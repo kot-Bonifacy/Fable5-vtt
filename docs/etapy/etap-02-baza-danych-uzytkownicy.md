@@ -8,13 +8,13 @@ Trwała warstwa danych (SQLite + Prisma) oraz logowanie zgodne z ankietą: MG ha
 
 ## Zakres
 
-- [ ] Prisma + SQLite, pierwsza migracja; plik bazy poza repo
-- [ ] Modele: `User` (nazwa, rola MG|GRACZ, hash hasła opcjonalny), `Campaign`, `Invitation` (token, wygaśnięcie, przypisanie do kampanii), szkielety `Character` i `Scene` (rozwijane w etapach 04 i 07)
-- [ ] Auth: logowanie MG hasłem (bcrypt/argon2), wejście gracza przez link `/join/<token>` z wyborem/utworzeniem imienia; sesja w podpisanym cookie httpOnly
-- [ ] Middleware ról: endpointy i zdarzenia socketowe deklarują wymaganą rolę; Socket.IO uwierzytelniany tym samym cookie przy handshake'u
-- [ ] Minimalny panel MG: utworzenie kampanii, generowanie/unieważnianie linków zaproszeń, lista graczy
-- [ ] Ekran logowania po polsku (proste, czytelne — szlif wizualny w etapie 26)
-- [ ] Testy dymne: logowanie, dołączenie z linku, odrzucenie akcji MG wykonanej przez gracza
+- [x] Prisma + SQLite, pierwsza migracja; plik bazy poza repo
+- [x] Modele: `User` (nazwa, rola MG|GRACZ, hash hasła opcjonalny), `Campaign`, `Invitation` (token, wygaśnięcie, przypisanie do kampanii), szkielety `Character` i `Scene` (rozwijane w etapach 04 i 07)
+- [x] Auth: logowanie MG hasłem (bcrypt/argon2), wejście gracza przez link `/join/<token>` z wyborem/utworzeniem imienia; sesja w podpisanym cookie httpOnly
+- [x] Middleware ról: endpointy i zdarzenia socketowe deklarują wymaganą rolę; Socket.IO uwierzytelniany tym samym cookie przy handshake'u
+- [x] Minimalny panel MG: utworzenie kampanii, generowanie/unieważnianie linków zaproszeń, lista graczy
+- [x] Ekran logowania po polsku (proste, czytelne — szlif wizualny w etapie 26)
+- [x] Testy dymne: logowanie, dołączenie z linku, odrzucenie akcji MG wykonanej przez gracza
 
 ## Poza zakresem
 

@@ -1,0 +1,86 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  role         String // "GM" | "PLAYER" (SQLite: no enum support in Prisma)
+  passwordHash String?
+  createdAt    DateTime @default(now())
+
+  sessions    Session[]
+  memberships CampaignMember[]
+  characters  Character[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Campaign {
+  id        String   @id @default(cuid())
+  name      String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  invitations Invitation[]
+  members     CampaignMember[]
+  characters  Character[]
+  scenes      Scene[]
+}
+
+model CampaignMember {
+  id         String   @id @default(cuid())
+  campaignId String
+  userId     String
+  joinedAt   DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, userId])
+}
+
+model Invitation {
+  id         String    @id @default(cuid())
+  token      String    @unique
+  campaignId String
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+}
+
+// Skeleton model — expanded in stage 07 (character sheet).
+model Character {
+  id         String   @id @default(cuid())
+  name       String
+  campaignId String
+  ownerId    String?
+  createdAt  DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  owner    User?    @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+}
+
+// Skeleton model — expanded in stage 04 (map & scenes).
+model Scene {
+  id         String   @id @default(cuid())
+  name       String
+  campaignId String
+  createdAt  DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+}

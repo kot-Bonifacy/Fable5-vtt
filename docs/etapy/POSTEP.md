@@ -5,7 +5,7 @@ Aktualizowany na koniec każdej sesji. Statusy: ⬜ nierozpoczęty · 🟨 w tok
 | #   | Etap                                      | Status | Data ukończenia | Uwagi                                                                  |
 | --- | ----------------------------------------- | ------ | --------------- | ---------------------------------------------------------------------- |
 | 01  | Szkielet projektu i środowisko            | ✅     | 2026-07-16      | repo: Fable5-vtt; shared konsumowany jako źródła TS (decyzja w README) |
-| 02  | Baza danych, użytkownicy, role            | ⬜     |                 |                                                                        |
+| 02  | Baza danych, użytkownicy, role            | ✅     | 2026-07-16      | Prisma 7 (adapter better-sqlite3); dodatkowy model `CampaignMember`    |
 | 03  | Rdzeń realtime i czat                     | ⬜     |                 |                                                                        |
 | 04  | Mapa i sceny                              | ⬜     |                 |                                                                        |
 | 05  | Tokeny                                    | ⬜     |                 |                                                                        |
@@ -37,3 +37,4 @@ Aktualizowany na koniec każdej sesji. Statusy: ⬜ nierozpoczęty · 🟨 w tok
 _(Tu zapisuj: gdzie przerwano pracę, znane problemy, od czego zacząć następną sesję.)_
 
 - **2026-07-16 (etap 01):** Monorepo działa (`pnpm dev/test/lint/build` — wszystko zielone). `CRED-EasyMode.pdf` przeniesiony do `data/private/` (prawa autorskie). Repo wypchnięte: https://github.com/kot-Bonifacy/Fable5-vtt. Następny etap: 02 (baza danych, użytkownicy, role).
+- **2026-07-16 (etap 02):** Auth i baza gotowe; przepływ zweryfikowany w przeglądarce (logowanie MG → kampania → link → dołączenie gracza → unieważnienie linku) + 21 testów dymnych. Decyzje z użytkownikiem: konto MG auto-seed z `.env` (`GM_PASSWORD`), linki zaproszeń **wielorazowe** (z wygaśnięciem/unieważnieniem), powrót gracza przez ponowne wejście linkiem i wybór swojego imienia (bez hasła — zaufana grupa). Odstępstwa/notatki: Prisma 7 (nowy generator `prisma-client` → klient w `src/generated/`, gitignore; runtime przez adapter better-sqlite3; konfiguracja CLI w `prisma.config.ts`), dodatkowy model `CampaignMember` (przypisanie gracza do kampanii), w dev Vite proxy `/api` + `/socket.io` (same-origin cookies, bez CORS), socketowy guard ról na razie na placeholderze `gm:ping` (prawdziwe zdarzenia MG od etapu 04). Następny etap: 03 (rdzeń realtime i czat).

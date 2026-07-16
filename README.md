@@ -22,10 +22,12 @@ docs/etapy/        # plan projektu (27 etapów)
 
 ```bash
 pnpm install
+cp packages/server/.env.example packages/server/.env   # ustaw GM_PASSWORD i COOKIE_SECRET
+pnpm --filter @vtt/server exec prisma migrate dev      # utworzenie/aktualizacja bazy SQLite
 pnpm dev        # serwer (http://localhost:3001) + klient (http://localhost:5173)
 ```
 
-Klient pokazuje w górnym pasku status połączenia z serwerem (zielona/czerwona kropka). Konfiguracja serwera przez zmienne środowiskowe — patrz `packages/server/.env.example`.
+Logowanie: MG loguje się hasłem z `GM_PASSWORD` (konto tworzy się automatycznie przy starcie serwera); gracze wchodzą linkiem zaproszenia generowanym w Panelu MG (`/join/<token>`). Konfiguracja serwera przez zmienne środowiskowe — patrz `packages/server/.env.example`.
 
 Pozostałe komendy:
 
@@ -40,6 +42,8 @@ pnpm format     # Prettier
 
 - **`@vtt/shared` konsumowany jako źródła TS** (`exports` wskazuje na `src/index.ts`): Vite (klient) i tsx (serwer dev) czytają TS bezpośrednio, bez osobnego kroku budowania; build produkcyjny serwera bundluje shared przez tsup. Prostsze niż project references — bez pilnowania kolejności budowania w dev.
 - Serwer jest autorytatywny; mechanika CP RED wyłącznie w `packages/shared` jako czyste funkcje z testami. Szczegóły architektury: [`CLAUDE.md`](CLAUDE.md).
+- **Prisma 7 + SQLite przez driver adapter `better-sqlite3`**: klient Prisma generowany do `packages/server/src/generated/` (gitignore), konfiguracja CLI w `prisma.config.ts`, migracje w repo (`prisma/migrations/`).
+- **Sesje w podpisanym cookie httpOnly** (`@fastify/cookie`), rekordy sesji w bazie; Socket.IO uwierzytelniany tym samym cookie przy handshake'u. W dev klient i serwer są same-origin dzięki proxy Vite (`/api`, `/socket.io`) — bez CORS; prod powtórzy to przez Caddy (etap 27).
 
 ## Licencja danych
 
