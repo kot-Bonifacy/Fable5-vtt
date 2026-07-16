@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# Builds
+dist/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# SQLite databases
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+
+# Copyrighted / private data — NEVER commit
+data/private/
+uploads/
+
+# Python (ai-gateway)
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Logs & OS junk
+*.log
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea/
+.vscode/
+!.vscode/extensions.json

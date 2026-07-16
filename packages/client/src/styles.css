@@ -1,0 +1,105 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  color-scheme: dark;
+  --bg: #14151a;
+  --bg-panel: #1e2028;
+  --bg-topbar: #0e0f13;
+  --border: #33363f;
+  --text: #d8dae0;
+  --text-dim: #7d818c;
+  --accent: #e01414;
+  --ok: #34c759;
+  --err: #ff3b30;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1rem;
+  height: 44px;
+  background: var(--bg-topbar);
+  border-bottom: 1px solid var(--border);
+}
+
+.top-bar-title {
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
+
+.connection-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.status-dot--connected {
+  background: var(--ok);
+  box-shadow: 0 0 6px var(--ok);
+}
+
+.status-dot--disconnected {
+  background: var(--err);
+  box-shadow: 0 0 6px var(--err);
+}
+
+.app-main {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.map-area {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  background:
+    linear-gradient(var(--border) 1px, transparent 1px) 0 0 / 48px 48px,
+    linear-gradient(90deg, var(--border) 1px, transparent 1px) 0 0 / 48px 48px,
+    var(--bg);
+}
+
+.side-panel {
+  width: 320px;
+  display: grid;
+  place-items: center;
+  background: var(--bg-panel);
+  border-left: 1px solid var(--border);
+}
+
+.placeholder-text {
+  color: var(--text-dim);
+  font-size: 0.9rem;
+}

@@ -1,0 +1,27 @@
+{
+  "name": "vtt",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Cyberpunk RED Virtual Tabletop — map, tokens, dice, character sheets, LLM bots",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@11.13.1",
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,green \"pnpm --filter @vtt/server dev\" \"pnpm --filter @vtt/client dev\"",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "lint": "eslint .",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.30.0",
+    "concurrently": "^9.1.2",
+    "eslint": "^9.30.0",
+    "eslint-config-prettier": "^10.1.5",
+    "prettier": "^3.6.2",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.35.0"
+  }
+}
