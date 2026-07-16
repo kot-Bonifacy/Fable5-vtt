@@ -36,4 +36,4 @@ Aktualizowany na koniec każdej sesji. Statusy: ⬜ nierozpoczęty · 🟨 w tok
 
 _(Tu zapisuj: gdzie przerwano pracę, znane problemy, od czego zacząć następną sesję.)_
 
-- **2026-07-16 (etap 01):** Monorepo działa (`pnpm dev/test/lint/build` — wszystko zielone). `CRED-EasyMode.pdf` przeniesiony do `data/private/` (prawa autorskie). Push na GitHub (repo `Fable5-vtt`) wymaga zainstalowania `gh` CLI i `gh auth login` — jeśli nie zrobiono w tej sesji, zacznij następną od tego. Następny etap: 02 (baza danych, użytkownicy, role).
+- **2026-07-16 (etap 01):** Monorepo działa (`pnpm dev/test/lint/build` — wszystko zielone). `CRED-EasyMode.pdf` przeniesiony do `data/private/` (prawa autorskie). Repo wypchnięte: https://github.com/kot-Bonifacy/Fable5-vtt. Następny etap: 02 (baza danych, użytkownicy, role).
