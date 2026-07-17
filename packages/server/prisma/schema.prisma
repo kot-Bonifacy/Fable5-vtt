@@ -14,9 +14,11 @@ model User {
   passwordHash String?
   createdAt    DateTime @default(now())
 
-  sessions    Session[]
-  memberships CampaignMember[]
-  characters  Character[]
+  sessions         Session[]
+  memberships      CampaignMember[]
+  characters       Character[]
+  chatMessages     ChatMessage[] @relation("ChatAuthor")
+  whispersReceived ChatMessage[] @relation("ChatRecipient")
 }
 
 model Session {
@@ -34,10 +36,11 @@ model Campaign {
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
 
-  invitations Invitation[]
-  members     CampaignMember[]
-  characters  Character[]
-  scenes      Scene[]
+  invitations  Invitation[]
+  members      CampaignMember[]
+  characters   Character[]
+  scenes       Scene[]
+  chatMessages ChatMessage[]
 }
 
 model CampaignMember {
@@ -73,6 +76,23 @@ model Character {
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   owner    User?    @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+}
+
+// Autoincrement id doubles as a stable chronological cursor for pagination.
+model ChatMessage {
+  id          Int      @id @default(autoincrement())
+  campaignId  String
+  authorId    String
+  kind        String // "say" | "whisper" (SQLite: no enum support in Prisma)
+  text        String
+  recipientId String? // whisper target; null for public messages
+  createdAt   DateTime @default(now())
+
+  campaign  Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  author    User     @relation("ChatAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  recipient User?    @relation("ChatRecipient", fields: [recipientId], references: [id], onDelete: SetNull)
+
+  @@index([campaignId, id])
 }
 
 // Skeleton model — expanded in stage 04 (map & scenes).

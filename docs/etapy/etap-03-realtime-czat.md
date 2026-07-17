@@ -8,14 +8,14 @@ Wzorzec synchronizacji stanu, na którym stanie cała reszta VTT (server-authori
 
 ## Zakres
 
-- [ ] Architektura zdarzeń: klient wysyła intencję → serwer waliduje (rola, uprawnienia) → mutuje stan → broadcast do pokoju; konwencja nazw `domena:czynnosc`
-- [ ] Rooms Socket.IO: pokój kampanii + pokój sceny; dołączanie po uwierzytelnieniu
-- [ ] Wersjonowanie stanu (licznik sekwencji per pokój) + pełny resync po reconnect (zdarzenie `state:sync`)
-- [ ] Czat: wiadomości wspólne, zapis w DB, historia z paginacją (doładowanie przy scrollu)
-- [ ] Szepty: `/w <imię> treść` — widzi tylko nadawca i adresat; filtrowanie po stronie serwera
-- [ ] Parser komend czatu (rozszerzalny — `/r` dojdzie w etapie 06); nieznana komenda → podpowiedź
-- [ ] Lista obecności (kto online, rola) w panelu bocznym
-- [ ] Testy: filtrowanie szeptów, resync po symulowanym rozłączeniu
+- [x] Architektura zdarzeń: klient wysyła intencję → serwer waliduje (rola, uprawnienia) → mutuje stan → broadcast do pokoju; konwencja nazw `domena:czynnosc`
+- [x] Rooms Socket.IO: pokój kampanii + pokój sceny; dołączanie po uwierzytelnieniu _(pokój sceny: helper `sceneRoom()` gotowy, realne dołączanie od etapu 04 — sceny jeszcze nie istnieją funkcjonalnie)_
+- [x] Wersjonowanie stanu (licznik sekwencji per pokój) + pełny resync po reconnect (zdarzenie `state:sync`)
+- [x] Czat: wiadomości wspólne, zapis w DB, historia z paginacją (doładowanie przy scrollu)
+- [x] Szepty: `/w <imię> treść` — widzi tylko nadawca i adresat; filtrowanie po stronie serwera
+- [x] Parser komend czatu (rozszerzalny — `/r` dojdzie w etapie 06); nieznana komenda → podpowiedź
+- [x] Lista obecności (kto online, rola) w panelu bocznym
+- [x] Testy: filtrowanie szeptów, resync po symulowanym rozłączeniu
 
 ## Poza zakresem
 

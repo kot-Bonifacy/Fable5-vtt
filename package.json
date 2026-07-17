@@ -9,7 +9,7 @@
   },
   "packageManager": "pnpm@11.13.1",
   "scripts": {
-    "dev": "concurrently -n server,client -c blue,green \"pnpm --filter @vtt/server dev\" \"pnpm --filter @vtt/client dev\"",
+    "dev": "concurrently --raw \"pnpm --filter @vtt/server dev\" \"pnpm --filter @vtt/client dev\"",
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "lint": "eslint .",

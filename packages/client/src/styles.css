@@ -15,6 +15,7 @@
   --accent: #e01414;
   --ok: #34c759;
   --err: #ff3b30;
+  --whisper: #b48be0;
 }
 
 html,
@@ -93,10 +94,121 @@ body {
 
 .side-panel {
   width: 320px;
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   background: var(--bg-panel);
   border-left: 1px solid var(--border);
+}
+
+/* --- Presence --- */
+
+.presence {
+  padding: 0.75rem 0.75rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.presence-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.presence-entry {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.presence-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --- Chat --- */
+
+.chat-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+}
+
+.chat-feed {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-right: 0.25rem;
+}
+
+.chat-message {
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.chat-message-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.chat-message-author {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.chat-message-time {
+  margin-left: auto;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.chat-message-text {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.chat-message--whisper {
+  border-left: 2px solid var(--whisper);
+  padding-left: 0.5rem;
+}
+
+.chat-message--whisper .chat-message-text {
+  color: var(--whisper);
+  font-style: italic;
+}
+
+.chat-whisper-label {
+  font-size: 0.72rem;
+  color: var(--whisper);
+}
+
+.chat-note {
+  font-size: 0.8rem;
+  font-style: italic;
+  color: var(--text-dim);
+}
+
+.chat-input-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.chat-input-row input {
+  flex: 1;
+  min-width: 0;
 }
 
 .placeholder-text {

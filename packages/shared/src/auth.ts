@@ -51,7 +51,6 @@ export interface CampaignDetail extends CampaignSummary {
 }
 
 /** Standard acknowledgement payload for Socket.IO events. */
-export interface SocketAck {
-  ok: boolean;
-  error?: string;
-}
+export type SocketAck<T = undefined> =
+  | { ok: true; data?: T }
+  | { ok: false; error: string };

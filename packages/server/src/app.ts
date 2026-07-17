@@ -9,7 +9,7 @@ import { ensureGmUser } from './auth/seed.js';
 import { registerAuthRoutes } from './routes/auth.js';
 import { registerJoinRoutes } from './routes/join.js';
 import { registerCampaignRoutes } from './routes/campaigns.js';
-import { setupSockets } from './sockets.js';
+import { setupRealtime } from './realtime/index.js';
 
 export interface BuiltApp {
   app: FastifyInstance;
@@ -55,7 +55,7 @@ export async function buildApp(
   const io = new SocketIOServer(app.server, {
     cors: { origin: config.clientOrigin, credentials: true },
   });
-  setupSockets(io, app, ctx);
+  setupRealtime(io, app, ctx);
 
   app.addHook('onClose', async () => {
     io.close();
