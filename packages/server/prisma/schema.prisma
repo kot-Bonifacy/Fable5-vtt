@@ -95,12 +95,34 @@ model ChatMessage {
   @@index([campaignId, id])
 }
 
-// Skeleton model — expanded in stage 04 (map & scenes).
 model Scene {
-  id         String   @id @default(cuid())
+  id         String  @id @default(cuid())
   name       String
   campaignId String
-  createdAt  DateTime @default(now())
+  active     Boolean @default(false)
+
+  // Background image (uploaded map); scene dimensions default to image size
+  // but can exceed it (empty margin around the map).
+  backgroundUrl    String?
+  backgroundWidth  Int?
+  backgroundHeight Int?
+  width            Int     @default(4000)
+  height           Int     @default(3000)
+
+  gridMode        String  @default("grid") // "grid" | "gridless" (SQLite: no enums)
+  gridSizePx      Float   @default(100)
+  gridOffsetX     Float   @default(0)
+  gridOffsetY     Float   @default(0)
+  gridColor       String  @default("#000000")
+  gridAlpha       Float   @default(0.35)
+  gridVisible     Boolean @default(true)
+  /** CP RED default: one square = 2 m — basis for ruler and DV (stage 15). */
+  metersPerSquare Float   @default(2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, active])
 }

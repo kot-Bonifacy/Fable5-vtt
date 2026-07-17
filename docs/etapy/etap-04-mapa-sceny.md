@@ -8,13 +8,13 @@ Renderer mapy w Pixi.js: MG wgrywa grafikę mapy, konfiguruje siatkę, aktywuje 
 
 ## Zakres
 
-- [ ] Integracja Pixi.js v8 z Reactem: komponent canvas zarządzający własnym cyklem życia, dane sceny z zustand
-- [ ] Viewport: pan (przeciąganie/środkowy przycisk), zoom do kursora (scroll), granice sceny
-- [ ] Model `Scene` w Prisma: nazwa, obraz tła, wymiary, konfiguracja siatki (rozmiar kratki w px i w metrach, offset X/Y, kolor, widoczność), tryb `grid|gridless`, flaga aktywności
-- [ ] Upload obrazu tła (`@fastify/multipart` → `uploads/`), serwowanie statyczne, walidacja typu/rozmiaru
-- [ ] Warstwa siatki rysowana w Pixi (Graphics) zgodnie z konfiguracją; tryb bez siatki ją wyłącza
-- [ ] Zarządzanie scenami: lista scen MG, tworzenie/edycja/usuwanie, aktywacja (gracze automatycznie przełączani na aktywną scenę — zdarzenie `scene:activate`)
-- [ ] Skala sceny: kratka = X metrów (domyślnie 2 m jak w CP RED) — fundament pod linijkę i DV w etapie 15
+- [x] Integracja Pixi.js v8 z Reactem: komponent canvas zarządzający własnym cyklem życia, dane sceny z zustand
+- [x] Viewport: pan (przeciąganie/środkowy przycisk), zoom do kursora (scroll), granice sceny
+- [x] Model `Scene` w Prisma: nazwa, obraz tła, wymiary, konfiguracja siatki (rozmiar kratki w px i w metrach, offset X/Y, kolor, widoczność), tryb `grid|gridless`, flaga aktywności
+- [x] Upload obrazu tła (`@fastify/multipart` → `uploads/`), serwowanie statyczne, walidacja typu/rozmiaru
+- [x] Warstwa siatki rysowana w Pixi (Graphics) zgodnie z konfiguracją; tryb bez siatki ją wyłącza
+- [x] Zarządzanie scenami: lista scen MG, tworzenie/edycja/usuwanie, aktywacja (gracze automatycznie przełączani na aktywną scenę — zdarzenie `scene:activate`)
+- [x] Skala sceny: kratka = X metrów (domyślnie 2 m jak w CP RED) — fundament pod linijkę i DV w etapie 15
 
 ## Poza zakresem
 

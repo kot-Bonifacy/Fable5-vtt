@@ -1,6 +1,8 @@
 import { execSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { unlinkSync } from 'node:fs';
+import { mkdtempSync, unlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { io as ioClient, type Socket as ClientSocket } from 'socket.io-client';
 import type {
@@ -27,6 +29,7 @@ const config: ServerConfig = {
   gmPassword: GM_PASSWORD,
   cookieSecret: 'test-cookie-secret',
   sessionTtlDays: 1,
+  uploadsDir: mkdtempSync(join(tmpdir(), 'vtt-uploads-')),
 };
 
 let built: BuiltApp;

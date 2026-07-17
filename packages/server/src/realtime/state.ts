@@ -23,7 +23,12 @@ export function campaignRoom(campaignId: string): string {
   return `campaign:${campaignId}`;
 }
 
-/** Socket.IO room of a scene — joined by viewers of that scene (stage 04+). */
+/** Socket.IO room of a scene — joined by viewers of that scene. */
 export function sceneRoom(sceneId: string): string {
   return `scene:${sceneId}`;
+}
+
+/** GM-only room of a campaign — targeted GM data (scene lists) goes here. */
+export function gmRoom(campaignId: string): string {
+  return `campaign:${campaignId}:gm`;
 }

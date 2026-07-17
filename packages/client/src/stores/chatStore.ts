@@ -29,6 +29,11 @@ interface ChatStoreState {
   applyMessage: (broadcast: ChatMessageBroadcast) => boolean;
   /** Returns true when a seq gap was detected and a resync is needed. */
   applyPresence: (broadcast: PresenceBroadcast) => boolean;
+  /**
+   * Advances the room seq for non-chat broadcasts (scenes etc.). Returns true
+   * when a gap was detected and a resync is needed.
+   */
+  applySeq: (seq: number | undefined) => boolean;
   prependHistory: (page: ChatHistoryPage) => void;
   setLoadingHistory: (loading: boolean) => void;
   addNote: (text: string) => void;
@@ -101,6 +106,17 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
       return true;
     }
     set({ seq, presence: broadcast.presence });
+    return false;
+  },
+
+  applySeq: (incoming) => {
+    const state = get();
+    const { resync, seq } = advanceSeq(state, incoming);
+    if (resync) {
+      set({ synced: false });
+      return true;
+    }
+    set({ seq });
     return false;
   },
 

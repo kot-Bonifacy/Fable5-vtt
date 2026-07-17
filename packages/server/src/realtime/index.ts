@@ -7,9 +7,17 @@ import type { PrismaClient } from '../db.js';
 import { SESSION_COOKIE, resolveSessionUser } from '../auth/sessions.js';
 import { getActiveCampaign } from '../routes/helpers.js';
 import { defineEvent, registerEvents, type RealtimeDeps, type RealtimeEvent } from './registry.js';
-import { RoomSequences, campaignRoom } from './state.js';
+import { RoomSequences, campaignRoom, gmRoom } from './state.js';
 import { broadcastPresence } from './presence.js';
 import { chatHistoryEvent, chatSendEvent } from './chat.js';
+import {
+  joinInitialScene,
+  sceneActivateEvent,
+  sceneCreateEvent,
+  sceneDeleteEvent,
+  sceneUpdateEvent,
+  sceneViewEvent,
+} from './scenes.js';
 import { sendStateSync, stateRequestEvent } from './sync.js';
 
 declare module 'socket.io' {
@@ -17,6 +25,8 @@ declare module 'socket.io' {
     user: SessionUser;
     /** Active campaign this socket belongs to (room joined); null when none. */
     campaign: CampaignSummary | null;
+    /** Scene this socket currently views (scene room joined); null when none. */
+    viewedSceneId: string | null;
   }
 }
 
@@ -33,6 +43,11 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   stateRequestEvent,
   chatSendEvent,
   chatHistoryEvent,
+  sceneCreateEvent,
+  sceneUpdateEvent,
+  sceneDeleteEvent,
+  sceneActivateEvent,
+  sceneViewEvent,
 ] as RealtimeEvent<never, unknown>[];
 
 async function authenticateHandshake(
@@ -93,8 +108,11 @@ export function setupRealtime(io: SocketIOServer, app: FastifyInstance, ctx: App
       try {
         const campaign = await resolveSocketCampaign(ctx.prisma, user);
         socket.data.campaign = campaign;
+        socket.data.viewedSceneId = null;
         if (campaign) {
           await socket.join(campaignRoom(campaign.id));
+          if (user.role === ROLE_GM) await socket.join(gmRoom(campaign.id));
+          await joinInitialScene(deps, socket, campaign.id);
           await broadcastPresence(deps, campaign.id);
         }
         await sendStateSync(deps, socket, user);

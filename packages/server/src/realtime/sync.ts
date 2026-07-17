@@ -1,8 +1,10 @@
 import type { Socket } from 'socket.io';
-import type { SessionUser, StateSyncPayload } from '@vtt/shared';
+import type { SceneSummary, SceneView, SessionUser, StateSyncPayload } from '@vtt/shared';
+import { ROLE_GM } from '@vtt/shared';
 import { defineEvent, type RealtimeDeps } from './registry.js';
 import { computePresence } from './presence.js';
 import { fetchHistoryPage } from './chat.js';
+import { fetchSceneList, getSceneById, toSceneView } from './scenes.js';
 import { campaignRoom } from './state.js';
 
 /**
@@ -17,18 +19,35 @@ export async function buildStateSync(
 ): Promise<StateSyncPayload> {
   const campaign = socket.data.campaign;
   if (!campaign) {
-    return { seq: 0, campaign: null, presence: [], messages: [], hasMoreHistory: false };
+    return {
+      seq: 0,
+      campaign: null,
+      presence: [],
+      messages: [],
+      hasMoreHistory: false,
+      scene: null,
+      scenes: [],
+    };
   }
-  const [presence, history] = await Promise.all([
+  const viewedSceneId = socket.data.viewedSceneId;
+  const [presence, history, viewedScene, scenes] = await Promise.all([
     computePresence(deps.io, campaign.id),
     fetchHistoryPage(deps.ctx.prisma, campaign.id, user.id),
+    viewedSceneId ? getSceneById(deps.ctx.prisma, viewedSceneId) : Promise.resolve(null),
+    // The full scene list is GM manager data — players never receive it.
+    user.role === ROLE_GM
+      ? fetchSceneList(deps.ctx.prisma, campaign.id)
+      : Promise.resolve<SceneSummary[]>([]),
   ]);
+  const scene: SceneView | null = viewedScene ? toSceneView(viewedScene) : null;
   return {
     seq: deps.seqs.current(campaignRoom(campaign.id)),
     campaign,
     presence,
     messages: history.messages,
     hasMoreHistory: history.hasMore,
+    scene,
+    scenes,
   };
 }
 

@@ -1,3 +1,5 @@
+import { resolve } from 'node:path';
+
 export interface ServerConfig {
   port: number;
   host: string;
@@ -7,6 +9,8 @@ export interface ServerConfig {
   gmPassword: string | undefined;
   cookieSecret: string;
   sessionTtlDays: number;
+  /** Absolute directory for user uploads (maps, tokens, handouts). */
+  uploadsDir: string;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
@@ -19,5 +23,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     gmPassword: env.GM_PASSWORD,
     cookieSecret: env.COOKIE_SECRET ?? 'dev-secret-change-me',
     sessionTtlDays: Number(env.SESSION_TTL_DAYS ?? 30),
+    // Default assumes cwd = packages/server (dev scripts) → repo-root uploads/.
+    uploadsDir: resolve(env.UPLOADS_DIR ?? '../../uploads'),
   };
 }
