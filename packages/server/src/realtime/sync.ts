@@ -5,6 +5,7 @@ import { defineEvent, type RealtimeDeps } from './registry.js';
 import { computePresence } from './presence.js';
 import { fetchHistoryPage } from './chat.js';
 import { fetchSceneList, getSceneById, toSceneView } from './scenes.js';
+import { fetchSceneTokensFor } from './tokens.js';
 import { campaignRoom } from './state.js';
 
 /**
@@ -27,10 +28,11 @@ export async function buildStateSync(
       hasMoreHistory: false,
       scene: null,
       scenes: [],
+      tokens: [],
     };
   }
   const viewedSceneId = socket.data.viewedSceneId;
-  const [presence, history, viewedScene, scenes] = await Promise.all([
+  const [presence, history, viewedScene, scenes, tokens] = await Promise.all([
     computePresence(deps.io, campaign.id),
     fetchHistoryPage(deps.ctx.prisma, campaign.id, user.id),
     viewedSceneId ? getSceneById(deps.ctx.prisma, viewedSceneId) : Promise.resolve(null),
@@ -38,6 +40,10 @@ export async function buildStateSync(
     user.role === ROLE_GM
       ? fetchSceneList(deps.ctx.prisma, campaign.id)
       : Promise.resolve<SceneSummary[]>([]),
+    // Already filtered per viewer: no hidden tokens or foreign HP for players.
+    viewedSceneId
+      ? fetchSceneTokensFor(deps.ctx.prisma, viewedSceneId, user)
+      : Promise.resolve([]),
   ]);
   const scene: SceneView | null = viewedScene ? toSceneView(viewedScene) : null;
   return {
@@ -48,6 +54,7 @@ export async function buildStateSync(
     hasMoreHistory: history.hasMore,
     scene,
     scenes,
+    tokens,
   };
 }
 

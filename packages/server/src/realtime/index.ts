@@ -18,6 +18,12 @@ import {
   sceneUpdateEvent,
   sceneViewEvent,
 } from './scenes.js';
+import {
+  tokenCreateEvent,
+  tokenDeleteEvent,
+  tokenMoveEvent,
+  tokenUpdateEvent,
+} from './tokens.js';
 import { sendStateSync, stateRequestEvent } from './sync.js';
 
 declare module 'socket.io' {
@@ -48,6 +54,10 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   sceneDeleteEvent,
   sceneActivateEvent,
   sceneViewEvent,
+  tokenCreateEvent,
+  tokenUpdateEvent,
+  tokenDeleteEvent,
+  tokenMoveEvent,
 ] as RealtimeEvent<never, unknown>[];
 
 async function authenticateHandshake(

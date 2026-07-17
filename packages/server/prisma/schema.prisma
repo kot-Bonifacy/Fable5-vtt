@@ -19,6 +19,7 @@ model User {
   characters       Character[]
   chatMessages     ChatMessage[] @relation("ChatAuthor")
   whispersReceived ChatMessage[] @relation("ChatRecipient")
+  tokens           Token[]
 }
 
 model Session {
@@ -41,6 +42,7 @@ model Campaign {
   characters   Character[]
   scenes       Scene[]
   chatMessages ChatMessage[]
+  tokenAssets  TokenAsset[]
 }
 
 model CampaignMember {
@@ -95,6 +97,51 @@ model ChatMessage {
   @@index([campaignId, id])
 }
 
+model Token {
+  id      String  @id @default(cuid())
+  sceneId String
+  name    String
+  /** Local asset path (/uploads/... or /public/...); null renders a placeholder disc. */
+  imageUrl String?
+  /** Top-left corner in scene (world) pixels. */
+  x       Float
+  y       Float
+  /** Edge length in grid squares (1..4). */
+  size    Int     @default(1)
+  /** Owning player; null = GM-controlled (NPC). */
+  ownerId String?
+  hidden  Boolean @default(false)
+  /** Local HP until the character sheet link lands in stage 08. */
+  hpCurrent Int?
+  hpMax     Int?
+  /** JSON array of status ids (SQLite has no native arrays). */
+  statuses String @default("[]")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  scene Scene @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  owner User? @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+
+  @@index([sceneId])
+}
+
+/** One uploaded token image — the campaign's simple asset library. */
+model TokenAsset {
+  id         String   @id @default(cuid())
+  campaignId String
+  /** Display name, defaults to the uploaded file's base name. */
+  name       String
+  url        String
+  width      Int
+  height     Int
+  createdAt  DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+}
+
 model Scene {
   id         String  @id @default(cuid())
   name       String
@@ -123,6 +170,7 @@ model Scene {
   updatedAt DateTime @updatedAt
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  tokens   Token[]
 
   @@index([campaignId, active])
 }

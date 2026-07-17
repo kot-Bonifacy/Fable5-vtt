@@ -1,4 +1,4 @@
-import type { RemoteSocket, Socket } from 'socket.io';
+import type { Socket } from 'socket.io';
 import type {
   SceneActivateBroadcast,
   SceneCreatePayload,
@@ -95,7 +95,7 @@ function requireCampaignId(socketData: { campaign: { id: string } | null }): str
   return socketData.campaign.id;
 }
 
-async function requireCampaignScene(
+export async function requireCampaignScene(
   prisma: PrismaClient,
   campaignId: string,
   sceneId: unknown,
@@ -108,9 +108,16 @@ async function requireCampaignScene(
   return scene;
 }
 
+/** Local and remote sockets share this shape — all we need to move viewers. */
+interface ViewerSocket {
+  data: unknown;
+  join(room: string): void | Promise<void>;
+  leave(room: string): void | Promise<void>;
+}
+
 /** Moves a socket's viewed scene: leaves the old scene room, joins the new. */
 export async function switchViewedScene(
-  socket: Socket | RemoteSocket<never, never>,
+  socket: ViewerSocket,
   sceneId: string | null,
 ): Promise<void> {
   const previous = (socket.data as { viewedSceneId: string | null }).viewedSceneId;
@@ -230,11 +237,16 @@ export const sceneActivateEvent = defineEvent<SceneIdPayload>({
     });
     const view = toSceneView(activated);
 
-    // Players always follow the active scene; the GM keeps their own view.
+    // Players always follow the active scene; the GM keeps their own view —
+    // unless they are not viewing anything yet (connected before any scene
+    // was active), in which case following the activation is the only
+    // sensible destination.
     const sockets = await deps.io.in(campaignRoom(campaignId)).fetchSockets();
     for (const member of sockets) {
-      const user = (member.data as { user: SessionUser }).user;
-      if (user.role !== ROLE_GM) await switchViewedScene(member, view.id);
+      const data = member.data as { user: SessionUser; viewedSceneId: string | null };
+      if (data.user.role !== ROLE_GM || data.viewedSceneId === null) {
+        await switchViewedScene(member, view.id);
+      }
     }
 
     const room = campaignRoom(campaignId);

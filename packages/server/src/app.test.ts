@@ -2,7 +2,7 @@ import { execSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { mkdtempSync, unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { io as ioClient, type Socket as ClientSocket } from 'socket.io-client';
 import type { AuthState, CampaignSummary, InvitationSummary, JoinInfo, SocketAck } from '@vtt/shared';
@@ -22,6 +22,7 @@ const config: ServerConfig = {
   cookieSecret: 'test-cookie-secret',
   sessionTtlDays: 1,
   uploadsDir: mkdtempSync(join(tmpdir(), 'vtt-uploads-')),
+  dataPublicDir: resolve(import.meta.dirname, '../../../data/public'),
 };
 
 let built: BuiltApp;

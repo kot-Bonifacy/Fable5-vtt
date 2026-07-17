@@ -12,12 +12,19 @@ import type {
   ServerHello,
   SocketAck,
   StateSyncPayload,
+  TokenCreatePayload,
+  TokenDeleteBroadcast,
+  TokenMoveBroadcast,
+  TokenPatch,
+  TokenUpsertBroadcast,
+  TokenView,
 } from '@vtt/shared';
-import { CHAT_COMMANDS_HELP, ROLE_GM, parseChatInput } from '@vtt/shared';
+import { CHAT_COMMANDS_HELP, ROLE_GM, TOKEN_MOVE_RATE_HZ, parseChatInput } from '@vtt/shared';
 import { useConnectionStore } from './stores/connectionStore.js';
 import { oldestMessageId, useChatStore } from './stores/chatStore.js';
 import { useSceneStore } from './stores/sceneStore.js';
 import { useAuthStore } from './stores/authStore.js';
+import { useTokenStore, type TokenViewerCtx } from './stores/tokenStore.js';
 
 let socket: Socket | undefined;
 
@@ -59,10 +66,16 @@ export function connectSocket(): Socket {
   socket.on('server:hello', (hello: ServerHello) => setServerHello(hello));
 
   const scenes = () => useSceneStore.getState();
+  const tokens = () => useTokenStore.getState();
+  const viewer = (): TokenViewerCtx => {
+    const user = useAuthStore.getState().user;
+    return { myUserId: user?.id ?? null, isGm: user?.role === ROLE_GM };
+  };
 
   socket.on('state:sync', (payload: StateSyncPayload) => {
     chat().applySync(payload);
     scenes().applySync(payload);
+    tokens().applySync(payload, viewer());
   });
   socket.on('chat:message', (broadcast: ChatMessageBroadcast) => {
     if (chat().applyMessage(broadcast)) socket?.emit('state:request');
@@ -88,11 +101,46 @@ export function connectSocket(): Socket {
     if (useAuthStore.getState().user?.role === ROLE_GM) {
       scenes().applyScene(broadcast.scene);
     } else {
+      const changed = useSceneStore.getState().scene?.id !== broadcast.scene.id;
       scenes().setScene(broadcast.scene);
+      // A scene switch means a new token set — refetch the filtered state.
+      if (changed) socket?.emit('state:request');
     }
   });
   socket.on('scene:list', (broadcast: SceneListBroadcast) => scenes().setScenes(broadcast.scenes));
-  socket.on('scene:view', (broadcast: SceneViewBroadcast) => scenes().setScene(broadcast.scene));
+  socket.on('scene:view', (broadcast: SceneViewBroadcast) => {
+    scenes().setScene(broadcast.scene);
+    socket?.emit('state:request');
+  });
+
+  // Token events for other scenes can reach us (campaign-wide broadcasts
+  // while the GM previews another scene) — filter by the viewed scene.
+  const viewingScene = (sceneId: string) => useSceneStore.getState().scene?.id === sceneId;
+
+  socket.on('token:upsert', (broadcast: TokenUpsertBroadcast) => {
+    if (chat().applySeq(broadcast.seq)) {
+      socket?.emit('state:request');
+      return;
+    }
+    if (viewingScene(broadcast.token.sceneId)) tokens().upsert(broadcast.token, viewer());
+  });
+  socket.on('token:delete', (broadcast: TokenDeleteBroadcast) => {
+    if (chat().applySeq(broadcast.seq)) {
+      socket?.emit('state:request');
+      return;
+    }
+    if (viewingScene(broadcast.sceneId)) tokens().remove(broadcast.tokenId);
+  });
+  socket.on('token:move', (broadcast: TokenMoveBroadcast) => {
+    // Intermediate frames carry no seq on purpose — never gap-check them.
+    if (broadcast.seq !== undefined && chat().applySeq(broadcast.seq)) {
+      socket?.emit('state:request');
+      return;
+    }
+    if (viewingScene(broadcast.sceneId)) {
+      tokens().applyMove(broadcast.tokenId, broadcast.x, broadcast.y);
+    }
+  });
 
   return socket;
 }
@@ -153,8 +201,42 @@ export const activateScene = (sceneId: string) => emitSceneAck('scene:activate',
 /** GM-only: switches this client's viewed scene (players always follow the active one). */
 export async function viewScene(sceneId: string): Promise<SocketAck<SceneView>> {
   const ack = await emitSceneAck<SceneView>('scene:view', { sceneId });
-  if (ack.ok && ack.data) useSceneStore.getState().setScene(ack.data);
+  if (ack.ok && ack.data) {
+    useSceneStore.getState().setScene(ack.data);
+    // Tokens of the newly viewed scene arrive with the fresh state.
+    socket?.emit('state:request');
+  }
   return ack;
+}
+
+export const createToken = (payload: TokenCreatePayload) =>
+  emitSceneAck<TokenView>('token:create', payload);
+
+export const updateToken = (tokenId: string, patch: TokenPatch) =>
+  emitSceneAck<TokenView>('token:update', { tokenId, patch });
+
+export const deleteToken = (tokenId: string) => emitSceneAck('token:delete', { tokenId });
+
+let lastMoveSentAt = 0;
+
+/**
+ * Streams drag positions, throttled to TOKEN_MOVE_RATE_HZ; the final position
+ * always goes out and resolves with the server-snapped coordinates.
+ */
+export function sendTokenMove(
+  tokenId: string,
+  x: number,
+  y: number,
+  final: boolean,
+): Promise<SocketAck<{ x: number; y: number }>> | null {
+  if (!final) {
+    const now = Date.now();
+    if (now - lastMoveSentAt < 1000 / TOKEN_MOVE_RATE_HZ) return null;
+    lastMoveSentAt = now;
+    socket?.emit('token:move', { tokenId, x, y, final: false });
+    return null;
+  }
+  return emitSceneAck<{ x: number; y: number }>('token:move', { tokenId, x, y, final: true });
 }
 
 /** Requests the previous page of chat history (infinite scroll upwards). */

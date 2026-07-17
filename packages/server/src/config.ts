@@ -11,6 +11,8 @@ export interface ServerConfig {
   sessionTtlDays: number;
   /** Absolute directory for user uploads (maps, tokens, handouts). */
   uploadsDir: string;
+  /** Absolute directory of committed public data (status icons, samples). */
+  dataPublicDir: string;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
@@ -23,7 +25,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     gmPassword: env.GM_PASSWORD,
     cookieSecret: env.COOKIE_SECRET ?? 'dev-secret-change-me',
     sessionTtlDays: Number(env.SESSION_TTL_DAYS ?? 30),
-    // Default assumes cwd = packages/server (dev scripts) → repo-root uploads/.
+    // Defaults assume cwd = packages/server (dev scripts) → repo-root dirs.
     uploadsDir: resolve(env.UPLOADS_DIR ?? '../../uploads'),
+    dataPublicDir: resolve(env.DATA_PUBLIC_DIR ?? '../../data/public'),
   };
 }

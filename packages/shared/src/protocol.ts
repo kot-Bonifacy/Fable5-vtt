@@ -1,6 +1,7 @@
 import type { CampaignSummary, Role } from './auth.js';
 import type { ChatMessageView } from './chat.js';
 import type { SceneSummary, SceneView } from './scenes.js';
+import type { TokenView } from './tokens.js';
 
 /** Server → client payload confirming a successful Socket.IO handshake. */
 export interface ServerHello {
@@ -32,6 +33,8 @@ export interface StateSyncPayload {
   scene: SceneView | null;
   /** All campaign scenes — GM only, always empty for players. */
   scenes: SceneSummary[];
+  /** Tokens of the viewed scene, already filtered for this viewer. */
+  tokens: TokenView[];
 }
 
 /** Payload of `chat:message`. `seq` is absent for targeted whisper deliveries. */

@@ -14,6 +14,7 @@ import { registerJoinRoutes } from './routes/join.js';
 import { registerCampaignRoutes } from './routes/campaigns.js';
 import { MAX_MAP_UPLOAD_BYTES, registerUploadRoutes } from './routes/uploads.js';
 import { setupRealtime } from './realtime/index.js';
+import { loadStatusRegistry } from './statuses.js';
 
 export interface BuiltApp {
   app: FastifyInstance;
@@ -42,6 +43,12 @@ export async function buildApp(
     root: config.uploadsDir,
     prefix: '/uploads/',
   });
+  // Committed public data: status icon SVGs, sample assets. Read-only.
+  await app.register(fastifyStatic, {
+    root: config.dataPublicDir,
+    prefix: '/public/',
+    decorateReply: false,
+  });
 
   app.decorateRequest('user', null);
   app.decorateRequest('sessionId', null);
@@ -60,7 +67,11 @@ export async function buildApp(
 
   app.get('/health', () => ({ status: 'ok', uptime: process.uptime() }));
 
-  const ctx: AppContext = { config, prisma };
+  const ctx: AppContext = {
+    config,
+    prisma,
+    statuses: await loadStatusRegistry(config.dataPublicDir, app.log),
+  };
   registerAuthRoutes(app, ctx);
   registerJoinRoutes(app, ctx);
   registerCampaignRoutes(app, ctx);

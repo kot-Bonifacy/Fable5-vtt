@@ -1,0 +1,37 @@
+{
+  "statuses": [
+    { "id": "stunned", "name": "Ogłuszony", "icon": "/public/cpred/status-icons/stunned.svg" },
+    {
+      "id": "seriously-wounded",
+      "name": "Poważnie ranny",
+      "icon": "/public/cpred/status-icons/seriously-wounded.svg"
+    },
+    {
+      "id": "mortally-wounded",
+      "name": "Śmiertelnie ranny",
+      "icon": "/public/cpred/status-icons/mortally-wounded.svg"
+    },
+    {
+      "id": "unconscious",
+      "name": "Nieprzytomny",
+      "icon": "/public/cpred/status-icons/unconscious.svg"
+    },
+    { "id": "dead", "name": "Martwy", "icon": "/public/cpred/status-icons/dead.svg" },
+    { "id": "on-fire", "name": "Podpalony", "icon": "/public/cpred/status-icons/on-fire.svg" },
+    { "id": "blinded", "name": "Oślepiony", "icon": "/public/cpred/status-icons/blinded.svg" },
+    { "id": "deafened", "name": "Ogłuszony (słuch)", "icon": "/public/cpred/status-icons/deafened.svg" },
+    {
+      "id": "immobilized",
+      "name": "Unieruchomiony",
+      "icon": "/public/cpred/status-icons/immobilized.svg"
+    },
+    { "id": "grappled", "name": "Pochwycony", "icon": "/public/cpred/status-icons/grappled.svg" },
+    { "id": "prone", "name": "Powalony", "icon": "/public/cpred/status-icons/prone.svg" },
+    { "id": "poisoned", "name": "Zatruty", "icon": "/public/cpred/status-icons/poisoned.svg" },
+    {
+      "id": "suppressed",
+      "name": "Przygwożdżony",
+      "icon": "/public/cpred/status-icons/suppressed.svg"
+    }
+  ]
+}
