@@ -1,5 +1,10 @@
 import { io, type Socket } from 'socket.io-client';
 import type {
+  CharacterCreatePayload,
+  CharacterDeleteBroadcast,
+  CharacterPatch,
+  CharacterUpsertBroadcast,
+  CharacterView,
   ChatHistoryPage,
   ChatMessageBroadcast,
   ChatSendPayload,
@@ -37,6 +42,7 @@ import { oldestMessageId, useChatStore } from './stores/chatStore.js';
 import { useSceneStore } from './stores/sceneStore.js';
 import { useAuthStore } from './stores/authStore.js';
 import { useTokenStore, type TokenViewerCtx } from './stores/tokenStore.js';
+import { useCharacterStore } from './stores/characterStore.js';
 
 let socket: Socket | undefined;
 
@@ -114,6 +120,15 @@ export function connectSocket(): Socket {
     chat().applySync(payload);
     scenes().applySync(payload);
     tokens().applySync(payload, viewer());
+    useCharacterStore.getState().applySync(payload);
+  });
+
+  // Character emissions are always targeted (owner + GM) and carry no seq.
+  socket.on('character:upsert', (broadcast: CharacterUpsertBroadcast) => {
+    useCharacterStore.getState().applyUpsert(broadcast.character);
+  });
+  socket.on('character:delete', (broadcast: CharacterDeleteBroadcast) => {
+    useCharacterStore.getState().applyDelete(broadcast.characterId);
   });
   socket.on('chat:message', (broadcast: ChatMessageBroadcast) => {
     const roll = broadcast.message.roll;
@@ -274,6 +289,65 @@ export const updateToken = (tokenId: string, patch: TokenPatch) =>
   emitSceneAck<TokenView>('token:update', { tokenId, patch });
 
 export const deleteToken = (tokenId: string) => emitSceneAck('token:delete', { tokenId });
+
+export const createCharacter = (payload: CharacterCreatePayload) =>
+  emitSceneAck<CharacterView>('character:create', payload);
+
+export const deleteCharacter = (characterId: string) =>
+  emitSceneAck('character:delete', { characterId });
+
+/** Immediate (non-debounced) character update — owner assignment, portraits. */
+export const updateCharacter = (characterId: string, patch: CharacterPatch) =>
+  emitSceneAck<CharacterView>('character:update', { characterId, patch });
+
+interface CharacterSaveBuffer {
+  patch: CharacterPatch;
+  timer: number;
+}
+
+const characterSaveBuffers = new Map<string, CharacterSaveBuffer>();
+/** Idle time after the last keystroke before the sheet autosaves. */
+const CHARACTER_SAVE_DEBOUNCE_MS = 600;
+
+/**
+ * Optimistically applies a sheet edit and schedules a debounced
+ * `character:update`. Consecutive edits merge into one patch (`data` keys
+ * shallowly), so fast typing produces a single save.
+ */
+export function queueCharacterSave(characterId: string, patch: CharacterPatch): void {
+  const store = useCharacterStore.getState();
+  store.localPatch(characterId, patch);
+
+  const buffer = characterSaveBuffers.get(characterId) ?? { patch: {}, timer: 0 };
+  const { data, ...rest } = patch;
+  Object.assign(buffer.patch, rest);
+  if (data) buffer.patch.data = { ...buffer.patch.data, ...data };
+  window.clearTimeout(buffer.timer);
+  buffer.timer = window.setTimeout(() => flushCharacterSave(characterId), CHARACTER_SAVE_DEBOUNCE_MS);
+  characterSaveBuffers.set(characterId, buffer);
+}
+
+/** Sends the buffered patch now (sheet close, tab switch, page hide). */
+export function flushCharacterSave(characterId: string): void {
+  const buffer = characterSaveBuffers.get(characterId);
+  if (!buffer) return;
+  characterSaveBuffers.delete(characterId);
+  window.clearTimeout(buffer.timer);
+
+  const store = useCharacterStore.getState();
+  store.beginSave(characterId);
+  if (!socket) {
+    store.endSave(characterId, null, false);
+    return;
+  }
+  socket.emit(
+    'character:update',
+    { characterId, patch: buffer.patch },
+    (ack: SocketAck<CharacterView>) => {
+      useCharacterStore.getState().endSave(characterId, ack.ok ? (ack.data ?? null) : null, ack.ok);
+    },
+  );
+}
 
 let lastMoveSentAt = 0;
 

@@ -4,6 +4,7 @@ import { TopBar } from './components/TopBar.js';
 import { MapArea } from './components/MapArea.js';
 import { SidePanel } from './components/SidePanel.js';
 import { DiceCup } from './components/DiceCup.js';
+import { CharacterSheets } from './components/CharacterSheet.js';
 import { LoginPage } from './pages/LoginPage.js';
 import { JoinPage } from './pages/JoinPage.js';
 import { GmPanel } from './pages/GmPanel.js';
@@ -18,6 +19,7 @@ function GameView() {
         <MapArea />
         <SidePanel />
       </main>
+      <CharacterSheets />
       <DiceCup />
     </div>
   );

@@ -24,7 +24,7 @@ import {
 import type { PrismaClient } from '../db.js';
 import type { Scene, Token } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
-import { campaignRoom, gmRoom, sceneRoom } from './state.js';
+import { campaignRoom, emitToCampaignUser, gmRoom, sceneRoom } from './state.js';
 import { requireCampaignScene } from './scenes.js';
 
 function parseStatuses(raw: string): string[] {
@@ -88,21 +88,6 @@ function requireCampaignId(socketData: { campaign: { id: string } | null }): str
   return socketData.campaign.id;
 }
 
-async function emitToUserSockets(
-  deps: RealtimeDeps,
-  campaignId: string,
-  userId: string,
-  event: string,
-  payload: unknown,
-): Promise<void> {
-  const sockets = await deps.io.in(campaignRoom(campaignId)).fetchSockets();
-  for (const socket of sockets) {
-    if ((socket.data as { user: SessionUser }).user.id === userId) {
-      socket.emit(event, payload);
-    }
-  }
-}
-
 /**
  * Emits a token upsert to everyone who may see the token.
  *
@@ -136,7 +121,7 @@ async function emitTokenUpsert(
   deps.io.to(room).emit('token:upsert', publicPayload);
   deps.io.to(gmRoom(campaignId)).emit('token:upsert', gmPayload);
   if (token.ownerId) {
-    await emitToUserSockets(deps, campaignId, token.ownerId, 'token:upsert', {
+    await emitToCampaignUser(deps.io, campaignId, token.ownerId, 'token:upsert', {
       token: toTokenView(token, true),
     } satisfies TokenUpsertBroadcast);
   }

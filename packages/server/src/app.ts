@@ -15,6 +15,7 @@ import { registerCampaignRoutes } from './routes/campaigns.js';
 import { MAX_MAP_UPLOAD_BYTES, registerUploadRoutes } from './routes/uploads.js';
 import { setupRealtime } from './realtime/index.js';
 import { loadStatusRegistry } from './statuses.js';
+import { loadCpredRegistry } from './cpred.js';
 
 export interface BuiltApp {
   app: FastifyInstance;
@@ -71,6 +72,7 @@ export async function buildApp(
     config,
     prisma,
     statuses: await loadStatusRegistry(config.dataPublicDir, app.log),
+    cpred: await loadCpredRegistry(config.dataPublicDir, app.log),
   };
   registerAuthRoutes(app, ctx);
   registerJoinRoutes(app, ctx);

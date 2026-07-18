@@ -1,5 +1,6 @@
 import type { CampaignSummary, Role } from './auth.js';
 import type { ChatMessageView } from './chat.js';
+import type { CharacterView } from './characters.js';
 import type { RollToss } from './dice.js';
 import type { SceneSummary, SceneView } from './scenes.js';
 import type { TokenView } from './tokens.js';
@@ -36,6 +37,8 @@ export interface StateSyncPayload {
   scenes: SceneSummary[];
   /** Tokens of the viewed scene, already filtered for this viewer. */
   tokens: TokenView[];
+  /** Characters this user may see: the GM gets all, a player only their own. */
+  characters: CharacterView[];
 }
 
 /** Payload of `chat:message`. `seq` is absent for targeted whisper deliveries. */

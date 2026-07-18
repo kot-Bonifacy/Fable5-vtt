@@ -1,3 +1,6 @@
+import type { Server as SocketIOServer } from 'socket.io';
+import type { SessionUser } from '@vtt/shared';
+
 /**
  * Per-room sequence counters (in memory). Room-wide broadcasts carry
  * consecutive numbers; a gap on the client means a missed event and triggers
@@ -31,4 +34,20 @@ export function sceneRoom(sceneId: string): string {
 /** GM-only room of a campaign — targeted GM data (scene lists) goes here. */
 export function gmRoom(campaignId: string): string {
   return `campaign:${campaignId}:gm`;
+}
+
+/** Emits to every socket of one user in a campaign (the whisper pattern). */
+export async function emitToCampaignUser(
+  io: SocketIOServer,
+  campaignId: string,
+  userId: string,
+  event: string,
+  payload: unknown,
+): Promise<void> {
+  const sockets = await io.in(campaignRoom(campaignId)).fetchSockets();
+  for (const socket of sockets) {
+    if ((socket.data as { user: SessionUser }).user.id === userId) {
+      socket.emit(event, payload);
+    }
+  }
 }

@@ -3,15 +3,17 @@ import { basename, extname, join } from 'node:path';
 import { mkdir, writeFile } from 'node:fs/promises';
 import type { FastifyInstance } from 'fastify';
 import { imageSize } from 'image-size';
-import type { MapUploadResult, TokenAssetView } from '@vtt/shared';
+import type { MapUploadResult, PortraitUploadResult, TokenAssetView } from '@vtt/shared';
 import { SCENE_DIMENSION_MAX, TOKEN_NAME_MAX_LENGTH } from '@vtt/shared';
 import type { AppContext } from '../context.js';
-import { requireGm } from '../auth/guards.js';
+import { requireAuth, requireGm } from '../auth/guards.js';
 import { getActiveCampaign } from './helpers.js';
 
 export const MAX_MAP_UPLOAD_BYTES = 40 * 1024 * 1024;
 export const MAX_TOKEN_UPLOAD_BYTES = 8 * 1024 * 1024;
 export const TOKEN_IMAGE_MAX_SIDE = 2048;
+export const MAX_PORTRAIT_UPLOAD_BYTES = 8 * 1024 * 1024;
+export const PORTRAIT_IMAGE_MAX_SIDE = 2048;
 
 /** Formats we accept and serve; keyed by the type sniffed from file content. */
 const IMAGE_EXTENSIONS: Record<string, string> = {
@@ -116,6 +118,45 @@ export function registerUploadRoutes(app: FastifyInstance, ctx: AppContext): voi
       width: asset.width,
       height: asset.height,
     };
+    return reply.code(201).send(result);
+  });
+
+  // Character portraits — any authenticated user (players set their own sheet's).
+  app.post('/api/uploads/portraits', { preHandler: requireAuth }, async (request, reply) => {
+    const file = await request.file({ limits: { fileSize: MAX_PORTRAIT_UPLOAD_BYTES } });
+    if (!file) {
+      return reply.code(400).send({ error: 'NO_FILE' });
+    }
+
+    let buffer: Buffer;
+    try {
+      buffer = await file.toBuffer();
+    } catch {
+      return reply.code(413).send({ error: 'FILE_TOO_LARGE' });
+    }
+
+    let width: number;
+    let height: number;
+    let type: string | undefined;
+    try {
+      ({ width, height, type } = imageSize(buffer));
+    } catch {
+      return reply.code(400).send({ error: 'UNSUPPORTED_IMAGE' });
+    }
+    const extension = type ? IMAGE_EXTENSIONS[type] : undefined;
+    if (!extension) {
+      return reply.code(400).send({ error: 'UNSUPPORTED_IMAGE' });
+    }
+    if (width > PORTRAIT_IMAGE_MAX_SIDE || height > PORTRAIT_IMAGE_MAX_SIDE) {
+      return reply.code(400).send({ error: 'IMAGE_TOO_LARGE' });
+    }
+
+    const portraitsDir = join(ctx.config.uploadsDir, 'portraits');
+    await mkdir(portraitsDir, { recursive: true });
+    const filename = `${randomBytes(12).toString('base64url')}.${extension}`;
+    await writeFile(join(portraitsDir, filename), buffer);
+
+    const result: PortraitUploadResult = { url: `/uploads/portraits/${filename}`, width, height };
     return reply.code(201).send(result);
   });
 

@@ -68,16 +68,23 @@ model Invitation {
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 }
 
-// Skeleton model — expanded in stage 07 (character sheet).
 model Character {
   id         String   @id @default(cuid())
   name       String
   campaignId String
+  /** Owning player; null = GM-controlled (NPC). */
   ownerId    String?
+  /** Local portrait path (/uploads/...); null renders a placeholder. */
+  portraitUrl String?
+  /** System-specific sheet payload (CP RED: CpredCharacterData JSON, schemaVersion inside). */
+  data       String   @default("{}")
   createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   owner    User?    @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+
+  @@index([campaignId])
 }
 
 // Autoincrement id doubles as a stable chronological cursor for pagination.

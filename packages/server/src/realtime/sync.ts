@@ -6,6 +6,7 @@ import { computePresence } from './presence.js';
 import { fetchHistoryPage } from './chat.js';
 import { fetchSceneList, getSceneById, toSceneView } from './scenes.js';
 import { fetchSceneTokensFor } from './tokens.js';
+import { fetchCharactersFor } from './characters.js';
 import { campaignRoom } from './state.js';
 
 /**
@@ -29,10 +30,11 @@ export async function buildStateSync(
       scene: null,
       scenes: [],
       tokens: [],
+      characters: [],
     };
   }
   const viewedSceneId = socket.data.viewedSceneId;
-  const [presence, history, viewedScene, scenes, tokens] = await Promise.all([
+  const [presence, history, viewedScene, scenes, tokens, characters] = await Promise.all([
     computePresence(deps.io, campaign.id),
     fetchHistoryPage(deps.ctx.prisma, campaign.id, user),
     viewedSceneId ? getSceneById(deps.ctx.prisma, viewedSceneId) : Promise.resolve(null),
@@ -42,6 +44,8 @@ export async function buildStateSync(
       : Promise.resolve<SceneSummary[]>([]),
     // Already filtered per viewer: no hidden tokens or foreign HP for players.
     viewedSceneId ? fetchSceneTokensFor(deps.ctx.prisma, viewedSceneId, user) : Promise.resolve([]),
+    // GM: all campaign characters; player: only their own.
+    fetchCharactersFor(deps.ctx.prisma, deps.ctx.cpred, campaign.id, user),
   ]);
   const scene: SceneView | null = viewedScene ? toSceneView(viewedScene) : null;
   return {
@@ -53,6 +57,7 @@ export async function buildStateSync(
     scene,
     scenes,
     tokens,
+    characters,
   };
 }
 

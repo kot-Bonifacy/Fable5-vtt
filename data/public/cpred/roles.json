@@ -1,0 +1,15 @@
+{
+  "$comment": "10 ról CP RED — polskie nazwy wg wydania Black Monk. Nazwy zdolności specjalnych: Efekt Charyzmy, Zmysł Walki, Twórca, Medycyna, Wiarygodność potwierdzone z Easy Mode; pozostałe 5 to tłumaczenia robocze do weryfikacji z podręcznikiem głównym.",
+  "roles": [
+    { "id": "rockerboy", "name": "Rocker", "ability": "Efekt Charyzmy" },
+    { "id": "solo", "name": "Solo", "ability": "Zmysł Walki" },
+    { "id": "netrunner", "name": "Netrunner", "ability": "Interfejs" },
+    { "id": "tech", "name": "Technik", "ability": "Twórca" },
+    { "id": "medtech", "name": "Medyk", "ability": "Medycyna" },
+    { "id": "media", "name": "Reporter", "ability": "Wiarygodność" },
+    { "id": "exec", "name": "Korpo", "ability": "Praca zespołowa" },
+    { "id": "lawman", "name": "Stróż Prawa", "ability": "Wsparcie" },
+    { "id": "fixer", "name": "Fixer", "ability": "Operator" },
+    { "id": "nomad", "name": "Nomada", "ability": "Moto" }
+  ]
+}
