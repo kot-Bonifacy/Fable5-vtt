@@ -29,6 +29,7 @@ import {
   TOKEN_MOVE_RATE_HZ,
   parseChatInput,
 } from '@vtt/shared';
+import { playRollAnimation } from './dice3d.js';
 import { useConnectionStore } from './stores/connectionStore.js';
 import { oldestMessageId, useChatStore } from './stores/chatStore.js';
 import { useSceneStore } from './stores/sceneStore.js';
@@ -108,7 +109,12 @@ export function connectSocket(): Socket {
     tokens().applySync(payload, viewer());
   });
   socket.on('chat:message', (broadcast: ChatMessageBroadcast) => {
-    if (chat().applyMessage(broadcast)) socket?.emit('state:request');
+    if (chat().applyMessage(broadcast)) {
+      socket?.emit('state:request');
+      return;
+    }
+    // Live rolls (never history/resync) replay the server's results in 3D.
+    if (broadcast.message.roll) playRollAnimation(broadcast.message.roll);
   });
   socket.on('presence:update', (broadcast: PresenceBroadcast) => {
     if (chat().applyPresence(broadcast)) socket?.emit('state:request');

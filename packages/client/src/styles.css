@@ -237,6 +237,26 @@ body {
   color: var(--text-dim);
 }
 
+/* --- 3D dice overlay --- */
+
+.dice-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+.dice-overlay--active {
+  opacity: 1;
+}
+
+.dice-overlay canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
 /* --- Roll result cards --- */
 
 .chat-roll-body {

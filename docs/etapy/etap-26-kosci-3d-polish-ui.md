@@ -6,10 +6,16 @@
 
 Warstwa satysfakcji: animowane kości 3D nad stołem oraz przegląd i ujednolicenie całego UI w klimacie cyberpunk/Foundry.
 
+> **Uwaga (2026-07-18):** podstawowe kości 3D zostały zrealizowane już w etapie 06 na życzenie
+> użytkownika — biblioteka `@3d-dice/dice-box-threejs` (wybrana zamiast `@3d-dice/dice-box`,
+> bo natywnie wspiera wymuszanie wyników serwera), integracja w `packages/client/src/dice3d.ts`,
+> assety w `packages/client/public/dice/` (patrz `docs/assety-kosci.md`). Dorzut krytyka już
+> wjeżdża osobną kością. W tym etapie zostaje: skórki/klimat, ustawienia per użytkownik i szlif.
+
 ## Zakres
 
-- [ ] Kości 3D: biblioteka `@3d-dice/dice-box` (WebGL + fizyka) — animacja rzutu przy każdym rzucie na czacie; **wynik zawsze z serwera** — animacja jest deterministycznie doprowadzana do wartości serwera, nigdy odwrotnie
-- [ ] Skórki kości: d10/d6 w klimacie (neon na czarnym), rozróżnienie wizualne krytyka (dorzut wjeżdża osobną kością)
+- [x] Kości 3D: biblioteka `@3d-dice/dice-box-threejs` (WebGL + fizyka) — animacja rzutu przy każdym rzucie na czacie; **wynik zawsze z serwera** — animacja jest deterministycznie doprowadzana do wartości serwera, nigdy odwrotnie _(zrobione w etapie 06)_
+- [ ] Skórki kości: d10/d6 w klimacie (neon na czarnym), rozróżnienie wizualne krytyka (dorzut wjeżdża osobną kością — _dorzut już działa, zostają skórki_)
 - [ ] Ustawienia per użytkownik: wyłączenie animacji (dostępność/wydajność), głośność stuknięć kości
 - [ ] Przegląd UI całej aplikacji — ujednolicenie do spójnego motywu wzorowanego na Foundry (ciemny interfejs, panele boczne, okna przeciągalne) z akcentem cyberpunk (neonowe podświetlenia, monospace w elementach „terminalowych"):
   - wspólne tokeny designu (kolory, typografia, odstępy) w jednym pliku motywu
