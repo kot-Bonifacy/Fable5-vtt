@@ -57,8 +57,10 @@ let initPromise: Promise<DiceBoxClass | null> | null = null;
 let overlay: HTMLDivElement | null = null;
 let funBadge: HTMLDivElement | null = null;
 let fadeTimer: number | undefined;
-const queue: DiceJob[] = [];
-let playing = false;
+/** Roll currently animating on the table (null when settled/cleared). */
+let current: DiceJob | null = null;
+/** Bumped by every throw — lets a superseded roll detect it lost the table. */
+let rollGeneration = 0;
 
 interface PendingThrow {
   toss: RollToss;
@@ -166,20 +168,20 @@ async function ensureBox(): Promise<DiceBoxClass | null> {
   return initPromise;
 }
 
-async function playNext(): Promise<void> {
-  const job = queue.shift();
-  if (!job) {
-    playing = false;
-    return;
-  }
-  playing = true;
+/**
+ * Plays a roll immediately. No queueing: a new throw sweeps dice still on
+ * the table (the superseded roll's promise resolves right away so its chat
+ * card is never held back).
+ */
+async function play(job: DiceJob): Promise<void> {
+  const generation = ++rollGeneration;
   const dice = await ensureBox();
   if (!dice || !overlay) {
     job.resolve(false);
-    for (const skipped of queue.splice(0)) skipped.resolve(false);
-    playing = false;
     return;
   }
+  current?.resolve(true);
+  current = job;
   window.clearTimeout(fadeTimer);
   overlay.classList.add('dice-overlay--active');
   overlay.classList.toggle('dice-overlay--fun', job.fun);
@@ -191,17 +193,15 @@ async function playNext(): Promise<void> {
     console.warn('3D dice roll failed', error);
     played = false;
   }
+  // Superseded mid-flight — the newer roll owns the table and the fade.
+  if (generation !== rollGeneration) return;
+  current = null;
   job.resolve(played);
-  if (queue.length > 0) {
-    void playNext();
-    return;
-  }
-  playing = false;
   fadeTimer = window.setTimeout(() => {
     overlay?.classList.remove('dice-overlay--active', 'dice-overlay--fun');
     // Let the fade-out transition finish before removing the dice.
     window.setTimeout(() => {
-      if (!playing) box?.clearDice();
+      if (current === null) box?.clearDice();
     }, 400);
   }, FADE_OUT_DELAY_MS);
 }
@@ -213,13 +213,12 @@ function enqueue(
   strength: number,
 ): Promise<boolean> {
   return new Promise((resolve) => {
-    queue.push({ notation, fun, toss, strength, resolve });
-    if (!playing) void playNext();
+    void play({ notation, fun, toss, strength, resolve });
   });
 }
 
 /**
- * Queues the 3D animation of a server roll. Call for live `chat:message`
+ * Plays the 3D animation of a server roll. Call for live `chat:message`
  * broadcasts only — history and resyncs must not replay old rolls. Resolves
  * (true = animation actually played) once the dice have settled.
  */
