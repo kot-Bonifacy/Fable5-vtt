@@ -180,6 +180,11 @@ async function play(job: DiceJob): Promise<void> {
     job.resolve(false);
     return;
   }
+  if (generation !== rollGeneration) {
+    // Swept or superseded while the box was still initializing.
+    job.resolve(false);
+    return;
+  }
   current?.resolve(true);
   current = job;
   window.clearTimeout(fadeTimer);
@@ -215,6 +220,20 @@ function enqueue(
   return new Promise((resolve) => {
     void play({ notation, fun, toss, strength, resolve });
   });
+}
+
+/**
+ * Immediately clears the table — grabbing the cup while dice from the
+ * previous roll are still tumbling makes them vanish into the cup. A roll
+ * still animating resolves right away so its chat card is never held back.
+ */
+export function sweepDice(): void {
+  rollGeneration++;
+  current?.resolve(true);
+  current = null;
+  window.clearTimeout(fadeTimer);
+  overlay?.classList.remove('dice-overlay--active', 'dice-overlay--fun');
+  box?.clearDice();
 }
 
 /**

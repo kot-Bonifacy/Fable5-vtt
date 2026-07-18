@@ -342,15 +342,17 @@ body {
   }
 }
 
+/* Amplitude follows the actual hand motion: --rattle is 0–9 (deg), set from
+   JS every frame and decaying to 0 when the cursor stops moving. */
 @keyframes dice-cup-rattle {
   0% {
-    rotate: -9deg;
+    rotate: calc(var(--rattle, 0) * -1deg);
   }
   50% {
-    rotate: 9deg;
+    rotate: calc(var(--rattle, 0) * 1deg);
   }
   100% {
-    rotate: -9deg;
+    rotate: calc(var(--rattle, 0) * -1deg);
   }
 }
 

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { RollGesture, RollToss } from '@vtt/shared';
 import { MAX_GESTURE_STRENGTH, formatRollNotation, parseChatInput } from '@vtt/shared';
-import { playFunRoll } from '../dice3d.js';
+import { playFunRoll, sweepDice } from '../dice3d.js';
 import { sendChatInput } from '../socket.js';
 import { useChatStore } from '../stores/chatStore.js';
 
@@ -53,27 +53,44 @@ async function digestSamples(samples: ShakeSample[]): Promise<string> {
 
 /**
  * Release direction + point from the tail of the shake: the throw continues
- * the hand's last motion. Returns undefined when the hand was (nearly) still.
+ * the hand's last motion. A hand that is (nearly) still at release tips the
+ * cup over in a random direction — the dice still pour out at the cursor.
  */
-function tossFromRecent(recent: ShakeSample[]): RollToss | undefined {
+function tossFromRecent(recent: ShakeSample[], now: number): RollToss | undefined {
   const last = recent[recent.length - 1];
   if (!last) return undefined;
+  const windowStart = now - TOSS_WINDOW_MS;
   let start = last;
   for (let i = recent.length - 2; i >= 0; i--) {
+    if (recent[i]!.t < windowStart) break;
     start = recent[i]!;
-    if (last.t - start.t >= TOSS_WINDOW_MS) break;
   }
   const dx = last.x - start.x;
   const dy = last.y - start.y;
   const travel = Math.hypot(dx, dy);
-  if (travel < TOSS_MIN_TRAVEL_PX) return undefined;
   const clamp01 = (n: number) => Math.min(Math.max(n, 0), 1);
-  return {
-    dirX: dx / travel,
-    dirY: dy / travel,
-    originX: clamp01(last.x / window.innerWidth),
-    originY: clamp01(last.y / window.innerHeight),
-  };
+  const originX = clamp01(last.x / window.innerWidth);
+  const originY = clamp01(last.y / window.innerHeight);
+  if (travel < TOSS_MIN_TRAVEL_PX || last.t < windowStart) {
+    const angle = Math.random() * 2 * Math.PI;
+    return { dirX: Math.cos(angle), dirY: Math.sin(angle), originX, originY };
+  }
+  return { dirX: dx / travel, dirY: dy / travel, originX, originY };
+}
+
+/**
+ * Shake speed (px/ms) over the tail of the gesture — what the hand was doing
+ * AT the moment of release, not averaged over the whole shake. Idle time
+ * counts as slowdown, so shaking hard, stopping and letting go throws gently.
+ */
+function tailSpeed(recent: ShakeSample[], now: number): number {
+  const tail = recent.filter((s) => s.t >= now - TOSS_WINDOW_MS);
+  if (tail.length < 2) return 0;
+  let path = 0;
+  for (let i = 1; i < tail.length; i++) {
+    path += Math.hypot(tail[i]!.x - tail[i - 1]!.x, tail[i]!.y - tail[i - 1]!.y);
+  }
+  return path / (now - tail[0]!.t);
 }
 
 function playRattle(volume: number): void {
@@ -99,10 +116,13 @@ export function DiceCup() {
 
   const [shaking, setShaking] = useState(false);
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const cupRef = useRef<HTMLDivElement | null>(null);
   const samplesRef = useRef<ShakeSample[]>([]);
   /** Tail of the shake (uncapped, trimmed to the toss window) — throw direction. */
   const recentRef = useRef<ShakeSample[]>([]);
   const rattleRef = useRef({ lastAt: 0, travel: 0, lastX: 0, lastY: 0 });
+  /** 0–1 wobble amplitude fed by motion, decaying when the cursor stops. */
+  const energyRef = useRef(0);
   const modeRef = useRef<CupMode>({ kind: 'fun' });
 
   const mode = useMemo<CupMode>(() => {
@@ -128,8 +148,13 @@ export function DiceCup() {
         samples.push({ x: e.clientX, y: e.clientY, t: now });
       }
       const recent = recentRef.current;
+      const prev = recent[recent.length - 1];
       recent.push({ x: e.clientX, y: e.clientY, t: now });
       while (recent.length > 2 && now - recent[1]!.t >= TOSS_WINDOW_MS) recent.shift();
+      if (prev && now > prev.t) {
+        const v = Math.hypot(e.clientX - prev.x, e.clientY - prev.y) / (now - prev.t);
+        energyRef.current = Math.max(energyRef.current, Math.min(v / 1.5, 1));
+      }
       setPos({ x: e.clientX, y: e.clientY });
 
       const r = rattleRef.current;
@@ -150,18 +175,9 @@ export function DiceCup() {
       samplesRef.current = [];
       const recent = recentRef.current;
       recentRef.current = [];
-      const first = samples[0];
-      const last = samples[samples.length - 1];
-      let speed = 0;
-      if (first && last && last.t > first.t) {
-        let path = 0;
-        for (let i = 1; i < samples.length; i++) {
-          path += Math.hypot(samples[i]!.x - samples[i - 1]!.x, samples[i]!.y - samples[i - 1]!.y);
-        }
-        speed = path / (last.t - first.t);
-      }
-      const strength = Math.min(strengthFromSpeed(speed), MAX_GESTURE_STRENGTH);
-      const toss = tossFromRecent(recent);
+      const now = performance.now();
+      const strength = Math.min(strengthFromSpeed(tailSpeed(recent, now)), MAX_GESTURE_STRENGTH);
+      const toss = tossFromRecent(recent, now);
 
       const current = modeRef.current;
       if (current.kind === 'roll') {
@@ -186,11 +202,26 @@ export function DiceCup() {
       if (e.key === 'Escape') onCancel();
     };
 
+    // Wobble amplitude follows the hand: impulses from pointer moves decay
+    // exponentially, so a stopped cursor means a still cup within ~0.5 s.
+    let raf = 0;
+    let lastFrame = performance.now();
+    const animateRattle = (t: number) => {
+      energyRef.current *= Math.exp(-(t - lastFrame) / 180);
+      lastFrame = t;
+      if (energyRef.current < 0.02) energyRef.current = 0;
+      cupRef.current?.style.setProperty('--rattle', (energyRef.current * 9).toFixed(2));
+      raf = requestAnimationFrame(animateRattle);
+    };
+    raf = requestAnimationFrame(animateRattle);
+
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', throwDice);
     window.addEventListener('pointercancel', onCancel);
     window.addEventListener('keydown', onKey);
     return () => {
+      cancelAnimationFrame(raf);
+      cupRef.current?.style.removeProperty('--rattle');
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', throwDice);
       window.removeEventListener('pointercancel', onCancel);
@@ -202,9 +233,12 @@ export function DiceCup() {
 
   const startShake = (e: React.PointerEvent) => {
     e.preventDefault();
+    // Grabbing the cup scoops any dice still tumbling back into it.
+    sweepDice();
     samplesRef.current = [{ x: e.clientX, y: e.clientY, t: performance.now() }];
     recentRef.current = [{ x: e.clientX, y: e.clientY, t: performance.now() }];
     rattleRef.current = { lastAt: 0, travel: 0, lastX: e.clientX, lastY: e.clientY };
+    energyRef.current = 0;
     setPos({ x: e.clientX, y: e.clientY });
     setShaking(true);
   };
@@ -218,6 +252,7 @@ export function DiceCup() {
 
   return (
     <div
+      ref={cupRef}
       className={`dice-cup${modeClass}${shaking ? ' dice-cup--shaking' : ''}`}
       style={
         shaking && pos
