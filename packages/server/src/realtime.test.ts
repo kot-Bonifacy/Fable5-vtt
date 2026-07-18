@@ -437,13 +437,22 @@ describe('dice rolls', () => {
     const toGm = waitFor<ChatMessageBroadcast>(gm.socket, 'chat:message');
     const ack = await emitAck(gm.socket, 'chat:send', {
       text: '/r 2d6 rzut z kubka',
-      gesture: { entropy: 'ab'.repeat(32), strength: 9 },
+      gesture: {
+        entropy: 'ab'.repeat(32),
+        strength: 9,
+        toss: { dirX: 3, dirY: 4, originX: 1.7, originY: -0.2 },
+      },
     });
     expect(ack.ok).toBe(true);
 
     const roll = (await toGm).message.roll;
     if (!roll) throw new Error('missing roll payload');
     expect(roll.tossStrength).toBe(3); // clamped to the maximum
+    // Direction re-normalized to a unit vector, origin clamped to the viewport.
+    expect(roll.toss?.dirX).toBeCloseTo(0.6);
+    expect(roll.toss?.dirY).toBeCloseTo(0.8);
+    expect(roll.toss?.originX).toBe(1);
+    expect(roll.toss?.originY).toBe(0);
     for (const term of roll.terms) {
       if (term.kind !== 'dice') continue;
       for (const value of term.rolls) {
@@ -466,6 +475,27 @@ describe('dice rolls', () => {
     });
     expect(ack.ok).toBe(true);
     expect((await toGm).message.roll?.tossStrength).toBeUndefined();
+
+    gm.socket.disconnect();
+  });
+
+  it('drops a degenerate or malformed toss but keeps the roll', async () => {
+    const gm = createSocket(gmCookie);
+    await gm.firstSync;
+
+    const toGm = waitFor<ChatMessageBroadcast>(gm.socket, 'chat:message');
+    const ack = await emitAck(gm.socket, 'chat:send', {
+      text: '/r 1d10',
+      gesture: {
+        entropy: 'ab'.repeat(8),
+        strength: 2,
+        toss: { dirX: 0, dirY: 0, originX: NaN, originY: 'up' },
+      },
+    });
+    expect(ack.ok).toBe(true);
+    const roll = (await toGm).message.roll;
+    expect(roll?.tossStrength).toBe(2);
+    expect(roll?.toss).toBeUndefined();
 
     gm.socket.disconnect();
   });

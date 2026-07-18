@@ -111,6 +111,20 @@ export interface CheckCritical {
   extraRoll: number;
 }
 
+/**
+ * Where and which way the cup was thrown — presentation metadata that lets
+ * every viewer's 3D animation continue the thrower's hand motion. Pure
+ * cosmetics: it never influences the rolled values.
+ */
+export interface RollToss {
+  /** Unit throw direction in screen coordinates (x right, y down). */
+  dirX: number;
+  dirY: number;
+  /** Release point in viewport coordinates normalized to 0–1. */
+  originX: number;
+  originY: number;
+}
+
 export interface RollResult {
   /** Canonical notation of what was rolled, e.g. `1d10+7`. */
   notation: string;
@@ -128,6 +142,8 @@ export interface RollResult {
    * with the dice cup: shake strength 0–3 boosting the 3D toss animation.
    */
   tossStrength?: number;
+  /** Throw direction and release point of the cup gesture (cosmetic). */
+  toss?: RollToss;
 }
 
 /** True when the formula's dice are exactly one added d10 — a CP RED check. */

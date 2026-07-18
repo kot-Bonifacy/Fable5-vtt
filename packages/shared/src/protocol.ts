@@ -1,5 +1,6 @@
 import type { CampaignSummary, Role } from './auth.js';
 import type { ChatMessageView } from './chat.js';
+import type { RollToss } from './dice.js';
 import type { SceneSummary, SceneView } from './scenes.js';
 import type { TokenView } from './tokens.js';
 
@@ -52,14 +53,16 @@ export interface PresenceBroadcast {
 /**
  * Physical shake gesture accompanying a roll command. The entropy digest is
  * MIXED into the server's crypto randomness (the gesture genuinely influences
- * the outcome, but can never be predicted or steered); the strength only
- * drives the 3D toss animation.
+ * the outcome, but can never be predicted or steered); the strength and toss
+ * only drive the 3D animation.
  */
 export interface RollGesture {
   /** Digest of the mouse-shake samples (hex, client-computed). */
   entropy: string;
   /** Toss strength 0–3 (shake speed) — animation boost for all viewers. */
   strength: number;
+  /** Release direction + point, so every viewer replays the same throw. */
+  toss?: RollToss;
 }
 
 export const MAX_GESTURE_ENTROPY_LENGTH = 256;

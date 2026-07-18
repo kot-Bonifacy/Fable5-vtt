@@ -8,7 +8,8 @@
  * Degrades gracefully: when WebGL/init fails, rolls simply show as chat
  * cards without an animation.
  */
-import type { RollResult } from '@vtt/shared';
+import type { RollResult, RollToss } from '@vtt/shared';
+import type DiceBoxClass from '@3d-dice/dice-box-threejs';
 
 /** Die sizes the library can render — anything else is skipped. */
 const RENDERABLE_SIDES = new Set([4, 6, 8, 10, 12, 20, 100]);
@@ -41,25 +42,83 @@ export function toAnimationNotation(roll: RollResult): string | null {
   return `${boost}${groups.join('+')}@${values.join(',')}`;
 }
 
-interface DiceBoxLike {
-  initialize(): Promise<void>;
-  roll(notation: string): Promise<unknown>;
-  clearDice(): void;
-}
-
 interface DiceJob {
   notation: string;
   fun: boolean;
+  /** Cup release direction + point — dice continue the hand's motion. */
+  toss: RollToss | undefined;
+  /** Shake strength 0–3 scaling the directed throw's speed. */
+  strength: number;
   resolve: (played: boolean) => void;
 }
 
-let box: DiceBoxLike | null = null;
-let initPromise: Promise<DiceBoxLike | null> | null = null;
+let box: DiceBoxClass | null = null;
+let initPromise: Promise<DiceBoxClass | null> | null = null;
 let overlay: HTMLDivElement | null = null;
 let funBadge: HTMLDivElement | null = null;
 let fadeTimer: number | undefined;
 const queue: DiceJob[] = [];
 let playing = false;
+
+interface PendingThrow {
+  toss: RollToss;
+  strength: number;
+}
+
+/** Consumed by the patched `startClickThrow` on the very next `roll()`. */
+let pendingThrow: PendingThrow | null = null;
+
+/**
+ * Patches the instance's `startClickThrow` so a queued cup throw continues
+ * the hand's motion: dice spawn at the release point and fly along the
+ * gesture's direction, faster for stronger shakes. Without a pending throw
+ * the library's random toss runs unchanged.
+ */
+function installDirectedThrow(dice: DiceBoxClass): void {
+  const randomThrow = dice.startClickThrow.bind(dice);
+  dice.startClickThrow = (notation: string) => {
+    const pending = pendingThrow;
+    pendingThrow = null;
+    if (!pending) return randomThrow(notation);
+    if (dice.rolling) {
+      dice.clearDice();
+      dice.rolling = false;
+    }
+
+    const { display } = dice;
+    const { dirX, dirY, originX, originY } = pending.toss;
+    // Shake strength 0–3 → throw speed. The library's own throws use
+    // |vector| ≈ 0–1.5 × the half-diagonal; this range sits inside it.
+    const reach =
+      Math.hypot(display.currentWidth, display.currentHeight) * (0.35 + 0.45 * pending.strength);
+    // Screen y grows downward, world y upward.
+    const throwVector = { x: dirX * reach, y: -dirY * reach };
+    const magnitude = reach + 100;
+    const boost = (Math.random() * 0.8 + 2.6) * magnitude * dice.strength;
+    const vectors = dice.getNotationVectors(notation, throwVector, boost, magnitude);
+    if (!vectors) return vectors;
+
+    // Spawn at the release point (clamped inside the walls at ±0.93),
+    // trailing dice staggered behind it as if pouring out of the cup.
+    const clampX = (x: number) =>
+      Math.min(Math.max(x, -0.85 * display.containerWidth), 0.85 * display.containerWidth);
+    const clampY = (y: number) =>
+      Math.min(Math.max(y, -0.85 * display.containerHeight), 0.85 * display.containerHeight);
+    const origin = {
+      x: clampX((originX * 2 - 1) * display.containerWidth),
+      y: clampY((1 - originY * 2) * display.containerHeight),
+    };
+    const back = { x: -dirX, y: dirY };
+    const spacing = display.scale * 0.9;
+    vectors.vectors.forEach((die, index) => {
+      const lateral = (Math.random() - 0.5) * spacing;
+      die.pos.x = clampX(origin.x + back.x * spacing * index - back.y * lateral);
+      die.pos.y = clampY(origin.y + back.y * spacing * index + back.x * lateral);
+      // die.pos.z stays as rolled by the library (200–400): a hand-height drop.
+    });
+    return vectors;
+  };
+}
 
 function ensureOverlay(): HTMLDivElement {
   if (overlay) return overlay;
@@ -74,7 +133,7 @@ function ensureOverlay(): HTMLDivElement {
   return overlay;
 }
 
-async function ensureBox(): Promise<DiceBoxLike | null> {
+async function ensureBox(): Promise<DiceBoxClass | null> {
   if (initPromise) return initPromise;
   initPromise = (async () => {
     try {
@@ -96,6 +155,7 @@ async function ensureBox(): Promise<DiceBoxLike | null> {
         shadows: true,
       });
       await instance.initialize();
+      installDirectedThrow(instance);
       box = instance;
       return instance;
     } catch (error) {
@@ -125,6 +185,7 @@ async function playNext(): Promise<void> {
   overlay.classList.toggle('dice-overlay--fun', job.fun);
   let played = true;
   try {
+    pendingThrow = job.toss ? { toss: job.toss, strength: job.strength } : null;
     await dice.roll(job.notation);
   } catch (error) {
     console.warn('3D dice roll failed', error);
@@ -145,9 +206,14 @@ async function playNext(): Promise<void> {
   }, FADE_OUT_DELAY_MS);
 }
 
-function enqueue(notation: string, fun: boolean): Promise<boolean> {
+function enqueue(
+  notation: string,
+  fun: boolean,
+  toss: RollToss | undefined,
+  strength: number,
+): Promise<boolean> {
   return new Promise((resolve) => {
-    queue.push({ notation, fun, resolve });
+    queue.push({ notation, fun, toss, strength, resolve });
     if (!playing) void playNext();
   });
 }
@@ -160,14 +226,14 @@ function enqueue(notation: string, fun: boolean): Promise<boolean> {
 export function playRollAnimation(roll: RollResult): Promise<boolean> {
   const notation = toAnimationNotation(roll);
   if (!notation) return Promise.resolve(false);
-  return enqueue(notation, false);
+  return enqueue(notation, false, roll.toss, roll.tossStrength ?? 0);
 }
 
 /**
  * Local physics-only toy roll from the dice cup (no roll command active):
  * nothing is sent to the server and no chat card appears.
  */
-export function playFunRoll(notation: string, strength: number): Promise<boolean> {
+export function playFunRoll(notation: string, strength: number, toss?: RollToss): Promise<boolean> {
   const boost = '!'.repeat(Math.min(Math.max(strength, 0), 3));
-  return enqueue(`${boost}${notation}`, true);
+  return enqueue(`${boost}${notation}`, true, toss, strength);
 }

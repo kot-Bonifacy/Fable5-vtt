@@ -7,6 +7,7 @@ import type {
   RollFormula,
   RollGesture,
   RollResult,
+  RollToss,
   SessionUser,
 } from '@vtt/shared';
 import {
@@ -165,20 +166,51 @@ async function persistAndEmitWhisper(
 }
 
 /**
+ * Sanitizes the optional throw vector: all four numbers must be finite, the
+ * direction non-degenerate. The direction is re-normalized and the origin
+ * clamped to the viewport, so clients can never inject wild values into other
+ * viewers' animations.
+ */
+function sanitizeToss(raw: unknown): RollToss | undefined {
+  if (typeof raw !== 'object' || raw === null) return undefined;
+  const { dirX, dirY, originX, originY } = raw as Record<string, unknown>;
+  const nums = [dirX, dirY, originX, originY];
+  if (!nums.every((n): n is number => typeof n === 'number' && Number.isFinite(n))) {
+    return undefined;
+  }
+  const length = Math.hypot(dirX as number, dirY as number);
+  if (length < 1e-6) return undefined;
+  const clamp01 = (n: number) => Math.min(Math.max(n, 0), 1);
+  return {
+    dirX: (dirX as number) / length,
+    dirY: (dirY as number) / length,
+    originX: clamp01(originX as number),
+    originY: clamp01(originY as number),
+  };
+}
+
+/**
  * Sanitizes the optional cup gesture: clamps the strength, drops malformed or
  * oversized payloads (the entropy is free-form client data — it only ever
  * feeds a hash, but we keep it bounded).
  */
 function sanitizeGesture(raw: unknown): RollGesture | undefined {
   if (typeof raw !== 'object' || raw === null) return undefined;
-  const { entropy, strength } = raw as { entropy?: unknown; strength?: unknown };
+  const { entropy, strength, toss } = raw as {
+    entropy?: unknown;
+    strength?: unknown;
+    toss?: unknown;
+  };
   if (typeof entropy !== 'string' || entropy.length === 0) return undefined;
   if (entropy.length > MAX_GESTURE_ENTROPY_LENGTH) return undefined;
   const clamped =
     typeof strength === 'number' && Number.isFinite(strength)
       ? Math.min(Math.max(Math.round(strength), 0), MAX_GESTURE_STRENGTH)
       : 0;
-  return { entropy, strength: clamped };
+  const gesture: RollGesture = { entropy, strength: clamped };
+  const sanitizedToss = sanitizeToss(toss);
+  if (sanitizedToss) gesture.toss = sanitizedToss;
+  return gesture;
 }
 
 /**
@@ -198,6 +230,7 @@ async function persistAndEmitRoll(
 ): Promise<void> {
   const result = rollFormula(formula, createMixedRng(gesture?.entropy));
   if (gesture && gesture.strength > 0) result.tossStrength = gesture.strength;
+  if (gesture?.toss) result.toss = gesture.toss;
   const kind = visibility === 'gm' ? 'gmroll' : 'roll';
   const stored = await deps.ctx.prisma.chatMessage.create({
     data: {

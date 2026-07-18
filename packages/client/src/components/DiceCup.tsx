@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { RollGesture } from '@vtt/shared';
+import type { RollGesture, RollToss } from '@vtt/shared';
 import { MAX_GESTURE_STRENGTH, formatRollNotation, parseChatInput } from '@vtt/shared';
 import { playFunRoll } from '../dice3d.js';
 import { sendChatInput } from '../socket.js';
@@ -18,6 +18,10 @@ const RATTLE_SOUNDS = [3, 5, 7, 9, 11].map((n) => `/dice/sounds/dicehit/dicehit_
 const RATTLE_MIN_GAP_MS = 90;
 const RATTLE_MIN_TRAVEL_PX = 45;
 const MAX_SAMPLES = 512;
+/** How far back into the shake the release direction looks. */
+const TOSS_WINDOW_MS = 120;
+/** Below this travel the release has no readable direction — random throw. */
+const TOSS_MIN_TRAVEL_PX = 8;
 
 /** Shake speed (px/ms) → toss strength 0–3. */
 function strengthFromSpeed(speed: number): number {
@@ -47,6 +51,31 @@ async function digestSamples(samples: ShakeSample[]): Promise<string> {
   }
 }
 
+/**
+ * Release direction + point from the tail of the shake: the throw continues
+ * the hand's last motion. Returns undefined when the hand was (nearly) still.
+ */
+function tossFromRecent(recent: ShakeSample[]): RollToss | undefined {
+  const last = recent[recent.length - 1];
+  if (!last) return undefined;
+  let start = last;
+  for (let i = recent.length - 2; i >= 0; i--) {
+    start = recent[i]!;
+    if (last.t - start.t >= TOSS_WINDOW_MS) break;
+  }
+  const dx = last.x - start.x;
+  const dy = last.y - start.y;
+  const travel = Math.hypot(dx, dy);
+  if (travel < TOSS_MIN_TRAVEL_PX) return undefined;
+  const clamp01 = (n: number) => Math.min(Math.max(n, 0), 1);
+  return {
+    dirX: dx / travel,
+    dirY: dy / travel,
+    originX: clamp01(last.x / window.innerWidth),
+    originY: clamp01(last.y / window.innerHeight),
+  };
+}
+
 function playRattle(volume: number): void {
   const src = RATTLE_SOUNDS[Math.floor(Math.random() * RATTLE_SOUNDS.length)]!;
   const audio = new Audio(src);
@@ -71,6 +100,8 @@ export function DiceCup() {
   const [shaking, setShaking] = useState(false);
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const samplesRef = useRef<ShakeSample[]>([]);
+  /** Tail of the shake (uncapped, trimmed to the toss window) — throw direction. */
+  const recentRef = useRef<ShakeSample[]>([]);
   const rattleRef = useRef({ lastAt: 0, travel: 0, lastX: 0, lastY: 0 });
   const modeRef = useRef<CupMode>({ kind: 'fun' });
 
@@ -91,17 +122,20 @@ export function DiceCup() {
     if (!shaking) return;
 
     const onMove = (e: PointerEvent) => {
+      const now = performance.now();
       const samples = samplesRef.current;
       if (samples.length < MAX_SAMPLES) {
-        samples.push({ x: e.clientX, y: e.clientY, t: performance.now() });
+        samples.push({ x: e.clientX, y: e.clientY, t: now });
       }
+      const recent = recentRef.current;
+      recent.push({ x: e.clientX, y: e.clientY, t: now });
+      while (recent.length > 2 && now - recent[1]!.t >= TOSS_WINDOW_MS) recent.shift();
       setPos({ x: e.clientX, y: e.clientY });
 
       const r = rattleRef.current;
       r.travel += Math.hypot(e.clientX - r.lastX, e.clientY - r.lastY);
       r.lastX = e.clientX;
       r.lastY = e.clientY;
-      const now = performance.now();
       if (r.travel >= RATTLE_MIN_TRAVEL_PX && now - r.lastAt >= RATTLE_MIN_GAP_MS) {
         playRattle(Math.min(r.travel / 200, 1));
         r.lastAt = now;
@@ -114,6 +148,8 @@ export function DiceCup() {
       setPos(null);
       const samples = samplesRef.current;
       samplesRef.current = [];
+      const recent = recentRef.current;
+      recentRef.current = [];
       const first = samples[0];
       const last = samples[samples.length - 1];
       let speed = 0;
@@ -125,17 +161,18 @@ export function DiceCup() {
         speed = path / (last.t - first.t);
       }
       const strength = Math.min(strengthFromSpeed(speed), MAX_GESTURE_STRENGTH);
+      const toss = tossFromRecent(recent);
 
       const current = modeRef.current;
       if (current.kind === 'roll') {
         lastFunNotation = current.notation;
         void digestSamples(samples).then((entropy) => {
-          const gesture: RollGesture = { entropy, strength };
+          const gesture: RollGesture = { entropy, strength, toss };
           sendChatInput(useChatStore.getState().draft, gesture);
           useChatStore.getState().setDraft('');
         });
       } else {
-        void playFunRoll(lastFunNotation, strength);
+        void playFunRoll(lastFunNotation, strength, toss);
       }
     };
 
@@ -143,6 +180,7 @@ export function DiceCup() {
       setShaking(false);
       setPos(null);
       samplesRef.current = [];
+      recentRef.current = [];
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onCancel();
@@ -165,6 +203,7 @@ export function DiceCup() {
   const startShake = (e: React.PointerEvent) => {
     e.preventDefault();
     samplesRef.current = [{ x: e.clientX, y: e.clientY, t: performance.now() }];
+    recentRef.current = [{ x: e.clientX, y: e.clientY, t: performance.now() }];
     rattleRef.current = { lastAt: 0, travel: 0, lastX: e.clientX, lastY: e.clientY };
     setPos({ x: e.clientX, y: e.clientY });
     setShaking(true);
