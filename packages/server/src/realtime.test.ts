@@ -50,7 +50,10 @@ function cookieOf(setCookieHeader: string | string[] | undefined): string {
  * Creates a client socket with a `state:sync` listener attached before the
  * connection completes, so the initial sync is never missed.
  */
-function createSocket(cookie: string): { socket: ClientSocket; firstSync: Promise<StateSyncPayload> } {
+function createSocket(cookie: string): {
+  socket: ClientSocket;
+  firstSync: Promise<StateSyncPayload>;
+} {
   const socket = ioClient(baseUrl, {
     extraHeaders: { cookie },
     reconnection: false,
@@ -327,12 +330,147 @@ describe('whispers', () => {
 
     const vex = createSocket(vexCookie);
     const vexSync = await vex.firstSync;
-    expect(
-      vexSync.messages.some((m) => m.kind === 'whisper' && m.text === 'tajny plan'),
-    ).toBe(true);
+    expect(vexSync.messages.some((m) => m.kind === 'whisper' && m.text === 'tajny plan')).toBe(
+      true,
+    );
 
     gm.socket.disconnect();
     vex.socket.disconnect();
+  });
+});
+
+describe('dice rolls', () => {
+  it('broadcasts /r to everyone with seq and a structured payload', async () => {
+    const gm = createSocket(gmCookie);
+    const rogue = createSocket(rogueCookie);
+    const vex = createSocket(vexCookie);
+    await Promise.all([gm.firstSync, rogue.firstSync, vex.firstSync]);
+
+    const toGm = waitFor<ChatMessageBroadcast>(gm.socket, 'chat:message');
+    const toRogue = waitFor<ChatMessageBroadcast>(rogue.socket, 'chat:message');
+    const toVex = waitFor<ChatMessageBroadcast>(vex.socket, 'chat:message');
+    const ack = await emitAck(rogue.socket, 'chat:send', { text: '/r 1d10+5 test refleksu' });
+    expect(ack.ok).toBe(true);
+
+    const [gmCopy, rogueCopy, vexCopy] = await Promise.all([toGm, toRogue, toVex]);
+    expect(gmCopy.seq).toEqual(expect.any(Number));
+    expect(gmCopy.message.kind).toBe('roll');
+    expect(gmCopy.message.authorName).toBe('Rogue');
+    expect(gmCopy.message.text).toBe('test refleksu');
+    expect(vexCopy.message.id).toBe(gmCopy.message.id);
+    expect(rogueCopy.message.id).toBe(gmCopy.message.id);
+
+    const roll = gmCopy.message.roll;
+    if (!roll) throw new Error('missing roll payload');
+    expect(roll.notation).toBe('1d10+5');
+    expect(roll.terms).toHaveLength(2);
+    const [die, mod] = roll.terms;
+    if (die?.kind !== 'dice' || mod?.kind !== 'modifier') throw new Error('bad terms');
+    expect(die.rolls).toHaveLength(1);
+    expect(die.rolls[0]).toBeGreaterThanOrEqual(1);
+    expect(die.rolls[0]).toBeLessThanOrEqual(10);
+    // Total = sum of subtotals, adjusted by the crit/fumble extra die.
+    const extra =
+      roll.critical === undefined
+        ? 0
+        : roll.critical.type === 'crit'
+          ? roll.critical.extraRoll
+          : -roll.critical.extraRoll;
+    expect(roll.total).toBe(die.subtotal + mod.subtotal + extra);
+    if (roll.critical) {
+      expect(die.rolls[0]).toBe(roll.critical.type === 'crit' ? 10 : 1);
+    }
+
+    gm.socket.disconnect();
+    rogue.socket.disconnect();
+    vex.socket.disconnect();
+  });
+
+  it('delivers the GM’s /gr only to the GM — players never get the payload', async () => {
+    const gm = createSocket(gmCookie);
+    const rogue = createSocket(rogueCookie);
+    await Promise.all([gm.firstSync, rogue.firstSync]);
+
+    const toGm = waitFor<ChatMessageBroadcast>(gm.socket, 'chat:message');
+    const rogueSilent = expectSilence(rogue.socket, 'chat:message');
+    const ack = await emitAck(gm.socket, 'chat:send', { text: '/gr 1d10+2' });
+    expect(ack.ok).toBe(true);
+
+    const gmCopy = await toGm;
+    expect(gmCopy.message.kind).toBe('gmroll');
+    expect(gmCopy.message.roll?.notation).toBe('1d10+2');
+    // GM rolls are targeted deliveries — no room seq.
+    expect(gmCopy.seq).toBeUndefined();
+    await rogueSilent;
+
+    gm.socket.disconnect();
+    rogue.socket.disconnect();
+  });
+
+  it('delivers a player’s /gr to the author and the GM, but not to other players', async () => {
+    const gm = createSocket(gmCookie);
+    const rogue = createSocket(rogueCookie);
+    const vex = createSocket(vexCookie);
+    await Promise.all([gm.firstSync, rogue.firstSync, vex.firstSync]);
+
+    const toGm = waitFor<ChatMessageBroadcast>(gm.socket, 'chat:message');
+    const toRogue = waitFor<ChatMessageBroadcast>(rogue.socket, 'chat:message');
+    const vexSilent = expectSilence(vex.socket, 'chat:message');
+    const ack = await emitAck(rogue.socket, 'chat:send', { text: '/gr 2d6 skradanie' });
+    expect(ack.ok).toBe(true);
+
+    const [gmCopy, authorCopy] = await Promise.all([toGm, toRogue]);
+    expect(gmCopy.message.kind).toBe('gmroll');
+    expect(gmCopy.message.authorName).toBe('Rogue');
+    expect(authorCopy.message.id).toBe(gmCopy.message.id);
+    await vexSilent;
+
+    gm.socket.disconnect();
+    rogue.socket.disconnect();
+    vex.socket.disconnect();
+  });
+
+  it('rejects a missing or malformed notation', async () => {
+    const { socket, firstSync } = createSocket(rogueCookie);
+    await firstSync;
+    expect(await emitAck(socket, 'chat:send', { text: '/r' })).toEqual({
+      ok: false,
+      error: 'ROLL_MISSING_NOTATION',
+    });
+    expect(await emitAck(socket, 'chat:send', { text: '/r abc' })).toEqual({
+      ok: false,
+      error: 'ROLL_BAD_NOTATION',
+    });
+    expect(await emitAck(socket, 'chat:send', { text: '/gr 999d6' })).toEqual({
+      ok: false,
+      error: 'ROLL_BAD_NOTATION',
+    });
+    socket.disconnect();
+  });
+
+  it('filters foreign GM rolls out of players’ history and sync', async () => {
+    // GM rolls exist from the earlier tests: the GM’s own /gr 1d10+2 and
+    // Rogue’s /gr 2d6. Vex must see neither, Rogue only their own.
+    const vex = createSocket(vexCookie);
+    const vexSync = await vex.firstSync;
+    expect(vexSync.messages.some((m) => m.kind === 'gmroll')).toBe(false);
+
+    const rogue = createSocket(rogueCookie);
+    const rogueSync = await rogue.firstSync;
+    const rogueGmRolls = rogueSync.messages.filter((m) => m.kind === 'gmroll');
+    expect(rogueGmRolls.length).toBeGreaterThanOrEqual(1);
+    expect(rogueGmRolls.every((m) => m.authorName === 'Rogue')).toBe(true);
+
+    // The GM sees every GM roll, including the players’ ones.
+    const gm = createSocket(gmCookie);
+    const gmSync = await gm.firstSync;
+    const gmGmRolls = gmSync.messages.filter((m) => m.kind === 'gmroll');
+    expect(gmGmRolls.some((m) => m.authorName === 'MG')).toBe(true);
+    expect(gmGmRolls.some((m) => m.authorName === 'Rogue')).toBe(true);
+
+    vex.socket.disconnect();
+    rogue.socket.disconnect();
+    gm.socket.disconnect();
   });
 });
 

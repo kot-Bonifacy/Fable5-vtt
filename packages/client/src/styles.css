@@ -237,6 +237,137 @@ body {
   color: var(--text-dim);
 }
 
+/* --- Roll result cards --- */
+
+.chat-roll-body {
+  margin-top: 0.2rem;
+  padding: 0.45rem 0.55rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+}
+
+.chat-roll--gm .chat-roll-body {
+  border-left-color: var(--whisper);
+}
+
+.chat-roll-gm-label {
+  font-size: 0.72rem;
+  color: var(--whisper);
+  font-style: italic;
+}
+
+.chat-roll-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.chat-roll-notation {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  overflow-wrap: anywhere;
+}
+
+.chat-roll-flavor {
+  font-family: inherit;
+  font-style: italic;
+}
+
+.chat-roll-total {
+  margin-left: auto;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.chat-roll-dice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.3rem;
+}
+
+.chat-die {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.6rem;
+  height: 1.6rem;
+  padding: 0 0.25rem;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.chat-die--max {
+  border-color: var(--ok);
+  color: var(--ok);
+}
+
+.chat-die--min {
+  border-color: var(--err);
+  color: var(--err);
+}
+
+.chat-die--extra {
+  border-style: dashed;
+}
+
+.chat-die--crit {
+  border-color: var(--ok);
+  color: var(--ok);
+  box-shadow: 0 0 5px rgb(52 199 89 / 45%);
+}
+
+.chat-die--fumble {
+  border-color: var(--err);
+  color: var(--err);
+  box-shadow: 0 0 5px rgb(255 59 48 / 45%);
+}
+
+.chat-roll-sign,
+.chat-roll-mod {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+
+.chat-roll-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.35rem;
+}
+
+.chat-roll-badge {
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.chat-roll-badge--crit {
+  background: rgb(52 199 89 / 15%);
+  color: var(--ok);
+}
+
+.chat-roll-badge--fumble {
+  background: rgb(255 59 48 / 15%);
+  color: var(--err);
+}
+
+.chat-roll-badge--injury {
+  background: rgb(224 20 20 / 18%);
+  color: var(--accent);
+}
+
 .chat-input-row {
   display: flex;
   gap: 0.5rem;

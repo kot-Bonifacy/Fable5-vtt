@@ -16,10 +16,19 @@ import type {
   TokenDeleteBroadcast,
   TokenMoveBroadcast,
   TokenPatch,
+  RollParseError,
   TokenUpsertBroadcast,
   TokenView,
 } from '@vtt/shared';
-import { CHAT_COMMANDS_HELP, ROLE_GM, TOKEN_MOVE_RATE_HZ, parseChatInput } from '@vtt/shared';
+import {
+  CHAT_COMMANDS_HELP,
+  MAX_DICE_PER_TERM,
+  MAX_DIE_SIDES,
+  MAX_ROLL_TERMS,
+  ROLE_GM,
+  TOKEN_MOVE_RATE_HZ,
+  parseChatInput,
+} from '@vtt/shared';
 import { useConnectionStore } from './stores/connectionStore.js';
 import { oldestMessageId, useChatStore } from './stores/chatStore.js';
 import { useSceneStore } from './stores/sceneStore.js';
@@ -42,10 +51,31 @@ function chatErrorText(code: string): string {
       return 'Nie możesz szeptać do samego siebie.';
     case 'MESSAGE_TOO_LONG':
       return 'Wiadomość jest za długa (limit 2000 znaków).';
+    case 'ROLL_MISSING_NOTATION':
+      return 'Podaj formułę rzutu: /r 1d10+5';
+    case 'ROLL_BAD_NOTATION':
+      return 'Nieprawidłowa formuła rzutu (przykłady: 1d10+5, 2d6+3).';
     case 'NO_CAMPAIGN':
       return 'Brak aktywnej kampanii — czat jest niedostępny.';
     default:
       return `Błąd czatu: ${code}`;
+  }
+}
+
+/** Local hints for roll-notation mistakes — matches the server's validation. */
+function rollErrorText(reason: 'MISSING_NOTATION' | RollParseError): string {
+  switch (reason) {
+    case 'MISSING_NOTATION':
+    case 'EMPTY':
+      return 'Podaj formułę rzutu: /r 1d10+5';
+    case 'TOO_MANY_TERMS':
+      return `Za dużo członów w formule (maksymalnie ${MAX_ROLL_TERMS}).`;
+    case 'TOO_MANY_DICE':
+      return `Za dużo kości w jednym członie (maksymalnie ${MAX_DICE_PER_TERM}).`;
+    case 'BAD_SIDES':
+      return `Nieprawidłowa liczba ścianek kości (od 2 do ${MAX_DIE_SIDES}).`;
+    case 'SYNTAX':
+      return 'Nieprawidłowa formuła rzutu (przykłady: 1d10+5, 2d6+3).';
   }
 }
 
@@ -173,6 +203,10 @@ export function sendChatInput(text: string): void {
     );
     return;
   }
+  if (parsed.kind === 'invalid-roll') {
+    store.addNote(rollErrorText(parsed.reason));
+    return;
+  }
   socket?.emit('chat:send', { text }, (ack: SocketAck) => {
     if (!ack.ok) useChatStore.getState().addNote(chatErrorText(ack.error));
   });
@@ -188,8 +222,7 @@ function emitSceneAck<T = undefined>(event: string, payload: unknown): Promise<S
   });
 }
 
-export const createScene = (name: string) =>
-  emitSceneAck<SceneView>('scene:create', { name });
+export const createScene = (name: string) => emitSceneAck<SceneView>('scene:create', { name });
 
 export const updateScene = (sceneId: string, patch: ScenePatch) =>
   emitSceneAck<SceneView>('scene:update', { sceneId, patch });

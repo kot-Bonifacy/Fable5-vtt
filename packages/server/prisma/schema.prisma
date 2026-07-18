@@ -85,9 +85,10 @@ model ChatMessage {
   id          Int      @id @default(autoincrement())
   campaignId  String
   authorId    String
-  kind        String // "say" | "whisper" (SQLite: no enum support in Prisma)
+  kind        String // "say" | "whisper" | "roll" | "gmroll" (SQLite: no enum support in Prisma)
   text        String
   recipientId String? // whisper target; null for public messages
+  payload     String? // structured JSON (RollResult for roll kinds); null for plain text
   createdAt   DateTime @default(now())
 
   campaign  Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)

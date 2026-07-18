@@ -95,6 +95,65 @@ describe('parseChatInput — whispers', () => {
   });
 });
 
+describe('parseChatInput — rolls', () => {
+  const D10_PLUS_5 = {
+    terms: [
+      { kind: 'dice', sign: 1, count: 1, sides: 10 },
+      { kind: 'modifier', sign: 1, value: 5 },
+    ],
+  };
+
+  it('parses a public roll', () => {
+    expect(parseChatInput('/r 1d10+5', ROSTER)).toEqual({
+      kind: 'roll',
+      visibility: 'public',
+      formula: D10_PLUS_5,
+    });
+  });
+
+  it('accepts the /roll and /rzut aliases', () => {
+    expect(parseChatInput('/roll 2d6', ROSTER)).toMatchObject({ kind: 'roll' });
+    expect(parseChatInput('/rzut 2d6', ROSTER)).toMatchObject({ kind: 'roll' });
+  });
+
+  it('parses a GM roll with gm visibility', () => {
+    expect(parseChatInput('/gr 1d10+5', ROSTER)).toMatchObject({ kind: 'roll', visibility: 'gm' });
+    expect(parseChatInput('/gmroll 1d10+5', ROSTER)).toMatchObject({ visibility: 'gm' });
+  });
+
+  it('allows spaces inside the notation when there is no label', () => {
+    expect(parseChatInput('/r 1d10 + 5', ROSTER)).toEqual({
+      kind: 'roll',
+      visibility: 'public',
+      formula: D10_PLUS_5,
+    });
+  });
+
+  it('treats text after the notation as a label', () => {
+    expect(parseChatInput('/r 1d10+5 atak z bliska', ROSTER)).toEqual({
+      kind: 'roll',
+      visibility: 'public',
+      formula: D10_PLUS_5,
+      label: 'atak z bliska',
+    });
+  });
+
+  it('reports a missing notation', () => {
+    expect(parseChatInput('/r', ROSTER)).toEqual({
+      kind: 'invalid-roll',
+      reason: 'MISSING_NOTATION',
+    });
+  });
+
+  it('reports a malformed notation', () => {
+    expect(parseChatInput('/r abc', ROSTER)).toEqual({ kind: 'invalid-roll', reason: 'SYNTAX' });
+    expect(parseChatInput('/r 999d6', ROSTER)).toEqual({
+      kind: 'invalid-roll',
+      reason: 'TOO_MANY_DICE',
+    });
+  });
+});
+
 describe('parseChatInput — unknown commands', () => {
   it('flags an unknown command with its name', () => {
     expect(parseChatInput('/dance', ROSTER)).toEqual({ kind: 'unknown-command', command: 'dance' });
@@ -102,9 +161,5 @@ describe('parseChatInput — unknown commands', () => {
 
   it('flags a lone slash as unknown', () => {
     expect(parseChatInput('/', ROSTER)).toEqual({ kind: 'unknown-command', command: '' });
-  });
-
-  it('does not know /r yet (arrives in stage 06)', () => {
-    expect(parseChatInput('/r 1d10', ROSTER)).toEqual({ kind: 'unknown-command', command: 'r' });
   });
 });

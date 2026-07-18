@@ -34,16 +34,14 @@ export async function buildStateSync(
   const viewedSceneId = socket.data.viewedSceneId;
   const [presence, history, viewedScene, scenes, tokens] = await Promise.all([
     computePresence(deps.io, campaign.id),
-    fetchHistoryPage(deps.ctx.prisma, campaign.id, user.id),
+    fetchHistoryPage(deps.ctx.prisma, campaign.id, user),
     viewedSceneId ? getSceneById(deps.ctx.prisma, viewedSceneId) : Promise.resolve(null),
     // The full scene list is GM manager data — players never receive it.
     user.role === ROLE_GM
       ? fetchSceneList(deps.ctx.prisma, campaign.id)
       : Promise.resolve<SceneSummary[]>([]),
     // Already filtered per viewer: no hidden tokens or foreign HP for players.
-    viewedSceneId
-      ? fetchSceneTokensFor(deps.ctx.prisma, viewedSceneId, user)
-      : Promise.resolve([]),
+    viewedSceneId ? fetchSceneTokensFor(deps.ctx.prisma, viewedSceneId, user) : Promise.resolve([]),
   ]);
   const scene: SceneView | null = viewedScene ? toSceneView(viewedScene) : null;
   return {

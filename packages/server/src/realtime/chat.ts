@@ -1,9 +1,13 @@
+import { randomInt } from 'node:crypto';
 import type {
   ChatHistoryPage,
   ChatHistoryRequest,
   ChatMessageBroadcast,
   ChatMessageView,
   ChatSendPayload,
+  DiceRng,
+  RollFormula,
+  RollResult,
   SessionUser,
 } from '@vtt/shared';
 import {
@@ -11,6 +15,7 @@ import {
   MAX_CHAT_MESSAGE_LENGTH,
   ROLE_GM,
   parseChatInput,
+  rollFormula,
 } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
@@ -29,7 +34,8 @@ async function getRoster(prisma: PrismaClient, campaignId: string): Promise<Rost
   ]);
   const byId = new Map<string, RosterUser>();
   for (const gm of gms) byId.set(gm.id, { id: gm.id, name: gm.name });
-  for (const member of members) byId.set(member.userId, { id: member.userId, name: member.user.name });
+  for (const member of members)
+    byId.set(member.userId, { id: member.userId, name: member.user.name });
   return [...byId.values()];
 }
 
@@ -39,6 +45,7 @@ interface StoredMessage {
   authorId: string;
   text: string;
   recipientId: string | null;
+  payload: string | null;
   createdAt: Date;
   author: { name: string };
   recipient: { name: string } | null;
@@ -57,14 +64,26 @@ function toView(message: StoredMessage): ChatMessageView {
     view.recipientId = message.recipientId;
     view.recipientName = message.recipient.name;
   }
+  if ((message.kind === 'roll' || message.kind === 'gmroll') && message.payload) {
+    view.roll = JSON.parse(message.payload) as RollResult;
+  }
   return view;
 }
 
 const INCLUDE_NAMES = { author: true, recipient: true } as const;
 
-/** Whispers are filtered in the query — invisible messages never leave the DB layer. */
-function visibleTo(userId: string) {
-  return { OR: [{ kind: 'say' }, { authorId: userId }, { recipientId: userId }] };
+/**
+ * Visibility filter applied in the query — invisible messages (foreign
+ * whispers, foreign GM rolls for players) never leave the DB layer.
+ */
+function visibleTo(user: SessionUser) {
+  return {
+    OR: [
+      { kind: { in: user.role === ROLE_GM ? ['say', 'roll', 'gmroll'] : ['say', 'roll'] } },
+      { authorId: user.id },
+      { recipientId: user.id },
+    ],
+  };
 }
 
 /**
@@ -74,7 +93,7 @@ function visibleTo(userId: string) {
 export async function fetchHistoryPage(
   prisma: PrismaClient,
   campaignId: string,
-  userId: string,
+  user: SessionUser,
   beforeId?: number,
   limit = CHAT_HISTORY_PAGE_SIZE,
 ): Promise<ChatHistoryPage> {
@@ -82,7 +101,7 @@ export async function fetchHistoryPage(
     where: {
       campaignId,
       ...(beforeId !== undefined ? { id: { lt: beforeId } } : {}),
-      ...visibleTo(userId),
+      ...visibleTo(user),
     },
     include: INCLUDE_NAMES,
     orderBy: { id: 'desc' },
@@ -143,6 +162,53 @@ async function persistAndEmitWhisper(
   }
 }
 
+/** Crypto-strong die roller — the only RNG real rolls ever use. */
+const cryptoRng: DiceRng = (sides) => randomInt(1, sides + 1);
+
+/**
+ * Executes a roll server-side and delivers the result. Public rolls broadcast
+ * to the campaign room with a seq; GM rolls go targeted (whisper pattern,
+ * no seq) to the author's and GMs' sockets only — other players never see
+ * them, not even in network payloads.
+ */
+async function persistAndEmitRoll(
+  deps: RealtimeDeps,
+  campaignId: string,
+  user: SessionUser,
+  visibility: 'public' | 'gm',
+  formula: RollFormula,
+  label: string | undefined,
+): Promise<void> {
+  const result = rollFormula(formula, cryptoRng);
+  const kind = visibility === 'gm' ? 'gmroll' : 'roll';
+  const stored = await deps.ctx.prisma.chatMessage.create({
+    data: {
+      campaignId,
+      authorId: user.id,
+      kind,
+      text: label ?? '',
+      payload: JSON.stringify(result),
+    },
+    include: INCLUDE_NAMES,
+  });
+
+  const room = campaignRoom(campaignId);
+  if (kind === 'roll') {
+    const payload: ChatMessageBroadcast = { seq: deps.seqs.next(room), message: toView(stored) };
+    deps.io.to(room).emit('chat:message', payload);
+    return;
+  }
+
+  const payload: ChatMessageBroadcast = { message: toView(stored) };
+  const sockets = await deps.io.in(room).fetchSockets();
+  for (const socket of sockets) {
+    const socketUser = (socket.data as { user: SessionUser }).user;
+    if (socketUser.id === user.id || socketUser.role === ROLE_GM) {
+      socket.emit('chat:message', payload);
+    }
+  }
+}
+
 export const chatSendEvent = defineEvent<ChatSendPayload>({
   name: 'chat:send',
   handler: async ({ deps, socket, user, payload }) => {
@@ -165,11 +231,25 @@ export const chatSendEvent = defineEvent<ChatSendPayload>({
         throw new RealtimeError(
           parsed.reason === 'MISSING_TARGET' ? 'WHISPER_MISSING_TARGET' : 'WHISPER_MISSING_TEXT',
         );
+      case 'invalid-roll':
+        throw new RealtimeError(
+          parsed.reason === 'MISSING_NOTATION' ? 'ROLL_MISSING_NOTATION' : 'ROLL_BAD_NOTATION',
+        );
       case 'say':
         await persistAndEmitSay(deps, campaignId, user, parsed.text);
         return;
       case 'whisper':
         await persistAndEmitWhisper(deps, campaignId, user, parsed.targetName, parsed.text);
+        return;
+      case 'roll':
+        await persistAndEmitRoll(
+          deps,
+          campaignId,
+          user,
+          parsed.visibility,
+          parsed.formula,
+          parsed.label,
+        );
         return;
     }
   },
@@ -184,9 +264,11 @@ export const chatHistoryEvent = defineEvent<ChatHistoryRequest, ChatHistoryPage>
       throw new RealtimeError('BAD_REQUEST');
     }
     const limit = Math.min(
-      typeof payload.limit === 'number' && payload.limit > 0 ? payload.limit : CHAT_HISTORY_PAGE_SIZE,
+      typeof payload.limit === 'number' && payload.limit > 0
+        ? payload.limit
+        : CHAT_HISTORY_PAGE_SIZE,
       CHAT_HISTORY_PAGE_SIZE,
     );
-    return fetchHistoryPage(deps.ctx.prisma, campaignId, user.id, beforeId, limit);
+    return fetchHistoryPage(deps.ctx.prisma, campaignId, user, beforeId, limit);
   },
 });

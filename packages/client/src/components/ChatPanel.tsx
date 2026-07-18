@@ -1,5 +1,12 @@
-import { useLayoutEffect, useRef, useState, type FormEvent, type UIEvent } from 'react';
-import type { ChatMessageView } from '@vtt/shared';
+import {
+  useLayoutEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+  type UIEvent,
+} from 'react';
+import type { ChatMessageView, RollResult } from '@vtt/shared';
 import { loadOlderHistory, sendChatInput } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useChatStore, type ChatItem } from '../stores/chatStore.js';
@@ -9,6 +16,97 @@ const STICK_TO_BOTTOM_PX = 64;
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
+}
+
+/** The dice breakdown: one chip per die (max/min highlighted) plus modifiers. */
+function RollDice({ roll }: { roll: RollResult }) {
+  const parts: ReactNode[] = [];
+  roll.terms.forEach((term, i) => {
+    if (i > 0 || term.sign === -1) {
+      parts.push(
+        <span key={`sign-${i}`} className="chat-roll-sign">
+          {term.sign === -1 ? '−' : '+'}
+        </span>,
+      );
+    }
+    if (term.kind === 'dice') {
+      term.rolls.forEach((value, j) => {
+        const extreme =
+          value === term.sides ? ' chat-die--max' : value === 1 ? ' chat-die--min' : '';
+        parts.push(
+          <span key={`die-${i}-${j}`} className={`chat-die${extreme}`} title={`d${term.sides}`}>
+            {value}
+          </span>,
+        );
+      });
+    } else {
+      parts.push(
+        <span key={`mod-${i}`} className="chat-roll-mod">
+          {term.value}
+        </span>,
+      );
+    }
+  });
+  if (roll.critical) {
+    const { type, extraRoll } = roll.critical;
+    parts.push(
+      <span key="extra-sign" className="chat-roll-sign">
+        {type === 'crit' ? '+' : '−'}
+      </span>,
+      <span
+        key="extra-die"
+        className={`chat-die chat-die--extra chat-die--${type}`}
+        title="dorzut d10"
+      >
+        {extraRoll}
+      </span>,
+    );
+  }
+  return <div className="chat-roll-dice">{parts}</div>;
+}
+
+/** A roll result card — visually distinct from plain chat messages. */
+function RollRow({ message }: { message: ChatMessageView }) {
+  const roll = message.roll;
+  if (!roll) return null;
+  const isGmRoll = message.kind === 'gmroll';
+
+  return (
+    <div className={`chat-message chat-roll${isGmRoll ? ' chat-roll--gm' : ''}`}>
+      <div className="chat-message-meta">
+        <span className="chat-message-author">{message.authorName}</span>
+        {isGmRoll && <span className="chat-roll-gm-label">rzut do MG</span>}
+        <span className="chat-message-time">{formatTime(message.createdAt)}</span>
+      </div>
+      <div className="chat-roll-body">
+        <div className="chat-roll-header">
+          <span className="chat-roll-notation">
+            {roll.notation}
+            {message.text && <span className="chat-roll-flavor"> — {message.text}</span>}
+          </span>
+          <span className="chat-roll-total">{roll.total}</span>
+        </div>
+        <RollDice roll={roll} />
+        {(roll.critical || roll.criticalDamage) && (
+          <div className="chat-roll-badges">
+            {roll.critical?.type === 'crit' && (
+              <span className="chat-roll-badge chat-roll-badge--crit">
+                Krytyk! dorzut +{roll.critical.extraRoll}
+              </span>
+            )}
+            {roll.critical?.type === 'fumble' && (
+              <span className="chat-roll-badge chat-roll-badge--fumble">
+                Fumble! dorzut −{roll.critical.extraRoll}
+              </span>
+            )}
+            {roll.criticalDamage && (
+              <span className="chat-roll-badge chat-roll-badge--injury">Rana krytyczna!</span>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function MessageRow({ message, myUserId }: { message: ChatMessageView; myUserId: string }) {
@@ -86,7 +184,11 @@ export function ChatPanel() {
         {loadingHistory && <p className="chat-note">Wczytywanie historii…</p>}
         {items.map((item: ChatItem) =>
           item.type === 'message' ? (
-            <MessageRow key={item.message.id} message={item.message} myUserId={user.id} />
+            item.message.kind === 'roll' || item.message.kind === 'gmroll' ? (
+              <RollRow key={item.message.id} message={item.message} />
+            ) : (
+              <MessageRow key={item.message.id} message={item.message} myUserId={user.id} />
+            )
           ) : (
             <p key={item.id} className="chat-note">
               {item.text}
@@ -99,7 +201,9 @@ export function ChatPanel() {
           type="text"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          placeholder={campaign ? 'Wiadomość… (/w <imię> — szept)' : 'Czat niedostępny'}
+          placeholder={
+            campaign ? 'Wiadomość… (/r 1d10+5 — rzut, /w <imię> — szept)' : 'Czat niedostępny'
+          }
           disabled={!synced || !campaign}
           aria-label="Wiadomość czatu"
         />

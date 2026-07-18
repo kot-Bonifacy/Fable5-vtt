@@ -1,6 +1,13 @@
 /** Chat message types and the chat command parser (pure logic, no IO). */
 
-export type ChatKind = 'say' | 'whisper';
+import {
+  parseRollNotation,
+  type RollFormula,
+  type RollParseError,
+  type RollResult,
+} from './dice.js';
+
+export type ChatKind = 'say' | 'whisper' | 'roll' | 'gmroll';
 
 /** A chat message as seen by clients. Whisper fields are present only for whispers. */
 export interface ChatMessageView {
@@ -10,7 +17,10 @@ export interface ChatMessageView {
   authorName: string;
   recipientId?: string;
   recipientName?: string;
+  /** For rolls: the optional label typed after the notation. */
   text: string;
+  /** Structured roll outcome — present only for kinds `roll` and `gmroll`. */
+  roll?: RollResult;
   /** ISO timestamp — always assigned by the server. */
   createdAt: string;
 }
@@ -21,14 +31,23 @@ export const CHAT_HISTORY_PAGE_SIZE = 50;
 /** Aliases accepted for the whisper command (without the leading slash). */
 export const WHISPER_ALIASES = ['w', 'whisper', 'szept'];
 
+/** Aliases of the public roll command. */
+export const ROLL_ALIASES = ['r', 'roll', 'rzut'];
+
+/** Aliases of the GM roll command (result visible to the author and GMs only). */
+export const GM_ROLL_ALIASES = ['gr', 'gmroll'];
+
 /** One-line help shown next to "unknown command" errors. */
-export const CHAT_COMMANDS_HELP = 'Dostępne komendy: /w <imię> <treść> (szept)';
+export const CHAT_COMMANDS_HELP =
+  'Dostępne komendy: /w <imię> <treść> (szept), /r <formuła> [etykieta] (rzut), /gr <formuła> (rzut widoczny dla MG)';
 
 export type ParsedChatInput =
   | { kind: 'empty' }
   | { kind: 'say'; text: string }
   | { kind: 'whisper'; targetName: string; text: string }
   | { kind: 'invalid-whisper'; reason: 'MISSING_TARGET' | 'MISSING_TEXT' }
+  | { kind: 'roll'; visibility: 'public' | 'gm'; formula: RollFormula; label?: string }
+  | { kind: 'invalid-roll'; reason: 'MISSING_NOTATION' | RollParseError }
   | { kind: 'unknown-command'; command: string };
 
 /**
@@ -70,8 +89,27 @@ function splitWhisperArgs(
 }
 
 /**
- * Parses raw chat input into an intention. Extensible: new commands (e.g. /r
- * in stage 06) get their own alias list and branch here.
+ * Splits roll-command arguments into notation and label. The whole argument
+ * string is tried first (so `/r 1d10 + 5` works); otherwise the first token
+ * is the notation and the rest becomes the label (`/r 1d10+5 atak z bliska`).
+ */
+function parseRollArgs(visibility: 'public' | 'gm', args: string): ParsedChatInput {
+  if (args.length === 0) return { kind: 'invalid-roll', reason: 'MISSING_NOTATION' };
+
+  const whole = parseRollNotation(args);
+  if (whole.ok) return { kind: 'roll', visibility, formula: whole.formula };
+
+  const split = /^(\S+)\s*(.*)$/s.exec(args);
+  const first = parseRollNotation(split?.[1] ?? '');
+  if (!first.ok) return { kind: 'invalid-roll', reason: first.error };
+
+  const label = (split?.[2] ?? '').trim();
+  return { kind: 'roll', visibility, formula: first.formula, ...(label ? { label } : {}) };
+}
+
+/**
+ * Parses raw chat input into an intention. Extensible: new commands get their
+ * own alias list and branch here.
  *
  * `knownNames` (campaign roster) improves whisper parsing for names with
  * spaces; the caller (server) remains authoritative for target resolution.
@@ -87,6 +125,11 @@ export function parseChatInput(raw: string, knownNames: string[] = []): ParsedCh
   const parsed = /^\/(\S*)\s*(.*)$/s.exec(input);
   const command = (parsed?.[1] ?? '').toLowerCase();
   const args = (parsed?.[2] ?? '').trim();
+
+  if (ROLL_ALIASES.includes(command) || GM_ROLL_ALIASES.includes(command)) {
+    const visibility = GM_ROLL_ALIASES.includes(command) ? 'gm' : 'public';
+    return parseRollArgs(visibility, args);
+  }
 
   if (WHISPER_ALIASES.includes(command)) {
     if (args.length === 0) return { kind: 'invalid-whisper', reason: 'MISSING_TARGET' };
