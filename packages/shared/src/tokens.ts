@@ -240,7 +240,13 @@ export interface TokenSnapScene {
   grid: { sizePx: number; offsetX: number; offsetY: number };
 }
 
-function snapAxis(value: number, offset: number, cell: number, limit: number, extent: number): number {
+function snapAxis(
+  value: number,
+  offset: number,
+  cell: number,
+  limit: number,
+  extent: number,
+): number {
   const origin = normalizeGridOffset(offset, cell);
   const col = Math.round((value - origin) / cell);
   const maxCol = Math.floor((limit - extent - origin) / cell);

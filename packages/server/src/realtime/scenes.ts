@@ -11,12 +11,7 @@ import type {
   SceneViewBroadcast,
   SessionUser,
 } from '@vtt/shared';
-import {
-  ROLE_GM,
-  normalizeGridOffset,
-  sanitizeSceneName,
-  sanitizeScenePatch,
-} from '@vtt/shared';
+import { ROLE_GM, normalizeGridOffset, sanitizeSceneName, sanitizeScenePatch } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
 import type { Scene } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';

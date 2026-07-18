@@ -18,12 +18,7 @@ import {
   sceneUpdateEvent,
   sceneViewEvent,
 } from './scenes.js';
-import {
-  tokenCreateEvent,
-  tokenDeleteEvent,
-  tokenMoveEvent,
-  tokenUpdateEvent,
-} from './tokens.js';
+import { tokenCreateEvent, tokenDeleteEvent, tokenMoveEvent, tokenUpdateEvent } from './tokens.js';
 import { sendStateSync, stateRequestEvent } from './sync.js';
 
 declare module 'socket.io' {

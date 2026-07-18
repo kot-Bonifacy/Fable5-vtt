@@ -5,7 +5,13 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { io as ioClient, type Socket as ClientSocket } from 'socket.io-client';
-import type { AuthState, CampaignSummary, InvitationSummary, JoinInfo, SocketAck } from '@vtt/shared';
+import type {
+  AuthState,
+  CampaignSummary,
+  InvitationSummary,
+  JoinInfo,
+  SocketAck,
+} from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 

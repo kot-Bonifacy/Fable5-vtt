@@ -65,7 +65,11 @@ function drawToken({ bg, skin, visor, accent }) {
       if (d > 126) continue; // transparent corners
       // Background disc with a subtle vertical gradient.
       const shade = 1 - (y / SIZE) * 0.35;
-      set(x, y, bg.map((v) => Math.round(v * shade)));
+      set(
+        x,
+        y,
+        bg.map((v) => Math.round(v * shade)),
+      );
       // Shoulders.
       const sy = y - 170;
       if (sy > 0 && Math.abs(x - C) < 78 - sy * 0.25) set(x, y, accent);

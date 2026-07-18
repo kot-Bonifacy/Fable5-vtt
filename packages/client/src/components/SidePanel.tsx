@@ -41,7 +41,13 @@ export function SidePanel() {
           </button>
         </nav>
       )}
-      {activeTab === 'chat' ? <ChatPanel /> : activeTab === 'scenes' ? <ScenePanel /> : <TokenPanel />}
+      {activeTab === 'chat' ? (
+        <ChatPanel />
+      ) : activeTab === 'scenes' ? (
+        <ScenePanel />
+      ) : (
+        <TokenPanel />
+      )}
     </aside>
   );
 }

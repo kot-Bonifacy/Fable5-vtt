@@ -226,7 +226,12 @@ export class MapRenderer {
 
     const world = viewport.toWorld(event.global.x, event.global.y);
     const token = drag.node.token;
-    const pos = clampTokenPosition(world.x - drag.grabDx, world.y - drag.grabDy, token.size, snapScene);
+    const pos = clampTokenPosition(
+      world.x - drag.grabDx,
+      world.y - drag.grabDy,
+      token.size,
+      snapScene,
+    );
     drag.node.position.set(pos.x, pos.y);
     drag.lastX = pos.x;
     drag.lastY = pos.y;

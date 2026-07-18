@@ -58,8 +58,7 @@ export function registerJoinRoutes(app: FastifyInstance, ctx: AppContext): void 
       return reply.code(400).send({ error: 'NAME_TAKEN' });
     }
     const user =
-      existing ??
-      (await ctx.prisma.user.create({ data: { name: trimmed, role: ROLE_PLAYER } }));
+      existing ?? (await ctx.prisma.user.create({ data: { name: trimmed, role: ROLE_PLAYER } }));
 
     await ctx.prisma.campaignMember.upsert({
       where: { campaignId_userId: { campaignId: invitation.campaignId, userId: user.id } },

@@ -53,7 +53,10 @@ function cookieOf(setCookieHeader: string | string[] | undefined): string {
   return raw.split(';')[0]!;
 }
 
-function createSocket(cookie: string): { socket: ClientSocket; firstSync: Promise<StateSyncPayload> } {
+function createSocket(cookie: string): {
+  socket: ClientSocket;
+  firstSync: Promise<StateSyncPayload>;
+} {
   const socket = ioClient(baseUrl, {
     extraHeaders: { cookie },
     reconnection: false,

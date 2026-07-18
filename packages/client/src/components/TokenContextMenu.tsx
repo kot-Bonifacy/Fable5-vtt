@@ -96,8 +96,8 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
         </select>
 
         <label className="auth-label">
-          <input type="checkbox" checked={hasHp} onChange={(e) => setHasHp(e.target.checked)} /> Pasek
-          HP
+          <input type="checkbox" checked={hasHp} onChange={(e) => setHasHp(e.target.checked)} />{' '}
+          Pasek HP
         </label>
         {hasHp && (
           <div className="scene-editor-row">
@@ -135,13 +135,7 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
   );
 }
 
-export function TokenContextMenu({
-  menu,
-  onClose,
-}: {
-  menu: TokenMenuState;
-  onClose: () => void;
-}) {
+export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onClose: () => void }) {
   const token = useTokenStore((s) => s.tokens[menu.tokenId]);
   const statuses = useTokenStore((s) => s.statuses);
   const [editing, setEditing] = useState(false);
@@ -184,10 +178,14 @@ export function TokenContextMenu({
 
   return (
     <>
-      <div className="context-menu-backdrop" onClick={onClose} onContextMenu={(e) => {
-        e.preventDefault();
-        onClose();
-      }} />
+      <div
+        className="context-menu-backdrop"
+        onClick={onClose}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          onClose();
+        }}
+      />
       <div className="context-menu" style={{ left, top, width: MENU_WIDTH }}>
         <p className="context-menu-title">{token.name}</p>
         <button

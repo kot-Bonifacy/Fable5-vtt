@@ -97,7 +97,11 @@ function CampaignCard({
       )}
       <ul className="invite-list">
         {campaign.invitations.map((invitation) => (
-          <InvitationRow key={invitation.id} invitation={invitation} onRevoke={(id) => void revoke(id)} />
+          <InvitationRow
+            key={invitation.id}
+            invitation={invitation}
+            onRevoke={(id) => void revoke(id)}
+          />
         ))}
       </ul>
       <button type="button" onClick={() => void createInvitation()}>

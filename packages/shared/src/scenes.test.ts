@@ -54,9 +54,9 @@ describe('sanitizeScenePatch', () => {
   });
 
   it('drops invalid grid fields but keeps valid ones', () => {
-    expect(
-      sanitizeScenePatch({ grid: { color: 'red', visible: true, offsetX: 12 } }),
-    ).toEqual({ grid: { visible: true, offsetX: 12 } });
+    expect(sanitizeScenePatch({ grid: { color: 'red', visible: true, offsetX: 12 } })).toEqual({
+      grid: { visible: true, offsetX: 12 },
+    });
   });
 
   it('drops an all-invalid grid patch entirely', () => {

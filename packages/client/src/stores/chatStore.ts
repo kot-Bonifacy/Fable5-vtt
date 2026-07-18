@@ -11,8 +11,7 @@ import type {
 
 /** A chat feed entry: a server message or a local, ephemeral system note. */
 export type ChatItem =
-  | { type: 'message'; message: ChatMessageView }
-  | { type: 'note'; id: string; text: string };
+  { type: 'message'; message: ChatMessageView } | { type: 'note'; id: string; text: string };
 
 interface ChatStoreState {
   /** False until the first `state:sync` (and after a disconnect). */

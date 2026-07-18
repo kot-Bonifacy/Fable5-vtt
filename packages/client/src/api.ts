@@ -32,7 +32,8 @@ async function request<T>(method: 'GET' | 'POST', url: string, body?: unknown): 
 }
 
 export const apiGet = <T>(url: string): Promise<T> => request<T>('GET', url);
-export const apiPost = <T>(url: string, body?: unknown): Promise<T> => request<T>('POST', url, body);
+export const apiPost = <T>(url: string, body?: unknown): Promise<T> =>
+  request<T>('POST', url, body);
 
 /** Uploads a single file as multipart/form-data (field name: `file`). */
 export async function apiUpload<T>(url: string, file: File): Promise<T> {

@@ -28,8 +28,17 @@ function placeholderColor(name: string): number {
   const c = 0.35;
   const x = c * (1 - Math.abs(((hue / 60) % 2) - 1));
   const [r, g, b] =
-    hue < 60 ? [c, x, 0] : hue < 120 ? [x, c, 0] : hue < 180 ? [0, c, x]
-    : hue < 240 ? [0, x, c] : hue < 300 ? [x, 0, c] : [c, 0, x];
+    hue < 60
+      ? [c, x, 0]
+      : hue < 120
+        ? [x, c, 0]
+        : hue < 180
+          ? [0, c, x]
+          : hue < 240
+            ? [0, x, c]
+            : hue < 300
+              ? [x, 0, c]
+              : [c, 0, x];
   const to255 = (v: number) => Math.round((v + 0.25) * 255);
   return (to255(r) << 16) | (to255(g) << 8) | to255(b);
 }
@@ -130,7 +139,10 @@ export class TokenNode extends Container {
       .circle(center, center, radius)
       .stroke({ color: ringColor(token, ctx), width: RING_WIDTH });
 
-    this.imageMask.clear().circle(center, center, radius - RING_WIDTH / 2).fill(0xffffff);
+    this.imageMask
+      .clear()
+      .circle(center, center, radius - RING_WIDTH / 2)
+      .fill(0xffffff);
 
     this.placeholder
       .clear()
@@ -213,7 +225,10 @@ export class TokenNode extends Container {
       if (!url) return;
       const badge = new Sprite();
       badge.setSize(iconSize, iconSize);
-      badge.position.set(2 + (index % perRow) * (iconSize + 2), 2 + Math.floor(index / perRow) * (iconSize + 2));
+      badge.position.set(
+        2 + (index % perRow) * (iconSize + 2),
+        2 + Math.floor(index / perRow) * (iconSize + 2),
+      );
       badge.alpha = 0.9;
       this.statusLayer.addChild(badge);
       Assets.load<Texture>(url)

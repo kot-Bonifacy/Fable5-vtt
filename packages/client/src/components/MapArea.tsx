@@ -122,7 +122,9 @@ export function MapArea() {
       {!scene && (
         <div className="map-overlay">
           <p className="placeholder-text">
-            {isGm ? 'Brak sceny — utwórz i aktywuj ją w zakładce „Sceny”.' : 'Brak aktywnej sceny — MG musi ją aktywować.'}
+            {isGm
+              ? 'Brak sceny — utwórz i aktywuj ją w zakładce „Sceny”.'
+              : 'Brak aktywnej sceny — MG musi ją aktywować.'}
           </p>
         </div>
       )}
