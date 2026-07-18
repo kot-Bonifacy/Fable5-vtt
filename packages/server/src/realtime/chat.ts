@@ -1,23 +1,25 @@
-import { randomInt } from 'node:crypto';
 import type {
   ChatHistoryPage,
   ChatHistoryRequest,
   ChatMessageBroadcast,
   ChatMessageView,
   ChatSendPayload,
-  DiceRng,
   RollFormula,
+  RollGesture,
   RollResult,
   SessionUser,
 } from '@vtt/shared';
 import {
   CHAT_HISTORY_PAGE_SIZE,
   MAX_CHAT_MESSAGE_LENGTH,
+  MAX_GESTURE_ENTROPY_LENGTH,
+  MAX_GESTURE_STRENGTH,
   ROLE_GM,
   parseChatInput,
   rollFormula,
 } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
+import { createMixedRng } from './dice-rng.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { campaignRoom } from './state.js';
 
@@ -162,8 +164,22 @@ async function persistAndEmitWhisper(
   }
 }
 
-/** Crypto-strong die roller — the only RNG real rolls ever use. */
-const cryptoRng: DiceRng = (sides) => randomInt(1, sides + 1);
+/**
+ * Sanitizes the optional cup gesture: clamps the strength, drops malformed or
+ * oversized payloads (the entropy is free-form client data — it only ever
+ * feeds a hash, but we keep it bounded).
+ */
+function sanitizeGesture(raw: unknown): RollGesture | undefined {
+  if (typeof raw !== 'object' || raw === null) return undefined;
+  const { entropy, strength } = raw as { entropy?: unknown; strength?: unknown };
+  if (typeof entropy !== 'string' || entropy.length === 0) return undefined;
+  if (entropy.length > MAX_GESTURE_ENTROPY_LENGTH) return undefined;
+  const clamped =
+    typeof strength === 'number' && Number.isFinite(strength)
+      ? Math.min(Math.max(Math.round(strength), 0), MAX_GESTURE_STRENGTH)
+      : 0;
+  return { entropy, strength: clamped };
+}
 
 /**
  * Executes a roll server-side and delivers the result. Public rolls broadcast
@@ -178,8 +194,10 @@ async function persistAndEmitRoll(
   visibility: 'public' | 'gm',
   formula: RollFormula,
   label: string | undefined,
+  gesture: RollGesture | undefined,
 ): Promise<void> {
-  const result = rollFormula(formula, cryptoRng);
+  const result = rollFormula(formula, createMixedRng(gesture?.entropy));
+  if (gesture && gesture.strength > 0) result.tossStrength = gesture.strength;
   const kind = visibility === 'gm' ? 'gmroll' : 'roll';
   const stored = await deps.ctx.prisma.chatMessage.create({
     data: {
@@ -249,6 +267,7 @@ export const chatSendEvent = defineEvent<ChatSendPayload>({
           parsed.visibility,
           parsed.formula,
           parsed.label,
+          sanitizeGesture(payload.gesture),
         );
         return;
     }

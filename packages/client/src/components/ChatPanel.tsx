@@ -1,11 +1,4 @@
-import {
-  useLayoutEffect,
-  useRef,
-  useState,
-  type FormEvent,
-  type ReactNode,
-  type UIEvent,
-} from 'react';
+import { useLayoutEffect, useRef, type FormEvent, type ReactNode, type UIEvent } from 'react';
 import type { ChatMessageView, RollResult } from '@vtt/shared';
 import { loadOlderHistory, sendChatInput } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
@@ -136,7 +129,9 @@ export function ChatPanel() {
   const hasMoreHistory = useChatStore((s) => s.hasMoreHistory);
   const loadingHistory = useChatStore((s) => s.loadingHistory);
 
-  const [draft, setDraft] = useState('');
+  // Draft lives in the store so the dice cup can read and execute commands.
+  const draft = useChatStore((s) => s.draft);
+  const setDraft = useChatStore((s) => s.setDraft);
   const feedRef = useRef<HTMLDivElement>(null);
   const stickToBottomRef = useRef(true);
   /** scrollHeight captured when older-history loading starts (to keep position). */

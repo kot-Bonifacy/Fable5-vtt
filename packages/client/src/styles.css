@@ -257,6 +257,103 @@ body {
   height: 100% !important;
 }
 
+.dice-overlay-fun-badge {
+  position: absolute;
+  bottom: 3.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  background: rgb(20 21 26 / 80%);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  font-style: italic;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.dice-overlay--fun .dice-overlay-fun-badge {
+  opacity: 1;
+}
+
+/* --- Dice cup --- */
+
+.dice-cup {
+  position: fixed;
+  bottom: 1rem;
+  left: 1rem;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem;
+  border-radius: 50%;
+  background: var(--bg-panel);
+  border: 2px solid var(--border);
+  color: var(--text-dim);
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.dice-cup:hover {
+  color: var(--text);
+}
+
+.dice-cup--hot {
+  --cup-glow: 224 20 20;
+  color: var(--accent);
+  border-color: var(--accent);
+  animation: dice-cup-pulse 1.6s ease-in-out infinite;
+}
+
+.dice-cup--gm {
+  --cup-glow: 180 139 224;
+  color: var(--whisper);
+  border-color: var(--whisper);
+  animation: dice-cup-pulse 1.6s ease-in-out infinite;
+}
+
+.dice-cup--shaking {
+  cursor: grabbing;
+  z-index: 80;
+  animation: dice-cup-rattle 0.12s linear infinite;
+}
+
+.dice-cup-label {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding-right: 0.25rem;
+}
+
+@keyframes dice-cup-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 6px rgb(var(--cup-glow) / 35%);
+  }
+  50% {
+    box-shadow: 0 0 14px rgb(var(--cup-glow) / 75%);
+  }
+}
+
+@keyframes dice-cup-rattle {
+  0% {
+    rotate: -9deg;
+  }
+  50% {
+    rotate: 9deg;
+  }
+  100% {
+    rotate: -9deg;
+  }
+}
+
 /* --- Roll result cards --- */
 
 .chat-roll-body {

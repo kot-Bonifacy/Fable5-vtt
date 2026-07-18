@@ -20,6 +20,13 @@ Konfiguracja w `packages/client/src/dice3d.ts` (`theme_customColorset`): kolory 
 tekstura (`metal`, `fire`, `marble`, … — patrz katalog `public/dice/textures/`) i materiał
 (`metal`, `plastic`, `glass`, `wood`). Dźwięki: `sounds`, `volume`, `sound_dieMaterial`.
 
+## Kubek do rzucania
+
+Ikona kubka (`DiceCup.tsx`, lewy dolny róg stołu) używa próbek dźwiękowych grzechotu
+z tego samego zestawu (`public/dice/sounds/dicehit/dicehit_metal*.mp3`). Potrząsanie
+myszą generuje entropię (SHA-256 z próbek ruchu) domieszaną do RNG serwera — patrz
+`packages/server/src/realtime/dice-rng.ts`.
+
 ## Ograniczenia
 
 - Renderowane są tylko kości d4/d6/d8/d10/d12/d20/d100 — inne (np. d3) pokazują się wyłącznie

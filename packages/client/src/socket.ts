@@ -2,7 +2,9 @@ import { io, type Socket } from 'socket.io-client';
 import type {
   ChatHistoryPage,
   ChatMessageBroadcast,
+  ChatSendPayload,
   PresenceBroadcast,
+  RollGesture,
   SceneActivateBroadcast,
   SceneListBroadcast,
   ScenePatch,
@@ -29,7 +31,7 @@ import {
   TOKEN_MOVE_RATE_HZ,
   parseChatInput,
 } from '@vtt/shared';
-import { playRollAnimation } from './dice3d.js';
+import { playRollAnimation, toAnimationNotation } from './dice3d.js';
 import { useConnectionStore } from './stores/connectionStore.js';
 import { oldestMessageId, useChatStore } from './stores/chatStore.js';
 import { useSceneStore } from './stores/sceneStore.js';
@@ -37,6 +39,11 @@ import { useAuthStore } from './stores/authStore.js';
 import { useTokenStore, type TokenViewerCtx } from './stores/tokenStore.js';
 
 let socket: Socket | undefined;
+
+/** Extra time after the dice settle before the chat card spoils the total. */
+const CARD_REVEAL_DELAY_MS = 2500;
+/** Safety net: reveal the card even if the animation never reports back. */
+const MAX_ANIMATION_WAIT_MS = 15_000;
 
 function chatErrorText(code: string): string {
   switch (code) {
@@ -109,12 +116,22 @@ export function connectSocket(): Socket {
     tokens().applySync(payload, viewer());
   });
   socket.on('chat:message', (broadcast: ChatMessageBroadcast) => {
-    if (chat().applyMessage(broadcast)) {
+    const roll = broadcast.message.roll;
+    // Live rolls (never history/resync) replay the server's results in 3D;
+    // their chat card is held back so the table reads the dice first.
+    const hold = roll !== undefined && toAnimationNotation(roll) !== null;
+    if (chat().applyMessage(broadcast, hold)) {
       socket?.emit('state:request');
       return;
     }
-    // Live rolls (never history/resync) replay the server's results in 3D.
-    if (broadcast.message.roll) playRollAnimation(broadcast.message.roll);
+    if (hold && roll) {
+      const reveal = () => useChatStore.getState().revealMessage(broadcast.message.id);
+      const guard = window.setTimeout(reveal, MAX_ANIMATION_WAIT_MS);
+      void playRollAnimation(roll).then((played) => {
+        window.clearTimeout(guard);
+        window.setTimeout(reveal, played ? CARD_REVEAL_DELAY_MS : 0);
+      });
+    }
   });
   socket.on('presence:update', (broadcast: PresenceBroadcast) => {
     if (chat().applyPresence(broadcast)) socket?.emit('state:request');
@@ -191,9 +208,10 @@ export function disconnectSocket(): void {
 /**
  * Sends raw chat input. Obvious mistakes (unknown command, incomplete
  * whisper) are caught locally for an instant hint; the server re-parses and
- * stays authoritative for everything else.
+ * stays authoritative for everything else. `gesture` accompanies rolls
+ * thrown with the dice cup.
  */
-export function sendChatInput(text: string): void {
+export function sendChatInput(text: string, gesture?: RollGesture): void {
   const store = useChatStore.getState();
   const parsed = parseChatInput(text);
   if (parsed.kind === 'empty') return;
@@ -213,7 +231,8 @@ export function sendChatInput(text: string): void {
     store.addNote(rollErrorText(parsed.reason));
     return;
   }
-  socket?.emit('chat:send', { text }, (ack: SocketAck) => {
+  const payload: ChatSendPayload = parsed.kind === 'roll' && gesture ? { text, gesture } : { text };
+  socket?.emit('chat:send', payload, (ack: SocketAck) => {
     if (!ack.ok) useChatStore.getState().addNote(chatErrorText(ack.error));
   });
 }

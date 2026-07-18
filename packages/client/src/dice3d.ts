@@ -1,7 +1,9 @@
 /**
  * 3D dice visualization (@3d-dice/dice-box-threejs). The dice NEVER decide
- * anything — the server rolls, and the animation replays its results using
- * the library's predetermined-outcome notation (`1d10+2d6@7,3,5`).
+ * anything — real rolls are computed on the server and the animation replays
+ * their results via the library's predetermined-outcome notation
+ * (`1d10+2d6@7,3,5`). "Fun" rolls (dice cup with no roll command) are local
+ * physics-only toys: no forced result, nothing sent anywhere.
  *
  * Degrades gracefully: when WebGL/init fails, rolls simply show as chat
  * cards without an animation.
@@ -12,13 +14,15 @@ import type { RollResult } from '@vtt/shared';
 const RENDERABLE_SIDES = new Set([4, 6, 8, 10, 12, 20, 100]);
 
 const OVERLAY_ID = 'dice-overlay';
-const FADE_OUT_DELAY_MS = 1800;
+/** Dice linger after settling until just past the chat-card reveal (~2.5 s). */
+const FADE_OUT_DELAY_MS = 3200;
 
 /**
  * Builds the predetermined-outcome notation for a server roll: dice groups
  * joined with `+`, then `@` and every die value in spawn order. The
- * crit/fumble extra d10 is appended as its own group. Returns null when the
- * roll contains no renderable dice.
+ * crit/fumble extra d10 is appended as its own group; the cup's shake
+ * strength maps to the library's `!` toss boost. Returns null when the roll
+ * contains no renderable dice.
  */
 export function toAnimationNotation(roll: RollResult): string | null {
   const groups: string[] = [];
@@ -33,7 +37,8 @@ export function toAnimationNotation(roll: RollResult): string | null {
     values.push(roll.critical.extraRoll);
   }
   if (groups.length === 0) return null;
-  return `${groups.join('+')}@${values.join(',')}`;
+  const boost = '!'.repeat(Math.min(Math.max(roll.tossStrength ?? 0, 0), 3));
+  return `${boost}${groups.join('+')}@${values.join(',')}`;
 }
 
 interface DiceBoxLike {
@@ -42,11 +47,18 @@ interface DiceBoxLike {
   clearDice(): void;
 }
 
+interface DiceJob {
+  notation: string;
+  fun: boolean;
+  resolve: (played: boolean) => void;
+}
+
 let box: DiceBoxLike | null = null;
 let initPromise: Promise<DiceBoxLike | null> | null = null;
 let overlay: HTMLDivElement | null = null;
+let funBadge: HTMLDivElement | null = null;
 let fadeTimer: number | undefined;
-const queue: string[] = [];
+const queue: DiceJob[] = [];
 let playing = false;
 
 function ensureOverlay(): HTMLDivElement {
@@ -54,6 +66,10 @@ function ensureOverlay(): HTMLDivElement {
   overlay = document.createElement('div');
   overlay.id = OVERLAY_ID;
   overlay.className = 'dice-overlay';
+  funBadge = document.createElement('div');
+  funBadge.className = 'dice-overlay-fun-badge';
+  funBadge.textContent = 'Rzut na niby — bez znaczenia dla gry';
+  overlay.appendChild(funBadge);
   document.body.appendChild(overlay);
   return overlay;
 }
@@ -91,32 +107,37 @@ async function ensureBox(): Promise<DiceBoxLike | null> {
 }
 
 async function playNext(): Promise<void> {
-  const notation = queue.shift();
-  if (!notation) {
+  const job = queue.shift();
+  if (!job) {
     playing = false;
     return;
   }
   playing = true;
   const dice = await ensureBox();
   if (!dice || !overlay) {
-    queue.length = 0;
+    job.resolve(false);
+    for (const skipped of queue.splice(0)) skipped.resolve(false);
     playing = false;
     return;
   }
   window.clearTimeout(fadeTimer);
   overlay.classList.add('dice-overlay--active');
+  overlay.classList.toggle('dice-overlay--fun', job.fun);
+  let played = true;
   try {
-    await dice.roll(notation);
+    await dice.roll(job.notation);
   } catch (error) {
     console.warn('3D dice roll failed', error);
+    played = false;
   }
+  job.resolve(played);
   if (queue.length > 0) {
     void playNext();
     return;
   }
   playing = false;
   fadeTimer = window.setTimeout(() => {
-    overlay?.classList.remove('dice-overlay--active');
+    overlay?.classList.remove('dice-overlay--active', 'dice-overlay--fun');
     // Let the fade-out transition finish before removing the dice.
     window.setTimeout(() => {
       if (!playing) box?.clearDice();
@@ -124,13 +145,29 @@ async function playNext(): Promise<void> {
   }, FADE_OUT_DELAY_MS);
 }
 
+function enqueue(notation: string, fun: boolean): Promise<boolean> {
+  return new Promise((resolve) => {
+    queue.push({ notation, fun, resolve });
+    if (!playing) void playNext();
+  });
+}
+
 /**
  * Queues the 3D animation of a server roll. Call for live `chat:message`
- * broadcasts only — history and resyncs must not replay old rolls.
+ * broadcasts only — history and resyncs must not replay old rolls. Resolves
+ * (true = animation actually played) once the dice have settled.
  */
-export function playRollAnimation(roll: RollResult): void {
+export function playRollAnimation(roll: RollResult): Promise<boolean> {
   const notation = toAnimationNotation(roll);
-  if (!notation) return;
-  queue.push(notation);
-  if (!playing) void playNext();
+  if (!notation) return Promise.resolve(false);
+  return enqueue(notation, false);
+}
+
+/**
+ * Local physics-only toy roll from the dice cup (no roll command active):
+ * nothing is sent to the server and no chat card appears.
+ */
+export function playFunRoll(notation: string, strength: number): Promise<boolean> {
+  const boost = '!'.repeat(Math.min(Math.max(strength, 0), 3));
+  return enqueue(`${boost}${notation}`, true);
 }

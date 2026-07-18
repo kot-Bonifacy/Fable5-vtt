@@ -430,6 +430,46 @@ describe('dice rolls', () => {
     vex.socket.disconnect();
   });
 
+  it('mixes a cup gesture into the roll and clamps its strength for viewers', async () => {
+    const gm = createSocket(gmCookie);
+    await gm.firstSync;
+
+    const toGm = waitFor<ChatMessageBroadcast>(gm.socket, 'chat:message');
+    const ack = await emitAck(gm.socket, 'chat:send', {
+      text: '/r 2d6 rzut z kubka',
+      gesture: { entropy: 'ab'.repeat(32), strength: 9 },
+    });
+    expect(ack.ok).toBe(true);
+
+    const roll = (await toGm).message.roll;
+    if (!roll) throw new Error('missing roll payload');
+    expect(roll.tossStrength).toBe(3); // clamped to the maximum
+    for (const term of roll.terms) {
+      if (term.kind !== 'dice') continue;
+      for (const value of term.rolls) {
+        expect(value).toBeGreaterThanOrEqual(1);
+        expect(value).toBeLessThanOrEqual(term.sides);
+      }
+    }
+
+    gm.socket.disconnect();
+  });
+
+  it('ignores malformed gestures instead of failing the roll', async () => {
+    const gm = createSocket(gmCookie);
+    await gm.firstSync;
+
+    const toGm = waitFor<ChatMessageBroadcast>(gm.socket, 'chat:message');
+    const ack = await emitAck(gm.socket, 'chat:send', {
+      text: '/r 1d10',
+      gesture: { entropy: 'x'.repeat(1000), strength: 2 },
+    });
+    expect(ack.ok).toBe(true);
+    expect((await toGm).message.roll?.tossStrength).toBeUndefined();
+
+    gm.socket.disconnect();
+  });
+
   it('rejects a missing or malformed notation', async () => {
     const { socket, firstSync } = createSocket(rogueCookie);
     await firstSync;

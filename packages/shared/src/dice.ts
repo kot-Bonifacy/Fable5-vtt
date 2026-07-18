@@ -123,6 +123,11 @@ export interface RollResult {
   /** True when two or more sixes appeared among added d6 dice (CP RED). */
   criticalDamage: boolean;
   total: number;
+  /**
+   * Presentation metadata attached by the server when the roll was thrown
+   * with the dice cup: shake strength 0–3 boosting the 3D toss animation.
+   */
+  tossStrength?: number;
 }
 
 /** True when the formula's dice are exactly one added d10 — a CP RED check. */
