@@ -1,6 +1,6 @@
-# Etap 27 — Wdrożenie na VPS 🏁 Produkcja
+# Etap 28 — Wdrożenie na VPS 🏁 Produkcja
 
-**Faza:** I — Wykończenie · **Wymaga etapów:** minimum 01–03; pełny sens po 21 (TURN) — ale etap jest samodzielny i można go wykonać wcześniej, gdy zechcesz grać zdalnie
+**Faza:** I — Wykończenie · **Wymaga etapów:** minimum 01–03; pełny sens po 22 (TURN) — ale etap jest samodzielny i można go wykonać wcześniej, gdy zechcesz grać zdalnie
 
 ## Cel sesji
 
@@ -13,7 +13,7 @@ Produkcyjne wdrożenie na VPS (home.pl, 8 GB / 4 vCPU / Ubuntu 24.04): Docker Co
 - [ ] Tailscale: VPS i PC z GPU w jednym tailnecie; serwer VTT woła gateway po adresie tailnetowym (env); gateway nasłuchuje wyłącznie na interfejsie Tailscale; test degradacji — PC offline ⇒ boty offline, VTT działa
 - [ ] Firewall (ufw): tylko 80/443 (+ zakres TURN), SSH po kluczu (bez hasła), fail2ban dla SSH
 - [ ] Backupy automatyczne (cron/systemd timer): kopia SQLite przez `sqlite3 .backup` lub litestream, archiwum `uploads/` i `data/private/`; retencja (np. 7 dziennych + 4 tygodniowe); kopia off-site (rclone na dysk chmurowy lub pobieranie na PC domowy); **test odtworzenia** — obowiązkowy
-- [ ] coturn skonfigurowany i wpięty w konfigurację ICE klienta (env z etapu 21); test głosu przez internet (dwie sieci — np. komputer + telefon LTE)
+- [ ] coturn skonfigurowany i wpięty w konfigurację ICE klienta (env z etapu 22); test głosu przez internet (dwie sieci — np. komputer + telefon LTE)
 - [ ] Deploy powtarzalny: skrypt `deploy.sh` (pull → build → migracje → restart) + krótka instrukcja w `docs/DEPLOY.md`; zmienne środowiskowe prod w `.env.prod` poza repo
 - [ ] Monitoring minimalny: healthcheck kontenerów, powiadomienie o padzie (choćby uptime-kuma lub cron+mail), monitoring miejsca na dysku
 - [ ] Smoke test produkcji: pełna mini-sesja zdalna (mapa, tokeny, rzuty, karta, bot przez Tailscale, głos, STT)

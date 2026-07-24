@@ -19,7 +19,7 @@ Aktywne boty stają się uczestnikami czatu sesji: rozmawiają po polsku jako NP
 
 ## Poza zakresem
 
-- Pamięć między sesjami, RAG, relacje (etap 18); rzuty i ruch tokenów przez boty (etap 19); STT/szept głosowy (etap 20)
+- Pamięć między sesjami, RAG, relacje (etap 19); rzuty i ruch tokenów przez boty (etap 20); mowa botów — TTS (etap 12); STT/szept głosowy (etap 21)
 
 ## Kryteria ukończenia
 
@@ -32,4 +32,5 @@ Aktywne boty stają się uczestnikami czatu sesji: rozmawiają po polsku jako NP
 
 - Wiadomości botów zapisuj w DB jak zwykłe wiadomości (autor = bot) — historia sceny jest jednocześnie pamięcią krótkoterminową bota
 - Do budowy kontekstu licz tokeny realnie (tokenizer po stronie gatewaya), nie znakami
-- Ogranicz max tokenów odpowiedzi (NPC mówi 1–4 zdania) — krótsze odpowiedzi to też szybsze odpowiedzi i lepszy klimat
+- Ogranicz max tokenów odpowiedzi (NPC mówi 1–4 zdania) — krótsze odpowiedzi to też szybsze odpowiedzi i lepszy klimat (a od etapu 12 również krótsza synteza mowy)
+- Payload wiadomości bota zaprojektuj tak, by dało się do niego dołożyć `audioUrl` **po fakcie** — w etapie 12 audio dochodzi asynchronicznie i tekst nigdy nie czeka na dźwięk

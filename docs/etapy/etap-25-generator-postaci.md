@@ -1,8 +1,8 @@
-# Etap 24 — Generator postaci (lifepath)
+# Etap 25 — Generator postaci (lifepath)
 
-**Faza:** H — Świat CP RED · **Wymaga etapów:** 12, 22
+**Faza:** H — Świat CP RED · **Wymaga etapów:** 13, 23
 
-⚠️ **Wymaga materiałów od Ciebie:** rozdziały podręcznika: tworzenie postaci (metody statystyk, pakiety umiejętności ról, wyposażenie startowe) i pełne tabele lifepath — przez pipeline z etapu 12.
+⚠️ **Wymaga materiałów od Ciebie:** rozdziały podręcznika: tworzenie postaci (metody statystyk, pakiety umiejętności ról, wyposażenie startowe) i pełne tabele lifepath — przez pipeline z etapu 13.
 
 ## Cel sesji
 
@@ -16,7 +16,7 @@ Kreator postaci krok po kroku: od wyboru roli, przez statystyki i umiejętności
   2. statystyki — metody z podręcznika (losowanie przez silnik kości / pakiety punktów) z podglądem pochodnych (HP, humanity)
   3. umiejętności — pakiet roli + punkty do rozdania, walidacja limitów
   4. lifepath — kolejne tabele (pochodzenie, rodzina, motywacje, przyjaciele, wrogowie, romanse…): losowanie `1d10` albo wybór ręczny; wynik jako sekcja biografii na karcie
-  5. wyposażenie startowe — pakiet roli + zakupy za startowe eddies (kompendium + ekonomia z etapu 22)
+  5. wyposażenie startowe — pakiet roli + zakupy za startowe eddies (kompendium + ekonomia z etapu 23)
   6. dane opisowe — imię, portret (upload), styl
 - [ ] Zapis w dowolnym momencie jako szkic; ukończenie tworzy pełną kartę (etap 07) z tokenem
 - [ ] Dostępność: MG zawsze; gracze — jeśli MG włączy (tworzenie własnych postaci)
@@ -34,6 +34,6 @@ Kreator postaci krok po kroku: od wyboru roli, przez statystyki i umiejętności
 
 ## Wskazówki techniczne
 
-- Tabele lifepath to dane (etap 12), kreator tylko je odtwarza — żadnych treści tabel w kodzie
+- Tabele lifepath to dane (etap 13), kreator tylko je odtwarza — żadnych treści tabel w kodzie
 - Stan kreatora trzymaj jako dokument szkicu w DB (odporność na zamknięcie karty przeglądarki w połowie)
 - Sesja zerowa z drużyną to najlepszy test tego etapu — zaplanuj ją po jego ukończeniu

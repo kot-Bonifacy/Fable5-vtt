@@ -1,6 +1,6 @@
-# Etap 19 — Autonomia botów w mechanice 🏁 Pełne boty
+# Etap 20 — Autonomia botów w mechanice 🏁 Pełne boty
 
-**Faza:** F — Boty zaawansowane · **Wymaga etapów:** 13, 14, 15, 18
+**Faza:** F — Boty zaawansowane · **Wymaga etapów:** 14, 15, 16, 19
 
 ## Cel sesji
 
@@ -20,7 +20,7 @@ Boty działają w mechanice gry zgodnie z ankietą: pełna automatyka (bot sam r
 
 ## Poza zakresem
 
-- Zaawansowana taktyka (osłony, skupianie ognia) — dopracowanie promptu taktycznego to POMYSLY.md; netrunning botów (po etapie 25); boty inicjujące akcje poza swoją turą
+- Zaawansowana taktyka (osłony, skupianie ognia) — dopracowanie promptu taktycznego to POMYSLY.md; netrunning botów (po etapie 26); boty inicjujące akcje poza swoją turą
 
 ## Kryteria ukończenia
 

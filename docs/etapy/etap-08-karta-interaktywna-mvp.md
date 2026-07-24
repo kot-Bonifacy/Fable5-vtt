@@ -19,7 +19,7 @@ Spięcie stołu w całość: klik w umiejętność wykonuje rzut z modyfikatoram
 
 ## Poza zakresem
 
-- Automatyczne aplikowanie obrażeń z rzutów (etap 14), inicjatywa (etap 13), zasięgi (etap 15)
+- Automatyczne aplikowanie obrażeń z rzutów (etap 15), inicjatywa (etap 14), zasięgi (etap 16)
 
 ## Kryteria ukończenia
 
@@ -29,5 +29,5 @@ Spięcie stołu w całość: klik w umiejętność wykonuje rzut z modyfikatoram
 
 ## Wskazówki techniczne
 
-- Opis rzutu (etykieta umiejętności, składniki) buduj w `shared/systems/cpred` — boty w etapie 19 użyją dokładnie tej samej funkcji
+- Opis rzutu (etykieta umiejętności, składniki) buduj w `shared/systems/cpred` — boty w etapie 20 użyją dokładnie tej samej funkcji
 - To etap milowy — zostaw godzinę na świadome „pogranie" i notatki do POMYSLY.md zamiast dociskania nowych funkcji

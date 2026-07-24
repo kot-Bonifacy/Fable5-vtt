@@ -1,4 +1,4 @@
-# Etap 16 — Fog of war, rysowanie, warstwa MG
+# Etap 17 — Fog of war, rysowanie, warstwa MG
 
 **Faza:** E — Widoczność · **Wymaga etapów:** 05
 
@@ -17,7 +17,7 @@ Narzędzia kontroli informacji: ręczna mgła wojny, rysowanie po mapie, warstwa
 
 ## Poza zakresem
 
-- Automatyczne odsłanianie z vision/światła (etap 17 — ta mgła ręczna zostanie z nim zintegrowana), rysowanie jako szablony zaklęć/obszarów
+- Automatyczne odsłanianie z vision/światła (etap 18 — ta mgła ręczna zostanie z nim zintegrowana), rysowanie jako szablony zaklęć/obszarów
 
 ## Kryteria ukończenia
 
@@ -28,5 +28,5 @@ Narzędzia kontroli informacji: ręczna mgła wojny, rysowanie po mapie, warstwa
 ## Wskazówki techniczne
 
 - Mgłę trzymaj jako zbiór kształtów (wielokąty/okręgi pędzla) renderowanych do maski, nie jako bitmapę — mniejsze dane, łatwiejszy sync i undo
-- Filtrowanie tokenów po mgle wymaga testu punkt-w-wielokącie na serwerze — funkcja przyda się też w etapie 17, umieść ją w `shared`
+- Filtrowanie tokenów po mgle wymaga testu punkt-w-wielokącie na serwerze — funkcja przyda się też w etapie 18, umieść ją w `shared`
 - Freehand upraszczaj (algorytm Douglas-Peucker / `simplify-js`) przed wysyłką

@@ -1,6 +1,6 @@
-# Etap 15 — Zasięgi, DV z mapy, autofire 🏁 Pełna automatyka walki
+# Etap 16 — Zasięgi, DV z mapy, autofire 🏁 Pełna automatyka walki
 
-**Faza:** D — Walka · **Wymaga etapów:** 14
+**Faza:** D — Walka · **Wymaga etapów:** 15
 
 ## Cel sesji
 
@@ -9,8 +9,8 @@ Mapa zaczyna liczyć walkę dystansową: pomiar odległości, automatyczne DV wg
 ## Zakres
 
 - [ ] Linijka: narzędzie pomiaru (klik-przeciągnij), dystans w metrach wg skali sceny (kratka = 2 m), widoczna dla mierzącego (+ opcjonalnie dla wszystkich), pomiar wielopunktowy (łamana)
-- [ ] Atak dystansowy z mapy: wybór atakującego tokenu + celu → serwer liczy dystans → DV z tabeli zasięgów broni (dane z etapu 12) → rzut ataku vs DV → trafienie/pudło na czacie z pełnym rozbiciem (dystans, przedział zasięgu, DV)
-- [ ] Spięcie z etapem 14: trafienie proponuje od razu rzut obrażeń i „zastosuj na celu" — pełny łańcuch atak→obrażenia w dwóch kliknięciach
+- [ ] Atak dystansowy z mapy: wybór atakującego tokenu + celu → serwer liczy dystans → DV z tabeli zasięgów broni (dane z etapu 13) → rzut ataku vs DV → trafienie/pudło na czacie z pełnym rozbiciem (dystans, przedział zasięgu, DV)
+- [ ] Spięcie z etapem 15: trafienie proponuje od razu rzut obrażeń i „zastosuj na celu" — pełny łańcuch atak→obrażenia w dwóch kliknięciach
 - [ ] Atak wręcz: dystans sąsiedztwa, DV wg zasad walki wręcz/bijatyki
 - [ ] Autofire: tryb na broniach, które go mają — osobna tabela DV, mnożnik obrażeń wg nadwyżki (limit broni), zużycie amunicji
 - [ ] Suppressive fire: oznaczenie obszaru/celów, wymuszony test WILL (Concentration) u celów, efekt (ruch do osłony) jako status/notatka na czacie
@@ -19,7 +19,7 @@ Mapa zaczyna liczyć walkę dystansową: pomiar odległości, automatyczne DV wg
 
 ## Poza zakresem
 
-- Osłony/przeszkody w linii strzału (wymaga ścian z etapu 17 — dopisz do POMYSLY.md jako integracja po etapie 17), granaty i wzorce obszarowe (POMYSLY.md), celowane lokacje poza głową
+- Osłony/przeszkody w linii strzału (wymaga ścian z etapu 18 — dopisz do POMYSLY.md jako integracja po etapie 18), granaty i wzorce obszarowe (POMYSLY.md), celowane lokacje poza głową
 
 ## Kryteria ukończenia
 
@@ -31,4 +31,4 @@ Mapa zaczyna liczyć walkę dystansową: pomiar odległości, automatyczne DV wg
 ## Wskazówki techniczne
 
 - Dystans licz na serwerze z pozycji tokenów (środek—środek, metryka z zasad — sprawdź w podręczniku, jak CP RED liczy przekątne) — nie ufaj klientowi
-- Tabele DV per typ broni już są w danych z etapu 12 — jeśli struktura nie pasuje, popraw ją tam, nie obudowuj kodem
+- Tabele DV per typ broni już są w danych z etapu 13 — jeśli struktura nie pasuje, popraw ją tam, nie obudowuj kodem

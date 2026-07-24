@@ -1,12 +1,12 @@
 # VTT — Cyberpunk RED Virtual Tabletop
 
-VTT dla jednej grupy RPG (Cyberpunk RED): mapa + tokeny, interaktywne karty postaci, kości d10 wg zasad CP RED, boty LLM na lokalnym modelu, polecenia głosowe (STT), czat głosowy (WebRTC). Interfejs wzorowany na Foundry VTT. Właściciel projektu jest MG i zaawansowanym full-stack developerem; gra też solo z botami.
+VTT dla jednej grupy RPG (Cyberpunk RED): mapa + tokeny, interaktywne karty postaci, kości d10 wg zasad CP RED, boty LLM na lokalnym modelu (opcjonalnie mówiące po polsku — TTS), polecenia głosowe (STT), czat głosowy (WebRTC). Interfejs wzorowany na Foundry VTT. Właściciel projektu jest MG i zaawansowanym full-stack developerem; gra też solo z botami.
 
 Pełna wizja i decyzje: `docs/etapy/00-przeglad.md`. Źródłowa ankieta: `vtt-ankieta-podsumowanie.md`.
 
 ## Jak pracujemy (WAŻNE — przeczytaj na starcie każdej sesji)
 
-1. Projekt jest realizowany w 27 etapach — **jeden etap = jedna sesja pracy**. Opisy etapów: `docs/etapy/etap-NN-*.md`.
+1. Projekt jest realizowany w 28 etapach — **jeden etap = jedna sesja pracy**. Opisy etapów: `docs/etapy/etap-NN-*.md`.
 2. Na początku sesji przeczytaj `docs/etapy/POSTEP.md` (co ukończone, co w toku) oraz plik bieżącego etapu. Nie zaczynaj etapu, którego zależności nie są ukończone.
 3. **Trzymaj się zakresu etapu.** Pomysły spoza zakresu dopisuj do `docs/etapy/POMYSLY.md` zamiast implementować.
 4. Etap jest ukończony, gdy spełnione są wszystkie jego **Kryteria ukończenia**. Wtedy zaktualizuj `POSTEP.md` (status, data, odstępstwa od planu) i odhacz checklisty w pliku etapu.
@@ -24,6 +24,7 @@ Pełna wizja i decyzje: `docs/etapy/00-przeglad.md`. Źródłowa ankieta: `vtt-a
 | AI Gateway        | Python 3.12 + FastAPI w `ai-gateway/` — spina llama-server, faster-whisper i RAG                          |
 | LLM               | Qwythos-9B-v2 GGUF Q8_0 przez `llama-server` (llama.cpp), API zgodne z OpenAI, RTX 5070 Ti na lokalnym PC |
 | STT               | faster-whisper (medium; fallback: small lub CPU int8, jeśli zabraknie VRAM)                               |
+| TTS (głos botów)  | opcjonalny, ≤ 3 GB VRAM; silnik wybierany w etapie 12 po odsłuchu: Piper (CPU) lub Chatterbox (GPU)       |
 | Głos graczy       | WebRTC mesh P2P, signaling przez Socket.IO, coturn na VPS                                                 |
 | Deploy            | Docker Compose na VPS (Ubuntu 24.04, home.pl), Caddy (HTTPS), Tailscale dla kanału VPS↔PC                 |
 
@@ -33,7 +34,7 @@ Pełna wizja i decyzje: `docs/etapy/00-przeglad.md`. Źródłowa ankieta: `vtt-a
 packages/client/      # React + Pixi.js
 packages/server/      # Fastify + Socket.IO + Prisma
 packages/shared/      # typy, silnik kości i zasad CP RED (bez zależności od IO)
-ai-gateway/           # Python: LLM, STT, RAG (uruchamiany na PC z GPU)
+ai-gateway/           # Python: LLM, TTS, STT, RAG (uruchamiany na PC z GPU)
 data/public/          # dane własne / wolne od praw autorskich (w repo)
 data/private/         # dane z podręcznika CP RED — GITIGNORE, nigdy w repo
 docs/etapy/           # plan projektu: przegląd, etapy, postęp
@@ -89,5 +90,5 @@ Uwaga: `@vtt/shared` jest konsumowany jako źródła TS (bez kroku build w dev) 
 ## Środowisko
 
 - Dev: Windows 11, ten sam komputer hostuje llama-server i faster-whisper (RTX 5070 Ti, 16 GB VRAM). Wszystko na localhost.
-- Prod (etap 27): VPS home.pl (8 GB RAM / 4 vCPU / Ubuntu 24.04), domena `vtt.tatanga.eu` (tymczasowo `http://217.154.210.181:8088`), kanał VPS↔PC przez Tailscale.
-- Budżet VRAM jest ciasny (model Q8_0 ~9,5 GB + KV cache + whisper). Jeśli coś się nie mieści — patrz sekcja „Ryzyka" w `docs/etapy/00-przeglad.md`.
+- Prod (etap 28): VPS home.pl (8 GB RAM / 4 vCPU / Ubuntu 24.04), domena `vtt.tatanga.eu` (tymczasowo `http://217.154.210.181:8088`), kanał VPS↔PC przez Tailscale.
+- Budżet VRAM jest ciasny (model Q8_0 ~9,5 GB + KV cache + whisper + opcjonalny TTS). Przed dołożeniem czegokolwiek na GPU sprawdź bilans w „Ryzyka" w `docs/etapy/00-przeglad.md` i pomiary w `ai-gateway/README.md` — i pamiętaj, że modele nie muszą być rezydentne jednocześnie (można je zwalniać na czas cudzej pracy).

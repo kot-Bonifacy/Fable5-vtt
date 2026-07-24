@@ -1,10 +1,10 @@
-# Etap 21 — WebRTC: czat głosowy graczy
+# Etap 22 — WebRTC: czat głosowy graczy
 
 **Faza:** G — Głos · **Wymaga etapów:** 03
 
 ## Cel sesji
 
-Wbudowana komunikacja głosowa graczy: mesh P2P WebRTC z signalingiem przez Socket.IO. Pełny test przez internet dopiero po etapie 27 (TURN na VPS) — w tej sesji działa w LAN/localhost.
+Wbudowana komunikacja głosowa graczy: mesh P2P WebRTC z signalingiem przez Socket.IO. Pełny test przez internet dopiero po etapie 28 (TURN na VPS) — w tej sesji działa w LAN/localhost.
 
 ## Zakres
 
@@ -12,20 +12,20 @@ Wbudowana komunikacja głosowa graczy: mesh P2P WebRTC z signalingiem przez Sock
 - [ ] Topologia mesh P2P (każdy z każdym) — przy limicie ~5–6 uczestników zgodnie ze skalą z ankiety
 - [ ] Panel głosowy: lista uczestników kanału, wskaźnik mówienia (analiza poziomu audio), mute własny, deafen, głośność per uczestnik (lokalnie)
 - [ ] Wybór urządzeń: mikrofon/wyjście, zapamiętane per użytkownik; echo cancellation i noise suppression (constraints przeglądarki)
-- [ ] STUN: publiczne serwery (Google) w konfiguracji; struktura konfiguracji ICE gotowa na coturn z etapu 27 (env)
+- [ ] STUN: publiczne serwery (Google) w konfiguracji; struktura konfiguracji ICE gotowa na coturn z etapu 28 (env)
 - [ ] Obsługa zmian: reconnect socketa odbudowuje połączenia P2P; wejście nowego gracza spina go ze wszystkimi
-- [ ] Rozdzielenie od PTT z etapu 20: osobne strumienie (PTT nagrywa do STT, kanał głosowy nadaje ciągle z mute) — sprawdź, że oba działają jednocześnie na jednym mikrofonie
+- [ ] Rozdzielenie od PTT z etapu 21: osobne strumienie (PTT nagrywa do STT, kanał głosowy nadaje ciągle z mute) — sprawdź, że oba działają jednocześnie na jednym mikrofonie
 
 ## Poza zakresem
 
-- SFU (mediasoup/LiveKit) — niepotrzebne przy tej skali; wideo; nagrywanie sesji; muzyka/ambient (ankieta: poza platformą); TURN/coturn (etap 27)
+- SFU (mediasoup/LiveKit) — niepotrzebne przy tej skali; wideo; nagrywanie sesji; muzyka/ambient (ankieta: poza platformą); TURN/coturn (etap 28)
 
 ## Kryteria ukończenia
 
 - Trzy przeglądarki (w tym jedna na innym urządzeniu w LAN) rozmawiają ze sobą; wskaźniki mówienia działają; mute faktycznie ucisza (potwierdzone u odbiorcy)
 - Odświeżenie strony jednego uczestnika odbudowuje mu głos bez ingerencji pozostałych
 - PTT do bota działa podczas aktywnego kanału głosowego
-- W POSTEP.md odnotowane: „test przez internet — do wykonania po etapie 27"
+- W POSTEP.md odnotowane: „test przez internet — do wykonania po etapie 28"
 
 ## Wskazówki techniczne
 

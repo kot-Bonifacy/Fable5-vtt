@@ -1,6 +1,6 @@
 # Fable5-vtt — Cyberpunk RED Virtual Tabletop
 
-VTT dla jednej grupy RPG grającej w Cyberpunk RED: mapa z tokenami (Pixi.js), interaktywne karty postaci, kości d10 wg zasad CP RED, boty NPC na lokalnym LLM, polecenia głosowe (STT) i czat głosowy (WebRTC). Interfejs wzorowany na Foundry VTT. Projekt prywatny, realizowany etapami — plan w [`docs/etapy/`](docs/etapy/00-przeglad.md), postęp w [`docs/etapy/POSTEP.md`](docs/etapy/POSTEP.md).
+VTT dla jednej grupy RPG grającej w Cyberpunk RED: mapa z tokenami (Pixi.js), interaktywne karty postaci, kości d10 wg zasad CP RED, boty NPC na lokalnym LLM (opcjonalnie mówiące po polsku), polecenia głosowe (STT) i czat głosowy (WebRTC). Interfejs wzorowany na Foundry VTT. Projekt prywatny, realizowany etapami — plan w [`docs/etapy/`](docs/etapy/00-przeglad.md), postęp w [`docs/etapy/POSTEP.md`](docs/etapy/POSTEP.md).
 
 ## Struktura
 
@@ -8,10 +8,10 @@ VTT dla jednej grupy RPG grającej w Cyberpunk RED: mapa z tokenami (Pixi.js), i
 packages/client/   # React + TypeScript + Vite + Pixi.js (frontend)
 packages/server/   # Fastify + Socket.IO + Prisma (backend, autorytatywny)
 packages/shared/   # typy + silnik zasad CP RED (czysta logika, vitest)
-ai-gateway/        # Python + FastAPI: LLM, STT, RAG (na PC z GPU)
+ai-gateway/        # Python + FastAPI: LLM, TTS, STT, RAG (na PC z GPU)
 data/public/       # dane przykładowe wolne od praw autorskich
 data/private/      # dane z podręcznika CP RED — gitignore, nigdy w repo
-docs/etapy/        # plan projektu (27 etapów)
+docs/etapy/        # plan projektu (28 etapów)
 ```
 
 ## Wymagania
@@ -51,7 +51,7 @@ cd ai-gateway && uv run pytest              # testy gatewaya
 - **`@vtt/shared` konsumowany jako źródła TS** (`exports` wskazuje na `src/index.ts`): Vite (klient) i tsx (serwer dev) czytają TS bezpośrednio, bez osobnego kroku budowania; build produkcyjny serwera bundluje shared przez tsup. Prostsze niż project references — bez pilnowania kolejności budowania w dev.
 - Serwer jest autorytatywny; mechanika CP RED wyłącznie w `packages/shared` jako czyste funkcje z testami. Szczegóły architektury: [`CLAUDE.md`](CLAUDE.md).
 - **Prisma 7 + SQLite przez driver adapter `better-sqlite3`**: klient Prisma generowany do `packages/server/src/generated/` (gitignore), konfiguracja CLI w `prisma.config.ts`, migracje w repo (`prisma/migrations/`).
-- **Sesje w podpisanym cookie httpOnly** (`@fastify/cookie`), rekordy sesji w bazie; Socket.IO uwierzytelniany tym samym cookie przy handshake'u. W dev klient i serwer są same-origin dzięki proxy Vite (`/api`, `/socket.io`) — bez CORS; prod powtórzy to przez Caddy (etap 27).
+- **Sesje w podpisanym cookie httpOnly** (`@fastify/cookie`), rekordy sesji w bazie; Socket.IO uwierzytelniany tym samym cookie przy handshake'u. W dev klient i serwer są same-origin dzięki proxy Vite (`/api`, `/socket.io`) — bez CORS; prod powtórzy to przez Caddy (etap 28).
 
 ## Licencja danych
 

@@ -1,4 +1,4 @@
-# Etap 13 — Inicjatywa i tury
+# Etap 14 — Inicjatywa i tury
 
 **Faza:** D — Walka · **Wymaga etapów:** 08
 
@@ -19,7 +19,7 @@ Tracker inicjatywy sterujący przebiegiem walki: rzuty inicjatywy, kolejność, 
 
 ## Poza zakresem
 
-- Automatyka obrażeń (etap 14), zasięgi/DV (etap 15), tury botów-towarzyszy (etap 19 — ale tracker musi ich po prostu traktować jak zwykłe tokeny)
+- Automatyka obrażeń (etap 15), zasięgi/DV (etap 16), tury botów-towarzyszy (etap 20 — ale tracker musi ich po prostu traktować jak zwykłe tokeny)
 
 ## Kryteria ukończenia
 

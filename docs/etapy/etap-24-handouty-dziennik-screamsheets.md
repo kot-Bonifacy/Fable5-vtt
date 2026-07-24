@@ -1,6 +1,6 @@
-# Etap 23 — Handouty, dziennik kampanii, screamsheets
+# Etap 24 — Handouty, dziennik kampanii, screamsheets
 
-**Faza:** H — Świat CP RED · **Wymaga etapów:** 11 (dla generatora LLM), 18 (dziennik korzysta ze streszczeń)
+**Faza:** H — Świat CP RED · **Wymaga etapów:** 11 (dla generatora LLM), 19 (dziennik korzysta ze streszczeń)
 
 ## Cel sesji
 
@@ -9,7 +9,7 @@ Narzędzia narracyjne MG: handouty dla graczy, przeglądowy dziennik kampanii i 
 ## Zakres
 
 - [ ] Handouty: MG tworzy handout (grafika z uploadu i/lub sformatowany tekst — markdown), udostępnia wszystkim lub wybranym graczom; u odbiorców popup/powiadomienie + stała zakładka „Handouty"; cofanie udostępnienia
-- [ ] Dziennik kampanii UI: oś czasu wpisów — automatyczne streszczenia sesji (z etapu 18) + ręczne wpisy MG (markdown); edycja, wyszukiwanie pełnotekstowe; opcja „pokaż graczom" per wpis (domyślnie tylko MG)
+- [ ] Dziennik kampanii UI: oś czasu wpisów — automatyczne streszczenia sesji (z etapu 19) + ręczne wpisy MG (markdown); edycja, wyszukiwanie pełnotekstowe; opcja „pokaż graczom" per wpis (domyślnie tylko MG)
 - [ ] Screamsheets: generator zajawki — MG podaje temat/hasła → LLM generuje treść po polsku (nagłówek, lead, treść artykułu w konwencji brukowca Night City) → szablon graficzny screamsheet (HTML/CSS stylizowany na gazetę) → zapis i udostępnienie jak handout; edycja treści przed publikacją; działa też bez LLM (ręczne wypełnienie szablonu)
 - [ ] Powiązania: wpis dziennika może linkować do handoutów i screamsheets
 - [ ] Uprawnienia i filtrowanie serwerowe: gracz dostaje wyłącznie udostępnione mu materiały

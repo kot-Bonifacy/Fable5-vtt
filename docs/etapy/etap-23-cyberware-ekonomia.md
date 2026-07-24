@@ -1,8 +1,8 @@
-# Etap 22 — Cyberware, humanity, ekonomia, reputacja
+# Etap 23 — Cyberware, humanity, ekonomia, reputacja
 
-**Faza:** H — Świat CP RED · **Wymaga etapów:** 12
+**Faza:** H — Świat CP RED · **Wymaga etapów:** 13
 
-⚠️ **Wymaga materiałów od Ciebie:** rozdziały podręcznika: cyberware, ekonomia/ceny, lifestyle, reputacja — przepuszczone przez pipeline z etapu 12 (rozszerzenie schematów w tej sesji).
+⚠️ **Wymaga materiałów od Ciebie:** rozdziały podręcznika: cyberware, ekonomia/ceny, lifestyle, reputacja — przepuszczone przez pipeline z etapu 13 (rozszerzenie schematów w tej sesji).
 
 ## Cel sesji
 

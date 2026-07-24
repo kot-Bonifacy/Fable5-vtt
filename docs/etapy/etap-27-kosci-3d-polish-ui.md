@@ -1,4 +1,4 @@
-# Etap 26 — Kości 3D i szlif UI
+# Etap 27 — Kości 3D i szlif UI
 
 **Faza:** I — Wykończenie · **Wymaga etapów:** 06 (kości), sensownie: wszystkie funkcjonalne
 

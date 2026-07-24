@@ -11,7 +11,7 @@ Silnik rzutów w `packages/shared` z pełnymi zasadami CP RED (krytyk przy 10, f
 - [x] Parser notacji: `XdY`, modyfikatory (`1d10+7`, `2d6+3`), suma wielu członów
 - [x] Zasady CP RED w silniku:
   - test umiejętności: `1d10 + STAT + umiejętność + mod`; naturalna 10 → dorzut d10 dodawany (krytyk); naturalna 1 → dorzut d10 odejmowany (fumble)
-  - kości obrażeń: `Xd6`, wykrywanie dwóch lub więcej „6" → flaga rany krytycznej (obsługa tabeli w etapie 14)
+  - kości obrażeń: `Xd6`, wykrywanie dwóch lub więcej „6" → flaga rany krytycznej (obsługa tabeli w etapie 15)
 - [x] Deterministyczny RNG wstrzykiwany z zewnątrz (serwer podaje crypto-losowy, testy — seedowany)
 - [x] Komendy czatu: `/r 1d10+5` (publiczny), `/gr` (rzut MG — widzi tylko MG), `/br` (rzut ukryty przed graczem? — nie: wystarczą publiczny i MG-only)
 - [x] Rzuty WYŁĄCZNIE na serwerze — klient wysyła intencję, serwer liczy i broadcastuje
@@ -20,7 +20,7 @@ Silnik rzutów w `packages/shared` z pełnymi zasadami CP RED (krytyk przy 10, f
 
 ## Poza zakresem
 
-- Rzuty z karty postaci (etap 08), animacje 3D (etap 26), automatyka obrażeń (etap 14)
+- Rzuty z karty postaci (etap 08), animacje 3D (etap 27), automatyka obrażeń (etap 15)
 
 ## Kryteria ukończenia
 
@@ -30,5 +30,5 @@ Silnik rzutów w `packages/shared` z pełnymi zasadami CP RED (krytyk przy 10, f
 
 ## Wskazówki techniczne
 
-- API silnika projektuj pod przyszłych konsumentów: etap 08 (karta), 14–15 (walka), 19 (boty) będą wołać te same funkcje — zwracaj ustrukturyzowany wynik (JSON z rozbiciem), nie string
+- API silnika projektuj pod przyszłych konsumentów: etap 08 (karta), 15–16 (walka), 20 (boty) będą wołać te same funkcje — zwracaj ustrukturyzowany wynik (JSON z rozbiciem), nie string
 - Wynik rzutu zapisuj w DB jako wiadomość czatu typu `roll` z payloadem JSON — rendering po stronie klienta

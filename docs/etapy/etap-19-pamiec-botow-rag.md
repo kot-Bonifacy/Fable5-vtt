@@ -1,6 +1,6 @@
-# Etap 18 — Pamięć botów: RAG, dziennik, relacje + asystent MG
+# Etap 19 — Pamięć botów: RAG, dziennik, relacje + asystent MG
 
-**Faza:** F — Boty zaawansowane · **Wymaga etapów:** 11, 12
+**Faza:** F — Boty zaawansowane · **Wymaga etapów:** 11, 13
 
 ## Cel sesji
 
@@ -9,7 +9,7 @@ Pamięć długoterminowa botów zgodnie z ankietą: baza wiedzy kampanii z RAG, 
 ## Zakres
 
 - [ ] Gateway — moduł RAG: model embeddingów wielojęzyczny sprawdzony na polskim (bge-m3 albo multilingual-e5; przetestuj oba na 10 przykładowych zapytaniach o zasady i wybierz), wektorowa baza lokalna (sqlite-vec lub Chroma), endpointy `index` i `search`
-- [ ] Kolekcje: (1) podręcznik CP RED — chunkowanie tekstu z etapu 12 z metadanymi (rozdział/sekcja), dane tylko lokalnie; (2) baza wiedzy kampanii — notatki MG, opisy miejsc/frakcji/NPC (edytor wpisów w UI); (3) streszczenia sesji
+- [ ] Kolekcje: (1) podręcznik CP RED — chunkowanie tekstu z etapu 13 z metadanymi (rozdział/sekcja), dane tylko lokalnie; (2) baza wiedzy kampanii — notatki MG, opisy miejsc/frakcji/NPC (edytor wpisów w UI); (3) streszczenia sesji
 - [ ] Streszczenia sesji: przycisk MG „zakończ sesję" → LLM streszcza czat sesji (mapowanie-redukcja przy długich logach) → wpis w dzienniku kampanii (edytowalny przez MG) → indeksowany w RAG
 - [ ] Relacje NPC↔postacie: struktura w DB (wartość sympatia/wrogość, notatka „skąd"), edycja ręczna przez MG + propozycja aktualizacji po streszczeniu sesji (MG zatwierdza); relacje wstrzykiwane do promptu bota, gdy rozmawia z daną postacią
 - [ ] Kontekst botów rozszerzony: przy odpowiedzi bota gateway dokleja top-k wyników RAG z bazy kampanii i streszczeń (filtr: to, co bot może wiedzieć — sekcja „kontekst wiedzy" profilu wskazuje kolekcje/tagi)
@@ -18,7 +18,7 @@ Pamięć długoterminowa botów zgodnie z ankietą: baza wiedzy kampanii z RAG, 
 
 ## Poza zakresem
 
-- Akcje mechaniczne botów (etap 19), automatyczna aktualizacja relacji bez zatwierdzenia MG, pamięć epizodyczna per bot ponad streszczenia (POMYSLY.md)
+- Akcje mechaniczne botów (etap 20), automatyczna aktualizacja relacji bez zatwierdzenia MG, pamięć epizodyczna per bot ponad streszczenia (POMYSLY.md)
 
 ## Kryteria ukończenia
 

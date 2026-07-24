@@ -14,11 +14,11 @@ Renderer mapy w Pixi.js: MG wgrywa grafikę mapy, konfiguruje siatkę, aktywuje 
 - [x] Upload obrazu tła (`@fastify/multipart` → `uploads/`), serwowanie statyczne, walidacja typu/rozmiaru
 - [x] Warstwa siatki rysowana w Pixi (Graphics) zgodnie z konfiguracją; tryb bez siatki ją wyłącza
 - [x] Zarządzanie scenami: lista scen MG, tworzenie/edycja/usuwanie, aktywacja (gracze automatycznie przełączani na aktywną scenę — zdarzenie `scene:activate`)
-- [x] Skala sceny: kratka = X metrów (domyślnie 2 m jak w CP RED) — fundament pod linijkę i DV w etapie 15
+- [x] Skala sceny: kratka = X metrów (domyślnie 2 m jak w CP RED) — fundament pod linijkę i DV w etapie 16
 
 ## Poza zakresem
 
-- Tokeny (etap 05), fog of war i rysowanie (etap 16), oświetlenie (etap 17)
+- Tokeny (etap 05), fog of war i rysowanie (etap 17), oświetlenie (etap 18)
 
 ## Kryteria ukończenia
 

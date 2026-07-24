@@ -21,7 +21,7 @@ Tokeny na mapie z pełną synchronizacją: drag&drop ze snapem, paski HP, ikony 
 
 ## Poza zakresem
 
-- Powiązanie z kartą postaci (etap 08), vision/oświetlenie (etap 17), martwe pola walki
+- Powiązanie z kartą postaci (etap 08), vision/oświetlenie (etap 18), martwe pola walki
 
 ## Kryteria ukończenia
 

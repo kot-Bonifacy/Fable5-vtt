@@ -1,6 +1,6 @@
-# Etap 17 — Dynamiczne oświetlenie i ściany
+# Etap 18 — Dynamiczne oświetlenie i ściany
 
-**Faza:** E — Widoczność · **Wymaga etapów:** 16
+**Faza:** E — Widoczność · **Wymaga etapów:** 17
 
 ⚠️ Najtrudniejszy technicznie etap projektu — jeśli po połowie sesji widać, że się nie zmieści, podziel: **17a** ściany + widoczność tokenów, **17b** źródła światła + integracja z mgłą. Zaktualizuj wtedy POSTEP.md i pliki etapów.
 
@@ -15,7 +15,7 @@
 - [ ] Vision tokenów: zasięg widzenia na tokenie (m); widok gracza = suma pól widzenia jego tokenów przycięta zasięgiem
 - [ ] Źródła światła: obiekt światła na mapie (zasięg jasny/przyćmiony, kolor, opcjonalnie migotanie) + światło przypinane do tokenu (latarka); w scenie „ciemnej" widać tylko obszary oświetlone i w zasięgu vision
 - [ ] Renderowanie w Pixi: maski/tekstury widoczności, tryb `multiply`/mesh — cel: 60 fps przy ~50 segmentach ścian i ~10 światłach
-- [ ] Integracja z mgłą z etapu 16: tryb „eksploracja" — obszary raz zobaczone zostają odsłonięte (bez tokenów), aktualna widoczność pokazuje „na żywo"; mgła ręczna nadal działa jako nadpisanie MG
+- [ ] Integracja z mgłą z etapu 17: tryb „eksploracja" — obszary raz zobaczone zostają odsłonięte (bez tokenów), aktualna widoczność pokazuje „na żywo"; mgła ręczna nadal działa jako nadpisanie MG
 - [ ] Filtrowanie serwerowe: pozycje tokenów niewidocznych dla gracza (za ścianą/w ciemności) nie są mu wysyłane; aktualizacja przy każdym ruchu
 
 ## Poza zakresem

@@ -17,7 +17,7 @@ Serce wizji z ankiety: edytor, w którym przed grą tworzysz boty (NPC / towarzy
 
 ## Poza zakresem
 
-- Udział botów w czacie sesji (etap 11), pamięć długoterminowa i RAG (etap 18), akcje mechaniczne (etap 19)
+- Udział botów w czacie sesji (etap 11), pamięć długoterminowa i RAG (etap 19), akcje mechaniczne (etap 20), głos bota (etap 12 — sekcja „Głos" dojdzie do tego samego edytora)
 
 ## Kryteria ukończenia
 
@@ -30,3 +30,4 @@ Serce wizji z ankiety: edytor, w którym przed grą tworzysz boty (NPC / towarzy
 - Szablon system promptu trzymaj w jednym miejscu (plik w `ai-gateway/prompts/` lub w `shared`) i wersjonuj — będzie strojony wielokrotnie; testuj na modelu docelowym, nie „na sucho"
 - 9B to mały model: prompt ma być konkretny i zwięzły, unikaj ścian tekstu; przykładowe odzywki w profilu bardzo poprawiają utrzymanie stylu
 - Typ `asystent_mg` ustawia `reasoning: true` (bloki think) — pozostałe typy false, zgodnie z ankietą
+- Model `BotProfile` projektuj tak, by dało się dołożyć sekcję „Głos" bez migracji burzącej dane (etap 12 doda: włącznik mowy, id presetu lub ścieżkę własnej próbki, tempo/ekspresję) — zostaw też miejsce w układzie formularza

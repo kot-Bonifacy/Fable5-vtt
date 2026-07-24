@@ -21,7 +21,7 @@ Działające monorepo z klientem, serwerem i pakietem współdzielonym, połącz
 
 ## Poza zakresem
 
-- Docker (wraca w etapie 27 — dev działa natywnie na Windows)
+- Docker (wraca w etapie 28 — dev działa natywnie na Windows)
 - Jakakolwiek logika gry, baza danych, autoryzacja
 
 ## Kryteria ukończenia
