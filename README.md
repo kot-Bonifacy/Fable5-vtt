@@ -17,6 +17,7 @@ docs/etapy/        # plan projektu (27 etapów)
 ## Wymagania
 
 - Node.js ≥ 22 (LTS) + pnpm (`npm i -g pnpm`)
+- Boty AI (opcjonalnie, tylko na PC z GPU): [`uv`](https://docs.astral.sh/uv/), llama.cpp i model GGUF — szczegóły w [`ai-gateway/README.md`](ai-gateway/README.md). Bez gatewaya VTT działa normalnie, funkcje botów są wyszarzone.
 
 ## Uruchomienie
 
@@ -36,6 +37,13 @@ pnpm test       # testy (vitest)
 pnpm lint       # ESLint
 pnpm build      # build produkcyjny wszystkich pakietów
 pnpm format     # Prettier
+```
+
+Boty (osobno, na PC z GPU):
+
+```powershell
+pwsh ai-gateway/scripts/start-gateway.ps1   # gateway + llama-server
+cd ai-gateway && uv run pytest              # testy gatewaya
 ```
 
 ## Decyzje techniczne

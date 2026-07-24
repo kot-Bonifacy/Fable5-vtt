@@ -8,15 +8,15 @@ Serwis `ai-gateway/` (Python/FastAPI) na PC z GPU: zarządza llama-server, kolej
 
 ## Zakres
 
-- [ ] `ai-gateway/`: projekt FastAPI (zarządzanie zależnościami przez `uv`), konfiguracja w `.env` (ścieżka GGUF, port, rozmiar kontekstu)
-- [ ] Uruchamianie i nadzór `llama-server` (Qwythos-9B-v2 Q8_0): start jako podproces lub obok (skrypt startowy), health-check, restart po padzie
-- [ ] Endpoint `POST /chat`: przyjmuje wiadomości + parametry, przekazuje do llama-server (API OpenAI-compatible), zwraca odpowiedź ze streamingiem (SSE)
-- [ ] Sterowanie blokami `think` per żądanie (parametr `reasoning: bool`) — zgodnie z ankietą: włączone tylko dla asystenta MG; upewnij się, że bloki think są odfiltrowane z odpowiedzi widocznej dla użytkownika
-- [ ] Kolejka FIFO: jedno żądanie generacji naraz, pozycja w kolejce raportowana; limity czasu i max tokenów dobrane pod odpowiedź ≤ ~15 s (zmierz tokens/s i zapisz w README gatewaya)
-- [ ] `GET /health`: status llama-server, długość kolejki, użycie VRAM (nvidia-smi)
-- [ ] Serwer VTT: moduł `ai-client` (adres gatewaya z env — dziś localhost, po etapie 27 adres w tailnecie), health-check cykliczny, status botów w UI (dostępne/offline)
-- [ ] Degradacja: gateway offline ⇒ funkcje botów wyszarzone z komunikatem, zero błędów w reszcie aplikacji
-- [ ] Prosty ekran testowy dla MG („zadaj pytanie modelowi") do weryfikacji całego łańcucha
+- [x] `ai-gateway/`: projekt FastAPI (zarządzanie zależnościami przez `uv`), konfiguracja w `.env` (ścieżka GGUF, port, rozmiar kontekstu)
+- [x] Uruchamianie i nadzór `llama-server` (Qwythos-9B-v2 Q8_0): start jako podproces lub obok (skrypt startowy), health-check, restart po padzie
+- [x] Endpoint `POST /chat`: przyjmuje wiadomości + parametry, przekazuje do llama-server (API OpenAI-compatible), zwraca odpowiedź ze streamingiem (SSE)
+- [x] Sterowanie blokami `think` per żądanie (parametr `reasoning: bool`) — zgodnie z ankietą: włączone tylko dla asystenta MG; upewnij się, że bloki think są odfiltrowane z odpowiedzi widocznej dla użytkownika
+- [x] Kolejka FIFO: jedno żądanie generacji naraz, pozycja w kolejce raportowana; limity czasu i max tokenów dobrane pod odpowiedź ≤ ~15 s (zmierz tokens/s i zapisz w README gatewaya)
+- [x] `GET /health`: status llama-server, długość kolejki, użycie VRAM (nvidia-smi)
+- [x] Serwer VTT: moduł `ai-client` (adres gatewaya z env — dziś localhost, po etapie 27 adres w tailnecie), health-check cykliczny, status botów w UI (dostępne/offline)
+- [x] Degradacja: gateway offline ⇒ funkcje botów wyszarzone z komunikatem, zero błędów w reszcie aplikacji
+- [x] Prosty ekran testowy dla MG („zadaj pytanie modelowi") do weryfikacji całego łańcucha
 
 ## Poza zakresem
 
@@ -24,9 +24,9 @@ Serwis `ai-gateway/` (Python/FastAPI) na PC z GPU: zarządza llama-server, kolej
 
 ## Kryteria ukończenia
 
-- Pytanie po polsku z ekranu testowego wraca po polsku, streamowane, w sensownym czasie; drugi równoległy request czeka w kolejce (potwierdzone logami)
-- Zabicie llama-server → gateway raportuje degradację i podnosi go z powrotem; zabicie gatewaya → VTT działa dalej, UI pokazuje boty offline, po powrocie status sam wraca
-- Pomiar: tokens/s i zużycie VRAM zapisane w `ai-gateway/README.md` (decyzja nt. rezerwy pod whisper w etapie 20)
+- [x] Pytanie po polsku z ekranu testowego wraca po polsku, streamowane, w sensownym czasie; drugi równoległy request czeka w kolejce (potwierdzone logami)
+- [x] Zabicie llama-server → gateway raportuje degradację i podnosi go z powrotem; zabicie gatewaya → VTT działa dalej, UI pokazuje boty offline, po powrocie status sam wraca
+- [x] Pomiar: tokens/s i zużycie VRAM zapisane w `ai-gateway/README.md` (decyzja nt. rezerwy pod whisper w etapie 20)
 
 ## Wskazówki techniczne
 

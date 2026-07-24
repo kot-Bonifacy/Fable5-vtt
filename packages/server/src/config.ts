@@ -13,6 +13,14 @@ export interface ServerConfig {
   uploadsDir: string;
   /** Absolute directory of committed public data (status icons, samples). */
   dataPublicDir: string;
+  /** Base URL of the Python AI gateway (localhost in dev, tailnet address in prod). */
+  aiGatewayUrl: string;
+  /** Shared secret sent as X-API-Key; empty disables the header (local dev). */
+  aiGatewayApiKey: string;
+  /** How often the server polls the gateway for bot availability. */
+  aiHealthIntervalMs: number;
+  /** Hard cap on a single generation before the server gives up. */
+  aiRequestTimeoutMs: number;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
@@ -28,5 +36,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     // Defaults assume cwd = packages/server (dev scripts) → repo-root dirs.
     uploadsDir: resolve(env.UPLOADS_DIR ?? '../../uploads'),
     dataPublicDir: resolve(env.DATA_PUBLIC_DIR ?? '../../data/public'),
+    aiGatewayUrl: (env.AI_GATEWAY_URL ?? 'http://127.0.0.1:8100').replace(/\/$/, ''),
+    aiGatewayApiKey: env.AI_GATEWAY_API_KEY ?? '',
+    aiHealthIntervalMs: Number(env.AI_HEALTH_INTERVAL_MS ?? 10_000),
+    aiRequestTimeoutMs: Number(env.AI_REQUEST_TIMEOUT_MS ?? 120_000),
   };
 }

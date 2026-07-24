@@ -21,6 +21,7 @@ import {
 import { tokenCreateEvent, tokenDeleteEvent, tokenMoveEvent, tokenUpdateEvent } from './tokens.js';
 import { characterCreateEvent, characterDeleteEvent, characterUpdateEvent } from './characters.js';
 import { characterRollEvent } from './character-rolls.js';
+import { aiAskEvent, aiRefreshEvent, broadcastAiStatus, sendAiStatus } from './ai.js';
 import { sendStateSync, stateRequestEvent } from './sync.js';
 
 declare module 'socket.io' {
@@ -59,6 +60,8 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   characterUpdateEvent,
   characterDeleteEvent,
   characterRollEvent,
+  aiAskEvent,
+  aiRefreshEvent,
 ] as RealtimeEvent<never, unknown>[];
 
 async function authenticateHandshake(
@@ -95,6 +98,9 @@ async function resolveSocketCampaign(
 export function setupRealtime(io: SocketIOServer, app: FastifyInstance, ctx: AppContext): void {
   const deps: RealtimeDeps = { io, log: app.log, ctx, seqs: new RoomSequences() };
 
+  // Gateway coming back or going down flips bot availability for everyone.
+  ctx.ai.onStatusChange((status) => broadcastAiStatus(deps, status));
+
   io.use((socket, next) => {
     authenticateHandshake(app, ctx, socket.handshake.headers.cookie)
       .then((user) => {
@@ -114,6 +120,7 @@ export function setupRealtime(io: SocketIOServer, app: FastifyInstance, ctx: App
 
     socket.emit('server:hello', createServerHello());
     registerEvents(deps, socket, EVENTS);
+    sendAiStatus(deps, socket);
 
     void (async () => {
       try {

@@ -1,0 +1,46 @@
+[project]
+name = "vtt-ai-gateway"
+version = "0.1.0"
+description = "AI Gateway for VTT: llama-server supervision, request queue, SSE chat"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "httpx>=0.28",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+]
+
+[project.scripts]
+vtt-gateway = "vtt_gateway.__main__:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "asgi-lifespan>=2.1",
+    "ruff>=0.8",
+]
+
+[tool.uv]
+# Narzędzie deweloperskie na jednym PC — testy i linter zawsze pod ręką
+# (`uv run pytest` bez dodatkowych flag).
+default-groups = ["dev"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/vtt_gateway"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

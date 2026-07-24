@@ -1,3 +1,4 @@
+import type { AiStatus } from './ai.js';
 import type { CampaignSummary, Role } from './auth.js';
 import type { ChatMessageView } from './chat.js';
 import type { CharacterView } from './characters.js';
@@ -39,6 +40,8 @@ export interface StateSyncPayload {
   tokens: TokenView[];
   /** Characters this user may see: the GM gets all, a player only their own. */
   characters: CharacterView[];
+  /** Bot availability, filtered by role (players get no diagnostics). */
+  ai: AiStatus;
 }
 
 /** Payload of `chat:message`. `seq` is absent for targeted whisper deliveries. */

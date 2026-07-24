@@ -7,6 +7,7 @@ import { Server as SocketIOServer } from 'socket.io';
 import type { ServerConfig } from './config.js';
 import type { AppContext } from './context.js';
 import { createPrisma, type PrismaClient } from './db.js';
+import { AiGateway } from './ai/gateway.js';
 import { SESSION_COOKIE, resolveSessionUser } from './auth/sessions.js';
 import { ensureGmUser } from './auth/seed.js';
 import { registerAuthRoutes } from './routes/auth.js';
@@ -25,6 +26,8 @@ export interface BuiltApp {
 
 export interface BuildAppOptions {
   logger?: boolean;
+  /** Lets smoke tests stand in for the AI gateway without a running Python service. */
+  aiFetch?: typeof fetch;
 }
 
 export async function buildApp(
@@ -68,11 +71,20 @@ export async function buildApp(
 
   app.get('/health', () => ({ status: 'ok', uptime: process.uptime() }));
 
+  const ai = new AiGateway({
+    url: config.aiGatewayUrl,
+    apiKey: config.aiGatewayApiKey,
+    healthIntervalMs: config.aiHealthIntervalMs,
+    requestTimeoutMs: config.aiRequestTimeoutMs,
+    fetchImpl: options.aiFetch,
+  });
+
   const ctx: AppContext = {
     config,
     prisma,
     statuses: await loadStatusRegistry(config.dataPublicDir, app.log),
     cpred: await loadCpredRegistry(config.dataPublicDir, app.log),
+    ai,
   };
   registerAuthRoutes(app, ctx);
   registerJoinRoutes(app, ctx);
@@ -83,8 +95,10 @@ export async function buildApp(
     cors: { origin: config.clientOrigin, credentials: true },
   });
   setupRealtime(io, app, ctx);
+  ai.start();
 
   app.addHook('onClose', async () => {
+    ai.stop();
     io.close();
     await prisma.$disconnect();
   });

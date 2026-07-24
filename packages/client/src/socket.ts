@@ -1,5 +1,12 @@
 import { io, type Socket } from 'socket.io-client';
 import type {
+  AiAskPayload,
+  AiChunkBroadcast,
+  AiDoneBroadcast,
+  AiErrorBroadcast,
+  AiQueueBroadcast,
+  AiStatus,
+  AiStatusBroadcast,
   CharacterCreatePayload,
   CharacterDeleteBroadcast,
   CharacterPatch,
@@ -45,6 +52,7 @@ import { useSceneStore } from './stores/sceneStore.js';
 import { useAuthStore } from './stores/authStore.js';
 import { useTokenStore, type TokenViewerCtx } from './stores/tokenStore.js';
 import { useCharacterStore } from './stores/characterStore.js';
+import { useAiStore } from './stores/aiStore.js';
 
 let socket: Socket | undefined;
 /** User the live socket authenticated as — a different one forces a reconnect. */
@@ -97,6 +105,22 @@ function rollErrorText(reason: 'MISSING_NOTATION' | RollParseError): string {
   }
 }
 
+/** Polish messages for AI failures — the gateway is optional by design. */
+function aiErrorText(code: string, detail?: string): string {
+  switch (code) {
+    case 'AI_UNAVAILABLE':
+      return 'Model jest niedostępny — sprawdź, czy AI Gateway i llama-server działają.';
+    case 'AI_UNREACHABLE':
+      return 'Brak połączenia z AI Gateway. Reszta VTT działa normalnie.';
+    case 'AI_EMPTY_PROMPT':
+      return 'Wpisz treść pytania.';
+    case 'AI_PROMPT_TOO_LONG':
+      return 'Pytanie jest za długie.';
+    default:
+      return detail ? `Błąd AI: ${detail}` : `Błąd AI: ${code}`;
+  }
+}
+
 /**
  * Connects to the server on the same origin (Vite proxy in dev). Passing a
  * different `userId` (someone else joined in the same browser) drops the old
@@ -132,7 +156,25 @@ export function connectSocket(userId: string): Socket {
     scenes().applySync(payload);
     tokens().applySync(payload, viewer());
     useCharacterStore.getState().applySync(payload);
+    if (payload.ai) useAiStore.getState().setStatus(payload.ai);
   });
+
+  // AI status/streams are targeted, carry no seq and are never persisted —
+  // the gateway is an external service, not game state.
+  const ai = () => useAiStore.getState();
+  socket.on('ai:status', (broadcast: AiStatusBroadcast) => ai().setStatus(broadcast.status));
+  socket.on('ai:queue', (broadcast: AiQueueBroadcast) =>
+    ai().setQueuePosition(broadcast.requestId, broadcast.position),
+  );
+  socket.on('ai:chunk', (broadcast: AiChunkBroadcast) =>
+    ai().appendChunk(broadcast.requestId, broadcast.kind, broadcast.text),
+  );
+  socket.on('ai:done', (broadcast: AiDoneBroadcast) =>
+    ai().finishExchange(broadcast.requestId, broadcast.usage),
+  );
+  socket.on('ai:error', (broadcast: AiErrorBroadcast) =>
+    ai().failExchange(broadcast.requestId, aiErrorText(broadcast.code, broadcast.detail)),
+  );
 
   // Character emissions are always targeted (owner + GM) and carry no seq.
   socket.on('character:upsert', (broadcast: CharacterUpsertBroadcast) => {
@@ -301,6 +343,39 @@ export function sendCharacterRoll(
   };
   socket?.emit('character:roll', payload, (ack: SocketAck<{ messageId: number }>) => {
     if (!ack.ok) useChatStore.getState().addNote(rollAckErrorText(ack.error));
+  });
+}
+
+/**
+ * Asks the model from the GM test screen. The ack only hands back a request id —
+ * the answer arrives as `ai:chunk` events until `ai:done`.
+ */
+export function askAi(payload: AiAskPayload): void {
+  const store = useAiStore.getState();
+  const prompt = payload.prompt.trim();
+  if (!prompt) return;
+  if (!socket) {
+    store.failLocally(prompt, 'Brak połączenia z serwerem.');
+    return;
+  }
+  socket.emit('ai:ask', payload, (ack: SocketAck<{ requestId: string }>) => {
+    const ai = useAiStore.getState();
+    if (ack.ok && ack.data) ai.startExchange(ack.data.requestId, prompt);
+    else if (!ack.ok) ai.failLocally(prompt, aiErrorText(ack.error));
+  });
+}
+
+/** Forces an immediate gateway health check (GM). */
+export function refreshAiStatus(): Promise<AiStatus | null> {
+  return new Promise((resolve) => {
+    if (!socket) {
+      resolve(null);
+      return;
+    }
+    socket.emit('ai:refresh', (ack: SocketAck<AiStatus>) => {
+      if (ack.ok && ack.data) useAiStore.getState().setStatus(ack.data);
+      resolve(ack.ok ? (ack.data ?? null) : null);
+    });
   });
 }
 

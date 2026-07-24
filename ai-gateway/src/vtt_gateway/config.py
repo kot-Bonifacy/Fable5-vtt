@@ -1,0 +1,65 @@
+"""Konfiguracja gatewaya — wszystko przez zmienne środowiskowe / plik .env."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        env_prefix="GATEWAY_",
+        extra="ignore",
+    )
+
+    # --- gateway ---
+    host: str = "127.0.0.1"
+    port: int = 8100
+    # Klucz wymagany w nagłówku X-API-Key. Pusty = brak autoryzacji (tylko dev na localhost).
+    api_key: str = ""
+    log_level: str = "INFO"
+
+    # --- llama-server ---
+    # Pusta ścieżka binarki = gateway nie zarządza procesem, tylko łączy się z llama_url.
+    llama_binary: Path | None = None
+    llama_model: Path | None = None
+    llama_url: str = "http://127.0.0.1:8080"
+    # 32k mieści się w 16 GB VRAM razem z rezerwą na whisper — pomiary w README.
+    llama_ctx_size: int = 32768
+    llama_gpu_layers: int = 999
+    llama_flash_attn: bool = True
+    # Dodatkowe argumenty llama-server, rozdzielone spacją (np. "--cache-type-k q8_0").
+    llama_extra_args: str = ""
+    # Ile sekund czekać na wstanie llama-server po starcie/restarcie.
+    llama_startup_timeout: float = 180.0
+    # Co ile sekund odpytywać llama-server o zdrowie.
+    health_interval: float = 5.0
+    # Po ilu nieudanych health-checkach uznajemy proces za martwy i restartujemy.
+    health_failures_before_restart: int = 3
+
+    # --- generacja ---
+    default_max_tokens: int = 512
+    # Rozumowanie zjada ten sam budżet co odpowiedź, więc żądania z think dostają
+    # wyższy limit — inaczej model „przemyśli" całą pulę i odda pustą odpowiedź.
+    reasoning_max_tokens: int = 1536
+    # Twardy limit tokenów samego bloku think (llama.cpp domyka go po jego przekroczeniu).
+    reasoning_budget: int = 640
+    default_temperature: float = 0.6
+    default_top_p: float = 0.95
+    default_top_k: int = 20
+    # Twardy limit czasu pojedynczej generacji (sekundy).
+    generation_timeout: float = 120.0
+    # Ile żądań może czekać w kolejce zanim gateway zacznie odrzucać (503).
+    max_queue_length: int = 16
+
+    @property
+    def manages_llama(self) -> bool:
+        """Czy gateway sam uruchamia llama-server."""
+        return self.llama_binary is not None and self.llama_model is not None
+
+
+def load_settings() -> Settings:
+    return Settings()

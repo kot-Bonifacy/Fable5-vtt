@@ -7,6 +7,7 @@ import { fetchHistoryPage } from './chat.js';
 import { fetchSceneList, getSceneById, toSceneView } from './scenes.js';
 import { fetchSceneTokensFor } from './tokens.js';
 import { fetchCharactersFor } from './character-io.js';
+import { aiStatusFor } from './ai.js';
 import { campaignRoom } from './state.js';
 
 /**
@@ -31,6 +32,7 @@ export async function buildStateSync(
       scenes: [],
       tokens: [],
       characters: [],
+      ai: aiStatusFor(deps, user.role === ROLE_GM),
     };
   }
   const viewedSceneId = socket.data.viewedSceneId;
@@ -60,6 +62,7 @@ export async function buildStateSync(
     scenes,
     tokens,
     characters,
+    ai: aiStatusFor(deps, user.role === ROLE_GM),
   };
 }
 

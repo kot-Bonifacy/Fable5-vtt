@@ -76,6 +76,14 @@ pnpm build      # build produkcyjny (client: vite, server: tsup, shared: tsc --n
 pnpm format     # Prettier
 ```
 
+AI Gateway (osobny proces na PC z GPU, wymaga `uv`):
+
+```
+pwsh ai-gateway/scripts/start-gateway.ps1   # gateway (:8100) + llama-server (:8080)
+cd ai-gateway && uv run pytest              # testy gatewaya
+cd ai-gateway && uv run ruff check .        # lint Pythona
+```
+
 Uwaga: `@vtt/shared` jest konsumowany jako źródła TS (bez kroku build w dev) — patrz „Decyzje techniczne" w README.
 
 ## Środowisko

@@ -5,15 +5,17 @@ import { ChatPanel } from './ChatPanel.js';
 import { ScenePanel } from './ScenePanel.js';
 import { TokenPanel } from './TokenPanel.js';
 import { CharacterPanel } from './CharacterPanel.js';
+import { AiPanel } from './AiPanel.js';
 import { useAuthStore } from '../stores/authStore.js';
 
-type Tab = 'chat' | 'scenes' | 'tokens' | 'characters';
+type Tab = 'chat' | 'scenes' | 'tokens' | 'characters' | 'ai';
 
 export function SidePanel() {
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const [tab, setTab] = useState<Tab>('chat');
-  // Players get chat + characters; the GM additionally scenes + tokens.
-  const activeTab: Tab = !isGm && (tab === 'scenes' || tab === 'tokens') ? 'chat' : tab;
+  // Players get chat + characters; the GM additionally scenes, tokens and AI.
+  const gmOnly = tab === 'scenes' || tab === 'tokens' || tab === 'ai';
+  const activeTab: Tab = !isGm && gmOnly ? 'chat' : tab;
 
   const tabs: { id: Tab; label: string }[] = [
     { id: 'chat', label: 'Czat' },
@@ -24,6 +26,7 @@ export function SidePanel() {
         ] as const)
       : []),
     { id: 'characters', label: 'Postacie' },
+    ...(isGm ? ([{ id: 'ai', label: 'AI' }] as const) : []),
   ];
 
   return (
@@ -47,6 +50,8 @@ export function SidePanel() {
         <ScenePanel />
       ) : activeTab === 'tokens' ? (
         <TokenPanel />
+      ) : activeTab === 'ai' ? (
+        <AiPanel />
       ) : (
         <CharacterPanel />
       )}
