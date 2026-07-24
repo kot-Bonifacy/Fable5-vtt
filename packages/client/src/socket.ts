@@ -3,8 +3,10 @@ import type {
   CharacterCreatePayload,
   CharacterDeleteBroadcast,
   CharacterPatch,
+  CharacterRollPayload,
   CharacterUpsertBroadcast,
   CharacterView,
+  CpredRollRequest,
   ChatHistoryPage,
   ChatMessageBroadcast,
   ChatSendPayload,
@@ -45,6 +47,8 @@ import { useTokenStore, type TokenViewerCtx } from './stores/tokenStore.js';
 import { useCharacterStore } from './stores/characterStore.js';
 
 let socket: Socket | undefined;
+/** User the live socket authenticated as — a different one forces a reconnect. */
+let connectedUserId: string | null = null;
 
 /** Extra time after the dice settle before the chat card spoils the total. */
 const CARD_REVEAL_DELAY_MS = 2500;
@@ -93,9 +97,16 @@ function rollErrorText(reason: 'MISSING_NOTATION' | RollParseError): string {
   }
 }
 
-/** Connects to the server on the same origin (Vite proxy in dev). */
-export function connectSocket(): Socket {
-  if (socket) return socket;
+/**
+ * Connects to the server on the same origin (Vite proxy in dev). Passing a
+ * different `userId` (someone else joined in the same browser) drops the old
+ * connection first — otherwise the previous user's socket would keep feeding
+ * their state into the stores.
+ */
+export function connectSocket(userId: string): Socket {
+  if (socket && connectedUserId === userId) return socket;
+  if (socket) disconnectSocket();
+  connectedUserId = userId;
 
   socket = io();
   const { setConnected, setDisconnected, setServerHello } = useConnectionStore.getState();
@@ -216,6 +227,7 @@ export function connectSocket(): Socket {
 export function disconnectSocket(): void {
   socket?.disconnect();
   socket = undefined;
+  connectedUserId = null;
   useConnectionStore.getState().setDisconnected();
   useChatStore.getState().setDesynced();
 }
@@ -249,6 +261,46 @@ export function sendChatInput(text: string, gesture?: RollGesture): void {
   const payload: ChatSendPayload = parsed.kind === 'roll' && gesture ? { text, gesture } : { text };
   socket?.emit('chat:send', payload, (ack: SocketAck) => {
     if (!ack.ok) useChatStore.getState().addNote(chatErrorText(ack.error));
+  });
+}
+
+/** Polish hints for the sheet-roll rejections the server can return. */
+function rollAckErrorText(code: string): string {
+  switch (code) {
+    case 'CHARACTER_NOT_FOUND':
+      return 'Nie możesz rzucać tą postacią.';
+    case 'NOT_ENOUGH_LUCK':
+      return 'Za mało punktów Szczęścia w puli.';
+    case 'UNKNOWN_SKILL':
+      return 'Nieznana umiejętność — odśwież stronę.';
+    case 'UNKNOWN_STAT':
+      return 'Nieznana cecha — odśwież stronę.';
+    case 'BAD_MODIFIER':
+      return 'Modyfikator sytuacyjny poza dozwolonym zakresem.';
+    default:
+      return `Błąd rzutu: ${code}`;
+  }
+}
+
+/**
+ * Sends a sheet check. The server re-derives every modifier from the stored
+ * sheet (wound penalty included), spends the Luck and rolls — the client only
+ * declares the intention and hands over the cup gesture.
+ */
+export function sendCharacterRoll(
+  characterId: string,
+  request: CpredRollRequest,
+  visibility: 'public' | 'gm',
+  gesture?: RollGesture,
+): void {
+  const payload: CharacterRollPayload<CpredRollRequest> = {
+    characterId,
+    request,
+    visibility,
+    ...(gesture ? { gesture } : {}),
+  };
+  socket?.emit('character:roll', payload, (ack: SocketAck<{ messageId: number }>) => {
+    if (!ack.ok) useChatStore.getState().addNote(rollAckErrorText(ack.error));
   });
 }
 
@@ -323,7 +375,10 @@ export function queueCharacterSave(characterId: string, patch: CharacterPatch): 
   Object.assign(buffer.patch, rest);
   if (data) buffer.patch.data = { ...buffer.patch.data, ...data };
   window.clearTimeout(buffer.timer);
-  buffer.timer = window.setTimeout(() => flushCharacterSave(characterId), CHARACTER_SAVE_DEBOUNCE_MS);
+  buffer.timer = window.setTimeout(
+    () => flushCharacterSave(characterId),
+    CHARACTER_SAVE_DEBOUNCE_MS,
+  );
   characterSaveBuffers.set(characterId, buffer);
 }
 

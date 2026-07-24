@@ -19,11 +19,8 @@ import {
   sceneViewEvent,
 } from './scenes.js';
 import { tokenCreateEvent, tokenDeleteEvent, tokenMoveEvent, tokenUpdateEvent } from './tokens.js';
-import {
-  characterCreateEvent,
-  characterDeleteEvent,
-  characterUpdateEvent,
-} from './characters.js';
+import { characterCreateEvent, characterDeleteEvent, characterUpdateEvent } from './characters.js';
+import { characterRollEvent } from './character-rolls.js';
 import { sendStateSync, stateRequestEvent } from './sync.js';
 
 declare module 'socket.io' {
@@ -61,6 +58,7 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   characterCreateEvent,
   characterUpdateEvent,
   characterDeleteEvent,
+  characterRollEvent,
 ] as RealtimeEvent<never, unknown>[];
 
 async function authenticateHandshake(

@@ -3,9 +3,7 @@ import type {
   CharacterDeleteBroadcast,
   CharacterIdPayload,
   CharacterUpdatePayload,
-  CharacterUpsertBroadcast,
   CharacterView,
-  SessionUser,
 } from '@vtt/shared';
 import {
   ROLE_GM,
@@ -16,42 +14,18 @@ import {
   sanitizeTokenImageUrl,
   validateCharacterDataPatch,
 } from '@vtt/shared';
-import type { CpredRegistry } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
 import type { Character } from '../generated/prisma/client.js';
-import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
-import { emitToCampaignUser, gmRoom } from './state.js';
+import { RealtimeError, defineEvent } from './registry.js';
+import { emitToCampaignUser } from './state.js';
+import { emitCharacterDelete, emitCharacterUpsert, toCharacterView } from './character-io.js';
+import { emitTokensById, emitTokensOfCharacter } from './tokens.js';
 
 /**
- * Characters travel only to their owner and the GM: every emission is
- * targeted (owner sockets + GM room) and carries no room seq — the whisper
- * pattern. Other players never learn a character exists.
+ * Character event handlers. Delivery and view mapping live in
+ * `character-io.ts`; sheet changes also refresh the HP bars of every token
+ * linked to the character (stage 08 — the sheet is the source of truth).
  */
-
-export function toCharacterView(character: Character, registry: CpredRegistry): CharacterView {
-  return {
-    id: character.id,
-    name: character.name,
-    ownerId: character.ownerId,
-    portraitUrl: character.portraitUrl,
-    data: parseCharacterData(character.data, registry),
-    updatedAt: character.updatedAt.toISOString(),
-  };
-}
-
-/** Characters as one viewer sees them: the GM gets all, a player their own. */
-export async function fetchCharactersFor(
-  prisma: PrismaClient,
-  registry: CpredRegistry,
-  campaignId: string,
-  user: SessionUser,
-): Promise<CharacterView[]> {
-  const rows = await prisma.character.findMany({
-    where: { campaignId, ...(user.role === ROLE_GM ? {} : { ownerId: user.id }) },
-    orderBy: { createdAt: 'asc' },
-  });
-  return rows.map((row) => toCharacterView(row, registry));
-}
 
 function requireCampaignId(socketData: { campaign: { id: string } | null }): string {
   if (!socketData.campaign) throw new RealtimeError('NO_CAMPAIGN');
@@ -84,31 +58,6 @@ async function requireValidOwner(
     where: { campaignId_userId: { campaignId, userId: ownerId } },
   });
   if (!membership) throw new RealtimeError('OWNER_NOT_FOUND');
-}
-
-async function emitCharacterUpsert(
-  deps: RealtimeDeps,
-  campaignId: string,
-  view: CharacterView,
-): Promise<void> {
-  const payload: CharacterUpsertBroadcast = { character: view };
-  deps.io.to(gmRoom(campaignId)).emit('character:upsert', payload);
-  if (view.ownerId) {
-    await emitToCampaignUser(deps.io, campaignId, view.ownerId, 'character:upsert', payload);
-  }
-}
-
-async function emitCharacterDelete(
-  deps: RealtimeDeps,
-  campaignId: string,
-  characterId: string,
-  ownerId: string | null,
-): Promise<void> {
-  const payload: CharacterDeleteBroadcast = { characterId };
-  deps.io.to(gmRoom(campaignId)).emit('character:delete', payload);
-  if (ownerId) {
-    await emitToCampaignUser(deps.io, campaignId, ownerId, 'character:delete', payload);
-  }
 }
 
 export const characterCreateEvent = defineEvent<CharacterCreatePayload, CharacterView>({
@@ -189,6 +138,10 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
     });
     const view = toCharacterView(updated, deps.ctx.cpred);
     await emitCharacterUpsert(deps, campaignId, view);
+    // HP and stats drive the bars of every token bound to this sheet.
+    if ('data' in patch || 'ownerId' in patch || 'name' in patch) {
+      await emitTokensOfCharacter(deps, campaignId, updated);
+    }
     // A reassigned character vanishes from the previous owner's list.
     if (character.ownerId && character.ownerId !== updated.ownerId) {
       await emitToCampaignUser(deps.io, campaignId, character.ownerId, 'character:delete', {
@@ -211,7 +164,18 @@ export const characterDeleteEvent = defineEvent<CharacterIdPayload>({
     if (user.role !== ROLE_GM && character.ownerId !== user.id) {
       throw new RealtimeError('CHARACTER_NOT_FOUND');
     }
+    // Tokens are unlinked by the DB (SetNull); refresh them so their bars
+    // fall back to their own HP instead of showing the dead sheet's.
+    const linkedTokens = await deps.ctx.prisma.token.findMany({
+      where: { characterId: character.id },
+      select: { id: true },
+    });
     await deps.ctx.prisma.character.delete({ where: { id: character.id } });
     await emitCharacterDelete(deps, campaignId, character.id, character.ownerId);
+    await emitTokensById(
+      deps,
+      campaignId,
+      linkedTokens.map((token) => token.id),
+    );
   },
 });

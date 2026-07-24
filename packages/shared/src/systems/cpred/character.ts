@@ -349,7 +349,13 @@ function collectCharacterDataPatch(
         ITEM_FIELD_MAX_LENGTH,
         issues,
       );
-      const ammo = validateText(row.ammo ?? '', 'weapons', 'Amunicja', ITEM_FIELD_MAX_LENGTH, issues);
+      const ammo = validateText(
+        row.ammo ?? '',
+        'weapons',
+        'Amunicja',
+        ITEM_FIELD_MAX_LENGTH,
+        issues,
+      );
       const rof = validateText(row.rof ?? '', 'weapons', 'LA', ITEM_FIELD_MAX_LENGTH, issues);
       if (damage === undefined || ammo === undefined || rof === undefined) return undefined;
       return { ...base, damage, ammo, rof };
@@ -412,8 +418,7 @@ export function validateCharacterDataPatch(
   raw: unknown,
   registry: CpredRegistry,
 ):
-  | { ok: true; patch: Partial<CpredCharacterData> }
-  | { ok: false; issues: CpredValidationIssue[] } {
+  { ok: true; patch: Partial<CpredCharacterData> } | { ok: false; issues: CpredValidationIssue[] } {
   const { patch, issues } = collectCharacterDataPatch(raw, registry);
   if (issues.length > 0) return { ok: false, issues };
   return { ok: true, patch };

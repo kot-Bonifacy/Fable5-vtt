@@ -5,6 +5,7 @@ import { MapArea } from './components/MapArea.js';
 import { SidePanel } from './components/SidePanel.js';
 import { DiceCup } from './components/DiceCup.js';
 import { CharacterSheets } from './components/CharacterSheet.js';
+import { RollDialog } from './components/RollDialog.js';
 import { LoginPage } from './pages/LoginPage.js';
 import { JoinPage } from './pages/JoinPage.js';
 import { GmPanel } from './pages/GmPanel.js';
@@ -20,6 +21,7 @@ function GameView() {
         <SidePanel />
       </main>
       <CharacterSheets />
+      <RollDialog />
       <DiceCup />
     </div>
   );
@@ -27,19 +29,22 @@ function GameView() {
 
 export function App() {
   const status = useAuthStore((s) => s.status);
+  const userId = useAuthStore((s) => s.user?.id ?? null);
   const initialize = useAuthStore((s) => s.initialize);
 
   useEffect(() => {
     void initialize();
   }, [initialize]);
 
+  // Keyed by user id: joining as somebody else in the same browser must not
+  // keep the previous user's socket (and their state) alive.
   useEffect(() => {
-    if (status === 'authenticated') {
-      connectSocket();
+    if (status === 'authenticated' && userId) {
+      connectSocket(userId);
     } else if (status === 'anonymous') {
       disconnectSocket();
     }
-  }, [status]);
+  }, [status, userId]);
 
   if (status === 'loading') {
     return (

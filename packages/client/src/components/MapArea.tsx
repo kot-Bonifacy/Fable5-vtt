@@ -4,6 +4,8 @@ import { MapRenderer } from '../map/MapRenderer.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { ensureStatusesLoaded, useTokenStore } from '../stores/tokenStore.js';
+import { useCharacterStore } from '../stores/characterStore.js';
+import { useChatStore } from '../stores/chatStore.js';
 import { createToken, sendTokenMove } from '../socket.js';
 import { TokenContextMenu } from './TokenContextMenu.js';
 
@@ -11,6 +13,26 @@ export interface TokenMenuState {
   tokenId: string;
   x: number;
   y: number;
+}
+
+/**
+ * Double-click on a token opens the linked sheet — but only if this viewer
+ * may see it: the GM sees every character, a player only their own (the
+ * server never sends anyone else's, so `characters` already reflects that).
+ */
+function openSheetOfToken(tokenId: string): void {
+  const token = useTokenStore.getState().tokens[tokenId];
+  if (!token) return;
+  const characterStore = useCharacterStore.getState();
+  if (!token.characterId) {
+    useChatStore.getState().addNote(`Token „${token.name}” nie ma przypisanej karty postaci.`);
+    return;
+  }
+  if (!(token.characterId in characterStore.characters)) {
+    useChatStore.getState().addNote(`Nie masz dostępu do karty postaci „${token.name}”.`);
+    return;
+  }
+  characterStore.openSheet(token.characterId);
 }
 
 export function MapArea() {
@@ -62,6 +84,7 @@ export function MapArea() {
         setMenu({ tokenId, x: clientX, y: clientY });
       }
     };
+    renderer.onTokenActivate = (tokenId) => openSheetOfToken(tokenId);
     rendererRef.current = renderer;
     let cancelled = false;
     void renderer.init(host).then(() => {

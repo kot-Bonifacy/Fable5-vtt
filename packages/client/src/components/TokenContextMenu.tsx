@@ -4,6 +4,7 @@ import { TOKEN_HP_LIMIT, TOKEN_SIZE_MAX, TOKEN_SIZE_MIN } from '@vtt/shared';
 import { apiGet } from '../api.js';
 import { deleteToken, updateToken } from '../socket.js';
 import { useTokenStore } from '../stores/tokenStore.js';
+import { useCharacterStore } from '../stores/characterStore.js';
 import type { TokenMenuState } from './MapArea.js';
 
 const MENU_WIDTH = 240;
@@ -17,12 +18,16 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
   const [name, setName] = useState(token.name);
   const [size, setSize] = useState(token.size);
   const [ownerId, setOwnerId] = useState<string | ''>(token.ownerId ?? '');
+  const [characterId, setCharacterId] = useState<string | ''>(token.characterId ?? '');
   const [hasHp, setHasHp] = useState(token.hp != null);
   const [hpCurrent, setHpCurrent] = useState(token.hp?.current ?? 10);
   const [hpMax, setHpMax] = useState(token.hp?.max ?? 10);
   const [players, setPlayers] = useState<PlayerOption[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const characters = useCharacterStore((s) => s.characters);
+  const characterOrder = useCharacterStore((s) => s.order);
+  const linked = characterId !== '';
 
   useEffect(() => {
     apiGet<CampaignDetail[]>('/api/campaigns')
@@ -45,7 +50,9 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
       name: trimmed,
       size,
       ownerId: ownerId === '' ? null : ownerId,
-      hp: hasHp ? { current: hpCurrent, max: hpMax } : null,
+      characterId: characterId === '' ? null : characterId,
+      // A linked token takes its HP from the sheet — never write them here.
+      ...(linked ? {} : { hp: hasHp ? { current: hpCurrent, max: hpMax } : null }),
     };
     const ack = await updateToken(token.id, patch);
     setSaving(false);
@@ -95,11 +102,39 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
           ))}
         </select>
 
-        <label className="auth-label">
-          <input type="checkbox" checked={hasHp} onChange={(e) => setHasHp(e.target.checked)} />{' '}
-          Pasek HP
+        <label className="auth-label" htmlFor="token-character">
+          Karta postaci
         </label>
-        {hasHp && (
+        <select
+          id="token-character"
+          value={characterId}
+          onChange={(e) => setCharacterId(e.target.value)}
+          title="Powiązanie z kartą: pasek PW tokenu czyta wtedy wartości z karty"
+        >
+          <option value="">— brak (własne HP tokenu) —</option>
+          {characterOrder.map((id) => {
+            const character = characters[id];
+            if (!character) return null;
+            return (
+              <option key={id} value={id}>
+                {character.name}
+              </option>
+            );
+          })}
+        </select>
+
+        {linked ? (
+          <p className="placeholder-text">
+            Pasek PW pochodzi z karty postaci — zmieniaj go na karcie albo skrótami +/− w menu
+            tokenu.
+          </p>
+        ) : (
+          <label className="auth-label">
+            <input type="checkbox" checked={hasHp} onChange={(e) => setHasHp(e.target.checked)} />{' '}
+            Pasek HP
+          </label>
+        )}
+        {!linked && hasHp && (
           <div className="scene-editor-row">
             <input
               type="number"
@@ -169,6 +204,24 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
     void updateToken(token.id, { statuses: next });
   }
 
+  /**
+   * Quick damage/healing from the map. For a linked token the server writes
+   * the value through to the sheet, so both stay in sync.
+   */
+  function changeHp(delta: number) {
+    const hp = token?.hp;
+    if (!token || !hp) return;
+    const current = Math.max(0, Math.min(hp.max, hp.current + delta));
+    if (current === hp.current) return;
+    void updateToken(token.id, { hp: { current, max: hp.max } });
+  }
+
+  function openSheet() {
+    if (!token?.characterId) return;
+    useCharacterStore.getState().openSheet(token.characterId);
+    onClose();
+  }
+
   async function remove() {
     if (!token) return;
     if (!window.confirm(`Usunąć token „${token.name}”?`)) return;
@@ -188,6 +241,31 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
       />
       <div className="context-menu" style={{ left, top, width: MENU_WIDTH }}>
         <p className="context-menu-title">{token.name}</p>
+        {token.hp && (
+          <div className="context-menu-hp">
+            <span className="context-menu-hp-value" title="Punkty Wytrzymałości">
+              PW {token.hp.current}/{token.hp.max}
+            </span>
+            <span className="context-menu-hp-buttons">
+              {[-5, -1, 1, 5].map((delta) => (
+                <button
+                  key={delta}
+                  type="button"
+                  className="small-button"
+                  onClick={() => changeHp(delta)}
+                  title={delta < 0 ? `Obrażenia ${-delta}` : `Leczenie ${delta}`}
+                >
+                  {delta > 0 ? `+${delta}` : delta}
+                </button>
+              ))}
+            </span>
+          </div>
+        )}
+        {token.characterId && (
+          <button type="button" className="context-menu-item" onClick={openSheet}>
+            📄 Otwórz kartę postaci
+          </button>
+        )}
         <button
           type="button"
           className="context-menu-item"

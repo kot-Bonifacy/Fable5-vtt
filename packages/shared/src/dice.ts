@@ -125,10 +125,33 @@ export interface RollToss {
   originY: number;
 }
 
+/**
+ * One named contribution to a roll's modifier, so the chat card can explain
+ * where the number came from ("Percepcja 4", "Poważnie ranny −2"). The core
+ * engine only carries these entries — game systems (stage 08: CP RED) fill
+ * them in, which keeps the dice module free of system knowledge.
+ */
+export interface RollBreakdownEntry {
+  label: string;
+  /** Signed contribution to the total. */
+  value: number;
+  /** Free-form category used for styling, e.g. `stat`, `skill`, `wound`. */
+  kind?: string;
+}
+
 export interface RollResult {
   /** Canonical notation of what was rolled, e.g. `1d10+7`. */
   notation: string;
   terms: RollTermResult[];
+  /**
+   * Human-readable name of what was rolled ("Percepcja (INT)") — set by sheet
+   * rolls; chat commands leave it out and use the message's label instead.
+   */
+  title?: string;
+  /** Acting character's name, shown on the chat card instead of the user's. */
+  actor?: string;
+  /** Named modifier sources summing up to the formula's flat modifier. */
+  breakdown?: RollBreakdownEntry[];
   /**
    * Present only when the formula is a CP RED check (its dice are exactly one
    * added d10) and the natural roll was a 10 or a 1.

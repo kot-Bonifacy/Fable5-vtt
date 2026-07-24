@@ -83,6 +83,7 @@ model Character {
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   owner    User?    @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  tokens   Token[]
 
   @@index([campaignId])
 }
@@ -119,7 +120,9 @@ model Token {
   /** Owning player; null = GM-controlled (NPC). */
   ownerId String?
   hidden  Boolean @default(false)
-  /** Local HP until the character sheet link lands in stage 08. */
+  /** Linked character sheet; when set, the sheet's HP drives the token's bar. */
+  characterId String?
+  /** Own HP of a standalone token (unused while characterId is set). */
   hpCurrent Int?
   hpMax     Int?
   /** JSON array of status ids (SQLite has no native arrays). */
@@ -128,10 +131,12 @@ model Token {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  scene Scene @relation(fields: [sceneId], references: [id], onDelete: Cascade)
-  owner User? @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  scene     Scene      @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  owner     User?      @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  character Character? @relation(fields: [characterId], references: [id], onDelete: SetNull)
 
   @@index([sceneId])
+  @@index([characterId])
 }
 
 /** One uploaded token image — the campaign's simple asset library. */

@@ -22,10 +22,12 @@ import {
   type TokenSnapScene,
 } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
-import type { Scene, Token } from '../generated/prisma/client.js';
+import type { Character, Scene, Token } from '../generated/prisma/client.js';
+import { toLinkedSheet, writeSheetHp, type LinkedSheet, type SheetRegistry } from '../sheets.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { campaignRoom, emitToCampaignUser, gmRoom, sceneRoom } from './state.js';
 import { requireCampaignScene } from './scenes.js';
+import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 
 function parseStatuses(raw: string): string[] {
   try {
@@ -37,11 +39,19 @@ function parseStatuses(raw: string): string[] {
 }
 
 /**
- * Maps a DB row to the wire view. `includeHp` controls whether the `hp` key
- * exists at all — clients merge upserts with spread, so an absent key means
- * "no change / not for you" and never overwrites a previously delivered value.
+ * Maps a DB row to the wire view. `includePrivate` controls whether the `hp`
+ * and `characterId` keys exist at all — clients merge upserts with spread, so
+ * an absent key means "no change / not for you" and never overwrites a
+ * previously delivered value.
+ *
+ * A linked token's HP comes from the sheet (the single source of truth); the
+ * token's own pair is only used while it is standalone.
  */
-export function toTokenView(token: Token, includeHp: boolean): TokenView {
+export function toTokenView(
+  token: Token,
+  includePrivate: boolean,
+  linked?: LinkedSheet | null,
+): TokenView {
   const view: TokenView = {
     id: token.id,
     sceneId: token.sceneId,
@@ -54,15 +64,45 @@ export function toTokenView(token: Token, includeHp: boolean): TokenView {
     hidden: token.hidden,
     statuses: parseStatuses(token.statuses),
   };
-  if (includeHp) {
-    view.hp = token.hpMax === null ? null : { current: token.hpCurrent ?? 0, max: token.hpMax };
+  if (includePrivate) {
+    view.characterId = token.characterId;
+    // A link to a deleted/unreadable sheet falls back to the token's own HP.
+    view.hp = linked
+      ? linked.hp
+      : token.hpMax === null
+        ? null
+        : { current: token.hpCurrent ?? 0, max: token.hpMax };
   }
   return view;
+}
+
+/** Loads the sheets linked by the given tokens, keyed by character id. */
+async function loadLinkedSheets(
+  prisma: PrismaClient,
+  registry: SheetRegistry,
+  tokens: { characterId: string | null }[],
+): Promise<Map<string, LinkedSheet>> {
+  const ids = [...new Set(tokens.map((t) => t.characterId).filter((id): id is string => !!id))];
+  if (ids.length === 0) return new Map();
+  const characters = await prisma.character.findMany({ where: { id: { in: ids } } });
+  return new Map(characters.map((c) => [c.id, toLinkedSheet(c, registry)]));
+}
+
+/**
+ * May this viewer see the token's private fields (HP, sheet link)? The GM
+ * always can; a player only for tokens they own or tokens bound to their own
+ * character.
+ */
+function seesPrivate(token: Token, linked: LinkedSheet | undefined, user: SessionUser): boolean {
+  if (user.role === ROLE_GM) return true;
+  if (token.ownerId === user.id) return true;
+  return linked?.ownerId === user.id;
 }
 
 /** Tokens of a scene as one viewer sees them: players never get hidden ones or foreign HP. */
 export async function fetchSceneTokensFor(
   prisma: PrismaClient,
+  registry: SheetRegistry,
   sceneId: string,
   user: SessionUser,
 ): Promise<TokenView[]> {
@@ -71,7 +111,11 @@ export async function fetchSceneTokensFor(
     where: { sceneId, ...(isGm ? {} : { hidden: false }) },
     orderBy: { createdAt: 'asc' },
   });
-  return rows.map((row) => toTokenView(row, isGm || row.ownerId === user.id));
+  const sheets = await loadLinkedSheets(prisma, registry, rows);
+  return rows.map((row) => {
+    const linked = row.characterId ? sheets.get(row.characterId) : undefined;
+    return toTokenView(row, seesPrivate(row, linked, user), linked);
+  });
 }
 
 function toSnapScene(scene: Scene): TokenSnapScene {
@@ -88,28 +132,40 @@ function requireCampaignId(socketData: { campaign: { id: string } | null }): str
   return socketData.campaign.id;
 }
 
+/** Loads the sheet a single token is linked to (null when standalone). */
+async function loadLinkedSheet(deps: RealtimeDeps, token: Token): Promise<LinkedSheet | null> {
+  if (!token.characterId) return null;
+  const character = await deps.ctx.prisma.character.findUnique({
+    where: { id: token.characterId },
+  });
+  return character ? toLinkedSheet(character, deps.ctx.cpred) : null;
+}
+
 /**
  * Emits a token upsert to everyone who may see the token.
  *
  * Active scene, visible token: a sequenced campaign-wide broadcast carries the
- * public view (no HP), then targeted no-seq emissions deliver the full view to
- * the GM and the HP-bearing view to the owner. Hidden tokens go to the GM room
- * only; tokens on non-active scenes go to that scene's viewers (GM previews).
+ * public view (no HP, no sheet link), then targeted no-seq emissions deliver
+ * the private view to the GM, the token's owner and the linked character's
+ * owner. Hidden tokens go to the GM room only; tokens on non-active scenes go
+ * to that scene's viewers (GM previews).
  */
 async function emitTokenUpsert(
   deps: RealtimeDeps,
   campaignId: string,
   scene: Scene,
   token: Token,
+  linkedSheet?: LinkedSheet | null,
 ): Promise<void> {
-  const gmPayload: TokenUpsertBroadcast = { token: toTokenView(token, true) };
+  const linked = linkedSheet !== undefined ? linkedSheet : await loadLinkedSheet(deps, token);
+  const privatePayload: TokenUpsertBroadcast = { token: toTokenView(token, true, linked) };
 
   if (!scene.active) {
-    deps.io.to(sceneRoom(scene.id)).emit('token:upsert', gmPayload);
+    deps.io.to(sceneRoom(scene.id)).emit('token:upsert', privatePayload);
     return;
   }
   if (token.hidden) {
-    deps.io.to(gmRoom(campaignId)).emit('token:upsert', gmPayload);
+    deps.io.to(gmRoom(campaignId)).emit('token:upsert', privatePayload);
     return;
   }
 
@@ -119,11 +175,58 @@ async function emitTokenUpsert(
     token: toTokenView(token, false),
   };
   deps.io.to(room).emit('token:upsert', publicPayload);
-  deps.io.to(gmRoom(campaignId)).emit('token:upsert', gmPayload);
-  if (token.ownerId) {
-    await emitToCampaignUser(deps.io, campaignId, token.ownerId, 'token:upsert', {
-      token: toTokenView(token, true),
-    } satisfies TokenUpsertBroadcast);
+  deps.io.to(gmRoom(campaignId)).emit('token:upsert', privatePayload);
+  // Both owners see the private view; a player owning the sheet but not the
+  // token (or the other way round) still gets exactly one copy.
+  const privateUserIds = new Set<string>();
+  if (token.ownerId) privateUserIds.add(token.ownerId);
+  if (linked?.ownerId) privateUserIds.add(linked.ownerId);
+  for (const userId of privateUserIds) {
+    await emitToCampaignUser(deps.io, campaignId, userId, 'token:upsert', privatePayload);
+  }
+}
+
+/**
+ * Refreshes every token bound to a character — called after a sheet change so
+ * the map's HP bars follow the sheet (stage 08: the sheet is the source of
+ * truth). Cheap: one query, then the usual per-token emissions.
+ */
+export async function emitTokensOfCharacter(
+  deps: RealtimeDeps,
+  campaignId: string,
+  character: Character,
+): Promise<void> {
+  const tokens = await deps.ctx.prisma.token.findMany({
+    where: { characterId: character.id },
+    include: { scene: true },
+  });
+  const linked = toLinkedSheet(character, deps.ctx.cpred);
+  for (const row of tokens) {
+    const { scene, ...token } = row;
+    if (scene.campaignId !== campaignId) continue;
+    await emitTokenUpsert(deps, campaignId, scene, token as Token, linked);
+  }
+}
+
+/**
+ * Re-emits the given tokens as they are now — used after a character is
+ * deleted, when the DB has already unlinked them (SetNull) and their bars
+ * fall back to the token's own HP.
+ */
+export async function emitTokensById(
+  deps: RealtimeDeps,
+  campaignId: string,
+  tokenIds: string[],
+): Promise<void> {
+  if (tokenIds.length === 0) return;
+  const tokens = await deps.ctx.prisma.token.findMany({
+    where: { id: { in: tokenIds } },
+    include: { scene: true },
+  });
+  for (const row of tokens) {
+    const { scene, ...token } = row;
+    if (scene.campaignId !== campaignId) continue;
+    await emitTokenUpsert(deps, campaignId, scene, token as Token);
   }
 }
 
@@ -175,6 +278,20 @@ async function requireValidOwner(
   if (!membership) throw new RealtimeError('OWNER_NOT_FOUND');
 }
 
+/** A linked character must belong to the same campaign. */
+async function requireCampaignCharacter(
+  prisma: PrismaClient,
+  campaignId: string,
+  characterId: string | null | undefined,
+): Promise<Character | null> {
+  if (characterId === null || characterId === undefined) return null;
+  const character = await prisma.character.findUnique({ where: { id: characterId } });
+  if (!character || character.campaignId !== campaignId) {
+    throw new RealtimeError('CHARACTER_NOT_FOUND');
+  }
+  return character;
+}
+
 export const tokenCreateEvent = defineEvent<TokenCreatePayload, TokenView>({
   name: 'token:create',
   role: ROLE_GM,
@@ -195,6 +312,14 @@ export const tokenCreateEvent = defineEvent<TokenCreatePayload, TokenView>({
     }
     const ownerId = payload.ownerId ?? null;
     await requireValidOwner(deps.ctx.prisma, campaignId, ownerId);
+    if (payload.characterId !== undefined && payload.characterId !== null) {
+      if (typeof payload.characterId !== 'string') throw new RealtimeError('BAD_REQUEST');
+    }
+    const character = await requireCampaignCharacter(
+      deps.ctx.prisma,
+      campaignId,
+      payload.characterId,
+    );
 
     const { x, y } = snapTokenPosition(payload.x, payload.y, size, toSnapScene(scene));
     const token = await deps.ctx.prisma.token.create({
@@ -206,13 +331,15 @@ export const tokenCreateEvent = defineEvent<TokenCreatePayload, TokenView>({
         y,
         size,
         ownerId,
+        characterId: character?.id ?? null,
         hidden: payload.hidden === true,
         hpCurrent: hp?.current ?? null,
         hpMax: hp?.max ?? null,
       },
     });
-    await emitTokenUpsert(deps, campaignId, scene, token);
-    return toTokenView(token, true);
+    const linked = character ? toLinkedSheet(character, deps.ctx.cpred) : null;
+    await emitTokenUpsert(deps, campaignId, scene, token, linked);
+    return toTokenView(token, true, linked);
   },
 });
 
@@ -231,6 +358,9 @@ export const tokenUpdateEvent = defineEvent<TokenUpdatePayload, TokenView>({
     if ('ownerId' in patch) {
       await requireValidOwner(deps.ctx.prisma, campaignId, patch.ownerId);
     }
+    // The link after this update decides where HP are written.
+    const characterId = patch.characterId !== undefined ? patch.characterId : token.characterId;
+    const character = await requireCampaignCharacter(deps.ctx.prisma, campaignId, characterId);
 
     const data: Record<string, unknown> = {};
     if (patch.name !== undefined) data.name = patch.name;
@@ -238,7 +368,25 @@ export const tokenUpdateEvent = defineEvent<TokenUpdatePayload, TokenView>({
     if (patch.ownerId !== undefined) data.ownerId = patch.ownerId;
     if (patch.hidden !== undefined) data.hidden = patch.hidden;
     if (patch.statuses !== undefined) data.statuses = JSON.stringify(patch.statuses);
-    if (patch.hp !== undefined) {
+    if (patch.characterId !== undefined) data.characterId = patch.characterId;
+    // A linked token has no HP of its own: the value is written through to
+    // the sheet (single source of truth) and echoed back to sheet viewers.
+    let linked: LinkedSheet | null = character ? toLinkedSheet(character, deps.ctx.cpred) : null;
+    if (patch.hp !== undefined && character) {
+      if (patch.hp !== null) {
+        const written = writeSheetHp(character, patch.hp.current, deps.ctx.cpred);
+        const savedCharacter = await deps.ctx.prisma.character.update({
+          where: { id: character.id },
+          data: { data: written.data },
+        });
+        linked = toLinkedSheet(savedCharacter, deps.ctx.cpred);
+        await emitCharacterUpsert(
+          deps,
+          campaignId,
+          toCharacterView(savedCharacter, deps.ctx.cpred),
+        );
+      }
+    } else if (patch.hp !== undefined) {
       data.hpCurrent = patch.hp?.current ?? null;
       data.hpMax = patch.hp?.max ?? null;
     }
@@ -256,17 +404,17 @@ export const tokenUpdateEvent = defineEvent<TokenUpdatePayload, TokenView>({
       // Vanish from players first, then refresh the GM's semi-transparent view.
       emitTokenDelete(deps, campaignId, scene, updated.id, true);
       deps.io.to(gmRoom(campaignId)).emit('token:upsert', {
-        token: toTokenView(updated, true),
+        token: toTokenView(updated, true, linked),
       } satisfies TokenUpsertBroadcast);
       if (!scene.active) {
         deps.io.to(sceneRoom(scene.id)).emit('token:upsert', {
-          token: toTokenView(updated, true),
+          token: toTokenView(updated, true, linked),
         } satisfies TokenUpsertBroadcast);
       }
     } else {
-      await emitTokenUpsert(deps, campaignId, scene, updated);
+      await emitTokenUpsert(deps, campaignId, scene, updated, linked);
     }
-    return toTokenView(updated, true);
+    return toTokenView(updated, true, linked);
   },
 });
 

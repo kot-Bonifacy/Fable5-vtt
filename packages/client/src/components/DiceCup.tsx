@@ -2,8 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { RollGesture, RollToss } from '@vtt/shared';
 import { MAX_GESTURE_STRENGTH, formatRollNotation, parseChatInput } from '@vtt/shared';
 import { playFunRoll, sweepDice } from '../dice3d.js';
-import { sendChatInput } from '../socket.js';
+import { sendCharacterRoll, sendChatInput } from '../socket.js';
 import { useChatStore } from '../stores/chatStore.js';
+import { useRollStore, type PendingRoll } from '../stores/rollStore.js';
 
 interface ShakeSample {
   x: number;
@@ -100,19 +101,30 @@ function playRattle(volume: number): void {
   void audio.play().catch(() => undefined);
 }
 
-type CupMode = { kind: 'fun' } | { kind: 'roll'; visibility: 'public' | 'gm'; notation: string };
+type CupMode =
+  | { kind: 'fun' }
+  | { kind: 'roll'; visibility: 'public' | 'gm'; notation: string }
+  | { kind: 'sheet'; pending: PendingRoll };
+
+/** Cup label for a loaded sheet check, e.g. `Percepcja (INT) +11`. */
+function sheetLabel(pending: PendingRoll): string {
+  const sign = pending.modifierTotal < 0 ? '−' : '+';
+  return `${pending.title} ${sign}${Math.abs(pending.modifierTotal)}`;
+}
 
 /**
  * The dice cup: always available on the table. Grab it, shake, release to
- * throw. When the chat draft holds a roll command the throw is REAL — the
- * shake's entropy is mixed into the server's RNG (the gesture genuinely
- * influences the outcome; the server stays authoritative). Otherwise the
- * throw is a local toy roll with no game meaning.
+ * throw. The throw is REAL when a sheet check is loaded (clicked on a
+ * character sheet) or the chat draft holds a roll command — the shake's
+ * entropy is mixed into the server's RNG (the gesture genuinely influences
+ * the outcome; the server stays authoritative). Otherwise the throw is a
+ * local toy roll with no game meaning.
  */
 export function DiceCup() {
   const draft = useChatStore((s) => s.draft);
   const synced = useChatStore((s) => s.synced);
   const campaign = useChatStore((s) => s.campaign);
+  const pending = useRollStore((s) => s.pending);
 
   const [shaking, setShaking] = useState(false);
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
@@ -126,6 +138,8 @@ export function DiceCup() {
   const modeRef = useRef<CupMode>({ kind: 'fun' });
 
   const mode = useMemo<CupMode>(() => {
+    // A check loaded from a sheet wins over whatever sits in the chat draft.
+    if (pending) return { kind: 'sheet', pending };
     const parsed = parseChatInput(draft);
     if (parsed.kind === 'roll') {
       return {
@@ -135,8 +149,18 @@ export function DiceCup() {
       };
     }
     return { kind: 'fun' };
-  }, [draft]);
+  }, [draft, pending]);
   modeRef.current = mode;
+
+  // Esc puts a loaded check back on the shelf (as long as we are not mid-shake).
+  useEffect(() => {
+    if (!pending || shaking) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') useRollStore.getState().clearCup();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [pending, shaking]);
 
   useEffect(() => {
     if (!shaking) return;
@@ -180,7 +204,15 @@ export function DiceCup() {
       const toss = tossFromRecent(recent, now);
 
       const current = modeRef.current;
-      if (current.kind === 'roll') {
+      if (current.kind === 'sheet') {
+        const { pending: loaded } = current;
+        lastFunNotation = '1d10';
+        useRollStore.getState().clearCup();
+        void digestSamples(samples).then((entropy) => {
+          const gesture: RollGesture = { entropy, strength, toss };
+          sendCharacterRoll(loaded.characterId, loaded.request, loaded.visibility, gesture);
+        });
+      } else if (current.kind === 'roll') {
         lastFunNotation = current.notation;
         void digestSamples(samples).then((entropy) => {
           const gesture: RollGesture = { entropy, strength, toss };
@@ -244,11 +276,23 @@ export function DiceCup() {
   };
 
   const modeClass =
-    mode.kind === 'roll' ? (mode.visibility === 'gm' ? ' dice-cup--gm' : ' dice-cup--hot') : '';
+    mode.kind === 'sheet'
+      ? mode.pending.visibility === 'gm'
+        ? ' dice-cup--gm'
+        : ' dice-cup--sheet'
+      : mode.kind === 'roll'
+        ? mode.visibility === 'gm'
+          ? ' dice-cup--gm'
+          : ' dice-cup--hot'
+        : '';
   const title =
-    mode.kind === 'roll'
-      ? `Potrząśnij i rzuć: ${mode.notation}${mode.visibility === 'gm' ? ' (do MG)' : ''} — wynik liczy się w grze`
-      : 'Potrząśnij i rzuć na niby (wpisz /r <formuła>, by rzut się liczył)';
+    mode.kind === 'sheet'
+      ? `Potrząśnij i rzuć: ${mode.pending.characterName} — ${sheetLabel(mode.pending)}${
+          mode.pending.visibility === 'gm' ? ' (do MG)' : ''
+        } · Esc odkłada rzut`
+      : mode.kind === 'roll'
+        ? `Potrząśnij i rzuć: ${mode.notation}${mode.visibility === 'gm' ? ' (do MG)' : ''} — wynik liczy się w grze`
+        : 'Potrząśnij i rzuć na niby (wpisz /r <formuła>, by rzut się liczył)';
 
   return (
     <div
@@ -276,6 +320,7 @@ export function DiceCup() {
         <circle cx="14" cy="13" r="1.2" fill="var(--bg, #14151a)" />
       </svg>
       {mode.kind === 'roll' && <span className="dice-cup-label">{mode.notation}</span>}
+      {mode.kind === 'sheet' && <span className="dice-cup-label">{sheetLabel(mode.pending)}</span>}
     </div>
   );
 }

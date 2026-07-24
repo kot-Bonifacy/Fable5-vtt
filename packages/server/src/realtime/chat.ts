@@ -54,7 +54,7 @@ interface StoredMessage {
   recipient: { name: string } | null;
 }
 
-function toView(message: StoredMessage): ChatMessageView {
+export function toChatMessageView(message: StoredMessage): ChatMessageView {
   const view: ChatMessageView = {
     id: message.id,
     kind: message.kind as ChatMessageView['kind'],
@@ -73,7 +73,7 @@ function toView(message: StoredMessage): ChatMessageView {
   return view;
 }
 
-const INCLUDE_NAMES = { author: true, recipient: true } as const;
+export const INCLUDE_CHAT_NAMES = { author: true, recipient: true } as const;
 
 /**
  * Visibility filter applied in the query — invisible messages (foreign
@@ -106,13 +106,13 @@ export async function fetchHistoryPage(
       ...(beforeId !== undefined ? { id: { lt: beforeId } } : {}),
       ...visibleTo(user),
     },
-    include: INCLUDE_NAMES,
+    include: INCLUDE_CHAT_NAMES,
     orderBy: { id: 'desc' },
     take: limit + 1,
   });
   const hasMore = rows.length > limit;
   const page = rows.slice(0, limit).reverse();
-  return { messages: page.map(toView), hasMore };
+  return { messages: page.map(toChatMessageView), hasMore };
 }
 
 function requireCampaignId(socketData: { campaign: { id: string } | null }): string {
@@ -128,10 +128,13 @@ async function persistAndEmitSay(
 ): Promise<void> {
   const stored = await deps.ctx.prisma.chatMessage.create({
     data: { campaignId, authorId: user.id, kind: 'say', text },
-    include: INCLUDE_NAMES,
+    include: INCLUDE_CHAT_NAMES,
   });
   const room = campaignRoom(campaignId);
-  const payload: ChatMessageBroadcast = { seq: deps.seqs.next(room), message: toView(stored) };
+  const payload: ChatMessageBroadcast = {
+    seq: deps.seqs.next(room),
+    message: toChatMessageView(stored),
+  };
   deps.io.to(room).emit('chat:message', payload);
 }
 
@@ -149,13 +152,13 @@ async function persistAndEmitWhisper(
 
   const stored = await deps.ctx.prisma.chatMessage.create({
     data: { campaignId, authorId: user.id, kind: 'whisper', text, recipientId: target.id },
-    include: INCLUDE_NAMES,
+    include: INCLUDE_CHAT_NAMES,
   });
 
   // Targeted delivery: only sockets of the author and the recipient — the
   // whisper never reaches other clients, not even in network payloads. No
   // seq: it is not a room-wide broadcast, so it must not create seq gaps.
-  const payload: ChatMessageBroadcast = { message: toView(stored) };
+  const payload: ChatMessageBroadcast = { message: toChatMessageView(stored) };
   const sockets = await deps.io.in(campaignRoom(campaignId)).fetchSockets();
   for (const socket of sockets) {
     const socketUser = (socket.data as { user: SessionUser }).user;
@@ -194,7 +197,7 @@ function sanitizeToss(raw: unknown): RollToss | undefined {
  * oversized payloads (the entropy is free-form client data — it only ever
  * feeds a hash, but we keep it bounded).
  */
-function sanitizeGesture(raw: unknown): RollGesture | undefined {
+export function sanitizeGesture(raw: unknown): RollGesture | undefined {
   if (typeof raw !== 'object' || raw === null) return undefined;
   const { entropy, strength, toss } = raw as {
     entropy?: unknown;
@@ -214,11 +217,35 @@ function sanitizeGesture(raw: unknown): RollGesture | undefined {
 }
 
 /**
- * Executes a roll server-side and delivers the result. Public rolls broadcast
- * to the campaign room with a seq; GM rolls go targeted (whisper pattern,
- * no seq) to the author's and GMs' sockets only — other players never see
- * them, not even in network payloads.
+ * Delivers a stored roll message. Public rolls broadcast to the campaign room
+ * with a seq; GM rolls go targeted (whisper pattern, no seq) to the author's
+ * and GMs' sockets only — other players never see them, not even in network
+ * payloads. Shared with sheet rolls (`character:roll`).
  */
+export async function deliverRollMessage(
+  deps: RealtimeDeps,
+  campaignId: string,
+  authorId: string,
+  message: ChatMessageView,
+): Promise<void> {
+  const room = campaignRoom(campaignId);
+  if (message.kind !== 'gmroll') {
+    const payload: ChatMessageBroadcast = { seq: deps.seqs.next(room), message };
+    deps.io.to(room).emit('chat:message', payload);
+    return;
+  }
+
+  const payload: ChatMessageBroadcast = { message };
+  const sockets = await deps.io.in(room).fetchSockets();
+  for (const socket of sockets) {
+    const socketUser = (socket.data as { user: SessionUser }).user;
+    if (socketUser.id === authorId || socketUser.role === ROLE_GM) {
+      socket.emit('chat:message', payload);
+    }
+  }
+}
+
+/** Executes a chat-command roll server-side and delivers the result. */
 async function persistAndEmitRoll(
   deps: RealtimeDeps,
   campaignId: string,
@@ -231,33 +258,17 @@ async function persistAndEmitRoll(
   const result = rollFormula(formula, createMixedRng(gesture?.entropy));
   if (gesture && gesture.strength > 0) result.tossStrength = gesture.strength;
   if (gesture?.toss) result.toss = gesture.toss;
-  const kind = visibility === 'gm' ? 'gmroll' : 'roll';
   const stored = await deps.ctx.prisma.chatMessage.create({
     data: {
       campaignId,
       authorId: user.id,
-      kind,
+      kind: visibility === 'gm' ? 'gmroll' : 'roll',
       text: label ?? '',
       payload: JSON.stringify(result),
     },
-    include: INCLUDE_NAMES,
+    include: INCLUDE_CHAT_NAMES,
   });
-
-  const room = campaignRoom(campaignId);
-  if (kind === 'roll') {
-    const payload: ChatMessageBroadcast = { seq: deps.seqs.next(room), message: toView(stored) };
-    deps.io.to(room).emit('chat:message', payload);
-    return;
-  }
-
-  const payload: ChatMessageBroadcast = { message: toView(stored) };
-  const sockets = await deps.io.in(room).fetchSockets();
-  for (const socket of sockets) {
-    const socketUser = (socket.data as { user: SessionUser }).user;
-    if (socketUser.id === user.id || socketUser.role === ROLE_GM) {
-      socket.emit('chat:message', payload);
-    }
-  }
+  await deliverRollMessage(deps, campaignId, user.id, toChatMessageView(stored));
 }
 
 export const chatSendEvent = defineEvent<ChatSendPayload>({

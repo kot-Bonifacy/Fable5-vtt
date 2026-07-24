@@ -77,6 +77,26 @@ export function CharacterPanel() {
     if (!ack.ok) setError(ackErrorText(ack.error));
   }
 
+  /** Start-of-session ritual (RAW): every pool back to its maximum. */
+  async function refreshAllLuck() {
+    const store = useCharacterStore.getState();
+    const stale = store.order
+      .map((id) => store.characters[id])
+      .filter((character) => character && character.data.luckCurrent < character.data.stats.luck);
+    if (stale.length === 0) return;
+    if (!window.confirm(`Odnowić pulę Szczęścia ${stale.length} postaciom (nowa sesja)?`)) return;
+    for (const character of stale) {
+      if (!character) continue;
+      const ack = await updateCharacter(character.id, {
+        data: { luckCurrent: character.data.stats.luck },
+      });
+      if (!ack.ok) {
+        setError(ackErrorText(ack.error));
+        return;
+      }
+    }
+  }
+
   async function removeCharacter(characterId: string, name: string) {
     if (!window.confirm(`Usunąć postać „${name}”? Tej operacji nie można cofnąć.`)) return;
     const ack = await deleteCharacter(characterId);
@@ -90,6 +110,16 @@ export function CharacterPanel() {
 
   return (
     <div className="character-panel">
+      {isGm && order.length > 0 && (
+        <button
+          type="button"
+          className="small-button"
+          onClick={() => void refreshAllLuck()}
+          title="Ustawia pulę Szczęścia wszystkich postaci na maksimum (start sesji)"
+        >
+          ↻ Odnów Szczęście wszystkim
+        </button>
+      )}
       {order.length === 0 ? (
         <p className="placeholder-text">
           {isGm ? 'Brak postaci — utwórz pierwszą poniżej.' : 'Nie masz jeszcze żadnej postaci.'}

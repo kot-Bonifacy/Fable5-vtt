@@ -58,28 +58,53 @@ function RollDice({ roll }: { roll: RollResult }) {
   return <div className="chat-roll-dice">{parts}</div>;
 }
 
+/** Named modifier sources of a sheet roll ("Percepcja +4, Poważnie ranny −2"). */
+function RollBreakdown({ roll }: { roll: RollResult }) {
+  if (!roll.breakdown || roll.breakdown.length === 0) return null;
+  return (
+    <div className="chat-roll-breakdown">
+      {roll.breakdown.map((entry) => (
+        <span
+          key={`${entry.kind}-${entry.label}`}
+          className={`chat-roll-source chat-roll-source--${entry.kind ?? 'other'}`}
+        >
+          {entry.label} {entry.value >= 0 ? '+' : '−'}
+          {Math.abs(entry.value)}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 /** A roll result card — visually distinct from plain chat messages. */
 function RollRow({ message }: { message: ChatMessageView }) {
   const roll = message.roll;
   if (!roll) return null;
   const isGmRoll = message.kind === 'gmroll';
+  // Sheet rolls speak for the character; chat commands for the user.
+  const label = roll.actor ?? message.authorName;
 
   return (
     <div className={`chat-message chat-roll${isGmRoll ? ' chat-roll--gm' : ''}`}>
       <div className="chat-message-meta">
-        <span className="chat-message-author">{message.authorName}</span>
+        <span className="chat-message-author">{label}</span>
+        {roll.actor && <span className="chat-roll-actor-by">({message.authorName})</span>}
         {isGmRoll && <span className="chat-roll-gm-label">rzut do MG</span>}
         <span className="chat-message-time">{formatTime(message.createdAt)}</span>
       </div>
       <div className="chat-roll-body">
         <div className="chat-roll-header">
           <span className="chat-roll-notation">
-            {roll.notation}
-            {message.text && <span className="chat-roll-flavor"> — {message.text}</span>}
+            {roll.title ?? roll.notation}
+            {roll.title && <span className="chat-roll-formula"> · {roll.notation}</span>}
+            {message.text && !roll.title && (
+              <span className="chat-roll-flavor"> — {message.text}</span>
+            )}
           </span>
           <span className="chat-roll-total">{roll.total}</span>
         </div>
         <RollDice roll={roll} />
+        <RollBreakdown roll={roll} />
         {(roll.critical || roll.criticalDamage) && (
           <div className="chat-roll-badges">
             {roll.critical?.type === 'crit' && (

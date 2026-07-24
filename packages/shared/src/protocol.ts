@@ -78,6 +78,20 @@ export interface ChatSendPayload {
   gesture?: RollGesture;
 }
 
+/**
+ * Client → server payload of `character:roll` — a check rolled from a sheet.
+ * The request itself is system-specific (CP RED: `CpredRollRequest`), so the
+ * core protocol only carries it; the server's system module validates it.
+ */
+export interface CharacterRollPayload<TRequest = unknown> {
+  characterId: string;
+  request: TRequest;
+  /** `gm` = result visible to the author and the GM only (whisper pattern). */
+  visibility: 'public' | 'gm';
+  /** Present when the roll was thrown with the dice cup. */
+  gesture?: RollGesture;
+}
+
 /** Client → server payload of `chat:history`. */
 export interface ChatHistoryRequest {
   /** Return messages with id lower than this (exclusive). */

@@ -8,14 +8,14 @@ Spięcie stołu w całość: klik w umiejętność wykonuje rzut z modyfikatoram
 
 ## Zakres
 
-- [ ] Klik w umiejętność/statystykę na karcie → rzut `1d10 + STAT + umiejętność` przez silnik z etapu 06, wynik na czacie z opisem („Rebeka: Percepcja (INT) = 17")
-- [ ] Okno rzutu przed wykonaniem: modyfikator sytuacyjny ad hoc, rzut publiczny/prywatny; zapamiętywanie ostatniego wyboru
-- [ ] Automatyczne modyfikatory stanu: poważnie ranny (kary wg zasad CP RED) doliczane i pokazywane w rozbiciu rzutu
-- [ ] Punkty szczęścia (LUCK): pula na karcie, wydawanie punktów przy rzucie (dodawane do wyniku), odnawianie puli przyciskiem MG/sesyjnie
-- [ ] Powiązanie token ↔ karta: token wskazuje postać; pasek HP tokenu czyta z karty; zmiana HP na karcie/tokenie aktualizuje oba
-- [ ] Dwuklik na tokenie otwiera kartę (z uprawnieniami: gracz — swoją; MG — każdą; cudzy token gracza → podgląd ograniczony lub brak)
-- [ ] Szybka zmiana HP z tokenu (+/-) dla MG
-- [ ] Przegląd całości i naprawa najgrubszych zgrzytów UX zgłoszonych podczas testu (patrz kryteria)
+- [x] Klik w umiejętność/statystykę na karcie → rzut `1d10 + STAT + umiejętność` przez silnik z etapu 06, wynik na czacie z opisem („Rebeka: Percepcja (INT) = 17")
+- [x] Okno rzutu przed wykonaniem: modyfikator sytuacyjny ad hoc, rzut publiczny/prywatny; zapamiętywanie ostatniego wyboru
+- [x] Automatyczne modyfikatory stanu: poważnie ranny (kary wg zasad CP RED) doliczane i pokazywane w rozbiciu rzutu
+- [x] Punkty szczęścia (LUCK): pula na karcie, wydawanie punktów przy rzucie (dodawane do wyniku), odnawianie puli przyciskiem MG/sesyjnie
+- [x] Powiązanie token ↔ karta: token wskazuje postać; pasek HP tokenu czyta z karty; zmiana HP na karcie/tokenie aktualizuje oba
+- [x] Dwuklik na tokenie otwiera kartę (z uprawnieniami: gracz — swoją; MG — każdą; cudzy token gracza → podgląd ograniczony lub brak)
+- [x] Szybka zmiana HP z tokenu (+/-) dla MG
+- [x] Przegląd całości i naprawa najgrubszych zgrzytów UX zgłoszonych podczas testu (patrz kryteria)
 
 ## Poza zakresem
 

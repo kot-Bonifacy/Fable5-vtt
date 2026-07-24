@@ -1538,3 +1538,216 @@ input[type='color'] {
   font-size: 0.85rem;
   line-height: 1.45;
 }
+
+/* --- stage 08: sheet rolls, wound state, token HP shortcuts --- */
+
+/* A check loaded into the cup from a character sheet. */
+.dice-cup--sheet {
+  --cup-glow: 52 199 89;
+  color: var(--ok);
+  border-color: var(--ok);
+  animation: dice-cup-pulse 1.6s ease-in-out infinite;
+}
+
+/* Clickable skill / stat = roll trigger. */
+.skill-roll,
+.stat-roll {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.skill-roll:hover,
+.stat-roll:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.stat-roll {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.05em;
+}
+
+.stat-roll:hover {
+  text-decoration: underline;
+}
+
+.skill-base-roll {
+  width: 100%;
+  text-align: center;
+  font-weight: 700;
+}
+
+.wound-badge {
+  margin: 0.1rem 0 0.2rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+
+.wound-badge--light {
+  color: var(--text-dim);
+  border-color: var(--border);
+}
+
+.wound-badge--serious {
+  color: #f59e0b;
+  border-color: #f59e0b;
+  background: rgb(245 158 11 / 0.08);
+}
+
+.wound-badge--mortal {
+  color: var(--err);
+  border-color: var(--err);
+  background: rgb(255 59 48 / 0.1);
+}
+
+.luck-refresh {
+  margin-left: 0.3rem;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.luck-refresh:hover:not(:disabled) {
+  color: var(--ok);
+}
+
+.luck-refresh:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Roll dialog */
+.roll-dialog {
+  min-width: 20rem;
+}
+
+.roll-preview {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin: 0.2rem 0 0.6rem;
+  padding: 0.4rem 0.5rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.roll-preview li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.roll-preview--wound {
+  color: #f59e0b;
+}
+
+.roll-preview--luck {
+  color: var(--ok);
+}
+
+.roll-preview-total {
+  margin-top: 0.25rem;
+  padding-top: 0.25rem;
+  border-top: 1px solid var(--border);
+  font-weight: 700;
+}
+
+.roll-visibility {
+  border: none;
+  display: flex;
+  gap: 1rem;
+  margin: 0.4rem 0;
+  font-size: 0.85rem;
+}
+
+.roll-dialog-hint {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+/* Roll card: character name + modifier sources */
+.chat-roll-actor-by {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.chat-roll-formula {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.chat-roll-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.3rem;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.chat-roll-source {
+  padding: 0.05rem 0.3rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.chat-roll-source--wound {
+  color: #f59e0b;
+  border-color: #f59e0b;
+}
+
+.chat-roll-source--luck {
+  color: var(--ok);
+  border-color: var(--ok);
+}
+
+.chat-roll-source--situational {
+  color: var(--text);
+}
+
+/* Token context menu: quick HP */
+.context-menu-hp {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.3rem 0.6rem 0.45rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.context-menu-hp-value {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.context-menu-hp-buttons {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.context-menu-hp-buttons button {
+  flex: 1;
+}
+
+/* The roll dialog is opened from a sheet window (z-index 300+) — it has to
+   sit above it, otherwise the sheet covers half of the dialog. */
+.dialog-backdrop:has(.roll-dialog) {
+  z-index: 400;
+}

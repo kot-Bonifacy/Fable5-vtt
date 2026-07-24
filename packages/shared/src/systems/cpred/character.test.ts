@@ -7,7 +7,13 @@ import {
   validateCharacterDataPatch,
   type CpredRegistry,
 } from './character.js';
-import { deathSaveTarget, hpMax, humanityMax, seriousWoundThreshold, skillBase } from './derived.js';
+import {
+  deathSaveTarget,
+  hpMax,
+  humanityMax,
+  seriousWoundThreshold,
+  skillBase,
+} from './derived.js';
 import { sanitizeCharacterName } from '../../characters.js';
 
 const registry: CpredRegistry = buildCpredRegistry(
@@ -82,7 +88,9 @@ describe('validateCharacterDataPatch', () => {
         roleId: 'solo',
         roleAbilityRank: 4,
         eddies: 500,
-        weapons: [{ id: 'w1', name: 'Ciężki pistolet', damage: '3k6', ammo: '8', rof: '2', notes: '' }],
+        weapons: [
+          { id: 'w1', name: 'Ciężki pistolet', damage: '3k6', ammo: '8', rof: '2', notes: '' },
+        ],
       },
       registry,
     );
@@ -129,11 +137,18 @@ describe('validateCharacterDataPatch', () => {
   });
 
   it('rejects oversized item lists and bad rows', () => {
-    const rows = Array.from({ length: 41 }, (_, i) => ({ id: `g${i}`, name: 'x', notes: '', qty: 1 }));
+    const rows = Array.from({ length: 41 }, (_, i) => ({
+      id: `g${i}`,
+      name: 'x',
+      notes: '',
+      qty: 1,
+    }));
     expect(validateCharacterDataPatch({ gear: rows }, registry).ok).toBe(false);
     expect(
-      validateCharacterDataPatch({ armor: [{ id: 'a1', name: 'Kurtka', notes: '', sp: 99 }] }, registry)
-        .ok,
+      validateCharacterDataPatch(
+        { armor: [{ id: 'a1', name: 'Kurtka', notes: '', sp: 99 }] },
+        registry,
+      ).ok,
     ).toBe(false);
   });
 

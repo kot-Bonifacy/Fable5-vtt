@@ -1,10 +1,18 @@
-import { useEffect, useRef, useState, type ChangeEvent, type PointerEvent } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type MouseEvent,
+  type PointerEvent,
+} from 'react';
 import type { CpredCharacterData, CpredItemRow, PortraitUploadResult } from '@vtt/shared';
 import {
   CPRED_STAT_IDS,
   CPRED_STAT_LABELS,
   CPRED_STAT_MAX,
   CPRED_STAT_MIN,
+  CPRED_WOUND_LABELS,
   ROLE_RANK_MAX,
   ROLE_RANK_MIN,
   SKILL_LEVEL_MAX,
@@ -15,6 +23,8 @@ import {
   seriousWoundThreshold,
   skillBase,
   validateCharacterDataPatch,
+  woundCheckPenalty,
+  woundState,
 } from '@vtt/shared';
 import { ApiError, apiUpload } from '../api.js';
 import { flushCharacterSave, queueCharacterSave } from '../socket.js';
@@ -23,6 +33,7 @@ import {
   useCharacterStore,
   type CharacterSheetView,
 } from '../stores/characterStore.js';
+import { quickLoadCup, useRollStore, type RollTarget } from '../stores/rollStore.js';
 
 type SheetTab = 'stats' | 'combat' | 'gear' | 'bio';
 
@@ -217,7 +228,7 @@ function CharacterSheetWindow({
       </nav>
 
       <div className="sheet-body">
-        {tab === 'stats' && <StatsTab data={data} saveData={saveData} />}
+        {tab === 'stats' && <StatsTab character={character} data={data} saveData={saveData} />}
         {tab === 'combat' && <CombatTab data={data} saveData={saveData} />}
         {tab === 'gear' && <GearTab data={data} saveData={saveData} />}
         {tab === 'bio' && (
@@ -243,10 +254,26 @@ interface TabProps {
   saveData: (patch: Partial<CpredCharacterData>, fieldKey: string) => void;
 }
 
-function StatsTab({ data, saveData }: TabProps) {
+function StatsTab({ character, data, saveData }: TabProps & { character: CharacterSheetView }) {
   const registry = useCharacterStore((s) => s.registry);
   const maxHp = hpMax(data.stats);
   const role = registry.roles.find((r) => r.id === data.roleId) ?? null;
+  const wound = woundState(data.hpCurrent, data.stats);
+  const woundPenalty = woundCheckPenalty(wound);
+
+  /**
+   * Click opens the roll dialog, Shift+click loads the cup straight away with
+   * the last used settings. Either way the throw itself happens at the cup.
+   */
+  function startRoll(target: Omit<RollTarget, 'characterId' | 'characterName'>, shift: boolean) {
+    const full: RollTarget = {
+      characterId: character.id,
+      characterName: character.name,
+      ...target,
+    };
+    if (shift) quickLoadCup(full, data, registry);
+    else useRollStore.getState().openDialog(full);
+  }
 
   function setStat(statId: (typeof CPRED_STAT_IDS)[number], event: ChangeEvent<HTMLInputElement>) {
     const value = parseNumberInput(event);
@@ -267,18 +294,34 @@ function StatsTab({ data, saveData }: TabProps) {
     <div className="sheet-stats">
       <div className="stat-grid">
         {CPRED_STAT_IDS.map((id) => (
-          <label key={id} className="stat-box" title={CPRED_STAT_LABELS[id].name}>
-            <span className="stat-abbr">{CPRED_STAT_LABELS[id].abbr}</span>
+          <div key={id} className="stat-box" title={CPRED_STAT_LABELS[id].name}>
+            <button
+              type="button"
+              className="stat-abbr stat-roll"
+              onClick={(e: MouseEvent) => startRoll({ kind: 'stat', statId: id }, e.shiftKey)}
+              title={`Rzut: ${CPRED_STAT_LABELS[id].name} (Shift — bez okna)`}
+            >
+              {CPRED_STAT_LABELS[id].abbr}
+            </button>
             <input
               type="number"
               min={CPRED_STAT_MIN}
               max={CPRED_STAT_MAX}
               value={data.stats[id]}
               onChange={(e) => setStat(id, e)}
+              aria-label={CPRED_STAT_LABELS[id].name}
             />
-          </label>
+          </div>
         ))}
       </div>
+
+      {wound !== 'healthy' && (
+        <p className={`wound-badge wound-badge--${wound}`}>
+          {CPRED_WOUND_LABELS[wound]}
+          {woundPenalty !== 0 && ` — −${Math.abs(woundPenalty)} do wszystkich testów`}
+          {wound === 'mortal' && ' i Testy Przeżywalności'}
+        </p>
+      )}
 
       <div className="derived-strip">
         <label className="derived-box" title="Punkty Wytrzymałości: obecne / maksymalne">
@@ -303,7 +346,18 @@ function StatsTab({ data, saveData }: TabProps) {
           <span className="derived-value">{deathSaveTarget(data.stats)}</span>
         </div>
         <label className="derived-box" title="Punkty Szczęścia: obecne / maksymalne (SZ)">
-          <span>Szczęście</span>
+          <span>
+            Szczęście
+            <button
+              type="button"
+              className="luck-refresh"
+              onClick={() => saveData({ luckCurrent: data.stats.luck }, 'luckCurrent')}
+              title="Odnów pulę Szczęścia (RAW: na początku każdej sesji)"
+              disabled={data.luckCurrent >= data.stats.luck}
+            >
+              ↻
+            </button>
+          </span>
           <span className="derived-value">
             <input
               type="number"
@@ -335,7 +389,9 @@ function StatsTab({ data, saveData }: TabProps) {
           Rola
           <select
             value={data.roleId ?? ''}
-            onChange={(e) => saveData({ roleId: e.target.value === '' ? null : e.target.value }, 'roleId')}
+            onChange={(e) =>
+              saveData({ roleId: e.target.value === '' ? null : e.target.value }, 'roleId')
+            }
           >
             <option value="">— brak —</option>
             {registry.roles.map((r) => (
@@ -374,11 +430,21 @@ function StatsTab({ data, saveData }: TabProps) {
         <tbody>
           {registry.skills.map((skill) => {
             const level = data.skills[skill.id] ?? 0;
+            const rollTitle = `Rzut: ${skill.name} (${CPRED_STAT_LABELS[skill.stat].abbr}) — Shift pomija okno`;
             return (
               <tr key={skill.id} className={level > 0 ? 'skill-trained' : ''}>
                 <td>
-                  {skill.name}
-                  {skill.multiplier === 2 ? ' (×2)' : ''}
+                  <button
+                    type="button"
+                    className="skill-roll"
+                    onClick={(e: MouseEvent) =>
+                      startRoll({ kind: 'skill', skillId: skill.id }, e.shiftKey)
+                    }
+                    title={rollTitle}
+                  >
+                    {skill.name}
+                    {skill.multiplier === 2 ? ' (×2)' : ''}
+                  </button>
                 </td>
                 <td>{CPRED_STAT_LABELS[skill.stat].abbr}</td>
                 <td>
@@ -392,9 +458,21 @@ function StatsTab({ data, saveData }: TabProps) {
                       if (value === undefined) return;
                       saveData({ skills: { ...data.skills, [skill.id]: value } }, 'skills');
                     }}
+                    aria-label={`Poziom: ${skill.name}`}
                   />
                 </td>
-                <td className="skill-base">{skillBase(data.stats[skill.stat], level)}</td>
+                <td className="skill-base">
+                  <button
+                    type="button"
+                    className="skill-roll skill-base-roll"
+                    onClick={(e: MouseEvent) =>
+                      startRoll({ kind: 'skill', skillId: skill.id }, e.shiftKey)
+                    }
+                    title={rollTitle}
+                  >
+                    {skillBase(data.stats[skill.stat], level)}
+                  </button>
+                </td>
               </tr>
             );
           })}

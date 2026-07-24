@@ -15,10 +15,10 @@ export interface TokenHp {
 }
 
 /**
- * A token as seen by one viewer. `hp` is present only when the viewer is
- * allowed to see it (the owner or the GM) — for everyone else the field is
- * absent and never crosses the wire. Players never receive views with
- * `hidden: true` at all.
+ * A token as seen by one viewer. `hp` and `characterId` are present only when
+ * the viewer is allowed to see them (the token's owner, the linked
+ * character's owner or the GM) — for everyone else the fields are absent and
+ * never cross the wire. Players never receive views with `hidden: true` at all.
  */
 export interface TokenView {
   id: string;
@@ -36,7 +36,14 @@ export interface TokenView {
   hidden: boolean;
   /** Status ids — definitions (PL name, icon) live in data, not code. */
   statuses: string[];
+  /**
+   * HP shown on the token's bar. For a token linked to a character this
+   * mirrors the sheet (the sheet is the single source of truth); standalone
+   * tokens keep their own pair.
+   */
   hp?: TokenHp | null;
+  /** Linked character id; null = standalone token. */
+  characterId?: string | null;
 }
 
 /** One entry of the status registry (`data/public/cpred/statuses.json`). */
@@ -66,6 +73,8 @@ export interface TokenCreatePayload {
   ownerId?: string | null;
   hidden?: boolean;
   hp?: TokenHp | null;
+  /** Link to a character sheet; its HP then drives the token's bar. */
+  characterId?: string | null;
 }
 
 /** Mutable token fields; a patch carries any subset. */
@@ -75,8 +84,10 @@ export interface TokenPatch {
   size?: number;
   ownerId?: string | null;
   hidden?: boolean;
+  /** For a linked token the server writes this through to the sheet. */
   hp?: TokenHp | null;
   statuses?: string[];
+  characterId?: string | null;
 }
 
 /** Client → server payload of `token:update` (GM only). */
@@ -217,6 +228,10 @@ export function sanitizeTokenPatch(
     const hp = sanitizeTokenHp(input.hp);
     if (hp === undefined) return null;
     patch.hp = hp;
+  }
+  if ('characterId' in input) {
+    if (input.characterId !== null && typeof input.characterId !== 'string') return null;
+    patch.characterId = input.characterId;
   }
   if ('statuses' in input) {
     if (!Array.isArray(input.statuses)) return null;

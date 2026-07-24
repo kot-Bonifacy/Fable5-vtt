@@ -18,6 +18,8 @@ const MIN_ZOOM = 0.05;
 const MAX_ZOOM = 8;
 /** Screen-pixel distance that turns a click into a drag. */
 const DRAG_THRESHOLD_PX = 4;
+/** Max gap between two clicks on a token to count as a double-click. */
+const DOUBLE_CLICK_MS = 350;
 
 interface DragState {
   node: TokenNode;
@@ -48,6 +50,8 @@ export class MapRenderer {
   onTokenMenu: ((tokenId: string, clientX: number, clientY: number) => void) | null = null;
   /** Plain click on the map (world px) — used by token placement mode. */
   onMapClick: ((x: number, y: number) => void) | null = null;
+  /** Double-click on a token — opens its character sheet (stage 08). */
+  onTokenActivate: ((tokenId: string) => void) | null = null;
 
   private readonly app = new Application();
   private viewport: Viewport | null = null;
@@ -56,6 +60,8 @@ export class MapRenderer {
   private readonly tokenLayer = new Container();
   private readonly dragGhost = new Graphics();
   private readonly tokenNodes = new Map<string, TokenNode>();
+  /** tokenId → may the local user drag it (GM or owner). */
+  private readonly movableTokens = new Map<string, boolean>();
   private drag: DragState | null = null;
   private scene: SceneView | null = null;
   private sceneId: string | null = null;
@@ -146,15 +152,19 @@ export class MapRenderer {
         this.tokenLayer.addChild(node);
         this.wireInteraction(node);
       }
+      // Every token stays interactive (double-click opens its sheet); only
+      // dragging is restricted to the GM and the token's owner.
       const movable = ctx.isGm || token.ownerId === ctx.myUserId;
-      node.eventMode = movable ? 'static' : 'none';
-      node.cursor = 'pointer';
+      this.movableTokens.set(token.id, movable);
+      node.eventMode = 'static';
+      node.cursor = movable ? 'pointer' : 'default';
       node.update(token, ctx, this.drag?.node === node);
     }
     for (const [id, node] of this.tokenNodes) {
       if (!seen.has(id)) {
         if (this.drag?.node === node) this.endDrag(false);
         this.tokenNodes.delete(id);
+        this.movableTokens.delete(id);
         node.destroy({ children: true });
       }
     }
@@ -164,6 +174,7 @@ export class MapRenderer {
     if (this.drag) this.endDrag(false);
     for (const node of this.tokenNodes.values()) node.destroy({ children: true });
     this.tokenNodes.clear();
+    this.movableTokens.clear();
     this.tokenLayer.removeChildren();
   }
 
@@ -183,13 +194,24 @@ export class MapRenderer {
   }
 
   private wireInteraction(node: TokenNode): void {
+    // Pixi has no dblclick: count two quick clicks on the same token.
+    let lastClickAt = 0;
     node.on('pointerdown', (event: FederatedPointerEvent) => {
       if (event.button === 2) {
         const rect = this.app.canvas.getBoundingClientRect();
         this.onTokenMenu?.(node.tokenId, rect.left + event.global.x, rect.top + event.global.y);
         return;
       }
-      if (event.button !== 0 || this.drag || !this.viewport) return;
+      if (event.button !== 0) return;
+      const now = performance.now();
+      if (now - lastClickAt < DOUBLE_CLICK_MS) {
+        lastClickAt = 0;
+        this.onTokenActivate?.(node.tokenId);
+        return;
+      }
+      lastClickAt = now;
+      if (this.movableTokens.get(node.tokenId) === false) return;
+      if (this.drag || !this.viewport) return;
       const world = this.viewport.toWorld(event.global.x, event.global.y);
       this.drag = {
         node,
