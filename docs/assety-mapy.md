@@ -10,7 +10,10 @@ Notatki z etapu 04. Gdzie brać grafiki map, czego pilnować licencyjnie i jak g
 
 ## Plik testowy w repo
 
-- `data/public/maps/test-map-4096.png` — generowany programowo (skrypt z sesji etapu 04), 4096×4096 px, kwartały miasta wyrównane do kratki 100 px. Służy do testów wydajności i kalibracji siatki; wolny od praw osób trzecich.
+- `data/public/maps/test-map-4096.png` — generowany programowo przez `scripts/generate-test-map.mjs` (czysty Node, bez zależności; PNG kodowany ręcznie). 4096×4096 px, ~4,3 MB. Wolny od praw osób trzecich, bez wrysowanej siatki i bez tekstu. Regeneracja: `node scripts/generate-test-map.mjs [plik]`.
+- **Skala jest wiążąca dla wyglądu mapy.** Przy 1 kratce = 2 m i 100 px/kratkę mapa 4096 px to ~82 × 82 m — czyli **jedno skrzyżowanie**, nie dzielnica. Poprzednia wersja rysowała 5×5 „kwartałów”, z których każdy miał w praktyce 6,6 m szerokości; dlatego wyglądała jak schemat, a nie miasto. Jeśli będziesz robić kolejne mapy proceduralnie — najpierw policz metry.
+- Zawartość: aleja N–S (20 m) × przecznica E–W (12 m), zaokrąglone krawężniki, przejścia dla pieszych, sygnalizacja, wysepka rozdzielająca, cztery narożniki zabudowy (dach z lądowiskiem, kamienice z zaułkami 2 m, parking, plac budowy, stragany), auta przy krawężniku i w ruchu, neony z poświatą, kałuże. Wszystkie krawędzie ulic i budynków leżą na wielokrotnościach 100 px, więc siatka pasuje przy offsecie 0.
+- W rogach są cztery małe kropki kalibracyjne (cyan / limonka / bursztyn / magenta) — pozwalają na pierwszy rzut oka potwierdzić, że wczytało się pełne 4096 px.
 
 ## Darmowe mapy z sieci (sprawdzone źródła)
 
