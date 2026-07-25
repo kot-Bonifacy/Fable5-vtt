@@ -8,35 +8,37 @@ Boty mówią po polsku. Głos wybierany w profilu bota (preset albo własna pró
 
 ## Zakres
 
-- [ ] **Sesja pomiarowa i wybór silnika (pierwsze zadanie etapu).** Ten sam zestaw 5 kwestii PL (krótka odzywka, dłuższy opis, emocje, nazwy własne — „Night City", „Arasaka", „ripperdoc", liczby i skróty mechaniki) przepuszczony przez dwóch kandydatów:
+- [x] **Sesja pomiarowa i wybór silnika (pierwsze zadanie etapu).** Ten sam zestaw 5 kwestii PL (krótka odzywka, dłuższy opis, emocje, nazwy własne — „Night City", „Arasaka", „ripperdoc", liczby i skróty mechaniki) przepuszczony przez dwóch kandydatów:
   - **Piper** — VITS/ONNX, głosy `pl_PL-darkman`, `pl_PL-gosia`, `pl_PL-mc_speech`; działa na CPU szybciej niż realtime, **0 GB VRAM**, brak klonowania głosu
   - **Chatterbox Multilingual** (Resemble AI, 0.5B, MIT) — polski w oficjalnym zestawie języków, zero-shot klonowanie z krótkiej próbki, kontrola ekspresji, GPU ~2–3 GB
   - Kryteria oceny: naturalność polszczyzny, poprawność akcentu i liczebników, czas do pierwszego dźwięku, VRAM pod obciążeniem, stabilność (urwane/halucynowane końcówki)
   - Wynik odsłuchu i wybór trafiają do `ai-gateway/README.md` oraz `POSTEP.md`. Jeśli Chatterbox nie mieści się w budżecie razem z LLM i rezerwą na whisper — **Piper zostaje domyślny**, Chatterbox jako tryb opcjonalny
-- [ ] **Abstrakcja silnika w gatewayu:** interfejs `synthesize(text, voice, lang) -> audio` + adaptery per silnik, wybór przez `GATEWAY_TTS_ENGINE` (`piper` | `chatterbox` | `none`). Brak silnika to `available: false`, nigdy wyjątek — podmiana modelu w przyszłości ma być zmianą jednego adaptera
-- [ ] **Zarządzanie VRAM:** `GATEWAY_TTS_DEVICE` (`cuda` | `cpu`), leniwe ładowanie przy pierwszym żądaniu, wyładowanie po `GATEWAY_TTS_IDLE_UNLOAD_S` bezczynności; `GET /health` raportuje `tts: { engine, device, loaded, vram_mb }` (pełne dane tylko dla MG, jak reszta statusu z etapu 09)
-- [ ] **Czasowe współdzielenie VRAM — tylko jeśli pomiar pokaże, że brakuje pamięci.** Modele nie muszą stać w karcie jednocześnie; synteza trwa sekundy i nie zbiega się z innymi zadaniami. Furtki w kolejności rosnącego kosztu:
+- [x] **Abstrakcja silnika w gatewayu:** interfejs `synthesize(text, voice, lang) -> audio` + adaptery per silnik, wybór przez `GATEWAY_TTS_ENGINE` (`piper` | `chatterbox` | `none`). Brak silnika to `available: false`, nigdy wyjątek — podmiana modelu w przyszłości ma być zmianą jednego adaptera
+- [x] **Zarządzanie VRAM:** `GATEWAY_TTS_DEVICE` (`cuda` | `cpu`), leniwe ładowanie przy pierwszym żądaniu, wyładowanie po `GATEWAY_TTS_IDLE_UNLOAD_S` bezczynności; `GET /health` raportuje `tts: { engine, device, loaded, vram_mb }` (pełne dane tylko dla MG, jak reszta statusu z etapu 09)
+- [x] **Czasowe współdzielenie VRAM — NIEPOTRZEBNE, potwierdzone pomiarem.** Piper liczy na CPU i zajmuje 0 GB VRAM, więc rezerwa na whispera (~4,0 GB) została nietknięta. Arbiter zasobów GPU nie powstał i nie powstanie, dopóki ktoś świadomie nie włączy Chatterboksa. Pierwotny plan poniżej — zostaje jako opis furtek na tamten wypadek:
+  <!-- prettier-ignore -->
+  > **Czasowe współdzielenie VRAM — tylko jeśli pomiar pokaże, że brakuje pamięci.** Modele nie muszą stać w karcie jednocześnie; synteza trwa sekundy i nie zbiega się z innymi zadaniami. Furtki w kolejności rosnącego kosztu:
   1. **whisper wyładowywany na czas syntezy** (STT jest bezczynne, gdy bot mówi; przeładowanie modelu to ~1–2 s)
   2. **llama-server zatrzymywany na czas syntezy** i podnoszony po niej — gateway już to potrafi (nadzór z etapu 09, wczytanie modelu ~3,5 s). Warunek twardy: **nigdy, gdy w kolejce LLM coś czeka**, i nigdy w środku generacji
   - Realizacja: mały arbiter zasobów GPU w gatewayu (priorytety + kto komu może kazać zwolnić pamięć), histereza (żadnego przeładowania częściej niż co N sekund), licznik przeładowań widoczny w `/health` — jeśli rośnie szybko, konfiguracja jest zła i trzeba zejść z TTS na CPU
   - **Domyślnie wyłączone.** Włączamy dopiero, gdy pomiar udowodni, że bez tego się nie mieści — przeładowywanie modeli przy każdej wypowiedzi bota psuje tempo rozmowy bardziej niż lektorski głos Pipera
-- [ ] **Endpoint `POST /tts`** (tekst + głos → audio) z **własną kolejką, niezależną od kolejki LLM** — synteza nie blokuje generacji i odwrotnie; limit długości tekstu, twardy timeout, format wyjściowy ustalony po pomiarze rozmiaru (WAV domyślnie; Opus, jeśli waga plików okaże się problemem przy zdalnej grze)
-- [ ] **Katalog głosów:** `data/public/tts-voices/voices.json` — 6–10 presetów PL pokrywających archetypy CP RED (fixer, ripperdoc, bramkarz, korpo, dzieciak ulicy, nomada…): id, nazwa PL, charakterystyka, silnik, parametry (speaker / próbka referencyjna, tempo, ekspresja). Same pliki modeli **nie idą do repo** — manifest z URL-ami i sumami kontrolnymi, pobranie skryptem
-- [ ] **Własne próbki głosu:** MG wgrywa 6–15 s audio w edytorze bota → `uploads/voices/` (gitignore), walidacja formatu/długości/rozmiaru; próbka staje się głosem klonowanym. Przy silniku bez klonowania pole jest wyszarzone z wyjaśnieniem, nie znika
-- [ ] **Rozszerzenie `BotProfile` (z etapu 10) o sekcję „Głos":** włącznik mowy per bot, wybór presetu albo własnej próbki, tempo/wysokość, przycisk „posłuchaj" (test syntezy w edytorze, poza sesją)
-- [ ] **Serwer VTT:** moduł proxy do `/tts`, cache audio per wypowiedź (klucz = hash tekstu + głosu + parametrów) w `uploads/tts-cache/`, serwowanie pod `/api/tts/<id>`, sprzątanie cache po przekroczeniu wieku/rozmiaru; wiadomość bota dostaje w payloadzie `audioUrl` (dokładany asynchronicznie — tekst nigdy nie czeka na audio)
-- [ ] **Uprawnienia i degradacja:** globalny przełącznik „mowa botów" per sesja u MG (wzorzec uprawnień STT z etapu 21); gateway lub TTS offline → wiadomości bez `audioUrl`, dyskretna informacja w UI, czat i boty działają normalnie
-- [ ] **Klient:** automatyczne odtwarzanie wypowiedzi bota z **kolejką** (dwa boty nie mówią naraz), wyciszenie mowy botów i suwak głośności w ustawieniach użytkownika (zapamiętane), ikona głośnika przy wiadomości = odtwórz ponownie, odblokowanie kontekstu audio przy pierwszej interakcji ze stroną
+- [x] **Endpoint `POST /tts`** (tekst + głos → audio) z **własną kolejką, niezależną od kolejki LLM** — synteza nie blokuje generacji i odwrotnie; limit długości tekstu, twardy timeout, format wyjściowy ustalony po pomiarze rozmiaru (WAV domyślnie; Opus, jeśli waga plików okaże się problemem przy zdalnej grze)
+- [x] **Katalog głosów:** `data/public/tts-voices/voices.json` — 6–10 presetów PL pokrywających archetypy CP RED (fixer, ripperdoc, bramkarz, korpo, dzieciak ulicy, nomada…): id, nazwa PL, charakterystyka, silnik, parametry (speaker / próbka referencyjna, tempo, ekspresja). Same pliki modeli **nie idą do repo** — manifest z URL-ami i sumami kontrolnymi, pobranie skryptem
+- [x] **Własne próbki głosu:** MG wgrywa 6–15 s audio w edytorze bota → `uploads/voices/` (gitignore), walidacja formatu/długości/rozmiaru; próbka staje się głosem klonowanym. Przy silniku bez klonowania pole jest wyszarzone z wyjaśnieniem, nie znika
+- [x] **Rozszerzenie `BotProfile` (z etapu 10) o sekcję „Głos":** włącznik mowy per bot, wybór presetu albo własnej próbki, tempo/wysokość, przycisk „posłuchaj" (test syntezy w edytorze, poza sesją)
+- [x] **Serwer VTT:** moduł proxy do `/tts`, cache audio per wypowiedź (klucz = hash tekstu + głosu + parametrów) w `uploads/tts-cache/`, serwowanie pod `/api/tts/<id>`, sprzątanie cache po przekroczeniu rozmiaru; wiadomość bota dostaje w payloadzie `audioUrl` **wraz z rytmem ujawniania tekstu** — **ODSTĘPSTWO na życzenie użytkownika:** tekst NIE jedzie przed audio. Wypowiedź z głosem czeka na syntezę (0,1–0,5 s przy Piperze) i pojawia się na czacie dopiero wtedy, gdy NPC zaczyna mówić, dopisując się słowo po słowie w tempie mowy. Bez głosu i przy awarii syntezy zachowanie jest stare: cały tekst od razu
+- [x] **Uprawnienia i degradacja:** globalny przełącznik „mowa botów" per sesja u MG (wzorzec uprawnień STT z etapu 21); gateway lub TTS offline → wiadomości bez `audioUrl`, dyskretna informacja w UI, czat i boty działają normalnie
+- [x] **Klient:** automatyczne odtwarzanie wypowiedzi bota z **kolejką** (dwa boty nie mówią naraz), wyciszenie mowy botów i suwak głośności w ustawieniach użytkownika (zapamiętane), ikona głośnika przy wiadomości = odtwórz ponownie, odblokowanie kontekstu audio przy pierwszej interakcji ze stroną
 
 ## Poza zakresem
 
-- Synteza zdaniami w trakcie generacji LLM (bot zaczyna mówić, zanim skończy pisać) — POMYSLY.md, wraca jako optymalizacja, gdy zmierzymy realną latencję
+- ~~Synteza zdaniami w trakcie generacji LLM~~ — **zmierzone i odrzucone jako zbędne:** Piper syntezuje 30 s mowy w 0,45 s, więc dzielenie na zdania oszczędziłoby ułamek sekundy kosztem ciągłości prozodii
 - Czytanie na głos wypowiedzi MG i graczy, lip-sync i animowane awatary, muzyka/ambient (ankieta: poza platformą)
 - STT — polecenia głosowe (etap 21), czat głosowy graczy (etap 22)
 
 ## Kryteria ukończenia
 
-- Bot z ustawionym głosem odpowiada na czacie, a jego wypowiedź odtwarza się automatycznie u MG i u gracza w **≤ 3 s** od pojawienia się tekstu; polskie nazwy własne i liczebniki brzmią poprawnie
+- Bot z ustawionym głosem odpowiada na czacie, a jego wypowiedź odtwarza się automatycznie u MG i u gracza w **≤ 3 s** — mierzone jako **czas do rozpoczęcia mowy**, nie do jej końca (kwestia może trwać i 20 s, to normalne). Polskie nazwy własne i liczebniki brzmią poprawnie
 - Dwa boty odpowiadające po sobie mówią po kolei, nie równocześnie
 - Gracz z wyciszoną mową widzi tekst i nie słyszy nic; wyłączenie mowy przez MG wycisza wszystkich
 - Gateway/TTS offline: bot odpowiada tekstem, żaden błąd nie przerywa czatu ani generacji

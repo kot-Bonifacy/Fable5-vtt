@@ -38,6 +38,8 @@ const config: ServerConfig = {
   aiGatewayApiKey: '',
   aiHealthIntervalMs: 60_000,
   aiRequestTimeoutMs: 1000,
+  ttsTimeoutMs: 5000,
+  ttsCacheMaxBytes: 8 * 1024 * 1024,
 };
 
 // Smallest valid 1×1 PNG — enough for the sniffing/dimension pipeline.

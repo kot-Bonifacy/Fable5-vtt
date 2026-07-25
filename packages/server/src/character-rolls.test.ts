@@ -45,6 +45,8 @@ const config: ServerConfig = {
   aiGatewayApiKey: '',
   aiHealthIntervalMs: 60_000,
   aiRequestTimeoutMs: 1000,
+  ttsTimeoutMs: 5000,
+  ttsCacheMaxBytes: 8 * 1024 * 1024,
 };
 
 let built: BuiltApp;

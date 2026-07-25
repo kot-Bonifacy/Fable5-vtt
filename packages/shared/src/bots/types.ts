@@ -82,18 +82,28 @@ export interface BotLesson {
 }
 
 /**
- * Placeholder for stage 12 (TTS). Declared now so adding speech needs no
- * migration — the whole profile lives in one JSON column.
+ * Speech (stage 12). The whole profile lives in one JSON column, so adding it
+ * needed no migration — `parseBotData` fills the section in for older bots.
  */
 export interface BotVoice {
   enabled: boolean;
   /** Id of a bundled Polish preset, or null when a sample is used. */
   presetId: string | null;
-  /** `/uploads/...` path of a cloning sample. */
+  /** `/uploads/voices/...` path of a cloning sample (engines that support it). */
   sampleUrl: string | null;
-  /** 0.5–1.5, 1 = engine default. */
+  /** 0.5–2.0, 1 = preset default. */
   rate: number;
+  /**
+   * 0.7–1.4, 1 = preset default. Piper has no pitch control, so the engine
+   * composes it from synthesis speed and playback sample rate — see the adapter.
+   */
+  pitch: number;
 }
+
+export const BOT_VOICE_RATE_MIN = 0.5;
+export const BOT_VOICE_RATE_MAX = 2;
+export const BOT_VOICE_PITCH_MIN = 0.7;
+export const BOT_VOICE_PITCH_MAX = 1.4;
 
 export interface BotProfileData {
   schemaVersion: typeof BOT_SCHEMA_VERSION;
@@ -267,6 +277,12 @@ export interface BotActivityEntry {
   /** 0 = generating, 1+ = place in the queue. */
   position: number;
   text: string;
+  /**
+   * The answer will be spoken (stage 12). Then `text` stays empty on purpose:
+   * the line appears only when the NPC starts saying it, so a live preview
+   * would give away the punchline.
+   */
+  speaking?: boolean;
   /**
    * Private turn (answer to a whisper) — delivered only to this user and the
    * GM, so a whispered answer never flashes on other clients.

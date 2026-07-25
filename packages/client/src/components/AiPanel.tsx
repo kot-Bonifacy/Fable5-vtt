@@ -58,7 +58,8 @@ function StatusLine({ status }: { status: AiStatus }) {
           <>
             <dt>VRAM</dt>
             <dd>
-              {Math.round(status.gpu.memoryUsedMb / 1024)} / {Math.round(status.gpu.memoryTotalMb / 1024)} GB
+              {Math.round(status.gpu.memoryUsedMb / 1024)} /{' '}
+              {Math.round(status.gpu.memoryTotalMb / 1024)} GB
             </dd>
           </>
         )}
@@ -120,7 +121,8 @@ function ExchangeCard({ exchange }: { exchange: AiExchange }) {
         <p className="ai-exchange-usage">
           {exchange.usage.completionTokens ?? '?'} tokenów
           {seconds !== null && ` · ${seconds.toFixed(1)} s`}
-          {exchange.usage.tokensPerSecond && ` · ${exchange.usage.tokensPerSecond.toFixed(1)} tok/s`}
+          {exchange.usage.tokensPerSecond &&
+            ` · ${exchange.usage.tokensPerSecond.toFixed(1)} tok/s`}
         </p>
       )}
     </li>

@@ -276,6 +276,66 @@ body {
   line-height: 1.2;
 }
 
+/* Speech (stage 12): a line being spoken writes itself out, so it ends with a
+   blinking caret until the NPC finishes the sentence. */
+.chat-speech-cursor {
+  display: inline-block;
+  width: 0.5ch;
+  height: 1em;
+  margin-left: 0.1ch;
+  vertical-align: text-bottom;
+  background: #e5a54b;
+  animation: speech-caret 1s steps(2, start) infinite;
+}
+
+@keyframes speech-caret {
+  50% {
+    opacity: 0;
+  }
+}
+
+.chat-replay {
+  padding: 0 0.3rem;
+  line-height: 1.2;
+  opacity: 0.55;
+}
+
+.chat-replay:hover {
+  opacity: 1;
+}
+
+.speech-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.speech-controls--off {
+  opacity: 0.6;
+}
+
+.speech-volume {
+  width: 5rem;
+}
+
+.small-button--on {
+  border-color: #4c8f4c;
+  color: #9fe09f;
+}
+
+.bot-warning {
+  margin: 0.2rem 0 0.4rem;
+  color: #e5a54b;
+  font-size: 0.82rem;
+}
+
+.bot-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.9rem;
+}
+
 .chat-queue-row {
   display: flex;
   align-items: center;

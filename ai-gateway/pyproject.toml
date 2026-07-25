@@ -9,6 +9,11 @@ dependencies = [
     "httpx>=0.28",
     "pydantic>=2.9",
     "pydantic-settings>=2.6",
+    # Głos botów (etap 12): Piper działa na CPU i nie dotyka VRAM-u.
+    # `onnx` jest potrzebny do wystawienia alignmentu fonemów w modelu głosu —
+    # z niego bierze się rytm ujawniania tekstu na czacie.
+    "piper-tts>=1.6",
+    "onnx>=1.18",
 ]
 
 [project.scripts]

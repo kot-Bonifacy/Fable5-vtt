@@ -41,6 +41,9 @@ import type {
   SceneViewBroadcast,
   ServerHello,
   SocketAck,
+  SpeechPreviewPayload,
+  SpeechPreviewResult,
+  SpeechStatus,
   StateSyncPayload,
   TokenCreatePayload,
   TokenDeleteBroadcast,
@@ -60,6 +63,8 @@ import {
   parseChatInput,
 } from '@vtt/shared';
 import { playRollAnimation, toAnimationNotation } from './dice3d.js';
+import { speakMessage, unlockAudioOnFirstGesture } from './speech.js';
+import { useSpeechStore } from './stores/speechStore.js';
 import { useConnectionStore } from './stores/connectionStore.js';
 import { oldestMessageId, useChatStore } from './stores/chatStore.js';
 import { useSceneStore } from './stores/sceneStore.js';
@@ -206,6 +211,8 @@ export function connectSocket(userId: string): Socket {
   socket = io();
   const { setConnected, setDisconnected, setServerHello } = useConnectionStore.getState();
   const chat = () => useChatStore.getState();
+  // Browsers refuse to play audio before the user has touched the page.
+  unlockAudioOnFirstGesture();
 
   socket.on('connect', () => setConnected());
   socket.on('disconnect', () => {
@@ -257,6 +264,7 @@ export function connectSocket(userId: string): Socket {
   // the gateway is an external service, not game state.
   const ai = () => useAiStore.getState();
   socket.on('ai:status', (broadcast: AiStatusBroadcast) => ai().setStatus(broadcast.status));
+  socket.on('speech:status', (status: SpeechStatus) => useSpeechStore.getState().setStatus(status));
   socket.on('ai:queue', (broadcast: AiQueueBroadcast) =>
     ai().setQueuePosition(broadcast.requestId, broadcast.position),
   );
@@ -279,11 +287,18 @@ export function connectSocket(userId: string): Socket {
   });
   socket.on('chat:message', (broadcast: ChatMessageBroadcast) => {
     const roll = broadcast.message.roll;
+    const speech = broadcast.message.speech;
     // Live rolls (never history/resync) replay the server's results in 3D;
     // their chat card is held back so the table reads the dice first.
-    const hold = roll !== undefined && toAnimationNotation(roll) !== null;
+    // A spoken NPC line is held for the same reason: it joins the feed when the
+    // NPC starts saying it, then writes itself out in step with the voice.
+    const hold = (roll !== undefined && toAnimationNotation(roll) !== null) || speech !== undefined;
     if (chat().applyMessage(broadcast, hold)) {
       socket?.emit('state:request');
+      return;
+    }
+    if (speech) {
+      speakMessage(broadcast.message);
       return;
     }
     if (hold && roll) {
@@ -580,6 +595,14 @@ export const sayAsBot = (payload: BotSayPayload) =>
 export function stopBots(turnId?: string): void {
   socket?.emit('bot:stop', turnId ? { turnId } : {});
 }
+
+/** GM's session-wide switch for bot speech. */
+export const toggleSpeech = (enabled: boolean) =>
+  emitSceneAck<{ enabled: boolean }>('speech:toggle', { enabled });
+
+/** „Posłuchaj" in the bot editor — synthesis outside the session. */
+export const previewVoice = (payload: SpeechPreviewPayload) =>
+  emitSceneAck<SpeechPreviewResult>('speech:preview', payload);
 
 function emitSceneAck<T = undefined>(event: string, payload: unknown): Promise<SocketAck<T>> {
   return new Promise((resolve) => {

@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "engine": "piper",
+  "note": "Same wagi nie idą do repo (370 MB). Pobierz je skryptem: pnpm tsx scripts/download-tts-voices.mjs albo python -m piper.download_voices --download-dir <dir> <id>.",
+  "source": "https://huggingface.co/rhasspy/piper-voices",
+  "models": [
+    {
+      "id": "pl_PL-darkman-medium",
+      "path": "pl/pl_PL/darkman/medium",
+      "sampleRate": 22050,
+      "sizeBytes": 63201294,
+      "sha256": "db505438a5364e8e2e0242c4324130a873ed660dfbe8d9689cef428ffb1b645f",
+      "license": "CC0",
+      "dataset": "https://github.com/OHF-Voice/voice-datasets"
+    },
+    {
+      "id": "pl_PL-gosia-medium",
+      "path": "pl/pl_PL/gosia/medium",
+      "sampleRate": 22050,
+      "sizeBytes": 63201294,
+      "sha256": "38f66464240ed74f186e6b7dc13c6e3b22e023426299f25c2b3cc9dfa9373fbc",
+      "license": "CC0",
+      "dataset": "https://github.com/OHF-Voice/voice-datasets"
+    },
+    {
+      "id": "pl_PL-mc_speech-medium",
+      "path": "pl/pl_PL/mc_speech/medium",
+      "sampleRate": 22050,
+      "sizeBytes": 63201294,
+      "sha256": "a6b043358bc81e6c111a5140606a21959ce7f34969b8b7207f62869787cc3907",
+      "license": "CC0",
+      "dataset": "https://www.kaggle.com/datasets/czyzi0/the-mc-speech-dataset"
+    },
+    {
+      "id": "pl_PL-bass-high",
+      "path": "pl/pl_PL/bass/high",
+      "sampleRate": 22050,
+      "sizeBytes": 114204024,
+      "sha256": "73b8408967c58118700f21eb2413cd8b666c7844c6136cf674bf5dd56bde72c2",
+      "license": "Apache-2.0",
+      "dataset": "https://huggingface.co/rhasspy/piper-voices"
+    },
+    {
+      "id": "pl_PL-mls_6892-low",
+      "path": "pl/pl_PL/mls_6892/low",
+      "sampleRate": 16000,
+      "sizeBytes": 63104526,
+      "sha256": "b572ab1a0f1d3b722b2a545e0b38834e6f932852cd0f11a44c022baa8f104c10",
+      "license": "CC-BY-4.0",
+      "dataset": "http://www.openslr.org/94/",
+      "attribution": "Multilingual LibriSpeech (MLS), speaker 6892 — CC BY 4.0"
+    }
+  ]
+}

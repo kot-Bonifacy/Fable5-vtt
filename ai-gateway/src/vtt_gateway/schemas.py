@@ -64,6 +64,21 @@ class GpuInfo(BaseModel):
     memory_used_mb: int
 
 
+class TtsStatusInfo(BaseModel):
+    """Stan silnika mowy. Serwer VTT pokazuje całość wyłącznie MG."""
+
+    engine: str
+    device: str
+    available: bool
+    loaded: bool
+    queue_length: int = 0
+    busy: bool = False
+    voices: int = 0
+    syntheses: int = 0
+    last_synth_ms: int | None = None
+    vram_mb: int | None = None
+
+
 class HealthResponse(BaseModel):
     status: Literal["ok", "degraded"]
     llama: LlamaStatus
@@ -75,6 +90,7 @@ class HealthResponse(BaseModel):
     restarts: int = 0
     last_error: str | None = None
     gpu: GpuInfo | None = None
+    tts: TtsStatusInfo | None = None
 
 
 class ChatUsage(BaseModel):
@@ -93,3 +109,54 @@ class TokenizeRequest(BaseModel):
 class TokenizeResponse(BaseModel):
     count: int
     context_size: int | None = None
+
+
+class TtsRequest(BaseModel):
+    """Synteza jednej wypowiedzi bota."""
+
+    text: str = Field(min_length=1)
+    voice: str = ""
+    speed: float = 1.0
+    pitch: float = 1.0
+    expressiveness: float = 0.5
+    speaker_id: int | None = None
+    # Klonowanie głosu: `reference_id` to hash próbki. Gateway trzyma ją u siebie,
+    # więc serwer VTT dosyła `reference_audio_base64` tylko przy pierwszym użyciu
+    # (albo po restarcie gatewaya, gdy dostanie z powrotem 409).
+    reference_id: str | None = None
+    reference_audio_base64: str | None = None
+    bot_id: str | None = None
+
+
+class RevealPointInfo(BaseModel):
+    """„W tej milisekundzie widocznych jest tyle pierwszych znaków wypowiedzi”."""
+
+    ms: int
+    chars: int
+
+
+class TtsResponse(BaseModel):
+    audio_base64: str
+    format: Literal["wav"] = "wav"
+    sample_rate: int
+    duration_ms: int
+    reveal: list[RevealPointInfo] = Field(default_factory=list)
+    engine: str
+    voice: str
+    synth_ms: int = 0
+    spoken_text: str = ""
+
+
+class VoiceInfoResponse(BaseModel):
+    id: str
+    name: str
+    engine: str
+    sample_rate: int | None = None
+    quality: str | None = None
+    clonable: bool = False
+
+
+class VoicesResponse(BaseModel):
+    engine: str
+    available: bool
+    voices: list[VoiceInfoResponse] = Field(default_factory=list)

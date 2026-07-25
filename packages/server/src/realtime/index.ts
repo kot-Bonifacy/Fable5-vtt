@@ -25,6 +25,7 @@ import { botCreateEvent, botDeleteEvent, botDuplicateEvent, botUpdateEvent } fro
 import { botChatEvent, botTeachEvent } from './bot-chat.js';
 import { botSayEvent, botStopEvent } from './bot-turns.js';
 import { aiAskEvent, aiRefreshEvent, broadcastAiStatus, sendAiStatus } from './ai.js';
+import { sendSpeechStatus, speechPreviewEvent, speechToggleEvent } from './speech.js';
 import { sendStateSync, stateRequestEvent } from './sync.js';
 
 declare module 'socket.io' {
@@ -73,6 +74,8 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   botTeachEvent,
   botSayEvent,
   botStopEvent,
+  speechToggleEvent,
+  speechPreviewEvent,
 ] as RealtimeEvent<never, unknown>[];
 
 async function authenticateHandshake(
@@ -109,8 +112,14 @@ async function resolveSocketCampaign(
 export function setupRealtime(io: SocketIOServer, app: FastifyInstance, ctx: AppContext): void {
   const deps: RealtimeDeps = { io, log: app.log, ctx, seqs: new RoomSequences() };
 
-  // Gateway coming back or going down flips bot availability for everyone.
-  ctx.ai.onStatusChange((status) => broadcastAiStatus(deps, status));
+  // Gateway coming back or going down flips bot availability for everyone —
+  // and with it the speech engine, so the „mowa botów" indicator follows.
+  ctx.ai.onStatusChange((status) => {
+    broadcastAiStatus(deps, status);
+    for (const socket of io.sockets.sockets.values()) {
+      void sendSpeechStatus(deps, socket).catch(() => undefined);
+    }
+  });
 
   io.use((socket, next) => {
     authenticateHandshake(app, ctx, socket.handshake.headers.cookie)
@@ -144,6 +153,7 @@ export function setupRealtime(io: SocketIOServer, app: FastifyInstance, ctx: App
           await joinInitialScene(deps, socket, campaign.id);
           await broadcastPresence(deps, campaign.id);
         }
+        await sendSpeechStatus(deps, socket);
         await sendStateSync(deps, socket, user);
       } catch (error) {
         app.log.error({ err: error, socketId: socket.id }, 'socket room setup failed');

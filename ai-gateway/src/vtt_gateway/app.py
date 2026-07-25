@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
 from collections.abc import AsyncIterator, Callable
@@ -22,8 +23,15 @@ from .schemas import (
     LlamaStatus,
     TokenizeRequest,
     TokenizeResponse,
+    TtsRequest,
+    TtsResponse,
+    TtsStatusInfo,
+    VoicesResponse,
 )
 from .supervisor import LlamaSupervisor
+from .tts.base import SynthesisParams, TtsError
+from .tts.manager import TtsBusy, TtsManager
+from .tts.samples import SampleStore, UnknownSample
 
 log = logging.getLogger(__name__)
 
@@ -43,11 +51,14 @@ def create_app(
         app.state.client = client
         app.state.supervisor = supervisor
         app.state.queue = RequestQueue(settings.max_queue_length)
+        app.state.tts = TtsManager(settings)
+        app.state.samples = SampleStore(settings.tts_samples_dir)
         await supervisor.start()
         try:
             yield
         finally:
             await supervisor.stop()
+            await app.state.tts.shutdown()
             await client.aclose()
 
     app = FastAPI(title="VTT AI Gateway", version="0.1.0", lifespan=lifespan)
@@ -60,6 +71,8 @@ def create_app(
     async def health(request: Request) -> HealthResponse:
         supervisor: LlamaSupervisor = request.app.state.supervisor
         queue: RequestQueue = request.app.state.queue
+        tts: TtsManager = request.app.state.tts
+        tts_status = tts.status()
         return HealthResponse(
             status="ok" if supervisor.is_ready else "degraded",
             llama=supervisor.status,
@@ -71,6 +84,7 @@ def create_app(
             restarts=supervisor.restarts,
             last_error=supervisor.last_error,
             gpu=await read_gpu_info(),
+            tts=TtsStatusInfo(**vars(tts_status)),
         )
 
     @app.post("/chat", dependencies=[Depends(require_api_key)])
@@ -140,6 +154,58 @@ def create_app(
             # z tego powodu wypowiedzi bota, oddajemy czysty błąd.
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         return TokenizeResponse(count=count, context_size=supervisor.context_size)
+
+    @app.get("/tts/voices", response_model=VoicesResponse)
+    async def tts_voices(request: Request) -> VoicesResponse:
+        """Głosy, które silnik faktycznie ma na dysku — katalog presetów po
+        stronie VTT mapuje na te identyfikatory."""
+        tts: TtsManager = request.app.state.tts
+        return VoicesResponse(
+            engine=tts.engine_name,
+            available=tts.available,
+            voices=[vars(voice) for voice in tts.voices()],  # type: ignore[arg-type]
+        )
+
+    @app.post("/tts", response_model=TtsResponse, dependencies=[Depends(require_api_key)])
+    async def tts_synthesize(request: Request, body: TtsRequest) -> TtsResponse:
+        """Synteza jednej wypowiedzi. Każdy błąd to czysty status HTTP —
+        serwer VTT ma z niego wyprowadzić wypowiedź bez audio, nigdy wyjątek
+        przerywający czat."""
+        tts: TtsManager = request.app.state.tts
+        samples: SampleStore = request.app.state.samples
+
+        try:
+            reference = samples.resolve(body.reference_id, body.reference_audio_base64)
+        except UnknownSample as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        except Exception as exc:  # InvalidSample i wszystko, co przyjdzie z dysku
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+        params = SynthesisParams(
+            speed=body.speed,
+            pitch=body.pitch,
+            expressiveness=body.expressiveness,
+            speaker_id=body.speaker_id,
+            reference_audio=reference,
+        )
+        try:
+            result = await tts.synthesize(body.text, body.voice, params)
+        except TtsBusy as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        except TtsError as exc:
+            log.warning("synteza nieudana (bot=%s): %s", body.bot_id, exc)
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+        return TtsResponse(
+            audio_base64=base64.b64encode(result.audio).decode("ascii"),
+            sample_rate=result.sample_rate,
+            duration_ms=result.duration_ms,
+            reveal=[{"ms": point.ms, "chars": point.chars} for point in result.reveal],
+            engine=result.engine,
+            voice=result.voice,
+            synth_ms=result.synth_ms,
+            spoken_text=result.spoken_text,
+        )
 
     @app.post("/admin/restart", dependencies=[Depends(require_api_key)])
     async def restart(request: Request) -> dict[str, str]:

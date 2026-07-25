@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 1,
+  "voices": [
+    {
+      "id": "fixerka",
+      "name": "Fikserka",
+      "description": "Kobiecy, opanowany, lekko znudzony — ktoś, kto zna cenę każdej przysługi",
+      "engine": "piper",
+      "model": "pl_PL-gosia-medium",
+      "speed": 1.0,
+      "pitch": 1.0
+    },
+    {
+      "id": "fixer",
+      "name": "Fikser",
+      "description": "Męski, rzeczowy, bez emocji — głos domyślny dla NPC-ów z ulicy",
+      "engine": "piper",
+      "model": "pl_PL-darkman-medium",
+      "speed": 1.0,
+      "pitch": 1.0
+    },
+    {
+      "id": "ripperdoc",
+      "name": "Ripperdoc",
+      "description": "Niższy, nieco wolniejszy — chirurg, który mówi jak do pacjenta na stole",
+      "engine": "piper",
+      "model": "pl_PL-bass-high",
+      "speed": 0.95,
+      "pitch": 0.88
+    },
+    {
+      "id": "bramkarz",
+      "name": "Bramkarz",
+      "description": "Bardzo niski i powolny — masa mięśni, która nie lubi pytań",
+      "engine": "piper",
+      "model": "pl_PL-darkman-medium",
+      "speed": 0.92,
+      "pitch": 0.82
+    },
+    {
+      "id": "korpo",
+      "name": "Korpo",
+      "description": "Gładki, wyrównany, odrobinę za szybki — jak prezentacja kwartalna",
+      "engine": "piper",
+      "model": "pl_PL-mc_speech-medium",
+      "speed": 1.05,
+      "pitch": 1.0
+    },
+    {
+      "id": "korpo-kobieta",
+      "name": "Korpo (kobieta)",
+      "description": "Chłodna uprzejmość działu, który właśnie zatwierdził twoją likwidację",
+      "engine": "piper",
+      "model": "pl_PL-gosia-medium",
+      "speed": 1.05,
+      "pitch": 0.94
+    },
+    {
+      "id": "dzieciak-ulicy",
+      "name": "Dzieciak ulicy",
+      "description": "Wysoki i szybki — nastolatek, który mówi, zanim pomyśli",
+      "engine": "piper",
+      "model": "pl_PL-gosia-medium",
+      "speed": 1.15,
+      "pitch": 1.28
+    },
+    {
+      "id": "netrunner",
+      "name": "Netrunner",
+      "description": "Podbity i nerwowy — ktoś, kto połowę uwagi trzyma w sieci",
+      "engine": "piper",
+      "model": "pl_PL-mc_speech-medium",
+      "speed": 1.12,
+      "pitch": 1.15
+    },
+    {
+      "id": "nomada",
+      "name": "Nomada",
+      "description": "Spokojny, głęboki, bez pośpiechu — pustynia i rodzina",
+      "engine": "piper",
+      "model": "pl_PL-bass-high",
+      "speed": 0.96,
+      "pitch": 1.0
+    },
+    {
+      "id": "weteran",
+      "name": "Weteran",
+      "description": "Zdarty, niski, mówiący krótkimi zdaniami — za dużo widział",
+      "engine": "piper",
+      "model": "pl_PL-darkman-medium",
+      "speed": 0.9,
+      "pitch": 0.88
+    },
+    {
+      "id": "barmanka",
+      "name": "Barmanka",
+      "description": "Ciepły i lekko śpiewny — słucha więcej, niż mówi",
+      "engine": "piper",
+      "model": "pl_PL-gosia-medium",
+      "speed": 1.0,
+      "pitch": 1.1
+    },
+    {
+      "id": "radio",
+      "name": "Głos z radia",
+      "description": "Szorstki, w niższej próbce — komunikat, przekaz, zapowiedź",
+      "engine": "piper",
+      "model": "pl_PL-mls_6892-low",
+      "speed": 1.0,
+      "pitch": 1.0
+    }
+  ]
+}

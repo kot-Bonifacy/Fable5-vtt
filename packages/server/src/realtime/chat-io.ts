@@ -5,7 +5,7 @@ import type {
   SessionUser,
 } from '@vtt/shared';
 import { CHAT_HISTORY_PAGE_SIZE, ROLE_GM } from '@vtt/shared';
-import type { RollResult } from '@vtt/shared';
+import type { RollResult, SpeechTrack } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
 import type { RealtimeDeps } from './registry.js';
 import { campaignRoom } from './state.js';
@@ -88,6 +88,11 @@ export function toChatMessageView(message: StoredMessage): ChatMessageView {
   }
   if ((message.kind === 'roll' || message.kind === 'gmroll') && message.payload) {
     view.roll = JSON.parse(message.payload) as RollResult;
+  } else if (message.botId && message.payload) {
+    // NPC line with a voice: audio plus the rhythm its text is written out
+    // with. Stored so „odtwórz ponownie" still works after a reload.
+    const stored = JSON.parse(message.payload) as { speech?: SpeechTrack };
+    if (stored.speech) view.speech = stored.speech;
   }
   return view;
 }

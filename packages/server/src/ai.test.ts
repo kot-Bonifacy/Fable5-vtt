@@ -37,6 +37,8 @@ const config: ServerConfig = {
   // Fast polling so „gateway came back” is observable inside a test.
   aiHealthIntervalMs: 200,
   aiRequestTimeoutMs: 5000,
+  ttsTimeoutMs: 5000,
+  ttsCacheMaxBytes: 8 * 1024 * 1024,
 };
 
 /** Test-controlled stand-in for the Python gateway. */
@@ -109,7 +111,11 @@ function createSocket(cookie: string): {
   socket: ClientSocket;
   firstSync: Promise<StateSyncPayload>;
 } {
-  const socket = ioClient(baseUrl, { extraHeaders: { cookie }, reconnection: false, timeout: 3000 });
+  const socket = ioClient(baseUrl, {
+    extraHeaders: { cookie },
+    reconnection: false,
+    timeout: 3000,
+  });
   openSockets.push(socket);
   const firstSync = new Promise<StateSyncPayload>((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('state:sync timeout')), 4000);
@@ -145,7 +151,12 @@ function emitAck<T = undefined>(
 function collectAnswer(
   socket: ClientSocket,
   ms = 3000,
-): Promise<{ answer: string; thinking: string; done: AiDoneBroadcast | null; error: string | null }> {
+): Promise<{
+  answer: string;
+  thinking: string;
+  done: AiDoneBroadcast | null;
+  error: string | null;
+}> {
   return new Promise((resolve, reject) => {
     let answer = '';
     let thinking = '';

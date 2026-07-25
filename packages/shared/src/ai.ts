@@ -44,6 +44,25 @@ export interface AiStatus {
   restarts?: number;
   gpu?: AiGpuInfo | null;
   error?: string | null;
+  /**
+   * Speech engine (stage 12). Reported by the same health check, but never
+   * relayed to players — they only learn whether bots speak (`SpeechStatusPublic`).
+   */
+  tts?: AiTtsInfo | null;
+}
+
+/** Speech engine state as the gateway reports it. */
+export interface AiTtsInfo {
+  engine: string;
+  device: string;
+  available: boolean;
+  loaded: boolean;
+  queueLength: number;
+  busy: boolean;
+  voices: number;
+  syntheses: number;
+  lastSynthMs: number | null;
+  vramMb: number | null;
 }
 
 export function offlineAiStatus(now: Date = new Date()): AiStatus {

@@ -21,6 +21,10 @@ export interface ServerConfig {
   aiHealthIntervalMs: number;
   /** Hard cap on a single generation before the server gives up. */
   aiRequestTimeoutMs: number;
+  /** Hard cap on synthesizing one bot line; on timeout the line goes without audio. */
+  ttsTimeoutMs: number;
+  /** Cached bot audio is swept down to this size after every write. */
+  ttsCacheMaxBytes: number;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
@@ -40,5 +44,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     aiGatewayApiKey: env.AI_GATEWAY_API_KEY ?? '',
     aiHealthIntervalMs: Number(env.AI_HEALTH_INTERVAL_MS ?? 10_000),
     aiRequestTimeoutMs: Number(env.AI_REQUEST_TIMEOUT_MS ?? 120_000),
+    // Piper synthesizes 30 s of speech in ~0,5 s; 20 s is a wide safety margin
+    // that still keeps a wedged gateway from holding a bot line hostage.
+    ttsTimeoutMs: Number(env.TTS_TIMEOUT_MS ?? 20_000),
+    ttsCacheMaxBytes: Number(env.TTS_CACHE_MAX_BYTES ?? 512 * 1024 * 1024),
   };
 }

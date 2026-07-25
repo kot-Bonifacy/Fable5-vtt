@@ -11,6 +11,10 @@ import {
   BOT_TEMPERATURE_MAX,
   BOT_TEMPERATURE_MIN,
   BOT_TYPES,
+  BOT_VOICE_PITCH_MAX,
+  BOT_VOICE_PITCH_MIN,
+  BOT_VOICE_RATE_MAX,
+  BOT_VOICE_RATE_MIN,
   type BotGeneration,
   type BotKnowledge,
   type BotLesson,
@@ -54,7 +58,7 @@ export function createDefaultBotData(type: BotType = 'npc'): BotProfileData {
     knowledge: { world: '', campaign: '', people: '', forbidden: '' },
     generation: defaultBotGeneration(type),
     lessons: [],
-    voice: { enabled: false, presetId: null, sampleUrl: null, rate: 1 },
+    voice: { enabled: false, presetId: null, sampleUrl: null, rate: 1, pitch: 1 },
   };
 }
 
@@ -257,15 +261,29 @@ function validateLessons(raw: unknown, issues: BotValidationIssue[]): BotLesson[
 }
 
 function validateVoice(raw: unknown, issues: BotValidationIssue[]): BotVoice | undefined {
-  // Stage 12 owns this section; stage 10 only keeps it well-formed.
   if (typeof raw !== 'object' || raw === null) {
     issues.push(issue('voice', 'Nieprawidłowy format ustawień głosu.'));
     return undefined;
   }
   const input = raw as Record<string, unknown>;
   const rate = input.rate ?? 1;
-  if (typeof rate !== 'number' || !Number.isFinite(rate) || rate < 0.5 || rate > 1.5) {
-    issues.push(issue('voice.rate', 'Tempo mowy musi mieścić się w zakresie 0,5–1,5.'));
+  if (
+    typeof rate !== 'number' ||
+    !Number.isFinite(rate) ||
+    rate < BOT_VOICE_RATE_MIN ||
+    rate > BOT_VOICE_RATE_MAX
+  ) {
+    issues.push(issue('voice.rate', 'Tempo mowy musi mieścić się w zakresie 0,5–2,0.'));
+    return undefined;
+  }
+  const pitch = input.pitch ?? 1;
+  if (
+    typeof pitch !== 'number' ||
+    !Number.isFinite(pitch) ||
+    pitch < BOT_VOICE_PITCH_MIN ||
+    pitch > BOT_VOICE_PITCH_MAX
+  ) {
+    issues.push(issue('voice.pitch', 'Wysokość głosu musi mieścić się w zakresie 0,7–1,4.'));
     return undefined;
   }
   return {
@@ -273,6 +291,7 @@ function validateVoice(raw: unknown, issues: BotValidationIssue[]): BotVoice | u
     presetId: typeof input.presetId === 'string' ? input.presetId : null,
     sampleUrl: typeof input.sampleUrl === 'string' ? input.sampleUrl : null,
     rate,
+    pitch,
   };
 }
 

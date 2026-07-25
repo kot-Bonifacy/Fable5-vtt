@@ -6,6 +6,7 @@ import {
   type RollParseError,
   type RollResult,
 } from './dice.js';
+import type { SpeechTrack } from './tts.js';
 
 export type ChatKind = 'say' | 'whisper' | 'roll' | 'gmroll';
 
@@ -33,6 +34,12 @@ export interface ChatMessageView {
   text: string;
   /** Structured roll outcome — present only for kinds `roll` and `gmroll`. */
   roll?: RollResult;
+  /**
+   * Voice of an NPC line: audio plus the rhythm the text is written out with.
+   * Absent = show the line immediately (speech off, no voice set, or synthesis
+   * failed — the degradation path).
+   */
+  speech?: SpeechTrack;
   /** ISO timestamp — always assigned by the server. */
   createdAt: string;
 }

@@ -55,6 +55,23 @@ class Settings(BaseSettings):
     # Ile żądań może czekać w kolejce zanim gateway zacznie odrzucać (503).
     max_queue_length: int = 16
 
+    # --- TTS (głos botów) ---
+    # piper | chatterbox | none. Piper wybrany po pomiarach etapu 12: 0 GB VRAM,
+    # synteza ~50x szybsza niż realtime i alignment fonemów (rytm ujawniania tekstu).
+    tts_engine: str = "piper"
+    # cpu | cuda — dotyczy tylko silników, które w ogóle mogą pójść na GPU.
+    tts_device: str = "cpu"
+    tts_voices_dir: Path = Path("C:/AI/tts/piper-voices")
+    tts_default_voice: str = "pl_PL-darkman-medium"
+    # Katalog na próbki głosu do klonowania (przysyłane przez serwer VTT).
+    tts_samples_dir: Path = Path("C:/AI/tts/voice-samples")
+    # Po ilu sekundach bezczynności zwolnić model. 0 = trzymaj w pamięci.
+    tts_idle_unload_s: float = 600.0
+    # Twardy limit długości pojedynczej wypowiedzi (znaki).
+    tts_max_chars: int = 1200
+    tts_timeout: float = 60.0
+    tts_max_queue_length: int = 8
+
     @property
     def manages_llama(self) -> bool:
         """Czy gateway sam uruchamia llama-server."""
