@@ -301,9 +301,18 @@ export class MapRenderer {
   destroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
-    if (this.viewport) {
+    const viewport = this.viewport;
+    this.viewport = null;
+    if (viewport) {
+      // Order matters: `Viewport.destroy` unhooks its plugins from the app
+      // ticker, so it has to run while that ticker still exists. Destroying
+      // the application first kills the ticker and the viewport teardown then
+      // throws („Cannot read properties of null (reading 'next')"), which took
+      // the whole app down with a white screen whenever the map unmounted —
+      // leaving the game for the GM panel, or any HMR reload during a session.
+      viewport.destroy({ children: true });
       this.app.destroy(true, { children: true });
-      this.viewport = null;
+      this.tokenNodes.clear();
     }
     // When init is still pending, it destroys the app itself on completion.
   }
