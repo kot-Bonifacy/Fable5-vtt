@@ -64,6 +64,11 @@ class FakeLlama:
                 200,
                 json={"model_path": "C:/models/Qwythos-9B-v2-Q8_0.gguf", "n_ctx": 16384},
             )
+        if request.url.path == "/tokenize":
+            content = json.loads(request.content).get("content", "")
+            # llama-server oddaje listę identyfikatorów tokenów; do pomiaru
+            # długości liczy się tylko jej rozmiar.
+            return httpx.Response(200, json={"tokens": list(range(len(content.split())))})
         if request.url.path == "/v1/chat/completions":
             self.requests.append(json.loads(request.content))
             return httpx.Response(
@@ -214,6 +219,38 @@ async def test_api_key_is_enforced():
         assert ok.status_code == 200
         # /health zostaje bez klucza — serwer VTT odpytuje go cyklicznie do statusu botów.
         assert (await client.get("/health")).status_code == 200
+
+
+async def test_tokenize_measures_text_with_the_model_tokenizer():
+    fake = FakeLlama()
+    app = create_app(
+        _settings(),
+        client_factory=lambda: httpx.AsyncClient(transport=httpx.MockTransport(fake.handler)),
+    )
+    async for client in _client(app):
+        await _wait_for_ready(client)
+        response = await client.post("/tokenize", json={"text": "Czas to eddiesy skarbie"})
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["count"] == 4
+        # Serwer VTT liczy z tego budżet kontekstu — okno musi przyjechać razem.
+        assert payload["context_size"] == 16384
+
+        empty = await client.post("/tokenize", json={"text": ""})
+        assert empty.json()["count"] == 0
+
+
+async def test_tokenize_refuses_when_llama_is_down():
+    fake = FakeLlama(healthy=False)
+    app = create_app(
+        _settings(),
+        client_factory=lambda: httpx.AsyncClient(transport=httpx.MockTransport(fake.handler)),
+    )
+    async for client in _client(app):
+        # 503, nie 500: serwer VTT ma wtedy oszacować długość po znakach i mimo
+        # wszystko wypuścić wypowiedź bota.
+        response = await client.post("/tokenize", json={"text": "cokolwiek"})
+        assert response.status_code == 503
 
 
 @pytest.mark.parametrize("purpose", ["npc", "test"])

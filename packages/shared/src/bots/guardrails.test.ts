@@ -15,6 +15,36 @@ describe('sanitizeBotReply', () => {
     expect(sanitizeBotReply(raw, npc).text).toBe('Dwa tysiące i temat zamknięty.');
   });
 
+  it('drops an inflected self-label and cuts an inflected label of someone else', () => {
+    // Live test of stage 11: the model labelled its own line in the vocative
+    // („Doktorze Kość:") and the label was published verbatim.
+    const doc = { botName: 'Doktor Kość', type: 'npc' as const, participants: ['Johnny', 'Vex'] };
+    expect(sanitizeBotReply('Doktorze Kość: Siadaj, obejrzę to.', doc).text).toBe(
+      'Siadaj, obejrzę to.',
+    );
+    expect(sanitizeBotReply('Nie ruszaj tego.\nJohnnym: Dobra.', doc).text).toBe(
+      'Nie ruszaj tego.',
+    );
+  });
+
+  it('keeps an ordinary sentence that happens to start with a word and a colon', () => {
+    // Regression (stage 11): „Krótko:" is not a speaker — the old rule treated
+    // any word before a colon as somebody else's line and dropped the answer.
+    expect(sanitizeBotReply('Krótko: nie wchodzę w to.', npc).text).toBe(
+      'Krótko: nie wchodzę w to.',
+    );
+    expect(sanitizeBotReply('Cena: dwa tysiące eddiesów.', npc).text).toBe(
+      'Cena: dwa tysiące eddiesów.',
+    );
+  });
+
+  it('still cuts a line written for another bot at the table', () => {
+    const raw = ['Nic nie wiem.', 'Sasha: Ja powiem prawdę.'].join('\n');
+    expect(
+      sanitizeBotReply(raw, { ...npc, participants: [...npc.participants, 'Sasha'] }).text,
+    ).toBe('Nic nie wiem.');
+  });
+
   it('removes whole-line asides and unwraps a fully quoted answer', () => {
     const raw = ['(uśmiecha się krzywo)', '„Nie znam takiego gościa."'].join('\n');
     expect(sanitizeBotReply(raw, npc).text).toBe('Nie znam takiego gościa.');

@@ -82,3 +82,14 @@ class ChatUsage(BaseModel):
     completion_tokens: int | None = None
     generation_ms: int | None = None
     tokens_per_second: float | None = None
+
+
+class TokenizeRequest(BaseModel):
+    """Pomiar długości tekstu tokenizerem modelu (budżet kontekstu botów)."""
+
+    text: str
+
+
+class TokenizeResponse(BaseModel):
+    count: int
+    context_size: int | None = None

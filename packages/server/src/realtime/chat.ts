@@ -1,12 +1,10 @@
 import type {
   ChatHistoryPage,
   ChatHistoryRequest,
-  ChatMessageBroadcast,
   ChatMessageView,
   ChatSendPayload,
   RollFormula,
   RollGesture,
-  RollResult,
   RollToss,
   SessionUser,
 } from '@vtt/shared';
@@ -19,153 +17,148 @@ import {
   parseChatInput,
   rollFormula,
 } from '@vtt/shared';
-import type { PrismaClient } from '../db.js';
 import { createMixedRng } from './dice-rng.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
-import { campaignRoom } from './state.js';
-
-interface RosterUser {
-  id: string;
-  name: string;
-}
-
-/** Everyone who can be whispered to in a campaign: its members plus GMs. */
-async function getRoster(prisma: PrismaClient, campaignId: string): Promise<RosterUser[]> {
-  const [members, gms] = await Promise.all([
-    prisma.campaignMember.findMany({ where: { campaignId }, include: { user: true } }),
-    prisma.user.findMany({ where: { role: ROLE_GM } }),
-  ]);
-  const byId = new Map<string, RosterUser>();
-  for (const gm of gms) byId.set(gm.id, { id: gm.id, name: gm.name });
-  for (const member of members)
-    byId.set(member.userId, { id: member.userId, name: member.user.name });
-  return [...byId.values()];
-}
-
-interface StoredMessage {
-  id: number;
-  kind: string;
-  authorId: string;
-  text: string;
-  recipientId: string | null;
-  payload: string | null;
-  createdAt: Date;
-  author: { name: string };
-  recipient: { name: string } | null;
-}
-
-export function toChatMessageView(message: StoredMessage): ChatMessageView {
-  const view: ChatMessageView = {
-    id: message.id,
-    kind: message.kind as ChatMessageView['kind'],
-    authorId: message.authorId,
-    authorName: message.author.name,
-    text: message.text,
-    createdAt: message.createdAt.toISOString(),
-  };
-  if (message.recipientId && message.recipient) {
-    view.recipientId = message.recipientId;
-    view.recipientName = message.recipient.name;
-  }
-  if ((message.kind === 'roll' || message.kind === 'gmroll') && message.payload) {
-    view.roll = JSON.parse(message.payload) as RollResult;
-  }
-  return view;
-}
-
-export const INCLUDE_CHAT_NAMES = { author: true, recipient: true } as const;
-
-/**
- * Visibility filter applied in the query — invisible messages (foreign
- * whispers, foreign GM rolls for players) never leave the DB layer.
- */
-function visibleTo(user: SessionUser) {
-  return {
-    OR: [
-      { kind: { in: user.role === ROLE_GM ? ['say', 'roll', 'gmroll'] : ['say', 'roll'] } },
-      { authorId: user.id },
-      { recipientId: user.id },
-    ],
-  };
-}
-
-/**
- * Fetches a page of chat history visible to the user, ascending by id.
- * `beforeId` (exclusive) paginates backwards; omit it for the latest page.
- */
-export async function fetchHistoryPage(
-  prisma: PrismaClient,
-  campaignId: string,
-  user: SessionUser,
-  beforeId?: number,
-  limit = CHAT_HISTORY_PAGE_SIZE,
-): Promise<ChatHistoryPage> {
-  const rows = await prisma.chatMessage.findMany({
-    where: {
-      campaignId,
-      ...(beforeId !== undefined ? { id: { lt: beforeId } } : {}),
-      ...visibleTo(user),
-    },
-    include: INCLUDE_CHAT_NAMES,
-    orderBy: { id: 'desc' },
-    take: limit + 1,
-  });
-  const hasMore = rows.length > limit;
-  const page = rows.slice(0, limit).reverse();
-  return { messages: page.map(toChatMessageView), hasMore };
-}
+import {
+  broadcastChatMessage,
+  deliverChatMessageTo,
+  deliverRollMessage,
+  fetchHistoryPage,
+  getRoster,
+  insertChatMessage,
+} from './chat-io.js';
+import {
+  listChatBots,
+  requestBotTurns,
+  speakAsBot,
+  triggerBotsForLine,
+  type ChatBot,
+} from './bot-turns.js';
 
 function requireCampaignId(socketData: { campaign: { id: string } | null }): string {
   if (!socketData.campaign) throw new RealtimeError('NO_CAMPAIGN');
   return socketData.campaign.id;
 }
 
+/**
+ * Scene a line belongs to: the one this socket is looking at. Players always
+ * follow the active scene, and a GM previewing another scene is working there,
+ * so their lines (and the bots pinned to that scene) belong to it. The chat
+ * feed itself stays campaign-wide — the tag only scopes the bots' memory.
+ */
+function messageSceneId(socketData: { viewedSceneId: string | null }): string | null {
+  return socketData.viewedSceneId ?? null;
+}
+
 async function persistAndEmitSay(
   deps: RealtimeDeps,
   campaignId: string,
   user: SessionUser,
+  sceneId: string | null,
+  text: string,
+): Promise<ChatMessageView> {
+  const message = await insertChatMessage(deps.ctx.prisma, {
+    campaignId,
+    authorId: user.id,
+    kind: 'say',
+    text,
+    sceneId,
+  });
+  broadcastChatMessage(deps, campaignId, message);
+  return message;
+}
+
+/**
+ * A whisper to a bot: a private player↔bot conversation. Stored with the bot as
+ * recipient and delivered to the author plus the GM — nobody else, not even in
+ * network payloads.
+ */
+async function persistAndEmitWhisperToBot(
+  deps: RealtimeDeps,
+  campaignId: string,
+  user: SessionUser,
+  sceneId: string | null,
+  bot: ChatBot,
   text: string,
 ): Promise<void> {
-  const stored = await deps.ctx.prisma.chatMessage.create({
-    data: { campaignId, authorId: user.id, kind: 'say', text },
-    include: INCLUDE_CHAT_NAMES,
+  const message = await insertChatMessage(deps.ctx.prisma, {
+    campaignId,
+    authorId: user.id,
+    kind: 'whisper',
+    text,
+    recipientBotId: bot.id,
+    sceneId,
   });
-  const room = campaignRoom(campaignId);
-  const payload: ChatMessageBroadcast = {
-    seq: deps.seqs.next(room),
-    message: toChatMessageView(stored),
-  };
-  deps.io.to(room).emit('chat:message', payload);
+  await deliverChatMessageTo(deps, campaignId, message, [user.id], true);
+  await requestBotTurns(deps, [
+    {
+      campaignId,
+      botId: bot.id,
+      sceneId,
+      calledByUserId: user.id,
+      whisperToUserId: user.id,
+    },
+  ]);
 }
 
 async function persistAndEmitWhisper(
   deps: RealtimeDeps,
   campaignId: string,
   user: SessionUser,
+  sceneId: string | null,
   targetName: string,
   text: string,
+  bots: ChatBot[],
 ): Promise<void> {
+  const wanted = targetName.toLowerCase();
   const roster = await getRoster(deps.ctx.prisma, campaignId);
-  const target = roster.find((r) => r.name.toLowerCase() === targetName.toLowerCase());
-  if (!target) throw new RealtimeError('TARGET_NOT_FOUND');
+  const target = roster.find((entry) => entry.name.toLowerCase() === wanted);
+  if (!target) {
+    // Only bots in the session can be whispered to — an idle profile must not
+    // become a way for players to probe which bots exist.
+    const bot = bots.find((entry) => entry.active && entry.name.toLowerCase() === wanted);
+    if (!bot) throw new RealtimeError('TARGET_NOT_FOUND');
+    await persistAndEmitWhisperToBot(deps, campaignId, user, sceneId, bot, text);
+    return;
+  }
   if (target.id === user.id) throw new RealtimeError('TARGET_IS_SELF');
 
-  const stored = await deps.ctx.prisma.chatMessage.create({
-    data: { campaignId, authorId: user.id, kind: 'whisper', text, recipientId: target.id },
-    include: INCLUDE_CHAT_NAMES,
+  const message = await insertChatMessage(deps.ctx.prisma, {
+    campaignId,
+    authorId: user.id,
+    kind: 'whisper',
+    text,
+    recipientId: target.id,
+    sceneId,
   });
+  // Targeted delivery: author and recipient only. No seq — it is not a
+  // room-wide broadcast, so it must not create seq gaps.
+  await deliverChatMessageTo(deps, campaignId, message, [user.id, target.id]);
+}
 
-  // Targeted delivery: only sockets of the author and the recipient — the
-  // whisper never reaches other clients, not even in network payloads. No
-  // seq: it is not a room-wide broadcast, so it must not create seq gaps.
-  const payload: ChatMessageBroadcast = { message: toChatMessageView(stored) };
-  const sockets = await deps.io.in(campaignRoom(campaignId)).fetchSockets();
-  for (const socket of sockets) {
-    const socketUser = (socket.data as { user: SessionUser }).user;
-    if (socketUser.id === user.id || socketUser.id === target.id) {
-      socket.emit('chat:message', payload);
-    }
-  }
+/**
+ * `/jako <bot> <treść>` — the GM speaks in an NPC's name without the model.
+ * The bot may be idle („nie w sesji"): voicing an NPC by hand needs no model.
+ */
+async function persistAndEmitAsBot(
+  deps: RealtimeDeps,
+  campaignId: string,
+  user: SessionUser,
+  sceneId: string | null,
+  targetName: string,
+  text: string,
+  bots: ChatBot[],
+): Promise<void> {
+  const wanted = targetName.toLowerCase();
+  const bot = bots.find((entry) => entry.name.toLowerCase() === wanted);
+  if (!bot) throw new RealtimeError('BOT_NOT_FOUND');
+  await speakAsBot(deps, {
+    campaignId,
+    gmUserId: user.id,
+    sceneId,
+    bot: { id: bot.id, name: bot.name },
+    text,
+  });
 }
 
 /**
@@ -216,40 +209,12 @@ export function sanitizeGesture(raw: unknown): RollGesture | undefined {
   return gesture;
 }
 
-/**
- * Delivers a stored roll message. Public rolls broadcast to the campaign room
- * with a seq; GM rolls go targeted (whisper pattern, no seq) to the author's
- * and GMs' sockets only — other players never see them, not even in network
- * payloads. Shared with sheet rolls (`character:roll`).
- */
-export async function deliverRollMessage(
-  deps: RealtimeDeps,
-  campaignId: string,
-  authorId: string,
-  message: ChatMessageView,
-): Promise<void> {
-  const room = campaignRoom(campaignId);
-  if (message.kind !== 'gmroll') {
-    const payload: ChatMessageBroadcast = { seq: deps.seqs.next(room), message };
-    deps.io.to(room).emit('chat:message', payload);
-    return;
-  }
-
-  const payload: ChatMessageBroadcast = { message };
-  const sockets = await deps.io.in(room).fetchSockets();
-  for (const socket of sockets) {
-    const socketUser = (socket.data as { user: SessionUser }).user;
-    if (socketUser.id === authorId || socketUser.role === ROLE_GM) {
-      socket.emit('chat:message', payload);
-    }
-  }
-}
-
 /** Executes a chat-command roll server-side and delivers the result. */
 async function persistAndEmitRoll(
   deps: RealtimeDeps,
   campaignId: string,
   user: SessionUser,
+  sceneId: string | null,
   visibility: 'public' | 'gm',
   formula: RollFormula,
   label: string | undefined,
@@ -258,31 +223,35 @@ async function persistAndEmitRoll(
   const result = rollFormula(formula, createMixedRng(gesture?.entropy));
   if (gesture && gesture.strength > 0) result.tossStrength = gesture.strength;
   if (gesture?.toss) result.toss = gesture.toss;
-  const stored = await deps.ctx.prisma.chatMessage.create({
-    data: {
-      campaignId,
-      authorId: user.id,
-      kind: visibility === 'gm' ? 'gmroll' : 'roll',
-      text: label ?? '',
-      payload: JSON.stringify(result),
-    },
-    include: INCLUDE_CHAT_NAMES,
+  const message = await insertChatMessage(deps.ctx.prisma, {
+    campaignId,
+    authorId: user.id,
+    kind: visibility === 'gm' ? 'gmroll' : 'roll',
+    text: label ?? '',
+    payload: JSON.stringify(result),
+    sceneId,
   });
-  await deliverRollMessage(deps, campaignId, user.id, toChatMessageView(stored));
+  await deliverRollMessage(deps, campaignId, user.id, message);
 }
 
 export const chatSendEvent = defineEvent<ChatSendPayload>({
   name: 'chat:send',
   handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
+    const sceneId = messageSceneId(socket.data);
     const text = typeof payload?.text === 'string' ? payload.text : '';
     if (text.length > MAX_CHAT_MESSAGE_LENGTH) throw new RealtimeError('MESSAGE_TOO_LONG');
 
-    const roster = await getRoster(deps.ctx.prisma, campaignId);
-    const parsed = parseChatInput(
-      text,
-      roster.map((r) => r.name),
-    );
+    const [roster, bots] = await Promise.all([
+      getRoster(deps.ctx.prisma, campaignId),
+      listChatBots(deps.ctx.prisma, campaignId),
+    ]);
+    // Bot names join the roster only to parse multi-word targets; who may be
+    // addressed at all is decided below, per command.
+    const parsed = parseChatInput(text, [
+      ...roster.map((entry) => entry.name),
+      ...bots.map((entry) => entry.name),
+    ]);
 
     switch (parsed.kind) {
       case 'empty':
@@ -293,21 +262,58 @@ export const chatSendEvent = defineEvent<ChatSendPayload>({
         throw new RealtimeError(
           parsed.reason === 'MISSING_TARGET' ? 'WHISPER_MISSING_TARGET' : 'WHISPER_MISSING_TEXT',
         );
+      case 'invalid-as-bot':
+        throw new RealtimeError(
+          parsed.reason === 'MISSING_TARGET' ? 'AS_BOT_MISSING_TARGET' : 'AS_BOT_MISSING_TEXT',
+        );
       case 'invalid-roll':
         throw new RealtimeError(
           parsed.reason === 'MISSING_NOTATION' ? 'ROLL_MISSING_NOTATION' : 'ROLL_BAD_NOTATION',
         );
-      case 'say':
-        await persistAndEmitSay(deps, campaignId, user, parsed.text);
+      case 'say': {
+        const message = await persistAndEmitSay(deps, campaignId, user, sceneId, parsed.text);
+        await triggerBotsForLine(deps, {
+          campaignId,
+          sceneId,
+          origin: 'user',
+          text: parsed.text,
+          messageId: message.id,
+          calledByUserId: user.id,
+          bots,
+        });
         return;
+      }
       case 'whisper':
-        await persistAndEmitWhisper(deps, campaignId, user, parsed.targetName, parsed.text);
+        await persistAndEmitWhisper(
+          deps,
+          campaignId,
+          user,
+          sceneId,
+          parsed.targetName,
+          parsed.text,
+          bots,
+        );
+        return;
+      case 'as-bot':
+        // Speaking as an NPC is a GM power — a player must not be able to put
+        // words in an NPC's mouth.
+        if (user.role !== ROLE_GM) throw new RealtimeError('FORBIDDEN');
+        await persistAndEmitAsBot(
+          deps,
+          campaignId,
+          user,
+          sceneId,
+          parsed.targetName,
+          parsed.text,
+          bots,
+        );
         return;
       case 'roll':
         await persistAndEmitRoll(
           deps,
           campaignId,
           user,
+          sceneId,
           parsed.visibility,
           parsed.formula,
           parsed.label,

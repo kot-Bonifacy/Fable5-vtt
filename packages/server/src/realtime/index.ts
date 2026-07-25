@@ -23,6 +23,7 @@ import { characterCreateEvent, characterDeleteEvent, characterUpdateEvent } from
 import { characterRollEvent } from './character-rolls.js';
 import { botCreateEvent, botDeleteEvent, botDuplicateEvent, botUpdateEvent } from './bots.js';
 import { botChatEvent, botTeachEvent } from './bot-chat.js';
+import { botSayEvent, botStopEvent } from './bot-turns.js';
 import { aiAskEvent, aiRefreshEvent, broadcastAiStatus, sendAiStatus } from './ai.js';
 import { sendStateSync, stateRequestEvent } from './sync.js';
 
@@ -70,6 +71,8 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   botDuplicateEvent,
   botChatEvent,
   botTeachEvent,
+  botSayEvent,
+  botStopEvent,
 ] as RealtimeEvent<never, unknown>[];
 
 async function authenticateHandshake(

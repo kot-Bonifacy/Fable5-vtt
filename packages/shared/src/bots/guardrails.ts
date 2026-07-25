@@ -1,3 +1,4 @@
+import { findBotMentions } from './mentions.js';
 import type { BotType } from './types.js';
 
 /**
@@ -45,6 +46,16 @@ function normalizeName(value: string): string {
   return value.trim().toLowerCase();
 }
 
+/**
+ * Is this speaker label that person's name? Inflection has to be tolerated:
+ * the model labels its own line „Doktorze Kość:" (vocative) as happily as
+ * „Doktor Kość:", and an unrecognized label used to be published verbatim.
+ */
+function isNameOf(label: string, name: string): boolean {
+  if (normalizeName(label) === normalizeName(name)) return true;
+  return findBotMentions(label, [{ id: 'name', name }]).length > 0;
+}
+
 function cutToSentence(text: string, maxChars: number): string {
   if (text.length <= maxChars) return text;
   const head = text.slice(0, maxChars);
@@ -74,6 +85,13 @@ export function sanitizeBotReply(
   }
 
   const botName = normalizeName(options.botName);
+  // Only a name that belongs to somebody at the table counts as a speaker
+  // label. Anything else („Krótko: nie.", „Cena: dwa tysiące") is an ordinary
+  // Polish sentence — treating every word before a colon as dialogue used to
+  // throw whole answers away (found by the stage 11 tests).
+  const others = (options.participants ?? []).filter(
+    (name) => name.trim().length > 0 && normalizeName(name) !== botName,
+  );
   const lines: string[] = [];
   for (const rawLine of source.split('\n')) {
     const line = rawLine.trim();
@@ -86,14 +104,15 @@ export function sanitizeBotReply(
 
     const speaker = SPEAKER_LINE.exec(line);
     if (speaker) {
-      const who = normalizeName(speaker[1] ?? '');
-      if (who === botName) {
+      const who = speaker[1] ?? '';
+      if (isNameOf(who, options.botName)) {
         // The model labelled its own line — keep the content, drop the label.
         lines.push((speaker[2] ?? '').trim());
         continue;
       }
-      // Anyone else: the model started writing the scene for the table. Stop.
-      if (who.length > 1 && !who.includes(' ')) break;
+      // Somebody else at the table: the model started writing the scene for
+      // them. Cut everything from here on.
+      if (others.some((name) => isNameOf(who, name))) break;
     }
     lines.push(line);
   }

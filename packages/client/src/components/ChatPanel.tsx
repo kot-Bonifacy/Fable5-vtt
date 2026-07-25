@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, type FormEvent, type ReactNode, type UIEvent } from 'react';
-import type { ChatMessageView, RollResult } from '@vtt/shared';
-import { loadOlderHistory, sendChatInput } from '../socket.js';
+import type { BotActivityEntry, BotTraceBroadcast, ChatMessageView, RollResult } from '@vtt/shared';
+import { ROLE_GM } from '@vtt/shared';
+import { loadOlderHistory, sendChatInput, stopBots } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useChatStore, type ChatItem } from '../stores/chatStore.js';
 
@@ -127,7 +128,46 @@ function RollRow({ message }: { message: ChatMessageView }) {
   );
 }
 
-function MessageRow({ message, myUserId }: { message: ChatMessageView; myUserId: string }) {
+/** Small portrait next to an NPC line (bot-spoken or typed by the GM). */
+function Speaker({ message }: { message: ChatMessageView }) {
+  if (!message.botId) return null;
+  return message.portraitUrl ? (
+    <img className="chat-portrait" src={message.portraitUrl} alt="" />
+  ) : (
+    <span className="chat-portrait chat-portrait--empty" aria-hidden>
+      ☻
+    </span>
+  );
+}
+
+/**
+ * GM-only badge under a bot line: how the answer was produced. Players never
+ * receive this payload, so for them a bot line and a `/jako` line are the same.
+ */
+function BotTrace({ trace }: { trace: BotTraceBroadcast }) {
+  const parts: string[] = ['bot'];
+  if (trace.generationMs !== null) parts.push(`${(trace.generationMs / 1000).toFixed(1)} s`);
+  if (trace.completionTokens !== null) parts.push(`${trace.completionTokens} tok`);
+  parts.push(`kontekst: ${trace.historyTurns} wypowiedzi`);
+  if (trace.promptTokens !== null) parts.push(`${trace.promptTokens} tok promptu`);
+  if (trace.retried) parts.push('powtórka');
+  return (
+    <div className="chat-bot-trace">
+      <span className="chat-bot-trace-badge">{parts.join(' · ')}</span>
+      {trace.warning && <span className="chat-bot-trace-warning">⚠ {trace.warning}</span>}
+    </div>
+  );
+}
+
+function MessageRow({
+  message,
+  myUserId,
+  trace,
+}: {
+  message: ChatMessageView;
+  myUserId: string;
+  trace?: BotTraceBroadcast;
+}) {
   const isWhisper = message.kind === 'whisper';
   const whisperLabel =
     message.authorId === myUserId
@@ -135,13 +175,59 @@ function MessageRow({ message, myUserId }: { message: ChatMessageView; myUserId:
       : `szept od: ${message.authorName}`;
 
   return (
-    <div className={`chat-message${isWhisper ? ' chat-message--whisper' : ''}`}>
+    <div
+      className={`chat-message${isWhisper ? ' chat-message--whisper' : ''}${
+        message.botId ? ' chat-message--npc' : ''
+      }`}
+    >
       <div className="chat-message-meta">
+        <Speaker message={message} />
         <span className="chat-message-author">{message.authorName}</span>
         {isWhisper && <span className="chat-whisper-label">{whisperLabel}</span>}
         <span className="chat-message-time">{formatTime(message.createdAt)}</span>
       </div>
       <div className="chat-message-text">{message.text}</div>
+      {trace && <BotTrace trace={trace} />}
+    </div>
+  );
+}
+
+/**
+ * A bot turn in flight. The answer streams in as provisional text (italic) and
+ * is replaced by a real message once the guardrails have passed it — the
+ * automatic retry after a slip clears the text and starts over.
+ */
+function BotActivityRow({ entry, canStop }: { entry: BotActivityEntry; canStop: boolean }) {
+  const queued = entry.state === 'queued';
+  return (
+    <div className="chat-message chat-message--npc chat-message--pending">
+      <div className="chat-message-meta">
+        {entry.portraitUrl ? (
+          <img className="chat-portrait" src={entry.portraitUrl} alt="" />
+        ) : (
+          <span className="chat-portrait chat-portrait--empty" aria-hidden>
+            ☻
+          </span>
+        )}
+        <span className="chat-message-author">{entry.name}</span>
+        <span className="chat-typing-label">
+          {queued ? `w kolejce (${entry.position})` : 'pisze…'}
+        </span>
+        {entry.whisperToUserId && <span className="chat-whisper-label">szeptem</span>}
+        {canStop && (
+          <button
+            type="button"
+            className="small-button chat-stop"
+            title="Przerwij wypowiedź bota"
+            onClick={() => stopBots(entry.turnId)}
+          >
+            ✕
+          </button>
+        )}
+      </div>
+      {entry.text.length > 0 && (
+        <div className="chat-message-text chat-message-text--pending">{entry.text}</div>
+      )}
     </div>
   );
 }
@@ -153,6 +239,9 @@ export function ChatPanel() {
   const items = useChatStore((s) => s.items);
   const hasMoreHistory = useChatStore((s) => s.hasMoreHistory);
   const loadingHistory = useChatStore((s) => s.loadingHistory);
+  const botActivity = useChatStore((s) => s.botActivity);
+  const botTraces = useChatStore((s) => s.botTraces);
+  const isGm = user?.role === ROLE_GM;
 
   // Draft lives in the store so the dice cup can read and execute commands.
   const draft = useChatStore((s) => s.draft);
@@ -171,7 +260,8 @@ export function ChatPanel() {
     } else if (stickToBottomRef.current) {
       feed.scrollTop = feed.scrollHeight;
     }
-  }, [items, loadingHistory]);
+    // Streamed bot text grows the feed too — follow it like a new message.
+  }, [items, loadingHistory, botActivity]);
 
   const onScroll = (event: UIEvent<HTMLDivElement>) => {
     const feed = event.currentTarget;
@@ -207,7 +297,12 @@ export function ChatPanel() {
             item.message.kind === 'roll' || item.message.kind === 'gmroll' ? (
               <RollRow key={item.message.id} message={item.message} />
             ) : (
-              <MessageRow key={item.message.id} message={item.message} myUserId={user.id} />
+              <MessageRow
+                key={item.message.id}
+                message={item.message}
+                myUserId={user.id}
+                {...(botTraces[item.message.id] ? { trace: botTraces[item.message.id] } : {})}
+              />
             )
           ) : (
             <p key={item.id} className="chat-note">
@@ -215,14 +310,29 @@ export function ChatPanel() {
             </p>
           ),
         )}
+        {botActivity.map((entry) => (
+          <BotActivityRow key={entry.turnId} entry={entry} canStop={isGm} />
+        ))}
       </div>
+      {isGm && botActivity.length > 1 && (
+        <div className="chat-queue-row">
+          <span className="chat-note">Boty w kolejce: {botActivity.length - 1}</span>
+          <button type="button" className="small-button" onClick={() => stopBots()}>
+            Przerwij wszystkie
+          </button>
+        </div>
+      )}
       <form className="chat-input-row" onSubmit={onSubmit}>
         <input
           type="text"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder={
-            campaign ? 'Wiadomość… (/r 1d10+5 — rzut, /w <imię> — szept)' : 'Czat niedostępny'
+            campaign
+              ? isGm
+                ? 'Wiadomość… (/r — rzut, /w — szept, /jako <NPC> — mów jako NPC)'
+                : 'Wiadomość… (/r 1d10+5 — rzut, /w <imię> — szept)'
+              : 'Czat niedostępny'
           }
           disabled={!synced || !campaign}
           aria-label="Wiadomość czatu"

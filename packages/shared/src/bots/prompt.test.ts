@@ -13,6 +13,7 @@ import {
   buildRoleAnchor,
   compileBotPrompt,
   normalizeLesson,
+  repeatedCatchphrase,
 } from './prompt.js';
 import type { BotProfileData } from './types.js';
 
@@ -34,6 +35,57 @@ function fixer(): BotProfileData {
     },
   });
 }
+
+describe('compileBotPrompt — where the bot is talking (stage 11)', () => {
+  it('explains session chat: several speakers, answer only what was addressed', () => {
+    const prompt = compileBotPrompt({
+      name: 'Vex',
+      data: fixer(),
+      participants: ['Johnny', 'Rogue'],
+      scene: 'Bar Afterlife',
+      mode: 'chat',
+    });
+    expect(prompt).toContain('Miejsce sceny: Bar Afterlife');
+    expect(prompt).toContain('ostatnią wypowiedź skierowaną do Ciebie');
+    // Whispered lines are in the same transcript — they must not be repeated.
+    expect(prompt).toContain('„(szeptem)"');
+    expect(buildRoleAnchor({ name: 'Vex', data: fixer(), mode: 'chat' })).toContain(
+      'ostatnią wypowiedź skierowaną do Ciebie',
+    );
+  });
+
+  it('marks a whisper as a private exchange and names the other side', () => {
+    const prompt = compileBotPrompt({
+      name: 'Vex',
+      data: fixer(),
+      mode: 'whisper',
+      whisperWith: 'Johnny',
+    });
+    expect(prompt).toContain('Rozmawiacie na osobności');
+    expect(prompt).toContain('Johnny');
+  });
+
+  it('tells the bot not to echo the catchphrase it just used', () => {
+    const data = fixer();
+    const anchor = buildRoleAnchor({
+      name: 'Vex',
+      data,
+      mode: 'chat',
+      lastOwnLine: 'No i co z tego? Czas to eddiesy, skarbie.',
+    });
+    expect(anchor).toContain('Nie powtarzaj zwrotu „Czas to eddiesy, skarbie."');
+    expect(repeatedCatchphrase(data, 'Nie znam takiego gościa.')).toBeNull();
+    expect(repeatedCatchphrase(data, null)).toBeNull();
+    // Punctuation and case must not hide a repeat.
+    expect(repeatedCatchphrase(data, 'czas to EDDIESY skarbie!')).toBe('Czas to eddiesy, skarbie.');
+  });
+
+  it('says nothing about the situation in the editor sandbox', () => {
+    const prompt = compileBotPrompt({ name: 'Vex', data: fixer() });
+    expect(prompt).not.toContain('Rozmowa toczy się na żywo');
+    expect(prompt).not.toContain('Rozmawiacie na osobności');
+  });
+});
 
 describe('compileBotPrompt', () => {
   it('carries every profile section and the hard rules', () => {

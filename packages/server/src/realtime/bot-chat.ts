@@ -8,6 +8,7 @@ import type {
   BotErrorBroadcast,
   BotLesson,
   BotProfileData,
+  BotPromptMode,
   BotReplyBroadcast,
   BotTeachPayload,
   BotView,
@@ -56,9 +57,15 @@ export interface BotRuntime {
 export interface BotTurnOptions {
   /** Conversation so far, oldest first, including the new incoming line. */
   turns: BotChatTurn[];
+  /** Cap on turns sent to the model; session chat raises it above the editor's. */
+  maxTurns?: number;
   /** Names at the table — used for stop sequences and slip detection. */
   participants: string[];
   scene?: string | null;
+  /** Where the bot is talking; defaults to the editor sandbox. */
+  mode?: BotPromptMode;
+  /** Who the bot is whispering with, in `whisper` mode. */
+  whisperWith?: string | null;
   /** Provisional streamed text; `reset` clears what was streamed before. */
   onChunk?: (text: string, reset: boolean) => void;
   signal?: AbortSignal;
@@ -75,11 +82,14 @@ export interface BotTurnOutcome {
 
 const DEFAULT_SPEAKER = 'Mistrz Gry';
 
-function trimTurns(turns: BotChatTurn[] | undefined): BotChatTurn[] {
+function trimTurns(
+  turns: BotChatTurn[] | undefined,
+  maxTurns = BOT_HISTORY_MAX_TURNS,
+): BotChatTurn[] {
   if (!Array.isArray(turns)) return [];
   return turns
     .filter((turn) => typeof turn?.text === 'string' && turn.text.trim().length > 0)
-    .slice(-BOT_HISTORY_MAX_TURNS)
+    .slice(-maxTurns)
     .map((turn) => ({
       role: turn.role === 'bot' ? 'bot' : 'user',
       text: turn.text.slice(0, BOT_TEST_MESSAGE_MAX_LENGTH),
@@ -176,12 +186,16 @@ export async function runBotTurn(
   bot: BotRuntime,
   options: BotTurnOptions,
 ): Promise<BotTurnOutcome> {
-  const turns = trimTurns(options.turns);
+  const turns = trimTurns(options.turns, options.maxTurns);
   const promptCtx = {
     name: bot.name,
     data: bot.data,
     participants: options.participants,
     scene: options.scene ?? null,
+    mode: options.mode ?? 'test',
+    whisperWith: options.whisperWith ?? null,
+    // Lets the anchor tell the bot not to echo its own last catchphrase.
+    lastOwnLine: turns.findLast((turn) => turn.role === 'bot')?.text ?? null,
   };
   const guard = {
     botName: bot.name,
@@ -248,23 +262,27 @@ export async function runBotTurn(
 }
 
 /**
- * Names at the table: campaign members plus their characters. Used both for
- * stop sequences and for spotting a bot that starts speaking for a player.
+ * Names at the table: campaign members, their characters and the other bots.
+ * Used for stop sequences, for spotting a bot that starts speaking for someone
+ * else — and (since stage 11) to tell a speaker label from an ordinary
+ * sentence that happens to contain a colon.
  */
 export async function campaignParticipants(
   prisma: PrismaClient,
   campaignId: string,
 ): Promise<string[]> {
-  const [members, characters] = await Promise.all([
+  const [members, characters, bots] = await Promise.all([
     prisma.campaignMember.findMany({
       where: { campaignId },
       select: { user: { select: { name: true } } },
     }),
     prisma.character.findMany({ where: { campaignId }, select: { name: true } }),
+    prisma.botProfile.findMany({ where: { campaignId, archived: false }, select: { name: true } }),
   ]);
   const names = new Set<string>();
   for (const member of members) names.add(member.user.name);
   for (const character of characters) names.add(character.name);
+  for (const bot of bots) names.add(bot.name);
   return [...names];
 }
 

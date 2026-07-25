@@ -154,6 +154,46 @@ describe('parseChatInput — rolls', () => {
   });
 });
 
+describe('parseChatInput — bots (stage 11)', () => {
+  const NAMES = [...ROSTER, 'Vex', 'Pani Wu'];
+
+  it('accepts the @ prefix in a whisper target, like a chat mention', () => {
+    expect(parseChatInput('/w @Vex mam eddiesy', NAMES)).toEqual({
+      kind: 'whisper',
+      targetName: 'Vex',
+      text: 'mam eddiesy',
+    });
+  });
+
+  it('parses „speak as this NPC" with both aliases', () => {
+    expect(parseChatInput('/jako Vex Czas to eddiesy.', NAMES)).toEqual({
+      kind: 'as-bot',
+      targetName: 'Vex',
+      text: 'Czas to eddiesy.',
+    });
+    expect(parseChatInput('/as Vex Siadaj.', NAMES)).toMatchObject({ kind: 'as-bot' });
+  });
+
+  it('matches a multi-word NPC name without quoting', () => {
+    expect(parseChatInput('/jako Pani Wu Herbata ostygła.', NAMES)).toEqual({
+      kind: 'as-bot',
+      targetName: 'Pani Wu',
+      text: 'Herbata ostygła.',
+    });
+  });
+
+  it('reports a missing NPC and a missing line separately', () => {
+    expect(parseChatInput('/jako', NAMES)).toEqual({
+      kind: 'invalid-as-bot',
+      reason: 'MISSING_TARGET',
+    });
+    expect(parseChatInput('/jako Vex', NAMES)).toEqual({
+      kind: 'invalid-as-bot',
+      reason: 'MISSING_TEXT',
+    });
+  });
+});
+
 describe('parseChatInput — unknown commands', () => {
   it('flags an unknown command with its name', () => {
     expect(parseChatInput('/dance', ROSTER)).toEqual({ kind: 'unknown-command', command: 'dance' });

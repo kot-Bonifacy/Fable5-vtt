@@ -32,6 +32,30 @@ class LlamaError(RuntimeError):
     pass
 
 
+async def count_tokens(client: httpx.AsyncClient, settings: Settings, text: str) -> int:
+    """Liczba tokenów tekstu według tokenizera ładowanego modelu.
+
+    Serwer VTT używa tego do przycinania historii czatu do okna kontekstu —
+    liczenie znakami rozjeżdża się na polskich odmianach i emoji nawet o 40%.
+    Nie przechodzi przez kolejkę: `/tokenize` w llama-server nie zajmuje slotu
+    generacji (nie rusza KV cache), a odpowiedź przychodzi w kilka ms.
+    """
+    if not text:
+        return 0
+    response = await client.post(
+        f"{settings.llama_url}/tokenize",
+        json={"content": text},
+        timeout=httpx.Timeout(15.0, connect=5.0),
+    )
+    if response.status_code != 200:
+        body = response.text[:200]
+        raise LlamaError(f"llama-server /tokenize HTTP {response.status_code}: {body}")
+    tokens = response.json().get("tokens")
+    if not isinstance(tokens, list):
+        raise LlamaError("llama-server /tokenize zwrócił nieoczekiwany kształt odpowiedzi")
+    return len(tokens)
+
+
 def build_payload(request: ChatRequest, settings: Settings) -> dict[str, Any]:
     reasoning = request.wants_reasoning()
     default_max_tokens = settings.reasoning_max_tokens if reasoning else settings.default_max_tokens

@@ -7,14 +7,18 @@ import type {
   AiQueueBroadcast,
   AiStatus,
   AiStatusBroadcast,
+  BotActivityBroadcast,
   BotChatPayload,
   BotChunkBroadcast,
   BotCreatePayload,
   BotDeleteBroadcast,
   BotErrorBroadcast,
   BotLesson,
+  BotNoticeBroadcast,
   BotPatch,
   BotReplyBroadcast,
+  BotSayPayload,
+  BotTraceBroadcast,
   BotUpsertBroadcast,
   BotView,
   CharacterCreatePayload,
@@ -92,10 +96,40 @@ function chatErrorText(code: string): string {
       return 'Podaj formułę rzutu: /r 1d10+5';
     case 'ROLL_BAD_NOTATION':
       return 'Nieprawidłowa formuła rzutu (przykłady: 1d10+5, 2d6+3).';
+    case 'AS_BOT_MISSING_TARGET':
+      return 'Podaj bota: /jako <imię> <treść>';
+    case 'AS_BOT_MISSING_TEXT':
+      return 'Podaj treść wypowiedzi: /jako <imię> <treść>';
+    case 'BOT_NOT_FOUND':
+      return 'Nie znaleziono NPC-a o tym imieniu.';
+    case 'FORBIDDEN':
+      return 'Tylko MG może mówić w imieniu NPC-a.';
     case 'NO_CAMPAIGN':
       return 'Brak aktywnej kampanii — czat jest niedostępny.';
     default:
       return `Błąd czatu: ${code}`;
+  }
+}
+
+/**
+ * A bot could not answer. Shown as a local chat note to whoever called it (and
+ * the GM) — the transcript itself stays clean, and the rest of the VTT works.
+ */
+function botNoticeText(notice: BotNoticeBroadcast): string {
+  switch (notice.code) {
+    case 'AI_UNAVAILABLE':
+    case 'AI_UNREACHABLE':
+      return `${notice.botName} nie odpowiada — model jest niedostępny (AI Gateway offline).`;
+    case 'BOT_STOPPED':
+      return `Przerwano wypowiedź ${notice.botName}.`;
+    case 'BOT_TIMEOUT':
+      return `${notice.botName} nie odpowiedział w limicie czasu.`;
+    case 'BOT_EMPTY_REPLY':
+      return `${notice.botName} nie miał nic do powiedzenia.`;
+    default:
+      return notice.detail
+        ? `${notice.botName}: błąd modelu — ${notice.detail}`
+        : `${notice.botName}: błąd modelu (${notice.code}).`;
   }
 }
 
@@ -147,6 +181,8 @@ function botErrorText(code: string, detail?: string): string {
       return 'Korekta jest za długa.';
     case 'INVALID_NAME':
       return 'Imię bota musi mieć od 1 do 48 znaków.';
+    case 'NAME_TAKEN':
+      return 'To imię nosi już gracz albo inny bot — przy stole imiona muszą być unikalne.';
     case 'INVALID_DATA':
       return 'Nieprawidłowe dane profilu.';
     case 'FORBIDDEN':
@@ -205,6 +241,16 @@ export function connectSocket(userId: string): Socket {
   socket.on('bot:reply', (broadcast: BotReplyBroadcast) => bots().finishBotTurn(broadcast));
   socket.on('bot:error', (broadcast: BotErrorBroadcast) =>
     bots().failBotTurn(broadcast.botId, botErrorText(broadcast.code, broadcast.detail)),
+  );
+
+  // Session chat: turns in flight („Vex pisze…" + queue) are ephemeral state,
+  // broadcast without a seq; failures arrive targeted as a local chat note.
+  socket.on('bot:activity', (broadcast: BotActivityBroadcast) =>
+    chat().setBotActivity(broadcast.entries ?? []),
+  );
+  socket.on('bot:trace', (broadcast: BotTraceBroadcast) => chat().addBotTrace(broadcast));
+  socket.on('bot:notice', (broadcast: BotNoticeBroadcast) =>
+    chat().addNote(botNoticeText(broadcast)),
   );
 
   // AI status/streams are targeted, carry no seq and are never persisted —
@@ -340,6 +386,14 @@ export function sendChatInput(text: string, gesture?: RollGesture): void {
     store.addNote(
       chatErrorText(
         parsed.reason === 'MISSING_TARGET' ? 'WHISPER_MISSING_TARGET' : 'WHISPER_MISSING_TEXT',
+      ),
+    );
+    return;
+  }
+  if (parsed.kind === 'invalid-as-bot') {
+    store.addNote(
+      chatErrorText(
+        parsed.reason === 'MISSING_TARGET' ? 'AS_BOT_MISSING_TARGET' : 'AS_BOT_MISSING_TEXT',
       ),
     );
     return;
@@ -513,9 +567,18 @@ export function sendBotChat(payload: BotChatPayload): void {
   });
 }
 
-/** GM's emergency stop for a generating bot. */
+/** GM's emergency stop for a generating bot (bot editor). */
 export function cancelBotChat(): void {
   socket?.emit('bot:cancel');
+}
+
+/** GM types a line in an NPC's name — same result as `/jako` on chat. */
+export const sayAsBot = (payload: BotSayPayload) =>
+  emitSceneAck<{ messageId: number }>('bot:say', payload);
+
+/** GM's emergency stop for bots speaking on session chat. */
+export function stopBots(turnId?: string): void {
+  socket?.emit('bot:stop', turnId ? { turnId } : {});
 }
 
 function emitSceneAck<T = undefined>(event: string, payload: unknown): Promise<SocketAck<T>> {

@@ -106,6 +106,32 @@ export class AiGateway {
   }
 
   /**
+   * Measures a text with the model's own tokenizer — used to trim bot chat
+   * history to the context window. Returns null when the gateway cannot
+   * answer; the caller then falls back to a character estimate rather than
+   * skipping the bot's line.
+   */
+  async countTokens(text: string): Promise<number | null> {
+    if (text.length === 0) return 0;
+    try {
+      const response = await this.fetchImpl(`${this.options.url}/tokenize`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          ...(this.options.apiKey ? { 'x-api-key': this.options.apiKey } : {}),
+        },
+        body: JSON.stringify({ text }),
+        signal: AbortSignal.timeout(HEALTH_TIMEOUT_MS),
+      });
+      if (!response.ok) return null;
+      const body = (await response.json()) as { count?: unknown };
+      return typeof body.count === 'number' && Number.isFinite(body.count) ? body.count : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Streams one generation. Yields queue positions first (if the gateway is
    * busy), then the answer. Errors are yielded, not thrown.
    */

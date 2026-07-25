@@ -238,6 +238,71 @@ body {
   color: var(--text-dim);
 }
 
+/* --- NPC lines (bots and the GM's /jako — deliberately identical) --- */
+
+.chat-portrait {
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 50%;
+  object-fit: cover;
+  flex: none;
+  align-self: center;
+}
+
+.chat-portrait--empty {
+  display: grid;
+  place-items: center;
+  background: #2a2d36;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+}
+
+.chat-message--npc .chat-message-author {
+  color: #e5a54b;
+}
+
+.chat-message--pending .chat-message-text--pending {
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.chat-typing-label {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.chat-stop {
+  padding: 0 0.3rem;
+  line-height: 1.2;
+}
+
+.chat-queue-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+}
+
+/* GM-only diagnostics of a generated line. */
+.chat-bot-trace {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.15rem;
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}
+
+.chat-bot-trace-badge {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0 0.4rem;
+}
+
+.chat-bot-trace-warning {
+  color: var(--warn);
+}
+
 /* --- 3D dice overlay --- */
 
 .dice-overlay {
@@ -1984,6 +2049,23 @@ input[type='color'] {
 
 .bot-create select {
   max-width: 9rem;
+}
+
+.bot-scene-pin {
+  max-width: 8.5rem;
+  font-size: 0.7rem;
+  padding: 0.1rem 0.2rem;
+}
+
+.bot-say select {
+  max-width: 8rem;
+}
+
+.bot-activity {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
 }
 
 .bot-window {

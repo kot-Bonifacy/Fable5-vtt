@@ -13,9 +13,21 @@ export type ChatKind = 'say' | 'whisper' | 'roll' | 'gmroll';
 export interface ChatMessageView {
   id: number;
   kind: ChatKind;
+  /**
+   * Author's user account. An NPC line (bot-generated or typed by the GM with
+   * `/jako`) is authored by the GM who runs the bot — the two are
+   * indistinguishable on purpose, so players cannot tell a bot from the GM.
+   */
   authorId: string;
+  /** Display name: the user's, or the NPC's when `botId` is set. */
   authorName: string;
+  /** Set when the line was spoken by a bot profile. */
+  botId?: string;
+  /** NPC portrait (`/uploads/...`); NPC lines only. */
+  portraitUrl?: string | null;
   recipientId?: string;
+  /** Whisper addressed to a bot. */
+  recipientBotId?: string;
   recipientName?: string;
   /** For rolls: the optional label typed after the notation. */
   text: string;
@@ -37,9 +49,12 @@ export const ROLL_ALIASES = ['r', 'roll', 'rzut'];
 /** Aliases of the GM roll command (result visible to the author and GMs only). */
 export const GM_ROLL_ALIASES = ['gr', 'gmroll'];
 
+/** Aliases of „speak as this NPC" — GM only, no model involved. */
+export const AS_BOT_ALIASES = ['jako', 'as'];
+
 /** One-line help shown next to "unknown command" errors. */
 export const CHAT_COMMANDS_HELP =
-  'Dostępne komendy: /w <imię> <treść> (szept), /r <formuła> [etykieta] (rzut), /gr <formuła> (rzut widoczny dla MG)';
+  'Dostępne komendy: /w <imię> <treść> (szept), /r <formuła> [etykieta] (rzut), /gr <formuła> (rzut widoczny dla MG), /jako <bot> <treść> (MG mówi jako NPC)';
 
 export type ParsedChatInput =
   | { kind: 'empty' }
@@ -48,21 +63,29 @@ export type ParsedChatInput =
   | { kind: 'invalid-whisper'; reason: 'MISSING_TARGET' | 'MISSING_TEXT' }
   | { kind: 'roll'; visibility: 'public' | 'gm'; formula: RollFormula; label?: string }
   | { kind: 'invalid-roll'; reason: 'MISSING_NOTATION' | RollParseError }
+  /** GM speaks in a bot's name; `targetName` is the bot. */
+  | { kind: 'as-bot'; targetName: string; text: string }
+  | { kind: 'invalid-as-bot'; reason: 'MISSING_TARGET' | 'MISSING_TEXT' }
   | { kind: 'unknown-command'; command: string };
 
 /**
- * Splits whisper arguments into target name and message text.
+ * Splits „<target> <text>" arguments (whisper, `/jako`) into name and text.
  *
  * Target resolution order:
  * 1. a name in quotes: `"Jan Kowalski" cześć`,
  * 2. the longest case-insensitive prefix matching one of `knownNames`
  *    (handles names with spaces without quoting),
  * 3. the first whitespace-separated token.
+ *
+ * A leading `@` is accepted and dropped, so `/w @Vex` works exactly like the
+ * `@Vex` mention syntax used to call bots in ordinary messages.
  */
-function splitWhisperArgs(
-  args: string,
+function splitTargetArgs(
+  rawArgs: string,
   knownNames: string[],
 ): { targetName: string; text: string } | null {
+  const args = rawArgs.startsWith('@') ? rawArgs.slice(1).trimStart() : rawArgs;
+  if (args.length === 0) return null;
   const quoted = /^"([^"]+)"\s*(.*)$/s.exec(args) ?? /^'([^']+)'\s*(.*)$/s.exec(args);
   if (quoted) {
     return { targetName: quoted[1]!.trim(), text: quoted[2]!.trim() };
@@ -111,8 +134,9 @@ function parseRollArgs(visibility: 'public' | 'gm', args: string): ParsedChatInp
  * Parses raw chat input into an intention. Extensible: new commands get their
  * own alias list and branch here.
  *
- * `knownNames` (campaign roster) improves whisper parsing for names with
- * spaces; the caller (server) remains authoritative for target resolution.
+ * `knownNames` (campaign roster plus the GM's bots) improves parsing of names
+ * with spaces; the caller (server) remains authoritative for target resolution
+ * and for who may be addressed at all.
  */
 export function parseChatInput(raw: string, knownNames: string[] = []): ParsedChatInput {
   const input = raw.trim();
@@ -133,10 +157,18 @@ export function parseChatInput(raw: string, knownNames: string[] = []): ParsedCh
 
   if (WHISPER_ALIASES.includes(command)) {
     if (args.length === 0) return { kind: 'invalid-whisper', reason: 'MISSING_TARGET' };
-    const split = splitWhisperArgs(args, knownNames);
+    const split = splitTargetArgs(args, knownNames);
     if (!split) return { kind: 'invalid-whisper', reason: 'MISSING_TARGET' };
     if (split.text.length === 0) return { kind: 'invalid-whisper', reason: 'MISSING_TEXT' };
     return { kind: 'whisper', targetName: split.targetName, text: split.text };
+  }
+
+  if (AS_BOT_ALIASES.includes(command)) {
+    if (args.length === 0) return { kind: 'invalid-as-bot', reason: 'MISSING_TARGET' };
+    const split = splitTargetArgs(args, knownNames);
+    if (!split) return { kind: 'invalid-as-bot', reason: 'MISSING_TARGET' };
+    if (split.text.length === 0) return { kind: 'invalid-as-bot', reason: 'MISSING_TEXT' };
+    return { kind: 'as-bot', targetName: split.targetName, text: split.text };
   }
 
   return { kind: 'unknown-command', command };

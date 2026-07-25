@@ -281,6 +281,9 @@ beforeEach(async () => {
   gateway.up = true;
   gateway.answers = [];
   gateway.bodies = [];
+  // Names at the table are unique since stage 11, so each test starts with an
+  // empty roster instead of piling up „Vex" profiles.
+  await built.prisma.botProfile.deleteMany({});
   const gm = createSocket(gmCookie);
   await gm.firstSync;
   await refreshServerStatus(gm.socket);

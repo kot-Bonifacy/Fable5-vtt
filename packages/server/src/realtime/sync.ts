@@ -3,7 +3,7 @@ import type { SceneSummary, SceneView, SessionUser, StateSyncPayload } from '@vt
 import { ROLE_GM } from '@vtt/shared';
 import { defineEvent, type RealtimeDeps } from './registry.js';
 import { computePresence } from './presence.js';
-import { fetchHistoryPage } from './chat.js';
+import { fetchHistoryPage } from './chat-io.js';
 import { fetchSceneList, getSceneById, toSceneView } from './scenes.js';
 import { fetchSceneTokensFor } from './tokens.js';
 import { fetchCharactersFor } from './character-io.js';

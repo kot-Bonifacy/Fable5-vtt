@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import type {
+  BotActivityEntry,
+  BotTraceBroadcast,
   CampaignSummary,
   ChatHistoryPage,
   ChatMessageBroadcast,
@@ -30,6 +32,14 @@ interface ChatStoreState {
   loadingHistory: boolean;
   /** Chat input draft — shared so the dice cup can read/execute commands. */
   draft: string;
+  /** Bot turns in flight („Vex pisze…" plus the queue), newest state wins. */
+  botActivity: BotActivityEntry[];
+  /**
+   * GM-only diagnostics of delivered bot lines, keyed by message id. Players
+   * never receive these, so a bot line looks exactly like an NPC line the GM
+   * typed by hand.
+   */
+  botTraces: Record<number, BotTraceBroadcast>;
 
   applySync: (payload: StateSyncPayload) => void;
   /**
@@ -51,6 +61,8 @@ interface ChatStoreState {
   setLoadingHistory: (loading: boolean) => void;
   addNote: (text: string) => void;
   setDesynced: () => void;
+  setBotActivity: (entries: BotActivityEntry[]) => void;
+  addBotTrace: (trace: BotTraceBroadcast) => void;
 }
 
 let noteCounter = 0;
@@ -96,6 +108,8 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
   hasMoreHistory: false,
   loadingHistory: false,
   draft: '',
+  botActivity: [],
+  botTraces: {},
 
   applySync: (payload) =>
     set((state) => ({
@@ -188,7 +202,12 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
       items: [...state.items, { type: 'note', id: `note-${++noteCounter}`, text }],
     })),
 
-  setDesynced: () => set({ synced: false }),
+  setDesynced: () => set({ synced: false, botActivity: [] }),
+
+  setBotActivity: (entries) => set({ botActivity: entries }),
+
+  addBotTrace: (trace) =>
+    set((state) => ({ botTraces: { ...state.botTraces, [trace.messageId]: trace } })),
 }));
 
 /** Id of the oldest server message in the feed — pagination cursor. */

@@ -112,8 +112,14 @@ export interface BotView {
   portraitUrl: string | null;
   /** Linked character sheet (companions); null for plain NPCs. */
   characterId: string | null;
-  /** Active in the current session — stage 11 lets active bots speak. */
+  /** Active in the current session — only active bots speak on chat. */
   active: boolean;
+  /**
+   * Scene the bot is pinned to („tryb w scenie"): there it also answers a
+   * direct continuation of its own last line. Null = present everywhere, but
+   * only when called by name.
+   */
+  sceneId: string | null;
   archived: boolean;
   data: BotProfileData;
   updatedAt: string;
@@ -140,6 +146,8 @@ export interface BotPatch {
   portraitUrl?: string | null;
   characterId?: string | null;
   active?: boolean;
+  /** Scene pin; null unpins („wszystkie scenki"). */
+  sceneId?: string | null;
   archived?: boolean;
   /** Partial profile body; top-level keys replace the stored ones. */
   data?: Record<string, unknown>;
@@ -215,4 +223,89 @@ export interface BotErrorBroadcast {
   botId: string;
   code: string;
   detail?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Session chat (stage 11) — bots as participants of the campaign chat.
+// ---------------------------------------------------------------------------
+
+/** How many past chat lines of the scene may travel back to the model. */
+export const BOT_SESSION_HISTORY_MAX_TURNS = 40;
+/** Hard cap on one bot turn — the criterion is „the whole thing ≤ ~15 s". */
+export const BOT_TURN_TIMEOUT_MS = 20_000;
+/** Tokens kept free in the context window for the answer and prompt overhead. */
+export const BOT_CONTEXT_SAFETY_TOKENS = 512;
+/** Context assumed when the gateway does not report its window. */
+export const BOT_CONTEXT_FALLBACK_TOKENS = 8192;
+
+/** Client → server payload of `bot:say` — the GM speaks as a bot (no model). */
+export interface BotSayPayload {
+  botId: string;
+  text: string;
+  /** Set to whisper the line privately to one user instead of the whole room. */
+  whisperToUserId?: string | null;
+}
+
+/** Client → server payload of `bot:stop` — the GM's emergency brake. */
+export interface BotStopPayload {
+  /** One turn; omit to drop the whole queue. */
+  turnId?: string;
+}
+
+/**
+ * One bot turn in flight, as everyone at the table sees it. `text` carries the
+ * provisional answer so chat can stream it; the final, sanitized line arrives
+ * as a normal `chat:message` and the entry disappears.
+ */
+export interface BotActivityEntry {
+  turnId: string;
+  botId: string;
+  name: string;
+  portraitUrl: string | null;
+  /** `queued` = waiting for the model, `typing` = generating now. */
+  state: 'queued' | 'typing';
+  /** 0 = generating, 1+ = place in the queue. */
+  position: number;
+  text: string;
+  /**
+   * Private turn (answer to a whisper) — delivered only to this user and the
+   * GM, so a whispered answer never flashes on other clients.
+   */
+  whisperToUserId?: string;
+}
+
+/** Payload of `bot:activity` — the full list of turns in flight (no seq). */
+export interface BotActivityBroadcast {
+  entries: BotActivityEntry[];
+}
+
+/**
+ * A bot could not answer (gateway down, timeout, GM stop). Targeted at the
+ * person who called it plus the GM — never a room broadcast, and never stored,
+ * so the transcript stays clean.
+ */
+export interface BotNoticeBroadcast {
+  botId: string;
+  botName: string;
+  code: string;
+  detail?: string;
+}
+
+/**
+ * GM-only diagnostics of a delivered bot line, keyed by the chat message id:
+ * players receive the message alone, so a bot's line is indistinguishable from
+ * an NPC line typed by the GM (`/jako`).
+ */
+export interface BotTraceBroadcast {
+  messageId: number;
+  botId: string;
+  /** The answer was regenerated after the bot stepped out of character. */
+  retried: boolean;
+  /** Polish description of a slip that survived the retry; null when clean. */
+  warning: string | null;
+  generationMs: number | null;
+  completionTokens: number | null;
+  /** Chat lines that fitted in the context window, and their token cost. */
+  historyTurns: number;
+  promptTokens: number | null;
 }

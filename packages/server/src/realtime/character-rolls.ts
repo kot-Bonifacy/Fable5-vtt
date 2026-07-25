@@ -18,12 +18,8 @@ import { createMixedRng } from './dice-rng.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { emitTokensOfCharacter } from './tokens.js';
-import {
-  INCLUDE_CHAT_NAMES,
-  deliverRollMessage,
-  sanitizeGesture,
-  toChatMessageView,
-} from './chat.js';
+import { INCLUDE_CHAT_NAMES, deliverRollMessage, toChatMessageView } from './chat-io.js';
+import { sanitizeGesture } from './chat.js';
 
 /**
  * Sheet-driven checks (stage 08). The client only sends an intention — which

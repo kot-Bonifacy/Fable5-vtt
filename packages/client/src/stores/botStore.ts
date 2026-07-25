@@ -126,6 +126,7 @@ export const useBotStore = create<BotStoreState>((set, get) => ({
       if (patch.portraitUrl !== undefined) next.portraitUrl = patch.portraitUrl;
       if (patch.characterId !== undefined) next.characterId = patch.characterId;
       if (patch.active !== undefined) next.active = patch.active;
+      if (patch.sceneId !== undefined) next.sceneId = patch.sceneId;
       if (patch.archived !== undefined) next.archived = patch.archived;
       if (patch.data !== undefined) {
         next.data = mergeBotData(current.data, patch.data as Partial<BotProfileData>);

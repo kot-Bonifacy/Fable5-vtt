@@ -14,9 +14,15 @@ from fastapi.responses import StreamingResponse
 
 from .config import Settings, load_settings
 from .gpu import read_gpu_info
-from .llama_client import LlamaError, stream_chat
+from .llama_client import LlamaError, count_tokens, stream_chat
 from .queue import QueueFull, RequestQueue
-from .schemas import ChatRequest, HealthResponse, LlamaStatus
+from .schemas import (
+    ChatRequest,
+    HealthResponse,
+    LlamaStatus,
+    TokenizeRequest,
+    TokenizeResponse,
+)
 from .supervisor import LlamaSupervisor
 
 log = logging.getLogger(__name__)
@@ -116,6 +122,24 @@ def create_app(
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
+
+    @app.post("/tokenize", response_model=TokenizeResponse, dependencies=[Depends(require_api_key)])
+    async def tokenize(request: Request, body: TokenizeRequest) -> TokenizeResponse:
+        """Pomiar długości promptu tokenizerem modelu (budżet kontekstu botów)."""
+        supervisor: LlamaSupervisor = request.app.state.supervisor
+        client: httpx.AsyncClient = request.app.state.client
+        if not supervisor.is_ready:
+            raise HTTPException(
+                status_code=503,
+                detail=f"Model niedostępny (status: {supervisor.status.value})",
+            )
+        try:
+            count = await count_tokens(client, settings, body.text)
+        except (LlamaError, httpx.HTTPError) as exc:
+            # Serwer VTT ma fallback na oszacowanie po znakach — nie wywracamy
+            # z tego powodu wypowiedzi bota, oddajemy czysty błąd.
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        return TokenizeResponse(count=count, context_size=supervisor.context_size)
 
     @app.post("/admin/restart", dependencies=[Depends(require_api_key)])
     async def restart(request: Request) -> dict[str, str]:
