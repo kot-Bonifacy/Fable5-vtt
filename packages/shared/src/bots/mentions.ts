@@ -118,6 +118,11 @@ export interface BotTriggerInput {
   sceneId: string | null;
   /** The message directly preceding this one in the same scene. */
   previous?: { botId: string | null; agoMs: number } | null;
+  /**
+   * Bot that spoke this line — it must not answer itself. Matters for `/jako`:
+   * „Rina nie wybacza" typed as Rina would otherwise call Rina.
+   */
+  excludeBotId?: string | null;
   bots: BotTriggerCandidate[];
 }
 
@@ -135,6 +140,7 @@ export function selectBotsToAnswer(input: BotTriggerInput): string[] {
     (bot) =>
       bot.active &&
       bot.archived !== true &&
+      bot.id !== input.excludeBotId &&
       (bot.sceneId === null || bot.sceneId === input.sceneId),
   );
   if (present.length === 0) return [];

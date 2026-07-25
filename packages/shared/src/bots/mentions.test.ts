@@ -171,6 +171,19 @@ describe('selectBotsToAnswer — loop guard', () => {
     expect(ids).toEqual([]);
   });
 
+  it('never lets an NPC line call the NPC it was written for', () => {
+    // Found in the browser: `/jako Rina Rina nie wybacza` made Rina answer
+    // herself.
+    const ids = selectBotsToAnswer({
+      text: 'Rina nie wybacza takich rzeczy.',
+      origin: 'gm_as_bot',
+      sceneId: SCENE,
+      excludeBotId: 'rina',
+      bots: [bot({ id: 'rina', name: 'Rina', sceneId: SCENE })],
+    });
+    expect(ids).toEqual([]);
+  });
+
   it('lets the GM speaking as an NPC call another bot by name, but not continue a thread', () => {
     const bots = [bot({ id: 'sasha', name: 'Sasha', sceneId: SCENE })];
     expect(

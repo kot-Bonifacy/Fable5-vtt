@@ -573,8 +573,8 @@ export async function speakAsBot(
     sceneId: options.sceneId,
     whisperToUserId: options.whisperToUserId ?? null,
   });
-  // A hand-written NPC line may still call another bot by name; a generated
-  // line never does (that is the loop guard).
+  // A hand-written NPC line may still call ANOTHER bot by name (a generated
+  // line never calls anyone) — but never the NPC it was written for.
   if (!options.whisperToUserId) {
     await triggerBotsForLine(deps, {
       campaignId: options.campaignId,
@@ -583,6 +583,7 @@ export async function speakAsBot(
       text: options.text,
       messageId: message.id,
       calledByUserId: options.gmUserId,
+      excludeBotId: options.bot.id,
     });
   }
   return message;
@@ -618,6 +619,8 @@ export async function triggerBotsForLine(
     text: string;
     messageId: number;
     calledByUserId: string;
+    /** Bot that spoke the line — it must not answer itself. */
+    excludeBotId?: string;
     /** Pass the list when the caller already has it (saves a query). */
     bots?: ChatBot[];
   },
@@ -635,6 +638,7 @@ export async function triggerBotsForLine(
     origin: line.origin,
     sceneId: line.sceneId,
     previous,
+    ...(line.excludeBotId ? { excludeBotId: line.excludeBotId } : {}),
     bots,
   });
   if (botIds.length === 0) return;
