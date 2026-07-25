@@ -7,6 +7,7 @@ import { fetchHistoryPage } from './chat.js';
 import { fetchSceneList, getSceneById, toSceneView } from './scenes.js';
 import { fetchSceneTokensFor } from './tokens.js';
 import { fetchCharactersFor } from './character-io.js';
+import { fetchBotsFor } from './bots.js';
 import { aiStatusFor } from './ai.js';
 import { campaignRoom } from './state.js';
 
@@ -32,11 +33,12 @@ export async function buildStateSync(
       scenes: [],
       tokens: [],
       characters: [],
+      bots: [],
       ai: aiStatusFor(deps, user.role === ROLE_GM),
     };
   }
   const viewedSceneId = socket.data.viewedSceneId;
-  const [presence, history, viewedScene, scenes, tokens, characters] = await Promise.all([
+  const [presence, history, viewedScene, scenes, tokens, characters, bots] = await Promise.all([
     computePresence(deps.io, campaign.id),
     fetchHistoryPage(deps.ctx.prisma, campaign.id, user),
     viewedSceneId ? getSceneById(deps.ctx.prisma, viewedSceneId) : Promise.resolve(null),
@@ -50,6 +52,8 @@ export async function buildStateSync(
       : Promise.resolve([]),
     // GM: all campaign characters; player: only their own.
     fetchCharactersFor(deps.ctx.prisma, deps.ctx.cpred, campaign.id, user),
+    // Bot profiles carry secrets and prompts — GM only.
+    fetchBotsFor(deps.ctx.prisma, campaign.id, user.role === ROLE_GM),
   ]);
   const scene: SceneView | null = viewedScene ? toSceneView(viewedScene) : null;
   return {
@@ -62,6 +66,7 @@ export async function buildStateSync(
     scenes,
     tokens,
     characters,
+    bots,
     ai: aiStatusFor(deps, user.role === ROLE_GM),
   };
 }

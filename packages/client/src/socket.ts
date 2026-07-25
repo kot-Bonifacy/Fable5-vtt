@@ -7,6 +7,16 @@ import type {
   AiQueueBroadcast,
   AiStatus,
   AiStatusBroadcast,
+  BotChatPayload,
+  BotChunkBroadcast,
+  BotCreatePayload,
+  BotDeleteBroadcast,
+  BotErrorBroadcast,
+  BotLesson,
+  BotPatch,
+  BotReplyBroadcast,
+  BotUpsertBroadcast,
+  BotView,
   CharacterCreatePayload,
   CharacterDeleteBroadcast,
   CharacterPatch,
@@ -53,6 +63,7 @@ import { useAuthStore } from './stores/authStore.js';
 import { useTokenStore, type TokenViewerCtx } from './stores/tokenStore.js';
 import { useCharacterStore } from './stores/characterStore.js';
 import { useAiStore } from './stores/aiStore.js';
+import { useBotStore } from './stores/botStore.js';
 
 let socket: Socket | undefined;
 /** User the live socket authenticated as — a different one forces a reconnect. */
@@ -121,6 +132,30 @@ function aiErrorText(code: string, detail?: string): string {
   }
 }
 
+/** Polish messages for bot-editor failures (stage 10). */
+function botErrorText(code: string, detail?: string): string {
+  switch (code) {
+    case 'BOT_NOT_FOUND':
+      return 'Nie znaleziono bota — odśwież stronę.';
+    case 'BOT_EMPTY_MESSAGE':
+      return 'Wpisz treść wypowiedzi.';
+    case 'BOT_MESSAGE_TOO_LONG':
+      return 'Wypowiedź jest za długa.';
+    case 'BOT_EMPTY_CORRECTION':
+      return 'Wpisz treść korekty.';
+    case 'BOT_CORRECTION_TOO_LONG':
+      return 'Korekta jest za długa.';
+    case 'INVALID_NAME':
+      return 'Imię bota musi mieć od 1 do 48 znaków.';
+    case 'INVALID_DATA':
+      return 'Nieprawidłowe dane profilu.';
+    case 'FORBIDDEN':
+      return 'Boty może edytować tylko MG.';
+    default:
+      return aiErrorText(code, detail);
+  }
+}
+
 /**
  * Connects to the server on the same origin (Vite proxy in dev). Passing a
  * different `userId` (someone else joined in the same browser) drops the old
@@ -156,8 +191,21 @@ export function connectSocket(userId: string): Socket {
     scenes().applySync(payload);
     tokens().applySync(payload, viewer());
     useCharacterStore.getState().applySync(payload);
+    useBotStore.getState().applySync(payload);
     if (payload.ai) useAiStore.getState().setStatus(payload.ai);
   });
+
+  // Bot profiles are GM-only and targeted at the GM room — no seq, like whispers.
+  const bots = () => useBotStore.getState();
+  socket.on('bot:upsert', (broadcast: BotUpsertBroadcast) => bots().applyUpsert(broadcast.bot));
+  socket.on('bot:delete', (broadcast: BotDeleteBroadcast) => bots().applyDelete(broadcast.botId));
+  socket.on('bot:chunk', (broadcast: BotChunkBroadcast) =>
+    bots().appendChunk(broadcast.botId, broadcast.text, broadcast.reset === true),
+  );
+  socket.on('bot:reply', (broadcast: BotReplyBroadcast) => bots().finishBotTurn(broadcast));
+  socket.on('bot:error', (broadcast: BotErrorBroadcast) =>
+    bots().failBotTurn(broadcast.botId, botErrorText(broadcast.code, broadcast.detail)),
+  );
 
   // AI status/streams are targeted, carry no seq and are never persisted —
   // the gateway is an external service, not game state.
@@ -377,6 +425,97 @@ export function refreshAiStatus(): Promise<AiStatus | null> {
       resolve(ack.ok ? (ack.data ?? null) : null);
     });
   });
+}
+
+export const createBot = (payload: BotCreatePayload) =>
+  emitSceneAck<BotView>('bot:create', payload);
+
+export const deleteBot = (botId: string) => emitSceneAck('bot:delete', { botId });
+
+export const duplicateBot = (botId: string) => emitSceneAck<BotView>('bot:duplicate', { botId });
+
+/** Immediate (non-debounced) profile update — activation, archiving, portraits. */
+export const updateBot = (botId: string, patch: BotPatch) =>
+  emitSceneAck<BotView>('bot:update', { botId, patch });
+
+/** Turns a GM correction into a lesson stored in the profile. */
+export const teachBot = (botId: string, correction: string, quote?: string) =>
+  emitSceneAck<{ lesson: BotLesson; bot: BotView }>('bot:teach', {
+    botId,
+    correction,
+    ...(quote ? { quote } : {}),
+  });
+
+interface BotSaveBuffer {
+  patch: BotPatch;
+  timer: number;
+}
+
+const botSaveBuffers = new Map<string, BotSaveBuffer>();
+const BOT_SAVE_DEBOUNCE_MS = 600;
+
+/**
+ * Optimistically applies a profile edit and schedules a debounced
+ * `bot:update`. A profile edited mid-session takes effect on the bot's very
+ * next line — the prompt is compiled from the stored profile every time.
+ */
+export function queueBotSave(botId: string, patch: BotPatch): void {
+  useBotStore.getState().localPatch(botId, patch);
+
+  const buffer = botSaveBuffers.get(botId) ?? { patch: {}, timer: 0 };
+  const { data, ...rest } = patch;
+  Object.assign(buffer.patch, rest);
+  if (data) buffer.patch.data = { ...buffer.patch.data, ...data };
+  window.clearTimeout(buffer.timer);
+  buffer.timer = window.setTimeout(() => flushBotSave(botId), BOT_SAVE_DEBOUNCE_MS);
+  botSaveBuffers.set(botId, buffer);
+}
+
+/** Sends the buffered profile patch now (editor close, tab switch). */
+export function flushBotSave(botId: string): void {
+  const buffer = botSaveBuffers.get(botId);
+  if (!buffer) return;
+  botSaveBuffers.delete(botId);
+  window.clearTimeout(buffer.timer);
+
+  const store = useBotStore.getState();
+  store.beginSave(botId);
+  if (!socket) {
+    store.endSave(botId, null, false);
+    return;
+  }
+  socket.emit('bot:update', { botId, patch: buffer.patch }, (ack: SocketAck<BotView>) => {
+    useBotStore.getState().endSave(botId, ack.ok ? (ack.data ?? null) : null, ack.ok);
+  });
+}
+
+/**
+ * Sends one turn of the editor's test conversation. The answer streams back as
+ * `bot:chunk` and is replaced by the final, sanitized `bot:reply`.
+ */
+export function sendBotChat(payload: BotChatPayload): void {
+  const store = useBotStore.getState();
+  const message = payload.message.trim();
+  if (!message) return;
+  store.addUserTurn(payload.botId, message);
+  if (!socket) {
+    store.startBotTurn(payload.botId, 'local');
+    store.failBotTurn(payload.botId, 'Brak połączenia z serwerem.');
+    return;
+  }
+  socket.emit('bot:chat', payload, (ack: SocketAck<{ requestId: string }>) => {
+    const bots = useBotStore.getState();
+    if (ack.ok && ack.data) bots.startBotTurn(payload.botId, ack.data.requestId);
+    else if (!ack.ok) {
+      bots.startBotTurn(payload.botId, 'local');
+      bots.failBotTurn(payload.botId, botErrorText(ack.error));
+    }
+  });
+}
+
+/** GM's emergency stop for a generating bot. */
+export function cancelBotChat(): void {
+  socket?.emit('bot:cancel');
 }
 
 function emitSceneAck<T = undefined>(event: string, payload: unknown): Promise<SocketAck<T>> {

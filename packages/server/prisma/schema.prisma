@@ -43,6 +43,7 @@ model Campaign {
   scenes       Scene[]
   chatMessages ChatMessage[]
   tokenAssets  TokenAsset[]
+  bots         BotProfile[]
 }
 
 model CampaignMember {
@@ -84,6 +85,36 @@ model Character {
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   owner    User?    @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   tokens   Token[]
+  bots     BotProfile[]
+
+  @@index([campaignId])
+}
+
+/**
+ * An LLM bot authored by the GM (NPC, companion or GM assistant). The whole
+ * profile — persona, knowledge, generation params, learned lessons and the
+ * stage-12 voice section — lives in one JSON column, so tuning the profile
+ * shape never needs a migration.
+ */
+model BotProfile {
+  id         String @id @default(cuid())
+  campaignId String
+  name       String
+  /** Local portrait path (/uploads/...); null renders a placeholder. */
+  portraitUrl String?
+  /** BotProfileData JSON (schemaVersion inside). */
+  data String @default("{}")
+  /** Active in the current session — stage 11 lets active bots speak on chat. */
+  active   Boolean @default(false)
+  archived Boolean @default(false)
+  /** Linked character sheet — companions with their own stats. */
+  characterId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  campaign  Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  character Character? @relation(fields: [characterId], references: [id], onDelete: SetNull)
 
   @@index([campaignId])
 }

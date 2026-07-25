@@ -5,6 +5,7 @@ import { MapArea } from './components/MapArea.js';
 import { SidePanel } from './components/SidePanel.js';
 import { DiceCup } from './components/DiceCup.js';
 import { CharacterSheets } from './components/CharacterSheet.js';
+import { BotEditors } from './components/BotEditor.js';
 import { RollDialog } from './components/RollDialog.js';
 import { LoginPage } from './pages/LoginPage.js';
 import { JoinPage } from './pages/JoinPage.js';
@@ -21,6 +22,7 @@ function GameView() {
         <SidePanel />
       </main>
       <CharacterSheets />
+      <BotEditors />
       <RollDialog />
       <DiceCup />
     </div>

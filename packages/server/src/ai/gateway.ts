@@ -22,6 +22,8 @@ export interface AiChatRequest {
   reasoning?: boolean;
   maxTokens?: number;
   temperature?: number;
+  /** Stop sequences — bots use them to cut hallucinated dialogue of others. */
+  stop?: string[];
 }
 
 export type AiStreamEvent =
@@ -115,6 +117,7 @@ export class AiGateway {
       reasoning: request.reasoning ?? null,
       max_tokens: request.maxTokens ?? null,
       temperature: request.temperature ?? null,
+      stop: request.stop ?? null,
     };
 
     let response: Response;

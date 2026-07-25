@@ -34,6 +34,11 @@ const config: ServerConfig = {
   sessionTtlDays: 1,
   uploadsDir: mkdtempSync(join(tmpdir(), 'vtt-uploads-')),
   dataPublicDir: resolve(import.meta.dirname, '../../../data/public'),
+  // The gateway is never reachable in these suites — bots stay unavailable.
+  aiGatewayUrl: 'http://127.0.0.1:1',
+  aiGatewayApiKey: '',
+  aiHealthIntervalMs: 60_000,
+  aiRequestTimeoutMs: 1000,
 };
 
 const PNG_1X1 = Buffer.from(

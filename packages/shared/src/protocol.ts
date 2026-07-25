@@ -1,5 +1,6 @@
 import type { AiStatus } from './ai.js';
 import type { CampaignSummary, Role } from './auth.js';
+import type { BotView } from './bots/types.js';
 import type { ChatMessageView } from './chat.js';
 import type { CharacterView } from './characters.js';
 import type { RollToss } from './dice.js';
@@ -40,6 +41,8 @@ export interface StateSyncPayload {
   tokens: TokenView[];
   /** Characters this user may see: the GM gets all, a player only their own. */
   characters: CharacterView[];
+  /** Bot profiles — GM only (they carry secrets), always empty for players. */
+  bots: BotView[];
   /** Bot availability, filtered by role (players get no diagnostics). */
   ai: AiStatus;
 }

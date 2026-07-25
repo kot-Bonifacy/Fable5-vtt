@@ -15,6 +15,7 @@
   --accent: #e01414;
   --ok: #34c759;
   --err: #ff3b30;
+  --warn: #d9a441;
   --whisper: #b48be0;
 }
 
@@ -1911,4 +1912,231 @@ input[type='color'] {
 .ai-exchange-usage {
   font-size: 0.75rem;
   color: var(--text-dim);
+}
+
+/* --- Boty (etap 10): zakładka z listą i pływający edytor profilu --- */
+
+.bot-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.75rem;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.bot-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.bot-panel-count {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.bot-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.bot-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.bot-row--archived {
+  opacity: 0.55;
+}
+
+.bot-open {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-align: left;
+  min-width: 0;
+}
+
+.bot-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex: none;
+}
+
+.bot-active {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}
+
+.bot-create select {
+  max-width: 9rem;
+}
+
+.bot-window {
+  width: min(720px, calc(100vw - 24px));
+}
+
+.bot-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.bot-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.bot-field--inline {
+  flex: 1;
+}
+
+.bot-row-inline {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-end;
+}
+
+.bot-hint {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.bot-phrase-row {
+  display: flex;
+  gap: 0.3rem;
+  margin-top: 0.25rem;
+}
+
+.bot-phrase-row input {
+  flex: 1;
+}
+
+.bot-teach {
+  display: flex;
+  gap: 0.4rem;
+  align-items: flex-end;
+}
+
+.bot-teach textarea {
+  flex: 1;
+}
+
+.bot-lessons {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.bot-lesson {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.bot-lesson input[type='text'] {
+  flex: 1;
+}
+
+.bot-lesson--off input[type='text'] {
+  color: var(--text-dim);
+  text-decoration: line-through;
+}
+
+.bot-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 0;
+}
+
+.bot-chat-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.bot-chat-log {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 8rem;
+  max-height: 40vh;
+  overflow-y: auto;
+  padding: 0.4rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.bot-turn {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.bot-turn-author {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.bot-turn--user .bot-turn-text {
+  color: var(--text-dim);
+}
+
+.bot-turn-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.bot-turn-note {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.bot-turn-warning {
+  font-size: 0.75rem;
+  color: var(--warn);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.bot-turn-usage {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}
+
+.bot-chat-form {
+  display: flex;
+  gap: 0.4rem;
+  align-items: flex-end;
+}
+
+.bot-chat-form textarea {
+  flex: 1;
+}
+
+.bot-prompt {
+  max-height: 22rem;
 }

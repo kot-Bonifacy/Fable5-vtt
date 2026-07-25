@@ -1,6 +1,7 @@
 export * from './protocol.js';
 export * from './ai.js';
 export * from './auth.js';
+export * from './bots/index.js';
 export * from './chat.js';
 export * from './characters.js';
 export * from './dice.js';
