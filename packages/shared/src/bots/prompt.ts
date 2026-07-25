@@ -124,13 +124,15 @@ export function compileBotPrompt(ctx: BotPromptContext): string {
     opening,
     ctx.scene ? `Miejsce sceny: ${ctx.scene}` : '',
     ...personaSections(ctx),
+    isAssistant ? assistantRules() : characterRules(ctx),
+    // Lessons come last and outrank the generic rules: a GM correction like
+    // „odpowiadaj jednym zdaniem" must beat the default length rule above.
     lessons.length > 0
       ? section(
-          'Wnioski z gry (Mistrz Gry Cię tego nauczył — trzymaj się ich)',
+          'Wnioski z gry (Mistrz Gry Cię tego nauczył — obowiązują ponad powyższymi zasadami)',
           lessons.map((lesson) => `- ${lesson}`).join('\n'),
         )
       : '',
-    isAssistant ? assistantRules() : characterRules(ctx),
   ];
 
   return blocks

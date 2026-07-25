@@ -531,8 +531,14 @@ function LessonsTab({
   );
 }
 
+/**
+ * Stable fallback: a fresh `[]` inside the selector would be a new snapshot on
+ * every render and send zustand into an infinite update loop.
+ */
+const NO_TURNS: BotTestTurn[] = [];
+
 function ChatTab({ bot, onTeach }: { bot: BotView; onTeach: (correction: string) => void }) {
-  const turns = useBotStore((s) => s.conversations[bot.id] ?? []);
+  const turns = useBotStore((s) => s.conversations[bot.id] ?? NO_TURNS);
   const pending = useBotStore((s) => s.pendingReplies[bot.id]);
   const clearConversation = useBotStore((s) => s.clearConversation);
   const available = useAiStore((s) => s.status.available);
