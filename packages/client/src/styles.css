@@ -2629,10 +2629,11 @@ body.is-resizing {
   padding: 0.15rem 0.45rem;
 }
 
-.combat-bar-handle:hover,
+/* No hover highlight: the label is a grip, not a button — the grab cursor
+   says everything. Keyboard focus still needs a visible mark. */
 .combat-bar-handle:focus-visible {
-  background: rgba(217, 164, 65, 0.16);
-  outline: none;
+  outline: 1px solid var(--warn);
+  outline-offset: 1px;
 }
 
 .combat-bar--dragging {
