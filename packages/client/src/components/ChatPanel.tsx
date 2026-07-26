@@ -348,11 +348,15 @@ export function ChatPanel() {
           type="text"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
+          // Rolling is deliberately absent from the hint: dice are thrown by
+          // grabbing and shaking the cup, and advertising `/r` here nudged
+          // people to type what they should be throwing. The command still
+          // works for anyone who wants it.
           placeholder={
             campaign
               ? isGm
-                ? 'Wiadomość… (/r — rzut, /w — szept, /jako <NPC> — mów jako NPC)'
-                : 'Wiadomość… (/r 1d10+5 — rzut, /w <imię> — szept)'
+                ? 'Wiadomość… (/w — szept, /jako <NPC> — mów jako NPC)'
+                : 'Wiadomość… (/w <imię> — szept)'
               : 'Czat niedostępny'
           }
           disabled={!synced || !campaign}
