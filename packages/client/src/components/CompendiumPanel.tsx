@@ -98,9 +98,7 @@ export function CompendiumPanel() {
                     </span>
                   ) : null}
                 </span>
-                <span className="compendium-row-meta">
-                  {shortStats(entry, weaponTypeById)}
-                </span>
+                <span className="compendium-row-meta">{shortStats(entry, weaponTypeById)}</span>
               </button>
             </li>
           ))}
@@ -199,56 +197,99 @@ function EntryCard({
       <dl className="compendium-stats">
         {entry.category === 'weapon' && resolved ? (
           <>
-            <Stat label="OBR." value={resolved.damage} />
-            <Stat label="LA" value={String(resolved.rof)} />
-            <Stat label="Magazynek" value={resolved.magazine === null ? '—' : String(resolved.magazine)} />
-            <Stat label="Ręce" value={String(resolved.hands)} />
-            <Stat label="Ukrywalna" value={resolved.concealable ? 'tak' : 'nie'} />
+            <Stat
+              label="Obrażenia"
+              value={resolved.damage}
+              hint="Pula kości k6 — na karcie postaci pole OBR."
+            />
+            <Stat
+              label="Liczba ataków"
+              value={String(resolved.rof)}
+              hint="Ile ataków tą bronią można wykonać w jednej turze (na karcie: LA)."
+            />
+            <Stat
+              label="Magazynek"
+              value={resolved.magazine === null ? '—' : String(resolved.magazine)}
+            />
+            <Stat label="Chwyt" value={resolved.hands === 2 ? 'oburęczna' : 'jednoręczna'} />
+            <Stat label="Da się ukryć" value={resolved.concealable ? 'tak' : 'nie'} />
             <Stat label="Jakość" value={WEAPON_QUALITY_LABELS[entry.quality]} />
-            {resolved.typeName ? <Stat label="Typ" value={resolved.typeName} /> : null}
+            {resolved.typeName ? <Stat label="Typ broni" value={resolved.typeName} /> : null}
             {resolved.attachmentSlots > 0 ? (
-              <Stat label="Gniazda" value={String(resolved.attachmentSlots)} />
+              <Stat
+                label="Gniazda na dodatki"
+                value={String(resolved.attachmentSlots)}
+                hint="Ile dodatków (celownik, tłumik, magazynek) można zamontować."
+              />
             ) : null}
           </>
         ) : null}
         {entry.category === 'armor' ? (
           <>
-            <Stat label="OB" value={String(entry.sp)} />
             <Stat
-              label="Lokacje"
+              label="Ochrona"
+              value={String(entry.sp)}
+              hint="Ile obrażeń zatrzymuje pancerz — na karcie postaci pole OB."
+            />
+            <Stat
+              label="Chroni"
               value={entry.locations.map((l) => ARMOR_LOCATION_LABELS[l]).join(', ')}
             />
-            {entry.penalty ? <Stat label="Kara" value={String(entry.penalty)} /> : null}
+            {entry.penalty ? (
+              <Stat
+                label="Kara"
+                value={String(entry.penalty)}
+                hint="Modyfikator do Zwinności i Ruchu, gdy pancerz jest założony."
+              />
+            ) : null}
           </>
         ) : null}
         {entry.category === 'cyberware' ? (
           <>
-            {entry.humanityLoss ? <Stat label="Człowieczeństwo" value={`−${entry.humanityLoss}`} /> : null}
-            {entry.slots !== undefined ? <Stat label="Gniazda" value={String(entry.slots)} /> : null}
-            {entry.foundation ? <Stat label="Podstawa" value="tak" /> : null}
+            {entry.humanityLoss ? (
+              <Stat
+                label="Utrata człowieczeństwa"
+                value={`−${entry.humanityLoss}`}
+                hint="Ile Człowieczeństwa kosztuje wszczepienie."
+              />
+            ) : null}
+            {entry.slots !== undefined ? (
+              <Stat label="Gniazda" value={String(entry.slots)} />
+            ) : null}
+            {entry.foundation ? (
+              <Stat
+                label="Wszczep podstawowy"
+                value="tak"
+                hint="Podstawa pod kolejne opcje (np. cyberoko przyjmuje wkładki)."
+              />
+            ) : null}
           </>
         ) : null}
         <Stat label="Cena" value={formatCost(entry)} />
       </dl>
 
       {entry.category === 'weapon' && resolved?.rangeDv ? (
-        <table className="compendium-range">
-          <caption>PT w walce dystansowej</caption>
-          <thead>
-            <tr>
-              {CPRED_RANGE_BANDS.map((band) => (
-                <th key={band.id}>{rangeBandLabel(band)}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              {CPRED_RANGE_BANDS.map((band, index) => (
-                <td key={band.id}>{resolved.rangeDv?.[index] ?? 'Nd.'}</td>
-              ))}
-            </tr>
-          </tbody>
-        </table>
+        <div className="compendium-range-wrap">
+          <table className="compendium-range">
+            <caption title="Poziom trudności testu ataku na danym dystansie.">
+              Poziom trudności (PT) w walce dystansowej
+            </caption>
+            <thead>
+              <tr>
+                {CPRED_RANGE_BANDS.map((band) => (
+                  <th key={band.id}>{rangeBandLabel(band)}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                {CPRED_RANGE_BANDS.map((band, index) => (
+                  <td key={band.id}>{resolved.rangeDv?.[index] ?? 'Nd.'}</td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </div>
       ) : null}
 
       {entry.description ? <p className="compendium-card-text">{entry.description}</p> : null}
@@ -293,10 +334,11 @@ function EntryCard({
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+/** `hint` becomes a tooltip — the place to explain a rulebook abbreviation. */
+function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div className="compendium-stat">
-      <dt>{label}</dt>
+      <dt {...(hint ? { title: hint } : {})}>{label}</dt>
       <dd>{value}</dd>
     </div>
   );

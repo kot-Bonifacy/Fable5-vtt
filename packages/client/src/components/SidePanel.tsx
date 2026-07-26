@@ -8,6 +8,7 @@ import { CharacterPanel } from './CharacterPanel.js';
 import { CompendiumPanel } from './CompendiumPanel.js';
 import { AiPanel } from './AiPanel.js';
 import { BotPanel } from './BotPanel.js';
+import { SidePanelResizer, useSidePanelWidth } from './SidePanelResizer.js';
 import { useAuthStore } from '../stores/authStore.js';
 
 type Tab = 'chat' | 'scenes' | 'tokens' | 'characters' | 'compendium' | 'bots' | 'ai';
@@ -33,6 +34,7 @@ const GM_TABS: { id: Tab; label: string }[] = [
 
 export function SidePanel() {
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
+  const width = useSidePanelWidth();
   const [tab, setTab] = useState<Tab>('chat');
   const gmOnly = GM_TABS.some((entry) => entry.id === tab);
   const activeTab: Tab = !isGm && gmOnly ? 'chat' : tab;
@@ -49,7 +51,8 @@ export function SidePanel() {
   );
 
   return (
-    <aside className="side-panel">
+    <aside className="side-panel" style={{ width: `${width}px` }}>
+      <SidePanelResizer width={width} />
       <PresenceList />
       <div className="side-tab-rows">
         <nav className="side-tabs">{TABLE_TABS.map(renderTab)}</nav>

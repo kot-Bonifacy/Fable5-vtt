@@ -130,7 +130,10 @@ body {
 }
 
 .side-panel {
+  /* Width is user-controlled (SidePanelResizer) and restored from storage. */
   width: 320px;
+  flex: none;
+  position: relative;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -2458,6 +2461,13 @@ input[type='color'] {
   font-size: 0.85rem;
 }
 
+.compendium-range-wrap {
+  /* The DV table has eight columns; in a narrow panel it scrolls on its own
+     instead of pushing a scrollbar onto the whole side panel. */
+  overflow-x: auto;
+  max-width: 100%;
+}
+
 .compendium-range {
   width: 100%;
   border-collapse: collapse;
@@ -2540,4 +2550,38 @@ input[type='color'] {
 
 .compendium-original summary {
   cursor: pointer;
+}
+
+/* --- Side panel resizer -------------------------------------------------- */
+
+.side-resizer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  transform: translateX(-50%);
+  cursor: col-resize;
+  z-index: 6;
+  background: transparent;
+}
+
+.side-resizer:hover,
+.side-resizer:focus-visible,
+body.is-resizing .side-resizer {
+  background: var(--accent);
+  opacity: 0.55;
+  outline: none;
+}
+
+/* While dragging, keep the pointer from selecting text or hitting the map. */
+body.is-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+/* A wider panel should spread the stats out rather than stretch two columns. */
+.compendium-range th,
+.compendium-range td {
+  white-space: nowrap;
 }

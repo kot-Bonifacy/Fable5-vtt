@@ -35,9 +35,9 @@ export const WEAPON_QUALITIES = ['poor', 'standard', 'excellent'] as const;
 export type WeaponQuality = (typeof WEAPON_QUALITIES)[number];
 
 export const WEAPON_QUALITY_LABELS: Record<WeaponQuality, string> = {
-  poor: 'Niska jakość',
-  standard: 'Zwykła jakość',
-  excellent: 'Doskonała jakość',
+  poor: 'Niska',
+  standard: 'Zwykła',
+  excellent: 'Doskonała',
 };
 
 /** Price bands used by the rulebook's shopping tables ("100 ed (Premium)"). */
@@ -92,7 +92,8 @@ export const CPRED_RANGE_BANDS = [
 export type RangeBandId = (typeof CPRED_RANGE_BANDS)[number]['id'];
 
 export function rangeBandLabel(band: (typeof CPRED_RANGE_BANDS)[number]): string {
-  return `${band.min}–${band.max} m`;
+  // Non-breaking space: the range table is narrow and "0–6 m" must not wrap.
+  return `${band.min}–${band.max}\u00A0m`;
 }
 
 /** DV per range band; index matches `CPRED_RANGE_BANDS`. */
