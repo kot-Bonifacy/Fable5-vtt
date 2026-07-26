@@ -166,8 +166,10 @@ export function CombatBar() {
         onKeyDown={onHandleKeyDown}
         tabIndex={0}
         role="button"
+        // No tooltip on purpose: the grab cursor says it all, and a hint
+        // floating over the map would break the table's mood. The label keeps
+        // an aria-label, which only assistive tech reads out.
         aria-label="Przesuń pasek walki"
-        title="Przeciągnij, aby przesunąć pasek (strzałki przesuwają po kroku). Dwuklik wraca na środek."
       >
         {combat.round === 0 ? 'PRZED WALKĄ' : `RUNDA ${combat.round}`}
       </div>
