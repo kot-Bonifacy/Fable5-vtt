@@ -28,6 +28,7 @@ import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { campaignRoom, emitToCampaignUser, gmRoom, sceneRoom } from './state.js';
 import { requireCampaignScene } from './scenes.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
+import { emitCombatOfScene } from './combat.js';
 
 function parseStatuses(raw: string): string[] {
   try {
@@ -414,6 +415,11 @@ export const tokenUpdateEvent = defineEvent<TokenUpdatePayload, TokenView>({
     } else {
       await emitTokenUpsert(deps, campaignId, scene, updated, linked);
     }
+    // The tracker mirrors the token: a rename shows up in the initiative list,
+    // and hiding a token must pull its row from the players' tracker too.
+    if (patch.name !== undefined || patch.imageUrl !== undefined || patch.hidden !== undefined) {
+      await emitCombatOfScene(deps, campaignId, scene);
+    }
     return toTokenView(updated, true, linked);
   },
 });
@@ -430,6 +436,9 @@ export const tokenDeleteEvent = defineEvent<TokenIdPayload>({
     );
     await deps.ctx.prisma.token.delete({ where: { id: token.id } });
     emitTokenDelete(deps, campaignId, scene, token.id, !token.hidden);
+    // The DB cascades the token out of any running fight — push the shorter
+    // roster to everyone (killed enemies simply leave the tracker).
+    await emitCombatOfScene(deps, campaignId, scene);
   },
 });
 

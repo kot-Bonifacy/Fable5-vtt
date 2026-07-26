@@ -17,7 +17,7 @@ Aktualizowany na koniec każdej sesji. Statusy: ⬜ nierozpoczęty · 🟨 w tok
 | 11  | Boty NPC na czacie                        | ✅     | 2026-07-25      | pamięć per scenka; wypowiedź bota nie do odróżnienia od `/jako` MG                  |
 | 12  | TTS — głos botów                          | ✅     | 2026-07-26      | Piper na CPU (0 GB VRAM); tekst dopisuje się na czacie w rytmie mowy                |
 | 13  | Dane z podręcznika i kompendium           | ✅     | 2026-07-26      | import „na dowody" ze statbloków; edytor MG uzupełnia braki darmowych materiałów    |
-| 14  | Inicjatywa i tury                         | ⬜     |                 |                                                                                     |
+| 14  | Inicjatywa i tury                         | 🟨     |                 | kod gotowy, testy zielone; został przegląd UI na koncie MG                          |
 | 15  | Obrażenia, pancerz, krytyki, Death Save   | ⬜     |                 |                                                                                     |
 | 16  | Zasięgi, DV z mapy, autofire              | ⬜     |                 |                                                                                     |
 | 17  | Fog of war, rysowanie, warstwa MG         | ⬜     |                 |                                                                                     |

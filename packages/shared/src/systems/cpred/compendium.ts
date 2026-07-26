@@ -312,7 +312,10 @@ export function validateCompendiumEntry(
   }
   const input = raw as Record<string, unknown>;
   const category = input.category;
-  if (typeof category !== 'string' || !(COMPENDIUM_CATEGORIES as readonly string[]).includes(category)) {
+  if (
+    typeof category !== 'string' ||
+    !(COMPENDIUM_CATEGORIES as readonly string[]).includes(category)
+  ) {
     issues.push({ field: 'category', message: 'Nieznana kategoria wpisu.' });
     return { ok: false, issues };
   }
@@ -325,7 +328,10 @@ export function validateCompendiumEntry(
         ? `${category}.${slugify(name)}`
         : '';
   if (!isValidCompendiumId(id)) {
-    issues.push({ field: 'id', message: 'Identyfikator może zawierać tylko małe litery, cyfry, "-" i ".".' });
+    issues.push({
+      field: 'id',
+      message: 'Identyfikator może zawierać tylko małe litery, cyfry, "-" i ".".',
+    });
   }
 
   const description = checkOptionalText(
@@ -396,7 +402,8 @@ function validateWeapon(
       ? input.weaponTypeId
       : null;
   const quality =
-    typeof input.quality === 'string' && (WEAPON_QUALITIES as readonly string[]).includes(input.quality)
+    typeof input.quality === 'string' &&
+    (WEAPON_QUALITIES as readonly string[]).includes(input.quality)
       ? (input.quality as WeaponQuality)
       : 'standard';
 
@@ -526,7 +533,11 @@ function validateCyberware(
   issues: CompendiumIssue[],
 ): CyberwareEntry | undefined {
   const cyberware: CyberwareEntry = { ...base, category: 'cyberware' };
-  if (input.humanityLoss !== undefined && input.humanityLoss !== null && input.humanityLoss !== '') {
+  if (
+    input.humanityLoss !== undefined &&
+    input.humanityLoss !== null &&
+    input.humanityLoss !== ''
+  ) {
     if (typeof input.humanityLoss !== 'string' || input.humanityLoss.length > 16) {
       issues.push({
         field: 'humanityLoss',
@@ -664,7 +675,9 @@ export function searchCompendium(
   return entries.filter((entry) => {
     if (category && entry.category !== category) return false;
     if (!needle) return true;
-    const haystack = slugify(`${entry.name} ${entry.nameOriginal ?? ''} ${entry.description ?? ''}`);
+    const haystack = slugify(
+      `${entry.name} ${entry.nameOriginal ?? ''} ${entry.description ?? ''}`,
+    );
     return haystack.includes(needle);
   });
 }

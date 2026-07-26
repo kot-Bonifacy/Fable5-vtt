@@ -61,7 +61,9 @@ async function main(): Promise<number> {
         if (!result.ok) {
           problems += 1;
           const name = (entry as { name?: string }).name ?? '(bez nazwy)';
-          rejected.push(`${name}: ${result.issues.map((i) => `${i.field} — ${i.message}`).join('; ')}`);
+          rejected.push(
+            `${name}: ${result.issues.map((i) => `${i.field} — ${i.message}`).join('; ')}`,
+          );
         }
       }
       const label = relative(REPO_ROOT, path);

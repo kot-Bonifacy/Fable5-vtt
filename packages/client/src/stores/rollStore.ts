@@ -28,11 +28,26 @@ export interface PendingRoll extends RollTarget {
   modifierTotal: number;
 }
 
+/**
+ * An initiative roll loaded into the cup (stage 14). It carries no sheet
+ * request: the server derives the modifier from the participant's sheet, the
+ * player only supplies the throw.
+ */
+export interface PendingInitiative {
+  combatantId: string;
+  /** Participant's name, shown on the cup. */
+  name: string;
+  /** REF, or 0 for a statist without a sheet. */
+  modifierTotal: number;
+}
+
 interface RollStoreState {
   /** Open roll dialog (null = closed). */
   target: RollTarget | null;
   /** Check loaded into the cup, waiting for the throw. */
   pending: PendingRoll | null;
+  /** Initiative loaded into the cup (mutually exclusive with `pending`). */
+  initiative: PendingInitiative | null;
   /** Last dialog choices, reused for the next roll (and by Shift+click). */
   lastModifier: number;
   lastVisibility: 'public' | 'gm';
@@ -40,6 +55,7 @@ interface RollStoreState {
   openDialog: (target: RollTarget) => void;
   closeDialog: () => void;
   loadCup: (pending: PendingRoll) => void;
+  loadInitiativeCup: (initiative: PendingInitiative) => void;
   clearCup: () => void;
   remember: (modifier: number, visibility: 'public' | 'gm') => void;
 }
@@ -47,13 +63,15 @@ interface RollStoreState {
 export const useRollStore = create<RollStoreState>((set) => ({
   target: null,
   pending: null,
+  initiative: null,
   lastModifier: 0,
   lastVisibility: 'public',
 
   openDialog: (target) => set({ target }),
   closeDialog: () => set({ target: null }),
-  loadCup: (pending) => set({ pending, target: null }),
-  clearCup: () => set({ pending: null }),
+  loadCup: (pending) => set({ pending, initiative: null, target: null }),
+  loadInitiativeCup: (initiative) => set({ initiative, pending: null, target: null }),
+  clearCup: () => set({ pending: null, initiative: null }),
   remember: (lastModifier, lastVisibility) => set({ lastModifier, lastVisibility }),
 }));
 

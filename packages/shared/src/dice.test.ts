@@ -137,6 +137,19 @@ describe('rollFormula', () => {
     expect(twoDice.total).toBe(11);
   });
 
+  it('honours an explicit opt-out of the check rule (initiative)', () => {
+    // Initiative is 1d10 + REF, but criticals belong to Skill Checks — a
+    // natural 10 must not explode. The RNG would throw on a second draw.
+    const result = rollFormula(parse('1d10+8'), scriptedRng([10]), { checkRule: false });
+    expect(result.critical).toBeUndefined();
+    expect(result.total).toBe(18);
+  });
+
+  it('honours an explicit opt-in to the check rule', () => {
+    const result = rollFormula(parse('2d10'), scriptedRng([10, 3, 5]), { checkRule: true });
+    expect(result.critical).toEqual({ type: 'crit', extraRoll: 5 });
+  });
+
   it('flags critical damage on two or more added sixes', () => {
     expect(rollFormula(parse('3d6'), scriptedRng([6, 6, 2])).criticalDamage).toBe(true);
     expect(rollFormula(parse('3d6'), scriptedRng([6, 5, 2])).criticalDamage).toBe(false);

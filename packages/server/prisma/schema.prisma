@@ -198,6 +198,8 @@ model Token {
   scene     Scene      @relation(fields: [sceneId], references: [id], onDelete: Cascade)
   owner     User?      @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   character Character? @relation(fields: [characterId], references: [id], onDelete: SetNull)
+  /// Removing a token pulls it out of any running combat.
+  combatants Combatant[]
 
   @@index([sceneId])
   @@index([characterId])
@@ -250,8 +252,50 @@ model Scene {
   tokens       Token[]
   chatMessages ChatMessage[]
   bots         BotProfile[]
+  combat       Combat?
 
   @@index([campaignId, active])
+}
+
+/// One running fight, bound to a scene (stage 14). Ending combat deletes the
+/// row — round history is deliberately not persisted.
+model Combat {
+  id      String @id @default(cuid())
+  /// A scene runs at most one combat at a time.
+  sceneId String @unique
+  /// 0 = participants gathered, round 1 has not started yet.
+  round   Int    @default(0)
+  /// Whose turn it is; null before the first round starts.
+  activeCombatantId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  scene      Scene       @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  combatants Combatant[]
+}
+
+/// A token taking part in a combat. The token stays the single source of
+/// truth for name, portrait, HP and visibility — this row only adds the
+/// tracker's own data (initiative, tie-breaker, manual position).
+model Combatant {
+  id       String @id @default(cuid())
+  combatId String
+  tokenId  String
+  /// Rolled initiative (1d10 + REF in CP RED); null = not rolled yet.
+  initiative Int?
+  /// Secondary sort supplied by the game system (CP RED: REF); null = unknown.
+  tieBreak   Int?
+  /// Manual position inside a tie group — the GM's drag has the final say.
+  order      Int    @default(0)
+
+  createdAt DateTime @default(now())
+
+  combat Combat @relation(fields: [combatId], references: [id], onDelete: Cascade)
+  token  Token  @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+
+  @@unique([combatId, tokenId])
+  @@index([combatId])
 }
 
 /// Compendium entries typed in by the GM (stage 13). Imported rulebook data

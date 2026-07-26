@@ -363,9 +363,7 @@ describe('compendium', () => {
       characterId: created.data.id,
       patch: {
         data: {
-          gear: [
-            { id: 'row1', name: 'Coś', notes: '', qty: 1, compendiumId: 'NIE POPRAWNY SLUG' },
-          ],
+          gear: [{ id: 'row1', name: 'Coś', notes: '', qty: 1, compendiumId: 'NIE POPRAWNY SLUG' }],
         },
       },
     });

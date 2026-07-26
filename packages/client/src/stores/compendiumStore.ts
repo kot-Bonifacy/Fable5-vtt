@@ -68,7 +68,8 @@ export const useCompendiumStore = create<CompendiumStoreState>((set) => ({
         weaponTypes,
         weaponTypeById: Object.fromEntries(weaponTypes.map((type) => [type.id, type])),
         // A selected entry that vanished falls back to the list.
-        selectedId: state.selectedId && state.selectedId in indexed.entries ? state.selectedId : null,
+        selectedId:
+          state.selectedId && state.selectedId in indexed.entries ? state.selectedId : null,
       };
     }),
 

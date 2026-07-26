@@ -2585,3 +2585,284 @@ body.is-resizing {
 .compendium-range td {
   white-space: nowrap;
 }
+
+/* ---------------------------------------------------------------- stage 14
+   Initiative tracker: a bar floating over the map (who acts now, at a
+   glance) and the „Walka" tab with the full queue and its controls.
+   ------------------------------------------------------------------------ */
+
+.combat-bar {
+  position: absolute;
+  top: 0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: calc(100% - 1rem);
+  padding: 0.3rem 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(14, 15, 19, 0.92);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+}
+
+.combat-bar-round {
+  flex: none;
+  padding: 0 0.45rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  color: var(--warn);
+  white-space: nowrap;
+}
+
+.combat-bar-step {
+  flex: none;
+  padding: 0.15rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.combat-bar-step:hover {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.combat-bar-queue {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  list-style: none;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.combat-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.45rem 0.15rem 0.15rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.03);
+  white-space: nowrap;
+}
+
+.combat-chip--active {
+  border-color: var(--warn);
+  background: rgba(217, 164, 65, 0.16);
+  box-shadow: 0 0 0 1px rgba(217, 164, 65, 0.35);
+}
+
+/* GM-only: a participant the players cannot see in their tracker. */
+.combat-chip--hidden {
+  opacity: 0.55;
+  border-style: dashed;
+}
+
+.combat-chip-portrait {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex: none;
+}
+
+.combat-chip-portrait--empty,
+.combat-row-portrait--empty {
+  display: grid;
+  place-items: center;
+  background: var(--bg-panel);
+  color: var(--text-dim);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.combat-chip-name {
+  font-size: 0.72rem;
+  max-width: 9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.combat-chip-initiative {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--warn);
+}
+
+.combat-bar-end-turn {
+  flex: none;
+  padding: 0.2rem 0.7rem;
+  border: 1px solid var(--warn);
+  border-radius: 999px;
+  background: rgba(217, 164, 65, 0.18);
+  color: var(--warn);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.combat-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.75rem;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.combat-hint {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+
+.combat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.combat-header-round {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--warn);
+}
+
+.combat-header-buttons {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.combat-tie {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  padding: 0.35rem 0.5rem;
+  border: 1px dashed var(--warn);
+  border-radius: 4px;
+  font-size: 0.72rem;
+  color: var(--warn);
+}
+
+.combat-list,
+.combat-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  list-style: none;
+}
+
+.combat-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.combat-row--active {
+  border-color: var(--warn);
+  background: rgba(217, 164, 65, 0.12);
+}
+
+.combat-row[draggable='true'] {
+  cursor: grab;
+}
+
+.combat-row-index {
+  flex: none;
+  width: 1.1rem;
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  text-align: right;
+}
+
+.combat-row-portrait {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex: none;
+}
+
+.combat-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.combat-row-name {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.combat-row-meta {
+  font-size: 0.66rem;
+  color: var(--text-dim);
+}
+
+.combat-row-initiative {
+  flex: none;
+  min-width: 2rem;
+  text-align: center;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--warn);
+  cursor: pointer;
+}
+
+.combat-row-initiative-input {
+  flex: none;
+  width: 3.2rem;
+  text-align: center;
+}
+
+.combat-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0.1rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.combat-picker-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.combat-tag {
+  flex: none;
+  padding: 0 0.3rem;
+  border-radius: 3px;
+  background: var(--bg-panel);
+  color: var(--text-dim);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}

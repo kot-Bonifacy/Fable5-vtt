@@ -6,8 +6,10 @@ import { useAuthStore } from '../stores/authStore.js';
 import { ensureStatusesLoaded, useTokenStore } from '../stores/tokenStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useChatStore } from '../stores/chatStore.js';
+import { activeTokenIdOf, useCombatStore } from '../stores/combatStore.js';
 import { createToken, sendTokenMove } from '../socket.js';
 import { TokenContextMenu } from './TokenContextMenu.js';
+import { CombatBar } from './CombatBar.js';
 
 export interface TokenMenuState {
   tokenId: string;
@@ -98,33 +100,43 @@ export function MapArea() {
     };
   }, [placeToken]);
 
-  useEffect(() => {
-    if (ready) rendererRef.current?.setScene(scene);
-  }, [ready, scene]);
-
   // The token layer bypasses React: the renderer diffs store snapshots
   // directly, so 20 Hz drag updates never re-render the component tree.
+  const pushTokens = useCallback(() => {
+    const tokenState = useTokenStore.getState();
+    const current = useSceneStore.getState().effectiveScene;
+    const user = useAuthStore.getState().user;
+    rendererRef.current?.setTokens(current ? Object.values(tokenState.tokens) : [], {
+      gridSizePx: current?.grid.sizePx ?? 100,
+      myUserId: user?.id ?? null,
+      isGm: user?.role === ROLE_GM,
+      statusIcons: new Map(tokenState.statuses.map((s) => [s.id, s.icon])),
+      activeTokenId: activeTokenIdOf(useCombatStore.getState().combat),
+    });
+  }, []);
+
   useEffect(() => {
     if (!ready) return;
-    const push = () => {
-      const tokenState = useTokenStore.getState();
-      const current = useSceneStore.getState().effectiveScene;
-      const user = useAuthStore.getState().user;
-      rendererRef.current?.setTokens(current ? Object.values(tokenState.tokens) : [], {
-        gridSizePx: current?.grid.sizePx ?? 100,
-        myUserId: user?.id ?? null,
-        isGm: user?.role === ROLE_GM,
-        statusIcons: new Map(tokenState.statuses.map((s) => [s.id, s.icon])),
-      });
-    };
-    push();
-    const unsubTokens = useTokenStore.subscribe(push);
-    const unsubScene = useSceneStore.subscribe(push);
+    rendererRef.current?.setScene(scene);
+    // A scene change wipes the token layer, and the store subscription below
+    // may have already delivered this scene's tokens (state:sync fills the
+    // stores before React runs this effect) — re-push, or the map stays empty
+    // until the next token event.
+    pushTokens();
+  }, [ready, scene, pushTokens]);
+
+  useEffect(() => {
+    if (!ready) return;
+    pushTokens();
+    const unsubTokens = useTokenStore.subscribe(pushTokens);
+    const unsubScene = useSceneStore.subscribe(pushTokens);
+    const unsubCombat = useCombatStore.subscribe(pushTokens);
     return () => {
       unsubTokens();
       unsubScene();
+      unsubCombat();
     };
-  }, [ready]);
+  }, [ready, pushTokens]);
 
   useEffect(() => {
     if (!placement) return;
@@ -162,6 +174,7 @@ export function MapArea() {
           Kliknij na mapie, aby postawić „{placement.name}” (Esc anuluje)
         </div>
       )}
+      <CombatBar />
       {menu && <TokenContextMenu menu={menu} onClose={() => setMenu(null)} />}
     </section>
   );

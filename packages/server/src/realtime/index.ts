@@ -19,6 +19,19 @@ import {
   sceneViewEvent,
 } from './scenes.js';
 import { tokenCreateEvent, tokenDeleteEvent, tokenMoveEvent, tokenUpdateEvent } from './tokens.js';
+import {
+  combatAddEvent,
+  combatEndEvent,
+  combatNextEvent,
+  combatOrderEvent,
+  combatPreviousEvent,
+  combatRemoveEvent,
+  combatRerollTieEvent,
+  combatRollAllEvent,
+  combatRollEvent,
+  combatSetInitiativeEvent,
+  combatStartEvent,
+} from './combat.js';
 import { characterCreateEvent, characterDeleteEvent, characterUpdateEvent } from './characters.js';
 import { characterRollEvent } from './character-rolls.js';
 import { compendiumDeleteEvent, compendiumUpsertEvent } from './compendium.js';
@@ -61,6 +74,17 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   tokenUpdateEvent,
   tokenDeleteEvent,
   tokenMoveEvent,
+  combatStartEvent,
+  combatAddEvent,
+  combatRemoveEvent,
+  combatRollAllEvent,
+  combatRerollTieEvent,
+  combatRollEvent,
+  combatSetInitiativeEvent,
+  combatOrderEvent,
+  combatNextEvent,
+  combatPreviousEvent,
+  combatEndEvent,
   compendiumUpsertEvent,
   compendiumDeleteEvent,
   characterCreateEvent,

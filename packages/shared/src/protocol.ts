@@ -2,6 +2,7 @@ import type { AiStatus } from './ai.js';
 import type { CampaignSummary, Role } from './auth.js';
 import type { BotView } from './bots/types.js';
 import type { ChatMessageView } from './chat.js';
+import type { CombatView } from './combat.js';
 import type { CharacterView } from './characters.js';
 import type { CompendiumEntry, WeaponTypeDefinition } from './systems/cpred/compendium.js';
 import type { RollToss } from './dice.js';
@@ -48,6 +49,8 @@ export interface StateSyncPayload {
   ai: AiStatus;
   /** Item catalogue — the same for everyone; players pick gear from it. */
   compendium: CompendiumSyncPayload;
+  /** Combat of the viewed scene, filtered for this viewer; null = no fight. */
+  combat: CombatView | null;
 }
 
 /** Weapon base rows plus every entry: imported ones and the GM's own. */
@@ -123,6 +126,16 @@ export interface CharacterRollPayload<TRequest = unknown> {
   /** `gm` = result visible to the author and the GM only (whisper pattern). */
   visibility: 'public' | 'gm';
   /** Present when the roll was thrown with the dice cup. */
+  gesture?: RollGesture;
+}
+
+/**
+ * A player (or the GM) rolls initiative for one participant. Lives here rather
+ * than in `combat.ts` because it carries the cup gesture — the tracker itself
+ * knows nothing about dice.
+ */
+export interface CombatRollPayload {
+  combatantId: string;
   gesture?: RollGesture;
 }
 

@@ -1,5 +1,5 @@
 import type { CpredRegistry, TokenHp } from '@vtt/shared';
-import { hpMax, mergeCharacterData, parseCharacterData } from '@vtt/shared';
+import { CPRED_STAT_LABELS, hpMax, mergeCharacterData, parseCharacterData } from '@vtt/shared';
 import type { Character } from './generated/prisma/client.js';
 
 /**
@@ -21,6 +21,33 @@ export type SheetRegistry = CpredRegistry;
 export interface LinkedSheet {
   hp: TokenHp;
   ownerId: string | null;
+}
+
+/**
+ * What the combat tracker needs from a sheet to roll initiative (stage 14).
+ * The tracker itself only knows „1d10 plus this modifier, ties broken by that
+ * value" — CP RED fills both with REF.
+ */
+export interface SheetInitiative {
+  modifier: number;
+  /** Secondary sort for equal totals; CP RED breaks ties by REF. */
+  tieBreak: number;
+  /** Shown on the chat card so the roll explains itself. */
+  label: string;
+}
+
+/** Initiative inputs of a linked sheet — CP RED: `1d10 + REF`. */
+export function readSheetInitiative(
+  character: Pick<Character, 'data'>,
+  registry: SheetRegistry,
+): SheetInitiative {
+  const data = parseCharacterData(character.data, registry);
+  const ref = data.stats.ref;
+  return {
+    modifier: ref,
+    tieBreak: ref,
+    label: `${CPRED_STAT_LABELS.ref.name} (${CPRED_STAT_LABELS.ref.abbr})`,
+  };
 }
 
 /** Reads the sheet's HP pair: current from the data, max derived from stats. */

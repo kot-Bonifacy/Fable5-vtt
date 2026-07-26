@@ -8,12 +8,18 @@ export interface TokenNodeCtx {
   isGm: boolean;
   /** status id → icon URL, from the data-driven registry. */
   statusIcons: ReadonlyMap<string, string>;
+  /** Token acting right now in the initiative tracker (stage 14). */
+  activeTokenId: string | null;
 }
 
 const RING_WIDTH = 3;
 const RING_OWN = 0x4ade80;
 const RING_OTHER_PLAYER = 0x38bdf8;
 const RING_NPC = 0xf87171;
+
+/** Halo around whoever is taking their turn — amber, like the tracker. */
+const TURN_RING_COLOR = 0xfacc15;
+const TURN_RING_WIDTH = 5;
 
 const HP_GREEN = 0x22c55e;
 const HP_ORANGE = 0xf59e0b;
@@ -63,6 +69,7 @@ export class TokenNode extends Container {
   private readonly placeholder = new Graphics();
   private readonly initial: Text;
   private readonly ring = new Graphics();
+  private readonly turnRing = new Graphics();
   private readonly hpBar = new Graphics();
   private readonly nameText: Text;
   private readonly statusLayer = new Container();
@@ -91,6 +98,7 @@ export class TokenNode extends Container {
     });
     this.image.mask = this.imageMask;
     this.addChild(
+      this.turnRing,
       this.placeholder,
       this.initial,
       this.image,
@@ -122,6 +130,7 @@ export class TokenNode extends Container {
       ctx.gridSizePx,
       ctx.myUserId,
       ctx.isGm,
+      ctx.activeTokenId === token.id,
     ]);
     if (signature === this.signature) return;
     this.signature = signature;
@@ -138,6 +147,17 @@ export class TokenNode extends Container {
       .clear()
       .circle(center, center, radius)
       .stroke({ color: ringColor(token, ctx), width: RING_WIDTH });
+
+    // Whose turn it is: a soft halo outside the owner ring, so both stay
+    // readable (owner colour keeps its meaning during combat).
+    this.turnRing.clear();
+    if (ctx.activeTokenId === token.id) {
+      this.turnRing
+        .circle(center, center, radius + TURN_RING_WIDTH)
+        .stroke({ color: TURN_RING_COLOR, width: TURN_RING_WIDTH, alpha: 0.55 })
+        .circle(center, center, radius + 1)
+        .stroke({ color: TURN_RING_COLOR, width: 2, alpha: 0.95 });
+    }
 
     this.imageMask
       .clear()

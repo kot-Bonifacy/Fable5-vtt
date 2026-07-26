@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import type { CampaignDetail, TokenPatch, TokenView } from '@vtt/shared';
 import { TOKEN_HP_LIMIT, TOKEN_SIZE_MAX, TOKEN_SIZE_MIN } from '@vtt/shared';
 import { apiGet } from '../api.js';
-import { deleteToken, updateToken } from '../socket.js';
+import { addToCombat, deleteToken, removeFromCombat, updateToken } from '../socket.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
+import { useCombatStore } from '../stores/combatStore.js';
 import type { TokenMenuState } from './MapArea.js';
 
 const MENU_WIDTH = 240;
@@ -173,7 +174,9 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
 export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onClose: () => void }) {
   const token = useTokenStore((s) => s.tokens[menu.tokenId]);
   const statuses = useTokenStore((s) => s.statuses);
+  const combat = useCombatStore((s) => s.combat);
   const [editing, setEditing] = useState(false);
+  const combatant = combat?.combatants.find((c) => c.tokenId === menu.tokenId) ?? null;
 
   // The token can vanish under the open menu (deleted in another tab).
   useEffect(() => {
@@ -273,6 +276,25 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
         >
           {token.hidden ? '👁 Pokaż graczom' : '🚫 Ukryj przed graczami'}
         </button>
+        {/* Reinforcements arriving mid-fight — and whoever just fled it. */}
+        {combat &&
+          (combatant ? (
+            <button
+              type="button"
+              className="context-menu-item"
+              onClick={() => void removeFromCombat(combatant.id).then(onClose)}
+            >
+              ⚔ Usuń z walki
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="context-menu-item"
+              onClick={() => void addToCombat([menu.tokenId]).then(onClose)}
+            >
+              ⚔ Dodaj do walki
+            </button>
+          ))}
         <button type="button" className="context-menu-item" onClick={() => setEditing(true)}>
           ✏️ Edytuj…
         </button>

@@ -6,12 +6,13 @@ import { ScenePanel } from './ScenePanel.js';
 import { TokenPanel } from './TokenPanel.js';
 import { CharacterPanel } from './CharacterPanel.js';
 import { CompendiumPanel } from './CompendiumPanel.js';
+import { CombatPanel } from './CombatPanel.js';
 import { AiPanel } from './AiPanel.js';
 import { BotPanel } from './BotPanel.js';
 import { SidePanelResizer, useSidePanelWidth } from './SidePanelResizer.js';
 import { useAuthStore } from '../stores/authStore.js';
 
-type Tab = 'chat' | 'scenes' | 'tokens' | 'characters' | 'compendium' | 'bots' | 'ai';
+type Tab = 'chat' | 'scenes' | 'tokens' | 'characters' | 'compendium' | 'combat' | 'bots' | 'ai';
 
 /**
  * Side panel tabs in two rows: what everyone at the table uses, and the GM's
@@ -22,6 +23,7 @@ type Tab = 'chat' | 'scenes' | 'tokens' | 'characters' | 'compendium' | 'bots' |
 const TABLE_TABS: { id: Tab; label: string }[] = [
   { id: 'chat', label: 'Czat' },
   { id: 'characters', label: 'Postacie' },
+  { id: 'combat', label: 'Walka' },
   { id: 'compendium', label: 'Kompendium' },
 ];
 
@@ -69,6 +71,8 @@ export function SidePanel() {
         <ScenePanel />
       ) : activeTab === 'tokens' ? (
         <TokenPanel />
+      ) : activeTab === 'combat' ? (
+        <CombatPanel />
       ) : activeTab === 'compendium' ? (
         <CompendiumPanel />
       ) : activeTab === 'bots' ? (

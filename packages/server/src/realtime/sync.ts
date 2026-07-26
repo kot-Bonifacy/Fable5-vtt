@@ -6,6 +6,7 @@ import { computePresence } from './presence.js';
 import { fetchHistoryPage } from './chat-io.js';
 import { fetchSceneList, getSceneById, toSceneView } from './scenes.js';
 import { fetchSceneTokensFor } from './tokens.js';
+import { fetchCombatFor } from './combat.js';
 import { fetchCharactersFor } from './character-io.js';
 import { fetchBotsFor } from './bots.js';
 import { aiStatusFor } from './ai.js';
@@ -37,29 +38,33 @@ export async function buildStateSync(
       bots: [],
       ai: aiStatusFor(deps, user.role === ROLE_GM),
       compendium: await buildCompendiumSync(deps, null),
+      combat: null,
     };
   }
   const viewedSceneId = socket.data.viewedSceneId;
-  const [presence, history, viewedScene, scenes, tokens, characters, bots, compendium] =
+  const [presence, history, viewedScene, scenes, tokens, characters, bots, compendium, combat] =
     await Promise.all([
-    computePresence(deps.io, campaign.id),
-    fetchHistoryPage(deps.ctx.prisma, campaign.id, user),
-    viewedSceneId ? getSceneById(deps.ctx.prisma, viewedSceneId) : Promise.resolve(null),
-    // The full scene list is GM manager data — players never receive it.
-    user.role === ROLE_GM
-      ? fetchSceneList(deps.ctx.prisma, campaign.id)
-      : Promise.resolve<SceneSummary[]>([]),
-    // Already filtered per viewer: no hidden tokens or foreign HP for players.
-    viewedSceneId
-      ? fetchSceneTokensFor(deps.ctx.prisma, deps.ctx.cpred, viewedSceneId, user)
-      : Promise.resolve([]),
-    // GM: all campaign characters; player: only their own.
-    fetchCharactersFor(deps.ctx.prisma, deps.ctx.cpred, campaign.id, user),
-    // Bot profiles carry secrets and prompts — GM only.
-    fetchBotsFor(deps.ctx.prisma, campaign.id, user.role === ROLE_GM),
-    // Item catalogue: files on disk plus the campaign's own entries.
-    buildCompendiumSync(deps, campaign.id),
-  ]);
+      computePresence(deps.io, campaign.id),
+      fetchHistoryPage(deps.ctx.prisma, campaign.id, user),
+      viewedSceneId ? getSceneById(deps.ctx.prisma, viewedSceneId) : Promise.resolve(null),
+      // The full scene list is GM manager data — players never receive it.
+      user.role === ROLE_GM
+        ? fetchSceneList(deps.ctx.prisma, campaign.id)
+        : Promise.resolve<SceneSummary[]>([]),
+      // Already filtered per viewer: no hidden tokens or foreign HP for players.
+      viewedSceneId
+        ? fetchSceneTokensFor(deps.ctx.prisma, deps.ctx.cpred, viewedSceneId, user)
+        : Promise.resolve([]),
+      // GM: all campaign characters; player: only their own.
+      fetchCharactersFor(deps.ctx.prisma, deps.ctx.cpred, campaign.id, user),
+      // Bot profiles carry secrets and prompts — GM only.
+      fetchBotsFor(deps.ctx.prisma, campaign.id, user.role === ROLE_GM),
+      // Item catalogue: files on disk plus the campaign's own entries.
+      buildCompendiumSync(deps, campaign.id),
+      // Initiative tracker of the viewed scene — hidden participants are
+      // stripped for players, exactly like hidden tokens.
+      viewedSceneId ? fetchCombatFor(deps.ctx.prisma, viewedSceneId, user) : Promise.resolve(null),
+    ]);
   const scene: SceneView | null = viewedScene ? toSceneView(viewedScene) : null;
   return {
     seq: deps.seqs.current(campaignRoom(campaign.id)),
@@ -74,6 +79,7 @@ export async function buildStateSync(
     bots,
     ai: aiStatusFor(deps, user.role === ROLE_GM),
     compendium,
+    combat,
   };
 }
 

@@ -175,12 +175,28 @@ export function isCheckFormula(formula: RollFormula): boolean {
   return dice.length === 1 && dice[0]!.count === 1 && dice[0]!.sides === 10 && dice[0]!.sign === 1;
 }
 
+export interface RollOptions {
+  /**
+   * Whether the CP RED check rule (a natural 10 or 1 on a single added d10
+   * rolls one extra die) applies. Left out, the engine infers it from the
+   * formula — chat commands cannot declare their intent. Rolls that are not
+   * Checks in the rules set it to `false` explicitly: initiative is
+   * `1d10 + REF`, but the rulebook ties criticals to Skill Checks, so an
+   * initiative of 10 must not explode.
+   */
+  checkRule?: boolean;
+}
+
 /**
  * Executes a formula. Every random number comes from `rng` — the server
  * injects a crypto-based one, tests a seeded or scripted one.
  */
-export function rollFormula(formula: RollFormula, rng: DiceRng): RollResult {
-  const isCheck = isCheckFormula(formula);
+export function rollFormula(
+  formula: RollFormula,
+  rng: DiceRng,
+  options: RollOptions = {},
+): RollResult {
+  const isCheck = options.checkRule ?? isCheckFormula(formula);
   const terms: RollTermResult[] = [];
   let total = 0;
   let sixes = 0;

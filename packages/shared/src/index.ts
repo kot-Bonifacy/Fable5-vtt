@@ -3,6 +3,7 @@ export * from './ai.js';
 export * from './auth.js';
 export * from './bots/index.js';
 export * from './chat.js';
+export * from './combat.js';
 export * from './characters.js';
 export * from './dice.js';
 export * from './scenes.js';

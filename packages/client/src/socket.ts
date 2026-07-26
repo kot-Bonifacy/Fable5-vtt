@@ -27,6 +27,8 @@ import type {
   CharacterRollPayload,
   CharacterUpsertBroadcast,
   CharacterView,
+  CombatUpdateBroadcast,
+  CombatView,
   CompendiumDeleteBroadcast,
   CompendiumEntry,
   CompendiumUpsertBroadcast,
@@ -77,6 +79,7 @@ import { useCharacterStore } from './stores/characterStore.js';
 import { useCompendiumStore } from './stores/compendiumStore.js';
 import { useAiStore } from './stores/aiStore.js';
 import { useBotStore } from './stores/botStore.js';
+import { useCombatStore } from './stores/combatStore.js';
 
 let socket: Socket | undefined;
 /** User the live socket authenticated as — a different one forces a reconnect. */
@@ -240,6 +243,7 @@ export function connectSocket(userId: string): Socket {
     useCharacterStore.getState().applySync(payload);
     useBotStore.getState().applySync(payload);
     useCompendiumStore.getState().applySync(payload);
+    useCombatStore.getState().applySync(payload);
     if (payload.ai) useAiStore.getState().setStatus(payload.ai);
   });
 
@@ -374,6 +378,16 @@ export function connectSocket(userId: string): Socket {
     }
     if (viewingScene(broadcast.sceneId)) tokens().remove(broadcast.tokenId);
   });
+  // The tracker arrives as a whole: the public view campaign-wide (with a
+  // seq), the GM's full view targeted right after it (no seq, like whispers).
+  socket.on('combat:update', (broadcast: CombatUpdateBroadcast) => {
+    if (broadcast.seq !== undefined && chat().applySeq(broadcast.seq)) {
+      socket?.emit('state:request');
+      return;
+    }
+    if (viewingScene(broadcast.sceneId)) useCombatStore.getState().setCombat(broadcast.combat);
+  });
+
   socket.on('token:move', (broadcast: TokenMoveBroadcast) => {
     // Intermediate frames carry no seq on purpose — never gap-check them.
     if (broadcast.seq !== undefined && chat().applySeq(broadcast.seq)) {
@@ -654,6 +668,67 @@ export const updateToken = (tokenId: string, patch: TokenPatch) =>
   emitSceneAck<TokenView>('token:update', { tokenId, patch });
 
 export const deleteToken = (tokenId: string) => emitSceneAck('token:delete', { tokenId });
+
+/* Combat tracker (stage 14). Every call resolves with the fresh combat view;
+   the same state also arrives as a broadcast, so the UI may ignore the ack. */
+
+export const startCombat = (sceneId: string, tokenIds: string[]) =>
+  emitSceneAck<CombatView>('combat:start', { sceneId, tokenIds });
+
+export const addToCombat = (tokenIds: string[]) =>
+  emitSceneAck<CombatView>('combat:add', { tokenIds });
+
+export const removeFromCombat = (combatantId: string) =>
+  emitSceneAck<CombatView>('combat:remove', { combatantId });
+
+export const rollCombatInitiativeForAll = (rerollAll = false) =>
+  emitSceneAck<CombatView>('combat:roll-all', { rerollAll });
+
+export const rerollCombatTie = (combatantIds: string[]) =>
+  emitSceneAck<CombatView>('combat:reroll-tie', { combatantIds });
+
+export const setCombatInitiative = (combatantId: string, initiative: number | null) =>
+  emitSceneAck<CombatView>('combat:set-initiative', { combatantId, initiative });
+
+export const reorderCombat = (combatantIds: string[]) =>
+  emitSceneAck<CombatView>('combat:order', { combatantIds });
+
+export const nextCombatTurn = () => emitSceneAck<CombatView>('combat:next', {});
+
+export const previousCombatTurn = () => emitSceneAck<CombatView>('combat:previous', {});
+
+export const endCombat = () => emitSceneAck('combat:end', {});
+
+/**
+ * One participant's own initiative, thrown with the dice cup — the gesture
+ * carries into the server's RNG and the result lands on chat like any roll.
+ */
+export function sendInitiativeRoll(combatantId: string, gesture?: RollGesture): void {
+  const payload = gesture ? { combatantId, gesture } : { combatantId };
+  socket?.emit('combat:roll', payload, (ack: SocketAck<{ initiative: number }>) => {
+    if (!ack.ok) useChatStore.getState().addNote(combatErrorText(ack.error));
+  });
+}
+
+/** Polish messages for tracker rejections. */
+export function combatErrorText(code: string): string {
+  switch (code) {
+    case 'COMBAT_NOT_FOUND':
+      return 'Nie ma trwającej walki na tej scenie.';
+    case 'COMBATANT_NOT_FOUND':
+      return 'Nie znaleziono uczestnika walki — odśwież stronę.';
+    case 'TOKEN_NOT_FOUND':
+      return 'Nie znaleziono tokenu — odśwież stronę.';
+    case 'TOO_MANY_COMBATANTS':
+      return 'Za dużo uczestników walki.';
+    case 'FORBIDDEN':
+      return 'To nie jest twoja tura.';
+    case 'SCENE_NOT_FOUND':
+      return 'Scena zniknęła — odśwież stronę.';
+    default:
+      return `Błąd walki: ${code}`;
+  }
+}
 
 export const createCharacter = (payload: CharacterCreatePayload) =>
   emitSceneAck<CharacterView>('character:create', payload);
