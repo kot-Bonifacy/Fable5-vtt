@@ -2532,3 +2532,12 @@ input[type='color'] {
 .compendium-editor textarea {
   max-width: 100%;
 }
+
+.compendium-original {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.compendium-original summary {
+  cursor: pointer;
+}

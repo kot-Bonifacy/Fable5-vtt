@@ -252,6 +252,12 @@ function EntryCard({
       ) : null}
 
       {entry.description ? <p className="compendium-card-text">{entry.description}</p> : null}
+      {entry.descriptionOriginal ? (
+        <details className="compendium-original">
+          <summary>Oryginał (EN)</summary>
+          <p>{entry.descriptionOriginal}</p>
+        </details>
+      ) : null}
       {entry.category === 'weapon' && entry.features?.length ? (
         <ul className="compendium-features">
           {entry.features.map((feature) => (

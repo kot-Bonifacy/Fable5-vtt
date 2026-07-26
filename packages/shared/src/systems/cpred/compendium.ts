@@ -148,6 +148,8 @@ interface CompendiumEntryBase {
   name: string;
   nameOriginal?: string;
   description?: string;
+  /** English source text, kept when the description was translated (stage 13). */
+  descriptionOriginal?: string;
   /** Price in eddies; null when the material gives only a band. */
   cost: number | null;
   costCategory?: CostCategory;
@@ -346,6 +348,13 @@ export function validateCompendiumEntry(
     COMPENDIUM_SOURCE_MAX_LENGTH,
     issues,
   );
+  const descriptionOriginal = checkOptionalText(
+    input.descriptionOriginal,
+    'descriptionOriginal',
+    'Oryginalny opis',
+    COMPENDIUM_DESCRIPTION_MAX_LENGTH,
+    issues,
+  );
   const cost = checkCost(input.cost, issues);
   const costCategory =
     typeof input.costCategory === 'string' &&
@@ -359,6 +368,7 @@ export function validateCompendiumEntry(
     cost,
     ...(nameOriginal ? { nameOriginal } : {}),
     ...(description ? { description } : {}),
+    ...(descriptionOriginal ? { descriptionOriginal } : {}),
     ...(costCategory ? { costCategory } : {}),
     ...(source ? { source } : {}),
     ...(input.incomplete === true ? { incomplete: true as const } : {}),

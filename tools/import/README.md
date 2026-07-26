@@ -13,9 +13,36 @@ uv run --with pdfplumber python tools/import/extract-pdf-text.py
 # 2. tekst -> JSON kompendium (-> data/private/cpred/compendium)
 uv run --with pdfplumber python tools/import/parse-compendium.py
 
+# 2.5. opisy EN -> PL lokalnym modelem (wymaga uruchomionego llama-servera)
+uv run --with httpx python tools/import/translate-descriptions.py
+
 # 3. walidacja schematami z @vtt/shared (to samo, co robi serwer przy starcie)
 packages/server/node_modules/.bin/tsx tools/import/validate-compendium.ts
 ```
+
+## Tłumaczenie opisów
+
+Materiały RTG są po angielsku, a przy stole gramy po polsku, więc opisy
+przechodzą przez model z etapu 09 (`translate-descriptions.py`). Nic nie
+opuszcza komputera. Oryginał zostaje w polu `descriptionOriginal` i jest do
+podejrzenia na karcie przedmiotu („Oryginał (EN)”), więc każde tłumaczenie da
+się zweryfikować bez wracania do PDF-a.
+
+**Model 9B nie wystarcza sam z siebie.** Przy pierwszym przebiegu mylił typy
+broni („ciężki pistolet” dla pistoletu maszynowego), kalkował angielski
+(„kolanówka” zamiast kabury na kostkę) i tłumaczył wciągnięte do opisu nagłówki
+stron. Stąd dwie decyzje:
+
+- parser **wycina z opisu zdanie o typie i jakości** („An Excellent Quality
+  Heavy Pistol.”) — te wartości są w polach strukturalnych i widać je na
+  karcie, a w tekście tylko kusiły model do przekręcenia nazwy typu;
+- `translations-override.json` trzyma **ręczne poprawki kluczowane id wpisu**.
+  Mają pierwszeństwo przed modelem i przeżywają każdy kolejny import. Dziś
+  siedzi tam komplet 35 opisów broni po korekcie.
+
+Ponowne uruchomienie skryptu nie płaci za to, co już przetłumaczone: wyniki są
+cache'owane po skrócie treści w `translations.json`, a wpisy z override
+stosują się natychmiast.
 
 Serwer czyta wynik przy każdym starcie: najpierw `data/public/cpred/compendium`
 (przykłady wymyślone, w repo), potem `data/private/cpred/compendium` — pliki

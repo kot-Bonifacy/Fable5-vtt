@@ -361,6 +361,41 @@ def strip_pdf_artefacts(text: str) -> str:
     # Column breaks hyphenate words: "com- monly" -> "commonly".
     text = re.sub(r"(\w)-\s+(\w)", r"\1\2", text)
 
+    # The next section's heading and the page's pull-quote sit in the same
+    # column, so extraction glues them onto the last entry's description.
+    text = re.sub(
+        r"\s*(?:very\s+|heavy\s+|light\s+|medium\s+|exotic\s+)?"
+        r"(?:pistols|smgs|shotguns|rifles|melee\s+weapons|grenades|bows)\s*$",
+        "",
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(r"\s*Listen Up YoU primitive screwheads\s*$", "", text, flags=re.IGNORECASE)
+
+    # "An Excellent Quality Heavy Pistol." is already parsed into `quality` and
+    # `weaponTypeId`, and the card shows both. Leaving it in the description
+    # duplicates the stats — and, once translated, invited the model to rename
+    # the weapon type ("ciężki pistolet" for an SMG). Structured data wins.
+    #
+    # Only the standalone sentence goes: when the phrase carries a subordinate
+    # clause ("... Assault Rifle that deals 4d6 damage"), removing it would
+    # leave a dangling fragment, so that variant is left for the translator.
+    text = re.sub(
+        r"\s*\bAn?\s+(?:Poor|Standard|Excellent)\s+Quality\s+[A-Za-z /\-]{2,30}?[.,]",
+        "",
+        text,
+        flags=re.IGNORECASE,
+    )
+
+    # Page furniture that shares the column: running heads and page numbers.
+    # Swept last, because dropping the type sentence is what exposes them.
+    text = re.sub(
+        r"\s*(?:TOGGLE.S TEMPLE|WOODCHIPPER.S GARAGE|sniPer|assault|very|\d{2,8}:*)\s*$",
+        "",
+        text,
+        flags=re.IGNORECASE,
+    )
+
     doubled = re.compile(r"([A-Za-z])\1")
     repeated_only = re.compile(r"^([A-Za-z'’])\1+$")
     kept: list[str] = []
@@ -370,9 +405,16 @@ def strip_pdf_artefacts(text: str) -> str:
         # Leftovers of the same quote: "ee", "MM", "’’".
         if repeated_only.match(word):
             continue
+        # Punctuation-only debris: ",,", "..", "——", "™™..".
+        if len(word) > 1 and not re.search(r"[A-Za-z0-9ąćęłńóśźż]", word):
+            continue
         kept.append(word)
     cleaned = [w for w in kept if len(w) > 1 or w.lower() in {"a", "i", "o", "w", "z"}]
-    return " ".join(cleaned).strip()
+    result = " ".join(cleaned).strip()
+
+    # Word filtering can uncover furniture that was not last before it ran
+    # (a page number followed by other debris), so sweep the tail once more.
+    return re.sub(r"\s*(?:\d{2,8}:*|[—–-])\s*$", "", result).strip()
 
 
 def clean_name(raw: str) -> str:
