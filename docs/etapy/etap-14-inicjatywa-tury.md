@@ -34,6 +34,7 @@ Tracker inicjatywy sterujący przebiegiem walki: rzuty inicjatywy, kolejność, 
 - **Turę przesuwa MG albo aktywny gracz** („Kończę turę"); serwer sprawdza, czyja to naprawdę tura.
 - **Uczestnicy:** zaznaczenie tokenów sceny (postacie graczy zaznaczone domyślnie) + „Dodaj do walki" w menu kontekstowym tokenu.
 - **Remisy — dwie ścieżki:** REF rozstrzyga automatycznie przy porządkowaniu po rzucie, a RAW Easy Mode („remisy należy rozstrzygnąć ponownym rzutem") dostał przycisk „Przerzuć remis". Ręczne przeciąganie jest ostateczne w obrębie tej samej inicjatywy; wyższa inicjatywa zawsze wyprzedza niższą.
+- **Pasek nad mapą jest przesuwalny** (życzenie użytkownika po oględzinach): łapie się go za etykietę rundy — jedyne miejsce bez przycisku, więc chwyt nigdy nie koliduje ze sterowaniem. Pozycja jest zapamiętana w `localStorage` (jak szerokość panelu), przycinana do obszaru mapy przy przeciąganiu i przy zmianie rozmiaru okna; strzałki przesuwają skokowo, dwuklik wraca na środek u góry.
 - **Inicjatywa nie jest Testem:** krytyk/fumble z etapu 06 celowo NIE działa na `1d10 + REF` (zasada dotyczy Testów Umiejętności) — silnik kości dostał jawne `checkRule: false`.
 
 ## Wskazówki techniczne

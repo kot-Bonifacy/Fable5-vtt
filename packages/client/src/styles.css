@@ -2619,6 +2619,31 @@ body.is-resizing {
   white-space: nowrap;
 }
 
+/* Drag handle: the label is the only spot on the bar without a control, so
+   grabbing it can never collide with stepping the turn. */
+.combat-bar-handle {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  border-radius: 999px;
+  padding: 0.15rem 0.45rem;
+}
+
+.combat-bar-handle:hover,
+.combat-bar-handle:focus-visible {
+  background: rgba(217, 164, 65, 0.16);
+  outline: none;
+}
+
+.combat-bar--dragging {
+  cursor: grabbing;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.6);
+}
+
+.combat-bar--dragging .combat-bar-handle {
+  cursor: grabbing;
+}
+
 .combat-bar-step {
   flex: none;
   padding: 0.15rem 0.5rem;
