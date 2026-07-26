@@ -2592,6 +2592,9 @@ body.is-resizing {
    ------------------------------------------------------------------------ */
 
 .combat-bar {
+  /* Nothing here is meant to be read as a document: dragging the bar (or a
+     stray double-click) must never leave „RUNDA 1" or a name highlighted. */
+  user-select: none;
   position: absolute;
   top: 0.5rem;
   left: 50%;
@@ -2624,7 +2627,6 @@ body.is-resizing {
 .combat-bar-handle {
   cursor: grab;
   touch-action: none;
-  user-select: none;
   border-radius: 999px;
   padding: 0.15rem 0.45rem;
 }
