@@ -191,6 +191,9 @@ function CombatRow({
           className="combat-row-initiative-input"
           type="number"
           autoFocus
+          // Select what is there: typing a new value must replace the old one,
+          // not append to it (3 + „15" would land as 315, clamped to 99).
+          onFocus={(e) => e.target.select()}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commit}
