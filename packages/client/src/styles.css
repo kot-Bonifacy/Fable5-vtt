@@ -875,20 +875,49 @@ button:disabled {
 
 /* --- Side panel tabs --- */
 
+.side-tab-rows {
+  border-bottom: 1px solid var(--border);
+}
+
 .side-tabs {
   display: flex;
-  border-bottom: 1px solid var(--border);
+  gap: 0.15rem;
+}
+
+/* Second row: the GM's tools, visually subordinate to the shared row. */
+.side-tabs--gm {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.025);
+  border-top: 1px solid var(--border);
+}
+
+.side-tabs-label {
+  flex: none;
+  padding: 0 0.4rem;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--accent);
 }
 
 .side-tab {
   flex: 1;
-  padding: 0.45rem 0;
+  min-width: 0;
+  padding: 0.45rem 0.15rem;
   background: transparent;
   border: none;
   border-radius: 0;
   color: var(--text-dim);
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.side-tabs--gm .side-tab {
+  font-size: 0.75rem;
+  padding: 0.3rem 0.15rem;
 }
 
 .side-tab--active {
@@ -2486,4 +2515,20 @@ input[type='color'] {
   max-width: 34rem;
   max-height: 85vh;
   overflow-y: auto;
+}
+
+/* Three number fields in a row overflow a narrow dialog; let them wrap. */
+.compendium-editor .bot-row-inline {
+  flex-wrap: wrap;
+}
+
+.compendium-editor .bot-field--inline {
+  flex: 1 1 7rem;
+  min-width: 0;
+}
+
+.compendium-editor input,
+.compendium-editor select,
+.compendium-editor textarea {
+  max-width: 100%;
 }

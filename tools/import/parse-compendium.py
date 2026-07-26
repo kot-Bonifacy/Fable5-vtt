@@ -351,6 +351,30 @@ def split_named_blocks(text: str) -> list[str]:
     return blocks
 
 
+def strip_pdf_artefacts(text: str) -> str:
+    """Drops words mangled by the DLCs' decorative pull-quotes.
+
+    Those are typeset with doubled glyphs, so extraction yields things like
+    "FFiirreePPoowweerr uunnttiill iitt". A real word almost never contains two
+    doubled letter pairs, so that is the signal used to throw one away.
+    """
+    # Column breaks hyphenate words: "com- monly" -> "commonly".
+    text = re.sub(r"(\w)-\s+(\w)", r"\1\2", text)
+
+    doubled = re.compile(r"([A-Za-z])\1")
+    repeated_only = re.compile(r"^([A-Za-z'’])\1+$")
+    kept: list[str] = []
+    for word in text.split():
+        if len(word) > 3 and len(doubled.findall(word)) >= 2:
+            continue
+        # Leftovers of the same quote: "ee", "MM", "’’".
+        if repeated_only.match(word):
+            continue
+        kept.append(word)
+    cleaned = [w for w in kept if len(w) > 1 or w.lower() in {"a", "i", "o", "w", "z"}]
+    return " ".join(cleaned).strip()
+
+
 def clean_name(raw: str) -> str:
     """PDF small-caps arrive mangled ('NoMad .357 MagnuM', 'towa tyPe-12').
 
@@ -413,11 +437,11 @@ def parse_named_block(block: str, label: str, seen_ids: set[str]) -> dict | None
     if slots_match:
         entry["attachmentSlots"] = int(slots_match.group(1))
 
-    description = " ".join(
-        line
-        for line in lines[1:]
-        if not COST_RE.match(line) and not SLOTS_RE.match(line)
-    ).strip()
+    description = strip_pdf_artefacts(
+        " ".join(
+            line for line in lines[1:] if not COST_RE.match(line) and not SLOTS_RE.match(line)
+        )
+    )
     if description:
         entry["description"] = description[:1000]
     features = extract_features(body)

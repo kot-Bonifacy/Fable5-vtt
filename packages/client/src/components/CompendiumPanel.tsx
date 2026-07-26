@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import type { CompendiumEntry } from '@vtt/shared';
+import type { CompendiumEntry, WeaponTypeDefinition } from '@vtt/shared';
 import {
   ARMOR_LOCATION_LABELS,
   COMPENDIUM_CATEGORIES,
@@ -14,7 +14,7 @@ import {
 import { deleteCompendiumEntry } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
-import { useCompendiumStore, entryCount, visibleEntries } from '../stores/compendiumStore.js';
+import { countByCategory, useCompendiumStore, visibleEntries } from '../stores/compendiumStore.js';
 import { addCompendiumItemToCharacter } from '../compendium-items.js';
 import { CompendiumEditor } from './CompendiumEditor.js';
 
@@ -36,14 +36,16 @@ export function CompendiumPanel() {
   const setQuery = useCompendiumStore((s) => s.setQuery);
   const select = useCompendiumStore((s) => s.select);
   const edit = useCompendiumStore((s) => s.edit);
-  const entries = useCompendiumStore(visibleEntries);
+  // Raw slices only: a selector that derives a new array or object on every
+  // render loops React (learned in stage 10, same trap).
   const entriesById = useCompendiumStore((s) => s.entries);
-  const counts = useCompendiumStore((s) => ({
-    weapon: entryCount(s, 'weapon'),
-    armor: entryCount(s, 'armor'),
-    gear: entryCount(s, 'gear'),
-    cyberware: entryCount(s, 'cyberware'),
-  }));
+  const order = useCompendiumStore((s) => s.order);
+  const weaponTypeById = useCompendiumStore((s) => s.weaponTypeById);
+  const entries = useMemo(
+    () => visibleEntries(entriesById, order, query, category),
+    [entriesById, order, query, category],
+  );
+  const counts = useMemo(() => countByCategory(entriesById, order), [entriesById, order]);
 
   const selected = selectedId ? (entriesById[selectedId] ?? null) : null;
 
@@ -96,7 +98,9 @@ export function CompendiumPanel() {
                     </span>
                   ) : null}
                 </span>
-                <span className="compendium-row-meta">{shortStats(entry)}</span>
+                <span className="compendium-row-meta">
+                  {shortStats(entry, weaponTypeById)}
+                </span>
               </button>
             </li>
           ))}
@@ -108,11 +112,23 @@ export function CompendiumPanel() {
   );
 }
 
-/** One-line summary shown in the list: the numbers that matter at the table. */
-function shortStats(entry: CompendiumEntry): string {
+/**
+ * One-line summary for the list. Weapon damage usually lives on the base type,
+ * not on the entry, so it has to be resolved — otherwise every imported weapon
+ * would show a dash where its dice belong.
+ */
+function shortStats(
+  entry: CompendiumEntry,
+  weaponTypeById: Record<string, WeaponTypeDefinition>,
+): string {
   switch (entry.category) {
-    case 'weapon':
-      return `${entry.damage ?? '—'} · ${formatCost(entry)}`;
+    case 'weapon': {
+      const damage =
+        entry.damage ??
+        (entry.weaponTypeId ? weaponTypeById[entry.weaponTypeId]?.damage : undefined) ??
+        '—';
+      return `${damage} · ${formatCost(entry)}`;
+    }
     case 'armor':
       return `OB ${entry.sp} · ${formatCost(entry)}`;
     default:

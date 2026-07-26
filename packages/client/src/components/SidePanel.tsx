@@ -12,46 +12,54 @@ import { useAuthStore } from '../stores/authStore.js';
 
 type Tab = 'chat' | 'scenes' | 'tokens' | 'characters' | 'compendium' | 'bots' | 'ai';
 
+/**
+ * Side panel tabs in two rows: what everyone at the table uses, and the GM's
+ * tools. Splitting them by audience rather than simply wrapping keeps both
+ * rows meaningful as later stages add tabs (initiative, journal, handouts),
+ * and a player still sees one short row.
+ */
+const TABLE_TABS: { id: Tab; label: string }[] = [
+  { id: 'chat', label: 'Czat' },
+  { id: 'characters', label: 'Postacie' },
+  { id: 'compendium', label: 'Kompendium' },
+];
+
+const GM_TABS: { id: Tab; label: string }[] = [
+  { id: 'scenes', label: 'Sceny' },
+  { id: 'tokens', label: 'Tokeny' },
+  { id: 'bots', label: 'Boty' },
+  { id: 'ai', label: 'AI' },
+];
+
 export function SidePanel() {
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const [tab, setTab] = useState<Tab>('chat');
-  // Players get chat + characters; the GM additionally scenes, tokens, bots and AI.
-  const gmOnly = tab === 'scenes' || tab === 'tokens' || tab === 'bots' || tab === 'ai';
+  const gmOnly = GM_TABS.some((entry) => entry.id === tab);
   const activeTab: Tab = !isGm && gmOnly ? 'chat' : tab;
 
-  const tabs: { id: Tab; label: string }[] = [
-    { id: 'chat', label: 'Czat' },
-    ...(isGm
-      ? ([
-          { id: 'scenes', label: 'Sceny' },
-          { id: 'tokens', label: 'Tokeny' },
-        ] as const)
-      : []),
-    { id: 'characters', label: 'Postacie' },
-    { id: 'compendium', label: 'Kompendium' },
-    ...(isGm
-      ? ([
-          { id: 'bots', label: 'Boty' },
-          { id: 'ai', label: 'AI' },
-        ] as const)
-      : []),
-  ];
+  const renderTab = (entry: { id: Tab; label: string }) => (
+    <button
+      key={entry.id}
+      type="button"
+      className={`side-tab ${activeTab === entry.id ? 'side-tab--active' : ''}`}
+      onClick={() => setTab(entry.id)}
+    >
+      {entry.label}
+    </button>
+  );
 
   return (
     <aside className="side-panel">
       <PresenceList />
-      <nav className="side-tabs">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            className={`side-tab ${activeTab === t.id ? 'side-tab--active' : ''}`}
-            onClick={() => setTab(t.id)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </nav>
+      <div className="side-tab-rows">
+        <nav className="side-tabs">{TABLE_TABS.map(renderTab)}</nav>
+        {isGm ? (
+          <nav className="side-tabs side-tabs--gm">
+            <span className="side-tabs-label">MG</span>
+            {GM_TABS.map(renderTab)}
+          </nav>
+        ) : null}
+      </div>
       {activeTab === 'chat' ? (
         <ChatPanel />
       ) : activeTab === 'scenes' ? (

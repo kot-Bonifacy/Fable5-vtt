@@ -96,15 +96,40 @@ export const useCompendiumStore = create<CompendiumStoreState>((set) => ({
   edit: (editing) => set({ editing }),
 }));
 
+/**
+ * Derived views. These are plain functions, NOT zustand selectors: they build
+ * new arrays and objects, and a selector that returns a fresh reference on
+ * every render sends React into an update loop ("The result of getSnapshot
+ * should be cached"). Components read the raw `entries`/`order` slices — those
+ * keep their identity between renders — and call these inside `useMemo`.
+ */
+
 /** Entries of the active category matching the search box, in server order. */
-export function visibleEntries(state: CompendiumStoreState): CompendiumEntry[] {
-  const all = state.order.map((id) => state.entries[id]).filter((e): e is CompendiumEntry => !!e);
+export function visibleEntries(
+  entries: Record<string, CompendiumEntry>,
+  order: string[],
+  query: string,
+  category: CompendiumCategory,
+): CompendiumEntry[] {
+  const all = order.map((id) => entries[id]).filter((e): e is CompendiumEntry => !!e);
   if (all.length === 0) return NO_ENTRIES;
-  return searchCompendium(all, state.query, state.category);
+  return searchCompendium(all, query, category);
 }
 
-export function entryCount(state: CompendiumStoreState, category: CompendiumCategory): number {
-  let count = 0;
-  for (const id of state.order) if (state.entries[id]?.category === category) count += 1;
-  return count;
+/** How many entries each category holds, for the badges on the category chips. */
+export function countByCategory(
+  entries: Record<string, CompendiumEntry>,
+  order: string[],
+): Record<CompendiumCategory, number> {
+  const counts: Record<CompendiumCategory, number> = {
+    weapon: 0,
+    armor: 0,
+    gear: 0,
+    cyberware: 0,
+  };
+  for (const id of order) {
+    const entry = entries[id];
+    if (entry) counts[entry.category] += 1;
+  }
+  return counts;
 }
