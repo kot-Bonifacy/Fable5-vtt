@@ -13,6 +13,8 @@ export interface ServerConfig {
   uploadsDir: string;
   /** Absolute directory of committed public data (status icons, samples). */
   dataPublicDir: string;
+  /** Absolute directory of gitignored rulebook-derived data; may not exist. */
+  dataPrivateDir: string;
   /** Base URL of the Python AI gateway (localhost in dev, tailnet address in prod). */
   aiGatewayUrl: string;
   /** Shared secret sent as X-API-Key; empty disables the header (local dev). */
@@ -40,6 +42,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     // Defaults assume cwd = packages/server (dev scripts) → repo-root dirs.
     uploadsDir: resolve(env.UPLOADS_DIR ?? '../../uploads'),
     dataPublicDir: resolve(env.DATA_PUBLIC_DIR ?? '../../data/public'),
+    dataPrivateDir: resolve(env.DATA_PRIVATE_DIR ?? '../../data/private'),
     aiGatewayUrl: (env.AI_GATEWAY_URL ?? 'http://127.0.0.1:8100').replace(/\/$/, ''),
     aiGatewayApiKey: env.AI_GATEWAY_API_KEY ?? '',
     aiHealthIntervalMs: Number(env.AI_HEALTH_INTERVAL_MS ?? 10_000),

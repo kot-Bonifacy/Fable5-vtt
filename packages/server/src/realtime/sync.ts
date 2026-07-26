@@ -9,6 +9,7 @@ import { fetchSceneTokensFor } from './tokens.js';
 import { fetchCharactersFor } from './character-io.js';
 import { fetchBotsFor } from './bots.js';
 import { aiStatusFor } from './ai.js';
+import { buildCompendiumSync } from './compendium.js';
 import { campaignRoom } from './state.js';
 
 /**
@@ -35,10 +36,12 @@ export async function buildStateSync(
       characters: [],
       bots: [],
       ai: aiStatusFor(deps, user.role === ROLE_GM),
+      compendium: await buildCompendiumSync(deps, null),
     };
   }
   const viewedSceneId = socket.data.viewedSceneId;
-  const [presence, history, viewedScene, scenes, tokens, characters, bots] = await Promise.all([
+  const [presence, history, viewedScene, scenes, tokens, characters, bots, compendium] =
+    await Promise.all([
     computePresence(deps.io, campaign.id),
     fetchHistoryPage(deps.ctx.prisma, campaign.id, user),
     viewedSceneId ? getSceneById(deps.ctx.prisma, viewedSceneId) : Promise.resolve(null),
@@ -54,6 +57,8 @@ export async function buildStateSync(
     fetchCharactersFor(deps.ctx.prisma, deps.ctx.cpred, campaign.id, user),
     // Bot profiles carry secrets and prompts — GM only.
     fetchBotsFor(deps.ctx.prisma, campaign.id, user.role === ROLE_GM),
+    // Item catalogue: files on disk plus the campaign's own entries.
+    buildCompendiumSync(deps, campaign.id),
   ]);
   const scene: SceneView | null = viewedScene ? toSceneView(viewedScene) : null;
   return {
@@ -68,6 +73,7 @@ export async function buildStateSync(
     characters,
     bots,
     ai: aiStatusFor(deps, user.role === ROLE_GM),
+    compendium,
   };
 }
 

@@ -46,6 +46,9 @@ const config: ServerConfig = {
   sessionTtlDays: 1,
   uploadsDir: mkdtempSync(join(tmpdir(), 'vtt-uploads-')),
   dataPublicDir: resolve(import.meta.dirname, '../../../data/public'),
+  // Deliberately absent: tests run on the committed sample compendium,
+  // which is also the "fresh clone without data/private" path.
+  dataPrivateDir: resolve(import.meta.dirname, 'fixtures/no-private-data'),
   aiGatewayUrl: 'http://gateway.test',
   aiGatewayApiKey: 'test-key',
   aiHealthIntervalMs: 5000,

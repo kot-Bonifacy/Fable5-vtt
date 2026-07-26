@@ -3,6 +3,7 @@ import type { CampaignSummary, Role } from './auth.js';
 import type { BotView } from './bots/types.js';
 import type { ChatMessageView } from './chat.js';
 import type { CharacterView } from './characters.js';
+import type { CompendiumEntry, WeaponTypeDefinition } from './systems/cpred/compendium.js';
 import type { RollToss } from './dice.js';
 import type { SceneSummary, SceneView } from './scenes.js';
 import type { TokenView } from './tokens.js';
@@ -45,6 +46,33 @@ export interface StateSyncPayload {
   bots: BotView[];
   /** Bot availability, filtered by role (players get no diagnostics). */
   ai: AiStatus;
+  /** Item catalogue — the same for everyone; players pick gear from it. */
+  compendium: CompendiumSyncPayload;
+}
+
+/** Weapon base rows plus every entry: imported ones and the GM's own. */
+export interface CompendiumSyncPayload {
+  weaponTypes: WeaponTypeDefinition[];
+  entries: CompendiumEntry[];
+}
+
+/** GM writes one of the campaign's own compendium entries. */
+export interface CompendiumUpsertPayload {
+  entry: unknown;
+}
+
+export interface CompendiumIdPayload {
+  id: string;
+}
+
+export interface CompendiumUpsertBroadcast {
+  seq: number;
+  entry: CompendiumEntry;
+}
+
+export interface CompendiumDeleteBroadcast {
+  seq: number;
+  id: string;
 }
 
 /** Payload of `chat:message`. `seq` is absent for targeted whisper deliveries. */

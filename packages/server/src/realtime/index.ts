@@ -21,6 +21,7 @@ import {
 import { tokenCreateEvent, tokenDeleteEvent, tokenMoveEvent, tokenUpdateEvent } from './tokens.js';
 import { characterCreateEvent, characterDeleteEvent, characterUpdateEvent } from './characters.js';
 import { characterRollEvent } from './character-rolls.js';
+import { compendiumDeleteEvent, compendiumUpsertEvent } from './compendium.js';
 import { botCreateEvent, botDeleteEvent, botDuplicateEvent, botUpdateEvent } from './bots.js';
 import { botChatEvent, botTeachEvent } from './bot-chat.js';
 import { botSayEvent, botStopEvent } from './bot-turns.js';
@@ -60,6 +61,8 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   tokenUpdateEvent,
   tokenDeleteEvent,
   tokenMoveEvent,
+  compendiumUpsertEvent,
+  compendiumDeleteEvent,
   characterCreateEvent,
   characterUpdateEvent,
   characterDeleteEvent,

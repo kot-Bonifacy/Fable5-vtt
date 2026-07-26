@@ -47,6 +47,7 @@ model Campaign {
   chatMessages ChatMessage[]
   tokenAssets  TokenAsset[]
   bots         BotProfile[]
+  compendium   CompendiumEntry[]
 }
 
 model CampaignMember {
@@ -251,4 +252,25 @@ model Scene {
   bots         BotProfile[]
 
   @@index([campaignId, active])
+}
+
+/// Compendium entries typed in by the GM (stage 13). Imported rulebook data
+/// lives in JSON files under data/private and is never written here — this
+/// table only holds what the group made up itself, so the campaign database
+/// stays free of copyrighted content.
+model CompendiumEntry {
+  id         String   @id @default(cuid())
+  campaignId String
+  /// Stable slug used by character sheets, e.g. "weapon.zgrzyt-9".
+  slug       String
+  category   String
+  /// Full entry as JSON, validated with the shared schema before writing.
+  data       String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, slug])
+  @@index([campaignId])
 }

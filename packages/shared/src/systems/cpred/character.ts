@@ -1,3 +1,4 @@
+import { isValidCompendiumId } from './ids.js';
 import { hpMax, humanityMax } from './derived.js';
 import {
   CPRED_STAT_IDS,
@@ -98,6 +99,12 @@ export interface CpredItemRow {
   id: string;
   name: string;
   notes: string;
+  /**
+   * Compendium entry this row came from (stage 13), e.g. "weapon.zgrzyt-9".
+   * The row keeps its own copy of the numbers so a sheet stays readable when
+   * the catalogue changes; the reference is what links it back to the card.
+   */
+  compendiumId?: string;
 }
 
 export interface CpredGearRow extends CpredItemRow {
@@ -259,7 +266,16 @@ function validateRowBase(
   const name = validateText(input.name, field, 'Nazwa', ITEM_NAME_MAX_LENGTH, issues);
   const notes = validateText(input.notes ?? '', field, 'Uwagi', ITEM_NOTES_MAX_LENGTH, issues);
   if (name === undefined || notes === undefined) return undefined;
-  return { id: input.id, name: name.trim(), notes };
+  const compendiumId =
+    typeof input.compendiumId === 'string' && isValidCompendiumId(input.compendiumId)
+      ? input.compendiumId
+      : undefined;
+  return {
+    id: input.id,
+    name: name.trim(),
+    notes,
+    ...(compendiumId ? { compendiumId } : {}),
+  };
 }
 
 function validateRows<T extends CpredItemRow>(

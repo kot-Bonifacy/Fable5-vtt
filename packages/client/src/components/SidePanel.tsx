@@ -5,11 +5,12 @@ import { ChatPanel } from './ChatPanel.js';
 import { ScenePanel } from './ScenePanel.js';
 import { TokenPanel } from './TokenPanel.js';
 import { CharacterPanel } from './CharacterPanel.js';
+import { CompendiumPanel } from './CompendiumPanel.js';
 import { AiPanel } from './AiPanel.js';
 import { BotPanel } from './BotPanel.js';
 import { useAuthStore } from '../stores/authStore.js';
 
-type Tab = 'chat' | 'scenes' | 'tokens' | 'characters' | 'bots' | 'ai';
+type Tab = 'chat' | 'scenes' | 'tokens' | 'characters' | 'compendium' | 'bots' | 'ai';
 
 export function SidePanel() {
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
@@ -27,6 +28,7 @@ export function SidePanel() {
         ] as const)
       : []),
     { id: 'characters', label: 'Postacie' },
+    { id: 'compendium', label: 'Kompendium' },
     ...(isGm
       ? ([
           { id: 'bots', label: 'Boty' },
@@ -56,6 +58,8 @@ export function SidePanel() {
         <ScenePanel />
       ) : activeTab === 'tokens' ? (
         <TokenPanel />
+      ) : activeTab === 'compendium' ? (
+        <CompendiumPanel />
       ) : activeTab === 'bots' ? (
         <BotPanel />
       ) : activeTab === 'ai' ? (

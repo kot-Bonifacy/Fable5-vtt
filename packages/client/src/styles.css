@@ -2282,3 +2282,208 @@ input[type='color'] {
 .bot-prompt {
   max-height: 22rem;
 }
+
+/* --- Compendium (stage 13) --------------------------------------------- */
+
+.compendium-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.compendium-head {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.compendium-search {
+  flex: 1;
+  min-width: 0;
+}
+
+.compendium-categories {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.compendium-category {
+  padding: 0.2rem 0.45rem;
+  font-size: 0.75rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-dim);
+}
+
+.compendium-category--active {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.compendium-count {
+  opacity: 0.6;
+  margin-left: 0.2rem;
+}
+
+.compendium-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.compendium-row {
+  width: 100%;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-align: left;
+}
+
+.compendium-row-name {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.compendium-row-meta {
+  flex: none;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.compendium-tag {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.05rem 0.3rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-dim);
+}
+
+.compendium-tag--warn {
+  color: #f0b429;
+  border-color: #f0b429;
+}
+
+.compendium-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.compendium-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.compendium-card-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.compendium-card-name {
+  font-size: 1rem;
+}
+
+.compendium-card-original,
+.compendium-source {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}
+
+.compendium-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+  gap: 0.35rem;
+}
+
+.compendium-stat {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.3rem 0.4rem;
+}
+
+.compendium-stat dt {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+
+.compendium-stat dd {
+  font-size: 0.85rem;
+}
+
+.compendium-range {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.68rem;
+}
+
+.compendium-range caption {
+  text-align: left;
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  padding-bottom: 0.2rem;
+}
+
+.compendium-range th,
+.compendium-range td {
+  border: 1px solid var(--border);
+  padding: 0.15rem 0.2rem;
+  text-align: center;
+}
+
+.compendium-card-text {
+  font-size: 0.8rem;
+}
+
+.compendium-features {
+  list-style: disc;
+  padding-left: 1.1rem;
+  font-size: 0.78rem;
+}
+
+.compendium-warning {
+  font-size: 0.72rem;
+  color: #f0b429;
+}
+
+.compendium-assign {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+  border-top: 1px solid var(--border);
+  padding-top: 0.5rem;
+}
+
+.compendium-assign select {
+  flex: 1;
+  min-width: 0;
+}
+
+.compendium-note {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.compendium-editor {
+  max-width: 34rem;
+  max-height: 85vh;
+  overflow-y: auto;
+}

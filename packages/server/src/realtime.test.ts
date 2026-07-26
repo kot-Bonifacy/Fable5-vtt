@@ -31,6 +31,9 @@ const config: ServerConfig = {
   sessionTtlDays: 1,
   uploadsDir: mkdtempSync(join(tmpdir(), 'vtt-uploads-')),
   dataPublicDir: resolve(import.meta.dirname, '../../../data/public'),
+  // Deliberately absent: tests run on the committed sample compendium,
+  // which is also the "fresh clone without data/private" path.
+  dataPrivateDir: resolve(import.meta.dirname, 'fixtures/no-private-data'),
   // The gateway is never reachable in these suites — bots stay unavailable.
   aiGatewayUrl: 'http://127.0.0.1:1',
   aiGatewayApiKey: '',

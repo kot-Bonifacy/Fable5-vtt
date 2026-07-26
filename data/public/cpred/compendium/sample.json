@@ -1,0 +1,172 @@
+{
+  "schemaVersion": 1,
+  "source": "Dane przykładowe VTT (wymyślone — wolne od praw autorskich)",
+  "weaponTypes": [
+    {
+      "id": "weapon-type.sample-pistol",
+      "name": "Pistolet przykładowy",
+      "skillId": "handgun",
+      "damage": "2k6",
+      "magazine": 10,
+      "rof": 2,
+      "hands": 1,
+      "concealable": true,
+      "attachmentSlots": 3,
+      "melee": false,
+      "rangeDv": [13, 15, 20, 25, 30, 30, null, null]
+    },
+    {
+      "id": "weapon-type.sample-rifle",
+      "name": "Karabin przykładowy",
+      "skillId": "shoulder-arms",
+      "damage": "5k6",
+      "magazine": 25,
+      "rof": 1,
+      "hands": 2,
+      "concealable": false,
+      "attachmentSlots": 3,
+      "melee": false,
+      "rangeDv": [17, 16, 15, 13, 15, 20, 25, 30]
+    },
+    {
+      "id": "weapon-type.sample-blade",
+      "name": "Ostrze przykładowe",
+      "skillId": "melee-weapon",
+      "damage": "3k6",
+      "magazine": null,
+      "rof": 2,
+      "hands": 1,
+      "concealable": false,
+      "melee": true
+    }
+  ],
+  "entries": [
+    {
+      "id": "weapon.zgrzyt-9",
+      "category": "weapon",
+      "name": "Zgrzyt 9",
+      "description": "Tania spluwa z warsztatu w Kotłowni. Zacina się, gdy najbardziej nie trzeba.",
+      "weaponTypeId": "weapon-type.sample-pistol",
+      "quality": "poor",
+      "cost": 50,
+      "costCategory": "costly"
+    },
+    {
+      "id": "weapon.iglica-tw",
+      "category": "weapon",
+      "name": "Iglica TW",
+      "description": "Warsztatowa przeróbka z celownikiem kolimatorowym.",
+      "weaponTypeId": "weapon-type.sample-pistol",
+      "quality": "excellent",
+      "cost": 500,
+      "costCategory": "expensive",
+      "features": ["Złącze smartguna"]
+    },
+    {
+      "id": "weapon.grzechotnik",
+      "category": "weapon",
+      "name": "Grzechotnik",
+      "description": "Karabin składany na trzy części, popularny wśród kurierów z Pustkowi.",
+      "weaponTypeId": "weapon-type.sample-rifle",
+      "quality": "standard",
+      "cost": 500,
+      "costCategory": "expensive",
+      "features": ["Wydłużony magazynek"]
+    },
+    {
+      "id": "weapon.szpon",
+      "category": "weapon",
+      "name": "Szpon",
+      "description": "Monoostrze z rękojeścią owiniętą taśmą izolacyjną.",
+      "weaponTypeId": "weapon-type.sample-blade",
+      "quality": "standard",
+      "cost": 100,
+      "costCategory": "premium"
+    },
+    {
+      "id": "armor.kurtka-warsztatowa",
+      "category": "armor",
+      "name": "Kurtka warsztatowa",
+      "description": "Gruby brezent z wszytymi płytkami. Cięższa niż wygląda.",
+      "sp": 7,
+      "locations": ["body"],
+      "cost": 100,
+      "costCategory": "premium"
+    },
+    {
+      "id": "armor.helm-kurierski",
+      "category": "armor",
+      "name": "Hełm kurierski",
+      "description": "Kask z osłoną karku, standard na trasach międzymiastowych.",
+      "sp": 11,
+      "locations": ["head"],
+      "penalty": -1,
+      "cost": 500,
+      "costCategory": "expensive"
+    },
+    {
+      "id": "gear.apteczka-polowa",
+      "category": "gear",
+      "name": "Apteczka polowa",
+      "description": "Zestaw opatrunków i klejów tkankowych na trzy użycia.",
+      "cost": 50,
+      "costCategory": "costly"
+    },
+    {
+      "id": "gear.latarka-taktyczna",
+      "category": "gear",
+      "name": "Latarka taktyczna",
+      "description": "Świeci na 100 metrów, mocowana na szynie.",
+      "cost": 20,
+      "costCategory": "everyday"
+    },
+    {
+      "id": "gear.lina-wspinaczkowa",
+      "category": "gear",
+      "name": "Lina wspinaczkowa",
+      "description": "Trzydzieści metrów plecionki z hakiem magnetycznym.",
+      "cost": 20,
+      "costCategory": "everyday"
+    },
+    {
+      "id": "gear.agent-kieszonkowy",
+      "category": "gear",
+      "name": "Agent kieszonkowy",
+      "description": "Sterowany głosem asystent w kieszeni. Nie zawsze słucha.",
+      "cost": 100,
+      "costCategory": "premium"
+    },
+    {
+      "id": "cyberware.oko-przykladowe",
+      "category": "cyberware",
+      "name": "Cyberoko przykładowe",
+      "description": "Wymiana gałki ocznej z gniazdami na wkładki optyczne.",
+      "cost": 100,
+      "costCategory": "premium",
+      "humanityLoss": "2k6",
+      "foundation": true,
+      "slots": 3
+    },
+    {
+      "id": "cyberware.wkladka-teleoptyczna",
+      "category": "cyberware",
+      "name": "Wkładka teleoptyczna",
+      "description": "Powiększenie obrazu; wymaga cyberoka.",
+      "cost": 500,
+      "costCategory": "expensive",
+      "humanityLoss": "1",
+      "slots": 1
+    },
+    {
+      "id": "cyberware.sprzeg-neuralny-przykladowy",
+      "category": "cyberware",
+      "name": "Sprzęg neuralny przykładowy",
+      "description": "Kręgosłupowa magistrala danych — podstawa pod resztę elektroniki.",
+      "cost": 500,
+      "costCategory": "expensive",
+      "humanityLoss": "2k6",
+      "foundation": true,
+      "slots": 5
+    }
+  ]
+}

@@ -27,6 +27,9 @@ import type {
   CharacterRollPayload,
   CharacterUpsertBroadcast,
   CharacterView,
+  CompendiumDeleteBroadcast,
+  CompendiumEntry,
+  CompendiumUpsertBroadcast,
   CpredRollRequest,
   ChatHistoryPage,
   ChatMessageBroadcast,
@@ -71,6 +74,7 @@ import { useSceneStore } from './stores/sceneStore.js';
 import { useAuthStore } from './stores/authStore.js';
 import { useTokenStore, type TokenViewerCtx } from './stores/tokenStore.js';
 import { useCharacterStore } from './stores/characterStore.js';
+import { useCompendiumStore } from './stores/compendiumStore.js';
 import { useAiStore } from './stores/aiStore.js';
 import { useBotStore } from './stores/botStore.js';
 
@@ -235,6 +239,7 @@ export function connectSocket(userId: string): Socket {
     tokens().applySync(payload, viewer());
     useCharacterStore.getState().applySync(payload);
     useBotStore.getState().applySync(payload);
+    useCompendiumStore.getState().applySync(payload);
     if (payload.ai) useAiStore.getState().setStatus(payload.ai);
   });
 
@@ -277,6 +282,14 @@ export function connectSocket(userId: string): Socket {
   socket.on('ai:error', (broadcast: AiErrorBroadcast) =>
     ai().failExchange(broadcast.requestId, aiErrorText(broadcast.code, broadcast.detail)),
   );
+
+  // The compendium is shared data: room broadcasts with a seq, like chat.
+  socket.on('compendium:upsert', (broadcast: CompendiumUpsertBroadcast) => {
+    useCompendiumStore.getState().applyUpsert(broadcast.entry);
+  });
+  socket.on('compendium:delete', (broadcast: CompendiumDeleteBroadcast) => {
+    useCompendiumStore.getState().applyDelete(broadcast.id);
+  });
 
   // Character emissions are always targeted (owner + GM) and carry no seq.
   socket.on('character:upsert', (broadcast: CharacterUpsertBroadcast) => {
@@ -741,5 +754,27 @@ export function loadOlderHistory(): void {
     } else {
       chat.setLoadingHistory(false);
     }
+  });
+}
+
+/** GM: creates or updates one of the campaign's own compendium entries. */
+export function saveCompendiumEntry(entry: unknown): Promise<SocketAck<CompendiumEntry>> {
+  return new Promise((resolve) => {
+    if (!socket) {
+      resolve({ ok: false, error: 'OFFLINE' });
+      return;
+    }
+    socket.emit('compendium:upsert', { entry }, (ack: SocketAck<CompendiumEntry>) => resolve(ack));
+  });
+}
+
+/** GM: removes one of the campaign's own entries (imported data is read-only). */
+export function deleteCompendiumEntry(id: string): Promise<SocketAck> {
+  return new Promise((resolve) => {
+    if (!socket) {
+      resolve({ ok: false, error: 'OFFLINE' });
+      return;
+    }
+    socket.emit('compendium:delete', { id }, (ack: SocketAck) => resolve(ack));
   });
 }
