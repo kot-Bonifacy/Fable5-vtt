@@ -13,7 +13,31 @@ import { GmPanel } from './pages/GmPanel.js';
 import { useAuthStore } from './stores/authStore.js';
 import { connectSocket, disconnectSocket } from './socket.js';
 
+/**
+ * At the table the right button belongs to the game — it opens the token menu
+ * on the map — so the browser's own menu stays out of the way. Two exceptions
+ * keep real work possible: text fields (paste, spellcheck) and a live text
+ * selection (copying a line out of the chat log).
+ */
+function useGameContextMenu(): void {
+  useEffect(() => {
+    const onContextMenu = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      // The map is the game surface: never let the browser menu cover it.
+      if (!target?.closest('.map-area')) {
+        if (target?.closest('input, textarea, [contenteditable="true"]')) return;
+        const selection = window.getSelection();
+        if (selection && !selection.isCollapsed && selection.toString().trim() !== '') return;
+      }
+      event.preventDefault();
+    };
+    document.addEventListener('contextmenu', onContextMenu);
+    return () => document.removeEventListener('contextmenu', onContextMenu);
+  }, []);
+}
+
 function GameView() {
+  useGameContextMenu();
   return (
     <div className="app-layout">
       <TopBar />
