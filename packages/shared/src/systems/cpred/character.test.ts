@@ -3,6 +3,7 @@ import {
   CPRED_SCHEMA_VERSION,
   buildCpredRegistry,
   createDefaultCharacterData,
+  groupedSkills,
   mergeCharacterData,
   parseCharacterData,
   validateCharacterDataPatch,
@@ -174,6 +175,36 @@ describe('parseCharacterData', () => {
     expect(data.eddies).toBe(1234);
     expect(data.roleId).toBeNull();
     expect(data.skills).toEqual({ handgun: 3 });
+  });
+});
+
+describe('groupedSkills', () => {
+  const grouped = buildCpredRegistry(
+    {
+      skills: [
+        { id: 'handgun', name: 'Broń krótka', stat: 'ref', group: 'ranged' },
+        { id: 'athletics', name: 'Atletyka', stat: 'dex', group: 'body' },
+        { id: 'archery', name: 'Łucznictwo', stat: 'ref', group: 'ranged' },
+        { id: 'orphan', name: 'Bez kategorii', stat: 'int' },
+      ],
+    },
+    { roles: [] },
+  );
+
+  it('keeps the rulebook order of categories and drops empty ones', () => {
+    // Body is printed before ranged weapons, whatever order the file uses.
+    expect(groupedSkills(grouped).map((group) => group.id)).toEqual(['body', 'ranged', 'other']);
+  });
+
+  it('puts skills without a category in a trailing group', () => {
+    const last = groupedSkills(grouped).at(-1);
+    expect(last?.id).toBe('other');
+    expect(last?.skills.map((skill) => skill.id)).toEqual(['orphan']);
+  });
+
+  it('lists every skill exactly once', () => {
+    const ids = groupedSkills(grouped).flatMap((group) => group.skills.map((skill) => skill.id));
+    expect(ids.sort()).toEqual(['archery', 'athletics', 'handgun', 'orphan']);
   });
 });
 

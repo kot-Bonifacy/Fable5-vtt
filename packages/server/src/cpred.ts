@@ -4,28 +4,51 @@ import type { FastifyBaseLogger } from 'fastify';
 import { EMPTY_CPRED_REGISTRY, buildCpredRegistry, type CpredRegistry } from '@vtt/shared';
 
 /**
- * Loads the CP RED data files (skills, roles) from `data/public/cpred/`.
- * The server validates character sheets against whatever the data declares —
- * swapping the files for the full rulebook set (stage 12) needs no code change.
+ * Loads the CP RED data files (skills, roles).
+ *
+ * Two directories, same rule as the compendium: `data/public/cpred/` ships the
+ * 41 Easy Mode skills so a fresh clone has a usable sheet, and
+ * `data/private/cpred/` holds the full 66-skill list imported from the
+ * rulebook (stage 13), which is gitignored. A private file *replaces* its
+ * public counterpart rather than merging with it — the skill list has to be
+ * exactly what the group plays with, and a merge would leave stale rows
+ * behind. Sheets store `skillId -> level` and skip untrained skills, so
+ * swapping the list adds rows at 0 without touching any character.
  */
 export async function loadCpredRegistry(
   dataPublicDir: string,
+  dataPrivateDir: string,
   log: FastifyBaseLogger,
 ): Promise<CpredRegistry> {
-  const dir = join(dataPublicDir, 'cpred');
-  try {
-    const [skillsRaw, rolesRaw] = await Promise.all([
-      readFile(join(dir, 'skills.json'), 'utf8'),
-      readFile(join(dir, 'roles.json'), 'utf8'),
-    ]);
-    const registry = buildCpredRegistry(JSON.parse(skillsRaw), JSON.parse(rolesRaw));
-    if (registry.skills.length === 0) {
-      log.warn({ dir }, 'cpred skills registry is empty');
+  const skills = await loadFile(dataPublicDir, dataPrivateDir, 'skills.json', log);
+  const roles = await loadFile(dataPublicDir, dataPrivateDir, 'roles.json', log);
+  if (skills === undefined && roles === undefined) return EMPTY_CPRED_REGISTRY;
+
+  const registry = buildCpredRegistry(skills, roles);
+  if (registry.skills.length === 0) log.warn('cpred skills registry is empty');
+  return registry;
+}
+
+async function loadFile(
+  dataPublicDir: string,
+  dataPrivateDir: string,
+  name: string,
+  log: FastifyBaseLogger,
+): Promise<unknown> {
+  // Private last so it wins; a missing private directory is the normal case.
+  const paths = [join(dataPublicDir, 'cpred', name), join(dataPrivateDir, 'cpred', name)];
+  let loaded: unknown;
+  for (const path of paths) {
+    try {
+      loaded = JSON.parse(await readFile(path, 'utf8'));
+    } catch (error) {
+      // A malformed private file must not silently fall back to the samples:
+      // the GM would see a shorter skill list and no reason why.
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        log.warn({ err: error, path }, 'cpred data file skipped');
+      }
     }
-    return registry;
-  } catch (error) {
-    // Missing data must not take the VTT down — sheets just have no skill rows.
-    log.warn({ err: error, dir }, 'cpred registry not loaded');
-    return EMPTY_CPRED_REGISTRY;
   }
+  if (loaded === undefined) log.warn({ paths }, 'cpred data file not found');
+  return loaded;
 }

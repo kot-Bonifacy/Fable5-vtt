@@ -35,7 +35,8 @@ async function readJsonFiles(dir: string): Promise<{ path: string; data: unknown
   }
   const files: { path: string; data: unknown }[] = [];
   for (const name of names.sort()) {
-    if (!name.endsWith('.json') || name === 'import-report.json') continue;
+    // Same skip as the server loader: the importers' reports are not data.
+    if (!name.endsWith('.json') || name.startsWith('import-report')) continue;
     const path = join(dir, name);
     files.push({ path, data: JSON.parse(await readFile(path, 'utf8')) });
   }

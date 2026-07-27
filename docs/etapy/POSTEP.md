@@ -16,9 +16,9 @@ Aktualizowany na koniec każdej sesji. Statusy: ⬜ nierozpoczęty · 🟨 w tok
 | 10  | Edytor botów                              | ✅     | 2026-07-25      | + guardraile roli, auto-powtórka i nauka z korekt MG (rozszerzenie)                 |
 | 11  | Boty NPC na czacie                        | ✅     | 2026-07-25      | pamięć per scenka; wypowiedź bota nie do odróżnienia od `/jako` MG                  |
 | 12  | TTS — głos botów                          | ✅     | 2026-07-26      | Piper na CPU (0 GB VRAM); tekst dopisuje się na czacie w rytmie mowy                |
-| 13  | Dane z podręcznika i kompendium           | ✅     | 2026-07-26      | import „na dowody" ze statbloków; edytor MG uzupełnia braki darmowych materiałów    |
+| 13  | Dane z podręcznika i kompendium           | ✅     | 2026-07-27      | domknięty 26.07 na darmowych materiałach; 27.07 uzupełniony z podręcznika głównego  |
 | 14  | Inicjatywa i tury                         | ✅     | 2026-07-26      | tracker = pasek nad mapą + zakładka „Walka”; remisy: REF, przerzut RAW i drag       |
-| 15  | Obrażenia, pancerz, krytyki, Death Save   | ✅     | 2026-07-27      | tabela ran: korpus z Easy Mode, głowa z materiałów MG (nieoficjalna); rany w kompendium |
+| 15  | Obrażenia, pancerz, krytyki, Death Save   | ✅     | 2026-07-27      | obie tabele ran z podręcznika głównego (nieoficjalna tabela głowy zastąpiona 27.07) |
 | 16  | Zasięgi, DV z mapy, autofire              | ⬜     |                 |                                                                                     |
 | 17  | Fog of war, rysowanie, warstwa MG         | ⬜     |                 |                                                                                     |
 | 18  | Dynamiczne oświetlenie i ściany           | ⬜     |                 | możliwy podział na 2 sesje                                                          |
@@ -36,6 +36,33 @@ Aktualizowany na koniec każdej sesji. Statusy: ⬜ nierozpoczęty · 🟨 w tok
 ## Notatki między sesjami
 
 _(Tu zapisuj: gdzie przerwano pracę, znane problemy, od czego zacząć następną sesję.)_
+
+### 2026-07-27 — uzupełnienie danych z podręcznika głównego
+
+Sesja poza planem etapów: doszedł pełny podręcznik CP RED (PL), więc etap 13 dostał
+dane, których darmowe materiały nie miały. Szczegóły w pliku etapu 13; tu tylko to,
+co zmieniło stan projektu poza nim:
+
+- **Nowy parser** `tools/import/parse-manual.py` czyta markdownowy zrzut podręcznika
+  (`tools/rulebook/build-manual.mjs`). `parse-compendium.py` przestał pisać
+  `weapon-types.json` i `armor.json` — teraz porównuje statbloki DLC z podręcznikiem
+  i raportuje rozbieżności (`rulebookDifferences` w `import-report.json`).
+- **Znalezione błędy w danych i kodzie** (poprawione):
+  - polskie etykiety kategorii cenowych miały zamienione `costly` i `expensive`
+    („Drogie” = 50 ed stoi w podręczniku niżej niż „Kosztowne” = 500 ed);
+  - nieoficjalna tabela Ran Krytycznych głowy z etapu 15 nie zgadzała się z
+    podręcznikiem w żadnym wierszu (miała m.in. „Dekapitację” na 2) — zastąpiona;
+  - `Fixer` miał zdolność „Operator” zamiast „Znajomości”, rola `media` nazywała się
+    „Reporter” zamiast „Media”;
+  - typy broni odwoływały się do umiejętności `martial-arts`, której nie było w
+    `skills.json` — pełna lista ją zawiera, odniesienie już nie wisi.
+- **Rozbieżność źródeł rozstrzygnięta na korzyść podręcznika:** statbloki DLC dają
+  pistoletowi maszynowemu LA 2, podręcznik LA 1. Raport importu ją pokazuje.
+- **Zostało do zrobienia:** 35 nowych broni markowych ma opisy po angielsku —
+  wymagają przebiegu `translate-descriptions.py` przy włączonym llama-serverze
+  (`pwsh ai-gateway/scripts/start-gateway.ps1`, potem
+  `uv run --with httpx python tools/import/translate-descriptions.py`).
+  Nie da się tego zrobić bez GPU, więc czeka na najbliższą sesję z gatewayem.
 
 - **2026-07-16 (etap 01):** Monorepo działa (`pnpm dev/test/lint/build` — wszystko zielone). `CRED-EasyMode.pdf` przeniesiony do `data/private/` (prawa autorskie). Repo wypchnięte: https://github.com/kot-Bonifacy/Fable5-vtt. Następny etap: 02 (baza danych, użytkownicy, role).
 - **2026-07-17 (etap 03):** Rdzeń realtime i czat gotowe; kryteria zweryfikowane w dwóch odizolowanych przeglądarkach + obserwator socketowy (szept Rogue→Vex nie pojawia się w payloadach trzeciego uczestnika; reconnect po ubiciu serwera odtwarza historię; presence live). Architektura: moduł `packages/server/src/realtime/` — rejestr zdarzeń z deklaracją roli (`defineEvent`/`registerEvents`), pokoje `campaign:<id>`/`scene:<id>` (sceny dołączane od etapu 04), licznik sekwencji per pokój (in-memory; szepty i inne emisje celowane NIE zużywają seq — tylko broadcasty do pokoju), `state:sync` przy połączeniu i na `state:request` (klient żąda przy wykrytej luce seq). Czat: `ChatMessage` w DB (id autoincrement = kursor paginacji), parser komend w `shared/chat.ts` (aliasy `/w`, `/whisper`, `/szept`; cudzysłowy i dopasowanie wieloczłonowych imion z rosteru; `//` wysyła literalny ukośnik; limit 2000 znaków), historia stronicowana po `beforeId` (50/strona), szepty filtrowane w zapytaniu DB (nigdy nie opuszczają serwera). Odstępstwo/naprawa środowiska: `tsx watch` zawieszał się pod `concurrently` z prefiksami — root `pnpm dev` przełączony na `concurrently --raw` (bez prefiksów; logi serwera to i tak JSON pino). `gm:ping` zachowany jako przykład roli w nowym rejestrze. Następny etap: 04 (mapa i sceny).

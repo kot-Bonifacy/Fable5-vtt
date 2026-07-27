@@ -69,13 +69,19 @@ export const COST_CATEGORIES = [
 ] as const;
 export type CostCategory = (typeof COST_CATEGORIES)[number];
 
+/**
+ * Labels of the Polish edition. The ladder is one price per band — 10 Tanie,
+ * 20 Codzienne, 50 Drogie, 100 Premium, 500 Kosztowne, 1000 B. kosztowne,
+ * 5000 Luksusowe, 10000 Superluksusowe — so „Drogie" sits *below* „Kosztowne",
+ * which is the opposite of what the English names suggest.
+ */
 export const COST_CATEGORY_LABELS: Record<CostCategory, string> = {
   cheap: 'Tanie',
   everyday: 'Codzienne',
-  costly: 'Kosztowne',
-  premium: 'Ekskluzywne',
-  expensive: 'Drogie',
-  veryExpensive: 'Bardzo drogie',
+  costly: 'Drogie',
+  premium: 'Premium',
+  expensive: 'Kosztowne',
+  veryExpensive: 'Bardzo kosztowne',
   luxury: 'Luksusowe',
   superLuxury: 'Superluksusowe',
 };
@@ -241,11 +247,7 @@ export interface CriticalInjuryEntry extends CompendiumEntryBase {
 }
 
 export type CompendiumEntry =
-  | WeaponEntry
-  | ArmorEntry
-  | GearEntry
-  | CyberwareEntry
-  | CriticalInjuryEntry;
+  WeaponEntry | ArmorEntry | GearEntry | CyberwareEntry | CriticalInjuryEntry;
 
 export function isCriticalInjuryEntry(entry: CompendiumEntry): entry is CriticalInjuryEntry {
   return entry.category === 'criticalInjury';

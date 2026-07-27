@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ChangeEvent,
@@ -28,6 +29,7 @@ import {
   SKILL_LEVEL_MAX,
   SKILL_LEVEL_MIN,
   deathSaveTarget,
+  groupedSkills,
   hpMax,
   humanityMax,
   isValidDamageNotation,
@@ -341,9 +343,7 @@ function StatsTab({ character, data, saveData }: TabProps & { character: Charact
               type="button"
               className="small-button death-save-button"
               title={`Rzuć 1k10 pod BC ${deathSaveTarget(data.stats)}. Każdy kolejny test jest o 1 trudniejszy.`}
-              onClick={() =>
-                loadDeathSaveCup(character.id, character.name, data, registry)
-              }
+              onClick={() => loadDeathSaveCup(character.id, character.name, data, registry)}
             >
               Test Przeżywalności
               {data.deathSaves > 0 ? ` (+${data.deathSaves})` : ''}
@@ -447,67 +447,138 @@ function StatsTab({ character, data, saveData }: TabProps & { character: Charact
         )}
       </div>
 
-      <table className="sheet-table skill-table">
-        <thead>
-          <tr>
-            <th>Umiejętność</th>
-            <th>Cecha</th>
-            <th>Poz.</th>
-            <th title="Cecha + poziom">Baza</th>
-          </tr>
-        </thead>
-        <tbody>
-          {registry.skills.map((skill) => {
-            const level = data.skills[skill.id] ?? 0;
-            const rollTitle = `Rzut: ${skill.name} (${CPRED_STAT_LABELS[skill.stat].abbr}) — Shift pomija okno`;
-            return (
-              <tr key={skill.id} className={level > 0 ? 'skill-trained' : ''}>
-                <td>
-                  <button
-                    type="button"
-                    className="skill-roll"
-                    onClick={(e: MouseEvent) =>
-                      startRoll({ kind: 'skill', skillId: skill.id }, e.shiftKey)
-                    }
-                    title={rollTitle}
-                  >
-                    {skill.name}
-                    {skill.multiplier === 2 ? ' (×2)' : ''}
-                  </button>
-                </td>
-                <td>{CPRED_STAT_LABELS[skill.stat].abbr}</td>
-                <td>
-                  <input
-                    type="number"
-                    min={SKILL_LEVEL_MIN}
-                    max={SKILL_LEVEL_MAX}
-                    value={level}
-                    onChange={(e) => {
-                      const value = parseNumberInput(e);
-                      if (value === undefined) return;
-                      saveData({ skills: { ...data.skills, [skill.id]: value } }, 'skills');
-                    }}
-                    aria-label={`Poziom: ${skill.name}`}
-                  />
-                </td>
-                <td className="skill-base">
-                  <button
-                    type="button"
-                    className="skill-roll skill-base-roll"
-                    onClick={(e: MouseEvent) =>
-                      startRoll({ kind: 'skill', skillId: skill.id }, e.shiftKey)
-                    }
-                    title={rollTitle}
-                  >
-                    {skillBase(data.stats[skill.stat], level)}
-                  </button>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      <SkillTable data={data} saveData={saveData} startRoll={startRoll} />
     </div>
+  );
+}
+
+/**
+ * The skill table, one collapsible block per rulebook category.
+ *
+ * The full rulebook list is 66 rows, so the sheet opens only the categories the
+ * character has actually trained in — everything else is one click away. A
+ * character with nothing trained yet (a fresh sheet) gets every block open,
+ * because there is nothing to hide behind.
+ */
+function SkillTable({
+  data,
+  saveData,
+  startRoll,
+}: {
+  data: CpredCharacterData;
+  saveData: TabProps['saveData'];
+  startRoll: (target: Omit<RollTarget, 'characterId' | 'characterName'>, shift: boolean) => void;
+}) {
+  const registry = useCharacterStore((s) => s.registry);
+  const groups = useMemo(() => groupedSkills(registry), [registry]);
+  const [open, setOpen] = useState<ReadonlySet<string>>(new Set());
+  // The registry arrives after the first render, so the default cannot be a
+  // useState initialiser; it is applied once, when the groups first show up.
+  const defaultsApplied = useRef(false);
+  useEffect(() => {
+    if (defaultsApplied.current || groups.length === 0) return;
+    defaultsApplied.current = true;
+    const trained = groups.filter((group) =>
+      group.skills.some((skill) => (data.skills[skill.id] ?? 0) > 0),
+    );
+    setOpen(new Set((trained.length > 0 ? trained : groups).map((group) => group.id)));
+  }, [groups, data.skills]);
+
+  function toggle(id: string) {
+    setOpen((current) => {
+      const next = new Set(current);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+  }
+
+  return (
+    <table className="sheet-table skill-table">
+      <thead>
+        <tr>
+          <th>Umiejętność</th>
+          <th>Cecha</th>
+          <th>Poz.</th>
+          <th title="Cecha + poziom">Baza</th>
+        </tr>
+      </thead>
+      {groups.map((group) => {
+        const isOpen = open.has(group.id);
+        const trained = group.skills.filter((skill) => (data.skills[skill.id] ?? 0) > 0).length;
+        return (
+          <tbody key={group.id}>
+            <tr className="skill-group">
+              <th colSpan={4}>
+                <button
+                  type="button"
+                  className="skill-group-toggle"
+                  onClick={() => toggle(group.id)}
+                  aria-expanded={isOpen}
+                >
+                  <span aria-hidden="true">{isOpen ? '▾' : '▸'}</span> {group.label}
+                  <span className="skill-group-count">
+                    {trained}/{group.skills.length}
+                  </span>
+                </button>
+              </th>
+            </tr>
+            {isOpen &&
+              group.skills.map((skill) => {
+                const level = data.skills[skill.id] ?? 0;
+                const rollTitle = `Rzut: ${skill.name} (${CPRED_STAT_LABELS[skill.stat].abbr}) — Shift pomija okno`;
+                // The rulebook blurb only exists in the private data files.
+                const title = skill.description
+                  ? `${skill.description}\n\n${rollTitle}`
+                  : rollTitle;
+                return (
+                  <tr key={skill.id} className={level > 0 ? 'skill-trained' : ''}>
+                    <td>
+                      <button
+                        type="button"
+                        className="skill-roll"
+                        onClick={(e: MouseEvent) =>
+                          startRoll({ kind: 'skill', skillId: skill.id }, e.shiftKey)
+                        }
+                        title={title}
+                      >
+                        {skill.name}
+                        {skill.multiplier === 2 ? ' (×2)' : ''}
+                      </button>
+                    </td>
+                    <td>{CPRED_STAT_LABELS[skill.stat].abbr}</td>
+                    <td>
+                      <input
+                        type="number"
+                        min={SKILL_LEVEL_MIN}
+                        max={SKILL_LEVEL_MAX}
+                        value={level}
+                        onChange={(e) => {
+                          const value = parseNumberInput(e);
+                          if (value === undefined) return;
+                          saveData({ skills: { ...data.skills, [skill.id]: value } }, 'skills');
+                        }}
+                        aria-label={`Poziom: ${skill.name}`}
+                      />
+                    </td>
+                    <td className="skill-base">
+                      <button
+                        type="button"
+                        className="skill-roll skill-base-roll"
+                        onClick={(e: MouseEvent) =>
+                          startRoll({ kind: 'skill', skillId: skill.id }, e.shiftKey)
+                        }
+                        title={rollTitle}
+                      >
+                        {skillBase(data.stats[skill.stat], level)}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+          </tbody>
+        );
+      })}
+    </table>
   );
 }
 

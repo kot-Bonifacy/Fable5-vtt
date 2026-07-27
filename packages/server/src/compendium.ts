@@ -31,8 +31,8 @@ export async function loadCompendium(
       continue; // Missing directory is normal: private data is optional.
     }
     for (const name of names.sort()) {
-      // The importer's report sits next to the data but is not data itself.
-      if (!name.endsWith('.json') || name === 'import-report.json') continue;
+      // The importers' reports sit next to the data but are not data itself.
+      if (!name.endsWith('.json') || name.startsWith('import-report')) continue;
       try {
         files.push(JSON.parse(await readFile(join(dir, name), 'utf8')));
       } catch (error) {

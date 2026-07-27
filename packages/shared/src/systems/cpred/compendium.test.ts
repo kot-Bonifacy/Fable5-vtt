@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  COST_CATEGORIES,
   buildCompendium,
   dvForRange,
   formatCost,
@@ -7,6 +8,7 @@ import {
   searchCompendium,
   validateCompendiumEntry,
   type CompendiumEntry,
+  type CostCategory,
   type WeaponEntry,
 } from './compendium.js';
 import { slugify } from './ids.js';
@@ -239,9 +241,32 @@ describe('searchCompendium', () => {
 
 describe('formatCost', () => {
   it('shows the band next to the price', () => {
-    expect(formatCost({ cost: 550, costCategory: 'expensive' })).toBe('550 ed (Drogie)');
+    expect(formatCost({ cost: 550, costCategory: 'expensive' })).toBe('550 ed (Kosztowne)');
     expect(formatCost({ cost: 100 })).toBe('100 ed');
     expect(formatCost({ cost: null })).toBe('—');
-    expect(formatCost({ cost: null, costCategory: 'costly' })).toBe('Kosztowne');
+    expect(formatCost({ cost: null, costCategory: 'costly' })).toBe('Drogie');
+  });
+
+  /**
+   * „Drogie" (50 ed) sits below „Kosztowne" (500 ed) in the Polish edition —
+   * the reverse of what the English band names suggest, and exactly the pair
+   * that was swapped here until the rulebook import (stage 13). The ladder is
+   * one price per band, so the price pins the label.
+   */
+  it('keeps the Polish bands in the rulebook order', () => {
+    const ladder: [number, CostCategory, string][] = [
+      [10, 'cheap', 'Tanie'],
+      [20, 'everyday', 'Codzienne'],
+      [50, 'costly', 'Drogie'],
+      [100, 'premium', 'Premium'],
+      [500, 'expensive', 'Kosztowne'],
+      [1000, 'veryExpensive', 'Bardzo kosztowne'],
+      [5000, 'luxury', 'Luksusowe'],
+      [10_000, 'superLuxury', 'Superluksusowe'],
+    ];
+    expect(ladder.map(([, band]) => band)).toEqual([...COST_CATEGORIES]);
+    for (const [cost, band, label] of ladder) {
+      expect(formatCost({ cost, costCategory: band })).toBe(`${cost} ed (${label})`);
+    }
   });
 });

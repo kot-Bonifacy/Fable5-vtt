@@ -38,13 +38,51 @@ export const CRITICAL_INJURY_EFFECT_MAX_LENGTH = 400;
 /** Death Saves already taken — the counter only grows while at 0 HP. */
 export const DEATH_SAVES_MAX = 20;
 
-/** One entry of `data/public/cpred/skills.json`. */
+/**
+ * The nine skill categories of the rulebook, in the order it prints them.
+ * The sheet groups its skill table by these, because the full list is 66 rows
+ * long and nobody finds "Żegluga" in one flat column.
+ */
+export const CPRED_SKILL_GROUPS = [
+  'awareness',
+  'body',
+  'control',
+  'education',
+  'melee',
+  'performance',
+  'ranged',
+  'social',
+  'technique',
+] as const;
+export type CpredSkillGroup = (typeof CPRED_SKILL_GROUPS)[number];
+
+export const CPRED_SKILL_GROUP_LABELS: Record<CpredSkillGroup, string> = {
+  awareness: 'Spostrzegawczość',
+  body: 'Ciało',
+  control: 'Kontrola',
+  education: 'Edukacja',
+  melee: 'Walka wręcz',
+  performance: 'Występy',
+  ranged: 'Broń dystansowa',
+  social: 'Umiejętności społeczne',
+  technique: 'Technika',
+};
+
+export function isCpredSkillGroup(value: unknown): value is CpredSkillGroup {
+  return typeof value === 'string' && (CPRED_SKILL_GROUPS as readonly string[]).includes(value);
+}
+
+/** One entry of `cpred/skills.json` (public samples or the private full set). */
 export interface CpredSkillDefinition {
   id: string;
   name: string;
   stat: (typeof CPRED_STAT_IDS)[number];
   /** Advancement cost multiplier (×2 skills); unused until stage 24. */
   multiplier?: number;
+  /** Rulebook category; absent skills fall into a trailing "Inne" group. */
+  group?: CpredSkillGroup;
+  /** What the skill covers — rulebook text, so only the private file has it. */
+  description?: string;
 }
 
 /** One entry of `data/public/cpred/roles.json`. */
@@ -78,14 +116,22 @@ function isStatId(value: unknown): value is CpredSkillDefinition['stat'] {
 export function buildCpredRegistry(rawSkills: unknown, rawRoles: unknown): CpredRegistry {
   const skillsInput = (rawSkills as { skills?: unknown })?.skills;
   const rolesInput = (rawRoles as { roles?: unknown })?.roles;
-  const skills = (Array.isArray(skillsInput) ? skillsInput : []).filter(
-    (entry): entry is CpredSkillDefinition =>
-      typeof entry === 'object' &&
-      entry !== null &&
-      typeof (entry as CpredSkillDefinition).id === 'string' &&
-      typeof (entry as CpredSkillDefinition).name === 'string' &&
-      isStatId((entry as CpredSkillDefinition).stat),
-  );
+  const skills = (Array.isArray(skillsInput) ? skillsInput : [])
+    .filter(
+      (entry): entry is CpredSkillDefinition =>
+        typeof entry === 'object' &&
+        entry !== null &&
+        typeof (entry as CpredSkillDefinition).id === 'string' &&
+        typeof (entry as CpredSkillDefinition).name === 'string' &&
+        isStatId((entry as CpredSkillDefinition).stat),
+    )
+    // An unknown category must not create a phantom group on the sheet, so it
+    // is dropped rather than trusted; the skill itself still shows up.
+    .map((entry) =>
+      entry.group !== undefined && !isCpredSkillGroup(entry.group)
+        ? { ...entry, group: undefined }
+        : entry,
+    );
   const roles = (Array.isArray(rolesInput) ? rolesInput : []).filter(
     (entry): entry is CpredRoleDefinition =>
       typeof entry === 'object' &&
@@ -100,6 +146,34 @@ export function buildCpredRegistry(rawSkills: unknown, rawRoles: unknown): Cpred
     roles,
     roleIds: new Set(roles.map((r) => r.id)),
   };
+}
+
+/** A skill category with its skills, ready to render as one block. */
+export interface CpredSkillGroupView {
+  id: CpredSkillGroup | 'other';
+  label: string;
+  skills: CpredSkillDefinition[];
+}
+
+/**
+ * Skills split into the rulebook's categories, in its order. Skills with no
+ * category (the public sample file has none) end up in a trailing group, so a
+ * fresh clone still shows every row.
+ */
+export function groupedSkills(registry: CpredRegistry): CpredSkillGroupView[] {
+  const groups: CpredSkillGroupView[] = CPRED_SKILL_GROUPS.map((id) => ({
+    id,
+    label: CPRED_SKILL_GROUP_LABELS[id],
+    skills: [],
+  }));
+  const other: CpredSkillGroupView = { id: 'other', label: 'Umiejętności', skills: [] };
+  for (const skill of registry.skills) {
+    const group = skill.group ? groups.find((entry) => entry.id === skill.group) : undefined;
+    (group ?? other).skills.push(skill);
+  }
+  const filled: CpredSkillGroupView[] = groups.filter((group) => group.skills.length > 0);
+  if (other.skills.length > 0) filled.push(other);
+  return filled;
 }
 
 /** A plain equipment-ish row (cyberware, and the base of the other rows). */
@@ -382,7 +456,13 @@ function validateCriticalInjuries(
       issues.push(issue('criticalInjuries', 'Nieprawidłowy identyfikator rany krytycznej.'));
       return undefined;
     }
-    const name = validateText(row.name, 'criticalInjuries', 'Nazwa rany', ITEM_NAME_MAX_LENGTH, issues);
+    const name = validateText(
+      row.name,
+      'criticalInjuries',
+      'Nazwa rany',
+      ITEM_NAME_MAX_LENGTH,
+      issues,
+    );
     const effect = validateText(
       row.effect ?? '',
       'criticalInjuries',
@@ -583,9 +663,7 @@ export function normalizeCharacterData(data: CpredCharacterData): CpredCharacter
     luckCurrent: Math.min(data.luckCurrent, data.stats.luck),
     humanityCurrent: Math.min(data.humanityCurrent, humanityMax(data.stats)),
     // Ablation can never leave a piece of armor above its undamaged SP.
-    armor: data.armor.map((row) =>
-      row.spCurrent > row.sp ? { ...row, spCurrent: row.sp } : row,
-    ),
+    armor: data.armor.map((row) => (row.spCurrent > row.sp ? { ...row, spCurrent: row.sp } : row)),
     // RAW: the Death Save modifiers accumulate „dopóki nie zostaniesz
     // ustabilizowany" — a single regained HP wipes the counter.
     deathSaves: hpCurrent >= 1 ? 0 : Math.min(data.deathSaves, DEATH_SAVES_MAX),

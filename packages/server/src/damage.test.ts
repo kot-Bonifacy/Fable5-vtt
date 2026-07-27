@@ -107,21 +107,37 @@ function emitAck<T = undefined>(
   });
 }
 
-/** Resolves on the first chat message that carries an applied-damage entry. */
-function waitForDamage(socket: ClientSocket, ms = 3000): Promise<ChatMessageBroadcast> {
+/**
+ * Resolves on the first chat message matching `match`.
+ *
+ * Filtering matters even when a test expects exactly one message: every
+ * broadcast goes to both sockets, so a message an earlier test only consumed on
+ * `player` is still queued on `gm` and a bare `once('chat:message')` would pick
+ * that one up instead.
+ */
+function waitForMessage(
+  socket: ClientSocket,
+  match: (payload: ChatMessageBroadcast) => boolean,
+  ms = 3000,
+): Promise<ChatMessageBroadcast> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       socket.off('chat:message', onMessage);
-      reject(new Error('damage message timeout'));
+      reject(new Error('chat:message timeout'));
     }, ms);
     const onMessage = (payload: ChatMessageBroadcast) => {
-      if (!payload.message.damage) return;
+      if (!match(payload)) return;
       clearTimeout(timer);
       socket.off('chat:message', onMessage);
       resolve(payload);
     };
     socket.on('chat:message', onMessage);
   });
+}
+
+/** Resolves on the first chat message that carries an applied-damage entry. */
+function waitForDamage(socket: ClientSocket, ms = 3000): Promise<ChatMessageBroadcast> {
+  return waitForMessage(socket, (payload) => payload.message.damage !== undefined, ms);
 }
 
 function data<T>(ack: SocketAck<T>, what: string): T {
@@ -330,7 +346,7 @@ describe('damage, armor and Death Saves', () => {
 
   it('applies damage: armor stops what it can, ablates, and HP follow the sheet', async () => {
     // A plain `/r` roll carries no damage metadata — applying it must fail.
-    const chatRoll = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+    const chatRoll = waitForMessage(gm, (payload) => payload.message.roll?.notation === '6d6');
     await emitAck(gm, 'chat:send', { text: '/r 6d6 obrażenia' });
     const chatRollId = (await chatRoll).message.id;
     const rejected = await emitAck(gm, 'damage:apply', {

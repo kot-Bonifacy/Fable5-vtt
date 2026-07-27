@@ -98,7 +98,7 @@ export async function buildApp(
     config,
     prisma,
     statuses: await loadStatusRegistry(config.dataPublicDir, app.log),
-    cpred: await loadCpredRegistry(config.dataPublicDir, app.log),
+    cpred: await loadCpredRegistry(config.dataPublicDir, config.dataPrivateDir, app.log),
     compendium: await loadCompendium(config.dataPublicDir, config.dataPrivateDir, app.log),
     ai,
     tts,

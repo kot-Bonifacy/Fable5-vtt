@@ -1625,6 +1625,42 @@ input[type='color'] {
   font-weight: 700;
 }
 
+/* Category header of the skill table — a full-width row that folds its block. */
+.skill-group th {
+  padding: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.skill-group-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  padding: 0.25rem 0.3rem;
+  background: rgba(51, 54, 63, 0.35);
+  border: 0;
+  color: var(--text-dim);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.skill-group-toggle:hover {
+  color: var(--text);
+  background: rgba(51, 54, 63, 0.6);
+}
+
+.skill-group-count {
+  margin-left: auto;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--text-dim);
+}
+
 .row-table-wrap {
   display: flex;
   flex-direction: column;

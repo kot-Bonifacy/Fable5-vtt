@@ -513,6 +513,55 @@ def write_json(path: Path, payload: dict) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
+def load_rulebook_tables() -> tuple[list[dict], list[dict]]:
+    """The base tables `parse-manual.py` wrote, if the rulebook was imported."""
+    types_path = OUT_DIR / "weapon-types.json"
+    armor_path = OUT_DIR / "armor.json"
+    types = armor = []
+    if types_path.exists():
+        types = json.loads(types_path.read_text(encoding="utf-8")).get("weaponTypes", [])
+    if armor_path.exists():
+        armor = json.loads(armor_path.read_text(encoding="utf-8")).get("entries", [])
+    return types, armor
+
+
+def compare_with_rulebook(
+    inferred_types: list[dict],
+    inferred_armor: list[dict],
+    rulebook_types: list[dict],
+    rulebook_armor: list[dict],
+) -> list[str]:
+    """
+    Statblock evidence vs. the rulebook tables.
+
+    A mismatch is not automatically an error — an NPC may carry a poor quality
+    weapon, and the Hardened DLCs do print the odd typo — but it is the one
+    signal that either the free-material import or the rulebook parse went
+    wrong somewhere, so it belongs in the report.
+    """
+    differences: list[str] = []
+    by_id = {entry["id"]: entry for entry in rulebook_types}
+    for entry in inferred_types:
+        official = by_id.get(entry["id"])
+        if not official:
+            continue
+        for field, label in (("damage", "obrażenia"), ("rof", "LA"), ("magazine", "magazynek")):
+            mine, theirs = entry.get(field), official.get(field)
+            if mine is not None and theirs is not None and mine != theirs:
+                differences.append(
+                    f"{entry['id']}: {label} ze statbloków {mine}, z podręcznika {theirs}"
+                )
+    armor_by_id = {entry["id"]: entry for entry in rulebook_armor}
+    for entry in inferred_armor:
+        official = armor_by_id.get(entry["id"])
+        if official and entry.get("sp") != official.get("sp"):
+            differences.append(
+                f"{entry['id']}: OB ze statbloków {entry.get('sp')}, "
+                f"z podręcznika {official.get('sp')}"
+            )
+    return differences
+
+
 def main() -> int:
     if not TEXT_DIR.is_dir():
         print(f"brak {TEXT_DIR} — uruchom najpierw extract-pdf-text.py", file=sys.stderr)
@@ -529,31 +578,29 @@ def main() -> int:
     warnings.extend(type_notes)
     warnings.extend(named_notes)
 
-    known_types = {entry["id"] for entry in weapon_types}
+    # The base tables now come from the core rulebook (`parse-manual.py`), which
+    # prints them outright instead of leaving them to be inferred. This script
+    # keeps its aggregate only to cross-check it and to know which base types
+    # exist — branded weapons whose type is missing are dropped.
+    rulebook_types, rulebook_armor = load_rulebook_tables()
+    known_types = {entry["id"] for entry in rulebook_types} or {
+        entry["id"] for entry in weapon_types
+    }
     kept_weapons = [w for w in named_weapons if w["weaponTypeId"] in known_types]
     dropped_types = Counter(
         w["weaponTypeId"] for w in named_weapons if w["weaponTypeId"] not in known_types
     )
     if dropped_types:
         detail = ", ".join(f"{k} ×{v}" for k, v in dropped_types.most_common())
-        warnings.append(f"broń markowa bez typu bazowego w materiałach: {detail}")
+        warnings.append(f"broń markowa bez typu bazowego: {detail}")
+    if not rulebook_types:
+        warnings.append(
+            "brak weapon-types.json z podręcznika — uruchom najpierw parse-manual.py, "
+            "inaczej broń markowa opiera się na typach wywnioskowanych ze statbloków"
+        )
 
-    write_json(
-        OUT_DIR / "weapon-types.json",
-        {
-            "schemaVersion": 1,
-            "source": "Cyberpunk RED — materiały darmowe (Easy Mode PL + DLC RTG)",
-            "weaponTypes": weapon_types,
-        },
-    )
-    write_json(
-        OUT_DIR / "armor.json",
-        {
-            "schemaVersion": 1,
-            "source": "Cyberpunk RED — statbloki z darmowych DLC",
-            "entries": armor_entries,
-        },
-    )
+    differences = compare_with_rulebook(weapon_types, armor_entries, rulebook_types, rulebook_armor)
+
     write_json(
         OUT_DIR / "weapons.json",
         {
@@ -582,17 +629,20 @@ def main() -> int:
             for armor_id, ev in sorted(armor_evidence.items())
         },
         "counts": {
-            "weaponTypes": len(weapon_types),
-            "armor": len(armor_entries),
+            "weaponTypesInferred": len(weapon_types),
+            "armorInferred": len(armor_entries),
             "namedWeapons": len(kept_weapons),
         },
+        "rulebookDifferences": differences,
         "warnings": warnings,
     }
     write_json(OUT_DIR / "import-report.json", report)
 
-    print(f"typy broni:      {len(weapon_types)}")
-    print(f"pancerze:        {len(armor_entries)}")
     print(f"broń markowa:    {len(kept_weapons)}")
+    print(f"typy z podręcz.: {len(rulebook_types)} (tabele bazowe pisze parse-manual.py)")
+    print(f"rozbieżności:    {len(differences)}")
+    for difference in differences:
+        print(f"  ~ {difference}")
     print(f"ostrzeżenia:     {len(warnings)}")
     for warning in warnings[:15]:
         print(f"  - {warning}")

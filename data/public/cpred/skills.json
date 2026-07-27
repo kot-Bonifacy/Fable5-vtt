@@ -1,55 +1,253 @@
 {
-  "$comment": "Lista umiejętności CP RED (zestaw Easy Mode, oficjalne polskie nazwy). Tylko nazwy i przypisane cechy — bez opisów z podręcznika. Pełna lista 66 umiejętności zostanie podmieniona w etapie 12 (dane prywatne). Pole multiplier: mnożnik kosztu rozwoju (×2).",
+  "$comment": "Lista umiejętności CP RED (zestaw Easy Mode, oficjalne polskie nazwy) — dane przykładowe/zapasowe dla świeżego klonu repo. Tylko nazwy, cechy i kategorie; bez opisów z podręcznika. Pełny zestaw 66 umiejętności importuje tools/import/parse-manual.py do data/private/cpred/skills.json i ten plik nadpisuje ten zestaw. Pole multiplier: mnożnik kosztu rozwoju (×2). Pole group: kategoria umiejętności (CPRED_SKILL_GROUPS).",
   "skills": [
-    { "id": "acting", "name": "Aktorstwo", "stat": "cool" },
-    { "id": "athletics", "name": "Atletyka", "stat": "dex" },
-    { "id": "brawling", "name": "Bijatyka", "stat": "dex" },
-    { "id": "bureaucracy", "name": "Biurokracja", "stat": "int" },
-    { "id": "melee-weapon", "name": "Broń biała", "stat": "dex" },
-    { "id": "shoulder-arms", "name": "Broń długa", "stat": "ref" },
-    { "id": "handgun", "name": "Broń krótka", "stat": "ref" },
-    { "id": "deduction", "name": "Dedukcja", "stat": "int" },
+    {
+      "id": "acting",
+      "name": "Aktorstwo",
+      "stat": "cool",
+      "group": "performance"
+    },
+    {
+      "id": "athletics",
+      "name": "Atletyka",
+      "stat": "dex",
+      "group": "body"
+    },
+    {
+      "id": "brawling",
+      "name": "Bijatyka",
+      "stat": "dex",
+      "group": "melee"
+    },
+    {
+      "id": "bureaucracy",
+      "name": "Biurokracja",
+      "stat": "int",
+      "group": "education"
+    },
+    {
+      "id": "melee-weapon",
+      "name": "Broń biała",
+      "stat": "dex",
+      "group": "melee"
+    },
+    {
+      "id": "shoulder-arms",
+      "name": "Broń długa",
+      "stat": "ref",
+      "group": "ranged"
+    },
+    {
+      "id": "handgun",
+      "name": "Broń krótka",
+      "stat": "ref",
+      "group": "ranged"
+    },
+    {
+      "id": "deduction",
+      "name": "Dedukcja",
+      "stat": "int",
+      "group": "education"
+    },
     {
       "id": "electronics-security",
       "name": "Elektronika i zabezpieczenia",
       "stat": "tech",
+      "group": "technique",
       "multiplier": 2
     },
-    { "id": "forgery", "name": "Fałszerstwo", "stat": "tech" },
-    { "id": "photography-film", "name": "Fotografia/Film", "stat": "tech" },
-    { "id": "play-instrument", "name": "Gra na instrumencie", "stat": "tech" },
-    { "id": "pick-pocket", "name": "Kieszonkostwo", "stat": "tech" },
-    { "id": "composition", "name": "Komponowanie", "stat": "int" },
-    { "id": "concentration", "name": "Koncentracja", "stat": "will" },
-    { "id": "conversation", "name": "Konwersacja", "stat": "emp" },
-    { "id": "criminology", "name": "Kryminologia", "stat": "int" },
-    { "id": "cryptography", "name": "Kryptografia", "stat": "int" },
-    { "id": "accounting", "name": "Księgowość", "stat": "int" },
-    { "id": "wardrobe-style", "name": "Moda i styl", "stat": "cool" },
-    { "id": "human-perception", "name": "Odczytywanie emocji", "stat": "emp" },
+    {
+      "id": "forgery",
+      "name": "Fałszerstwo",
+      "stat": "tech",
+      "group": "technique"
+    },
+    {
+      "id": "photography-film",
+      "name": "Fotografia/Film",
+      "stat": "tech",
+      "group": "technique"
+    },
+    {
+      "id": "play-instrument",
+      "name": "Gra na instrumencie",
+      "stat": "tech",
+      "group": "performance"
+    },
+    {
+      "id": "pick-pocket",
+      "name": "Kieszonkostwo",
+      "stat": "tech",
+      "group": "technique"
+    },
+    {
+      "id": "composition",
+      "name": "Komponowanie",
+      "stat": "int",
+      "group": "education"
+    },
+    {
+      "id": "concentration",
+      "name": "Koncentracja",
+      "stat": "will",
+      "group": "awareness"
+    },
+    {
+      "id": "conversation",
+      "name": "Konwersacja",
+      "stat": "emp",
+      "group": "social"
+    },
+    {
+      "id": "criminology",
+      "name": "Kryminologia",
+      "stat": "int",
+      "group": "education"
+    },
+    {
+      "id": "cryptography",
+      "name": "Kryptografia",
+      "stat": "int",
+      "group": "education"
+    },
+    {
+      "id": "accounting",
+      "name": "Księgowość",
+      "stat": "int",
+      "group": "education"
+    },
+    {
+      "id": "wardrobe-style",
+      "name": "Moda i styl",
+      "stat": "cool",
+      "group": "social"
+    },
+    {
+      "id": "human-perception",
+      "name": "Odczytywanie emocji",
+      "stat": "emp",
+      "group": "social"
+    },
     {
       "id": "resist-torture-drugs",
       "name": "Odporność na tortury/narkotyki",
-      "stat": "will"
+      "stat": "will",
+      "group": "body"
     },
-    { "id": "pick-lock", "name": "Otwieranie zamków", "stat": "tech" },
-    { "id": "perception", "name": "Percepcja", "stat": "int" },
-    { "id": "persuasion", "name": "Perswazja", "stat": "cool" },
-    { "id": "first-aid", "name": "Pierwsza pomoc", "stat": "tech" },
-    { "id": "driving", "name": "Prowadzenie pojazdów", "stat": "ref" },
-    { "id": "bribery", "name": "Przekupstwo", "stat": "cool" },
-    { "id": "interrogation", "name": "Przesłuchiwanie", "stat": "cool" },
-    { "id": "library-search", "name": "Przeszukiwanie baz danych", "stat": "int" },
-    { "id": "business", "name": "Robienie interesów", "stat": "int" },
-    { "id": "paramedic", "name": "Ratownictwo medyczne", "stat": "tech", "multiplier": 2 },
-    { "id": "stealth", "name": "Skradanie się", "stat": "dex" },
-    { "id": "tactics", "name": "Taktyka", "stat": "int" },
-    { "id": "dance", "name": "Taniec", "stat": "dex" },
-    { "id": "tracking", "name": "Tropienie", "stat": "int" },
-    { "id": "conceal-reveal-object", "name": "Ukrycie/Znalezienie przedmiotu", "stat": "int" },
-    { "id": "evasion", "name": "Unik", "stat": "dex" },
-    { "id": "local-expert", "name": "Wiedza lokalna", "stat": "int" },
-    { "id": "education", "name": "Wykształcenie", "stat": "int" },
-    { "id": "streetwise", "name": "Znajomość półświatka", "stat": "cool" }
+    {
+      "id": "pick-lock",
+      "name": "Otwieranie zamków",
+      "stat": "tech",
+      "group": "technique"
+    },
+    {
+      "id": "perception",
+      "name": "Percepcja",
+      "stat": "int",
+      "group": "awareness"
+    },
+    {
+      "id": "persuasion",
+      "name": "Perswazja",
+      "stat": "cool",
+      "group": "social"
+    },
+    {
+      "id": "first-aid",
+      "name": "Pierwsza pomoc",
+      "stat": "tech",
+      "group": "technique"
+    },
+    {
+      "id": "driving",
+      "name": "Prowadzenie pojazdów",
+      "stat": "ref",
+      "group": "control"
+    },
+    {
+      "id": "bribery",
+      "name": "Przekupstwo",
+      "stat": "cool",
+      "group": "social"
+    },
+    {
+      "id": "interrogation",
+      "name": "Przesłuchiwanie",
+      "stat": "cool",
+      "group": "social"
+    },
+    {
+      "id": "library-search",
+      "name": "Przeszukiwanie baz danych",
+      "stat": "int",
+      "group": "education"
+    },
+    {
+      "id": "business",
+      "name": "Robienie interesów",
+      "stat": "int",
+      "group": "education"
+    },
+    {
+      "id": "paramedic",
+      "name": "Ratownictwo medyczne",
+      "stat": "tech",
+      "group": "technique",
+      "multiplier": 2
+    },
+    {
+      "id": "stealth",
+      "name": "Skradanie się",
+      "stat": "dex",
+      "group": "body"
+    },
+    {
+      "id": "tactics",
+      "name": "Taktyka",
+      "stat": "int",
+      "group": "education"
+    },
+    {
+      "id": "dance",
+      "name": "Taniec",
+      "stat": "dex",
+      "group": "body"
+    },
+    {
+      "id": "tracking",
+      "name": "Tropienie",
+      "stat": "int",
+      "group": "awareness"
+    },
+    {
+      "id": "conceal-reveal-object",
+      "name": "Ukrycie/Znalezienie przedmiotu",
+      "stat": "int",
+      "group": "awareness"
+    },
+    {
+      "id": "evasion",
+      "name": "Unik",
+      "stat": "dex",
+      "group": "melee"
+    },
+    {
+      "id": "local-expert",
+      "name": "Wiedza lokalna",
+      "stat": "int",
+      "group": "education"
+    },
+    {
+      "id": "education",
+      "name": "Wykształcenie",
+      "stat": "int",
+      "group": "education"
+    },
+    {
+      "id": "streetwise",
+      "name": "Znajomość półświatka",
+      "stat": "cool",
+      "group": "social"
+    }
   ]
 }
