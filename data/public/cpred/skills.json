@@ -38,6 +38,14 @@
       "group": "ranged"
     },
     {
+      "$comment": "Spoza zestawu Easy Mode — dołożona, bo bez niej nie da się rzucić na ogień ciągły (etap 16), a przykładowy karabin w kompendium go ma.",
+      "id": "autofire",
+      "name": "Ogień ciągły",
+      "stat": "ref",
+      "group": "ranged",
+      "multiplier": 2
+    },
+    {
       "id": "handgun",
       "name": "Broń krótka",
       "stat": "ref",

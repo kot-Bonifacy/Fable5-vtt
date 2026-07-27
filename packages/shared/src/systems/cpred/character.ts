@@ -196,10 +196,24 @@ export interface CpredGearRow extends CpredItemRow {
 export interface CpredWeaponRow extends CpredItemRow {
   /** Damage notation, e.g. "3k6" — free text until the compendium (stage 12). */
   damage: string;
-  ammo: string;
+  /**
+   * Rounds left in the magazine (stage 16). A single shot spends one, a burst
+   * ten; at zero the weapon has to be reloaded before it fires again.
+   */
+  ammoCurrent: number;
+  /**
+   * Magazine size. Zero means „this weapon does not count rounds" — melee
+   * weapons, and bows, whose arrows the rules explicitly do not track.
+   */
+  ammoMax: number;
+  /** Ammunition loaded, as printed on the sheet ("Karabinowa", "Śrutowa"). */
+  ammoType: string;
   /** Rate of fire ("LA" on the Polish sheet). */
   rof: string;
 }
+
+/** Rounds a magazine may hold on the sheet — the compendium's own cap. */
+export const WEAPON_AMMO_MAX = 500;
 
 export interface CpredArmorRow extends CpredItemRow {
   /** Stopping Power the piece has when undamaged ("OB" on the Polish sheet). */
@@ -370,6 +384,47 @@ function validateText(
     return undefined;
   }
   return raw;
+}
+
+/** The ammunition fields of a weapon row, or undefined when the input is bad. */
+type WeaponAmmo = Pick<CpredWeaponRow, 'ammoCurrent' | 'ammoMax' | 'ammoType'>;
+
+/**
+ * Reads a weapon's ammunition (stage 16), migrating rows written before it.
+ *
+ * Until stage 16 a weapon had one free-text `ammo` field, which players used
+ * for either the magazine size ("30") or the cartridge ("Karabinowa"). Both
+ * readings are honoured: a number becomes a full magazine, anything else
+ * becomes the ammunition type. Nobody has to retype their sheet.
+ */
+function readWeaponAmmo(
+  row: Record<string, unknown>,
+  issues: CpredValidationIssue[],
+): WeaponAmmo | undefined {
+  const legacy = typeof row.ammo === 'string' ? row.ammo.trim() : '';
+  const legacyMagazine = /^\d{1,3}$/.test(legacy) ? Number(legacy) : null;
+
+  const rawMax = row.ammoMax ?? legacyMagazine ?? 0;
+  if (!isInteger(rawMax) || rawMax < 0 || rawMax > WEAPON_AMMO_MAX) {
+    issues.push(issue('weapons', `Magazynek musi być liczbą od 0 do ${WEAPON_AMMO_MAX}.`));
+    return undefined;
+  }
+  const rawCurrent = row.ammoCurrent ?? legacyMagazine ?? 0;
+  if (!isInteger(rawCurrent) || rawCurrent < 0 || rawCurrent > WEAPON_AMMO_MAX) {
+    issues.push(issue('weapons', `Stan magazynka musi być liczbą od 0 do ${WEAPON_AMMO_MAX}.`));
+    return undefined;
+  }
+  const ammoType = validateText(
+    row.ammoType ?? (legacyMagazine === null ? legacy : ''),
+    'weapons',
+    'Rodzaj amunicji',
+    ITEM_FIELD_MAX_LENGTH,
+    issues,
+  );
+  if (ammoType === undefined) return undefined;
+  // A magazine can never hold more than it fits; an untracked weapon (max 0)
+  // keeps its counter at zero instead of showing "3/0".
+  return { ammoCurrent: Math.min(rawCurrent, rawMax), ammoMax: rawMax, ammoType };
 }
 
 function validateRowBase(
@@ -546,16 +601,10 @@ function collectCharacterDataPatch(
         ITEM_FIELD_MAX_LENGTH,
         issues,
       );
-      const ammo = validateText(
-        row.ammo ?? '',
-        'weapons',
-        'Amunicja',
-        ITEM_FIELD_MAX_LENGTH,
-        issues,
-      );
+      const ammo = readWeaponAmmo(row, issues);
       const rof = validateText(row.rof ?? '', 'weapons', 'LA', ITEM_FIELD_MAX_LENGTH, issues);
       if (damage === undefined || ammo === undefined || rof === undefined) return undefined;
-      return { ...base, damage, ammo, rof };
+      return { ...base, damage, ...ammo, rof };
     });
     if (weapons) patch.weapons = weapons;
   }

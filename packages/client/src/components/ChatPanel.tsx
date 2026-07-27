@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, type FormEvent, type ReactNode, type UIEvent }
 import type { BotActivityEntry, BotTraceBroadcast, ChatMessageView, RollResult } from '@vtt/shared';
 import { ROLE_GM } from '@vtt/shared';
 import { loadOlderHistory, sendChatInput, stopBots } from '../socket.js';
+import { AttackRow } from './AttackControls.js';
 import { DamageApplyControls, DamageRow } from './DamageControls.js';
 import { replayMessage } from '../speech.js';
 import { useAuthStore } from '../stores/authStore.js';
@@ -136,6 +137,7 @@ function RollRow({ message, isGm }: { message: ChatMessageView; isGm: boolean })
             </span>
           </div>
         )}
+        {roll.attack && <AttackRow message={message} attack={roll.attack} />}
         {/* Damage is applied by the GM only — players never see the button. */}
         {isGm && roll.damage && <DamageApplyControls message={message} roll={roll} />}
       </div>

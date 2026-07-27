@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type {
+  CpredAttackRequest,
   CpredCharacterData,
   CpredHitLocation,
   CpredRegistry,
@@ -48,6 +49,33 @@ export interface PendingInitiative {
   modifierTotal: number;
 }
 
+/**
+ * An attack loaded into the cup (stage 16). The distance and the DV are not
+ * here on purpose: the client shows an estimate on the cup, but the server
+ * measures the map when the dice actually fly.
+ */
+export interface PendingAttack {
+  characterId: string;
+  characterName: string;
+  attackerTokenId?: string;
+  targetTokenId: string;
+  targetName: string;
+  request: CpredAttackRequest;
+  /** Cup label, e.g. „Zgrzyt 9 → Ganger · 24 m". */
+  title: string;
+  modifierTotal: number;
+}
+
+/** A defender's Evasion roll contesting an attack already on the chat. */
+export interface PendingEvasion {
+  /** Chat message id of the attack being contested. */
+  messageId: number;
+  characterId: string;
+  characterName: string;
+  title: string;
+  modifierTotal: number;
+}
+
 interface RollStoreState {
   /** Open roll dialog (null = closed). */
   target: RollTarget | null;
@@ -55,6 +83,10 @@ interface RollStoreState {
   pending: PendingRoll | null;
   /** Initiative loaded into the cup (mutually exclusive with `pending`). */
   initiative: PendingInitiative | null;
+  /** Attack loaded into the cup (stage 16). */
+  attack: PendingAttack | null;
+  /** Evasion loaded into the cup (stage 16). */
+  evasion: PendingEvasion | null;
   /** Last dialog choices, reused for the next roll (and by Shift+click). */
   lastModifier: number;
   lastVisibility: 'public' | 'gm';
@@ -65,24 +97,39 @@ interface RollStoreState {
   closeDialog: () => void;
   loadCup: (pending: PendingRoll) => void;
   loadInitiativeCup: (initiative: PendingInitiative) => void;
+  loadAttackCup: (attack: PendingAttack) => void;
+  loadEvasionCup: (evasion: PendingEvasion) => void;
   clearCup: () => void;
   remember: (modifier: number, visibility: 'public' | 'gm') => void;
   rememberLocation: (location: CpredHitLocation) => void;
 }
 
+/** Every slot of the cup, cleared. Spread it before setting the new one. */
+const EMPTY_CUP = {
+  pending: null,
+  initiative: null,
+  attack: null,
+  evasion: null,
+} as const;
+
 export const useRollStore = create<RollStoreState>((set) => ({
   target: null,
   pending: null,
   initiative: null,
+  attack: null,
+  evasion: null,
   lastModifier: 0,
   lastVisibility: 'public',
   lastLocation: 'body',
 
   openDialog: (target) => set({ target }),
   closeDialog: () => set({ target: null }),
-  loadCup: (pending) => set({ pending, initiative: null, target: null }),
-  loadInitiativeCup: (initiative) => set({ initiative, pending: null, target: null }),
-  clearCup: () => set({ pending: null, initiative: null }),
+  // Only one thing can sit in the cup at a time — loading anything empties it.
+  loadCup: (pending) => set({ ...EMPTY_CUP, pending, target: null }),
+  loadInitiativeCup: (initiative) => set({ ...EMPTY_CUP, initiative, target: null }),
+  loadAttackCup: (attack) => set({ ...EMPTY_CUP, attack, target: null }),
+  loadEvasionCup: (evasion) => set({ ...EMPTY_CUP, evasion, target: null }),
+  clearCup: () => set({ ...EMPTY_CUP }),
   remember: (lastModifier, lastVisibility) => set({ lastModifier, lastVisibility }),
   rememberLocation: (lastLocation) => set({ lastLocation }),
 }));

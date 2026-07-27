@@ -43,6 +43,7 @@ from terms import (  # noqa: E402
     ARMOR_LOCATIONS_BY_NAME,
     COST_BAND_BY_PRICE,
     MANUAL_ARMOR_ROWS,
+    MANUAL_AUTOFIRE_ROWS,
     MANUAL_RANGE_ROWS,
     MANUAL_SHARED_ROWS,
     MANUAL_WEAPON_SKILLS,
@@ -70,6 +71,7 @@ SOURCE = "Cyberpunk RED — podręcznik główny (wydanie polskie)"
 SCHEMA_VERSION = 1
 DESCRIPTION_MAX = 1000  # COMPENDIUM_DESCRIPTION_MAX_LENGTH in compendium.ts
 RANGE_BANDS = 8  # CPRED_RANGE_BANDS in compendium.ts
+AUTOFIRE_BANDS = 5  # CPRED_AUTOFIRE_RANGE_BANDS in attacks.ts — the table stops at 100 m
 ROLL_MIN, ROLL_MAX = 2, 12
 
 PL_TRANSLITERATION = str.maketrans(
@@ -391,6 +393,13 @@ def parse_ranged_types(gear: str) -> dict[str, dict]:
                 entry["hands"] = hands
             if features:
                 entry["features"] = features
+            # Fire modes are a property of the type, not of the branded copy:
+            # every SMG fires bursts, and the DV table is keyed by type.
+            autofire_max, suppressive = fire_modes(features)
+            if autofire_max is not None:
+                entry["autofireMax"] = autofire_max
+            if suppressive:
+                entry["suppressive"] = True
             if label in MANUAL_SHARED_ROWS:
                 entry["source"] = (
                     f"{SOURCE}, s. {page} — wiersz „{label}” obejmuje oba typy"
@@ -417,6 +426,46 @@ def parse_range_dv(combat: str) -> dict[str, list[int | None]]:
         for key in MANUAL_RANGE_ROWS[label]:
             tables[key] = parsed
     return tables
+
+
+def parse_autofire_dv(combat: str) -> dict[str, list[int | None]]:
+    """
+    The autofire DV table (s. 173). It is a table of its own — autofire never
+    reads the single-shot row — and it only reaches 100 m, so the five values
+    are padded with `null` up to the eight bands the schema uses.
+    """
+    text, _ = section(combat, "### PT OGNIA CIĄGŁEGO", "### PRZYKŁAD OGNIA CIĄGŁEGO")
+    tables: dict[str, list[int | None]] = {}
+    for label, body in split_on_anchors(clean(text), list(MANUAL_AUTOFIRE_ROWS)):
+        row = re.match(r"[\s–-]*((?:\d{2}|Nd\.|\s)+)", body)
+        if not row:
+            warn(f"tabela PT ognia ciągłego: nie odczytałem wiersza „{label}”")
+            continue
+        values = re.findall(r"Nd\.|\d{2}", row.group(1))
+        if len(values) != AUTOFIRE_BANDS:
+            warn(f"tabela PT ognia ciągłego „{label}”: {len(values)} wartości zamiast {AUTOFIRE_BANDS}")
+            continue
+        parsed: list[int | None] = [None if value == "Nd." else int(value) for value in values]
+        parsed += [None] * (RANGE_BANDS - AUTOFIRE_BANDS)
+        for key in MANUAL_AUTOFIRE_ROWS[label]:
+            tables[key] = parsed
+    return tables
+
+
+AUTOFIRE_FEATURE = re.compile(r"Ogień ciągły\s*\((?P<max>\d+)\)", re.IGNORECASE)
+
+
+def fire_modes(features: list[str]) -> tuple[int | None, bool]:
+    """Reads „Ogień ciągły (4)" and „ogień zaporowy" out of a weapon's features."""
+    autofire_max: int | None = None
+    suppressive = False
+    for feature in features:
+        match = AUTOFIRE_FEATURE.search(feature)
+        if match:
+            autofire_max = int(match.group("max"))
+        if "zaporow" in feature.lower():
+            suppressive = True
+    return autofire_max, suppressive
 
 
 UNARMED_TABLE = re.compile(r"Budowa Ciała[^O]*?Obrażenia\s*(?P<damage>(?:\dk6\s*){2,})")
@@ -761,6 +810,7 @@ def main() -> int:
     types = parse_melee_types(combat)
     types.update(parse_ranged_types(gear))
     range_dv = parse_range_dv(combat)
+    autofire_dv = parse_autofire_dv(combat)
     unarmed = parse_unarmed(combat)
 
     for key, table in range_dv.items():
@@ -768,6 +818,22 @@ def main() -> int:
             types[key]["rangeDv"] = table
         elif key not in ("light pistol", "heavy rifle"):
             warn(f"tabela PT: typ „{key}” nie ma wiersza w tabeli broni")
+
+    # Autofire needs both halves: the multiplier cap from the weapon's features
+    # and its own DV table. A type with only one of them is a parsing failure,
+    # not a weapon that fires half a burst.
+    for key, table in autofire_dv.items():
+        if key not in types:
+            warn(f"tabela PT ognia ciągłego: typ „{key}” nie ma wiersza w tabeli broni")
+            continue
+        autofire_max = types[key].pop("autofireMax", None)
+        if autofire_max is None:
+            warn(f"ogień ciągły: typ „{key}” ma tabelę PT, ale nie ma cechy „Ogień ciągły (N)”")
+            continue
+        types[key]["autofire"] = {"max": autofire_max, "rangeDv": table}
+    for key, weapon_type in types.items():
+        if weapon_type.pop("autofireMax", None) is not None:
+            warn(f"ogień ciągły: typ „{key}” ma cechę „Ogień ciągły (N)”, ale nie ma tabeli PT")
 
     # Brawling and martial arts are unarmed, so they have no row in the weapon
     # tables at all — the rules give them a BODY-based damage ladder instead.
@@ -791,8 +857,9 @@ def main() -> int:
     apply_overrides(weapon_types, overrides, "weaponTypes")
     for weapon_type in weapon_types:
         weapon_type.setdefault("hands", 2 if not weapon_type["melee"] else 1)
-        # `ammunition`, `cost` and `costCategory` are not part of the weapon type
-        # schema; they travel to the buyable entry instead.
+        # `cost` and `costCategory` are not part of the weapon type schema;
+        # they travel to the buyable entry instead. `ammunition` stays: the
+        # sheet copies the cartridge onto the weapon row (stage 16).
     page_gear = page_of(gear, gear.find("Typ broniUmiejętność"))
     entries = base_weapon_entries(ordered, page_gear)
     entries += parse_exotics(market, gear, overrides)
@@ -804,7 +871,8 @@ def main() -> int:
 
     schema_fields = {
         "id", "name", "nameOriginal", "skillId", "damage", "magazine", "rof", "hands",
-        "concealable", "attachmentSlots", "melee", "rangeDv", "description", "source", "incomplete",
+        "concealable", "attachmentSlots", "melee", "rangeDv", "autofire", "suppressive",
+        "ammunition", "description", "source", "incomplete",
     }
     write(
         COMPENDIUM_DIR / "weapon-types.json",

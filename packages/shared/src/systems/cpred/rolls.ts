@@ -92,7 +92,23 @@ export interface CpredRollRequest {
   modifier?: number;
   /** Luck points spent from the pool; each adds +1 (declared before the roll). */
   luckSpent?: number;
+  /**
+   * Chat message id of the attack this damage follows (stage 16). The client
+   * sends only the id; the server reads the notation, the multiplier and the
+   * target off the stored attack and rewrites the three fields below, so a
+   * client can neither pick its own burst multiplier nor its own target.
+   */
+  attackMessageId?: number;
+  /** Server-filled: damage notation overriding the weapon row (burst = 2k6). */
+  damageNotation?: string;
+  /** Server-filled: autofire multiplier applied to the rolled total. */
+  damageMultiplier?: number;
+  /** Server-filled: token the damage is aimed at. */
+  targetTokenId?: string;
 }
+
+/** Highest damage multiplier any weapon can reach — guards the stored value. */
+export const CPRED_DAMAGE_MULTIPLIER_MAX = 10;
 
 export type CpredRollProblem =
   | 'BAD_REQUEST'
@@ -110,6 +126,10 @@ export interface CpredDamagePlan {
   weaponName: string;
   /** Damage armor cannot stop (injury effects, falls) — stage 15 leaves it false. */
   ignoreArmor?: boolean;
+  /** Autofire's factor on the rolled total; absent means ×1 (stage 16). */
+  multiplier?: number;
+  /** Token the damage is aimed at, preselected by „Zastosuj" (stage 16). */
+  targetTokenId?: string;
 }
 
 /**
@@ -269,8 +289,18 @@ function planDamageRoll(
 ): { ok: true; plan: CpredRollPlan } | { ok: false; error: CpredRollProblem } {
   const weapon = data.weapons.find((row) => row.id === request.weaponRowId);
   if (!weapon) return { ok: false, error: 'UNKNOWN_WEAPON' };
-  const parsed = parseRollNotation(weapon.damage ?? '');
+  // A burst rolls 2d6 whatever the weapon prints, so the attack that produced
+  // it may override the notation — but only the server ever fills that in.
+  const parsed = parseRollNotation(request.damageNotation ?? weapon.damage ?? '');
   if (!parsed.ok || !parsed.formula.terms.some((term) => term.kind === 'dice')) {
+    return { ok: false, error: 'BAD_DAMAGE' };
+  }
+  const multiplier = request.damageMultiplier ?? 1;
+  if (
+    !isInteger(multiplier) ||
+    multiplier < 1 ||
+    multiplier > CPRED_DAMAGE_MULTIPLIER_MAX
+  ) {
     return { ok: false, error: 'BAD_DAMAGE' };
   }
 
@@ -282,17 +312,23 @@ function planDamageRoll(
     terms.push({ kind: 'modifier', sign: modifier < 0 ? -1 : 1, value: Math.abs(modifier) });
   }
 
+  const suffix = multiplier > 1 ? ` ×${multiplier}` : '';
   return {
     ok: true,
     plan: {
-      title: `${weapon.name} — obrażenia (${CPRED_HIT_LOCATION_LABELS[location]})`,
+      title: `${weapon.name} — obrażenia (${CPRED_HIT_LOCATION_LABELS[location]})${suffix}`,
       formula: { terms },
       breakdown,
       modifierTotal: modifier,
       woundState: state,
       luckSpent: 0,
       checkRule: false,
-      damage: { location, weaponName: weapon.name },
+      damage: {
+        location,
+        weaponName: weapon.name,
+        ...(multiplier > 1 ? { multiplier } : {}),
+        ...(request.targetTokenId ? { targetTokenId: request.targetTokenId } : {}),
+      },
     },
   };
 }

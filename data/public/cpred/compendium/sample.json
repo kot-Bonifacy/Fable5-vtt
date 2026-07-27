@@ -1,5 +1,6 @@
 {
   "schemaVersion": 1,
+  "$comment": "Wszystkie liczby są wymyślone, także tabele PT — nie kopiuj tu wierszy z podręcznika. Prawdziwe dane wchodzą z data/private/ i nadpisują ten plik po id.",
   "source": "Dane przykładowe VTT (wymyślone — wolne od praw autorskich)",
   "weaponTypes": [
     {
@@ -13,7 +14,7 @@
       "concealable": true,
       "attachmentSlots": 3,
       "melee": false,
-      "rangeDv": [13, 15, 20, 25, 30, 30, null, null]
+      "rangeDv": [12, 14, 19, 24, 29, 29, null, null]
     },
     {
       "id": "weapon-type.sample-rifle",
@@ -26,7 +27,9 @@
       "concealable": false,
       "attachmentSlots": 3,
       "melee": false,
-      "rangeDv": [17, 16, 15, 13, 15, 20, 25, 30]
+      "rangeDv": [18, 16, 14, 14, 16, 21, 26, 31],
+      "autofire": { "max": 4, "rangeDv": [21, 19, 16, 19, 24, null, null, null] },
+      "suppressive": true
     },
     {
       "id": "weapon-type.sample-blade",

@@ -4,13 +4,39 @@ import {
   Container,
   Graphics,
   Sprite,
+  Text,
   Texture,
   type FederatedPointerEvent,
 } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
-import type { SceneView, TokenSnapScene, TokenView } from '@vtt/shared';
-import { clampTokenPosition, normalizeGridOffset, snapTokenPosition } from '@vtt/shared';
+import type { ScenePoint, SceneView, TokenSnapScene, TokenView } from '@vtt/shared';
+import {
+  clampTokenPosition,
+  formatMetres,
+  formatSquares,
+  normalizeGridOffset,
+  polylineMetres,
+  snapTokenPosition,
+  squaresForDistance,
+} from '@vtt/shared';
 import { TokenNode, type TokenNodeCtx } from './TokenNode.js';
+
+/** One measurement drawn on the map: the line plus who is holding it. */
+export interface RulerLine {
+  points: ScenePoint[];
+  /** Label shown at the far end; the local line has none (it is the user's). */
+  userName?: string;
+  /** Line colour as 0xrrggbb. */
+  color: number;
+}
+
+/** One range band drawn as a ring around a token (stage 16). */
+export interface RangeRing {
+  /** Radius in scene pixels. */
+  radiusPx: number;
+  /** „PT 15" — printed where the ring meets the horizontal axis. */
+  label: string;
+}
 
 /** Extra pannable margin around the scene, as a fraction of its size. */
 const PAN_MARGIN = 0.5;
@@ -52,13 +78,21 @@ export class MapRenderer {
   onMapClick: ((x: number, y: number) => void) | null = null;
   /** Double-click on a token — opens its character sheet (stage 08). */
   onTokenActivate: ((tokenId: string) => void) | null = null;
+  /** Click on a token while the crosshair is armed (stage 16). */
+  onTokenTarget: ((tokenId: string) => void) | null = null;
+  /** The local ruler changed; null means the measurement ended. */
+  onRulerChange: ((points: ScenePoint[] | null) => void) | null = null;
 
   private readonly app = new Application();
   private viewport: Viewport | null = null;
   private readonly background = new Sprite();
   private readonly grid = new Graphics();
+  private readonly rangeLayer = new Container();
+  private readonly rangeGraphics = new Graphics();
   private readonly tokenLayer = new Container();
   private readonly dragGhost = new Graphics();
+  private readonly overlayLayer = new Container();
+  private readonly rulerGraphics = new Graphics();
   private readonly tokenNodes = new Map<string, TokenNode>();
   /** tokenId → may the local user drag it (GM or owner). */
   private readonly movableTokens = new Map<string, boolean>();
@@ -67,6 +101,19 @@ export class MapRenderer {
   private sceneId: string | null = null;
   private backgroundUrl: string | null = null;
   private destroyed = false;
+  /** Ruler tool armed: the map measures instead of panning. */
+  private rulerMode = false;
+  /** Waypoints of the measurement in progress; the last one follows the pointer. */
+  private rulerPoints: ScenePoint[] | null = null;
+  /** Crosshair armed by „Atakuj": the next token click reports a target. */
+  private targeting = false;
+  /** Labels drawn on the overlay layer — rebuilt on every redraw. */
+  private readonly overlayTexts: Text[] = [];
+  private readonly rangeTexts: Text[] = [];
+  /** Last overlay input, so a zoom can redraw at the new screen scale. */
+  private lastRulers: RulerLine[] = [];
+  private lastRingCentre: ScenePoint | null = null;
+  private lastRings: RangeRing[] = [];
 
   async init(host: HTMLElement): Promise<void> {
     await this.app.init({ resizeTo: host, backgroundAlpha: 0, antialias: true });
@@ -91,14 +138,25 @@ export class MapRenderer {
       .clampZoom({ minScale: MIN_ZOOM, maxScale: MAX_ZOOM });
     viewport.addChild(this.background);
     viewport.addChild(this.grid);
+    // Range rings sit under the tokens so they never hide a portrait; the
+    // ruler sits above everything, because a measurement is meant to be read.
+    this.rangeLayer.addChild(this.rangeGraphics);
+    viewport.addChild(this.rangeLayer);
     viewport.addChild(this.tokenLayer);
     viewport.addChild(this.dragGhost);
+    this.overlayLayer.addChild(this.rulerGraphics);
+    viewport.addChild(this.overlayLayer);
     this.app.stage.addChild(viewport);
     this.viewport = viewport;
 
     viewport.on('clicked', (event) => {
       this.onMapClick?.(event.world.x, event.world.y);
     });
+
+    this.wireRuler(viewport);
+    // Overlay labels are sized in screen pixels, so a zoom has to redraw them.
+    viewport.on('zoomed', () => this.refreshOverlays());
+    viewport.on('zoomed-end', () => this.refreshOverlays());
 
     this.app.renderer.on('resize', (width: number, height: number) => {
       viewport.resize(width, height);
@@ -115,6 +173,8 @@ export class MapRenderer {
       this.backgroundUrl = null;
       this.background.visible = false;
       this.grid.clear();
+      this.setRulers([]);
+      this.setRangeRings(null, []);
       this.clearTokens();
       return;
     }
@@ -170,6 +230,174 @@ export class MapRenderer {
     }
   }
 
+  /**
+   * Arms or disarms the ruler. While it is armed the viewport stops panning on
+   * the left button — dragging measures instead — and the cursor says so.
+   */
+  setRulerMode(active: boolean): void {
+    if (this.rulerMode === active) return;
+    this.rulerMode = active;
+    if (!active) this.finishRuler();
+    this.applyMapCursor();
+  }
+
+  /** Arms the crosshair: the next click on a token reports it as a target. */
+  setTargeting(active: boolean): void {
+    if (this.targeting === active) return;
+    this.targeting = active;
+    this.applyMapCursor();
+  }
+
+  private applyMapCursor(): void {
+    const canvas = this.app.canvas;
+    if (!canvas) return;
+    canvas.style.cursor = this.targeting ? 'crosshair' : this.rulerMode ? 'cell' : '';
+  }
+
+  /**
+   * Pointer handling of the ruler. It lives on the viewport rather than on the
+   * stage so the coordinates are already world-space, and it only takes over
+   * the left button while the tool is armed.
+   */
+  private wireRuler(viewport: Viewport): void {
+    viewport.eventMode = 'static';
+
+    viewport.on('pointerdown', (event: FederatedPointerEvent) => {
+      if (!this.rulerMode || event.button !== 0 || this.drag) return;
+      const world = viewport.toWorld(event.global.x, event.global.y);
+      const start = { x: Math.round(world.x), y: Math.round(world.y) };
+      // Two points from the start: the second one follows the pointer.
+      this.rulerPoints = [start, { ...start }];
+      viewport.plugins.pause('drag');
+      this.emitRuler();
+    });
+
+    viewport.on('pointermove', (event: FederatedPointerEvent) => {
+      const points = this.rulerPoints;
+      if (!points) return;
+      const world = viewport.toWorld(event.global.x, event.global.y);
+      points[points.length - 1] = { x: Math.round(world.x), y: Math.round(world.y) };
+      this.emitRuler();
+    });
+
+    const end = () => {
+      if (this.rulerPoints) this.finishRuler();
+    };
+    viewport.on('pointerup', end);
+    viewport.on('pointerupoutside', end);
+  }
+
+  /**
+   * Drops a waypoint at the pointer, turning the measurement into a polyline.
+   * Called from the map component on Space, the way Foundry uses Ctrl.
+   */
+  addRulerWaypoint(): void {
+    const points = this.rulerPoints;
+    if (!points || points.length >= 24) return;
+    const last = points[points.length - 1]!;
+    points.push({ ...last });
+    this.emitRuler();
+  }
+
+  private finishRuler(): void {
+    this.rulerPoints = null;
+    this.viewport?.plugins.resume('drag');
+    this.onRulerChange?.(null);
+  }
+
+  private emitRuler(): void {
+    if (this.rulerPoints) this.onRulerChange?.(this.rulerPoints.map((p) => ({ ...p })));
+  }
+
+  /**
+   * World units per screen pixel. Overlay text and line widths are multiplied
+   * by it so a label stays the same size on screen at any zoom — a map drawn
+   * at 4096 px is usually viewed at 0.18×, where an unscaled 18 px label would
+   * render three pixels tall and be unreadable.
+   */
+  private overlayScale(): number {
+    const scale = this.viewport?.scale.x ?? 1;
+    return scale > 0 ? 1 / scale : 1;
+  }
+
+  /** Redraws every measurement on the map — the local one plus the remote ones. */
+  setRulers(lines: RulerLine[]): void {
+    if (this.destroyed) return;
+    this.lastRulers = lines;
+    this.rulerGraphics.clear();
+    for (const text of this.overlayTexts) text.destroy();
+    this.overlayTexts.length = 0;
+    const scene = this.scene;
+    if (!scene) return;
+    const k = this.overlayScale();
+
+    for (const line of lines) {
+      if (line.points.length < 2) continue;
+      const first = line.points[0]!;
+      this.rulerGraphics.moveTo(first.x, first.y);
+      for (const point of line.points.slice(1)) this.rulerGraphics.lineTo(point.x, point.y);
+      this.rulerGraphics.stroke({ color: line.color, width: 3 * k, alpha: 0.9 });
+      for (const point of line.points) {
+        this.rulerGraphics.circle(point.x, point.y, 5 * k).fill({ color: line.color, alpha: 0.9 });
+      }
+
+      const metres = polylineMetres(line.points, scene);
+      const squares = squaresForDistance(metres, scene);
+      const end = line.points[line.points.length - 1]!;
+      const label = new Text({
+        text: `${line.userName ? `${line.userName}: ` : ''}${formatMetres(metres)} · ${formatSquares(squares)}`,
+        style: {
+          fontFamily: 'system-ui, sans-serif',
+          fontSize: 18,
+          fill: 0xffffff,
+          stroke: { color: 0x000000, width: 4 },
+        },
+      });
+      label.scale.set(k);
+      label.position.set(end.x + 12 * k, end.y - 28 * k);
+      this.overlayLayer.addChild(label);
+      this.overlayTexts.push(label);
+    }
+  }
+
+  /** Draws the DV bands of a weapon as rings around a token (optional toggle). */
+  setRangeRings(centre: ScenePoint | null, rings: RangeRing[]): void {
+    if (this.destroyed) return;
+    this.lastRingCentre = centre;
+    this.lastRings = rings;
+    this.rangeGraphics.clear();
+    for (const text of this.rangeTexts) text.destroy();
+    this.rangeTexts.length = 0;
+    if (!centre) return;
+    const k = this.overlayScale();
+
+    for (const ring of rings) {
+      this.rangeGraphics
+        .circle(centre.x, centre.y, ring.radiusPx)
+        .stroke({ color: 0x38bdf8, width: 2 * k, alpha: 0.45 });
+      const label = new Text({
+        text: ring.label,
+        style: {
+          fontFamily: 'system-ui, sans-serif',
+          fontSize: 16,
+          fill: 0x7dd3fc,
+          stroke: { color: 0x0b1220, width: 4 },
+        },
+      });
+      label.scale.set(k);
+      label.position.set(centre.x + ring.radiusPx - 8 * k, centre.y - 22 * k);
+      this.rangeLayer.addChild(label);
+      this.rangeTexts.push(label);
+    }
+  }
+
+  /** Re-renders the overlays at the current zoom (labels are screen-sized). */
+  private refreshOverlays(): void {
+    if (this.destroyed) return;
+    this.setRulers(this.lastRulers);
+    this.setRangeRings(this.lastRingCentre, this.lastRings);
+  }
+
   private clearTokens(): void {
     if (this.drag) this.endDrag(false);
     for (const node of this.tokenNodes.values()) node.destroy({ children: true });
@@ -203,6 +431,13 @@ export class MapRenderer {
         return;
       }
       if (event.button !== 0) return;
+      // With the crosshair armed a click picks the target instead of dragging.
+      if (this.targeting) {
+        event.stopPropagation();
+        this.onTokenTarget?.(node.tokenId);
+        return;
+      }
+      if (this.rulerMode) return;
       const now = performance.now();
       if (now - lastClickAt < DOUBLE_CLICK_MS) {
         lastClickAt = 0;

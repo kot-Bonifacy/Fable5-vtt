@@ -2,9 +2,21 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { RollGesture, RollToss } from '@vtt/shared';
 import { MAX_GESTURE_STRENGTH, formatRollNotation, parseChatInput } from '@vtt/shared';
 import { playFunRoll, sweepDice } from '../dice3d.js';
-import { sendCharacterRoll, sendChatInput, sendInitiativeRoll } from '../socket.js';
+import {
+  sendAttackEvade,
+  sendAttackRoll,
+  sendCharacterRoll,
+  sendChatInput,
+  sendInitiativeRoll,
+} from '../socket.js';
 import { useChatStore } from '../stores/chatStore.js';
-import { useRollStore, type PendingInitiative, type PendingRoll } from '../stores/rollStore.js';
+import {
+  useRollStore,
+  type PendingAttack,
+  type PendingEvasion,
+  type PendingInitiative,
+  type PendingRoll,
+} from '../stores/rollStore.js';
 
 interface ShakeSample {
   x: number;
@@ -105,7 +117,9 @@ type CupMode =
   | { kind: 'fun' }
   | { kind: 'roll'; visibility: 'public' | 'gm'; notation: string }
   | { kind: 'sheet'; pending: PendingRoll }
-  | { kind: 'initiative'; pending: PendingInitiative };
+  | { kind: 'initiative'; pending: PendingInitiative }
+  | { kind: 'attack'; pending: PendingAttack }
+  | { kind: 'evasion'; pending: PendingEvasion };
 
 /** Cup label for a loaded sheet check, e.g. `Percepcja (INT) +11`. */
 function sheetLabel(pending: PendingRoll): string {
@@ -136,6 +150,8 @@ export function DiceCup() {
   const campaign = useChatStore((s) => s.campaign);
   const pending = useRollStore((s) => s.pending);
   const initiative = useRollStore((s) => s.initiative);
+  const attack = useRollStore((s) => s.attack);
+  const evasion = useRollStore((s) => s.evasion);
 
   const [shaking, setShaking] = useState(false);
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
@@ -152,6 +168,8 @@ export function DiceCup() {
     // A check loaded from a sheet wins over whatever sits in the chat draft.
     if (pending) return { kind: 'sheet', pending };
     if (initiative) return { kind: 'initiative', pending: initiative };
+    if (attack) return { kind: 'attack', pending: attack };
+    if (evasion) return { kind: 'evasion', pending: evasion };
     const parsed = parseChatInput(draft);
     if (parsed.kind === 'roll') {
       return {
@@ -161,18 +179,18 @@ export function DiceCup() {
       };
     }
     return { kind: 'fun' };
-  }, [draft, pending, initiative]);
+  }, [draft, pending, initiative, attack, evasion]);
   modeRef.current = mode;
 
   // Esc puts a loaded check back on the shelf (as long as we are not mid-shake).
   useEffect(() => {
-    if ((!pending && !initiative) || shaking) return;
+    if ((!pending && !initiative && !attack && !evasion) || shaking) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') useRollStore.getState().clearCup();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [pending, initiative, shaking]);
+  }, [pending, initiative, attack, evasion, shaking]);
 
   useEffect(() => {
     if (!shaking) return;
@@ -230,6 +248,24 @@ export function DiceCup() {
         useRollStore.getState().clearCup();
         void digestSamples(samples).then((entropy) => {
           sendInitiativeRoll(loaded.combatantId, { entropy, strength, toss });
+        });
+      } else if (current.kind === 'attack') {
+        const { pending: loaded } = current;
+        lastFunNotation = '1d10';
+        useRollStore.getState().clearCup();
+        void digestSamples(samples).then((entropy) => {
+          sendAttackRoll(loaded.characterId, loaded.targetTokenId, loaded.request, loaded.attackerTokenId, {
+            entropy,
+            strength,
+            toss,
+          });
+        });
+      } else if (current.kind === 'evasion') {
+        const { pending: loaded } = current;
+        lastFunNotation = '1d10';
+        useRollStore.getState().clearCup();
+        void digestSamples(samples).then((entropy) => {
+          sendAttackEvade(loaded.messageId, loaded.characterId, { entropy, strength, toss });
         });
       } else if (current.kind === 'roll') {
         lastFunNotation = current.notation;
@@ -295,7 +331,11 @@ export function DiceCup() {
   };
 
   const modeClass =
-    mode.kind === 'initiative'
+    mode.kind === 'attack'
+      ? ' dice-cup--attack'
+      : mode.kind === 'evasion'
+        ? ' dice-cup--sheet'
+        : mode.kind === 'initiative'
       ? ' dice-cup--sheet'
       : mode.kind === 'sheet'
         ? mode.pending.visibility === 'gm'
@@ -307,7 +347,11 @@ export function DiceCup() {
             : ' dice-cup--hot'
           : '';
   const title =
-    mode.kind === 'initiative'
+    mode.kind === 'attack'
+      ? `Potrząśnij i strzel: ${mode.pending.title} · Esc odkłada atak`
+      : mode.kind === 'evasion'
+        ? `Potrząśnij i rzuć unik: ${mode.pending.title} · Esc odkłada rzut`
+        : mode.kind === 'initiative'
       ? `Potrząśnij i rzuć inicjatywę: ${mode.pending.name} — ${initiativeLabel(mode.pending)} · Esc odkłada rzut`
       : mode.kind === 'sheet'
         ? `Potrząśnij i rzuć: ${mode.pending.characterName} — ${sheetLabel(mode.pending)}${
@@ -343,6 +387,9 @@ export function DiceCup() {
         <circle cx="14" cy="13" r="1.2" fill="var(--bg, #14151a)" />
       </svg>
       {mode.kind === 'roll' && <span className="dice-cup-label">{mode.notation}</span>}
+      {(mode.kind === 'attack' || mode.kind === 'evasion') && (
+        <span className="dice-cup-label">{mode.pending.title}</span>
+      )}
       {mode.kind === 'sheet' && <span className="dice-cup-label">{sheetLabel(mode.pending)}</span>}
       {mode.kind === 'initiative' && (
         <span className="dice-cup-label">{initiativeLabel(mode.pending)}</span>

@@ -1,15 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ROLE_GM } from '@vtt/shared';
-import { MapRenderer } from '../map/MapRenderer.js';
+import { CPRED_RANGE_BANDS, ROLE_GM, metresPerPixel, tokenCentre } from '@vtt/shared';
+import { MapRenderer, type RangeRing, type RulerLine } from '../map/MapRenderer.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { ensureStatusesLoaded, useTokenStore } from '../stores/tokenStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useChatStore } from '../stores/chatStore.js';
 import { activeTokenIdOf, useCombatStore } from '../stores/combatStore.js';
-import { createToken, sendTokenMove } from '../socket.js';
+import { clearRuler, createToken, sendRuler, sendTokenMove } from '../socket.js';
+import { loadAttackAtToken } from '../attack-targeting.js';
+import { useAttackStore } from '../stores/attackStore.js';
+import { useRulerStore } from '../stores/rulerStore.js';
 import { TokenContextMenu } from './TokenContextMenu.js';
 import { CombatBar } from './CombatBar.js';
+import { MapTools } from './MapTools.js';
 
 export interface TokenMenuState {
   tokenId: string;
@@ -46,6 +50,8 @@ export function MapArea() {
   const scene = useSceneStore((s) => s.effectiveScene);
   const placement = useTokenStore((s) => s.placement);
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
+  const rulerActive = useRulerStore((s) => s.toolActive);
+  const targeting = useAttackStore((s) => s.targeting);
 
   useEffect(() => {
     ensureStatusesLoaded();
@@ -87,6 +93,14 @@ export function MapArea() {
       }
     };
     renderer.onTokenActivate = (tokenId) => openSheetOfToken(tokenId);
+    renderer.onTokenTarget = (tokenId) => loadAttackAtToken(tokenId);
+    renderer.onRulerChange = (points) => {
+      const current = useSceneStore.getState().effectiveScene;
+      useRulerStore.getState().setLocal(points);
+      if (!current) return;
+      if (points) sendRuler(current.id, points, useRulerStore.getState().privateMode);
+      else clearRuler(current.id);
+    };
     rendererRef.current = renderer;
     let cancelled = false;
     void renderer.init(host).then(() => {
@@ -147,6 +161,104 @@ export function MapArea() {
     return () => window.removeEventListener('keydown', onKey);
   }, [placement]);
 
+  // Ruler and crosshair are renderer modes, not React state — push the flags.
+  useEffect(() => {
+    if (!ready) return;
+    rendererRef.current?.setRulerMode(rulerActive);
+  }, [ready, rulerActive]);
+
+  useEffect(() => {
+    if (!ready) return;
+    rendererRef.current?.setTargeting(targeting !== null);
+  }, [ready, targeting]);
+
+  // Redraws every measurement: the local line plus the other viewers'. The
+  // sweep drops lines from clients that navigated away without a `ruler:clear`.
+  const pushRulers = useCallback(() => {
+    const state = useRulerStore.getState();
+    const myId = useAuthStore.getState().user?.id ?? '';
+    const lines: RulerLine[] = [];
+    if (state.local) lines.push({ points: state.local, color: 0xfacc15 });
+    for (const ruler of Object.values(state.remote)) {
+      if (ruler.userId === myId) continue;
+      lines.push({ points: ruler.points, userName: ruler.userName, color: 0x60a5fa });
+    }
+    rendererRef.current?.setRulers(lines);
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    pushRulers();
+    const unsub = useRulerStore.subscribe(pushRulers);
+    const timer = window.setInterval(() => useRulerStore.getState().sweep(), 2000);
+    return () => {
+      unsub();
+      window.clearInterval(timer);
+    };
+  }, [ready, pushRulers]);
+
+  // Range rings follow the overlay toggle and the token it was armed on.
+  const pushRangeRings = useCallback(() => {
+    const renderer = rendererRef.current;
+    if (!renderer) return;
+    const overlay = useAttackStore.getState().overlay;
+    const current = useSceneStore.getState().effectiveScene;
+    const token = overlay ? useTokenStore.getState().tokens[overlay.tokenId] : undefined;
+    if (!overlay || !current || !token) {
+      renderer.setRangeRings(null, []);
+      return;
+    }
+    const perPixel = metresPerPixel(current);
+    if (perPixel <= 0) {
+      renderer.setRangeRings(null, []);
+      return;
+    }
+    const rings: RangeRing[] = [];
+    CPRED_RANGE_BANDS.forEach((band, index) => {
+      const dv = overlay.rangeDv[index];
+      if (dv === null || dv === undefined) return;
+      rings.push({ radiusPx: band.max / perPixel, label: `PT ${dv}` });
+    });
+    renderer.setRangeRings(tokenCentre(token, current), rings);
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    pushRangeRings();
+    const unsubAttack = useAttackStore.subscribe(pushRangeRings);
+    const unsubTokens = useTokenStore.subscribe(pushRangeRings);
+    const unsubScene = useSceneStore.subscribe(pushRangeRings);
+    return () => {
+      unsubAttack();
+      unsubTokens();
+      unsubScene();
+    };
+  }, [ready, pushRangeRings]);
+
+  // Keyboard: M arms the ruler, Space drops a waypoint mid-measurement, Esc
+  // puts both the ruler and the crosshair away.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
+      if (event.key === 'm' || event.key === 'M') {
+        useRulerStore.getState().toggleTool();
+        return;
+      }
+      if (event.key === ' ' && useRulerStore.getState().local) {
+        event.preventDefault();
+        rendererRef.current?.addRulerWaypoint();
+        return;
+      }
+      if (event.key === 'Escape') {
+        if (useAttackStore.getState().targeting) useAttackStore.getState().disarm();
+        if (useRulerStore.getState().toolActive) useRulerStore.getState().setToolActive(false);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   return (
     <section className="map-area">
       <div
@@ -174,6 +286,14 @@ export function MapArea() {
           Kliknij na mapie, aby postawić „{placement.name}” (Esc anuluje)
         </div>
       )}
+      {targeting && (
+        <div className="map-placement-hint map-placement-hint--attack">
+          {targeting.characterName} celuje: „{targeting.weaponName}”
+          {targeting.mode !== 'single' ? ` — ${targeting.mode === 'autofire' ? 'seria' : 'zapora'}` : ''}
+          {' — kliknij cel na mapie (Esc anuluje)'}
+        </div>
+      )}
+      <MapTools />
       <CombatBar />
       {menu && <TokenContextMenu menu={menu} onClose={() => setMenu(null)} />}
     </section>

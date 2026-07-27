@@ -11,18 +11,23 @@ import {
 import type {
   ArmorLocation,
   CpredArmorRow,
+  CpredAttackMode,
   CpredCharacterData,
   CpredItemRow,
+  CpredWeaponRow,
   PortraitUploadResult,
+  ResolvedWeapon,
 } from '@vtt/shared';
 import {
   ARMOR_LOCATIONS,
   ARMOR_LOCATION_LABELS,
   ARMOR_SP_MAX,
+  CPRED_BURST_AMMO_COST,
   CPRED_STAT_IDS,
   CPRED_STAT_LABELS,
   CPRED_STAT_MAX,
   CPRED_STAT_MIN,
+  CPRED_SUPPRESSIVE_RANGE_M,
   CPRED_WOUND_LABELS,
   ROLE_RANK_MAX,
   ROLE_RANK_MIN,
@@ -33,6 +38,8 @@ import {
   hpMax,
   humanityMax,
   isValidDamageNotation,
+  isWeaponEntry,
+  resolveWeapon,
   seriousWoundThreshold,
   skillBase,
   validateCharacterDataPatch,
@@ -40,7 +47,10 @@ import {
   woundState,
 } from '@vtt/shared';
 import { ApiError, apiUpload } from '../api.js';
-import { flushCharacterSave, queueCharacterSave } from '../socket.js';
+import { flushCharacterSave, queueCharacterSave, reloadWeapon } from '../socket.js';
+import { useAttackStore } from '../stores/attackStore.js';
+import { useCompendiumStore } from '../stores/compendiumStore.js';
+import { useTokenStore } from '../stores/tokenStore.js';
 import {
   ensureCpredDataLoaded,
   useCharacterStore,
@@ -672,6 +682,270 @@ function RowTable<T extends CpredItemRow>({
   );
 }
 
+/**
+ * The weapon list (stage 16). Beyond editing the row it is the place combat
+ * starts from: „Atak"/„Seria"/„Zapora" arm the map's crosshair, and the next
+ * click on a token loads the cup. Which buttons appear follows the weapon's
+ * catalogue entry — only a weapon whose type has autofire can fire a burst.
+ */
+function WeaponTable({
+  character,
+  data,
+  saveData,
+  startRoll,
+}: {
+  character: CharacterSheetView;
+  data: CpredCharacterData;
+  saveData: TabProps['saveData'];
+  startRoll: (target: Omit<RollTarget, 'characterId' | 'characterName'>, shift: boolean) => void;
+}) {
+  const entries = useCompendiumStore((s) => s.entries);
+  const weaponTypeById = useCompendiumStore((s) => s.weaponTypeById);
+  const tokens = useTokenStore((s) => s.tokens);
+
+  /** Catalogue stats of a row, or null for a hand-typed weapon. */
+  function resolvedOf(row: CpredWeaponRow): ResolvedWeapon | null {
+    const entry = row.compendiumId ? entries[row.compendiumId] : undefined;
+    if (!entry || !isWeaponEntry(entry)) return null;
+    return resolveWeapon(entry, { weaponTypeById: new Map(Object.entries(weaponTypeById)) });
+  }
+
+  function updateRow(rowId: string, patch: Partial<CpredWeaponRow>) {
+    saveData(
+      { weapons: data.weapons.map((row) => (row.id === rowId ? { ...row, ...patch } : row)) },
+      'weapons',
+    );
+  }
+
+  /** Draws (or hides) this weapon's DV bands around the character's token. */
+  function showRangeRings(row: CpredWeaponRow, resolved: ResolvedWeapon) {
+    const own = Object.values(tokens).find((token) => token.characterId === character.id);
+    if (!own || !resolved.rangeDv) return;
+    useAttackStore.getState().toggleOverlay({
+      tokenId: own.id,
+      weaponName: row.name,
+      rangeDv: resolved.rangeDv,
+      autofire: false,
+    });
+  }
+
+  /** Arms the map: the next click on a token fires this weapon. */
+  function aim(row: CpredWeaponRow, mode: CpredAttackMode, resolved: ResolvedWeapon | null) {
+    const own = Object.values(tokens).find((token) => token.characterId === character.id);
+    useAttackStore.getState().arm({
+      characterId: character.id,
+      characterName: character.name,
+      ...(own ? { attackerTokenId: own.id } : {}),
+      weaponRowId: row.id,
+      weaponName: row.name,
+      mode,
+      aimed: false,
+      modifier: 0,
+      melee: resolved?.melee ?? false,
+    });
+  }
+
+  return (
+    <div className="row-table-wrap">
+      <table className="sheet-table weapon-table">
+        <thead>
+          <tr>
+            <th>Nazwa</th>
+            <th style={{ width: '5.5rem' }}>Obrażenia</th>
+            <th style={{ width: '7rem' }}>Amunicja</th>
+            <th style={{ width: '3.5rem' }}>LA</th>
+            <th>Uwagi</th>
+            <th>Atak</th>
+            <th />
+          </tr>
+        </thead>
+        <tbody>
+          {data.weapons.map((row) => {
+            const resolved = resolvedOf(row);
+            const tracksAmmo = row.ammoMax > 0;
+            const empty = tracksAmmo && row.ammoCurrent <= 0;
+            return (
+              <tr key={row.id}>
+                <td>
+                  <input
+                    type="text"
+                    maxLength={64}
+                    value={row.name}
+                    onChange={(e) => updateRow(row.id, { name: e.target.value })}
+                  />
+                </td>
+                <td>
+                  <input
+                    type="text"
+                    maxLength={32}
+                    value={row.damage}
+                    onChange={(e) => updateRow(row.id, { damage: e.target.value })}
+                  />
+                </td>
+                <td className="weapon-ammo-cell">
+                  {tracksAmmo ? (
+                    <>
+                      <input
+                        type="number"
+                        className={`weapon-ammo-input${empty ? ' weapon-ammo-input--empty' : ''}`}
+                        min={0}
+                        max={row.ammoMax}
+                        value={row.ammoCurrent}
+                        aria-label={`Stan magazynka: ${row.name}`}
+                        onChange={(e) => {
+                          const value = parseNumberInput(e);
+                          if (value !== undefined) {
+                            updateRow(row.id, { ammoCurrent: Math.min(value, row.ammoMax) });
+                          }
+                        }}
+                      />
+                      <span className="weapon-ammo-max">/{row.ammoMax}</span>
+                      <button
+                        type="button"
+                        className="small-button"
+                        disabled={row.ammoCurrent >= row.ammoMax}
+                        title={`Przeładuj do pełna${row.ammoType ? ` (${row.ammoType})` : ''}`}
+                        onClick={() => reloadWeapon(character.id, row.id)}
+                      >
+                        ⟳
+                      </button>
+                    </>
+                  ) : (
+                    <span className="weapon-ammo-none" title="Ta broń nie liczy amunicji">
+                      —
+                    </span>
+                  )}
+                </td>
+                <td>
+                  <input
+                    type="text"
+                    maxLength={32}
+                    value={row.rof}
+                    onChange={(e) => updateRow(row.id, { rof: e.target.value })}
+                  />
+                </td>
+                <td>
+                  <input
+                    type="text"
+                    maxLength={200}
+                    value={row.notes}
+                    onChange={(e) => updateRow(row.id, { notes: e.target.value })}
+                  />
+                </td>
+                <td className="weapon-actions">
+                  <button
+                    type="button"
+                    className="small-button"
+                    disabled={empty}
+                    title={
+                      empty
+                        ? 'Pusty magazynek — przeładuj'
+                        : resolved?.melee
+                          ? 'Atak wręcz — wskaż cel na mapie (do 2 m)'
+                          : 'Atak — wskaż cel na mapie'
+                    }
+                    onClick={() => aim(row, 'single', resolved)}
+                  >
+                    Atak
+                  </button>
+                  {resolved?.autofire && (
+                    <button
+                      type="button"
+                      className="small-button"
+                      disabled={row.ammoCurrent < CPRED_BURST_AMMO_COST}
+                      title={`Ogień ciągły — ${CPRED_BURST_AMMO_COST} naboi, obrażenia 2k6 × przerzut (do ×${resolved.autofire.max})`}
+                      onClick={() => aim(row, 'autofire', resolved)}
+                    >
+                      Seria
+                    </button>
+                  )}
+                  {resolved?.suppressive && (
+                    <button
+                      type="button"
+                      className="small-button"
+                      disabled={row.ammoCurrent < CPRED_BURST_AMMO_COST}
+                      title={`Ogień zaporowy — ${CPRED_BURST_AMMO_COST} naboi, testy SW u wszystkich w ${CPRED_SUPPRESSIVE_RANGE_M} m`}
+                      onClick={() => aim(row, 'suppressive', resolved)}
+                    >
+                      Zapora
+                    </button>
+                  )}
+                  {resolved?.rangeDv && (
+                    <button
+                      type="button"
+                      className="small-button"
+                      title="Pokaż pierścienie przedziałów PT wokół swojego tokenu (kliknij ponownie, by schować)"
+                      onClick={() => showRangeRings(row, resolved)}
+                    >
+                      ◎
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="small-button"
+                    disabled={!isValidDamageNotation(row.damage)}
+                    title={
+                      isValidDamageNotation(row.damage)
+                        ? 'Sam rzut na obrażenia, bez testu trafienia (Shift — bez okna)'
+                        : 'Uzupełnij obrażenia notacją kości, np. 3k6'
+                    }
+                    onClick={(event: MouseEvent) =>
+                      startRoll({ kind: 'damage', weaponRowId: row.id }, event.shiftKey)
+                    }
+                  >
+                    OBR.
+                  </button>
+                </td>
+                <td>
+                  <button
+                    type="button"
+                    className="small-button character-delete"
+                    onClick={() =>
+                      saveData(
+                        { weapons: data.weapons.filter((r) => r.id !== row.id) },
+                        'weapons',
+                      )
+                    }
+                    title="Usuń wiersz"
+                  >
+                    ✕
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      <button
+        type="button"
+        className="small-button"
+        onClick={() =>
+          saveData(
+            {
+              weapons: [
+                ...data.weapons,
+                {
+                  id: newRowId(),
+                  name: '',
+                  damage: '',
+                  ammoCurrent: 0,
+                  ammoMax: 0,
+                  ammoType: '',
+                  rof: '',
+                  notes: '',
+                },
+              ],
+            },
+            'weapons',
+          )
+        }
+      >
+        Dodaj broń
+      </button>
+    </div>
+  );
+}
+
 function CombatTab({ character, data, saveData }: TabProps & { character: CharacterSheetView }) {
   const registry = useCharacterStore((s) => s.registry);
 
@@ -689,39 +963,7 @@ function CombatTab({ character, data, saveData }: TabProps & { character: Charac
   return (
     <div className="sheet-combat">
       <h3>Broń</h3>
-      <RowTable
-        rows={data.weapons}
-        columns={[
-          { key: 'name', label: 'Nazwa' },
-          { key: 'damage', label: 'Obrażenia', maxLength: 32, width: '5.5rem' },
-          { key: 'ammo', label: 'Amunicja', maxLength: 32, width: '5.5rem' },
-          { key: 'rof', label: 'LA', maxLength: 32, width: '3.5rem' },
-          { key: 'notes', label: 'Uwagi', maxLength: 200 },
-        ]}
-        addLabel="Dodaj broń"
-        makeRow={() => ({ id: newRowId(), name: '', damage: '', ammo: '', rof: '', notes: '' })}
-        onChange={(rows) => saveData({ weapons: rows }, 'weapons')}
-        action={{
-          label: 'Rzut',
-          render: (row) => (
-            <button
-              type="button"
-              className="small-button"
-              disabled={!isValidDamageNotation(row.damage)}
-              title={
-                isValidDamageNotation(row.damage)
-                  ? 'Rzut na obrażenia (Shift — bez okna, w korpus)'
-                  : 'Uzupełnij obrażenia notacją kości, np. 3k6'
-              }
-              onClick={(event: MouseEvent) =>
-                startRoll({ kind: 'damage', weaponRowId: row.id }, event.shiftKey)
-              }
-            >
-              OBR.
-            </button>
-          ),
-        }}
-      />
+      <WeaponTable character={character} data={data} saveData={saveData} startRoll={startRoll} />
 
       <h3>Pancerz</h3>
       <ArmorTable data={data} saveData={saveData} />

@@ -164,6 +164,54 @@ export interface RollDamageMeta {
   weaponName?: string;
   /** True when armor stops none of this damage. */
   ignoreArmor?: boolean;
+  /**
+   * Factor applied to the rolled total before armor (CP RED autofire: 2d6
+   * times how far the attack beat its DV). Absent means ×1. The dice are
+   * *not* multiplied — the rules roll two dice and multiply the sum, which
+   * also keeps „two sixes = Critical Injury" reading the same two dice.
+   */
+  multiplier?: number;
+  /** Token this damage is meant for, so „Zastosuj" preselects it (stage 16). */
+  targetTokenId?: string;
+}
+
+/** Rolled total after the damage multiplier — what actually hits the target. */
+export function damageTotal(roll: Pick<RollResult, 'total' | 'damage'>): number {
+  return roll.total * (roll.damage?.multiplier ?? 1);
+}
+
+/**
+ * An attack a roll resolved, so the chat card can show the verdict and offer
+ * the follow-up damage roll (stage 16). Like `RollDamageMeta`, this stays
+ * opaque: the engine judges nothing here, it only carries what the system
+ * module (CP RED) computed, plus the labels the card prints.
+ */
+export interface RollAttackMeta {
+  /** Everything the system needs to chain the damage roll, as it defined it. */
+  system: Record<string, unknown>;
+  /** „Militech M-10AF → Ganger" — headline of the card. */
+  label: string;
+  /** „24 m (13–25 m) · PT 15" — the line explaining where the DV came from. */
+  detail: string;
+  /** Whether the attack landed; absent when the roll sets a DV for others. */
+  hit?: boolean;
+  /** Token the attack was aimed at, so „Zastosuj" can preselect it. */
+  targetTokenId?: string;
+  /** Follow-up damage the card offers, when the attack landed. */
+  damageNotation?: string;
+  /** Factor the follow-up damage is multiplied by (autofire). */
+  damageMultiplier?: number;
+  /** True once the defender contested the attack — it may only be done once. */
+  evaded?: boolean;
+  /** Results of checks the attack forced on others (suppressive fire). */
+  forcedChecks?: RollForcedCheck[];
+}
+
+/** One target's forced check — the card lists them under the attack. */
+export interface RollForcedCheck {
+  name: string;
+  detail: string;
+  success: boolean;
 }
 
 export interface RollResult {
@@ -190,6 +238,8 @@ export interface RollResult {
   outcome?: RollOutcome;
   /** Applicable damage, when the roll was a weapon's damage (stage 15). */
   damage?: RollDamageMeta;
+  /** Attack verdict, when the roll was an attack (stage 16). */
+  attack?: RollAttackMeta;
   total: number;
   /**
    * Presentation metadata attached by the server when the roll was thrown

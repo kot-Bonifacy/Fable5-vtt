@@ -199,7 +199,16 @@ describe('planCpredRoll', () => {
 });
 
 describe('planCpredRoll — damage (stage 15)', () => {
-  const weapon = { id: 'w1', name: 'Zgrzyt-9', notes: '', damage: '3k6', ammo: '8', rof: '2' };
+  const weapon = {
+    id: 'w1',
+    name: 'Zgrzyt-9',
+    notes: '',
+    damage: '3k6',
+    ammoCurrent: 8,
+    ammoMax: 8,
+    ammoType: 'Ś. Pistolet',
+    rof: '2',
+  };
 
   it('rolls the weapon row’s notation, with no check rule and no wound penalty', () => {
     const data = sheet({ hpCurrent: 0, weapons: [weapon] });

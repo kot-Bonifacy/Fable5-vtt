@@ -162,6 +162,14 @@ MANUAL_RANGE_ROWS: dict[str, list[str]] = {
     "Wyrzutnie Rakiet": ["rocket launcher"],
 }
 
+# Row label of the autofire DV table -> the weapon types that read from it.
+# Only the two rows the rulebook prints: autofire is a property of SMGs and
+# assault rifles, and the table stops at 100 m (five bands, not eight).
+MANUAL_AUTOFIRE_ROWS: dict[str, list[str]] = {
+    "PM-y": ["submachine gun", "heavy submachine gun"],
+    "Karabiny szturmowe": ["assault rifle"],
+}
+
 # The Polish edition names two armor pieces differently from the DLC glossary
 # above („Skóry" vs „Kurtka skórzana"); the rulebook wording wins on the card.
 MANUAL_ARMOR_ROWS: dict[str, str] = {

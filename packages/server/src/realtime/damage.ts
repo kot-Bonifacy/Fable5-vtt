@@ -6,7 +6,7 @@ import type {
   RollResult,
   TokenHp,
 } from '@vtt/shared';
-import { ARMOR_SP_MAX, ROLE_GM } from '@vtt/shared';
+import { ARMOR_SP_MAX, ROLE_GM, damageTotal } from '@vtt/shared';
 import type { Character, Token } from '../generated/prisma/client.js';
 import {
   applyDamageToSheet,
@@ -124,7 +124,9 @@ export const damageApplyEvent = defineEvent<DamageApplyPayload, { messageId: num
     }
 
     const request: SheetDamageRequest = {
-      damage: roll.total,
+      // Autofire rolls 2d6 and multiplies the sum (stage 16); the factor is
+      // read off the stored roll, never off the client's request.
+      damage: damageTotal(roll),
       criticalInjury: roll.criticalDamage === true,
       location,
       ...(payload?.armorSp !== undefined ? { armorSp: payload.armorSp } : {}),

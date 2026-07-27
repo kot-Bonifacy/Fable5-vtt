@@ -113,6 +113,20 @@ export function rangeBandLabel(band: (typeof CPRED_RANGE_BANDS)[number]): string
 export type RangeDvTable = (number | null)[];
 
 /**
+ * Autofire (stage 16). The rulebook gives bursts their own DV table — which
+ * stops at 100 m, so the last three bands are always `null` — and caps the
+ * damage multiplier per weapon type (3 for SMGs, 4 for assault rifles).
+ */
+export interface AutofireProfile {
+  /** Highest multiplier the burst's damage may reach. */
+  max: number;
+  rangeDv: RangeDvTable;
+}
+
+/** Upper bound of the autofire multiplier cap; guards imported data. */
+export const AUTOFIRE_MAX_MULTIPLIER = 10;
+
+/**
  * DV for a shot at `metres`, or null when out of range / unknown. Stage 16
  * calls this with the measured distance between two tokens.
  */
@@ -148,6 +162,12 @@ export interface WeaponTypeDefinition {
   melee: boolean;
   /** DV per range band; omitted for melee weapons. */
   rangeDv?: RangeDvTable;
+  /** Present only on weapons that can fire bursts. */
+  autofire?: AutofireProfile;
+  /** True when the weapon can lay down suppressive fire. */
+  suppressive?: boolean;
+  /** Cartridge the magazine takes ("Karabinowa") — copied onto the sheet. */
+  ammunition?: string;
   /** Caveats from the import, e.g. damage that scales with the wielder. */
   description?: string;
   /** Where the numbers came from — shown in the UI as a provenance note. */
@@ -703,6 +723,27 @@ function validateCyberware(
   return cyberware;
 }
 
+/** A DV table read off a data file: exactly one slot per band, `null` for „Nd.". */
+function readRangeDvTable(raw: unknown): RangeDvTable | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  return CPRED_RANGE_BANDS.map((_, index) => {
+    const value = raw[index];
+    return isInteger(value) ? value : null;
+  });
+}
+
+/** An autofire profile is only usable with both a cap and a reachable band. */
+function readAutofireProfile(raw: unknown): AutofireProfile | undefined {
+  if (typeof raw !== 'object' || raw === null) return undefined;
+  const input = raw as Record<string, unknown>;
+  if (!isInteger(input.max) || input.max < 1 || input.max > AUTOFIRE_MAX_MULTIPLIER) {
+    return undefined;
+  }
+  const rangeDv = readRangeDvTable(input.rangeDv);
+  if (!rangeDv || rangeDv.every((value) => value === null)) return undefined;
+  return { max: input.max, rangeDv };
+}
+
 function validateWeaponType(raw: unknown): WeaponTypeDefinition | undefined {
   if (typeof raw !== 'object' || raw === null) return undefined;
   const input = raw as Record<string, unknown>;
@@ -715,12 +756,8 @@ function validateWeaponType(raw: unknown): WeaponTypeDefinition | undefined {
     isInteger(input.magazine) && input.magazine >= 0 && input.magazine <= WEAPON_MAGAZINE_MAX
       ? input.magazine
       : null;
-  const rangeDv = Array.isArray(input.rangeDv)
-    ? CPRED_RANGE_BANDS.map((_, index) => {
-        const value = (input.rangeDv as unknown[])[index];
-        return isInteger(value) ? value : null;
-      })
-    : undefined;
+  const rangeDv = readRangeDvTable(input.rangeDv);
+  const autofire = readAutofireProfile(input.autofire);
   return {
     id: input.id,
     name: input.name,
@@ -734,6 +771,11 @@ function validateWeaponType(raw: unknown): WeaponTypeDefinition | undefined {
     ...(isInteger(input.attachmentSlots) ? { attachmentSlots: input.attachmentSlots } : {}),
     melee,
     ...(rangeDv && !melee ? { rangeDv } : {}),
+    ...(autofire && !melee ? { autofire } : {}),
+    ...(input.suppressive === true && !melee ? { suppressive: true as const } : {}),
+    ...(typeof input.ammunition === 'string' && input.ammunition.length > 0
+      ? { ammunition: input.ammunition.slice(0, COMPENDIUM_NAME_MAX_LENGTH) }
+      : {}),
     ...(typeof input.description === 'string'
       ? { description: input.description.slice(0, COMPENDIUM_DESCRIPTION_MAX_LENGTH) }
       : {}),
@@ -779,6 +821,10 @@ export interface ResolvedWeapon {
   attachmentSlots: number;
   skillId: string | null;
   rangeDv?: RangeDvTable;
+  autofire?: AutofireProfile;
+  suppressive?: boolean;
+  /** Cartridge the type takes; empty when the weapon counts no rounds. */
+  ammoType?: string;
   typeName?: string;
   melee: boolean;
 }
@@ -797,6 +843,9 @@ export function resolveWeapon(
     attachmentSlots: weapon.attachmentSlots ?? type?.attachmentSlots ?? 0,
     skillId: type?.skillId ?? null,
     ...(type?.rangeDv ? { rangeDv: type.rangeDv } : {}),
+    ...(type?.autofire ? { autofire: type.autofire } : {}),
+    ...(type?.suppressive ? { suppressive: true as const } : {}),
+    ...(type?.ammunition ? { ammoType: type.ammunition } : {}),
     ...(type ? { typeName: type.name } : {}),
     melee: type?.melee ?? false,
   };

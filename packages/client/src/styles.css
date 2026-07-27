@@ -3107,3 +3107,124 @@ body.is-resizing {
 .combat-bar-death-save:hover {
   background: rgb(255 59 48 / 25%);
 }
+
+/* --- stage 16: ranged combat, ruler, range rings --- */
+
+/* Map toolbar: the ruler and the range-ring toggle, above the canvas. */
+.map-tools {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  display: flex;
+  gap: 0.3rem;
+  z-index: 20;
+}
+
+.map-tool {
+  width: 2rem;
+  height: 2rem;
+  display: grid;
+  place-items: center;
+  background: rgb(15 18 25 / 85%);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.map-tool:hover {
+  border-color: var(--accent, #38bdf8);
+}
+
+.map-tool--active {
+  border-color: var(--accent, #38bdf8);
+  background: rgb(56 189 248 / 20%);
+}
+
+/* „X celuje…" — same banner as token placement, in the attack colour. It has
+   to sit above the floating sheets: the click that armed it came from one. */
+.map-placement-hint--attack {
+  border-color: var(--err);
+  z-index: 400;
+}
+
+/* An attack loaded into the cup reads as dangerous, not as a plain check. */
+.dice-cup--attack {
+  --cup-glow: 255 59 48;
+  color: var(--err);
+  border-color: var(--err);
+  animation: dice-cup-pulse 1.2s ease-in-out infinite;
+}
+
+/* Weapon rows carry more controls than the generic row table. */
+.weapon-ammo-cell {
+  white-space: nowrap;
+}
+
+.weapon-ammo-input {
+  width: 2.8rem;
+  text-align: right;
+}
+
+.weapon-ammo-input--empty {
+  color: var(--err);
+  border-color: var(--err);
+}
+
+.weapon-ammo-max {
+  color: var(--text-dim);
+  margin: 0 0.25rem 0 0.1rem;
+}
+
+.weapon-ammo-none {
+  color: var(--text-dim);
+}
+
+.weapon-actions {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+/* The attack card under a roll on the chat. */
+.chat-attack {
+  margin-top: 0.35rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--border);
+}
+
+.chat-attack-detail {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+}
+
+.chat-roll-badge--suppressive {
+  background: rgb(56 189 248 / 15%);
+  color: var(--accent, #38bdf8);
+}
+
+.chat-attack-checks {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.8rem;
+}
+
+.chat-attack-check--held {
+  color: var(--ok);
+}
+
+.chat-attack-check--pinned {
+  color: var(--err);
+}
+
+.chat-attack-actions {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  margin-top: 0.4rem;
+}

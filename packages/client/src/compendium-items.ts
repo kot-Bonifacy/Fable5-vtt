@@ -37,7 +37,11 @@ export async function addCompendiumItemToCharacter(
           ...base,
           notes: (entry.features ?? []).join(', ').slice(0, 200),
           damage: resolved?.damage ?? '',
-          ammo: resolved?.magazine === null || resolved === null ? '' : String(resolved.magazine),
+          // A bought weapon arrives loaded; a weapon whose type tracks no
+          // magazine (melee, bows) gets a zero counter the sheet hides.
+          ammoCurrent: resolved?.magazine ?? 0,
+          ammoMax: resolved?.magazine ?? 0,
+          ammoType: resolved?.ammoType ?? '',
           rof: resolved ? String(resolved.rof) : '',
         },
       ];

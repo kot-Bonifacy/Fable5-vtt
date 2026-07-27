@@ -35,7 +35,7 @@ import { sanitizeGesture } from './chat.js';
  */
 
 /** Rolling a character requires owning it (the GM may roll anything). */
-async function requireRollableCharacter(
+export async function requireRollableCharacter(
   deps: RealtimeDeps,
   campaignId: string,
   user: SessionUser,
@@ -121,6 +121,47 @@ async function markTokensDead(
 /** Status id from `data/public/cpred/statuses.json`. */
 const DEAD_STATUS_ID = 'dead';
 
+/**
+ * Fills in the parts of a damage request that follow from an attack (stage 16).
+ *
+ * The client sends `attackMessageId` and nothing else about the damage; the
+ * notation, the autofire multiplier, the hit location and the target all come
+ * off the stored attack, so nobody can roll a ×4 burst that never happened.
+ */
+async function resolveRollRequest(
+  deps: RealtimeDeps,
+  campaignId: string,
+  raw: CpredRollRequest | undefined,
+): Promise<CpredRollRequest> {
+  const request: CpredRollRequest = { ...(raw ?? ({} as CpredRollRequest)) };
+  // Never trust these off the wire — they are server-filled by design.
+  delete request.damageNotation;
+  delete request.damageMultiplier;
+  delete request.targetTokenId;
+  if (request.kind !== 'damage' || request.attackMessageId === undefined) return request;
+
+  if (!Number.isInteger(request.attackMessageId)) throw new RealtimeError('BAD_REQUEST');
+  const message = await deps.ctx.prisma.chatMessage.findUnique({
+    where: { id: request.attackMessageId },
+  });
+  if (!message || message.campaignId !== campaignId || !message.payload) {
+    throw new RealtimeError('MESSAGE_NOT_FOUND');
+  }
+  const roll = JSON.parse(message.payload) as RollResult;
+  const attack = roll.attack;
+  if (!attack || attack.hit !== true) throw new RealtimeError('NOT_A_HIT');
+
+  const system = attack.system as { location?: unknown; weaponRowId?: unknown };
+  return {
+    ...request,
+    ...(typeof system.weaponRowId === 'string' ? { weaponRowId: system.weaponRowId } : {}),
+    ...(system.location === 'head' ? { location: 'head' as const } : { location: 'body' as const }),
+    ...(attack.damageNotation ? { damageNotation: attack.damageNotation } : {}),
+    ...(attack.damageMultiplier ? { damageMultiplier: attack.damageMultiplier } : {}),
+    ...(attack.targetTokenId ? { targetTokenId: attack.targetTokenId } : {}),
+  };
+}
+
 export const characterRollEvent = defineEvent<
   CharacterRollPayload<CpredRollRequest>,
   { messageId: number }
@@ -133,7 +174,8 @@ export const characterRollEvent = defineEvent<
 
     const registry = deps.ctx.cpred;
     const data = parseCharacterData(character.data, registry);
-    const planned = planCpredRoll(data, registry, payload?.request ?? ({} as CpredRollRequest));
+    const request = await resolveRollRequest(deps, campaign.id, payload?.request);
+    const planned = planCpredRoll(data, registry, request);
     if (!planned.ok) throw new RealtimeError(planned.error);
     const { plan } = planned;
 
@@ -168,6 +210,8 @@ export const characterRollEvent = defineEvent<
         locationLabel: hitLocationLabel(plan.damage.location),
         weaponName: plan.damage.weaponName,
         ...(plan.damage.ignoreArmor ? { ignoreArmor: true } : {}),
+        ...(plan.damage.multiplier ? { multiplier: plan.damage.multiplier } : {}),
+        ...(plan.damage.targetTokenId ? { targetTokenId: plan.damage.targetTokenId } : {}),
       };
     }
 

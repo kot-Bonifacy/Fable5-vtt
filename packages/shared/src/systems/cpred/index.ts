@@ -6,3 +6,4 @@ export * from './rolls.js';
 export * from './ids.js';
 export * from './compendium.js';
 export * from './damage.js';
+export * from './attacks.js';

@@ -7,6 +7,8 @@ import type {
   AiQueueBroadcast,
   AiStatus,
   AiStatusBroadcast,
+  AttackEvadePayload,
+  AttackRollPayload,
   BotActivityBroadcast,
   BotChatPayload,
   BotChunkBroadcast,
@@ -32,6 +34,7 @@ import type {
   CompendiumDeleteBroadcast,
   CompendiumEntry,
   CompendiumUpsertBroadcast,
+  CpredAttackRequest,
   CpredRollRequest,
   ChatHistoryPage,
   ChatMessageBroadcast,
@@ -40,12 +43,17 @@ import type {
   DamageUndoPayload,
   PresenceBroadcast,
   RollGesture,
+  RulerBroadcast,
+  RulerClearBroadcast,
+  RulerClearPayload,
+  RulerUpdatePayload,
   SceneActivateBroadcast,
   SceneListBroadcast,
   ScenePatch,
   SceneUpdateBroadcast,
   SceneView,
   SceneViewBroadcast,
+  ScenePoint,
   ServerHello,
   SocketAck,
   SpeechPreviewPayload,
@@ -59,9 +67,11 @@ import type {
   RollParseError,
   TokenUpsertBroadcast,
   TokenView,
+  WeaponReloadPayload,
 } from '@vtt/shared';
 import {
   CHAT_COMMANDS_HELP,
+  CPRED_ATTACK_PROBLEM_MESSAGES,
   MAX_DICE_PER_TERM,
   MAX_DIE_SIDES,
   MAX_ROLL_TERMS,
@@ -82,10 +92,15 @@ import { useCompendiumStore } from './stores/compendiumStore.js';
 import { useAiStore } from './stores/aiStore.js';
 import { useBotStore } from './stores/botStore.js';
 import { useCombatStore } from './stores/combatStore.js';
+import { useRulerStore } from './stores/rulerStore.js';
 
 let socket: Socket | undefined;
 /** User the live socket authenticated as — a different one forces a reconnect. */
 let connectedUserId: string | null = null;
+
+/** Ruler updates per second while dragging — presentation, not state. */
+const RULER_RATE_HZ = 20;
+let lastRulerSentAt = 0;
 
 /** Extra time after the dice settle before the chat card spoils the total. */
 const CARD_REVEAL_DELAY_MS = 2500;
@@ -406,6 +421,16 @@ export function connectSocket(userId: string): Socket {
     }
   });
 
+  // Rulers are ephemeral like intermediate drags: no seq, never resynced.
+  socket.on('ruler:update', (broadcast: RulerBroadcast) => {
+    if (!viewingScene(broadcast.sceneId)) return;
+    useRulerStore.getState().receive(broadcast);
+  });
+
+  socket.on('ruler:clear', (broadcast: RulerClearBroadcast) => {
+    useRulerStore.getState().drop(broadcast.userId);
+  });
+
   return socket;
 }
 
@@ -530,6 +555,105 @@ export function undoDamage(messageId: number): void {
   socket?.emit('damage:undo', payload, (ack: SocketAck) => {
     if (!ack.ok) useChatStore.getState().addNote(damageAckErrorText(ack.error));
   });
+}
+
+/** Polish hints for attack rejections (stage 16). */
+function attackAckErrorText(code: string): string {
+  const known = CPRED_ATTACK_PROBLEM_MESSAGES[code as keyof typeof CPRED_ATTACK_PROBLEM_MESSAGES];
+  if (known) return known;
+  switch (code) {
+    case 'TOKEN_NOT_FOUND':
+      return 'Nie ma takiego celu na scenie.';
+    case 'ATTACKER_NOT_ON_SCENE':
+      return 'Ta postać nie ma tokenu na tej scenie.';
+    case 'ATTACKER_NOT_LINKED':
+      return 'Ten token nie należy do tej postaci.';
+    case 'ATTACKER_ON_OTHER_SCENE':
+      return 'Atakujący stoi na innej scenie.';
+    case 'CHARACTER_NOT_FOUND':
+      return 'Nie możesz atakować tą postacią.';
+    case 'NOT_THE_TARGET':
+      return 'Unikać może tylko cel ataku.';
+    case 'ALREADY_EVADED':
+      return 'Ten atak został już zakwestionowany unikiem.';
+    case 'NOT_AN_ATTACK':
+      return 'Ten wpis nie jest atakiem.';
+    case 'WEAPON_HAS_NO_MAGAZINE':
+      return 'Ta broń nie ma magazynka do przeładowania.';
+    default:
+      return `Błąd ataku: ${code}`;
+  }
+}
+
+/**
+ * Fires from the map. The client names the target token and the weapon; the
+ * server measures the distance between the tokens and derives the DV — that is
+ * why no distance travels here.
+ */
+export function sendAttackRoll(
+  characterId: string,
+  targetTokenId: string,
+  request: CpredAttackRequest,
+  attackerTokenId?: string,
+  gesture?: RollGesture,
+): void {
+  const payload: AttackRollPayload<CpredAttackRequest> = {
+    characterId,
+    targetTokenId,
+    request,
+    ...(attackerTokenId ? { attackerTokenId } : {}),
+    ...(gesture ? { gesture } : {}),
+  };
+  socket?.emit('attack:roll', payload, (ack: SocketAck<{ messageId: number }>) => {
+    if (!ack.ok) useChatStore.getState().addNote(attackAckErrorText(ack.error));
+  });
+}
+
+/** The defender contests an attack: the DV is replaced by a real Evasion roll. */
+export function sendAttackEvade(
+  messageId: number,
+  characterId: string,
+  gesture?: RollGesture,
+): void {
+  const payload: AttackEvadePayload = {
+    messageId,
+    characterId,
+    ...(gesture ? { gesture } : {}),
+  };
+  socket?.emit('attack:evade', payload, (ack: SocketAck<{ total: number; hit: boolean }>) => {
+    if (!ack.ok) useChatStore.getState().addNote(attackAckErrorText(ack.error));
+  });
+}
+
+/** Reloads a weapon row to a full magazine (an Action at the table). */
+export function reloadWeapon(characterId: string, weaponRowId: string): void {
+  const payload: WeaponReloadPayload = { characterId, weaponRowId };
+  socket?.emit('weapon:reload', payload, (ack: SocketAck<{ ammo: number }>) => {
+    if (!ack.ok) useChatStore.getState().addNote(attackAckErrorText(ack.error));
+  });
+}
+
+/**
+ * Streams the ruler while it is being dragged. Throttled like token drags —
+ * a measurement is presentation, not state, and nobody needs 120 Hz of it.
+ */
+export function sendRuler(sceneId: string, points: ScenePoint[], isPrivate: boolean): void {
+  const now = Date.now();
+  if (now - lastRulerSentAt < 1000 / RULER_RATE_HZ) return;
+  lastRulerSentAt = now;
+  const payload: RulerUpdatePayload = {
+    sceneId,
+    points,
+    ...(isPrivate ? { private: true } : {}),
+  };
+  socket?.emit('ruler:update', payload);
+}
+
+/** Tells the other viewers the measurement is over. */
+export function clearRuler(sceneId: string): void {
+  lastRulerSentAt = 0;
+  const payload: RulerClearPayload = { sceneId };
+  socket?.emit('ruler:clear', payload);
 }
 
 /**

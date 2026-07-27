@@ -162,6 +162,41 @@ export interface DamageUndoPayload {
   messageId: number;
 }
 
+/**
+ * An attack made from the map (stage 16). Like every other roll, the client
+ * sends an intention only: who attacks, with which weapon and at which token.
+ * The distance is *measured on the server* from the two tokens' positions —
+ * it is never sent, precisely because it decides the difficulty.
+ */
+export interface AttackRollPayload<TRequest = unknown> {
+  characterId: string;
+  targetTokenId: string;
+  /** Which of the character's tokens is shooting; derived when omitted. */
+  attackerTokenId?: string;
+  request: TRequest;
+  /** Present when the roll was thrown with the dice cup. */
+  gesture?: RollGesture;
+}
+
+/**
+ * The defender contests an attack that already resolved (stage 16): the DV
+ * from the range table is replaced by a real DEX + Evasion roll, and the
+ * attack's chat card is rewritten with the new verdict.
+ */
+export interface AttackEvadePayload {
+  /** Chat message id of the attack. */
+  messageId: number;
+  /** Sheet rolling the evasion; must own the targeted token. */
+  characterId: string;
+  gesture?: RollGesture;
+}
+
+/** Reloading a weapon row to a full magazine (an Action at the table). */
+export interface WeaponReloadPayload {
+  characterId: string;
+  weaponRowId: string;
+}
+
 /** Client → server payload of `chat:history`. */
 export interface ChatHistoryRequest {
   /** Return messages with id lower than this (exclusive). */
