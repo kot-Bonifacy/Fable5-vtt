@@ -11,7 +11,7 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   prettier,
   {
-    files: ['scripts/**/*.mjs'],
+    files: ['scripts/**/*.mjs', 'tools/**/*.mjs'],
     languageOptions: { globals: globals.node },
   },
   {
