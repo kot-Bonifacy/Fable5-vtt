@@ -49,6 +49,11 @@ interface ChatStoreState {
   applyMessage: (broadcast: ChatMessageBroadcast, hold?: boolean) => boolean;
   /** Moves a held message into the feed (in id order). */
   revealMessage: (id: number) => void;
+  /**
+   * Replaces a message already in the feed (stage 15: the GM takes back an
+   * applied damage entry). Returns true when a seq gap was detected.
+   */
+  updateMessage: (broadcast: ChatMessageBroadcast) => boolean;
   setDraft: (draft: string) => void;
   /** Returns true when a seq gap was detected and a resync is needed. */
   applyPresence: (broadcast: PresenceBroadcast) => boolean;
@@ -157,6 +162,26 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
       held: state.held.filter((m) => m.id !== id),
       items: hasMessage(state.items, id) ? state.items : insertByIdOrder(state.items, message),
     });
+  },
+
+  updateMessage: (broadcast) => {
+    const state = get();
+    const { resync, seq } = advanceSeq(state, broadcast.seq);
+    if (resync) {
+      set({ synced: false });
+      return true;
+    }
+    const { message } = broadcast;
+    set({
+      seq,
+      items: state.items.map((item) =>
+        item.type === 'message' && item.message.id === message.id
+          ? { type: 'message', message }
+          : item,
+      ),
+      held: state.held.map((held) => (held.id === message.id ? message : held)),
+    });
+    return false;
   },
 
   setDraft: (draft) => set({ draft }),

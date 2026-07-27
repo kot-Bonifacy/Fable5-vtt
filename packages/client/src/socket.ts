@@ -36,6 +36,8 @@ import type {
   ChatHistoryPage,
   ChatMessageBroadcast,
   ChatSendPayload,
+  DamageApplyPayload,
+  DamageUndoPayload,
   PresenceBroadcast,
   RollGesture,
   SceneActivateBroadcast,
@@ -327,6 +329,11 @@ export function connectSocket(userId: string): Socket {
       });
     }
   });
+  // A message that changed after the fact (stage 15: the GM took an applied
+  // damage entry back) — replaced in place, never appended again.
+  socket.on('chat:update', (broadcast: ChatMessageBroadcast) => {
+    if (chat().updateMessage(broadcast)) socket?.emit('state:request');
+  });
   socket.on('presence:update', (broadcast: PresenceBroadcast) => {
     if (chat().applyPresence(broadcast)) socket?.emit('state:request');
   });
@@ -487,6 +494,41 @@ export function sendCharacterRoll(
   };
   socket?.emit('character:roll', payload, (ack: SocketAck<{ messageId: number }>) => {
     if (!ack.ok) useChatStore.getState().addNote(rollAckErrorText(ack.error));
+  });
+}
+
+/** Polish hints for the damage rejections (GM-only actions, stage 15). */
+function damageAckErrorText(code: string): string {
+  switch (code) {
+    case 'MESSAGE_NOT_FOUND':
+      return 'Nie znalazłem tego rzutu na czacie.';
+    case 'NOT_A_DAMAGE_ROLL':
+      return 'Ten wpis nie jest rzutem na obrażenia.';
+    case 'TOKEN_NOT_FOUND':
+      return 'Nie ma takiego tokenu na scenie.';
+    case 'TOKEN_HAS_NO_HP':
+      return 'Ten token nie ma PW — powiąż go z kartą albo ustaw PW w menu tokenu.';
+    case 'ALREADY_UNDONE':
+      return 'To rozliczenie zostało już cofnięte.';
+    case 'FORBIDDEN':
+      return 'Obrażenia rozlicza MG.';
+    default:
+      return `Błąd rozliczenia obrażeń: ${code}`;
+  }
+}
+
+/** GM applies a rolled damage total to a token (server recomputes everything). */
+export function applyDamage(payload: DamageApplyPayload): void {
+  socket?.emit('damage:apply', payload, (ack: SocketAck<{ messageId: number }>) => {
+    if (!ack.ok) useChatStore.getState().addNote(damageAckErrorText(ack.error));
+  });
+}
+
+/** GM takes back an applied damage entry (HP, armor and injury are restored). */
+export function undoDamage(messageId: number): void {
+  const payload: DamageUndoPayload = { messageId };
+  socket?.emit('damage:undo', payload, (ack: SocketAck) => {
+    if (!ack.ok) useChatStore.getState().addNote(damageAckErrorText(ack.error));
   });
 }
 

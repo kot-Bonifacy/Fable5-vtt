@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CPRED_SCHEMA_VERSION,
   buildCpredRegistry,
   createDefaultCharacterData,
   mergeCharacterData,
@@ -161,7 +162,7 @@ describe('validateCharacterDataPatch', () => {
 describe('parseCharacterData', () => {
   it('fills defaults for malformed JSON', () => {
     const data = parseCharacterData('not-json', registry);
-    expect(data.schemaVersion).toBe(1);
+    expect(data.schemaVersion).toBe(CPRED_SCHEMA_VERSION);
     expect(data.stats.int).toBe(5);
   });
 

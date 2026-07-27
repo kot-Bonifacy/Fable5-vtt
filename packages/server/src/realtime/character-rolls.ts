@@ -1,23 +1,27 @@
 import type {
   ChatMessageView,
   CharacterRollPayload,
+  CpredCharacterData,
   CpredRollRequest,
   RollGesture,
   RollResult,
   SessionUser,
 } from '@vtt/shared';
 import {
+  DEATH_SAVES_MAX,
   ROLE_GM,
+  hitLocationLabel,
   mergeCharacterData,
   parseCharacterData,
-  planCpredCheck,
+  planCpredRoll,
+  resolveCpredDeathSave,
   rollFormula,
 } from '@vtt/shared';
 import type { Character } from '../generated/prisma/client.js';
 import { createMixedRng } from './dice-rng.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
-import { emitTokensOfCharacter } from './tokens.js';
+import { emitTokensById, emitTokensOfCharacter } from './tokens.js';
 import { INCLUDE_CHAT_NAMES, deliverRollMessage, toChatMessageView } from './chat-io.js';
 import { sanitizeGesture } from './chat.js';
 
@@ -52,6 +56,71 @@ async function requireRollableCharacter(
   return character;
 }
 
+/** The natural die of a roll — the first die of the first dice term. */
+function firstDieRoll(result: RollResult): number {
+  for (const term of result.terms) {
+    if (term.kind === 'dice' && term.rolls.length > 0) return term.rolls[0]!;
+  }
+  return 0;
+}
+
+/**
+ * Books a Death Save on the sheet: the counter makes every later save harder
+ * (RAW +1 each), and a failed one marks the character dead — a status the GM
+ * can lift, because at the table „umierasz" is still a scene, not a checkbox.
+ */
+async function recordDeathSave(
+  deps: RealtimeDeps,
+  campaignId: string,
+  character: Character,
+  data: CpredCharacterData,
+  survived: boolean,
+): Promise<void> {
+  const updated = mergeCharacterData(data, {
+    deathSaves: Math.min(data.deathSaves + 1, DEATH_SAVES_MAX),
+  });
+  const saved = await deps.ctx.prisma.character.update({
+    where: { id: character.id },
+    data: { data: JSON.stringify(updated) },
+  });
+  await emitCharacterUpsert(deps, campaignId, toCharacterView(saved, deps.ctx.cpred));
+  await emitTokensOfCharacter(deps, campaignId, saved);
+  if (!survived) await markTokensDead(deps, campaignId, saved.id);
+}
+
+/** Puts the „Martwy" badge on every token bound to the character. */
+async function markTokensDead(
+  deps: RealtimeDeps,
+  campaignId: string,
+  characterId: string,
+): Promise<void> {
+  const tokens = await deps.ctx.prisma.token.findMany({
+    where: { characterId },
+    include: { scene: true },
+  });
+  const changed: string[] = [];
+  for (const row of tokens) {
+    if (row.scene.campaignId !== campaignId) continue;
+    let statuses: string[];
+    try {
+      const parsed: unknown = JSON.parse(row.statuses);
+      statuses = Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
+    } catch {
+      statuses = [];
+    }
+    if (statuses.includes(DEAD_STATUS_ID)) continue;
+    await deps.ctx.prisma.token.update({
+      where: { id: row.id },
+      data: { statuses: JSON.stringify([...statuses, DEAD_STATUS_ID]) },
+    });
+    changed.push(row.id);
+  }
+  if (changed.length > 0) await emitTokensById(deps, campaignId, changed);
+}
+
+/** Status id from `data/public/cpred/statuses.json`. */
+const DEAD_STATUS_ID = 'dead';
+
 export const characterRollEvent = defineEvent<
   CharacterRollPayload<CpredRollRequest>,
   { messageId: number }
@@ -64,7 +133,7 @@ export const characterRollEvent = defineEvent<
 
     const registry = deps.ctx.cpred;
     const data = parseCharacterData(character.data, registry);
-    const planned = planCpredCheck(data, registry, payload?.request ?? ({} as CpredRollRequest));
+    const planned = planCpredRoll(data, registry, payload?.request ?? ({} as CpredRollRequest));
     if (!planned.ok) throw new RealtimeError(planned.error);
     const { plan } = planned;
 
@@ -82,12 +151,42 @@ export const characterRollEvent = defineEvent<
       await emitTokensOfCharacter(deps, campaign.id, saved);
     }
 
-    const result: RollResult = rollFormula(plan.formula, createMixedRng(gesture?.entropy));
+    const result: RollResult = rollFormula(plan.formula, createMixedRng(gesture?.entropy), {
+      checkRule: plan.checkRule,
+    });
     result.title = plan.title;
     result.actor = character.name;
     result.breakdown = plan.breakdown;
     if (gesture && gesture.strength > 0) result.tossStrength = gesture.strength;
     if (gesture?.toss) result.toss = gesture.toss;
+
+    // Damage rolls carry what „Zastosuj na celu" needs; the total itself is
+    // read back from this stored message when the GM applies it.
+    if (plan.damage) {
+      result.damage = {
+        location: plan.damage.location,
+        locationLabel: hitLocationLabel(plan.damage.location),
+        weaponName: plan.damage.weaponName,
+        ...(plan.damage.ignoreArmor ? { ignoreArmor: true } : {}),
+      };
+    }
+
+    // A Death Save is judged by the rules, not by the reader: the card shows
+    // the verdict, and the sheet's counter makes the next save harder.
+    if (plan.deathSave) {
+      const natural = firstDieRoll(result);
+      const outcome = resolveCpredDeathSave(natural, plan.deathSave);
+      result.outcome = {
+        success: outcome.survived,
+        label: outcome.survived ? 'Przeżywa' : 'Śmierć',
+        detail: outcome.automaticFailure
+          ? 'Naturalna 10 — automatyczna porażka'
+          : outcome.modifier > 0
+            ? `${outcome.natural} + ${outcome.modifier} = ${outcome.total} · próg BC ${outcome.target}`
+            : `${outcome.natural} · próg BC ${outcome.target}`,
+      };
+      await recordDeathSave(deps, campaign.id, character, data, outcome.survived);
+    }
 
     const kind = visibility === 'gm' ? 'gmroll' : 'roll';
     const stored = await deps.ctx.prisma.chatMessage.create({

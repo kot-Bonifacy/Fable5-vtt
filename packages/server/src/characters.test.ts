@@ -16,6 +16,7 @@ import type {
   SocketAck,
   StateSyncPayload,
 } from '@vtt/shared';
+import { CPRED_SCHEMA_VERSION } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 
@@ -230,7 +231,7 @@ describe('characters', () => {
     vexCharacterId = ack.data.id;
     expect(ack.data.ownerId).toBe(vexId);
     const data = ack.data.data as CpredCharacterData;
-    expect(data.schemaVersion).toBe(1);
+    expect(data.schemaVersion).toBe(CPRED_SCHEMA_VERSION);
     expect(data.hpCurrent).toBe(35); // default stats 5/5
 
     const received = await vexUpsert;

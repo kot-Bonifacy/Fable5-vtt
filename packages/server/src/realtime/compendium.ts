@@ -6,7 +6,7 @@ import type {
   CompendiumUpsertBroadcast,
   CompendiumUpsertPayload,
 } from '@vtt/shared';
-import { ROLE_GM, slugify, validateCompendiumEntry } from '@vtt/shared';
+import { ROLE_GM, validateCompendiumEntry } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { campaignRoom } from './state.js';
@@ -76,14 +76,16 @@ export const compendiumUpsertEvent = defineEvent<CompendiumUpsertPayload, Compen
     const raw = payload?.entry;
     if (typeof raw !== 'object' || raw === null) throw new RealtimeError('BAD_REQUEST');
 
-    // The id is derived from the name for new entries; editing keeps the slug
-    // so character sheets that reference it do not break.
-    const category = (raw as { category?: string }).category ?? '';
-    const name = (raw as { name?: string }).name ?? '';
+    // Editing keeps the slug so character sheets that reference it do not
+    // break; a new entry lets the shared validator mint one from the name —
+    // it knows the per-category prefix (a slug may not contain capitals, so
+    // „criticalInjury" becomes „injury").
     const existingId = (raw as { id?: string }).id;
-    const id = existingId && existingId.length > 0 ? existingId : `${category}.${slugify(name)}`;
-
-    const result = validateCompendiumEntry({ ...raw, id, custom: true });
+    const result = validateCompendiumEntry({
+      ...raw,
+      ...(existingId && existingId.length > 0 ? { id: existingId } : { id: undefined }),
+      custom: true,
+    });
     if (!result.ok) throw new RealtimeError(`INVALID_ENTRY:${result.issues[0]?.message ?? ''}`);
     const entry = result.entry;
 

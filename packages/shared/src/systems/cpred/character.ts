@@ -1,5 +1,6 @@
 import { isValidCompendiumId } from './ids.js';
 import { hpMax, humanityMax } from './derived.js';
+import { ARMOR_LOCATIONS, ARMOR_SP_MAX, type ArmorLocation } from './locations.js';
 import {
   CPRED_STAT_IDS,
   CPRED_STAT_LABELS,
@@ -13,9 +14,13 @@ import {
  * gates future migrations (stages 12/22 add fields). Validation lives here so
  * the server and the client reject the same inputs with the same Polish
  * messages.
+ *
+ * Version 2 (stage 15) added armor locations with ablated SP, the list of
+ * Critical Injuries and the Death Save counter. Older rows simply lack those
+ * keys — `parseCharacterData` fills them in, so no data migration is needed.
  */
 
-export const CPRED_SCHEMA_VERSION = 1;
+export const CPRED_SCHEMA_VERSION = 2;
 
 export const SKILL_LEVEL_MIN = 0;
 export const SKILL_LEVEL_MAX = 10;
@@ -28,7 +33,10 @@ export const ITEM_NAME_MAX_LENGTH = 64;
 export const ITEM_NOTES_MAX_LENGTH = 200;
 export const ITEM_FIELD_MAX_LENGTH = 32;
 export const ITEM_QTY_MAX = 999;
-export const ARMOR_SP_MAX = 30;
+export const CRITICAL_INJURY_ROWS_MAX = 12;
+export const CRITICAL_INJURY_EFFECT_MAX_LENGTH = 400;
+/** Death Saves already taken — the counter only grows while at 0 HP. */
+export const DEATH_SAVES_MAX = 20;
 
 /** One entry of `data/public/cpred/skills.json`. */
 export interface CpredSkillDefinition {
@@ -120,8 +128,39 @@ export interface CpredWeaponRow extends CpredItemRow {
 }
 
 export interface CpredArmorRow extends CpredItemRow {
-  /** Stopping Power ("OB" on the Polish sheet). */
+  /** Stopping Power the piece has when undamaged ("OB" on the Polish sheet). */
   sp: number;
+  /** SP left after ablation; repairs put it back up to `sp`. */
+  spCurrent: number;
+  /** Where it is worn — decides which hit it stops (stage 15). */
+  location: ArmorLocation;
+  /** Carried but not worn armor protects nothing; absent means worn. */
+  equipped?: boolean;
+}
+
+/**
+ * A Critical Injury the character currently suffers (stage 15). The row keeps
+ * its own copy of the name and effect so the sheet stays readable even if the
+ * GM later edits the injury table.
+ */
+export interface CpredCriticalInjuryRow {
+  /** Compendium id of the injury (`criticalInjury.zapadniete-pluco`). */
+  id: string;
+  name: string;
+  effect: string;
+  /** The 2d6 value that drew it — shown on the sheet as provenance. */
+  rolled?: number;
+  /** Some injuries make every later Death Save harder. */
+  deathSavePenalty?: number;
+}
+
+/**
+ * Extra Death Save difficulty carried by the injuries suffered right now.
+ * Lives next to the row type (not in `damage.ts`) so the roll planner can use
+ * it without the two modules importing each other.
+ */
+export function injuryDeathSavePenalty(injuries: readonly CpredCriticalInjuryRow[]): number {
+  return injuries.reduce((sum, injury) => sum + (injury.deathSavePenalty ?? 0), 0);
 }
 
 export interface CpredCharacterData {
@@ -142,6 +181,14 @@ export interface CpredCharacterData {
   armor: CpredArmorRow[];
   gear: CpredGearRow[];
   cyberware: CpredItemRow[];
+  /** Critical Injuries suffered right now (stage 15). */
+  criticalInjuries: CpredCriticalInjuryRow[];
+  /**
+   * Death Saves already taken since going Mortally Wounded. Each one makes the
+   * next harder (+1); regaining a single HP resets the counter (RAW:
+   * modifiers accumulate „dopóki nie zostaniesz ustabilizowany").
+   */
+  deathSaves: number;
   eddies: number;
   notes: string;
 }
@@ -161,6 +208,8 @@ export function createDefaultCharacterData(): CpredCharacterData {
     armor: [],
     gear: [],
     cyberware: [],
+    criticalInjuries: [],
+    deathSaves: 0,
     eddies: 0,
     notes: '',
   };
@@ -303,6 +352,58 @@ function validateRows<T extends CpredItemRow>(
   return rows;
 }
 
+/**
+ * Critical Injuries carried by the sheet. Malformed rows are rejected rather
+ * than dropped: they are written by the server after a damage roll, so a bad
+ * one means a bug, not stale user input.
+ */
+function validateCriticalInjuries(
+  raw: unknown,
+  issues: CpredValidationIssue[],
+): CpredCriticalInjuryRow[] | undefined {
+  if (!Array.isArray(raw)) {
+    issues.push(issue('criticalInjuries', 'Nieprawidłowy format listy ran krytycznych.'));
+    return undefined;
+  }
+  if (raw.length > CRITICAL_INJURY_ROWS_MAX) {
+    issues.push(
+      issue('criticalInjuries', `Za dużo ran krytycznych (limit ${CRITICAL_INJURY_ROWS_MAX}).`),
+    );
+    return undefined;
+  }
+  const rows: CpredCriticalInjuryRow[] = [];
+  for (const entry of raw) {
+    if (typeof entry !== 'object' || entry === null) {
+      issues.push(issue('criticalInjuries', 'Nieprawidłowy wiersz rany krytycznej.'));
+      return undefined;
+    }
+    const row = entry as Record<string, unknown>;
+    if (typeof row.id !== 'string' || !isValidCompendiumId(row.id)) {
+      issues.push(issue('criticalInjuries', 'Nieprawidłowy identyfikator rany krytycznej.'));
+      return undefined;
+    }
+    const name = validateText(row.name, 'criticalInjuries', 'Nazwa rany', ITEM_NAME_MAX_LENGTH, issues);
+    const effect = validateText(
+      row.effect ?? '',
+      'criticalInjuries',
+      'Efekt rany',
+      CRITICAL_INJURY_EFFECT_MAX_LENGTH,
+      issues,
+    );
+    if (name === undefined || effect === undefined) return undefined;
+    const rolled = row.rolled;
+    const penalty = row.deathSavePenalty;
+    rows.push({
+      id: row.id,
+      name,
+      effect,
+      ...(isInteger(rolled) && rolled >= 2 && rolled <= 12 ? { rolled } : {}),
+      ...(isInteger(penalty) && penalty > 0 && penalty <= 5 ? { deathSavePenalty: penalty } : {}),
+    });
+  }
+  return rows;
+}
+
 /** Validates every recognized top-level key, collecting problems as it goes. */
 function collectCharacterDataPatch(
   raw: unknown,
@@ -385,9 +486,39 @@ function collectCharacterDataPatch(
         issues.push(issue('armor', `OB pancerza musi być liczbą od 0 do ${ARMOR_SP_MAX}.`));
         return undefined;
       }
-      return { ...base, sp };
+      // Ablated SP defaults to undamaged armor — rows written before stage 15
+      // simply had no current value.
+      const spCurrent = row.spCurrent ?? sp;
+      if (!isInteger(spCurrent) || spCurrent < 0 || spCurrent > ARMOR_SP_MAX) {
+        issues.push(issue('armor', `Bieżące OB musi być liczbą od 0 do ${ARMOR_SP_MAX}.`));
+        return undefined;
+      }
+      const location = (ARMOR_LOCATIONS as readonly unknown[]).includes(row.location)
+        ? (row.location as ArmorLocation)
+        : 'body';
+      return {
+        ...base,
+        sp,
+        spCurrent: Math.min(spCurrent, sp),
+        location,
+        ...(row.equipped === false ? { equipped: false } : {}),
+      };
     });
     if (armor) patch.armor = armor;
+  }
+  if ('criticalInjuries' in input) {
+    const injuries = validateCriticalInjuries(input.criticalInjuries, issues);
+    if (injuries) patch.criticalInjuries = injuries;
+  }
+  if ('deathSaves' in input) {
+    const value = input.deathSaves;
+    if (!isInteger(value) || value < 0 || value > DEATH_SAVES_MAX) {
+      issues.push(
+        issue('deathSaves', `Liczba Testów Przeżywalności musi być od 0 do ${DEATH_SAVES_MAX}.`),
+      );
+    } else {
+      patch.deathSaves = value;
+    }
   }
   if ('gear' in input) {
     const gear = validateRows<CpredGearRow>(input.gear, 'gear', issues, (base, row) => {
@@ -445,11 +576,19 @@ export function validateCharacterDataPatch(
  * leave current HP, luck or humanity above their recomputed maximums.
  */
 export function normalizeCharacterData(data: CpredCharacterData): CpredCharacterData {
+  const hpCurrent = Math.min(data.hpCurrent, hpMax(data.stats));
   return {
     ...data,
-    hpCurrent: Math.min(data.hpCurrent, hpMax(data.stats)),
+    hpCurrent,
     luckCurrent: Math.min(data.luckCurrent, data.stats.luck),
     humanityCurrent: Math.min(data.humanityCurrent, humanityMax(data.stats)),
+    // Ablation can never leave a piece of armor above its undamaged SP.
+    armor: data.armor.map((row) =>
+      row.spCurrent > row.sp ? { ...row, spCurrent: row.sp } : row,
+    ),
+    // RAW: the Death Save modifiers accumulate „dopóki nie zostaniesz
+    // ustabilizowany" — a single regained HP wipes the counter.
+    deathSaves: hpCurrent >= 1 ? 0 : Math.min(data.deathSaves, DEATH_SAVES_MAX),
   };
 }
 

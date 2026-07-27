@@ -3,6 +3,7 @@ import { ROLE_GM } from '@vtt/shared';
 import { nextCombatTurn, previousCombatTurn } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useCombatStore, myActiveCombatant } from '../stores/combatStore.js';
+import { useDeathSavePrompt } from '../death-save.js';
 
 /**
  * The tracker's always-visible face, floating over the map: round number,
@@ -54,6 +55,8 @@ export function CombatBar() {
   const user = useAuthStore((s) => s.user);
   const isGm = user?.role === ROLE_GM;
   const myTurn = useMemo(() => myActiveCombatant(combat, user?.id ?? null), [combat, user?.id]);
+  // RAW: a Mortally Wounded character rolls at the start of each of their turns.
+  const deathSave = useDeathSavePrompt();
 
   const barRef = useRef<HTMLDivElement | null>(null);
   const [position, setPosition] = useState<BarPosition | null>(readStoredPosition);
@@ -218,6 +221,19 @@ export function CombatBar() {
           aria-label="Następna tura"
         >
           ▶
+        </button>
+      )}
+      {deathSave && (
+        <button
+          type="button"
+          className="combat-bar-death-save"
+          onClick={deathSave.roll}
+          title={`${deathSave.characterName} jest śmiertelnie ranny — rzut 1k10 pod BC${
+            deathSave.savesTaken > 0 ? `, +${deathSave.savesTaken} za poprzednie testy` : ''
+          }`}
+        >
+          Test Przeżywalności
+          {deathSave.savesTaken > 0 ? ` +${deathSave.savesTaken}` : ''}
         </button>
       )}
       {/* The acting player ends their own turn; the server re-checks whose it is. */}

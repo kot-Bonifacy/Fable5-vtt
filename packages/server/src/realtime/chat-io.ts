@@ -2,6 +2,7 @@ import type {
   ChatHistoryPage,
   ChatMessageBroadcast,
   ChatMessageView,
+  DamageLogEntry,
   SessionUser,
 } from '@vtt/shared';
 import { CHAT_HISTORY_PAGE_SIZE, ROLE_GM } from '@vtt/shared';
@@ -88,6 +89,8 @@ export function toChatMessageView(message: StoredMessage): ChatMessageView {
   }
   if ((message.kind === 'roll' || message.kind === 'gmroll') && message.payload) {
     view.roll = JSON.parse(message.payload) as RollResult;
+  } else if (message.kind === 'damage' && message.payload) {
+    view.damage = JSON.parse(message.payload) as DamageLogEntry;
   } else if (message.botId && message.payload) {
     // NPC line with a voice: audio plus the rhythm its text is written out
     // with. Stored so „odtwórz ponownie" still works after a reload.
@@ -95,6 +98,23 @@ export function toChatMessageView(message: StoredMessage): ChatMessageView {
     if (stored.speech) view.speech = stored.speech;
   }
   return view;
+}
+
+/**
+ * Strips what this viewer may not see from a message. Today that is exactly
+ * the damage log's absolute HP (and the sheet link that would identify the
+ * target's card): the GM and the target's owner get the numbers, everyone else
+ * sees the hit itself — how much got through, what the armor did, whether the
+ * wound state changed. Absolute HP never leave the server for anyone else, the
+ * same rule tokens have followed since stage 05.
+ */
+export function redactChatMessage(message: ChatMessageView, user: SessionUser): ChatMessageView {
+  const damage = message.damage;
+  if (!damage) return message;
+  if (user.role === ROLE_GM) return message;
+  if (damage.targetOwnerId && damage.targetOwnerId === user.id) return message;
+  const { hp: _hp, characterId: _characterId, targetOwnerId: _owner, ...visible } = damage;
+  return { ...message, damage: visible };
 }
 
 /**
@@ -109,7 +129,7 @@ export function visibleTo(user: SessionUser) {
   if (user.role === ROLE_GM) {
     return {
       OR: [
-        { kind: { in: ['say', 'roll', 'gmroll'] } },
+        { kind: { in: ['say', 'roll', 'gmroll', 'damage'] } },
         { authorId: user.id },
         { recipientId: user.id },
         { botId: { not: null } },
@@ -118,7 +138,11 @@ export function visibleTo(user: SessionUser) {
     };
   }
   return {
-    OR: [{ kind: { in: ['say', 'roll'] } }, { authorId: user.id }, { recipientId: user.id }],
+    OR: [
+      { kind: { in: ['say', 'roll', 'damage'] } },
+      { authorId: user.id },
+      { recipientId: user.id },
+    ],
   };
 }
 
@@ -145,7 +169,10 @@ export async function fetchHistoryPage(
   });
   const hasMore = rows.length > limit;
   const page = rows.slice(0, limit).reverse();
-  return { messages: page.map(toChatMessageView), hasMore };
+  return {
+    messages: page.map((row) => redactChatMessage(toChatMessageView(row), user)),
+    hasMore,
+  };
 }
 
 export interface NewChatMessage {
@@ -207,6 +234,28 @@ export async function deliverChatMessageTo(
     if (targets.has(socketUser.id) || (includeGm && socketUser.role === ROLE_GM)) {
       socket.emit('chat:message', payload);
     }
+  }
+}
+
+/**
+ * Room-wide delivery where each viewer gets their own cut of the message
+ * (stage 15: the damage log's HP). One seq is drawn for the room and sent to
+ * every socket in it, so the sequence stays gapless for everyone — this is a
+ * broadcast, only redacted per recipient.
+ */
+export async function broadcastRedactedChatMessage(
+  deps: RealtimeDeps,
+  campaignId: string,
+  message: ChatMessageView,
+  event: 'chat:message' | 'chat:update' = 'chat:message',
+): Promise<void> {
+  const room = campaignRoom(campaignId);
+  const seq = deps.seqs.next(room);
+  const sockets = await deps.io.in(room).fetchSockets();
+  for (const socket of sockets) {
+    const socketUser = (socket.data as { user: SessionUser }).user;
+    const payload: ChatMessageBroadcast = { seq, message: redactChatMessage(message, socketUser) };
+    socket.emit(event, payload);
   }
 }
 

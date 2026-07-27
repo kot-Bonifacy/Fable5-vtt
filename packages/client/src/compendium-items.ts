@@ -46,10 +46,19 @@ export async function addCompendiumItemToCharacter(
     }
     case 'armor': {
       if (data.armor.length >= ITEM_ROWS_MAX) return 'Lista pancerzy jest pełna.';
-      const armor = [...data.armor, { ...base, notes: '', sp: entry.sp }];
+      // Fresh armor is undamaged and worn where the catalogue says it sits
+      // (stage 15); a piece covering several spots lands on the body.
+      const location = entry.locations.includes('body') ? 'body' : (entry.locations[0] ?? 'body');
+      const armor = [
+        ...data.armor,
+        { ...base, notes: '', sp: entry.sp, spCurrent: entry.sp, location },
+      ];
       queueCharacterSave(characterId, { data: { armor } });
       return `Dodano „${entry.name}” do pancerza.`;
     }
+    case 'criticalInjury':
+      // Injuries are drawn by the damage flow, never bought.
+      return 'Rany krytyczne trafiają na kartę z rzutu na obrażenia.';
     case 'cyberware': {
       if (data.cyberware.length >= ITEM_ROWS_MAX) return 'Lista cyborgizacji jest pełna.';
       const notes = entry.humanityLoss ? `Człowieczeństwo −${entry.humanityLoss}` : '';

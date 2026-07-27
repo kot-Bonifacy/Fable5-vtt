@@ -5,9 +5,19 @@ import {
   type ChangeEvent,
   type MouseEvent,
   type PointerEvent,
+  type ReactNode,
 } from 'react';
-import type { CpredCharacterData, CpredItemRow, PortraitUploadResult } from '@vtt/shared';
+import type {
+  ArmorLocation,
+  CpredArmorRow,
+  CpredCharacterData,
+  CpredItemRow,
+  PortraitUploadResult,
+} from '@vtt/shared';
 import {
+  ARMOR_LOCATIONS,
+  ARMOR_LOCATION_LABELS,
+  ARMOR_SP_MAX,
   CPRED_STAT_IDS,
   CPRED_STAT_LABELS,
   CPRED_STAT_MAX,
@@ -20,6 +30,7 @@ import {
   deathSaveTarget,
   hpMax,
   humanityMax,
+  isValidDamageNotation,
   seriousWoundThreshold,
   skillBase,
   validateCharacterDataPatch,
@@ -33,7 +44,12 @@ import {
   useCharacterStore,
   type CharacterSheetView,
 } from '../stores/characterStore.js';
-import { quickLoadCup, useRollStore, type RollTarget } from '../stores/rollStore.js';
+import {
+  loadDeathSaveCup,
+  quickLoadCup,
+  useRollStore,
+  type RollTarget,
+} from '../stores/rollStore.js';
 
 type SheetTab = 'stats' | 'combat' | 'gear' | 'bio';
 
@@ -229,7 +245,7 @@ function CharacterSheetWindow({
 
       <div className="sheet-body">
         {tab === 'stats' && <StatsTab character={character} data={data} saveData={saveData} />}
-        {tab === 'combat' && <CombatTab data={data} saveData={saveData} />}
+        {tab === 'combat' && <CombatTab character={character} data={data} saveData={saveData} />}
         {tab === 'gear' && <GearTab data={data} saveData={saveData} />}
         {tab === 'bio' && (
           <BioTab character={character} data={data} saveData={saveData} setIssues={setIssues} />
@@ -320,6 +336,19 @@ function StatsTab({ character, data, saveData }: TabProps & { character: Charact
           {CPRED_WOUND_LABELS[wound]}
           {woundPenalty !== 0 && ` — −${Math.abs(woundPenalty)} do wszystkich testów`}
           {wound === 'mortal' && ' i Testy Przeżywalności'}
+          {wound === 'mortal' && (
+            <button
+              type="button"
+              className="small-button death-save-button"
+              title={`Rzuć 1k10 pod BC ${deathSaveTarget(data.stats)}. Każdy kolejny test jest o 1 trudniejszy.`}
+              onClick={() =>
+                loadDeathSaveCup(character.id, character.name, data, registry)
+              }
+            >
+              Test Przeżywalności
+              {data.deathSaves > 0 ? ` (+${data.deathSaves})` : ''}
+            </button>
+          )}
         </p>
       )}
 
@@ -489,6 +518,7 @@ function RowTable<T extends CpredItemRow>({
   addLabel,
   makeRow,
   onChange,
+  action,
 }: {
   rows: T[];
   columns: {
@@ -502,6 +532,8 @@ function RowTable<T extends CpredItemRow>({
   addLabel: string;
   makeRow: () => T;
   onChange: (rows: T[]) => void;
+  /** Optional trailing cell, e.g. the weapon's damage-roll button. */
+  action?: { label: string; render: (row: T) => ReactNode };
 }) {
   function updateRow(rowId: string, key: keyof T & string, value: string | number) {
     onChange(rows.map((row) => (row.id === rowId ? { ...row, [key]: value } : row)));
@@ -517,6 +549,7 @@ function RowTable<T extends CpredItemRow>({
                 {c.label}
               </th>
             ))}
+            {action && <th>{action.label}</th>}
             <th />
           </tr>
         </thead>
@@ -546,6 +579,7 @@ function RowTable<T extends CpredItemRow>({
                   )}
                 </td>
               ))}
+              {action && <td className="row-action-cell">{action.render(row)}</td>}
               <td>
                 <button
                   type="button"
@@ -567,7 +601,20 @@ function RowTable<T extends CpredItemRow>({
   );
 }
 
-function CombatTab({ data, saveData }: TabProps) {
+function CombatTab({ character, data, saveData }: TabProps & { character: CharacterSheetView }) {
+  const registry = useCharacterStore((s) => s.registry);
+
+  /** Same path as a skill roll: dialog, or straight to the cup on Shift. */
+  function startRoll(target: Omit<RollTarget, 'characterId' | 'characterName'>, shift: boolean) {
+    const full: RollTarget = {
+      characterId: character.id,
+      characterName: character.name,
+      ...target,
+    };
+    if (shift) quickLoadCup(full, data, registry);
+    else useRollStore.getState().openDialog(full);
+  }
+
   return (
     <div className="sheet-combat">
       <h3>Broń</h3>
@@ -583,21 +630,224 @@ function CombatTab({ data, saveData }: TabProps) {
         addLabel="Dodaj broń"
         makeRow={() => ({ id: newRowId(), name: '', damage: '', ammo: '', rof: '', notes: '' })}
         onChange={(rows) => saveData({ weapons: rows }, 'weapons')}
+        action={{
+          label: 'Rzut',
+          render: (row) => (
+            <button
+              type="button"
+              className="small-button"
+              disabled={!isValidDamageNotation(row.damage)}
+              title={
+                isValidDamageNotation(row.damage)
+                  ? 'Rzut na obrażenia (Shift — bez okna, w korpus)'
+                  : 'Uzupełnij obrażenia notacją kości, np. 3k6'
+              }
+              onClick={(event: MouseEvent) =>
+                startRoll({ kind: 'damage', weaponRowId: row.id }, event.shiftKey)
+              }
+            >
+              OBR.
+            </button>
+          ),
+        }}
       />
 
       <h3>Pancerz</h3>
-      <RowTable
-        rows={data.armor}
-        columns={[
-          { key: 'name', label: 'Nazwa' },
-          { key: 'sp', label: 'OB', numeric: true, max: 30, width: '3.5rem' },
-          { key: 'notes', label: 'Uwagi', maxLength: 200 },
-        ]}
-        addLabel="Dodaj pancerz"
-        makeRow={() => ({ id: newRowId(), name: '', sp: 11, notes: '' })}
-        onChange={(rows) => saveData({ armor: rows }, 'armor')}
-      />
+      <ArmorTable data={data} saveData={saveData} />
+
+      <h3>Rany krytyczne</h3>
+      <CriticalInjuries data={data} saveData={saveData} />
     </div>
+  );
+}
+
+/**
+ * Worn armor: SP as bought, SP after ablation and where it sits. The damage
+ * flow reads exactly these three (stage 15) — the highest worn SP of the hit
+ * location is what stops the shot.
+ */
+function ArmorTable({ data, saveData }: TabProps) {
+  function update(rowId: string, patch: Partial<CpredArmorRow>) {
+    saveData(
+      { armor: data.armor.map((row) => (row.id === rowId ? { ...row, ...patch } : row)) },
+      'armor',
+    );
+  }
+
+  return (
+    <div className="row-table-wrap">
+      <table className="sheet-table">
+        <thead>
+          <tr>
+            <th>Nazwa</th>
+            <th style={{ width: '6.5rem' }}>Lokacja</th>
+            <th style={{ width: '4rem' }}>OB</th>
+            <th style={{ width: '4.5rem' }}>Bieżące</th>
+            <th style={{ width: '4rem' }}>Noszony</th>
+            <th>Uwagi</th>
+            <th />
+          </tr>
+        </thead>
+        <tbody>
+          {data.armor.map((row) => (
+            <tr key={row.id} className={row.equipped === false ? 'armor-row--stowed' : undefined}>
+              <td>
+                <input
+                  type="text"
+                  maxLength={64}
+                  value={row.name}
+                  onChange={(e) => update(row.id, { name: e.target.value })}
+                />
+              </td>
+              <td>
+                <select
+                  value={row.location}
+                  onChange={(e) => update(row.id, { location: e.target.value as ArmorLocation })}
+                  aria-label="Lokacja pancerza"
+                >
+                  {ARMOR_LOCATIONS.map((id) => (
+                    <option key={id} value={id}>
+                      {ARMOR_LOCATION_LABELS[id]}
+                    </option>
+                  ))}
+                </select>
+              </td>
+              <td>
+                <input
+                  type="number"
+                  min={0}
+                  max={ARMOR_SP_MAX}
+                  value={row.sp}
+                  onChange={(e) => {
+                    const value = parseNumberInput(e);
+                    if (value === undefined) return;
+                    update(row.id, { sp: value, spCurrent: Math.min(row.spCurrent, value) });
+                  }}
+                  aria-label="OB pancerza"
+                />
+              </td>
+              <td className={row.spCurrent < row.sp ? 'armor-ablated' : undefined}>
+                <input
+                  type="number"
+                  min={0}
+                  max={row.sp}
+                  value={row.spCurrent}
+                  onChange={(e) => {
+                    const value = parseNumberInput(e);
+                    if (value !== undefined) update(row.id, { spCurrent: Math.min(value, row.sp) });
+                  }}
+                  aria-label="Bieżące OB (po ablacji)"
+                  title="Ablacja: każde przebicie obniża OB o 1. Naprawa przywraca pełną wartość."
+                />
+              </td>
+              <td className="armor-worn-cell">
+                <input
+                  type="checkbox"
+                  checked={row.equipped !== false}
+                  onChange={(e) => update(row.id, { equipped: e.target.checked })}
+                  aria-label="Noszony"
+                />
+              </td>
+              <td>
+                <input
+                  type="text"
+                  maxLength={200}
+                  value={row.notes}
+                  onChange={(e) => update(row.id, { notes: e.target.value })}
+                />
+              </td>
+              <td className="armor-actions">
+                <button
+                  type="button"
+                  className="small-button"
+                  disabled={row.spCurrent >= row.sp}
+                  title="Napraw pancerz do pełnego OB"
+                  onClick={() => update(row.id, { spCurrent: row.sp })}
+                >
+                  Napraw
+                </button>
+                <button
+                  type="button"
+                  className="small-button character-delete"
+                  onClick={() =>
+                    saveData({ armor: data.armor.filter((r) => r.id !== row.id) }, 'armor')
+                  }
+                  title="Usuń pancerz"
+                >
+                  ✕
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <button
+        type="button"
+        className="small-button"
+        onClick={() =>
+          saveData(
+            {
+              armor: [
+                ...data.armor,
+                {
+                  id: newRowId(),
+                  name: '',
+                  sp: 11,
+                  spCurrent: 11,
+                  location: 'body' as ArmorLocation,
+                  notes: '',
+                },
+              ],
+            },
+            'armor',
+          )
+        }
+      >
+        Dodaj pancerz
+      </button>
+    </div>
+  );
+}
+
+/**
+ * Critical Injuries the character is suffering. They are drawn by the damage
+ * flow; here they can be read (the effect is the rules text) and removed —
+ * „Łatanie" and „Leczenie" are played out at the table, not automated.
+ */
+function CriticalInjuries({ data, saveData }: TabProps) {
+  if (data.criticalInjuries.length === 0) {
+    return <p className="placeholder-text">Brak ran krytycznych.</p>;
+  }
+  return (
+    <ul className="injury-list">
+      {data.criticalInjuries.map((injury, index) => (
+        <li key={`${injury.id}-${index}`} className="injury-row">
+          <div className="injury-head">
+            <span className="injury-name">{injury.name}</span>
+            {injury.rolled ? <span className="injury-roll">2k6 = {injury.rolled}</span> : null}
+            {injury.deathSavePenalty ? (
+              <span className="injury-penalty">
+                +{injury.deathSavePenalty} do Testu Przeżywalności
+              </span>
+            ) : null}
+            <button
+              type="button"
+              className="small-button character-delete"
+              title="Usuń ranę (wyleczona albo załatana)"
+              onClick={() =>
+                saveData(
+                  { criticalInjuries: data.criticalInjuries.filter((_, i) => i !== index) },
+                  'criticalInjuries',
+                )
+              }
+            >
+              ✕
+            </button>
+          </div>
+          <p className="injury-effect">{injury.effect}</p>
+        </li>
+      ))}
+    </ul>
   );
 }
 

@@ -1,6 +1,11 @@
 import { create } from 'zustand';
-import type { CpredCharacterData, CpredRegistry, CpredRollRequest } from '@vtt/shared';
-import { planCpredCheck } from '@vtt/shared';
+import type {
+  CpredCharacterData,
+  CpredHitLocation,
+  CpredRegistry,
+  CpredRollRequest,
+} from '@vtt/shared';
+import { planCpredRoll } from '@vtt/shared';
 
 /**
  * Sheet-driven rolls (stage 08). Clicking a skill or a stat opens the roll
@@ -16,6 +21,8 @@ export interface RollTarget {
   kind: CpredRollRequest['kind'];
   skillId?: string;
   statId?: CpredRollRequest['statId'];
+  /** Weapon row for `kind: 'damage'`. */
+  weaponRowId?: string;
 }
 
 /** A check waiting in the cup: everything the server needs, plus the label. */
@@ -51,6 +58,8 @@ interface RollStoreState {
   /** Last dialog choices, reused for the next roll (and by Shift+click). */
   lastModifier: number;
   lastVisibility: 'public' | 'gm';
+  /** Last aimed location of a damage roll (stage 15). */
+  lastLocation: CpredHitLocation;
 
   openDialog: (target: RollTarget) => void;
   closeDialog: () => void;
@@ -58,6 +67,7 @@ interface RollStoreState {
   loadInitiativeCup: (initiative: PendingInitiative) => void;
   clearCup: () => void;
   remember: (modifier: number, visibility: 'public' | 'gm') => void;
+  rememberLocation: (location: CpredHitLocation) => void;
 }
 
 export const useRollStore = create<RollStoreState>((set) => ({
@@ -66,6 +76,7 @@ export const useRollStore = create<RollStoreState>((set) => ({
   initiative: null,
   lastModifier: 0,
   lastVisibility: 'public',
+  lastLocation: 'body',
 
   openDialog: (target) => set({ target }),
   closeDialog: () => set({ target: null }),
@@ -73,6 +84,7 @@ export const useRollStore = create<RollStoreState>((set) => ({
   loadInitiativeCup: (initiative) => set({ initiative, pending: null, target: null }),
   clearCup: () => set({ pending: null, initiative: null }),
   remember: (lastModifier, lastVisibility) => set({ lastModifier, lastVisibility }),
+  rememberLocation: (lastLocation) => set({ lastLocation }),
 }));
 
 /**
@@ -86,20 +98,37 @@ export function quickLoadCup(
   registry: CpredRegistry,
 ): void {
   const store = useRollStore.getState();
+  const isCheck = target.kind === 'skill' || target.kind === 'stat';
   const request: CpredRollRequest = {
     kind: target.kind,
     ...(target.skillId ? { skillId: target.skillId } : {}),
     ...(target.statId ? { statId: target.statId } : {}),
-    modifier: store.lastModifier,
+    ...(target.weaponRowId ? { weaponRowId: target.weaponRowId } : {}),
+    ...(target.kind === 'damage' ? { location: store.lastLocation } : {}),
+    // Damage and Death Saves take no situational modifier by default: the
+    // remembered check modifier must not silently ride along.
+    modifier: isCheck ? store.lastModifier : 0,
     luckSpent: 0,
   };
-  const planned = planCpredCheck(data, registry, request);
+  const planned = planCpredRoll(data, registry, request);
   if (!planned.ok) return;
   store.loadCup({
     ...target,
     request,
-    visibility: store.lastVisibility,
+    // A damage roll or a Death Save is always public: the table needs to see
+    // what happened to the target.
+    visibility: isCheck ? store.lastVisibility : 'public',
     title: planned.plan.title,
     modifierTotal: planned.plan.modifierTotal,
   });
+}
+
+/** Loads a Death Save into the cup — no dialog, the rules leave no choices. */
+export function loadDeathSaveCup(
+  characterId: string,
+  characterName: string,
+  data: CpredCharacterData,
+  registry: CpredRegistry,
+): void {
+  quickLoadCup({ characterId, characterName, kind: 'deathSave' }, data, registry);
 }

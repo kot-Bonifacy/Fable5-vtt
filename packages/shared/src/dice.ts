@@ -139,6 +139,33 @@ export interface RollBreakdownEntry {
   kind?: string;
 }
 
+/**
+ * Verdict of a roll the rules judge on their own (stage 15: Death Saves;
+ * stage 16: rolls against a DV). The dice engine only carries it — the game
+ * system decides what counts as success and writes the Polish label.
+ */
+export interface RollOutcome {
+  success: boolean;
+  /** Short verdict shown on the card, e.g. „Przeżył" / „Zgon". */
+  label: string;
+  /** The arithmetic behind it, e.g. „5 + 2 = 7 · próg BC 8". */
+  detail?: string;
+}
+
+/**
+ * Damage a roll produced, so the chat card can offer „Zastosuj na celu".
+ * Locations are opaque strings here: the core engine must not learn what a
+ * head is (stage 15: CP RED fills them in).
+ */
+export interface RollDamageMeta {
+  location: string;
+  locationLabel: string;
+  /** Weapon the damage came from — shown on the card. */
+  weaponName?: string;
+  /** True when armor stops none of this damage. */
+  ignoreArmor?: boolean;
+}
+
 export interface RollResult {
   /** Canonical notation of what was rolled, e.g. `1d10+7`. */
   notation: string;
@@ -159,6 +186,10 @@ export interface RollResult {
   critical?: CheckCritical;
   /** True when two or more sixes appeared among added d6 dice (CP RED). */
   criticalDamage: boolean;
+  /** Verdict, when the rules judge this roll (Death Saves). */
+  outcome?: RollOutcome;
+  /** Applicable damage, when the roll was a weapon's damage (stage 15). */
+  damage?: RollDamageMeta;
   total: number;
   /**
    * Presentation metadata attached by the server when the roll was thrown

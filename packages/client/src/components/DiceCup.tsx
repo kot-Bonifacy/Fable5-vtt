@@ -109,6 +109,9 @@ type CupMode =
 
 /** Cup label for a loaded sheet check, e.g. `Percepcja (INT) +11`. */
 function sheetLabel(pending: PendingRoll): string {
+  // Damage rolls and Death Saves carry no running modifier — their title
+  // already says everything („Zgrzyt-9 — obrażenia (Głowa)").
+  if (pending.kind === 'damage' || pending.kind === 'deathSave') return pending.title;
   const sign = pending.modifierTotal < 0 ? '−' : '+';
   return `${pending.title} ${sign}${Math.abs(pending.modifierTotal)}`;
 }

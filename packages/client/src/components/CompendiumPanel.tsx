@@ -5,6 +5,7 @@ import {
   COMPENDIUM_CATEGORIES,
   COMPENDIUM_CATEGORY_LABELS,
   CPRED_RANGE_BANDS,
+  CRITICAL_INJURY_TABLE_LABELS,
   ROLE_GM,
   WEAPON_QUALITY_LABELS,
   formatCost,
@@ -129,6 +130,8 @@ function shortStats(
     }
     case 'armor':
       return `OB ${entry.sp} · ${formatCost(entry)}`;
+    case 'criticalInjury':
+      return `2k6 = ${entry.roll} · ${CRITICAL_INJURY_TABLE_LABELS[entry.table]}`;
     default:
       return formatCost(entry);
   }
@@ -244,6 +247,37 @@ function EntryCard({
             ) : null}
           </>
         ) : null}
+        {entry.category === 'criticalInjury' ? (
+          <>
+            <Stat
+              label="Tabela"
+              value={CRITICAL_INJURY_TABLE_LABELS[entry.table]}
+              hint="Trafienie w korpus albo w głowę (strzał celowany)."
+            />
+            <Stat
+              label="Wynik 2k6"
+              value={String(entry.roll)}
+              hint="Rzut, przy którym wypada ta rana."
+            />
+            {entry.quickFix ? (
+              <Stat
+                label="Łatanie"
+                value={entry.quickFix}
+                hint="Znosi efekt rany do końca dnia."
+              />
+            ) : null}
+            {entry.treatment ? (
+              <Stat label="Leczenie" value={entry.treatment} hint="Usuwa ranę na stałe." />
+            ) : null}
+            {entry.deathSavePenalty ? (
+              <Stat
+                label="Test Przeżywalności"
+                value={`+${entry.deathSavePenalty} do trudności`}
+                hint="Rana podnosi podstawową trudność Testu Przeżywalności."
+              />
+            ) : null}
+          </>
+        ) : null}
         {entry.category === 'cyberware' ? (
           <>
             {entry.humanityLoss ? (
@@ -265,7 +299,9 @@ function EntryCard({
             ) : null}
           </>
         ) : null}
-        <Stat label="Cena" value={formatCost(entry)} />
+        {entry.category === 'criticalInjury' ? null : (
+          <Stat label="Cena" value={formatCost(entry)} />
+        )}
       </dl>
 
       {entry.category === 'weapon' && resolved?.rangeDv ? (
@@ -315,7 +351,7 @@ function EntryCard({
       ) : null}
       {entry.source ? <p className="compendium-source">Źródło: {entry.source}</p> : null}
 
-      {targets.length > 0 ? (
+      {targets.length > 0 && entry.category !== 'criticalInjury' ? (
         <div className="compendium-assign">
           <select value={target} onChange={(event) => setTargetId(event.target.value)}>
             {targets.map((character) => (

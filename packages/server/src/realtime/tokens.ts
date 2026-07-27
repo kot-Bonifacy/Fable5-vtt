@@ -8,6 +8,7 @@ import type {
   TokenPatch,
   TokenUpdatePayload,
   TokenUpsertBroadcast,
+  TokenHp,
   TokenView,
 } from '@vtt/shared';
 import {
@@ -23,7 +24,13 @@ import {
 } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
 import type { Character, Scene, Token } from '../generated/prisma/client.js';
-import { toLinkedSheet, writeSheetHp, type LinkedSheet, type SheetRegistry } from '../sheets.js';
+import {
+  sheetWoundStatuses,
+  toLinkedSheet,
+  writeSheetHp,
+  type LinkedSheet,
+  type SheetRegistry,
+} from '../sheets.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { campaignRoom, emitToCampaignUser, gmRoom, sceneRoom } from './state.js';
 import { requireCampaignScene } from './scenes.js';
@@ -191,6 +198,11 @@ async function emitTokenUpsert(
  * Refreshes every token bound to a character — called after a sheet change so
  * the map's HP bars follow the sheet (stage 08: the sheet is the source of
  * truth). Cheap: one query, then the usual per-token emissions.
+ *
+ * It also keeps the wound statuses in step with the HP (stage 15). Doing it
+ * here means every path that changes a sheet — damage, the token menu's ±5,
+ * a manual edit — ends with the right badges on the map, without each caller
+ * remembering to ask.
  */
 export async function emitTokensOfCharacter(
   deps: RealtimeDeps,
@@ -205,8 +217,30 @@ export async function emitTokensOfCharacter(
   for (const row of tokens) {
     const { scene, ...token } = row;
     if (scene.campaignId !== campaignId) continue;
-    await emitTokenUpsert(deps, campaignId, scene, token as Token, linked);
+    const synced = await syncWoundStatuses(deps, token as Token, linked.hp);
+    await emitTokenUpsert(deps, campaignId, scene, synced, linked);
   }
+}
+
+/**
+ * Writes the system's wound statuses onto a token when its HP crossed a
+ * threshold. Statuses the GM set by hand are left alone — only the managed
+ * wound ids are added or removed.
+ */
+export async function syncWoundStatuses(
+  deps: RealtimeDeps,
+  token: Token,
+  hp: TokenHp | null,
+): Promise<Token> {
+  const current = parseStatuses(token.statuses);
+  const next = sheetWoundStatuses(current, hp);
+  if (next.length === current.length && next.every((id, index) => id === current[index])) {
+    return token;
+  }
+  return deps.ctx.prisma.token.update({
+    where: { id: token.id },
+    data: { statuses: JSON.stringify(next) },
+  });
 }
 
 /**
@@ -254,7 +288,7 @@ function emitTokenDelete(
   }
 }
 
-async function requireCampaignToken(
+export async function requireCampaignToken(
   prisma: PrismaClient,
   campaignId: string,
   tokenId: unknown,
@@ -399,7 +433,17 @@ export const tokenUpdateEvent = defineEvent<TokenUpdatePayload, TokenView>({
       data.y = snapped.y;
     }
 
-    const updated = await deps.ctx.prisma.token.update({ where: { id: token.id }, data });
+    let updated = await deps.ctx.prisma.token.update({ where: { id: token.id }, data });
+    // Crossing a wound threshold from the token menu (−5 PW) must move the
+    // badges too — the same automation the damage flow relies on (stage 15).
+    if (patch.hp !== undefined) {
+      const hp = linked
+        ? linked.hp
+        : updated.hpMax === null
+          ? null
+          : { current: updated.hpCurrent ?? 0, max: updated.hpMax };
+      updated = await syncWoundStatuses(deps, updated, hp);
+    }
 
     if (!token.hidden && updated.hidden) {
       // Vanish from players first, then refresh the GM's semi-transparent view.

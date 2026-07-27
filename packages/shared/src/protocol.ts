@@ -139,6 +139,29 @@ export interface CombatRollPayload {
   gesture?: RollGesture;
 }
 
+/**
+ * GM applies a stored damage roll to a token (stage 15). The client sends only
+ * the intention: which roll, which target and the GM's overrides. Every number
+ * that decides the outcome is re-read on the server from the roll message and
+ * the target's sheet.
+ */
+export interface DamageApplyPayload {
+  /** Chat message id of the damage roll. */
+  messageId: number;
+  tokenId: string;
+  /** Overrides the location the roll was made for. */
+  location?: string;
+  /** SP protecting the target — for statists without a sheet. */
+  armorSp?: number;
+  /** Armor stops nothing this time (falls, injury effects). */
+  ignoreArmor?: boolean;
+}
+
+/** GM takes back an applied damage entry; the id is the log message's. */
+export interface DamageUndoPayload {
+  messageId: number;
+}
+
 /** Client → server payload of `chat:history`. */
 export interface ChatHistoryRequest {
   /** Return messages with id lower than this (exclusive). */

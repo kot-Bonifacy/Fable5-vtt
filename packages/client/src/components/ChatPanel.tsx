@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, type FormEvent, type ReactNode, type UIEvent }
 import type { BotActivityEntry, BotTraceBroadcast, ChatMessageView, RollResult } from '@vtt/shared';
 import { ROLE_GM } from '@vtt/shared';
 import { loadOlderHistory, sendChatInput, stopBots } from '../socket.js';
+import { DamageApplyControls, DamageRow } from './DamageControls.js';
 import { replayMessage } from '../speech.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useChatStore, type ChatItem } from '../stores/chatStore.js';
@@ -80,7 +81,7 @@ function RollBreakdown({ roll }: { roll: RollResult }) {
 }
 
 /** A roll result card — visually distinct from plain chat messages. */
-function RollRow({ message }: { message: ChatMessageView }) {
+function RollRow({ message, isGm }: { message: ChatMessageView; isGm: boolean }) {
   const roll = message.roll;
   if (!roll) return null;
   const isGmRoll = message.kind === 'gmroll';
@@ -125,6 +126,18 @@ function RollRow({ message }: { message: ChatMessageView }) {
             )}
           </div>
         )}
+        {roll.outcome && (
+          <div className="chat-roll-badges">
+            <span
+              className={`chat-roll-badge chat-roll-badge--${roll.outcome.success ? 'success' : 'failure'}`}
+            >
+              {roll.outcome.label}
+              {roll.outcome.detail ? ` · ${roll.outcome.detail}` : ''}
+            </span>
+          </div>
+        )}
+        {/* Damage is applied by the GM only — players never see the button. */}
+        {isGm && roll.damage && <DamageApplyControls message={message} roll={roll} />}
       </div>
     </div>
   );
@@ -316,7 +329,14 @@ export function ChatPanel() {
         {items.map((item: ChatItem) =>
           item.type === 'message' ? (
             item.message.kind === 'roll' || item.message.kind === 'gmroll' ? (
-              <RollRow key={item.message.id} message={item.message} />
+              <RollRow key={item.message.id} message={item.message} isGm={isGm} />
+            ) : item.message.kind === 'damage' && item.message.damage ? (
+              <DamageRow
+                key={item.message.id}
+                message={item.message}
+                entry={item.message.damage}
+                isGm={isGm}
+              />
             ) : (
               <MessageRow
                 key={item.message.id}

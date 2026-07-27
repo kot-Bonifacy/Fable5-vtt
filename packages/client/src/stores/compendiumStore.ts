@@ -127,6 +127,7 @@ export function countByCategory(
     armor: 0,
     gear: 0,
     cyberware: 0,
+    criticalInjury: 0,
   };
   for (const id of order) {
     const entry = entries[id];

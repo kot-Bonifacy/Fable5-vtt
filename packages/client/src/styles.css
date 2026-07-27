@@ -2894,3 +2894,180 @@ body.is-resizing {
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
+
+/* ---- Obrażenia, pancerz i rany krytyczne (etap 15) ---- */
+
+.chat-roll-badge--wound {
+  background: rgb(245 158 11 / 18%);
+  color: #f59e0b;
+}
+
+.chat-roll-badge--success {
+  background: rgb(52 199 89 / 15%);
+  color: var(--ok);
+}
+
+.chat-roll-badge--failure {
+  background: rgb(255 59 48 / 15%);
+  color: var(--err);
+}
+
+.chat-roll-badge--note {
+  background: rgb(127 127 127 / 15%);
+  color: var(--text-dim);
+}
+
+/* „Zastosuj na celu” pod kartą rzutu na obrażenia — widoczne tylko dla MG. */
+.damage-apply {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.4rem;
+  padding-top: 0.4rem;
+  border-top: 1px dashed var(--border);
+}
+
+.damage-apply select {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
+.damage-armor-input {
+  width: 3.5rem;
+}
+
+.chat-damage {
+  border-left: 3px solid var(--accent);
+  padding-left: 0.5rem;
+}
+
+.chat-damage--undone {
+  opacity: 0.55;
+}
+
+.chat-damage--undone .chat-damage-headline {
+  text-decoration: line-through;
+}
+
+.chat-damage-location {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.chat-damage-undo {
+  margin-left: auto;
+}
+
+.chat-damage-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.chat-damage-headline {
+  font-weight: 600;
+}
+
+.chat-damage-detail {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.chat-damage-injury-effect {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+/* Pancerz na karcie postaci */
+.armor-row--stowed input,
+.armor-row--stowed select {
+  opacity: 0.6;
+}
+
+.armor-ablated input {
+  color: #f59e0b;
+  font-weight: 600;
+}
+
+.armor-worn-cell {
+  text-align: center;
+}
+
+.armor-actions {
+  display: flex;
+  gap: 0.25rem;
+  white-space: nowrap;
+}
+
+.row-action-cell {
+  text-align: center;
+}
+
+/* Rany krytyczne na karcie postaci */
+.injury-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.injury-row {
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--err);
+  border-radius: 6px;
+  padding: 0.3rem 0.45rem;
+}
+
+.injury-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.injury-name {
+  font-weight: 600;
+}
+
+.injury-roll,
+.injury-penalty {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.injury-penalty {
+  color: #f59e0b;
+}
+
+.injury-head .character-delete {
+  margin-left: auto;
+}
+
+.injury-effect {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.death-save-button {
+  margin-left: 0.5rem;
+}
+
+.combat-bar-death-save {
+  background: rgb(255 59 48 / 15%);
+  color: var(--err);
+  border: 1px solid var(--err);
+  border-radius: 6px;
+  padding: 0.2rem 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.combat-bar-death-save:hover {
+  background: rgb(255 59 48 / 25%);
+}

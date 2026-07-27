@@ -1,6 +1,6 @@
 import { parseRollNotation } from '../../dice.js';
-import { ARMOR_SP_MAX } from './character.js';
 import { isValidCompendiumId, slugify } from './ids.js';
+import { ARMOR_LOCATIONS, ARMOR_SP_MAX, type ArmorLocation } from './locations.js';
 import { CPRED_STAT_IDS } from './stats.js';
 
 /**
@@ -20,7 +20,13 @@ import { CPRED_STAT_IDS } from './stats.js';
 
 export const COMPENDIUM_SCHEMA_VERSION = 1;
 
-export const COMPENDIUM_CATEGORIES = ['weapon', 'armor', 'gear', 'cyberware'] as const;
+export const COMPENDIUM_CATEGORIES = [
+  'weapon',
+  'armor',
+  'gear',
+  'cyberware',
+  'criticalInjury',
+] as const;
 export type CompendiumCategory = (typeof COMPENDIUM_CATEGORIES)[number];
 
 export const COMPENDIUM_CATEGORY_LABELS: Record<CompendiumCategory, string> = {
@@ -28,7 +34,17 @@ export const COMPENDIUM_CATEGORY_LABELS: Record<CompendiumCategory, string> = {
   armor: 'Pancerz',
   gear: 'Sprzęt',
   cyberware: 'Cyborgizacje',
+  criticalInjury: 'Rany krytyczne',
 };
+
+/**
+ * Categories that can be added to a character sheet. Critical Injuries are in
+ * the compendium because they are rulebook data the GM must be able to edit,
+ * but nobody buys one — they are drawn by the damage engine (stage 15).
+ */
+export const COMPENDIUM_ITEM_CATEGORIES = COMPENDIUM_CATEGORIES.filter(
+  (category) => category !== 'criticalInjury',
+);
 
 /** Weapon quality from the rulebook: poor jams on a 1, excellent adds +1. */
 export const WEAPON_QUALITIES = ['poor', 'standard', 'excellent'] as const;
@@ -62,15 +78,6 @@ export const COST_CATEGORY_LABELS: Record<CostCategory, string> = {
   veryExpensive: 'Bardzo drogie',
   luxury: 'Luksusowe',
   superLuxury: 'Superluksusowe',
-};
-
-export const ARMOR_LOCATIONS = ['head', 'body', 'shield'] as const;
-export type ArmorLocation = (typeof ARMOR_LOCATIONS)[number];
-
-export const ARMOR_LOCATION_LABELS: Record<ArmorLocation, string> = {
-  head: 'Głowa',
-  body: 'Korpus',
-  shield: 'Tarcza',
 };
 
 /**
@@ -199,7 +206,66 @@ export interface CyberwareEntry extends CompendiumEntryBase {
   slots?: number;
 }
 
-export type CompendiumEntry = WeaponEntry | ArmorEntry | GearEntry | CyberwareEntry;
+/** The two Critical Injury tables of the rulebook (2d6 each). */
+export const CRITICAL_INJURY_TABLES = ['body', 'head'] as const;
+export type CriticalInjuryTable = (typeof CRITICAL_INJURY_TABLES)[number];
+
+export const CRITICAL_INJURY_TABLE_LABELS: Record<CriticalInjuryTable, string> = {
+  body: 'Korpus',
+  head: 'Głowa',
+};
+
+export const CRITICAL_INJURY_ROLL_MIN = 2;
+export const CRITICAL_INJURY_ROLL_MAX = 12;
+export const CRITICAL_INJURY_DEATH_SAVE_PENALTY_MAX = 5;
+
+/**
+ * One row of a Critical Injury table (stage 15). It lives in the compendium
+ * rather than in a data file of its own because the free material only carries
+ * the body table — the GM has to be able to type the missing rows in, and the
+ * compendium already has the editor, the per-campaign storage and the sync.
+ *
+ * `description` holds the injury's effect (the rules text shown on the sheet).
+ */
+export interface CriticalInjuryEntry extends CompendiumEntryBase {
+  category: 'criticalInjury';
+  table: CriticalInjuryTable;
+  /** 2d6 value that draws this injury, 2–12. */
+  roll: number;
+  /** „Łatanie" — the temporary fix and its DV, as free text. */
+  quickFix?: string;
+  /** „Leczenie" — the permanent treatment and its DV. */
+  treatment?: string;
+  /** Injuries that make every later Death Save harder (RAW: +1). */
+  deathSavePenalty?: number;
+}
+
+export type CompendiumEntry =
+  | WeaponEntry
+  | ArmorEntry
+  | GearEntry
+  | CyberwareEntry
+  | CriticalInjuryEntry;
+
+export function isCriticalInjuryEntry(entry: CompendiumEntry): entry is CriticalInjuryEntry {
+  return entry.category === 'criticalInjury';
+}
+
+/** The injury's effect text — the sheet copies it onto the character. */
+export function criticalInjuryEffect(entry: CriticalInjuryEntry): string {
+  return entry.description ?? '';
+}
+
+/** Injuries of one table, sorted by their 2d6 value. */
+export function criticalInjuryTable(
+  entries: readonly CompendiumEntry[],
+  table: CriticalInjuryTable,
+): CriticalInjuryEntry[] {
+  return entries
+    .filter(isCriticalInjuryEntry)
+    .filter((entry) => entry.table === table)
+    .sort((a, b) => a.roll - b.roll);
+}
 
 /** Shape of one compendium JSON file (`data/public|private/cpred/compendium`). */
 export interface CompendiumFile {
@@ -321,11 +387,13 @@ export function validateCompendiumEntry(
   }
 
   const name = checkName(input.name, issues);
+  // Ids are slugs, so the category prefix has to be lowercase too.
+  const idPrefix = category === 'criticalInjury' ? 'injury' : category;
   const id =
     typeof input.id === 'string' && input.id.length > 0
       ? input.id
       : name
-        ? `${category}.${slugify(name)}`
+        ? `${idPrefix}.${slugify(name)}`
         : '';
   if (!isValidCompendiumId(id)) {
     issues.push({
@@ -386,6 +454,7 @@ export function validateCompendiumEntry(
   if (category === 'weapon') entry = validateWeapon(input, base, issues);
   else if (category === 'armor') entry = validateArmor(input, base, issues);
   else if (category === 'cyberware') entry = validateCyberware(input, base, issues);
+  else if (category === 'criticalInjury') entry = validateCriticalInjury(input, base, issues);
   else entry = { ...base, category: 'gear' };
 
   if (issues.length > 0 || !entry) return { ok: false, issues };
@@ -525,6 +594,72 @@ function validateArmor(
     if (input.penalty !== 0) armor.penalty = input.penalty;
   }
   return armor;
+}
+
+function validateCriticalInjury(
+  input: Record<string, unknown>,
+  base: CompendiumEntryBase,
+  issues: CompendiumIssue[],
+): CriticalInjuryEntry | undefined {
+  const table = (CRITICAL_INJURY_TABLES as readonly unknown[]).includes(input.table)
+    ? (input.table as CriticalInjuryTable)
+    : undefined;
+  if (!table) {
+    issues.push({ field: 'table', message: 'Wybierz tabelę rany: korpus albo głowa.' });
+    return undefined;
+  }
+  if (
+    !isInteger(input.roll) ||
+    input.roll < CRITICAL_INJURY_ROLL_MIN ||
+    input.roll > CRITICAL_INJURY_ROLL_MAX
+  ) {
+    issues.push({
+      field: 'roll',
+      message: `Wynik 2k6 musi być liczbą od ${CRITICAL_INJURY_ROLL_MIN} do ${CRITICAL_INJURY_ROLL_MAX}.`,
+    });
+    return undefined;
+  }
+  if (!base.description) {
+    issues.push({ field: 'description', message: 'Efekt rany jest wymagany.' });
+    return undefined;
+  }
+  const injury: CriticalInjuryEntry = {
+    ...base,
+    category: 'criticalInjury',
+    table,
+    roll: input.roll,
+  };
+  const quickFix = checkOptionalText(
+    input.quickFix,
+    'quickFix',
+    'Łatanie',
+    COMPENDIUM_NAME_MAX_LENGTH,
+    issues,
+  );
+  const treatment = checkOptionalText(
+    input.treatment,
+    'treatment',
+    'Leczenie',
+    COMPENDIUM_NAME_MAX_LENGTH,
+    issues,
+  );
+  if (quickFix) injury.quickFix = quickFix;
+  if (treatment) injury.treatment = treatment;
+  if (input.deathSavePenalty !== undefined && input.deathSavePenalty !== null) {
+    if (
+      !isInteger(input.deathSavePenalty) ||
+      input.deathSavePenalty < 0 ||
+      input.deathSavePenalty > CRITICAL_INJURY_DEATH_SAVE_PENALTY_MAX
+    ) {
+      issues.push({
+        field: 'deathSavePenalty',
+        message: `Kara do Testu Przeżywalności: liczba od 0 do ${CRITICAL_INJURY_DEATH_SAVE_PENALTY_MAX}.`,
+      });
+      return undefined;
+    }
+    if (input.deathSavePenalty > 0) injury.deathSavePenalty = input.deathSavePenalty;
+  }
+  return injury;
 }
 
 function validateCyberware(

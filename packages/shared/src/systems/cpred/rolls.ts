@@ -7,9 +7,10 @@
  * that went into it.
  */
 
-import type { RollBreakdownEntry, RollFormula, RollTerm } from '../../dice.js';
-import type { CpredCharacterData, CpredRegistry } from './character.js';
-import { hpMax, seriousWoundThreshold } from './derived.js';
+import { parseRollNotation, type RollBreakdownEntry, type RollFormula, type RollTerm } from '../../dice.js';
+import { injuryDeathSavePenalty, type CpredCharacterData, type CpredRegistry } from './character.js';
+import { deathSaveTarget, hpMax } from './derived.js';
+import { CPRED_HIT_LOCATION_LABELS, type CpredHitLocation } from './locations.js';
 import { CPRED_STAT_LABELS, isCpredStatId, type CpredStatId, type CpredStats } from './stats.js';
 
 /** Wound state, driven purely by current HP (Easy Mode "Progi Rany"). */
@@ -23,18 +24,26 @@ export const CPRED_WOUND_LABELS: Record<CpredWoundState, string> = {
 };
 
 /**
- * Wound state for the given HP: full HP = unharmed, below max = lightly
+ * Wound state from a bare HP pair: full HP = unharmed, below max = lightly
  * wounded, at or below half of max = seriously wounded, below 1 = mortally
  * wounded. States replace each other — they never stack.
+ *
+ * Takes the numbers rather than a sheet so statist tokens (stage 05: their own
+ * HP, no character) get the same thresholds as player characters.
  */
+export function woundStateFromHp(hpCurrent: number, hpMaxValue: number): CpredWoundState {
+  if (hpCurrent < 1) return 'mortal';
+  if (hpCurrent <= Math.ceil(hpMaxValue / 2)) return 'serious';
+  if (hpCurrent < hpMaxValue) return 'light';
+  return 'healthy';
+}
+
+/** Wound state of a character sheet — the threshold follows from BC and SW. */
 export function woundState(
   hpCurrent: number,
   stats: Pick<CpredStats, 'body' | 'will'>,
 ): CpredWoundState {
-  if (hpCurrent < 1) return 'mortal';
-  if (hpCurrent <= seriousWoundThreshold(stats)) return 'serious';
-  if (hpCurrent < hpMax(stats)) return 'light';
-  return 'healthy';
+  return woundStateFromHp(hpCurrent, hpMax(stats));
 }
 
 /** Penalty applied to every check: −2 seriously wounded, −4 mortally wounded. */
@@ -62,15 +71,23 @@ export function effectiveMove(stats: Pick<CpredStats, 'move'>, state: CpredWound
 /** Bounds of the ad-hoc situational modifier offered by the roll dialog. */
 export const CPRED_SITUATIONAL_MODIFIER_LIMIT = 20;
 
-export type CpredRollTargetKind = 'skill' | 'stat';
+/**
+ * What can be rolled from a sheet: a Skill or Stat Check (stage 08), a weapon's
+ * damage or a Death Save (stage 15). Only Checks obey the exploding-10 rule.
+ */
+export type CpredRollKind = 'skill' | 'stat' | 'damage' | 'deathSave';
 
 /** What the client asks the server to roll from a sheet. */
 export interface CpredRollRequest {
-  kind: CpredRollTargetKind;
+  kind: CpredRollKind;
   /** Required for `kind: 'skill'` — an id from the skill registry. */
   skillId?: string;
   /** Required for `kind: 'stat'` — one of the ten CP RED stats. */
   statId?: CpredStatId;
+  /** Required for `kind: 'damage'` — id of the weapon row on the sheet. */
+  weaponRowId?: string;
+  /** `kind: 'damage'`: where the shot is aimed. Defaults to the body (RAW). */
+  location?: CpredHitLocation;
   /** Ad-hoc situational modifier (GM's call), −20…+20. */
   modifier?: number;
   /** Luck points spent from the pool; each adds +1 (declared before the roll). */
@@ -78,10 +95,40 @@ export interface CpredRollRequest {
 }
 
 export type CpredRollProblem =
-  'BAD_REQUEST' | 'UNKNOWN_SKILL' | 'UNKNOWN_STAT' | 'BAD_MODIFIER' | 'NOT_ENOUGH_LUCK';
+  | 'BAD_REQUEST'
+  | 'UNKNOWN_SKILL'
+  | 'UNKNOWN_STAT'
+  | 'BAD_MODIFIER'
+  | 'NOT_ENOUGH_LUCK'
+  | 'UNKNOWN_WEAPON'
+  | 'BAD_DAMAGE';
 
-/** Everything needed to execute and explain one sheet check. */
-export interface CpredCheckPlan {
+/** Damage metadata the chat card needs to offer „Zastosuj na celu". */
+export interface CpredDamagePlan {
+  location: CpredHitLocation;
+  /** Weapon the damage came from, for the card's title. */
+  weaponName: string;
+  /** Damage armor cannot stop (injury effects, falls) — stage 15 leaves it false. */
+  ignoreArmor?: boolean;
+}
+
+/**
+ * Death Save inputs read off the sheet: roll 1d10 under BODY, with +1 per save
+ * already taken and +1 per injury that raises the base difficulty. The modifier
+ * deliberately stays out of the formula — the die stands alone on the chat card
+ * and the verdict explains the arithmetic.
+ */
+export interface CpredDeathSavePlan {
+  /** Roll under this to survive (BODY). */
+  target: number;
+  /** Added to the die before the comparison. */
+  modifier: number;
+  savesTaken: number;
+  injuryPenalty: number;
+}
+
+/** Everything needed to execute and explain one sheet roll. */
+export interface CpredRollPlan {
   /** Chat-card title, e.g. `Percepcja (INT)`. */
   title: string;
   /** `1d10 + <total>` — the flat term is omitted when the total is zero. */
@@ -92,6 +139,12 @@ export interface CpredCheckPlan {
   woundState: CpredWoundState;
   /** Luck actually spent (0 when the request omitted it). */
   luckSpent: number;
+  /** Whether the exploding-10 Check rule applies (Checks only). */
+  checkRule: boolean;
+  /** Present for `kind: 'damage'`. */
+  damage?: CpredDamagePlan;
+  /** Present for `kind: 'deathSave'`. */
+  deathSave?: CpredDeathSavePlan;
 }
 
 function isInteger(value: unknown): value is number {
@@ -100,14 +153,14 @@ function isInteger(value: unknown): value is number {
 
 /**
  * Validates a roll request against the sheet and builds its plan. Rejects
- * unknown skills/stats, out-of-range modifiers and spending more Luck than
- * the character has left — the server calls this before touching the dice.
+ * unknown skills/stats/weapons, out-of-range modifiers and spending more Luck
+ * than the character has left — the server calls this before touching the dice.
  */
-export function planCpredCheck(
+export function planCpredRoll(
   data: CpredCharacterData,
   registry: CpredRegistry,
   request: CpredRollRequest,
-): { ok: true; plan: CpredCheckPlan } | { ok: false; error: CpredRollProblem } {
+): { ok: true; plan: CpredRollPlan } | { ok: false; error: CpredRollProblem } {
   if (typeof request !== 'object' || request === null) return { ok: false, error: 'BAD_REQUEST' };
 
   const modifier = request.modifier ?? 0;
@@ -117,6 +170,20 @@ export function planCpredCheck(
   const luckSpent = request.luckSpent ?? 0;
   if (!isInteger(luckSpent) || luckSpent < 0) return { ok: false, error: 'BAD_REQUEST' };
   if (luckSpent > data.luckCurrent) return { ok: false, error: 'NOT_ENOUGH_LUCK' };
+
+  const state = woundState(data.hpCurrent, data.stats);
+
+  // Damage and Death Saves are not Checks: no stat, no skill, no wound penalty
+  // and no exploding 10. They share only the validation above.
+  if (request.kind === 'damage') {
+    // Luck buys successes on Checks, never damage.
+    if (luckSpent > 0) return { ok: false, error: 'BAD_REQUEST' };
+    return planDamageRoll(data, request, modifier, state);
+  }
+  if (request.kind === 'deathSave') {
+    if (luckSpent > 0) return { ok: false, error: 'BAD_REQUEST' };
+    return planDeathSaveRoll(data, state);
+  }
 
   const breakdown: RollBreakdownEntry[] = [];
   let title: string;
@@ -154,7 +221,6 @@ export function planCpredCheck(
     return { ok: false, error: 'BAD_REQUEST' };
   }
 
-  const state = woundState(data.hpCurrent, data.stats);
   const woundPenalty = woundCheckPenalty(state);
   if (woundPenalty !== 0) {
     breakdown.push({ label: CPRED_WOUND_LABELS[state], value: woundPenalty, kind: 'wound' });
@@ -185,6 +251,103 @@ export function planCpredCheck(
       modifierTotal,
       woundState: state,
       luckSpent,
+      checkRule: true,
     },
+  };
+}
+
+/**
+ * A weapon's damage roll: the notation stored on the sheet row, plus an
+ * optional flat modifier from the GM. The hit location travels with the plan
+ * so the chat card can offer „Zastosuj" against the right armor.
+ */
+function planDamageRoll(
+  data: CpredCharacterData,
+  request: CpredRollRequest,
+  modifier: number,
+  state: CpredWoundState,
+): { ok: true; plan: CpredRollPlan } | { ok: false; error: CpredRollProblem } {
+  const weapon = data.weapons.find((row) => row.id === request.weaponRowId);
+  if (!weapon) return { ok: false, error: 'UNKNOWN_WEAPON' };
+  const parsed = parseRollNotation(weapon.damage ?? '');
+  if (!parsed.ok || !parsed.formula.terms.some((term) => term.kind === 'dice')) {
+    return { ok: false, error: 'BAD_DAMAGE' };
+  }
+
+  const location: CpredHitLocation = request.location === 'head' ? 'head' : 'body';
+  const breakdown: RollBreakdownEntry[] = [];
+  const terms = [...parsed.formula.terms];
+  if (modifier !== 0) {
+    breakdown.push({ label: 'Modyfikator obrażeń', value: modifier, kind: 'situational' });
+    terms.push({ kind: 'modifier', sign: modifier < 0 ? -1 : 1, value: Math.abs(modifier) });
+  }
+
+  return {
+    ok: true,
+    plan: {
+      title: `${weapon.name} — obrażenia (${CPRED_HIT_LOCATION_LABELS[location]})`,
+      formula: { terms },
+      breakdown,
+      modifierTotal: modifier,
+      woundState: state,
+      luckSpent: 0,
+      checkRule: false,
+      damage: { location, weaponName: weapon.name },
+    },
+  };
+}
+
+/** A Death Save: a bare 1d10 judged against BODY (see `CpredDeathSavePlan`). */
+function planDeathSaveRoll(
+  data: CpredCharacterData,
+  state: CpredWoundState,
+): { ok: true; plan: CpredRollPlan } {
+  const target = deathSaveTarget(data.stats);
+  const savesTaken = Math.max(0, Math.round(data.deathSaves));
+  const injuryPenalty = injuryDeathSavePenalty(data.criticalInjuries);
+  return {
+    ok: true,
+    plan: {
+      title: 'Test Przeżywalności',
+      formula: { terms: [{ kind: 'dice', sign: 1, count: 1, sides: 10 }] },
+      breakdown: [],
+      modifierTotal: 0,
+      woundState: state,
+      luckSpent: 0,
+      checkRule: false,
+      deathSave: { target, modifier: savesTaken + injuryPenalty, savesTaken, injuryPenalty },
+    },
+  };
+}
+
+export interface CpredDeathSaveOutcome {
+  survived: boolean;
+  /** The die alone, before the modifier. */
+  natural: number;
+  /** Die plus modifier — what is compared against the target. */
+  total: number;
+  target: number;
+  modifier: number;
+  /** True when a natural 10 failed the save regardless of the numbers. */
+  automaticFailure: boolean;
+}
+
+/**
+ * Resolves one Death Save: you survive by rolling (die + modifier) under BODY.
+ * A natural 10 always fails, however high BODY is (RAW).
+ */
+export function resolveCpredDeathSave(
+  natural: number,
+  plan: Pick<CpredDeathSavePlan, 'target' | 'modifier'>,
+): CpredDeathSaveOutcome {
+  const total = natural + plan.modifier;
+  const automaticFailure = natural === 10;
+  return {
+    survived: !automaticFailure && total < plan.target,
+    natural,
+    total,
+    target: plan.target,
+    modifier: plan.modifier,
+    automaticFailure,
   };
 }

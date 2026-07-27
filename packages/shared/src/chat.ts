@@ -8,7 +8,55 @@ import {
 } from './dice.js';
 import type { SpeechTrack } from './tts.js';
 
-export type ChatKind = 'say' | 'whisper' | 'roll' | 'gmroll';
+export type ChatKind = 'say' | 'whisper' | 'roll' | 'gmroll' | 'damage';
+
+/**
+ * Result of applying a damage roll to a target (stage 15). Written by the
+ * server, never by a client — the numbers come from the stored roll and the
+ * target's sheet, so nobody can type their own damage.
+ *
+ * Locations are opaque strings plus a label: the chat core stays free of game
+ * system knowledge, exactly like `RollDamageMeta`.
+ *
+ * Visibility: everything here is public except `hp` and `characterId`, which
+ * are stripped for anyone but the GM and the target's owner — the same rule
+ * tokens follow since stage 05 (absolute HP never leave the server).
+ */
+export interface DamageLogEntry {
+  /** Chat message the damage roll came from. */
+  sourceMessageId?: number;
+  targetTokenId: string;
+  targetName: string;
+  /** Sheet that took the damage; absent for statists and for redacted views. */
+  characterId?: string | null;
+  /** Who may see the HP numbers (token owner or sheet owner). */
+  targetOwnerId?: string | null;
+  location: string;
+  locationLabel: string;
+  /** What the dice showed. */
+  damageRolled: number;
+  /** SP subtracted (0 when unarmored or when the damage ignores armor). */
+  armorSp: number;
+  /** Damage that reached HP, after armor and the head multiplier. */
+  damageThrough: number;
+  doubled: boolean;
+  /** Critical injury bonus damage included in `hpLost`. */
+  bonusDamage: number;
+  hpLost: number;
+  /** Absolute HP — GM and owner only. */
+  hp?: { before: number; after: number; max: number };
+  /** Ablated armor piece, when one was hit. */
+  armor?: { rowId: string; name: string; before: number; after: number };
+  /** Wound state change, e.g. „Poważnie ranny → Śmiertelnie ranny". */
+  woundLabel?: string;
+  /** Critical injury drawn from the table (2d6). */
+  injury?: { id: string; name: string; effect: string; rolled: number };
+  /** Why no injury was drawn, e.g. „brak tabeli dla głowy". */
+  injuryNote?: string;
+  /** Set once the GM took the application back. */
+  undone?: boolean;
+  undoneByName?: string;
+}
 
 /** A chat message as seen by clients. Whisper fields are present only for whispers. */
 export interface ChatMessageView {
@@ -34,6 +82,8 @@ export interface ChatMessageView {
   text: string;
   /** Structured roll outcome — present only for kinds `roll` and `gmroll`. */
   roll?: RollResult;
+  /** Applied damage — present only for kind `damage` (stage 15). */
+  damage?: DamageLogEntry;
   /**
    * Voice of an NPC line: audio plus the rhythm the text is written out with.
    * Absent = show the line immediately (speech off, no voice set, or synthesis

@@ -16,9 +16,31 @@ uv run --with pdfplumber python tools/import/parse-compendium.py
 # 2.5. opisy EN -> PL lokalnym modelem (wymaga uruchomionego llama-servera)
 uv run --with httpx python tools/import/translate-descriptions.py
 
+# 2b. tabela Ran Krytycznych z Easy Mode (etap 15) -> to samo kompendium
+uv run --with pdfplumber python tools/import/parse-critical-injuries.py
+
 # 3. walidacja schematami z @vtt/shared (to samo, co robi serwer przy starcie)
 packages/server/node_modules/.bin/tsx tools/import/validate-compendium.ts
 ```
+
+## Rany krytyczne (etap 15)
+
+`parse-critical-injuries.py` czyta tabelę 2k6 ze strony 22 Easy Mode i zapisuje
+ją jako wpisy kompendium kategorii `criticalInjury`
+(`data/private/cpred/compendium/critical-injuries.json`).
+
+Nie da się jej sparsować z wyekstrahowanego tekstu: komórka „Efekt rany” zawija
+się **nad i pod** wierszem, więc w płaskim tekście jedna linia miesza trzy różne
+wiersze tabeli. Skrypt czyta więc pudełka słów z pdfplumbera i przydziela je do
+kolumn po współrzędnej X, a do wierszy po Y — kolumny „Łatanie” i „Leczenie”
+dzieli szczelina szeroka na 7 punktów, stąd sztywne granice w `COLUMNS`.
+
+Easy Mode zawiera **tylko tabelę dla korpusu** (sam to deklaruje: „Ta lista
+zawiera w sobie jedynie połowę Ran Krytycznych opisanych w podręczniku
+głównym”). Tabeli dla głowy nie ma w żadnym darmowym materiale RTG — wpisuje się
+ją ręcznie w edytorze kompendium (kategoria „Rany krytyczne”, tabela „Głowa”).
+Do tego czasu trafienie krytyczne w głowę zadaje obrażenia i +5 bonusu, ale na
+czacie melduje „brak wpisu w tabeli”.
 
 ## Tłumaczenie opisów
 

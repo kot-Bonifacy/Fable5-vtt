@@ -8,13 +8,13 @@ Automatyczne rozliczanie obrażeń wg zasad CP RED: SP pancerza i ablacja, lokac
 
 ## Zakres
 
-- [ ] Silnik obrażeń w `shared/systems/cpred` (czyste funkcje + testy): wejście (rzut obrażeń, lokacja, SP celu, modyfikatory) → wyjście (obrażenia po pancerzu, ablacja, flagi krytyka/śmierci) — dokładne reguły wg podręcznika (mnożnik trafienia w głowę, ablacja SP przy przebiciu itd.)
-- [ ] Pancerz na karcie: założony pancerz (głowa/korpus) z bieżącym SP; ablacja automatycznie obniża SP, naprawa ręcznie
-- [ ] Przepływ w UI: rzut obrażeń z karty/broni → karta wyniku na czacie z przyciskiem „zastosuj na celu" (wybrany token) → serwer liczy, aktualizuje HP i SP, loguje wynik na czacie („Przebicie: 7 obrażeń, SP korpusu 11→10")
-- [ ] Progi stanu: poważnie ranny (≤ połowa HP) — automatyczny status i kary do rzutów (spięte z etapem 08); stan śmiertelny (HP 0) — status, kary, początek Death Save'ów
-- [ ] Rany krytyczne: import tabeli ran krytycznych (dane z etapu 13), przy ≥2 szóstkach na kościach obrażeń — automatyczne losowanie/wybór rany, efekt jako status z opisem, dodatkowe obrażenia wg zasad
-- [ ] Death Save: przycisk na karcie/trackerze, rzut wg zasad (próg BODY, narastająca kara za kolejne), wynik na czacie, MG oznacza stabilizację/śmierć
-- [ ] Testy jednostkowe całej matematyki (pancerz, ablacja, głowa, progi, kary Death Save)
+- [x] Silnik obrażeń w `shared/systems/cpred` (czyste funkcje + testy): wejście (rzut obrażeń, lokacja, SP celu, modyfikatory) → wyjście (obrażenia po pancerzu, ablacja, flagi krytyka/śmierci) — dokładne reguły wg podręcznika (mnożnik trafienia w głowę, ablacja SP przy przebiciu itd.)
+- [x] Pancerz na karcie: założony pancerz (głowa/korpus) z bieżącym SP; ablacja automatycznie obniża SP, naprawa ręcznie
+- [x] Przepływ w UI: rzut obrażeń z karty/broni → karta wyniku na czacie z przyciskiem „zastosuj na celu" (wybrany token) → serwer liczy, aktualizuje HP i SP, loguje wynik na czacie („Przebicie: 7 obrażeń, SP korpusu 11→10")
+- [x] Progi stanu: poważnie ranny (≤ połowa HP) — automatyczny status i kary do rzutów (spięte z etapem 08); stan śmiertelny (HP 0) — status, kary, początek Death Save'ów
+- [x] Rany krytyczne: import tabeli ran krytycznych (dane z etapu 13), przy ≥2 szóstkach na kościach obrażeń — automatyczne losowanie/wybór rany, efekt jako status z opisem, dodatkowe obrażenia wg zasad
+- [x] Death Save: przycisk na karcie/trackerze, rzut wg zasad (próg BODY, narastająca kara za kolejne), wynik na czacie, MG oznacza stabilizację/śmierć
+- [x] Testy jednostkowe całej matematyki (pancerz, ablacja, głowa, progi, kary Death Save)
 
 ## Poza zakresem
 

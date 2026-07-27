@@ -6,6 +6,10 @@ import {
   COMPENDIUM_CATEGORIES,
   COMPENDIUM_CATEGORY_LABELS,
   COST_CATEGORIES,
+  CRITICAL_INJURY_ROLL_MAX,
+  CRITICAL_INJURY_ROLL_MIN,
+  CRITICAL_INJURY_TABLES,
+  CRITICAL_INJURY_TABLE_LABELS,
   COST_CATEGORY_LABELS,
   WEAPON_QUALITIES,
   WEAPON_QUALITY_LABELS,
@@ -91,7 +95,7 @@ export function CompendiumEditor() {
           </label>
 
           <label className="bot-field">
-            Opis
+            {form.category === 'criticalInjury' ? 'Efekt rany' : 'Opis'}
             <textarea
               value={form.description}
               rows={2}
@@ -100,7 +104,10 @@ export function CompendiumEditor() {
             />
           </label>
 
-          <div className="bot-row-inline">
+          <div
+            className="bot-row-inline"
+            hidden={form.category === 'criticalInjury'}
+          >
             <label className="bot-field bot-field--inline">
               Cena (ed)
               <input
@@ -272,6 +279,69 @@ export function CompendiumEditor() {
             </div>
           ) : null}
 
+          {form.category === 'criticalInjury' ? (
+            <>
+              <div className="bot-row-inline">
+                <label className="bot-field bot-field--inline">
+                  Tabela
+                  <select
+                    value={form.injuryTable}
+                    onChange={(event) => patch({ injuryTable: event.target.value })}
+                  >
+                    {CRITICAL_INJURY_TABLES.map((id) => (
+                      <option key={id} value={id}>
+                        {CRITICAL_INJURY_TABLE_LABELS[id]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="bot-field bot-field--inline">
+                  Wynik 2k6
+                  <input
+                    type="number"
+                    min={CRITICAL_INJURY_ROLL_MIN}
+                    max={CRITICAL_INJURY_ROLL_MAX}
+                    value={form.injuryRoll}
+                    onChange={(event) => patch({ injuryRoll: event.target.value })}
+                  />
+                </label>
+                <label className="bot-field bot-field--inline">
+                  Test Przeżywalności
+                  <input
+                    type="number"
+                    min={0}
+                    max={5}
+                    value={form.deathSavePenalty}
+                    placeholder="+0"
+                    title="O ile ta rana podnosi podstawową trudność Testu Przeżywalności."
+                    onChange={(event) => patch({ deathSavePenalty: event.target.value })}
+                  />
+                </label>
+              </div>
+              <div className="bot-row-inline">
+                <label className="bot-field bot-field--inline">
+                  Łatanie
+                  <input
+                    value={form.quickFix}
+                    placeholder="Ratownictwo medyczne PT 13"
+                    onChange={(event) => patch({ quickFix: event.target.value })}
+                  />
+                </label>
+                <label className="bot-field bot-field--inline">
+                  Leczenie
+                  <input
+                    value={form.treatment}
+                    placeholder="Chirurgia PT 15"
+                    onChange={(event) => patch({ treatment: event.target.value })}
+                  />
+                </label>
+              </div>
+              <p className="compendium-note">
+                Efekt rany wpisz w polu „Opis” — to on trafia na kartę postaci.
+              </p>
+            </>
+          ) : null}
+
           {issues.length > 0 ? (
             <ul className="sheet-issues">
               {issues.map((message) => (
@@ -312,6 +382,11 @@ interface EditorForm {
   humanityLoss: string;
   slots: string;
   foundation: boolean;
+  injuryTable: string;
+  injuryRoll: string;
+  quickFix: string;
+  treatment: string;
+  deathSavePenalty: string;
 }
 
 function toForm(entry: CompendiumEntry | undefined): EditorForm {
@@ -336,6 +411,14 @@ function toForm(entry: CompendiumEntry | undefined): EditorForm {
     humanityLoss: entry?.category === 'cyberware' ? (entry.humanityLoss ?? '') : '',
     slots: entry?.category === 'cyberware' && entry.slots !== undefined ? String(entry.slots) : '',
     foundation: entry?.category === 'cyberware' ? Boolean(entry.foundation) : false,
+    injuryTable: entry?.category === 'criticalInjury' ? entry.table : 'body',
+    injuryRoll: entry?.category === 'criticalInjury' ? String(entry.roll) : '',
+    quickFix: entry?.category === 'criticalInjury' ? (entry.quickFix ?? '') : '',
+    treatment: entry?.category === 'criticalInjury' ? (entry.treatment ?? '') : '',
+    deathSavePenalty:
+      entry?.category === 'criticalInjury' && entry.deathSavePenalty
+        ? String(entry.deathSavePenalty)
+        : '',
   };
 }
 
@@ -383,6 +466,16 @@ function fromForm(form: EditorForm, existingId: string | undefined): Record<stri
       humanityLoss: form.humanityLoss || undefined,
       slots: numberOrUndefined(form.slots),
       foundation: form.foundation,
+    };
+  }
+  if (form.category === 'criticalInjury') {
+    return {
+      ...base,
+      table: form.injuryTable,
+      roll: numberOrUndefined(form.injuryRoll) ?? Number.NaN,
+      quickFix: form.quickFix || undefined,
+      treatment: form.treatment || undefined,
+      deathSavePenalty: numberOrUndefined(form.deathSavePenalty),
     };
   }
   return base;

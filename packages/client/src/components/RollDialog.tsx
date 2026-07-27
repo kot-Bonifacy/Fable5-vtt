@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react';
-import type { CpredRollRequest } from '@vtt/shared';
-import { CPRED_SITUATIONAL_MODIFIER_LIMIT, planCpredCheck } from '@vtt/shared';
+import type { CpredHitLocation, CpredRollRequest } from '@vtt/shared';
+import {
+  CPRED_AIMED_SHOT_PENALTY,
+  CPRED_HIT_LOCATIONS,
+  CPRED_HIT_LOCATION_LABELS,
+  CPRED_SITUATIONAL_MODIFIER_LIMIT,
+  formatRollNotation,
+  planCpredRoll,
+} from '@vtt/shared';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useRollStore, type PendingRoll, type RollTarget } from '../stores/rollStore.js';
 
@@ -21,10 +28,15 @@ function RollDialogBody({ target }: { target: RollTarget }) {
   const closeDialog = useRollStore((s) => s.closeDialog);
   const lastModifier = useRollStore((s) => s.lastModifier);
   const lastVisibility = useRollStore((s) => s.lastVisibility);
+  const lastLocation = useRollStore((s) => s.lastLocation);
+  const isDamage = target.kind === 'damage';
 
-  const [modifier, setModifier] = useState(lastModifier);
+  const [modifier, setModifier] = useState(isDamage ? 0 : lastModifier);
   const [luckSpent, setLuckSpent] = useState(0);
-  const [visibility, setVisibility] = useState<'public' | 'gm'>(lastVisibility);
+  const [visibility, setVisibility] = useState<'public' | 'gm'>(
+    isDamage ? 'public' : lastVisibility,
+  );
+  const [location, setLocation] = useState<CpredHitLocation>(lastLocation);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -40,16 +52,19 @@ function RollDialogBody({ target }: { target: RollTarget }) {
     kind: target.kind,
     ...(target.skillId ? { skillId: target.skillId } : {}),
     ...(target.statId ? { statId: target.statId } : {}),
+    ...(target.weaponRowId ? { weaponRowId: target.weaponRowId } : {}),
+    ...(isDamage ? { location } : {}),
     modifier,
     luckSpent,
   };
   // Same pure function the server uses — the preview can never disagree.
-  const planned = planCpredCheck(character.data, registry, request);
+  const planned = planCpredRoll(character.data, registry, request);
   const luckMax = character.data.luckCurrent;
 
   function confirm() {
     if (!planned.ok) return;
-    useRollStore.getState().remember(modifier, visibility);
+    if (isDamage) useRollStore.getState().rememberLocation(location);
+    else useRollStore.getState().remember(modifier, visibility);
     const pending: PendingRoll = {
       ...target,
       request,
@@ -79,14 +94,40 @@ function RollDialogBody({ target }: { target: RollTarget }) {
               </li>
             ))}
             <li className="roll-preview-total">
-              <span>1k10 +</span>
-              <span>{planned.plan.modifierTotal}</span>
+              <span>{isDamage ? 'Rzut na obrażenia' : '1k10 +'}</span>
+              <span>
+                {isDamage
+                  ? formatRollNotation(planned.plan.formula).replace('d', 'k')
+                  : planned.plan.modifierTotal}
+              </span>
             </li>
           </ul>
         )}
 
+        {isDamage && (
+          <fieldset className="roll-visibility">
+            <legend className="auth-label">Trafienie</legend>
+            {CPRED_HIT_LOCATIONS.map((id) => (
+              <label key={id}>
+                <input
+                  type="radio"
+                  name="roll-location"
+                  checked={location === id}
+                  onChange={() => setLocation(id)}
+                />{' '}
+                {CPRED_HIT_LOCATION_LABELS[id]}
+              </label>
+            ))}
+            <p className="roll-dialog-hint">
+              {location === 'head'
+                ? `Strzał celowany: ${CPRED_AIMED_SHOT_PENALTY} do ataku, a obrażenia po pancerzu liczą się podwójnie.`
+                : 'RAW: atak bez celowania zawsze trafia w korpus.'}
+            </p>
+          </fieldset>
+        )}
+
         <label className="auth-label" htmlFor="roll-modifier">
-          Modyfikator sytuacyjny
+          {isDamage ? 'Modyfikator obrażeń' : 'Modyfikator sytuacyjny'}
         </label>
         <input
           id="roll-modifier"
@@ -107,46 +148,51 @@ function RollDialogBody({ target }: { target: RollTarget }) {
           }}
         />
 
-        <label className="auth-label" htmlFor="roll-luck">
-          Punkty Szczęścia (pula: {luckMax})
-        </label>
-        <input
-          id="roll-luck"
-          type="number"
-          min={0}
-          max={luckMax}
-          value={luckSpent}
-          disabled={luckMax === 0}
-          onChange={(e) => {
-            const value = Number(e.target.value);
-            if (Number.isFinite(value)) {
-              setLuckSpent(Math.max(0, Math.min(luckMax, Math.round(value))));
-            }
-          }}
-          title="Deklarowane przed rzutem — każdy punkt to +1 do wyniku"
-        />
+        {/* Luck buys successes on Checks, never damage (RAW). */}
+        {!isDamage && (
+          <>
+            <label className="auth-label" htmlFor="roll-luck">
+              Punkty Szczęścia (pula: {luckMax})
+            </label>
+            <input
+              id="roll-luck"
+              type="number"
+              min={0}
+              max={luckMax}
+              value={luckSpent}
+              disabled={luckMax === 0}
+              onChange={(e) => {
+                const value = Number(e.target.value);
+                if (Number.isFinite(value)) {
+                  setLuckSpent(Math.max(0, Math.min(luckMax, Math.round(value))));
+                }
+              }}
+              title="Deklarowane przed rzutem — każdy punkt to +1 do wyniku"
+            />
 
-        <fieldset className="roll-visibility">
-          <legend className="auth-label">Widoczność</legend>
-          <label>
-            <input
-              type="radio"
-              name="roll-visibility"
-              checked={visibility === 'public'}
-              onChange={() => setVisibility('public')}
-            />{' '}
-            Publiczny
-          </label>
-          <label>
-            <input
-              type="radio"
-              name="roll-visibility"
-              checked={visibility === 'gm'}
-              onChange={() => setVisibility('gm')}
-            />{' '}
-            Tylko dla MG
-          </label>
-        </fieldset>
+            <fieldset className="roll-visibility">
+              <legend className="auth-label">Widoczność</legend>
+              <label>
+                <input
+                  type="radio"
+                  name="roll-visibility"
+                  checked={visibility === 'public'}
+                  onChange={() => setVisibility('public')}
+                />{' '}
+                Publiczny
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="roll-visibility"
+                  checked={visibility === 'gm'}
+                  onChange={() => setVisibility('gm')}
+                />{' '}
+                Tylko dla MG
+              </label>
+            </fieldset>
+          </>
+        )}
 
         {!planned.ok && <p className="auth-error">Nie można wykonać tego rzutu.</p>}
 
