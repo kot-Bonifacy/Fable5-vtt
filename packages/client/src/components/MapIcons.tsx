@@ -1,11 +1,15 @@
 /**
  * Icons of the map toolbar (stage 17a).
  *
- * Drawn by hand rather than pulled from an icon font: the toolbar sits on top
- * of the canvas, so the glyphs have to inherit `currentColor` (state is shown
- * by colour, not by a box around the button) and carry their own drop shadow
- * to stay legible over a bright map. Emoji could do neither — half of them
- * rendered as flat monochrome shapes with no way to tint them.
+ * Mostly drawn by hand rather than pulled from an icon font: the toolbar sits
+ * on top of the canvas, so a glyph has to inherit `currentColor` (state is
+ * shown by colour, not by a box around the button) and carry its own drop
+ * shadow to stay legible over a bright map. Emoji do neither — several of them
+ * render as flat monochrome shapes that cannot be tinted.
+ *
+ * The pushpin and the brush are the exception: their colour glyphs simply look
+ * better than a two-colour line drawing, so those two show „armed" with a glow
+ * instead of a colour change.
  *
  * The visual language follows what virtual tabletops already use for these
  * tools (Foundry maps them onto Font Awesome: ruler, cloud-fog, thumbtack,
@@ -84,16 +88,7 @@ export function IconFog(props: IconProps) {
   );
 }
 
-/** Full moon — fog is switched on for this scene (the map sleeps in the dark). */
-export function IconMoon(props: IconProps) {
-  return (
-    <Svg {...props}>
-      <path d="M20 13.4A8.2 8.2 0 1 1 10.6 4a6.4 6.4 0 0 0 9.4 9.4Z" />
-    </Svg>
-  );
-}
-
-/** Sun — fog is off, the whole scene is lit. */
+/** Sun — the fog brush is revealing rather than covering. */
 export function IconSun(props: IconProps) {
   return (
     <Svg {...props}>

@@ -2,7 +2,14 @@ import { useState, type ChangeEvent, type FormEvent } from 'react';
 import type { MapUploadResult, SceneSummary } from '@vtt/shared';
 import { GRID_SIZE_MAX, GRID_SIZE_MIN } from '@vtt/shared';
 import { apiUpload, ApiError } from '../api.js';
-import { activateScene, createScene, deleteScene, updateScene, viewScene } from '../socket.js';
+import {
+  activateScene,
+  createScene,
+  deleteScene,
+  toggleFog,
+  updateScene,
+  viewScene,
+} from '../socket.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 
 function uploadErrorText(error: unknown): string {
@@ -173,6 +180,24 @@ function SceneEditor({ onClose }: { onClose: () => void }) {
           {scene.background.width}×{scene.background.height} px
         </p>
       )}
+
+      {/* Unlike every other field here, this one applies at once and is not
+          part of the draft: switching fog on has to take concealed tokens
+          away from the players in the same operation, so it travels on its
+          own event (`fog:toggle`) rather than through the scene patch. */}
+      <label className="auth-label">
+        <input
+          type="checkbox"
+          checked={scene.fogEnabled}
+          onChange={(e) => void toggleFog(scene.id, e.target.checked)}
+        />{' '}
+        Mgła wojny na tej scenie
+      </label>
+      <p className="auth-hint">
+        {scene.fogEnabled
+          ? 'Scena startuje zakryta — odsłaniaj ją pędzlem z paska mapy. Zmiana działa od razu, bez „Zapisz”.'
+          : 'Cała mapa widoczna dla graczy. Włącz dla scen z eksploracją; odsłonięte wcześniej fragmenty wrócą.'}
+      </p>
 
       <label className="auth-label">
         <input

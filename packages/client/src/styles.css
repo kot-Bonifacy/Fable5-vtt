@@ -1058,6 +1058,7 @@ input[type='color'] {
   color: var(--text);
   font-size: 0.85rem;
   pointer-events: none;
+  user-select: none;
   z-index: 20;
 }
 
@@ -3118,6 +3119,10 @@ body.is-resizing {
   display: flex;
   gap: 0.3rem;
   z-index: 20;
+  /* Dragging a fog rectangle across the map is a drag over the document too,
+     and the emoji buttons are text nodes — without this the browser paints
+     them with its blue selection highlight, which reads as a broken toggle. */
+  user-select: none;
 }
 
 /* No box around the glyph: the icon itself carries the state through colour,
@@ -3289,6 +3294,8 @@ body.is-resizing {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 0.3rem;
+  /* Same reason as `.map-tools`: these are emoji, i.e. selectable text. */
+  user-select: none;
 }
 
 /* Same pattern as the map toolbar: no box around the glyph, a generous hit

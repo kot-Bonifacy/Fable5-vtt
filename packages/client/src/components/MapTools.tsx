@@ -6,7 +6,7 @@ import { useFogStore } from '../stores/fogStore.js';
 import { useMapToolStore } from '../stores/mapToolStore.js';
 import { useRulerStore } from '../stores/rulerStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
-import { resetFog, toggleFog, undoFog } from '../socket.js';
+import { resetFog, undoFog } from '../socket.js';
 import {
   IconBrush,
   IconCloud,
@@ -14,7 +14,6 @@ import {
   IconEye,
   IconEyeOff,
   IconFog,
-  IconMoon,
   IconPin,
   IconRangeRings,
   IconRect,
@@ -97,27 +96,13 @@ export function MapTools() {
             title={
               fogEnabled
                 ? 'Mgła wojny (F) — przeciągnij, by odsłonić lub zakryć'
-                : 'Mgła wyłączona na tej scenie — włącz ją przełącznikiem obok'
+                : 'Mgła wyłączona na tej scenie — włącz ją w zakładce „Sceny”'
             }
             aria-pressed={tool === 'fog'}
             disabled={!fogEnabled}
             onClick={() => toggleTool('fog')}
           >
             <IconFog />
-          </button>
-          <button
-            type="button"
-            className={`map-tool${fogEnabled ? ' map-tool--night' : ' map-tool--day'}`}
-            title={
-              fogEnabled
-                ? 'Mgła włączona na tej scenie — kliknij, by wyłączyć (cała mapa widoczna)'
-                : 'Mgła wyłączona — kliknij, by włączyć (odsłonięte fragmenty wracają)'
-            }
-            aria-pressed={fogEnabled}
-            disabled={!sceneId}
-            onClick={() => sceneId && void toggleFog(sceneId, !fogEnabled)}
-          >
-            {fogEnabled ? <IconMoon /> : <IconSun />}
           </button>
           <button
             type="button"

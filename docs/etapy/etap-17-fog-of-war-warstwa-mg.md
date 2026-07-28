@@ -16,7 +16,7 @@ serwera) oraz warstwa MG z ukrytymi notatkami.
 - [x] Fog of war (ręczny): scena startuje zakryta, MG odsłania/zakrywa pędzlem i prostokątem; stan mgły trwały per scena; gracze widzą wspólną odsłonę
 - [x] Renderowanie mgły w Pixi: warstwa nad tokenami, u MG półprzezroczysta, u graczy kryjąca; tokeny w zakrytym obszarze niewidoczne dla graczy również w danych (serwer filtruje po pozycji vs mgła)
 - [x] Warstwa MG: ukryte pinezki-notatki na mapie (ikona + tekst po kliknięciu), ukryte tokeny (z etapu 05) renderowane u MG
-- [x] Pasek narzędzi mapy: wybór narzędzia (wskaźnik/linijka/mgła/notatka), skróty klawiszowe (M, F, N, Esc)
+- [x] Pasek narzędzi mapy: wybór narzędzia (wskaźnik/linijka/mgła/notatka), skróty klawiszowe (M, F, N, Esc); przełącznik mgły per scena mieszka w zakładce „Sceny”, obok siatki i skali
 - [x] Test filtrowania: payloady gracza nie zawierają notatek MG ani tokenów w zakrytych obszarach
 
 ## Poza zakresem
@@ -52,4 +52,6 @@ serwera) oraz warstwa MG z ukrytymi notatkami.
   na serię kształtów tego samego trybu, odsłonięcia rysowane trybem `erase`. Tekstura jest
   celowo zgrubna (max 2048 px), co daje miękką krawędź i oszczędza VRAM.
 - **Przełącznik mgły ma własne zdarzenie** `fog:toggle`, a nie pole w `scene:update` —
-  włączenie mgły musi w tym samym ruchu zabrać graczom tokeny.
+  włączenie mgły musi w tym samym ruchu zabrać graczom tokeny. W UI siedzi w edytorze
+  sceny (to właściwość sceny, ustawiana raz przy jej przygotowaniu), więc w pasku mapy
+  jest **jedna** ikona mgły — narzędzie malowania.
