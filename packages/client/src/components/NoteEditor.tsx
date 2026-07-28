@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { NOTE_ICONS, NOTE_TEXT_MAX_LENGTH, type NoteIcon } from '@vtt/shared';
 import { useNoteStore } from '../stores/noteStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
@@ -19,12 +19,23 @@ export function NoteEditor() {
   const [text, setText] = useState('');
   const [icon, setIcon] = useState<NoteIcon>(NOTE_ICONS[0]);
   const [busy, setBusy] = useState(false);
+  const textRef = useRef<HTMLTextAreaElement | null>(null);
 
   // Re-seed the form whenever a different pin (or a fresh draft) opens it.
   useEffect(() => {
     setText(note?.text ?? '');
     setIcon(note?.icon ?? NOTE_ICONS[0]);
   }, [note?.id, note?.text, note?.icon, draft?.x, draft?.y]);
+
+  // `autoFocus` loses a race the editor cannot win on its own: the panel opens
+  // from a click on the Pixi canvas, and the browser's own focus handling for
+  // that press runs after React has mounted the field, putting focus back on
+  // the body. One frame later the press is over and the focus sticks — without
+  // this the first letters typed went to the map's tool shortcuts instead.
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => textRef.current?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [note?.id, draft?.x, draft?.y]);
 
   const open = draft !== null || note !== undefined;
   useEffect(() => {
@@ -90,6 +101,7 @@ export function NoteEditor() {
         ))}
       </div>
       <textarea
+        ref={textRef}
         className="note-editor-text"
         value={text}
         maxLength={NOTE_TEXT_MAX_LENGTH}

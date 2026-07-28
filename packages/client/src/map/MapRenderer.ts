@@ -11,6 +11,9 @@ import {
 } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
 import type {
+  DrawingShape,
+  DrawingStyle,
+  DrawingView,
   FogShape,
   FogState,
   MapNoteView,
@@ -20,12 +23,15 @@ import type {
   TokenView,
 } from '@vtt/shared';
 import {
+  DRAWING_FILL_ALPHA,
+  DRAWING_PATH_MAX_POINTS,
   FOG_STROKE_MAX_POINTS,
   clampTokenPosition,
   formatMetres,
   formatSquares,
   normalizeGridOffset,
   polylineMetres,
+  simplifyPath,
   snapTokenPosition,
   squaresForDistance,
 } from '@vtt/shared';
@@ -57,8 +63,30 @@ export interface FogBrushSettings {
   radius: number;
 }
 
+/** Which shape the drawing tool produces (stage 17b). */
+export type DrawToolKind = 'pencil' | 'line' | 'rect' | 'ellipse' | 'text';
+
+/** The drawing tool's current setting, pushed in from the toolbar. */
+export interface DrawSettings {
+  armed: boolean;
+  tool: DrawToolKind;
+  style: DrawingStyle;
+  /** GM layer: the shape is sent with `gmOnly`, and previewed dashed. */
+  gmOnly: boolean;
+  /** Label height in scene pixels — a drawing's text belongs to the map. */
+  fontSize: number;
+}
+
 /** Extra pannable margin around the scene, as a fraction of its size. */
 const PAN_MARGIN = 0.5;
+/**
+ * How far a freehand stroke may stray from the simplified line, in scene
+ * pixels. Three is under a tenth of a grid square: the eye cannot tell, and a
+ * long stroke loses nine samples in ten (see `simplifyPath` in shared).
+ */
+const DRAW_SIMPLIFY_TOLERANCE = 3;
+/** Minimum pointer travel between freehand samples, in scene pixels. */
+const DRAW_SAMPLE_STEP = 4;
 /** Fog opacity for the GM — dark enough to read as fog, light enough to plan through. */
 const FOG_GM_ALPHA = 0.55;
 /**
@@ -97,6 +125,61 @@ function drawFogShape(graphics: Graphics, shape: FogShape): void {
     cap: 'round',
     join: 'round',
   });
+}
+
+/** `#rrggbb` → the number Pixi wants. Sanitized upstream, so this cannot fail. */
+function colorOf(style: DrawingStyle): number {
+  return parseInt(style.color.slice(1), 16);
+}
+
+/**
+ * Paints one drawing. Rect and ellipse take their optional fill first and the
+ * outline on top, so a filled area still reads as a bounded shape rather than
+ * a smudge; a one-point path is a dot, the mark a click of the pencil leaves.
+ */
+function drawDrawingShape(graphics: Graphics, shape: DrawingShape, style: DrawingStyle): void {
+  const color = colorOf(style);
+  const stroke = { color, width: style.width, cap: 'round', join: 'round', alpha: 1 } as const;
+
+  if (shape.kind === 'path') {
+    const [first, ...rest] = shape.points;
+    if (!first) return;
+    if (rest.length === 0) {
+      graphics.circle(first.x, first.y, Math.max(style.width / 2, 1)).fill({ color });
+      return;
+    }
+    graphics.moveTo(first.x, first.y);
+    for (const point of rest) graphics.lineTo(point.x, point.y);
+    graphics.stroke(stroke);
+    return;
+  }
+
+  if (shape.kind === 'rect') {
+    graphics.rect(shape.x, shape.y, shape.width, shape.height);
+  } else if (shape.kind === 'ellipse') {
+    graphics.ellipse(shape.x, shape.y, shape.radiusX, shape.radiusY);
+  } else {
+    return; // text is a Text node, not geometry
+  }
+  if (style.filled) graphics.fill({ color, alpha: DRAWING_FILL_ALPHA });
+  graphics.stroke(stroke);
+}
+
+/** A label as it sits on the map: sized in scene pixels, so it zooms with it. */
+function createDrawingText(text: string, fontSize: number, style: DrawingStyle): Text {
+  const label = new Text({
+    text,
+    style: {
+      fontFamily: 'system-ui, sans-serif',
+      fontSize,
+      fill: colorOf(style),
+      // The outline is what keeps a caption readable over both a lit floor
+      // plan and a dark alley without the user having to pick a colour twice.
+      stroke: { color: 0x000000, width: Math.max(2, fontSize / 10) },
+    },
+  });
+  label.resolution = 2;
+  return label;
 }
 
 interface DragState {
@@ -142,11 +225,24 @@ export class MapRenderer {
   onNotePlace: ((x: number, y: number) => void) | null = null;
   /** Click on an existing GM note pin. */
   onNoteActivate: ((noteId: string) => void) | null = null;
+  /** A drawing gesture finished — send it to the server (stage 17b). */
+  onDrawingCreate: ((shape: DrawingShape) => void) | null = null;
+  /** Click with the text tool armed: the caller asks for the words (world px). */
+  onDrawingTextPlace: ((x: number, y: number) => void) | null = null;
+  /** Click with the eraser armed; the caller decides which drawing that hits. */
+  onDrawingErase: ((x: number, y: number) => void) | null = null;
 
   private readonly app = new Application();
   private viewport: Viewport | null = null;
   private readonly background = new Sprite();
   private readonly grid = new Graphics();
+  /** Public drawings: map content, so they sit under the tokens (stage 17b). */
+  private readonly drawLayer = new Container();
+  /** GM-layer drawings — above the fog, next to the note pins. */
+  private readonly gmDrawLayer = new Container();
+  private readonly drawNodes = new Map<number, Container>();
+  /** The gesture in progress; never leaves the renderer until it is finished. */
+  private readonly drawPreview = new Graphics();
   private readonly rangeLayer = new Container();
   private readonly rangeGraphics = new Graphics();
   private readonly tokenLayer = new Container();
@@ -190,6 +286,20 @@ export class MapRenderer {
   private fogStroke: ScenePoint[] | null = null;
   private fogRectStart: ScenePoint | null = null;
   private fogRectEnd: ScenePoint | null = null;
+  /** Drawing tool settings; `armed` decides whether a drag draws. */
+  private draw: DrawSettings = {
+    armed: false,
+    tool: 'pencil',
+    style: { color: '#22d3ee', width: 6, filled: false },
+    gmOnly: false,
+    fontSize: 48,
+  };
+  /** Eraser armed: a click reports the world point, the caller picks the shape. */
+  private erasing = false;
+  /** Drawing gesture in progress: freehand samples, or the drag's two corners. */
+  private drawPoints: ScenePoint[] | null = null;
+  private drawStart: ScenePoint | null = null;
+  private drawEnd: ScenePoint | null = null;
   private lastFog: FogState | null = null;
   private lastFogPending: FogShape | null = null;
   private fogIsGm = false;
@@ -225,6 +335,10 @@ export class MapRenderer {
       .clampZoom({ minScale: MIN_ZOOM, maxScale: MAX_ZOOM });
     viewport.addChild(this.background);
     viewport.addChild(this.grid);
+    // Public drawings are map content: they go under the tokens (a sketched
+    // route must not cover a portrait) and under the fog, which therefore
+    // conceals them exactly as it conceals the map they annotate.
+    viewport.addChild(this.drawLayer);
     // Range rings sit under the tokens so they never hide a portrait; the
     // ruler sits above everything, because a measurement is meant to be read.
     this.rangeLayer.addChild(this.rangeGraphics);
@@ -235,8 +349,12 @@ export class MapRenderer {
     // tokens; the GM layer and the ruler stay readable on top of the fog.
     this.fogLayer.addChild(this.fogSprite);
     viewport.addChild(this.fogLayer);
+    // The GM's own layer: drawings the players never receive, drawn over the
+    // fog so the GM can plan through it — the same treatment as note pins.
+    viewport.addChild(this.gmDrawLayer);
     viewport.addChild(this.noteLayer);
     this.overlayLayer.addChild(this.rulerGraphics);
+    this.overlayLayer.addChild(this.drawPreview);
     viewport.addChild(this.overlayLayer);
     // Scratch container: the fog is rendered into a texture at reduced scale,
     // never added to the stage.
@@ -275,6 +393,7 @@ export class MapRenderer {
       this.setRulers([]);
       this.setRangeRings(null, []);
       this.setNotes([]);
+      this.setDrawings([]);
       this.fogSprite.visible = false;
       this.clearTokens();
       return;
@@ -299,6 +418,8 @@ export class MapRenderer {
     this.setFog(this.lastFog, this.lastFogPending, this.fogIsGm);
     if (sceneChanged) {
       this.clearTokens();
+      this.setDrawings([]);
+      this.cancelDrawGesture();
       this.fitScene(scene);
     }
     // `fitScene` changes the zoom by hand, and pixi-viewport only emits
@@ -377,6 +498,24 @@ export class MapRenderer {
     this.applyMapCursor();
   }
 
+  /**
+   * Arms or disarms drawing. Like the ruler and the fog brush it takes the left
+   * button off the viewport — a drag has to mean one thing at a time.
+   */
+  setDrawMode(settings: DrawSettings): void {
+    const wasArmed = this.draw.armed;
+    this.draw = settings;
+    if (wasArmed && !settings.armed) this.cancelDrawGesture();
+    this.applyMapCursor();
+  }
+
+  /** Arms the eraser: a click reports the world point it landed on. */
+  setErasing(active: boolean): void {
+    if (this.erasing === active) return;
+    this.erasing = active;
+    this.applyMapCursor();
+  }
+
   private applyMapCursor(): void {
     const canvas = this.app.canvas;
     if (!canvas) return;
@@ -384,11 +523,15 @@ export class MapRenderer {
       ? 'crosshair'
       : this.fogBrush.armed
         ? 'crosshair'
-        : this.notePlacing
-          ? 'copy'
-          : this.rulerMode
-            ? 'cell'
-            : '';
+        : this.draw.armed
+          ? 'crosshair'
+          : this.erasing
+            ? 'pointer'
+            : this.notePlacing
+              ? 'copy'
+              : this.rulerMode
+                ? 'cell'
+                : '';
   }
 
   private cancelFogGesture(): void {
@@ -416,6 +559,102 @@ export class MapRenderer {
     return { kind: 'rect', mode, x, y, width, height };
   }
 
+  private cancelDrawGesture(): void {
+    if (!this.drawPoints && !this.drawStart) return;
+    this.drawPoints = null;
+    this.drawStart = null;
+    this.drawEnd = null;
+    this.drawPreview.clear();
+    this.viewport?.plugins.resume('drag');
+  }
+
+  /** The shape the drawing gesture describes; null when nothing is usable yet. */
+  private drawGestureShape(): DrawingShape | null {
+    if (this.drawPoints && this.drawPoints.length > 0) {
+      return { kind: 'path', points: this.drawPoints.map((point) => ({ ...point })) };
+    }
+    const start = this.drawStart;
+    const end = this.drawEnd;
+    if (!start || !end) return null;
+    if (this.draw.tool === 'ellipse') {
+      const radiusX = Math.abs(end.x - start.x) / 2;
+      const radiusY = Math.abs(end.y - start.y) / 2;
+      if (radiusX < 1 || radiusY < 1) return null;
+      return {
+        kind: 'ellipse',
+        x: (start.x + end.x) / 2,
+        y: (start.y + end.y) / 2,
+        radiusX,
+        radiusY,
+      };
+    }
+    const width = Math.abs(end.x - start.x);
+    const height = Math.abs(end.y - start.y);
+    if (width < 1 || height < 1) return null;
+    return {
+      kind: 'rect',
+      x: Math.min(start.x, end.x),
+      y: Math.min(start.y, end.y),
+      width,
+      height,
+    };
+  }
+
+  /** Redraws the shape under the cursor on the overlay, above everything else. */
+  private renderDrawPreview(): void {
+    this.drawPreview.clear();
+    const shape = this.drawGestureShape();
+    if (!shape) return;
+    drawDrawingShape(this.drawPreview, shape, this.draw.style);
+    // A GM-layer shape is previewed dimmer, so „nobody else will see this" is
+    // visible while it is being drawn rather than only afterwards.
+    this.drawPreview.alpha = this.draw.gmOnly ? 0.65 : 0.9;
+  }
+
+  /** Drops the preview once the server has answered (ack or rejection). */
+  clearDrawingPreview(): void {
+    if (this.destroyed) return;
+    this.drawPreview.clear();
+  }
+
+  /**
+   * Reconciles the drawing layers with the store (diff by id). A drawing is
+   * immutable once stored — there is no `drawing:update` — so a node that
+   * already exists never has to be repainted, which keeps a scene with a few
+   * hundred sketches free of per-frame work.
+   */
+  setDrawings(drawings: DrawingView[]): void {
+    if (this.destroyed) return;
+    const seen = new Set<number>();
+
+    for (const drawing of drawings) {
+      seen.add(drawing.id);
+      if (this.drawNodes.has(drawing.id)) continue;
+      const layer = drawing.gmOnly ? this.gmDrawLayer : this.drawLayer;
+      let node: Container;
+      if (drawing.shape.kind === 'text') {
+        const label = createDrawingText(drawing.shape.text, drawing.shape.fontSize, drawing.style);
+        label.position.set(drawing.shape.x, drawing.shape.y);
+        node = label;
+      } else {
+        const graphics = new Graphics();
+        drawDrawingShape(graphics, drawing.shape, drawing.style);
+        node = graphics;
+      }
+      // The GM's own layer is dimmed a touch: at the table it has to be
+      // instantly distinguishable from what the players are also looking at.
+      node.alpha = drawing.gmOnly ? 0.75 : 1;
+      this.drawNodes.set(drawing.id, node);
+      layer.addChild(node);
+    }
+
+    for (const [id, node] of this.drawNodes) {
+      if (seen.has(id)) continue;
+      this.drawNodes.delete(id);
+      node.destroy({ children: true });
+    }
+  }
+
   /**
    * Pointer handling of the ruler. It lives on the viewport rather than on the
    * stage so the coordinates are already world-space, and it only takes over
@@ -438,6 +677,31 @@ export class MapRenderer {
         }
         viewport.plugins.pause('drag');
         this.onFogPreview?.(this.fogGestureShape());
+        return;
+      }
+      if (this.erasing) {
+        this.onDrawingErase?.(point.x, point.y);
+        return;
+      }
+      if (this.draw.armed) {
+        // Text is placed, not dragged: the click only says where, the words
+        // come from a dialog.
+        if (this.draw.tool === 'text') {
+          this.onDrawingTextPlace?.(point.x, point.y);
+          return;
+        }
+        if (this.draw.tool === 'pencil') {
+          this.drawPoints = [point];
+        } else if (this.draw.tool === 'line') {
+          // A straight line is a two-point polyline; the second end follows
+          // the pointer, exactly like the ruler's.
+          this.drawPoints = [point, { ...point }];
+        } else {
+          this.drawStart = point;
+          this.drawEnd = { ...point };
+        }
+        viewport.plugins.pause('drag');
+        this.renderDrawPreview();
         return;
       }
       if (!this.rulerMode) return;
@@ -469,6 +733,26 @@ export class MapRenderer {
         return;
       }
 
+      if (this.drawPoints) {
+        if (this.draw.tool === 'line') {
+          // The line tool keeps two points: the anchor and the pointer.
+          this.drawPoints[1] = point;
+        } else {
+          const last = this.drawPoints[this.drawPoints.length - 1]!;
+          // Thin the stroke as it is drawn; what survives this still goes
+          // through Douglas–Peucker before it is sent.
+          if (Math.hypot(point.x - last.x, point.y - last.y) < DRAW_SAMPLE_STEP) return;
+          if (this.drawPoints.length < DRAWING_PATH_MAX_POINTS) this.drawPoints.push(point);
+        }
+        this.renderDrawPreview();
+        return;
+      }
+      if (this.drawStart) {
+        this.drawEnd = point;
+        this.renderDrawPreview();
+        return;
+      }
+
       const points = this.rulerPoints;
       if (!points) return;
       points[points.length - 1] = point;
@@ -484,6 +768,23 @@ export class MapRenderer {
         this.viewport?.plugins.resume('drag');
         this.onFogPreview?.(null);
         if (shape) this.onFogPaint?.(shape);
+        return;
+      }
+      if (this.drawPoints || this.drawStart) {
+        let shape = this.drawGestureShape();
+        // Freehand arrives at pointer rate; simplifying here — before the wire,
+        // not after — is what keeps one stroke a single small row.
+        if (shape?.kind === 'path' && this.draw.tool === 'pencil') {
+          shape = { kind: 'path', points: simplifyPath(shape.points, DRAW_SIMPLIFY_TOLERANCE) };
+        }
+        this.drawPoints = null;
+        this.drawStart = null;
+        this.drawEnd = null;
+        this.viewport?.plugins.resume('drag');
+        // The preview stays on screen until the server answers, so a stroke
+        // never blinks out of existence while the ack is in flight.
+        if (shape) this.onDrawingCreate?.(shape);
+        else this.drawPreview.clear();
         return;
       }
       if (this.rulerPoints) this.finishRuler();
@@ -756,7 +1057,11 @@ export class MapRenderer {
         this.onTokenTarget?.(node.tokenId);
         return;
       }
-      if (this.rulerMode) return;
+      // A map tool owns the left button while it is armed. Without this a
+      // click that was meant to paint fog or draw a line would *also* grab the
+      // token underneath and drag it — the two gestures ran at once, because
+      // Pixi bubbles the token's event up to the viewport as well.
+      if (this.rulerMode || this.fogBrush.armed || this.draw.armed || this.erasing) return;
       const now = performance.now();
       if (now - lastClickAt < DOUBLE_CLICK_MS) {
         lastClickAt = 0;
@@ -873,6 +1178,7 @@ export class MapRenderer {
       this.app.destroy(true, { children: true });
       this.tokenNodes.clear();
       this.noteNodes.clear();
+      this.drawNodes.clear();
     }
     // When init is still pending, it destroys the app itself on completion.
   }

@@ -41,6 +41,12 @@ import type {
   ChatSendPayload,
   DamageApplyPayload,
   DamageUndoPayload,
+  DrawingClearBroadcast,
+  DrawingDeleteBroadcast,
+  DrawingShape,
+  DrawingStyle,
+  DrawingUpsertBroadcast,
+  DrawingView,
   FogPaintBroadcast,
   FogShape,
   FogSyncBroadcast,
@@ -101,6 +107,7 @@ import { useAiStore } from './stores/aiStore.js';
 import { useBotStore } from './stores/botStore.js';
 import { useCombatStore } from './stores/combatStore.js';
 import { useRulerStore } from './stores/rulerStore.js';
+import { useDrawingStore } from './stores/drawingStore.js';
 import { useFogStore } from './stores/fogStore.js';
 import { useNoteStore } from './stores/noteStore.js';
 
@@ -272,6 +279,7 @@ export function connectSocket(userId: string): Socket {
     useCompendiumStore.getState().applySync(payload);
     useCombatStore.getState().applySync(payload);
     useFogStore.getState().applySync(payload);
+    useDrawingStore.getState().applySync(payload);
     useNoteStore.getState().applySync(payload);
     if (payload.ai) useAiStore.getState().setStatus(payload.ai);
   });
@@ -466,6 +474,35 @@ export function connectSocket(userId: string): Socket {
   // server sends the whole filtered list instead of a stream of deltas.
   socket.on('token:sync', (broadcast: TokenSyncBroadcast) => {
     if (viewingScene(broadcast.sceneId)) tokens().applyTokens(broadcast.tokens, viewer());
+  });
+
+  // Map drawings (stage 17b). Public ones are campaign-wide state and carry a
+  // seq; the GM layer arrives targeted at the GM room, so — like whispers and
+  // note pins — those must never be gap-checked.
+  const drawings = () => useDrawingStore.getState();
+  socket.on('drawing:upsert', (broadcast: DrawingUpsertBroadcast) => {
+    if (broadcast.seq !== undefined && chat().applySeq(broadcast.seq)) {
+      socket?.emit('state:request');
+      return;
+    }
+    if (viewingScene(broadcast.drawing.sceneId)) drawings().upsert(broadcast.drawing);
+  });
+  socket.on('drawing:delete', (broadcast: DrawingDeleteBroadcast) => {
+    if (broadcast.seq !== undefined && chat().applySeq(broadcast.seq)) {
+      socket?.emit('state:request');
+      return;
+    }
+    if (viewingScene(broadcast.sceneId)) drawings().remove(broadcast.drawingId);
+  });
+  socket.on('drawing:clear', (broadcast: DrawingClearBroadcast) => {
+    if (broadcast.seq !== undefined && chat().applySeq(broadcast.seq)) {
+      socket?.emit('state:request');
+      return;
+    }
+    // The sweep carries a rule, not a list: „drop this author's drawings" (or
+    // all of them) lands correctly on every client, each of which already
+    // holds only what it may see.
+    drawings().clear(broadcast.sceneId, broadcast.authorId);
   });
 
   // GM layer notes are targeted at the GM room — no seq, like whispers.
@@ -722,6 +759,21 @@ export const updateNote = (noteId: string, patch: NotePatch) =>
   emitSceneAck<MapNoteView>('note:update', { noteId, patch });
 
 export const deleteNote = (noteId: string) => emitSceneAck('note:delete', { noteId });
+
+/* Map drawings (stage 17b) — open to players too; the server enforces both the
+   GM layer and „your own lines are yours". */
+
+export const createDrawing = (
+  sceneId: string,
+  shape: DrawingShape,
+  style: DrawingStyle,
+  gmOnly: boolean,
+) => emitSceneAck<DrawingView>('drawing:create', { sceneId, shape, style, gmOnly });
+
+export const deleteDrawing = (drawingId: number) => emitSceneAck('drawing:delete', { drawingId });
+
+export const clearDrawings = (sceneId: string, scope: 'mine' | 'all') =>
+  emitSceneAck('drawing:clear', { sceneId, scope });
 
 /**
  * Asks the model from the GM test screen. The ack only hands back a request id —

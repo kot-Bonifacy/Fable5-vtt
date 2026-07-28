@@ -6,6 +6,7 @@ import type { CombatView } from './combat.js';
 import type { CharacterView } from './characters.js';
 import type { CompendiumEntry, WeaponTypeDefinition } from './systems/cpred/compendium.js';
 import type { RollToss } from './dice.js';
+import type { DrawingView } from './drawings.js';
 import type { FogState } from './fog.js';
 import type { MapNoteView } from './notes.js';
 import type { SceneSummary, SceneView } from './scenes.js';
@@ -49,6 +50,11 @@ export interface StateSyncPayload {
    * gone from `tokens` above. Null when no scene is viewed.
    */
   fog: FogState | null;
+  /**
+   * Drawings of the viewed scene (stage 17b), already filtered: a player never
+   * receives one from the GM layer. Ascending by id — that is the paint order.
+   */
+  drawings: DrawingView[];
   /** GM layer notes of the viewed scene — GM only, always empty for players. */
   notes: MapNoteView[];
   /** Characters this user may see: the GM gets all, a player only their own. */

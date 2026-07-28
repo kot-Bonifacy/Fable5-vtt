@@ -20,6 +20,7 @@ model User {
   chatMessages     ChatMessage[] @relation("ChatAuthor")
   whispersReceived ChatMessage[] @relation("ChatRecipient")
   tokens           Token[]
+  drawings         MapDrawing[]
 }
 
 model Session {
@@ -261,6 +262,7 @@ model Scene {
   bots         BotProfile[]
   combat       Combat?
   fogShapes    FogShape[]
+  drawings     MapDrawing[]
   notes        MapNote[]
 
   @@index([campaignId, active])
@@ -286,6 +288,38 @@ model FogShape {
   createdAt DateTime @default(now())
 
   scene Scene @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+
+  @@index([sceneId, id])
+}
+
+/**
+ * One drawing on the map (stage 17b): a sketched route, a circled target, the
+ * name of a room. Same storage idea as FogShape — geometry in a JSON column,
+ * the autoincrement id doubling as the paint order — with two additions the
+ * fog does not need: an author (a player may erase only their own lines) and
+ * `gmOnly`, which keeps a drawing off every player socket.
+ */
+model MapDrawing {
+  id       Int    @id @default(autoincrement())
+  sceneId  String
+  authorId String
+  /// "path" (pencil and line tool) | "rect" | "ellipse" | "text"
+  kind     String
+  /// Geometry as JSON; the shape kind decides the fields (see shared/drawings).
+  data     String
+  /// Stroke colour as #rrggbb.
+  color    String
+  /// Stroke width in scene pixels.
+  width    Int
+  /// Rect and ellipse only: fill the interior at low alpha.
+  filled   Boolean @default(false)
+  /// GM layer: the server never emits this drawing to a player.
+  gmOnly   Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  scene  Scene @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  author User  @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
   @@index([sceneId, id])
 }

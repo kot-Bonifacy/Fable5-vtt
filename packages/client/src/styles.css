@@ -3260,6 +3260,71 @@ body.is-resizing {
   font-variant-numeric: tabular-nums;
 }
 
+/* --- stage 17b: drawing tools --- */
+
+/* Colour swatches. A closed palette instead of a colour picker: six colours
+   cover every annotation and keep the options row one line tall. The active
+   swatch is marked with a ring rather than a border, so the colour itself
+   stays exactly the size of the others. */
+.map-color-row {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.map-color {
+  width: 1.15rem;
+  height: 1.15rem;
+  padding: 0;
+  border: 1px solid rgb(15 23 42 / 70%);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 70%);
+  transition: transform 120ms ease;
+}
+
+.map-color:hover {
+  transform: translateY(-1px) scale(1.1);
+}
+
+.map-color--active {
+  outline: 2px solid #f8fafc;
+  outline-offset: 2px;
+}
+
+.map-color:focus-visible {
+  outline: 2px solid var(--accent, #38bdf8);
+  outline-offset: 2px;
+}
+
+/* Inline hint inside a tool's options row (the eraser has no settings). */
+.map-tool-hint {
+  align-self: center;
+  color: #e2e8f0;
+  font-size: 0.75rem;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 95%);
+}
+
+/* The text tool's prompt reuses the note editor's panel; only the input and
+   the width differ — a map label is a few words, not a paragraph. */
+.drawing-text-editor {
+  width: min(20rem, calc(100% - 1.5rem));
+}
+
+.drawing-text-input {
+  padding: 0.4rem 0.55rem;
+  background: rgb(2 6 23 / 85%);
+  color: #e2e8f0;
+  border: 1px solid rgb(148 163 184 / 45%);
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.drawing-text-input:focus-visible {
+  outline: 2px solid var(--accent, #38bdf8);
+  outline-offset: 1px;
+}
+
 /* GM note editor — a small floating panel, never shown to a player. */
 .note-editor {
   position: absolute;

@@ -104,7 +104,8 @@ function emitAck<T = undefined>(
 }
 
 function data<T>(ack: SocketAck<T>, what: string): T {
-  if (!ack.ok || ack.data === undefined) throw new Error(`${what} failed: ${ack.error ?? '?'}`);
+  if (!ack.ok) throw new Error(`${what} failed: ${ack.error}`);
+  if (ack.data === undefined) throw new Error(`${what} returned no data`);
   return ack.data;
 }
 

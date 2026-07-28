@@ -29,3 +29,6 @@ Backlog pomysłów, które pojawiły się w trakcie pracy, ale nie należą do z
 | 2026-07-28 | **Efekt ognia zaporowego jako status tokenu** — karta czatu mówi „do osłony”, ale przypięty cel nie dostaje żadnego znacznika ani wymuszenia ruchu | etap 16 — implementacja | czeka |
 | 2026-07-28 | **Karta broni w kompendium nie pokazuje tabeli PT ognia ciągłego** — dane są w typie broni od etapu 16, UI pokazuje tylko tabelę pojedynczego strzału | etap 16 — oględziny UI | drobiazg |
 | 2026-07-28 | **Sztuki walki: styl jako osobna umiejętność** — podręcznik każe uczyć się każdego stylu osobno; dziś jest jedna „Sztuki walki” | etap 16 — zasady wręcz | czeka |
+| 2026-07-28 | **Szablony obszarowe z narzędzi rysowania** (stożek, promień, linia rażenia) — geometria i warstwa są gotowe od 17b, brakuje kształtów i wiązania z zasadami | etap 17b — poza zakresem | razem z granatami (POMYSLY wyżej) |
+| 2026-07-28 | **Edycja rysunku po narysowaniu** — dziś kształt jest niezmienny (`drawing:update` nie istnieje): przesunięcie, zmiana koloru czy poprawka podpisu wymagają skasowania i narysowania od nowa | etap 17b — implementacja | czeka |
+| 2026-07-28 | **Przyciąganie rysunków do siatki** (Shift = prosta pod kątem 45°, prostokąt do pól) — przydatne przy szkicowaniu planu pomieszczeń | etap 17b — oględziny UI | drobiazg |

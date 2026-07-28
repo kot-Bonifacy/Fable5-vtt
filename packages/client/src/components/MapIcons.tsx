@@ -174,6 +174,101 @@ export function IconCoverAll(props: IconProps) {
   );
 }
 
+/* --- stage 17b: drawing tools --- */
+
+/** Nib on a slanted body — the freehand pencil, and the drawing tool itself. */
+export function IconPencil(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 20l1.1-4 10-10 2.9 2.9-10 10L4 20Z" />
+      <path d="M15.1 6l2.2-2.2a1.5 1.5 0 0 1 2.1 0l.8.8a1.5 1.5 0 0 1 0 2.1L18 8.9" />
+      <path d="M5.1 16L8 18.9" opacity="0.5" />
+    </Svg>
+  );
+}
+
+/** A segment with its two endpoints — the straight line tool. */
+export function IconLine(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M6.5 17.5 17.5 6.5" />
+      <circle cx="5.6" cy="18.4" r="1.9" />
+      <circle cx="18.4" cy="5.6" r="1.9" />
+    </Svg>
+  );
+}
+
+/** Solid rectangle outline — distinct from the fog's dashed one on purpose. */
+export function IconRectSolid(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="3.5" y="5.5" width="17" height="13" rx="1.6" />
+    </Svg>
+  );
+}
+
+/** Ellipse — the oval tool. */
+export function IconEllipse(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <ellipse cx="12" cy="12" rx="8.6" ry="6.2" />
+    </Svg>
+  );
+}
+
+/** A serif „T" — the text tool. */
+export function IconText(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M5 6.5h14M12 6.5V18" />
+      <path d="M9 18h6" />
+    </Svg>
+  );
+}
+
+/** Slanted eraser over the line it is wiping. */
+export function IconEraser(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M8.4 19.5 4 15.1a1.6 1.6 0 0 1 0-2.3l7.6-7.6a1.6 1.6 0 0 1 2.3 0l4.4 4.4a1.6 1.6 0 0 1 0 2.3l-7.6 7.6H8.4Z" />
+      <path d="M8.6 8.2 15.8 15.4" opacity="0.5" />
+      <path d="M11 19.5h9" />
+    </Svg>
+  );
+}
+
+/** Half-shaded square — the fill toggle for rectangles and ellipses. */
+export function IconFill(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="4" y="4" width="16" height="16" rx="2" />
+      <path d="M4.6 14.5 14.5 4.6M8.2 19.4 19.4 8.2M13.4 20 20 13.4" opacity="0.75" />
+    </Svg>
+  );
+}
+
+/** Waste bin — clearing drawings off the scene. */
+export function IconTrash(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4.5 6.5h15M9.5 6.5V5a1.5 1.5 0 0 1 1.5-1.5h2A1.5 1.5 0 0 1 14.5 5v1.5" />
+      <path d="M6.5 6.5 7.4 19a1.6 1.6 0 0 0 1.6 1.5h6a1.6 1.6 0 0 0 1.6-1.5l.9-12.5" />
+      <path d="M10.4 10v6.6M13.6 10v6.6" opacity="0.6" />
+    </Svg>
+  );
+}
+
+/** Bin with a sweeping arc — clearing *everything*, the GM's big hammer. */
+export function IconTrashAll(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4.5 8.5h11M8.5 8.5V7a1.5 1.5 0 0 1 1.5-1.5h1.5A1.5 1.5 0 0 1 13 7v1.5" />
+      <path d="M6 8.5 6.8 19a1.6 1.6 0 0 0 1.6 1.5h3.2A1.6 1.6 0 0 0 13.2 19L14 8.5" />
+      <path d="M17 5.5a7 7 0 0 1 0 13" opacity="0.6" />
+    </Svg>
+  );
+}
+
 /** Concentric rings — the weapon range overlay from stage 16. */
 export function IconRangeRings(props: IconProps) {
   return (

@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { CPRED_RANGE_BANDS, ROLE_GM, metresPerPixel, tokenCentre } from '@vtt/shared';
+import {
+  CPRED_RANGE_BANDS,
+  ROLE_GM,
+  metresPerPixel,
+  pickDrawingAt,
+  tokenCentre,
+} from '@vtt/shared';
 import { MapRenderer, type RangeRing, type RulerLine } from '../map/MapRenderer.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useAuthStore } from '../stores/authStore.js';
@@ -7,15 +13,25 @@ import { ensureStatusesLoaded, useTokenStore } from '../stores/tokenStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useChatStore } from '../stores/chatStore.js';
 import { activeTokenIdOf, useCombatStore } from '../stores/combatStore.js';
-import { clearRuler, createToken, paintFog, sendRuler, sendTokenMove } from '../socket.js';
+import {
+  clearRuler,
+  createDrawing,
+  createToken,
+  deleteDrawing,
+  paintFog,
+  sendRuler,
+  sendTokenMove,
+} from '../socket.js';
 import { loadAttackAtToken } from '../attack-targeting.js';
 import { useAttackStore } from '../stores/attackStore.js';
 import { useRulerStore } from '../stores/rulerStore.js';
 import { useFogStore } from '../stores/fogStore.js';
 import { useNoteStore } from '../stores/noteStore.js';
-import { useMapToolStore } from '../stores/mapToolStore.js';
+import { sortedDrawings, useDrawingStore } from '../stores/drawingStore.js';
+import { currentDrawingStyle, useMapToolStore } from '../stores/mapToolStore.js';
 import { TokenContextMenu } from './TokenContextMenu.js';
 import { CombatBar } from './CombatBar.js';
+import { DrawingTextEditor } from './DrawingTextEditor.js';
 import { MapTools } from './MapTools.js';
 import { NoteEditor } from './NoteEditor.js';
 
@@ -45,6 +61,20 @@ function openSheetOfToken(tokenId: string): void {
   characterStore.openSheet(token.characterId);
 }
 
+/** Polish hints for the rejections `drawing:create` can come back with. */
+function drawingErrorText(code: string | undefined): string {
+  switch (code) {
+    case 'DRAWING_LIMIT_REACHED':
+      return 'Na tej scenie jest już maksymalna liczba rysunków — wyczyść część z nich.';
+    case 'SCENE_NOT_VIEWED':
+      return 'Ta scena nie jest już wyświetlana — rysunek nie został zapisany.';
+    case 'NOT_CONNECTED':
+      return 'Brak połączenia z serwerem — rysunek nie został zapisany.';
+    default:
+      return `Nie udało się zapisać rysunku: ${code ?? 'nieznany błąd'}.`;
+  }
+}
+
 export function MapArea() {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const rendererRef = useRef<MapRenderer | null>(null);
@@ -58,6 +88,12 @@ export function MapArea() {
   const fogMode = useMapToolStore((s) => s.fogMode);
   const fogShape = useMapToolStore((s) => s.fogShape);
   const fogRadius = useMapToolStore((s) => s.fogRadius);
+  const drawTool = useMapToolStore((s) => s.drawTool);
+  const drawColor = useMapToolStore((s) => s.drawColor);
+  const drawWidth = useMapToolStore((s) => s.drawWidth);
+  const drawFilled = useMapToolStore((s) => s.drawFilled);
+  const drawFontSize = useMapToolStore((s) => s.drawFontSize);
+  const drawGmOnly = useMapToolStore((s) => s.drawGmOnly);
   const targeting = useAttackStore((s) => s.targeting);
 
   useEffect(() => {
@@ -117,6 +153,39 @@ export function MapArea() {
     };
     renderer.onNotePlace = (x, y) => useNoteStore.getState().setDraft({ x, y });
     renderer.onNoteActivate = (noteId) => useNoteStore.getState().setEditing(noteId);
+    renderer.onDrawingCreate = (shape) => {
+      const current = useSceneStore.getState().effectiveScene;
+      if (!current) return;
+      const tools = useMapToolStore.getState();
+      const gmOnly = useAuthStore.getState().user?.role === ROLE_GM && tools.drawGmOnly;
+      void createDrawing(current.id, shape, currentDrawingStyle(tools), gmOnly).then((ack) => {
+        // The preview lives on until the server answers — either the real
+        // drawing has arrived by broadcast, or the attempt failed and the
+        // sketch must not linger as if it had worked.
+        renderer.clearDrawingPreview();
+        if (!ack.ok) useChatStore.getState().addNote(drawingErrorText(ack.error));
+      });
+    };
+    renderer.onDrawingTextPlace = (x, y) => useDrawingStore.getState().setTextDraft({ x, y });
+    renderer.onDrawingErase = (x, y) => {
+      const current = useSceneStore.getState().effectiveScene;
+      const user = useAuthStore.getState().user;
+      if (!current || !user) return;
+      // Scale the grab radius with the zoom: at 0.18× a six-pixel line is one
+      // screen pixel wide, and „click exactly on it" would be unusable.
+      const tolerance = Math.max(6, current.grid.sizePx / 6);
+      const target = pickDrawingAt(
+        sortedDrawings(useDrawingStore.getState().drawings).filter(
+          (drawing) => drawing.sceneId === current.id,
+        ),
+        { x, y },
+        tolerance,
+        // A player reaches through someone else's line to their own beneath it;
+        // the server enforces the same rule regardless of what the UI offers.
+        (drawing) => user.role === ROLE_GM || drawing.authorId === user.id,
+      );
+      if (target) void deleteDrawing(target.id);
+    };
     renderer.onRulerChange = (points) => {
       const current = useSceneStore.getState().effectiveScene;
       useRulerStore.getState().setLocal(points);
@@ -195,7 +264,28 @@ export function MapArea() {
       shape: fogShape,
       radius: fogRadius,
     });
-  }, [ready, tool, isGm, fogMode, fogShape, fogRadius]);
+    rendererRef.current?.setDrawMode({
+      armed: tool === 'draw',
+      tool: drawTool,
+      style: { color: drawColor, width: drawWidth, filled: drawFilled },
+      gmOnly: isGm && drawGmOnly,
+      fontSize: drawFontSize,
+    });
+    rendererRef.current?.setErasing(tool === 'erase');
+  }, [
+    ready,
+    tool,
+    isGm,
+    fogMode,
+    fogShape,
+    fogRadius,
+    drawTool,
+    drawColor,
+    drawWidth,
+    drawFilled,
+    drawFontSize,
+    drawGmOnly,
+  ]);
 
   useEffect(() => {
     if (!ready) return;
@@ -293,15 +383,54 @@ export function MapArea() {
     return useNoteStore.subscribe(pushNotes);
   }, [ready, pushNotes]);
 
-  // Keyboard: M ruler, F fog, N note; Space drops a waypoint mid-measurement,
-  // Esc puts the armed tool and the attack crosshair away.
+  // Drawings bypass React like the tokens do: the renderer diffs the store by
+  // id, so a busy scene never re-renders the component tree.
+  const pushDrawings = useCallback(() => {
+    const current = useSceneStore.getState().effectiveScene;
+    const all = sortedDrawings(useDrawingStore.getState().drawings);
+    rendererRef.current?.setDrawings(
+      current ? all.filter((drawing) => drawing.sceneId === current.id) : [],
+    );
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    pushDrawings();
+    const unsubDrawings = useDrawingStore.subscribe(pushDrawings);
+    const unsubScene = useSceneStore.subscribe(pushDrawings);
+    return () => {
+      unsubDrawings();
+      unsubScene();
+    };
+  }, [ready, scene, pushDrawings]);
+
+  // Keyboard: M ruler, R draw, G eraser, F fog, N note; Space drops a waypoint
+  // mid-measurement, Esc puts the armed tool and the attack crosshair away.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
       const tools = useMapToolStore.getState();
+      // A one-letter shortcut must not fire while a map dialog is waiting for
+      // words. Focus alone is not a reliable guard: a click anywhere outside
+      // the field puts it back on the body, and the next keystroke would then
+      // change tools under an open editor instead of typing into it.
+      const noteState = useNoteStore.getState();
+      const typing =
+        useDrawingStore.getState().textDraft !== null ||
+        noteState.draft !== null ||
+        noteState.editingId !== null;
+      if (typing && event.key !== 'Escape') return;
       if (event.key === 'm' || event.key === 'M') {
         tools.toggleTool('ruler');
+        return;
+      }
+      if (event.key === 'r' || event.key === 'R') {
+        tools.toggleTool('draw');
+        return;
+      }
+      if (event.key === 'g' || event.key === 'G') {
+        tools.toggleTool('erase');
         return;
       }
       if ((event.key === 'f' || event.key === 'F') && isGm) {
@@ -319,6 +448,7 @@ export function MapArea() {
       }
       if (event.key === 'Escape') {
         if (useAttackStore.getState().targeting) useAttackStore.getState().disarm();
+        if (useDrawingStore.getState().textDraft) useDrawingStore.getState().setTextDraft(null);
         if (tools.tool !== 'pointer') tools.setTool('pointer');
       }
     };
@@ -367,8 +497,12 @@ export function MapArea() {
           Kliknij na mapie, by wbić pinezkę notatki (Esc anuluje)
         </div>
       )}
+      {tool === 'draw' && drawTool === 'text' && (
+        <div className="map-placement-hint">Kliknij na mapie, by postawić podpis (Esc anuluje)</div>
+      )}
       <MapTools />
       <CombatBar />
+      <DrawingTextEditor />
       {isGm && <NoteEditor />}
       {menu && <TokenContextMenu menu={menu} onClose={() => setMenu(null)} />}
     </section>

@@ -12,14 +12,14 @@ pomieszczenia — synchronizowane na żywo, z osobną warstwą tylko dla MG.
 
 ## Zakres
 
-- [ ] Narzędzia: ołówek (freehand), linia, prostokąt, elipsa, tekst
-- [ ] Kolor i grubość linii; wybór zapamiętywany między sesjami (localStorage)
-- [ ] Warstwa rysunków synchronizowana na żywo (jak tokeny: intencja → serwer → broadcast), trwała per scena
-- [ ] Gumka: każdy usuwa własne rysunki, MG usuwa wszystkie; „wyczyść moje" i „wyczyść wszystko" (MG)
-- [ ] MG może rysować na **warstwie MG** — takie rysunki nie trafiają do payloadu gracza (jak notatki z 17a)
-- [ ] Rysowanie dostępne dla graczy (wspólna tablica), z limitem liczby kształtów na scenę
-- [ ] Rozszerzenie paska narzędzi z 17a o narzędzia rysowania i ich ustawienia
-- [ ] Test filtrowania: payload gracza nie zawiera rysunków z warstwy MG
+- [x] Narzędzia: ołówek (freehand), linia, prostokąt, elipsa, tekst
+- [x] Kolor i grubość linii; wybór zapamiętywany między sesjami (localStorage)
+- [x] Warstwa rysunków synchronizowana na żywo (jak tokeny: intencja → serwer → broadcast), trwała per scena
+- [x] Gumka: każdy usuwa własne rysunki, MG usuwa wszystkie; „wyczyść moje" i „wyczyść wszystko" (MG)
+- [x] MG może rysować na **warstwie MG** — takie rysunki nie trafiają do payloadu gracza (jak notatki z 17a)
+- [x] Rysowanie dostępne dla graczy (wspólna tablica), z limitem liczby kształtów na scenę
+- [x] Rozszerzenie paska narzędzi z 17a o narzędzia rysowania i ich ustawienia
+- [x] Test filtrowania: payload gracza nie zawiera rysunków z warstwy MG
 
 ## Poza zakresem
 
@@ -28,10 +28,28 @@ pomieszczenia — synchronizowane na żywo, z osobną warstwą tylko dla MG.
 
 ## Kryteria ukończenia
 
-- Rysunek pojawia się na żywo u wszystkich widzów sceny
-- Rysunek MG na warstwie MG niewidoczny dla gracza (payload sprawdzony)
-- Stan rysunków przeżywa restart serwera i reconnect
-- Gracz nie może usunąć cudzego rysunku; MG może usunąć każdy
+- [x] Rysunek pojawia się na żywo u wszystkich widzów sceny
+- [x] Rysunek MG na warstwie MG niewidoczny dla gracza (payload sprawdzony)
+- [x] Stan rysunków przeżywa restart serwera i reconnect
+- [x] Gracz nie może usunąć cudzego rysunku; MG może usunąć każdy
+
+## Decyzje podjęte w sesji (28.07.2026)
+
+- **Tekst skaluje się razem z mapą** (rozmiar w pikselach sceny), a nie ze stałą
+  wielkością ekranową, którą sugerowała wskazówka techniczna niżej. Podpis
+  „Magazyn" należy do mapy jak nazwa pomieszczenia na rzucie — przy oddaleniu
+  etykiety ekranowe tłoczyłyby się i przestały wskazywać konkretne miejsce.
+  Pinezki notatek i linijka pozostają ekranowe, bo są UI, nie treścią mapy.
+- **Prostokąt i elipsa mają przełącznik wypełnienia** (obrys + opcjonalne
+  wypełnienie 25% alfa) — potrzebne do zaznaczania stref.
+- **Bez przełącznika „gracze mogą rysować"** — wspólna tablica zawsze otwarta,
+  a przed zaśmieceniem bazy chroni limit kształtów na scenę.
+- **MG domyślnie rysuje na warstwie MG**, z przyciskiem „pokaż graczom".
+  Szkicu, który miał zostać za zasłoną, nie da się cofnąć; udostępnienie to
+  jedno kliknięcie.
+- **Rysunki nie są filtrowane mgłą** (świadome odstępstwo): publiczny rysunek
+  to wspólna adnotacja, mgła zakrywa go wizualnie (warstwa pod mgłą), a to, co
+  ma pozostać tajne, należy do warstwy MG — i dlatego jest ona domyślna dla MG.
 
 ## Wskazówki techniczne
 
