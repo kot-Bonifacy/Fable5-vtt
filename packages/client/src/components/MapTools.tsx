@@ -304,8 +304,8 @@ export function MapTools() {
               <input
                 type="range"
                 min={DRAWING_MIN_FONT_SIZE}
-                max={Math.min(DRAWING_MAX_FONT_SIZE, 200)}
-                step={2}
+                max={DRAWING_MAX_FONT_SIZE}
+                step={4}
                 value={drawFontSize}
                 onChange={(event) => setDrawFontSize(Number(event.target.value))}
                 aria-label="Wielkość tekstu"

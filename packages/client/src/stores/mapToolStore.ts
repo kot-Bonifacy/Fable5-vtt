@@ -3,6 +3,7 @@ import {
   DRAWING_DEFAULT_COLOR,
   DRAWING_DEFAULT_FONT_SIZE,
   DRAWING_DEFAULT_WIDTH,
+  DRAWING_LEGACY_FONT_SIZE,
   DRAWING_MAX_FONT_SIZE,
   DRAWING_MAX_WIDTH,
   DRAWING_MIN_FONT_SIZE,
@@ -83,7 +84,12 @@ function loadDrawSettings(): DrawSettings {
           : DEFAULT_DRAW_SETTINGS.drawWidth,
       drawFilled: stored.drawFilled === true,
       drawFontSize:
-        typeof stored.drawFontSize === 'number'
+        // A stored size equal to the old default was never chosen by anyone —
+        // it is last version's default sitting in localStorage, and keeping it
+        // would mean the new one never reaches the people who already used the
+        // text tool once.
+        typeof stored.drawFontSize === 'number' &&
+        Math.round(stored.drawFontSize) !== DRAWING_LEGACY_FONT_SIZE
           ? clamp(Math.round(stored.drawFontSize), DRAWING_MIN_FONT_SIZE, DRAWING_MAX_FONT_SIZE)
           : DEFAULT_DRAW_SETTINGS.drawFontSize,
       drawGmOnly: stored.drawGmOnly !== false,

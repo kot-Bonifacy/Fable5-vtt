@@ -100,8 +100,19 @@ export const DRAWING_DEFAULT_WIDTH = 12;
 
 export const DRAWING_MIN_FONT_SIZE = 8;
 export const DRAWING_MAX_FONT_SIZE = 400;
-/** A grid square is 100 px ≈ 2 m, so the default label is about a metre tall. */
-export const DRAWING_DEFAULT_FONT_SIZE = 48;
+/**
+ * About one grid square tall on the usual 100 px grid. Labels are sized in
+ * scene pixels and a map is normally viewed well below 1:1, so half a square —
+ * the first guess — came out as a dozen screen pixels: legible only when
+ * leaning in. A caption on a floor plan is signage, not a footnote.
+ */
+export const DRAWING_DEFAULT_FONT_SIZE = 96;
+/**
+ * The size shipped before that measurement. A stored value identical to it was
+ * never a deliberate choice — it is the old default sitting in localStorage —
+ * so the client adopts the new one instead of preserving a size nobody picked.
+ */
+export const DRAWING_LEGACY_FONT_SIZE = 48;
 
 export const DRAWING_TEXT_MAX_LENGTH = 120;
 /** Max samples in one freehand path; the client simplifies before sending. */
