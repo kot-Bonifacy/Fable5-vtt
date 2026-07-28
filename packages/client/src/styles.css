@@ -3169,18 +3169,26 @@ body.is-resizing {
    icon at this size — but an emoji cannot take `currentColor`, so those show
    „armed" with a glow instead. Sized well above the old 1rem: the complaint
    about the previous toolbar was never the glyphs, only how small they were. */
+/* One size for every colour emoji in the app, so the toolbar and the note
+   picker can never drift apart again — they show the same pushpin, and two
+   scales for one glyph read as a bug. */
+:root {
+  --emoji-glyph-size: 1.15rem;
+}
+
 .map-tool-emoji {
-  font-size: 1.3rem;
+  font-size: var(--emoji-glyph-size);
   line-height: 1;
   /* Just enough to lift it off a pale map — anything more reads as blur. */
   filter: drop-shadow(0 1px 1px rgb(0 0 0 / 55%));
 }
 
-.map-tool-emoji--pin {
-  font-size: 1.1rem;
-}
-
-.map-tool--active .map-tool-emoji {
+/* An emoji cannot take `currentColor`, so an armed emoji button shows its
+   state with a glow plus a lifted background. Kept deliberately tight: a wide
+   halo around a colour glyph stops reading as „selected" and starts reading
+   as „out of focus". */
+.map-tool--active .map-tool-emoji,
+.note-icon--active {
   filter: drop-shadow(0 0 3px var(--accent, #38bdf8));
 }
 
@@ -3287,7 +3295,7 @@ body.is-resizing {
    area, and the chosen one marked by a glow — a border would compete with
    the emoji's own colour instead of pointing at it. */
 .note-icon {
-  height: 2.4rem;
+  height: 2.1rem;
   padding: 0;
   display: grid;
   place-items: center;
@@ -3297,7 +3305,7 @@ body.is-resizing {
   cursor: pointer;
   /* Same glyph size as the map toolbar — the picker and the pin it drops
      should read as one control, not two different scales. */
-  font-size: 1.3rem;
+  font-size: var(--emoji-glyph-size);
   line-height: 1;
   transition:
     background 120ms ease,
@@ -3314,9 +3322,11 @@ body.is-resizing {
   outline-offset: 1px;
 }
 
+/* Has to sit after the `.note-icon` base rule: same specificity, so the
+   transparent background above would otherwise win on source order and the
+   chosen icon would be marked by its glow alone. */
 .note-icon--active {
   background: rgb(148 163 184 / 18%);
-  filter: drop-shadow(0 0 3px var(--accent, #38bdf8));
 }
 
 .note-editor-text {
