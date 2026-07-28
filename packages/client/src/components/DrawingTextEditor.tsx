@@ -105,30 +105,32 @@ export function DrawingTextEditor() {
           if (event.key === 'Enter') void save();
         }}
       />
-      <div className="drawing-text-sizes" role="group" aria-label="Wielkość podpisu">
-        {DRAWING_FONT_PRESETS.map((preset) => (
-          <button
-            key={preset.id}
-            type="button"
-            className={`text-size-chip${fontSize === preset.size ? ' text-size-chip--active' : ''}`}
-            aria-pressed={fontSize === preset.size}
-            aria-label={`${FONT_PRESET_LABELS[preset.id]} (${preset.size} px)`}
-            title={`${FONT_PRESET_LABELS[preset.id]} — ${preset.size} px mapy`}
-            onClick={() => setDrawFontSize(preset.size)}
-          >
-            {/* No words: the glyph is scaled in exact proportion to the map
-                size (a 72nd of it), so the ladder *is* the label — and three
-                letters fit where three names did not. An affine version of
-                this read as three identical A's; the ratio has to survive, not
-                just the order. The name and the number stay in the tooltip. */}
-            <span style={{ fontSize: `${preset.size / 72}rem` }}>A</span>
-          </button>
-        ))}
-        {/* A size dialled in on the toolbar slider matches no chip — the number
-            is what tells the user where they actually are. */}
-        <span className="drawing-text-size-value">{fontSize} px</span>
-      </div>
+      {/* Sizes and buttons share one row: the chips are small, the buttons sit
+          right, and a dialog this short has no room for a line that is mostly
+          air. The pixel figure that used to close this row is gone — the
+          toolbar slider a few pixels above shows the same number. */}
       <footer className="note-editor-actions">
+        <div className="drawing-text-sizes" role="group" aria-label="Wielkość podpisu">
+          {DRAWING_FONT_PRESETS.map((preset) => (
+            <button
+              key={preset.id}
+              type="button"
+              className={`text-size-chip${fontSize === preset.size ? ' text-size-chip--active' : ''}`}
+              aria-pressed={fontSize === preset.size}
+              aria-label={`${FONT_PRESET_LABELS[preset.id]} (${preset.size} px)`}
+              title={`${FONT_PRESET_LABELS[preset.id]} — ${preset.size} px mapy`}
+              onClick={() => setDrawFontSize(preset.size)}
+            >
+              {/* No words: the glyph is scaled in exact proportion to the map
+                  size (a 72nd of it), so the ladder *is* the label — and three
+                  letters fit where three names did not. An affine version of
+                  this read as three identical A's; the ratio has to survive,
+                  not just the order. The name and the number stay in the
+                  tooltip. */}
+              <span style={{ fontSize: `${preset.size / 72}rem` }}>A</span>
+            </button>
+          ))}
+        </div>
         <span className="spacer" />
         <button
           type="button"

@@ -3305,10 +3305,13 @@ body.is-resizing {
   text-shadow: 0 1px 3px rgb(0 0 0 / 95%);
 }
 
-/* The text tool's prompt reuses the note editor's panel; only the input and
-   the width differ — a map label is a few words, not a paragraph. */
+/* The text tool's prompt reuses the note editor's panel, but it is three rows
+   tall instead of six — so it gets a tighter gap and a narrower box, or the
+   panel reads as mostly empty. */
 .drawing-text-editor {
-  width: min(20rem, calc(100% - 1.5rem));
+  width: min(18rem, calc(100% - 1.5rem));
+  gap: 0.4rem;
+  padding: 0.6rem;
 }
 
 .drawing-text-input {
@@ -3326,21 +3329,20 @@ body.is-resizing {
 }
 
 /* Size ladder for a caption: three letters, no words. Each chip draws an „A"
-   at the ratio the map will use, so the ladder is its own label and the row
-   stays a third of the width three names needed — the name and the pixel
-   figure live in the tooltip. The number on the right covers a size dialled in
-   on the toolbar slider, which matches no chip. */
+   at the ratio the map will use, so the ladder is its own label — the name and
+   the pixel figure live in the tooltip. Small enough to share the row with the
+   dialog's buttons, which is the whole point of dropping the words. */
 .drawing-text-sizes {
   display: flex;
-  gap: 0.3rem;
+  gap: 0.25rem;
   align-items: center;
 }
 
 .text-size-chip {
   display: grid;
   place-items: center;
-  width: 2rem;
-  height: 1.9rem;
+  width: 1.85rem;
+  height: 1.7rem;
   padding: 0;
   background: rgb(30 41 59 / 70%);
   color: #cbd5e1;
@@ -3364,13 +3366,6 @@ body.is-resizing {
 .text-size-chip:focus-visible {
   outline: 2px solid var(--accent, #38bdf8);
   outline-offset: 1px;
-}
-
-.drawing-text-size-value {
-  margin-left: auto;
-  color: #94a3b8;
-  font-size: 0.72rem;
-  font-variant-numeric: tabular-nums;
 }
 
 /* GM note editor — a small floating panel, never shown to a player. */
