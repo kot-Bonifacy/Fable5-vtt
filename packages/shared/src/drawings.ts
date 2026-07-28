@@ -107,12 +107,20 @@ export const DRAWING_MAX_FONT_SIZE = 400;
  * leaning in. A caption on a floor plan is signage, not a footnote.
  */
 export const DRAWING_DEFAULT_FONT_SIZE = 96;
+
 /**
- * The size shipped before that measurement. A stored value identical to it was
- * never a deliberate choice — it is the old default sitting in localStorage —
- * so the client adopts the new one instead of preserving a size nobody picked.
+ * The three sizes the label dialog offers, in scene pixels. They are a ladder
+ * against the usual 100 px grid square — half of one, three quarters, a whole
+ * one — because „how big is this caption?" is a question about the map, not
+ * about anybody's screen. The slider in the toolbar still reaches everything
+ * in between and above; these are the answers worth one click.
  */
-export const DRAWING_LEGACY_FONT_SIZE = 48;
+export const DRAWING_FONT_PRESETS = [
+  { id: 'small', size: 48 },
+  { id: 'medium', size: 72 },
+  { id: 'large', size: DRAWING_DEFAULT_FONT_SIZE },
+] as const;
+export type DrawingFontPresetId = (typeof DRAWING_FONT_PRESETS)[number]['id'];
 
 export const DRAWING_TEXT_MAX_LENGTH = 120;
 /** Max samples in one freehand path; the client simplifies before sending. */

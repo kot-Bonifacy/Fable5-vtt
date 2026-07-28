@@ -3325,6 +3325,54 @@ body.is-resizing {
   outline-offset: 1px;
 }
 
+/* Size ladder for a caption: three letters, no words. Each chip draws an „A"
+   at the ratio the map will use, so the ladder is its own label and the row
+   stays a third of the width three names needed — the name and the pixel
+   figure live in the tooltip. The number on the right covers a size dialled in
+   on the toolbar slider, which matches no chip. */
+.drawing-text-sizes {
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+.text-size-chip {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 1.9rem;
+  padding: 0;
+  background: rgb(30 41 59 / 70%);
+  color: #cbd5e1;
+  border: 1px solid rgb(148 163 184 / 35%);
+  border-radius: 6px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.text-size-chip:hover {
+  background: rgb(51 65 85 / 80%);
+  color: #f1f5f9;
+}
+
+.text-size-chip--active {
+  color: var(--accent, #38bdf8);
+  border-color: var(--accent, #38bdf8);
+  background: rgb(56 189 248 / 12%);
+}
+
+.text-size-chip:focus-visible {
+  outline: 2px solid var(--accent, #38bdf8);
+  outline-offset: 1px;
+}
+
+.drawing-text-size-value {
+  margin-left: auto;
+  color: #94a3b8;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
 /* GM note editor — a small floating panel, never shown to a player. */
 .note-editor {
   position: absolute;

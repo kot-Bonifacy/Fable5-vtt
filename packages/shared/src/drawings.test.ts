@@ -3,7 +3,9 @@ import {
   DRAWING_DEFAULT_COLOR,
   DRAWING_DEFAULT_FONT_SIZE,
   DRAWING_DEFAULT_WIDTH,
+  DRAWING_FONT_PRESETS,
   DRAWING_MAX_FONT_SIZE,
+  DRAWING_MIN_FONT_SIZE,
   DRAWING_MAX_WIDTH,
   DRAWING_PATH_MAX_POINTS,
   DRAWING_TEXT_MAX_LENGTH,
@@ -135,6 +137,25 @@ describe('sanitizeDrawingShape', () => {
     expect(sanitizeDrawingShape({ kind: 'cone', x: 0, y: 0 })).toBeNull();
     expect(sanitizeDrawingShape(null)).toBeNull();
     expect(sanitizeDrawingShape('rect')).toBeNull();
+  });
+});
+
+describe('DRAWING_FONT_PRESETS', () => {
+  it('is an ascending ladder inside the allowed range', () => {
+    const sizes = DRAWING_FONT_PRESETS.map((preset) => preset.size);
+    expect(sizes).toEqual([...sizes].sort((a, b) => a - b));
+    for (const size of sizes) {
+      expect(size).toBeGreaterThanOrEqual(DRAWING_MIN_FONT_SIZE);
+      expect(size).toBeLessThanOrEqual(DRAWING_MAX_FONT_SIZE);
+      // A preset the sanitizer would silently rewrite is a broken button.
+      expect(
+        sanitizeDrawingShape({ kind: 'text', x: 0, y: 0, text: 'Hol', fontSize: size }),
+      ).toEqual({ kind: 'text', x: 0, y: 0, text: 'Hol', fontSize: size });
+    }
+  });
+
+  it('offers the default as one of its rungs', () => {
+    expect(DRAWING_FONT_PRESETS.map((preset) => preset.size)).toContain(DRAWING_DEFAULT_FONT_SIZE);
   });
 });
 

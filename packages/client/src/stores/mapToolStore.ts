@@ -3,7 +3,6 @@ import {
   DRAWING_DEFAULT_COLOR,
   DRAWING_DEFAULT_FONT_SIZE,
   DRAWING_DEFAULT_WIDTH,
-  DRAWING_LEGACY_FONT_SIZE,
   DRAWING_MAX_FONT_SIZE,
   DRAWING_MAX_WIDTH,
   DRAWING_MIN_FONT_SIZE,
@@ -63,46 +62,62 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
+/**
+ * Bumped when a default changes in a way that should reach people who already
+ * used the tool. Version 2 raised the label size from half a grid square to a
+ * whole one; anything stored under an older version adopts the new size once,
+ * and the stamp is written back immediately — otherwise a deliberate „Mała"
+ * would be overwritten on every reload, which is exactly the trap the earlier
+ * „is it equal to the old default?" check walked into once the dialog started
+ * offering that size as a real choice.
+ */
+const SETTINGS_VERSION = 2;
+
+type StoredDrawSettings = Partial<DrawSettings> & { version?: number };
+
 /** Reads the stored settings, ignoring anything the format no longer knows. */
 function loadDrawSettings(): DrawSettings {
   if (typeof localStorage === 'undefined') return { ...DEFAULT_DRAW_SETTINGS };
+  let stored: StoredDrawSettings | null = null;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { ...DEFAULT_DRAW_SETTINGS };
-    const stored = JSON.parse(raw) as Partial<DrawSettings>;
-    return {
-      drawTool: DRAW_TOOLS.includes(stored.drawTool as DrawTool)
-        ? (stored.drawTool as DrawTool)
-        : DEFAULT_DRAW_SETTINGS.drawTool,
-      drawColor:
-        typeof stored.drawColor === 'string' && /^#[0-9a-f]{6}$/i.test(stored.drawColor)
-          ? stored.drawColor
-          : DEFAULT_DRAW_SETTINGS.drawColor,
-      drawWidth:
-        typeof stored.drawWidth === 'number'
-          ? clamp(Math.round(stored.drawWidth), DRAWING_MIN_WIDTH, DRAWING_MAX_WIDTH)
-          : DEFAULT_DRAW_SETTINGS.drawWidth,
-      drawFilled: stored.drawFilled === true,
-      drawFontSize:
-        // A stored size equal to the old default was never chosen by anyone —
-        // it is last version's default sitting in localStorage, and keeping it
-        // would mean the new one never reaches the people who already used the
-        // text tool once.
-        typeof stored.drawFontSize === 'number' &&
-        Math.round(stored.drawFontSize) !== DRAWING_LEGACY_FONT_SIZE
-          ? clamp(Math.round(stored.drawFontSize), DRAWING_MIN_FONT_SIZE, DRAWING_MAX_FONT_SIZE)
-          : DEFAULT_DRAW_SETTINGS.drawFontSize,
-      drawGmOnly: stored.drawGmOnly !== false,
-    };
+    if (raw) stored = JSON.parse(raw) as StoredDrawSettings;
   } catch {
-    return { ...DEFAULT_DRAW_SETTINGS };
+    stored = null;
   }
+  if (!stored) return { ...DEFAULT_DRAW_SETTINGS };
+
+  const settings: DrawSettings = {
+    drawTool: DRAW_TOOLS.includes(stored.drawTool as DrawTool)
+      ? (stored.drawTool as DrawTool)
+      : DEFAULT_DRAW_SETTINGS.drawTool,
+    drawColor:
+      typeof stored.drawColor === 'string' && /^#[0-9a-f]{6}$/i.test(stored.drawColor)
+        ? stored.drawColor
+        : DEFAULT_DRAW_SETTINGS.drawColor,
+    drawWidth:
+      typeof stored.drawWidth === 'number'
+        ? clamp(Math.round(stored.drawWidth), DRAWING_MIN_WIDTH, DRAWING_MAX_WIDTH)
+        : DEFAULT_DRAW_SETTINGS.drawWidth,
+    drawFilled: stored.drawFilled === true,
+    drawFontSize:
+      typeof stored.drawFontSize === 'number'
+        ? clamp(Math.round(stored.drawFontSize), DRAWING_MIN_FONT_SIZE, DRAWING_MAX_FONT_SIZE)
+        : DEFAULT_DRAW_SETTINGS.drawFontSize,
+    drawGmOnly: stored.drawGmOnly !== false,
+  };
+
+  if (stored.version !== SETTINGS_VERSION) {
+    settings.drawFontSize = DEFAULT_DRAW_SETTINGS.drawFontSize;
+    saveDrawSettings(settings);
+  }
+  return settings;
 }
 
 function saveDrawSettings(settings: DrawSettings): void {
   if (typeof localStorage === 'undefined') return;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...settings, version: SETTINGS_VERSION }));
   } catch {
     // A full or blocked storage must never break the toolbar.
   }
