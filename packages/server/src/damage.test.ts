@@ -65,7 +65,11 @@ function createSocket(cookie: string): {
   socket: ClientSocket;
   firstSync: Promise<StateSyncPayload>;
 } {
-  const socket = ioClient(baseUrl, { extraHeaders: { cookie }, reconnection: false, timeout: 3000 });
+  const socket = ioClient(baseUrl, {
+    extraHeaders: { cookie },
+    reconnection: false,
+    timeout: 3000,
+  });
   openSockets.push(socket);
   const firstSync = new Promise<StateSyncPayload>((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('state:sync timeout')), 4000);
@@ -276,6 +280,9 @@ describe('damage, armor and Death Saves', () => {
     });
 
     const scene = data(await emitAck<SceneView>(gm, 'scene:create', { name: 'Zaułek' }), 'scene');
+    // Stage 17: a fresh scene starts under fog, which would hide these
+    // tokens from the player. This suite is not about fog — light it up.
+    await emitAck(gm, 'fog:toggle', { sceneId: scene.id, enabled: false });
     const activated = waitFor(player, 'scene:activate');
     await emitAck(gm, 'scene:activate', { sceneId: scene.id });
     await activated;

@@ -394,6 +394,9 @@ describe('token ↔ character link', () => {
 
     const scene = await emitAck<SceneView>(gm, 'scene:create', { name: 'Magazyn' });
     if (!scene.ok || !scene.data) throw new Error('scene:create failed');
+    // Stage 17: a fresh scene starts under fog, which would hide these
+    // tokens from the player. This suite is not about fog — light it up.
+    await emitAck(gm, 'fog:toggle', { sceneId: scene.data.id, enabled: false });
     const activated = waitFor(vex, 'scene:activate');
     await emitAck(gm, 'scene:activate', { sceneId: scene.data.id });
     await activated;

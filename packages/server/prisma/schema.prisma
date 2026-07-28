@@ -245,6 +245,13 @@ model Scene {
   /** CP RED default: one square = 2 m — basis for ruler and DV (stage 15). */
   metersPerSquare Float   @default(2)
 
+  /**
+   * Fog of war (stage 17). A fresh scene starts covered, so nothing leaks
+   * before the GM has looked at the map; scenes that need no exploration are
+   * switched off with one toggle.
+   */
+  fogEnabled Boolean @default(true)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -253,8 +260,52 @@ model Scene {
   chatMessages ChatMessage[]
   bots         BotProfile[]
   combat       Combat?
+  fogShapes    FogShape[]
+  notes        MapNote[]
 
   @@index([campaignId, active])
+}
+
+/**
+ * One painted fog shape (stage 17). The fog is an ordered list, not a bitmap:
+ * the autoincrement id *is* the paint order, and the last shape covering a
+ * point decides whether that point is revealed. Undo deletes the highest id,
+ * „cover everything" clears the table for the scene (the base state is
+ * covered), „reveal everything" clears it and stores one full-scene rectangle.
+ */
+model FogShape {
+  id      Int    @id @default(autoincrement())
+  sceneId String
+  /// "reveal" | "hide" (SQLite: no enum support in Prisma)
+  mode    String
+  /// "stroke" (brush polyline + radius) | "rect"
+  kind    String
+  /// Geometry as JSON: stroke -> {points,radius}; rect -> {x,y,width,height}.
+  data    String
+
+  createdAt DateTime @default(now())
+
+  scene Scene @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+
+  @@index([sceneId, id])
+}
+
+/// A pin on the GM layer (stage 17): icon plus text, never emitted to a player.
+model MapNote {
+  id      String @id @default(cuid())
+  sceneId String
+  x       Float
+  y       Float
+  /// Pin glyph from the shared closed set.
+  icon    String @default("📌")
+  text    String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  scene Scene @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+
+  @@index([sceneId])
 }
 
 /// One running fight, bound to a scene (stage 14). Ending combat deletes the

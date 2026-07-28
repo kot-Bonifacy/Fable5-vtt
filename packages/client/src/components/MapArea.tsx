@@ -7,13 +7,17 @@ import { ensureStatusesLoaded, useTokenStore } from '../stores/tokenStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useChatStore } from '../stores/chatStore.js';
 import { activeTokenIdOf, useCombatStore } from '../stores/combatStore.js';
-import { clearRuler, createToken, sendRuler, sendTokenMove } from '../socket.js';
+import { clearRuler, createToken, paintFog, sendRuler, sendTokenMove } from '../socket.js';
 import { loadAttackAtToken } from '../attack-targeting.js';
 import { useAttackStore } from '../stores/attackStore.js';
 import { useRulerStore } from '../stores/rulerStore.js';
+import { useFogStore } from '../stores/fogStore.js';
+import { useNoteStore } from '../stores/noteStore.js';
+import { useMapToolStore } from '../stores/mapToolStore.js';
 import { TokenContextMenu } from './TokenContextMenu.js';
 import { CombatBar } from './CombatBar.js';
 import { MapTools } from './MapTools.js';
+import { NoteEditor } from './NoteEditor.js';
 
 export interface TokenMenuState {
   tokenId: string;
@@ -50,7 +54,10 @@ export function MapArea() {
   const scene = useSceneStore((s) => s.effectiveScene);
   const placement = useTokenStore((s) => s.placement);
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
-  const rulerActive = useRulerStore((s) => s.toolActive);
+  const tool = useMapToolStore((s) => s.tool);
+  const fogMode = useMapToolStore((s) => s.fogMode);
+  const fogShape = useMapToolStore((s) => s.fogShape);
+  const fogRadius = useMapToolStore((s) => s.fogRadius);
   const targeting = useAttackStore((s) => s.targeting);
 
   useEffect(() => {
@@ -94,6 +101,22 @@ export function MapArea() {
     };
     renderer.onTokenActivate = (tokenId) => openSheetOfToken(tokenId);
     renderer.onTokenTarget = (tokenId) => loadAttackAtToken(tokenId);
+    renderer.onFogPreview = (shape) => {
+      // The preview is local only: the server hears about the stroke once,
+      // when the GM lets go, rather than at pointer speed.
+      useFogStore.getState().setPending(shape ? { ...shape, id: -1 } : null);
+    };
+    renderer.onFogPaint = (shape) => {
+      const current = useSceneStore.getState().effectiveScene;
+      if (!current) return;
+      void paintFog(current.id, shape).then((ack) => {
+        // A rejected stroke (limit reached, lost GM role) must not linger as
+        // a preview that suggests it worked.
+        if (!ack.ok) useFogStore.getState().setPending(null);
+      });
+    };
+    renderer.onNotePlace = (x, y) => useNoteStore.getState().setDraft({ x, y });
+    renderer.onNoteActivate = (noteId) => useNoteStore.getState().setEditing(noteId);
     renderer.onRulerChange = (points) => {
       const current = useSceneStore.getState().effectiveScene;
       useRulerStore.getState().setLocal(points);
@@ -161,11 +184,18 @@ export function MapArea() {
     return () => window.removeEventListener('keydown', onKey);
   }, [placement]);
 
-  // Ruler and crosshair are renderer modes, not React state — push the flags.
+  // Tools are renderer modes, not React state — push the flags.
   useEffect(() => {
     if (!ready) return;
-    rendererRef.current?.setRulerMode(rulerActive);
-  }, [ready, rulerActive]);
+    rendererRef.current?.setRulerMode(tool === 'ruler');
+    rendererRef.current?.setNotePlacing(tool === 'note' && isGm);
+    rendererRef.current?.setFogBrush({
+      armed: tool === 'fog' && isGm,
+      mode: fogMode,
+      shape: fogShape,
+      radius: fogRadius,
+    });
+  }, [ready, tool, isGm, fogMode, fogShape, fogRadius]);
 
   useEffect(() => {
     if (!ready) return;
@@ -235,14 +265,51 @@ export function MapArea() {
     };
   }, [ready, pushRangeRings]);
 
-  // Keyboard: M arms the ruler, Space drops a waypoint mid-measurement, Esc
-  // puts both the ruler and the crosshair away.
+  // The fog mask is pushed straight to the renderer like the token layer —
+  // recompositing a texture must not wait for a React render.
+  const pushFog = useCallback(() => {
+    const { fog, pending } = useFogStore.getState();
+    rendererRef.current?.setFog(fog, pending, useAuthStore.getState().user?.role === ROLE_GM);
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    pushFog();
+    const unsubFog = useFogStore.subscribe(pushFog);
+    const unsubScene = useSceneStore.subscribe(pushFog);
+    return () => {
+      unsubFog();
+      unsubScene();
+    };
+  }, [ready, scene, pushFog]);
+
+  const pushNotes = useCallback(() => {
+    rendererRef.current?.setNotes(Object.values(useNoteStore.getState().notes));
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    pushNotes();
+    return useNoteStore.subscribe(pushNotes);
+  }, [ready, pushNotes]);
+
+  // Keyboard: M ruler, F fog, N note; Space drops a waypoint mid-measurement,
+  // Esc puts the armed tool and the attack crosshair away.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
+      const tools = useMapToolStore.getState();
       if (event.key === 'm' || event.key === 'M') {
-        useRulerStore.getState().toggleTool();
+        tools.toggleTool('ruler');
+        return;
+      }
+      if ((event.key === 'f' || event.key === 'F') && isGm) {
+        tools.toggleTool('fog');
+        return;
+      }
+      if ((event.key === 'n' || event.key === 'N') && isGm) {
+        tools.toggleTool('note');
         return;
       }
       if (event.key === ' ' && useRulerStore.getState().local) {
@@ -252,12 +319,12 @@ export function MapArea() {
       }
       if (event.key === 'Escape') {
         if (useAttackStore.getState().targeting) useAttackStore.getState().disarm();
-        if (useRulerStore.getState().toolActive) useRulerStore.getState().setToolActive(false);
+        if (tools.tool !== 'pointer') tools.setTool('pointer');
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [isGm]);
 
   return (
     <section className="map-area">
@@ -289,12 +356,20 @@ export function MapArea() {
       {targeting && (
         <div className="map-placement-hint map-placement-hint--attack">
           {targeting.characterName} celuje: „{targeting.weaponName}”
-          {targeting.mode !== 'single' ? ` — ${targeting.mode === 'autofire' ? 'seria' : 'zapora'}` : ''}
+          {targeting.mode !== 'single'
+            ? ` — ${targeting.mode === 'autofire' ? 'seria' : 'zapora'}`
+            : ''}
           {' — kliknij cel na mapie (Esc anuluje)'}
+        </div>
+      )}
+      {isGm && tool === 'note' && (
+        <div className="map-placement-hint">
+          Kliknij na mapie, by wbić pinezkę notatki (Esc anuluje)
         </div>
       )}
       <MapTools />
       <CombatBar />
+      {isGm && <NoteEditor />}
       {menu && <TokenContextMenu menu={menu} onClose={() => setMenu(null)} />}
     </section>
   );

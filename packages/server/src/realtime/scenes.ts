@@ -42,6 +42,7 @@ export function toSceneView(scene: Scene): SceneView {
       visible: scene.gridVisible,
     },
     metersPerSquare: scene.metersPerSquare,
+    fogEnabled: scene.fogEnabled,
   };
 }
 

@@ -5,6 +5,9 @@ import { RULER_IDLE_TIMEOUT_MS } from '@vtt/shared';
 /**
  * Rulers on the map (stage 16) — core VTT, no game system.
  *
+ * Which tool is armed lives in `mapToolStore` (stage 17) — this store only
+ * carries the lines themselves.
+ *
  * The local line is whatever this user is dragging right now; remote lines are
  * what the other viewers of the scene are measuring. Both are throw-away: a
  * remote line that stops updating disappears on its own, because a client that
@@ -20,16 +23,12 @@ export interface RemoteRuler {
 }
 
 interface RulerStoreState {
-  /** True while the ruler tool is armed: dragging the map measures. */
-  toolActive: boolean;
   /** The line this user is dragging; null when nothing is being measured. */
   local: ScenePoint[] | null;
   /** GM only: measure without showing the line to the players. */
   privateMode: boolean;
   remote: Record<string, RemoteRuler>;
 
-  setToolActive: (toolActive: boolean) => void;
-  toggleTool: () => void;
   setLocal: (points: ScenePoint[] | null) => void;
   setPrivateMode: (privateMode: boolean) => void;
   receive: (ruler: Omit<RemoteRuler, 'at'>) => void;
@@ -40,13 +39,10 @@ interface RulerStoreState {
 }
 
 export const useRulerStore = create<RulerStoreState>((set, get) => ({
-  toolActive: false,
   local: null,
   privateMode: false,
   remote: {},
 
-  setToolActive: (toolActive) => set({ toolActive, ...(toolActive ? {} : { local: null }) }),
-  toggleTool: () => get().setToolActive(!get().toolActive),
   setLocal: (local) => set({ local }),
   setPrivateMode: (privateMode) => set({ privateMode }),
   receive: ({ userId, userName, points }) =>

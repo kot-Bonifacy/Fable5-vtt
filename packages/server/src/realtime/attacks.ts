@@ -19,6 +19,7 @@ import {
   ROLE_GM,
   concentrationBase,
   formatMetres,
+  isTokenInFog,
   isWeaponEntry,
   mergeCharacterData,
   metresBetweenTokens,
@@ -37,6 +38,7 @@ import { requireRollableCharacter } from './character-rolls.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { emitTokensOfCharacter, requireCampaignToken, toTokenView } from './tokens.js';
 import { buildCompendiumSync } from './compendium.js';
+import { fetchFogState } from './fog-io.js';
 import { toSceneView } from './scenes.js';
 import {
   INCLUDE_CHAT_NAMES,
@@ -179,7 +181,8 @@ function attackDetail(meta: CpredAttackMeta): string {
     );
   }
   if (meta.mode !== 'single') parts.push(meta.modeLabel);
-  if (meta.ammoCost > 0) parts.push(`magazynek ${meta.ammoAfter}/${meta.ammoCost + meta.ammoAfter}`);
+  if (meta.ammoCost > 0)
+    parts.push(`magazynek ${meta.ammoAfter}/${meta.ammoCost + meta.ammoAfter}`);
   return parts.join(' · ');
 }
 
@@ -224,7 +227,8 @@ async function resolveSuppression(
       const character = await deps.ctx.prisma.character.findUnique({
         where: { id: token.characterId },
       });
-      if (character) modifier = concentrationBase(parseCharacterData(character.data, registry), registry);
+      if (character)
+        modifier = concentrationBase(parseCharacterData(character.data, registry), registry);
     }
     const die = rng(10);
     const total = die + modifier;
@@ -258,8 +262,23 @@ export const attackRollEvent = defineEvent<
       payload?.targetTokenId,
     );
     // A hidden token must not even be targetable by a player: a rejected
-    // attack would tell them exactly where it stands.
-    if (target.hidden && user.role !== ROLE_GM) throw new RealtimeError('TOKEN_NOT_FOUND');
+    // attack would tell them exactly where it stands. Unrevealed fog conceals
+    // a token just as completely (stage 17), so it gets the same answer —
+    // unless the player controls the token, in which case they can see it.
+    if (user.role !== ROLE_GM) {
+      if (target.hidden) throw new RealtimeError('TOKEN_NOT_FOUND');
+      const fog = await fetchFogState(deps.ctx.prisma, scene);
+      const controlledByPlayer =
+        target.ownerId === user.id ||
+        (target.characterId !== null && target.characterId === character.id);
+      if (
+        fog.enabled &&
+        !controlledByPlayer &&
+        isTokenInFog(toTokenView(target, false), toSceneView(scene), fog)
+      ) {
+        throw new RealtimeError('TOKEN_NOT_FOUND');
+      }
+    }
 
     const attacker = await resolveAttackerToken(
       deps,
@@ -479,4 +498,3 @@ export const weaponReloadEvent = defineEvent<WeaponReloadPayload, { ammo: number
     return { ammo: row.ammoMax };
   },
 });
-

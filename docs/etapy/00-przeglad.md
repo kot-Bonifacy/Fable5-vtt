@@ -22,7 +22,8 @@ Każdy etap to jedna sesja pracy z Claude. Etapy są pogrupowane w 9 faz. Szczeg
 | 14  | Inicjatywa i tury                                  | D. Walka             |                           |
 | 15  | Obrażenia, pancerz, krytyki, Death Save            | D. Walka             |                           |
 | 16  | Zasięgi, DV z mapy, autofire                       | D. Walka             | 🏁 Pełna automatyka walki |
-| 17  | Fog of war, rysowanie, warstwa MG                  | E. Widoczność        |                           |
+| 17a | Fog of war i warstwa MG                            | E. Widoczność        |                           |
+| 17b | Rysowanie po mapie                                 | E. Widoczność        |                           |
 | 18  | Dynamiczne oświetlenie i ściany                    | E. Widoczność        |                           |
 | 19  | Pamięć botów — RAG, dziennik, relacje, asystent MG | F. Boty zaawansowane |                           |
 | 20  | Autonomia botów w mechanice                        | F. Boty zaawansowane | 🏁 Pełne boty             |
@@ -43,7 +44,7 @@ Fazy A→B→C odwzorowują priorytety MVP z ankiety (mapa+tokeny, kości, karty
 - 14 (inicjatywa) przed 15–16 i 20.
 - 9–11 (boty podstawowe) przed 12 i przed 19–20.
 - 12 (TTS) nie blokuje niczego — nic od niego nie zależy, więc można go przesunąć dalej, jeśli wolisz najpierw walkę. Jedyne powiązanie to wspólny budżet VRAM z etapem 21 (STT): kto pierwszy, ten ustala rezerwę dla drugiego.
-- 17 przed 18 (oświetlenie buduje na fog of war).
+- 17a przed 18 (oświetlenie buduje na fog of war); 17b (rysowanie) nie blokuje niczego.
 - 28 (VPS) na końcu, ale można go wcześniej „wcisnąć" w dowolnym momencie, gdy zechcesz grać zdalnie — plan etapu jest samodzielny.
 
 ## Decyzje projektowe (ustalone z użytkownikiem 16.07.2026)
@@ -68,7 +69,7 @@ Fazy A→B→C odwzorowują priorytety MVP z ankiety (mapa+tokeny, kości, karty
 ## Ryzyka i ograniczenia
 
 - **VRAM (16 GB) — najciaśniejszy zasób projektu.** Bilans po pomiarach z etapu 09: Windows z pulpitem ~2,8 GB + llama-server @32k ~9,2 GB ⇒ **wolne ~4,0 GB** na wszystko pozostałe, do podziału między whisper (etap 21) i TTS (etap 12). Szacunki dla tych dwóch (1,5–2 GB i 2–3 GB) to górne widełki z dokumentacji, nie pomiary — **prawdopodobnie zawyżone i możliwe, że wszystko zmieści się bez zabiegów**; rozstrzygną to etapy 12 i 21, każdy z obowiązkiem zaktualizowania bilansu w `ai-gateway/README.md`. Gdyby jednak zabrakło, kluczowa obserwacja brzmi: **te modele nie muszą stać w karcie jednocześnie** — bot mówi wtedy, gdy LLM skończył generować, a mikrofon milczy. Ścieżki ratunku w kolejności rosnącego kosztu: leniwe ładowanie TTS z wyładowaniem po bezczynności → zwolnienie whispera na czas syntezy (~1–2 s przeładowania) → kontekst LLM 32k→16k (+0,5 GB) → `--cache-type-k/v q8_0` (+~0,3 GB) → zatrzymanie `llama-server` na czas syntezy (~3,5 s wczytania, tylko przy pustej kolejce) → whisper `small` (+~1 GB) → TTS na CPU (Piper, 0 GB) → ostatecznie kwant LLM Q6_K.
-- **Licencja RTG:** dane podręcznika tylko lokalnie (`data/private/`, gitignore) — repo jest publiczne. Szczegóły w CLAUDE.md.
+-
 - **Czas odpowiedzi bota ≤ 15 s:** limituje długość promptu (RAG top-k, przycinanie historii) i max tokenów odpowiedzi; kolejka jeden-bot-naraz zgodnie z ankietą.
 - **Upload 50 Mb/s w domu:** wystarcza na Tailscale (tekst do LLM), ale duże mapy trzymamy na VPS, nie serwujemy z PC.
 - **Etapy 13, 23, 25, 26 wymagają materiałów od Ciebie** (skonwertowany tekst podręcznika) — przygotuj je przed tymi sesjami.

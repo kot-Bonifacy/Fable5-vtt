@@ -1,4 +1,6 @@
 import type {
+  FogState,
+  SceneView,
   SessionUser,
   TokenCreatePayload,
   TokenDeleteBroadcast,
@@ -6,6 +8,7 @@ import type {
   TokenMoveBroadcast,
   TokenMovePayload,
   TokenPatch,
+  TokenSyncBroadcast,
   TokenUpdatePayload,
   TokenUpsertBroadcast,
   TokenHp,
@@ -14,6 +17,7 @@ import type {
 import {
   ROLE_GM,
   clampTokenPosition,
+  isTokenInFog,
   sanitizeTokenHp,
   sanitizeTokenImageUrl,
   sanitizeTokenName,
@@ -33,6 +37,7 @@ import {
 } from '../sheets.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { campaignRoom, emitToCampaignUser, gmRoom, sceneRoom } from './state.js';
+import { fetchFogState } from './fog-io.js';
 import { requireCampaignScene } from './scenes.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { emitCombatOfScene } from './combat.js';
@@ -96,6 +101,14 @@ async function loadLinkedSheets(
   return new Map(characters.map((c) => [c.id, toLinkedSheet(c, registry)]));
 }
 
+/** Who controls a token: its owner, or the owner of the sheet it is bound to. */
+function controllerIds(token: Token, linked: LinkedSheet | undefined | null): Set<string> {
+  const ids = new Set<string>();
+  if (token.ownerId) ids.add(token.ownerId);
+  if (linked?.ownerId) ids.add(linked.ownerId);
+  return ids;
+}
+
 /**
  * May this viewer see the token's private fields (HP, sheet link)? The GM
  * always can; a player only for tokens they own or tokens bound to their own
@@ -107,23 +120,88 @@ function seesPrivate(token: Token, linked: LinkedSheet | undefined, user: Sessio
   return linked?.ownerId === user.id;
 }
 
-/** Tokens of a scene as one viewer sees them: players never get hidden ones or foreign HP. */
+/** Just the grid, which is all the fog geometry needs off a scene row. */
+function toGridScene(scene: Scene): Pick<SceneView, 'grid'> {
+  return {
+    grid: {
+      sizePx: scene.gridSizePx,
+      offsetX: scene.gridOffsetX,
+      offsetY: scene.gridOffsetY,
+      color: scene.gridColor,
+      alpha: scene.gridAlpha,
+      visible: scene.gridVisible,
+    },
+  };
+}
+
+/**
+ * Is the token in unrevealed fog *for this player* (stage 17)?
+ *
+ * Whoever controls the token is exempt: a player must never lose their own
+ * character off the map because the GM has not lit that corridor yet. Losing
+ * sight of your own token reads as a bug, not as suspense — and the position
+ * is hardly a secret from the person moving it.
+ */
+function hiddenByFogFrom(
+  token: Token,
+  scene: Scene,
+  fog: FogState,
+  linked: LinkedSheet | undefined | null,
+  userId: string,
+): boolean {
+  if (!fog.enabled) return false;
+  if (controllerIds(token, linked).has(userId)) return false;
+  return isTokenInFog(token, toGridScene(scene), fog);
+}
+
+/**
+ * Tokens of a scene as one viewer sees them: players never get hidden ones,
+ * foreign HP, or anything standing in unrevealed fog. The GM sees everything
+ * and therefore never pays for the fog query.
+ */
 export async function fetchSceneTokensFor(
   prisma: PrismaClient,
   registry: SheetRegistry,
-  sceneId: string,
+  scene: Scene,
   user: SessionUser,
 ): Promise<TokenView[]> {
   const isGm = user.role === ROLE_GM;
   const rows = await prisma.token.findMany({
-    where: { sceneId, ...(isGm ? {} : { hidden: false }) },
+    where: { sceneId: scene.id, ...(isGm ? {} : { hidden: false }) },
     orderBy: { createdAt: 'asc' },
   });
   const sheets = await loadLinkedSheets(prisma, registry, rows);
-  return rows.map((row) => {
+  const fog = isGm ? null : await fetchFogState(prisma, scene);
+  const views: TokenView[] = [];
+  for (const row of rows) {
     const linked = row.characterId ? sheets.get(row.characterId) : undefined;
-    return toTokenView(row, seesPrivate(row, linked, user), linked);
-  });
+    if (fog && hiddenByFogFrom(row, scene, fog, linked, user.id)) continue;
+    views.push(toTokenView(row, seesPrivate(row, linked, user), linked));
+  }
+  return views;
+}
+
+/**
+ * Re-sends every player viewing the scene the token list they may now see.
+ *
+ * Repainting the fog can add and remove tokens for the same viewer in one
+ * stroke, and each player's list differs (own tokens stay visible), so a full
+ * targeted push is both simpler and safer than reasoning about deltas. Only
+ * the active scene has player viewers, so a GM's private preview costs nothing.
+ */
+export async function emitSceneTokensToPlayers(
+  deps: RealtimeDeps,
+  campaignId: string,
+  scene: Scene,
+): Promise<void> {
+  if (!scene.active) return;
+  const sockets = await deps.io.in(campaignRoom(campaignId)).fetchSockets();
+  for (const member of sockets) {
+    const data = member.data as { user: SessionUser; viewedSceneId: string | null };
+    if (data.user.role === ROLE_GM || data.viewedSceneId !== scene.id) continue;
+    const tokens = await fetchSceneTokensFor(deps.ctx.prisma, deps.ctx.cpred, scene, data.user);
+    member.emit('token:sync', { sceneId: scene.id, tokens } satisfies TokenSyncBroadcast);
+  }
 }
 
 function toSnapScene(scene: Scene): TokenSnapScene {
@@ -177,6 +255,21 @@ async function emitTokenUpsert(
     return;
   }
 
+  // Both owners see the private view; a player owning the sheet but not the
+  // token (or the other way round) still gets exactly one copy.
+  const privateUserIds = controllerIds(token, linked);
+
+  // Standing in unrevealed fog is the same kind of secret as `hidden`, except
+  // the people controlling the token keep it (stage 17).
+  const fog = await fetchFogState(deps.ctx.prisma, scene);
+  if (fog.enabled && isTokenInFog(token, toGridScene(scene), fog)) {
+    deps.io.to(gmRoom(campaignId)).emit('token:upsert', privatePayload);
+    for (const userId of privateUserIds) {
+      await emitToCampaignUser(deps.io, campaignId, userId, 'token:upsert', privatePayload);
+    }
+    return;
+  }
+
   const room = campaignRoom(campaignId);
   const publicPayload: TokenUpsertBroadcast = {
     seq: deps.seqs.next(room),
@@ -184,11 +277,6 @@ async function emitTokenUpsert(
   };
   deps.io.to(room).emit('token:upsert', publicPayload);
   deps.io.to(gmRoom(campaignId)).emit('token:upsert', privatePayload);
-  // Both owners see the private view; a player owning the sheet but not the
-  // token (or the other way round) still gets exactly one copy.
-  const privateUserIds = new Set<string>();
-  if (token.ownerId) privateUserIds.add(token.ownerId);
-  if (linked?.ownerId) privateUserIds.add(linked.ownerId);
   for (const userId of privateUserIds) {
     await emitToCampaignUser(deps.io, campaignId, userId, 'token:upsert', privatePayload);
   }
@@ -459,6 +547,11 @@ export const tokenUpdateEvent = defineEvent<TokenUpdatePayload, TokenView>({
     } else {
       await emitTokenUpsert(deps, campaignId, scene, updated, linked);
     }
+    // Growing a token re-snaps it, which moves its centre and can therefore
+    // push it across the fog boundary — reconcile the players' lists.
+    if (patch.size !== undefined && patch.size !== token.size) {
+      await emitSceneTokensToPlayers(deps, campaignId, scene);
+    }
     // The tracker mirrors the token: a rename shows up in the initiative list,
     // and hiding a token must pull its row from the players' tracker too.
     if (patch.name !== undefined || patch.imageUrl !== undefined || patch.hidden !== undefined) {
@@ -525,10 +618,26 @@ export const tokenMoveEvent = defineEvent<TokenMovePayload, { x: number; y: numb
       final,
       byUserId: user.id,
     };
+    // Crossing the fog boundary changes *who the token exists for*, which a
+    // move broadcast cannot express — so those frames go to the GM and the
+    // controllers only, and the players get a reconciling list on the drop.
+    const fog = await fetchFogState(deps.ctx.prisma, scene);
+    const grid = toGridScene(scene);
+    const fogMatters =
+      fog.enabled &&
+      (isTokenInFog(token, grid, fog) || isTokenInFog({ ...token, x, y }, grid, fog));
+
     if (!scene.active) {
       deps.io.to(sceneRoom(scene.id)).emit('token:move', move);
     } else if (token.hidden) {
       deps.io.to(gmRoom(campaignId)).emit('token:move', move);
+    } else if (fogMatters) {
+      deps.io.to(gmRoom(campaignId)).emit('token:move', move);
+      const linked = await loadLinkedSheet(deps, token);
+      for (const userId of controllerIds(token, linked)) {
+        await emitToCampaignUser(deps.io, campaignId, userId, 'token:move', move);
+      }
+      if (final) await emitSceneTokensToPlayers(deps, campaignId, scene);
     } else {
       const room = campaignRoom(campaignId);
       // Only the persisted final position consumes a seq — intermediate drag

@@ -34,6 +34,8 @@ interface TokenStoreState {
   placement: TokenPlacement | null;
 
   applySync: (payload: StateSyncPayload, viewer: TokenViewerCtx) => void;
+  /** Replaces the whole list — used by `token:sync` after a fog repaint. */
+  applyTokens: (tokens: TokenView[], viewer: TokenViewerCtx) => void;
   /** Merges an upsert; absent keys (e.g. `hp` in public payloads) keep old values. */
   upsert: (token: TokenView, viewer: TokenViewerCtx) => void;
   remove: (tokenId: string) => void;
@@ -51,6 +53,13 @@ export const useTokenStore = create<TokenStoreState>((set) => ({
     set(() => {
       const tokens: Record<string, TokenView> = {};
       for (const token of payload.tokens) tokens[token.id] = normalizeHp(token, viewer);
+      return { tokens };
+    }),
+
+  applyTokens: (incoming, viewer) =>
+    set(() => {
+      const tokens: Record<string, TokenView> = {};
+      for (const token of incoming) tokens[token.id] = normalizeHp(token, viewer);
       return { tokens };
     }),
 

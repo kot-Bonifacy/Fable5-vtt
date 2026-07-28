@@ -73,7 +73,11 @@ function createSocket(cookie: string): {
   socket: ClientSocket;
   firstSync: Promise<StateSyncPayload>;
 } {
-  const socket = ioClient(baseUrl, { extraHeaders: { cookie }, reconnection: false, timeout: 3000 });
+  const socket = ioClient(baseUrl, {
+    extraHeaders: { cookie },
+    reconnection: false,
+    timeout: 3000,
+  });
   openSockets.push(socket);
   const firstSync = new Promise<StateSyncPayload>((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('state:sync timeout')), 4000);
@@ -244,7 +248,7 @@ describe('ranged combat from the map', () => {
       patch: {
         data: {
           // REF 6 + Broń krótka 5 = +11; Ogień ciągły 4 → +10 on bursts.
-          stats: { ...character.data.stats, ref: 6, will: 6, dex: 5 },
+          stats: { ...(character.data as CpredCharacterData).stats, ref: 6, will: 6, dex: 5 },
           skills: { handgun: 5, autofire: 4, evasion: 3, concentration: 2 },
           weapons: [
             {
@@ -289,6 +293,9 @@ describe('ranged combat from the map', () => {
     sceneId = scene.id;
     // 20 000 px = 400 m of street: room to stand past every range band.
     await emitAck(gm, 'scene:update', { sceneId, patch: { width: 20_000 } });
+    // Stage 17: a fresh scene starts under fog, which would hide these
+    // tokens from the player. This suite is not about fog — light it up.
+    await emitAck(gm, 'fog:toggle', { sceneId, enabled: false });
     const activated = waitFor(player, 'scene:activate');
     await emitAck(gm, 'scene:activate', { sceneId });
     await activated;
@@ -572,7 +579,12 @@ describe('ranged combat from the map', () => {
     );
     await emitAck(gm, 'character:update', {
       characterId: defender.id,
-      patch: { data: { stats: { ...defender.data.stats, dex: 6 }, skills: { evasion: 4 } } },
+      patch: {
+        data: {
+          stats: { ...(defender.data as CpredCharacterData).stats, dex: 6 },
+          skills: { evasion: 4 },
+        },
+      },
     });
     const defenderToken = data(
       await emitAck<TokenView>(gm, 'token:create', {

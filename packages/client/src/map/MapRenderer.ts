@@ -3,14 +3,24 @@ import {
   Assets,
   Container,
   Graphics,
+  RenderTexture,
   Sprite,
   Text,
   Texture,
   type FederatedPointerEvent,
 } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
-import type { ScenePoint, SceneView, TokenSnapScene, TokenView } from '@vtt/shared';
+import type {
+  FogShape,
+  FogState,
+  MapNoteView,
+  ScenePoint,
+  SceneView,
+  TokenSnapScene,
+  TokenView,
+} from '@vtt/shared';
 import {
+  FOG_STROKE_MAX_POINTS,
   clampTokenPosition,
   formatMetres,
   formatSquares,
@@ -38,14 +48,56 @@ export interface RangeRing {
   label: string;
 }
 
+/** The fog tool's current setting, pushed in from the toolbar. */
+export interface FogBrushSettings {
+  /** Painting fog is off while this is null. */
+  armed: boolean;
+  mode: 'reveal' | 'hide';
+  shape: 'brush' | 'rect';
+  radius: number;
+}
+
 /** Extra pannable margin around the scene, as a fraction of its size. */
 const PAN_MARGIN = 0.5;
+/** Fog opacity for the GM — dark enough to read as fog, light enough to plan through. */
+const FOG_GM_ALPHA = 0.55;
+/**
+ * Longest edge of the fog render texture. A scene is capped to this, so a
+ * 4096 px map composites into 2048 px (16 MB instead of 64 MB) and the fog
+ * edge picks up a soft two-pixel feather, which looks better than a hard one.
+ */
+const FOG_TEXTURE_MAX_PX = 2048;
 const MIN_ZOOM = 0.05;
 const MAX_ZOOM = 8;
 /** Screen-pixel distance that turns a click into a drag. */
 const DRAG_THRESHOLD_PX = 4;
 /** Max gap between two clicks on a token to count as a double-click. */
 const DOUBLE_CLICK_MS = 350;
+
+/** Paints one fog shape: a round-capped band for a stroke, a box for a rect. */
+function drawFogShape(graphics: Graphics, shape: FogShape): void {
+  if (shape.kind === 'rect') {
+    graphics.rect(shape.x, shape.y, shape.width, shape.height).fill({ color: 0x000000, alpha: 1 });
+    return;
+  }
+  const [first, ...rest] = shape.points;
+  if (!first) return;
+  // A click without a drag is one disc; anything longer is a thick polyline,
+  // which is exactly the geometry `fogShapeContains` tests on the server.
+  if (rest.length === 0) {
+    graphics.circle(first.x, first.y, shape.radius).fill({ color: 0x000000, alpha: 1 });
+    return;
+  }
+  graphics.moveTo(first.x, first.y);
+  for (const point of rest) graphics.lineTo(point.x, point.y);
+  graphics.stroke({
+    color: 0x000000,
+    alpha: 1,
+    width: shape.radius * 2,
+    cap: 'round',
+    join: 'round',
+  });
+}
 
 interface DragState {
   node: TokenNode;
@@ -82,6 +134,14 @@ export class MapRenderer {
   onTokenTarget: ((tokenId: string) => void) | null = null;
   /** The local ruler changed; null means the measurement ended. */
   onRulerChange: ((points: ScenePoint[] | null) => void) | null = null;
+  /** A fog stroke/rectangle is being drawn (preview); null ends the gesture. */
+  onFogPreview: ((shape: FogShape | null) => void) | null = null;
+  /** The GM finished a fog gesture — send it to the server. */
+  onFogPaint: ((shape: FogShape) => void) | null = null;
+  /** Click on the map with the note tool armed (world px). */
+  onNotePlace: ((x: number, y: number) => void) | null = null;
+  /** Click on an existing GM note pin. */
+  onNoteActivate: ((noteId: string) => void) | null = null;
 
   private readonly app = new Application();
   private viewport: Viewport | null = null;
@@ -91,6 +151,16 @@ export class MapRenderer {
   private readonly rangeGraphics = new Graphics();
   private readonly tokenLayer = new Container();
   private readonly dragGhost = new Graphics();
+  private readonly fogLayer = new Container();
+  private readonly fogSprite = new Sprite();
+  /** Off-stage container rendered into `fogTexture`; scaled down for memory. */
+  private readonly fogScratch = new Container();
+  private readonly fogCover = new Graphics();
+  /** One Graphics per run of same-mode shapes — blend mode lives on the node. */
+  private readonly fogPasses: Graphics[] = [];
+  private fogTexture: RenderTexture | null = null;
+  private readonly noteLayer = new Container();
+  private readonly noteNodes = new Map<string, Container>();
   private readonly overlayLayer = new Container();
   private readonly rulerGraphics = new Graphics();
   private readonly tokenNodes = new Map<string, TokenNode>();
@@ -107,6 +177,22 @@ export class MapRenderer {
   private rulerPoints: ScenePoint[] | null = null;
   /** Crosshair armed by „Atakuj": the next token click reports a target. */
   private targeting = false;
+  /** Note tool armed: the next click on empty map drops a pin. */
+  private notePlacing = false;
+  /** Fog brush settings; `armed` decides whether a drag paints. */
+  private fogBrush: FogBrushSettings = {
+    armed: false,
+    mode: 'reveal',
+    shape: 'brush',
+    radius: 120,
+  };
+  /** Fog gesture in progress: brush samples, or the rectangle's origin. */
+  private fogStroke: ScenePoint[] | null = null;
+  private fogRectStart: ScenePoint | null = null;
+  private fogRectEnd: ScenePoint | null = null;
+  private lastFog: FogState | null = null;
+  private lastFogPending: FogShape | null = null;
+  private fogIsGm = false;
   /** Labels drawn on the overlay layer — rebuilt on every redraw. */
   private readonly overlayTexts: Text[] = [];
   private readonly rangeTexts: Text[] = [];
@@ -114,6 +200,7 @@ export class MapRenderer {
   private lastRulers: RulerLine[] = [];
   private lastRingCentre: ScenePoint | null = null;
   private lastRings: RangeRing[] = [];
+  private lastNotes: MapNoteView[] = [];
 
   async init(host: HTMLElement): Promise<void> {
     await this.app.init({ resizeTo: host, backgroundAlpha: 0, antialias: true });
@@ -144,12 +231,24 @@ export class MapRenderer {
     viewport.addChild(this.rangeLayer);
     viewport.addChild(this.tokenLayer);
     viewport.addChild(this.dragGhost);
+    // Fog hides the map and everything standing on it, so it sits above the
+    // tokens; the GM layer and the ruler stay readable on top of the fog.
+    this.fogLayer.addChild(this.fogSprite);
+    viewport.addChild(this.fogLayer);
+    viewport.addChild(this.noteLayer);
     this.overlayLayer.addChild(this.rulerGraphics);
     viewport.addChild(this.overlayLayer);
+    // Scratch container: the fog is rendered into a texture at reduced scale,
+    // never added to the stage.
+    this.fogScratch.addChild(this.fogCover);
     this.app.stage.addChild(viewport);
     this.viewport = viewport;
 
     viewport.on('clicked', (event) => {
+      if (this.notePlacing) {
+        this.onNotePlace?.(Math.round(event.world.x), Math.round(event.world.y));
+        return;
+      }
       this.onMapClick?.(event.world.x, event.world.y);
     });
 
@@ -175,6 +274,8 @@ export class MapRenderer {
       this.grid.clear();
       this.setRulers([]);
       this.setRangeRings(null, []);
+      this.setNotes([]);
+      this.fogSprite.visible = false;
       this.clearTokens();
       return;
     }
@@ -193,10 +294,20 @@ export class MapRenderer {
 
     this.updateBackground(scene);
     this.drawGrid(scene);
+    // The scene's size drives the fog texture, so a resized (or swapped) map
+    // has to recomposite it before the next frame.
+    this.setFog(this.lastFog, this.lastFogPending, this.fogIsGm);
     if (sceneChanged) {
       this.clearTokens();
       this.fitScene(scene);
     }
+    // `fitScene` changes the zoom by hand, and pixi-viewport only emits
+    // `zoomed` for its own plugins (wheel, pinch) — so nothing else would tell
+    // the screen-sized overlays to rescale. Without this a note pin dropped
+    // before the map settled renders at world scale: three pixels tall on a
+    // 4096 px map, which is how the same bug showed up for ruler labels in
+    // stage 16.
+    this.refreshOverlays();
   }
 
   /** Reconciles the token layer with the store state (diff by id). */
@@ -248,10 +359,61 @@ export class MapRenderer {
     this.applyMapCursor();
   }
 
+  /** Arms the note tool: a click on empty map asks for a new pin. */
+  setNotePlacing(active: boolean): void {
+    if (this.notePlacing === active) return;
+    this.notePlacing = active;
+    this.applyMapCursor();
+  }
+
+  /**
+   * Arms or disarms fog painting. Like the ruler it takes the left button off
+   * the viewport, because a drag has to mean one thing at a time.
+   */
+  setFogBrush(settings: FogBrushSettings): void {
+    const wasArmed = this.fogBrush.armed;
+    this.fogBrush = settings;
+    if (wasArmed && !settings.armed) this.cancelFogGesture();
+    this.applyMapCursor();
+  }
+
   private applyMapCursor(): void {
     const canvas = this.app.canvas;
     if (!canvas) return;
-    canvas.style.cursor = this.targeting ? 'crosshair' : this.rulerMode ? 'cell' : '';
+    canvas.style.cursor = this.targeting
+      ? 'crosshair'
+      : this.fogBrush.armed
+        ? 'crosshair'
+        : this.notePlacing
+          ? 'copy'
+          : this.rulerMode
+            ? 'cell'
+            : '';
+  }
+
+  private cancelFogGesture(): void {
+    if (!this.fogStroke && !this.fogRectStart) return;
+    this.fogStroke = null;
+    this.fogRectStart = null;
+    this.viewport?.plugins.resume('drag');
+    this.onFogPreview?.(null);
+  }
+
+  /** The shape the current gesture describes; null when nothing is usable yet. */
+  private fogGestureShape(): FogShape | null {
+    const { mode, radius } = this.fogBrush;
+    if (this.fogStroke && this.fogStroke.length > 0) {
+      return { kind: 'stroke', mode, radius, points: this.fogStroke.map((p) => ({ ...p })) };
+    }
+    const start = this.fogRectStart;
+    const end = this.fogRectEnd;
+    if (!start || !end) return null;
+    const x = Math.min(start.x, end.x);
+    const y = Math.min(start.y, end.y);
+    const width = Math.abs(end.x - start.x);
+    const height = Math.abs(end.y - start.y);
+    if (width < 1 || height < 1) return null;
+    return { kind: 'rect', mode, x, y, width, height };
   }
 
   /**
@@ -263,24 +425,67 @@ export class MapRenderer {
     viewport.eventMode = 'static';
 
     viewport.on('pointerdown', (event: FederatedPointerEvent) => {
-      if (!this.rulerMode || event.button !== 0 || this.drag) return;
+      if (event.button !== 0 || this.drag) return;
       const world = viewport.toWorld(event.global.x, event.global.y);
-      const start = { x: Math.round(world.x), y: Math.round(world.y) };
+      const point = { x: Math.round(world.x), y: Math.round(world.y) };
+
+      if (this.fogBrush.armed) {
+        if (this.fogBrush.shape === 'brush') {
+          this.fogStroke = [point];
+        } else {
+          this.fogRectStart = point;
+          this.fogRectEnd = { ...point };
+        }
+        viewport.plugins.pause('drag');
+        this.onFogPreview?.(this.fogGestureShape());
+        return;
+      }
+      if (!this.rulerMode) return;
       // Two points from the start: the second one follows the pointer.
-      this.rulerPoints = [start, { ...start }];
+      this.rulerPoints = [point, { ...point }];
       viewport.plugins.pause('drag');
       this.emitRuler();
     });
 
     viewport.on('pointermove', (event: FederatedPointerEvent) => {
+      const world = viewport.toWorld(event.global.x, event.global.y);
+      const point = { x: Math.round(world.x), y: Math.round(world.y) };
+
+      if (this.fogStroke) {
+        const last = this.fogStroke[this.fogStroke.length - 1]!;
+        // Thin the stroke as it is drawn: samples closer than a fifth of the
+        // brush add nothing the round caps do not already cover, and the cap
+        // on stroke length is what keeps a slow drag from being rejected.
+        const minStep = Math.max(4, this.fogBrush.radius / 5);
+        if (Math.hypot(point.x - last.x, point.y - last.y) >= minStep) {
+          if (this.fogStroke.length < FOG_STROKE_MAX_POINTS) this.fogStroke.push(point);
+          this.onFogPreview?.(this.fogGestureShape());
+        }
+        return;
+      }
+      if (this.fogRectStart) {
+        this.fogRectEnd = point;
+        this.onFogPreview?.(this.fogGestureShape());
+        return;
+      }
+
       const points = this.rulerPoints;
       if (!points) return;
-      const world = viewport.toWorld(event.global.x, event.global.y);
-      points[points.length - 1] = { x: Math.round(world.x), y: Math.round(world.y) };
+      points[points.length - 1] = point;
       this.emitRuler();
     });
 
     const end = () => {
+      if (this.fogStroke || this.fogRectStart) {
+        const shape = this.fogGestureShape();
+        this.fogStroke = null;
+        this.fogRectStart = null;
+        this.fogRectEnd = null;
+        this.viewport?.plugins.resume('drag');
+        this.onFogPreview?.(null);
+        if (shape) this.onFogPaint?.(shape);
+        return;
+      }
       if (this.rulerPoints) this.finishRuler();
     };
     viewport.on('pointerup', end);
@@ -391,11 +596,125 @@ export class MapRenderer {
     }
   }
 
+  /**
+   * Redraws the fog of war.
+   *
+   * The mask cannot be a Pixi mask: the shape list interleaves reveals and
+   * re-covers in paint order, and no single mask geometry expresses that. So
+   * the fog is composited into a render texture instead — a black sheet over
+   * the whole scene, then one Graphics per run of same-mode shapes, reveals
+   * drawn with the `erase` blend mode, which punches real transparency rather
+   * than painting grey. The texture is deliberately coarse: fog edges gain
+   * nothing from pixel precision, and a 4096 px map would otherwise cost
+   * 64 MB of VRAM.
+   */
+  setFog(fog: FogState | null, pending: FogShape | null, isGm: boolean): void {
+    if (this.destroyed) return;
+    this.lastFog = fog;
+    this.lastFogPending = pending;
+    this.fogIsGm = isGm;
+    const scene = this.scene;
+
+    if (!scene || !fog || !fog.enabled) {
+      this.fogSprite.visible = false;
+      return;
+    }
+
+    const factor = Math.max(1, Math.max(scene.width, scene.height) / FOG_TEXTURE_MAX_PX);
+    const width = Math.max(1, Math.ceil(scene.width / factor));
+    const height = Math.max(1, Math.ceil(scene.height / factor));
+    if (!this.fogTexture || this.fogTexture.width !== width || this.fogTexture.height !== height) {
+      this.fogTexture?.destroy(true);
+      this.fogTexture = RenderTexture.create({ width, height, antialias: true });
+      this.fogSprite.texture = this.fogTexture;
+    }
+    this.fogScratch.scale.set(1 / factor);
+
+    // The sheet everything else is carved out of.
+    this.fogCover.clear().rect(0, 0, scene.width, scene.height).fill({ color: 0x000000, alpha: 1 });
+
+    const shapes: FogShape[] = pending ? [...fog.shapes, pending] : [...fog.shapes];
+    let pass = 0;
+    for (let i = 0; i < shapes.length;) {
+      const mode = shapes[i]!.mode;
+      const graphics = this.fogPass(pass++);
+      // `erase` removes the sheet's alpha where a reveal was painted; a
+      // re-cover is an ordinary opaque draw on top of it.
+      graphics.blendMode = mode === 'reveal' ? 'erase' : 'normal';
+      while (i < shapes.length && shapes[i]!.mode === mode) {
+        drawFogShape(graphics, shapes[i]!);
+        i++;
+      }
+    }
+    for (let i = pass; i < this.fogPasses.length; i++) this.fogPasses[i]!.clear();
+
+    this.app.renderer.render({ container: this.fogScratch, target: this.fogTexture, clear: true });
+    this.fogSprite.visible = true;
+    this.fogSprite.position.set(0, 0);
+    this.fogSprite.setSize(scene.width, scene.height);
+    // The GM plans through the fog; players get the real thing.
+    this.fogSprite.alpha = isGm ? FOG_GM_ALPHA : 1;
+  }
+
+  /** Lazily grows the pool of blend passes and hands back a cleared one. */
+  private fogPass(index: number): Graphics {
+    let graphics = this.fogPasses[index];
+    if (!graphics) {
+      graphics = new Graphics();
+      this.fogPasses[index] = graphics;
+      this.fogScratch.addChild(graphics);
+    }
+    graphics.clear();
+    return graphics;
+  }
+
+  /** Draws the GM's note pins. Players never receive notes, so this stays empty. */
+  setNotes(notes: MapNoteView[]): void {
+    if (this.destroyed) return;
+    this.lastNotes = notes;
+    const k = this.overlayScale();
+    const seen = new Set<string>();
+
+    for (const note of notes) {
+      seen.add(note.id);
+      let node = this.noteNodes.get(note.id);
+      if (!node) {
+        node = new Container();
+        const glyph = new Text({
+          text: note.icon,
+          style: { fontFamily: 'system-ui, sans-serif', fontSize: 28 },
+        });
+        glyph.anchor.set(0.5, 1);
+        node.addChild(glyph);
+        node.eventMode = 'static';
+        node.cursor = 'pointer';
+        node.on('pointerdown', (event: FederatedPointerEvent) => {
+          if (event.button !== 0) return;
+          event.stopPropagation();
+          this.onNoteActivate?.(note.id);
+        });
+        this.noteNodes.set(note.id, node);
+        this.noteLayer.addChild(node);
+      }
+      const glyph = node.children[0] as Text;
+      if (glyph.text !== note.icon) glyph.text = note.icon;
+      node.position.set(note.x, note.y);
+      node.scale.set(k);
+    }
+
+    for (const [id, node] of this.noteNodes) {
+      if (seen.has(id)) continue;
+      this.noteNodes.delete(id);
+      node.destroy({ children: true });
+    }
+  }
+
   /** Re-renders the overlays at the current zoom (labels are screen-sized). */
   private refreshOverlays(): void {
     if (this.destroyed) return;
     this.setRulers(this.lastRulers);
     this.setRangeRings(this.lastRingCentre, this.lastRings);
+    this.setNotes(this.lastNotes);
   }
 
   private clearTokens(): void {
@@ -546,8 +865,14 @@ export class MapRenderer {
       // the whole app down with a white screen whenever the map unmounted —
       // leaving the game for the GM panel, or any HMR reload during a session.
       viewport.destroy({ children: true });
+      // The fog scratch container is off-stage, so `destroy({children:true})`
+      // above never reaches it — and its render texture is real VRAM.
+      this.fogScratch.destroy({ children: true });
+      this.fogTexture?.destroy(true);
+      this.fogTexture = null;
       this.app.destroy(true, { children: true });
       this.tokenNodes.clear();
+      this.noteNodes.clear();
     }
     // When init is still pending, it destroys the app itself on completion.
   }

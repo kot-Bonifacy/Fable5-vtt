@@ -125,7 +125,13 @@ describe('resolveCpredDamage', () => {
   });
 
   it('floors HP at zero and reports the wound transition', () => {
-    const outcome = resolveCpredDamage({ hpCurrent: 6, hpMax: 40, location: 'body', damage: 30, armorSp: 0 });
+    const outcome = resolveCpredDamage({
+      hpCurrent: 6,
+      hpMax: 40,
+      location: 'body',
+      damage: 30,
+      armorSp: 0,
+    });
     expect(outcome.hpAfter).toBe(0);
     expect(outcome.hpLost).toBe(6);
     expect(outcome.woundBefore).toBe('serious');
@@ -134,7 +140,13 @@ describe('resolveCpredDamage', () => {
   });
 
   it('crosses the serious threshold at exactly half of max HP', () => {
-    const outcome = resolveCpredDamage({ hpCurrent: 21, hpMax: 40, location: 'body', damage: 1, armorSp: 0 });
+    const outcome = resolveCpredDamage({
+      hpCurrent: 21,
+      hpMax: 40,
+      location: 'body',
+      damage: 1,
+      armorSp: 0,
+    });
     expect(outcome.woundBefore).toBe('light');
     expect(outcome.woundAfter).toBe('serious');
   });

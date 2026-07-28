@@ -28,19 +28,6 @@ Pełna wizja i decyzje: `docs/etapy/00-przeglad.md`. Źródłowa ankieta: `vtt-a
 | Głos graczy       | WebRTC mesh P2P, signaling przez Socket.IO, coturn na VPS                                                 |
 | Deploy            | Docker Compose na VPS (Ubuntu 24.04, home.pl), Caddy (HTTPS), Tailscale dla kanału VPS↔PC                 |
 
-## Struktura repo
-
-```
-packages/client/      # React + Pixi.js
-packages/server/      # Fastify + Socket.IO + Prisma
-packages/shared/      # typy, silnik kości i zasad CP RED (bez zależności od IO)
-ai-gateway/           # Python: LLM, TTS, STT, RAG (uruchamiany na PC z GPU)
-data/public/          # dane własne / wolne od praw autorskich (w repo)
-data/private/         # dane z podręcznika CP RED — GITIGNORE, nigdy w repo
-docs/etapy/           # plan projektu: przegląd, etapy, postęp
-uploads/              # mapy, tokeny, handouty użytkownika — GITIGNORE
-```
-
 ## Zasady architektury
 
 - **Serwer jest autorytatywny.** Klient wysyła intencje, serwer waliduje, aktualizuje stan i broadcastuje. Rzuty kości wykonują się WYŁĄCZNIE na serwerze (animacje 3D u klienta tylko wizualizują wynik serwera).
@@ -67,15 +54,6 @@ Repozytorium GitHub jest **publiczne**, a treści podręcznika Cyberpunk RED są
 - Testy: obowiązkowe dla silnika zasad w `shared`; API serwera — testy dymne kluczowych ścieżek; UI — bez wymogu, chyba że etap stanowi inaczej.
 
 ## Komendy
-
-```
-pnpm install    # instalacja zależności (pnpm workspaces)
-pnpm dev        # klient (localhost:5173) + serwer (localhost:3001) równolegle
-pnpm test       # testy wszystkich pakietów (vitest)
-pnpm lint       # ESLint (flat config w korzeniu repo)
-pnpm build      # build produkcyjny (client: vite, server: tsup, shared: tsc --noEmit)
-pnpm format     # Prettier
-```
 
 AI Gateway (osobny proces na PC z GPU, wymaga `uv`):
 

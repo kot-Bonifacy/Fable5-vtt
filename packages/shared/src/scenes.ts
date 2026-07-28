@@ -31,6 +31,8 @@ export interface SceneView {
   gridMode: GridMode;
   grid: GridConfig;
   metersPerSquare: number;
+  /** Fog of war active on this scene (stage 17); off means fully lit. */
+  fogEnabled: boolean;
 }
 
 /** List entry for the GM scene manager — never sent to players. */
@@ -62,6 +64,9 @@ export interface ScenePatch {
   gridMode?: GridMode;
   grid?: Partial<GridConfig>;
   metersPerSquare?: number;
+  // `fogEnabled` is deliberately NOT patchable here: switching fog on has to
+  // re-filter every player's token list in the same breath, so it goes through
+  // `fog:toggle` (stage 17) rather than the generic scene patch.
 }
 
 /** Client → server payload of `scene:update`. */

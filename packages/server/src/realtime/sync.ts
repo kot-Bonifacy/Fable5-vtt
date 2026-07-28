@@ -1,9 +1,18 @@
 import type { Socket } from 'socket.io';
-import type { SceneSummary, SceneView, SessionUser, StateSyncPayload } from '@vtt/shared';
+import type {
+  FogState,
+  MapNoteView,
+  SceneSummary,
+  SceneView,
+  SessionUser,
+  StateSyncPayload,
+} from '@vtt/shared';
 import { ROLE_GM } from '@vtt/shared';
 import { defineEvent, type RealtimeDeps } from './registry.js';
 import { computePresence } from './presence.js';
 import { fetchHistoryPage } from './chat-io.js';
+import { fetchFogState } from './fog-io.js';
+import { fetchSceneNotes } from './notes.js';
 import { fetchSceneList, getSceneById, toSceneView } from './scenes.js';
 import { fetchSceneTokensFor } from './tokens.js';
 import { fetchCombatFor } from './combat.js';
@@ -34,6 +43,8 @@ export async function buildStateSync(
       scene: null,
       scenes: [],
       tokens: [],
+      fog: null,
+      notes: [],
       characters: [],
       bots: [],
       ai: aiStatusFor(deps, user.role === ROLE_GM),
@@ -42,19 +53,30 @@ export async function buildStateSync(
     };
   }
   const viewedSceneId = socket.data.viewedSceneId;
-  const [presence, history, viewedScene, scenes, tokens, characters, bots, compendium, combat] =
+  // Tokens and fog both need the scene row (grid scale, fog switch), so the
+  // scene is fetched first rather than in the parallel batch below.
+  const viewedScene = viewedSceneId ? await getSceneById(deps.ctx.prisma, viewedSceneId) : null;
+  const [presence, history, scenes, tokens, fog, notes, characters, bots, compendium, combat] =
     await Promise.all([
       computePresence(deps.io, campaign.id),
       fetchHistoryPage(deps.ctx.prisma, campaign.id, user),
-      viewedSceneId ? getSceneById(deps.ctx.prisma, viewedSceneId) : Promise.resolve(null),
       // The full scene list is GM manager data — players never receive it.
       user.role === ROLE_GM
         ? fetchSceneList(deps.ctx.prisma, campaign.id)
         : Promise.resolve<SceneSummary[]>([]),
-      // Already filtered per viewer: no hidden tokens or foreign HP for players.
-      viewedSceneId
-        ? fetchSceneTokensFor(deps.ctx.prisma, deps.ctx.cpred, viewedSceneId, user)
+      // Already filtered per viewer: no hidden tokens, foreign HP, or anything
+      // standing in unrevealed fog.
+      viewedScene
+        ? fetchSceneTokensFor(deps.ctx.prisma, deps.ctx.cpred, viewedScene, user)
         : Promise.resolve([]),
+      // The mask is the same for everyone — it describes what is visible.
+      viewedScene
+        ? fetchFogState(deps.ctx.prisma, viewedScene)
+        : Promise.resolve<FogState | null>(null),
+      // GM layer notes never reach a player socket.
+      viewedSceneId && user.role === ROLE_GM
+        ? fetchSceneNotes(deps.ctx.prisma, viewedSceneId)
+        : Promise.resolve<MapNoteView[]>([]),
       // GM: all campaign characters; player: only their own.
       fetchCharactersFor(deps.ctx.prisma, deps.ctx.cpred, campaign.id, user),
       // Bot profiles carry secrets and prompts — GM only.
@@ -75,6 +97,8 @@ export async function buildStateSync(
     scene,
     scenes,
     tokens,
+    fog,
+    notes,
     characters,
     bots,
     ai: aiStatusFor(deps, user.role === ROLE_GM),

@@ -104,7 +104,9 @@ async function markTokensDead(
     let statuses: string[];
     try {
       const parsed: unknown = JSON.parse(row.statuses);
-      statuses = Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
+      statuses = Array.isArray(parsed)
+        ? parsed.filter((id): id is string => typeof id === 'string')
+        : [];
     } catch {
       statuses = [];
     }

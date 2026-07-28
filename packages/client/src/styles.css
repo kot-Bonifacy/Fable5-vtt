@@ -3120,26 +3120,194 @@ body.is-resizing {
   z-index: 20;
 }
 
+/* No box around the glyph: the icon itself carries the state through colour,
+   and the map stays visible underneath. The hit area is still a full square —
+   only the chrome is gone, not the target. Contrast over a bright map comes
+   from the icon's own shadow rather than from a panel behind it. */
 .map-tool {
   width: 2rem;
   height: 2rem;
+  padding: 0;
   display: grid;
   place-items: center;
-  background: rgb(15 18 25 / 85%);
-  border: 1px solid var(--border);
+  background: transparent;
+  border: none;
   border-radius: 6px;
-  color: var(--text);
-  font-size: 1rem;
+  color: #cbd5e1;
   cursor: pointer;
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 95%)) drop-shadow(0 0 1px rgb(0 0 0 / 80%));
+  transition:
+    color 120ms ease,
+    transform 120ms ease;
 }
 
-.map-tool:hover {
-  border-color: var(--accent, #38bdf8);
+/* Hover brightens whatever colour the button already carries — setting a
+   colour here instead would wash out the active state exactly when the
+   pointer is on it, which is when it matters most. */
+.map-tool:hover:not(:disabled) {
+  background: rgb(148 163 184 / 14%);
+  transform: translateY(-1px);
+  filter: brightness(1.35) drop-shadow(0 1px 2px rgb(0 0 0 / 95%));
+}
+
+.map-tool:focus-visible {
+  outline: 2px solid var(--accent, #38bdf8);
+  outline-offset: 1px;
 }
 
 .map-tool--active {
+  color: var(--accent, #38bdf8);
+}
+
+/* Two buttons keep their colour emoji, which simply draw better than a line
+   icon at this size — but an emoji cannot take `currentColor`, so those show
+   „armed" with a glow instead. Sized well above the old 1rem: the complaint
+   about the previous toolbar was never the glyphs, only how small they were. */
+.map-tool-emoji {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.map-tool--active .map-tool-emoji {
+  filter: drop-shadow(0 0 5px var(--accent, #38bdf8))
+    drop-shadow(0 0 2px var(--accent, #38bdf8));
+}
+
+/* „Widzę więcej niż gracze" — the private-measurement eye and anything else
+   that hides information from the table reads amber, not accent-blue. */
+.map-tool--warn {
+  color: #fbbf24;
+}
+
+/* The per-scene fog switch keeps its day/night colour at all times: it is a
+   state indicator first and a button second. */
+.map-tool--night {
+  color: #818cf8;
+}
+
+.map-tool--day {
+  color: #fbbf24;
+}
+
+.map-tool:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Settings of the armed tool (stage 17) — a second row under the toolbar, so
+   the tool buttons never shift position when options appear. */
+.map-tools {
+  flex-wrap: wrap;
+  max-width: min(38rem, calc(100% - 1.5rem));
+}
+
+.map-tools-sep {
+  width: 1px;
+  height: 1.2rem;
+  align-self: center;
+  margin: 0 0.25rem;
+  background: rgb(148 163 184 / 45%);
+}
+
+.map-tool-options {
+  flex-basis: 100%;
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+.map-tool-slider {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  color: #e2e8f0;
+  font-size: 0.75rem;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 95%);
+}
+
+.map-tool-slider input {
+  width: 7rem;
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 90%));
+}
+
+.map-tool-slider span {
+  min-width: 2.2rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* GM note editor — a small floating panel, never shown to a player. */
+.note-editor {
+  position: absolute;
+  top: 4.5rem;
+  left: 0.75rem;
+  width: min(22rem, calc(100% - 1.5rem));
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: rgb(15 18 25 / 96%);
+  border: 1px solid var(--accent, #38bdf8);
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 45%);
+  z-index: 30;
+}
+
+.note-editor-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.note-editor-hint {
+  color: var(--text-dim, #94a3b8);
+  font-size: 0.75rem;
+}
+
+.note-editor-icons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.note-icon {
+  width: 1.9rem;
+  height: 1.9rem;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.note-icon--active {
   border-color: var(--accent, #38bdf8);
   background: rgb(56 189 248 / 20%);
+}
+
+.note-editor-text {
+  resize: vertical;
+  min-height: 5rem;
+  padding: 0.5rem;
+  background: rgb(2 6 23 / 60%);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.note-editor-actions {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.note-editor-actions .spacer {
+  flex: 1;
 }
 
 /* „X celuje…" — same banner as token placement, in the attack colour. It has

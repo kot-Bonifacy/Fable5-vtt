@@ -41,6 +41,13 @@ import type {
   ChatSendPayload,
   DamageApplyPayload,
   DamageUndoPayload,
+  FogPaintBroadcast,
+  FogShape,
+  FogSyncBroadcast,
+  MapNoteView,
+  NoteDeleteBroadcast,
+  NotePatch,
+  NoteUpsertBroadcast,
   PresenceBroadcast,
   RollGesture,
   RulerBroadcast,
@@ -64,6 +71,7 @@ import type {
   TokenDeleteBroadcast,
   TokenMoveBroadcast,
   TokenPatch,
+  TokenSyncBroadcast,
   RollParseError,
   TokenUpsertBroadcast,
   TokenView,
@@ -93,6 +101,8 @@ import { useAiStore } from './stores/aiStore.js';
 import { useBotStore } from './stores/botStore.js';
 import { useCombatStore } from './stores/combatStore.js';
 import { useRulerStore } from './stores/rulerStore.js';
+import { useFogStore } from './stores/fogStore.js';
+import { useNoteStore } from './stores/noteStore.js';
 
 let socket: Socket | undefined;
 /** User the live socket authenticated as — a different one forces a reconnect. */
@@ -261,6 +271,8 @@ export function connectSocket(userId: string): Socket {
     useBotStore.getState().applySync(payload);
     useCompendiumStore.getState().applySync(payload);
     useCombatStore.getState().applySync(payload);
+    useFogStore.getState().applySync(payload);
+    useNoteStore.getState().applySync(payload);
     if (payload.ai) useAiStore.getState().setStatus(payload.ai);
   });
 
@@ -429,6 +441,39 @@ export function connectSocket(userId: string): Socket {
 
   socket.on('ruler:clear', (broadcast: RulerClearBroadcast) => {
     useRulerStore.getState().drop(broadcast.userId);
+  });
+
+  // Fog of war (stage 17). The mask is campaign-wide state on the active
+  // scene, so it is sequenced like tokens; a GM previewing another map gets
+  // targeted, seq-less copies which must not be gap-checked.
+  const fog = () => useFogStore.getState();
+  socket.on('fog:paint', (broadcast: FogPaintBroadcast) => {
+    if (broadcast.seq !== undefined && chat().applySeq(broadcast.seq)) {
+      socket?.emit('state:request');
+      return;
+    }
+    if (viewingScene(broadcast.sceneId)) fog().append(broadcast.sceneId, broadcast.shape);
+  });
+  socket.on('fog:sync', (broadcast: FogSyncBroadcast) => {
+    if (broadcast.seq !== undefined && chat().applySeq(broadcast.seq)) {
+      socket?.emit('state:request');
+      return;
+    }
+    if (viewingScene(broadcast.fog.sceneId)) fog().setFog(broadcast.fog);
+  });
+
+  // Repainting the fog can both add and remove tokens for one viewer, so the
+  // server sends the whole filtered list instead of a stream of deltas.
+  socket.on('token:sync', (broadcast: TokenSyncBroadcast) => {
+    if (viewingScene(broadcast.sceneId)) tokens().applyTokens(broadcast.tokens, viewer());
+  });
+
+  // GM layer notes are targeted at the GM room — no seq, like whispers.
+  socket.on('note:upsert', (broadcast: NoteUpsertBroadcast) => {
+    if (viewingScene(broadcast.note.sceneId)) useNoteStore.getState().upsert(broadcast.note);
+  });
+  socket.on('note:delete', (broadcast: NoteDeleteBroadcast) => {
+    useNoteStore.getState().remove(broadcast.noteId);
   });
 
   return socket;
@@ -655,6 +700,28 @@ export function clearRuler(sceneId: string): void {
   const payload: RulerClearPayload = { sceneId };
   socket?.emit('ruler:clear', payload);
 }
+
+/* Fog of war and the GM layer (stage 17) — GM-only calls; the server rejects
+   them for a player regardless of what the UI shows. */
+
+export const paintFog = (sceneId: string, shape: FogShape) =>
+  emitSceneAck('fog:paint', { sceneId, shape });
+
+export const resetFog = (sceneId: string, mode: 'reveal' | 'hide') =>
+  emitSceneAck('fog:reset', { sceneId, mode });
+
+export const undoFog = (sceneId: string) => emitSceneAck('fog:undo', { sceneId });
+
+export const toggleFog = (sceneId: string, enabled: boolean) =>
+  emitSceneAck<boolean>('fog:toggle', { sceneId, enabled });
+
+export const createNote = (sceneId: string, x: number, y: number, text: string, icon?: string) =>
+  emitSceneAck<MapNoteView>('note:create', { sceneId, x, y, text, icon });
+
+export const updateNote = (noteId: string, patch: NotePatch) =>
+  emitSceneAck<MapNoteView>('note:update', { noteId, patch });
+
+export const deleteNote = (noteId: string) => emitSceneAck('note:delete', { noteId });
 
 /**
  * Asks the model from the GM test screen. The ack only hands back a request id —

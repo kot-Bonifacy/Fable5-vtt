@@ -37,6 +37,8 @@ import { characterRollEvent } from './character-rolls.js';
 import { damageApplyEvent, damageUndoEvent } from './damage.js';
 import { attackEvadeEvent, attackRollEvent, weaponReloadEvent } from './attacks.js';
 import { rulerClearEvent, rulerUpdateEvent } from './ruler.js';
+import { fogPaintEvent, fogResetEvent, fogToggleEvent, fogUndoEvent } from './fog.js';
+import { noteCreateEvent, noteDeleteEvent, noteUpdateEvent } from './notes.js';
 import { compendiumDeleteEvent, compendiumUpsertEvent } from './compendium.js';
 import { botCreateEvent, botDeleteEvent, botDuplicateEvent, botUpdateEvent } from './bots.js';
 import { botChatEvent, botTeachEvent } from './bot-chat.js';
@@ -101,6 +103,13 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   weaponReloadEvent,
   rulerUpdateEvent,
   rulerClearEvent,
+  fogPaintEvent,
+  fogResetEvent,
+  fogUndoEvent,
+  fogToggleEvent,
+  noteCreateEvent,
+  noteUpdateEvent,
+  noteDeleteEvent,
   aiAskEvent,
   aiRefreshEvent,
   botCreateEvent,

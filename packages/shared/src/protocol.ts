@@ -6,6 +6,8 @@ import type { CombatView } from './combat.js';
 import type { CharacterView } from './characters.js';
 import type { CompendiumEntry, WeaponTypeDefinition } from './systems/cpred/compendium.js';
 import type { RollToss } from './dice.js';
+import type { FogState } from './fog.js';
+import type { MapNoteView } from './notes.js';
 import type { SceneSummary, SceneView } from './scenes.js';
 import type { TokenView } from './tokens.js';
 
@@ -41,6 +43,14 @@ export interface StateSyncPayload {
   scenes: SceneSummary[];
   /** Tokens of the viewed scene, already filtered for this viewer. */
   tokens: TokenView[];
+  /**
+   * Fog of the viewed scene (stage 17). The mask itself is public — it is the
+   * shape of what players may see — while the tokens it conceals are already
+   * gone from `tokens` above. Null when no scene is viewed.
+   */
+  fog: FogState | null;
+  /** GM layer notes of the viewed scene — GM only, always empty for players. */
+  notes: MapNoteView[];
   /** Characters this user may see: the GM gets all, a player only their own. */
   characters: CharacterView[];
   /** Bot profiles — GM only (they carry secrets), always empty for players. */

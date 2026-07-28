@@ -113,7 +113,10 @@ export function rangeBandFor(metres: number): (typeof CPRED_RANGE_BANDS)[number]
 }
 
 /** DV of a burst at this distance; null when the autofire table does not reach. */
-export function autofireDvForRange(profile: AutofireProfile | undefined, metres: number): number | null {
+export function autofireDvForRange(
+  profile: AutofireProfile | undefined,
+  metres: number,
+): number | null {
   if (!profile) return null;
   return dvForRange(profile.rangeDv, metres);
 }
@@ -297,9 +300,7 @@ export function planCpredAttack(
   // Which skill fires this attack: bursts always use „Ogień ciągły", anything
   // else uses the weapon type's skill (the sheet's row may name its own).
   const skillId =
-    mode === 'single'
-      ? (resolved?.skillId ?? request.skillId ?? null)
-      : CPRED_AUTOFIRE_SKILL_ID;
+    mode === 'single' ? (resolved?.skillId ?? request.skillId ?? null) : CPRED_AUTOFIRE_SKILL_ID;
   const skill = skillId ? registry.skills.find((entry) => entry.id === skillId) : undefined;
   if (!skill) return { ok: false, error: 'UNKNOWN_SKILL' };
 

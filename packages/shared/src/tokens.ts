@@ -130,6 +130,17 @@ export interface TokenDeleteBroadcast {
   tokenId: string;
 }
 
+/**
+ * Server → client `token:sync` — the complete token list of a scene as this
+ * one socket may see it, replacing whatever it held. Sent when a change can
+ * add *and* remove tokens for the same viewer at once, which is exactly what
+ * repainting the fog of war does (stage 17). Targeted, therefore no seq.
+ */
+export interface TokenSyncBroadcast {
+  sceneId: string;
+  tokens: TokenView[];
+}
+
 /** Server → client `token:move`. `byUserId` lets the dragging client skip its own echo. */
 export interface TokenMoveBroadcast {
   seq?: number;
