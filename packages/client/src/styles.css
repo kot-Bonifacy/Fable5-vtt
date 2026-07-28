@@ -506,9 +506,13 @@ body {
   font-style: italic;
 }
 
+/* Baseline alignment was right while the total was the same size as the text
+   beside it. Now that it is two lines tall, a shared baseline would hang it
+   off the first line and leave the second one under its belly — centring keeps
+   the number level with however many lines the notation wraps to. */
 .chat-roll-header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 0.5rem;
 }
 
@@ -524,10 +528,18 @@ body {
   font-style: italic;
 }
 
+/* The result of the roll — the one number the whole card exists for. Sized to
+   about two lines of the notation next to it, because every roll card carries
+   at least two lines anyway, and at text size the figure read as a footnote of
+   its own dice. `line-height: 1` is what makes „two lines tall" true rather
+   than approximate; tabular figures stop 11 from sitting narrower than 10. */
 .chat-roll-total {
   margin-left: auto;
-  font-size: 1.15rem;
+  flex: none;
+  font-size: 2.1rem;
+  line-height: 1;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
   color: var(--text);
 }
 
