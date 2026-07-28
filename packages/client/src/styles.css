@@ -3135,10 +3135,16 @@ body.is-resizing {
   border-radius: 6px;
   color: #cbd5e1;
   cursor: pointer;
-  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 95%)) drop-shadow(0 0 1px rgb(0 0 0 / 80%));
   transition:
     color 120ms ease,
     transform 120ms ease;
+}
+
+/* The shadow lives on the glyph, not on the button: a thin line icon needs a
+   hard edge to survive a bright map, while a colour emoji already carries its
+   own outline and turns to mush under the same treatment. */
+.map-tool svg {
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 95%)) drop-shadow(0 0 1px rgb(0 0 0 / 80%));
 }
 
 /* Hover brightens whatever colour the button already carries — setting a
@@ -3147,7 +3153,7 @@ body.is-resizing {
 .map-tool:hover:not(:disabled) {
   background: rgb(148 163 184 / 14%);
   transform: translateY(-1px);
-  filter: brightness(1.35) drop-shadow(0 1px 2px rgb(0 0 0 / 95%));
+  filter: brightness(1.35);
 }
 
 .map-tool:focus-visible {
@@ -3166,11 +3172,16 @@ body.is-resizing {
 .map-tool-emoji {
   font-size: 1.3rem;
   line-height: 1;
+  /* Just enough to lift it off a pale map — anything more reads as blur. */
+  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 55%));
+}
+
+.map-tool-emoji--pin {
+  font-size: 1.1rem;
 }
 
 .map-tool--active .map-tool-emoji {
-  filter: drop-shadow(0 0 5px var(--accent, #38bdf8))
-    drop-shadow(0 0 2px var(--accent, #38bdf8));
+  filter: drop-shadow(0 0 3px var(--accent, #38bdf8));
 }
 
 /* „Widzę więcej niż gracze" — the private-measurement eye and anything else
@@ -3265,27 +3276,47 @@ body.is-resizing {
   font-size: 0.75rem;
 }
 
+/* Two clean rows of five rather than a flex row that wraps 9 + 1. */
 .note-editor-icons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.3rem;
 }
 
+/* Same pattern as the map toolbar: no box around the glyph, a generous hit
+   area, and the chosen one marked by a glow — a border would compete with
+   the emoji's own colour instead of pointing at it. */
 .note-icon {
-  width: 1.9rem;
-  height: 1.9rem;
+  height: 2.4rem;
+  padding: 0;
   display: grid;
   place-items: center;
   background: transparent;
-  border: 1px solid var(--border);
+  border: none;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 1rem;
+  /* Same glyph size as the map toolbar — the picker and the pin it drops
+     should read as one control, not two different scales. */
+  font-size: 1.3rem;
+  line-height: 1;
+  transition:
+    background 120ms ease,
+    transform 120ms ease;
+}
+
+.note-icon:hover {
+  background: rgb(148 163 184 / 14%);
+  transform: translateY(-1px);
+}
+
+.note-icon:focus-visible {
+  outline: 2px solid var(--accent, #38bdf8);
+  outline-offset: 1px;
 }
 
 .note-icon--active {
-  border-color: var(--accent, #38bdf8);
-  background: rgb(56 189 248 / 20%);
+  background: rgb(148 163 184 / 18%);
+  filter: drop-shadow(0 0 3px var(--accent, #38bdf8));
 }
 
 .note-editor-text {

@@ -112,8 +112,10 @@ export function IconSun(props: IconProps) {
  * with a glow instead of a colour change (see `.map-tool-emoji`).
  */
 export function IconPin() {
+  // A touch smaller than the brush: the pushpin glyph is drawn edge to edge,
+  // so at the same font size it outweighs everything next to it.
   return (
-    <span className="map-tool-emoji" aria-hidden>
+    <span className="map-tool-emoji map-tool-emoji--pin" aria-hidden>
       📌
     </span>
   );
