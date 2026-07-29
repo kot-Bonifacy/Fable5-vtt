@@ -58,6 +58,7 @@ import type {
   RollGesture,
   RulerBroadcast,
   RulerClearBroadcast,
+  SceneVisibility,
   RulerClearPayload,
   RulerUpdatePayload,
   SceneActivateBroadcast,
@@ -81,6 +82,11 @@ import type {
   RollParseError,
   TokenUpsertBroadcast,
   TokenView,
+  DoorSyncBroadcast,
+  VisionSyncBroadcast,
+  WallKind,
+  WallSyncBroadcast,
+  WallView,
   WeaponReloadPayload,
 } from '@vtt/shared';
 import {
@@ -110,6 +116,7 @@ import { useRulerStore } from './stores/rulerStore.js';
 import { useDrawingStore } from './stores/drawingStore.js';
 import { useFogStore } from './stores/fogStore.js';
 import { useNoteStore } from './stores/noteStore.js';
+import { useWallStore } from './stores/wallStore.js';
 
 let socket: Socket | undefined;
 /** User the live socket authenticated as — a different one forces a reconnect. */
@@ -281,6 +288,7 @@ export function connectSocket(userId: string): Socket {
     useFogStore.getState().applySync(payload);
     useDrawingStore.getState().applySync(payload);
     useNoteStore.getState().applySync(payload);
+    useWallStore.getState().applySync(payload);
     if (payload.ai) useAiStore.getState().setStatus(payload.ai);
   });
 
@@ -503,6 +511,21 @@ export function connectSocket(userId: string): Socket {
     // all of them) lands correctly on every client, each of which already
     // holds only what it may see.
     drawings().clear(broadcast.sceneId, broadcast.authorId);
+  });
+
+  // Walls, doors and the field of view (stage 18a). All three are targeted —
+  // walls at the GM room, vision and doors at one player's socket — so none of
+  // them carries a seq and none may be gap-checked.
+  socket.on('wall:sync', (broadcast: WallSyncBroadcast) => {
+    if (viewingScene(broadcast.sceneId)) {
+      useWallStore.getState().setWalls(broadcast.sceneId, broadcast.walls);
+    }
+  });
+  socket.on('vision:sync', (broadcast: VisionSyncBroadcast) => {
+    if (viewingScene(broadcast.sceneId)) useWallStore.getState().setVision(broadcast.polygons);
+  });
+  socket.on('door:sync', (broadcast: DoorSyncBroadcast) => {
+    if (viewingScene(broadcast.sceneId)) useWallStore.getState().setDoors(broadcast.doors);
   });
 
   // GM layer notes are targeted at the GM room — no seq, like whispers.
@@ -749,8 +772,8 @@ export const resetFog = (sceneId: string, mode: 'reveal' | 'hide') =>
 
 export const undoFog = (sceneId: string) => emitSceneAck('fog:undo', { sceneId });
 
-export const toggleFog = (sceneId: string, enabled: boolean) =>
-  emitSceneAck<boolean>('fog:toggle', { sceneId, enabled });
+export const setSceneVisibility = (sceneId: string, visibility: SceneVisibility) =>
+  emitSceneAck<SceneVisibility>('scene:visibility', { sceneId, visibility });
 
 export const createNote = (sceneId: string, x: number, y: number, text: string, icon?: string) =>
   emitSceneAck<MapNoteView>('note:create', { sceneId, x, y, text, icon });
@@ -774,6 +797,27 @@ export const deleteDrawing = (drawingId: number) => emitSceneAck('drawing:delete
 
 export const clearDrawings = (sceneId: string, scope: 'mine' | 'all') =>
   emitSceneAck('drawing:clear', { sceneId, scope });
+
+/* Walls and doors (stage 18a). Everything here is GM-only except `toggleDoor`,
+   which a player may use on a door the GM flagged — and only while they can
+   see it; the server checks both, whatever the UI offers. */
+
+export const createWalls = (
+  sceneId: string,
+  points: ScenePoint[],
+  kind: WallKind,
+  playerToggle: boolean,
+) => emitSceneAck<WallView[]>('wall:create', { sceneId, points, kind, playerToggle });
+
+export const updateWall = (wallId: number, patch: { kind?: WallKind; playerToggle?: boolean }) =>
+  emitSceneAck<WallView>('wall:update', { wallId, patch });
+
+export const deleteWall = (wallId: number) => emitSceneAck('wall:delete', { wallId });
+
+export const clearWalls = (sceneId: string) => emitSceneAck('wall:clear', { sceneId });
+
+export const toggleDoor = (wallId: number, open?: boolean) =>
+  emitSceneAck<WallView>('door:toggle', { wallId, open });
 
 /**
  * Asks the model from the GM test screen. The ack only hands back a request id —

@@ -21,6 +21,8 @@ import type {
   SceneView,
   TokenSnapScene,
   TokenView,
+  WallKind,
+  WallView,
 } from '@vtt/shared';
 import {
   DRAWING_FILL_ALPHA,
@@ -33,7 +35,9 @@ import {
   polylineMetres,
   simplifyPath,
   snapTokenPosition,
+  snapWallPoint,
   squaresForDistance,
+  wallMidpoint,
 } from '@vtt/shared';
 import { TokenNode, type TokenNodeCtx } from './TokenNode.js';
 
@@ -76,6 +80,25 @@ export interface DrawSettings {
   /** Label height in scene pixels — a drawing's text belongs to the map. */
   fontSize: number;
 }
+
+/** The wall tool's current setting, pushed in from the toolbar (stage 18a). */
+export interface WallSettings {
+  armed: boolean;
+  mode: 'draw' | 'erase';
+  kind: WallKind;
+  snapGrid: boolean;
+}
+
+/**
+ * How each kind of wall is drawn on the GM's layer. Players never receive a
+ * wall, so this palette is read by exactly one person at the table — it only
+ * has to make „what blocks sight right now?" legible at a glance.
+ */
+const WALL_COLORS: Record<WallKind, number> = {
+  wall: 0xf87171,
+  door: 0xfbbf24,
+  window: 0x38bdf8,
+};
 
 /** Extra pannable margin around the scene, as a fraction of its size. */
 const PAN_MARGIN = 0.5;
@@ -231,6 +254,12 @@ export class MapRenderer {
   onDrawingTextPlace: ((x: number, y: number) => void) | null = null;
   /** Click with the eraser armed; the caller decides which drawing that hits. */
   onDrawingErase: ((x: number, y: number) => void) | null = null;
+  /** A wall chain was closed — send its points to the server (stage 18a). */
+  onWallChain: ((points: ScenePoint[]) => void) | null = null;
+  /** Click with the wall eraser armed; the caller picks the segment. */
+  onWallErase: ((x: number, y: number) => void) | null = null;
+  /** Click on a door glyph — open or close it. */
+  onDoorToggle: ((wallId: number) => void) | null = null;
 
   private readonly app = new Application();
   private viewport: Viewport | null = null;
@@ -255,6 +284,20 @@ export class MapRenderer {
   /** One Graphics per run of same-mode shapes — blend mode lives on the node. */
   private readonly fogPasses: Graphics[] = [];
   private fogTexture: RenderTexture | null = null;
+  /** Walls and door glyphs — GM only, above the fog like the note pins. */
+  private readonly wallLayer = new Container();
+  private readonly wallGraphics = new Graphics();
+  private readonly doorNodes = new Map<number, Container>();
+  /**
+   * The player's field of view, composited exactly like the fog: a black sheet
+   * with the polygons erased out of it.
+   */
+  private readonly visionLayer = new Container();
+  private readonly visionSprite = new Sprite();
+  private readonly visionScratch = new Container();
+  private readonly visionCover = new Graphics();
+  private readonly visionCutout = new Graphics();
+  private visionTexture: RenderTexture | null = null;
   private readonly noteLayer = new Container();
   private readonly noteNodes = new Map<string, Container>();
   private readonly overlayLayer = new Container();
@@ -311,6 +354,15 @@ export class MapRenderer {
   private lastRingCentre: ScenePoint | null = null;
   private lastRings: RangeRing[] = [];
   private lastNotes: MapNoteView[] = [];
+  private lastWalls: WallView[] = [];
+  private lastDoors: WallView[] = [];
+  private lastVisionPolygons: ScenePoint[][] = [];
+  private visionActive = false;
+  /** Wall tool settings; `armed` decides whether a click traces or erases. */
+  private wall: WallSettings = { armed: false, mode: 'draw', kind: 'wall', snapGrid: true };
+  /** The chain being traced: confirmed points plus the one under the pointer. */
+  private wallPoints: ScenePoint[] | null = null;
+  private wallCursor: ScenePoint | null = null;
 
   async init(host: HTMLElement): Promise<void> {
     await this.app.init({ resizeTo: host, backgroundAlpha: 0, antialias: true });
@@ -349,9 +401,17 @@ export class MapRenderer {
     // tokens; the GM layer and the ruler stay readable on top of the fog.
     this.fogLayer.addChild(this.fogSprite);
     viewport.addChild(this.fogLayer);
+    // The player's field of view sits with the fog: both are the same kind of
+    // cover, and a scene never runs the two at once (one visibility mode).
+    this.visionLayer.addChild(this.visionSprite);
+    viewport.addChild(this.visionLayer);
     // The GM's own layer: drawings the players never receive, drawn over the
     // fog so the GM can plan through it — the same treatment as note pins.
     viewport.addChild(this.gmDrawLayer);
+    // Walls are GM-only and have to stay readable over everything, including
+    // the fog they usually accompany.
+    this.wallLayer.addChild(this.wallGraphics);
+    viewport.addChild(this.wallLayer);
     viewport.addChild(this.noteLayer);
     this.overlayLayer.addChild(this.rulerGraphics);
     this.overlayLayer.addChild(this.drawPreview);
@@ -359,10 +419,15 @@ export class MapRenderer {
     // Scratch container: the fog is rendered into a texture at reduced scale,
     // never added to the stage.
     this.fogScratch.addChild(this.fogCover);
+    this.visionScratch.addChild(this.visionCover);
+    this.visionScratch.addChild(this.visionCutout);
     this.app.stage.addChild(viewport);
     this.viewport = viewport;
 
     viewport.on('clicked', (event) => {
+      // A wall click was already handled on pointerdown; letting it through
+      // here would also drop a token in the middle of a floor plan.
+      if (this.wall.armed) return;
       if (this.notePlacing) {
         this.onNotePlace?.(Math.round(event.world.x), Math.round(event.world.y));
         return;
@@ -394,6 +459,8 @@ export class MapRenderer {
       this.setRangeRings(null, []);
       this.setNotes([]);
       this.setDrawings([]);
+      this.setWalls([], []);
+      this.setVision([], false);
       this.fogSprite.visible = false;
       this.clearTokens();
       return;
@@ -416,10 +483,14 @@ export class MapRenderer {
     // The scene's size drives the fog texture, so a resized (or swapped) map
     // has to recomposite it before the next frame.
     this.setFog(this.lastFog, this.lastFogPending, this.fogIsGm);
+    this.setVision(this.lastVisionPolygons, this.visionActive);
     if (sceneChanged) {
       this.clearTokens();
       this.setDrawings([]);
+      this.setWalls([], []);
+      this.setVision([], false);
       this.cancelDrawGesture();
+      this.cancelWallChain();
       this.fitScene(scene);
     }
     // `fitScene` changes the zoom by hand, and pixi-viewport only emits
@@ -525,13 +596,17 @@ export class MapRenderer {
         ? 'crosshair'
         : this.draw.armed
           ? 'crosshair'
-          : this.erasing
-            ? 'pointer'
-            : this.notePlacing
-              ? 'copy'
-              : this.rulerMode
-                ? 'cell'
-                : '';
+          : this.wall.armed
+            ? this.wall.mode === 'erase'
+              ? 'pointer'
+              : 'crosshair'
+            : this.erasing
+              ? 'pointer'
+              : this.notePlacing
+                ? 'copy'
+                : this.rulerMode
+                  ? 'cell'
+                  : '';
   }
 
   private cancelFogGesture(): void {
@@ -679,6 +754,35 @@ export class MapRenderer {
         this.onFogPreview?.(this.fogGestureShape());
         return;
       }
+      if (this.wall.armed) {
+        if (this.wall.mode === 'erase') {
+          this.onWallErase?.(point.x, point.y);
+          return;
+        }
+        // Walls are traced click by click, not dragged: a floor plan is a
+        // sequence of corners, and holding the button down for twenty metres
+        // of corridor is neither accurate nor comfortable.
+        const snapped = this.snapWall(point);
+        const chain = this.wallPoints;
+        if (!chain) {
+          this.wallPoints = [snapped];
+          this.wallCursor = { ...snapped };
+          viewport.plugins.pause('drag');
+          this.drawWallLayer();
+          return;
+        }
+        const last = chain[chain.length - 1]!;
+        // Clicking the same corner twice closes the chain — the same gesture
+        // that ends a polygon in every drawing program.
+        if (snapped.x === last.x && snapped.y === last.y) {
+          this.finishWallChain();
+          return;
+        }
+        chain.push(snapped);
+        this.wallCursor = { ...snapped };
+        this.drawWallLayer();
+        return;
+      }
       if (this.erasing) {
         this.onDrawingErase?.(point.x, point.y);
         return;
@@ -730,6 +834,16 @@ export class MapRenderer {
       if (this.fogRectStart) {
         this.fogRectEnd = point;
         this.onFogPreview?.(this.fogGestureShape());
+        return;
+      }
+
+      if (this.wallPoints) {
+        const snapped = this.snapWall(point);
+        const cursor = this.wallCursor;
+        if (!cursor || cursor.x !== snapped.x || cursor.y !== snapped.y) {
+          this.wallCursor = snapped;
+          this.drawWallLayer();
+        }
         return;
       }
 
@@ -969,6 +1083,218 @@ export class MapRenderer {
     return graphics;
   }
 
+  /**
+   * Arms or disarms the wall tool. Like every other map tool it takes the left
+   * button off the viewport — a drag has to mean one thing at a time.
+   */
+  setWallMode(settings: WallSettings): void {
+    const wasArmed = this.wall.armed;
+    this.wall = settings;
+    if (wasArmed && !settings.armed) this.cancelWallChain();
+    this.drawWallLayer();
+    this.applyMapCursor();
+  }
+
+  /**
+   * Drops the chain being traced without sending it (Esc, tool change).
+   * Returns whether there was anything to drop, so Esc can cancel the chain
+   * first and only put the tool away on a second press — one mis-click must
+   * not cost a whole floor plan, and an Esc that only ever cancelled would
+   * leave no way out of the tool.
+   */
+  cancelWallChain(): boolean {
+    if (!this.wallPoints) return false;
+    this.wallPoints = null;
+    this.wallCursor = null;
+    this.viewport?.plugins.resume('drag');
+    this.drawWallLayer();
+    return true;
+  }
+
+  /**
+   * Closes the chain being traced and hands it over. Called on a double click,
+   * on Enter, and on the click that lands back on the starting point — the
+   * three ways a floor plan is normally finished.
+   */
+  finishWallChain(): void {
+    const points = this.wallPoints;
+    this.wallPoints = null;
+    this.wallCursor = null;
+    // Tracing paused the viewport's drag so a chain click could never also pan
+    // the map; every exit from the gesture has to hand it back.
+    this.viewport?.plugins.resume('drag');
+    if (points && points.length >= 2) this.onWallChain?.(points.map((point) => ({ ...point })));
+    this.drawWallLayer();
+  }
+
+  /** Where a drawn point actually lands: existing endpoints first, grid second. */
+  private snapWall(point: ScenePoint): ScenePoint {
+    const scene = this.scene;
+    const gridSizePx =
+      this.wall.snapGrid && scene && scene.gridMode === 'grid' ? scene.grid.sizePx : null;
+    return snapWallPoint(point, this.lastWalls, { gridSizePx });
+  }
+
+  /**
+   * The wall layer (GM only) plus the door glyphs (also the players', for the
+   * doors they were given). Redrawn whole on every change — a scene holds tens
+   * of segments, and a diff would buy nothing but a way to get out of step.
+   */
+  setWalls(walls: WallView[], doors: WallView[]): void {
+    if (this.destroyed) return;
+    this.lastWalls = walls;
+    this.lastDoors = doors;
+    this.drawWallLayer();
+  }
+
+  private drawWallLayer(): void {
+    if (this.destroyed) return;
+    const k = this.overlayScale();
+    this.wallGraphics.clear();
+
+    for (const wall of this.lastWalls) {
+      const open = wall.kind === 'door' && wall.open;
+      this.wallGraphics
+        .moveTo(wall.x1, wall.y1)
+        .lineTo(wall.x2, wall.y2)
+        .stroke({
+          color: WALL_COLORS[wall.kind],
+          width: 4 * k,
+          // An open door and a window both let sight through; drawing them
+          // paler is what makes „what is blocking right now?" readable
+          // without clicking anything.
+          alpha: open || wall.kind === 'window' ? 0.35 : 0.85,
+          cap: 'round',
+        });
+      // Endpoints are the thing that has to line up exactly — a two-pixel gap
+      // between segments is a slit light pours through, and invisible at the
+      // zoom a floor plan is traced at.
+      for (const end of [
+        { x: wall.x1, y: wall.y1 },
+        { x: wall.x2, y: wall.y2 },
+      ]) {
+        this.wallGraphics.circle(end.x, end.y, 4 * k).fill({ color: 0xffffff, alpha: 0.5 });
+      }
+    }
+
+    // The chain in progress, with the segment that follows the pointer.
+    const chain = this.wallPoints;
+    if (chain && chain.length > 0) {
+      const preview = this.wallCursor ? [...chain, this.wallCursor] : chain;
+      const first = preview[0]!;
+      this.wallGraphics.moveTo(first.x, first.y);
+      for (const point of preview.slice(1)) this.wallGraphics.lineTo(point.x, point.y);
+      this.wallGraphics.stroke({
+        color: WALL_COLORS[this.wall.kind],
+        width: 4 * k,
+        alpha: 0.6,
+        cap: 'round',
+      });
+      for (const point of preview) {
+        this.wallGraphics.circle(point.x, point.y, 5 * k).fill({ color: 0xffffff, alpha: 0.8 });
+      }
+    }
+
+    this.syncDoorGlyphs(k);
+  }
+
+  /** Clickable door handles — the one wall object a player may ever touch. */
+  private syncDoorGlyphs(k: number): void {
+    const seen = new Set<number>();
+    for (const door of this.lastDoors) {
+      seen.add(door.id);
+      let node = this.doorNodes.get(door.id);
+      if (!node) {
+        node = new Container();
+        const glyph = new Text({
+          text: '🚪',
+          style: { fontFamily: 'system-ui, sans-serif', fontSize: 22 },
+        });
+        glyph.anchor.set(0.5, 0.5);
+        node.addChild(glyph);
+        node.eventMode = 'static';
+        node.cursor = 'pointer';
+        node.on('pointerdown', (event: FederatedPointerEvent) => {
+          if (event.button !== 0) return;
+          // The wall eraser has to reach the segment under the glyph, so it
+          // keeps the click while it is armed.
+          if (this.wall.armed && this.wall.mode === 'erase') return;
+          event.stopPropagation();
+          this.onDoorToggle?.(door.id);
+        });
+        this.doorNodes.set(door.id, node);
+        this.wallLayer.addChild(node);
+      }
+      const centre = wallMidpoint(door);
+      node.position.set(centre.x, centre.y);
+      node.scale.set(k);
+      // An open door is dimmed, so the state reads from across the map.
+      node.alpha = door.open ? 0.45 : 1;
+    }
+
+    for (const [id, node] of this.doorNodes) {
+      if (seen.has(id)) continue;
+      this.doorNodes.delete(id);
+      node.destroy({ children: true });
+    }
+  }
+
+  /**
+   * Redraws the player's field of view (stage 18a).
+   *
+   * The same composite as the fog, for the same reason: a black sheet over the
+   * scene with the visible polygons punched out of it by the `erase` blend
+   * mode. `active` is the scene's visibility mode — with it off nothing is
+   * drawn at all, while an *empty* polygon list with it on is a real answer:
+   * a player with no token on the scene sees nothing.
+   */
+  setVision(polygons: ScenePoint[][], active: boolean): void {
+    if (this.destroyed) return;
+    this.lastVisionPolygons = polygons;
+    this.visionActive = active;
+    const scene = this.scene;
+
+    if (!scene || !active) {
+      this.visionSprite.visible = false;
+      return;
+    }
+
+    const factor = Math.max(1, Math.max(scene.width, scene.height) / FOG_TEXTURE_MAX_PX);
+    const width = Math.max(1, Math.ceil(scene.width / factor));
+    const height = Math.max(1, Math.ceil(scene.height / factor));
+    if (
+      !this.visionTexture ||
+      this.visionTexture.width !== width ||
+      this.visionTexture.height !== height
+    ) {
+      this.visionTexture?.destroy(true);
+      this.visionTexture = RenderTexture.create({ width, height, antialias: true });
+      this.visionSprite.texture = this.visionTexture;
+    }
+    this.visionScratch.scale.set(1 / factor);
+
+    this.visionCover
+      .clear()
+      .rect(0, 0, scene.width, scene.height)
+      .fill({ color: 0x000000, alpha: 1 });
+    this.visionCutout.clear();
+    this.visionCutout.blendMode = 'erase';
+    for (const polygon of polygons) {
+      if (polygon.length < 3) continue;
+      this.visionCutout.poly(polygon.map((point) => ({ x: point.x, y: point.y })));
+      this.visionCutout.fill({ color: 0x000000, alpha: 1 });
+    }
+
+    this.app.renderer.render({
+      container: this.visionScratch,
+      target: this.visionTexture,
+      clear: true,
+    });
+    this.visionSprite.visible = true;
+    this.visionSprite.position.set(0, 0);
+    this.visionSprite.setSize(scene.width, scene.height);
+  }
+
   /** Draws the GM's note pins. Players never receive notes, so this stays empty. */
   setNotes(notes: MapNoteView[]): void {
     if (this.destroyed) return;
@@ -1016,6 +1342,9 @@ export class MapRenderer {
     this.setRulers(this.lastRulers);
     this.setRangeRings(this.lastRingCentre, this.lastRings);
     this.setNotes(this.lastNotes);
+    // Wall handles and door glyphs are screen-sized, like the note pins: at a
+    // typical 0.18x map zoom a world-scaled handle is a couple of pixels.
+    this.drawWallLayer();
   }
 
   private clearTokens(): void {
@@ -1061,7 +1390,15 @@ export class MapRenderer {
       // click that was meant to paint fog or draw a line would *also* grab the
       // token underneath and drag it — the two gestures ran at once, because
       // Pixi bubbles the token's event up to the viewport as well.
-      if (this.rulerMode || this.fogBrush.armed || this.draw.armed || this.erasing) return;
+      if (
+        this.rulerMode ||
+        this.fogBrush.armed ||
+        this.draw.armed ||
+        this.wall.armed ||
+        this.erasing
+      ) {
+        return;
+      }
       const now = performance.now();
       if (now - lastClickAt < DOUBLE_CLICK_MS) {
         lastClickAt = 0;
@@ -1175,10 +1512,14 @@ export class MapRenderer {
       this.fogScratch.destroy({ children: true });
       this.fogTexture?.destroy(true);
       this.fogTexture = null;
+      this.visionScratch.destroy({ children: true });
+      this.visionTexture?.destroy(true);
+      this.visionTexture = null;
       this.app.destroy(true, { children: true });
       this.tokenNodes.clear();
       this.noteNodes.clear();
       this.drawNodes.clear();
+      this.doorNodes.clear();
     }
     // When init is still pending, it destroys the app itself on completion.
   }

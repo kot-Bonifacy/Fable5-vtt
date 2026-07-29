@@ -192,6 +192,12 @@ model Token {
   hpMax     Int?
   /** JSON array of status ids (SQLite has no native arrays). */
   statuses String @default("[]")
+  /**
+   * How far this token sees, in metres (stage 18a). Null = as far as the walls
+   * allow, which is the right default for a lit scene; darkness and light
+   * sources arrive in 18b.
+   */
+  visionRange Float?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -247,11 +253,16 @@ model Scene {
   metersPerSquare Float   @default(2)
 
   /**
-   * Fog of war (stage 17). A fresh scene starts covered, so nothing leaks
-   * before the GM has looked at the map; scenes that need no exploration are
-   * switched off with one toggle.
+   * How this scene decides what a player may see (stages 17a, 18a):
+   * "open" — everything, "fog" — the hand-painted fog of war, "dynamic" — the
+   * field of view of the player's own tokens, blocked by walls.
+   *
+   * One column rather than two switches: „hand fog on *and* dynamic vision"
+   * would be an unanswerable „why is this black?" at the table. Painted fog
+   * shapes survive a trip through the other modes, so switching back restores
+   * the exploration the group had already done.
    */
-  fogEnabled Boolean @default(true)
+  visibility String @default("fog")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -264,6 +275,7 @@ model Scene {
   fogShapes    FogShape[]
   drawings     MapDrawing[]
   notes        MapNote[]
+  walls        Wall[]
 
   @@index([campaignId, active])
 }
@@ -322,6 +334,38 @@ model MapDrawing {
   author User  @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
   @@index([sceneId, id])
+}
+
+/**
+ * One wall segment (stage 18a): the geometry that blocks sight.
+ *
+ * A wall is stored as a plain segment rather than a chain, because that is what
+ * the raycast consumes — the editor draws chains, but a chain is only a series
+ * of rows created in one gesture. Unlike fog and drawings this table is **never
+ * emitted to a player**: the layout of a building is exactly the kind of thing
+ * a party is supposed to discover. The one exception is a door flagged
+ * `playerToggle`, which a player must be able to see in order to open it.
+ */
+model Wall {
+  id      Int    @id @default(autoincrement())
+  sceneId String
+  /// "wall" (blocks sight) | "door" (blocks while closed) | "window" (never blocks)
+  kind    String @default("wall")
+  /// Doors only: an open door stops blocking sight.
+  open    Boolean @default(false)
+  /// Doors only: players may open and close this one themselves.
+  playerToggle Boolean @default(false)
+  /// Endpoints in scene (world) pixels.
+  x1 Float
+  y1 Float
+  x2 Float
+  y2 Float
+
+  createdAt DateTime @default(now())
+
+  scene Scene @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+
+  @@index([sceneId])
 }
 
 /// A pin on the GM layer (stage 17): icon plus text, never emitted to a player.

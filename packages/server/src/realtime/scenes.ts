@@ -11,7 +11,13 @@ import type {
   SceneViewBroadcast,
   SessionUser,
 } from '@vtt/shared';
-import { ROLE_GM, normalizeGridOffset, sanitizeSceneName, sanitizeScenePatch } from '@vtt/shared';
+import {
+  ROLE_GM,
+  isSceneVisibility,
+  normalizeGridOffset,
+  sanitizeSceneName,
+  sanitizeScenePatch,
+} from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
 import type { Scene } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
@@ -42,7 +48,10 @@ export function toSceneView(scene: Scene): SceneView {
       visible: scene.gridVisible,
     },
     metersPerSquare: scene.metersPerSquare,
-    fogEnabled: scene.fogEnabled,
+    // A row written before stage 18a, or edited by hand, must never fall
+    // through to „open" — an unreadable mode is treated as hand-painted fog,
+    // the setting that hides rather than reveals.
+    visibility: isSceneVisibility(scene.visibility) ? scene.visibility : 'fog',
   };
 }
 

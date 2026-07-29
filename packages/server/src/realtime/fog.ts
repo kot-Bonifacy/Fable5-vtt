@@ -4,17 +4,25 @@ import type {
   FogResetPayload,
   FogShapeView,
   FogSyncBroadcast,
-  FogTogglePayload,
   FogUndoPayload,
   SceneUpdateBroadcast,
+  SceneVisibility,
+  SceneVisibilityPayload,
 } from '@vtt/shared';
-import { FOG_MAX_SHAPES, ROLE_GM, fullSceneReveal, sanitizeFogShape } from '@vtt/shared';
+import {
+  FOG_MAX_SHAPES,
+  ROLE_GM,
+  fullSceneReveal,
+  isSceneVisibility,
+  sanitizeFogShape,
+} from '@vtt/shared';
 import type { Scene } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { fetchFogState, toFogRowData } from './fog-io.js';
 import { requireCampaignScene, toSceneView } from './scenes.js';
 import { campaignRoom, sceneRoom } from './state.js';
 import { emitSceneTokensToPlayers } from './tokens.js';
+import { emitVisionToPlayers } from './vision.js';
 
 /**
  * Fog of war (stage 17) — core VTT, no game system involved.
@@ -135,20 +143,31 @@ export const fogResetEvent = defineEvent<FogResetPayload>({
   },
 });
 
-export const fogToggleEvent = defineEvent<FogTogglePayload, boolean>({
-  name: 'fog:toggle',
+/**
+ * The scene's visibility mode: nothing, hand-painted fog, or walls (17a, 18a).
+ *
+ * Its own event rather than a field of the generic scene patch, for the reason
+ * the fog switch had one: changing this must take tokens away from players — or
+ * hand them back — in the same operation, so it needs a handler that re-filters
+ * every player's list. It also has to push the *other* mode's state: a scene
+ * that just became dynamic still has fog shapes stored, and the client must be
+ * told to stop drawing them.
+ */
+export const sceneVisibilityEvent = defineEvent<SceneVisibilityPayload, SceneVisibility>({
+  name: 'scene:visibility',
   role: ROLE_GM,
   handler: async ({ deps, socket, payload }) => {
     const campaignId = requireCampaignId(socket.data);
     const scene = await requireCampaignScene(deps.ctx.prisma, campaignId, payload?.sceneId);
-    if (typeof payload?.enabled !== 'boolean') throw new RealtimeError('BAD_REQUEST');
-    if (scene.fogEnabled === payload.enabled) return payload.enabled;
+    const visibility = payload?.visibility;
+    if (!isSceneVisibility(visibility)) throw new RealtimeError('BAD_REQUEST');
+    if (scene.visibility === visibility) return visibility;
 
     const updated = await deps.ctx.prisma.scene.update({
       where: { id: scene.id },
-      data: { fogEnabled: payload.enabled },
+      data: { visibility },
     });
-    // Painted shapes survive the switch, so turning fog back on restores the
+    // Painted shapes survive the switch, so coming back to `fog` restores the
     // exploration the group had already done instead of starting from black.
     await afterFogChange(deps, campaignId, updated, async () => {
       const view = toSceneView(updated);
@@ -164,8 +183,12 @@ export const fogToggleEvent = defineEvent<FogTogglePayload, boolean>({
           .emit('scene:update', { scene: view } satisfies SceneUpdateBroadcast);
       }
       await emitFogSync(deps, campaignId, updated);
+      // Becoming dynamic hands the players their first polygons. Leaving it
+      // needs no counterpart: the client draws the cover only while the scene
+      // says `dynamic`, and that scene update went out a few lines above.
+      await emitVisionToPlayers(deps, campaignId, updated);
     });
-    return payload.enabled;
+    return visibility;
   },
 });
 

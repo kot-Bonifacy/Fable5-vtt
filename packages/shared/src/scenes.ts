@@ -1,6 +1,24 @@
 export const GRID_MODES = ['grid', 'gridless'] as const;
 export type GridMode = (typeof GRID_MODES)[number];
 
+export const SCENE_VISIBILITIES = ['open', 'fog', 'dynamic'] as const;
+/**
+ * How a scene decides what a player may see (stages 17a, 18a):
+ *  - `open` — everything; a city map, a handout, a scene already explored;
+ *  - `fog` — the hand-painted fog of war: the GM uncovers with a brush;
+ *  - `dynamic` — the field of view of the player's own tokens, blocked by walls.
+ *
+ * One setting rather than two switches. „Hand fog *and* dynamic vision" would
+ * give the GM two independent sources of black and no way to tell which one is
+ * hiding the corridor; overlaying them deliberately waits for stage 18b, where
+ * manual fog becomes an explicit override on top of exploration.
+ */
+export type SceneVisibility = (typeof SCENE_VISIBILITIES)[number];
+
+export function isSceneVisibility(value: unknown): value is SceneVisibility {
+  return value === 'open' || value === 'fog' || value === 'dynamic';
+}
+
 /** Grid overlay configuration; all pixel values are in scene (world) space. */
 export interface GridConfig {
   /** Square size in px; CP RED maps usually pair this with 2 m per square. */
@@ -31,8 +49,8 @@ export interface SceneView {
   gridMode: GridMode;
   grid: GridConfig;
   metersPerSquare: number;
-  /** Fog of war active on this scene (stage 17); off means fully lit. */
-  fogEnabled: boolean;
+  /** What limits a player's view here: nothing, hand-painted fog, or walls. */
+  visibility: SceneVisibility;
 }
 
 /** List entry for the GM scene manager — never sent to players. */
@@ -64,9 +82,22 @@ export interface ScenePatch {
   gridMode?: GridMode;
   grid?: Partial<GridConfig>;
   metersPerSquare?: number;
-  // `fogEnabled` is deliberately NOT patchable here: switching fog on has to
+  // `visibility` is deliberately NOT patchable here: changing it has to
   // re-filter every player's token list in the same breath, so it goes through
-  // `fog:toggle` (stage 17) rather than the generic scene patch.
+  // `scene:visibility` (stages 17a, 18a) rather than the generic scene patch.
+}
+
+/**
+ * Client → server payload of `scene:visibility`.
+ *
+ * Its own event rather than a field of `ScenePatch`, for the reason fog had one
+ * in 17a: switching a scene to `fog` or `dynamic` must take tokens away from
+ * players in the same operation, so it needs a handler that re-filters their
+ * lists — not a field somebody flips in passing while renaming the scene.
+ */
+export interface SceneVisibilityPayload {
+  sceneId: string;
+  visibility: SceneVisibility;
 }
 
 /** Client → server payload of `scene:update`. */

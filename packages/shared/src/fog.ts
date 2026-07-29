@@ -53,7 +53,12 @@ export type FogShapeView = FogShape & { id: number };
 /** Fog of one scene, as sent to every viewer of it. */
 export interface FogState {
   sceneId: string;
-  /** GM's per-scene switch; a scene with fog off is fully visible. */
+  /**
+   * Is this scene painting fog at all? True exactly when its visibility mode
+   * is `fog` (stage 18a) — the other two modes send an empty, disabled state,
+   * while the painted shapes stay in the database waiting to be switched
+   * back on.
+   */
   enabled: boolean;
   /** Ascending by id — that *is* the paint order. */
   shapes: FogShapeView[];
@@ -89,17 +94,9 @@ export interface FogUndoPayload {
   sceneId: string;
 }
 
-/**
- * Client → server payload of `fog:toggle` — the per-scene fog switch.
- *
- * This lives outside the generic scene patch on purpose: switching fog *on*
- * must take tokens away from players in the same operation, so it needs a
- * handler that re-filters their lists, not a field anyone can flip in passing.
- */
-export interface FogTogglePayload {
-  sceneId: string;
-  enabled: boolean;
-}
+// The per-scene fog switch became one of the three modes of
+// `SceneVisibilityPayload` in stage 18a — a scene decides between no cover,
+// hand-painted fog and walls, and never runs two of them at once.
 
 /**
  * Server → client `fog:paint`: one appended shape. Sequenced on the active

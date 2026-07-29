@@ -16,7 +16,8 @@ import { useFogStore } from '../stores/fogStore.js';
 import { useMapToolStore } from '../stores/mapToolStore.js';
 import { useRulerStore } from '../stores/rulerStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
-import { clearDrawings, deleteDrawing, resetFog, undoFog } from '../socket.js';
+import { useWallStore } from '../stores/wallStore.js';
+import { clearDrawings, clearWalls, deleteDrawing, resetFog, undoFog } from '../socket.js';
 import {
   IconBrush,
   IconCloud,
@@ -36,6 +37,10 @@ import {
   IconRevealAll,
   IconRuler,
   IconSun,
+  IconDoor,
+  IconWall,
+  IconWindow,
+  IconSnap,
   IconText,
   IconTrash,
   IconTrashAll,
@@ -74,6 +79,14 @@ export function MapTools() {
   const setDrawFontSize = useMapToolStore((s) => s.setDrawFontSize);
   const drawGmOnly = useMapToolStore((s) => s.drawGmOnly);
   const setDrawGmOnly = useMapToolStore((s) => s.setDrawGmOnly);
+  const wallMode = useMapToolStore((s) => s.wallMode);
+  const setWallMode = useMapToolStore((s) => s.setWallMode);
+  const wallKind = useMapToolStore((s) => s.wallKind);
+  const setWallKind = useMapToolStore((s) => s.setWallKind);
+  const wallPlayerToggle = useMapToolStore((s) => s.wallPlayerToggle);
+  const setWallPlayerToggle = useMapToolStore((s) => s.setWallPlayerToggle);
+  const wallSnapGrid = useMapToolStore((s) => s.wallSnapGrid);
+  const setWallSnapGrid = useMapToolStore((s) => s.setWallSnapGrid);
   const privateMode = useRulerStore((s) => s.privateMode);
   const setPrivateMode = useRulerStore((s) => s.setPrivateMode);
   const overlay = useAttackStore((s) => s.overlay);
@@ -84,6 +97,8 @@ export function MapTools() {
   const fogEnabled = useFogStore((s) => s.fog?.enabled ?? false);
   const hasShapes = useFogStore((s) => (s.fog?.shapes.length ?? 0) > 0);
   const drawings = useDrawingStore((s) => s.drawings);
+  const visibility = useSceneStore((s) => s.effectiveScene?.visibility ?? 'open');
+  const hasWalls = useWallStore((s) => s.walls.length > 0);
 
   // Switching fog off mid-session must put the brush away too — otherwise the
   // settings row lingers next to a disabled tool button, and a stray drag
@@ -209,6 +224,19 @@ export function MapTools() {
             onClick={() => toggleTool('fog')}
           >
             <IconFog />
+          </button>
+          <button
+            type="button"
+            className={`map-tool${tool === 'wall' ? ' map-tool--active' : ''}`}
+            title={
+              visibility === 'dynamic'
+                ? 'Ściany (W) — klikaj narożniki, Enter kończy; gracze nigdy nie dostają ścian'
+                : 'Ściany (W) — działają dopiero w trybie „Dynamiczna” (zakładka „Sceny”); można je rysować już teraz'
+            }
+            aria-pressed={tool === 'wall'}
+            onClick={() => toggleTool('wall')}
+          >
+            <IconWall />
           </button>
           <button
             type="button"
@@ -370,6 +398,111 @@ export function MapTools() {
           </span>
           <span className="map-tools-sep" aria-hidden />
           {drawingButtons}
+        </div>
+      )}
+
+      {isGm && tool === 'wall' && (
+        <div className="map-tool-options" role="group" aria-label="Ustawienia ścian">
+          <button
+            type="button"
+            className={`map-tool${wallMode === 'draw' ? ' map-tool--active' : ''}`}
+            title="Rysowanie — klikaj kolejne narożniki"
+            aria-pressed={wallMode === 'draw'}
+            onClick={() => setWallMode('draw')}
+          >
+            <IconLine />
+          </button>
+          <button
+            type="button"
+            className={`map-tool${wallMode === 'erase' ? ' map-tool--active' : ''}`}
+            title="Gumka — kliknij ścianę, by ją usunąć"
+            aria-pressed={wallMode === 'erase'}
+            onClick={() => setWallMode('erase')}
+          >
+            <IconEraser />
+          </button>
+
+          {wallMode === 'draw' && (
+            <>
+              <span className="map-tools-sep" aria-hidden />
+              <button
+                type="button"
+                className={`map-tool${wallKind === 'wall' ? ' map-tool--active' : ''}`}
+                title="Ściana pełna — zawsze blokuje widok"
+                aria-pressed={wallKind === 'wall'}
+                onClick={() => setWallKind('wall')}
+              >
+                <IconWall />
+              </button>
+              <button
+                type="button"
+                className={`map-tool${wallKind === 'door' ? ' map-tool--active' : ''}`}
+                title="Drzwi — blokują widok, dopóki są zamknięte; kliknięcie na mapie je otwiera"
+                aria-pressed={wallKind === 'door'}
+                onClick={() => setWallKind('door')}
+              >
+                <IconDoor />
+              </button>
+              <button
+                type="button"
+                className={`map-tool${wallKind === 'window' ? ' map-tool--active' : ''}`}
+                title="Okno — nie blokuje widoku (oznaczenie dla MG)"
+                aria-pressed={wallKind === 'window'}
+                onClick={() => setWallKind('window')}
+              >
+                <IconWindow />
+              </button>
+
+              {wallKind === 'door' && (
+                <button
+                  type="button"
+                  className={`map-tool${
+                    wallPlayerToggle ? ' map-tool--active' : ' map-tool--warn'
+                  }`}
+                  title={
+                    wallPlayerToggle
+                      ? 'Gracze mogą otwierać te drzwi (widzą je, gdy są w polu widzenia)'
+                      : 'Drzwi tylko dla MG — gracze ich nie zobaczą ani nie otworzą'
+                  }
+                  aria-pressed={wallPlayerToggle}
+                  onClick={() => setWallPlayerToggle(!wallPlayerToggle)}
+                >
+                  {wallPlayerToggle ? <IconEye /> : <IconEyeOff />}
+                </button>
+              )}
+
+              <span className="map-tools-sep" aria-hidden />
+              <button
+                type="button"
+                className={`map-tool${wallSnapGrid ? ' map-tool--active' : ''}`}
+                title={
+                  wallSnapGrid
+                    ? 'Przyciąganie do siatki włączone (końce istniejących ścian mają pierwszeństwo)'
+                    : 'Bez przyciągania do siatki — końce ścian nadal łapią'
+                }
+                aria-pressed={wallSnapGrid}
+                onClick={() => setWallSnapGrid(!wallSnapGrid)}
+              >
+                <IconSnap />
+              </button>
+            </>
+          )}
+
+          <span className="map-tools-sep" aria-hidden />
+          <button
+            type="button"
+            className="map-tool map-tool--warn"
+            title="Usuń wszystkie ściany z tej sceny"
+            disabled={!sceneId || !hasWalls}
+            onClick={() => sceneId && void clearWalls(sceneId)}
+          >
+            <IconTrashAll />
+          </button>
+          {visibility !== 'dynamic' && (
+            <span className="map-tool-hint">
+              Tryb widoczności sceny to nie „Dynamiczna” — ściany nic jeszcze nie zasłaniają
+            </span>
+          )}
         </div>
       )}
 

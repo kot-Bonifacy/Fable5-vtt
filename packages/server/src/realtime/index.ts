@@ -37,7 +37,14 @@ import { characterRollEvent } from './character-rolls.js';
 import { damageApplyEvent, damageUndoEvent } from './damage.js';
 import { attackEvadeEvent, attackRollEvent, weaponReloadEvent } from './attacks.js';
 import { rulerClearEvent, rulerUpdateEvent } from './ruler.js';
-import { fogPaintEvent, fogResetEvent, fogToggleEvent, fogUndoEvent } from './fog.js';
+import { fogPaintEvent, fogResetEvent, fogUndoEvent, sceneVisibilityEvent } from './fog.js';
+import {
+  doorToggleEvent,
+  wallClearEvent,
+  wallCreateEvent,
+  wallDeleteEvent,
+  wallUpdateEvent,
+} from './walls.js';
 import { drawingClearEvent, drawingCreateEvent, drawingDeleteEvent } from './drawings.js';
 import { noteCreateEvent, noteDeleteEvent, noteUpdateEvent } from './notes.js';
 import { compendiumDeleteEvent, compendiumUpsertEvent } from './compendium.js';
@@ -107,7 +114,12 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   fogPaintEvent,
   fogResetEvent,
   fogUndoEvent,
-  fogToggleEvent,
+  sceneVisibilityEvent,
+  wallCreateEvent,
+  wallUpdateEvent,
+  wallDeleteEvent,
+  wallClearEvent,
+  doorToggleEvent,
   drawingCreateEvent,
   drawingDeleteEvent,
   drawingClearEvent,

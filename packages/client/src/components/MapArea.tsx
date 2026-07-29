@@ -4,6 +4,7 @@ import {
   ROLE_GM,
   metresPerPixel,
   pickDrawingAt,
+  pickWallAt,
   tokenCentre,
 } from '@vtt/shared';
 import { MapRenderer, type RangeRing, type RulerLine } from '../map/MapRenderer.js';
@@ -17,10 +18,13 @@ import {
   clearRuler,
   createDrawing,
   createToken,
+  createWalls,
   deleteDrawing,
+  deleteWall,
   paintFog,
   sendRuler,
   sendTokenMove,
+  toggleDoor,
 } from '../socket.js';
 import { loadAttackAtToken } from '../attack-targeting.js';
 import { useAttackStore } from '../stores/attackStore.js';
@@ -28,6 +32,7 @@ import { useRulerStore } from '../stores/rulerStore.js';
 import { useFogStore } from '../stores/fogStore.js';
 import { useNoteStore } from '../stores/noteStore.js';
 import { sortedDrawings, useDrawingStore } from '../stores/drawingStore.js';
+import { clickableDoors, useWallStore } from '../stores/wallStore.js';
 import { currentDrawingStyle, useMapToolStore } from '../stores/mapToolStore.js';
 import { TokenContextMenu } from './TokenContextMenu.js';
 import { CombatBar } from './CombatBar.js';
@@ -75,6 +80,30 @@ function drawingErrorText(code: string | undefined): string {
   }
 }
 
+/** Polish hints for the rejections `wall:create` can come back with. */
+function wallErrorText(code: string | undefined): string {
+  switch (code) {
+    case 'WALL_LIMIT_REACHED':
+      return 'Na tej scenie jest już maksymalna liczba ścian.';
+    case 'NOT_CONNECTED':
+      return 'Brak połączenia z serwerem — ściana nie została zapisana.';
+    default:
+      return `Nie udało się zapisać ściany: ${code ?? 'nieznany błąd'}.`;
+  }
+}
+
+/** Polish hints for `door:toggle`. */
+function doorErrorText(code: string | undefined): string {
+  switch (code) {
+    case 'FORBIDDEN':
+      return 'Tych drzwi nie otworzysz — MG ich nie udostępnił.';
+    case 'WALL_NOT_FOUND':
+      return 'Nie widzisz tych drzwi.';
+    default:
+      return `Nie udało się poruszyć drzwiami: ${code ?? 'nieznany błąd'}.`;
+  }
+}
+
 export function MapArea() {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const rendererRef = useRef<MapRenderer | null>(null);
@@ -94,7 +123,12 @@ export function MapArea() {
   const drawFilled = useMapToolStore((s) => s.drawFilled);
   const drawFontSize = useMapToolStore((s) => s.drawFontSize);
   const drawGmOnly = useMapToolStore((s) => s.drawGmOnly);
+  const wallMode = useMapToolStore((s) => s.wallMode);
+  const wallKind = useMapToolStore((s) => s.wallKind);
+  const wallSnapGrid = useMapToolStore((s) => s.wallSnapGrid);
   const targeting = useAttackStore((s) => s.targeting);
+  const hasVision = useWallStore((s) => s.hasVision);
+  const seesNothing = useWallStore((s) => s.polygons.length === 0);
 
   useEffect(() => {
     ensureStatusesLoaded();
@@ -186,6 +220,29 @@ export function MapArea() {
       );
       if (target) void deleteDrawing(target.id);
     };
+    renderer.onWallChain = (points) => {
+      const current = useSceneStore.getState().effectiveScene;
+      if (!current) return;
+      const tools = useMapToolStore.getState();
+      void createWalls(current.id, points, tools.wallKind, tools.wallPlayerToggle).then((ack) => {
+        if (!ack.ok) useChatStore.getState().addNote(wallErrorText(ack.error));
+      });
+    };
+    renderer.onWallErase = (x, y) => {
+      const current = useSceneStore.getState().effectiveScene;
+      if (!current) return;
+      // The same zoom-scaled grab radius the drawing eraser uses: at 0.18x a
+      // wall is a couple of screen pixels and „click exactly on it" is not a
+      // thing anyone can do.
+      const tolerance = Math.max(8, current.grid.sizePx / 5);
+      const target = pickWallAt(useWallStore.getState().walls, { x, y }, tolerance);
+      if (target) void deleteWall(target.id);
+    };
+    renderer.onDoorToggle = (wallId) => {
+      void toggleDoor(wallId).then((ack) => {
+        if (!ack.ok) useChatStore.getState().addNote(doorErrorText(ack.error));
+      });
+    };
     renderer.onRulerChange = (points) => {
       const current = useSceneStore.getState().effectiveScene;
       useRulerStore.getState().setLocal(points);
@@ -272,6 +329,12 @@ export function MapArea() {
       fontSize: drawFontSize,
     });
     rendererRef.current?.setErasing(tool === 'erase');
+    rendererRef.current?.setWallMode({
+      armed: tool === 'wall' && isGm,
+      mode: wallMode,
+      kind: wallKind,
+      snapGrid: wallSnapGrid,
+    });
   }, [
     ready,
     tool,
@@ -285,6 +348,9 @@ export function MapArea() {
     drawFilled,
     drawFontSize,
     drawGmOnly,
+    wallMode,
+    wallKind,
+    wallSnapGrid,
   ]);
 
   useEffect(() => {
@@ -373,6 +439,29 @@ export function MapArea() {
     };
   }, [ready, scene, pushFog]);
 
+  // Walls, doors and the field of view bypass React like the tokens do — a
+  // recomposited cover must not wait for a render.
+  const pushWalls = useCallback(() => {
+    const state = useWallStore.getState();
+    const isGmNow = useAuthStore.getState().user?.role === ROLE_GM;
+    rendererRef.current?.setWalls(state.walls, clickableDoors(state, isGmNow));
+    const current = useSceneStore.getState().effectiveScene;
+    // Only a player is covered: the GM sees the whole map and the walls on it.
+    const active = !isGmNow && current?.visibility === 'dynamic';
+    rendererRef.current?.setVision(state.polygons, active === true);
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    pushWalls();
+    const unsubWalls = useWallStore.subscribe(pushWalls);
+    const unsubScene = useSceneStore.subscribe(pushWalls);
+    return () => {
+      unsubWalls();
+      unsubScene();
+    };
+  }, [ready, scene, pushWalls]);
+
   const pushNotes = useCallback(() => {
     rendererRef.current?.setNotes(Object.values(useNoteStore.getState().notes));
   }, []);
@@ -441,6 +530,16 @@ export function MapArea() {
         tools.toggleTool('note');
         return;
       }
+      if ((event.key === 'w' || event.key === 'W') && isGm) {
+        tools.toggleTool('wall');
+        return;
+      }
+      // Enter closes the wall chain being traced, the way it ends a polygon in
+      // any drawing program; the last corner clicked twice does the same.
+      if (event.key === 'Enter' && tools.tool === 'wall') {
+        rendererRef.current?.finishWallChain();
+        return;
+      }
       if (event.key === ' ' && useRulerStore.getState().local) {
         event.preventDefault();
         rendererRef.current?.addRulerWaypoint();
@@ -449,6 +548,10 @@ export function MapArea() {
       if (event.key === 'Escape') {
         if (useAttackStore.getState().targeting) useAttackStore.getState().disarm();
         if (useDrawingStore.getState().textDraft) useDrawingStore.getState().setTextDraft(null);
+        // The first Esc drops the chain being traced, the second puts the tool
+        // away — otherwise one mis-click would cost the whole floor plan, and
+        // an Esc that only ever cancelled would leave no way out of the tool.
+        if (tools.tool === 'wall' && rendererRef.current?.cancelWallChain()) return;
         if (tools.tool !== 'pointer') tools.setTool('pointer');
       }
     };
@@ -495,6 +598,20 @@ export function MapArea() {
       {isGm && tool === 'note' && (
         <div className="map-placement-hint">
           Kliknij na mapie, by wbić pinezkę notatki (Esc anuluje)
+        </div>
+      )}
+      {isGm && tool === 'wall' && (
+        <div className="map-placement-hint">
+          {wallMode === 'erase'
+            ? 'Kliknij ścianę, by ją usunąć (Esc kończy)'
+            : 'Klikaj kolejne narożniki; Enter lub klik w ostatni punkt kończy ścianę (Esc anuluje)'}
+        </div>
+      )}
+      {/* Visibility comes from tokens alone, so „no token" means „no map". The
+          hint is what keeps that from reading as a broken connection. */}
+      {!isGm && scene?.visibility === 'dynamic' && hasVision && seesNothing && (
+        <div className="map-placement-hint">
+          Nie masz tokenu na tej scenie — MG musi go wystawić, żebyś cokolwiek zobaczył
         </div>
       )}
       {tool === 'draw' && drawTool === 'text' && (

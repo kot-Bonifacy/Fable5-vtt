@@ -37,9 +37,11 @@ export function toFogRowData(shape: FogShape): { mode: string; kind: string; dat
 
 /** The fog of one scene, in paint order. The same view goes to every viewer. */
 export async function fetchFogState(prisma: PrismaClient, scene: Scene): Promise<FogState> {
-  // A scene with fog switched off needs no shapes at all: everything is lit,
-  // and skipping the query keeps the common case (city scenes, handouts) free.
-  if (!scene.fogEnabled) return { sceneId: scene.id, enabled: false, shapes: [] };
+  // A scene not painting fog needs no shapes at all: skipping the query keeps
+  // the common cases (city scenes, handouts, walled interiors) free. The rows
+  // stay in the table, so switching the mode back restores the exploration the
+  // group had already done.
+  if (scene.visibility !== 'fog') return { sceneId: scene.id, enabled: false, shapes: [] };
   const rows = await prisma.fogShape.findMany({
     where: { sceneId: scene.id },
     orderBy: { id: 'asc' },

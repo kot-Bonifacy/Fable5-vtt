@@ -251,7 +251,7 @@ describe('tokens', () => {
     sceneId = created.data.id;
     // Stage 17: a fresh scene starts under fog, which would hide these
     // tokens from the player. This suite is not about fog — light it up.
-    await emitAck(gm, 'fog:toggle', { sceneId, enabled: false });
+    await emitAck(gm, 'scene:visibility', { sceneId, visibility: 'open' });
     const activated = waitFor(player, 'scene:activate');
     expect((await emitAck(gm, 'scene:activate', { sceneId })).ok).toBe(true);
     await activated;

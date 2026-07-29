@@ -1,5 +1,6 @@
 import type { GridMode } from './scenes.js';
 import { normalizeGridOffset } from './scenes.js';
+import { VISION_RANGE_MAX_METRES } from './vision.js';
 
 export const TOKEN_NAME_MAX_LENGTH = 64;
 export const TOKEN_SIZE_MIN = 1;
@@ -44,6 +45,12 @@ export interface TokenView {
   hp?: TokenHp | null;
   /** Linked character id; null = standalone token. */
   characterId?: string | null;
+  /**
+   * How far this token sees in metres, on a scene with dynamic visibility
+   * (stage 18a); null = as far as the walls allow. Private like the HP: the
+   * server sends the finished vision polygon anyway, so nobody else needs it.
+   */
+  visionRange?: number | null;
 }
 
 /** One entry of the status registry (`data/public/cpred/statuses.json`). */
@@ -88,6 +95,8 @@ export interface TokenPatch {
   hp?: TokenHp | null;
   statuses?: string[];
   characterId?: string | null;
+  /** Sight limit in metres; null puts it back to „as far as the walls allow". */
+  visionRange?: number | null;
 }
 
 /** Client → server payload of `token:update` (GM only). */
@@ -200,6 +209,18 @@ export function sanitizeTokenHp(raw: unknown): TokenHp | null | undefined {
 }
 
 /**
+ * Sight limit in metres (stage 18a). Null is a real value — „as far as the
+ * walls allow" — so, like the HP pair, `undefined` is what signals a rejection
+ * and zero is folded into null rather than making a token blind by typo.
+ */
+export function sanitizeVisionRange(raw: unknown): number | null | undefined {
+  if (raw === null) return null;
+  if (!isFiniteNumber(raw)) return undefined;
+  if (raw <= 0) return null;
+  return Math.round(clamp(raw, 1, VISION_RANGE_MAX_METRES) * 10) / 10;
+}
+
+/**
  * Normalizes a raw (untrusted) token patch: validates each provided field and
  * drops unknown ones. `validStatusIds` filters the status list against the
  * data-driven registry. Returns null when the patch as a whole is invalid.
@@ -243,6 +264,11 @@ export function sanitizeTokenPatch(
   if ('characterId' in input) {
     if (input.characterId !== null && typeof input.characterId !== 'string') return null;
     patch.characterId = input.characterId;
+  }
+  if ('visionRange' in input) {
+    const range = sanitizeVisionRange(input.visionRange);
+    if (range === undefined) return null;
+    patch.visionRange = range;
   }
   if ('statuses' in input) {
     if (!Array.isArray(input.statuses)) return null;

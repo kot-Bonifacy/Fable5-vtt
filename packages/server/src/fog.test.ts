@@ -310,7 +310,9 @@ describe('fog of war', () => {
     expect(paint.ok).toBe(false);
     expect((await emitAck(player, 'fog:reset', { sceneId, mode: 'reveal' })).ok).toBe(false);
     expect((await emitAck(player, 'fog:undo', { sceneId })).ok).toBe(false);
-    expect((await emitAck(player, 'fog:toggle', { sceneId, enabled: false })).ok).toBe(false);
+    expect((await emitAck(player, 'scene:visibility', { sceneId, visibility: 'open' })).ok).toBe(
+      false,
+    );
 
     const sync = await roundTrip(player);
     expect(sync.tokens.map((t) => t.id)).not.toContain(npcTokenId);
@@ -342,14 +344,14 @@ describe('fog of war', () => {
       sceneId,
       shape: { kind: 'rect', mode: 'reveal', x: 0, y: 0, width: 400, height: 400 },
     });
-    await emitAck(gm, 'fog:toggle', { sceneId, enabled: false });
+    await emitAck(gm, 'scene:visibility', { sceneId, visibility: 'open' });
 
     const lit = await roundTrip(player);
     expect(lit.fog?.enabled).toBe(false);
-    expect(lit.scene?.fogEnabled).toBe(false);
+    expect(lit.scene?.visibility).toBe('open');
     expect(lit.tokens.map((t) => t.id)).toEqual(expect.arrayContaining([npcTokenId, ownTokenId]));
 
-    await emitAck(gm, 'fog:toggle', { sceneId, enabled: true });
+    await emitAck(gm, 'scene:visibility', { sceneId, visibility: 'fog' });
     const dark = await roundTrip(player);
     expect(dark.fog?.enabled).toBe(true);
     // The reveal painted before the switch survived it.

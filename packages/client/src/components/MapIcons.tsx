@@ -279,3 +279,44 @@ export function IconRangeRings(props: IconProps) {
     </Svg>
   );
 }
+
+/** Brickwork — the wall tool (stage 18a). */
+export function IconWall(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M3.5 6.5h17v11h-17z" />
+      <path d="M3.5 12h17M9 6.5V12M15 12v5.5" />
+    </Svg>
+  );
+}
+
+/** A door leaf with its handle — the door kind, and the toggle. */
+export function IconDoor(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M6.5 3.5h11v17h-11z" />
+      <circle cx="14.5" cy="12" r="1" fill="currentColor" />
+    </Svg>
+  );
+}
+
+/** A pane with a cross bar — the window kind (never blocks sight). */
+export function IconWindow(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4.5 5.5h15v13h-15z" />
+      <path d="M12 5.5v13M4.5 12h15" opacity="0.6" />
+    </Svg>
+  );
+}
+
+/** Points snapping to a lattice — the wall snap toggle. */
+export function IconSnap(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 9h16M4 15h16M9 4v16M15 4v16" opacity="0.5" />
+      <circle cx="9" cy="9" r="2" fill="currentColor" />
+      <circle cx="15" cy="15" r="2" fill="currentColor" />
+    </Svg>
+  );
+}

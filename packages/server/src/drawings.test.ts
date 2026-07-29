@@ -225,7 +225,7 @@ describe('map drawings', () => {
     sceneId = scene.id;
     // Fog off: this stage is about drawings, and a covered scene only makes the
     // token pushes noisier.
-    await emitAck(gm, 'fog:toggle', { sceneId, enabled: false });
+    await emitAck(gm, 'scene:visibility', { sceneId, visibility: 'open' });
     await emitAck(gm, 'scene:activate', { sceneId });
     await roundTrip(player);
   }, 30_000);

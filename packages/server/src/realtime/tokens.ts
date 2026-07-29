@@ -1,5 +1,6 @@
 import type {
   FogState,
+  ScenePoint,
   SceneView,
   SessionUser,
   TokenCreatePayload,
@@ -17,7 +18,9 @@ import type {
 import {
   ROLE_GM,
   clampTokenPosition,
+  isPointVisible,
   isTokenInFog,
+  tokenCentre,
   sanitizeTokenHp,
   sanitizeTokenImageUrl,
   sanitizeTokenName,
@@ -38,6 +41,14 @@ import {
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { campaignRoom, emitToCampaignUser, gmRoom, sceneRoom } from './state.js';
 import { fetchFogState } from './fog-io.js';
+import {
+  emitDragVision,
+  emitVisionToPlayers,
+  loadVisionContext,
+  usesDynamicVision,
+  visionPolygonsFor,
+  type SceneVisionContext,
+} from './vision.js';
 import { requireCampaignScene } from './scenes.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { emitCombatOfScene } from './combat.js';
@@ -79,6 +90,7 @@ export function toTokenView(
   };
   if (includePrivate) {
     view.characterId = token.characterId;
+    view.visionRange = token.visionRange;
     // A link to a deleted/unreadable sheet falls back to the token's own HP.
     view.hp = linked
       ? linked.hp
@@ -135,35 +147,73 @@ function toGridScene(scene: Scene): Pick<SceneView, 'grid'> {
 }
 
 /**
- * Is the token in unrevealed fog *for this player* (stage 17)?
+ * What hides tokens from one player on this scene (stages 17a, 18a).
  *
- * Whoever controls the token is exempt: a player must never lose their own
- * character off the map because the GM has not lit that corridor yet. Losing
- * sight of your own token reads as a bug, not as suspense — and the position
- * is hardly a secret from the person moving it.
+ * A scene answers „what may this player see?" one way at a time, which is why
+ * the visibility mode is a single setting rather than two switches — this type
+ * is the shape of that decision, and there is deliberately no case where both
+ * the fog and the walls have a say.
  */
-function hiddenByFogFrom(
-  token: Token,
+export type Concealment =
+  { kind: 'none' } | { kind: 'fog'; fog: FogState } | { kind: 'vision'; polygons: ScenePoint[][] };
+
+/**
+ * Builds the concealment one viewer is subject to. The GM is subject to none of
+ * it and therefore never pays for the query — neither the fog nor the raycast.
+ */
+export async function concealmentFor(
+  prisma: PrismaClient,
   scene: Scene,
-  fog: FogState,
+  user: SessionUser,
+  context?: SceneVisionContext,
+): Promise<Concealment> {
+  if (user.role === ROLE_GM) return { kind: 'none' };
+  if (scene.visibility === 'fog') return { kind: 'fog', fog: await fetchFogState(prisma, scene) };
+  if (usesDynamicVision(scene)) {
+    const ctx = context ?? (await loadVisionContext(prisma, scene));
+    return { kind: 'vision', polygons: await visionPolygonsFor(prisma, scene, user.id, ctx) };
+  }
+  return { kind: 'none' };
+}
+
+/**
+ * Is the token concealed from *this player* right now?
+ *
+ * Whoever controls the token is exempt, under both regimes: a player must never
+ * lose their own character off the map because the GM has not lit that corridor
+ * yet, or because the character walked behind its own wall. Losing sight of
+ * your own token reads as a bug, not as suspense — and the position is hardly a
+ * secret from the person moving it.
+ */
+export function concealedFrom(
+  token: Pick<Token, 'x' | 'y' | 'size' | 'ownerId'>,
+  scene: Scene,
+  concealment: Concealment,
   linked: LinkedSheet | undefined | null,
   userId: string,
 ): boolean {
-  if (!fog.enabled) return false;
-  if (controllerIds(token, linked).has(userId)) return false;
-  return isTokenInFog(token, toGridScene(scene), fog);
+  if (concealment.kind === 'none') return false;
+  if (controllerIds(token as Token, linked).has(userId)) return false;
+  if (concealment.kind === 'fog') {
+    if (!concealment.fog.enabled) return false;
+    return isTokenInFog(token, toGridScene(scene), concealment.fog);
+  }
+  // Measured at the token's centre, like the fog and the ruler: „where a token
+  // is" has to mean one thing across the whole VTT.
+  return !isPointVisible(tokenCentre(token, toGridScene(scene)), concealment.polygons);
 }
 
 /**
  * Tokens of a scene as one viewer sees them: players never get hidden ones,
- * foreign HP, or anything standing in unrevealed fog. The GM sees everything
- * and therefore never pays for the fog query.
+ * foreign HP, or anything the fog or a wall is keeping from them. The GM sees
+ * everything and therefore never pays for the visibility query.
  */
 export async function fetchSceneTokensFor(
   prisma: PrismaClient,
   registry: SheetRegistry,
   scene: Scene,
   user: SessionUser,
+  context?: SceneVisionContext,
 ): Promise<TokenView[]> {
   const isGm = user.role === ROLE_GM;
   const rows = await prisma.token.findMany({
@@ -171,11 +221,11 @@ export async function fetchSceneTokensFor(
     orderBy: { createdAt: 'asc' },
   });
   const sheets = await loadLinkedSheets(prisma, registry, rows);
-  const fog = isGm ? null : await fetchFogState(prisma, scene);
+  const concealment = await concealmentFor(prisma, scene, user, context);
   const views: TokenView[] = [];
   for (const row of rows) {
     const linked = row.characterId ? sheets.get(row.characterId) : undefined;
-    if (fog && hiddenByFogFrom(row, scene, fog, linked, user.id)) continue;
+    if (concealedFrom(row, scene, concealment, linked, user.id)) continue;
     views.push(toTokenView(row, seesPrivate(row, linked, user), linked));
   }
   return views;
@@ -195,11 +245,22 @@ export async function emitSceneTokensToPlayers(
   scene: Scene,
 ): Promise<void> {
   if (!scene.active) return;
+  // The walls are the same for every viewer — only the origins differ — so the
+  // segment list is built once and handed to each per-player raycast.
+  const context = usesDynamicVision(scene)
+    ? await loadVisionContext(deps.ctx.prisma, scene)
+    : undefined;
   const sockets = await deps.io.in(campaignRoom(campaignId)).fetchSockets();
   for (const member of sockets) {
     const data = member.data as { user: SessionUser; viewedSceneId: string | null };
     if (data.user.role === ROLE_GM || data.viewedSceneId !== scene.id) continue;
-    const tokens = await fetchSceneTokensFor(deps.ctx.prisma, deps.ctx.cpred, scene, data.user);
+    const tokens = await fetchSceneTokensFor(
+      deps.ctx.prisma,
+      deps.ctx.cpred,
+      scene,
+      data.user,
+      context,
+    );
     member.emit('token:sync', { sceneId: scene.id, tokens } satisfies TokenSyncBroadcast);
   }
 }
@@ -258,6 +319,22 @@ async function emitTokenUpsert(
   // Both owners see the private view; a player owning the sheet but not the
   // token (or the other way round) still gets exactly one copy.
   const privateUserIds = controllerIds(token, linked);
+
+  // On a dynamic scene the audience cannot be a room at all: every player has
+  // a different field of view, so „who may see this token?" has a different
+  // answer per socket. The GM and the controllers get the token directly and
+  // everybody else gets their own filtered list — which is the one code path
+  // that already knows how to answer that question per viewer.
+  if (usesDynamicVision(scene)) {
+    deps.io.to(gmRoom(campaignId)).emit('token:upsert', privatePayload);
+    // Any of these can change what somebody *sees*, not just what they see of
+    // this token: a new owner, a different sight range, a token appearing at
+    // all. Recomputing every viewer is a raycast apiece and removes a whole
+    // class of „the map went dark and stayed dark" bugs.
+    await emitVisionToPlayers(deps, campaignId, scene);
+    await emitSceneTokensToPlayers(deps, campaignId, scene);
+    return;
+  }
 
   // Standing in unrevealed fog is the same kind of secret as `hidden`, except
   // the people controlling the token keep it (stage 17).
@@ -491,6 +568,7 @@ export const tokenUpdateEvent = defineEvent<TokenUpdatePayload, TokenView>({
     if (patch.ownerId !== undefined) data.ownerId = patch.ownerId;
     if (patch.hidden !== undefined) data.hidden = patch.hidden;
     if (patch.statuses !== undefined) data.statuses = JSON.stringify(patch.statuses);
+    if (patch.visionRange !== undefined) data.visionRange = patch.visionRange;
     if (patch.characterId !== undefined) data.characterId = patch.characterId;
     // A linked token has no HP of its own: the value is written through to
     // the sheet (single source of truth) and echoed back to sheet viewers.
@@ -573,11 +651,77 @@ export const tokenDeleteEvent = defineEvent<TokenIdPayload>({
     );
     await deps.ctx.prisma.token.delete({ where: { id: token.id } });
     emitTokenDelete(deps, campaignId, scene, token.id, !token.hidden);
+    // Removing a token can take a player's eyes off the map with it, and with
+    // them everything those eyes were keeping visible.
+    if (usesDynamicVision(scene)) {
+      await emitVisionToPlayers(deps, campaignId, scene);
+      await emitSceneTokensToPlayers(deps, campaignId, scene);
+    }
     // The DB cascades the token out of any running fight — push the shorter
     // roster to everyone (killed enemies simply leave the tracker).
     await emitCombatOfScene(deps, campaignId, scene);
   },
 });
+
+/**
+ * A move on a scene where walls decide visibility (stage 18a).
+ *
+ * There is no room that could carry this: two players standing on opposite
+ * sides of a door have different answers to „does that token exist?", so each
+ * socket is asked separately. The GM and whoever controls the token always get
+ * the frame; anybody else gets it only while the token is inside their own
+ * field of view — which is why an intermediate frame costs a raycast per
+ * watching player, and why the drop is what reconciles everyone.
+ *
+ * The mover also gets their *own* view back, throttled, so the darkness travels
+ * with the token instead of snapping into place when they let go.
+ */
+async function emitDynamicMove(
+  deps: RealtimeDeps,
+  campaignId: string,
+  scene: Scene,
+  token: Token,
+  move: Omit<TokenMoveBroadcast, 'seq'>,
+  position: { x: number; y: number },
+  final: boolean,
+): Promise<void> {
+  const linked = await loadLinkedSheet(deps, token);
+  const controllers = controllerIds(token, linked);
+  deps.io.to(gmRoom(campaignId)).emit('token:move', move);
+
+  const context = await loadVisionContext(deps.ctx.prisma, scene);
+  const moved = { ...token, x: position.x, y: position.y };
+  const centre = tokenCentre(moved, toGridScene(scene));
+  const sockets = await deps.io.in(campaignRoom(campaignId)).fetchSockets();
+  for (const member of sockets) {
+    const data = member.data as { user: SessionUser; viewedSceneId: string | null };
+    if (data.user.role === ROLE_GM || data.viewedSceneId !== scene.id) continue;
+    if (controllers.has(data.user.id)) {
+      member.emit('token:move', move);
+      continue;
+    }
+    const polygons = await visionPolygonsFor(deps.ctx.prisma, scene, data.user.id, context);
+    if (isPointVisible(centre, polygons)) member.emit('token:move', move);
+  }
+
+  if (final) {
+    // The drop is the moment everything is re-derived from the database: who
+    // may see which token, and what the mover's own tokens now light up.
+    await emitSceneTokensToPlayers(deps, campaignId, scene);
+    await emitVisionToPlayers(deps, campaignId, scene, { onlyUserIds: controllers });
+    return;
+  }
+  for (const userId of controllers) {
+    await emitDragVision(
+      deps,
+      campaignId,
+      scene,
+      userId,
+      { tokenId: token.id, x: position.x, y: position.y },
+      false,
+    );
+  }
+}
 
 export const tokenMoveEvent = defineEvent<TokenMovePayload, { x: number; y: number }>({
   name: 'token:move',
@@ -626,6 +770,11 @@ export const tokenMoveEvent = defineEvent<TokenMovePayload, { x: number; y: numb
     const fogMatters =
       fog.enabled &&
       (isTokenInFog(token, grid, fog) || isTokenInFog({ ...token, x, y }, grid, fog));
+
+    if (scene.active && !token.hidden && usesDynamicVision(scene)) {
+      await emitDynamicMove(deps, campaignId, scene, token, move, { x, y }, final);
+      return { x, y };
+    }
 
     if (!scene.active) {
       deps.io.to(sceneRoom(scene.id)).emit('token:move', move);

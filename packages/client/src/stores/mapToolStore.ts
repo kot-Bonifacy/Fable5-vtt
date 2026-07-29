@@ -10,6 +10,7 @@ import {
   FOG_DEFAULT_BRUSH_RADIUS,
   type DrawingStyle,
   type FogMode,
+  type WallKind,
 } from '@vtt/shared';
 
 /**
@@ -20,8 +21,16 @@ import {
  * — two tools fighting over the same drag is exactly the bug this prevents.
  * `pointer` is the normal state: pan the map, drag tokens.
  */
-export const MAP_TOOLS = ['pointer', 'ruler', 'fog', 'note', 'draw', 'erase'] as const;
+export const MAP_TOOLS = ['pointer', 'ruler', 'fog', 'note', 'draw', 'erase', 'wall'] as const;
 export type MapTool = (typeof MAP_TOOLS)[number];
+
+/**
+ * What the wall tool does with a click (stage 18a). Drawing and erasing are
+ * modes of one tool rather than two tools, because they share everything else
+ * — the snapping, the visible wall layer — and the GM alternates between them
+ * constantly while tracing a floor plan.
+ */
+export type WallMode = 'draw' | 'erase';
 
 /** How the fog tool paints: a round brush, or a dragged rectangle. */
 export type FogBrushShape = 'brush' | 'rect';
@@ -130,6 +139,14 @@ interface MapToolStoreState extends DrawSettings {
   fogShape: FogBrushShape;
   /** Brush radius in scene pixels. */
   fogRadius: number;
+  /** Wall tool: drawing a chain, or erasing segments. */
+  wallMode: WallMode;
+  /** What the next drawn chain becomes. */
+  wallKind: WallKind;
+  /** Doors only: may the players open it themselves? */
+  wallPlayerToggle: boolean;
+  /** Snap drawn points to the grid (endpoints of existing walls always win). */
+  wallSnapGrid: boolean;
 
   setTool: (tool: MapTool) => void;
   /** Clicking the armed tool again puts it away. */
@@ -143,6 +160,10 @@ interface MapToolStoreState extends DrawSettings {
   setDrawFilled: (drawFilled: boolean) => void;
   setDrawFontSize: (drawFontSize: number) => void;
   setDrawGmOnly: (drawGmOnly: boolean) => void;
+  setWallMode: (wallMode: WallMode) => void;
+  setWallKind: (wallKind: WallKind) => void;
+  setWallPlayerToggle: (wallPlayerToggle: boolean) => void;
+  setWallSnapGrid: (wallSnapGrid: boolean) => void;
 }
 
 export const useMapToolStore = create<MapToolStoreState>((set, get) => {
@@ -167,6 +188,12 @@ export const useMapToolStore = create<MapToolStoreState>((set, get) => {
     fogMode: 'reveal',
     fogShape: 'brush',
     fogRadius: FOG_DEFAULT_BRUSH_RADIUS,
+    wallMode: 'draw',
+    wallKind: 'wall',
+    // Doors default to the players' — the GM who wants a secret door unticks
+    // it, which is the rarer case and the one worth a deliberate click.
+    wallPlayerToggle: true,
+    wallSnapGrid: true,
     ...loadDrawSettings(),
 
     setTool: (tool) => set({ tool }),
@@ -180,6 +207,10 @@ export const useMapToolStore = create<MapToolStoreState>((set, get) => {
     setDrawFilled: (drawFilled) => persist({ drawFilled }),
     setDrawFontSize: (drawFontSize) => persist({ drawFontSize }),
     setDrawGmOnly: (drawGmOnly) => persist({ drawGmOnly }),
+    setWallMode: (wallMode) => set({ wallMode }),
+    setWallKind: (wallKind) => set({ wallKind }),
+    setWallPlayerToggle: (wallPlayerToggle) => set({ wallPlayerToggle }),
+    setWallSnapGrid: (wallSnapGrid) => set({ wallSnapGrid }),
   };
 });
 

@@ -1,12 +1,12 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react';
-import type { MapUploadResult, SceneSummary } from '@vtt/shared';
+import type { MapUploadResult, SceneSummary, SceneVisibility } from '@vtt/shared';
 import { GRID_SIZE_MAX, GRID_SIZE_MIN } from '@vtt/shared';
 import { apiUpload, ApiError } from '../api.js';
 import {
   activateScene,
   createScene,
   deleteScene,
-  toggleFog,
+  setSceneVisibility,
   updateScene,
   viewScene,
 } from '../socket.js';
@@ -182,21 +182,31 @@ function SceneEditor({ onClose }: { onClose: () => void }) {
       )}
 
       {/* Unlike every other field here, this one applies at once and is not
-          part of the draft: switching fog on has to take concealed tokens
-          away from the players in the same operation, so it travels on its
-          own event (`fog:toggle`) rather than through the scene patch. */}
-      <label className="auth-label">
-        <input
-          type="checkbox"
-          checked={scene.fogEnabled}
-          onChange={(e) => void toggleFog(scene.id, e.target.checked)}
-        />{' '}
-        Mgła wojny na tej scenie
+          part of the draft: changing what hides the map has to take concealed
+          tokens away from the players — or hand them back — in the same
+          operation, so it travels on its own event (`scene:visibility`)
+          rather than through the scene patch. One setting rather than two
+          switches, because „fog *and* walls" would give two independent
+          sources of black and no way to tell which one is hiding the room. */}
+      <label className="auth-label" htmlFor="scene-visibility">
+        Widoczność dla graczy
       </label>
+      <select
+        id="scene-visibility"
+        className="text-input"
+        value={scene.visibility}
+        onChange={(e) => void setSceneVisibility(scene.id, e.target.value as SceneVisibility)}
+      >
+        <option value="open">Pełna — wszyscy widzą całą mapę</option>
+        <option value="fog">Ręczna mgła — odsłaniasz pędzlem</option>
+        <option value="dynamic">Dynamiczna — ściany i pole widzenia</option>
+      </select>
       <p className="auth-hint">
-        {scene.fogEnabled
-          ? 'Scena startuje zakryta — odsłaniaj ją pędzlem z paska mapy. Zmiana działa od razu, bez „Zapisz”.'
-          : 'Cała mapa widoczna dla graczy. Włącz dla scen z eksploracją; odsłonięte wcześniej fragmenty wrócą.'}
+        {scene.visibility === 'open'
+          ? 'Cała mapa widoczna dla graczy. Zmiana działa od razu, bez „Zapisz”.'
+          : scene.visibility === 'fog'
+            ? 'Scena startuje zakryta — odsłaniaj ją pędzlem z paska mapy. Namalowana mgła przeżywa zmianę trybu.'
+            : 'Gracz widzi tylko to, co widzą jego tokeny. Narysuj ściany narzędziem „Ściany” (klawisz W); bez ścian widać całą mapę, a gracz bez tokenu — nic.'}
       </p>
 
       <label className="auth-label">

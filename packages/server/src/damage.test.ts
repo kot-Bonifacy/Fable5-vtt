@@ -282,7 +282,7 @@ describe('damage, armor and Death Saves', () => {
     const scene = data(await emitAck<SceneView>(gm, 'scene:create', { name: 'Zaułek' }), 'scene');
     // Stage 17: a fresh scene starts under fog, which would hide these
     // tokens from the player. This suite is not about fog — light it up.
-    await emitAck(gm, 'fog:toggle', { sceneId: scene.id, enabled: false });
+    await emitAck(gm, 'scene:visibility', { sceneId: scene.id, visibility: 'open' });
     const activated = waitFor(player, 'scene:activate');
     await emitAck(gm, 'scene:activate', { sceneId: scene.id });
     await activated;

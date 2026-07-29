@@ -7,6 +7,7 @@ import type {
   SceneView,
   SessionUser,
   StateSyncPayload,
+  WallView,
 } from '@vtt/shared';
 import { ROLE_GM } from '@vtt/shared';
 import { defineEvent, type RealtimeDeps } from './registry.js';
@@ -15,6 +16,8 @@ import { fetchHistoryPage } from './chat-io.js';
 import { fetchFogState } from './fog-io.js';
 import { fetchSceneDrawings } from './drawings.js';
 import { fetchSceneNotes } from './notes.js';
+import { fetchSceneWalls } from './walls-io.js';
+import { computeViewerVision, type ViewerVision } from './vision.js';
 import { fetchSceneList, getSceneById, toSceneView } from './scenes.js';
 import { fetchSceneTokensFor } from './tokens.js';
 import { fetchCombatFor } from './combat.js';
@@ -48,6 +51,9 @@ export async function buildStateSync(
       fog: null,
       drawings: [],
       notes: [],
+      walls: [],
+      vision: null,
+      doors: [],
       characters: [],
       bots: [],
       ai: aiStatusFor(deps, user.role === ROLE_GM),
@@ -67,6 +73,8 @@ export async function buildStateSync(
     fog,
     drawings,
     notes,
+    walls,
+    vision,
     characters,
     bots,
     compendium,
@@ -95,6 +103,15 @@ export async function buildStateSync(
     viewedSceneId && user.role === ROLE_GM
       ? fetchSceneNotes(deps.ctx.prisma, viewedSceneId)
       : Promise.resolve<MapNoteView[]>([]),
+    // Walls are GM data, full stop — a player gets `vision` below instead,
+    // which is what the walls produced rather than what they are.
+    viewedSceneId && user.role === ROLE_GM
+      ? fetchSceneWalls(deps.ctx.prisma, viewedSceneId)
+      : Promise.resolve<WallView[]>([]),
+    // Field of view of this player's own tokens; null in every other mode.
+    viewedScene
+      ? computeViewerVision(deps.ctx.prisma, viewedScene, user)
+      : Promise.resolve<ViewerVision | null>(null),
     // GM: all campaign characters; player: only their own.
     fetchCharactersFor(deps.ctx.prisma, deps.ctx.cpred, campaign.id, user),
     // Bot profiles carry secrets and prompts — GM only.
@@ -118,6 +135,9 @@ export async function buildStateSync(
     fog,
     drawings,
     notes,
+    walls,
+    vision: vision ? { sceneId: scene?.id ?? '', polygons: vision.polygons } : null,
+    doors: vision?.doors ?? [],
     characters,
     bots,
     ai: aiStatusFor(deps, user.role === ROLE_GM),

@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
 import type { CampaignDetail, TokenPatch, TokenView } from '@vtt/shared';
-import { TOKEN_HP_LIMIT, TOKEN_SIZE_MAX, TOKEN_SIZE_MIN } from '@vtt/shared';
+import {
+  TOKEN_HP_LIMIT,
+  TOKEN_SIZE_MAX,
+  TOKEN_SIZE_MIN,
+  VISION_RANGE_MAX_METRES,
+} from '@vtt/shared';
 import { apiGet } from '../api.js';
 import { addToCombat, deleteToken, removeFromCombat, updateToken } from '../socket.js';
 import { useTokenStore } from '../stores/tokenStore.js';
@@ -23,6 +28,9 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
   const [hasHp, setHasHp] = useState(token.hp != null);
   const [hpCurrent, setHpCurrent] = useState(token.hp?.current ?? 10);
   const [hpMax, setHpMax] = useState(token.hp?.max ?? 10);
+  const [visionRange, setVisionRange] = useState(
+    token.visionRange == null ? '' : String(token.visionRange),
+  );
   const [players, setPlayers] = useState<PlayerOption[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -47,11 +55,17 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
     }
     setSaving(true);
     setError(null);
+    const parsedRange = visionRange.trim() === '' ? null : Number(visionRange);
+    if (parsedRange !== null && (!Number.isFinite(parsedRange) || parsedRange <= 0)) {
+      setError('Zasięg widzenia musi być liczbą metrów większą od zera (albo pusty).');
+      return;
+    }
     const patch: TokenPatch = {
       name: trimmed,
       size,
       ownerId: ownerId === '' ? null : ownerId,
       characterId: characterId === '' ? null : characterId,
+      visionRange: parsedRange,
       // A linked token takes its HP from the sheet — never write them here.
       ...(linked ? {} : { hp: hasHp ? { current: hpCurrent, max: hpMax } : null }),
     };
@@ -90,6 +104,24 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
             </option>
           ))}
         </select>
+
+        <label className="auth-label" htmlFor="token-vision">
+          Zasięg widzenia (m)
+        </label>
+        <input
+          id="token-vision"
+          type="number"
+          min={1}
+          max={VISION_RANGE_MAX_METRES}
+          step={0.5}
+          placeholder="bez ograniczenia"
+          value={visionRange}
+          onChange={(e) => setVisionRange(e.target.value)}
+          title="Działa na scenach w trybie „Dynamiczna”. Puste pole = widzi tak daleko, jak pozwalają ściany."
+        />
+        <p className="auth-hint">
+          Puste pole = ograniczają tylko ściany. Ma znaczenie na scenach z trybem „Dynamiczna”.
+        </p>
 
         <label className="auth-label" htmlFor="token-owner">
           Właściciel

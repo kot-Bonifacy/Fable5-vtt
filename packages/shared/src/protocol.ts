@@ -11,6 +11,8 @@ import type { FogState } from './fog.js';
 import type { MapNoteView } from './notes.js';
 import type { SceneSummary, SceneView } from './scenes.js';
 import type { TokenView } from './tokens.js';
+import type { VisionSyncBroadcast } from './vision.js';
+import type { WallView } from './walls.js';
 
 /** Server → client payload confirming a successful Socket.IO handshake. */
 export interface ServerHello {
@@ -57,6 +59,19 @@ export interface StateSyncPayload {
   drawings: DrawingView[];
   /** GM layer notes of the viewed scene — GM only, always empty for players. */
   notes: MapNoteView[];
+  /**
+   * Walls of the viewed scene (stage 18a) — **GM only, always empty for a
+   * player**. A floor plan is what the party is meant to discover; players get
+   * `vision` below, which is the finished result of the raycast.
+   */
+  walls: WallView[];
+  /**
+   * Field of view of this viewer's own tokens, on a scene with dynamic
+   * visibility; null in every other mode (and for the GM, who sees all).
+   */
+  vision: VisionSyncBroadcast | null;
+  /** Doors this player may operate and can currently see; empty for the GM. */
+  doors: WallView[];
   /** Characters this user may see: the GM gets all, a player only their own. */
   characters: CharacterView[];
   /** Bot profiles — GM only (they carry secrets), always empty for players. */
