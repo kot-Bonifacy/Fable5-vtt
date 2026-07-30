@@ -20,6 +20,9 @@ Każdy etap to jedna sesja pracy z Claude. Etapy są pogrupowane w 9 faz. Szczeg
 | 12  | TTS — głos botów                                   | C. Boty MVP          |                           |
 | 13  | Dane z podręcznika i kompendium                    | D. Walka             |                           |
 | 14  | Inicjatywa i tury                                  | D. Walka             |                           |
+| 14b | Ekonomia akcji: budżet tury i katalog akcji        | D. Walka             |                           |
+| 14c | Ruch w turze: budżet metrów na mapie               | D. Walka             |                           |
+| 14d | Statusy w mechanice: zwarcie, kryty, automaty tury | D. Walka             | 🏁 Pełna mechanika tur    |
 | 15  | Obrażenia, pancerz, krytyki, Death Save            | D. Walka             |                           |
 | 16  | Zasięgi, DV z mapy, autofire                       | D. Walka             | 🏁 Pełna automatyka walki |
 | 17a | Fog of war i warstwa MG                            | E. Widoczność        |                           |
@@ -42,6 +45,7 @@ Fazy A→B→C odwzorowują priorytety MVP z ankiety (mapa+tokeny, kości, karty
 
 - 13 (dane podręcznika) przed 15–16, 19, 23, 25, 26 — wszystkie konsumują dane z pipeline'u.
 - 14 (inicjatywa) przed 15–16 i 20.
+- 14b→14c→14d (ekonomia akcji, dopisane 30.07 — patrz „Rozszerzenia planu po starcie") **po** 15–16 (spinają istniejące ścieżki ataku i przeładowania) i **przed** 20 — bezpieczniki botów („limit akcji na turę, ruch ≤ MOVE") to wprost walidacja z tych etapów.
 - 9–11 (boty podstawowe) przed 12 i przed 19–20.
 - 12 (TTS) nie blokuje niczego — nic od niego nie zależy, więc można go przesunąć dalej, jeśli wolisz najpierw walkę. Jedyne powiązanie to wspólny budżet VRAM z etapem 21 (STT): kto pierwszy, ten ustala rezerwę dla drugiego.
 - 17a przed 18 (oświetlenie buduje na fog of war); 17b (rysowanie) nie blokuje niczego.
@@ -65,6 +69,8 @@ Fazy A→B→C odwzorowują priorytety MVP z ankiety (mapa+tokeny, kości, karty
 ## Rozszerzenia planu po starcie
 
 1. **Etap 12 — TTS: głos botów** (dodany 24.07.2026, plan urósł z 27 do 28 etapów; dawne etapy 12–27 przenumerowane na 13–28). Boty dostają mowę po polsku jako **opcję** — włączaną per bot i per sesja, z pełną degradacją do samego tekstu. Umieszczony w fazie C, zaraz po etapie 11: faza G to głos **ludzi** (wejście STT i rozmowa graczy), a mowa botów jest domknięciem samych botów i nie musi na nią czekać. Twardy budżet: **≤ 3 GB VRAM**, przy czym realny sufit wyznacza rezerwa pod whisper z etapu 21 — patrz „Ryzyka".
+
+2. **Etapy 14b/14c/14d — system tur** (dodane 30.07.2026). Pełny podręcznik, dostarczony po utworzeniu planu, opisuje kompletną mechanikę tur (Tura = 1 Akcja Ruchu + 1 Akcja, katalog akcji z kosztami, zwarcie, statusy, automaty przejścia tury), której pierwotny plan nie projektował — etap 14 dał sam tracker kolejności, a POMYSLY notowało ekonomię akcji jako „naturalne dla etapu 20". Decyzje z użytkownikiem: egzekwowanie **twarde z wolną ręką MG**, ruch liczony w **metrach po ścieżce**, pełny zakres RAW (zwarcie, kryty w turze, Wstrzymanie Akcji, DoT), rozłożone na **trzy sesje** (duże zmiany w kodzie i dużo testów). Numeracja literowa w fazie D, żeby nie przenumerowywać etapów 15–28.
 
 ## Ryzyka i ograniczenia
 

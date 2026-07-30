@@ -18,6 +18,9 @@ Aktualizowany na koniec każdej sesji. Statusy: ⬜ nierozpoczęty · 🟨 w tok
 | 12  | TTS — głos botów                          | ✅     | 2026-07-26      | Piper na CPU (0 GB VRAM); tekst dopisuje się na czacie w rytmie mowy                |
 | 13  | Dane z podręcznika i kompendium           | ✅     | 2026-07-27      | domknięty 26.07 na darmowych materiałach; 27.07 uzupełniony z podręcznika głównego  |
 | 14  | Inicjatywa i tury                         | ✅     | 2026-07-26      | tracker = pasek nad mapą + zakładka „Walka”; remisy: REF, przerzut RAW i drag       |
+| 14b | Ekonomia akcji: budżet tury i katalog     | ⬜     |                 | dopisany 30.07 (pełny podręcznik); twarda walidacja + wolna ręka MG; przed etapem 20 |
+| 14c | Ruch w turze: budżet metrów na mapie      | ⬜     |                 | dopisany 30.07; metry po ścieżce (decyzja MG); wspólny punkt walidacji z kolizjami  |
+| 14d | Statusy w mechanice: zwarcie i automaty   | ⬜     |                 | dopisany 30.07; zwarcie RAW, kryty w turze, DoT; przy okazji fix testu death save   |
 | 15  | Obrażenia, pancerz, krytyki, Death Save   | ✅     | 2026-07-27      | obie tabele ran z podręcznika głównego (nieoficjalna tabela głowy zastąpiona 27.07) |
 | 16  | Zasięgi, DV z mapy, autofire              | ✅     | 2026-07-28      | wręcz: PT zastępczy z karty celu + przycisk „Unik” (RAW nie zna statycznego PT)     |
 | 17a | Fog of war i warstwa MG                   | ✅     | 2026-07-28      | etap 17 podzielony na 17a/17b; nowa scena startuje zakryta, mgła przełączalna       |

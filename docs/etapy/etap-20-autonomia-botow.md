@@ -1,6 +1,6 @@
 # Etap 20 — Autonomia botów w mechanice 🏁 Pełne boty
 
-**Faza:** F — Boty zaawansowane · **Wymaga etapów:** 14, 15, 16, 19
+**Faza:** F — Boty zaawansowane · **Wymaga etapów:** 14b–14d, 15, 16, 19
 
 ## Cel sesji
 
@@ -13,9 +13,9 @@ Boty działają w mechanice gry zgodnie z ankietą: pełna automatyka (bot sam r
   - **automat** — akcja wykonywana od razu
   - **propozycja** — bot pisze zamiar („rzucam na Handel"), przy wiadomości przyciski Zatwierdź/Odrzuć (MG lub wskazany gracz)
   - **kontrolowany** — bot tylko mówi; mechanikę wykonuje za niego przypisany gracz/MG
-- [ ] Wykonanie akcji przez istniejące systemy: te same ścieżki serwera co dla graczy (rzuty z etapu 06/08, atak+DV z 15, obrażenia z 14, ruch z 05) — bot jest „graczem" z uprawnieniami do swojej postaci
+- [ ] Wykonanie akcji przez istniejące systemy: te same ścieżki serwera co dla graczy (rzuty z etapu 06/08, atak+DV z 16, obrażenia z 15, ruch z 05/14c, ekonomia akcji z 14b) — bot jest „graczem" z uprawnieniami do swojej postaci
 - [ ] Tura bota w walce: gdy tracker wskaże bota-towarzysza/NPC bota, MG klika „graj turę" → bot dostaje stan taktyczny (pozycje widocznych tokenów, dystanse, HP własne, dostępna broń) → decyduje → akcja wg trybu autonomii
-- [ ] Bezpieczniki: whitelist akcji, limit akcji na turę, ruch ≤ MOVE postaci, cel musi istnieć i być widoczny — walidacja serwerowa identyczna jak dla ludzi; nieprawidłowa akcja → bot dostaje błąd i jedną szansę poprawki, potem pas
+- [ ] Bezpieczniki: whitelist akcji + „cel musi istnieć i być widoczny"; limit akcji na turę i ruch ≤ MOVE egzekwuje już twarda walidacja z etapów 14b/14c (identyczna jak dla ludzi) — tu tylko obsługa odmowy: nieprawidłowa akcja → bot dostaje błąd i jedną szansę poprawki, potem pas
 - [ ] Log przejrzystości: każda akcja bota na czacie z oznaczeniem „(bot)" i rozbiciem rzutu jak u graczy
 
 ## Poza zakresem
