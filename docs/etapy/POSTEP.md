@@ -43,8 +43,9 @@ Pełne notatki z zamkniętych etapów: `archiwum/dziennik-sesji.md` (nie czytaj 
 
 ## Od czego zacząć
 
-Ostatnio zamknięte: **18d + dopisek 18e** (drzwi i okna). Następny etap: **19 — pamięć botów (RAG, dziennik, relacje)**.
-Etapy 14b/14c/14d (system tur) są opisane i czekają; kolejność wobec 19 zależy od Ciebie.
+Ostatnio zamknięte: **18d + dopisek 18e** (drzwi i okna).
+Następne etapy: **14b → 14c → 14d** (system tur), w tej kolejności. Dopisane 30.07 po dostarczeniu pełnego podręcznika, który opisuje kompletny system tur — pierwotny plan go nie projektował, a etap 14 dał sam tracker kolejności. Zależności (14, 15, 16) są zamknięte, więc 14b można zaczynać od razu; etap 20 (autonomia botów) zakłada w bezpiecznikach „limit akcji na turę", czyli stoi na tej trójce.
+Dopiero po nich: **19 — pamięć botów (RAG, dziennik, relacje)**.
 
 ### Otwarte zaległości (przechodzą między etapami)
 
