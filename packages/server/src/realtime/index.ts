@@ -45,6 +45,13 @@ import {
   wallDeleteEvent,
   wallUpdateEvent,
 } from './walls.js';
+import {
+  lightCreateEvent,
+  lightDeleteEvent,
+  lightUpdateEvent,
+  sceneLightingEvent,
+  tokenLightToggleEvent,
+} from './lights.js';
 import { drawingClearEvent, drawingCreateEvent, drawingDeleteEvent } from './drawings.js';
 import { noteCreateEvent, noteDeleteEvent, noteUpdateEvent } from './notes.js';
 import { compendiumDeleteEvent, compendiumUpsertEvent } from './compendium.js';
@@ -120,6 +127,11 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   wallDeleteEvent,
   wallClearEvent,
   doorToggleEvent,
+  lightCreateEvent,
+  lightUpdateEvent,
+  lightDeleteEvent,
+  tokenLightToggleEvent,
+  sceneLightingEvent,
   drawingCreateEvent,
   drawingDeleteEvent,
   drawingClearEvent,

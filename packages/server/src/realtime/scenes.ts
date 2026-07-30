@@ -52,6 +52,8 @@ export function toSceneView(scene: Scene): SceneView {
     // through to „open" — an unreadable mode is treated as hand-painted fog,
     // the setting that hides rather than reveals.
     visibility: isSceneVisibility(scene.visibility) ? scene.visibility : 'fog',
+    dark: scene.dark,
+    darkSightM: scene.darkSightM,
   };
 }
 

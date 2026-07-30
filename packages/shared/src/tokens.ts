@@ -1,3 +1,4 @@
+import { sanitizeTokenLight, type TokenLight } from './lights.js';
 import type { GridMode } from './scenes.js';
 import { normalizeGridOffset } from './scenes.js';
 import { VISION_RANGE_MAX_METRES } from './vision.js';
@@ -51,6 +52,13 @@ export interface TokenView {
    * server sends the finished vision polygon anyway, so nobody else needs it.
    */
   visionRange?: number | null;
+  /**
+   * Light this token carries (stage 18b); null = none. Private like the HP: the
+   * people who need it are the GM (who sets it up) and whoever controls the
+   * token (who switches it on and off). Everybody else sees the *effect* — a
+   * glow and a lit corridor — through their own `vision:sync`.
+   */
+  light?: TokenLight | null;
 }
 
 /** One entry of the status registry (`data/public/cpred/statuses.json`). */
@@ -97,6 +105,8 @@ export interface TokenPatch {
   characterId?: string | null;
   /** Sight limit in metres; null puts it back to „as far as the walls allow". */
   visionRange?: number | null;
+  /** Carried light; null takes the lamp away entirely (stage 18b). */
+  light?: TokenLight | null;
 }
 
 /** Client → server payload of `token:update` (GM only). */
@@ -269,6 +279,11 @@ export function sanitizeTokenPatch(
     const range = sanitizeVisionRange(input.visionRange);
     if (range === undefined) return null;
     patch.visionRange = range;
+  }
+  if ('light' in input) {
+    const light = sanitizeTokenLight(input.light);
+    if (light === undefined) return null;
+    patch.light = light;
   }
   if ('statuses' in input) {
     if (!Array.isArray(input.statuses)) return null;

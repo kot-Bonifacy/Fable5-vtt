@@ -50,6 +50,9 @@ import type {
   FogPaintBroadcast,
   FogShape,
   FogSyncBroadcast,
+  LightPatch,
+  LightSyncBroadcast,
+  LightView,
   MapNoteView,
   NoteDeleteBroadcast,
   NotePatch,
@@ -117,6 +120,7 @@ import { useDrawingStore } from './stores/drawingStore.js';
 import { useFogStore } from './stores/fogStore.js';
 import { useNoteStore } from './stores/noteStore.js';
 import { useWallStore } from './stores/wallStore.js';
+import { useLightStore } from './stores/lightStore.js';
 
 let socket: Socket | undefined;
 /** User the live socket authenticated as — a different one forces a reconnect. */
@@ -289,6 +293,7 @@ export function connectSocket(userId: string): Socket {
     useDrawingStore.getState().applySync(payload);
     useNoteStore.getState().applySync(payload);
     useWallStore.getState().applySync(payload);
+    useLightStore.getState().applySync(payload);
     if (payload.ai) useAiStore.getState().setStatus(payload.ai);
   });
 
@@ -522,7 +527,18 @@ export function connectSocket(userId: string): Socket {
     }
   });
   socket.on('vision:sync', (broadcast: VisionSyncBroadcast) => {
-    if (viewingScene(broadcast.sceneId)) useWallStore.getState().setVision(broadcast.polygons);
+    if (!viewingScene(broadcast.sceneId)) return;
+    // One event, two stores: the server computes the field of view and the light
+    // inside it in a single pass, and splitting the payload here would only mean
+    // two chances for the map to draw a mask that belongs to another position.
+    useWallStore.getState().setVision(broadcast.polygons);
+    useLightStore.getState().setVisionLight(broadcast.light ?? null, broadcast.glows ?? []);
+  });
+  // Lamp rows are GM-only and targeted at the GM room — no seq, like walls.
+  socket.on('light:sync', (broadcast: LightSyncBroadcast) => {
+    if (viewingScene(broadcast.sceneId)) {
+      useLightStore.getState().setLights(broadcast.sceneId, broadcast.lights);
+    }
   });
   socket.on('door:sync', (broadcast: DoorSyncBroadcast) => {
     if (viewingScene(broadcast.sceneId)) useWallStore.getState().setDoors(broadcast.doors);
@@ -818,6 +834,29 @@ export const clearWalls = (sceneId: string) => emitSceneAck('wall:clear', { scen
 
 export const toggleDoor = (wallId: number, open?: boolean) =>
   emitSceneAck<WallView>('door:toggle', { wallId, open });
+
+/* Lights and darkness (stage 18b). GM-only except `toggleTokenLight`, which the
+   controller of a token may use on their own torch — the server checks that,
+   whatever the UI offers. */
+
+export const createLight = (
+  sceneId: string,
+  x: number,
+  y: number,
+  spec: { brightM: number; dimM: number; color: string; flicker: boolean },
+) => emitSceneAck<LightView>('light:create', { sceneId, x, y, ...spec });
+
+export const updateLight = (lightId: number, patch: LightPatch) =>
+  emitSceneAck<LightView>('light:update', { lightId, patch });
+
+export const deleteLight = (lightId: number) => emitSceneAck('light:delete', { lightId });
+
+/** Zapal/zgaś — the one light action a player performs, on a token they control. */
+export const toggleTokenLight = (tokenId: string, on?: boolean) =>
+  emitSceneAck<TokenView>('token:light', { tokenId, on });
+
+export const setSceneLighting = (sceneId: string, patch: { dark?: boolean; darkSightM?: number }) =>
+  emitSceneAck<SceneView>('scene:lighting', { sceneId, ...patch });
 
 /**
  * Asks the model from the GM test screen. The ack only hands back a request id —

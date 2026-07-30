@@ -20,6 +20,7 @@
  * the polygon finite when the observer looks out of an open door.
  */
 
+import type { LightGlow, LightMask } from './lights.js';
 import type { ScenePoint } from './measure.js';
 
 /** A blocking edge in scene pixels. Walls, doors and the scene border alike. */
@@ -51,6 +52,17 @@ export interface VisionSyncBroadcast {
   sceneId: string;
   /** One polygon per vision source; an empty list means „sees nothing". */
   polygons: ScenePoint[][];
+  /**
+   * Light levels inside the polygons above (stage 18b); null on a scene that is
+   * not dark, where being seen is the whole of being visible.
+   *
+   * A grid rather than the light polygons, for the same reason the walls stayed
+   * behind: a light's polygon is clipped by walls and therefore *is* a floor
+   * plan. See `lights.ts`.
+   */
+  light?: LightMask | null;
+  /** Lamps this viewer can see, for the coloured layer; empty on a lit scene. */
+  glows?: LightGlow[];
 }
 
 /** Default sight limit in metres offered by the UI; null stays „unlimited". */
@@ -184,8 +196,15 @@ export function computeVisionPolygon(
   return polygon;
 }
 
-/** Is any part of the segment within `radius` of the point? */
-function segmentWithinRadius(point: ScenePoint, segment: Segment, radius: number): boolean {
+/**
+ * Is any part of the segment within `radius` of the point?
+ *
+ * Exported for the light mask (stage 18b), which pre-filters the wall list per
+ * light: a torch is shadowed only by walls it can reach, and on a full floor
+ * plan that is the difference between eight segment tests per cell and two
+ * hundred.
+ */
+export function segmentWithinRadius(point: ScenePoint, segment: Segment, radius: number): boolean {
   const dx = segment.x2 - segment.x1;
   const dy = segment.y2 - segment.y1;
   const lengthSq = dx * dx + dy * dy;

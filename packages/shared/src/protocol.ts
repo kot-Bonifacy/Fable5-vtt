@@ -8,6 +8,7 @@ import type { CompendiumEntry, WeaponTypeDefinition } from './systems/cpred/comp
 import type { RollToss } from './dice.js';
 import type { DrawingView } from './drawings.js';
 import type { FogState } from './fog.js';
+import type { LightView } from './lights.js';
 import type { MapNoteView } from './notes.js';
 import type { SceneSummary, SceneView } from './scenes.js';
 import type { TokenView } from './tokens.js';
@@ -65,6 +66,12 @@ export interface StateSyncPayload {
    * `vision` below, which is the finished result of the raycast.
    */
   walls: WallView[];
+  /**
+   * Lights of the viewed scene (stage 18b) — **GM only, always empty for a
+   * player**, for the reason the walls are: a light's shape is the shape of the
+   * room it stands in. Players get light *levels* inside `vision` below.
+   */
+  lights: LightView[];
   /**
    * Field of view of this viewer's own tokens, on a scene with dynamic
    * visibility; null in every other mode (and for the GM, who sees all).

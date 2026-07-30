@@ -1,11 +1,12 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react';
 import type { MapUploadResult, SceneSummary, SceneVisibility } from '@vtt/shared';
-import { GRID_SIZE_MAX, GRID_SIZE_MIN } from '@vtt/shared';
+import { GRID_SIZE_MAX, GRID_SIZE_MIN, SCENE_DARK_SIGHT_MAX_M, formatMetres } from '@vtt/shared';
 import { apiUpload, ApiError } from '../api.js';
 import {
   activateScene,
   createScene,
   deleteScene,
+  setSceneLighting,
   setSceneVisibility,
   updateScene,
   viewScene,
@@ -208,6 +209,59 @@ function SceneEditor({ onClose }: { onClose: () => void }) {
             ? 'Scena startuje zakryta — odsłaniaj ją pędzlem z paska mapy. Namalowana mgła przeżywa zmianę trybu.'
             : 'Gracz widzi tylko to, co widzą jego tokeny. Narysuj ściany narzędziem „Ściany” (klawisz W); bez ścian widać całą mapę, a gracz bez tokenu — nic.'}
       </p>
+
+      {/* Darkness only means something where sight comes from tokens, so the
+          switch appears with the mode that asks them. It applies at once for the
+          same reason the mode does: turning the lights out takes every token in
+          an unlit spot away from the players (`scene:lighting`). */}
+      {scene.visibility === 'dynamic' && (
+        <>
+          <label className="auth-label">
+            <input
+              type="checkbox"
+              checked={scene.dark}
+              onChange={(e) => void setSceneLighting(scene.id, { dark: e.target.checked })}
+            />{' '}
+            Ciemna scena — widać tylko to, co oświetlone
+          </label>
+          {scene.dark && (
+            <>
+              <label className="auth-label" htmlFor="scene-dark-sight">
+                Widoczność po omacku: {formatMetres(scene.darkSightM)}
+              </label>
+              <div className="scene-editor-row">
+                <input
+                  id="scene-dark-sight"
+                  type="range"
+                  min={0}
+                  max={10}
+                  step={0.5}
+                  value={scene.darkSightM}
+                  onChange={(e) =>
+                    void setSceneLighting(scene.id, { darkSightM: Number(e.target.value) })
+                  }
+                />
+                <input
+                  type="number"
+                  className="scene-number-input"
+                  min={0}
+                  max={SCENE_DARK_SIGHT_MAX_M}
+                  step={0.5}
+                  value={scene.darkSightM}
+                  onChange={(e) =>
+                    void setSceneLighting(scene.id, { darkSightM: Number(e.target.value) })
+                  }
+                />
+              </div>
+              <p className="auth-hint">
+                Ile token widzi bez żadnego światła. Domyślne 2 m to jedna kratka — dzięki temu
+                czarny ekran nigdy nie czyta się jako awaria. Zero = całkowita ciemność. Lampy
+                stawiaj narzędziem „Światła” (klawisz L), latarkę tokenu ustawisz w jego menu.
+              </p>
+            </>
+          )}
+        </>
+      )}
 
       <label className="auth-label">
         <input

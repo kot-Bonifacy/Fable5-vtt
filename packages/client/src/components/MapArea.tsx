@@ -3,11 +3,18 @@ import {
   CPRED_RANGE_BANDS,
   ROLE_GM,
   metresPerPixel,
+  metresToPixels,
   pickDrawingAt,
   pickWallAt,
   tokenCentre,
 } from '@vtt/shared';
-import { MapRenderer, type RangeRing, type RulerLine } from '../map/MapRenderer.js';
+import type { LightGlow } from '@vtt/shared';
+import {
+  MapRenderer,
+  type LightMarker,
+  type RangeRing,
+  type RulerLine,
+} from '../map/MapRenderer.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { ensureStatusesLoaded, useTokenStore } from '../stores/tokenStore.js';
@@ -17,14 +24,17 @@ import { activeTokenIdOf, useCombatStore } from '../stores/combatStore.js';
 import {
   clearRuler,
   createDrawing,
+  createLight,
   createToken,
   createWalls,
   deleteDrawing,
+  deleteLight,
   deleteWall,
   paintFog,
   sendRuler,
   sendTokenMove,
   toggleDoor,
+  updateLight,
 } from '../socket.js';
 import { loadAttackAtToken } from '../attack-targeting.js';
 import { useAttackStore } from '../stores/attackStore.js';
@@ -33,6 +43,7 @@ import { useFogStore } from '../stores/fogStore.js';
 import { useNoteStore } from '../stores/noteStore.js';
 import { sortedDrawings, useDrawingStore } from '../stores/drawingStore.js';
 import { clickableDoors, useWallStore } from '../stores/wallStore.js';
+import { pickLightAt, useLightStore } from '../stores/lightStore.js';
 import { currentDrawingStyle, useMapToolStore } from '../stores/mapToolStore.js';
 import { TokenContextMenu } from './TokenContextMenu.js';
 import { CombatBar } from './CombatBar.js';
@@ -92,6 +103,33 @@ function wallErrorText(code: string | undefined): string {
   }
 }
 
+/**
+ * How close a click has to be to a lamp handle to hit it, in scene pixels.
+ * Scaled with the grid for the reason the wall and drawing erasers are: at a
+ * typical 0.18× map zoom a fixed pixel radius is a target nobody can hit.
+ */
+function lightGrabTolerance(gridSizePx: number): number {
+  return Math.max(12, gridSizePx / 3);
+}
+
+/** Polish hints for the rejections the light events can come back with. */
+function lightErrorText(code: string | undefined): string {
+  switch (code) {
+    case 'LIGHT_LIMIT_REACHED':
+      return 'Na tej scenie jest już maksymalna liczba świateł.';
+    case 'LIGHT_NOT_FOUND':
+      return 'To światło już nie istnieje — odśwież stronę.';
+    case 'NO_LIGHT':
+      return 'Ten token nie ma latarki — MG musi ją najpierw ustawić.';
+    case 'FORBIDDEN':
+      return 'To nie twój token.';
+    case 'NOT_CONNECTED':
+      return 'Brak połączenia z serwerem — zmiana światła nie została zapisana.';
+    default:
+      return `Nie udało się zmienić światła: ${code ?? 'nieznany błąd'}.`;
+  }
+}
+
 /** Polish hints for `door:toggle`. */
 function doorErrorText(code: string | undefined): string {
   switch (code) {
@@ -126,6 +164,7 @@ export function MapArea() {
   const wallMode = useMapToolStore((s) => s.wallMode);
   const wallKind = useMapToolStore((s) => s.wallKind);
   const wallSnapGrid = useMapToolStore((s) => s.wallSnapGrid);
+  const lightMode = useMapToolStore((s) => s.lightMode);
   const targeting = useAttackStore((s) => s.targeting);
   const hasVision = useWallStore((s) => s.hasVision);
   const seesNothing = useWallStore((s) => s.polygons.length === 0);
@@ -243,6 +282,47 @@ export function MapArea() {
         if (!ack.ok) useChatStore.getState().addNote(doorErrorText(ack.error));
       });
     };
+    renderer.onLightPlace = (x, y) => {
+      const current = useSceneStore.getState().effectiveScene;
+      if (!current) return;
+      const tools = useMapToolStore.getState();
+      const spec = {
+        brightM: tools.lightBrightM,
+        dimM: tools.lightDimM,
+        color: tools.lightColor,
+        flicker: tools.lightFlicker,
+      };
+      // Clicking a lamp that is already there retunes it to the panel's
+      // settings — which is what makes the panel double as the editor.
+      const existing = pickLightAt(
+        useLightStore.getState().lights,
+        { x, y },
+        lightGrabTolerance(current.grid.sizePx),
+      );
+      const request = existing
+        ? updateLight(existing.id, spec)
+        : createLight(current.id, x, y, spec);
+      void request.then((ack) => {
+        if (!ack.ok) useChatStore.getState().addNote(lightErrorText(ack.error));
+      });
+    };
+    renderer.onLightErase = (x, y) => {
+      const current = useSceneStore.getState().effectiveScene;
+      if (!current) return;
+      const target = pickLightAt(
+        useLightStore.getState().lights,
+        { x, y },
+        lightGrabTolerance(current.grid.sizePx),
+      );
+      if (target) void deleteLight(target.id);
+    };
+    renderer.onLightToggle = (lightId) => {
+      const light = useLightStore.getState().lights.find((entry) => entry.id === lightId);
+      if (!light) return;
+      void updateLight(lightId, { enabled: !light.enabled }).then((ack) => {
+        if (!ack.ok) useChatStore.getState().addNote(lightErrorText(ack.error));
+      });
+    };
     renderer.onRulerChange = (points) => {
       const current = useSceneStore.getState().effectiveScene;
       useRulerStore.getState().setLocal(points);
@@ -335,6 +415,7 @@ export function MapArea() {
       kind: wallKind,
       snapGrid: wallSnapGrid,
     });
+    rendererRef.current?.setLightTool({ armed: tool === 'light' && isGm, mode: lightMode });
   }, [
     ready,
     tool,
@@ -351,6 +432,7 @@ export function MapArea() {
     wallMode,
     wallKind,
     wallSnapGrid,
+    lightMode,
   ]);
 
   useEffect(() => {
@@ -448,7 +530,7 @@ export function MapArea() {
     const current = useSceneStore.getState().effectiveScene;
     // Only a player is covered: the GM sees the whole map and the walls on it.
     const active = !isGmNow && current?.visibility === 'dynamic';
-    rendererRef.current?.setVision(state.polygons, active === true);
+    rendererRef.current?.setVision(state.polygons, active === true, useLightStore.getState().mask);
   }, []);
 
   useEffect(() => {
@@ -456,11 +538,99 @@ export function MapArea() {
     pushWalls();
     const unsubWalls = useWallStore.subscribe(pushWalls);
     const unsubScene = useSceneStore.subscribe(pushWalls);
+    const unsubLight = useLightStore.subscribe(pushWalls);
     return () => {
       unsubWalls();
       unsubScene();
+      unsubLight();
     };
   }, [ready, scene, pushWalls]);
+
+  /**
+   * Lamp handles (GM) and the coloured glow (everyone).
+   *
+   * The GM's glow is derived locally from the lamp list and the tokens' own
+   * lights, because the GM never gets a `vision:sync` — they see everything, so
+   * the server never runs a raycast for them. A player's glow comes off the wire
+   * already filtered to the lamps they can see.
+   */
+  const pushLights = useCallback(() => {
+    const renderer = rendererRef.current;
+    if (!renderer) return;
+    const current = useSceneStore.getState().effectiveScene;
+    const state = useLightStore.getState();
+    const isGmNow = useAuthStore.getState().user?.role === ROLE_GM;
+    if (!current) {
+      renderer.setLights([]);
+      renderer.setGlows([]);
+      return;
+    }
+    const reachPx = (light: { brightM: number; dimM: number }) =>
+      metresToPixels(Math.max(light.brightM, light.dimM), current);
+
+    const markers: LightMarker[] = isGmNow
+      ? state.lights.map((light) => ({
+          id: light.id,
+          x: light.x,
+          y: light.y,
+          radiusPx: reachPx(light),
+          color: light.color,
+          enabled: light.enabled,
+        }))
+      : [];
+    renderer.setLights(markers);
+
+    if (!isGmNow) {
+      renderer.setGlows(state.glows);
+      return;
+    }
+    // The GM's own preview of the lighting: the lamps plus every torch that is
+    // switched on. Only meaningful on a dark scene — on a lit one it would be a
+    // wash of colour over a map that needs none.
+    if (!current.dark || current.visibility !== 'dynamic') {
+      renderer.setGlows([]);
+      return;
+    }
+    const glows: LightGlow[] = [];
+    for (const light of state.lights) {
+      if (!light.enabled) continue;
+      glows.push({
+        x: light.x,
+        y: light.y,
+        brightPx: metresToPixels(light.brightM, current),
+        dimPx: metresToPixels(light.dimM, current),
+        color: light.color,
+        flicker: light.flicker,
+      });
+    }
+    for (const token of Object.values(useTokenStore.getState().tokens)) {
+      const carried = token.light;
+      if (!carried || !carried.on || token.sceneId !== current.id) continue;
+      const centre = tokenCentre(token, current);
+      glows.push({
+        x: centre.x,
+        y: centre.y,
+        brightPx: metresToPixels(carried.brightM, current),
+        dimPx: metresToPixels(carried.dimM, current),
+        color: carried.color,
+        flicker: carried.flicker,
+      });
+    }
+    renderer.setGlows(glows);
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    pushLights();
+    const unsubLight = useLightStore.subscribe(pushLights);
+    const unsubScene = useSceneStore.subscribe(pushLights);
+    const unsubTokens = useTokenStore.subscribe(pushLights);
+    return () => {
+      unsubLight();
+      unsubScene();
+      unsubTokens();
+    };
+  }, [ready, scene, pushLights]);
 
   const pushNotes = useCallback(() => {
     rendererRef.current?.setNotes(Object.values(useNoteStore.getState().notes));
@@ -534,6 +704,10 @@ export function MapArea() {
         tools.toggleTool('wall');
         return;
       }
+      if ((event.key === 'l' || event.key === 'L') && isGm) {
+        tools.toggleTool('light');
+        return;
+      }
       // Enter closes the wall chain being traced, the way it ends a polygon in
       // any drawing program; the last corner clicked twice does the same.
       if (event.key === 'Enter' && tools.tool === 'wall') {
@@ -605,6 +779,13 @@ export function MapArea() {
           {wallMode === 'erase'
             ? 'Kliknij ścianę, by ją usunąć (Esc kończy)'
             : 'Klikaj kolejne narożniki; Enter lub klik w ostatni punkt kończy ścianę (Esc anuluje)'}
+        </div>
+      )}
+      {isGm && tool === 'light' && (
+        <div className="map-placement-hint">
+          {lightMode === 'erase'
+            ? 'Kliknij światło, by je usunąć (Esc kończy)'
+            : 'Kliknij mapę, by postawić światło; klik w istniejące zmienia je na ustawienia z panelu (Esc kończy)'}
         </div>
       )}
       {/* Visibility comes from tokens alone, so „no token" means „no map". The

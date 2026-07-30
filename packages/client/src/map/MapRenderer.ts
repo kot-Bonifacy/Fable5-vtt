@@ -16,6 +16,8 @@ import type {
   DrawingView,
   FogShape,
   FogState,
+  LightGlow,
+  LightMask,
   MapNoteView,
   ScenePoint,
   SceneView,
@@ -28,7 +30,10 @@ import {
   DRAWING_FILL_ALPHA,
   DRAWING_PATH_MAX_POINTS,
   FOG_STROKE_MAX_POINTS,
+  LIGHT_BRIGHT,
+  LIGHT_DIM,
   clampTokenPosition,
+  decodeLevelRuns,
   formatMetres,
   formatSquares,
   normalizeGridOffset,
@@ -90,6 +95,32 @@ export interface WallSettings {
 }
 
 /**
+ * The light tool's current setting (stage 18b). The lamp's own parameters are
+ * deliberately absent: the renderer only reports *where* the click landed, and
+ * the caller — which already holds the toolbar state — decides whether that
+ * means „place a new lamp with these settings" or „retune the one under the
+ * pointer".
+ */
+export interface LightSettings {
+  armed: boolean;
+  mode: 'place' | 'erase';
+}
+
+/**
+ * One lamp handle on the GM's layer (stage 18b). Already in scene pixels — the
+ * renderer never sees metres, so the grid scale stays in one place.
+ */
+export interface LightMarker {
+  id: number;
+  x: number;
+  y: number;
+  /** Outer reach in scene pixels — drawn as a ring, because reach is a distance. */
+  radiusPx: number;
+  color: string;
+  enabled: boolean;
+}
+
+/**
  * How each kind of wall is drawn on the GM's layer. Players never receive a
  * wall, so this palette is read by exactly one person at the table — it only
  * has to make „what blocks sight right now?" legible at a glance.
@@ -118,6 +149,31 @@ const FOG_GM_ALPHA = 0.55;
  * edge picks up a soft two-pixel feather, which looks better than a hard one.
  */
 const FOG_TEXTURE_MAX_PX = 2048;
+/**
+ * How much cover a dimly lit patch keeps (stage 18b). Between „fully lit" (no
+ * cover at all) and „dark" (opaque), and close enough to the fog's own 0.55 that
+ * the three states read as one family of darkness.
+ */
+const DIM_COVER_ALPHA = 0.45;
+/**
+ * Concentric rings used to fake a light's falloff. Pixi v8 can do a radial
+ * gradient fill, but rings drawn additively are a) predictable across drivers
+ * and b) indistinguishable from a gradient at table zoom. Ten is where the
+ * banding stops being visible on a wide neon tube.
+ */
+const GLOW_RING_COUNT = 10;
+/**
+ * Peak opacity of the coloured glow at a lamp's centre.
+ *
+ * Deliberately low. The glow is decoration — what decides visibility is the
+ * mask under it — and because the layer blends additively, a lit street with ten
+ * overlapping lamps stacks all of them. Measured on the test map: 0.4 washed the
+ * whole quarter out, 0.28 keeps a single lamp's colour obvious while ten of them
+ * still read as separate pools of light.
+ */
+const GLOW_ALPHA = 0.28;
+/** How far a flickering lamp's glow dips, as a fraction of its own alpha. */
+const FLICKER_DEPTH = 0.22;
 const MIN_ZOOM = 0.05;
 const MAX_ZOOM = 8;
 /** Screen-pixel distance that turns a click into a drag. */
@@ -260,6 +316,12 @@ export class MapRenderer {
   onWallErase: ((x: number, y: number) => void) | null = null;
   /** Click on a door glyph — open or close it. */
   onDoorToggle: ((wallId: number) => void) | null = null;
+  /** Click with the light tool armed: place a lamp, or retune the one here. */
+  onLightPlace: ((x: number, y: number) => void) | null = null;
+  /** Click with the light eraser armed; the caller picks the lamp. */
+  onLightErase: ((x: number, y: number) => void) | null = null;
+  /** Click on a lamp marker with no tool armed — switch it on or off. */
+  onLightToggle: ((lightId: number) => void) | null = null;
 
   private readonly app = new Application();
   private viewport: Viewport | null = null;
@@ -276,6 +338,13 @@ export class MapRenderer {
   private readonly rangeGraphics = new Graphics();
   private readonly tokenLayer = new Container();
   private readonly dragGhost = new Graphics();
+  /**
+   * The coloured glow of lamps this viewer can see (stage 18b) — above the
+   * tokens, so a torch warms the figure holding it, and below the darkness
+   * cover, which trims whatever the glow spills past a corner.
+   */
+  private readonly lightLayer = new Container();
+  private readonly glowNodes: Graphics[] = [];
   private readonly fogLayer = new Container();
   private readonly fogSprite = new Sprite();
   /** Off-stage container rendered into `fogTexture`; scaled down for memory. */
@@ -298,6 +367,18 @@ export class MapRenderer {
   private readonly visionCover = new Graphics();
   private readonly visionCutout = new Graphics();
   private visionTexture: RenderTexture | null = null;
+  /**
+   * The unlit part of what this viewer can see (stage 18b): the light mask drawn
+   * back over the holes the polygons punched, so only the *lit* part of the field
+   * of view ends up transparent. A one-pixel-per-cell canvas scaled up with
+   * linear filtering, which is what gives a light a soft edge for free.
+   */
+  private readonly unlitSprite = new Sprite();
+  private unlitCanvas: HTMLCanvasElement | null = null;
+  private unlitTexture: Texture | null = null;
+  /** Lamp markers — GM only, above the fog like the walls they usually accompany. */
+  private readonly lightMarkerLayer = new Container();
+  private readonly lightNodes = new Map<number, Container>();
   private readonly noteLayer = new Container();
   private readonly noteNodes = new Map<string, Container>();
   private readonly overlayLayer = new Container();
@@ -358,11 +439,19 @@ export class MapRenderer {
   private lastDoors: WallView[] = [];
   private lastVisionPolygons: ScenePoint[][] = [];
   private visionActive = false;
+  private lastLightMask: LightMask | null = null;
+  private lastGlows: LightGlow[] = [];
+  private lastLights: LightMarker[] = [];
   /** Wall tool settings; `armed` decides whether a click traces or erases. */
   private wall: WallSettings = { armed: false, mode: 'draw', kind: 'wall', snapGrid: true };
   /** The chain being traced: confirmed points plus the one under the pointer. */
   private wallPoints: ScenePoint[] | null = null;
   private wallCursor: ScenePoint | null = null;
+  /** Light tool settings; `armed` decides whether a click places or removes. */
+  private light: LightSettings = { armed: false, mode: 'place' };
+  /** Ticker phase for flickering lamps — renderer-side, never a network event. */
+  private flickerPhase = 0;
+  private hasFlicker = false;
 
   async init(host: HTMLElement): Promise<void> {
     await this.app.init({ resizeTo: host, backgroundAlpha: 0, antialias: true });
@@ -397,6 +486,9 @@ export class MapRenderer {
     viewport.addChild(this.rangeLayer);
     viewport.addChild(this.tokenLayer);
     viewport.addChild(this.dragGhost);
+    // Light is above the tokens — a torch has to warm the figure carrying it —
+    // and below the cover, which is what stops a glow leaking round a corner.
+    viewport.addChild(this.lightLayer);
     // Fog hides the map and everything standing on it, so it sits above the
     // tokens; the GM layer and the ruler stay readable on top of the fog.
     this.fogLayer.addChild(this.fogSprite);
@@ -412,6 +504,9 @@ export class MapRenderer {
     // the fog they usually accompany.
     this.wallLayer.addChild(this.wallGraphics);
     viewport.addChild(this.wallLayer);
+    // Lamp markers keep the walls' treatment: GM-only and readable over the
+    // cover, because they are edited while looking at the finished darkness.
+    viewport.addChild(this.lightMarkerLayer);
     viewport.addChild(this.noteLayer);
     this.overlayLayer.addChild(this.rulerGraphics);
     this.overlayLayer.addChild(this.drawPreview);
@@ -421,13 +516,17 @@ export class MapRenderer {
     this.fogScratch.addChild(this.fogCover);
     this.visionScratch.addChild(this.visionCover);
     this.visionScratch.addChild(this.visionCutout);
+    // Order inside the cover: black sheet, holes for what is in view, then the
+    // unlit part painted back in. What survives all three is „seen *and* lit".
+    this.visionScratch.addChild(this.unlitSprite);
     this.app.stage.addChild(viewport);
     this.viewport = viewport;
+    this.app.ticker.add(this.tickFlicker);
 
     viewport.on('clicked', (event) => {
-      // A wall click was already handled on pointerdown; letting it through
-      // here would also drop a token in the middle of a floor plan.
-      if (this.wall.armed) return;
+      // A wall or lamp click was already handled on pointerdown; letting it
+      // through here would also drop a token in the middle of a floor plan.
+      if (this.wall.armed || this.light.armed) return;
       if (this.notePlacing) {
         this.onNotePlace?.(Math.round(event.world.x), Math.round(event.world.y));
         return;
@@ -460,7 +559,9 @@ export class MapRenderer {
       this.setNotes([]);
       this.setDrawings([]);
       this.setWalls([], []);
-      this.setVision([], false);
+      this.setLights([]);
+      this.setGlows([]);
+      this.setVision([], false, null);
       this.fogSprite.visible = false;
       this.clearTokens();
       return;
@@ -488,7 +589,9 @@ export class MapRenderer {
       this.clearTokens();
       this.setDrawings([]);
       this.setWalls([], []);
-      this.setVision([], false);
+      this.setLights([]);
+      this.setGlows([]);
+      this.setVision([], false, null);
       this.cancelDrawGesture();
       this.cancelWallChain();
       this.fitScene(scene);
@@ -600,13 +703,17 @@ export class MapRenderer {
             ? this.wall.mode === 'erase'
               ? 'pointer'
               : 'crosshair'
-            : this.erasing
-              ? 'pointer'
-              : this.notePlacing
-                ? 'copy'
-                : this.rulerMode
-                  ? 'cell'
-                  : '';
+            : this.light.armed
+              ? this.light.mode === 'erase'
+                ? 'pointer'
+                : 'copy'
+              : this.erasing
+                ? 'pointer'
+                : this.notePlacing
+                  ? 'copy'
+                  : this.rulerMode
+                    ? 'cell'
+                    : '';
   }
 
   private cancelFogGesture(): void {
@@ -752,6 +859,13 @@ export class MapRenderer {
         }
         viewport.plugins.pause('drag');
         this.onFogPreview?.(this.fogGestureShape());
+        return;
+      }
+      if (this.light.armed) {
+        // A lamp is placed, not dragged: it has no extent of its own, only a
+        // position and a reach set in the panel.
+        if (this.light.mode === 'erase') this.onLightErase?.(point.x, point.y);
+        else this.onLightPlace?.(point.x, point.y);
         return;
       }
       if (this.wall.armed) {
@@ -1240,22 +1354,30 @@ export class MapRenderer {
   }
 
   /**
-   * Redraws the player's field of view (stage 18a).
+   * Redraws the player's field of view (stages 18a, 18b).
    *
    * The same composite as the fog, for the same reason: a black sheet over the
    * scene with the visible polygons punched out of it by the `erase` blend
    * mode. `active` is the scene's visibility mode — with it off nothing is
    * drawn at all, while an *empty* polygon list with it on is a real answer:
    * a player with no token on the scene sees nothing.
+   *
+   * On a dark scene a third pass paints the unlit part back in from `mask`, so
+   * what stays transparent is the intersection of „in view" and „lit". Doing it
+   * as a paint-back rather than an intersection is what lets the polygons stay
+   * crisp while the light keeps a soft edge — and it is the only arrangement
+   * that works without the client ever holding a light's true outline.
    */
-  setVision(polygons: ScenePoint[][], active: boolean): void {
+  setVision(polygons: ScenePoint[][], active: boolean, mask?: LightMask | null): void {
     if (this.destroyed) return;
     this.lastVisionPolygons = polygons;
     this.visionActive = active;
+    if (mask !== undefined) this.lastLightMask = mask;
     const scene = this.scene;
 
     if (!scene || !active) {
       this.visionSprite.visible = false;
+      this.unlitSprite.visible = false;
       return;
     }
 
@@ -1284,6 +1406,7 @@ export class MapRenderer {
       this.visionCutout.poly(polygon.map((point) => ({ x: point.x, y: point.y })));
       this.visionCutout.fill({ color: 0x000000, alpha: 1 });
     }
+    this.updateUnlitSheet(this.lastLightMask);
 
     this.app.renderer.render({
       container: this.visionScratch,
@@ -1293,6 +1416,196 @@ export class MapRenderer {
     this.visionSprite.visible = true;
     this.visionSprite.position.set(0, 0);
     this.visionSprite.setSize(scene.width, scene.height);
+  }
+
+  /**
+   * Rebuilds the „unlit" sheet from a light mask.
+   *
+   * The mask is one byte per cell, so it becomes a canvas of exactly that size
+   * and is stretched over the area it describes. Linear filtering across a cell
+   * boundary is what turns three discrete levels into a gradient — the reason a
+   * one-metre grid is enough resolution for something as soft as light.
+   *
+   * The canvas and its texture are reused between pushes: at ten masks a second
+   * during a drag, allocating a new one each time would be pure churn.
+   */
+  private updateUnlitSheet(mask: LightMask | null): void {
+    if (!mask || mask.cols <= 0 || mask.rows <= 0) {
+      this.unlitSprite.visible = false;
+      return;
+    }
+    let canvas = this.unlitCanvas;
+    if (!canvas || canvas.width !== mask.cols || canvas.height !== mask.rows) {
+      canvas = document.createElement('canvas');
+      canvas.width = mask.cols;
+      canvas.height = mask.rows;
+      this.unlitCanvas = canvas;
+      this.unlitTexture?.destroy(true);
+      this.unlitTexture = Texture.from(canvas);
+      this.unlitSprite.texture = this.unlitTexture;
+    }
+    const context = canvas.getContext('2d');
+    if (!context) {
+      this.unlitSprite.visible = false;
+      return;
+    }
+    const levels = decodeLevelRuns(mask.runs, mask.cols * mask.rows);
+    const image = context.createImageData(mask.cols, mask.rows);
+    for (let i = 0; i < levels.length; i++) {
+      const level = levels[i]!;
+      // Black throughout (the RGB bytes stay zero); only the opacity differs,
+      // which is what makes this a cover rather than a picture.
+      image.data[i * 4 + 3] =
+        level === LIGHT_BRIGHT ? 0 : level === LIGHT_DIM ? Math.round(DIM_COVER_ALPHA * 255) : 255;
+    }
+    context.putImageData(image, 0, 0);
+    this.unlitTexture?.source.update();
+    this.unlitSprite.visible = true;
+    this.unlitSprite.position.set(mask.x, mask.y);
+    this.unlitSprite.setSize(mask.cols * mask.cell, mask.rows * mask.cell);
+  }
+
+  /**
+   * The coloured glow of the lamps this viewer can see (stage 18b).
+   *
+   * Additive concentric rings rather than a gradient fill: predictable on every
+   * driver, and at table zoom nobody can tell. This layer is decoration — what
+   * decides visibility is the mask above and the server's own filtering — so it
+   * is free to be approximate.
+   */
+  setGlows(glows: LightGlow[]): void {
+    if (this.destroyed) return;
+    this.lastGlows = glows;
+    this.hasFlicker = glows.some((glow) => glow.flicker);
+    while (this.glowNodes.length < glows.length) {
+      const node = new Graphics();
+      node.blendMode = 'add';
+      this.glowNodes.push(node);
+      this.lightLayer.addChild(node);
+    }
+    for (let i = 0; i < this.glowNodes.length; i++) {
+      const node = this.glowNodes[i]!;
+      const glow = glows[i];
+      node.clear();
+      if (!glow) {
+        node.visible = false;
+        continue;
+      }
+      node.visible = true;
+      node.alpha = 1;
+      const color = parseInt(glow.color.slice(1), 16);
+      const outer = Math.max(glow.dimPx, glow.brightPx);
+      if (outer <= 0) {
+        node.visible = false;
+        continue;
+      }
+      for (let ring = GLOW_RING_COUNT; ring >= 1; ring--) {
+        const radius = (outer * ring) / GLOW_RING_COUNT;
+        // Each ring adds the same amount, so the centre — covered by all of
+        // them — ends up brightest without any per-pixel maths.
+        node.circle(glow.x, glow.y, radius).fill({
+          color,
+          alpha: GLOW_ALPHA / GLOW_RING_COUNT,
+        });
+      }
+    }
+  }
+
+  /**
+   * Flickering lamps, animated here rather than in the data: a candle mrugające
+   * over the network would be an event per frame, and the alpha of a decorative
+   * layer is exactly the kind of thing a client may decide for itself.
+   */
+  private readonly tickFlicker = (): void => {
+    // A scene with no flickering lamp costs one comparison per frame.
+    if (this.destroyed || !this.hasFlicker) return;
+    this.flickerPhase += 0.12;
+    for (let i = 0; i < this.lastGlows.length; i++) {
+      const glow = this.lastGlows[i]!;
+      const node = this.glowNodes[i];
+      if (!node || !glow.flicker) continue;
+      // Two out-of-phase sines: irregular enough to read as a flame, cheap
+      // enough to be free, and never fully dark.
+      const wobble =
+        Math.sin(this.flickerPhase + i) * 0.6 + Math.sin(this.flickerPhase * 2.7 + i * 1.7) * 0.4;
+      node.alpha = 1 - FLICKER_DEPTH * (0.5 - wobble / 2);
+    }
+  };
+
+  /**
+   * Arms or disarms the light tool. Like every other map tool it takes the left
+   * button off the viewport — a click has to mean one thing at a time.
+   */
+  setLightTool(settings: LightSettings): void {
+    this.light = settings;
+    this.applyMapCursor();
+  }
+
+  /**
+   * Draws the GM's lamp markers (stage 18b). Players never receive a lamp row,
+   * so for them this stays empty and the glow layer is all they see.
+   *
+   * Each marker carries its outer radius as a dashed-looking ring, because the
+   * question a GM asks while dressing a scene is „how far does this reach?" and
+   * the glow alone does not answer it once several lamps overlap.
+   */
+  setLights(lights: LightMarker[]): void {
+    if (this.destroyed) return;
+    this.lastLights = lights;
+    const k = this.overlayScale();
+    const seen = new Set<number>();
+
+    for (const light of lights) {
+      seen.add(light.id);
+      let node = this.lightNodes.get(light.id);
+      let ring: Graphics;
+      if (!node) {
+        node = new Container();
+        ring = new Graphics();
+        node.addChild(ring);
+        const glyph = new Text({
+          text: '💡',
+          style: { fontFamily: 'system-ui, sans-serif', fontSize: 20 },
+        });
+        glyph.anchor.set(0.5, 0.5);
+        node.addChild(glyph);
+        node.eventMode = 'static';
+        node.cursor = 'pointer';
+        node.on('pointerdown', (event: FederatedPointerEvent) => {
+          if (event.button !== 0) return;
+          // While a light tool is armed the click belongs to the tool: the
+          // eraser has to reach the lamp under the glyph, and „place" retunes it.
+          if (this.light.armed) return;
+          event.stopPropagation();
+          this.onLightToggle?.(light.id);
+        });
+        this.lightNodes.set(light.id, node);
+        this.lightMarkerLayer.addChild(node);
+      } else {
+        ring = node.children[0] as Graphics;
+      }
+      node.position.set(light.x, light.y);
+      // The glyph is screen-sized (it is a handle), the ring is world-sized (it
+      // is a distance) — so only the glyph rescales with the zoom.
+      const glyph = node.children[1];
+      if (glyph) glyph.scale.set(k);
+      ring
+        .clear()
+        .circle(0, 0, light.radiusPx)
+        .stroke({
+          color: parseInt(light.color.slice(1), 16),
+          width: 2 * k,
+          alpha: light.enabled ? 0.7 : 0.25,
+        });
+      // A switched-off lamp is dimmed, so its state reads from across the map.
+      node.alpha = light.enabled ? 1 : 0.4;
+    }
+
+    for (const [id, node] of this.lightNodes) {
+      if (seen.has(id)) continue;
+      this.lightNodes.delete(id);
+      node.destroy({ children: true });
+    }
   }
 
   /** Draws the GM's note pins. Players never receive notes, so this stays empty. */
@@ -1342,9 +1655,10 @@ export class MapRenderer {
     this.setRulers(this.lastRulers);
     this.setRangeRings(this.lastRingCentre, this.lastRings);
     this.setNotes(this.lastNotes);
-    // Wall handles and door glyphs are screen-sized, like the note pins: at a
-    // typical 0.18x map zoom a world-scaled handle is a couple of pixels.
+    // Wall handles, door glyphs and lamp handles are screen-sized, like the note
+    // pins: at a typical 0.18x map zoom a world-scaled handle is a few pixels.
     this.drawWallLayer();
+    this.setLights(this.lastLights);
   }
 
   private clearTokens(): void {
@@ -1515,11 +1829,18 @@ export class MapRenderer {
       this.visionScratch.destroy({ children: true });
       this.visionTexture?.destroy(true);
       this.visionTexture = null;
+      // The unlit sheet's texture wraps a canvas of its own, and it lives inside
+      // the off-stage scratch container — so nothing above reaches it either.
+      this.unlitTexture?.destroy(true);
+      this.unlitTexture = null;
+      this.unlitCanvas = null;
+      this.app.ticker.remove(this.tickFlicker);
       this.app.destroy(true, { children: true });
       this.tokenNodes.clear();
       this.noteNodes.clear();
       this.drawNodes.clear();
       this.doorNodes.clear();
+      this.lightNodes.clear();
     }
     // When init is still pending, it destroys the app itself on completion.
   }

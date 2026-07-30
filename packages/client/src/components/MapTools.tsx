@@ -7,6 +7,7 @@ import {
   DRAWING_MIN_WIDTH,
   FOG_BRUSH_MAX_RADIUS,
   FOG_BRUSH_MIN_RADIUS,
+  LIGHT_COLORS,
   ROLE_GM,
 } from '@vtt/shared';
 import { useAttackStore } from '../stores/attackStore.js';
@@ -17,7 +18,16 @@ import { useMapToolStore } from '../stores/mapToolStore.js';
 import { useRulerStore } from '../stores/rulerStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useWallStore } from '../stores/wallStore.js';
-import { clearDrawings, clearWalls, deleteDrawing, resetFog, undoFog } from '../socket.js';
+import { useLightStore } from '../stores/lightStore.js';
+import { useTokenStore } from '../stores/tokenStore.js';
+import {
+  clearDrawings,
+  clearWalls,
+  deleteDrawing,
+  resetFog,
+  toggleTokenLight,
+  undoFog,
+} from '../socket.js';
 import {
   IconBrush,
   IconCloud,
@@ -27,7 +37,9 @@ import {
   IconEye,
   IconEyeOff,
   IconFill,
+  IconFlicker,
   IconFog,
+  IconLamp,
   IconLine,
   IconPencil,
   IconPin,
@@ -87,6 +99,16 @@ export function MapTools() {
   const setWallPlayerToggle = useMapToolStore((s) => s.setWallPlayerToggle);
   const wallSnapGrid = useMapToolStore((s) => s.wallSnapGrid);
   const setWallSnapGrid = useMapToolStore((s) => s.setWallSnapGrid);
+  const lightMode = useMapToolStore((s) => s.lightMode);
+  const setLightMode = useMapToolStore((s) => s.setLightMode);
+  const lightBrightM = useMapToolStore((s) => s.lightBrightM);
+  const setLightBrightM = useMapToolStore((s) => s.setLightBrightM);
+  const lightDimM = useMapToolStore((s) => s.lightDimM);
+  const setLightDimM = useMapToolStore((s) => s.setLightDimM);
+  const lightColor = useMapToolStore((s) => s.lightColor);
+  const setLightColor = useMapToolStore((s) => s.setLightColor);
+  const lightFlicker = useMapToolStore((s) => s.lightFlicker);
+  const setLightFlicker = useMapToolStore((s) => s.setLightFlicker);
   const privateMode = useRulerStore((s) => s.privateMode);
   const setPrivateMode = useRulerStore((s) => s.setPrivateMode);
   const overlay = useAttackStore((s) => s.overlay);
@@ -99,6 +121,9 @@ export function MapTools() {
   const drawings = useDrawingStore((s) => s.drawings);
   const visibility = useSceneStore((s) => s.effectiveScene?.visibility ?? 'open');
   const hasWalls = useWallStore((s) => s.walls.length > 0);
+  const sceneIsDark = useSceneStore((s) => s.effectiveScene?.dark ?? false);
+  const lightCount = useLightStore((s) => s.lights.length);
+  const tokens = useTokenStore((s) => s.tokens);
 
   // Switching fog off mid-session must put the brush away too — otherwise the
   // settings row lingers next to a disabled tool button, and a stray drag
@@ -117,6 +142,15 @@ export function MapTools() {
     }
     return newest;
   }, [drawings, sceneId, myUserId]);
+
+  /**
+   * Tokens on this scene that carry a lamp and whose light state this viewer is
+   * allowed to see — which, for a player, is exactly the ones they control.
+   */
+  const myTorches = useMemo(
+    () => Object.values(tokens).filter((token) => token.sceneId === sceneId && token.light != null),
+    [tokens, sceneId],
+  );
 
   const anyDrawings = useMemo(
     () => Object.values(drawings).some((drawing) => drawing.sceneId === sceneId),
@@ -240,6 +274,19 @@ export function MapTools() {
           </button>
           <button
             type="button"
+            className={`map-tool${tool === 'light' ? ' map-tool--active' : ''}`}
+            title={
+              sceneIsDark && visibility === 'dynamic'
+                ? 'Światła (L) — kliknij mapę, by postawić lampę; gracze nigdy nie dostają listy świateł'
+                : 'Światła (L) — działają dopiero na ciemnej scenie w trybie „Dynamiczna” (zakładka „Sceny”); można je stawiać już teraz'
+            }
+            aria-pressed={tool === 'light'}
+            onClick={() => toggleTool('light')}
+          >
+            <IconLamp />
+          </button>
+          <button
+            type="button"
             className={`map-tool${tool === 'note' ? ' map-tool--active' : ''}`}
             title="Notatka MG (N) — kliknij na mapie, by wbić pinezkę (gracze jej nie widzą)"
             aria-pressed={tool === 'note'}
@@ -249,6 +296,26 @@ export function MapTools() {
           </button>
         </>
       )}
+
+      {/* The player's own torch switch. Sneaking down a corridor in the dark is
+          a tactical decision, so it must not require asking the GM — and it
+          belongs on the map rather than in a panel, because that is where the
+          consequence shows. The GM flips the same switch from a token's menu.
+          A player only ever receives `light` for tokens they control, so the
+          list needs no ownership check of its own. */}
+      {!isGm &&
+        myTorches.map((torch) => (
+          <button
+            key={torch.id}
+            type="button"
+            className={`map-tool${torch.light?.on ? ' map-tool--active' : ''}`}
+            title={torch.light?.on ? `Zgaś latarkę: ${torch.name}` : `Zapal latarkę: ${torch.name}`}
+            aria-pressed={torch.light?.on ?? false}
+            onClick={() => void toggleTokenLight(torch.id)}
+          >
+            <IconLamp />
+          </button>
+        ))}
 
       {overlay && (
         <button
@@ -501,6 +568,98 @@ export function MapTools() {
           {visibility !== 'dynamic' && (
             <span className="map-tool-hint">
               Tryb widoczności sceny to nie „Dynamiczna” — ściany nic jeszcze nie zasłaniają
+            </span>
+          )}
+        </div>
+      )}
+
+      {isGm && tool === 'light' && (
+        <div className="map-tool-options" role="group" aria-label="Ustawienia świateł">
+          <button
+            type="button"
+            className={`map-tool${lightMode === 'place' ? ' map-tool--active' : ''}`}
+            title="Stawianie — kliknij mapę; klik w istniejące światło zmienia je na te ustawienia"
+            aria-pressed={lightMode === 'place'}
+            onClick={() => setLightMode('place')}
+          >
+            <IconLamp />
+          </button>
+          <button
+            type="button"
+            className={`map-tool${lightMode === 'erase' ? ' map-tool--active' : ''}`}
+            title="Gumka — kliknij światło, by je usunąć"
+            aria-pressed={lightMode === 'erase'}
+            onClick={() => setLightMode('erase')}
+          >
+            <IconEraser />
+          </button>
+
+          {lightMode === 'place' && (
+            <>
+              <span className="map-tools-sep" aria-hidden />
+              <label className="map-tool-slider" title="Zasięg światła jasnego (metry)">
+                <span className="map-tool-hint">jasno</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={40}
+                  step={1}
+                  value={lightBrightM}
+                  onChange={(event) => setLightBrightM(Number(event.target.value))}
+                  aria-label="Zasięg światła jasnego w metrach"
+                />
+                <span>{lightBrightM} m</span>
+              </label>
+              <label className="map-tool-slider" title="Zasięg światła przyćmionego (metry)">
+                <span className="map-tool-hint">mrok</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={60}
+                  step={1}
+                  value={lightDimM}
+                  onChange={(event) => setLightDimM(Number(event.target.value))}
+                  aria-label="Zasięg światła przyćmionego w metrach"
+                />
+                <span>{Math.max(lightBrightM, lightDimM)} m</span>
+              </label>
+              <div className="map-color-row" role="group" aria-label="Barwa światła">
+                {LIGHT_COLORS.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    className={`map-color${lightColor === color ? ' map-color--active' : ''}`}
+                    style={{ background: color }}
+                    title={`Barwa ${color}`}
+                    aria-label={`Barwa ${color}`}
+                    aria-pressed={lightColor === color}
+                    onClick={() => setLightColor(color)}
+                  />
+                ))}
+              </div>
+              <button
+                type="button"
+                className={`map-tool${lightFlicker ? ' map-tool--active' : ''}`}
+                title={
+                  lightFlicker
+                    ? 'Migotanie włączone — świeca, ognisko, psujący się neon'
+                    : 'Światło stałe — kliknij, by migotało'
+                }
+                aria-pressed={lightFlicker}
+                onClick={() => setLightFlicker(!lightFlicker)}
+              >
+                <IconFlicker />
+              </button>
+            </>
+          )}
+
+          <span className="map-tools-sep" aria-hidden />
+          <span className="map-tool-hint">
+            {lightCount === 0 ? 'brak świateł' : `świateł: ${lightCount}`}
+          </span>
+          {!(sceneIsDark && visibility === 'dynamic') && (
+            <span className="map-tool-hint">
+              Scena nie jest ciemna — światła nic jeszcze nie zmieniają (zakładka „Sceny”)
             </span>
           )}
         </div>

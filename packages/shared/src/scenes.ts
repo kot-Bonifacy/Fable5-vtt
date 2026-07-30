@@ -51,6 +51,19 @@ export interface SceneView {
   metersPerSquare: number;
   /** What limits a player's view here: nothing, hand-painted fog, or walls. */
   visibility: SceneVisibility;
+  /**
+   * Is it dark in here (stage 18b)? Only meaningful in `dynamic` visibility —
+   * darkness limits what a *token* sees, and the other two modes do not ask
+   * tokens anything. Off means the scene is lit end to end, which is the right
+   * default for a street, a bar or a daylight map.
+   */
+  dark: boolean;
+  /**
+   * How far a token sees in the dark with no light, in metres (stage 18b).
+   * Zero is „nothing at all"; the default of one grid square exists so a player
+   * without a torch reads their screen as darkness rather than as a crash.
+   */
+  darkSightM: number;
 }
 
 /** List entry for the GM scene manager — never sent to players. */
@@ -85,6 +98,20 @@ export interface ScenePatch {
   // `visibility` is deliberately NOT patchable here: changing it has to
   // re-filter every player's token list in the same breath, so it goes through
   // `scene:visibility` (stages 17a, 18a) rather than the generic scene patch.
+  //
+  // `dark` and `darkSightM` are out for the same reason and travel on
+  // `scene:lighting` (stage 18b): turning the lights out takes every token in
+  // an unlit spot away from the players who could see it a moment ago.
+}
+
+/**
+ * Client → server payload of `scene:lighting` (stage 18b). Either field may be
+ * omitted; sending neither is a no-op rather than an error.
+ */
+export interface SceneLightingPayload {
+  sceneId: string;
+  dark?: boolean;
+  darkSightM?: number;
 }
 
 /**

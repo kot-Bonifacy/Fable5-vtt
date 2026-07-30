@@ -18,7 +18,6 @@ import type {
 import {
   ROLE_GM,
   clampTokenPosition,
-  isPointVisible,
   isTokenInFog,
   tokenCentre,
   sanitizeTokenHp,
@@ -41,13 +40,16 @@ import {
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { campaignRoom, emitToCampaignUser, gmRoom, sceneRoom } from './state.js';
 import { fetchFogState } from './fog-io.js';
+import { tokenLightOf } from './lights-io.js';
 import {
   emitDragVision,
   emitVisionToPlayers,
+  isPointObservable,
   loadVisionContext,
   usesDynamicVision,
-  visionPolygonsFor,
+  viewerSightFor,
   type SceneVisionContext,
+  type ViewerLighting,
 } from './vision.js';
 import { requireCampaignScene } from './scenes.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
@@ -91,6 +93,9 @@ export function toTokenView(
   if (includePrivate) {
     view.characterId = token.characterId;
     view.visionRange = token.visionRange;
+    // The lamp itself is private (the GM configures it, the controller flips
+    // it); what everybody else gets is the lit corridor it produces.
+    view.light = tokenLightOf(token);
     // A link to a deleted/unreadable sheet falls back to the token's own HP.
     view.hp = linked
       ? linked.hp
@@ -147,15 +152,22 @@ function toGridScene(scene: Scene): Pick<SceneView, 'grid'> {
 }
 
 /**
- * What hides tokens from one player on this scene (stages 17a, 18a).
+ * What hides tokens from one player on this scene (stages 17a, 18a, 18b).
  *
  * A scene answers „what may this player see?" one way at a time, which is why
  * the visibility mode is a single setting rather than two switches — this type
  * is the shape of that decision, and there is deliberately no case where both
  * the fog and the walls have a say.
+ *
+ * The `vision` variant carries the lighting alongside the polygons rather than
+ * as a fourth kind: darkness is not a different way of hiding, it is a second
+ * condition on the same one. „In view but unlit" has to be as hidden as „behind
+ * a wall", and one variant holding both keeps that impossible to forget.
  */
 export type Concealment =
-  { kind: 'none' } | { kind: 'fog'; fog: FogState } | { kind: 'vision'; polygons: ScenePoint[][] };
+  | { kind: 'none' }
+  | { kind: 'fog'; fog: FogState }
+  | { kind: 'vision'; polygons: ScenePoint[][]; lighting: ViewerLighting | null };
 
 /**
  * Builds the concealment one viewer is subject to. The GM is subject to none of
@@ -171,7 +183,8 @@ export async function concealmentFor(
   if (scene.visibility === 'fog') return { kind: 'fog', fog: await fetchFogState(prisma, scene) };
   if (usesDynamicVision(scene)) {
     const ctx = context ?? (await loadVisionContext(prisma, scene));
-    return { kind: 'vision', polygons: await visionPolygonsFor(prisma, scene, user.id, ctx) };
+    const sight = await viewerSightFor(prisma, scene, user.id, ctx);
+    return { kind: 'vision', polygons: sight.polygons, lighting: sight.lighting };
   }
   return { kind: 'none' };
 }
@@ -179,11 +192,11 @@ export async function concealmentFor(
 /**
  * Is the token concealed from *this player* right now?
  *
- * Whoever controls the token is exempt, under both regimes: a player must never
+ * Whoever controls the token is exempt, under every regime: a player must never
  * lose their own character off the map because the GM has not lit that corridor
- * yet, or because the character walked behind its own wall. Losing sight of
- * your own token reads as a bug, not as suspense — and the position is hardly a
- * secret from the person moving it.
+ * yet, because the character walked behind its own wall, or because they put
+ * their own torch out. Losing sight of your own token reads as a bug, not as
+ * suspense — and the position is hardly a secret from the person moving it.
  */
 export function concealedFrom(
   token: Pick<Token, 'x' | 'y' | 'size' | 'ownerId'>,
@@ -199,8 +212,13 @@ export function concealedFrom(
     return isTokenInFog(token, toGridScene(scene), concealment.fog);
   }
   // Measured at the token's centre, like the fog and the ruler: „where a token
-  // is" has to mean one thing across the whole VTT.
-  return !isPointVisible(tokenCentre(token, toGridScene(scene)), concealment.polygons);
+  // is" has to mean one thing across the whole VTT. On a dark scene being in
+  // view is not enough — something has to be shining on it.
+  return !isPointObservable(
+    tokenCentre(token, toGridScene(scene)),
+    concealment.polygons,
+    concealment.lighting,
+  );
 }
 
 /**
@@ -297,7 +315,7 @@ async function loadLinkedSheet(deps: RealtimeDeps, token: Token): Promise<Linked
  * owner. Hidden tokens go to the GM room only; tokens on non-active scenes go
  * to that scene's viewers (GM previews).
  */
-async function emitTokenUpsert(
+export async function emitTokenUpsert(
   deps: RealtimeDeps,
   campaignId: string,
   scene: Scene,
@@ -569,6 +587,17 @@ export const tokenUpdateEvent = defineEvent<TokenUpdatePayload, TokenView>({
     if (patch.hidden !== undefined) data.hidden = patch.hidden;
     if (patch.statuses !== undefined) data.statuses = JSON.stringify(patch.statuses);
     if (patch.visionRange !== undefined) data.visionRange = patch.visionRange;
+    if (patch.light !== undefined) {
+      // Null takes the lamp away by zeroing its reach: „carries nothing" and
+      // „carries a lamp of radius zero" must not be two states (see the schema).
+      data.lightBrightM = patch.light?.brightM ?? 0;
+      data.lightDimM = patch.light?.dimM ?? 0;
+      if (patch.light) {
+        data.lightColor = patch.light.color;
+        data.lightFlicker = patch.light.flicker;
+        data.lightOn = patch.light.on;
+      }
+    }
     if (patch.characterId !== undefined) data.characterId = patch.characterId;
     // A linked token has no HP of its own: the value is written through to
     // the sheet (single source of truth) and echoed back to sheet viewers.
@@ -700,8 +729,15 @@ async function emitDynamicMove(
       member.emit('token:move', move);
       continue;
     }
-    const polygons = await visionPolygonsFor(deps.ctx.prisma, scene, data.user.id, context);
-    if (isPointVisible(centre, polygons)) member.emit('token:move', move);
+    // The watcher's own sight, cast from where *their* tokens are — including
+    // the light they are carrying, which is why the token being dragged is
+    // handed in: its torch has to have moved with it.
+    const sight = await viewerSightFor(deps.ctx.prisma, scene, data.user.id, context, {
+      tokenId: token.id,
+      x: position.x,
+      y: position.y,
+    });
+    if (isPointObservable(centre, sight.polygons, sight.lighting)) member.emit('token:move', move);
   }
 
   if (final) {

@@ -2,6 +2,7 @@ import type { Socket } from 'socket.io';
 import type {
   DrawingView,
   FogState,
+  LightView,
   MapNoteView,
   SceneSummary,
   SceneView,
@@ -17,6 +18,7 @@ import { fetchFogState } from './fog-io.js';
 import { fetchSceneDrawings } from './drawings.js';
 import { fetchSceneNotes } from './notes.js';
 import { fetchSceneWalls } from './walls-io.js';
+import { fetchSceneLights } from './lights-io.js';
 import { computeViewerVision, type ViewerVision } from './vision.js';
 import { fetchSceneList, getSceneById, toSceneView } from './scenes.js';
 import { fetchSceneTokensFor } from './tokens.js';
@@ -52,6 +54,7 @@ export async function buildStateSync(
       drawings: [],
       notes: [],
       walls: [],
+      lights: [],
       vision: null,
       doors: [],
       characters: [],
@@ -74,6 +77,7 @@ export async function buildStateSync(
     drawings,
     notes,
     walls,
+    lights,
     vision,
     characters,
     bots,
@@ -108,6 +112,11 @@ export async function buildStateSync(
     viewedSceneId && user.role === ROLE_GM
       ? fetchSceneWalls(deps.ctx.prisma, viewedSceneId)
       : Promise.resolve<WallView[]>([]),
+    // Lights are GM data for the same reason walls are — the shape a lamp
+    // throws is the shape of the room. Players get `vision.light` instead.
+    viewedSceneId && user.role === ROLE_GM
+      ? fetchSceneLights(deps.ctx.prisma, viewedSceneId)
+      : Promise.resolve<LightView[]>([]),
     // Field of view of this player's own tokens; null in every other mode.
     viewedScene
       ? computeViewerVision(deps.ctx.prisma, viewedScene, user)
@@ -136,7 +145,15 @@ export async function buildStateSync(
     drawings,
     notes,
     walls,
-    vision: vision ? { sceneId: scene?.id ?? '', polygons: vision.polygons } : null,
+    lights,
+    vision: vision
+      ? {
+          sceneId: scene?.id ?? '',
+          polygons: vision.polygons,
+          light: vision.light,
+          glows: vision.glows,
+        }
+      : null,
     doors: vision?.doors ?? [],
     characters,
     bots,

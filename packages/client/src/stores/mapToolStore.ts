@@ -8,6 +8,9 @@ import {
   DRAWING_MIN_FONT_SIZE,
   DRAWING_MIN_WIDTH,
   FOG_DEFAULT_BRUSH_RADIUS,
+  LIGHT_DEFAULT_BRIGHT_M,
+  LIGHT_DEFAULT_COLOR,
+  LIGHT_DEFAULT_DIM_M,
   type DrawingStyle,
   type FogMode,
   type WallKind,
@@ -21,7 +24,16 @@ import {
  * — two tools fighting over the same drag is exactly the bug this prevents.
  * `pointer` is the normal state: pan the map, drag tokens.
  */
-export const MAP_TOOLS = ['pointer', 'ruler', 'fog', 'note', 'draw', 'erase', 'wall'] as const;
+export const MAP_TOOLS = [
+  'pointer',
+  'ruler',
+  'fog',
+  'note',
+  'draw',
+  'erase',
+  'wall',
+  'light',
+] as const;
 export type MapTool = (typeof MAP_TOOLS)[number];
 
 /**
@@ -31,6 +43,16 @@ export type MapTool = (typeof MAP_TOOLS)[number];
  * constantly while tracing a floor plan.
  */
 export type WallMode = 'draw' | 'erase';
+
+/**
+ * What the light tool does with a click (stage 18b). Modes of one tool rather
+ * than two tools, for the reason the wall tool has them: dressing a scene with
+ * lamps means placing, adjusting and removing them in the same breath.
+ *
+ * `place` on an existing lamp *retunes* it to the settings in the panel, which
+ * is what makes the panel double as the editor — one control set, no dialog.
+ */
+export type LightMode = 'place' | 'erase';
 
 /** How the fog tool paints: a round brush, or a dragged rectangle. */
 export type FogBrushShape = 'brush' | 'rect';
@@ -147,6 +169,13 @@ interface MapToolStoreState extends DrawSettings {
   wallPlayerToggle: boolean;
   /** Snap drawn points to the grid (endpoints of existing walls always win). */
   wallSnapGrid: boolean;
+  /** Light tool: placing/retuning lamps, or removing them. */
+  lightMode: LightMode;
+  /** What the next placed lamp gets, in metres. */
+  lightBrightM: number;
+  lightDimM: number;
+  lightColor: string;
+  lightFlicker: boolean;
 
   setTool: (tool: MapTool) => void;
   /** Clicking the armed tool again puts it away. */
@@ -164,6 +193,11 @@ interface MapToolStoreState extends DrawSettings {
   setWallKind: (wallKind: WallKind) => void;
   setWallPlayerToggle: (wallPlayerToggle: boolean) => void;
   setWallSnapGrid: (wallSnapGrid: boolean) => void;
+  setLightMode: (lightMode: LightMode) => void;
+  setLightBrightM: (lightBrightM: number) => void;
+  setLightDimM: (lightDimM: number) => void;
+  setLightColor: (lightColor: string) => void;
+  setLightFlicker: (lightFlicker: boolean) => void;
 }
 
 export const useMapToolStore = create<MapToolStoreState>((set, get) => {
@@ -194,6 +228,11 @@ export const useMapToolStore = create<MapToolStoreState>((set, get) => {
     // it, which is the rarer case and the one worth a deliberate click.
     wallPlayerToggle: true,
     wallSnapGrid: true,
+    lightMode: 'place',
+    lightBrightM: LIGHT_DEFAULT_BRIGHT_M,
+    lightDimM: LIGHT_DEFAULT_DIM_M,
+    lightColor: LIGHT_DEFAULT_COLOR,
+    lightFlicker: false,
     ...loadDrawSettings(),
 
     setTool: (tool) => set({ tool }),
@@ -211,6 +250,11 @@ export const useMapToolStore = create<MapToolStoreState>((set, get) => {
     setWallKind: (wallKind) => set({ wallKind }),
     setWallPlayerToggle: (wallPlayerToggle) => set({ wallPlayerToggle }),
     setWallSnapGrid: (wallSnapGrid) => set({ wallSnapGrid }),
+    setLightMode: (lightMode) => set({ lightMode }),
+    setLightBrightM: (lightBrightM) => set({ lightBrightM }),
+    setLightDimM: (lightDimM) => set({ lightDimM }),
+    setLightColor: (lightColor) => set({ lightColor }),
+    setLightFlicker: (lightFlicker) => set({ lightFlicker }),
   };
 });
 

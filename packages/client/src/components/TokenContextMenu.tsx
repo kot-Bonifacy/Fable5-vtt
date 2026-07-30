@@ -1,13 +1,24 @@
 import { useEffect, useState } from 'react';
 import type { CampaignDetail, TokenPatch, TokenView } from '@vtt/shared';
 import {
+  LIGHT_COLORS,
+  LIGHT_DEFAULT_COLOR,
+  LIGHT_RADIUS_MAX_METRES,
   TOKEN_HP_LIMIT,
+  TOKEN_LIGHT_DEFAULT_BRIGHT_M,
+  TOKEN_LIGHT_DEFAULT_DIM_M,
   TOKEN_SIZE_MAX,
   TOKEN_SIZE_MIN,
   VISION_RANGE_MAX_METRES,
 } from '@vtt/shared';
 import { apiGet } from '../api.js';
-import { addToCombat, deleteToken, removeFromCombat, updateToken } from '../socket.js';
+import {
+  addToCombat,
+  deleteToken,
+  removeFromCombat,
+  toggleTokenLight,
+  updateToken,
+} from '../socket.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useCombatStore } from '../stores/combatStore.js';
@@ -31,6 +42,13 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
   const [visionRange, setVisionRange] = useState(
     token.visionRange == null ? '' : String(token.visionRange),
   );
+  const [hasLight, setHasLight] = useState(token.light != null);
+  const [lightBrightM, setLightBrightM] = useState(
+    token.light?.brightM ?? TOKEN_LIGHT_DEFAULT_BRIGHT_M,
+  );
+  const [lightDimM, setLightDimM] = useState(token.light?.dimM ?? TOKEN_LIGHT_DEFAULT_DIM_M);
+  const [lightColor, setLightColor] = useState(token.light?.color ?? LIGHT_DEFAULT_COLOR);
+  const [lightFlicker, setLightFlicker] = useState(token.light?.flicker ?? false);
   const [players, setPlayers] = useState<PlayerOption[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -66,6 +84,18 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
       ownerId: ownerId === '' ? null : ownerId,
       characterId: characterId === '' ? null : characterId,
       visionRange: parsedRange,
+      // Taking the lamp away is `null`, not a lamp of radius zero — see
+      // `sanitizeTokenLight`. The switch keeps whatever state it was in, so
+      // retuning a lit torch does not put it out.
+      light: hasLight
+        ? {
+            brightM: lightBrightM,
+            dimM: lightDimM,
+            color: lightColor,
+            flicker: lightFlicker,
+            on: token.light?.on ?? true,
+          }
+        : null,
       // A linked token takes its HP from the sheet — never write them here.
       ...(linked ? {} : { hp: hasHp ? { current: hpCurrent, max: hpMax } : null }),
     };
@@ -122,6 +152,73 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
         <p className="auth-hint">
           Puste pole = ograniczają tylko ściany. Ma znaczenie na scenach z trybem „Dynamiczna”.
         </p>
+
+        <label className="auth-label">
+          <input
+            type="checkbox"
+            checked={hasLight}
+            onChange={(e) => setHasLight(e.target.checked)}
+          />{' '}
+          Nosi światło (latarka, pochodnia)
+        </label>
+        {hasLight && (
+          <>
+            <div className="scene-editor-row">
+              <label className="auth-label" htmlFor="token-light-bright">
+                jasno (m)
+              </label>
+              <input
+                id="token-light-bright"
+                type="number"
+                className="scene-number-input"
+                min={0}
+                max={LIGHT_RADIUS_MAX_METRES}
+                step={1}
+                value={lightBrightM}
+                onChange={(e) => setLightBrightM(Number(e.target.value))}
+              />
+              <label className="auth-label" htmlFor="token-light-dim">
+                mrok (m)
+              </label>
+              <input
+                id="token-light-dim"
+                type="number"
+                className="scene-number-input"
+                min={0}
+                max={LIGHT_RADIUS_MAX_METRES}
+                step={1}
+                value={lightDimM}
+                onChange={(e) => setLightDimM(Number(e.target.value))}
+              />
+            </div>
+            <div className="map-color-row" role="group" aria-label="Barwa światła tokenu">
+              {LIGHT_COLORS.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  className={`map-color${lightColor === color ? ' map-color--active' : ''}`}
+                  style={{ background: color }}
+                  title={`Barwa ${color}`}
+                  aria-label={`Barwa ${color}`}
+                  aria-pressed={lightColor === color}
+                  onClick={() => setLightColor(color)}
+                />
+              ))}
+            </div>
+            <label className="auth-label">
+              <input
+                type="checkbox"
+                checked={lightFlicker}
+                onChange={(e) => setLightFlicker(e.target.checked)}
+              />{' '}
+              Migotanie (ogień, psujący się neon)
+            </label>
+            <p className="auth-hint">
+              Latarkę zapala i gasi także sam gracz — z paska mapy albo z menu tokenu. Widać ją
+              tylko na ciemnych scenach w trybie „Dynamiczna”.
+            </p>
+          </>
+        )}
 
         <label className="auth-label" htmlFor="token-owner">
           Właściciel
@@ -308,6 +405,15 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
         >
           {token.hidden ? '👁 Pokaż graczom' : '🚫 Ukryj przed graczami'}
         </button>
+        {token.light && (
+          <button
+            type="button"
+            className="context-menu-item"
+            onClick={() => void toggleTokenLight(token.id).then(onClose)}
+          >
+            {token.light.on ? '🌑 Zgaś latarkę' : '🔆 Zapal latarkę'}
+          </button>
+        )}
         {/* Reinforcements arriving mid-fight — and whoever just fled it. */}
         {combat &&
           (combatant ? (

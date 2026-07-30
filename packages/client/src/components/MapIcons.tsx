@@ -310,6 +310,42 @@ export function IconWindow(props: IconProps) {
   );
 }
 
+/** A bulb — the light tool, and one lamp on the map (stage 18b). */
+export function IconLamp(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 3a6 6 0 0 0-3.4 10.9c.6.4.9 1 .9 1.7v.4h5v-.4c0-.7.3-1.3.9-1.7A6 6 0 0 0 12 3Z" />
+      <path d="M9.5 19h5M10.5 21.5h3" />
+    </Svg>
+  );
+}
+
+/**
+ * A moon over a rooftop — „dark scene". A crescent alone reads as „night mode"
+ * for the interface, which is a different switch entirely.
+ */
+export function IconDarkScene(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M15.5 3.2a6.4 6.4 0 1 0 5.3 9.6 7 7 0 0 1-5.3-9.6Z" />
+      <path d="M2.5 20.5h9M4 20.5v-4l3.5-2.6L11 16.5v4" opacity="0.7" />
+    </Svg>
+  );
+}
+
+/** A flickering flame — the lamp's „migotanie" toggle. */
+export function IconFlicker(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 3c2.5 3 4.5 5 4.5 8a4.5 4.5 0 0 1-9 0c0-1.6.8-2.9 2-4.3" />
+      <path
+        d="M12 19.5c1.4 0 2.2-1 2.2-2.1 0-1.3-1.1-2-2.2-3.4-1.1 1.4-2.2 2.1-2.2 3.4 0 1.1.8 2.1 2.2 2.1Z"
+        opacity="0.6"
+      />
+    </Svg>
+  );
+}
+
 /** Points snapping to a lattice — the wall snap toggle. */
 export function IconSnap(props: IconProps) {
   return (

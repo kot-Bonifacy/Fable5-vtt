@@ -198,6 +198,18 @@ model Token {
    * sources arrive in 18b.
    */
   visionRange Float?
+  /**
+   * Light this token carries (stage 18b) — a torch, a lamp, a flare. A dim
+   * radius of zero means it carries nothing, which is why these are plain
+   * defaults rather than nullable columns: „no lamp" and „lamp of size zero"
+   * must not be two different states.
+   */
+  lightBrightM Float   @default(0)
+  lightDimM    Float   @default(0)
+  lightColor   String  @default("#ffd9a0")
+  lightFlicker Boolean @default(false)
+  /// Lit right now. The one light field a player may write, on a token they control.
+  lightOn      Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -264,6 +276,19 @@ model Scene {
    */
   visibility String @default("fog")
 
+  /**
+   * Is it dark in here (stage 18b)? Only meaningful while `visibility` is
+   * "dynamic": darkness limits what a *token* sees, and the other two modes ask
+   * tokens nothing. Off keeps every existing scene exactly as it was.
+   */
+  dark Boolean @default(false)
+  /**
+   * How far a token sees in the dark with no light at all, in metres. One grid
+   * square by default — a fully black screen reads as a broken app rather than
+   * as darkness, and proper darkvision is a character trait (stage 23).
+   */
+  darkSightM Float @default(2)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -276,6 +301,7 @@ model Scene {
   drawings     MapDrawing[]
   notes        MapNote[]
   walls        Wall[]
+  lights       MapLight[]
 
   @@index([campaignId, active])
 }
@@ -360,6 +386,38 @@ model Wall {
   y1 Float
   x2 Float
   y2 Float
+
+  createdAt DateTime @default(now())
+
+  scene Scene @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+
+  @@index([sceneId])
+}
+
+/**
+ * A light standing on the map (stage 18b) — a street lamp, a burning barrel, the
+ * glow of a vending machine.
+ *
+ * GM data like the walls, and for the same reason: the shape a light takes is
+ * the shape of the room it is in. A player never receives a row from this table;
+ * they receive the light *level* of the ground they can already see, plus the
+ * position of lamps in their line of sight.
+ */
+model MapLight {
+  id      Int    @id @default(autoincrement())
+  sceneId String
+  /// Centre in scene (world) pixels.
+  x Float
+  y Float
+  /// Full-brightness radius in metres.
+  brightM Float @default(4)
+  /// Outer radius in metres; the server keeps it at or above brightM.
+  dimM    Float @default(10)
+  color   String @default("#ffd9a0")
+  /// Renderer-side alpha wobble; never a network event.
+  flicker Boolean @default(false)
+  /// A switched-off light stays on the map, dark, ready to be switched back on.
+  enabled Boolean @default(true)
 
   createdAt DateTime @default(now())
 

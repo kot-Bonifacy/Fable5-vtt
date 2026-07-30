@@ -8,6 +8,7 @@ export * from './characters.js';
 export * from './dice.js';
 export * from './drawings.js';
 export * from './fog.js';
+export * from './lights.js';
 export * from './measure.js';
 export * from './notes.js';
 export * from './scenes.js';
