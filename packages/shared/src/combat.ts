@@ -30,9 +30,28 @@ export interface TurnResourceView {
   max: number;
 }
 
+/**
+ * A continuous consumable of a turn — pips cannot express „7,5 z 12 m"
+ * (stage 14c). Still system-agnostic: the core paints a number, a maximum and
+ * whatever unit the system names, and knows nothing about metres or RUCH.
+ */
+export interface TurnDistanceView {
+  label: string;
+  used: number;
+  max: number;
+  /** Unit suffix as the system writes it („m"). */
+  unit: string;
+  /** The mover declared hard going — the system charges double per unit. */
+  hard?: boolean;
+  /** Why the maximum is what it is („Pancerz −2 · Złamana noga −4"). */
+  note?: string;
+}
+
 /** A participant's turn budget, filled in by the active game system. */
 export interface TurnBudgetView {
   resources: TurnResourceView[];
+  /** Distance left this turn; absent when the system does not measure one. */
+  distance?: TurnDistanceView;
   /** What the Action went to, e.g. „Atak: Ciężki pistolet + Maczeta". */
   note?: string;
   /**
@@ -308,6 +327,16 @@ export interface CombatHoldReleasePayload {
 /** GM hands a participant their whole turn back (the escape hatch). */
 export interface CombatResetTurnPayload {
   combatantId: string;
+}
+
+/**
+ * The mover declares that this turn's going is hard — swimming, climbing,
+ * rubble (stage 14c). The player says it, the GM sees it, and the system
+ * decides what it costs.
+ */
+export interface CombatTerrainPayload {
+  combatantId?: string;
+  hard: boolean;
 }
 
 /** Longest trigger description the tracker will store. */

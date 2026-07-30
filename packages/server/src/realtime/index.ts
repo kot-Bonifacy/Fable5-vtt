@@ -38,6 +38,7 @@ import {
   combatHoldEvent,
   combatHoldReleaseEvent,
   combatResetTurnEvent,
+  combatTerrainEvent,
 } from './combat-actions.js';
 import { characterCreateEvent, characterDeleteEvent, characterUpdateEvent } from './characters.js';
 import { characterRollEvent } from './character-rolls.js';
@@ -118,6 +119,7 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   combatHoldEvent,
   combatHoldReleaseEvent,
   combatResetTurnEvent,
+  combatTerrainEvent,
   compendiumUpsertEvent,
   compendiumDeleteEvent,
   characterCreateEvent,

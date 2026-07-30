@@ -21,6 +21,19 @@ export const ARMOR_LOCATION_LABELS: Record<ArmorLocation, string> = {
 export const ARMOR_SP_MAX = 30;
 
 /**
+ * Bounds shared by the catalogue and the sheet (stage 14c). They live in this
+ * leaf module for the same reason the locations do: from stage 14c both
+ * `compendium.ts` and `character.ts` validate the same two numbers, and having
+ * either import the other is exactly the edge this file exists to avoid.
+ */
+
+/** Worst REF/ZW/RUCH penalty one piece of armor may carry (s. 185). */
+export const ARMOR_PENALTY_MIN = -6;
+
+/** Worst RUCH penalty one Critical Injury may carry — a severed leg is −6. */
+export const INJURY_MOVE_PENALTY_MIN = -10;
+
+/**
  * Where an attack lands. RAW: every attack hits the body unless the attacker
  * spent an Aimed Shot on the head — there is no hit-location table in CP RED.
  * A shield is not a hit location: it is armor a defender may interpose.

@@ -11,11 +11,13 @@ import {
   pickWallAt,
   sceneBoundsSegments,
   tokenCentre,
+  type CombatView,
   type WallKind,
 } from '@vtt/shared';
 import {
   MapRenderer,
   type LightMarker,
+  type MoveAllowance,
   type RangeRing,
   type RenderGlow,
   type RulerLine,
@@ -25,7 +27,7 @@ import { useAuthStore } from '../stores/authStore.js';
 import { ensureStatusesLoaded, useTokenStore } from '../stores/tokenStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useChatStore } from '../stores/chatStore.js';
-import { activeTokenIdOf, useCombatStore } from '../stores/combatStore.js';
+import { activeCombatantOf, activeTokenIdOf, useCombatStore } from '../stores/combatStore.js';
 import {
   clearRuler,
   createDrawing,
@@ -174,6 +176,45 @@ function openingErrorText(code: string | undefined, kind: WallKind | undefined):
   }
 }
 
+/**
+ * Why a drag was refused (stage 14c). The detail — how many metres were
+ * missing, which status is holding the token — is on the card the server posts
+ * to the GM and to whoever tried; this line is the nudge at the map.
+ */
+function moveErrorText(code: string | undefined): string {
+  switch (code) {
+    case 'MOVE_REFUSED':
+      return 'Ruch odrzucony — sprawdź kartę odmowy na czacie.';
+    case 'FORBIDDEN':
+      return 'Nie możesz ruszać tym tokenem.';
+    case 'TOKEN_NOT_FOUND':
+      return 'Nie znaleziono tokenu — odśwież stronę.';
+    default:
+      return `Nie udało się przesunąć tokenu: ${code ?? 'nieznany błąd'}.`;
+  }
+}
+
+/**
+ * What is left of the acting participant's movement, as the reach circle needs
+ * it. Only drawn for a token this user may actually drag: the GM sees it for
+ * whoever is acting, a player only for their own.
+ */
+function moveAllowanceOf(
+  combat: CombatView | null,
+  userId: string | null,
+  isGm: boolean,
+): MoveAllowance | null {
+  const active = activeCombatantOf(combat);
+  const distance = active?.turn?.distance;
+  if (!active || !distance) return null;
+  if (!isGm && active.ownerId !== userId) return null;
+  return {
+    tokenId: active.tokenId,
+    metresLeft: Math.max(0, distance.max - distance.used),
+    costFactor: distance.hard ? 2 : 1,
+  };
+}
+
 export function MapArea() {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const rendererRef = useRef<MapRenderer | null>(null);
@@ -227,12 +268,20 @@ export function MapArea() {
     const renderer = new MapRenderer();
     renderer.onLoadingChange = setLoading;
     renderer.onMapClick = placeToken;
-    renderer.onTokenMove = (tokenId, x, y, final) => {
-      const ack = sendTokenMove(tokenId, x, y, final);
+    renderer.onTokenMove = (tokenId, x, y, final, path) => {
+      const before = useTokenStore.getState().tokens[tokenId];
+      const ack = sendTokenMove(tokenId, x, y, final, path);
       void ack?.then((result) => {
-        if (result.ok && result.data) {
-          useTokenStore.getState().applyMove(tokenId, result.data.x, result.data.y);
+        if (result.ok) {
+          const landed = result.data;
+          if (landed) useTokenStore.getState().applyMove(tokenId, landed.x, landed.y);
+          return;
         }
+        // Refused (stage 14c): the token goes back where the server still has
+        // it, and the reason is said out loud — a figure sliding home on its
+        // own would read as a bug rather than as a rule.
+        if (before) renderer.snapTokenBack(tokenId, before.x, before.y);
+        useChatStore.getState().addNote(moveErrorText(result.error));
       });
     };
     renderer.onTokenMenu = (tokenId, clientX, clientY) => {
@@ -438,6 +487,22 @@ export function MapArea() {
       unsubCombat();
     };
   }, [ready, pushTokens]);
+
+  // The reach circle follows the tracker: every spent metre comes back as a
+  // fresh budget, so the ring shrinks as the token walks (stage 14c).
+  const pushMoveAllowance = useCallback(() => {
+    const state = useCombatStore.getState();
+    const user = useAuthStore.getState().user;
+    rendererRef.current?.setMoveAllowance(
+      moveAllowanceOf(state.combat, user?.id ?? null, user?.role === ROLE_GM),
+    );
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    pushMoveAllowance();
+    return useCombatStore.subscribe(pushMoveAllowance);
+  }, [ready, pushMoveAllowance]);
 
   useEffect(() => {
     if (!placement) return;

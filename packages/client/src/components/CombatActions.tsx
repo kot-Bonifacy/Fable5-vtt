@@ -7,9 +7,15 @@ import {
   COMBAT_INITIATIVE_MAX,
   COMBAT_INITIATIVE_MIN,
   ROLE_GM,
+  formatMetres,
   woundStateFromHp,
 } from '@vtt/shared';
-import { combatErrorText, holdCombatAction, spendCombatAction } from '../socket.js';
+import {
+  combatErrorText,
+  holdCombatAction,
+  setCombatTerrain,
+  spendCombatAction,
+} from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
@@ -137,12 +143,35 @@ export function CombatActions({
     setStabilizeOpen(false);
   }
 
+  async function toggleTerrain(hard: boolean) {
+    setError(null);
+    const ack = await setCombatTerrain(hard, combatant.id);
+    if (!ack.ok) setError(combatErrorText(ack.error));
+  }
+
   const budget = combatant.turn;
   const actionSpent = budget?.resources.find((r) => r.id === 'action')?.used === 1;
+  const distance = budget?.distance;
 
   return (
     <div className="combat-actions">
       <p className="panel-section-title">Akcje — {combatant.name}</p>
+      {distance && (
+        <p className="combat-hint">
+          Ruch: {formatMetres(Math.max(0, distance.max - distance.used))} z{' '}
+          {formatMetres(distance.max)} pozostało
+          {distance.note ? ` · ${distance.note}` : ''}
+          {'. '}
+          <button
+            type="button"
+            className={`small-button${distance.hard ? ' small-button--on' : ''}`}
+            title="Pływanie, wspinaczka, gruz: każdy metr ścieżki kosztuje dwa metry budżetu (RAW)."
+            onClick={() => void toggleTerrain(!distance.hard)}
+          >
+            {distance.hard ? 'Ruch utrudniony ×2 — wyłącz' : 'Ruch utrudniony ×2'}
+          </button>
+        </p>
+      )}
       {combatant.held && (
         <p className="combat-hint combat-hint--held">
           Akcja wstrzymana:{' '}

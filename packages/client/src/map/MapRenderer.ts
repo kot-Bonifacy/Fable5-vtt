@@ -47,6 +47,7 @@ import {
   snapWallPoint,
   squaresForDistance,
   wallMidpoint,
+  TOKEN_PATH_MAX_POINTS,
 } from '@vtt/shared';
 import { TokenNode, type TokenNodeCtx } from './TokenNode.js';
 
@@ -327,6 +328,28 @@ interface DragState {
   moved: boolean;
   lastX: number;
   lastY: number;
+  /**
+   * The route the hand actually took, as token top-left positions (stage 14c).
+   * The server charges movement by this path's length, so it is collected from
+   * every pointer event rather than from the throttled network frames.
+   */
+  path: ScenePoint[];
+  /** How far apart two samples must be to be worth keeping, in world px. */
+  sampleGap: number;
+}
+
+/**
+ * What is left of the dragged token's movement, as the tracker reports it
+ * (stage 14c). Orientation only: the client cannot know about walls, and from
+ * this stage it does not know about hard going either — the server does the
+ * arithmetic and the reach circle is drawn from its answer.
+ */
+export interface MoveAllowance {
+  tokenId: string;
+  /** Metres still walkable this turn. */
+  metresLeft: number;
+  /** Metres of budget one metre of ground costs (2 in hard going). */
+  costFactor: number;
 }
 
 /**
@@ -341,7 +364,9 @@ export class MapRenderer {
   /** Reports background loading, so the UI can show a spinner. */
   onLoadingChange: ((loading: boolean) => void) | null = null;
   /** Streams drag positions; `final` marks the drop (authoritative snap). */
-  onTokenMove: ((tokenId: string, x: number, y: number, final: boolean) => void) | null = null;
+  onTokenMove:
+    | ((tokenId: string, x: number, y: number, final: boolean, path?: ScenePoint[]) => void)
+    | null = null;
   /** Right-click on a token; coordinates are browser client px (for the menu). */
   onTokenMenu: ((tokenId: string, clientX: number, clientY: number) => void) | null = null;
   /** Plain click on the map (world px) — used by token placement mode. */
@@ -468,6 +493,10 @@ export class MapRenderer {
   private readonly noteNodes = new Map<string, Container>();
   private readonly overlayLayer = new Container();
   private readonly rulerGraphics = new Graphics();
+  /** The reach circle and the trail of a drag in progress (stage 14c). */
+  private readonly moveGraphics = new Graphics();
+  private moveText: Text | null = null;
+  private moveAllowance: MoveAllowance | null = null;
   private readonly tokenNodes = new Map<string, TokenNode>();
   /** tokenId → may the local user drag it (GM or owner). */
   private readonly movableTokens = new Map<string, boolean>();
@@ -594,6 +623,7 @@ export class MapRenderer {
     viewport.addChild(this.lightMarkerLayer);
     viewport.addChild(this.noteLayer);
     this.overlayLayer.addChild(this.rulerGraphics);
+    this.overlayLayer.addChild(this.moveGraphics);
     this.overlayLayer.addChild(this.drawPreview);
     viewport.addChild(this.overlayLayer);
     // Scratch container: the fog is rendered into a texture at reduced scale,
@@ -644,6 +674,7 @@ export class MapRenderer {
       this.background.visible = false;
       this.grid.clear();
       this.setRulers([]);
+      this.setMoveAllowance(null);
       this.setRangeRings(null, []);
       this.setNotes([]);
       this.setDrawings([]);
@@ -1187,6 +1218,108 @@ export class MapRenderer {
       this.overlayLayer.addChild(label);
       this.overlayTexts.push(label);
     }
+  }
+
+  /**
+   * How far the token being dragged may still go (stage 14c).
+   *
+   * The circle it draws is explicitly *orientation*: it measures straight-line
+   * reach, while the server charges the length of the route — so walking round
+   * a corner runs out sooner than the ring suggests, and the ring is drawn
+   * dashed and labelled to admit it. Walls are not in it at all: they never
+   * leave the server, which is the whole reason the truth lives there.
+   */
+  setMoveAllowance(allowance: MoveAllowance | null): void {
+    if (this.destroyed) return;
+    this.moveAllowance = allowance;
+    this.drawMoveOverlay();
+  }
+
+  /** Metres of the drag in progress, or null when nothing is being dragged. */
+  private draggedMetres(): number | null {
+    const drag = this.drag;
+    const scene = this.scene;
+    if (!drag || !drag.moved || !scene) return null;
+    const half = (drag.node.token.size * scene.grid.sizePx) / 2;
+    const centres = [...drag.path, { x: drag.lastX, y: drag.lastY }].map((point) => ({
+      x: point.x + half,
+      y: point.y + half,
+    }));
+    return polylineMetres(centres, scene);
+  }
+
+  /**
+   * Paints the reach circle and, while a token is moving, the trail behind it
+   * with a running metre count. The trail turns red the moment the route costs
+   * more than the tracker says is left — the drop would snap back, and finding
+   * that out before letting go is the difference between a budget and a trap.
+   */
+  private drawMoveOverlay(): void {
+    this.moveGraphics.clear();
+    this.moveText?.destroy();
+    this.moveText = null;
+    const scene = this.scene;
+    const allowance = this.moveAllowance;
+    if (!scene) return;
+
+    const k = this.overlayScale();
+    const drag = this.drag;
+    const metres = this.draggedMetres();
+    const perMetre = scene.grid.sizePx / (scene.metersPerSquare || 2);
+    const factor = allowance && allowance.costFactor > 0 ? allowance.costFactor : 1;
+    const spent = metres === null ? 0 : metres * factor;
+    const over = allowance !== null && spent > allowance.metresLeft + 0.05;
+
+    // The reach circle sits on the token that owns the budget — while it is
+    // being dragged, on the position it is being dragged *from*, because that
+    // is where the metres are measured from.
+    if (allowance && allowance.metresLeft > 0) {
+      const node = this.tokenNodes.get(allowance.tokenId);
+      if (node) {
+        const origin =
+          drag?.node === node
+            ? { x: drag.path[0]?.x ?? node.x, y: drag.path[0]?.y ?? node.y }
+            : { x: node.x, y: node.y };
+        const half = (node.token.size * scene.grid.sizePx) / 2;
+        const radius = (allowance.metresLeft / factor) * perMetre;
+        this.moveGraphics
+          .circle(origin.x + half, origin.y + half, radius)
+          .stroke({ color: 0x4ade80, width: 1.5 * k, alpha: 0.5 });
+      }
+    }
+
+    if (!drag || metres === null) return;
+    const half = (drag.node.token.size * scene.grid.sizePx) / 2;
+    const trail = [...drag.path, { x: drag.lastX, y: drag.lastY }];
+    const first = trail[0]!;
+    this.moveGraphics.moveTo(first.x + half, first.y + half);
+    for (const point of trail.slice(1)) {
+      this.moveGraphics.lineTo(point.x + half, point.y + half);
+    }
+    this.moveGraphics.stroke({
+      color: over ? 0xf87171 : 0x4ade80,
+      width: 3 * k,
+      alpha: 0.85,
+      cap: 'round',
+      join: 'round',
+    });
+
+    const label = new Text({
+      text:
+        allowance === null
+          ? formatMetres(metres)
+          : `${formatMetres(spent)} / ${formatMetres(allowance.metresLeft)}`,
+      style: {
+        fontFamily: 'system-ui, sans-serif',
+        fontSize: 18,
+        fill: over ? 0xfca5a5 : 0xbbf7d0,
+        stroke: { color: 0x0b1220, width: 4 },
+      },
+    });
+    label.scale.set(k);
+    label.position.set(drag.lastX + half + 12 * k, drag.lastY + half - 30 * k);
+    this.overlayLayer.addChild(label);
+    this.moveText = label;
   }
 
   /** Draws the DV bands of a weapon as rings around a token (optional toggle). */
@@ -2010,6 +2143,7 @@ export class MapRenderer {
   private refreshOverlays(): void {
     if (this.destroyed) return;
     this.setRulers(this.lastRulers);
+    this.drawMoveOverlay();
     this.setRangeRings(this.lastRingCentre, this.lastRings);
     this.setNotes(this.lastNotes);
     // Wall handles, door glyphs and lamp handles are screen-sized, like the note
@@ -2089,6 +2223,10 @@ export class MapRenderer {
         moved: false,
         lastX: node.x,
         lastY: node.y,
+        path: [{ x: node.x, y: node.y }],
+        // A quarter of a square: enough to keep a curve round a corner, small
+        // enough that a wobbling hand is not billed for the wobble.
+        sampleGap: Math.max(4, (this.scene?.grid.sizePx ?? 100) / 4),
       };
       // The viewport must not pan while a token is being dragged.
       this.viewport.plugins.pause('drag');
@@ -2124,6 +2262,8 @@ export class MapRenderer {
     drag.node.position.set(pos.x, pos.y);
     drag.lastX = pos.x;
     drag.lastY = pos.y;
+    this.samplePath(drag, pos);
+    this.drawMoveOverlay();
 
     // Ghost outline previews the snapped landing cell.
     this.dragGhost.clear();
@@ -2139,6 +2279,30 @@ export class MapRenderer {
     this.onTokenMove?.(token.id, pos.x, pos.y, false);
   };
 
+  /**
+   * Keeps the drag's route without keeping every pointer event.
+   *
+   * Samples closer together than `sampleGap` are dropped, which is what stops
+   * a shaking hand from costing metres. When even the thinned path threatens
+   * the payload cap the gap doubles and the whole trail is re-thinned, so a
+   * long walk loses detail rather than losing its tail.
+   */
+  private samplePath(drag: DragState, point: ScenePoint): void {
+    const last = drag.path[drag.path.length - 1]!;
+    if (Math.hypot(point.x - last.x, point.y - last.y) < drag.sampleGap) return;
+    drag.path.push({ x: point.x, y: point.y });
+    if (drag.path.length < TOKEN_PATH_MAX_POINTS - 1) return;
+    drag.sampleGap *= 2;
+    const thinned: ScenePoint[] = [drag.path[0]!];
+    for (const candidate of drag.path.slice(1)) {
+      const previous = thinned[thinned.length - 1]!;
+      if (Math.hypot(candidate.x - previous.x, candidate.y - previous.y) >= drag.sampleGap) {
+        thinned.push(candidate);
+      }
+    }
+    drag.path = thinned;
+  }
+
   private readonly onDragEnd = (): void => {
     this.endDrag(true);
   };
@@ -2153,6 +2317,7 @@ export class MapRenderer {
     this.app.stage.off('pointerupoutside', this.onDragEnd);
     this.viewport?.plugins.resume('drag');
     this.dragGhost.clear();
+    this.drawMoveOverlay();
 
     if (!drag.moved || drag.node.destroyed) return;
     const snapScene = this.snapScene();
@@ -2162,7 +2327,22 @@ export class MapRenderer {
       : { x: drag.lastX, y: drag.lastY };
     drag.node.position.set(pos.x, pos.y);
     drag.node.alpha = token.hidden ? 0.5 : 1;
-    if (commit) this.onTokenMove?.(token.id, pos.x, pos.y, true);
+    // The route travels with the drop: the first point is where the token
+    // stood, and the server replaces both ends with its own numbers anyway.
+    if (commit) this.onTokenMove?.(token.id, pos.x, pos.y, true, drag.path.slice(1));
+  }
+
+  /**
+   * Puts a token back where the server says it is — the snap-back a refused
+   * move ends in (stage 14c). The node may already be gone (scene switch), in
+   * which case the authoritative position arrives with the next sync anyway.
+   */
+  snapTokenBack(tokenId: string, x: number, y: number): void {
+    if (this.destroyed) return;
+    const node = this.tokenNodes.get(tokenId);
+    if (!node || node.destroyed) return;
+    node.position.set(x, y);
+    node.alpha = node.token.hidden ? 0.5 : 1;
   }
 
   destroy(): void {

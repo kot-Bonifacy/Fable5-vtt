@@ -1,4 +1,7 @@
 import { sanitizeTokenLight, type TokenLight } from './lights.js';
+// Type-only, like `measure.ts` imports `TokenView` back — erased at runtime,
+// so the two modules describing the same map never form a real cycle.
+import type { ScenePoint } from './measure.js';
 import type { GridMode } from './scenes.js';
 import { normalizeGridOffset } from './scenes.js';
 import { VISION_RANGE_MAX_METRES } from './vision.js';
@@ -130,6 +133,35 @@ export interface TokenMovePayload {
   x: number;
   y: number;
   final: boolean;
+  /**
+   * The route the token actually took, in scene pixels (stage 14c). Sent with
+   * the drop so the server can charge movement by path length rather than by
+   * the straight line to the landing square. Only the *shape* is the client's
+   * to report: the server measures it, and anchors both ends itself.
+   */
+  path?: ScenePoint[];
+}
+
+/** Waypoints one drag may report — a guard against runaway payloads. */
+export const TOKEN_PATH_MAX_POINTS = 64;
+
+/**
+ * Validates a drag path off the wire: at most `TOKEN_PATH_MAX_POINTS` finite
+ * points, rounded to whole pixels. An unusable path is not an error — the
+ * server falls back to the straight line, which is the shortest route anyone
+ * could have taken and therefore the cheapest.
+ */
+export function sanitizeTokenPath(raw: unknown): ScenePoint[] | null {
+  if (!Array.isArray(raw) || raw.length === 0 || raw.length > TOKEN_PATH_MAX_POINTS) return null;
+  const points: ScenePoint[] = [];
+  for (const value of raw) {
+    if (typeof value !== 'object' || value === null) return null;
+    const point = value as Record<string, unknown>;
+    if (typeof point.x !== 'number' || !Number.isFinite(point.x)) return null;
+    if (typeof point.y !== 'number' || !Number.isFinite(point.y)) return null;
+    points.push({ x: Math.round(point.x), y: Math.round(point.y) });
+  }
+  return points;
 }
 
 /**

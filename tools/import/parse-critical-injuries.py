@@ -56,6 +56,10 @@ DEATH_SAVE_PENALTY = re.compile(
     r"\+(\d)\s+do\s+podstawowej\s+trudności\s+Testu\s+Przeżywalności", re.IGNORECASE
 )
 
+# „-4 do Ruchu (minimum 1)" -> movePenalty: -4 (stage 14c). The tracker enforces
+# whatever the table says, so the number has to leave the prose and become data.
+MOVE_PENALTY = re.compile(r"[-−–]\s*(\d)\s+do\s+Ruchu", re.IGNORECASE)
+
 PL_TRANSLITERATION = str.maketrans(
     {"ą": "a", "ć": "c", "ę": "e", "ł": "l", "ń": "n", "ó": "o", "ś": "s", "ź": "z", "ż": "z"}
 )
@@ -154,6 +158,9 @@ def parse(page) -> list[dict]:
         penalty = DEATH_SAVE_PENALTY.search(effect)
         if penalty:
             entry["deathSavePenalty"] = int(penalty.group(1))
+        slowed = MOVE_PENALTY.search(effect)
+        if slowed:
+            entry["movePenalty"] = -int(slowed.group(1))
         injuries.append(entry)
     return injuries
 
@@ -212,6 +219,9 @@ def parse_markdown_table(path: Path, heading: str, table: str) -> list[dict]:
         penalty = DEATH_SAVE_PENALTY.search(effect)
         if penalty:
             entry["deathSavePenalty"] = int(penalty.group(1))
+        slowed = MOVE_PENALTY.search(effect)
+        if slowed:
+            entry["movePenalty"] = -int(slowed.group(1))
         injuries.append(entry)
     return injuries
 

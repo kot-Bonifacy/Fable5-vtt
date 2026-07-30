@@ -20,32 +20,32 @@ modyfikują efektywny RUCH.
 
 ## Zakres
 
-- [ ] Budżet ruchu w silniku tury (`shared/systems/cpred`, czyste funkcje + testy):
+- [x] Budżet ruchu w silniku tury (`shared/systems/cpred`, czyste funkcje + testy):
       RUCH × 2 m na Akcję Ruchu, kumulacja przez całą turę (rozdzielanie: ruch → atak → ruch),
       Bieg (Akcja z 14b) dodaje drugie RUCH × 2 m
-- [ ] Efektywny RUCH liczony w shared z metadanych, nie hardkodu per przypadek:
+- [x] Efektywny RUCH liczony w shared z metadanych, nie hardkodu per przypadek:
       baza z karty + kara ciężkiego pancerza (REF/ZW/RUCH — dziś nieliczona nigdzie,
       dane pancerza mają pole kary od etapu 13) + Śmiertelnie Ranny −6 (minimum 1, etap 15)
       + modyfikatory ran krytycznych (Zapadnięte płuco −2, Złamana noga −4, Odcięta noga −6,
       minimum 1) — wartości efektów przy statusach jako dane (wzorzec z etapu 15)
-- [ ] `token:move` świadomy walki: dla uczestnika aktywnej walki serwer liczy długość ścieżki
+- [x] `token:move` świadomy walki: dla uczestnika aktywnej walki serwer liczy długość ścieżki
       (klient wysyła łamaną z przeciągania; pojedynczy drag bez punktów pośrednich = odcinek),
       odejmuje od budżetu, odrzuca nadmiar i ruch poza turą (gracz); wynik odmowy w payload —
       UI robi snap-back z dymkiem
-- [ ] **Wspólny punkt walidacji ruchu** na serwerze: budżet tury ORAZ (w przyszłości) kolizje
+- [x] **Wspólny punkt walidacji ruchu** na serwerze: budżet tury ORAZ (w przyszłości) kolizje
       ze ścianami z odłożonej sesji (decyzja 30.07, POMYSLY) przechodzą przez jedno miejsce —
       kolizje mają się dopiąć bez przebudowy
-- [ ] Tryb ruchu utrudnionego (pływanie/wspinaczka/teren: 2 m budżetu za 1 m ścieżki) jako
+- [x] Tryb ruchu utrudnionego (pływanie/wspinaczka/teren: 2 m budżetu za 1 m ścieżki) jako
       przełącznik przy aktywnej turze (gracz deklaruje, MG widzi); skoki i upadki bez automatyki
-- [ ] Blokady ruchu ze statusów: Przewrócony (ruch dopiero po Akcji Wstania z 14b),
+- [x] Blokady ruchu ze statusów: Przewrócony (ruch dopiero po Akcji Wstania z 14b),
       Unieruchomiony/Pochwycony (bez własnej Akcji Ruchu; relacja „kto kogo trzyma" i ciągnięcie
       dopiero w 14d), Nieprzytomny (nic)
-- [ ] Licznik metrów przebytych pieszo w turze — zapisywany w stanie tury (konsumują go
+- [x] Licznik metrów przebytych pieszo w turze — zapisywany w stanie tury (konsumują go
       automaty 14d: Złamane żebra / Ciało obce „ruch > 4 m", Uraz ucha)
-- [ ] UI: resztka ruchu przy pasku walki (np. „7,5 / 12 m"), orientacyjna obwódka zasięgu
+- [x] UI: resztka ruchu przy pasku walki (np. „7,5 / 12 m"), orientacyjna obwódka zasięgu
       pozostałego ruchu wokół aktywnego tokenu (okrąg; klient nie zna ścian — zaznacz w UI,
       że to orientacja, prawda jest na serwerze), ślad ścieżki podczas przeciągania
-- [ ] Testy: matematyka budżetu i efektywnego RUCH (minimum 1!), test dymny `token:move`
+- [x] Testy: matematyka budżetu i efektywnego RUCH (minimum 1!), test dymny `token:move`
       (odrzucenie ponad budżet, snap-back, reset na nowej turze, Bieg, ruch MG bez blokady,
       ruch poza walką bez limitu)
 

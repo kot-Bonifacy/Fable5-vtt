@@ -1,6 +1,12 @@
 import { parseRollNotation } from '../../dice.js';
 import { isValidCompendiumId, slugify } from './ids.js';
-import { ARMOR_LOCATIONS, ARMOR_SP_MAX, type ArmorLocation } from './locations.js';
+import {
+  ARMOR_LOCATIONS,
+  ARMOR_PENALTY_MIN,
+  ARMOR_SP_MAX,
+  INJURY_MOVE_PENALTY_MIN,
+  type ArmorLocation,
+} from './locations.js';
 import { CPRED_STAT_IDS } from './stats.js';
 
 /**
@@ -264,6 +270,12 @@ export interface CriticalInjuryEntry extends CompendiumEntryBase {
   treatment?: string;
   /** Injuries that make every later Death Save harder (RAW: +1). */
   deathSavePenalty?: number;
+  /**
+   * RUCH the injury costs while it lasts, as a negative number (stage 14c):
+   * a collapsed lung −2, a broken leg −4, an amputated one −6. The tracker
+   * enforces whatever the table says, so a GM's own row works the same way.
+   */
+  movePenalty?: number;
 }
 
 export type CompendiumEntry =
@@ -329,7 +341,6 @@ export const COMPENDIUM_COST_MAX = 10_000_000;
 export const WEAPON_ROF_MAX = 10;
 export const WEAPON_MAGAZINE_MAX = 500;
 export const WEAPON_SLOTS_MAX = 6;
-export const ARMOR_PENALTY_MIN = -6;
 export const CYBERWARE_SLOTS_MAX = 10;
 
 export interface CompendiumIssue {
@@ -680,6 +691,20 @@ function validateCriticalInjury(
       return undefined;
     }
     if (input.deathSavePenalty > 0) injury.deathSavePenalty = input.deathSavePenalty;
+  }
+  if (input.movePenalty !== undefined && input.movePenalty !== null) {
+    if (
+      !isInteger(input.movePenalty) ||
+      input.movePenalty > 0 ||
+      input.movePenalty < INJURY_MOVE_PENALTY_MIN
+    ) {
+      issues.push({
+        field: 'movePenalty',
+        message: `Kara do RUCH-u: liczba od ${INJURY_MOVE_PENALTY_MIN} do 0.`,
+      });
+      return undefined;
+    }
+    if (input.movePenalty < 0) injury.movePenalty = input.movePenalty;
   }
   return injury;
 }

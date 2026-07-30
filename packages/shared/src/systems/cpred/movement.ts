@@ -1,0 +1,162 @@
+/**
+ * CP RED movement (stage 14c) — pure logic, no IO.
+ *
+ * „Możesz przemieścić się o RUCH × 2 metry" (s. 168). That sentence needs two
+ * things the tracker cannot supply on its own:
+ *
+ *  - **an effective RUCH**, which is the sheet's stat minus what is currently
+ *    weighing the character down: heavy armor, Critical Injuries to the legs
+ *    and lungs, and being Mortally Wounded. RAW never lets it fall below 1 —
+ *    a dying character crawls, they do not become furniture;
+ *  - **permission to move at all**, which some statuses simply take away.
+ *
+ * Every modifier here arrives as *data*: the armor penalty rides on the sheet's
+ * armor row (copied from the catalogue, like SP), and an injury's penalty rides
+ * on the injury row (copied from the compendium, like `deathSavePenalty` in
+ * stage 15). There is deliberately no table of injury names in this file —
+ * a GM who types „Zmiażdżona stopa −3" into the compendium gets it enforced.
+ */
+
+import type { CpredArmorRow, CpredCriticalInjuryRow } from './character.js';
+import { woundMovePenalty, woundStateFromHp, type CpredWoundState } from './rolls.js';
+
+/** Metres one point of RUCH is worth per Move Action (RAW: RUCH × 2). */
+export const CPRED_METRES_PER_MOVE_POINT = 2;
+
+/** „RUCH nigdy nie spada poniżej 1" — the floor every modifier stops at. */
+export const CPRED_MIN_MOVE = 1;
+
+/**
+ * Movement cost multiplier of hard going — swimming, climbing, rubble.
+ * RAW: „każdy metr kosztuje 2 metry ruchu".
+ */
+export const CPRED_HARD_TERRAIN_FACTOR = 2;
+
+/** Everything that can lower RUCH, gathered from one character's sheet. */
+export interface CpredMoveInput {
+  /** RUCH as printed on the sheet. */
+  move: number;
+  /** Worn armor; only the equipped pieces weigh anything. */
+  armor?: readonly CpredArmorRow[];
+  /** Critical Injuries suffered right now. */
+  injuries?: readonly CpredCriticalInjuryRow[];
+  /** Wound state — Mortally Wounded costs 6 points of RUCH. */
+  wound?: CpredWoundState;
+}
+
+/** One line of „skąd ten RUCH" — shown to the GM, never guessed at. */
+export interface CpredMoveModifier {
+  label: string;
+  value: number;
+}
+
+export interface CpredMoveBudget {
+  /** RUCH after every penalty, floored at 1. */
+  move: number;
+  /** Metres one Move Action buys: `move × 2`. */
+  metresPerMove: number;
+  /** What was subtracted, in the order it was applied. */
+  modifiers: CpredMoveModifier[];
+  /** True when the penalties would have gone below the RAW minimum. */
+  floored: boolean;
+}
+
+/**
+ * The armor penalty of a set of worn pieces.
+ *
+ * „Kary nie sumują się — liczy się najwyższa" (s. 185): a character in a heavy
+ * jacket *and* a helmet is slowed by the worse of the two, not by both. Carried
+ * but unworn armor weighs nothing here — it protects nothing either (stage 15).
+ */
+export function armorMovePenalty(armor: readonly CpredArmorRow[] | undefined): number {
+  if (!armor || armor.length === 0) return 0;
+  let worst = 0;
+  for (const row of armor) {
+    if (row.equipped === false) continue;
+    const penalty = row.penalty ?? 0;
+    if (penalty < worst) worst = penalty;
+  }
+  return worst;
+}
+
+/** Combined RUCH penalty of the Critical Injuries a character carries. */
+export function injuryMovePenalty(injuries: readonly CpredCriticalInjuryRow[] | undefined): number {
+  if (!injuries || injuries.length === 0) return 0;
+  return injuries.reduce((sum, injury) => sum + (injury.movePenalty ?? 0), 0);
+}
+
+/**
+ * Effective RUCH and the metres it buys. The modifier list exists so the
+ * tracker can explain a shrunken budget („Złamana noga −4") instead of quietly
+ * refusing a drag the player thought was legal.
+ */
+export function cpredMoveBudget(input: CpredMoveInput): CpredMoveBudget {
+  const modifiers: CpredMoveModifier[] = [];
+  const armor = armorMovePenalty(input.armor);
+  if (armor !== 0) modifiers.push({ label: 'Pancerz', value: armor });
+  const wound = input.wound ? woundMovePenalty(input.wound) : 0;
+  if (wound !== 0) modifiers.push({ label: 'Śmiertelnie ranny', value: wound });
+  for (const injury of input.injuries ?? []) {
+    if (injury.movePenalty) modifiers.push({ label: injury.name, value: injury.movePenalty });
+  }
+
+  const base = Number.isFinite(input.move) ? Math.round(input.move) : CPRED_MIN_MOVE;
+  const raw = base + modifiers.reduce((sum, modifier) => sum + modifier.value, 0);
+  const move = Math.max(CPRED_MIN_MOVE, raw);
+  return {
+    move,
+    metresPerMove: move * CPRED_METRES_PER_MOVE_POINT,
+    modifiers,
+    floored: raw < CPRED_MIN_MOVE,
+  };
+}
+
+/** The same, taken straight off a sheet's HP so the caller need not classify. */
+export function cpredMoveBudgetFromSheet(input: {
+  move: number;
+  hpCurrent: number;
+  hpMax: number;
+  armor?: readonly CpredArmorRow[];
+  injuries?: readonly CpredCriticalInjuryRow[];
+}): CpredMoveBudget {
+  return cpredMoveBudget({
+    move: input.move,
+    armor: input.armor,
+    injuries: input.injuries,
+    wound: woundStateFromHp(input.hpCurrent, input.hpMax),
+  });
+}
+
+/**
+ * Statuses that stop a token from walking off on its own (stage 14c).
+ *
+ * Ids come from `data/public/cpred/statuses.json`; what they *mean* is CP RED
+ * and therefore lives here. Being Prone is the one that clears itself inside a
+ * turn — „Wstanie" is an Action, and stage 14b already sells it.
+ */
+export const CPRED_MOVE_BLOCKING_STATUSES: Record<string, string> = {
+  dead: 'Martwy token nie może się poruszać.',
+  unconscious: 'Nieprzytomny token nie może się poruszać.',
+  prone: 'Powalony token musi najpierw wstać (Akcja „Wstanie").',
+  immobilized: 'Unieruchomiony token nie może wykonać Akcji Ruchu.',
+  grappled: 'Pochwycony token nie może wykonać własnej Akcji Ruchu.',
+};
+
+/** The first status refusing this token its move, or null when free to go. */
+export function cpredMovementBlock(statuses: readonly string[]): string | null {
+  for (const id of Object.keys(CPRED_MOVE_BLOCKING_STATUSES)) {
+    if (statuses.includes(id)) return CPRED_MOVE_BLOCKING_STATUSES[id]!;
+  }
+  return null;
+}
+
+/** Status the „Wstanie" Action takes off the token that spent it. */
+export const CPRED_PRONE_STATUS_ID = 'prone';
+
+/**
+ * Metres of budget one metre of path costs. Hard going doubles it; everything
+ * else the rules charge for (jumps, falls) stays the GM's call this stage.
+ */
+export function cpredTerrainFactor(hard: boolean | undefined): number {
+  return hard === true ? CPRED_HARD_TERRAIN_FACTOR : 1;
+}

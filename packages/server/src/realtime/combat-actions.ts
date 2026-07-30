@@ -1,11 +1,11 @@
 import type {
-  ChatMessageView,
   CombatActionLogEntry,
   CombatActionPayload,
   CombatAllowPayload,
   CombatHoldPayload,
   CombatHoldReleasePayload,
   CombatResetTurnPayload,
+  CombatTerrainPayload,
   CombatView,
   SessionUser,
 } from '@vtt/shared';
@@ -14,15 +14,17 @@ import {
   COMBAT_HOLD_TRIGGER_MAX_LENGTH,
   COMBAT_INITIATIVE_MAX,
   COMBAT_INITIATIVE_MIN,
+  CPRED_ACTION_STAND_UP,
   ROLE_GM,
 } from '@vtt/shared';
 import type { Scene } from '../generated/prisma/client.js';
 import {
+  SHEET_PRONE_STATUS_ID,
   freshTurnState,
+  setTurnHardTerrain,
   sheetActionName,
   sheetActionReserves,
   turnActionAvailable,
-  turnProblemMessage,
 } from '../sheets.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import {
@@ -31,6 +33,7 @@ import {
   fireHeldAction,
   findCombatantForToken,
   loadCombatById,
+  moveBudgetForCombatant,
   renumberOrder,
   requireCampaignId,
   requireCombatant,
@@ -39,15 +42,11 @@ import {
   type CombatRow,
   type CombatantRow,
   type TurnSpendOutcome,
-  type TurnSpendProblem,
 } from './combat.js';
-import {
-  INCLUDE_CHAT_NAMES,
-  broadcastChatMessage,
-  deliverChatMessageTo,
-  toChatMessageView,
-} from './chat-io.js';
+import { INCLUDE_CHAT_NAMES, deliverChatMessageTo, toChatMessageView } from './chat-io.js';
 import type { SheetTurnSpend } from '../sheets.js';
+import { actionEntry, logRefusedAction, logSpentAction, turnRefusalMessage } from './combat-log.js';
+import { emitTokenUpsert } from './tokens.js';
 
 /**
  * The action economy (stage 14b).
@@ -69,12 +68,6 @@ import type { SheetTurnSpend } from '../sheets.js';
  * cost nothing, which is why none of those paths call in here.
  */
 
-/** Polish text for every refusal the tracker can produce. */
-export function turnRefusalMessage(problem: TurnSpendProblem): string {
-  if (problem === 'NOT_YOUR_TURN') return 'To nie jest twoja tura.';
-  return turnProblemMessage(problem);
-}
-
 function requireText(value: unknown, limit: number): string | null {
   if (value === undefined || value === null) return null;
   if (typeof value !== 'string') throw new RealtimeError('BAD_REQUEST');
@@ -82,72 +75,6 @@ function requireText(value: unknown, limit: number): string | null {
   if (trimmed.length === 0) return null;
   if (trimmed.length > limit) throw new RealtimeError('BAD_REQUEST');
   return trimmed;
-}
-
-/**
- * Writes the chat line for a spent action. Public and unremarkable on purpose:
- * „Vex — Przeładowanie" is what a table says out loud, and from stage 19 it is
- * also what a bot reads to know the fight happened.
- */
-async function logSpentAction(
-  deps: RealtimeDeps,
-  campaignId: string,
-  user: SessionUser,
-  entry: CombatActionLogEntry,
-): Promise<void> {
-  const stored = await deps.ctx.prisma.chatMessage.create({
-    data: {
-      campaignId,
-      authorId: user.id,
-      kind: 'action',
-      text: entry.actionName,
-      payload: JSON.stringify(entry),
-    },
-    include: INCLUDE_CHAT_NAMES,
-  });
-  broadcastChatMessage(deps, campaignId, toChatMessageView(stored));
-}
-
-/**
- * Writes the refusal card. It goes to the GM and to the player who tried —
- * nobody else needs to watch somebody run out of Actions, and the GM needs the
- * „Przepuść" button in a place they cannot scroll past.
- */
-async function logRefusedAction(
-  deps: RealtimeDeps,
-  campaignId: string,
-  user: SessionUser,
-  entry: CombatActionLogEntry,
-): Promise<ChatMessageView> {
-  const stored = await deps.ctx.prisma.chatMessage.create({
-    data: {
-      campaignId,
-      authorId: user.id,
-      kind: 'gmaction',
-      text: entry.actionName,
-      payload: JSON.stringify(entry),
-    },
-    include: INCLUDE_CHAT_NAMES,
-  });
-  const view = toChatMessageView(stored);
-  await deliverChatMessageTo(deps, campaignId, view, [user.id], true);
-  return view;
-}
-
-/** The log entry describing one attempt, spent or refused. */
-function actionEntry(
-  combatant: CombatantRow,
-  actionId: string,
-  actionName: string,
-  note: string | null,
-): CombatActionLogEntry {
-  return {
-    combatantId: combatant.id,
-    actorName: combatant.token.name,
-    actionId,
-    actionName,
-    ...(note ? { note } : {}),
-  };
 }
 
 /**
@@ -211,6 +138,30 @@ async function settleSpend(
   };
   await logSpentAction(deps, campaignId, user, entry);
   return view;
+}
+
+/** Takes „Powalony" off a token that just paid for standing up. */
+async function clearProneStatus(
+  deps: RealtimeDeps,
+  campaignId: string,
+  scene: Scene,
+  combatant: CombatantRow,
+): Promise<void> {
+  let statuses: string[];
+  try {
+    const parsed: unknown = JSON.parse(combatant.token.statuses);
+    statuses = Array.isArray(parsed)
+      ? parsed.filter((id): id is string => typeof id === 'string')
+      : [];
+  } catch {
+    return;
+  }
+  if (!statuses.includes(SHEET_PRONE_STATUS_ID)) return;
+  const token = await deps.ctx.prisma.token.update({
+    where: { id: combatant.tokenId },
+    data: { statuses: JSON.stringify(statuses.filter((id) => id !== SHEET_PRONE_STATUS_ID)) },
+  });
+  await emitTokenUpsert(deps, campaignId, scene, token);
 }
 
 /** The participant a payload names, or the one this player controls. */
@@ -289,6 +240,12 @@ export const combatActionEvent = defineEvent<CombatActionPayload, CombatView>({
       { kind: 'action', actionId },
       user,
     );
+    // Getting up is the one Action that also changes the map: „Powalony" is
+    // what stops the token moving (stage 14c), so paying for standing has to
+    // take it off — otherwise the player pays and still cannot walk.
+    if (outcome.kind === 'spent' && actionId === CPRED_ACTION_STAND_UP) {
+      await clearProneStatus(deps, campaignId, scene, combatant);
+    }
     // `settleSpend` already emitted the fresh tracker — re-emitting it here
     // would burn a second seq for one action.
     const view = await settleSpend(deps, campaignId, scene, user, outcome, actionId, note);
@@ -420,9 +377,41 @@ export const combatResetTurnEvent = defineEvent<CombatResetTurnPayload, CombatVi
       campaignId,
       payload?.combatantId,
     );
+    const move = await moveBudgetForCombatant(deps, combatant);
     await deps.ctx.prisma.combatant.update({
       where: { id: combatant.id },
-      data: { turnState: freshTurnState(), actionBypass: false },
+      data: { turnState: freshTurnState(move), actionBypass: false },
+    });
+    return emitReloaded(deps, campaignId, scene, combat.id);
+  },
+});
+
+/**
+ * „Ruch utrudniony" (stage 14c): every metre of path costs two of budget.
+ *
+ * The mover declares it, not the map: the VTT has no idea which squares are
+ * water, rubble or a fence, and asking the GM to paint terrain before every
+ * fight would cost more than it is worth. The declaration rides in the tracker
+ * where the GM can see it — and take it back if they disagree.
+ */
+export const combatTerrainEvent = defineEvent<CombatTerrainPayload, CombatView>({
+  name: 'combat:terrain',
+  handler: async ({ deps, socket, user, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    if (typeof payload?.hard !== 'boolean') throw new RealtimeError('BAD_REQUEST');
+    const { combat, combatant, scene } = await myCombatant(
+      deps,
+      campaignId,
+      user,
+      socket.data.viewedSceneId,
+      payload?.combatantId,
+    );
+    if (user.role !== ROLE_GM && combat.activeCombatantId !== combatant.id) {
+      throw new RealtimeError('NOT_YOUR_TURN');
+    }
+    await deps.ctx.prisma.combatant.update({
+      where: { id: combatant.id },
+      data: { turnState: setTurnHardTerrain(combatant.turnState, payload.hard) },
     });
     return emitReloaded(deps, campaignId, scene, combat.id);
   },

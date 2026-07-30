@@ -32,11 +32,14 @@ import {
 import type { PrismaClient } from '../db.js';
 import type { Combat, Combatant, Scene, Token } from '../generated/prisma/client.js';
 import {
+  applyMoveBudget,
   freshTurnState,
   readSheetInitiative,
+  readSheetMoveBudget,
   spendTurnState,
   spendUsesAction,
   turnBudgetOf,
+  type SheetMoveBudget,
   type SheetRegistry,
   type SheetTurnProblem,
   type SheetTurnSpend,
@@ -333,11 +336,12 @@ export async function renumberOrder(prisma: PrismaClient, combat: CombatRow): Pr
  * pointer, not replaying the turn. „Zwróć turę" is the button for that.
  */
 async function applyTurnPointer(
-  prisma: PrismaClient,
+  deps: RealtimeDeps,
   combat: CombatRow,
   pointer: TurnPointer,
   startTurn: boolean,
 ): Promise<void> {
+  const prisma = deps.ctx.prisma;
   await prisma.combat.update({
     where: { id: combat.id },
     data: { round: pointer.round, activeCombatantId: pointer.activeCombatantId },
@@ -354,11 +358,15 @@ async function applyTurnPointer(
     data: { actionBypass: false },
   });
   if (pointer.activeCombatantId === null) return;
+  // The fresh budget carries the distance this participant may cover, read off
+  // their sheet at the moment their turn begins (stage 14c).
+  const starting = combat.combatants.find((row) => row.id === pointer.activeCombatantId);
+  const move = starting ? await moveBudgetForCombatant(deps, starting) : null;
   await prisma.combatant.update({
     where: { id: pointer.activeCombatantId },
     // A participant who held an Action into somebody else's turn keeps it: the
     // reservation is cleared when it fires, not when their own turn comes back.
-    data: { turnState: freshTurnState(), held: false, heldTrigger: null, heldInitiative: null },
+    data: { turnState: freshTurnState(move), held: false, heldTrigger: null, heldInitiative: null },
   });
 }
 
@@ -451,6 +459,12 @@ export type TurnSpendOutcome =
       kind: 'refused';
       combatant: CombatantRow;
       error: SheetTurnProblem | 'NOT_YOUR_TURN';
+      /**
+       * The budget the refusal was measured against — the participant's stored
+       * state with the freshest allowance already folded in, so a message can
+       * say „zostało ci 4,5 m" and mean it.
+       */
+      judged: string | null;
     };
 
 /** Refusal codes this module can produce — the client maps them to Polish. */
@@ -480,11 +494,23 @@ async function applySpend(
   const bypassed = combatant.actionBypass;
   if (!isGm && !bypassed) {
     const mine = combat.activeCombatantId === combatant.id;
-    if (!mine && !combatant.held) return { kind: 'refused', combatant, error: 'NOT_YOUR_TURN' };
+    // A declared „Wstrzymanie Akcji" excuses acting out of turn — but only for
+    // the Action it reserved. Nobody reserves a walk (stage 14c).
+    const excused = combatant.held && spendUsesAction(spend);
+    if (!mine && !excused) {
+      return { kind: 'refused', combatant, error: 'NOT_YOUR_TURN', judged: combatant.turnState };
+    }
   }
 
-  const result = spendTurnState(combatant.turnState, spend, isGm || bypassed);
-  if (!result.ok) return { kind: 'refused', combatant, error: result.error };
+  // Movement is judged against the sheet as it is *now*: armor shed between
+  // drags, or a leg broken on somebody else's turn, changes what is left.
+  const judged =
+    spend.kind === 'move'
+      ? applyMoveBudget(combatant.turnState, await moveBudgetForCombatant(deps, combatant))
+      : combatant.turnState;
+
+  const result = spendTurnState(judged, spend, isGm || bypassed);
+  if (!result.ok) return { kind: 'refused', combatant, error: result.error, judged };
 
   // Firing a reserved Action ends the reservation — a hold is spent once.
   const releasesHold = combatant.held && spendUsesAction(spend);
@@ -497,6 +523,24 @@ async function applySpend(
     },
   });
   return { kind: 'spent', combatant, forced: result.forced, bypassed };
+}
+
+/**
+ * How far this participant may go, read from the sheet they are bound to.
+ * A statist without one returns `null`: the tracker then counts whole Move
+ * Actions as it did in stage 14b rather than inventing a RUCH for them.
+ */
+export async function moveBudgetForCombatant(
+  deps: RealtimeDeps,
+  row: CombatantRow,
+): Promise<SheetMoveBudget | null> {
+  const characterId = row.token.character?.id;
+  if (!characterId) return null;
+  const character = await deps.ctx.prisma.character.findUnique({
+    where: { id: characterId },
+    select: { data: true },
+  });
+  return character ? readSheetMoveBudget(character, deps.ctx.cpred) : null;
 }
 
 /** The participant a token is playing in the fight running on its scene. */
@@ -612,7 +656,7 @@ export const combatRemoveEvent = defineEvent<CombatantIdPayload, CombatView>({
       const pointer = nextTurn(toCombatView(combat));
       const activeCombatantId =
         pointer.activeCombatantId === combatant.id ? null : pointer.activeCombatantId;
-      await applyTurnPointer(deps.ctx.prisma, combat, { ...pointer, activeCombatantId }, true);
+      await applyTurnPointer(deps, combat, { ...pointer, activeCombatantId }, true);
     }
     await deps.ctx.prisma.combatant.delete({ where: { id: combatant.id } });
     return emitReloaded(deps, campaignId, scene, combat.id);
@@ -794,7 +838,7 @@ export const combatNextEvent = defineEvent<undefined, CombatView>({
     // before anybody else gets their turn.
     const held = dueHold(combat, pointer);
     if (held) await fireHeldAction(deps.ctx.prisma, combat, held);
-    else await applyTurnPointer(deps.ctx.prisma, combat, pointer, true);
+    else await applyTurnPointer(deps, combat, pointer, true);
     return emitReloaded(deps, campaignId, scene, combat.id);
   },
 });
@@ -810,7 +854,7 @@ export const combatPreviousEvent = defineEvent<undefined, CombatView>({
     if (!combat) throw new RealtimeError('COMBAT_NOT_FOUND');
 
     const pointer = previousTurn(toCombatView(combat));
-    await applyTurnPointer(deps.ctx.prisma, combat, pointer, false);
+    await applyTurnPointer(deps, combat, pointer, false);
     return emitReloaded(deps, campaignId, scene, combat.id);
   },
 });

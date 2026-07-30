@@ -26,6 +26,7 @@
  */
 
 import type { TurnBudgetView } from '../../combat.js';
+import { cpredTerrainFactor } from './movement.js';
 
 /** What a catalogue entry costs out of the turn's budget. */
 export type CpredActionCost = 'action' | 'move' | 'free';
@@ -74,7 +75,7 @@ export const CPRED_ACTIONS: readonly CpredActionDefinition[] = [
     id: CPRED_ACTION_MOVE,
     name: 'Akcja Ruchu',
     cost: 'move',
-    hint: 'Przemieszczasz się o RUCH × 2 metrów. Ruch można rozdzielić wokół Akcji.',
+    hint: 'Ciągnij token po mapie — metry liczy serwer. Przycisk zużywa całą Akcję Ruchu (ruch poza mapą).',
   },
   {
     id: CPRED_ACTION_ATTACK,
@@ -252,19 +253,88 @@ export interface CpredTurnState {
   /** Move Actions granted this turn — one, plus whatever Bieg added. */
   moveMax: number;
   moveUsed: number;
+  /**
+   * Metres of path already walked this turn (stage 14c). Hard going is already
+   * counted double here — this is budget spent, not ground covered.
+   */
+  metresUsed: number;
+  /**
+   * Metres one Move Action buys: effective RUCH × 2. Null when the participant
+   * has no sheet to read it from, in which case metres are not enforced at all
+   * and the turn falls back to counting whole Move Actions (stage 14b).
+   */
+  metresPerMove: number | null;
+  /** Why the allowance is what it is („Pancerz −2"); null when nothing shrank it. */
+  moveNote: string | null;
+  /** The mover declared hard going („2 m budżetu za 1 m ścieżki"). */
+  hardTerrain: boolean;
   /** null = the Action is still free. */
   action: CpredSpentAction | null;
   /** How many times the GM went past the budget with this participant. */
   overspent: number;
 }
 
-export function freshCpredTurn(): CpredTurnState {
-  return { moveMax: CPRED_MOVE_ACTIONS_PER_TURN, moveUsed: 0, action: null, overspent: 0 };
+/** How far a participant may go, as the sheet reports it at that moment. */
+export interface CpredMoveAllowance {
+  /** Metres one Move Action buys; null when there is no sheet to ask. */
+  metresPerMove: number | null;
+  /** What shrank it, for the tracker to show („Złamana noga −4"). */
+  note?: string | null;
+}
+
+export function freshCpredTurn(allowance?: CpredMoveAllowance | null): CpredTurnState {
+  return {
+    moveMax: CPRED_MOVE_ACTIONS_PER_TURN,
+    moveUsed: 0,
+    metresUsed: 0,
+    metresPerMove: normalizeMetresPerMove(allowance?.metresPerMove),
+    moveNote: allowance?.note ?? null,
+    hardTerrain: false,
+    action: null,
+    overspent: 0,
+  };
+}
+
+/**
+ * Re-reads the allowance onto a turn already in progress. Called before every
+ * move is judged, so armor taken off — or a leg broken on somebody else's turn
+ * — changes what is left of *this* turn rather than only the next one.
+ */
+export function withCpredMoveAllowance(
+  state: CpredTurnState,
+  allowance: CpredMoveAllowance | null,
+): CpredTurnState {
+  const metresPerMove = normalizeMetresPerMove(allowance?.metresPerMove);
+  const moveNote = allowance?.note ?? null;
+  if (metresPerMove === state.metresPerMove && moveNote === state.moveNote) return state;
+  return { ...state, metresPerMove, moveNote };
+}
+
+/** Rounding slack, in metres: float noise must not refuse a legal last step. */
+const METRE_EPSILON = 0.05;
+
+function roundMetres(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
+function normalizeMetresPerMove(value: number | null | undefined): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return null;
+  return roundMetres(value);
 }
 
 /** What the caller is trying to spend. */
 export type CpredTurnSpend =
-  | { kind: 'move' }
+  | {
+      kind: 'move';
+      /**
+       * Length of the path walked, in metres. Absent = „a whole Move Action",
+       * which is how movement narrated off the map is booked (the „Akcja Ruchu"
+       * button) and what every pre-14c caller means.
+       */
+      metres?: number;
+      /** Override of the stored hard-going declaration for this step. */
+      hard?: boolean;
+    }
   | { kind: 'action'; actionId: string }
   | {
       kind: 'attack';
@@ -311,6 +381,15 @@ export function readCpredTurn(raw: unknown): CpredTurnState {
     : CPRED_MOVE_ACTIONS_PER_TURN;
   const moveUsed = Number.isInteger(raw.moveUsed) ? Math.max(0, raw.moveUsed as number) : 0;
   const overspent = Number.isInteger(raw.overspent) ? Math.max(0, raw.overspent as number) : 0;
+  // Rows written before stage 14c carry no metres at all: they read back as a
+  // turn that has not walked anywhere, with the distance simply unenforced.
+  const metresUsed =
+    typeof raw.metresUsed === 'number' && Number.isFinite(raw.metresUsed)
+      ? Math.max(0, roundMetres(raw.metresUsed))
+      : 0;
+  const metresPerMove = normalizeMetresPerMove(raw.metresPerMove as number | null | undefined);
+  const moveNote = typeof raw.moveNote === 'string' ? raw.moveNote : null;
+  const hardTerrain = raw.hardTerrain === true;
 
   let action: CpredSpentAction | null = null;
   if (isReadable(raw.action) && typeof raw.action.id === 'string') {
@@ -335,7 +414,38 @@ export function readCpredTurn(raw: unknown): CpredTurnState {
       };
     }
   }
-  return { moveMax, moveUsed, action, overspent };
+  return {
+    moveMax,
+    moveUsed,
+    metresUsed,
+    metresPerMove,
+    moveNote,
+    hardTerrain,
+    action,
+    overspent,
+  };
+}
+
+/**
+ * The mover declares hard going, or takes the declaration back. It is a
+ * property of the turn, not of the map: RAW makes the *player* say „płynę",
+ * and the GM sees it in the tracker (stage decision, 14c).
+ */
+export function setCpredHardTerrain(state: CpredTurnState, hard: boolean): CpredTurnState {
+  return { ...state, hardTerrain: hard };
+}
+
+/** Metres this turn's Move Actions add up to; null when RUCH is unknown. */
+export function cpredMetresMax(state: CpredTurnState): number | null {
+  if (state.metresPerMove === null) return null;
+  return roundMetres(state.moveMax * state.metresPerMove);
+}
+
+/** Metres still walkable; null when the participant has no RUCH to limit. */
+export function cpredMetresLeft(state: CpredTurnState): number | null {
+  const max = cpredMetresMax(state);
+  if (max === null) return null;
+  return Math.max(0, roundMetres(max - state.metresUsed));
 }
 
 /**
@@ -345,7 +455,7 @@ export function readCpredTurn(raw: unknown): CpredTurnState {
  * blocked).
  */
 export function spendCpredTurn(state: CpredTurnState, spend: CpredTurnSpend): CpredTurnResult {
-  if (spend.kind === 'move') return spendMove(state);
+  if (spend.kind === 'move') return spendMove(state, spend);
   if (spend.kind === 'attack') return spendAttack(state, spend);
 
   const definition = cpredAction(spend.actionId);
@@ -353,7 +463,7 @@ export function spendCpredTurn(state: CpredTurnState, spend: CpredTurnSpend): Cp
   // Free actions are catalogued so the UI can name them, but they cost nothing
   // and are never refused — RAW does not track which hand is holding what.
   if (definition.cost === 'free') return { ok: true, state };
-  if (definition.cost === 'move') return spendMove(state);
+  if (definition.cost === 'move') return spendMove(state, { kind: 'move' });
 
   if (state.action !== null) return { ok: false, error: 'NO_ACTION_LEFT' };
   if (definition.requiresSpentMove && state.moveUsed === 0) {
@@ -369,9 +479,77 @@ export function spendCpredTurn(state: CpredTurnState, spend: CpredTurnSpend): Cp
   };
 }
 
-function spendMove(state: CpredTurnState): CpredTurnResult {
-  if (state.moveUsed >= state.moveMax) return { ok: false, error: 'NO_MOVE_LEFT' };
-  return { ok: true, state: { ...state, moveUsed: state.moveUsed + 1 } };
+/**
+ * Movement (stage 14c). „Możesz przemieścić się o RUCH × 2 metry" is a *budget*,
+ * not a permission slip: the turn's metres accumulate across as many drags as
+ * the player likes and can be split around the Action („ruch → atak → ruch"),
+ * which is why nothing here counts drags.
+ *
+ * Two shapes of spend meet in this function:
+ *  - a **path**, in metres, from a token that was dragged across the map;
+ *  - a **whole Move Action**, which is what the „Akcja Ruchu" button books for
+ *    movement that happened off the map („biegnę za róg, poza kadrem") and what
+ *    every caller written before this stage means.
+ *
+ * A participant whose RUCH is unknown (a statist with no sheet) is not policed
+ * in metres at all — inventing a number for them would be worse than the GM's
+ * judgement, and the GM is never blocked anyway.
+ */
+function spendMove(
+  state: CpredTurnState,
+  spend: Extract<CpredTurnSpend, { kind: 'move' }>,
+): CpredTurnResult {
+  const perMove = state.metresPerMove;
+  const rebased = state;
+
+  if (spend.metres === undefined) {
+    // A whole Move Action, unmeasured. It still eats its share of the metres,
+    // so „narrated" movement cannot be followed by a full-length drag.
+    if (rebased.moveUsed >= rebased.moveMax) return { ok: false, error: 'NO_MOVE_LEFT' };
+    return {
+      ok: true,
+      state: {
+        ...rebased,
+        moveUsed: rebased.moveUsed + 1,
+        metresUsed:
+          perMove === null ? rebased.metresUsed : roundMetres(rebased.metresUsed + perMove),
+      },
+    };
+  }
+
+  const walked = Number.isFinite(spend.metres) ? Math.max(0, spend.metres) : 0;
+  const hard = spend.hard ?? rebased.hardTerrain;
+  const cost = roundMetres(walked * cpredTerrainFactor(hard));
+  const metresUsed = roundMetres(rebased.metresUsed + cost);
+
+  if (perMove === null) {
+    // No RUCH to measure against: book the distance, claim the Move Action,
+    // refuse nothing.
+    return {
+      ok: true,
+      state: {
+        ...rebased,
+        metresUsed,
+        moveUsed: cost > 0 ? Math.max(rebased.moveUsed, 1) : rebased.moveUsed,
+      },
+    };
+  }
+
+  const max = roundMetres(rebased.moveMax * perMove);
+  if (metresUsed > max + METRE_EPSILON) return { ok: false, error: 'NO_MOVE_LEFT' };
+  const moveUsed = moveActionsFor(metresUsed, perMove, rebased);
+  return { ok: true, state: { ...rebased, metresUsed, moveUsed } };
+}
+
+/**
+ * How many Move Actions a distance has consumed. Derived rather than counted,
+ * because a turn's metres are one pool: 13 m out of a 12 m Move Action is the
+ * second Action being started, whether it took one drag or five.
+ */
+function moveActionsFor(metresUsed: number, perMove: number, state: CpredTurnState): number {
+  if (metresUsed <= 0) return state.moveUsed;
+  const spent = Math.ceil(metresUsed / perMove - METRE_EPSILON);
+  return Math.min(state.moveMax, Math.max(state.moveUsed, spent));
 }
 
 /**
@@ -447,7 +625,16 @@ export function forceCpredTurn(state: CpredTurnState, spend: CpredTurnSpend): Cp
   if (attempt.ok) return attempt.state;
   // Past the budget: book what was spent anyway so the counters keep counting.
   const overspent = { ...state, overspent: state.overspent + 1 };
-  if (spend.kind === 'move') return { ...overspent, moveUsed: overspent.moveUsed + 1 };
+  if (spend.kind === 'move') {
+    if (spend.metres === undefined) return { ...overspent, moveUsed: overspent.moveUsed + 1 };
+    const walked = Number.isFinite(spend.metres) ? Math.max(0, spend.metres) : 0;
+    const cost = roundMetres(walked * cpredTerrainFactor(spend.hard ?? overspent.hardTerrain));
+    return {
+      ...overspent,
+      metresUsed: roundMetres(overspent.metresUsed + cost),
+      moveUsed: Math.max(overspent.moveUsed, 1),
+    };
+  }
   if (spend.kind === 'attack') {
     const open = overspent.action?.attack;
     if (open) {
@@ -493,7 +680,11 @@ export function forceCpredTurn(state: CpredTurnState, spend: CpredTurnSpend): Cp
  * „Ruch 0/1 · Akcja 0/1 · Ataki 1/2" without knowing a single CP RED rule, so a
  * future system only has to fill the same three fields differently.
  */
-export function cpredTurnBudget(state: CpredTurnState): TurnBudgetView {
+export function cpredTurnBudget(
+  state: CpredTurnState,
+  /** Why the metres are what they are („Pancerz −2"); shown next to them. */
+  moveNote?: string,
+): TurnBudgetView {
   const attack = state.action?.attack;
   const notes: string[] = [];
   if (state.action) {
@@ -517,9 +708,48 @@ export function cpredTurnBudget(state: CpredTurnState): TurnBudgetView {
         max: attack?.closed ? attack.count : CPRED_ATTACKS_PER_ACTION,
       },
     ],
+    // Metres are continuous, so they cannot be pips — the core paints them as
+    // „7,5 / 12 m" without knowing that a metre is RUCH × 2 (stage 14c).
+    ...(state.metresPerMove !== null
+      ? {
+          distance: {
+            label: 'Dystans',
+            used: state.metresUsed,
+            max: cpredMetresMax(state) ?? 0,
+            unit: 'm',
+            ...(state.hardTerrain ? { hard: true } : {}),
+            ...(moveNote ?? state.moveNote ? { note: moveNote ?? state.moveNote! } : {}),
+          },
+        }
+      : {}),
     ...(notes.length > 0 ? { note: notes.join(' · ') } : {}),
     ...(state.overspent > 0 ? { overspent: state.overspent } : {}),
   };
+}
+
+/** Budget a path of this length would cost, hard going included (stage 14c). */
+export function cpredMoveCost(state: CpredTurnState, metres: number, hard?: boolean): number {
+  const walked = Number.isFinite(metres) ? Math.max(0, metres) : 0;
+  return roundMetres(walked * cpredTerrainFactor(hard ?? state.hardTerrain));
+}
+
+function formatMetreValue(metres: number): string {
+  const rounded = roundMetres(metres);
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1).replace('.', ',');
+}
+
+/**
+ * Why a drag was refused, in metres rather than in rule-speak. „Nie masz już
+ * Akcji Ruchu" is true but useless when the player can see empty floor ahead of
+ * them; „zabrakło 3,2 m" tells them whether to run or to stop.
+ */
+export function cpredMoveRefusal(state: CpredTurnState, metres: number, hard?: boolean): string {
+  const left = cpredMetresLeft(state);
+  if (left === null) return CPRED_TURN_PROBLEM_MESSAGES.NO_MOVE_LEFT;
+  const cost = cpredMoveCost(state, metres, hard);
+  const missing = formatMetreValue(Math.max(0, cost - left));
+  const hardGoing = (hard ?? state.hardTerrain) ? ' (ruch utrudniony — podwójny koszt)' : '';
+  return `Za daleko o ${missing} m — zostało ci ${formatMetreValue(left)} m ruchu${hardGoing}.`;
 }
 
 /** Polish refusals, shown to the player who ran out and to the GM who judges. */

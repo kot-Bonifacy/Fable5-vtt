@@ -25,6 +25,7 @@ import {
   sanitizeTokenImageUrl,
   sanitizeTokenName,
   sanitizeTokenPatch,
+  sanitizeTokenPath,
   sanitizeTokenSize,
   snapTokenPosition,
   type TokenSnapScene,
@@ -55,6 +56,7 @@ import {
 import { requireCampaignScene } from './scenes.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { emitCombatOfScene } from './combat.js';
+import { validateTokenMove } from './movement.js';
 
 function parseStatuses(raw: string): string[] {
   try {
@@ -801,53 +803,78 @@ export const tokenMoveEvent = defineEvent<TokenMovePayload, { x: number; y: numb
       ? snapTokenPosition(payload.x, payload.y, token.size, snapScene)
       : clampTokenPosition(payload.x, payload.y, token.size, snapScene);
 
+    /** Sends one frame of this token's movement to everyone entitled to it. */
+    const broadcast = async (
+      position: { x: number; y: number },
+      isFinal: boolean,
+    ): Promise<void> => {
+      const move: Omit<TokenMoveBroadcast, 'seq'> = {
+        sceneId: scene.id,
+        tokenId: token.id,
+        x: position.x,
+        y: position.y,
+        final: isFinal,
+        byUserId: user.id,
+      };
+      // Crossing the fog boundary changes *who the token exists for*, which a
+      // move broadcast cannot express — so those frames go to the GM and the
+      // controllers only, and the players get a reconciling list on the drop.
+      const fog = await fetchFogState(deps.ctx.prisma, scene);
+      const grid = toGridScene(scene);
+      const fogMatters =
+        fog.enabled &&
+        (isTokenInFog(token, grid, fog) || isTokenInFog({ ...token, ...position }, grid, fog));
+
+      if (scene.active && !token.hidden && usesDynamicVision(scene)) {
+        await emitDynamicMove(deps, campaignId, scene, token, move, position, isFinal);
+        return;
+      }
+
+      if (!scene.active) {
+        deps.io.to(sceneRoom(scene.id)).emit('token:move', move);
+      } else if (token.hidden) {
+        deps.io.to(gmRoom(campaignId)).emit('token:move', move);
+      } else if (fogMatters) {
+        deps.io.to(gmRoom(campaignId)).emit('token:move', move);
+        const linked = await loadLinkedSheet(deps, token);
+        for (const userId of controllerIds(token, linked)) {
+          await emitToCampaignUser(deps.io, campaignId, userId, 'token:move', move);
+        }
+        if (isFinal) await emitSceneTokensToPlayers(deps, campaignId, scene);
+      } else {
+        const room = campaignRoom(campaignId);
+        // Only the persisted final position consumes a seq — intermediate drag
+        // frames are ephemeral and a missed one must not trigger a resync.
+        if (isFinal) {
+          deps.io.to(room).emit('token:move', { ...move, seq: deps.seqs.next(room) });
+        } else {
+          deps.io.to(room).emit('token:move', move);
+        }
+      }
+    };
+
     if (final) {
+      // Only the drop is judged (stage 14c). Intermediate frames are a hand in
+      // motion, not a decision — charging them would bill a player for hovering.
+      try {
+        await validateTokenMove(deps, campaignId, user, {
+          scene,
+          token,
+          from: { x: token.x, y: token.y },
+          to: { x, y },
+          path: sanitizeTokenPath(payload.path),
+        });
+      } catch (error) {
+        // Everybody watching the drag has the figure standing where it was
+        // dropped. The mover snaps it back off the ack; the audience needs to
+        // be told, or a refused move would look like it happened to them.
+        await broadcast({ x: token.x, y: token.y }, true);
+        throw error;
+      }
       await deps.ctx.prisma.token.update({ where: { id: token.id }, data: { x, y } });
     }
 
-    const move: Omit<TokenMoveBroadcast, 'seq'> = {
-      sceneId: scene.id,
-      tokenId: token.id,
-      x,
-      y,
-      final,
-      byUserId: user.id,
-    };
-    // Crossing the fog boundary changes *who the token exists for*, which a
-    // move broadcast cannot express — so those frames go to the GM and the
-    // controllers only, and the players get a reconciling list on the drop.
-    const fog = await fetchFogState(deps.ctx.prisma, scene);
-    const grid = toGridScene(scene);
-    const fogMatters =
-      fog.enabled &&
-      (isTokenInFog(token, grid, fog) || isTokenInFog({ ...token, x, y }, grid, fog));
-
-    if (scene.active && !token.hidden && usesDynamicVision(scene)) {
-      await emitDynamicMove(deps, campaignId, scene, token, move, { x, y }, final);
-      return { x, y };
-    }
-
-    if (!scene.active) {
-      deps.io.to(sceneRoom(scene.id)).emit('token:move', move);
-    } else if (token.hidden) {
-      deps.io.to(gmRoom(campaignId)).emit('token:move', move);
-    } else if (fogMatters) {
-      deps.io.to(gmRoom(campaignId)).emit('token:move', move);
-      const linked = await loadLinkedSheet(deps, token);
-      for (const userId of controllerIds(token, linked)) {
-        await emitToCampaignUser(deps.io, campaignId, userId, 'token:move', move);
-      }
-      if (final) await emitSceneTokensToPlayers(deps, campaignId, scene);
-    } else {
-      const room = campaignRoom(campaignId);
-      // Only the persisted final position consumes a seq — intermediate drag
-      // frames are ephemeral and a missed one must not trigger a resync.
-      if (final) {
-        deps.io.to(room).emit('token:move', { ...move, seq: deps.seqs.next(room) });
-      } else {
-        deps.io.to(room).emit('token:move', move);
-      }
-    }
+    await broadcast({ x, y }, final);
     return { x, y };
   },
 });

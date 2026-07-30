@@ -3611,6 +3611,21 @@ body.is-resizing {
   background: var(--err);
 }
 
+/* Metres left this turn (stage 14c) — a fraction, not pips: movement is
+   continuous, and „7,5 / 12 m" is what the player has to read at a glance. */
+.combat-budget-distance {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+}
+
+.combat-budget-distance--over {
+  color: var(--err);
+}
+
 .combat-budget-flag {
   padding: 0 0.3rem;
   border-radius: 3px;

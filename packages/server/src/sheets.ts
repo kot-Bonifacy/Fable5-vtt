@@ -13,11 +13,18 @@ import type {
 import {
   CPRED_ACTIONS,
   CPRED_HIT_LOCATIONS,
+  CPRED_PRONE_STATUS_ID,
   CPRED_STAT_LABELS,
   CPRED_TURN_PROBLEM_MESSAGES,
   applyWoundStatuses,
   cpredAction,
+  cpredMetresLeft,
+  cpredMoveBudgetFromSheet,
+  cpredMoveRefusal,
+  cpredMovementBlock,
   cpredTurnBudget,
+  setCpredHardTerrain,
+  withCpredMoveAllowance,
   drawCriticalInjury,
   effectiveArmor,
   forceCpredTurn,
@@ -143,9 +150,93 @@ export function spendUsesAction(spend: SheetTurnSpend): boolean {
   return cpredAction(spend.actionId)?.cost === 'action';
 }
 
-/** A budget with everything still unspent — the start of a participant's turn. */
-export function freshTurnState(): SheetTurnState {
-  return JSON.stringify(freshCpredTurn());
+/**
+ * What the core needs to know about one participant's movement (stage 14c).
+ * The tracker only ever asks „how far may this one go, and why that far" —
+ * that RUCH × 2 is metres, that armor weighs and that a broken leg costs 4
+ * stays on this side of the seam.
+ */
+export interface SheetMoveBudget {
+  /** Distance one Move Action buys, in the unit the system measures in. */
+  metresPerMove: number;
+  /** „Pancerz −2 · Złamana noga −4" — shown next to the metres, never guessed. */
+  note: string | null;
+}
+
+/** Movement allowance of a linked sheet: effective RUCH × 2, and what shrank it. */
+export function readSheetMoveBudget(
+  character: Pick<Character, 'data'>,
+  registry: SheetRegistry,
+): SheetMoveBudget {
+  const data = parseCharacterData(character.data, registry);
+  const budget = cpredMoveBudgetFromSheet({
+    move: data.stats.move,
+    hpCurrent: data.hpCurrent,
+    hpMax: hpMax(data.stats),
+    armor: data.armor,
+    injuries: data.criticalInjuries,
+  });
+  const note = budget.modifiers
+    .map(({ label, value }) => `${label} ${value > 0 ? '+' : '−'}${Math.abs(value)}`)
+    .join(' · ');
+  return {
+    metresPerMove: budget.metresPerMove,
+    note: note.length > 0 ? `${note}${budget.floored ? ' (RUCH minimum 1)' : ''}` : null,
+  };
+}
+
+/**
+ * Statuses that stop a token walking off on its own — the answer is a ready
+ * Polish sentence, because „grappled" means nothing to the person being told
+ * their drag was refused.
+ */
+export function sheetMovementBlock(statuses: readonly string[]): string | null {
+  return cpredMovementBlock(statuses);
+}
+
+/** Status the „Wstanie" Action takes off the token that paid for it. */
+export const SHEET_PRONE_STATUS_ID = CPRED_PRONE_STATUS_ID;
+
+/**
+ * A budget with everything still unspent — the start of a participant's turn.
+ * The distance allowance is baked in at that moment; a spend may hand in a
+ * fresher one, which is how a leg broken mid-turn shortens the rest of it.
+ */
+export function freshTurnState(move?: SheetMoveBudget | null): SheetTurnState {
+  return JSON.stringify(
+    freshCpredTurn(move ? { metresPerMove: move.metresPerMove, note: move.note } : null),
+  );
+}
+
+/**
+ * Re-reads a participant's allowance onto the budget they are already holding.
+ * Called just before a move is judged, so the sheet as it is *now* decides how
+ * far they get — not the sheet as it was when their turn began.
+ */
+export function applyMoveBudget(
+  stored: string | null,
+  move: SheetMoveBudget | null,
+): SheetTurnState {
+  const state = withCpredMoveAllowance(
+    readCpredTurn(stored ?? undefined),
+    move ? { metresPerMove: move.metresPerMove, note: move.note } : null,
+  );
+  return JSON.stringify(state);
+}
+
+/** Records the mover's „ruch utrudniony" declaration on a stored budget. */
+export function setTurnHardTerrain(stored: string | null, hard: boolean): SheetTurnState {
+  return JSON.stringify(setCpredHardTerrain(readCpredTurn(stored ?? undefined), hard));
+}
+
+/** Distance still available on a stored budget; null when it is not measured. */
+export function turnDistanceLeft(stored: string | null): number | null {
+  return cpredMetresLeft(readCpredTurn(stored ?? undefined));
+}
+
+/** Why a path of this length does not fit — in the unit the players speak in. */
+export function turnDistanceRefusal(stored: string | null, metres: number): string {
+  return cpredMoveRefusal(readCpredTurn(stored ?? undefined), metres);
 }
 
 /**
@@ -170,9 +261,12 @@ export function turnProblemMessage(problem: SheetTurnProblem): string {
 }
 
 /** The tracker's projection of a stored budget (`null` before the turn starts). */
-export function turnBudgetOf(stored: string | null): TurnBudgetView | null {
+export function turnBudgetOf(
+  stored: string | null,
+  moveNote?: string | null,
+): TurnBudgetView | null {
   if (stored === null) return null;
-  return cpredTurnBudget(readCpredTurn(stored));
+  return cpredTurnBudget(readCpredTurn(stored), moveNote ?? undefined);
 }
 
 /**

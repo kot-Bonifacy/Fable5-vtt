@@ -7,11 +7,15 @@ import {
   CPRED_ACTION_STAND_UP,
   CPRED_ATTACKS_PER_ACTION,
   cpredAction,
+  cpredMetresLeft,
+  cpredMoveRefusal,
   cpredTurnBudget,
   forceCpredTurn,
   freshCpredTurn,
   readCpredTurn,
+  setCpredHardTerrain,
   spendCpredTurn,
+  withCpredMoveAllowance,
   type CpredTurnSpend,
   type CpredTurnState,
 } from './turn.js';
@@ -223,5 +227,148 @@ describe('turn state round-trip and projection', () => {
   it('reports an overspending GM', () => {
     const twice = spendAll(freshCpredTurn(), [fast(), fast()]);
     expect(cpredTurnBudget(forceCpredTurn(twice, fast())).overspent).toBe(1);
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * Movement in metres (stage 14c)
+ * ------------------------------------------------------------------ */
+
+/** A turn belonging to somebody with RUCH 6, i.e. 12 m per Move Action. */
+function walker(metresPerMove = 12): CpredTurnState {
+  return freshCpredTurn({ metresPerMove });
+}
+
+/** Walks `metres` of path, asserting the step was legal. */
+function walk(state: CpredTurnState, metres: number, hard?: boolean): CpredTurnState {
+  const result = spendCpredTurn(state, { kind: 'move', metres, ...(hard ? { hard } : {}) });
+  if (!result.ok) throw new Error(`unexpected refusal: ${result.error}`);
+  return result.state;
+}
+
+describe('cpred movement budget', () => {
+  it('lets a RUCH 6 character walk 11 m and refuses the next 3 m', () => {
+    const after = walk(walker(), 11);
+    expect(after.metresUsed).toBe(11);
+    const tooFar = spendCpredTurn(after, { kind: 'move', metres: 3 });
+    expect(tooFar).toEqual({ ok: false, error: 'NO_MOVE_LEFT' });
+  });
+
+  it('spends one pool across several drags, not one budget per drag', () => {
+    const after = walk(walk(walk(walker(), 4), 4), 4);
+    expect(after.metresUsed).toBe(12);
+    expect(spendCpredTurn(after, { kind: 'move', metres: 0.5 }).ok).toBe(false);
+  });
+
+  it('splits movement around the Action („ruch → atak → ruch")', () => {
+    const moved = walk(walker(), 5);
+    const attacked = spendAll(moved, [fast()]);
+    const finished = walk(attacked, 7);
+    expect(finished.metresUsed).toBe(12);
+    expect(finished.action?.id).toBe(CPRED_ACTION_ATTACK);
+  });
+
+  it('lets the last legal metre through despite float noise', () => {
+    // 3 × 4.1 m adds up to 12.299…; the budget is 12.3 after rounding.
+    const after = walk(walk(walk(walker(12.3), 4.1), 4.1), 4.1);
+    expect(after.metresUsed).toBeCloseTo(12.3, 5);
+  });
+
+  it('gives Bieg a second Move Action worth of metres', () => {
+    const moved = walk(walker(), 12);
+    const running = spendCpredTurn(moved, { kind: 'action', actionId: CPRED_ACTION_RUN });
+    expect(running.ok).toBe(true);
+    if (!running.ok) return;
+    const after = walk(running.state, 12);
+    expect(after.metresUsed).toBe(24);
+    expect(spendCpredTurn(after, { kind: 'move', metres: 1 }).ok).toBe(false);
+  });
+
+  it('unlocks Bieg once the first metre is walked, not before', () => {
+    expect(spendCpredTurn(walker(), { kind: 'action', actionId: CPRED_ACTION_RUN })).toEqual({
+      ok: false,
+      error: 'RUN_NEEDS_MOVE',
+    });
+    const stepped = walk(walker(), 1);
+    expect(spendCpredTurn(stepped, { kind: 'action', actionId: CPRED_ACTION_RUN }).ok).toBe(true);
+  });
+
+  it('charges hard going double', () => {
+    const after = walk(walker(), 6, true);
+    expect(after.metresUsed).toBe(12);
+    expect(spendCpredTurn(after, { kind: 'move', metres: 1 }).ok).toBe(false);
+  });
+
+  it('remembers a declared hard going for later steps', () => {
+    const declared = setCpredHardTerrain(walker(), true);
+    expect(walk(declared, 3).metresUsed).toBe(6);
+  });
+
+  it('books the „Akcja Ruchu" button as a whole Move Action of metres', () => {
+    const after = spendCpredTurn(walker(), { kind: 'move' });
+    expect(after.ok).toBe(true);
+    if (!after.ok) return;
+    expect(after.state.metresUsed).toBe(12);
+    expect(after.state.moveUsed).toBe(1);
+    // Narrated movement is still movement: no drag fits afterwards.
+    expect(spendCpredTurn(after.state, { kind: 'move', metres: 1 }).ok).toBe(false);
+  });
+
+  it('leaves a participant without a sheet unpoliced', () => {
+    const statist = freshCpredTurn();
+    const after = walk(statist, 400);
+    expect(after.metresUsed).toBe(400);
+    expect(after.moveUsed).toBe(1);
+    expect(cpredTurnBudget(after).distance).toBeUndefined();
+  });
+
+  it('shrinks what is left when a leg breaks mid-turn', () => {
+    const moved = walk(walker(), 6);
+    // A Critical Injury lands on somebody else's turn: RUCH 6 → 2, so 4 m.
+    const hurt = withCpredMoveAllowance(moved, { metresPerMove: 4, note: 'Złamana noga −4' });
+    expect(cpredMetresLeft(hurt)).toBe(0);
+    expect(spendCpredTurn(hurt, { kind: 'move', metres: 1 }).ok).toBe(false);
+    expect(cpredTurnBudget(hurt).distance?.note).toBe('Złamana noga −4');
+  });
+
+  it('paints the distance as „used / max m" for the tracker', () => {
+    const budget = cpredTurnBudget(walk(walker(), 7.5));
+    expect(budget.distance).toEqual({ label: 'Dystans', used: 7.5, max: 12, unit: 'm' });
+    expect(budget.resources.find((r) => r.id === 'move')).toEqual({
+      id: 'move',
+      label: 'Ruch',
+      used: 1,
+      max: 1,
+    });
+  });
+
+  it('explains a refusal in metres, not in rules', () => {
+    const after = walk(walker(), 10);
+    expect(cpredMoveRefusal(after, 5)).toBe('Za daleko o 3 m — zostało ci 2 m ruchu.');
+  });
+
+  it('lets the GM walk past the budget and counts the overspend', () => {
+    const after = forceCpredTurn(walk(walker(), 12), { kind: 'move', metres: 8 });
+    expect(after.metresUsed).toBe(20);
+    expect(after.overspent).toBe(1);
+    expect(cpredTurnBudget(after).distance).toEqual({
+      label: 'Dystans',
+      used: 20,
+      max: 12,
+      unit: 'm',
+    });
+  });
+
+  it('survives a round trip through the JSON column', () => {
+    const declared = setCpredHardTerrain(walk(walker(), 3.5), true);
+    const restored = readCpredTurn(JSON.stringify(declared));
+    expect(restored).toEqual(declared);
+  });
+
+  it('reads a stage 14b row back as a turn that has not walked anywhere', () => {
+    const legacy = readCpredTurn({ moveMax: 1, moveUsed: 1, action: null, overspent: 0 });
+    expect(legacy.metresUsed).toBe(0);
+    expect(legacy.metresPerMove).toBeNull();
+    expect(legacy.moveUsed).toBe(1);
   });
 });

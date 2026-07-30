@@ -101,6 +101,7 @@ import {
   MAX_ROLL_TERMS,
   ROLE_GM,
   TOKEN_MOVE_RATE_HZ,
+  TOKEN_PATH_MAX_POINTS,
   parseChatInput,
 } from '@vtt/shared';
 import { playRollAnimation, toAnimationNotation } from './dice3d.js';
@@ -1135,6 +1136,13 @@ export const releaseCombatHold = (combatantId: string) =>
 export const resetCombatTurn = (combatantId: string) =>
   emitSceneAck<CombatView>('combat:reset-turn', { combatantId });
 
+/** „Ruch utrudniony": the mover declares it, the server charges double for it. */
+export const setCombatTerrain = (hard: boolean, combatantId?: string) =>
+  emitSceneAck<CombatView>('combat:terrain', {
+    hard,
+    ...(combatantId ? { combatantId } : {}),
+  });
+
 /** Polish messages for tracker rejections. */
 export function combatErrorText(code: string): string {
   switch (code) {
@@ -1169,6 +1177,10 @@ export function combatErrorText(code: string): string {
       return 'Ten uczestnik nie ma wstrzymanej Akcji.';
     case 'USE_HOLD_EVENT':
       return 'Wstrzymanie Akcji deklaruje się osobnym przyciskiem.';
+    // Stage 14c: the metres (or the status) that stopped the drag are on the
+    // refusal card; the tracker only needs to say that it was stopped.
+    case 'MOVE_REFUSED':
+      return 'Ruch odrzucony — szczegóły na karcie odmowy.';
     default:
       return `Błąd walki: ${code}`;
   }
@@ -1247,6 +1259,7 @@ export function sendTokenMove(
   x: number,
   y: number,
   final: boolean,
+  path?: ScenePoint[],
 ): Promise<SocketAck<{ x: number; y: number }>> | null {
   if (!final) {
     const now = Date.now();
@@ -1255,7 +1268,15 @@ export function sendTokenMove(
     socket?.emit('token:move', { tokenId, x, y, final: false });
     return null;
   }
-  return emitSceneAck<{ x: number; y: number }>('token:move', { tokenId, x, y, final: true });
+  // The route rides on the drop only (stage 14c): the server charges movement
+  // by its length, and intermediate frames are a hand in motion, not a walk.
+  return emitSceneAck<{ x: number; y: number }>('token:move', {
+    tokenId,
+    x,
+    y,
+    final: true,
+    ...(path && path.length > 0 ? { path: path.slice(0, TOKEN_PATH_MAX_POINTS) } : {}),
+  });
 }
 
 /** Requests the previous page of chat history (infinite scroll upwards). */

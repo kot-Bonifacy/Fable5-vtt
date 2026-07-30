@@ -21,6 +21,7 @@ import type {
 import {
   ARMOR_LOCATIONS,
   ARMOR_LOCATION_LABELS,
+  ARMOR_PENALTY_MIN,
   ARMOR_SP_MAX,
   CPRED_BURST_AMMO_COST,
   CPRED_STAT_IDS,
@@ -996,6 +997,7 @@ function ArmorTable({ data, saveData }: TabProps) {
             <th style={{ width: '6.5rem' }}>Lokacja</th>
             <th style={{ width: '4rem' }}>OB</th>
             <th style={{ width: '4.5rem' }}>Bieżące</th>
+            <th style={{ width: '4.5rem' }}>Kara</th>
             <th style={{ width: '4rem' }}>Noszony</th>
             <th>Uwagi</th>
             <th />
@@ -1051,6 +1053,25 @@ function ArmorTable({ data, saveData }: TabProps) {
                   }}
                   aria-label="Bieżące OB (po ablacji)"
                   title="Ablacja: każde przebicie obniża OB o 1. Naprawa przywraca pełną wartość."
+                />
+              </td>
+              {/* Stage 14c: heavy armor slows the wearer (REF/ZW/RUCH). The
+                  turn budget reads exactly this field, and only from worn
+                  pieces — the worst one counts, they do not add up (s. 185). */}
+              <td>
+                <input
+                  type="number"
+                  min={ARMOR_PENALTY_MIN}
+                  max={0}
+                  value={row.penalty ?? 0}
+                  onChange={(e) => {
+                    const value = parseNumberInput(e);
+                    if (value === undefined) return;
+                    const clamped = Math.min(0, Math.max(ARMOR_PENALTY_MIN, value));
+                    update(row.id, { penalty: clamped === 0 ? undefined : clamped });
+                  }}
+                  aria-label="Kara pancerza do REF/ZW/RUCH"
+                  title="Kara do REF, ZW i RUCH-u. Liczy się najgorsza z noszonych sztuk, kary się nie sumują."
                 />
               </td>
               <td className="armor-worn-cell">

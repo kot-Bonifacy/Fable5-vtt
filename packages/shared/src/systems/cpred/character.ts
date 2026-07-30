@@ -1,6 +1,12 @@
 import { isValidCompendiumId } from './ids.js';
 import { hpMax, humanityMax } from './derived.js';
-import { ARMOR_LOCATIONS, ARMOR_SP_MAX, type ArmorLocation } from './locations.js';
+import {
+  ARMOR_LOCATIONS,
+  ARMOR_PENALTY_MIN,
+  ARMOR_SP_MAX,
+  INJURY_MOVE_PENALTY_MIN,
+  type ArmorLocation,
+} from './locations.js';
 import {
   CPRED_STAT_IDS,
   CPRED_STAT_LABELS,
@@ -224,6 +230,12 @@ export interface CpredArmorRow extends CpredItemRow {
   location: ArmorLocation;
   /** Carried but not worn armor protects nothing; absent means worn. */
   equipped?: boolean;
+  /**
+   * Penalty this piece puts on REF/ZW/RUCH, as a negative number (stage 14c).
+   * Copied from the catalogue when the armor is bought, like `sp` — so a
+   * hand-edited one-off („ta kurtka ma podszewkę") stays hand-edited.
+   */
+  penalty?: number;
 }
 
 /**
@@ -240,6 +252,12 @@ export interface CpredCriticalInjuryRow {
   rolled?: number;
   /** Some injuries make every later Death Save harder. */
   deathSavePenalty?: number;
+  /**
+   * RUCH this injury costs, as a negative number (stage 14c): a collapsed lung
+   * is −2, a broken leg −4, a severed one −6. Copied from the compendium when
+   * the injury is drawn, so editing the table never rewrites old wounds.
+   */
+  movePenalty?: number;
 }
 
 /**
@@ -528,12 +546,16 @@ function validateCriticalInjuries(
     if (name === undefined || effect === undefined) return undefined;
     const rolled = row.rolled;
     const penalty = row.deathSavePenalty;
+    const movePenalty = row.movePenalty;
     rows.push({
       id: row.id,
       name,
       effect,
       ...(isInteger(rolled) && rolled >= 2 && rolled <= 12 ? { rolled } : {}),
       ...(isInteger(penalty) && penalty > 0 && penalty <= 5 ? { deathSavePenalty: penalty } : {}),
+      ...(isInteger(movePenalty) && movePenalty < 0 && movePenalty >= INJURY_MOVE_PENALTY_MIN
+        ? { movePenalty }
+        : {}),
     });
   }
   return rows;
@@ -625,12 +647,20 @@ function collectCharacterDataPatch(
       const location = (ARMOR_LOCATIONS as readonly unknown[]).includes(row.location)
         ? (row.location as ArmorLocation)
         : 'body';
+      const penalty = row.penalty;
+      if (penalty !== undefined && penalty !== null) {
+        if (!isInteger(penalty) || penalty > 0 || penalty < ARMOR_PENALTY_MIN) {
+          issues.push(issue('armor', `Kara pancerza musi być liczbą od ${ARMOR_PENALTY_MIN} do 0.`));
+          return undefined;
+        }
+      }
       return {
         ...base,
         sp,
         spCurrent: Math.min(spCurrent, sp),
         location,
         ...(row.equipped === false ? { equipped: false } : {}),
+        ...(isInteger(penalty) && penalty < 0 ? { penalty } : {}),
       };
     });
     if (armor) patch.armor = armor;

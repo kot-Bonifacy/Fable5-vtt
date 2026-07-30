@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { TurnBudgetView } from '@vtt/shared';
-import { ROLE_GM } from '@vtt/shared';
+import { ROLE_GM, formatMetres } from '@vtt/shared';
 import { nextCombatTurn, previousCombatTurn } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useCombatStore, activeCombatantOf, myActiveCombatant } from '../stores/combatStore.js';
@@ -81,6 +81,27 @@ function TurnBudget({ budget }: { budget: TurnBudgetView }) {
           </span>
         </span>
       ))}
+      {/* Metres cannot be pips (stage 14c) — a continuous budget reads as a
+          fraction, and the unit is whatever the system called it. */}
+      {budget.distance && (
+        <span
+          className={`combat-budget-distance${
+            budget.distance.used > budget.distance.max ? ' combat-budget-distance--over' : ''
+          }`}
+          title={
+            budget.distance.note
+              ? `${budget.distance.label}: ${budget.distance.note}`
+              : budget.distance.label
+          }
+        >
+          {formatMetres(budget.distance.used)} / {formatMetres(budget.distance.max)}
+          {budget.distance.hard && (
+            <span className="combat-budget-flag" title="Ruch utrudniony — podwójny koszt">
+              ×2
+            </span>
+          )}
+        </span>
+      )}
       {budget.bypass && (
         <span className="combat-budget-flag" title="MG przepuścił jedną akcję">
           przepustka

@@ -248,6 +248,9 @@ export function toCriticalInjuryRow(
     effect: criticalInjuryEffect(entry),
     rolled,
     ...(entry.deathSavePenalty ? { deathSavePenalty: entry.deathSavePenalty } : {}),
+    // Stage 14c: the injury's RUCH cost travels with the wound, so editing the
+    // table later never rewrites a leg that is already broken.
+    ...(entry.movePenalty ? { movePenalty: entry.movePenalty } : {}),
   };
 }
 

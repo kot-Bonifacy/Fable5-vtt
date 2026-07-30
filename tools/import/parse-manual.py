@@ -689,6 +689,9 @@ INJURY_TAIL = re.compile(rf"\s*(?P<quick>{QUICK_FIX})\s*(?P<treat>{TREATMENT})\s
 DEATH_SAVE_PENALTY = re.compile(
     r"\+(\d)\s+do\s+podstawowej\s+trudności\s+Testu\s+Przeżywalności", re.IGNORECASE
 )
+# „-4 do Ruchu (minimum 1)" -> movePenalty: -4 (stage 14c): the turn budget
+# enforces it, so it has to be a number rather than a sentence.
+MOVE_PENALTY = re.compile(r"[-−–]\s*(\d)\s+do\s+Ruchu", re.IGNORECASE)
 # The injury name is glued to its effect. The effect always starts with a
 # capital („rękaRęka zostaje"), a signed modifier („płuco-2 do Ruchu") or a
 # space before either of those.
@@ -746,6 +749,9 @@ def parse_injury_table(chapter: str, start: str, end: str, table: str) -> list[d
         penalty = DEATH_SAVE_PENALTY.search(effect)
         if penalty:
             entry["deathSavePenalty"] = int(penalty.group(1))
+        slowed = MOVE_PENALTY.search(effect)
+        if slowed:
+            entry["movePenalty"] = -int(slowed.group(1))
         injuries.append(entry)
     return injuries
 

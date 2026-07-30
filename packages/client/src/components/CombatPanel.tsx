@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CombatantView, TokenView, TurnBudgetView } from '@vtt/shared';
+import { formatMetres } from '@vtt/shared';
 import {
   COMBAT_INITIATIVE_MAX,
   COMBAT_INITIATIVE_MIN,
@@ -109,6 +110,12 @@ function budgetSummary(budget: TurnBudgetView): string {
   const parts = budget.resources.map(
     (resource) => `${resource.label} ${resource.used}/${resource.max}`,
   );
+  if (budget.distance) {
+    const used = formatMetres(budget.distance.used);
+    const max = formatMetres(budget.distance.max);
+    const metres = `${budget.distance.label} ${used}/${max}`;
+    parts.push(budget.distance.hard ? `${metres} (utrudniony ×2)` : metres);
+  }
   if (budget.overspent) parts.push(`poza budżetem ×${budget.overspent}`);
   if (budget.bypass) parts.push('przepustka MG');
   return parts.join(' · ');

@@ -55,7 +55,16 @@ export async function addCompendiumItemToCharacter(
       const location = entry.locations.includes('body') ? 'body' : (entry.locations[0] ?? 'body');
       const armor = [
         ...data.armor,
-        { ...base, notes: '', sp: entry.sp, spCurrent: entry.sp, location },
+        {
+          ...base,
+          notes: '',
+          sp: entry.sp,
+          spCurrent: entry.sp,
+          location,
+          // Stage 14c: heavy armor slows its wearer, and the turn budget reads
+          // the number off the row — so it is copied like SP, not looked up.
+          ...(entry.penalty ? { penalty: entry.penalty } : {}),
+        },
       ];
       queueCharacterSave(characterId, { data: { armor } });
       return `Dodano „${entry.name}” do pancerza.`;
