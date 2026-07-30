@@ -10,7 +10,7 @@ Pipeline danych: tekst podręcznika → ustrukturyzowany JSON → baza; kompendi
 
 ## Zakres
 
-- [x] Schematy danych (`shared/systems/cpred/compendium.ts` — ręczna walidacja z komunikatami PL, jak reszta repo; bez zod, patrz POSTEP): broń (typ, umiejętność, obrażenia, ROF, magazynek, ręce, ukrywalność, cena, tabela DV per zasięg), pancerz (SP, kara, lokacja), ekwipunek ogólny, pełna lista umiejętności, role i zdolności ról
+- [x] Schematy danych (`shared/systems/cpred/compendium.ts` — ręczna walidacja z komunikatami PL, jak reszta repo; bez zod, patrz `archiwum/dziennik-sesji.md`): broń (typ, umiejętność, obrażenia, ROF, magazynek, ręce, ukrywalność, cena, tabela DV per zasięg), pancerz (SP, kara, lokacja), ekwipunek ogólny, pełna lista umiejętności, role i zdolności ról
 - [x] Skrypty importu w `tools/import/`: parsowanie dostarczonego tekstu (regex/heurystyki + ręczne poprawki w plikach pośrednich) → JSON walidowany schematami → zapis do `data/private/`
 - [x] Ładowanie danych przy starcie serwera z `data/private/` (pełne dane) z fallbackiem na `data/public/` (kilkanaście przykładowych, wymyślonych wpisów do dev/testów i dla publicznego repo)
 - [x] Podmiana roboczej listy umiejętności z etapu 07 na pełne dane — **odblokowane 2026-07-27**, gdy pojawił się podręcznik główny. Wcześniej niewykonalne z darmowych materiałów: statbloki DLC wymieniają umiejętności spoza Easy Mode, ale nigdy nie podają cechy, z której się je rzuca. Dziś: 66 umiejętności z cechami, mnożnikami (×2), 9 kategoriami i opisami; karta grupuje je w zwijane bloki
