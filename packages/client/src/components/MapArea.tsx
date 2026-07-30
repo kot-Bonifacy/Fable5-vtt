@@ -2,17 +2,20 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   CPRED_RANGE_BANDS,
   ROLE_GM,
+  blockingSegments,
+  computeVisionPolygon,
   metresPerPixel,
   metresToPixels,
   pickDrawingAt,
   pickWallAt,
+  sceneBoundsSegments,
   tokenCentre,
 } from '@vtt/shared';
-import type { LightGlow } from '@vtt/shared';
 import {
   MapRenderer,
   type LightMarker,
   type RangeRing,
+  type RenderGlow,
   type RulerLine,
 } from '../map/MapRenderer.js';
 import { useSceneStore } from '../stores/sceneStore.js';
@@ -39,6 +42,7 @@ import {
 import { loadAttackAtToken } from '../attack-targeting.js';
 import { useAttackStore } from '../stores/attackStore.js';
 import { useRulerStore } from '../stores/rulerStore.js';
+import { useExplorationStore } from '../stores/explorationStore.js';
 import { useFogStore } from '../stores/fogStore.js';
 import { useNoteStore } from '../stores/noteStore.js';
 import { sortedDrawings, useDrawingStore } from '../stores/drawingStore.js';
@@ -292,6 +296,10 @@ export function MapArea() {
         color: tools.lightColor,
         flicker: tools.lightFlicker,
       };
+      // „Light this room" (stage 18c): the radii are worked out on the server,
+      // because that is where the walls are. The colour and the flicker still
+      // come from the panel — those are taste, not measurement.
+      const fitRoom = tools.lightFitRoom;
       // Clicking a lamp that is already there retunes it to the panel's
       // settings — which is what makes the panel double as the editor.
       const existing = pickLightAt(
@@ -300,8 +308,8 @@ export function MapArea() {
         lightGrabTolerance(current.grid.sizePx),
       );
       const request = existing
-        ? updateLight(existing.id, spec)
-        : createLight(current.id, x, y, spec);
+        ? updateLight(existing.id, spec, fitRoom)
+        : createLight(current.id, x, y, { ...spec, fitRoom });
       void request.then((ack) => {
         if (!ack.ok) useChatStore.getState().addNote(lightErrorText(ack.error));
       });
@@ -531,6 +539,13 @@ export function MapArea() {
     // Only a player is covered: the GM sees the whole map and the walls on it.
     const active = !isGmNow && current?.visibility === 'dynamic';
     rendererRef.current?.setVision(state.polygons, active === true, useLightStore.getState().mask);
+    // The memory of the map and the GM's overrides go into the same sheet, and
+    // only a player has that sheet: for the GM the first is nothing to draw and
+    // the second is drawn by the fog layer instead.
+    rendererRef.current?.setExploration(isGmNow ? null : useExplorationStore.getState().mask);
+    rendererRef.current?.setVisionOverrides(
+      isGmNow ? [] : (useFogStore.getState().fog?.overrides ?? []),
+    );
   }, []);
 
   useEffect(() => {
@@ -539,10 +554,14 @@ export function MapArea() {
     const unsubWalls = useWallStore.subscribe(pushWalls);
     const unsubScene = useSceneStore.subscribe(pushWalls);
     const unsubLight = useLightStore.subscribe(pushWalls);
+    const unsubExploration = useExplorationStore.subscribe(pushWalls);
+    const unsubFog = useFogStore.subscribe(pushWalls);
     return () => {
       unsubWalls();
       unsubScene();
       unsubLight();
+      unsubExploration();
+      unsubFog();
     };
   }, [ready, scene, pushWalls]);
 
@@ -591,9 +610,22 @@ export function MapArea() {
       renderer.setGlows([]);
       return;
     }
-    const glows: LightGlow[] = [];
+    // Walls clip the GM's glow the way the darkness cover clips a player's: a
+    // lamp inside a sealed room must not pour light through its walls. The GM
+    // holds the wall list, so the same raycast the server runs is available
+    // here — and windows are not in the blocker set, so light goes through them
+    // exactly as it does on the server.
+    const segments = [
+      ...blockingSegments(useWallStore.getState().walls),
+      ...sceneBoundsSegments(current),
+    ];
+    const clipOf = (x: number, y: number, reach: number) =>
+      reach > 0 ? computeVisionPolygon({ x, y }, segments, reach) : undefined;
+
+    const glows: RenderGlow[] = [];
     for (const light of state.lights) {
       if (!light.enabled) continue;
+      const reach = reachPx(light);
       glows.push({
         x: light.x,
         y: light.y,
@@ -601,6 +633,7 @@ export function MapArea() {
         dimPx: metresToPixels(light.dimM, current),
         color: light.color,
         flicker: light.flicker,
+        clip: clipOf(light.x, light.y, reach),
       });
     }
     for (const token of Object.values(useTokenStore.getState().tokens)) {
@@ -614,6 +647,7 @@ export function MapArea() {
         dimPx: metresToPixels(carried.dimM, current),
         color: carried.color,
         flicker: carried.flicker,
+        clip: clipOf(centre.x, centre.y, reachPx(carried)),
       });
     }
     renderer.setGlows(glows);

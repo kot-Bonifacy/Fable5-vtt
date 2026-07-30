@@ -16,13 +16,17 @@ import {
   LIGHT_DEFAULT_DIM_M,
   LIGHT_MAX_PER_SCENE,
   ROLE_GM,
+  fitLightToRoom,
   orderLightRadii,
   sanitizeDarkSight,
+  roomSegments,
   sanitizeLightPatch,
+  sceneBoundsSegments,
 } from '@vtt/shared';
 import type { Scene } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
-import { fetchSceneLights, toLightView } from './lights-io.js';
+import { fetchSceneLights, toLightScene, toLightView } from './lights-io.js';
+import { fetchSceneWalls } from './walls-io.js';
 import { requireCampaignScene, toSceneView } from './scenes.js';
 import { campaignRoom, gmRoom, sceneRoom } from './state.js';
 import {
@@ -111,7 +115,23 @@ export const lightCreateEvent = defineEvent<LightCreatePayload, LightView>({
     const stored = await deps.ctx.prisma.mapLight.count({ where: { sceneId: scene.id } });
     if (stored >= LIGHT_MAX_PER_SCENE) throw new RealtimeError('LIGHT_LIMIT_REACHED');
 
-    const ordered = orderLightRadii(patch.brightM ?? 0, patch.dimM ?? 0);
+    // „Light this room" (stage 18c): the walls measure the lamp, because the
+    // client has no walls to measure it with. A scene without any is not an
+    // error — the fit simply comes back at the cap, which on an open map is the
+    // honest answer.
+    const fitted =
+      payload?.fitRoom === true
+        ? fitLightToRoom(
+            { x: patch.x, y: patch.y },
+            [
+              ...roomSegments(await fetchSceneWalls(deps.ctx.prisma, scene.id)),
+              ...sceneBoundsSegments(scene),
+            ],
+            toLightScene(scene),
+          )
+        : null;
+
+    const ordered = fitted ?? orderLightRadii(patch.brightM ?? 0, patch.dimM ?? 0);
     const created = await deps.ctx.prisma.mapLight.create({
       data: {
         sceneId: scene.id,
@@ -137,8 +157,20 @@ export const lightUpdateEvent = defineEvent<LightUpdatePayload, LightView>({
     if (!patch) throw new RealtimeError('BAD_REQUEST');
 
     // The radii are ordered only once the pair is complete: a patch touching
-    // just the bright one still has to end up inside the dim one.
-    const ordered = orderLightRadii(patch.brightM ?? row.brightM, patch.dimM ?? row.dimM);
+    // just the bright one still has to end up inside the dim one. „Fit the
+    // room" skips that entirely — it measures where the lamp will *end up*, so
+    // a move and a re-fit in the same patch land on the new room, not the old.
+    const ordered =
+      payload?.fitRoom === true
+        ? fitLightToRoom(
+            { x: patch.x ?? row.x, y: patch.y ?? row.y },
+            [
+              ...roomSegments(await fetchSceneWalls(deps.ctx.prisma, row.sceneId)),
+              ...sceneBoundsSegments(row.scene),
+            ],
+            toLightScene(row.scene),
+          )
+        : orderLightRadii(patch.brightM ?? row.brightM, patch.dimM ?? row.dimM);
     const updated = await deps.ctx.prisma.mapLight.update({
       where: { id: row.id },
       data: {

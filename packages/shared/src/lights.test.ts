@@ -3,8 +3,11 @@ import {
   LIGHT_BRIGHT,
   LIGHT_DARK,
   LIGHT_DIM,
+  LIGHT_ROOM_FIT_MAX_M,
+  LIGHT_ROOM_FIT_MIN_M,
   buildLightMask,
   decodeLevelRuns,
+  fitLightToRoom,
   encodeLevelRuns,
   isPointLit,
   lightLevelAt,
@@ -368,5 +371,138 @@ describe('sanitizeDarkSight', () => {
 
   it('is null for anything that is not a number', () => {
     expect(sanitizeDarkSight('2')).toBeNull();
+  });
+});
+
+describe('fitLightToRoom', () => {
+  // 2 m per 100 px square — the CP RED default, so 50 px is one metre.
+  const scene = { grid: gridOf(100), metersPerSquare: 2 };
+
+  it('measures the room it stands in, not the map', () => {
+    // A 400×400 px room (8×8 m) inside a 1000×1000 scene, lamp in the middle.
+    const segments: Segment[] = [
+      ...sceneBoundsSegments(BOUNDS),
+      { x1: 300, y1: 300, x2: 700, y2: 300 },
+      { x1: 700, y1: 300, x2: 700, y2: 700 },
+      { x1: 700, y1: 700, x2: 300, y2: 700 },
+      { x1: 300, y1: 700, x2: 300, y2: 300 },
+    ];
+    const fit = fitLightToRoom({ x: 500, y: 500 }, segments, scene);
+    // The far corner is 200√2 px ≈ 283 px ≈ 5.7 m away.
+    expect(fit.dimM).toBeGreaterThan(5);
+    expect(fit.dimM).toBeLessThan(6.5);
+    // A rim of dim light rather than a hard switch at the wall.
+    expect(fit.brightM).toBeLessThan(fit.dimM);
+    expect(fit.brightM).toBeGreaterThan(fit.dimM / 2 - 0.5);
+  });
+
+  it('takes the far corner of an L-shaped room, because the walls block the rest', () => {
+    const segments: Segment[] = [
+      ...sceneBoundsSegments(BOUNDS),
+      // A stub wall that makes the room an L without closing it off.
+      { x1: 500, y1: 0, x2: 500, y2: 400 },
+    ];
+    const fit = fitLightToRoom({ x: 200, y: 600 }, segments, scene);
+    // The scene corner opposite is ~1000 px ≈ 20 m; the fit reaches for it.
+    expect(fit.dimM).toBeGreaterThan(15);
+  });
+
+  it('caps an open map instead of lighting the district', () => {
+    const open = { width: 20000, height: 20000 };
+    const fit = fitLightToRoom({ x: 10000, y: 10000 }, sceneBoundsSegments(open), scene);
+    expect(fit.dimM).toBe(LIGHT_ROOM_FIT_MAX_M);
+  });
+
+  it('never comes out as nothing, however small the cupboard', () => {
+    const segments: Segment[] = [
+      ...sceneBoundsSegments(BOUNDS),
+      { x1: 480, y1: 480, x2: 520, y2: 480 },
+      { x1: 520, y1: 480, x2: 520, y2: 520 },
+      { x1: 520, y1: 520, x2: 480, y2: 520 },
+      { x1: 480, y1: 520, x2: 480, y2: 480 },
+    ];
+    const fit = fitLightToRoom({ x: 500, y: 500 }, segments, scene);
+    expect(fit.dimM).toBe(LIGHT_ROOM_FIT_MIN_M);
+    expect(fit.brightM).toBeGreaterThan(0);
+  });
+});
+
+describe('light through a window', () => {
+  // A wall across the map with a window in the middle of it.
+  const wall: Segment[] = [
+    { x1: 500, y1: 0, x2: 500, y2: 400 },
+    { x1: 500, y1: 600, x2: 500, y2: 1000 },
+  ];
+  const window: Segment[] = [{ x1: 500, y1: 400, x2: 500, y2: 600 }];
+  const lamp: LightSource = {
+    origin: { x: 300, y: 500 },
+    brightPx: 100,
+    dimPx: 400,
+    color: '#ffffff',
+    flicker: false,
+  };
+
+  it('gets through, unlike a wall', () => {
+    // 50 px past the pane, which the lamp still reaches.
+    expect(lightLevelAt({ x: 550, y: 500 }, [lamp], wall, window)).not.toBe(LIGHT_DARK);
+    // The same distance to the side, through the solid part: nothing.
+    expect(lightLevelAt({ x: 550, y: 200 }, [lamp], wall, window)).toBe(LIGHT_DARK);
+  });
+
+  it('arrives tired: the pane costs the light half of what is left', () => {
+    // The lamp is 200 px from the glass and reaches 400, so it has 200 px of
+    // reach in hand — which past the pane is spent over 100 px of map.
+    expect(lightLevelAt({ x: 590, y: 500 }, [lamp], wall, window)).not.toBe(LIGHT_DARK);
+    expect(lightLevelAt({ x: 620, y: 500 }, [lamp], wall, window)).toBe(LIGHT_DARK);
+    // Without the pane in the way the very same point is lit.
+    expect(lightLevelAt({ x: 620, y: 500 }, [lamp], [], [])).not.toBe(LIGHT_DARK);
+  });
+
+  it('changes nothing on the lamp own side of the glass', () => {
+    // Nothing between the lamp and a point on its own side of the wall.
+    expect(lightLevelAt({ x: 350, y: 500 }, [lamp], wall, window)).toBe(LIGHT_BRIGHT);
+  });
+
+  it('shows up in the mask the same way', () => {
+    const bounds = { x: 200, y: 300, width: 600, height: 400 };
+    const lit = buildLightMask({
+      bounds,
+      cellPx: 50,
+      sources: [lamp],
+      segments: wall,
+      polygons: [
+        [
+          { x: 200, y: 300 },
+          { x: 800, y: 300 },
+          { x: 800, y: 700 },
+          { x: 200, y: 700 },
+        ],
+      ],
+    });
+    const dimmed = buildLightMask({
+      bounds,
+      cellPx: 50,
+      sources: [lamp],
+      segments: wall,
+      windows: window,
+      polygons: [
+        [
+          { x: 200, y: 300 },
+          { x: 800, y: 300 },
+          { x: 800, y: 700 },
+          { x: 200, y: 700 },
+        ],
+      ],
+    });
+    const litCells = decodeLevelRuns(lit.runs, lit.cols * lit.rows).reduce(
+      (a, b) => a + (b > 0 ? 1 : 0),
+      0,
+    );
+    const dimmedCells = decodeLevelRuns(dimmed.runs, dimmed.cols * dimmed.rows).reduce(
+      (a, b) => a + (b > 0 ? 1 : 0),
+      0,
+    );
+    expect(dimmedCells).toBeLessThan(litCells);
+    expect(dimmedCells).toBeGreaterThan(0);
   });
 });

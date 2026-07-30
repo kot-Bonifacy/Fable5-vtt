@@ -14,6 +14,7 @@ import { ROLE_GM } from '@vtt/shared';
 import { defineEvent, type RealtimeDeps } from './registry.js';
 import { computePresence } from './presence.js';
 import { fetchHistoryPage } from './chat-io.js';
+import { explorationMaskFor } from './exploration.js';
 import { fetchFogState } from './fog-io.js';
 import { fetchSceneDrawings } from './drawings.js';
 import { fetchSceneNotes } from './notes.js';
@@ -57,6 +58,7 @@ export async function buildStateSync(
       lights: [],
       vision: null,
       doors: [],
+      exploration: null,
       characters: [],
       bots: [],
       ai: aiStatusFor(deps, user.role === ROLE_GM),
@@ -83,6 +85,7 @@ export async function buildStateSync(
     bots,
     compendium,
     combat,
+    exploration,
   ] = await Promise.all([
     computePresence(deps.io, campaign.id),
     fetchHistoryPage(deps.ctx.prisma, campaign.id, user),
@@ -130,6 +133,9 @@ export async function buildStateSync(
     // Initiative tracker of the viewed scene — hidden participants are
     // stripped for players, exactly like hidden tokens.
     viewedSceneId ? fetchCombatFor(deps.ctx.prisma, viewedSceneId, user) : Promise.resolve(null),
+    // The party's memory of this map (stage 18c) — the same for everyone,
+    // because it holds only what somebody has already seen.
+    explorationMaskFor(deps.ctx.prisma, viewedScene),
   ]);
   const scene: SceneView | null = viewedScene ? toSceneView(viewedScene) : null;
   return {
@@ -155,6 +161,7 @@ export async function buildStateSync(
         }
       : null,
     doors: vision?.doors ?? [],
+    exploration,
     characters,
     bots,
     ai: aiStatusFor(deps, user.role === ROLE_GM),

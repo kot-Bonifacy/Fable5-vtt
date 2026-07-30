@@ -62,6 +62,19 @@ export interface FogState {
   enabled: boolean;
   /** Ascending by id — that *is* the paint order. */
   shapes: FogShapeView[];
+  /**
+   * The GM's overrides over dynamic vision (stage 18c) — the same brush, a
+   * different meaning: `hide` keeps an area black however well lit and however
+   * clear the line of sight, `reveal` shows it through walls.
+   *
+   * A separate list from `shapes` rather than a flag on them, because the two
+   * are read against different backgrounds: fog starts covered and its shapes
+   * decide everything, while an override starts *absent* and only speaks where
+   * the GM painted. Sharing one list would turn every old „reveal" stroke into
+   * a hole in the walls the moment a scene switched to dynamic vision. Only one
+   * of the two lists is ever non-empty for a given scene mode.
+   */
+  overrides: FogShapeView[];
 }
 
 export const FOG_BRUSH_MIN_RADIUS = 8;
@@ -82,11 +95,21 @@ export interface FogPaintPayload {
   shape: FogShape;
 }
 
-/** Client → server payload of `fog:reset` — the two sweeping buttons. */
+/** Client → server payload of `fog:reset` — the sweeping buttons. */
 export interface FogResetPayload {
   sceneId: string;
-  /** `reveal` uncovers the whole scene, `hide` puts it all back under fog. */
-  mode: FogMode;
+  /**
+   * `reveal` uncovers the whole scene, `hide` puts it all back under cover,
+   * `clear` drops every shape and hands the scene back to whatever decides
+   * visibility underneath.
+   *
+   * `clear` only differs from `hide` on a scene whose brush paints GM overrides
+   * (stage 18c): fog starts covered, so „cover everything" and „forget my
+   * strokes" are the same button there, while an override starts absent and the
+   * two are opposites — one blinds the party, the other lets the walls speak
+   * again.
+   */
+  mode: FogMode | 'clear';
 }
 
 /** Client → server payload of `fog:undo` — drops the last painted shape. */
@@ -106,6 +129,12 @@ export interface FogPaintBroadcast {
   seq?: number;
   sceneId: string;
   shape: FogShapeView;
+  /**
+   * Which list the shape joins (stage 18c): the fog, or the GM's overrides
+   * over dynamic vision. Decided by the scene's mode on the server — the client
+   * is told, never asked.
+   */
+  override: boolean;
 }
 
 /** Server → client `fog:sync` — the whole fog after a reset, undo or toggle. */
@@ -234,6 +263,27 @@ export function isPointRevealed(point: ScenePoint, fog: Pick<FogState, 'enabled'
 }
 
 /**
+ * The GM's verdict on one point, or null where they have not painted (stage
+ * 18c): `reveal` — show it whatever the walls say, `hide` — keep it black
+ * whatever the light says.
+ *
+ * The last shape containing the point wins, exactly as in the fog: the brush is
+ * the same, so „paint over your mistake" has to mean the same thing. Null is a
+ * real answer and the usual one — it means „the walls and the lamps decide",
+ * which is what dynamic vision is for.
+ */
+export function fogOverrideAt(
+  point: ScenePoint,
+  overrides: readonly FogShapeView[],
+): FogMode | null {
+  for (let i = overrides.length - 1; i >= 0; i--) {
+    const shape = overrides[i]!;
+    if (fogShapeContains(shape, point)) return shape.mode;
+  }
+  return null;
+}
+
+/**
  * Is this token standing in the dark? Measured at its centre — the same point
  * the ruler and the range bands use, so „where a token is" means one thing
  * across the whole VTT. A 2×2 token straddling the fog edge therefore follows
@@ -255,4 +305,13 @@ export function isTokenInFog(
  */
 export function fullSceneReveal(scene: Pick<SceneView, 'width' | 'height'>): FogRect {
   return { kind: 'rect', mode: 'reveal', x: 0, y: 0, width: scene.width, height: scene.height };
+}
+
+/**
+ * The opposite shape, and the one only an override set needs (stage 18c): fog
+ * is covered to begin with, but „everyone goes blind" over dynamic vision has
+ * to be written down.
+ */
+export function fullSceneHide(scene: Pick<SceneView, 'width' | 'height'>): FogRect {
+  return { kind: 'rect', mode: 'hide', x: 0, y: 0, width: scene.width, height: scene.height };
 }

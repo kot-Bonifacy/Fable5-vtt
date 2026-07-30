@@ -31,6 +31,13 @@ widać niewiele, dopóki się do niego nie stanie.
 - [ ] Zaglądanie przez okno gaśnie, gdy token odejdzie od okna — bez ręcznego
       zamykania
 
+## Co już weszło w 18c
+
+- **Okno tłumi światło** (`LIGHT_WINDOW_COST` w `shared/lights.ts`): przepuszcza
+  je — bo okno nie jest w zbiorze blokerów — ale za szybą lampa zużywa resztę
+  zasięgu dwa razy szybciej. Zrobione na wniosek MG w trakcie oględzin 18c.
+  **Wzrok** przez okno jest nadal nieograniczony i to jest zakres tego etapu
+
 ## Poza zakresem
 
 - Wyważanie drzwi i otwieranie zamków jako testy umiejętności CP RED

@@ -1,4 +1,5 @@
 import type {
+  FogShapeView,
   LightGlow,
   LightMask,
   LightSource,
@@ -13,6 +14,7 @@ import {
   blockingSegments,
   buildLightMask,
   computeVisionPolygon,
+  fogOverrideAt,
   isPointLit,
   isPointVisible,
   isSegmentClear,
@@ -28,6 +30,8 @@ import {
 import type { PrismaClient } from '../db.js';
 import type { Scene, Token } from '../generated/prisma/client.js';
 import type { RealtimeDeps } from './registry.js';
+import { emitExploration, recordSight } from './exploration.js';
+import { fetchFogState } from './fog-io.js';
 import { fetchSceneWalls } from './walls-io.js';
 import { fetchSceneLights, lightSourceOf, toLightScene, tokenLightOf } from './lights-io.js';
 import { campaignRoom, emitToCampaignUser } from './state.js';
@@ -79,6 +83,25 @@ export function usesDarkness(scene: Pick<Scene, 'visibility' | 'dark'>): boolean
 type TokenGeometry = Pick<Token, 'x' | 'y' | 'size'>;
 
 /**
+ * A light carried by one token, with what decides who it shines for.
+ *
+ * A hidden token is one the GM has taken off every player's map, and its lamp
+ * has to disappear with it: the light mask would otherwise show a lit patch
+ * creeping down the corridor and the glow layer would mark the bearer's exact
+ * position — the ambush given away by the thing that was supposed to be hidden.
+ * It cannot simply be dropped from the scene either, or a player whose *own*
+ * token is hidden would be blinded by their own torch. So the switch is per
+ * viewer: the bearer keeps their light, everybody else never hears of it.
+ */
+interface CarriedLight {
+  source: LightSource;
+  token: TokenGeometry;
+  hidden: boolean;
+  /** Users who control the bearer: its owner, and the owner of its character. */
+  owners: Set<string>;
+}
+
+/**
  * Everything the raycast needs for one scene: the walls (for door lookups), the
  * segments that currently block sight (scene border included) and — on a dark
  * scene — everything that emits light.
@@ -91,7 +114,18 @@ export interface SceneVisionContext {
   /** Lamps standing on the map, switched on, in scene pixels. */
   staticSources: LightSource[];
   /** Lights carried by tokens and switched on, keyed by token id. */
-  carried: Map<string, { source: LightSource; token: TokenGeometry }>;
+  carried: Map<string, CarriedLight>;
+  /**
+   * Windows, as bare segments (stage 18c). They are deliberately *not* in
+   * `segments` — a window stops neither sight nor light — but light that passes
+   * through one arrives dimmer, and this is the list that says where they are.
+   */
+  windows: Segment[];
+  /**
+   * The GM's overrides painted over this scene (stage 18c), in paint order.
+   * Empty on a scene the GM has not drawn on, which is the usual case.
+   */
+  overrides: FogShapeView[];
   /** Is light part of the answer here? */
   dark: boolean;
   /** How far a token sees with no light at all, in scene pixels. */
@@ -105,6 +139,7 @@ export async function loadVisionContext(
   scene: Scene,
 ): Promise<SceneVisionContext> {
   const walls = await fetchSceneWalls(prisma, scene.id);
+  const fog = await fetchFogState(prisma, scene);
   const dark = usesDarkness(scene);
   // A lit scene never asks about light, so it never pays for the queries: the
   // lamp rows and the carried torches are only read where they can matter.
@@ -118,11 +153,15 @@ export async function loadVisionContext(
     // through an open door would run to infinity and the polygon would be
     // unbounded.
     segments: [...blockingSegments(walls), ...sceneBoundsSegments(scene)],
+    windows: walls
+      .filter((wall) => wall.kind === 'window')
+      .map((wall) => ({ x1: wall.x1, y1: wall.y1, x2: wall.x2, y2: wall.y2 })),
     lights,
     staticSources: lights
       .map((light) => lightSourceOf(light, scene))
       .filter((source): source is LightSource => source !== null),
     carried,
+    overrides: fog.overrides,
     dark,
     darkSightPx: perPixel > 0 ? Math.max(0, scene.darkSightM) / perPixel : 0,
     maskCellPx: lightMaskCellPx({
@@ -136,16 +175,27 @@ export async function loadVisionContext(
 async function loadCarriedLights(
   prisma: PrismaClient,
   scene: Scene,
-): Promise<Map<string, { source: LightSource; token: TokenGeometry }>> {
-  const tokens = await prisma.token.findMany({ where: { sceneId: scene.id } });
-  const carried = new Map<string, { source: LightSource; token: TokenGeometry }>();
+): Promise<Map<string, CarriedLight>> {
+  const tokens = await prisma.token.findMany({
+    where: { sceneId: scene.id },
+    include: { character: { select: { ownerId: true } } },
+  });
+  const carried = new Map<string, CarriedLight>();
   const measure = toMeasureScene(scene);
   for (const token of tokens) {
     const light = tokenLightOf(token);
     if (!light || !light.on) continue;
     const source = lightSourceAt(tokenCentre(token, measure), light, scene);
     if (!source) continue;
-    carried.set(token.id, { source, token: { x: token.x, y: token.y, size: token.size } });
+    const owners = new Set<string>();
+    if (token.ownerId) owners.add(token.ownerId);
+    if (token.character?.ownerId) owners.add(token.character.ownerId);
+    carried.set(token.id, {
+      source,
+      token: { x: token.x, y: token.y, size: token.size },
+      hidden: token.hidden,
+      owners,
+    });
   }
   return carried;
 }
@@ -165,18 +215,29 @@ function lightSourceAt(
 }
 
 /**
- * Everything emitting light right now. `liveOverride` moves one token's torch to
- * where the pointer is, so the light travels with the token during a drag
- * instead of snapping into place when the mover lets go.
+ * Everything emitting light for one viewer right now.
+ *
+ * `viewerId` is who is asking, and it is a required argument on purpose: a
+ * carried light belonging to a hidden token only exists for whoever controls it
+ * (see `CarriedLight`), and a call site that forgot to say who it was building
+ * the world for would leak that token's position. `null` means „nobody" and
+ * drops every hidden bearer's light — the safe answer, and the right one for
+ * the GM, who is never filtered by any of this in the first place.
+ *
+ * `liveOverride` moves one token's torch to where the pointer is, so the light
+ * travels with the token during a drag instead of snapping into place when the
+ * mover lets go.
  */
 export function lightSourcesOf(
   scene: Scene,
   context: SceneVisionContext,
+  viewerId: string | null,
   liveOverride?: { tokenId: string; x: number; y: number },
 ): LightSource[] {
   const sources = [...context.staticSources];
   const measure = toMeasureScene(scene);
   for (const [tokenId, entry] of context.carried) {
+    if (entry.hidden && !(viewerId !== null && entry.owners.has(viewerId))) continue;
     if (liveOverride && liveOverride.tokenId === tokenId) {
       const moved = tokenCentre({ ...entry.token, x: liveOverride.x, y: liveOverride.y }, measure);
       sources.push({ ...entry.source, origin: moved });
@@ -237,6 +298,8 @@ function visionSourceOf(
 export interface ViewerLighting {
   sources: LightSource[];
   segments: Segment[];
+  /** Panes the light gets through, at the cost of half its reach each. */
+  windows: Segment[];
 }
 
 /**
@@ -317,10 +380,11 @@ export async function viewerSightFor(
   const lighting: ViewerLighting | null = context.dark
     ? {
         sources: [
-          ...lightSourcesOf(scene, context, liveOverride),
+          ...lightSourcesOf(scene, context, userId, liveOverride),
           ...darkSightSources(sources, context.darkSightPx),
         ],
         segments: context.segments,
+        windows: context.windows,
       }
     : null;
   return { polygons, lighting, sources };
@@ -334,15 +398,27 @@ export async function viewerSightFor(
  * the polygon", and on a dark one it also has to be „and something is shining on
  * it". A token that satisfies the first and not the second is standing in the
  * dark, and a player must not be told it exists.
+ *
+ * The GM's brush (stage 18c) speaks before either of them and settles it both
+ * ways. That is the whole point of an override — a GM who painted an area black
+ * did so knowing where the walls are — and it has to be answered here rather
+ * than in the renderer, or „hidden" would mean a black rectangle with the token
+ * list still describing what stands behind it.
  */
 export function isPointObservable(
   point: ScenePoint,
   polygons: readonly (readonly ScenePoint[])[],
   lighting: ViewerLighting | null,
+  overrides: readonly FogShapeView[],
 ): boolean {
+  if (overrides.length > 0) {
+    const override = fogOverrideAt(point, overrides);
+    if (override === 'hide') return false;
+    if (override === 'reveal') return true;
+  }
   if (!isPointVisible(point, polygons)) return false;
   if (!lighting) return true;
-  return isPointLit(point, lighting.sources, lighting.segments);
+  return isPointLit(point, lighting.sources, lighting.segments, lighting.windows);
 }
 
 /**
@@ -465,6 +541,7 @@ export function lightMaskFor(
     cellPx: context.maskCellPx,
     sources: lighting.sources,
     segments: lighting.segments,
+    windows: lighting.windows,
     polygons,
   });
 }
@@ -488,7 +565,7 @@ export async function computeViewerVision(
     doors: visibleDoorsFor(ctx, sight.sources),
     light: sight.lighting ? lightMaskFor(ctx, sight.polygons, sight.lighting) : null,
     glows: sight.lighting
-      ? visibleGlowsFor(lightSourcesOf(scene, ctx), sight.sources, ctx.segments)
+      ? visibleGlowsFor(lightSourcesOf(scene, ctx, user.id), sight.sources, ctx.segments)
       : [],
   };
 }
@@ -525,14 +602,24 @@ export async function emitDragVision(
 
   const context = await loadVisionContext(deps.ctx.prisma, scene);
   const sight = await viewerSightFor(deps.ctx.prisma, scene, userId, context, live);
+  const light = sight.lighting ? lightMaskFor(context, sight.polygons, sight.lighting) : null;
   await emitToCampaignUser(deps.io, campaignId, userId, 'vision:sync', {
     sceneId: scene.id,
     polygons: sight.polygons,
-    light: sight.lighting ? lightMaskFor(context, sight.polygons, sight.lighting) : null,
+    light,
     glows: sight.lighting
-      ? visibleGlowsFor(lightSourcesOf(scene, context, live), sight.sources, context.segments)
+      ? visibleGlowsFor(
+          lightSourcesOf(scene, context, userId, live),
+          sight.sources,
+          context.segments,
+        )
       : [],
   });
+  // Walking is how a map gets discovered, so the memory grows mid-drag too —
+  // and only when it actually grew does anybody hear about it.
+  if (await recordSight(deps.ctx.prisma, scene, { polygons: sight.polygons, mask: light })) {
+    await emitExploration(deps, campaignId, scene);
+  }
 }
 
 /**
@@ -552,6 +639,7 @@ export async function emitVisionToPlayers(
   if (!scene.active || !usesDynamicVision(scene)) return;
   const context = await loadVisionContext(deps.ctx.prisma, scene);
   const sockets = await deps.io.in(campaignRoom(campaignId)).fetchSockets();
+  let discovered = false;
   for (const member of sockets) {
     const data = member.data as { user: SessionUser; viewedSceneId: string | null };
     if (data.user.role === ROLE_GM || data.viewedSceneId !== scene.id) continue;
@@ -565,5 +653,16 @@ export async function emitVisionToPlayers(
       glows: vision.glows,
     });
     member.emit('door:sync', { sceneId: scene.id, doors: vision.doors });
+    // Every player's sight goes into the same memory: what the scout sees, the
+    // group knows. Accumulated over the loop and pushed once at the end.
+    if (
+      await recordSight(deps.ctx.prisma, scene, {
+        polygons: vision.polygons,
+        mask: vision.light,
+      })
+    ) {
+      discovered = true;
+    }
   }
+  if (discovered) await emitExploration(deps, campaignId, scene);
 }

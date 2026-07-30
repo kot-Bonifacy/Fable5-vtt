@@ -40,6 +40,7 @@ import {
   IconFlicker,
   IconFog,
   IconLamp,
+  IconRoomLight,
   IconLine,
   IconPencil,
   IconPin,
@@ -109,6 +110,8 @@ export function MapTools() {
   const setLightColor = useMapToolStore((s) => s.setLightColor);
   const lightFlicker = useMapToolStore((s) => s.lightFlicker);
   const setLightFlicker = useMapToolStore((s) => s.setLightFlicker);
+  const lightFitRoom = useMapToolStore((s) => s.lightFitRoom);
+  const setLightFitRoom = useMapToolStore((s) => s.setLightFitRoom);
   const privateMode = useRulerStore((s) => s.privateMode);
   const setPrivateMode = useRulerStore((s) => s.setPrivateMode);
   const overlay = useAttackStore((s) => s.overlay);
@@ -117,7 +120,10 @@ export function MapTools() {
   const myUserId = useAuthStore((s) => s.user?.id ?? null);
   const sceneId = useSceneStore((s) => s.effectiveScene?.id ?? null);
   const fogEnabled = useFogStore((s) => s.fog?.enabled ?? false);
-  const hasShapes = useFogStore((s) => (s.fog?.shapes.length ?? 0) > 0);
+  const overrideCount = useFogStore((s) => s.fog?.overrides.length ?? 0);
+  const hasShapes = useFogStore(
+    (s) => (s.fog?.shapes.length ?? 0) > 0 || (s.fog?.overrides.length ?? 0) > 0,
+  );
   const drawings = useDrawingStore((s) => s.drawings);
   const visibility = useSceneStore((s) => s.effectiveScene?.visibility ?? 'open');
   const hasWalls = useWallStore((s) => s.walls.length > 0);
@@ -129,9 +135,14 @@ export function MapTools() {
   // settings row lingers next to a disabled tool button, and a stray drag
   // would store shapes nobody can see.
   const setTool = useMapToolStore((s) => s.setTool);
+  // The same brush serves two masters (stage 18c): the fog of a `fog` scene and
+  // the GM's override of a `dynamic` one. Only an `open` scene has nothing for
+  // it to paint on, and there it goes away.
+  const brushPaintsOverride = visibility === 'dynamic' && isGm;
+  const brushAvailable = fogEnabled || brushPaintsOverride;
   useEffect(() => {
-    if (!fogEnabled && tool === 'fog') setTool('pointer');
-  }, [fogEnabled, tool, setTool]);
+    if (!brushAvailable && tool === 'fog') setTool('pointer');
+  }, [brushAvailable, tool, setTool]);
 
   /** My newest drawing on this scene — what „cofnij" takes back. */
   const myNewest = useMemo(() => {
@@ -249,12 +260,14 @@ export function MapTools() {
             type="button"
             className={`map-tool${tool === 'fog' ? ' map-tool--active' : ''}`}
             title={
-              fogEnabled
-                ? 'Mgła wojny (F) — przeciągnij, by odsłonić lub zakryć'
-                : 'Mgła wyłączona na tej scenie — włącz ją w zakładce „Sceny”'
+              brushPaintsOverride
+                ? 'Nadpisanie widoczności (F) — przeciągnij, by zakryć mimo światła albo odsłonić mimo ścian'
+                : fogEnabled
+                  ? 'Mgła wojny (F) — przeciągnij, by odsłonić lub zakryć'
+                  : 'Mgła wyłączona na tej scenie — włącz ją w zakładce „Sceny”'
             }
             aria-pressed={tool === 'fog'}
-            disabled={!fogEnabled}
+            disabled={!brushAvailable}
             onClick={() => toggleTool('fog')}
           >
             <IconFog />
@@ -597,32 +610,53 @@ export function MapTools() {
           {lightMode === 'place' && (
             <>
               <span className="map-tools-sep" aria-hidden />
-              <label className="map-tool-slider" title="Zasięg światła jasnego (metry)">
-                <span className="map-tool-hint">jasno</span>
-                <input
-                  type="range"
-                  min={0}
-                  max={40}
-                  step={1}
-                  value={lightBrightM}
-                  onChange={(event) => setLightBrightM(Number(event.target.value))}
-                  aria-label="Zasięg światła jasnego w metrach"
-                />
-                <span>{lightBrightM} m</span>
-              </label>
-              <label className="map-tool-slider" title="Zasięg światła przyćmionego (metry)">
-                <span className="map-tool-hint">mrok</span>
-                <input
-                  type="range"
-                  min={0}
-                  max={60}
-                  step={1}
-                  value={lightDimM}
-                  onChange={(event) => setLightDimM(Number(event.target.value))}
-                  aria-label="Zasięg światła przyćmionego w metrach"
-                />
-                <span>{Math.max(lightBrightM, lightDimM)} m</span>
-              </label>
+              <button
+                type="button"
+                className={`map-tool${lightFitRoom ? ' map-tool--active' : ''}`}
+                title={
+                  lightFitRoom
+                    ? 'Dopasowanie do pomieszczenia włączone — zasięg liczą ściany, suwaki nie mają nic do powiedzenia'
+                    : 'Zapal pomieszczenie — kliknij w środku pokoju, a zasięg dobierze się do jego ścian'
+                }
+                aria-pressed={lightFitRoom}
+                onClick={() => setLightFitRoom(!lightFitRoom)}
+              >
+                <IconRoomLight />
+              </button>
+              {/* Left out rather than hidden while the walls do the measuring:
+                  `hidden` loses to the class's own `display`, and two sliders
+                  that visibly do nothing are worse than no sliders. */}
+              {!lightFitRoom && (
+                <>
+                  <label className="map-tool-slider" title="Zasięg światła jasnego (metry)">
+                    <span className="map-tool-hint">jasno</span>
+                    <input
+                      type="range"
+                      min={0}
+                      max={40}
+                      step={1}
+                      value={lightBrightM}
+                      onChange={(event) => setLightBrightM(Number(event.target.value))}
+                      aria-label="Zasięg światła jasnego w metrach"
+                    />
+                    <span>{lightBrightM} m</span>
+                  </label>
+                  <label className="map-tool-slider" title="Zasięg światła przyćmionego (metry)">
+                    <span className="map-tool-hint">mrok</span>
+                    <input
+                      type="range"
+                      min={0}
+                      max={60}
+                      step={1}
+                      value={lightDimM}
+                      onChange={(event) => setLightDimM(Number(event.target.value))}
+                      aria-label="Zasięg światła przyćmionego w metrach"
+                    />
+                    <span>{Math.max(lightBrightM, lightDimM)} m</span>
+                  </label>
+                </>
+              )}
+              {lightFitRoom && <span className="map-tool-hint">zasięg z pomieszczenia</span>}
               <div className="map-color-row" role="group" aria-label="Barwa światła">
                 {LIGHT_COLORS.map((color) => (
                   <button
@@ -657,6 +691,11 @@ export function MapTools() {
           <span className="map-tool-hint">
             {lightCount === 0 ? 'brak świateł' : `świateł: ${lightCount}`}
           </span>
+          {lightFitRoom && lightMode === 'place' && !hasWalls && (
+            <span className="map-tool-hint">
+              Scena nie ma ścian — dopasowanie do pomieszczenia zwróci maksymalny zasięg
+            </span>
+          )}
           {!(sceneIsDark && visibility === 'dynamic') && (
             <span className="map-tool-hint">
               Scena nie jest ciemna — światła nic jeszcze nie zmieniają (zakładka „Sceny”)
@@ -666,11 +705,15 @@ export function MapTools() {
       )}
 
       {isGm && tool === 'fog' && (
-        <div className="map-tool-options" role="group" aria-label="Ustawienia mgły">
+        <div
+          className="map-tool-options"
+          role="group"
+          aria-label={brushPaintsOverride ? 'Ustawienia nadpisania' : 'Ustawienia mgły'}
+        >
           <button
             type="button"
             className={`map-tool${fogMode === 'reveal' ? ' map-tool--active' : ''}`}
-            title="Odsłanianie mapy"
+            title={brushPaintsOverride ? 'Odsłoń mimo ścian i ciemności' : 'Odsłanianie mapy'}
             aria-pressed={fogMode === 'reveal'}
             onClick={() => setFogMode('reveal')}
           >
@@ -679,7 +722,9 @@ export function MapTools() {
           <button
             type="button"
             className={`map-tool${fogMode === 'hide' ? ' map-tool--active' : ''}`}
-            title="Zakrywanie z powrotem"
+            title={
+              brushPaintsOverride ? 'Zakryj mimo światła i linii wzroku' : 'Zakrywanie z powrotem'
+            }
             aria-pressed={fogMode === 'hide'}
             onClick={() => setFogMode('hide')}
           >
@@ -731,7 +776,7 @@ export function MapTools() {
           <button
             type="button"
             className="map-tool"
-            title="Odsłoń całą mapę"
+            title={brushPaintsOverride ? 'Pokaż graczom całą mapę' : 'Odsłoń całą mapę'}
             disabled={!sceneId}
             onClick={() => sceneId && void resetFog(sceneId, 'reveal')}
           >
@@ -740,12 +785,23 @@ export function MapTools() {
           <button
             type="button"
             className="map-tool"
-            title="Zakryj całą mapę"
+            title={brushPaintsOverride ? 'Oślep wszystkich' : 'Zakryj całą mapę'}
             disabled={!sceneId}
             onClick={() => sceneId && void resetFog(sceneId, 'hide')}
           >
             <IconCoverAll />
           </button>
+          {brushPaintsOverride && (
+            <button
+              type="button"
+              className="map-tool"
+              title="Wyczyść nadpisania — o widoczności znów decydują ściany i światła"
+              disabled={!sceneId || overrideCount === 0}
+              onClick={() => sceneId && void resetFog(sceneId, 'clear')}
+            >
+              <IconEraser />
+            </button>
+          )}
         </div>
       )}
     </div>

@@ -17,7 +17,7 @@ interface FogStoreState {
 
   applySync: (payload: StateSyncPayload) => void;
   setFog: (fog: FogState | null) => void;
-  append: (sceneId: string, shape: FogShapeView) => void;
+  append: (sceneId: string, shape: FogShapeView, override: boolean) => void;
   setPending: (pending: FogShapeView | null) => void;
 }
 
@@ -28,13 +28,18 @@ export const useFogStore = create<FogStoreState>((set) => ({
   applySync: (payload) => set({ fog: payload.fog, pending: null }),
   setFog: (fog) => set({ fog, pending: null }),
 
-  append: (sceneId, shape) =>
+  append: (sceneId, shape, override) =>
     set((state) => {
       // A broadcast for a scene we are not looking at (the GM previewing
       // another map) must not land in this mask.
       if (!state.fog || state.fog.sceneId !== sceneId) return state;
-      if (state.fog.shapes.some((existing) => existing.id === shape.id)) return state;
-      return { fog: { ...state.fog, shapes: [...state.fog.shapes, shape] }, pending: null };
+      // The same brush fills two lists (stage 18c) and the server says which.
+      const list = override ? state.fog.overrides : state.fog.shapes;
+      if (list.some((existing) => existing.id === shape.id)) return state;
+      const fog = override
+        ? { ...state.fog, overrides: [...state.fog.overrides, shape] }
+        : { ...state.fog, shapes: [...state.fog.shapes, shape] };
+      return { fog, pending: null };
     }),
 
   setPending: (pending) => set({ pending }),

@@ -12,16 +12,16 @@ może ręcznie zakryć albo odsłonić dowolny fragment mimo ścian i świateł.
 
 ## Zakres
 
-- [ ] Tryb „eksploracja" (przełącznik sceny, działa w trybie `dynamic`): obszar
+- [x] Tryb „eksploracja" (przełącznik sceny, działa w trybie `dynamic`): obszar
       raz zobaczony zostaje odsłonięty — **sama mapa, bez tokenów** — a aktualne
       pole widzenia pokazuje się jaśniej
-- [ ] Stan eksploracji trwały per scena; przycisk MG „zapomnij eksplorację"
-- [ ] Zapisywana jest **widoczność faktyczna**: w ciemnej scenie zapamiętuje się
+- [x] Stan eksploracji trwały per scena; przycisk MG „zapomnij eksplorację"
+- [x] Zapisywana jest **widoczność faktyczna**: w ciemnej scenie zapamiętuje się
       tylko to, co było oświetlone (zasięg latarki), nie cały korytarz
-- [ ] Ręczna mgła z 17a jako **nadpisanie MG** nad dynamiczną widocznością:
+- [x] Ręczna mgła z 17a jako **nadpisanie MG** nad dynamiczną widocznością:
       pociągnięcie „zakryj" trzyma obszar czarny mimo ścian i świateł,
       pociągnięcie „odsłoń" pokazuje go mimo braku linii wzroku
-- [ ] Nadpisanie działa też na filtrowanie tokenów po stronie serwera (zakryte
+- [x] Nadpisanie działa też na filtrowanie tokenów po stronie serwera (zakryte
       ręcznie = token nie trafia do payloadu)
 
 ## Poza zakresem
@@ -31,12 +31,12 @@ może ręcznie zakryć albo odsłonić dowolny fragment mimo ścian i świateł.
 
 ## Kryteria ukończenia
 
-- [ ] Obszar odwiedzony pozostaje odsłonięty (mapa), ale NPC znika z niego, gdy
+- [x] Obszar odwiedzony pozostaje odsłonięty (mapa), ale NPC znika z niego, gdy
       token gracza wyjdzie — i nie ma go w payloadzie
-- [ ] Eksploracja przeżywa przeładowanie strony i restart serwera
-- [ ] W ciemnej scenie przejście korytarzem z latarką zapamiętuje pas o
+- [x] Eksploracja przeżywa przeładowanie strony i restart serwera
+- [x] W ciemnej scenie przejście korytarzem z latarką zapamiętuje pas o
       szerokości latarki, a nie cały korytarz
-- [ ] „Zakryj" pędzlem MG chowa graczowi oświetlony, widoczny fragment mapy;
+- [x] „Zakryj" pędzlem MG chowa graczowi oświetlony, widoczny fragment mapy;
       „odsłoń" pokazuje fragment za ścianą
 
 ## Wskazówki techniczne
@@ -50,3 +50,20 @@ może ręcznie zakryć albo odsłonić dowolny fragment mimo ścian i świateł.
   zamiast rysować tysiące prostokątów
 - Kolejność kompozycji jest już opisana w `MapRenderer`: rysunki → tokeny →
   światło → mgła/ciemność → nakładka UI
+
+## Co doszło poza pierwotnym zakresem (decyzje MG w trakcie sesji)
+
+- **„Zapal pomieszczenie"** — `light:create`/`light:update` z `fitRoom`: serwer mierzy
+  pokój raycastem (drzwi traktowane jak zamknięte) i dobiera promienie lampy.
+  Powód: stawianie lamp po jednej z ręcznym wpisywaniem zasięgu to ta część
+  przygotowań, którą MG przestaje robić — a nieużywana ciemność jest bezużyteczna
+- **Poświata przycinana ścianami u MG** — gracz ma płachtę ciemności, która
+  przycina wyciek za róg; MG nie ma nic, więc lampa w zamkniętym pokoju wylewała
+  kolor przez ściany. MG ma ściany lokalnie, więc klip liczy ten sam raycast
+- **Okno tłumi światło** (`LIGHT_WINDOW_COST`) — okno przepuszcza światło (bo nie
+  jest w zbiorze blokerów), ale za szybą lampa zużywa resztę zasięgu dwa razy
+  szybciej. Domknięcie tematu okien należy do 18d; tutaj wszedł tylko ich wpływ
+  na światło
+- **Wygładzenie gradientu światła** — maska ma trzy poziomy, więc samo skalowanie
+  zostawiało dwa widoczne pierścienie wokół każdej lampy. Nadpróbkowanie ×6 plus
+  rozmycie zamienia je w jedną rampę; format na drucie bez zmian

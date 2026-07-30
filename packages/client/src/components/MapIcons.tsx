@@ -321,6 +321,20 @@ export function IconLamp(props: IconProps) {
 }
 
 /**
+ * A bulb inside four walls — „light this room" (stage 18c). The room is what
+ * distinguishes it from the plain lamp next to it in the toolbar: the button
+ * places the same lamp, but lets the walls decide how far it reaches.
+ */
+export function IconRoomLight(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M3.5 4.5h17v15h-17z" />
+      <path d="M12 8.5a3 3 0 0 0-1.7 5.5c.3.2.45.5.45.85v.15h2.5v-.15c0-.35.15-.65.45-.85A3 3 0 0 0 12 8.5Z" />
+    </Svg>
+  );
+}
+
+/**
  * A moon over a rooftop — „dark scene". A crescent alone reads as „night mode"
  * for the interface, which is a different switch entirely.
  */

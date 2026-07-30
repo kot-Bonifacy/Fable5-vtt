@@ -86,6 +86,7 @@ import type {
   TokenUpsertBroadcast,
   TokenView,
   DoorSyncBroadcast,
+  ExplorationSyncBroadcast,
   VisionSyncBroadcast,
   WallKind,
   WallSyncBroadcast,
@@ -121,6 +122,7 @@ import { useFogStore } from './stores/fogStore.js';
 import { useNoteStore } from './stores/noteStore.js';
 import { useWallStore } from './stores/wallStore.js';
 import { useLightStore } from './stores/lightStore.js';
+import { useExplorationStore } from './stores/explorationStore.js';
 
 let socket: Socket | undefined;
 /** User the live socket authenticated as — a different one forces a reconnect. */
@@ -294,6 +296,7 @@ export function connectSocket(userId: string): Socket {
     useNoteStore.getState().applySync(payload);
     useWallStore.getState().applySync(payload);
     useLightStore.getState().applySync(payload);
+    useExplorationStore.getState().applySync(payload);
     if (payload.ai) useAiStore.getState().setStatus(payload.ai);
   });
 
@@ -473,7 +476,9 @@ export function connectSocket(userId: string): Socket {
       socket?.emit('state:request');
       return;
     }
-    if (viewingScene(broadcast.sceneId)) fog().append(broadcast.sceneId, broadcast.shape);
+    if (viewingScene(broadcast.sceneId)) {
+      fog().append(broadcast.sceneId, broadcast.shape, broadcast.override === true);
+    }
   });
   socket.on('fog:sync', (broadcast: FogSyncBroadcast) => {
     if (broadcast.seq !== undefined && chat().applySeq(broadcast.seq)) {
@@ -542,6 +547,15 @@ export function connectSocket(userId: string): Socket {
   });
   socket.on('door:sync', (broadcast: DoorSyncBroadcast) => {
     if (viewingScene(broadcast.sceneId)) useWallStore.getState().setDoors(broadcast.doors);
+  });
+  // The party's memory of the map (stage 18c). One broadcast for everybody —
+  // exploration is shared, so unlike `vision:sync` it is not composed per
+  // socket — and no seq, because a missed one is corrected by the next
+  // discovery rather than by a resync.
+  socket.on('explore:sync', (broadcast: ExplorationSyncBroadcast) => {
+    if (viewingScene(broadcast.sceneId)) {
+      useExplorationStore.getState().setExploration(broadcast.mask);
+    }
   });
 
   // GM layer notes are targeted at the GM room — no seq, like whispers.
@@ -783,13 +797,20 @@ export function clearRuler(sceneId: string): void {
 export const paintFog = (sceneId: string, shape: FogShape) =>
   emitSceneAck('fog:paint', { sceneId, shape });
 
-export const resetFog = (sceneId: string, mode: 'reveal' | 'hide') =>
+export const resetFog = (sceneId: string, mode: 'reveal' | 'hide' | 'clear') =>
   emitSceneAck('fog:reset', { sceneId, mode });
 
 export const undoFog = (sceneId: string) => emitSceneAck('fog:undo', { sceneId });
 
 export const setSceneVisibility = (sceneId: string, visibility: SceneVisibility) =>
   emitSceneAck<SceneVisibility>('scene:visibility', { sceneId, visibility });
+
+/* Exploration memory (stage 18c) — GM-only. */
+
+export const setSceneExplore = (sceneId: string, explore: boolean) =>
+  emitSceneAck<SceneView>('scene:explore', { sceneId, explore });
+
+export const forgetExploration = (sceneId: string) => emitSceneAck('explore:forget', { sceneId });
 
 export const createNote = (sceneId: string, x: number, y: number, text: string, icon?: string) =>
   emitSceneAck<MapNoteView>('note:create', { sceneId, x, y, text, icon });
@@ -843,11 +864,11 @@ export const createLight = (
   sceneId: string,
   x: number,
   y: number,
-  spec: { brightM: number; dimM: number; color: string; flicker: boolean },
+  spec: { brightM: number; dimM: number; color: string; flicker: boolean; fitRoom?: boolean },
 ) => emitSceneAck<LightView>('light:create', { sceneId, x, y, ...spec });
 
-export const updateLight = (lightId: number, patch: LightPatch) =>
-  emitSceneAck<LightView>('light:update', { lightId, patch });
+export const updateLight = (lightId: number, patch: LightPatch, fitRoom?: boolean) =>
+  emitSceneAck<LightView>('light:update', { lightId, patch, fitRoom });
 
 export const deleteLight = (lightId: number) => emitSceneAck('light:delete', { lightId });
 

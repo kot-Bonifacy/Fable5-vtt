@@ -64,6 +64,13 @@ export interface SceneView {
    * without a torch reads their screen as darkness rather than as a crash.
    */
   darkSightM: number;
+  /**
+   * Does this scene stay on the plan once the party has walked it (stage 18c)?
+   * Only meaningful in `dynamic` visibility. On means an area already seen
+   * remains drawn — the map, never the tokens — dimmed behind the current field
+   * of view.
+   */
+  explore: boolean;
 }
 
 /** List entry for the GM scene manager — never sent to players. */
@@ -112,6 +119,20 @@ export interface SceneLightingPayload {
   sceneId: string;
   dark?: boolean;
   darkSightM?: number;
+}
+
+/**
+ * Client → server payload of `scene:explore` (stage 18c) — the switch on the
+ * party's memory of this map.
+ *
+ * Its own event rather than a scene patch field for the reason the other two
+ * have one: it changes what every player's screen shows the moment it flips.
+ * Unlike them it takes no token away, because a remembered room never showed
+ * anybody who was standing in it.
+ */
+export interface SceneExplorePayload {
+  sceneId: string;
+  explore: boolean;
 }
 
 /**

@@ -449,6 +449,67 @@ describe('darkness, lamps and torches', () => {
     );
   });
 
+  it('a hidden token does not give itself away with its own torch', async () => {
+    // The leak this covers: the token is filtered out of the payload, but its
+    // lamp used to light the map for everyone and to appear in the glow layer
+    // at its exact position — the ambush announced by the thing hiding it.
+    await emitAck(gm, 'scene:lighting', { sceneId, darkSightM: 0 });
+    await emitAck(player, 'token:light', { tokenId: ownTokenId, on: false });
+    await emitAck(gm, 'token:update', {
+      tokenId: neighbourTokenId,
+      patch: {
+        hidden: true,
+        light: { brightM: 4, dimM: 10, color: '#ffd9a0', flicker: false, on: true },
+      },
+    });
+
+    const hidden = await roundTrip(player);
+    expect(hidden.tokens.map((t) => t.id)).not.toContain(neighbourTokenId);
+    expect(hidden.vision?.glows ?? []).toEqual([]);
+    // Its own square, one metre from the player, is still pitch dark.
+    expect(levelAt(hidden.vision!.light!, { x: 560, y: 1500 })).toBe(LIGHT_DARK);
+
+    // Revealed again, the very same lamp does all the things it should.
+    await emitAck(gm, 'token:update', { tokenId: neighbourTokenId, patch: { hidden: false } });
+    const shown = await roundTrip(player);
+    expect(shown.tokens.map((t) => t.id)).toContain(neighbourTokenId);
+    expect(shown.vision?.glows?.length).toBe(1);
+    expect(levelAt(shown.vision!.light!, { x: 560, y: 1500 })).not.toBe(LIGHT_DARK);
+
+    await emitAck(gm, 'token:update', {
+      tokenId: neighbourTokenId,
+      patch: { light: { brightM: 0, dimM: 0, color: '#ffd9a0', flicker: false, on: false } },
+    });
+    await emitAck(gm, 'scene:lighting', { sceneId, darkSightM: 2 });
+  });
+
+  it('still lights the way for the owner of a hidden token', async () => {
+    // The mistake the per-viewer filter exists to avoid: dropping hidden
+    // bearers from the scene outright would blind a sneaking player with their
+    // own torch.
+    await emitAck(gm, 'scene:lighting', { sceneId, darkSightM: 0 });
+    // Lit by the GM, because a hidden token is out of its own owner's reach as
+    // well: it is absent from their token list, so `token:light` refuses it the
+    // way it refuses any token the player cannot see. Sight from it is another
+    // matter and has worked since stage 18a — which is exactly why its light
+    // has to keep working too.
+    await emitAck(gm, 'token:update', {
+      tokenId: ownTokenId,
+      patch: {
+        hidden: true,
+        light: { brightM: 8, dimM: 30, color: '#ffd9a0', flicker: false, on: true },
+      },
+    });
+
+    const sneaking = await roundTrip(player);
+    // 30 m of dim reach from their own (hidden) token still crosses the room.
+    expect(levelAt(sneaking.vision!.light!, { x: 1500, y: 1500 })).not.toBe(LIGHT_DARK);
+    expect(sneaking.tokens.map((t) => t.id)).toContain(npcTokenId);
+
+    await emitAck(gm, 'token:update', { tokenId: ownTokenId, patch: { hidden: false } });
+    await emitAck(gm, 'scene:lighting', { sceneId, darkSightM: 2 });
+  });
+
   it('never sends a player the lamp rows', async () => {
     const leaked = record<unknown>(player, 'light:sync');
     const lamp = data(

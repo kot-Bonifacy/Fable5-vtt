@@ -289,6 +289,17 @@ model Scene {
    */
   darkSightM Float @default(2)
 
+  /**
+   * Does this scene remember where the party has already been (stage 18c)?
+   *
+   * Only meaningful while `visibility` is "dynamic", for the same reason
+   * darkness is: the memory records what a token actually saw, and the other
+   * two modes ask tokens nothing. On by default because a map that forgets a
+   * room the moment you step out of it is the harder thing to explain at the
+   * table — a GM who wants that turns it off per scene.
+   */
+  explore Boolean @default(true)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -302,8 +313,39 @@ model Scene {
   notes        MapNote[]
   walls        Wall[]
   lights       MapLight[]
+  exploration  SceneExploration?
 
   @@index([campaignId, active])
+}
+
+/**
+ * What the party has already seen on one scene (stage 18c) — one row per scene.
+ *
+ * The only place in this project where geometry is stored as a **grid** rather
+ * than as a list of shapes, and deliberately so. What has to be remembered is
+ * „visible *and* lit": the intersection of one polygon with the reach of lamps
+ * standing somewhere else entirely, which a shape list cannot express without
+ * clipping polygons against each other. A grid turns the same question into a
+ * point test, has a size that depends on the map rather than on how long the
+ * session ran, and — the property that matters most for something updated ten
+ * times a second — merging into it is idempotent.
+ *
+ * The cell is the light mask's cell (half a grid square, one metre on a CP RED
+ * map), anchored at the scene origin so a cell means the same square for every
+ * viewer and across restarts.
+ */
+model SceneExploration {
+  sceneId String @id
+  /// Cell edge in scene pixels — stored, because changing the grid invalidates it.
+  cell    Int
+  cols    Int
+  rows    Int
+  /// Alternating run lengths, "unexplored,explored,…" in row-major order.
+  data    String
+
+  updatedAt DateTime @updatedAt
+
+  scene Scene @relation(fields: [sceneId], references: [id], onDelete: Cascade)
 }
 
 /**
@@ -322,6 +364,17 @@ model FogShape {
   kind    String
   /// Geometry as JSON: stroke -> {points,radius}; rect -> {x,y,width,height}.
   data    String
+  /**
+   * Which set this shape belongs to (stage 18c). False — the hand-painted fog
+   * of the "fog" mode; true — a GM override laid over dynamic vision, which
+   * forces an area black or visible whatever the walls and lamps say.
+   *
+   * Two sets rather than one, because the same stroke means very different
+   * things in the two modes: carrying a fog-mode „reveal" into dynamic mode
+   * would switch off the walls over half the map, and the GM would rightly read
+   * that as the vision system being broken.
+   */
+  override Boolean @default(false)
 
   createdAt DateTime @default(now())
 

@@ -27,7 +27,13 @@
 
 import { metresPerPixel, type ScenePoint } from './measure.js';
 import type { SceneView } from './scenes.js';
-import { isPointVisible, isSegmentClear, segmentWithinRadius, type Segment } from './vision.js';
+import {
+  computeVisionPolygon,
+  isPointVisible,
+  isSegmentClear,
+  segmentWithinRadius,
+  type Segment,
+} from './vision.js';
 
 /** Nothing reaches this point. */
 export const LIGHT_DARK = 0;
@@ -60,6 +66,23 @@ export const LIGHT_DEFAULT_DIM_M = 10;
 /** A hand torch, the default a token's light is offered with. */
 export const TOKEN_LIGHT_DEFAULT_BRIGHT_M = 6;
 export const TOKEN_LIGHT_DEFAULT_DIM_M = 14;
+
+/**
+ * Bounds of the radius „light this room" picks, in metres.
+ *
+ * The upper one is what stops a lamp dropped in an open street from lighting
+ * the whole district: past fifty metres the answer is „this is not a room", and
+ * a GM who wants a floodlight can still type any radius by hand. The lower one
+ * keeps a lamp wedged into a cupboard from coming out as nothing at all.
+ */
+export const LIGHT_ROOM_FIT_MIN_M = 3;
+export const LIGHT_ROOM_FIT_MAX_M = 50;
+/**
+ * How much of the fitted radius is full brightness. A room lit to its far
+ * corners with no falloff looks like a switch rather than a lamp; a little over
+ * half leaves a rim of dim light where the walls are.
+ */
+const LIGHT_ROOM_FIT_BRIGHT_RATIO = 0.55;
 
 /**
  * How far a token sees in a dark scene with no light at all, in metres.
@@ -117,6 +140,12 @@ export interface LightCreatePayload {
   dimM?: number;
   color?: string;
   flicker?: boolean;
+  /**
+   * Measure the room around (x, y) and size the lamp to it (stage 18c), which
+   * overrides any radius sent along. The walls live on the server, so this is
+   * the one light property a client can only ask for rather than compute.
+   */
+  fitRoom?: boolean;
 }
 
 /** Mutable light fields; a patch carries any subset. */
@@ -133,6 +162,12 @@ export interface LightPatch {
 export interface LightUpdatePayload {
   lightId: number;
   patch: LightPatch;
+  /**
+   * Re-measure the room around the lamp and resize it to fit (stage 18c),
+   * which overrides any radius in `patch`. A sibling of the patch rather than
+   * a field of it: a patch is „these values", this is „work the values out".
+   */
+  fitRoom?: boolean;
 }
 
 export interface LightDeletePayload {
@@ -339,9 +374,107 @@ export function toLightSource(
   };
 }
 
+/**
+ * Radii for a lamp that should light the room it is standing in (stage 18c).
+ *
+ * „One click per room" rather than „one click per lamp, then two numbers": on a
+ * floor plan with a dozen rooms, typing radii is the part a GM stops doing, and
+ * a darkness feature nobody preps is a darkness feature nobody uses.
+ *
+ * The measurement is the raycast that already exists — a lamp is a viewer that
+ * cannot move — so the room's *own* walls decide the answer, and an L-shaped
+ * room gets the radius of its far corner rather than of its bounding box. Which
+ * is right: the light past the corner is blocked by the same geometry anyway.
+ *
+ * It has to run on the server, because that is the only place the walls are.
+ */
+export function fitLightToRoom(
+  origin: ScenePoint,
+  segments: readonly Segment[],
+  scene: Pick<SceneView, 'grid' | 'metersPerSquare'>,
+): { brightM: number; dimM: number } {
+  const perPixel = metresPerPixel(scene);
+  const maxPx = perPixel > 0 ? LIGHT_ROOM_FIT_MAX_M / perPixel : 0;
+  const polygon = computeVisionPolygon(origin, segments, maxPx > 0 ? maxPx : null);
+  let reachPx = 0;
+  for (const point of polygon) {
+    const distance = Math.hypot(point.x - origin.x, point.y - origin.y);
+    if (distance > reachPx) reachPx = distance;
+  }
+  const dimM = clamp(
+    Math.round(reachPx * perPixel * 10) / 10,
+    LIGHT_ROOM_FIT_MIN_M,
+    LIGHT_ROOM_FIT_MAX_M,
+  );
+  return { brightM: Math.round(dimM * LIGHT_ROOM_FIT_BRIGHT_RATIO * 10) / 10, dimM };
+}
+
 /** How far a source reaches at all. */
 export function lightReachPx(source: LightSource): number {
   return Math.max(source.brightPx, source.dimPx);
+}
+
+/**
+ * What one window costs a beam of light passing through it (stage 18c).
+ *
+ * A window lets light through — that is what distinguishes it from a wall — but
+ * a room seen through glass is never as bright as the room the lamp is in. The
+ * cost is charged on the far side of the pane: whatever reach the light has
+ * left when it arrives at the glass, it spends twice as fast beyond it. A lamp
+ * that would have thrown 8 m past an open door throws 4 m past a window. That is
+ * a made-up number rather than a rule from the book, chosen because it leaves a
+ * window meaningfully brighter than a wall and meaningfully dimmer than an open
+ * door.
+ */
+export const LIGHT_WINDOW_COST = 2;
+
+/**
+ * Where along `from`→`to` the two segments cross, as a fraction of the first;
+ * null when they do not.
+ */
+function crossingFraction(from: ScenePoint, to: ScenePoint, pane: Segment): number | null {
+  const rx = to.x - from.x;
+  const ry = to.y - from.y;
+  const sx = pane.x2 - pane.x1;
+  const sy = pane.y2 - pane.y1;
+  const denominator = rx * sy - ry * sx;
+  if (denominator === 0) return null;
+  const ox = pane.x1 - from.x;
+  const oy = pane.y1 - from.y;
+  const t = (ox * sy - oy * sx) / denominator;
+  const u = (ox * ry - oy * rx) / denominator;
+  if (t < 0 || t > 1 || u < 0 || u > 1) return null;
+  return t;
+}
+
+/**
+ * How far a light *reads* from this point once the windows in between have
+ * taken their toll — the straight distance when the path is clear.
+ *
+ * Windows are not in the blocker set (`wallBlocksSight` lets them through), so
+ * without this they would be free: a lamp in a lit lobby would light the alley
+ * outside exactly as far as it lights the lobby.
+ *
+ * The toll is charged on what is *beyond* the pane, not on the whole path. A
+ * lamp standing at the very edge of its own reach still puts something through
+ * the glass — it just does not carry far — while doubling the whole distance
+ * would have made a window at arm's length brighter than one across the room,
+ * which is backwards.
+ */
+export function apparentLightDistance(
+  from: ScenePoint,
+  to: ScenePoint,
+  windows: readonly Segment[],
+): number {
+  const length = Math.hypot(to.x - from.x, to.y - from.y);
+  if (windows.length === 0 || length === 0) return length;
+  let beyond = 0;
+  for (const pane of windows) {
+    const fraction = crossingFraction(from, to, pane);
+    if (fraction === null) continue;
+    beyond += (1 - fraction) * length * (LIGHT_WINDOW_COST - 1);
+  }
+  return length + beyond;
 }
 
 /**
@@ -351,22 +484,28 @@ export function lightReachPx(source: LightSource): number {
  * pre-computed light polygon: the polygon would need hundreds of vertices to
  * answer the same question, and this is the query the server runs per token per
  * viewer — „is that NPC standing in the dark?" — so it has to be cheap.
+ *
+ * `windows` are the panes between the two: they do not stop the light, they
+ * make it arrive tired (stage 18c).
  */
 export function lightLevelAt(
   point: ScenePoint,
   sources: readonly LightSource[],
   segments: readonly Segment[],
+  windows: readonly Segment[] = [],
 ): LightLevel {
   let best: LightLevel = LIGHT_DARK;
   for (const source of sources) {
     if (best === LIGHT_BRIGHT) break;
     const reach = lightReachPx(source);
     if (reach <= 0) continue;
-    const distance = Math.hypot(point.x - source.origin.x, point.y - source.origin.y);
+    const straight = Math.hypot(point.x - source.origin.x, point.y - source.origin.y);
+    if (straight > reach) continue;
+    if (!isSegmentClear(source.origin, point, segments)) continue;
+    const distance = apparentLightDistance(source.origin, point, windows);
     if (distance > reach) continue;
     const level: LightLevel = distance <= source.brightPx ? LIGHT_BRIGHT : LIGHT_DIM;
     if (level <= best) continue;
-    if (!isSegmentClear(source.origin, point, segments)) continue;
     best = level;
   }
   return best;
@@ -377,8 +516,9 @@ export function isPointLit(
   point: ScenePoint,
   sources: readonly LightSource[],
   segments: readonly Segment[],
+  windows: readonly Segment[] = [],
 ): boolean {
-  return lightLevelAt(point, sources, segments) !== LIGHT_DARK;
+  return lightLevelAt(point, sources, segments, windows) !== LIGHT_DARK;
 }
 
 /** Bounding box of a set of polygons in scene pixels; null when there is none. */
@@ -466,6 +606,8 @@ export interface LightMaskInput {
    * whole representation exists to avoid.
    */
   polygons: readonly (readonly ScenePoint[])[];
+  /** Panes light passes through at a cost (stage 18c); empty is the usual case. */
+  windows?: readonly Segment[];
 }
 
 /**
@@ -499,17 +641,25 @@ export function buildLightMask(input: LightMaskInput): LightMask {
     const rowFrom = Math.max(0, Math.floor((source.origin.y - reach - originY) / cell));
     const rowTo = Math.min(rows - 1, Math.ceil((source.origin.y + reach - originY) / cell));
 
+    // Panes near this light, for the same reason as the blockers: a window on
+    // the other side of the map cannot dim anything here.
+    const panes = (input.windows ?? []).filter((pane) =>
+      segmentWithinRadius(source.origin, pane, reach),
+    );
+
     for (let row = rowFrom; row <= rowTo; row++) {
       const py = originY + row * cell + cell / 2;
       for (let col = colFrom; col <= colTo; col++) {
         const index = row * cols + col;
         if (levels[index] === LIGHT_BRIGHT) continue;
         const px = originX + col * cell + cell / 2;
-        const distance = Math.hypot(px - source.origin.x, py - source.origin.y);
+        const straight = Math.hypot(px - source.origin.x, py - source.origin.y);
+        if (straight > reach) continue;
+        if (!isSegmentClear(source.origin, { x: px, y: py }, near)) continue;
+        const distance = apparentLightDistance(source.origin, { x: px, y: py }, panes);
         if (distance > reach) continue;
         const level = distance <= source.brightPx ? LIGHT_BRIGHT : LIGHT_DIM;
         if (level <= levels[index]!) continue;
-        if (!isSegmentClear(source.origin, { x: px, y: py }, near)) continue;
         levels[index] = level;
       }
     }

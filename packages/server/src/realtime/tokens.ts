@@ -1,4 +1,5 @@
 import type {
+  FogShapeView,
   FogState,
   ScenePoint,
   SceneView,
@@ -167,7 +168,13 @@ function toGridScene(scene: Scene): Pick<SceneView, 'grid'> {
 export type Concealment =
   | { kind: 'none' }
   | { kind: 'fog'; fog: FogState }
-  | { kind: 'vision'; polygons: ScenePoint[][]; lighting: ViewerLighting | null };
+  | {
+      kind: 'vision';
+      polygons: ScenePoint[][];
+      lighting: ViewerLighting | null;
+      /** The GM's brush over this scene (stage 18c); it outranks both above. */
+      overrides: FogShapeView[];
+    };
 
 /**
  * Builds the concealment one viewer is subject to. The GM is subject to none of
@@ -184,7 +191,12 @@ export async function concealmentFor(
   if (usesDynamicVision(scene)) {
     const ctx = context ?? (await loadVisionContext(prisma, scene));
     const sight = await viewerSightFor(prisma, scene, user.id, ctx);
-    return { kind: 'vision', polygons: sight.polygons, lighting: sight.lighting };
+    return {
+      kind: 'vision',
+      polygons: sight.polygons,
+      lighting: sight.lighting,
+      overrides: ctx.overrides,
+    };
   }
   return { kind: 'none' };
 }
@@ -218,6 +230,7 @@ export function concealedFrom(
     tokenCentre(token, toGridScene(scene)),
     concealment.polygons,
     concealment.lighting,
+    concealment.overrides,
   );
 }
 
@@ -737,7 +750,9 @@ async function emitDynamicMove(
       x: position.x,
       y: position.y,
     });
-    if (isPointObservable(centre, sight.polygons, sight.lighting)) member.emit('token:move', move);
+    if (isPointObservable(centre, sight.polygons, sight.lighting, context.overrides)) {
+      member.emit('token:move', move);
+    }
   }
 
   if (final) {

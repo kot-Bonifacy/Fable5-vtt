@@ -142,6 +142,21 @@ export function blockingSegments(walls: readonly WallView[]): Segment[] {
 }
 
 /**
+ * The walls of a room with every door shut and every window boarded (stage
+ * 18c) — the shape of the space itself rather than of what can be seen from it.
+ *
+ * „How big is this room?" and „what can be seen from here?" are different
+ * questions and want different segment lists. Measuring a lamp with the doors
+ * as they happen to stand would size it by whatever is beyond the one that is
+ * open: a bedroom with its door ajar measures as the whole floor. The light
+ * still spills through that doorway when it is drawn — the raycast at render
+ * time uses the real doors — it just no longer decides how strong the bulb is.
+ */
+export function roomSegments(walls: readonly WallView[]): Segment[] {
+  return walls.map((wall) => ({ x1: wall.x1, y1: wall.y1, x2: wall.x2, y2: wall.y2 }));
+}
+
+/**
  * Validates a drawn chain and turns it into segments. Points are rounded to
  * whole scene pixels and consecutive duplicates are dropped — a click that did
  * not move is not a wall, and a zero-length segment would give the raycast a

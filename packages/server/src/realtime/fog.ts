@@ -12,13 +12,14 @@ import type {
 import {
   FOG_MAX_SHAPES,
   ROLE_GM,
+  fullSceneHide,
   fullSceneReveal,
   isSceneVisibility,
   sanitizeFogShape,
 } from '@vtt/shared';
 import type { Scene } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
-import { fetchFogState, toFogRowData } from './fog-io.js';
+import { fetchFogState, paintsOverride, toFogRowData } from './fog-io.js';
 import { requireCampaignScene, toSceneView } from './scenes.js';
 import { campaignRoom, sceneRoom } from './state.js';
 import { emitSceneTokensToPlayers } from './tokens.js';
@@ -90,19 +91,28 @@ export const fogPaintEvent = defineEvent<FogPaintPayload, FogShapeView>({
     const shape = sanitizeFogShape(payload?.shape);
     if (!shape) throw new RealtimeError('BAD_REQUEST');
 
-    const stored = await deps.ctx.prisma.fogShape.count({ where: { sceneId: scene.id } });
+    // Which set the stroke joins is decided by the scene, never by the client:
+    // the same brush paints the fog of a `fog` scene and the GM's override of a
+    // `dynamic` one (stage 18c), and a client that could choose could also
+    // punch a hole in the walls of a scene the GM had not opened.
+    const override = paintsOverride(scene);
+    const stored = await deps.ctx.prisma.fogShape.count({
+      where: { sceneId: scene.id, override },
+    });
     if (stored >= FOG_MAX_SHAPES) throw new RealtimeError('FOG_LIMIT_REACHED');
 
     const row = await deps.ctx.prisma.fogShape.create({
-      data: { sceneId: scene.id, ...toFogRowData(shape) },
+      data: { sceneId: scene.id, override, ...toFogRowData(shape) },
     });
     const view: FogShapeView = { ...shape, id: row.id };
 
     await afterFogChange(deps, campaignId, scene, () => {
       if (!scene.active) {
-        deps.io
-          .to(sceneRoom(scene.id))
-          .emit('fog:paint', { sceneId: scene.id, shape: view } satisfies FogPaintBroadcast);
+        deps.io.to(sceneRoom(scene.id)).emit('fog:paint', {
+          sceneId: scene.id,
+          shape: view,
+          override,
+        } satisfies FogPaintBroadcast);
         return;
       }
       const room = campaignRoom(campaignId);
@@ -110,6 +120,7 @@ export const fogPaintEvent = defineEvent<FogPaintPayload, FogShapeView>({
         seq: deps.seqs.next(room),
         sceneId: scene.id,
         shape: view,
+        override,
       };
       deps.io.to(room).emit('fog:paint', broadcast);
     });
@@ -124,17 +135,28 @@ export const fogResetEvent = defineEvent<FogResetPayload>({
     const campaignId = requireCampaignId(socket.data);
     const scene = await requireCampaignScene(deps.ctx.prisma, campaignId, payload?.sceneId);
     const mode = payload?.mode;
-    if (mode !== 'reveal' && mode !== 'hide') throw new RealtimeError('BAD_REQUEST');
+    if (mode !== 'reveal' && mode !== 'hide' && mode !== 'clear') {
+      throw new RealtimeError('BAD_REQUEST');
+    }
+    const override = paintsOverride(scene);
 
-    // Both resets start by clearing the list — the base state is „covered", so
-    // „cover everything" needs no shape at all, and „reveal everything" needs
-    // exactly one. That also compacts a session's worth of brush strokes into
-    // a single row.
+    // Every reset starts by clearing the set, which also compacts a session's
+    // worth of brush strokes into at most one row. What „everything covered"
+    // then costs differs between the two sets, and that difference *is* the
+    // difference between them: fog starts covered, so it needs no shape at all,
+    // while an override starts absent and has to say so out loud.
     await deps.ctx.prisma.$transaction(async (tx) => {
-      await tx.fogShape.deleteMany({ where: { sceneId: scene.id } });
+      await tx.fogShape.deleteMany({ where: { sceneId: scene.id, override } });
+      if (mode === 'clear') return;
       if (mode === 'reveal') {
         await tx.fogShape.create({
-          data: { sceneId: scene.id, ...toFogRowData(fullSceneReveal(scene)) },
+          data: { sceneId: scene.id, override, ...toFogRowData(fullSceneReveal(scene)) },
+        });
+        return;
+      }
+      if (override) {
+        await tx.fogShape.create({
+          data: { sceneId: scene.id, override, ...toFogRowData(fullSceneHide(scene)) },
         });
       }
     });
@@ -199,7 +221,7 @@ export const fogUndoEvent = defineEvent<FogUndoPayload>({
     const campaignId = requireCampaignId(socket.data);
     const scene = await requireCampaignScene(deps.ctx.prisma, campaignId, payload?.sceneId);
     const last = await deps.ctx.prisma.fogShape.findFirst({
-      where: { sceneId: scene.id },
+      where: { sceneId: scene.id, override: paintsOverride(scene) },
       orderBy: { id: 'desc' },
     });
     if (!last) return;

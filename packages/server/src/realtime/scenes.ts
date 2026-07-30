@@ -54,6 +54,7 @@ export function toSceneView(scene: Scene): SceneView {
     visibility: isSceneVisibility(scene.visibility) ? scene.visibility : 'fog',
     dark: scene.dark,
     darkSightM: scene.darkSightM,
+    explore: scene.explore,
   };
 }
 

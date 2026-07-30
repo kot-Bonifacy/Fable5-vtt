@@ -7,6 +7,8 @@ import {
   createScene,
   deleteScene,
   setSceneLighting,
+  forgetExploration,
+  setSceneExplore,
   setSceneVisibility,
   updateScene,
   viewScene,
@@ -260,6 +262,32 @@ function SceneEditor({ onClose }: { onClose: () => void }) {
               </p>
             </>
           )}
+
+          {/* The party's memory of the map (stage 18c). Applies at once like the
+              two settings above, but for the opposite reason: it takes nothing
+              away from anybody — a remembered room never showed who was in it —
+              so it needs no token re-filter, only a repaint. */}
+          <label className="auth-label">
+            <input
+              type="checkbox"
+              checked={scene.explore}
+              onChange={(e) => void setSceneExplore(scene.id, e.target.checked)}
+            />{' '}
+            Pamięć eksploracji — zwiedzone zostaje na planie
+          </label>
+          <p className="auth-hint">
+            Obszar raz zobaczony zostaje narysowany przyciemniony — sama mapa, bez tokenów. W
+            ciemnej scenie zapamiętuje się tylko to, co było oświetlone, więc korytarz przejdzie do
+            pamięci pasem szerokości latarki.
+          </p>
+          <button
+            type="button"
+            className="small-button small-button--danger"
+            onClick={() => void forgetExploration(scene.id)}
+            disabled={!scene.explore}
+          >
+            Zapomnij eksplorację
+          </button>
         </>
       )}
 

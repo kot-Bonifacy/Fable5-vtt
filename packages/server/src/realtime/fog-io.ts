@@ -35,20 +35,51 @@ export function toFogRowData(shape: FogShape): { mode: string; kind: string; dat
   return { mode: shape.mode, kind: shape.kind, data: JSON.stringify(geometry) };
 }
 
-/** The fog of one scene, in paint order. The same view goes to every viewer. */
-export async function fetchFogState(prisma: PrismaClient, scene: Scene): Promise<FogState> {
-  // A scene not painting fog needs no shapes at all: skipping the query keeps
-  // the common cases (city scenes, handouts, walled interiors) free. The rows
-  // stay in the table, so switching the mode back restores the exploration the
-  // group had already done.
-  if (scene.visibility !== 'fog') return { sceneId: scene.id, enabled: false, shapes: [] };
+/** Which set of shapes the brush writes to on this scene (stage 18c). */
+export function paintsOverride(scene: Pick<Scene, 'visibility'>): boolean {
+  return scene.visibility === 'dynamic';
+}
+
+/** The shapes of one set, in paint order. */
+async function fetchShapes(
+  prisma: PrismaClient,
+  sceneId: string,
+  override: boolean,
+): Promise<FogShapeView[]> {
   const rows = await prisma.fogShape.findMany({
-    where: { sceneId: scene.id },
+    where: { sceneId, override },
     orderBy: { id: 'asc' },
   });
-  return {
-    sceneId: scene.id,
-    enabled: true,
-    shapes: rows.map(toFogShapeView).filter((shape): shape is FogShapeView => shape !== null),
-  };
+  return rows.map(toFogShapeView).filter((shape): shape is FogShapeView => shape !== null);
+}
+
+/**
+ * The fog of one scene, in paint order. The same view goes to every viewer.
+ *
+ * Exactly one of the two lists is ever populated, decided by the scene's mode:
+ * a scene painting fog reads the fog set, a scene on dynamic vision reads the
+ * GM's overrides (stage 18c), and an open scene reads neither. Both sets stay
+ * in the table through a mode change, so switching back restores the work the
+ * GM had already done — and switching *over* never reinterprets it.
+ */
+export async function fetchFogState(prisma: PrismaClient, scene: Scene): Promise<FogState> {
+  // A scene doing neither needs no shapes at all: skipping the query keeps the
+  // common cases (city scenes, handouts) free.
+  if (scene.visibility === 'fog') {
+    return {
+      sceneId: scene.id,
+      enabled: true,
+      shapes: await fetchShapes(prisma, scene.id, false),
+      overrides: [],
+    };
+  }
+  if (scene.visibility === 'dynamic') {
+    return {
+      sceneId: scene.id,
+      enabled: false,
+      shapes: [],
+      overrides: await fetchShapes(prisma, scene.id, true),
+    };
+  }
+  return { sceneId: scene.id, enabled: false, shapes: [], overrides: [] };
 }

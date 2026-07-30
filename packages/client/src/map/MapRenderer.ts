@@ -14,7 +14,9 @@ import type {
   DrawingShape,
   DrawingStyle,
   DrawingView,
+  ExplorationMask,
   FogShape,
+  FogShapeView,
   FogState,
   LightGlow,
   LightMask,
@@ -33,6 +35,7 @@ import {
   LIGHT_BRIGHT,
   LIGHT_DIM,
   clampTokenPosition,
+  decodeFlagRuns,
   decodeLevelRuns,
   formatMetres,
   formatSquares,
@@ -107,6 +110,17 @@ export interface LightSettings {
 }
 
 /**
+ * A glow as the renderer wants it: the wire shape plus, for the GM, the polygon
+ * the walls let its light out into (stage 18c).
+ *
+ * Only the GM ever carries a clip. A player is handed no wall geometry, and for
+ * them the darkness cover drawn above this layer already trims whatever a lamp
+ * spills round a corner — which is why the leak was only ever visible on the
+ * GM's own screen.
+ */
+export type RenderGlow = LightGlow & { clip?: ScenePoint[] };
+
+/**
  * One lamp handle on the GM's layer (stage 18b). Already in scene pixels — the
  * renderer never sees metres, so the grid scale stays in one place.
  */
@@ -156,12 +170,46 @@ const FOG_TEXTURE_MAX_PX = 2048;
  */
 const DIM_COVER_ALPHA = 0.45;
 /**
+ * How much of the cover an explored cell lifts (stage 18c).
+ *
+ * Not a free number: erasing with alpha `a` multiplies what is underneath by
+ * `1 - a`, so a fully covered cell has to land on `DIM_COVER_ALPHA` for the
+ * memory of a room and a dimly lit room to read the same. Both mean „you know
+ * the shape of this but are not looking at it".
+ */
+const EXPLORED_ERASE_ALPHA = 1 - DIM_COVER_ALPHA;
+/**
+ * What the GM's own overrides look like on the GM's screen (stage 18c). The GM
+ * is never covered, so their brush has nothing to erase — it is drawn as a
+ * tint instead, and only strongly enough to be unmistakable while planning.
+ */
+const OVERRIDE_GM_HIDE_ALPHA = 0.5;
+const OVERRIDE_GM_REVEAL_ALPHA = 0.22;
+const OVERRIDE_GM_REVEAL_COLOR = 0x38bdf8;
+/**
  * Concentric rings used to fake a light's falloff. Pixi v8 can do a radial
  * gradient fill, but rings drawn additively are a) predictable across drivers
  * and b) indistinguishable from a gradient at table zoom. Ten is where the
  * banding stops being visible on a wide neon tube.
  */
-const GLOW_RING_COUNT = 10;
+const GLOW_RING_COUNT = 28;
+/**
+ * How many pixels of the „unlit" canvas one mask cell becomes before it is
+ * blurred (stage 18c).
+ *
+ * The mask carries three levels, so scaling it up on its own puts two visible
+ * steps in every pool of light — read at the table as two concentric rings
+ * rather than as a lamp. Supersampling first and blurring after turns those
+ * steps into a ramp, and it costs nothing on the wire: a whole field of view is
+ * a canvas of a few hundred pixels a side.
+ */
+const UNLIT_SUPERSAMPLE = 6;
+/**
+ * Blur radius on that canvas, in supersampled pixels — a little under one cell,
+ * which spreads each step across roughly two metres of map. Wider than that and
+ * a torch stops having an edge at all; narrower and the rings come back.
+ */
+const UNLIT_BLUR_PX = 4;
 /**
  * Peak opacity of the coloured glow at a lamp's centre.
  *
@@ -345,6 +393,8 @@ export class MapRenderer {
    */
   private readonly lightLayer = new Container();
   private readonly glowNodes: Graphics[] = [];
+  /** One clip per glow — the GM's lamps are cut to what the walls let out. */
+  private readonly glowMasks: Graphics[] = [];
   private readonly fogLayer = new Container();
   private readonly fogSprite = new Sprite();
   /** Off-stage container rendered into `fogTexture`; scaled down for memory. */
@@ -374,8 +424,33 @@ export class MapRenderer {
    * linear filtering, which is what gives a light a soft edge for free.
    */
   private readonly unlitSprite = new Sprite();
+  /** One pixel per mask cell — the levels as they came off the wire. */
+  private unlitCellCanvas: HTMLCanvasElement | null = null;
+  /** The same thing blown up and blurred; this is what the texture shows. */
   private unlitCanvas: HTMLCanvasElement | null = null;
   private unlitTexture: Texture | null = null;
+  /**
+   * What the party already walked (stage 18c), drawn as a partial `erase`: an
+   * explored cell has its cover lifted to `DIM_COVER_ALPHA` instead of being
+   * cleared, so a remembered room reads as the map seen once rather than as the
+   * map being looked at. Same one-pixel-per-cell canvas trick as the unlit
+   * sheet, which also gives the boundary of the memory a soft edge.
+   *
+   * Deliberately drawn *after* the unlit sheet: an area you have explored stays
+   * on the plan even when you are standing in it in the dark. You remember the
+   * shape of the room you cannot currently see.
+   */
+  private readonly exploredSprite = new Sprite();
+  private exploredCanvas: HTMLCanvasElement | null = null;
+  private exploredTexture: Texture | null = null;
+  private lastExploration: ExplorationMask | null = null;
+  /**
+   * The GM's overrides over dynamic vision (stage 18c), composited last: they
+   * outrank the walls, the light and the memory, exactly as they do on the
+   * server when it decides which tokens a player may receive.
+   */
+  private readonly overridePasses: Graphics[] = [];
+  private visionOverrides: FogShapeView[] = [];
   /** Lamp markers — GM only, above the fog like the walls they usually accompany. */
   private readonly lightMarkerLayer = new Container();
   private readonly lightNodes = new Map<number, Container>();
@@ -440,7 +515,7 @@ export class MapRenderer {
   private lastVisionPolygons: ScenePoint[][] = [];
   private visionActive = false;
   private lastLightMask: LightMask | null = null;
-  private lastGlows: LightGlow[] = [];
+  private lastGlows: RenderGlow[] = [];
   private lastLights: LightMarker[] = [];
   /** Wall tool settings; `armed` decides whether a click traces or erases. */
   private wall: WallSettings = { armed: false, mode: 'draw', kind: 'wall', snapGrid: true };
@@ -516,9 +591,13 @@ export class MapRenderer {
     this.fogScratch.addChild(this.fogCover);
     this.visionScratch.addChild(this.visionCover);
     this.visionScratch.addChild(this.visionCutout);
-    // Order inside the cover: black sheet, holes for what is in view, then the
-    // unlit part painted back in. What survives all three is „seen *and* lit".
+    // Order inside the cover: black sheet, holes for what is in view, the unlit
+    // part painted back in, the party's memory lifted to a dim grey, and last
+    // the GM's overrides — which win over all of it. What survives is „seen and
+    // lit", „seen once", or „the GM said so".
     this.visionScratch.addChild(this.unlitSprite);
+    this.exploredSprite.blendMode = 'erase';
+    this.visionScratch.addChild(this.exploredSprite);
     this.app.stage.addChild(viewport);
     this.viewport = viewport;
     this.app.ticker.add(this.tickFlicker);
@@ -1144,8 +1223,19 @@ export class MapRenderer {
     this.fogIsGm = isGm;
     const scene = this.scene;
 
-    if (!scene || !fog || !fog.enabled) {
+    if (!scene || !fog) {
       this.fogSprite.visible = false;
+      return;
+    }
+    // A dynamic scene draws no fog. What it may have is the GM's overrides, and
+    // those are composited into the vision sheet for a player — but the GM has
+    // no vision sheet, so this layer is where they get to see their own brush.
+    if (!fog.enabled) {
+      if (isGm) {
+        this.drawOverridePreview(scene, fog.overrides, pending);
+      } else {
+        this.fogSprite.visible = false;
+      }
       return;
     }
 
@@ -1185,7 +1275,66 @@ export class MapRenderer {
     this.fogSprite.alpha = isGm ? FOG_GM_ALPHA : 1;
   }
 
-  /** Lazily grows the pool of blend passes and hands back a cleared one. */
+  /**
+   * The GM's view of their own overrides on a dynamic scene (stage 18c).
+   *
+   * Two flat tints instead of the player's composite: black where the players
+   * are being kept out, blue where they are being let through. The GM is
+   * planning against this, so it has to say „I painted here" rather than
+   * pretend to be what a player sees — that is what the player preview button
+   * of stage 17a is for.
+   */
+  private drawOverridePreview(
+    scene: SceneView,
+    overrides: FogShapeView[],
+    pending: FogShape | null,
+  ): void {
+    const shapes: FogShape[] = pending ? [...overrides, pending] : overrides;
+    if (shapes.length === 0) {
+      this.fogSprite.visible = false;
+      return;
+    }
+    const factor = Math.max(1, Math.max(scene.width, scene.height) / FOG_TEXTURE_MAX_PX);
+    const width = Math.max(1, Math.ceil(scene.width / factor));
+    const height = Math.max(1, Math.ceil(scene.height / factor));
+    if (!this.fogTexture || this.fogTexture.width !== width || this.fogTexture.height !== height) {
+      this.fogTexture?.destroy(true);
+      this.fogTexture = RenderTexture.create({ width, height, antialias: true });
+      this.fogSprite.texture = this.fogTexture;
+    }
+    this.fogScratch.scale.set(1 / factor);
+    // No sheet at all here: the base is transparent and each shape adds its own
+    // tint, so „reveal" is visible as itself rather than as a hole in nothing.
+    this.fogCover.clear();
+
+    let pass = 0;
+    for (let i = 0; i < shapes.length;) {
+      const mode = shapes[i]!.mode;
+      const graphics = this.fogPass(pass++);
+      graphics.blendMode = 'normal';
+      graphics.alpha = mode === 'reveal' ? OVERRIDE_GM_REVEAL_ALPHA : OVERRIDE_GM_HIDE_ALPHA;
+      graphics.tint = mode === 'reveal' ? OVERRIDE_GM_REVEAL_COLOR : 0x000000;
+      while (i < shapes.length && shapes[i]!.mode === mode) {
+        drawFogShape(graphics, shapes[i]!);
+        i++;
+      }
+    }
+    for (let i = pass; i < this.fogPasses.length; i++) this.fogPasses[i]!.clear();
+
+    this.app.renderer.render({ container: this.fogScratch, target: this.fogTexture, clear: true });
+    this.fogSprite.visible = true;
+    this.fogSprite.position.set(0, 0);
+    this.fogSprite.setSize(scene.width, scene.height);
+    this.fogSprite.alpha = 1;
+  }
+
+  /**
+   * Lazily grows the pool of blend passes and hands back a cleared one.
+   *
+   * Alpha and tint are reset along with the geometry: the same pool draws the
+   * fog (opaque black) and the GM's override preview (tinted and translucent),
+   * and a pass that kept last frame's tint would paint the fog blue.
+   */
   private fogPass(index: number): Graphics {
     let graphics = this.fogPasses[index];
     if (!graphics) {
@@ -1194,6 +1343,8 @@ export class MapRenderer {
       this.fogScratch.addChild(graphics);
     }
     graphics.clear();
+    graphics.alpha = 1;
+    graphics.tint = 0xffffff;
     return graphics;
   }
 
@@ -1373,11 +1524,40 @@ export class MapRenderer {
     this.lastVisionPolygons = polygons;
     this.visionActive = active;
     if (mask !== undefined) this.lastLightMask = mask;
-    const scene = this.scene;
+    this.redrawVision();
+  }
 
-    if (!scene || !active) {
+  /**
+   * The party's memory of this map (stage 18c). Null is „this scene forgets",
+   * which is not the same as an empty mask — a scene that remembers, walked by
+   * nobody yet — but they compose identically, so nothing here has to care.
+   */
+  setExploration(mask: ExplorationMask | null): void {
+    if (this.destroyed) return;
+    this.lastExploration = mask;
+    this.redrawVision();
+  }
+
+  /**
+   * The GM's overrides for this scene (stage 18c). They arrive on the fog
+   * events, because they are painted with the fog brush, but on a dynamic scene
+   * they belong to *this* sheet — the fog layer is not drawn there at all.
+   */
+  setVisionOverrides(overrides: FogShapeView[]): void {
+    if (this.destroyed) return;
+    this.visionOverrides = overrides;
+    this.redrawVision();
+  }
+
+  /** Composites the cover a player sees: walls, light, memory, GM overrides. */
+  private redrawVision(): void {
+    const scene = this.scene;
+    const polygons = this.lastVisionPolygons;
+
+    if (!scene || !this.visionActive) {
       this.visionSprite.visible = false;
       this.unlitSprite.visible = false;
+      this.exploredSprite.visible = false;
       return;
     }
 
@@ -1407,6 +1587,8 @@ export class MapRenderer {
       this.visionCutout.fill({ color: 0x000000, alpha: 1 });
     }
     this.updateUnlitSheet(this.lastLightMask);
+    this.updateExploredSheet(this.lastExploration);
+    this.drawVisionOverrides();
 
     this.app.renderer.render({
       container: this.visionScratch,
@@ -1421,24 +1603,28 @@ export class MapRenderer {
   /**
    * Rebuilds the „unlit" sheet from a light mask.
    *
-   * The mask is one byte per cell, so it becomes a canvas of exactly that size
-   * and is stretched over the area it describes. Linear filtering across a cell
-   * boundary is what turns three discrete levels into a gradient — the reason a
-   * one-metre grid is enough resolution for something as soft as light.
+   * The mask is one byte per cell, so it lands first on a canvas of exactly that
+   * size — and then goes through a supersampled blur (stage 18c). Bilinear
+   * upscaling alone leaves the two boundaries between the three levels visible
+   * as concentric rings around every lamp; blurring them turns the pair of steps
+   * into a single ramp, which is what light actually does. The wire format is
+   * untouched: this is a rendering decision, made where the pixels are.
    *
-   * The canvas and its texture are reused between pushes: at ten masks a second
-   * during a drag, allocating a new one each time would be pure churn.
+   * Both canvases and the texture are reused between pushes: at ten masks a
+   * second during a drag, allocating them each time would be pure churn.
    */
   private updateUnlitSheet(mask: LightMask | null): void {
     if (!mask || mask.cols <= 0 || mask.rows <= 0) {
       this.unlitSprite.visible = false;
       return;
     }
+    const width = mask.cols * UNLIT_SUPERSAMPLE;
+    const height = mask.rows * UNLIT_SUPERSAMPLE;
     let canvas = this.unlitCanvas;
-    if (!canvas || canvas.width !== mask.cols || canvas.height !== mask.rows) {
+    if (!canvas || canvas.width !== width || canvas.height !== height) {
       canvas = document.createElement('canvas');
-      canvas.width = mask.cols;
-      canvas.height = mask.rows;
+      canvas.width = width;
+      canvas.height = height;
       this.unlitCanvas = canvas;
       this.unlitTexture?.destroy(true);
       this.unlitTexture = Texture.from(canvas);
@@ -1449,8 +1635,20 @@ export class MapRenderer {
       this.unlitSprite.visible = false;
       return;
     }
+    let cells = this.unlitCellCanvas;
+    if (!cells || cells.width !== mask.cols || cells.height !== mask.rows) {
+      cells = document.createElement('canvas');
+      cells.width = mask.cols;
+      cells.height = mask.rows;
+      this.unlitCellCanvas = cells;
+    }
+    const cellContext = cells.getContext('2d');
+    if (!cellContext) {
+      this.unlitSprite.visible = false;
+      return;
+    }
     const levels = decodeLevelRuns(mask.runs, mask.cols * mask.rows);
-    const image = context.createImageData(mask.cols, mask.rows);
+    const image = cellContext.createImageData(mask.cols, mask.rows);
     for (let i = 0; i < levels.length; i++) {
       const level = levels[i]!;
       // Black throughout (the RGB bytes stay zero); only the opacity differs,
@@ -1458,11 +1656,94 @@ export class MapRenderer {
       image.data[i * 4 + 3] =
         level === LIGHT_BRIGHT ? 0 : level === LIGHT_DIM ? Math.round(DIM_COVER_ALPHA * 255) : 255;
     }
-    context.putImageData(image, 0, 0);
+    cellContext.putImageData(image, 0, 0);
+
+    // Blown up and blurred, so the three levels become one ramp. The blur pulls
+    // transparency in from outside the canvas at its border, which is harmless:
+    // the outer ring of cells lies outside the viewer's polygon, where the cover
+    // underneath was never erased and is opaque on its own.
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.filter = `blur(${UNLIT_BLUR_PX}px)`;
+    context.drawImage(cells, 0, 0, canvas.width, canvas.height);
+    context.filter = 'none';
     this.unlitTexture?.source.update();
     this.unlitSprite.visible = true;
     this.unlitSprite.position.set(mask.x, mask.y);
     this.unlitSprite.setSize(mask.cols * mask.cell, mask.rows * mask.cell);
+  }
+
+  /**
+   * Rebuilds the „already explored" sheet (stage 18c).
+   *
+   * A partial erase rather than a hole: `EXPLORED_ERASE_ALPHA` is chosen so a
+   * fully covered cell lands exactly on `DIM_COVER_ALPHA`, the same grey the
+   * light mask uses for „made out, not seen clearly". Memory and dim light
+   * reading the same is the point — both mean „you know the shape of this".
+   */
+  private updateExploredSheet(mask: ExplorationMask | null): void {
+    if (!mask || mask.cols <= 0 || mask.rows <= 0) {
+      this.exploredSprite.visible = false;
+      return;
+    }
+    let canvas = this.exploredCanvas;
+    if (!canvas || canvas.width !== mask.cols || canvas.height !== mask.rows) {
+      canvas = document.createElement('canvas');
+      canvas.width = mask.cols;
+      canvas.height = mask.rows;
+      this.exploredCanvas = canvas;
+      this.exploredTexture?.destroy(true);
+      this.exploredTexture = Texture.from(canvas);
+      this.exploredSprite.texture = this.exploredTexture;
+    }
+    const context = canvas.getContext('2d');
+    if (!context) {
+      this.exploredSprite.visible = false;
+      return;
+    }
+    const cells = decodeFlagRuns(mask.runs, mask.cols * mask.rows);
+    const image = context.createImageData(mask.cols, mask.rows);
+    const strength = Math.round(EXPLORED_ERASE_ALPHA * 255);
+    for (let i = 0; i < cells.length; i++) image.data[i * 4 + 3] = cells[i] ? strength : 0;
+    context.putImageData(image, 0, 0);
+    this.exploredTexture?.source.update();
+    this.exploredSprite.visible = true;
+    this.exploredSprite.position.set(0, 0);
+    this.exploredSprite.setSize(mask.cols * mask.cell, mask.rows * mask.cell);
+  }
+
+  /**
+   * Draws the GM's overrides into the cover (stage 18c), in paint order.
+   *
+   * Last word on the sheet, matching what the server already decided about the
+   * tokens: `hide` is an opaque draw that no amount of light undoes, `reveal` an
+   * erase that no wall undoes. Same two blend modes the fog uses, for the same
+   * reason — and the same rule that the newest shape covering a point wins.
+   */
+  private drawVisionOverrides(): void {
+    const shapes = this.visionOverrides;
+    let pass = 0;
+    for (let i = 0; i < shapes.length;) {
+      const mode = shapes[i]!.mode;
+      const graphics = this.overridePass(pass++);
+      graphics.blendMode = mode === 'reveal' ? 'erase' : 'normal';
+      while (i < shapes.length && shapes[i]!.mode === mode) {
+        drawFogShape(graphics, shapes[i]!);
+        i++;
+      }
+    }
+    for (let i = pass; i < this.overridePasses.length; i++) this.overridePasses[i]!.clear();
+  }
+
+  /** Lazily grows the override blend passes and hands back a cleared one. */
+  private overridePass(index: number): Graphics {
+    let graphics = this.overridePasses[index];
+    if (!graphics) {
+      graphics = new Graphics();
+      this.overridePasses[index] = graphics;
+      this.visionScratch.addChild(graphics);
+    }
+    graphics.clear();
+    return graphics;
   }
 
   /**
@@ -1473,7 +1754,7 @@ export class MapRenderer {
    * decides visibility is the mask above and the server's own filtering — so it
    * is free to be approximate.
    */
-  setGlows(glows: LightGlow[]): void {
+  setGlows(glows: RenderGlow[]): void {
     if (this.destroyed) return;
     this.lastGlows = glows;
     this.hasFlicker = glows.some((glow) => glow.flicker);
@@ -1487,6 +1768,9 @@ export class MapRenderer {
       const node = this.glowNodes[i]!;
       const glow = glows[i];
       node.clear();
+      const clip = this.glowMask(i);
+      clip.clear();
+      node.mask = null;
       if (!glow) {
         node.visible = false;
         continue;
@@ -1508,7 +1792,27 @@ export class MapRenderer {
           alpha: GLOW_ALPHA / GLOW_RING_COUNT,
         });
       }
+      // A lamp shut inside a room must not pour colour through its walls. The
+      // clip is the light's own raycast, and only the GM ever has one: a player
+      // is handed no wall geometry, and for them the darkness cover above this
+      // layer does the same job.
+      if (glow.clip && glow.clip.length >= 3) {
+        clip.poly(glow.clip.map((point: ScenePoint) => ({ x: point.x, y: point.y })));
+        clip.fill({ color: 0xffffff, alpha: 1 });
+        node.mask = clip;
+      }
     }
+  }
+
+  /** Lazily grows the glow clip pool and hands back the one for this glow. */
+  private glowMask(index: number): Graphics {
+    let graphics = this.glowMasks[index];
+    if (!graphics) {
+      graphics = new Graphics();
+      this.glowMasks[index] = graphics;
+      this.lightLayer.addChild(graphics);
+    }
+    return graphics;
   }
 
   /**

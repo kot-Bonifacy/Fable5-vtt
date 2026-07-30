@@ -171,6 +171,8 @@ interface MapToolStoreState extends DrawSettings {
   wallSnapGrid: boolean;
   /** Light tool: placing/retuning lamps, or removing them. */
   lightMode: LightMode;
+  /** „Light this room": the server measures the walls and sizes the lamp. */
+  lightFitRoom: boolean;
   /** What the next placed lamp gets, in metres. */
   lightBrightM: number;
   lightDimM: number;
@@ -194,6 +196,7 @@ interface MapToolStoreState extends DrawSettings {
   setWallPlayerToggle: (wallPlayerToggle: boolean) => void;
   setWallSnapGrid: (wallSnapGrid: boolean) => void;
   setLightMode: (lightMode: LightMode) => void;
+  setLightFitRoom: (lightFitRoom: boolean) => void;
   setLightBrightM: (lightBrightM: number) => void;
   setLightDimM: (lightDimM: number) => void;
   setLightColor: (lightColor: string) => void;
@@ -229,6 +232,7 @@ export const useMapToolStore = create<MapToolStoreState>((set, get) => {
     wallPlayerToggle: true,
     wallSnapGrid: true,
     lightMode: 'place',
+    lightFitRoom: false,
     lightBrightM: LIGHT_DEFAULT_BRIGHT_M,
     lightDimM: LIGHT_DEFAULT_DIM_M,
     lightColor: LIGHT_DEFAULT_COLOR,
@@ -251,6 +255,7 @@ export const useMapToolStore = create<MapToolStoreState>((set, get) => {
     setWallPlayerToggle: (wallPlayerToggle) => set({ wallPlayerToggle }),
     setWallSnapGrid: (wallSnapGrid) => set({ wallSnapGrid }),
     setLightMode: (lightMode) => set({ lightMode }),
+    setLightFitRoom: (lightFitRoom) => set({ lightFitRoom }),
     setLightBrightM: (lightBrightM) => set({ lightBrightM }),
     setLightDimM: (lightDimM) => set({ lightDimM }),
     setLightColor: (lightColor) => set({ lightColor }),

@@ -52,6 +52,7 @@ import {
   sceneLightingEvent,
   tokenLightToggleEvent,
 } from './lights.js';
+import { explorationForgetEvent, sceneExploreEvent } from './exploration.js';
 import { drawingClearEvent, drawingCreateEvent, drawingDeleteEvent } from './drawings.js';
 import { noteCreateEvent, noteDeleteEvent, noteUpdateEvent } from './notes.js';
 import { compendiumDeleteEvent, compendiumUpsertEvent } from './compendium.js';
@@ -132,6 +133,8 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   lightDeleteEvent,
   tokenLightToggleEvent,
   sceneLightingEvent,
+  sceneExploreEvent,
+  explorationForgetEvent,
   drawingCreateEvent,
   drawingDeleteEvent,
   drawingClearEvent,

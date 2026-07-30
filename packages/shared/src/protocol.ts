@@ -7,6 +7,7 @@ import type { CharacterView } from './characters.js';
 import type { CompendiumEntry, WeaponTypeDefinition } from './systems/cpred/compendium.js';
 import type { RollToss } from './dice.js';
 import type { DrawingView } from './drawings.js';
+import type { ExplorationMask } from './exploration.js';
 import type { FogState } from './fog.js';
 import type { LightView } from './lights.js';
 import type { MapNoteView } from './notes.js';
@@ -79,6 +80,13 @@ export interface StateSyncPayload {
   vision: VisionSyncBroadcast | null;
   /** Doors this player may operate and can currently see; empty for the GM. */
   doors: WallView[];
+  /**
+   * Where the party has already been on the viewed scene (stage 18c); null when
+   * the scene does not remember. Shared by the whole group and safe to hand
+   * over whole: it only ever describes cells somebody has actually seen, and
+   * the tokens that were standing in them are long gone from `tokens` above.
+   */
+  exploration: ExplorationMask | null;
   /** Characters this user may see: the GM gets all, a player only their own. */
   characters: CharacterView[];
   /** Bot profiles — GM only (they carry secrets), always empty for players. */
