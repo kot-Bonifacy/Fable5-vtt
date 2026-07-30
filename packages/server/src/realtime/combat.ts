@@ -9,8 +9,8 @@ import type {
   CombatStartPayload,
   CombatUpdateBroadcast,
   CombatView,
-  CombatantIdPayload,
   CombatantView,
+  GrappleView,
   RollBreakdownEntry,
   RollFormula,
   RollResult,
@@ -34,6 +34,7 @@ import type { Combat, Combatant, Scene, Token } from '../generated/prisma/client
 import {
   applyMoveBudget,
   freshTurnState,
+  sheetActionBlock,
   readSheetInitiative,
   readSheetMoveBudget,
   spendTurnState,
@@ -83,7 +84,57 @@ export function combatantOwnerId(row: CombatantRow): string | null {
   return row.token.ownerId ?? row.token.character?.ownerId ?? null;
 }
 
-export function toCombatantView(row: CombatantRow): CombatantView {
+/** Status ids of a token, forgiving of a column somebody hand-edited. */
+export function readTokenStatuses(raw: string): string[] {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * The Hold (stage 14d). Tracker state, like the initiative queue: it is
+ * a statement about participants and it dies with the fight. Stored once
+ * — on the Held row, pointing at the Attacker — so „kto kogo" has exactly
+ * one place to be wrong.
+ * ------------------------------------------------------------------ */
+
+/** Both ends of one Hold, resolved against the roster. */
+export interface GrapplePair {
+  attacker: CombatantRow;
+  defender: CombatantRow;
+}
+
+/** The Hold this participant is in, from either end; null when free. */
+export function findGrapple(combat: CombatRow, combatant: CombatantRow): GrapplePair | null {
+  if (combatant.grappledById) {
+    const attacker = combat.combatants.find((row) => row.id === combatant.grappledById);
+    // A dangling pointer means the Attacker left the fight; the Hold left with
+    // them, and the row is tidied up the next time anything writes to it.
+    return attacker ? { attacker, defender: combatant } : null;
+  }
+  const defender = combat.combatants.find((row) => row.grappledById === combatant.id);
+  return defender ? { attacker: combatant, defender } : null;
+}
+
+/** What the tracker paints for one participant's Hold. */
+function grappleViewFor(combat: CombatRow, combatant: CombatantRow): GrappleView | undefined {
+  const pair = findGrapple(combat, combatant);
+  if (!pair) return undefined;
+  const attacking = pair.attacker.id === combatant.id;
+  const other = attacking ? pair.defender : pair.attacker;
+  return {
+    role: attacking ? 'attacker' : 'defender',
+    otherId: other.id,
+    otherName: other.token.name,
+    ...(pair.defender.humanShield ? { shield: true } : {}),
+    ...(pair.defender.chokeStreak > 0 ? { chokeStreak: pair.defender.chokeStreak } : {}),
+  };
+}
+
+export function toCombatantView(row: CombatantRow, combat: CombatRow): CombatantView {
   const view: CombatantView = {
     id: row.id,
     tokenId: row.tokenId,
@@ -100,6 +151,8 @@ export function toCombatantView(row: CombatantRow): CombatantView {
   const budget = turnBudgetOf(row.turnState);
   if (budget) view.turn = row.actionBypass ? { ...budget, bypass: true } : budget;
   if (row.held) view.held = { trigger: row.heldTrigger, initiative: row.heldInitiative };
+  const grapple = grappleViewFor(combat, row);
+  if (grapple) view.grapple = grapple;
   return view;
 }
 
@@ -110,7 +163,35 @@ export function toCombatView(row: CombatRow): CombatView {
     sceneId: row.sceneId,
     round: row.round,
     activeCombatantId: row.activeCombatantId,
-    combatants: sortCombatants(row.combatants.map(toCombatantView)),
+    combatants: sortCombatants(row.combatants.map((combatant) => toCombatantView(combatant, row))),
+  };
+}
+
+/**
+ * Is this token in a Hold, and is it being used as cover? Read by the attack
+ * paths, which need the −2, the two-handed refusal and „Ludzka tarcza nie może
+ * unikać" without dragging the whole grapple module in behind them.
+ *
+ * A token outside a running fight is never in a Hold: the relation only exists
+ * inside combat, and ending the fight clears it (`clearGrapplesOfCombat`).
+ */
+export async function grappleStateForToken(
+  prisma: PrismaClient,
+  sceneId: string,
+  tokenId: string,
+): Promise<{ grappled: boolean; humanShield: boolean; shieldOf: CombatantRow | null }> {
+  const free = { grappled: false, humanShield: false, shieldOf: null };
+  const combat = await loadCombat(prisma, sceneId);
+  if (!combat) return free;
+  const combatant = combat.combatants.find((row) => row.tokenId === tokenId);
+  if (!combatant) return free;
+  const pair = findGrapple(combat, combatant);
+  if (!pair) return free;
+  return {
+    grappled: true,
+    // Only the Held one is ever the shield; the Attacker is the one behind it.
+    humanShield: pair.defender.id === combatant.id && pair.defender.humanShield,
+    shieldOf: pair.defender.humanShield && pair.attacker.id === combatant.id ? pair.defender : null,
   };
 }
 
@@ -312,7 +393,9 @@ async function rollFor(deps: RealtimeDeps, targets: CombatantRow[]): Promise<voi
  * is the last criterion.
  */
 export async function renumberOrder(prisma: PrismaClient, combat: CombatRow): Promise<void> {
-  const ordered = resolveInitiativeOrder(combat.combatants.map(toCombatantView));
+  const ordered = resolveInitiativeOrder(
+    combat.combatants.map((combatant) => toCombatantView(combatant, combat)),
+  );
   await Promise.all(
     ordered.map((combatant, index) =>
       prisma.combatant.update({ where: { id: combatant.id }, data: { order: index } }),
@@ -335,7 +418,7 @@ export async function renumberOrder(prisma: PrismaClient, combat: CombatRow): Pr
  * Stepping *back* deliberately leaves budgets alone — the GM is correcting the
  * pointer, not replaying the turn. „Zwróć turę" is the button for that.
  */
-async function applyTurnPointer(
+export async function applyTurnPointer(
   deps: RealtimeDeps,
   combat: CombatRow,
   pointer: TurnPointer,
@@ -458,17 +541,19 @@ export type TurnSpendOutcome =
   | {
       kind: 'refused';
       combatant: CombatantRow;
-      error: SheetTurnProblem | 'NOT_YOUR_TURN';
+      error: TurnSpendProblem;
       /**
        * The budget the refusal was measured against — the participant's stored
        * state with the freshest allowance already folded in, so a message can
        * say „zostało ci 4,5 m" and mean it.
        */
       judged: string | null;
+      /** Ready sentence, when the refusal came with one (statuses, stage 14d). */
+      message?: string;
     };
 
 /** Refusal codes this module can produce — the client maps them to Polish. */
-export type TurnSpendProblem = SheetTurnProblem | 'NOT_YOUR_TURN';
+export type TurnSpendProblem = SheetTurnProblem | 'NOT_YOUR_TURN' | 'STATUS_BLOCKED';
 
 /**
  * Books one spend against a participant's turn.
@@ -499,6 +584,22 @@ async function applySpend(
     const excused = combatant.held && spendUsesAction(spend);
     if (!mine && !excused) {
       return { kind: 'refused', combatant, error: 'NOT_YOUR_TURN', judged: combatant.turnState };
+    }
+    // Some states are not an arithmetic problem: an unconscious participant has
+    // a full budget and still does nothing with it (stage 14d). Movement asks
+    // the same table its own question and answers it in metres, so it is left
+    // to `validateTokenMove`.
+    if (spend.kind !== 'move') {
+      const message = sheetActionBlock(readTokenStatuses(combatant.token.statuses));
+      if (message) {
+        return {
+          kind: 'refused',
+          combatant,
+          error: 'STATUS_BLOCKED',
+          judged: combatant.turnState,
+          message,
+        };
+      }
     }
   }
 
@@ -635,30 +736,6 @@ export const combatAddEvent = defineEvent<CombatAddPayload, CombatView>({
         data: { combatId: combat.id, tokenId, order: order++ },
       });
     }
-    return emitReloaded(deps, campaignId, scene, combat.id);
-  },
-});
-
-export const combatRemoveEvent = defineEvent<CombatantIdPayload, CombatView>({
-  name: 'combat:remove',
-  role: ROLE_GM,
-  handler: async ({ deps, socket, payload }) => {
-    const campaignId = requireCampaignId(socket.data);
-    const { combat, combatant, scene } = await requireCombatant(
-      deps.ctx.prisma,
-      campaignId,
-      payload?.combatantId,
-    );
-
-    // Removing whoever is acting (death, flight) hands the turn on rather than
-    // stalling the tracker with a pointer to nobody.
-    if (combat.activeCombatantId === combatant.id) {
-      const pointer = nextTurn(toCombatView(combat));
-      const activeCombatantId =
-        pointer.activeCombatantId === combatant.id ? null : pointer.activeCombatantId;
-      await applyTurnPointer(deps, combat, { ...pointer, activeCombatantId }, true);
-    }
-    await deps.ctx.prisma.combatant.delete({ where: { id: combatant.id } });
     return emitReloaded(deps, campaignId, scene, combat.id);
   },
 });
@@ -859,15 +936,9 @@ export const combatPreviousEvent = defineEvent<undefined, CombatView>({
   },
 });
 
-export const combatEndEvent = defineEvent({
-  name: 'combat:end',
-  role: ROLE_GM,
-  handler: async ({ deps, socket }) => {
-    const campaignId = requireCampaignId(socket.data);
-    const sceneId = socket.data.viewedSceneId;
-    const scene = await requireCampaignScene(deps.ctx.prisma, campaignId, sceneId);
-    // Ending clears the state completely — round history is not persisted.
-    await deps.ctx.prisma.combat.deleteMany({ where: { sceneId: scene.id } });
-    emitCombat(deps, campaignId, scene, null);
-  },
-});
+/**
+ * `combat:remove` and `combat:end` live in `combat-actions.ts`, not here.
+ * Both now have consequences on the *map* — a Hold that ends has to take the
+ * „Pochwycony" sticker off the token (stage 14d) — and the token layer already
+ * imports this module, so the tracker cannot import it back.
+ */

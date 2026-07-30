@@ -2,6 +2,7 @@ import type {
   ChatMessageView,
   CharacterRollPayload,
   CpredCharacterData,
+  CpredRollContext,
   CpredRollRequest,
   CpredWoundState,
   RollGesture,
@@ -23,8 +24,10 @@ import {
   woundStateFromHp,
 } from '@vtt/shared';
 import type { Character } from '../generated/prisma/client.js';
+import { sheetSituationModifiers } from '../sheets.js';
 import { createMixedRng } from './dice-rng.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
+import { grappleStateForToken } from './combat.js';
 import { requireTurnSpend } from './combat-actions.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { emitTokensById, emitTokensOfCharacter, requireCampaignToken } from './tokens.js';
@@ -289,6 +292,31 @@ async function applyStabilization(
   return { healed: true };
 }
 
+/**
+ * What the world adds to this character's roll (stage 14d).
+ *
+ * Read off the token they are playing on the scene this socket is looking at —
+ * the same way reloading finds the token whose Action it charges. A character
+ * with no token on that scene is in no Hold, which is the right answer: nobody
+ * is grappling a sheet.
+ */
+async function situationForCharacter(
+  deps: RealtimeDeps,
+  campaignId: string,
+  sceneId: string | null,
+  character: Character,
+): Promise<CpredRollContext> {
+  if (!sceneId) return {};
+  const token = await deps.ctx.prisma.token.findFirst({
+    where: { characterId: character.id, sceneId },
+  });
+  if (!token) return {};
+  const scene = await deps.ctx.prisma.scene.findUnique({ where: { id: sceneId } });
+  if (!scene || scene.campaignId !== campaignId) return {};
+  const grapple = await grappleStateForToken(deps.ctx.prisma, sceneId, token.id);
+  return { modifiers: sheetSituationModifiers({ grappled: grapple.grappled }) };
+}
+
 export const characterRollEvent = defineEvent<
   CharacterRollPayload<CpredRollRequest>,
   { messageId: number }
@@ -302,7 +330,17 @@ export const characterRollEvent = defineEvent<
     const registry = deps.ctx.cpred;
     const data = parseCharacterData(character.data, registry);
     const request = await resolveRollRequest(deps, campaign.id, user, payload?.request);
-    const planned = planCpredRoll(data, registry, request);
+    // „Obaj walczący ... otrzymują modyfikator −2 do wszystkich Akcji" (s. 176):
+    // every Check made from the sheet carries it, named, so the player can see
+    // where it came from. A Death Save is not an Action and is exempt — the
+    // planner ignores the context for that kind anyway (stage 14d decision).
+    const context = await situationForCharacter(
+      deps,
+      campaign.id,
+      socket.data.viewedSceneId,
+      character,
+    );
+    const planned = planCpredRoll(data, registry, request, context);
     if (!planned.ok) throw new RealtimeError(planned.error);
     const { plan } = planned;
 

@@ -217,6 +217,21 @@ export const damageUndoEvent = defineEvent<DamageUndoPayload, void>({
     const entry = JSON.parse(message.payload) as DamageLogEntry;
     if (entry.undone) throw new RealtimeError('ALREADY_UNDONE');
 
+    // Statuses the hit put on come off first: a restored sheet that stays
+    // „Nieprzytomny" looks like the undo half-worked (stage 14d).
+    if (entry.statusesAdded && entry.statusesAdded.length > 0) {
+      const token = await deps.ctx.prisma.token.findUnique({ where: { id: entry.targetTokenId } });
+      if (token) {
+        const statuses = parseTokenStatuses(token).filter(
+          (id) => !entry.statusesAdded!.includes(id),
+        );
+        await deps.ctx.prisma.token.update({
+          where: { id: token.id },
+          data: { statuses: JSON.stringify(statuses) },
+        });
+      }
+    }
+
     if (entry.characterId) {
       const character = await deps.ctx.prisma.character.findUnique({
         where: { id: entry.characterId },

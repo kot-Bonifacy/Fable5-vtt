@@ -1,97 +1,95 @@
-# Etap 14d — Statusy w mechanice: zwarcie, kryty i automaty tury 🏁 Pełna mechanika tur
+# Etap 14d — Zwarcie: Pochwycenie, Duszenie, Rzut i Ludzka tarcza
 
-**Faza:** D — Walka · **Wymaga etapów:** 14c, 15
+**Faza:** D — Walka · **Wymaga etapów:** 14c, 15, 16
 
 ## Cel sesji
 
-Statusy przestają być naklejkami: Pochwycenie/Duszenie/Rzut/Ludzka tarcza wg RAW, rany
-krytyczne egzekwowane w turze, obrażenia okresowe (ogień, tonięcie) i monity początku tury.
-Po tym etapie system tur jest kompletny — etap 20 dostaje bezpieczniki „za darmo".
+Zwarcie przestaje być naklejką na tokenie: Trzymanie jest **relacją w stanie walki**
+(kto kogo), z egzekwowaną karą −2, zakazem ruchu Trzymanego, ciągnięciem go za sobą,
+Duszeniem, Rzutem i Ludzką tarczą. Przy okazji statusy dostają **jedną tabelę efektów**
+zamiast rozsianych ifów, z której skorzysta etap 14e.
+
+## Decyzje projektowe (ustalone z użytkownikiem 2026-07-31)
+
+- **Etap 14d podzielony na 14d (zwarcie) i 14e (automaty tury).** Pierwotny zakres 14d był
+  na dwie sesje. Podział przebiega wzdłuż naturalnego szwu: 14d to **relacje między
+  tokenami**, 14e to **upływ czasu** (hooki początku/końca tury, DoT, monity).
+- **Test sporny jak „Unik" z etapu 16:** atakujący rzuca ZW + Bijatyka od razu przeciw
+  PT zastępczemu celu (ZW + Bijatyka + 5 za kość), a cel dostaje na karcie czatu przycisk
+  „Broń się" — jego aktywny rzut może wynik odwrócić. Nie blokuje tury, gdy broniący jest
+  botem albo go nie ma przy stole.
+- **Kara −2 dotyka wszystkich rzutów z karty** (ataki, umiejętności, cechy, testy sporne
+  zwarcia), zgodnie z RAW „−2 do wszystkich Akcji". **Nie** dotyka Uniku ani Testu
+  Przeżywalności — to reakcje, nie Akcje.
+- **Obrażenia Bijatyki wg progów BC są już zrobione** (etap 16: `unarmedDamage`,
+  `attackDamageNotation`) — wpis w POMYSLY z 27.07 był nieaktualny.
 
 ## Zakres
 
-- [ ] **Zwarcie RAW** (s. 176–177) — relacja Trzymania w stanie walki na serwerze (kto kogo;
-      status tokenu to tylko wizualizacja, czyszczona z końcem walki):
-  - Pochwycenie: Akcja, test sporny ZW + Bijatyka vs ZW + Bijatyka; wygrana = Trzymanie
-    **albo** zabranie przedmiotu z ręki celu. W Trzymaniu obie strony −2 do wszystkich Akcji
-    (spięte z rozbiciem rzutów jak kary ran z etapu 15), Trzymany bez Akcji Ruchu, zakaz broni
-    dwuręcznych (walidacja przy ataku z 14b); Atakujący uwalnia za darmo, ucieczka = Akcja +
-    wygrany test sporny (kończy Trzymanie dla wszystkich)
-  - Ciągnięcie: Akcja Ruchu Atakującego przesuwa też Trzymanego (spięcie z budżetem z 14c)
-  - Duszenie: Akcja, obrażenia = BC Atakującego, ignorują pancerz i go nie uszkadzają;
-    cel z > 1 PW nie spada poniżej 1 PW — zamiast tego Nieprzytomny; licznik 3 rund duszenia
-    z rzędu → Nieprzytomny niezależnie od PW (reset licznika, gdy runda bez Duszenia)
-  - Rzut (osobą): Akcja, obrażenia = BC ignorujące pancerz, kończy Trzymanie, cel Przewrócony
-  - Ludzka tarcza: Akcja, Atakujący „za osłoną" przed widzianymi atakami dystansowymi
-    (nie działa wręcz ani przy celowaniu w głowę); tarcza nie może Unikać ataków dystansowych;
-    po śmierci staje się tarczą z PW = BC; koniec Trzymania kończy efekt za darmo
-- [ ] **Obrażenia Bijatyki i Sztuk walki wg progów BC** (1k6/2k6/3k6/4k6; cyberręka min 2k6)
-      w silniku ataków — domyka wpis POMYSLY z 2026-07-27 (dziś typ broni ma stałe 2k6)
-- [ ] **Rany krytyczne egzekwowane w turze** (statusy z etapu 15 dostają efekty maszynowe
-      jako dane, wzorzec: schemat publiczny, wartości w `data/private`):
-  - Uraz kręgosłupa: następna tura bez Akcji (Akcja Ruchu zostaje)
-  - Uraz ucha / Urwane ucho: ruch > 4 m pieszo → następna tura bez Akcji Ruchu
-  - Złamane żebra / Ciało obce: ruch > 4 m pieszo → na końcu tury ponowne obrażenia dodatkowe
-    rany, bez redukcji pancerzem (licznik metrów z 14c)
-  - Odcięta noga: zakaz Uniku — spięcie z przyciskiem „Unik" z etapu 16
-  - modyfikatory RUCH już konsumuje 14c — tu tylko dopięcie brakujących metadanych
-- [ ] **Automaty przejścia tury** (początek/koniec tury w trackerze):
-  - Śmiertelnie Ranny: automonit Testu Przeżywalności na początku tury (baner + przycisk;
-    rzut istniejącą ścieżką z etapu 15)
-  - Podpalony: obrażenia na koniec tury wg natężenia (2/4/6 wprost w PW, bez pancerza
-    i ablacji); ugaszenie = Akcja z katalogu 14b
-  - Tonięcie/duszenie się: obrażenia = BC na początku tury, bez pancerza; status nadaje MG
-  - Zatruty: generyczny DoT z wartością ustawianą przez MG (ten sam mechanizm co Podpalony;
-    pełne trucizny z testem Odporności — POMYSLY)
-  - Przygwożdżony (ogień zaporowy z etapu 16): status nadawany automatycznie przy oblanym
-    teście SW, przypomnienie w turze celu („rusz się do osłony"), wygasa z końcem jego tury;
-    egzekwowanie miękkie — osłon nie ma w modelu mapy (domyka wpis POMYSLY z 2026-07-28)
-  - obrażenia okresowe nie wywołują Ran Krytycznych (RAW s. 181)
-- [ ] Spójne blokady statusów w walidacji 14b/14c: Nieprzytomny (nic), Przewrócony (bez ruchu
-      do Wstania), Unieruchomiony (bez ruchu) — jedna tabela efektów zamiast rozsianych ifów
-- [ ] Naprawa migotliwego testu `damage.test.ts > rolls Death Saves that get harder each time`
-      (wyścig `waitFor` w teście — notatka POMYSLY z 2026-07-30; ten etap i tak dotyka
-      death save'ów)
-- [ ] Testy: zwarcie end-to-end (Pochwycenie → Duszenie ×3 → Nieprzytomny na 1 PW;
-      Rzut → Przewrócony + koniec Trzymania), DoT na przejściu tury, flagi krytów
-      („bez Akcji", „ruch > 4 m"), obrażenia Bijatyki wg progów BC
+- [x] **Relacja Trzymania w stanie walki** (s. 176–177): kto kogo trzyma, licznik rund
+      Duszenia i flaga Ludzkiej tarczy jako kolumny uczestnika walki; status tokenu
+      (`grappled`) to tylko wizualizacja, czyszczona z końcem walki i z końcem Trzymania
+- [x] **Pochwycenie**: Akcja, test sporny ZW + Bijatyka vs ZW + Bijatyka; wygrana =
+      Trzymanie **albo** zabranie przedmiotu z ręki celu (efekt opisowy — ekwipunku ten
+      etap nie rusza)
+- [x] **Skutki Trzymania**: obie strony −2 do wszystkich Akcji (widoczne w rozbiciu
+      rzutów jak kary ran z etapu 15), Trzymany bez Akcji Ruchu, zakaz broni dwuręcznych
+      po obu stronach (walidacja przy ataku), Atakujący uwalnia za darmo
+- [x] **Wyrwanie się**: Akcja + wygrany test sporny; RAW pozwala próbować także osobie
+      trzeciej, a sukces kończy Trzymanie dla wszystkich
+- [x] **Ciągnięcie**: Akcja Ruchu Atakującego przesuwa też Trzymanego (spięcie z budżetem
+      metrów z 14c — płaci Atakujący)
+- [x] **Duszenie**: Akcja, obrażenia = BC Atakującego, ignorują pancerz i go nie uszkadzają;
+      cel z > 1 PW nie spada poniżej 0 PW — zamiast tego zostaje na 1 PW i jest Nieprzytomny;
+      3 Rundy Duszenia pod rząd → Nieprzytomny niezależnie od PW (licznik zeruje runda bez
+      Duszenia)
+- [x] **Rzut osobą**: Akcja, obrażenia = BC ignorujące pancerz, kończy Trzymanie,
+      cel Przewrócony
+- [x] **Ludzka tarcza**: Akcja, Atakujący „za osłoną" przed widzianymi atakami dystansowymi
+      (nie działa wręcz ani przy Celowaniu w głowę); tarcza nie może Unikać ataków
+      dystansowych; koniec Trzymania kończy efekt za darmo
+- [x] **Jedna tabela efektów statusów** zamiast rozsianych ifów: Nieprzytomny/Martwy (nic),
+      Przewrócony (bez ruchu do Wstania), Unieruchomiony i Pochwycony (bez ruchu),
+      z gotowymi zdaniami odmowy; konsumowana przez walidację 14b (Akcje) i 14c (ruch)
+- [x] Naprawa migotliwego testu `damage.test.ts > rolls Death Saves that get harder each time`
+      (wyścig `waitFor` w teście — notatka POMYSLY z 2026-07-30)
+- [x] Testy: zwarcie end-to-end (Pochwycenie → Duszenie ×3 → Nieprzytomny na 1 PW;
+      Rzut → Przewrócony + koniec Trzymania), kara −2 w rozbiciu, ciągnięcie, wyrwanie się,
+      zakaz broni dwuręcznych, tabela efektów statusów
 
 ## Poza zakresem
 
-- Techniki Sztuk walki (Sprężynka, Rozbrojenie, Żelazny Chwyt, Strzaskanie…) i style jako
-  osobne umiejętności — POMYSLY (wymagają warunków śledzonych per tura, które ten etap
-  nawiasem mówiąc dostarcza)
+- Automaty przejścia tury, obrażenia okresowe i rany krytyczne egzekwowane w turze — **14e**
+- Techniki Sztuk walki (Żelazny Chwyt, Rozbrojenie, Kontrrzut…) i style jako osobne
+  umiejętności — POMYSLY
 - Osłony jako model mapy (twarde egzekwowanie „za osłoną" Ludzkiej tarczy zostaje opisowe)
-- Pełna mechanika trucizn/narkotyków (test Odporności na tortury/narkotyki, uzależnienia —
-  rozdział Trauma Team), porażenie prądem, promieniowanie, czynniki środowiskowe
-- Pochwycenie przedmiotu trzymanego przez cel egzekwowane na ekwipunku (efekt opisowy na czacie)
+- Pochwycenie przedmiotu egzekwowane na ekwipunku (efekt opisowy na czacie)
+- Rzut **przedmiotem** (ZW + Atletyka, PT z wiersza Granatnika) — osobna ścieżka ataku
+  dystansowego, nie zwarcie
+- Tarcza z ciała po śmierci Ludzkiej tarczy (PW = BC) — wymaga modelu tarcz w ekwipunku;
+  zostaje wpisem na karcie czatu
 
 ## Kryteria ukończenia
 
 - Scenariusz zwarcia na żywo u dwóch klientów: wygrane Pochwycenie → oba tokeny mają −2
   widoczne w rozbiciu kolejnych rzutów, Trzymany nie ruszy tokenem, Atakujący ciągnie go
-  swoim ruchem; Duszenie w 3 kolejnych rundach → cel Nieprzytomny na 1 PW; Rzut → cel
-  Przewrócony, Trzymanie i kary −2 znikają
-- Bijatyka postaci z BC 8 rzuca 3k6, z BC 4 rzuca 1k6
-- Złamane żebra: ruch 6 m → na końcu tury automatyczne obrażenia dodatkowe rany z pominięciem
-  pancerza, wpis na czacie; ruch 3 m → nic
-- Podpalony NPC dostaje obrażenia na końcu swojej tury bez klikania; Akcja „Ugaś się" zdejmuje status
-- Śmiertelnie Ranny dostaje monit Testu Przeżywalności na początku swojej tury; wynik idzie
-  ścieżką z etapu 15 (narastający modyfikator działa)
-- Uraz kręgosłupa: w następnej turze przycisk ataku odrzucony, ruch działa
+  swoim ruchem
+- Duszenie w 3 kolejnych rundach → cel Nieprzytomny; Duszenie celu z 30 PW przez BC 12
+  nie schodzi poniżej 1 PW i daje Nieprzytomnego
+- Rzut → cel Przewrócony, Trzymanie i kary −2 znikają u obu stron
+- Broń dwuręczna w Trzymaniu odrzucona po obu stronach; Ludzka tarcza nie może Unikać
+  ataku dystansowego
+- Wyrwanie się (Akcja + wygrany test) kończy Trzymanie u obu stron i zdejmuje status
 - Migotliwy test death save przechodzi w wielokrotnych pełnych przebiegach (co najmniej 8×,
   wcześniej padał ~1/8)
 
 ## Wskazówki techniczne
 
-- Efekty statusów i ran jako **dane z metadanymi maszynowymi** (`moveModifier`, `noAction`,
-  `noMove`, `dotDamage`, `noDodge`, flagi progowe „ruch > 4 m"), nie łańcuchy ifów po id —
-  wzorzec z etapu 15: schemat + zmyślona próbka w `data/public`, wartości z podręcznika
-  w `data/private`
 - Relacja Trzymania żyje w stanie walki (jak kolejka z etapu 14), nie w tokenie — token
   dostaje tylko status wizualny; zakończenie walki czyści relacje i statusy zwarcia
-- Automaty przejścia tury wpinaj w istniejące zdarzenie zmiany tury z etapu 14 — jedno
-  miejsce, w którym system CP RED dostaje hook `onTurnStart`/`onTurnEnd` (separacja
-  rdzeń/system jak w 14b)
-- Duszenie/Rzut używają BC i **nie** przechodzą przez silnik pancerza — osobna ścieżka
-  „obrażenia wprost w PW" z etapu 15 (ta sama, co dodatkowe obrażenia krytyka)
+- Efekty statusów jako **dane z metadanymi maszynowymi** (`noMove`, `noAction`, `noDodge`),
+  nie łańcuchy ifów po id — wzorzec z etapu 15
+- Duszenie/Rzut używają BC i **nie** przechodzą przez silnik pancerza — ta sama ścieżka
+  „obrażenia wprost w PW", co dodatkowe obrażenia krytyka z etapu 15
+- Kara −2 wchodzi do rozbicia rzutu jako wpis obok kar ran, żeby gracz widział, skąd się
+  wzięła — nie jako cichy modyfikator w formule

@@ -128,30 +128,10 @@ export function cpredMoveBudgetFromSheet(input: {
 }
 
 /**
- * Statuses that stop a token from walking off on its own (stage 14c).
- *
- * Ids come from `data/public/cpred/statuses.json`; what they *mean* is CP RED
- * and therefore lives here. Being Prone is the one that clears itself inside a
- * turn — „Wstanie" is an Action, and stage 14b already sells it.
+ * Which statuses stop a token walking used to live here (stage 14c). Stage 14d
+ * moved that table to `statuses.ts`, where it answers three questions instead of
+ * one — movement, Actions and dodges all read the same rows now.
  */
-export const CPRED_MOVE_BLOCKING_STATUSES: Record<string, string> = {
-  dead: 'Martwy token nie może się poruszać.',
-  unconscious: 'Nieprzytomny token nie może się poruszać.',
-  prone: 'Powalony token musi najpierw wstać (Akcja „Wstanie").',
-  immobilized: 'Unieruchomiony token nie może wykonać Akcji Ruchu.',
-  grappled: 'Pochwycony token nie może wykonać własnej Akcji Ruchu.',
-};
-
-/** The first status refusing this token its move, or null when free to go. */
-export function cpredMovementBlock(statuses: readonly string[]): string | null {
-  for (const id of Object.keys(CPRED_MOVE_BLOCKING_STATUSES)) {
-    if (statuses.includes(id)) return CPRED_MOVE_BLOCKING_STATUSES[id]!;
-  }
-  return null;
-}
-
-/** Status the „Wstanie" Action takes off the token that spent it. */
-export const CPRED_PRONE_STATUS_ID = 'prone';
 
 /**
  * Metres of budget one metre of path costs. Hard going doubles it; everything

@@ -5,7 +5,6 @@ import {
   armorMovePenalty,
   cpredMoveBudget,
   cpredMoveBudgetFromSheet,
-  cpredMovementBlock,
   cpredTerrainFactor,
   injuryMovePenalty,
 } from './movement.js';
@@ -99,27 +98,5 @@ describe('hard going', () => {
     expect(cpredTerrainFactor(true)).toBe(2);
     expect(cpredTerrainFactor(false)).toBe(1);
     expect(cpredTerrainFactor(undefined)).toBe(1);
-  });
-});
-
-describe('statuses that stop a token', () => {
-  it('refuses the Prone token and names the Action that fixes it', () => {
-    expect(cpredMovementBlock(['prone'])).toContain('Wstanie');
-  });
-
-  it('refuses being held and being unconscious', () => {
-    expect(cpredMovementBlock(['grappled'])).not.toBeNull();
-    expect(cpredMovementBlock(['immobilized'])).not.toBeNull();
-    expect(cpredMovementBlock(['unconscious'])).not.toBeNull();
-  });
-
-  it('lets a wounded but conscious token walk', () => {
-    expect(cpredMovementBlock(['seriously-wounded', 'on-fire'])).toBeNull();
-    expect(cpredMovementBlock([])).toBeNull();
-  });
-
-  it('reports the deadliest reason first when several apply', () => {
-    // „Martwy" outranks „Powalony": telling a corpse to stand up is nonsense.
-    expect(cpredMovementBlock(['prone', 'dead'])).toContain('Martwy');
   });
 });

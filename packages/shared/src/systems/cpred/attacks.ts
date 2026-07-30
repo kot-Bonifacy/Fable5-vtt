@@ -178,7 +178,8 @@ export type CpredAttackProblem =
   | 'OUT_OF_RANGE'
   | 'MELEE_OUT_OF_REACH'
   | 'RANGED_WEAPON_IN_MELEE'
-  | 'NOT_ENOUGH_AMMO';
+  | 'NOT_ENOUGH_AMMO'
+  | 'GRAPPLE_TWO_HANDED';
 
 /** Everything the chat card needs to explain a hit — and to offer the damage roll. */
 export interface CpredAttackMeta {
@@ -223,6 +224,21 @@ export interface CpredAttackPlan {
   attack: CpredAttackMeta;
 }
 
+/**
+ * What the attacker's situation adds to the roll, and what it forbids
+ * (stage 14d). Both halves come from combat state the server owns.
+ */
+export interface CpredAttackContext {
+  /** Named entries spliced into the breakdown, e.g. „Trzymanie −2". */
+  modifiers?: readonly RollBreakdownEntry[];
+  /**
+   * The attacker is in a Hold: „Żadna z Trzymających się Postaci nie może
+   * wykorzystywać broni dwuręcznych, nawet jeśli te Postacie mają więcej niż
+   * dwie ręce" (s. 176).
+   */
+  grappled?: boolean;
+}
+
 function isInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value);
 }
@@ -259,6 +275,11 @@ export function planCpredAttack(
     typeId?: string | null;
   },
   target: CpredAttackTarget & { tokenId: string },
+  /**
+   * Modifiers the world imposes — being Held is −2 (stage 14d). Server-filled:
+   * a client must not be able to declare its own (`CpredRollContext`).
+   */
+  context: CpredAttackContext = {},
 ): { ok: true; plan: CpredAttackPlan } | { ok: false; error: CpredAttackProblem } {
   if (typeof request !== 'object' || request === null) return { ok: false, error: 'BAD_REQUEST' };
   const mode: CpredAttackMode = (CPRED_ATTACK_MODES as readonly string[]).includes(request.mode)
@@ -276,6 +297,12 @@ export function planCpredAttack(
 
   const { row, resolved } = weapon;
   const melee = resolved?.melee ?? false;
+
+  // A hand is busy holding somebody: two-handed weapons are out for both sides
+  // of a Hold, whatever the sheet says about extra arms (s. 176).
+  if (context.grappled === true && resolved?.hands === 2) {
+    return { ok: false, error: 'GRAPPLE_TWO_HANDED' };
+  }
 
   // Reach and range: the map decides whether this attack is possible at all.
   if (melee && target.metres > CPRED_MELEE_REACH_M) {
@@ -340,6 +367,7 @@ export function planCpredAttack(
   if (woundPenalty !== 0) {
     breakdown.push({ label: CPRED_WOUND_LABELS[state], value: woundPenalty, kind: 'wound' });
   }
+  for (const entry of context.modifiers ?? []) breakdown.push({ ...entry });
   if (aimed) {
     breakdown.push({
       label: `Strzał celowany (${CPRED_HIT_LOCATION_LABELS.head})`,
@@ -500,4 +528,5 @@ export const CPRED_ATTACK_PROBLEM_MESSAGES: Record<CpredAttackProblem, string> =
   MELEE_OUT_OF_REACH: `Do ataku wręcz cel musi być nie dalej niż ${CPRED_MELEE_REACH_M} m.`,
   RANGED_WEAPON_IN_MELEE: 'Tej broni nie użyjesz w zwarciu.',
   NOT_ENOUGH_AMMO: 'Za mało amunicji — przeładuj broń.',
+  GRAPPLE_TWO_HANDED: 'W Trzymaniu nie można używać broni dwuręcznych.',
 };

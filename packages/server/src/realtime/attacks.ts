@@ -36,7 +36,9 @@ import {
   rollFormula,
 } from '@vtt/shared';
 import type { Character, Scene, Token } from '../generated/prisma/client.js';
+import { sheetDodgeBlock, sheetHumanShieldCovers, sheetSituationModifiers } from '../sheets.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
+import { grappleStateForToken, readTokenStatuses } from './combat.js';
 import { requireTurnSpend } from './combat-actions.js';
 import { requireRollableCharacter } from './character-rolls.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
@@ -299,6 +301,9 @@ export const attackRollEvent = defineEvent<
     );
 
     const weapon = await resolveWeaponRow(deps, campaignId, data, payload?.request?.weaponRowId);
+    // Being in a Hold is −2 to everything and takes two-handed weapons away
+    // (stage 14d). Read from the tracker, never from the request.
+    const attackerGrapple = await grappleStateForToken(deps.ctx.prisma, scene.id, attacker.id);
     const planned = planCpredAttack(
       data,
       registry,
@@ -311,6 +316,10 @@ export const attackRollEvent = defineEvent<
         ...(weapon.resolved?.melee
           ? { evasionDv: await targetEvasionDv(deps, registry, target) }
           : {}),
+      },
+      {
+        modifiers: sheetSituationModifiers({ grappled: attackerGrapple.grappled }),
+        ...(attackerGrapple.grappled ? { grappled: true } : {}),
       },
     );
     if (!planned.ok) throw new RealtimeError(planned.error);
@@ -352,6 +361,17 @@ export const attackRollEvent = defineEvent<
     if (gesture?.toss) result.toss = gesture.toss;
 
     result.attack = await buildAttackMeta(deps, registry, result, meta, scene, attacker);
+    // „Dopóki zasłaniasz się Ludzką tarczą, uznaje się, że jesteś za osłoną"
+    // (s. 178). Cover is not in the map model, so this is a line on the card
+    // rather than a modifier — the GM rules on it, which is the stage's
+    // declared limit, not an oversight.
+    const targetGrapple = await grappleStateForToken(deps.ctx.prisma, scene.id, target.id);
+    if (
+      targetGrapple.shieldOf &&
+      sheetHumanShieldCovers({ melee: meta.melee, aimedAtHead: meta.aimed })
+    ) {
+      result.attack.detail = `${result.attack.detail} · cel zasłania się Ludzką tarczą (${targetGrapple.shieldOf.token.name}) — traktuj jak osłonę`;
+    }
 
     const stored = await deps.ctx.prisma.chatMessage.create({
       data: {
@@ -454,6 +474,16 @@ export const attackEvadeEvent = defineEvent<AttackEvadePayload, { total: number;
     const character = await requireRollableCharacter(deps, campaignId, user, payload.characterId);
     const target = await deps.ctx.prisma.token.findUnique({ where: { id: meta.targetTokenId } });
     if (!target || target.characterId !== character.id) throw new RealtimeError('NOT_THE_TARGET');
+
+    // „Dopóki ją trzymasz, twoja Ludzka tarcza nie może unikać Ataków
+    // dystansowych, nawet jeśli jej REF wynosi 8 lub więcej" (s. 178). Melee is
+    // untouched: being a shield does not stop you ducking a machete.
+    const defence = await grappleStateForToken(deps.ctx.prisma, target.sceneId, target.id);
+    if (defence.humanShield && !meta.melee) throw new RealtimeError('SHIELD_CANNOT_DODGE');
+    // A dodge is a reaction, not an Action, so the Hold's −2 stays off it
+    // (stage 14d decision) — but the status table still gets a say.
+    const dodgeBlock = sheetDodgeBlock(readTokenStatuses(target.statuses));
+    if (dodgeBlock) throw new RealtimeError('DODGE_BLOCKED');
 
     const registry = deps.ctx.cpred;
     const data = parseCharacterData(character.data, registry);

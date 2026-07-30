@@ -7,6 +7,7 @@ import type {
   CombatResetTurnPayload,
   CombatTerrainPayload,
   CombatView,
+  CombatantIdPayload,
   SessionUser,
 } from '@vtt/shared';
 import {
@@ -16,6 +17,7 @@ import {
   COMBAT_INITIATIVE_MIN,
   CPRED_ACTION_STAND_UP,
   ROLE_GM,
+  nextTurn,
 } from '@vtt/shared';
 import type { Scene } from '../generated/prisma/client.js';
 import {
@@ -28,17 +30,21 @@ import {
 } from '../sheets.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import {
+  applyTurnPointer,
   combatantOwnerId,
+  emitCombatOfScene,
   emitReloaded,
   fireHeldAction,
   findCombatantForToken,
   loadCombatById,
+  loadCombat,
   moveBudgetForCombatant,
   renumberOrder,
   requireCampaignId,
   requireCombatant,
   spendTurnForCombatant,
   spendTurnForToken,
+  toCombatView,
   type CombatRow,
   type CombatantRow,
   type TurnSpendOutcome,
@@ -47,6 +53,8 @@ import { INCLUDE_CHAT_NAMES, deliverChatMessageTo, toChatMessageView } from './c
 import type { SheetTurnSpend } from '../sheets.js';
 import { actionEntry, logRefusedAction, logSpentAction, turnRefusalMessage } from './combat-log.js';
 import { emitTokenUpsert } from './tokens.js';
+import { clearGrapplesOf } from './grapple-state.js';
+import { requireCampaignScene } from './scenes.js';
 
 /**
  * The action economy (stage 14b).
@@ -123,7 +131,12 @@ async function settleSpend(
   if (outcome.kind === 'refused') {
     const entry: CombatActionLogEntry = {
       ...actionEntry(outcome.combatant, actionId, name, note),
-      refusal: { code: outcome.error, message: turnRefusalMessage(outcome.error) },
+      // A status refusal brings its own sentence („Nieprzytomny token nie
+      // wykonuje Akcji"); everything else is looked up by code.
+      refusal: {
+        code: outcome.error,
+        message: outcome.message ?? turnRefusalMessage(outcome.error),
+      },
     };
     await logRefusedAction(deps, campaignId, user, entry);
     throw new RealtimeError(outcome.error);
@@ -181,7 +194,7 @@ async function resolveCombatant(
 }
 
 /** The participant this player controls in the fight on their viewed scene. */
-async function myCombatant(
+export async function myCombatant(
   deps: RealtimeDeps,
   campaignId: string,
   user: SessionUser,
@@ -414,6 +427,58 @@ export const combatTerrainEvent = defineEvent<CombatTerrainPayload, CombatView>(
       data: { turnState: setTurnHardTerrain(combatant.turnState, payload.hard) },
     });
     return emitReloaded(deps, campaignId, scene, combat.id);
+  },
+});
+
+/**
+ * Taking a participant out of the fight (death, flight, a mistake).
+ *
+ * Here rather than in `combat.ts` because it reaches onto the map: a Hold that
+ * loses either end has to give the „Pochwycony" sticker back, or the survivor
+ * is left with a token that silently refuses to walk (stage 14d).
+ */
+export const combatRemoveEvent = defineEvent<CombatantIdPayload, CombatView>({
+  name: 'combat:remove',
+  role: ROLE_GM,
+  handler: async ({ deps, socket, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    const { combat, combatant, scene } = await requireCombatant(
+      deps.ctx.prisma,
+      campaignId,
+      payload?.combatantId,
+    );
+
+    // Removing whoever is acting (death, flight) hands the turn on rather than
+    // stalling the tracker with a pointer to nobody.
+    if (combat.activeCombatantId === combatant.id) {
+      const pointer = nextTurn(toCombatView(combat));
+      const activeCombatantId =
+        pointer.activeCombatantId === combatant.id ? null : pointer.activeCombatantId;
+      await applyTurnPointer(deps, combat, { ...pointer, activeCombatantId }, true);
+    }
+    await clearGrapplesOf(deps, campaignId, combat, combatant);
+    await deps.ctx.prisma.combatant.delete({ where: { id: combatant.id } });
+    return emitReloaded(deps, campaignId, scene, combat.id);
+  },
+});
+
+/**
+ * Ending the fight. The rows cascade away with the combat, but the Holds have
+ * to be undone first: a relation that dies quietly would leave „Pochwycony"
+ * painted on tokens nobody is holding any more.
+ */
+export const combatEndEvent = defineEvent({
+  name: 'combat:end',
+  role: ROLE_GM,
+  handler: async ({ deps, socket }) => {
+    const campaignId = requireCampaignId(socket.data);
+    const sceneId = socket.data.viewedSceneId;
+    const scene = await requireCampaignScene(deps.ctx.prisma, campaignId, sceneId);
+    const combat = await loadCombat(deps.ctx.prisma, scene.id);
+    if (combat) await clearGrapplesOf(deps, campaignId, combat);
+    // Ending clears the state completely — round history is not persisted.
+    await deps.ctx.prisma.combat.deleteMany({ where: { sceneId: scene.id } });
+    await emitCombatOfScene(deps, campaignId, scene);
   },
 });
 

@@ -3662,6 +3662,16 @@ body.is-resizing {
   border-top: 1px solid var(--border);
 }
 
+/* Zwarcie (stage 14d) — its own block, because which buttons it shows depends
+   on a relation rather than on the budget above it. */
+.combat-grapple {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-top: 0.4rem;
+  border-top: 1px dashed var(--border);
+}
+
 .combat-action-grid {
   display: flex;
   flex-wrap: wrap;

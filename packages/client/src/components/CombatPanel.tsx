@@ -196,6 +196,16 @@ function CombatRow({
           {combatant.tieBreak !== null ? ` · REF ${combatant.tieBreak}` : ''}
           {combatant.turn ? ` · ${budgetSummary(combatant.turn)}` : ''}
         </span>
+        {combatant.grapple && (
+          <span className="combat-row-held">
+            🤼{' '}
+            {combatant.grapple.role === 'attacker'
+              ? `trzyma ${combatant.grapple.otherName}`
+              : `w Trzymaniu — ${combatant.grapple.otherName}`}
+            {combatant.grapple.shield ? ' · Ludzka tarcza' : ''}
+            {combatant.grapple.chokeStreak ? ` · Duszenie ×${combatant.grapple.chokeStreak}` : ''}
+          </span>
+        )}
         {combatant.held && (
           <span className="combat-row-held">
             ⏸{' '}

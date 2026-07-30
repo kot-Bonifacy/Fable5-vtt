@@ -72,6 +72,28 @@ export interface PendingAttack {
   modifierTotal: number;
 }
 
+/**
+ * A grapple test loaded into the cup (stage 14d) — either an attempt at
+ * somebody, or the answer to an attempt already on the chat („Broń się").
+ *
+ * One slot for both because they are the same roll (ZW + Bijatyka) and the same
+ * gesture; only the address differs, which is what the two optional halves are.
+ */
+export interface PendingGrapple {
+  characterId: string;
+  characterName: string;
+  title: string;
+  modifierTotal: number;
+  /** Starting a contest: whom, with which token, and what for. */
+  attempt?: {
+    targetTokenId: string;
+    attackerTokenId?: string;
+    intent: 'hold' | 'item' | 'escape';
+  };
+  /** Answering one: the chat card being contested. */
+  resist?: { messageId: number };
+}
+
 /** A defender's Evasion roll contesting an attack already on the chat. */
 export interface PendingEvasion {
   /** Chat message id of the attack being contested. */
@@ -93,6 +115,8 @@ interface RollStoreState {
   attack: PendingAttack | null;
   /** Evasion loaded into the cup (stage 16). */
   evasion: PendingEvasion | null;
+  /** Grapple test loaded into the cup (stage 14d). */
+  grapple: PendingGrapple | null;
   /** Last dialog choices, reused for the next roll (and by Shift+click). */
   lastModifier: number;
   lastVisibility: 'public' | 'gm';
@@ -105,6 +129,7 @@ interface RollStoreState {
   loadInitiativeCup: (initiative: PendingInitiative) => void;
   loadAttackCup: (attack: PendingAttack) => void;
   loadEvasionCup: (evasion: PendingEvasion) => void;
+  loadGrappleCup: (grapple: PendingGrapple) => void;
   clearCup: () => void;
   remember: (modifier: number, visibility: 'public' | 'gm') => void;
   rememberLocation: (location: CpredHitLocation) => void;
@@ -116,6 +141,7 @@ const EMPTY_CUP = {
   initiative: null,
   attack: null,
   evasion: null,
+  grapple: null,
 } as const;
 
 export const useRollStore = create<RollStoreState>((set) => ({
@@ -124,6 +150,7 @@ export const useRollStore = create<RollStoreState>((set) => ({
   initiative: null,
   attack: null,
   evasion: null,
+  grapple: null,
   lastModifier: 0,
   lastVisibility: 'public',
   lastLocation: 'body',
@@ -135,6 +162,7 @@ export const useRollStore = create<RollStoreState>((set) => ({
   loadInitiativeCup: (initiative) => set({ ...EMPTY_CUP, initiative, target: null }),
   loadAttackCup: (attack) => set({ ...EMPTY_CUP, attack, target: null }),
   loadEvasionCup: (evasion) => set({ ...EMPTY_CUP, evasion, target: null }),
+  loadGrappleCup: (grapple) => set({ ...EMPTY_CUP, grapple, target: null }),
   clearCup: () => set({ ...EMPTY_CUP }),
   remember: (lastModifier, lastVisibility) => set({ lastModifier, lastVisibility }),
   rememberLocation: (lastLocation) => set({ lastLocation }),

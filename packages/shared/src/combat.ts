@@ -76,6 +76,30 @@ export interface HeldActionView {
   initiative: number | null;
 }
 
+/**
+ * A grapple this participant is part of (stage 14d).
+ *
+ * Core tracker data for the same reason the initiative queue is: it is a
+ * statement about *participants*, and it ends when the fight does. What being
+ * held costs — the −2, the lost Move Action, the two-handed weapons — is the
+ * game system's business and never reaches this file.
+ *
+ * The other side is named, so a hidden participant's row must be scrubbed
+ * before a player sees it (`filterCombatForPlayer`): the name would betray
+ * somebody the player cannot see.
+ */
+export interface GrappleView {
+  /** `attacker` holds; `defender` is being held. */
+  role: 'attacker' | 'defender';
+  /** The participant on the other end. */
+  otherId: string;
+  otherName: string;
+  /** The Attacker is using the Held one as cover (stage 14d). */
+  shield?: boolean;
+  /** Rounds of choking in a row — the tracker warns before the third. */
+  chokeStreak?: number;
+}
+
 /** One participant of a combat, as delivered to a client. */
 export interface CombatantView {
   id: string;
@@ -104,6 +128,8 @@ export interface CombatantView {
   turn?: TurnBudgetView;
   /** Declared „Wstrzymanie Akcji", until it fires or the round ends. */
   held?: HeldActionView;
+  /** The Hold this participant is in, if any (stage 14d). */
+  grapple?: GrappleView;
 }
 
 /** A combat as one viewer sees it (players never receive hidden participants). */
@@ -229,9 +255,20 @@ export function previousTurn(combat: CombatView): TurnPointer {
  * would betray that someone is there.
  */
 export function filterCombatForPlayer(combat: CombatView): CombatView {
+  const visibleIds = new Set(
+    combat.combatants.filter((c) => c.hidden !== true).map((combatant) => combatant.id),
+  );
   const combatants = combat.combatants
     .filter((combatant) => combatant.hidden !== true)
-    .map(({ hidden: _hidden, ...rest }) => rest);
+    .map(({ hidden: _hidden, ...rest }) => {
+      // A Hold naming somebody the player cannot see would announce them by
+      // name. The row keeps its budget and loses only the relation.
+      if (rest.grapple && !visibleIds.has(rest.grapple.otherId)) {
+        const { grapple: _grapple, ...withoutGrapple } = rest;
+        return withoutGrapple;
+      }
+      return rest;
+    });
   const activeVisible = combatants.some((c) => c.id === combat.activeCombatantId);
   return {
     id: combat.id,
@@ -337,6 +374,48 @@ export interface CombatResetTurnPayload {
 export interface CombatTerrainPayload {
   combatantId?: string;
   hard: boolean;
+}
+
+/**
+ * Pochwycenie, or wrestling free of one (stage 14d). Both are the same opposed
+ * test from the tracker's point of view: somebody spends an Action, rolls, and
+ * the Hold either starts or ends.
+ *
+ * No distance travels here, for the same reason attacks send none (stage 16):
+ * the server measures it. Neither does a DV — it is read off the defender's
+ * sheet.
+ */
+export interface CombatGrapplePayload<TGesture = unknown> {
+  /** Sheet doing the grabbing; defaults to the caller's own. */
+  characterId?: string;
+  /** Token doing the grabbing, when the sheet has several on the scene. */
+  attackerTokenId?: string;
+  /** Who is being grabbed — or, for an escape, who is being wrestled free of. */
+  targetTokenId: string;
+  /**
+   * `hold` (default) starts a Hold; `item` takes something out of the target's
+   * hands (descriptive this stage); `escape` breaks a Hold the target is the
+   * Attacker of — RAW lets a third party try, not only the one being held.
+   */
+  intent?: 'hold' | 'item' | 'escape';
+  modifier?: number;
+  luckSpent?: number;
+  gesture?: TGesture;
+}
+
+/** The defender answers a Pochwycenie with a roll of their own („Broń się"). */
+export interface CombatGrappleResistPayload<TGesture = unknown> {
+  /** Chat card of the attempt being contested. */
+  messageId: number;
+  characterId?: string;
+  gesture?: TGesture;
+}
+
+/** Something only the Attacker of a Hold can do — no roll, just an Action. */
+export interface CombatGrappleActionPayload {
+  /** Participant acting; defaults to the one the caller controls. */
+  combatantId?: string;
+  kind: 'choke' | 'throw' | 'human-shield' | 'release';
 }
 
 /** Longest trigger description the tracker will store. */

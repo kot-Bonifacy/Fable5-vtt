@@ -21,11 +21,9 @@ import {
 import { tokenCreateEvent, tokenDeleteEvent, tokenMoveEvent, tokenUpdateEvent } from './tokens.js';
 import {
   combatAddEvent,
-  combatEndEvent,
   combatNextEvent,
   combatOrderEvent,
   combatPreviousEvent,
-  combatRemoveEvent,
   combatRerollTieEvent,
   combatRollAllEvent,
   combatRollEvent,
@@ -35,11 +33,14 @@ import {
 import {
   combatActionEvent,
   combatAllowEvent,
+  combatEndEvent,
   combatHoldEvent,
   combatHoldReleaseEvent,
+  combatRemoveEvent,
   combatResetTurnEvent,
   combatTerrainEvent,
 } from './combat-actions.js';
+import { grappleActionEvent, grappleAttemptEvent, grappleResistEvent } from './grapple.js';
 import { characterCreateEvent, characterDeleteEvent, characterUpdateEvent } from './characters.js';
 import { characterRollEvent } from './character-rolls.js';
 import { damageApplyEvent, damageUndoEvent } from './damage.js';
@@ -120,6 +121,9 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   combatHoldReleaseEvent,
   combatResetTurnEvent,
   combatTerrainEvent,
+  grappleAttemptEvent,
+  grappleResistEvent,
+  grappleActionEvent,
   compendiumUpsertEvent,
   compendiumDeleteEvent,
   characterCreateEvent,

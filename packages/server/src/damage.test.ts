@@ -479,6 +479,23 @@ describe('damage, armor and Death Saves', () => {
     const afterFirst = await sheetOf(characterId);
     expect(afterFirst.deathSaves).toBe(1);
 
+    /*
+     * The next save is „+1 per save already taken **plus** whatever the sheet's
+     * Critical Injuries add" (RAW). Which injury the test above drew is a 2d6
+     * roll, and one row of that table carries `deathSavePenalty: 1` — so the
+     * expected modifier is *read off the sheet* rather than assumed to be 1.
+     *
+     * Assuming it is what made this test flake roughly once in eight full runs
+     * (diagnosed and fixed in stage 14d): the failure was never a `waitFor`
+     * race, it was the test disagreeing with the rules whenever the dice drew
+     * the one injury that makes dying harder.
+     */
+    const injuryPenalty = afterFirst.criticalInjuries.reduce(
+      (sum, injury) => sum + (injury.deathSavePenalty ?? 0),
+      0,
+    );
+    const expectedModifier = afterFirst.deathSaves + injuryPenalty;
+
     const second = waitFor<ChatMessageBroadcast>(player, 'chat:message');
     await emitAck(player, 'character:roll', {
       characterId,
@@ -486,8 +503,7 @@ describe('damage, armor and Death Saves', () => {
       visibility: 'public',
     });
     const secondRoll = (await second).message.roll;
-    // The second save carries the +1 from the first one.
-    expect(secondRoll?.outcome?.detail).toMatch(/\+ 1|Naturalna 10/);
+    expect(secondRoll?.outcome?.detail).toMatch(new RegExp(`\\+ ${expectedModifier}|Naturalna 10`));
     const afterSecond = await sheetOf(characterId);
     expect(afterSecond.deathSaves).toBe(2);
 

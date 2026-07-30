@@ -280,6 +280,18 @@ export function CombatBar() {
                 ⏸
               </span>
             )}
+            {combatant.grapple && (
+              <span
+                className="combat-chip-held"
+                title={
+                  combatant.grapple.role === 'attacker'
+                    ? `Trzyma: ${combatant.grapple.otherName} (−2 do Akcji)`
+                    : `W Trzymaniu: ${combatant.grapple.otherName} (−2 do Akcji, bez Akcji Ruchu)`
+                }
+              >
+                🤼
+              </span>
+            )}
             <span className="combat-chip-initiative">{combatant.initiative ?? '—'}</span>
           </li>
         ))}

@@ -30,6 +30,8 @@ import type {
   CharacterUpsertBroadcast,
   CharacterView,
   CombatUpdateBroadcast,
+  CombatGrapplePayload,
+  CombatGrappleResistPayload,
   CombatView,
   CompendiumDeleteBroadcast,
   CompendiumEntry,
@@ -96,6 +98,7 @@ import type {
 import {
   CHAT_COMMANDS_HELP,
   CPRED_ATTACK_PROBLEM_MESSAGES,
+  CPRED_GRAPPLE_PROBLEM_MESSAGES,
   MAX_DICE_PER_TERM,
   MAX_DIE_SIDES,
   MAX_ROLL_TERMS,
@@ -1143,6 +1146,70 @@ export const setCombatTerrain = (hard: boolean, combatantId?: string) =>
     ...(combatantId ? { combatantId } : {}),
   });
 
+/* Grappling (stage 14d). Like an attack, the client names an intention and a
+   target token — never a distance, never a DV, never who ends up holding whom. */
+
+/** Pochwycenie, taking an item, or wrestling free — one opposed test each. */
+export function sendGrappleAttempt(
+  characterId: string,
+  targetTokenId: string,
+  intent: 'hold' | 'item' | 'escape',
+  attackerTokenId?: string,
+  gesture?: RollGesture,
+): void {
+  const payload: CombatGrapplePayload<RollGesture> = {
+    characterId,
+    targetTokenId,
+    intent,
+    ...(attackerTokenId ? { attackerTokenId } : {}),
+    ...(gesture ? { gesture } : {}),
+  };
+  socket?.emit('grapple:attempt', payload, (ack: SocketAck<{ messageId: number }>) => {
+    if (!ack.ok) useChatStore.getState().addNote(grappleAckErrorText(ack.error));
+  });
+}
+
+/** „Broń się": the defender answers an attempt already sitting on the chat. */
+export function sendGrappleResist(
+  messageId: number,
+  characterId: string,
+  gesture?: RollGesture,
+): void {
+  const payload: CombatGrappleResistPayload<RollGesture> = {
+    messageId,
+    characterId,
+    ...(gesture ? { gesture } : {}),
+  };
+  socket?.emit('grapple:resist', payload, (ack: SocketAck<{ total: number; won: boolean }>) => {
+    if (!ack.ok) useChatStore.getState().addNote(grappleAckErrorText(ack.error));
+  });
+}
+
+/** Duszenie, Rzut, Ludzka tarcza, Uwolnienie — no roll, just an Action. */
+export const sendGrappleAction = (
+  kind: 'choke' | 'throw' | 'human-shield' | 'release',
+  combatantId?: string,
+) =>
+  emitSceneAck<CombatView>('grapple:action', {
+    kind,
+    ...(combatantId ? { combatantId } : {}),
+  });
+
+function grappleAckErrorText(code: string): string {
+  const known = CPRED_GRAPPLE_PROBLEM_MESSAGES[code as keyof typeof CPRED_GRAPPLE_PROBLEM_MESSAGES];
+  if (known) return known;
+  switch (code) {
+    case 'NOT_AN_OPPOSED_TEST':
+      return 'Ten wpis nie jest testem spornym.';
+    case 'ALREADY_ANSWERED':
+      return 'Ten test został już zakwestionowany.';
+    case 'TOKEN_HAS_NO_HP':
+      return 'Ten cel nie ma punktów wytrzymałości.';
+    default:
+      return combatErrorText(code);
+  }
+}
+
 /** Polish messages for tracker rejections. */
 export function combatErrorText(code: string): string {
   switch (code) {
@@ -1181,6 +1248,11 @@ export function combatErrorText(code: string): string {
     // refusal card; the tracker only needs to say that it was stopped.
     case 'MOVE_REFUSED':
       return 'Ruch odrzucony — szczegóły na karcie odmowy.';
+    // Stage 14d: the refusal already carries its own sentence on the card.
+    case 'STATUS_BLOCKED':
+      return 'Stan tokenu nie pozwala na tę Akcję — szczegóły na karcie odmowy.';
+    case 'DODGE_BLOCKED':
+      return 'W tym stanie nie można Unikać.';
     default:
       return `Błąd walki: ${code}`;
   }

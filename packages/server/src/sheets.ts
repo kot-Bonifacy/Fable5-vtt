@@ -1,27 +1,41 @@
 import type {
   CompendiumEntry,
+  CpredChokeOutcome,
   CpredCharacterData,
   CpredHitLocation,
   CpredRegistry,
   CpredTurnProblem,
   CpredTurnSpend,
+  CpredWoundState,
   DamageLogEntry,
   DiceRng,
+  RollBreakdownEntry,
   TokenHp,
   TurnBudgetView,
 } from '@vtt/shared';
 import {
   CPRED_ACTIONS,
+  CPRED_GRAPPLED_STATUS_ID,
+  CPRED_GRAPPLE_PENALTY,
+  CPRED_GRAPPLE_PENALTY_LABEL,
   CPRED_HIT_LOCATIONS,
   CPRED_PRONE_STATUS_ID,
   CPRED_STAT_LABELS,
+  CPRED_STATIST_GRAPPLE_DV,
   CPRED_TURN_PROBLEM_MESSAGES,
+  CPRED_UNCONSCIOUS_STATUS_ID,
+  CPRED_WOUND_LABELS,
   applyWoundStatuses,
   cpredAction,
+  cpredActionBlock,
+  cpredDodgeBlock,
+  cpredGrappleBase,
+  cpredHumanShieldCovers,
   cpredMetresLeft,
   cpredMoveBudgetFromSheet,
   cpredMoveRefusal,
   cpredMovementBlock,
+  cpredPassiveGrappleDv,
   cpredTurnBudget,
   setCpredHardTerrain,
   withCpredMoveAllowance,
@@ -33,9 +47,13 @@ import {
   hpMax,
   isCriticalInjuryEntry,
   mergeCharacterData,
+  nextCpredChokeStreak,
   parseCharacterData,
   readCpredTurn,
+  resolveCpredChoke,
   resolveCpredDamage,
+  resolveCpredGrappleTest,
+  resolveCpredThrow,
   spendCpredTurn,
   toCriticalInjuryRow,
   woundTransitionLabel,
@@ -194,8 +212,186 @@ export function sheetMovementBlock(statuses: readonly string[]): string | null {
   return cpredMovementBlock(statuses);
 }
 
+/** The same, for spending an Action at all — Nieprzytomny and Martwy (14d). */
+export function sheetActionBlock(statuses: readonly string[]): string | null {
+  return cpredActionBlock(statuses);
+}
+
+/** The same, for a dodge. A reaction, so being Held does not stop it. */
+export function sheetDodgeBlock(statuses: readonly string[]): string | null {
+  return cpredDodgeBlock(statuses);
+}
+
 /** Status the „Wstanie" Action takes off the token that paid for it. */
 export const SHEET_PRONE_STATUS_ID = CPRED_PRONE_STATUS_ID;
+
+/* ------------------------------------------------------------------ *
+ * Grappling (stage 14d). The tracker owns „who is holding whom"; every
+ * question about what that *costs* is answered here.
+ * ------------------------------------------------------------------ */
+
+/** Status a Held participant wears while the relation lasts. */
+export const SHEET_GRAPPLED_STATUS_ID = CPRED_GRAPPLED_STATUS_ID;
+
+/** Status a choked-out participant gets. */
+export const SHEET_UNCONSCIOUS_STATUS_ID = CPRED_UNCONSCIOUS_STATUS_ID;
+
+/** Flat modifier a Hold imposes on both sides — used to shift stand-in DVs. */
+export const SHEET_GRAPPLE_PENALTY = CPRED_GRAPPLE_PENALTY;
+
+/**
+ * The named modifiers a participant's situation adds to every roll they make.
+ * A list rather than a number so the chat card can say „Trzymanie −2" instead
+ * of quietly moving the total (stage 14d decision).
+ */
+export function sheetSituationModifiers(situation: { grappled: boolean }): RollBreakdownEntry[] {
+  if (!situation.grappled) return [];
+  return [
+    {
+      label: CPRED_GRAPPLE_PENALTY_LABEL,
+      value: CPRED_GRAPPLE_PENALTY,
+      kind: 'situational',
+    },
+  ];
+}
+
+/** Which side of a Hold an action needs, or undefined when it needs none. */
+export function sheetActionRequiresGrapple(actionId: string): 'attacker' | 'defender' | undefined {
+  return cpredAction(actionId)?.requiresGrapple;
+}
+
+/** ZW + Bijatyka of a sheet — the fixed half of the opposed test. */
+export function readSheetGrappleBase(
+  character: Pick<Character, 'data'>,
+  registry: SheetRegistry,
+): number {
+  return cpredGrappleBase(parseCharacterData(character.data, registry), registry);
+}
+
+/** Stand-in DV of a defender who has not rolled: ZW + Bijatyka + half a die. */
+export function readSheetGrappleDv(
+  character: Pick<Character, 'data'>,
+  registry: SheetRegistry,
+  modifier = 0,
+): number {
+  return cpredPassiveGrappleDv(parseCharacterData(character.data, registry), registry, modifier);
+}
+
+/** DV of a target with no sheet — the statist default. */
+export const SHEET_STATIST_GRAPPLE_DV = CPRED_STATIST_GRAPPLE_DV;
+
+/** BODY of a sheet: the damage Duszenie and Rzut deal, flat and undiced. */
+export function readSheetBody(character: Pick<Character, 'data'>, registry: SheetRegistry): number {
+  return parseCharacterData(character.data, registry).stats.body;
+}
+
+/** Who wins an opposed grapple test — ties go to the defender. */
+export function judgeSheetGrapple(
+  attackerTotal: number,
+  defenderTotal: number,
+): { won: boolean; margin: number } {
+  return resolveCpredGrappleTest(attackerTotal, defenderTotal);
+}
+
+/** Does a Ludzka tarcza stop this attack? */
+export function sheetHumanShieldCovers(attack: { melee: boolean; aimedAtHead: boolean }): boolean {
+  return cpredHumanShieldCovers(attack);
+}
+
+/** Rounds in a row after one more squeeze (or 1, when the streak was broken). */
+export function nextSheetChokeStreak(
+  previousRound: number | null,
+  round: number,
+  streak: number,
+): number {
+  return nextCpredChokeStreak(previousRound, round, streak);
+}
+
+/** What Duszenie or Rzut did — the shape the caller writes back and logs. */
+export interface SheetGrappleDamage {
+  /** Serialized sheet payload; absent when the target had no sheet. */
+  data?: string;
+  hp: TokenHp;
+  log: SheetDamageLog;
+  /** The squeeze knocked them out — the caller adds the status. */
+  unconscious: boolean;
+}
+
+function grappleDamageLog(
+  outcome: {
+    damage: number;
+    hpBefore: number;
+    hpAfter: number;
+    hpLost: number;
+    woundBefore: CpredWoundState;
+    woundAfter: CpredWoundState;
+  },
+  hpMaxValue: number,
+): SheetDamageLog {
+  return {
+    location: 'body',
+    locationLabel: hitLocationLabel('body'),
+    damageRolled: outcome.damage,
+    // Armor is not merely beaten here: it is not consulted, and it does not
+    // ablate („ignoruje pancerz Broniącego i nie uszkadza go", s. 177).
+    armorSp: 0,
+    damageThrough: outcome.hpLost,
+    doubled: false,
+    bonusDamage: 0,
+    hpLost: outcome.hpLost,
+    hp: { before: outcome.hpBefore, after: outcome.hpAfter, max: hpMaxValue },
+    ...(outcome.woundBefore !== outcome.woundAfter
+      ? {
+          woundLabel: `${CPRED_WOUND_LABELS[outcome.woundBefore]} → ${
+            CPRED_WOUND_LABELS[outcome.woundAfter]
+          }`,
+        }
+      : {}),
+  };
+}
+
+/**
+ * Duszenie or Rzut against a sheet. Both deal the Attacker's BODY straight to
+ * Hit Points; the choke additionally refuses to take a target with more than
+ * 1 HP below zero, parking them at 1 and unconscious instead.
+ */
+export function applyGrappleDamageToSheet(
+  character: Character,
+  registry: SheetRegistry,
+  request: { body: number; kind: 'choke' | 'throw'; roundsInARow?: number },
+): SheetGrappleDamage {
+  const data = parseCharacterData(character.data, registry);
+  const max = hpMax(data.stats);
+  const input = { body: request.body, hpCurrent: data.hpCurrent, hpMax: max };
+  const outcome =
+    request.kind === 'choke'
+      ? resolveCpredChoke({ ...input, roundsInARow: request.roundsInARow ?? 1 })
+      : resolveCpredThrow(input);
+  const merged = mergeCharacterData(data, { hpCurrent: outcome.hpAfter });
+  return {
+    data: JSON.stringify(merged),
+    hp: { current: merged.hpCurrent, max },
+    log: grappleDamageLog(outcome, max),
+    unconscious: request.kind === 'choke' && (outcome as CpredChokeOutcome).unconscious,
+  };
+}
+
+/** The same against a statist token that only carries its own HP pair. */
+export function applyGrappleDamageToTokenHp(
+  hp: TokenHp,
+  request: { body: number; kind: 'choke' | 'throw'; roundsInARow?: number },
+): SheetGrappleDamage {
+  const input = { body: request.body, hpCurrent: hp.current, hpMax: hp.max };
+  const outcome =
+    request.kind === 'choke'
+      ? resolveCpredChoke({ ...input, roundsInARow: request.roundsInARow ?? 1 })
+      : resolveCpredThrow(input);
+  return {
+    hp: { current: outcome.hpAfter, max: hp.max },
+    log: grappleDamageLog(outcome, hp.max),
+    unconscious: request.kind === 'choke' && (outcome as CpredChokeOutcome).unconscious,
+  };
+}
 
 /**
  * A budget with everything still unspent — the start of a participant's turn.

@@ -207,6 +207,30 @@ export interface RollAttackMeta {
   forcedChecks?: RollForcedCheck[];
 }
 
+/**
+ * An opposed test whose loser may still answer (stage 14d).
+ *
+ * Deliberately not `RollAttackMeta`: an attack card offers damage and a dodge,
+ * an opposed test offers one counter-roll and a verdict. Same shape of card,
+ * different question — and the core knows neither, exactly as with attacks.
+ */
+export interface RollOpposedMeta {
+  /** Whatever the follow-up needs, as the system defined it. */
+  system: Record<string, unknown>;
+  /** „Vex → Kurier · Pochwycenie" — headline of the card. */
+  label: string;
+  /** „zwarcie · 2 m · PT 14 (ZW + Bijatyka celu)" — where the DV came from. */
+  detail: string;
+  /** Did the roller beat the other side? Ties go to the defender. */
+  won: boolean;
+  /** Token whose owner may answer with a roll of their own. */
+  defenderTokenId?: string;
+  /** Text of the button offered to them („Broń się"). */
+  answerLabel?: string;
+  /** Set once the answer was rolled — an opposed test is contested once. */
+  answered?: boolean;
+}
+
 /** One target's forced check — the card lists them under the attack. */
 export interface RollForcedCheck {
   name: string;
@@ -240,6 +264,8 @@ export interface RollResult {
   damage?: RollDamageMeta;
   /** Attack verdict, when the roll was an attack (stage 16). */
   attack?: RollAttackMeta;
+  /** Verdict of an opposed test the other side may answer (stage 14d). */
+  opposed?: RollOpposedMeta;
   total: number;
   /**
    * Presentation metadata attached by the server when the roll was thrown

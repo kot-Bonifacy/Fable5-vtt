@@ -21,6 +21,9 @@ import {
 /** Polish text for every refusal the tracker can produce. */
 export function turnRefusalMessage(problem: TurnSpendProblem): string {
   if (problem === 'NOT_YOUR_TURN') return 'To nie jest twoja tura.';
+  // A status refusal always arrives with a sentence of its own (the table in
+  // `statuses.ts` names each one); this is the fallback nobody should see.
+  if (problem === 'STATUS_BLOCKED') return 'Stan tokenu nie pozwala na tę Akcję.';
   return turnProblemMessage(problem);
 }
 

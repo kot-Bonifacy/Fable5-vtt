@@ -9,6 +9,7 @@ import type {
 import { ROLE_GM } from '@vtt/shared';
 import { allowCombatAction, loadOlderHistory, sendChatInput, stopBots } from '../socket.js';
 import { AttackRow } from './AttackControls.js';
+import { OpposedRow } from './GrappleControls.js';
 import { DamageApplyControls, DamageRow } from './DamageControls.js';
 import { replayMessage } from '../speech.js';
 import { useAuthStore } from '../stores/authStore.js';
@@ -144,6 +145,7 @@ function RollRow({ message, isGm }: { message: ChatMessageView; isGm: boolean })
           </div>
         )}
         {roll.attack && <AttackRow message={message} attack={roll.attack} />}
+        {roll.opposed && <OpposedRow message={message} opposed={roll.opposed} />}
         {/* Damage is applied by the GM only — players never see the button. */}
         {isGm && roll.damage && <DamageApplyControls message={message} roll={roll} />}
       </div>

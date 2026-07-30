@@ -216,6 +216,18 @@ export interface CpredRollPlan {
   stabilize?: CpredStabilizePlan;
 }
 
+/**
+ * Modifiers that come from the *world* rather than the sheet or the request —
+ * being Held is −2 to every Action (stage 14d), and stage 14e adds the Critical
+ * Injuries that bite in combat.
+ *
+ * A separate argument on purpose: these are filled in by the server from state
+ * a client cannot see or forge, so they must not travel inside the request.
+ */
+export interface CpredRollContext {
+  modifiers?: readonly RollBreakdownEntry[];
+}
+
 function isInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value);
 }
@@ -229,6 +241,7 @@ export function planCpredRoll(
   data: CpredCharacterData,
   registry: CpredRegistry,
   request: CpredRollRequest,
+  context: CpredRollContext = {},
 ): { ok: true; plan: CpredRollPlan } | { ok: false; error: CpredRollProblem } {
   if (typeof request !== 'object' || request === null) return { ok: false, error: 'BAD_REQUEST' };
 
@@ -254,7 +267,7 @@ export function planCpredRoll(
     return planDeathSaveRoll(data, state);
   }
   if (request.kind === 'stabilize') {
-    return planStabilizeRoll(data, registry, request, modifier, luckSpent, state);
+    return planStabilizeRoll(data, registry, request, modifier, luckSpent, state, context);
   }
 
   const breakdown: RollBreakdownEntry[] = [];
@@ -280,7 +293,7 @@ export function planCpredRoll(
     return { ok: false, error: 'BAD_REQUEST' };
   }
 
-  return finishCheck(title, breakdown, state, modifier, luckSpent);
+  return finishCheck(title, breakdown, state, modifier, luckSpent, {}, context);
 }
 
 /** The stat + skill pair every Check opens with, named the way the card shows it. */
@@ -316,11 +329,15 @@ function finishCheck(
   modifier: number,
   luckSpent: number,
   extra: Pick<CpredRollPlan, 'stabilize'> = {},
+  context: CpredRollContext = {},
 ): { ok: true; plan: CpredRollPlan } {
   const woundPenalty = woundCheckPenalty(state);
   if (woundPenalty !== 0) {
     breakdown.push({ label: CPRED_WOUND_LABELS[state], value: woundPenalty, kind: 'wound' });
   }
+  // Next to the wound penalty, and for the same reason: the player has to see
+  // where a −2 they did not ask for came from (stage 14d).
+  for (const entry of context.modifiers ?? []) breakdown.push({ ...entry });
   if (modifier !== 0) {
     breakdown.push({ label: 'Modyfikator sytuacyjny', value: modifier, kind: 'situational' });
   }
@@ -369,6 +386,7 @@ function planStabilizeRoll(
   modifier: number,
   luckSpent: number,
   state: CpredWoundState,
+  context: CpredRollContext = {},
 ): { ok: true; plan: CpredRollPlan } | { ok: false; error: CpredRollProblem } {
   const allowed = [CPRED_FIRST_AID_SKILL_ID, CPRED_PARAMEDIC_SKILL_ID];
   const candidates = registry.skills.filter((entry) => allowed.includes(entry.id));
@@ -398,6 +416,7 @@ function planStabilizeRoll(
     modifier,
     luckSpent,
     { stabilize: { dv, targetName, targetTokenId, skillName: skill.name } },
+    context,
   );
 }
 

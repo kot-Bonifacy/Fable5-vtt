@@ -55,7 +55,7 @@ import {
 } from './vision.js';
 import { requireCampaignScene } from './scenes.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
-import { emitCombatOfScene } from './combat.js';
+import { emitCombatOfScene, findGrapple, loadCombat } from './combat.js';
 import { validateTokenMove } from './movement.js';
 
 function parseStatuses(raw: string): string[] {
@@ -776,6 +776,45 @@ async function emitDynamicMove(
   }
 }
 
+/**
+ * Drags whoever this token is Holding (stage 14d).
+ *
+ * The Held one keeps their offset rather than being teleported on top of the
+ * Attacker: a grapple is two people shuffling, not one carrying the other. The
+ * position is clamped but deliberately *not* snapped — snapping both would pull
+ * them onto the same square whenever the offset is under half a cell.
+ *
+ * Nothing here is judged: the Attacker's own drag has already been through the
+ * budget, and RAW gives the Held one no say in the matter.
+ */
+async function dragGrappledToken(
+  deps: RealtimeDeps,
+  campaignId: string,
+  scene: Scene,
+  mover: Token,
+  delta: { dx: number; dy: number },
+): Promise<void> {
+  if (delta.dx === 0 && delta.dy === 0) return;
+  const combat = await loadCombat(deps.ctx.prisma, scene.id);
+  if (!combat) return;
+  const combatant = combat.combatants.find((row) => row.tokenId === mover.id);
+  if (!combatant) return;
+  const pair = findGrapple(combat, combatant);
+  // Only the Attacker drags; being Held does not let you tow your captor.
+  if (!pair || pair.attacker.id !== combatant.id) return;
+
+  const held = await deps.ctx.prisma.token.findUnique({ where: { id: pair.defender.tokenId } });
+  if (!held || held.sceneId !== scene.id) return;
+  const snapScene = toSnapScene(scene);
+  const { x, y } = clampTokenPosition(held.x + delta.dx, held.y + delta.dy, held.size, snapScene);
+  if (x === held.x && y === held.y) return;
+  await deps.ctx.prisma.token.update({ where: { id: held.id }, data: { x, y } });
+  // An upsert rather than a move frame: the audience for the Held token can
+  // differ from the mover's (fog, dynamic vision), and `emitTokensById` already
+  // answers that question per viewer.
+  await emitTokensById(deps, campaignId, [held.id]);
+}
+
 export const tokenMoveEvent = defineEvent<TokenMovePayload, { x: number; y: number }>({
   name: 'token:move',
   handler: async ({ deps, socket, user, payload }) => {
@@ -872,6 +911,13 @@ export const tokenMoveEvent = defineEvent<TokenMovePayload, { x: number; y: numb
         throw error;
       }
       await deps.ctx.prisma.token.update({ where: { id: token.id }, data: { x, y } });
+      // „Atakujący ciągnie go ze sobą, gdy wykonuje swoją Akcję Ruchu" (s. 176).
+      // The metres were already charged to the one doing the dragging — the
+      // Held one pays nothing, because they are not the one walking.
+      await dragGrappledToken(deps, campaignId, scene, token, {
+        dx: x - token.x,
+        dy: y - token.y,
+      });
     }
 
     await broadcast({ x, y }, final);

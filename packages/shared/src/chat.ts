@@ -85,6 +85,12 @@ export interface DamageLogEntry {
   injury?: { id: string; name: string; effect: string; rolled: number };
   /** Why no injury was drawn, e.g. „brak tabeli dla głowy". */
   injuryNote?: string;
+  /**
+   * Statuses this hit put on the target token (stage 14d: a choke knocks out,
+   * a throw knocks down). „Cofnij" takes them off again — restoring the HP and
+   * leaving the character unconscious would be a half-undo nobody can see.
+   */
+  statusesAdded?: string[];
   /** Set once the GM took the application back. */
   undone?: boolean;
   undoneByName?: string;

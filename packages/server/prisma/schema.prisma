@@ -547,6 +547,18 @@ model Combatant {
   held           Boolean @default(false)
   /// One-shot pass from the GM: the next refused spend goes through anyway.
   actionBypass   Boolean @default(false)
+  /// The Hold this participant is *being held in* — id of the Attacker's
+  /// Combatant row (stage 14d). Null on the Attacker's own row and on anybody
+  /// free: the relation is stored once, on the Defender, so „kto kogo" cannot
+  /// disagree with itself. Not a foreign key: both rows die with the combat.
+  grappledById   String?
+  /// Rounds this participant has been choked in a row, and the round the last
+  /// squeeze happened in — „3 Rundy pod rząd" needs both to tell a streak from
+  /// a pause.
+  chokeStreak    Int     @default(0)
+  chokeRound     Int?
+  /// The Attacker is using this (Held) participant as a Ludzka tarcza.
+  humanShield    Boolean @default(false)
 
   createdAt DateTime @default(now())
 

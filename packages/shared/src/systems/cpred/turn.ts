@@ -50,6 +50,12 @@ export interface CpredActionDefinition {
   handledElsewhere?: boolean;
   /** Reserves the Action instead of spending it (Wstrzymanie Akcji). */
   reserves?: boolean;
+  /**
+   * The action only exists inside a Hold, and only for one side of it
+   * (stage 14d): only the Attacker chokes, throws or lets go, and only the
+   * Held one — or a third party — wrestles free.
+   */
+  requiresGrapple?: 'attacker' | 'defender';
 }
 
 /** Catalogue ids the rest of the code names directly. */
@@ -60,6 +66,13 @@ export const CPRED_ACTION_RUN = 'run';
 export const CPRED_ACTION_STAND_UP = 'stand-up';
 export const CPRED_ACTION_HOLD = 'hold';
 export const CPRED_ACTION_STABILIZE = 'stabilize';
+/** Grappling (stage 14d) — each of these is resolved by `grapple:*`. */
+export const CPRED_ACTION_GRAPPLE = 'grapple';
+export const CPRED_ACTION_CHOKE = 'choke';
+export const CPRED_ACTION_THROW = 'throw';
+export const CPRED_ACTION_HUMAN_SHIELD = 'human-shield';
+export const CPRED_ACTION_ESCAPE_GRAPPLE = 'escape-grapple';
+export const CPRED_ACTION_RELEASE_GRAPPLE = 'release-grapple';
 
 /**
  * The catalogue itself (s. 168–169). Mechanics, not rulebook prose: the costs
@@ -121,28 +134,42 @@ export const CPRED_ACTIONS: readonly CpredActionDefinition[] = [
     handledElsewhere: true,
   },
   {
-    id: 'grapple',
+    id: CPRED_ACTION_GRAPPLE,
     name: 'Pochwycenie',
     cost: 'action',
-    hint: 'Łapiesz i trzymasz przeciwnika lub chwytasz trzymany przez niego przedmiot.',
+    hint: 'Test sporny ZW + Bijatyka. Wygrana = Trzymanie albo przedmiot z ręki celu.',
+    handledElsewhere: true,
   },
   {
-    id: 'choke',
+    id: CPRED_ACTION_ESCAPE_GRAPPLE,
+    name: 'Wyrwanie się z Trzymania',
+    cost: 'action',
+    hint: 'Test sporny przeciw Trzymającemu. Sukces kończy Trzymanie dla wszystkich.',
+    handledElsewhere: true,
+  },
+  {
+    id: CPRED_ACTION_CHOKE,
     name: 'Duszenie',
     cost: 'action',
-    hint: 'Dusisz przeciwnika, którego Pochwyciłeś.',
+    hint: 'Obrażenia równe twojej BC, bez redukcji pancerzem. Trzy Rundy pod rząd = Nieprzytomny.',
+    requiresGrapple: 'attacker',
+    handledElsewhere: true,
   },
   {
-    id: 'throw',
+    id: CPRED_ACTION_THROW,
     name: 'Rzut',
     cost: 'action',
-    hint: 'Rzucasz Pochwyconego przeciwnika na ziemię lub ciskasz przedmiotem.',
+    hint: 'Obrażenia równe twojej BC bez pancerza; kończy Trzymanie, a cel jest Powalony.',
+    requiresGrapple: 'attacker',
+    handledElsewhere: true,
   },
   {
-    id: 'human-shield',
+    id: CPRED_ACTION_HUMAN_SHIELD,
     name: 'Ludzka tarcza',
     cost: 'action',
-    hint: 'Zasłaniasz się Pochwyconym przeciwnikiem.',
+    hint: 'Zasłaniasz się Trzymanym. Chroni przed ostrzałem, nie przed bronią białą ani strzałem w głowę.',
+    requiresGrapple: 'attacker',
+    handledElsewhere: true,
   },
   {
     id: 'skill',
@@ -205,10 +232,12 @@ export const CPRED_ACTIONS: readonly CpredActionDefinition[] = [
     hint: 'Upuszczenie trzymanej broni (ale nie tarczy) nie wymaga Akcji.',
   },
   {
-    id: 'release-grapple',
+    id: CPRED_ACTION_RELEASE_GRAPPLE,
     name: 'Uwolnienie Trzymanego',
     cost: 'free',
-    hint: 'Puszczasz Pochwyconego przeciwnika.',
+    hint: 'Puszczasz Trzymanego — „w dowolnym momencie, nie zużywając Akcji".',
+    requiresGrapple: 'attacker',
+    handledElsewhere: true,
   },
 ];
 
