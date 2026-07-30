@@ -760,12 +760,31 @@ describe('a door glyph obeys the light', () => {
     await roundTrip(player);
   }, 30_000);
 
-  it('shows the far door on a lit scene — the line of sight is real', () => {
-    // Nothing is gated on light here, and the sight line through the window is
-    // genuine, so the marker belongs on the map.
-    return roundTrip(player).then((sync) => {
-      expect(sync.doors.map((door) => door.id)).toContain(doorId);
-    });
+  it('keeps the far door off a lit scene too, since stage 18d', async () => {
+    // Stage 18c left this one on the map: the sight line through the glass is
+    // geometrically real, and on a *lit* scene nothing was stopping it. Stage 18d
+    // stops it, because a window seen from 30 m away is a bright rectangle and
+    // not a view — so the handle across the room is no longer offered on any
+    // scene, dark or lit.
+    const sync = await roundTrip(player);
+    expect(sync.doors.map((door) => door.id)).not.toContain(doorId);
+  });
+
+  it('hands the far door over once the token stands at the window', async () => {
+    // Centre (1750, 1250): 1,41 m from the corner of the pane, so the curtain
+    // opens. The sight line to the door then threads that pane close to its
+    // lower edge — it crosses x = 1700 at y ≈ 1195, five pixels inside the glass
+    // — which is exactly the shot the GM reported in stage 18c, taken from five
+    // metres away instead of thirty. The drop snaps to a cell, so the position
+    // is grid-aligned on purpose.
+    await emitAck(gm, 'token:move', { tokenId: ownTokenId, x: 1700, y: 1200, final: true });
+    const atTheGlass = await roundTrip(player);
+    expect(atTheGlass.doors.map((door) => door.id)).toContain(doorId);
+    // …and it is still out of arm's reach, which is a different refusal.
+    expect(errorOf(await emitAck(player, 'door:toggle', { wallId: doorId }))).toBe(
+      'DOOR_OUT_OF_REACH',
+    );
+    await emitAck(gm, 'token:move', { tokenId: ownTokenId, x: 2750, y: 2300, final: true });
   });
 
   it('takes it away once the lights go out', async () => {

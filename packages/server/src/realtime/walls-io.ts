@@ -22,6 +22,7 @@ export function toWallView(row: WallRow): WallView {
     kind: isWallKind(row.kind) ? row.kind : 'wall',
     open: row.open,
     playerToggle: row.playerToggle,
+    locked: row.locked,
     x1: row.x1,
     y1: row.y1,
     x2: row.x2,

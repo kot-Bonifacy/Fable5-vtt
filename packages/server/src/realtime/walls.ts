@@ -16,6 +16,7 @@ import { emitSceneTokensToPlayers } from './tokens.js';
 import { fetchSceneWalls, toWallView } from './walls-io.js';
 import {
   emitVisionToPlayers,
+  isWallInReach,
   loadVisionContext,
   usesDynamicVision,
   visibleDoorsFor,
@@ -115,17 +116,29 @@ export const wallUpdateEvent = defineEvent<WallUpdatePayload, WallView>({
     if (patch.kind !== undefined) {
       if (!isWallKind(patch.kind)) throw new RealtimeError('BAD_REQUEST');
       data.kind = patch.kind;
-      // Retyping a door into a wall takes its player flag with it, and closes
-      // it: an „open wall" is a state nothing in the UI could explain.
+      // Retyping a door into a wall takes its player flag and its bolt with it,
+      // and closes it: an „open wall" is a state nothing in the UI could explain.
       if (patch.kind !== 'door') {
         data.playerToggle = false;
         data.open = false;
+        data.locked = false;
       }
     }
     if (patch.playerToggle !== undefined) {
       if (typeof patch.playerToggle !== 'boolean') throw new RealtimeError('BAD_REQUEST');
       const kind = (data.kind as string | undefined) ?? row.kind;
       data.playerToggle = kind === 'door' && patch.playerToggle;
+    }
+    if (patch.locked !== undefined) {
+      if (typeof patch.locked !== 'boolean') throw new RealtimeError('BAD_REQUEST');
+      const kind = (data.kind as string | undefined) ?? row.kind;
+      const locked = kind === 'door' && patch.locked;
+      data.locked = locked;
+      // Bolting a door shuts it. „Open and locked" is a real thing — a door
+      // wedged so it cannot be closed — but it is not what a GM means when they
+      // click the padlock in the middle of a scene, and the state that click was
+      // reaching for would otherwise need a second one.
+      if (locked) data.open = false;
     }
 
     const updated = await deps.ctx.prisma.wall.update({ where: { id: row.id }, data });
@@ -169,10 +182,21 @@ export const wallClearEvent = defineEvent<WallClearPayload>({
  * Opening and closing a door — the interaction that happens most at the table,
  * and the only one a player is allowed to perform on the wall layer.
  *
- * A player may work a door only when the GM flagged it *and* they can see it
- * right now. The second half matters: the flag alone would let a client toggle
- * a door on the far side of the map and read the answer, which is a map probe
- * dressed up as an interaction.
+ * A player has to clear four conditions, and the order they are checked in is
+ * the point of this handler. Each one may only reveal what the previous one has
+ * already conceded:
+ *
+ *  1. the GM flagged the door as theirs (`playerToggle`) — else `FORBIDDEN`;
+ *  2. they can see it right now — else `WALL_NOT_FOUND`, the same answer an
+ *     unseen token gives, because a rejection must not become a way to learn
+ *     that a door is there at all;
+ *  3. one of their tokens stands within arm's reach — else `DOOR_OUT_OF_REACH`
+ *     (stage 18d). Safe to name: they were already told the door exists by being
+ *     shown it;
+ *  4. it is not bolted — else `DOOR_LOCKED`. Last on purpose. „Locked" is the
+ *     one fact about a door that is learned by pulling the handle, so a player
+ *     halfway across the room must not get it: they would be probing the map for
+ *     which doors matter without their character touching anything.
  */
 export const doorToggleEvent = defineEvent<DoorTogglePayload, WallView>({
   name: 'door:toggle',
@@ -199,12 +223,14 @@ export const doorToggleEvent = defineEvent<DoorTogglePayload, WallView>({
       // has to be lit to be worked, and the guard must agree with the list the
       // player was sent — or the handle they can see would refuse them.
       const sight = await viewerSightFor(deps.ctx.prisma, row.scene, user.id, context);
-      const reachable = visibleDoorsFor(context, sight.sources, sight.lighting).some(
+      const visible = visibleDoorsFor(context, sight.sources, sight.lighting).some(
         (door) => door.id === wall.id,
       );
-      // A door out of sight is refused the same way an unseen token is: the
-      // rejection must not become a way to learn the door is there.
-      if (!reachable) throw new RealtimeError('WALL_NOT_FOUND');
+      if (!visible) throw new RealtimeError('WALL_NOT_FOUND');
+      if (!isWallInReach(context, sight.sources, wall)) {
+        throw new RealtimeError('DOOR_OUT_OF_REACH');
+      }
+      if (wall.locked) throw new RealtimeError('DOOR_LOCKED');
     }
 
     const open = typeof payload?.open === 'boolean' ? payload.open : !wall.open;

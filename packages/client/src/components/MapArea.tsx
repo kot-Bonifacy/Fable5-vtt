@@ -38,6 +38,7 @@ import {
   sendTokenMove,
   toggleDoor,
   updateLight,
+  updateWall,
 } from '../socket.js';
 import { loadAttackAtToken } from '../attack-targeting.js';
 import { useAttackStore } from '../stores/attackStore.js';
@@ -141,6 +142,13 @@ function doorErrorText(code: string | undefined): string {
       return 'Tych drzwi nie otworzysz — MG ich nie udostępnił.';
     case 'WALL_NOT_FOUND':
       return 'Nie widzisz tych drzwi.';
+    // Stage 18d. „Za daleko" names the door, which is safe — the player was
+    // shown it. „Zamknięte na klucz" is only ever said to someone whose token
+    // stands at the handle, so the message is the character's discovery.
+    case 'DOOR_OUT_OF_REACH':
+      return 'Za daleko — podejdź do drzwi (na jedną kratkę).';
+    case 'DOOR_LOCKED':
+      return 'Zamknięte na klucz — same drzwi nie ustąpią.';
     default:
       return `Nie udało się poruszyć drzwiami: ${code ?? 'nieznany błąd'}.`;
   }
@@ -280,6 +288,22 @@ export function MapArea() {
       const tolerance = Math.max(8, current.grid.sizePx / 5);
       const target = pickWallAt(useWallStore.getState().walls, { x, y }, tolerance);
       if (target) void deleteWall(target.id);
+    };
+    renderer.onWallLock = (x, y) => {
+      const current = useSceneStore.getState().effectiveScene;
+      if (!current) return;
+      const tolerance = Math.max(8, current.grid.sizePx / 5);
+      // Doors only: a bolt on a plain wall would be a promise nothing keeps, and
+      // letting the pick land on one would silently do nothing.
+      const doors = useWallStore.getState().walls.filter((wall) => wall.kind === 'door');
+      const target = pickWallAt(doors, { x, y }, tolerance);
+      if (!target) {
+        useChatStore.getState().addNote('Kliknij drzwi — zamek zakłada się tylko na drzwiach.');
+        return;
+      }
+      void updateWall(target.id, { locked: !target.locked }).then((ack) => {
+        if (!ack.ok) useChatStore.getState().addNote(wallErrorText(ack.error));
+      });
     };
     renderer.onDoorToggle = (wallId) => {
       void toggleDoor(wallId).then((ack) => {
@@ -812,7 +836,9 @@ export function MapArea() {
         <div className="map-placement-hint">
           {wallMode === 'erase'
             ? 'Kliknij ścianę, by ją usunąć (Esc kończy)'
-            : 'Klikaj kolejne narożniki; Enter lub klik w ostatni punkt kończy ścianę (Esc anuluje)'}
+            : wallMode === 'lock'
+              ? 'Kliknij drzwi, by założyć lub zdjąć zamek (zakładanie je zamyka; Esc kończy)'
+              : 'Klikaj kolejne narożniki; Enter lub klik w ostatni punkt kończy ścianę (Esc anuluje)'}
         </div>
       )}
       {isGm && tool === 'light' && (

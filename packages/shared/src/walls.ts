@@ -1,5 +1,5 @@
 /**
- * Walls and doors (stage 18a) — core VTT, no game system involved.
+ * Walls, doors and windows (stages 18a, 18d) — core VTT, no game system.
  *
  * A wall is stored as a single segment, not as a chain: the editor draws chains
  * because that is how a floor plan is traced, but the raycast in `vision.ts`
@@ -11,6 +11,10 @@
  * wall layout is the floor plan of a building the party has not entered yet.
  * Players receive one thing only — doors the GM flagged as theirs to open, and
  * only while those doors lie inside their own field of view.
+ *
+ * Stage 18d made both of those objects behave like things in a space rather than
+ * switches on a board: a door has to be within arm's reach to be worked and can
+ * be bolted, and a window shows what is behind it only from up close.
  */
 
 import type { ScenePoint } from './measure.js';
@@ -18,9 +22,10 @@ import type { Segment } from './vision.js';
 
 export const WALL_KINDS = ['wall', 'door', 'window'] as const;
 /**
- * `wall` blocks sight always, `door` only while closed, `window` never — the
- * last one exists so a GM can mark glass and railings that will block *movement*
- * once the VTT knows collisions at all (it does not yet; see POMYSLY.md).
+ * `wall` blocks sight always, `door` only while closed, `window` — since stage
+ * 18d — only for an observer standing away from it (see `sightSegmentsFor`).
+ * A window also lets light through at a cost (`LIGHT_WINDOW_COST`), which is
+ * what makes it different from a door left ajar.
  */
 export type WallKind = (typeof WALL_KINDS)[number];
 
@@ -34,11 +39,34 @@ export interface WallView {
   open: boolean;
   /** Doors only: players may operate this one, and therefore may see it. */
   playerToggle: boolean;
+  /**
+   * Doors only (stage 18d): bolted, and a player's click does nothing.
+   *
+   * **This field is scrubbed to `false` on its way to a player.** A locked door
+   * still travels — a door you cannot see is a door you cannot try — but whether
+   * it gives is something the character finds out by pulling the handle, not
+   * something the client is told in advance. The GM's own list carries the truth.
+   */
+  locked: boolean;
   x1: number;
   y1: number;
   x2: number;
   y2: number;
 }
+
+/**
+ * Arm's reach, in metres (stage 18d) — how close a token has to stand to touch
+ * a door, and how close to a window before the pane stops being a bright
+ * rectangle and starts being a view.
+ *
+ * Two metres is one square on a Cyberpunk RED map, and on such a scene it works
+ * out to exactly „the square next to it, diagonals included": the centre of an
+ * adjacent square sits 1 m from the wall along its edge and 1,41 m from the
+ * nearest end diagonally, while two squares out is 3 m and misses. Expressed in
+ * metres rather than in squares so that gridless scenes and unusual scales get
+ * an answer that still means the length of an arm.
+ */
+export const WALL_REACH_M = 2;
 
 /** Max points in one drawn chain — a guard against a runaway client. */
 export const WALL_CHAIN_MAX_POINTS = 128;
@@ -74,6 +102,8 @@ export interface WallUpdatePayload {
   patch: {
     kind?: WallKind;
     playerToggle?: boolean;
+    /** Doors only (stage 18d); bolting one also shuts it. */
+    locked?: boolean;
   };
 }
 
@@ -124,7 +154,14 @@ export function isWallKind(value: unknown): value is WallKind {
   return value === 'wall' || value === 'door' || value === 'window';
 }
 
-/** Does this wall stop a line of sight right now? */
+/**
+ * Does this wall stop a line of sight for everybody, wherever they stand?
+ *
+ * A window answers `false` here and is nonetheless a blocker for most observers
+ * — see `sightSegmentsFor`. This function is the part of the answer that does not
+ * depend on who is asking, and it is what the *light* uses: a pane dims a beam
+ * (`LIGHT_WINDOW_COST`), it never stops it.
+ */
 export function wallBlocksSight(wall: Pick<WallView, 'kind' | 'open'>): boolean {
   if (wall.kind === 'window') return false;
   if (wall.kind === 'door') return !wall.open;
@@ -139,6 +176,63 @@ export function blockingSegments(walls: readonly WallView[]): Segment[] {
     segments.push({ x1: wall.x1, y1: wall.y1, x2: wall.x2, y2: wall.y2 });
   }
   return segments;
+}
+
+/**
+ * What blocks sight **for one observer** (stage 18d) — the walls everybody is
+ * stopped by, plus the windows this particular observer is too far from to see
+ * through.
+ *
+ * This is the „net curtain" rule, and it is the reason the segment list stopped
+ * being shared between viewers. A window is a bright rectangle from the street:
+ * a curtain, a grimy pane or a half-drawn blind gives away that there is a room
+ * behind it and nothing about what is in the room. Walk up to it and you look
+ * through. The rule is deliberately symmetric — the geometry has no idea which
+ * side is „inside", and neither has a net curtain.
+ *
+ * `curtainReachPx` of `null` switches the rule off, which is what a **dark**
+ * scene passes: at night a lit window is *more* visible from a distance, not
+ * less, and there the pane already costs the light that comes through it.
+ *
+ * The reach is measured to the nearest point of the pane, so standing at one end
+ * of a shop front opens the whole of it. That is a simplification, and the right
+ * one: a window is one object, and splitting a pane into the bit you are level
+ * with and the bit you are not would be geometry nobody at the table asked for.
+ */
+export function sightSegmentsFor(
+  walls: readonly WallView[],
+  origin: ScenePoint,
+  options: { curtainReachPx: number | null },
+): Segment[] {
+  const reach = options.curtainReachPx;
+  const segments: Segment[] = [];
+  for (const wall of walls) {
+    if (wallBlocksSight(wall)) {
+      segments.push({ x1: wall.x1, y1: wall.y1, x2: wall.x2, y2: wall.y2 });
+      continue;
+    }
+    // Only windows get the curtain treatment. A door standing open is open.
+    if (reach === null || wall.kind !== 'window') continue;
+    if (distanceToWall(origin, wall) <= reach) continue;
+    segments.push({ x1: wall.x1, y1: wall.y1, x2: wall.x2, y2: wall.y2 });
+  }
+  return segments;
+}
+
+/**
+ * Is any of these points within `reachPx` of the wall (stage 18d)?
+ *
+ * „Arm's reach" for a door: the distance runs from a token's centre — the point
+ * the ruler, the range bands and the field of view all measure from — to the
+ * nearest point of the segment, so a door is reachable from anywhere along it
+ * rather than only opposite its middle.
+ */
+export function isWallWithinReach(
+  wall: Segment,
+  origins: readonly ScenePoint[],
+  reachPx: number,
+): boolean {
+  return origins.some((origin) => distanceToWall(origin, wall) <= reachPx);
 }
 
 /**

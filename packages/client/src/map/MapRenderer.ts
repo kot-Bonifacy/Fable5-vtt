@@ -89,10 +89,10 @@ export interface DrawSettings {
   fontSize: number;
 }
 
-/** The wall tool's current setting, pushed in from the toolbar (stage 18a). */
+/** The wall tool's current setting, pushed in from the toolbar (stages 18a, 18d). */
 export interface WallSettings {
   armed: boolean;
-  mode: 'draw' | 'erase';
+  mode: 'draw' | 'erase' | 'lock';
   kind: WallKind;
   snapGrid: boolean;
 }
@@ -144,6 +144,13 @@ const WALL_COLORS: Record<WallKind, number> = {
   door: 0xfbbf24,
   window: 0x38bdf8,
 };
+
+/**
+ * A bolted door (stage 18d). Violet rather than a shade of the door's amber: the
+ * GM has to be able to count the locked doors on a floor plan at a glance, and a
+ * brightness difference already means „open" on this layer.
+ */
+const WALL_LOCKED_COLOR = 0xc084fc;
 
 /** Extra pannable margin around the scene, as a fraction of its size. */
 const PAN_MARGIN = 0.5;
@@ -362,6 +369,8 @@ export class MapRenderer {
   onWallChain: ((points: ScenePoint[]) => void) | null = null;
   /** Click with the wall eraser armed; the caller picks the segment. */
   onWallErase: ((x: number, y: number) => void) | null = null;
+  /** Click with the bolt armed (stage 18d); the caller picks the door. */
+  onWallLock: ((x: number, y: number) => void) | null = null;
   /** Click on a door glyph — open or close it. */
   onDoorToggle: ((wallId: number) => void) | null = null;
   /** Click with the light tool armed: place a lamp, or retune the one here. */
@@ -779,9 +788,9 @@ export class MapRenderer {
         : this.draw.armed
           ? 'crosshair'
           : this.wall.armed
-            ? this.wall.mode === 'erase'
-              ? 'pointer'
-              : 'crosshair'
+            ? this.wall.mode === 'draw'
+              ? 'crosshair'
+              : 'pointer'
             : this.light.armed
               ? this.light.mode === 'erase'
                 ? 'pointer'
@@ -950,6 +959,12 @@ export class MapRenderer {
       if (this.wall.armed) {
         if (this.wall.mode === 'erase') {
           this.onWallErase?.(point.x, point.y);
+          return;
+        }
+        if (this.wall.mode === 'lock') {
+          // Like the eraser, this reports where the click landed and lets the
+          // caller pick the segment — it holds the wall list already.
+          this.onWallLock?.(point.x, point.y);
           return;
         }
         // Walls are traced click by click, not dragged: a floor plan is a
@@ -1353,9 +1368,13 @@ export class MapRenderer {
    * button off the viewport — a drag has to mean one thing at a time.
    */
   setWallMode(settings: WallSettings): void {
-    const wasArmed = this.wall.armed;
+    const wasDrawing = this.wall.armed && this.wall.mode === 'draw';
     this.wall = settings;
-    if (wasArmed && !settings.armed) this.cancelWallChain();
+    // Leaving the pencil drops the chain being traced, whether the tool was put
+    // away or merely switched to the eraser or the bolt. Half a wall left hanging
+    // while the next click means something else also leaves the map un-draggable,
+    // because tracing pauses the drag plugin.
+    if (wasDrawing && !(settings.armed && settings.mode === 'draw')) this.cancelWallChain();
     this.drawWallLayer();
     this.applyMapCursor();
   }
@@ -1423,7 +1442,7 @@ export class MapRenderer {
         .moveTo(wall.x1, wall.y1)
         .lineTo(wall.x2, wall.y2)
         .stroke({
-          color: WALL_COLORS[wall.kind],
+          color: wall.locked ? WALL_LOCKED_COLOR : WALL_COLORS[wall.kind],
           width: 4 * k,
           // An open door and a window both let sight through; drawing them
           // paler is what makes „what is blocking right now?" readable
@@ -1463,7 +1482,14 @@ export class MapRenderer {
     this.syncDoorGlyphs(k);
   }
 
-  /** Clickable door handles — the one wall object a player may ever touch. */
+  /**
+   * Clickable door handles — the one wall object a player may ever touch.
+   *
+   * The padlock badge (stage 18d) is driven by `locked` alone and needs no notion
+   * of who is looking: the server scrubs that flag out of every player's door
+   * list, so a `true` here can only have arrived on the GM's own socket. The data
+   * is the gate, which is one fewer thing to get wrong than a role check would be.
+   */
   private syncDoorGlyphs(k: number): void {
     const seen = new Set<number>();
     for (const door of this.lastDoors) {
@@ -1477,13 +1503,24 @@ export class MapRenderer {
         });
         glyph.anchor.set(0.5, 0.5);
         node.addChild(glyph);
+        const bolt = new Text({
+          text: '🔒',
+          style: { fontFamily: 'system-ui, sans-serif', fontSize: 13 },
+        });
+        bolt.anchor.set(0.5, 0.5);
+        // Off the corner of the door rather than over it: the glyph still has to
+        // read as a door, and the eye is meant to catch the lock second.
+        bolt.position.set(11, -11);
+        bolt.visible = false;
+        bolt.label = 'bolt';
+        node.addChild(bolt);
         node.eventMode = 'static';
         node.cursor = 'pointer';
         node.on('pointerdown', (event: FederatedPointerEvent) => {
           if (event.button !== 0) return;
-          // The wall eraser has to reach the segment under the glyph, so it
-          // keeps the click while it is armed.
-          if (this.wall.armed && this.wall.mode === 'erase') return;
+          // The eraser and the bolt both have to reach the segment under the
+          // glyph, so they keep the click while they are armed.
+          if (this.wall.armed && this.wall.mode !== 'draw') return;
           event.stopPropagation();
           this.onDoorToggle?.(door.id);
         });
@@ -1495,6 +1532,8 @@ export class MapRenderer {
       node.scale.set(k);
       // An open door is dimmed, so the state reads from across the map.
       node.alpha = door.open ? 0.45 : 1;
+      const bolt = node.getChildByLabel('bolt');
+      if (bolt) bolt.visible = door.locked;
     }
 
     for (const [id, node] of this.doorNodes) {

@@ -11,6 +11,7 @@ import type {
 } from '@vtt/shared';
 import {
   ROLE_GM,
+  WALL_REACH_M,
   blockingSegments,
   buildLightMask,
   computeVisionPolygon,
@@ -18,11 +19,13 @@ import {
   isPointLit,
   isPointVisible,
   isSegmentClear,
+  isWallWithinReach,
   lightMaskCellPx,
   lightReachPx,
   metresPerPixel,
   polygonsBounds,
   sceneBoundsSegments,
+  sightSegmentsFor,
   tokenCentre,
   wallMidpoint,
   type Segment,
@@ -37,7 +40,7 @@ import { fetchSceneLights, lightSourceOf, toLightScene, tokenLightOf } from './l
 import { campaignRoom, emitToCampaignUser } from './state.js';
 
 /**
- * Server-side field of view (stages 18a, 18b) — core VTT, no game system.
+ * Server-side field of view (stages 18a, 18b, 18d) — core VTT, no game system.
  *
  * This module is the reason walls and lights never leave the server. It answers
  * two questions and emits one event:
@@ -54,6 +57,11 @@ import { campaignRoom, emitToCampaignUser } from './state.js';
  * it. Light levels travel as a coarse grid clipped to the viewer's own field of
  * view rather than as light polygons, because a light polygon is clipped by
  * walls and therefore *is* a floor plan — see `shared/lights.ts`.
+ *
+ * Stage 18d moved the blocker list from the scene onto each sight source. A
+ * window is a wall to whoever stands away from it („net curtain") and glass to
+ * whoever walks up, so two tokens on one scene no longer share a geometry. The
+ * light kept the scene-wide list: a pane dims a beam, it never stops it.
  *
  * The GM is exempt from all of it: they see every token anyway, so they never
  * pay for a raycast or a light mask.
@@ -108,7 +116,25 @@ interface CarriedLight {
  */
 export interface SceneVisionContext {
   walls: WallView[];
+  /**
+   * What blocks sight regardless of who is looking, scene border included.
+   *
+   * Since stage 18d this is **not** the list the raycast is given: a window
+   * blocks the sight of anybody standing away from it, so each observer gets
+   * their own list (`sightSegmentsFor`, computed in `visionSourceOf`). This one
+   * remains the answer for everything that is not an observer — the **light**,
+   * which passes through glass at a cost, and the GM's own view.
+   */
   segments: Segment[];
+  /** The scene's own four edges, so a per-viewer list can be built cheaply. */
+  boundsSegments: Segment[];
+  /**
+   * How close a token has to stand to a window to see through it, in scene
+   * pixels; null on a dark scene, where the pane stops nothing (stage 18d).
+   */
+  curtainReachPx: number | null;
+  /** Arm's reach for a door, in scene pixels (stage 18d). */
+  reachPx: number;
   /** Stored lights; the GM's list, and the source of `staticSources`. */
   lights: LightView[];
   /** Lamps standing on the map, switched on, in scene pixels. */
@@ -147,12 +173,24 @@ export async function loadVisionContext(
   const carried = dark ? await loadCarriedLights(prisma, scene) : new Map();
   const measure = toMeasureScene(scene);
   const perPixel = metresPerPixel(measure);
+  // A scene with no usable scale (a hand-edited grid of zero) cannot measure
+  // metres, and the safe answer there is „no limit" rather than „nothing is in
+  // reach" — the latter would bolt every door on the map for reasons nobody
+  // could see.
+  const reachPx = perPixel > 0 ? WALL_REACH_M / perPixel : Number.POSITIVE_INFINITY;
+  const boundsSegments = sceneBoundsSegments(scene);
   return {
     walls,
     // The scene border is always part of the set: without it a ray fired
     // through an open door would run to infinity and the polygon would be
     // unbounded.
-    segments: [...blockingSegments(walls), ...sceneBoundsSegments(scene)],
+    segments: [...blockingSegments(walls), ...boundsSegments],
+    boundsSegments,
+    // The net curtain is deliberately off in the dark: at night a lit window is
+    // more visible from a distance, not less, and there the glass already takes
+    // its toll on the light coming through (stage 18c).
+    curtainReachPx: dark ? null : reachPx,
+    reachPx,
     windows: walls
       .filter((wall) => wall.kind === 'window')
       .map((wall) => ({ x1: wall.x1, y1: wall.y1, x2: wall.x2, y2: wall.y2 })),
@@ -269,25 +307,51 @@ async function fetchVisionTokens(
   });
 }
 
-/** One thing that sees: where from, and how far. */
+/**
+ * One thing that sees: where from, how far, and — since stage 18d — what stops
+ * it.
+ *
+ * The blockers belong to the source rather than to the scene because of the net
+ * curtain: a window is a wall to whoever stands away from it and nothing at all
+ * to whoever stands at it, so two tokens on the same scene genuinely have
+ * different geometry. Everything that answers „what can this viewer see?" reads
+ * the list from here — the polygon, and the door glyphs with it.
+ */
 interface SightSource {
   origin: ScenePoint;
   radiusPx: number | null;
+  /** Blockers for this observer alone, scene border included. */
+  segments: Segment[];
 }
 
-/** Turns one token into the origin and radius its sight is cast from. */
+/** Turns one token into the origin, radius and blockers its sight is cast from. */
 function visionSourceOf(
   token: Pick<Token, 'x' | 'y' | 'size' | 'visionRange'>,
   scene: Scene,
+  context: SceneVisionContext,
 ): SightSource {
   const measure = toMeasureScene(scene);
   // Sight is measured from the token's centre — the same point the ruler and
   // the range bands use, so „where a token is" means one thing across the VTT.
   const origin = tokenCentre(token, measure);
-  if (token.visionRange === null) return { origin, radiusPx: null };
+  const segments = sightBlockersFor(context, origin);
+  if (token.visionRange === null) return { origin, radiusPx: null, segments };
   const perPixel = metresPerPixel(measure);
-  if (perPixel <= 0) return { origin, radiusPx: null };
-  return { origin, radiusPx: token.visionRange / perPixel };
+  if (perPixel <= 0) return { origin, radiusPx: null, segments };
+  return { origin, radiusPx: token.visionRange / perPixel, segments };
+}
+
+/**
+ * The blockers one observer is subject to. Returns the scene-wide list itself —
+ * not a copy — whenever the curtain rule cannot change the answer, which is the
+ * common case: a dark scene, or a scene with no windows in it at all.
+ */
+function sightBlockersFor(context: SceneVisionContext, origin: ScenePoint): Segment[] {
+  if (context.curtainReachPx === null || context.windows.length === 0) return context.segments;
+  return [
+    ...sightSegmentsFor(context.walls, origin, { curtainReachPx: context.curtainReachPx }),
+    ...context.boundsSegments,
+  ];
 }
 
 /**
@@ -372,10 +436,12 @@ export async function viewerSightFor(
       liveOverride && liveOverride.tokenId === token.id
         ? { ...token, x: liveOverride.x, y: liveOverride.y }
         : token;
-    return visionSourceOf(positioned, scene);
+    return visionSourceOf(positioned, scene, context);
   });
   const polygons = sources.map((source) =>
-    computeVisionPolygon(source.origin, context.segments, source.radiusPx),
+    // Each source's own blockers, not the scene's: the windows this one is close
+    // enough to look through are open for it and shut for the others.
+    computeVisionPolygon(source.origin, source.segments, source.radiusPx),
   );
   const lighting: ViewerLighting | null = context.dark
     ? {
@@ -438,6 +504,12 @@ export function isPointObservable(
  * of a door across a pitch-black map: the door marker is drawn above the
  * darkness cover, so it read as a handle floating in the black. Anything a lamp
  * or a torch does not reach is now left out, the same as a token would be.
+ *
+ * Since stage 18d the line of sight is tested against each source's **own**
+ * blockers, so a door seen only through a window across the street is no longer
+ * on the list — the same net curtain the polygon obeys. Distance, on the other
+ * hand, is *not* a condition here: a door out of arm's reach is still a door
+ * you can see, and the click is what tells you it is too far away.
  */
 export function visibleDoorsFor(
   context: SceneVisionContext,
@@ -446,7 +518,7 @@ export function visibleDoorsFor(
 ): WallView[] {
   const doors = context.walls.filter((wall) => wall.kind === 'door' && wall.playerToggle);
   if (doors.length === 0 || sources.length === 0) return [];
-  return doors.filter((door) => {
+  const visible = doors.filter((door) => {
     const midpoint = wallMidpoint(door);
     // The GM's brush outranks the geometry here as it does everywhere else: a
     // door under a „hide" stroke is a door the players are not being shown.
@@ -457,25 +529,54 @@ export function visibleDoorsFor(
     if (lighting && !isPointLit(midpoint, lighting.sources, lighting.segments, lighting.windows)) {
       return false;
     }
-    // The door being tested is removed from the blockers: a closed door must
-    // not hide itself.
-    const others = context.segments.filter(
-      (segment) =>
-        !(
-          segment.x1 === door.x1 &&
-          segment.y1 === door.y1 &&
-          segment.x2 === door.x2 &&
-          segment.y2 === door.y2
-        ),
-    );
     return sources.some((source) => {
       if (source.radiusPx !== null) {
         const distance = Math.hypot(midpoint.x - source.origin.x, midpoint.y - source.origin.y);
         if (distance > source.radiusPx) return false;
       }
+      // The door being tested is removed from this source's blockers: a closed
+      // door must not hide itself.
+      const others = source.segments.filter(
+        (segment) =>
+          !(
+            segment.x1 === door.x1 &&
+            segment.y1 === door.y1 &&
+            segment.x2 === door.x2 &&
+            segment.y2 === door.y2
+          ),
+      );
       return isSegmentClear(source.origin, midpoint, others);
     });
   });
+  // Whether the bolt is thrown is the one thing about a door a player learns by
+  // pulling the handle rather than by looking, so it never leaves the server.
+  // Scrubbed here — the single function that answers „what is a player told
+  // about doors" — rather than at each emit site, where the next one added would
+  // forget.
+  return visible.map((door) => (door.locked ? { ...door, locked: false } : door));
+}
+
+/**
+ * Is this wall within arm's reach of any of the viewer's own tokens (stage 18d)?
+ *
+ * The condition that turns a door from a switch on a board into an object in the
+ * room. Measured from a token's centre to the nearest point of the segment, so a
+ * wide double door is reachable from anywhere along it.
+ *
+ * Deliberately **not** part of `isPointObservable`: reach decides what a hand can
+ * do, not what an eye can see, and a door across the room stays perfectly
+ * visible while it stays shut to you.
+ */
+export function isWallInReach(
+  context: SceneVisionContext,
+  sources: readonly SightSource[],
+  wall: Segment,
+): boolean {
+  return isWallWithinReach(
+    wall,
+    sources.map((source) => source.origin),
+    context.reachPx,
+  );
 }
 
 /**
@@ -489,7 +590,6 @@ export function visibleDoorsFor(
 export function visibleGlowsFor(
   lightSources: readonly LightSource[],
   sight: readonly SightSource[],
-  segments: readonly Segment[],
 ): LightGlow[] {
   if (sight.length === 0) return [];
   const glows: LightGlow[] = [];
@@ -504,7 +604,11 @@ export function visibleGlowsFor(
       // Beyond your own sight limit you cannot see the lamp itself — but its
       // light may still reach you, and the mask says so on its own.
       if (viewer.radiusPx !== null && distance > viewer.radiusPx) return false;
-      return isSegmentClear(viewer.origin, light.origin, segments);
+      // The viewer's own blockers, like everywhere else. Glows exist only on a
+      // dark scene, where the curtain rule is off, so today this is the same
+      // list for everyone — it stays per source so that a later change to the
+      // rule cannot leave this one function looking through walls.
+      return isSegmentClear(viewer.origin, light.origin, viewer.segments);
     });
     if (!seen) continue;
     glows.push({
@@ -569,7 +673,7 @@ export async function computeViewerVision(
     doors: visibleDoorsFor(ctx, sight.sources, sight.lighting),
     light: sight.lighting ? lightMaskFor(ctx, sight.polygons, sight.lighting) : null,
     glows: sight.lighting
-      ? visibleGlowsFor(lightSourcesOf(scene, ctx, user.id), sight.sources, ctx.segments)
+      ? visibleGlowsFor(lightSourcesOf(scene, ctx, user.id), sight.sources)
       : [],
   };
 }
@@ -612,11 +716,7 @@ export async function emitDragVision(
     polygons: sight.polygons,
     light,
     glows: sight.lighting
-      ? visibleGlowsFor(
-          lightSourcesOf(scene, context, userId, live),
-          sight.sources,
-          context.segments,
-        )
+      ? visibleGlowsFor(lightSourcesOf(scene, context, userId, live), sight.sources)
       : [],
   });
   // Walking is how a map gets discovered, so the memory grows mid-drag too —

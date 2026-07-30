@@ -40,6 +40,7 @@ import {
   IconFlicker,
   IconFog,
   IconLamp,
+  IconLock,
   IconRoomLight,
   IconLine,
   IconPencil,
@@ -500,6 +501,15 @@ export function MapTools() {
             onClick={() => setWallMode('erase')}
           >
             <IconEraser />
+          </button>
+          <button
+            type="button"
+            className={`map-tool${wallMode === 'lock' ? ' map-tool--active' : ''}`}
+            title="Zamek — kliknij drzwi, by je zamknąć na klucz (lub zdjąć zamek). Gracz dowie się o zamku tylko po próbie otwarcia"
+            aria-pressed={wallMode === 'lock'}
+            onClick={() => setWallMode('lock')}
+          >
+            <IconLock />
           </button>
 
           {wallMode === 'draw' && (

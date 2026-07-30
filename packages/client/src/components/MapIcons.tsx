@@ -300,12 +300,27 @@ export function IconDoor(props: IconProps) {
   );
 }
 
-/** A pane with a cross bar — the window kind (never blocks sight). */
+/**
+ * A pane with a cross bar — the window kind. Since stage 18d a window blocks the
+ * sight of anyone standing away from it („net curtain") and lets light through at
+ * a cost.
+ */
 export function IconWindow(props: IconProps) {
   return (
     <Svg {...props}>
       <path d="M4.5 5.5h15v13h-15z" />
       <path d="M12 5.5v13M4.5 12h15" opacity="0.6" />
+    </Svg>
+  );
+}
+
+/** A padlock — the bolt a GM throws on a door (stage 18d). */
+export function IconLock(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M5.5 10.5h13v10h-13z" />
+      <path d="M8.5 10.5V7.5a3.5 3.5 0 0 1 7 0v3" />
+      <circle cx="12" cy="15.5" r="1.2" fill="currentColor" />
     </Svg>
   );
 }

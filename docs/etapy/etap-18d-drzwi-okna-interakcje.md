@@ -11,31 +11,38 @@
 
 Drzwi i okna zachowują się jak przedmioty w przestrzeni, a nie jak przełączniki
 na planszy: trzeba do nich podejść, mogą być zamknięte na klucz, a przez okno
-widać niewiele, dopóki się do niego nie stanie.
+widać niewiele, dopóki się przy nim nie stanie.
 
 ## Zakres
 
-- [ ] **Zasięg ręki:** gracz może otworzyć/zamknąć drzwi tylko, gdy jego token
-      stoi w odległości nie większej niż ustalony próg (propozycja: 2 m — jedna
+- [x] **Zasięg ręki:** gracz może otworzyć/zamknąć drzwi tylko, gdy jego token
+  
+      stoi w odległości nie większej niż ustalony próg (**przyjęte: 2 m** — jedna
       kratka — mierzone od środka tokenu do najbliższego punktu segmentu). MG bez
       ograniczenia. Odrzucenie nie może zdradzać, że drzwi tam są
-- [ ] Drzwi poza zasięgiem widać (jeśli są w polu widzenia), ale klik ich nie
+- [x] Drzwi poza zasięgiem widać (jeśli są w polu widzenia), ale klik ich nie
+  
       rusza — z czytelnym komunikatem „za daleko"
-- [ ] **Zamek (MG):** drzwi mogą być zablokowane; zablokowane drzwi nie reagują
+- [x] **Zamek (MG):** drzwi mogą być zablokowane; zablokowane drzwi nie reagują
+  
       na klik gracza. MG blokuje i odblokowuje z paska narzędzi ścian
-- [ ] Stan zamka widoczny dla MG na warstwie ścian; gracz widzi tylko efekt
+- [x] Stan zamka widoczny dla MG na warstwie ścian; gracz widzi tylko efekt
+  
       („zamknięte na klucz") po próbie otwarcia
-- [ ] **Okna z firanką** (doprecyzowane przez MG 30.07, zastępuje pierwotny
+- [x] **Okna z firanką** (doprecyzowane przez MG 30.07, zastępuje pierwotny
+  
       pomysł „dwustanowego okna z klikaniem"): **na scenie, która NIE jest
       oznaczona jako „Ciemna scena"**, okno z dystansu w ogóle nie pokazuje
       wnętrza — trzeba do niego **podejść bardzo blisko** (ten sam próg co do
-      drzwi, propozycja 2 m), żeby widok się pojawił. Model fizyczny: firanka,
+      drzwi, 2 m), żeby widok się pojawił. Model fizyczny: firanka,
       brudna szyba, roleta — z ulicy okno to jasny prostokąt i tyle
-- [ ] Bez klikania: decyduje sama odległość, a wgląd gaśnie po odejściu
-- [ ] Reguła **symetryczna** — geometria nie wie, co jest „w środku", więc ktoś
+- [x] Bez klikania: decyduje sama odległość, a wgląd gaśnie po odejściu
+- [x] Reguła **symetryczna** — geometria nie wie, co jest „w środku", więc ktoś
+  
       w pokoju też musi podejść do okna, żeby obserwować ulicę. To zresztą
       dokładnie to, co robi firanka
-- [ ] **Świadomie nie dotyczy scen ciemnych:** nocą oświetlone okno jest z
+- [x] **Świadomie nie dotyczy scen ciemnych:** nocą oświetlone okno jest z
+  
       dystansu bardziej widoczne, nie mniej, a tam ograniczeniem jest już
       tłumienie światła przez szybę (`LIGHT_WINDOW_COST`, weszło w 18c)
 
@@ -55,13 +62,23 @@ widać niewiele, dopóki się do niego nie stanie.
 
 ## Kryteria ukończenia
 
-- [ ] Gracz stojący przez pół mapy od drzwi nie otwiera ich klikiem; ten sam
+> Kryteria poprawione 30.07 przy wejściu w etap: pierwotne trzy ostatnie
+> opisywały **wersję z klikaniem w okno** („`window:peek`", „pas 2 m"), którą
+> ustalenie MG z 30.07 zastąpiło firanką bez klikania. Zdarzenie `window:peek`
+> nie istnieje — o wglądzie decyduje sama odległość.
+
+- [x] Gracz stojący przez pół mapy od drzwi nie otwiera ich klikiem; ten sam
+  
       gracz po podejściu na kratkę otwiera je normalnie
-- [ ] Drzwi zablokowane przez MG nie ustępują graczowi, a MG otwiera je nadal
-- [ ] Token przy ścianie z oknem widzi przez nie tylko pas 2 m; po kliknięciu w
-      okno widzi całą przestrzeń za nim, a po odejściu znów tylko pas
-- [ ] Testy dymne: `door:toggle` z odległości → odmowa; z zamkiem → odmowa;
-      `window:peek` bez zbliżenia → odmowa
+- [x] Drzwi zablokowane przez MG nie ustępują graczowi, a MG otwiera je nadal
+- [x] Token dalej niż 2 m od okna **nie widzi przez nie nic** (okno jest dla
+  
+      niego ścianą); po podejściu na 2 m widzi całą przestrzeń za nim, a po
+      odejściu znów nic. Reguła symetryczna, wyłączona na scenie ciemnej
+- [x] Testy dymne: `door:toggle` z odległości → `DOOR_OUT_OF_REACH`; na
+  
+      zablokowanych drzwiach z zasięgu → `DOOR_LOCKED`; token za oknem nie trafia
+      do payloadu z dystansu, a trafia po podejściu
 
 ## Wskazówki techniczne
 

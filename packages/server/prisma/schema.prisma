@@ -434,6 +434,9 @@ model Wall {
   open    Boolean @default(false)
   /// Doors only: players may open and close this one themselves.
   playerToggle Boolean @default(false)
+  /// Doors only (stage 18d): bolted. The GM still works it; a player's click does
+  /// nothing and the flag never reaches their socket.
+  locked Boolean @default(false)
   /// Endpoints in scene (world) pixels.
   x1 Float
   y1 Float

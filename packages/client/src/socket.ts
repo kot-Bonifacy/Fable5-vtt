@@ -846,8 +846,10 @@ export const createWalls = (
   playerToggle: boolean,
 ) => emitSceneAck<WallView[]>('wall:create', { sceneId, points, kind, playerToggle });
 
-export const updateWall = (wallId: number, patch: { kind?: WallKind; playerToggle?: boolean }) =>
-  emitSceneAck<WallView>('wall:update', { wallId, patch });
+export const updateWall = (
+  wallId: number,
+  patch: { kind?: WallKind; playerToggle?: boolean; locked?: boolean },
+) => emitSceneAck<WallView>('wall:update', { wallId, patch });
 
 export const deleteWall = (wallId: number) => emitSceneAck('wall:delete', { wallId });
 

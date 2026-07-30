@@ -39,7 +39,18 @@ function seeFrom(
 }
 
 function wall(id: number, x1: number, y1: number, x2: number, y2: number): WallView {
-  return { id, sceneId: 's', kind: 'wall', open: false, playerToggle: false, x1, y1, x2, y2 };
+  return {
+    id,
+    sceneId: 's',
+    kind: 'wall',
+    open: false,
+    playerToggle: false,
+    locked: false,
+    x1,
+    y1,
+    x2,
+    y2,
+  };
 }
 
 describe('computeVisionPolygon', () => {

@@ -37,12 +37,14 @@ export const MAP_TOOLS = [
 export type MapTool = (typeof MAP_TOOLS)[number];
 
 /**
- * What the wall tool does with a click (stage 18a). Drawing and erasing are
- * modes of one tool rather than two tools, because they share everything else
- * — the snapping, the visible wall layer — and the GM alternates between them
- * constantly while tracing a floor plan.
+ * What the wall tool does with a click (stages 18a, 18d). Drawing, erasing and
+ * bolting are modes of one tool rather than three tools, because they share
+ * everything else — the snapping, the visible wall layer — and the GM alternates
+ * between them constantly while dressing a floor plan.
+ *
+ * `lock` clicks a door rather than a corner: it throws or draws its bolt.
  */
-export type WallMode = 'draw' | 'erase';
+export type WallMode = 'draw' | 'erase' | 'lock';
 
 /**
  * What the light tool does with a click (stage 18b). Modes of one tool rather
