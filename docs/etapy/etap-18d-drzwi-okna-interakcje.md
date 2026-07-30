@@ -25,11 +25,19 @@ widać niewiele, dopóki się do niego nie stanie.
       na klik gracza. MG blokuje i odblokowuje z paska narzędzi ścian
 - [ ] Stan zamka widoczny dla MG na warstwie ścian; gracz widzi tylko efekt
       („zamknięte na klucz") po próbie otwarcia
-- [ ] **Okna dwustanowe:** z dystansu okno daje wgląd tylko o jedną kratkę (2 m)
-      w głąb; po podejściu do okna (ten sam próg co drzwi) kliknięcie w nie
-      pozwala „zajrzeć" i daje pełny zasięg widzenia przez okno
-- [ ] Zaglądanie przez okno gaśnie, gdy token odejdzie od okna — bez ręcznego
-      zamykania
+- [ ] **Okna z firanką** (doprecyzowane przez MG 30.07, zastępuje pierwotny
+      pomysł „dwustanowego okna z klikaniem"): **na scenie, która NIE jest
+      oznaczona jako „Ciemna scena"**, okno z dystansu w ogóle nie pokazuje
+      wnętrza — trzeba do niego **podejść bardzo blisko** (ten sam próg co do
+      drzwi, propozycja 2 m), żeby widok się pojawił. Model fizyczny: firanka,
+      brudna szyba, roleta — z ulicy okno to jasny prostokąt i tyle
+- [ ] Bez klikania: decyduje sama odległość, a wgląd gaśnie po odejściu
+- [ ] Reguła **symetryczna** — geometria nie wie, co jest „w środku", więc ktoś
+      w pokoju też musi podejść do okna, żeby obserwować ulicę. To zresztą
+      dokładnie to, co robi firanka
+- [ ] **Świadomie nie dotyczy scen ciemnych:** nocą oświetlone okno jest z
+      dystansu bardziej widoczne, nie mniej, a tam ograniczeniem jest już
+      tłumienie światła przez szybę (`LIGHT_WINDOW_COST`, weszło w 18c)
 
 ## Co już weszło w 18c
 
@@ -59,8 +67,13 @@ widać niewiele, dopóki się do niego nie stanie.
 
 - Próg odległości mierz `distanceToWall` z `shared/walls.ts` (istnieje od 18a) —
   od środka tokenu, jak wszystko inne w tym projekcie
-- Okno „z dystansu" to nie nowy raycast: to segment blokujący z wyjątkiem —
-  najprościej policzyć wielokąt widzenia z oknem jako ścianą, a osobno dodać
-  wielokąt lokalny o promieniu jednej kratki liczony ze środka okna
+- Okno „z firanką" to **nie nowy raycast, tylko zbiór segmentów liczony per
+  źródło wzroku**: dla każdego tokenu dołóż do blokerów te okna, od których
+  stoi dalej niż próg. Dziś `SceneVisionContext.segments` jest wspólny dla
+  wszystkich widzów, więc trzeba przenieść listę do `SightSource` — skorzysta z
+  tego również `visibleDoorsFor`, które dziś patrzy przez odległe okna
+- **Nie ruszaj tego dla światła:** okna mają zostać przezroczyste dla lamp (z
+  karą `LIGHT_WINDOW_COST`), bo inaczej oświetlone wnętrze przestanie prześwitywać
+  na ulicę
 - Zaglądanie jest stanem efemerycznym (jak pomiar linijką), a nie kolumną w
   bazie: gaśnie, gdy token odejdzie, i nie musi przeżyć restartu
