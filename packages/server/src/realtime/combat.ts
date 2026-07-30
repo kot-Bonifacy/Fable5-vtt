@@ -15,6 +15,7 @@ import type {
   RollFormula,
   RollResult,
   SessionUser,
+  TurnPointer,
 } from '@vtt/shared';
 import {
   COMBAT_INITIATIVE_MAX,
@@ -30,7 +31,16 @@ import {
 } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
 import type { Combat, Combatant, Scene, Token } from '../generated/prisma/client.js';
-import { readSheetInitiative, type SheetRegistry } from '../sheets.js';
+import {
+  freshTurnState,
+  readSheetInitiative,
+  spendTurnState,
+  spendUsesAction,
+  turnBudgetOf,
+  type SheetRegistry,
+  type SheetTurnProblem,
+  type SheetTurnSpend,
+} from '../sheets.js';
 import { createMixedRng } from './dice-rng.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { campaignRoom, gmRoom, sceneRoom } from './state.js';
@@ -51,11 +61,11 @@ import { sanitizeGesture } from './chat.js';
  */
 
 /** A combatant row together with everything needed to render and roll it. */
-type CombatantRow = Combatant & {
+export type CombatantRow = Combatant & {
   token: Token & { character: { id: string; ownerId: string | null } | null };
 };
 
-type CombatRow = Combat & { combatants: CombatantRow[] };
+export type CombatRow = Combat & { combatants: CombatantRow[] };
 
 const COMBAT_INCLUDE = {
   combatants: {
@@ -66,11 +76,11 @@ const COMBAT_INCLUDE = {
 } as const;
 
 /** Who controls a participant: the token's owner, or the linked sheet's. */
-function combatantOwnerId(row: CombatantRow): string | null {
+export function combatantOwnerId(row: CombatantRow): string | null {
   return row.token.ownerId ?? row.token.character?.ownerId ?? null;
 }
 
-function toCombatantView(row: CombatantRow): CombatantView {
+export function toCombatantView(row: CombatantRow): CombatantView {
   const view: CombatantView = {
     id: row.id,
     tokenId: row.tokenId,
@@ -82,11 +92,16 @@ function toCombatantView(row: CombatantRow): CombatantView {
     ownerId: combatantOwnerId(row),
   };
   if (row.token.hidden) view.hidden = true;
+  // The budget is the system's projection (stage 14b) — the tracker only paints
+  // it. Absent until the participant's turn has actually begun.
+  const budget = turnBudgetOf(row.turnState);
+  if (budget) view.turn = row.actionBypass ? { ...budget, bypass: true } : budget;
+  if (row.held) view.held = { trigger: row.heldTrigger, initiative: row.heldInitiative };
   return view;
 }
 
 /** The GM's full view — sorted, with hidden participants included. */
-function toCombatView(row: CombatRow): CombatView {
+export function toCombatView(row: CombatRow): CombatView {
   return {
     id: row.id,
     sceneId: row.sceneId,
@@ -96,11 +111,14 @@ function toCombatView(row: CombatRow): CombatView {
   };
 }
 
-async function loadCombat(prisma: PrismaClient, sceneId: string): Promise<CombatRow | null> {
+export async function loadCombat(
+  prisma: PrismaClient,
+  sceneId: string,
+): Promise<CombatRow | null> {
   return prisma.combat.findUnique({ where: { sceneId }, include: COMBAT_INCLUDE });
 }
 
-async function loadCombatById(prisma: PrismaClient, combatId: string): Promise<CombatRow> {
+export async function loadCombatById(prisma: PrismaClient, combatId: string): Promise<CombatRow> {
   const combat = await prisma.combat.findUnique({
     where: { id: combatId },
     include: COMBAT_INCLUDE,
@@ -165,7 +183,7 @@ export async function emitCombatOfScene(
   emitCombat(deps, campaignId, scene, row ? toCombatView(row) : null);
 }
 
-function requireCampaignId(socketData: { campaign: { id: string } | null }): string {
+export function requireCampaignId(socketData: { campaign: { id: string } | null }): string {
   if (!socketData.campaign) throw new RealtimeError('NO_CAMPAIGN');
   return socketData.campaign.id;
 }
@@ -178,7 +196,7 @@ function requireIdList(value: unknown): string[] {
 }
 
 /** Loads a combat plus its scene, rejecting anything outside the campaign. */
-async function requireCombatant(
+export async function requireCombatant(
   prisma: PrismaClient,
   campaignId: string,
   combatantId: unknown,
@@ -290,7 +308,7 @@ async function rollFor(deps: RealtimeDeps, targets: CombatantRow[]): Promise<voi
  * between genuinely tied participants survives, because the previous position
  * is the last criterion.
  */
-async function renumberOrder(prisma: PrismaClient, combat: CombatRow): Promise<void> {
+export async function renumberOrder(prisma: PrismaClient, combat: CombatRow): Promise<void> {
   const ordered = resolveInitiativeOrder(combat.combatants.map(toCombatantView));
   await Promise.all(
     ordered.map((combatant, index) =>
@@ -299,7 +317,109 @@ async function renumberOrder(prisma: PrismaClient, combat: CombatRow): Promise<v
   );
 }
 
-async function emitReloaded(
+/**
+ * Moves the turn pointer and does the turn's housekeeping (stage 14b).
+ *
+ * `startTurn` is what makes „a turn began" real: the participant who is up
+ * gets a fresh budget from the game system, so their Move Action and Action
+ * are back — and everybody's one-shot pass from the GM expires, because
+ * „przepuść" means *this* action, not a standing permission.
+ *
+ * A new round also wipes every „Wstrzymanie Akcji" nobody fired: RAW keeps a
+ * held Action inside the Round it was declared in, and a declaration that
+ * outlived its round would let a player act twice in the next one.
+ *
+ * Stepping *back* deliberately leaves budgets alone — the GM is correcting the
+ * pointer, not replaying the turn. „Zwróć turę" is the button for that.
+ */
+async function applyTurnPointer(
+  prisma: PrismaClient,
+  combat: CombatRow,
+  pointer: TurnPointer,
+  startTurn: boolean,
+): Promise<void> {
+  await prisma.combat.update({
+    where: { id: combat.id },
+    data: { round: pointer.round, activeCombatantId: pointer.activeCombatantId },
+  });
+  if (pointer.round !== combat.round) {
+    await prisma.combatant.updateMany({
+      where: { combatId: combat.id, held: true },
+      data: { held: false, heldTrigger: null, heldInitiative: null },
+    });
+  }
+  if (!startTurn) return;
+  await prisma.combatant.updateMany({
+    where: { combatId: combat.id, actionBypass: true },
+    data: { actionBypass: false },
+  });
+  if (pointer.activeCombatantId === null) return;
+  await prisma.combatant.update({
+    where: { id: pointer.activeCombatantId },
+    // A participant who held an Action into somebody else's turn keeps it: the
+    // reservation is cleared when it fires, not when their own turn comes back.
+    data: { turnState: freshTurnState(), held: false, heldTrigger: null, heldInitiative: null },
+  });
+}
+
+/**
+ * The held Action that is due before the turn moves on (stage 14b).
+ *
+ * „Wstrzymanie Akcji" may name a value in the initiative queue instead of a
+ * trigger, and the count descends through that value on its way to the next
+ * participant — so the wait ends by itself, without the GM remembering. A hold
+ * declared with a *described* trigger is never picked up here: judging whether
+ * „gdy ktoś wyjdzie zza rogu" happened is the GM's job, and the tracker offers
+ * them a button instead.
+ */
+export function dueHold(combat: CombatRow, pointer: TurnPointer): CombatantRow | null {
+  const waiting = combat.combatants.filter(
+    (row) => row.held && row.heldInitiative !== null && row.id !== pointer.activeCombatantId,
+  );
+  if (waiting.length === 0) return null;
+  // Wrapping into the next round is the last chance: an unfired declaration
+  // expires with the round, so anything still waiting is due now.
+  const wrapping = pointer.round !== combat.round;
+  const nextInitiative =
+    combat.combatants.find((row) => row.id === pointer.activeCombatantId)?.initiative ?? null;
+  const due = waiting.filter(
+    (row) => wrapping || nextInitiative === null || row.heldInitiative! > nextInitiative,
+  );
+  if (due.length === 0) return null;
+  return due.reduce((best, row) => (row.heldInitiative! > best.heldInitiative! ? row : best));
+}
+
+/**
+ * Hands the turn to a participant whose held Action just came up. Their budget
+ * is deliberately *not* refreshed — the reserved Action is the one they saved
+ * during their own turn, and handing them a fresh turn would be a second one.
+ */
+export async function fireHeldAction(
+  prisma: PrismaClient,
+  combat: CombatRow,
+  row: CombatantRow,
+): Promise<void> {
+  await prisma.combatant.update({
+    where: { id: row.id },
+    data: {
+      held: false,
+      heldTrigger: null,
+      heldInitiative: null,
+      // „Przestawia uczestnika na zadeklarowaną wartość kolejki" — from here on
+      // they act at the value they waited for, this round and the next.
+      ...(row.heldInitiative !== null ? { initiative: row.heldInitiative } : {}),
+    },
+  });
+  await prisma.combat.update({
+    where: { id: combat.id },
+    data: { activeCombatantId: row.id },
+  });
+  if (row.heldInitiative !== null) {
+    await renumberOrder(prisma, await loadCombatById(prisma, combat.id));
+  }
+}
+
+export async function emitReloaded(
   deps: RealtimeDeps,
   campaignId: string,
   scene: Scene,
@@ -309,6 +429,116 @@ async function emitReloaded(
   const view = toCombatView(row);
   emitCombat(deps, campaignId, scene, view);
   return view;
+}
+
+/* ------------------------------------------------------------------ *
+ * Turn budget (stage 14b)
+ * ------------------------------------------------------------------ */
+
+/** What came of trying to spend part of a turn. */
+export type TurnSpendOutcome =
+  /** No fight is running here, or this token is not in it — nothing to enforce. */
+  | { kind: 'not-in-combat' }
+  | {
+      kind: 'spent';
+      combatant: CombatantRow;
+      /** The GM went past the budget; counted, never blocked. */
+      forced: boolean;
+      /** A one-shot „przepuść" was burned to make this legal. */
+      bypassed: boolean;
+    }
+  | {
+      kind: 'refused';
+      combatant: CombatantRow;
+      error: SheetTurnProblem | 'NOT_YOUR_TURN';
+    };
+
+/** Refusal codes this module can produce — the client maps them to Polish. */
+export type TurnSpendProblem = SheetTurnProblem | 'NOT_YOUR_TURN';
+
+/**
+ * Books one spend against a participant's turn.
+ *
+ * Three rules, in this order:
+ *
+ *  1. **Outside your own turn you do not act.** The exceptions are a declared
+ *     „Wstrzymanie Akcji" (the whole point of which is acting later) and a
+ *     one-shot pass from the GM.
+ *  2. **The system judges the budget.** Whether two attacks fit into one Action
+ *     is CP RED's business, not the tracker's.
+ *  3. **The GM is never blocked.** Their own NPCs go past the budget with the
+ *     overspend counted, so the tracker says so out loud (stage decision).
+ */
+async function applySpend(
+  deps: RealtimeDeps,
+  combat: CombatRow,
+  combatant: CombatantRow,
+  spend: SheetTurnSpend,
+  user: SessionUser,
+): Promise<TurnSpendOutcome> {
+  const isGm = user.role === ROLE_GM;
+  const bypassed = combatant.actionBypass;
+  if (!isGm && !bypassed) {
+    const mine = combat.activeCombatantId === combatant.id;
+    if (!mine && !combatant.held) return { kind: 'refused', combatant, error: 'NOT_YOUR_TURN' };
+  }
+
+  const result = spendTurnState(combatant.turnState, spend, isGm || bypassed);
+  if (!result.ok) return { kind: 'refused', combatant, error: result.error };
+
+  // Firing a reserved Action ends the reservation — a hold is spent once.
+  const releasesHold = combatant.held && spendUsesAction(spend);
+  await deps.ctx.prisma.combatant.update({
+    where: { id: combatant.id },
+    data: {
+      turnState: result.state,
+      ...(bypassed ? { actionBypass: false } : {}),
+      ...(releasesHold ? { held: false, heldTrigger: null, heldInitiative: null } : {}),
+    },
+  });
+  return { kind: 'spent', combatant, forced: result.forced, bypassed };
+}
+
+/** The participant a token is playing in the fight running on its scene. */
+export async function findCombatantForToken(
+  prisma: PrismaClient,
+  sceneId: string,
+  tokenId: string,
+): Promise<{ combat: CombatRow; combatant: CombatantRow } | null> {
+  const combat = await loadCombat(prisma, sceneId);
+  // Before round 1 the GM is still setting the fight up: there is no turn to
+  // be outside of, so nothing is enforced yet.
+  if (!combat || combat.round < 1) return null;
+  const combatant = combat.combatants.find((row) => row.tokenId === tokenId);
+  return combatant ? { combat, combatant } : null;
+}
+
+/**
+ * Spends part of the turn of whoever is playing this token. Used by the paths
+ * that already existed before the budget did (attacks, reloading): a token that
+ * is not in the fight simply passes through untouched.
+ */
+export async function spendTurnForToken(
+  deps: RealtimeDeps,
+  scene: Scene,
+  tokenId: string,
+  spend: SheetTurnSpend,
+  user: SessionUser,
+): Promise<TurnSpendOutcome> {
+  const found = await findCombatantForToken(deps.ctx.prisma, scene.id, tokenId);
+  if (!found) return { kind: 'not-in-combat' };
+  return applySpend(deps, found.combat, found.combatant, spend, user);
+}
+
+/** The same, for a participant the caller already resolved. */
+export async function spendTurnForCombatant(
+  deps: RealtimeDeps,
+  combat: CombatRow,
+  combatant: CombatantRow,
+  spend: SheetTurnSpend,
+  user: SessionUser,
+): Promise<TurnSpendOutcome> {
+  return applySpend(deps, combat, combatant, spend, user);
 }
 
 export const combatStartEvent = defineEvent<CombatStartPayload, CombatView>({
@@ -382,10 +612,7 @@ export const combatRemoveEvent = defineEvent<CombatantIdPayload, CombatView>({
       const pointer = nextTurn(toCombatView(combat));
       const activeCombatantId =
         pointer.activeCombatantId === combatant.id ? null : pointer.activeCombatantId;
-      await deps.ctx.prisma.combat.update({
-        where: { id: combat.id },
-        data: { round: pointer.round, activeCombatantId },
-      });
+      await applyTurnPointer(deps.ctx.prisma, combat, { ...pointer, activeCombatantId }, true);
     }
     await deps.ctx.prisma.combatant.delete({ where: { id: combatant.id } });
     return emitReloaded(deps, campaignId, scene, combat.id);
@@ -563,10 +790,11 @@ export const combatNextEvent = defineEvent<undefined, CombatView>({
     }
 
     const pointer = nextTurn(toCombatView(combat));
-    await deps.ctx.prisma.combat.update({
-      where: { id: combat.id },
-      data: { round: pointer.round, activeCombatantId: pointer.activeCombatantId },
-    });
+    // A declaration tied to a value in the queue fires on the way past it,
+    // before anybody else gets their turn.
+    const held = dueHold(combat, pointer);
+    if (held) await fireHeldAction(deps.ctx.prisma, combat, held);
+    else await applyTurnPointer(deps.ctx.prisma, combat, pointer, true);
     return emitReloaded(deps, campaignId, scene, combat.id);
   },
 });
@@ -582,10 +810,7 @@ export const combatPreviousEvent = defineEvent<undefined, CombatView>({
     if (!combat) throw new RealtimeError('COMBAT_NOT_FOUND');
 
     const pointer = previousTurn(toCombatView(combat));
-    await deps.ctx.prisma.combat.update({
-      where: { id: combat.id },
-      data: { round: pointer.round, activeCombatantId: pointer.activeCombatantId },
-    });
+    await applyTurnPointer(deps.ctx.prisma, combat, pointer, false);
     return emitReloaded(deps, campaignId, scene, combat.id);
   },
 });

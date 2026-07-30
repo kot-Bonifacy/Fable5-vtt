@@ -2,6 +2,7 @@ import type {
   ChatHistoryPage,
   ChatMessageBroadcast,
   ChatMessageView,
+  CombatActionLogEntry,
   DamageLogEntry,
   SessionUser,
 } from '@vtt/shared';
@@ -91,6 +92,8 @@ export function toChatMessageView(message: StoredMessage): ChatMessageView {
     view.roll = JSON.parse(message.payload) as RollResult;
   } else if (message.kind === 'damage' && message.payload) {
     view.damage = JSON.parse(message.payload) as DamageLogEntry;
+  } else if ((message.kind === 'action' || message.kind === 'gmaction') && message.payload) {
+    view.action = JSON.parse(message.payload) as CombatActionLogEntry;
   } else if (message.botId && message.payload) {
     // NPC line with a voice: audio plus the rhythm its text is written out
     // with. Stored so „odtwórz ponownie" still works after a reload.
@@ -129,7 +132,7 @@ export function visibleTo(user: SessionUser) {
   if (user.role === ROLE_GM) {
     return {
       OR: [
-        { kind: { in: ['say', 'roll', 'gmroll', 'damage'] } },
+        { kind: { in: ['say', 'roll', 'gmroll', 'damage', 'action', 'gmaction'] } },
         { authorId: user.id },
         { recipientId: user.id },
         { botId: { not: null } },
@@ -137,9 +140,11 @@ export function visibleTo(user: SessionUser) {
       ],
     };
   }
+  // `gmaction` (a refused action) is deliberately absent: a player sees only
+  // their own, through the `authorId` clause below.
   return {
     OR: [
-      { kind: { in: ['say', 'roll', 'damage'] } },
+      { kind: { in: ['say', 'roll', 'damage', 'action'] } },
       { authorId: user.id },
       { recipientId: user.id },
     ],
@@ -225,6 +230,7 @@ export async function deliverChatMessageTo(
   message: ChatMessageView,
   userIds: (string | null | undefined)[],
   includeGm = false,
+  event: 'chat:message' | 'chat:update' = 'chat:message',
 ): Promise<void> {
   const targets = new Set(userIds.filter((id): id is string => typeof id === 'string'));
   const payload: ChatMessageBroadcast = { message };
@@ -232,7 +238,7 @@ export async function deliverChatMessageTo(
   for (const socket of sockets) {
     const socketUser = (socket.data as { user: SessionUser }).user;
     if (targets.has(socketUser.id) || (includeGm && socketUser.role === ROLE_GM)) {
-      socket.emit('chat:message', payload);
+      socket.emit(event, payload);
     }
   }
 }

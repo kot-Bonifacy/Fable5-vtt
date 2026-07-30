@@ -15,6 +15,48 @@ export const MAX_COMBATANTS = 40;
 export const COMBAT_INITIATIVE_MIN = -20;
 export const COMBAT_INITIATIVE_MAX = 99;
 
+/**
+ * One consumable of a turn, as the tracker paints it (stage 14b).
+ *
+ * The core knows only „this participant has `used` of `max` of something the
+ * system calls `label`". What the something *is* — a Move Action, an Attack
+ * Action, the two attacks an LA 2 weapon fits into one — is entirely the game
+ * system's business, exactly like `tieBreak` above is REF only in CP RED.
+ */
+export interface TurnResourceView {
+  id: string;
+  label: string;
+  used: number;
+  max: number;
+}
+
+/** A participant's turn budget, filled in by the active game system. */
+export interface TurnBudgetView {
+  resources: TurnResourceView[];
+  /** What the Action went to, e.g. „Atak: Ciężki pistolet + Maczeta". */
+  note?: string;
+  /**
+   * How far past the budget this participant has gone. Only the GM's own NPCs
+   * can get here — a player's action is refused instead of counted.
+   */
+  overspent?: number;
+  /** A one-shot pass from the GM is waiting to be used („przepuść"). */
+  bypass?: boolean;
+}
+
+/**
+ * „Wstrzymanie Akcji" — the Action is reserved rather than spent, so the
+ * participant may still act after their turn ends (s. 168). The declaration is
+ * core tracker data: it is a statement about the initiative queue, and firing
+ * it moves the participant inside that queue.
+ */
+export interface HeldActionView {
+  /** What will make the held Action happen; null when a queue value was named. */
+  trigger: string | null;
+  /** Initiative value the participant will drop to; null when a trigger was described. */
+  initiative: number | null;
+}
+
 /** One participant of a combat, as delivered to a client. */
 export interface CombatantView {
   id: string;
@@ -35,6 +77,14 @@ export interface CombatantView {
   ownerId: string | null;
   /** GM-only: this participant is hidden from players. Never sent to them. */
   hidden?: boolean;
+  /**
+   * What is left of this participant's turn (stage 14b); absent before the
+   * fight starts. Safe to send to everyone who can see the row at all —
+   * a hidden participant is dropped whole, budget included.
+   */
+  turn?: TurnBudgetView;
+  /** Declared „Wstrzymanie Akcji", until it fires or the round ends. */
+  held?: HeldActionView;
 }
 
 /** A combat as one viewer sees it (players never receive hidden participants). */
@@ -218,3 +268,50 @@ export interface CombatRerollTiePayload {
 export interface CombatOrderPayload {
   combatantIds: string[];
 }
+
+/**
+ * A participant spends part of their turn on a catalogued action (stage 14b).
+ *
+ * The action id belongs to the game system's catalogue — the core only carries
+ * it. `combatantId` is optional for a player: the server resolves it to the
+ * participant they control, so nobody can spend somebody else's budget.
+ */
+export interface CombatActionPayload {
+  combatantId?: string;
+  actionId: string;
+  /** Free-text detail shown on the chat line („wyważam drzwi"). */
+  note?: string;
+}
+
+/** GM lets one refused action through — a single-use pass („przepuść"). */
+export interface CombatAllowPayload {
+  combatantId: string;
+  /** Chat card the refusal landed on, so it can be marked as passed. */
+  messageId?: number;
+}
+
+/**
+ * Declaring „Wstrzymanie Akcji": either a described trigger or a value in the
+ * initiative queue (RAW allows both), plus the intended target of the action.
+ */
+export interface CombatHoldPayload {
+  combatantId?: string;
+  trigger?: string;
+  initiative?: number | null;
+}
+
+/** The held Action fires: the participant drops to the declared queue value. */
+export interface CombatHoldReleasePayload {
+  combatantId: string;
+}
+
+/** GM hands a participant their whole turn back (the escape hatch). */
+export interface CombatResetTurnPayload {
+  combatantId: string;
+}
+
+/** Longest trigger description the tracker will store. */
+export const COMBAT_HOLD_TRIGGER_MAX_LENGTH = 120;
+
+/** Longest note a chat line about an action may carry. */
+export const COMBAT_ACTION_NOTE_MAX_LENGTH = 120;

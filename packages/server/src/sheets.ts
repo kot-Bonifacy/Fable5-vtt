@@ -3,22 +3,33 @@ import type {
   CpredCharacterData,
   CpredHitLocation,
   CpredRegistry,
+  CpredTurnProblem,
+  CpredTurnSpend,
   DamageLogEntry,
   DiceRng,
   TokenHp,
+  TurnBudgetView,
 } from '@vtt/shared';
 import {
+  CPRED_ACTIONS,
   CPRED_HIT_LOCATIONS,
   CPRED_STAT_LABELS,
+  CPRED_TURN_PROBLEM_MESSAGES,
   applyWoundStatuses,
+  cpredAction,
+  cpredTurnBudget,
   drawCriticalInjury,
   effectiveArmor,
+  forceCpredTurn,
+  freshCpredTurn,
   hitLocationLabel,
   hpMax,
   isCriticalInjuryEntry,
   mergeCharacterData,
   parseCharacterData,
+  readCpredTurn,
   resolveCpredDamage,
+  spendCpredTurn,
   toCriticalInjuryRow,
   woundTransitionLabel,
 } from '@vtt/shared';
@@ -70,6 +81,106 @@ export function readSheetInitiative(
     tieBreak: ref,
     label: `${CPRED_STAT_LABELS.ref.name} (${CPRED_STAT_LABELS.ref.abbr})`,
   };
+}
+
+/* ------------------------------------------------------------------ *
+ * Turn budget (stage 14b). The tracker knows „a turn started, give me a
+ * fresh budget" and „somebody wants to spend this — is that legal?".
+ * What a Move Action is, how many attacks an LA 2 weapon fits into one
+ * Action and why aiming eats the whole thing all stay behind this seam.
+ * ------------------------------------------------------------------ */
+
+/** The system's turn state, serialized for the `Combatant.turnState` column. */
+export type SheetTurnState = string;
+
+/** What a participant is trying to spend — the system names the vocabulary. */
+export type SheetTurnSpend = CpredTurnSpend;
+
+/** Machine-readable refusal, re-emitted as a realtime error code. */
+export type SheetTurnProblem = CpredTurnProblem;
+
+/** One entry of the system's action catalogue, as the UI lists it. */
+export interface SheetActionEntry {
+  id: string;
+  name: string;
+  cost: 'action' | 'move' | 'free';
+  hint: string;
+  /**
+   * Resolved by a path of its own (attacks, reloading, stabilizing, holding),
+   * so the generic „wykonaj akcję" button must not offer it.
+   */
+  handledElsewhere: boolean;
+}
+
+/** Actions the „Walka" tab may offer as plain buttons. */
+export function sheetActionCatalogue(): SheetActionEntry[] {
+  return CPRED_ACTIONS.map((action) => ({
+    id: action.id,
+    name: action.name,
+    cost: action.cost,
+    hint: action.hint,
+    handledElsewhere: action.handledElsewhere === true,
+  }));
+}
+
+/** Polish name of a catalogued action; the id itself when it is unknown. */
+export function sheetActionName(actionId: string): string {
+  return cpredAction(actionId)?.name ?? actionId;
+}
+
+/** True when the action reserves the Action rather than spending it. */
+export function sheetActionReserves(actionId: string): boolean {
+  return cpredAction(actionId)?.reserves === true;
+}
+
+/**
+ * Does this spend claim the turn's Action? The tracker needs the answer to
+ * know when a reserved („wstrzymana") Action has finally been used up.
+ */
+export function spendUsesAction(spend: SheetTurnSpend): boolean {
+  if (spend.kind === 'move') return false;
+  if (spend.kind === 'attack') return true;
+  return cpredAction(spend.actionId)?.cost === 'action';
+}
+
+/** A budget with everything still unspent — the start of a participant's turn. */
+export function freshTurnState(): SheetTurnState {
+  return JSON.stringify(freshCpredTurn());
+}
+
+/**
+ * Judges one spend. `force` is the GM's freedom: their own NPC is never
+ * blocked, but the overspend is counted and shows in the tracker.
+ */
+export function spendTurnState(
+  stored: string | null,
+  spend: SheetTurnSpend,
+  force: boolean,
+): { ok: true; state: SheetTurnState; forced: boolean } | { ok: false; error: SheetTurnProblem } {
+  const current = readCpredTurn(stored ?? undefined);
+  const attempt = spendCpredTurn(current, spend);
+  if (attempt.ok) return { ok: true, state: JSON.stringify(attempt.state), forced: false };
+  if (!force) return { ok: false, error: attempt.error };
+  return { ok: true, state: JSON.stringify(forceCpredTurn(current, spend)), forced: true };
+}
+
+/** Human-readable reason a spend was refused. */
+export function turnProblemMessage(problem: SheetTurnProblem): string {
+  return CPRED_TURN_PROBLEM_MESSAGES[problem];
+}
+
+/** The tracker's projection of a stored budget (`null` before the turn starts). */
+export function turnBudgetOf(stored: string | null): TurnBudgetView | null {
+  if (stored === null) return null;
+  return cpredTurnBudget(readCpredTurn(stored));
+}
+
+/**
+ * Is the turn's Action still unspent? „Wstrzymanie Akcji" reserves it rather
+ * than spending it, so the tracker has to ask before letting anyone hold.
+ */
+export function turnActionAvailable(stored: string | null): boolean {
+  return readCpredTurn(stored ?? undefined).action === null;
 }
 
 /** Reads the sheet's HP pair: current from the data, max derived from stats. */

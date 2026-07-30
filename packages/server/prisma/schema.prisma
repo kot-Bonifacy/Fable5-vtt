@@ -531,6 +531,22 @@ model Combatant {
   tieBreak   Int?
   /// Manual position inside a tie group — the GM's drag has the final say.
   order      Int    @default(0)
+  /// What is left of this participant's turn (stage 14b), as the game system
+  /// serialized it. Opaque to the tracker: the core only asks the system for a
+  /// fresh one at the start of a turn and hands it back for judging spends.
+  /// Null = the turn has not started yet.
+  turnState  String?
+  /// „Wstrzymanie Akcji": what will make the reserved Action happen. Null when
+  /// nothing is held, or when a queue value was declared instead of a trigger.
+  heldTrigger    String?
+  /// Initiative value the held Action was declared for; null when the player
+  /// described a trigger instead. Both null with `heldAt` set = no hold.
+  heldInitiative Int?
+  /// Set while a hold is declared — the pair above may both be null (a trigger
+  /// of "wtedy, gdy zobaczę" typed as empty text still reserves the Action).
+  held           Boolean @default(false)
+  /// One-shot pass from the GM: the next refused spend goes through anyway.
+  actionBypass   Boolean @default(false)
 
   createdAt DateTime @default(now())
 

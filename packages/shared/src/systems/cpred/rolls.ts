@@ -7,8 +7,17 @@
  * that went into it.
  */
 
-import { parseRollNotation, type RollBreakdownEntry, type RollFormula, type RollTerm } from '../../dice.js';
-import { injuryDeathSavePenalty, type CpredCharacterData, type CpredRegistry } from './character.js';
+import {
+  parseRollNotation,
+  type RollBreakdownEntry,
+  type RollFormula,
+  type RollTerm,
+} from '../../dice.js';
+import {
+  injuryDeathSavePenalty,
+  type CpredCharacterData,
+  type CpredRegistry,
+} from './character.js';
 import { deathSaveTarget, hpMax } from './derived.js';
 import { CPRED_HIT_LOCATION_LABELS, type CpredHitLocation } from './locations.js';
 import { CPRED_STAT_LABELS, isCpredStatId, type CpredStatId, type CpredStats } from './stats.js';
@@ -73,9 +82,26 @@ export const CPRED_SITUATIONAL_MODIFIER_LIMIT = 20;
 
 /**
  * What can be rolled from a sheet: a Skill or Stat Check (stage 08), a weapon's
- * damage or a Death Save (stage 15). Only Checks obey the exploding-10 rule.
+ * damage or a Death Save (stage 15), or Stabilizing somebody (stage 14b).
+ * Only Checks obey the exploding-10 rule — and Stabilizing is one.
  */
-export type CpredRollKind = 'skill' | 'stat' | 'damage' | 'deathSave';
+export type CpredRollKind = 'skill' | 'stat' | 'damage' | 'deathSave' | 'stabilize';
+
+/** Skills the rules name for Stabilizing (s. 222). Either one may be rolled. */
+export const CPRED_FIRST_AID_SKILL_ID = 'first-aid';
+export const CPRED_PARAMEDIC_SKILL_ID = 'paramedic';
+
+/**
+ * „PT ustabilizowania celu (w tym siebie) zależy od aktualnego progu ran"
+ * (s. 222). An unhurt target has nothing to stabilize, so it shares the easiest
+ * rung rather than getting a rule of its own.
+ */
+export const CPRED_STABILIZE_DV: Record<CpredWoundState, number> = {
+  healthy: 10,
+  light: 10,
+  serious: 13,
+  mortal: 15,
+};
 
 /** What the client asks the server to roll from a sheet. */
 export interface CpredRollRequest {
@@ -105,6 +131,16 @@ export interface CpredRollRequest {
   damageMultiplier?: number;
   /** Server-filled: token the damage is aimed at. */
   targetTokenId?: string;
+  /**
+   * Required for `kind: 'stabilize'` — the token being stabilized, which RAW
+   * allows to be your own. Unlike the damage fields above this one *is* the
+   * client's choice; the server only checks it may be reached and seen.
+   */
+  stabilizeTokenId?: string;
+  /** Server-filled: DV read off the target's wound threshold (10/13/15). */
+  stabilizeDv?: number;
+  /** Server-filled: whose name the card names. */
+  stabilizeTargetName?: string;
 }
 
 /** Highest damage multiplier any weapon can reach — guards the stored value. */
@@ -130,6 +166,17 @@ export interface CpredDamagePlan {
   multiplier?: number;
   /** Token the damage is aimed at, preselected by „Zastosuj" (stage 16). */
   targetTokenId?: string;
+}
+
+/** What „Ustabilizowanie" needs to judge itself and explain the verdict. */
+export interface CpredStabilizePlan {
+  /** Beat this to stabilize (RAW: the roll has to be strictly higher). */
+  dv: number;
+  targetName: string;
+  /** Token whose sheet the success is applied to. */
+  targetTokenId: string;
+  /** Which of the two medical skills was rolled. */
+  skillName: string;
 }
 
 /**
@@ -165,6 +212,8 @@ export interface CpredRollPlan {
   damage?: CpredDamagePlan;
   /** Present for `kind: 'deathSave'`. */
   deathSave?: CpredDeathSavePlan;
+  /** Present for `kind: 'stabilize'`. */
+  stabilize?: CpredStabilizePlan;
 }
 
 function isInteger(value: unknown): value is number {
@@ -204,6 +253,9 @@ export function planCpredRoll(
     if (luckSpent > 0) return { ok: false, error: 'BAD_REQUEST' };
     return planDeathSaveRoll(data, state);
   }
+  if (request.kind === 'stabilize') {
+    return planStabilizeRoll(data, registry, request, modifier, luckSpent, state);
+  }
 
   const breakdown: RollBreakdownEntry[] = [];
   let title: string;
@@ -213,21 +265,8 @@ export function planCpredRoll(
     const skill = registry.skills.find((entry) => entry.id === request.skillId);
     if (!skill) return { ok: false, error: 'UNKNOWN_SKILL' };
     statId = skill.stat;
-    const level = data.skills[skill.id] ?? 0;
-    const statValue = data.stats[statId];
     title = `${skill.name} (${CPRED_STAT_LABELS[statId].abbr})`;
-    breakdown.push({
-      label: `${CPRED_STAT_LABELS[statId].name} (${CPRED_STAT_LABELS[statId].abbr})`,
-      value: statValue,
-      kind: 'stat',
-    });
-    // RAW: an untrained skill simply contributes nothing — the check still
-    // happens on the bare stat, and the card says so.
-    breakdown.push({
-      label: level > 0 ? skill.name : `${skill.name} (nietrenowana)`,
-      value: level,
-      kind: 'skill',
-    });
+    breakdown.push(...skillBreakdown(data, skill));
   } else if (request.kind === 'stat') {
     if (!isCpredStatId(request.statId)) return { ok: false, error: 'UNKNOWN_STAT' };
     statId = request.statId;
@@ -241,6 +280,43 @@ export function planCpredRoll(
     return { ok: false, error: 'BAD_REQUEST' };
   }
 
+  return finishCheck(title, breakdown, state, modifier, luckSpent);
+}
+
+/** The stat + skill pair every Check opens with, named the way the card shows it. */
+function skillBreakdown(
+  data: CpredCharacterData,
+  skill: { id: string; name: string; stat: CpredStatId },
+): RollBreakdownEntry[] {
+  const level = data.skills[skill.id] ?? 0;
+  return [
+    {
+      label: `${CPRED_STAT_LABELS[skill.stat].name} (${CPRED_STAT_LABELS[skill.stat].abbr})`,
+      value: data.stats[skill.stat],
+      kind: 'stat',
+    },
+    // RAW: an untrained skill simply contributes nothing — the check still
+    // happens on the bare stat, and the card says so.
+    {
+      label: level > 0 ? skill.name : `${skill.name} (nietrenowana)`,
+      value: level,
+      kind: 'skill',
+    },
+  ];
+}
+
+/**
+ * The tail every Check shares: the automatic wound penalty, the GM's ad-hoc
+ * modifier and declared Luck, folded into one flat term next to the d10.
+ */
+function finishCheck(
+  title: string,
+  breakdown: RollBreakdownEntry[],
+  state: CpredWoundState,
+  modifier: number,
+  luckSpent: number,
+  extra: Pick<CpredRollPlan, 'stabilize'> = {},
+): { ok: true; plan: CpredRollPlan } {
   const woundPenalty = woundCheckPenalty(state);
   if (woundPenalty !== 0) {
     breakdown.push({ label: CPRED_WOUND_LABELS[state], value: woundPenalty, kind: 'wound' });
@@ -272,8 +348,57 @@ export function planCpredRoll(
       woundState: state,
       luckSpent,
       checkRule: true,
+      ...extra,
     },
   };
+}
+
+/**
+ * „Ustabilizowanie" (s. 222): TECH + Pierwsza pomoc *or* Ratownictwo medyczne
+ * against a DV read off the target's wound threshold. An ordinary Check in
+ * every other respect — the wound penalty of the *medic* still applies, which
+ * is why a mortally wounded character stabilizing themselves is so hard.
+ *
+ * When the caller names no skill, the better of the two is rolled: at the table
+ * nobody picks the worse way to save a friend.
+ */
+function planStabilizeRoll(
+  data: CpredCharacterData,
+  registry: CpredRegistry,
+  request: CpredRollRequest,
+  modifier: number,
+  luckSpent: number,
+  state: CpredWoundState,
+): { ok: true; plan: CpredRollPlan } | { ok: false; error: CpredRollProblem } {
+  const allowed = [CPRED_FIRST_AID_SKILL_ID, CPRED_PARAMEDIC_SKILL_ID];
+  const candidates = registry.skills.filter((entry) => allowed.includes(entry.id));
+  if (candidates.length === 0) return { ok: false, error: 'UNKNOWN_SKILL' };
+
+  const named = request.skillId
+    ? candidates.find((entry) => entry.id === request.skillId)
+    : undefined;
+  if (request.skillId && !named) return { ok: false, error: 'UNKNOWN_SKILL' };
+  const skill =
+    named ??
+    candidates.reduce((best, entry) =>
+      (data.skills[entry.id] ?? 0) > (data.skills[best.id] ?? 0) ? entry : best,
+    );
+
+  const dv = request.stabilizeDv;
+  const targetTokenId = request.stabilizeTokenId;
+  if (!isInteger(dv) || typeof targetTokenId !== 'string' || targetTokenId.length === 0) {
+    return { ok: false, error: 'BAD_REQUEST' };
+  }
+  const targetName = request.stabilizeTargetName ?? 'cel';
+
+  return finishCheck(
+    `Ustabilizowanie → ${targetName}`,
+    skillBreakdown(data, skill),
+    state,
+    modifier,
+    luckSpent,
+    { stabilize: { dv, targetName, targetTokenId, skillName: skill.name } },
+  );
 }
 
 /**
@@ -296,11 +421,7 @@ function planDamageRoll(
     return { ok: false, error: 'BAD_DAMAGE' };
   }
   const multiplier = request.damageMultiplier ?? 1;
-  if (
-    !isInteger(multiplier) ||
-    multiplier < 1 ||
-    multiplier > CPRED_DAMAGE_MULTIPLIER_MAX
-  ) {
+  if (!isInteger(multiplier) || multiplier < 1 || multiplier > CPRED_DAMAGE_MULTIPLIER_MAX) {
     return { ok: false, error: 'BAD_DAMAGE' };
   }
 

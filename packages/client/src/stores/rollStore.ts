@@ -6,7 +6,13 @@ import type {
   CpredRegistry,
   CpredRollRequest,
 } from '@vtt/shared';
-import { planCpredRoll } from '@vtt/shared';
+import {
+  CPRED_FIRST_AID_SKILL_ID,
+  CPRED_PARAMEDIC_SKILL_ID,
+  planCpredRoll,
+  woundCheckPenalty,
+  woundState,
+} from '@vtt/shared';
 
 /**
  * Sheet-driven rolls (stage 08). Clicking a skill or a stat opens the roll
@@ -178,4 +184,50 @@ export function loadDeathSaveCup(
   registry: CpredRegistry,
 ): void {
   quickLoadCup({ characterId, characterName, kind: 'deathSave' }, data, registry);
+}
+
+/**
+ * Loads „Ustabilizowanie" into the cup (stage 14b).
+ *
+ * Planned by hand rather than through `planCpredRoll`, because the DV depends
+ * on the *target's* wound threshold and only the server may read it — the cup
+ * label therefore shows the modifier the medic carries, and the card that lands
+ * on chat shows the PT it was measured against.
+ */
+export function loadStabilizeCup(
+  medic: { characterId: string; characterName: string },
+  target: { tokenId: string; name: string },
+  data: CpredCharacterData,
+  registry: CpredRegistry,
+): void {
+  const store = useRollStore.getState();
+  const candidates = registry.skills.filter(
+    (skill) => skill.id === CPRED_FIRST_AID_SKILL_ID || skill.id === CPRED_PARAMEDIC_SKILL_ID,
+  );
+  if (candidates.length === 0) return;
+  const skill = candidates.reduce((best, entry) =>
+    (data.skills[entry.id] ?? 0) > (data.skills[best.id] ?? 0) ? entry : best,
+  );
+  const modifierTotal =
+    data.stats[skill.stat] +
+    (data.skills[skill.id] ?? 0) +
+    woundCheckPenalty(woundState(data.hpCurrent, data.stats));
+
+  store.loadCup({
+    characterId: medic.characterId,
+    characterName: medic.characterName,
+    kind: 'stabilize',
+    skillId: skill.id,
+    request: {
+      kind: 'stabilize',
+      skillId: skill.id,
+      stabilizeTokenId: target.tokenId,
+      modifier: 0,
+      luckSpent: 0,
+    },
+    // A stabilization is the table's business: somebody is bleeding out.
+    visibility: 'public',
+    title: `Ustabilizowanie → ${target.name}`,
+    modifierTotal,
+  });
 }

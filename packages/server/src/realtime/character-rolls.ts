@@ -3,11 +3,14 @@ import type {
   CharacterRollPayload,
   CpredCharacterData,
   CpredRollRequest,
+  CpredWoundState,
   RollGesture,
   RollResult,
   SessionUser,
 } from '@vtt/shared';
 import {
+  CPRED_ACTION_STABILIZE,
+  CPRED_STABILIZE_DV,
   DEATH_SAVES_MAX,
   ROLE_GM,
   hitLocationLabel,
@@ -16,12 +19,15 @@ import {
   planCpredRoll,
   resolveCpredDeathSave,
   rollFormula,
+  woundState,
+  woundStateFromHp,
 } from '@vtt/shared';
 import type { Character } from '../generated/prisma/client.js';
 import { createMixedRng } from './dice-rng.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
+import { requireTurnSpend } from './combat-actions.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
-import { emitTokensById, emitTokensOfCharacter } from './tokens.js';
+import { emitTokensById, emitTokensOfCharacter, requireCampaignToken } from './tokens.js';
 import { INCLUDE_CHAT_NAMES, deliverRollMessage, toChatMessageView } from './chat-io.js';
 import { sanitizeGesture } from './chat.js';
 
@@ -123,6 +129,34 @@ async function markTokensDead(
 /** Status id from `data/public/cpred/statuses.json`. */
 const DEAD_STATUS_ID = 'dead';
 
+/** Charges the Action „Ustabilizowanie" costs to the medic's own token. */
+async function spendStabilizeAction(
+  deps: RealtimeDeps,
+  campaignId: string,
+  sceneId: string | null,
+  character: Character,
+  user: SessionUser,
+): Promise<void> {
+  if (!sceneId) return;
+  const scene = await deps.ctx.prisma.scene.findUnique({ where: { id: sceneId } });
+  if (!scene || scene.campaignId !== campaignId) return;
+  const token = await deps.ctx.prisma.token.findFirst({
+    where: { characterId: character.id, sceneId },
+  });
+  if (!token) return;
+  await requireTurnSpend(
+    deps,
+    campaignId,
+    scene,
+    token.id,
+    { kind: 'action', actionId: CPRED_ACTION_STABILIZE },
+    user,
+    CPRED_ACTION_STABILIZE,
+    // The roll card that follows says „Ustabilizowanie → Vex" already.
+    { silent: true },
+  );
+}
+
 /**
  * Fills in the parts of a damage request that follow from an attack (stage 16).
  *
@@ -133,6 +167,7 @@ const DEAD_STATUS_ID = 'dead';
 async function resolveRollRequest(
   deps: RealtimeDeps,
   campaignId: string,
+  user: SessionUser,
   raw: CpredRollRequest | undefined,
 ): Promise<CpredRollRequest> {
   const request: CpredRollRequest = { ...(raw ?? ({} as CpredRollRequest)) };
@@ -140,6 +175,11 @@ async function resolveRollRequest(
   delete request.damageNotation;
   delete request.damageMultiplier;
   delete request.targetTokenId;
+  delete request.stabilizeDv;
+  delete request.stabilizeTargetName;
+  if (request.kind === 'stabilize') {
+    return resolveStabilizeRequest(deps, campaignId, user, request);
+  }
   if (request.kind !== 'damage' || request.attackMessageId === undefined) return request;
 
   if (!Number.isInteger(request.attackMessageId)) throw new RealtimeError('BAD_REQUEST');
@@ -164,6 +204,91 @@ async function resolveRollRequest(
   };
 }
 
+/**
+ * Fills in what „Ustabilizowanie" needs from the *target* (stage 14b): the DV
+ * follows from their wound threshold, so it is read here rather than taken from
+ * the client — otherwise a medic could declare their patient lightly wounded.
+ *
+ * A hidden token is invisible to a player in every other path, and stabilizing
+ * is no exception: they may not even confirm it exists.
+ */
+async function resolveStabilizeRequest(
+  deps: RealtimeDeps,
+  campaignId: string,
+  user: SessionUser,
+  request: CpredRollRequest,
+): Promise<CpredRollRequest> {
+  const tokenId = request.stabilizeTokenId;
+  if (typeof tokenId !== 'string' || tokenId.length === 0) throw new RealtimeError('BAD_REQUEST');
+  const { token } = await requireCampaignToken(deps.ctx.prisma, campaignId, tokenId);
+  if (user.role !== ROLE_GM && token.hidden) throw new RealtimeError('TOKEN_NOT_FOUND');
+
+  let state: CpredWoundState;
+  if (token.characterId) {
+    const target = await deps.ctx.prisma.character.findUnique({
+      where: { id: token.characterId },
+    });
+    if (!target) throw new RealtimeError('TOKEN_NOT_FOUND');
+    const targetData = parseCharacterData(target.data, deps.ctx.cpred);
+    state = woundState(targetData.hpCurrent, targetData.stats);
+  } else if (token.hpCurrent !== null && token.hpMax !== null && token.hpMax > 0) {
+    state = woundStateFromHp(token.hpCurrent, token.hpMax);
+  } else {
+    // A statist with no HP at all has no wound threshold to read; the everyday
+    // rung is the honest default and the GM can still modify the roll.
+    state = 'light';
+  }
+  return {
+    ...request,
+    stabilizeDv: CPRED_STABILIZE_DV[state],
+    stabilizeTargetName: token.name,
+  };
+}
+
+/**
+ * Applies a successful „Ustabilizowanie" to the target: a mortally wounded
+ * character „natychmiastowo zostaje przywrócona do poziomu 1 PW" (s. 222), and
+ * the Death Save counter resets with it (`mergeCharacterData` clears it as soon
+ * as HP reach 1 — the same rule stage 15 already encodes).
+ *
+ * Applied by the server rather than handed to the GM as a button: unlike damage
+ * there is nothing to adjudicate here — no armor, no location, no override.
+ */
+async function applyStabilization(
+  deps: RealtimeDeps,
+  campaignId: string,
+  targetTokenId: string,
+): Promise<{ healed: boolean }> {
+  const token = await deps.ctx.prisma.token.findUnique({ where: { id: targetTokenId } });
+  if (!token) return { healed: false };
+  if (!token.characterId) {
+    // A statist token keeps its own HP pair; lift it off the floor the same way.
+    if (token.hpCurrent !== null && token.hpCurrent < 1) {
+      await deps.ctx.prisma.token.update({
+        where: { id: token.id },
+        data: { hpCurrent: 1 },
+      });
+      await emitTokensById(deps, campaignId, [token.id]);
+      return { healed: true };
+    }
+    return { healed: false };
+  }
+  const character = await deps.ctx.prisma.character.findUnique({
+    where: { id: token.characterId },
+  });
+  if (!character) return { healed: false };
+  const data = parseCharacterData(character.data, deps.ctx.cpred);
+  if (data.hpCurrent >= 1) return { healed: false };
+
+  const saved = await deps.ctx.prisma.character.update({
+    where: { id: character.id },
+    data: { data: JSON.stringify(mergeCharacterData(data, { hpCurrent: 1 })) },
+  });
+  await emitCharacterUpsert(deps, campaignId, toCharacterView(saved, deps.ctx.cpred));
+  await emitTokensOfCharacter(deps, campaignId, saved);
+  return { healed: true };
+}
+
 export const characterRollEvent = defineEvent<
   CharacterRollPayload<CpredRollRequest>,
   { messageId: number }
@@ -176,10 +301,16 @@ export const characterRollEvent = defineEvent<
 
     const registry = deps.ctx.cpred;
     const data = parseCharacterData(character.data, registry);
-    const request = await resolveRollRequest(deps, campaign.id, payload?.request);
+    const request = await resolveRollRequest(deps, campaign.id, user, payload?.request);
     const planned = planCpredRoll(data, registry, request);
     if (!planned.ok) throw new RealtimeError(planned.error);
     const { plan } = planned;
+
+    // Stabilizing is an Action (s. 169) — booked before the dice, so a medic
+    // with nothing left in the turn does not roll and then get told no.
+    if (plan.stabilize) {
+      await spendStabilizeAction(deps, campaign.id, socket.data.viewedSceneId, character, user);
+    }
 
     const visibility: 'public' | 'gm' = payload?.visibility === 'gm' ? 'gm' : 'public';
     const gesture: RollGesture | undefined = sanitizeGesture(payload?.gesture);
@@ -232,6 +363,22 @@ export const characterRollEvent = defineEvent<
             : `${outcome.natural} · próg BC ${outcome.target}`,
       };
       await recordDeathSave(deps, campaign.id, character, data, outcome.survived);
+    }
+
+    // „Jeśli wynik Testu jest wyższy od PT, udało ci się" (s. 165) — the same
+    // strictly-greater rule attacks use, in the one place it is written down.
+    if (plan.stabilize) {
+      const success = result.total > plan.stabilize.dv;
+      const applied = success
+        ? await applyStabilization(deps, campaign.id, plan.stabilize.targetTokenId)
+        : { healed: false };
+      result.outcome = {
+        success,
+        label: success ? 'Ustabilizowany' : 'Nie udało się',
+        detail: `${plan.stabilize.skillName} ${result.total} vs PT ${plan.stabilize.dv}${
+          applied.healed ? ' · cel wraca do 1 PW' : ''
+        }`,
+      };
     }
 
     const kind = visibility === 'gm' ? 'gmroll' : 'roll';

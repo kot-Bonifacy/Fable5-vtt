@@ -3564,3 +3564,167 @@ body.is-resizing {
   flex-wrap: wrap;
   margin-top: 0.4rem;
 }
+
+/* ---- Ekonomia akcji: budżet tury i akcje (etap 14b) ---- */
+
+.combat-budget {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding-left: 0.4rem;
+  border-left: 1px solid var(--border);
+}
+
+.combat-budget-item {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.combat-budget-label {
+  font-size: 0.62rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.combat-budget-pips {
+  display: flex;
+  gap: 0.15rem;
+}
+
+.combat-budget-pip {
+  width: 0.5rem;
+  height: 0.5rem;
+  border: 1px solid var(--warn);
+  border-radius: 50%;
+}
+
+.combat-budget-pip--spent {
+  background: var(--warn);
+}
+
+/* Past the budget: only the GM's own NPCs ever get here. */
+.combat-budget-pip--over {
+  border-color: var(--err);
+  background: var(--err);
+}
+
+.combat-budget-flag {
+  padding: 0 0.3rem;
+  border-radius: 3px;
+  background: rgb(217 164 65 / 18%);
+  color: var(--warn);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.combat-budget-flag--over {
+  background: rgb(255 59 48 / 18%);
+  color: var(--err);
+}
+
+.combat-chip-held {
+  font-size: 0.7rem;
+  color: var(--warn);
+}
+
+.combat-row-held {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.66rem;
+  color: var(--warn);
+}
+
+.combat-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--border);
+}
+
+.combat-action-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.combat-hint--held {
+  color: var(--warn);
+}
+
+.combat-hold-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-panel);
+}
+
+.combat-hold-form label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.combat-hold-form input {
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-action {
+  border-left: 3px solid var(--border);
+  padding-left: 0.5rem;
+}
+
+.chat-action--refused {
+  border-left-color: var(--err);
+}
+
+.chat-action--overspent {
+  border-left-color: var(--warn);
+}
+
+.chat-action-body {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+}
+
+.chat-action-name {
+  font-weight: 600;
+}
+
+.chat-action-note {
+  color: var(--text-dim);
+}
+
+.chat-action-badge {
+  padding: 0 0.3rem;
+  border-radius: 3px;
+  background: rgb(217 164 65 / 18%);
+  color: var(--warn);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.chat-action-refusal {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.2rem;
+  font-size: 0.74rem;
+  color: var(--err);
+}

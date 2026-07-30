@@ -11,9 +11,12 @@ import type {
   RollForcedCheck,
   RollGesture,
   RollResult,
+  SessionUser,
   WeaponReloadPayload,
 } from '@vtt/shared';
 import {
+  CPRED_ACTION_ATTACK,
+  CPRED_ACTION_RELOAD,
   CPRED_EVASION_SKILL_ID,
   CPRED_SUPPRESSIVE_RANGE_M,
   ROLE_GM,
@@ -34,6 +37,7 @@ import {
 } from '@vtt/shared';
 import type { Character, Scene, Token } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
+import { requireTurnSpend } from './combat-actions.js';
 import { requireRollableCharacter } from './character-rolls.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { emitTokensOfCharacter, requireCampaignToken, toTokenView } from './tokens.js';
@@ -313,6 +317,28 @@ export const attackRollEvent = defineEvent<
     const { plan } = planned;
     const meta = plan.attack;
 
+    // The turn budget is charged *before* anything is spent for real: an attack
+    // that has no Action left must not eat ammunition or Luck on its way to the
+    // refusal. „Liczba Ataków" decides whether this one fits (stage 14b).
+    await requireTurnSpend(
+      deps,
+      campaignId,
+      scene,
+      attacker.id,
+      {
+        kind: 'attack',
+        weaponRowId: meta.weaponRowId,
+        weaponName: meta.weaponName,
+        rof: weapon.resolved?.rof ?? 1,
+        ...(meta.aimed ? { aimed: true } : {}),
+      },
+      user,
+      CPRED_ACTION_ATTACK,
+      // The roll card that follows says „Zgrzyt → Kurier" already; a second
+      // line reading „Vex — Atak" underneath it is noise.
+      { silent: true },
+    );
+
     await spendAttackCosts(deps, campaignId, character, data, meta, plan.luckSpent);
 
     const gesture: RollGesture | undefined = sanitizeGesture(payload?.gesture);
@@ -474,6 +500,36 @@ export const attackEvadeEvent = defineEvent<AttackEvadePayload, { total: number;
   },
 });
 
+/**
+ * Charges an Action to whichever token the character is playing on the scene
+ * this socket is looking at. Outside a running fight — and for a character with
+ * no token on that scene — there is no budget to charge and nothing happens.
+ */
+async function spendCharacterAction(
+  deps: RealtimeDeps,
+  campaignId: string,
+  sceneId: string | null,
+  character: Character,
+  user: SessionUser,
+): Promise<void> {
+  if (!sceneId) return;
+  const scene = await deps.ctx.prisma.scene.findUnique({ where: { id: sceneId } });
+  if (!scene || scene.campaignId !== campaignId) return;
+  const token = await deps.ctx.prisma.token.findFirst({
+    where: { characterId: character.id, sceneId },
+  });
+  if (!token) return;
+  await requireTurnSpend(
+    deps,
+    campaignId,
+    scene,
+    token.id,
+    { kind: 'action', actionId: CPRED_ACTION_RELOAD },
+    user,
+    CPRED_ACTION_RELOAD,
+  );
+}
+
 /** Reloading: an Action at the table, one click here. */
 export const weaponReloadEvent = defineEvent<WeaponReloadPayload, { ammo: number }>({
   name: 'weapon:reload',
@@ -485,7 +541,13 @@ export const weaponReloadEvent = defineEvent<WeaponReloadPayload, { ammo: number
     const row = data.weapons.find((weapon) => weapon.id === payload?.weaponRowId);
     if (!row) throw new RealtimeError('UNKNOWN_WEAPON');
     if (row.ammoMax <= 0) throw new RealtimeError('WEAPON_HAS_NO_MAGAZINE');
+    // A full magazine costs nothing: the click was a misfire, not an Action.
     if (row.ammoCurrent >= row.ammoMax) return { ammo: row.ammoCurrent };
+
+    // „Przeładowanie — Załadowujesz magazynek do pełna" is an Action (s. 169).
+    // Unlike an attack it produces no card of its own, so the chat line is the
+    // only trace the table gets — hence not silent.
+    await spendCharacterAction(deps, campaignId, socket.data.viewedSceneId, character, user);
 
     const weapons = data.weapons.map((weapon) =>
       weapon.id === row.id ? { ...weapon, ammoCurrent: row.ammoMax } : weapon,

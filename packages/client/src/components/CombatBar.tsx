@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { TurnBudgetView } from '@vtt/shared';
 import { ROLE_GM } from '@vtt/shared';
 import { nextCombatTurn, previousCombatTurn } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
-import { useCombatStore, myActiveCombatant } from '../stores/combatStore.js';
+import { useCombatStore, activeCombatantOf, myActiveCombatant } from '../stores/combatStore.js';
 import { useDeathSavePrompt } from '../death-save.js';
 
 /**
@@ -50,11 +51,56 @@ function storePosition(position: BarPosition | null): void {
   }
 }
 
+/**
+ * What is left of the acting participant's turn (stage 14b): one pip per unit,
+ * filled once it is spent. The labels come from the game system, so this stays
+ * a row of dots whatever „Ruch" and „Akcja" turn out to mean in a future RPG.
+ */
+function TurnBudget({ budget }: { budget: TurnBudgetView }) {
+  return (
+    <div
+      className="combat-budget"
+      title={
+        budget.note
+          ? `${budget.note}${budget.overspent ? ` · przekroczenie ×${budget.overspent}` : ''}`
+          : 'Budżet tury'
+      }
+    >
+      {budget.resources.map((resource) => (
+        <span key={resource.id} className="combat-budget-item">
+          <span className="combat-budget-label">{resource.label}</span>
+          <span className="combat-budget-pips" aria-label={`${resource.used} z ${resource.max}`}>
+            {Array.from({ length: Math.max(resource.max, resource.used) }, (_, index) => (
+              <span
+                key={index}
+                className={`combat-budget-pip${
+                  index < resource.used ? ' combat-budget-pip--spent' : ''
+                }${index >= resource.max ? ' combat-budget-pip--over' : ''}`}
+              />
+            ))}
+          </span>
+        </span>
+      ))}
+      {budget.bypass && (
+        <span className="combat-budget-flag" title="MG przepuścił jedną akcję">
+          przepustka
+        </span>
+      )}
+      {budget.overspent ? (
+        <span className="combat-budget-flag combat-budget-flag--over" title="Poza budżetem tury">
+          +{budget.overspent}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 export function CombatBar() {
   const combat = useCombatStore((s) => s.combat);
   const user = useAuthStore((s) => s.user);
   const isGm = user?.role === ROLE_GM;
   const myTurn = useMemo(() => myActiveCombatant(combat, user?.id ?? null), [combat, user?.id]);
+  const acting = useMemo(() => activeCombatantOf(combat), [combat]);
   // RAW: a Mortally Wounded character rolls at the start of each of their turns.
   const deathSave = useDeathSavePrompt();
 
@@ -208,10 +254,17 @@ export function CombatBar() {
               </span>
             )}
             <span className="combat-chip-name">{combatant.name}</span>
+            {combatant.held && (
+              <span className="combat-chip-held" title="Akcja wstrzymana">
+                ⏸
+              </span>
+            )}
             <span className="combat-chip-initiative">{combatant.initiative ?? '—'}</span>
           </li>
         ))}
       </ol>
+      {/* The budget belongs to whoever is acting — the queue above says who. */}
+      {acting?.turn && <TurnBudget budget={acting.turn} />}
       {isGm && (
         <button
           type="button"

@@ -1,7 +1,13 @@
 import { useLayoutEffect, useRef, type FormEvent, type ReactNode, type UIEvent } from 'react';
-import type { BotActivityEntry, BotTraceBroadcast, ChatMessageView, RollResult } from '@vtt/shared';
+import type {
+  BotActivityEntry,
+  BotTraceBroadcast,
+  ChatMessageView,
+  CombatActionLogEntry,
+  RollResult,
+} from '@vtt/shared';
 import { ROLE_GM } from '@vtt/shared';
-import { loadOlderHistory, sendChatInput, stopBots } from '../socket.js';
+import { allowCombatAction, loadOlderHistory, sendChatInput, stopBots } from '../socket.js';
 import { AttackRow } from './AttackControls.js';
 import { DamageApplyControls, DamageRow } from './DamageControls.js';
 import { replayMessage } from '../speech.js';
@@ -141,6 +147,65 @@ function RollRow({ message, isGm }: { message: ChatMessageView; isGm: boolean })
         {/* Damage is applied by the GM only — players never see the button. */}
         {isGm && roll.damage && <DamageApplyControls message={message} roll={roll} />}
       </div>
+    </div>
+  );
+}
+
+/**
+ * A spent — or refused — combat action (stage 14b).
+ *
+ * A refusal is not a wall: it lands here with the reason and, for the GM, a
+ * „Przepuść" button that grants one single-use pass. The player then clicks
+ * their own button again, which is the table's „no, go ahead" turned into two
+ * clicks instead of an argument.
+ */
+function CombatActionRow({
+  message,
+  entry,
+  isGm,
+}: {
+  message: ChatMessageView;
+  entry: CombatActionLogEntry;
+  isGm: boolean;
+}) {
+  const refused = entry.refusal !== undefined;
+  return (
+    <div
+      className={`chat-message chat-action${refused ? ' chat-action--refused' : ''}${
+        entry.overspent ? ' chat-action--overspent' : ''
+      }`}
+    >
+      <div className="chat-message-meta">
+        <span className="chat-message-author">{entry.actorName}</span>
+        <span className="chat-message-time">{formatTime(message.createdAt)}</span>
+      </div>
+      <div className="chat-action-body">
+        <span className="chat-action-name">{entry.actionName}</span>
+        {entry.note && <span className="chat-action-note">— {entry.note}</span>}
+        {entry.overspent && <span className="chat-action-badge">poza budżetem tury</span>}
+        {entry.passed && !refused && (
+          <span className="chat-action-badge">przepuszczone przez MG</span>
+        )}
+      </div>
+      {entry.refusal && (
+        <div className="chat-action-refusal">
+          <span>Odmowa: {entry.refusal.message}</span>
+          {entry.passed ? (
+            <span className="chat-action-badge">przepuszczone — powtórz akcję</span>
+          ) : (
+            isGm && (
+              <button
+                type="button"
+                className="small-button"
+                title="Jednorazowe zezwolenie — gracz klika swoją akcję jeszcze raz"
+                onClick={() => void allowCombatAction(entry.combatantId, message.id)}
+              >
+                Przepuść
+              </button>
+            )
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -337,6 +402,14 @@ export function ChatPanel() {
                 key={item.message.id}
                 message={item.message}
                 entry={item.message.damage}
+                isGm={isGm}
+              />
+            ) : (item.message.kind === 'action' || item.message.kind === 'gmaction') &&
+              item.message.action ? (
+              <CombatActionRow
+                key={item.message.id}
+                message={item.message}
+                entry={item.message.action}
                 isGm={isGm}
               />
             ) : (

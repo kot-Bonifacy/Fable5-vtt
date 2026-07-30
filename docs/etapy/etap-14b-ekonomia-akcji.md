@@ -25,7 +25,7 @@ każdego uczestnika walki, kataloguje akcje z kosztami i twardo pilnuje graczy; 
 
 ## Zakres
 
-- [ ] Silnik budżetu tury w `shared/systems/cpred` (czyste funkcje + testy vitest): stan tury
+- [x] Silnik budżetu tury w `shared/systems/cpred` (czyste funkcje + testy vitest): stan tury
       uczestnika (Akcja Ruchu, Akcja, licznik ataków w ramach Akcji Ataku, bronie użyte w tej
       Akcji), przejścia (wydaj Ruch/Akcję/atak, Bieg = Akcja dająca drugą Akcję Ruchu) i reguły
       legalności:
@@ -33,31 +33,35 @@ każdego uczestnika walki, kataloguje akcje z kosztami i twardo pilnuje graczy; 
   - dwie bronie LA 1 **nie** mogą obie zaatakować w jednej Akcji; łącznie nigdy więcej niż 2 ataki
   - Bardzo duża broń biała nie atakuje dwukrotnie
   - Celowanie (−8, już w silniku z etapu 16) = pojedynczy atak i **cała** Akcja
-- [ ] Katalog akcji CP RED (id, nazwa PL, koszt, warunki) w `shared/systems/cpred`: Atak,
+- [x] Katalog akcji CP RED (id, nazwa PL, koszt, warunki) w `shared/systems/cpred`: Atak,
       Celowany atak, Przeładowanie, Bieg, Wstanie, Pochwycenie, Duszenie, Rzut, Ludzka tarcza,
       Ustabilizowanie, Wstrzymanie Akcji, Użycie Umiejętności, Użycie przedmiotu,
       Przygotuj/upuść tarczę, akcje pojazdów i Akcje Sieciowe jako pozycje generyczne
       (zużywają Akcję, automatyka przyjdzie z etapami pojazdów/26). Mechanika zwarcia
       (Pochwycenie/Duszenie/Rzut/Ludzka tarcza) dopiero w 14d — tu tylko koszt Akcji.
-- [ ] Akcje darmowe wg RAW zapisane w katalogu (bez egzekwowania rąk): dobycie łatwo dostępnej
+- [x] Akcje darmowe wg RAW zapisane w katalogu (bez egzekwowania rąk): dobycie łatwo dostępnej
       broni, upuszczenie broni, uwolnienie Trzymanego; schowanie broni do kabury = Akcja.
       Nie śledzimy, co postać trzyma w dłoniach — poza zakresem (wpis w POMYSLY).
-- [ ] Serwerowy stan tury per uczestnik: reset na początku jego tury, trwały przez całą turę
+- [x] Serwerowy stan tury per uczestnik: reset na początku jego tury, trwały przez całą turę
       (rozdzielanie ruchu wokół ataków!), pełny resync po reconnect; filtrowanie jak reszta
       danych walki (budżet ukrytego wroga nie wycieka graczom).
-- [ ] Spięcie istniejących ścieżek: atak z mapy (etap 16) zużywa atak/Akcję, przeładowanie
+- [x] Spięcie istniejących ścieżek: atak z mapy (etap 16) zużywa atak/Akcję, przeładowanie
       (etap 16) zużywa Akcję, Ustabilizowanie woła ścieżkę stabilizacji z etapu 15.
-- [ ] Zdarzenia wg konwencji `combat:action` (intencja gracza → walidacja → broadcast);
+      _Korekta 30.07: ścieżka stabilizacji z etapu 15 **nie istniała** — etap 15 zbudował sam
+      Test Przeżywalności. Ustabilizowanie zostało zaimplementowane tu w całości (rzut
+      `kind: 'stabilize'`: TECH + Pierwsza pomoc/Ratownictwo vs PT 10/13/15 wg progu ran celu,
+      sukces przywraca 1 PW i czyści licznik Testów Przeżywalności)._
+- [x] Zdarzenia wg konwencji `combat:action` (intencja gracza → walidacja → broadcast);
       czytelna odmowa z powodem (`NO_ACTION_LEFT`, `NOT_YOUR_TURN`, `ROF_EXCEEDED`…).
-- [ ] Wstrzymanie Akcji: deklaracja (opis wyzwalacza **lub** wartość w Kolejce Inicjatywy +
+- [x] Wstrzymanie Akcji: deklaracja (opis wyzwalacza **lub** wartość w Kolejce Inicjatywy +
       cel akcji), znacznik w trackerze widoczny wg reguł widoczności; „odpal wstrzymaną"
       przestawia uczestnika na zadeklarowaną wartość kolejki (tracker z etapu 14 już umie
       przestawiać — tu automatyzacja + zapis deklaracji). Niewykorzystana deklaracja wygasa
       z końcem rundy.
-- [ ] UI: pasek walki (etap 14) pokazuje budżet aktywnego uczestnika (piktogramy: Ruch, Akcja,
+- [x] UI: pasek walki (etap 14) pokazuje budżet aktywnego uczestnika (piktogramy: Ruch, Akcja,
       ataki 0/2); zakładka „Walka" dostaje przyciski akcji generycznych (Wstanie, Przeładuj,
       Bieg, Ustabilizuj, Wstrzymaj Akcję, Użycie Umiejętności/przedmiotu). „Kończę turę" bez zmian.
-- [ ] Testy: silnik budżetu (przypadki brzegowe LA — 2×LA 1, LA 1 + LA 2, celowanie po ataku),
+- [x] Testy: silnik budżetu (przypadki brzegowe LA — 2×LA 1, LA 1 + LA 2, celowanie po ataku),
       testy dymne serwera (trzeci atak odrzucony; akcja poza turą odrzucona; „przepuść" MG działa;
       resync odtwarza budżet).
 

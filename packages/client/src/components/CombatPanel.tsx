@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { CombatantView, TokenView } from '@vtt/shared';
+import type { CombatantView, TokenView, TurnBudgetView } from '@vtt/shared';
 import {
   COMBAT_INITIATIVE_MAX,
   COMBAT_INITIATIVE_MIN,
@@ -11,13 +11,16 @@ import {
   endCombat,
   nextCombatTurn,
   previousCombatTurn,
+  releaseCombatHold,
   removeFromCombat,
   reorderCombat,
   rerollCombatTie,
+  resetCombatTurn,
   rollCombatInitiativeForAll,
   setCombatInitiative,
   startCombat,
 } from '../socket.js';
+import { CombatActions } from './CombatActions.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useCombatStore } from '../stores/combatStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
@@ -101,6 +104,16 @@ function CombatSetup({ tokens }: { tokens: TokenView[] }) {
   );
 }
 
+/** „Ruch 0/1 · Akcja 1/1 · Ataki 2/2" — the budget squeezed into a row. */
+function budgetSummary(budget: TurnBudgetView): string {
+  const parts = budget.resources.map(
+    (resource) => `${resource.label} ${resource.used}/${resource.max}`,
+  );
+  if (budget.overspent) parts.push(`poza budżetem ×${budget.overspent}`);
+  if (budget.bypass) parts.push('przepustka MG');
+  return parts.join(' · ');
+}
+
 /** One row of the tracker; the GM can drag it to settle a tie by hand. */
 function CombatRow({
   combatant,
@@ -174,7 +187,26 @@ function CombatRow({
         <span className="combat-row-meta">
           {hp ? `PW ${hp.current}/${hp.max}` : ''}
           {combatant.tieBreak !== null ? ` · REF ${combatant.tieBreak}` : ''}
+          {combatant.turn ? ` · ${budgetSummary(combatant.turn)}` : ''}
         </span>
+        {combatant.held && (
+          <span className="combat-row-held">
+            ⏸{' '}
+            {combatant.held.initiative !== null
+              ? `wstrzymana przy ${combatant.held.initiative}`
+              : `wstrzymana: ${combatant.held.trigger ?? 'wyzwalacz opisany'}`}
+            {isGm && (
+              <button
+                type="button"
+                className="small-button"
+                onClick={() => void releaseCombatHold(combatant.id)}
+                title="Odpal wstrzymaną Akcję teraz"
+              >
+                Odpal
+              </button>
+            )}
+          </span>
+        )}
       </span>
       {canRoll && (
         <button
@@ -217,6 +249,16 @@ function CombatRow({
         >
           {combatant.initiative ?? '—'}
         </span>
+      )}
+      {isGm && combatant.turn && (
+        <button
+          type="button"
+          className="small-button"
+          onClick={() => void resetCombatTurn(combatant.id)}
+          title="Zwróć turę — pełny budżet Ruchu i Akcji"
+        >
+          ↺
+        </button>
       )}
       {isGm && (
         <button
@@ -262,6 +304,14 @@ export function CombatPanel() {
   /** May this viewer roll for the participant? Owner or GM. */
   const mayRoll = (combatant: CombatantView): boolean =>
     isGm || (user !== null && combatant.ownerId === user.id);
+
+  /** The participant this viewer may spend a turn for, if any (stage 14b). */
+  const active = combat.combatants.find((c) => c.id === combat.activeCombatantId) ?? null;
+  const actor = isGm
+    ? active
+    : (combat.combatants.find(
+        (c) => user !== null && c.ownerId === user.id && (c.id === active?.id || c.held),
+      ) ?? null);
 
   function handleDrop(targetId: string) {
     if (!isGm || !combat || dragged === null || dragged === targetId) return;
@@ -347,6 +397,11 @@ export function CombatPanel() {
           );
         })}
       </ol>
+
+      {/* Action buttons belong to whoever may actually act: the GM (always,
+          for the acting participant) and a player on their own turn — or with
+          an Action they held into somebody else's. */}
+      {actor && <CombatActions combat={combat} combatant={actor} />}
 
       {isGm && (
         <p className="combat-hint">

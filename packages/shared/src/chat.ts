@@ -8,7 +8,39 @@ import {
 } from './dice.js';
 import type { SpeechTrack } from './tts.js';
 
-export type ChatKind = 'say' | 'whisper' | 'roll' | 'gmroll' | 'damage';
+/**
+ * `action` is the public log of a spent combat action (stage 14b); `gmaction`
+ * is its refused twin, delivered only to the GM and the player who tried —
+ * the same split `roll`/`gmroll` has had since stage 06.
+ */
+export type ChatKind = 'say' | 'whisper' | 'roll' | 'gmroll' | 'damage' | 'action' | 'gmaction';
+
+/**
+ * One combat action, as the chat log records it (stage 14b). Written by the
+ * server: the budget it spent is the server's own arithmetic, and a refusal is
+ * the server's verdict, so nothing here comes off the wire.
+ */
+export interface CombatActionLogEntry {
+  /** Participant the action belonged to — the „przepuść" button needs it. */
+  combatantId: string;
+  /** Who acted, denormalized so the line survives a removed participant. */
+  actorName: string;
+  /** Catalogue id of the action (system-specific, opaque here). */
+  actionId: string;
+  /** Polish name of the action, e.g. „Przeładowanie". */
+  actionName: string;
+  /** Free-text detail the actor added. */
+  note?: string;
+  /**
+   * Why the action was refused; absent on a successful one. The code is the
+   * machine-readable half, the message the one a human reads.
+   */
+  refusal?: { code: string; message: string };
+  /** Set once the GM waved a refusal through. */
+  passed?: boolean;
+  /** The GM ran their own NPC past the budget — logged, never blocked. */
+  overspent?: boolean;
+}
 
 /**
  * Result of applying a damage roll to a target (stage 15). Written by the
@@ -84,6 +116,8 @@ export interface ChatMessageView {
   roll?: RollResult;
   /** Applied damage — present only for kind `damage` (stage 15). */
   damage?: DamageLogEntry;
+  /** Spent (or refused) combat action — kinds `action` and `gmaction`. */
+  action?: CombatActionLogEntry;
   /**
    * Voice of an NPC line: audio plus the rhythm the text is written out with.
    * Absent = show the line immediately (speech off, no voice set, or synthesis

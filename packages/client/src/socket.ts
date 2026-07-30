@@ -1102,6 +1102,39 @@ export function sendInitiativeRoll(combatantId: string, gesture?: RollGesture): 
   });
 }
 
+/* Action economy (stage 14b). The budget itself is never sent by the client —
+   it only names an intention, and the server answers with the fresh tracker. */
+
+export const spendCombatAction = (actionId: string, note?: string, combatantId?: string) =>
+  emitSceneAck<CombatView>('combat:action', {
+    actionId,
+    ...(note ? { note } : {}),
+    ...(combatantId ? { combatantId } : {}),
+  });
+
+/** GM waves one refused action through — a single-use pass. */
+export const allowCombatAction = (combatantId: string, messageId?: number) =>
+  emitSceneAck<CombatView>('combat:allow', {
+    combatantId,
+    ...(messageId !== undefined ? { messageId } : {}),
+  });
+
+/** „Wstrzymanie Akcji": a described trigger, a queue value, or both. */
+export const holdCombatAction = (
+  declaration: { trigger?: string; initiative?: number | null },
+  combatantId?: string,
+) =>
+  emitSceneAck<CombatView>('combat:hold', {
+    ...declaration,
+    ...(combatantId ? { combatantId } : {}),
+  });
+
+export const releaseCombatHold = (combatantId: string) =>
+  emitSceneAck<CombatView>('combat:hold-release', { combatantId });
+
+export const resetCombatTurn = (combatantId: string) =>
+  emitSceneAck<CombatView>('combat:reset-turn', { combatantId });
+
 /** Polish messages for tracker rejections. */
 export function combatErrorText(code: string): string {
   switch (code) {
@@ -1117,6 +1150,25 @@ export function combatErrorText(code: string): string {
       return 'To nie jest twoja tura.';
     case 'SCENE_NOT_FOUND':
       return 'Scena zniknęła — odśwież stronę.';
+    // Budget refusals (stage 14b) — the same wording the GM's card shows.
+    case 'NOT_YOUR_TURN':
+      return 'To nie jest twoja tura.';
+    case 'NO_ACTION_LEFT':
+      return 'Nie masz już Akcji w tej turze.';
+    case 'NO_MOVE_LEFT':
+      return 'Nie masz już Akcji Ruchu w tej turze.';
+    case 'ROF_EXCEEDED':
+      return 'Ta broń nie zmieści się w rozpoczętej Akcji Ataku (LA).';
+    case 'AIM_NEEDS_FULL_ACTION':
+      return 'Celowanie zabiera całą Akcję — nie po rozpoczętym ataku.';
+    case 'RUN_NEEDS_MOVE':
+      return 'Bieg wymaga wcześniejszego wykonania Akcji Ruchu w tej turze.';
+    case 'HOLD_NEEDS_DECLARATION':
+      return 'Wstrzymanie Akcji wymaga opisu wyzwalacza albo wartości w kolejce.';
+    case 'NOTHING_HELD':
+      return 'Ten uczestnik nie ma wstrzymanej Akcji.';
+    case 'USE_HOLD_EVENT':
+      return 'Wstrzymanie Akcji deklaruje się osobnym przyciskiem.';
     default:
       return `Błąd walki: ${code}`;
   }
