@@ -667,3 +667,140 @@ describe('lighting a room in one click', () => {
     await emitAck(gm, 'light:delete', { lightId: lamp.id });
   });
 });
+
+describe('a door glyph obeys the light', () => {
+  let gm: ClientSocket;
+  let player: ClientSocket;
+  let sceneId: string;
+  let doorId: number;
+  let ownTokenId: string;
+
+  beforeAll(async () => {
+    const gmConn = createSocket(gmCookie);
+    const playerConn = createSocket(playerCookie);
+    gm = gmConn.socket;
+    player = playerConn.socket;
+    await Promise.all([gmConn.firstSync, playerConn.firstSync]);
+
+    const scene = data(
+      await emitAck<SceneView>(gm, 'scene:create', { name: 'Budynek z oknem' }),
+      'scene:create',
+    );
+    sceneId = scene.id;
+    await emitAck(gm, 'scene:update', {
+      sceneId,
+      patch: { width: 4000, height: 4000, grid: { sizePx: 100 }, metersPerSquare: 2 },
+    });
+    await emitAck(gm, 'scene:activate', { sceneId });
+    await emitAck(gm, 'scene:visibility', { sceneId, visibility: 'dynamic' });
+
+    // The real shape that raised this: a building whose east wall has a window
+    // in it and whose *north* wall has the door. A player standing away to the
+    // south-east has line of sight to that door straight through the glass and
+    // across the room — geometrically true, and not something they can see on a
+    // dark map.
+    await emitAck(gm, 'wall:create', {
+      sceneId,
+      kind: 'wall',
+      points: [
+        { x: 1000, y: 700 },
+        { x: 1000, y: 1400 },
+        { x: 1700, y: 1400 },
+        { x: 1700, y: 1200 },
+      ],
+    });
+    await emitAck(gm, 'wall:create', {
+      sceneId,
+      kind: 'wall',
+      points: [
+        { x: 1700, y: 1100 },
+        { x: 1700, y: 700 },
+        { x: 1300, y: 700 },
+      ],
+    });
+    await emitAck(gm, 'wall:create', {
+      sceneId,
+      kind: 'wall',
+      points: [
+        { x: 1200, y: 700 },
+        { x: 1000, y: 700 },
+      ],
+    });
+    await emitAck(gm, 'wall:create', {
+      sceneId,
+      kind: 'window',
+      points: [
+        { x: 1700, y: 1100 },
+        { x: 1700, y: 1200 },
+      ],
+    });
+    doorId = data(
+      await emitAck<WallView[]>(gm, 'wall:create', {
+        sceneId,
+        kind: 'door',
+        playerToggle: true,
+        points: [
+          { x: 1200, y: 700 },
+          { x: 1300, y: 700 },
+        ],
+      }),
+      'wall:create door',
+    )[0]!.id;
+
+    ownTokenId = data(
+      await emitAck<TokenView>(gm, 'token:create', {
+        sceneId,
+        name: 'Rogue',
+        x: 2750,
+        y: 2300,
+        ownerId: playerId,
+      }),
+      'token:create own',
+    ).id;
+    await roundTrip(player);
+  }, 30_000);
+
+  it('shows the far door on a lit scene — the line of sight is real', () => {
+    // Nothing is gated on light here, and the sight line through the window is
+    // genuine, so the marker belongs on the map.
+    return roundTrip(player).then((sync) => {
+      expect(sync.doors.map((door) => door.id)).toContain(doorId);
+    });
+  });
+
+  it('takes it away once the lights go out', async () => {
+    await emitAck(gm, 'scene:lighting', { sceneId, dark: true, darkSightM: 2 });
+    const dark = await roundTrip(player);
+    expect(dark.doors.map((door) => door.id)).not.toContain(doorId);
+    // And the handle is refused, the same way an unseen token is.
+    expect(errorOf(await emitAck(player, 'door:toggle', { wallId: doorId }))).toBe(
+      'WALL_NOT_FOUND',
+    );
+  });
+
+  it('hands it back when the player walks up to it in the dark', async () => {
+    // „Po omacku" is a light source like any other, so a door at arm's length
+    // stays workable — which was the point of the stage 18a exemption, and is
+    // the part of it that survives.
+    // Grid-aligned on purpose: the drop snaps to a cell, and a token snapped
+    // one square further back stands 3 m from the door with 2 m of groping.
+    await emitAck(gm, 'token:move', { tokenId: ownTokenId, x: 1200, y: 700, final: true });
+    const close = await roundTrip(player);
+    expect(close.doors.map((door) => door.id)).toContain(doorId);
+    expect((await emitAck(player, 'door:toggle', { wallId: doorId })).ok).toBe(true);
+  });
+
+  it('is taken away again by the GM brush, however well lit', async () => {
+    await emitAck(gm, 'scene:lighting', { sceneId, dark: false });
+    const lit = await roundTrip(player);
+    expect(lit.doors.map((door) => door.id)).toContain(doorId);
+
+    await emitAck(gm, 'fog:paint', {
+      sceneId,
+      shape: { kind: 'rect', mode: 'hide', x: 1150, y: 650, width: 200, height: 100 },
+    });
+    const hidden = await roundTrip(player);
+    expect(hidden.doors.map((door) => door.id)).not.toContain(doorId);
+    await emitAck(gm, 'fog:reset', { sceneId, mode: 'clear' });
+  });
+});

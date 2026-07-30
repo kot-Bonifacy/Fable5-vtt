@@ -430,19 +430,33 @@ export function isPointObservable(
  * in line of sight — so a marked door deep in an unexplored building still
  * gives nothing away.
  *
- * Darkness deliberately does *not* apply here. Groping along a wall for a door
- * handle is something a character does; a door you have walked up to in the
- * dark is not a secret, and taking the handle away would only make the player
- * type „I open the door" on the chat instead.
+ * On a dark scene the light has a say too (corrected in stage 18c). Stage 18a
+ * exempted doors from darkness on the grounds that a door you have walked up to
+ * is not a secret — which is true, and stays true, because „walked up to" is
+ * inside the „po omacku" disc and that disc is a light source like any other.
+ * What the exemption also did, and should not have, was hand a player the glyph
+ * of a door across a pitch-black map: the door marker is drawn above the
+ * darkness cover, so it read as a handle floating in the black. Anything a lamp
+ * or a torch does not reach is now left out, the same as a token would be.
  */
 export function visibleDoorsFor(
   context: SceneVisionContext,
   sources: readonly SightSource[],
+  lighting: ViewerLighting | null,
 ): WallView[] {
   const doors = context.walls.filter((wall) => wall.kind === 'door' && wall.playerToggle);
   if (doors.length === 0 || sources.length === 0) return [];
   return doors.filter((door) => {
     const midpoint = wallMidpoint(door);
+    // The GM's brush outranks the geometry here as it does everywhere else: a
+    // door under a „hide" stroke is a door the players are not being shown.
+    if (context.overrides.length > 0) {
+      const override = fogOverrideAt(midpoint, context.overrides);
+      if (override === 'hide') return false;
+    }
+    if (lighting && !isPointLit(midpoint, lighting.sources, lighting.segments, lighting.windows)) {
+      return false;
+    }
     // The door being tested is removed from the blockers: a closed door must
     // not hide itself.
     const others = context.segments.filter(
@@ -505,16 +519,6 @@ export function visibleGlowsFor(
   return glows;
 }
 
-/** The vision sources of one player — needed on its own for the door test. */
-export async function visionSourcesFor(
-  prisma: PrismaClient,
-  scene: Scene,
-  userId: string,
-): Promise<SightSource[]> {
-  const tokens = await fetchVisionTokens(prisma, scene.id, userId);
-  return tokens.map((token) => visionSourceOf(token, scene));
-}
-
 /** What one player's socket needs after any change to what they can see. */
 export interface ViewerVision {
   polygons: ScenePoint[][];
@@ -562,7 +566,7 @@ export async function computeViewerVision(
   const sight = await viewerSightFor(prisma, scene, user.id, ctx);
   return {
     polygons: sight.polygons,
-    doors: visibleDoorsFor(ctx, sight.sources),
+    doors: visibleDoorsFor(ctx, sight.sources, sight.lighting),
     light: sight.lighting ? lightMaskFor(ctx, sight.polygons, sight.lighting) : null,
     glows: sight.lighting
       ? visibleGlowsFor(lightSourcesOf(scene, ctx, user.id), sight.sources, ctx.segments)

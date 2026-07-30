@@ -19,7 +19,7 @@ import {
   loadVisionContext,
   usesDynamicVision,
   visibleDoorsFor,
-  visionSourcesFor,
+  viewerSightFor,
 } from './vision.js';
 
 /**
@@ -195,8 +195,13 @@ export const doorToggleEvent = defineEvent<DoorTogglePayload, WallView>({
       if (socket.data.viewedSceneId !== row.sceneId) throw new RealtimeError('SCENE_NOT_VIEWED');
       if (!wall.playerToggle) throw new RealtimeError('FORBIDDEN');
       const context = await loadVisionContext(deps.ctx.prisma, row.scene);
-      const sources = await visionSourcesFor(deps.ctx.prisma, row.scene, user.id);
-      const reachable = visibleDoorsFor(context, sources).some((door) => door.id === wall.id);
+      // The whole sight rather than just the origins: on a dark scene a door
+      // has to be lit to be worked, and the guard must agree with the list the
+      // player was sent — or the handle they can see would refuse them.
+      const sight = await viewerSightFor(deps.ctx.prisma, row.scene, user.id, context);
+      const reachable = visibleDoorsFor(context, sight.sources, sight.lighting).some(
+        (door) => door.id === wall.id,
+      );
       // A door out of sight is refused the same way an unseen token is: the
       // rejection must not become a way to learn the door is there.
       if (!reachable) throw new RealtimeError('WALL_NOT_FOUND');
