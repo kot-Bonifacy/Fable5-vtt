@@ -1,8 +1,8 @@
 import { create } from 'zustand';
-import type { ScenePoint, StateSyncPayload, WallView } from '@vtt/shared';
+import { isOpening, type ScenePoint, type StateSyncPayload, type WallView } from '@vtt/shared';
 
 /**
- * Walls, doors and the field of view of the viewed scene (stage 18a).
+ * Walls, openings and the field of view of the viewed scene (stage 18a).
  *
  * Two very different things live here on purpose, because they are two halves
  * of one question — „what does this map let me see?" — answered differently
@@ -14,8 +14,8 @@ import type { ScenePoint, StateSyncPayload, WallView } from '@vtt/shared';
  *    their own tokens describe, computed on the server. The client cuts it out
  *    of a black sheet and never learns what produced its shape.
  *
- * `doors` is the deliberate crack between the two: doors the GM flagged as the
- * players' to open, and only while they are in sight.
+ * `openings` is the deliberate crack between the two: the doors *and windows*
+ * the GM flagged as the players' to work, and only while they are in sight.
  */
 interface WallStoreState {
   /** GM only; ascending by id. */
@@ -24,39 +24,42 @@ interface WallStoreState {
   polygons: ScenePoint[][];
   /** Whether a `vision:sync` has ever arrived for the current scene. */
   hasVision: boolean;
-  /** Doors this viewer may operate (GM: taken from `walls` instead). */
-  doors: WallView[];
+  /** Openings this viewer may operate (GM: taken from `walls` instead). */
+  openings: WallView[];
 
   applySync: (payload: StateSyncPayload) => void;
   setWalls: (sceneId: string, walls: WallView[]) => void;
   setVision: (polygons: ScenePoint[][]) => void;
-  setDoors: (doors: WallView[]) => void;
+  setOpenings: (openings: WallView[]) => void;
 }
 
 export const useWallStore = create<WallStoreState>((set) => ({
   walls: [],
   polygons: [],
   hasVision: false,
-  doors: [],
+  openings: [],
 
   applySync: (payload) =>
     set({
       walls: payload.walls,
       polygons: payload.vision?.polygons ?? [],
       hasVision: payload.vision !== null,
-      doors: payload.doors,
+      openings: payload.openings,
     }),
 
   setWalls: (_sceneId, walls) => set({ walls }),
   setVision: (polygons) => set({ polygons, hasVision: true }),
-  setDoors: (doors) => set({ doors }),
+  setOpenings: (openings) => set({ openings }),
 }));
 
 // The chain being traced lives in the renderer, not here: it changes at pointer
 // rate and never leaves the client, so putting it in a store would re-render
 // the component tree for every mouse move and buy nothing.
 
-/** The doors this viewer can click: every door for the GM, the flagged ones else. */
-export function clickableDoors(state: WallStoreState, isGm: boolean): WallView[] {
-  return isGm ? state.walls.filter((wall) => wall.kind === 'door') : state.doors;
+/**
+ * The openings this viewer can click: every door and window for the GM, the
+ * flagged ones a player was actually sent.
+ */
+export function clickableOpenings(state: WallStoreState, isGm: boolean): WallView[] {
+  return isGm ? state.walls.filter(isOpening) : state.openings;
 }

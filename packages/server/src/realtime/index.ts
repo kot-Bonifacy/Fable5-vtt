@@ -39,7 +39,7 @@ import { attackEvadeEvent, attackRollEvent, weaponReloadEvent } from './attacks.
 import { rulerClearEvent, rulerUpdateEvent } from './ruler.js';
 import { fogPaintEvent, fogResetEvent, fogUndoEvent, sceneVisibilityEvent } from './fog.js';
 import {
-  doorToggleEvent,
+  openingToggleEvent,
   wallClearEvent,
   wallCreateEvent,
   wallDeleteEvent,
@@ -127,7 +127,7 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   wallUpdateEvent,
   wallDeleteEvent,
   wallClearEvent,
-  doorToggleEvent,
+  openingToggleEvent,
   lightCreateEvent,
   lightUpdateEvent,
   lightDeleteEvent,

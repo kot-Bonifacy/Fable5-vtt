@@ -22,12 +22,25 @@ import type { Segment } from './vision.js';
 
 export const WALL_KINDS = ['wall', 'door', 'window'] as const;
 /**
- * `wall` blocks sight always, `door` only while closed, `window` — since stage
- * 18d — only for an observer standing away from it (see `sightSegmentsFor`).
- * A window also lets light through at a cost (`LIGHT_WINDOW_COST`), which is
- * what makes it different from a door left ajar.
+ * `wall` blocks sight always. `door` and `window` are **openings**: they can be
+ * opened, bolted and worked by hand, and what they do to sight depends on that
+ * state. A closed door blocks; a closed window blocks only for an observer
+ * standing away from it (the net curtain, stage 18d) and dims the light that
+ * passes it (`LIGHT_WINDOW_COST`); either one standing open is a hole in the
+ * wall — no shadow, no toll on the light.
  */
 export type WallKind = (typeof WALL_KINDS)[number];
+
+/**
+ * Can this be opened, bolted and reached for?
+ *
+ * Doors and windows are one mechanism with two skins. They differ only in what
+ * they do while **closed** — a door is opaque, a window is a curtained pane —
+ * and once open they are the same hole in a wall.
+ */
+export function isOpening(wall: Pick<WallView, 'kind'>): boolean {
+  return wall.kind === 'door' || wall.kind === 'window';
+}
 
 /** One stored wall as it goes over the wire — GM only, save for open doors. */
 export interface WallView {
@@ -35,12 +48,12 @@ export interface WallView {
   id: number;
   sceneId: string;
   kind: WallKind;
-  /** Doors only; a wall or window ignores it. */
+  /** Openings only (doors and windows); a plain wall ignores it. */
   open: boolean;
-  /** Doors only: players may operate this one, and therefore may see it. */
+  /** Openings only: players may operate this one, and therefore may see it. */
   playerToggle: boolean;
   /**
-   * Doors only (stage 18d): bolted, and a player's click does nothing.
+   * Openings only (stage 18d): bolted, and a player's click does nothing.
    *
    * **This field is scrubbed to `false` on its way to a player.** A locked door
    * still travels — a door you cannot see is a door you cannot try — but whether
@@ -92,7 +105,7 @@ export interface WallCreatePayload {
   /** Consecutive points; N points become N−1 segments. */
   points: ScenePoint[];
   kind: WallKind;
-  /** Doors only; ignored for other kinds. */
+  /** Openings only; ignored on a plain wall. */
   playerToggle?: boolean;
 }
 
@@ -102,7 +115,7 @@ export interface WallUpdatePayload {
   patch: {
     kind?: WallKind;
     playerToggle?: boolean;
-    /** Doors only (stage 18d); bolting one also shuts it. */
+    /** Openings only (stage 18d); bolting one also shuts it. */
     locked?: boolean;
   };
 }
@@ -116,11 +129,15 @@ export interface WallClearPayload {
 }
 
 /**
- * Client → server payload of `door:toggle`. Omitting `open` flips the door,
- * which is what a click on the map means; the explicit form exists for tests
- * and for a future keyboard shortcut.
+ * Client → server payload of `opening:toggle`. Omitting `open` flips it, which
+ * is what a click on the map means; the explicit form exists for tests and for a
+ * future keyboard shortcut.
+ *
+ * One event for doors and windows rather than two, because the interaction is
+ * identical down to the refusal codes — only the fiction differs, and fiction is
+ * the GM's department.
  */
-export interface DoorTogglePayload {
+export interface OpeningTogglePayload {
   wallId: number;
   open?: boolean;
 }
@@ -138,12 +155,13 @@ export interface WallSyncBroadcast {
 }
 
 /**
- * Server → client `door:sync` — the operable doors one player may currently
- * see. Targeted per socket (no seq), because the list differs per viewer.
+ * Server → client `opening:sync` — the doors *and windows* one player may
+ * currently operate and see. Targeted per socket (no seq), because the list
+ * differs per viewer.
  */
-export interface DoorSyncBroadcast {
+export interface OpeningSyncBroadcast {
   sceneId: string;
-  doors: WallView[];
+  openings: WallView[];
 }
 
 function finiteNumber(value: unknown): value is number {
@@ -157,15 +175,33 @@ export function isWallKind(value: unknown): value is WallKind {
 /**
  * Does this wall stop a line of sight for everybody, wherever they stand?
  *
- * A window answers `false` here and is nonetheless a blocker for most observers
- * — see `sightSegmentsFor`. This function is the part of the answer that does not
- * depend on who is asking, and it is what the *light* uses: a pane dims a beam
- * (`LIGHT_WINDOW_COST`), it never stops it.
+ * A closed window answers `false` here and is nonetheless a blocker for most
+ * observers — see `sightSegmentsFor`. This function is the part of the answer
+ * that does not depend on who is asking, and it is what the *light* uses: a pane
+ * dims a beam (`LIGHT_WINDOW_COST`), it never stops it.
  */
 export function wallBlocksSight(wall: Pick<WallView, 'kind' | 'open'>): boolean {
   if (wall.kind === 'window') return false;
   if (wall.kind === 'door') return !wall.open;
   return true;
+}
+
+/**
+ * The panes that currently take their toll on light passing through them
+ * (`LIGHT_WINDOW_COST`) — closed windows, and only those.
+ *
+ * An **open** window is a hole: nothing is left to dim the beam, which is what
+ * makes „the window is open" legible on a dark map without anyone saying so. A
+ * door is absent from this list in both states — shut it blocks outright, open
+ * it costs nothing.
+ */
+export function tollingWindows(walls: readonly WallView[]): Segment[] {
+  const panes: Segment[] = [];
+  for (const wall of walls) {
+    if (wall.kind !== 'window' || wall.open) continue;
+    panes.push({ x1: wall.x1, y1: wall.y1, x2: wall.x2, y2: wall.y2 });
+  }
+  return panes;
 }
 
 /** The subset of walls the raycast cares about, as bare segments. */
@@ -194,6 +230,10 @@ export function blockingSegments(walls: readonly WallView[]): Segment[] {
  * scene passes: at night a lit window is *more* visible from a distance, not
  * less, and there the pane already costs the light that comes through it.
  *
+ * An **open** window is never curtained. There is no glass in the way any more,
+ * so it behaves like a doorway — which is the whole point of being able to open
+ * one, and the reason a burglar shoves the sash up before looking in.
+ *
  * The reach is measured to the nearest point of the pane, so standing at one end
  * of a shop front opens the whole of it. That is a simplification, and the right
  * one: a window is one object, and splitting a pane into the bit you are level
@@ -211,8 +251,9 @@ export function sightSegmentsFor(
       segments.push({ x1: wall.x1, y1: wall.y1, x2: wall.x2, y2: wall.y2 });
       continue;
     }
-    // Only windows get the curtain treatment. A door standing open is open.
-    if (reach === null || wall.kind !== 'window') continue;
+    // Only closed windows get the curtain treatment. Anything standing open —
+    // a door or a sash — is a hole, and a hole hides nothing from anybody.
+    if (reach === null || wall.kind !== 'window' || wall.open) continue;
     if (distanceToWall(origin, wall) <= reach) continue;
     segments.push({ x1: wall.x1, y1: wall.y1, x2: wall.x2, y2: wall.y2 });
   }

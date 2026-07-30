@@ -78,8 +78,11 @@ export interface StateSyncPayload {
    * visibility; null in every other mode (and for the GM, who sees all).
    */
   vision: VisionSyncBroadcast | null;
-  /** Doors this player may operate and can currently see; empty for the GM. */
-  doors: WallView[];
+  /**
+   * Doors and windows this player may operate and can currently see; empty for
+   * the GM, who works the wall layer directly.
+   */
+  openings: WallView[];
   /**
    * Where the party has already been on the viewed scene (stage 18c); null when
    * the scene does not remember. Shared by the whole group and safe to hand

@@ -39,6 +39,7 @@ import {
   decodeLevelRuns,
   formatMetres,
   formatSquares,
+  isOpening,
   normalizeGridOffset,
   polylineMetres,
   simplifyPath,
@@ -371,8 +372,8 @@ export class MapRenderer {
   onWallErase: ((x: number, y: number) => void) | null = null;
   /** Click with the bolt armed (stage 18d); the caller picks the door. */
   onWallLock: ((x: number, y: number) => void) | null = null;
-  /** Click on a door glyph — open or close it. */
-  onDoorToggle: ((wallId: number) => void) | null = null;
+  /** Click on a door or window glyph — open or close it. */
+  onOpeningToggle: ((wallId: number) => void) | null = null;
   /** Click with the light tool armed: place a lamp, or retune the one here. */
   onLightPlace: ((x: number, y: number) => void) | null = null;
   /** Click with the light eraser armed; the caller picks the lamp. */
@@ -415,7 +416,7 @@ export class MapRenderer {
   /** Walls and door glyphs — GM only, above the fog like the note pins. */
   private readonly wallLayer = new Container();
   private readonly wallGraphics = new Graphics();
-  private readonly doorNodes = new Map<number, Container>();
+  private readonly openingNodes = new Map<number, Container>();
   /**
    * The player's field of view, composited exactly like the fog: a black sheet
    * with the polygons erased out of it.
@@ -520,7 +521,7 @@ export class MapRenderer {
   private lastRings: RangeRing[] = [];
   private lastNotes: MapNoteView[] = [];
   private lastWalls: WallView[] = [];
-  private lastDoors: WallView[] = [];
+  private lastOpenings: WallView[] = [];
   private lastVisionPolygons: ScenePoint[][] = [];
   private visionActive = false;
   private lastLightMask: LightMask | null = null;
@@ -1420,14 +1421,15 @@ export class MapRenderer {
   }
 
   /**
-   * The wall layer (GM only) plus the door glyphs (also the players', for the
-   * doors they were given). Redrawn whole on every change — a scene holds tens
-   * of segments, and a diff would buy nothing but a way to get out of step.
+   * The wall layer (GM only) plus the opening glyphs (also the players', for the
+   * doors and windows they were given). Redrawn whole on every change — a scene
+   * holds tens of segments, and a diff would buy nothing but a way to get out of
+   * step.
    */
-  setWalls(walls: WallView[], doors: WallView[]): void {
+  setWalls(walls: WallView[], openings: WallView[]): void {
     if (this.destroyed) return;
     this.lastWalls = walls;
-    this.lastDoors = doors;
+    this.lastOpenings = openings;
     this.drawWallLayer();
   }
 
@@ -1437,17 +1439,19 @@ export class MapRenderer {
     this.wallGraphics.clear();
 
     for (const wall of this.lastWalls) {
-      const open = wall.kind === 'door' && wall.open;
+      const open = isOpening(wall) && wall.open;
       this.wallGraphics
         .moveTo(wall.x1, wall.y1)
         .lineTo(wall.x2, wall.y2)
         .stroke({
           color: wall.locked ? WALL_LOCKED_COLOR : WALL_COLORS[wall.kind],
           width: 4 * k,
-          // An open door and a window both let sight through; drawing them
-          // paler is what makes „what is blocking right now?" readable
-          // without clicking anything.
-          alpha: open || wall.kind === 'window' ? 0.35 : 0.85,
+          // Anything standing open lets sight through; drawing it paler is what
+          // makes „what is blocking right now?" readable without clicking. A
+          // *closed* window is drawn solid since stage 18d — it stops everyone
+          // who is not standing at it — and stays cyan, so the kind is still
+          // legible at a glance.
+          alpha: open ? 0.35 : 0.85,
           cap: 'round',
         });
       // Endpoints are the thing that has to line up exactly — a two-pixel gap
@@ -1479,22 +1483,27 @@ export class MapRenderer {
       }
     }
 
-    this.syncDoorGlyphs(k);
+    this.syncOpeningGlyphs(k);
   }
 
   /**
-   * Clickable door handles — the one wall object a player may ever touch.
+   * Clickable handles for doors and windows — the only wall objects a player may
+   * ever touch.
    *
    * The padlock badge (stage 18d) is driven by `locked` alone and needs no notion
-   * of who is looking: the server scrubs that flag out of every player's door
+   * of who is looking: the server scrubs that flag out of every player's opening
    * list, so a `true` here can only have arrived on the GM's own socket. The data
    * is the gate, which is one fewer thing to get wrong than a role check would be.
+   *
+   * Both the glyph and the badge are refreshed on every pass rather than only at
+   * creation: the GM can retype a door into a window under the same row id, and a
+   * cached 🚪 over a window would be the map lying about what is there.
    */
-  private syncDoorGlyphs(k: number): void {
+  private syncOpeningGlyphs(k: number): void {
     const seen = new Set<number>();
-    for (const door of this.lastDoors) {
-      seen.add(door.id);
-      let node = this.doorNodes.get(door.id);
+    for (const opening of this.lastOpenings) {
+      seen.add(opening.id);
+      let node = this.openingNodes.get(opening.id);
       if (!node) {
         node = new Container();
         const glyph = new Text({
@@ -1502,14 +1511,15 @@ export class MapRenderer {
           style: { fontFamily: 'system-ui, sans-serif', fontSize: 22 },
         });
         glyph.anchor.set(0.5, 0.5);
+        glyph.label = 'glyph';
         node.addChild(glyph);
         const bolt = new Text({
           text: '🔒',
           style: { fontFamily: 'system-ui, sans-serif', fontSize: 13 },
         });
         bolt.anchor.set(0.5, 0.5);
-        // Off the corner of the door rather than over it: the glyph still has to
-        // read as a door, and the eye is meant to catch the lock second.
+        // Off the corner rather than over it: the glyph still has to read as a
+        // door or a pane, and the eye is meant to catch the lock second.
         bolt.position.set(11, -11);
         bolt.visible = false;
         bolt.label = 'bolt';
@@ -1522,23 +1532,27 @@ export class MapRenderer {
           // glyph, so they keep the click while they are armed.
           if (this.wall.armed && this.wall.mode !== 'draw') return;
           event.stopPropagation();
-          this.onDoorToggle?.(door.id);
+          this.onOpeningToggle?.(opening.id);
         });
-        this.doorNodes.set(door.id, node);
+        this.openingNodes.set(opening.id, node);
         this.wallLayer.addChild(node);
       }
-      const centre = wallMidpoint(door);
+      const centre = wallMidpoint(opening);
       node.position.set(centre.x, centre.y);
       node.scale.set(k);
-      // An open door is dimmed, so the state reads from across the map.
-      node.alpha = door.open ? 0.45 : 1;
+      // Anything standing open is dimmed, so „what is blocking right now?" reads
+      // from across the map without clicking — the same language the segments
+      // themselves speak.
+      node.alpha = opening.open ? 0.45 : 1;
+      const glyph = node.getChildByLabel('glyph');
+      if (glyph instanceof Text) glyph.text = opening.kind === 'window' ? '🪟' : '🚪';
       const bolt = node.getChildByLabel('bolt');
-      if (bolt) bolt.visible = door.locked;
+      if (bolt) bolt.visible = opening.locked;
     }
 
-    for (const [id, node] of this.doorNodes) {
+    for (const [id, node] of this.openingNodes) {
       if (seen.has(id)) continue;
-      this.doorNodes.delete(id);
+      this.openingNodes.delete(id);
       node.destroy({ children: true });
     }
   }
@@ -2182,7 +2196,7 @@ export class MapRenderer {
       this.tokenNodes.clear();
       this.noteNodes.clear();
       this.drawNodes.clear();
-      this.doorNodes.clear();
+      this.openingNodes.clear();
       this.lightNodes.clear();
     }
     // When init is still pending, it destroys the app itself on completion.

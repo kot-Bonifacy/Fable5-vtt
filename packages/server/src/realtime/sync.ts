@@ -57,7 +57,7 @@ export async function buildStateSync(
       walls: [],
       lights: [],
       vision: null,
-      doors: [],
+      openings: [],
       exploration: null,
       characters: [],
       bots: [],
@@ -160,7 +160,7 @@ export async function buildStateSync(
           glows: vision.glows,
         }
       : null,
-    doors: vision?.doors ?? [],
+    openings: vision?.openings ?? [],
     exploration,
     characters,
     bots,

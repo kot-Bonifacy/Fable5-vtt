@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { WALL_REACH_M, isWallWithinReach, sightSegmentsFor, type WallView } from './walls.js';
+import {
+  WALL_REACH_M,
+  isOpening,
+  isWallWithinReach,
+  sightSegmentsFor,
+  tollingWindows,
+  type WallView,
+} from './walls.js';
 import { computeVisionPolygon, isPointInPolygon, sceneBoundsSegments } from './vision.js';
 
 /**
@@ -121,6 +128,51 @@ describe('sightSegmentsFor — the net curtain', () => {
     expect(sightSegmentsFor(shut, { x: 390, y: 300 }, { curtainReachPx: REACH_PX })).toHaveLength(
       1,
     );
+  });
+
+  it('never applies to an open window either — there is no glass left in it', () => {
+    // The point of being able to open one: shove the sash up and the pane stops
+    // being a bright rectangle from across the street.
+    const open = [WINDOW, ...PLAN.filter((wall) => wall.kind !== 'window')].map((wall) =>
+      wall.kind === 'window' ? { ...wall, open: true } : wall,
+    );
+    const fromStreet = { x: 200, y: 300 };
+    const segments = sightSegmentsFor(open, fromStreet, { curtainReachPx: REACH_PX });
+    expect(segments).toHaveLength(3);
+    expect(segments).not.toContainEqual({ x1: 400, y1: 100, x2: 400, y2: 500 });
+    expect(
+      isPointInPolygon(
+        { x: 700, y: 300 },
+        computeVisionPolygon(fromStreet, [...segments, ...sceneBoundsSegments(BOUNDS)], null),
+      ),
+    ).toBe(true);
+  });
+});
+
+describe('tollingWindows — which panes still cost the light', () => {
+  it('lists closed windows and nothing else', () => {
+    expect(tollingWindows(PLAN)).toEqual([{ x1: 400, y1: 100, x2: 400, y2: 500 }]);
+  });
+
+  it('drops a window once it is opened — an open sash dims nothing', () => {
+    const opened = PLAN.map((wall) => (wall.kind === 'window' ? { ...wall, open: true } : wall));
+    expect(tollingWindows(opened)).toEqual([]);
+  });
+
+  it('never lists a door, open or shut — a door blocks or it costs nothing', () => {
+    const doors = [
+      makeWall(9, 'door', 0, 0, 100, 0),
+      makeWall(10, 'door', 0, 100, 100, 100, { open: true }),
+    ];
+    expect(tollingWindows(doors)).toEqual([]);
+  });
+});
+
+describe('isOpening — what can be worked by hand', () => {
+  it('accepts doors and windows and refuses a plain wall', () => {
+    expect(isOpening({ kind: 'door' })).toBe(true);
+    expect(isOpening({ kind: 'window' })).toBe(true);
+    expect(isOpening({ kind: 'wall' })).toBe(false);
   });
 });
 

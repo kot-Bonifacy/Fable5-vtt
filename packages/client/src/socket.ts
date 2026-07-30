@@ -85,7 +85,7 @@ import type {
   RollParseError,
   TokenUpsertBroadcast,
   TokenView,
-  DoorSyncBroadcast,
+  OpeningSyncBroadcast,
   ExplorationSyncBroadcast,
   VisionSyncBroadcast,
   WallKind,
@@ -523,8 +523,8 @@ export function connectSocket(userId: string): Socket {
     drawings().clear(broadcast.sceneId, broadcast.authorId);
   });
 
-  // Walls, doors and the field of view (stage 18a). All three are targeted —
-  // walls at the GM room, vision and doors at one player's socket — so none of
+  // Walls, openings and the field of view (stage 18a). All three are targeted —
+  // walls at the GM room, vision and openings at one player's socket — so none of
   // them carries a seq and none may be gap-checked.
   socket.on('wall:sync', (broadcast: WallSyncBroadcast) => {
     if (viewingScene(broadcast.sceneId)) {
@@ -545,8 +545,8 @@ export function connectSocket(userId: string): Socket {
       useLightStore.getState().setLights(broadcast.sceneId, broadcast.lights);
     }
   });
-  socket.on('door:sync', (broadcast: DoorSyncBroadcast) => {
-    if (viewingScene(broadcast.sceneId)) useWallStore.getState().setDoors(broadcast.doors);
+  socket.on('opening:sync', (broadcast: OpeningSyncBroadcast) => {
+    if (viewingScene(broadcast.sceneId)) useWallStore.getState().setOpenings(broadcast.openings);
   });
   // The party's memory of the map (stage 18c). One broadcast for everybody —
   // exploration is shared, so unlike `vision:sync` it is not composed per
@@ -835,9 +835,10 @@ export const deleteDrawing = (drawingId: number) => emitSceneAck('drawing:delete
 export const clearDrawings = (sceneId: string, scope: 'mine' | 'all') =>
   emitSceneAck('drawing:clear', { sceneId, scope });
 
-/* Walls and doors (stage 18a). Everything here is GM-only except `toggleDoor`,
-   which a player may use on a door the GM flagged — and only while they can
-   see it; the server checks both, whatever the UI offers. */
+/* Walls, doors and windows (stage 18a). Everything here is GM-only except
+   `toggleOpening`, which a player may use on a door or window the GM flagged —
+   and only from arm's reach, while they can see it and it is not bolted; the
+   server checks all of it, whatever the UI offers. */
 
 export const createWalls = (
   sceneId: string,
@@ -855,8 +856,8 @@ export const deleteWall = (wallId: number) => emitSceneAck('wall:delete', { wall
 
 export const clearWalls = (sceneId: string) => emitSceneAck('wall:clear', { sceneId });
 
-export const toggleDoor = (wallId: number, open?: boolean) =>
-  emitSceneAck<WallView>('door:toggle', { wallId, open });
+export const toggleOpening = (wallId: number, open?: boolean) =>
+  emitSceneAck<WallView>('opening:toggle', { wallId, open });
 
 /* Lights and darkness (stage 18b). GM-only except `toggleTokenLight`, which the
    controller of a token may use on their own torch — the server checks that,

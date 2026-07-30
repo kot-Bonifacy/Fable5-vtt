@@ -1,5 +1,5 @@
 import type {
-  DoorTogglePayload,
+  OpeningTogglePayload,
   WallClearPayload,
   WallCreatePayload,
   WallDeletePayload,
@@ -7,7 +7,7 @@ import type {
   WallUpdatePayload,
   WallView,
 } from '@vtt/shared';
-import { ROLE_GM, WALL_MAX_PER_SCENE, isWallKind, sanitizeWallChain } from '@vtt/shared';
+import { ROLE_GM, WALL_MAX_PER_SCENE, isOpening, isWallKind, sanitizeWallChain } from '@vtt/shared';
 import type { Scene } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { requireCampaignScene } from './scenes.js';
@@ -19,12 +19,12 @@ import {
   isWallInReach,
   loadVisionContext,
   usesDynamicVision,
-  visibleDoorsFor,
+  visibleOpeningsFor,
   viewerSightFor,
 } from './vision.js';
 
 /**
- * Wall and door events (stage 18a) — core VTT, no game system involved.
+ * Wall, door and window events (stage 18a) — core VTT, no game system involved.
  *
  * The geometry lives in `@vtt/shared` (`walls.ts`, `vision.ts`); this module
  * stores it, guards who may edit it and — the part that matters — makes sure it
@@ -72,9 +72,9 @@ export const wallCreateEvent = defineEvent<WallCreatePayload, WallView[]>({
     const segments = sanitizeWallChain(payload?.points);
     if (!segments) throw new RealtimeError('BAD_REQUEST');
     const kind = isWallKind(payload?.kind) ? payload.kind : 'wall';
-    // The player flag is a door's business; on a wall it would be a promise the
-    // UI never keeps.
-    const playerToggle = kind === 'door' && payload?.playerToggle === true;
+    // The player flag belongs to openings; on a plain wall it would be a promise
+    // the UI never keeps.
+    const playerToggle = isOpening({ kind }) && payload?.playerToggle === true;
 
     const stored = await deps.ctx.prisma.wall.count({ where: { sceneId: scene.id } });
     if (stored + segments.length > WALL_MAX_PER_SCENE) {
@@ -116,9 +116,10 @@ export const wallUpdateEvent = defineEvent<WallUpdatePayload, WallView>({
     if (patch.kind !== undefined) {
       if (!isWallKind(patch.kind)) throw new RealtimeError('BAD_REQUEST');
       data.kind = patch.kind;
-      // Retyping a door into a wall takes its player flag and its bolt with it,
-      // and closes it: an „open wall" is a state nothing in the UI could explain.
-      if (patch.kind !== 'door') {
+      // Retyping an opening into a plain wall takes its player flag and its bolt
+      // with it, and closes it: an „open wall" is a state nothing in the UI could
+      // explain. Door ↔ window keeps all three — the mechanism is the same one.
+      if (!isOpening({ kind: patch.kind })) {
         data.playerToggle = false;
         data.open = false;
         data.locked = false;
@@ -126,13 +127,13 @@ export const wallUpdateEvent = defineEvent<WallUpdatePayload, WallView>({
     }
     if (patch.playerToggle !== undefined) {
       if (typeof patch.playerToggle !== 'boolean') throw new RealtimeError('BAD_REQUEST');
-      const kind = (data.kind as string | undefined) ?? row.kind;
-      data.playerToggle = kind === 'door' && patch.playerToggle;
+      const kind = ((data.kind as string | undefined) ?? row.kind) as WallView['kind'];
+      data.playerToggle = isOpening({ kind }) && patch.playerToggle;
     }
     if (patch.locked !== undefined) {
       if (typeof patch.locked !== 'boolean') throw new RealtimeError('BAD_REQUEST');
-      const kind = (data.kind as string | undefined) ?? row.kind;
-      const locked = kind === 'door' && patch.locked;
+      const kind = ((data.kind as string | undefined) ?? row.kind) as WallView['kind'];
+      const locked = isOpening({ kind }) && patch.locked;
       data.locked = locked;
       // Bolting a door shuts it. „Open and locked" is a real thing — a door
       // wedged so it cannot be closed — but it is not what a GM means when they
@@ -179,27 +180,35 @@ export const wallClearEvent = defineEvent<WallClearPayload>({
 });
 
 /**
- * Opening and closing a door — the interaction that happens most at the table,
- * and the only one a player is allowed to perform on the wall layer.
+ * Opening and closing a door **or a window** — the interaction that happens most
+ * at the table, and the only one a player is allowed to perform on the wall
+ * layer. One handler for both, because the guards are identical: what differs
+ * between a shut door and a shut window is what they do to sight, not who is
+ * allowed to touch them.
  *
  * A player has to clear four conditions, and the order they are checked in is
  * the point of this handler. Each one may only reveal what the previous one has
  * already conceded:
  *
- *  1. the GM flagged the door as theirs (`playerToggle`) — else `FORBIDDEN`;
+ *  1. the GM flagged it as theirs (`playerToggle`) — else `FORBIDDEN`;
  *  2. they can see it right now — else `WALL_NOT_FOUND`, the same answer an
  *     unseen token gives, because a rejection must not become a way to learn
  *     that a door is there at all;
- *  3. one of their tokens stands within arm's reach — else `DOOR_OUT_OF_REACH`
- *     (stage 18d). Safe to name: they were already told the door exists by being
- *     shown it;
- *  4. it is not bolted — else `DOOR_LOCKED`. Last on purpose. „Locked" is the
+ *  3. one of their tokens stands within arm's reach — else `OPENING_OUT_OF_REACH`
+ *     (stage 18d). Safe to name: they were already told it exists by being shown
+ *     it;
+ *  4. it is not bolted — else `OPENING_LOCKED`. Last on purpose. „Locked" is the
  *     one fact about a door that is learned by pulling the handle, so a player
  *     halfway across the room must not get it: they would be probing the map for
  *     which doors matter without their character touching anything.
+ *
+ * What an *open* window then means for movement is the GM's ruling: this VTT has
+ * no movement collisions yet, so nothing stops a token crossing a wall in the
+ * first place (see POMYSLY.md). The state is here, honest and shared, ready for
+ * the day the ruling becomes a rule.
  */
-export const doorToggleEvent = defineEvent<DoorTogglePayload, WallView>({
-  name: 'door:toggle',
+export const openingToggleEvent = defineEvent<OpeningTogglePayload, WallView>({
+  name: 'opening:toggle',
   handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
     const wallId = payload?.wallId;
@@ -212,25 +221,25 @@ export const doorToggleEvent = defineEvent<DoorTogglePayload, WallView>({
     });
     if (!row || row.scene.campaignId !== campaignId) throw new RealtimeError('WALL_NOT_FOUND');
     const wall = toWallView(row);
-    if (wall.kind !== 'door') throw new RealtimeError('NOT_A_DOOR');
+    if (!isOpening(wall)) throw new RealtimeError('NOT_AN_OPENING');
 
     const isGm = user.role === ROLE_GM;
     if (!isGm) {
       if (socket.data.viewedSceneId !== row.sceneId) throw new RealtimeError('SCENE_NOT_VIEWED');
       if (!wall.playerToggle) throw new RealtimeError('FORBIDDEN');
       const context = await loadVisionContext(deps.ctx.prisma, row.scene);
-      // The whole sight rather than just the origins: on a dark scene a door
+      // The whole sight rather than just the origins: on a dark scene an opening
       // has to be lit to be worked, and the guard must agree with the list the
       // player was sent — or the handle they can see would refuse them.
       const sight = await viewerSightFor(deps.ctx.prisma, row.scene, user.id, context);
-      const visible = visibleDoorsFor(context, sight.sources, sight.lighting).some(
-        (door) => door.id === wall.id,
+      const visible = visibleOpeningsFor(context, sight.sources, sight.lighting).some(
+        (opening) => opening.id === wall.id,
       );
       if (!visible) throw new RealtimeError('WALL_NOT_FOUND');
       if (!isWallInReach(context, sight.sources, wall)) {
-        throw new RealtimeError('DOOR_OUT_OF_REACH');
+        throw new RealtimeError('OPENING_OUT_OF_REACH');
       }
-      if (wall.locked) throw new RealtimeError('DOOR_LOCKED');
+      if (wall.locked) throw new RealtimeError('OPENING_LOCKED');
     }
 
     const open = typeof payload?.open === 'boolean' ? payload.open : !wall.open;

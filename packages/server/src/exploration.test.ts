@@ -306,13 +306,13 @@ describe('exploration memory', () => {
   });
 
   it('keeps the room on the plan after the door shuts — without the NPC in it', async () => {
-    await emitAck(gm, 'door:toggle', { wallId: doorId, open: true });
+    await emitAck(gm, 'opening:toggle', { wallId: doorId, open: true });
     const open = await roundTrip(player);
     // Through the open door: the room is seen and its occupant is real.
     expect(exploredAt(open.exploration!, { x: 1500, y: 1500 })).toBe(true);
     expect(open.tokens.map((t) => t.id)).toContain(npcTokenId);
 
-    await emitAck(gm, 'door:toggle', { wallId: doorId, open: false });
+    await emitAck(gm, 'opening:toggle', { wallId: doorId, open: false });
     const shut = await roundTrip(player);
     // The map is remembered…
     expect(exploredAt(shut.exploration!, { x: 1500, y: 1500 })).toBe(true);
@@ -338,7 +338,7 @@ describe('exploration memory', () => {
     // Pitch dark, no torch: a player makes out one grid square around
     // themselves, and that is all the map may remember.
     await emitAck(gm, 'scene:lighting', { sceneId, dark: true, darkSightM: 2 });
-    await emitAck(gm, 'door:toggle', { wallId: doorId, open: true });
+    await emitAck(gm, 'opening:toggle', { wallId: doorId, open: true });
     const groping = await roundTrip(player);
     expect(exploredAt(groping.exploration!, { x: 500, y: 1500 })).toBe(true);
     // The room beyond the open door is in plain view and pitch dark: in view is
@@ -365,8 +365,8 @@ describe('exploration memory', () => {
     const pushed = waitFor<ExplorationSyncBroadcast>(gm, 'explore:sync');
     // Any change to what the player sees re-derives their vision, which is what
     // feeds the memory — working the door is the cheapest such change.
-    await emitAck(gm, 'door:toggle', { wallId: doorId, open: false });
-    await emitAck(gm, 'door:toggle', { wallId: doorId, open: true });
+    await emitAck(gm, 'opening:toggle', { wallId: doorId, open: false });
+    await emitAck(gm, 'opening:toggle', { wallId: doorId, open: true });
     const broadcast = await pushed;
     expect(broadcast.sceneId).toBe(sceneId);
     expect(exploredCount(broadcast.mask!)).toBeGreaterThan(0);
@@ -619,7 +619,7 @@ describe('lighting a room in one click', () => {
       }),
       'wall:create door',
     )[0]!;
-    await emitAck(gm, 'door:toggle', { wallId: door.id, open: true });
+    await emitAck(gm, 'opening:toggle', { wallId: door.id, open: true });
 
     const lamp = data(
       await emitAck<LightView>(gm, 'light:create', {
@@ -767,7 +767,7 @@ describe('a door glyph obeys the light', () => {
     // not a view — so the handle across the room is no longer offered on any
     // scene, dark or lit.
     const sync = await roundTrip(player);
-    expect(sync.doors.map((door) => door.id)).not.toContain(doorId);
+    expect(sync.openings.map((door) => door.id)).not.toContain(doorId);
   });
 
   it('hands the far door over once the token stands at the window', async () => {
@@ -779,10 +779,10 @@ describe('a door glyph obeys the light', () => {
     // is grid-aligned on purpose.
     await emitAck(gm, 'token:move', { tokenId: ownTokenId, x: 1700, y: 1200, final: true });
     const atTheGlass = await roundTrip(player);
-    expect(atTheGlass.doors.map((door) => door.id)).toContain(doorId);
+    expect(atTheGlass.openings.map((door) => door.id)).toContain(doorId);
     // …and it is still out of arm's reach, which is a different refusal.
-    expect(errorOf(await emitAck(player, 'door:toggle', { wallId: doorId }))).toBe(
-      'DOOR_OUT_OF_REACH',
+    expect(errorOf(await emitAck(player, 'opening:toggle', { wallId: doorId }))).toBe(
+      'OPENING_OUT_OF_REACH',
     );
     await emitAck(gm, 'token:move', { tokenId: ownTokenId, x: 2750, y: 2300, final: true });
   });
@@ -790,9 +790,9 @@ describe('a door glyph obeys the light', () => {
   it('takes it away once the lights go out', async () => {
     await emitAck(gm, 'scene:lighting', { sceneId, dark: true, darkSightM: 2 });
     const dark = await roundTrip(player);
-    expect(dark.doors.map((door) => door.id)).not.toContain(doorId);
+    expect(dark.openings.map((door) => door.id)).not.toContain(doorId);
     // And the handle is refused, the same way an unseen token is.
-    expect(errorOf(await emitAck(player, 'door:toggle', { wallId: doorId }))).toBe(
+    expect(errorOf(await emitAck(player, 'opening:toggle', { wallId: doorId }))).toBe(
       'WALL_NOT_FOUND',
     );
   });
@@ -805,21 +805,21 @@ describe('a door glyph obeys the light', () => {
     // one square further back stands 3 m from the door with 2 m of groping.
     await emitAck(gm, 'token:move', { tokenId: ownTokenId, x: 1200, y: 700, final: true });
     const close = await roundTrip(player);
-    expect(close.doors.map((door) => door.id)).toContain(doorId);
-    expect((await emitAck(player, 'door:toggle', { wallId: doorId })).ok).toBe(true);
+    expect(close.openings.map((door) => door.id)).toContain(doorId);
+    expect((await emitAck(player, 'opening:toggle', { wallId: doorId })).ok).toBe(true);
   });
 
   it('is taken away again by the GM brush, however well lit', async () => {
     await emitAck(gm, 'scene:lighting', { sceneId, dark: false });
     const lit = await roundTrip(player);
-    expect(lit.doors.map((door) => door.id)).toContain(doorId);
+    expect(lit.openings.map((door) => door.id)).toContain(doorId);
 
     await emitAck(gm, 'fog:paint', {
       sceneId,
       shape: { kind: 'rect', mode: 'hide', x: 1150, y: 650, width: 200, height: 100 },
     });
     const hidden = await roundTrip(player);
-    expect(hidden.doors.map((door) => door.id)).not.toContain(doorId);
+    expect(hidden.openings.map((door) => door.id)).not.toContain(doorId);
     await emitAck(gm, 'fog:reset', { sceneId, mode: 'clear' });
   });
 });

@@ -99,6 +99,8 @@ export function MapTools() {
   const setWallKind = useMapToolStore((s) => s.setWallKind);
   const wallPlayerToggle = useMapToolStore((s) => s.wallPlayerToggle);
   const setWallPlayerToggle = useMapToolStore((s) => s.setWallPlayerToggle);
+  const windowPlayerToggle = useMapToolStore((s) => s.windowPlayerToggle);
+  const setWindowPlayerToggle = useMapToolStore((s) => s.setWindowPlayerToggle);
   const wallSnapGrid = useMapToolStore((s) => s.wallSnapGrid);
   const setWallSnapGrid = useMapToolStore((s) => s.setWallSnapGrid);
   const lightMode = useMapToolStore((s) => s.lightMode);
@@ -505,7 +507,7 @@ export function MapTools() {
           <button
             type="button"
             className={`map-tool${wallMode === 'lock' ? ' map-tool--active' : ''}`}
-            title="Zamek — kliknij drzwi, by je zamknąć na klucz (lub zdjąć zamek). Gracz dowie się o zamku tylko po próbie otwarcia"
+            title="Zamek — kliknij drzwi albo okno, by je zamknąć na klucz (lub zdjąć zamek). Gracz dowie się o zamku tylko po próbie otwarcia"
             aria-pressed={wallMode === 'lock'}
             onClick={() => setWallMode('lock')}
           >
@@ -536,7 +538,7 @@ export function MapTools() {
               <button
                 type="button"
                 className={`map-tool${wallKind === 'window' ? ' map-tool--active' : ''}`}
-                title="Okno — nie blokuje widoku (oznaczenie dla MG)"
+                title="Okno — z dystansu zasłania jak ściana („firanka”), przepuszcza przygaszone światło; otwarte jest dziurą w ścianie"
                 aria-pressed={wallKind === 'window'}
                 onClick={() => setWallKind('window')}
               >
@@ -558,6 +560,27 @@ export function MapTools() {
                   onClick={() => setWallPlayerToggle(!wallPlayerToggle)}
                 >
                   {wallPlayerToggle ? <IconEye /> : <IconEyeOff />}
+                </button>
+              )}
+
+              {/* Windows keep their own answer to the same question, and default
+                  to „no": a whole elevation of them would otherwise be a wall of
+                  handles inviting the party to climb in anywhere. */}
+              {wallKind === 'window' && (
+                <button
+                  type="button"
+                  className={`map-tool${
+                    windowPlayerToggle ? ' map-tool--active' : ' map-tool--warn'
+                  }`}
+                  title={
+                    windowPlayerToggle
+                      ? 'Gracze mogą otwierać to okno (widzą je, gdy jest w polu widzenia) — otwarte przestaje zasłaniać i przepuszcza pełne światło'
+                      : 'Okno tylko dla MG — gracze go nie ruszą ani nie zobaczą jako uchwytu'
+                  }
+                  aria-pressed={windowPlayerToggle}
+                  onClick={() => setWindowPlayerToggle(!windowPlayerToggle)}
+                >
+                  {windowPlayerToggle ? <IconEye /> : <IconEyeOff />}
                 </button>
               )}
 

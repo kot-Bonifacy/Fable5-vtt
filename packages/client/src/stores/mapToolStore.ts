@@ -167,8 +167,10 @@ interface MapToolStoreState extends DrawSettings {
   wallMode: WallMode;
   /** What the next drawn chain becomes. */
   wallKind: WallKind;
-  /** Doors only: may the players open it themselves? */
+  /** Doors: may the players open them themselves? */
   wallPlayerToggle: boolean;
+  /** Windows: the same question, kept apart because the answer differs. */
+  windowPlayerToggle: boolean;
   /** Snap drawn points to the grid (endpoints of existing walls always win). */
   wallSnapGrid: boolean;
   /** Light tool: placing/retuning lamps, or removing them. */
@@ -196,6 +198,7 @@ interface MapToolStoreState extends DrawSettings {
   setWallMode: (wallMode: WallMode) => void;
   setWallKind: (wallKind: WallKind) => void;
   setWallPlayerToggle: (wallPlayerToggle: boolean) => void;
+  setWindowPlayerToggle: (windowPlayerToggle: boolean) => void;
   setWallSnapGrid: (wallSnapGrid: boolean) => void;
   setLightMode: (lightMode: LightMode) => void;
   setLightFitRoom: (lightFitRoom: boolean) => void;
@@ -232,6 +235,12 @@ export const useMapToolStore = create<MapToolStoreState>((set, get) => {
     // Doors default to the players' — the GM who wants a secret door unticks
     // it, which is the rarer case and the one worth a deliberate click.
     wallPlayerToggle: true,
+    // Windows default the other way (stage 18e). Doors are drawn one at a time
+    // and in doorways; windows are traced in runs along a whole elevation, so
+    // „players may" by default would bury the map in 🪟 handles and announce
+    // that every window in Night City is a way in. The GM opens the one that
+    // matters with a single click.
+    windowPlayerToggle: false,
     wallSnapGrid: true,
     lightMode: 'place',
     lightFitRoom: false,
@@ -255,6 +264,7 @@ export const useMapToolStore = create<MapToolStoreState>((set, get) => {
     setWallMode: (wallMode) => set({ wallMode }),
     setWallKind: (wallKind) => set({ wallKind }),
     setWallPlayerToggle: (wallPlayerToggle) => set({ wallPlayerToggle }),
+    setWindowPlayerToggle: (windowPlayerToggle) => set({ windowPlayerToggle }),
     setWallSnapGrid: (wallSnapGrid) => set({ wallSnapGrid }),
     setLightMode: (lightMode) => set({ lightMode }),
     setLightFitRoom: (lightFitRoom) => set({ lightFitRoom }),
@@ -264,6 +274,15 @@ export const useMapToolStore = create<MapToolStoreState>((set, get) => {
     setLightFlicker: (lightFlicker) => set({ lightFlicker }),
   };
 });
+
+/**
+ * Is the opening about to be drawn the players' to work? Reads the flag that
+ * belongs to the selected kind, so switching door ↔ window never silently
+ * carries one kind's answer over to the other.
+ */
+export function currentPlayerToggle(state: MapToolStoreState): boolean {
+  return state.wallKind === 'window' ? state.windowPlayerToggle : state.wallPlayerToggle;
+}
 
 /** The style the toolbar currently describes — what a new shape is drawn with. */
 export function currentDrawingStyle(state: MapToolStoreState): DrawingStyle {

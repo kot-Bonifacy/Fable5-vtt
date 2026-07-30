@@ -18,6 +18,7 @@ import {
   fogOverrideAt,
   isPointLit,
   isPointVisible,
+  isOpening,
   isSegmentClear,
   isWallWithinReach,
   lightMaskCellPx,
@@ -27,6 +28,7 @@ import {
   sceneBoundsSegments,
   sightSegmentsFor,
   tokenCentre,
+  tollingWindows,
   wallMidpoint,
   type Segment,
 } from '@vtt/shared';
@@ -142,9 +144,9 @@ export interface SceneVisionContext {
   /** Lights carried by tokens and switched on, keyed by token id. */
   carried: Map<string, CarriedLight>;
   /**
-   * Windows, as bare segments (stage 18c). They are deliberately *not* in
-   * `segments` — a window stops neither sight nor light — but light that passes
-   * through one arrives dimmer, and this is the list that says where they are.
+   * The panes that dim the light passing through them (stage 18c) — **closed**
+   * windows only. They are deliberately *not* in `segments`: a window stops
+   * light no more than an open door does, it just costs it (`LIGHT_WINDOW_COST`).
    */
   windows: Segment[];
   /**
@@ -191,9 +193,9 @@ export async function loadVisionContext(
     // its toll on the light coming through (stage 18c).
     curtainReachPx: dark ? null : reachPx,
     reachPx,
-    windows: walls
-      .filter((wall) => wall.kind === 'window')
-      .map((wall) => ({ x1: wall.x1, y1: wall.y1, x2: wall.x2, y2: wall.y2 })),
+    // Closed panes only: an open sash has no glass left to dim a beam, so a lit
+    // room throws its light into the street at full strength through it.
+    windows: tollingWindows(walls),
     lights,
     staticSources: lights
       .map((light) => lightSourceOf(light, scene))
@@ -488,13 +490,20 @@ export function isPointObservable(
 }
 
 /**
- * Doors this player may operate *and* can currently see.
+ * Openings — doors and windows — this player may operate *and* can currently
+ * see.
  *
  * The one crack in „walls never reach a player", and a deliberate one: a door
- * nobody can see is a door nobody can open. The GM decides which doors are the
+ * nobody can see is a door nobody can open. The GM decides which openings are the
  * players' to work by flagging them, and even those only travel once they are
  * in line of sight — so a marked door deep in an unexplored building still
  * gives nothing away.
+ *
+ * A **closed window** is on this list whenever it is in view, even though it is
+ * the thing blocking that view: the pane is what the character is looking at, and
+ * from the street a lit window is the most conspicuous object on the wall. It is
+ * removed from the blockers before its own line of sight is tested, exactly as a
+ * closed door is, so it cannot hide itself.
  *
  * On a dark scene the light has a say too (corrected in stage 18c). Stage 18a
  * exempted doors from darkness on the grounds that a door you have walked up to
@@ -511,14 +520,14 @@ export function isPointObservable(
  * hand, is *not* a condition here: a door out of arm's reach is still a door
  * you can see, and the click is what tells you it is too far away.
  */
-export function visibleDoorsFor(
+export function visibleOpeningsFor(
   context: SceneVisionContext,
   sources: readonly SightSource[],
   lighting: ViewerLighting | null,
 ): WallView[] {
-  const doors = context.walls.filter((wall) => wall.kind === 'door' && wall.playerToggle);
-  if (doors.length === 0 || sources.length === 0) return [];
-  const visible = doors.filter((door) => {
+  const openings = context.walls.filter((wall) => isOpening(wall) && wall.playerToggle);
+  if (openings.length === 0 || sources.length === 0) return [];
+  const visible = openings.filter((door) => {
     const midpoint = wallMidpoint(door);
     // The GM's brush outranks the geometry here as it does everywhere else: a
     // door under a „hide" stroke is a door the players are not being shown.
@@ -548,11 +557,11 @@ export function visibleDoorsFor(
       return isSegmentClear(source.origin, midpoint, others);
     });
   });
-  // Whether the bolt is thrown is the one thing about a door a player learns by
-  // pulling the handle rather than by looking, so it never leaves the server.
+  // Whether the bolt is thrown is the one thing about an opening a player learns
+  // by pulling the handle rather than by looking, so it never leaves the server.
   // Scrubbed here — the single function that answers „what is a player told
-  // about doors" — rather than at each emit site, where the next one added would
-  // forget.
+  // about doors and windows" — rather than at each emit site, where the next one
+  // added would forget.
   return visible.map((door) => (door.locked ? { ...door, locked: false } : door));
 }
 
@@ -626,7 +635,8 @@ export function visibleGlowsFor(
 /** What one player's socket needs after any change to what they can see. */
 export interface ViewerVision {
   polygons: ScenePoint[][];
-  doors: WallView[];
+  /** Doors and windows this viewer may work — see `visibleOpeningsFor`. */
+  openings: WallView[];
   /** Light levels inside the polygons; null on a scene that is not dark. */
   light: LightMask | null;
   glows: LightGlow[];
@@ -670,7 +680,7 @@ export async function computeViewerVision(
   const sight = await viewerSightFor(prisma, scene, user.id, ctx);
   return {
     polygons: sight.polygons,
-    doors: visibleDoorsFor(ctx, sight.sources, sight.lighting),
+    openings: visibleOpeningsFor(ctx, sight.sources, sight.lighting),
     light: sight.lighting ? lightMaskFor(ctx, sight.polygons, sight.lighting) : null,
     glows: sight.lighting
       ? visibleGlowsFor(lightSourcesOf(scene, ctx, user.id), sight.sources)
@@ -756,7 +766,7 @@ export async function emitVisionToPlayers(
       light: vision.light,
       glows: vision.glows,
     });
-    member.emit('door:sync', { sceneId: scene.id, doors: vision.doors });
+    member.emit('opening:sync', { sceneId: scene.id, openings: vision.openings });
     // Every player's sight goes into the same memory: what the scout sees, the
     // group knows. Accumulated over the loop and pushed once at the end.
     if (

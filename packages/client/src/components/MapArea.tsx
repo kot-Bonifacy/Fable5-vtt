@@ -4,12 +4,14 @@ import {
   ROLE_GM,
   blockingSegments,
   computeVisionPolygon,
+  isOpening,
   metresPerPixel,
   metresToPixels,
   pickDrawingAt,
   pickWallAt,
   sceneBoundsSegments,
   tokenCentre,
+  type WallKind,
 } from '@vtt/shared';
 import {
   MapRenderer,
@@ -36,7 +38,7 @@ import {
   paintFog,
   sendRuler,
   sendTokenMove,
-  toggleDoor,
+  toggleOpening,
   updateLight,
   updateWall,
 } from '../socket.js';
@@ -47,9 +49,13 @@ import { useExplorationStore } from '../stores/explorationStore.js';
 import { useFogStore } from '../stores/fogStore.js';
 import { useNoteStore } from '../stores/noteStore.js';
 import { sortedDrawings, useDrawingStore } from '../stores/drawingStore.js';
-import { clickableDoors, useWallStore } from '../stores/wallStore.js';
+import { clickableOpenings, useWallStore } from '../stores/wallStore.js';
 import { pickLightAt, useLightStore } from '../stores/lightStore.js';
-import { currentDrawingStyle, useMapToolStore } from '../stores/mapToolStore.js';
+import {
+  currentDrawingStyle,
+  currentPlayerToggle,
+  useMapToolStore,
+} from '../stores/mapToolStore.js';
 import { TokenContextMenu } from './TokenContextMenu.js';
 import { CombatBar } from './CombatBar.js';
 import { DrawingTextEditor } from './DrawingTextEditor.js';
@@ -135,22 +141,36 @@ function lightErrorText(code: string | undefined): string {
   }
 }
 
-/** Polish hints for `door:toggle`. */
-function doorErrorText(code: string | undefined): string {
+/**
+ * Polish hints for `opening:toggle`, worded for whichever thing was clicked.
+ *
+ * The kind comes from the client's own list rather than from the ack: the server
+ * says why it refused, and the map already knows what the player reached for.
+ */
+function openingErrorText(code: string | undefined, kind: WallKind | undefined): string {
+  const isWindow = kind === 'window';
   switch (code) {
     case 'FORBIDDEN':
-      return 'Tych drzwi nie otworzysz — MG ich nie udostępnił.';
+      return isWindow
+        ? 'Tego okna nie ruszysz — MG go nie udostępnił.'
+        : 'Tych drzwi nie otworzysz — MG ich nie udostępnił.';
     case 'WALL_NOT_FOUND':
-      return 'Nie widzisz tych drzwi.';
-    // Stage 18d. „Za daleko" names the door, which is safe — the player was
+      return isWindow ? 'Nie widzisz tego okna.' : 'Nie widzisz tych drzwi.';
+    // Stage 18d. „Za daleko" names the thing, which is safe — the player was
     // shown it. „Zamknięte na klucz" is only ever said to someone whose token
     // stands at the handle, so the message is the character's discovery.
-    case 'DOOR_OUT_OF_REACH':
-      return 'Za daleko — podejdź do drzwi (na jedną kratkę).';
-    case 'DOOR_LOCKED':
-      return 'Zamknięte na klucz — same drzwi nie ustąpią.';
+    case 'OPENING_OUT_OF_REACH':
+      return isWindow
+        ? 'Za daleko — podejdź do okna (na jedną kratkę).'
+        : 'Za daleko — podejdź do drzwi (na jedną kratkę).';
+    case 'OPENING_LOCKED':
+      return isWindow
+        ? 'Okno zamknięte na skobel — nie ustąpi.'
+        : 'Zamknięte na klucz — same drzwi nie ustąpią.';
     default:
-      return `Nie udało się poruszyć drzwiami: ${code ?? 'nieznany błąd'}.`;
+      return isWindow
+        ? `Nie udało się poruszyć oknem: ${code ?? 'nieznany błąd'}.`
+        : `Nie udało się poruszyć drzwiami: ${code ?? 'nieznany błąd'}.`;
   }
 }
 
@@ -275,9 +295,11 @@ export function MapArea() {
       const current = useSceneStore.getState().effectiveScene;
       if (!current) return;
       const tools = useMapToolStore.getState();
-      void createWalls(current.id, points, tools.wallKind, tools.wallPlayerToggle).then((ack) => {
-        if (!ack.ok) useChatStore.getState().addNote(wallErrorText(ack.error));
-      });
+      void createWalls(current.id, points, tools.wallKind, currentPlayerToggle(tools)).then(
+        (ack) => {
+          if (!ack.ok) useChatStore.getState().addNote(wallErrorText(ack.error));
+        },
+      );
     };
     renderer.onWallErase = (x, y) => {
       const current = useSceneStore.getState().effectiveScene;
@@ -293,21 +315,25 @@ export function MapArea() {
       const current = useSceneStore.getState().effectiveScene;
       if (!current) return;
       const tolerance = Math.max(8, current.grid.sizePx / 5);
-      // Doors only: a bolt on a plain wall would be a promise nothing keeps, and
-      // letting the pick land on one would silently do nothing.
-      const doors = useWallStore.getState().walls.filter((wall) => wall.kind === 'door');
-      const target = pickWallAt(doors, { x, y }, tolerance);
+      // Openings only: a bolt on a plain wall would be a promise nothing keeps,
+      // and letting the pick land on one would silently do nothing.
+      const openings = useWallStore.getState().walls.filter(isOpening);
+      const target = pickWallAt(openings, { x, y }, tolerance);
       if (!target) {
-        useChatStore.getState().addNote('Kliknij drzwi — zamek zakłada się tylko na drzwiach.');
+        useChatStore
+          .getState()
+          .addNote('Kliknij drzwi albo okno — zamek zakłada się tylko na nich.');
         return;
       }
       void updateWall(target.id, { locked: !target.locked }).then((ack) => {
         if (!ack.ok) useChatStore.getState().addNote(wallErrorText(ack.error));
       });
     };
-    renderer.onDoorToggle = (wallId) => {
-      void toggleDoor(wallId).then((ack) => {
-        if (!ack.ok) useChatStore.getState().addNote(doorErrorText(ack.error));
+    renderer.onOpeningToggle = (wallId) => {
+      const state = useWallStore.getState();
+      const kind = [...state.walls, ...state.openings].find((wall) => wall.id === wallId)?.kind;
+      void toggleOpening(wallId).then((ack) => {
+        if (!ack.ok) useChatStore.getState().addNote(openingErrorText(ack.error, kind));
       });
     };
     renderer.onLightPlace = (x, y) => {
@@ -558,7 +584,7 @@ export function MapArea() {
   const pushWalls = useCallback(() => {
     const state = useWallStore.getState();
     const isGmNow = useAuthStore.getState().user?.role === ROLE_GM;
-    rendererRef.current?.setWalls(state.walls, clickableDoors(state, isGmNow));
+    rendererRef.current?.setWalls(state.walls, clickableOpenings(state, isGmNow));
     const current = useSceneStore.getState().effectiveScene;
     // Only a player is covered: the GM sees the whole map and the walls on it.
     const active = !isGmNow && current?.visibility === 'dynamic';
@@ -837,7 +863,7 @@ export function MapArea() {
           {wallMode === 'erase'
             ? 'Kliknij ścianę, by ją usunąć (Esc kończy)'
             : wallMode === 'lock'
-              ? 'Kliknij drzwi, by założyć lub zdjąć zamek (zakładanie je zamyka; Esc kończy)'
+              ? 'Kliknij drzwi albo okno, by założyć lub zdjąć zamek (zakładanie je zamyka; Esc kończy)'
               : 'Klikaj kolejne narożniki; Enter lub klik w ostatni punkt kończy ścianę (Esc anuluje)'}
         </div>
       )}

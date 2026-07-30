@@ -75,10 +75,11 @@ widać niewiele, dopóki się przy nim nie stanie.
   
       niego ścianą); po podejściu na 2 m widzi całą przestrzeń za nim, a po
       odejściu znów nic. Reguła symetryczna, wyłączona na scenie ciemnej
-- [x] Testy dymne: `door:toggle` z odległości → `DOOR_OUT_OF_REACH`; na
+- [x] Testy dymne: `opening:toggle` z odległości → `OPENING_OUT_OF_REACH`; na
   
-      zablokowanych drzwiach z zasięgu → `DOOR_LOCKED`; token za oknem nie trafia
-      do payloadu z dystansu, a trafia po podejściu
+      zablokowanych drzwiach z zasięgu → `OPENING_LOCKED`; token za oknem nie
+      trafia do payloadu z dystansu, a trafia po podejściu (nazwy zdarzenia i
+      kodów zmienione w dopisku 18e niżej — okna używają tych samych)
 
 ## Wskazówki techniczne
 
@@ -88,9 +89,41 @@ widać niewiele, dopóki się przy nim nie stanie.
   źródło wzroku**: dla każdego tokenu dołóż do blokerów te okna, od których
   stoi dalej niż próg. Dziś `SceneVisionContext.segments` jest wspólny dla
   wszystkich widzów, więc trzeba przenieść listę do `SightSource` — skorzysta z
-  tego również `visibleDoorsFor`, które dziś patrzy przez odległe okna
+  tego również `visibleOpeningsFor` (wtedy `visibleDoorsFor`), które dziś patrzy
+  przez odległe okna
 - **Nie ruszaj tego dla światła:** okna mają zostać przezroczyste dla lamp (z
   karą `LIGHT_WINDOW_COST`), bo inaczej oświetlone wnętrze przestanie prześwitywać
   na ulicę
 - Zaglądanie jest stanem efemerycznym (jak pomiar linijką), a nie kolumną w
   bazie: gaśnie, gdy token odejdzie, i nie musi przeżyć restartu
+
+## Dopisek 18e — zamek na oknach (30.07, na wniosek MG)
+
+Okno przestało być samą szybą i stało się **drugim rodzajem otworu**: ma stan
+`open`, zamek i flagę „gracze mogą", czyli dokładnie tę samą maszynerię co
+drzwi. Różnią się już tylko tym, co robią **zamknięte** — drzwi są nieprzejrzyste,
+okno jest firanką — a otwarte są tym samym otworem w ścianie.
+
+- [x] `wall:create` i `wall:update` przyjmują `playerToggle` i `locked` dla okien
+- [x] **Otwarte okno przestaje być firanką** — widać przez nie z każdej
+      odległości, bo nie ma już szyby na drodze
+- [x] **Otwarte okno przestaje tłumić światło** (`tollingWindows` zwraca tylko
+      zamknięte szyby), więc oświetlony pokój wylewa się na ulicę pełną mocą
+- [x] Zamknięte okno w polu widzenia **jest na liście otworów gracza**, choć samo
+      zasłania — z ulicy witryna jest najbardziej rzucającym się w oczy obiektem
+      na elewacji; przy teście własnej linii wzroku jest wyjmowane z blokerów,
+      tak jak zamknięte drzwi
+- [x] Nowe okno domyślnie **tylko dla MG** (odwrotnie niż drzwi) — okna rysuje
+      się ciągiem po całej elewacji, więc domyślne „gracze mogą" zasypałoby mapę
+      ikonami 🪟 i ogłosiło, że każde okno w mieście jest wejściem
+- [x] `door:sync` → **`opening:sync`**, `door:toggle` → **`opening:toggle`**,
+      `StateSyncPayload.doors` → `openings`, `DOOR_LOCKED`/`DOOR_OUT_OF_REACH` →
+      `OPENING_*`. Nazwa `doors` niosąca okna byłaby kłamstwem, które gnije
+
+### Czego to świadomie NIE robi
+
+**Fizycznego wejścia przez okno nie ma czego blokować.** VTT nie zna kolizji
+ruchu — token przechodzi przez ścianę tak samo jak przez otwarte drzwi — więc
+„otwarte okno = można wejść" jest ustaleniem przy stole, a nie regułą silnika.
+Stan jest jawny i wspólny dla wszystkich, gotowy na dzień, w którym ruch zacznie
+sprawdzać ściany (`POMYSLY.md`, decyzja MG z 30.07: osobna sesja).

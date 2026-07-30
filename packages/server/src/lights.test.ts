@@ -305,7 +305,7 @@ describe('darkness, lamps and torches', () => {
     // The lights go out, and the door is opened: from here on the only thing
     // hiding the NPC in the room is the dark.
     data(await emitAck<SceneView>(gm, 'scene:lighting', { sceneId, dark: true }), 'scene:lighting');
-    await emitAck(gm, 'door:toggle', { wallId: doorId, open: true });
+    await emitAck(gm, 'opening:toggle', { wallId: doorId, open: true });
     await roundTrip(player);
   }, 30_000);
 
@@ -359,11 +359,11 @@ describe('darkness, lamps and torches', () => {
 
     // The light is blocked by the same geometry sight is: shutting the door
     // takes both away.
-    await emitAck(gm, 'door:toggle', { wallId: doorId, open: false });
+    await emitAck(gm, 'opening:toggle', { wallId: doorId, open: false });
     const shut = await roundTrip(player);
     expect(shut.tokens.map((t) => t.id)).not.toContain(npcTokenId);
 
-    await emitAck(gm, 'door:toggle', { wallId: doorId, open: true });
+    await emitAck(gm, 'opening:toggle', { wallId: doorId, open: true });
     // Switching the lamp off is not the same as deleting it, and has the same
     // effect on what the player may see.
     await emitAck(gm, 'light:update', { lightId: lamp.id, patch: { enabled: false } });
@@ -388,7 +388,7 @@ describe('darkness, lamps and torches', () => {
       }),
       'light:create',
     );
-    await emitAck(gm, 'door:toggle', { wallId: doorId, open: false });
+    await emitAck(gm, 'opening:toggle', { wallId: doorId, open: false });
     const sync = await roundTrip(player);
     const mask = sync.vision?.light;
     expect(mask).toBeTruthy();
@@ -399,7 +399,7 @@ describe('darkness, lamps and torches', () => {
     expect(sync.vision?.glows ?? []).toEqual([]);
 
     await emitAck(gm, 'light:delete', { lightId: lamp.id });
-    await emitAck(gm, 'door:toggle', { wallId: doorId, open: true });
+    await emitAck(gm, 'opening:toggle', { wallId: doorId, open: true });
   });
 
   it('a torch on the player token lights the room through the open door', async () => {

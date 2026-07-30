@@ -320,7 +320,7 @@ describe('walls and dynamic vision', () => {
     const gmSync = await roundTrip(gm);
     expect(gmSync.walls.length).toBe(8);
     // Not one wall id crossed to the player in any shape, doors excepted.
-    const doorIds = new Set(sync.doors.map((door) => door.id));
+    const doorIds = new Set(sync.openings.map((door) => door.id));
     for (const wall of gmSync.walls) {
       if (doorIds.has(wall.id)) continue;
       expect(JSON.stringify(sync)).not.toContain(`"id":${wall.id},"sceneId"`);
@@ -338,21 +338,24 @@ describe('walls and dynamic vision', () => {
 
   it('opening the door reveals the room and the NPC in it', async () => {
     const pushed = waitFor<{ sceneId: string; tokens: TokenView[] }>(player, 'token:sync');
-    data(await emitAck<WallView>(gm, 'door:toggle', { wallId: doorId, open: true }), 'door:toggle');
+    data(
+      await emitAck<WallView>(gm, 'opening:toggle', { wallId: doorId, open: true }),
+      'opening:toggle',
+    );
     expect((await pushed).tokens.map((t) => t.id)).toContain(npcTokenId);
 
     const sync = await roundTrip(player);
     expect(sync.tokens.map((t) => t.id)).toContain(npcTokenId);
 
     // …and closing it takes the NPC away again.
-    await emitAck(gm, 'door:toggle', { wallId: doorId, open: false });
+    await emitAck(gm, 'opening:toggle', { wallId: doorId, open: false });
     const closed = await roundTrip(player);
     expect(closed.tokens.map((t) => t.id)).not.toContain(npcTokenId);
   });
 
   it('gives a player only the doors they may open and can actually see', async () => {
     const sync = await roundTrip(player);
-    const ids = sync.doors.map((door) => door.id);
+    const ids = sync.openings.map((door) => door.id);
     expect(ids).toContain(doorId);
     // Flagged, but the room stands between the player and it.
     expect(ids).not.toContain(farDoorId);
@@ -363,27 +366,27 @@ describe('walls and dynamic vision', () => {
   it('refuses a door the player can see but is standing 10 m from (stage 18d)', async () => {
     // The token has not moved: it is at (500, 1500) and the door is at x = 1000,
     // which on a 2 m square of 100 px is ten metres of corridor.
-    expect((await roundTrip(player)).doors.map((door) => door.id)).toContain(doorId);
-    expect(errorOf(await emitAck(player, 'door:toggle', { wallId: doorId }))).toBe(
-      'DOOR_OUT_OF_REACH',
+    expect((await roundTrip(player)).openings.map((door) => door.id)).toContain(doorId);
+    expect(errorOf(await emitAck(player, 'opening:toggle', { wallId: doorId }))).toBe(
+      'OPENING_OUT_OF_REACH',
     );
   });
 
   it('lets the same player work the same door once they walk up to it', async () => {
     // One square west of the door: 2 m from its nearest point, arm's reach.
     await emitAck(player, 'token:move', { tokenId: ownTokenId, x: 850, y: 1450, final: true });
-    expect((await emitAck(player, 'door:toggle', { wallId: doorId })).ok).toBe(true);
-    expect((await emitAck(player, 'door:toggle', { wallId: doorId })).ok).toBe(true);
+    expect((await emitAck(player, 'opening:toggle', { wallId: doorId })).ok).toBe(true);
+    expect((await emitAck(player, 'opening:toggle', { wallId: doorId })).ok).toBe(true);
     await emitAck(player, 'token:move', { tokenId: ownTokenId, x: 450, y: 1450, final: true });
   });
 
   it('refuses the other two doors for reasons that give nothing away', async () => {
-    expect(errorOf(await emitAck(player, 'door:toggle', { wallId: privateDoorId }))).toBe(
+    expect(errorOf(await emitAck(player, 'opening:toggle', { wallId: privateDoorId }))).toBe(
       'FORBIDDEN',
     );
     // A door out of sight is refused like a token out of sight: the rejection
     // must not become a way to learn it is there.
-    expect(errorOf(await emitAck(player, 'door:toggle', { wallId: farDoorId }))).toBe(
+    expect(errorOf(await emitAck(player, 'opening:toggle', { wallId: farDoorId }))).toBe(
       'WALL_NOT_FOUND',
     );
   });
@@ -395,19 +398,21 @@ describe('walls and dynamic vision', () => {
       'wall:update lock',
     );
 
-    expect(errorOf(await emitAck(player, 'door:toggle', { wallId: doorId }))).toBe('DOOR_LOCKED');
+    expect(errorOf(await emitAck(player, 'opening:toggle', { wallId: doorId }))).toBe(
+      'OPENING_LOCKED',
+    );
     // The GM works a bolted door normally — the bolt is the players' problem.
     const opened = data(
-      await emitAck<WallView>(gm, 'door:toggle', { wallId: doorId, open: true }),
-      'door:toggle by gm',
+      await emitAck<WallView>(gm, 'opening:toggle', { wallId: doorId, open: true }),
+      'opening:toggle by gm',
     );
     expect(opened.open).toBe(true);
     expect(opened.locked).toBe(true);
 
     // Unbolting hands it back to the player, who is still standing at the handle.
     await emitAck(gm, 'wall:update', { wallId: doorId, patch: { locked: false } });
-    expect((await emitAck(player, 'door:toggle', { wallId: doorId })).ok).toBe(true);
-    await emitAck(gm, 'door:toggle', { wallId: doorId, open: false });
+    expect((await emitAck(player, 'opening:toggle', { wallId: doorId })).ok).toBe(true);
+    await emitAck(gm, 'opening:toggle', { wallId: doorId, open: false });
     await emitAck(player, 'token:move', { tokenId: ownTokenId, x: 450, y: 1450, final: true });
   });
 
@@ -415,14 +420,14 @@ describe('walls and dynamic vision', () => {
     await emitAck(gm, 'wall:update', { wallId: doorId, patch: { locked: true } });
     // Standing 10 m away, the answer must be the distance and nothing else: which
     // doors are worth breaking into is not something to be probed by clicking.
-    expect(errorOf(await emitAck(player, 'door:toggle', { wallId: doorId }))).toBe(
-      'DOOR_OUT_OF_REACH',
+    expect(errorOf(await emitAck(player, 'opening:toggle', { wallId: doorId }))).toBe(
+      'OPENING_OUT_OF_REACH',
     );
     await emitAck(gm, 'wall:update', { wallId: doorId, patch: { locked: false } });
   });
 
   it('shuts an open door when it is bolted', async () => {
-    await emitAck(gm, 'door:toggle', { wallId: doorId, open: true });
+    await emitAck(gm, 'opening:toggle', { wallId: doorId, open: true });
     const bolted = data(
       await emitAck<WallView>(gm, 'wall:update', { wallId: doorId, patch: { locked: true } }),
       'wall:update lock open door',
@@ -434,12 +439,12 @@ describe('walls and dynamic vision', () => {
   it('never tells a player whether a door is bolted', async () => {
     await emitAck(gm, 'wall:update', { wallId: doorId, patch: { locked: true } });
     const sync = await roundTrip(player);
-    const door = sync.doors.find((entry) => entry.id === doorId);
+    const door = sync.openings.find((entry) => entry.id === doorId);
     // The door itself still travels — a door you cannot see is a door you cannot
     // try — but the bolt is scrubbed out of it.
     expect(door).toBeDefined();
     expect(door?.locked).toBe(false);
-    expect(JSON.stringify(sync.doors)).not.toContain('"locked":true');
+    expect(JSON.stringify(sync.openings)).not.toContain('"locked":true');
     // The GM's own list carries the truth.
     const gmSync = await roundTrip(gm);
     expect(gmSync.walls.find((wall) => wall.id === doorId)?.locked).toBe(true);
@@ -492,18 +497,18 @@ describe('walls and dynamic vision', () => {
   });
 
   it('honours a token sight range', async () => {
-    await emitAck(gm, 'door:toggle', { wallId: doorId, open: true });
+    await emitAck(gm, 'opening:toggle', { wallId: doorId, open: true });
     // 4 m at 2 m per 100 px square = 200 px: short of the door, 500 px away.
     await emitAck(gm, 'token:update', { tokenId: ownTokenId, patch: { visionRange: 4 } });
     const near = await roundTrip(player);
     expect(near.tokens.map((t) => t.id)).not.toContain(npcTokenId);
-    expect(near.doors.map((d) => d.id)).not.toContain(doorId);
+    expect(near.openings.map((d) => d.id)).not.toContain(doorId);
 
     // Back to „as far as the walls allow" and the open door does its job.
     await emitAck(gm, 'token:update', { tokenId: ownTokenId, patch: { visionRange: null } });
     const far = await roundTrip(player);
     expect(far.tokens.map((t) => t.id)).toContain(npcTokenId);
-    await emitAck(gm, 'door:toggle', { wallId: doorId, open: false });
+    await emitAck(gm, 'opening:toggle', { wallId: doorId, open: false });
   });
 
   it('never streams a concealed token to a player, not even mid-drag', async () => {
@@ -535,7 +540,7 @@ describe('walls and dynamic vision', () => {
     const blind = await roundTrip(player);
     expect(blind.vision?.polygons).toEqual([]);
     expect(blind.tokens).toEqual([]);
-    expect(blind.doors).toEqual([]);
+    expect(blind.openings).toEqual([]);
 
     await emitAck(gm, 'token:update', { tokenId: ownTokenId, patch: { ownerId: playerId } });
     const restored = await roundTrip(player);
@@ -543,13 +548,13 @@ describe('walls and dynamic vision', () => {
   });
 
   it('keeps walls and door states across a reconnect', async () => {
-    await emitAck(gm, 'door:toggle', { wallId: doorId, open: true });
+    await emitAck(gm, 'opening:toggle', { wallId: doorId, open: true });
     const fresh = createSocket(gmCookie);
     const sync = await fresh.firstSync;
     expect(sync.walls.length).toBe(8);
     expect(sync.walls.find((wall) => wall.id === doorId)?.open).toBe(true);
     expect(sync.walls.filter((wall) => wall.kind === 'door')).toHaveLength(3);
-    await emitAck(gm, 'door:toggle', { wallId: doorId, open: false });
+    await emitAck(gm, 'opening:toggle', { wallId: doorId, open: false });
   });
 
   it('erases one wall and then the lot', async () => {
@@ -605,6 +610,8 @@ describe('a window is a net curtain on a lit scene', () => {
   let sceneId: string;
   let npcTokenId: string;
   let ownTokenId: string;
+  /** The shop front itself, flagged as the players' to work (stage 18e). */
+  let windowId: number;
 
   beforeAll(async () => {
     const gmConn = createSocket(gmCookie);
@@ -635,14 +642,18 @@ describe('a window is a net curtain on a lit scene', () => {
         { x: 2000, y: 2000 },
       ],
     });
-    await emitAck(gm, 'wall:create', {
-      sceneId,
-      kind: 'window',
-      points: [
-        { x: 2000, y: 1000 },
-        { x: 2000, y: 2000 },
-      ],
-    });
+    windowId = data(
+      await emitAck<WallView[]>(gm, 'wall:create', {
+        sceneId,
+        kind: 'window',
+        playerToggle: true,
+        points: [
+          { x: 2000, y: 1000 },
+          { x: 2000, y: 2000 },
+        ],
+      }),
+      'wall:create window',
+    )[0]!.id;
 
     npcTokenId = data(
       await emitAck<TokenView>(gm, 'token:create', {
@@ -707,5 +718,95 @@ describe('a window is a net curtain on a lit scene', () => {
 
     await emitAck(gm, 'scene:lighting', { sceneId, dark: false });
     await emitAck(gm, 'light:delete', { lightId: lamp.id });
+  });
+
+  /* Stage 18e: the window is an object with a latch, not just a pane. */
+
+  it('hands the player the window itself — it is what they are looking at', async () => {
+    const sync = await roundTrip(player);
+    // Flagged, in view, and on the list even though it is the very thing
+    // stopping them seeing past it: from the street a shop front is the most
+    // conspicuous object on the wall.
+    expect(sync.openings.map((opening) => opening.id)).toContain(windowId);
+  });
+
+  it('refuses to open it from across the street', async () => {
+    expect(errorOf(await emitAck(player, 'opening:toggle', { wallId: windowId }))).toBe(
+      'OPENING_OUT_OF_REACH',
+    );
+  });
+
+  it('opens it from the pavement, and the curtain is gone for good', async () => {
+    await emitAck(player, 'token:move', { tokenId: ownTokenId, x: 1850, y: 1450, final: true });
+    const opened = data(
+      await emitAck<WallView>(player, 'opening:toggle', { wallId: windowId }),
+      'opening:toggle window',
+    );
+    expect(opened.open).toBe(true);
+
+    // Back across the street: with the sash up there is no glass to hide behind,
+    // so the shop keeper is a row the player receives from ten metres away.
+    await emitAck(player, 'token:move', { tokenId: ownTokenId, x: 1450, y: 1450, final: true });
+    const sync = await roundTrip(player);
+    expect(sync.tokens.map((token) => token.id)).toContain(npcTokenId);
+
+    await emitAck(gm, 'opening:toggle', { wallId: windowId, open: false });
+    const shut = await roundTrip(player);
+    expect(shut.tokens.map((token) => token.id)).not.toContain(npcTokenId);
+  });
+
+  it('bolts shut against a player standing right at it', async () => {
+    await emitAck(gm, 'wall:update', { wallId: windowId, patch: { locked: true } });
+    await emitAck(player, 'token:move', { tokenId: ownTokenId, x: 1850, y: 1450, final: true });
+    expect(errorOf(await emitAck(player, 'opening:toggle', { wallId: windowId }))).toBe(
+      'OPENING_LOCKED',
+    );
+
+    // …and the latch itself never crossed the wire.
+    const sync = await roundTrip(player);
+    expect(sync.openings.find((opening) => opening.id === windowId)?.locked).toBe(false);
+
+    await emitAck(gm, 'wall:update', { wallId: windowId, patch: { locked: false } });
+    await emitAck(player, 'token:move', { tokenId: ownTokenId, x: 1450, y: 1450, final: true });
+  });
+
+  it('stops dimming the light once it is open', async () => {
+    // A lamp 13 m inside throws just short of a man in the street through glass
+    // (the pane charges the reach beyond it double) and reaches him once the
+    // sash is up. Nothing else changes — same lamp, same distance, same dark.
+    const lamp = data(
+      await emitAck<{ id: number }>(gm, 'light:create', {
+        sceneId,
+        x: 2500,
+        y: 1500,
+        brightM: 8,
+        dimM: 14,
+        color: '#ffd9a0',
+        flicker: false,
+      }),
+      'light:create',
+    );
+    const outsideId = data(
+      await emitAck<TokenView>(gm, 'token:create', {
+        sceneId,
+        name: 'Kurier',
+        x: 1800,
+        y: 1450,
+      }),
+      'token:create outside',
+    ).id;
+    await emitAck(gm, 'scene:lighting', { sceneId, dark: true, darkSightM: 2 });
+
+    const throughGlass = await roundTrip(player);
+    expect(throughGlass.tokens.map((token) => token.id)).not.toContain(outsideId);
+
+    await emitAck(gm, 'opening:toggle', { wallId: windowId, open: true });
+    const throughAir = await roundTrip(player);
+    expect(throughAir.tokens.map((token) => token.id)).toContain(outsideId);
+
+    await emitAck(gm, 'opening:toggle', { wallId: windowId, open: false });
+    await emitAck(gm, 'scene:lighting', { sceneId, dark: false });
+    await emitAck(gm, 'light:delete', { lightId: lamp.id });
+    await emitAck(gm, 'token:delete', { tokenId: outsideId });
   });
 });
