@@ -63,7 +63,12 @@ export function registerEvents(
         typeof maybeAck === 'function'
           ? (maybeAck as (response: SocketAck<unknown>) => void)
           : undefined;
-      const payload = args[0] === maybeAck ? undefined : args[0];
+      // A fire-and-forget emit carries the payload as its only argument, so
+      // „first argument is also the last one" must not be read as „the payload
+      // is the callback". Only an actual callback is allowed to shadow it —
+      // otherwise every ack-less event (intermediate `token:move`, rulers)
+      // would reach its handler with nothing in its hands.
+      const payload = ack && args.length === 1 ? undefined : args[0];
 
       const user = socket.data.user;
       if (event.role && user.role !== event.role) {

@@ -328,6 +328,21 @@ describe('tokens', () => {
     expect(await gmSees).toMatchObject({ tokenId: ownTokenId, x: 300, y: 500, final: true });
   });
 
+  /**
+   * The frames of a drag and of a march (stage 16e) are sent fire-and-forget:
+   * one argument, no acknowledgement. They used to be swallowed on arrival —
+   * the payload was mistaken for the missing callback — so everyone but the
+   * mover saw the figure stand still and then jump to where it landed.
+   */
+  it('broadcasts an ack-less intermediate frame — a walk must not arrive in one jump', async () => {
+    const gmSees = waitFor<TokenMoveBroadcast>(gm, 'token:move');
+    player.emit('token:move', { tokenId: ownTokenId, x: 342, y: 528, final: false });
+    const frame = await gmSees;
+    // Mid-stride positions are clamped, never snapped: the figure is between
+    // two squares, which is the whole point of an intermediate frame.
+    expect(frame).toMatchObject({ tokenId: ownTokenId, x: 342, y: 528, final: false });
+  });
+
   it('rejects a player moving a foreign or hidden token', async () => {
     const foreign = await emitAck(player, 'token:move', {
       tokenId: npcTokenId,
