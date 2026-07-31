@@ -36,7 +36,13 @@ import {
   rollFormula,
 } from '@vtt/shared';
 import type { Character, Scene, Token } from '../generated/prisma/client.js';
-import { sheetDodgeBlock, sheetHumanShieldCovers, sheetSituationModifiers } from '../sheets.js';
+import {
+  SHEET_SUPPRESSED_STATUS_ID,
+  sheetDodgeBlock,
+  sheetHumanShieldCovers,
+  sheetSituationModifiers,
+} from '../sheets.js';
+import { pinToken } from './turn-effects.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { grappleStateForToken, readTokenStatuses } from './combat.js';
 import { requireTurnSpend } from './combat-actions.js';
@@ -221,6 +227,7 @@ async function suppressionTargets(
  */
 async function resolveSuppression(
   deps: RealtimeDeps,
+  campaignId: string,
   registry: CpredRegistry,
   targets: { token: Token; metres: number }[],
   dv: number,
@@ -247,6 +254,11 @@ async function resolveSuppression(
       }`,
       success: resisted,
     });
+    // Stage 14e closes the loop the card opened: whoever failed the check is
+    // marked „Przygwożdżony" until the end of their own next turn. Soft by
+    // design — the map has no cover model, so the status nags rather than
+    // refuses, which is exactly what the POMYSLY entry from 28.07 asked for.
+    if (!resisted) await pinToken(deps, campaignId, token.id, SHEET_SUPPRESSED_STATUS_ID);
   }
   return checks;
 }
@@ -318,7 +330,10 @@ export const attackRollEvent = defineEvent<
           : {}),
       },
       {
-        modifiers: sheetSituationModifiers({ grappled: attackerGrapple.grappled }),
+        modifiers: sheetSituationModifiers({
+          grappled: attackerGrapple.grappled,
+          injuries: data.criticalInjuries,
+        }),
         ...(attackerGrapple.grappled ? { grappled: true } : {}),
       },
     );
@@ -360,7 +375,15 @@ export const attackRollEvent = defineEvent<
     if (gesture && gesture.strength > 0) result.tossStrength = gesture.strength;
     if (gesture?.toss) result.toss = gesture.toss;
 
-    result.attack = await buildAttackMeta(deps, registry, result, meta, scene, attacker);
+    result.attack = await buildAttackMeta(
+      deps,
+      campaignId,
+      registry,
+      result,
+      meta,
+      scene,
+      attacker,
+    );
     // „Dopóki zasłaniasz się Ludzką tarczą, uznaje się, że jesteś za osłoną"
     // (s. 178). Cover is not in the map model, so this is a line on the card
     // rather than a modifier — the GM rules on it, which is the stage's
@@ -392,6 +415,7 @@ export const attackRollEvent = defineEvent<
 /** The verdict block the chat card renders, including suppressive fire's checks. */
 async function buildAttackMeta(
   deps: RealtimeDeps,
+  campaignId: string,
   registry: CpredRegistry,
   result: RollResult,
   meta: CpredAttackMeta,
@@ -403,7 +427,7 @@ async function buildAttackMeta(
   if (meta.dv === null) {
     // Suppressive fire sets the DV instead of beating one.
     const targets = await suppressionTargets(deps, scene, attacker);
-    const checks = await resolveSuppression(deps, registry, targets, result.total);
+    const checks = await resolveSuppression(deps, campaignId, registry, targets, result.total);
     return {
       system: { ...meta },
       label: `${meta.weaponName} → ogień zaporowy`,
@@ -480,13 +504,15 @@ export const attackEvadeEvent = defineEvent<AttackEvadePayload, { total: number;
     // untouched: being a shield does not stop you ducking a machete.
     const defence = await grappleStateForToken(deps.ctx.prisma, target.sceneId, target.id);
     if (defence.humanShield && !meta.melee) throw new RealtimeError('SHIELD_CANNOT_DODGE');
-    // A dodge is a reaction, not an Action, so the Hold's −2 stays off it
-    // (stage 14d decision) — but the status table still gets a say.
-    const dodgeBlock = sheetDodgeBlock(readTokenStatuses(target.statuses));
-    if (dodgeBlock) throw new RealtimeError('DODGE_BLOCKED');
-
     const registry = deps.ctx.cpred;
     const data = parseCharacterData(character.data, registry);
+    // A dodge is a reaction, not an Action, so the Hold's −2 stays off it
+    // (stage 14d decision) — but the status table still gets a say, and from
+    // stage 14e so do the Critical Injuries: „Odcięta noga … nie możesz Unikać
+    // ataków" lives on the sheet, not on the token.
+    const dodgeBlock = sheetDodgeBlock(readTokenStatuses(target.statuses), data.criticalInjuries);
+    if (dodgeBlock) throw new RealtimeError('DODGE_BLOCKED');
+
     const planned = planCpredRoll(data, registry, {
       kind: 'skill',
       skillId: CPRED_EVASION_SKILL_ID,

@@ -28,6 +28,7 @@
     { "id": "grappled", "name": "Pochwycony", "icon": "/public/cpred/status-icons/grappled.svg" },
     { "id": "prone", "name": "Powalony", "icon": "/public/cpred/status-icons/prone.svg" },
     { "id": "poisoned", "name": "Zatruty", "icon": "/public/cpred/status-icons/poisoned.svg" },
+    { "id": "drowning", "name": "Tonięcie", "icon": "/public/cpred/status-icons/drowning.svg" },
     {
       "id": "suppressed",
       "name": "Przygwożdżony",

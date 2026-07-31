@@ -20,13 +20,11 @@ import {
 import { createMixedRng } from './dice-rng.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
+import { emitCombatOfScene } from './combat.js';
+import { oweCarryToToken } from './turn-effects.js';
 import { emitTokensById, emitTokensOfCharacter, requireCampaignToken } from './tokens.js';
 import { buildCompendiumSync } from './compendium.js';
-import {
-  INCLUDE_CHAT_NAMES,
-  broadcastRedactedChatMessage,
-  toChatMessageView,
-} from './chat-io.js';
+import { INCLUDE_CHAT_NAMES, broadcastRedactedChatMessage, toChatMessageView } from './chat-io.js';
 
 /**
  * Applying damage (stage 15).
@@ -105,7 +103,11 @@ export const damageApplyEvent = defineEvent<DamageApplyPayload, { messageId: num
     const campaignId = requireCampaignId(socket.data);
     const sourceMessageId = requireMessageId(payload?.messageId);
     const roll = await loadDamageRoll(deps, campaignId, sourceMessageId);
-    const { token } = await requireCampaignToken(deps.ctx.prisma, campaignId, payload?.tokenId);
+    const { token, scene } = await requireCampaignToken(
+      deps.ctx.prisma,
+      campaignId,
+      payload?.tokenId,
+    );
 
     const location = isValidHitLocation(payload?.location)
       ? payload.location
@@ -159,6 +161,14 @@ export const damageApplyEvent = defineEvent<DamageApplyPayload, { messageId: num
       await emitCharacterUpsert(deps, campaignId, toCharacterView(saved, deps.ctx.cpred));
       // Refreshes HP bars and, since stage 15, the wound status badges.
       await emitTokensOfCharacter(deps, campaignId, saved);
+      // „Uraz kręgosłupa: w swojej kolejnej Turze nie możesz wykonać Akcji"
+      // (stage 14e). The debt is against a turn that has not begun — and this
+      // hit may well have landed on somebody else's turn — so it is written on
+      // the tracker row and spent when the victim's own turn starts.
+      if (applied.carry) {
+        await oweCarryToToken(deps, token.sceneId, token.id, applied.carry);
+        await emitCombatOfScene(deps, campaignId, scene);
+      }
     } else {
       const hp = tokenOwnHp(token);
       if (!hp) throw new RealtimeError('TOKEN_HAS_NO_HP');

@@ -12,10 +12,10 @@ Po tym etapie system tur jest kompletny — etap 20 dostaje bezpieczniki „za d
 
 ## Zakres
 
-- [ ] **Hooki przejścia tury** (`onTurnStart` / `onTurnEnd`) wpięte w istniejące zdarzenie
+- [x] **Hooki przejścia tury** (`onTurnStart` / `onTurnEnd`) wpięte w istniejące zdarzenie
       zmiany tury z etapu 14 — jedno miejsce, w którym system CP RED dostaje kontrolę
       (separacja rdzeń/system jak w 14b); rdzeń nie wie, czym jest ogień ani rana
-- [ ] **Rany krytyczne egzekwowane w turze** (statusy z etapu 15 dostają efekty maszynowe
+- [x] **Rany krytyczne egzekwowane w turze** (statusy z etapu 15 dostają efekty maszynowe
       jako dane, wzorzec: schemat publiczny, wartości w `data/private`):
   - Uraz kręgosłupa: następna tura bez Akcji (Akcja Ruchu zostaje)
   - Uraz ucha / Urwane ucho: ruch > 4 m pieszo → następna tura bez Akcji Ruchu
@@ -23,20 +23,20 @@ Po tym etapie system tur jest kompletny — etap 20 dostaje bezpieczniki „za d
     dodatkowe rany, bez redukcji pancerzem (licznik `metresUsed` z 14c)
   - Odcięta noga: zakaz Uniku — spięcie z przyciskiem „Unik" z etapu 16
   - modyfikatory RUCH konsumuje już 14c — tu tylko dopięcie brakujących metadanych
-- [ ] **Obrażenia okresowe** (DoT) na przejściu tury:
+- [x] **Obrażenia okresowe** (DoT) na przejściu tury:
   - Podpalony: obrażenia na koniec tury wg natężenia (2/4/6 wprost w PW, bez pancerza
     i ablacji); ugaszenie = Akcja z katalogu 14b
   - Tonięcie/duszenie się: obrażenia = BC na początku tury, bez pancerza; status nadaje MG
   - Zatruty: generyczny DoT z wartością ustawianą przez MG (ten sam mechanizm co Podpalony;
     pełne trucizny z testem Odporności — POMYSLY)
   - obrażenia okresowe nie wywołują Ran Krytycznych (RAW s. 181)
-- [ ] **Monity początku tury**:
+- [x] **Monity początku tury**:
   - Śmiertelnie Ranny: automonit Testu Przeżywalności (baner + przycisk; rzut istniejącą
     ścieżką z etapu 15, z narastającym modyfikatorem)
   - Przygwożdżony (ogień zaporowy z etapu 16): status nadawany automatycznie przy oblanym
     teście SW, przypomnienie w turze celu („rusz się do osłony"), wygasa z końcem jego tury;
     egzekwowanie miękkie — osłon nie ma w modelu mapy (domyka wpis POMYSLY z 2026-07-28)
-- [ ] Testy: DoT na przejściu tury, flagi krytów („bez Akcji", „ruch > 4 m"), monit Testu
+- [x] Testy: DoT na przejściu tury, flagi krytów („bez Akcji", „ruch > 4 m"), monit Testu
       Przeżywalności odpalający się dokładnie raz na turę
 
 ## Poza zakresem
@@ -46,6 +46,24 @@ Po tym etapie system tur jest kompletny — etap 20 dostaje bezpieczniki „za d
 - Osłony jako model mapy (Przygwożdżony zostaje przypomnieniem, nie wymuszeniem)
 - Leczenie ran krytycznych („Łatanie", „Leczenie") — dane są w kompendium od etapu 13,
   ale ścieżka rozgrywania to osobna rzecz
+
+## Odstępstwa i decyzje (2026-07-31)
+
+- **Nowa kolumna `Combatant.turnEffects`** (poza pierwotnym planem). Strażnik idempotencji
+  siedział najpierw w `turnState`, ale budżet tury jest **odtwarzany**, gdy tura się zaczyna
+  — a „zaczyna się" obejmuje cofnięcie i ponowne „dalej" oraz „Zwróć turę". Licznik w
+  budżecie kasowałyby dokładnie te akcje, przed którymi miał chronić, i drugie przejście
+  paliłoby tego samego NPC-a jeszcze raz.
+- **Cofnięcie tury (`combat:previous`) nie odpala hooków** (decyzja MG przed startem) — to
+  korekta wskaźnika, nie odgrywanie tury od nowa; tak samo jak 14b nie odświeża tam budżetów.
+- **Kary płaskie z ran** (`actionPenalty`) dołożone poza pierwotnym zakresem (decyzja MG):
+  wpinają się w gotowy szew `sheetSituationModifiers` z 14d. Parser bierze **tylko** kary
+  bezwarunkowe — „−4 do wszystkich Akcji **wykonywanych tą ręką**" i „**związanych z
+  mówieniem**" zostają prozą dla MG, bo VTT nie wie, co jest w której dłoni.
+- **Próg „ponad 4 m" liczy się z surowej ścieżki** (`metresWalked`), nie z budżetu: ruch
+  utrudniony podwaja koszt, a nie przebyty dystans.
+- **Nowy status `drowning` (Tonięcie)** dopisany do `statuses.json` wraz z własnoręcznie
+  narysowaną ikoną (atrybucja w `status-icons/ATTRIBUTION.md`).
 
 ## Kryteria ukończenia
 

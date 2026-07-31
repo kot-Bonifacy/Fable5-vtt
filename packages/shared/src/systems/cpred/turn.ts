@@ -66,6 +66,8 @@ export const CPRED_ACTION_RUN = 'run';
 export const CPRED_ACTION_STAND_UP = 'stand-up';
 export const CPRED_ACTION_HOLD = 'hold';
 export const CPRED_ACTION_STABILIZE = 'stabilize';
+/** Putting yourself out (stage 14e) — the answer to „Podpalony". */
+export const CPRED_ACTION_EXTINGUISH = 'extinguish';
 /** Grappling (stage 14d) — each of these is resolved by `grapple:*`. */
 export const CPRED_ACTION_GRAPPLE = 'grapple';
 export const CPRED_ACTION_CHOKE = 'choke';
@@ -117,6 +119,12 @@ export const CPRED_ACTIONS: readonly CpredActionDefinition[] = [
     name: 'Wstanie',
     cost: 'action',
     hint: 'Wstajesz po Przewróceniu. Przewrócony nie może wykonywać Akcji Ruchu.',
+  },
+  {
+    id: CPRED_ACTION_EXTINGUISH,
+    name: 'Ugaszenie',
+    cost: 'action',
+    hint: 'Zbijasz z siebie płomienie. Zdejmuje Stan Podpalony, więc na koniec tury nic już nie płonie.',
   },
   {
     id: CPRED_ACTION_HOLD,
@@ -288,6 +296,12 @@ export interface CpredTurnState {
    */
   metresUsed: number;
   /**
+   * Ground actually covered, in metres, with no multiplier on it (stage 14e).
+   * The rules that ask „czy przemieściłeś się ponad 4 m na piechotę" mean this
+   * number, not the budget: rubble makes a walk expensive, not longer.
+   */
+  metresWalked: number;
+  /**
    * Metres one Move Action buys: effective RUCH × 2. Null when the participant
    * has no sheet to read it from, in which case metres are not enforced at all
    * and the turn falls back to counting whole Move Actions (stage 14b).
@@ -301,6 +315,69 @@ export interface CpredTurnState {
   action: CpredSpentAction | null;
   /** How many times the GM went past the budget with this participant. */
   overspent: number;
+  /**
+   * Ready refusal baked in when the turn began (stage 14e): a spine injury owes
+   * the *next* turn its Action, so the debt has to be paid by a turn that did
+   * not exist when the wound landed. Null = nothing is owed.
+   */
+  blockedAction: string | null;
+  /** The same for the Move Action — the ear injuries after a long walk. */
+  blockedMove: string | null;
+}
+
+/**
+ * Which of this participant's turn hooks have already fired, and in what round
+ * (stage 14e).
+ *
+ * Deliberately *not* part of the budget. A budget is handed out fresh whenever
+ * a turn begins — and „begins" includes the GM stepping back and forward
+ * through the queue, or pressing „Zwróć turę". A ledger living inside it would
+ * be wiped by exactly the actions it exists to survive, and the second pass
+ * would set the same NPC on fire again.
+ */
+export interface CpredTurnLedger {
+  /** Round whose start-of-turn effects already ran (drowning, the reminders). */
+  startedRound?: number;
+  /** Round whose end-of-turn effects already ran (fire, poison, the ribs). */
+  endedRound?: number;
+}
+
+/** Reads a stored ledger; anything unreadable means „nothing has fired yet". */
+export function readCpredTurnLedger(raw: unknown): CpredTurnLedger {
+  if (typeof raw === 'string') {
+    try {
+      return readCpredTurnLedger(JSON.parse(raw));
+    } catch {
+      return {};
+    }
+  }
+  if (!isReadable(raw)) return {};
+  const value = raw as { startedRound?: unknown; endedRound?: unknown };
+  return {
+    ...(Number.isInteger(value.startedRound) ? { startedRound: value.startedRound as number } : {}),
+    ...(Number.isInteger(value.endedRound) ? { endedRound: value.endedRound as number } : {}),
+  };
+}
+
+/** True when this phase already ran for this participant in this round. */
+export function cpredTurnPhaseRan(
+  ledger: CpredTurnLedger,
+  phase: 'turn-start' | 'turn-end',
+  round: number,
+): boolean {
+  const stamp = phase === 'turn-start' ? ledger.startedRound : ledger.endedRound;
+  return stamp !== undefined && stamp === round;
+}
+
+/** Records that this phase has now run. */
+export function markCpredTurnPhase(
+  ledger: CpredTurnLedger,
+  phase: 'turn-start' | 'turn-end',
+  round: number,
+): CpredTurnLedger {
+  return phase === 'turn-start'
+    ? { ...ledger, startedRound: round }
+    : { ...ledger, endedRound: round };
 }
 
 /** How far a participant may go, as the sheet reports it at that moment. */
@@ -311,16 +388,34 @@ export interface CpredMoveAllowance {
   note?: string | null;
 }
 
-export function freshCpredTurn(allowance?: CpredMoveAllowance | null): CpredTurnState {
+/**
+ * Debts one turn hands to the next (stage 14e). Produced by the end-of-turn
+ * hook — or by a wound landing mid-round — and spent exactly once, by the turn
+ * that starts after it.
+ */
+export interface CpredTurnCarryInput {
+  /** Ready sentence refusing the Action for one turn. */
+  noAction?: string | null;
+  /** Ready sentence refusing the Move Action for one turn. */
+  noMove?: string | null;
+}
+
+export function freshCpredTurn(
+  allowance?: CpredMoveAllowance | null,
+  carry?: CpredTurnCarryInput | null,
+): CpredTurnState {
   return {
     moveMax: CPRED_MOVE_ACTIONS_PER_TURN,
     moveUsed: 0,
     metresUsed: 0,
+    metresWalked: 0,
     metresPerMove: normalizeMetresPerMove(allowance?.metresPerMove),
     moveNote: allowance?.note ?? null,
     hardTerrain: false,
     action: null,
     overspent: 0,
+    blockedAction: carry?.noAction ?? null,
+    blockedMove: carry?.noMove ?? null,
   };
 }
 
@@ -381,7 +476,11 @@ export type CpredTurnProblem =
   | 'ROF_EXCEEDED'
   | 'AIM_NEEDS_FULL_ACTION'
   | 'RUN_NEEDS_MOVE'
-  | 'UNKNOWN_ACTION';
+  | 'UNKNOWN_ACTION'
+  /** A Critical Injury took this turn's Action away before it began (14e). */
+  | 'ACTION_BLOCKED'
+  /** The same for the Move Action. */
+  | 'MOVE_BLOCKED';
 
 export type CpredTurnResult =
   { ok: true; state: CpredTurnState } | { ok: false; error: CpredTurnProblem };
@@ -416,9 +515,18 @@ export function readCpredTurn(raw: unknown): CpredTurnState {
     typeof raw.metresUsed === 'number' && Number.isFinite(raw.metresUsed)
       ? Math.max(0, roundMetres(raw.metresUsed))
       : 0;
+  // Rows written before stage 14e carry no raw distance. Falling back to the
+  // budget is the honest reading: without a hard-going declaration the two are
+  // the same number, and with one it errs towards enforcing the injury.
+  const metresWalked =
+    typeof raw.metresWalked === 'number' && Number.isFinite(raw.metresWalked)
+      ? Math.max(0, roundMetres(raw.metresWalked))
+      : metresUsed;
   const metresPerMove = normalizeMetresPerMove(raw.metresPerMove as number | null | undefined);
   const moveNote = typeof raw.moveNote === 'string' ? raw.moveNote : null;
   const hardTerrain = raw.hardTerrain === true;
+  const blockedAction = typeof raw.blockedAction === 'string' ? raw.blockedAction : null;
+  const blockedMove = typeof raw.blockedMove === 'string' ? raw.blockedMove : null;
 
   let action: CpredSpentAction | null = null;
   if (isReadable(raw.action) && typeof raw.action.id === 'string') {
@@ -447,11 +555,14 @@ export function readCpredTurn(raw: unknown): CpredTurnState {
     moveMax,
     moveUsed,
     metresUsed,
+    metresWalked,
     metresPerMove,
     moveNote,
     hardTerrain,
     action,
     overspent,
+    blockedAction,
+    blockedMove,
   };
 }
 
@@ -494,6 +605,9 @@ export function spendCpredTurn(state: CpredTurnState, spend: CpredTurnSpend): Cp
   if (definition.cost === 'free') return { ok: true, state };
   if (definition.cost === 'move') return spendMove(state, { kind: 'move' });
 
+  // A wound that took the turn's Action away is not an arithmetic problem, so
+  // it is answered before the budget is even consulted (stage 14e).
+  if (state.blockedAction !== null) return { ok: false, error: 'ACTION_BLOCKED' };
   if (state.action !== null) return { ok: false, error: 'NO_ACTION_LEFT' };
   if (definition.requiresSpentMove && state.moveUsed === 0) {
     return { ok: false, error: 'RUN_NEEDS_MOVE' };
@@ -531,6 +645,11 @@ function spendMove(
   const perMove = state.metresPerMove;
   const rebased = state;
 
+  // An ear that costs this turn's Move Action refuses before any measuring —
+  // telling the player they ran out of metres would send them looking for a
+  // shorter route that does not exist (stage 14e).
+  if (rebased.blockedMove !== null) return { ok: false, error: 'MOVE_BLOCKED' };
+
   if (spend.metres === undefined) {
     // A whole Move Action, unmeasured. It still eats its share of the metres,
     // so „narrated" movement cannot be followed by a full-length drag.
@@ -542,6 +661,10 @@ function spendMove(
         moveUsed: rebased.moveUsed + 1,
         metresUsed:
           perMove === null ? rebased.metresUsed : roundMetres(rebased.metresUsed + perMove),
+        // Narrated movement covers ground too — a whole Move Action off the map
+        // is exactly „RUCH × 2 metry" of walking, and the injuries count it.
+        metresWalked:
+          perMove === null ? rebased.metresWalked : roundMetres(rebased.metresWalked + perMove),
       },
     };
   }
@@ -550,6 +673,7 @@ function spendMove(
   const hard = spend.hard ?? rebased.hardTerrain;
   const cost = roundMetres(walked * cpredTerrainFactor(hard));
   const metresUsed = roundMetres(rebased.metresUsed + cost);
+  const metresWalked = roundMetres(rebased.metresWalked + walked);
 
   if (perMove === null) {
     // No RUCH to measure against: book the distance, claim the Move Action,
@@ -559,6 +683,7 @@ function spendMove(
       state: {
         ...rebased,
         metresUsed,
+        metresWalked,
         moveUsed: cost > 0 ? Math.max(rebased.moveUsed, 1) : rebased.moveUsed,
       },
     };
@@ -567,7 +692,7 @@ function spendMove(
   const max = roundMetres(rebased.moveMax * perMove);
   if (metresUsed > max + METRE_EPSILON) return { ok: false, error: 'NO_MOVE_LEFT' };
   const moveUsed = moveActionsFor(metresUsed, perMove, rebased);
-  return { ok: true, state: { ...rebased, metresUsed, moveUsed } };
+  return { ok: true, state: { ...rebased, metresUsed, metresWalked, moveUsed } };
 }
 
 /**
@@ -592,6 +717,9 @@ function spendAttack(
 ): CpredTurnResult {
   const aimed = spend.aimed === true;
   const rof = Number.isFinite(spend.rof) ? Math.max(1, Math.round(spend.rof)) : 1;
+
+  // An attack is an Action, so a wound that took the Action away takes this too.
+  if (state.blockedAction !== null) return { ok: false, error: 'ACTION_BLOCKED' };
 
   if (state.action === null) {
     // An aimed shot is a single attack that eats the Action, and so is any
@@ -661,6 +789,7 @@ export function forceCpredTurn(state: CpredTurnState, spend: CpredTurnSpend): Cp
     return {
       ...overspent,
       metresUsed: roundMetres(overspent.metresUsed + cost),
+      metresWalked: roundMetres(overspent.metresWalked + walked),
       moveUsed: Math.max(overspent.moveUsed, 1),
     };
   }
@@ -723,10 +852,24 @@ export function cpredTurnBudget(
         : state.action.label,
     );
   }
+  // A blocked resource is painted as spent: the pips are what the GM glances at,
+  // and „Akcja 0/1" next to a button that always refuses would be a lie.
+  if (state.blockedAction) notes.push(state.blockedAction);
+  if (state.blockedMove) notes.push(state.blockedMove);
   return {
     resources: [
-      { id: 'move', label: 'Ruch', used: state.moveUsed, max: state.moveMax },
-      { id: 'action', label: 'Akcja', used: state.action ? 1 : 0, max: 1 },
+      {
+        id: 'move',
+        label: 'Ruch',
+        used: state.blockedMove ? state.moveMax : state.moveUsed,
+        max: state.moveMax,
+      },
+      {
+        id: 'action',
+        label: 'Akcja',
+        used: state.action || state.blockedAction ? 1 : 0,
+        max: 1,
+      },
       {
         id: 'attacks',
         label: 'Ataki',
@@ -747,7 +890,7 @@ export function cpredTurnBudget(
             max: cpredMetresMax(state) ?? 0,
             unit: 'm',
             ...(state.hardTerrain ? { hard: true } : {}),
-            ...(moveNote ?? state.moveNote ? { note: moveNote ?? state.moveNote! } : {}),
+            ...((moveNote ?? state.moveNote) ? { note: moveNote ?? state.moveNote! } : {}),
           },
         }
       : {}),
@@ -789,4 +932,18 @@ export const CPRED_TURN_PROBLEM_MESSAGES: Record<CpredTurnProblem, string> = {
   AIM_NEEDS_FULL_ACTION: 'Celowanie zabiera całą Akcję — nie po rozpoczętym ataku.',
   RUN_NEEDS_MOVE: 'Bieg wymaga wcześniejszego wykonania Akcji Ruchu w tej turze.',
   UNKNOWN_ACTION: 'Nie znam takiej akcji.',
+  // Both of these normally travel with a sentence naming the wound; these are
+  // the fallbacks for a state that lost it.
+  ACTION_BLOCKED: 'Rana krytyczna zabiera ci Akcję w tej turze.',
+  MOVE_BLOCKED: 'Rana krytyczna zabiera ci Akcję Ruchu w tej turze.',
 };
+
+/** The sentence behind a blocked spend, when the state carries one. */
+export function cpredTurnBlockReason(
+  state: CpredTurnState,
+  problem: CpredTurnProblem,
+): string | null {
+  if (problem === 'ACTION_BLOCKED') return state.blockedAction;
+  if (problem === 'MOVE_BLOCKED') return state.blockedMove;
+  return null;
+}

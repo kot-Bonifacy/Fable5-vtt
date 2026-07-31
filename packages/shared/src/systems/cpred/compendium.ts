@@ -4,6 +4,7 @@ import {
   ARMOR_LOCATIONS,
   ARMOR_PENALTY_MIN,
   ARMOR_SP_MAX,
+  INJURY_ACTION_PENALTY_MIN,
   INJURY_MOVE_PENALTY_MIN,
   type ArmorLocation,
 } from './locations.js';
@@ -276,6 +277,21 @@ export interface CriticalInjuryEntry extends CompendiumEntryBase {
    * enforces whatever the table says, so a GM's own row works the same way.
    */
   movePenalty?: number;
+  /**
+   * Machine effects the turn hooks enforce (stage 14e). Flags rather than
+   * prose, for the same reason `movePenalty` is a number: the effect text is
+   * for the player, and the tracker cannot read Polish.
+   */
+  /** „W swojej kolejnej Turze nie możesz wykonać Akcji" (Uraz kręgosłupa). */
+  noActionNextTurn?: boolean;
+  /** Walking more than 4 m costs the next turn's Move Action (the ear injuries). */
+  noMoveAfterRun?: boolean;
+  /** Walking more than 4 m re-opens the wound at the end of the turn. */
+  dotAfterRun?: boolean;
+  /** „Nie możesz Unikać ataków" (Odcięta noga). */
+  noDodge?: boolean;
+  /** Flat penalty to every Check made from the sheet („−2 do wszystkich Akcji"). */
+  actionPenalty?: number;
 }
 
 export type CompendiumEntry =
@@ -706,6 +722,25 @@ function validateCriticalInjury(
     }
     if (input.movePenalty < 0) injury.movePenalty = input.movePenalty;
   }
+  if (input.actionPenalty !== undefined && input.actionPenalty !== null) {
+    if (
+      !isInteger(input.actionPenalty) ||
+      input.actionPenalty > 0 ||
+      input.actionPenalty < INJURY_ACTION_PENALTY_MIN
+    ) {
+      issues.push({
+        field: 'actionPenalty',
+        message: `Kara do rzutów: liczba od ${INJURY_ACTION_PENALTY_MIN} do 0.`,
+      });
+      return undefined;
+    }
+    if (input.actionPenalty < 0) injury.actionPenalty = input.actionPenalty;
+  }
+  // The turn flags need no range check — anything but `true` means „no effect".
+  if (input.noActionNextTurn === true) injury.noActionNextTurn = true;
+  if (input.noMoveAfterRun === true) injury.noMoveAfterRun = true;
+  if (input.dotAfterRun === true) injury.dotAfterRun = true;
+  if (input.noDodge === true) injury.noDodge = true;
   return injury;
 }
 

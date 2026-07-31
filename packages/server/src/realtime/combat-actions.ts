@@ -15,12 +15,15 @@ import {
   COMBAT_HOLD_TRIGGER_MAX_LENGTH,
   COMBAT_INITIATIVE_MAX,
   COMBAT_INITIATIVE_MIN,
+  CPRED_ACTION_EXTINGUISH,
   CPRED_ACTION_STAND_UP,
   ROLE_GM,
   nextTurn,
+  previousTurn,
 } from '@vtt/shared';
 import type { Scene } from '../generated/prisma/client.js';
 import {
+  SHEET_ON_FIRE_STATUS_ID,
   SHEET_PRONE_STATUS_ID,
   freshTurnState,
   setTurnHardTerrain,
@@ -32,6 +35,7 @@ import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import {
   applyTurnPointer,
   combatantOwnerId,
+  dueHold,
   emitCombatOfScene,
   emitReloaded,
   fireHeldAction,
@@ -54,6 +58,7 @@ import type { SheetTurnSpend } from '../sheets.js';
 import { actionEntry, logRefusedAction, logSpentAction, turnRefusalMessage } from './combat-log.js';
 import { emitTokenUpsert } from './tokens.js';
 import { clearGrapplesOf } from './grapple-state.js';
+import { advanceTurn } from './turn-effects.js';
 import { requireCampaignScene } from './scenes.js';
 
 /**
@@ -153,13 +158,27 @@ async function settleSpend(
   return view;
 }
 
-/** Takes „Powalony" off a token that just paid for standing up. */
-async function clearProneStatus(
+/**
+ * Actions whose whole point is to take a status off the token that paid for
+ * them. „Wstanie" is what stops „Powalony" refusing every walk (stage 14c), and
+ * „Ugaszenie" is what stops the fire billing you at the end of every turn
+ * (stage 14e) — in both cases the player would otherwise pay an Action and see
+ * nothing change.
+ */
+const STATUS_CLEARED_BY_ACTION: Readonly<Record<string, string>> = {
+  [CPRED_ACTION_STAND_UP]: SHEET_PRONE_STATUS_ID,
+  [CPRED_ACTION_EXTINGUISH]: SHEET_ON_FIRE_STATUS_ID,
+};
+
+async function clearStatusAfterAction(
   deps: RealtimeDeps,
   campaignId: string,
   scene: Scene,
   combatant: CombatantRow,
+  actionId: string,
 ): Promise<void> {
+  const statusId = STATUS_CLEARED_BY_ACTION[actionId];
+  if (!statusId) return;
   let statuses: string[];
   try {
     const parsed: unknown = JSON.parse(combatant.token.statuses);
@@ -169,10 +188,10 @@ async function clearProneStatus(
   } catch {
     return;
   }
-  if (!statuses.includes(SHEET_PRONE_STATUS_ID)) return;
+  if (!statuses.includes(statusId)) return;
   const token = await deps.ctx.prisma.token.update({
     where: { id: combatant.tokenId },
-    data: { statuses: JSON.stringify(statuses.filter((id) => id !== SHEET_PRONE_STATUS_ID)) },
+    data: { statuses: JSON.stringify(statuses.filter((id) => id !== statusId)) },
   });
   await emitTokenUpsert(deps, campaignId, scene, token);
 }
@@ -253,11 +272,11 @@ export const combatActionEvent = defineEvent<CombatActionPayload, CombatView>({
       { kind: 'action', actionId },
       user,
     );
-    // Getting up is the one Action that also changes the map: „Powalony" is
-    // what stops the token moving (stage 14c), so paying for standing has to
-    // take it off — otherwise the player pays and still cannot walk.
-    if (outcome.kind === 'spent' && actionId === CPRED_ACTION_STAND_UP) {
-      await clearProneStatus(deps, campaignId, scene, combatant);
+    // Some Actions also change the map: standing up drops „Powalony" and
+    // beating out the flames drops „Podpalony". Paying and seeing nothing
+    // change would be the worst of both.
+    if (outcome.kind === 'spent') {
+      await clearStatusAfterAction(deps, campaignId, scene, combatant, actionId);
     }
     // `settleSpend` already emitted the fresh tracker — re-emitting it here
     // would burn a second seq for one action.
@@ -458,6 +477,63 @@ export const combatRemoveEvent = defineEvent<CombatantIdPayload, CombatView>({
     }
     await clearGrapplesOf(deps, campaignId, combat, combatant);
     await deps.ctx.prisma.combatant.delete({ where: { id: combatant.id } });
+    return emitReloaded(deps, campaignId, scene, combat.id);
+  },
+});
+
+/**
+ * Advances the turn. The GM always may; the acting participant's own player
+ * may end their turn („Kończę turę") — the server re-checks who that is, so a
+ * player can never skip somebody else's turn.
+ *
+ * Here rather than in `combat.ts` because ending a turn now *does* things
+ * (stage 14e): fire burns, ribs re-open, „Przygwożdżony" lifts. All of that
+ * writes token state, which sits below this module and above the tracker.
+ */
+export const combatNextEvent = defineEvent<undefined, CombatView>({
+  name: 'combat:next',
+  handler: async ({ deps, socket, user }) => {
+    const campaignId = requireCampaignId(socket.data);
+    const sceneId = socket.data.viewedSceneId;
+    const scene = await requireCampaignScene(deps.ctx.prisma, campaignId, sceneId);
+    const combat = await loadCombat(deps.ctx.prisma, scene.id);
+    if (!combat) throw new RealtimeError('COMBAT_NOT_FOUND');
+
+    if (user.role !== ROLE_GM) {
+      const active = combat.combatants.find((row) => row.id === combat.activeCombatantId);
+      if (!active || active.token.hidden) throw new RealtimeError('FORBIDDEN');
+      if (combatantOwnerId(active) !== user.id) throw new RealtimeError('FORBIDDEN');
+    }
+
+    const pointer = nextTurn(toCombatView(combat));
+    // A declaration tied to a value in the queue fires on the way past it,
+    // before anybody else gets their turn. Nobody's turn *ended* in that case —
+    // the queue merely stepped aside — so the hooks stay out of it.
+    const held = dueHold(combat, pointer);
+    if (held) await fireHeldAction(deps.ctx.prisma, combat, held);
+    else await advanceTurn(deps, campaignId, scene, combat, pointer, user);
+    return emitReloaded(deps, campaignId, scene, combat.id);
+  },
+});
+
+/**
+ * The GM steps the pointer back. Deliberately hookless: this is a correction,
+ * not a replay. Budgets have been left alone here since stage 14b, and stage
+ * 14e follows the same line — otherwise a GM fixing a mis-click would set the
+ * same NPC on fire again. „Zwróć turę" is the button for a genuine do-over.
+ */
+export const combatPreviousEvent = defineEvent<undefined, CombatView>({
+  name: 'combat:previous',
+  role: ROLE_GM,
+  handler: async ({ deps, socket }) => {
+    const campaignId = requireCampaignId(socket.data);
+    const sceneId = socket.data.viewedSceneId;
+    const scene = await requireCampaignScene(deps.ctx.prisma, campaignId, sceneId);
+    const combat = await loadCombat(deps.ctx.prisma, scene.id);
+    if (!combat) throw new RealtimeError('COMBAT_NOT_FOUND');
+
+    const pointer = previousTurn(toCombatView(combat));
+    await applyTurnPointer(deps, combat, pointer, false);
     return emitReloaded(deps, campaignId, scene, combat.id);
   },
 });

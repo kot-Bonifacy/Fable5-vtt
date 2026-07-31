@@ -4,6 +4,7 @@ import {
   ARMOR_LOCATIONS,
   ARMOR_PENALTY_MIN,
   ARMOR_SP_MAX,
+  INJURY_ACTION_PENALTY_MIN,
   INJURY_MOVE_PENALTY_MIN,
   type ArmorLocation,
 } from './locations.js';
@@ -258,6 +259,21 @@ export interface CpredCriticalInjuryRow {
    * the injury is drawn, so editing the table never rewrites old wounds.
    */
   movePenalty?: number;
+  /**
+   * Machine effects the turn hooks enforce (stage 14e). All four are copied
+   * from the compendium with the rest of the row, so the tracker never needs a
+   * table of injury names — a GM's own row works exactly like a printed one.
+   */
+  /** „W swojej kolejnej Turze nie możesz wykonać Akcji" (Uraz kręgosłupa). */
+  noActionNextTurn?: boolean;
+  /** Walking more than 4 m costs the next turn's Move Action (the ears). */
+  noMoveAfterRun?: boolean;
+  /** Walking more than 4 m re-opens the wound at the end of the turn. */
+  dotAfterRun?: boolean;
+  /** „Nie możesz Unikać ataków" (Odcięta noga). */
+  noDodge?: boolean;
+  /** Flat penalty to every Check made from the sheet („−2 do wszystkich Akcji"). */
+  actionPenalty?: number;
 }
 
 /**
@@ -547,6 +563,7 @@ function validateCriticalInjuries(
     const rolled = row.rolled;
     const penalty = row.deathSavePenalty;
     const movePenalty = row.movePenalty;
+    const actionPenalty = row.actionPenalty;
     rows.push({
       id: row.id,
       name,
@@ -555,6 +572,17 @@ function validateCriticalInjuries(
       ...(isInteger(penalty) && penalty > 0 && penalty <= 5 ? { deathSavePenalty: penalty } : {}),
       ...(isInteger(movePenalty) && movePenalty < 0 && movePenalty >= INJURY_MOVE_PENALTY_MIN
         ? { movePenalty }
+        : {}),
+      // The machine effects of stage 14e. Booleans are copied only when true,
+      // so a row that never had them stays byte-identical after a round trip.
+      ...(row.noActionNextTurn === true ? { noActionNextTurn: true as const } : {}),
+      ...(row.noMoveAfterRun === true ? { noMoveAfterRun: true as const } : {}),
+      ...(row.dotAfterRun === true ? { dotAfterRun: true as const } : {}),
+      ...(row.noDodge === true ? { noDodge: true as const } : {}),
+      ...(isInteger(actionPenalty) &&
+      actionPenalty < 0 &&
+      actionPenalty >= INJURY_ACTION_PENALTY_MIN
+        ? { actionPenalty }
         : {}),
     });
   }
@@ -650,7 +678,9 @@ function collectCharacterDataPatch(
       const penalty = row.penalty;
       if (penalty !== undefined && penalty !== null) {
         if (!isInteger(penalty) || penalty > 0 || penalty < ARMOR_PENALTY_MIN) {
-          issues.push(issue('armor', `Kara pancerza musi być liczbą od ${ARMOR_PENALTY_MIN} do 0.`));
+          issues.push(
+            issue('armor', `Kara pancerza musi być liczbą od ${ARMOR_PENALTY_MIN} do 0.`),
+          );
           return undefined;
         }
       }

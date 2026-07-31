@@ -1146,6 +1146,24 @@ export const setCombatTerrain = (hard: boolean, combatantId?: string) =>
     ...(combatantId ? { combatantId } : {}),
   });
 
+/**
+ * Periodic effects (stage 14e). The GM says „pali się, i to mocno"; what that
+ * costs per turn is the server's business, and even the intensity is validated
+ * there — a status the rules compute themselves ignores the number entirely.
+ */
+export const setTokenEffect = (
+  tokenId: string,
+  statusId: string,
+  active: boolean,
+  damage?: number | null,
+) =>
+  emitSceneAck<{ statuses: string[] }>('token:effect', {
+    tokenId,
+    statusId,
+    active,
+    ...(damage !== undefined ? { damage } : {}),
+  });
+
 /* Grappling (stage 14d). Like an attack, the client names an intention and a
    target token — never a distance, never a DV, never who ends up holding whom. */
 
@@ -1253,6 +1271,12 @@ export function combatErrorText(code: string): string {
       return 'Stan tokenu nie pozwala na tę Akcję — szczegóły na karcie odmowy.';
     case 'DODGE_BLOCKED':
       return 'W tym stanie nie można Unikać.';
+    // Stage 14e: a Critical Injury took this turn's Action or Move Action away
+    // before it began. The wound's own sentence rides on the refusal card.
+    case 'ACTION_BLOCKED':
+      return 'Rana krytyczna zabiera ci Akcję w tej turze — szczegóły na karcie odmowy.';
+    case 'MOVE_BLOCKED':
+      return 'Rana krytyczna zabiera ci Akcję Ruchu w tej turze — szczegóły na karcie odmowy.';
     default:
       return `Błąd walki: ${code}`;
   }

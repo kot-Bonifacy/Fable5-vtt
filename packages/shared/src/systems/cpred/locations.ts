@@ -34,6 +34,14 @@ export const ARMOR_PENALTY_MIN = -6;
 export const INJURY_MOVE_PENALTY_MIN = -10;
 
 /**
+ * Worst flat penalty a Critical Injury may put on every Check (stage 14e).
+ * The printed table stops at −4 („Uraz mózgu"); the room above it is for the
+ * GM's own rows, and the floor is what stops a typo turning a wound into a
+ * character who can never roll again.
+ */
+export const INJURY_ACTION_PENALTY_MIN = -8;
+
+/**
  * Where an attack lands. RAW: every attack hits the body unless the attacker
  * spent an Aimed Shot on the head — there is no hit-location table in CP RED.
  * A shield is not a hit location: it is armor a defender may interpose.
@@ -51,10 +59,7 @@ export function isCpredHitLocation(value: unknown): value is CpredHitLocation {
 }
 
 /** True when the armor piece protects the hit location. */
-export function armorCoversLocation(
-  armorLocation: ArmorLocation,
-  hit: CpredHitLocation,
-): boolean {
+export function armorCoversLocation(armorLocation: ArmorLocation, hit: CpredHitLocation): boolean {
   // A shield only helps when the defender uses it, which is the GM's call —
   // it is never picked automatically as the protecting piece.
   return armorLocation === hit;

@@ -7,6 +7,7 @@ import {
   CPRED_ACTION_HOLD,
   CPRED_ACTION_STABILIZE,
   CPRED_CHOKE_ROUNDS_TO_UNCONSCIOUS,
+  CPRED_FIRE_INTENSITIES,
   COMBAT_INITIATIVE_MAX,
   COMBAT_INITIATIVE_MIN,
   ROLE_GM,
@@ -18,6 +19,7 @@ import {
   holdCombatAction,
   sendGrappleAction,
   setCombatTerrain,
+  setTokenEffect,
   spendCombatAction,
 } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
@@ -219,6 +221,130 @@ interface StabilizeTarget {
   /** Only a wounded target is worth the Action. */
   wounded: boolean;
 }
+
+/**
+ * The GM's switchboard for what a turn costs by itself (stage 14e).
+ *
+ * A GM control because the *source* is never in the model: the VTT does not
+ * know the barrel exploded or that this one is under water. It knows what a
+ * status costs once it is there — the same division of labour „ruch utrudniony"
+ * settled in 14c. Here rather than only in the token's context menu because a
+ * fight is where these get set, and because the menu is the one surface that
+ * cannot be reached without a mouse.
+ */
+function PeriodicEffects({ combat }: { combat: CombatView }) {
+  const [open, setOpen] = useState(false);
+  const [target, setTarget] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const tokens = useTokenStore((s) => s.tokens);
+
+  const chosen = target ?? combat.activeCombatantId ?? combat.combatants[0]?.id ?? null;
+  const row = combat.combatants.find((entry) => entry.id === chosen) ?? null;
+  const statuses = row ? (tokens[row.tokenId]?.statuses ?? []) : [];
+
+  async function set(statusId: string, active: boolean, damage?: number | null) {
+    if (!row) return;
+    setError(null);
+    const ack = await setTokenEffect(row.tokenId, statusId, active, damage);
+    if (!ack.ok) setError(combatErrorText(ack.error));
+  }
+
+  return (
+    <div className="combat-effects">
+      <p className="panel-section-title">
+        Efekty okresowe
+        <button
+          type="button"
+          className="small-button"
+          onClick={() => setOpen((value) => !value)}
+          title="Podpalenie, trucizna i tonięcie — obrażenia nalicza serwer na przejściu tury"
+        >
+          {open ? 'Zwiń' : 'Rozwiń'}
+        </button>
+      </p>
+      {open && (
+        <>
+          <label className="combat-effect-target">
+            <span>Cel</span>
+            <select value={chosen ?? ''} onChange={(e) => setTarget(e.target.value)}>
+              {combat.combatants.map((entry) => (
+                <option key={entry.id} value={entry.id}>
+                  {entry.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="combat-effect-row">
+            <span className="combat-effect-name">
+              Podpalony{statuses.includes(ON_FIRE) ? ' — pali się' : ''}
+            </span>
+            {CPRED_FIRE_INTENSITIES.map((rung) => (
+              <button
+                key={rung.damage}
+                type="button"
+                className="small-button"
+                title={`${rung.damage} obrażeń na koniec każdej tury, bez pancerza`}
+                onClick={() => void set(ON_FIRE, true, rung.damage)}
+              >
+                {rung.label} ({rung.damage})
+              </button>
+            ))}
+            <button
+              type="button"
+              className="small-button"
+              disabled={!statuses.includes(ON_FIRE)}
+              onClick={() => void set(ON_FIRE, false)}
+            >
+              Ugaś
+            </button>
+          </div>
+          <div className="combat-effect-row">
+            <span className="combat-effect-name">
+              Zatruty{statuses.includes(POISONED) ? ' — trucizna działa' : ''}
+            </span>
+            {[2, 4, 6].map((damage) => (
+              <button
+                key={damage}
+                type="button"
+                className="small-button"
+                title={`${damage} obrażeń na koniec każdej tury, bez pancerza`}
+                onClick={() => void set(POISONED, true, damage)}
+              >
+                {damage}
+              </button>
+            ))}
+            <button
+              type="button"
+              className="small-button"
+              disabled={!statuses.includes(POISONED)}
+              onClick={() => void set(POISONED, false)}
+            >
+              Odtruj
+            </button>
+          </div>
+          <div className="combat-effect-row">
+            <span className="combat-effect-name">
+              Tonięcie{statuses.includes(DROWNING) ? ' — tonie' : ''}
+            </span>
+            <button
+              type="button"
+              className="small-button"
+              title="Obrażenia równe BC celu, na początku każdej jego tury (wartości nie da się ustawić)"
+              onClick={() => void set(DROWNING, !statuses.includes(DROWNING))}
+            >
+              {statuses.includes(DROWNING) ? 'Wyciągnij' : 'Topi się (BC)'}
+            </button>
+          </div>
+          {error && <p className="auth-error">{error}</p>}
+        </>
+      )}
+    </div>
+  );
+}
+
+const ON_FIRE = 'on-fire';
+const POISONED = 'poisoned';
+const DROWNING = 'drowning';
 
 export function CombatActions({
   combat,
@@ -468,6 +594,8 @@ export function CombatActions({
         onAttempt={grappleAt}
         onHoldAction={(kind) => void holdAction(kind)}
       />
+
+      {isGm && <PeriodicEffects combat={combat} />}
 
       {stabilizeOpen && (
         <ul className="combat-picker">

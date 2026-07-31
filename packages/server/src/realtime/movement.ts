@@ -173,10 +173,14 @@ async function settleMovementSpend(
   const distance = `${formatMetres(metres)} ścieżki`;
 
   if (outcome.kind === 'refused') {
+    // A refusal that arrived with a sentence of its own keeps it: a wound says
+    // „Uraz ucha: po marszu ponad 4 m…", which is the only version the player
+    // can act on (stage 14e). Only a plain budget refusal is phrased here.
     const message =
-      outcome.error === 'NO_MOVE_LEFT'
+      outcome.message ??
+      (outcome.error === 'NO_MOVE_LEFT'
         ? turnDistanceRefusal(outcome.judged, metres)
-        : turnRefusalMessage(outcome.error);
+        : turnRefusalMessage(outcome.error));
     await logMovementRefusal(deps, campaignId, user, {
       ...actionEntry(outcome.combatant, CPRED_ACTION_MOVE, name, distance),
       refusal: { code: outcome.error, message },

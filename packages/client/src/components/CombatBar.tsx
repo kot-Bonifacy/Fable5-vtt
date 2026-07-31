@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { TurnBudgetView } from '@vtt/shared';
-import { ROLE_GM, formatMetres } from '@vtt/shared';
+import { ROLE_GM, cpredTurnReminders, formatMetres } from '@vtt/shared';
 import { nextCombatTurn, previousCombatTurn } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useCombatStore, activeCombatantOf, myActiveCombatant } from '../stores/combatStore.js';
+import { useTokenStore } from '../stores/tokenStore.js';
 import { useDeathSavePrompt } from '../death-save.js';
 
 /**
@@ -122,6 +123,14 @@ export function CombatBar() {
   const isGm = user?.role === ROLE_GM;
   const myTurn = useMemo(() => myActiveCombatant(combat, user?.id ?? null), [combat, user?.id]);
   const acting = useMemo(() => activeCombatantOf(combat), [combat]);
+  const tokens = useTokenStore((s) => s.tokens);
+  // What the acting participant's own statuses want them to remember (stage
+  // 14e). „Przygwożdżony" cannot be enforced — the map has no cover — so the
+  // honest form of the rule is a sentence in front of the person it concerns.
+  const reminders = useMemo(
+    () => (acting ? cpredTurnReminders(tokens[acting.tokenId]?.statuses ?? []) : []),
+    [acting, tokens],
+  );
   // RAW: a Mortally Wounded character rolls at the start of each of their turns.
   const deathSave = useDeathSavePrompt();
 
@@ -309,17 +318,24 @@ export function CombatBar() {
           ▶
         </button>
       )}
+      {reminders.length > 0 && (
+        <span className="combat-bar-reminder" title={reminders.join(' · ')}>
+          ⚠ {reminders[0]}
+        </span>
+      )}
       {deathSave && (
         <button
           type="button"
           className="combat-bar-death-save"
           onClick={deathSave.roll}
           title={`${deathSave.characterName} jest śmiertelnie ranny — rzut 1k10 pod BC${
-            deathSave.savesTaken > 0 ? `, +${deathSave.savesTaken} za poprzednie testy` : ''
+            deathSave.modifier > 0
+              ? `, +${deathSave.modifier} za poprzednie testy i rany krytyczne`
+              : ''
           }`}
         >
           Test Przeżywalności
-          {deathSave.savesTaken > 0 ? ` +${deathSave.savesTaken}` : ''}
+          {deathSave.modifier > 0 ? ` +${deathSave.modifier}` : ''}
         </button>
       )}
       {/* The acting player ends their own turn; the server re-checks whose it is. */}

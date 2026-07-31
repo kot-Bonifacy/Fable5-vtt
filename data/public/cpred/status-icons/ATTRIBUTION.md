@@ -21,3 +21,12 @@ zmienione na identyfikatory statusów CP RED używane w `../statuses.json`.
 | `suppressed.svg`       | Bullet impacts      | Delapouite |
 
 Źródło: <https://github.com/game-icons/icons> (gałąź `master`).
+
+## Ikony własne
+
+| Plik            | Opis                                    | Autor         |
+| --------------- | --------------------------------------- | ------------- |
+| `drowning.svg`  | Tonący — postać nad falami (etap 14e)   | projekt (VTT) |
+
+Ikony w tej sekcji narysowano na potrzeby projektu i obowiązuje na nie ta sama licencja co na
+kod repozytorium.

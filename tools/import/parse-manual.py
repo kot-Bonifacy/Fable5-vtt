@@ -692,6 +692,34 @@ DEATH_SAVE_PENALTY = re.compile(
 # „-4 do Ruchu (minimum 1)" -> movePenalty: -4 (stage 14c): the turn budget
 # enforces it, so it has to be a number rather than a sentence.
 MOVE_PENALTY = re.compile(r"[-−–]\s*(\d)\s+do\s+Ruchu", re.IGNORECASE)
+# Stage 14e: the four machine effects the turn hooks read. Each one is a
+# sentence the rulebook repeats verbatim across several rows, which is exactly
+# what makes a regex the right tool — the alternative is a hand-kept list of
+# injury names in the engine, and then a GM's own row does nothing.
+# The lookahead matters: „nie możesz wykonać Akcji Ruchu" is a *different*
+# injury (the ears), and without it every torn ear would also lose its Action.
+NO_ACTION_NEXT_TURN = re.compile(
+    r"kolejnej\s+Turze\s+nie\s+możesz\s+wykonać\s+Akcji(?!\s+Ruchu)", re.IGNORECASE
+)
+# „Jeśli w swojej Turze przemieściłeś się ponad 4 m … nie możesz wykonać Akcji Ruchu"
+NO_MOVE_AFTER_RUN = re.compile(
+    r"przemieściłeś\s+się\s+ponad\s+4\s*m[^.]*?nie\s+możesz\s+wykonać\s+Akcji\s+Ruchu",
+    re.IGNORECASE,
+)
+# „Na koniec każdej Tury, w której przemieściłeś się ponad 4 m … ponownie
+# otrzymujesz obrażenia dodatkowe tej rany"
+DOT_AFTER_RUN = re.compile(
+    r"przemieściłeś\s+się\s+ponad\s+4\s*m[^.]*?ponownie\s+otrzymujesz\s+obrażenia", re.IGNORECASE
+)
+NO_DODGE = re.compile(r"[Nn]ie\s+możesz\s+Unikać\s+ataków")
+# „-2 do wszystkich Akcji" — the flat penalty every Check from the sheet carries.
+# Only when the sentence ends there: „-4 do wszystkich Akcji wykonywanych tą
+# ręką" and „…związanych z mówieniem" are conditional, and a VTT that cannot
+# tell which hand is holding what (POMYSLY, 30.07) must not pretend otherwise.
+# Those two stay prose the GM applies by hand, which is the honest answer.
+ACTION_PENALTY = re.compile(
+    r"[-−–]\s*(\d)\s+do\s+wszystkich\s+Akcji(?=\s*[.,]|\s*$)", re.IGNORECASE
+)
 # The injury name is glued to its effect. The effect always starts with a
 # capital („rękaRęka zostaje"), a signed modifier („płuco-2 do Ruchu") or a
 # space before either of those.
@@ -752,6 +780,17 @@ def parse_injury_table(chapter: str, start: str, end: str, table: str) -> list[d
         slowed = MOVE_PENALTY.search(effect)
         if slowed:
             entry["movePenalty"] = -int(slowed.group(1))
+        if NO_ACTION_NEXT_TURN.search(effect):
+            entry["noActionNextTurn"] = True
+        if NO_MOVE_AFTER_RUN.search(effect):
+            entry["noMoveAfterRun"] = True
+        if DOT_AFTER_RUN.search(effect):
+            entry["dotAfterRun"] = True
+        if NO_DODGE.search(effect):
+            entry["noDodge"] = True
+        flat_penalty = ACTION_PENALTY.search(effect)
+        if flat_penalty:
+            entry["actionPenalty"] = -int(flat_penalty.group(1))
         injuries.append(entry)
     return injuries
 

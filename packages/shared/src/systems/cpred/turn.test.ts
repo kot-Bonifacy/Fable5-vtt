@@ -9,10 +9,14 @@ import {
   cpredAction,
   cpredMetresLeft,
   cpredMoveRefusal,
+  cpredTurnBlockReason,
+  cpredTurnPhaseRan,
   cpredTurnBudget,
   forceCpredTurn,
   freshCpredTurn,
+  markCpredTurnPhase,
   readCpredTurn,
+  readCpredTurnLedger,
   setCpredHardTerrain,
   spendCpredTurn,
   withCpredMoveAllowance,
@@ -370,5 +374,132 @@ describe('cpred movement budget', () => {
     expect(legacy.metresUsed).toBe(0);
     expect(legacy.metresPerMove).toBeNull();
     expect(legacy.moveUsed).toBe(1);
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * Turn automation (stage 14e)
+ * ------------------------------------------------------------------ */
+
+describe('debts one turn hands to the next', () => {
+  const spine = 'Uraz kręgosłupa: w tej turze nie wykonujesz Akcji (Akcja Ruchu zostaje).';
+  const ear = 'Uraz ucha: po marszu ponad 4 m w tej turze nie wykonujesz Akcji Ruchu.';
+
+  it('refuses the Action and lets the walking through', () => {
+    const state = freshCpredTurn({ metresPerMove: 12 }, { noAction: spine });
+    const acted = spendCpredTurn(state, { kind: 'action', actionId: CPRED_ACTION_RELOAD });
+    expect(acted).toEqual({ ok: false, error: 'ACTION_BLOCKED' });
+    // „ale możesz wykonać Akcję Ruchu" — the half of the rule that is easy to
+    // lose when a block is implemented as „the turn is over".
+    expect(spendCpredTurn(state, { kind: 'move', metres: 8 }).ok).toBe(true);
+  });
+
+  it('refuses an attack too — an attack is an Action', () => {
+    const state = freshCpredTurn({ metresPerMove: 12 }, { noAction: spine });
+    expect(spendCpredTurn(state, fast())).toEqual({ ok: false, error: 'ACTION_BLOCKED' });
+  });
+
+  it('refuses the walk and lets the Action through', () => {
+    const state = freshCpredTurn({ metresPerMove: 12 }, { noMove: ear });
+    expect(spendCpredTurn(state, { kind: 'move', metres: 1 })).toEqual({
+      ok: false,
+      error: 'MOVE_BLOCKED',
+    });
+    expect(spendCpredTurn(state, { kind: 'action', actionId: CPRED_ACTION_RELOAD }).ok).toBe(true);
+  });
+
+  it('hands the GM the reason, not just the code', () => {
+    const state = freshCpredTurn(null, { noAction: spine });
+    expect(cpredTurnBlockReason(state, 'ACTION_BLOCKED')).toBe(spine);
+    expect(cpredTurnBlockReason(state, 'NO_ACTION_LEFT')).toBeNull();
+  });
+
+  it('paints a blocked resource as spent, with the reason in the note', () => {
+    const budget = cpredTurnBudget(freshCpredTurn({ metresPerMove: 12 }, { noMove: ear }));
+    expect(budget.resources.find((r) => r.id === 'move')?.used).toBe(1);
+    expect(budget.note).toContain('Uraz ucha');
+  });
+
+  it('lets the GM force past a block and counts the overspend', () => {
+    const state = freshCpredTurn(null, { noAction: spine });
+    const forced = forceCpredTurn(state, { kind: 'action', actionId: CPRED_ACTION_RELOAD });
+    expect(forced.overspent).toBe(1);
+    expect(forced.action?.id).toBe(CPRED_ACTION_RELOAD);
+  });
+
+  it('does not survive into the turn after next', () => {
+    const blocked = freshCpredTurn(null, { noAction: spine });
+    expect(freshCpredTurn(null).blockedAction).toBeNull();
+    expect(blocked.blockedAction).toBe(spine);
+  });
+});
+
+describe('metres walked versus metres spent', () => {
+  it('counts hard going twice in the budget and once on the ground', () => {
+    const after = walk(walker(), 3, true);
+    expect(after.metresUsed).toBe(6);
+    // The rib does not know the ground was rubble: „ponad 4 m na piechotę"
+    // is about distance covered, and 3 m is 3 m.
+    expect(after.metresWalked).toBe(3);
+  });
+
+  it('accumulates raw distance across several drags', () => {
+    const after = walk(walk(walker(), 2.5), 3);
+    expect(after.metresWalked).toBe(5.5);
+  });
+
+  it('counts a narrated Move Action as a full move of walking', () => {
+    const after = spendCpredTurn(walker(), { kind: 'move' });
+    expect(after.ok && after.state.metresWalked).toBe(12);
+  });
+
+  it('counts the GM’s forced overrun on the ground as well', () => {
+    const after = forceCpredTurn(walk(walker(), 12), { kind: 'move', metres: 8 });
+    expect(after.metresWalked).toBe(20);
+  });
+
+  it('reads a stage 14c row back with the budget as its distance', () => {
+    // Nothing in an old row says how much of the budget was terrain, so the
+    // safe reading is „they walked what they paid" — it errs towards enforcing
+    // the injury rather than towards forgetting it.
+    const legacy = readCpredTurn({ moveMax: 1, moveUsed: 1, metresUsed: 9, overspent: 0 });
+    expect(legacy.metresWalked).toBe(9);
+    expect(legacy.blockedAction).toBeNull();
+    expect(legacy.blockedMove).toBeNull();
+  });
+});
+
+describe('the turn-hook ledger', () => {
+  it('remembers each phase separately, per round', () => {
+    const ended = markCpredTurnPhase({}, 'turn-end', 3);
+    expect(cpredTurnPhaseRan(ended, 'turn-end', 3)).toBe(true);
+    // The start of that same turn is a different question with its own answer.
+    expect(cpredTurnPhaseRan(ended, 'turn-start', 3)).toBe(false);
+    // Stepping back and forward lands on the same round: nothing fires twice.
+    expect(cpredTurnPhaseRan(ended, 'turn-end', 4)).toBe(false);
+    expect(cpredTurnPhaseRan({}, 'turn-end', 3)).toBe(false);
+  });
+
+  it('lives outside the budget, because a fresh budget must not clear it', () => {
+    // The whole reason for the extra column: „Zwróć turę" and stepping the
+    // pointer back both hand out a fresh budget, and both must leave the
+    // ledger standing — otherwise the second pass burns the same NPC again.
+    const ledger = markCpredTurnPhase(markCpredTurnPhase({}, 'turn-start', 2), 'turn-end', 2);
+    expect(readCpredTurnLedger(JSON.stringify(ledger))).toEqual(ledger);
+    expect(Object.keys(freshCpredTurn())).not.toContain('endedRound');
+  });
+
+  it('reads garbage as „nothing has fired yet"', () => {
+    expect(readCpredTurnLedger('nie-json')).toEqual({});
+    expect(readCpredTurnLedger(null)).toEqual({});
+    expect(readCpredTurnLedger({ endedRound: 'trzy' })).toEqual({});
+  });
+
+  it('survives the JSON column with everything stage 14e added to the budget', () => {
+    const state = setCpredHardTerrain(
+      { ...walk(walker(10), 3.5), blockedMove: 'Uraz ucha: …', blockedAction: 'Kręgosłup: …' },
+      true,
+    );
+    expect(readCpredTurn(JSON.stringify(state))).toEqual(state);
   });
 });

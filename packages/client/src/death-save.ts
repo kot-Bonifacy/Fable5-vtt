@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { ROLE_GM, woundState } from '@vtt/shared';
+import { ROLE_GM, injuryDeathSavePenalty, woundState } from '@vtt/shared';
 import { useAuthStore } from './stores/authStore.js';
 import { useCharacterStore } from './stores/characterStore.js';
 import { useCombatStore } from './stores/combatStore.js';
@@ -23,6 +23,13 @@ export interface DeathSavePrompt {
   characterName: string;
   /** Saves already taken — each one makes the next harder. */
   savesTaken: number;
+  /**
+   * The whole modifier the roll will carry: the saves taken *plus* the Critical
+   * Injuries that make dying easier. The banner promised „+1" for a while and
+   * the card said „+2" — the rules add both, and the reminder has to say so
+   * (stage 14e, after the flickering test of 14d pointed at exactly this gap).
+   */
+  modifier: number;
   roll: () => void;
 }
 
@@ -48,6 +55,7 @@ export function useDeathSavePrompt(): DeathSavePrompt | null {
       characterId,
       characterName: character.name,
       savesTaken: character.data.deathSaves,
+      modifier: character.data.deathSaves + injuryDeathSavePenalty(character.data.criticalInjuries),
       roll: () => loadDeathSaveCup(characterId, character.name, character.data, registry),
     };
   }, [combat, tokens, characters, registry, user]);

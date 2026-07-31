@@ -53,9 +53,9 @@ export const CPRED_WOUND_STATUS_IDS: Record<CpredWoundState, string | null> = {
 };
 
 /** All ids this module manages, so the caller can strip the stale ones. */
-export const CPRED_MANAGED_WOUND_STATUS_IDS: string[] = Object.values(CPRED_WOUND_STATUS_IDS).filter(
-  (id): id is string => id !== null,
-);
+export const CPRED_MANAGED_WOUND_STATUS_IDS: string[] = Object.values(
+  CPRED_WOUND_STATUS_IDS,
+).filter((id): id is string => id !== null);
 
 /**
  * Wound statuses a token with these HP should carry. Works for sheetless
@@ -251,6 +251,12 @@ export function toCriticalInjuryRow(
     // Stage 14c: the injury's RUCH cost travels with the wound, so editing the
     // table later never rewrites a leg that is already broken.
     ...(entry.movePenalty ? { movePenalty: entry.movePenalty } : {}),
+    // Stage 14e: so do the machine effects the turn hooks read.
+    ...(entry.noActionNextTurn ? { noActionNextTurn: true as const } : {}),
+    ...(entry.noMoveAfterRun ? { noMoveAfterRun: true as const } : {}),
+    ...(entry.dotAfterRun ? { dotAfterRun: true as const } : {}),
+    ...(entry.noDodge ? { noDodge: true as const } : {}),
+    ...(entry.actionPenalty ? { actionPenalty: entry.actionPenalty } : {}),
   };
 }
 

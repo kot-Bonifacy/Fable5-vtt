@@ -2,8 +2,11 @@ import type {
   CompendiumEntry,
   CpredChokeOutcome,
   CpredCharacterData,
+  CpredCriticalInjuryRow,
   CpredHitLocation,
+  CpredPeriodicDamage,
   CpredRegistry,
+  CpredTurnCarryInput,
   CpredTurnProblem,
   CpredTurnSpend,
   CpredWoundState,
@@ -15,13 +18,16 @@ import type {
 } from '@vtt/shared';
 import {
   CPRED_ACTIONS,
+  CPRED_FIRE_INTENSITIES,
   CPRED_GRAPPLED_STATUS_ID,
   CPRED_GRAPPLE_PENALTY,
   CPRED_GRAPPLE_PENALTY_LABEL,
   CPRED_HIT_LOCATIONS,
+  CPRED_ON_FIRE_STATUS_ID,
   CPRED_PRONE_STATUS_ID,
   CPRED_STAT_LABELS,
   CPRED_STATIST_GRAPPLE_DV,
+  CPRED_SUPPRESSED_STATUS_ID,
   CPRED_TURN_PROBLEM_MESSAGES,
   CPRED_UNCONSCIOUS_STATUS_ID,
   CPRED_WOUND_LABELS,
@@ -29,14 +35,24 @@ import {
   cpredAction,
   cpredActionBlock,
   cpredDodgeBlock,
+  cpredExpiringStatuses,
   cpredGrappleBase,
   cpredHumanShieldCovers,
+  cpredInjuryCarryOnDraw,
+  cpredInjuryDodgeBlock,
+  cpredInjuryModifiers,
+  cpredInjuryTurnEnd,
   cpredMetresLeft,
   cpredMoveBudgetFromSheet,
   cpredMoveRefusal,
   cpredMovementBlock,
   cpredPassiveGrappleDv,
+  cpredPeriodicDamage,
+  cpredStatusHasDialableDamage,
+  cpredTurnBlockReason,
+  cpredTurnPhaseRan,
   cpredTurnBudget,
+  cpredTurnReminders,
   setCpredHardTerrain,
   withCpredMoveAllowance,
   drawCriticalInjury,
@@ -46,10 +62,12 @@ import {
   hitLocationLabel,
   hpMax,
   isCriticalInjuryEntry,
+  markCpredTurnPhase,
   mergeCharacterData,
   nextCpredChokeStreak,
   parseCharacterData,
   readCpredTurn,
+  readCpredTurnLedger,
   resolveCpredChoke,
   resolveCpredDamage,
   resolveCpredGrappleTest,
@@ -217,9 +235,16 @@ export function sheetActionBlock(statuses: readonly string[]): string | null {
   return cpredActionBlock(statuses);
 }
 
-/** The same, for a dodge. A reaction, so being Held does not stop it. */
-export function sheetDodgeBlock(statuses: readonly string[]): string | null {
-  return cpredDodgeBlock(statuses);
+/**
+ * The same, for a dodge. A reaction, so being Held does not stop it — but a
+ * missing leg does, and that lives on the sheet rather than on the token
+ * (stage 14e), so both sources are asked here in one call.
+ */
+export function sheetDodgeBlock(
+  statuses: readonly string[],
+  injuries: readonly CpredCriticalInjuryRow[] = [],
+): string | null {
+  return cpredDodgeBlock(statuses) ?? cpredInjuryDodgeBlock(injuries);
 }
 
 /** Status the „Wstanie" Action takes off the token that paid for it. */
@@ -242,17 +267,34 @@ export const SHEET_GRAPPLE_PENALTY = CPRED_GRAPPLE_PENALTY;
 /**
  * The named modifiers a participant's situation adds to every roll they make.
  * A list rather than a number so the chat card can say „Trzymanie −2" instead
- * of quietly moving the total (stage 14d decision).
+ * of quietly moving the total (stage 14d decision) — and from stage 14e the
+ * Critical Injuries that carry a flat penalty join the same list under their
+ * own names („Wstrząśnienie mózgu −2").
  */
-export function sheetSituationModifiers(situation: { grappled: boolean }): RollBreakdownEntry[] {
-  if (!situation.grappled) return [];
-  return [
-    {
+export function sheetSituationModifiers(situation: {
+  grappled: boolean;
+  injuries?: readonly CpredCriticalInjuryRow[];
+}): RollBreakdownEntry[] {
+  const entries: RollBreakdownEntry[] = [];
+  if (situation.grappled) {
+    entries.push({
       label: CPRED_GRAPPLE_PENALTY_LABEL,
       value: CPRED_GRAPPLE_PENALTY,
       kind: 'situational',
-    },
-  ];
+    });
+  }
+  for (const modifier of cpredInjuryModifiers(situation.injuries ?? [])) {
+    entries.push({ label: modifier.label, value: modifier.value, kind: 'situational' });
+  }
+  return entries;
+}
+
+/** Critical Injuries a sheet carries — the input the modifiers above want. */
+export function readSheetInjuries(
+  character: Pick<Character, 'data'>,
+  registry: SheetRegistry,
+): CpredCriticalInjuryRow[] {
+  return parseCharacterData(character.data, registry).criticalInjuries;
 }
 
 /** Which side of a Hold an action needs, or undefined when it needs none. */
@@ -376,6 +418,74 @@ export function applyGrappleDamageToSheet(
   };
 }
 
+/**
+ * Periodic damage against a sheet (stage 14e): fire, poison, drowning and the
+ * ribs that re-open when their owner runs.
+ *
+ * The same „straight into Hit Points" path Duszenie uses, with two rules the
+ * caller must not be able to forget: armor neither stops it nor ablates from
+ * it, and „obrażenia okresowe nie wywołują Ran Krytycznych" (s. 181) — so no
+ * injury table is ever consulted, whatever the number was.
+ */
+export function applyPeriodicDamageToSheet(
+  character: Character,
+  registry: SheetRegistry,
+  damage: number,
+): { data: string; hp: TokenHp; log: SheetDamageLog } {
+  const data = parseCharacterData(character.data, registry);
+  const max = hpMax(data.stats);
+  const outcome = resolveCpredDamage({
+    damage,
+    location: 'body',
+    armorSp: 0,
+    hpCurrent: data.hpCurrent,
+    hpMax: max,
+    criticalInjury: false,
+    ignoreArmor: true,
+  });
+  const merged = mergeCharacterData(data, { hpCurrent: outcome.hpAfter });
+  return {
+    data: JSON.stringify(merged),
+    hp: { current: merged.hpCurrent, max },
+    log: periodicDamageLog(outcome, max),
+  };
+}
+
+/** The same against a statist token that only carries its own HP pair. */
+export function applyPeriodicDamageToTokenHp(
+  hp: TokenHp,
+  damage: number,
+): { hp: TokenHp; log: SheetDamageLog } {
+  const outcome = resolveCpredDamage({
+    damage,
+    location: 'body',
+    armorSp: 0,
+    hpCurrent: hp.current,
+    hpMax: hp.max,
+    criticalInjury: false,
+    ignoreArmor: true,
+  });
+  return { hp: { current: outcome.hpAfter, max: hp.max }, log: periodicDamageLog(outcome, hp.max) };
+}
+
+function periodicDamageLog(
+  outcome: ReturnType<typeof resolveCpredDamage>,
+  hpMaxValue: number,
+): SheetDamageLog {
+  return {
+    location: 'body',
+    locationLabel: hitLocationLabel('body'),
+    damageRolled: outcome.damageRolled,
+    armorSp: 0,
+    damageThrough: outcome.damageThrough,
+    doubled: false,
+    bonusDamage: 0,
+    hpLost: outcome.hpLost,
+    hp: { before: outcome.hpBefore, after: outcome.hpAfter, max: hpMaxValue },
+    ...(woundTransitionLabel(outcome) ? { woundLabel: woundTransitionLabel(outcome)! } : {}),
+  };
+}
+
 /** The same against a statist token that only carries its own HP pair. */
 export function applyGrappleDamageToTokenHp(
   hp: TokenHp,
@@ -393,14 +503,188 @@ export function applyGrappleDamageToTokenHp(
   };
 }
 
+/* ------------------------------------------------------------------ *
+ * Turn automation (stage 14e). The tracker knows „a turn is ending" and
+ * „a turn is beginning"; what happens then — who burns, who drowns, who
+ * owes the next turn its Action — is all on this side of the seam.
+ * ------------------------------------------------------------------ */
+
+/** Numbers riding along with a token's statuses (fire intensity, poison). */
+export type SheetStatusData = Record<string, number>;
+
+/**
+ * Reads the `Token.statusData` column into the flat map the rules want.
+ *
+ * Stored as `{"on-fire":{"damage":6}}` rather than `{"on-fire":6}` so a later
+ * stage can put a second number on a status (rounds left, a source) without a
+ * migration; the rules only ever ask for the damage.
+ */
+export function readSheetStatusData(raw: string | null | undefined): SheetStatusData {
+  if (!raw) return {};
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== 'object' || parsed === null) return {};
+    const values: SheetStatusData = {};
+    for (const [id, entry] of Object.entries(parsed as Record<string, unknown>)) {
+      if (typeof entry !== 'object' || entry === null) continue;
+      const damage = (entry as { damage?: unknown }).damage;
+      if (typeof damage === 'number' && Number.isFinite(damage)) {
+        values[id] = Math.max(0, Math.round(damage));
+      }
+    }
+    return values;
+  } catch {
+    return {};
+  }
+}
+
+/** Writes one status's number back, or clears it when `damage` is null. */
+export function writeSheetStatusData(
+  raw: string | null | undefined,
+  statusId: string,
+  damage: number | null,
+): string {
+  const values = readSheetStatusData(raw);
+  if (damage === null) delete values[statusId];
+  else values[statusId] = Math.max(0, Math.round(damage));
+  return JSON.stringify(
+    Object.fromEntries(Object.entries(values).map(([id, value]) => [id, { damage: value }])),
+  );
+}
+
+/** Statuses whose damage the GM may dial, and the rungs offered for fire. */
+export const SHEET_FIRE_INTENSITIES = CPRED_FIRE_INTENSITIES;
+
+export function sheetStatusHasDialableDamage(statusId: string): boolean {
+  return cpredStatusHasDialableDamage(statusId);
+}
+
+/** Status the „Ugaszenie" Action takes off the token that paid for it. */
+export const SHEET_ON_FIRE_STATUS_ID = CPRED_ON_FIRE_STATUS_ID;
+
+/** Status suppressive fire leaves on whoever failed its WILL check. */
+export const SHEET_SUPPRESSED_STATUS_ID = CPRED_SUPPRESSED_STATUS_ID;
+
+/** One line of damage a status owes right now. */
+export type SheetPeriodicDamage = CpredPeriodicDamage;
+
+/** What this token owes in this phase of its own turn. */
+export function sheetPeriodicDamage(
+  statuses: readonly string[],
+  phase: 'turn-start' | 'turn-end',
+  input: { values?: SheetStatusData; body?: number } = {},
+): SheetPeriodicDamage[] {
+  return cpredPeriodicDamage(statuses, phase, input);
+}
+
+/** Statuses that come off by themselves when their carrier's turn ends. */
+export function sheetExpiringStatuses(statuses: readonly string[]): string[] {
+  return cpredExpiringStatuses(statuses);
+}
+
+/** Nudges for the participant whose turn just began; never a refusal. */
+export function sheetTurnReminders(statuses: readonly string[]): string[] {
+  return cpredTurnReminders(statuses);
+}
+
+/** Debts a turn hands to the next one, as the tracker stores them. */
+export type SheetTurnCarry = CpredTurnCarryInput;
+
+/** True when the carry is worth persisting at all. */
+export function sheetCarryIsEmpty(carry: SheetTurnCarry | null): boolean {
+  return !carry || (!carry.noAction && !carry.noMove);
+}
+
+/** Merges two debts — a spine injury on top of an ear, both owed at once. */
+export function mergeSheetCarry(
+  first: SheetTurnCarry | null,
+  second: SheetTurnCarry | null,
+): SheetTurnCarry | null {
+  const merged: SheetTurnCarry = {
+    ...(first?.noAction || second?.noAction
+      ? { noAction: first?.noAction ?? second?.noAction }
+      : {}),
+    ...(first?.noMove || second?.noMove ? { noMove: first?.noMove ?? second?.noMove } : {}),
+  };
+  return sheetCarryIsEmpty(merged) ? null : merged;
+}
+
+/** Reads a stored carry back; anything unreadable is simply no debt. */
+export function readSheetCarry(raw: string | null | undefined): SheetTurnCarry | null {
+  if (!raw) return null;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== 'object' || parsed === null) return null;
+    const value = parsed as { noAction?: unknown; noMove?: unknown };
+    const carry: SheetTurnCarry = {
+      ...(typeof value.noAction === 'string' ? { noAction: value.noAction } : {}),
+      ...(typeof value.noMove === 'string' ? { noMove: value.noMove } : {}),
+    };
+    return sheetCarryIsEmpty(carry) ? null : carry;
+  } catch {
+    return null;
+  }
+}
+
+/** The debt a wound creates the moment it is drawn („Uraz kręgosłupa"). */
+export function sheetInjuryCarryOnDraw(injury: {
+  name: string;
+  noActionNextTurn?: boolean;
+}): SheetTurnCarry | null {
+  return cpredInjuryCarryOnDraw(injury);
+}
+
+/** What a Critical Injury owes at the end of a turn spent walking. */
+export function sheetInjuryTurnEnd(
+  injuries: readonly CpredCriticalInjuryRow[],
+  metresWalked: number,
+): { carry: SheetTurnCarry | null; damage: SheetPeriodicDamage[] } {
+  const result = cpredInjuryTurnEnd(injuries, metresWalked);
+  return {
+    carry: sheetCarryIsEmpty(result.carry) ? null : result.carry,
+    damage: result.damage,
+  };
+}
+
+/** Ground this turn actually covered — what „ponad 4 m" is measured against. */
+export function turnMetresWalked(stored: string | null): number {
+  return readCpredTurn(stored ?? undefined).metresWalked;
+}
+
+/** The two moments a turn hands control to the game system. */
+export type SheetTurnPhase = 'turn-start' | 'turn-end';
+
+/** True when this phase already ran for this participant in this round. */
+export function turnPhaseAlreadyRan(
+  stored: string | null,
+  phase: SheetTurnPhase,
+  round: number,
+): boolean {
+  return cpredTurnPhaseRan(readCpredTurnLedger(stored ?? undefined), phase, round);
+}
+
+/** Records that this phase has now run, for the ledger column to keep. */
+export function markTurnPhase(stored: string | null, phase: SheetTurnPhase, round: number): string {
+  return JSON.stringify(markCpredTurnPhase(readCpredTurnLedger(stored ?? undefined), phase, round));
+}
+
 /**
  * A budget with everything still unspent — the start of a participant's turn.
  * The distance allowance is baked in at that moment; a spend may hand in a
  * fresher one, which is how a leg broken mid-turn shortens the rest of it.
+ *
+ * `carry` is what the previous turn (or a wound that landed since) left owing:
+ * a turn can begin already missing its Action.
  */
-export function freshTurnState(move?: SheetMoveBudget | null): SheetTurnState {
+export function freshTurnState(
+  move?: SheetMoveBudget | null,
+  carry?: SheetTurnCarry | null,
+): SheetTurnState {
   return JSON.stringify(
-    freshCpredTurn(move ? { metresPerMove: move.metresPerMove, note: move.note } : null),
+    freshCpredTurn(
+      move ? { metresPerMove: move.metresPerMove, note: move.note } : null,
+      carry ?? null,
+    ),
   );
 }
 
@@ -443,11 +727,18 @@ export function spendTurnState(
   stored: string | null,
   spend: SheetTurnSpend,
   force: boolean,
-): { ok: true; state: SheetTurnState; forced: boolean } | { ok: false; error: SheetTurnProblem } {
+):
+  | { ok: true; state: SheetTurnState; forced: boolean }
+  | { ok: false; error: SheetTurnProblem; message?: string } {
   const current = readCpredTurn(stored ?? undefined);
   const attempt = spendCpredTurn(current, spend);
   if (attempt.ok) return { ok: true, state: JSON.stringify(attempt.state), forced: false };
-  if (!force) return { ok: false, error: attempt.error };
+  if (!force) {
+    // A refusal that came from a wound arrives with the wound's own sentence:
+    // „ACTION_BLOCKED" tells the player nothing about which rib it was.
+    const reason = cpredTurnBlockReason(current, attempt.error);
+    return { ok: false, error: attempt.error, ...(reason ? { message: reason } : {}) };
+  }
   return { ok: true, state: JSON.stringify(forceCpredTurn(current, spend)), forced: true };
 }
 
@@ -549,7 +840,7 @@ export function applyDamageToSheet(
   request: SheetDamageRequest,
   injuries: readonly CompendiumEntry[],
   rng: DiceRng,
-): { data: string; hp: TokenHp; log: SheetDamageLog } {
+): { data: string; hp: TokenHp; log: SheetDamageLog; carry: SheetTurnCarry | null } {
   const data = parseCharacterData(character.data, registry);
   const location = normalizeLocation(request.location);
   const max = hpMax(data.stats);
@@ -599,6 +890,10 @@ export function applyDamageToSheet(
     ...(woundTransitionLabel(outcome) ? { woundLabel: woundTransitionLabel(outcome)! } : {}),
   };
 
+  // A wound that takes the next turn's Action away is a debt against a turn
+  // that has not begun — and may not even belong to whoever is acting now.
+  let carry: SheetTurnCarry | null = null;
+
   if (outcome.criticalInjury) {
     const pool = injuries.filter(isCriticalInjuryEntry);
     const draw = drawCriticalInjury(
@@ -612,6 +907,7 @@ export function applyDamageToSheet(
       const row = toCriticalInjuryRow(draw.entry, rolled);
       patch.criticalInjuries = [...data.criticalInjuries, row];
       log.injury = { id: row.id, name: row.name, effect: row.effect, rolled };
+      carry = cpredInjuryCarryOnDraw(row);
     } else if (draw.exhausted) {
       log.injuryNote = 'Cel ma już wszystkie rany z tej tabeli.';
     } else {
@@ -624,6 +920,7 @@ export function applyDamageToSheet(
     data: JSON.stringify(merged),
     hp: { current: merged.hpCurrent, max },
     log,
+    carry,
   };
 }
 

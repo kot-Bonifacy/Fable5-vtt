@@ -268,7 +268,12 @@ export const grappleAttemptEvent = defineEvent<
         ...(payload?.modifier !== undefined ? { modifier: payload.modifier } : {}),
         ...(payload?.luckSpent !== undefined ? { luckSpent: payload.luckSpent } : {}),
       },
-      { modifiers: sheetSituationModifiers({ grappled: attackerGrappled }) },
+      {
+        modifiers: sheetSituationModifiers({
+          grappled: attackerGrappled,
+          injuries: data.criticalInjuries,
+        }),
+      },
     );
     if (!planned.ok) throw new RealtimeError(planned.error);
 
@@ -416,7 +421,12 @@ export const grappleResistEvent = defineEvent<
       registry,
       { kind: 'skill', skillId: CPRED_BRAWLING_SKILL_ID },
       // Whatever the stand-in charged them, the real roll is charged too.
-      { modifiers: sheetSituationModifiers({ grappled: system.defenderModifier !== 0 }) },
+      {
+        modifiers: sheetSituationModifiers({
+          grappled: system.defenderModifier !== 0,
+          injuries: data.criticalInjuries,
+        }),
+      },
     );
     if (!planned.ok) throw new RealtimeError(planned.error);
 

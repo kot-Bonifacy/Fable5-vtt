@@ -193,6 +193,14 @@ model Token {
   /** JSON array of status ids (SQLite has no native arrays). */
   statuses String @default("[]")
   /**
+   * Numbers that go with those statuses (stage 14e), as a JSON object keyed by
+   * status id: `{"on-fire":{"damage":6}}`. A separate column rather than an
+   * entry in `statuses` because the ids are what the map, the filters and the
+   * rules all read — a status that sometimes carries a payload would make every
+   * one of those places ask what shape it is in.
+   */
+  statusData String @default("{}")
+  /**
    * How far this token sees, in metres (stage 18a). Null = as far as the walls
    * allow, which is the right default for a lit scene; darkness and light
    * sources arrive in 18b.
@@ -536,6 +544,20 @@ model Combatant {
   /// fresh one at the start of a turn and hands it back for judging spends.
   /// Null = the turn has not started yet.
   turnState  String?
+  /// What the game system wants baked into this participant's *next* turn
+  /// (stage 14e), serialized the same opaque way `turnState` is. A spine injury
+  /// takes away the Action of a turn that has not started yet — and may well be
+  /// drawn during somebody else's turn — so the debt needs a home outside the
+  /// turn that is currently running. Cleared the moment it is spent.
+  nextTurnState  String?
+  /// Which of this participant's turn hooks have already fired, and in which
+  /// round (stage 14e), as the game system serialized it. Deliberately *not*
+  /// part of `turnState`: a budget is handed out fresh whenever a turn begins,
+  /// and „begins" includes the GM stepping back and forward through the queue
+  /// or pressing „Zwróć turę" — a ledger inside it would be wiped by exactly
+  /// the actions it exists to survive, and the second pass would set the same
+  /// NPC on fire again.
+  turnEffects    String?
   /// „Wstrzymanie Akcji": what will make the reserved Action happen. Null when
   /// nothing is held, or when a queue value was declared instead of a trigger.
   heldTrigger    String?

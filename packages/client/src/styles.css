@@ -3753,3 +3753,63 @@ body.is-resizing {
   font-size: 0.74rem;
   color: var(--err);
 }
+
+/* --- stage 14e: turn automation (periodic damage, injuries, reminders) --- */
+
+/* „Przygwożdżony — rusz się do osłony": a nudge on the bar, in front of the
+   person whose turn it is. Warning colours, not error ones — nothing here
+   refuses anything. */
+.combat-bar-reminder {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  max-width: 22rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0.2rem 0.45rem;
+  border: 1px solid var(--warn);
+  border-radius: 6px;
+  background: rgb(255 179 0 / 12%);
+  color: var(--warn);
+  font-size: 0.72rem;
+}
+
+/* A debt the next turn already carries („Uraz kręgosłupa: bez Akcji"). Reads
+   like the Hold line above it, one notch dimmer: it is not happening yet. */
+.combat-row-held--owes {
+  color: var(--err);
+}
+
+/* The GM's switchboard for fire, poison and drowning. */
+.combat-effects {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-top: 0.4rem;
+  border-top: 1px dashed var(--border);
+}
+
+.combat-effect-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.combat-effect-name {
+  flex: 1 1 8rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.combat-effect-target {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+}
+
+.combat-effect-target select {
+  flex: 1;
+}

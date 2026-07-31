@@ -463,6 +463,29 @@ describe('ranged combat from the map', () => {
     expect(card.detail).toContain('PT dla celów');
   });
 
+  /**
+   * Stage 14e closes the loop the card opened (POMYSLY, 28.07): whoever failed
+   * the check is marked „Przygwożdżony" on the map, not only in a sentence.
+   * Soft by design — the status nags, and nothing refuses.
+   */
+  it('marks the tokens that failed the check as „Przygwożdżony"', async () => {
+    await emitAck(player, 'weapon:reload', { characterId, weaponRowId: 'w-rifle' });
+    await placeTargetAt(10);
+    // Ten volleys: the WILL check is a die roll, so at least one target fails.
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const card = await attack({ weaponRowId: 'w-rifle', mode: 'suppressive' });
+      const pinned = (card.forcedChecks ?? []).some((check) => check.success === false);
+      await emitAck(player, 'weapon:reload', { characterId, weaponRowId: 'w-rifle' });
+      if (!pinned) continue;
+      const sync = waitFor<StateSyncPayload>(gm, 'state:sync');
+      await emitAck(gm, 'state:request');
+      const wearing = (await sync).tokens.filter((token) => token.statuses.includes('suppressed'));
+      expect(wearing.length).toBeGreaterThan(0);
+      return;
+    }
+    throw new Error('nobody failed a WILL check in ten volleys');
+  });
+
   it('needs the target within 2 m for a melee attack', async () => {
     await placeTargetAt(6);
     const tooFar = await emitAck(player, 'attack:roll', {
@@ -630,6 +653,62 @@ describe('ranged combat from the map', () => {
       characterId: defender.id,
     });
     expect(again).toEqual({ ok: false, error: 'ALREADY_EVADED' });
+  });
+
+  /**
+   * Stage 14e: „Odcięta noga … Nie możesz Unikać ataków". The refusal has to
+   * come from the *sheet*, not from the token's statuses — a severed leg is a
+   * Critical Injury, and nothing paints it on the map.
+   */
+  it('refuses the dodge of a defender whose leg is gone', async () => {
+    const cripple = data(
+      await emitAck<CharacterView>(gm, 'character:create', { name: 'Kuternoga' }),
+      'character:create',
+    );
+    await emitAck(gm, 'character:update', {
+      characterId: cripple.id,
+      patch: {
+        data: {
+          stats: { ...(cripple.data as CpredCharacterData).stats, dex: 6 },
+          skills: { evasion: 4 },
+          criticalInjuries: [
+            {
+              id: 'injury.body-odcieta-noga',
+              name: 'Odcięta noga',
+              effect: 'Nie możesz Unikać ataków.',
+              noDodge: true,
+            },
+          ],
+        },
+      },
+    });
+    const crippleToken = data(
+      await emitAck<TokenView>(gm, 'token:create', {
+        sceneId,
+        name: 'Kuternoga',
+        x: 2 * PX_PER_M,
+        y: 0,
+        characterId: cripple.id,
+      }),
+      'token:create',
+    );
+    const message = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+    const ack = data(
+      await emitAck<{ messageId: number }>(player, 'attack:roll', {
+        characterId,
+        targetTokenId: crippleToken.id,
+        attackerTokenId: shooterTokenId,
+        request: { weaponRowId: 'w-blade', mode: 'single' },
+      }),
+      'attack:roll',
+    );
+    await message;
+    const refused = await emitAck(gm, 'attack:evade', {
+      messageId: ack.messageId,
+      characterId: cripple.id,
+    });
+    expect(refused).toEqual({ ok: false, error: 'DODGE_BLOCKED' });
+    await emitAck(gm, 'token:delete', { tokenId: crippleToken.id });
   });
 
   it('never lets a bystander dodge someone else’s attack', async () => {

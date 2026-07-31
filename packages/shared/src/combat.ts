@@ -130,6 +130,13 @@ export interface CombatantView {
   held?: HeldActionView;
   /** The Hold this participant is in, if any (stage 14d). */
   grapple?: GrappleView;
+  /**
+   * Ready sentences their *next* turn will start already missing (stage 14e) —
+   * „Uraz kręgosłupa: w tej turze nie wykonujesz Akcji". Shown before the turn
+   * begins on purpose: a GM planning the round needs to know the NPC they were
+   * counting on is about to lose their Action.
+   */
+  owes?: string[];
 }
 
 /** A combat as one viewer sees it (players never receive hidden participants). */
@@ -374,6 +381,25 @@ export interface CombatResetTurnPayload {
 export interface CombatTerrainPayload {
   combatantId?: string;
   hard: boolean;
+}
+
+/**
+ * The GM sets — or lifts — a status that costs its carrier something every turn
+ * (stage 14e): fire, poison, drowning.
+ *
+ * One event for both halves because at the table it is one decision: „pali się,
+ * i to mocno". The intensity travels as a plain number and the server decides
+ * whether that status accepts one at all (drowning reads BODY, and no dial can
+ * overwrite it).
+ */
+export interface TokenEffectPayload {
+  tokenId: string;
+  /** Status id from the registry (`on-fire`, `poisoned`, `drowning`). */
+  statusId: string;
+  /** false takes the status off and forgets its number. */
+  active: boolean;
+  /** Damage per turn, for the statuses that accept a dial; null = the default. */
+  damage?: number | null;
 }
 
 /**

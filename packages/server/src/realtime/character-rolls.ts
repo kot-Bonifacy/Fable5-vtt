@@ -305,16 +305,31 @@ async function situationForCharacter(
   campaignId: string,
   sceneId: string | null,
   character: Character,
+  data: CpredCharacterData,
 ): Promise<CpredRollContext> {
-  if (!sceneId) return {};
+  // The wounds travel with the character, map or no map (stage 14e): a
+  // concussion is −2 whether or not there is a token standing on a scene.
+  const injuries = data.criticalInjuries;
+  const grappled = await isCharacterGrappled(deps, campaignId, sceneId, character);
+  return { modifiers: sheetSituationModifiers({ grappled, injuries }) };
+}
+
+/** Is this character's token on the viewed scene in a Hold right now? */
+async function isCharacterGrappled(
+  deps: RealtimeDeps,
+  campaignId: string,
+  sceneId: string | null,
+  character: Character,
+): Promise<boolean> {
+  if (!sceneId) return false;
   const token = await deps.ctx.prisma.token.findFirst({
     where: { characterId: character.id, sceneId },
   });
-  if (!token) return {};
+  if (!token) return false;
   const scene = await deps.ctx.prisma.scene.findUnique({ where: { id: sceneId } });
-  if (!scene || scene.campaignId !== campaignId) return {};
+  if (!scene || scene.campaignId !== campaignId) return false;
   const grapple = await grappleStateForToken(deps.ctx.prisma, sceneId, token.id);
-  return { modifiers: sheetSituationModifiers({ grappled: grapple.grappled }) };
+  return grapple.grappled;
 }
 
 export const characterRollEvent = defineEvent<
@@ -339,6 +354,7 @@ export const characterRollEvent = defineEvent<
       campaign.id,
       socket.data.viewedSceneId,
       character,
+      data,
     );
     const planned = planCpredRoll(data, registry, request, context);
     if (!planned.ok) throw new RealtimeError(planned.error);

@@ -196,6 +196,14 @@ function CombatRow({
           {combatant.tieBreak !== null ? ` · REF ${combatant.tieBreak}` : ''}
           {combatant.turn ? ` · ${budgetSummary(combatant.turn)}` : ''}
         </span>
+        {/* What their next turn already owes (stage 14e). Shown before the turn
+            starts on purpose: a wound that landed on somebody else's turn is
+            invisible until the tracker says so. */}
+        {combatant.owes?.map((line) => (
+          <span key={line} className="combat-row-held combat-row-held--owes">
+            🩼 {line}
+          </span>
+        ))}
         {combatant.grapple && (
           <span className="combat-row-held">
             🤼{' '}
