@@ -21,6 +21,14 @@ const RING_NPC = 0xf87171;
 const TURN_RING_COLOR = 0xfacc15;
 const TURN_RING_WIDTH = 5;
 
+// The third ring — „this is the figure my clicks steer" (stage 16e) — is drawn
+// by `MapRenderer` on the overlay layer, not here. Everything in this file is
+// sized in *world* pixels, and a table is usually looking at a 4096 px map at
+// about a fifth of scale: a ring three world pixels wide lands on half a screen
+// pixel. The owner ring survives that because it is a solid circle of colour;
+// a second thin ring inside it simply disappears. The overlay is the one layer
+// that already scales its strokes by the zoom.
+
 const HP_GREEN = 0x22c55e;
 const HP_ORANGE = 0xf59e0b;
 const HP_RED = 0xef4444;

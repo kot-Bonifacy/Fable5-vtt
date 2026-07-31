@@ -4,14 +4,21 @@ import {
   ROLE_GM,
   blockingSegments,
   computeVisionPolygon,
+  cpredMovementBlock,
   isOpening,
+  isPointInPolygon,
+  isPointVisible,
+  isSegmentClear,
   metresPerPixel,
   metresToPixels,
+  movementSegments,
   pickDrawingAt,
   pickWallAt,
   sceneBoundsSegments,
   tokenCentre,
   type CombatView,
+  type ScenePoint,
+  type TokenView,
   type WallKind,
 } from '@vtt/shared';
 import {
@@ -52,6 +59,7 @@ import { useFogStore } from '../stores/fogStore.js';
 import { useNoteStore } from '../stores/noteStore.js';
 import { sortedDrawings, useDrawingStore } from '../stores/drawingStore.js';
 import { clickableOpenings, useWallStore } from '../stores/wallStore.js';
+import { useSelectionStore } from '../stores/selectionStore.js';
 import { pickLightAt, useLightStore } from '../stores/lightStore.js';
 import {
   currentDrawingStyle,
@@ -212,7 +220,67 @@ function moveAllowanceOf(
     tokenId: active.tokenId,
     metresLeft: Math.max(0, distance.max - distance.used),
     costFactor: distance.hard ? 2 : 1,
+    // The GM is never refused a move — going past the budget is logged as
+    // „poza budżetem" and happens (stage 14b) — so their route is drawn against
+    // the budget but never cut by it.
+    enforced: !isGm,
   };
+}
+
+/**
+ * Why the steered token may not walk at all right now (stage 16e), as a
+ * sentence, or null when it may.
+ *
+ * The client asks the same two questions the server asks in this order, and
+ * asking them here is not a second rulebook: it is the difference between a
+ * cursor that says „no" before the click and a figure that walks two metres and
+ * snaps back with a card. The server still decides.
+ */
+function walkRefusalFor(
+  tokenId: string | null,
+  combat: CombatView | null,
+  token: TokenView | undefined,
+  isGm: boolean,
+): string | null {
+  if (!tokenId || isGm) return null;
+  const blocked = token ? cpredMovementBlock(token.statuses) : null;
+  if (blocked) return blocked;
+  const combatant = combat?.combatants.find((row) => row.tokenId === tokenId);
+  if (!combatant || !combat) return null;
+  if (combat.activeCombatantId && combat.activeCombatantId !== combatant.id) {
+    return 'To nie jest tura tej postaci — poczekaj na swoją kolej.';
+  }
+  return null;
+}
+
+/**
+ * Which other tokens the marching figure can see from a given spot — the GM's
+ * half of „ktoś nowy w polu widzenia".
+ *
+ * A player never needs this: a token they could not see is not in their store
+ * at all, so „somebody appeared" is literally a new key. The GM holds every
+ * token from the start, so for them the question has to be asked of the
+ * geometry — with the same raycast the server runs, off the walls they already
+ * have for the light layer.
+ */
+function tokensSeenFrom(
+  marcher: TokenView,
+  origin: ScenePoint,
+  tokens: readonly TokenView[],
+  scene: Parameters<typeof tokenCentre>[1] & Parameters<typeof metresToPixels>[1],
+  segments: ReturnType<typeof blockingSegments>,
+): Set<string> {
+  const radiusPx =
+    marcher.visionRange === null || marcher.visionRange === undefined
+      ? null
+      : metresToPixels(marcher.visionRange, scene);
+  const polygon = computeVisionPolygon(origin, segments, radiusPx);
+  const seen = new Set<string>();
+  for (const token of tokens) {
+    if (token.id === marcher.id) continue;
+    if (isPointInPolygon(tokenCentre(token, scene), polygon)) seen.add(token.id);
+  }
+  return seen;
 }
 
 export function MapArea() {
@@ -221,6 +289,8 @@ export function MapArea() {
   const [ready, setReady] = useState(false);
   const [loading, setLoading] = useState(false);
   const [menu, setMenu] = useState<TokenMenuState | null>(null);
+  /** Token walking a planned route right now (stage 16e); null when none is. */
+  const [marchingTokenId, setMarchingTokenId] = useState<string | null>(null);
   const scene = useSceneStore((s) => s.effectiveScene);
   const placement = useTokenStore((s) => s.placement);
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
@@ -246,10 +316,10 @@ export function MapArea() {
     ensureStatusesLoaded();
   }, []);
 
-  const placeToken = useCallback((worldX: number, worldY: number) => {
+  const placeToken = useCallback((worldX: number, worldY: number): boolean => {
     const pending = useTokenStore.getState().placement;
     const current = useSceneStore.getState().effectiveScene;
-    if (!pending || !current) return;
+    if (!pending || !current) return false;
     const extent = current.grid.sizePx;
     void createToken({
       sceneId: current.id,
@@ -260,6 +330,7 @@ export function MapArea() {
       y: worldY - extent / 2,
     });
     useTokenStore.getState().setPlacement(null);
+    return true;
   }, []);
 
   useEffect(() => {
@@ -280,10 +351,16 @@ export function MapArea() {
         // Refused (stage 14c): the token goes back where the server still has
         // it, and the reason is said out loud — a figure sliding home on its
         // own would read as a bug rather than as a rule.
+        // A refusal is also one of the four things that stop a march (16e):
+        // walking on after the rules said no would be walking on a lie.
+        renderer.interruptWalk(null);
         if (before) renderer.snapTokenBack(tokenId, before.x, before.y);
         useChatStore.getState().addNote(moveErrorText(result.error));
       });
     };
+    renderer.onSelectionChange = (tokenId) => useSelectionStore.getState().select(tokenId);
+    renderer.onWalkNote = (text) => useChatStore.getState().addNote(text);
+    renderer.onWalkStateChange = setMarchingTokenId;
     renderer.onTokenMenu = (tokenId, clientX, clientY) => {
       if (useAuthStore.getState().user?.role === ROLE_GM) {
         setMenu({ tokenId, x: clientX, y: clientY });
@@ -487,6 +564,210 @@ export function MapArea() {
       unsubCombat();
     };
   }, [ready, pushTokens]);
+
+  /**
+   * Hands the renderer what counts as walkable ground (stage 16e) — the whole of
+   * the difference between what the GM knows and what a player knows, in one
+   * place.
+   *
+   * **GM:** real geometry. Walls are lines, so the answer is an edge test:
+   * anywhere is standable, and a step is legal when nothing blocks the straight
+   * line between the two cells. That routes through rooms nobody has entered,
+   * which is what planning a scene needs.
+   *
+   * **Player:** the field of view their own tokens describe, and nothing else.
+   * The polygon ends exactly where a wall stands, so a route confined to it goes
+   * round walls the client was never sent — the identity the whole stage rests
+   * on. The party's *memory* (18c) is deliberately **not** in here: a remembered
+   * corridor remembers the floor and not the walls (both sides of a wall were
+   * seen, so both sides are remembered), and planning through it would send
+   * figures straight through masonry. „Nie dalej, niż widzisz" — a click into a
+   * remembered but unlit room walks to the edge of sight and waits for the next
+   * one.
+   *
+   * A scene with no visibility model at all has neither: everything is walkable,
+   * because there is nothing on it to walk round.
+   */
+  const pushWalkPassable = useCallback(() => {
+    const renderer = rendererRef.current;
+    const current = useSceneStore.getState().effectiveScene;
+    if (!renderer) return;
+    if (!current) {
+      renderer.setWalkPassable(null);
+      return;
+    }
+    if (useAuthStore.getState().user?.role === ROLE_GM) {
+      const segments = [
+        ...movementSegments(useWallStore.getState().walls),
+        ...sceneBoundsSegments(current),
+      ];
+      renderer.setWalkPassable(
+        () => true,
+        (from, to) => isSegmentClear(from, to, segments),
+      );
+      return;
+    }
+    const wallState = useWallStore.getState();
+    if (!wallState.hasVision) {
+      renderer.setWalkPassable(() => true);
+      return;
+    }
+    const polygons = wallState.polygons;
+    renderer.setWalkPassable((point) => isPointVisible(point, polygons));
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    pushWalkPassable();
+    const unsubWalls = useWallStore.subscribe(pushWalkPassable);
+    const unsubScene = useSceneStore.subscribe(pushWalkPassable);
+    return () => {
+      unsubWalls();
+      unsubScene();
+    };
+  }, [ready, pushWalkPassable]);
+
+  /** „Powalony", „nie twoja tura" — the cursor says no before the click does. */
+  const pushWalkRefusal = useCallback(() => {
+    const renderer = rendererRef.current;
+    if (!renderer) return;
+    const selected = useSelectionStore.getState().tokenId;
+    renderer.setWalkRefusal(
+      walkRefusalFor(
+        selected,
+        useCombatStore.getState().combat,
+        selected ? useTokenStore.getState().tokens[selected] : undefined,
+        useAuthStore.getState().user?.role === ROLE_GM,
+      ),
+    );
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    pushWalkRefusal();
+    const unsubSelection = useSelectionStore.subscribe(pushWalkRefusal);
+    const unsubCombat = useCombatStore.subscribe(pushWalkRefusal);
+    const unsubTokens = useTokenStore.subscribe(pushWalkRefusal);
+    return () => {
+      unsubSelection();
+      unsubCombat();
+      unsubTokens();
+    };
+  }, [ready, pushWalkRefusal]);
+
+  /**
+   * The three automatic reasons a march stops (stage 16e). The fourth — a hand
+   * on Escape or the mouse — lives in the renderer, where the pointer is.
+   *
+   * All of them are watched only *while* somebody is walking: outside a march
+   * this effect does not exist, so the subscriptions cost nothing at rest.
+   */
+  useEffect(() => {
+    const renderer = rendererRef.current;
+    if (!ready || !renderer || !marchingTokenId) return;
+    const isGm = useAuthStore.getState().user?.role === ROLE_GM;
+    const startTokens = useTokenStore.getState().tokens;
+    const known = new Set(Object.keys(startTokens));
+    const startHp = startTokens[marchingTokenId]?.hp?.current ?? null;
+    const startActive = activeTokenIdOf(useCombatStore.getState().combat);
+
+    const sceneOf = () => useSceneStore.getState().effectiveScene;
+    /** Who the walking figure could see when it set off (GM only). */
+    const seenAtStart = (() => {
+      const current = sceneOf();
+      const marcher = startTokens[marchingTokenId];
+      if (!isGm || !current || !marcher) return null;
+      const segments = [
+        ...blockingSegments(useWallStore.getState().walls),
+        ...sceneBoundsSegments(current),
+      ];
+      return tokensSeenFrom(
+        marcher,
+        tokenCentre(marcher, current),
+        Object.values(startTokens),
+        current,
+        segments,
+      );
+    })();
+
+    const unsubTokens = useTokenStore.subscribe(() => {
+      const state = useTokenStore.getState();
+      for (const id of Object.keys(state.tokens)) {
+        // A player is only ever sent tokens they can see, so a new key *is*
+        // somebody stepping into view — the „enemy sighted" of every CRPG.
+        if (!known.has(id)) {
+          renderer.interruptWalk('Ktoś pojawił się w polu widzenia — marsz przerwany.');
+          return;
+        }
+      }
+      const hp = state.tokens[marchingTokenId]?.hp?.current ?? null;
+      if (startHp !== null && hp !== null && hp < startHp) {
+        renderer.interruptWalk('Obrażenia — marsz przerwany.');
+      }
+    });
+
+    const unsubCombat = useCombatStore.subscribe(() => {
+      if (activeTokenIdOf(useCombatStore.getState().combat) !== startActive) {
+        renderer.interruptWalk('Zmiana tury — marsz przerwany.');
+      }
+    });
+
+    // The GM's own check runs on a timer rather than on a store event: nothing
+    // in any store changes when a figure walks round a corner and finds
+    // somebody standing there. Four times a second is well under the pace a
+    // token moves at three metres a second, and the raycast is the one the
+    // light layer already runs on every lamp.
+    const timer = seenAtStart
+      ? window.setInterval(() => {
+          const current = sceneOf();
+          const state = useTokenStore.getState();
+          const marcher = state.tokens[marchingTokenId];
+          const position = renderer.marchPosition();
+          if (!current || !marcher || !position) return;
+          const segments = [
+            ...blockingSegments(useWallStore.getState().walls),
+            ...sceneBoundsSegments(current),
+          ];
+          const half = (marcher.size * current.grid.sizePx) / 2;
+          const seen = tokensSeenFrom(
+            marcher,
+            { x: position.x + half, y: position.y + half },
+            Object.values(state.tokens),
+            current,
+            segments,
+          );
+          for (const id of seen) {
+            if (seenAtStart.has(id)) continue;
+            const spotted = state.tokens[id];
+            renderer.interruptWalk(
+              `${spotted ? `„${spotted.name}"` : 'Ktoś'} w polu widzenia — marsz przerwany.`,
+            );
+            return;
+          }
+        }, 250)
+      : null;
+
+    return () => {
+      unsubTokens();
+      unsubCombat();
+      if (timer !== null) window.clearInterval(timer);
+    };
+  }, [ready, marchingTokenId]);
+
+  // Escape drops the selection and stops a march — the same key that cancels
+  // token placement, so „never mind" is one key everywhere on the map.
+  useEffect(() => {
+    if (!ready) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      const renderer = rendererRef.current;
+      if (!renderer) return;
+      renderer.interruptWalk('Marsz przerwany.');
+      renderer.setSelection(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [ready]);
 
   // The reach circle follows the tracker: every spent metre comes back as a
   // fresh budget, so the ring shrinks as the token walks (stage 14c).

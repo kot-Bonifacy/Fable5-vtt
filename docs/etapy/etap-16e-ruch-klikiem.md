@@ -28,8 +28,13 @@ i tak samo jak tam, oba trudne przypadki wychodzą za darmo:
 
 | Kto idzie | Skąd bierze przechodniość | Co z tego wynika |
 | --------- | ------------------------- | ---------------- |
-| MG        | pełne ściany (`blockingSegments`, `isSegmentClear`) | trasa po prawdziwej geometrii, także przez nieodkryte pokoje |
-| Gracz     | `isPointInPolygon` (widzę teraz) ∪ `isPointExplored` (pamiętam) | trasa po znanym terenie, bez wycieku planu budynku |
+| MG        | pełne ściany (`movementSegments`, `isSegmentClear`) | trasa po prawdziwej geometrii, także przez nieodkryte pokoje |
+| Gracz     | `isPointVisible` (widzę teraz) | trasa dokładna co do piksela, bez wycieku planu budynku |
+
+> **Poprawka z sesji wdrożeniowej (31.07):** wiersz gracza brzmiał pierwotnie
+> „widzę teraz ∪ `isPointExplored` (pamiętam)”. Maska eksploracji **nie pamięta ścian** — mur
+> widać z obu stron, więc po zwiedzeniu korytarza obie jego strony są zapamiętane i A* przez
+> mur przechodzi. Szczegóły i decyzja MG: „Odstępstwa przy implementacji” na końcu pliku.
 
 Jedyne miejsce, w którym granica **nie** jest ścianą, to horyzont: koniec zasięgu widzenia,
 krawędź sceny, brzeg pamięci. Stąd „idź w tę stronę” (decyzja MG) — klik w czerń nie jest
@@ -37,46 +42,46 @@ odmową, tylko marszem do granicy wiedzy.
 
 ## Zakres
 
-- [ ] **Zaznaczenie tokenu** — nowy `selectionStore` (rdzeń VTT, bez wiedzy o CP RED): LPM
+- [x] **Zaznaczenie tokenu** — nowy `selectionStore` (rdzeń VTT, bez wiedzy o CP RED): LPM
       zaznacza token, którym wolno sterować (MG — każdy, gracz — swój), Esc / PPM / klik
       w puste odznacza. `TokenNode` rysuje **trzeci** pierścień: obok obwódki właściciela
       (czyj to jest) i halo aktywnego w turze (czyja tura) — żaden z nich nie może stracić znaczenia
-- [ ] **`planWalk` w `shared/pathfinding.ts`** — czysta funkcja z **wstrzykiwanym predykatem
+- [x] **`planWalk` w `shared/pathfinding.ts`** — czysta funkcja z **wstrzykiwanym predykatem
       przechodniości** (wzorzec `DiceRng` z etapu 06): A* po kratkach sceny, 8 kierunków,
       przekątna √2, wygładzenie trasy (usuwanie punktów pośrednich, gdy odcinek prosty jest
       przechodni). Rdzeń VTT — o metrach, budżecie i CP RED nie wie nic
-- [ ] **Rozmiar tokenu w trasie** — kratka jest przechodnia dla tokenu `size × size` tylko
+- [x] **Rozmiar tokenu w trasie** — kratka jest przechodnia dla tokenu `size × size` tylko
       wtedy, gdy przechodnie są **wszystkie** kratki, które zajmie. Bez tego token 2×2
       przeciska się przez metrowe drzwi
-- [ ] **„Idź w tę stronę”** (decyzja MG) — cel poza znanym terenem nie jest odmową: A* kończy
+- [x] **„Idź w tę stronę”** (decyzja MG) — cel poza znanym terenem nie jest odmową: A* kończy
       na kratce najbliższej celowi spośród osiągalnych, a trasa jest rysowana do niej
-- [ ] **Podgląd trasy pod kursorem**: zielona do granicy budżetu tury, znacznik ✖ w miejscu,
+- [x] **Podgląd trasy pod kursorem**: zielona do granicy budżetu tury, znacznik ✖ w miejscu,
       gdzie postać stanie, i wygaszona reszta dalej; licznik `„12 / 12 m”`. Ruch utrudniony
       (×2 z 14c) liczy się w koszcie, nie w metrach ziemi
-- [ ] **Przycięcie do budżetu — „idź, ile starczy”** (decyzja MG): klik w punkt poza zasięgiem
+- [x] **Przycięcie do budżetu — „idź, ile starczy”** (decyzja MG): klik w punkt poza zasięgiem
       tury przenosi na granicę budżetu, zamiast odmawiać całego ruchu. Serwer dalej rozstrzyga;
       to przycięcie po stronie UI, nie nowa reguła
-- [ ] **Marsz zamiast teleportu** (decyzja MG): token przechodzi trasę na oczach całego stołu
+- [x] **Marsz zamiast teleportu** (decyzja MG): token przechodzi trasę na oczach całego stołu
       — tym samym strumieniem `token:move` z `final: false`, którym idzie dziś przeciąganie
       (20 Hz). Ostatnia ramka `final: true` niesie **przebytą** łamaną
-- [ ] **Cztery powody przerwania marszu** (decyzja MG — pierwsze trzy automatyczne):
+- [x] **Cztery powody przerwania marszu** (decyzja MG — pierwsze trzy automatyczne):
   - **ktoś nowy w polu widzenia** („enemy sighted” z BG/Fallouta): u gracza — token, który
     pojawił się w jego `tokenStore`; u MG — token, który wszedł w pole widzenia maszerującego
   - **koniec budżetu tury** — postać staje na granicy i mówi o tym na czacie
   - **zdarzenie w grze** — karta odmowy, obrażenia okresowe (14e), zmiana tury
   - **Esc albo klik** — zatrzymanie w miejscu, w którym token właśnie jest
-- [ ] **Kursor mówi, co się stanie**: strzałka marszu nad terenem osiągalnym, kursor „idź
+- [x] **Kursor mówi, co się stanie**: strzałka marszu nad terenem osiągalnym, kursor „idź
       w tę stronę” nad czernią, kursor odmowy, gdy zaznaczonym tokenem nie wolno ruszyć
       (nie twoja tura, Powalony, Pochwycony — stany, które 14c/14d już znają)
-- [ ] **Przeciąganie zostaje** (decyzja MG) i nie może kolidować z zaznaczeniem: pointerdown
+- [x] **Przeciąganie zostaje** (decyzja MG) i nie może kolidować z zaznaczeniem: pointerdown
       na tokenie zaznacza dopiero, gdy nie przekroczono `DRAG_THRESHOLD_PX`, który renderer
       już ma. Ręczny punkt załamania (Shift+klik) zostaje jako obejście, gdy automat wybierze
       inną trasę niż gracz
-- [ ] **Kolejność pierwszeństwa kliknięcia** — jedno ustalenie zamiast rozsypanych warunków
+- [x] **Kolejność pierwszeństwa kliknięcia** — jedno ustalenie zamiast rozsypanych warunków
       (jak kolejność odmów przy `door:toggle` w 18d): stawianie tokenu → narzędzie mapy
       (linijka, mgła, rysowanie, ściany, światła) → celownik uzbrojony z karty/menu (16b) →
       zaznaczony token (marsz) → puste kliknięcie
-- [ ] Testy w `shared`: obejście rogu w kształcie L, pokój bez wyjścia (trasa do najbliższego
+- [x] Testy w `shared`: obejście rogu w kształcie L, pokój bez wyjścia (trasa do najbliższego
       osiągalnego punktu), przycięcie do limitu metrów, token 2×2 przy metrowych drzwiach,
       cel poza obszarem, determinizm trasy (ta sama para punktów = ta sama łamana), sufit
       przeszukiwania
@@ -119,6 +124,47 @@ odmową, tylko marszem do granicy wiedzy.
   automatu): granica biegnie między **ruchem** a **atakiem**, nie między Pixi a Reactem, jak
   w pierwszej wersji. Automat chodzenia to duży blok algorytmiczny z własnym zestawem testów;
   celowanie i HUD dzielą za to jedno pytanie — „czym i w co uderzam”.
+
+## Odstępstwa przy implementacji (2026-07-31, w trakcie sesji)
+
+- **Pamięć eksploracji nie planuje trasy** (decyzja MG w trakcie sesji, po zgłoszeniu błędu
+  w tym opisie). Sekcja „Rzecz, na której stoi etap” zakładała, że baza trasy to
+  „widzę teraz ∪ pamiętam”, i że granicą tej sumy są ściany. **Druga połowa jest fałszywa:**
+  maskę eksploracji buduje się z tego, co drużyna **widziała**, a ścianę widać z obu stron —
+  po przejściu korytarza obie strony muru są zapamiętane, więc mur przestaje istnieć dla A*.
+  Gracz planuje więc **wyłącznie po aktualnym wielokącie widoczności**, co jest dokładne co do
+  piksela, i jest dosłownie pierwotnym pomysłem MG („nie dalej, niż widzisz”). Klik w znany,
+  ale niewidoczny pokój prowadzi do granicy wzroku — to samo zachowanie co klik w czerń.
+  Odzyskanie „znany budynek jednym kliknięciem” → wpis w POMYSLY (kliencka pamięć ścian
+  z krawędzi `vision:sync`).
+- **`planWalk` dostał drugi, opcjonalny predykat — `canStep` (test krawędzi).** Plan mówił
+  o jednym predykacie przechodniości, ale przeszkody MG i gracza mają różny **kształt**:
+  wielokąt widoczności jest obszarem (test punktu wystarcza), a ściana jest **odcinkiem** —
+  dwie kratki po jej obu stronach są doskonale „stalne”, więc bez testu przejścia trasa MG
+  przechodziłaby przez jego własne mury. Gracz nie podaje `canStep` w ogóle.
+- **Trzecia lista odcinków: `movementSegments` w `shared/walls.ts`.** Wzrok, pocisk i ciało
+  mają w tym miejscu różne odpowiedzi: zamknięta szyba zatrzymuje **ciało** zawsze, wzrok tylko
+  z daleka (firanka z 18d), a kuli nie zatrzymuje wcale (16b). Otwarte okno jest dziurą — to
+  domyka 18e od strony ruchu. Serwerowe kolizje ruchu (POMYSLY) mają czytać tę samą listę.
+- **Trasa MG nie jest przycinana budżetem tury** (`MoveAllowance.enforced`). MG nigdy nie
+  dostaje odmowy ruchu — przekroczenie budżetu serwer loguje jako „poza budżetem” i przepuszcza
+  (14b) — więc obcięcie jego trasy byłoby regułą wymyśloną przez klienta. MG widzi znacznik
+  granicy budżetu i idzie dalej; gracz jest przycinany, bo alternatywą jest odmowa i snap-back.
+- **„Klik w puste odznacza” przegrał z kolejnością pierwszeństwa.** Zakres wymieniał obie
+  rzeczy; przy zaznaczonym tokenie klik w podłoże **jest marszem** (tak mówi lista
+  pierwszeństwa dwa punkty niżej), więc odznaczanie zostało przy Esc i PPM.
+- **Trzeci pierścień rysuje `MapRenderer` na warstwie overlay, nie `TokenNode`.** Zakres mówił
+  „`TokenNode` rysuje trzeci pierścień”, i tak było zrobione — po czym MG zgłosił, że kliknięcie
+  w token nie daje efektu. `TokenNode` sizuje wszystko w **jednostkach świata**, a stół patrzy
+  na mapę 4096 px przy zoomie ~0,2×: pierścień 2 px świata to 0,4 piksela ekranu. Obwódka
+  właściciela to przeżywa (pełne koło koloru), cienki pierścień wewnątrz — nie. Overlay mnoży
+  grubość kresek przez zoom, więc pierścień siedzi tam, **na zewnątrz** portretu, i odświeża się
+  przy zoomie, przeciąganiu, marszu i pushu tokenów.
+
+- **Marsz nie może być pomylony z upuszczeniem przeciąganego tokenu.** `pixi-viewport` nie pana
+  w trakcie ciągnięcia tokenu (wtyczka drag jest wstrzymana), więc puszczenie przycisku
+  emituje `clicked` na mapie — i gdyby kursor zjechał z portretu, upuszczenie od razu wysyłałoby
+  tę samą postać w drugie miejsce. Stąd `DRAG_CLICK_GRACE_MS`.
 
 ## Kryteria ukończenia
 

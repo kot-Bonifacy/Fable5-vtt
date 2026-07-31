@@ -25,6 +25,8 @@ import type {
   SceneView,
   TokenSnapScene,
   TokenView,
+  WalkPassable,
+  WalkStep,
   WallKind,
   WallView,
 } from '@vtt/shared';
@@ -34,18 +36,24 @@ import {
   FOG_STROKE_MAX_POINTS,
   LIGHT_BRIGHT,
   LIGHT_DIM,
+  WALK_RADIUS_CELLS,
   clampTokenPosition,
+  clipWalkToBudget,
   decodeFlagRuns,
   decodeLevelRuns,
   formatMetres,
   formatSquares,
   isOpening,
+  metresPerPixel,
   normalizeGridOffset,
+  planWalk,
   polylineMetres,
   simplifyPath,
   snapTokenPosition,
   snapWallPoint,
   squaresForDistance,
+  thinWalk,
+  walkGridForScene,
   wallMidpoint,
   TOKEN_PATH_MAX_POINTS,
 } from '@vtt/shared';
@@ -237,6 +245,28 @@ const MAX_ZOOM = 8;
 const DRAG_THRESHOLD_PX = 4;
 /** Max gap between two clicks on a token to count as a double-click. */
 const DOUBLE_CLICK_MS = 350;
+/** How long after a drop a map click is still the drop's own pointer release. */
+const DRAG_CLICK_GRACE_MS = 250;
+/** Dashes in the selection ring — coarse enough to read as dashed at table zoom. */
+const SELECT_RING_DASHES = 12;
+/**
+ * How fast a token walks a planned route, in metres of ground per second
+ * (stage 16e, chosen by the GM). A full CP RED turn of a MOVE 6 character is
+ * twelve metres, so a turn's worth of walking takes about four seconds: slow
+ * enough that the table sees *which way* the figure went — which is often the
+ * content of the scene — and slow enough to stop it by hand halfway.
+ */
+const WALK_SPEED_M_PER_S = 3;
+/**
+ * Longest route planned outside a fight, in metres. Inside one the turn budget
+ * decides, and it is always smaller than this.
+ */
+const WALK_FREE_RANGE_M = 80;
+/** Route preview colours: what will be walked, and what will not. */
+const WALK_COLOR = 0x4ade80;
+const WALK_COLOR_BEYOND = 0x94a3b8;
+/** „Walk that way" — a route that ends at the edge of what is known. */
+const WALK_COLOR_UNKNOWN = 0x38bdf8;
 
 /** Paints one fog shape: a round-capped band for a stroke, a box for a rect. */
 function drawFogShape(graphics: Graphics, shape: FogShape): void {
@@ -301,6 +331,23 @@ function drawDrawingShape(graphics: Graphics, shape: DrawingShape, style: Drawin
   graphics.stroke(stroke);
 }
 
+/**
+ * Did this pointer event land on a token (stage 16e)?
+ *
+ * Asked of `clicked`, which fires whatever the pointer was over — the viewport
+ * cannot tell the map from the figures standing on it. A click on a token has
+ * already been answered by the token's own handler, so the walk branch has to
+ * stand down or one click would both select a figure and send it walking.
+ */
+function isTokenTarget(target: unknown): boolean {
+  let node = target as { parent?: unknown } | null;
+  while (node) {
+    if (node instanceof TokenNode) return true;
+    node = (node.parent ?? null) as { parent?: unknown } | null;
+  }
+  return false;
+}
+
 /** A label as it sits on the map: sized in scene pixels, so it zooms with it. */
 function createDrawingText(text: string, fontSize: number, style: DrawingStyle): Text {
   const label = new Text({
@@ -339,6 +386,40 @@ interface DragState {
 }
 
 /**
+ * A march in progress (stage 16e): the token walking a planned route on its
+ * own, in front of the whole table.
+ *
+ * It rides the *drag* channel rather than a new one — intermediate `token:move`
+ * frames with `final: false`, exactly what a hand dragging the figure sends —
+ * and that is what makes the fog open in front of it for free: the server
+ * already refreshes the mover's own field of view on every intermediate frame
+ * (`emitDragVision`). A march is a drag without the hand.
+ */
+interface MarchState {
+  node: TokenNode;
+  /** Where the figure set off from — the server measures the route from here. */
+  start: ScenePoint;
+  /** Waypoints left, as token top-left positions; `index` is the next one. */
+  route: ScenePoint[];
+  index: number;
+  /** Where the figure is right now, between two waypoints. */
+  x: number;
+  y: number;
+  /**
+   * The route already covered. The server charges by what it is sent, so an
+   * interrupted march must report the ground it walked and never the plan it
+   * abandoned — otherwise stopping halfway would still cost the whole trip.
+   */
+  walked: ScenePoint[];
+  /** Scene pixels per second. */
+  speedPx: number;
+  /** The plan was cut by the turn budget — say so when the figure stops. */
+  clipped: boolean;
+  /** Budget as it stood when the march started, for the landing arithmetic. */
+  budget: { metresLeft: number; costFactor: number } | null;
+}
+
+/**
  * What is left of the dragged token's movement, as the tracker reports it
  * (stage 14c). Orientation only: the client cannot know about walls, and from
  * this stage it does not know about hard going either — the server does the
@@ -350,6 +431,16 @@ export interface MoveAllowance {
   metresLeft: number;
   /** Metres of budget one metre of ground costs (2 in hard going). */
   costFactor: number;
+  /**
+   * Would going past this be refused? False for the GM, who may overspend — the
+   * server logs it as „poza budżetem" and lets the figure walk (stage 14b).
+   *
+   * It decides whether a planned route is *cut* at the budget (stage 16e). Cut
+   * for a player, because the alternative is a refusal and a snap-back; drawn
+   * but not cut for the GM, because clipping them would be a rule the server
+   * does not have.
+   */
+  enforced?: boolean;
 }
 
 /**
@@ -365,12 +456,22 @@ export class MapRenderer {
   onLoadingChange: ((loading: boolean) => void) | null = null;
   /** Streams drag positions; `final` marks the drop (authoritative snap). */
   onTokenMove:
-    | ((tokenId: string, x: number, y: number, final: boolean, path?: ScenePoint[]) => void)
-    | null = null;
+    ((tokenId: string, x: number, y: number, final: boolean, path?: ScenePoint[]) => void) | null =
+    null;
   /** Right-click on a token; coordinates are browser client px (for the menu). */
   onTokenMenu: ((tokenId: string, clientX: number, clientY: number) => void) | null = null;
-  /** Plain click on the map (world px) — used by token placement mode. */
-  onMapClick: ((x: number, y: number) => void) | null = null;
+  /**
+   * Plain click on the map (world px) — used by token placement mode. Returns
+   * whether the click was consumed: from stage 16e the same click may mean
+   * „walk here", and exactly one of the two has to win it.
+   */
+  onMapClick: ((x: number, y: number) => boolean) | null = null;
+  /** The steered token changed (stage 16e); null means nothing is selected. */
+  onSelectionChange: ((tokenId: string | null) => void) | null = null;
+  /** Something worth a line on the chat happened to a march („marsz przerwany…"). */
+  onWalkNote: ((text: string) => void) | null = null;
+  /** A march began (token id) or ended (null) — the caller watches for interruptions. */
+  onWalkStateChange: ((tokenId: string | null) => void) | null = null;
   /** Double-click on a token — opens its character sheet (stage 08). */
   onTokenActivate: ((tokenId: string) => void) | null = null;
   /** Click on a token while the crosshair is armed (stage 16). */
@@ -566,6 +667,72 @@ export class MapRenderer {
   /** Ticker phase for flickering lamps — renderer-side, never a network event. */
   private flickerPhase = 0;
   private hasFlicker = false;
+  /** The token this viewer steers (stage 16e); mirrors `selectionStore`. */
+  private selectedTokenId: string | null = null;
+  /**
+   * „May a token stand here?", injected by the caller (stage 16e).
+   *
+   * The renderer deliberately never learns what makes a point passable. The GM
+   * hands in a predicate reading real walls, a player one reading their own
+   * field of view and the party's memory, and neither shape reaches this file —
+   * the same bargain `planWalk` strikes in `shared`, one layer down.
+   */
+  private walkPassable: WalkPassable | null = null;
+  /** Edge test for callers whose obstacles are lines (the GM's walls). */
+  private walkCanStep: WalkStep | undefined = undefined;
+  /** Why this token may not walk at all („Powalony"), or null when it may. */
+  private walkRefusal: string | null = null;
+  /** The route under the cursor and the march, drawn above everything. */
+  private readonly walkGraphics = new Graphics();
+  /**
+   * The third ring — „this figure obeys my clicks" (stage 16e).
+   *
+   * On the overlay rather than on the token, and that is not a layering
+   * preference: a token draws itself in **world** pixels, and a table looks at a
+   * 4096 px map at about a fifth of scale, where a two-pixel ring is half a
+   * screen pixel of nothing. Overlay strokes are multiplied by `overlayScale()`,
+   * so this one is the same weight at every zoom — the treatment the ruler and
+   * the route already get, for the same reason.
+   */
+  private readonly selectGraphics = new Graphics();
+  private walkText: Text | null = null;
+  /**
+   * Last planned route, keyed by the goal cell. A* would otherwise run on every
+   * pointer event — dozens of times a second — to produce the same polyline.
+   */
+  private walkHover: {
+    key: string;
+    points: ScenePoint[];
+    walkable: ScenePoint[];
+    truncated: boolean;
+    metres: number;
+    spent: number;
+    complete: boolean;
+  } | null = null;
+  private march: MarchState | null = null;
+  /** Cursor the route preview asks for; '' leaves the tool cursors alone. */
+  private walkCursor = '';
+  /**
+   * Corners the player insisted on with Shift+click (stage 16e).
+   *
+   * The escape hatch for the one thing an automatic route cannot know: *why*
+   * you are going somewhere. The shortest way past a doorway may be the way
+   * past the doorway somebody is aiming through, and no pathfinder is going to
+   * work that out. Each waypoint is planned to in turn, so the legs still go
+   * round corners — this bends the route, it does not replace it.
+   */
+  private walkWaypoints: ScenePoint[] = [];
+  /**
+   * When a token drag last ended, in ticker time.
+   *
+   * The viewport does not pan while a figure is being dragged (its drag plugin
+   * is paused), so as far as `pixi-viewport` is concerned nothing moved and the
+   * drop still counts as a *click* on the map. Without this the release of a
+   * drag would immediately send the same figure walking somewhere else — and it
+   * would only happen when the pointer left the portrait during the drag, which
+   * is exactly the kind of bug that survives a demo and shows up at the table.
+   */
+  private dragEndedAt = 0;
 
   async init(host: HTMLElement): Promise<void> {
     await this.app.init({ resizeTo: host, backgroundAlpha: 0, antialias: true });
@@ -624,6 +791,8 @@ export class MapRenderer {
     viewport.addChild(this.noteLayer);
     this.overlayLayer.addChild(this.rulerGraphics);
     this.overlayLayer.addChild(this.moveGraphics);
+    this.overlayLayer.addChild(this.selectGraphics);
+    this.overlayLayer.addChild(this.walkGraphics);
     this.overlayLayer.addChild(this.drawPreview);
     viewport.addChild(this.overlayLayer);
     // Scratch container: the fog is rendered into a texture at reduced scale,
@@ -641,7 +810,18 @@ export class MapRenderer {
     this.app.stage.addChild(viewport);
     this.viewport = viewport;
     this.app.ticker.add(this.tickFlicker);
+    this.app.ticker.add(this.tickMarch);
 
+    /**
+     * What one left click on the map means — the whole order of precedence in
+     * one place (stage 16e), rather than a condition per feature scattered over
+     * the file. The same treatment the refusals of `door:toggle` got in 18d, and
+     * for the same reason: a click is one gesture with six possible meanings,
+     * and the only way to keep them straight is to write the order down.
+     *
+     *   placing a token → map tool (ruler, fog, drawing, walls, lights)
+     *   → armed crosshair (16b) → steered token walks → empty click
+     */
     viewport.on('clicked', (event) => {
       // A wall or lamp click was already handled on pointerdown; letting it
       // through here would also drop a token in the middle of a floor plan.
@@ -650,7 +830,20 @@ export class MapRenderer {
         this.onNotePlace?.(Math.round(event.world.x), Math.round(event.world.y));
         return;
       }
-      this.onMapClick?.(event.world.x, event.world.y);
+      if (this.onMapClick?.(event.world.x, event.world.y)) return;
+      if (this.targeting) return;
+      if (this.rulerMode || this.fogBrush.armed || this.draw.armed || this.erasing) return;
+      // A click that landed on a token has already been answered by the token
+      // itself — selecting it, opening its sheet, stopping a march.
+      if (isTokenTarget(event.event.target)) return;
+      // The release of a drag is not an order to walk (see `dragEndedAt`).
+      if (performance.now() - this.dragEndedAt < DRAG_CLICK_GRACE_MS) return;
+      const pointer = event.event as FederatedPointerEvent;
+      if (pointer.shiftKey === true) {
+        this.addWalkWaypoint(event.world.x, event.world.y);
+        return;
+      }
+      this.walkTo(event.world.x, event.world.y);
     });
 
     this.wireRuler(viewport);
@@ -744,16 +937,23 @@ export class MapRenderer {
       this.movableTokens.set(token.id, movable);
       node.eventMode = 'static';
       node.cursor = movable ? 'pointer' : 'default';
-      node.update(token, ctx, this.drag?.node === node);
+      // A figure in the middle of a march owns its own position, exactly as a
+      // dragged one does: the store still holds where the server last saw it.
+      node.update(token, ctx, this.drag?.node === node || this.march?.node === node);
     }
     for (const [id, node] of this.tokenNodes) {
       if (!seen.has(id)) {
         if (this.drag?.node === node) this.endDrag(false);
+        if (this.march?.node === node) this.finishMarch(null, false);
+        if (this.selectedTokenId === id) this.setSelection(null);
         this.tokenNodes.delete(id);
         this.movableTokens.delete(id);
         node.destroy({ children: true });
       }
     }
+    // The ring lives on the overlay, so it does not travel with the figure —
+    // every push that can move one has to redraw it.
+    this.drawSelectionRing();
   }
 
   /**
@@ -810,9 +1010,29 @@ export class MapRenderer {
     this.applyMapCursor();
   }
 
+  /**
+   * The pointer says what the click will do. Tools come first — an armed brush
+   * means the same thing everywhere — and the walk cursor fills the gap left
+   * when none of them is holding the button (stage 16e): a hand over ground the
+   * figure can reach, the „that way" arrow over the dark, and the barred circle
+   * when the selected token may not move at all.
+   */
   private applyMapCursor(): void {
     const canvas = this.app.canvas;
     if (!canvas) return;
+    const toolArmed =
+      this.targeting ||
+      this.notePlacing ||
+      this.rulerMode ||
+      this.fogBrush.armed ||
+      this.draw.armed ||
+      this.wall.armed ||
+      this.light.armed ||
+      this.erasing;
+    if (this.walkCursor && !toolArmed) {
+      canvas.style.cursor = this.walkCursor;
+      return;
+    }
     canvas.style.cursor = this.targeting
       ? 'crosshair'
       : this.fogBrush.armed
@@ -966,6 +1186,14 @@ export class MapRenderer {
     viewport.eventMode = 'static';
 
     viewport.on('pointerdown', (event: FederatedPointerEvent) => {
+      // Right button on bare map drops the selection (stage 16e) — the same
+      // „never mind" every game of this shape uses, and it never competes with
+      // the GM's token menu, which is a right click *on a figure*.
+      if (event.button === 2 && !isTokenTarget(event.target)) {
+        this.finishMarch(null);
+        this.setSelection(null);
+        return;
+      }
       if (event.button !== 0 || this.drag) return;
       const world = viewport.toWorld(event.global.x, event.global.y);
       const point = { x: Math.round(world.x), y: Math.round(world.y) };
@@ -1058,6 +1286,11 @@ export class MapRenderer {
     viewport.on('pointermove', (event: FederatedPointerEvent) => {
       const world = viewport.toWorld(event.global.x, event.global.y);
       const point = { x: Math.round(world.x), y: Math.round(world.y) };
+
+      // The route follows the cursor before any tool gets a say: it is not a
+      // gesture, it is what the map looks like while a figure is selected, and
+      // the method itself stands down when a tool is armed.
+      this.trackWalkHover(point);
 
       if (this.fogStroke) {
         const last = this.fogStroke[this.fogStroke.length - 1]!;
@@ -1320,6 +1553,504 @@ export class MapRenderer {
     label.position.set(drag.lastX + half + 12 * k, drag.lastY + half - 30 * k);
     this.overlayLayer.addChild(label);
     this.moveText = label;
+  }
+
+  /**
+   * The token this viewer steers (stage 16e). Only ever a token they may move —
+   * the caller decides that, because „may I move this?" is an ownership
+   * question and this file does not know who is logged in.
+   */
+  setSelection(tokenId: string | null): void {
+    if (this.destroyed || this.selectedTokenId === tokenId) return;
+    this.selectedTokenId = tokenId;
+    this.walkWaypoints = [];
+    this.walkHover = null;
+    this.drawSelectionRing();
+    this.drawWalkPreview();
+    this.applyMapCursor();
+    this.onSelectionChange?.(tokenId);
+  }
+
+  /**
+   * Draws the selection ring around the steered figure, in screen-constant
+   * weight. Dashed, so it cannot be mistaken for the solid owner ring under it
+   * or the amber turn halo outside it — on a token that is yours, selected and
+   * acting, all three have to be readable at once.
+   */
+  private drawSelectionRing(): void {
+    this.selectGraphics.clear();
+    const scene = this.scene;
+    const node = this.selectedTokenId ? this.tokenNodes.get(this.selectedTokenId) : undefined;
+    if (!scene || !node || node.destroyed) return;
+    const half = (node.token.size * scene.grid.sizePx) / 2;
+    const k = this.overlayScale();
+    // Outside the portrait and outside the turn halo: at table zoom the token
+    // is a dozen screen pixels across, and anything drawn *inside* it lands on
+    // the artwork instead of round it.
+    const radius = half + 8 * k;
+    const arc = Math.PI / SELECT_RING_DASHES;
+    for (let dash = 0; dash < SELECT_RING_DASHES; dash++) {
+      const start = dash * arc * 2;
+      this.selectGraphics.arc(node.x + half, node.y + half, radius, start, start + arc);
+      this.selectGraphics.stroke({ color: 0xffffff, width: 2.5 * k, alpha: 0.95 });
+    }
+  }
+
+  /**
+   * Hands in what counts as walkable ground (stage 16e).
+   *
+   * Null switches route planning off entirely, which is what a scene with no
+   * visibility model wants: with no walls and no polygons there is nothing to
+   * walk *round*, and a straight line is the whole of the answer.
+   */
+  setWalkPassable(isPassable: WalkPassable | null, canStep?: WalkStep): void {
+    if (this.destroyed) return;
+    this.walkPassable = isPassable;
+    this.walkCanStep = canStep;
+    this.walkHover = null;
+    this.drawWalkPreview();
+  }
+
+  /**
+   * Why the selected token may not walk right now — „Powalony", „nie twoja
+   * tura" — or null when it may. The sentence is the caller's, because every
+   * one of those reasons is a rule and rules live in the game system.
+   */
+  setWalkRefusal(reason: string | null): void {
+    if (this.destroyed || this.walkRefusal === reason) return;
+    this.walkRefusal = reason;
+    this.walkHover = null;
+    this.drawWalkPreview();
+    this.applyMapCursor();
+  }
+
+  /** Is a token walking a planned route right now? */
+  isMarching(): boolean {
+    return this.march !== null;
+  }
+
+  /**
+   * Stops a march where the figure stands (stage 16e) — the hand of the player,
+   * or one of the three automatic reasons the caller watches for. The ground
+   * already covered is what gets sent and therefore what gets charged.
+   */
+  interruptWalk(note: string | null): void {
+    if (!this.march) return;
+    this.finishMarch(note);
+  }
+
+  /** The turn's remaining movement, but only when it belongs to the steered token. */
+  private walkBudget(): { metresLeft: number; costFactor: number; enforced: boolean } | null {
+    const allowance = this.moveAllowance;
+    if (!allowance || allowance.tokenId !== this.selectedTokenId) return null;
+    return {
+      metresLeft: allowance.metresLeft,
+      costFactor: allowance.costFactor > 0 ? allowance.costFactor : 1,
+      enforced: allowance.enforced !== false,
+    };
+  }
+
+  /** Where the walking figure is this frame — the store still holds the old spot. */
+  marchPosition(): ScenePoint | null {
+    return this.march ? { x: this.march.x, y: this.march.y } : null;
+  }
+
+  /**
+   * Plans the route to a point under the cursor, budget already applied.
+   *
+   * The route starts at the token's **real** position rather than at the cell it
+   * snaps to: the server measures from where the figure stands, and a plan
+   * measured from anywhere else would be billed differently than it was drawn.
+   */
+  private planWalkRoute(goal: ScenePoint): {
+    points: ScenePoint[];
+    walkable: ScenePoint[];
+    truncated: boolean;
+    metres: number;
+    spent: number;
+    complete: boolean;
+  } | null {
+    const scene = this.scene;
+    const isPassable = this.walkPassable;
+    const node = this.selectedTokenId ? this.tokenNodes.get(this.selectedTokenId) : undefined;
+    if (!scene || !isPassable || !node || node.destroyed) return null;
+    const cell = scene.grid.sizePx;
+    const perPixel = metresPerPixel(scene);
+    if (cell <= 0 || perPixel <= 0) return null;
+
+    const grid = walkGridForScene(
+      scene,
+      normalizeGridOffset(scene.grid.offsetX, cell),
+      normalizeGridOffset(scene.grid.offsetY, cell),
+    );
+    const budget = this.walkBudget();
+    const enforced = budget?.enforced ? budget : null;
+    // The search reaches exactly as far as the turn can pay for, plus a cell of
+    // slack so the route may bulge round a corner on its way to the far edge.
+    const reachM = enforced ? enforced.metresLeft / enforced.costFactor : WALK_FREE_RANGE_M;
+    const radiusCells = Math.min(
+      WALK_RADIUS_CELLS,
+      Math.max(1, Math.ceil(reachM / (cell * perPixel)) + 1),
+    );
+    const extent = node.token.size * cell;
+    const from = { x: node.x, y: node.y };
+    const options = {
+      grid,
+      isPassable,
+      ...(this.walkCanStep ? { canStep: this.walkCanStep } : {}),
+      size: node.token.size,
+      radiusCells,
+    };
+    // One leg per insisted-on corner, then the leg to the cursor. A leg that
+    // could not be finished ends the route there: walking past a waypoint you
+    // asked for would be worse than stopping at it.
+    const legs = [...this.walkWaypoints, goal];
+    const points: ScenePoint[] = [from];
+    let truncated = false;
+    for (const leg of legs) {
+      const start = points[points.length - 1]!;
+      const plan = planWalk(start, { x: leg.x - extent / 2, y: leg.y - extent / 2 }, options);
+      if (!plan) return null;
+      points.push(...plan.points.slice(1));
+      if (plan.truncated) {
+        truncated = true;
+        break;
+      }
+    }
+    const clipped = clipWalkToBudget(points, scene, enforced);
+    return {
+      points,
+      walkable: clipped.points,
+      truncated,
+      metres: clipped.metres,
+      spent: clipped.spent,
+      complete: clipped.complete,
+    };
+  }
+
+  /**
+   * Recomputes the route under the cursor, at most once per destination cell.
+   *
+   * Without the cache A* runs on every pointer event — dozens of times a second
+   * — to produce the polyline it produced last time. The key carries everything
+   * that can change the answer, so it also serves as the invalidation.
+   */
+  private trackWalkHover(point: ScenePoint): void {
+    const scene = this.scene;
+    const node = this.selectedTokenId ? this.tokenNodes.get(this.selectedTokenId) : undefined;
+    const blocked =
+      this.march !== null ||
+      this.drag !== null ||
+      this.rulerMode ||
+      this.targeting ||
+      this.notePlacing ||
+      this.fogBrush.armed ||
+      this.draw.armed ||
+      this.wall.armed ||
+      this.light.armed ||
+      this.erasing;
+    if (!scene || !node || node.destroyed || blocked || !this.walkPassable) {
+      if (this.walkHover || this.walkCursor) {
+        this.walkHover = null;
+        this.walkCursor = '';
+        this.drawWalkPreview();
+        this.applyMapCursor();
+      }
+      return;
+    }
+    if (this.walkRefusal) {
+      this.walkHover = null;
+      this.setWalkCursor('not-allowed');
+      this.drawWalkPreview();
+      return;
+    }
+
+    const cell = scene.grid.sizePx || 1;
+    const budget = this.walkBudget();
+    const key = [
+      node.tokenId,
+      Math.round(node.x),
+      Math.round(node.y),
+      Math.floor(point.x / cell),
+      Math.floor(point.y / cell),
+      budget ? budget.metresLeft : -1,
+      budget ? budget.costFactor : 1,
+      this.walkWaypoints.length,
+    ].join(':');
+    if (this.walkHover?.key === key) return;
+
+    const route = this.planWalkRoute(point);
+    this.walkHover = route ? { key, ...route } : null;
+    this.setWalkCursor(route === null ? '' : route.truncated ? 'alias' : 'pointer');
+    this.drawWalkPreview();
+  }
+
+  private setWalkCursor(cursor: string): void {
+    if (this.walkCursor === cursor) return;
+    this.walkCursor = cursor;
+    this.applyMapCursor();
+  }
+
+  /**
+   * Paints the route: solid green for the part that will be walked, an ✖ where
+   * the figure will stop, and a dim tail for the part the turn cannot pay for.
+   *
+   * The tail is the whole of „idź, ile starczy" (decision of stage 16e): the
+   * click is not refused, it is *shortened*, and the player can see by how much
+   * before they commit — which is the difference between a budget and a trap.
+   */
+  private drawWalkPreview(): void {
+    this.walkGraphics.clear();
+    this.walkText?.destroy();
+    this.walkText = null;
+    const hover = this.walkHover;
+    const scene = this.scene;
+    const node = this.selectedTokenId ? this.tokenNodes.get(this.selectedTokenId) : undefined;
+    if (!hover || !scene || !node || node.destroyed || this.march) return;
+    if (hover.points.length < 2) return;
+
+    const half = (node.token.size * scene.grid.sizePx) / 2;
+    const k = this.overlayScale();
+    const stroke = (points: readonly ScenePoint[], color: number, alpha: number) => {
+      const [first, ...rest] = points;
+      if (!first || rest.length === 0) return;
+      this.walkGraphics.moveTo(first.x + half, first.y + half);
+      for (const point of rest) this.walkGraphics.lineTo(point.x + half, point.y + half);
+      this.walkGraphics.stroke({ color, width: 3 * k, alpha, cap: 'round', join: 'round' });
+    };
+
+    // The unaffordable tail first, so the green line is drawn over its join.
+    if (!hover.complete) {
+      stroke(hover.points.slice(Math.max(0, hover.walkable.length - 1)), WALK_COLOR_BEYOND, 0.5);
+    }
+    const color = hover.truncated ? WALK_COLOR_UNKNOWN : WALK_COLOR;
+    stroke(hover.walkable, color, 0.9);
+
+    // The corners the player insisted on, so „I asked for this route" is visible
+    // while it is being built rather than only inferable from its shape.
+    for (const waypoint of this.walkWaypoints) {
+      this.walkGraphics.circle(waypoint.x, waypoint.y, 5 * k).fill({ color: 0xfacc15, alpha: 0.9 });
+    }
+
+    const stop = hover.walkable[hover.walkable.length - 1];
+    if (!stop) return;
+    const cx = stop.x + half;
+    const cy = stop.y + half;
+    const arm = 9 * k;
+    this.walkGraphics
+      .moveTo(cx - arm, cy - arm)
+      .lineTo(cx + arm, cy + arm)
+      .moveTo(cx + arm, cy - arm)
+      .lineTo(cx - arm, cy + arm)
+      .stroke({ color: hover.complete ? color : 0xf87171, width: 3 * k, alpha: 0.95 });
+
+    const budget = this.walkBudget();
+    const label = new Text({
+      text: budget
+        ? `${formatMetres(hover.spent)} / ${formatMetres(budget.metresLeft)}`
+        : formatMetres(hover.metres),
+      style: {
+        fontFamily: 'system-ui, sans-serif',
+        fontSize: 18,
+        fill: hover.complete ? 0xbbf7d0 : 0xfca5a5,
+        stroke: { color: 0x0b1220, width: 4 },
+      },
+    });
+    label.scale.set(k);
+    label.position.set(cx + 14 * k, cy - 30 * k);
+    this.overlayLayer.addChild(label);
+    this.walkText = label;
+  }
+
+  /**
+   * Shift+click: „go through here first". Only accepted where the figure can
+   * actually get to — a corner it cannot reach would silently end every route
+   * at the same place, which reads as the map being broken.
+   */
+  private addWalkWaypoint(worldX: number, worldY: number): void {
+    if (this.march || !this.selectedTokenId || this.walkRefusal) return;
+    if (this.walkWaypoints.length >= 8) return;
+    const route = this.planWalkRoute({ x: worldX, y: worldY });
+    if (!route || route.truncated || route.points.length < 2) return;
+    this.walkWaypoints.push({ x: worldX, y: worldY });
+    this.walkHover = null;
+    this.trackWalkHover({ x: worldX, y: worldY });
+  }
+
+  /**
+   * Sends the steered token along the route under the cursor.
+   *
+   * A click while a march is running stops it instead — the fourth reason a
+   * march ends (stage 16e), and the only one that is a hand rather than an
+   * event.
+   */
+  private walkTo(worldX: number, worldY: number): void {
+    if (this.march) {
+      this.finishMarch('Marsz przerwany.');
+      return;
+    }
+    const node = this.selectedTokenId ? this.tokenNodes.get(this.selectedTokenId) : undefined;
+    const scene = this.scene;
+    if (!node || node.destroyed || !scene) return;
+    if (this.walkRefusal) {
+      this.onWalkNote?.(this.walkRefusal);
+      return;
+    }
+    this.trackWalkHover({ x: worldX, y: worldY });
+    const hover = this.walkHover;
+    const budget = this.walkBudget();
+    if (!hover || hover.points.length < 2) return;
+    if (hover.walkable.length < 2) {
+      this.onWalkNote?.('Nie starcza ruchu w tej turze — postać zostaje w miejscu.');
+      return;
+    }
+
+    const perPixel = metresPerPixel(scene);
+    this.march = {
+      node,
+      start: { x: node.x, y: node.y },
+      route: hover.walkable.slice(1),
+      index: 0,
+      x: node.x,
+      y: node.y,
+      walked: [],
+      speedPx: perPixel > 0 ? WALK_SPEED_M_PER_S / perPixel : node.token.size * scene.grid.sizePx,
+      clipped: !hover.complete,
+      // Only an enforced budget can refuse a landing, so only an enforced one
+      // has any say in where an interrupted march is allowed to stop.
+      budget: budget?.enforced ? budget : null,
+    };
+    // The corners were an instruction for *this* walk; the next click starts
+    // from the automatic route again.
+    this.walkWaypoints = [];
+    this.walkHover = null;
+    this.walkGraphics.clear();
+    this.walkText?.destroy();
+    this.walkText = null;
+    this.setWalkCursor('');
+    this.onWalkStateChange?.(node.tokenId);
+  }
+
+  /**
+   * One frame of a march.
+   *
+   * Interpolated in Pixi's own ticker rather than a `setInterval`, so the figure
+   * moves in step with the frame it is drawn in. The network frames are *not*
+   * per-frame: `sendTokenMove` throttles the intermediate ones to 20 Hz on its
+   * way out, exactly as it does for a drag.
+   */
+  private readonly tickMarch = (): void => {
+    const march = this.march;
+    if (!march) return;
+    if (march.node.destroyed || !this.scene) {
+      this.finishMarch(null, false);
+      return;
+    }
+    let budgetPx = (march.speedPx * this.app.ticker.deltaMS) / 1000;
+    while (budgetPx > 0 && march.index < march.route.length) {
+      const target = march.route[march.index]!;
+      const dx = target.x - march.x;
+      const dy = target.y - march.y;
+      const distance = Math.hypot(dx, dy);
+      if (distance <= budgetPx || distance < 0.01) {
+        march.x = target.x;
+        march.y = target.y;
+        march.walked.push({ x: target.x, y: target.y });
+        march.index++;
+        budgetPx -= distance;
+        continue;
+      }
+      march.x += (dx / distance) * budgetPx;
+      march.y += (dy / distance) * budgetPx;
+      budgetPx = 0;
+    }
+
+    march.node.position.set(march.x, march.y);
+    this.drawSelectionRing();
+    this.drawMarchTrail(march);
+    this.onTokenMove?.(march.node.token.id, march.x, march.y, false);
+    if (march.index >= march.route.length) {
+      this.finishMarch(march.clipped ? 'Koniec ruchu w tej turze — postać zatrzymuje się.' : null);
+    }
+  };
+
+  /** The line behind a walking figure, so the table can see which way it went. */
+  private drawMarchTrail(march: MarchState): void {
+    this.walkGraphics.clear();
+    const scene = this.scene;
+    if (!scene) return;
+    const half = (march.node.token.size * scene.grid.sizePx) / 2;
+    const k = this.overlayScale();
+    const trail = [march.start, ...march.walked, { x: march.x, y: march.y }];
+    const first = trail[0]!;
+    this.walkGraphics.moveTo(first.x + half, first.y + half);
+    for (const point of trail.slice(1)) this.walkGraphics.lineTo(point.x + half, point.y + half);
+    this.walkGraphics.stroke({
+      color: WALK_COLOR,
+      width: 3 * k,
+      alpha: 0.7,
+      cap: 'round',
+      join: 'round',
+    });
+  }
+
+  /**
+   * Where a stopped figure actually stands, and the route it is billed for.
+   *
+   * The snap is the awkward part. A march is cut mid-leg, the server snaps
+   * whatever position it is sent, and a snap forward can cost up to half a
+   * square that the budget no longer has — turning an interruption into a
+   * refusal and a snap-back. So a landing that no longer fits walks *back* to
+   * the last waypoint that does; the figure stops a step short rather than
+   * having the whole move rejected.
+   */
+  private marchLanding(
+    march: MarchState,
+    scene: SceneView,
+  ): { point: ScenePoint; walked: ScenePoint[] } {
+    const snapScene = this.snapScene();
+    const snapped = snapScene
+      ? snapTokenPosition(march.x, march.y, march.node.token.size, snapScene)
+      : { x: march.x, y: march.y };
+    const budget = march.budget;
+    if (!budget) return { point: snapped, walked: march.walked };
+    const limit = budget.metresLeft / budget.costFactor + 0.05;
+    const fits = (walked: readonly ScenePoint[], end: ScenePoint): boolean =>
+      polylineMetres([march.start, ...walked, end], scene) <= limit;
+    if (fits(march.walked, snapped)) return { point: snapped, walked: march.walked };
+    for (let i = march.walked.length - 1; i >= 0; i--) {
+      const walked = march.walked.slice(0, i);
+      const end = march.walked[i]!;
+      if (fits(walked, end)) return { point: end, walked };
+    }
+    return { point: march.start, walked: [] };
+  }
+
+  /**
+   * Ends a march: commit where the figure stopped, and say why if it matters.
+   *
+   * `commit` is false when the march ended because its *token* did — a scene
+   * switch, a deleted figure, the renderer being torn down. Reporting a landing
+   * for a token that no longer exists would charge a turn for a walk nobody can
+   * see, and the position the server holds is already the right one.
+   */
+  private finishMarch(note: string | null, commit = true): void {
+    const march = this.march;
+    if (!march) return;
+    this.march = null;
+    this.walkGraphics.clear();
+    this.walkText?.destroy();
+    this.walkText = null;
+
+    const scene = this.scene;
+    if (commit && scene && !march.node.destroyed) {
+      const { point, walked } = this.marchLanding(march, scene);
+      march.node.position.set(point.x, point.y);
+      const path = thinWalk([...walked, point], TOKEN_PATH_MAX_POINTS);
+      this.onTokenMove?.(march.node.token.id, point.x, point.y, true, path);
+    }
+    this.onWalkStateChange?.(null);
+    if (note) this.onWalkNote?.(note);
   }
 
   /** Draws the DV bands of a weapon as rings around a token (optional toggle). */
@@ -2144,6 +2875,8 @@ export class MapRenderer {
     if (this.destroyed) return;
     this.setRulers(this.lastRulers);
     this.drawMoveOverlay();
+    this.drawSelectionRing();
+    this.drawWalkPreview();
     this.setRangeRings(this.lastRingCentre, this.lastRings);
     this.setNotes(this.lastNotes);
     // Wall handles, door glyphs and lamp handles are screen-sized, like the note
@@ -2152,8 +2885,26 @@ export class MapRenderer {
     this.setLights(this.lastLights);
   }
 
+  /**
+   * A selection and a march belong to one scene. Both are dropped without a
+   * final frame: the tokens they refer to are about to be destroyed, and the
+   * server's own positions are the ones that survive a scene switch.
+   */
+  private clearWalkState(): void {
+    this.finishMarch(null, false);
+    this.walkWaypoints = [];
+    this.walkHover = null;
+    this.walkGraphics.clear();
+    this.selectGraphics.clear();
+    this.walkText?.destroy();
+    this.walkText = null;
+    this.setWalkCursor('');
+    this.setSelection(null);
+  }
+
   private clearTokens(): void {
     if (this.drag) this.endDrag(false);
+    this.clearWalkState();
     for (const node of this.tokenNodes.values()) node.destroy({ children: true });
     this.tokenNodes.clear();
     this.movableTokens.clear();
@@ -2211,6 +2962,12 @@ export class MapRenderer {
         return;
       }
       lastClickAt = now;
+      // Clicking anything while a figure is walking stops it where it stands
+      // (stage 16e) — a hand on the map outranks a plan, always.
+      if (this.march) {
+        this.finishMarch('Marsz przerwany.');
+        return;
+      }
       if (this.movableTokens.get(node.tokenId) === false) return;
       if (this.drag || !this.viewport) return;
       const world = this.viewport.toWorld(event.global.x, event.global.y);
@@ -2264,6 +3021,7 @@ export class MapRenderer {
     drag.lastY = pos.y;
     this.samplePath(drag, pos);
     this.drawMoveOverlay();
+    this.drawSelectionRing();
 
     // Ghost outline previews the snapped landing cell.
     this.dragGhost.clear();
@@ -2319,7 +3077,16 @@ export class MapRenderer {
     this.dragGhost.clear();
     this.drawMoveOverlay();
 
+    // A press that never became a drag is a click, and a click on a figure you
+    // may move selects it (stage 16e). Reading the same `DRAG_THRESHOLD_PX` the
+    // drag already uses is what keeps the two gestures from competing: below it
+    // nothing moved, above it nothing was selected.
+    if (!drag.moved && !drag.node.destroyed) {
+      this.setSelection(drag.node.tokenId);
+      return;
+    }
     if (!drag.moved || drag.node.destroyed) return;
+    this.dragEndedAt = performance.now();
     const snapScene = this.snapScene();
     const token = drag.node.token;
     const pos = snapScene
@@ -2347,6 +3114,9 @@ export class MapRenderer {
 
   destroy(): void {
     if (this.destroyed) return;
+    // Before the flag: a march holds a node and a ticker, and both are about to
+    // stop existing. Nothing is committed — the server keeps its own position.
+    this.finishMarch(null, false);
     this.destroyed = true;
     const viewport = this.viewport;
     this.viewport = null;
@@ -2372,6 +3142,7 @@ export class MapRenderer {
       this.unlitTexture = null;
       this.unlitCanvas = null;
       this.app.ticker.remove(this.tickFlicker);
+      this.app.ticker.remove(this.tickMarch);
       this.app.destroy(true, { children: true });
       this.tokenNodes.clear();
       this.noteNodes.clear();

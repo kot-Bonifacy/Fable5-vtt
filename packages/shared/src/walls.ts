@@ -215,6 +215,29 @@ export function blockingSegments(walls: readonly WallView[]): Segment[] {
 }
 
 /**
+ * What stops a **body** (stage 16e) — core VTT, no game system.
+ *
+ * A third list next to sight and fire, and it has to be a third one: the three
+ * questions genuinely have different answers at a window. Sight is stopped by a
+ * closed pane only at a distance (the net curtain of 18d), a bullet is never
+ * stopped by glass at all („szyby … nie mają PW", s. 180) — and a person is
+ * stopped by it always, until somebody opens the sash. Once it is open the same
+ * window is a hole you can climb through, which is exactly what 18e made it.
+ *
+ * Used only to plan routes for now. When movement collisions arrive on the
+ * server (POMYSLY, 30.07) they read this same list, which is the point of
+ * writing it here rather than inside the client's pathfinder.
+ */
+export function movementSegments(walls: readonly WallView[]): Segment[] {
+  const segments = blockingSegments(walls);
+  for (const wall of walls) {
+    if (wall.kind !== 'window' || wall.open) continue;
+    segments.push({ x1: wall.x1, y1: wall.y1, x2: wall.x2, y2: wall.y2 });
+  }
+  return segments;
+}
+
+/**
  * What blocks sight **for one observer** (stage 18d) — the walls everybody is
  * stopped by, plus the windows this particular observer is too far from to see
  * through.
