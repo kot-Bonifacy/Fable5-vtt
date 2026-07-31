@@ -179,7 +179,8 @@ export type CpredAttackProblem =
   | 'MELEE_OUT_OF_REACH'
   | 'RANGED_WEAPON_IN_MELEE'
   | 'NOT_ENOUGH_AMMO'
-  | 'GRAPPLE_TWO_HANDED';
+  | 'GRAPPLE_TWO_HANDED'
+  | 'NO_LINE_OF_FIRE';
 
 /** Everything the chat card needs to explain a hit — and to offer the damage roll. */
 export interface CpredAttackMeta {
@@ -237,6 +238,16 @@ export interface CpredAttackContext {
    * dwie ręce" (s. 176).
    */
   grappled?: boolean;
+  /**
+   * Is the straight line to the target free of walls, shut doors and — from
+   * stage 16c — cover (stage 16b)?
+   *
+   * Measured by the server, which is the only side that holds the geometry: the
+   * walls never reach a client (18a), so a preview on the sheet cannot know and
+   * deliberately leaves this `undefined`, which means „do not judge it here".
+   * Only an explicit `false` refuses the attack.
+   */
+  lineOfFire?: boolean;
 }
 
 function isInteger(value: unknown): value is number {
@@ -302,6 +313,19 @@ export function planCpredAttack(
   // of a Hold, whatever the sheet says about extra arms (s. 176).
   if (context.grappled === true && resolved?.hands === 2) {
     return { ok: false, error: 'GRAPPLE_TWO_HANDED' };
+  }
+
+  // What stands in the way outranks how far away it is (stage 16b): a target
+  // behind a wall is not „out of range", and telling the player it is would send
+  // them stepping back rather than round the corner. Melee is included on
+  // purpose — a fist does not pass through a door either.
+  //
+  // Suppressive fire is exempt: it sprays an area rather than a token, and each
+  // of its targets is tested on its own by the caller. Refusing the whole volley
+  // because the token that set its direction happens to be behind a wall would
+  // be the wrong answer to the wrong question.
+  if (context.lineOfFire === false && mode !== 'suppressive') {
+    return { ok: false, error: 'NO_LINE_OF_FIRE' };
   }
 
   // Reach and range: the map decides whether this attack is possible at all.
@@ -529,4 +553,5 @@ export const CPRED_ATTACK_PROBLEM_MESSAGES: Record<CpredAttackProblem, string> =
   RANGED_WEAPON_IN_MELEE: 'Tej broni nie użyjesz w zwarciu.',
   NOT_ENOUGH_AMMO: 'Za mało amunicji — przeładuj broń.',
   GRAPPLE_TWO_HANDED: 'W Trzymaniu nie można używać broni dwuręcznych.',
+  NO_LINE_OF_FIRE: 'Cel za przeszkodą — nie masz linii strzału.',
 };

@@ -26,6 +26,7 @@ import { useAuthStore } from '../stores/authStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { loadStabilizeCup, useRollStore } from '../stores/rollStore.js';
+import { AttackLauncher } from './AttackLauncher.js';
 
 /**
  * The action buttons of the „Walka" tab (stage 14b).
@@ -35,9 +36,14 @@ import { loadStabilizeCup, useRollStore } from '../stores/rollStore.js';
  * (`CombatPanel`, `CombatBar`) stays free of game rules and only paints the
  * budget the server sends it.
  *
- * What is *not* here: Atak and Przeładowanie have buttons of their own on the
- * character sheet and book their own cost, so offering them twice would let one
- * turn's Action be spent from two places.
+ * What is *not* here: Przeładowanie has a button of its own on the character
+ * sheet and books its own cost, so offering it twice would let one turn's Action
+ * be spent from two places.
+ *
+ * Atak used to be in that sentence and stopped being (stage 16b). The row below
+ * does not spend anything — it *arms the map*, and the Action is charged by the
+ * server when the dice actually fly, so an abandoned cup costs nothing. That is
+ * the same bargain Ustabilizowanie and Pochwycenie already make here.
  */
 
 /**
@@ -366,6 +372,7 @@ export function CombatActions({
   const [holdInitiative, setHoldInitiative] = useState('');
   const [stabilizeOpen, setStabilizeOpen] = useState(false);
   const [grappleOpen, setGrappleOpen] = useState(false);
+  const [attackOpen, setAttackOpen] = useState(false);
 
   /** The sheet acting right now — needed for a roll, absent for a statist. */
   const actingCharacter = useMemo(() => {
@@ -584,6 +591,29 @@ export function CombatActions({
           </p>
         </div>
       )}
+
+      {/* Stage 16b: the second door into an attack. „Atak" used to live only on
+          the weapon row of an open sheet, so a statist could not fire at all and
+          the GM had to open somebody's sheet to shoot with anybody. */}
+      <div className="combat-grapple">
+        <p className="panel-section-title">
+          Atak
+          <button
+            type="button"
+            className="small-button"
+            title="Wybierz broń, potem kliknij cel na mapie"
+            onClick={() => setAttackOpen((open) => !open)}
+          >
+            {attackOpen ? 'Zwiń' : 'Broń…'}
+          </button>
+        </p>
+        {attackOpen && (
+          <AttackLauncher
+            token={tokenMap[combatant.tokenId]}
+            onArmed={() => setAttackOpen(false)}
+          />
+        )}
+      </div>
 
       <GrappleRow
         combat={combat}

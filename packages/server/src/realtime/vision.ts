@@ -15,6 +15,7 @@ import {
   blockingSegments,
   buildLightMask,
   computeVisionPolygon,
+  fireSegmentsFor,
   fogOverrideAt,
   isPointLit,
   isPointVisible,
@@ -563,6 +564,34 @@ export function visibleOpeningsFor(
   // about doors and windows" — rather than at each emit site, where the next one
   // added would forget.
   return visible.map((door) => (door.locked ? { ...door, locked: false } : door));
+}
+
+/**
+ * Can a shot fired from `from` reach `to` (stage 16b)?
+ *
+ * The map's answer to „is there a wall in the way", and the reason the check
+ * lives on the server rather than in the attack preview: the geometry never
+ * leaves this process (18a), so a client genuinely cannot know. The refusal it
+ * produces is the only thing the player is told.
+ *
+ * Note what is **not** asked here: whether the shooter can see the target at
+ * all. Hidden tokens and unrevealed fog are already refused a step earlier
+ * (stage 17), and darkness is deliberately left to the GM — a field of view per
+ * token, rather than per viewer, is a bigger change than this stage wanted (see
+ * POMYSLY). This function answers geometry, nothing else.
+ *
+ * `fireSegmentsFor` is the shooter's own blocker list, which is what makes the
+ * window case come out right without a rule of its own — see `shared/walls.ts`.
+ */
+export function hasLineOfFire(
+  context: SceneVisionContext,
+  from: ScenePoint,
+  to: ScenePoint,
+): boolean {
+  const segments = fireSegmentsFor(context.walls, from, {
+    curtainReachPx: context.curtainReachPx,
+  });
+  return isSegmentClear(from, to, segments);
 }
 
 /**

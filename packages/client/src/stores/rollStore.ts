@@ -61,7 +61,13 @@ export interface PendingInitiative {
  * measures the map when the dice actually fly.
  */
 export interface PendingAttack {
-  characterId: string;
+  /**
+   * Sheet firing the shot. Absent for a statist (stage 16b): the token's own
+   * combat profile supplies the numbers, and `attackerTokenId` is then the only
+   * address the server needs.
+   */
+  characterId?: string;
+  /** Whoever is shooting, sheet or token — shown on the cup. */
   characterName: string;
   attackerTokenId?: string;
   targetTokenId: string;

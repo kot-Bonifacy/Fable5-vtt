@@ -62,7 +62,27 @@ export interface TokenView {
    * glow and a lit corridor — through their own `vision:sync`.
    */
   light?: TokenLight | null;
+  /**
+   * Fighting numbers of a token with no character sheet (stage 16b); null or
+   * absent for the tokens nobody has statted, which is most of them.
+   *
+   * Deliberately **opaque here**. The core VTT must not know what a weapon or a
+   * Stopping Power is (`systems/cpred` is a different world), so the map layer
+   * carries the blob and the system layer reads it — the same bargain
+   * `Combatant.turnState` struck in stage 14b.
+   *
+   * Private like the HP: it names the NPC's gun and how much armour it wears,
+   * and a player learns those by being shot at.
+   */
+  combatProfile?: TokenCombatProfile | null;
 }
+
+/**
+ * A game system's fighting numbers for one token, as they travel. The core
+ * declares the slot; only the system knows the shape (CP RED:
+ * `CpredCombatProfile`).
+ */
+export type TokenCombatProfile = Record<string, unknown>;
 
 /** One entry of the status registry (`data/public/cpred/statuses.json`). */
 export interface StatusDefinition {
@@ -110,6 +130,8 @@ export interface TokenPatch {
   visionRange?: number | null;
   /** Carried light; null takes the lamp away entirely (stage 18b). */
   light?: TokenLight | null;
+  /** Statist's fighting numbers; null takes the profile away (stage 16b). */
+  combatProfile?: TokenCombatProfile | null;
 }
 
 /** Client → server payload of `token:update` (GM only). */
@@ -316,6 +338,15 @@ export function sanitizeTokenPatch(
     const light = sanitizeTokenLight(input.light);
     if (light === undefined) return null;
     patch.light = light;
+  }
+  if ('combatProfile' in input) {
+    // Shape only. What the fields mean, and which values are legal, is the game
+    // system's to decide — the core would have to know what a Stopping Power is
+    // to say more, and that is exactly the knowledge this layer must not have.
+    if (input.combatProfile === null) patch.combatProfile = null;
+    else if (typeof input.combatProfile === 'object' && !Array.isArray(input.combatProfile)) {
+      patch.combatProfile = input.combatProfile as TokenCombatProfile;
+    } else return null;
   }
   if ('statuses' in input) {
     if (!Array.isArray(input.statuses)) return null;

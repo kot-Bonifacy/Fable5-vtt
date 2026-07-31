@@ -17,6 +17,7 @@ import {
   rangeBandFor,
   resolveCpredAttack,
   unarmedDamage,
+  type CpredAttackContext,
   type CpredAttackRequest,
 } from './attacks.js';
 import { buildCpredRegistry, createDefaultCharacterData, type CpredRegistry } from './character.js';
@@ -101,6 +102,7 @@ function plan(
     metres = 24,
     evasionDv,
     typeId,
+    context,
   }: {
     data?: ReturnType<typeof sheet>;
     resolved?: ResolvedWeapon | null;
@@ -108,6 +110,7 @@ function plan(
     metres?: number;
     evasionDv?: number;
     typeId?: string;
+    context?: CpredAttackContext;
   } = {},
 ) {
   return planCpredAttack(
@@ -121,6 +124,7 @@ function plan(
       metres,
       ...(evasionDv !== undefined ? { evasionDv } : {}),
     },
+    context ?? {},
   );
 }
 
@@ -463,6 +467,53 @@ describe('defence values read off a sheet', () => {
   it('works on a sheet with neither skill trained', () => {
     expect(evasionBase(sheet(), registry)).toBe(5);
     expect(concentrationBase(sheet(), registry)).toBe(5);
+  });
+});
+
+describe('planCpredAttack — line of fire (stage 16b)', () => {
+  const data = sheet({ weapons: [weaponRow()], skills: { handgun: 6, 'melee-weapon': 6 } });
+
+  it('refuses a shot the server measured as blocked', () => {
+    expect(plan({}, { data, context: { lineOfFire: false } })).toEqual({
+      ok: false,
+      error: 'NO_LINE_OF_FIRE',
+    });
+  });
+
+  it('lets the shot through when the line is clear', () => {
+    expect(plan({}, { data, context: { lineOfFire: true } })).toMatchObject({ ok: true });
+  });
+
+  it('judges nothing when the caller could not measure — the sheet preview', () => {
+    expect(plan({}, { data, context: {} })).toMatchObject({ ok: true });
+  });
+
+  it('outranks the range table: a wall is not „out of range"', () => {
+    // 900 m is off the end of the pistol's table, so without the wall this
+    // would answer OUT_OF_RANGE — and send the player stepping closer instead
+    // of round the corner.
+    expect(plan({}, { data, metres: 900, context: { lineOfFire: false } })).toEqual({
+      ok: false,
+      error: 'NO_LINE_OF_FIRE',
+    });
+  });
+
+  it('stops a fist too — a wall is a wall', () => {
+    expect(plan({}, { data, resolved: blade, metres: 2, context: { lineOfFire: false } })).toEqual({
+      ok: false,
+      error: 'NO_LINE_OF_FIRE',
+    });
+  });
+
+  it('leaves suppressive fire alone — it sprays an area, not a token', () => {
+    const row = weaponRow({ ammoCurrent: 25, ammoMax: 25 });
+    const gunner = sheet({ weapons: [row], skills: { autofire: 6 } });
+    expect(
+      plan(
+        { mode: 'suppressive' },
+        { data: gunner, resolved: rifle, row, metres: 20, context: { lineOfFire: false } },
+      ),
+    ).toMatchObject({ ok: true });
   });
 });
 

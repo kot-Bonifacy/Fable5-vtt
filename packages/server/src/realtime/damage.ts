@@ -9,9 +9,11 @@ import type {
 import { ARMOR_SP_MAX, ROLE_GM, damageTotal } from '@vtt/shared';
 import type { Character, Token } from '../generated/prisma/client.js';
 import {
+  SHEET_STATIST_ARMOR_ROW_ID,
   applyDamageToSheet,
   applyDamageToTokenHp,
   isValidHitLocation,
+  readSheetCombatProfile,
   sheetWoundStatuses,
   undoDamageOnSheet,
   type SheetDamageLog,
@@ -172,13 +174,17 @@ export const damageApplyEvent = defineEvent<DamageApplyPayload, { messageId: num
     } else {
       const hp = tokenOwnHp(token);
       if (!hp) throw new RealtimeError('TOKEN_HAS_NO_HP');
-      const applied = applyDamageToTokenHp(hp, request);
+      // Stage 16b: a statted extra brings its own Stopping Power, so the GM no
+      // longer types the armour into every hit — and it wears down like anyone's.
+      const profile = readSheetCombatProfile(token.combatProfile);
+      const applied = applyDamageToTokenHp(hp, request, profile);
       log = applied.log;
       await deps.ctx.prisma.token.update({
         where: { id: token.id },
         data: {
           hpCurrent: applied.hp.current,
           statuses: JSON.stringify(sheetWoundStatuses(parseTokenStatuses(token), applied.hp)),
+          ...(applied.profile ? { combatProfile: JSON.stringify(applied.profile) } : {}),
         },
       });
       await emitTokensById(deps, campaignId, [token.id]);
@@ -261,11 +267,19 @@ export const damageUndoEvent = defineEvent<DamageUndoPayload, void>({
       const token = await deps.ctx.prisma.token.findUnique({ where: { id: entry.targetTokenId } });
       if (token) {
         const hp: TokenHp = { current: entry.hp.before, max: entry.hp.max };
+        // The statist's armour goes back up with the HP (stage 16b). Leaving it
+        // ablated would be the same half-undo the statuses were fixed for in 14d.
+        const profile = readSheetCombatProfile(token.combatProfile);
+        const restoredArmor =
+          profile && entry.armor?.rowId === SHEET_STATIST_ARMOR_ROW_ID
+            ? { ...profile, armorSp: entry.armor.before }
+            : null;
         await deps.ctx.prisma.token.update({
           where: { id: token.id },
           data: {
             hpCurrent: hp.current,
             statuses: JSON.stringify(sheetWoundStatuses(parseTokenStatuses(token), hp)),
+            ...(restoredArmor ? { combatProfile: JSON.stringify(restoredArmor) } : {}),
           },
         });
         await emitTokensById(deps, campaignId, [token.id]);

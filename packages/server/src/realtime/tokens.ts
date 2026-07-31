@@ -4,6 +4,7 @@ import type {
   ScenePoint,
   SceneView,
   SessionUser,
+  TokenCombatProfile,
   TokenCreatePayload,
   TokenDeleteBroadcast,
   TokenIdPayload,
@@ -33,6 +34,7 @@ import {
 import type { PrismaClient } from '../db.js';
 import type { Character, Scene, Token } from '../generated/prisma/client.js';
 import {
+  sheetCombatProfile,
   sheetWoundStatuses,
   toLinkedSheet,
   writeSheetHp,
@@ -68,6 +70,26 @@ function parseStatuses(raw: string): string[] {
 }
 
 /**
+ * The statist's combat profile as it travels (stage 16b) — an object or null.
+ *
+ * Reads the column without interpreting it: which fields it should hold is the
+ * game system's business (`sanitizeCombatProfile` in `systems/cpred`), and this
+ * module deliberately does not know. Anything unreadable becomes null, which is
+ * exactly what „this token has not been statted" already means.
+ */
+function parseCombatProfileColumn(raw: string | null): TokenCombatProfile | null {
+  if (raw === null || raw.length === 0) return null;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+      ? (parsed as TokenCombatProfile)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Maps a DB row to the wire view. `includePrivate` controls whether the `hp`
  * and `characterId` keys exist at all — clients merge upserts with spread, so
  * an absent key means "no change / not for you" and never overwrites a
@@ -96,6 +118,10 @@ export function toTokenView(
   if (includePrivate) {
     view.characterId = token.characterId;
     view.visionRange = token.visionRange;
+    // The statist's gun and armour (stage 16b). Opaque to this module by
+    // design — it reads the column and forwards it, and never asks what a
+    // Stopping Power is.
+    view.combatProfile = parseCombatProfileColumn(token.combatProfile);
     // The lamp itself is private (the GM configures it, the controller flips
     // it); what everybody else gets is the lit corridor it produces.
     view.light = tokenLightOf(token);
@@ -614,6 +640,15 @@ export const tokenUpdateEvent = defineEvent<TokenUpdatePayload, TokenView>({
       }
     }
     if (patch.characterId !== undefined) data.characterId = patch.characterId;
+    // The statist's fighting numbers (stage 16b). Stored as the system handed
+    // them over, sanitised on the way in by `sheetCombatProfile` — the core
+    // must not decide that BODY 99 is wrong, only that this is an object.
+    if (patch.combatProfile !== undefined) {
+      data.combatProfile =
+        patch.combatProfile === null
+          ? null
+          : JSON.stringify(sheetCombatProfile(patch.combatProfile));
+    }
     // A linked token has no HP of its own: the value is written through to
     // the sheet (single source of truth) and echoed back to sheet viewers.
     let linked: LinkedSheet | null = character ? toLinkedSheet(character, deps.ctx.cpred) : null;

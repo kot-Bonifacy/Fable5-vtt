@@ -12,7 +12,12 @@ import type { CpredAttackMode } from '@vtt/shared';
  */
 
 export interface AttackTargeting {
-  characterId: string;
+  /**
+   * Sheet doing the shooting. Absent when a statist is firing (stage 16b) —
+   * then `attackerTokenId` is required and the token's profile is the sheet.
+   */
+  characterId?: string;
+  /** Name on the cursor and on the cup: the sheet's, or the token's. */
   characterName: string;
   /** Token that will do the shooting; the server re-checks the link. */
   attackerTokenId?: string;

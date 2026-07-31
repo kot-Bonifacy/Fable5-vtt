@@ -2,6 +2,7 @@ import type {
   CompendiumEntry,
   CpredChokeOutcome,
   CpredCharacterData,
+  CpredCombatProfile,
   CpredCriticalInjuryRow,
   CpredHitLocation,
   CpredPeriodicDamage,
@@ -31,7 +32,9 @@ import {
   CPRED_TURN_PROBLEM_MESSAGES,
   CPRED_UNCONSCIOUS_STATUS_ID,
   CPRED_WOUND_LABELS,
+  STATIST_WEAPON_ROW_ID,
   applyWoundStatuses,
+  combatProfileSheetForSkill,
   cpredAction,
   cpredActionBlock,
   cpredDodgeBlock,
@@ -66,12 +69,15 @@ import {
   mergeCharacterData,
   nextCpredChokeStreak,
   parseCharacterData,
+  parseCombatProfile,
+  passiveEvasionDv,
   readCpredTurn,
   readCpredTurnLedger,
   resolveCpredChoke,
   resolveCpredDamage,
   resolveCpredGrappleTest,
   resolveCpredThrow,
+  sanitizeCombatProfile,
   spendCpredTurn,
   toCriticalInjuryRow,
   woundTransitionLabel,
@@ -321,6 +327,51 @@ export function readSheetGrappleDv(
 
 /** DV of a target with no sheet — the statist default. */
 export const SHEET_STATIST_GRAPPLE_DV = CPRED_STATIST_GRAPPLE_DV;
+
+/* ------------------------------------------------------------------ *
+ * The statist's combat profile (stage 16b). Everything on the other
+ * side of this seam works on `CpredCharacterData`; a statist has a
+ * dozen numbers instead. Rather than teaching the attack and damage
+ * paths what a statist is, the profile is dressed as a sheet here —
+ * see `systems/cpred/statist.ts` for why that is the cheap direction.
+ * ------------------------------------------------------------------ */
+
+/** The system's profile shape, as it sits in `Token.combatProfile`. */
+export type SheetCombatProfile = CpredCombatProfile;
+
+/** Reads the token's column; null for a token nobody has statted. */
+export function readSheetCombatProfile(raw: string | null): SheetCombatProfile | null {
+  return parseCombatProfile(raw);
+}
+
+/** Repairs whatever a client sent before it is stored. Never rejects. */
+export function sheetCombatProfile(raw: unknown): SheetCombatProfile {
+  return sanitizeCombatProfile(raw);
+}
+
+/**
+ * The profile seen as a character sheet, with one skill filled in at the
+ * profile's level — the skill this particular roll is made with.
+ */
+export function sheetFromCombatProfile(
+  profile: SheetCombatProfile,
+  hp: TokenHp,
+  skillId: string | null,
+): CpredCharacterData {
+  return combatProfileSheetForSkill(profile, hp, skillId);
+}
+
+/** Stand-in DV a statist defends with: its own DEX + Unik + half a die. */
+export function sheetCombatProfileEvasionDv(
+  profile: SheetCombatProfile,
+  registry: SheetRegistry,
+  hp: TokenHp,
+): number {
+  return passiveEvasionDv(sheetFromCombatProfile(profile, hp, null), registry);
+}
+
+/** The single weapon row id a synthesised statist sheet carries. */
+export const SHEET_STATIST_WEAPON_ROW_ID = STATIST_WEAPON_ROW_ID;
 
 /** BODY of a sheet: the damage Duszenie and Rzut deal, flat and undiced. */
 export function readSheetBody(character: Pick<Character, 'data'>, registry: SheetRegistry): number {
@@ -924,21 +975,44 @@ export function applyDamageToSheet(
   };
 }
 
-/** The same hit against a statist token that only has its own HP pair. */
+/**
+ * Row id the ablated armour of a statist is logged under (stage 16b).
+ *
+ * A sheet ablates a named armour *row*; a profile has one number and no rows,
+ * but „Cofnij" reads the log rather than the target, so the entry still needs an
+ * id to point at. A constant is enough — a statist wears one thing.
+ */
+export const SHEET_STATIST_ARMOR_ROW_ID = 'statist-armor';
+
+/**
+ * The same hit against a statist token that only has its own HP pair.
+ *
+ * Since stage 16b the token may also carry a combat profile, and then its
+ * Stopping Power is applied and ablated exactly as a sheet's would be — the GM
+ * stopped having to remember the number and type it into every hit. An explicit
+ * `armorSp` in the request still wins and leaves the profile alone, the same
+ * bargain `applyDamageToSheet` makes with a hand-typed value.
+ */
 export function applyDamageToTokenHp(
   hp: TokenHp,
   request: SheetDamageRequest,
-): { hp: TokenHp; log: SheetDamageLog } {
+  profile?: SheetCombatProfile | null,
+): { hp: TokenHp; log: SheetDamageLog; profile?: SheetCombatProfile } {
   const location = normalizeLocation(request.location);
+  const profileSp = profile?.armorSp ?? 0;
   const outcome = resolveCpredDamage({
     damage: request.damage,
     location,
-    armorSp: request.armorSp ?? 0,
+    armorSp: request.armorSp ?? profileSp,
     hpCurrent: hp.current,
     hpMax: hp.max,
     criticalInjury: request.criticalInjury,
     ignoreArmor: request.ignoreArmor,
   });
+  // Only the profile's own armour wears out, and only when it stopped
+  // something: a value the GM typed in by hand is a one-off ruling, not a
+  // claim about what this extra is wearing.
+  const ablated = profile && request.armorSp === undefined && outcome.ablated && profileSp > 0;
   const log: SheetDamageLog = {
     location,
     locationLabel: hitLocationLabel(location),
@@ -949,13 +1023,27 @@ export function applyDamageToTokenHp(
     bonusDamage: outcome.bonusDamage,
     hpLost: outcome.hpLost,
     hp: { before: outcome.hpBefore, after: outcome.hpAfter, max: hp.max },
+    ...(ablated
+      ? {
+          armor: {
+            rowId: SHEET_STATIST_ARMOR_ROW_ID,
+            name: 'Pancerz',
+            before: outcome.spBefore,
+            after: outcome.spAfter,
+          },
+        }
+      : {}),
     ...(woundTransitionLabel(outcome) ? { woundLabel: woundTransitionLabel(outcome)! } : {}),
     // A statist has no sheet to carry an injury — the GM plays it out by hand.
     ...(outcome.criticalInjury
       ? { injuryNote: 'Cel bez karty postaci — ranę krytyczną rozegraj ręcznie.' }
       : {}),
   };
-  return { hp: { current: outcome.hpAfter, max: hp.max }, log };
+  return {
+    hp: { current: outcome.hpAfter, max: hp.max },
+    log,
+    ...(ablated ? { profile: { ...profile, armorSp: outcome.spAfter } } : {}),
+  };
 }
 
 /**

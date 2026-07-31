@@ -25,8 +25,9 @@ Każdy etap to jedna sesja pracy z Claude. Etapy są pogrupowane w 9 faz. Szczeg
 | 14d | Statusy w mechanice: zwarcie, kryty, automaty tury | D. Walka             | 🏁 Pełna mechanika tur    |
 | 15  | Obrażenia, pancerz, krytyki, Death Save            | D. Walka             |                           |
 | 16  | Zasięgi, DV z mapy, autofire                       | D. Walka             | 🏁 Pełna automatyka walki |
-| 16b | Osłony, linia strzału i atak z mapy                | D. Walka             |                           |
-| 16c | Granaty, wzorce obszarowe i amunicja specjalna     | D. Walka             | 🏁 Pełny ostrzał          |
+| 16b | Linia strzału i atak z mapy                        | D. Walka             |                           |
+| 16c | Osłony jako obiekty sceny                          | D. Walka             |                           |
+| 16d | Granaty, wzorce obszarowe i amunicja specjalna     | D. Walka             | 🏁 Pełny ostrzał          |
 | 17a | Fog of war i warstwa MG                            | E. Widoczność        |                           |
 | 17b | Rysowanie po mapie                                 | E. Widoczność        |                           |
 | 18  | Dynamiczne oświetlenie i ściany                    | E. Widoczność        |                           |
@@ -48,7 +49,7 @@ Fazy A→B→C odwzorowują priorytety MVP z ankiety (mapa+tokeny, kości, karty
 - 13 (dane podręcznika) przed 15–16, 19, 23, 25, 26 — wszystkie konsumują dane z pipeline'u.
 - 14 (inicjatywa) przed 15–16 i 20.
 - 14b→14c→14d (ekonomia akcji, dopisane 30.07 — patrz „Rozszerzenia planu po starcie") **po** 15–16 (spinają istniejące ścieżki ataku i przeładowania) i **przed** 20 — bezpieczniki botów („limit akcji na turę, ruch ≤ MOVE") to wprost walidacja z tych etapów.
-- 16b→16c (osłony i amunicja, dopisane 31.07) **po** 18a–18e (linia strzału konsumuje geometrię ścian i otworów) i **przed** 20 — inaczej bot uczy się strzelać w świecie, w którym mury nie zatrzymują kul.
+- 16b→16c→16d (linia strzału, osłony i amunicja, dopisane 31.07) **po** 18a–18e (linia strzału konsumuje geometrię ścian i otworów) i **przed** 20 — inaczej bot uczy się strzelać w świecie, w którym mury nie zatrzymują kul.
 - 9–11 (boty podstawowe) przed 12 i przed 19–20.
 - 12 (TTS) nie blokuje niczego — nic od niego nie zależy, więc można go przesunąć dalej, jeśli wolisz najpierw walkę. Jedyne powiązanie to wspólny budżet VRAM z etapem 21 (STT): kto pierwszy, ten ustala rezerwę dla drugiego.
 - 17a przed 18 (oświetlenie buduje na fog of war); 17b (rysowanie) nie blokuje niczego.
@@ -75,7 +76,7 @@ Fazy A→B→C odwzorowują priorytety MVP z ankiety (mapa+tokeny, kości, karty
 
 2. **Etapy 14b/14c/14d — system tur** (dodane 30.07.2026). Pełny podręcznik, dostarczony po utworzeniu planu, opisuje kompletną mechanikę tur (Tura = 1 Akcja Ruchu + 1 Akcja, katalog akcji z kosztami, zwarcie, statusy, automaty przejścia tury), której pierwotny plan nie projektował — etap 14 dał sam tracker kolejności, a POMYSLY notowało ekonomię akcji jako „naturalne dla etapu 20". Decyzje z użytkownikiem: egzekwowanie **twarde z wolną ręką MG**, ruch liczony w **metrach po ścieżce**, pełny zakres RAW (zwarcie, kryty w turze, Wstrzymanie Akcji, DoT), rozłożone na **trzy sesje** (duże zmiany w kodzie i dużo testów). Numeracja literowa w fazie D, żeby nie przenumerowywać etapów 15–28.
 
-3. **Etapy 16b/16c — ostrzał w terenie** (dodane 31.07.2026). Etap 16 zrobił całą matematykę strzelania (PT z dystansu, ogień ciągły i zaporowy, amunicja, przeładowanie, celowany strzał), ale **świadomie zostawił osłony poza zakresem**, bo ścian jeszcze nie było — dziś kula przechodzi przez mur, choć geometria jest gotowa od 18a–18e. 16b domyka „co stoi między nami" (linia strzału, osłona jako obiekt z SP i PW, atak z mapy, strzelanie tokenem bez karty postaci), 16c domyka „czym strzelam" (granaty i wzorce obszarowe, rzut przedmiotem, 12 typów amunicji). Decyzje z użytkownikiem: **ściana blokuje absolutnie, zniszczalne są tylko osłony**; **rozstrzyga linia środek—środek** (RAW nie zna kary za częściową osłonę); **przed etapem 19**, żeby autonomia botów z 20 stała na kompletnej walce.
+3. **Etapy 16b/16c/16d — ostrzał w terenie** (dodane 31.07.2026, tego samego dnia 16b podzielony na 16b i 16c). Etap 16 zrobił całą matematykę strzelania (PT z dystansu, ogień ciągły i zaporowy, amunicja, przeładowanie, celowany strzał), ale **świadomie zostawił osłony poza zakresem**, bo ścian jeszcze nie było — dziś kula przechodzi przez mur, choć geometria jest gotowa od 18a–18e. 16b domyka „czy widzę, w co strzelam" (linia strzału, ogień zaporowy przez mury, atak z mapy, profil bojowy statysty bez karty postaci), 16c domyka „co stoi między nami" (osłona jako obiekt sceny z PW, ostrzeliwanie jej, Ludzka tarcza), 16d domyka „czym strzelam" (granaty i wzorce obszarowe, rzut przedmiotem, 12 typów amunicji). Decyzje z użytkownikiem: **ściana blokuje absolutnie, zniszczalne są tylko osłony**; **rozstrzyga linia środek—środek** (RAW nie zna kary za częściową osłonę); **osłona ma PW, nie ma SP** (podręcznik, s. 179 — pierwotny opis 16b mówił inaczej); **profil statysty obejmuje też obronę**; **przed etapem 19**, żeby autonomia botów z 20 stała na kompletnej walce.
 
 ## Ryzyka i ograniczenia
 

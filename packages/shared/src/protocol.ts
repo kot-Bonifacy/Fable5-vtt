@@ -218,7 +218,12 @@ export interface DamageUndoPayload {
  * it is never sent, precisely because it decides the difficulty.
  */
 export interface AttackRollPayload<TRequest = unknown> {
-  characterId: string;
+  /**
+   * Sheet making the attack. Omitted for a statist (stage 16b) — a token with
+   * no sheet, fighting from the combat profile stored on it. `attackerTokenId`
+   * is then required, because there is nothing else to look the fighter up by.
+   */
+  characterId?: string;
   targetTokenId: string;
   /** Which of the character's tokens is shooting; derived when omitted. */
   attackerTokenId?: string;

@@ -1,13 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import {
   WALL_REACH_M,
+  fireSegmentsFor,
   isOpening,
   isWallWithinReach,
   sightSegmentsFor,
   tollingWindows,
   type WallView,
 } from './walls.js';
-import { computeVisionPolygon, isPointInPolygon, sceneBoundsSegments } from './vision.js';
+import {
+  computeVisionPolygon,
+  isPointInPolygon,
+  isSegmentClear,
+  sceneBoundsSegments,
+} from './vision.js';
 
 /**
  * Stage 18d: arm's reach, and the net curtain in a window.
@@ -165,6 +171,59 @@ describe('tollingWindows — which panes still cost the light', () => {
       makeWall(10, 'door', 0, 100, 100, 100, { open: true }),
     ];
     expect(tollingWindows(doors)).toEqual([]);
+  });
+});
+
+/** Is the straight line between these two points free of bullet blockers? */
+function canShoot(from: { x: number; y: number }, to: { x: number; y: number }) {
+  return isSegmentClear(from, to, fireSegmentsFor(PLAN, from, { curtainReachPx: REACH_PX }));
+}
+
+describe('fireSegmentsFor — what stops a bullet (stage 16b)', () => {
+  const inside = { x: 700, y: 300 };
+  const street = { x: 200, y: 300 };
+
+  it('stops a shot at a target behind a solid wall', () => {
+    // North of the room's south wall to south of it: the segment at y = 500
+    // stands between them.
+    expect(canShoot({ x: 700, y: 700 }, inside)).toBe(false);
+  });
+
+  it('lets the same shot through once the wall is a door standing open', () => {
+    const open = PLAN.map((wall) =>
+      wall.id === 4 ? { ...wall, kind: 'door' as const, open: true } : wall,
+    );
+    const from = { x: 700, y: 700 };
+    const segments = fireSegmentsFor(open, from, { curtainReachPx: REACH_PX });
+    expect(isSegmentClear(from, inside, segments)).toBe(true);
+  });
+
+  it('refuses a shot through a closed window from across the street', () => {
+    // Glass is not cover in the rules — what refuses this shot is the curtain:
+    // from 200 px away the pane is a bright rectangle, not a view.
+    expect(canShoot(street, inside)).toBe(false);
+  });
+
+  it('lets the shot through from a metre away, where the pane is a view', () => {
+    const atTheGlass = { x: 360, y: 300 };
+    expect(canShoot(atTheGlass, inside)).toBe(true);
+  });
+
+  it('lets it through from the street once the sash is up', () => {
+    const open = PLAN.map((wall) => (wall.id === 1 ? { ...wall, open: true } : wall));
+    const segments = fireSegmentsFor(open, street, { curtainReachPx: REACH_PX });
+    expect(isSegmentClear(street, inside, segments)).toBe(true);
+  });
+
+  it('does not let a wall hide behind the target: a blocker at the target is not in the way', () => {
+    // Aiming at a point on the wall itself. The segment terminates the ray
+    // exactly at the destination, and that must read as „clear" — otherwise no
+    // token standing against a wall could ever be shot.
+    expect(canShoot({ x: 700, y: 700 }, { x: 700, y: 500 })).toBe(true);
+  });
+
+  it('is clear along an open street with nothing in between', () => {
+    expect(canShoot({ x: 100, y: 700 }, { x: 300, y: 700 })).toBe(true);
   });
 });
 

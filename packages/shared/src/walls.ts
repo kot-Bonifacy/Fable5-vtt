@@ -261,6 +261,35 @@ export function sightSegmentsFor(
 }
 
 /**
+ * What stops a **bullet** fired from `origin` (stage 16b) — core VTT, no game
+ * system: the shot itself is CP RED's business, the geometry is not.
+ *
+ * Deliberately the same list as `sightSegmentsFor`, and that identity is the
+ * decision of the stage rather than a coincidence worth refactoring away. You
+ * shoot where you can see, and the two awkward cases fall out of it for free:
+ *
+ *  - a **closed window** is not cover in the rules („szyby … nie mają PW i w
+ *    związku z tym nie są osłoną", s. 180), so glass must not stop a round —
+ *    and it does not, for anybody standing close enough to look through it. From
+ *    across the street the same pane is a net curtain (18d), and what refuses the
+ *    shot there is not the glass but the fact that the shooter cannot make out
+ *    the target behind it;
+ *  - a **door** is opaque while shut and a hole once open, exactly as it is for
+ *    sight.
+ *
+ * The wrapper exists so that call sites read as what they mean, and so that
+ * stage 16c has one place to add cover: an object that blocks a bullet and
+ * nothing else appends its segments here, and sight never hears about it.
+ */
+export function fireSegmentsFor(
+  walls: readonly WallView[],
+  origin: ScenePoint,
+  options: { curtainReachPx: number | null },
+): Segment[] {
+  return sightSegmentsFor(walls, origin, options);
+}
+
+/**
  * Is any of these points within `reachPx` of the wall (stage 18d)?
  *
  * „Arm's reach" for a door: the distance runs from a token's centre — the point

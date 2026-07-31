@@ -201,6 +201,18 @@ model Token {
    */
   statusData String @default("{}")
   /**
+   * Fighting numbers of a token with no character sheet (stage 16b), as the
+   * game system serialized them — the same opaque JSON bargain `turnState`
+   * makes in 14b. Null = an extra nobody has statted, which is most tokens.
+   *
+   * On the token rather than in a stub Character row, because a statist is not
+   * a person: it has no owner, no portrait, nothing to open in a sheet window,
+   * and it dies when the token is deleted. Hit points stay in `hpCurrent` /
+   * `hpMax` where they already were — two homes for one number is how they
+   * drift apart.
+   */
+  combatProfile String?
+  /**
    * How far this token sees, in metres (stage 18a). Null = as far as the walls
    * allow, which is the right default for a lit scene; darkness and light
    * sources arrive in 18b.

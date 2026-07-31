@@ -719,6 +719,8 @@ function attackAckErrorText(code: string): string {
       return 'Ten wpis nie jest atakiem.';
     case 'WEAPON_HAS_NO_MAGAZINE':
       return 'Ta broń nie ma magazynka do przeładowania.';
+    case 'TOKEN_HAS_NO_PROFILE':
+      return 'Ten token nie ma profilu bojowego — uzupełnij go w „Edytuj…” w menu tokenu.';
     default:
       return `Błąd ataku: ${code}`;
   }
@@ -730,14 +732,15 @@ function attackAckErrorText(code: string): string {
  * why no distance travels here.
  */
 export function sendAttackRoll(
-  characterId: string,
+  /** Sheet firing; omitted for a statist, whose token carries the numbers. */
+  characterId: string | undefined,
   targetTokenId: string,
   request: CpredAttackRequest,
   attackerTokenId?: string,
   gesture?: RollGesture,
 ): void {
   const payload: AttackRollPayload<CpredAttackRequest> = {
-    characterId,
+    ...(characterId ? { characterId } : {}),
     targetTokenId,
     request,
     ...(attackerTokenId ? { attackerTokenId } : {}),

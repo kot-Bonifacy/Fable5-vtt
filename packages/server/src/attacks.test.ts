@@ -3,7 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { mkdtempSync, unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { io as ioClient, type Socket as ClientSocket } from 'socket.io-client';
 import type {
   CampaignSummary,
@@ -760,6 +760,331 @@ describe('ranged combat from the map', () => {
     expect(ack).toEqual({ ok: true });
     await new Promise((resolve) => setTimeout(resolve, 200));
     expect(received).toHaveLength(0);
+  });
+
+  /**
+   * Stage 16b: what stands between the two tokens.
+   *
+   * The scene runs at 50 px per metre along the x axis, so a wall drawn as a
+   * vertical segment at x = 500 stands 10 m out from the shooter at x = 0. The
+   * walls are cleared at the end of each test — the rest of the suite fires
+   * down the same street.
+   */
+  describe('line of fire', () => {
+    /** A vertical segment `metres` out from the shooter, tall enough to matter. */
+    async function wallAt(metres: number, kind: 'wall' | 'door' | 'window' = 'wall') {
+      const x = metres * PX_PER_M;
+      return emitAck(gm, 'wall:create', {
+        sceneId,
+        kind,
+        points: [
+          { x, y: -400 },
+          { x, y: 400 },
+        ],
+      });
+    }
+
+    // Both halves matter: a leftover wall would refuse the next suite's shots,
+    // and a shooter left standing where the previous test moved it would change
+    // every distance measured after it.
+    afterEach(async () => {
+      await emitAck(gm, 'wall:clear', { sceneId });
+      await emitAck(gm, 'token:move', { tokenId: shooterTokenId, x: 0, y: 0, final: true });
+    });
+
+    it('refuses a shot at a target behind a wall', async () => {
+      await placeTargetAt(20);
+      await wallAt(10);
+      const ack = await emitAck(player, 'attack:roll', {
+        characterId,
+        targetTokenId,
+        attackerTokenId: shooterTokenId,
+        request: { weaponRowId: 'w-pistol', mode: 'single' },
+      });
+      expect(ack).toEqual({ ok: false, error: 'NO_LINE_OF_FIRE' });
+    });
+
+    it('lets the same shot through once the door in that wall is open', async () => {
+      await placeTargetAt(20);
+      const created = data(
+        await emitAck<{ id: number }[]>(gm, 'wall:create', {
+          sceneId,
+          kind: 'door',
+          points: [
+            { x: 10 * PX_PER_M, y: -400 },
+            { x: 10 * PX_PER_M, y: 400 },
+          ],
+        }),
+        'wall:create',
+      );
+      const shut = await emitAck(player, 'attack:roll', {
+        characterId,
+        targetTokenId,
+        attackerTokenId: shooterTokenId,
+        request: { weaponRowId: 'w-pistol', mode: 'single' },
+      });
+      expect(shut).toEqual({ ok: false, error: 'NO_LINE_OF_FIRE' });
+
+      await emitAck(gm, 'opening:toggle', { wallId: created[0]!.id, open: true });
+      const card = await attack({ weaponRowId: 'w-pistol', mode: 'single' });
+      // Through the doorway the shot is an ordinary one again: the DV comes off
+      // the range table, not off the wall.
+      expect(card.system.metres).toBe(20);
+      expect(card.system.dv).toBe(19); // sample pistol, band 13–25
+    });
+
+    it('a wall behind the target does not block the target', async () => {
+      await placeTargetAt(10);
+      await wallAt(20);
+      const card = await attack({ weaponRowId: 'w-pistol', mode: 'single' });
+      expect(card.system.metres).toBe(10);
+    });
+
+    /**
+     * Glass is not cover in the rules („szyby … nie są osłoną", s. 180), so the
+     * pane itself never stops a round. What refuses the shot from across the
+     * street is the net curtain of stage 18d: from there the target simply
+     * cannot be made out. Walk up to the window and you fire through it.
+     */
+    it('stops a shot through a closed window from far, and lets it through from close', async () => {
+      await placeTargetAt(20);
+      await wallAt(10, 'window');
+      const far = await emitAck(player, 'attack:roll', {
+        characterId,
+        targetTokenId,
+        attackerTokenId: shooterTokenId,
+        request: { weaponRowId: 'w-pistol', mode: 'single' },
+      });
+      expect(far).toEqual({ ok: false, error: 'NO_LINE_OF_FIRE' });
+
+      // Tokens snap to the grid, so the shooter stands on even metres: 8 m puts
+      // its centre one metre from the pane, inside the 2 m reach of stage 18d.
+      await emitAck(gm, 'token:move', {
+        tokenId: shooterTokenId,
+        x: 8 * PX_PER_M,
+        y: 0,
+        final: true,
+      });
+      const card = await attack({ weaponRowId: 'w-pistol', mode: 'single' });
+      expect(card.system.metres).toBe(12);
+    });
+
+    it('stops a fist too — a wall is not only about bullets', async () => {
+      // The target's centre is 2 m out; the wall at x = 100 px stands halfway
+      // between the two centres, which is what „a wall between us" means here.
+      await placeTargetAt(2);
+      await wallAt(2);
+      const ack = await emitAck(player, 'attack:roll', {
+        characterId,
+        targetTokenId,
+        attackerTokenId: shooterTokenId,
+        request: { weaponRowId: 'w-blade', mode: 'single' },
+      });
+      expect(ack).toEqual({ ok: false, error: 'NO_LINE_OF_FIRE' });
+    });
+
+    /** RAW s. 174: „wszystkie … osoby w zasięgu 25 m, **które widzisz**". */
+    it('keeps suppressive fire off a target standing behind a wall', async () => {
+      await emitAck(player, 'weapon:reload', { characterId, weaponRowId: 'w-rifle' });
+      await placeTargetAt(20);
+      const open = await attack({ weaponRowId: 'w-rifle', mode: 'suppressive' });
+      expect((open.forcedChecks ?? []).map((check) => check.name)).toContain('Ganger');
+
+      await emitAck(player, 'weapon:reload', { characterId, weaponRowId: 'w-rifle' });
+      await wallAt(10);
+      const walled = await attack({ weaponRowId: 'w-rifle', mode: 'suppressive' });
+      expect((walled.forcedChecks ?? []).map((check) => check.name)).not.toContain('Ganger');
+    });
+  });
+
+  /**
+   * Stage 16b: a token with no character sheet fights from its own profile.
+   *
+   * The point of these is the identity claimed in `systems/cpred/statist.ts` —
+   * the statist is dressed as a sheet, so everything downstream (the DV from
+   * the range table, the magazine, the turn budget, the chat card) behaves
+   * exactly as it does for a player character.
+   */
+  describe('statist combat profile', () => {
+    let statistTokenId: string;
+
+    const PROFILE = {
+      ref: 7,
+      dex: 5,
+      body: 6,
+      will: 5,
+      skillLevel: 4,
+      evasion: 3,
+      armorSp: 11,
+      weaponId: 'weapon.zgrzyt-9',
+      weaponName: 'Zgrzyt 9',
+      weaponDamage: '2k6',
+      ammoCurrent: 10,
+      ammoMax: 10,
+    };
+
+    /** The statist's stored profile, read back off a fresh sync. */
+    async function profileOf(tokenId: string): Promise<Record<string, unknown>> {
+      const sync = waitFor<StateSyncPayload>(gm, 'state:sync');
+      await emitAck(gm, 'state:request');
+      const token = (await sync).tokens.find((entry) => entry.id === tokenId);
+      if (!token?.combatProfile) throw new Error('token carries no combat profile');
+      return token.combatProfile as Record<string, unknown>;
+    }
+
+    it('stats a bare token from the GM side', async () => {
+      statistTokenId = data(
+        await emitAck<TokenView>(gm, 'token:create', {
+          sceneId,
+          name: 'Ochroniarz',
+          x: 4 * PX_PER_M,
+          y: 4 * PX_PER_M,
+          hp: { current: 25, max: 25 },
+        }),
+        'token:create',
+      ).id;
+      const ack = await emitAck<TokenView>(gm, 'token:update', {
+        tokenId: statistTokenId,
+        patch: { combatProfile: PROFILE },
+      });
+      expect(ack.ok).toBe(true);
+      expect(await profileOf(statistTokenId)).toMatchObject({ ref: 7, armorSp: 11 });
+    });
+
+    it('repairs a profile the client sent out of range instead of refusing it', async () => {
+      await emitAck(gm, 'token:update', {
+        tokenId: statistTokenId,
+        patch: { combatProfile: { ...PROFILE, ref: 99, ammoCurrent: 900 } },
+      });
+      const stored = await profileOf(statistTokenId);
+      expect(stored.ref).toBe(10);
+      expect(stored.ammoCurrent).toBe(10);
+      await emitAck(gm, 'token:update', {
+        tokenId: statistTokenId,
+        patch: { combatProfile: PROFILE },
+      });
+    });
+
+    it('fires without a character sheet, reading the DV off the range table', async () => {
+      await placeTargetAt(20);
+      const message = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+      const ack = await emitAck<{ messageId: number }>(gm, 'attack:roll', {
+        targetTokenId,
+        attackerTokenId: statistTokenId,
+        request: { weaponRowId: 'statist-weapon', mode: 'single' },
+      });
+      expect(ack.ok).toBe(true);
+      const card = (await message).message.roll?.attack as AttackCard | undefined;
+      if (!card) throw new Error('roll message carried no attack card');
+      // REF 7 + the profile's skill level 4, and a DV from the map like anyone's.
+      expect(card.system.dv).toBe(19);
+      expect(card.label).toContain('Zgrzyt 9');
+      expect((await profileOf(statistTokenId)).ammoCurrent).toBe(9);
+    });
+
+    it('refuses to fire with a token nobody has statted', async () => {
+      const bare = data(
+        await emitAck<TokenView>(gm, 'token:create', {
+          sceneId,
+          name: 'Przechodzień',
+          x: 6 * PX_PER_M,
+          y: 6 * PX_PER_M,
+        }),
+        'token:create',
+      ).id;
+      const ack = await emitAck(gm, 'attack:roll', {
+        targetTokenId,
+        attackerTokenId: bare,
+        request: { weaponRowId: 'statist-weapon', mode: 'single' },
+      });
+      expect(ack).toEqual({ ok: false, error: 'TOKEN_HAS_NO_PROFILE' });
+      await emitAck(gm, 'token:delete', { tokenId: bare });
+    });
+
+    it('never lets a player fire with a statist that is not theirs', async () => {
+      const ack = await emitAck(player, 'attack:roll', {
+        targetTokenId,
+        attackerTokenId: statistTokenId,
+        request: { weaponRowId: 'statist-weapon', mode: 'single' },
+      });
+      expect(ack).toEqual({ ok: false, error: 'CHARACTER_NOT_FOUND' });
+    });
+
+    it('keeps the profile off a player’s copy of the token', async () => {
+      const sync = waitFor<StateSyncPayload>(player, 'state:sync');
+      await emitAck(player, 'state:request');
+      const seen = (await sync).tokens.find((entry) => entry.id === statistTokenId);
+      expect(seen).toBeDefined();
+      // The gun and the armour are private the same way the HP bar is: a player
+      // finds out what an NPC is wearing by shooting at it.
+      expect(seen?.combatProfile ?? null).toBeNull();
+    });
+
+    /**
+     * The defence half of the profile (stage 16b decision): before it, every
+     * extra defended a swing at the everyday DV of 13 whatever the GM intended.
+     */
+    it('defends a melee swing with its own DEX + Unik instead of the everyday DV', async () => {
+      await emitAck(gm, 'token:move', {
+        tokenId: statistTokenId,
+        x: 2 * PX_PER_M,
+        y: 0,
+        final: true,
+      });
+      const message = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+      const ack = await emitAck<{ messageId: number }>(player, 'attack:roll', {
+        characterId,
+        targetTokenId: statistTokenId,
+        attackerTokenId: shooterTokenId,
+        request: { weaponRowId: 'w-blade', mode: 'single' },
+      });
+      expect(ack.ok).toBe(true);
+      const card = (await message).message.roll?.attack as AttackCard | undefined;
+      if (!card) throw new Error('roll message carried no attack card');
+      // ZW 5 + Unik 3 + half a die (5) = 13 by coincidence of the numbers, so
+      // the source is what this asserts, not the total.
+      expect(card.system.dvSource).toBe('evasion');
+      expect(card.detail).toContain('Unik celu');
+    });
+
+    /** RAW: armour stops the damage and wears down by one when it does. */
+    it('applies and ablates the profile’s armour without the GM typing it', async () => {
+      // SP 4 against the rifle's 5k6: the lowest possible roll still gets
+      // through, so „did the armour stop everything?" cannot make this flaky.
+      await emitAck(gm, 'token:update', {
+        tokenId: statistTokenId,
+        patch: { combatProfile: { ...PROFILE, armorSp: 4 } },
+      });
+
+      const damageMessage = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+      const rolled = data(
+        await emitAck<{ messageId: number }>(gm, 'character:roll', {
+          characterId,
+          request: { kind: 'damage', weaponRowId: 'w-rifle' },
+          visibility: 'public',
+        }),
+        'character:roll',
+      );
+      await damageMessage;
+
+      const applied = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+      const ack = await emitAck<{ messageId: number }>(gm, 'damage:apply', {
+        messageId: rolled.messageId,
+        tokenId: statistTokenId,
+      });
+      expect(ack.ok).toBe(true);
+      const entry = (await applied).message.damage;
+      expect(entry?.armorSp).toBe(4);
+      expect(entry?.armor).toMatchObject({ before: 4, after: 3 });
+      expect(await profileOf(statistTokenId)).toMatchObject({ armorSp: 3 });
+
+      // „Cofnij" puts the armour back up with the HP — a half-undo is what
+      // stage 14d fixed for statuses, and this is the same shape of bug.
+      const undone = waitFor<ChatMessageBroadcast>(gm, 'chat:update');
+      await emitAck(gm, 'damage:undo', { messageId: data(ack, 'damage:apply').messageId });
+      await undone;
+      expect(await profileOf(statistTokenId)).toMatchObject({ armorSp: 4 });
+    });
   });
 
   it('rejects a malformed ruler line', async () => {

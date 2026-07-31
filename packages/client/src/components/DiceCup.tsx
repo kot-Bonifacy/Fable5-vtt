@@ -262,11 +262,17 @@ export function DiceCup() {
         lastFunNotation = '1d10';
         useRollStore.getState().clearCup();
         void digestSamples(samples).then((entropy) => {
-          sendAttackRoll(loaded.characterId, loaded.targetTokenId, loaded.request, loaded.attackerTokenId, {
-            entropy,
-            strength,
-            toss,
-          });
+          sendAttackRoll(
+            loaded.characterId,
+            loaded.targetTokenId,
+            loaded.request,
+            loaded.attackerTokenId,
+            {
+              entropy,
+              strength,
+              toss,
+            },
+          );
         });
       } else if (current.kind === 'evasion') {
         const { pending: loaded } = current;
@@ -363,32 +369,32 @@ export function DiceCup() {
       : mode.kind === 'evasion' || mode.kind === 'grapple'
         ? ' dice-cup--sheet'
         : mode.kind === 'initiative'
-      ? ' dice-cup--sheet'
-      : mode.kind === 'sheet'
-        ? mode.pending.visibility === 'gm'
-          ? ' dice-cup--gm'
-          : ' dice-cup--sheet'
-        : mode.kind === 'roll'
-          ? mode.visibility === 'gm'
-            ? ' dice-cup--gm'
-            : ' dice-cup--hot'
-          : '';
+          ? ' dice-cup--sheet'
+          : mode.kind === 'sheet'
+            ? mode.pending.visibility === 'gm'
+              ? ' dice-cup--gm'
+              : ' dice-cup--sheet'
+            : mode.kind === 'roll'
+              ? mode.visibility === 'gm'
+                ? ' dice-cup--gm'
+                : ' dice-cup--hot'
+              : '';
   const title =
     mode.kind === 'attack'
       ? `Potrząśnij i strzel: ${mode.pending.title} · Esc odkłada atak`
       : mode.kind === 'evasion'
         ? `Potrząśnij i rzuć unik: ${mode.pending.title} · Esc odkłada rzut`
         : mode.kind === 'grapple'
-        ? `Potrząśnij i rzuć: ${mode.pending.title} · Esc odkłada rzut`
-        : mode.kind === 'initiative'
-      ? `Potrząśnij i rzuć inicjatywę: ${mode.pending.name} — ${initiativeLabel(mode.pending)} · Esc odkłada rzut`
-      : mode.kind === 'sheet'
-        ? `Potrząśnij i rzuć: ${mode.pending.characterName} — ${sheetLabel(mode.pending)}${
-            mode.pending.visibility === 'gm' ? ' (do MG)' : ''
-          } · Esc odkłada rzut`
-        : mode.kind === 'roll'
-          ? `Potrząśnij i rzuć: ${mode.notation}${mode.visibility === 'gm' ? ' (do MG)' : ''} — wynik liczy się w grze`
-          : 'Potrząśnij i rzuć na niby (wpisz /r <formuła>, by rzut się liczył)';
+          ? `Potrząśnij i rzuć: ${mode.pending.title} · Esc odkłada rzut`
+          : mode.kind === 'initiative'
+            ? `Potrząśnij i rzuć inicjatywę: ${mode.pending.name} — ${initiativeLabel(mode.pending)} · Esc odkłada rzut`
+            : mode.kind === 'sheet'
+              ? `Potrząśnij i rzuć: ${mode.pending.characterName} — ${sheetLabel(mode.pending)}${
+                  mode.pending.visibility === 'gm' ? ' (do MG)' : ''
+                } · Esc odkłada rzut`
+              : mode.kind === 'roll'
+                ? `Potrząśnij i rzuć: ${mode.notation}${mode.visibility === 'gm' ? ' (do MG)' : ''} — wynik liczy się w grze`
+                : 'Potrząśnij i rzuć na niby (wpisz /r <formuła>, by rzut się liczył)';
 
   return (
     <div

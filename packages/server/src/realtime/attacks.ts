@@ -12,11 +12,13 @@ import type {
   RollGesture,
   RollResult,
   SessionUser,
+  TokenHp,
   WeaponReloadPayload,
 } from '@vtt/shared';
 import {
   CPRED_ACTION_ATTACK,
   CPRED_ACTION_RELOAD,
+  CPRED_AUTOFIRE_SKILL_ID,
   CPRED_EVASION_SKILL_ID,
   CPRED_SUPPRESSIVE_RANGE_M,
   ROLE_GM,
@@ -34,13 +36,19 @@ import {
   resolveCpredAttack,
   resolveWeapon,
   rollFormula,
+  tokenCentre,
 } from '@vtt/shared';
 import type { Character, Scene, Token } from '../generated/prisma/client.js';
 import {
+  SHEET_STATIST_WEAPON_ROW_ID,
   SHEET_SUPPRESSED_STATUS_ID,
+  readSheetCombatProfile,
+  sheetCombatProfileEvasionDv,
   sheetDodgeBlock,
+  sheetFromCombatProfile,
   sheetHumanShieldCovers,
   sheetSituationModifiers,
+  type SheetCombatProfile,
 } from '../sheets.js';
 import { pinToken } from './turn-effects.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
@@ -48,9 +56,15 @@ import { grappleStateForToken, readTokenStatuses } from './combat.js';
 import { requireTurnSpend } from './combat-actions.js';
 import { requireRollableCharacter } from './character-rolls.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
-import { emitTokensOfCharacter, requireCampaignToken, toTokenView } from './tokens.js';
+import {
+  emitTokensById,
+  emitTokensOfCharacter,
+  requireCampaignToken,
+  toTokenView,
+} from './tokens.js';
 import { buildCompendiumSync } from './compendium.js';
 import { fetchFogState } from './fog-io.js';
+import { hasLineOfFire, loadVisionContext, type SceneVisionContext } from './vision.js';
 import { toSceneView } from './scenes.js';
 import {
   INCLUDE_CHAT_NAMES,
@@ -132,30 +146,110 @@ async function resolveAttackerToken(
   return token;
 }
 
-/** Stand-in evasion DV of a target that has a sheet; undefined for a statist. */
+/**
+ * Stand-in evasion DV of the defender.
+ *
+ * Two sources since stage 16b, and the fallback order is the point: a sheet
+ * first, then the token's own combat profile, and only a token with neither
+ * drops through to the everyday DV. Before 16b every extra defended itself at
+ * 13 whatever the GM had in mind for it.
+ */
 async function targetEvasionDv(
   deps: RealtimeDeps,
   registry: CpredRegistry,
   token: Token,
 ): Promise<number | undefined> {
-  if (!token.characterId) return undefined;
-  const character = await deps.ctx.prisma.character.findUnique({
-    where: { id: token.characterId },
-  });
-  if (!character) return undefined;
-  return passiveEvasionDv(parseCharacterData(character.data, registry), registry);
+  if (token.characterId) {
+    const character = await deps.ctx.prisma.character.findUnique({
+      where: { id: token.characterId },
+    });
+    if (character) return passiveEvasionDv(parseCharacterData(character.data, registry), registry);
+  }
+  const profile = readSheetCombatProfile(token.combatProfile);
+  if (!profile) return undefined;
+  return sheetCombatProfileEvasionDv(profile, registry, tokenHpOf(token));
 }
 
-/** Spends Luck and ammunition on the sheet in one write, and re-emits it. */
+/** The token's own HP pair, with a sane stand-in for a token that has no bar. */
+function tokenHpOf(token: Token): TokenHp {
+  if (token.hpMax === null) return { current: 1, max: 1 };
+  return { current: token.hpCurrent ?? 0, max: token.hpMax };
+}
+
+/**
+ * Who is making this attack (stage 16b): a character sheet, or a token's own
+ * combat profile.
+ *
+ * Both arms end up carrying a `CpredCharacterData`, which is the whole design —
+ * everything downstream (the planner, the breakdown, the turn budget, the chat
+ * card) works on a sheet and never learns that statists exist. What differs is
+ * only where the numbers came from and where the spent rounds are written back.
+ */
+type AttackSource =
+  | { kind: 'character'; character: Character; token: Token; data: CpredCharacterData }
+  | { kind: 'statist'; token: Token; profile: SheetCombatProfile; data: CpredCharacterData };
+
+/** Name shown as the actor of the roll — the sheet's, or the token's. */
+function sourceName(source: AttackSource): string {
+  return source.kind === 'character' ? source.character.name : source.token.name;
+}
+
+/**
+ * The statist token this socket may fire with.
+ *
+ * A statist has no owner in the sheet sense, so control follows the token: the
+ * GM always, a player only for a token that is theirs. The refusals reuse the
+ * codes the character path already speaks, so the client's error table did not
+ * have to grow a second vocabulary.
+ */
+async function resolveStatistToken(
+  deps: RealtimeDeps,
+  campaignId: string,
+  user: SessionUser,
+  sceneId: string,
+  attackerTokenId: unknown,
+): Promise<Token> {
+  if (typeof attackerTokenId !== 'string' || attackerTokenId.length === 0) {
+    throw new RealtimeError('BAD_REQUEST');
+  }
+  const { token } = await requireCampaignToken(deps.ctx.prisma, campaignId, attackerTokenId);
+  if (token.sceneId !== sceneId) throw new RealtimeError('ATTACKER_ON_OTHER_SCENE');
+  if (user.role !== ROLE_GM && token.ownerId !== user.id) {
+    throw new RealtimeError('CHARACTER_NOT_FOUND');
+  }
+  return token;
+}
+
+/**
+ * Spends Luck and ammunition in one write, and re-emits whatever holds them.
+ *
+ * The two arms differ only in the destination: a sheet writes the whole
+ * `CpredCharacterData` back, a statist writes the magazine into its own profile
+ * column. A statist never spends Luck — its synthesised sheet has none, and the
+ * planner refuses the request long before this.
+ */
 async function spendAttackCosts(
   deps: RealtimeDeps,
   campaignId: string,
-  character: Character,
-  data: CpredCharacterData,
+  source: AttackSource,
   meta: CpredAttackMeta,
   luckSpent: number,
 ): Promise<void> {
   if (luckSpent === 0 && meta.ammoCost === 0) return;
+
+  if (source.kind === 'statist') {
+    const saved = await deps.ctx.prisma.token.update({
+      where: { id: source.token.id },
+      data: {
+        combatProfile: JSON.stringify({ ...source.profile, ammoCurrent: meta.ammoAfter }),
+      },
+    });
+    source.token = saved;
+    await emitTokensById(deps, campaignId, [saved.id]);
+    return;
+  }
+
+  const { character, data } = source;
   const weapons = data.weapons.map((row) =>
     row.id === meta.weaponRowId ? { ...row, ammoCurrent: meta.ammoAfter } : row,
   );
@@ -198,11 +292,20 @@ function attackDetail(meta: CpredAttackMeta): string {
   return parts.join(' · ');
 }
 
-/** Everyone the suppressing fire can reach: visible tokens within 25 m. */
+/**
+ * Everyone the suppressing volley can reach: tokens within 25 m that the
+ * shooter has a line to.
+ *
+ * The line of fire is stage 16b closing a hole the rule always had. RAW is
+ * explicit — „wszystkie … osoby w zasięgu 25 m, **które widzisz**" (s. 174) —
+ * and until now the radius was the whole of it, so a burst down a corridor
+ * pinned everyone in the neighbouring flat.
+ */
 async function suppressionTargets(
   deps: RealtimeDeps,
   scene: Scene,
   attacker: Token,
+  fire: FireContext,
 ): Promise<{ token: Token; metres: number }[]> {
   const tokens = await deps.ctx.prisma.token.findMany({ where: { sceneId: scene.id } });
   const view = toSceneView(scene);
@@ -212,9 +315,42 @@ async function suppressionTargets(
     const metres = metresForRules(
       metresBetweenTokens(toTokenView(attacker, true), toTokenView(token, true), view),
     );
-    if (metres <= CPRED_SUPPRESSIVE_RANGE_M) found.push({ token, metres });
+    if (metres > CPRED_SUPPRESSIVE_RANGE_M) continue;
+    if (!(await lineOfFireBetween(deps, scene, attacker, token, fire))) continue;
+    found.push({ token, metres });
   }
   return found.sort((a, b) => a.metres - b.metres);
+}
+
+/**
+ * The scene geometry an attack is judged against, loaded at most once per
+ * attack. A cache rather than a plain call because suppressive fire asks the
+ * same question of every token in a 25 m radius, and the wall list does not
+ * change between those questions.
+ */
+interface FireContext {
+  loaded: SceneVisionContext | null;
+}
+
+/** Is the straight line between two tokens free of walls and shut doors? */
+async function lineOfFireBetween(
+  deps: RealtimeDeps,
+  scene: Scene,
+  from: Token,
+  to: Token,
+  fire: FireContext,
+): Promise<boolean> {
+  const context = fire.loaded ?? (await loadVisionContext(deps.ctx.prisma, scene));
+  fire.loaded = context;
+  // A scene nobody has drawn walls on cannot block anything, and paying for the
+  // raycast there would tax every attack in the campaign for nothing.
+  if (context.walls.length === 0) return true;
+  const view = toSceneView(scene);
+  return hasLineOfFire(
+    context,
+    tokenCentre(toTokenView(from, true), view),
+    tokenCentre(toTokenView(to, true), view),
+  );
 }
 
 /**
@@ -263,6 +399,44 @@ async function resolveSuppression(
   return checks;
 }
 
+/**
+ * Dresses a statist token as an attacker (stage 16b).
+ *
+ * Two passes, and the second one is not laziness: which skill fires the weapon
+ * is a property of the *weapon type* in the compendium, so the sheet has to
+ * exist before the catalogue can be asked, and the answer then decides which
+ * skill on that sheet carries the profile's level. Building it in one pass would
+ * mean either hard-coding the skill or giving the statist every skill at once —
+ * and „trained in everything" is exactly what a statist must not be.
+ */
+async function buildStatistSource(
+  deps: RealtimeDeps,
+  campaignId: string,
+  registry: CpredRegistry,
+  token: Token,
+  request: CpredAttackRequest | undefined,
+): Promise<AttackSource> {
+  const profile = readSheetCombatProfile(token.combatProfile);
+  if (!profile) throw new RealtimeError('TOKEN_HAS_NO_PROFILE');
+  const hp = tokenHpOf(token);
+
+  // Pass one: a sheet good enough to look the weapon up with.
+  const bare = sheetFromCombatProfile(profile, hp, null);
+  const weapon = await resolveWeaponRow(deps, campaignId, bare, SHEET_STATIST_WEAPON_ROW_ID);
+  const skillId =
+    request?.mode === 'autofire' || request?.mode === 'suppressive'
+      ? CPRED_AUTOFIRE_SKILL_ID
+      : (weapon.resolved?.skillId ?? request?.skillId ?? null);
+
+  // Pass two: the same sheet with that one skill at the profile's level.
+  return {
+    kind: 'statist',
+    token,
+    profile,
+    data: sheetFromCombatProfile(profile, hp, skillId),
+  };
+}
+
 export const attackRollEvent = defineEvent<
   AttackRollPayload<CpredAttackRequest>,
   { messageId: number }
@@ -270,9 +444,14 @@ export const attackRollEvent = defineEvent<
   name: 'attack:roll',
   handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
-    const character = await requireRollableCharacter(deps, campaignId, user, payload?.characterId);
     const registry = deps.ctx.cpred;
-    const data = parseCharacterData(character.data, registry);
+    // Stage 16b: an attack no longer has to come from a sheet. Naming no
+    // character means „the token itself is the fighter", and the profile on it
+    // supplies the numbers a sheet would have.
+    const statist = typeof payload?.characterId !== 'string' || payload.characterId.length === 0;
+    const character = statist
+      ? null
+      : await requireRollableCharacter(deps, campaignId, user, payload?.characterId);
 
     const { token: target, scene } = await requireCampaignToken(
       deps.ctx.prisma,
@@ -288,7 +467,7 @@ export const attackRollEvent = defineEvent<
       const fog = await fetchFogState(deps.ctx.prisma, scene);
       const controlledByPlayer =
         target.ownerId === user.id ||
-        (target.characterId !== null && target.characterId === character.id);
+        (target.characterId !== null && target.characterId === character?.id);
       if (
         fog.enabled &&
         !controlledByPlayer &&
@@ -298,14 +477,26 @@ export const attackRollEvent = defineEvent<
       }
     }
 
-    const attacker = await resolveAttackerToken(
-      deps,
-      campaignId,
-      character,
-      target.sceneId,
-      payload?.attackerTokenId,
-    );
+    const attacker = character
+      ? await resolveAttackerToken(
+          deps,
+          campaignId,
+          character,
+          target.sceneId,
+          payload?.attackerTokenId,
+        )
+      : await resolveStatistToken(deps, campaignId, user, target.sceneId, payload?.attackerTokenId);
     if (attacker.id === target.id) throw new RealtimeError('BAD_REQUEST');
+
+    const source = character
+      ? ({
+          kind: 'character',
+          character,
+          token: attacker,
+          data: parseCharacterData(character.data, registry),
+        } satisfies AttackSource)
+      : await buildStatistSource(deps, campaignId, registry, attacker, payload?.request);
+    const data = source.data;
 
     const sceneView = toSceneView(scene);
     const metres = metresForRules(
@@ -316,6 +507,11 @@ export const attackRollEvent = defineEvent<
     // Being in a Hold is −2 to everything and takes two-handed weapons away
     // (stage 14d). Read from the tracker, never from the request.
     const attackerGrapple = await grappleStateForToken(deps.ctx.prisma, scene.id, attacker.id);
+    // What stands between the two of them (stage 16b). Measured here, never
+    // sent: the walls do not leave the server, so the client's preview cannot
+    // know and deliberately does not guess.
+    const fire: FireContext = { loaded: null };
+    const lineOfFire = await lineOfFireBetween(deps, scene, attacker, target, fire);
     const planned = planCpredAttack(
       data,
       registry,
@@ -335,6 +531,7 @@ export const attackRollEvent = defineEvent<
           injuries: data.criticalInjuries,
         }),
         ...(attackerGrapple.grappled ? { grappled: true } : {}),
+        lineOfFire,
       },
     );
     if (!planned.ok) throw new RealtimeError(planned.error);
@@ -363,14 +560,14 @@ export const attackRollEvent = defineEvent<
       { silent: true },
     );
 
-    await spendAttackCosts(deps, campaignId, character, data, meta, plan.luckSpent);
+    await spendAttackCosts(deps, campaignId, source, meta, plan.luckSpent);
 
     const gesture: RollGesture | undefined = sanitizeGesture(payload?.gesture);
     const result: RollResult = rollFormula(plan.formula, createMixedRng(gesture?.entropy), {
       checkRule: true,
     });
     result.title = plan.title;
-    result.actor = character.name;
+    result.actor = sourceName(source);
     result.breakdown = plan.breakdown;
     if (gesture && gesture.strength > 0) result.tossStrength = gesture.strength;
     if (gesture?.toss) result.toss = gesture.toss;
@@ -383,6 +580,7 @@ export const attackRollEvent = defineEvent<
       meta,
       scene,
       attacker,
+      fire,
     );
     // „Dopóki zasłaniasz się Ludzką tarczą, uznaje się, że jesteś za osłoną"
     // (s. 178). Cover is not in the map model, so this is a line on the card
@@ -421,12 +619,13 @@ async function buildAttackMeta(
   meta: CpredAttackMeta,
   scene: Scene,
   attacker: Token,
+  fire: FireContext,
 ): Promise<RollAttackMeta> {
   const label = `${meta.weaponName} → ${meta.targetName}`;
 
   if (meta.dv === null) {
     // Suppressive fire sets the DV instead of beating one.
-    const targets = await suppressionTargets(deps, scene, attacker);
+    const targets = await suppressionTargets(deps, scene, attacker, fire);
     const checks = await resolveSuppression(deps, campaignId, registry, targets, result.total);
     return {
       system: { ...meta },

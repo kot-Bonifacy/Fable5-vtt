@@ -1,13 +1,14 @@
-# Etap 16c — Granaty, wzorce obszarowe i amunicja specjalna 🏁 Pełny ostrzał
+# Etap 16d — Granaty, wzorce obszarowe i amunicja specjalna 🏁 Pełny ostrzał
 
-**Faza:** D — Walka · **Wymaga etapów:** 16b
+**Faza:** D — Walka · **Wymaga etapów:** 16b, 16c
 
 ## Cel sesji
 
 Ostrzał przestaje być „jedna kula, jeden cel": granat, śrut i wyrzutnia rażą obszar,
 a rodzaj naboju wreszcie coś znaczy. Po tym etapie walka dystansowa CP RED jest kompletna.
 
-**Pochodzenie:** dopisany 2026-07-31 razem z 16b. Zbiera trzy wpisy z POMYSLY, które etap 16
+**Pochodzenie:** dopisany 2026-07-31 razem z 16b (wtedy jako 16c; przenumerowany, gdy 16b
+podzielił się na 16b i 16c). Zbiera trzy wpisy z POMYSLY, które etap 16
 świadomie zostawił („granaty i wzorce obszarowe" z 28.07, „rzut przedmiotem" z 31.07,
 „amunicja specjalna" z 27.07) — dane są sparsowane od etapu 13, brakuje modelu i UI.
 
@@ -41,7 +42,7 @@ a rodzaj naboju wreszcie coś znaczy. Po tym etapie walka dystansowa CP RED jest
   zostają przy etapie 23, jak ustalono 27.07
 - **Trucizny z pełnym testem Odporności** — biotoksyczna amunicja korzysta z generycznego
   DoT z 14e; pełna mechanika trucizn ma własny wpis w POMYSLY
-- Niszczenie osłon obszarem ponad to, co daje 16b (wybuch obejmuje osłonę tak samo jak token)
+- Niszczenie osłon obszarem ponad to, co daje 16c (wybuch obejmuje osłonę tak samo jak token)
 
 ## Kryteria ukończenia
 

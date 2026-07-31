@@ -1,6 +1,15 @@
 import { useEffect, useState } from 'react';
-import type { CampaignDetail, TokenPatch, TokenView } from '@vtt/shared';
+import type {
+  CampaignDetail,
+  CpredCombatProfile,
+  TokenPatch,
+  TokenView,
+  WeaponEntry,
+} from '@vtt/shared';
 import {
+  ARMOR_SP_MAX,
+  CPRED_STAT_MAX,
+  CPRED_STAT_MIN,
   LIGHT_COLORS,
   LIGHT_DEFAULT_COLOR,
   LIGHT_RADIUS_MAX_METRES,
@@ -10,6 +19,9 @@ import {
   TOKEN_SIZE_MAX,
   TOKEN_SIZE_MIN,
   VISION_RANGE_MAX_METRES,
+  createDefaultCombatProfile,
+  isWeaponEntry,
+  sanitizeCombatProfile,
 } from '@vtt/shared';
 import { apiGet } from '../api.js';
 import {
@@ -22,6 +34,8 @@ import {
 import { useTokenStore } from '../stores/tokenStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useCombatStore } from '../stores/combatStore.js';
+import { useCompendiumStore } from '../stores/compendiumStore.js';
+import { AttackLauncher } from './AttackLauncher.js';
 import type { TokenMenuState } from './MapArea.js';
 
 const MENU_WIDTH = 240;
@@ -29,6 +43,147 @@ const MENU_WIDTH = 240;
 interface PlayerOption {
   id: string;
   name: string;
+}
+
+/**
+ * The statist's fighting numbers (stage 16b).
+ *
+ * Twelve fields instead of a character sheet, and the shortness is the feature:
+ * a ganger who exists to fire three shots and fall over should be statted
+ * between two sentences of narration. Everything not asked for here is the
+ * rulebook's ordinary human — see `systems/cpred/statist.ts`.
+ */
+function StatistProfileFields({
+  profile,
+  onChange,
+}: {
+  profile: CpredCombatProfile;
+  onChange: (next: CpredCombatProfile) => void;
+}) {
+  const entries = useCompendiumStore((s) => s.entries);
+  const order = useCompendiumStore((s) => s.order);
+
+  const weapons = order
+    .map((id) => entries[id])
+    .filter((entry): entry is WeaponEntry => !!entry && isWeaponEntry(entry));
+
+  function set<K extends keyof CpredCombatProfile>(key: K, value: CpredCombatProfile[K]) {
+    onChange({ ...profile, [key]: value });
+  }
+
+  /** Picking a weapon copies its numbers, the way a sheet row does. */
+  function pickWeapon(compendiumId: string) {
+    const entry = weapons.find((weapon) => weapon.id === compendiumId);
+    if (!entry) {
+      onChange({ ...profile, weaponId: null, weaponName: 'Pięści', weaponDamage: '1k6' });
+      return;
+    }
+    const magazine = entry.magazine ?? 0;
+    onChange({
+      ...profile,
+      weaponId: entry.id,
+      weaponName: entry.name,
+      weaponDamage: entry.damage ?? profile.weaponDamage,
+      ammoMax: magazine,
+      ammoCurrent: magazine,
+    });
+  }
+
+  const statFields: { key: 'ref' | 'dex' | 'body' | 'will'; label: string }[] = [
+    { key: 'ref', label: 'REF' },
+    { key: 'dex', label: 'ZW' },
+    { key: 'body', label: 'BC' },
+    { key: 'will', label: 'SW' },
+  ];
+
+  return (
+    <>
+      <div className="scene-editor-row">
+        {statFields.map((field) => (
+          <label key={field.key} className="auth-label" title={`Cecha ${field.label}`}>
+            {field.label}
+            <input
+              type="number"
+              className="scene-number-input"
+              min={CPRED_STAT_MIN}
+              max={CPRED_STAT_MAX}
+              value={profile[field.key]}
+              onChange={(e) => set(field.key, Number(e.target.value))}
+            />
+          </label>
+        ))}
+      </div>
+      <div className="scene-editor-row">
+        <label className="auth-label" title="Poziom umiejętności, którą strzela ta broń">
+          Umiejętność
+          <input
+            type="number"
+            className="scene-number-input"
+            min={0}
+            max={10}
+            value={profile.skillLevel}
+            onChange={(e) => set('skillLevel', Number(e.target.value))}
+          />
+        </label>
+        <label className="auth-label" title="Poziom Uniku — z niego liczy się PT obrony statysty">
+          Unik
+          <input
+            type="number"
+            className="scene-number-input"
+            min={0}
+            max={10}
+            value={profile.evasion}
+            onChange={(e) => set('evasion', Number(e.target.value))}
+          />
+        </label>
+        <label className="auth-label" title="OB pancerza; schodzi automatycznie przy trafieniu">
+          Pancerz OB
+          <input
+            type="number"
+            className="scene-number-input"
+            min={0}
+            max={ARMOR_SP_MAX}
+            value={profile.armorSp}
+            onChange={(e) => set('armorSp', Number(e.target.value))}
+          />
+        </label>
+      </div>
+
+      <label className="auth-label" htmlFor="statist-weapon">
+        Broń
+      </label>
+      <select
+        id="statist-weapon"
+        value={profile.weaponId ?? ''}
+        onChange={(e) => pickWeapon(e.target.value)}
+      >
+        <option value="">— bez broni (pięści) —</option>
+        {weapons.map((weapon) => (
+          <option key={weapon.id} value={weapon.id}>
+            {weapon.name}
+          </option>
+        ))}
+      </select>
+      <div className="scene-editor-row">
+        <label className="auth-label" title="Naboje w magazynku">
+          Amunicja
+          <input
+            type="number"
+            className="scene-number-input"
+            min={0}
+            max={profile.ammoMax}
+            value={profile.ammoCurrent}
+            onChange={(e) => set('ammoCurrent', Number(e.target.value))}
+          />
+        </label>
+        <span className="auth-hint">z {profile.ammoMax}</span>
+      </div>
+      <p className="auth-hint">
+        Reszta cech statysty to 5 (przeciętny człowiek). PW bierze się z paska powyżej, nie z
+        profilu.
+      </p>
+    </>
+  );
 }
 
 function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => void }) {
@@ -52,6 +207,10 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
   const [players, setPlayers] = useState<PlayerOption[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [hasProfile, setHasProfile] = useState(token.combatProfile != null);
+  const [profile, setProfile] = useState<CpredCombatProfile>(() =>
+    token.combatProfile ? sanitizeCombatProfile(token.combatProfile) : createDefaultCombatProfile(),
+  );
   const characters = useCharacterStore((s) => s.characters);
   const characterOrder = useCharacterStore((s) => s.order);
   const linked = characterId !== '';
@@ -98,6 +257,9 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
         : null,
       // A linked token takes its HP from the sheet — never write them here.
       ...(linked ? {} : { hp: hasHp ? { current: hpCurrent, max: hpMax } : null }),
+      // A token with a real sheet has no use for a statist profile, and keeping
+      // both would give the attack path two sources for one weapon (stage 16b).
+      combatProfile: linked || !hasProfile ? null : { ...profile },
     };
     const ack = await updateToken(token.id, patch);
     setSaving(false);
@@ -286,6 +448,20 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
           </div>
         )}
 
+        {!linked && (
+          <>
+            <label className="auth-label">
+              <input
+                type="checkbox"
+                checked={hasProfile}
+                onChange={(e) => setHasProfile(e.target.checked)}
+              />{' '}
+              Profil bojowy (statysta bez karty postaci)
+            </label>
+            {hasProfile && <StatistProfileFields profile={profile} onChange={setProfile} />}
+          </>
+        )}
+
         {error && <p className="auth-error">{error}</p>}
         <div className="scene-editor-row">
           <button type="button" onClick={() => void save()} disabled={saving}>
@@ -305,6 +481,7 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
   const statuses = useTokenStore((s) => s.statuses);
   const combat = useCombatStore((s) => s.combat);
   const [editing, setEditing] = useState(false);
+  const [aiming, setAiming] = useState(false);
   const combatant = combat?.combatants.find((c) => c.tokenId === menu.tokenId) ?? null;
 
   // The token can vanish under the open menu (deleted in another tab).
@@ -398,6 +575,16 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
             📄 Otwórz kartę postaci
           </button>
         )}
+        {/* Stage 16b: the map's own way into the attack. Before it, firing meant
+            opening somebody's sheet — and an NPC without one could not fire. */}
+        <button
+          type="button"
+          className="context-menu-item"
+          onClick={() => setAiming((open) => !open)}
+        >
+          🎯 Atak…
+        </button>
+        {aiming && <AttackLauncher token={token} onArmed={onClose} />}
         <button
           type="button"
           className="context-menu-item"

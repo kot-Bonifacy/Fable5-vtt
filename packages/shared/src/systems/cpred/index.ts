@@ -9,5 +9,6 @@ export * from './damage.js';
 export * from './statuses.js';
 export * from './movement.js';
 export * from './attacks.js';
+export * from './statist.js';
 export * from './grapple.js';
 export * from './turn.js';
