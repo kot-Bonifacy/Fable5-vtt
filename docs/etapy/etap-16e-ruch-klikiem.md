@@ -153,6 +153,21 @@ odmową, tylko marszem do granicy wiedzy.
 - **„Klik w puste odznacza” przegrał z kolejnością pierwszeństwa.** Zakres wymieniał obie
   rzeczy; przy zaznaczonym tokenie klik w podłoże **jest marszem** (tak mówi lista
   pierwszeństwa dwa punkty niżej), więc odznaczanie zostało przy Esc i PPM.
+- **Błąd spoza etapu, znaleziony przez zgłoszenie MG: kliknięcie w token było zepsute dla
+  graczy od 18a.** Objaw („klikam w token i nic") wyglądał na wadę 16e. Log `event.event.target`
+  z `viewport.on('clicked')` pokazał `Viewport` zamiast `TokenNode`: **hit-test nigdy nie
+  dochodził do warstwy tokenów**, bo pełnoekranowe warstwy przykrywające — u gracza płachta
+  widoczności (18a), u każdego mgła (17a) — leżą nad tokenami i domyślnie biorą udział
+  w trafianiu. Naprawa: `eventMode = 'none'` na warstwach czysto malarskich. Obala to
+  zapisaną wcześniej „pułapkę CDP”: zdarzenia wskaźnika docierały zawsze, a token był
+  nieklikalny także dla prawdziwej myszy.
+
+- **Odmowa „nie twoja tura” musi porównywać dokładnie tak jak serwer.** Pierwsza wersja miała
+  zabezpieczenie `activeCombatantId && …`, a serwer **celowo zeruje** to pole dla gracza, gdy
+  turę ma ukryty NPC (`filterCombatForPlayer`) — nazwanie go zdradziłoby jego istnienie.
+  „Nie wiem, czyja jest tura” nadal znaczy „nie moja”, bo gdyby była moja, aktywnym byłby
+  właśnie ten widoczny wiersz.
+
 - **Trzeci pierścień rysuje `MapRenderer` na warstwie overlay, nie `TokenNode`.** Zakres mówił
   „`TokenNode` rysuje trzeci pierścień”, i tak było zrobione — po czym MG zgłosił, że kliknięcie
   w token nie daje efektu. `TokenNode` sizuje wszystko w **jednostkach świata**, a stół patrzy

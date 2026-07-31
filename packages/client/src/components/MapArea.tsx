@@ -247,7 +247,13 @@ function walkRefusalFor(
   if (blocked) return blocked;
   const combatant = combat?.combatants.find((row) => row.tokenId === tokenId);
   if (!combatant || !combat) return null;
-  if (combat.activeCombatantId && combat.activeCombatantId !== combatant.id) {
+  // The same comparison the server makes (`applySpend`), deliberately without a
+  // „only when we know who is acting" guard. A player is *often* not told who
+  // has the turn — `filterCombatForPlayer` blanks `activeCombatantId` whenever a
+  // hidden NPC is acting, because naming them would announce them — and „I
+  // don't know whose turn it is" still means „it is not mine": if it were, the
+  // active participant would be this very row, which the player can see.
+  if (combat.activeCombatantId !== combatant.id) {
     return 'To nie jest tura tej postaci — poczekaj na swoją kolej.';
   }
   return null;

@@ -807,6 +807,23 @@ export class MapRenderer {
     this.visionScratch.addChild(this.unlitSprite);
     this.exploredSprite.blendMode = 'erase';
     this.visionScratch.addChild(this.exploredSprite);
+    // Layers that are pure covering: they draw over the map and must never be
+    // the thing a click lands on. Without this the darkness sheet a player has
+    // over the whole scene sits between the pointer and every token on it.
+    for (const layer of [
+      this.background,
+      this.grid,
+      this.drawLayer,
+      this.gmDrawLayer,
+      this.rangeLayer,
+      this.dragGhost,
+      this.lightLayer,
+      this.fogLayer,
+      this.visionLayer,
+      this.overlayLayer,
+    ]) {
+      layer.eventMode = 'none';
+    }
     this.app.stage.addChild(viewport);
     this.viewport = viewport;
     this.app.ticker.add(this.tickFlicker);
