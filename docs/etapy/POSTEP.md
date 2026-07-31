@@ -25,6 +25,8 @@ Pełne notatki z zamkniętych etapów: `archiwum/dziennik-sesji.md` (nie czytaj 
 | 14e | Automaty tury: rany krytyczne, DoT, monity | ✅     | 2026-07-31      | strażnik hooków w osobnej kolumnie (budżet tury jest odtwarzany); + kary płaskie z ran |
 | 15  | Obrażenia, pancerz, krytyki, Death Save   | ✅     | 2026-07-27      | obie tabele ran z podręcznika głównego (nieoficjalna tabela głowy zastąpiona 27.07)  |
 | 16  | Zasięgi, DV z mapy, autofire              | ✅     | 2026-07-28      | wręcz: PT zastępczy z karty celu + przycisk „Unik” (RAW nie zna statycznego PT)      |
+| 16b | Osłony, linia strzału i atak z mapy       | ⬜     |                 | dopisany 31.07 — dziś kula przechodzi przez mur, a NPC bez karty nie może strzelać   |
+| 16c | Granaty, obszary i amunicja specjalna     | ⬜     |                 | dopisany 31.07 — zbiera 3 wpisy z POMYSLY (granaty, rzut przedmiotem, naboje)        |
 | 17a | Fog of war i warstwa MG                   | ✅     | 2026-07-28      | etap 17 podzielony na 17a/17b; nowa scena startuje zakryta, mgła przełączalna        |
 | 17b | Rysowanie po mapie                        | ✅     | 2026-07-28      | tekst skaluje się z mapą (odstępstwo od wskazówki); MG domyślnie rysuje u siebie     |
 | 18a | Ściany i widoczność tokenów               | ✅     | 2026-07-29      | etap 18 podzielony na 18a/18b; ściany nie opuszczają serwera                         |
@@ -45,7 +47,9 @@ Pełne notatki z zamkniętych etapów: `archiwum/dziennik-sesji.md` (nie czytaj 
 ## Od czego zacząć
 
 Ostatnio zamknięte: **14e** (automaty tury — ogień/trucizna/tonięcie na przejściu tury, rany krytyczne z efektami maszynowymi, Przygwożdżony, monit Testu Przeżywalności z pełnym modyfikatorem).
-Następny etap: **19 — pamięć botów (RAG, dziennik, relacje)**. Cała faza D (walka) jest domknięta: 14, 14b–14e, 15, 16 — tura zaczyna i kończy się sama, więc etap 20 dostaje bezpieczniki „za darmo", tak jak zapowiadał opis 14e.
+Następny etap: **16b — osłony, linia strzału i atak z mapy** (dopisany 31.07 po przeglądzie mechaniki ostrzału, decyzja MG). Potem **16c** (granaty, obszary, amunicja specjalna), a dopiero po nich **19 — pamięć botów**.
+
+**Dlaczego 16b/16c przed 19:** strzelanie jako takie jest zrobione od etapu 16 (PT z tabeli zasięgów wg dystansu z mapy, ogień ciągły z mnożnikiem, ogień zaporowy, amunicja, przeładowanie, celowany strzał w głowę, LA z 14b), ale **atak nie sprawdza, co stoi między strzelcem a celem** — kula przechodzi przez mur, choć ściany są od 18a. Etap 16 zostawił to świadomie („wymaga ścian z etapu 18"), a etap 20 uczyłby boty strzelać w świecie bez osłon. Do tego atak startuje **wyłącznie** z wiersza broni na karcie postaci (brak wejścia z mapy i z zakładki „Walka"), a `roll:attack` wymaga `characterId`, więc MG nie ma jak strzelić NPC-em bez pełnej karty.
 
 ### Otwarte zaległości (przechodzą między etapami)
 
