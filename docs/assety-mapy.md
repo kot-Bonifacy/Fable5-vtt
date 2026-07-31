@@ -8,7 +8,16 @@ Notatki z etapu 04. Gdzie brać grafiki map, czego pilnować licencyjnie i jak g
 - Mapy wgrywamy **bez wrysowanej siatki** — siatkę rysuje VTT (konfigurowalna w edytorze sceny). Jeśli mapa ma już siatkę, dopasuj `rozmiar kratki` i `offset` do niej suwakami.
 - Skala CP RED: **1 kratka = 2 m**. Przy 100 px/kratkę mapa 4096×4096 ≈ 82×82 m (spory kwartał ulic).
 
-## Plik testowy w repo
+## Mapy w repo
+
+### `night-city-crossroads-2508.png` — mapa do gry
+
+- **Autorstwo MG**: wygenerowana AI z promptu nr 1 z tego pliku („Skrzyżowanie w Night City"), potem upscale do 2508×2508 px (~10,2 MB). Własna praca właściciela projektu, więc może być w publicznym repo — inaczej niż mapy z sieci, które zostają w `uploads/`.
+- Zawartość: skrzyżowanie z przejściami dla pieszych, auta w ruchu i przy krawężniku, cztery narożniki zabudowy z wnętrzami (bar, sklepy, parking, lądowisko na dachu), neony i mokry asfalt. **Bez wrysowanej siatki i bez tekstu** — siatkę rysuje VTT.
+- **Skala jest wiążąca dla wrażenia z mapy** (1 kratka = 2 m): przy 100 px/kratkę te 2508 px to ~50 × 50 m, przy 60 px/kratkę ~84 × 84 m. Kalibrację robi się suwakami w edytorze sceny — dopasuj kratkę do szerokości jezdni, a nie do okrągłej liczby.
+- Wnętrza budynków są widoczne, więc mapa dobrze współgra ze ścianami i mgłą MG z etapów 17a–18e.
+
+### `test-map-4096.png` — mapa testowa
 
 - `data/public/maps/test-map-4096.png` — generowany programowo przez `scripts/generate-test-map.mjs` (czysty Node, bez zależności; PNG kodowany ręcznie). 4096×4096 px, ~4,3 MB. Wolny od praw osób trzecich, bez wrysowanej siatki i bez tekstu. Regeneracja: `node scripts/generate-test-map.mjs [plik]`.
 - **Skala jest wiążąca dla wyglądu mapy.** Przy 1 kratce = 2 m i 100 px/kratkę mapa 4096 px to ~82 × 82 m — czyli **jedno skrzyżowanie**, nie dzielnica. Poprzednia wersja rysowała 5×5 „kwartałów”, z których każdy miał w praktyce 6,6 m szerokości; dlatego wyglądała jak schemat, a nie miasto. Jeśli będziesz robić kolejne mapy proceduralnie — najpierw policz metry.
