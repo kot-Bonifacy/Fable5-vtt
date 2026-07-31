@@ -247,6 +247,11 @@ const DRAG_THRESHOLD_PX = 4;
 const DOUBLE_CLICK_MS = 350;
 /** How long after a drop a map click is still the drop's own pointer release. */
 const DRAG_CLICK_GRACE_MS = 250;
+/**
+ * Longest gap between two march frames that counts as real time, in ms. Beyond
+ * it the renderer is assumed to have stalled and the march simply resumes.
+ */
+const MARCH_MAX_FRAME_MS = 100;
 /** Dashes in the selection ring — coarse enough to read as dashed at table zoom. */
 const SELECT_RING_DASHES = 12;
 /**
@@ -399,9 +404,22 @@ interface MarchState {
   node: TokenNode;
   /** Where the figure set off from — the server measures the route from here. */
   start: ScenePoint;
-  /** Waypoints left, as token top-left positions; `index` is the next one. */
+  /** Waypoints of the walk, as token top-left positions. */
   route: ScenePoint[];
-  index: number;
+  /**
+   * Distance from `start` to each waypoint, in scene pixels — the prefix sums
+   * that turn „how long have I been walking" into „where am I". Computed once,
+   * because the route never changes while it is being walked.
+   */
+  distances: number[];
+  /**
+   * `performance.now()` when the figure set off — pushed forward whenever the
+   * renderer stalls, so a gap between frames is absorbed instead of being
+   * covered at once. See `MARCH_MAX_FRAME_MS`.
+   */
+  startedAt: number;
+  /** When the march was last advanced, for spotting those gaps. */
+  lastTickAt: number;
   /** Where the figure is right now, between two waypoints. */
   x: number;
   y: number;
@@ -1923,11 +1941,23 @@ export class MapRenderer {
     }
 
     const perPixel = metresPerPixel(scene);
+    const start = { x: node.x, y: node.y };
+    const route = hover.walkable.slice(1);
+    const distances: number[] = [];
+    let running = 0;
+    let previous = start;
+    for (const point of route) {
+      running += Math.hypot(point.x - previous.x, point.y - previous.y);
+      distances.push(running);
+      previous = point;
+    }
     this.march = {
       node,
-      start: { x: node.x, y: node.y },
-      route: hover.walkable.slice(1),
-      index: 0,
+      start,
+      route,
+      distances,
+      startedAt: performance.now(),
+      lastTickAt: performance.now(),
       x: node.x,
       y: node.y,
       walked: [],
@@ -1963,30 +1993,57 @@ export class MapRenderer {
       this.finishMarch(null, false);
       return;
     }
-    let budgetPx = (march.speedPx * this.app.ticker.deltaMS) / 1000;
-    while (budgetPx > 0 && march.index < march.route.length) {
-      const target = march.route[march.index]!;
-      const dx = target.x - march.x;
-      const dy = target.y - march.y;
-      const distance = Math.hypot(dx, dy);
-      if (distance <= budgetPx || distance < 0.01) {
-        march.x = target.x;
-        march.y = target.y;
-        march.walked.push({ x: target.x, y: target.y });
-        march.index++;
-        budgetPx -= distance;
-        continue;
+    // A stall is absorbed, never covered. If the renderer went away for a
+    // while — a background tab, a long frame, the browser reflowing a window —
+    // the figure carries on from where it was instead of appearing at the spot
+    // it „should" have reached. Walking is something the table watches, and a
+    // figure that jumps two rooms because a frame was late is worse than a
+    // figure that arrives a moment late.
+    const now = performance.now();
+    const gap = now - march.lastTickAt;
+    if (gap > MARCH_MAX_FRAME_MS) march.startedAt += gap - MARCH_MAX_FRAME_MS;
+    march.lastTickAt = now;
+
+    // How far along the route the figure should be *now*, measured from the
+    // wall clock rather than by adding up frame deltas.
+    //
+    // The difference matters more than it looks. An accumulating walker drifts
+    // with every irregular frame and, worse, is not idempotent: run the same
+    // frame twice and the figure moves twice as far. Reading the clock makes
+    // the position a pure function of „when did this march start", so a stutter,
+    // a slow frame or a doubled tick all land in exactly the same place — and a
+    // march can never outrun its own speed.
+    const travelled = (march.speedPx * (now - march.startedAt)) / 1000;
+    const total = march.distances[march.distances.length - 1] ?? 0;
+    const done = travelled >= total;
+
+    let leg = 0;
+    while (leg < march.distances.length && march.distances[leg]! <= travelled) leg++;
+    if (done || leg >= march.distances.length) {
+      const last = march.route[march.route.length - 1];
+      if (last) {
+        march.x = last.x;
+        march.y = last.y;
       }
-      march.x += (dx / distance) * budgetPx;
-      march.y += (dy / distance) * budgetPx;
-      budgetPx = 0;
+      march.walked = march.route.map((point) => ({ ...point }));
+    } else {
+      const from = leg === 0 ? march.start : march.route[leg - 1]!;
+      const to = march.route[leg]!;
+      const legStart = leg === 0 ? 0 : march.distances[leg - 1]!;
+      const legLength = march.distances[leg]! - legStart;
+      const t = legLength > 0 ? (travelled - legStart) / legLength : 1;
+      march.x = from.x + (to.x - from.x) * t;
+      march.y = from.y + (to.y - from.y) * t;
+      // Only whole waypoints count as walked: the leg in progress is charged
+      // from where the figure actually stands if the march is cut short.
+      march.walked = march.route.slice(0, leg).map((point) => ({ ...point }));
     }
 
     march.node.position.set(march.x, march.y);
     this.drawSelectionRing();
     this.drawMarchTrail(march);
     this.onTokenMove?.(march.node.token.id, march.x, march.y, false);
-    if (march.index >= march.route.length) {
+    if (done) {
       this.finishMarch(march.clipped ? 'Koniec ruchu w tej turze — postać zatrzymuje się.' : null);
     }
   };
