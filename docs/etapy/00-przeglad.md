@@ -28,6 +28,8 @@ Każdy etap to jedna sesja pracy z Claude. Etapy są pogrupowane w 9 faz. Szczeg
 | 16b | Linia strzału i atak z mapy                        | D. Walka             |                           |
 | 16c | Osłony jako obiekty sceny                          | D. Walka             |                           |
 | 16d | Granaty, wzorce obszarowe i amunicja specjalna     | D. Walka             | 🏁 Pełny ostrzał          |
+| 16e | Ruch klikiem: zaznaczenie, automat chodzenia, marsz | D. Walka            |                           |
+| 16f | Celowanie kursorem i HUD walki                     | D. Walka             | 🏁 Walka bez otwierania paneli |
 | 17a | Fog of war i warstwa MG                            | E. Widoczność        |                           |
 | 17b | Rysowanie po mapie                                 | E. Widoczność        |                           |
 | 18  | Dynamiczne oświetlenie i ściany                    | E. Widoczność        |                           |
@@ -50,6 +52,7 @@ Fazy A→B→C odwzorowują priorytety MVP z ankiety (mapa+tokeny, kości, karty
 - 14 (inicjatywa) przed 15–16 i 20.
 - 14b→14c→14d (ekonomia akcji, dopisane 30.07 — patrz „Rozszerzenia planu po starcie") **po** 15–16 (spinają istniejące ścieżki ataku i przeładowania) i **przed** 20 — bezpieczniki botów („limit akcji na turę, ruch ≤ MOVE") to wprost walidacja z tych etapów.
 - 16b→16c→16d (linia strzału, osłony i amunicja, dopisane 31.07) **po** 18a–18e (linia strzału konsumuje geometrię ścian i otworów) i **przed** 20 — inaczej bot uczy się strzelać w świecie, w którym mury nie zatrzymują kul.
+- 16e→16f (sterowanie z mapy i HUD, dopisane 31.07) **po** 16b (jest już co uruchamiać klikiem) i **przed** 16c/16d — osłony i granaty dokładają do mapy kolejne znaczenia kliknięcia, więc model wskaźnika ustala się raz, a nie przepisuje dwa razy. Wewnętrznie 16f wymaga 16e (HUD mówi o zaznaczonym tokenie).
 - 9–11 (boty podstawowe) przed 12 i przed 19–20.
 - 12 (TTS) nie blokuje niczego — nic od niego nie zależy, więc można go przesunąć dalej, jeśli wolisz najpierw walkę. Jedyne powiązanie to wspólny budżet VRAM z etapem 21 (STT): kto pierwszy, ten ustala rezerwę dla drugiego.
 - 17a przed 18 (oświetlenie buduje na fog of war); 17b (rysowanie) nie blokuje niczego.
@@ -77,6 +80,12 @@ Fazy A→B→C odwzorowują priorytety MVP z ankiety (mapa+tokeny, kości, karty
 2. **Etapy 14b/14c/14d — system tur** (dodane 30.07.2026). Pełny podręcznik, dostarczony po utworzeniu planu, opisuje kompletną mechanikę tur (Tura = 1 Akcja Ruchu + 1 Akcja, katalog akcji z kosztami, zwarcie, statusy, automaty przejścia tury), której pierwotny plan nie projektował — etap 14 dał sam tracker kolejności, a POMYSLY notowało ekonomię akcji jako „naturalne dla etapu 20". Decyzje z użytkownikiem: egzekwowanie **twarde z wolną ręką MG**, ruch liczony w **metrach po ścieżce**, pełny zakres RAW (zwarcie, kryty w turze, Wstrzymanie Akcji, DoT), rozłożone na **trzy sesje** (duże zmiany w kodzie i dużo testów). Numeracja literowa w fazie D, żeby nie przenumerowywać etapów 15–28.
 
 3. **Etapy 16b/16c/16d — ostrzał w terenie** (dodane 31.07.2026, tego samego dnia 16b podzielony na 16b i 16c). Etap 16 zrobił całą matematykę strzelania (PT z dystansu, ogień ciągły i zaporowy, amunicja, przeładowanie, celowany strzał), ale **świadomie zostawił osłony poza zakresem**, bo ścian jeszcze nie było — dziś kula przechodzi przez mur, choć geometria jest gotowa od 18a–18e. 16b domyka „czy widzę, w co strzelam" (linia strzału, ogień zaporowy przez mury, atak z mapy, profil bojowy statysty bez karty postaci), 16c domyka „co stoi między nami" (osłona jako obiekt sceny z PW, ostrzeliwanie jej, Ludzka tarcza), 16d domyka „czym strzelam" (granaty i wzorce obszarowe, rzut przedmiotem, 12 typów amunicji). Decyzje z użytkownikiem: **ściana blokuje absolutnie, zniszczalne są tylko osłony**; **rozstrzyga linia środek—środek** (RAW nie zna kary za częściową osłonę); **osłona ma PW, nie ma SP** (podręcznik, s. 179 — pierwotny opis 16b mówił inaczej); **profil statysty obejmuje też obronę**; **przed etapem 19**, żeby autonomia botów z 20 stała na kompletnej walce.
+
+4. **Etapy 16e/16f — interfejs walki** (dodane 31.07.2026 na zgłoszenie MG: „obecny sposób używania myszki do sterowania tokenami jest niewygodny"). Mechanika walki jest kompletna (14b–14e, 15, 16, 16b), ale **wejściem do niej zostało UI z czasów, gdy walki nie było**: ruch to przeciąganie obrazka, a atak zaczyna się od otwarcia karty postaci albo menu kontekstowego. Wzorzec: klasyczne komputerowe RPG z rzutem od góry — zaznaczasz postać, klikasz w podłoże, żeby iść, i we wroga, żeby go zaatakować.
+
+   **Odkrycie, które ukształtowało 16e (pomysł MG):** trasę omijającą ściany da się policzyć u gracza, który ścian nie ma — bo **granica pola widzenia jest obrazem ścian**. A* ograniczony do widocznego wielokąta i zapamiętanego terenu (18c) obchodzi mur, nie wiedząc o jego istnieniu; MG, który ściany ma, liczy po pełnej geometrii. Ta sama tożsamość, na której stoi 16b („linia strzału = blokady wzroku strzelca"), tylko dla nóg zamiast dla kul.
+
+   Decyzje z użytkownikiem: **ruch klikiem, ale przeciąganie zostaje** (MG nie traci szybkiego ustawiania tokenów); **interfejs działa zawsze, a w walce dochodzi budżet tury i pasek akcji**; **klik w cel ładuje kubek, nie rzuca** (rzut kośćmi jest osobnym momentem przy stole); **trasa po terenie widocznym i zapamiętanym**, a klik w nieznane to marsz do granicy wiedzy; **marsz widoczny dla całego stołu**, przerywany przez pojawienie się kogoś w polu widzenia, koniec budżetu i zdarzenia w grze; **„idź, ile starczy"** zamiast odmowy ruchu ponad budżet. Podział na dwie sesje biegnie między **ruchem** (16e) a **atakiem i HUD-em** (16f). Kolejność: **przed 16c/16d**, bo osłony i granaty dołożą do wskaźnika kolejne przypadki.
 
 ## Ryzyka i ograniczenia
 

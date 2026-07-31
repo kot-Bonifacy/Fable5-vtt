@@ -28,6 +28,8 @@ Pełne notatki z zamkniętych etapów: `archiwum/dziennik-sesji.md` (nie czytaj 
 | 16b | Linia strzału i atak z mapy                | ✅     | 2026-07-31      | etap 16b podzielony na 16b/16c; linia strzału = blokady wzroku strzelca, nie druga geometria |
 | 16c | Osłony jako obiekty sceny                  | ⬜     |                 | wydzielony z 16b 31.07; PW wg RAW, bez SP (podręcznik nie zna SP osłon)                   |
 | 16d | Granaty, obszary i amunicja specjalna      | ⬜     |                 | dopisany 31.07 jako 16c — zbiera 3 wpisy z POMYSLY (granaty, rzut, naboje)                |
+| 16e | Ruch klikiem: zaznaczenie, automat chodzenia | ⬜   |                 | dopisany 31.07; trasę omijającą ściany liczy granica widoczności, nie ściany (pomysł MG)  |
+| 16f | Celowanie kursorem i HUD walki             | ⬜     |                 | dopisany 31.07 razem z 16e; wymaga zaznaczenia z 16e                                      |
 | 17a | Fog of war i warstwa MG                    | ✅     | 2026-07-28      | etap 17 podzielony na 17a/17b; nowa scena startuje zakryta, mgła przełączalna             |
 | 17b | Rysowanie po mapie                         | ✅     | 2026-07-28      | tekst skaluje się z mapą (odstępstwo od wskazówki); MG domyślnie rysuje u siebie          |
 | 18a | Ściany i widoczność tokenów                | ✅     | 2026-07-29      | etap 18 podzielony na 18a/18b; ściany nie opuszczają serwera                              |
@@ -48,7 +50,11 @@ Pełne notatki z zamkniętych etapów: `archiwum/dziennik-sesji.md` (nie czytaj 
 ## Od czego zacząć
 
 Ostatnio zamknięte: **16b** (linia strzału na serwerze, ogień zaporowy przez mury, atak z mapy i z zakładki „Walka", profil bojowy statysty — atak i obrona).
-Następny etap: **16c — osłony jako obiekty sceny** (wydzielony z 16b 31.07). Potem **16d** (granaty, obszary, amunicja specjalna), a dopiero po nich **19 — pamięć botów**.
+Następny etap: **16e — ruch klikiem** (zaznaczenie tokenu, automat chodzenia obchodzący rogi, marsz widoczny dla stołu), potem **16f** (celownik i dymek celu, panel aktywnej postaci, pasek akcji, skróty). Dopiero po nich **16c** (osłony), **16d** (granaty) i **19 — pamięć botów**.
+
+**Dlaczego 16e/16f przed 16c:** zgłoszenie MG z 31.07 — „sposób używania myszki do sterowania tokenami jest niewygodny". Walka ma już całą mechanikę (14b–14e, 16, 16b), ale wejściem do niej jest wiersz na karcie postaci albo menu kontekstowe, a ruch to przeciąganie obrazka. Osłony (16c) i granaty (16d) dokładają do mapy **kolejne znaczenia kliknięcia** (klik w osłonę, wskazanie obszaru wybuchu), więc model wskaźnika lepiej ustalić przed nimi, a nie przepisywać te same miejsca dwa razy.
+
+**Rzecz, na której stoi 16e (pomysł MG z 31.07):** klient gracza nie dostaje ani jednej ściany (18a) — a mimo to policzy trasę, która ściany omija, bo **granica pola widzenia jest obrazem ścian**. A* ograniczony do widocznego wielokąta (`wallStore.polygons`) i zapamiętanego terenu (`explorationStore.mask`) obchodzi mur, nie wiedząc, że istnieje; MG liczy po pełnej geometrii. To ta sama tożsamość, na której stoi 16b („linia strzału = blokady wzroku strzelca").
 
 **Dlaczego 16c/16d przed 19:** 16b zamknął „czy widzę, w co strzelam" — kula nie przechodzi już przez mur ani przez zamknięte drzwi, a MG strzela NPC-em bez karty postaci. Zostało „co stoi między nami": osłona jako obiekt, który blokuje pocisk, ale nie wzrok, i który da się rozwalić (16c). Granaty (16d) zależą od osłon RAW-owo („eksplozja nie zadaje obrażeń celom ukrytym za osłoną", s. 175), a etap 20 uczyłby boty strzelać w świecie bez osłon.
 
