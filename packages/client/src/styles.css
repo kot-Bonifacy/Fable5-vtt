@@ -3813,3 +3813,365 @@ body.is-resizing {
 .combat-effect-target select {
   flex: 1;
 }
+
+/* ===== HUD walki — lewy pasek i celownik (etap 16f) ===== */
+
+/* A rail rather than an overlay: the panel and the action bar are pressed
+   constantly, and anything floating over the map eventually covers the tile
+   somebody wants to click. It sits before `.map-area` in the flex row, so the
+   canvas simply gets narrower — Pixi resizes itself (`resizeTo` on the host). */
+.hud-rail {
+  width: 15rem;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 0;
+  padding: 0.5rem;
+  overflow-y: auto;
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border);
+  user-select: none;
+}
+
+.hud-rail--collapsed {
+  width: 1.6rem;
+  padding: 0.35rem 0.15rem;
+  align-items: center;
+}
+
+.hud-head {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.hud-head-title {
+  flex: 1;
+  font-size: 0.85rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hud-collapse {
+  flex: none;
+  width: 1.3rem;
+  height: 1.3rem;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.hud-collapse:hover {
+  color: var(--text);
+}
+
+.hud-empty {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--text-dim);
+}
+
+.hud-identity {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.hud-portrait {
+  width: 2.6rem;
+  height: 2.6rem;
+  flex: none;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+}
+
+.hud-portrait--empty {
+  display: grid;
+  place-items: center;
+  background: #2a2d36;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+
+.hud-identity-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+/* The wound state colours the bar, so „how bad is it" is answered by a glance
+   rather than by dividing two numbers (the same rungs stage 15 judges on). */
+.hud-hp {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.7rem;
+  --hud-hp-color: var(--ok);
+}
+
+.hud-hp--light {
+  --hud-hp-color: #d4d94a;
+}
+
+.hud-hp--serious {
+  --hud-hp-color: var(--warn);
+}
+
+.hud-hp--mortal {
+  --hud-hp-color: var(--err);
+}
+
+.hud-hp-track {
+  flex: 1;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: #2a2d36;
+  overflow: hidden;
+}
+
+.hud-hp-fill {
+  display: block;
+  height: 100%;
+  background: var(--hud-hp-color);
+}
+
+.hud-hp-value {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+}
+
+.hud-hp-none {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}
+
+.hud-statuses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem;
+  line-height: 1;
+}
+
+/* The registry ships SVG files, not glyphs — the same images the token wears
+   as badges, at the size a panel row can hold. */
+.hud-status img {
+  width: 0.95rem;
+  height: 0.95rem;
+  display: block;
+}
+
+.hud-refusal {
+  margin: 0;
+  padding: 0.3rem 0.4rem;
+  font-size: 0.7rem;
+  line-height: 1.3;
+  color: var(--warn);
+  background: rgb(217 164 65 / 12%);
+  border-radius: 4px;
+}
+
+.hud-turn-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.hud-slots {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+/* One row per slot rather than a grid of squares: a weapon is „Ciężki pistolet
+   — seria", and a name that long is unreadable in a box. The number key keeps
+   the left edge, which is where the eye goes when a hand is on the keyboard. */
+.hud-slot {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  padding: 0.28rem 0.4rem;
+  text-align: left;
+  font-size: 0.74rem;
+  color: var(--text);
+  background: #23262f;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.hud-slot:hover {
+  border-color: #4b4f5c;
+}
+
+.hud-slot-key {
+  flex: none;
+  min-width: 1rem;
+  text-align: center;
+  font-size: 0.62rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+}
+
+.hud-slot-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The fire mode is a chip, not part of the name: it is the only difference
+   between three slots of the same weapon, so it must never be the part that
+   gets truncated. */
+.hud-slot-mode {
+  flex: none;
+  padding: 0 0.22rem;
+  font-size: 0.6rem;
+  color: var(--warn);
+  border: 1px solid var(--warn);
+  border-radius: 3px;
+}
+
+.hud-slot-ammo {
+  flex: none;
+  font-size: 0.65rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+}
+
+/* Armed reads as the crosshair's own colour, because that is what it does to
+   the pointer — the two marks are one state seen in two places. */
+.hud-slot--armed {
+  border-color: var(--accent);
+  background: rgb(224 20 20 / 16%);
+}
+
+/* Refused, not removed: a greyed slot with a reason in its tooltip is how the
+   player learns the rule; a slot that vanished would just look like a bug. */
+.hud-slot--refused {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.hud-armed {
+  margin: 0;
+  font-size: 0.7rem;
+  line-height: 1.3;
+  color: var(--text-dim);
+}
+
+.hud-armed-hint {
+  color: var(--text-dim);
+}
+
+.hud-form {
+  padding-top: 0.25rem;
+  border-top: 1px solid var(--border);
+}
+
+.hud-keys {
+  margin: auto 0 0;
+  font-size: 0.62rem;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+.hud-keys kbd {
+  padding: 0 0.2rem;
+  font-family: inherit;
+  background: #23262f;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+
+/* The bubble follows the pointer, so it is fixed to the viewport and never
+   takes a click — the click underneath it is the whole point. */
+.aim-tooltip {
+  position: fixed;
+  z-index: 45;
+  width: 15rem;
+  padding: 0.4rem 0.55rem;
+  pointer-events: none;
+  user-select: none;
+  background: rgba(14, 15, 19, 0.95);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 8px 20px rgb(0 0 0 / 50%);
+  font-size: 0.72rem;
+}
+
+.aim-tooltip-title {
+  margin: 0 0 0.15rem;
+  font-weight: 600;
+}
+
+.aim-tooltip-line {
+  margin: 0 0 0.3rem;
+  display: flex;
+  gap: 0.3rem;
+  align-items: baseline;
+  color: var(--text-dim);
+}
+
+.aim-tooltip-weapon {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aim-tooltip-mode {
+  flex: none;
+  padding: 0 0.25rem;
+  font-size: 0.62rem;
+  color: var(--warn);
+  border: 1px solid var(--warn);
+  border-radius: 3px;
+}
+
+.aim-tooltip-facts {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.15rem 0.5rem;
+}
+
+.aim-tooltip-facts div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.3rem;
+}
+
+.aim-tooltip-facts dt {
+  color: var(--text-dim);
+}
+
+.aim-tooltip-facts dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.aim-tooltip-note {
+  margin: 0.3rem 0 0;
+  font-size: 0.62rem;
+  line-height: 1.3;
+  color: var(--text-dim);
+}
+
+.aim-tooltip-refusal {
+  margin: 0;
+  color: var(--err);
+  line-height: 1.3;
+}

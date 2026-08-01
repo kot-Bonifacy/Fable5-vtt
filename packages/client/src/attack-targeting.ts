@@ -1,4 +1,10 @@
-import type { CpredAttackRequest, CpredCharacterData, TokenView } from '@vtt/shared';
+import type {
+  CpredAttackMeta,
+  CpredAttackMode,
+  CpredAttackRequest,
+  CpredCharacterData,
+  TokenView,
+} from '@vtt/shared';
 import {
   CPRED_ATTACK_PROBLEM_MESSAGES,
   STATIST_WEAPON_ROW_ID,
@@ -31,46 +37,66 @@ import { useTokenStore } from './stores/tokenStore.js';
  * One thing the preview genuinely **cannot** know is whether there is a wall in
  * the way (stage 16b): the geometry never leaves the server, so `lineOfFire`
  * stays unset here and only the server's refusal reports it.
+ *
+ * Stage 16f added a second caller. The crosshair on the map asks the *same*
+ * planner for a tooltip before the click („24 m · 13–25 m · PT 20 · 8/12"), so
+ * what the bubble promises and what the cup carries cannot disagree — they are
+ * one call apart.
  */
-export function loadAttackAtToken(targetTokenId: string): void {
-  const targeting = useAttackStore.getState().targeting;
-  if (!targeting) return;
 
-  const chat = useChatStore.getState();
+/** Who is shooting and with what — the shape both callers boil down to. */
+export interface AttackIntent {
+  /** Sheet doing the shooting; absent for a statist (stage 16b). */
+  characterId?: string;
+  attackerTokenId: string;
+  weaponRowId: string;
+  mode: CpredAttackMode;
+  aimed?: boolean;
+  modifier?: number;
+}
+
+/** A planned shot, or the sentence explaining why there is none. */
+export type AttackPreview =
+  | {
+      ok: true;
+      attack: CpredAttackMeta;
+      /** Shooter's display name, as the cup labels it. */
+      attackerName: string;
+      request: CpredAttackRequest;
+      modifierTotal: number;
+      metres: number;
+    }
+  | { ok: false; message: string };
+
+/**
+ * Runs the planner for one intent against one target token.
+ *
+ * Returns rather than announces: the tooltip wants the refusal as text under
+ * the cursor, while the click wants it on the chat log. Neither decision
+ * belongs to the planner.
+ */
+export function planAttackPreview(intent: AttackIntent, targetTokenId: string): AttackPreview {
   const tokens = useTokenStore.getState().tokens;
   const scene = useSceneStore.getState().effectiveScene;
   const target = tokens[targetTokenId];
-  if (!target || !scene) return;
-
-  const attackerToken = targeting.attackerTokenId
-    ? tokens[targeting.attackerTokenId]
-    : targeting.characterId
-      ? Object.values(tokens).find((token) => token.characterId === targeting.characterId)
-      : undefined;
+  const attackerToken = tokens[intent.attackerTokenId];
+  if (!target || !scene) return { ok: false, message: 'Nie znalazłem celu na tej scenie.' };
   if (!attackerToken) {
-    chat.addNote(`„${targeting.characterName}” nie ma tokenu na tej scenie.`);
-    return;
+    return { ok: false, message: 'Atakujący nie ma tokenu na tej scenie.' };
   }
   if (attackerToken.id === target.id) {
-    chat.addNote('Wybierz cel inny niż atakujący.');
-    return;
+    return { ok: false, message: 'Wybierz cel inny niż atakujący.' };
   }
 
   // Where the numbers come from: a sheet, or the token's own combat profile.
-  const fighter = targeting.characterId
-    ? sheetFighter(targeting.characterId)
-    : statistFighter(attackerToken, targeting.weaponRowId);
-  if (typeof fighter === 'string') {
-    chat.addNote(fighter);
-    return;
-  }
+  const fighter = intent.characterId
+    ? sheetFighter(intent.characterId)
+    : statistFighter(attackerToken, intent.weaponRowId);
+  if (typeof fighter === 'string') return { ok: false, message: fighter };
   const { data, name } = fighter;
 
-  const row = data.weapons.find((weapon) => weapon.id === targeting.weaponRowId);
-  if (!row) {
-    chat.addNote('Nie znalazłem tej broni na karcie.');
-    return;
-  }
+  const row = data.weapons.find((weapon) => weapon.id === intent.weaponRowId);
+  if (!row) return { ok: false, message: 'Nie znalazłem tej broni na karcie.' };
 
   const compendium = useCompendiumStore.getState();
   const entry = row.compendiumId ? compendium.entries[row.compendiumId] : undefined;
@@ -84,9 +110,9 @@ export function loadAttackAtToken(targetTokenId: string): void {
   const metres = metresForRules(metresBetweenTokens(attackerToken, target, scene));
   const request: CpredAttackRequest = {
     weaponRowId: row.id,
-    mode: targeting.mode,
-    ...(targeting.aimed ? { aimed: true } : {}),
-    ...(targeting.modifier !== 0 ? { modifier: targeting.modifier } : {}),
+    mode: intent.mode,
+    ...(intent.aimed ? { aimed: true } : {}),
+    ...(intent.modifier ? { modifier: intent.modifier } : {}),
   };
 
   const planned = planCpredAttack(
@@ -96,23 +122,82 @@ export function loadAttackAtToken(targetTokenId: string): void {
     { row, resolved, typeId: entry && isWeaponEntry(entry) ? entry.weaponTypeId : null },
     { name: target.name, tokenId: target.id, metres },
   );
-  if (!planned.ok) {
-    chat.addNote(CPRED_ATTACK_PROBLEM_MESSAGES[planned.error]);
+  if (!planned.ok) return { ok: false, message: CPRED_ATTACK_PROBLEM_MESSAGES[planned.error] };
+  return {
+    ok: true,
+    attack: planned.plan.attack,
+    attackerName: name,
+    request,
+    modifierTotal: planned.plan.modifierTotal,
+    metres,
+  };
+}
+
+/**
+ * Loads the cup for an explicit intent — the action bar's path (stage 16f).
+ *
+ * The bar knows which weapon is active without arming anything, so it hands the
+ * intent straight in. Everything after that is the same code the sheet's
+ * „Atakuj" runs.
+ */
+export function loadAttackFor(intent: AttackIntent, targetTokenId: string): void {
+  const chat = useChatStore.getState();
+  const preview = planAttackPreview(intent, targetTokenId);
+  if (!preview.ok) {
+    chat.addNote(preview.message);
     return;
   }
-  const { attack } = planned.plan;
-
+  const target = useTokenStore.getState().tokens[targetTokenId];
+  const { attack } = preview;
   useAttackStore.getState().disarm();
   useRollStore.getState().loadAttackCup({
-    ...(targeting.characterId ? { characterId: targeting.characterId } : {}),
-    characterName: name,
-    attackerTokenId: attackerToken.id,
-    targetTokenId: target.id,
-    targetName: target.name,
-    request,
-    title: cupTitle(row.name, target.name, metres, attack.dv, attack.modeLabel, attack.mode),
-    modifierTotal: planned.plan.modifierTotal,
+    ...(intent.characterId ? { characterId: intent.characterId } : {}),
+    characterName: preview.attackerName,
+    attackerTokenId: intent.attackerTokenId,
+    targetTokenId,
+    targetName: target?.name ?? attack.targetName,
+    request: preview.request,
+    title: cupTitle(
+      attack.weaponName,
+      attack.targetName,
+      preview.metres,
+      attack.dv,
+      attack.modeLabel,
+      attack.mode,
+    ),
+    modifierTotal: preview.modifierTotal,
   });
+}
+
+/**
+ * Loads the cup from the armed crosshair — the sheet's and the „Walka" tab's
+ * path (stages 16 and 16b). Resolves which token is doing the shooting, then
+ * hands the same intent to `loadAttackFor`.
+ */
+export function loadAttackAtToken(targetTokenId: string): void {
+  const targeting = useAttackStore.getState().targeting;
+  if (!targeting) return;
+  const tokens = useTokenStore.getState().tokens;
+  const attackerToken = targeting.attackerTokenId
+    ? tokens[targeting.attackerTokenId]
+    : targeting.characterId
+      ? Object.values(tokens).find((token) => token.characterId === targeting.characterId)
+      : undefined;
+  if (!attackerToken) {
+    useChatStore.getState().addNote(`„${targeting.characterName}” nie ma tokenu na tej scenie.`);
+    return;
+  }
+  loadAttackFor(
+    {
+      ...(targeting.characterId ? { characterId: targeting.characterId } : {}),
+      attackerTokenId: attackerToken.id,
+      weaponRowId: targeting.weaponRowId,
+      mode: targeting.mode,
+      aimed: targeting.aimed,
+      modifier: targeting.modifier,
+    },
+    targetTokenId,
+  );
 }
 
 /** Whoever is firing, as a sheet the planner understands, or a refusal to show. */

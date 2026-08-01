@@ -1,8 +1,9 @@
 import { useMemo } from 'react';
-import type { CpredAttackMode, ResolvedWeapon, TokenView } from '@vtt/shared';
+import type { CpredAttackMode, CpredWeaponOption, TokenView } from '@vtt/shared';
 import {
   CPRED_ATTACK_MODE_LABELS,
-  STATIST_WEAPON_ROW_ID,
+  cpredFireModes,
+  cpredWeaponOptions,
   isWeaponEntry,
   resolveWeapon,
   sanitizeCombatProfile,
@@ -25,21 +26,13 @@ import { useCompendiumStore } from '../stores/compendiumStore.js';
  * distance, the DV and whether there is a wall in the way are all the server's.
  */
 
-/** One thing this token can attack with, whatever the numbers come from. */
-interface WeaponOption {
-  rowId: string;
-  name: string;
-  resolved: ResolvedWeapon | null;
-  /** Rounds left / magazine size; null for a weapon that counts none. */
-  ammo: { current: number; max: number } | null;
-}
-
 /**
- * The weapons a token can fire: its sheet's rows, or the single weapon of its
- * combat profile. Empty when there is neither, which is what „this token has
- * not been statted" looks like from here.
+ * The weapons a token can fire, as the shared builder sees them. The branch
+ * itself — sheet rows or the single weapon of a combat profile — lives in
+ * `cpredWeaponOptions`, because the action bar of stage 16f asks the same
+ * question and two answers to it would drift apart.
  */
-function useWeaponOptions(token: TokenView | undefined): WeaponOption[] {
+function useWeaponOptions(token: TokenView | undefined): CpredWeaponOption[] {
   const characters = useCharacterStore((s) => s.characters);
   const entries = useCompendiumStore((s) => s.entries);
   const weaponTypeById = useCompendiumStore((s) => s.weaponTypeById);
@@ -47,43 +40,18 @@ function useWeaponOptions(token: TokenView | undefined): WeaponOption[] {
   return useMemo(() => {
     if (!token) return [];
     const types = new Map(Object.entries(weaponTypeById));
-    const resolveById = (compendiumId: string | undefined): ResolvedWeapon | null => {
-      const entry = compendiumId ? entries[compendiumId] : undefined;
-      return entry && isWeaponEntry(entry) ? resolveWeapon(entry, { weaponTypeById: types }) : null;
-    };
-
     const character = token.characterId ? characters[token.characterId] : undefined;
-    if (character) {
-      return character.data.weapons.map((row) => ({
-        rowId: row.id,
-        name: row.name,
-        resolved: resolveById(row.compendiumId),
-        ammo: row.ammoMax > 0 ? { current: row.ammoCurrent, max: row.ammoMax } : null,
-      }));
-    }
-
-    if (!token.combatProfile) return [];
-    const profile = sanitizeCombatProfile(token.combatProfile);
-    return [
-      {
-        rowId: STATIST_WEAPON_ROW_ID,
-        name: profile.weaponName,
-        resolved: resolveById(profile.weaponId ?? undefined),
-        ammo: profile.ammoMax > 0 ? { current: profile.ammoCurrent, max: profile.ammoMax } : null,
+    return cpredWeaponOptions(
+      character ? character.data : null,
+      character || !token.combatProfile ? null : sanitizeCombatProfile(token.combatProfile),
+      (compendiumId) => {
+        const entry = compendiumId ? entries[compendiumId] : undefined;
+        return entry && isWeaponEntry(entry)
+          ? resolveWeapon(entry, { weaponTypeById: types })
+          : null;
       },
-    ];
+    );
   }, [token, characters, entries, weaponTypeById]);
-}
-
-/**
- * The fire modes a weapon actually offers. A pistol shows one button and no
- * choice to make; only a weapon with a burst grows the row.
- */
-function modesOf(resolved: ResolvedWeapon | null): CpredAttackMode[] {
-  const modes: CpredAttackMode[] = ['single'];
-  if (resolved?.autofire) modes.push('autofire');
-  if (resolved?.suppressive) modes.push('suppressive');
-  return modes;
 }
 
 export function AttackLauncher({
@@ -108,7 +76,7 @@ export function AttackLauncher({
 
   const character = token.characterId ? characters[token.characterId] : undefined;
 
-  function aim(option: WeaponOption, mode: CpredAttackMode) {
+  function aim(option: CpredWeaponOption, mode: CpredAttackMode) {
     if (!token) return;
     useAttackStore.getState().arm({
       ...(character ? { characterId: character.id } : {}),
@@ -136,7 +104,7 @@ export function AttackLauncher({
               </span>
             )}
           </span>
-          {modesOf(option.resolved).map((mode) => (
+          {cpredFireModes(option.resolved).map((mode) => (
             <button
               key={mode}
               type="button"

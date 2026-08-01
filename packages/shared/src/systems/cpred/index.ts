@@ -12,3 +12,4 @@ export * from './attacks.js';
 export * from './statist.js';
 export * from './grapple.js';
 export * from './turn.js';
+export * from './hotbar.js';

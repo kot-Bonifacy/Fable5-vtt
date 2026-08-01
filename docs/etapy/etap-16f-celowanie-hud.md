@@ -16,33 +16,38 @@ o kim mówić ani czym celować.
 
 ## Zakres
 
-- [ ] **Celownik nad wrogiem** — kursor nad tokenem, który zaznaczony token może zaatakować,
+- [x] **Celownik nad wrogiem** — kursor nad tokenem, który zaznaczony token może zaatakować,
       zmienia się w celownik; cel dostaje obrys odróżnialny od trzech pierścieni z 16e
-      (właściciel, aktywny w turze, zaznaczony)
-- [ ] **Dymek celu**: dystans, przedział zasięgu, PT z tabeli, tryb ognia, stan magazynka.
+      (właściciel, aktywny w turze, zaznaczony). **Rozstrzygnięcie z sesji (model klasycznego
+      CRPG, decyzja MG):** token, którym mogę sterować → klik go **zaznacza**; każdy inny →
+      klik **celuje**. MG steruje wszystkim, więc dla niego celowanie to **Alt+klik** —
+      inaczej nie miałby czym przełączać zaznaczenia między własnymi NPC-ami
+- [x] **Dymek celu**: dystans, przedział zasięgu, PT z tabeli, tryb ognia, stan magazynka.
       Liczony tym samym planerem co podgląd kubka (`planCpredAttack`), więc **jest podglądem,
       nie prawdą** — dymek nigdy nie twierdzi, że strzał przejdzie, bo klient nie wie o murze
       w linii ognia (16b); odmowę linii strzału zgłasza serwer
-- [ ] **Klik w cel ładuje kubek** (decyzja MG) — rzut zostaje osobnym gestem, a modyfikator
+- [x] **Klik w cel ładuje kubek** (decyzja MG) — rzut zostaje osobnym gestem, a modyfikator
       sytuacyjny dokłada się przed rzutem. Ścieżka jest ta sama, co przy „🎯 Atak…” z 16b
       (`loadAttackAtToken`); nowe jest tylko to, że nie trzeba po nią wchodzić do menu
-- [ ] **Aktywna broń** — wybór w pasku decyduje, czym token strzela po kliknięciu w cel;
+- [x] **Aktywna broń** — wybór w pasku decyduje, czym token strzela po kliknięciu w cel;
       domyślnie pierwsza broń karty albo jedyna broń profilu bojowego statysty (16b)
-- [ ] **Panel aktywnej postaci** (róg obszaru mapy): portret/awatar zaznaczonego tokenu,
+- [x] **Panel aktywnej postaci** (~~róg obszaru mapy~~ **nowy lewy pasek boczny**, decyzja MG
+      z sesji — HUD nie leży na mapie, więc nigdy nie zasłania pola, w które ktoś chce
+      kliknąć): portret/awatar zaznaczonego tokenu,
       nazwa, pasek PW z redakcją, którą serwer już stosuje (właściciel i MG, nikt inny),
       ikony statusów, a w trwającej walce — budżet tury (pipsy Akcji i metry z 14c)
       i przycisk „Koniec tury” / „Zwróć turę” zależnie od roli
-- [ ] **Pasek akcji (hotbar)**: broń z trybami ognia (pojedynczy, seria, zapora — dokładnie
+- [x] **Pasek akcji (hotbar)**: broń z trybami ognia (pojedynczy, seria, zapora — dokładnie
       te, które daje `AttackLauncher`), Przeładowanie, oraz akcje z katalogu 14b mające dziś
       przyciski w zakładce „Walka”: Ustabilizowanie, Pochwycenie, Wstrzymanie Akcji, Wstanie, Bieg
-- [ ] **Ten sam kod zasad, co zakładka „Walka”** — HUD woła `spendCombatAction`,
+- [x] **Ten sam kod zasad, co zakładka „Walka”** — HUD woła `spendCombatAction`,
       `holdCombatAction`, `loadStabilizeCup` i `loadGrappleCup`; formularze za duże na pasek
       (Wstrzymanie z wyzwalaczem, Pochwycenie z wyborem celu) otwierają **ten sam** komponent,
       a nie jego kopię
-- [ ] **Stany paska są treścią etapu, nie ozdobą**: nie twoja tura → pasek wyszarzony
+- [x] **Stany paska są treścią etapu, nie ozdobą**: nie twoja tura → pasek wyszarzony
       z powodem; poza walką → broń działa, budżetu nie ma; token bez karty i bez profilu →
       pasek mówi, czego brakuje (tym samym zdaniem, co dziś `AttackLauncher`)
-- [ ] **Skróty klawiszowe** — mapa klawiszy nie może kolidować z narzędziami mapy
+- [x] **Skróty klawiszowe** — mapa klawiszy nie może kolidować z narzędziami mapy
       (zajęte: `M` linijka, `R` rysowanie, `G` gumka, `F` mgła, `N` notatka, `W` ściany,
       `L` światła, `Enter` koniec łańcucha ścian, `Spacja` waypoint linijki, `Esc`):
   - `1`–`9` — sloty paska akcji
@@ -50,10 +55,10 @@ o kim mówić ani czym celować.
   - `E` — koniec tury
   - `Esc` — kolejno: przerwij marsz (16e) → anuluj celowanie → odznacz token
   - każdy przycisk niesie swój skrót w `title`, żeby dało się ich nauczyć bez instrukcji
-- [ ] **Klawisze nie działają w polach tekstowych** — strażnik `typing` z `MapArea` już
+- [x] **Klawisze nie działają w polach tekstowych** — strażnik `typing` z `MapArea` już
       istnieje (czat, edytor podpisu, notatka MG); nowe skróty muszą przez niego przechodzić,
       inaczej „1” w wiadomości na czacie wystrzeli z pistoletu
-- [ ] Testy: czysta funkcja składająca sloty (`hotbarSlotsFor`: karta postaci albo profil
+- [x] Testy: czysta funkcja składająca sloty (`hotbarSlotsFor`: karta postaci albo profil
       statysty, tryby ognia z typu broni, akcje odmówione przez statusy) — reszta to UI,
       bez wymogu testów zgodnie z konwencją projektu
 
@@ -106,6 +111,7 @@ o kim mówić ani czym celować.
   inaczej marsz zacznie kosztować klatki
 - **Skróty rejestruj w istniejącym `keydown`** w `MapArea` (ma już strażnik `typing`
   i wielostopniowy Esc); drugi nasłuch na `window` rozjedzie się z pierwszym
-- **Pułapka oględzin:** klik w token przez CDP nie działa (patrz 16e), więc „zaznacz → pasek
-  się wypełnił” wymaga myszy użytkownika. Same przyciski paska i panelu są zwykłym DOM-em
-  i **da się** je kliknąć automatem, jeśli zaznaczenie ustawi się programowo
+- ~~**Pułapka oględzin:** klik w token przez CDP nie działa (patrz 16e)~~ — **nieaktualne**:
+  16e obalił tę diagnozę (nie działał hit-test, nie automatyzacja). Cała ścieżka
+  „zaznacz → uzbrój → wyceluj” daje się odklikać automatem, łącznie z `Alt+klik`
+  (`left_click` z modyfikatorem). Działa też `Tab`, `1`–`9` i `Esc`

@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { TopBar } from './components/TopBar.js';
 import { MapArea } from './components/MapArea.js';
+import { CombatHud } from './components/CombatHud.js';
 import { SidePanel } from './components/SidePanel.js';
 import { DiceCup } from './components/DiceCup.js';
 import { CharacterSheets } from './components/CharacterSheet.js';
@@ -42,6 +43,10 @@ function GameView() {
     <div className="app-layout">
       <TopBar />
       <main className="app-main">
+        {/* Stage 16f: the combat HUD is a rail of its own rather than an
+            overlay, so the panel and the action bar never sit on top of the
+            ground somebody is trying to click. */}
+        <CombatHud />
         <MapArea />
         <SidePanel />
       </main>

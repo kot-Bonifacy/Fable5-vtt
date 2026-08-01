@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  CPRED_ATTACK_MODE_SHORT,
   CPRED_RANGE_BANDS,
   ROLE_GM,
   blockingSegments,
@@ -32,9 +33,14 @@ import {
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { ensureStatusesLoaded, useTokenStore } from '../stores/tokenStore.js';
-import { useCharacterStore } from '../stores/characterStore.js';
+import { ensureCpredDataLoaded, useCharacterStore } from '../stores/characterStore.js';
 import { useChatStore } from '../stores/chatStore.js';
-import { activeCombatantOf, activeTokenIdOf, useCombatStore } from '../stores/combatStore.js';
+import {
+  activeCombatantOf,
+  activeTokenIdOf,
+  myActiveCombatant,
+  useCombatStore,
+} from '../stores/combatStore.js';
 import {
   clearRuler,
   createDrawing,
@@ -44,6 +50,7 @@ import {
   deleteDrawing,
   deleteLight,
   deleteWall,
+  nextCombatTurn,
   paintFog,
   sendRuler,
   sendTokenMove,
@@ -52,7 +59,15 @@ import {
   updateWall,
 } from '../socket.js';
 import { loadAttackAtToken } from '../attack-targeting.js';
+import {
+  activateSlot,
+  attackWithActiveWeapon,
+  currentHudContext,
+  hudTurnRefusal,
+  nextSteerableToken,
+} from '../hud.js';
 import { useAttackStore } from '../stores/attackStore.js';
+import { activeWeaponOf, useHudStore } from '../stores/hudStore.js';
 import { useRulerStore } from '../stores/rulerStore.js';
 import { useExplorationStore } from '../stores/explorationStore.js';
 import { useFogStore } from '../stores/fogStore.js';
@@ -71,6 +86,7 @@ import { CombatBar } from './CombatBar.js';
 import { DrawingTextEditor } from './DrawingTextEditor.js';
 import { MapTools } from './MapTools.js';
 import { NoteEditor } from './NoteEditor.js';
+import { TargetTooltip, type AimHover } from './TargetTooltip.js';
 
 export interface TokenMenuState {
   tokenId: string;
@@ -245,18 +261,10 @@ function walkRefusalFor(
   if (!tokenId || isGm) return null;
   const blocked = token ? cpredMovementBlock(token.statuses) : null;
   if (blocked) return blocked;
-  const combatant = combat?.combatants.find((row) => row.tokenId === tokenId);
-  if (!combatant || !combat) return null;
-  // The same comparison the server makes (`applySpend`), deliberately without a
-  // „only when we know who is acting" guard. A player is *often* not told who
-  // has the turn — `filterCombatForPlayer` blanks `activeCombatantId` whenever a
-  // hidden NPC is acting, because naming them would announce them — and „I
-  // don't know whose turn it is" still means „it is not mine": if it were, the
-  // active participant would be this very row, which the player can see.
-  if (combat.activeCombatantId !== combatant.id) {
-    return 'To nie jest tura tej postaci — poczekaj na swoją kolej.';
-  }
-  return null;
+  // „Not your turn" is asked in exactly one place (stage 16f): the action bar
+  // greys itself out with the same sentence, and two answers to „may this
+  // figure act" would eventually disagree.
+  return hudTurnRefusal(combat, tokenId, isGm);
 }
 
 /**
@@ -297,6 +305,8 @@ export function MapArea() {
   const [menu, setMenu] = useState<TokenMenuState | null>(null);
   /** Token walking a planned route right now (stage 16e); null when none is. */
   const [marchingTokenId, setMarchingTokenId] = useState<string | null>(null);
+  /** Token under the crosshair and where the pointer is (stage 16f). */
+  const [aimHover, setAimHover] = useState<AimHover | null>(null);
   const scene = useSceneStore((s) => s.effectiveScene);
   const placement = useTokenStore((s) => s.placement);
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
@@ -320,6 +330,13 @@ export function MapArea() {
 
   useEffect(() => {
     ensureStatusesLoaded();
+    // The skill registry too, and that is not tidiness (stage 16f). Until now
+    // it was fetched by the „Postacie" tab and by an open character sheet,
+    // which was enough while every attack started from one of them. The HUD's
+    // whole point is that none of them is opened any more — and without the
+    // registry `planCpredAttack` cannot name the skill, so every shot from the
+    // map came back „Nie wiem, jaką umiejętnością strzelać z tej broni".
+    ensureCpredDataLoaded();
   }, []);
 
   const placeToken = useCallback((worldX: number, worldY: number): boolean => {
@@ -373,7 +390,17 @@ export function MapArea() {
       }
     };
     renderer.onTokenActivate = (tokenId) => openSheetOfToken(tokenId);
-    renderer.onTokenTarget = (tokenId) => loadAttackAtToken(tokenId);
+    // Two doors into one attack (stage 16f). A crosshair armed from a sheet or
+    // from the „Walka" tab already named its weapon, so it wins; otherwise the
+    // shot is fired with whatever the action bar has in hand.
+    renderer.onTokenTarget = (tokenId) => {
+      if (useAttackStore.getState().targeting) {
+        loadAttackAtToken(tokenId);
+        return;
+      }
+      attackWithActiveWeapon(tokenId);
+    };
+    renderer.onAimHover = setAimHover;
     renderer.onFogPreview = (shape) => {
       // The preview is local only: the server hears about the stroke once,
       // when the GM lets go, rather than at pointer speed.
@@ -760,21 +787,6 @@ export function MapArea() {
     };
   }, [ready, marchingTokenId]);
 
-  // Escape drops the selection and stops a march — the same key that cancels
-  // token placement, so „never mind" is one key everywhere on the map.
-  useEffect(() => {
-    if (!ready) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      const renderer = rendererRef.current;
-      if (!renderer) return;
-      renderer.interruptWalk('Marsz przerwany.');
-      renderer.setSelection(null);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [ready]);
-
   // The reach circle follows the tracker: every spent metre comes back as a
   // fresh budget, so the ring shrinks as the token walks (stage 14c).
   const pushMoveAllowance = useCallback(() => {
@@ -849,6 +861,28 @@ export function MapArea() {
     if (!ready) return;
     rendererRef.current?.setTargeting(targeting !== null);
   }, [ready, targeting]);
+
+  /**
+   * Does the steered figure have a weapon in hand (stage 16f)? That single flag
+   * is the whole of what turns the pointer into a crosshair over an enemy —
+   * which weapon it is stays in the action bar, where the rules are.
+   */
+  const pushAimReady = useCallback(() => {
+    const selected = useSelectionStore.getState().tokenId;
+    const weapon = activeWeaponOf(useHudStore.getState().activeWeapon, selected);
+    rendererRef.current?.setAimReady(weapon !== null);
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    pushAimReady();
+    const unsubHud = useHudStore.subscribe(pushAimReady);
+    const unsubSelection = useSelectionStore.subscribe(pushAimReady);
+    return () => {
+      unsubHud();
+      unsubSelection();
+    };
+  }, [ready, pushAimReady]);
 
   // Redraws every measurement: the local line plus the other viewers'. The
   // sweep drops lines from clients that navigated away without a `ruler:clear`.
@@ -1101,6 +1135,10 @@ export function MapArea() {
 
   // Keyboard: M ruler, R draw, G eraser, F fog, N note; Space drops a waypoint
   // mid-measurement, Esc puts the armed tool and the attack crosshair away.
+  // Stage 16f added the combat keys — 1–9 for the action bar, Tab for the next
+  // figure, E for the end of a turn — to *this* listener rather than to one of
+  // its own, so the order in which two keys claim the same press stays written
+  // down in a single place.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
@@ -1116,6 +1154,31 @@ export function MapArea() {
         noteState.draft !== null ||
         noteState.editingId !== null;
       if (typing && event.key !== 'Escape') return;
+      // Combat keys first: they are the ones pressed every round, and none of
+      // them collides with a map tool (`1`–`9`, Tab and E were all free).
+      if (event.key >= '1' && event.key <= '9') {
+        const context = currentHudContext();
+        const slot = context.slots.find((entry) => entry.key === event.key);
+        if (slot && context.token) activateSlot(slot, context.token.id);
+        return;
+      }
+      if (event.key === 'Tab') {
+        // The browser's own focus ring would otherwise walk the side panel.
+        event.preventDefault();
+        const next = nextSteerableToken(useSelectionStore.getState().tokenId);
+        rendererRef.current?.setSelection(next);
+        return;
+      }
+      if (event.key === 'e' || event.key === 'E') {
+        // The server re-checks whose turn it is; this only refuses the press
+        // that obviously belongs to somebody else, so the key is not a way to
+        // step a stranger's turn.
+        const combat = useCombatStore.getState().combat;
+        const user = useAuthStore.getState().user;
+        if (!combat) return;
+        if (isGm || myActiveCombatant(combat, user?.id ?? null)) void nextCombatTurn();
+        return;
+      }
       if (event.key === 'm' || event.key === 'M') {
         tools.toggleTool('ruler');
         return;
@@ -1155,14 +1218,42 @@ export function MapArea() {
         rendererRef.current?.addRulerWaypoint();
         return;
       }
+      // Escape is a ladder, not a switch (stage 16f): one rung per press, most
+      // recent commitment first. „Never mind" should undo the last thing you
+      // did, and a key that dropped everything at once would cost the selection
+      // every time somebody meant to lower a weapon.
       if (event.key === 'Escape') {
-        if (useAttackStore.getState().targeting) useAttackStore.getState().disarm();
-        if (useDrawingStore.getState().textDraft) useDrawingStore.getState().setTextDraft(null);
+        const renderer = rendererRef.current;
+        const hud = useHudStore.getState();
+        if (renderer?.isMarching()) {
+          renderer.interruptWalk('Marsz przerwany.');
+          return;
+        }
+        if (useAttackStore.getState().targeting) {
+          useAttackStore.getState().disarm();
+          return;
+        }
+        if (hud.form) {
+          hud.setForm(null);
+          return;
+        }
+        if (hud.activeWeapon) {
+          hud.setActiveWeapon(null);
+          return;
+        }
+        if (useDrawingStore.getState().textDraft) {
+          useDrawingStore.getState().setTextDraft(null);
+          return;
+        }
         // The first Esc drops the chain being traced, the second puts the tool
         // away — otherwise one mis-click would cost the whole floor plan, and
         // an Esc that only ever cancelled would leave no way out of the tool.
-        if (tools.tool === 'wall' && rendererRef.current?.cancelWallChain()) return;
-        if (tools.tool !== 'pointer') tools.setTool('pointer');
+        if (tools.tool === 'wall' && renderer?.cancelWallChain()) return;
+        if (tools.tool !== 'pointer') {
+          tools.setTool('pointer');
+          return;
+        }
+        renderer?.setSelection(null);
       }
     };
     window.addEventListener('keydown', onKey);
@@ -1199,8 +1290,8 @@ export function MapArea() {
       {targeting && (
         <div className="map-placement-hint map-placement-hint--attack">
           {targeting.characterName} celuje: „{targeting.weaponName}”
-          {targeting.mode !== 'single'
-            ? ` — ${targeting.mode === 'autofire' ? 'seria' : 'zapora'}`
+          {CPRED_ATTACK_MODE_SHORT[targeting.mode]
+            ? ` — ${CPRED_ATTACK_MODE_SHORT[targeting.mode]}`
             : ''}
           {' — kliknij cel na mapie (Esc anuluje)'}
         </div>
@@ -1238,6 +1329,7 @@ export function MapArea() {
       )}
       <MapTools />
       <CombatBar />
+      <TargetTooltip hover={aimHover} />
       <DrawingTextEditor />
       {isGm && <NoteEditor />}
       {menu && <TokenContextMenu menu={menu} onClose={() => setMenu(null)} />}

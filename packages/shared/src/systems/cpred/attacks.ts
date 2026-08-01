@@ -60,6 +60,17 @@ export const CPRED_ATTACK_MODE_LABELS: Record<CpredAttackMode, string> = {
   suppressive: 'Ogień zaporowy',
 };
 
+/**
+ * One-word names for places with no room for the full ones — a chip on an
+ * action-bar slot, the hint over the map. Null for a plain shot, which needs no
+ * word at all: „Ciężki pistolet" already says everything.
+ */
+export const CPRED_ATTACK_MODE_SHORT: Record<CpredAttackMode, string | null> = {
+  single: null,
+  autofire: 'seria',
+  suppressive: 'zapora',
+};
+
 /** Reach of a melee attack — „Atakowany cel musi znajdować się do 2 m od ciebie". */
 export const CPRED_MELEE_REACH_M = 2;
 

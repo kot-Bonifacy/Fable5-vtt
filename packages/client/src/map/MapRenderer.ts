@@ -272,6 +272,14 @@ const WALK_COLOR = 0x4ade80;
 const WALK_COLOR_BEYOND = 0x94a3b8;
 /** „Walk that way" — a route that ends at the edge of what is known. */
 const WALK_COLOR_UNKNOWN = 0x38bdf8;
+/**
+ * The target under the crosshair (stage 16f). Red, and solid: the three rings
+ * of 16e are white, green/blue/red *ownership* and amber — a fourth mark that
+ * shared any of them would be one shape too many to read at a glance.
+ */
+const AIM_COLOR = 0xf87171;
+/** Corner brackets of the target reticle, as a fraction of its radius. */
+const AIM_BRACKET = 0.45;
 
 /** Paints one fog shape: a round-capped band for a stroke, a box for a rect. */
 function drawFogShape(graphics: Graphics, shape: FogShape): void {
@@ -344,13 +352,17 @@ function drawDrawingShape(graphics: Graphics, shape: DrawingShape, style: Drawin
  * already been answered by the token's own handler, so the walk branch has to
  * stand down or one click would both select a figure and send it walking.
  */
-function isTokenTarget(target: unknown): boolean {
+function tokenNodeOf(target: unknown): TokenNode | null {
   let node = target as { parent?: unknown } | null;
   while (node) {
-    if (node instanceof TokenNode) return true;
+    if (node instanceof TokenNode) return node;
     node = (node.parent ?? null) as { parent?: unknown } | null;
   }
-  return false;
+  return null;
+}
+
+function isTokenTarget(target: unknown): boolean {
+  return tokenNodeOf(target) !== null;
 }
 
 /** A label as it sits on the map: sized in scene pixels, so it zooms with it. */
@@ -494,6 +506,14 @@ export class MapRenderer {
   onTokenActivate: ((tokenId: string) => void) | null = null;
   /** Click on a token while the crosshair is armed (stage 16). */
   onTokenTarget: ((tokenId: string) => void) | null = null;
+  /**
+   * The pointer moved onto (or off) a token the selected figure can aim at
+   * (stage 16f). The screen position travels with it so the caller can float a
+   * bubble there — the renderer knows where the pointer is, and the DOM does
+   * not.
+   */
+  onAimHover:
+    ((hover: { tokenId: string; clientX: number; clientY: number } | null) => void) | null = null;
   /** The local ruler changed; null means the measurement ended. */
   onRulerChange: ((points: ScenePoint[] | null) => void) | null = null;
   /** A fog stroke/rectangle is being drawn (preview); null ends the gesture. */
@@ -713,6 +733,17 @@ export class MapRenderer {
    * the route already get, for the same reason.
    */
   private readonly selectGraphics = new Graphics();
+  /**
+   * Does the selected figure have a weapon in hand (stage 16f)?
+   *
+   * The whole of what turns a pointer into a crosshair. The renderer never
+   * learns *which* weapon — that is a rule, and the bar owns it; it only needs
+   * to know whether pointing at somebody means anything right now.
+   */
+  private aimReady = false;
+  /** Token under the crosshair, redrawn as a reticle on the overlay. */
+  private aimTokenId: string | null = null;
+  private readonly aimGraphics = new Graphics();
   private walkText: Text | null = null;
   /**
    * Last planned route, keyed by the goal cell. A* would otherwise run on every
@@ -810,6 +841,7 @@ export class MapRenderer {
     this.overlayLayer.addChild(this.rulerGraphics);
     this.overlayLayer.addChild(this.moveGraphics);
     this.overlayLayer.addChild(this.selectGraphics);
+    this.overlayLayer.addChild(this.aimGraphics);
     this.overlayLayer.addChild(this.walkGraphics);
     this.overlayLayer.addChild(this.drawPreview);
     viewport.addChild(this.overlayLayer);
@@ -866,7 +898,9 @@ export class MapRenderer {
         return;
       }
       if (this.onMapClick?.(event.world.x, event.world.y)) return;
-      if (this.targeting) return;
+      // A weapon in hand used to swallow this click; since stage 16f it does
+      // not — the ground under an armed figure still means „walk there", which
+      // is the difference between a crosshair and a modal targeting mode.
       if (this.rulerMode || this.fogBrush.armed || this.draw.armed || this.erasing) return;
       // A click that landed on a token has already been answered by the token
       // itself — selecting it, opening its sheet, stopping a march.
@@ -981,14 +1015,16 @@ export class MapRenderer {
         if (this.drag?.node === node) this.endDrag(false);
         if (this.march?.node === node) this.finishMarch(null, false);
         if (this.selectedTokenId === id) this.setSelection(null);
+        if (this.aimTokenId === id) this.clearAim();
         this.tokenNodes.delete(id);
         this.movableTokens.delete(id);
         node.destroy({ children: true });
       }
     }
-    // The ring lives on the overlay, so it does not travel with the figure —
-    // every push that can move one has to redraw it.
+    // The ring and the reticle live on the overlay, so they do not travel with
+    // the figure — every push that can move one has to redraw them.
     this.drawSelectionRing();
+    this.drawAimReticle();
   }
 
   /**
@@ -1006,6 +1042,7 @@ export class MapRenderer {
   setTargeting(active: boolean): void {
     if (this.targeting === active) return;
     this.targeting = active;
+    if (!active) this.clearAim();
     this.applyMapCursor();
   }
 
@@ -1055,6 +1092,13 @@ export class MapRenderer {
   private applyMapCursor(): void {
     const canvas = this.app.canvas;
     if (!canvas) return;
+    // The reticle outranks everything: it is the most specific thing the
+    // pointer can be doing, and it is already filtered against every armed
+    // tool (`aimTargetFor`).
+    if (this.aimTokenId) {
+      canvas.style.cursor = 'crosshair';
+      return;
+    }
     const toolArmed =
       this.targeting ||
       this.notePlacing ||
@@ -1321,6 +1365,12 @@ export class MapRenderer {
     viewport.on('pointermove', (event: FederatedPointerEvent) => {
       const world = viewport.toWorld(event.global.x, event.global.y);
       const point = { x: Math.round(world.x), y: Math.round(world.y) };
+
+      // Who is under the pointer decides everything below it (stage 16f): a
+      // token the selected figure can aim at gets the reticle and suppresses
+      // the route, while empty ground keeps behaving exactly as in 16e — that
+      // is what „bez wchodzenia w tryb" means in code.
+      this.updateAim(tokenNodeOf(event.target), event);
 
       // The route follows the cursor before any tool gets a say: it is not a
       // gesture, it is what the map looks like while a figure is selected, and
@@ -1600,6 +1650,9 @@ export class MapRenderer {
     this.selectedTokenId = tokenId;
     this.walkWaypoints = [];
     this.walkHover = null;
+    // The reticle belongs to whoever was doing the aiming; a new figure has
+    // not raised a weapon yet.
+    this.clearAim();
     this.drawSelectionRing();
     this.drawWalkPreview();
     this.applyMapCursor();
@@ -1629,6 +1682,119 @@ export class MapRenderer {
       this.selectGraphics.arc(node.x + half, node.y + half, radius, start, start + arc);
       this.selectGraphics.stroke({ color: 0xffffff, width: 2.5 * k, alpha: 0.95 });
     }
+  }
+
+  /**
+   * Does the steered figure have a weapon in hand right now (stage 16f)?
+   *
+   * Pushed by the action bar, which is the only place that knows. Nothing else
+   * about the weapon reaches this file: „can I hit them from here" is a rule
+   * and lives in `planCpredAttack`, and the reticle is drawn whether or not the
+   * shot would land — the bubble next to it says which.
+   */
+  setAimReady(active: boolean): void {
+    if (this.destroyed || this.aimReady === active) return;
+    this.aimReady = active;
+    if (!active) this.clearAim();
+  }
+
+  /**
+   * Is this token something the pointer is *aiming at* rather than reaching
+   * for — and if so, which node?
+   *
+   * The rule is the one every top-down RPG uses: a figure I steer is somebody I
+   * **select**, anybody else is somebody I can **shoot**. Which leaves the GM,
+   * who steers the whole map and would otherwise never be able to switch
+   * figures — so for them the plain click keeps selecting and `Alt` is how they
+   * say „this one is a target, not my next pawn". A player holding `Alt` gets
+   * the same escape hatch for the rare shot at their own side.
+   *
+   * The crosshair armed from a sheet (stages 16 and 16b) overrides all of it:
+   * that gesture already said „the next token I click is a target".
+   */
+  private aimTargetFor(node: TokenNode | null, altKey: boolean): TokenNode | null {
+    if (!node || node.destroyed) return null;
+    // A map tool owns the pointer while it is armed — a fog brush over a
+    // portrait paints fog, and a crosshair there would be a lie.
+    if (
+      this.rulerMode ||
+      this.notePlacing ||
+      this.fogBrush.armed ||
+      this.draw.armed ||
+      this.wall.armed ||
+      this.light.armed ||
+      this.erasing
+    ) {
+      return null;
+    }
+    if (this.targeting) return node;
+    if (!this.aimReady || !this.selectedTokenId) return null;
+    if (node.tokenId === this.selectedTokenId) return null;
+    const steerable = this.movableTokens.get(node.tokenId) !== false;
+    if (steerable && !altKey) return null;
+    return node;
+  }
+
+  /** Puts the reticle on a token, or takes it off; reports both to the caller. */
+  private updateAim(node: TokenNode | null, event: FederatedPointerEvent): void {
+    const target = this.march ? null : this.aimTargetFor(node, event.altKey === true);
+    const id = target?.tokenId ?? null;
+    if (id !== this.aimTokenId) {
+      this.aimTokenId = id;
+      this.drawAimReticle();
+      this.applyMapCursor();
+    }
+    // The position is reported even when the token has not changed: the bubble
+    // follows the pointer across a large figure rather than sticking to the
+    // spot it was first seen at.
+    this.onAimHover?.(
+      id ? { tokenId: id, clientX: event.client.x, clientY: event.client.y } : null,
+    );
+  }
+
+  /** Takes the reticle down — selection changed, weapon put away, scene swapped. */
+  private clearAim(): void {
+    if (this.aimTokenId === null) return;
+    this.aimTokenId = null;
+    this.drawAimReticle();
+    this.applyMapCursor();
+    this.onAimHover?.(null);
+  }
+
+  /**
+   * Corner brackets round the token under the crosshair.
+   *
+   * Brackets rather than a fourth ring, and that is the whole design: a token
+   * can already be wearing an owner ring, the turn halo and the selection
+   * dashes at once, and a circle inside that stack is unreadable. A bracketed
+   * box says „sights" in the visual language of every game that has them.
+   */
+  private drawAimReticle(): void {
+    this.aimGraphics.clear();
+    const scene = this.scene;
+    const node = this.aimTokenId ? this.tokenNodes.get(this.aimTokenId) : undefined;
+    if (!scene || !node || node.destroyed) return;
+    const extent = node.token.size * scene.grid.sizePx;
+    const k = this.overlayScale();
+    const pad = 6 * k;
+    const left = node.x - pad;
+    const top = node.y - pad;
+    const right = node.x + extent + pad;
+    const bottom = node.y + extent + pad;
+    const arm = (right - left) * AIM_BRACKET;
+    const corners: [number, number, number, number][] = [
+      [left, top, 1, 1],
+      [right, top, -1, 1],
+      [left, bottom, 1, -1],
+      [right, bottom, -1, -1],
+    ];
+    for (const [x, y, dx, dy] of corners) {
+      this.aimGraphics
+        .moveTo(x + dx * arm, y)
+        .lineTo(x, y)
+        .lineTo(x, y + dy * arm);
+    }
+    this.aimGraphics.stroke({ color: AIM_COLOR, width: 2.5 * k, alpha: 0.95, cap: 'square' });
   }
 
   /**
@@ -1777,7 +1943,10 @@ export class MapRenderer {
       this.march !== null ||
       this.drag !== null ||
       this.rulerMode ||
-      this.targeting ||
+      // A weapon in hand no longer freezes the map (stage 16f): only the
+      // pointer actually resting on a target does, because that click is
+      // already spoken for.
+      this.aimTokenId !== null ||
       this.notePlacing ||
       this.fogBrush.armed ||
       this.draw.armed ||
@@ -2950,6 +3119,7 @@ export class MapRenderer {
     this.setRulers(this.lastRulers);
     this.drawMoveOverlay();
     this.drawSelectionRing();
+    this.drawAimReticle();
     this.drawWalkPreview();
     this.setRangeRings(this.lastRingCentre, this.lastRings);
     this.setNotes(this.lastNotes);
@@ -2966,10 +3136,12 @@ export class MapRenderer {
    */
   private clearWalkState(): void {
     this.finishMarch(null, false);
+    this.clearAim();
     this.walkWaypoints = [];
     this.walkHover = null;
     this.walkGraphics.clear();
     this.selectGraphics.clear();
+    this.aimGraphics.clear();
     this.walkText?.destroy();
     this.walkText = null;
     this.setWalkCursor('');
@@ -3010,8 +3182,10 @@ export class MapRenderer {
         return;
       }
       if (event.button !== 0) return;
-      // With the crosshair armed a click picks the target instead of dragging.
-      if (this.targeting) {
+      // A token under the crosshair is a target, not something to pick up —
+      // whether the crosshair came from a sheet (16b) or from the weapon in the
+      // action bar (16f). The caller decides which of the two is firing.
+      if (this.aimTargetFor(node, event.altKey === true)) {
         event.stopPropagation();
         this.onTokenTarget?.(node.tokenId);
         return;
