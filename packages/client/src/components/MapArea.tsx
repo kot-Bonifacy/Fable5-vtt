@@ -92,7 +92,6 @@ import {
   useMapToolStore,
 } from '../stores/mapToolStore.js';
 import { TokenContextMenu } from './TokenContextMenu.js';
-import { CombatBar } from './CombatBar.js';
 import { DrawingTextEditor } from './DrawingTextEditor.js';
 import { MapTools } from './MapTools.js';
 import { NoteEditor } from './NoteEditor.js';
@@ -1466,7 +1465,6 @@ export function MapArea() {
         <div className="map-placement-hint">Kliknij na mapie, by postawić podpis (Esc anuluje)</div>
       )}
       <MapTools />
-      <CombatBar />
       <TargetTooltip hover={aimHover} />
       <DrawingTextEditor />
       {isGm && <NoteEditor />}

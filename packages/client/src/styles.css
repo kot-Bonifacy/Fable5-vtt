@@ -41,13 +41,22 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 1rem;
   padding: 0 1rem;
-  height: 44px;
+  /* Tall enough for a portrait one can actually recognise: the tracker lives
+     here now, and „kto teraz gra" should be readable from across the desk
+     (owner's call, 01.08 — the target screens are 4K). Settled at 56 px after
+     64 came back as too much. */
+  height: 56px;
   background: var(--bg-topbar);
   border-bottom: 1px solid var(--border);
 }
 
+/* The whole row is scaled to the taller bar (01.08): at the distance a GM sits
+   from a 4K screen, the old 0.85rem labels read as small print. */
 .top-bar-title {
+  flex: none;
+  font-size: 1.1rem;
   font-weight: 600;
   letter-spacing: 0.04em;
   color: var(--accent);
@@ -57,7 +66,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   color: var(--text-dim);
 }
 
@@ -762,25 +771,42 @@ button:disabled {
 /* --- Top bar additions --- */
 
 .top-bar-right {
+  flex: none;
   display: flex;
   align-items: center;
   gap: 1rem;
 }
 
 .top-bar-campaign {
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   color: var(--text);
 }
 
 .top-bar-user {
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   color: var(--text-dim);
 }
 
 .top-bar-link {
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   color: var(--accent);
   text-decoration: none;
+}
+
+/* „Wyloguj", „Panel MG" and the speech toggles — same family as the panels'
+   small buttons, one notch up so the row keeps a single reading distance. */
+.top-bar .small-button {
+  padding: 0.3rem 0.7rem;
+  font-size: 0.85rem;
+}
+
+.top-bar .speech-volume {
+  width: 5.5rem;
+}
+
+.top-bar .status-dot {
+  width: 11px;
+  height: 11px;
 }
 
 .top-bar-link:hover {
@@ -2646,74 +2672,52 @@ body.is-resizing {
 }
 
 /* ---------------------------------------------------------------- stage 14
-   Initiative tracker: a bar floating over the map (who acts now, at a
+   Initiative tracker: a fixed strip in the top bar (who acts now, at a
    glance) and the „Walka" tab with the full queue and its controls.
+
+   The strip used to float over the map and could be dragged around; it moved
+   into the top bar on the owner's request (01.08), where it covers nothing and
+   the queue can use the whole width of the window.
    ------------------------------------------------------------------------ */
 
 .combat-bar {
-  /* Nothing here is meant to be read as a document: dragging the bar (or a
-     stray double-click) must never leave „RUNDA 1" or a name highlighted. */
+  /* Nothing here is meant to be read as a document: a stray double-click must
+     never leave „RUNDA 1" or a name highlighted. */
   user-select: none;
-  position: absolute;
-  top: 0.5rem;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 5;
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.4rem;
-  max-width: calc(100% - 1rem);
-  padding: 0.3rem 0.45rem;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: rgba(14, 15, 19, 0.92);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(2px);
+  height: 100%;
+}
+
+/* No fight running: the strip is only a placeholder holding the middle open
+   (and, for the GM, the one button that starts a queue). */
+.combat-bar--idle {
+  gap: 0;
 }
 
 .combat-bar-round {
   flex: none;
-  padding: 0 0.45rem;
-  font-size: 0.62rem;
+  padding: 0 0.2rem;
+  font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.09em;
   color: var(--warn);
   white-space: nowrap;
 }
 
-/* Drag handle: the label is the only spot on the bar without a control, so
-   grabbing it can never collide with stepping the turn. */
-.combat-bar-handle {
-  cursor: grab;
-  touch-action: none;
-  border-radius: 999px;
-  padding: 0.15rem 0.45rem;
-}
-
-/* No hover highlight: the label is a grip, not a button — the grab cursor
-   says everything. Keyboard focus still needs a visible mark. */
-.combat-bar-handle:focus-visible {
-  outline: 1px solid var(--warn);
-  outline-offset: 1px;
-}
-
-.combat-bar--dragging {
-  cursor: grabbing;
-  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.6);
-}
-
-.combat-bar--dragging .combat-bar-handle {
-  cursor: grabbing;
-}
-
 .combat-bar-step {
   flex: none;
-  padding: 0.15rem 0.5rem;
+  padding: 0.1rem 0.45rem;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: transparent;
   color: var(--text);
-  font-size: 0.75rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
   cursor: pointer;
 }
 
@@ -2723,19 +2727,42 @@ body.is-resizing {
 }
 
 .combat-bar-queue {
+  /* Shrinks before it scrolls: with a handful of participants the queue sits
+     centred in the bar, and only a crowd makes it take the whole width. */
+  flex: 0 1 auto;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 0.25rem;
   list-style: none;
   overflow-x: auto;
-  scrollbar-width: thin;
+  /* A visible scrollbar would eat a third of a 44 px bar — the wheel scrolls
+     the row, and the running turn scrolls itself into view. */
+  scrollbar-width: none;
+}
+
+.combat-bar-queue::-webkit-scrollbar {
+  display: none;
+}
+
+/* Faded edges are the only honest sign that the row continues past the bar.
+   Applied only while it actually overflows, so a short queue keeps its first
+   and last chip at full strength. */
+.combat-bar-queue--scrollable {
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    #000 14px,
+    #000 calc(100% - 14px),
+    transparent 100%
+  );
 }
 
 .combat-chip {
   display: flex;
   align-items: center;
-  gap: 0.3rem;
-  padding: 0.15rem 0.45rem 0.15rem 0.15rem;
+  gap: 0.4rem;
+  padding: 0.15rem 0.55rem 0.15rem 0.15rem;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.03);
@@ -2754,12 +2781,32 @@ body.is-resizing {
   border-style: dashed;
 }
 
+/* The portrait carries the badge, so it needs a corner to hang it in. */
+.combat-chip-figure {
+  position: relative;
+  display: flex;
+  flex: none;
+}
+
 .combat-chip-portrait {
-  width: 22px;
-  height: 22px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   object-fit: cover;
   flex: none;
+}
+
+/* „Action held" / „grappling" — a corner mark on the portrait rather than a
+   word in the row, which would push the names of everybody after it. */
+.combat-chip-badge {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  font-size: 0.7rem;
+  line-height: 1;
+  padding: 1px;
+  border-radius: 999px;
+  background: var(--bg-topbar);
 }
 
 .combat-chip-portrait--empty,
@@ -2772,30 +2819,77 @@ body.is-resizing {
   font-weight: 700;
 }
 
+/* Everybody on the strip is named — on the screens this table is played on
+   there is room for it, and a row of anonymous portraits reads like a puzzle.
+   The full name is still in the tooltip when it has to be cut. */
 .combat-chip-name {
-  font-size: 0.72rem;
-  max-width: 9rem;
+  font-size: 0.85rem;
+  max-width: 10rem;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+.combat-chip--active .combat-chip-name {
+  font-weight: 600;
+  color: var(--warn);
+}
+
 .combat-chip-initiative {
-  font-size: 0.72rem;
+  font-size: 0.85rem;
   font-weight: 700;
   color: var(--warn);
 }
 
 .combat-bar-end-turn {
   flex: none;
-  padding: 0.2rem 0.7rem;
+  padding: 0.25rem 0.8rem;
   border: 1px solid var(--warn);
   border-radius: 999px;
   background: rgba(217, 164, 65, 0.18);
   color: var(--warn);
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
+}
+
+/* Turn mode on and off — the GM's pair, both in the same spot. */
+.combat-bar-start {
+  padding: 0.25rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.combat-bar-start:hover:not(:disabled) {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.combat-bar-start:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.combat-bar-stop {
+  flex: none;
+  padding: 0.1rem 0.45rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.combat-bar-stop:hover {
+  border-color: var(--err);
+  color: var(--err);
 }
 
 .combat-panel {
@@ -3117,11 +3211,13 @@ body.is-resizing {
 }
 
 .combat-bar-death-save {
+  flex: none;
   background: rgb(255 59 48 / 15%);
   color: var(--err);
   border: 1px solid var(--err);
   border-radius: 6px;
-  padding: 0.2rem 0.5rem;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
@@ -3773,16 +3869,20 @@ body.is-resizing {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-  max-width: 22rem;
+  /* Shares the bar with the queue now, so it yields space instead of taking
+     it: the full sentence is in the tooltip either way. */
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 18rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  padding: 0.2rem 0.45rem;
+  padding: 0.25rem 0.5rem;
   border: 1px solid var(--warn);
   border-radius: 6px;
   background: rgb(255 179 0 / 12%);
   color: var(--warn);
-  font-size: 0.72rem;
+  font-size: 0.8rem;
 }
 
 /* A debt the next turn already carries („Uraz kręgosłupa: bez Akcji"). Reads
@@ -4004,12 +4104,6 @@ body.is-resizing {
   background: rgb(255 255 255 / 4%);
   border-left: 2px solid var(--border);
   border-radius: 3px;
-}
-
-.hud-turn-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem;
 }
 
 .hud-slots {

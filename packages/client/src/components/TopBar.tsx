@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { CombatBar } from './CombatBar.js';
 import { ConnectionStatus } from './ConnectionStatus.js';
 import { SpeechControls } from './SpeechControls.js';
 import { useAuthStore } from '../stores/authStore.js';
@@ -11,6 +12,9 @@ export function TopBar() {
   return (
     <header className="top-bar">
       <span className="top-bar-title">VTT — Cyberpunk RED</span>
+      {/* The turn tracker sits in the middle of the bar rather than over the
+          map: the table stays uncovered, and the queue gets a full-width row. */}
+      <CombatBar />
       <div className="top-bar-right">
         {activeCampaign && <span className="top-bar-campaign">{activeCampaign.name}</span>}
         <ConnectionStatus />

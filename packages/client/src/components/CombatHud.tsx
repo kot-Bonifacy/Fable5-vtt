@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import type { CpredHotbarSlot } from '@vtt/shared';
 import { CPRED_WOUND_LABELS, ROLE_GM, woundStateFromHp } from '@vtt/shared';
 import { activateSlot, currentHudContext, hudSignature, type HudContext } from '../hud.js';
-import { nextCombatTurn, previousCombatTurn } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useCombatStore } from '../stores/combatStore.js';
@@ -279,30 +278,9 @@ export function CombatHud() {
           {context.turn && <TurnBudget budget={context.turn} />}
           {context.refusal && <p className="hud-refusal">{context.refusal}</p>}
 
-          {combat && context.combatant && (
-            <div className="hud-turn-buttons">
-              {(isGm || context.isActiveTurn) && (
-                <button
-                  type="button"
-                  className="small-button"
-                  title="Kończy turę i przesuwa kolejkę inicjatywy (E)"
-                  onClick={() => void nextCombatTurn()}
-                >
-                  Koniec tury
-                </button>
-              )}
-              {isGm && (
-                <button
-                  type="button"
-                  className="small-button"
-                  title="Cofa kolejkę o jedną turę"
-                  onClick={() => void previousCombatTurn()}
-                >
-                  Zwróć turę
-                </button>
-              )}
-            </div>
-          )}
+          {/* Stepping the queue is not here on purpose: it belongs to the strip
+              in the top bar, which owns the queue and works with nothing
+              selected. „E" still ends the turn from the map. */}
 
           <div className="hud-slots">
             {context.slots.length === 0 && (
