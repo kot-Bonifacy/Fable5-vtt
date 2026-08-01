@@ -70,7 +70,10 @@ export interface PendingAttack {
   /** Whoever is shooting, sheet or token — shown on the cup. */
   characterName: string;
   attackerTokenId?: string;
-  targetTokenId: string;
+  /** Token being shot at; absent when the shot is aimed at a cover (16c). */
+  targetTokenId?: string;
+  /** Cover being shot at instead — „ostrzelaj samochód" (stage 16c). */
+  targetCoverId?: number;
   targetName: string;
   request: CpredAttackRequest;
   /** Cup label, e.g. „Zgrzyt 9 → Ganger · 24 m". */

@@ -17,6 +17,7 @@
  * be bolted, and a window shows what is behind it only from up close.
  */
 
+import { fireCoverSegments, type CoverView } from './covers.js';
 import type { ScenePoint } from './measure.js';
 import type { Segment } from './vision.js';
 
@@ -300,16 +301,27 @@ export function sightSegmentsFor(
  *  - a **door** is opaque while shut and a hole once open, exactly as it is for
  *    sight.
  *
- * The wrapper exists so that call sites read as what they mean, and so that
- * stage 16c has one place to add cover: an object that blocks a bullet and
- * nothing else appends its segments here, and sight never hears about it.
+ * Stage 16c filled in the promise this wrapper was written for: **cover** is an
+ * object that blocks a bullet and nothing else, so its edges are appended here
+ * and sight never hears about them. The `coverReachPx` exemption comes with it —
+ * a car you are standing at does not stop your own shots (`fireCoverSegments`).
  */
 export function fireSegmentsFor(
   walls: readonly WallView[],
   origin: ScenePoint,
-  options: { curtainReachPx: number | null },
+  options: {
+    curtainReachPx: number | null;
+    /** Cover on the scene (stage 16c); omit on a scene that has none. */
+    covers?: readonly CoverView[];
+    /** How close counts as „standing at it", in scene pixels. */
+    coverReachPx?: number;
+  },
 ): Segment[] {
-  return sightSegmentsFor(walls, origin, options);
+  const segments = sightSegmentsFor(walls, origin, options);
+  if (options.covers && options.covers.length > 0) {
+    segments.push(...fireCoverSegments(options.covers, origin, options.coverReachPx ?? 0));
+  }
+  return segments;
 }
 
 /**

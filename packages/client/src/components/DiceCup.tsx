@@ -264,7 +264,10 @@ export function DiceCup() {
         void digestSamples(samples).then((entropy) => {
           sendAttackRoll(
             loaded.characterId,
-            loaded.targetTokenId,
+            {
+              ...(loaded.targetTokenId ? { tokenId: loaded.targetTokenId } : {}),
+              ...(loaded.targetCoverId !== undefined ? { coverId: loaded.targetCoverId } : {}),
+            },
             loaded.request,
             loaded.attackerTokenId,
             {

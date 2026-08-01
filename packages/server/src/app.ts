@@ -21,6 +21,7 @@ import { setupRealtime } from './realtime/index.js';
 import { loadStatusRegistry } from './statuses.js';
 import { loadCompendium } from './compendium.js';
 import { loadCpredRegistry } from './cpred.js';
+import { loadCoverCatalogue } from './covers.js';
 import { loadVoiceRegistry } from './voices.js';
 
 export interface BuiltApp {
@@ -100,6 +101,7 @@ export async function buildApp(
     statuses: await loadStatusRegistry(config.dataPublicDir, app.log),
     cpred: await loadCpredRegistry(config.dataPublicDir, config.dataPrivateDir, app.log),
     compendium: await loadCompendium(config.dataPublicDir, config.dataPrivateDir, app.log),
+    covers: await loadCoverCatalogue(config.dataPublicDir, config.dataPrivateDir, app.log),
     ai,
     tts,
     voices: await loadVoiceRegistry(config.dataPublicDir, app.log),

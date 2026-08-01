@@ -9,6 +9,9 @@ import type {
   AiStatusBroadcast,
   AttackEvadePayload,
   AttackRollPayload,
+  AttackRollResult,
+  CoverSyncBroadcast,
+  CoverView,
   BotActivityBroadcast,
   BotChatPayload,
   BotChunkBroadcast,
@@ -127,6 +130,8 @@ import { useNoteStore } from './stores/noteStore.js';
 import { useWallStore } from './stores/wallStore.js';
 import { useLightStore } from './stores/lightStore.js';
 import { useExplorationStore } from './stores/explorationStore.js';
+import { useCoverStore } from './stores/coverStore.js';
+import { offerCoverChoice, offerShieldChoice } from './attack-targeting.js';
 
 let socket: Socket | undefined;
 /** User the live socket authenticated as — a different one forces a reconnect. */
@@ -299,6 +304,7 @@ export function connectSocket(userId: string): Socket {
     useDrawingStore.getState().applySync(payload);
     useNoteStore.getState().applySync(payload);
     useWallStore.getState().applySync(payload);
+    useCoverStore.getState().applySync(payload);
     useLightStore.getState().applySync(payload);
     useExplorationStore.getState().applySync(payload);
     if (payload.ai) useAiStore.getState().setStatus(payload.ai);
@@ -549,6 +555,19 @@ export function connectSocket(userId: string): Socket {
       useLightStore.getState().setLights(broadcast.sceneId, broadcast.lights);
     }
   });
+  // Cover is the one scene object every viewer receives (stage 16c), so unlike
+  // `wall:sync` this one goes to the room and carries a seq on the active
+  // scene — a missed edit would leave somebody planning a route through a car
+  // that is no longer there.
+  socket.on('cover:sync', (broadcast: CoverSyncBroadcast & { seq?: number }) => {
+    if (chat().applySeq(broadcast.seq)) {
+      socket?.emit('state:request');
+      return;
+    }
+    if (viewingScene(broadcast.sceneId)) {
+      useCoverStore.getState().setCovers(broadcast.sceneId, broadcast.covers);
+    }
+  });
   socket.on('opening:sync', (broadcast: OpeningSyncBroadcast) => {
     if (viewingScene(broadcast.sceneId)) useWallStore.getState().setOpenings(broadcast.openings);
   });
@@ -734,20 +753,51 @@ function attackAckErrorText(code: string): string {
 export function sendAttackRoll(
   /** Sheet firing; omitted for a statist, whose token carries the numbers. */
   characterId: string | undefined,
-  targetTokenId: string,
+  /** What is being shot at: a token, or a cover (stage 16c). */
+  target: { tokenId?: string; coverId?: number },
   request: CpredAttackRequest,
   attackerTokenId?: string,
   gesture?: RollGesture,
 ): void {
   const payload: AttackRollPayload<CpredAttackRequest> = {
     ...(characterId ? { characterId } : {}),
-    targetTokenId,
+    ...(target.coverId !== undefined
+      ? { targetCoverId: target.coverId }
+      : { targetTokenId: target.tokenId ?? '' }),
     request,
     ...(attackerTokenId ? { attackerTokenId } : {}),
     ...(gesture ? { gesture } : {}),
   };
-  socket?.emit('attack:roll', payload, (ack: SocketAck<{ messageId: number }>) => {
-    if (!ack.ok) useChatStore.getState().addNote(attackAckErrorText(ack.error));
+  socket?.emit('attack:roll', payload, (ack: SocketAck<AttackRollResult>) => {
+    if (!ack.ok) {
+      useChatStore.getState().addNote(attackAckErrorText(ack.error));
+      return;
+    }
+    // Stage 16c: the shot did not happen because something was in the way, and
+    // the server says *what*. Nothing was rolled and nothing was spent, so the
+    // answer is a card with the two choices rather than an error — the same
+    // card the local preview raises for a cover it could see coming.
+    const blocked = ack.data?.blocked;
+    if (!blocked || !attackerTokenId) return;
+    const intent = {
+      ...(characterId ? { characterId } : {}),
+      attackerTokenId,
+      weaponRowId: request.weaponRowId,
+      mode: request.mode,
+      ...(request.aimed ? { aimed: true } : {}),
+      ...(request.modifier ? { modifier: request.modifier } : {}),
+    };
+    if (blocked.kind === 'cover') {
+      if (!target.tokenId) return;
+      offerCoverChoice(intent, target.tokenId, {
+        id: blocked.coverId,
+        name: blocked.name,
+        hpCurrent: blocked.hpCurrent,
+        hpMax: blocked.hpMax,
+      });
+      return;
+    }
+    if (target.tokenId) offerShieldChoice(intent, target.tokenId, blocked);
   });
 }
 
@@ -865,6 +915,32 @@ export const clearWalls = (sceneId: string) => emitSceneAck('wall:clear', { scen
 
 export const toggleOpening = (wallId: number, open?: boolean) =>
   emitSceneAck<WallView>('opening:toggle', { wallId, open });
+
+/* Cover (stage 16c). GM-only to edit, visible to everybody — the body points
+   are *not* sent: the server reads them out of the catalogue the preset names,
+   so a client cannot type its own toughness into a car. */
+
+export const createCover = (
+  sceneId: string,
+  typeId: string,
+  rect: { x: number; y: number; width: number; height: number },
+) => emitSceneAck<CoverView>('cover:create', { sceneId, typeId, ...rect });
+
+export const updateCover = (
+  coverId: number,
+  patch: {
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+    name?: string;
+    hpCurrent?: number;
+  },
+) => emitSceneAck<CoverView>('cover:update', { coverId, patch });
+
+export const deleteCover = (coverId: number) => emitSceneAck('cover:delete', { coverId });
+
+export const clearCovers = (sceneId: string) => emitSceneAck('cover:clear', { sceneId });
 
 /* Lights and darkness (stage 18b). GM-only except `toggleTokenLight`, which the
    controller of a token may use on their own torch — the server checks that,

@@ -4,6 +4,7 @@ import type { BotView } from './bots/types.js';
 import type { ChatMessageView } from './chat.js';
 import type { CombatView } from './combat.js';
 import type { CharacterView } from './characters.js';
+import type { CoverView } from './covers.js';
 import type { CompendiumEntry, WeaponTypeDefinition } from './systems/cpred/compendium.js';
 import type { RollToss } from './dice.js';
 import type { DrawingView } from './drawings.js';
@@ -67,6 +68,16 @@ export interface StateSyncPayload {
    * `vision` below, which is the finished result of the raycast.
    */
   walls: WallView[];
+  /**
+   * Cover standing on the viewed scene (stage 16c) — **for everybody**, and the
+   * only scene object of which that is true.
+   *
+   * The rule the walls obey („data a player cannot see does not leave the
+   * server") is what puts a car here rather than next to them: everyone at the
+   * table is looking straight at it. A client needs it to draw the car, to
+   * plan a route round it and to offer it as a target.
+   */
+  covers: CoverView[];
   /**
    * Lights of the viewed scene (stage 18b) — **GM only, always empty for a
    * player**, for the reason the walls are: a light's shape is the shape of the
@@ -197,7 +208,15 @@ export interface CombatRollPayload {
 export interface DamageApplyPayload {
   /** Chat message id of the damage roll. */
   messageId: number;
-  tokenId: string;
+  /** Token taking the hit; omitted when a cover does (stage 16c). */
+  tokenId?: string;
+  /**
+   * Cover taking the hit instead of a token (stage 16c). An object has no
+   * armour, no Critical Injuries and no Death Save, and whatever is left over
+   * once it is wrecked simply stops („pozostałe obrażenia tego ataku
+   * przepadają", s. 179).
+   */
+  coverId?: number;
   /** Overrides the location the roll was made for. */
   location?: string;
   /** SP protecting the target — for statists without a sheet. */
@@ -224,13 +243,47 @@ export interface AttackRollPayload<TRequest = unknown> {
    * is then required, because there is nothing else to look the fighter up by.
    */
   characterId?: string;
-  targetTokenId: string;
+  /** Token being shot at. Omitted when the target is a cover (stage 16c). */
+  targetTokenId?: string;
+  /**
+   * Cover being shot at instead of a token (stage 16c) — „ostrzelaj samochód".
+   * Exactly one of the two target fields may be present.
+   */
+  targetCoverId?: number;
   /** Which of the character's tokens is shooting; derived when omitted. */
   attackerTokenId?: string;
   request: TRequest;
   /** Present when the roll was thrown with the dice cup. */
   gesture?: RollGesture;
 }
+
+/**
+ * Why a shot did not happen (stage 16c) — something stops the round, and the
+ * table has to choose what to do about it.
+ *
+ * Returned as a **result**, not thrown as an error, and that is the whole point:
+ * nothing was rolled, nothing was spent, and the client has everything it needs
+ * to offer the two answers the rules allow — shoot the obstacle instead, or
+ * declare that the target leaned out (`ignoreCover`).
+ */
+export type AttackBlocked =
+  | {
+      kind: 'cover';
+      coverId: number;
+      name: string;
+      hpCurrent: number;
+      hpMax: number;
+    }
+  | {
+      kind: 'shield';
+      /** The Human Shield itself — „PW tarczy to PW trzymanego" (s. 181). */
+      tokenId: string;
+      name: string;
+    };
+
+/** Ack of `attack:roll`: the card that was posted, or what stood in the way. */
+export type AttackRollResult =
+  { messageId: number; blocked?: undefined } | { blocked: AttackBlocked };
 
 /**
  * The defender contests an attack that already resolved (stage 16): the DV

@@ -332,6 +332,7 @@ model Scene {
   drawings     MapDrawing[]
   notes        MapNote[]
   walls        Wall[]
+  covers       Cover[]
   lights       MapLight[]
   exploration  SceneExploration?
 
@@ -462,6 +463,45 @@ model Wall {
   y1 Float
   x2 Float
   y2 Float
+
+  createdAt DateTime @default(now())
+
+  scene Scene @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+
+  @@index([sceneId])
+}
+
+/**
+ * Cover standing on the map (stage 16c) — the car, the concrete bollard, the
+ * crate somebody ducks behind.
+ *
+ * The one table on a scene that is **not** GM data. A wall is a floor plan the
+ * party is meant to discover, so its rows stop at the server; a car parked in
+ * the street is something everybody is looking at, and hiding its row would only
+ * mean nobody could draw it. What follows from that is the whole difference in
+ * behaviour: cover blocks a bullet and never blocks sight (a cover that blocked
+ * sight would simply be a wall).
+ *
+ * Toughness is stored as two plain numbers rather than as a material, because
+ * where they came from is a CP RED table (s. 180) and the core must not learn
+ * what „beton" is — `typeId` names a catalogue preset and stays opaque here.
+ * Zero current HP is a wreck: still on the map, stops nothing.
+ */
+model Cover {
+  id      Int    @id @default(autoincrement())
+  sceneId String
+  /// Catalogue preset it was placed from ("car", "concrete-bollard", …).
+  typeId  String
+  /// Label drawn on the map; defaults to the preset's name.
+  name    String
+  /// Top-left corner and size in scene (world) pixels; axis-aligned rectangle.
+  x      Float
+  y      Float
+  width  Float
+  height Float
+  /// Body points. 0 = destroyed; the row stays as scenery and stops nothing.
+  hpMax     Int
+  hpCurrent Int
 
   createdAt DateTime @default(now())
 

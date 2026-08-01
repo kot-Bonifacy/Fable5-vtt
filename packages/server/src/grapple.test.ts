@@ -562,6 +562,45 @@ describe('grappling', () => {
   });
 
   /**
+   * Stage 16c gave „uznaje się, że jesteś za osłoną" (s. 181) teeth: until then
+   * it was a sentence appended to the card and the GM ruled on it. Now the shot
+   * is stopped by the person in the way, and the answer names them — their body
+   * points are the cover's, because they *are* the cover.
+   */
+  it('stops a bullet aimed at whoever is holding the shield', async () => {
+    const ack = await emitAck<{ blocked?: { kind: string; tokenId: string; name: string } }>(
+      gm,
+      'attack:roll',
+      {
+        characterId: thugCharacterId,
+        attackerTokenId: thugTokenId,
+        targetTokenId: vexTokenId,
+        request: { weaponRowId: 'w-pistol', mode: 'single' },
+      },
+    );
+    expect(ack.ok).toBe(true);
+    expect(ack.ok && ack.data?.blocked).toEqual({
+      kind: 'shield',
+      tokenId: statistTokenId,
+      name: 'Kurier',
+    });
+  });
+
+  it('lets an aimed shot over the top of it', async () => {
+    // „Nie można nimi zasłaniać się … przed atakami dystansowymi wycelowanymi
+    // w twoją głowę" (s. 178) — the shield is at chest height, and the −8 of an
+    // aimed shot is what it costs to shoot over it.
+    const ack = await emitAck<{ blocked?: unknown }>(gm, 'attack:roll', {
+      characterId: thugCharacterId,
+      attackerTokenId: thugTokenId,
+      targetTokenId: vexTokenId,
+      request: { weaponRowId: 'w-pistol', mode: 'single', aimed: true },
+    });
+    expect(ack.ok).toBe(true);
+    expect(ack.ok && ack.data?.blocked).toBeUndefined();
+  });
+
+  /**
    * The other side of the table: a *player* being Held.
    *
    * The stats are swapped for this block so the NPC wins on merit — the whole

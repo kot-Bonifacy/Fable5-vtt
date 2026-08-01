@@ -10,6 +10,7 @@ import { ARMOR_SP_MAX, ROLE_GM, damageTotal } from '@vtt/shared';
 import type { Character, Token } from '../generated/prisma/client.js';
 import {
   SHEET_STATIST_ARMOR_ROW_ID,
+  applyDamageToCover,
   applyDamageToSheet,
   applyDamageToTokenHp,
   isValidHitLocation,
@@ -23,6 +24,7 @@ import { createMixedRng } from './dice-rng.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { emitCombatOfScene } from './combat.js';
+import { emitCovers } from './covers.js';
 import { oweCarryToToken } from './turn-effects.js';
 import { emitTokensById, emitTokensOfCharacter, requireCampaignToken } from './tokens.js';
 import { buildCompendiumSync } from './compendium.js';
@@ -98,6 +100,38 @@ async function logDamage(
   return view;
 }
 
+/**
+ * Takes the hit out of a cover's body points and pushes the new list (stage
+ * 16c). Wrecking one leaves the row on the map — it is still scenery — and
+ * `coverStanding` is what stops it blocking anything from the next shot on.
+ */
+async function applyDamageToCoverRow(
+  deps: RealtimeDeps,
+  campaignId: string,
+  coverId: unknown,
+  roll: RollResult,
+): Promise<{ coverId: number; name: string; log: SheetDamageLog }> {
+  if (typeof coverId !== 'number' || !Number.isInteger(coverId)) {
+    throw new RealtimeError('BAD_REQUEST');
+  }
+  const row = await deps.ctx.prisma.cover.findUnique({
+    where: { id: coverId },
+    include: { scene: true },
+  });
+  if (!row || row.scene.campaignId !== campaignId) throw new RealtimeError('COVER_NOT_FOUND');
+
+  const applied = applyDamageToCover(
+    { current: row.hpCurrent, max: row.hpMax },
+    { damage: damageTotal(roll) },
+  );
+  await deps.ctx.prisma.cover.update({
+    where: { id: row.id },
+    data: { hpCurrent: applied.hpCurrent },
+  });
+  await emitCovers(deps, campaignId, row.scene);
+  return { coverId: row.id, name: row.name, log: applied.log };
+}
+
 export const damageApplyEvent = defineEvent<DamageApplyPayload, { messageId: number }>({
   name: 'damage:apply',
   role: ROLE_GM,
@@ -105,6 +139,27 @@ export const damageApplyEvent = defineEvent<DamageApplyPayload, { messageId: num
     const campaignId = requireCampaignId(socket.data);
     const sourceMessageId = requireMessageId(payload?.messageId);
     const roll = await loadDamageRoll(deps, campaignId, sourceMessageId);
+
+    // Stage 16c: the thing taking the hit may be a cover. Its whole path is
+    // three lines long and shares nothing with the sheet — no armour, no
+    // injury table, no Death Save — so it forks here rather than growing
+    // branches inside `applyDamageToSheet`.
+    if (payload?.coverId !== undefined) {
+      const view = await applyDamageToCoverRow(deps, campaignId, payload.coverId, roll);
+      const entry: DamageLogEntry = {
+        ...view.log,
+        sourceMessageId,
+        targetCoverId: view.coverId,
+        targetName: view.name,
+        characterId: null,
+        // A car has no owner to keep its numbers from: everybody at the table
+        // can see the bonnet coming apart.
+        targetOwnerId: null,
+      };
+      const logged = await logDamage(deps, campaignId, user.id, entry);
+      return { messageId: logged.id };
+    }
+
     const { token, scene } = await requireCampaignToken(
       deps.ctx.prisma,
       campaignId,
@@ -233,9 +288,27 @@ export const damageUndoEvent = defineEvent<DamageUndoPayload, void>({
     const entry = JSON.parse(message.payload) as DamageLogEntry;
     if (entry.undone) throw new RealtimeError('ALREADY_UNDONE');
 
+    // A wrecked car welds itself back together (stage 16c). Cheap and complete:
+    // a cover's whole state is one number, so there is nothing else to restore
+    // — and it is the reason a destroyed cover stays on the map as a wreck
+    // instead of being deleted, which „Cofnij" could not undo.
+    if (entry.targetCoverId !== undefined && entry.hp) {
+      const cover = await deps.ctx.prisma.cover.findUnique({
+        where: { id: entry.targetCoverId },
+        include: { scene: true },
+      });
+      if (cover && cover.scene.campaignId === campaignId) {
+        await deps.ctx.prisma.cover.update({
+          where: { id: cover.id },
+          data: { hpCurrent: Math.max(0, Math.min(entry.hp.before, cover.hpMax)) },
+        });
+        await emitCovers(deps, campaignId, cover.scene);
+      }
+    }
+
     // Statuses the hit put on come off first: a restored sheet that stays
     // „Nieprzytomny" looks like the undo half-worked (stage 14d).
-    if (entry.statusesAdded && entry.statusesAdded.length > 0) {
+    if (entry.targetTokenId && entry.statusesAdded && entry.statusesAdded.length > 0) {
       const token = await deps.ctx.prisma.token.findUnique({ where: { id: entry.targetTokenId } });
       if (token) {
         const statuses = parseTokenStatuses(token).filter(
@@ -263,8 +336,9 @@ export const damageUndoEvent = defineEvent<DamageUndoPayload, void>({
         await emitCharacterUpsert(deps, campaignId, toCharacterView(saved, deps.ctx.cpred));
         await emitTokensOfCharacter(deps, campaignId, saved);
       }
-    } else if (entry.hp) {
-      const token = await deps.ctx.prisma.token.findUnique({ where: { id: entry.targetTokenId } });
+    } else if (entry.hp && entry.targetTokenId) {
+      const tokenId = entry.targetTokenId;
+      const token = await deps.ctx.prisma.token.findUnique({ where: { id: tokenId } });
       if (token) {
         const hp: TokenHp = { current: entry.hp.before, max: entry.hp.max };
         // The statist's armour goes back up with the HP (stage 16b). Leaving it

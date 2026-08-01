@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import {
+  cpredCoverPresetDetail,
   DRAWING_COLORS,
   DRAWING_MAX_FONT_SIZE,
   DRAWING_MAX_WIDTH,
@@ -18,9 +19,11 @@ import { useMapToolStore } from '../stores/mapToolStore.js';
 import { useRulerStore } from '../stores/rulerStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useWallStore } from '../stores/wallStore.js';
+import { useCoverStore } from '../stores/coverStore.js';
 import { useLightStore } from '../stores/lightStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import {
+  clearCovers,
   clearDrawings,
   clearWalls,
   deleteDrawing,
@@ -31,6 +34,7 @@ import {
 import {
   IconBrush,
   IconCloud,
+  IconCover,
   IconCoverAll,
   IconEllipse,
   IconEraser,
@@ -103,6 +107,11 @@ export function MapTools() {
   const setWindowPlayerToggle = useMapToolStore((s) => s.setWindowPlayerToggle);
   const wallSnapGrid = useMapToolStore((s) => s.wallSnapGrid);
   const setWallSnapGrid = useMapToolStore((s) => s.setWallSnapGrid);
+  const coverMode = useMapToolStore((s) => s.coverMode);
+  const setCoverMode = useMapToolStore((s) => s.setCoverMode);
+  const coverTypeId = useMapToolStore((s) => s.coverTypeId);
+  const setCoverTypeId = useMapToolStore((s) => s.setCoverTypeId);
+  const coverCatalogue = useMapToolStore((s) => s.coverCatalogue);
   const lightMode = useMapToolStore((s) => s.lightMode);
   const setLightMode = useMapToolStore((s) => s.setLightMode);
   const lightBrightM = useMapToolStore((s) => s.lightBrightM);
@@ -130,6 +139,7 @@ export function MapTools() {
   const drawings = useDrawingStore((s) => s.drawings);
   const visibility = useSceneStore((s) => s.effectiveScene?.visibility ?? 'open');
   const hasWalls = useWallStore((s) => s.walls.length > 0);
+  const coverCount = useCoverStore((s) => s.covers.length);
   const sceneIsDark = useSceneStore((s) => s.effectiveScene?.dark ?? false);
   const lightCount = useLightStore((s) => s.lights.length);
   const tokens = useTokenStore((s) => s.tokens);
@@ -287,6 +297,15 @@ export function MapTools() {
             onClick={() => toggleTool('wall')}
           >
             <IconWall />
+          </button>
+          <button
+            type="button"
+            className={`map-tool${tool === 'cover' ? ' map-tool--active' : ''}`}
+            title="Osłony (O) — przeciągnij prostokąt; osłona zatrzymuje kulę, ale nie zasłania widoku. Widzą ją wszyscy przy stole"
+            aria-pressed={tool === 'cover'}
+            onClick={() => toggleTool('cover')}
+          >
+            <IconCover />
           </button>
           <button
             type="button"
@@ -616,6 +635,74 @@ export function MapTools() {
               Tryb widoczności sceny to nie „Dynamiczna” — ściany nic jeszcze nie zasłaniają
             </span>
           )}
+        </div>
+      )}
+
+      {isGm && tool === 'cover' && (
+        <div className="map-tool-options" role="group" aria-label="Ustawienia osłon">
+          <button
+            type="button"
+            className={`map-tool${coverMode === 'draw' ? ' map-tool--active' : ''}`}
+            title="Rysowanie — przeciągnij prostokąt na mapie"
+            aria-pressed={coverMode === 'draw'}
+            onClick={() => setCoverMode('draw')}
+          >
+            <IconRect />
+          </button>
+          <button
+            type="button"
+            className={`map-tool${coverMode === 'erase' ? ' map-tool--active' : ''}`}
+            title="Gumka — kliknij osłonę, by ją usunąć (także wrak)"
+            aria-pressed={coverMode === 'erase'}
+            onClick={() => setCoverMode('erase')}
+          >
+            <IconEraser />
+          </button>
+
+          {coverMode === 'draw' && (
+            <>
+              <span className="map-tools-sep" aria-hidden />
+              {/* The catalogue decides the material and the body points; this is
+                  only which row of it the next rectangle uses. „Gips cienki" is
+                  absent from the list on purpose — the table gives it 0 PW,
+                  which is the rulebook saying it is not cover. */}
+              <label
+                className="map-tool-slider"
+                title="Rodzaj osłony (materiał i grubość z podręcznika, s. 180)"
+              >
+                <select
+                  value={coverTypeId}
+                  onChange={(event) => setCoverTypeId(event.target.value)}
+                  aria-label="Rodzaj osłony"
+                >
+                  {coverCatalogue.presets.map((preset) => (
+                    <option key={preset.id} value={preset.id}>
+                      {preset.name} — {cpredCoverPresetDetail(coverCatalogue, preset)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {coverCatalogue.presets.length === 0 && (
+                <span className="map-tool-hint">
+                  Brak katalogu osłon — sprawdź data/public/cpred/covers.json
+                </span>
+              )}
+            </>
+          )}
+
+          <span className="map-tools-sep" aria-hidden />
+          <span className="map-tool-hint">
+            {coverCount === 0 ? 'brak osłon' : `osłon: ${coverCount}`}
+          </span>
+          <button
+            type="button"
+            className="map-tool map-tool--warn"
+            title="Usuń wszystkie osłony z tej sceny"
+            disabled={!sceneId || coverCount === 0}
+            onClick={() => sceneId && void clearCovers(sceneId)}
+          >
+            <IconTrashAll />
+          </button>
         </div>
       )}
 

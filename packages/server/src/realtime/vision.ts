@@ -1,4 +1,5 @@
 import type {
+  CoverView,
   FogShapeView,
   LightGlow,
   LightMask,
@@ -15,6 +16,7 @@ import {
   blockingSegments,
   buildLightMask,
   computeVisionPolygon,
+  coverInLineOfFire,
   fireSegmentsFor,
   fogOverrideAt,
   isPointLit,
@@ -39,6 +41,7 @@ import type { RealtimeDeps } from './registry.js';
 import { emitExploration, recordSight } from './exploration.js';
 import { fetchFogState } from './fog-io.js';
 import { fetchSceneWalls } from './walls-io.js';
+import { fetchSceneCovers } from './covers-io.js';
 import { fetchSceneLights, lightSourceOf, toLightScene, tokenLightOf } from './lights-io.js';
 import { campaignRoom, emitToCampaignUser } from './state.js';
 
@@ -120,6 +123,16 @@ interface CarriedLight {
 export interface SceneVisionContext {
   walls: WallView[];
   /**
+   * Cover standing on the scene (stage 16c).
+   *
+   * The one thing in this context that is **not** a secret: covers travel to
+   * every client, so they are here for the shooting rules, not for the hiding
+   * ones. Nothing in the sight calculation reads this field, and that omission
+   * is the definition of cover rather than an oversight — a car that blocked a
+   * line of sight would be a wall.
+   */
+  covers: CoverView[];
+  /**
    * What blocks sight regardless of who is looking, scene border included.
    *
    * Since stage 18d this is **not** the list the raycast is given: a window
@@ -168,6 +181,7 @@ export async function loadVisionContext(
   scene: Scene,
 ): Promise<SceneVisionContext> {
   const walls = await fetchSceneWalls(prisma, scene.id);
+  const covers = await fetchSceneCovers(prisma, scene.id);
   const fog = await fetchFogState(prisma, scene);
   const dark = usesDarkness(scene);
   // A lit scene never asks about light, so it never pays for the queries: the
@@ -184,6 +198,7 @@ export async function loadVisionContext(
   const boundsSegments = sceneBoundsSegments(scene);
   return {
     walls,
+    covers,
     // The scene border is always part of the set: without it a ray fired
     // through an open door would run to infinity and the polygon would be
     // unbounded.
@@ -590,6 +605,49 @@ export function hasLineOfFire(
 ): boolean {
   const segments = fireSegmentsFor(context.walls, from, {
     curtainReachPx: context.curtainReachPx,
+  });
+  return isSegmentClear(from, to, segments);
+}
+
+/**
+ * Which cover stands between two points (stage 16c), or null.
+ *
+ * Deliberately a **separate** question from `hasLineOfFire`, even though both
+ * ask what stops a round. A wall's refusal can only say „coś stoi na drodze",
+ * because the geometry never leaves the server; a cover's refusal names the car
+ * and puts a button under it, because the client already has the car. Two
+ * different answers to give, so two functions rather than one boolean that
+ * throws the useful half away.
+ *
+ * The reach exemption („you may fire over the bonnet you are leaning on") is
+ * measured with the same `reachPx` that decides whether a hand can work a door.
+ */
+export function coverBetween(
+  context: SceneVisionContext,
+  from: ScenePoint,
+  to: ScenePoint,
+): CoverView | null {
+  if (context.covers.length === 0) return null;
+  return coverInLineOfFire(context.covers, from, to, context.reachPx);
+}
+
+/**
+ * Everything that stops a round: walls, shut doors *and* cover.
+ *
+ * The question suppressive fire asks of each of its targets — there the volley
+ * either reaches somebody or it does not, and a car in the way is as good an
+ * answer as a wall. The single-target path keeps the two apart, because it has
+ * a card to write.
+ */
+export function hasClearShot(
+  context: SceneVisionContext,
+  from: ScenePoint,
+  to: ScenePoint,
+): boolean {
+  const segments = fireSegmentsFor(context.walls, from, {
+    curtainReachPx: context.curtainReachPx,
+    covers: context.covers,
+    coverReachPx: context.reachPx,
   });
   return isSegmentClear(from, to, segments);
 }

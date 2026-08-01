@@ -1,5 +1,6 @@
 import type { Socket } from 'socket.io';
 import type {
+  CoverView,
   DrawingView,
   FogState,
   LightView,
@@ -19,6 +20,7 @@ import { fetchFogState } from './fog-io.js';
 import { fetchSceneDrawings } from './drawings.js';
 import { fetchSceneNotes } from './notes.js';
 import { fetchSceneWalls } from './walls-io.js';
+import { fetchSceneCovers } from './covers-io.js';
 import { fetchSceneLights } from './lights-io.js';
 import { computeViewerVision, type ViewerVision } from './vision.js';
 import { fetchSceneList, getSceneById, toSceneView } from './scenes.js';
@@ -55,6 +57,7 @@ export async function buildStateSync(
       drawings: [],
       notes: [],
       walls: [],
+      covers: [],
       lights: [],
       vision: null,
       openings: [],
@@ -79,6 +82,7 @@ export async function buildStateSync(
     drawings,
     notes,
     walls,
+    covers,
     lights,
     vision,
     characters,
@@ -115,6 +119,12 @@ export async function buildStateSync(
     viewedSceneId && user.role === ROLE_GM
       ? fetchSceneWalls(deps.ctx.prisma, viewedSceneId)
       : Promise.resolve<WallView[]>([]),
+    // Cover is the one scene object everybody receives (stage 16c): a car in
+    // the street is not a secret, and a client that did not have it could not
+    // draw it, plan a route round it or offer it as a target.
+    viewedSceneId
+      ? fetchSceneCovers(deps.ctx.prisma, viewedSceneId)
+      : Promise.resolve<CoverView[]>([]),
     // Lights are GM data for the same reason walls are — the shape a lamp
     // throws is the shape of the room. Players get `vision.light` instead.
     viewedSceneId && user.role === ROLE_GM
@@ -151,6 +161,7 @@ export async function buildStateSync(
     drawings,
     notes,
     walls,
+    covers,
     lights,
     vision: vision
       ? {

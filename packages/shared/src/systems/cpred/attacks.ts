@@ -163,6 +163,16 @@ export interface CpredAttackRequest {
   aimed?: boolean;
   modifier?: number;
   luckSpent?: number;
+  /**
+   * Fire anyway, with a cover standing in the way (stage 16c).
+   *
+   * The rules do not have this button — cover either stops the round or it is
+   * not cover (s. 179) — so it is deliberately an explicit, per-shot decision
+   * rather than a setting: the card names the car, and somebody at the table
+   * says „he leaned out". Without the flag the planner refuses, which is what
+   * keeps „I forgot the car was there" from ever happening silently.
+   */
+  ignoreCover?: boolean;
 }
 
 /** The target's side, as the server measured and read it. */
@@ -175,6 +185,16 @@ export interface CpredAttackTarget {
    * falls back to the everyday DV.
    */
   evasionDv?: number;
+  /**
+   * This target is a cover, not a person (stage 16c).
+   *
+   * An object does not dodge, does not wear armour and cannot be shot in the
+   * head, so the three things that follow from being a person are switched off
+   * — but everything else (the range table, the ammunition, the turn budget)
+   * is the ordinary attack, which is the reason cover is a *target* here rather
+   * than a second event.
+   */
+  cover?: boolean;
 }
 
 export type CpredAttackProblem =
@@ -191,7 +211,9 @@ export type CpredAttackProblem =
   | 'RANGED_WEAPON_IN_MELEE'
   | 'NOT_ENOUGH_AMMO'
   | 'GRAPPLE_TWO_HANDED'
-  | 'NO_LINE_OF_FIRE';
+  | 'NO_LINE_OF_FIRE'
+  | 'TARGET_BEHIND_COVER'
+  | 'COVER_NOT_SUPPRESSIBLE';
 
 /** Everything the chat card needs to explain a hit — and to offer the damage roll. */
 export interface CpredAttackMeta {
@@ -206,8 +228,13 @@ export interface CpredAttackMeta {
   location: CpredHitLocation;
   aimed: boolean;
   targetName: string;
-  /** Target token, so „Obrażenia" can pre-select it in stage 15's controls. */
-  targetTokenId: string;
+  /**
+   * Target token, so „Obrażenia" can pre-select it in stage 15's controls.
+   * Absent when the shot is aimed at a cover (stage 16c).
+   */
+  targetTokenId?: string;
+  /** Cover being shot at instead of a token (stage 16c). */
+  targetCoverId?: number;
   metres: number;
   /** „13–25 m", or null for melee and suppressive fire. */
   rangeLabel: string | null;
@@ -259,6 +286,17 @@ export interface CpredAttackContext {
    * Only an explicit `false` refuses the attack.
    */
   lineOfFire?: boolean;
+  /**
+   * A cover standing between the shooter and the target (stage 16c).
+   *
+   * Unlike `lineOfFire` this one is filled in on **both** sides, and that is
+   * the difference between a wall and a car: covers travel to the client, so a
+   * preview can see the obstacle coming and offer the choice before the dice
+   * are picked up rather than after the refusal.
+   *
+   * `request.ignoreCover` is the one thing that gets past it.
+   */
+  cover?: { name: string; hpCurrent: number; hpMax: number };
 }
 
 function isInteger(value: unknown): value is number {
@@ -296,7 +334,7 @@ export function planCpredAttack(
     /** Type id of the row's compendium entry, when it has one. */
     typeId?: string | null;
   },
-  target: CpredAttackTarget & { tokenId: string },
+  target: CpredAttackTarget & { tokenId?: string; coverId?: number },
   /**
    * Modifiers the world imposes — being Held is −2 (stage 14d). Server-filled:
    * a client must not be able to declare its own (`CpredRollContext`).
@@ -339,6 +377,19 @@ export function planCpredAttack(
     return { ok: false, error: 'NO_LINE_OF_FIRE' };
   }
 
+  // A cover in the way (stage 16c). Refused rather than penalised, because RAW
+  // has no middle setting: „Nie ma czegoś takiego jak »częściowa« osłona"
+  // (s. 179). The refusal is the card that offers the car as a target instead —
+  // and `ignoreCover` is the table overruling it in one click.
+  if (context.cover && request.ignoreCover !== true && mode !== 'suppressive') {
+    return { ok: false, error: 'TARGET_BEHIND_COVER' };
+  }
+  // Suppressive fire sprays an area rather than an object, and an object cannot
+  // be made to keep its head down.
+  if (target.cover === true && mode === 'suppressive') {
+    return { ok: false, error: 'COVER_NOT_SUPPRESSIBLE' };
+  }
+
   // Reach and range: the map decides whether this attack is possible at all.
   if (melee && target.metres > CPRED_MELEE_REACH_M) {
     return { ok: false, error: 'MELEE_OUT_OF_REACH' };
@@ -366,7 +417,10 @@ export function planCpredAttack(
   const skill = skillId ? registry.skills.find((entry) => entry.id === skillId) : undefined;
   if (!skill) return { ok: false, error: 'UNKNOWN_SKILL' };
 
-  const aimed = request.aimed === true && canAimInMode(mode) && !melee;
+  // An object has no head to aim at, so the −8 and the doubled damage of an
+  // aimed shot are simply off for cover — silently, because the bar keeps the
+  // shooter's last choice armed and refusing the shot over it would be noise.
+  const aimed = request.aimed === true && canAimInMode(mode) && !melee && target.cover !== true;
   const location: CpredHitLocation = aimed ? 'head' : 'body';
 
   const damage =
@@ -452,7 +506,8 @@ export function planCpredAttack(
         location,
         aimed,
         targetName: target.name,
-        targetTokenId: target.tokenId,
+        ...(target.tokenId ? { targetTokenId: target.tokenId } : {}),
+        ...(target.coverId !== undefined ? { targetCoverId: target.coverId } : {}),
         metres: target.metres,
         rangeLabel: band ? rangeBandLabel(band) : null,
         dv: dvResult.dv,
@@ -565,4 +620,6 @@ export const CPRED_ATTACK_PROBLEM_MESSAGES: Record<CpredAttackProblem, string> =
   NOT_ENOUGH_AMMO: 'Za mało amunicji — przeładuj broń.',
   GRAPPLE_TWO_HANDED: 'W Trzymaniu nie można używać broni dwuręcznych.',
   NO_LINE_OF_FIRE: 'Cel za przeszkodą — nie masz linii strzału.',
+  TARGET_BEHIND_COVER: 'Cel jest za osłoną — ostrzelaj osłonę albo strzelaj mimo niej.',
+  COVER_NOT_SUPPRESSIBLE: 'Ogniem zaporowym nie zmusisz przedmiotu, żeby się schował.',
 };

@@ -863,8 +863,62 @@ export interface SheetDamageRequest {
 /** The part of the chat log the system fills in. */
 export type SheetDamageLog = Omit<
   DamageLogEntry,
-  'targetTokenId' | 'targetName' | 'sourceMessageId' | 'targetOwnerId' | 'characterId'
+  | 'targetTokenId'
+  | 'targetCoverId'
+  | 'targetName'
+  | 'sourceMessageId'
+  | 'targetOwnerId'
+  | 'characterId'
 >;
+
+/**
+ * The same hit against a **cover** (stage 16c) — a car, a bollard, a crate.
+ *
+ * Three of the four things `applyDamageToSheet` does are deliberately absent,
+ * and each absence is a rule rather than a simplification:
+ *
+ *  - **no armour.** „Jeśli nie może zatrzymać kuli, nie jest to osłona i nie ma
+ *    PW" (s. 179) — cover is body points, not Stopping Power, so there is
+ *    nothing to subtract and nothing to ablate;
+ *  - **no Critical Injury and no Death Save.** An object has no anatomy and
+ *    nothing to stabilise. Two sixes on the damage dice mean two sixes;
+ *  - **no wound statuses.** A dented car is not „Poważnie ranny".
+ *
+ * What is left is the one rule the stage exists for: **the overflow stops
+ * here.** „Jeśli PW osłony spadną do 0, pozostałe obrażenia tego ataku
+ * przepadają i postać za osłoną ich nie otrzymuje" (s. 179) — which falls out
+ * of applying the hit to the cover alone and clamping at zero.
+ */
+export function applyDamageToCover(
+  hp: { current: number; max: number },
+  request: Pick<SheetDamageRequest, 'damage'>,
+): { hpCurrent: number; log: SheetDamageLog } {
+  const damage = Math.max(0, Math.round(request.damage));
+  const before = Math.max(0, Math.min(hp.current, hp.max));
+  const after = Math.max(0, before - damage);
+  return {
+    hpCurrent: after,
+    log: {
+      location: 'body',
+      locationLabel: 'osłona',
+      damageRolled: damage,
+      armorSp: 0,
+      damageThrough: damage,
+      doubled: false,
+      bonusDamage: 0,
+      hpLost: before - after,
+      hp: { before, after, max: hp.max },
+      ...(after === 0 && before > 0
+        ? {
+            woundLabel:
+              damage > before
+                ? `Osłona zniszczona — nadwyżka ${damage - before} obrażeń przepada`
+                : 'Osłona zniszczona',
+          }
+        : {}),
+    },
+  };
+}
 
 export function isValidHitLocation(value: unknown): value is CpredHitLocation {
   return typeof value === 'string' && (CPRED_HIT_LOCATIONS as readonly string[]).includes(value);

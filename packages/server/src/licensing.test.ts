@@ -63,6 +63,16 @@ describe('licence guard', () => {
     }
   });
 
+  it('ships only invented cover material values in data/public (stage 16c)', () => {
+    // The material × thickness table is rulebook content (s. 180), so the
+    // committed file carries the right *shape* with made-up numbers and the
+    // group's real table lives in data/private, which replaces it whole.
+    const file = join(REPO_ROOT, 'data', 'public', 'cpred', 'covers.json');
+    if (!existsSync(file)) return;
+    const parsed = JSON.parse(readFileSync(file, 'utf8')) as { source?: string };
+    expect(parsed.source ?? '').toMatch(/przykładowe|wymyślone/i);
+  });
+
   it('never commits the importer output alongside the scripts', () => {
     const tracked = wouldBeCommitted('tools/import');
     expect(tracked.length).toBeGreaterThan(0);

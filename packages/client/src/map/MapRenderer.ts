@@ -11,6 +11,7 @@ import {
 } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
 import type {
+  CoverView,
   DrawingShape,
   DrawingStyle,
   DrawingView,
@@ -31,6 +32,7 @@ import type {
   WallView,
 } from '@vtt/shared';
 import {
+  COVER_MIN_SIZE_PX,
   DRAWING_FILL_ALPHA,
   DRAWING_PATH_MAX_POINTS,
   FOG_STROKE_MAX_POINTS,
@@ -39,6 +41,7 @@ import {
   WALK_RADIUS_CELLS,
   clampTokenPosition,
   clipWalkToBudget,
+  coverStanding,
   decodeFlagRuns,
   decodeLevelRuns,
   formatMetres,
@@ -108,6 +111,17 @@ export interface WallSettings {
 }
 
 /**
+ * The cover tool's current setting (stage 16c). Which preset a new rectangle
+ * becomes is deliberately absent for the reason the lamp's parameters are: the
+ * renderer reports the gesture, and the caller — which holds the toolbar — turns
+ * it into an intent.
+ */
+export interface CoverSettings {
+  armed: boolean;
+  mode: 'draw' | 'erase';
+}
+
+/**
  * The light tool's current setting (stage 18b). The lamp's own parameters are
  * deliberately absent: the renderer only reports *where* the click landed, and
  * the caller — which already holds the toolbar state — decides whether that
@@ -154,6 +168,22 @@ const WALL_COLORS: Record<WallKind, number> = {
   door: 0xfbbf24,
   window: 0x38bdf8,
 };
+
+/**
+ * Cover (stage 16c). Steel-grey rather than a colour of its own: a car is part
+ * of the map, and the palette of this layer has to stay quieter than the tokens
+ * standing on it. A wreck keeps the shape and loses the weight.
+ */
+const COVER_FILL_COLOR = 0x64748b;
+const COVER_STROKE_COLOR = 0xcbd5e1;
+const COVER_WRECK_COLOR = 0x94a3b8;
+
+/** Green while it will hold, amber while it might, red when it is nearly gone. */
+function coverBarColor(ratio: number): number {
+  if (ratio > 0.6) return 0x4ade80;
+  if (ratio > 0.25) return 0xfbbf24;
+  return 0xf87171;
+}
 
 /**
  * A bolted door (stage 18d). Violet rather than a shade of the door's amber: the
@@ -544,6 +574,19 @@ export class MapRenderer {
   onLightErase: ((x: number, y: number) => void) | null = null;
   /** Click on a lamp marker with no tool armed — switch it on or off. */
   onLightToggle: ((lightId: number) => void) | null = null;
+  /** A cover rectangle was dragged out (stage 16c) — world pixels. */
+  onCoverRect: ((rect: { x: number; y: number; width: number; height: number }) => void) | null =
+    null;
+  /** Click with the cover eraser armed; the caller picks the rectangle. */
+  onCoverErase: ((x: number, y: number) => void) | null = null;
+  /**
+   * Click on a cover with no tool armed (stage 16c) — „ostrzelaj samochód".
+   *
+   * Returns whether the click was consumed, exactly like `onMapClick`: with no
+   * weapon in hand a car is scenery and the click has to fall through to the
+   * walk planner underneath.
+   */
+  onCoverClick: ((coverId: number) => boolean) | null = null;
 
   private readonly app = new Application();
   private viewport: Viewport | null = null;
@@ -556,6 +599,15 @@ export class MapRenderer {
   private readonly drawNodes = new Map<number, Container>();
   /** The gesture in progress; never leaves the renderer until it is finished. */
   private readonly drawPreview = new Graphics();
+  /**
+   * Cover (stage 16c). Map content like the public drawings, so it sits *under*
+   * the tokens — a figure crouching behind a car must not be hidden by the car
+   * — and under the fog, which conceals it exactly as it conceals the map.
+   */
+  private readonly coverLayer = new Container();
+  private readonly coverGraphics = new Graphics();
+  /** One label per cover („Samochód 18/25"), kept in step with the rows. */
+  private readonly coverLabels = new Map<number, Text>();
   private readonly rangeLayer = new Container();
   private readonly rangeGraphics = new Graphics();
   private readonly tokenLayer = new Container();
@@ -702,6 +754,12 @@ export class MapRenderer {
   private wallCursor: ScenePoint | null = null;
   /** Light tool settings; `armed` decides whether a click places or removes. */
   private light: LightSettings = { armed: false, mode: 'place' };
+  /** Cover tool settings (stage 16c); a drag draws, a click erases. */
+  private cover: CoverSettings = { armed: false, mode: 'draw' };
+  /** Corners of the rectangle being dragged, null when no drag is in flight. */
+  private coverRectStart: ScenePoint | null = null;
+  private coverRectEnd: ScenePoint | null = null;
+  private lastCovers: CoverView[] = [];
   /** Ticker phase for flickering lamps — renderer-side, never a network event. */
   private flickerPhase = 0;
   private hasFlicker = false;
@@ -810,6 +868,10 @@ export class MapRenderer {
     // route must not cover a portrait) and under the fog, which therefore
     // conceals them exactly as it conceals the map they annotate.
     viewport.addChild(this.drawLayer);
+    // Cover goes above the drawings and below the tokens: it is a thing in the
+    // world, and things in the world do not cover the people standing at them.
+    this.coverLayer.addChild(this.coverGraphics);
+    viewport.addChild(this.coverLayer);
     // Range rings sit under the tokens so they never hide a portrait; the
     // ruler sits above everything, because a measurement is meant to be read.
     this.rangeLayer.addChild(this.rangeGraphics);
@@ -865,6 +927,11 @@ export class MapRenderer {
       this.grid,
       this.drawLayer,
       this.gmDrawLayer,
+      // Cover is drawn, never clicked *in Pixi*: a click on a car is resolved
+      // from world coordinates by the caller, which holds the cover list. Left
+      // interactive it would sit between the pointer and the viewport and break
+      // the same hit test the covering layers broke before stage 16e.
+      this.coverLayer,
       this.rangeLayer,
       this.dragGhost,
       this.lightLayer,
@@ -1106,6 +1173,7 @@ export class MapRenderer {
       this.fogBrush.armed ||
       this.draw.armed ||
       this.wall.armed ||
+      this.cover.armed ||
       this.light.armed ||
       this.erasing;
     if (this.walkCursor && !toolArmed) {
@@ -1122,17 +1190,21 @@ export class MapRenderer {
             ? this.wall.mode === 'draw'
               ? 'crosshair'
               : 'pointer'
-            : this.light.armed
-              ? this.light.mode === 'erase'
+            : this.cover.armed
+              ? this.cover.mode === 'erase'
                 ? 'pointer'
-                : 'copy'
-              : this.erasing
-                ? 'pointer'
-                : this.notePlacing
-                  ? 'copy'
-                  : this.rulerMode
-                    ? 'cell'
-                    : '';
+                : 'crosshair'
+              : this.light.armed
+                ? this.light.mode === 'erase'
+                  ? 'pointer'
+                  : 'copy'
+                : this.erasing
+                  ? 'pointer'
+                  : this.notePlacing
+                    ? 'copy'
+                    : this.rulerMode
+                      ? 'cell'
+                      : '';
   }
 
   private cancelFogGesture(): void {
@@ -1288,6 +1360,19 @@ export class MapRenderer {
         this.onFogPreview?.(this.fogGestureShape());
         return;
       }
+      if (this.cover.armed) {
+        if (this.cover.mode === 'erase') {
+          this.onCoverErase?.(point.x, point.y);
+          return;
+        }
+        // A cover *is* an extent, so unlike a lamp it is dragged out: the GM
+        // draws the car the size the car is.
+        this.coverRectStart = point;
+        this.coverRectEnd = { ...point };
+        viewport.plugins.pause('drag');
+        this.drawCoverLayer();
+        return;
+      }
       if (this.light.armed) {
         // A lamp is placed, not dragged: it has no extent of its own, only a
         // position and a reach set in the panel.
@@ -1394,6 +1479,11 @@ export class MapRenderer {
         this.onFogPreview?.(this.fogGestureShape());
         return;
       }
+      if (this.coverRectStart) {
+        this.coverRectEnd = point;
+        this.drawCoverLayer();
+        return;
+      }
 
       if (this.wallPoints) {
         const snapped = this.snapWall(point);
@@ -1432,6 +1522,15 @@ export class MapRenderer {
     });
 
     const end = () => {
+      if (this.coverRectStart) {
+        const rect = this.coverGestureRect();
+        this.coverRectStart = null;
+        this.coverRectEnd = null;
+        this.viewport?.plugins.resume('drag');
+        this.drawCoverLayer();
+        if (rect) this.onCoverRect?.(rect);
+        return;
+      }
       if (this.fogStroke || this.fogRectStart) {
         const shape = this.fogGestureShape();
         this.fogStroke = null;
@@ -2472,6 +2571,129 @@ export class MapRenderer {
   }
 
   /**
+   * Arms or disarms the cover tool (stage 16c). Leaving it mid-drag drops the
+   * rectangle rather than storing half of it.
+   */
+  setCoverTool(settings: CoverSettings): void {
+    this.cover = settings;
+    if (!settings.armed || settings.mode !== 'draw') this.cancelCoverRect();
+    this.applyMapCursor();
+  }
+
+  /** Drops the rectangle being dragged without sending it (Esc, tool change). */
+  cancelCoverRect(): boolean {
+    if (!this.coverRectStart) return false;
+    this.coverRectStart = null;
+    this.coverRectEnd = null;
+    this.viewport?.plugins.resume('drag');
+    this.drawCoverLayer();
+    return true;
+  }
+
+  /** The dragged rectangle in scene pixels, or null when it was a stray click. */
+  private coverGestureRect(): {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null {
+    const start = this.coverRectStart;
+    const end = this.coverRectEnd;
+    if (!start || !end) return null;
+    const x = Math.min(start.x, end.x);
+    const y = Math.min(start.y, end.y);
+    const width = Math.abs(end.x - start.x);
+    const height = Math.abs(end.y - start.y);
+    if (width < COVER_MIN_SIZE_PX || height < COVER_MIN_SIZE_PX) return null;
+    return { x, y, width, height };
+  }
+
+  /**
+   * The cover layer (stage 16c) — the one map object everybody sees, so this
+   * runs for players as well as for the GM.
+   *
+   * What it has to say in one glance is „will this stop a bullet, and for how
+   * much longer": hence the body-point bar along the top edge, and hence a
+   * wrecked cover drawn as a pale outline rather than removed. A wreck is still
+   * scenery, and „the car is gone" would be a worse lie than „the car is a
+   * wreck" — it stopped being cover, not being there.
+   */
+  setCovers(covers: CoverView[]): void {
+    if (this.destroyed) return;
+    this.lastCovers = covers;
+    this.drawCoverLayer();
+  }
+
+  private drawCoverLayer(): void {
+    if (this.destroyed) return;
+    const k = this.overlayScale();
+    this.coverGraphics.clear();
+    const seen = new Set<number>();
+
+    for (const cover of this.lastCovers) {
+      seen.add(cover.id);
+      const standing = coverStanding(cover);
+      this.coverGraphics
+        .rect(cover.x, cover.y, cover.width, cover.height)
+        .fill({ color: COVER_FILL_COLOR, alpha: standing ? 0.32 : 0.1 })
+        .stroke({
+          color: standing ? COVER_STROKE_COLOR : COVER_WRECK_COLOR,
+          width: (standing ? 3 : 2) * k,
+          alpha: standing ? 0.95 : 0.5,
+        });
+
+      if (standing && cover.hpMax > 0) {
+        // The bar rides on the top edge rather than floating above it: at table
+        // zoom anything detached from the rectangle reads as a separate object.
+        const ratio = Math.max(0, Math.min(1, cover.hpCurrent / cover.hpMax));
+        const height = 4 * k;
+        this.coverGraphics
+          .rect(cover.x, cover.y, cover.width, height)
+          .fill({ color: 0x000000, alpha: 0.45 })
+          .rect(cover.x, cover.y, cover.width * ratio, height)
+          .fill({ color: coverBarColor(ratio), alpha: 0.9 });
+      }
+
+      let label = this.coverLabels.get(cover.id);
+      if (!label) {
+        label = new Text({
+          text: '',
+          style: {
+            fontFamily: 'system-ui, sans-serif',
+            fontSize: 14,
+            fill: 0xf2f4f8,
+            stroke: { color: 0x000000, width: 3 },
+          },
+        });
+        label.anchor.set(0.5, 0.5);
+        this.coverLabels.set(cover.id, label);
+        this.coverLayer.addChild(label);
+      }
+      label.text = standing
+        ? `${cover.name} ${cover.hpCurrent}/${cover.hpMax}`
+        : `${cover.name} (wrak)`;
+      label.scale.set(k);
+      label.alpha = standing ? 0.95 : 0.5;
+      label.position.set(cover.x + cover.width / 2, cover.y + cover.height / 2);
+    }
+
+    for (const [id, label] of this.coverLabels) {
+      if (seen.has(id)) continue;
+      this.coverLabels.delete(id);
+      label.destroy();
+    }
+
+    // The rectangle under the pointer, while the GM is dragging one out.
+    const pending = this.coverRectStart && this.coverRectEnd ? this.coverGestureRect() : null;
+    if (pending) {
+      this.coverGraphics
+        .rect(pending.x, pending.y, pending.width, pending.height)
+        .fill({ color: COVER_FILL_COLOR, alpha: 0.2 })
+        .stroke({ color: COVER_STROKE_COLOR, width: 2 * k, alpha: 0.8 });
+    }
+  }
+
+  /**
    * Arms or disarms the wall tool. Like every other map tool it takes the left
    * button off the viewport — a drag has to mean one thing at a time.
    */
@@ -3126,6 +3348,9 @@ export class MapRenderer {
     // Wall handles, door glyphs and lamp handles are screen-sized, like the note
     // pins: at a typical 0.18x map zoom a world-scaled handle is a few pixels.
     this.drawWallLayer();
+    // The cover label and its body-point bar are screen-sized for the same
+    // reason: the rectangle is world geometry, the reading on it is not.
+    this.drawCoverLayer();
     this.setLights(this.lastLights);
   }
 

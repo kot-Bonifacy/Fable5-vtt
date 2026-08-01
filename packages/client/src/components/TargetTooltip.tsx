@@ -126,7 +126,18 @@ export function TargetTooltip({ hover }: { hover: AimHover | null }) {
           </p>
         </>
       ) : (
-        <p className="aim-tooltip-refusal">{preview.message}</p>
+        <>
+          <p className="aim-tooltip-refusal">{preview.message}</p>
+          {/* Stage 16c: a cover is the one obstacle the client can see coming,
+              so the bubble names it and how much of it is left — the number the
+              choice on the card actually turns on. */}
+          {preview.cover && (
+            <p className="aim-tooltip-note">
+              {preview.cover.name}: {preview.cover.hpCurrent}/{preview.cover.hpMax} PW · klik
+              otworzy wybór
+            </p>
+          )}
+        </>
       )}
     </div>
   );

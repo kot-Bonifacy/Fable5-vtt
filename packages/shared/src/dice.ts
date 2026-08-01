@@ -173,6 +173,13 @@ export interface RollDamageMeta {
   multiplier?: number;
   /** Token this damage is meant for, so „Zastosuj" preselects it (stage 16). */
   targetTokenId?: string;
+  /**
+   * Cover this damage is meant for instead of a token (stage 16c). Exclusive
+   * with `targetTokenId`: a shot is aimed either at somebody or at the car they
+   * are behind, and „Zastosuj" needs to know which before it can preselect
+   * anything.
+   */
+  targetCoverId?: number;
 }
 
 /** Rolled total after the damage multiplier — what actually hits the target. */
@@ -197,6 +204,8 @@ export interface RollAttackMeta {
   hit?: boolean;
   /** Token the attack was aimed at, so „Zastosuj" can preselect it. */
   targetTokenId?: string;
+  /** Cover the attack was aimed at instead of a token (stage 16c). */
+  targetCoverId?: number;
   /** Follow-up damage the card offers, when the attack landed. */
   damageNotation?: string;
   /** Factor the follow-up damage is multiplied by (autofire). */

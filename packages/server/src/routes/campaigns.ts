@@ -22,6 +22,17 @@ function toInvitationSummary(invitation: Invitation): InvitationSummary {
 export function registerCampaignRoutes(app: FastifyInstance, ctx: AppContext): void {
   const gmOnly = { preHandler: requireGm };
 
+  /**
+   * The cover catalogue (stage 16c) — material × thickness and the presets.
+   *
+   * Served from the server's own copy rather than as a static file, and that is
+   * the whole reason the route exists: `data/private/` **replaces** its public
+   * counterpart, the private directory is never served, and a palette reading
+   * the public samples would advertise body points the server does not use. One
+   * source of the numbers, on the side that decides them.
+   */
+  app.get('/api/cpred/covers', async () => ctx.covers);
+
   app.get('/api/campaigns', gmOnly, async () => {
     const campaigns = await ctx.prisma.campaign.findMany({
       orderBy: { createdAt: 'desc' },

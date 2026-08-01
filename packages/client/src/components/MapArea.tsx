@@ -5,6 +5,7 @@ import {
   ROLE_GM,
   blockingSegments,
   computeVisionPolygon,
+  coverMovementSegments,
   cpredMovementBlock,
   isOpening,
   isPointInPolygon,
@@ -43,10 +44,12 @@ import {
 } from '../stores/combatStore.js';
 import {
   clearRuler,
+  createCover,
   createDrawing,
   createLight,
   createToken,
   createWalls,
+  deleteCover,
   deleteDrawing,
   deleteLight,
   deleteWall,
@@ -65,6 +68,7 @@ import {
   currentHudContext,
   hudTurnRefusal,
   nextSteerableToken,
+  shootCoverAt,
 } from '../hud.js';
 import { useAttackStore } from '../stores/attackStore.js';
 import { activeWeaponOf, useHudStore } from '../stores/hudStore.js';
@@ -76,9 +80,11 @@ import { sortedDrawings, useDrawingStore } from '../stores/drawingStore.js';
 import { clickableOpenings, useWallStore } from '../stores/wallStore.js';
 import { useSelectionStore } from '../stores/selectionStore.js';
 import { pickLightAt, useLightStore } from '../stores/lightStore.js';
+import { coverAt, useCoverStore } from '../stores/coverStore.js';
 import {
   currentDrawingStyle,
   currentPlayerToggle,
+  ensureCoverCatalogueLoaded,
   useMapToolStore,
 } from '../stores/mapToolStore.js';
 import { TokenContextMenu } from './TokenContextMenu.js';
@@ -137,6 +143,24 @@ function wallErrorText(code: string | undefined): string {
       return 'Brak połączenia z serwerem — ściana nie została zapisana.';
     default:
       return `Nie udało się zapisać ściany: ${code ?? 'nieznany błąd'}.`;
+  }
+}
+
+/** Polish hints for the rejections the cover events can come back with. */
+function coverErrorText(code: string | undefined): string {
+  switch (code) {
+    case 'COVER_LIMIT_REACHED':
+      return 'Na tej scenie jest już maksymalna liczba osłon.';
+    case 'COVER_NOT_FOUND':
+      return 'Ta osłona już nie istnieje — odśwież stronę.';
+    case 'UNKNOWN_COVER_TYPE':
+      return 'Nie znam takiego rodzaju osłony — sprawdź katalog w data/public.';
+    case 'COVER_HAS_NO_HP':
+      return 'To nie jest osłona: taki materiał nie zatrzyma kuli (podręcznik, s. 179).';
+    case 'NOT_CONNECTED':
+      return 'Brak połączenia z serwerem — osłona nie została zapisana.';
+    default:
+      return `Nie udało się zmienić osłony: ${code ?? 'nieznany błąd'}.`;
   }
 }
 
@@ -323,6 +347,7 @@ export function MapArea() {
   const wallMode = useMapToolStore((s) => s.wallMode);
   const wallKind = useMapToolStore((s) => s.wallKind);
   const wallSnapGrid = useMapToolStore((s) => s.wallSnapGrid);
+  const coverMode = useMapToolStore((s) => s.coverMode);
   const lightMode = useMapToolStore((s) => s.lightMode);
   const targeting = useAttackStore((s) => s.targeting);
   const hasVision = useWallStore((s) => s.hasVision);
@@ -330,6 +355,10 @@ export function MapArea() {
 
   useEffect(() => {
     ensureStatusesLoaded();
+    // The cover catalogue (stage 16c) — the GM's palette needs the material
+    // table, and the same lesson as below applies: fetch it where the map is,
+    // not where a panel happens to be opened.
+    ensureCoverCatalogueLoaded();
     // The skill registry too, and that is not tidiness (stage 16f). Until now
     // it was fetched by the „Postacie" tab and by an open character sheet,
     // which was enough while every attack started from one of them. The HUD's
@@ -356,12 +385,30 @@ export function MapArea() {
     return true;
   }, []);
 
+  /**
+   * What a bare click on the map means, in the order the answers outrank each
+   * other: putting a token down, shooting the car under the pointer, and —
+   * handled by the renderer once this returns false — walking.
+   *
+   * Cover sits in the middle for a reason (stage 16c). A car is scenery to
+   * anybody with empty hands, so it must not swallow the click that would have
+   * started a walk; with a weapon in hand it is a target, and „ostrzelaj
+   * samochód" has to be reachable without a menu.
+   */
+  const handleMapClick = useCallback(
+    (worldX: number, worldY: number): boolean => {
+      if (placeToken(worldX, worldY)) return true;
+      return shootCoverAt(worldX, worldY);
+    },
+    [placeToken],
+  );
+
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
     const renderer = new MapRenderer();
     renderer.onLoadingChange = setLoading;
-    renderer.onMapClick = placeToken;
+    renderer.onMapClick = handleMapClick;
     renderer.onTokenMove = (tokenId, x, y, final, path) => {
       const before = useTokenStore.getState().tokens[tokenId];
       const ack = sendTokenMove(tokenId, x, y, final, path);
@@ -493,6 +540,29 @@ export function MapArea() {
       const kind = [...state.walls, ...state.openings].find((wall) => wall.id === wallId)?.kind;
       void toggleOpening(wallId).then((ack) => {
         if (!ack.ok) useChatStore.getState().addNote(openingErrorText(ack.error, kind));
+      });
+    };
+    // Cover (stage 16c). The rectangle is the whole gesture: the preset the GM
+    // has armed decides the material, the label and the body points, and those
+    // are read on the *server* — a client that could name its own toughness
+    // could park a bulletproof crate anywhere.
+    renderer.onCoverRect = (rect) => {
+      const current = useSceneStore.getState().effectiveScene;
+      if (!current) return;
+      const typeId = useMapToolStore.getState().coverTypeId;
+      if (!typeId) {
+        useChatStore.getState().addNote('Wybierz rodzaj osłony w pasku narzędzi.');
+        return;
+      }
+      void createCover(current.id, typeId, rect).then((ack) => {
+        if (!ack.ok) useChatStore.getState().addNote(coverErrorText(ack.error));
+      });
+    };
+    renderer.onCoverErase = (x, y) => {
+      const target = coverAt({ x, y });
+      if (!target) return;
+      void deleteCover(target.id).then((ack) => {
+        if (!ack.ok) useChatStore.getState().addNote(coverErrorText(ack.error));
       });
     };
     renderer.onLightPlace = (x, y) => {
@@ -629,9 +699,15 @@ export function MapArea() {
       renderer.setWalkPassable(null);
       return;
     }
+    // Cover blocks legs whatever else does (stage 16c, GM decision): the car is
+    // in the way of a body even where it is not in the way of an eye, and it is
+    // in everybody's list because everybody can see it. A **wreck** stops
+    // blocking, exactly as it stops stopping bullets.
+    const coverEdges = coverMovementSegments(useCoverStore.getState().covers);
     if (useAuthStore.getState().user?.role === ROLE_GM) {
       const segments = [
         ...movementSegments(useWallStore.getState().walls),
+        ...coverEdges,
         ...sceneBoundsSegments(current),
       ];
       renderer.setWalkPassable(
@@ -642,11 +718,17 @@ export function MapArea() {
     }
     const wallState = useWallStore.getState();
     if (!wallState.hasVision) {
-      renderer.setWalkPassable(() => true);
+      renderer.setWalkPassable(
+        () => true,
+        coverEdges.length > 0 ? (from, to) => isSegmentClear(from, to, coverEdges) : undefined,
+      );
       return;
     }
     const polygons = wallState.polygons;
-    renderer.setWalkPassable((point) => isPointVisible(point, polygons));
+    renderer.setWalkPassable(
+      (point) => isPointVisible(point, polygons),
+      coverEdges.length > 0 ? (from, to) => isSegmentClear(from, to, coverEdges) : undefined,
+    );
   }, []);
 
   useEffect(() => {
@@ -654,9 +736,11 @@ export function MapArea() {
     pushWalkPassable();
     const unsubWalls = useWallStore.subscribe(pushWalkPassable);
     const unsubScene = useSceneStore.subscribe(pushWalkPassable);
+    const unsubCovers = useCoverStore.subscribe(pushWalkPassable);
     return () => {
       unsubWalls();
       unsubScene();
+      unsubCovers();
     };
   }, [ready, pushWalkPassable]);
 
@@ -837,6 +921,7 @@ export function MapArea() {
       kind: wallKind,
       snapGrid: wallSnapGrid,
     });
+    rendererRef.current?.setCoverTool({ armed: tool === 'cover' && isGm, mode: coverMode });
     rendererRef.current?.setLightTool({ armed: tool === 'light' && isGm, mode: lightMode });
   }, [
     ready,
@@ -854,6 +939,7 @@ export function MapArea() {
     wallMode,
     wallKind,
     wallSnapGrid,
+    coverMode,
     lightMode,
   ]);
 
@@ -983,6 +1069,19 @@ export function MapArea() {
       isGmNow ? [] : (useFogStore.getState().fog?.overrides ?? []),
     );
   }, []);
+
+  // Cover goes to the renderer the same way and for the same reason (stage
+  // 16c) — a car that has just been wrecked has to stop looking solid without
+  // waiting for a React render.
+  const pushCovers = useCallback(() => {
+    rendererRef.current?.setCovers(useCoverStore.getState().covers);
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    pushCovers();
+    return useCoverStore.subscribe(pushCovers);
+  }, [ready, pushCovers]);
 
   useEffect(() => {
     if (!ready) return;
@@ -1203,6 +1302,10 @@ export function MapArea() {
         tools.toggleTool('wall');
         return;
       }
+      if ((event.key === 'o' || event.key === 'O') && isGm) {
+        tools.toggleTool('cover');
+        return;
+      }
       if ((event.key === 'l' || event.key === 'L') && isGm) {
         tools.toggleTool('light');
         return;
@@ -1249,6 +1352,9 @@ export function MapArea() {
         // away — otherwise one mis-click would cost the whole floor plan, and
         // an Esc that only ever cancelled would leave no way out of the tool.
         if (tools.tool === 'wall' && renderer?.cancelWallChain()) return;
+        // The cover tool gets the same two-step treatment (stage 16c): the
+        // first Esc drops the rectangle being dragged out, the second the tool.
+        if (tools.tool === 'cover' && renderer?.cancelCoverRect()) return;
         if (tools.tool !== 'pointer') {
           tools.setTool('pointer');
           return;

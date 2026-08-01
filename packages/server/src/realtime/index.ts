@@ -55,6 +55,7 @@ import {
   wallDeleteEvent,
   wallUpdateEvent,
 } from './walls.js';
+import { coverClearEvent, coverCreateEvent, coverDeleteEvent, coverUpdateEvent } from './covers.js';
 import {
   lightCreateEvent,
   lightDeleteEvent,
@@ -148,6 +149,10 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   wallDeleteEvent,
   wallClearEvent,
   openingToggleEvent,
+  coverCreateEvent,
+  coverUpdateEvent,
+  coverDeleteEvent,
+  coverClearEvent,
   lightCreateEvent,
   lightUpdateEvent,
   lightDeleteEvent,

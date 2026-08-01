@@ -1,23 +1,33 @@
 import type {
+  CoverView,
   CpredAttackMeta,
   CpredAttackMode,
   CpredAttackRequest,
+  CpredAttackTarget,
   CpredCharacterData,
+  ScenePoint,
+  SceneView,
   TokenView,
 } from '@vtt/shared';
 import {
   CPRED_ATTACK_PROBLEM_MESSAGES,
   STATIST_WEAPON_ROW_ID,
+  WALL_REACH_M,
   combatProfileSheetForSkill,
+  coverInLineOfFire,
+  distanceToCover,
   formatMetres,
   isWeaponEntry,
   metresBetweenTokens,
   metresForRules,
+  metresPerPixel,
   planCpredAttack,
   resolveWeapon,
   sanitizeCombatProfile,
+  tokenCentre,
 } from '@vtt/shared';
 import { useAttackStore } from './stores/attackStore.js';
+import { useCoverStore } from './stores/coverStore.js';
 import { useCharacterStore } from './stores/characterStore.js';
 import { useChatStore } from './stores/chatStore.js';
 import { useCompendiumStore } from './stores/compendiumStore.js';
@@ -53,7 +63,17 @@ export interface AttackIntent {
   mode: CpredAttackMode;
   aimed?: boolean;
   modifier?: number;
+  /**
+   * The table ruled that the target leaned out from behind the car (stage 16c).
+   * Carried on the intent rather than typed into the request so that the
+   * decision survives the re-plan the refusal card triggers.
+   */
+  ignoreCover?: boolean;
 }
+
+/** What is being shot at: somebody, or the thing they are hiding behind. */
+export type AttackTargetRef =
+  { kind: 'token'; tokenId: string } | { kind: 'cover'; coverId: number };
 
 /** A planned shot, or the sentence explaining why there is none. */
 export type AttackPreview =
@@ -66,7 +86,16 @@ export type AttackPreview =
       modifierTotal: number;
       metres: number;
     }
-  | { ok: false; message: string };
+  | {
+      ok: false;
+      message: string;
+      /**
+       * The cover the refusal is about (stage 16c). Present only for
+       * `TARGET_BEHIND_COVER`, and it is what turns a dead-end message into a
+       * card with two buttons.
+       */
+      cover?: CoverView;
+    };
 
 /**
  * Runs the planner for one intent against one target token.
@@ -75,18 +104,32 @@ export type AttackPreview =
  * the cursor, while the click wants it on the chat log. Neither decision
  * belongs to the planner.
  */
-export function planAttackPreview(intent: AttackIntent, targetTokenId: string): AttackPreview {
+export function planAttackPreview(
+  intent: AttackIntent,
+  target: string | AttackTargetRef,
+): AttackPreview {
+  const ref: AttackTargetRef =
+    typeof target === 'string' ? { kind: 'token', tokenId: target } : target;
   const tokens = useTokenStore.getState().tokens;
   const scene = useSceneStore.getState().effectiveScene;
-  const target = tokens[targetTokenId];
   const attackerToken = tokens[intent.attackerTokenId];
-  if (!target || !scene) return { ok: false, message: 'Nie znalazłem celu na tej scenie.' };
+  if (!scene) return { ok: false, message: 'Nie znalazłem celu na tej scenie.' };
   if (!attackerToken) {
     return { ok: false, message: 'Atakujący nie ma tokenu na tej scenie.' };
   }
-  if (attackerToken.id === target.id) {
-    return { ok: false, message: 'Wybierz cel inny niż atakujący.' };
-  }
+
+  // Where the target's name and distance come from. Two shapes, and everything
+  // downstream sees only the third one the planner takes — which is the reason
+  // shooting a car needed no second code path (stage 16c).
+  const aim =
+    ref.kind === 'token'
+      ? tokenAim(attackerToken, tokens[ref.tokenId], scene)
+      : coverAim(
+          attackerToken,
+          useCoverStore.getState().covers.find((c) => c.id === ref.coverId),
+          scene,
+        );
+  if (typeof aim === 'string') return { ok: false, message: aim };
 
   // Where the numbers come from: a sheet, or the token's own combat profile.
   const fighter = intent.characterId
@@ -107,30 +150,101 @@ export function planAttackPreview(intent: AttackIntent, targetTokenId: string): 
         })
       : null;
 
-  const metres = metresForRules(metresBetweenTokens(attackerToken, target, scene));
   const request: CpredAttackRequest = {
     weaponRowId: row.id,
     mode: intent.mode,
     ...(intent.aimed ? { aimed: true } : {}),
     ...(intent.modifier ? { modifier: intent.modifier } : {}),
+    ...(intent.ignoreCover ? { ignoreCover: true } : {}),
   };
+
+  // The one obstacle the client genuinely knows about (stage 16c). Walls stay
+  // the server's secret, so `lineOfFire` is still left unset here — but a car
+  // travels to every client, so refusing over it locally is the honest answer
+  // and gets the choice in front of the player before the dice are picked up.
+  const blocking =
+    ref.kind === 'token' && !intent.ignoreCover
+      ? coverBlockingShot(attackerToken, aim.point, scene)
+      : null;
 
   const planned = planCpredAttack(
     data,
     useCharacterStore.getState().registry,
     request,
     { row, resolved, typeId: entry && isWeaponEntry(entry) ? entry.weaponTypeId : null },
-    { name: target.name, tokenId: target.id, metres },
+    aim.target,
+    blocking
+      ? { cover: { name: blocking.name, hpCurrent: blocking.hpCurrent, hpMax: blocking.hpMax } }
+      : {},
   );
-  if (!planned.ok) return { ok: false, message: CPRED_ATTACK_PROBLEM_MESSAGES[planned.error] };
+  if (!planned.ok) {
+    return blocking
+      ? { ok: false, message: CPRED_ATTACK_PROBLEM_MESSAGES[planned.error], cover: blocking }
+      : { ok: false, message: CPRED_ATTACK_PROBLEM_MESSAGES[planned.error] };
+  }
   return {
     ok: true,
     attack: planned.plan.attack,
     attackerName: name,
     request,
     modifierTotal: planned.plan.modifierTotal,
-    metres,
+    metres: aim.target.metres,
   };
+}
+
+/** The target's name, distance and defence — whichever kind of target it is. */
+type Aim =
+  | string
+  | { target: CpredAttackTarget & { tokenId?: string; coverId?: number }; point: ScenePoint };
+
+function tokenAim(attacker: TokenView, target: TokenView | undefined, scene: SceneView): Aim {
+  if (!target) return 'Nie znalazłem celu na tej scenie.';
+  if (attacker.id === target.id) return 'Wybierz cel inny niż atakujący.';
+  return {
+    target: {
+      name: target.name,
+      tokenId: target.id,
+      metres: metresForRules(metresBetweenTokens(attacker, target, scene)),
+    },
+    point: tokenCentre(target, scene),
+  };
+}
+
+/**
+ * Aiming at a cover (stage 16c). The distance is measured to the **nearest**
+ * point of the rectangle rather than to its middle, for the reason the server
+ * uses the same point: a line to the centre of a car goes through the near half
+ * of the bodywork, and the car would block a shot at itself.
+ */
+function coverAim(attacker: TokenView, cover: CoverView | undefined, scene: SceneView): Aim {
+  if (!cover) return 'Ta osłona już nie stoi na tej scenie.';
+  const perPixel = metresPerPixel(scene);
+  const origin = tokenCentre(attacker, scene);
+  return {
+    target: {
+      name: cover.name,
+      coverId: cover.id,
+      cover: true,
+      metres: metresForRules(distanceToCover(origin, cover) * perPixel),
+    },
+    point: {
+      x: Math.min(Math.max(origin.x, cover.x), cover.x + cover.width),
+      y: Math.min(Math.max(origin.y, cover.y), cover.y + cover.height),
+    },
+  };
+}
+
+/** Cover between the shooter and where they are aiming; null on a clear shot. */
+function coverBlockingShot(
+  attacker: TokenView,
+  aimPoint: ScenePoint,
+  scene: SceneView,
+): CoverView | null {
+  const covers = useCoverStore.getState().covers;
+  if (covers.length === 0) return null;
+  const perPixel = metresPerPixel(scene);
+  if (perPixel <= 0) return null;
+  return coverInLineOfFire(covers, tokenCentre(attacker, scene), aimPoint, WALL_REACH_M / perPixel);
 }
 
 /**
@@ -140,22 +254,30 @@ export function planAttackPreview(intent: AttackIntent, targetTokenId: string): 
  * intent straight in. Everything after that is the same code the sheet's
  * „Atakuj" runs.
  */
-export function loadAttackFor(intent: AttackIntent, targetTokenId: string): void {
+export function loadAttackFor(intent: AttackIntent, target: string | AttackTargetRef): void {
+  const ref: AttackTargetRef =
+    typeof target === 'string' ? { kind: 'token', tokenId: target } : target;
   const chat = useChatStore.getState();
-  const preview = planAttackPreview(intent, targetTokenId);
+  const preview = planAttackPreview(intent, ref);
   if (!preview.ok) {
+    // „Cel za osłoną" is not a dead end — it is a question (stage 16c). The two
+    // buttons are the two answers the rules allow, and nothing has been rolled
+    // or spent while the card sits there.
+    if (preview.cover && ref.kind === 'token') {
+      offerCoverChoice(intent, ref.tokenId, preview.cover);
+      return;
+    }
     chat.addNote(preview.message);
     return;
   }
-  const target = useTokenStore.getState().tokens[targetTokenId];
   const { attack } = preview;
   useAttackStore.getState().disarm();
   useRollStore.getState().loadAttackCup({
     ...(intent.characterId ? { characterId: intent.characterId } : {}),
     characterName: preview.attackerName,
     attackerTokenId: intent.attackerTokenId,
-    targetTokenId,
-    targetName: target?.name ?? attack.targetName,
+    ...(ref.kind === 'token' ? { targetTokenId: ref.tokenId } : { targetCoverId: ref.coverId }),
+    targetName: attack.targetName,
     request: preview.request,
     title: cupTitle(
       attack.weaponName,
@@ -167,6 +289,76 @@ export function loadAttackFor(intent: AttackIntent, targetTokenId: string): void
     ),
     modifierTotal: preview.modifierTotal,
   });
+}
+
+/**
+ * The refusal card of „cel za osłoną" (stage 16c).
+ *
+ * Deliberately a local note rather than a chat message on the server: nothing
+ * has happened yet, and the log should record the decision, not the hesitation.
+ * The wording names the obstacle and its remaining body points, because that is
+ * the number the choice actually turns on.
+ */
+export function offerCoverChoice(
+  intent: AttackIntent,
+  targetTokenId: string,
+  cover: CoverBlock,
+): void {
+  const target = useTokenStore.getState().tokens[targetTokenId];
+  const who = target?.name ?? 'Cel';
+  useChatStore
+    .getState()
+    .addNote(`${who} jest za osłoną: ${cover.name} (${cover.hpCurrent}/${cover.hpMax} PW).`, [
+      {
+        label: 'Ostrzelaj osłonę',
+        title: 'Strzał w osłonę: obrażenia schodzą z jej PW, nadwyżka przepada',
+        run: () => loadAttackFor(intent, { kind: 'cover', coverId: cover.id }),
+      },
+      {
+        label: 'Strzelaj mimo osłony',
+        title: 'Cel się wychylił — decyzja stołu, zapisana na karcie rzutu',
+        run: () => loadAttackFor({ ...intent, ignoreCover: true }, targetTokenId),
+      },
+    ]);
+}
+
+/** What the refusal card needs to know about the obstacle. */
+export interface CoverBlock {
+  id: number;
+  name: string;
+  hpCurrent: number;
+  hpMax: number;
+}
+
+/**
+ * The same card for a **Human Shield** (stages 14d, 16c) — „uznaje się, że
+ * jesteś za osłoną" (s. 181).
+ *
+ * Only the server knows who is holding whom, so this one is raised from the
+ * `attack:roll` ack rather than from the preview. „Ostrzelaj tarczę" is an
+ * ordinary attack at the shield's own token, which is exactly what „PW tarczy
+ * to PW trzymanego" means once you stop treating it as a special case.
+ */
+export function offerShieldChoice(
+  intent: AttackIntent,
+  targetTokenId: string,
+  shield: { tokenId: string; name: string },
+): void {
+  const target = useTokenStore.getState().tokens[targetTokenId];
+  useChatStore
+    .getState()
+    .addNote(`${target?.name ?? 'Cel'} zasłania się Ludzką tarczą: ${shield.name}.`, [
+      {
+        label: `Ostrzelaj tarczę (${shield.name})`,
+        title: 'PW tarczy to PW trzymanego — strzał trafia w nią',
+        run: () => loadAttackFor(intent, { kind: 'token', tokenId: shield.tokenId }),
+      },
+      {
+        label: 'Strzelaj mimo tarczy',
+        title: 'Cel się wychylił — decyzja stołu, zapisana na karcie rzutu',
+        run: () => loadAttackFor({ ...intent, ignoreCover: true }, targetTokenId),
+      },
+    ]);
 }
 
 /**

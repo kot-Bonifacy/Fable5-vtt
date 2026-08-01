@@ -11,9 +11,25 @@ import type {
   StateSyncPayload,
 } from '@vtt/shared';
 
+/**
+ * A button offered on a local note (stage 16c).
+ *
+ * The refusal card of „cel za osłoną" needs two answers — shoot the car, or
+ * declare that he leaned out — and neither is worth a chat message on the
+ * server: nothing has been rolled or spent yet, and the choice belongs to the
+ * person who is about to press the trigger. So the buttons live on the
+ * ephemeral note, and the decision only reaches the log once it has been made.
+ */
+export interface ChatNoteAction {
+  label: string;
+  title?: string;
+  run: () => void;
+}
+
 /** A chat feed entry: a server message or a local, ephemeral system note. */
 export type ChatItem =
-  { type: 'message'; message: ChatMessageView } | { type: 'note'; id: string; text: string };
+  | { type: 'message'; message: ChatMessageView }
+  | { type: 'note'; id: string; text: string; actions?: ChatNoteAction[] };
 
 interface ChatStoreState {
   /** False until the first `state:sync` (and after a disconnect). */
@@ -64,7 +80,7 @@ interface ChatStoreState {
   applySeq: (seq: number | undefined) => boolean;
   prependHistory: (page: ChatHistoryPage) => void;
   setLoadingHistory: (loading: boolean) => void;
-  addNote: (text: string) => void;
+  addNote: (text: string, actions?: ChatNoteAction[]) => void;
   setDesynced: () => void;
   setBotActivity: (entries: BotActivityEntry[]) => void;
   addBotTrace: (trace: BotTraceBroadcast) => void;
@@ -222,9 +238,17 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
 
   setLoadingHistory: (loading) => set({ loadingHistory: loading }),
 
-  addNote: (text) =>
+  addNote: (text, actions) =>
     set((state) => ({
-      items: [...state.items, { type: 'note', id: `note-${++noteCounter}`, text }],
+      items: [
+        ...state.items,
+        {
+          type: 'note',
+          id: `note-${++noteCounter}`,
+          text,
+          ...(actions && actions.length > 0 ? { actions } : {}),
+        },
+      ],
     })),
 
   setDesynced: () => set({ synced: false, botActivity: [] }),

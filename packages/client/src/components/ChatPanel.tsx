@@ -425,6 +425,25 @@ export function ChatPanel() {
           ) : (
             <p key={item.id} className="chat-note">
               {item.text}
+              {/* Buttons on a note (stage 16c): the „cel za osłoną" card asks
+                  which of the two answers the rules allow the table wants, and
+                  neither has cost anything yet. Pressing one is what turns the
+                  choice into a roll — and into a line of the log. */}
+              {item.actions && (
+                <span className="chat-note-actions">
+                  {item.actions.map((action) => (
+                    <button
+                      key={action.label}
+                      type="button"
+                      className="small-button"
+                      {...(action.title ? { title: action.title } : {})}
+                      onClick={() => action.run()}
+                    >
+                      {action.label}
+                    </button>
+                  ))}
+                </span>
+              )}
             </p>
           ),
         )}

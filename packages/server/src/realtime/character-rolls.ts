@@ -178,6 +178,7 @@ async function resolveRollRequest(
   delete request.damageNotation;
   delete request.damageMultiplier;
   delete request.targetTokenId;
+  delete request.targetCoverId;
   delete request.stabilizeDv;
   delete request.stabilizeTargetName;
   if (request.kind === 'stabilize') {
@@ -204,6 +205,7 @@ async function resolveRollRequest(
     ...(attack.damageNotation ? { damageNotation: attack.damageNotation } : {}),
     ...(attack.damageMultiplier ? { damageMultiplier: attack.damageMultiplier } : {}),
     ...(attack.targetTokenId ? { targetTokenId: attack.targetTokenId } : {}),
+    ...(attack.targetCoverId !== undefined ? { targetCoverId: attack.targetCoverId } : {}),
   };
 }
 
@@ -399,6 +401,9 @@ export const characterRollEvent = defineEvent<
         ...(plan.damage.ignoreArmor ? { ignoreArmor: true } : {}),
         ...(plan.damage.multiplier ? { multiplier: plan.damage.multiplier } : {}),
         ...(plan.damage.targetTokenId ? { targetTokenId: plan.damage.targetTokenId } : {}),
+        ...(plan.damage.targetCoverId !== undefined
+          ? { targetCoverId: plan.damage.targetCoverId }
+          : {}),
       };
     }
 

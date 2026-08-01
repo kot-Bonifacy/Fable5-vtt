@@ -131,6 +131,8 @@ export interface CpredRollRequest {
   damageMultiplier?: number;
   /** Server-filled: token the damage is aimed at. */
   targetTokenId?: string;
+  /** Server-filled: cover the damage is aimed at instead (stage 16c). */
+  targetCoverId?: number;
   /**
    * Required for `kind: 'stabilize'` — the token being stabilized, which RAW
    * allows to be your own. Unlike the damage fields above this one *is* the
@@ -166,6 +168,8 @@ export interface CpredDamagePlan {
   multiplier?: number;
   /** Token the damage is aimed at, preselected by „Zastosuj" (stage 16). */
   targetTokenId?: string;
+  /** Cover the damage is aimed at instead (stage 16c) — a car, not a person. */
+  targetCoverId?: number;
 }
 
 /** What „Ustabilizowanie" needs to judge itself and explain the verdict. */
@@ -468,6 +472,7 @@ function planDamageRoll(
         weaponName: weapon.name,
         ...(multiplier > 1 ? { multiplier } : {}),
         ...(request.targetTokenId ? { targetTokenId: request.targetTokenId } : {}),
+        ...(request.targetCoverId !== undefined ? { targetCoverId: request.targetCoverId } : {}),
       },
     },
   };

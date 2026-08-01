@@ -1,0 +1,94 @@
+{
+  "source": "Wymyślone przykłady — nie są to wartości z podręcznika Cyberpunk RED.",
+  "_comment": "Osłony (etap 16c). Repozytorium jest publiczne, a tabela materiałów ze s. 180 podręcznika jest treścią objętą prawem autorskim, więc tu stoją wymyślone wiersze o właściwym KSZTAŁCIE (materiał → PW dla wersji grubej i cienkiej). Prawdziwa tabela mieszka w data/private/cpred/covers.json (gitignore) i ZASTĘPUJE ten plik w całości, tak samo jak przy skills.json. Brak kolumny SP jest zamierzony i wynika z zasad, nie z licencji: „Jeśli nie może zatrzymać kuli, nie jest to osłona i nie ma PW” (s. 179).",
+  "materials": [
+    { "id": "steel", "name": "Stal", "thick": 44, "thin": 22 },
+    { "id": "stone", "name": "Kamień", "thick": 36, "thin": 18 },
+    { "id": "bulletproof-glass", "name": "Szyba kuloodporna", "thick": 28, "thin": 14 },
+    { "id": "concrete", "name": "Beton", "thick": 24, "thin": 12 },
+    { "id": "wood", "name": "Drewno", "thick": 16, "thin": 8 },
+    { "id": "drywall", "name": "Gips, pianka, plastik", "thick": 12, "thin": 0 }
+  ],
+  "presets": [
+    {
+      "id": "car",
+      "name": "Samochód",
+      "materialId": "steel",
+      "thickness": "thin",
+      "widthM": 4,
+      "heightM": 2
+    },
+    {
+      "id": "armored-car",
+      "name": "Opancerzony wóz",
+      "materialId": "steel",
+      "thickness": "thick",
+      "widthM": 5,
+      "heightM": 2
+    },
+    {
+      "id": "dumpster",
+      "name": "Kontener na śmieci",
+      "materialId": "steel",
+      "thickness": "thin",
+      "widthM": 2,
+      "heightM": 2
+    },
+    {
+      "id": "concrete-bollard",
+      "name": "Betonowy słupek",
+      "materialId": "concrete",
+      "thickness": "thick",
+      "widthM": 1,
+      "heightM": 1
+    },
+    {
+      "id": "concrete-barrier",
+      "name": "Barierka betonowa",
+      "materialId": "concrete",
+      "thickness": "thin",
+      "widthM": 4,
+      "heightM": 1
+    },
+    {
+      "id": "stone-wall",
+      "name": "Kamienny murek",
+      "materialId": "stone",
+      "thickness": "thin",
+      "widthM": 4,
+      "heightM": 1
+    },
+    {
+      "id": "crate",
+      "name": "Skrzynia",
+      "materialId": "wood",
+      "thickness": "thick",
+      "widthM": 2,
+      "heightM": 2
+    },
+    {
+      "id": "barricade",
+      "name": "Barykada z desek",
+      "materialId": "wood",
+      "thickness": "thin",
+      "widthM": 4,
+      "heightM": 1
+    },
+    {
+      "id": "shop-window",
+      "name": "Kuloodporna witryna",
+      "materialId": "bulletproof-glass",
+      "thickness": "thin",
+      "widthM": 4,
+      "heightM": 1
+    },
+    {
+      "id": "vending-machine",
+      "name": "Automat z napojami",
+      "materialId": "drywall",
+      "thickness": "thick",
+      "widthM": 1,
+      "heightM": 2
+    }
+  ]
+}

@@ -16,6 +16,7 @@ import {
   sanitizeCombatProfile,
 } from '@vtt/shared';
 import { loadAttackFor } from './attack-targeting.js';
+import { coverAt } from './stores/coverStore.js';
 import { combatErrorText, reloadWeapon, spendCombatAction } from './socket.js';
 import { useAttackStore } from './stores/attackStore.js';
 import { useAuthStore } from './stores/authStore.js';
@@ -264,6 +265,34 @@ export function attackWithActiveWeapon(targetTokenId: string): boolean {
       mode: weapon.mode,
     },
     targetTokenId,
+  );
+  return true;
+}
+
+/**
+ * Fires the bar's active weapon at the cover under the pointer (stage 16c) —
+ * „ostrzelaj samochód" without going through the refusal card first.
+ *
+ * Returns false when there is no cover there or nothing armed, so the click
+ * falls through to the walk planner: with empty hands a car is scenery, and
+ * scenery must not swallow the click that would have started a walk.
+ */
+export function shootCoverAt(worldX: number, worldY: number): boolean {
+  const weapon = useHudStore.getState().activeWeapon;
+  const selected = useSelectionStore.getState().tokenId;
+  if (!weapon || !selected || weapon.tokenId !== selected) return false;
+  const cover = coverAt({ x: worldX, y: worldY });
+  if (!cover) return false;
+  const token = useTokenStore.getState().tokens[weapon.tokenId];
+  if (!token) return false;
+  loadAttackFor(
+    {
+      ...(token.characterId ? { characterId: token.characterId } : {}),
+      attackerTokenId: weapon.tokenId,
+      weaponRowId: weapon.weaponRowId,
+      mode: weapon.mode,
+    },
+    { kind: 'cover', coverId: cover.id },
   );
   return true;
 }

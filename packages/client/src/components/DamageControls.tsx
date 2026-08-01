@@ -8,6 +8,7 @@ import {
 } from '@vtt/shared';
 import { applyDamage, undoDamage } from '../socket.js';
 import { useTokenStore } from '../stores/tokenStore.js';
+import { useCoverStore } from '../stores/coverStore.js';
 
 /**
  * Applying damage from the chat card (stage 15) — GM only.
@@ -18,26 +19,53 @@ import { useTokenStore } from '../stores/tokenStore.js';
  */
 
 const NO_TARGET = '';
+/**
+ * Prefix marking a cover in the target dropdown (stage 16c). One `<select>`
+ * rather than two, because „w co poszły te obrażenia" is a single question and
+ * the answer is either a person or the car they were behind.
+ */
+const COVER_PREFIX = 'cover:';
 
-export function DamageApplyControls({ message, roll }: { message: ChatMessageView; roll: RollResult }) {
+export function DamageApplyControls({
+  message,
+  roll,
+}: {
+  message: ChatMessageView;
+  roll: RollResult;
+}) {
   const tokens = useTokenStore((s) => s.tokens);
-  const [tokenId, setTokenId] = useState<string>(NO_TARGET);
+  const covers = useCoverStore((s) => s.covers);
+  const [tokenId, setTokenId] = useState<string>(
+    // The attack already said what it was aimed at; „Zastosuj" only has to
+    // agree with it (stage 16c: a shot at a car cannot land on a person).
+    roll.damage?.targetCoverId !== undefined
+      ? `${COVER_PREFIX}${roll.damage.targetCoverId}`
+      : (roll.damage?.targetTokenId ?? NO_TARGET),
+  );
   const [location, setLocation] = useState<CpredHitLocation>(
     isCpredHitLocation(roll.damage?.location) ? roll.damage.location : 'body',
   );
   const [armorOverride, setArmorOverride] = useState('');
 
   const options = useMemo(
-    () =>
-      Object.values(tokens).sort((a, b) => a.name.localeCompare(b.name, 'pl')),
+    () => Object.values(tokens).sort((a, b) => a.name.localeCompare(b.name, 'pl')),
     [tokens],
   );
-  const target = tokenId ? tokens[tokenId] : undefined;
+  const coverId = tokenId.startsWith(COVER_PREFIX)
+    ? Number.parseInt(tokenId.slice(COVER_PREFIX.length), 10)
+    : null;
+  const target = coverId === null && tokenId ? tokens[tokenId] : undefined;
   // A statist token carries its own HP; a linked one takes them from the sheet.
   const needsArmorHint = target !== undefined && target.characterId == null;
 
   function apply() {
     if (!tokenId) return;
+    // A cover has no armour and no anatomy (s. 179), so neither field is sent —
+    // and neither is shown, so there is nothing to send by accident.
+    if (coverId !== null) {
+      applyDamage({ messageId: message.id, coverId });
+      return;
+    }
     const sp = Number.parseInt(armorOverride, 10);
     applyDamage({
       messageId: message.id,
@@ -49,11 +77,7 @@ export function DamageApplyControls({ message, roll }: { message: ChatMessageVie
 
   return (
     <div className="damage-apply">
-      <select
-        value={tokenId}
-        onChange={(e) => setTokenId(e.target.value)}
-        aria-label="Cel obrażeń"
-      >
+      <select value={tokenId} onChange={(e) => setTokenId(e.target.value)} aria-label="Cel obrażeń">
         <option value={NO_TARGET}>Wybierz cel…</option>
         {options.map((token) => (
           <option key={token.id} value={token.id}>
@@ -61,33 +85,42 @@ export function DamageApplyControls({ message, roll }: { message: ChatMessageVie
             {token.hp ? ` (${token.hp.current}/${token.hp.max} PW)` : ''}
           </option>
         ))}
-      </select>
-      <select
-        value={location}
-        onChange={(e) => setLocation(e.target.value as CpredHitLocation)}
-        aria-label="Trafiona lokacja"
-      >
-        {CPRED_HIT_LOCATIONS.map((id) => (
-          <option key={id} value={id}>
-            {CPRED_HIT_LOCATION_LABELS[id]}
+        {covers.map((cover) => (
+          <option key={`cover-${cover.id}`} value={`${COVER_PREFIX}${cover.id}`}>
+            {cover.name} ({cover.hpCurrent}/{cover.hpMax} PW)
           </option>
         ))}
       </select>
-      <input
-        type="number"
-        className="damage-armor-input"
-        min={0}
-        max={ARMOR_SP_MAX}
-        value={armorOverride}
-        onChange={(e) => setArmorOverride(e.target.value)}
-        placeholder="OB"
-        title={
-          needsArmorHint
-            ? 'Cel bez karty — wpisz OB pancerza, inaczej liczę 0'
-            : 'Puste = OB z karty postaci'
-        }
-        aria-label="OB pancerza celu"
-      />
+      {coverId === null && (
+        <>
+          <select
+            value={location}
+            onChange={(e) => setLocation(e.target.value as CpredHitLocation)}
+            aria-label="Trafiona lokacja"
+          >
+            {CPRED_HIT_LOCATIONS.map((id) => (
+              <option key={id} value={id}>
+                {CPRED_HIT_LOCATION_LABELS[id]}
+              </option>
+            ))}
+          </select>
+          <input
+            type="number"
+            className="damage-armor-input"
+            min={0}
+            max={ARMOR_SP_MAX}
+            value={armorOverride}
+            onChange={(e) => setArmorOverride(e.target.value)}
+            placeholder="OB"
+            title={
+              needsArmorHint
+                ? 'Cel bez karty — wpisz OB pancerza, inaczej liczę 0'
+                : 'Puste = OB z karty postaci'
+            }
+            aria-label="OB pancerza celu"
+          />
+        </>
+      )}
       <button type="button" className="small-button" disabled={!tokenId} onClick={apply}>
         Zastosuj
       </button>

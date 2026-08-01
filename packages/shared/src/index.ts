@@ -5,6 +5,7 @@ export * from './bots/index.js';
 export * from './chat.js';
 export * from './combat.js';
 export * from './characters.js';
+export * from './covers.js';
 export * from './dice.js';
 export * from './drawings.js';
 export * from './exploration.js';

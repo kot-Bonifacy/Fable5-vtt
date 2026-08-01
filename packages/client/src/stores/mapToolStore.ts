@@ -11,6 +11,9 @@ import {
   LIGHT_DEFAULT_BRIGHT_M,
   LIGHT_DEFAULT_COLOR,
   LIGHT_DEFAULT_DIM_M,
+  EMPTY_COVER_CATALOGUE,
+  buildCoverCatalogue,
+  type CpredCoverCatalogue,
   type DrawingStyle,
   type FogMode,
   type WallKind,
@@ -32,6 +35,7 @@ export const MAP_TOOLS = [
   'draw',
   'erase',
   'wall',
+  'cover',
   'light',
 ] as const;
 export type MapTool = (typeof MAP_TOOLS)[number];
@@ -45,6 +49,13 @@ export type MapTool = (typeof MAP_TOOLS)[number];
  * `lock` clicks a door rather than a corner: it throws or draws its bolt.
  */
 export type WallMode = 'draw' | 'erase' | 'lock';
+
+/**
+ * What the cover tool does with a click (stage 16c). Two modes, and the eraser
+ * is not optional: a wrecked car stays on the map as scenery, so removing one
+ * for good has to be a deliberate gesture rather than a side effect of shooting.
+ */
+export type CoverMode = 'draw' | 'erase';
 
 /**
  * What the light tool does with a click (stage 18b). Modes of one tool rather
@@ -173,6 +184,17 @@ interface MapToolStoreState extends DrawSettings {
   windowPlayerToggle: boolean;
   /** Snap drawn points to the grid (endpoints of existing walls always win). */
   wallSnapGrid: boolean;
+  /** Cover tool: dragging a rectangle, or removing one. */
+  coverMode: CoverMode;
+  /** Preset the next dragged rectangle becomes („car", „concrete-bollard"…). */
+  coverTypeId: string;
+  /**
+   * The catalogue, fetched once from `data/public`. It lives with the tool
+   * settings rather than in `coverStore` because only the GM's palette reads
+   * it: what a *player* needs about a cover — its size, name and body points —
+   * already travels with the row.
+   */
+  coverCatalogue: CpredCoverCatalogue;
   /** Light tool: placing/retuning lamps, or removing them. */
   lightMode: LightMode;
   /** „Light this room": the server measures the walls and sizes the lamp. */
@@ -200,6 +222,9 @@ interface MapToolStoreState extends DrawSettings {
   setWallPlayerToggle: (wallPlayerToggle: boolean) => void;
   setWindowPlayerToggle: (windowPlayerToggle: boolean) => void;
   setWallSnapGrid: (wallSnapGrid: boolean) => void;
+  setCoverMode: (coverMode: CoverMode) => void;
+  setCoverTypeId: (coverTypeId: string) => void;
+  setCoverCatalogue: (coverCatalogue: CpredCoverCatalogue) => void;
   setLightMode: (lightMode: LightMode) => void;
   setLightFitRoom: (lightFitRoom: boolean) => void;
   setLightBrightM: (lightBrightM: number) => void;
@@ -242,6 +267,9 @@ export const useMapToolStore = create<MapToolStoreState>((set, get) => {
     // matters with a single click.
     windowPlayerToggle: false,
     wallSnapGrid: true,
+    coverMode: 'draw',
+    coverTypeId: '',
+    coverCatalogue: EMPTY_COVER_CATALOGUE,
     lightMode: 'place',
     lightFitRoom: false,
     lightBrightM: LIGHT_DEFAULT_BRIGHT_M,
@@ -266,6 +294,15 @@ export const useMapToolStore = create<MapToolStoreState>((set, get) => {
     setWallPlayerToggle: (wallPlayerToggle) => set({ wallPlayerToggle }),
     setWindowPlayerToggle: (windowPlayerToggle) => set({ windowPlayerToggle }),
     setWallSnapGrid: (wallSnapGrid) => set({ wallSnapGrid }),
+    setCoverMode: (coverMode) => set({ coverMode }),
+    setCoverTypeId: (coverTypeId) => set({ coverTypeId }),
+    setCoverCatalogue: (coverCatalogue) =>
+      set((state) => ({
+        coverCatalogue,
+        // First catalogue in also picks the first preset, so the palette is
+        // never armed with nothing selected.
+        coverTypeId: state.coverTypeId || (coverCatalogue.presets[0]?.id ?? ''),
+      })),
     setLightMode: (lightMode) => set({ lightMode }),
     setLightFitRoom: (lightFitRoom) => set({ lightFitRoom }),
     setLightBrightM: (lightBrightM) => set({ lightBrightM }),
@@ -287,4 +324,29 @@ export function currentPlayerToggle(state: MapToolStoreState): boolean {
 /** The style the toolbar currently describes — what a new shape is drawn with. */
 export function currentDrawingStyle(state: MapToolStoreState): DrawingStyle {
   return { color: state.drawColor, width: state.drawWidth, filled: state.drawFilled };
+}
+
+let catalogueRequested = false;
+
+/**
+ * Fetches the cover catalogue once per session.
+ *
+ * From the **API** rather than from `/public/`, unlike the status registry: a
+ * group playing with the rulebook's own table has it in `data/private/`, which
+ * is never served as a static file, and a palette reading the public samples
+ * would promise body points the server does not use. A failure only leaves the
+ * palette empty — every cover already on a scene keeps its numbers, because
+ * those live on the row.
+ */
+export function ensureCoverCatalogueLoaded(): void {
+  if (catalogueRequested) return;
+  catalogueRequested = true;
+  fetch('/api/cpred/covers')
+    .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
+    .then((data: unknown) => {
+      useMapToolStore.getState().setCoverCatalogue(buildCoverCatalogue(data));
+    })
+    .catch(() => {
+      catalogueRequested = false;
+    });
 }

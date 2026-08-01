@@ -57,7 +57,10 @@ export interface CombatActionLogEntry {
 export interface DamageLogEntry {
   /** Chat message the damage roll came from. */
   sourceMessageId?: number;
-  targetTokenId: string;
+  /** Token that took the damage; absent when a cover did (stage 16c). */
+  targetTokenId?: string;
+  /** Cover that took the damage instead of a token (stage 16c). */
+  targetCoverId?: number;
   targetName: string;
   /** Sheet that took the damage; absent for statists and for redacted views. */
   characterId?: string | null;

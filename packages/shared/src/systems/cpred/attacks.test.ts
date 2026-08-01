@@ -517,6 +517,92 @@ describe('planCpredAttack — line of fire (stage 16b)', () => {
   });
 });
 
+describe('planCpredAttack — cover (stage 16c)', () => {
+  const data = sheet({ weapons: [weaponRow()], skills: { handgun: 6, 'melee-weapon': 6 } });
+  const car = { name: 'Samochód', hpCurrent: 25, hpMax: 25 };
+
+  it('refuses a shot at somebody behind a cover', () => {
+    expect(plan({}, { data, context: { cover: car } })).toEqual({
+      ok: false,
+      error: 'TARGET_BEHIND_COVER',
+    });
+  });
+
+  it('lets it through when the table rules the target leaned out', () => {
+    expect(plan({ ignoreCover: true }, { data, context: { cover: car } })).toMatchObject({
+      ok: true,
+    });
+  });
+
+  it('leaves suppressive fire alone, as walls do', () => {
+    const row = weaponRow({ ammoCurrent: 25, ammoMax: 25 });
+    const gunner = sheet({ weapons: [row], skills: { autofire: 6 } });
+    expect(
+      plan(
+        { mode: 'suppressive' },
+        { data: gunner, resolved: rifle, row, metres: 20, context: { cover: car } },
+      ),
+    ).toMatchObject({ ok: true });
+  });
+
+  it('reads the DV off the range table when the cover *is* the target', () => {
+    const shot = planCpredAttack(
+      data,
+      registry,
+      { weaponRowId: weaponRow().id, mode: 'single' },
+      { row: weaponRow(), resolved: pistol },
+      { name: 'Samochód', coverId: 7, metres: 24, cover: true },
+    );
+    expect(shot).toMatchObject({ ok: true });
+    if (!shot.ok) return;
+    expect(shot.plan.attack.dv).toBe(dvForRange(PISTOL_DV, 24));
+    expect(shot.plan.attack.targetCoverId).toBe(7);
+    expect(shot.plan.attack.targetTokenId).toBeUndefined();
+  });
+
+  it('drops the aimed shot against an object — a car has no head', () => {
+    const shot = planCpredAttack(
+      data,
+      registry,
+      { weaponRowId: weaponRow().id, mode: 'single', aimed: true },
+      { row: weaponRow(), resolved: pistol },
+      { name: 'Samochód', coverId: 7, metres: 24, cover: true },
+    );
+    expect(shot).toMatchObject({ ok: true });
+    if (!shot.ok) return;
+    expect(shot.plan.attack.aimed).toBe(false);
+    expect(shot.plan.attack.location).toBe('body');
+  });
+
+  it('refuses to suppress an object', () => {
+    const row = weaponRow({ ammoCurrent: 25, ammoMax: 25 });
+    const gunner = sheet({ weapons: [row], skills: { autofire: 6 } });
+    expect(
+      planCpredAttack(
+        gunner,
+        registry,
+        { weaponRowId: row.id, mode: 'suppressive' },
+        { row, resolved: rifle },
+        { name: 'Samochód', coverId: 7, metres: 20, cover: true },
+      ),
+    ).toEqual({ ok: false, error: 'COVER_NOT_SUPPRESSIBLE' });
+  });
+
+  it('still charges the ammunition for a shot at a car', () => {
+    const row = weaponRow({ ammoCurrent: 8, ammoMax: 8 });
+    const shot = planCpredAttack(
+      sheet({ weapons: [row], skills: { handgun: 6 } }),
+      registry,
+      { weaponRowId: row.id, mode: 'single' },
+      { row, resolved: pistol },
+      { name: 'Samochód', coverId: 7, metres: 10, cover: true },
+    );
+    expect(shot).toMatchObject({ ok: true });
+    if (!shot.ok) return;
+    expect(shot.plan.attack.ammoAfter).toBe(7);
+  });
+});
+
 describe('problem messages', () => {
   it('has Polish text for every problem the planner can return', () => {
     for (const message of Object.values(CPRED_ATTACK_PROBLEM_MESSAGES)) {

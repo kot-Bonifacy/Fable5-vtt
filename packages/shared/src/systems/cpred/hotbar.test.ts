@@ -33,7 +33,7 @@ const pistol: ResolvedWeapon = {
 const smg: ResolvedWeapon = {
   ...pistol,
   magazine: 30,
-  autofire: { max: 3 },
+  autofire: { max: 3, rangeDv: [13, 15, 20, 25, 30, 30, null, null] },
   suppressive: true,
 };
 

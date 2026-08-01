@@ -1,7 +1,9 @@
 import type {
   AttackEvadePayload,
   AttackRollPayload,
+  AttackRollResult,
   ChatMessageView,
+  CoverView,
   CpredAttackMeta,
   CpredAttackRequest,
   CpredCharacterData,
@@ -11,6 +13,7 @@ import type {
   RollForcedCheck,
   RollGesture,
   RollResult,
+  ScenePoint,
   SessionUser,
   TokenHp,
   WeaponReloadPayload,
@@ -23,8 +26,10 @@ import {
   CPRED_SUPPRESSIVE_RANGE_M,
   ROLE_GM,
   concentrationBase,
+  distanceToCover,
   formatMetres,
   isTokenInFog,
+  metresPerPixel,
   isWeaponEntry,
   mergeCharacterData,
   metresBetweenTokens,
@@ -64,7 +69,14 @@ import {
 } from './tokens.js';
 import { buildCompendiumSync } from './compendium.js';
 import { fetchFogState } from './fog-io.js';
-import { hasLineOfFire, loadVisionContext, type SceneVisionContext } from './vision.js';
+import {
+  coverBetween,
+  hasClearShot,
+  hasLineOfFire,
+  loadVisionContext,
+  type SceneVisionContext,
+} from './vision.js';
+import { toCoverView } from './covers-io.js';
 import { toSceneView } from './scenes.js';
 import {
   INCLUDE_CHAT_NAMES,
@@ -316,7 +328,7 @@ async function suppressionTargets(
       metresBetweenTokens(toTokenView(attacker, true), toTokenView(token, true), view),
     );
     if (metres > CPRED_SUPPRESSIVE_RANGE_M) continue;
-    if (!(await lineOfFireBetween(deps, scene, attacker, token, fire))) continue;
+    if (!(await clearShotBetween(deps, scene, attacker, token, fire))) continue;
     found.push({ token, metres });
   }
   return found.sort((a, b) => a.metres - b.metres);
@@ -332,8 +344,16 @@ interface FireContext {
   loaded: SceneVisionContext | null;
 }
 
-/** Is the straight line between two tokens free of walls and shut doors? */
-async function lineOfFireBetween(
+/**
+ * Can the volley reach that token at all — walls, shut doors *and* cover?
+ *
+ * Suppressive fire is the one place the two obstacles get the same answer
+ * (stage 16c). It has no card to write and no target to offer instead: it
+ * sprays a cone and asks each figure in it to keep its head down, and somebody
+ * already behind a car is not going to be impressed. So a cover simply takes
+ * them off the list, exactly as a wall does.
+ */
+async function clearShotBetween(
   deps: RealtimeDeps,
   scene: Scene,
   from: Token,
@@ -342,15 +362,98 @@ async function lineOfFireBetween(
 ): Promise<boolean> {
   const context = fire.loaded ?? (await loadVisionContext(deps.ctx.prisma, scene));
   fire.loaded = context;
-  // A scene nobody has drawn walls on cannot block anything, and paying for the
-  // raycast there would tax every attack in the campaign for nothing.
-  if (context.walls.length === 0) return true;
+  if (context.walls.length === 0 && context.covers.length === 0) return true;
   const view = toSceneView(scene);
-  return hasLineOfFire(
+  return hasClearShot(
     context,
     tokenCentre(toTokenView(from, true), view),
     tokenCentre(toTokenView(to, true), view),
   );
+}
+
+/** The same question between two bare points — cover is a rectangle, not a token. */
+async function lineOfFireTo(
+  deps: RealtimeDeps,
+  scene: Scene,
+  from: ScenePoint,
+  to: ScenePoint,
+  fire: FireContext,
+): Promise<boolean> {
+  const context = fire.loaded ?? (await loadVisionContext(deps.ctx.prisma, scene));
+  fire.loaded = context;
+  // A scene nobody has drawn walls on cannot block anything, and paying for the
+  // raycast there would tax every attack in the campaign for nothing.
+  if (context.walls.length === 0) return true;
+  return hasLineOfFire(context, from, to);
+}
+
+/**
+ * The cover standing in the way, if any (stage 16c).
+ *
+ * `exceptCoverId` takes the target itself out of the test: shooting *at* a car
+ * would otherwise be refused because of the car, since a segment that ends
+ * inside a rectangle counts as crossing it.
+ */
+async function blockingCoverFor(
+  deps: RealtimeDeps,
+  scene: Scene,
+  from: ScenePoint,
+  to: ScenePoint,
+  fire: FireContext,
+  exceptCoverId: number | null,
+): Promise<CoverView | null> {
+  const context = fire.loaded ?? (await loadVisionContext(deps.ctx.prisma, scene));
+  fire.loaded = context;
+  if (context.covers.length === 0) return null;
+  const found = coverBetween(context, from, to);
+  if (!found || found.id === exceptCoverId) return null;
+  return found;
+}
+
+/**
+ * Where a shot at a cover lands: the point of the rectangle nearest the
+ * shooter. „Aim at the middle of the car" would send the line through the near
+ * half of the bodywork and let the car block a shot at itself.
+ */
+function coverAimPoint(origin: ScenePoint, cover: CoverView): ScenePoint {
+  return {
+    x: Math.min(Math.max(origin.x, cover.x), cover.x + cover.width),
+    y: Math.min(Math.max(origin.y, cover.y), cover.y + cover.height),
+  };
+}
+
+/** Loads a cover row and proves it belongs to this campaign. */
+async function requireCampaignCover(deps: RealtimeDeps, campaignId: string, coverId: unknown) {
+  if (typeof coverId !== 'number' || !Number.isInteger(coverId)) {
+    throw new RealtimeError('BAD_REQUEST');
+  }
+  const row = await deps.ctx.prisma.cover.findUnique({
+    where: { id: coverId },
+    include: { scene: true },
+  });
+  if (!row || row.scene.campaignId !== campaignId) throw new RealtimeError('COVER_NOT_FOUND');
+  return { ...toCoverView(row), scene: row.scene };
+}
+
+/**
+ * The Human Shield this target is hiding behind (stages 14d, 16c), or null.
+ *
+ * „Dopóki zasłaniasz się Ludzką tarczą, uznaje się, że jesteś za osłoną"
+ * (s. 181) — and cover, in this project since stage 16c, means the shot has to
+ * go through the thing in front. `sheetHumanShieldCovers` still decides *when*
+ * the shield counts: it does nothing against a melee swing, and nothing against
+ * a shot aimed at the head above it.
+ */
+async function humanShieldOf(
+  deps: RealtimeDeps,
+  sceneId: string,
+  targetTokenId: string,
+  attack: { melee: boolean; aimed: boolean },
+): Promise<{ tokenId: string; name: string } | null> {
+  if (!sheetHumanShieldCovers({ melee: attack.melee, aimedAtHead: attack.aimed })) return null;
+  const state = await grappleStateForToken(deps.ctx.prisma, sceneId, targetTokenId);
+  if (!state.shieldOf) return null;
+  return { tokenId: state.shieldOf.tokenId, name: state.shieldOf.token.name };
 }
 
 /**
@@ -437,178 +540,225 @@ async function buildStatistSource(
   };
 }
 
-export const attackRollEvent = defineEvent<
-  AttackRollPayload<CpredAttackRequest>,
-  { messageId: number }
->({
-  name: 'attack:roll',
-  handler: async ({ deps, socket, user, payload }) => {
-    const campaignId = requireCampaignId(socket.data);
-    const registry = deps.ctx.cpred;
-    // Stage 16b: an attack no longer has to come from a sheet. Naming no
-    // character means „the token itself is the fighter", and the profile on it
-    // supplies the numbers a sheet would have.
-    const statist = typeof payload?.characterId !== 'string' || payload.characterId.length === 0;
-    const character = statist
-      ? null
-      : await requireRollableCharacter(deps, campaignId, user, payload?.characterId);
+export const attackRollEvent = defineEvent<AttackRollPayload<CpredAttackRequest>, AttackRollResult>(
+  {
+    name: 'attack:roll',
+    handler: async ({ deps, socket, user, payload }) => {
+      const campaignId = requireCampaignId(socket.data);
+      const registry = deps.ctx.cpred;
+      // Stage 16b: an attack no longer has to come from a sheet. Naming no
+      // character means „the token itself is the fighter", and the profile on it
+      // supplies the numbers a sheet would have.
+      const statist = typeof payload?.characterId !== 'string' || payload.characterId.length === 0;
+      const character = statist
+        ? null
+        : await requireRollableCharacter(deps, campaignId, user, payload?.characterId);
 
-    const { token: target, scene } = await requireCampaignToken(
-      deps.ctx.prisma,
-      campaignId,
-      payload?.targetTokenId,
-    );
-    // A hidden token must not even be targetable by a player: a rejected
-    // attack would tell them exactly where it stands. Unrevealed fog conceals
-    // a token just as completely (stage 17), so it gets the same answer —
-    // unless the player controls the token, in which case they can see it.
-    if (user.role !== ROLE_GM) {
-      if (target.hidden) throw new RealtimeError('TOKEN_NOT_FOUND');
-      const fog = await fetchFogState(deps.ctx.prisma, scene);
-      const controlledByPlayer =
-        target.ownerId === user.id ||
-        (target.characterId !== null && target.characterId === character?.id);
-      if (
-        fog.enabled &&
-        !controlledByPlayer &&
-        isTokenInFog(toTokenView(target, false), toSceneView(scene), fog)
-      ) {
-        throw new RealtimeError('TOKEN_NOT_FOUND');
+      // Stage 16c: the thing being shot at is a token **or** a cover. Both arms
+      // end in the same planner call — only where the name, the distance and the
+      // defence come from differs.
+      const coverTarget =
+        payload?.targetCoverId !== undefined
+          ? await requireCampaignCover(deps, campaignId, payload.targetCoverId)
+          : null;
+      const tokenTarget = coverTarget
+        ? null
+        : await requireCampaignToken(deps.ctx.prisma, campaignId, payload?.targetTokenId);
+      const target = tokenTarget?.token ?? null;
+      const scene = coverTarget ? coverTarget.scene : tokenTarget!.scene;
+
+      // A hidden token must not even be targetable by a player: a rejected
+      // attack would tell them exactly where it stands. Unrevealed fog conceals
+      // a token just as completely (stage 17), so it gets the same answer —
+      // unless the player controls the token, in which case they can see it.
+      if (target && user.role !== ROLE_GM) {
+        if (target.hidden) throw new RealtimeError('TOKEN_NOT_FOUND');
+        const fog = await fetchFogState(deps.ctx.prisma, scene);
+        const controlledByPlayer =
+          target.ownerId === user.id ||
+          (target.characterId !== null && target.characterId === character?.id);
+        if (
+          fog.enabled &&
+          !controlledByPlayer &&
+          isTokenInFog(toTokenView(target, false), toSceneView(scene), fog)
+        ) {
+          throw new RealtimeError('TOKEN_NOT_FOUND');
+        }
       }
-    }
 
-    const attacker = character
-      ? await resolveAttackerToken(
-          deps,
-          campaignId,
-          character,
-          target.sceneId,
-          payload?.attackerTokenId,
-        )
-      : await resolveStatistToken(deps, campaignId, user, target.sceneId, payload?.attackerTokenId);
-    if (attacker.id === target.id) throw new RealtimeError('BAD_REQUEST');
+      const attacker = character
+        ? await resolveAttackerToken(
+            deps,
+            campaignId,
+            character,
+            scene.id,
+            payload?.attackerTokenId,
+          )
+        : await resolveStatistToken(deps, campaignId, user, scene.id, payload?.attackerTokenId);
+      if (target && attacker.id === target.id) throw new RealtimeError('BAD_REQUEST');
 
-    const source = character
-      ? ({
-          kind: 'character',
-          character,
-          token: attacker,
-          data: parseCharacterData(character.data, registry),
-        } satisfies AttackSource)
-      : await buildStatistSource(deps, campaignId, registry, attacker, payload?.request);
-    const data = source.data;
+      const source = character
+        ? ({
+            kind: 'character',
+            character,
+            token: attacker,
+            data: parseCharacterData(character.data, registry),
+          } satisfies AttackSource)
+        : await buildStatistSource(deps, campaignId, registry, attacker, payload?.request);
+      const data = source.data;
 
-    const sceneView = toSceneView(scene);
-    const metres = metresForRules(
-      metresBetweenTokens(toTokenView(attacker, true), toTokenView(target, true), sceneView),
-    );
+      const sceneView = toSceneView(scene);
+      const origin = tokenCentre(toTokenView(attacker, true), sceneView);
+      const metres = target
+        ? metresForRules(
+            metresBetweenTokens(toTokenView(attacker, true), toTokenView(target, true), sceneView),
+          )
+        : metresForRules(distanceToCover(origin, coverTarget!) * metresPerPixel(sceneView));
 
-    const weapon = await resolveWeaponRow(deps, campaignId, data, payload?.request?.weaponRowId);
-    // Being in a Hold is −2 to everything and takes two-handed weapons away
-    // (stage 14d). Read from the tracker, never from the request.
-    const attackerGrapple = await grappleStateForToken(deps.ctx.prisma, scene.id, attacker.id);
-    // What stands between the two of them (stage 16b). Measured here, never
-    // sent: the walls do not leave the server, so the client's preview cannot
-    // know and deliberately does not guess.
-    const fire: FireContext = { loaded: null };
-    const lineOfFire = await lineOfFireBetween(deps, scene, attacker, target, fire);
-    const planned = planCpredAttack(
-      data,
-      registry,
-      payload?.request ?? ({} as CpredAttackRequest),
-      weapon,
-      {
-        name: target.name,
-        tokenId: target.id,
-        metres,
-        ...(weapon.resolved?.melee
-          ? { evasionDv: await targetEvasionDv(deps, registry, target) }
-          : {}),
-      },
-      {
-        modifiers: sheetSituationModifiers({
-          grappled: attackerGrapple.grappled,
-          injuries: data.criticalInjuries,
-        }),
-        ...(attackerGrapple.grappled ? { grappled: true } : {}),
-        lineOfFire,
-      },
-    );
-    if (!planned.ok) throw new RealtimeError(planned.error);
-    const { plan } = planned;
-    const meta = plan.attack;
+      const weapon = await resolveWeaponRow(deps, campaignId, data, payload?.request?.weaponRowId);
+      // Being in a Hold is −2 to everything and takes two-handed weapons away
+      // (stage 14d). Read from the tracker, never from the request.
+      const attackerGrapple = await grappleStateForToken(deps.ctx.prisma, scene.id, attacker.id);
+      // What stands between the two of them (stage 16b). Measured here, never
+      // sent: the walls do not leave the server, so the client's preview cannot
+      // know and deliberately does not guess.
+      const fire: FireContext = { loaded: null };
+      const aimPoint = target
+        ? tokenCentre(toTokenView(target, true), sceneView)
+        : coverAimPoint(origin, coverTarget!);
+      const lineOfFire = await lineOfFireTo(deps, scene, origin, aimPoint, fire);
+      // Cover, on the other hand, *is* client-visible, so the same obstacle is
+      // reported by name — and answered with a choice rather than an error.
+      //
+      // A wall outranks it: with both a wall and a car in the way, offering
+      // „ostrzelaj samochód" would send somebody through a whole exchange to
+      // arrive at „cel za przeszkodą" anyway. So the cover is only looked for
+      // once the geometry has already said the shot could get there.
+      const blocking =
+        lineOfFire === false
+          ? null
+          : await blockingCoverFor(deps, scene, origin, aimPoint, fire, coverTarget?.id ?? null);
+      if (blocking && payload?.request?.ignoreCover !== true) {
+        return {
+          blocked: {
+            kind: 'cover',
+            coverId: blocking.id,
+            name: blocking.name,
+            hpCurrent: blocking.hpCurrent,
+            hpMax: blocking.hpMax,
+          },
+        };
+      }
 
-    // The turn budget is charged *before* anything is spent for real: an attack
-    // that has no Action left must not eat ammunition or Luck on its way to the
-    // refusal. „Liczba Ataków" decides whether this one fits (stage 14b).
-    await requireTurnSpend(
-      deps,
-      campaignId,
-      scene,
-      attacker.id,
-      {
-        kind: 'attack',
-        weaponRowId: meta.weaponRowId,
-        weaponName: meta.weaponName,
-        rof: weapon.resolved?.rof ?? 1,
-        ...(meta.aimed ? { aimed: true } : {}),
-      },
-      user,
-      CPRED_ACTION_ATTACK,
-      // The roll card that follows says „Zgrzyt → Kurier" already; a second
-      // line reading „Vex — Atak" underneath it is noise.
-      { silent: true },
-    );
+      // „Dopóki zasłaniasz się Ludzką tarczą, uznaje się, że jesteś za osłoną"
+      // (s. 181). Since stage 16c that sentence has teeth: the shot is stopped by
+      // the person in the way, and the card offers them as the target — their
+      // body points are the cover's, because they *are* the cover.
+      if (target && payload?.request?.ignoreCover !== true) {
+        const shield = await humanShieldOf(deps, scene.id, target.id, {
+          melee: weapon.resolved?.melee ?? false,
+          aimed: payload?.request?.aimed === true,
+        });
+        if (shield) {
+          return { blocked: { kind: 'shield', tokenId: shield.tokenId, name: shield.name } };
+        }
+      }
 
-    await spendAttackCosts(deps, campaignId, source, meta, plan.luckSpent);
+      const planned = planCpredAttack(
+        data,
+        registry,
+        payload?.request ?? ({} as CpredAttackRequest),
+        weapon,
+        target
+          ? {
+              name: target.name,
+              tokenId: target.id,
+              metres,
+              ...(weapon.resolved?.melee
+                ? { evasionDv: await targetEvasionDv(deps, registry, target) }
+                : {}),
+            }
+          : { name: coverTarget!.name, coverId: coverTarget!.id, metres, cover: true },
+        {
+          modifiers: sheetSituationModifiers({
+            grappled: attackerGrapple.grappled,
+            injuries: data.criticalInjuries,
+          }),
+          ...(attackerGrapple.grappled ? { grappled: true } : {}),
+          lineOfFire,
+        },
+      );
+      if (!planned.ok) throw new RealtimeError(planned.error);
+      const { plan } = planned;
+      const meta = plan.attack;
 
-    const gesture: RollGesture | undefined = sanitizeGesture(payload?.gesture);
-    const result: RollResult = rollFormula(plan.formula, createMixedRng(gesture?.entropy), {
-      checkRule: true,
-    });
-    result.title = plan.title;
-    result.actor = sourceName(source);
-    result.breakdown = plan.breakdown;
-    if (gesture && gesture.strength > 0) result.tossStrength = gesture.strength;
-    if (gesture?.toss) result.toss = gesture.toss;
-
-    result.attack = await buildAttackMeta(
-      deps,
-      campaignId,
-      registry,
-      result,
-      meta,
-      scene,
-      attacker,
-      fire,
-    );
-    // „Dopóki zasłaniasz się Ludzką tarczą, uznaje się, że jesteś za osłoną"
-    // (s. 178). Cover is not in the map model, so this is a line on the card
-    // rather than a modifier — the GM rules on it, which is the stage's
-    // declared limit, not an oversight.
-    const targetGrapple = await grappleStateForToken(deps.ctx.prisma, scene.id, target.id);
-    if (
-      targetGrapple.shieldOf &&
-      sheetHumanShieldCovers({ melee: meta.melee, aimedAtHead: meta.aimed })
-    ) {
-      result.attack.detail = `${result.attack.detail} · cel zasłania się Ludzką tarczą (${targetGrapple.shieldOf.token.name}) — traktuj jak osłonę`;
-    }
-
-    const stored = await deps.ctx.prisma.chatMessage.create({
-      data: {
+      // The turn budget is charged *before* anything is spent for real: an attack
+      // that has no Action left must not eat ammunition or Luck on its way to the
+      // refusal. „Liczba Ataków" decides whether this one fits (stage 14b).
+      await requireTurnSpend(
+        deps,
         campaignId,
-        authorId: user.id,
-        kind: 'roll',
-        text: plan.title,
-        payload: JSON.stringify(result),
-      },
-      include: INCLUDE_CHAT_NAMES,
-    });
-    const view: ChatMessageView = toChatMessageView(stored);
-    await deliverRollMessage(deps, campaignId, user.id, view);
-    return { messageId: view.id };
+        scene,
+        attacker.id,
+        {
+          kind: 'attack',
+          weaponRowId: meta.weaponRowId,
+          weaponName: meta.weaponName,
+          rof: weapon.resolved?.rof ?? 1,
+          ...(meta.aimed ? { aimed: true } : {}),
+        },
+        user,
+        CPRED_ACTION_ATTACK,
+        // The roll card that follows says „Zgrzyt → Kurier" already; a second
+        // line reading „Vex — Atak" underneath it is noise.
+        { silent: true },
+      );
+
+      await spendAttackCosts(deps, campaignId, source, meta, plan.luckSpent);
+
+      const gesture: RollGesture | undefined = sanitizeGesture(payload?.gesture);
+      const result: RollResult = rollFormula(plan.formula, createMixedRng(gesture?.entropy), {
+        checkRule: true,
+      });
+      result.title = plan.title;
+      result.actor = sourceName(source);
+      result.breakdown = plan.breakdown;
+      if (gesture && gesture.strength > 0) result.tossStrength = gesture.strength;
+      if (gesture?.toss) result.toss = gesture.toss;
+
+      result.attack = await buildAttackMeta(
+        deps,
+        campaignId,
+        registry,
+        result,
+        meta,
+        scene,
+        attacker,
+        fire,
+      );
+      // Whoever fired past a cover said so out loud (stage 16c): the card carries
+      // the decision, because „he leaned out" is a ruling the table made and the
+      // log is where rulings live.
+      if (payload?.request?.ignoreCover === true) {
+        result.attack.detail = `${result.attack.detail} · strzał mimo osłony`;
+      }
+
+      const stored = await deps.ctx.prisma.chatMessage.create({
+        data: {
+          campaignId,
+          authorId: user.id,
+          kind: 'roll',
+          text: plan.title,
+          payload: JSON.stringify(result),
+        },
+        include: INCLUDE_CHAT_NAMES,
+      });
+      const view: ChatMessageView = toChatMessageView(stored);
+      await deliverRollMessage(deps, campaignId, user.id, view);
+      return { messageId: view.id };
+    },
   },
-});
+);
 
 /** The verdict block the chat card renders, including suppressive fire's checks. */
 async function buildAttackMeta(
@@ -655,7 +805,10 @@ async function buildAttackMeta(
     label,
     detail,
     hit: outcome.hit,
-    targetTokenId: meta.targetTokenId,
+    ...(meta.targetTokenId ? { targetTokenId: meta.targetTokenId } : {}),
+    // Stage 16c: „Zastosuj" has to know it is denting a car rather than a
+    // person, because the two take damage down different paths.
+    ...(meta.targetCoverId !== undefined ? { targetCoverId: meta.targetCoverId } : {}),
     ...(outcome.hit
       ? {
           damageNotation: meta.damage,
@@ -692,6 +845,8 @@ export const attackEvadeEvent = defineEvent<AttackEvadePayload, { total: number;
     const meta = roll.attack?.system as CpredAttackMeta | undefined;
     if (!roll.attack || !meta || meta.dv === null) throw new RealtimeError('NOT_AN_ATTACK');
     if (roll.attack.evaded) throw new RealtimeError('ALREADY_EVADED');
+    // A car does not duck (stage 16c).
+    if (!meta.targetTokenId) throw new RealtimeError('NOT_THE_TARGET');
 
     // Only the target's own sheet may dodge — and only its owner or the GM.
     const character = await requireRollableCharacter(deps, campaignId, user, payload.characterId);

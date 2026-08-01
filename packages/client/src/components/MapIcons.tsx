@@ -290,6 +290,21 @@ export function IconWall(props: IconProps) {
   );
 }
 
+/**
+ * A car seen from above behind a low barrier — the cover tool (stage 16c).
+ * Deliberately not a shield: a shield is something you carry, and cover is
+ * something that is already standing there.
+ */
+export function IconCover(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4.5 14.5h15v4h-15z" />
+      <path d="M7 14.5l1.8-4.5h6.4l1.8 4.5" />
+      <path d="M9.5 18.5v2M14.5 18.5v2" />
+    </Svg>
+  );
+}
+
 /** A door leaf with its handle — the door kind, and the toggle. */
 export function IconDoor(props: IconProps) {
   return (
