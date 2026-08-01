@@ -23,6 +23,12 @@ export interface HudActiveWeapon {
   name: string;
   /** True for a melee weapon — the planner refuses it past two metres. */
   melee: boolean;
+  /**
+   * True when this weapon is aimed at a square of ground rather than at a
+   * figure (stage 16d): the blast is centred on a square, so the click that
+   * fires it lands on the map, not on somebody.
+   */
+  pointTarget: boolean;
 }
 
 /** A slot whose action needs words or a target before it can be booked. */

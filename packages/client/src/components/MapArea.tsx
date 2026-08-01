@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   CPRED_ATTACK_MODE_SHORT,
+  CPRED_BLAST_SIDE_M,
   CPRED_RANGE_BANDS,
   ROLE_GM,
   blockingSegments,
@@ -69,6 +70,7 @@ import {
   hudTurnRefusal,
   nextSteerableToken,
   shootCoverAt,
+  throwAtPoint,
 } from '../hud.js';
 import { useAttackStore } from '../stores/attackStore.js';
 import { activeWeaponOf, useHudStore } from '../stores/hudStore.js';
@@ -398,6 +400,9 @@ export function MapArea() {
   const handleMapClick = useCallback(
     (worldX: number, worldY: number): boolean => {
       if (placeToken(worldX, worldY)) return true;
+      // A grenade in hand outranks the car: the charge is aimed at the square,
+      // and that square may well be the one the car is standing on (stage 16d).
+      if (throwAtPoint(worldX, worldY)) return true;
       return shootCoverAt(worldX, worldY);
     },
     [placeToken],
@@ -957,6 +962,11 @@ export function MapArea() {
     const selected = useSelectionStore.getState().tokenId;
     const weapon = activeWeaponOf(useHudStore.getState().activeWeapon, selected);
     rendererRef.current?.setAimReady(weapon !== null);
+    // A charge in hand asks for a square instead of a figure (stage 16d), so
+    // the renderer draws the blast under the cursor rather than a crosshair.
+    rendererRef.current?.setBlastPreview(
+      weapon?.pointTarget ? { sideM: CPRED_BLAST_SIDE_M } : null,
+    );
   }, []);
 
   useEffect(() => {

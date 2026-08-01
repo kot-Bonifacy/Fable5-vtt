@@ -9,6 +9,7 @@
 
 import {
   parseRollNotation,
+  type RollAreaTarget,
   type RollBreakdownEntry,
   type RollFormula,
   type RollTerm,
@@ -134,6 +135,13 @@ export interface CpredRollRequest {
   /** Server-filled: cover the damage is aimed at instead (stage 16c). */
   targetCoverId?: number;
   /**
+   * Server-filled: everyone an area attack reached (stage 16d), so one roll can
+   * be applied to all of them. Read off the stored attack like everything else
+   * here — a client naming its own victims would be a client rolling damage on
+   * whoever it liked.
+   */
+  areaTargets?: RollAreaTarget[];
+  /**
    * Required for `kind: 'stabilize'` — the token being stabilized, which RAW
    * allows to be your own. Unlike the damage fields above this one *is* the
    * client's choice; the server only checks it may be reached and seen.
@@ -170,6 +178,8 @@ export interface CpredDamagePlan {
   targetTokenId?: string;
   /** Cover the damage is aimed at instead (stage 16c) — a car, not a person. */
   targetCoverId?: number;
+  /** Everyone an area attack reached (stage 16d) — each applied separately. */
+  areaTargets?: RollAreaTarget[];
 }
 
 /** What „Ustabilizowanie" needs to judge itself and explain the verdict. */
@@ -473,6 +483,7 @@ function planDamageRoll(
         ...(multiplier > 1 ? { multiplier } : {}),
         ...(request.targetTokenId ? { targetTokenId: request.targetTokenId } : {}),
         ...(request.targetCoverId !== undefined ? { targetCoverId: request.targetCoverId } : {}),
+        ...(request.areaTargets ? { areaTargets: request.areaTargets } : {}),
       },
     },
   };

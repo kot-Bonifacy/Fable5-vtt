@@ -267,6 +267,7 @@ export function DiceCup() {
             {
               ...(loaded.targetTokenId ? { tokenId: loaded.targetTokenId } : {}),
               ...(loaded.targetCoverId !== undefined ? { coverId: loaded.targetCoverId } : {}),
+              ...(loaded.targetPoint ? { point: loaded.targetPoint } : {}),
             },
             loaded.request,
             loaded.attackerTokenId,
@@ -282,7 +283,12 @@ export function DiceCup() {
         lastFunNotation = '1d10';
         useRollStore.getState().clearCup();
         void digestSamples(samples).then((entropy) => {
-          sendAttackEvade(loaded.messageId, loaded.characterId, { entropy, strength, toss });
+          sendAttackEvade(
+            loaded.messageId,
+            loaded.characterId,
+            { entropy, strength, toss },
+            loaded.tokenId,
+          );
         });
       } else if (current.kind === 'grapple') {
         const { pending: loaded } = current;

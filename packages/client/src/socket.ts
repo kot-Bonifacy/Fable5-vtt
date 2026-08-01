@@ -753,17 +753,19 @@ function attackAckErrorText(code: string): string {
 export function sendAttackRoll(
   /** Sheet firing; omitted for a statist, whose token carries the numbers. */
   characterId: string | undefined,
-  /** What is being shot at: a token, or a cover (stage 16c). */
-  target: { tokenId?: string; coverId?: number },
+  /** What is aimed at: a token, a cover (16c) or a square of ground (16d). */
+  target: { tokenId?: string; coverId?: number; point?: ScenePoint },
   request: CpredAttackRequest,
   attackerTokenId?: string,
   gesture?: RollGesture,
 ): void {
   const payload: AttackRollPayload<CpredAttackRequest> = {
     ...(characterId ? { characterId } : {}),
-    ...(target.coverId !== undefined
-      ? { targetCoverId: target.coverId }
-      : { targetTokenId: target.tokenId ?? '' }),
+    ...(target.point
+      ? { targetPoint: target.point }
+      : target.coverId !== undefined
+        ? { targetCoverId: target.coverId }
+        : { targetTokenId: target.tokenId ?? '' }),
     request,
     ...(attackerTokenId ? { attackerTokenId } : {}),
     ...(gesture ? { gesture } : {}),
@@ -806,10 +808,13 @@ export function sendAttackEvade(
   messageId: number,
   characterId: string,
   gesture?: RollGesture,
+  /** The figure jumping clear of a blast (stage 16d); absent for a dodge. */
+  tokenId?: string,
 ): void {
   const payload: AttackEvadePayload = {
     messageId,
     characterId,
+    ...(tokenId ? { tokenId } : {}),
     ...(gesture ? { gesture } : {}),
   };
   socket?.emit('attack:evade', payload, (ack: SocketAck<{ total: number; hit: boolean }>) => {

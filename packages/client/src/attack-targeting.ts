@@ -5,6 +5,7 @@ import type {
   CpredAttackRequest,
   CpredAttackTarget,
   CpredCharacterData,
+  RangeDvTable,
   ScenePoint,
   SceneView,
   TokenView,
@@ -18,12 +19,14 @@ import {
   distanceToCover,
   formatMetres,
   isWeaponEntry,
+  metresBetween,
   metresBetweenTokens,
   metresForRules,
   metresPerPixel,
   planCpredAttack,
   resolveWeapon,
   sanitizeCombatProfile,
+  snapToSquareCentre,
   tokenCentre,
 } from '@vtt/shared';
 import { useAttackStore } from './stores/attackStore.js';
@@ -69,11 +72,21 @@ export interface AttackIntent {
    * decision survives the re-plan the refusal card triggers.
    */
   ignoreCover?: boolean;
+  /**
+   * Let go of this row instead of using it (stage 16d) — „Rzut przedmiotem".
+   * Never set for a grenade, whose weapon type is thrown by definition.
+   */
+  thrown?: boolean;
 }
 
-/** What is being shot at: somebody, or the thing they are hiding behind. */
+/**
+ * What is being aimed at: somebody, the thing they are hiding behind (16c), or
+ * the ground between them (16d).
+ */
 export type AttackTargetRef =
-  { kind: 'token'; tokenId: string } | { kind: 'cover'; coverId: number };
+  | { kind: 'token'; tokenId: string }
+  | { kind: 'cover'; coverId: number }
+  | { kind: 'point'; point: ScenePoint };
 
 /** A planned shot, or the sentence explaining why there is none. */
 export type AttackPreview =
@@ -124,11 +137,13 @@ export function planAttackPreview(
   const aim =
     ref.kind === 'token'
       ? tokenAim(attackerToken, tokens[ref.tokenId], scene)
-      : coverAim(
-          attackerToken,
-          useCoverStore.getState().covers.find((c) => c.id === ref.coverId),
-          scene,
-        );
+      : ref.kind === 'point'
+        ? pointAim(attackerToken, ref.point, scene)
+        : coverAim(
+            attackerToken,
+            useCoverStore.getState().covers.find((c) => c.id === ref.coverId),
+            scene,
+          );
   if (typeof aim === 'string') return { ok: false, message: aim };
 
   // Where the numbers come from: a sheet, or the token's own combat profile.
@@ -156,6 +171,7 @@ export function planAttackPreview(
     ...(intent.aimed ? { aimed: true } : {}),
     ...(intent.modifier ? { modifier: intent.modifier } : {}),
     ...(intent.ignoreCover ? { ignoreCover: true } : {}),
+    ...(intent.thrown ? { thrown: true } : {}),
   };
 
   // The one obstacle the client genuinely knows about (stage 16c). Walls stay
@@ -173,9 +189,15 @@ export function planAttackPreview(
     request,
     { row, resolved, typeId: entry && isWeaponEntry(entry) ? entry.weaponTypeId : null },
     aim.target,
-    blocking
-      ? { cover: { name: blocking.name, hpCurrent: blocking.hpCurrent, hpMax: blocking.hpMax } }
-      : {},
+    {
+      ...(blocking
+        ? { cover: { name: blocking.name, hpCurrent: blocking.hpCurrent, hpMax: blocking.hpMax } }
+        : {}),
+      // The Grenade Launcher line every throw is judged by (s. 177). Read from
+      // the same catalogue the server reads, so the preview and the verdict
+      // cannot disagree about how hard the throw was.
+      ...(intent.thrown ? { throwProfile: throwProfile() } : {}),
+    },
   );
   if (!planned.ok) {
     return blocking
@@ -234,6 +256,40 @@ function coverAim(attacker: TokenView, cover: CoverView | undefined, scene: Scen
   };
 }
 
+/**
+ * Aiming at a square of ground (stage 16d) — where a grenade is meant to land.
+ *
+ * The click is snapped to the middle of a grid square before anything is
+ * measured, so the preview's distance is the one the server will measure: the
+ * rules centre the blast on a square, not on the pixel somebody hit.
+ */
+function pointAim(attacker: TokenView, point: ScenePoint, scene: SceneView): Aim {
+  const centre = snapToSquareCentre(point, scene);
+  return {
+    target: {
+      name: POINT_TARGET_NAME,
+      point: true,
+      metres: metresForRules(metresBetween(tokenCentre(attacker, scene), centre, scene)),
+    },
+    point: centre,
+  };
+}
+
+/** How a square of ground names itself on the cup and on the card. */
+export const POINT_TARGET_NAME = 'wybrane pole';
+
+/** Catalogue row every throw reads its DV off (s. 177) — mirrors the server. */
+const GRENADE_LAUNCHER_TYPE_ID = 'weapon-type.grenade-launcher';
+
+/** The range line a thrown object is judged by; undefined refuses the throw. */
+function throwProfile(): { rangeDv: RangeDvTable } | undefined {
+  const types = useCompendiumStore.getState().weaponTypeById;
+  const type =
+    types[GRENADE_LAUNCHER_TYPE_ID] ??
+    Object.values(types).find((candidate) => candidate.thrown === true && candidate.rangeDv);
+  return type?.rangeDv ? { rangeDv: type.rangeDv } : undefined;
+}
+
 /** Cover between the shooter and where they are aiming; null on a clear shot. */
 function coverBlockingShot(
   attacker: TokenView,
@@ -272,11 +328,16 @@ export function loadAttackFor(intent: AttackIntent, target: string | AttackTarge
   }
   const { attack } = preview;
   useAttackStore.getState().disarm();
+  const scene = useSceneStore.getState().effectiveScene;
   useRollStore.getState().loadAttackCup({
     ...(intent.characterId ? { characterId: intent.characterId } : {}),
     characterName: preview.attackerName,
     attackerTokenId: intent.attackerTokenId,
-    ...(ref.kind === 'token' ? { targetTokenId: ref.tokenId } : { targetCoverId: ref.coverId }),
+    ...(ref.kind === 'token'
+      ? { targetTokenId: ref.tokenId }
+      : ref.kind === 'point'
+        ? { targetPoint: scene ? snapToSquareCentre(ref.point, scene) : ref.point }
+        : { targetCoverId: ref.coverId }),
     targetName: attack.targetName,
     request: preview.request,
     title: cupTitle(
@@ -387,6 +448,7 @@ export function loadAttackAtToken(targetTokenId: string): void {
       mode: targeting.mode,
       aimed: targeting.aimed,
       modifier: targeting.modifier,
+      ...(targeting.thrown ? { thrown: true } : {}),
     },
     targetTokenId,
   );

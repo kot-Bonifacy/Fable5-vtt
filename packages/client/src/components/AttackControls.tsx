@@ -1,4 +1,5 @@
 import type { ChatMessageView, RollAttackMeta } from '@vtt/shared';
+import { formatMetres } from '@vtt/shared';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useRollStore } from '../stores/rollStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
@@ -65,6 +66,31 @@ export function AttackRow({
     });
   }
 
+  /**
+   * The sheet steering a figure caught in a blast, when this viewer may act for
+   * it (stage 16d). Absent for anyone else's figure, which is also why the
+   * button is only ever drawn on rows the viewer could actually roll for.
+   */
+  function evadeableBy(tokenId: string | undefined) {
+    if (!tokenId) return undefined;
+    const characterId = tokens[tokenId]?.characterId;
+    return characterId ? characters[characterId] : undefined;
+  }
+
+  /** „Odskocz" — one figure jumping out of the square (s. 174). */
+  function jumpClear(tokenId: string) {
+    const character = evadeableBy(tokenId);
+    if (!character) return;
+    useRollStore.getState().loadEvasionCup({
+      messageId: message.id,
+      characterId: character.id,
+      characterName: character.name,
+      tokenId,
+      title: `Odskok: ${character.name}`,
+      modifierTotal: 0,
+    });
+  }
+
   function rollEvasion() {
     if (!defender) return;
     useRollStore.getState().loadEvasionCup({
@@ -108,8 +134,39 @@ export function AttackRow({
         <p className="chat-attack-detail">Nikt nie stał w zasięgu ognia zaporowego.</p>
       )}
 
+      {attack.area && (
+        <ul className="chat-attack-checks">
+          {attack.area.targets.length === 0 && (
+            <li className="chat-attack-check--held">Wybuch nikogo nie dosięgnął.</li>
+          )}
+          {attack.area.targets.map((target) => (
+            <li
+              key={target.tokenId ?? `cover-${target.coverId}`}
+              className={
+                target.spared ? 'chat-attack-check--held' : 'chat-attack-check--pinned'
+              }
+            >
+              <strong>{target.name}</strong> — {formatMetres(target.metres)} od środka
+              {target.spared === 'wall' && ' · zasłonięty ścianą'}
+              {target.spared === 'cover' && ` · zasłonięty: ${target.sparedBy ?? 'osłona'}`}
+              {target.spared === 'evaded' && ' · odskoczył poza obszar'}
+              {target.canEvade && evadeableBy(target.tokenId) && (
+                <button
+                  type="button"
+                  className="small-button"
+                  title="REF 8+ pozwala odskoczyć: rzut ZW + Unik musi przebić rzut atakującego"
+                  onClick={() => jumpClear(target.tokenId!)}
+                >
+                  Odskocz
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
       <div className="chat-attack-actions">
-        {attack.hit && attacker && (
+        {(attack.hit || attack.area) && attacker && (
           <button
             type="button"
             className="small-button"

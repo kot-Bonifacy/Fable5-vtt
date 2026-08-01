@@ -192,6 +192,7 @@ export function CombatHud() {
       mode: slot.mode,
       name: slot.modeLabel ? `${slot.label} — ${slot.modeLabel}` : slot.label,
       melee: slot.melee,
+      pointTarget: slot.pointTarget,
     });
   }, [token, context.slots]);
 

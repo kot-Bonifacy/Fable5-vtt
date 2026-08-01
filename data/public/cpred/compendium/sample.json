@@ -14,7 +14,16 @@
       "concealable": true,
       "attachmentSlots": 3,
       "melee": false,
-      "rangeDv": [12, 14, 19, 24, 29, 29, null, null]
+      "rangeDv": [
+        12,
+        14,
+        19,
+        24,
+        29,
+        29,
+        null,
+        null
+      ]
     },
     {
       "id": "weapon-type.sample-rifle",
@@ -27,8 +36,29 @@
       "concealable": false,
       "attachmentSlots": 3,
       "melee": false,
-      "rangeDv": [18, 16, 14, 14, 16, 21, 26, 31],
-      "autofire": { "max": 4, "rangeDv": [21, 19, 16, 19, 24, null, null, null] },
+      "rangeDv": [
+        18,
+        16,
+        14,
+        14,
+        16,
+        21,
+        26,
+        31
+      ],
+      "autofire": {
+        "max": 4,
+        "rangeDv": [
+          21,
+          19,
+          16,
+          19,
+          24,
+          null,
+          null,
+          null
+        ]
+      },
       "suppressive": true
     },
     {
@@ -41,6 +71,30 @@
       "hands": 1,
       "concealable": false,
       "melee": true
+    },
+    {
+      "id": "weapon-type.sample-grenade",
+      "name": "Ładunek przykładowy",
+      "skillId": "athletics",
+      "damage": "4k6",
+      "magazine": null,
+      "rof": 1,
+      "hands": 1,
+      "concealable": true,
+      "melee": false,
+      "thrown": true,
+      "explosive": true,
+      "maxRangeM": 20,
+      "rangeDv": [
+        14,
+        14,
+        16,
+        18,
+        21,
+        24,
+        null,
+        null
+      ]
     }
   ],
   "entries": [
@@ -63,7 +117,9 @@
       "quality": "excellent",
       "cost": 500,
       "costCategory": "expensive",
-      "features": ["Złącze smartguna"]
+      "features": [
+        "Złącze smartguna"
+      ]
     },
     {
       "id": "weapon.grzechotnik",
@@ -74,7 +130,9 @@
       "quality": "standard",
       "cost": 500,
       "costCategory": "expensive",
-      "features": ["Wydłużony magazynek"]
+      "features": [
+        "Wydłużony magazynek"
+      ]
     },
     {
       "id": "weapon.szpon",
@@ -92,7 +150,9 @@
       "name": "Kurtka warsztatowa",
       "description": "Gruby brezent z wszytymi płytkami. Cięższa niż wygląda.",
       "sp": 7,
-      "locations": ["body"],
+      "locations": [
+        "body"
+      ],
       "cost": 100,
       "costCategory": "premium"
     },
@@ -102,7 +162,9 @@
       "name": "Hełm kurierski",
       "description": "Kask z osłoną karku, standard na trasach międzymiastowych.",
       "sp": 11,
-      "locations": ["head"],
+      "locations": [
+        "head"
+      ],
       "penalty": -1,
       "cost": 500,
       "costCategory": "expensive"
@@ -170,6 +232,16 @@
       "humanityLoss": "2k6",
       "foundation": true,
       "slots": 5
+    },
+    {
+      "id": "weapon.puszka-hukowa",
+      "category": "weapon",
+      "name": "Puszka hukowa",
+      "description": "Zlepek z warsztatu w Kotłowni — rzuca się, licząc do trzech. Liczbę sztuk wpisz w polu magazynka.",
+      "weaponTypeId": "weapon-type.sample-grenade",
+      "quality": "standard",
+      "cost": 80,
+      "costCategory": "costly"
     }
   ]
 }

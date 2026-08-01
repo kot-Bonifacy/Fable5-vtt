@@ -119,6 +119,16 @@ export interface CpredHotbarWeaponSlot {
    */
   modeLabel: string | null;
   melee: boolean;
+  /**
+   * Aimed at a patch of ground rather than at a figure (stage 16d).
+   *
+   * True for anything that explodes, because the rules centre the blast on a
+   * square: „twój cel (pole 2x2 metry, nie osoba)" (s. 174). A thrown knife is
+   * *not* this — it is let go of at a person, and only the skill changes.
+   */
+  pointTarget: boolean;
+  /** Thrown by hand — the roll is ZW + Atletyka, not REF + weapon (s. 177). */
+  thrown: boolean;
   /** Rounds left / magazine size, for the badge; null when none are counted. */
   ammo: { current: number; max: number } | null;
   /** Why it cannot be used right now, or null. */
@@ -216,19 +226,24 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
   const slots: CpredHotbarSlot[] = [];
 
   for (const option of options) {
+    const pointTarget = option.resolved?.explosive === true;
+    const thrown = option.resolved?.thrown === true;
     for (const mode of cpredFireModes(option.resolved)) {
       slots.push({
         kind: 'weapon',
         id: `weapon:${option.rowId}:${mode}`,
         label: option.name,
         modeLabel: CPRED_ATTACK_MODE_SHORT[mode],
-        hint:
-          mode === 'single'
+        hint: pointTarget
+          ? `${option.name} — kliknij pole na mapie, żeby wyznaczyć środek wybuchu`
+          : mode === 'single'
             ? `${option.name} — kliknij cel na mapie, żeby załadować kubek`
             : `${option.name}: ${CPRED_ATTACK_MODE_LABELS[mode]} — kliknij cel na mapie`,
         weaponRowId: option.rowId,
         mode,
         melee: option.resolved?.melee ?? false,
+        pointTarget,
+        thrown,
         ammo: option.ammo,
         disabled: weaponRefusal(option, mode, actionRefusal),
         key: null,

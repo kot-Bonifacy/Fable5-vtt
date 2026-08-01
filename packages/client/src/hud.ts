@@ -204,6 +204,10 @@ export function activateSlot(slot: CpredHotbarSlot, tokenId: string): void {
       // the same gun are two different things to be holding.
       name: slot.modeLabel ? `${slot.label} — ${slot.modeLabel}` : slot.label,
       melee: slot.melee,
+      // A grenade waits for a click on the *ground* rather than on a figure
+      // (stage 16d), so the map has to know which of the two this weapon wants
+      // before the click happens.
+      pointTarget: slot.pointTarget,
     };
     hud.setActiveWeapon(weapon);
     // The crosshair armed from a sheet and the bar's own weapon would both
@@ -255,6 +259,10 @@ export function attackWithActiveWeapon(targetTokenId: string): boolean {
   const weapon = useHudStore.getState().activeWeapon;
   const selected = useSelectionStore.getState().tokenId;
   if (!weapon || !selected || weapon.tokenId !== selected) return false;
+  // A charge aimed at a figure still goes off on the *square* that figure is
+  // standing on (stage 16d), so it declines the token and lets the ground path
+  // take the same click.
+  if (weapon.pointTarget) return false;
   const token = useTokenStore.getState().tokens[weapon.tokenId];
   if (!token) return false;
   loadAttackFor(
@@ -270,6 +278,36 @@ export function attackWithActiveWeapon(targetTokenId: string): boolean {
 }
 
 /**
+ * Throws the bar's active charge at a square of ground (stage 16d).
+ *
+ * The one place the HUD deliberately takes a click that would otherwise start a
+ * walk: with a grenade in hand, clicking the floor means „it lands here". That
+ * is a mode, and stage 16f spent a session avoiding modes — but a blast is
+ * centred on a square (s. 174), and there is no way to name a square except by
+ * pointing at one. Escape and the slot key both put it away.
+ *
+ * Returns false when nothing point-aimed is armed, so the click falls through
+ * to the walk planner untouched.
+ */
+export function throwAtPoint(worldX: number, worldY: number): boolean {
+  const weapon = useHudStore.getState().activeWeapon;
+  const selected = useSelectionStore.getState().tokenId;
+  if (!weapon?.pointTarget || !selected || weapon.tokenId !== selected) return false;
+  const token = useTokenStore.getState().tokens[weapon.tokenId];
+  if (!token) return false;
+  loadAttackFor(
+    {
+      ...(token.characterId ? { characterId: token.characterId } : {}),
+      attackerTokenId: weapon.tokenId,
+      weaponRowId: weapon.weaponRowId,
+      mode: weapon.mode,
+    },
+    { kind: 'point', point: { x: worldX, y: worldY } },
+  );
+  return true;
+}
+
+/**
  * Fires the bar's active weapon at the cover under the pointer (stage 16c) —
  * „ostrzelaj samochód" without going through the refusal card first.
  *
@@ -280,7 +318,7 @@ export function attackWithActiveWeapon(targetTokenId: string): boolean {
 export function shootCoverAt(worldX: number, worldY: number): boolean {
   const weapon = useHudStore.getState().activeWeapon;
   const selected = useSelectionStore.getState().tokenId;
-  if (!weapon || !selected || weapon.tokenId !== selected) return false;
+  if (!weapon || weapon.pointTarget || !selected || weapon.tokenId !== selected) return false;
   const cover = coverAt({ x: worldX, y: worldY });
   if (!cover) return false;
   const token = useTokenStore.getState().tokens[weapon.tokenId];

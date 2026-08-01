@@ -816,6 +816,25 @@ def write(path: Path, payload: dict) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf8")
 
 
+def add_extra_types(types: list[dict], overrides: dict) -> list[dict]:
+    """Weapon type rows the book never prints as rows.
+
+    A grenade is ammunition in the rulebook, bought by the piece and thrown with
+    Athletics against the Grenade Launcher's range line (s. 177) — there is no
+    „Granat" line in the weapon table to parse. The VTT needs one anyway, because
+    since stage 16d a grenade is a weapon row on a sheet. It lives in the
+    overrides file with its own `source` saying where each number came from.
+    """
+    extra: dict[str, dict] = overrides.get("weaponTypesExtra", {})
+    known = {entry["id"] for entry in types}
+    for type_id, row in extra.items():
+        if type_id in known:
+            warn(f"weaponTypesExtra: „{type_id}” już istnieje — pomijam")
+            continue
+        types.append({"id": type_id, **row})
+    return sorted(types, key=lambda entry: entry["name"])
+
+
 def apply_overrides(entries: list[dict], overrides: dict, key: str) -> list[dict]:
     """Hand-read values win over the regexes; each carries its own `source`."""
     patches: dict[str, dict] = overrides.get(key, {})
@@ -900,6 +919,7 @@ def main() -> int:
     ordered = dict(sorted(types.items(), key=lambda item: item[1]["name"]))
     weapon_types = list(ordered.values())
     apply_overrides(weapon_types, overrides, "weaponTypes")
+    weapon_types = add_extra_types(weapon_types, overrides)
     for weapon_type in weapon_types:
         weapon_type.setdefault("hands", 2 if not weapon_type["melee"] else 1)
         # `cost` and `costCategory` are not part of the weapon type schema;

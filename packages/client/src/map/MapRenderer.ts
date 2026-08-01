@@ -52,6 +52,7 @@ import {
   planWalk,
   polylineMetres,
   simplifyPath,
+  snapToSquareCentre,
   snapTokenPosition,
   snapWallPoint,
   squaresForDistance,
@@ -302,6 +303,13 @@ const WALK_COLOR = 0x4ade80;
 const WALK_COLOR_BEYOND = 0x94a3b8;
 /** „Walk that way" — a route that ends at the edge of what is known. */
 const WALK_COLOR_UNKNOWN = 0x38bdf8;
+/**
+ * The explosion template (stage 16d). Amber, and it is the only warm fill on
+ * the map: everything else the overlay draws is a line, so a filled patch in a
+ * colour nothing else uses reads as „this ground is about to be dangerous"
+ * without a legend.
+ */
+const BLAST_COLOR = 0xfb923c;
 /**
  * The target under the crosshair (stage 16f). Red, and solid: the three rings
  * of 16e are white, green/blue/red *ownership* and amber — a fourth mark that
@@ -802,6 +810,19 @@ export class MapRenderer {
   /** Token under the crosshair, redrawn as a reticle on the overlay. */
   private aimTokenId: string | null = null;
   private readonly aimGraphics = new Graphics();
+  /**
+   * The explosion template that follows the pointer (stage 16d).
+   *
+   * Set while a charge is in hand, and it is the only thing in this file that
+   * knows about areas — the size comes from the rules module through the action
+   * bar, and where the square lands comes from the grid. The renderer's job is
+   * to make „it goes off *here*" visible before the click, because the square is
+   * the whole decision: a metre of pointer travel is a person in or out.
+   */
+  private blastPreview: { sideM: number } | null = null;
+  /** Centre of that square under the pointer, snapped to the grid. */
+  private blastHover: ScenePoint | null = null;
+  private readonly blastGraphics = new Graphics();
   private walkText: Text | null = null;
   /**
    * Last planned route, keyed by the goal cell. A* would otherwise run on every
@@ -905,6 +926,7 @@ export class MapRenderer {
     this.overlayLayer.addChild(this.selectGraphics);
     this.overlayLayer.addChild(this.aimGraphics);
     this.overlayLayer.addChild(this.walkGraphics);
+    this.overlayLayer.addChild(this.blastGraphics);
     this.overlayLayer.addChild(this.drawPreview);
     viewport.addChild(this.overlayLayer);
     // Scratch container: the fog is rendered into a texture at reduced scale,
@@ -1461,6 +1483,9 @@ export class MapRenderer {
       // gesture, it is what the map looks like while a figure is selected, and
       // the method itself stands down when a tool is armed.
       this.trackWalkHover(point);
+      // …and the explosion template follows it in the same breath, for the same
+      // reason: with a grenade in hand it *is* what the map looks like.
+      this.trackBlastHover(point);
 
       if (this.fogStroke) {
         const last = this.fogStroke[this.fogStroke.length - 1]!;
@@ -1798,6 +1823,73 @@ export class MapRenderer {
   }
 
   /**
+   * Arms — or puts away — the explosion template (stage 16d).
+   *
+   * `null` is „no charge in hand", which takes the square off the map and hands
+   * the pointer back to the route preview. Nothing here decides whether the
+   * throw is legal; the bar has already asked the rules that question, and the
+   * server asks it again when the dice fly.
+   */
+  setBlastPreview(preview: { sideM: number } | null): void {
+    if (this.destroyed) return;
+    if (this.blastPreview?.sideM === preview?.sideM) return;
+    this.blastPreview = preview;
+    if (!preview) {
+      this.blastHover = null;
+      this.blastGraphics.clear();
+    }
+    this.applyMapCursor();
+  }
+
+  /** Follows the pointer with the template; called from the move handler. */
+  private trackBlastHover(point: ScenePoint): void {
+    const scene = this.scene;
+    if (!this.blastPreview || !scene) {
+      if (this.blastHover) {
+        this.blastHover = null;
+        this.blastGraphics.clear();
+      }
+      return;
+    }
+    const centre = snapToSquareCentre(point, scene);
+    if (this.blastHover && this.blastHover.x === centre.x && this.blastHover.y === centre.y) return;
+    this.blastHover = centre;
+    this.drawBlastPreview();
+  }
+
+  /**
+   * The square the charge would cover, drawn on the grid it snaps to.
+   *
+   * Deliberately a filled box rather than an outline: the question the player is
+   * answering is „who is inside", and an outline makes that a guess at the edges
+   * — which is exactly where the rule bites.
+   */
+  private drawBlastPreview(): void {
+    this.blastGraphics.clear();
+    const scene = this.scene;
+    const centre = this.blastHover;
+    const preview = this.blastPreview;
+    if (!scene || !centre || !preview) return;
+    const perPixel = metresPerPixel(scene);
+    if (perPixel <= 0) return;
+    const half = preview.sideM / perPixel / 2;
+    const k = this.overlayScale();
+    this.blastGraphics
+      .rect(centre.x - half, centre.y - half, half * 2, half * 2)
+      .fill({ color: BLAST_COLOR, alpha: 0.18 })
+      .stroke({ color: BLAST_COLOR, width: 2.5 * k, alpha: 0.9 });
+    // A cross on the centre square: the charge lands on *that* one, and on a
+    // 5×5 template the middle is otherwise impossible to point at.
+    const cell = scene.grid.sizePx / 2;
+    this.blastGraphics
+      .moveTo(centre.x - cell, centre.y)
+      .lineTo(centre.x + cell, centre.y)
+      .moveTo(centre.x, centre.y - cell)
+      .lineTo(centre.x, centre.y + cell)
+      .stroke({ color: BLAST_COLOR, width: 2 * k, alpha: 0.75 });
+  }
+
+  /**
    * Is this token something the pointer is *aiming at* rather than reaching
    * for — and if so, which node?
    *
@@ -2042,6 +2134,9 @@ export class MapRenderer {
       this.march !== null ||
       this.drag !== null ||
       this.rulerMode ||
+      // A charge in hand owns the click: the next one says where it lands, not
+      // where the figure walks (stage 16d).
+      this.blastPreview !== null ||
       // A weapon in hand no longer freezes the map (stage 16f): only the
       // pointer actually resting on a target does, because that click is
       // already spoken for.

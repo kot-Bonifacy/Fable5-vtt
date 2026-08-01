@@ -76,7 +76,7 @@ export function AttackLauncher({
 
   const character = token.characterId ? characters[token.characterId] : undefined;
 
-  function aim(option: CpredWeaponOption, mode: CpredAttackMode) {
+  function aim(option: CpredWeaponOption, mode: CpredAttackMode, thrown = false) {
     if (!token) return;
     useAttackStore.getState().arm({
       ...(character ? { characterId: character.id } : {}),
@@ -87,7 +87,9 @@ export function AttackLauncher({
       mode,
       aimed: false,
       modifier: 0,
-      melee: option.resolved?.melee ?? false,
+      // A thrown object leaves the hand, so reach stops applying to it.
+      melee: thrown ? false : (option.resolved?.melee ?? false),
+      ...(thrown ? { thrown: true } : {}),
     });
     onArmed?.();
   }
@@ -119,6 +121,22 @@ export function AttackLauncher({
               {mode === 'single' ? 'Celuj' : CPRED_ATTACK_MODE_LABELS[mode]}
             </button>
           ))}
+          {/*
+            „Rzut przedmiotem" (stage 16d). Offered for anything that is not
+            already thrown by nature: the rules let you let go of a knife, a
+            brick or a chair, and the roll is the same one every time — ZW +
+            Atletyka against the Grenade Launcher's line, 25 m of arm (s. 177).
+          */}
+          {!option.resolved?.thrown && (
+            <button
+              type="button"
+              className="small-button"
+              title="Rzut przedmiotem: ZW + Atletyka, PT z wiersza Granatnika, zasięg do 25 m"
+              onClick={() => aim(option, 'single', true)}
+            >
+              Rzuć
+            </button>
+          )}
         </li>
       ))}
     </ul>

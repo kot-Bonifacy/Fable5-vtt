@@ -5,6 +5,7 @@ import type {
   CpredHitLocation,
   CpredRegistry,
   CpredRollRequest,
+  ScenePoint,
 } from '@vtt/shared';
 import {
   CPRED_FIRST_AID_SKILL_ID,
@@ -74,6 +75,8 @@ export interface PendingAttack {
   targetTokenId?: string;
   /** Cover being shot at instead — „ostrzelaj samochód" (stage 16c). */
   targetCoverId?: number;
+  /** Square the charge is aimed at instead of anybody (stage 16d). */
+  targetPoint?: ScenePoint;
   targetName: string;
   request: CpredAttackRequest;
   /** Cup label, e.g. „Zgrzyt 9 → Ganger · 24 m". */
@@ -109,6 +112,11 @@ export interface PendingEvasion {
   messageId: number;
   characterId: string;
   characterName: string;
+  /**
+   * Which figure is jumping clear of a blast (stage 16d). Absent for an
+   * ordinary dodge, which has one target and nothing to name.
+   */
+  tokenId?: string;
   title: string;
   modifierTotal: number;
 }

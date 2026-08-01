@@ -11,6 +11,7 @@ import type { DrawingView } from './drawings.js';
 import type { ExplorationMask } from './exploration.js';
 import type { FogState } from './fog.js';
 import type { LightView } from './lights.js';
+import type { ScenePoint } from './measure.js';
 import type { MapNoteView } from './notes.js';
 import type { SceneSummary, SceneView } from './scenes.js';
 import type { TokenView } from './tokens.js';
@@ -250,6 +251,16 @@ export interface AttackRollPayload<TRequest = unknown> {
    * Exactly one of the two target fields may be present.
    */
   targetCoverId?: number;
+  /**
+   * A patch of ground being aimed at instead of a token or a cover (stage 16d)
+   * — where a grenade is meant to land, in scene pixels.
+   *
+   * The server snaps it to a grid square before anything else happens, because
+   * the rules centre the blast on a square rather than on the click („twój cel
+   * (pole 2x2 metry, nie osoba)", s. 174). Exactly one of the three target
+   * fields may be present.
+   */
+  targetPoint?: ScenePoint;
   /** Which of the character's tokens is shooting; derived when omitted. */
   attackerTokenId?: string;
   request: TRequest;
@@ -295,6 +306,15 @@ export interface AttackEvadePayload {
   messageId: number;
   /** Sheet rolling the evasion; must own the targeted token. */
   characterId: string;
+  /**
+   * Which figure is jumping clear of an area attack (stage 16d).
+   *
+   * Absent for an ordinary attack, which has exactly one target and therefore
+   * nothing to name. A blast has many, and each of them gets their own attempt:
+   * „Osoba z REF 8 lub wyższym może zdecydować się na odskoczenie poza obszar
+   * wybuchu" (s. 174) is a decision per person, not per grenade.
+   */
+  tokenId?: string;
   gesture?: RollGesture;
 }
 

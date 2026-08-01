@@ -179,6 +179,7 @@ async function resolveRollRequest(
   delete request.damageMultiplier;
   delete request.targetTokenId;
   delete request.targetCoverId;
+  delete request.areaTargets;
   delete request.stabilizeDv;
   delete request.stabilizeTargetName;
   if (request.kind === 'stabilize') {
@@ -195,7 +196,11 @@ async function resolveRollRequest(
   }
   const roll = JSON.parse(message.payload) as RollResult;
   const attack = roll.attack;
-  if (!attack || attack.hit !== true) throw new RealtimeError('NOT_A_HIT');
+  // A charge that missed still went off — it just went off somewhere else
+  // (s. 174, stage 16d). „Nie trafiłeś" is about the square that was aimed at,
+  // so an area card offers its damage on both branches; everything else still
+  // needs a hit before there is anything to roll.
+  if (!attack || (attack.hit !== true && !attack.area)) throw new RealtimeError('NOT_A_HIT');
 
   const system = attack.system as { location?: unknown; weaponRowId?: unknown };
   return {
@@ -206,6 +211,11 @@ async function resolveRollRequest(
     ...(attack.damageMultiplier ? { damageMultiplier: attack.damageMultiplier } : {}),
     ...(attack.targetTokenId ? { targetTokenId: attack.targetTokenId } : {}),
     ...(attack.targetCoverId !== undefined ? { targetCoverId: attack.targetCoverId } : {}),
+    // Only the ones the blast actually reached: whoever a wall spared, or who
+    // jumped clear, is not on the list „Zastosuj wszystkim" works from.
+    ...(attack.area
+      ? { areaTargets: attack.area.targets.filter((target) => target.spared === undefined) }
+      : {}),
   };
 }
 
@@ -404,6 +414,7 @@ export const characterRollEvent = defineEvent<
         ...(plan.damage.targetCoverId !== undefined
           ? { targetCoverId: plan.damage.targetCoverId }
           : {}),
+        ...(plan.damage.areaTargets ? { areaTargets: plan.damage.areaTargets } : {}),
       };
     }
 

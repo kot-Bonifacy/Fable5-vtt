@@ -31,12 +31,14 @@ import {
   type RollFormula,
   type RollTerm,
 } from '../../dice.js';
+import { CPRED_BLAST_SIDE_M, CPRED_THROW_RANGE_M } from './areas.js';
 import type { CpredCharacterData, CpredRegistry, CpredWeaponRow } from './character.js';
 import {
   CPRED_RANGE_BANDS,
   dvForRange,
   rangeBandLabel,
   type AutofireProfile,
+  type RangeDvTable,
   type ResolvedWeapon,
 } from './compendium.js';
 import { CPRED_AIMED_SHOT_PENALTY } from './damage.js';
@@ -48,7 +50,7 @@ import {
   woundState,
   type CpredWoundState,
 } from './rolls.js';
-import { CPRED_STAT_LABELS } from './stats.js';
+import { CPRED_STAT_LABELS, type CpredStatId } from './stats.js';
 
 /** How the attack is being made. Melee follows from the weapon, not from here. */
 export const CPRED_ATTACK_MODES = ['single', 'autofire', 'suppressive'] as const;
@@ -87,6 +89,15 @@ export const CPRED_AUTOFIRE_DAMAGE = '2k6';
 export const CPRED_AUTOFIRE_SKILL_ID = 'autofire';
 export const CPRED_EVASION_SKILL_ID = 'evasion';
 export const CPRED_CONCENTRATION_SKILL_ID = 'concentration';
+/** „testując ZW + Atletyka + 1k10" — everything thrown by hand (s. 177). */
+export const CPRED_THROW_SKILL_ID = 'athletics';
+
+/**
+ * REF a target needs before it may jump clear of a blast or a shotgun spread:
+ * „Osoba z REF 8 lub wyższym może zdecydować się na odskoczenie poza obszar
+ * wybuchu" (s. 174).
+ */
+export const CPRED_EVADE_AREA_MIN_REF = 8;
 
 /**
  * DV of an unopposed swing at a target with no sheet to dodge with. 13 is the
@@ -173,6 +184,16 @@ export interface CpredAttackRequest {
    * keeps „I forgot the car was there" from ever happening silently.
    */
   ignoreCover?: boolean;
+  /**
+   * Throw this row rather than use it normally (stage 16d) — „Rzut przedmiotem".
+   *
+   * Redundant for a grenade, whose weapon *type* is thrown by definition; it
+   * exists for the knife, the brick and the chair, which are ordinary rows until
+   * somebody decides to let go of one. The DV then comes off the Grenade
+   * Launcher line whatever the object is (s. 177), which is why the caller has
+   * to supply `throwProfile` — that line lives in the compendium.
+   */
+  thrown?: boolean;
 }
 
 /** The target's side, as the server measured and read it. */
@@ -195,6 +216,15 @@ export interface CpredAttackTarget {
    * than a second event.
    */
   cover?: boolean;
+  /**
+   * This target is a patch of ground, not a person (stage 16d).
+   *
+   * „twój cel (pole 2x2 metry, nie osoba) jest środkiem tego obszaru" (s. 174):
+   * a grenade is aimed at a square, and the square neither dodges nor has a head,
+   * so it switches the same three things off as a cover does. What it keeps is
+   * the range table — a badly thrown grenade is badly thrown at a distance.
+   */
+  point?: boolean;
 }
 
 export type CpredAttackProblem =
@@ -246,6 +276,20 @@ export interface CpredAttackMeta {
   dvSource: 'range' | 'autofire' | 'evasion' | 'everyday' | 'suppressive';
   /** Cap of the burst multiplier, present for `mode: 'autofire'`. */
   autofireMax?: number;
+  /** Thrown by hand rather than fired (stage 16d). */
+  thrown?: boolean;
+  /**
+   * Stat the roll was made with. Carried because the scatter of a missed charge
+   * is measured against it (stage 16d) and reading it back off the breakdown's
+   * label would mean parsing „Zręczność (ZW)" at the other end.
+   */
+  statId: CpredStatId;
+  /**
+   * This attack goes off over an area (stage 16d). The side is carried rather
+   * than assumed so a card written today still reads right if the catalogue
+   * ever grows a bigger charge.
+   */
+  blastSideM?: number;
   /** Rounds this attack spends. */
   ammoCost: number;
   ammoBefore: number;
@@ -297,6 +341,16 @@ export interface CpredAttackContext {
    * `request.ignoreCover` is the one thing that gets past it.
    */
   cover?: { name: string; hpCurrent: number; hpMax: number };
+  /**
+   * The Grenade Launcher line of the range table, for anything thrown that is
+   * not itself a grenade (stage 16d).
+   *
+   * Passed in rather than looked up because the rules put it in the catalogue —
+   * „PT określasz, używając wiersza Granatnika w tabeli PT zasięgów" (s. 177) —
+   * and the planner is not allowed to know the catalogue. Both sides fill it
+   * from the same compendium, so the preview and the verdict agree.
+   */
+  throwProfile?: { rangeDv: RangeDvTable; skillId?: string };
 }
 
 function isInteger(value: unknown): value is number {
@@ -356,7 +410,14 @@ export function planCpredAttack(
   if (!isInteger(target.metres) || target.metres < 0) return { ok: false, error: 'BAD_REQUEST' };
 
   const { row, resolved } = weapon;
-  const melee = resolved?.melee ?? false;
+  // Letting go of something turns it into a ranged attack whatever it is
+  // (s. 177), so a thrown knife stops being a melee weapon for this one roll.
+  const thrown = resolved?.thrown === true || request.thrown === true;
+  const melee = thrown ? false : (resolved?.melee ?? false);
+  const explosive = resolved?.explosive === true;
+  // What the range table is read from, and how far the arm reaches at all.
+  const rangeDv = thrown ? (resolved?.rangeDv ?? context.throwProfile?.rangeDv) : resolved?.rangeDv;
+  const maxRangeM = thrown ? (resolved?.maxRangeM ?? CPRED_THROW_RANGE_M) : resolved?.maxRangeM;
 
   // A hand is busy holding somebody: two-handed weapons are out for both sides
   // of a Hold, whatever the sheet says about extra arms (s. 176).
@@ -381,7 +442,12 @@ export function planCpredAttack(
   // has no middle setting: „Nie ma czegoś takiego jak »częściowa« osłona"
   // (s. 179). The refusal is the card that offers the car as a target instead —
   // and `ignoreCover` is the table overruling it in one click.
-  if (context.cover && request.ignoreCover !== true && mode !== 'suppressive') {
+  //
+  // An explosive is exempt, and that exemption is the whole tactical point of a
+  // grenade: it goes *over* the bonnet. The car still matters — it takes whoever
+  // is behind it out of the blast (s. 174) — but that is decided where the charge
+  // goes off, not on the way there.
+  if (context.cover && request.ignoreCover !== true && mode !== 'suppressive' && !explosive) {
     return { ok: false, error: 'TARGET_BEHIND_COVER' };
   }
   // Suppressive fire sprays an area rather than an object, and an object cannot
@@ -394,10 +460,16 @@ export function planCpredAttack(
   if (melee && target.metres > CPRED_MELEE_REACH_M) {
     return { ok: false, error: 'MELEE_OUT_OF_REACH' };
   }
-  if (!melee && mode !== 'suppressive' && !resolved?.rangeDv) {
+  if (!melee && mode !== 'suppressive' && !rangeDv) {
     // A ranged weapon with no range table is a hand-typed row; without the
-    // table there is no DV to shoot against.
+    // table there is no DV to shoot against. For a throw it means the caller
+    // did not hand over the Grenade Launcher line.
     return { ok: false, error: 'UNKNOWN_WEAPON' };
+  }
+  // „Maksymalny zasięg rzutu to 25 m" (s. 177) — a ceiling the DV table does not
+  // express, because the table is the launcher's and a launcher outreaches an arm.
+  if (maxRangeM !== undefined && mode !== 'suppressive' && target.metres > maxRangeM) {
+    return { ok: false, error: 'OUT_OF_RANGE' };
   }
   if (melee && mode !== 'single') return { ok: false, error: 'BAD_REQUEST' };
 
@@ -406,21 +478,29 @@ export function planCpredAttack(
   if (mode === 'suppressive' && resolved?.suppressive !== true) {
     return { ok: false, error: 'NO_SUPPRESSIVE' };
   }
+  // Nothing let go of has a fire mode. Checked *after* the two above so that a
+  // grenade asked for a burst hears „ta broń nie ma ognia ciągłego" rather than
+  // a bare „nieprawidłowe żądanie" — the weapon is the reason, not the request.
+  if (thrown && mode !== 'single') return { ok: false, error: 'BAD_REQUEST' };
 
   const ammoCost = attackAmmoCost(mode, row);
   if (ammoCost > 0 && row.ammoCurrent < ammoCost) return { ok: false, error: 'NOT_ENOUGH_AMMO' };
 
   // Which skill fires this attack: bursts always use „Ogień ciągły", anything
   // else uses the weapon type's skill (the sheet's row may name its own).
-  const skillId =
-    mode === 'single' ? (resolved?.skillId ?? request.skillId ?? null) : CPRED_AUTOFIRE_SKILL_ID;
+  const skillId = attackSkillId(mode, thrown, resolved, request, context);
   const skill = skillId ? registry.skills.find((entry) => entry.id === skillId) : undefined;
   if (!skill) return { ok: false, error: 'UNKNOWN_SKILL' };
 
   // An object has no head to aim at, so the −8 and the doubled damage of an
   // aimed shot are simply off for cover — silently, because the bar keeps the
   // shooter's last choice armed and refusing the shot over it would be noise.
-  const aimed = request.aimed === true && canAimInMode(mode) && !melee && target.cover !== true;
+  const aimed =
+    request.aimed === true &&
+    canAimInMode(mode) &&
+    !melee &&
+    target.cover !== true &&
+    target.point !== true;
   const location: CpredHitLocation = aimed ? 'head' : 'body';
 
   const damage =
@@ -434,7 +514,7 @@ export function planCpredAttack(
     }
   }
 
-  const dvResult = attackDv(mode, melee, resolved, target);
+  const dvResult = attackDv(mode, melee, { rangeDv, autofire: resolved?.autofire }, target);
   if (dvResult === 'OUT_OF_RANGE') return { ok: false, error: 'OUT_OF_RANGE' };
 
   // Modifier breakdown, in the order the rules apply it.
@@ -515,6 +595,9 @@ export function planCpredAttack(
         ...(mode === 'autofire' && resolved?.autofire
           ? { autofireMax: resolved.autofire.max }
           : {}),
+        ...(thrown ? { thrown: true as const } : {}),
+        ...(explosive ? { blastSideM: CPRED_BLAST_SIDE_M } : {}),
+        statId,
         ammoCost,
         ammoBefore: row.ammoCurrent,
         ammoAfter: row.ammoCurrent - ammoCost,
@@ -532,12 +615,35 @@ export function attackAmmoCost(
   return mode === 'single' ? 1 : CPRED_BURST_AMMO_COST;
 }
 
+/**
+ * Which skill this attack rolls.
+ *
+ * Bursts always use „Ogień ciągły"; anything let go of uses Athletics, because
+ * the rules describe the throw itself rather than the object („testując ZW +
+ * Atletyka", s. 177) — a grenade type may still name its own, which is how the
+ * catalogue stays the place skills are decided.
+ */
+function attackSkillId(
+  mode: CpredAttackMode,
+  thrown: boolean,
+  resolved: ResolvedWeapon | null,
+  request: CpredAttackRequest,
+  context: CpredAttackContext,
+): string | null {
+  if (mode !== 'single') return CPRED_AUTOFIRE_SKILL_ID;
+  if (thrown) {
+    if (resolved?.thrown === true && resolved.skillId) return resolved.skillId;
+    return context.throwProfile?.skillId ?? CPRED_THROW_SKILL_ID;
+  }
+  return resolved?.skillId ?? request.skillId ?? null;
+}
+
 type DvResult = { dv: number | null; source: CpredAttackMeta['dvSource'] };
 
 function attackDv(
   mode: CpredAttackMode,
   melee: boolean,
-  resolved: ResolvedWeapon | null,
+  resolved: { rangeDv?: RangeDvTable; autofire?: AutofireProfile },
   target: CpredAttackTarget,
 ): DvResult | 'OUT_OF_RANGE' {
   // The suppressing player's own total becomes the DV their targets face.

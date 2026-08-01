@@ -75,8 +75,40 @@ export function DamageApplyControls({
     });
   }
 
+  /**
+   * „Zastosuj wszystkim" (stage 16d) — one roll, N applications.
+   *
+   * Deliberately N separate calls rather than one bulk event: every call writes
+   * its own log row, so the GM can take the grenade back off one person without
+   * un-exploding it for the other three. „Każdy cel otrzymuje tyle samo
+   * obrażeń" (s. 174) is satisfied by the *roll* being shared, not by the
+   * bookkeeping being shared.
+   */
+  const area = roll.damage?.areaTargets ?? [];
+  function applyToArea() {
+    for (const target of area) {
+      if (target.coverId !== undefined) {
+        applyDamage({ messageId: message.id, coverId: target.coverId });
+      } else if (target.tokenId) {
+        applyDamage({ messageId: message.id, tokenId: target.tokenId, location: 'body' });
+      }
+    }
+  }
+
   return (
     <div className="damage-apply">
+      {area.length > 0 && (
+        <button
+          type="button"
+          className="small-button"
+          title={`Rozlicza ten sam rzut na każdym celu z obszaru: ${area
+            .map((target) => target.name)
+            .join(', ')}. Każde trafienie można cofnąć osobno.`}
+          onClick={applyToArea}
+        >
+          Zastosuj wszystkim ({area.length})
+        </button>
+      )}
       <select value={tokenId} onChange={(e) => setTokenId(e.target.value)} aria-label="Cel obrażeń">
         <option value={NO_TARGET}>Wybierz cel…</option>
         {options.map((token) => (

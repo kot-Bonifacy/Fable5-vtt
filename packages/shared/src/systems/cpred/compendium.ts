@@ -173,6 +173,21 @@ export interface WeaponTypeDefinition {
   autofire?: AutofireProfile;
   /** True when the weapon can lay down suppressive fire. */
   suppressive?: boolean;
+  /**
+   * Thrown by hand rather than fired (stage 16d) — a grenade, a knife, a brick.
+   * „Aby Rzucić przedmiotem, w ramach Akcji wykonujesz atak dystansowy, testując
+   * ZW + Atletyka + 1k10" (s. 177), which is why the skill on the row is
+   * Athletics and the DV comes off the Grenade Launcher line of the range table.
+   */
+  thrown?: boolean;
+  /**
+   * The „Eksplozja" feature of the weapon table: this one damages a 10×10 m
+   * square rather than a person (s. 174). A flag rather than a branch, so a
+   * home-made launcher the GM types in explodes too.
+   */
+  explosive?: boolean;
+  /** Hard ceiling on range in metres, beyond the DV table — 25 m for a throw. */
+  maxRangeM?: number;
   /** Cartridge the magazine takes ("Karabinowa") — copied onto the sheet. */
   ammunition?: string;
   /** Caveats from the import, e.g. damage that scales with the wielder. */
@@ -356,6 +371,8 @@ export const COMPENDIUM_FEATURE_MAX_LENGTH = 80;
 export const COMPENDIUM_COST_MAX = 10_000_000;
 export const WEAPON_ROF_MAX = 10;
 export const WEAPON_MAGAZINE_MAX = 500;
+/** Ceiling on a weapon type's hard range cap; guards imported data (stage 16d). */
+export const WEAPON_MAX_RANGE_M = 1000;
 export const WEAPON_SLOTS_MAX = 6;
 export const CYBERWARE_SLOTS_MAX = 10;
 
@@ -833,6 +850,11 @@ function validateWeaponType(raw: unknown): WeaponTypeDefinition | undefined {
     ...(rangeDv && !melee ? { rangeDv } : {}),
     ...(autofire && !melee ? { autofire } : {}),
     ...(input.suppressive === true && !melee ? { suppressive: true as const } : {}),
+    ...(input.thrown === true && !melee ? { thrown: true as const } : {}),
+    ...(input.explosive === true && !melee ? { explosive: true as const } : {}),
+    ...(isInteger(input.maxRangeM) && input.maxRangeM > 0 && input.maxRangeM <= WEAPON_MAX_RANGE_M
+      ? { maxRangeM: input.maxRangeM }
+      : {}),
     ...(typeof input.ammunition === 'string' && input.ammunition.length > 0
       ? { ammunition: input.ammunition.slice(0, COMPENDIUM_NAME_MAX_LENGTH) }
       : {}),
@@ -883,6 +905,12 @@ export interface ResolvedWeapon {
   rangeDv?: RangeDvTable;
   autofire?: AutofireProfile;
   suppressive?: boolean;
+  /** Thrown by hand rather than fired (stage 16d). */
+  thrown?: boolean;
+  /** Damages a square rather than a person (stage 16d). */
+  explosive?: boolean;
+  /** Hard range ceiling in metres, on top of the DV table (stage 16d). */
+  maxRangeM?: number;
   /** Cartridge the type takes; empty when the weapon counts no rounds. */
   ammoType?: string;
   typeName?: string;
@@ -905,6 +933,9 @@ export function resolveWeapon(
     ...(type?.rangeDv ? { rangeDv: type.rangeDv } : {}),
     ...(type?.autofire ? { autofire: type.autofire } : {}),
     ...(type?.suppressive ? { suppressive: true as const } : {}),
+    ...(type?.thrown ? { thrown: true as const } : {}),
+    ...(type?.explosive ? { explosive: true as const } : {}),
+    ...(type?.maxRangeM !== undefined ? { maxRangeM: type.maxRangeM } : {}),
     ...(type?.ammunition ? { ammoType: type.ammunition } : {}),
     ...(type ? { typeName: type.name } : {}),
     melee: type?.melee ?? false,

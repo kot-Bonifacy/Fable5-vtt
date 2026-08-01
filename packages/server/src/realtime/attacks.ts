@@ -8,7 +8,9 @@ import type {
   CpredAttackRequest,
   CpredCharacterData,
   CpredRegistry,
+  RangeDvTable,
   ResolvedWeapon,
+  RollAreaMeta,
   RollAttackMeta,
   RollForcedCheck,
   RollGesture,
@@ -23,6 +25,7 @@ import {
   CPRED_ACTION_RELOAD,
   CPRED_AUTOFIRE_SKILL_ID,
   CPRED_EVASION_SKILL_ID,
+  CPRED_STAT_LABELS,
   CPRED_SUPPRESSIVE_RANGE_M,
   ROLE_GM,
   concentrationBase,
@@ -32,6 +35,7 @@ import {
   metresPerPixel,
   isWeaponEntry,
   mergeCharacterData,
+  metresBetween,
   metresBetweenTokens,
   metresForRules,
   parseCharacterData,
@@ -55,6 +59,13 @@ import {
   sheetSituationModifiers,
   type SheetCombatProfile,
 } from '../sheets.js';
+import {
+  blastTargets,
+  describeArea,
+  requireScenePoint,
+  scatterBlast,
+  toAreaMeta,
+} from './areas.js';
 import { pinToken } from './turn-effects.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { grappleStateForToken, readTokenStatuses } from './combat.js';
@@ -104,6 +115,32 @@ import { sanitizeGesture } from './chat.js';
 function requireCampaignId(socketData: { campaign: { id: string } | null }): string {
   if (!socketData.campaign) throw new RealtimeError('NO_CAMPAIGN');
   return socketData.campaign.id;
+}
+
+/** Name of a target that is a patch of ground rather than somebody (stage 16d). */
+const POINT_TARGET_NAME = 'wybrane pole';
+
+/** Catalogue row every throw reads its DV off (s. 177). */
+const GRENADE_LAUNCHER_TYPE_ID = 'weapon-type.grenade-launcher';
+
+/**
+ * The range line a thrown object is judged by.
+ *
+ * Read from the catalogue rather than written here, because it *is* catalogue
+ * data — the rulebook numbers live in `data/private`. A campaign whose
+ * compendium never got the launcher falls back to whatever else is thrown, and
+ * only then gives up: without a table there is no DV, which the planner says in
+ * plain Polish.
+ */
+async function throwProfileOf(
+  deps: RealtimeDeps,
+  campaignId: string,
+): Promise<{ rangeDv: RangeDvTable } | undefined> {
+  const compendium = await buildCompendiumSync(deps, campaignId);
+  const type =
+    compendium.weaponTypes.find((candidate) => candidate.id === GRENADE_LAUNCHER_TYPE_ID) ??
+    compendium.weaponTypes.find((candidate) => candidate.thrown === true && candidate.rangeDv);
+  return type?.rangeDv ? { rangeDv: type.rangeDv } : undefined;
 }
 
 /**
@@ -156,6 +193,34 @@ async function resolveAttackerToken(
   });
   if (!token) throw new RealtimeError('ATTACKER_NOT_ON_SCENE');
   return token;
+}
+
+/**
+ * Which scene a point-aimed attack happens on (stage 16d).
+ *
+ * A token target brings its own scene and a cover brings its own; a patch of
+ * ground brings nothing, so the thrower supplies it. Authorisation has already
+ * happened by the time this runs — the character was proven rollable, and a
+ * statist's token is proven controllable a few lines further down.
+ */
+async function requireAttackerScene(
+  deps: RealtimeDeps,
+  campaignId: string,
+  character: Character | null,
+  attackerTokenId: unknown,
+): Promise<Scene> {
+  if (typeof attackerTokenId === 'string' && attackerTokenId.length > 0) {
+    const { scene } = await requireCampaignToken(deps.ctx.prisma, campaignId, attackerTokenId);
+    return scene;
+  }
+  if (character) {
+    const token = await deps.ctx.prisma.token.findFirst({
+      where: { characterId: character.id, scene: { campaignId } },
+      include: { scene: true },
+    });
+    if (token) return token.scene;
+  }
+  throw new RealtimeError('ATTACKER_NOT_ON_SCENE');
 }
 
 /**
@@ -554,18 +619,25 @@ export const attackRollEvent = defineEvent<AttackRollPayload<CpredAttackRequest>
         ? null
         : await requireRollableCharacter(deps, campaignId, user, payload?.characterId);
 
-      // Stage 16c: the thing being shot at is a token **or** a cover. Both arms
-      // end in the same planner call — only where the name, the distance and the
-      // defence come from differs.
+      // Stage 16c: the thing being shot at is a token **or** a cover; stage 16d
+      // adds a third — a patch of ground. All three arms end in the same planner
+      // call, and only where the name, the distance and the defence come from
+      // differs. A point has no scene of its own, so the attacker's supplies it.
+      const pointAim = payload?.targetPoint !== undefined;
       const coverTarget =
-        payload?.targetCoverId !== undefined
+        !pointAim && payload?.targetCoverId !== undefined
           ? await requireCampaignCover(deps, campaignId, payload.targetCoverId)
           : null;
-      const tokenTarget = coverTarget
-        ? null
-        : await requireCampaignToken(deps.ctx.prisma, campaignId, payload?.targetTokenId);
+      const tokenTarget =
+        pointAim || coverTarget
+          ? null
+          : await requireCampaignToken(deps.ctx.prisma, campaignId, payload?.targetTokenId);
       const target = tokenTarget?.token ?? null;
-      const scene = coverTarget ? coverTarget.scene : tokenTarget!.scene;
+      const scene = coverTarget
+        ? coverTarget.scene
+        : tokenTarget
+          ? tokenTarget.scene
+          : await requireAttackerScene(deps, campaignId, character, payload?.attackerTokenId);
 
       // A hidden token must not even be targetable by a player: a rejected
       // attack would tell them exactly where it stands. Unrevealed fog conceals
@@ -609,11 +681,21 @@ export const attackRollEvent = defineEvent<AttackRollPayload<CpredAttackRequest>
 
       const sceneView = toSceneView(scene);
       const origin = tokenCentre(toTokenView(attacker, true), sceneView);
+      // Where this attack is pointed. A token is aimed at its middle, a cover at
+      // its nearest edge (16c), and a patch of ground at the middle of its square
+      // — the point the client clicked, snapped by the server and never trusted.
+      const aimPoint = target
+        ? tokenCentre(toTokenView(target, true), sceneView)
+        : coverTarget
+          ? coverAimPoint(origin, coverTarget)
+          : requireScenePoint(payload?.targetPoint, scene);
       const metres = target
         ? metresForRules(
             metresBetweenTokens(toTokenView(attacker, true), toTokenView(target, true), sceneView),
           )
-        : metresForRules(distanceToCover(origin, coverTarget!) * metresPerPixel(sceneView));
+        : coverTarget
+          ? metresForRules(distanceToCover(origin, coverTarget) * metresPerPixel(sceneView))
+          : metresForRules(metresBetween(origin, aimPoint, sceneView));
 
       const weapon = await resolveWeaponRow(deps, campaignId, data, payload?.request?.weaponRowId);
       // Being in a Hold is −2 to everything and takes two-handed weapons away
@@ -623,9 +705,7 @@ export const attackRollEvent = defineEvent<AttackRollPayload<CpredAttackRequest>
       // sent: the walls do not leave the server, so the client's preview cannot
       // know and deliberately does not guess.
       const fire: FireContext = { loaded: null };
-      const aimPoint = target
-        ? tokenCentre(toTokenView(target, true), sceneView)
-        : coverAimPoint(origin, coverTarget!);
+      const explosive = weapon.resolved?.explosive === true;
       const lineOfFire = await lineOfFireTo(deps, scene, origin, aimPoint, fire);
       // Cover, on the other hand, *is* client-visible, so the same obstacle is
       // reported by name — and answered with a choice rather than an error.
@@ -634,8 +714,11 @@ export const attackRollEvent = defineEvent<AttackRollPayload<CpredAttackRequest>
       // „ostrzelaj samochód" would send somebody through a whole exchange to
       // arrive at „cel za przeszkodą" anyway. So the cover is only looked for
       // once the geometry has already said the shot could get there.
+      //
+      // Nothing blocks a grenade on the way out (stage 16d): it is lobbed over
+      // the bonnet, and the car has its say where the charge goes off instead.
       const blocking =
-        lineOfFire === false
+        lineOfFire === false || explosive
           ? null
           : await blockingCoverFor(deps, scene, origin, aimPoint, fire, coverTarget?.id ?? null);
       if (blocking && payload?.request?.ignoreCover !== true) {
@@ -678,7 +761,9 @@ export const attackRollEvent = defineEvent<AttackRollPayload<CpredAttackRequest>
                 ? { evasionDv: await targetEvasionDv(deps, registry, target) }
                 : {}),
             }
-          : { name: coverTarget!.name, coverId: coverTarget!.id, metres, cover: true },
+          : coverTarget
+            ? { name: coverTarget.name, coverId: coverTarget.id, metres, cover: true }
+            : { name: POINT_TARGET_NAME, metres, point: true },
         {
           modifiers: sheetSituationModifiers({
             grappled: attackerGrapple.grappled,
@@ -686,6 +771,12 @@ export const attackRollEvent = defineEvent<AttackRollPayload<CpredAttackRequest>
           }),
           ...(attackerGrapple.grappled ? { grappled: true } : {}),
           lineOfFire,
+          // „PT określasz, używając wiersza Granatnika w tabeli PT zasięgów"
+          // (s. 177) — the line lives in the catalogue, so the planner is handed
+          // it rather than allowed to go looking.
+          ...(payload?.request?.thrown === true
+            ? { throwProfile: await throwProfileOf(deps, campaignId) }
+            : {}),
         },
       );
       if (!planned.ok) throw new RealtimeError(planned.error);
@@ -735,6 +826,17 @@ export const attackRollEvent = defineEvent<AttackRollPayload<CpredAttackRequest>
         scene,
         attacker,
         fire,
+        // An explosion is judged where it went off, so the blast needs the aim
+        // point and the stat that threw — the one the scatter is measured
+        // against when the throw misses.
+        meta.blastSideM !== undefined
+          ? {
+              aim: aimPoint,
+              sideM: meta.blastSideM,
+              stat: data.stats[meta.statId],
+              statLabel: CPRED_STAT_LABELS[meta.statId].abbr,
+            }
+          : undefined,
       );
       // Whoever fired past a cover said so out loud (stage 16c): the card carries
       // the decision, because „he leaned out" is a ruling the table made and the
@@ -760,6 +862,17 @@ export const attackRollEvent = defineEvent<AttackRollPayload<CpredAttackRequest>
   },
 );
 
+/**
+ * An explosion's own facts: where it was aimed and whose steadiness the scatter
+ * is measured against (stage 16d). Absent for every ordinary attack.
+ */
+interface BlastRequest {
+  aim: ScenePoint;
+  sideM: number;
+  stat: number;
+  statLabel: string;
+}
+
 /** The verdict block the chat card renders, including suppressive fire's checks. */
 async function buildAttackMeta(
   deps: RealtimeDeps,
@@ -770,6 +883,7 @@ async function buildAttackMeta(
   scene: Scene,
   attacker: Token,
   fire: FireContext,
+  blast?: BlastRequest,
 ): Promise<RollAttackMeta> {
   const label = `${meta.weaponName} → ${meta.targetName}`;
 
@@ -788,13 +902,31 @@ async function buildAttackMeta(
   }
 
   const outcome = resolveCpredAttack(result.total, meta.dv, meta.autofireMax);
-  const detail = outcome.hit
+  let detail = outcome.hit
     ? `${attackDetail(meta)}${
         outcome.multiplier
           ? ` · przerzut o ${outcome.margin} → obrażenia ×${outcome.multiplier}`
           : ''
       }`
     : `${attackDetail(meta)} · brakło ${Math.abs(outcome.margin) + 1}`;
+
+  // A charge that missed still goes off — it just goes off somewhere else
+  // (s. 174). That is why the area is resolved on both branches and why the
+  // damage roll is offered even on a miss: „nie trafiłeś" is about the square
+  // that was aimed at, not about whether anything exploded.
+  let area: RollAreaMeta | undefined;
+  if (blast) {
+    const context = fire.loaded ?? (await loadVisionContext(deps.ctx.prisma, scene));
+    fire.loaded = context;
+    const scattered = outcome.hit
+      ? null
+      : scatterBlast(blast.aim, scene, blast.stat, blast.statLabel, createMixedRng());
+    const centre = scattered ? scattered.centre : blast.aim;
+    const targets = await blastTargets(deps, scene, registry, centre, blast.sideM, context);
+    area = toAreaMeta(scene, centre, blast.sideM, targets, scattered?.scatter ?? null);
+    detail = `${detail} · ${describeArea(area)}`;
+  }
+  const damages = outcome.hit || area !== undefined;
 
   return {
     system: {
@@ -809,7 +941,8 @@ async function buildAttackMeta(
     // Stage 16c: „Zastosuj" has to know it is denting a car rather than a
     // person, because the two take damage down different paths.
     ...(meta.targetCoverId !== undefined ? { targetCoverId: meta.targetCoverId } : {}),
-    ...(outcome.hit
+    ...(area ? { area } : {}),
+    ...(damages
       ? {
           damageNotation: meta.damage,
           ...(outcome.multiplier && outcome.multiplier > 1
@@ -844,6 +977,15 @@ export const attackEvadeEvent = defineEvent<AttackEvadePayload, { total: number;
     const roll = JSON.parse(message.payload) as RollResult;
     const meta = roll.attack?.system as CpredAttackMeta | undefined;
     if (!roll.attack || !meta || meta.dv === null) throw new RealtimeError('NOT_AN_ATTACK');
+
+    // Jumping clear of a blast is the same roll against the same total, but it
+    // belongs to one figure out of many rather than to the attack (stage 16d),
+    // so it forks before the single-target checks — which all assume there is
+    // exactly one defender to talk about.
+    if (roll.attack.area && typeof payload.tokenId === 'string') {
+      return evadeArea(deps, campaignId, user, message, roll, payload);
+    }
+
     if (roll.attack.evaded) throw new RealtimeError('ALREADY_EVADED');
     // A car does not duck (stage 16c).
     if (!meta.targetTokenId) throw new RealtimeError('NOT_THE_TARGET');
@@ -909,6 +1051,86 @@ export const attackEvadeEvent = defineEvent<AttackEvadePayload, { total: number;
     return { total: evasion.total, hit: outcome.hit };
   },
 });
+
+/**
+ * One figure jumps clear of a blast (stage 16d).
+ *
+ * „Osoba z REF 8 lub wyższym może zdecydować się na odskoczenie poza obszar
+ * wybuchu. W tym celu musi rzucić więcej niż twój rzut na atak ładunkiem
+ * wybuchowym" (s. 174) — so the roll is the ordinary Evasion roll and the DV is
+ * the attacker's own total, exactly as in a dodge. What differs is the bookkeeping:
+ * the verdict lands on **this target's row**, not on the attack, because the
+ * other three people in the square are still standing in it.
+ */
+async function evadeArea(
+  deps: RealtimeDeps,
+  campaignId: string,
+  user: SessionUser,
+  message: { id: number },
+  roll: RollResult,
+  payload: AttackEvadePayload,
+): Promise<{ total: number; hit: boolean }> {
+  const area = roll.attack!.area!;
+  const index = area.targets.findIndex((entry) => entry.tokenId === payload.tokenId);
+  const entry = index === -1 ? undefined : area.targets[index]!;
+  if (!entry) throw new RealtimeError('NOT_THE_TARGET');
+  // Somebody a wall already saved has nothing to jump out of, and nobody jumps
+  // twice out of the same explosion.
+  if (entry.spared) throw new RealtimeError('ALREADY_EVADED');
+  // REF 8+ is the price of admission, and it was read off the sheet when the
+  // blast was resolved — never off this request.
+  if (entry.canEvade !== true) throw new RealtimeError('DODGE_BLOCKED');
+
+  const character = await requireRollableCharacter(deps, campaignId, user, payload.characterId);
+  const target = await deps.ctx.prisma.token.findUnique({ where: { id: entry.tokenId } });
+  if (!target || target.characterId !== character.id) throw new RealtimeError('NOT_THE_TARGET');
+
+  const registry = deps.ctx.cpred;
+  const data = parseCharacterData(character.data, registry);
+  const dodgeBlock = sheetDodgeBlock(readTokenStatuses(target.statuses), data.criticalInjuries);
+  if (dodgeBlock) throw new RealtimeError('DODGE_BLOCKED');
+
+  const planned = planCpredRoll(data, registry, {
+    kind: 'skill',
+    skillId: CPRED_EVASION_SKILL_ID,
+  });
+  if (!planned.ok) throw new RealtimeError(planned.error);
+
+  const gesture: RollGesture | undefined = sanitizeGesture(payload.gesture);
+  const evasion = rollFormula(planned.plan.formula, createMixedRng(gesture?.entropy), {
+    checkRule: true,
+  });
+  // Ties go to the attacker here, unusually: the rule asks the dodger to roll
+  // *more* than the attack, so an equal roll is not enough to get out of the way.
+  const cleared = evasion.total > roll.total;
+
+  const targets = area.targets.map((candidate, position) =>
+    position === index
+      ? {
+          ...candidate,
+          ...(cleared ? { spared: 'evaded' as const, sparedBy: character.name } : {}),
+          canEvade: false,
+        }
+      : candidate,
+  );
+  const updated: RollResult = {
+    ...roll,
+    attack: {
+      ...roll.attack!,
+      area: { ...area, targets },
+      detail: `${roll.attack!.detail} · Odskok ${character.name}: ${evasion.total} vs ${
+        roll.total
+      } → ${cleared ? 'poza obszarem' : 'nie zdążył'}`,
+    },
+  };
+  const saved = await deps.ctx.prisma.chatMessage.update({
+    where: { id: message.id },
+    data: { payload: JSON.stringify(updated) },
+    include: INCLUDE_CHAT_NAMES,
+  });
+  await broadcastRedactedChatMessage(deps, campaignId, toChatMessageView(saved), 'chat:update');
+  return { total: evasion.total, hit: !cleared };
+}
 
 /**
  * Charges an Action to whichever token the character is playing on the scene

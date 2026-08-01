@@ -104,20 +104,45 @@ export function toChatMessageView(message: StoredMessage): ChatMessageView {
 }
 
 /**
- * Strips what this viewer may not see from a message. Today that is exactly
- * the damage log's absolute HP (and the sheet link that would identify the
- * target's card): the GM and the target's owner get the numbers, everyone else
- * sees the hit itself — how much got through, what the armor did, whether the
- * wound state changed. Absolute HP never leave the server for anyone else, the
- * same rule tokens have followed since stage 05.
+ * Strips what this viewer may not see from a message.
+ *
+ * Two things, both of them the same rule tokens have followed since stage 05 —
+ * what a player cannot see does not leave the server:
+ *
+ *  - the damage log's absolute HP (and the sheet link that would identify the
+ *    target's card): the GM and the target's owner get the numbers, everyone
+ *    else sees the hit itself — how much got through, what the armor did,
+ *    whether the wound state changed;
+ *  - the roster of an area attack (stage 16d). A grenade lobbed into a dark room
+ *    reaches whoever is standing there, and listing them on the card would be a
+ *    perfect scouting tool. Players read only their **own** figures off it; the
+ *    covers stay, because a car is on everybody's screen already.
  */
 export function redactChatMessage(message: ChatMessageView, user: SessionUser): ChatMessageView {
-  const damage = message.damage;
-  if (!damage) return message;
   if (user.role === ROLE_GM) return message;
-  if (damage.targetOwnerId && damage.targetOwnerId === user.id) return message;
+  let view = message;
+
+  const area = view.roll?.attack?.area;
+  if (area) {
+    const visible = area.targets.filter(
+      (target) => target.coverId !== undefined || target.ownerId === user.id,
+    );
+    if (visible.length !== area.targets.length) {
+      view = {
+        ...view,
+        roll: {
+          ...view.roll!,
+          attack: { ...view.roll!.attack!, area: { ...area, targets: visible } },
+        },
+      };
+    }
+  }
+
+  const damage = view.damage;
+  if (!damage) return view;
+  if (damage.targetOwnerId && damage.targetOwnerId === user.id) return view;
   const { hp: _hp, characterId: _characterId, targetOwnerId: _owner, ...visible } = damage;
-  return { ...message, damage: visible };
+  return { ...view, damage: visible };
 }
 
 /**
@@ -277,7 +302,9 @@ export async function deliverRollMessage(
   message: ChatMessageView,
 ): Promise<void> {
   if (message.kind !== 'gmroll') {
-    broadcastChatMessage(deps, campaignId, message);
+    // Redacted rather than broadcast raw since stage 16d: an area attack's card
+    // carries a list of everyone it reached, and that list is not public.
+    await broadcastRedactedChatMessage(deps, campaignId, message);
     return;
   }
   await deliverChatMessageTo(deps, campaignId, message, [authorId], true);

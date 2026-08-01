@@ -610,3 +610,178 @@ describe('problem messages', () => {
     }
   });
 });
+
+/**
+ * Stage 16d — grenades, thrown objects and aiming at the ground.
+ *
+ * The planner grew a third kind of target and a second way of using a row, and
+ * both were meant to arrive *without* a second code path. These tests are the
+ * proof: the same call, the same breakdown, the same ammunition accounting.
+ */
+const grenade: ResolvedWeapon = {
+  damage: '6k6',
+  magazine: null,
+  rof: 1,
+  hands: 1,
+  concealable: true,
+  attachmentSlots: 0,
+  skillId: 'athletics',
+  rangeDv: [16, 15, 15, 17, 20, 22, 25, null],
+  thrown: true,
+  explosive: true,
+  maxRangeM: 25,
+  melee: false,
+};
+
+/** The registry above knows nothing of Athletics; grenades need it. */
+const throwRegistry: CpredRegistry = buildCpredRegistry(
+  {
+    skills: [
+      { id: 'handgun', name: 'Broń krótka', stat: 'ref' },
+      { id: 'melee-weapon', name: 'Broń biała', stat: 'dex' },
+      { id: 'athletics', name: 'Atletyka', stat: 'dex' },
+      { id: 'evasion', name: 'Unik', stat: 'dex' },
+    ],
+  },
+  { roles: [{ id: 'solo', name: 'Solo', ability: 'Zmysł Walki' }] },
+);
+
+function throwPlan(
+  request: Partial<CpredAttackRequest>,
+  {
+    resolved = grenade,
+    metres = 10,
+    target = { name: 'wybrane pole', point: true as const },
+    context = {},
+  }: {
+    resolved?: ResolvedWeapon | null;
+    metres?: number;
+    target?: Record<string, unknown>;
+    context?: CpredAttackContext;
+  } = {},
+) {
+  const row = weaponRow({
+    id: 'w-grenade',
+    name: 'Granat',
+    damage: '6k6',
+    ammoCurrent: 3,
+    ammoMax: 3,
+  });
+  return planCpredAttack(
+    sheet({ weapons: [row], skills: { athletics: 4 } }),
+    throwRegistry,
+    { weaponRowId: row.id, mode: 'single', ...request },
+    { row, resolved },
+    { metres, ...target } as never,
+    context,
+  );
+}
+
+describe('throwing a charge at a square (stage 16d)', () => {
+  it('rolls Athletics rather than the weapon skill', () => {
+    const result = throwPlan({});
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.plan.breakdown.some((entry) => entry.label === 'Atletyka')).toBe(true);
+    expect(result.plan.attack.statId).toBe('dex');
+    expect(result.plan.attack.thrown).toBe(true);
+  });
+
+  it('marks the attack as covering a 10 m square', () => {
+    const result = throwPlan({});
+    if (!result.ok) throw new Error(result.error);
+    expect(result.plan.attack.blastSideM).toBe(10);
+  });
+
+  it('reads its DV off the range table like any other ranged attack', () => {
+    const result = throwPlan({});
+    if (!result.ok) throw new Error(result.error);
+    expect(result.plan.attack.dv).toBe(dvForRange(grenade.rangeDv, 10));
+    expect(result.plan.attack.dvSource).toBe('range');
+  });
+
+  it('refuses a throw past the reach of an arm, even inside the table', () => {
+    // 30 m is still a printed band, but no arm reaches it (s. 177).
+    expect(throwPlan({}, { metres: 30 })).toEqual({ ok: false, error: 'OUT_OF_RANGE' });
+  });
+
+  it('has nothing to aim at: a square has no head', () => {
+    const result = throwPlan({ aimed: true });
+    if (!result.ok) throw new Error(result.error);
+    expect(result.plan.attack.aimed).toBe(false);
+    expect(result.plan.attack.location).toBe('body');
+  });
+
+  it('goes over the car instead of being stopped by it', () => {
+    // The same context refuses an ordinary shot (`TARGET_BEHIND_COVER`).
+    const context: CpredAttackContext = {
+      cover: { name: 'Samochód', hpCurrent: 25, hpMax: 25 },
+    };
+    expect(throwPlan({}, { context }).ok).toBe(true);
+    expect(throwPlan({}, { context, resolved: { ...grenade, explosive: false } })).toEqual({
+      ok: false,
+      error: 'TARGET_BEHIND_COVER',
+    });
+  });
+
+  it('spends one charge, like any other single shot', () => {
+    const result = throwPlan({});
+    if (!result.ok) throw new Error(result.error);
+    expect(result.plan.attack.ammoCost).toBe(1);
+    expect(result.plan.attack.ammoAfter).toBe(2);
+  });
+
+  it('has no fire modes', () => {
+    expect(throwPlan({ mode: 'autofire' })).toEqual({ ok: false, error: 'NO_AUTOFIRE' });
+  });
+});
+
+describe('throwing an ordinary object (stage 16d)', () => {
+  /** „PT określasz, używając wiersza Granatnika" — supplied by the caller. */
+  const throwProfile = { rangeDv: grenade.rangeDv! };
+
+  it('turns a melee weapon into a ranged attack for one throw', () => {
+    const result = throwPlan(
+      { thrown: true },
+      {
+        resolved: blade,
+        metres: 10,
+        target: { name: 'Ganger', tokenId: 'token-1' },
+        context: { throwProfile },
+      },
+    );
+    if (!result.ok) throw new Error(result.error);
+    // Ten metres would be out of reach for the same blade swung by hand.
+    expect(result.plan.attack.melee).toBe(false);
+    expect(result.plan.attack.thrown).toBe(true);
+    expect(result.plan.attack.dv).toBe(dvForRange(throwProfile.rangeDv, 10));
+    // Damage comes off the sheet row, exactly as it does when the same weapon
+    // is swung: throwing changes how you hit, not what you hit with.
+    expect(result.plan.attack.damage).toBe('6k6');
+    // …and it makes no crater.
+    expect(result.plan.attack.blastSideM).toBeUndefined();
+  });
+
+  it('refuses when nobody handed over the range line', () => {
+    expect(
+      throwPlan(
+        { thrown: true },
+        { resolved: blade, target: { name: 'Ganger', tokenId: 'token-1' } },
+      ),
+    ).toEqual({ ok: false, error: 'UNKNOWN_WEAPON' });
+  });
+
+  it('still refuses a throw past 25 m', () => {
+    expect(
+      throwPlan(
+        { thrown: true },
+        {
+          resolved: blade,
+          metres: 26,
+          target: { name: 'Ganger', tokenId: 'token-1' },
+          context: { throwProfile },
+        },
+      ),
+    ).toEqual({ ok: false, error: 'OUT_OF_RANGE' });
+  });
+});

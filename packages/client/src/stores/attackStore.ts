@@ -30,6 +30,14 @@ export interface AttackTargeting {
   modifier: number;
   /** True for melee weapons — the map only accepts targets within reach. */
   melee: boolean;
+  /**
+   * Let go of this row instead of using it (stage 16d) — „Rzut przedmiotem".
+   *
+   * Turns a knife into a ranged attack for one throw: ZW + Atletyka, the
+   * Grenade Launcher's range line and 25 m of arm (s. 177). Never set for a
+   * grenade, which is thrown by definition.
+   */
+  thrown?: boolean;
 }
 
 /** Which token's range bands are drawn as rings on the map. */

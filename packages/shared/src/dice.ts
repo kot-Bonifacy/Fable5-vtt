@@ -180,6 +180,60 @@ export interface RollDamageMeta {
    * anything.
    */
   targetCoverId?: number;
+  /**
+   * Everyone an area attack reached (stage 16d), so one damage roll can be
+   * applied to all of them.
+   *
+   * A list rather than a single combined card, because „Cofnij" is per victim:
+   * the GM must be able to take the grenade back off one person without
+   * un-exploding it for the other three.
+   */
+  areaTargets?: RollAreaTarget[];
+}
+
+/** One figure — or one car — an area attack found (stage 16d). */
+export interface RollAreaTarget {
+  tokenId?: string;
+  coverId?: number;
+  name: string;
+  /** Distance from the centre of the area, in metres. */
+  metres: number;
+  /**
+   * Why this one walks away untouched. Absent means it takes the damage.
+   * Kept as plain words rather than rules: the core carries them, the system
+   * module decides what they mean.
+   */
+  spared?: 'wall' | 'cover' | 'evaded';
+  /** What spared it — the name of the wall's owner scene object, or the cover. */
+  sparedBy?: string;
+  /** True when this target may still try to jump clear of the area. */
+  canEvade?: boolean;
+  /**
+   * Who controls this figure. Present only so the delivery layer can decide who
+   * may read the row: an area card names everybody it reached, and „who is
+   * standing in that dark room" is exactly the kind of thing that must not reach
+   * a player. Absent for a cover, which the whole table can see anyway.
+   */
+  ownerId?: string | null;
+}
+
+/**
+ * The patch of map an attack went off over (stage 16d). The client redraws the
+ * template from this, so a card scrolled back to weeks later still shows where
+ * the grenade actually landed.
+ */
+export interface RollAreaMeta {
+  sceneId: string;
+  /** Centre in scene pixels — already snapped to a grid square. */
+  centre: { x: number; y: number };
+  /** Side of the square, in metres. */
+  sideM: number;
+  /**
+   * How the charge got here when the throw missed: the scatter roll, written
+   * out. Absent on a hit, where the charge simply landed where it was aimed.
+   */
+  scatter?: string;
+  targets: RollAreaTarget[];
 }
 
 /** Rolled total after the damage multiplier — what actually hits the target. */
@@ -214,6 +268,8 @@ export interface RollAttackMeta {
   evaded?: boolean;
   /** Results of checks the attack forced on others (suppressive fire). */
   forcedChecks?: RollForcedCheck[];
+  /** Where this attack went off and whom it reached (stage 16d). */
+  area?: RollAreaMeta;
 }
 
 /**
