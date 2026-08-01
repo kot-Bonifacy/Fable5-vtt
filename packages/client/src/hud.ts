@@ -55,6 +55,16 @@ export interface HudContext {
   isActiveTurn: boolean;
   /** Why the whole bar is greyed out („nie twoja tura"), or null. */
   refusal: string | null;
+  /**
+   * Is the figure in the panel also the one being steered?
+   *
+   * False while the rail is merely *describing* somebody — the default it picks
+   * at login, or the figure remembered from before a right click. Reading a
+   * character sheet must not silently make the next click on the floor a march,
+   * so the crosshair, the walk preview and the armed weapon all stay off until
+   * the user commits by clicking the figure (or pressing one of its slots).
+   */
+  steering: boolean;
 }
 
 /**
@@ -90,6 +100,7 @@ export function hudContextFor(tokenId: string | null): HudContext {
     : null;
   const turn = combatant?.turn ?? null;
   const refusal = hudTurnRefusal(combat, tokenId, isGm);
+  const steering = tokenId !== null && useSelectionStore.getState().tokenId === tokenId;
 
   if (!token) {
     return {
@@ -100,6 +111,7 @@ export function hudContextFor(tokenId: string | null): HudContext {
       isGm,
       isActiveTurn: false,
       refusal: null,
+      steering: false,
     };
   }
 
@@ -137,12 +149,47 @@ export function hudContextFor(tokenId: string | null): HudContext {
     isGm,
     isActiveTurn: refusal === null,
     refusal,
+    steering,
   };
 }
 
-/** Builds the HUD state for whatever token this viewer is steering. */
+/**
+ * The figure this viewer's own token defaults to — what the rail shows before
+ * anything has been clicked.
+ *
+ * Players only. The GM's every token is steerable, so „their own figure" would
+ * mean picking one NPC out of dozens at random; their rail stays on whatever
+ * they last clicked and is empty until then.
+ */
+function defaultFocusTokenId(): string | null {
+  const user = useAuthStore.getState().user;
+  if (!user || user.role === ROLE_GM) return null;
+  const own = Object.values(useTokenStore.getState().tokens)
+    .filter((token) => token.ownerId === user.id)
+    .sort((a, b) => a.name.localeCompare(b.name, 'pl') || a.id.localeCompare(b.id));
+  return own[0]?.id ?? null;
+}
+
+/**
+ * The figure the left rail describes — steered, remembered, or defaulted to.
+ *
+ * Derived rather than stored, so it heals itself: a remembered id whose token
+ * has not arrived yet (or has been deleted, or belongs to another scene) simply
+ * falls through to the default, and snaps back the moment the token shows up.
+ * The only thing that can leave the rail empty while a default exists is the
+ * user saying so — right click on bare map, or the last rung of Escape.
+ */
+export function hudFocusTokenId(): string | null {
+  const selection = useSelectionStore.getState();
+  const tokens = useTokenStore.getState().tokens;
+  if (selection.focusTokenId && tokens[selection.focusTokenId]) return selection.focusTokenId;
+  if (selection.dismissed) return null;
+  return defaultFocusTokenId();
+}
+
+/** Builds the HUD state for whatever token this viewer has under attention. */
 export function currentHudContext(): HudContext {
-  return hudContextFor(useSelectionStore.getState().tokenId);
+  return hudContextFor(hudFocusTokenId());
 }
 
 /**
@@ -165,10 +212,40 @@ export function hudSignature(context: HudContext): string {
     token?.statuses ?? null,
     context.turn ?? null,
     context.refusal,
+    context.steering,
     context.combatant?.id ?? null,
     context.combatant?.grapple?.role ?? null,
     context.slots.map((slot) => [slot.id, slot.label, slot.disabled, slot.key]),
   ]);
+}
+
+/**
+ * How the rail asks the map to steer a figure, registered by `MapArea`.
+ *
+ * The selection has to go *through* the renderer rather than straight into the
+ * store: the dashed ring, the walk preview and the reticle all live there, and
+ * a store write nobody drew would leave the map disagreeing with the panel.
+ */
+let steerHandler: ((tokenId: string) => void) | null = null;
+
+/** `MapArea` hands in the renderer's selection door; null on unmount. */
+export function setSteerHandler(handler: ((tokenId: string) => void) | null): void {
+  steerHandler = handler;
+}
+
+/**
+ * Takes control of the figure the rail is describing.
+ *
+ * Pressing a slot is the one unambiguous „I am playing this one" there is, so
+ * it promotes a figure the rail merely *showed* into the steered one. Without
+ * this the default panel would be a wall of buttons that quietly do nothing:
+ * every attack path (`attackWithActiveWeapon`, `throwAtPoint`, `shootCoverAt`)
+ * refuses a weapon whose token is not the selected one.
+ */
+function steerToken(tokenId: string): void {
+  if (useSelectionStore.getState().tokenId === tokenId) return;
+  if (steerHandler) steerHandler(tokenId);
+  else useSelectionStore.getState().select(tokenId);
 }
 
 /**
@@ -185,6 +262,9 @@ export function activateSlot(slot: CpredHotbarSlot, tokenId: string): void {
     chat.addNote(slot.disabled);
     return;
   }
+  // A refused slot is deliberately *not* worth taking control for — the button
+  // did nothing, so the map should not change under the user either.
+  steerToken(tokenId);
   const hud = useHudStore.getState();
 
   if (slot.kind === 'weapon') {

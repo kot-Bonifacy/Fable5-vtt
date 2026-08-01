@@ -3993,6 +3993,19 @@ body.is-resizing {
   border-radius: 4px;
 }
 
+/* „This is a view, not a grip" — quieter than a refusal, which is a rule
+   speaking; this one is only telling the user where the map's attention is. */
+.hud-preview {
+  margin: 0;
+  padding: 0.3rem 0.4rem;
+  font-size: 0.68rem;
+  line-height: 1.3;
+  color: var(--text-dim);
+  background: rgb(255 255 255 / 4%);
+  border-left: 2px solid var(--border);
+  border-radius: 3px;
+}
+
 .hud-turn-buttons {
   display: flex;
   flex-wrap: wrap;

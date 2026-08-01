@@ -67,8 +67,10 @@ import {
   activateSlot,
   attackWithActiveWeapon,
   currentHudContext,
+  hudFocusTokenId,
   hudTurnRefusal,
   nextSteerableToken,
+  setSteerHandler,
   shootCoverAt,
   throwAtPoint,
 } from '../hud.js';
@@ -433,7 +435,20 @@ export function MapArea() {
         useChatStore.getState().addNote(moveErrorText(result.error));
       });
     };
-    renderer.onSelectionChange = (tokenId) => useSelectionStore.getState().select(tokenId);
+    // Steering and „what the left rail is describing" are two pointers, and the
+    // reason is what tells them apart: a right click drops both, a scene swap
+    // sends the rail back to what it remembered on the new map, and everything
+    // else leaves the rail where it was — that is the whole of „remember the
+    // last figure I clicked".
+    renderer.onSelectionChange = (tokenId, reason) => {
+      const selection = useSelectionStore.getState();
+      if (reason === 'dismiss') selection.dismiss();
+      else if (reason === 'scene') selection.resetFocus();
+      else selection.select(tokenId);
+    };
+    // The rail's buttons take control of the figure they belong to; the ring
+    // and the walk preview live in the renderer, so the request goes there.
+    setSteerHandler((tokenId) => renderer.setSelection(tokenId));
     renderer.onWalkNote = (text) => useChatStore.getState().addNote(text);
     renderer.onWalkStateChange = setMarchingTokenId;
     renderer.onTokenMenu = (tokenId, clientX, clientY) => {
@@ -630,6 +645,7 @@ export function MapArea() {
     return () => {
       cancelled = true;
       setReady(false);
+      setSteerHandler(null);
       renderer.destroy();
       rendererRef.current = null;
     };
@@ -1274,7 +1290,11 @@ export function MapArea() {
       if (event.key === 'Tab') {
         // The browser's own focus ring would otherwise walk the side panel.
         event.preventDefault();
-        const next = nextSteerableToken(useSelectionStore.getState().tokenId);
+        // Cycling starts from the figure on screen, not from the steered one:
+        // with the rail defaulting to the player's own token, the first Tab has
+        // to move on from what they are already looking at rather than restart
+        // the list from its beginning.
+        const next = nextSteerableToken(hudFocusTokenId());
         rendererRef.current?.setSelection(next);
         return;
       }
@@ -1369,7 +1389,9 @@ export function MapArea() {
           tools.setTool('pointer');
           return;
         }
-        renderer?.setSelection(null);
+        // The last rung empties the rail too — same „never mind" as a right
+        // click on bare map, and the only way to a blank panel on purpose.
+        renderer?.setSelection(null, 'dismiss');
       }
     };
     window.addEventListener('keydown', onKey);

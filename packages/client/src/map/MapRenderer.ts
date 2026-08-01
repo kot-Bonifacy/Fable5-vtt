@@ -72,6 +72,23 @@ export interface RulerLine {
   color: number;
 }
 
+/**
+ * Why the steered figure changed.
+ *
+ * The left rail keeps describing a figure after it stops being steered, so it
+ * has to tell „the user said never mind" from „the map was swapped under it".
+ * The renderer is the only thing that knows which of the four just happened.
+ */
+export type SelectionChange =
+  /** A click on a figure, or `Tab`. */
+  | 'pick'
+  /** „Never mind" — right click on bare map, or the last rung of Escape. */
+  | 'dismiss'
+  /** The scene was swapped out. */
+  | 'scene'
+  /** The figure left the map (deleted, or moved out of sight). */
+  | 'gone';
+
 /** One range band drawn as a ring around a token (stage 16). */
 export interface RangeRing {
   /** Radius in scene pixels. */
@@ -535,7 +552,7 @@ export class MapRenderer {
    */
   onMapClick: ((x: number, y: number) => boolean) | null = null;
   /** The steered token changed (stage 16e); null means nothing is selected. */
-  onSelectionChange: ((tokenId: string | null) => void) | null = null;
+  onSelectionChange: ((tokenId: string | null, reason: SelectionChange) => void) | null = null;
   /** Something worth a line on the chat happened to a march („marsz przerwany…"). */
   onWalkNote: ((text: string) => void) | null = null;
   /** A march began (token id) or ended (null) — the caller watches for interruptions. */
@@ -1103,7 +1120,7 @@ export class MapRenderer {
       if (!seen.has(id)) {
         if (this.drag?.node === node) this.endDrag(false);
         if (this.march?.node === node) this.finishMarch(null, false);
-        if (this.selectedTokenId === id) this.setSelection(null);
+        if (this.selectedTokenId === id) this.setSelection(null, 'gone');
         if (this.aimTokenId === id) this.clearAim();
         this.tokenNodes.delete(id);
         this.movableTokens.delete(id);
@@ -1364,7 +1381,7 @@ export class MapRenderer {
       // the GM's token menu, which is a right click *on a figure*.
       if (event.button === 2 && !isTokenTarget(event.target)) {
         this.finishMarch(null);
-        this.setSelection(null);
+        this.setSelection(null, 'dismiss');
         return;
       }
       if (event.button !== 0 || this.drag) return;
@@ -1769,8 +1786,17 @@ export class MapRenderer {
    * the caller decides that, because „may I move this?" is an ownership
    * question and this file does not know who is logged in.
    */
-  setSelection(tokenId: string | null): void {
-    if (this.destroyed || this.selectedTokenId === tokenId) return;
+  setSelection(tokenId: string | null, reason: SelectionChange = 'pick'): void {
+    if (this.destroyed) return;
+    // Two reasons are reported even when nothing was steered, because the rail
+    // outlives the selection: „never mind" has a figure to dismiss precisely
+    // when nothing is selected (the rail shows one the user never clicked), and
+    // a scene swap has to reach the rail's per-scene memory whether or not a
+    // figure happened to be under the ring. `pick` and `gone` are idempotent.
+    if (this.selectedTokenId === tokenId) {
+      if (reason === 'dismiss' || reason === 'scene') this.onSelectionChange?.(tokenId, reason);
+      return;
+    }
     this.selectedTokenId = tokenId;
     this.walkWaypoints = [];
     this.walkHover = null;
@@ -1780,7 +1806,7 @@ export class MapRenderer {
     this.drawSelectionRing();
     this.drawWalkPreview();
     this.applyMapCursor();
-    this.onSelectionChange?.(tokenId);
+    this.onSelectionChange?.(tokenId, reason);
   }
 
   /**
@@ -3465,7 +3491,7 @@ export class MapRenderer {
     this.walkText?.destroy();
     this.walkText = null;
     this.setWalkCursor('');
-    this.setSelection(null);
+    this.setSelection(null, 'scene');
   }
 
   private clearTokens(): void {

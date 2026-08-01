@@ -152,7 +152,7 @@ function useHudContext(): HudContext {
 
 export function CombatHud() {
   const context = useHudContext();
-  const selectedId = useSelectionStore((s) => s.tokenId);
+  const focusId = context.token?.id ?? null;
   const activeWeapon = useHudStore((s) => s.activeWeapon);
   const form = useHudStore((s) => s.form);
   const collapsed = useHudStore((s) => s.collapsed);
@@ -172,10 +172,14 @@ export function CombatHud() {
    * the games this HUD is modelled on you do not „equip" before shooting, you
    * click. Only the first *usable* weapon is taken — arming an empty magazine
    * would put a crosshair on a gun that cannot fire.
+   *
+   * Steering is the condition, not merely being on screen: the rail describes a
+   * figure by default, and a panel that raised a gun the moment it opened would
+   * turn „look at my character" into „aim at whatever I click next".
    */
   useEffect(() => {
     const state = useHudStore.getState();
-    if (!token) {
+    if (!token || !context.steering) {
       if (state.activeWeapon) state.setActiveWeapon(null);
       return;
     }
@@ -194,12 +198,12 @@ export function CombatHud() {
       melee: slot.melee,
       pointTarget: slot.pointTarget,
     });
-  }, [token, context.slots]);
+  }, [token, context.steering, context.slots]);
 
   // A form belongs to the figure it was opened for; switching figures closes it.
   useEffect(() => {
     useHudStore.getState().setForm(null);
-  }, [selectedId]);
+  }, [focusId]);
 
   if (collapsed) {
     return (
@@ -261,6 +265,16 @@ export function CombatHud() {
               <StatusRow statuses={token.statuses} />
             </div>
           </div>
+
+          {/* Showing is not steering: the rail fills itself in with this
+              figure, but the map still belongs to nobody until the user says
+              so. Without this line an unmoving token after a click on the floor
+              reads as a broken map rather than as „you have not picked me up". */}
+          {!context.steering && (
+            <p className="hud-preview">
+              Podgląd — kliknij tę figurę na mapie albo naciśnij slot, żeby nią sterować.
+            </p>
+          )}
 
           {context.turn && <TurnBudget budget={context.turn} />}
           {context.refusal && <p className="hud-refusal">{context.refusal}</p>}
