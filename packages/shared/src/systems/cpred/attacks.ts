@@ -31,7 +31,7 @@ import {
   type RollFormula,
   type RollTerm,
 } from '../../dice.js';
-import { ammoFitsWeapon, type CpredAmmoProfile } from './ammo.js';
+import { ammoFitsWeapon, type CpredAmmoCheck, type CpredAmmoProfile } from './ammo.js';
 import { CPRED_BLAST_SIDE_M, CPRED_THROW_RANGE_M } from './areas.js';
 import type { CpredCharacterData, CpredRegistry, CpredWeaponRow } from './character.js';
 import {
@@ -767,6 +767,42 @@ export function concentrationBase(data: CpredCharacterData, registry: CpredRegis
   const skill = registry.skills.find((entry) => entry.id === CPRED_CONCENTRATION_SKILL_ID);
   const stat = skill ? data.stats[skill.stat] : data.stats.will;
   return stat + (data.skills[CPRED_CONCENTRATION_SKILL_ID] ?? 0);
+}
+
+/** What one forced check is rolled on: the attribute, the skill, and its name. */
+export interface CpredCheckBase {
+  total: number;
+  statId: CpredStatId;
+  /** Name to print — the registry's when it has the skill, the row's otherwise. */
+  label: string;
+  /** Levels of the skill; 0 for untrained and for a skill this campaign lacks. */
+  skillLevel: number;
+}
+
+/**
+ * The target's side of a check some *round* forces on them (stage 16h).
+ *
+ * The generalisation of `concentrationBase`, and it degrades where that one
+ * could not afford to: a campaign running the 41-skill Easy Mode list has never
+ * heard of „Cyberinżynieria", and an EMP round must still be rollable there. The
+ * fallback is the attribute named on the catalogue row — a character who never
+ * trained the skill rolls their TECH, which is exactly what RAW says an
+ * untrained check is.
+ */
+export function cpredCheckBase(
+  data: CpredCharacterData,
+  registry: CpredRegistry,
+  check: Pick<CpredAmmoCheck, 'skillId' | 'skillLabel' | 'statId'>,
+): CpredCheckBase {
+  const skill = registry.skills.find((entry) => entry.id === check.skillId);
+  const statId = skill?.stat ?? check.statId ?? 'will';
+  const skillLevel = skill ? (data.skills[check.skillId] ?? 0) : 0;
+  return {
+    total: data.stats[statId] + skillLevel,
+    statId,
+    label: skill?.name ?? check.skillLabel ?? check.skillId,
+    skillLevel,
+  };
 }
 
 /** Polish problem messages, shown next to the weapon that could not fire. */

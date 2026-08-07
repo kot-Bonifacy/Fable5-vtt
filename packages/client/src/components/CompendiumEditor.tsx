@@ -7,6 +7,7 @@ import {
   CPRED_AMMO_PATTERNS,
   CPRED_AMMO_PATTERN_LABELS,
   CPRED_CONE_RANGE_M,
+  CPRED_SMOKE_PENALTY,
   CPRED_ON_FIRE_STATUS_ID,
   COMPENDIUM_CATEGORY_LABELS,
   COST_CATEGORIES,
@@ -319,6 +320,170 @@ export function CompendiumEditor() {
                   />
                 </label>
               </div>
+
+              {/*
+                Stage 16h - the half of the table that hurts nobody directly.
+                The ids are typed rather than picked from a list on purpose: the
+                status registry and the injury table are campaign data, and a
+                dropdown built from them would go stale the moment the GM edits
+                either. The validator refuses a malformed id, so a typo is caught
+                on save rather than at the table.
+              */}
+              <label className="bot-checkbox">
+                <input
+                  type="checkbox"
+                  checked={form.ammoNoDamage}
+                  onChange={(event) => patch({ ammoNoDamage: event.target.checked })}
+                />
+                Nie zadaje obrazen
+              </label>
+              <div className="bot-row-inline">
+                <label className="bot-field bot-field--inline">
+                  Test: umiejetnosc
+                  <input
+                    value={form.ammoCheckSkillId}
+                    placeholder="resist-torture-drugs"
+                    title="Identyfikator umiejetnosci z rejestru; puste = brak wymuszonego testu."
+                    onChange={(event) => patch({ ammoCheckSkillId: event.target.value })}
+                  />
+                </label>
+                <label className="bot-field bot-field--inline">
+                  Nazwa
+                  <input
+                    value={form.ammoCheckSkillLabel}
+                    placeholder="Odpornosc na tortury/narkotyki"
+                    title="Uzywana, gdy kampania nie ma tej umiejetnosci w rejestrze."
+                    onChange={(event) => patch({ ammoCheckSkillLabel: event.target.value })}
+                  />
+                </label>
+                <label className="bot-field bot-field--inline">
+                  Cecha
+                  <input
+                    value={form.ammoCheckStatId}
+                    placeholder="will"
+                    title="Cecha, na ktorej odbywa sie test, gdy umiejetnosci brak (will, tech...)."
+                    onChange={(event) => patch({ ammoCheckStatId: event.target.value })}
+                  />
+                </label>
+                <label className="bot-field bot-field--inline">
+                  PT
+                  <input
+                    type="number"
+                    min={1}
+                    max={40}
+                    value={form.ammoCheckDv}
+                    placeholder="-"
+                    title="Wypelnij, zeby naboj wymusil test na trafionych."
+                    onChange={(event) => patch({ ammoCheckDv: event.target.value })}
+                  />
+                </label>
+              </div>
+              <div className="bot-row-inline">
+                <label className="bot-field bot-field--inline">
+                  Porazka: obrazenia
+                  <input
+                    value={form.ammoFailDamage}
+                    placeholder="3k6"
+                    title="Obrazenia bezposrednie - pancerz ich nie zatrzymuje."
+                    onChange={(event) => patch({ ammoFailDamage: event.target.value })}
+                  />
+                </label>
+                <label className="bot-field bot-field--inline">
+                  Statusy
+                  <input
+                    value={form.ammoFailStatuses}
+                    placeholder="prone, unconscious"
+                    title="Identyfikatory statusow po przecinku."
+                    onChange={(event) => patch({ ammoFailStatuses: event.target.value })}
+                  />
+                </label>
+                <label className="bot-field bot-field--inline">
+                  Rany
+                  <input
+                    value={form.ammoFailInjuries}
+                    placeholder="injury.head-uraz-oka"
+                    title="Identyfikatory ran krytycznych z kompendium, po przecinku."
+                    onChange={(event) => patch({ ammoFailInjuries: event.target.value })}
+                  />
+                </label>
+                <label className="bot-field bot-field--inline">
+                  Czas (s)
+                  <input
+                    type="number"
+                    min={0}
+                    max={600}
+                    value={form.ammoFailDurationS}
+                    placeholder="60"
+                    title="Jak dlugo trzymaja sie statusy i rany; puste = do odwolania."
+                    onChange={(event) => patch({ ammoFailDurationS: event.target.value })}
+                  />
+                </label>
+              </div>
+              <label className="bot-checkbox">
+                <input
+                  type="checkbox"
+                  checked={form.ammoCheckBiological}
+                  onChange={(event) => patch({ ammoCheckBiological: event.target.checked })}
+                />
+                Dziala tylko na cele biologiczne
+              </label>
+              <div className="bot-row-inline">
+                <label className="bot-field bot-field--inline">
+                  Dym: bok (m)
+                  <input
+                    type="number"
+                    min={0}
+                    max={60}
+                    value={form.ammoSmokeSide}
+                    placeholder="-"
+                    title="Wypelnij, jesli naboj zasnuwa kwadrat dymu."
+                    onChange={(event) => patch({ ammoSmokeSide: event.target.value })}
+                  />
+                </label>
+                <label className="bot-field bot-field--inline">
+                  Kara
+                  <input
+                    type="number"
+                    min={-10}
+                    max={-1}
+                    value={form.ammoSmokePenalty}
+                    placeholder={String(CPRED_SMOKE_PENALTY)}
+                    onChange={(event) => patch({ ammoSmokePenalty: event.target.value })}
+                  />
+                </label>
+                <label className="bot-field bot-field--inline">
+                  Poprawka: premia
+                  <input
+                    type="number"
+                    min={0}
+                    max={20}
+                    value={form.ammoSmartBonus}
+                    placeholder="-"
+                    title="Wypelnij, jesli naboj proponuje drugi rzut po bliskim pudle."
+                    onChange={(event) => patch({ ammoSmartBonus: event.target.value })}
+                  />
+                </label>
+                <label className="bot-field bot-field--inline">
+                  Max chybienie
+                  <input
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={form.ammoSmartMaxMiss}
+                    placeholder="4"
+                    onChange={(event) => patch({ ammoSmartMaxMiss: event.target.value })}
+                  />
+                </label>
+                <label className="bot-field bot-field--inline">
+                  Wymaga
+                  <input
+                    value={form.ammoSmartRequires}
+                    placeholder="Celownik optyczny"
+                    title="Ostrzezenie na karcie ataku; VTT tego nie sprawdza (etap 23)."
+                    onChange={(event) => patch({ ammoSmartRequires: event.target.value })}
+                  />
+                </label>
+              </div>
             </>
           ) : null}
 
@@ -502,6 +667,22 @@ interface EditorForm {
   /** Stage 16g — which rounds this ammunition is made in, and what it does. */
   ammoPatterns: string[];
   ablationBonus: string;
+  /* Stage 16h — the rounds that hurt nobody directly. */
+  ammoNoDamage: boolean;
+  ammoCheckSkillId: string;
+  ammoCheckSkillLabel: string;
+  ammoCheckStatId: string;
+  ammoCheckDv: string;
+  ammoCheckBiological: boolean;
+  ammoFailDamage: string;
+  ammoFailStatuses: string;
+  ammoFailInjuries: string;
+  ammoFailDurationS: string;
+  ammoSmokeSide: string;
+  ammoSmokePenalty: string;
+  ammoSmartMaxMiss: string;
+  ammoSmartBonus: string;
+  ammoSmartRequires: string;
   ammoNoAblation: boolean;
   ammoNoCritical: boolean;
   ammoNonLethal: boolean;
@@ -545,6 +726,34 @@ function toForm(entry: CompendiumEntry | undefined): EditorForm {
     ammoNoAblation: entry?.category === 'ammo' ? Boolean(entry.noAblation) : false,
     ammoNoCritical: entry?.category === 'ammo' ? Boolean(entry.noCriticalInjury) : false,
     ammoNonLethal: entry?.category === 'ammo' ? Boolean(entry.nonLethal) : false,
+    ammoNoDamage: entry?.category === 'ammo' ? Boolean(entry.noDamage) : false,
+    ammoCheckSkillId: entry?.category === 'ammo' && entry.check ? entry.check.skillId : '',
+    ammoCheckSkillLabel:
+      entry?.category === 'ammo' && entry.check ? (entry.check.skillLabel ?? '') : '',
+    ammoCheckStatId: entry?.category === 'ammo' && entry.check ? (entry.check.statId ?? '') : '',
+    ammoCheckDv: entry?.category === 'ammo' && entry.check ? String(entry.check.dv) : '',
+    ammoCheckBiological:
+      entry?.category === 'ammo' && entry.check ? Boolean(entry.check.biologicalOnly) : false,
+    ammoFailDamage:
+      entry?.category === 'ammo' && entry.check ? (entry.check.failure.damage ?? '') : '',
+    ammoFailStatuses:
+      entry?.category === 'ammo' && entry.check
+        ? (entry.check.failure.statuses ?? []).join(', ')
+        : '',
+    ammoFailInjuries:
+      entry?.category === 'ammo' && entry.check
+        ? (entry.check.failure.injuries ?? []).join(', ')
+        : '',
+    ammoFailDurationS:
+      entry?.category === 'ammo' && entry.check?.failure.durationS
+        ? String(entry.check.failure.durationS)
+        : '',
+    ammoSmokeSide: entry?.category === 'ammo' && entry.smoke ? String(entry.smoke.sideM) : '',
+    ammoSmokePenalty: entry?.category === 'ammo' && entry.smoke ? String(entry.smoke.penalty) : '',
+    ammoSmartMaxMiss: entry?.category === 'ammo' && entry.smart ? String(entry.smart.maxMiss) : '',
+    ammoSmartBonus: entry?.category === 'ammo' && entry.smart ? String(entry.smart.bonus) : '',
+    ammoSmartRequires:
+      entry?.category === 'ammo' && entry.smart ? (entry.smart.requires ?? '') : '',
     ammoNoAim: entry?.category === 'ammo' ? Boolean(entry.noAim) : false,
     ammoIgniteDamage:
       entry?.category === 'ammo' && entry.ignites ? String(entry.ignites.damage) : '',
@@ -564,6 +773,18 @@ function toForm(entry: CompendiumEntry | undefined): EditorForm {
         ? String(entry.deathSavePenalty)
         : '',
   };
+}
+
+/**
+ * A comma-separated list of ids as typed by the GM (stage 16h). Trimmed and
+ * emptied of blanks; the server's validator is what refuses a malformed one, so
+ * a typo comes back as a named issue rather than being silently dropped here.
+ */
+function idList(value: string): string[] {
+  return value
+    .split(',')
+    .map((id) => id.trim())
+    .filter(Boolean);
 }
 
 function numberOrUndefined(value: string): number | undefined {
@@ -599,6 +820,10 @@ function fromForm(form: EditorForm, existingId: string | undefined): Record<stri
   if (form.category === 'ammo') {
     const ignite = numberOrUndefined(form.ammoIgniteDamage);
     const spreadDv = numberOrUndefined(form.ammoSpreadDv);
+    const checkDv = numberOrUndefined(form.ammoCheckDv);
+    const failDuration = numberOrUndefined(form.ammoFailDurationS);
+    const smokeSide = numberOrUndefined(form.ammoSmokeSide);
+    const smartBonus = numberOrUndefined(form.ammoSmartBonus);
     return {
       ...base,
       patterns: form.ammoPatterns,
@@ -616,6 +841,49 @@ function fromForm(form: EditorForm, existingId: string | undefined): Record<stri
               dv: spreadDv,
               damage: form.ammoSpreadDamage,
               coneRangeM: numberOrUndefined(form.ammoSpreadRange) ?? CPRED_CONE_RANGE_M,
+            },
+          }
+        : {}),
+      // Stage 16h. The DV is what decides whether there is a check at all — a
+      // row with a skill and no DV is half-typed, and the validator says so.
+      noDamage: form.ammoNoDamage,
+      ...(checkDv
+        ? {
+            check: {
+              skillId: form.ammoCheckSkillId.trim(),
+              ...(form.ammoCheckSkillLabel.trim()
+                ? { skillLabel: form.ammoCheckSkillLabel.trim() }
+                : {}),
+              ...(form.ammoCheckStatId.trim() ? { statId: form.ammoCheckStatId.trim() } : {}),
+              dv: checkDv,
+              biologicalOnly: form.ammoCheckBiological,
+              failure: {
+                ...(form.ammoFailDamage.trim() ? { damage: form.ammoFailDamage.trim() } : {}),
+                ...(idList(form.ammoFailStatuses).length > 0
+                  ? { statuses: idList(form.ammoFailStatuses) }
+                  : {}),
+                ...(idList(form.ammoFailInjuries).length > 0
+                  ? { injuries: idList(form.ammoFailInjuries) }
+                  : {}),
+                ...(failDuration ? { durationS: failDuration } : {}),
+              },
+            },
+          }
+        : {}),
+      ...(smokeSide
+        ? {
+            smoke: {
+              sideM: smokeSide,
+              penalty: numberOrUndefined(form.ammoSmokePenalty) ?? CPRED_SMOKE_PENALTY,
+            },
+          }
+        : {}),
+      ...(smartBonus !== undefined
+        ? {
+            smart: {
+              maxMiss: numberOrUndefined(form.ammoSmartMaxMiss) ?? 4,
+              bonus: smartBonus,
+              ...(form.ammoSmartRequires.trim() ? { requires: form.ammoSmartRequires.trim() } : {}),
             },
           }
         : {}),

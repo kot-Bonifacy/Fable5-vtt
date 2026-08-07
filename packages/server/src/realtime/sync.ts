@@ -1,6 +1,7 @@
 import type { Socket } from 'socket.io';
 import type {
   CoverView,
+  SmokeView,
   DrawingView,
   FogState,
   LightView,
@@ -21,6 +22,7 @@ import { fetchSceneDrawings } from './drawings.js';
 import { fetchSceneNotes } from './notes.js';
 import { fetchSceneWalls } from './walls-io.js';
 import { fetchSceneCovers } from './covers-io.js';
+import { fetchSceneSmoke } from './smoke-io.js';
 import { fetchSceneLights } from './lights-io.js';
 import { computeViewerVision, type ViewerVision } from './vision.js';
 import { fetchSceneList, getSceneById, toSceneView } from './scenes.js';
@@ -58,6 +60,7 @@ export async function buildStateSync(
       notes: [],
       walls: [],
       covers: [],
+      smoke: [],
       lights: [],
       vision: null,
       openings: [],
@@ -83,6 +86,7 @@ export async function buildStateSync(
     notes,
     walls,
     covers,
+    smoke,
     lights,
     vision,
     characters,
@@ -125,6 +129,11 @@ export async function buildStateSync(
     viewedSceneId
       ? fetchSceneCovers(deps.ctx.prisma, viewedSceneId)
       : Promise.resolve<CoverView[]>([]),
+    // Smoke rides with the covers and for the same reason (stage 16h): a client
+    // that cannot draw the cloud cannot show a player why their roll was -4.
+    viewedSceneId
+      ? fetchSceneSmoke(deps.ctx.prisma, viewedSceneId)
+      : Promise.resolve<SmokeView[]>([]),
     // Lights are GM data for the same reason walls are — the shape a lamp
     // throws is the shape of the room. Players get `vision.light` instead.
     viewedSceneId && user.role === ROLE_GM
@@ -162,6 +171,7 @@ export async function buildStateSync(
     notes,
     walls,
     covers,
+    smoke,
     lights,
     vision: vision
       ? {

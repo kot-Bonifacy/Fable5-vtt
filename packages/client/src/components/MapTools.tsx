@@ -20,10 +20,12 @@ import { useRulerStore } from '../stores/rulerStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useWallStore } from '../stores/wallStore.js';
 import { useCoverStore } from '../stores/coverStore.js';
+import { useSmokeStore } from '../stores/smokeStore.js';
 import { useLightStore } from '../stores/lightStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import {
   clearCovers,
+  clearSmoke,
   clearDrawings,
   clearWalls,
   deleteDrawing,
@@ -140,6 +142,7 @@ export function MapTools() {
   const visibility = useSceneStore((s) => s.effectiveScene?.visibility ?? 'open');
   const hasWalls = useWallStore((s) => s.walls.length > 0);
   const coverCount = useCoverStore((s) => s.covers.length);
+  const smokeCount = useSmokeStore((s) => s.smoke.length);
   const sceneIsDark = useSceneStore((s) => s.effectiveScene?.dark ?? false);
   const lightCount = useLightStore((s) => s.lights.length);
   const tokens = useTokenStore((s) => s.tokens);
@@ -700,6 +703,26 @@ export function MapTools() {
             title="Usuń wszystkie osłony z tej sceny"
             disabled={!sceneId || coverCount === 0}
             onClick={() => sceneId && void clearCovers(sceneId)}
+          >
+            <IconTrashAll />
+          </button>
+
+          {/*
+            The smoke eraser lives with the cover tool (stage 16h) rather than
+            getting a tool of its own: nobody *places* a cloud — a round does —
+            so the only control it needs is the one that clears it, and this is
+            the panel that already means „things standing on the map".
+          */}
+          <span className="map-tools-sep" aria-hidden />
+          <span className="map-tool-hint">
+            {smokeCount === 0 ? 'brak dymu' : `dymu: ${smokeCount}`}
+          </span>
+          <button
+            type="button"
+            className="map-tool map-tool--warn"
+            title="Rozwiej cały dym na tej scenie (podręcznik nie mówi, kiedy dym opada — decyduje MG)"
+            disabled={!sceneId || smokeCount === 0}
+            onClick={() => sceneId && clearSmoke(sceneId)}
           >
             <IconTrashAll />
           </button>

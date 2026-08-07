@@ -15,6 +15,7 @@ export * from './measure.js';
 export * from './notes.js';
 export * from './pathfinding.js';
 export * from './scenes.js';
+export * from './smoke.js';
 export * from './tokens.js';
 export * from './tts.js';
 export * from './vision.js';

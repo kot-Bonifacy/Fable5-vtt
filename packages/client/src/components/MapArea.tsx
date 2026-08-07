@@ -85,6 +85,7 @@ import { clickableOpenings, useWallStore } from '../stores/wallStore.js';
 import { useSelectionStore } from '../stores/selectionStore.js';
 import { pickLightAt, useLightStore } from '../stores/lightStore.js';
 import { coverAt, useCoverStore } from '../stores/coverStore.js';
+import { useSmokeStore } from '../stores/smokeStore.js';
 import {
   currentDrawingStyle,
   currentPlayerToggle,
@@ -1112,6 +1113,25 @@ export function MapArea() {
     pushCovers();
     return useCoverStore.subscribe(pushCovers);
   }, [ready, pushCovers]);
+
+  // Smoke rides with the covers (stage 16h): a cloud the GM has just cleared
+  // must stop shading the square before anybody rolls in it. The scene is a
+  // dependency too — the square is measured in metres, so a grid change moves
+  // its edges.
+  const pushSmoke = useCallback(() => {
+    rendererRef.current?.setSmoke(useSmokeStore.getState().smoke);
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    pushSmoke();
+    const unsubSmoke = useSmokeStore.subscribe(pushSmoke);
+    const unsubScene = useSceneStore.subscribe(pushSmoke);
+    return () => {
+      unsubSmoke();
+      unsubScene();
+    };
+  }, [ready, pushSmoke]);
 
   useEffect(() => {
     if (!ready) return;

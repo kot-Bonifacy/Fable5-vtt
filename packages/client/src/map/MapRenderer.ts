@@ -12,6 +12,7 @@ import {
 import { Viewport } from 'pixi-viewport';
 import type {
   CoverView,
+  SmokeView,
   DrawingShape,
   DrawingStyle,
   DrawingView,
@@ -49,6 +50,7 @@ import {
   formatSquares,
   isOpening,
   metresPerPixel,
+  smokeSidePx,
   normalizeGridOffset,
   planWalk,
   polylineMetres,
@@ -211,6 +213,13 @@ const WALL_COLORS: Record<WallKind, number> = {
  */
 const COVER_FILL_COLOR = 0x64748b;
 const COVER_STROKE_COLOR = 0xcbd5e1;
+/**
+ * Smoke (stage 16h). Deliberately close to the cover grey and deliberately
+ * softer: both are „the world got in the way", and the difference between them
+ * is that one has an edge you can lean on and the other does not.
+ */
+const SMOKE_FILL_COLOR = 0x9aa3ad;
+const SMOKE_STROKE_COLOR = 0xd7dce2;
 const COVER_WRECK_COLOR = 0x94a3b8;
 
 /** Green while it will hold, amber while it might, red when it is nearly gone. */
@@ -648,6 +657,10 @@ export class MapRenderer {
    */
   private readonly coverLayer = new Container();
   private readonly coverGraphics = new Graphics();
+  private readonly smokeLayer = new Container();
+  private readonly smokeGraphics = new Graphics();
+  /** One label per cloud („Dym −4"), kept in step with the rows. */
+  private readonly smokeLabels = new Map<number, Text>();
   /** One label per cover („Samochód 18/25"), kept in step with the rows. */
   private readonly coverLabels = new Map<number, Text>();
   private readonly rangeLayer = new Container();
@@ -802,6 +815,7 @@ export class MapRenderer {
   private coverRectStart: ScenePoint | null = null;
   private coverRectEnd: ScenePoint | null = null;
   private lastCovers: CoverView[] = [];
+  private lastSmoke: SmokeView[] = [];
   /** Ticker phase for flickering lamps — renderer-side, never a network event. */
   private flickerPhase = 0;
   private hasFlicker = false;
@@ -933,6 +947,11 @@ export class MapRenderer {
     // world, and things in the world do not cover the people standing at them.
     this.coverLayer.addChild(this.coverGraphics);
     viewport.addChild(this.coverLayer);
+    // Smoke goes with the covers and just above them: a cloud drifts over the
+    // car it was thrown at, and neither of them may hide the people standing
+    // there — which is why both sit below the token layer.
+    this.smokeLayer.addChild(this.smokeGraphics);
+    viewport.addChild(this.smokeLayer);
     // Range rings sit under the tokens so they never hide a portrait; the
     // ruler sits above everything, because a measurement is meant to be read.
     this.rangeLayer.addChild(this.rangeGraphics);
@@ -994,6 +1013,7 @@ export class MapRenderer {
       // interactive it would sit between the pointer and the viewport and break
       // the same hit test the covering layers broke before stage 16e.
       this.coverLayer,
+      this.smokeLayer,
       this.rangeLayer,
       this.dragGhost,
       this.lightLayer,
@@ -2862,6 +2882,68 @@ export class MapRenderer {
   }
 
   /**
+   * The smoke layer (stage 16h) — drawn for everybody, like the covers.
+   *
+   * A cloud has to read as „the ground here is worse" and not as „something is
+   * standing here", so it is a soft grey square with a dashed edge and no bar,
+   * no label box and no outline weight. It sits *under* the tokens: a figure in
+   * smoke is still a figure, and burying it would cost the one thing the layer
+   * exists to show — who is inside.
+   */
+  setSmoke(smoke: SmokeView[]): void {
+    if (this.destroyed) return;
+    this.lastSmoke = smoke;
+    this.drawSmokeLayer();
+  }
+
+  private drawSmokeLayer(): void {
+    if (this.destroyed) return;
+    const k = this.overlayScale();
+    this.smokeGraphics.clear();
+    const seen = new Set<number>();
+
+    const scene = this.scene;
+    for (const cloud of this.lastSmoke) {
+      seen.add(cloud.id);
+      const side = scene ? smokeSidePx(cloud, scene) : 0;
+      if (side <= 0) continue;
+      const x = cloud.x - side / 2;
+      const y = cloud.y - side / 2;
+      this.smokeGraphics
+        .rect(x, y, side, side)
+        .fill({ color: SMOKE_FILL_COLOR, alpha: 0.42 })
+        .stroke({ color: SMOKE_STROKE_COLOR, width: 2 * k, alpha: 0.6 });
+
+      let label = this.smokeLabels.get(cloud.id);
+      if (!label) {
+        label = new Text({
+          text: '',
+          style: {
+            fontFamily: 'system-ui, sans-serif',
+            fontSize: 14,
+            fill: 0xe6e8ec,
+            stroke: { color: 0x000000, width: 3 },
+          },
+        });
+        label.anchor.set(0.5, 0.5);
+        this.smokeLabels.set(cloud.id, label);
+        this.smokeLayer.addChild(label);
+      }
+      // The penalty is the whole point of the square, so it is on the square.
+      label.text = `${cloud.name} ${cloud.penalty}`;
+      label.scale.set(k);
+      label.alpha = 0.75;
+      label.position.set(cloud.x, cloud.y);
+    }
+
+    for (const [id, label] of this.smokeLabels) {
+      if (seen.has(id)) continue;
+      this.smokeLabels.delete(id);
+      label.destroy();
+    }
+  }
+
+  /**
    * Arms or disarms the wall tool. Like every other map tool it takes the left
    * button off the viewport — a drag has to mean one thing at a time.
    */
@@ -3519,6 +3601,9 @@ export class MapRenderer {
     // The cover label and its body-point bar are screen-sized for the same
     // reason: the rectangle is world geometry, the reading on it is not.
     this.drawCoverLayer();
+    // A cloud's label is screen-sized for the same reason a cover's is: the
+    // square is world geometry, the „−4" written on it is not.
+    this.drawSmokeLayer();
     this.setLights(this.lastLights);
   }
 

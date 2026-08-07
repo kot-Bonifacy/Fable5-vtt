@@ -42,10 +42,16 @@ import {
 } from './combat-actions.js';
 import { grappleActionEvent, grappleAttemptEvent, grappleResistEvent } from './grapple.js';
 import { tokenEffectEvent } from './turn-effects.js';
+import { effectExpireEvent } from './timed-effects.js';
 import { characterCreateEvent, characterDeleteEvent, characterUpdateEvent } from './characters.js';
 import { characterRollEvent } from './character-rolls.js';
 import { damageApplyEvent, damageUndoEvent } from './damage.js';
-import { attackEvadeEvent, attackRollEvent, weaponReloadEvent } from './attacks.js';
+import {
+  attackEvadeEvent,
+  attackRollEvent,
+  attackSmartEvent,
+  weaponReloadEvent,
+} from './attacks.js';
 import { rulerClearEvent, rulerUpdateEvent } from './ruler.js';
 import { fogPaintEvent, fogResetEvent, fogUndoEvent, sceneVisibilityEvent } from './fog.js';
 import {
@@ -56,6 +62,7 @@ import {
   wallUpdateEvent,
 } from './walls.js';
 import { coverClearEvent, coverCreateEvent, coverDeleteEvent, coverUpdateEvent } from './covers.js';
+import { smokeClearEvent } from './smoke.js';
 import {
   lightCreateEvent,
   lightDeleteEvent,
@@ -127,6 +134,7 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   grappleResistEvent,
   grappleActionEvent,
   tokenEffectEvent,
+  effectExpireEvent,
   compendiumUpsertEvent,
   compendiumDeleteEvent,
   characterCreateEvent,
@@ -137,6 +145,7 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   damageUndoEvent,
   attackRollEvent,
   attackEvadeEvent,
+  attackSmartEvent,
   weaponReloadEvent,
   rulerUpdateEvent,
   rulerClearEvent,
@@ -153,6 +162,7 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   coverUpdateEvent,
   coverDeleteEvent,
   coverClearEvent,
+  smokeClearEvent,
   lightCreateEvent,
   lightUpdateEvent,
   lightDeleteEvent,

@@ -216,3 +216,65 @@ describe('sanitizeCharacterName', () => {
     expect(sanitizeCharacterName(42)).toBeNull();
   });
 });
+
+/**
+ * A wound that heals by itself (stage 16h). The timer has to survive every
+ * round trip through the sheet, or the first unrelated save would turn a minute
+ * of blindness into a permanent one.
+ */
+describe('timed critical injuries', () => {
+  const timed = { source: 'Amunicja hukbłyskowa', durationS: 60, expiresAtRound: 9 };
+
+  it('keeps the timer through a validate/merge round trip', () => {
+    const result = validateCharacterDataPatch(
+      {
+        criticalInjuries: [
+          { id: 'injury.head-uraz-oka', name: 'Uraz oka', effect: '-2 do ataków', timed },
+        ],
+      },
+      registry,
+    );
+    expect(result.ok).toBe(true);
+    const row = result.ok ? result.patch.criticalInjuries?.[0] : undefined;
+    expect(row?.timed).toEqual(timed);
+  });
+
+  it('takes a timer with no round — outside a fight nothing is counting', () => {
+    const result = validateCharacterDataPatch(
+      {
+        criticalInjuries: [
+          {
+            id: 'injury.head-uraz-oka',
+            name: 'Uraz oka',
+            effect: '-2',
+            timed: { source: 'Gaz', durationS: 60 },
+          },
+        ],
+      },
+      registry,
+    );
+    const row = result.ok ? result.patch.criticalInjuries?.[0] : undefined;
+    expect(row?.timed?.expiresAtRound).toBeUndefined();
+    expect(row?.timed?.source).toBe('Gaz');
+  });
+
+  it('drops a malformed timer instead of throwing the sheet away', () => {
+    const result = validateCharacterDataPatch(
+      {
+        criticalInjuries: [
+          {
+            id: 'injury.head-uraz-oka',
+            name: 'Uraz oka',
+            effect: '-2',
+            timed: { durationS: 'minuta' },
+          },
+        ],
+      },
+      registry,
+    );
+    expect(result.ok).toBe(true);
+    const row = result.ok ? result.patch.criticalInjuries?.[0] : undefined;
+    // The safe failure is a wound that stays until somebody takes it off.
+    expect(row?.timed).toBeUndefined();
+  });
+});

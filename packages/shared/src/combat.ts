@@ -403,6 +403,27 @@ export interface TokenEffectPayload {
 }
 
 /**
+ * The GM ends a timed effect by hand (stage 16h) — „Minęła minuta".
+ *
+ * Both lists in one call because one round put them there in one sentence:
+ * a flashbang leaves two Critical Injuries, a sleep round two statuses, and
+ * clearing them one at a time would leave a figure half-blind for a click.
+ *
+ * Not the same event as `token:effect`: that one is the GM *deciding* a status,
+ * this one is a duration running out. They differ in what may be refused —
+ * only a wound that carries a timer may be healed this way.
+ */
+export interface EffectExpirePayload {
+  tokenId: string;
+  /** Timed statuses to lift („Powalony", „Nieprzytomny"). */
+  statusIds?: string[];
+  /** Timed Critical Injuries to heal, by compendium id. */
+  injuryIds?: string[];
+  /** The damage card the button was pressed on, so it stops offering it. */
+  messageId?: number;
+}
+
+/**
  * Pochwycenie, or wrestling free of one (stage 14d). Both are the same opposed
  * test from the tracker's point of view: somebody spends an Action, rolls, and
  * the Hold either starts or ends.

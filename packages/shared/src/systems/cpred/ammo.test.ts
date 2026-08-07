@@ -3,8 +3,12 @@ import {
   CPRED_ABLATION_STANDARD,
   ammoAblation,
   ammoDamageNotes,
+  ammoDealsDamage,
   ammoFitsWeapon,
+  ammoOffersSecondRoll,
   ammoOptionsFor,
+  cpredAmmoCheckOutcome,
+  describeAmmoFailure,
   loadedAmmoFor,
   type CpredAmmoProfile,
 } from './ammo.js';
@@ -222,5 +226,76 @@ describe('ammunition in the compendium', () => {
         ? ammoFitsWeapon({ id: shot.id, patterns: shot.patterns }, resolved)
         : false,
     ).toBe(true);
+  });
+});
+
+/**
+ * Stage 16h: the half of the table that hurts nobody directly. All of it is
+ * catalogue data, so these tests build rows — the combat code never learns the
+ * word „gaz".
+ */
+describe('rounds that deal no damage (stage 16h)', () => {
+  const gas = ammo({
+    id: 'ammo.test-gas',
+    name: 'Gaz testowy',
+    patterns: ['grenade'],
+    noDamage: true,
+    check: {
+      skillId: 'resist-torture-drugs',
+      skillLabel: 'Odporność na tortury/narkotyki',
+      statId: 'will',
+      dv: 13,
+      failure: { injuries: ['injury.head-uraz-oka'], durationS: 60 },
+    },
+  });
+
+  it('takes the damage roll off a hit', () => {
+    expect(ammoDealsDamage(gas)).toBe(false);
+    // Absent flags mean „ordinary ammunition", which very much does damage.
+    expect(ammoDealsDamage(ammo())).toBe(true);
+    expect(ammoDealsDamage(null)).toBe(true);
+  });
+
+  it('gives the check to the round, not to the code', () => {
+    expect(gas.check?.dv).toBe(13);
+    expect(gas.check?.failure.injuries).toEqual(['injury.head-uraz-oka']);
+  });
+
+  it('judges a forced check with ties going to the round', () => {
+    // 13 vs DV 13 is a tie, and a tie means the round got through.
+    expect(cpredAmmoCheckOutcome(5, 8, 13).resisted).toBe(false);
+    expect(cpredAmmoCheckOutcome(6, 8, 13).resisted).toBe(true);
+    expect(cpredAmmoCheckOutcome(6, 8, 13).total).toBe(14);
+  });
+
+  it('writes what failing cost in one Polish line', () => {
+    expect(
+      describeAmmoFailure(
+        { damage: '3k6', statuses: ['prone'], durationS: 60 },
+        { statuses: ['Powalony'] },
+      ),
+    ).toBe('3k6 bezpośrednich · Powalony · na minutę');
+    // No labels supplied: the ids are printed rather than nothing at all.
+    expect(describeAmmoFailure({ damage: '2k6' })).toBe('2k6 bezpośrednich');
+  });
+});
+
+describe('smart ammunition (stage 16h)', () => {
+  const smart = ammo({ id: 'ammo.test-smart', smart: { maxMiss: 4, bonus: 10 } });
+
+  it('offers the second roll only for a near miss', () => {
+    expect(ammoOffersSecondRoll(smart, 1)).toBe(true);
+    expect(ammoOffersSecondRoll(smart, 4)).toBe(true);
+    expect(ammoOffersSecondRoll(smart, 5)).toBe(false);
+  });
+
+  it('never offers it on a hit', () => {
+    // A hit is not a miss of zero — the caller passes the printed „brakło N".
+    expect(ammoOffersSecondRoll(smart, 0)).toBe(false);
+  });
+
+  it('offers nothing for an ordinary round', () => {
+    expect(ammoOffersSecondRoll(ammo(), 1)).toBe(false);
+    expect(ammoOffersSecondRoll(null, 1)).toBe(false);
   });
 });

@@ -1,5 +1,6 @@
 import type {
   AttackEvadePayload,
+  AttackSmartPayload,
   AttackRollPayload,
   AttackRollResult,
   ChatMessageView,
@@ -30,9 +31,12 @@ import {
   CPRED_STAT_LABELS,
   CPRED_SUPPRESSIVE_RANGE_M,
   ROLE_GM,
+  ammoDealsDamage,
   ammoFitsWeapon,
+  ammoOffersSecondRoll,
   ammoProfilesOf,
   concentrationBase,
+  cpredSmokeModifiers,
   distanceToCover,
   loadedAmmoFor,
   formatMetres,
@@ -71,7 +75,10 @@ import {
   scatterBlast,
   toAreaMeta,
   type AreaShape,
+  type BlastTarget,
 } from './areas.js';
+import { resolveAmmoChecks, type AmmoCheckTarget } from './ammo-effects.js';
+import { placeSmoke, smokeModifiersAt } from './smoke.js';
 import { pinToken } from './turn-effects.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { grappleStateForToken, readTokenStatuses } from './combat.js';
@@ -580,6 +587,10 @@ async function resolveSuppression(
         resisted ? '' : ' — do osłony'
       }`,
       success: resisted,
+      // Stage 16h closes the leak this list has had since 16: the card goes to
+      // the whole table, and it names every figure within 25 m — hidden ones and
+      // ones standing in unrevealed fog included.
+      ownerId: await controllerOfToken(deps, token),
     });
     // Stage 14e closes the loop the card opened: whoever failed the check is
     // marked „Przygwożdżony" until the end of their own next turn. Soft by
@@ -588,6 +599,17 @@ async function resolveSuppression(
     if (!resisted) await pinToken(deps, campaignId, token.id, SHEET_SUPPRESSED_STATUS_ID);
   }
   return checks;
+}
+
+/** Who may read a card row naming this figure — its owner, or its sheet's. */
+async function controllerOfToken(deps: RealtimeDeps, token: Token): Promise<string | null> {
+  if (token.ownerId) return token.ownerId;
+  if (!token.characterId) return null;
+  const character = await deps.ctx.prisma.character.findUnique({
+    where: { id: token.characterId },
+    select: { ownerId: true },
+  });
+  return character?.ownerId ?? null;
 }
 
 /**
@@ -790,10 +812,16 @@ export const attackRollEvent = defineEvent<AttackRollPayload<CpredAttackRequest>
             ? { name: coverTarget.name, coverId: coverTarget.id, metres, cover: true }
             : { name: POINT_TARGET_NAME, metres, point: true },
         {
-          modifiers: sheetSituationModifiers({
-            grappled: attackerGrapple.grappled,
-            injuries: data.criticalInjuries,
-          }),
+          modifiers: [
+            ...sheetSituationModifiers({
+              grappled: attackerGrapple.grappled,
+              injuries: data.criticalInjuries,
+            }),
+            // Standing in smoke is −4 to everything the shooter does (s. 347,
+            // stage 16h) — a named row in the breakdown like every other
+            // situational modifier, never a silent correction of the total.
+            ...cpredSmokeModifiers(await smokeModifiersAt(deps, scene, origin)),
+          ],
           ...(attackerGrapple.grappled ? { grappled: true } : {}),
           lineOfFire,
           // „PT określasz, używając wiersza Granatnika w tabeli PT zasięgów"
@@ -851,6 +879,8 @@ export const attackRollEvent = defineEvent<AttackRollPayload<CpredAttackRequest>
         scene,
         attacker,
         fire,
+        target,
+        user.id,
         // An explosion is judged where it went off, so the blast needs the aim
         // point and the stat that threw — the one the scatter is measured
         // against when the throw misses. A spread of shot is judged from the
@@ -919,6 +949,10 @@ async function buildAttackMeta(
   scene: Scene,
   attacker: Token,
   fire: FireContext,
+  /** The figure being shot at, when the target is one (stage 16h needs the row). */
+  target: Token | null,
+  /** Who fired — the author of the cards the round's effects post. */
+  authorId: string,
   blast?: AreaRequest,
 ): Promise<RollAttackMeta> {
   const label = `${meta.weaponName} → ${meta.targetName}`;
@@ -930,9 +964,13 @@ async function buildAttackMeta(
     return {
       system: { ...meta },
       label: `${meta.weaponName} → ogień zaporowy`,
-      detail: `${attackDetail(meta)} · PT dla celów ${result.total} · w zasięgu ${formatMetres(
+      // Deliberately countless (stage 16h). „w zasięgu 25 m: 4" walked straight
+      // past the per-viewer filter on the rows below and told the table exactly
+      // how many people are standing in the dark room — the same leak 16d closed
+      // for the blast card by making `describeArea` countless.
+      detail: `${attackDetail(meta)} · PT dla celów ${result.total} · zasięg ${formatMetres(
         CPRED_SUPPRESSIVE_RANGE_M,
-      )}: ${targets.length}`,
+      )}`,
       forcedChecks: checks,
     };
   }
@@ -955,6 +993,10 @@ async function buildAttackMeta(
   // rzut się uda, każdy cel … otrzymuje 3k6" (s. 174). Miss and the pellets go
   // into the wall behind, so there is nobody to list and nothing to roll.
   let area: RollAreaMeta | undefined;
+  /** Whoever the round reached, for the check it forces on them (stage 16h). */
+  let reached: AmmoCheckTarget[] = [];
+  /** Where the round went off — where a cloud of smoke would settle. */
+  let landedAt: ScenePoint | null = null;
   if (blast?.kind === 'blast') {
     const context = fire.loaded ?? (await loadVisionContext(deps.ctx.prisma, scene));
     fire.loaded = context;
@@ -966,6 +1008,8 @@ async function buildAttackMeta(
     const targets = await areaTargets(deps, scene, registry, shape, context);
     area = toAreaMeta(scene, shape, targets, scattered?.scatter ?? null);
     detail = `${detail} · ${describeArea(area)}`;
+    landedAt = centre;
+    reached = checkTargetsIn(targets);
   } else if (blast?.kind === 'cone' && outcome.hit) {
     const context = fire.loaded ?? (await loadVisionContext(deps.ctx.prisma, scene));
     fire.loaded = context;
@@ -981,8 +1025,60 @@ async function buildAttackMeta(
     });
     area = toAreaMeta(scene, shape, targets, null);
     detail = `${detail} · ${describeArea(area)}`;
+    landedAt = blast.towards;
+    reached = checkTargetsIn(targets);
   }
-  const damages = outcome.hit || area !== undefined;
+
+  /* --- Stage 16h: the round that hurts nobody directly --------------- */
+
+  const ammo = meta.ammo;
+  // An ordinary shot at one person reaches exactly that person, and only on a
+  // hit. An area reached whoever the geometry said it did, hit or miss — a gas
+  // grenade that lands short still gasses the wrong square.
+  if (!area && outcome.hit && target && ammo?.check) {
+    reached = [{ token: target, metres: meta.metres }];
+  }
+  const forcedChecks =
+    ammo?.check && reached.length > 0
+      ? await resolveAmmoChecks(deps, campaignId, registry, scene, ammo, reached, authorId)
+      : undefined;
+  if (ammo?.check) {
+    const skill = registry.skills.find((entry) => entry.id === ammo.check!.skillId);
+    const checkLabel = skill?.name ?? ammo.check.skillLabel ?? ammo.check.skillId;
+    detail = `${detail} · test ${checkLabel} PT ${ammo.check.dv}`;
+  }
+
+  // „Zasnuwa kwadrat 10 m × 10 m gęstym dymem" (s. 347). Laid down where the
+  // round went off, which on a miss is the square the scatter chose — smoke does
+  // not care whether the throw was good.
+  if (ammo?.smoke && landedAt) {
+    const cloud = await placeSmoke(deps, campaignId, scene, landedAt, {
+      sideM: ammo.smoke.sideM,
+      penalty: ammo.smoke.penalty,
+      name: 'Dym',
+    });
+    if (cloud) {
+      detail = `${detail} · dym ${cloud.sideM}×${cloud.sideM} m (${cloud.penalty} do testów)`;
+    }
+  }
+
+  // „Ta amunicja nie zadaje obrażeń": no button, no notation, nothing to apply.
+  // Checked here rather than in the planner because the planner still needs a
+  // valid damage notation on the weapon — what changes is only what is offered.
+  const damages = (outcome.hit || area !== undefined) && ammoDealsDamage(ammo);
+
+  // „Jeśli chybisz o 4 lub mniej … dostajesz drugi rzut" (s. 347). Offered, not
+  // taken: Luck may be spent on it, and spending Luck is never the server's
+  // decision. `missedBy` is the number the card already prints.
+  const missedBy = Math.abs(outcome.margin) + 1;
+  const smart =
+    !outcome.hit && meta.mode === 'single' && ammoOffersSecondRoll(ammo, missedBy)
+      ? {
+          missedBy,
+          bonus: ammo!.smart!.bonus,
+          ...(ammo!.smart!.requires ? { requires: ammo!.smart!.requires } : {}),
+        }
+      : undefined;
 
   return {
     system: {
@@ -998,6 +1094,8 @@ async function buildAttackMeta(
     // person, because the two take damage down different paths.
     ...(meta.targetCoverId !== undefined ? { targetCoverId: meta.targetCoverId } : {}),
     ...(area ? { area } : {}),
+    ...(forcedChecks ? { forcedChecks } : {}),
+    ...(smart ? { smart } : {}),
     ...(damages
       ? {
           damageNotation: meta.damage,
@@ -1007,6 +1105,18 @@ async function buildAttackMeta(
         }
       : {}),
   };
+}
+
+/**
+ * Figures an area actually reached — the ones a wall or a car did not spare.
+ *
+ * A cover in the list is dropped rather than checked: „Test Odporności na
+ * tortury" means nothing to a parked car, and gas does not care about it either.
+ */
+function checkTargetsIn(targets: readonly BlastTarget[]): AmmoCheckTarget[] {
+  return targets
+    .filter((entry) => entry.token !== undefined && entry.view.spared === undefined)
+    .map((entry) => ({ token: entry.token!, metres: entry.view.metres }));
 }
 
 /**
@@ -1105,6 +1215,117 @@ export const attackEvadeEvent = defineEvent<AttackEvadePayload, { total: number;
     });
     await broadcastRedactedChatMessage(deps, campaignId, toChatMessageView(saved), 'chat:update');
     return { total: evasion.total, hit: outcome.hit };
+  },
+});
+
+/**
+ * The round corrects a near miss (stage 16h, „Amunicja inteligentna").
+ *
+ * „Jeśli chybisz o 4 lub mniej, dostajesz drugi rzut na trafienie: 1k10 + 10
+ * (możesz też wydać Szczęście)" (s. 347). Three things make this its own event
+ * rather than a second `attack:roll`:
+ *
+ *  - the DV is the *original* one, read off the stored card, so nothing about
+ *    the shot may drift between the two rolls — not the range, not the cover,
+ *    not the ammunition;
+ *  - it costs no Action and no round of ammunition. The bullet is already in
+ *    the air; this is the bullet steering;
+ *  - „cel mogący Unikać dalej może Unikać" — so the dodge is deliberately *not*
+ *    marked as spent, and a defender who was going to duck still may.
+ *
+ * The card is rewritten in place, exactly as a dodge rewrites it.
+ */
+export const attackSmartEvent = defineEvent<AttackSmartPayload, { total: number; hit: boolean }>({
+  name: 'attack:smart',
+  handler: async ({ deps, socket, user, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    if (typeof payload?.messageId !== 'number' || !Number.isInteger(payload.messageId)) {
+      throw new RealtimeError('BAD_REQUEST');
+    }
+    const message = await deps.ctx.prisma.chatMessage.findUnique({
+      where: { id: payload.messageId },
+      include: INCLUDE_CHAT_NAMES,
+    });
+    if (!message || message.campaignId !== campaignId || !message.payload) {
+      throw new RealtimeError('MESSAGE_NOT_FOUND');
+    }
+    const roll = JSON.parse(message.payload) as RollResult;
+    const meta = roll.attack?.system as CpredAttackMeta | undefined;
+    const smart = roll.attack?.smart;
+    if (!roll.attack || !meta || meta.dv === null) throw new RealtimeError('NOT_AN_ATTACK');
+    // Offered once. The offer is taken off the card below, so a second press
+    // finds nothing to take — which is also what a reloaded page will see.
+    if (!smart) throw new RealtimeError('NO_SECOND_ROLL');
+    // Only the shooter may steer their own bullet.
+    const character = await requireRollableCharacter(deps, campaignId, user, payload.characterId);
+    const registry = deps.ctx.cpred;
+    const data = parseCharacterData(character.data, registry);
+    if (!data.weapons.some((weapon) => weapon.id === meta.weaponRowId)) {
+      throw new RealtimeError('NOT_THE_SHOOTER');
+    }
+
+    const luckSpent = Math.max(0, Math.round(payload.luckSpent ?? 0));
+    if (luckSpent > data.luckCurrent) throw new RealtimeError('NOT_ENOUGH_LUCK');
+
+    const modifier = smart.bonus + luckSpent;
+    const gesture: RollGesture | undefined = sanitizeGesture(payload.gesture);
+    const second = rollFormula(
+      {
+        terms: [
+          { kind: 'dice', sign: 1, count: 1, sides: 10 },
+          { kind: 'modifier', sign: 1, value: modifier },
+        ],
+      },
+      createMixedRng(gesture?.entropy),
+      { checkRule: true },
+    );
+    if (luckSpent > 0) {
+      const spent = mergeCharacterData(data, { luckCurrent: data.luckCurrent - luckSpent });
+      const saved = await deps.ctx.prisma.character.update({
+        where: { id: character.id },
+        data: { data: JSON.stringify(spent) },
+      });
+      await emitCharacterUpsert(deps, campaignId, toCharacterView(saved, registry));
+    }
+
+    const outcome = resolveCpredAttack(second.total, meta.dv, meta.autofireMax);
+    const { smart: _offered, ...rest } = roll.attack;
+    const updated: RollResult = {
+      ...roll,
+      // The stored roll *becomes* the corrected one — total and dice together.
+      //
+      // The total has to change because everything downstream measures against
+      // it: a dodge beats `roll.total`, and leaving the old miss there would
+      // have the defender ducking a shot that never came. The terms have to
+      // change with it, or the card would print one die and a total that does
+      // not follow from it.
+      total: second.total,
+      terms: second.terms,
+      criticalDamage: second.criticalDamage,
+      ...(second.critical ? { critical: second.critical } : { critical: undefined }),
+      attack: {
+        ...rest,
+        hit: outcome.hit,
+        detail: `${roll.attack.detail} · poprawka naboju: 1k10+${modifier} = ${second.total}${
+          luckSpent > 0 ? ` (Szczęście ${luckSpent})` : ''
+        } → ${outcome.hit ? 'trafienie' : 'znowu pudło'}`,
+        ...(outcome.hit
+          ? {
+              damageNotation: meta.damage,
+              ...(outcome.multiplier && outcome.multiplier > 1
+                ? { damageMultiplier: outcome.multiplier }
+                : {}),
+            }
+          : { damageNotation: undefined, damageMultiplier: undefined }),
+      },
+    };
+    const saved = await deps.ctx.prisma.chatMessage.update({
+      where: { id: message.id },
+      data: { payload: JSON.stringify(updated) },
+      include: INCLUDE_CHAT_NAMES,
+    });
+    await broadcastRedactedChatMessage(deps, campaignId, toChatMessageView(saved), 'chat:update');
+    return { total: second.total, hit: outcome.hit };
   },
 });
 

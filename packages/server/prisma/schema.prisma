@@ -333,6 +333,7 @@ model Scene {
   notes        MapNote[]
   walls        Wall[]
   covers       Cover[]
+  smoke        Smoke[]
   lights       MapLight[]
   exploration  SceneExploration?
 
@@ -355,6 +356,32 @@ model Scene {
  * map), anchored at the scene origin so a cell means the same square for every
  * viewer and across restarts.
  */
+/// A cloud of smoke on the map (stage 16h).
+///
+/// Unlike a wall and like a cover, it travels to every client: a cloud in the
+/// street is not a secret. Unlike both, it stops nothing — it only makes what
+/// happens inside it harder („dzialania w dymie maja zwykle -4", s. 347), which
+/// is why it has a penalty and no body points.
+model Smoke {
+  id      Int    @id @default(autoincrement())
+  sceneId String
+  /// Label drawn on the map and printed in a roll's breakdown.
+  name    String @default("Dym")
+  /// Centre of the square in scene (world) pixels.
+  x       Float
+  y       Float
+  /// Side of the square in metres; the rulebook's cloud is 10 m across.
+  sideM   Float
+  /// What every Check made inside costs, as a negative number.
+  penalty Int    @default(-4)
+
+  createdAt DateTime @default(now())
+
+  scene Scene @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+
+  @@index([sceneId])
+}
+
 model SceneExploration {
   sceneId String @id
   /// Cell edge in scene pixels — stored, because changing the grid invalidates it.

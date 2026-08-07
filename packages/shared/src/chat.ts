@@ -113,6 +113,23 @@ export interface DamageLogEntry {
    * means the status had no number of its own.
    */
   statusValuesBefore?: Record<string, number | null>;
+  /**
+   * Effects this hit put on for a limited time (stage 16h) — what the GM's
+   * „Minęła minuta" button lifts.
+   *
+   * Distinct from „Cofnij", and the difference is the whole point of the field:
+   * undoing says the hit should never have happened and puts the HP back, while
+   * this says the minute has passed and leaves everything the round earned. In
+   * a fight the round counter presses it first; outside one, nothing else can.
+   */
+  timed?: {
+    statusIds?: string[];
+    injuryIds?: string[];
+    /** „na minutę — poza walką, zdejmuje MG" — what the button explains. */
+    label: string;
+    /** Set once somebody pressed it, so the card stops offering it. */
+    expired?: boolean;
+  };
   /** Set once the GM took the application back. */
   undone?: boolean;
   undoneByName?: string;

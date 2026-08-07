@@ -270,3 +270,82 @@ describe('formatCost', () => {
     }
   });
 });
+
+/**
+ * Stage 16h flags on an ammunition row. The validator is the only thing between
+ * a hand-typed catalogue and the combat code, so the cases that matter are the
+ * half-filled ones: a check with no DV, a failure that costs nothing, a cloud
+ * with a positive penalty.
+ */
+describe('ammunition without damage (stage 16h)', () => {
+  function ammoInput(overrides: Record<string, unknown>) {
+    return {
+      id: 'ammo.test',
+      category: 'ammo',
+      name: 'Nabój testowy',
+      cost: 10,
+      patterns: ['grenade'],
+      ...overrides,
+    };
+  }
+
+  it('keeps a well-formed forced check whole', () => {
+    const result = validateCompendiumEntry(
+      ammoInput({
+        noDamage: true,
+        check: {
+          skillId: 'resist-torture-drugs',
+          skillLabel: 'Odporność na tortury/narkotyki',
+          statId: 'will',
+          dv: 13,
+          biologicalOnly: true,
+          failure: { damage: '2k6', statuses: ['prone'], durationS: 60 },
+        },
+      }),
+    );
+    expect(result.ok).toBe(true);
+    const entry = result.ok && result.entry.category === 'ammo' ? result.entry : null;
+    expect(entry?.noDamage).toBe(true);
+    expect(entry?.check?.dv).toBe(13);
+    expect(entry?.check?.statId).toBe('will');
+    expect(entry?.check?.failure.durationS).toBe(60);
+  });
+
+  it('refuses a failure that costs nothing — it would roll dice for no reason', () => {
+    const result = validateCompendiumEntry(
+      ammoInput({ check: { skillId: 'resist-torture-drugs', dv: 13, failure: {} } }),
+    );
+    expect(result.ok).toBe(false);
+  });
+
+  it('refuses a check with no DV to beat', () => {
+    const result = validateCompendiumEntry(
+      ammoInput({ check: { skillId: 'resist-torture-drugs', failure: { damage: '2k6' } } }),
+    );
+    expect(result.ok).toBe(false);
+  });
+
+  it('refuses damage that is not dice', () => {
+    const result = validateCompendiumEntry(
+      ammoInput({
+        check: { skillId: 'resist-torture-drugs', dv: 13, failure: { damage: 'dużo' } },
+      }),
+    );
+    expect(result.ok).toBe(false);
+  });
+
+  it('takes a cloud of smoke and refuses one that helps the target', () => {
+    const good = validateCompendiumEntry(ammoInput({ smoke: { sideM: 10, penalty: -4 } }));
+    expect(good.ok).toBe(true);
+    const bad = validateCompendiumEntry(ammoInput({ smoke: { sideM: 10, penalty: 4 } }));
+    expect(bad.ok).toBe(false);
+  });
+
+  it('takes the smart round and keeps its cyberware warning', () => {
+    const result = validateCompendiumEntry(
+      ammoInput({ smart: { maxMiss: 4, bonus: 10, requires: 'Celownik optyczny' } }),
+    );
+    const entry = result.ok && result.entry.category === 'ammo' ? result.entry : null;
+    expect(entry?.smart).toEqual({ maxMiss: 4, bonus: 10, requires: 'Celownik optyczny' });
+  });
+});

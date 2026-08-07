@@ -138,6 +138,29 @@ export function redactChatMessage(message: ChatMessageView, user: SessionUser): 
     }
   }
 
+  // The same rule for the checks a volley or a gas round forced (stage 16h).
+  // These rows name figures too — „Ganger — 12 m · SW+Koncentracja …" — and
+  // suppressive fire had been broadcasting them to the whole table since stage
+  // 16, hidden tokens and unrevealed fog included.
+  const checks = view.roll?.attack?.forcedChecks;
+  if (checks) {
+    const visible = checks.filter((check) => check.ownerId === user.id);
+    if (visible.length !== checks.length) {
+      // An emptied list is dropped rather than sent as `[]`, and the difference
+      // is a sentence: the card reads „nikt nie stał w zasięgu" off an empty
+      // array, which would be a lie told to the player whose figures simply are
+      // not on the list. No field at all means „nothing here for you".
+      const { forcedChecks: _hidden, ...rest } = view.roll!.attack!;
+      view = {
+        ...view,
+        roll: {
+          ...view.roll!,
+          attack: visible.length > 0 ? { ...rest, forcedChecks: visible } : rest,
+        },
+      };
+    }
+  }
+
   const damage = view.damage;
   if (!damage) return view;
   if (damage.targetOwnerId && damage.targetOwnerId === user.id) return view;

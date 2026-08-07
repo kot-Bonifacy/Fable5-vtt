@@ -284,6 +284,26 @@ export interface CpredCriticalInjuryRow {
   noDodge?: boolean;
   /** Flat penalty to every Check made from the sheet („−2 do wszystkich Akcji"). */
   actionPenalty?: number;
+  /**
+   * This wound heals by itself (stage 16h) — tear gas and a flashbang leave
+   * „Uraz oka" and „Uraz ucha" for a minute, not for a surgeon.
+   *
+   * The row is otherwise an ordinary injury and is enforced by exactly the same
+   * flags, which is the point: a temporary „Uraz ucha" stops a run for the same
+   * reason a permanent one does. What differs is only who takes it off — the
+   * round counter, or the GM's card when no fight is running.
+   */
+  timed?: CpredTimedInjury;
+}
+
+/** When a self-healing wound comes off, and what put it there (stage 16h). */
+export interface CpredTimedInjury {
+  /** Round of the running combat it expires at; absent outside a fight. */
+  expiresAtRound?: number;
+  /** „Amunicja hukbłyskowa" — provenance, shown on the sheet and the card. */
+  source: string;
+  /** Seconds of fiction it lasts, for the label. */
+  durationS: number;
 }
 
 /**
@@ -530,6 +550,30 @@ function validateRows<T extends CpredItemRow>(
  * than dropped: they are written by the server after a damage roll, so a bad
  * one means a bug, not stale user input.
  */
+/**
+ * The self-healing half of an injury row (stage 16h), or undefined when the
+ * wound is an ordinary one.
+ *
+ * Dropped rather than refused when malformed: a broken timer would otherwise
+ * throw the whole sheet away, and the safe failure here is a wound that stays
+ * until somebody takes it off — which is what every wound did before 16h.
+ */
+function validateTimedInjury(raw: unknown): { timed: CpredTimedInjury } | undefined {
+  if (typeof raw !== 'object' || raw === null) return undefined;
+  const value = raw as Record<string, unknown>;
+  if (typeof value.source !== 'string' || value.source.length === 0) return undefined;
+  const durationS = value.durationS;
+  if (!isInteger(durationS) || durationS <= 0) return undefined;
+  const expires = value.expiresAtRound;
+  return {
+    timed: {
+      source: value.source.slice(0, ITEM_NAME_MAX_LENGTH),
+      durationS,
+      ...(isInteger(expires) && expires > 0 ? { expiresAtRound: expires } : {}),
+    },
+  };
+}
+
 function validateCriticalInjuries(
   raw: unknown,
   issues: CpredValidationIssue[],
@@ -594,6 +638,10 @@ function validateCriticalInjuries(
       actionPenalty >= INJURY_ACTION_PENALTY_MIN
         ? { actionPenalty }
         : {}),
+      // Stage 16h: a wound that heals by itself keeps its timer through every
+      // round trip, or it would become permanent the first time the sheet is
+      // saved for any other reason.
+      ...(validateTimedInjury(row.timed) ?? {}),
     });
   }
   return rows;

@@ -6,7 +6,7 @@ import {
   CPRED_HIT_LOCATION_LABELS,
   isCpredHitLocation,
 } from '@vtt/shared';
-import { applyDamage, undoDamage } from '../socket.js';
+import { applyDamage, expireTimedEffect, undoDamage } from '../socket.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { useCoverStore } from '../stores/coverStore.js';
 
@@ -228,9 +228,16 @@ export function DamageRow({
           {entry.woundLabel && (
             <span className="chat-roll-badge chat-roll-badge--wound">{entry.woundLabel}</span>
           )}
+          {/*
+            A wound named by a round rather than drawn from the table has no 2k6
+            behind it (stage 16h), so the provenance is dropped instead of
+            printing „2k6 = 0" — which would read as a broken die.
+          */}
           {entry.injury && (
             <span className="chat-roll-badge chat-roll-badge--injury" title={entry.injury.effect}>
-              Rana krytyczna (2k6 = {entry.injury.rolled}): {entry.injury.name}
+              Rana krytyczna
+              {entry.injury.rolled > 0 ? ` (2k6 = ${entry.injury.rolled})` : ''}:{' '}
+              {entry.injury.name}
             </span>
           )}
           {entry.injuryExtra && (
@@ -238,11 +245,19 @@ export function DamageRow({
               className="chat-roll-badge chat-roll-badge--injury"
               title={entry.injuryExtra.effect}
             >
-              Druga rana (2k6 = {entry.injuryExtra.rolled}): {entry.injuryExtra.name}
+              Druga rana
+              {entry.injuryExtra.rolled > 0 ? ` (2k6 = ${entry.injuryExtra.rolled})` : ''}:{' '}
+              {entry.injuryExtra.name}
             </span>
           )}
           {entry.injuryNote && (
             <span className="chat-roll-badge chat-roll-badge--note">{entry.injuryNote}</span>
+          )}
+          {/* „na minutę — do rundy 9" / „poza walką, zdejmuje MG" (stage 16h). */}
+          {entry.timed && (
+            <span className="chat-roll-badge chat-roll-badge--note">
+              {entry.timed.expired ? 'Efekt minął' : entry.timed.label}
+            </span>
           )}
           {entry.undone && (
             <span className="chat-roll-badge chat-roll-badge--note">
@@ -250,6 +265,30 @@ export function DamageRow({
             </span>
           )}
         </div>
+        {/*
+          The GM's clock (stage 16h). In a fight the round counter presses this
+          first; outside one nothing else can, which is exactly why the button
+          exists. Deliberately not „Cofnij": undoing says the hit should never
+          have happened and gives the hit points back, this says the minute has
+          passed and leaves everything the round earned.
+        */}
+        {isGm && entry.timed && !entry.timed.expired && !entry.undone && entry.targetTokenId && (
+          <button
+            type="button"
+            className="small-button"
+            title="Zdejmij efekt, którego czas minął (PW i rany z tego trafienia zostają)"
+            onClick={() =>
+              expireTimedEffect({
+                tokenId: entry.targetTokenId!,
+                ...(entry.timed!.statusIds ? { statusIds: entry.timed!.statusIds } : {}),
+                ...(entry.timed!.injuryIds ? { injuryIds: entry.timed!.injuryIds } : {}),
+                messageId: message.id,
+              })
+            }
+          >
+            Minęła minuta
+          </button>
+        )}
         {entry.injury && <p className="chat-damage-injury-effect">{entry.injury.effect}</p>}
         {entry.injuryExtra && (
           <p className="chat-damage-injury-effect">{entry.injuryExtra.effect}</p>

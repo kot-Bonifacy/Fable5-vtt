@@ -5,6 +5,7 @@ import {
   type CpredAmmoPattern,
   type CpredAmmoProfile,
 } from './ammo.js';
+import { SMOKE_PENALTY_MIN, SMOKE_SIDE_M_MAX } from '../../smoke.js';
 import { isValidCompendiumId, slugify } from './ids.js';
 import {
   ARMOR_LOCATIONS,
@@ -14,7 +15,7 @@ import {
   INJURY_MOVE_PENALTY_MIN,
   type ArmorLocation,
 } from './locations.js';
-import { CPRED_STAT_IDS } from './stats.js';
+import { CPRED_STAT_IDS, type CpredStatId } from './stats.js';
 
 /**
  * Compendium of CP RED game objects: weapon types (the rulebook's base rows),
@@ -676,6 +677,12 @@ export const AMMO_ABLATION_BONUS_MAX = 10;
 export const AMMO_DOT_DAMAGE_MAX = 20;
 export const AMMO_SPREAD_DV_MAX = 30;
 export const AMMO_SPREAD_RANGE_M_MAX = 50;
+/** Rails on the stage 16h flags. */
+export const AMMO_CHECK_DV_MAX = 40;
+/** Ten minutes of fiction — far past anything the table prints. */
+export const AMMO_CHECK_DURATION_S_MAX = 600;
+export const AMMO_SMART_MAX_MISS = 10;
+export const AMMO_SMART_BONUS_MAX = 20;
 
 /**
  * One ammunition row (stage 16g). Every effect is optional — a round with no
@@ -735,6 +742,21 @@ function validateAmmo(
   const spread = readAmmoSpread(input.spread, issues);
   if (issues.length > 0) return undefined;
   if (spread) ammo.spread = spread;
+
+  // Stage 16h — the half of the table that hurts nobody directly.
+  if (input.noDamage === true) ammo.noDamage = true;
+
+  const check = readAmmoCheck(input.check, issues);
+  if (issues.length > 0) return undefined;
+  if (check) ammo.check = check;
+
+  const smoke = readAmmoSmoke(input.smoke, issues);
+  if (issues.length > 0) return undefined;
+  if (smoke) ammo.smoke = smoke;
+
+  const smart = readAmmoSmart(input.smart, issues);
+  if (issues.length > 0) return undefined;
+  if (smart) ammo.smart = smart;
   return ammo;
 }
 
@@ -801,6 +823,167 @@ function readAmmoSpread(
     return undefined;
   }
   return { dv, damage, coneRangeM };
+}
+
+/**
+ * The check a no-damage round forces (stage 16h) and what failing it costs.
+ *
+ * Nothing here is looked up: the skill id, the injury ids and the status ids are
+ * carried as written, exactly as `ignites.statusId` has been since 16g. A round
+ * naming a skill this campaign's registry has never heard of degrades to a roll
+ * on the bare stat rather than being refused at import — the Easy Mode list has
+ * 41 skills and „Cyberinżynieria" is not one of them.
+ */
+function readAmmoCheck(
+  raw: unknown,
+  issues: CompendiumIssue[],
+): CpredAmmoEffect['check'] | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  const input = typeof raw === 'object' ? (raw as Record<string, unknown>) : null;
+  const skillId = input && typeof input.skillId === 'string' ? input.skillId : '';
+  const dv = input?.dv;
+  const failureRaw = input?.failure;
+  if (
+    !skillId ||
+    !isValidCompendiumId(skillId) ||
+    !isInteger(dv) ||
+    dv < 1 ||
+    dv > AMMO_CHECK_DV_MAX
+  ) {
+    issues.push({
+      field: 'check',
+      message: `Wymuszony test: identyfikator umiejętności i PT od 1 do ${AMMO_CHECK_DV_MAX}.`,
+    });
+    return undefined;
+  }
+  const failure =
+    typeof failureRaw === 'object' && failureRaw !== null
+      ? (failureRaw as Record<string, unknown>)
+      : null;
+  if (!failure) {
+    issues.push({ field: 'check', message: 'Wymuszony test musi mówić, co daje porażka.' });
+    return undefined;
+  }
+
+  const damage = failure.damage;
+  if (damage !== undefined && damage !== null) {
+    if (typeof damage !== 'string' || !isValidDamageNotation(damage)) {
+      issues.push({ field: 'check', message: 'Obrażenia porażki: notacja kości, np. 3k6.' });
+      return undefined;
+    }
+  }
+  const statuses = readIdList(failure.statuses);
+  const injuries = readIdList(failure.injuries);
+  if (statuses === null || injuries === null) {
+    issues.push({ field: 'check', message: 'Nieprawidłowe identyfikatory statusów albo ran.' });
+    return undefined;
+  }
+  const durationS = failure.durationS;
+  if (durationS !== undefined && durationS !== null) {
+    if (!isInteger(durationS) || durationS <= 0 || durationS > AMMO_CHECK_DURATION_S_MAX) {
+      issues.push({
+        field: 'check',
+        message: `Czas trwania efektu: sekundy od 1 do ${AMMO_CHECK_DURATION_S_MAX}.`,
+      });
+      return undefined;
+    }
+  }
+  // A failure that costs nothing is a row somebody half-filled, and it would
+  // roll dice at the table to no purpose.
+  if (typeof damage !== 'string' && statuses.length === 0 && injuries.length === 0) {
+    issues.push({
+      field: 'check',
+      message: 'Porażka testu musi coś dawać: obrażenia, status albo ranę krytyczną.',
+    });
+    return undefined;
+  }
+
+  const skillLabel = input && typeof input.skillLabel === 'string' ? input.skillLabel : '';
+  const statId = (CPRED_STAT_IDS as readonly unknown[]).includes(input?.statId)
+    ? (input!.statId as CpredStatId)
+    : undefined;
+  return {
+    skillId,
+    ...(skillLabel ? { skillLabel: skillLabel.slice(0, COMPENDIUM_NAME_MAX_LENGTH) } : {}),
+    ...(statId ? { statId } : {}),
+    dv,
+    ...(input?.biologicalOnly === true ? { biologicalOnly: true as const } : {}),
+    failure: {
+      ...(typeof damage === 'string' ? { damage } : {}),
+      ...(statuses.length > 0 ? { statuses } : {}),
+      ...(injuries.length > 0 ? { injuries } : {}),
+      ...(isInteger(durationS) && durationS > 0 ? { durationS } : {}),
+    },
+  };
+}
+
+/** A list of compendium-shaped ids, or null when one of them is not. */
+function readIdList(raw: unknown): string[] | null {
+  if (raw === undefined || raw === null) return [];
+  if (!Array.isArray(raw)) return null;
+  const ids: string[] = [];
+  for (const value of raw) {
+    if (typeof value !== 'string' || !isValidCompendiumId(value)) return null;
+    ids.push(value);
+  }
+  return ids;
+}
+
+/** „Zasnuwa kwadrat 10 m × 10 m … działania w dymie mają zwykle −4" (s. 347). */
+function readAmmoSmoke(
+  raw: unknown,
+  issues: CompendiumIssue[],
+): CpredAmmoEffect['smoke'] | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  const input = typeof raw === 'object' ? (raw as Record<string, unknown>) : null;
+  const sideM = input?.sideM;
+  const penalty = input?.penalty;
+  if (
+    !isInteger(sideM) ||
+    sideM < 1 ||
+    sideM > SMOKE_SIDE_M_MAX ||
+    !isInteger(penalty) ||
+    penalty >= 0 ||
+    penalty < SMOKE_PENALTY_MIN
+  ) {
+    issues.push({
+      field: 'smoke',
+      message: `Dym: bok kwadratu 1–${SMOKE_SIDE_M_MAX} m i ujemny modyfikator (do ${SMOKE_PENALTY_MIN}).`,
+    });
+    return undefined;
+  }
+  return { sideM, penalty };
+}
+
+/** „Jeśli chybisz o 4 lub mniej … drugi rzut 1k10 + 10" (s. 347). */
+function readAmmoSmart(
+  raw: unknown,
+  issues: CompendiumIssue[],
+): CpredAmmoEffect['smart'] | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  const input = typeof raw === 'object' ? (raw as Record<string, unknown>) : null;
+  const maxMiss = input?.maxMiss;
+  const bonus = input?.bonus;
+  if (
+    !isInteger(maxMiss) ||
+    maxMiss < 1 ||
+    maxMiss > AMMO_SMART_MAX_MISS ||
+    !isInteger(bonus) ||
+    bonus < 0 ||
+    bonus > AMMO_SMART_BONUS_MAX
+  ) {
+    issues.push({
+      field: 'smart',
+      message: `Amunicja inteligentna: chybienie 1–${AMMO_SMART_MAX_MISS} i premia 0–${AMMO_SMART_BONUS_MAX}.`,
+    });
+    return undefined;
+  }
+  const requires = input && typeof input.requires === 'string' ? input.requires : '';
+  return {
+    maxMiss,
+    bonus,
+    ...(requires ? { requires: requires.slice(0, COMPENDIUM_NAME_MAX_LENGTH) } : {}),
+  };
 }
 
 function validateArmor(
@@ -1189,6 +1372,14 @@ export function toAmmoProfile(entry: AmmoEntry): CpredAmmoProfile {
     ...(entry.ignites ? { ignites: { ...entry.ignites } } : {}),
     ...(entry.extraInjuryOn ? { extraInjuryOn: [...entry.extraInjuryOn] } : {}),
     ...(entry.spread ? { spread: { ...entry.spread } } : {}),
+    // Stage 16h. Every flag has to be copied by hand here — the profile is what
+    // travels with the shot (`CpredAttackMeta.ammo`), so anything missed at this
+    // line is a rule the combat code never sees, however carefully the
+    // catalogue row was typed.
+    ...(entry.noDamage ? { noDamage: true as const } : {}),
+    ...(entry.check ? { check: { ...entry.check, failure: { ...entry.check.failure } } } : {}),
+    ...(entry.smoke ? { smoke: { ...entry.smoke } } : {}),
+    ...(entry.smart ? { smart: { ...entry.smart } } : {}),
   };
 }
 

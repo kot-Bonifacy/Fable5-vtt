@@ -8,9 +8,13 @@ import type {
   AiStatus,
   AiStatusBroadcast,
   AttackEvadePayload,
+  AttackSmartPayload,
+  EffectExpirePayload,
+  SmokeClearPayload,
   AttackRollPayload,
   AttackRollResult,
   CoverSyncBroadcast,
+  SmokeSyncBroadcast,
   CoverView,
   BotActivityBroadcast,
   BotChatPayload,
@@ -131,6 +135,7 @@ import { useWallStore } from './stores/wallStore.js';
 import { useLightStore } from './stores/lightStore.js';
 import { useExplorationStore } from './stores/explorationStore.js';
 import { useCoverStore } from './stores/coverStore.js';
+import { useSmokeStore } from './stores/smokeStore.js';
 import { offerCoverChoice, offerShieldChoice } from './attack-targeting.js';
 
 let socket: Socket | undefined;
@@ -305,6 +310,7 @@ export function connectSocket(userId: string): Socket {
     useNoteStore.getState().applySync(payload);
     useWallStore.getState().applySync(payload);
     useCoverStore.getState().applySync(payload);
+    useSmokeStore.getState().applySync(payload);
     useLightStore.getState().applySync(payload);
     useExplorationStore.getState().applySync(payload);
     if (payload.ai) useAiStore.getState().setStatus(payload.ai);
@@ -568,6 +574,18 @@ export function connectSocket(userId: string): Socket {
       useCoverStore.getState().setCovers(broadcast.sceneId, broadcast.covers);
     }
   });
+  // Smoke rides with the covers (stage 16h) and for the same reason: everybody
+  // sees the cloud, and a missed edit would leave a player rolling -4 for a
+  // square that has been clear for a round.
+  socket.on('smoke:sync', (broadcast: SmokeSyncBroadcast & { seq?: number }) => {
+    if (chat().applySeq(broadcast.seq)) {
+      socket?.emit('state:request');
+      return;
+    }
+    if (viewingScene(broadcast.sceneId)) {
+      useSmokeStore.getState().setSmoke(broadcast.sceneId, broadcast.smoke);
+    }
+  });
   socket.on('opening:sync', (broadcast: OpeningSyncBroadcast) => {
     if (viewingScene(broadcast.sceneId)) useWallStore.getState().setOpenings(broadcast.openings);
   });
@@ -821,6 +839,50 @@ export function sendAttackEvade(
   };
   socket?.emit('attack:evade', payload, (ack: SocketAck<{ total: number; hit: boolean }>) => {
     if (!ack.ok) useChatStore.getState().addNote(attackAckErrorText(ack.error));
+  });
+}
+
+/**
+ * The shooter takes the second roll a smart round earned (stage 16h).
+ *
+ * The mirror image of the dodge above and deliberately a separate call: this one
+ * is rolled by the attacker, and it must not mark the defender's Evasion as
+ * spent — „cel mogący Unikać dalej może Unikać" (s. 347).
+ */
+export function sendAttackSmart(
+  messageId: number,
+  characterId: string,
+  gesture?: RollGesture,
+  luckSpent?: number,
+): void {
+  const payload: AttackSmartPayload = {
+    messageId,
+    characterId,
+    ...(luckSpent && luckSpent > 0 ? { luckSpent } : {}),
+    ...(gesture ? { gesture } : {}),
+  };
+  socket?.emit('attack:smart', payload, (ack: SocketAck<{ total: number; hit: boolean }>) => {
+    if (!ack.ok) useChatStore.getState().addNote(attackAckErrorText(ack.error));
+  });
+}
+
+/**
+ * The GM ends a timed effect by hand (stage 16h) — „Minęła minuta".
+ *
+ * Outside a fight this is the only clock there is: no round ticks, so nothing
+ * else can take the blindness off. Inside one it is an early exit.
+ */
+export function expireTimedEffect(payload: EffectExpirePayload): void {
+  socket?.emit('effect:expire', payload, (ack: SocketAck<{ removed: string[] }>) => {
+    if (!ack.ok) useChatStore.getState().addNote('Nie udało się zdjąć efektu.');
+  });
+}
+
+/** Clears one cloud of smoke, or every cloud on the scene (stage 16h). */
+export function clearSmoke(sceneId: string, smokeId?: number): void {
+  const payload: SmokeClearPayload = { sceneId, ...(smokeId !== undefined ? { smokeId } : {}) };
+  socket?.emit('smoke:clear', payload, (ack: SocketAck<{ cleared: number }>) => {
+    if (!ack.ok) useChatStore.getState().addNote('Nie udało się rozwiać dymu.');
   });
 }
 

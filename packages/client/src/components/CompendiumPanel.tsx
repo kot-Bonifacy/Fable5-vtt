@@ -6,6 +6,7 @@ import {
   COMPENDIUM_CATEGORY_LABELS,
   CPRED_RANGE_BANDS,
   CPRED_AMMO_PATTERN_LABELS,
+  describeAmmoFailure,
   CRITICAL_INJURY_TABLE_LABELS,
   ROLE_GM,
   WEAPON_QUALITY_LABELS,
@@ -270,6 +271,41 @@ function EntryCard({
             {entry.noCriticalInjury ? <Stat label="Rany krytyczne" value="nie powoduje" /> : null}
             {entry.noAblation ? <Stat label="Pancerz celu" value="nie ulega uszkodzeniu" /> : null}
             {entry.noAim ? <Stat label="Celowanie" value="niedostępne" /> : null}
+            {/* Stage 16h — the half of the table that hurts nobody directly. */}
+            {entry.noDamage ? (
+              <Stat
+                label="Obrażenia"
+                value="nie zadaje"
+                hint="Zamiast rzutu na obrażenia trafiony zdaje test albo dostaje efekt obszarowy."
+              />
+            ) : null}
+            {entry.check ? (
+              <Stat
+                label="Wymuszony test"
+                value={`${entry.check.skillLabel ?? entry.check.skillId} · PT ${entry.check.dv}`}
+                hint={`Porażka: ${describeAmmoFailure(entry.check.failure)}${
+                  entry.check.biologicalOnly ? ' · tylko cele biologiczne' : ''
+                }`}
+              />
+            ) : null}
+            {entry.smoke ? (
+              <Stat
+                label="Dym"
+                value={`${entry.smoke.sideM}×${entry.smoke.sideM} m · ${entry.smoke.penalty} do testów`}
+                hint="Kwadrat na mapie; każdy test wykonywany w dymie dostaje tę karę. Podręcznik nie mówi, kiedy dym opada — rozwiewa go MG."
+              />
+            ) : null}
+            {entry.smart ? (
+              <Stat
+                label="Poprawka po pudle"
+                value={`chybienie ≤ ${entry.smart.maxMiss} → 1k10 + ${entry.smart.bonus}`}
+                hint={
+                  entry.smart.requires
+                    ? `Wymaga cyborgizacji „${entry.smart.requires}" — VTT tego nie sprawdza (etap 23).`
+                    : 'Drugi rzut przeciw temu samemu PT.'
+                }
+              />
+            ) : null}
           </>
         ) : null}
         {entry.category === 'armor' ? (

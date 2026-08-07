@@ -13,6 +13,8 @@ import type {
   CpredTurnSpend,
   CpredWoundState,
   DamageLogEntry,
+  CpredTimedEffect,
+  CpredTimedInjury,
   DiceRng,
   RollBreakdownEntry,
   TokenHp,
@@ -20,6 +22,7 @@ import type {
 } from '@vtt/shared';
 import {
   CPRED_ACTIONS,
+  CPRED_EMP_STATUS_ID,
   CPRED_FIRE_INTENSITIES,
   CPRED_GRAPPLED_STATUS_ID,
   CPRED_GRAPPLE_PENALTY,
@@ -42,6 +45,7 @@ import {
   cpredActionBlock,
   cpredDodgeBlock,
   cpredExpiringStatuses,
+  cpredExpiryRound,
   cpredGrappleBase,
   cpredHumanShieldCovers,
   cpredInjuryCarryOnDraw,
@@ -59,6 +63,8 @@ import {
   cpredTurnPhaseRan,
   cpredTurnBudget,
   cpredTurnReminders,
+  cpredTimedExpired,
+  describeCpredTimer,
   setCpredHardTerrain,
   withCpredMoveAllowance,
   drawCriticalInjury,
@@ -522,6 +528,143 @@ export function applyPeriodicDamageToTokenHp(
   return { hp: { current: outcome.hpAfter, max: hp.max }, log: periodicDamageLog(outcome, hp.max) };
 }
 
+/**
+ * What failing a round's forced check costs a sheet (stage 16h).
+ *
+ * Everything here is *named*, never drawn: „porażka to Rana Krytyczna »Uraz
+ * oka«" picks one row out of the table, unlike the 2d6 of an ordinary Critical
+ * Injury. The wound is otherwise identical — same id, same effect text, same
+ * machine flags — which is why a temporary „Uraz ucha" stops a run exactly as a
+ * permanent one does.
+ *
+ * Damage is direct: „obrażenia bezpośrednie" throughout this half of the
+ * ammunition table, so armour neither subtracts nor wears down.
+ */
+export interface SheetForcedFailure {
+  /** Damage already rolled by the caller; 0 when the round only wounds. */
+  damage: number;
+  /** Injuries to add, by compendium id. */
+  injuryIds?: readonly string[];
+  /** When those wounds come off by themselves; absent = they stay. */
+  timed?: CpredTimedInjury;
+}
+
+export function applyForcedFailureToSheet(
+  character: Character,
+  registry: SheetRegistry,
+  failure: SheetForcedFailure,
+  compendium: readonly CompendiumEntry[],
+): { data: string; hp: TokenHp; log: SheetDamageLog; carry: SheetTurnCarry | null } {
+  const data = parseCharacterData(character.data, registry);
+  const max = hpMax(data.stats);
+  const outcome = resolveCpredDamage({
+    damage: Math.max(0, Math.round(failure.damage)),
+    location: 'body',
+    armorSp: 0,
+    hpCurrent: data.hpCurrent,
+    hpMax: max,
+    criticalInjury: false,
+    ignoreArmor: true,
+  });
+  const log = periodicDamageLog(outcome, max);
+  const patch: Partial<CpredCharacterData> = { hpCurrent: outcome.hpAfter };
+
+  const rows: CpredCriticalInjuryRow[] = [];
+  const missing: string[] = [];
+  let carry: SheetTurnCarry | null = null;
+  for (const id of failure.injuryIds ?? []) {
+    const entry = compendium.find((row) => row.id === id && isCriticalInjuryEntry(row));
+    if (!entry || !isCriticalInjuryEntry(entry)) {
+      missing.push(id);
+      continue;
+    }
+    // A wound that is already there is not doubled: a second flashbang in the
+    // same minute does not blind somebody twice, it just keeps them blind — and
+    // the timer of the row already on the sheet is left alone, because the
+    // longer of two overlapping minutes is the one that matters.
+    if (data.criticalInjuries.some((injury) => injury.id === id)) continue;
+    const row = toCriticalInjuryRow(entry, 0);
+    rows.push({ ...row, ...(failure.timed ? { timed: failure.timed } : {}) });
+    carry = mergeSheetCarry(carry, cpredInjuryCarryOnDraw(row) ?? {});
+  }
+  if (rows.length > 0) patch.criticalInjuries = [...data.criticalInjuries, ...rows];
+  if (rows[0]) {
+    log.injury = { id: rows[0].id, name: rows[0].name, effect: rows[0].effect, rolled: 0 };
+  }
+  if (rows[1]) {
+    log.injuryExtra = { id: rows[1].id, name: rows[1].name, effect: rows[1].effect, rolled: 0 };
+  }
+  if (missing.length > 0) {
+    log.injuryNote = `Brak w kompendium rany: ${missing.join(', ')} — uzupełnij tabelę ran.`;
+  }
+
+  const merged = mergeCharacterData(data, patch);
+  return {
+    data: JSON.stringify(merged),
+    hp: { current: merged.hpCurrent, max },
+    log,
+    carry: sheetCarryIsEmpty(carry) ? null : carry,
+  };
+}
+
+/**
+ * Wounds a sheet carries that the round counter has caught up with (stage 16h).
+ *
+ * Returns the rows to take off and the sheet without them, so the caller can
+ * both write the sheet back and say on the card *which* wound healed.
+ */
+export function expireSheetInjuries(
+  character: Character,
+  registry: SheetRegistry,
+  round: number,
+): { data: string; expired: CpredCriticalInjuryRow[] } | null {
+  const data = parseCharacterData(character.data, registry);
+  const expired = data.criticalInjuries.filter(
+    (injury) => injury.timed && cpredTimedExpired(injury.timed, round),
+  );
+  if (expired.length === 0) return null;
+  const merged = mergeCharacterData(data, {
+    criticalInjuries: data.criticalInjuries.filter((injury) => !expired.includes(injury)),
+  });
+  return { data: JSON.stringify(merged), expired };
+}
+
+/** Wounds a sheet carries that will heal by themselves — the GM's prompt list. */
+export function readSheetTimedInjuries(
+  character: Pick<Character, 'data'>,
+  registry: SheetRegistry,
+): CpredCriticalInjuryRow[] {
+  return parseCharacterData(character.data, registry).criticalInjuries.filter(
+    (injury) => injury.timed !== undefined,
+  );
+}
+
+/**
+ * Heals one self-healing wound by id — the GM's „Minęła minuta" button.
+ *
+ * Only a wound that carries a timer may go this way. An ordinary Critical
+ * Injury is taken off by treatment or by „Cofnij", and letting this button
+ * remove one would make it a third way to heal that nobody asked for. Outside a
+ * fight a timer has no round to expire at, which is exactly why the button
+ * exists rather than being an optimisation of the sweep.
+ */
+export function removeSheetTimedInjury(
+  character: Character,
+  registry: SheetRegistry,
+  injuryId: string,
+): { data: string; removed: CpredCriticalInjuryRow } | null {
+  const data = parseCharacterData(character.data, registry);
+  const index = data.criticalInjuries.findIndex(
+    (injury) => injury.id === injuryId && injury.timed !== undefined,
+  );
+  if (index === -1) return null;
+  const removed = data.criticalInjuries[index]!;
+  const merged = mergeCharacterData(data, {
+    criticalInjuries: data.criticalInjuries.filter((_, position) => position !== index),
+  });
+  return { data: JSON.stringify(merged), removed };
+}
+
 function periodicDamageLog(
   outcome: ReturnType<typeof resolveCpredDamage>,
   hpMaxValue: number,
@@ -566,45 +709,142 @@ export function applyGrappleDamageToTokenHp(
 /** Numbers riding along with a token's statuses (fire intensity, poison). */
 export type SheetStatusData = Record<string, number>;
 
+/** Timers riding along with them (stage 16h) — „Nieprzytomny na minutę". */
+export type SheetStatusTimers = Record<string, CpredTimedEffect>;
+
+/** Everything one status carries beside its id. */
+interface StatusEntry {
+  damage?: number;
+  timer?: CpredTimedEffect;
+}
+
 /**
- * Reads the `Token.statusData` column into the flat map the rules want.
+ * Reads the `Token.statusData` column whole.
  *
  * Stored as `{"on-fire":{"damage":6}}` rather than `{"on-fire":6}` so a later
- * stage can put a second number on a status (rounds left, a source) without a
- * migration; the rules only ever ask for the damage.
+ * stage could put a second number on a status without a migration — and stage
+ * 16h is that stage: a timed status adds `{"timer":{…}}` beside the damage, and
+ * nothing that reads the damage had to learn about it.
  */
-export function readSheetStatusData(raw: string | null | undefined): SheetStatusData {
+function readStatusEntries(raw: string | null | undefined): Record<string, StatusEntry> {
   if (!raw) return {};
   try {
     const parsed: unknown = JSON.parse(raw);
     if (typeof parsed !== 'object' || parsed === null) return {};
-    const values: SheetStatusData = {};
-    for (const [id, entry] of Object.entries(parsed as Record<string, unknown>)) {
-      if (typeof entry !== 'object' || entry === null) continue;
-      const damage = (entry as { damage?: unknown }).damage;
+    const entries: Record<string, StatusEntry> = {};
+    for (const [id, value] of Object.entries(parsed as Record<string, unknown>)) {
+      if (typeof value !== 'object' || value === null) continue;
+      const entry: StatusEntry = {};
+      const damage = (value as { damage?: unknown }).damage;
       if (typeof damage === 'number' && Number.isFinite(damage)) {
-        values[id] = Math.max(0, Math.round(damage));
+        entry.damage = Math.max(0, Math.round(damage));
       }
+      const timer = readStatusTimer((value as { timer?: unknown }).timer);
+      if (timer) entry.timer = timer;
+      if (entry.damage !== undefined || entry.timer) entries[id] = entry;
     }
-    return values;
+    return entries;
   } catch {
     return {};
   }
 }
 
-/** Writes one status's number back, or clears it when `damage` is null. */
+/** One stored timer, or null when it is malformed — never a thrown sheet. */
+function readStatusTimer(raw: unknown): CpredTimedEffect | null {
+  if (typeof raw !== 'object' || raw === null) return null;
+  const value = raw as Record<string, unknown>;
+  if (typeof value.source !== 'string' || value.source.length === 0) return null;
+  if (typeof value.durationS !== 'number' || !Number.isFinite(value.durationS)) return null;
+  const expires = value.expiresAtRound;
+  return {
+    source: value.source,
+    durationS: Math.max(0, Math.round(value.durationS)),
+    ...(typeof expires === 'number' && Number.isFinite(expires)
+      ? { expiresAtRound: Math.round(expires) }
+      : {}),
+  };
+}
+
+/** The damage dials only — what the periodic-damage rules ask for. */
+export function readSheetStatusData(raw: string | null | undefined): SheetStatusData {
+  const values: SheetStatusData = {};
+  for (const [id, entry] of Object.entries(readStatusEntries(raw))) {
+    if (entry.damage !== undefined) values[id] = entry.damage;
+  }
+  return values;
+}
+
+/** The timers only — what the round counter asks for (stage 16h). */
+export function readSheetStatusTimers(raw: string | null | undefined): SheetStatusTimers {
+  const timers: SheetStatusTimers = {};
+  for (const [id, entry] of Object.entries(readStatusEntries(raw))) {
+    if (entry.timer) timers[id] = entry.timer;
+  }
+  return timers;
+}
+
+function serializeStatusEntries(entries: Record<string, StatusEntry>): string {
+  return JSON.stringify(
+    Object.fromEntries(
+      Object.entries(entries).map(([id, entry]) => [
+        id,
+        {
+          ...(entry.damage !== undefined ? { damage: entry.damage } : {}),
+          ...(entry.timer ? { timer: entry.timer } : {}),
+        },
+      ]),
+    ),
+  );
+}
+
+/**
+ * Writes one status's number back, or forgets the status entirely when `damage`
+ * is null.
+ *
+ * „Entirely" includes its timer, and that is deliberate: the one caller that
+ * passes null is the GM toggling the badge by hand, and a status a person just
+ * set is theirs to take off — not the round counter's.
+ */
 export function writeSheetStatusData(
   raw: string | null | undefined,
   statusId: string,
   damage: number | null,
 ): string {
-  const values = readSheetStatusData(raw);
-  if (damage === null) delete values[statusId];
-  else values[statusId] = Math.max(0, Math.round(damage));
-  return JSON.stringify(
-    Object.fromEntries(Object.entries(values).map(([id, value]) => [id, { damage: value }])),
-  );
+  const entries = readStatusEntries(raw);
+  if (damage === null) delete entries[statusId];
+  else entries[statusId] = { ...entries[statusId], damage: Math.max(0, Math.round(damage)) };
+  return serializeStatusEntries(entries);
 }
+
+/** Writes one status's timer back, or clears it, leaving its damage alone. */
+export function writeSheetStatusTimer(
+  raw: string | null | undefined,
+  statusId: string,
+  timer: CpredTimedEffect | null,
+): string {
+  const entries = readStatusEntries(raw);
+  const current = entries[statusId];
+  if (timer === null) {
+    if (!current) return serializeStatusEntries(entries);
+    if (current.damage === undefined) delete entries[statusId];
+    else entries[statusId] = { damage: current.damage };
+  } else {
+    entries[statusId] = { ...current, timer };
+  }
+  return serializeStatusEntries(entries);
+}
+
+/** The round an effect applied now expires at, or null when nothing counts. */
+export const sheetExpiryRound = cpredExpiryRound;
+
+/** True once the round counter has caught up with a timer (stage 16h). */
+export const sheetTimedExpired = cpredTimedExpired;
+
+/** „na minutę — do rundy 9" — how a timer reads on a card. */
+export const describeSheetTimer = describeCpredTimer;
+
+/** Cyberware knocked out by an EMP round for a minute (stage 16h). */
+export const SHEET_EMP_STATUS_ID = CPRED_EMP_STATUS_ID;
 
 /** Statuses whose damage the GM may dial, and the rungs offered for fire. */
 export const SHEET_FIRE_INTENSITIES = CPRED_FIRE_INTENSITIES;

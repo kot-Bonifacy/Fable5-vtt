@@ -45,6 +45,7 @@ import {
   emitTokensOfCharacter,
   requireCampaignToken,
 } from './tokens.js';
+import { sweepTimedEffects } from './timed-effects.js';
 import {
   INCLUDE_CHAT_NAMES,
   broadcastChatMessage,
@@ -111,6 +112,12 @@ export async function advanceTurn(
   // `applyTurnPointer` is what spends it into the fresh budget.
   const refreshed = await loadCombatById(deps.ctx.prisma, combat.id);
   await applyTurnPointer(deps, refreshed, pointer, true);
+
+  // Stage 16h: a minute is six rounds, and this is where they are counted. Swept
+  // over the whole scene rather than the queue — a bystander blinded by tear gas
+  // has no turn to hang a hook on, and „the civilian never recovers" would be a
+  // bug nobody would think to look for.
+  await sweepTimedEffects(deps, campaignId, scene, pointer.round);
 
   if (pointer.activeCombatantId === null) return;
   const started = await loadCombatById(deps.ctx.prisma, combat.id);

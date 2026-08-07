@@ -5,6 +5,7 @@ import type { ChatMessageView } from './chat.js';
 import type { CombatView } from './combat.js';
 import type { CharacterView } from './characters.js';
 import type { CoverView } from './covers.js';
+import type { SmokeView } from './smoke.js';
 import type { CompendiumEntry, WeaponTypeDefinition } from './systems/cpred/compendium.js';
 import type { RollToss } from './dice.js';
 import type { DrawingView } from './drawings.js';
@@ -79,6 +80,13 @@ export interface StateSyncPayload {
    * plan a route round it and to offer it as a target.
    */
   covers: CoverView[];
+  /**
+   * Smoke hanging on the viewed scene (stage 16h) — **for everybody**, for the
+   * same reason the covers are: a bank of smoke in the street is not a secret,
+   * and a client that cannot draw it cannot show a player why their roll was
+   * −4.
+   */
+  smoke: SmokeView[];
   /**
    * Lights of the viewed scene (stage 18b) — **GM only, always empty for a
    * player**, for the reason the walls are: a light's shape is the shape of the
@@ -315,6 +323,23 @@ export interface AttackEvadePayload {
    * wybuchu" (s. 174) is a decision per person, not per grenade.
    */
   tokenId?: string;
+  gesture?: RollGesture;
+}
+
+/**
+ * The shooter takes the second roll a smart round earned (stage 16h).
+ *
+ * Its own payload rather than a flag on the evasion: this one is rolled by the
+ * *attacker*, may spend Luck, and leaves the defender's dodge untouched — three
+ * differences that would each need a branch inside `attack:evade`.
+ */
+export interface AttackSmartPayload {
+  /** Chat message id of the attack that missed. */
+  messageId: number;
+  /** The shooter's sheet — must be the one carrying the weapon row. */
+  characterId: string;
+  /** „możesz też wydać Szczęście" (s. 347), spent on this roll alone. */
+  luckSpent?: number;
   gesture?: RollGesture;
 }
 

@@ -128,6 +128,15 @@ export const CPRED_STATUS_EFFECTS: Readonly<Record<string, CpredStatusEffect>> =
     reminder: 'Ostrzał przygwoździł cię do ziemi — rusz się do osłony.',
     expiresAtTurnEnd: true,
   },
+  // „MG wybiera dwie cyborgizacje albo urządzenia celu, które przestają działać
+  // na minutę" (s. 347). Deliberately a marker and not a set of refusals: the
+  // VTT has no cyberware model until stage 23, so which two pieces went down is
+  // the GM's ruling — and a status that refused Actions on its own would be
+  // inventing a rule the round does not have.
+  emp: {
+    name: 'EMP',
+    reminder: 'Impuls EMP wyłączył ci dwie cyborgizacje — MG mówi które.',
+  },
 };
 
 /** Ids of the statuses in the table, in the order refusals are checked. */
@@ -181,6 +190,9 @@ export const CPRED_SUPPRESSED_STATUS_ID = 'suppressed';
 
 /** Drowning or suffocating — BODY damage at the start of every turn. */
 export const CPRED_DROWNING_STATUS_ID = 'drowning';
+
+/** Cyberware knocked out by an EMP round for a minute (stage 16h). */
+export const CPRED_EMP_STATUS_ID = 'emp';
 
 /** Generic poison: the same machinery as fire, with a value the GM picks. */
 export const CPRED_POISONED_STATUS_ID = 'poisoned';

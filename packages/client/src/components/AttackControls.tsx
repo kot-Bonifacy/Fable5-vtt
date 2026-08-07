@@ -91,6 +91,25 @@ export function AttackRow({
     });
   }
 
+  /**
+   * „Popraw strzał" — the smart round's second roll (stage 16h).
+   *
+   * Rolled by the shooter through the cup like everything else at this table,
+   * and against the same DV: the server reads it off the stored card, so nothing
+   * about the shot can drift between the two rolls.
+   */
+  function rollSmart() {
+    if (!attacker || !attack.smart) return;
+    useRollStore.getState().loadEvasionCup({
+      kind: 'smart',
+      messageId: message.id,
+      characterId: attacker.id,
+      characterName: attacker.name,
+      title: `Poprawka naboju: +${attack.smart.bonus}`,
+      modifierTotal: attack.smart.bonus,
+    });
+  }
+
   function rollEvasion() {
     if (!defender) return;
     useRollStore.getState().loadEvasionCup({
@@ -126,10 +145,18 @@ export function AttackRow({
               className={check.success ? 'chat-attack-check--held' : 'chat-attack-check--pinned'}
             >
               <strong>{check.name}</strong> — {check.detail}
+              {/* What failing cost them (stage 16h): „3k6 bezpośrednich · na minutę". */}
+              {check.effect && <> · {check.effect}</>}
             </li>
           ))}
         </ul>
       )}
+      {/*
+        An empty list means „nobody was in range" — and only ever arrives empty
+        when that is true. A player whose figures were simply filtered out of a
+        volley's list gets no field at all (`redactChatMessage`), so this line
+        can never become a lie told to them.
+      */}
       {attack.forcedChecks && attack.forcedChecks.length === 0 && (
         <p className="chat-attack-detail">Nikt nie stał w zasięgu ognia zaporowego.</p>
       )}
@@ -196,7 +223,31 @@ export function AttackRow({
             Unik: {defender.name}
           </button>
         )}
+        {/*
+          „Amunicja inteligentna": the round offers to correct a near miss
+          (stage 16h). Only the shooter sees it, because only their sheet may
+          spend the Luck the second roll allows.
+        */}
+        {attack.smart && attacker && (
+          <button
+            type="button"
+            className="small-button"
+            title={`Nabój naprowadza się po chybieniu o ${attack.smart.missedBy}: 1k10 + ${
+              attack.smart.bonus
+            } przeciw temu samemu PT${
+              attack.smart.requires ? ` · wymaga: ${attack.smart.requires}` : ''
+            }`}
+            onClick={rollSmart}
+          >
+            Popraw strzał 1k10+{attack.smart.bonus}
+          </button>
+        )}
       </div>
+      {attack.smart?.requires && (
+        <p className="chat-attack-detail">
+          Ten nabój wymaga cyborgizacji „{attack.smart.requires}" — VTT tego nie sprawdza.
+        </p>
+      )}
     </div>
   );
 }

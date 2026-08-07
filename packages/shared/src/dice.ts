@@ -295,6 +295,21 @@ export interface RollAttackMeta {
   forcedChecks?: RollForcedCheck[];
   /** Where this attack went off and whom it reached (stage 16d). */
   area?: RollAreaMeta;
+  /**
+   * The second roll a near miss earned (stage 16h, „Amunicja inteligentna").
+   *
+   * Offered rather than taken: the round guides itself, but Luck may be spent
+   * on the correction, and spending Luck is the player's decision. Absent on
+   * every hit and on every miss too wide for the round to fix.
+   */
+  smart?: {
+    /** How far the shot missed — the number the card already prints. */
+    missedBy: number;
+    /** Flat bonus the second roll gets („1k10 + 10"). */
+    bonus: number;
+    /** Cyberware the round assumes; a warning on the card, never a refusal. */
+    requires?: string;
+  };
 }
 
 /**
@@ -326,6 +341,19 @@ export interface RollForcedCheck {
   name: string;
   detail: string;
   success: boolean;
+  /**
+   * Who may read this row (stage 16h).
+   *
+   * A forced check names a figure, and naming figures is how a card leaks the
+   * dark room it was fired into: suppressive fire has been listing everyone
+   * within 25 m — hidden tokens and tokens in unrevealed fog included — to the
+   * whole table since stage 16. The delivery layer now filters these rows the
+   * same way it filters an area's target list (`redactChatMessage`), and a row
+   * with no owner belongs to the GM alone.
+   */
+  ownerId?: string | null;
+  /** „3k6 bezpośrednich · Uraz oka · na minutę" — what failing cost them. */
+  effect?: string;
 }
 
 export interface RollResult {

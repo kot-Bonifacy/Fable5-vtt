@@ -4,6 +4,7 @@ import { MAX_GESTURE_STRENGTH, formatRollNotation, parseChatInput } from '@vtt/s
 import { playFunRoll, sweepDice } from '../dice3d.js';
 import {
   sendAttackEvade,
+  sendAttackSmart,
   sendAttackRoll,
   sendCharacterRoll,
   sendChatInput,
@@ -283,6 +284,13 @@ export function DiceCup() {
         lastFunNotation = '1d10';
         useRollStore.getState().clearCup();
         void digestSamples(samples).then((entropy) => {
+          // Stage 16h: the same gesture, the opposite side of the table. A
+          // smart round is corrected by whoever fired it, so it goes to its own
+          // event — which leaves the defender's dodge unspent.
+          if (loaded.kind === 'smart') {
+            sendAttackSmart(loaded.messageId, loaded.characterId, { entropy, strength, toss });
+            return;
+          }
           sendAttackEvade(
             loaded.messageId,
             loaded.characterId,
@@ -392,7 +400,7 @@ export function DiceCup() {
     mode.kind === 'attack'
       ? `Potrząśnij i strzel: ${mode.pending.title} · Esc odkłada atak`
       : mode.kind === 'evasion'
-        ? `Potrząśnij i rzuć unik: ${mode.pending.title} · Esc odkłada rzut`
+        ? `Potrząśnij i rzuć: ${mode.pending.title} · Esc odkłada rzut`
         : mode.kind === 'grapple'
           ? `Potrząśnij i rzuć: ${mode.pending.title} · Esc odkłada rzut`
           : mode.kind === 'initiative'

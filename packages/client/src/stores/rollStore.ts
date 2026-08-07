@@ -106,8 +106,18 @@ export interface PendingGrapple {
   resist?: { messageId: number };
 }
 
-/** A defender's Evasion roll contesting an attack already on the chat. */
+/**
+ * A follow-up 1d10 roll on an attack card already on the chat.
+ *
+ * Two of them share the shape, and `kind` is the only thing that differs at the
+ * cup: the defender's Evasion (stage 16), and the shooter correcting a near
+ * miss with a smart round (stage 16h). Both name a stored message, roll one
+ * die, and have the server rewrite that card — which is why they are one slot
+ * rather than two nearly identical ones.
+ */
 export interface PendingEvasion {
+  /** Which follow-up this is; absent means the defender's dodge. */
+  kind?: 'evade' | 'smart';
   /** Chat message id of the attack being contested. */
   messageId: number;
   characterId: string;

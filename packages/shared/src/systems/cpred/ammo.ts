@@ -15,14 +15,18 @@
  *    types a round of their own into the compendium gets it enforced exactly
  *    like a printed one, and the combat code never learns the word „dumdum".
  *
- * What the flags deliberately do *not* cover is the other half of the rulebook
- * table — the rounds that deal no damage at all and force a check instead
- * (biotoxin, poison, sleep, tear gas, flashbang, EMP, smart, smoke). Those need
- * a mechanism this stage does not have (a forced check with an effect, and
- * statuses that expire after a minute) and are stage 16h.
+ * Stage 16h finished the table from the other end — the rounds that deal no
+ * damage at all. They needed exactly two mechanisms and no branches: a **check
+ * the round forces on whoever it reaches** (`check`), whose failure is again
+ * data (damage, statuses, injuries, a duration), and a **square of smoke**
+ * (`smoke`) that penalises rather than hurts. Two more flags cover the last two
+ * rows: `noDamage` for „nie zadaje obrażeń", and `smart` for the round that
+ * offers a second roll after a near miss.
  */
 
 import type { ResolvedWeapon } from './compendium.js';
+import type { CpredStatId } from './stats.js';
+import { CPRED_MINUTE_S, describeCpredDuration } from './timed.js';
 
 /**
  * Shape a round comes in. The rulebook's own list (s. 344), and the whole of
@@ -48,6 +52,93 @@ export interface CpredAmmoSpread {
   damage: string;
   /** „do 6 m przed tobą (3 pola)" — reach of the cone, in metres. */
   coneRangeM: number;
+}
+
+/**
+ * What failing the round's check costs (stage 16h).
+ *
+ * Four fields cover all seven rows of the no-damage half of the table, and the
+ * reason they are one shape rather than seven is that they compose: tear gas is
+ * an injury with a duration, biotoxin is damage without one, sleep is two
+ * statuses with one.
+ */
+export interface CpredAmmoCheckFailure {
+  /**
+   * Damage the failure deals, in dice notation. „obrażenia bezpośrednie"
+   * throughout this half of the table: armour neither stops it nor wears down,
+   * which is why it never travels through the ordinary damage roll.
+   */
+  damage?: string;
+  /** Statuses put on the target („Powalony i Nieprzytomny"). */
+  statuses?: string[];
+  /** Critical Injuries added by compendium id („Uraz oka", „Uraz ucha"). */
+  injuries?: string[];
+  /**
+   * Seconds of fiction the statuses and injuries last. Absent means „until
+   * somebody takes it off", which is what a wound normally is.
+   */
+  durationS?: number;
+}
+
+/**
+ * A check the round forces on whoever it reaches (stage 16h).
+ *
+ * The mechanism suppressive fire has had since stage 16 (`RollForcedCheck`),
+ * with one addition that is the whole stage: the result *does* something. Seven
+ * printed rounds are seven rows of this shape and not one branch in the combat
+ * code — and a GM inventing an eighth gets it enforced the same way.
+ */
+export interface CpredAmmoCheck {
+  /** Skill the target rolls, by registry id („resist-torture-drugs"). */
+  skillId: string;
+  /**
+   * What to call it when the registry has no such skill — the Easy Mode list
+   * carries 41 of them and „Cyberinżynieria" is not among them. The check then
+   * runs on the bare stat, which is the honest degradation: a character who
+   * never trained it rolls their attribute.
+   */
+  skillLabel?: string;
+  /**
+   * The attribute to fall back on in that case. Carried on the row rather than
+   * guessed, because „Odporność na tortury/narkotyki" is SW and
+   * „Cyberinżynieria" is TECH, and a wrong guess is a silently wrong roll.
+   */
+  statId?: CpredStatId;
+  dv: number;
+  /**
+   * „Wszystkie biologiczne cele" (biotoxin, s. 345). The VTT does not know
+   * which figures are made of meat, so this prints a caveat on the card rather
+   * than skipping anybody — the table decides, and can press „Cofnij".
+   */
+  biologicalOnly?: boolean;
+  failure: CpredAmmoCheckFailure;
+}
+
+/** „Amunicja dymna": a square that hides rather than hurts (s. 347). */
+export interface CpredAmmoSmoke {
+  /** Side of the square in metres — the rulebook's 10. */
+  sideM: number;
+  /** What every check made inside it takes, as a negative number („zwykle −4"). */
+  penalty: number;
+}
+
+/**
+ * „Amunicja inteligentna": a near miss corrects itself (s. 347).
+ *
+ * The second roll is offered rather than taken, because Luck may be spent on
+ * it — and spending Luck is never the server's decision.
+ */
+export interface CpredAmmoSmart {
+  /** Largest miss that still gets the second roll („chybisz o 4 lub mniej"). */
+  maxMiss: number;
+  /** Flat bonus on that roll — the round's own guidance („1k10 + 10"). */
+  bonus: number;
+  /**
+   * Cyberware the round needs („Celownik optyczny"). A warning on the card and
+   * never a refusal: the VTT has no cyberware model before stage 23, so
+   * refusing would be guessing.
+   */
+  requires?: string;
 }
 
 /**
@@ -92,6 +183,19 @@ export interface CpredAmmoEffect {
   spread?: CpredAmmoSpread;
   /** „Bronią załadowaną amunicją śrutową nie można Celować" (s. 174). */
   noAim?: boolean;
+  /**
+   * „Ta amunicja nie zadaje obrażeń" (stage 16h) — the attack card offers no
+   * damage roll at all, and whatever the round does instead is in `check` or
+   * `smoke`. Separate from those two on purpose: a round could in principle
+   * force a check *and* hurt, and the rules would then need both statements.
+   */
+  noDamage?: boolean;
+  /** The check this round forces on everything it reaches (stage 16h). */
+  check?: CpredAmmoCheck;
+  /** The cloud this round lays down instead of damage (stage 16h). */
+  smoke?: CpredAmmoSmoke;
+  /** The second roll this round offers after a near miss (stage 16h). */
+  smart?: CpredAmmoSmart;
 }
 
 /** A cartridge as the rules see it: what it is, what it fits, what it does. */
@@ -202,3 +306,80 @@ export function ammoDamageNotes(
   }
   return notes;
 }
+
+/* ------------------------------------------------------------------ *
+ * Rounds that deal no damage (stage 16h)
+ * ------------------------------------------------------------------ */
+
+/**
+ * Does a hit with this round end in a damage roll?
+ *
+ * The one question the attack card asks before offering the „Obrażenia" button,
+ * and the reason it is a function rather than `!ammo.noDamage`: an area attack
+ * with a gas round has a target list *and* nothing to roll, and reading that off
+ * two flags at three call sites is how they drift apart.
+ */
+export function ammoDealsDamage(ammo: CpredAmmoEffect | null | undefined): boolean {
+  return ammo?.noDamage !== true;
+}
+
+/** One target's answer to a forced check — pure arithmetic, rolled elsewhere. */
+export interface CpredAmmoCheckOutcome {
+  die: number;
+  modifier: number;
+  total: number;
+  /** True when the target beat the DV. Ties go to the round, as everywhere. */
+  resisted: boolean;
+}
+
+/**
+ * Judges one forced check. `die` comes from the caller's RNG, `modifier` is the
+ * target's stat plus skill — the same shape suppressive fire has used since 16.
+ */
+export function cpredAmmoCheckOutcome(
+  die: number,
+  modifier: number,
+  dv: number,
+): CpredAmmoCheckOutcome {
+  const total = die + modifier;
+  return { die, modifier, total, resisted: total > dv };
+}
+
+/**
+ * „3k6 bezpośrednich · Powalony, Nieprzytomny · na minutę" — what failing costs,
+ * in one Polish line for the chat card.
+ *
+ * Names rather than ids, so the caller passes the labels it already looked up;
+ * a card reading „injury.head-uraz-oka" would be the compendium leaking into
+ * the table's language.
+ */
+export function describeAmmoFailure(
+  failure: CpredAmmoCheckFailure,
+  labels: { statuses?: readonly string[]; injuries?: readonly string[] } = {},
+): string {
+  const parts: string[] = [];
+  if (failure.damage) parts.push(`${failure.damage} bezpośrednich`);
+  const statuses = labels.statuses ?? failure.statuses ?? [];
+  if (statuses.length > 0) parts.push(statuses.join(', '));
+  const injuries = labels.injuries ?? failure.injuries ?? [];
+  if (injuries.length > 0) parts.push(injuries.join(', '));
+  if (failure.durationS) parts.push(describeCpredDuration(failure.durationS));
+  return parts.join(' · ');
+}
+
+/**
+ * May this miss be taken again? „Jeśli chybisz o 4 lub mniej" (s. 347).
+ *
+ * `missedBy` is the number the attack card already prints („brakło 3"), so the
+ * offer and the explanation can never disagree about how close it was.
+ */
+export function ammoOffersSecondRoll(
+  ammo: CpredAmmoEffect | null | undefined,
+  missedBy: number,
+): boolean {
+  if (!ammo?.smart) return false;
+  return missedBy > 0 && missedBy <= ammo.smart.maxMiss;
+}
+
+/** Default duration of everything the table calls „na minutę". */
+export const CPRED_AMMO_MINUTE_S = CPRED_MINUTE_S;

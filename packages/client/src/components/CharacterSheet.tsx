@@ -22,6 +22,7 @@ import type {
 import {
   ARMOR_LOCATIONS,
   ARMOR_LOCATION_LABELS,
+  describeCpredTimer,
   ARMOR_PENALTY_MIN,
   ARMOR_SP_MAX,
   CPRED_BURST_AMMO_COST,
@@ -1223,6 +1224,17 @@ function CriticalInjuries({ data, saveData }: TabProps) {
           <div className="injury-head">
             <span className="injury-name">{injury.name}</span>
             {injury.rolled ? <span className="injury-roll">2k6 = {injury.rolled}</span> : null}
+            {/*
+              A wound that heals by itself (stage 16h). Worth a badge of its own
+              rather than a line in the effect text: „czy to zejdzie samo" is the
+              first thing a player asks about a blinded eye, and the answer
+              differs depending on whether a fight is running.
+            */}
+            {injury.timed ? (
+              <span className="injury-roll" title={injury.timed.source}>
+                {describeCpredTimer(injury.timed)}
+              </span>
+            ) : null}
             {injury.deathSavePenalty ? (
               <span className="injury-penalty">
                 +{injury.deathSavePenalty} do Testu Przeżywalności

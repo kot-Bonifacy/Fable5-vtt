@@ -13,6 +13,16 @@ export interface StatusRegistry {
   ids: ReadonlySet<string>;
 }
 
+/**
+ * Polish name of a status, or the id when the data does not know it (stage
+ * 16h). Cards name statuses out loud — „Kurier — Nieprzytomny (Amunicja
+ * usypiająca)" — and „unconscious" would be the registry leaking into the
+ * table's language.
+ */
+export function statusName(registry: StatusRegistry, id: string): string {
+  return registry.list.find((status) => status.id === id)?.name ?? id;
+}
+
 export const EMPTY_STATUS_REGISTRY: StatusRegistry = { list: [], ids: new Set() };
 
 export async function loadStatusRegistry(
