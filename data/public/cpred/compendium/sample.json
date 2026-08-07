@@ -4,28 +4,6 @@
   "source": "Dane przykładowe VTT (wymyślone — wolne od praw autorskich)",
   "weaponTypes": [
     {
-      "id": "weapon-type.sample-pistol",
-      "name": "Pistolet przykładowy",
-      "skillId": "handgun",
-      "damage": "2k6",
-      "magazine": 10,
-      "rof": 2,
-      "hands": 1,
-      "concealable": true,
-      "attachmentSlots": 3,
-      "melee": false,
-      "rangeDv": [
-        12,
-        14,
-        19,
-        24,
-        29,
-        29,
-        null,
-        null
-      ]
-    },
-    {
       "id": "weapon-type.sample-rifle",
       "name": "Karabin przykładowy",
       "skillId": "shoulder-arms",
@@ -59,7 +37,10 @@
           null
         ]
       },
-      "suppressive": true
+      "suppressive": true,
+      "ammoPatterns": [
+        "bullet"
+      ]
     },
     {
       "id": "weapon-type.sample-blade",
@@ -71,6 +52,88 @@
       "hands": 1,
       "concealable": false,
       "melee": true
+    },
+    {
+      "id": "weapon-type.sample-pistol",
+      "name": "Pistolet przykładowy",
+      "skillId": "handgun",
+      "damage": "2k6",
+      "magazine": 10,
+      "rof": 2,
+      "hands": 1,
+      "concealable": true,
+      "attachmentSlots": 3,
+      "melee": false,
+      "rangeDv": [
+        12,
+        14,
+        19,
+        24,
+        29,
+        29,
+        null,
+        null
+      ],
+      "ammoPatterns": [
+        "bullet"
+      ]
+    },
+    {
+      "id": "weapon-type.sample-shotgun",
+      "name": "Strzelba przykładowa",
+      "skillId": "shoulder-arms",
+      "damage": "5k6",
+      "magazine": 4,
+      "rof": 1,
+      "hands": 2,
+      "concealable": false,
+      "attachmentSlots": 3,
+      "melee": false,
+      "ammunition": "Pocisk przykładowy",
+      "ammoPatterns": [
+        "bullet",
+        "shell"
+      ],
+      "rangeDv": [
+        13,
+        15,
+        20,
+        25,
+        30,
+        35,
+        null,
+        null
+      ]
+    },
+    {
+      "id": "weapon-type.sample-flamer",
+      "name": "Zapalarka przykładowa",
+      "skillId": "shoulder-arms",
+      "damage": "5k6",
+      "magazine": 4,
+      "rof": 1,
+      "hands": 2,
+      "concealable": false,
+      "attachmentSlots": 0,
+      "melee": false,
+      "ammunition": "Nabój zapalarki",
+      "ammoPatterns": [
+        "shell"
+      ],
+      "ammoIds": [
+        "ammo.sample-flamer-shell"
+      ],
+      "rangeDv": [
+        13,
+        15,
+        20,
+        25,
+        30,
+        35,
+        null,
+        null
+      ],
+      "description": "Przykład broni, która strzela wyłącznie jednym rodzajem naboju."
     },
     {
       "id": "weapon-type.sample-grenade",
@@ -94,6 +157,9 @@
         24,
         null,
         null
+      ],
+      "ammoPatterns": [
+        "grenade"
       ]
     }
   ],
@@ -242,6 +308,122 @@
       "quality": "standard",
       "cost": 80,
       "costCategory": "costly"
+    },
+    {
+      "id": "ammo.sample-standard",
+      "category": "ammo",
+      "name": "Nabój przykładowy",
+      "cost": 10,
+      "costCategory": "cheap",
+      "patterns": [
+        "bullet",
+        "shell",
+        "arrow"
+      ],
+      "description": "Zwykły nabój bez cech specjalnych — kształt wpisu bez flag."
+    },
+    {
+      "id": "ammo.sample-piercing",
+      "category": "ammo",
+      "name": "Nabój przebijający",
+      "cost": 100,
+      "costCategory": "premium",
+      "patterns": [
+        "bullet",
+        "arrow"
+      ],
+      "ablationBonus": 1,
+      "description": "Przykład naboju, który zdejmuje o punkt pancerza więcej niż zwykły."
+    },
+    {
+      "id": "ammo.sample-burning",
+      "category": "ammo",
+      "name": "Nabój ognisty",
+      "cost": 100,
+      "costCategory": "premium",
+      "patterns": [
+        "bullet",
+        "grenade"
+      ],
+      "ignites": {
+        "statusId": "on-fire",
+        "damage": 2
+      },
+      "description": "Przykład naboju, który podpala cel, gdy obrażenia przejdą przez pancerz."
+    },
+    {
+      "id": "ammo.sample-blunt",
+      "category": "ammo",
+      "name": "Nabój obezwładniający",
+      "cost": 10,
+      "costCategory": "cheap",
+      "patterns": [
+        "bullet",
+        "shell"
+      ],
+      "noCriticalInjury": true,
+      "noAblation": true,
+      "nonLethal": true,
+      "description": "Przykład naboju, który nie zabija: bez ran krytycznych, bez zużycia pancerza, z podłogą na 1 PW."
+    },
+    {
+      "id": "ammo.sample-shot",
+      "category": "ammo",
+      "name": "Nabój wachlarzowy",
+      "cost": 10,
+      "costCategory": "cheap",
+      "patterns": [
+        "shell"
+      ],
+      "spread": {
+        "dv": 13,
+        "damage": "3k6",
+        "coneRangeM": 6
+      },
+      "noAim": true,
+      "description": "Przykład naboju, który zamiast jednego celu obejmuje stożek przed strzelcem."
+    },
+    {
+      "id": "ammo.sample-flamer-shell",
+      "category": "ammo",
+      "name": "Nabój zapalarki",
+      "cost": 100,
+      "costCategory": "premium",
+      "patterns": [
+        "shell"
+      ],
+      "spread": {
+        "dv": 13,
+        "damage": "3k6",
+        "coneRangeM": 6
+      },
+      "noAim": true,
+      "noCriticalInjury": true,
+      "ignites": {
+        "statusId": "on-fire",
+        "damage": 4
+      },
+      "description": "Przykład naboju przypisanego do jednej broni — stożek plus podpalenie."
+    },
+    {
+      "id": "weapon.huk-12",
+      "category": "weapon",
+      "name": "Huk 12",
+      "description": "Krótka strzelba warsztatowa. Bierze zarówno pociski, jak i wachlarzowy śrut.",
+      "weaponTypeId": "weapon-type.sample-shotgun",
+      "quality": "standard",
+      "cost": 500,
+      "costCategory": "expensive"
+    },
+    {
+      "id": "weapon.zapalarka",
+      "category": "weapon",
+      "name": "Zapalarka",
+      "description": "Przykład broni z jednym rodzajem naboju — strzela wyłącznie własnym ładunkiem zapalającym.",
+      "weaponTypeId": "weapon-type.sample-flamer",
+      "quality": "standard",
+      "cost": 500,
+      "costCategory": "expensive"
     }
   ]
 }

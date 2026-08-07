@@ -88,6 +88,18 @@ export interface CpredDamageInput {
   criticalInjury?: boolean;
   /** Damage armor cannot stop (thrown targets, injury effects, poison…). */
   ignoreArmor?: boolean;
+  /**
+   * Stopping Power the armor loses when this hit gets through (stage 16g).
+   * Defaults to RAW's single point; armour-piercing rounds take two, and rubber
+   * ones take none at all („pancerz … nie ulega uszkodzeniu", s. 346).
+   */
+  ablation?: number;
+  /**
+   * The hit cannot take a target off their feet: „Jeśli obrażenia … sprawią, że
+   * PW celu, który ma więcej niż 1 PW, spadną poniżej 0, zamiast tego cel
+   * zostaje na 1 PW" (rubber ammunition, s. 346).
+   */
+  nonLethal?: boolean;
 }
 
 export interface CpredDamageOutcome {
@@ -109,6 +121,12 @@ export interface CpredDamageOutcome {
   spBefore: number;
   spAfter: number;
   ablated: boolean;
+  /**
+   * True when the non-lethal floor caught the target — they would have dropped
+   * below 1 HP and did not (stage 16g). Shown on the card, because a target
+   * standing at exactly 1 HP after a burst is otherwise unexplainable.
+   */
+  heldAtOne: boolean;
   woundBefore: CpredWoundState;
   woundAfter: CpredWoundState;
   /** True when the hit scored a Critical Injury (the table roll is separate). */
@@ -141,11 +159,17 @@ export function resolveCpredDamage(input: CpredDamageInput): CpredDamageOutcome 
   const hpMaxValue = Math.max(1, Math.round(input.hpMax));
   // HP floor at 0: „poniżej 1 PW" is Mortally Wounded, and the rules never
   // track how far below zero someone is.
-  const hpAfter = clampToRange(hpBefore - damageThrough - bonusDamage, 0, hpMaxValue);
+  const raw = clampToRange(hpBefore - damageThrough - bonusDamage, 0, hpMaxValue);
+  // Rubber ammunition stops one step higher (s. 346). The condition is the
+  // rule's own: somebody already down to their last point can still be finished
+  // off with a baton round — it is only the *fall* that is cushioned.
+  const heldAtOne = input.nonLethal === true && hpBefore > 1 && raw < 1;
+  const hpAfter = heldAtOne ? 1 : raw;
 
   // Only damage that actually made it through the armor damages the armor.
-  const ablated = !ignoreArmor && spBefore > 0 && afterArmor > 0;
-  const spAfter = ablated ? Math.max(0, spBefore - CPRED_ABLATION_PER_HIT) : spBefore;
+  const ablation = Math.max(0, Math.round(input.ablation ?? CPRED_ABLATION_PER_HIT));
+  const ablated = !ignoreArmor && spBefore > 0 && afterArmor > 0 && ablation > 0;
+  const spAfter = ablated ? Math.max(0, spBefore - ablation) : spBefore;
 
   return {
     location: input.location,
@@ -160,6 +184,7 @@ export function resolveCpredDamage(input: CpredDamageInput): CpredDamageOutcome 
     spBefore,
     spAfter,
     ablated,
+    heldAtOne,
     woundBefore: woundStateFromHp(hpBefore, hpMaxValue),
     woundAfter: woundStateFromHp(hpAfter, hpMaxValue),
     criticalInjury,
@@ -202,6 +227,17 @@ export interface CriticalInjuryDraw {
   rolls: { total: number; dice: [number, number] }[];
   /** True when the re-rolls ran out — RAW says keep rolling, we give up. */
   exhausted: boolean;
+  /**
+   * A second wound the same hit inflicted (stage 16g: dumdum rounds, s. 345).
+   *
+   * „Gdy ta amunicja spowoduje Ranę Krytyczną Ciało obce, cel rzuca ponownie …,
+   * dopóki nie wylosuje rany innej niż Ciało obce. Następnie cel otrzymuje
+   * **także** tę wylosowaną Ranę Krytyczną" — so the first injury stays and this
+   * one joins it. „Nie zadaje ona kolejnych obrażeń dodatkowych": the 5 points
+   * of bonus damage are still counted once, which is why this is a separate
+   * field rather than a second call.
+   */
+  extra?: { entry: CriticalInjuryEntry; rolled: number };
 }
 
 /** How many times a duplicate injury is re-rolled before we give up. */
@@ -218,19 +254,51 @@ export function drawCriticalInjury(
   table: CriticalInjuryTable,
   rng: DiceRng,
   existingIds: readonly string[] = [],
+  /**
+   * Injuries that make the round draw a *second* one (stage 16g: „Ciało obce"
+   * hit by a dumdum). Passed as ids rather than a flag because the whole of
+   * ammunition is data — the engine must not learn what a foreign body is.
+   */
+  options: { extraOnIds?: readonly string[] } = {},
 ): CriticalInjuryDraw {
   const pool = entries.filter((entry) => entry.table === table);
   const rolls: { total: number; dice: [number, number] }[] = [];
   const taken = new Set(existingIds);
+  const first = drawOneInjury(pool, rng, rolls, taken);
+  if (!first.entry || !options.extraOnIds?.includes(first.entry.id)) return first;
 
+  // The round chewed its way in. RAW keeps rolling until the table gives
+  // something other than the wound that triggered it — and both stay.
+  taken.add(first.entry.id);
+  const second = drawOneInjury(pool, rng, rolls, taken, first.entry.id);
+  if (!second.entry) return { ...first, rolls, exhausted: second.exhausted };
+  return {
+    ...first,
+    rolls,
+    extra: { entry: second.entry, rolled: rolls[rolls.length - 1]!.total },
+  };
+}
+
+/**
+ * One 2d6 draw with the RAW re-rolls: an injury the target already suffers is
+ * rolled again, and so is `forbiddenId` when the caller has one (dumdum).
+ * Appends every roll to `rolls`, so the card can show the whole sequence.
+ */
+function drawOneInjury(
+  pool: readonly CriticalInjuryEntry[],
+  rng: DiceRng,
+  rolls: { total: number; dice: [number, number] }[],
+  taken: ReadonlySet<string>,
+  forbiddenId?: string,
+): CriticalInjuryDraw {
   for (let attempt = 0; attempt < CRITICAL_INJURY_MAX_ATTEMPTS; attempt++) {
     const roll = roll2d6(rng);
     rolls.push(roll);
     const entry = pool.find((candidate) => candidate.roll === roll.total) ?? null;
     if (!entry) return { entry: null, rolls, exhausted: false };
-    if (!taken.has(entry.id)) return { entry, rolls, exhausted: false };
+    if (!taken.has(entry.id) && entry.id !== forbiddenId) return { entry, rolls, exhausted: false };
     // Every injury of the table already present — stop instead of looping.
-    if (pool.every((candidate) => taken.has(candidate.id))) {
+    if (pool.every((candidate) => taken.has(candidate.id) || candidate.id === forbiddenId)) {
       return { entry: null, rolls, exhausted: true };
     }
   }

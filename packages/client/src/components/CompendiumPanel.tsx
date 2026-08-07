@@ -5,6 +5,7 @@ import {
   COMPENDIUM_CATEGORIES,
   COMPENDIUM_CATEGORY_LABELS,
   CPRED_RANGE_BANDS,
+  CPRED_AMMO_PATTERN_LABELS,
   CRITICAL_INJURY_TABLE_LABELS,
   ROLE_GM,
   WEAPON_QUALITY_LABELS,
@@ -128,6 +129,10 @@ function shortStats(
         '—';
       return `${damage} · ${formatCost(entry)}`;
     }
+    case 'ammo':
+      return `${entry.patterns.map((id) => CPRED_AMMO_PATTERN_LABELS[id]).join(', ')} · ${formatCost(
+        entry,
+      )}`;
     case 'armor':
       return `OB ${entry.sp} · ${formatCost(entry)}`;
     case 'criticalInjury':
@@ -227,6 +232,46 @@ function EntryCard({
             ) : null}
           </>
         ) : null}
+        {entry.category === 'ammo' ? (
+          <>
+            <Stat
+              label="Pasuje do"
+              value={entry.patterns.map((id) => CPRED_AMMO_PATTERN_LABELS[id]).join(', ')}
+              hint="Rodzaje naboi, w których ta amunicja jest produkowana — broń musi je komorować."
+            />
+            {entry.ablationBonus ? (
+              <Stat
+                label="Uszkodzenie pancerza"
+                value={`−${1 + entry.ablationBonus} OB`}
+                hint="Zwykły nabój zdejmuje 1 punkt OB; ten zdejmuje więcej."
+              />
+            ) : null}
+            {entry.spread ? (
+              <Stat
+                label="Stożek"
+                value={`${entry.spread.coneRangeM} m · PT ${entry.spread.dv} · ${entry.spread.damage}`}
+                hint="Jeden test trafienia przeciw stałemu PT; obrażenia dostają wszyscy w stożku."
+              />
+            ) : null}
+            {entry.ignites ? (
+              <Stat
+                label="Podpalenie"
+                value={`${entry.ignites.damage} obr./turę`}
+                hint="Cel płonie, dopóki nie ugasi ognia Akcją. Efekty się nie kumulują."
+              />
+            ) : null}
+            {entry.nonLethal ? (
+              <Stat
+                label="Obezwładniająca"
+                value="cel zostaje na 1 PW"
+                hint="Nie zbija celu, który miał więcej niż 1 PW, poniżej 1 PW."
+              />
+            ) : null}
+            {entry.noCriticalInjury ? <Stat label="Rany krytyczne" value="nie powoduje" /> : null}
+            {entry.noAblation ? <Stat label="Pancerz celu" value="nie ulega uszkodzeniu" /> : null}
+            {entry.noAim ? <Stat label="Celowanie" value="niedostępne" /> : null}
+          </>
+        ) : null}
         {entry.category === 'armor' ? (
           <>
             <Stat
@@ -260,11 +305,7 @@ function EntryCard({
               hint="Rzut, przy którym wypada ta rana."
             />
             {entry.quickFix ? (
-              <Stat
-                label="Łatanie"
-                value={entry.quickFix}
-                hint="Znosi efekt rany do końca dnia."
-              />
+              <Stat label="Łatanie" value={entry.quickFix} hint="Znosi efekt rany do końca dnia." />
             ) : null}
             {entry.treatment ? (
               <Stat label="Leczenie" value={entry.treatment} hint="Usuwa ranę na stałe." />
@@ -351,7 +392,10 @@ function EntryCard({
       ) : null}
       {entry.source ? <p className="compendium-source">Źródło: {entry.source}</p> : null}
 
-      {targets.length > 0 && entry.category !== 'criticalInjury' ? (
+      {/* Ammunition is loaded into a weapon row (stage 16g), not carried as an
+          item, so the sheet has nowhere to put it — the picker in the weapon
+          table is where it belongs. */}
+      {targets.length > 0 && entry.category !== 'criticalInjury' && entry.category !== 'ammo' ? (
         <div className="compendium-assign">
           <select value={target} onChange={(event) => setTargetId(event.target.value)}>
             {targets.map((character) => (

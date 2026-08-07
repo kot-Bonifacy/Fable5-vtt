@@ -4,6 +4,10 @@ import {
   ARMOR_LOCATIONS,
   ARMOR_LOCATION_LABELS,
   COMPENDIUM_CATEGORIES,
+  CPRED_AMMO_PATTERNS,
+  CPRED_AMMO_PATTERN_LABELS,
+  CPRED_CONE_RANGE_M,
+  CPRED_ON_FIRE_STATUS_ID,
   COMPENDIUM_CATEGORY_LABELS,
   COST_CATEGORIES,
   CRITICAL_INJURY_ROLL_MAX,
@@ -104,10 +108,7 @@ export function CompendiumEditor() {
             />
           </label>
 
-          <div
-            className="bot-row-inline"
-            hidden={form.category === 'criticalInjury'}
-          >
+          <div className="bot-row-inline" hidden={form.category === 'criticalInjury'}>
             <label className="bot-field bot-field--inline">
               Cena (ed)
               <input
@@ -199,6 +200,125 @@ export function CompendiumEditor() {
                   onChange={(event) => patch({ features: event.target.value })}
                 />
               </label>
+            </>
+          ) : null}
+
+          {form.category === 'ammo' ? (
+            <>
+              <fieldset className="bot-field">
+                <legend title="Bron komorowa jeden z tych ksztaltow - inaczej naboj do niej nie pasuje.">
+                  Rodzaje naboju
+                </legend>
+                {CPRED_AMMO_PATTERNS.map((pattern) => (
+                  <label key={pattern} className="bot-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={form.ammoPatterns.includes(pattern)}
+                      onChange={(event) =>
+                        patch({
+                          ammoPatterns: event.target.checked
+                            ? [...form.ammoPatterns, pattern]
+                            : form.ammoPatterns.filter((value) => value !== pattern),
+                        })
+                      }
+                    />
+                    {CPRED_AMMO_PATTERN_LABELS[pattern]}
+                  </label>
+                ))}
+              </fieldset>
+              <div className="bot-row-inline">
+                <label className="bot-field bot-field--inline">
+                  Pancerz -
+                  <input
+                    type="number"
+                    min={0}
+                    max={9}
+                    value={form.ablationBonus}
+                    placeholder="0"
+                    title="Ile punktow OB ponad zwykly 1 zdejmuje ten naboj (przeciwpancerny: 1)."
+                    onChange={(event) => patch({ ablationBonus: event.target.value })}
+                  />
+                </label>
+                <label className="bot-field bot-field--inline">
+                  Podpalenie
+                  <input
+                    type="number"
+                    min={0}
+                    max={20}
+                    value={form.ammoIgniteDamage}
+                    placeholder="0"
+                    title="Obrazenia na koniec kazdej tury celu, gdy naboj przebije pancerz."
+                    onChange={(event) => patch({ ammoIgniteDamage: event.target.value })}
+                  />
+                </label>
+              </div>
+              <div className="bot-row-inline">
+                <label className="bot-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={form.ammoNoAblation}
+                    onChange={(event) => patch({ ammoNoAblation: event.target.checked })}
+                  />
+                  Nie uszkadza pancerza
+                </label>
+                <label className="bot-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={form.ammoNoCritical}
+                    onChange={(event) => patch({ ammoNoCritical: event.target.checked })}
+                  />
+                  Bez ran krytycznych
+                </label>
+                <label className="bot-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={form.ammoNonLethal}
+                    onChange={(event) => patch({ ammoNonLethal: event.target.checked })}
+                  />
+                  Zostawia 1 PW
+                </label>
+                <label className="bot-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={form.ammoNoAim}
+                    onChange={(event) => patch({ ammoNoAim: event.target.checked })}
+                  />
+                  Bez Celowania
+                </label>
+              </div>
+              <div className="bot-row-inline">
+                <label className="bot-field bot-field--inline">
+                  Stozek: PT
+                  <input
+                    type="number"
+                    min={0}
+                    max={30}
+                    value={form.ammoSpreadDv}
+                    placeholder="-"
+                    title="Wypelnij, jesli naboj obejmuje stozek zamiast jednego celu (srut)."
+                    onChange={(event) => patch({ ammoSpreadDv: event.target.value })}
+                  />
+                </label>
+                <label className="bot-field bot-field--inline">
+                  Obrazenia
+                  <input
+                    value={form.ammoSpreadDamage}
+                    placeholder="3k6"
+                    onChange={(event) => patch({ ammoSpreadDamage: event.target.value })}
+                  />
+                </label>
+                <label className="bot-field bot-field--inline">
+                  Zasieg (m)
+                  <input
+                    type="number"
+                    min={1}
+                    max={50}
+                    value={form.ammoSpreadRange}
+                    placeholder={String(CPRED_CONE_RANGE_M)}
+                    onChange={(event) => patch({ ammoSpreadRange: event.target.value })}
+                  />
+                </label>
+              </div>
             </>
           ) : null}
 
@@ -379,6 +499,17 @@ interface EditorForm {
   sp: string;
   penalty: string;
   locations: string[];
+  /** Stage 16g — which rounds this ammunition is made in, and what it does. */
+  ammoPatterns: string[];
+  ablationBonus: string;
+  ammoNoAblation: boolean;
+  ammoNoCritical: boolean;
+  ammoNonLethal: boolean;
+  ammoNoAim: boolean;
+  ammoIgniteDamage: string;
+  ammoSpreadDv: string;
+  ammoSpreadDamage: string;
+  ammoSpreadRange: string;
   humanityLoss: string;
   slots: string;
   foundation: boolean;
@@ -408,6 +539,19 @@ function toForm(entry: CompendiumEntry | undefined): EditorForm {
     sp: entry?.category === 'armor' ? String(entry.sp) : '',
     penalty: entry?.category === 'armor' && entry.penalty ? String(entry.penalty) : '',
     locations: entry?.category === 'armor' ? [...entry.locations] : ['body'],
+    ammoPatterns: entry?.category === 'ammo' ? [...entry.patterns] : ['bullet'],
+    ablationBonus:
+      entry?.category === 'ammo' && entry.ablationBonus ? String(entry.ablationBonus) : '',
+    ammoNoAblation: entry?.category === 'ammo' ? Boolean(entry.noAblation) : false,
+    ammoNoCritical: entry?.category === 'ammo' ? Boolean(entry.noCriticalInjury) : false,
+    ammoNonLethal: entry?.category === 'ammo' ? Boolean(entry.nonLethal) : false,
+    ammoNoAim: entry?.category === 'ammo' ? Boolean(entry.noAim) : false,
+    ammoIgniteDamage:
+      entry?.category === 'ammo' && entry.ignites ? String(entry.ignites.damage) : '',
+    ammoSpreadDv: entry?.category === 'ammo' && entry.spread ? String(entry.spread.dv) : '',
+    ammoSpreadDamage: entry?.category === 'ammo' && entry.spread ? entry.spread.damage : '',
+    ammoSpreadRange:
+      entry?.category === 'ammo' && entry.spread ? String(entry.spread.coneRangeM) : '',
     humanityLoss: entry?.category === 'cyberware' ? (entry.humanityLoss ?? '') : '',
     slots: entry?.category === 'cyberware' && entry.slots !== undefined ? String(entry.slots) : '',
     foundation: entry?.category === 'cyberware' ? Boolean(entry.foundation) : false,
@@ -450,6 +594,31 @@ function fromForm(form: EditorForm, existingId: string | undefined): Record<stri
         .split(',')
         .map((value) => value.trim())
         .filter(Boolean),
+    };
+  }
+  if (form.category === 'ammo') {
+    const ignite = numberOrUndefined(form.ammoIgniteDamage);
+    const spreadDv = numberOrUndefined(form.ammoSpreadDv);
+    return {
+      ...base,
+      patterns: form.ammoPatterns,
+      ablationBonus: numberOrUndefined(form.ablationBonus),
+      noAblation: form.ammoNoAblation,
+      noCriticalInjury: form.ammoNoCritical,
+      nonLethal: form.ammoNonLethal,
+      noAim: form.ammoNoAim,
+      // Burning is the only status ammunition sets in this stage, so the editor
+      // offers the number rather than a free-text status id nobody could guess.
+      ...(ignite ? { ignites: { statusId: CPRED_ON_FIRE_STATUS_ID, damage: ignite } } : {}),
+      ...(spreadDv
+        ? {
+            spread: {
+              dv: spreadDv,
+              damage: form.ammoSpreadDamage,
+              coneRangeM: numberOrUndefined(form.ammoSpreadRange) ?? CPRED_CONE_RANGE_M,
+            },
+          }
+        : {}),
     };
   }
   if (form.category === 'armor') {

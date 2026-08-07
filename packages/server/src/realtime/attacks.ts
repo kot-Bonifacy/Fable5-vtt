@@ -4,6 +4,8 @@ import type {
   AttackRollResult,
   ChatMessageView,
   CoverView,
+  CompendiumEntry,
+  CpredAmmoProfile,
   CpredAttackMeta,
   CpredAttackRequest,
   CpredCharacterData,
@@ -28,8 +30,11 @@ import {
   CPRED_STAT_LABELS,
   CPRED_SUPPRESSIVE_RANGE_M,
   ROLE_GM,
+  ammoFitsWeapon,
+  ammoProfilesOf,
   concentrationBase,
   distanceToCover,
+  loadedAmmoFor,
   formatMetres,
   isTokenInFog,
   metresPerPixel,
@@ -60,11 +65,12 @@ import {
   type SheetCombatProfile,
 } from '../sheets.js';
 import {
-  blastTargets,
+  areaTargets,
   describeArea,
   requireScenePoint,
   scatterBlast,
   toAreaMeta,
+  type AreaShape,
 } from './areas.js';
 import { pinToken } from './turn-effects.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
@@ -157,21 +163,33 @@ async function resolveWeaponRow(
   row: CpredCharacterData['weapons'][number];
   resolved: ResolvedWeapon | null;
   typeId: string | null;
+  ammo: CpredAmmoProfile | null;
 }> {
   if (typeof weaponRowId !== 'string') throw new RealtimeError('BAD_REQUEST');
   const row = data.weapons.find((weapon) => weapon.id === weaponRowId);
   if (!row) throw new RealtimeError('UNKNOWN_WEAPON');
-  if (!row.compendiumId) return { row, resolved: null, typeId: null };
+  if (!row.compendiumId) return { row, resolved: null, typeId: null, ammo: null };
 
   const compendium = await buildCompendiumSync(deps, campaignId);
   const entry = compendium.entries.find((candidate) => candidate.id === row.compendiumId);
-  if (!entry || !isWeaponEntry(entry)) return { row, resolved: null, typeId: null };
+  if (!entry || !isWeaponEntry(entry)) return { row, resolved: null, typeId: null, ammo: null };
   const weaponTypeById = new Map(compendium.weaponTypes.map((type) => [type.id, type]));
+  const resolved = resolveWeapon(entry, { weaponTypeById });
   return {
     row,
-    resolved: resolveWeapon(entry, { weaponTypeById }),
+    resolved,
     typeId: entry.weaponTypeId,
+    // Stage 16g: what is actually in the magazine. Read here rather than in the
+    // planner for the same reason the weapon is — the catalogue is the server's,
+    // and the planner is handed facts, never a place to look them up.
+    ammo: loadedAmmoFor(row, resolved, ammoLookup(compendium.entries)),
   };
+}
+
+/** Catalogue lookup for one campaign's ammunition rows (stage 16g). */
+function ammoLookup(entries: readonly CompendiumEntry[]): (id: string) => CpredAmmoProfile | null {
+  const byId = new Map(ammoProfilesOf(entries).map((ammo) => [ammo.id, ammo]));
+  return (id) => byId.get(id) ?? null;
 }
 
 /** The token doing the shooting: the one named, or the character's on that scene. */
@@ -360,9 +378,14 @@ function attackDetail(meta: CpredAttackMeta): string {
         ? `PT ${meta.dv} (Unik celu)`
         : meta.dvSource === 'everyday'
           ? `PT ${meta.dv} (bez karty — PT codzienny)`
-          : `PT ${meta.dv}`,
+          : meta.dvSource === 'spread'
+            ? `PT ${meta.dv} (śrut — stały)`
+            : `PT ${meta.dv}`,
     );
   }
+  // What was in the magazine (stage 16g). Ordinary ammunition says nothing,
+  // because „Nie ma cech specjalnych" is not worth a line on every card.
+  if (meta.ammo) parts.push(`nabój: ${meta.ammo.name}`);
   if (meta.mode !== 'single') parts.push(meta.modeLabel);
   if (meta.ammoCost > 0)
     parts.push(`magazynek ${meta.ammoAfter}/${meta.ammoCost + meta.ammoAfter}`);
@@ -751,6 +774,8 @@ export const attackRollEvent = defineEvent<AttackRollPayload<CpredAttackRequest>
         data,
         registry,
         payload?.request ?? ({} as CpredAttackRequest),
+        // The row, its catalogue entry and the round in the magazine — the three
+        // things that decide what leaves the barrel (stage 16g).
         weapon,
         target
           ? {
@@ -828,15 +853,24 @@ export const attackRollEvent = defineEvent<AttackRollPayload<CpredAttackRequest>
         fire,
         // An explosion is judged where it went off, so the blast needs the aim
         // point and the stat that threw — the one the scatter is measured
-        // against when the throw misses.
+        // against when the throw misses. A spread of shot is judged from the
+        // muzzle instead, and the target only sets the direction (stage 16g).
         meta.blastSideM !== undefined
           ? {
+              kind: 'blast' as const,
               aim: aimPoint,
               sideM: meta.blastSideM,
               stat: data.stats[meta.statId],
               statLabel: CPRED_STAT_LABELS[meta.statId].abbr,
             }
-          : undefined,
+          : meta.coneRangeM !== undefined
+            ? {
+                kind: 'cone' as const,
+                origin,
+                towards: aimPoint,
+                rangeM: meta.coneRangeM,
+              }
+            : undefined,
       );
       // Whoever fired past a cover said so out loud (stage 16c): the card carries
       // the decision, because „he leaned out" is a ruling the table made and the
@@ -863,15 +897,17 @@ export const attackRollEvent = defineEvent<AttackRollPayload<CpredAttackRequest>
 );
 
 /**
- * An explosion's own facts: where it was aimed and whose steadiness the scatter
- * is measured against (stage 16d). Absent for every ordinary attack.
+ * The area this attack covers, when it covers one. Absent for every ordinary
+ * attack — one bullet, one person.
+ *
+ * A blast carries where it was aimed and whose steadiness the scatter is
+ * measured against (stage 16d); a cone carries where the shooter stands and
+ * which way they pointed (stage 16g). Neither carries a target list: who is
+ * standing in it is measured when the dice have already fallen.
  */
-interface BlastRequest {
-  aim: ScenePoint;
-  sideM: number;
-  stat: number;
-  statLabel: string;
-}
+type AreaRequest =
+  | { kind: 'blast'; aim: ScenePoint; sideM: number; stat: number; statLabel: string }
+  | { kind: 'cone'; origin: ScenePoint; towards: ScenePoint; rangeM: number };
 
 /** The verdict block the chat card renders, including suppressive fire's checks. */
 async function buildAttackMeta(
@@ -883,7 +919,7 @@ async function buildAttackMeta(
   scene: Scene,
   attacker: Token,
   fire: FireContext,
-  blast?: BlastRequest,
+  blast?: AreaRequest,
 ): Promise<RollAttackMeta> {
   const label = `${meta.weaponName} → ${meta.targetName}`;
 
@@ -911,19 +947,39 @@ async function buildAttackMeta(
     : `${attackDetail(meta)} · brakło ${Math.abs(outcome.margin) + 1}`;
 
   // A charge that missed still goes off — it just goes off somewhere else
-  // (s. 174). That is why the area is resolved on both branches and why the
+  // (s. 174). That is why the blast is resolved on both branches and why the
   // damage roll is offered even on a miss: „nie trafiłeś" is about the square
   // that was aimed at, not about whether anything exploded.
+  //
+  // A spread of shot is the opposite case and the rule says so plainly: „Jeśli
+  // rzut się uda, każdy cel … otrzymuje 3k6" (s. 174). Miss and the pellets go
+  // into the wall behind, so there is nobody to list and nothing to roll.
   let area: RollAreaMeta | undefined;
-  if (blast) {
+  if (blast?.kind === 'blast') {
     const context = fire.loaded ?? (await loadVisionContext(deps.ctx.prisma, scene));
     fire.loaded = context;
     const scattered = outcome.hit
       ? null
       : scatterBlast(blast.aim, scene, blast.stat, blast.statLabel, createMixedRng());
     const centre = scattered ? scattered.centre : blast.aim;
-    const targets = await blastTargets(deps, scene, registry, centre, blast.sideM, context);
-    area = toAreaMeta(scene, centre, blast.sideM, targets, scattered?.scatter ?? null);
+    const shape: AreaShape = { kind: 'blast', centre, sideM: blast.sideM };
+    const targets = await areaTargets(deps, scene, registry, shape, context);
+    area = toAreaMeta(scene, shape, targets, scattered?.scatter ?? null);
+    detail = `${detail} · ${describeArea(area)}`;
+  } else if (blast?.kind === 'cone' && outcome.hit) {
+    const context = fire.loaded ?? (await loadVisionContext(deps.ctx.prisma, scene));
+    fire.loaded = context;
+    const shape: AreaShape = {
+      kind: 'cone',
+      origin: blast.origin,
+      towards: blast.towards,
+      rangeM: blast.rangeM,
+    };
+    // The shooter is standing at the muzzle and is not shot by their own gun.
+    const targets = await areaTargets(deps, scene, registry, shape, context, {
+      excludeTokenId: attacker.id,
+    });
+    area = toAreaMeta(scene, shape, targets, null);
     detail = `${detail} · ${describeArea(area)}`;
   }
   const damages = outcome.hit || area !== undefined;
@@ -1162,7 +1218,15 @@ async function spendCharacterAction(
   );
 }
 
-/** Reloading: an Action at the table, one click here. */
+/**
+ * Reloading: an Action at the table, one click here — and since stage 16g also
+ * the one way the round in the magazine changes.
+ *
+ * Both halves are the same event because at the table they are the same motion:
+ * „żeby zmienić nabój, trzeba przeładować". A change therefore costs an Action
+ * in a fight even when the magazine was full, and costs nothing outside one,
+ * where `spendCharacterAction` finds no budget to charge.
+ */
 export const weaponReloadEvent = defineEvent<WeaponReloadPayload, { ammo: number }>({
   name: 'weapon:reload',
   handler: async ({ deps, socket, user, payload }) => {
@@ -1172,23 +1236,85 @@ export const weaponReloadEvent = defineEvent<WeaponReloadPayload, { ammo: number
     const data = parseCharacterData(character.data, registry);
     const row = data.weapons.find((weapon) => weapon.id === payload?.weaponRowId);
     if (!row) throw new RealtimeError('UNKNOWN_WEAPON');
-    if (row.ammoMax <= 0) throw new RealtimeError('WEAPON_HAS_NO_MAGAZINE');
+
+    // What is being loaded: an id, „ordinary" (null), or „leave it alone".
+    const requested = await requireLoadableAmmo(deps, campaignId, row, payload?.ammoId);
+    const nextAmmoId = requested === undefined ? row.ammoId : (requested?.id ?? undefined);
+    const changing = nextAmmoId !== row.ammoId;
+
+    if (row.ammoMax <= 0) {
+      // Nothing to refill. A weapon whose rounds the rules do not count (a bow)
+      // still gets to swap what it shoots — that is a choice of arrow, not a
+      // magazine change, so it is free and needs no Action.
+      if (!changing) throw new RealtimeError('WEAPON_HAS_NO_MAGAZINE');
+      await saveWeaponRow(deps, campaignId, character, data, row.id, {
+        ...(nextAmmoId ? { ammoId: nextAmmoId } : { ammoId: undefined }),
+      });
+      return { ammo: row.ammoCurrent };
+    }
     // A full magazine costs nothing: the click was a misfire, not an Action.
-    if (row.ammoCurrent >= row.ammoMax) return { ammo: row.ammoCurrent };
+    // Unless the round is changing — then the full magazine comes out.
+    if (row.ammoCurrent >= row.ammoMax && !changing) return { ammo: row.ammoCurrent };
 
     // „Przeładowanie — Załadowujesz magazynek do pełna" is an Action (s. 169).
     // Unlike an attack it produces no card of its own, so the chat line is the
     // only trace the table gets — hence not silent.
     await spendCharacterAction(deps, campaignId, socket.data.viewedSceneId, character, user);
 
-    const weapons = data.weapons.map((weapon) =>
-      weapon.id === row.id ? { ...weapon, ammoCurrent: row.ammoMax } : weapon,
-    );
-    const saved = await deps.ctx.prisma.character.update({
-      where: { id: character.id },
-      data: { data: JSON.stringify(mergeCharacterData(data, { weapons })) },
+    await saveWeaponRow(deps, campaignId, character, data, row.id, {
+      ammoCurrent: row.ammoMax,
+      ...(changing ? (nextAmmoId ? { ammoId: nextAmmoId } : { ammoId: undefined }) : {}),
     });
-    await emitCharacterUpsert(deps, campaignId, toCharacterView(saved, registry));
     return { ammo: row.ammoMax };
   },
 });
+
+/**
+ * The round the client asked for, proven to exist and to fit this weapon.
+ *
+ * `undefined` means the request said nothing about ammunition (a plain reload);
+ * `null` means ordinary ammunition, which has no catalogue row.
+ */
+async function requireLoadableAmmo(
+  deps: RealtimeDeps,
+  campaignId: string,
+  row: CpredCharacterData['weapons'][number],
+  ammoId: unknown,
+): Promise<CpredAmmoProfile | null | undefined> {
+  if (ammoId === undefined) return undefined;
+  if (ammoId === null || ammoId === '') return null;
+  if (typeof ammoId !== 'string') throw new RealtimeError('BAD_REQUEST');
+
+  const compendium = await buildCompendiumSync(deps, campaignId);
+  const ammo = ammoLookup(compendium.entries)(ammoId);
+  if (!ammo) throw new RealtimeError('UNKNOWN_AMMO');
+
+  const entry = row.compendiumId
+    ? compendium.entries.find((candidate) => candidate.id === row.compendiumId)
+    : undefined;
+  const weaponTypeById = new Map(compendium.weaponTypes.map((type) => [type.id, type]));
+  const resolved = entry && isWeaponEntry(entry) ? resolveWeapon(entry, { weaponTypeById }) : null;
+  // The same test the planner would apply — said now, so nobody discovers it
+  // with a target already picked out.
+  if (!ammoFitsWeapon(ammo, resolved)) throw new RealtimeError('AMMO_MISMATCH');
+  return ammo;
+}
+
+/** Writes one weapon row back and pushes the sheet to everyone who may see it. */
+async function saveWeaponRow(
+  deps: RealtimeDeps,
+  campaignId: string,
+  character: Character,
+  data: CpredCharacterData,
+  rowId: string,
+  patch: Partial<CpredCharacterData['weapons'][number]>,
+): Promise<void> {
+  const weapons = data.weapons.map((weapon) =>
+    weapon.id === rowId ? { ...weapon, ...patch } : weapon,
+  );
+  const saved = await deps.ctx.prisma.character.update({
+    where: { id: character.id },
+    data: { data: JSON.stringify(mergeCharacterData(data, { weapons })) },
+  });
+  await emitCharacterUpsert(deps, campaignId, toCharacterView(saved, deps.ctx.cpred));
+}

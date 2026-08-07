@@ -33,6 +33,7 @@ import type {
 } from '@vtt/shared';
 import {
   COVER_MIN_SIZE_PX,
+  CPRED_CONE_HALF_ANGLE_DEG,
   DRAWING_FILL_ALPHA,
   DRAWING_PATH_MAX_POINTS,
   FOG_STROKE_MAX_POINTS,
@@ -62,6 +63,22 @@ import {
   TOKEN_PATH_MAX_POINTS,
 } from '@vtt/shared';
 import { TokenNode, type TokenNodeCtx } from './TokenNode.js';
+
+/**
+ * A template the pointer drags around (stages 16d, 16g): the square a charge
+ * covers, or the wedge a shotgun sprays. Two shapes, one drawing layer — and
+ * one flag telling the map whether the next click still belongs to a figure.
+ */
+export type AreaPreview = { kind: 'blast'; sideM: number } | { kind: 'cone'; rangeM: number };
+
+/** Two previews are the same when their shape and their size are. */
+function samePreview(a: AreaPreview | null, b: AreaPreview | null): boolean {
+  if (a === null || b === null) return a === b;
+  if (a.kind !== b.kind) return false;
+  return a.kind === 'blast' && b.kind === 'blast'
+    ? a.sideM === b.sideM
+    : (a as { rangeM: number }).rangeM === (b as { rangeM: number }).rangeM;
+}
 
 /** One measurement drawn on the map: the line plus who is holding it. */
 export interface RulerLine {
@@ -828,17 +845,23 @@ export class MapRenderer {
   private aimTokenId: string | null = null;
   private readonly aimGraphics = new Graphics();
   /**
-   * The explosion template that follows the pointer (stage 16d).
+   * The area template that follows the pointer (stages 16d, 16g).
    *
-   * Set while a charge is in hand, and it is the only thing in this file that
-   * knows about areas — the size comes from the rules module through the action
-   * bar, and where the square lands comes from the grid. The renderer's job is
-   * to make „it goes off *here*" visible before the click, because the square is
-   * the whole decision: a metre of pointer travel is a person in or out.
+   * Set while a charge — or a shotgun loaded with shot — is in hand, and it is
+   * the only thing in this file that knows about areas: the size comes from the
+   * rules module through the action bar, and where the square lands comes from
+   * the grid. The renderer's job is to make „it goes off *here*" visible before
+   * the click, because the shape is the whole decision: a metre of pointer
+   * travel is a person in or out.
+   *
+   * The two shapes differ in what the click then means, and the flag says so
+   * without this file having to know why: a blast **replaces** the target (the
+   * click lands on the ground), a cone only *shows* what a perfectly ordinary
+   * shot at a figure will also sweep.
    */
-  private blastPreview: { sideM: number } | null = null;
-  /** Centre of that square under the pointer, snapped to the grid. */
-  private blastHover: ScenePoint | null = null;
+  private areaPreview: AreaPreview | null = null;
+  /** Centre of the square (snapped) or the point the cone is aimed at. */
+  private areaHover: ScenePoint | null = null;
   private readonly blastGraphics = new Graphics();
   private walkText: Text | null = null;
   /**
@@ -1502,7 +1525,7 @@ export class MapRenderer {
       this.trackWalkHover(point);
       // …and the explosion template follows it in the same breath, for the same
       // reason: with a grenade in hand it *is* what the map looks like.
-      this.trackBlastHover(point);
+      this.trackAreaHover(point);
 
       if (this.fogStroke) {
         const last = this.fogStroke[this.fogStroke.length - 1]!;
@@ -1849,69 +1872,91 @@ export class MapRenderer {
   }
 
   /**
-   * Arms — or puts away — the explosion template (stage 16d).
+   * Arms — or puts away — the area template (stages 16d, 16g).
    *
-   * `null` is „no charge in hand", which takes the square off the map and hands
-   * the pointer back to the route preview. Nothing here decides whether the
-   * throw is legal; the bar has already asked the rules that question, and the
-   * server asks it again when the dice fly.
+   * `null` is „nothing of the sort in hand", which takes the shape off the map
+   * and hands the pointer back to the route preview. Nothing here decides
+   * whether the shot is legal; the bar has already asked the rules that
+   * question, and the server asks it again when the dice fly.
    */
-  setBlastPreview(preview: { sideM: number } | null): void {
+  setAreaPreview(preview: AreaPreview | null): void {
     if (this.destroyed) return;
-    if (this.blastPreview?.sideM === preview?.sideM) return;
-    this.blastPreview = preview;
+    if (samePreview(this.areaPreview, preview)) return;
+    this.areaPreview = preview;
     if (!preview) {
-      this.blastHover = null;
+      this.areaHover = null;
       this.blastGraphics.clear();
     }
     this.applyMapCursor();
   }
 
   /** Follows the pointer with the template; called from the move handler. */
-  private trackBlastHover(point: ScenePoint): void {
+  private trackAreaHover(point: ScenePoint): void {
     const scene = this.scene;
-    if (!this.blastPreview || !scene) {
-      if (this.blastHover) {
-        this.blastHover = null;
+    if (!this.areaPreview || !scene) {
+      if (this.areaHover) {
+        this.areaHover = null;
         this.blastGraphics.clear();
       }
       return;
     }
-    const centre = snapToSquareCentre(point, scene);
-    if (this.blastHover && this.blastHover.x === centre.x && this.blastHover.y === centre.y) return;
-    this.blastHover = centre;
-    this.drawBlastPreview();
+    // A blast snaps to the square it will be centred on; a cone only needs a
+    // direction, so it follows the raw pointer.
+    const aim = this.areaPreview.kind === 'blast' ? snapToSquareCentre(point, scene) : { ...point };
+    if (this.areaHover && this.areaHover.x === aim.x && this.areaHover.y === aim.y) return;
+    this.areaHover = aim;
+    this.drawAreaPreview();
   }
 
   /**
-   * The square the charge would cover, drawn on the grid it snaps to.
+   * The patch the shot would cover, drawn on the grid it snaps to.
    *
-   * Deliberately a filled box rather than an outline: the question the player is
-   * answering is „who is inside", and an outline makes that a guess at the edges
-   * — which is exactly where the rule bites.
+   * Deliberately a filled shape rather than an outline: the question the player
+   * is answering is „who is inside", and an outline makes that a guess at the
+   * edges — which is exactly where the rule bites.
    */
-  private drawBlastPreview(): void {
+  private drawAreaPreview(): void {
     this.blastGraphics.clear();
     const scene = this.scene;
-    const centre = this.blastHover;
-    const preview = this.blastPreview;
-    if (!scene || !centre || !preview) return;
+    const aim = this.areaHover;
+    const preview = this.areaPreview;
+    if (!scene || !aim || !preview) return;
     const perPixel = metresPerPixel(scene);
     if (perPixel <= 0) return;
-    const half = preview.sideM / perPixel / 2;
     const k = this.overlayScale();
+
+    if (preview.kind === 'cone') {
+      // The wedge starts at the muzzle, so it needs the figure holding the gun;
+      // with none selected there is nothing to draw from.
+      const node = this.selectedTokenId ? this.tokenNodes.get(this.selectedTokenId) : undefined;
+      if (!node || node.destroyed) return;
+      const half = (node.token.size * scene.grid.sizePx) / 2;
+      const origin = { x: node.x + half, y: node.y + half };
+      const angle = Math.atan2(aim.y - origin.y, aim.x - origin.x);
+      const halfAngle = (CPRED_CONE_HALF_ANGLE_DEG * Math.PI) / 180;
+      const reach = preview.rangeM / perPixel;
+      this.blastGraphics
+        .moveTo(origin.x, origin.y)
+        .arc(origin.x, origin.y, reach, angle - halfAngle, angle + halfAngle)
+        .lineTo(origin.x, origin.y)
+        .fill({ color: BLAST_COLOR, alpha: 0.16 })
+        .stroke({ color: BLAST_COLOR, width: 2.5 * k, alpha: 0.85 });
+      return;
+    }
+
+    const half = preview.sideM / perPixel / 2;
     this.blastGraphics
-      .rect(centre.x - half, centre.y - half, half * 2, half * 2)
+      .rect(aim.x - half, aim.y - half, half * 2, half * 2)
       .fill({ color: BLAST_COLOR, alpha: 0.18 })
       .stroke({ color: BLAST_COLOR, width: 2.5 * k, alpha: 0.9 });
     // A cross on the centre square: the charge lands on *that* one, and on a
     // 5×5 template the middle is otherwise impossible to point at.
     const cell = scene.grid.sizePx / 2;
     this.blastGraphics
-      .moveTo(centre.x - cell, centre.y)
-      .lineTo(centre.x + cell, centre.y)
-      .moveTo(centre.x, centre.y - cell)
-      .lineTo(centre.x, centre.y + cell)
+      .moveTo(aim.x - cell, aim.y)
+      .lineTo(aim.x + cell, aim.y)
+      .moveTo(aim.x, aim.y - cell)
+      .lineTo(aim.x, aim.y + cell)
       .stroke({ color: BLAST_COLOR, width: 2 * k, alpha: 0.75 });
   }
 
@@ -2161,8 +2206,10 @@ export class MapRenderer {
       this.drag !== null ||
       this.rulerMode ||
       // A charge in hand owns the click: the next one says where it lands, not
-      // where the figure walks (stage 16d).
-      this.blastPreview !== null ||
+      // where the figure walks (stage 16d). A cone is *not* such a case — it is
+      // an ordinary shot at a figure that happens to spray (16g) — so only the
+      // shape that replaces the target blocks the route.
+      this.areaPreview?.kind === 'blast' ||
       // A weapon in hand no longer freezes the map (stage 16f): only the
       // pointer actually resting on a target does, because that click is
       // already spoken for.

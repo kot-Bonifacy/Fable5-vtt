@@ -11,9 +11,11 @@ import {
   CPRED_ACTION_STABILIZE,
   ROLE_GM,
   hotbarSlotsFor,
+  isAmmoEntry,
   isWeaponEntry,
   resolveWeapon,
   sanitizeCombatProfile,
+  toAmmoProfile,
 } from '@vtt/shared';
 import { loadAttackFor } from './attack-targeting.js';
 import { coverAt } from './stores/coverStore.js';
@@ -127,6 +129,12 @@ export function hudContextFor(tokenId: string | null): HudContext {
     resolve: (compendiumId) => {
       const entry = compendiumId ? compendium.entries[compendiumId] : undefined;
       return entry && isWeaponEntry(entry) ? resolveWeapon(entry, { weaponTypeById }) : null;
+    },
+    // Stage 16g: what is in the magazine decides how the slot behaves — a
+    // shotgun loaded with shot aims a cone, not a bullet.
+    resolveAmmo: (ammoId) => {
+      const entry = compendium.entries[ammoId];
+      return entry && isAmmoEntry(entry) ? toAmmoProfile(entry) : null;
     },
     statuses: token.statuses,
     turn: turn
@@ -288,6 +296,9 @@ export function activateSlot(slot: CpredHotbarSlot, tokenId: string): void {
       // (stage 16d), so the map has to know which of the two this weapon wants
       // before the click happens.
       pointTarget: slot.pointTarget,
+      // A shell sprays: the map draws the cone the shot will cover, while the
+      // click keeps meaning „that figure" (stage 16g).
+      ...(slot.coneRangeM !== null ? { coneRangeM: slot.coneRangeM } : {}),
     };
     hud.setActiveWeapon(weapon);
     // The crosshair armed from a sheet and the bar's own weapon would both

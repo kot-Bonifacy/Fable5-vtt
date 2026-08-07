@@ -5,6 +5,7 @@ import type {
   CpredCombatProfile,
   CpredCriticalInjuryRow,
   CpredHitLocation,
+  CpredAmmoProfile,
   CpredPeriodicDamage,
   CpredRegistry,
   CpredTurnCarryInput,
@@ -33,6 +34,8 @@ import {
   CPRED_UNCONSCIOUS_STATUS_ID,
   CPRED_WOUND_LABELS,
   STATIST_WEAPON_ROW_ID,
+  ammoAblation,
+  ammoDamageNotes,
   applyWoundStatuses,
   combatProfileSheetForSkill,
   cpredAction,
@@ -858,6 +861,13 @@ export interface SheetDamageRequest {
   /** GM override of the SP protecting the target (statists, cover…). */
   armorSp?: number;
   ignoreArmor?: boolean;
+  /**
+   * The round that landed (stage 16g). Everything it changes about this hit —
+   * how much armour wears down, whether a Critical Injury is drawn at all,
+   * whether the target can be dropped below 1 HP — is read off these flags, so
+   * the damage path never learns the name of a single cartridge.
+   */
+  ammo?: CpredAmmoProfile;
 }
 
 /** The part of the chat log the system fills in. */
@@ -920,6 +930,15 @@ export function applyDamageToCover(
   };
 }
 
+/** The card's ammunition block: the round's name and what it changed. */
+function ammoLogEntry(
+  ammo: CpredAmmoProfile,
+  outcome: Parameters<typeof ammoDamageNotes>[1],
+): NonNullable<DamageLogEntry['ammo']> {
+  const notes = ammoDamageNotes(ammo, outcome);
+  return { name: ammo.name, ...(notes.length > 0 ? { notes } : {}) };
+}
+
 export function isValidHitLocation(value: unknown): value is CpredHitLocation {
   return typeof value === 'string' && (CPRED_HIT_LOCATIONS as readonly string[]).includes(value);
 }
@@ -951,6 +970,11 @@ export function applyDamageToSheet(
   const max = hpMax(data.stats);
   const armorRow = effectiveArmor(data.armor, location);
   const armorSp = request.armorSp ?? armorRow?.spCurrent ?? 0;
+  const ammo = request.ammo ?? null;
+  // „Ta amunicja nie powoduje Ran Krytycznych" (s. 346) takes the bonus damage
+  // with it: the 5 points are part of the Critical Injury rule, not a separate
+  // effect of rolling two sixes.
+  const criticalInjury = request.criticalInjury && ammo?.noCriticalInjury !== true;
 
   const outcome = resolveCpredDamage({
     damage: request.damage,
@@ -958,8 +982,10 @@ export function applyDamageToSheet(
     armorSp,
     hpCurrent: data.hpCurrent,
     hpMax: max,
-    criticalInjury: request.criticalInjury,
+    criticalInjury,
     ignoreArmor: request.ignoreArmor,
+    ablation: ammoAblation(ammo),
+    ...(ammo?.nonLethal ? { nonLethal: true } : {}),
   });
 
   const patch: Partial<CpredCharacterData> = { hpCurrent: outcome.hpAfter };
@@ -1006,18 +1032,46 @@ export function applyDamageToSheet(
       location,
       rng,
       data.criticalInjuries.map((injury) => injury.id),
+      // Dumdum: „cel rzuca ponownie …, dopóki nie wylosuje rany innej niż Ciało
+      // obce" (s. 345). Which injury triggers it is data, so a GM's own table
+      // works the same way.
+      ammo?.extraInjuryOn ? { extraOnIds: ammo.extraInjuryOn } : {},
     );
     const rolled = draw.rolls[draw.rolls.length - 1]?.total ?? 0;
     if (draw.entry) {
-      const row = toCriticalInjuryRow(draw.entry, rolled);
-      patch.criticalInjuries = [...data.criticalInjuries, row];
-      log.injury = { id: row.id, name: row.name, effect: row.effect, rolled };
+      const row = toCriticalInjuryRow(draw.entry, draw.extra ? draw.rolls[0]!.total : rolled);
+      const rows = [row];
+      log.injury = { id: row.id, name: row.name, effect: row.effect, rolled: row.rolled ?? rolled };
       carry = cpredInjuryCarryOnDraw(row);
+      // „Następnie cel otrzymuje **także** tę wylosowaną Ranę Krytyczną. Nie
+      // zadaje ona kolejnych obrażeń dodatkowych" — a second wound on the same
+      // hit, and the 5 bonus points stay counted once.
+      if (draw.extra) {
+        const second = toCriticalInjuryRow(draw.extra.entry, draw.extra.rolled);
+        rows.push(second);
+        log.injuryExtra = {
+          id: second.id,
+          name: second.name,
+          effect: second.effect,
+          rolled: draw.extra.rolled,
+        };
+        carry = mergeSheetCarry(carry, cpredInjuryCarryOnDraw(second) ?? {});
+      }
+      patch.criticalInjuries = [...data.criticalInjuries, ...rows];
     } else if (draw.exhausted) {
       log.injuryNote = 'Cel ma już wszystkie rany z tej tabeli.';
     } else {
       log.injuryNote = `Brak wpisu na ${rolled} w tabeli ran (${hitLocationLabel(location)}) — uzupełnij kompendium.`;
     }
+  }
+
+  // What the round itself did, as named entries rather than silent arithmetic.
+  if (ammo) {
+    log.ammo = ammoLogEntry(ammo, {
+      ablated: ablatedRow ? outcome.spBefore - outcome.spAfter : 0,
+      heldAtOne: outcome.heldAtOne,
+      injurySuppressed: request.criticalInjury && ammo.noCriticalInjury === true,
+    });
   }
 
   const merged = mergeCharacterData(data, patch);
@@ -1054,14 +1108,18 @@ export function applyDamageToTokenHp(
 ): { hp: TokenHp; log: SheetDamageLog; profile?: SheetCombatProfile } {
   const location = normalizeLocation(request.location);
   const profileSp = profile?.armorSp ?? 0;
+  const ammo = request.ammo ?? null;
+  const criticalInjury = request.criticalInjury && ammo?.noCriticalInjury !== true;
   const outcome = resolveCpredDamage({
     damage: request.damage,
     location,
     armorSp: request.armorSp ?? profileSp,
     hpCurrent: hp.current,
     hpMax: hp.max,
-    criticalInjury: request.criticalInjury,
+    criticalInjury,
     ignoreArmor: request.ignoreArmor,
+    ablation: ammoAblation(ammo),
+    ...(ammo?.nonLethal ? { nonLethal: true } : {}),
   });
   // Only the profile's own armour wears out, and only when it stopped
   // something: a value the GM typed in by hand is a one-off ruling, not a
@@ -1092,6 +1150,15 @@ export function applyDamageToTokenHp(
     ...(outcome.criticalInjury
       ? { injuryNote: 'Cel bez karty postaci — ranę krytyczną rozegraj ręcznie.' }
       : {}),
+    ...(ammo
+      ? {
+          ammo: ammoLogEntry(ammo, {
+            ablated: ablated ? outcome.spBefore - outcome.spAfter : 0,
+            heldAtOne: outcome.heldAtOne,
+            injurySuppressed: request.criticalInjury && ammo.noCriticalInjury === true,
+          }),
+        }
+      : {}),
   };
   return {
     hp: { current: outcome.hpAfter, max: hp.max },
@@ -1119,12 +1186,18 @@ export function undoDamageOnSheet(
       row.id === entry.armor!.rowId ? { ...row, spCurrent: entry.armor!.before } : row,
     );
   }
-  if (entry.injury) {
-    // Remove one instance of the drawn injury, not every injury of that id.
-    const index = data.criticalInjuries.findIndex((injury) => injury.id === entry.injury!.id);
-    if (index >= 0) {
-      patch.criticalInjuries = data.criticalInjuries.filter((_, position) => position !== index);
+  // Remove one instance of each drawn injury, not every injury of that id. Two
+  // of them when a dumdum round chewed its way in (stage 16g).
+  const drawn = [entry.injury, entry.injuryExtra].filter(
+    (injury): injury is NonNullable<DamageLogEntry['injury']> => injury !== undefined,
+  );
+  if (drawn.length > 0) {
+    let remaining = [...data.criticalInjuries];
+    for (const injury of drawn) {
+      const index = remaining.findIndex((row) => row.id === injury.id);
+      if (index >= 0) remaining = remaining.filter((_, position) => position !== index);
     }
+    patch.criticalInjuries = remaining;
   }
   const merged = mergeCharacterData(data, patch);
   return { data: JSON.stringify(merged), hp: { current: merged.hpCurrent, max } };

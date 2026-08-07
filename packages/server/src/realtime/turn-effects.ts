@@ -531,3 +531,80 @@ export async function pinToken(
   });
   await emitTokensById(deps, campaignId, [tokenId]);
 }
+
+/** What setting a periodic status did, so „Cofnij" can put it back. */
+export interface AppliedStatusEffect {
+  statusId: string;
+  /** True when the token was not carrying the status before. */
+  added: boolean;
+  /** The number it carried before, or null when it had none. */
+  damageBefore: number | null;
+}
+
+/**
+ * Sets a burning (or otherwise periodic) status with the number the *source*
+ * dictates — a round of incendiary ammunition burns for 2, a flamethrower for 4
+ * (stages 16g, s. 346 and 348).
+ *
+ * „Efekty tego ataku z kilku źródeł nie kumulują się" (s. 346), and the
+ * flamethrower says how they combine instead: „ten efekt zastępuje efekt
+ * podpalenia zadający mniejsze obrażenia". So two fires are not two fires — the
+ * fiercer one wins, and a weaker one changes nothing at all.
+ */
+export async function igniteToken(
+  deps: RealtimeDeps,
+  campaignId: string,
+  tokenId: string,
+  effect: { statusId: string; damage: number },
+): Promise<AppliedStatusEffect | null> {
+  const token = await deps.ctx.prisma.token.findUnique({ where: { id: tokenId } });
+  if (!token) return null;
+  const statuses = readTokenStatuses(token.statuses);
+  const values = readSheetStatusData(token.statusData);
+  const before = values[effect.statusId];
+  const carried = statuses.includes(effect.statusId);
+  const current = carried ? (before ?? defaultPeriodicDamage(effect.statusId)) : 0;
+  if (carried && current >= effect.damage) return null;
+
+  await deps.ctx.prisma.token.update({
+    where: { id: tokenId },
+    data: {
+      statuses: JSON.stringify(carried ? statuses : [...statuses, effect.statusId]),
+      statusData: writeSheetStatusData(token.statusData, effect.statusId, effect.damage),
+    },
+  });
+  await emitTokensById(deps, campaignId, [tokenId]);
+  return {
+    statusId: effect.statusId,
+    added: !carried,
+    damageBefore: before === undefined ? null : before,
+  };
+}
+
+/** Puts a status's number back where it was; used by „Cofnij" (stage 16g). */
+export async function restoreStatusValues(
+  deps: RealtimeDeps,
+  campaignId: string,
+  tokenId: string,
+  values: Readonly<Record<string, number | null>>,
+): Promise<void> {
+  const entries = Object.entries(values);
+  if (entries.length === 0) return;
+  const token = await deps.ctx.prisma.token.findUnique({ where: { id: tokenId } });
+  if (!token) return;
+  let statusData = token.statusData;
+  for (const [statusId, damage] of entries) {
+    statusData = writeSheetStatusData(statusData, statusId, damage);
+  }
+  await deps.ctx.prisma.token.update({ where: { id: tokenId }, data: { statusData } });
+  await emitTokensById(deps, campaignId, [tokenId]);
+}
+
+/** How hard this status burns when nobody set a number — the table's own value. */
+function defaultPeriodicDamage(statusId: string): number {
+  const due = [
+    ...sheetPeriodicDamage([statusId], 'turn-end'),
+    ...sheetPeriodicDamage([statusId], 'turn-start'),
+  ];
+  return due[0]?.damage ?? 0;
+}

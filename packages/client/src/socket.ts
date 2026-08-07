@@ -738,6 +738,8 @@ function attackAckErrorText(code: string): string {
       return 'Ten wpis nie jest atakiem.';
     case 'WEAPON_HAS_NO_MAGAZINE':
       return 'Ta broń nie ma magazynka do przeładowania.';
+    case 'UNKNOWN_AMMO':
+      return 'Nie ma takiego naboju w kompendium.';
     case 'TOKEN_HAS_NO_PROFILE':
       return 'Ten token nie ma profilu bojowego — uzupełnij go w „Edytuj…” w menu tokenu.';
     default:
@@ -823,8 +825,22 @@ export function sendAttackEvade(
 }
 
 /** Reloads a weapon row to a full magazine (an Action at the table). */
-export function reloadWeapon(characterId: string, weaponRowId: string): void {
-  const payload: WeaponReloadPayload = { characterId, weaponRowId };
+export function reloadWeapon(
+  characterId: string,
+  weaponRowId: string,
+  /**
+   * Load this kind of round while reloading (stage 16g); `null` is ordinary
+   * ammunition. Changing the round goes through the reload event and not
+   * through a sheet edit, which is how „zmiana naboju kosztuje Przeładowanie"
+   * comes out enforced rather than merely written down.
+   */
+  ammoId?: string | null,
+): void {
+  const payload: WeaponReloadPayload = {
+    characterId,
+    weaponRowId,
+    ...(ammoId !== undefined ? { ammoId } : {}),
+  };
   socket?.emit('weapon:reload', payload, (ack: SocketAck<{ ammo: number }>) => {
     if (!ack.ok) useChatStore.getState().addNote(attackAckErrorText(ack.error));
   });

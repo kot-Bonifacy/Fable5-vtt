@@ -215,6 +215,16 @@ export interface CpredWeaponRow extends CpredItemRow {
   ammoMax: number;
   /** Ammunition loaded, as printed on the sheet ("Karabinowa", "Śrutowa"). */
   ammoType: string;
+  /**
+   * Kind of round in the magazine (stage 16g): a compendium id of an ammunition
+   * entry, e.g. „ammo.armour-piercing". Absent means ordinary ammunition, which
+   * has no entry because it has no effects („Nie ma cech specjalnych", s. 345).
+   *
+   * A second field beside `ammoType` rather than a replacement, because the two
+   * answer different questions: `ammoType` is the calibre the sheet prints
+   * („Karabinowa"), this is what the round *does*.
+   */
+  ammoId?: string;
   /** Rate of fire ("LA" on the Polish sheet). */
   rof: string;
 }
@@ -654,7 +664,13 @@ function collectCharacterDataPatch(
       const ammo = readWeaponAmmo(row, issues);
       const rof = validateText(row.rof ?? '', 'weapons', 'LA', ITEM_FIELD_MAX_LENGTH, issues);
       if (damage === undefined || ammo === undefined || rof === undefined) return undefined;
-      return { ...base, damage, ...ammo, rof };
+      // Stage 16g: which *kind* of round is in the magazine, as a reference to
+      // the catalogue. Kept apart from `ammoType` on purpose — that one is the
+      // calibre printed on the sheet („Karabinowa"), and „Amunicja zapalająca do
+      // karabinu" is both at once.
+      const ammoId =
+        typeof row.ammoId === 'string' && isValidCompendiumId(row.ammoId) ? row.ammoId : undefined;
+      return { ...base, damage, ...ammo, rof, ...(ammoId ? { ammoId } : {}) };
     });
     if (weapons) patch.weapons = weapons;
   }

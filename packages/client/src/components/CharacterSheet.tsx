@@ -10,6 +10,7 @@ import {
 } from 'react';
 import type {
   ArmorLocation,
+  CompendiumEntry,
   CpredArmorRow,
   CpredAttackMode,
   CpredCharacterData,
@@ -34,15 +35,18 @@ import {
   ROLE_RANK_MIN,
   SKILL_LEVEL_MAX,
   SKILL_LEVEL_MIN,
+  ammoOptionsFor,
   deathSaveTarget,
   groupedSkills,
   hpMax,
   humanityMax,
+  isAmmoEntry,
   isValidDamageNotation,
   isWeaponEntry,
   resolveWeapon,
   seriousWoundThreshold,
   skillBase,
+  toAmmoProfile,
   validateCharacterDataPatch,
   woundCheckPenalty,
   woundState,
@@ -684,6 +688,68 @@ function RowTable<T extends CpredItemRow>({
 }
 
 /**
+ * What kind of round sits in this weapon's magazine (stage 16g).
+ *
+ * A `select` rather than a free text field, because the catalogue already knows
+ * which rounds fit: „naboje … należy dopasować do rodzaju używanej broni"
+ * (s. 344), so a shotgun offers shot and a bow does not.
+ *
+ * The change travels through `weapon:reload` rather than through a sheet edit,
+ * and that is the whole of the „zmiana naboju kosztuje Przeładowanie" decision:
+ * out of a fight the event finds no budget to charge, in one it books the Action
+ * and fills the magazine, exactly as swapping a magazine does at the table.
+ */
+function AmmoPicker({
+  characterId,
+  row,
+  resolved,
+}: {
+  characterId: string;
+  row: CpredWeaponRow;
+  resolved: ResolvedWeapon | null;
+}) {
+  const entries = useCompendiumStore((s) => s.entries);
+  const order = useCompendiumStore((s) => s.order);
+  const options = useMemo(() => {
+    const catalogue = order
+      .map((id) => entries[id])
+      .filter((entry): entry is CompendiumEntry => !!entry)
+      .filter(isAmmoEntry)
+      .map(toAmmoProfile);
+    return ammoOptionsFor(catalogue, resolved);
+  }, [entries, order, resolved]);
+
+  // A weapon the catalogue has told nothing about — a hand-typed row, a melee
+  // weapon — has no rounds to choose between, and an empty dropdown next to it
+  // would be one more thing to explain.
+  if (options.length === 0) return null;
+  const loaded = row.ammoId && options.some((ammo) => ammo.id === row.ammoId) ? row.ammoId : '';
+  const forced = resolved?.ammoIds?.length === 1;
+
+  return (
+    <select
+      className="weapon-ammo-type"
+      value={loaded}
+      disabled={forced}
+      aria-label={`Rodzaj naboju: ${row.name}`}
+      title={
+        forced
+          ? 'Ta broń strzela tylko jednym rodzajem amunicji.'
+          : 'Rodzaj naboju w magazynku. Zmiana w trakcie walki kosztuje Akcję (Przeładowanie) i ładuje magazynek do pełna.'
+      }
+      onChange={(e) => reloadWeapon(characterId, row.id, e.target.value || null)}
+    >
+      <option value="">Zwykła</option>
+      {options.map((ammo) => (
+        <option key={ammo.id} value={ammo.id}>
+          {ammo.name}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+/**
  * The weapon list (stage 16). Beyond editing the row it is the place combat
  * starts from: „Atak"/„Seria"/„Zapora" arm the map's crosshair, and the next
  * click on a token loads the cup. Which buttons appear follows the weapon's
@@ -816,6 +882,7 @@ function WeaponTable({
                       —
                     </span>
                   )}
+                  <AmmoPicker characterId={character.id} row={row} resolved={resolved} />
                 </td>
                 <td>
                   <input
@@ -902,10 +969,7 @@ function WeaponTable({
                     type="button"
                     className="small-button character-delete"
                     onClick={() =>
-                      saveData(
-                        { weapons: data.weapons.filter((r) => r.id !== row.id) },
-                        'weapons',
-                      )
+                      saveData({ weapons: data.weapons.filter((r) => r.id !== row.id) }, 'weapons')
                     }
                     title="Usuń wiersz"
                   >

@@ -1,5 +1,6 @@
 import type {
   ChatMessageView,
+  CpredAmmoProfile,
   DamageApplyPayload,
   DamageLogEntry,
   DamageUndoPayload,
@@ -25,7 +26,12 @@ import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { emitCombatOfScene } from './combat.js';
 import { emitCovers } from './covers.js';
-import { oweCarryToToken } from './turn-effects.js';
+import {
+  igniteToken,
+  oweCarryToToken,
+  restoreStatusValues,
+  type AppliedStatusEffect,
+} from './turn-effects.js';
 import { emitTokensById, emitTokensOfCharacter, requireCampaignToken } from './tokens.js';
 import { buildCompendiumSync } from './compendium.js';
 import { INCLUDE_CHAT_NAMES, broadcastRedactedChatMessage, toChatMessageView } from './chat-io.js';
@@ -182,6 +188,12 @@ export const damageApplyEvent = defineEvent<DamageApplyPayload, { messageId: num
       }
     }
 
+    // Stage 16g: the round that was fired, carried by the damage roll itself.
+    // Read from the stored message like every other number here — a client
+    // naming its own ammunition would be a client choosing its own armour
+    // penetration.
+    const ammo = readRollAmmo(roll);
+
     const request: SheetDamageRequest = {
       // Autofire rolls 2d6 and multiplies the sum (stage 16); the factor is
       // read off the stored roll, never off the client's request.
@@ -190,6 +202,7 @@ export const damageApplyEvent = defineEvent<DamageApplyPayload, { messageId: num
       location,
       ...(payload?.armorSp !== undefined ? { armorSp: payload.armorSp } : {}),
       ...(payload?.ignoreArmor === true || roll.damage?.ignoreArmor ? { ignoreArmor: true } : {}),
+      ...(ammo ? { ammo } : {}),
     };
 
     let log: SheetDamageLog;
@@ -245,8 +258,18 @@ export const damageApplyEvent = defineEvent<DamageApplyPayload, { messageId: num
       await emitTokensById(deps, campaignId, [token.id]);
     }
 
+    // „Gdy ten typ amunicji po przejściu przez zbroję celu zadaje mu obrażenia,
+    // cel zostaje także podpalony" (s. 346) — through the armour and *hurting*,
+    // so a round the vest stopped sets nobody alight. The status then burns on
+    // the ordinary end-of-turn path from 14e.
+    const ignited =
+      ammo?.ignites && log.damageThrough > 0
+        ? await igniteToken(deps, campaignId, token.id, ammo.ignites)
+        : null;
+
     const entry: DamageLogEntry = {
       ...log,
+      ...(ignited ? describeIgnition(log, ammo!.ignites!, ignited) : {}),
       sourceMessageId,
       targetTokenId: token.id,
       targetName: token.name,
@@ -257,6 +280,42 @@ export const damageApplyEvent = defineEvent<DamageApplyPayload, { messageId: num
     return { messageId: view.id };
   },
 });
+
+/**
+ * The round carried by a damage roll (stage 16g).
+ *
+ * Stored under `RollDamageMeta.system`, which the dice engine treats as opaque —
+ * so this is where CP RED reads it back. A message written before the stage
+ * simply has none, and every flag is then absent, which is exactly „ordinary
+ * ammunition".
+ */
+function readRollAmmo(roll: RollResult): CpredAmmoProfile | null {
+  const system = roll.damage?.system;
+  if (!system || typeof system !== 'object') return null;
+  const ammo = (system as { ammo?: unknown }).ammo;
+  if (!ammo || typeof ammo !== 'object') return null;
+  const candidate = ammo as Partial<CpredAmmoProfile>;
+  if (typeof candidate.id !== 'string' || typeof candidate.name !== 'string') return null;
+  return { ...(candidate as CpredAmmoProfile), patterns: candidate.patterns ?? [] };
+}
+
+/** The fire this hit started, written into the log the card renders. */
+function describeIgnition(
+  log: SheetDamageLog,
+  ignites: { statusId: string; damage: number },
+  applied: AppliedStatusEffect,
+): Pick<DamageLogEntry, 'ammo' | 'statusesAdded' | 'statusValuesBefore'> {
+  const note = `Podpalony — ${ignites.damage} obr./turę`;
+  return {
+    ...(log.ammo
+      ? { ammo: { ...log.ammo, notes: [...(log.ammo.notes ?? []), note] } }
+      : { ammo: { name: 'Amunicja zapalająca', notes: [note] } }),
+    // Only a status this hit actually put on comes off again: raising an
+    // existing fire from 2 to 4 must not let „Cofnij" extinguish it.
+    ...(applied.added ? { statusesAdded: [ignites.statusId] } : {}),
+    statusValuesBefore: { [ignites.statusId]: applied.damageBefore },
+  };
+}
 
 function parseTokenStatuses(token: Token): string[] {
   try {
@@ -319,6 +378,10 @@ export const damageUndoEvent = defineEvent<DamageUndoPayload, void>({
           data: { statuses: JSON.stringify(statuses) },
         });
       }
+    }
+    // A fire this hit only made *fiercer* goes back to what it was (stage 16g).
+    if (entry.targetTokenId && entry.statusValuesBefore) {
+      await restoreStatusValues(deps, campaignId, entry.targetTokenId, entry.statusValuesBefore);
     }
 
     if (entry.characterId) {

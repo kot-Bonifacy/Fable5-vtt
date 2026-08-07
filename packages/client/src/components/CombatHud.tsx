@@ -102,6 +102,11 @@ function HotbarSlot({
       {slot.kind === 'weapon' && slot.modeLabel && (
         <span className="hud-slot-mode">{slot.modeLabel}</span>
       )}
+      {/* What is loaded (stage 16g): „Strzelba · Śrut" is a different attack
+          from „Strzelba · Zapalająca", and the slot has to say which. */}
+      {slot.kind === 'weapon' && slot.ammoLabel && (
+        <span className="hud-slot-mode hud-slot-ammo-type">{slot.ammoLabel}</span>
+      )}
       {ammo && (
         <span className="hud-slot-ammo">
           {ammo.current}/{ammo.max}
@@ -196,6 +201,7 @@ export function CombatHud() {
       name: slot.modeLabel ? `${slot.label} — ${slot.modeLabel}` : slot.label,
       melee: slot.melee,
       pointTarget: slot.pointTarget,
+      ...(slot.coneRangeM !== null ? { coneRangeM: slot.coneRangeM } : {}),
     });
   }, [token, context.steering, context.slots]);
 

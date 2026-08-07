@@ -979,8 +979,13 @@ export function MapArea() {
     rendererRef.current?.setAimReady(weapon !== null);
     // A charge in hand asks for a square instead of a figure (stage 16d), so
     // the renderer draws the blast under the cursor rather than a crosshair.
-    rendererRef.current?.setBlastPreview(
-      weapon?.pointTarget ? { sideM: CPRED_BLAST_SIDE_M } : null,
+    // A shell keeps the crosshair and adds the cone it will sweep (stage 16g).
+    rendererRef.current?.setAreaPreview(
+      weapon?.pointTarget
+        ? { kind: 'blast', sideM: CPRED_BLAST_SIDE_M }
+        : weapon?.coneRangeM
+          ? { kind: 'cone', rangeM: weapon.coneRangeM }
+          : null,
     );
   }, []);
 

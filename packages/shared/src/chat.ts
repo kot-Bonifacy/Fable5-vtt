@@ -86,14 +86,33 @@ export interface DamageLogEntry {
   woundLabel?: string;
   /** Critical injury drawn from the table (2d6). */
   injury?: { id: string; name: string; effect: string; rolled: number };
+  /**
+   * A second injury the same hit inflicted (stage 16g: dumdum rounds re-roll a
+   * „Ciało obce" and the target takes both wounds). Absent for every ordinary
+   * hit; „Cofnij" takes it off with the first one.
+   */
+  injuryExtra?: { id: string; name: string; effect: string; rolled: number };
   /** Why no injury was drawn, e.g. „brak tabeli dla głowy". */
   injuryNote?: string;
+  /**
+   * The round that landed and what it changed (stage 16g) — „pancerz −2
+   * (zamiast −1)", „cel zatrzymany na 1 PW". Named entries rather than a silent
+   * correction, the treatment „Trzymanie −2" got in 14d.
+   */
+  ammo?: { name: string; notes?: string[] };
   /**
    * Statuses this hit put on the target token (stage 14d: a choke knocks out,
    * a throw knocks down). „Cofnij" takes them off again — restoring the HP and
    * leaving the character unconscious would be a half-undo nobody can see.
    */
   statusesAdded?: string[];
+  /**
+   * Numbers those statuses carried before the hit (stage 16g), so „Cofnij" can
+   * put a fire that was already burning back to its old intensity instead of
+   * leaving the flamethrower's 4 on a target that was burning for 2. `null`
+   * means the status had no number of its own.
+   */
+  statusValuesBefore?: Record<string, number | null>;
   /** Set once the GM took the application back. */
   undone?: boolean;
   undoneByName?: string;

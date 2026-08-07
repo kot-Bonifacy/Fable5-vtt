@@ -214,6 +214,16 @@ export function DamageRow({
             {entry.armor.name}: OB {entry.armor.before} → {entry.armor.after}
           </span>
         )}
+        {/* What the round did, named rather than silently folded into the
+            numbers above (stage 16g) — the „Trzymanie −2" treatment. */}
+        {entry.ammo && (
+          <span className="chat-damage-detail">
+            nabój: {entry.ammo.name}
+            {entry.ammo.notes && entry.ammo.notes.length > 0
+              ? ` · ${entry.ammo.notes.join(' · ')}`
+              : ''}
+          </span>
+        )}
         <div className="chat-roll-badges">
           {entry.woundLabel && (
             <span className="chat-roll-badge chat-roll-badge--wound">{entry.woundLabel}</span>
@@ -221,6 +231,14 @@ export function DamageRow({
           {entry.injury && (
             <span className="chat-roll-badge chat-roll-badge--injury" title={entry.injury.effect}>
               Rana krytyczna (2k6 = {entry.injury.rolled}): {entry.injury.name}
+            </span>
+          )}
+          {entry.injuryExtra && (
+            <span
+              className="chat-roll-badge chat-roll-badge--injury"
+              title={entry.injuryExtra.effect}
+            >
+              Druga rana (2k6 = {entry.injuryExtra.rolled}): {entry.injuryExtra.name}
             </span>
           )}
           {entry.injuryNote && (
@@ -233,6 +251,9 @@ export function DamageRow({
           )}
         </div>
         {entry.injury && <p className="chat-damage-injury-effect">{entry.injury.effect}</p>}
+        {entry.injuryExtra && (
+          <p className="chat-damage-injury-effect">{entry.injuryExtra.effect}</p>
+        )}
       </div>
     </div>
   );

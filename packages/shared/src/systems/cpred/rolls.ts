@@ -19,6 +19,7 @@ import {
   type CpredCharacterData,
   type CpredRegistry,
 } from './character.js';
+import type { CpredAmmoProfile } from './ammo.js';
 import { deathSaveTarget, hpMax } from './derived.js';
 import { CPRED_HIT_LOCATION_LABELS, type CpredHitLocation } from './locations.js';
 import { CPRED_STAT_LABELS, isCpredStatId, type CpredStatId, type CpredStats } from './stats.js';
@@ -142,6 +143,13 @@ export interface CpredRollRequest {
    */
   areaTargets?: RollAreaTarget[];
   /**
+   * Server-filled: the round that was fired (stage 16g), read off the stored
+   * attack. It decides how much armour wears down, whether a Critical Injury is
+   * drawn at all and whether the target catches fire — all of which a client
+   * naming its own ammunition would be deciding for the GM.
+   */
+  ammo?: CpredAmmoProfile;
+  /**
    * Required for `kind: 'stabilize'` — the token being stabilized, which RAW
    * allows to be your own. Unlike the damage fields above this one *is* the
    * client's choice; the server only checks it may be reached and seen.
@@ -180,6 +188,8 @@ export interface CpredDamagePlan {
   targetCoverId?: number;
   /** Everyone an area attack reached (stage 16d) — each applied separately. */
   areaTargets?: RollAreaTarget[];
+  /** The round that was fired (stage 16g) — „Zastosuj" reads its effects. */
+  ammo?: CpredAmmoProfile;
 }
 
 /** What „Ustabilizowanie" needs to judge itself and explain the verdict. */
@@ -484,6 +494,7 @@ function planDamageRoll(
         ...(request.targetTokenId ? { targetTokenId: request.targetTokenId } : {}),
         ...(request.targetCoverId !== undefined ? { targetCoverId: request.targetCoverId } : {}),
         ...(request.areaTargets ? { areaTargets: request.areaTargets } : {}),
+        ...(request.ammo ? { ammo: request.ammo } : {}),
       },
     },
   };

@@ -137,27 +137,30 @@ export function AttackRow({
       {attack.area && (
         <ul className="chat-attack-checks">
           {attack.area.targets.length === 0 && (
-            <li className="chat-attack-check--held">Wybuch nikogo nie dosięgnął.</li>
+            <li className="chat-attack-check--held">
+              {attack.area.shape === 'cone'
+                ? 'W stożku nikogo nie było.'
+                : 'Wybuch nikogo nie dosięgnął.'}
+            </li>
           )}
           {attack.area.targets.map((target) => (
             <li
               key={target.tokenId ?? `cover-${target.coverId}`}
-              className={
-                target.spared ? 'chat-attack-check--held' : 'chat-attack-check--pinned'
-              }
+              className={target.spared ? 'chat-attack-check--held' : 'chat-attack-check--pinned'}
             >
               <strong>{target.name}</strong> — {formatMetres(target.metres)} od środka
               {target.spared === 'wall' && ' · zasłonięty ścianą'}
               {target.spared === 'cover' && ` · zasłonięty: ${target.sparedBy ?? 'osłona'}`}
               {target.spared === 'evaded' && ' · odskoczył poza obszar'}
+              {target.canEvade && !evadeableBy(target.tokenId) && ' · REF 8+ może Unikać'}
               {target.canEvade && evadeableBy(target.tokenId) && (
                 <button
                   type="button"
                   className="small-button"
-                  title="REF 8+ pozwala odskoczyć: rzut ZW + Unik musi przebić rzut atakującego"
+                  title="REF 8+ pozwala się uchylić: rzut ZW + Unik musi przebić rzut atakującego"
                   onClick={() => jumpClear(target.tokenId!)}
                 >
-                  Odskocz
+                  {attack.area?.shape === 'cone' ? 'Unik' : 'Odskocz'}
                 </button>
               )}
             </li>

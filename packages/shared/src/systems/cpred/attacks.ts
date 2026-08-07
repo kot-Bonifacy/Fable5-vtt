@@ -31,6 +31,7 @@ import {
   type RollFormula,
   type RollTerm,
 } from '../../dice.js';
+import { ammoFitsWeapon, type CpredAmmoProfile } from './ammo.js';
 import { CPRED_BLAST_SIDE_M, CPRED_THROW_RANGE_M } from './areas.js';
 import type { CpredCharacterData, CpredRegistry, CpredWeaponRow } from './character.js';
 import {
@@ -243,7 +244,9 @@ export type CpredAttackProblem =
   | 'GRAPPLE_TWO_HANDED'
   | 'NO_LINE_OF_FIRE'
   | 'TARGET_BEHIND_COVER'
-  | 'COVER_NOT_SUPPRESSIBLE';
+  | 'COVER_NOT_SUPPRESSIBLE'
+  | 'AMMO_MISMATCH'
+  | 'AMMO_SINGLE_ONLY';
 
 /** Everything the chat card needs to explain a hit — and to offer the damage roll. */
 export interface CpredAttackMeta {
@@ -273,11 +276,25 @@ export interface CpredAttackMeta {
    * the attacker's own total.
    */
   dv: number | null;
-  dvSource: 'range' | 'autofire' | 'evasion' | 'everyday' | 'suppressive';
+  dvSource: 'range' | 'autofire' | 'evasion' | 'everyday' | 'suppressive' | 'spread';
   /** Cap of the burst multiplier, present for `mode: 'autofire'`. */
   autofireMax?: number;
   /** Thrown by hand rather than fired (stage 16d). */
   thrown?: boolean;
+  /**
+   * The round in the magazine (stage 16g), carried whole rather than by id.
+   *
+   * The chat card is read long after the shot, „Zastosuj" runs on a different
+   * event, and the catalogue may have been edited in between — so the effects
+   * that decide the hit travel *with* the hit, exactly as the Critical Injury's
+   * machine flags travel with the wound (14e).
+   */
+  ammo?: CpredAmmoProfile;
+  /**
+   * Reach of the shotgun's cone in metres, when this shot spreads (s. 174).
+   * Present only for spread ammunition; the server measures who stands in it.
+   */
+  coneRangeM?: number;
   /**
    * Stat the roll was made with. Carried because the scatter of a missed charge
    * is measured against it (stage 16d) and reading it back off the breakdown's
@@ -387,6 +404,12 @@ export function planCpredAttack(
     resolved: ResolvedWeapon | null;
     /** Type id of the row's compendium entry, when it has one. */
     typeId?: string | null;
+    /**
+     * The round in the magazine (stage 16g), already looked up in the catalogue
+     * by the caller — the planner is not allowed to go shopping, for the same
+     * reason it is handed the Grenade Launcher line rather than finding it.
+     */
+    ammo?: CpredAmmoProfile | null;
   },
   target: CpredAttackTarget & { tokenId?: string; coverId?: number },
   /**
@@ -415,15 +438,30 @@ export function planCpredAttack(
   const thrown = resolved?.thrown === true || request.thrown === true;
   const melee = thrown ? false : (resolved?.melee ?? false);
   const explosive = resolved?.explosive === true;
-  // What the range table is read from, and how far the arm reaches at all.
+  // The round in the magazine (stage 16g) and the one thing it can change about
+  // the shape of the attack: a shell sprays a cone instead of hitting one person.
+  const ammo = weapon.ammo ?? null;
+  const spread = ammo?.spread;
+  // What the range table is read from, and how far the arm reaches at all. A
+  // spread of shot has neither table nor arm — it simply stops at the cone's
+  // reach („do 6 m przed tobą", s. 174), which is its range limit whole.
   const rangeDv = thrown ? (resolved?.rangeDv ?? context.throwProfile?.rangeDv) : resolved?.rangeDv;
-  const maxRangeM = thrown ? (resolved?.maxRangeM ?? CPRED_THROW_RANGE_M) : resolved?.maxRangeM;
+  const maxRangeM = spread
+    ? spread.coneRangeM
+    : thrown
+      ? (resolved?.maxRangeM ?? CPRED_THROW_RANGE_M)
+      : resolved?.maxRangeM;
 
   // A hand is busy holding somebody: two-handed weapons are out for both sides
   // of a Hold, whatever the sheet says about extra arms (s. 176).
   if (context.grappled === true && resolved?.hands === 2) {
     return { ok: false, error: 'GRAPPLE_TWO_HANDED' };
   }
+
+  // What is *in* the gun outranks what is in front of it: „naboje … należy
+  // dopasować do rodzaju używanej broni" (s. 344), and a round that does not fit
+  // never leaves the barrel, wall or no wall.
+  if (ammo && !ammoFitsWeapon(ammo, resolved)) return { ok: false, error: 'AMMO_MISMATCH' };
 
   // What stands in the way outranks how far away it is (stage 16b): a target
   // behind a wall is not „out of range", and telling the player it is would send
@@ -482,6 +520,9 @@ export function planCpredAttack(
   // grenade asked for a burst hears „ta broń nie ma ognia ciągłego" rather than
   // a bare „nieprawidłowe żądanie" — the weapon is the reason, not the request.
   if (thrown && mode !== 'single') return { ok: false, error: 'BAD_REQUEST' };
+  // „Gdy strzelasz amunicją śrutową, wykonujesz 1 atak dystansowy" (s. 174) —
+  // one attack, one cone. A burst of shot has no rule and no DV table.
+  if (spread && mode !== 'single') return { ok: false, error: 'AMMO_SINGLE_ONLY' };
 
   const ammoCost = attackAmmoCost(mode, row);
   if (ammoCost > 0 && row.ammoCurrent < ammoCost) return { ok: false, error: 'NOT_ENOUGH_AMMO' };
@@ -495,18 +536,26 @@ export function planCpredAttack(
   // An object has no head to aim at, so the −8 and the doubled damage of an
   // aimed shot are simply off for cover — silently, because the bar keeps the
   // shooter's last choice armed and refusing the shot over it would be noise.
+  //
+  // The same silence covers shot: „Bronią załadowaną amunicją śrutową nie można
+  // Celować" (s. 174) is a fact about the load, not a mistake in the request.
   const aimed =
     request.aimed === true &&
     canAimInMode(mode) &&
     !melee &&
+    ammo?.noAim !== true &&
     target.cover !== true &&
     target.point !== true;
   const location: CpredHitLocation = aimed ? 'head' : 'body';
 
+  // „każdy … otrzymuje 3k6 obrażeń" — a shell's damage is the shell's, not the
+  // gun's, and it does not care what the sheet's row says the shotgun does.
   const damage =
     mode === 'autofire'
       ? CPRED_AUTOFIRE_DAMAGE
-      : attackDamageNotation(row, data.stats, weapon.typeId);
+      : spread
+        ? spread.damage
+        : attackDamageNotation(row, data.stats, weapon.typeId);
   if (mode !== 'suppressive') {
     const parsed = parseRollNotation(damage);
     if (!parsed.ok || !parsed.formula.terms.some((term) => term.kind === 'dice')) {
@@ -514,7 +563,12 @@ export function planCpredAttack(
     }
   }
 
-  const dvResult = attackDv(mode, melee, { rangeDv, autofire: resolved?.autofire }, target);
+  const dvResult = attackDv(
+    mode,
+    melee,
+    { rangeDv, autofire: resolved?.autofire, ...(spread ? { spreadDv: spread.dv } : {}) },
+    target,
+  );
   if (dvResult === 'OUT_OF_RANGE') return { ok: false, error: 'OUT_OF_RANGE' };
 
   // Modifier breakdown, in the order the rules apply it.
@@ -597,6 +651,8 @@ export function planCpredAttack(
           : {}),
         ...(thrown ? { thrown: true as const } : {}),
         ...(explosive ? { blastSideM: CPRED_BLAST_SIDE_M } : {}),
+        ...(ammo ? { ammo } : {}),
+        ...(spread ? { coneRangeM: spread.coneRangeM } : {}),
         statId,
         ammoCost,
         ammoBefore: row.ammoCurrent,
@@ -643,11 +699,14 @@ type DvResult = { dv: number | null; source: CpredAttackMeta['dvSource'] };
 function attackDv(
   mode: CpredAttackMode,
   melee: boolean,
-  resolved: { rangeDv?: RangeDvTable; autofire?: AutofireProfile },
+  resolved: { rangeDv?: RangeDvTable; autofire?: AutofireProfile; spreadDv?: number },
   target: CpredAttackTarget,
 ): DvResult | 'OUT_OF_RANGE' {
   // The suppressing player's own total becomes the DV their targets face.
   if (mode === 'suppressive') return { dv: null, source: 'suppressive' };
+  // A spread of shot ignores the range table entirely: „wykonujesz 1 atak
+  // dystansowy … przeciwko PT 13" whether the target is at 2 m or at 6 (s. 174).
+  if (resolved.spreadDv !== undefined) return { dv: resolved.spreadDv, source: 'spread' };
   if (melee) {
     return target.evasionDv !== undefined
       ? { dv: target.evasionDv, source: 'evasion' }
@@ -728,4 +787,6 @@ export const CPRED_ATTACK_PROBLEM_MESSAGES: Record<CpredAttackProblem, string> =
   NO_LINE_OF_FIRE: 'Cel za przeszkodą — nie masz linii strzału.',
   TARGET_BEHIND_COVER: 'Cel jest za osłoną — ostrzelaj osłonę albo strzelaj mimo niej.',
   COVER_NOT_SUPPRESSIBLE: 'Ogniem zaporowym nie zmusisz przedmiotu, żeby się schował.',
+  AMMO_MISMATCH: 'Ten nabój nie pasuje do tej broni — zmień amunicję.',
+  AMMO_SINGLE_ONLY: 'Tą amunicją strzelasz tylko pojedynczo.',
 };

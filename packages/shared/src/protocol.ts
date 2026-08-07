@@ -322,6 +322,16 @@ export interface AttackEvadePayload {
 export interface WeaponReloadPayload {
   characterId: string;
   weaponRowId: string;
+  /**
+   * Load this kind of round while reloading (stage 16g); `null` goes back to
+   * ordinary ammunition, and leaving the field out keeps whatever is in the gun.
+   *
+   * Changing the round travels through *this* event rather than through a sheet
+   * edit, and that is the whole enforcement of „zmiana naboju kosztuje
+   * Przeładowanie": out of a fight nothing is charged (there is no budget), and
+   * in one the Action is booked exactly as a refill's would be.
+   */
+  ammoId?: string | null;
 }
 
 /** Client → server payload of `chat:history`. */

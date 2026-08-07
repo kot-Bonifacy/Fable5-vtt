@@ -1,6 +1,7 @@
 import type {
   ChatMessageView,
   CharacterRollPayload,
+  CpredAmmoProfile,
   CpredCharacterData,
   CpredRollContext,
   CpredRollRequest,
@@ -180,6 +181,7 @@ async function resolveRollRequest(
   delete request.targetTokenId;
   delete request.targetCoverId;
   delete request.areaTargets;
+  delete request.ammo;
   delete request.stabilizeDv;
   delete request.stabilizeTargetName;
   if (request.kind === 'stabilize') {
@@ -202,10 +204,17 @@ async function resolveRollRequest(
   // needs a hit before there is anything to roll.
   if (!attack || (attack.hit !== true && !attack.area)) throw new RealtimeError('NOT_A_HIT');
 
-  const system = attack.system as { location?: unknown; weaponRowId?: unknown };
+  const system = attack.system as {
+    location?: unknown;
+    weaponRowId?: unknown;
+    ammo?: CpredAmmoProfile;
+  };
   return {
     ...request,
     ...(typeof system.weaponRowId === 'string' ? { weaponRowId: system.weaponRowId } : {}),
+    // The round that was actually fired, off the stored attack — the magazine
+    // may hold something else by now, and the shot was fired then (stage 16g).
+    ...(system.ammo ? { ammo: system.ammo } : {}),
     ...(system.location === 'head' ? { location: 'head' as const } : { location: 'body' as const }),
     ...(attack.damageNotation ? { damageNotation: attack.damageNotation } : {}),
     ...(attack.damageMultiplier ? { damageMultiplier: attack.damageMultiplier } : {}),
@@ -415,6 +424,11 @@ export const characterRollEvent = defineEvent<
           ? { targetCoverId: plan.damage.targetCoverId }
           : {}),
         ...(plan.damage.areaTargets ? { areaTargets: plan.damage.areaTargets } : {}),
+        // Stage 16g: the round travels with the damage, so „Zastosuj" knows how
+        // much armour to wear off and whether the target catches fire. Opaque to
+        // the dice engine (`RollDamageMeta.system`) — CP RED puts it in, CP RED
+        // reads it out.
+        ...(plan.damage.ammo ? { system: { ammo: plan.damage.ammo } } : {}),
       };
     }
 

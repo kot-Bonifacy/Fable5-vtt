@@ -1,4 +1,10 @@
 import { parseRollNotation } from '../../dice.js';
+import {
+  CPRED_AMMO_PATTERNS,
+  type CpredAmmoEffect,
+  type CpredAmmoPattern,
+  type CpredAmmoProfile,
+} from './ammo.js';
 import { isValidCompendiumId, slugify } from './ids.js';
 import {
   ARMOR_LOCATIONS,
@@ -29,6 +35,7 @@ export const COMPENDIUM_SCHEMA_VERSION = 1;
 
 export const COMPENDIUM_CATEGORIES = [
   'weapon',
+  'ammo',
   'armor',
   'gear',
   'cyberware',
@@ -38,6 +45,7 @@ export type CompendiumCategory = (typeof COMPENDIUM_CATEGORIES)[number];
 
 export const COMPENDIUM_CATEGORY_LABELS: Record<CompendiumCategory, string> = {
   weapon: 'Broń',
+  ammo: 'Amunicja',
   armor: 'Pancerz',
   gear: 'Sprzęt',
   cyberware: 'Cyborgizacje',
@@ -45,12 +53,13 @@ export const COMPENDIUM_CATEGORY_LABELS: Record<CompendiumCategory, string> = {
 };
 
 /**
- * Categories that can be added to a character sheet. Critical Injuries are in
- * the compendium because they are rulebook data the GM must be able to edit,
- * but nobody buys one — they are drawn by the damage engine (stage 15).
+ * Categories that can be added to a character sheet. Two are excluded, for
+ * opposite reasons: nobody buys a Critical Injury (the damage engine draws them,
+ * stage 15), and ammunition is not carried as a row but *loaded* into a weapon
+ * (stage 16g) — how much of it is in the backpack is stage 23's economy.
  */
 export const COMPENDIUM_ITEM_CATEGORIES = COMPENDIUM_CATEGORIES.filter(
-  (category) => category !== 'criticalInjury',
+  (category) => category !== 'criticalInjury' && category !== 'ammo',
 );
 
 /** Weapon quality from the rulebook: poor jams on a 1, excellent adds +1. */
@@ -190,6 +199,19 @@ export interface WeaponTypeDefinition {
   maxRangeM?: number;
   /** Cartridge the magazine takes ("Karabinowa") — copied onto the sheet. */
   ammunition?: string;
+  /**
+   * Shapes of round this weapon chambers (stage 16g). „Kule … naboje śrutowe,
+   * strzały, granaty i rakiety należy dopasować do rodzaju używanej broni"
+   * (s. 344): a shotgun takes both bullets (breneka) and shells, a bow arrows.
+   * Absent means the catalogue has not been told, and no special round fits.
+   */
+  ammoPatterns?: CpredAmmoPattern[];
+  /**
+   * The only rounds this weapon fires, by id — a list rather than a pattern
+   * because the rulebook sometimes names them: a flamethrower „może strzelać
+   * tylko zapalającymi pociskami do strzelby" (s. 348). Overrides the patterns.
+   */
+  ammoIds?: string[];
   /** Caveats from the import, e.g. damage that scales with the wielder. */
   description?: string;
   /** Where the numbers came from — shown in the UI as a provenance note. */
@@ -229,6 +251,23 @@ export interface WeaponEntry extends CompendiumEntryBase {
   attachmentSlots?: number;
   /** Free-text features: "Ogień ciągły (4)", "Złącze smartguna". */
   features?: string[];
+}
+
+/**
+ * One row of the ammunition table (stage 16g, s. 345–347).
+ *
+ * A compendium *entry* rather than a table beside the weapon types, and the
+ * reason is that ammunition is bought: it has a price band, a description worth
+ * reading at the table and a GM who may want to invent a round of their own.
+ * All three come free with an entry, and none of them with a bare data table.
+ *
+ * The machine effects (`CpredAmmoEffect`) ride on the same row, so „what does
+ * this round do" is one lookup and never a name comparison.
+ */
+export interface AmmoEntry extends CompendiumEntryBase, CpredAmmoEffect {
+  category: 'ammo';
+  /** Shapes this round is made in; a round that fits nothing is refused. */
+  patterns: CpredAmmoPattern[];
 }
 
 export interface ArmorEntry extends CompendiumEntryBase {
@@ -310,7 +349,7 @@ export interface CriticalInjuryEntry extends CompendiumEntryBase {
 }
 
 export type CompendiumEntry =
-  WeaponEntry | ArmorEntry | GearEntry | CyberwareEntry | CriticalInjuryEntry;
+  WeaponEntry | AmmoEntry | ArmorEntry | GearEntry | CyberwareEntry | CriticalInjuryEntry;
 
 export function isCriticalInjuryEntry(entry: CompendiumEntry): entry is CriticalInjuryEntry {
   return entry.category === 'criticalInjury';
@@ -518,6 +557,7 @@ export function validateCompendiumEntry(
 
   let entry: CompendiumEntry | undefined;
   if (category === 'weapon') entry = validateWeapon(input, base, issues);
+  else if (category === 'ammo') entry = validateAmmo(input, base, issues);
   else if (category === 'armor') entry = validateArmor(input, base, issues);
   else if (category === 'cyberware') entry = validateCyberware(input, base, issues);
   else if (category === 'criticalInjury') entry = validateCriticalInjury(input, base, issues);
@@ -629,6 +669,138 @@ function validateFeatures(raw: unknown, issues: CompendiumIssue[]): string[] {
     if (trimmed) features.push(trimmed);
   }
   return features;
+}
+
+/** Rails on the ammunition flags; they guard imported data, not game balance. */
+export const AMMO_ABLATION_BONUS_MAX = 10;
+export const AMMO_DOT_DAMAGE_MAX = 20;
+export const AMMO_SPREAD_DV_MAX = 30;
+export const AMMO_SPREAD_RANGE_M_MAX = 50;
+
+/**
+ * One ammunition row (stage 16g). Every effect is optional — a round with no
+ * flags is „Amunicja zwykła", which the rulebook itself describes as „Nie ma
+ * cech specjalnych" (s. 345) — but the patterns are not: a round that fits
+ * nothing could never be loaded, so an empty list is a mistake worth naming.
+ */
+function validateAmmo(
+  input: Record<string, unknown>,
+  base: CompendiumEntryBase,
+  issues: CompendiumIssue[],
+): AmmoEntry | undefined {
+  const patterns = readAmmoPatterns(input.patterns);
+  if (patterns.length === 0) {
+    issues.push({
+      field: 'patterns',
+      message: 'Wybierz przynajmniej jeden rodzaj naboju (kule, śrut, strzały, granaty, rakiety).',
+    });
+    return undefined;
+  }
+  const ammo: AmmoEntry = { ...base, category: 'ammo', patterns };
+
+  if (input.ablationBonus !== undefined && input.ablationBonus !== null) {
+    if (
+      !isInteger(input.ablationBonus) ||
+      input.ablationBonus < 0 ||
+      input.ablationBonus > AMMO_ABLATION_BONUS_MAX
+    ) {
+      issues.push({
+        field: 'ablationBonus',
+        message: `Dodatkowe uszkodzenie pancerza: liczba od 0 do ${AMMO_ABLATION_BONUS_MAX}.`,
+      });
+      return undefined;
+    }
+    if (input.ablationBonus > 0) ammo.ablationBonus = input.ablationBonus;
+  }
+  if (input.noAblation === true) ammo.noAblation = true;
+  if (input.noCriticalInjury === true) ammo.noCriticalInjury = true;
+  if (input.nonLethal === true) ammo.nonLethal = true;
+  if (input.noAim === true) ammo.noAim = true;
+
+  const ignites = readAmmoIgnites(input.ignites, issues);
+  if (issues.length > 0) return undefined;
+  if (ignites) ammo.ignites = ignites;
+
+  if (input.extraInjuryOn !== undefined && input.extraInjuryOn !== null) {
+    if (
+      !Array.isArray(input.extraInjuryOn) ||
+      !input.extraInjuryOn.every((value) => typeof value === 'string' && isValidCompendiumId(value))
+    ) {
+      issues.push({ field: 'extraInjuryOn', message: 'Nieprawidłowe identyfikatory ran.' });
+      return undefined;
+    }
+    if (input.extraInjuryOn.length > 0) ammo.extraInjuryOn = [...input.extraInjuryOn];
+  }
+
+  const spread = readAmmoSpread(input.spread, issues);
+  if (issues.length > 0) return undefined;
+  if (spread) ammo.spread = spread;
+  return ammo;
+}
+
+function readAmmoPatterns(raw: unknown): CpredAmmoPattern[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<CpredAmmoPattern>();
+  for (const value of raw) {
+    if ((CPRED_AMMO_PATTERNS as readonly unknown[]).includes(value)) {
+      seen.add(value as CpredAmmoPattern);
+    }
+  }
+  return [...seen];
+}
+
+/** „cel zostaje podpalony … 2 punkty obrażeń" — the status and its number. */
+function readAmmoIgnites(
+  raw: unknown,
+  issues: CompendiumIssue[],
+): CpredAmmoEffect['ignites'] | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  const input = typeof raw === 'object' ? (raw as Record<string, unknown>) : null;
+  const statusId = input && typeof input.statusId === 'string' ? input.statusId : '';
+  const damage = input?.damage;
+  if (
+    !statusId ||
+    !isValidCompendiumId(statusId) ||
+    !isInteger(damage) ||
+    damage <= 0 ||
+    damage > AMMO_DOT_DAMAGE_MAX
+  ) {
+    issues.push({
+      field: 'ignites',
+      message: `Podpalenie: identyfikator statusu i obrażenia od 1 do ${AMMO_DOT_DAMAGE_MAX}.`,
+    });
+    return undefined;
+  }
+  return { statusId, damage };
+}
+
+/** The shotgun shell's fixed numbers (s. 174), read off the catalogue row. */
+function readAmmoSpread(
+  raw: unknown,
+  issues: CompendiumIssue[],
+): CpredAmmoEffect['spread'] | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  const input = typeof raw === 'object' ? (raw as Record<string, unknown>) : null;
+  const dv = input?.dv;
+  const damage = input?.damage;
+  const coneRangeM = input?.coneRangeM;
+  if (
+    !isInteger(dv) ||
+    dv < 1 ||
+    dv > AMMO_SPREAD_DV_MAX ||
+    typeof damage !== 'string' ||
+    !isValidDamageNotation(damage) ||
+    !isInteger(coneRangeM) ||
+    coneRangeM < 1 ||
+    coneRangeM > AMMO_SPREAD_RANGE_M_MAX
+  ) {
+    issues.push({
+      field: 'spread',
+      message: 'Śrut: PT, obrażenia notacją kości i zasięg stożka w metrach.',
+    });
+    return undefined;
+  }
+  return { dv, damage, coneRangeM };
 }
 
 function validateArmor(
@@ -835,6 +1007,12 @@ function validateWeaponType(raw: unknown): WeaponTypeDefinition | undefined {
       : null;
   const rangeDv = readRangeDvTable(input.rangeDv);
   const autofire = readAutofireProfile(input.autofire);
+  const ammoPatterns = readAmmoPatterns(input.ammoPatterns);
+  const ammoIds = Array.isArray(input.ammoIds)
+    ? input.ammoIds.filter(
+        (value): value is string => typeof value === 'string' && isValidCompendiumId(value),
+      )
+    : [];
   return {
     id: input.id,
     name: input.name,
@@ -858,6 +1036,8 @@ function validateWeaponType(raw: unknown): WeaponTypeDefinition | undefined {
     ...(typeof input.ammunition === 'string' && input.ammunition.length > 0
       ? { ammunition: input.ammunition.slice(0, COMPENDIUM_NAME_MAX_LENGTH) }
       : {}),
+    ...(ammoPatterns.length > 0 && !melee ? { ammoPatterns } : {}),
+    ...(ammoIds.length > 0 && !melee ? { ammoIds } : {}),
     ...(typeof input.description === 'string'
       ? { description: input.description.slice(0, COMPENDIUM_DESCRIPTION_MAX_LENGTH) }
       : {}),
@@ -913,6 +1093,10 @@ export interface ResolvedWeapon {
   maxRangeM?: number;
   /** Cartridge the type takes; empty when the weapon counts no rounds. */
   ammoType?: string;
+  /** Shapes of round this weapon chambers (stage 16g). */
+  ammoPatterns?: CpredAmmoPattern[];
+  /** The only rounds it fires, when the catalogue names them (flamethrower). */
+  ammoIds?: string[];
   typeName?: string;
   melee: boolean;
 }
@@ -937,6 +1121,8 @@ export function resolveWeapon(
     ...(type?.explosive ? { explosive: true as const } : {}),
     ...(type?.maxRangeM !== undefined ? { maxRangeM: type.maxRangeM } : {}),
     ...(type?.ammunition ? { ammoType: type.ammunition } : {}),
+    ...(type?.ammoPatterns ? { ammoPatterns: type.ammoPatterns } : {}),
+    ...(type?.ammoIds ? { ammoIds: type.ammoIds } : {}),
     ...(type ? { typeName: type.name } : {}),
     melee: type?.melee ?? false,
   };
@@ -973,6 +1159,37 @@ export function isWeaponEntry(entry: CompendiumEntry): entry is WeaponEntry {
 
 export function isArmorEntry(entry: CompendiumEntry): entry is ArmorEntry {
   return entry.category === 'armor';
+}
+
+/** Guard used before touching ammunition-only fields (stage 16g). */
+export function isAmmoEntry(entry: CompendiumEntry): entry is AmmoEntry {
+  return entry.category === 'ammo';
+}
+
+/**
+ * The ammunition rows of a catalogue, as the rules want them: id, name, the
+ * patterns they fit and the flags. Strips the shopping half of the entry (price,
+ * provenance, translations) so nothing downstream has to carry it around.
+ */
+export function ammoProfilesOf(entries: readonly CompendiumEntry[]): CpredAmmoProfile[] {
+  return entries.filter(isAmmoEntry).map(toAmmoProfile);
+}
+
+/** One catalogue row, read as a cartridge. */
+export function toAmmoProfile(entry: AmmoEntry): CpredAmmoProfile {
+  return {
+    id: entry.id,
+    name: entry.name,
+    patterns: [...entry.patterns],
+    ...(entry.ablationBonus ? { ablationBonus: entry.ablationBonus } : {}),
+    ...(entry.noAblation ? { noAblation: true as const } : {}),
+    ...(entry.noCriticalInjury ? { noCriticalInjury: true as const } : {}),
+    ...(entry.nonLethal ? { nonLethal: true as const } : {}),
+    ...(entry.noAim ? { noAim: true as const } : {}),
+    ...(entry.ignites ? { ignites: { ...entry.ignites } } : {}),
+    ...(entry.extraInjuryOn ? { extraInjuryOn: [...entry.extraInjuryOn] } : {}),
+    ...(entry.spread ? { spread: { ...entry.spread } } : {}),
+  };
 }
 
 /** Skill ids referenced by weapon types must exist in `skills.json`. */

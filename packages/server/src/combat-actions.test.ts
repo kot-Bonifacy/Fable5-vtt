@@ -534,9 +534,9 @@ describe('action economy', () => {
     const row = sync.combat?.combatants.find((c) => c.tokenId === vexTokenId);
     expect(row?.turn?.resources.find((r) => r.id === 'attacks')?.used).toBe(1);
     // …and the reconnected socket is still held to it.
-    expect(await attack(fresh.socket, vexCharacterId, vexTokenId, { weaponRowId: 'w-rifle' })).toEqual(
-      { ok: false, error: 'ROF_EXCEEDED' },
-    );
+    expect(
+      await attack(fresh.socket, vexCharacterId, vexTokenId, { weaponRowId: 'w-rifle' }),
+    ).toEqual({ ok: false, error: 'ROF_EXCEEDED' });
     fresh.socket.disconnect();
   });
 

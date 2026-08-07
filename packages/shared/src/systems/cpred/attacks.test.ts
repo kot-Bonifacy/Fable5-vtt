@@ -20,6 +20,7 @@ import {
   type CpredAttackContext,
   type CpredAttackRequest,
 } from './attacks.js';
+import type { CpredAmmoProfile } from './ammo.js';
 import { buildCpredRegistry, createDefaultCharacterData, type CpredRegistry } from './character.js';
 import { dvForRange, type ResolvedWeapon } from './compendium.js';
 
@@ -103,6 +104,7 @@ function plan(
     evasionDv,
     typeId,
     context,
+    ammo,
   }: {
     data?: ReturnType<typeof sheet>;
     resolved?: ResolvedWeapon | null;
@@ -111,13 +113,14 @@ function plan(
     evasionDv?: number;
     typeId?: string;
     context?: CpredAttackContext;
+    ammo?: CpredAmmoProfile | null;
   } = {},
 ) {
   return planCpredAttack(
     data,
     registry,
     { weaponRowId: row.id, mode: 'single', ...request },
-    { row, resolved, ...(typeId ? { typeId } : {}) },
+    { row, resolved, ...(typeId ? { typeId } : {}), ...(ammo ? { ammo } : {}) },
     {
       name: 'Ganger',
       tokenId: 'token-1',
@@ -783,5 +786,122 @@ describe('throwing an ordinary object (stage 16d)', () => {
         },
       ),
     ).toEqual({ ok: false, error: 'OUT_OF_RANGE' });
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * Ammunition (stage 16g): what the round in the magazine changes about
+ * the attack itself. Everything it changes about the *damage* is in
+ * `damage.test.ts` — the planner never touches HP.
+ * ------------------------------------------------------------------ */
+
+const shotgun: ResolvedWeapon = {
+  ...pistol,
+  damage: '5k6',
+  magazine: 4,
+  rof: 1,
+  hands: 2,
+  ammoPatterns: ['bullet', 'shell'],
+};
+
+const shot: CpredAmmoProfile = {
+  id: 'ammo.shot',
+  name: 'Amunicja śrutowa',
+  patterns: ['shell'],
+  spread: { dv: 13, damage: '3k6', coneRangeM: 6 },
+  noAim: true,
+};
+
+describe('planCpredAttack with special ammunition', () => {
+  const shotgunRow = weaponRow({
+    id: 'w2',
+    name: 'Strzelba',
+    damage: '5k6',
+    ammoMax: 4,
+    ammoCurrent: 4,
+  });
+  const shotgunSheet = sheet({ weapons: [shotgunRow], skills: { handgun: 6 } });
+
+  function shotPlan(request: Partial<CpredAttackRequest> = {}, metres = 4) {
+    return plan(request, {
+      data: shotgunSheet,
+      resolved: shotgun,
+      row: shotgunRow,
+      metres,
+      ammo: shot,
+    });
+  }
+
+  it('carries the round onto the card, so the table sees what was fired', () => {
+    const result = shotPlan();
+    expect(result.ok && result.plan.attack.ammo?.name).toBe('Amunicja śrutowa');
+  });
+
+  it('says nothing about ammunition when the magazine holds ordinary rounds', () => {
+    const result = plan({});
+    expect(result.ok && result.plan.attack.ammo).toBeUndefined();
+  });
+
+  it('refuses a round the weapon does not chamber', () => {
+    const result = plan({}, { ammo: shot }); // pistol chambers bullets, not shells
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.error).toBe('AMMO_MISMATCH');
+    expect(CPRED_ATTACK_PROBLEM_MESSAGES.AMMO_MISMATCH).toContain('nie pasuje');
+  });
+
+  it('a spread of shot has a fixed DV, whatever the range table says (s. 174)', () => {
+    const near = shotPlan({}, 2);
+    const far = shotPlan({}, 6);
+    expect(near.ok && near.plan.attack.dv).toBe(13);
+    expect(far.ok && far.plan.attack.dv).toBe(13);
+    expect(near.ok && near.plan.attack.dvSource).toBe('spread');
+  });
+
+  it('a spread of shot rolls the shell’s damage, not the gun’s', () => {
+    const result = shotPlan();
+    expect(result.ok && result.plan.attack.damage).toBe('3k6');
+  });
+
+  it('the cone’s reach is the shot’s whole range', () => {
+    const inside = shotPlan({}, 6);
+    const outside = shotPlan({}, 7);
+    expect(inside.ok).toBe(true);
+    expect(inside.ok && inside.plan.attack.coneRangeM).toBe(6);
+    expect(outside.ok).toBe(false);
+    expect(!outside.ok && outside.error).toBe('OUT_OF_RANGE');
+  });
+
+  it('cannot be aimed — the shot spreads (s. 174)', () => {
+    const result = shotPlan({ aimed: true });
+    expect(result.ok && result.plan.attack.aimed).toBe(false);
+    expect(result.ok && result.plan.attack.location).toBe('body');
+    // …and silently, so the bar's remembered „Celuj" is not an error to clear.
+    expect(
+      result.ok && result.plan.breakdown.some((entry) => entry.label.includes('celowany')),
+    ).toBe(false);
+  });
+
+  it('is a single shot only', () => {
+    const spreadRifle: ResolvedWeapon = {
+      ...shotgun,
+      autofire: { max: 3, rangeDv: RIFLE_AUTOFIRE_DV },
+    };
+    const result = plan(
+      { mode: 'autofire' },
+      { data: shotgunSheet, resolved: spreadRifle, row: shotgunRow, metres: 4, ammo: shot },
+    );
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.error).toBe('AMMO_SINGLE_ONLY');
+  });
+
+  it('leaves an ordinary round in the same weapon shooting normally', () => {
+    const slug: CpredAmmoProfile = { id: 'ammo.slug', name: 'Breneka', patterns: ['bullet'] };
+    const result = plan(
+      {},
+      { data: shotgunSheet, resolved: shotgun, row: shotgunRow, metres: 24, ammo: slug },
+    );
+    expect(result.ok && result.plan.attack.dvSource).toBe('range');
+    expect(result.ok && result.plan.attack.damage).toBe('5k6');
+    expect(result.ok && result.plan.attack.coneRangeM).toBeUndefined();
   });
 });

@@ -189,6 +189,13 @@ export interface RollDamageMeta {
    * un-exploding it for the other three.
    */
   areaTargets?: RollAreaTarget[];
+  /**
+   * Whatever the game system needs to finish applying this damage, as it
+   * defined it (stage 16g: the round that was fired). Opaque here for the same
+   * reason `RollAttackMeta.system` is: the dice engine carries it, the system
+   * module reads it, and the core never learns what armour-piercing means.
+   */
+  system?: Record<string, unknown>;
 }
 
 /** One figure — or one car — an area attack found (stage 16d). */
@@ -224,10 +231,28 @@ export interface RollAreaTarget {
  */
 export interface RollAreaMeta {
   sceneId: string;
+  /**
+   * What was covered (stage 16g). Absent means the square of stage 16d — cards
+   * written before shotguns existed stay readable.
+   */
+  shape?: 'blast' | 'cone';
   /** Centre in scene pixels — already snapped to a grid square. */
   centre: { x: number; y: number };
   /** Side of the square, in metres. */
   sideM: number;
+  /**
+   * The wedge in front of a shotgun (stage 16g), when `shape` is `'cone'`:
+   * where it started, which way it pointed and how far it reached. Drawn by the
+   * client, decided by the server — like every other piece of geometry here.
+   */
+  cone?: {
+    origin: { x: number; y: number };
+    /** Direction of the axis, degrees clockwise from east. */
+    angleDeg: number;
+    rangeM: number;
+    /** Half the opening, in degrees. */
+    halfAngleDeg: number;
+  };
   /**
    * How the charge got here when the throw missed: the scatter roll, written
    * out. Absent on a hit, where the charge simply landed where it was aimed.

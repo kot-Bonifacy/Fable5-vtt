@@ -4169,6 +4169,25 @@ body.is-resizing {
   color: var(--text-dim);
 }
 
+/* The round in the magazine (stage 16g) — the same chip as the fire mode,
+   in a colder colour: both change what the shot does, and neither is the
+   weapon's name. */
+.hud-slot-ammo-type {
+  color: var(--whisper);
+  border-color: var(--whisper);
+  max-width: 6.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The ammunition dropdown sits under the magazine counter in the weapon row. */
+.weapon-ammo-type {
+  width: 100%;
+  margin-top: 0.15rem;
+  font-size: 0.7rem;
+}
+
 /* Armed reads as the crosshair's own colour, because that is what it does to
    the pointer — the two marks are one state seen in two places. */
 .hud-slot--armed {

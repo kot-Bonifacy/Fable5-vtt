@@ -194,6 +194,60 @@ describe('effectiveArmor', () => {
   });
 });
 
+describe('resolveCpredDamage with special ammunition (stage 16g)', () => {
+  const base = { hpCurrent: 30, hpMax: 40, location: 'body' as const };
+
+  it('an armour-piercing round takes two points of SP instead of one', () => {
+    const outcome = resolveCpredDamage({ ...base, damage: 15, armorSp: 11, ablation: 2 });
+    expect(outcome.spBefore).toBe(11);
+    expect(outcome.spAfter).toBe(9);
+    // Only the armour changes: the damage that got through is the same 4.
+    expect(outcome.damageThrough).toBe(4);
+  });
+
+  it('leaves the armour alone when the round does not wear it (rubber)', () => {
+    const outcome = resolveCpredDamage({ ...base, damage: 15, armorSp: 11, ablation: 0 });
+    expect(outcome.ablated).toBe(false);
+    expect(outcome.spAfter).toBe(11);
+  });
+
+  it('holds a target above zero when the round is non-lethal', () => {
+    const outcome = resolveCpredDamage({
+      ...base,
+      hpCurrent: 5,
+      damage: 20,
+      armorSp: 0,
+      nonLethal: true,
+    });
+    expect(outcome.hpAfter).toBe(1);
+    expect(outcome.heldAtOne).toBe(true);
+    expect(outcome.hpLost).toBe(4);
+    // One point left is Seriously Wounded, not Mortally — which is the whole
+    // point of a baton round: the target stays out of Death Saves.
+    expect(outcome.woundAfter).toBe('serious');
+  });
+
+  it('does not lift a target that was already down to one point', () => {
+    // „PW celu, który ma więcej niż 1 PW" — the floor cushions a fall, it does
+    // not resurrect anybody who was already there.
+    const outcome = resolveCpredDamage({
+      ...base,
+      hpCurrent: 1,
+      damage: 20,
+      armorSp: 0,
+      nonLethal: true,
+    });
+    expect(outcome.hpAfter).toBe(0);
+    expect(outcome.heldAtOne).toBe(false);
+  });
+
+  it('leaves an ordinary hit exactly as it was', () => {
+    const plain = resolveCpredDamage({ ...base, damage: 15, armorSp: 11 });
+    expect(plain.spAfter).toBe(10);
+    expect(plain.heldAtOne).toBe(false);
+  });
+});
+
 describe('drawCriticalInjury', () => {
   const table = [injury(), injury({ id: 'injury.zlamana-noga', name: 'Złamana noga', roll: 8 })];
 
@@ -218,6 +272,35 @@ describe('drawCriticalInjury', () => {
     ]);
     expect(draw.entry).toBeNull();
     expect(draw.exhausted).toBe(true);
+  });
+
+  it('draws a second injury when a dumdum round finds a foreign body (s. 345)', () => {
+    // First 2d6 = 5 („Ciało obce" in this table), the re-roll gives 8.
+    const foreign = [injury({ id: 'injury.cialo-obce', name: 'Ciało obce', roll: 5 }), table[1]!];
+    const draw = drawCriticalInjury(foreign, 'body', scriptedRng([2, 3, 4, 4]), [], {
+      extraOnIds: ['injury.cialo-obce'],
+    });
+    // The wound that triggered it stays, and the second one joins it.
+    expect(draw.entry?.id).toBe('injury.cialo-obce');
+    expect(draw.extra?.entry.id).toBe('injury.zlamana-noga');
+    expect(draw.extra?.rolled).toBe(8);
+    expect(draw.rolls).toHaveLength(2);
+  });
+
+  it('keeps re-rolling until the second injury is a different one', () => {
+    const foreign = [injury({ id: 'injury.cialo-obce', name: 'Ciało obce', roll: 5 }), table[1]!];
+    // 5, 5 again, then 8: the round chews on until the table gives something else.
+    const draw = drawCriticalInjury(foreign, 'body', scriptedRng([2, 3, 1, 4, 4, 4]), [], {
+      extraOnIds: ['injury.cialo-obce'],
+    });
+    expect(draw.extra?.entry.id).toBe('injury.zlamana-noga');
+  });
+
+  it('draws no second injury for ordinary ammunition', () => {
+    const foreign = [injury({ id: 'injury.cialo-obce', name: 'Ciało obce', roll: 5 }), table[1]!];
+    const draw = drawCriticalInjury(foreign, 'body', scriptedRng([2, 3]));
+    expect(draw.entry?.id).toBe('injury.cialo-obce');
+    expect(draw.extra).toBeUndefined();
   });
 
   it('reports an empty table instead of inventing an injury', () => {

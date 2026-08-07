@@ -107,7 +107,12 @@ describe('squaresForDistance', () => {
 
 describe('sanitizeRulerPoints', () => {
   it('accepts a two-point line and rounds to whole pixels', () => {
-    expect(sanitizeRulerPoints([{ x: 1.4, y: 2.6 }, { x: 10, y: 10 }])).toEqual([
+    expect(
+      sanitizeRulerPoints([
+        { x: 1.4, y: 2.6 },
+        { x: 10, y: 10 },
+      ]),
+    ).toEqual([
       { x: 1, y: 3 },
       { x: 10, y: 10 },
     ]);
@@ -123,8 +128,18 @@ describe('sanitizeRulerPoints', () => {
   });
 
   it('rejects non-finite coordinates', () => {
-    expect(sanitizeRulerPoints([{ x: 0, y: 0 }, { x: Number.NaN, y: 0 }])).toBeNull();
-    expect(sanitizeRulerPoints([{ x: 0, y: 0 }, { x: Number.POSITIVE_INFINITY, y: 0 }])).toBeNull();
+    expect(
+      sanitizeRulerPoints([
+        { x: 0, y: 0 },
+        { x: Number.NaN, y: 0 },
+      ]),
+    ).toBeNull();
+    expect(
+      sanitizeRulerPoints([
+        { x: 0, y: 0 },
+        { x: Number.POSITIVE_INFINITY, y: 0 },
+      ]),
+    ).toBeNull();
   });
 
   it('rejects anything that is not an array of points', () => {

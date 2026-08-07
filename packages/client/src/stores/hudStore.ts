@@ -29,6 +29,12 @@ export interface HudActiveWeapon {
    * fires it lands on the map, not on somebody.
    */
   pointTarget: boolean;
+  /**
+   * Reach of the cone this weapon sprays (stage 16g), when its load spreads.
+   * Unlike `pointTarget` it changes nothing about the click — it only tells the
+   * map to show what the shot will also sweep.
+   */
+  coneRangeM?: number;
 }
 
 /** A slot whose action needs words or a target before it can be booked. */

@@ -14,6 +14,7 @@
  * rules questions. The UI's job is to draw nine boxes.
  */
 
+import { loadedAmmoFor, type CpredAmmoProfile } from './ammo.js';
 import type { CpredCharacterData, CpredWeaponRow } from './character.js';
 import type { ResolvedWeapon } from './compendium.js';
 import type { CpredCombatProfile } from './statist.js';
@@ -42,12 +43,17 @@ export interface CpredWeaponOption {
   resolved: ResolvedWeapon | null;
   /** Rounds left / magazine size; null for a weapon that counts none. */
   ammo: { current: number; max: number } | null;
+  /** The round loaded, when it is anything but ordinary (stage 16g). */
+  ammoProfile?: CpredAmmoProfile | null;
 }
 
 /** Compendium lookup the caller supplies — the registry lives in its store. */
 export type CpredWeaponResolver = (
   compendiumId: string | null | undefined,
 ) => ResolvedWeapon | null;
+
+/** The same, for ammunition ids (stage 16g). */
+export type CpredAmmoResolver = (ammoId: string) => CpredAmmoProfile | null;
 
 /**
  * The weapons a token can fire: its sheet's rows, or the single weapon of its
@@ -58,22 +64,33 @@ export function cpredWeaponOptions(
   sheet: Pick<CpredCharacterData, 'weapons'> | null,
   profile: CpredCombatProfile | null,
   resolve: CpredWeaponResolver,
+  resolveAmmo?: CpredAmmoResolver,
 ): CpredWeaponOption[] {
+  const lookup: CpredAmmoResolver = resolveAmmo ?? (() => null);
   if (sheet) {
-    return sheet.weapons.map((row: CpredWeaponRow) => ({
-      rowId: row.id,
-      name: row.name,
-      resolved: resolve(row.compendiumId),
-      ammo: row.ammoMax > 0 ? { current: row.ammoCurrent, max: row.ammoMax } : null,
-    }));
+    return sheet.weapons.map((row: CpredWeaponRow) => {
+      const resolved = resolve(row.compendiumId);
+      return {
+        rowId: row.id,
+        name: row.name,
+        resolved,
+        ammo: row.ammoMax > 0 ? { current: row.ammoCurrent, max: row.ammoMax } : null,
+        ammoProfile: loadedAmmoFor(row, resolved, lookup),
+      };
+    });
   }
   if (!profile) return [];
+  const resolved = resolve(profile.weaponId);
   return [
     {
       rowId: STATIST_WEAPON_ROW_ID,
       name: profile.weaponName,
-      resolved: resolve(profile.weaponId),
+      resolved,
       ammo: profile.ammoMax > 0 ? { current: profile.ammoCurrent, max: profile.ammoMax } : null,
+      // A statist's gun is loaded with whatever its weapon type fires and
+      // nothing else: nobody edits an extra's magazine, so only the „this
+      // weapon takes one kind of round" case can apply.
+      ammoProfile: loadedAmmoFor({}, resolved, lookup),
     },
   ];
 }
@@ -131,6 +148,18 @@ export interface CpredHotbarWeaponSlot {
   thrown: boolean;
   /** Rounds left / magazine size, for the badge; null when none are counted. */
   ammo: { current: number; max: number } | null;
+  /**
+   * Name of the round loaded, when it is not ordinary ammunition (stage 16g).
+   * On the slot rather than in the tooltip: „Strzelba · Śrut" and „Strzelba ·
+   * Zapalająca" are two different attacks, and the difference is the point.
+   */
+  ammoLabel: string | null;
+  /**
+   * Reach of the cone this shot sprays, in metres — present only for spread
+   * ammunition (stage 16g). The map draws the wedge from it; the click still
+   * lands on a figure, exactly as an ordinary shot's does.
+   */
+  coneRangeM: number | null;
   /** Why it cannot be used right now, or null. */
   disabled: string | null;
   /** `'1'`–`'9'`, or null past the ninth slot. */
@@ -170,6 +199,8 @@ export interface CpredHotbarInput {
   sheet: Pick<CpredCharacterData, 'weapons'> | null;
   profile: CpredCombatProfile | null;
   resolve: CpredWeaponResolver;
+  /** Ammunition lookup (stage 16g); without it every gun reads as ordinary. */
+  resolveAmmo?: CpredAmmoResolver;
   /** Status ids on the token — Powalony, Trzymany, Nieprzytomny… */
   statuses: readonly string[];
   /**
@@ -214,7 +245,7 @@ function weaponRefusal(
  * thing pressed every round.
  */
 export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
-  const options = cpredWeaponOptions(input.sheet, input.profile, input.resolve);
+  const options = cpredWeaponOptions(input.sheet, input.profile, input.resolve, input.resolveAmmo);
   const statusActionBlock = cpredActionBlock(input.statuses);
   const statusMoveBlock = cpredMovementBlock(input.statuses);
   // Outside a fight there is no budget to run out of, and the GM is never
@@ -228,6 +259,7 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
   for (const option of options) {
     const pointTarget = option.resolved?.explosive === true;
     const thrown = option.resolved?.thrown === true;
+    const spread = option.ammoProfile?.spread;
     for (const mode of cpredFireModes(option.resolved)) {
       slots.push({
         kind: 'weapon',
@@ -236,15 +268,19 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
         modeLabel: CPRED_ATTACK_MODE_SHORT[mode],
         hint: pointTarget
           ? `${option.name} — kliknij pole na mapie, żeby wyznaczyć środek wybuchu`
-          : mode === 'single'
-            ? `${option.name} — kliknij cel na mapie, żeby załadować kubek`
-            : `${option.name}: ${CPRED_ATTACK_MODE_LABELS[mode]} — kliknij cel na mapie`,
+          : spread && mode === 'single'
+            ? `${option.name}: ${option.ammoProfile!.name} — stożek ${spread.coneRangeM} m przed tobą, PT ${spread.dv}`
+            : mode === 'single'
+              ? `${option.name} — kliknij cel na mapie, żeby załadować kubek`
+              : `${option.name}: ${CPRED_ATTACK_MODE_LABELS[mode]} — kliknij cel na mapie`,
         weaponRowId: option.rowId,
         mode,
         melee: option.resolved?.melee ?? false,
         pointTarget,
         thrown,
         ammo: option.ammo,
+        ammoLabel: option.ammoProfile?.name ?? null,
+        coneRangeM: spread && mode === 'single' ? spread.coneRangeM : null,
         disabled: weaponRefusal(option, mode, actionRefusal),
         key: null,
       });
