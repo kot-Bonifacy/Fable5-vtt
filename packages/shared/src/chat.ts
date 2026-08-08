@@ -7,13 +7,20 @@ import {
   type RollResult,
 } from './dice.js';
 import type { SpeechTrack } from './tts.js';
+import type { BotActionProposal } from './bots/types.js';
 
 /**
  * `action` is the public log of a spent combat action (stage 14b); `gmaction`
  * is its refused twin, delivered only to the GM and the player who tried —
  * the same split `roll`/`gmroll` has had since stage 06.
+ *
+ * `proposal` (stage 20a) is a bot's intention waiting to be waved through. It is
+ * never public: what reaches the table is the roll that follows approval, and it
+ * looks exactly like anybody else's — a bot's mechanics stay as indistinguishable
+ * as its speech has been since stage 11.
  */
-export type ChatKind = 'say' | 'whisper' | 'roll' | 'gmroll' | 'damage' | 'action' | 'gmaction';
+export type ChatKind =
+  'say' | 'whisper' | 'roll' | 'gmroll' | 'damage' | 'action' | 'gmaction' | 'proposal';
 
 /**
  * One combat action, as the chat log records it (stage 14b). Written by the
@@ -163,6 +170,8 @@ export interface ChatMessageView {
   damage?: DamageLogEntry;
   /** Spent (or refused) combat action — kinds `action` and `gmaction`. */
   action?: CombatActionLogEntry;
+  /** A bot's intention awaiting approval — kind `proposal` only (stage 20a). */
+  proposal?: BotActionProposal;
   /**
    * Voice of an NPC line: audio plus the rhythm the text is written out with.
    * Absent = show the line immediately (speech off, no voice set, or synthesis

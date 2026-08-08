@@ -21,6 +21,7 @@ import {
   BOT_TURN_TIMEOUT_MS,
   MAX_CHAT_MESSAGE_LENGTH,
   ROLE_GM,
+  looksLikeActionRequest,
   compileBotPrompt,
   estimatePromptTokens,
   parseBotData,
@@ -31,6 +32,7 @@ import type { PrismaClient } from '../db.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { broadcastChatMessage, deliverChatMessageTo, insertChatMessage } from './chat-io.js';
 import { campaignParticipants, lastIncomingLine, runBotTurn, type BotRuntime } from './bot-chat.js';
+import { runBotAction } from './bot-actions.js';
 import { collectBotKnowledge, type BotKnowledgeResult } from './knowledge.js';
 import { relationForSpeaker } from './relations.js';
 import { getSceneById } from './scenes.js';
@@ -65,6 +67,13 @@ export interface BotTurnRequest {
   calledByUserId: string;
   /** Answer to a whisper: the line is whispered back to this user only. */
   whisperToUserId?: string | null;
+  /**
+   * The line that called the bot, and who said it (stage 20a). Carried rather
+   * than looked up: the action pass needs the exact wording before any history
+   * query runs, and a turn queued without it simply never tries to act.
+   */
+  requestText?: string;
+  calledByName?: string;
 }
 
 interface QueuedTurn {
@@ -458,9 +467,37 @@ async function runQueuedTurn(
       )?.name ?? null)
     : null;
 
-  const context = await buildBotContext(deps, bot, request, scene?.name ?? null, participants);
   // Hard cap on one turn, on top of the GM's stop button.
   const deadline = AbortSignal.any([signal, AbortSignal.timeout(BOT_TURN_TIMEOUT_MS)]);
+
+  // Stage 20a: before the bot answers, ask whether it was asked to *act*.
+  //
+  // The detector in front of this is deliberately cheap and deliberately wide:
+  // ordinary conversation (the stage 11 path, median 0,62 s) must not pay for a
+  // second generation, and a false alarm costs one small grammar-constrained
+  // call that comes back „rozmowa". A whispered line is exempt — mechanics
+  // happen at the table, not in a private aside.
+  const incoming = request.requestText ?? '';
+  if (!request.whisperToUserId && looksLikeActionRequest(incoming)) {
+    const outcome = await runBotAction(deps, {
+      campaignId: request.campaignId,
+      botId: bot.id,
+      sceneId: request.sceneId,
+      request: incoming,
+      speaker: request.calledByName ?? 'Mistrz Gry',
+      authorId,
+      signal: deadline,
+    }).catch((error: unknown) => {
+      deps.log.warn({ err: error, botId: bot.id }, 'bot action turn failed');
+      return 'talk' as const;
+    });
+    // A roll (or a card waiting for approval) IS the bot's answer to that line —
+    // a second generation for a sentence on top of it would double the cost of
+    // every request and put words in the mouth of a bot that just rolled dice.
+    if (outcome !== 'talk') return;
+  }
+
+  const context = await buildBotContext(deps, bot, request, scene?.name ?? null, participants);
   // A speaking bot must not have its answer streamed as text: the whole point
   // of stage 12 is that the words appear as they are spoken, so a live preview
   // of the sentence would give away the punchline before the NPC says it.
@@ -673,6 +710,7 @@ export async function speakAsBot(
       text: options.text,
       messageId: message.id,
       calledByUserId: options.gmUserId,
+      calledByName: options.bot.name,
       excludeBotId: options.bot.id,
     });
   }
@@ -709,6 +747,8 @@ export async function triggerBotsForLine(
     text: string;
     messageId: number;
     calledByUserId: string;
+    /** Display name of the speaker — travels into the bot's action prompt. */
+    calledByName?: string;
     /** Bot that spoke the line — it must not answer itself. */
     excludeBotId?: string;
     /** Pass the list when the caller already has it (saves a query). */
@@ -739,6 +779,8 @@ export async function triggerBotsForLine(
       botId,
       sceneId: line.sceneId,
       calledByUserId: line.calledByUserId,
+      requestText: line.text,
+      ...(line.calledByName ? { calledByName: line.calledByName } : {}),
     })),
   );
 }

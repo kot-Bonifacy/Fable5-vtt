@@ -275,3 +275,61 @@ async def test_reasoning_flag_overrides_purpose_default(purpose: str):
         )
         events = _parse_sse(response.text)
         assert any(name == "think" for name, _ in events)
+
+
+async def test_json_schema_reaches_llama_as_response_format():
+    """Etap 20a: schemat jedzie do llama-server jako `response_format`.
+
+    Gramatyka jest jedynym miejscem, w którym „bot nie może wybrać nieistniejącej
+    umiejętności" jest gwarancją, a nie kontrolą — dlatego sprawdzamy sam payload,
+    a nie to, co odpowiedział podstawiony model.
+    """
+    fake = FakeLlama()
+    app = create_app(
+        _settings(),
+        client_factory=lambda: httpx.AsyncClient(transport=httpx.MockTransport(fake.handler)),
+    )
+    schema = {
+        "type": "object",
+        "properties": {"akcja": {"enum": ["rzut", "pas"]}},
+        "required": ["akcja"],
+        "additionalProperties": False,
+    }
+    async for client in _client(app):
+        await _wait_for_ready(client)
+        await client.post(
+            "/chat",
+            json={
+                "messages": [{"role": "user", "content": "Rzuć na Percepcję"}],
+                "purpose": "npc",
+                "json_schema": schema,
+            },
+        )
+        sent = fake.requests[-1]
+        assert sent["response_format"]["type"] == "json_schema"
+        assert sent["response_format"]["json_schema"]["schema"] == schema
+
+
+async def test_json_schema_turns_reasoning_off_even_when_asked_for():
+    """Budżet think jest nieegzekwowalny (patrz `build_payload`), więc rozumowanie
+    przy gramatyce oznaczałoby ryzyko pustej decyzji. Wyłączamy je twardo."""
+    fake = FakeLlama()
+    app = create_app(
+        _settings(),
+        client_factory=lambda: httpx.AsyncClient(transport=httpx.MockTransport(fake.handler)),
+    )
+    async for client in _client(app):
+        await _wait_for_ready(client)
+        response = await client.post(
+            "/chat",
+            json={
+                "messages": [{"role": "user", "content": "Rzuć na Percepcję"}],
+                "purpose": "gm_assistant",
+                "reasoning": True,
+                "json_schema": {"type": "object", "properties": {}},
+            },
+        )
+        sent = fake.requests[-1]
+        assert sent["reasoning_budget"] == 0
+        assert sent["chat_template_kwargs"] == {"enable_thinking": False}
+        assert not any(name == "think" for name, _ in _parse_sse(response.text))

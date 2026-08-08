@@ -44,6 +44,17 @@ export interface AiChatRequest {
   temperature?: number;
   /** Stop sequences — bots use them to cut hallucinated dialogue of others. */
   stop?: string[];
+  /**
+   * JSON Schema the answer must satisfy (stage 20a). llama.cpp compiles it into
+   * a GBNF grammar and samples only tokens that fit, so an enum here is a
+   * guarantee rather than a check: a bot cannot name a skill that is not on the
+   * list, because those tokens are never offered to it.
+   *
+   * Reserved for machine-to-machine calls (the bot's decision pass). An NPC's
+   * spoken line never carries one — a grammar mangles Polish and rules out the
+   * sentence-by-sentence streaming stage 12's speech rides on.
+   */
+  jsonSchema?: Record<string, unknown>;
 }
 
 export type AiStreamEvent =
@@ -473,6 +484,7 @@ export class AiGateway {
       max_tokens: request.maxTokens ?? null,
       temperature: request.temperature ?? null,
       stop: request.stop ?? null,
+      json_schema: request.jsonSchema ?? null,
     };
 
     let response: Response;

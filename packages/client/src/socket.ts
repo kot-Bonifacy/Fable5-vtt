@@ -16,6 +16,7 @@ import type {
   CoverSyncBroadcast,
   SmokeSyncBroadcast,
   CoverView,
+  BotActionTraceBroadcast,
   BotActivityBroadcast,
   BotChatPayload,
   BotChunkBroadcast,
@@ -237,6 +238,28 @@ function botNoticeText(notice: BotNoticeBroadcast): string {
   }
 }
 
+/**
+ * Ślad decyzji mechanicznej bota (etap 20a) — notatka wyłącznie u MG.
+ *
+ * Notatka, a nie wiadomość: karta rzutu, która z tej decyzji wyniknie, jest
+ * zwyczajna, a gracze nie mają się dowiedzieć, że rzucał nią model. „Dlaczego
+ * bot to zrobił" jest pytaniem MG i zostaje po jego stronie ekranu.
+ */
+function botActionTraceText(trace: BotActionTraceBroadcast): string {
+  const took = `${trace.decisionMs} ms${trace.retried ? ' · poprawka' : ''}`;
+  const why = trace.reason ? ` — „${trace.reason}"` : '';
+  switch (trace.outcome) {
+    case 'executed':
+      return `🎲 ${trace.botName} rzucił sam: ${trace.optionLabel ?? '?'} · ${took}${why}`;
+    case 'proposed':
+      return `🎲 ${trace.botName} proponuje: ${trace.optionLabel ?? '?'} · ${took}${why}`;
+    case 'talk':
+      return `🎲 ${trace.botName} uznał to za rozmowę, nie prośbę o test · ${took}${why}`;
+    default:
+      return `🎲 ${trace.botName}: akcja odrzucona — ${trace.refusal ?? 'nieznany powód'} · ${took}`;
+  }
+}
+
 /** Local hints for roll-notation mistakes — matches the server's validation. */
 function rollErrorText(reason: 'MISSING_NOTATION' | RollParseError): string {
   switch (reason) {
@@ -383,6 +406,9 @@ export function connectSocket(userId: string): Socket {
     chat().setBotActivity(broadcast.entries ?? []),
   );
   socket.on('bot:trace', (broadcast: BotTraceBroadcast) => chat().addBotTrace(broadcast));
+  socket.on('bot:action-trace', (broadcast: BotActionTraceBroadcast) =>
+    chat().addNote(botActionTraceText(broadcast)),
+  );
   socket.on('bot:notice', (broadcast: BotNoticeBroadcast) =>
     chat().addNote(botNoticeText(broadcast)),
   );
@@ -1422,6 +1448,17 @@ export const sayAsBot = (payload: BotSayPayload) =>
 export function stopBots(turnId?: string): void {
   socket?.emit('bot:stop', turnId ? { turnId } : {});
 }
+
+/**
+ * „Zatwierdź" / „Odrzuć" na karcie propozycji bota (etap 20a). Zatwierdzenie
+ * zwraca id wiadomości z rzutem — karta po kliknięciu przestaje oferować przyciski.
+ */
+export const resolveBotProposal = (messageId: number, approve: boolean) =>
+  emitSceneAck<{ rollMessageId: number | null }>('bot:proposal', { messageId, approve });
+
+/** „Poproś o akcję" — MG pyta bota wprost, z pominięciem detektora prośby. */
+export const askBotToAct = (botId: string, request: string) =>
+  emitSceneAck<{ outcome: string }>('bot:act', { botId, request });
 
 /** GM's session-wide switch for bot speech. */
 export const toggleSpeech = (enabled: boolean) =>

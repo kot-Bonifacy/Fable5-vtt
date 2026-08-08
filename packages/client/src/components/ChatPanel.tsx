@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, type FormEvent, type ReactNode, type UIEvent } from 'react';
 import type {
+  BotActionProposal,
   BotActivityEntry,
   BotTraceBroadcast,
   ChatMessageView,
@@ -7,7 +8,13 @@ import type {
   RollResult,
 } from '@vtt/shared';
 import { ROLE_GM } from '@vtt/shared';
-import { allowCombatAction, loadOlderHistory, sendChatInput, stopBots } from '../socket.js';
+import {
+  allowCombatAction,
+  loadOlderHistory,
+  resolveBotProposal,
+  sendChatInput,
+  stopBots,
+} from '../socket.js';
 import { AttackRow } from './AttackControls.js';
 import { OpposedRow } from './GrappleControls.js';
 import { DamageApplyControls, DamageRow } from './DamageControls.js';
@@ -161,6 +168,70 @@ function RollRow({ message, isGm }: { message: ChatMessageView; isGm: boolean })
  * their own button again, which is the table's „no, go ahead" turned into two
  * clicks instead of an argument.
  */
+/**
+ * Karta propozycji bota (etap 20a) — widzi ją MG i sterujący gracz, nigdy stół.
+ *
+ * Rzut, który po niej przyjdzie, jest zwyczajną kartą rzutu: gracze nie mają jak
+ * poznać, że kośćmi rzucił model, dokładnie tak jak nie poznają wypowiedzi bota
+ * od wypowiedzi MG przez `/jako` (decyzja etapu 11).
+ */
+function BotProposalRow({
+  message,
+  proposal,
+  canResolve,
+}: {
+  message: ChatMessageView;
+  proposal: BotActionProposal;
+  canResolve: boolean;
+}) {
+  const answered = proposal.resolution !== undefined;
+  return (
+    <div
+      className={`chat-message chat-proposal${
+        proposal.resolution === 'rejected' ? ' chat-proposal--rejected' : ''
+      }`}
+    >
+      <div className="chat-message-meta">
+        <span className="chat-message-author">{proposal.botName}</span>
+        <span className="chat-message-time">{formatTime(message.createdAt)}</span>
+      </div>
+      <div className="chat-action-body">
+        <span className="chat-action-name">Chce rzucić: {proposal.optionLabel}</span>
+        {proposal.characterName && (
+          <span className="chat-action-note">— karta {proposal.characterName}</span>
+        )}
+      </div>
+      {proposal.reason && <p className="chat-proposal-reason">„{proposal.reason}"</p>}
+      <p className="chat-proposal-request">W odpowiedzi na: {proposal.request}</p>
+      {answered ? (
+        <span className="chat-action-badge">
+          {proposal.resolution === 'approved' ? 'Zatwierdzone' : 'Odrzucone'}
+          {proposal.resolvedByName ? ` — ${proposal.resolvedByName}` : ''}
+        </span>
+      ) : (
+        canResolve && (
+          <div className="chat-note-actions">
+            <button
+              type="button"
+              className="small-button"
+              onClick={() => void resolveBotProposal(message.id, true)}
+            >
+              Zatwierdź
+            </button>
+            <button
+              type="button"
+              className="small-button"
+              onClick={() => void resolveBotProposal(message.id, false)}
+            >
+              Odrzuć
+            </button>
+          </div>
+        )
+      )}
+    </div>
+  );
+}
+
 function CombatActionRow({
   message,
   entry,
@@ -414,6 +485,13 @@ export function ChatPanel() {
                 message={item.message}
                 entry={item.message.damage}
                 isGm={isGm}
+              />
+            ) : item.message.kind === 'proposal' && item.message.proposal ? (
+              <BotProposalRow
+                key={item.message.id}
+                message={item.message}
+                proposal={item.message.proposal}
+                canResolve={isGm || item.message.proposal.controllerUserId === user.id}
               />
             ) : (item.message.kind === 'action' || item.message.kind === 'gmaction') &&
               item.message.action ? (

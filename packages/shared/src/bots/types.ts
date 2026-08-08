@@ -140,6 +140,31 @@ export interface BotKnowledgeContext {
   topK: number;
 }
 
+/**
+ * Ile bot może zrobić sam (etap 20a).
+ *
+ * - `auto` — akcja wykonuje się od razu,
+ * - `proposal` — bot pisze zamiar, ktoś klika „Zatwierdź",
+ * - `controlled` — bot tylko mówi; mechanikę robi za niego człowiek.
+ *
+ * Nowy bot startuje na `proposal`: żadna akcja nie wykonuje się bez wiedzy MG,
+ * dopóki MG świadomie nie przełączy tego bota na automat.
+ */
+export const BOT_AUTONOMY_MODES = ['auto', 'proposal', 'controlled'] as const;
+export type BotAutonomy = (typeof BOT_AUTONOMY_MODES)[number];
+
+export const BOT_AUTONOMY_LABELS: Record<BotAutonomy, string> = {
+  auto: 'Automat',
+  proposal: 'Propozycja',
+  controlled: 'Kontrolowany',
+};
+
+export const BOT_AUTONOMY_HINTS: Record<BotAutonomy, string> = {
+  auto: 'Bot wykonuje akcję od razu — rzut ląduje na czacie bez pytania.',
+  proposal: 'Bot pisze, co chce zrobić; akcja czeka na „Zatwierdź".',
+  controlled: 'Bot tylko mówi — mechanikę wykonuje za niego MG albo gracz.',
+};
+
 export interface BotProfileData {
   schemaVersion: typeof BOT_SCHEMA_VERSION;
   type: BotType;
@@ -150,6 +175,15 @@ export interface BotProfileData {
   generation: BotGeneration;
   lessons: BotLesson[];
   voice: BotVoice;
+  /** Ile bot może zrobić sam w mechanice (etap 20a). */
+  autonomy: BotAutonomy;
+  /**
+   * Gracz, który obok MG może zatwierdzać i odrzucać propozycje tego bota
+   * (etap 20a). Konto, nie karta postaci: sterowanie towarzyszem można oddać
+   * komukolwiek przy stole, także komuś, kto nie jest właścicielem jego karty.
+   * `null` = decyduje wyłącznie MG.
+   */
+  controllerUserId: string | null;
 }
 
 /** A bot profile as delivered to the GM. */
@@ -375,4 +409,77 @@ export interface BotTraceBroadcast {
    * which is exactly the question the GM asks when a line sounds too warm.
    */
   relation?: { characterName: string; value: number };
+}
+
+// ---------------------------------------------------------------------------
+// Akcje botów w mechanice (etap 20a).
+// ---------------------------------------------------------------------------
+
+/**
+ * Propozycja akcji bota, jak widzi ją MG (i sterujący gracz) na czacie.
+ *
+ * Siedzi w `payload` wiadomości rodzaju `proposal`, a nie w pamięci serwera —
+ * inaczej restart w środku sesji zostawiałby kartę z martwymi przyciskami.
+ * `resolution` jest tym, co odróżnia kartę, na którą ktoś już odpowiedział.
+ */
+export interface BotActionProposal {
+  botId: string;
+  botName: string;
+  /** Karta postaci, którą bot chce rzucać; null = bot jej nie ma. */
+  characterId: string | null;
+  characterName: string | null;
+  /** Nazwa testu w języku MG („Percepcja"). */
+  optionLabel: string;
+  /** Nieprzezroczysty identyfikator (u nas: id umiejętności CP RED). */
+  optionId: string;
+  /** Jedno zdanie modelu, dlaczego właśnie to. */
+  reason: string;
+  /** Wypowiedź, która wywołała decyzję — kontekst dla klikającego. */
+  request: string;
+  /** Kto obok MG może to zatwierdzić; null = tylko MG. */
+  controllerUserId: string | null;
+  /** Ustawione po kliknięciu; karta przestaje wtedy oferować przyciski. */
+  resolution?: 'approved' | 'rejected';
+  resolvedByName?: string;
+  /** Wiadomość z kartą rzutu, która powstała po zatwierdzeniu. */
+  rollMessageId?: number;
+  /** Dlaczego akcja jest niewykonalna (bot bez karty, brak umiejętności). */
+  blocked?: string;
+}
+
+/** Klient → serwer: MG albo sterujący gracz odpowiada na kartę propozycji. */
+export interface BotProposalResolvePayload {
+  messageId: number;
+  approve: boolean;
+}
+
+/** Klient → serwer: „Poproś o akcję" — ścieżka pewna, z pominięciem detektora. */
+export interface BotActPayload {
+  botId: string;
+  /** Czego MG chce; trafia do promptu decyzyjnego jako wypowiedź. */
+  request: string;
+}
+
+/**
+ * Ślad decyzji mechanicznej bota — wyłącznie dla MG, jak `bot:trace` z 19b.
+ * Gracze widzą samą kartę rzutu, nieodróżnialną od rzutu człowieka.
+ */
+export interface BotActionTraceBroadcast {
+  botId: string;
+  botName: string;
+  /** Co model wybrał: `check`, `talk` albo `null`, gdy odpowiedź odpadła. */
+  decision: string | null;
+  /** Nazwa testu, gdy padł wybór. */
+  optionLabel?: string;
+  reason?: string;
+  /** Tryb autonomii, w którym decyzja zapadła. */
+  autonomy: BotAutonomy;
+  /** Co się z nią stało: wykonana, zaproponowana, odrzucona przez walidację. */
+  outcome: 'executed' | 'proposed' | 'refused' | 'talk';
+  /** Powód odrzucenia po polsku. */
+  refusal?: string;
+  /** Ile trwał sam przebieg decyzyjny. */
+  decisionMs: number;
+  /** Czy poszła druga próba po nieudanej walidacji. */
+  retried: boolean;
 }

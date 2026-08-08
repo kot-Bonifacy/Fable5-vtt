@@ -279,6 +279,7 @@ export const chatSendEvent = defineEvent<ChatSendPayload>({
           text: parsed.text,
           messageId: message.id,
           calledByUserId: user.id,
+          calledByName: user.name,
           bots,
         });
         return;

@@ -1,35 +1,82 @@
-# Etap 20 — Autonomia botów w mechanice 🏁 Pełne boty
+# Etap 20a — Akcje botów: structured output, tryby autonomii, rzuty poza walką
 
-**Faza:** F — Boty zaawansowane · **Wymaga etapów:** 14b–14d, 15, 16, 19
+**Faza:** F — Boty zaawansowane · **Wymaga etapów:** 11 (boty na czacie), 08 (rzuty z karty), 19c
+
+> **Podział (uzgodniony 08.08.2026):** pierwotny etap 20 obejmował naraz nową zdolność
+> gatewaya (structured output), nowy model danych i UI (tryby autonomii, karta propozycji),
+> całą warstwę taktyczną walki (stan taktyczny, „graj turę", atak i ruch) oraz bezpieczniki —
+> cztery niezależne kawałki architektury. Wydzielono:
+> [20b — tura bota w walce](etap-20b-tura-bota-w-walce.md).
+> Tutaj zostaje fundament plus jeden pionowy plaster, który go weryfikuje: bot rzuca kośćmi
+> poza walką.
 
 ## Cel sesji
 
-Boty działają w mechanice gry zgodnie z ankietą: pełna automatyka (bot sam rzuca i rusza tokenem) z przełącznikiem MG na tryb propozycji zatwierdzanych lub kontroli przez wskazaną osobę.
+Bot przestaje tylko mówić i zaczyna **działać** — na razie poza walką. MG pisze na czacie
+„Barman, rzuć na Percepcję", a bot (zależnie od trybu) sam wykonuje rzut albo proponuje go
+kartą z przyciskami „Zatwierdź / Odrzuć". Rzut idzie **tą samą ścieżką serwera co rzut
+gracza** (`character:roll`), więc karta na czacie wygląda dokładnie jak każda inna.
+
+## Rozstrzygnięcia sesji (przed kodem)
+
+1. **Gramatyka nie dotyka polszczyzny.** Structured output (`json_schema` → GBNF) obsługuje
+   **wyłącznie przebieg decyzyjny** — wywołanie maszyna-do-maszyny, w którym nie ma prozy do
+   zepsucia. Wypowiedź NPC-a zostaje swobodnym tekstem ze wszystkim, co zbudowały etapy 10–12
+   (kotwica roli, wykrywanie wyjścia z roli, sanitizer, TTS). To rozstrzyga napięcie między
+   wskazówką etapu 20 („structured output") a lekcją z 19c („9B pisze wiersz tekstu pewniej
+   niż poprawny JSON"): jedno i drugie jest prawdą, tylko o innych wywołaniach.
+2. **Domyślny tryb nowego bota: „propozycja".** Żadna akcja nie wykonuje się bez wiedzy MG,
+   dopóki MG świadomie nie przełączy bota na automat.
+3. **Zatwierdza MG, opcjonalnie też wskazany gracz.** Profil bota ma pole „steruje nim" —
+   gdy wskazuje gracza, ten też widzi kartę propozycji i jej przyciski.
+4. **Gracze nie widzą, że rzucił bot.** Karta rzutu wygląda jak każda inna (zgodnie z decyzją
+   etapu 11: wypowiedź bota jest nie do odróżnienia od `/jako` MG); ślad decyzji — co bot
+   wybrał, czym to uzasadnił, ile trwało — idzie do MG osobnym zdarzeniem, jak `bot:trace`
+   z 19b/19c.
+5. **Bot rzuca tylko własną kartą postaci.** Bez przypisanej karty (`BotProfile.characterId`)
+   nie ma czym rzucać i karta propozycji mówi to wprost. Statyści z profilem bojowym (16b)
+   dochodzą w 20b razem z atakiem.
 
 ## Zakres
 
-- [ ] Akcje botów jako structured output: zdefiniowany zestaw akcji (rzut na umiejętność, atak na cel, ruch tokenu, wypowiedź, użycie przedmiotu, pas) w formacie JSON wymuszanym gramatyką llama.cpp (GBNF/json_schema); walidacja zod po stronie serwera
-- [ ] Tryby autonomii per bot (przełącznik MG w profilu i szybki w UI sesji):
-  - **automat** — akcja wykonywana od razu
-  - **propozycja** — bot pisze zamiar („rzucam na Handel"), przy wiadomości przyciski Zatwierdź/Odrzuć (MG lub wskazany gracz)
-  - **kontrolowany** — bot tylko mówi; mechanikę wykonuje za niego przypisany gracz/MG
-- [ ] Wykonanie akcji przez istniejące systemy: te same ścieżki serwera co dla graczy (rzuty z etapu 06/08, atak+DV z 16, obrażenia z 15, ruch z 05/14c, ekonomia akcji z 14b) — bot jest „graczem" z uprawnieniami do swojej postaci
-- [ ] Tura bota w walce: gdy tracker wskaże bota-towarzysza/NPC bota, MG klika „graj turę" → bot dostaje stan taktyczny (pozycje widocznych tokenów, dystanse, HP własne, dostępna broń) → decyduje → akcja wg trybu autonomii
-- [ ] Bezpieczniki: whitelist akcji + „cel musi istnieć i być widoczny"; limit akcji na turę i ruch ≤ MOVE egzekwuje już twarda walidacja z etapów 14b/14c (identyczna jak dla ludzi) — tu tylko obsługa odmowy: nieprawidłowa akcja → bot dostaje błąd i jedną szansę poprawki, potem pas
-- [ ] Log przejrzystości: każda akcja bota na czacie z oznaczeniem „(bot)" i rozbiciem rzutu jak u graczy
+- [x] **Structured output w gatewayu** — `ChatRequest.json_schema` → `response_format`
+      w llama-server; rozumowanie wymuszone na off przy gramatyce; testy pytest
+- [x] **Schemat akcji bota** (`shared/bots/actions.ts`) — płaski, mały, enum akcji zamiast
+      wariantów; lista umiejętności bota **wchodzi do enuma w schemacie**, więc nieistniejąca
+      umiejętność jest niemożliwa już na poziomie gramatyki; walidacja i tak powtórzona w kodzie
+- [x] **Tryby autonomii per bot** — `automat` / `propozycja` / `kontrolowany` w profilu
+      (bez migracji, jak głos z etapu 12), przełącznik w edytorze i szybki w panelu sesji
+- [x] **Wykrywanie prośby o akcję** (`shared/bots/requests.ts`) — wąski, testowany detektor
+      polskich zwrotów; MG ma zawsze przycisk „Poproś o akcję" jako ścieżkę pewną
+- [x] **Wykonanie rzutu istniejącą ścieżką** — `performCharacterRoll` wydzielone z
+      `character:roll`; bot woła to samo, co gracz
+- [x] **Karta propozycji na czacie** — nowy rodzaj wiadomości `proposal`, dostarczany
+      wyłącznie MG i sterującemu graczowi; przyciski „Zatwierdź / Odrzuć", stan zapisany
+      w wiadomości (`chat:update`), więc przeżywa restart
+- [x] **Bezpieczniki** — whitelist akcji, tylko własna karta bota, jedna szansa poprawki po
+      odrzuceniu przez walidację, potem pas
+- [x] **Log decyzji** — pełny prompt i odpowiedź do pliku debug (strojenie będzie iteracyjne)
 
 ## Poza zakresem
 
-- Zaawansowana taktyka (osłony, skupianie ognia) — dopracowanie promptu taktycznego to POMYSLY.md; netrunning botów (po etapie 26); boty inicjujące akcje poza swoją turą
+- Wszystko, co dotyczy walki: stan taktyczny, „graj turę", atak, ruch, przeładowanie,
+  ekonomia akcji — [etap 20b](etap-20b-tura-bota-w-walce.md)
+- Bot inicjujący akcje sam z siebie (bez prośby) — poza planem
+- Statyści bez karty postaci jako aktorzy rzutów — 20b
 
 ## Kryteria ukończenia
 
-- Walka testowa: bot-towarzysz w trybie **propozycja** proponuje sensowny atak, po zatwierdzeniu rzut i obrażenia przechodzą pełną ścieżką; przełączenie na **automat** → następna tura wykonuje się sama; tryb **kontrolowany** oddaje mechanikę graczowi
-- Bot nie jest w stanie wykonać nielegalnej akcji (ruch ponad MOVE, atak na niewidoczny token) — potwierdzone testem z wymuszoną złą odpowiedzią LLM
-- Poza walką: bot poproszony na czacie „rzuć na Percepcję" proponuje/wykonuje rzut zgodnie z trybem
+- MG pisze na czacie „Barman, rzuć na Percepcję": bot w trybie **propozycja** odpowiada kartą
+  z uzasadnieniem i przyciskami; po „Zatwierdź" na czacie ląduje normalna karta rzutu z
+  rozbiciem, po „Odrzuć" nie dzieje się nic
+- Przełączenie bota na **automat** → następna prośba wykonuje się od razu, bez karty
+- Tryb **kontrolowany** → bot odpowiada słowami, mechaniki nie rusza
+- Bot z wymuszoną złą odpowiedzią modelu (nieistniejąca umiejętność, cudza karta postaci)
+  **nie wykonuje akcji** — potwierdzone testem
+- Z zatrzymanym gatewayem prośba o akcję wraca po polsku, a czat działa normalnie
 
 ## Wskazówki techniczne
 
-- Gramatyka JSON w llama.cpp bywa kapryśna przy dużych schematach — trzymaj schemat akcji płaski i mały; enum akcji zamiast zagnieżdżonych wariantów
-- Stan taktyczny serializuj zwięźle (tabela tekstowa, dystanse policzone z góry) — 9B lepiej wybiera z gotowych opcji („możliwe cele: A 12 m, B 30 m") niż liczy sam
-- Decyzję bota loguj w całości (prompt+odpowiedź) do pliku debug — strojenie będzie iteracyjne
+- Gramatyka JSON w llama.cpp bywa kapryśna przy dużych schematach — schemat płaski i mały
+- 9B lepiej wybiera z gotowych opcji („możliwe umiejętności: …") niż wymyśla identyfikatory
+- Decyzję loguj w całości (prompt + odpowiedź) — strojenie będzie iteracyjne

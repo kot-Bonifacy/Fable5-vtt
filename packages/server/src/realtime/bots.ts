@@ -150,6 +150,19 @@ async function requireCampaignCharacter(
   }
 }
 
+/** The player steering a bot's proposals must sit at this table (stage 20a). */
+async function requireCampaignMember(
+  prisma: PrismaClient,
+  campaignId: string,
+  userId: string,
+): Promise<void> {
+  const member = await prisma.campaignMember.findUnique({
+    where: { campaignId_userId: { campaignId, userId } },
+    select: { userId: true },
+  });
+  if (!member) throw new RealtimeError('TARGET_NOT_FOUND');
+}
+
 export const botCreateEvent = defineEvent<BotCreatePayload, BotView>({
   name: 'bot:create',
   role: ROLE_GM,
@@ -221,6 +234,13 @@ export const botUpdateEvent = defineEvent<BotUpdatePayload, BotView>({
       const current = parseBotData(bot.data);
       const result = validateBotDataPatch(patch.data, current.type);
       if (!result.ok) throw new RealtimeError('INVALID_DATA');
+      // Stage 20a: the shape of `controllerUserId` is checked in `shared`; that
+      // it belongs to somebody at THIS table can only be checked here. Handing
+      // approval rights to a stranger's account would be a permission granted by
+      // typing an id.
+      if (result.patch.controllerUserId) {
+        await requireCampaignMember(deps.ctx.prisma, campaignId, result.patch.controllerUserId);
+      }
       data.data = JSON.stringify(mergeBotData(current, result.patch));
     }
 

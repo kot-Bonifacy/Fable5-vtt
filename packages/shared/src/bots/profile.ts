@@ -1,5 +1,6 @@
 import { normalizeKnowledgeTags } from '../knowledge.js';
 import {
+  BOT_AUTONOMY_MODES,
   BOT_CATCHPHRASES_MAX,
   BOT_CATCHPHRASE_MAX_LENGTH,
   BOT_FIELD_MAX_LENGTH,
@@ -19,6 +20,7 @@ import {
   BOT_VOICE_PITCH_MIN,
   BOT_VOICE_RATE_MAX,
   BOT_VOICE_RATE_MIN,
+  type BotAutonomy,
   type BotGeneration,
   type BotKnowledge,
   type BotKnowledgeContext,
@@ -68,6 +70,11 @@ export function createDefaultBotData(type: BotType = 'npc'): BotProfileData {
     generation: defaultBotGeneration(type),
     lessons: [],
     voice: { enabled: false, presetId: null, sampleUrl: null, rate: 1, pitch: 1 },
+    // Etap 20a: nowy bot niczego nie robi sam. Przełączenie na automat to jedno
+    // kliknięcie, ale musi być kliknięciem MG — świeżo napisany bot potrafi
+    // wybrać bzdurę, a przy „automacie" widać to dopiero po fakcie.
+    autonomy: 'proposal',
+    controllerUserId: null,
   };
 }
 
@@ -391,6 +398,25 @@ export function validateBotDataPatch(
   if ('voice' in input) {
     const voice = validateVoice(input.voice, issues);
     if (voice) patch.voice = voice;
+  }
+  if ('autonomy' in input) {
+    if (!BOT_AUTONOMY_MODES.includes(input.autonomy as BotAutonomy)) {
+      issues.push(issue('autonomy', 'Nieznany tryb autonomii.'));
+    } else {
+      patch.autonomy = input.autonomy as BotAutonomy;
+    }
+  }
+  if ('controllerUserId' in input) {
+    // Czy ten identyfikator należy do członka kampanii, rozstrzyga serwer —
+    // tutaj sprawdzamy sam kształt, jak przy `characterId` w `BotPatch`.
+    const controller = input.controllerUserId;
+    if (controller === null || controller === undefined) {
+      patch.controllerUserId = null;
+    } else if (typeof controller === 'string' && controller.length > 0 && controller.length <= 64) {
+      patch.controllerUserId = controller;
+    } else {
+      issues.push(issue('controllerUserId', 'Nieprawidłowy sterujący gracz.'));
+    }
   }
 
   if (issues.length > 0) return { ok: false, issues };

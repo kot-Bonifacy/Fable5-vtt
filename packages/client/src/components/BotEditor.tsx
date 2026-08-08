@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent } from 'react';
 import type {
+  BotAutonomy,
   BotKnowledgeSource,
   BotLesson,
   BotProfileData,
@@ -10,6 +11,9 @@ import type {
   TtsVoicePreset,
 } from '@vtt/shared';
 import {
+  BOT_AUTONOMY_HINTS,
+  BOT_AUTONOMY_LABELS,
+  BOT_AUTONOMY_MODES,
   BOT_CATCHPHRASES_MAX,
   BOT_CORRECTION_MAX_LENGTH,
   BOT_FIELD_MAX_LENGTH,
@@ -33,6 +37,7 @@ import {
   RELATION_MAX,
   RELATION_MIN,
   RELATION_NOTE_MAX_LENGTH,
+  ROLE_GM,
   VOICE_SAMPLE_MAX_SECONDS,
   VOICE_SAMPLE_MIN_SECONDS,
   compileBotPrompt,
@@ -65,6 +70,7 @@ import { relationKey, useRelationStore } from '../stores/relationStore.js';
 import { playPreview } from '../speech.js';
 import { useBotStore, type BotTestTurn } from '../stores/botStore.js';
 import { useAiStore } from '../stores/aiStore.js';
+import { useChatStore } from '../stores/chatStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useSpeechStore } from '../stores/speechStore.js';
 
@@ -245,6 +251,67 @@ function BotEditorWindow({ botId, stackIndex }: { botId: string; stackIndex: num
   );
 }
 
+/**
+ * Ile bot może zrobić sam (etap 20a) i kto — obok MG — odpowiada na jego
+ * propozycje. Stoi na zakładce „Rola", bo to pytanie o to, kim bot jest przy
+ * stole, a nie o parametry modelu.
+ *
+ * Asystent MG nie gra żadną postacią, więc pola są dla niego wygaszone: mówić
+ * o mechanice to co innego niż ją wykonywać.
+ */
+function AutonomyFields({ bot, saveData }: TabProps) {
+  const presence = useChatStore((s) => s.presence);
+  const players = presence.filter((entry) => entry.role !== ROLE_GM);
+  const disabled = bot.data.type === 'gm_assistant';
+  const autonomy = bot.data.autonomy;
+  const controller = bot.data.controllerUserId;
+  // Konto sterującego może już nie być na liście obecnych — pokaż je mimo to,
+  // inaczej `select` po cichu przeskoczyłby na „tylko MG".
+  const knownController = controller && !players.some((entry) => entry.userId === controller);
+
+  return (
+    <>
+      <div className="bot-row-inline">
+        <label className="bot-field bot-field--inline">
+          <span className="auth-label">Autonomia w mechanice</span>
+          <select
+            value={autonomy}
+            disabled={disabled}
+            onChange={(e) => saveData({ autonomy: e.target.value as BotAutonomy })}
+          >
+            {BOT_AUTONOMY_MODES.map((mode) => (
+              <option key={mode} value={mode}>
+                {BOT_AUTONOMY_LABELS[mode]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="bot-field bot-field--inline">
+          <span className="auth-label">Propozycje zatwierdza też</span>
+          <select
+            value={controller ?? ''}
+            disabled={disabled || autonomy !== 'proposal'}
+            onChange={(e) => saveData({ controllerUserId: e.target.value || null })}
+          >
+            <option value="">tylko Mistrz Gry</option>
+            {knownController && <option value={controller}>gracz spoza sesji</option>}
+            {players.map((entry) => (
+              <option key={entry.userId} value={entry.userId}>
+                {entry.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <p className="bot-hint">
+        {disabled
+          ? 'Asystent MG nie prowadzi postaci — mechaniki nie dotyka.'
+          : BOT_AUTONOMY_HINTS[autonomy]}
+      </p>
+    </>
+  );
+}
+
 interface TabProps {
   bot: BotView;
   saveData: (patch: Partial<BotProfileData>) => void;
@@ -304,6 +371,8 @@ function RoleTab({ bot, saveData }: TabProps) {
         </label>
       </div>
       {uploadError && <p className="auth-error">{uploadError}</p>}
+
+      <AutonomyFields bot={bot} saveData={saveData} />
 
       <BotTextField
         label="Osobowość"
@@ -682,7 +751,7 @@ function KnowledgeTab({ bot, saveData }: TabProps) {
           ))}
         </select>
         <span className="bot-hint">
-          Dla towarzyszy — od etapu 20 bot będzie z niej rzucał kośćmi.
+          Bez niej bot nie ma czym rzucać — testy wykonuje wyłącznie tą kartą.
         </span>
       </label>
 

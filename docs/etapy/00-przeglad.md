@@ -4,45 +4,46 @@ Każdy etap to jedna sesja pracy z Claude. Etapy są pogrupowane w 9 faz. Szczeg
 
 ## Mapa etapów
 
-| #   | Etap                                               | Faza                 | Kamień milowy             |
-| --- | -------------------------------------------------- | -------------------- | ------------------------- |
-| 01  | Szkielet projektu i środowisko                     | A. Fundament         |                           |
-| 02  | Baza danych, użytkownicy, role                     | A. Fundament         |                           |
-| 03  | Rdzeń realtime i czat                              | A. Fundament         |                           |
-| 04  | Mapa i sceny                                       | B. Stół MVP          |                           |
-| 05  | Tokeny                                             | B. Stół MVP          |                           |
-| 06  | Silnik kości CP RED                                | B. Stół MVP          |                           |
-| 07  | Karta postaci — model i edytor                     | B. Stół MVP          |                           |
-| 08  | Karta interaktywna i integracja                    | B. Stół MVP          | 🏁 Grywalny stół          |
-| 09  | AI Gateway — fundament botów                       | C. Boty MVP          |                           |
-| 10  | Edytor botów                                       | C. Boty MVP          |                           |
-| 11  | Boty NPC na czacie                                 | C. Boty MVP          | 🏁 MVP z ankiety komplet  |
-| 12  | TTS — głos botów                                   | C. Boty MVP          |                           |
-| 13  | Dane z podręcznika i kompendium                    | D. Walka             |                           |
-| 14  | Inicjatywa i tury                                  | D. Walka             |                           |
-| 14b | Ekonomia akcji: budżet tury i katalog akcji        | D. Walka             |                           |
-| 14c | Ruch w turze: budżet metrów na mapie               | D. Walka             |                           |
-| 14d | Statusy w mechanice: zwarcie, kryty, automaty tury | D. Walka             | 🏁 Pełna mechanika tur    |
-| 15  | Obrażenia, pancerz, krytyki, Death Save            | D. Walka             |                           |
-| 16  | Zasięgi, DV z mapy, autofire                       | D. Walka             | 🏁 Pełna automatyka walki |
-| 16b | Linia strzału i atak z mapy                        | D. Walka             |                           |
-| 16c | Osłony jako obiekty sceny                          | D. Walka             |                           |
-| 16d | Granaty, wzorce obszarowe i amunicja specjalna     | D. Walka             | 🏁 Pełny ostrzał          |
-| 16e | Ruch klikiem: zaznaczenie, automat chodzenia, marsz | D. Walka            |                           |
-| 16f | Celowanie kursorem i HUD walki                     | D. Walka             | 🏁 Walka bez otwierania paneli |
-| 17a | Fog of war i warstwa MG                            | E. Widoczność        |                           |
-| 17b | Rysowanie po mapie                                 | E. Widoczność        |                           |
-| 18  | Dynamiczne oświetlenie i ściany                    | E. Widoczność        |                           |
-| 19  | Pamięć botów — RAG, dziennik, relacje, asystent MG | F. Boty zaawansowane |                           |
-| 20  | Autonomia botów w mechanice                        | F. Boty zaawansowane | 🏁 Pełne boty             |
-| 21  | STT — polecenia głosowe                            | G. Głos              |                           |
-| 22  | WebRTC — czat głosowy graczy                       | G. Głos              |                           |
-| 23  | Cyberware, humanity, ekonomia, reputacja           | H. Świat CP RED      |                           |
-| 24  | Handouty, dziennik kampanii, screamsheets          | H. Świat CP RED      |                           |
-| 25  | Generator postaci (lifepath)                       | H. Świat CP RED      |                           |
-| 26  | Netrunning                                         | H. Świat CP RED      |                           |
-| 27  | Kości 3D i szlif UI                                | I. Wykończenie       |                           |
-| 28  | Wdrożenie na VPS                                   | I. Wykończenie       | 🏁 Produkcja              |
+| #   | Etap                                                | Faza                 | Kamień milowy                  |
+| --- | --------------------------------------------------- | -------------------- | ------------------------------ |
+| 01  | Szkielet projektu i środowisko                      | A. Fundament         |                                |
+| 02  | Baza danych, użytkownicy, role                      | A. Fundament         |                                |
+| 03  | Rdzeń realtime i czat                               | A. Fundament         |                                |
+| 04  | Mapa i sceny                                        | B. Stół MVP          |                                |
+| 05  | Tokeny                                              | B. Stół MVP          |                                |
+| 06  | Silnik kości CP RED                                 | B. Stół MVP          |                                |
+| 07  | Karta postaci — model i edytor                      | B. Stół MVP          |                                |
+| 08  | Karta interaktywna i integracja                     | B. Stół MVP          | 🏁 Grywalny stół               |
+| 09  | AI Gateway — fundament botów                        | C. Boty MVP          |                                |
+| 10  | Edytor botów                                        | C. Boty MVP          |                                |
+| 11  | Boty NPC na czacie                                  | C. Boty MVP          | 🏁 MVP z ankiety komplet       |
+| 12  | TTS — głos botów                                    | C. Boty MVP          |                                |
+| 13  | Dane z podręcznika i kompendium                     | D. Walka             |                                |
+| 14  | Inicjatywa i tury                                   | D. Walka             |                                |
+| 14b | Ekonomia akcji: budżet tury i katalog akcji         | D. Walka             |                                |
+| 14c | Ruch w turze: budżet metrów na mapie                | D. Walka             |                                |
+| 14d | Statusy w mechanice: zwarcie, kryty, automaty tury  | D. Walka             | 🏁 Pełna mechanika tur         |
+| 15  | Obrażenia, pancerz, krytyki, Death Save             | D. Walka             |                                |
+| 16  | Zasięgi, DV z mapy, autofire                        | D. Walka             | 🏁 Pełna automatyka walki      |
+| 16b | Linia strzału i atak z mapy                         | D. Walka             |                                |
+| 16c | Osłony jako obiekty sceny                           | D. Walka             |                                |
+| 16d | Granaty, wzorce obszarowe i amunicja specjalna      | D. Walka             | 🏁 Pełny ostrzał               |
+| 16e | Ruch klikiem: zaznaczenie, automat chodzenia, marsz | D. Walka             |                                |
+| 16f | Celowanie kursorem i HUD walki                      | D. Walka             | 🏁 Walka bez otwierania paneli |
+| 17a | Fog of war i warstwa MG                             | E. Widoczność        |                                |
+| 17b | Rysowanie po mapie                                  | E. Widoczność        |                                |
+| 18  | Dynamiczne oświetlenie i ściany                     | E. Widoczność        |                                |
+| 19  | Pamięć botów — RAG, dziennik, relacje, asystent MG  | F. Boty zaawansowane |                                |
+| 20a | Akcje botów: structured output i rzuty              | F. Boty zaawansowane |                                |
+| 20b | Tura bota w walce                                   | F. Boty zaawansowane | 🏁 Pełne boty                  |
+| 21  | STT — polecenia głosowe                             | G. Głos              |                                |
+| 22  | WebRTC — czat głosowy graczy                        | G. Głos              |                                |
+| 23  | Cyberware, humanity, ekonomia, reputacja            | H. Świat CP RED      |                                |
+| 24  | Handouty, dziennik kampanii, screamsheets           | H. Świat CP RED      |                                |
+| 25  | Generator postaci (lifepath)                        | H. Świat CP RED      |                                |
+| 26  | Netrunning                                          | H. Świat CP RED      |                                |
+| 27  | Kości 3D i szlif UI                                 | I. Wykończenie       |                                |
+| 28  | Wdrożenie na VPS                                    | I. Wykończenie       | 🏁 Produkcja                   |
 
 ## Kolejność i zależności
 
@@ -86,6 +87,14 @@ Fazy A→B→C odwzorowują priorytety MVP z ankiety (mapa+tokeny, kości, karty
    **Odkrycie, które ukształtowało 16e (pomysł MG):** trasę omijającą ściany da się policzyć u gracza, który ścian nie ma — bo **granica pola widzenia jest obrazem ścian**. A* ograniczony do widocznego wielokąta i zapamiętanego terenu (18c) obchodzi mur, nie wiedząc o jego istnieniu; MG, który ściany ma, liczy po pełnej geometrii. Ta sama tożsamość, na której stoi 16b („linia strzału = blokady wzroku strzelca"), tylko dla nóg zamiast dla kul.
 
    Decyzje z użytkownikiem: **ruch klikiem, ale przeciąganie zostaje** (MG nie traci szybkiego ustawiania tokenów); **interfejs działa zawsze, a w walce dochodzi budżet tury i pasek akcji**; **klik w cel ładuje kubek, nie rzuca** (rzut kośćmi jest osobnym momentem przy stole); **trasa po terenie widocznym i zapamiętanym**, a klik w nieznane to marsz do granicy wiedzy; **marsz widoczny dla całego stołu**, przerywany przez pojawienie się kogoś w polu widzenia, koniec budżetu i zdarzenia w grze; **„idź, ile starczy"** zamiast odmowy ruchu ponad budżet. Podział na dwie sesje biegnie między **ruchem** (16e) a **atakiem i HUD-em** (16f). Kolejność: **przed 16c/16d**, bo osłony i granaty dołożą do wskaźnika kolejne przypadki.
+
+5. **Etapy 20a/20b — autonomia botów** (podział 08.08.2026). Pierwotny etap 20 obejmował naraz
+   nową zdolność gatewaya (structured output), nowy model danych z UI (tryby autonomii, karta
+   propozycji) i całą warstwę taktyczną walki (stan taktyczny, „Graj turę", atak, ruch). **20a**
+   bierze fundament plus jeden pionowy plaster, który go weryfikuje — bot rzuca kośćmi poza walką;
+   **20b** bierze pole bitwy. Rozstrzygnięcie, które ukształtowało 20a: **gramatyka JSON obsługuje
+   wyłącznie przebieg decyzyjny**, a wypowiedź NPC-a zostaje swobodnym tekstem — inaczej stracimy
+   wszystko, co etapy 10–12 zbudowały wokół polszczyzny i mowy.
 
 ## Ryzyka i ograniczenia
 

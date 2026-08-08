@@ -1,6 +1,20 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { BOT_TYPE_LABELS, MAX_CHAT_MESSAGE_LENGTH } from '@vtt/shared';
-import { createBot, deleteBot, duplicateBot, sayAsBot, stopBots, updateBot } from '../socket.js';
+import type { BotAutonomy } from '@vtt/shared';
+import {
+  BOT_AUTONOMY_LABELS,
+  BOT_AUTONOMY_MODES,
+  BOT_TYPE_LABELS,
+  MAX_CHAT_MESSAGE_LENGTH,
+} from '@vtt/shared';
+import {
+  askBotToAct,
+  createBot,
+  deleteBot,
+  duplicateBot,
+  sayAsBot,
+  stopBots,
+  updateBot,
+} from '../socket.js';
 import { useAiStore } from '../stores/aiStore.js';
 import { ensureBotTemplatesLoaded, useBotStore } from '../stores/botStore.js';
 import { useChatStore } from '../stores/chatStore.js';
@@ -20,6 +34,10 @@ function ackErrorText(code: string): string {
       return 'Nie znaleziono scenki — odśwież stronę.';
     case 'BOT_EMPTY_MESSAGE':
       return 'Wpisz treść wypowiedzi.';
+    case 'AI_UNAVAILABLE':
+      return 'AI Gateway nie odpowiada — bot nie wykona akcji.';
+    case 'TARGET_NOT_FOUND':
+      return 'Wskazany gracz nie należy do tej kampanii.';
     case 'NO_CAMPAIGN':
       return 'Brak aktywnej kampanii.';
     default:
@@ -49,6 +67,9 @@ export function BotPanel() {
   const [error, setError] = useState<string | null>(null);
   const [sayBotId, setSayBotId] = useState('');
   const [sayText, setSayText] = useState('');
+  const [actBotId, setActBotId] = useState('');
+  const [actText, setActText] = useState('');
+  const [acting, setActing] = useState(false);
 
   useEffect(() => {
     ensureBotTemplatesLoaded();
@@ -78,6 +99,12 @@ export function BotPanel() {
     if (!ack.ok) setError(ackErrorText(ack.error));
   }
 
+  /** Szybka zmiana pola profilu bez otwierania edytora (tryb autonomii). */
+  async function toggleData(botId: string, patch: Record<string, unknown>) {
+    const ack = await updateBot(botId, { data: patch });
+    if (!ack.ok) setError(ackErrorText(ack.error));
+  }
+
   /** „Mów jako" — the same server path as `/jako` on chat, no model involved. */
   async function submitSay(event: FormEvent) {
     event.preventDefault();
@@ -90,6 +117,27 @@ export function BotPanel() {
       return;
     }
     setSayText('');
+  }
+
+  /**
+   * „Poproś o akcję" (etap 20a) — pewna droga do przebiegu decyzyjnego, z
+   * pominięciem detektora prośby z czatu. Detektor jest wygodą; ten przycisk
+   * jest gwarancją, i dlatego istnieje mimo tego, że to samo zdanie zwykle
+   * zadziała wpisane na czat.
+   */
+  async function submitAct(event: FormEvent) {
+    event.preventDefault();
+    const request = actText.trim();
+    if (!actBotId || request.length === 0) return;
+    setError(null);
+    setActing(true);
+    const ack = await askBotToAct(actBotId, request);
+    setActing(false);
+    if (!ack.ok) {
+      setError(ackErrorText(ack.error));
+      return;
+    }
+    setActText('');
   }
 
   async function remove(botId: string, name: string) {
@@ -180,6 +228,21 @@ export function BotPanel() {
                       </option>
                     ))}
                   </select>
+                  <select
+                    className="bot-autonomy-pin"
+                    value={bot.data.autonomy}
+                    disabled={bot.data.type === 'gm_assistant'}
+                    onChange={(e) =>
+                      void toggleData(id, { autonomy: e.target.value as BotAutonomy })
+                    }
+                    title="Ile bot może zrobić sam w mechanice"
+                  >
+                    {BOT_AUTONOMY_MODES.map((mode) => (
+                      <option key={mode} value={mode}>
+                        {BOT_AUTONOMY_LABELS[mode]}
+                      </option>
+                    ))}
+                  </select>
                   <button
                     type="button"
                     className="small-button"
@@ -260,6 +323,37 @@ export function BotPanel() {
           disabled={!sayBotId || sayText.trim().length === 0}
         >
           Powiedz
+        </button>
+      </form>
+
+      <form className="scene-editor-row bot-say" onSubmit={(e) => void submitAct(e)}>
+        <select
+          value={actBotId}
+          onChange={(e) => setActBotId(e.target.value)}
+          title="Poproś o akcję"
+        >
+          <option value="">Poproś o akcję…</option>
+          {order
+            .filter((id) => !bots[id]?.archived && bots[id]?.data.type !== 'gm_assistant')
+            .map((id) => (
+              <option key={id} value={id}>
+                {bots[id]?.name}
+              </option>
+            ))}
+        </select>
+        <input
+          type="text"
+          maxLength={MAX_CHAT_MESSAGE_LENGTH}
+          placeholder="np. rzuć na Percepcję"
+          value={actText}
+          onChange={(e) => setActText(e.target.value)}
+        />
+        <button
+          type="submit"
+          className="small-button"
+          disabled={!actBotId || actText.trim().length === 0 || acting || !available}
+        >
+          {acting ? '…' : 'Poproś'}
         </button>
       </form>
 

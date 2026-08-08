@@ -27,6 +27,12 @@ export interface ServerConfig {
   ttsTimeoutMs: number;
   /** Cached bot audio is swept down to this size after every write. */
   ttsCacheMaxBytes: number;
+  /**
+   * Where the bots' decision log lands (stage 20a): one JSON line per decision,
+   * prompt and raw answer included. Empty (or absent, as in tests) disables it —
+   * the log carries GM notes and campaign secrets, so it stays a dev knob.
+   */
+  botDecisionLogPath?: string;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
@@ -51,5 +57,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     // that still keeps a wedged gateway from holding a bot line hostage.
     ttsTimeoutMs: Number(env.TTS_TIMEOUT_MS ?? 20_000),
     ttsCacheMaxBytes: Number(env.TTS_CACHE_MAX_BYTES ?? 512 * 1024 * 1024),
+    // Domyślnie w `data/private` (gitignore) — dziennik decyzji cytuje prompt,
+    // a w prompcie stoją sekrety NPC-ów. Pusta wartość wyłącza zapis.
+    botDecisionLogPath:
+      env.BOT_DECISION_LOG === ''
+        ? ''
+        : resolve(env.BOT_DECISION_LOG ?? '../../data/private/bot-decisions.jsonl'),
   };
 }

@@ -1,4 +1,5 @@
 import type {
+  BotActionProposal,
   ChatHistoryPage,
   ChatMessageBroadcast,
   ChatMessageView,
@@ -94,6 +95,8 @@ export function toChatMessageView(message: StoredMessage): ChatMessageView {
     view.damage = JSON.parse(message.payload) as DamageLogEntry;
   } else if ((message.kind === 'action' || message.kind === 'gmaction') && message.payload) {
     view.action = JSON.parse(message.payload) as CombatActionLogEntry;
+  } else if (message.kind === 'proposal' && message.payload) {
+    view.proposal = JSON.parse(message.payload) as BotActionProposal;
   } else if (message.botId && message.payload) {
     // NPC line with a voice: audio plus the rhythm its text is written out
     // with. Stored so „odtwórz ponownie" still works after a reload.
@@ -180,7 +183,12 @@ export function visibleTo(user: SessionUser) {
   if (user.role === ROLE_GM) {
     return {
       OR: [
-        { kind: { in: ['say', 'roll', 'gmroll', 'damage', 'action', 'gmaction'] } },
+        // `proposal` (stage 20a) is on the GM's list for the same reason bot
+        // whispers are: the GM runs the bots, so every intention of theirs is
+        // theirs to answer — including one authored under another GM account.
+        {
+          kind: { in: ['say', 'roll', 'gmroll', 'damage', 'action', 'gmaction', 'proposal'] },
+        },
         { authorId: user.id },
         { recipientId: user.id },
         { botId: { not: null } },

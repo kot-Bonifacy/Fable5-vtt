@@ -2379,6 +2379,10 @@ input[type='color'] {
   display: flex;
   align-items: center;
   gap: 0.4rem;
+  /* Etap 20a dołożył do wiersza drugi select (tryb autonomii) i przy wąskim
+     panelu wypychał imię bota poza kadr — sterowanie zawija się teraz do
+     drugiej linii, zamiast zjadać nazwę. */
+  flex-wrap: wrap;
 }
 
 .bot-row--archived {
@@ -2386,7 +2390,8 @@ input[type='color'] {
 }
 
 .bot-open {
-  flex: 1;
+  flex: 1 1 8rem;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -2401,8 +2406,10 @@ input[type='color'] {
 .bot-row-actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 0.25rem;
-  flex: none;
+  flex: 1 1 auto;
 }
 
 .bot-active {
@@ -2419,6 +2426,13 @@ input[type='color'] {
 
 .bot-scene-pin {
   max-width: 8.5rem;
+  font-size: 0.7rem;
+  padding: 0.1rem 0.2rem;
+}
+
+/* Tryb autonomii (etap 20a): trzy krótkie słowa, więc węższy niż przypięcie sceny. */
+.bot-autonomy-pin {
+  max-width: 6.5rem;
   font-size: 0.7rem;
   padding: 0.1rem 0.2rem;
 }
@@ -4578,4 +4592,32 @@ body.is-resizing {
 .bot-relation-note {
   flex: 1 1 10rem;
   min-width: 0;
+}
+
+/* --- etap 20a: karta propozycji akcji bota --- */
+
+/* Ta karta nigdy nie trafia do stołu — widzi ją MG i sterujący gracz. Ramka
+   w kolorze akcentu, a nie ostrzeżenia: propozycja niczego nie odmawia ani
+   nie łamie, tylko czeka na jedno kliknięcie. */
+.chat-proposal {
+  border-left: 3px solid var(--accent);
+  padding-left: 0.5rem;
+}
+
+.chat-proposal--rejected {
+  border-left-color: var(--border);
+  opacity: 0.65;
+}
+
+.chat-proposal-reason {
+  margin: 0.15rem 0 0;
+  font-size: 0.78rem;
+  font-style: italic;
+  color: var(--text-dim);
+}
+
+.chat-proposal-request {
+  margin: 0.1rem 0 0.3rem;
+  font-size: 0.72rem;
+  color: var(--text-dim);
 }

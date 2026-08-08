@@ -361,22 +361,47 @@ export const characterRollEvent = defineEvent<
   handler: async ({ deps, socket, user, payload }) => {
     const campaign = socket.data.campaign;
     if (!campaign) throw new RealtimeError('NO_CAMPAIGN');
-    const character = await requireRollableCharacter(deps, campaign.id, user, payload?.characterId);
+    return performCharacterRoll(deps, {
+      campaignId: campaign.id,
+      user,
+      sceneId: socket.data.viewedSceneId ?? null,
+      payload,
+    });
+  },
+});
+
+/**
+ * The body of `character:roll`, split out of the handler so it can be called
+ * without a socket (stage 20a: a bot rolling for its own sheet).
+ *
+ * Splitting it is the whole point of „bot jest graczem": there is exactly one
+ * place where a Check is planned, Luck is spent, the dice fall and the card is
+ * delivered — a second, bot-shaped copy of it would drift from this one within
+ * two stages.
+ */
+export async function performCharacterRoll(
+  deps: RealtimeDeps,
+  options: {
+    campaignId: string;
+    /** Whose permissions apply — the bot borrows the GM account (stage 11). */
+    user: SessionUser;
+    /** Scene the roll is made on; decides Holds and situational modifiers. */
+    sceneId: string | null;
+    payload: CharacterRollPayload<CpredRollRequest> | undefined;
+  },
+): Promise<{ messageId: number }> {
+  {
+    const { user, payload, sceneId, campaignId } = options;
+    const character = await requireRollableCharacter(deps, campaignId, user, payload?.characterId);
 
     const registry = deps.ctx.cpred;
     const data = parseCharacterData(character.data, registry);
-    const request = await resolveRollRequest(deps, campaign.id, user, payload?.request);
+    const request = await resolveRollRequest(deps, campaignId, user, payload?.request);
     // „Obaj walczący ... otrzymują modyfikator −2 do wszystkich Akcji" (s. 176):
     // every Check made from the sheet carries it, named, so the player can see
     // where it came from. A Death Save is not an Action and is exempt — the
     // planner ignores the context for that kind anyway (stage 14d decision).
-    const context = await situationForCharacter(
-      deps,
-      campaign.id,
-      socket.data.viewedSceneId,
-      character,
-      data,
-    );
+    const context = await situationForCharacter(deps, campaignId, sceneId, character, data);
     const planned = planCpredRoll(data, registry, request, context);
     if (!planned.ok) throw new RealtimeError(planned.error);
     const { plan } = planned;
@@ -384,7 +409,7 @@ export const characterRollEvent = defineEvent<
     // Stabilizing is an Action (s. 169) — booked before the dice, so a medic
     // with nothing left in the turn does not roll and then get told no.
     if (plan.stabilize) {
-      await spendStabilizeAction(deps, campaign.id, socket.data.viewedSceneId, character, user);
+      await spendStabilizeAction(deps, campaignId, sceneId, character, user);
     }
 
     const visibility: 'public' | 'gm' = payload?.visibility === 'gm' ? 'gm' : 'public';
@@ -397,8 +422,8 @@ export const characterRollEvent = defineEvent<
         where: { id: character.id },
         data: { data: JSON.stringify(spent) },
       });
-      await emitCharacterUpsert(deps, campaign.id, toCharacterView(saved, registry));
-      await emitTokensOfCharacter(deps, campaign.id, saved);
+      await emitCharacterUpsert(deps, campaignId, toCharacterView(saved, registry));
+      await emitTokensOfCharacter(deps, campaignId, saved);
     }
 
     const result: RollResult = rollFormula(plan.formula, createMixedRng(gesture?.entropy), {
@@ -446,7 +471,7 @@ export const characterRollEvent = defineEvent<
             ? `${outcome.natural} + ${outcome.modifier} = ${outcome.total} · próg BC ${outcome.target}`
             : `${outcome.natural} · próg BC ${outcome.target}`,
       };
-      await recordDeathSave(deps, campaign.id, character, data, outcome.survived);
+      await recordDeathSave(deps, campaignId, character, data, outcome.survived);
     }
 
     // „Jeśli wynik Testu jest wyższy od PT, udało ci się" (s. 165) — the same
@@ -454,7 +479,7 @@ export const characterRollEvent = defineEvent<
     if (plan.stabilize) {
       const success = result.total > plan.stabilize.dv;
       const applied = success
-        ? await applyStabilization(deps, campaign.id, plan.stabilize.targetTokenId)
+        ? await applyStabilization(deps, campaignId, plan.stabilize.targetTokenId)
         : { healed: false };
       result.outcome = {
         success,
@@ -468,7 +493,7 @@ export const characterRollEvent = defineEvent<
     const kind = visibility === 'gm' ? 'gmroll' : 'roll';
     const stored = await deps.ctx.prisma.chatMessage.create({
       data: {
-        campaignId: campaign.id,
+        campaignId,
         authorId: user.id,
         kind,
         text: plan.title,
@@ -477,7 +502,7 @@ export const characterRollEvent = defineEvent<
       include: INCLUDE_CHAT_NAMES,
     });
     const view: ChatMessageView = toChatMessageView(stored);
-    await deliverRollMessage(deps, campaign.id, user.id, view);
+    await deliverRollMessage(deps, campaignId, user.id, view);
     return { messageId: view.id };
-  },
-});
+  }
+}

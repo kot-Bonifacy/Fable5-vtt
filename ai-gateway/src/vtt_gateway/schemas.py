@@ -8,7 +8,7 @@ do priorytetyzacji w kolejce (FIFO, ale z rozróżnieniem w statusie).
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -42,8 +42,20 @@ class ChatRequest(BaseModel):
     stop: list[str] | None = None
     # Ziarno dla powtarzalności w testach; None = losowe.
     seed: int | None = None
+    # Etap 20a: structured output. Schemat JSON, do którego llama.cpp kompiluje
+    # gramatykę GBNF — model fizycznie nie może wypisać niczego innego. Używa go
+    # przebieg decyzyjny bota (maszyna-do-maszyny); wypowiedzi NPC-ów jadą dalej
+    # swobodnym tekstem, bo gramatyka psuje polszczyznę i wyklucza streaming
+    # zdaniami, na którym stoi TTS z etapu 12.
+    json_schema: dict[str, Any] | None = None
 
     def wants_reasoning(self) -> bool:
+        # Gramatyka i rozumowanie wykluczają się u nas z jednego powodu: budżet
+        # think jest w llama-server nieegzekwowalny (patrz `build_payload`), więc
+        # model potrafi przemyśleć cały `max_tokens` i oddać pustą odpowiedź —
+        # a pusta odpowiedź w przebiegu decyzyjnym to akcja, której nie ma.
+        if self.json_schema is not None:
+            return False
         if self.reasoning is not None:
             return self.reasoning
         return self.purpose is Purpose.GM_ASSISTANT

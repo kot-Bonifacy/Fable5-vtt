@@ -90,6 +90,20 @@ def build_payload(request: ChatRequest, settings: Settings) -> dict[str, Any]:
         # zadziała, jeśli llama.cpp kiedyś zacznie ją respektować, ale wołający
         # MUSI mieć własną ścieżkę na pustą odpowiedź (patrz `realtime/rules.ts`).
         payload["reasoning_budget"] = settings.reasoning_budget
+    if request.json_schema is not None:
+        # Structured output (etap 20a). llama-server kompiluje schemat do gramatyki
+        # GBNF i próbkuje wyłącznie tokeny, które ją spełniają — nieistniejąca
+        # umiejętność w enumie jest więc niemożliwa, a nie „wyłapywana walidacją".
+        # `strict` jest w kontrakcie OpenAI; llama.cpp go ignoruje, ale zostaje,
+        # żeby ten sam payload działał, gdyby gateway kiedyś wskazał na inny backend.
+        payload["response_format"] = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "decision",
+                "strict": True,
+                "schema": request.json_schema,
+            },
+        }
     return payload
 
 

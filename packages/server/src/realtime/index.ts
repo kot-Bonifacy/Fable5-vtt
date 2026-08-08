@@ -77,6 +77,7 @@ import { compendiumDeleteEvent, compendiumUpsertEvent } from './compendium.js';
 import { botCreateEvent, botDeleteEvent, botDuplicateEvent, botUpdateEvent } from './bots.js';
 import { botChatEvent, botTeachEvent } from './bot-chat.js';
 import { botSayEvent, botStopEvent } from './bot-turns.js';
+import { botActEvent, botProposalResolveEvent } from './bot-actions.js';
 import { aiAskEvent, aiRefreshEvent, broadcastAiStatus, sendAiStatus } from './ai.js';
 import { rulesAskEvent, rulesIndexEvent, rulesStatusEvent } from './rules.js';
 import {
@@ -218,6 +219,8 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   botTeachEvent,
   botSayEvent,
   botStopEvent,
+  botActEvent,
+  botProposalResolveEvent,
   speechToggleEvent,
   speechPreviewEvent,
 ] as RealtimeEvent<never, unknown>[];
