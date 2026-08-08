@@ -49,6 +49,38 @@ model Campaign {
   tokenAssets  TokenAsset[]
   bots         BotProfile[]
   compendium   CompendiumEntry[]
+  knowledge    KnowledgeEntry[]
+}
+
+/// Campaign knowledge base (stage 19b): places, factions, NPCs and GM notes the
+/// bots may recall. The DB is the source of truth; the gateway's RAG index is a
+/// derived copy, so `indexedDigest` says whether that copy is still current.
+///
+/// Copyright note (CLAUDE.md): the bodies are the GM's own writing about their
+/// campaign, so unlike the rulebook they live in the normal database.
+model KnowledgeEntry {
+  id         String @id @default(cuid())
+  campaignId String
+  title      String
+  body       String
+  /// place | faction | npc | event | note — labels live in `shared/knowledge.ts`.
+  type String @default("note")
+  /// JSON array of normalized tags; the bot's permission is a tag list too.
+  tags String @default("[]")
+  /// gm = never reaches any bot prompt; bots = readable with a matching tag.
+  visibility String @default("bots")
+
+  /// Fingerprint of what the gateway holds. Null = not indexed; different from
+  /// the current content = the GM edited it and the index is behind.
+  indexedDigest String?
+  indexedAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
 }
 
 model CampaignMember {

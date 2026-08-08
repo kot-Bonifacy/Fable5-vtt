@@ -7,7 +7,7 @@ zawartość książki.
 
 from __future__ import annotations
 
-from vtt_gateway.rag.chunker import chunk_markdown, estimate_tokens
+from vtt_gateway.rag.chunker import chunk_markdown, chunk_plain_text, estimate_tokens
 
 MANUAL = """# Rozdział Testowy
 
@@ -112,3 +112,82 @@ def test_liczenie_tokenow_da_sie_podmienic() -> None:
 def test_heurystyka_dlugosci_jest_dodatnia() -> None:
     assert estimate_tokens("") == 1
     assert estimate_tokens("a" * 360) == 100
+
+
+# --- płaski tekst (etap 19b) -------------------------------------------------
+
+# Zrzut z PDF-a udaje kształt materiału, nie jego treść: znaczniki stron, żywa
+# pagina powtórzona na każdej stronie, akapity porozrywane na linie i przeniesienie
+# wyrazu na końcu wiersza.
+ZRZUT = """=== page 1 ===
+
+   PORADNIK        TESTOWY
+
+          Pierwszy akapit zaczyna zdanie, które nie mieści się w jednej
+          linii i dlatego zostaje przenie-
+          sione dalej.
+
+          Drugi akapit tej samej strony.
+
+   1
+=== page 2 ===
+
+   PORADNIK        TESTOWY
+
+          Akapit z drugiej strony.
+
+   2
+=== page 3 ===
+
+   PORADNIK        TESTOWY
+
+          Akapit z trzeciej strony.
+
+   3
+=== page 4 ===
+
+   PORADNIK        TESTOWY
+
+          Akapit z czwartej strony.
+
+   4
+"""
+
+
+def test_plaski_tekst_niesie_tytul_i_numer_strony() -> None:
+    chunks = chunk_plain_text(ZRZUT, title="Poradnik Testowy", target_tokens=1000)
+
+    assert len(chunks) == 1
+    only = chunks[0]
+    assert only.chapter == "Poradnik Testowy"
+    assert only.section == ""
+    assert (only.page, only.page_end) == (1, 4)
+    assert only.citation == "Poradnik Testowy (s. 1–4)"
+    assert only.text.startswith("Poradnik Testowy (s. 1)")
+
+
+def test_plaski_tekst_skleja_przeniesiony_wyraz() -> None:
+    chunks = chunk_plain_text(ZRZUT, title="Poradnik", target_tokens=1000)
+    assert "przeniesione dalej" in chunks[0].text
+    assert "przenie- sione" not in chunks[0].text
+
+
+def test_plaski_tekst_wyrzuca_zywa_pagine_i_numery_stron() -> None:
+    """Nagłówek powtórzony na każdej stronie trafiałby we wszystkie zapytania."""
+    chunks = chunk_plain_text(ZRZUT, title="Poradnik", target_tokens=1000)
+    body = chunks[0].text.split("\n\n", 1)[1]
+    assert "PORADNIK" not in body
+    assert "\n1\n" not in body
+
+
+def test_plaski_tekst_dzieli_sie_po_budzecie_a_nie_po_stronach() -> None:
+    pages = "".join(
+        f"=== page {number} ===\n\nAkapit numer {number} w długim zrzucie z PDF-a.\n\n"
+        for number in range(1, 21)
+    )
+    chunks = chunk_plain_text(pages, title="Długi zrzut", target_tokens=40, overlap_tokens=0)
+
+    assert 1 < len(chunks) < 20
+    # Fragment obejmuje kilka stron, a cytat mówi który zakres.
+    assert chunks[0].page == 1
+    assert chunks[0].page_end is not None and chunks[0].page_end > 1

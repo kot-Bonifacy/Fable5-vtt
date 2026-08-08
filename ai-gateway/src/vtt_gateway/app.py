@@ -20,10 +20,12 @@ from .gpu import read_gpu_info
 from .llama_client import LlamaError, count_tokens, stream_chat
 from .queue import QueueFull, RequestQueue
 from .rag.service import RagDocument, RagError, RagService
+from .rag.store import SearchFilter
 from .schemas import (
     ChatRequest,
     HealthResponse,
     LlamaStatus,
+    RagForgetRequest,
     RagHealthInfo,
     RagIndexRequest,
     RagIndexResponse,
@@ -238,8 +240,17 @@ def create_app(
         droga, którą podręcznik opuszcza gateway, i idzie wyłącznie do MG."""
         rag: RagService = request.app.state.rag
         started = time.perf_counter()
+        filters = SearchFilter(
+            tags_any=tuple(sorted({tag.strip().lower() for tag in body.tags if tag.strip()})),
+            visibility=tuple(sorted({name.strip() for name in body.visibility if name.strip()})),
+        )
         try:
-            hits = await rag.search(body.query, collection=body.collection, top_k=body.top_k)
+            hits = await rag.search(
+                body.query,
+                collection=body.collection,
+                top_k=body.top_k,
+                filters=filters,
+            )
         except RagError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         return RagSearchResponse(
@@ -256,10 +267,20 @@ def create_app(
     )
     async def rag_index(request: Request, body: RagIndexRequest) -> RagIndexResponse:
         """Indeksowanie dokumentów przysłanych przez serwer VTT (etap 19b:
-        notatki kampanii). Krótkie, więc rozliczane synchronicznie."""
+        baza wiedzy kampanii). Krótkie, więc rozliczane synchronicznie."""
         rag: RagService = request.app.state.rag
         documents = [
-            RagDocument(source=doc.source, text=doc.text, title=doc.title, meta=dict(doc.meta))
+            RagDocument(
+                source=doc.source,
+                text=doc.text,
+                title=doc.title,
+                fmt=doc.format,
+                meta={
+                    **doc.meta,
+                    "tags": [tag.strip().lower() for tag in doc.tags if tag.strip()],
+                    "visibility": doc.visibility,
+                },
+            )
             for doc in body.documents
         ]
         try:
@@ -297,6 +318,20 @@ def create_app(
 
         request.app.state.rag_task = asyncio.create_task(run())
         return {"status": "started"}
+
+    @app.post("/rag/forget", dependencies=[Depends(require_api_key)])
+    async def rag_forget(request: Request, body: RagForgetRequest) -> dict[str, int]:
+        """Zapomina wskazane dokumenty (wpis skasowany albo osierocony w VTT)."""
+        rag: RagService = request.app.state.rag
+        if not rag.enabled:
+            raise HTTPException(status_code=503, detail=rag.disabled_reason or "RAG niedostępny")
+        return {"removed": rag.delete_documents(body.collection, body.sources)}
+
+    @app.get("/rag/collections/{name}/sources", dependencies=[Depends(require_api_key)])
+    async def rag_collection_sources(request: Request, name: str) -> dict[str, list[str]]:
+        """Co kolekcja ma zaindeksowane — serwer VTT rozpoznaje po tym sieroty."""
+        rag: RagService = request.app.state.rag
+        return {"sources": rag.collection_sources(name)}
 
     @app.delete("/rag/collections/{name}", dependencies=[Depends(require_api_key)])
     async def rag_delete_collection(request: Request, name: str) -> dict[str, int]:

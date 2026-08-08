@@ -10,11 +10,21 @@ import { CombatPanel } from './CombatPanel.js';
 import { AiPanel } from './AiPanel.js';
 import { BotPanel } from './BotPanel.js';
 import { RulesPanel } from './RulesPanel.js';
+import { KnowledgePanel } from './KnowledgePanel.js';
 import { SidePanelResizer, useSidePanelWidth } from './SidePanelResizer.js';
 import { useAuthStore } from '../stores/authStore.js';
 
 type Tab =
-  'chat' | 'scenes' | 'tokens' | 'characters' | 'compendium' | 'combat' | 'bots' | 'rules' | 'ai';
+  | 'chat'
+  | 'scenes'
+  | 'tokens'
+  | 'characters'
+  | 'compendium'
+  | 'combat'
+  | 'bots'
+  | 'rules'
+  | 'knowledge'
+  | 'ai';
 
 /**
  * Side panel tabs in two rows: what everyone at the table uses, and the GM's
@@ -34,6 +44,7 @@ const GM_TABS: { id: Tab; label: string }[] = [
   { id: 'tokens', label: 'Tokeny' },
   { id: 'bots', label: 'Boty' },
   { id: 'rules', label: 'Zasady' },
+  { id: 'knowledge', label: 'Wiedza' },
   { id: 'ai', label: 'AI' },
 ];
 
@@ -82,6 +93,8 @@ export function SidePanel() {
         <BotPanel />
       ) : activeTab === 'rules' ? (
         <RulesPanel />
+      ) : activeTab === 'knowledge' ? (
+        <KnowledgePanel />
       ) : activeTab === 'ai' ? (
         <AiPanel />
       ) : (

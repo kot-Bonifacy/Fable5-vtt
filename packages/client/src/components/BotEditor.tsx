@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState, type FormEvent, type PointerEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent } from 'react';
 import type {
+  BotKnowledgeSource,
   BotLesson,
   BotProfileData,
   BotType,
   BotView,
+  KnowledgePreviewResult,
   PortraitUploadResult,
   TtsVoicePreset,
 } from '@vtt/shared';
@@ -11,6 +13,10 @@ import {
   BOT_CATCHPHRASES_MAX,
   BOT_CORRECTION_MAX_LENGTH,
   BOT_FIELD_MAX_LENGTH,
+  BOT_KNOWLEDGE_SOURCES,
+  BOT_KNOWLEDGE_SOURCE_LABELS,
+  BOT_KNOWLEDGE_TOP_K_MAX,
+  BOT_KNOWLEDGE_TOP_K_MIN,
   BOT_LESSON_MAX_LENGTH,
   BOT_MAX_TOKENS_MAX,
   BOT_MAX_TOKENS_MIN,
@@ -29,16 +35,19 @@ import {
   compileBotPrompt,
   defaultBotGeneration,
   estimatePromptTokens,
+  normalizeKnowledgeTags,
 } from '@vtt/shared';
 import { ApiError, apiGet, apiUpload } from '../api.js';
 import {
   cancelBotChat,
   flushBotSave,
+  previewBotPrompt,
   previewVoice,
   queueBotSave,
   sendBotChat,
   teachBot,
 } from '../socket.js';
+import { useKnowledgeStore } from '../stores/knowledgeStore.js';
 import { playPreview } from '../speech.js';
 import { useBotStore, type BotTestTurn } from '../stores/botStore.js';
 import { useAiStore } from '../stores/aiStore.js';
@@ -599,6 +608,8 @@ function KnowledgeTab({ bot, saveData }: TabProps) {
         onChange={(value) => setKnowledge({ forbidden: value })}
       />
 
+      <KnowledgeContextSection bot={bot} saveData={saveData} />
+
       <h3>Model</h3>
       <div className="bot-row-inline">
         <label className="bot-field bot-field--inline">
@@ -661,6 +672,108 @@ function KnowledgeTab({ bot, saveData }: TabProps) {
 
       {/* Sekcja „Głos" dojdzie tutaj w etapie 12 (TTS). */}
     </div>
+  );
+}
+
+/**
+ * Uprawnienia do bazy wiedzy kampanii (etap 19b).
+ *
+ * Domyślnie pusty zbiór źródeł, czyli zachowanie z etapu 11: bot zna wyłącznie
+ * to, co MG wpisał mu wyżej. Dostęp trzeba nadać świadomie — i zawsze dotyczy
+ * tylko wpisów oznaczonych „boty z uprawnieniem".
+ */
+function KnowledgeContextSection({ bot, saveData }: TabProps) {
+  const context = bot.data.knowledgeContext;
+  const entries = useKnowledgeStore((s) => s.entries);
+  const order = useKnowledgeStore((s) => s.order);
+  const [tagDraft, setTagDraft] = useState(context.tags.join(', '));
+
+  // Tagi, które w ogóle występują w bazie — inaczej MG wpisuje je z pamięci
+  // i literówka cicho odcina bota od połowy świata.
+  const known = useMemo(() => {
+    const all = new Set<string>();
+    for (const id of order) for (const tag of entries[id]?.tags ?? []) all.add(tag);
+    return [...all].sort((a, b) => a.localeCompare(b, 'pl'));
+  }, [entries, order]);
+
+  function setContext(patch: Partial<BotProfileData['knowledgeContext']>) {
+    saveData({ knowledgeContext: { ...context, ...patch } });
+  }
+
+  function toggleSource(source: BotKnowledgeSource, enabled: boolean) {
+    setContext({
+      sources: enabled
+        ? [...new Set([...context.sources, source])]
+        : context.sources.filter((entry) => entry !== source),
+    });
+  }
+
+  function commitTags(raw: string) {
+    setTagDraft(raw);
+    setContext({ tags: normalizeKnowledgeTags(raw.split(/[,\s]+/)) });
+  }
+
+  const reads = context.sources.length > 0;
+
+  return (
+    <>
+      <h3>Kontekst wiedzy</h3>
+      <p className="bot-hint">
+        Czego bot może sobie przypomnieć poza własnym profilem. Bez zaznaczonego źródła zachowuje
+        się jak przed etapem 19b — zna wyłącznie to, co napisano wyżej.
+      </p>
+      {BOT_KNOWLEDGE_SOURCES.map((source) => (
+        <label key={source} className="bot-checkbox">
+          <input
+            type="checkbox"
+            checked={context.sources.includes(source)}
+            onChange={(e) => toggleSource(source, e.target.checked)}
+          />
+          <span>{BOT_KNOWLEDGE_SOURCE_LABELS[source]}</span>
+        </label>
+      ))}
+
+      {reads && (
+        <>
+          <label className="bot-field">
+            <span className="auth-label">Tagi, które czyta</span>
+            <input
+              type="text"
+              value={tagDraft}
+              placeholder="Puste = wszystkie wpisy dla botów"
+              onChange={(e) => commitTags(e.target.value)}
+            />
+            <span className="bot-hint">
+              {context.tags.length > 0
+                ? `Czyta wpisy z: ${context.tags.map((tag) => `#${tag}`).join(' ')}.`
+                : 'Czyta każdy wpis oznaczony „boty z uprawnieniem".'}
+              {known.length > 0 && ` W bazie są: ${known.map((tag) => `#${tag}`).join(' ')}.`}
+            </span>
+          </label>
+
+          <label className="bot-field">
+            <span className="auth-label">Ile fragmentów dokleić ({context.topK})</span>
+            <input
+              type="range"
+              min={BOT_KNOWLEDGE_TOP_K_MIN}
+              max={BOT_KNOWLEDGE_TOP_K_MAX}
+              step={1}
+              value={context.topK}
+              onChange={(e) => setContext({ topK: Number(e.target.value) })}
+            />
+            <span className="bot-hint">
+              Każdy fragment to kilkaset tokenów kontekstu i chwila wyszukiwania przed odpowiedzią.
+              Trzy wystarczają, dopóki wpisy są krótkie.
+            </span>
+          </label>
+
+          <p className="bot-hint">
+            Wpisy oznaczone „tylko MG" nigdy tu nie trafią, niezależnie od tagów. Co konkretnie
+            dostanie model, sprawdzisz w zakładce „Prompt".
+          </p>
+        </>
+      )}
+    </>
   );
 }
 
@@ -881,15 +994,74 @@ function BotTurnRow({
   );
 }
 
+/**
+ * Podgląd promptu. Bez pytania testowego pokazuje sam profil (kompilowany
+ * lokalnie), a po wpisaniu zdania rozmówcy — prompt **złożony przez serwer**,
+ * razem z fragmentami bazy wiedzy, które bot faktycznie dostanie. Bez tego
+ * „dlaczego bot to powiedział" przestaje być sprawdzalne (etap 19b).
+ */
 function PromptTab({ bot }: { bot: BotView }) {
-  const prompt = compileBotPrompt({ name: bot.name, data: bot.data });
+  const [message, setMessage] = useState('');
+  const [preview, setPreview] = useState<KnowledgePreviewResult | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const local = compileBotPrompt({ name: bot.name, data: bot.data });
+  const prompt = preview?.prompt ?? local;
+  const tokens = preview?.promptTokens ?? estimatePromptTokens(local);
+  const reads = bot.data.knowledgeContext.sources.length > 0;
+
+  async function check(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    flushBotSave(bot.id);
+    const ack = await previewBotPrompt(bot.id, message);
+    setBusy(false);
+    if (!ack.ok || !ack.data) {
+      setError('Nie udało się złożyć podglądu — sprawdź, czy serwer i AI Gateway działają.');
+      return;
+    }
+    setPreview(ack.data);
+  }
+
   return (
     <div className="bot-form">
       <p className="bot-hint">
-        Dokładnie to dostaje model (wersja szablonu {BOT_PROMPT_VERSION}, ok.{' '}
-        {estimatePromptTokens(prompt)} tokenów). Na końcu każdej rozmowy serwer dokleja jeszcze
-        krótkie przypomnienie roli z najnowszymi wnioskami.
+        Dokładnie to dostaje model (wersja szablonu {BOT_PROMPT_VERSION}, ok. {tokens} tokenów). Na
+        końcu każdej rozmowy serwer dokleja jeszcze krótkie przypomnienie roli z najnowszymi
+        wnioskami.
       </p>
+
+      <form className="bot-teach" onSubmit={(event) => void check(event)}>
+        <input
+          type="text"
+          value={message}
+          placeholder={
+            reads
+              ? 'Wpisz zdanie rozmówcy, np. „co wiesz o klubie Afterlife?”'
+              : 'Bot nie czyta bazy wiedzy — sprawdź, że prompt jest bez fragmentów'
+          }
+          onChange={(event) => setMessage(event.target.value)}
+        />
+        <button type="submit" className="small-button" disabled={busy}>
+          {busy ? 'Składam…' : 'Sprawdź prompt'}
+        </button>
+      </form>
+      {error && <p className="auth-error">{error}</p>}
+
+      {preview && (
+        <div className="bot-knowledge-preview">
+          {preview.passages.length > 0 ? (
+            <p className="bot-hint">
+              Doklejone wpisy:{' '}
+              {[...new Set(preview.passages.map((passage) => passage.title))].join(' · ')}
+            </p>
+          ) : null}
+          {preview.reason && <p className="bot-warning">{preview.reason}</p>}
+        </div>
+      )}
+
       <pre className="ai-thinking-text bot-prompt">{prompt}</pre>
     </div>
   );

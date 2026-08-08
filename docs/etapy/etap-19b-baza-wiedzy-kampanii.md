@@ -14,18 +14,19 @@ wypowiedzi bota gateway dokleja do promptu to, co **ten** bot ma prawo wiedzieć
 
 ## Zakres
 
-- [ ] **Kolekcja „baza wiedzy kampanii"** — model w DB (wpis: tytuł, treść, typ, tagi,
+- [x] **Kolekcja „baza wiedzy kampanii"** — model w DB (wpis: tytuł, treść, typ, tagi,
       widoczność), edytor MG w UI, indeksowanie przy zapisie (i reindeks całości na żądanie)
-- [ ] **Sekcja „kontekst wiedzy" w profilu bota** — które kolekcje i tagi bot może czytać;
+- [x] **Sekcja „kontekst wiedzy" w profilu bota** — które kolekcje i tagi bot może czytać;
       pusty zbiór = bot zna tylko to, co ma wpisane w profilu (zachowanie z etapu 11)
-- [ ] **Doklejanie top-k do promptu bota** — wyszukiwanie po ostatniej wypowiedzi rozmówcy,
+- [x] **Doklejanie top-k do promptu bota** — wyszukiwanie po ostatniej wypowiedzi rozmówcy,
       filtr po uprawnieniach bota, fragmenty jako osobna sekcja promptu; **bot nigdy nie
       cytuje źródła w wypowiedzi** (to NPC, nie asystent)
-- [ ] **Budżet promptu dla botów** — RAG + historia + profil w kontekście i w limicie czasu
+- [x] **Budżet promptu dla botów** — RAG + historia + profil w kontekście i w limicie czasu
       odpowiedzi z etapu 11; pomiar, nie oszacowanie
-- [ ] **Drugi tryb chunkowania: płaski tekst** — FAQ CP RED i DLC z `data/private/rulebook/text/`
+      (`packages/server/scripts/bot-context-budget.ts`, tabela w `ai-gateway/README.md`)
+- [x] **Drugi tryb chunkowania: płaski tekst** — FAQ CP RED i DLC z `data/private/rulebook/text/`
       do kolekcji podręcznika (asystent zasad z 19a od razu na tym korzysta)
-- [ ] Testy: filtr uprawnień bota (fragment spoza jego kolekcji nie dociera do promptu),
+- [x] Testy: filtr uprawnień bota (fragment spoza jego kolekcji nie dociera do promptu),
       chunkowanie płaskiego tekstu, reindeks bez duplikatów
 
 ## Poza zakresem
@@ -36,11 +37,12 @@ wypowiedzi bota gateway dokleja do promptu to, co **ten** bot ma prawo wiedzieć
 
 ## Kryteria ukończenia
 
-- [ ] NPC zapytany o miejsce opisane wyłącznie w bazie wiedzy odpowiada zgodnie z wpisem
-- [ ] Ten sam NPC bez uprawnienia do danej kolekcji odpowiada, że nie wie — fragment nie
+- [x] NPC zapytany o miejsce opisane wyłącznie w bazie wiedzy odpowiada zgodnie z wpisem
+- [x] Ten sam NPC bez uprawnienia do danej kolekcji odpowiada, że nie wie — fragment nie
       pojawia się w jego prompcie (sprawdzalne w podglądzie promptu w edytorze botów)
-- [ ] Wpis zmieniony w edytorze jest widoczny w odpowiedzi bota bez restartu gatewaya
-- [ ] Odpowiedź bota mieści się w limicie czasu z etapu 11 mimo doklejonego RAG
+- [x] Wpis zmieniony w edytorze jest widoczny w odpowiedzi bota bez restartu gatewaya
+- [x] Odpowiedź bota mieści się w limicie czasu z etapu 11 mimo doklejonego RAG
+      (zmierzone: 1,1 s na żywej kampanii, z czego wyszukiwanie 33–51 ms)
 
 ## Wskazówki techniczne
 

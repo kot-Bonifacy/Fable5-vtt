@@ -59,6 +59,13 @@ import type {
   FogPaintBroadcast,
   FogShape,
   FogSyncBroadcast,
+  KnowledgeDeleteBroadcast,
+  KnowledgeEntryView,
+  KnowledgeIndexStatus,
+  KnowledgePreviewResult,
+  KnowledgeSyncPayload,
+  KnowledgeUpsertBroadcast,
+  KnowledgeUpsertPayload,
   LightPatch,
   LightSyncBroadcast,
   LightView,
@@ -132,6 +139,7 @@ import { useCharacterStore } from './stores/characterStore.js';
 import { useCompendiumStore } from './stores/compendiumStore.js';
 import { useAiStore } from './stores/aiStore.js';
 import { useRulesStore } from './stores/rulesStore.js';
+import { useKnowledgeStore } from './stores/knowledgeStore.js';
 import { useBotStore } from './stores/botStore.js';
 import { useCombatStore } from './stores/combatStore.js';
 import { useRulerStore } from './stores/rulerStore.js';
@@ -400,6 +408,15 @@ export function connectSocket(userId: string): Socket {
   );
   socket.on('rules:error', (broadcast: RulesErrorBroadcast) =>
     rules().fail(broadcast.requestId, rulesErrorText(broadcast.code, broadcast.detail)),
+  );
+
+  // Baza wiedzy kampanii (etap 19b) — emisje celowane w pokój MG, bez seq:
+  // wpisy niosą sekrety fabuły i nie mają prawa dotrzeć do gracza.
+  socket.on('knowledge:upsert', (broadcast: KnowledgeUpsertBroadcast) =>
+    useKnowledgeStore.getState().upsert(broadcast.entry, broadcast.index),
+  );
+  socket.on('knowledge:delete', (broadcast: KnowledgeDeleteBroadcast) =>
+    useKnowledgeStore.getState().remove(broadcast.id, broadcast.index),
   );
 
   // The compendium is shared data: room broadcasts with a seq, like chat.
@@ -1172,6 +1189,34 @@ export function indexRulebook(): Promise<RulesIndexStatus | null> {
     });
   });
 }
+
+/** Baza wiedzy kampanii (MG). Wołane przy wejściu w zakładkę, nie w `state:sync`. */
+export function fetchKnowledge(): Promise<KnowledgeSyncPayload | null> {
+  return new Promise((resolve) => {
+    if (!socket) {
+      resolve(null);
+      return;
+    }
+    socket.emit('knowledge:list', (ack: SocketAck<KnowledgeSyncPayload>) => {
+      if (ack.ok && ack.data)
+        useKnowledgeStore.getState().replaceAll(ack.data.entries, ack.data.index);
+      resolve(ack.ok ? (ack.data ?? null) : null);
+    });
+  });
+}
+
+export const saveKnowledgeEntry = (payload: KnowledgeUpsertPayload) =>
+  emitSceneAck<KnowledgeEntryView>('knowledge:upsert', payload);
+
+export const deleteKnowledgeEntry = (id: string) => emitSceneAck('knowledge:delete', { id });
+
+/** Pełny przebieg indeksowania bazy wiedzy — dogania to, co się rozjechało. */
+export const reindexKnowledge = () =>
+  emitSceneAck<KnowledgeIndexStatus>('knowledge:reindex', undefined);
+
+/** Podgląd promptu bota z doklejonymi fragmentami (edytor botów, zakładka „Prompt"). */
+export const previewBotPrompt = (botId: string, message: string) =>
+  emitSceneAck<KnowledgePreviewResult>('knowledge:preview', { botId, message });
 
 export const createBot = (payload: BotCreatePayload) =>
   emitSceneAck<BotView>('bot:create', payload);

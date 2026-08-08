@@ -1,7 +1,11 @@
+import { normalizeKnowledgeTags } from '../knowledge.js';
 import {
   BOT_CATCHPHRASES_MAX,
   BOT_CATCHPHRASE_MAX_LENGTH,
   BOT_FIELD_MAX_LENGTH,
+  BOT_KNOWLEDGE_SOURCES,
+  BOT_KNOWLEDGE_TOP_K_MAX,
+  BOT_KNOWLEDGE_TOP_K_MIN,
   BOT_LESSONS_MAX,
   BOT_LESSON_MAX_LENGTH,
   BOT_MAX_TOKENS_MAX,
@@ -17,6 +21,8 @@ import {
   BOT_VOICE_RATE_MIN,
   type BotGeneration,
   type BotKnowledge,
+  type BotKnowledgeContext,
+  type BotKnowledgeSource,
   type BotLesson,
   type BotPersona,
   type BotProfileData,
@@ -56,6 +62,9 @@ export function createDefaultBotData(type: BotType = 'npc'): BotProfileData {
       catchphrases: [],
     },
     knowledge: { world: '', campaign: '', people: '', forbidden: '' },
+    // Pusty zbiór źródeł to zachowanie z etapu 11: bot zna wyłącznie swój profil.
+    // Nowy bot startuje bez dostępu do bazy wiedzy — MG musi go nadać świadomie.
+    knowledgeContext: { sources: [], tags: [], topK: 3 },
     generation: defaultBotGeneration(type),
     lessons: [],
     voice: { enabled: false, presetId: null, sampleUrl: null, rate: 1, pitch: 1 },
@@ -168,6 +177,46 @@ function validateKnowledge(raw: unknown, issues: BotValidationIssue[]): BotKnowl
     knowledge[key] = value;
   }
   return knowledge;
+}
+
+function validateKnowledgeContext(
+  raw: unknown,
+  issues: BotValidationIssue[],
+): BotKnowledgeContext | undefined {
+  if (typeof raw !== 'object' || raw === null) {
+    issues.push(issue('knowledgeContext', 'Nieprawidłowy format uprawnień do bazy wiedzy.'));
+    return undefined;
+  }
+  const input = raw as Record<string, unknown>;
+
+  const rawSources = Array.isArray(input.sources) ? input.sources : [];
+  const sources: BotKnowledgeSource[] = [];
+  for (const entry of rawSources) {
+    if (!BOT_KNOWLEDGE_SOURCES.includes(entry as BotKnowledgeSource)) {
+      issues.push(issue('knowledgeContext.sources', 'Nieznane źródło wiedzy.'));
+      return undefined;
+    }
+    if (!sources.includes(entry as BotKnowledgeSource)) sources.push(entry as BotKnowledgeSource);
+  }
+
+  const topK = input.topK ?? 3;
+  if (
+    !Number.isInteger(topK) ||
+    (topK as number) < BOT_KNOWLEDGE_TOP_K_MIN ||
+    (topK as number) > BOT_KNOWLEDGE_TOP_K_MAX
+  ) {
+    issues.push(
+      issue(
+        'knowledgeContext.topK',
+        `Liczba fragmentów musi mieścić się w zakresie ${BOT_KNOWLEDGE_TOP_K_MIN}–${BOT_KNOWLEDGE_TOP_K_MAX}.`,
+      ),
+    );
+    return undefined;
+  }
+
+  // Tagi normalizuje ta sama funkcja co po stronie wpisu — inaczej „Gangi" na
+  // profilu nigdy nie trafiłoby w „gangi" na wpisie.
+  return { sources, tags: normalizeKnowledgeTags(input.tags), topK: topK as number };
 }
 
 function validateGeneration(
@@ -326,6 +375,10 @@ export function validateBotDataPatch(
   if ('knowledge' in input) {
     const knowledge = validateKnowledge(input.knowledge, issues);
     if (knowledge) patch.knowledge = knowledge;
+  }
+  if ('knowledgeContext' in input) {
+    const context = validateKnowledgeContext(input.knowledgeContext, issues);
+    if (context) patch.knowledgeContext = context;
   }
   if ('generation' in input) {
     const generation = validateGeneration(input.generation, type, issues);

@@ -79,6 +79,13 @@ import { botChatEvent, botTeachEvent } from './bot-chat.js';
 import { botSayEvent, botStopEvent } from './bot-turns.js';
 import { aiAskEvent, aiRefreshEvent, broadcastAiStatus, sendAiStatus } from './ai.js';
 import { rulesAskEvent, rulesIndexEvent, rulesStatusEvent } from './rules.js';
+import {
+  knowledgeDeleteEvent,
+  knowledgeListEvent,
+  knowledgePreviewEvent,
+  knowledgeReindexEvent,
+  knowledgeUpsertEvent,
+} from './knowledge.js';
 import { sendSpeechStatus, speechPreviewEvent, speechToggleEvent } from './speech.js';
 import { sendStateSync, stateRequestEvent } from './sync.js';
 
@@ -182,6 +189,11 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   rulesAskEvent,
   rulesIndexEvent,
   rulesStatusEvent,
+  knowledgeListEvent,
+  knowledgeUpsertEvent,
+  knowledgeDeleteEvent,
+  knowledgeReindexEvent,
+  knowledgePreviewEvent,
   botCreateEvent,
   botUpdateEvent,
   botDeleteEvent,

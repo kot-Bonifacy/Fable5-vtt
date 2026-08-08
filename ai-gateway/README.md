@@ -41,9 +41,11 @@ Wersję CUDA dobierz do sterownika (`nvidia-smi` → „CUDA UMD Version”). Wa
 | `POST /tts`           | synteza jednej wypowiedzi → audio WAV + rytm ujawniania tekstu (`reveal`) |
 | `GET /tts/voices`     | modele głosu, które silnik faktycznie ma na dysku                         |
 | `GET /rag/status`     | model embeddingów, kolekcje, postęp indeksowania (etap 19a)               |
-| `POST /rag/search`    | wyszukiwanie hybrydowe → fragmenty z cytatem (rozdział, sekcja, strona)   |
-| `POST /rag/index`     | indeksowanie dokumentów przysłanych przez serwer VTT                      |
-| `POST /rag/index/rulebook` | indeksowanie podręcznika z **lokalnego dysku gatewaya** (w tle)      |
+| `POST /rag/search`    | wyszukiwanie hybrydowe → fragmenty z cytatem; `tags` i `visibility` filtrują uprawnieniami (19b) |
+| `POST /rag/index`     | indeksowanie dokumentów przysłanych przez serwer VTT (baza wiedzy kampanii) |
+| `POST /rag/index/rulebook` | indeksowanie podręcznika i zrzutów PDF z **lokalnego dysku gatewaya** (w tle) |
+| `POST /rag/forget`    | zapomnienie wskazanych dokumentów (wpis skasowany w edytorze MG)          |
+| `GET /rag/collections/{name}/sources` | co kolekcja ma zaindeksowane — po tym poznaje się sieroty |
 | `DELETE /rag/collections/{name}` | skasowanie kolekcji                                             |
 | `POST /admin/restart` | ręczny restart llama-server (diagnostyka)                                 |
 
@@ -167,6 +169,26 @@ Podręcznik z etapu 13 (21 plików MD) daje **1264 fragmenty** po 300–600 toke
 **Nie ma tu sqlite-vec ani Chromy.** Przy 1264 fragmentach po 1024 wymiary cała kolekcja to macierz 5 MB, a kosinus „każdy z każdym" to jedno mnożenie — zmierzone **38 ms na całe zapytanie razem z embeddingiem pytania**. Indeks ANN kupowałby zero, a kosztował natywne rozszerzenie SQLite, którego `enable_load_extension` nie musi być dostępne w każdej instalacji Pythona.
 
 Zmiana `GATEWAY_RAG_MODEL` unieważnia indeks (wektory dwóch modeli nie leżą w jednej przestrzeni): gateway wykrywa to, mówi o tym w `/rag/status`, a przy najbliższym indeksowaniu czyści kolekcje i buduje je od nowa.
+
+### Płaski tekst i uprawnienia (etap 19b, zmierzone 2026-08-08)
+
+Doszedł **drugi tryb chunkowania**: zrzuty PDF-a bez nagłówków (`chunk_plain_text`). Strony rozpoznaje po `=== page N ===`, skleja przeniesione wyrazy (`zauwa-` + `żymy`) i wyrzuca żywą paginę — linię powtórzoną na co najmniej połowie stron, bo taka trafiałaby we **wszystkie** zapytania o cokolwiek z tego dokumentu. Cytat schodzi tu do „tytuł, s. N", bo więcej z materiału nie da się uczciwie wyczytać.
+
+Które pliki wchodzą, mówi `GATEWAY_RAG_TEXT_FILES` (pary `plik.txt|Tytuł`). Domyślnie tylko materiały polskie — FAQ i dwa DLC. Angielskie dodatki są świadomie poza: w wyszukiwaniu pełnotekstowym przebijałyby polskie akapity, a ich statbloki są spoza kanonu kampanii. Zmierzone: podręcznik + trzy zrzuty = **24 dokumenty, 1297 fragmentów, 367 s** indeksowania na CPU.
+
+Uprawnienia botów są **filtrem SQL przed mnożeniem wektorów**, nie obcięciem wyników po fakcie: `visibility` siedzi w kolumnie `chunks`, tagi w indeksowanej tabeli `chunk_tags`, a `/rag/search` przyjmuje jedno i drugie. Kolekcja, do której bot nie ma prawa, nie kosztuje go ani jednego mnożenia.
+
+Zmierzone na kolekcji kampanii (8 wpisów, `pnpm --filter @vtt/server exec tsx scripts/bot-context-budget.ts`):
+
+| Co                                          | Ile                                  |
+| ------------------------------------------- | ------------------------------------ |
+| indeksowanie 8 wpisów bazy wiedzy           | 738 ms                               |
+| wyszukiwanie dla bota (mediana z 5)         | 60 ms                                |
+| prompt bota: profil + 18 wypowiedzi historii | 1252 tok                             |
+| ten sam prompt z 3 fragmentami              | 1677 tok (**+425**, ~142 na fragment) |
+| cała tura (wyszukiwanie + generacja)        | mediana 0,62 s, najgorsza 1,14 s     |
+
+Limit z etapu 11 to 20 s, więc RAG zjada z niego ~0,3%. Na żywej kampanii (`bot:trace`) wyszukiwanie mieści się w **33–51 ms** — kolekcja kampanii ma kilka fragmentów, więc kosztuje ją wyłącznie embedding pytania.
 
 ### Uwaga o `reasoning_budget` (znalezione 08.08)
 

@@ -22,10 +22,10 @@ from pathlib import Path
 import numpy as np
 
 from ..config import Settings
-from .chunker import chunk_markdown
+from .chunker import chunk_markdown, chunk_plain_text
 from .embeddings import EmbeddingError, OnnxEmbedder
 from .models import EmbeddingModelSpec, resolve_model
-from .store import CollectionStats, RagStore, fts_query
+from .store import CollectionStats, RagStore, SearchFilter, fts_query
 
 log = logging.getLogger(__name__)
 
@@ -72,11 +72,16 @@ class IndexProgress:
 
 @dataclass
 class RagDocument:
-    """Jeden dokument do zaindeksowania — tekst w markdownie."""
+    """Jeden dokument do zaindeksowania.
+
+    `fmt` decyduje o chunkerze: `markdown` to podręcznik i wpisy bazy wiedzy
+    (mają nagłówki), `text` to zrzuty PDF-a z FAQ i dodatków DLC.
+    """
 
     source: str
     text: str
     title: str = ""
+    fmt: str = "markdown"
     meta: dict[str, object] = field(default_factory=dict)
 
 
@@ -224,6 +229,7 @@ class RagService:
         collection: str = RULEBOOK_COLLECTION,
         top_k: int | None = None,
         weights: tuple[float, float] | None = None,
+        filters: SearchFilter | None = None,
     ) -> list[SearchHit]:
         """`weights` to (semantyka, pełny tekst) — nadpisanie konfiguracji.
 
@@ -245,7 +251,9 @@ class RagService:
             return []
         limit = top_k or self.settings.rag_top_k
         chosen = weights or (self.settings.rag_dense_weight, self.settings.rag_keyword_weight)
-        return await asyncio.to_thread(self._search_blocking, text, collection, limit, chosen)
+        return await asyncio.to_thread(
+            self._search_blocking, text, collection, limit, chosen, filters
+        )
 
     def _search_blocking(
         self,
@@ -253,6 +261,7 @@ class RagService:
         collection: str,
         top_k: int,
         weights: tuple[float, float],
+        filters: SearchFilter | None = None,
     ) -> list[SearchHit]:
         # Pula kandydatów jest szersza od wyniku: fuzja ma co łączyć, a koszt to
         # kilka milisekund na mnożeniu macierzy.
@@ -261,7 +270,7 @@ class RagService:
 
         dense_ids: list[int] = []
         if dense_weight > 0:
-            ids, matrix = self.store.load_vectors(collection, self.embedder.dim)
+            ids, matrix = self.store.load_vectors(collection, self.embedder.dim, filters)
             if ids:
                 vector = self.embedder.encode_queries([query])[0]
                 scores = matrix @ vector
@@ -272,7 +281,9 @@ class RagService:
         if keyword_weight > 0:
             fts_ids = [
                 chunk_id
-                for chunk_id, _ in self.store.search_fts(collection, fts_query(query), pool)
+                for chunk_id, _ in self.store.search_fts(
+                    collection, fts_query(query), pool, filters
+                )
             ]
 
         fused = _rrf((dense_ids, fts_ids), (dense_weight, keyword_weight))
@@ -319,6 +330,13 @@ class RagService:
             self._index_lock.release()
 
     async def index_rulebook(self) -> IndexProgress:
+        """Podręcznik główny (markdown) plus wskazane zrzuty PDF-a (płaski tekst).
+
+        FAQ i dodatki DLC lądują w **tej samej** kolekcji co podręcznik: to jeden
+        korpus zasad, a asystent z 19a ma z nich korzystać bez przełączania źródła.
+        Który plik wchodzi, decyduje konfiguracja (`GATEWAY_RAG_TEXT_FILES`) — po
+        angielsku przebiłyby polskie akapity w wyszukiwaniu słów.
+        """
         directory = Path(self.settings.rag_rulebook_dir)
         if not directory.is_dir():
             raise RagError(f"nie znaleziono katalogu podręcznika: {directory}")
@@ -329,7 +347,29 @@ class RagService:
             RagDocument(source=path.name, text=path.read_text(encoding="utf-8"))
             for path in files
         ]
+        documents.extend(self._plain_text_documents())
         return await self.index_documents(RULEBOOK_COLLECTION, documents)
+
+    def _plain_text_documents(self) -> list[RagDocument]:
+        """Zrzuty PDF-a z listy konfiguracyjnej. Brakujący plik jest pomijany
+        z ostrzeżeniem — na czystej maszynie `data/private` bywa niekompletne,
+        a to nie może wywrócić indeksowania podręcznika."""
+        directory = Path(self.settings.rag_text_dir)
+        documents: list[RagDocument] = []
+        for name, title in self.settings.rag_text_sources:
+            path = directory / name
+            if not path.is_file():
+                log.warning("pomijam brakujący zrzut tekstowy: %s", path)
+                continue
+            documents.append(
+                RagDocument(
+                    source=name,
+                    text=path.read_text(encoding="utf-8", errors="replace"),
+                    title=title,
+                    fmt="text",
+                )
+            )
+        return documents
 
     def _index_blocking(self, collection: str, documents: list[RagDocument]) -> IndexProgress:
         started = time.perf_counter()
@@ -358,11 +398,19 @@ class RagService:
         return self._progress
 
     def _index_one(self, collection: str, document: RagDocument) -> None:
-        chunks = chunk_markdown(
-            document.text,
-            target_tokens=self.settings.rag_chunk_tokens,
-            overlap_tokens=self.settings.rag_chunk_overlap,
-            count_tokens=self.embedder.count_tokens,
+        common = {
+            "target_tokens": self.settings.rag_chunk_tokens,
+            "overlap_tokens": self.settings.rag_chunk_overlap,
+            "count_tokens": self.embedder.count_tokens,
+        }
+        chunks = (
+            chunk_plain_text(
+                document.text,
+                title=document.title or Path(document.source).stem,
+                **common,  # type: ignore[arg-type]
+            )
+            if document.fmt == "text"
+            else chunk_markdown(document.text, **common)  # type: ignore[arg-type]
         )
         if not chunks:
             self.store.delete_document(collection, document.source)
@@ -407,6 +455,21 @@ class RagService:
     def delete_collection(self, collection: str) -> int:
         store = self._opened_store()
         return store.delete_collection(collection) if store else 0
+
+    def delete_documents(self, collection: str, sources: Iterable[str]) -> int:
+        """Zapomina wskazane dokumenty. Zwraca liczbę usuniętych fragmentów.
+
+        Wpis skasowany w edytorze MG musi zniknąć z indeksu **od razu** — inaczej
+        bot dalej pamiętałby miejsce, którego już nie ma.
+        """
+        store = self._opened_store()
+        if store is None:
+            return 0
+        return sum(store.delete_document(collection, source) for source in sources)
+
+    def collection_sources(self, collection: str) -> list[str]:
+        store = self._opened_store()
+        return store.sources(collection) if store else []
 
     def close(self) -> None:
         if self._store is not None:

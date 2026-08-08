@@ -234,10 +234,19 @@ function BotTrace({ trace }: { trace: BotTraceBroadcast }) {
   if (trace.completionTokens !== null) parts.push(`${trace.completionTokens} tok`);
   parts.push(`kontekst: ${trace.historyTurns} wypowiedzi`);
   if (trace.promptTokens !== null) parts.push(`${trace.promptTokens} tok promptu`);
+  if (trace.knowledgeMs !== undefined) parts.push(`wiedza ${trace.knowledgeMs} ms`);
   if (trace.retried) parts.push('powtórka');
+  const knowledge = trace.knowledgeTitles ?? [];
   return (
     <div className="chat-bot-trace">
       <span className="chat-bot-trace-badge">{parts.join(' · ')}</span>
+      {/* Same tytuły wpisów: „dlaczego bot to powiedział" da się sprawdzić w
+          trakcie gry, bez otwierania edytora. Treść zostaje w zakładce „Wiedza". */}
+      {knowledge.length > 0 && (
+        <span className="chat-bot-trace-badge" title="Wpisy bazy wiedzy doklejone do promptu">
+          📖 {knowledge.join(' · ')}
+        </span>
+      )}
       {trace.warning && <span className="chat-bot-trace-warning">⚠ {trace.warning}</span>}
     </div>
   );

@@ -12,6 +12,7 @@ import type {
   BotReplyBroadcast,
   BotTeachPayload,
   BotView,
+  KnowledgePassage,
 } from '@vtt/shared';
 import {
   BOT_BREAK_LABELS,
@@ -35,6 +36,7 @@ import type { AiChatRequest } from '../ai/gateway.js';
 import type { PrismaClient } from '../db.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { emitBotUpsert, requireCampaignBot, toBotView } from './bots.js';
+import { collectBotKnowledge } from './knowledge.js';
 
 /**
  * Running one bot turn — the piece stage 11 reuses to put bots on the session
@@ -61,6 +63,12 @@ export interface BotTurnOptions {
   maxTurns?: number;
   /** Names at the table — used for stop sequences and slip detection. */
   participants: string[];
+  /**
+   * Campaign knowledge already retrieved for this line (stage 19b). Looked up by
+   * the caller, not here: the passages must be measured together with the history
+   * when trimming to the context window, and that happens before the turn runs.
+   */
+  knowledgePassages?: KnowledgePassage[];
   scene?: string | null;
   /** Where the bot is talking; defaults to the editor sandbox. */
   mode?: BotPromptMode;
@@ -95,6 +103,15 @@ function trimTurns(
       text: turn.text.slice(0, BOT_TEST_MESSAGE_MAX_LENGTH),
       ...(typeof turn.speaker === 'string' ? { speaker: turn.speaker.slice(0, 48) } : {}),
     }));
+}
+
+/**
+ * What the bot is answering — the query the knowledge lookup runs on. The last
+ * line addressed to it, not the whole transcript: a search over forty turns of
+ * small talk returns whatever was mentioned most, not what was just asked.
+ */
+export function lastIncomingLine(turns: BotChatTurn[]): string {
+  return turns.findLast((turn) => turn.role === 'user')?.text ?? '';
 }
 
 /** Who said what — the bot's own lines as `assistant`, everyone else prefixed. */
@@ -196,6 +213,7 @@ export async function runBotTurn(
     whisperWith: options.whisperWith ?? null,
     // Lets the anchor tell the bot not to echo its own last catchphrase.
     lastOwnLine: turns.findLast((turn) => turn.role === 'bot')?.text ?? null,
+    knowledgePassages: options.knowledgePassages ?? [],
   };
   const guard = {
     botName: bot.name,
@@ -334,9 +352,17 @@ async function streamBotAnswer(
 
   try {
     const participants = await campaignParticipants(deps.ctx.prisma, campaignId);
+    // The editor's sandbox recalls the same knowledge the live chat would —
+    // otherwise „sprawdź, jak trzyma rolę" would test a different bot.
+    const knowledge = await collectBotKnowledge(deps, {
+      campaignId,
+      data: bot.data,
+      query: lastIncomingLine(turns),
+    });
     const outcome = await runBotTurn(deps, bot, {
       turns,
       participants,
+      knowledgePassages: knowledge.passages,
       signal: controller.signal,
       onChunk: (text, reset) => {
         if (socket.disconnected) return;

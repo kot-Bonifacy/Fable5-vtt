@@ -105,11 +105,43 @@ export const BOT_VOICE_RATE_MAX = 2;
 export const BOT_VOICE_PITCH_MIN = 0.7;
 export const BOT_VOICE_PITCH_MAX = 1.4;
 
+/**
+ * Kolekcje, z których bot może czytać (stage 19b). Na razie jedna: baza wiedzy
+ * kampanii. Podręcznika NIE ma na liście świadomie — żelazna zasada promptu mówi
+ * „nie znasz zasad gry", a jego treść jest objęta prawem autorskim i wypowiedź
+ * bota idzie na czat do graczy. Kolekcja `rulebook` zostaje przy asystencie zasad.
+ * Etap 19c dołoży `journal` (streszczenia sesji).
+ */
+export const BOT_KNOWLEDGE_SOURCES = ['campaign'] as const;
+export type BotKnowledgeSource = (typeof BOT_KNOWLEDGE_SOURCES)[number];
+
+export const BOT_KNOWLEDGE_SOURCE_LABELS: Record<BotKnowledgeSource, string> = {
+  campaign: 'Baza wiedzy kampanii',
+};
+
+export const BOT_KNOWLEDGE_TOP_K_MIN = 1;
+export const BOT_KNOWLEDGE_TOP_K_MAX = 6;
+export const BOT_KNOWLEDGE_TAGS_MAX = 12;
+
+/**
+ * Co bot ma prawo wyszukać poza własnym profilem. **Pusty zbiór źródeł = bot zna
+ * wyłącznie to, co MG wpisał mu w profilu** — dokładnie zachowanie z etapu 11.
+ */
+export interface BotKnowledgeContext {
+  sources: BotKnowledgeSource[];
+  /** Filtr tagów w tych kolekcjach; pusty = każdy wpis w kolekcji. */
+  tags: string[];
+  /** Ile fragmentów dokleić do promptu. */
+  topK: number;
+}
+
 export interface BotProfileData {
   schemaVersion: typeof BOT_SCHEMA_VERSION;
   type: BotType;
   persona: BotPersona;
   knowledge: BotKnowledge;
+  /** Uprawnienia do bazy wiedzy kampanii (etap 19b). */
+  knowledgeContext: BotKnowledgeContext;
   generation: BotGeneration;
   lessons: BotLesson[];
   voice: BotVoice;
@@ -324,4 +356,12 @@ export interface BotTraceBroadcast {
   /** Chat lines that fitted in the context window, and their token cost. */
   historyTurns: number;
   promptTokens: number | null;
+  /**
+   * Titles of the knowledge entries pasted into this prompt (stage 19b). Titles
+   * only — the entries themselves are GM notes and the trace travels with a
+   * message id, so a full body here would be one accident away from the table.
+   */
+  knowledgeTitles?: string[];
+  /** How long the knowledge lookup took — it sits in front of the generation. */
+  knowledgeMs?: number;
 }

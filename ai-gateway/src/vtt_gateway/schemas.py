@@ -187,6 +187,10 @@ class RagSearchRequest(BaseModel):
     query: str = Field(min_length=1, max_length=2000)
     collection: str = "rulebook"
     top_k: int | None = Field(default=None, ge=1, le=20)
+    # Uprawnienia wołającego (etap 19b). Pusta lista = bez ograniczeń w tym
+    # wymiarze — tak wygląda pytanie MG o zasady.
+    tags: list[str] = Field(default_factory=list, max_length=32)
+    visibility: list[str] = Field(default_factory=list, max_length=8)
 
 
 class RagHit(BaseModel):
@@ -218,12 +222,23 @@ class RagIndexDocument(BaseModel):
     source: str = Field(min_length=1, max_length=300)
     text: str = Field(min_length=1)
     title: str = ""
+    format: Literal["markdown", "text"] = "markdown"
+    # Filtry uprawnień zapisywane razem z fragmentami (etap 19b).
+    tags: list[str] = Field(default_factory=list, max_length=32)
+    visibility: str = Field(default="", max_length=32)
     meta: dict[str, str] = Field(default_factory=dict)
 
 
 class RagIndexRequest(BaseModel):
     collection: str = Field(min_length=1, max_length=64)
     documents: list[RagIndexDocument] = Field(min_length=1)
+
+
+class RagForgetRequest(BaseModel):
+    """Skasowanie pojedynczych dokumentów — wpis usunięty w edytorze MG."""
+
+    collection: str = Field(min_length=1, max_length=64)
+    sources: list[str] = Field(min_length=1, max_length=500)
 
 
 class RagIndexResponse(BaseModel):

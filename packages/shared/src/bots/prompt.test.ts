@@ -182,3 +182,54 @@ describe('profile storage', () => {
     expect(createDefaultBotData('npc').generation.reasoning).toBe(false);
   });
 });
+
+describe('compileBotPrompt — campaign knowledge (stage 19b)', () => {
+  const passages = [
+    {
+      chunkId: 1,
+      entryId: 'e1',
+      title: 'Klub Afterlife',
+      text: 'Klub Afterlife\n\nBar w podziemiach, w którym solówki szukają zleceń.',
+      score: 0.9,
+    },
+  ];
+
+  it('pastes the passages as the bot’s own memory, with no citation', () => {
+    const prompt = compileBotPrompt({
+      name: 'Vex',
+      data: fixer(),
+      knowledgePassages: passages,
+    });
+    expect(prompt).toContain('# Co pamiętasz na ten temat');
+    expect(prompt).toContain('Bar w podziemiach');
+    // A bot is a person, not the rules assistant: no source, no [1] markers.
+    expect(prompt).not.toContain('[1]');
+    expect(prompt).toContain('nie powołujesz się na notatki');
+  });
+
+  it('remembers BEFORE it keeps quiet — a blind spot outranks a passage', () => {
+    const prompt = compileBotPrompt({
+      name: 'Vex',
+      data: fixer(),
+      knowledgePassages: passages,
+    });
+    // The GM’s explicit „you don’t know this" is the last word in the profile,
+    // so it has to sit after anything the search pulled in.
+    expect(prompt.indexOf('Co pamiętasz na ten temat')).toBeLessThan(
+      prompt.indexOf('Czego nie wiesz i o czym milczysz'),
+    );
+    expect(prompt.indexOf('Co pamiętasz na ten temat')).toBeGreaterThan(
+      prompt.indexOf('# Co wiesz'),
+    );
+  });
+
+  it('adds no section at all when nothing was found', () => {
+    const prompt = compileBotPrompt({ name: 'Vex', data: fixer(), knowledgePassages: [] });
+    expect(prompt).not.toContain('Co pamiętasz');
+  });
+
+  it('tells the bot to admit it does not know a name it never heard', () => {
+    const prompt = compileBotPrompt({ name: 'Vex', data: fixer() });
+    expect(prompt).toContain('nie kojarzysz');
+  });
+});

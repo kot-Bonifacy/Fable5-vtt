@@ -9,7 +9,7 @@ import pytest
 
 from vtt_gateway.config import Settings
 from vtt_gateway.rag.service import RagDocument, RagError, RagService
-from vtt_gateway.rag.store import RagStore, fts_query
+from vtt_gateway.rag.store import RagStore, SearchFilter, fts_query
 
 from .fake_embedder import FakeEmbedder
 
@@ -184,4 +184,142 @@ async def test_status_liczy_fragmenty_i_dokumenty(tmp_path: Path) -> None:
     # Dwie sekcje w pierwszym rozdziale, jedna w drugim; sam nagłówek rozdziału
     # bez treści nie tworzy fragmentu.
     assert collections[0]["chunks"] == 3
+    service.close()
+
+
+# --- uprawnienia (etap 19b) --------------------------------------------------
+
+WPIS_KLUB = """# Klub Afterlife
+
+Bar w centrum, w którym solówki szukają zleceń.
+"""
+
+WPIS_GANG = """# Gang Maelstrom
+
+Cybergang z Watson, poznawalny po chromie zamiast twarzy.
+"""
+
+WPIS_SEKRET = """# Kto sypie ekipę
+
+Fixer Rogue sprzedaje ekipę korporacji.
+"""
+
+
+async def index_knowledge(service: RagService) -> None:
+    await service.index_documents(
+        "campaign",
+        [
+            RagDocument(
+                source="entry:klub",
+                text=WPIS_KLUB,
+                title="Klub Afterlife",
+                meta={"tags": ["miejsca"], "visibility": "bots"},
+            ),
+            RagDocument(
+                source="entry:gang",
+                text=WPIS_GANG,
+                title="Gang Maelstrom",
+                meta={"tags": ["gangi"], "visibility": "bots"},
+            ),
+            RagDocument(
+                source="entry:sekret",
+                text=WPIS_SEKRET,
+                title="Kto sypie ekipę",
+                meta={"tags": ["miejsca", "gangi"], "visibility": "gm"},
+            ),
+        ],
+    )
+
+
+async def test_filtr_tagow_odcina_wpis_spoza_uprawnien(tmp_path: Path) -> None:
+    service = make_service(tmp_path)
+    await index_knowledge(service)
+
+    hits = await service.search(
+        "gang",
+        collection="campaign",
+        filters=SearchFilter(tags_any=("miejsca",), visibility=("bots",)),
+    )
+
+    assert hits
+    assert all("Maelstrom" not in hit.text for hit in hits)
+    service.close()
+
+
+async def test_filtr_widocznosci_nie_wypuszcza_sekretu_mg(tmp_path: Path) -> None:
+    """Kryterium etapu: wpis „tylko MG" nie ma prawa trafić do promptu bota."""
+    service = make_service(tmp_path)
+    await index_knowledge(service)
+
+    for bot in await service.search(
+        "kto sypie ekipę",
+        collection="campaign",
+        filters=SearchFilter(visibility=("bots",)),
+    ):
+        assert "Rogue" not in bot.text
+
+    # MG szuka bez filtra i sekret znajduje.
+    gm = await service.search("kto sypie ekipę", collection="campaign")
+    assert any("Rogue" in hit.text for hit in gm)
+    service.close()
+
+
+async def test_kolekcje_sa_rozlaczne(tmp_path: Path) -> None:
+    service = make_service(tmp_path)
+    await index(service, ("01-zasady.md", ROZDZIAL))
+    await index_knowledge(service)
+
+    # Atrapa embeddera nie zna semantyki, więc wyszukiwanie zawsze coś zwróci —
+    # sprawdzamy, że z kolekcji podręcznika nie wypada ani jeden wpis kampanii.
+    rulebook = await service.search("Afterlife", collection="rulebook")
+    assert rulebook and all("Afterlife" not in hit.text for hit in rulebook)
+    assert {stats.name for stats in service.store.collections()} == {"rulebook", "campaign"}
+    service.close()
+
+
+async def test_zapomnienie_wpisu_zabiera_go_z_indeksu(tmp_path: Path) -> None:
+    service = make_service(tmp_path)
+    await index_knowledge(service)
+
+    assert service.delete_documents("campaign", ["entry:klub"]) > 0
+    assert "entry:klub" not in service.collection_sources("campaign")
+    left = await service.search("Afterlife", collection="campaign")
+    assert all("Afterlife" not in hit.text for hit in left)
+    service.close()
+
+
+async def test_reindeks_wpisu_nie_dubluje_fragmentow(tmp_path: Path) -> None:
+    service = make_service(tmp_path)
+    await index_knowledge(service)
+    before = service.store.collections()
+
+    await index_knowledge(service)
+    after = service.store.collections()
+
+    assert [(item.name, item.documents, item.chunks) for item in before] == [
+        (item.name, item.documents, item.chunks) for item in after
+    ]
+    service.close()
+
+
+async def test_zmiana_wpisu_widac_bez_restartu(tmp_path: Path) -> None:
+    """Kryterium etapu: wpis poprawiony w edytorze działa od razu."""
+    service = make_service(tmp_path)
+    await index_knowledge(service)
+
+    await service.index_documents(
+        "campaign",
+        [
+            RagDocument(
+                source="entry:klub",
+                text="# Klub Afterlife\n\nLokal spłonął w zeszłym tygodniu.\n",
+                title="Klub Afterlife",
+                meta={"tags": ["miejsca"], "visibility": "bots"},
+            )
+        ],
+    )
+
+    hits = await service.search("Afterlife", collection="campaign")
+    assert any("spłonął" in hit.text for hit in hits)
+    assert all("szukają zleceń" not in hit.text for hit in hits)
     service.close()

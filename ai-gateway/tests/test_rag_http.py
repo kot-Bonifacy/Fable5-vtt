@@ -31,6 +31,9 @@ async def client(tmp_path):
         rag_enabled=True,
         rag_db_path=tmp_path / "rag.sqlite3",
         rag_rulebook_dir=tmp_path / "manual",
+        # Bez tego indeksowanie podręcznika dociągnęłoby PRAWDZIWE zrzuty z
+        # `data/private` (ścieżka domyślna jest względna wobec katalogu gatewaya).
+        rag_text_dir=tmp_path / "text",
         rag_top_k=3,
     )
     llama = FakeLlama()

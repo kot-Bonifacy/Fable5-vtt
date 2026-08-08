@@ -2229,6 +2229,122 @@ input[type='color'] {
   color: var(--text-dim);
 }
 
+/* --- Baza wiedzy kampanii (etap 19b) ---
+   Odwrotnie niż w „Zasadach": tu MG pisze świat, więc pierwszoplanowa jest lista
+   i formularz, a z RAG-a liczy się jedna rzecz — czy bot już o tym wie. */
+
+.knowledge-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.75rem;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.knowledge-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.knowledge-entry {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  padding: 0.35rem 0.45rem;
+}
+
+.knowledge-entry-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  width: 100%;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+}
+
+.knowledge-entry-head:hover .knowledge-entry-title {
+  text-decoration: underline;
+}
+
+.knowledge-entry-title {
+  flex: 1 1 auto;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.knowledge-type {
+  flex: 0 0 auto;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--accent);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0 0.25rem;
+}
+
+.knowledge-flag {
+  flex: 0 0 auto;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.knowledge-flag--stale {
+  color: var(--warning, #d08a3a);
+}
+
+.knowledge-entry-body {
+  margin: 0.25rem 0 0;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  /* Podgląd, nie treść — pełny tekst jest w formularzu. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.knowledge-entry-foot {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  margin-top: 0.3rem;
+}
+
+.knowledge-tag {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  background: var(--bg-panel);
+  border-radius: 3px;
+  padding: 0 0.25rem;
+}
+
+.knowledge-entry-foot .character-delete {
+  margin-left: auto;
+}
+
+.knowledge-form {
+  padding: 0;
+}
+
+.bot-knowledge-preview {
+  border-left: 2px solid var(--accent);
+  padding-left: 0.45rem;
+}
+
 /* --- Boty (etap 10): zakładka z listą i pływający edytor profilu --- */
 
 .bot-panel {

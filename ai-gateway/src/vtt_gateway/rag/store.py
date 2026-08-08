@@ -47,10 +47,25 @@ CREATE TABLE IF NOT EXISTS chunks (
   text        TEXT NOT NULL,
   meta        TEXT NOT NULL DEFAULT '{}',
   tokens      INTEGER NOT NULL DEFAULT 0,
-  vector      BLOB
+  vector      BLOB,
+  -- Etap 19b: uprawnienia bota są filtrem PRZY wyszukiwaniu, nie obcięciem
+  -- wyników po fakcie, więc muszą dać się zapytać w SQL-u. Puste = bez ograniczeń
+  -- (tak wygląda cały podręcznik z 19a).
+  visibility  TEXT NOT NULL DEFAULT ''
 );
 
 CREATE INDEX IF NOT EXISTS chunks_by_collection ON chunks (collection);
+
+-- Tagi w osobnej tabeli, a nie w JSON-ie `meta`: filtr po tagu ma być zwykłym
+-- indeksowanym `EXISTS`, żeby kolekcja, do której bot nie ma prawa, nie
+-- kosztowała go ani jednego mnożenia wektorów.
+CREATE TABLE IF NOT EXISTS chunk_tags (
+  chunk_id INTEGER NOT NULL REFERENCES chunks(id) ON DELETE CASCADE,
+  tag      TEXT NOT NULL,
+  PRIMARY KEY (chunk_id, tag)
+) WITHOUT ROWID;
+
+CREATE INDEX IF NOT EXISTS chunk_tags_by_tag ON chunk_tags (tag);
 
 -- Samodzielna tabela FTS (nie `content=`): kasujemy i wstawiamy całe dokumenty,
 -- więc synchronizacja po rowid jest prostsza niż triggery na tabeli źródłowej.
@@ -95,6 +110,18 @@ class CollectionStats:
     indexed_at: str | None
 
 
+@dataclass(frozen=True)
+class SearchFilter:
+    """Kogo wolno przeszukać. Pusta krotka = „bez ograniczeń w tym wymiarze"."""
+
+    tags_any: tuple[str, ...] = ()
+    visibility: tuple[str, ...] = ()
+
+    @property
+    def empty(self) -> bool:
+        return not self.tags_any and not self.visibility
+
+
 def fts_query(question: str, *, max_terms: int = 12) -> str:
     """Zapytanie FTS5 z pytania w naturalnym języku.
 
@@ -129,7 +156,18 @@ class RagStore:
             self._db.execute("PRAGMA journal_mode = WAL")
             self._db.execute("PRAGMA foreign_keys = ON")
             self._db.executescript(SCHEMA)
+            self._migrate()
             self._db.commit()
+
+    def _migrate(self) -> None:
+        """Dokłada kolumny, których nie było w poprzedniej wersji schematu.
+
+        Indeks jest pochodną materiału, ale odtworzenie go to kilka minut na CPU —
+        dokładamy kolumnę zamiast kasować wszystko i kazać MG indeksować od nowa.
+        """
+        columns = {row["name"] for row in self._db.execute("PRAGMA table_info(chunks)")}
+        if "visibility" not in columns:
+            self._db.execute("ALTER TABLE chunks ADD COLUMN visibility TEXT NOT NULL DEFAULT ''")
 
     def close(self) -> None:
         with self._lock:
@@ -165,6 +203,10 @@ class RagStore:
 
         Ponowne indeksowanie tego samego pliku ma dawać ten sam wynik, a nie drugi
         komplet fragmentów — stąd kasowanie po `(kolekcja, źródło)`, nie po id.
+
+        `visibility` i `tags` czytamy z `meta` fragmentu: wołający i tak wkłada tam
+        wszystko, co wie o dokumencie, a filtr wyszukiwania potrzebuje tych dwóch
+        w kolumnach.
         """
         if vectors is not None and len(vectors) != len(chunks):
             raise ValueError("liczba wektorów nie zgadza się z liczbą fragmentów")
@@ -185,8 +227,8 @@ class RagStore:
                 )
                 chunk_cursor = self._db.execute(
                     "INSERT INTO chunks"
-                    " (document_id, collection, ordinal, text, meta, tokens, vector)"
-                    " VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    " (document_id, collection, ordinal, text, meta, tokens, vector, visibility)"
+                    " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                     (
                         document_id,
                         collection,
@@ -195,12 +237,19 @@ class RagStore:
                         json.dumps(meta, ensure_ascii=False),
                         tokens,
                         blob,
+                        _as_visibility(meta.get("visibility")),
                     ),
                 )
+                chunk_id = int(chunk_cursor.lastrowid or 0)
                 self._db.execute(
                     "INSERT INTO chunks_fts (rowid, text) VALUES (?, ?)",
-                    (chunk_cursor.lastrowid, text),
+                    (chunk_id, text),
                 )
+                for tag in _as_tags(meta.get("tags")):
+                    self._db.execute(
+                        "INSERT OR IGNORE INTO chunk_tags (chunk_id, tag) VALUES (?, ?)",
+                        (chunk_id, tag),
+                    )
             self._db.commit()
         return document_id
 
@@ -255,13 +304,40 @@ class RagStore:
             for row in rows
         ]
 
-    def load_vectors(self, collection: str, dim: int) -> tuple[list[int], np.ndarray]:
-        """Cała kolekcja jako jedna macierz. Przy 4 000 fragmentów to 16 MB."""
+    def _filter_sql(self, filters: SearchFilter | None) -> tuple[str, list[object]]:
+        """Warunek `WHERE` realizujący uprawnienia — wspólny dla obu wyszukiwań."""
+        if filters is None or filters.empty:
+            return "", []
+        clauses: list[str] = []
+        params: list[object] = []
+        if filters.visibility:
+            marks = ",".join("?" * len(filters.visibility))
+            clauses.append(f"c.visibility IN ({marks})")
+            params.extend(filters.visibility)
+        if filters.tags_any:
+            marks = ",".join("?" * len(filters.tags_any))
+            clauses.append(
+                "EXISTS (SELECT 1 FROM chunk_tags t"
+                f" WHERE t.chunk_id = c.id AND t.tag IN ({marks}))"
+            )
+            params.extend(filters.tags_any)
+        return " AND " + " AND ".join(clauses), params
+
+    def load_vectors(
+        self, collection: str, dim: int, filters: SearchFilter | None = None
+    ) -> tuple[list[int], np.ndarray]:
+        """Cała kolekcja jako jedna macierz. Przy 4 000 fragmentów to 16 MB.
+
+        Filtr działa **przed** mnożeniem, nie po nim: fragment, do którego bot nie
+        ma prawa, nie ma prawa go też kosztować (wskazówka etapu 19b).
+        """
+        where, params = self._filter_sql(filters)
         with self._lock:
             rows = self._db.execute(
-                "SELECT id, vector FROM chunks WHERE collection = ? AND vector IS NOT NULL"
-                " ORDER BY id",
-                (collection,),
+                "SELECT c.id, c.vector FROM chunks c"
+                " WHERE c.collection = ? AND c.vector IS NOT NULL"
+                f"{where} ORDER BY c.id",
+                [collection, *params],
             ).fetchall()
         if not rows:
             return [], np.zeros((0, dim), dtype=np.float32)
@@ -269,24 +345,39 @@ class RagStore:
         matrix = np.frombuffer(b"".join(row["vector"] for row in rows), dtype=np.float32)
         return ids, matrix.reshape(len(ids), dim)
 
-    def search_fts(self, collection: str, query: str, limit: int) -> list[tuple[int, float]]:
+    def search_fts(
+        self,
+        collection: str,
+        query: str,
+        limit: int,
+        filters: SearchFilter | None = None,
+    ) -> list[tuple[int, float]]:
         """Identyfikatory posortowane po BM25 (im mniej, tym lepiej u SQLite)."""
         if not query:
             return []
+        where, params = self._filter_sql(filters)
         with self._lock:
             try:
                 rows = self._db.execute(
                     "SELECT f.rowid AS id, bm25(chunks_fts) AS score"
                     "  FROM chunks_fts f JOIN chunks c ON c.id = f.rowid"
                     " WHERE chunks_fts MATCH ? AND c.collection = ?"
-                    " ORDER BY score LIMIT ?",
-                    (query, collection, limit),
+                    f"{where} ORDER BY score LIMIT ?",
+                    [query, collection, *params, limit],
                 ).fetchall()
             except sqlite3.OperationalError:
                 # Nieparsowalne zapytanie FTS nie może wywrócić wyszukiwania —
                 # zostaje sama część wektorowa.
                 return []
         return [(int(row["id"]), float(row["score"])) for row in rows]
+
+    def sources(self, collection: str) -> list[str]:
+        """Nazwy dokumentów w kolekcji — po nich rozpoznaje się sieroty."""
+        with self._lock:
+            rows = self._db.execute(
+                "SELECT source FROM documents WHERE collection = ? ORDER BY source", (collection,)
+            ).fetchall()
+        return [row["source"] for row in rows]
 
     def fetch(self, ids: list[int]) -> dict[int, StoredChunk]:
         if not ids:
@@ -313,3 +404,14 @@ class RagStore:
             )
             for row in rows
         }
+
+
+def _as_tags(value: object) -> list[str]:
+    """Tagi z metadanych fragmentu — znormalizowane po stronie wołającego."""
+    if not isinstance(value, list):
+        return []
+    return [item.strip().lower() for item in value if isinstance(item, str) and item.strip()]
+
+
+def _as_visibility(value: object) -> str:
+    return value.strip() if isinstance(value, str) else ""

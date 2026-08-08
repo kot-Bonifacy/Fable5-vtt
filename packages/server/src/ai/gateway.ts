@@ -99,6 +99,38 @@ export interface RulesFailure {
   detail: string;
 }
 
+export type RagResult<T> = { ok: true; result: T } | { ok: false; error: RulesFailure };
+
+/**
+ * Who may read what (stage 19b). Both lists are sent to the gateway and applied
+ * as a SQL filter BEFORE the vectors are multiplied — a collection the bot has
+ * no right to must not cost it anything.
+ */
+export interface RagSearchFilter {
+  /** Any of these tags; empty = every entry in the collection. */
+  tags?: string[];
+  /** Allowed values of the entry's visibility; empty = no restriction (GM). */
+  visibility?: string[];
+}
+
+/** One document pushed into the index (a knowledge entry). */
+export interface RagDocumentInput {
+  source: string;
+  text: string;
+  title: string;
+  tags: string[];
+  visibility: string;
+}
+
+export interface RagCollectionStats {
+  chunks: number;
+  documents: number;
+  /** Null when the collection has never been indexed. */
+  indexedAt: string | null;
+  ready: boolean;
+  reason: string | null;
+}
+
 export interface AiGatewayOptions {
   url: string;
   apiKey: string;
@@ -227,13 +259,144 @@ export class AiGateway {
     query: string,
     topK: number,
     collection = 'rulebook',
-  ): Promise<{ ok: true; result: RulesSearchResult } | { ok: false; error: RulesFailure }> {
+    filter?: RagSearchFilter,
+  ): Promise<RagResult<RulesSearchResult>> {
+    const body = await this.postRag('/rag/search', {
+      query,
+      collection,
+      top_k: topK,
+      tags: filter?.tags ?? [],
+      visibility: filter?.visibility ?? [],
+    });
+    if (!body.ok) return body;
+    const payload = body.result as { hits?: GatewayRagHit[]; took_ms?: number };
+    return {
+      ok: true,
+      result: {
+        passages: (payload.hits ?? []).map(toPassage),
+        tookMs: typeof payload.took_ms === 'number' ? payload.took_ms : 0,
+      },
+    };
+  }
+
+  /**
+   * Pushes knowledge-base entries into the index. Unlike the rulebook these are
+   * the GM's own notes, so sending their text over the wire is fine — and the
+   * gateway is the only place that can embed them.
+   */
+  async indexDocuments(
+    collection: string,
+    documents: RagDocumentInput[],
+  ): Promise<RagResult<{ chunks: number; documents: number }>> {
+    if (documents.length === 0) return { ok: true, result: { chunks: 0, documents: 0 } };
+    const body = await this.postRag('/rag/index', {
+      collection,
+      documents: documents.map((document) => ({
+        source: document.source,
+        text: document.text,
+        title: document.title,
+        format: 'markdown',
+        tags: document.tags,
+        visibility: document.visibility,
+      })),
+    });
+    if (!body.ok) return body;
+    const payload = body.result as { chunks?: number; documents?: number; error?: string | null };
+    if (payload.error) {
+      return { ok: false, error: { code: 'RAG_UNAVAILABLE', detail: payload.error } };
+    }
+    return {
+      ok: true,
+      result: { chunks: payload.chunks ?? 0, documents: payload.documents ?? 0 },
+    };
+  }
+
+  /** Removes entries from the index — a deleted note must stop being remembered. */
+  async forgetDocuments(collection: string, sources: string[]): Promise<RagResult<number>> {
+    if (sources.length === 0) return { ok: true, result: 0 };
+    const body = await this.postRag('/rag/forget', { collection, sources });
+    if (!body.ok) return body;
+    const payload = body.result as { removed?: number };
+    return { ok: true, result: payload.removed ?? 0 };
+  }
+
+  /**
+   * Drops indexed documents that no longer exist in the database. Needed
+   * because a delete can happen while the gateway is down — the entry then
+   * disappears from the GM's list but stays in the bot's memory.
+   *
+   * Returns null when the gateway could not be asked (the caller just reports
+   * nothing pruned; the next reindex tries again).
+   */
+  async forgetOrphans(collection: string, alive: Set<string>): Promise<number | null> {
+    let sources: string[];
+    try {
+      const response = await this.fetchImpl(
+        `${this.options.url}/rag/collections/${encodeURIComponent(collection)}/sources`,
+        { headers: this.jsonHeaders(), signal: AbortSignal.timeout(HEALTH_TIMEOUT_MS) },
+      );
+      if (!response.ok) return null;
+      const body = (await response.json()) as { sources?: unknown };
+      sources = Array.isArray(body.sources)
+        ? body.sources.filter((item): item is string => typeof item === 'string')
+        : [];
+    } catch {
+      return null;
+    }
+    const orphans = sources.filter((source) => !alive.has(source));
+    if (orphans.length === 0) return 0;
+    const forgotten = await this.forgetDocuments(collection, orphans);
+    return forgotten.ok ? orphans.length : null;
+  }
+
+  /** Per-collection view of the index — the knowledge panel's status line. */
+  async collectionStatus(collection: string): Promise<RagCollectionStats> {
+    let raw: GatewayRagStatus;
+    try {
+      const response = await this.fetchImpl(`${this.options.url}/rag/status`, {
+        signal: AbortSignal.timeout(HEALTH_TIMEOUT_MS),
+      });
+      if (!response.ok) {
+        return {
+          chunks: 0,
+          documents: 0,
+          indexedAt: null,
+          ready: false,
+          reason: `gateway HTTP ${response.status}`,
+        };
+      }
+      raw = (await response.json()) as GatewayRagStatus;
+    } catch (error) {
+      return {
+        chunks: 0,
+        documents: 0,
+        indexedAt: null,
+        ready: false,
+        reason: `brak połączenia z AI Gateway (${describeError(error)})`,
+      };
+    }
+    const found = raw.collections?.find((entry) => entry.name === collection) ?? null;
+    const enabled = raw.enabled && !raw.model_mismatch;
+    return {
+      chunks: found?.chunks ?? 0,
+      documents: found?.documents ?? 0,
+      indexedAt: found?.indexed_at ?? null,
+      // „Ready" for a knowledge base means „a search would work", even with
+      // nothing indexed yet — an empty base is a legitimate state, unlike an
+      // empty rulebook.
+      ready: enabled,
+      reason: enabled ? null : rulesReason(raw, found?.chunks ?? 0),
+    };
+  }
+
+  /** One `POST /rag/*` call with the shared failure wording. */
+  private async postRag(path: string, body: unknown): Promise<RagResult<unknown>> {
     let response: Response;
     try {
-      response = await this.fetchImpl(`${this.options.url}/rag/search`, {
+      response = await this.fetchImpl(`${this.options.url}${path}`, {
         method: 'POST',
         headers: this.jsonHeaders(),
-        body: JSON.stringify({ query, collection, top_k: topK }),
+        body: JSON.stringify(body),
         signal: AbortSignal.timeout(this.options.requestTimeoutMs),
       });
     } catch (error) {
@@ -244,21 +407,18 @@ export class AiGateway {
       return {
         ok: false,
         error: {
-          // 503 from `/rag/search` means „RAG cannot answer" (disabled, empty
-          // index, model changed) — a different problem from a dead model.
+          // 503 from `/rag/*` means „RAG cannot answer" (disabled, empty index,
+          // model changed) — a different problem from a dead model.
           code: response.status === 503 ? 'RAG_UNAVAILABLE' : 'AI_ERROR',
           detail: await safeDetail(response),
         },
       };
     }
-    const body = (await response.json()) as { hits?: GatewayRagHit[]; took_ms?: number };
-    return {
-      ok: true,
-      result: {
-        passages: (body.hits ?? []).map(toPassage),
-        tookMs: typeof body.took_ms === 'number' ? body.took_ms : 0,
-      },
-    };
+    try {
+      return { ok: true, result: await response.json() };
+    } catch (error) {
+      return { ok: false, error: { code: 'AI_ERROR', detail: describeError(error) } };
+    }
   }
 
   /**

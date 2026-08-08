@@ -29,7 +29,8 @@ import {
 import type { PrismaClient } from '../db.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { broadcastChatMessage, deliverChatMessageTo, insertChatMessage } from './chat-io.js';
-import { campaignParticipants, runBotTurn, type BotRuntime } from './bot-chat.js';
+import { campaignParticipants, lastIncomingLine, runBotTurn, type BotRuntime } from './bot-chat.js';
+import { collectBotKnowledge, type BotKnowledgeResult } from './knowledge.js';
 import { getSceneById } from './scenes.js';
 import { readSpeechEnabled, resolveVoice, synthesizeLine } from './speech.js';
 import { campaignRoom, gmRoom } from './state.js';
@@ -285,6 +286,8 @@ export async function stopBotTurns(
 interface BotContext {
   turns: BotChatTurn[];
   promptTokens: number | null;
+  /** Campaign knowledge recalled for this line (stage 19b). */
+  knowledge: BotKnowledgeResult;
 }
 
 /**
@@ -346,6 +349,14 @@ async function buildBotContext(
           };
     });
 
+  // Wiedza dokleja się do promptu systemowego, więc musi być znana ZANIM
+  // policzymy budżet — inaczej pomiar kłamałby o tyle, ile ważą fragmenty.
+  const knowledge = await collectBotKnowledge(deps, {
+    campaignId: request.campaignId,
+    data: bot.data,
+    query: lastIncomingLine(turns),
+  });
+
   const budget = contextBudget(deps, bot);
   const systemPrompt = compileBotPrompt({
     name: bot.name,
@@ -353,8 +364,10 @@ async function buildBotContext(
     participants,
     scene,
     mode: request.whisperToUserId ? 'whisper' : 'chat',
+    knowledgePassages: knowledge.passages,
   });
-  return trimToBudget(deps, systemPrompt, turns, budget);
+  const trimmed = await trimToBudget(deps, systemPrompt, turns, budget);
+  return { ...trimmed, knowledge };
 }
 
 /** Tokens left for the prompt after reserving room for the answer. */
@@ -374,7 +387,7 @@ async function trimToBudget(
   systemPrompt: string,
   turns: BotChatTurn[],
   budget: number,
-): Promise<BotContext> {
+): Promise<Omit<BotContext, 'knowledge'>> {
   const measure = async (candidate: BotChatTurn[]): Promise<number> => {
     const text = [
       systemPrompt,
@@ -450,6 +463,7 @@ async function runQueuedTurn(
       turns: context.turns,
       maxTurns: BOT_SESSION_HISTORY_MAX_TURNS,
       participants,
+      knowledgePassages: context.knowledge.passages,
       scene: scene?.name ?? null,
       mode: request.whisperToUserId ? 'whisper' : 'chat',
       whisperWith,
@@ -526,6 +540,7 @@ async function runQueuedTurn(
 
   // Diagnostics stay with the GM: for players the line is indistinguishable
   // from an NPC line the GM typed.
+  const knowledgeTitles = [...new Set(context.knowledge.passages.map((passage) => passage.title))];
   const trace: BotTraceBroadcast = {
     messageId: message.id,
     botId: bot.id,
@@ -535,6 +550,9 @@ async function runQueuedTurn(
     completionTokens: outcome.usage?.completionTokens ?? null,
     historyTurns: context.turns.length,
     promptTokens: context.promptTokens,
+    // Titles only: the trace rides a message id, and the bodies are GM notes.
+    ...(knowledgeTitles.length > 0 ? { knowledgeTitles } : {}),
+    ...(context.knowledge.tookMs > 0 ? { knowledgeMs: context.knowledge.tookMs } : {}),
   };
   deps.io.to(gmRoom(request.campaignId)).emit('bot:trace', trace);
 }

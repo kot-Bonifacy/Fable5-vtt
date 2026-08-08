@@ -89,6 +89,16 @@ class Settings(BaseSettings):
     rag_cache_dir: Path | None = None
     # Ścieżka względna wobec katalogu ai-gateway (stamtąd startuje skrypt).
     rag_rulebook_dir: Path = Path("../data/private/rulebook/manual/CPRED-podrecznik")
+    # Zrzuty PDF-a (etap 19b) — płaski tekst bez nagłówków, cytowany jako „tytuł, s. N".
+    rag_text_dir: Path = Path("../data/private/rulebook/text")
+    # `plik.txt|Tytuł`, rozdzielone przecinkami. Domyślnie tylko materiały polskie:
+    # angielskie DLC przebijają polskie akapity w wyszukiwaniu pełnotekstowym
+    # (decyzja MG z 08.08), a karta postaci to formularz bez treści zasad.
+    rag_text_files: str = (
+        "CPRED-FAQ_1.txt|Cyberpunk RED FAQ,"
+        "CPRED-DLC_01_Stara-giwera.txt|DLC: Stara giwera nigdy nie umiera,"
+        "CPRED-DLC_02_Czerwony-chrom.txt|DLC: Czerwony chrom"
+    )
     # Fragmenty 300–600 tokenów z zakładką — liczone tokenizerem modelu, nie na oko.
     rag_chunk_tokens: int = 420
     rag_chunk_overlap: int = 60
@@ -104,6 +114,18 @@ class Settings(BaseSettings):
     def manages_llama(self) -> bool:
         """Czy gateway sam uruchamia llama-server."""
         return self.llama_binary is not None and self.llama_model is not None
+
+    @property
+    def rag_text_sources(self) -> list[tuple[str, str]]:
+        """`rag_text_files` rozłożone na pary (plik, tytuł do cytatu)."""
+        sources: list[tuple[str, str]] = []
+        for item in self.rag_text_files.split(","):
+            entry = item.strip()
+            if not entry:
+                continue
+            name, _, title = entry.partition("|")
+            sources.append((name.strip(), title.strip() or Path(name.strip()).stem))
+        return sources
 
 
 def load_settings() -> Settings:
