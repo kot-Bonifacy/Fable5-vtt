@@ -106,17 +106,22 @@ export const BOT_VOICE_PITCH_MIN = 0.7;
 export const BOT_VOICE_PITCH_MAX = 1.4;
 
 /**
- * Kolekcje, z których bot może czytać (stage 19b). Na razie jedna: baza wiedzy
- * kampanii. Podręcznika NIE ma na liście świadomie — żelazna zasada promptu mówi
- * „nie znasz zasad gry", a jego treść jest objęta prawem autorskim i wypowiedź
- * bota idzie na czat do graczy. Kolekcja `rulebook` zostaje przy asystencie zasad.
- * Etap 19c dołoży `journal` (streszczenia sesji).
+ * Kolekcje, z których bot może czytać (etapy 19b i 19c): baza wiedzy kampanii i
+ * dziennik sesji. Podręcznika NIE ma na liście świadomie — żelazna zasada promptu
+ * mówi „nie znasz zasad gry", a jego treść jest objęta prawem autorskim i
+ * wypowiedź bota idzie na czat do graczy. Kolekcja `rulebook` zostaje przy
+ * asystencie zasad.
+ *
+ * Uwaga do dziennika: wpis rodzi się jako „tylko MG", więc zaznaczenie tego
+ * źródła samo z siebie nie daje botowi dostępu do niczego — dopiero MG decyduje
+ * per wpis, która sesja jest już „znana w mieście".
  */
-export const BOT_KNOWLEDGE_SOURCES = ['campaign'] as const;
+export const BOT_KNOWLEDGE_SOURCES = ['campaign', 'journal'] as const;
 export type BotKnowledgeSource = (typeof BOT_KNOWLEDGE_SOURCES)[number];
 
 export const BOT_KNOWLEDGE_SOURCE_LABELS: Record<BotKnowledgeSource, string> = {
   campaign: 'Baza wiedzy kampanii',
+  journal: 'Dziennik kampanii (streszczenia sesji)',
 };
 
 export const BOT_KNOWLEDGE_TOP_K_MIN = 1;
@@ -364,4 +369,10 @@ export interface BotTraceBroadcast {
   knowledgeTitles?: string[];
   /** How long the knowledge lookup took — it sits in front of the generation. */
   knowledgeMs?: number;
+  /**
+   * The attitude injected into this prompt (stage 19c). Present only when the
+   * caller turned out to be a player character the bot has a relation with —
+   * which is exactly the question the GM asks when a line sounds too warm.
+   */
+  relation?: { characterName: string; value: number };
 }

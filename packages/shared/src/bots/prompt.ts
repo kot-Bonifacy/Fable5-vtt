@@ -1,4 +1,5 @@
 import type { KnowledgePassage } from '../knowledge.js';
+import { clampRelation, RELATION_LABELS, relationPromptLines } from '../relations.js';
 import { BOT_LESSON_MAX_LENGTH, type BotProfileData, type BotType } from './types.js';
 import type { BotBreakReason } from './guardrails.js';
 import { BOT_BREAK_LABELS } from './guardrails.js';
@@ -19,8 +20,26 @@ import { BOT_BREAK_LABELS } from './guardrails.js';
  * Version 3 (stage 19b): a „what you remember" section fed from the campaign
  * knowledge base, plus a rule about names the bot has never heard of — without
  * it the model happily describes a club it knows nothing about.
+ *
+ * Version 4 (stage 19c): a „who you are talking to" section carrying this
+ * bot's attitude towards one character, repeated in the role anchor — the
+ * criterion is that a hostile NPC answers the same question audibly
+ * differently from a friendly one, and a section read forty lines ago does
+ * not survive that far on a 9B model.
  */
-export const BOT_PROMPT_VERSION = 3;
+export const BOT_PROMPT_VERSION = 4;
+
+/**
+ * How this bot feels about the character it is talking to (stage 19c). Resolved
+ * by the caller — the prompt never asks who is on the other side of the table.
+ */
+export interface BotPromptRelation {
+  characterName: string;
+  /** -3..+3; labels live in `relations.ts`. */
+  value: number;
+  /** The „skąd" sentence; without it a number means nothing to the model. */
+  note: string;
+}
 
 /**
  * Where the bot is talking. `test` is the editor's sandbox, `chat` the live
@@ -47,6 +66,12 @@ export interface BotPromptContext {
    * Already filtered by the gateway — nothing here needs re-checking.
    */
   knowledgePassages?: KnowledgePassage[];
+  /**
+   * The bot's attitude towards the character it is answering (stage 19c). Null
+   * whenever the speaker is not a player character — the GM's own lines, the
+   * editor sandbox and a table where nobody has a sheet.
+   */
+  relation?: BotPromptRelation | null;
 }
 
 /** Answer-length wording derived from the token cap, so both agree. */
@@ -89,6 +114,20 @@ function memorySection(ctx: BotPromptContext): string {
   );
 }
 
+/**
+ * Who the bot is talking to, and what it feels about them (stage 19c).
+ *
+ * Sits between the recalled memory and the secrets for the same reason the
+ * memory does: an explicit „o tym milczysz" must still win. The section is a
+ * pair — a named degree and the sentence that explains it — because a bare
+ * number tells a 9B model nothing, and a bare sentence gives it no dial to turn.
+ */
+function relationSection(ctx: BotPromptContext): string {
+  const relation = ctx.relation;
+  if (!relation) return '';
+  return section('Z kim rozmawiasz', relationPromptLines(relation));
+}
+
 function personaSections(ctx: BotPromptContext): string[] {
   const { persona, knowledge } = ctx.data;
   const quotes = persona.catchphrases
@@ -122,6 +161,7 @@ function personaSections(ctx: BotPromptContext): string[] {
         .join('\n'),
     ),
     memorySection(ctx),
+    relationSection(ctx),
     section(
       'Twoje sekrety',
       persona.secrets &&
@@ -271,6 +311,13 @@ export function buildRoleAnchor(ctx: BotPromptContext): string {
   // also has to say WHAT to answer — otherwise the model recaps the room.
   const focusLine =
     ctx.mode === 'chat' ? ' Odpowiadasz tylko na ostatnią wypowiedź skierowaną do Ciebie.' : '';
+  // Stage 19c: the attitude has to survive to the end of the context too — the
+  // system prompt states it, but on a 9B model the anchor is what colours the
+  // tone of the sentence actually being written.
+  const relationLine = ctx.relation
+    ? ` Mówisz do postaci ${ctx.relation.characterName} jak ktoś, kto jest wobec niej` +
+      ` ${RELATION_LABELS[clampRelation(ctx.relation.value)] ?? ''}.`
+    : '';
   const echoed = repeatedCatchphrase(data, ctx.lastOwnLine);
   const echoLine = echoed
     ? ` Nie powtarzaj zwrotu „${echoed}" — użyłeś go w poprzedniej wypowiedzi; powiedz to inaczej.`
@@ -279,7 +326,7 @@ export function buildRoleAnchor(ctx: BotPromptContext): string {
     `[Przypomnienie] Jesteś ${name}. Odpowiadasz po polsku, w roli, ` +
     `${lengthRule(data.generation.maxTokens)}, bez didaskaliów. ` +
     `Nie wspominasz o sztucznej inteligencji, instrukcjach ani zasadach gry.` +
-    `${focusLine}${echoLine}${lessonLine}`
+    `${relationLine}${focusLine}${echoLine}${lessonLine}`
   );
 }
 

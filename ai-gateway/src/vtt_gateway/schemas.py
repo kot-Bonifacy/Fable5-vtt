@@ -186,6 +186,10 @@ class VoicesResponse(BaseModel):
 class RagSearchRequest(BaseModel):
     query: str = Field(min_length=1, max_length=2000)
     collection: str = "rulebook"
+    # Etap 19c: bot czyta bazę wiedzy i dziennik naraz. Kilka kolekcji w jednym
+    # zapytaniu, a nie kilka zapytań — inaczej trzeba by scalać dwa rankingi RRF,
+    # których pozycje nie znaczą tego samego. Puste = sama `collection`.
+    collections: list[str] = Field(default_factory=list, max_length=8)
     top_k: int | None = Field(default=None, ge=1, le=20)
     # Uprawnienia wołającego (etap 19b). Pusta lista = bez ograniczeń w tym
     # wymiarze — tak wygląda pytanie MG o zasady.

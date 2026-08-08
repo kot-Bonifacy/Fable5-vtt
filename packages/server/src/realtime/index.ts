@@ -86,6 +86,14 @@ import {
   knowledgeReindexEvent,
   knowledgeUpsertEvent,
 } from './knowledge.js';
+import {
+  journalDeleteEvent,
+  journalListEvent,
+  journalReindexEvent,
+  journalSummarizeEvent,
+  journalUpsertEvent,
+} from './journal.js';
+import { relationDeleteEvent, relationListEvent, relationSetEvent } from './relations.js';
 import { sendSpeechStatus, speechPreviewEvent, speechToggleEvent } from './speech.js';
 import { sendStateSync, stateRequestEvent } from './sync.js';
 
@@ -194,6 +202,14 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   knowledgeDeleteEvent,
   knowledgeReindexEvent,
   knowledgePreviewEvent,
+  journalListEvent,
+  journalUpsertEvent,
+  journalDeleteEvent,
+  journalReindexEvent,
+  journalSummarizeEvent,
+  relationListEvent,
+  relationSetEvent,
+  relationDeleteEvent,
   botCreateEvent,
   botUpdateEvent,
   botDeleteEvent,

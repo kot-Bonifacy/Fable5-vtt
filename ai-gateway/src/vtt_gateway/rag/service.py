@@ -226,7 +226,7 @@ class RagService:
         self,
         query: str,
         *,
-        collection: str = RULEBOOK_COLLECTION,
+        collection: str | Sequence[str] = RULEBOOK_COLLECTION,
         top_k: int | None = None,
         weights: tuple[float, float] | None = None,
         filters: SearchFilter | None = None,
@@ -251,14 +251,17 @@ class RagService:
             return []
         limit = top_k or self.settings.rag_top_k
         chosen = weights or (self.settings.rag_dense_weight, self.settings.rag_keyword_weight)
+        names = [collection] if isinstance(collection, str) else list(collection)
+        if not names:
+            return []
         return await asyncio.to_thread(
-            self._search_blocking, text, collection, limit, chosen, filters
+            self._search_blocking, text, names, limit, chosen, filters
         )
 
     def _search_blocking(
         self,
         query: str,
-        collection: str,
+        collections: Sequence[str],
         top_k: int,
         weights: tuple[float, float],
         filters: SearchFilter | None = None,
@@ -270,7 +273,7 @@ class RagService:
 
         dense_ids: list[int] = []
         if dense_weight > 0:
-            ids, matrix = self.store.load_vectors(collection, self.embedder.dim, filters)
+            ids, matrix = self.store.load_vectors(collections, self.embedder.dim, filters)
             if ids:
                 vector = self.embedder.encode_queries([query])[0]
                 scores = matrix @ vector
@@ -282,7 +285,7 @@ class RagService:
             fts_ids = [
                 chunk_id
                 for chunk_id, _ in self.store.search_fts(
-                    collection, fts_query(query), pool, filters
+                    collections, fts_query(query), pool, filters
                 )
             ]
 

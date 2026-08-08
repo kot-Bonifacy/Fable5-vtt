@@ -3,6 +3,7 @@ import type { Socket } from 'socket.io';
 import type {
   AiUsage,
   BotChatPayload,
+  BotPromptRelation,
   BotChatTurn,
   BotChunkBroadcast,
   BotErrorBroadcast,
@@ -69,6 +70,12 @@ export interface BotTurnOptions {
    * when trimming to the context window, and that happens before the turn runs.
    */
   knowledgePassages?: KnowledgePassage[];
+  /**
+   * How this bot feels about the character it is answering (stage 19c).
+   * Resolved by the caller, like the passages: the turn runner must not have to
+   * know who sits behind which sheet.
+   */
+  relation?: BotPromptRelation | null;
   scene?: string | null;
   /** Where the bot is talking; defaults to the editor sandbox. */
   mode?: BotPromptMode;
@@ -214,6 +221,7 @@ export async function runBotTurn(
     // Lets the anchor tell the bot not to echo its own last catchphrase.
     lastOwnLine: turns.findLast((turn) => turn.role === 'bot')?.text ?? null,
     knowledgePassages: options.knowledgePassages ?? [],
+    relation: options.relation ?? null,
   };
   const guard = {
     botName: bot.name,

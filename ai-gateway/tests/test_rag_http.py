@@ -163,3 +163,35 @@ async def test_wylaczony_rag_odmawia_wyszukiwania(tmp_path) -> None:
             refused = await http.post("/rag/search", json={"query": "cokolwiek"})
             assert refused.status_code == 503
             assert "GATEWAY_RAG_ENABLED" in refused.json()["detail"]
+
+
+async def test_wyszukiwanie_po_kilku_kolekcjach(client) -> None:
+    """Etap 19c: bot pyta o bazę wiedzy i dziennik jednym zapytaniem."""
+    http, _app = client
+    for collection, source, text in (
+        ("campaign", "entry:klub", "# Klub Afterlife\n\nBar, w którym szuka się zleceń.\n"),
+        ("journal", "session:1", "# Sesja pierwsza\n\nEkipa wyniosła ze składu dwie skrzynie.\n"),
+    ):
+        indexed = await http.post(
+            "/rag/index",
+            json={
+                "collection": collection,
+                "documents": [
+                    {"source": source, "text": text, "visibility": "bots", "tags": ["sesje"]}
+                ],
+            },
+        )
+        assert indexed.status_code == 200
+
+    found = await http.post(
+        "/rag/search",
+        json={"query": "skrzynie", "collections": ["campaign", "journal"], "top_k": 10},
+    )
+    assert found.status_code == 200
+    body = found.json()
+    assert body["collection"] == "campaign,journal"
+    assert {hit["source"] for hit in body["hits"]} == {"entry:klub", "session:1"}
+
+    # Bez `collections` obowiązuje pojedyncza kolekcja — stary kontrakt z 19a/19b.
+    single = await http.post("/rag/search", json={"query": "skrzynie", "collection": "campaign"})
+    assert {hit["source"] for hit in single.json()["hits"]} == {"entry:klub"}

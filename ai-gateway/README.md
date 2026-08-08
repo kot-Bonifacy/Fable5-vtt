@@ -41,7 +41,7 @@ Wersję CUDA dobierz do sterownika (`nvidia-smi` → „CUDA UMD Version”). Wa
 | `POST /tts`           | synteza jednej wypowiedzi → audio WAV + rytm ujawniania tekstu (`reveal`) |
 | `GET /tts/voices`     | modele głosu, które silnik faktycznie ma na dysku                         |
 | `GET /rag/status`     | model embeddingów, kolekcje, postęp indeksowania (etap 19a)               |
-| `POST /rag/search`    | wyszukiwanie hybrydowe → fragmenty z cytatem; `tags` i `visibility` filtrują uprawnieniami (19b) |
+| `POST /rag/search`    | wyszukiwanie hybrydowe → fragmenty z cytatem; `tags` i `visibility` filtrują uprawnieniami (19b); `collections` obejmuje kilka kolekcji jednym rankingiem (19c) |
 | `POST /rag/index`     | indeksowanie dokumentów przysłanych przez serwer VTT (baza wiedzy kampanii) |
 | `POST /rag/index/rulebook` | indeksowanie podręcznika i zrzutów PDF z **lokalnego dysku gatewaya** (w tle) |
 | `POST /rag/forget`    | zapomnienie wskazanych dokumentów (wpis skasowany w edytorze MG)          |
@@ -189,6 +189,20 @@ Zmierzone na kolekcji kampanii (8 wpisów, `pnpm --filter @vtt/server exec tsx s
 | cała tura (wyszukiwanie + generacja)        | mediana 0,62 s, najgorsza 1,14 s     |
 
 Limit z etapu 11 to 20 s, więc RAG zjada z niego ~0,3%. Na żywej kampanii (`bot:trace`) wyszukiwanie mieści się w **33–51 ms** — kolekcja kampanii ma kilka fragmentów, więc kosztuje ją wyłącznie embedding pytania.
+
+### Dziennik jako trzecia kolekcja (etap 19c)
+
+Kolekcje są trzy: `rulebook` (asystent zasad), `campaign:<id>` (baza wiedzy) i `journal:<id>`
+(streszczenia sesji). Bot czyta te, na które MG mu pozwolił — i czyta je **jednym zapytaniem**:
+`/rag/search` przyjmuje `collections`, a `WHERE c.collection IN (…)` obejmuje je wszystkie przed
+mnożeniem wektorów. Dwa osobne wyszukiwania dałyby dwa rankingi RRF, których pozycji nie ma jak
+uczciwie zesłać (pozycja 1 w kolekcji o pięciu fragmentach nie znaczy tego samego co w kolekcji
+o tysiącu), i drugi przebieg embeddera na CPU. Fragmenty z obu źródeł mają konkurować o te same
+trzy miejsca w prompcie, a nie dostać po trzy każde.
+
+Streszczanie sesji jest po stronie serwera VTT (`realtime/journal.ts`), nie gatewaya: to zwykły
+ciąg wywołań `/chat` — jedno na porcję zapisu (mapowanie), potem składanie (redukcja) i jedno na
+propozycje relacji. Gateway nie musi wiedzieć, czym jest sesja.
 
 ### Uwaga o `reasoning_budget` (znalezione 08.08)
 

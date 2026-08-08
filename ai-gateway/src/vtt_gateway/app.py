@@ -244,17 +244,18 @@ def create_app(
             tags_any=tuple(sorted({tag.strip().lower() for tag in body.tags if tag.strip()})),
             visibility=tuple(sorted({name.strip() for name in body.visibility if name.strip()})),
         )
+        scope = body.collections or [body.collection]
         try:
             hits = await rag.search(
                 body.query,
-                collection=body.collection,
+                collection=scope,
                 top_k=body.top_k,
                 filters=filters,
             )
         except RagError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         return RagSearchResponse(
-            collection=body.collection,
+            collection=",".join(scope),
             query=body.query,
             hits=[vars(hit) for hit in hits],  # type: ignore[arg-type]
             took_ms=int((time.perf_counter() - started) * 1000),

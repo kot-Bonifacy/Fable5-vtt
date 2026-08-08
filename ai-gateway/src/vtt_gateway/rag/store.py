@@ -23,6 +23,7 @@ import json
 import re
 import sqlite3
 import threading
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -304,6 +305,18 @@ class RagStore:
             for row in rows
         ]
 
+    @staticmethod
+    def _collection_sql(collections: str | Sequence[str]) -> tuple[str, list[object]]:
+        """Warunek na kolekcje. Etap 19c pyta o kilka naraz — bot czyta bazę wiedzy
+        i dziennik, a dwa osobne wyszukiwania dałyby dwa rankingi, których nie ma
+        jak uczciwie zesłać (RRF liczy pozycję, a pozycja 1 w małej kolekcji nie
+        znaczy tego samego co pozycja 1 w dużej)."""
+        names = [collections] if isinstance(collections, str) else list(collections)
+        if len(names) == 1:
+            return "c.collection = ?", [names[0]]
+        marks = ",".join("?" * len(names))
+        return f"c.collection IN ({marks})", list(names)
+
     def _filter_sql(self, filters: SearchFilter | None) -> tuple[str, list[object]]:
         """Warunek `WHERE` realizujący uprawnienia — wspólny dla obu wyszukiwań."""
         if filters is None or filters.empty:
@@ -324,20 +337,21 @@ class RagStore:
         return " AND " + " AND ".join(clauses), params
 
     def load_vectors(
-        self, collection: str, dim: int, filters: SearchFilter | None = None
+        self, collections: str | Sequence[str], dim: int, filters: SearchFilter | None = None
     ) -> tuple[list[int], np.ndarray]:
-        """Cała kolekcja jako jedna macierz. Przy 4 000 fragmentów to 16 MB.
+        """Cała kolekcja (albo kilka) jako jedna macierz. Przy 4 000 fragmentów to 16 MB.
 
         Filtr działa **przed** mnożeniem, nie po nim: fragment, do którego bot nie
         ma prawa, nie ma prawa go też kosztować (wskazówka etapu 19b).
         """
+        scope, scope_params = self._collection_sql(collections)
         where, params = self._filter_sql(filters)
         with self._lock:
             rows = self._db.execute(
                 "SELECT c.id, c.vector FROM chunks c"
-                " WHERE c.collection = ? AND c.vector IS NOT NULL"
+                f" WHERE {scope} AND c.vector IS NOT NULL"
                 f"{where} ORDER BY c.id",
-                [collection, *params],
+                [*scope_params, *params],
             ).fetchall()
         if not rows:
             return [], np.zeros((0, dim), dtype=np.float32)
@@ -347,7 +361,7 @@ class RagStore:
 
     def search_fts(
         self,
-        collection: str,
+        collections: str | Sequence[str],
         query: str,
         limit: int,
         filters: SearchFilter | None = None,
@@ -355,15 +369,16 @@ class RagStore:
         """Identyfikatory posortowane po BM25 (im mniej, tym lepiej u SQLite)."""
         if not query:
             return []
+        scope, scope_params = self._collection_sql(collections)
         where, params = self._filter_sql(filters)
         with self._lock:
             try:
                 rows = self._db.execute(
                     "SELECT f.rowid AS id, bm25(chunks_fts) AS score"
                     "  FROM chunks_fts f JOIN chunks c ON c.id = f.rowid"
-                    " WHERE chunks_fts MATCH ? AND c.collection = ?"
+                    f" WHERE chunks_fts MATCH ? AND {scope}"
                     f"{where} ORDER BY score LIMIT ?",
-                    [query, collection, *params, limit],
+                    [query, *scope_params, *params, limit],
                 ).fetchall()
             except sqlite3.OperationalError:
                 # Nieparsowalne zapytanie FTS nie może wywrócić wyszukiwania —

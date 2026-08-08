@@ -258,12 +258,17 @@ export class AiGateway {
   async searchRules(
     query: string,
     topK: number,
-    collection = 'rulebook',
+    collection: string | string[] = 'rulebook',
     filter?: RagSearchFilter,
   ): Promise<RagResult<RulesSearchResult>> {
+    // Kilka kolekcji jedzie w JEDNYM zapytaniu (etap 19c): bot czyta bazę wiedzy
+    // i dziennik, a dwa osobne wyszukiwania dałyby dwa rankingi RRF, których
+    // pozycje nie znaczą tego samego — plus drugi przebieg embeddera na CPU.
+    const scope = Array.isArray(collection) ? collection : [collection];
     const body = await this.postRag('/rag/search', {
       query,
-      collection,
+      collection: scope[0] ?? 'rulebook',
+      collections: scope,
       top_k: topK,
       tags: filter?.tags ?? [],
       visibility: filter?.visibility ?? [],

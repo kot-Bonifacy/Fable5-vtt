@@ -57,8 +57,18 @@ import type {
   DrawingUpsertBroadcast,
   DrawingView,
   FogPaintBroadcast,
+  BotRelationView,
   FogShape,
   FogSyncBroadcast,
+  JournalDeleteBroadcast,
+  JournalDraftBroadcast,
+  JournalEntryView,
+  JournalErrorBroadcast,
+  JournalIndexStatus,
+  JournalProgressBroadcast,
+  JournalSyncPayload,
+  JournalUpsertBroadcast,
+  JournalUpsertPayload,
   KnowledgeDeleteBroadcast,
   KnowledgeEntryView,
   KnowledgeIndexStatus,
@@ -70,6 +80,10 @@ import type {
   LightSyncBroadcast,
   LightView,
   MapNoteView,
+  RelationDeleteBroadcast,
+  RelationSetPayload,
+  RelationSyncPayload,
+  RelationUpsertBroadcast,
   NoteDeleteBroadcast,
   NotePatch,
   NoteUpsertBroadcast,
@@ -140,6 +154,8 @@ import { useCompendiumStore } from './stores/compendiumStore.js';
 import { useAiStore } from './stores/aiStore.js';
 import { useRulesStore } from './stores/rulesStore.js';
 import { useKnowledgeStore } from './stores/knowledgeStore.js';
+import { useJournalStore } from './stores/journalStore.js';
+import { useRelationStore } from './stores/relationStore.js';
 import { useBotStore } from './stores/botStore.js';
 import { useCombatStore } from './stores/combatStore.js';
 import { useRulerStore } from './stores/rulerStore.js';
@@ -417,6 +433,29 @@ export function connectSocket(userId: string): Socket {
   );
   socket.on('knowledge:delete', (broadcast: KnowledgeDeleteBroadcast) =>
     useKnowledgeStore.getState().remove(broadcast.id, broadcast.index),
+  );
+
+  // Dziennik kampanii i relacje NPC (etap 19c) — tak samo tylko do pokoju MG.
+  socket.on('journal:upsert', (broadcast: JournalUpsertBroadcast) =>
+    useJournalStore.getState().upsert(broadcast.entry, broadcast.index),
+  );
+  socket.on('journal:delete', (broadcast: JournalDeleteBroadcast) =>
+    useJournalStore.getState().remove(broadcast.id, broadcast.index),
+  );
+  socket.on('journal:progress', (broadcast: JournalProgressBroadcast) =>
+    useJournalStore.getState().setProgress(broadcast),
+  );
+  socket.on('journal:draft', (broadcast: JournalDraftBroadcast) =>
+    useJournalStore.getState().setDraft(broadcast.draft, broadcast.proposals, broadcast.batches),
+  );
+  socket.on('journal:error', (broadcast: JournalErrorBroadcast) =>
+    useJournalStore.getState().fail(journalErrorText(broadcast.code, broadcast.detail)),
+  );
+  socket.on('relation:upsert', (broadcast: RelationUpsertBroadcast) =>
+    useRelationStore.getState().upsert(broadcast.relation),
+  );
+  socket.on('relation:delete', (broadcast: RelationDeleteBroadcast) =>
+    useRelationStore.getState().remove(broadcast.botId, broadcast.characterId),
   );
 
   // The compendium is shared data: room broadcasts with a seq, like chat.
@@ -1213,6 +1252,72 @@ export const deleteKnowledgeEntry = (id: string) => emitSceneAck('knowledge:dele
 /** Pełny przebieg indeksowania bazy wiedzy — dogania to, co się rozjechało. */
 export const reindexKnowledge = () =>
   emitSceneAck<KnowledgeIndexStatus>('knowledge:reindex', undefined);
+
+/** Dziennik kampanii (MG). Wołane przy wejściu w zakładkę, nie w `state:sync`. */
+export function fetchJournal(): Promise<JournalSyncPayload | null> {
+  return new Promise((resolve) => {
+    if (!socket) {
+      resolve(null);
+      return;
+    }
+    socket.emit('journal:list', (ack: SocketAck<JournalSyncPayload>) => {
+      if (ack.ok && ack.data) {
+        useJournalStore
+          .getState()
+          .replaceAll(ack.data.entries, ack.data.index, ack.data.pendingLines);
+      }
+      resolve(ack.ok ? (ack.data ?? null) : null);
+    });
+  });
+}
+
+export const saveJournalEntry = (payload: JournalUpsertPayload) =>
+  emitSceneAck<JournalEntryView>('journal:upsert', payload);
+
+export const deleteJournalEntry = (id: string) => emitSceneAck('journal:delete', { id });
+
+export const reindexJournal = () => emitSceneAck<JournalIndexStatus>('journal:reindex', undefined);
+
+/**
+ * „Zakończ sesję i streść". Ack niesie samo id żądania — wynik przychodzi
+ * osobnym `journal:draft`, bo streszczanie długiego logu to dziesiątki sekund.
+ */
+export const summarizeSession = (hint: string) =>
+  emitSceneAck<{ requestId: string }>('journal:summarize', { hint });
+
+export const cancelSummary = () => socket?.emit('journal:cancel');
+
+/** Po polsku, z następnym krokiem — kody odmowy widzi tylko MG. */
+export function journalErrorText(code: string, detail?: string): string {
+  switch (code) {
+    case 'JOURNAL_EMPTY_LOG':
+      return 'Nie ma czego streścić — od ostatniego wpisu dziennika nikt nic nie powiedział na czacie.';
+    case 'AI_UNAVAILABLE':
+      return 'Brak połączenia z AI Gateway — streszczanie wymaga modelu.';
+    default:
+      return detail ? `Streszczanie nie poszło: ${detail}` : 'Streszczanie nie poszło.';
+  }
+}
+
+/** Relacje NPC↔postacie (MG). */
+export function fetchRelations(): Promise<RelationSyncPayload | null> {
+  return new Promise((resolve) => {
+    if (!socket) {
+      resolve(null);
+      return;
+    }
+    socket.emit('relation:list', (ack: SocketAck<RelationSyncPayload>) => {
+      if (ack.ok && ack.data) useRelationStore.getState().replaceAll(ack.data.relations);
+      resolve(ack.ok ? (ack.data ?? null) : null);
+    });
+  });
+}
+
+export const setRelation = (payload: RelationSetPayload) =>
+  emitSceneAck<BotRelationView>('relation:set', payload);
+
+export const deleteRelation = (botId: string, characterId: string) =>
+  emitSceneAck('relation:delete', { botId, characterId });
 
 /** Podgląd promptu bota z doklejonymi fragmentami (edytor botów, zakładka „Prompt"). */
 export const previewBotPrompt = (botId: string, message: string) =>

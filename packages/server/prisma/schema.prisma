@@ -50,6 +50,7 @@ model Campaign {
   bots         BotProfile[]
   compendium   CompendiumEntry[]
   knowledge    KnowledgeEntry[]
+  journal      JournalEntry[]
 }
 
 /// Campaign knowledge base (stage 19b): places, factions, NPCs and GM notes the
@@ -81,6 +82,73 @@ model KnowledgeEntry {
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   @@index([campaignId])
+}
+
+/// One session summary in the campaign journal (stage 19c).
+///
+/// Same storage bargain as KnowledgeEntry, and deliberately the same permission
+/// language (visibility + tags): the GM should not have to learn a second one.
+/// What differs is the default — a summary is written from the party's point of
+/// view and contains things no NPC was present for, so it is born `gm` and
+/// reaches bots only once the GM has read it and tagged it.
+model JournalEntry {
+  id         String @id @default(cuid())
+  campaignId String
+  title      String
+  body       String
+  /// Day the session took place (YYYY-MM-DD). A day, not a timestamp: the entry
+  /// describes an evening at the table, and the GM may write it up next morning.
+  sessionDate String
+  /// JSON array of normalized tags; the bot's permission is a tag list too.
+  tags String @default("[]")
+  /// gm = never reaches any bot prompt; bots = readable with a matching tag.
+  visibility String @default("gm")
+
+  /// Last chat message covered by this summary — the next „zakończ sesję" starts
+  /// right after it, so nothing gets summarized twice. Null on a hand-written entry.
+  throughMessageId Int?
+  /// How many chat lines went into the summary; 0 when the GM typed it themselves.
+  lineCount Int @default(0)
+
+  /// Fingerprint of what the gateway holds (see KnowledgeEntry).
+  indexedDigest String?
+  indexedAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+}
+
+/// How one NPC feels about one player character (stage 19c).
+///
+/// A row is a pair: a degree on a closed scale and the sentence that explains it.
+/// Neither half works alone — „−2" means nothing to a language model, and a
+/// sentence alone cannot be sorted, shown at a glance or nudged by one step.
+///
+/// The relation hangs off the character sheet, not off the player's account: an
+/// NPC knows Vex, not the person holding the keyboard, and a player with two
+/// characters walks into the same conversation two different ways.
+model BotRelation {
+  id          String @id @default(cuid())
+  botId       String
+  characterId String
+  /// -3..+3; the labels live in `shared/relations.ts`.
+  value       Int    @default(0)
+  /// „Skąd" — travels into the prompt right next to the degree.
+  note        String @default("")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bot       BotProfile @relation(fields: [botId], references: [id], onDelete: Cascade)
+  character Character  @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@unique([botId, characterId])
+  @@index([botId])
+  @@index([characterId])
 }
 
 model CampaignMember {
@@ -123,6 +191,7 @@ model Character {
   owner    User?    @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   tokens   Token[]
   bots     BotProfile[]
+  relations BotRelation[]
 
   @@index([campaignId])
 }
@@ -161,6 +230,7 @@ model BotProfile {
 
   spokenMessages   ChatMessage[] @relation("ChatBot")
   whispersReceived ChatMessage[] @relation("ChatBotRecipient")
+  relations        BotRelation[]
 
   @@index([campaignId])
 }

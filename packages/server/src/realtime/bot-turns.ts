@@ -3,6 +3,7 @@ import type {
   BotActivityBroadcast,
   BotActivityEntry,
   BotChatTurn,
+  BotPromptRelation,
   BotNoticeBroadcast,
   BotSayPayload,
   BotStopPayload,
@@ -31,6 +32,7 @@ import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { broadcastChatMessage, deliverChatMessageTo, insertChatMessage } from './chat-io.js';
 import { campaignParticipants, lastIncomingLine, runBotTurn, type BotRuntime } from './bot-chat.js';
 import { collectBotKnowledge, type BotKnowledgeResult } from './knowledge.js';
+import { relationForSpeaker } from './relations.js';
 import { getSceneById } from './scenes.js';
 import { readSpeechEnabled, resolveVoice, synthesizeLine } from './speech.js';
 import { campaignRoom, gmRoom } from './state.js';
@@ -288,6 +290,8 @@ interface BotContext {
   promptTokens: number | null;
   /** Campaign knowledge recalled for this line (stage 19b). */
   knowledge: BotKnowledgeResult;
+  /** What this bot feels about the character that called it (stage 19c). */
+  relation: BotPromptRelation | null;
 }
 
 /**
@@ -357,6 +361,19 @@ async function buildBotContext(
     query: lastIncomingLine(turns),
   });
 
+  // Nastawienie do rozmówcy jedzie do promptu systemowego, więc — jak fragmenty
+  // — musi być znane przed pomiarem budżetu. Asystent MG relacji nie ma: rozmawia
+  // z MG, nie z postacią.
+  const relation =
+    bot.data.type === 'gm_assistant'
+      ? null
+      : await relationForSpeaker(deps.ctx.prisma, {
+          botId: bot.id,
+          campaignId: request.campaignId,
+          userId: request.calledByUserId,
+          sceneId: request.sceneId,
+        });
+
   const budget = contextBudget(deps, bot);
   const systemPrompt = compileBotPrompt({
     name: bot.name,
@@ -365,9 +382,10 @@ async function buildBotContext(
     scene,
     mode: request.whisperToUserId ? 'whisper' : 'chat',
     knowledgePassages: knowledge.passages,
+    relation,
   });
   const trimmed = await trimToBudget(deps, systemPrompt, turns, budget);
-  return { ...trimmed, knowledge };
+  return { ...trimmed, knowledge, relation };
 }
 
 /** Tokens left for the prompt after reserving room for the answer. */
@@ -387,7 +405,7 @@ async function trimToBudget(
   systemPrompt: string,
   turns: BotChatTurn[],
   budget: number,
-): Promise<Omit<BotContext, 'knowledge'>> {
+): Promise<Omit<BotContext, 'knowledge' | 'relation'>> {
   const measure = async (candidate: BotChatTurn[]): Promise<number> => {
     const text = [
       systemPrompt,
@@ -464,6 +482,7 @@ async function runQueuedTurn(
       maxTurns: BOT_SESSION_HISTORY_MAX_TURNS,
       participants,
       knowledgePassages: context.knowledge.passages,
+      relation: context.relation,
       scene: scene?.name ?? null,
       mode: request.whisperToUserId ? 'whisper' : 'chat',
       whisperWith,
@@ -553,6 +572,14 @@ async function runQueuedTurn(
     // Titles only: the trace rides a message id, and the bodies are GM notes.
     ...(knowledgeTitles.length > 0 ? { knowledgeTitles } : {}),
     ...(context.knowledge.tookMs > 0 ? { knowledgeMs: context.knowledge.tookMs } : {}),
+    ...(context.relation
+      ? {
+          relation: {
+            characterName: context.relation.characterName,
+            value: context.relation.value,
+          },
+        }
+      : {}),
   };
   deps.io.to(gmRoom(request.campaignId)).emit('bot:trace', trace);
 }

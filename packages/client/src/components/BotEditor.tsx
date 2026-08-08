@@ -30,24 +30,38 @@ import {
   BOT_VOICE_PITCH_MIN,
   BOT_VOICE_RATE_MAX,
   BOT_VOICE_RATE_MIN,
+  RELATION_MAX,
+  RELATION_MIN,
+  RELATION_NOTE_MAX_LENGTH,
   VOICE_SAMPLE_MAX_SECONDS,
   VOICE_SAMPLE_MIN_SECONDS,
   compileBotPrompt,
   defaultBotGeneration,
   estimatePromptTokens,
   normalizeKnowledgeTags,
+  relationBadge,
 } from '@vtt/shared';
+
+/** Stopnie skali w kolejności od najgorszego — lista rozwijana czyta się jak suwak. */
+const RELATION_VALUES = Array.from(
+  { length: RELATION_MAX - RELATION_MIN + 1 },
+  (_, index) => RELATION_MIN + index,
+);
 import { ApiError, apiGet, apiUpload } from '../api.js';
 import {
   cancelBotChat,
+  deleteRelation,
+  fetchRelations,
   flushBotSave,
   previewBotPrompt,
   previewVoice,
   queueBotSave,
   sendBotChat,
+  setRelation,
   teachBot,
 } from '../socket.js';
 import { useKnowledgeStore } from '../stores/knowledgeStore.js';
+import { relationKey, useRelationStore } from '../stores/relationStore.js';
 import { playPreview } from '../speech.js';
 import { useBotStore, type BotTestTurn } from '../stores/botStore.js';
 import { useAiStore } from '../stores/aiStore.js';
@@ -610,6 +624,8 @@ function KnowledgeTab({ bot, saveData }: TabProps) {
 
       <KnowledgeContextSection bot={bot} saveData={saveData} />
 
+      <RelationsSection bot={bot} />
+
       <h3>Model</h3>
       <div className="bot-row-inline">
         <label className="bot-field bot-field--inline">
@@ -772,6 +788,96 @@ function KnowledgeContextSection({ bot, saveData }: TabProps) {
             dostanie model, sprawdzisz w zakładce „Prompt".
           </p>
         </>
+      )}
+    </>
+  );
+}
+
+/**
+ * Nastawienie tego NPC-a do postaci graczy (etap 19c).
+ *
+ * Lista jest po postaciach, nie po relacjach: MG ma widzieć także te, których
+ * jeszcze nie wypełnił. „Bez relacji" nie jest tym samym co „obojętny" — pierwszy
+ * nie dokleja do promptu ani jednego zdania, drugi mówi modelowi wprost, że nie ma
+ * tu ani sympatii, ani urazy.
+ */
+function RelationsSection({ bot }: { bot: BotView }) {
+  const characters = useCharacterStore((s) => s.characters);
+  const order = useCharacterStore((s) => s.order);
+  const relations = useRelationStore((s) => s.relations);
+  const loaded = useRelationStore((s) => s.loaded);
+
+  useEffect(() => {
+    if (!loaded) void fetchRelations();
+  }, [loaded]);
+
+  if (bot.data.type === 'gm_assistant') return null;
+
+  const rows = order
+    .map((id) => characters[id])
+    .filter((character): character is NonNullable<typeof character> => !!character);
+
+  return (
+    <>
+      <h3>Nastawienie do postaci</h3>
+      <p className="bot-hint">
+        Wchodzi do promptu wyłącznie wtedy, gdy bot odpowiada tej postaci — i słychać je w tonie, a
+        nie w treści. Zdanie „skąd" jest ważniejsze niż stopień: bez niego model wie tylko, że ma
+        być miły albo niemiły.
+      </p>
+      {rows.length === 0 ? (
+        <p className="bot-hint">W kampanii nie ma jeszcze żadnej karty postaci.</p>
+      ) : (
+        <ul className="bot-relations">
+          {rows.map((character) => {
+            const relation = relations[relationKey(bot.id, character.id)];
+            return (
+              <li key={character.id} className="bot-relation">
+                <span className="bot-relation-name">{character.name}</span>
+                <select
+                  value={relation ? String(relation.value) : ''}
+                  onChange={(e) => {
+                    if (e.target.value === '') {
+                      void deleteRelation(bot.id, character.id);
+                      return;
+                    }
+                    void setRelation({
+                      botId: bot.id,
+                      characterId: character.id,
+                      value: Number(e.target.value),
+                      note: relation?.note ?? '',
+                    });
+                  }}
+                >
+                  <option value="">— bez relacji —</option>
+                  {RELATION_VALUES.map((value) => (
+                    <option key={value} value={value}>
+                      {relationBadge(value)}
+                    </option>
+                  ))}
+                </select>
+                {relation && (
+                  <input
+                    type="text"
+                    className="bot-relation-note"
+                    defaultValue={relation.note}
+                    maxLength={RELATION_NOTE_MAX_LENGTH}
+                    placeholder="Skąd się to wzięło — jedno zdanie"
+                    onBlur={(e) => {
+                      if (e.target.value === relation.note) return;
+                      void setRelation({
+                        botId: bot.id,
+                        characterId: character.id,
+                        value: relation.value,
+                        note: e.target.value,
+                      });
+                    }}
+                  />
+                )}
+              </li>
+            );
+          })}
+        </ul>
       )}
     </>
   );

@@ -233,3 +233,41 @@ describe('compileBotPrompt — campaign knowledge (stage 19b)', () => {
     expect(prompt).toContain('nie kojarzysz');
   });
 });
+
+describe('compileBotPrompt — attitude towards the speaker (stage 19c)', () => {
+  const relation = { characterName: 'Vex', value: -2, note: 'Okradł go przy wszystkich.' };
+
+  it('states the degree AND the reason, and repeats it in the anchor', () => {
+    const prompt = compileBotPrompt({ name: 'Barman', data: fixer(), relation });
+    expect(prompt).toContain('# Z kim rozmawiasz');
+    expect(prompt).toContain('Rozmawiasz z: Vex.');
+    expect(prompt).toContain('wrogi');
+    expect(prompt).toContain('Okradł go przy wszystkich.');
+    // A 9B model drifts away from a section it read forty lines ago.
+    expect(buildRoleAnchor({ name: 'Barman', data: fixer(), relation })).toContain('wrogi');
+  });
+
+  it('a friendly and a hostile attitude produce different prompts', () => {
+    const hostile = compileBotPrompt({ name: 'Barman', data: fixer(), relation });
+    const friendly = compileBotPrompt({
+      name: 'Barman',
+      data: fixer(),
+      relation: { ...relation, value: 3, note: 'Wyciągnął go z opresji.' },
+    });
+    expect(hostile).not.toBe(friendly);
+    expect(friendly).toContain('oddany przyjaciel');
+    expect(friendly).not.toContain('wrogi');
+  });
+
+  it('adds nothing when the speaker is not a player character', () => {
+    // The GM's own lines and the editor sandbox carry no relation at all.
+    const prompt = compileBotPrompt({ name: 'Barman', data: fixer() });
+    expect(prompt).not.toContain('Z kim rozmawiasz');
+    expect(buildRoleAnchor({ name: 'Barman', data: fixer() })).not.toContain('Mówisz do postaci');
+  });
+
+  it('keeps secrets above the attitude — a warm NPC still does not spill them', () => {
+    const prompt = compileBotPrompt({ name: 'Barman', data: fixer(), relation });
+    expect(prompt.indexOf('Z kim rozmawiasz')).toBeLessThan(prompt.indexOf('Twoje sekrety'));
+  });
+});

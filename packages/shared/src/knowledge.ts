@@ -251,7 +251,20 @@ export function knowledgeDocumentText(entry: {
   return `# ${entry.title}\n\n${KNOWLEDGE_TYPE_LABELS[entry.type]}.\n\n${entry.body}`;
 }
 
-/** Odcisk treści — po nim widać, czy indeks jest aktualny. Nie musi być kryptograficzny. */
+/**
+ * Odcisk treści — po nim widać, czy indeks jest aktualny. Nie musi być
+ * kryptograficzny. FNV-1a: krótki, stabilny i bez zależności — zmiana jednego
+ * znaku zmienia wynik. Dziennik kampanii z etapu 19c liczy odcisk tą samą funkcją.
+ */
+export function fingerprint(payload: string): string {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < payload.length; index += 1) {
+    hash ^= payload.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return `${payload.length.toString(36)}-${hash.toString(36)}`;
+}
+
 export function knowledgeDigest(entry: {
   title: string;
   body: string;
@@ -259,18 +272,9 @@ export function knowledgeDigest(entry: {
   tags: string[];
   visibility: KnowledgeVisibility;
 }): string {
-  const payload = [
-    entry.title,
-    entry.type,
-    entry.visibility,
-    [...entry.tags].sort().join(','),
-    entry.body,
-  ].join(' ');
-  // FNV-1a: krótki, stabilny i bez zależności — zmiana jednego znaku zmienia wynik.
-  let hash = 0x811c9dc5;
-  for (let index = 0; index < payload.length; index += 1) {
-    hash ^= payload.charCodeAt(index);
-    hash = Math.imul(hash, 0x01000193) >>> 0;
-  }
-  return `${payload.length.toString(36)}-${hash.toString(36)}`;
+  return fingerprint(
+    [entry.title, entry.type, entry.visibility, [...entry.tags].sort().join(','), entry.body].join(
+      ' ',
+    ),
+  );
 }

@@ -323,3 +323,82 @@ async def test_zmiana_wpisu_widac_bez_restartu(tmp_path: Path) -> None:
     assert any("spłonął" in hit.text for hit in hits)
     assert all("szukają zleceń" not in hit.text for hit in hits)
     service.close()
+
+
+WPIS_DZIENNIK = """# Napad na skład Militechu
+
+Ekipa weszła bocznym wejściem i wyszła z dwoma skrzyniami.
+"""
+
+
+async def index_journal(service: RagService) -> None:
+    await service.index_documents(
+        "journal",
+        [
+            RagDocument(
+                source="session:1",
+                text=WPIS_DZIENNIK,
+                title="Napad na skład Militechu",
+                meta={"tags": ["sesje"], "visibility": "bots"},
+            )
+        ],
+    )
+
+
+async def test_jedno_wyszukiwanie_obejmuje_kilka_kolekcji(tmp_path: Path) -> None:
+    """Etap 19c: bot czyta bazę wiedzy i dziennik w jednym rankingu."""
+    service = make_service(tmp_path)
+    await index_knowledge(service)
+    await index_journal(service)
+
+    hits = await service.search("skrzynie", collection=["campaign", "journal"], top_k=10)
+    sources = {hit.source for hit in hits}
+    assert "session:1" in sources
+    assert any(source.startswith("entry:") for source in sources)
+    service.close()
+
+
+async def test_kolekcja_spoza_uprawnien_nie_dokłada_ani_jednego_fragmentu(
+    tmp_path: Path,
+) -> None:
+    service = make_service(tmp_path)
+    await index_knowledge(service)
+    await index_journal(service)
+
+    # Bot bez zaznaczonego „Dziennik" pyta wyłącznie o bazę wiedzy.
+    hits = await service.search("skrzynie", collection=["campaign"], top_k=10)
+    assert hits and all(hit.source != "session:1" for hit in hits)
+    service.close()
+
+
+async def test_filtry_dzialaja_na_kazdej_z_kolekcji(tmp_path: Path) -> None:
+    """Widoczność i tagi filtrują tak samo, ile by kolekcji nie było."""
+    service = make_service(tmp_path)
+    await index_knowledge(service)
+    await service.index_documents(
+        "journal",
+        [
+            RagDocument(
+                source="session:2",
+                text="# Sesja druga\n\nRogue wystawił ekipę korporacji.\n",
+                title="Sesja druga",
+                meta={"tags": ["sesje"], "visibility": "gm"},
+            )
+        ],
+    )
+
+    hits = await service.search(
+        "kto wystawił ekipę",
+        collection=["campaign", "journal"],
+        top_k=10,
+        filters=SearchFilter(visibility=("bots",)),
+    )
+    assert all(hit.source not in {"session:2", "entry:sekret"} for hit in hits)
+    service.close()
+
+
+async def test_pusta_lista_kolekcji_nie_szuka(tmp_path: Path) -> None:
+    service = make_service(tmp_path)
+    await index_knowledge(service)
+    assert await service.search("cokolwiek", collection=[]) == []
+    service.close()

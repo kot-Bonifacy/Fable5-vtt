@@ -20,6 +20,7 @@ import {
   compileBotPrompt,
   emptyKnowledgeIndexStatus,
   estimatePromptTokens,
+  journalCollection,
   knowledgeCollection,
   knowledgeDigest,
   knowledgeDocumentText,
@@ -314,19 +315,37 @@ export interface BotKnowledgeResult {
 const NO_KNOWLEDGE: BotKnowledgeResult = { passages: [], tookMs: 0, reason: null };
 
 /**
+ * Kolekcje, które wolno przeszukać temu botowi. Nazwa kolekcji JEST uprawnieniem
+ * do źródła — dziennik, którego bot nie czyta, nie kosztuje go ani jednego
+ * mnożenia wektorów, bo nie wchodzi do zapytania.
+ */
+function botCollections(campaignId: string, data: BotProfileData): string[] {
+  const sources = data.knowledgeContext.sources;
+  const collections: string[] = [];
+  if (sources.includes('campaign')) collections.push(knowledgeCollection(campaignId));
+  if (sources.includes('journal')) collections.push(journalCollection(campaignId));
+  return collections;
+}
+
+/**
  * Co ten bot ma prawo sobie przypomnieć przy tej wypowiedzi.
  *
  * Uprawnienia jadą do gatewaya jako filtr zapytania: `visibility: ['bots']` (wpis
  * „tylko MG" nie ma prawa się pojawić) plus tagi z profilu. Pusty zbiór źródeł
  * kończy się natychmiastowym zerem — bot bez uprawnień nie wykonuje ani jednego
  * zapytania i zachowuje się dokładnie jak w etapie 11.
+ *
+ * Etap 19c dokłada drugą kolekcję (dziennik), ale nadal JEDNO wyszukiwanie:
+ * fragmenty z obu źródeł mają konkurować o te same trzy miejsca w prompcie, a nie
+ * dostać po trzy każde.
  */
 export async function collectBotKnowledge(
   deps: RealtimeDeps,
   options: { campaignId: string; data: BotProfileData; query: string },
 ): Promise<BotKnowledgeResult> {
   const context = options.data.knowledgeContext;
-  if (!context.sources.includes('campaign')) return NO_KNOWLEDGE;
+  const collections = botCollections(options.campaignId, options.data);
+  if (collections.length === 0) return NO_KNOWLEDGE;
 
   const query = options.query.trim();
   if (query.length === 0) return NO_KNOWLEDGE;
@@ -337,7 +356,7 @@ export async function collectBotKnowledge(
   const found = await deps.ctx.ai.searchRules(
     query,
     Math.min(context.topK, BOT_SEARCH_HARD_CAP),
-    knowledgeCollection(options.campaignId),
+    collections,
     { tags: context.tags, visibility: ['bots'] },
   );
   if (!found.ok) {
@@ -348,7 +367,7 @@ export async function collectBotKnowledge(
   return {
     passages: found.result.passages.map((passage) => ({
       chunkId: passage.chunkId,
-      entryId: passage.source.replace(/^entry:/, ''),
+      entryId: passage.source.replace(/^(entry|session):/, ''),
       // Chunker wkleja tytuł wpisu jako „rozdział" — wpis idzie do indeksu
       // z nagłówkiem `# Tytuł` właśnie po to.
       title: passage.chapter || passage.source,
@@ -378,8 +397,8 @@ export const knowledgePreviewEvent = defineEvent<KnowledgePreviewPayload, Knowle
     const found = await collectBotKnowledge(deps, { campaignId, data, query: message });
     const reason =
       found.reason ??
-      (!data.knowledgeContext.sources.includes('campaign')
-        ? 'Bot nie ma dostępu do bazy wiedzy — odpowiada wyłącznie z profilu.'
+      (data.knowledgeContext.sources.length === 0
+        ? 'Bot nie ma dostępu do żadnego źródła — odpowiada wyłącznie z profilu.'
         : message.trim().length === 0
           ? 'Wpisz zdanie rozmówcy, żeby zobaczyć, co bot sobie przypomni.'
           : found.passages.length === 0
