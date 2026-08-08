@@ -18,6 +18,7 @@ import type {
   CoverView,
   BotActionTraceBroadcast,
   BotActivityBroadcast,
+  BotPlayTurnResult,
   BotChatPayload,
   BotChunkBroadcast,
   BotCreatePayload,
@@ -248,15 +249,25 @@ function botNoticeText(notice: BotNoticeBroadcast): string {
 function botActionTraceText(trace: BotActionTraceBroadcast): string {
   const took = `${trace.decisionMs} ms${trace.retried ? ' · poprawka' : ''}`;
   const why = trace.reason ? ` — „${trace.reason}"` : '';
+  // Krok tury bojowej (20b) mówi też, KOGO bot widział. To najczęstsza
+  // odpowiedź na „dlaczego nie zaatakował", a z samej decyzji nie da się jej
+  // odgadnąć — stąd lista figur w śladzie, a nie tylko wybór.
+  const where = trace.combat
+    ? ` · ${trace.combat.actorName}, krok ${trace.combat.step}` +
+      ` · widzi: ${trace.combat.figures.length > 0 ? trace.combat.figures.join(', ') : 'nikogo'}`
+    : '';
+  const what = trace.combat?.summary ?? trace.optionLabel ?? '?';
   switch (trace.outcome) {
     case 'executed':
-      return `🎲 ${trace.botName} rzucił sam: ${trace.optionLabel ?? '?'} · ${took}${why}`;
+      return `🎲 ${trace.botName} wykonał: ${what} · ${took}${where}${why}`;
     case 'proposed':
-      return `🎲 ${trace.botName} proponuje: ${trace.optionLabel ?? '?'} · ${took}${why}`;
+      return `🎲 ${trace.botName} proponuje: ${what} · ${took}${where}${why}`;
     case 'talk':
       return `🎲 ${trace.botName} uznał to za rozmowę, nie prośbę o test · ${took}${why}`;
+    case 'pass':
+      return `🎲 ${trace.botName} pasuje · ${took}${where}${why}`;
     default:
-      return `🎲 ${trace.botName}: akcja odrzucona — ${trace.refusal ?? 'nieznany powód'} · ${took}`;
+      return `🎲 ${trace.botName}: akcja odrzucona — ${trace.refusal ?? 'nieznany powód'} · ${took}${where}`;
   }
 }
 
@@ -1459,6 +1470,15 @@ export const resolveBotProposal = (messageId: number, approve: boolean) =>
 /** „Poproś o akcję" — MG pyta bota wprost, z pominięciem detektora prośby. */
 export const askBotToAct = (botId: string, request: string) =>
   emitSceneAck<{ outcome: string }>('bot:act', { botId, request });
+
+/**
+ * „Graj turę" (etap 20b) — MG oddaje turę figury botowi, który ją prowadzi.
+ *
+ * Zawsze na klik, także w trybie automat (decyzja MG): tempo walki należy do
+ * stołu, a nie do wskaźnika tury.
+ */
+export const playBotTurn = (tokenId: string) =>
+  emitSceneAck<BotPlayTurnResult>('bot:play-turn', { tokenId });
 
 /** GM's session-wide switch for bot speech. */
 export const toggleSpeech = (enabled: boolean) =>

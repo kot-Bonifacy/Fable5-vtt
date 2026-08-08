@@ -1,5 +1,3 @@
-import { appendFile, mkdir } from 'node:fs/promises';
-import { dirname } from 'node:path';
 import type {
   BotActPayload,
   BotAction,
@@ -29,6 +27,8 @@ import {
 import type { AiChatRequest } from '../ai/gateway.js';
 import type { Character } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
+import { resolveBotCombatProposal } from './bot-combat.js';
+import { botActorUser, logBotDecision } from './bot-runtime.js';
 import { requireCampaignBot } from './bots.js';
 import { performCharacterRoll } from './character-rolls.js';
 import { INCLUDE_CHAT_NAMES, insertChatMessage, deliverChatMessageTo } from './chat-io.js';
@@ -242,28 +242,6 @@ async function runDecision(
   };
 }
 
-/**
- * Dziennik decyzji: jedna linia JSON na wywołanie, z promptem i surową
- * odpowiedzią. Strojenie promptu taktycznego będzie iteracyjne, a bez zapisu
- * „dlaczego bot wybrał Atletykę" da się rozstrzygnąć tylko zgadywaniem.
- *
- * Zapis nigdy nie może przewrócić tury bota — błąd ląduje w logu serwera i tyle.
- */
-async function logDecision(deps: RealtimeDeps, entry: Record<string, unknown>): Promise<void> {
-  const path = deps.ctx.config.botDecisionLogPath;
-  if (!path) return;
-  try {
-    await mkdir(dirname(path), { recursive: true });
-    await appendFile(
-      path,
-      `${JSON.stringify({ at: new Date().toISOString(), ...entry })}\n`,
-      'utf8',
-    );
-  } catch (error) {
-    deps.log.warn({ err: error }, 'bot decision log write failed');
-  }
-}
-
 function trace(deps: RealtimeDeps, campaignId: string, payload: BotActionTraceBroadcast): void {
   deps.io.to(gmRoom(campaignId)).emit('bot:action-trace', payload);
 }
@@ -295,7 +273,8 @@ export async function runBotAction(
     signal: request.signal,
   });
 
-  void logDecision(deps, {
+  void logBotDecision(deps, {
+    kind: 'check',
     campaignId: request.campaignId,
     botId: stored.id,
     botName: stored.name,
@@ -367,7 +346,7 @@ export async function runBotAction(
     try {
       await performCharacterRoll(deps, {
         campaignId: request.campaignId,
-        user: await gmActor(deps, request.authorId),
+        user: await botActorUser(deps, request.authorId),
         sceneId: request.sceneId,
         payload: {
           characterId: character.id,
@@ -416,21 +395,6 @@ export async function runBotAction(
     ...(action.reason ? { reason: action.reason } : {}),
   });
   return 'proposed';
-}
-
-/**
- * Konto, którym bot wykonuje mechanikę. To samo, którym mówi od etapu 11 —
- * autorem linii NPC-a jest MG, więc karta rzutu jest nieodróżnialna od rzutu
- * NPC-a wykonanego ręką MG. Rola GM daje przy tym prawo do cudzej karty, dlatego
- * o „to jest karta TEGO bota" musi zadbać wołający (patrz `runBotAction`).
- */
-async function gmActor(deps: RealtimeDeps, authorId: string): Promise<SessionUser> {
-  const user = await deps.ctx.prisma.user.findUnique({
-    where: { id: authorId },
-    select: { id: true, name: true, role: true },
-  });
-  if (!user) throw new RealtimeError('INTERNAL');
-  return { id: user.id, name: user.name, role: user.role as SessionUser['role'] };
 }
 
 /** Karta propozycji na czacie — widzi ją MG i sterujący gracz, nikt więcej. */
@@ -488,24 +452,36 @@ export const botProposalResolveEvent = defineEvent<
     if (proposal.resolution) throw new RealtimeError('PROPOSAL_ALREADY_RESOLVED');
 
     let rollMessageId: number | null = null;
+    let refusal: string | undefined;
     if (payload?.approve === true) {
-      // Karta trzyma id postaci sprzed kliknięcia, ale prawo do rzutu odczytujemy
-      // z bota TERAZ: MG mógł w międzyczasie odpiąć mu kartę.
+      // Karta trzyma id postaci sprzed kliknięcia, ale prawo do działania
+      // odczytujemy z bota TERAZ: MG mógł w międzyczasie odpiąć mu kartę.
       const bot = await deps.ctx.prisma.botProfile.findUnique({ where: { id: proposal.botId } });
       if (!bot || bot.campaignId !== campaignId || bot.characterId !== proposal.characterId) {
         throw new RealtimeError('BOT_CHARACTER_CHANGED');
       }
-      const rolled = await performCharacterRoll(deps, {
-        campaignId,
-        user: await gmActor(deps, message.authorId),
-        sceneId: message.sceneId ?? null,
-        payload: {
-          characterId: proposal.characterId ?? '',
-          request: { kind: 'skill', skillId: proposal.optionId },
-          visibility: 'public',
-        },
-      });
-      rollMessageId = rolled.messageId;
+      if (proposal.combat) {
+        // Akcja bojowa (20b) idzie inną ścieżką niż rzut z karty — i jest
+        // odtwarzana na świeżym stanie taktycznym, bo między propozycją
+        // a kliknięciem mogła minąć runda.
+        const played = await resolveBotCombatProposal(deps, {
+          campaignId,
+          proposal: proposal.combat,
+        });
+        if (played.outcome === 'refused') refusal = played.refusal ?? 'Akcja nie doszła do skutku.';
+      } else {
+        const rolled = await performCharacterRoll(deps, {
+          campaignId,
+          user: await botActorUser(deps, message.authorId),
+          sceneId: message.sceneId ?? null,
+          payload: {
+            characterId: proposal.characterId ?? '',
+            request: { kind: 'skill', skillId: proposal.optionId },
+            visibility: 'public',
+          },
+        });
+        rollMessageId = rolled.messageId;
+      }
     }
 
     const resolved: BotActionProposal = {
@@ -513,6 +489,9 @@ export const botProposalResolveEvent = defineEvent<
       resolution: payload?.approve === true ? 'approved' : 'rejected',
       resolvedByName: user.name,
       ...(rollMessageId !== null ? { rollMessageId } : {}),
+      // Zatwierdzona akcja, która i tak się nie odbyła, musi zostawić ślad na
+      // karcie: inaczej MG widzi „ZATWIERDZONE" i nic więcej się nie dzieje.
+      ...(refusal ? { blocked: refusal } : {}),
     };
     const saved = await deps.ctx.prisma.chatMessage.update({
       where: { id: message.id },

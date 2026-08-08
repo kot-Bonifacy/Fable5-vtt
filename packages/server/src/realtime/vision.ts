@@ -475,6 +475,45 @@ export async function viewerSightFor(
 }
 
 /**
+ * The sight of **one figure** (stage 20b), rather than of one player.
+ *
+ * Everything above this line answers „what may this account be shown", which is
+ * the right question for a screen and the wrong one for a fight: a player sees
+ * with all their tokens at once, and the GM sees everything. A bot deciding who
+ * to shoot needs neither — it needs what the figure it is holding can make out
+ * from where it is standing, walls, darkness and the GM's brush included.
+ *
+ * Without this the bot would inherit the GM account it acts with (stage 11) and
+ * shoot people through walls in the dark. Which is exactly the gap the scope of
+ * this stage names: „widoczność liczona per token, nie per gracz".
+ *
+ * Synchronous on purpose — the expensive part is the context, and the caller
+ * loads that once for the whole turn rather than once per question.
+ */
+export function tokenSightFor(
+  scene: Scene,
+  token: Pick<Token, 'x' | 'y' | 'size' | 'visionRange' | 'ownerId'>,
+  context: SceneVisionContext,
+): ViewerSight {
+  const source = visionSourceOf(token, scene, context);
+  const polygons = [computeVisionPolygon(source.origin, source.segments, source.radiusPx)];
+  const lighting: ViewerLighting | null = context.dark
+    ? {
+        // Whoever holds the figure also holds its torch: a hidden bearer's light
+        // exists for its controller and for nobody else, and an NPC token with
+        // no owner passes `null`, which is the safe answer.
+        sources: [
+          ...lightSourcesOf(scene, context, token.ownerId),
+          ...darkSightSources([source], context.darkSightPx),
+        ],
+        segments: context.segments,
+        windows: context.windows,
+      }
+    : null;
+  return { polygons, lighting, sources: [source] };
+}
+
+/**
  * Can this viewer see that point right now?
  *
  * The single definition of visible in the project, and the reason it lives here

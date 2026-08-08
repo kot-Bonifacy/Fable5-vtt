@@ -2929,6 +2929,30 @@ body.is-resizing {
   color: var(--warn);
 }
 
+/* „Graj turę" (etap 20b): pokazuje się tylko przy figurze prowadzonej przez
+   bota, więc może pozwolić sobie na pełne słowo obok strzałek. */
+.combat-bar-bot {
+  flex: none;
+  padding: 0.1rem 0.5rem;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--accent);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.combat-bar-bot:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.combat-bar-bot:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .combat-bar-queue {
   /* Shrinks before it scrolls: with a handful of participants the queue sits
      centred in the bar, and only a crowd makes it take the whole width. */

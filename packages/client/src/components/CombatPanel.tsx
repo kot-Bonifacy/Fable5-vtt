@@ -21,6 +21,7 @@ import {
   setCombatInitiative,
   startCombat,
 } from '../socket.js';
+import { BotTurnButton } from './BotTurnButton.js';
 import { CombatActions } from './CombatActions.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useCombatStore } from '../stores/combatStore.js';
@@ -275,6 +276,8 @@ function CombatRow({
           {combatant.initiative ?? '—'}
         </span>
       )}
+      {/* Etap 20b: pokazuje się samo przy figurze prowadzonej przez bota. */}
+      <BotTurnButton tokenId={combatant.tokenId} />
       {isGm && combatant.turn && (
         <button
           type="button"

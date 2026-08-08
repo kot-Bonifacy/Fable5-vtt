@@ -432,6 +432,15 @@ export interface BotActionProposal {
   optionLabel: string;
   /** Nieprzezroczysty identyfikator (u nas: id umiejętności CP RED). */
   optionId: string;
+  /**
+   * Akcja bojowa zamiast rzutu z karty (etap 20b).
+   *
+   * Ta sama karta, drugi rodzaj treści: MG czyta „Atak: Rico — Ciężki pistolet"
+   * tam, gdzie 20a pisało „Percepcja", i klika te same dwa przyciski. Osobne
+   * pole, a nie inne znaczenie `optionId`, bo po zatwierdzeniu wykonanie idzie
+   * zupełnie inną ścieżką — `attack:roll` albo `token:move`, nie `character:roll`.
+   */
+  combat?: BotCombatProposal;
   /** Jedno zdanie modelu, dlaczego właśnie to. */
   reason: string;
   /** Wypowiedź, która wywołała decyzję — kontekst dla klikającego. */
@@ -447,10 +456,56 @@ export interface BotActionProposal {
   blocked?: string;
 }
 
+/**
+ * Akcja bojowa zaproponowana przez bota (etap 20b) — treść karty i wszystko,
+ * czego wykonanie potrzebuje po kliknięciu „Zatwierdź".
+ *
+ * Identyfikatory (token celu, slot broni) siedzą tu, a nie w pamięci serwera,
+ * z tego samego powodu co reszta karty: propozycja ma przeżyć restart. Ale
+ * **żaden z nich nie jest zaufany po powrocie** — przed wykonaniem wszystko
+ * przechodzi te same bezpieczniki co przy decyzji (cel istnieje, jest widoczny,
+ * nie jest samym botem), bo między propozycją a klikiem mogła minąć runda.
+ */
+export interface BotCombatProposal {
+  /** Co bot chce zrobić: `attack`, `approach`, `retreat`, `reload`, `pass`. */
+  kind: string;
+  /** Jedno zdanie do karty („Atak: Rico — Ciężki pistolet"). */
+  summary: string;
+  /** Token, którego akcja dotyczy; null dla przeładowania i pasa. */
+  targetTokenId: string | null;
+  targetLabel: string | null;
+  /** Slot paska akcji z 16f (`weapon:<rowId>:<mode>`); null, gdy bez broni. */
+  weaponSlotId: string | null;
+  weaponLabel: string | null;
+  /** Token bota, który ma wykonać akcję — figura, nie karta. */
+  actorTokenId: string;
+  /** Który to krok tury; po wykonaniu serwer sam robi następny. */
+  step: number;
+}
+
 /** Klient → serwer: MG albo sterujący gracz odpowiada na kartę propozycji. */
 export interface BotProposalResolvePayload {
   messageId: number;
   approve: boolean;
+}
+
+/**
+ * Klient → serwer: „Graj turę" (etap 20b). MG wskazuje figurę prowadzoną przez
+ * bota, a serwer rozgrywa jej turę zgodnie z trybem autonomii tego bota.
+ */
+export interface BotPlayTurnPayload {
+  /** Figura na mapie; bot jest z niej wyliczany po karcie postaci. */
+  tokenId: string;
+}
+
+/** Ack `bot:play-turn` — ile kroków poszło i czym się skończyły. */
+export interface BotPlayTurnResult {
+  /** Ostatni wynik: wykonane, zaproponowane, odmówione albo pas. */
+  outcome: 'executed' | 'proposed' | 'refused' | 'pass';
+  /** Ile decyzji zapadło (0 = bot nie dostał nawet pierwszego pytania). */
+  steps: number;
+  /** Powód po polsku, gdy tura się nie odbyła. */
+  refusal?: string;
 }
 
 /** Klient → serwer: „Poproś o akcję" — ścieżka pewna, z pominięciem detektora. */
@@ -475,11 +530,27 @@ export interface BotActionTraceBroadcast {
   /** Tryb autonomii, w którym decyzja zapadła. */
   autonomy: BotAutonomy;
   /** Co się z nią stało: wykonana, zaproponowana, odrzucona przez walidację. */
-  outcome: 'executed' | 'proposed' | 'refused' | 'talk';
+  outcome: 'executed' | 'proposed' | 'refused' | 'talk' | 'pass';
   /** Powód odrzucenia po polsku. */
   refusal?: string;
   /** Ile trwał sam przebieg decyzyjny. */
   decisionMs: number;
   /** Czy poszła druga próba po nieudanej walidacji. */
   retried: boolean;
+  /**
+   * Krok tury bojowej (etap 20b): który to raz w tej turze i co bot widział.
+   *
+   * MG czyta to, gdy bot „zrobił coś dziwnego": lista figur w menu odpowiada na
+   * pytanie, czy bot w ogóle widział tego, kogo miał zaatakować — a to jest
+   * najczęstsza odpowiedź, i nie da się jej odgadnąć z samej decyzji.
+   */
+  combat?: {
+    step: number;
+    /** Figura, którą bot prowadzi. */
+    actorName: string;
+    /** Etykiety figur, które miał w menu (widoczne dla jego tokenu). */
+    figures: string[];
+    /** Jedno zdanie o wybranej akcji. */
+    summary?: string;
+  };
 }

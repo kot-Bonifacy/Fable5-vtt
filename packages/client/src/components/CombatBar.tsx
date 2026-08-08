@@ -6,6 +6,7 @@ import { useCombatStore, activeCombatantOf, myActiveCombatant } from '../stores/
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { useDeathSavePrompt } from '../death-save.js';
+import { BotTurnButton } from './BotTurnButton.js';
 
 /**
  * The turn tracker's always-visible face — a fixed strip in the top bar,
@@ -216,6 +217,9 @@ export function CombatBar() {
           ▶
         </button>
       )}
+      {/* Etap 20b: przy figurze prowadzonej przez bota. Stoi obok ▶, bo należy
+          do tego samego gestu — „ta tura jest rozegrana, idziemy dalej". */}
+      <BotTurnButton tokenId={acting?.tokenId ?? null} className="combat-bar-bot" />
       {reminders.length > 0 && (
         <span className="combat-bar-reminder" title={reminders.join(' · ')}>
           ⚠ {reminders[0]}

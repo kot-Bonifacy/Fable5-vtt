@@ -852,8 +852,26 @@ async function dragGrappledToken(
 
 export const tokenMoveEvent = defineEvent<TokenMovePayload, { x: number; y: number }>({
   name: 'token:move',
-  handler: async ({ deps, socket, user, payload }) => {
-    const campaignId = requireCampaignId(socket.data);
+  handler: async ({ deps, socket, user, payload }) =>
+    performTokenMove(deps, { campaignId: requireCampaignId(socket.data), user, payload }),
+});
+
+/**
+ * One move, socket-free (stage 20b) — the bot walking its figure goes through
+ * this, so „a bot is a player, not a second set of rules" stays literally true:
+ * the same clamp, the same snap, the same `validateTokenMove`, the same audience.
+ */
+export async function performTokenMove(
+  deps: RealtimeDeps,
+  options: {
+    campaignId: string;
+    /** Whose permissions apply; a bot borrows the GM account (stage 11). */
+    user: SessionUser;
+    payload: TokenMovePayload | undefined;
+  },
+): Promise<{ x: number; y: number }> {
+  {
+    const { campaignId, user, payload } = options;
     const { token, scene } = await requireCampaignToken(
       deps.ctx.prisma,
       campaignId,
@@ -957,5 +975,5 @@ export const tokenMoveEvent = defineEvent<TokenMovePayload, { x: number; y: numb
 
     await broadcast({ x, y }, final);
     return { x, y };
-  },
-});
+  }
+}

@@ -658,8 +658,32 @@ async function buildStatistSource(
 export const attackRollEvent = defineEvent<AttackRollPayload<CpredAttackRequest>, AttackRollResult>(
   {
     name: 'attack:roll',
-    handler: async ({ deps, socket, user, payload }) => {
-      const campaignId = requireCampaignId(socket.data);
+    handler: async ({ deps, socket, user, payload }) =>
+      performAttackRoll(deps, { campaignId: requireCampaignId(socket.data), user, payload }),
+  },
+);
+
+/**
+ * One attack, from the intention to the card on chat.
+ *
+ * Split out of the handler in stage 20b for the same reason `performCharacterRoll`
+ * was split out in 20a: a bot taking its turn has no socket, and „the bot shoots
+ * through exactly the code a player shoots through" is only true while there is
+ * one copy of it. Everything the handler used to read off the socket is a
+ * parameter now — and nothing else changed.
+ */
+export async function performAttackRoll(
+  deps: RealtimeDeps,
+  options: {
+    campaignId: string;
+    /** Whose permissions apply; a bot borrows the GM account (stage 11). */
+    user: SessionUser;
+    payload: AttackRollPayload<CpredAttackRequest> | undefined;
+  },
+): Promise<AttackRollResult> {
+  {
+    const { campaignId, user, payload } = options;
+    {
       const registry = deps.ctx.cpred;
       // Stage 16b: an attack no longer has to come from a sheet. Naming no
       // character means „the token itself is the fighter", and the profile on it
@@ -927,9 +951,9 @@ export const attackRollEvent = defineEvent<AttackRollPayload<CpredAttackRequest>
       const view: ChatMessageView = toChatMessageView(stored);
       await deliverRollMessage(deps, campaignId, user.id, view);
       return { messageId: view.id };
-    },
-  },
-);
+    }
+  }
+}
 
 /**
  * The area this attack covers, when it covers one. Absent for every ordinary
@@ -1455,8 +1479,28 @@ async function spendCharacterAction(
  */
 export const weaponReloadEvent = defineEvent<WeaponReloadPayload, { ammo: number }>({
   name: 'weapon:reload',
-  handler: async ({ deps, socket, user, payload }) => {
-    const campaignId = requireCampaignId(socket.data);
+  handler: async ({ deps, socket, user, payload }) =>
+    performWeaponReload(deps, {
+      campaignId: requireCampaignId(socket.data),
+      user,
+      sceneId: socket.data.viewedSceneId,
+      payload,
+    }),
+});
+
+/** One reload, socket-free — see `performAttackRoll` for why it is split out. */
+export async function performWeaponReload(
+  deps: RealtimeDeps,
+  options: {
+    campaignId: string;
+    user: SessionUser;
+    /** Scene the Action is booked on; decides which fight charges for it. */
+    sceneId: string | null;
+    payload: WeaponReloadPayload | undefined;
+  },
+): Promise<{ ammo: number }> {
+  {
+    const { campaignId, user, sceneId, payload } = options;
     const character = await requireRollableCharacter(deps, campaignId, user, payload?.characterId);
     const registry = deps.ctx.cpred;
     const data = parseCharacterData(character.data, registry);
@@ -1485,15 +1529,15 @@ export const weaponReloadEvent = defineEvent<WeaponReloadPayload, { ammo: number
     // „Przeładowanie — Załadowujesz magazynek do pełna" is an Action (s. 169).
     // Unlike an attack it produces no card of its own, so the chat line is the
     // only trace the table gets — hence not silent.
-    await spendCharacterAction(deps, campaignId, socket.data.viewedSceneId, character, user);
+    await spendCharacterAction(deps, campaignId, sceneId, character, user);
 
     await saveWeaponRow(deps, campaignId, character, data, row.id, {
       ammoCurrent: row.ammoMax,
       ...(changing ? (nextAmmoId ? { ammoId: nextAmmoId } : { ammoId: undefined }) : {}),
     });
     return { ammo: row.ammoMax };
-  },
-});
+  }
+}
 
 /**
  * The round the client asked for, proven to exist and to fit this weapon.

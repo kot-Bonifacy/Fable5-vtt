@@ -196,7 +196,11 @@ function BotProposalRow({
         <span className="chat-message-time">{formatTime(message.createdAt)}</span>
       </div>
       <div className="chat-action-body">
-        <span className="chat-action-name">Chce rzucić: {proposal.optionLabel}</span>
+        <span className="chat-action-name">
+          {/* Etap 20b: ta sama karta niesie akcję bojową, i wtedy „chce rzucić"
+              byłoby nieprawdą — podejście do wroga nie jest rzutem. */}
+          {proposal.combat ? proposal.combat.summary : `Chce rzucić: ${proposal.optionLabel}`}
+        </span>
         {proposal.characterName && (
           <span className="chat-action-note">— karta {proposal.characterName}</span>
         )}
@@ -207,6 +211,10 @@ function BotProposalRow({
         <span className="chat-action-badge">
           {proposal.resolution === 'approved' ? 'Zatwierdzone' : 'Odrzucone'}
           {proposal.resolvedByName ? ` — ${proposal.resolvedByName}` : ''}
+          {/* Zatwierdzona akcja, która i tak się nie odbyła — sytuacja zmieniła
+              się między propozycją a kliknięciem. Bez tego MG widzi
+              „ZATWIERDZONE" i nic więcej się nie dzieje. */}
+          {proposal.blocked ? ` · ${proposal.blocked}` : ''}
         </span>
       ) : (
         canResolve && (

@@ -4,4 +4,5 @@ export * from './guardrails.js';
 export * from './mentions.js';
 export * from './prompt.js';
 export * from './actions.js';
+export * from './combat.js';
 export * from './requests.js';

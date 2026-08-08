@@ -78,6 +78,7 @@ import { botCreateEvent, botDeleteEvent, botDuplicateEvent, botUpdateEvent } fro
 import { botChatEvent, botTeachEvent } from './bot-chat.js';
 import { botSayEvent, botStopEvent } from './bot-turns.js';
 import { botActEvent, botProposalResolveEvent } from './bot-actions.js';
+import { botPlayTurnEvent } from './bot-combat.js';
 import { aiAskEvent, aiRefreshEvent, broadcastAiStatus, sendAiStatus } from './ai.js';
 import { rulesAskEvent, rulesIndexEvent, rulesStatusEvent } from './rules.js';
 import {
@@ -221,6 +222,7 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   botStopEvent,
   botActEvent,
   botProposalResolveEvent,
+  botPlayTurnEvent,
   speechToggleEvent,
   speechPreviewEvent,
 ] as RealtimeEvent<never, unknown>[];
