@@ -394,8 +394,13 @@ function attackDetail(meta: CpredAttackMeta): string {
   // because „Nie ma cech specjalnych" is not worth a line on every card.
   if (meta.ammo) parts.push(`nabój: ${meta.ammo.name}`);
   if (meta.mode !== 'single') parts.push(meta.modeLabel);
-  if (meta.ammoCost > 0)
-    parts.push(`magazynek ${meta.ammoAfter}/${meta.ammoCost + meta.ammoAfter}`);
+  if (meta.ammoCost > 0) {
+    // Capacity, not „what was in there a moment ago" — the two agree only while
+    // the weapon started the shot full, which is why a single shot looked right
+    // and a ten-round burst printed „29/39" on a forty-round magazine.
+    const capacity = meta.ammoMax ?? meta.ammoCost + meta.ammoAfter;
+    parts.push(`magazynek ${meta.ammoAfter}/${capacity}`);
+  }
   return parts.join(' · ');
 }
 

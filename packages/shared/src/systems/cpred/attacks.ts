@@ -311,6 +311,13 @@ export interface CpredAttackMeta {
   ammoCost: number;
   ammoBefore: number;
   ammoAfter: number;
+  /**
+   * How much the magazine holds. Carried because the card's „magazynek 29/40"
+   * promises capacity, and capacity cannot be reconstructed from the rounds
+   * spent: `ammoCost + ammoAfter` is only the same number while the weapon
+   * started full. Optional, so cards written before this field still render.
+   */
+  ammoMax?: number;
 }
 
 /** A planned attack: the roll to make, plus everything needed to judge it. */
@@ -657,6 +664,7 @@ export function planCpredAttack(
         ammoCost,
         ammoBefore: row.ammoCurrent,
         ammoAfter: row.ammoCurrent - ammoCost,
+        ...(row.ammoMax > 0 ? { ammoMax: row.ammoMax } : {}),
       },
     },
   };

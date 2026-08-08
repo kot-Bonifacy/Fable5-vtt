@@ -400,6 +400,16 @@ describe('planCpredAttack — autofire', () => {
     expect(formatRollNotation(result.plan.formula)).toBe('1d10+11'); // REF 5 + Ogień ciągły 6
   });
 
+  it('carries the magazine size, which a burst cannot be back-computed from', () => {
+    // Fired from a magazine that is already down to 25 of 30: „rounds spent plus
+    // rounds left" would say 25, and the card promises capacity.
+    const started = weaponRow({ ammoCurrent: 25, ammoMax: 30 });
+    const burst = plan({ mode: 'autofire' }, { data, resolved: rifle, row: started, metres: 14 });
+    expect(burst.ok && burst.plan.attack.ammoAfter).toBe(15);
+    expect(burst.ok && burst.plan.attack.ammoMax).toBe(30);
+    expect(burst.ok && burst.plan.attack.ammoCost + burst.plan.attack.ammoAfter).toBe(25);
+  });
+
   it('spends ten rounds and refuses a burst with nine left', () => {
     const ok = plan({ mode: 'autofire' }, { data, resolved: rifle, row, metres: 14 });
     expect(ok.ok && ok.plan.attack.ammoCost).toBe(10);
