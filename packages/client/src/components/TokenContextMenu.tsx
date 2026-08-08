@@ -21,6 +21,7 @@ import {
   VISION_RANGE_MAX_METRES,
   createDefaultCombatProfile,
   isWeaponEntry,
+  resolveWeapon,
   sanitizeCombatProfile,
 } from '@vtt/shared';
 import { apiGet } from '../api.js';
@@ -62,6 +63,7 @@ function StatistProfileFields({
 }) {
   const entries = useCompendiumStore((s) => s.entries);
   const order = useCompendiumStore((s) => s.order);
+  const weaponTypeById = useCompendiumStore((s) => s.weaponTypeById);
 
   const weapons = order
     .map((id) => entries[id])
@@ -71,19 +73,28 @@ function StatistProfileFields({
     onChange({ ...profile, [key]: value });
   }
 
-  /** Picking a weapon copies its numbers, the way a sheet row does. */
+  /**
+   * Picking a weapon copies its numbers, the way a sheet row does — and like a
+   * sheet row it has to read them *resolved*. Obrażenia i magazynek mieszkają na
+   * typie broni, nie na wpisie: żaden ze stu wpisów katalogu nie niesie własnego
+   * `damage` ani `magazine`, więc czytanie ich wprost z wpisu dawało statyście
+   * pięści (1k6) i magazynek 0 niezależnie od tego, co MG wybrał.
+   */
   function pickWeapon(compendiumId: string) {
     const entry = weapons.find((weapon) => weapon.id === compendiumId);
     if (!entry) {
       onChange({ ...profile, weaponId: null, weaponName: 'Pięści', weaponDamage: '1k6' });
       return;
     }
-    const magazine = entry.magazine ?? 0;
+    const resolved = resolveWeapon(entry, {
+      weaponTypeById: new Map(Object.entries(weaponTypeById)),
+    });
+    const magazine = resolved.magazine ?? 0;
     onChange({
       ...profile,
       weaponId: entry.id,
       weaponName: entry.name,
-      weaponDamage: entry.damage ?? profile.weaponDamage,
+      weaponDamage: resolved.damage,
       ammoMax: magazine,
       ammoCurrent: magazine,
     });
