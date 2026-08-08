@@ -2156,6 +2156,79 @@ input[type='color'] {
   color: var(--text-dim);
 }
 
+/* --- Asystent zasad (etap 19a): cytaty z podręcznika pod odpowiedzią ---
+   Fragmenty stoją NAD odpowiedzią, bo przychodzą pierwsze i bo to one są
+   dowodem: odpowiedź modelu bez źródła jest niesprawdzalna. */
+
+.rules-passages {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rules-passage {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+}
+
+.rules-passage-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.3rem 0.45rem;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 0.78rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rules-passage-head:hover {
+  background: var(--bg-panel);
+}
+
+.rules-passage-index {
+  color: var(--accent);
+  font-weight: 600;
+  flex: 0 0 auto;
+}
+
+.rules-passage-citation {
+  flex: 1 1 auto;
+  color: var(--text-dim);
+  overflow-wrap: anywhere;
+}
+
+.rules-passage-toggle {
+  flex: 0 0 auto;
+  color: var(--text-dim);
+}
+
+.rules-passage-text {
+  margin: 0 0.45rem 0.35rem;
+  padding: 0.4rem;
+  font-size: 0.78rem;
+  background: var(--bg-panel);
+  border-radius: 4px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 16rem;
+  overflow-y: auto;
+}
+
+.rules-passage-meta {
+  margin: 0 0.45rem 0.35rem;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
 /* --- Boty (etap 10): zakładka z listą i pływający edytor profilu --- */
 
 .bot-panel {

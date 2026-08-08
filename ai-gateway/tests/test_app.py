@@ -20,6 +20,9 @@ def _settings(**overrides) -> Settings:
         "llama_model": None,
         "health_interval": 0.05,
         "api_key": "",
+        # Testy, które nie dotyczą RAG, nie mają zakładać bazy wektorowej na
+        # prawdziwej ścieżce z konfiguracji.
+        "rag_enabled": False,
     }
     base.update(overrides)
     return Settings(**base)

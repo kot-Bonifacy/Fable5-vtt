@@ -40,6 +40,11 @@ Wersję CUDA dobierz do sterownika (`nvidia-smi` → „CUDA UMD Version”). Wa
 | `POST /chat`          | generacja ze strumieniowaniem SSE                                         |
 | `POST /tts`           | synteza jednej wypowiedzi → audio WAV + rytm ujawniania tekstu (`reveal`) |
 | `GET /tts/voices`     | modele głosu, które silnik faktycznie ma na dysku                         |
+| `GET /rag/status`     | model embeddingów, kolekcje, postęp indeksowania (etap 19a)               |
+| `POST /rag/search`    | wyszukiwanie hybrydowe → fragmenty z cytatem (rozdział, sekcja, strona)   |
+| `POST /rag/index`     | indeksowanie dokumentów przysłanych przez serwer VTT                      |
+| `POST /rag/index/rulebook` | indeksowanie podręcznika z **lokalnego dysku gatewaya** (w tle)      |
+| `DELETE /rag/collections/{name}` | skasowanie kolekcji                                             |
 | `POST /admin/restart` | ręczny restart llama-server (diagnostyka)                                 |
 
 `POST /chat` przyjmuje `messages`, `purpose` (`npc` \| `gm_assistant` \| `test`), `bot_id`, `reasoning`, `max_tokens`, `temperature`, `top_p`, `top_k`, `seed`. Odpowiada zdarzeniami SSE:
@@ -128,6 +133,45 @@ Model załadowany z `include_alignments=True` oddaje liczbę próbek audio przyp
 
 Normalizacja przed syntezą (`tts/text.py`) jest częścią tego mechanizmu: „250" czyta się jako dwa słowa, a widoczne jest jako jeden token, więc każdy token pamięta, ile słów mówionych mu odpowiada. Przy okazji rozwijamy skróty mechaniki tak, jak mówi się je przy stole („DV" → „de fau", „1k10" → „jeden ka dziesięć").
 
+## RAG — pamięć długoterminowa (etap 19a, zmierzone 2026-08-08)
+
+Embeddingi liczą się **na CPU** przez `onnxruntime` — dokładnie tak jak Piper w etapie 12 i z tego samego powodu: rezerwa karty (~4,0 GB) należy do faster-whispera z etapu 21, a model embeddingów zabrałby jej połowę. Zmierzone na żywym gatewayu: zajęcie VRAM w trakcie indeksowania **nie drgnęło** (12,5 GB przed i po, czyli sam llama-server z pulpitem).
+
+### Wybór modelu
+
+Oba kandydatury mają na HuggingFace gotowy eksport ONNX, więc `torch` nie był potrzebny. Zestaw: 10 pytań MG zadanych naturalną polszczyzną, oczekiwana strona podręcznika (`data/private/rag/bench-questions.json`, poza repo — próbka o tym samym kształcie w `data/public/rag/`). Skrypt: `uv run python scripts/bench-embeddings.py`.
+
+| Tryb wyszukiwania         | bge-m3            | multilingual-e5-large |
+| ------------------------- | ----------------- | --------------------- |
+| same wektory              | 9/10 · MRR 0,900  | 10/10 · MRR 0,717     |
+| sam pełny tekst (FTS5)    | 7/10 · MRR 0,415  | 7/10 · MRR 0,415      |
+| hybryda 1,0 / 0,15        | 9/10 · MRR 0,783  | 9/10 · MRR 0,775      |
+| **hybryda 1,0 / 0,30**    | **10/10 · 0,770** | 9/10 · MRR 0,703      |
+| hybryda 1,0 / 0,50        | 10/10 · MRR 0,770 | 9/10 · MRR 0,637      |
+| hybryda 1,0 / 0,70        | 10/10 · MRR 0,595 | 9/10 · MRR 0,587      |
+| indeksowanie (1264 frag.) | 409 s (3,1 frag./s) | 490 s (2,6 frag./s) |
+| zapytanie (mediana)       | 38 ms             | 36 ms                 |
+
+**Wybrany: bge-m3, wagi 1,0 / 0,3.** Jako jedyny dochodzi do kompletu trafień, indeksuje o 20% szybciej i nie wymaga prefiksów `query:`/`passage:` (jeden sposób mniej, żeby się pomylić).
+
+Trzy rzeczy widać w tabeli i warto o nich pamiętać:
+
+- **Hybryda naprawdę dokłada trafienie** — bge-m3 sam z wektorów daje 9/10, dopiero pełny tekst dociąga pytanie, w którym liczy się nazwa własna zasady. Uzasadnienie decyzji z opisu etapu jest zmierzone, nie założone.
+- **Za duża waga słów psuje kolejność.** Przy 0,7 trafień jest tyle samo co przy 0,3, ale właściwy fragment ląduje niżej w prompcie (MRR 0,595 vs 0,770). Dla modelu 9B to różnica między odpowiedzią z fragmentu 1 a z fragmentu 4.
+- **Dla e5 hybryda pogarsza wynik** (10/10 → 9/10): fuzja potrafi wypchnąć z piątki trafienie, które miały same wektory. Wagi są zestrojone pod wybrany model i po jego zmianie trzeba je przemierzyć.
+
+### Chunkowanie i magazyn
+
+Podręcznik z etapu 13 (21 plików MD) daje **1264 fragmenty** po 300–600 tokenów liczonych tokenizerem modelu. Nagłówek zaczyna nowy fragment, tabela jedzie w całości, a pierwsza linia fragmentu to jego ścieżka („rozdział › sekcja (s. N)") — dzięki temu cytat bierze się z materiału, a FTS5 łapie nazwę sekcji tak samo jak słowa z akapitu.
+
+**Nie ma tu sqlite-vec ani Chromy.** Przy 1264 fragmentach po 1024 wymiary cała kolekcja to macierz 5 MB, a kosinus „każdy z każdym" to jedno mnożenie — zmierzone **38 ms na całe zapytanie razem z embeddingiem pytania**. Indeks ANN kupowałby zero, a kosztował natywne rozszerzenie SQLite, którego `enable_load_extension` nie musi być dostępne w każdej instalacji Pythona.
+
+Zmiana `GATEWAY_RAG_MODEL` unieważnia indeks (wektory dwóch modeli nie leżą w jednej przestrzeni): gateway wykrywa to, mówi o tym w `/rag/status`, a przy najbliższym indeksowaniu czyści kolekcje i buduje je od nowa.
+
+### Uwaga o `reasoning_budget` (znalezione 08.08)
+
+`llama-server` **przyjmuje** dowolną liczbę w `reasoning_budget` bez błędu, ale egzekwuje wyłącznie `0` (wyłącz rozumowanie) i `-1` (bez limitu). Nasze `640` nie robi nic. Skutek zaobserwowany na żywym modelu: przy pytaniu o osłony model wygenerował **1536 tokenów samego rozumowania i pustą odpowiedź** — przy komplecie poprawnych cytatów. Komentarz w `llama_client.py` obiecywał coś przeciwnego od etapu 09; jest poprawiony. Wołający musi mieć własną ścieżkę na pustą odpowiedź — serwer VTT powtarza wtedy pytanie raz, bez rozumowania (`realtime/rules.ts`).
+
 ## Nadzór nad llama-server
 
 Gateway pilnuje procesu i podnosi go po padzie: health-check co 5 s, natychmiastowa reakcja na zakończenie procesu, restart po 3 nieudanych sprawdzeniach. Zmierzone: po `taskkill /IM llama-server.exe /F` gateway zauważył pad w ~5 s i miał model z powrotem w gotowości po kolejnych ~4 s (licznik `restarts` w `/health` rośnie).
@@ -136,5 +180,6 @@ Kolejka jest po stronie gatewaya (FIFO, jedna generacja naraz, `--parallel 1` w 
 
 ## Znane ograniczenia
 
-- **Model zmyśla zasady Cyberpunk RED** (np. „Sztuka Klatki (Parkour), DC 15–16” zamiast Atletyki i DV). Bez RAG na podręczniku to normalne — naprawia to etap 19. Do tego czasu asystent MG jest wyłącznie zabawką diagnostyczną.
+- **Model zmyśla zasady Cyberpunk RED, gdy pyta się go bez RAG** (np. „Sztuka Klatki (Parkour), DC 15–16” zamiast Atletyki i DV). Dotyczy to wolnego pytania z zakładki „AI”. Zakładka „Zasady” (etap 19a) odpowiada wyłącznie z zaindeksowanych fragmentów i podaje przy każdym twierdzeniu numer cytatu.
+- **Pierwsze uruchomienie RAG pobiera ~2,3 GB wag** modelu embeddingów z HuggingFace, a pierwsze indeksowanie podręcznika trwa ~7 minut na CPU. Panel „Zasady” pokazuje postęp rozdziałami.
 - `llama-server` startuje z otwartym CORS i bez własnego klucza API, ale słucha tylko na `127.0.0.1` — z zewnątrz jest nieosiągalny. Nie wystawiaj jego portu.

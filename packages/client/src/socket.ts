@@ -73,6 +73,12 @@ import type {
   SceneVisibility,
   RulerClearPayload,
   RulerUpdatePayload,
+  RulesAskPayload,
+  RulesChunkBroadcast,
+  RulesDoneBroadcast,
+  RulesErrorBroadcast,
+  RulesIndexStatus,
+  RulesSourcesBroadcast,
   SceneActivateBroadcast,
   SceneListBroadcast,
   ScenePatch,
@@ -125,6 +131,7 @@ import { useTokenStore, type TokenViewerCtx } from './stores/tokenStore.js';
 import { useCharacterStore } from './stores/characterStore.js';
 import { useCompendiumStore } from './stores/compendiumStore.js';
 import { useAiStore } from './stores/aiStore.js';
+import { useRulesStore } from './stores/rulesStore.js';
 import { useBotStore } from './stores/botStore.js';
 import { useCombatStore } from './stores/combatStore.js';
 import { useRulerStore } from './stores/rulerStore.js';
@@ -236,6 +243,24 @@ function aiErrorText(code: string, detail?: string): string {
       return 'Pytanie jest za długie.';
     default:
       return detail ? `Błąd AI: ${detail}` : `Błąd AI: ${code}`;
+  }
+}
+
+/** Polish messages for rules-assistant failures (stage 19a). */
+function rulesErrorText(code: string, detail?: string): string {
+  switch (code) {
+    case 'RULES_EMPTY_QUESTION':
+      return 'Wpisz pytanie o zasady.';
+    case 'RULES_QUESTION_TOO_LONG':
+      return 'Pytanie jest za długie — zapytaj o jedną rzecz naraz.';
+    case 'RAG_UNAVAILABLE':
+      // Powód z gatewaya („podręcznik nie jest jeszcze zaindeksowany", „indeks
+      // zbudowano innym modelem") mówi MG, co zrobić — kod sam w sobie nie mówi nic.
+      return detail
+        ? `Przeszukanie podręcznika nieudane: ${detail}`
+        : 'Podręcznik nie jest zaindeksowany — kliknij „Zaindeksuj podręcznik".';
+    default:
+      return aiErrorText(code, detail);
   }
 }
 
@@ -354,6 +379,27 @@ export function connectSocket(userId: string): Socket {
   );
   socket.on('ai:error', (broadcast: AiErrorBroadcast) =>
     ai().failExchange(broadcast.requestId, aiErrorText(broadcast.code, broadcast.detail)),
+  );
+
+  // Asystent zasad (etap 19a): fragmenty przychodzą PRZED odpowiedzią, więc MG
+  // widzi źródła nawet wtedy, gdy generacja się urwie.
+  const rules = () => useRulesStore.getState();
+  socket.on('rules:sources', (broadcast: RulesSourcesBroadcast) =>
+    rules().setSources(broadcast.requestId, broadcast.passages, broadcast.searchMs),
+  );
+  socket.on('rules:chunk', (broadcast: RulesChunkBroadcast) =>
+    rules().appendChunk(broadcast.requestId, broadcast.kind, broadcast.text),
+  );
+  socket.on('rules:done', (broadcast: RulesDoneBroadcast) =>
+    rules().finish(
+      broadcast.requestId,
+      broadcast.totalMs,
+      broadcast.completionTokens,
+      broadcast.retriedWithoutReasoning ?? false,
+    ),
+  );
+  socket.on('rules:error', (broadcast: RulesErrorBroadcast) =>
+    rules().fail(broadcast.requestId, rulesErrorText(broadcast.code, broadcast.detail)),
   );
 
   // The compendium is shared data: room broadcasts with a seq, like chat.
@@ -1076,6 +1122,52 @@ export function refreshAiStatus(): Promise<AiStatus | null> {
     }
     socket.emit('ai:refresh', (ack: SocketAck<AiStatus>) => {
       if (ack.ok && ack.data) useAiStore.getState().setStatus(ack.data);
+      resolve(ack.ok ? (ack.data ?? null) : null);
+    });
+  });
+}
+
+/**
+ * Pytanie o zasady (MG). Ack oddaje samo id — fragmenty i odpowiedź lecą
+ * osobnymi zdarzeniami, jak przy `ai:ask`.
+ */
+export function askRules(payload: RulesAskPayload): void {
+  const question = payload.question.trim();
+  if (!question) return;
+  if (!socket) {
+    useRulesStore.getState().failLocally(question, 'Brak połączenia z serwerem.');
+    return;
+  }
+  socket.emit('rules:ask', payload, (ack: SocketAck<{ requestId: string }>) => {
+    const store = useRulesStore.getState();
+    if (ack.ok && ack.data) store.start(ack.data.requestId, question);
+    else if (!ack.ok) store.failLocally(question, rulesErrorText(ack.error));
+  });
+}
+
+/** Stan indeksu podręcznika (MG). Odpytywane też w pętli podczas indeksowania. */
+export function fetchRulesStatus(): Promise<RulesIndexStatus | null> {
+  return new Promise((resolve) => {
+    if (!socket) {
+      resolve(null);
+      return;
+    }
+    socket.emit('rules:status', (ack: SocketAck<RulesIndexStatus>) => {
+      if (ack.ok && ack.data) useRulesStore.getState().setStatus(ack.data);
+      resolve(ack.ok ? (ack.data ?? null) : null);
+    });
+  });
+}
+
+/** Uruchamia indeksowanie podręcznika po stronie gatewaya (MG). */
+export function indexRulebook(): Promise<RulesIndexStatus | null> {
+  return new Promise((resolve) => {
+    if (!socket) {
+      resolve(null);
+      return;
+    }
+    socket.emit('rules:index', (ack: SocketAck<RulesIndexStatus>) => {
+      if (ack.ok && ack.data) useRulesStore.getState().setStatus(ack.data);
       resolve(ack.ok ? (ack.data ?? null) : null);
     });
   });

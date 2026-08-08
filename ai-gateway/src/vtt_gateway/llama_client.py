@@ -83,8 +83,12 @@ def build_payload(request: ChatRequest, settings: Settings) -> dict[str, Any]:
         payload["reasoning_budget"] = 0
         payload["chat_template_kwargs"] = {"enable_thinking": False}
     else:
-        # Bez ograniczenia model potrafi przemyśleć cały limit tokenów i oddać
-        # pustą odpowiedź — budżet gwarantuje, że coś zostanie na treść.
+        # UWAGA (zmierzone 08.08 w etapie 19a): llama-server **przyjmuje** dowolną
+        # liczbę bez błędu, ale egzekwuje wyłącznie 0 (wyłącz) i -1 (bez limitu).
+        # Wartość dodatnia niczego nie gwarantuje — model potrafi przemyśleć cały
+        # `max_tokens` i oddać PUSTĄ odpowiedź. Zostawiamy ją, bo nie szkodzi i
+        # zadziała, jeśli llama.cpp kiedyś zacznie ją respektować, ale wołający
+        # MUSI mieć własną ścieżkę na pustą odpowiedź (patrz `realtime/rules.ts`).
         payload["reasoning_budget"] = settings.reasoning_budget
     return payload
 

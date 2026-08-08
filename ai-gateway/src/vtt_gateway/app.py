@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import json
 import logging
+import time
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from typing import Any
@@ -17,10 +19,17 @@ from .config import Settings, load_settings
 from .gpu import read_gpu_info
 from .llama_client import LlamaError, count_tokens, stream_chat
 from .queue import QueueFull, RequestQueue
+from .rag.service import RagDocument, RagError, RagService
 from .schemas import (
     ChatRequest,
     HealthResponse,
     LlamaStatus,
+    RagHealthInfo,
+    RagIndexRequest,
+    RagIndexResponse,
+    RagSearchRequest,
+    RagSearchResponse,
+    RagStatusResponse,
     TokenizeRequest,
     TokenizeResponse,
     TtsRequest,
@@ -53,12 +62,17 @@ def create_app(
         app.state.queue = RequestQueue(settings.max_queue_length)
         app.state.tts = TtsManager(settings)
         app.state.samples = SampleStore(settings.tts_samples_dir)
+        app.state.rag = RagService(settings)
+        # Indeksowanie podręcznika chodzi w tle (kilka minut na CPU) — trzymamy
+        # referencję, żeby pętla zdarzeń nie zebrała zadania w połowie.
+        app.state.rag_task = None
         await supervisor.start()
         try:
             yield
         finally:
             await supervisor.stop()
             await app.state.tts.shutdown()
+            app.state.rag.close()
             await client.aclose()
 
     app = FastAPI(title="VTT AI Gateway", version="0.1.0", lifespan=lifespan)
@@ -72,6 +86,7 @@ def create_app(
         supervisor: LlamaSupervisor = request.app.state.supervisor
         queue: RequestQueue = request.app.state.queue
         tts: TtsManager = request.app.state.tts
+        rag: RagService = request.app.state.rag
         tts_status = tts.status()
         return HealthResponse(
             status="ok" if supervisor.is_ready else "degraded",
@@ -85,6 +100,7 @@ def create_app(
             last_error=supervisor.last_error,
             gpu=await read_gpu_info(),
             tts=TtsStatusInfo(**vars(tts_status)),
+            rag=_rag_health(rag),
         )
 
     @app.post("/chat", dependencies=[Depends(require_api_key)])
@@ -207,6 +223,88 @@ def create_app(
             spoken_text=result.spoken_text,
         )
 
+    @app.get("/rag/status", response_model=RagStatusResponse)
+    async def rag_status(request: Request) -> RagStatusResponse:
+        rag: RagService = request.app.state.rag
+        return RagStatusResponse(**rag.status())  # type: ignore[arg-type]
+
+    @app.post(
+        "/rag/search",
+        response_model=RagSearchResponse,
+        dependencies=[Depends(require_api_key)],
+    )
+    async def rag_search(request: Request, body: RagSearchRequest) -> RagSearchResponse:
+        """Wyszukiwanie hybrydowe. Treść materiału wraca do wołającego — to jedyna
+        droga, którą podręcznik opuszcza gateway, i idzie wyłącznie do MG."""
+        rag: RagService = request.app.state.rag
+        started = time.perf_counter()
+        try:
+            hits = await rag.search(body.query, collection=body.collection, top_k=body.top_k)
+        except RagError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        return RagSearchResponse(
+            collection=body.collection,
+            query=body.query,
+            hits=[vars(hit) for hit in hits],  # type: ignore[arg-type]
+            took_ms=int((time.perf_counter() - started) * 1000),
+        )
+
+    @app.post(
+        "/rag/index",
+        response_model=RagIndexResponse,
+        dependencies=[Depends(require_api_key)],
+    )
+    async def rag_index(request: Request, body: RagIndexRequest) -> RagIndexResponse:
+        """Indeksowanie dokumentów przysłanych przez serwer VTT (etap 19b:
+        notatki kampanii). Krótkie, więc rozliczane synchronicznie."""
+        rag: RagService = request.app.state.rag
+        documents = [
+            RagDocument(source=doc.source, text=doc.text, title=doc.title, meta=dict(doc.meta))
+            for doc in body.documents
+        ]
+        try:
+            progress = await rag.index_documents(body.collection, documents)
+        except RagError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        return RagIndexResponse(
+            collection=body.collection,
+            documents=progress.done,
+            chunks=progress.chunks,
+            duration_ms=progress.duration_ms,
+            error=progress.error,
+        )
+
+    @app.post("/rag/index/rulebook", dependencies=[Depends(require_api_key)], status_code=202)
+    async def rag_index_rulebook(request: Request) -> dict[str, object]:
+        """Indeksowanie podręcznika z **lokalnego katalogu gatewaya**.
+
+        Tekst nie przechodzi przez serwer VTT ani przez sieć — gateway czyta pliki
+        z dysku maszyny, na której stoi. To jest realizacja kryterium etapu
+        „indeksowanie odbywa się wyłącznie lokalnie".
+        """
+        rag: RagService = request.app.state.rag
+        if not rag.enabled:
+            raise HTTPException(status_code=503, detail=rag.disabled_reason or "RAG niedostępny")
+        if rag.progress().running:
+            raise HTTPException(status_code=409, detail="indeksowanie już trwa")
+
+        async def run() -> None:
+            try:
+                await rag.index_rulebook()
+            except RagError as exc:
+                log.warning("indeksowanie podręcznika nieudane: %s", exc)
+                rag.progress().error = str(exc)
+
+        request.app.state.rag_task = asyncio.create_task(run())
+        return {"status": "started"}
+
+    @app.delete("/rag/collections/{name}", dependencies=[Depends(require_api_key)])
+    async def rag_delete_collection(request: Request, name: str) -> dict[str, int]:
+        rag: RagService = request.app.state.rag
+        if not rag.enabled:
+            raise HTTPException(status_code=503, detail=rag.disabled_reason or "RAG niedostępny")
+        return {"removed": rag.delete_collection(name)}
+
     @app.post("/admin/restart", dependencies=[Depends(require_api_key)])
     async def restart(request: Request) -> dict[str, str]:
         """Ręczny restart llama-server (diagnostyka z ekranu testowego MG)."""
@@ -226,3 +324,20 @@ def create_app(
 def _sse(event: str, data: dict[str, Any]) -> bytes:
     payload = json.dumps(data, ensure_ascii=False)
     return f"event: {event}\ndata: {payload}\n\n".encode()
+
+
+def _rag_health(rag: RagService) -> RagHealthInfo:
+    status = rag.status()
+    collections = status["collections"]
+    chunks = sum(int(item["chunks"]) for item in collections)  # type: ignore[index,union-attr]
+    indexing = bool(status["indexing"]["running"])  # type: ignore[index]
+    return RagHealthInfo(
+        enabled=bool(status["enabled"]),
+        ready=bool(status["enabled"]) and chunks > 0 and not status["model_mismatch"],
+        model=status["model"],  # type: ignore[arg-type]
+        device="cpu",
+        loaded=bool(status["loaded"]),
+        chunks=chunks,
+        indexing=indexing,
+        reason=status["reason"],  # type: ignore[arg-type]
+    )

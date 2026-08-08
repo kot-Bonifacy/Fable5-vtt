@@ -9,10 +9,12 @@ import { CompendiumPanel } from './CompendiumPanel.js';
 import { CombatPanel } from './CombatPanel.js';
 import { AiPanel } from './AiPanel.js';
 import { BotPanel } from './BotPanel.js';
+import { RulesPanel } from './RulesPanel.js';
 import { SidePanelResizer, useSidePanelWidth } from './SidePanelResizer.js';
 import { useAuthStore } from '../stores/authStore.js';
 
-type Tab = 'chat' | 'scenes' | 'tokens' | 'characters' | 'compendium' | 'combat' | 'bots' | 'ai';
+type Tab =
+  'chat' | 'scenes' | 'tokens' | 'characters' | 'compendium' | 'combat' | 'bots' | 'rules' | 'ai';
 
 /**
  * Side panel tabs in two rows: what everyone at the table uses, and the GM's
@@ -31,6 +33,7 @@ const GM_TABS: { id: Tab; label: string }[] = [
   { id: 'scenes', label: 'Sceny' },
   { id: 'tokens', label: 'Tokeny' },
   { id: 'bots', label: 'Boty' },
+  { id: 'rules', label: 'Zasady' },
   { id: 'ai', label: 'AI' },
 ];
 
@@ -77,6 +80,8 @@ export function SidePanel() {
         <CompendiumPanel />
       ) : activeTab === 'bots' ? (
         <BotPanel />
+      ) : activeTab === 'rules' ? (
+        <RulesPanel />
       ) : activeTab === 'ai' ? (
         <AiPanel />
       ) : (

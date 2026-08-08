@@ -1,0 +1,26 @@
+{
+  "$comment": "Próbka zestawu pytań do porównania modeli embeddingów (etap 19a). Pytania i sekcje są WYMYŚLONE — prawdziwy zestaw, odwołujący się do podręcznika, żyje w data/private/rag/bench-questions.json (poza repo, prawa autorskie).",
+  "collection": "rulebook",
+  "questions": [
+    {
+      "query": "co się dzieje z pancerzem, kiedy oberwę",
+      "expect": { "section": "Ablacja pancerza" }
+    },
+    {
+      "query": "ile metrów przechodzi postać w jednej turze",
+      "expect": { "section": "Odległość i ruch" }
+    },
+    {
+      "query": "jak sprawdzić, czy trafiłem z pistoletu na dużym dystansie",
+      "expect": { "section": "Poziom trudności strzału" }
+    },
+    {
+      "query": "kiedy rzuca się na przeżycie po ciężkiej ranie",
+      "expect": { "section": "Test przeżywalności" }
+    },
+    {
+      "query": "ile akcji mam w rundzie",
+      "expect": { "section": "Skrót akcji" }
+    }
+  ]
+}

@@ -33,6 +33,11 @@ venv/
 .DS_Store
 Thumbs.db
 
+# Bazy wektorowe RAG (etap 19a) — pochodne materiału źródłowego, odtwarzalne
+# jednym przebiegiem indeksowania. Fragmenty w środku to treść podręcznika.
+.rag-bench/
+*.sqlite3
+
 # Editors
 .idea/
 .vscode/

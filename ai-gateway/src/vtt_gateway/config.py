@@ -72,6 +72,34 @@ class Settings(BaseSettings):
     tts_timeout: float = 60.0
     tts_max_queue_length: int = 8
 
+    # --- RAG (pamięć długoterminowa, etap 19a) ---
+    rag_enabled: bool = True
+    # bge-m3 | multilingual-e5-large. Wybór zapadł pomiarem, nie z dokumentacji:
+    # na 10 polskich pytaniach o zasady bge-m3 daje 10/10 trafień w top-5, e5 — 9/10.
+    # Pełna tabela w README („Pomiary RAG").
+    rag_model: str = "bge-m3"
+    # Embeddingi liczą się na CPU: 0 GB VRAM, bo rezerwa karty jest przypisana
+    # whisperowi z etapu 21. Decyzja MG z 08.08 — uzasadnienie w opisie etapu 19a.
+    # 0 = domyślna liczba wątków onnxruntime.
+    rag_threads: int = 0
+    rag_batch_size: int = 8
+    # Baza wektorowa jest pochodną materiału źródłowego — nie backupujemy jej.
+    rag_db_path: Path = Path("C:/AI/vtt-rag/rag.sqlite3")
+    # Pusty = domyślny cache HuggingFace (~/.cache/huggingface).
+    rag_cache_dir: Path | None = None
+    # Ścieżka względna wobec katalogu ai-gateway (stamtąd startuje skrypt).
+    rag_rulebook_dir: Path = Path("../data/private/rulebook/manual/CPRED-podrecznik")
+    # Fragmenty 300–600 tokenów z zakładką — liczone tokenizerem modelu, nie na oko.
+    rag_chunk_tokens: int = 420
+    rag_chunk_overlap: int = 60
+    rag_top_k: int = 5
+    # Wagi fuzji RRF. Semantyka prowadzi, pełny tekst dokłada nazwy własne zasad.
+    # 0,3 zmierzone: przy 0,15 znika trafienie, które daje tylko pełny tekst
+    # (9/10), a przy 0,7 trafień jest tyle samo co przy 0,3, ale właściwy fragment
+    # ląduje niżej w prompcie (MRR 0,595 vs 0,770).
+    rag_dense_weight: float = 1.0
+    rag_keyword_weight: float = 0.3
+
     @property
     def manages_llama(self) -> bool:
         """Czy gateway sam uruchamia llama-server."""

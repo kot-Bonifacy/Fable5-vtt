@@ -1,5 +1,13 @@
-import type { AiGpuInfo, AiPurpose, AiStatus, AiTtsInfo, AiUsage } from '@vtt/shared';
-import { offlineAiStatus } from '@vtt/shared';
+import type {
+  AiGpuInfo,
+  AiPurpose,
+  AiStatus,
+  AiTtsInfo,
+  AiUsage,
+  RulesIndexStatus,
+  RulesPassage,
+} from '@vtt/shared';
+import { emptyRulesIndexStatus, offlineAiStatus } from '@vtt/shared';
 
 /** Shape of `GET /health` on the gateway (Python side uses snake_case). */
 interface GatewayHealth {
@@ -44,6 +52,52 @@ export type AiStreamEvent =
   | { type: 'delta'; text: string }
   | { type: 'done'; usage: AiUsage | null }
   | { type: 'error'; code: string; detail?: string };
+
+/** Shape of `GET /rag/status` on the gateway. */
+interface GatewayRagStatus {
+  enabled: boolean;
+  reason: string | null;
+  model: string | null;
+  device: string;
+  model_mismatch: boolean;
+  collections: {
+    name: string;
+    documents: number;
+    chunks: number;
+    tokens: number;
+    indexed_at: string | null;
+  }[];
+  indexing: {
+    running: boolean;
+    done: number;
+    total: number;
+    error: string | null;
+  };
+}
+
+interface GatewayRagHit {
+  chunk_id: number;
+  text: string;
+  source: string;
+  chapter: string;
+  section: string;
+  page: number | null;
+  page_end: number | null;
+  score: number;
+  dense_rank: number | null;
+  fts_rank: number | null;
+}
+
+export interface RulesSearchResult {
+  passages: RulesPassage[];
+  tookMs: number;
+}
+
+/** Failure of a RAG call, already worded for the GM. */
+export interface RulesFailure {
+  code: 'AI_UNREACHABLE' | 'RAG_UNAVAILABLE' | 'AI_ERROR';
+  detail: string;
+}
 
 export interface AiGatewayOptions {
   url: string;
@@ -141,6 +195,104 @@ export class AiGateway {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * State of the gateway's RAG index. Never throws: a gateway that is down is a
+   * „not ready" status with a reason, exactly like a gateway with an empty index —
+   * the panel says what to do in both cases.
+   */
+  async rulesStatus(): Promise<RulesIndexStatus> {
+    try {
+      const response = await this.fetchImpl(`${this.options.url}/rag/status`, {
+        signal: AbortSignal.timeout(HEALTH_TIMEOUT_MS),
+      });
+      if (!response.ok) {
+        return { ...emptyRulesIndexStatus(), reason: `gateway HTTP ${response.status}` };
+      }
+      return toRulesStatus((await response.json()) as GatewayRagStatus);
+    } catch (error) {
+      return {
+        ...emptyRulesIndexStatus(),
+        reason: `brak połączenia z AI Gateway (${describeError(error)})`,
+      };
+    }
+  }
+
+  /**
+   * Hybrid search over the indexed rulebook. The passages are book text, so the
+   * caller must only ever relay them to the GM.
+   */
+  async searchRules(
+    query: string,
+    topK: number,
+    collection = 'rulebook',
+  ): Promise<{ ok: true; result: RulesSearchResult } | { ok: false; error: RulesFailure }> {
+    let response: Response;
+    try {
+      response = await this.fetchImpl(`${this.options.url}/rag/search`, {
+        method: 'POST',
+        headers: this.jsonHeaders(),
+        body: JSON.stringify({ query, collection, top_k: topK }),
+        signal: AbortSignal.timeout(this.options.requestTimeoutMs),
+      });
+    } catch (error) {
+      void this.checkHealth();
+      return { ok: false, error: { code: 'AI_UNREACHABLE', detail: describeError(error) } };
+    }
+    if (!response.ok) {
+      return {
+        ok: false,
+        error: {
+          // 503 from `/rag/search` means „RAG cannot answer" (disabled, empty
+          // index, model changed) — a different problem from a dead model.
+          code: response.status === 503 ? 'RAG_UNAVAILABLE' : 'AI_ERROR',
+          detail: await safeDetail(response),
+        },
+      };
+    }
+    const body = (await response.json()) as { hits?: GatewayRagHit[]; took_ms?: number };
+    return {
+      ok: true,
+      result: {
+        passages: (body.hits ?? []).map(toPassage),
+        tookMs: typeof body.took_ms === 'number' ? body.took_ms : 0,
+      },
+    };
+  }
+
+  /**
+   * Asks the gateway to (re)index the rulebook from ITS OWN disk. No book text
+   * crosses the VTT server — that is the stage-19a licensing requirement, and the
+   * reason this is a bare trigger rather than an upload.
+   */
+  async indexRulebook(): Promise<{ ok: true } | { ok: false; error: RulesFailure }> {
+    try {
+      const response = await this.fetchImpl(`${this.options.url}/rag/index/rulebook`, {
+        method: 'POST',
+        headers: this.jsonHeaders(),
+        signal: AbortSignal.timeout(HEALTH_TIMEOUT_MS),
+      });
+      if (!response.ok) {
+        return {
+          ok: false,
+          error: {
+            code: response.status === 503 ? 'RAG_UNAVAILABLE' : 'AI_ERROR',
+            detail: await safeDetail(response),
+          },
+        };
+      }
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: { code: 'AI_UNREACHABLE', detail: describeError(error) } };
+    }
+  }
+
+  private jsonHeaders(): Record<string, string> {
+    return {
+      'content-type': 'application/json',
+      ...(this.options.apiKey ? { 'x-api-key': this.options.apiKey } : {}),
+    };
   }
 
   /**
@@ -332,6 +484,63 @@ function isMeaningfullyDifferent(a: AiStatus, b: AiStatus): boolean {
     a.tts?.loaded !== b.tts?.loaded ||
     a.tts?.queueLength !== b.tts?.queueLength
   );
+}
+
+function toPassage(hit: GatewayRagHit): RulesPassage {
+  return {
+    chunkId: hit.chunk_id,
+    text: hit.text,
+    source: hit.source,
+    chapter: hit.chapter ?? '',
+    section: hit.section ?? '',
+    page: hit.page ?? null,
+    pageEnd: hit.page_end ?? null,
+    score: hit.score ?? 0,
+    denseRank: hit.dense_rank ?? null,
+    keywordRank: hit.fts_rank ?? null,
+  };
+}
+
+function toRulesStatus(status: GatewayRagStatus): RulesIndexStatus {
+  // One collection per corpus; stage 19a indexes only the rulebook, later stages
+  // add their own and report them separately.
+  const rulebook = status.collections?.find((entry) => entry.name === 'rulebook') ?? null;
+  const chunks = rulebook?.chunks ?? 0;
+  const indexing = status.indexing?.running ?? false;
+  return {
+    enabled: status.enabled,
+    ready: status.enabled && chunks > 0 && !status.model_mismatch,
+    model: status.model ?? null,
+    device: status.device ?? 'cpu',
+    chunks,
+    documents: rulebook?.documents ?? 0,
+    indexedAt: rulebook?.indexed_at ?? null,
+    indexing,
+    progress: indexing ? { done: status.indexing.done, total: status.indexing.total } : null,
+    reason: rulesReason(status, chunks),
+  };
+}
+
+/** Why the assistant cannot answer — in the GM's language, with the next step. */
+function rulesReason(status: GatewayRagStatus, chunks: number): string | null {
+  if (!status.enabled) return status.reason ?? 'moduł RAG jest wyłączony w konfiguracji gatewaya';
+  if (status.indexing?.error) return status.indexing.error;
+  if (status.model_mismatch) {
+    return `indeks zbudowano innym modelem niż ${status.model ?? '?'} — zaindeksuj podręcznik ponownie`;
+  }
+  if (chunks === 0) return 'podręcznik nie jest jeszcze zaindeksowany';
+  return null;
+}
+
+async function safeDetail(response: Response): Promise<string> {
+  const text = await safeText(response);
+  try {
+    const body = JSON.parse(text) as { detail?: unknown };
+    if (typeof body.detail === 'string') return body.detail;
+  } catch {
+    // Nie JSON — oddajemy surowy tekst.
+  }
+  return text;
 }
 
 async function safeText(response: Response): Promise<string> {
