@@ -1,5 +1,4 @@
 import { mkdir } from 'node:fs/promises';
-import { join } from 'node:path';
 import Fastify, { type FastifyInstance } from 'fastify';
 import fastifyCookie from '@fastify/cookie';
 import fastifyMultipart from '@fastify/multipart';
@@ -9,20 +8,17 @@ import type { ServerConfig } from './config.js';
 import type { AppContext } from './context.js';
 import { createPrisma, type PrismaClient } from './db.js';
 import { AiGateway } from './ai/gateway.js';
-import { TtsClient } from './ai/tts.js';
 import { SESSION_COOKIE, resolveSessionUser } from './auth/sessions.js';
 import { ensureGmUser } from './auth/seed.js';
 import { registerAuthRoutes } from './routes/auth.js';
 import { registerJoinRoutes } from './routes/join.js';
 import { registerCampaignRoutes } from './routes/campaigns.js';
 import { MAX_MAP_UPLOAD_BYTES, registerUploadRoutes } from './routes/uploads.js';
-import { registerTtsRoutes } from './routes/tts.js';
 import { setupRealtime } from './realtime/index.js';
 import { loadStatusRegistry } from './statuses.js';
 import { loadCompendium } from './compendium.js';
 import { loadCpredRegistry } from './cpred.js';
 import { loadCoverCatalogue } from './covers.js';
-import { loadVoiceRegistry } from './voices.js';
 
 export interface BuiltApp {
   app: FastifyInstance;
@@ -85,16 +81,6 @@ export async function buildApp(
     fetchImpl: options.aiFetch,
   });
 
-  const tts = new TtsClient({
-    url: config.aiGatewayUrl,
-    apiKey: config.aiGatewayApiKey,
-    cacheDir: join(config.uploadsDir, 'tts-cache'),
-    timeoutMs: config.ttsTimeoutMs,
-    maxCacheBytes: config.ttsCacheMaxBytes,
-    ...(options.aiFetch ? { fetchImpl: options.aiFetch } : {}),
-    log: app.log,
-  });
-
   const ctx: AppContext = {
     config,
     prisma,
@@ -103,14 +89,11 @@ export async function buildApp(
     compendium: await loadCompendium(config.dataPublicDir, config.dataPrivateDir, app.log),
     covers: await loadCoverCatalogue(config.dataPublicDir, config.dataPrivateDir, app.log),
     ai,
-    tts,
-    voices: await loadVoiceRegistry(config.dataPublicDir, app.log),
   };
   registerAuthRoutes(app, ctx);
   registerJoinRoutes(app, ctx);
   registerCampaignRoutes(app, ctx);
   registerUploadRoutes(app, ctx);
-  registerTtsRoutes(app, ctx);
 
   const io = new SocketIOServer(app.server, {
     cors: { origin: config.clientOrigin, credentials: true },

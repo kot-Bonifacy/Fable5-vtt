@@ -1,5 +1,9 @@
 # Etap 21 — STT: polecenia głosowe
 
+> ⛔ **ETAP WYCOFANY 09.08.2026, nigdy nierozpoczęty.** Rozpoznawanie mowy wypada z projektu
+> w całości — także dyktowanie na czat i „szept głosowy do bota". Opis poniżej zostaje wyłącznie
+> jako zapis decyzji i nie jest planem pracy. Szczegóły: `README.md` w tym katalogu.
+
 **Faza:** G — Głos · **Wymaga etapów:** 11
 
 ## Cel sesji

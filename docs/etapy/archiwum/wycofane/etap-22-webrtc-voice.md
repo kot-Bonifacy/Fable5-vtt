@@ -1,5 +1,9 @@
 # Etap 22 — WebRTC: czat głosowy graczy
 
+> ⛔ **ETAP WYCOFANY 09.08.2026, nigdy nierozpoczęty.** Głosem przy stole zajmuje się zewnętrzny
+> komunikator — na stałe, nie tymczasowo. Odpada też coturn na VPS z etapu 28. Opis poniżej zostaje
+> wyłącznie jako zapis decyzji i nie jest planem pracy. Szczegóły: `README.md` w tym katalogu.
+
 **Faza:** G — Głos · **Wymaga etapów:** 03
 
 ## Cel sesji

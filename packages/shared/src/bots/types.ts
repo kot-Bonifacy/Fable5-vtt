@@ -82,30 +82,6 @@ export interface BotLesson {
 }
 
 /**
- * Speech (stage 12). The whole profile lives in one JSON column, so adding it
- * needed no migration — `parseBotData` fills the section in for older bots.
- */
-export interface BotVoice {
-  enabled: boolean;
-  /** Id of a bundled Polish preset, or null when a sample is used. */
-  presetId: string | null;
-  /** `/uploads/voices/...` path of a cloning sample (engines that support it). */
-  sampleUrl: string | null;
-  /** 0.5–2.0, 1 = preset default. */
-  rate: number;
-  /**
-   * 0.7–1.4, 1 = preset default. Piper has no pitch control, so the engine
-   * composes it from synthesis speed and playback sample rate — see the adapter.
-   */
-  pitch: number;
-}
-
-export const BOT_VOICE_RATE_MIN = 0.5;
-export const BOT_VOICE_RATE_MAX = 2;
-export const BOT_VOICE_PITCH_MIN = 0.7;
-export const BOT_VOICE_PITCH_MAX = 1.4;
-
-/**
  * Kolekcje, z których bot może czytać (etapy 19b i 19c): baza wiedzy kampanii i
  * dziennik sesji. Podręcznika NIE ma na liście świadomie — żelazna zasada promptu
  * mówi „nie znasz zasad gry", a jego treść jest objęta prawem autorskim i
@@ -174,7 +150,6 @@ export interface BotProfileData {
   knowledgeContext: BotKnowledgeContext;
   generation: BotGeneration;
   lessons: BotLesson[];
-  voice: BotVoice;
   /** Ile bot może zrobić sam w mechanice (etap 20a). */
   autonomy: BotAutonomy;
   /**
@@ -334,9 +309,10 @@ export interface BotStopPayload {
 }
 
 /**
- * One bot turn in flight, as everyone at the table sees it. `text` carries the
- * provisional answer so chat can stream it; the final, sanitized line arrives
- * as a normal `chat:message` and the entry disappears.
+ * One bot turn in flight, as everyone at the table sees it: „NPC pisze…" and
+ * its place in the queue, nothing more. The answer itself is never previewed —
+ * it arrives as a normal `chat:message` (written out in reading rhythm by the
+ * client) and the entry disappears.
  */
 export interface BotActivityEntry {
   turnId: string;
@@ -347,13 +323,6 @@ export interface BotActivityEntry {
   state: 'queued' | 'typing';
   /** 0 = generating, 1+ = place in the queue. */
   position: number;
-  text: string;
-  /**
-   * The answer will be spoken (stage 12). Then `text` stays empty on purpose:
-   * the line appears only when the NPC starts saying it, so a live preview
-   * would give away the punchline.
-   */
-  speaking?: boolean;
   /**
    * Private turn (answer to a whisper) — delivered only to this user and the
    * GM, so a whispered answer never flashes on other clients.

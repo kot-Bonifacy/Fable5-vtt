@@ -16,10 +16,6 @@ import {
   BOT_TEMPERATURE_MAX,
   BOT_TEMPERATURE_MIN,
   BOT_TYPES,
-  BOT_VOICE_PITCH_MAX,
-  BOT_VOICE_PITCH_MIN,
-  BOT_VOICE_RATE_MAX,
-  BOT_VOICE_RATE_MIN,
   type BotAutonomy,
   type BotGeneration,
   type BotKnowledge,
@@ -30,7 +26,6 @@ import {
   type BotProfileData,
   type BotTemplate,
   type BotType,
-  type BotVoice,
 } from './types.js';
 
 /**
@@ -69,7 +64,6 @@ export function createDefaultBotData(type: BotType = 'npc'): BotProfileData {
     knowledgeContext: { sources: [], tags: [], topK: 3 },
     generation: defaultBotGeneration(type),
     lessons: [],
-    voice: { enabled: false, presetId: null, sampleUrl: null, rate: 1, pitch: 1 },
     // Etap 20a: nowy bot niczego nie robi sam. Przełączenie na automat to jedno
     // kliknięcie, ale musi być kliknięciem MG — świeżo napisany bot potrafi
     // wybrać bzdurę, a przy „automacie" widać to dopiero po fakcie.
@@ -316,41 +310,6 @@ function validateLessons(raw: unknown, issues: BotValidationIssue[]): BotLesson[
   return lessons;
 }
 
-function validateVoice(raw: unknown, issues: BotValidationIssue[]): BotVoice | undefined {
-  if (typeof raw !== 'object' || raw === null) {
-    issues.push(issue('voice', 'Nieprawidłowy format ustawień głosu.'));
-    return undefined;
-  }
-  const input = raw as Record<string, unknown>;
-  const rate = input.rate ?? 1;
-  if (
-    typeof rate !== 'number' ||
-    !Number.isFinite(rate) ||
-    rate < BOT_VOICE_RATE_MIN ||
-    rate > BOT_VOICE_RATE_MAX
-  ) {
-    issues.push(issue('voice.rate', 'Tempo mowy musi mieścić się w zakresie 0,5–2,0.'));
-    return undefined;
-  }
-  const pitch = input.pitch ?? 1;
-  if (
-    typeof pitch !== 'number' ||
-    !Number.isFinite(pitch) ||
-    pitch < BOT_VOICE_PITCH_MIN ||
-    pitch > BOT_VOICE_PITCH_MAX
-  ) {
-    issues.push(issue('voice.pitch', 'Wysokość głosu musi mieścić się w zakresie 0,7–1,4.'));
-    return undefined;
-  }
-  return {
-    enabled: input.enabled === true,
-    presetId: typeof input.presetId === 'string' ? input.presetId : null,
-    sampleUrl: typeof input.sampleUrl === 'string' ? input.sampleUrl : null,
-    rate,
-    pitch,
-  };
-}
-
 /**
  * Validates one profile patch (any subset of top-level keys). `type` is needed
  * for generation defaults, so callers pass the currently stored type.
@@ -395,10 +354,9 @@ export function validateBotDataPatch(
     const lessons = validateLessons(input.lessons, issues);
     if (lessons) patch.lessons = lessons;
   }
-  if ('voice' in input) {
-    const voice = validateVoice(input.voice, issues);
-    if (voice) patch.voice = voice;
-  }
+  // `voice` z etapu 12 jest świadomie pomijane: mowa botów została wycofana, a
+  // stare profile mogą mieć tę sekcję w JSON-ie — patch bez niej po prostu
+  // przestaje ją zapisywać, zamiast odrzucać całe żądanie.
   if ('autonomy' in input) {
     if (!BOT_AUTONOMY_MODES.includes(input.autonomy as BotAutonomy)) {
       issues.push(issue('autonomy', 'Nieznany tryb autonomii.'));

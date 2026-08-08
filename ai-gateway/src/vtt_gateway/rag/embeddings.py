@@ -1,15 +1,13 @@
 """Embeddingi na CPU przez onnxruntime.
 
-**Dlaczego CPU, a nie GPU** (decyzja MG, etap 19a): po etapie 12 na karcie zostaje
-~4,0 GB, a etap 21 (faster-whisper `medium`) chce z tego 1,5–2 GB. Model
-embeddingów na GPU zjadłby połowę rezerwy i wymusiłby zejście z kontekstu 32k.
-Na CPU kosztuje kilka minut jednorazowego indeksowania i ułamek sekundy na
-zapytanie — przy limicie 15 s na odpowiedź to nie jest wąskie gardło. Ta sama
-droga, którą w etapie 12 poszedł Piper: 0 GB VRAM.
+**Dlaczego CPU, a nie GPU** (decyzja MG, etap 19a): model embeddingów na GPU
+zjadłby rezerwę, która trzyma kontekst 32k przy życiu. Na CPU kosztuje kilka
+minut jednorazowego indeksowania i ułamek sekundy na zapytanie — przy limicie
+15 s na odpowiedź to nie jest wąskie gardło.
 
 **Dlaczego nie sentence-transformers:** ciągnie za sobą torch (setki MB), a oba
-kandydujące modele mają na HuggingFace gotowy eksport ONNX. `onnxruntime` jest w
-gatewayu od etapu 12, więc nowe zależności to tylko tokenizer i klient HF.
+kandydujące modele mają na HuggingFace gotowy eksport ONNX, więc wystarczy
+`onnxruntime`, tokenizer i klient HF.
 """
 
 from __future__ import annotations

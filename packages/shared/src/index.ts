@@ -21,7 +21,6 @@ export * from './rules-assistant.js';
 export * from './scenes.js';
 export * from './smoke.js';
 export * from './tokens.js';
-export * from './tts.js';
 export * from './vision.js';
 export * from './walls.js';
 // CP RED system module. Core modules above must never import from it —

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { CombatBar } from './CombatBar.js';
 import { ConnectionStatus } from './ConnectionStatus.js';
-import { SpeechControls } from './SpeechControls.js';
+import { TypewriterToggle } from './TypewriterToggle.js';
 import { useAuthStore } from '../stores/authStore.js';
 
 export function TopBar() {
@@ -18,7 +18,7 @@ export function TopBar() {
       <div className="top-bar-right">
         {activeCampaign && <span className="top-bar-campaign">{activeCampaign.name}</span>}
         <ConnectionStatus />
-        <SpeechControls />
+        <TypewriterToggle />
         {user && (
           <span className="top-bar-user">
             {user.name} ({user.role === 'GM' ? 'MG' : 'Gracz'})

@@ -18,10 +18,9 @@ import {
 import { AttackRow } from './AttackControls.js';
 import { OpposedRow } from './GrappleControls.js';
 import { DamageApplyControls, DamageRow } from './DamageControls.js';
-import { replayMessage } from '../speech.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useChatStore, type ChatItem } from '../stores/chatStore.js';
-import { useSpeechStore } from '../stores/speechStore.js';
+import { useTypewriterStore } from '../stores/typewriterStore.js';
 
 const LOAD_MORE_THRESHOLD_PX = 48;
 const STICK_TO_BOTTOM_PX = 64;
@@ -345,12 +344,11 @@ function MessageRow({
     message.authorId === myUserId
       ? `szept do: ${message.recipientName ?? '?'}`
       : `szept od: ${message.authorName}`;
-  // While an NPC is speaking, only the words already said are on screen — the
-  // line writes itself out in step with the voice (stage 12). Anything not
-  // being spoken right now (history, silent bots, people) renders whole.
-  const revealedChars = useSpeechStore((state) => state.revealed[message.id]);
-  const speaking = revealedChars !== undefined;
-  const text = speaking ? message.text.slice(0, revealedChars) : message.text;
+  // Wypowiedź NPC-a, która właśnie się dopisuje, pokazuje tylko to, co „padło".
+  // Wszystko inne (historia, ludzie, linia po dopisaniu) renderuje się w całości.
+  const revealedChars = useTypewriterStore((state) => state.revealed[message.id]);
+  const typing = revealedChars !== undefined;
+  const text = typing ? message.text.slice(0, revealedChars) : message.text;
 
   return (
     <div
@@ -363,20 +361,10 @@ function MessageRow({
         <span className="chat-message-author">{message.authorName}</span>
         {isWhisper && <span className="chat-whisper-label">{whisperLabel}</span>}
         <span className="chat-message-time">{formatTime(message.createdAt)}</span>
-        {message.speech?.audioUrl && !speaking && (
-          <button
-            type="button"
-            className="small-button chat-replay"
-            title="Odtwórz ponownie"
-            onClick={() => replayMessage(message)}
-          >
-            🔊
-          </button>
-        )}
       </div>
       <div className="chat-message-text">
         {text}
-        {speaking && <span className="chat-speech-cursor" aria-hidden />}
+        {typing && <span className="chat-typewriter-cursor" aria-hidden />}
       </div>
       {trace && <BotTrace trace={trace} />}
     </div>
@@ -384,9 +372,9 @@ function MessageRow({
 }
 
 /**
- * A bot turn in flight. The answer streams in as provisional text (italic) and
- * is replaced by a real message once the guardrails have passed it — the
- * automatic retry after a slip clears the text and starts over.
+ * Tura bota w locie: stół widzi „NPC pisze…" i miejsce w kolejce, nigdy
+ * podglądu samej wypowiedzi — ta pojawia się dopiero jako zwyczajna wiadomość
+ * (dopisująca się słowo po słowie), gdy przejdzie przez guardraile.
  */
 function BotActivityRow({ entry, canStop }: { entry: BotActivityEntry; canStop: boolean }) {
   const queued = entry.state === 'queued';
@@ -402,7 +390,7 @@ function BotActivityRow({ entry, canStop }: { entry: BotActivityEntry; canStop: 
         )}
         <span className="chat-message-author">{entry.name}</span>
         <span className="chat-typing-label">
-          {queued ? `w kolejce (${entry.position})` : entry.speaking ? 'mówi…' : 'pisze…'}
+          {queued ? `w kolejce (${entry.position})` : 'pisze…'}
         </span>
         {entry.whisperToUserId && <span className="chat-whisper-label">szeptem</span>}
         {canStop && (
@@ -416,9 +404,6 @@ function BotActivityRow({ entry, canStop }: { entry: BotActivityEntry; canStop: 
           </button>
         )}
       </div>
-      {entry.text.length > 0 && (
-        <div className="chat-message-text chat-message-text--pending">{entry.text}</div>
-      )}
     </div>
   );
 }

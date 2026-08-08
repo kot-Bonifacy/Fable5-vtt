@@ -1,5 +1,11 @@
 # Etap 12 — TTS: głos botów
 
+> ⛔ **ETAP WYCOFANY 09.08.2026.** Był ukończony 26.07.2026 (Piper na CPU), ale mowa botów wypadła
+> z projektu razem z całą fazą G. **Kod został usunięty z repozytorium** — opis poniżej zostaje
+> wyłącznie jako zapis tego, co istniało, i nie jest planem pracy. Szczegóły: `README.md` w tym
+> katalogu. Z etapu przetrwało jedno zachowanie: wypowiedź NPC-a dopisuje się na czacie słowo po
+> słowie, ale rytm liczy dziś klient (`packages/client/src/typewriter.ts`), nie synteza mowy.
+
 **Faza:** C — Boty MVP · **Wymaga etapów:** 11
 
 ## Cel sesji

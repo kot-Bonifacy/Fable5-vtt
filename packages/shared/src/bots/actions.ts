@@ -17,8 +17,8 @@
  *    Konwerter JSON Schema → GBNF w llama.cpp bywa kapryśny przy dużych
  *    schematach, a 9B i tak wybiera lepiej z listy niż z drzewa.
  * 3. **Gramatyka nie dotyka polszczyzny.** Ten przebieg jest maszyna-do-maszyny.
- *    Wypowiedź NPC-a jedzie dalej swobodnym tekstem (etapy 10–12) — gramatyka
- *    psuje odmianę i wyklucza streaming zdaniami, na którym stoi TTS.
+ *    Wypowiedź NPC-a jedzie dalej swobodnym tekstem (etapy 10–11) — gramatyka
+ *    psuje odmianę i wyklucza strumieniowanie, na którym stoi podgląd wypowiedzi.
  */
 
 /**

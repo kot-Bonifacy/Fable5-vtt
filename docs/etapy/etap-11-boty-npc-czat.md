@@ -20,7 +20,7 @@ Aktywne boty stają się uczestnikami czatu sesji: rozmawiają po polsku jako NP
 
 ## Poza zakresem
 
-- Pamięć między sesjami, RAG, relacje (etap 19); rzuty i ruch tokenów przez boty (etap 20); mowa botów — TTS (etap 12); STT/szept głosowy (etap 21)
+- Pamięć między sesjami, RAG, relacje (etap 19); rzuty i ruch tokenów przez boty (etap 20); mowa botów (etap 12) i szept głosowy (etap 21) — oba wycofane 09.08.2026
 
 ## Kryteria ukończenia
 

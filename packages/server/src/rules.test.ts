@@ -44,8 +44,6 @@ const config: ServerConfig = {
   aiGatewayApiKey: 'test-key',
   aiHealthIntervalMs: 200,
   aiRequestTimeoutMs: 5000,
-  ttsTimeoutMs: 5000,
-  ttsCacheMaxBytes: 8 * 1024 * 1024,
 };
 
 const PASSAGE_ONE = {

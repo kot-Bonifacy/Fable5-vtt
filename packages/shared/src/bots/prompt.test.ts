@@ -174,7 +174,16 @@ describe('profile storage', () => {
     expect(data.persona.catchphrases).toEqual([]);
     expect(data.knowledge.world).toBe('');
     expect(data.generation.reasoning).toBe(false);
-    expect(data.voice.enabled).toBe(false);
+  });
+
+  it('drops the retired voice section instead of rejecting an old profile', () => {
+    // Profile zapisane przed wycofaniem mowy botów mają w JSON-ie sekcję `voice`.
+    // Musi być po cichu pomijana — inaczej stary bot przestałby się wczytywać.
+    const data = parseBotData(
+      '{"type":"npc","voice":{"enabled":true,"presetId":"pl-fixer","rate":1.2},"persona":{"personality":"Barman."}}',
+    );
+    expect(data.persona.personality).toBe('Barman.');
+    expect('voice' in data).toBe(false);
   });
 
   it('defaults thinking blocks on for the GM assistant only', () => {

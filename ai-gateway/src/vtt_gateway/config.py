@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     llama_binary: Path | None = None
     llama_model: Path | None = None
     llama_url: str = "http://127.0.0.1:8080"
-    # 32k mieści się w 16 GB VRAM razem z rezerwą na whisper — pomiary w README.
+    # 32k mieści się w 16 GB VRAM z zapasem — pomiary w README.
     llama_ctx_size: int = 32768
     llama_gpu_layers: int = 999
     llama_flash_attn: bool = True
@@ -55,31 +55,14 @@ class Settings(BaseSettings):
     # Ile żądań może czekać w kolejce zanim gateway zacznie odrzucać (503).
     max_queue_length: int = 16
 
-    # --- TTS (głos botów) ---
-    # piper | chatterbox | none. Piper wybrany po pomiarach etapu 12: 0 GB VRAM,
-    # synteza ~50x szybsza niż realtime i alignment fonemów (rytm ujawniania tekstu).
-    tts_engine: str = "piper"
-    # cpu | cuda — dotyczy tylko silników, które w ogóle mogą pójść na GPU.
-    tts_device: str = "cpu"
-    tts_voices_dir: Path = Path("C:/AI/tts/piper-voices")
-    tts_default_voice: str = "pl_PL-darkman-medium"
-    # Katalog na próbki głosu do klonowania (przysyłane przez serwer VTT).
-    tts_samples_dir: Path = Path("C:/AI/tts/voice-samples")
-    # Po ilu sekundach bezczynności zwolnić model. 0 = trzymaj w pamięci.
-    tts_idle_unload_s: float = 600.0
-    # Twardy limit długości pojedynczej wypowiedzi (znaki).
-    tts_max_chars: int = 1200
-    tts_timeout: float = 60.0
-    tts_max_queue_length: int = 8
-
     # --- RAG (pamięć długoterminowa, etap 19a) ---
     rag_enabled: bool = True
     # bge-m3 | multilingual-e5-large. Wybór zapadł pomiarem, nie z dokumentacji:
     # na 10 polskich pytaniach o zasady bge-m3 daje 10/10 trafień w top-5, e5 — 9/10.
     # Pełna tabela w README („Pomiary RAG").
     rag_model: str = "bge-m3"
-    # Embeddingi liczą się na CPU: 0 GB VRAM, bo rezerwa karty jest przypisana
-    # whisperowi z etapu 21. Decyzja MG z 08.08 — uzasadnienie w opisie etapu 19a.
+    # Embeddingi liczą się na CPU: 0 GB VRAM, więc cała karta zostaje modelowi
+    # językowemu. Decyzja MG z 08.08 — uzasadnienie w opisie etapu 19a.
     # 0 = domyślna liczba wątków onnxruntime.
     rag_threads: int = 0
     rag_batch_size: int = 8

@@ -8,7 +8,6 @@ import type {
   BotView,
   KnowledgePreviewResult,
   PortraitUploadResult,
-  TtsVoicePreset,
 } from '@vtt/shared';
 import {
   BOT_AUTONOMY_HINTS,
@@ -30,16 +29,10 @@ import {
   BOT_TEST_MESSAGE_MAX_LENGTH,
   BOT_TYPES,
   BOT_TYPE_LABELS,
-  BOT_VOICE_PITCH_MAX,
-  BOT_VOICE_PITCH_MIN,
-  BOT_VOICE_RATE_MAX,
-  BOT_VOICE_RATE_MIN,
   RELATION_MAX,
   RELATION_MIN,
   RELATION_NOTE_MAX_LENGTH,
   ROLE_GM,
-  VOICE_SAMPLE_MAX_SECONDS,
-  VOICE_SAMPLE_MIN_SECONDS,
   compileBotPrompt,
   defaultBotGeneration,
   estimatePromptTokens,
@@ -52,14 +45,13 @@ const RELATION_VALUES = Array.from(
   { length: RELATION_MAX - RELATION_MIN + 1 },
   (_, index) => RELATION_MIN + index,
 );
-import { ApiError, apiGet, apiUpload } from '../api.js';
+import { ApiError, apiUpload } from '../api.js';
 import {
   cancelBotChat,
   deleteRelation,
   fetchRelations,
   flushBotSave,
   previewBotPrompt,
-  previewVoice,
   queueBotSave,
   sendBotChat,
   setRelation,
@@ -67,19 +59,16 @@ import {
 } from '../socket.js';
 import { useKnowledgeStore } from '../stores/knowledgeStore.js';
 import { relationKey, useRelationStore } from '../stores/relationStore.js';
-import { playPreview } from '../speech.js';
 import { useBotStore, type BotTestTurn } from '../stores/botStore.js';
 import { useAiStore } from '../stores/aiStore.js';
 import { useChatStore } from '../stores/chatStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
-import { useSpeechStore } from '../stores/speechStore.js';
 
-type EditorTab = 'role' | 'knowledge' | 'voice' | 'lessons' | 'chat' | 'prompt';
+type EditorTab = 'role' | 'knowledge' | 'lessons' | 'chat' | 'prompt';
 
 const TABS: { id: EditorTab; label: string }[] = [
   { id: 'role', label: 'Rola' },
   { id: 'knowledge', label: 'Wiedza i model' },
-  { id: 'voice', label: 'Głos' },
   { id: 'lessons', label: 'Wnioski' },
   { id: 'chat', label: 'Rozmowa testowa' },
   { id: 'prompt', label: 'Prompt' },
@@ -227,7 +216,6 @@ function BotEditorWindow({ botId, stackIndex }: { botId: string; stackIndex: num
       <div className="sheet-body">
         {tab === 'role' && <RoleTab bot={bot} saveData={saveData} />}
         {tab === 'knowledge' && <KnowledgeTab bot={bot} saveData={saveData} />}
-        {tab === 'voice' && <VoiceTab bot={bot} saveData={saveData} />}
         {tab === 'lessons' && (
           <LessonsTab
             bot={bot}
@@ -444,213 +432,6 @@ function RoleTab({ bot, saveData }: TabProps) {
   );
 }
 
-/**
- * Voice of the NPC. Presets are archetypes („Fikserka", „Bramkarz"), and the
- * two sliders shift the chosen one further, so a dozen NPCs can sound distinct
- * without a dozen models. „Posłuchaj" synthesizes outside the session — the
- * table hears nothing.
- */
-function VoiceTab({ bot, saveData }: TabProps) {
-  const voice = bot.data.voice;
-  const speech = useSpeechStore((s) => s.status);
-  const [presets, setPresets] = useState<TtsVoicePreset[]>([]);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [spoken, setSpoken] = useState<string | null>(null);
-  const [sampleText, setSampleText] = useState('');
-  const [uploading, setUploading] = useState(false);
-  // Only engines that clone a voice can use a sample; with Piper the field
-  // stays visible but disabled, with an explanation.
-  const clonable = speech?.engine === 'chatterbox';
-
-  useEffect(() => {
-    apiGet<{ voices: TtsVoicePreset[] }>('/api/tts/voices')
-      .then((body) => setPresets(body.voices))
-      .catch(() => setPresets([]));
-  }, []);
-
-  function setVoice(patch: Partial<BotProfileData['voice']>) {
-    saveData({ voice: { ...voice, ...patch } });
-  }
-
-  async function uploadSample(file: File | undefined) {
-    if (!file) return;
-    setUploading(true);
-    setError(null);
-    try {
-      const result = await apiUpload<{ url: string; seconds: number }>('/api/uploads/voices', file);
-      setVoice({ sampleUrl: result.url });
-    } catch (uploadError) {
-      const code = uploadError instanceof ApiError ? uploadError.code : 'UNKNOWN';
-      setError(
-        code === 'SAMPLE_TOO_SHORT'
-          ? `Próbka jest za krótka (minimum ${VOICE_SAMPLE_MIN_SECONDS} s).`
-          : code === 'SAMPLE_TOO_LONG'
-            ? `Próbka jest za długa (maksimum ${VOICE_SAMPLE_MAX_SECONDS} s).`
-            : code === 'UNSUPPORTED_AUDIO'
-              ? 'To nie jest plik WAV.'
-              : code === 'FILE_TOO_LARGE'
-                ? 'Plik jest za duży (limit 8 MB).'
-                : 'Nie udało się wgrać próbki.',
-      );
-    } finally {
-      setUploading(false);
-    }
-  }
-
-  async function listen() {
-    setBusy(true);
-    setError(null);
-    flushBotSave(bot.id);
-    const ack = await previewVoice({
-      botId: bot.id,
-      presetId: voice.presetId,
-      rate: voice.rate,
-      pitch: voice.pitch,
-      text: sampleText.trim() || undefined,
-    });
-    setBusy(false);
-    if (!ack.ok || !ack.data) {
-      const code = ack.ok ? '' : ack.error;
-      setError(
-        code === 'TTS_UNAVAILABLE'
-          ? 'Silnik mowy jest niedostępny — sprawdź, czy AI Gateway działa.'
-          : code === 'VOICE_NOT_FOUND'
-            ? 'Wybierz głos z listy.'
-            : 'Nie udało się zsyntetyzować próbki.',
-      );
-      return;
-    }
-    setSpoken(ack.data.spokenText);
-    void playPreview(ack.data.audioUrl);
-  }
-
-  const engineAvailable = speech?.available === true;
-
-  return (
-    <div className="bot-form">
-      <label className="bot-checkbox">
-        <input
-          type="checkbox"
-          checked={voice.enabled}
-          onChange={(e) => setVoice({ enabled: e.target.checked })}
-        />
-        <span>Ten NPC mówi na głos</span>
-      </label>
-      <p className="bot-hint">
-        Wypowiedź pojawia się na czacie w rytmie mowy — słowo po słowie, tak jak ją słychać. Gracz z
-        wyciszonym dźwiękiem widzi ten sam rytm.
-      </p>
-
-      {!engineAvailable && (
-        <p className="bot-warning">
-          Silnik mowy jest teraz niedostępny. Ustawienia możesz zapisać — bot będzie mówił, gdy
-          gateway wróci.
-        </p>
-      )}
-
-      <label className="bot-field">
-        <span className="auth-label">Głos</span>
-        <select
-          value={voice.presetId ?? ''}
-          onChange={(e) => setVoice({ presetId: e.target.value || null })}
-        >
-          <option value="">— wybierz —</option>
-          {presets.map((preset) => (
-            <option key={preset.id} value={preset.id}>
-              {preset.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      {voice.presetId && (
-        <p className="bot-hint">
-          {presets.find((preset) => preset.id === voice.presetId)?.description ?? ''}
-        </p>
-      )}
-
-      <div className="bot-row-inline">
-        <label className="bot-field bot-field--inline">
-          <span className="auth-label">Tempo ({voice.rate.toFixed(2)}×)</span>
-          <input
-            type="range"
-            min={BOT_VOICE_RATE_MIN}
-            max={BOT_VOICE_RATE_MAX}
-            step={0.05}
-            value={voice.rate}
-            onChange={(e) => setVoice({ rate: Number(e.target.value) })}
-          />
-        </label>
-        <label className="bot-field bot-field--inline">
-          <span className="auth-label">Wysokość ({voice.pitch.toFixed(2)}×)</span>
-          <input
-            type="range"
-            min={BOT_VOICE_PITCH_MIN}
-            max={BOT_VOICE_PITCH_MAX}
-            step={0.02}
-            value={voice.pitch}
-            onChange={(e) => setVoice({ pitch: Number(e.target.value) })}
-          />
-        </label>
-      </div>
-
-      <div className="bot-field">
-        <span className="auth-label">Własna próbka głosu</span>
-        <p className="bot-hint">
-          {clonable
-            ? `Nagranie ${VOICE_SAMPLE_MIN_SECONDS}–${VOICE_SAMPLE_MAX_SECONDS} s w formacie WAV — bot przejmie z niego barwę.`
-            : `Silnik „${speech?.engine ?? 'none'}" nie klonuje głosu z próbki. Ustaw GATEWAY_TTS_ENGINE=chatterbox, jeśli chcesz z tego korzystać.`}
-        </p>
-        <input
-          type="file"
-          accept="audio/wav"
-          disabled={!clonable || uploading}
-          onChange={(e) => void uploadSample(e.target.files?.[0])}
-        />
-        {voice.sampleUrl && (
-          <div className="bot-row-inline">
-            <span className="bot-hint">Wgrana próbka: {voice.sampleUrl.split('/').pop()}</span>
-            <button
-              type="button"
-              className="small-button"
-              onClick={() => setVoice({ sampleUrl: null })}
-            >
-              Usuń
-            </button>
-          </div>
-        )}
-      </div>
-
-      <label className="bot-field">
-        <span className="auth-label">Kwestia do odsłuchu</span>
-        <input
-          type="text"
-          value={sampleText}
-          placeholder="Zostaw puste, żeby użyć zdania testowego"
-          onChange={(e) => setSampleText(e.target.value)}
-        />
-      </label>
-
-      <div className="bot-row-inline">
-        <button
-          type="button"
-          className="small-button"
-          disabled={busy || !engineAvailable}
-          onClick={() => void listen()}
-        >
-          {busy ? 'Syntetyzuję…' : '▶ Posłuchaj'}
-        </button>
-      </div>
-      {error && <p className="auth-error">{error}</p>}
-      {spoken && (
-        <p className="bot-hint">
-          Silnik przeczytał: <em>{spoken}</em>
-        </p>
-      )}
-    </div>
-  );
-}
-
 function KnowledgeTab({ bot, saveData }: TabProps) {
   const data = bot.data;
   const characters = useCharacterStore((s) => s.characters);
@@ -754,8 +535,6 @@ function KnowledgeTab({ bot, saveData }: TabProps) {
           Bez niej bot nie ma czym rzucać — testy wykonuje wyłącznie tą kartą.
         </span>
       </label>
-
-      {/* Sekcja „Głos" dojdzie tutaj w etapie 12 (TTS). */}
     </div>
   );
 }

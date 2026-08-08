@@ -1,6 +1,8 @@
 # VTT — Cyberpunk RED Virtual Tabletop
 
-VTT dla jednej grupy RPG (Cyberpunk RED): mapa + tokeny, interaktywne karty postaci, kości d10 wg zasad CP RED, boty LLM na lokalnym modelu (opcjonalnie mówiące po polsku — TTS), polecenia głosowe (STT), czat głosowy (WebRTC). Interfejs wzorowany na Foundry VTT. Właściciel projektu jest MG i zaawansowanym full-stack developerem; gra też solo z botami.
+VTT dla jednej grupy RPG (Cyberpunk RED): mapa + tokeny, interaktywne karty postaci, kości d10 wg zasad CP RED, boty LLM na lokalnym modelu (rozmawiające po polsku, wyłącznie tekstem). Interfejs wzorowany na Foundry VTT. Właściciel projektu jest MG i zaawansowanym full-stack developerem; gra też solo z botami.
+
+**Głos jest poza zakresem projektu (decyzja z 09.08.2026).** Ani mowa botów (TTS), ani polecenia głosowe (STT), ani czat głosowy graczy (WebRTC) — cała faza G została wycofana, a kod TTS z etapu 12 usunięty. Rozmowa z botami odbywa się na czacie; głos przy stole załatwia osobne narzędzie (Discord itp.). Nie proponuj wracania do żadnej z tych funkcji.
 
 Pełna wizja i decyzje: `docs/etapy/00-przeglad.md`. Źródłowa ankieta: `vtt-ankieta-podsumowanie.md`.
 
@@ -22,11 +24,9 @@ Pełna wizja i decyzje: `docs/etapy/00-przeglad.md`. Źródłowa ankieta: `vtt-a
 | Backend VTT       | Node.js (LTS) + TypeScript, Fastify + Socket.IO                                                           |
 | Baza danych       | SQLite + Prisma (migracje w repo)                                                                         |
 | Kod współdzielony | `packages/shared` — typy + silnik zasad CP RED (czysta logika, testy vitest)                              |
-| AI Gateway        | Python 3.12 + FastAPI w `ai-gateway/` — spina llama-server, faster-whisper i RAG                          |
+| AI Gateway        | Python 3.12 + FastAPI w `ai-gateway/` — spina llama-server i RAG                                          |
 | LLM               | Qwythos-9B-v2 GGUF Q8_0 przez `llama-server` (llama.cpp), API zgodne z OpenAI, RTX 5070 Ti na lokalnym PC |
-| STT               | faster-whisper (medium; fallback: small lub CPU int8, jeśli zabraknie VRAM)                               |
-| TTS (głos botów)  | opcjonalny, ≤ 3 GB VRAM; silnik wybierany w etapie 12 po odsłuchu: Piper (CPU) lub Chatterbox (GPU)       |
-| Głos graczy       | WebRTC mesh P2P, signaling przez Socket.IO, coturn na VPS                                                 |
+| Głos              | brak — TTS, STT i WebRTC wycofane 09.08.2026 (patrz akapit nad tabelą)                                    |
 | Deploy            | Docker Compose na VPS (Ubuntu 24.04, home.pl), Caddy (HTTPS), Tailscale dla kanału VPS↔PC                 |
 
 ## Zasady architektury
@@ -68,6 +68,6 @@ Uwaga: `@vtt/shared` jest konsumowany jako źródła TS (bez kroku build w dev) 
 
 ## Środowisko
 
-- Dev: Windows 11, ten sam komputer hostuje llama-server i faster-whisper (RTX 5070 Ti, 16 GB VRAM). Wszystko na localhost.
+- Dev: Windows 11, ten sam komputer hostuje llama-server (RTX 5070 Ti, 16 GB VRAM). Wszystko na localhost.
 - Prod (etap 28): VPS home.pl (8 GB RAM / 4 vCPU / Ubuntu 24.04), domena `vtt.tatanga.eu` (tymczasowo `http://217.154.210.181:8088`), kanał VPS↔PC przez Tailscale.
-- Budżet VRAM jest ciasny (model Q8_0 ~9,5 GB + KV cache + whisper + opcjonalny TTS). Przed dołożeniem czegokolwiek na GPU sprawdź bilans w „Ryzyka" w `docs/etapy/00-przeglad.md` i pomiary w `ai-gateway/README.md` — i pamiętaj, że modele nie muszą być rezydentne jednocześnie (można je zwalniać na czas cudzej pracy).
+- Po wycofaniu głosu budżet VRAM jest luźny: na karcie stoi wyłącznie model Q8_0 (~9,5 GB) z KV cache, a embeddingi RAG liczą się na CPU. Przed dołożeniem czegokolwiek na GPU sprawdź bilans w „Ryzyka" w `docs/etapy/00-przeglad.md` i pomiary w `ai-gateway/README.md`.

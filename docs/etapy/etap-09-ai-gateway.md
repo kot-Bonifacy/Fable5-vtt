@@ -20,7 +20,7 @@ Serwis `ai-gateway/` (Python/FastAPI) na PC z GPU: zarządza llama-server, kolej
 
 ## Poza zakresem
 
-- Profile botów (etap 10), boty na czacie sesji (etap 11), RAG i STT (etapy 19, 21)
+- Profile botów (etap 10), boty na czacie sesji (etap 11), RAG (etap 19); STT z etapu 21 — wycofany 09.08.2026
 
 ## Kryteria ukończenia
 

@@ -2,7 +2,6 @@ import type {
   AiGpuInfo,
   AiPurpose,
   AiStatus,
-  AiTtsInfo,
   AiUsage,
   RulesIndexStatus,
   RulesPassage,
@@ -21,18 +20,6 @@ interface GatewayHealth {
   restarts: number;
   last_error: string | null;
   gpu: { name: string; memory_total_mb: number; memory_used_mb: number } | null;
-  tts?: {
-    engine: string;
-    device: string;
-    available: boolean;
-    loaded: boolean;
-    queue_length: number;
-    busy: boolean;
-    voices: number;
-    syntheses: number;
-    last_synth_ms: number | null;
-    vram_mb: number | null;
-  } | null;
 }
 
 export interface AiChatRequest {
@@ -51,8 +38,8 @@ export interface AiChatRequest {
    * list, because those tokens are never offered to it.
    *
    * Reserved for machine-to-machine calls (the bot's decision pass). An NPC's
-   * spoken line never carries one — a grammar mangles Polish and rules out the
-   * sentence-by-sentence streaming stage 12's speech rides on.
+   * line never carries one — a grammar mangles Polish and rules out the
+   * token-by-token streaming the live preview of a bot's answer rides on.
    */
   jsonSchema?: Record<string, unknown>;
 }
@@ -591,23 +578,6 @@ function toStatus(health: GatewayHealth, now: Date = new Date()): AiStatus {
     restarts: health.restarts ?? 0,
     gpu: toGpu(health.gpu),
     error: health.last_error ?? null,
-    tts: toTts(health.tts),
-  };
-}
-
-function toTts(tts: GatewayHealth['tts']): AiTtsInfo | null {
-  if (!tts) return null;
-  return {
-    engine: tts.engine,
-    device: tts.device,
-    available: tts.available,
-    loaded: tts.loaded,
-    queueLength: tts.queue_length ?? 0,
-    busy: tts.busy ?? false,
-    voices: tts.voices ?? 0,
-    syntheses: tts.syntheses ?? 0,
-    lastSynthMs: tts.last_synth_ms ?? null,
-    vramMb: tts.vram_mb ?? null,
   };
 }
 
@@ -656,10 +626,7 @@ function isMeaningfullyDifferent(a: AiStatus, b: AiStatus): boolean {
     a.contextSize !== b.contextSize ||
     a.restarts !== b.restarts ||
     a.error !== b.error ||
-    a.gpu?.memoryUsedMb !== b.gpu?.memoryUsedMb ||
-    a.tts?.available !== b.tts?.available ||
-    a.tts?.loaded !== b.tts?.loaded ||
-    a.tts?.queueLength !== b.tts?.queueLength
+    a.gpu?.memoryUsedMb !== b.gpu?.memoryUsedMb
   );
 }
 

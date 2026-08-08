@@ -1,6 +1,6 @@
 # Fable5-vtt — Cyberpunk RED Virtual Tabletop
 
-VTT dla jednej grupy RPG grającej w Cyberpunk RED: mapa z tokenami (Pixi.js), interaktywne karty postaci, kości d10 wg zasad CP RED, boty NPC na lokalnym LLM (opcjonalnie mówiące po polsku), polecenia głosowe (STT) i czat głosowy (WebRTC). Interfejs wzorowany na Foundry VTT. Projekt prywatny, realizowany etapami — plan w [`docs/etapy/`](docs/etapy/00-przeglad.md), postęp w [`docs/etapy/POSTEP.md`](docs/etapy/POSTEP.md).
+VTT dla jednej grupy RPG grającej w Cyberpunk RED: mapa z tokenami (Pixi.js), interaktywne karty postaci, kości d10 wg zasad CP RED i boty NPC na lokalnym LLM (rozmawiające po polsku, tekstem). Interfejs wzorowany na Foundry VTT. Projekt prywatny, realizowany etapami — plan w [`docs/etapy/`](docs/etapy/00-przeglad.md), postęp w [`docs/etapy/POSTEP.md`](docs/etapy/POSTEP.md).
 
 ## Struktura
 
@@ -8,7 +8,7 @@ VTT dla jednej grupy RPG grającej w Cyberpunk RED: mapa z tokenami (Pixi.js), i
 packages/client/   # React + TypeScript + Vite + Pixi.js (frontend)
 packages/server/   # Fastify + Socket.IO + Prisma (backend, autorytatywny)
 packages/shared/   # typy + silnik zasad CP RED (czysta logika, vitest)
-ai-gateway/        # Python + FastAPI: LLM, TTS, STT, RAG (na PC z GPU)
+ai-gateway/        # Python + FastAPI: LLM, RAG (na PC z GPU)
 data/public/       # dane przykładowe wolne od praw autorskich
 data/private/      # dane z podręcznika CP RED — gitignore, nigdy w repo
 docs/etapy/        # plan projektu (28 etapów)

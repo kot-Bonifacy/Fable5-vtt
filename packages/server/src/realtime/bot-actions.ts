@@ -43,7 +43,7 @@ import { gmRoom } from './state.js';
  *
  * 1. **Przebieg decyzyjny jest osobnym wywołaniem.** Gramatyka JSON nie dotyka
  *    wypowiedzi NPC-a: ta jedzie dalej swobodnym tekstem ze wszystkim, co
- *    zbudowały etapy 10–12 (kotwica roli, wykrywanie wyjścia z roli, TTS). Tutaj
+ *    zbudowały etapy 10–11 (kotwica roli, wykrywanie wyjścia z roli). Tutaj
  *    jest wybór z listy, a nie proza — i dlatego prompt też jest inny: bez
  *    osobowości, sekretów i odzywek, które w tym pytaniu są samym szumem.
  * 2. **Menu jest prawdą, nie podpowiedzią.** Etykiety umiejętności wchodzą do

@@ -40,8 +40,6 @@ const config: ServerConfig = {
   // Fast polling so „gateway came back” is observable inside a test.
   aiHealthIntervalMs: 200,
   aiRequestTimeoutMs: 5000,
-  ttsTimeoutMs: 5000,
-  ttsCacheMaxBytes: 8 * 1024 * 1024,
 };
 
 /** Test-controlled stand-in for the Python gateway. */

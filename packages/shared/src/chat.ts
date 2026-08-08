@@ -6,7 +6,6 @@ import {
   type RollParseError,
   type RollResult,
 } from './dice.js';
-import type { SpeechTrack } from './tts.js';
 import type { BotActionProposal } from './bots/types.js';
 
 /**
@@ -172,12 +171,6 @@ export interface ChatMessageView {
   action?: CombatActionLogEntry;
   /** A bot's intention awaiting approval — kind `proposal` only (stage 20a). */
   proposal?: BotActionProposal;
-  /**
-   * Voice of an NPC line: audio plus the rhythm the text is written out with.
-   * Absent = show the line immediately (speech off, no voice set, or synthesis
-   * failed — the degradation path).
-   */
-  speech?: SpeechTrack;
   /** ISO timestamp — always assigned by the server. */
   createdAt: string;
 }

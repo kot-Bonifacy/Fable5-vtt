@@ -1,7 +1,7 @@
 """Pamięć długoterminowa gatewaya: chunkowanie, embeddingi i wyszukiwanie hybrydowe.
 
 Moduł jest świadomie niezależny od reszty gatewaya — nie wie nic o llama-serverze
-ani o TTS. Wchodzi się tu przez `RagService`, a wszystko poniżej (chunker, magazyn,
+ani o kolejce żądań. Wchodzi się tu przez `RagService`, a wszystko poniżej (chunker, magazyn,
 embedder) da się testować osobno i bez GPU.
 """
 

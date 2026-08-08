@@ -10,7 +10,6 @@ import type {
   BotTraceBroadcast,
   BotTriggerCandidate,
   BotTriggerOrigin,
-  BotVoice,
   ChatMessageView,
   SessionUser,
 } from '@vtt/shared';
@@ -36,7 +35,6 @@ import { runBotAction } from './bot-actions.js';
 import { collectBotKnowledge, type BotKnowledgeResult } from './knowledge.js';
 import { relationForSpeaker } from './relations.js';
 import { getSceneById } from './scenes.js';
-import { readSpeechEnabled, resolveVoice, synthesizeLine } from './speech.js';
 import { campaignRoom, gmRoom } from './state.js';
 
 /**
@@ -46,7 +44,7 @@ import { campaignRoom, gmRoom } from './state.js';
  * a time per campaign (llama-server runs with `--parallel 1` anyway), with the
  * turns in flight broadcast so the table sees „Vex pisze…" and how many bots
  * are waiting. The answer itself is a normal chat message — the transcript is
- * the bots' short-term memory, and stage 12 can attach audio to it later.
+ * the bots' short-term memory.
  *
  * What players may learn is deliberately limited: a bot line is stored and
  * delivered exactly like an NPC line typed by the GM (`/jako`), and the
@@ -79,8 +77,6 @@ export interface BotTurnRequest {
 interface QueuedTurn {
   request: BotTurnRequest;
   entry: BotActivityEntry;
-  /** Throttle guard for streamed text broadcasts. */
-  lastFlushAt: number;
 }
 
 class CampaignQueue {
@@ -234,10 +230,8 @@ export async function requestBotTurns(
         portraitUrl: bot.portraitUrl,
         state: 'queued',
         position: queue.pending.length + 1,
-        text: '',
         ...(request.whisperToUserId ? { whisperToUserId: request.whisperToUserId } : {}),
       },
-      lastFlushAt: 0,
     });
     queued += 1;
   }
@@ -440,7 +434,7 @@ async function runQueuedTurn(
   turn: QueuedTurn,
   signal: AbortSignal,
 ): Promise<void> {
-  const { request, entry } = turn;
+  const { request } = turn;
   const stored = await deps.ctx.prisma.botProfile.findUnique({ where: { id: request.botId } });
   if (!stored || stored.archived || !stored.active) return;
 
@@ -498,20 +492,11 @@ async function runQueuedTurn(
   }
 
   const context = await buildBotContext(deps, bot, request, scene?.name ?? null, participants);
-  // A speaking bot must not have its answer streamed as text: the whole point
-  // of stage 12 is that the words appear as they are spoken, so a live preview
-  // of the sentence would give away the punchline before the NPC says it.
-  const willSpeak =
-    bot.data.voice.enabled &&
-    resolveVoice(deps, bot.data.voice) !== null &&
-    deps.ctx.ai.getStatus().tts?.available === true &&
-    (await readSpeechEnabled(deps, request.campaignId));
-  if (willSpeak) {
-    // The table sees „NPC mówi…" instead of a sentence being typed out.
-    entry.speaking = true;
-    await broadcastActivity(deps, request.campaignId);
-  }
 
+  // Wypowiedź nie jedzie na czat token po tokenie: linia NPC-a dopisuje się u
+  // klienta dopiero po dostarczeniu, w równym tempie czytania. Podgląd generacji
+  // pokazywałby ten sam tekst drugi raz — i zdradzał puentę, zanim NPC ją wypowie.
+  // W czasie generacji stół widzi wyłącznie „NPC pisze…".
   let outcome;
   try {
     outcome = await runBotTurn(deps, bot, {
@@ -524,16 +509,6 @@ async function runQueuedTurn(
       mode: request.whisperToUserId ? 'whisper' : 'chat',
       whisperWith,
       signal: deadline,
-      onChunk: (text, reset) => {
-        // With a voice on, the table sees „NPC mówi…" and nothing else.
-        entry.text = willSpeak ? '' : reset ? '' : entry.text + text;
-        if (willSpeak) return;
-        const now = Date.now();
-        // The provisional text is streamed, but not at 80 events per second.
-        if (!reset && now - turn.lastFlushAt < 120) return;
-        turn.lastFlushAt = now;
-        void broadcastActivity(deps, request.campaignId).catch(() => undefined);
-      },
     });
   } catch (error) {
     if (signal.aborted) {
@@ -591,7 +566,6 @@ async function runQueuedTurn(
     text,
     sceneId: request.sceneId,
     whisperToUserId: request.whisperToUserId ?? null,
-    voice: bot.data.voice,
   });
 
   // Diagnostics stay with the GM: for players the line is indistinguishable
@@ -628,33 +602,16 @@ interface BotLine {
   text: string;
   sceneId: string | null;
   whisperToUserId: string | null;
-  /** Voice settings of the bot; omitted = the line is delivered silently. */
-  voice?: BotVoice;
 }
 
 /**
  * Stores and delivers one NPC line (generated or typed by the GM).
  *
- * With a voice set, the audio is synthesized **before** the message is sent:
- * the line has to reach the table together with its rhythm, so the text can be
- * written out in step with the speech. Piper needs ~0,15 s for a typical line
- * and ~0,5 s for a half-minute monologue, so this costs far less than waiting
- * for the model did. If synthesis fails, the line goes out immediately and
- * whole — audio is a bonus, never a prerequisite.
+ * The line reaches the table whole; the writing-out in reading rhythm is the
+ * client's own doing, so a hand-typed line and a generated one arrive by exactly
+ * the same route — players must not be able to tell them apart.
  */
 async function deliverBotLine(deps: RealtimeDeps, line: BotLine): Promise<ChatMessageView> {
-  const speech = line.voice
-    ? await synthesizeLine(deps, {
-        campaignId: line.campaignId,
-        botId: line.bot.id,
-        voice: line.voice,
-        text: line.text,
-      }).catch((error: unknown) => {
-        deps.log.warn({ err: error, botId: line.bot.id }, 'bot line synthesis failed');
-        return null;
-      })
-    : null;
-
   const message = await insertChatMessage(deps.ctx.prisma, {
     campaignId: line.campaignId,
     authorId: line.authorId,
@@ -663,7 +620,6 @@ async function deliverBotLine(deps: RealtimeDeps, line: BotLine): Promise<ChatMe
     botId: line.bot.id,
     speakerName: line.bot.name,
     sceneId: line.sceneId,
-    ...(speech ? { payload: JSON.stringify({ speech }) } : {}),
     ...(line.whisperToUserId ? { recipientId: line.whisperToUserId } : {}),
   });
   if (line.whisperToUserId) {
@@ -687,8 +643,6 @@ export async function speakAsBot(
     bot: { id: string; name: string };
     text: string;
     whisperToUserId?: string | null;
-    /** Voice of the NPC — a hand-typed line speaks too, or players could tell. */
-    voice?: BotVoice;
   },
 ): Promise<ChatMessageView> {
   const message = await deliverBotLine(deps, {
@@ -698,7 +652,6 @@ export async function speakAsBot(
     text: options.text,
     sceneId: options.sceneId,
     whisperToUserId: options.whisperToUserId ?? null,
-    ...(options.voice ? { voice: options.voice } : {}),
   });
   // A hand-written NPC line may still call ANOTHER bot by name (a generated
   // line never calls anyone) — but never the NPC it was written for.
@@ -819,7 +772,6 @@ export const botSayEvent = defineEvent<BotSayPayload, { messageId: number }>({
       bot: { id: bot.id, name: sanitizeBotName(bot.name) ?? bot.name },
       text,
       whisperToUserId,
-      voice: parseBotData(bot.data).voice,
     });
     return { messageId: message.id };
   },

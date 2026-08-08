@@ -37,9 +37,6 @@ model Campaign {
   name      String
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
-  /// GM's session-wide switch for bot speech (stage 12). Bots still need their
-  /// own voice enabled, so leaving this on changes nothing by itself.
-  speechEnabled Boolean @default(true)
 
   invitations  Invitation[]
   members      CampaignMember[]
@@ -199,8 +196,8 @@ model Character {
 /**
  * An LLM bot authored by the GM (NPC, companion or GM assistant). The whole
  * profile — persona, knowledge, generation params, learned lessons and the
- * stage-12 voice section — lives in one JSON column, so tuning the profile
- * shape never needs a migration.
+ * autonomy settings — lives in one JSON column, so tuning the profile shape
+ * never needs a migration.
  */
 model BotProfile {
   id         String @id @default(cuid())

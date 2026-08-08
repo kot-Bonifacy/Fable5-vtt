@@ -298,46 +298,22 @@ body {
   line-height: 1.2;
 }
 
-/* Speech (stage 12): a line being spoken writes itself out, so it ends with a
-   blinking caret until the NPC finishes the sentence. */
-.chat-speech-cursor {
+/* Wypowiedź NPC-a dopisuje się słowo po słowie, więc do czasu jej dokończenia
+   kończy się migającym kursorem. */
+.chat-typewriter-cursor {
   display: inline-block;
   width: 0.5ch;
   height: 1em;
   margin-left: 0.1ch;
   vertical-align: text-bottom;
   background: #e5a54b;
-  animation: speech-caret 1s steps(2, start) infinite;
+  animation: typewriter-caret 1s steps(2, start) infinite;
 }
 
-@keyframes speech-caret {
+@keyframes typewriter-caret {
   50% {
     opacity: 0;
   }
-}
-
-.chat-replay {
-  padding: 0 0.3rem;
-  line-height: 1.2;
-  opacity: 0.55;
-}
-
-.chat-replay:hover {
-  opacity: 1;
-}
-
-.speech-controls {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.speech-controls--off {
-  opacity: 0.6;
-}
-
-.speech-volume {
-  width: 5rem;
 }
 
 .small-button--on {
@@ -793,15 +769,11 @@ button:disabled {
   text-decoration: none;
 }
 
-/* „Wyloguj", „Panel MG" and the speech toggles — same family as the panels'
-   small buttons, one notch up so the row keeps a single reading distance. */
+/* „Wyloguj", „Panel MG" i przełącznik maszynopisu — ta sama rodzina co małe
+   przyciski paneli, o stopień większe, żeby wiersz miał jeden dystans czytania. */
 .top-bar .small-button {
   padding: 0.3rem 0.7rem;
   font-size: 0.85rem;
-}
-
-.top-bar .speech-volume {
-  width: 5.5rem;
 }
 
 .top-bar .status-dot {
