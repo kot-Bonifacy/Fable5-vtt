@@ -5,6 +5,7 @@ import type {
   ChatMessageView,
   CombatActionLogEntry,
   DamageLogEntry,
+  EconomyLogEntry,
   SessionUser,
 } from '@vtt/shared';
 import { CHAT_HISTORY_PAGE_SIZE, ROLE_GM } from '@vtt/shared';
@@ -97,6 +98,8 @@ export function toChatMessageView(message: StoredMessage): ChatMessageView {
     view.action = JSON.parse(message.payload) as CombatActionLogEntry;
   } else if (message.kind === 'proposal' && message.payload) {
     view.proposal = JSON.parse(message.payload) as BotActionProposal;
+  } else if (message.kind === 'economy' && message.payload) {
+    view.economy = JSON.parse(message.payload) as EconomyLogEntry;
   }
   return view;
 }
@@ -181,8 +184,13 @@ export function visibleTo(user: SessionUser) {
         // `proposal` (stage 20a) is on the GM's list for the same reason bot
         // whispers are: the GM runs the bots, so every intention of theirs is
         // theirs to answer — including one authored under another GM account.
+        // `economy` (stage 23b) is here for the mirror-image reason: the wallet
+        // cards are private, but the GM audits every one of them, including a
+        // purchase a player made without asking.
         {
-          kind: { in: ['say', 'roll', 'gmroll', 'damage', 'action', 'gmaction', 'proposal'] },
+          kind: {
+            in: ['say', 'roll', 'gmroll', 'damage', 'action', 'gmaction', 'proposal', 'economy'],
+          },
         },
         { authorId: user.id },
         { recipientId: user.id },

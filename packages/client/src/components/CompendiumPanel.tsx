@@ -14,15 +14,20 @@ import {
   CRITICAL_INJURY_TABLE_LABELS,
   ROLE_GM,
   WEAPON_QUALITY_LABELS,
+  entryPrice,
   formatCost,
+  formatPurchasePrice,
   rangeBandLabel,
   resolveWeapon,
 } from '@vtt/shared';
-import { deleteCompendiumEntry } from '../socket.js';
+import { deleteCompendiumEntry, sendCyberwareAction } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { countByCategory, useCompendiumStore, visibleEntries } from '../stores/compendiumStore.js';
-import { addCompendiumItemToCharacter } from '../compendium-items.js';
+import {
+  addCompendiumItemToCharacter,
+  buyCompendiumItemForCharacter,
+} from '../compendium-items.js';
 import { CompendiumEditor } from './CompendiumEditor.js';
 
 /**
@@ -174,10 +179,33 @@ function EntryCard({
   const targets = order.map((id) => characters[id]).filter((c) => c !== undefined);
   const target = targetId || targets[0]?.id || '';
 
+  // Stage 23b: a band is a price („50 ed (Drogie)" and „(Drogie)" cost the
+  // same), so an entry priced only by its band is still buyable.
+  const price = entryPrice(entry);
+  const priceLabel = formatPurchasePrice(entry) ?? '—';
+  const fitting =
+    entry.category === 'cyberware' && entry.install ? CYBERWARE_INSTALL_COST[entry.install] : 0;
+
   async function addToSheet() {
     if (!target) return;
     const result = await addCompendiumItemToCharacter(target, entry, resolved);
     setNote(result);
+  }
+
+  async function buy() {
+    if (!target) return;
+    setNote(await buyCompendiumItemForCharacter(target, entry));
+  }
+
+  /** Cyberware never goes through `economy:buy` — the Humanity is rolled. */
+  async function install(payment: 'full' | 'installOnly') {
+    if (!target) return;
+    sendCyberwareAction({ characterId: target, action: 'install', entryId: entry.id, payment });
+    setNote(
+      payment === 'installOnly'
+        ? `Montaż „${entry.name}” — ${fitting} ed. Rzut na Utratę Człowieczeństwa idzie na czat.`
+        : `Instaluję „${entry.name}” — ${(price ?? 0) + fitting} ed. Rzut na Utratę Człowieczeństwa idzie na czat.`,
+    );
   }
 
   return (
@@ -475,9 +503,57 @@ function EntryCard({
               </option>
             ))}
           </select>
-          <button type="button" className="small-button" onClick={() => void addToSheet()}>
-            Dodaj postaci
-          </button>
+          {entry.category === 'cyberware' ? (
+            <>
+              <button
+                type="button"
+                className="small-button"
+                title={
+                  price === null
+                    ? 'Ten wpis nie ma ceny — uzupełnij ją w kompendium.'
+                    : `Wszczep ${price} ed${fitting > 0 ? ` + montaż ${fitting} ed` : ''}`
+                }
+                disabled={price === null}
+                onClick={() => void install('full')}
+              >
+                Zainstaluj{price === null ? '' : ` — ${price + fitting} ed`}
+              </button>
+              {/* „Montaż znalezionej cyborgizacji" (s. 375): chrome pulled off
+                  a corpse costs the ripperdoc's time and nothing else. */}
+              <button
+                type="button"
+                className="small-button"
+                title="Wszczep już masz — płacisz tylko za montaż (s. 375)."
+                onClick={() => void install('installOnly')}
+              >
+                Znaleziony — montaż {fitting} ed
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              className="small-button"
+              title={
+                price === null
+                  ? 'Ten wpis nie ma ceny — uzupełnij ją w kompendium.'
+                  : `Cena schodzi z konta postaci: ${priceLabel}`
+              }
+              disabled={price === null}
+              onClick={() => void buy()}
+            >
+              Kup{price === null ? '' : ` — ${price} ed`}
+            </button>
+          )}
+          {isGm ? (
+            <button
+              type="button"
+              className="small-button"
+              title="Bez opłaty — łup, ekwipunek startowy, nagroda za zlecenie."
+              onClick={() => void addToSheet()}
+            >
+              Dodaj za darmo
+            </button>
+          ) : null}
         </div>
       ) : null}
       {note ? <p className="compendium-note">{note}</p> : null}

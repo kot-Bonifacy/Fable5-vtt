@@ -53,6 +53,11 @@ import type {
   ChatSendPayload,
   DamageApplyPayload,
   DamageUndoPayload,
+  EconomyAdjustPayload,
+  EconomyBuyPayload,
+  EconomyHistoryResult,
+  EconomySettlePayload,
+  EconomyTransferPayload,
   DrawingClearBroadcast,
   DrawingDeleteBroadcast,
   DrawingShape,
@@ -1848,6 +1853,11 @@ function cyberwareErrorText(code: string | undefined): string {
       return 'Tej cyborgizacji nie ma już na karcie.';
     case 'TOO_MANY_ROWS':
       return 'Lista cyborgizacji jest pełna.';
+    // Stage 23b: the operation is paid for before the dice are thrown.
+    case 'NOT_ENOUGH_EDDIES':
+      return 'Za mało eurodolców na wszczep i montaż.';
+    case 'NO_PRICE':
+      return 'Ten wpis nie ma ceny — uzupełnij ją w kompendium albo wybierz „Znaleziony”.';
     case 'CHARACTER_NOT_FOUND':
       return 'Nie możesz zmieniać tej karty.';
     case 'OFFLINE':
@@ -1879,6 +1889,88 @@ export function sendCyberwareAction(
   socket.emit('character:cyberware', full, (ack: SocketAck<{ messageId: number | null }>) => {
     if (!ack.ok) useChatStore.getState().addNote(cyberwareErrorText(ack.error));
   });
+}
+
+/* ------------------------------------------------------------------ *
+ * Eddies (stage 23b)
+ *
+ * Every one of these is an ack call rather than fire-and-forget: a wallet
+ * refuses (no money, no price, a full sheet), and a refusal the user does not
+ * see is a purchase they think went through.
+ * ------------------------------------------------------------------ */
+
+/** Polish text for a refusal of any of the `economy:*` events. */
+export function economyErrorText(code: string | undefined): string {
+  switch (code) {
+    case 'NOT_ENOUGH_EDDIES':
+      return 'Za mało eurodolców.';
+    case 'NO_PRICE':
+      return 'Ten wpis nie ma ceny — uzupełnij ją w kompendium albo podaj własną.';
+    case 'NOT_PURCHASABLE':
+      return 'Tego się tu nie kupuje: cyborgizacje instaluje się z karty wpisu, amunicję ładuje się do broni.';
+    case 'ENTRY_NOT_FOUND':
+      return 'Nie znalazłem tego wpisu w kompendium.';
+    case 'TOO_MANY_ROWS':
+      return 'Ta lista na karcie jest pełna.';
+    case 'CHARACTER_NOT_FOUND':
+      return 'Nie ma takiej postaci w tej kampanii.';
+    case 'FORBIDDEN':
+      return 'Tylko MG może to zrobić.';
+    case 'BAD_REQUEST':
+      return 'Nieprawidłowa kwota.';
+    case 'OFFLINE':
+    case 'NOT_CONNECTED':
+      return 'Brak połączenia z serwerem.';
+    default:
+      return 'Nie udało się wykonać operacji na eurodolcach.';
+  }
+}
+
+function emitEconomy<T>(event: string, payload: unknown): Promise<SocketAck<T>> {
+  return new Promise((resolve) => {
+    if (!socket) {
+      resolve({ ok: false, error: 'OFFLINE' });
+      return;
+    }
+    socket.emit(event, payload, (ack: SocketAck<T>) => resolve(ack));
+  });
+}
+
+/** Buys one catalogue entry: the price leaves the wallet, the row lands. */
+export function buyCompendiumEntry(
+  payload: EconomyBuyPayload,
+): Promise<SocketAck<{ balance: number }>> {
+  // Anything buffered would otherwise land after the server's own write and
+  // overwrite the freshly charged balance with the pre-purchase one.
+  flushCharacterSave(payload.characterId);
+  return emitEconomy('economy:buy', payload);
+}
+
+export function transferEddies(
+  payload: EconomyTransferPayload,
+): Promise<SocketAck<{ balance: number }>> {
+  flushCharacterSave(payload.fromCharacterId);
+  return emitEconomy('economy:transfer', payload);
+}
+
+/** GM only: sets a balance outright, leaving a „korekta MG" in the audit. */
+export function adjustEddies(
+  payload: EconomyAdjustPayload,
+): Promise<SocketAck<{ balance: number }>> {
+  flushCharacterSave(payload.characterId);
+  return emitEconomy('economy:adjust', payload);
+}
+
+/** GM only: the first of the month for every character with a Lifestyle. */
+export function settleMonth(
+  payload: EconomySettlePayload = {},
+): Promise<SocketAck<{ charged: number; shortfall: number; settled: number; skipped: number }>> {
+  return emitEconomy('economy:settle', payload);
+}
+
+/** The audit of one wallet — newest first — plus who it can pay. */
+export function fetchLedger(characterId: string): Promise<SocketAck<EconomyHistoryResult>> {
+  return emitEconomy('economy:history', { characterId });
 }
 
 /** GM: creates or updates one of the campaign's own compendium entries. */

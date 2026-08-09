@@ -14,16 +14,16 @@ miesiąc życia całej drużynie.
 
 ## Zakres
 
-- [ ] **Eurodolce jako operacja serwera** — każda zmiana stanu konta przechodzi przez serwer
+- [x] **Eurodolce jako operacja serwera** — każda zmiana stanu konta przechodzi przez serwer
       i zostawia wpis (audyt „gdzie się podziały pieniądze")
-- [ ] **Zakup z kompendium** — przycisk „Kup" odejmuje cenę i dodaje przedmiot; brak środków
+- [x] **Zakup z kompendium** — przycisk „Kup" odejmuje cenę i dodaje przedmiot; brak środków
       blokuje z komunikatem; MG może nadpisać cenę
-- [ ] **Instalacja cyborgizacji pobiera cenę** (domknięcie 23a) — razem z ceną operacji wg
+- [x] **Instalacja cyborgizacji pobiera cenę** (domknięcie 23a) — razem z ceną operacji wg
       montażu (Galeria 100 / Klinika 500 / Szpital 1000 ed, s. 226)
-- [ ] **Przelewy** — MG → gracz i gracz → gracz, z logiem na czacie
-- [ ] **Lifestyle** — poziom życia na karcie (tabele z rozdz. 17) i przycisk MG „Rozlicz miesiąc":
+- [x] **Przelewy** — MG → gracz i gracz → gracz, z logiem na czacie
+- [x] **Lifestyle** — poziom życia na karcie (tabele z rozdz. 17) i przycisk MG „Rozlicz miesiąc":
       koszty wszystkich postaci naraz, jedno podsumowanie na czacie
-- [ ] Testy: zakup przy niewystarczających środkach, rozliczenie miesiąca, przelew do postaci
+- [x] Testy: zakup przy niewystarczających środkach, rozliczenie miesiąca, przelew do postaci
       spoza kampanii
 
 ## Poza zakresem
@@ -34,9 +34,9 @@ miesiąc życia całej drużynie.
 
 ## Kryteria ukończenia
 
-- [ ] Zakup broni odejmuje eurodolce i dodaje przedmiot; brak środków blokuje z komunikatem
-- [ ] „Rozlicz miesiąc" pobiera koszty lifestyle wszystkich postaci naraz i loguje wynik
-- [ ] Przelew gracz → gracz zmienia oba konta i zostawia jedną linię na czacie
+- [x] Zakup broni odejmuje eurodolce i dodaje przedmiot; brak środków blokuje z komunikatem
+- [x] „Rozlicz miesiąc" pobiera koszty lifestyle wszystkich postaci naraz i loguje wynik
+- [x] Przelew gracz → gracz zmienia oba konta i zostawia jedną linię na czacie
 
 ## Wskazówki techniczne
 

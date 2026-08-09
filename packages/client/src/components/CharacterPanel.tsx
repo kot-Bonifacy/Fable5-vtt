@@ -1,8 +1,14 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import type { CampaignDetail, CpredCharacterData } from '@vtt/shared';
-import { ROLE_GM, cyberpsychosisFor } from '@vtt/shared';
+import { ROLE_GM, cyberpsychosisFor, formatEddies } from '@vtt/shared';
 import { apiGet } from '../api.js';
-import { createCharacter, deleteCharacter, updateCharacter } from '../socket.js';
+import {
+  createCharacter,
+  deleteCharacter,
+  economyErrorText,
+  settleMonth,
+  updateCharacter,
+} from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { ensureCpredDataLoaded, useCharacterStore } from '../stores/characterStore.js';
 
@@ -41,6 +47,7 @@ export function CharacterPanel() {
   const [newName, setNewName] = useState('');
   const [newOwnerId, setNewOwnerId] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [settlement, setSettlement] = useState<string | null>(null);
 
   useEffect(() => {
     ensureCpredDataLoaded();
@@ -97,6 +104,28 @@ export function CharacterPanel() {
     }
   }
 
+  /** The first of the month (stage 23b) — preview first, then the real thing. */
+  async function runSettlement(preview: boolean) {
+    if (
+      !preview &&
+      !window.confirm('Pobrać Poziom życia i czynsz wszystkim postaciom z ustawionym rachunkiem?')
+    ) {
+      return;
+    }
+    const ack = await settleMonth({ preview });
+    if (!ack.ok || !ack.data) {
+      setSettlement(economyErrorText(ack.ok ? undefined : ack.error));
+      return;
+    }
+    const { charged, shortfall, settled, skipped } = ack.data;
+    setSettlement(
+      `${preview ? 'Do pobrania' : 'Pobrano'} ${formatEddies(charged)} ed od ${settled} postaci` +
+        (shortfall > 0 ? ` · niedopłata ${formatEddies(shortfall)} ed` : '') +
+        (skipped > 0 ? ` · pominięto ${skipped} bez Poziomu życia` : '') +
+        '. Szczegóły na czacie.',
+    );
+  }
+
   async function removeCharacter(characterId: string, name: string) {
     if (!window.confirm(`Usunąć postać „${name}”? Tej operacji nie można cofnąć.`)) return;
     const ack = await deleteCharacter(characterId);
@@ -111,15 +140,37 @@ export function CharacterPanel() {
   return (
     <div className="character-panel">
       {isGm && order.length > 0 && (
-        <button
-          type="button"
-          className="small-button"
-          onClick={() => void refreshAllLuck()}
-          title="Ustawia pulę Szczęścia wszystkich postaci na maksimum (start sesji)"
-        >
-          ↻ Odnów Szczęście wszystkim
-        </button>
+        <div className="character-panel-actions">
+          <button
+            type="button"
+            className="small-button"
+            onClick={() => void refreshAllLuck()}
+            title="Ustawia pulę Szczęścia wszystkich postaci na maksimum (start sesji)"
+          >
+            ↻ Odnów Szczęście wszystkim
+          </button>
+          {/* Stage 23b. Two clicks on purpose: the preview lists the bill for
+              every sheet with a Lifestyle and touches nothing, and only the
+              second press moves money — a mis-click here empties wallets. */}
+          <button
+            type="button"
+            className="small-button"
+            onClick={() => void runSettlement(true)}
+            title="Podgląd: ile zejdzie każdej postaci pierwszego dnia miesiąca (nic nie pobiera)"
+          >
+            Podgląd miesiąca
+          </button>
+          <button
+            type="button"
+            className="small-button"
+            onClick={() => void runSettlement(false)}
+            title="Pobiera Poziom życia i czynsz wszystkim postaciom, które je mają ustawione"
+          >
+            💸 Rozlicz miesiąc
+          </button>
+        </div>
       )}
+      {settlement ? <p className="character-panel-note">{settlement}</p> : null}
       {order.length === 0 ? (
         <p className="placeholder-text">
           {isGm ? 'Brak postaci — utwórz pierwszą poniżej.' : 'Nie masz jeszcze żadnej postaci.'}

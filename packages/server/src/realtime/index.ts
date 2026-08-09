@@ -46,6 +46,13 @@ import { effectExpireEvent } from './timed-effects.js';
 import { characterCreateEvent, characterDeleteEvent, characterUpdateEvent } from './characters.js';
 import { characterRollEvent } from './character-rolls.js';
 import { characterCyberwareEvent } from './cyberware.js';
+import {
+  economyAdjustEvent,
+  economyBuyEvent,
+  economyHistoryEvent,
+  economySettleEvent,
+  economyTransferEvent,
+} from './economy.js';
 import { damageApplyEvent, damageUndoEvent } from './damage.js';
 import {
   attackEvadeEvent,
@@ -160,6 +167,11 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   characterDeleteEvent,
   characterRollEvent,
   characterCyberwareEvent,
+  economyBuyEvent,
+  economyTransferEvent,
+  economyAdjustEvent,
+  economySettleEvent,
+  economyHistoryEvent,
   damageApplyEvent,
   damageUndoEvent,
   attackRollEvent,

@@ -206,10 +206,35 @@ describe('cyborgizacje i człowieczeństwo', () => {
     const stats = (ack.data.data as CpredCharacterData).stats;
     const updated = await emitAck<CharacterView>(gm, 'character:update', {
       characterId,
-      patch: { data: { stats: { ...stats, emp: 6 }, humanityCurrent: 60, skills: { empathy: 4 } } },
+      patch: {
+        data: {
+          stats: { ...stats, emp: 6 },
+          humanityCurrent: 60,
+          skills: { empathy: 4 },
+          // Stage 23b: chrome costs money, so a ripperdoc's client needs some.
+          eddies: 20_000,
+        },
+      },
     });
     if (!updated.ok || !updated.data) throw new Error('character:update failed');
     expect((updated.data.data as CpredCharacterData).humanityCurrent).toBe(60);
+    expect((updated.data.data as CpredCharacterData).eddies).toBe(20_000);
+  });
+
+  it('nie instaluje chromu, na który postaci nie stać (etap 23b)', async () => {
+    const broke = await emitAck<CharacterView>(gm, 'character:create', { name: 'Bez grosza' });
+    if (!broke.ok || !broke.data) throw new Error('character:create failed');
+    // Ramownica: 1000 ed wszczepu + 1000 ed za szpital — na koncie zero.
+    const ack = await emitAck(gm, 'character:cyberware', {
+      characterId: broke.data.id,
+      action: 'install',
+      entryId: 'cyberware.ramownica-przykladowa',
+    });
+    expect(ack).toEqual({ ok: false, error: 'NOT_ENOUGH_EDDIES' });
+    // Odmowa przyszła PRZED rzutem: karta pozostała bez wszczepu.
+    const sheet = await sheetOf(gm, broke.data.id);
+    expect(sheet.cyberware).toHaveLength(0);
+    await emitAck(gm, 'character:delete', { characterId: broke.data.id });
   });
 
   it('instaluje wszczep: rzut na czacie, wiersz na karcie, Człowieczeństwo w dół', async () => {
@@ -243,6 +268,9 @@ describe('cyborgizacje i człowieczeństwo', () => {
     });
     // Sufit spadł o 2, a pula o tyle, ile padło na kościach.
     expect(data.humanityCurrent).toBe(Math.min(60 - rolled, 58));
+    // Etap 23b: 100 ed za oko + 500 ed za montaż w klinice (s. 375).
+    expect(data.eddies).toBe(20_000 - 600);
+    expect(roll?.outcome?.detail).toContain('600 ed');
   });
 
   it('nie pozwala instalować cudzego chromu', async () => {
@@ -340,6 +368,7 @@ describe('cyborgizacje i człowieczeństwo', () => {
       characterId,
       patch: { data: { humanityCurrent: 10 } },
     });
+    const before = await sheetOf(vex, characterId);
     const card = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
     const ack = await emitAck<{ messageId: number }>(gm, 'character:cyberware', {
       characterId,
@@ -353,6 +382,8 @@ describe('cyborgizacje i człowieczeństwo', () => {
 
     const after = await sheetOf(vex, characterId);
     expect(after.humanityCurrent).toBe(10 + (roll?.total ?? 0));
+    // Etap 23b: tydzień u Medyka to 500 ed (s. 375).
+    expect(before.eddies - after.eddies).toBe(500);
 
     // Druga tura terapii z poziomu tuż pod sufitem — nadwyżka przepada.
     const ceiling = 60 - after.cyberware.reduce((s, r) => s + (r.humanityMaxPenalty ?? 0), 0);

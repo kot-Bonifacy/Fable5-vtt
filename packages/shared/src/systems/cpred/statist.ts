@@ -220,6 +220,9 @@ export function combatProfileSheet(
     criticalInjuries: [],
     deathSaves: 0,
     eddies: 0,
+    // A statist has no wallet and pays no rent: the sheet is synthesised for
+    // one fight and thrown away, and the monthly settlement skips a null.
+    lifestyle: null,
     notes: '',
   };
 }

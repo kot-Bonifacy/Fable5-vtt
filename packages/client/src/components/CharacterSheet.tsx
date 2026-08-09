@@ -16,6 +16,7 @@ import type {
   CpredCharacterData,
   CpredItemRow,
   CpredWeaponRow,
+  LedgerEntryView,
   PortraitUploadResult,
   ResolvedWeapon,
 } from '@vtt/shared';
@@ -34,9 +35,14 @@ import {
   CPRED_WOUND_LABELS,
   CYBERWARE_INSTALL_LABELS,
   CYBERWARE_TYPE_LABELS,
+  HOUSING_DEFINITIONS,
+  HOUSING_OPTIONS,
   HUMANITY_MIN,
   HUMANITY_THERAPIES,
   HUMANITY_THERAPY_DEFINITIONS,
+  LEDGER_KIND_LABELS,
+  LIFESTYLE_DEFINITIONS,
+  LIFESTYLE_LEVELS,
   ROLE_GM,
   ROLE_RANK_MAX,
   ROLE_RANK_MIN,
@@ -47,12 +53,17 @@ import {
   cyberwareCapacity,
   deathSaveTarget,
   effectiveCpredStats,
+  formatEddies,
+  formatLedgerAmount,
   groupedSkills,
   hpMax,
   humanityMaxWith,
   isAmmoEntry,
+  isHousingOption,
+  isLifestyleLevel,
   isValidDamageNotation,
   isWeaponEntry,
+  monthlyCostOf,
   resolveWeapon,
   seriousWoundThreshold,
   skillBase,
@@ -63,10 +74,13 @@ import {
 } from '@vtt/shared';
 import { ApiError, apiUpload } from '../api.js';
 import {
+  economyErrorText,
+  fetchLedger,
   flushCharacterSave,
   queueCharacterSave,
   reloadWeapon,
   sendCyberwareAction,
+  transferEddies,
 } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useAttackStore } from '../stores/attackStore.js';
@@ -1311,19 +1325,7 @@ function CriticalInjuries({ data, saveData }: TabProps) {
 function GearTab({ character, data, saveData }: TabProps & { character: CharacterSheetView }) {
   return (
     <div className="sheet-gear">
-      <label className="sheet-eddies" title="Eurodolce (eb)">
-        Eurodolce (eb)
-        <input
-          type="number"
-          min={0}
-          max={10_000_000}
-          value={data.eddies}
-          onChange={(e) => {
-            const value = parseNumberInput(e);
-            if (value !== undefined) saveData({ eddies: value }, 'eddies');
-          }}
-        />
-      </label>
+      <WalletSection character={character} data={data} saveData={saveData} />
 
       <h3>Sprzęt</h3>
       <RowTable
@@ -1340,6 +1342,227 @@ function GearTab({ character, data, saveData }: TabProps & { character: Characte
 
       <CyberwareSection characterId={character.id} data={data} saveData={saveData} />
     </div>
+  );
+}
+
+/**
+ * The wallet (stage 23b).
+ *
+ * The balance stopped being a field and became a **read-out**: every eddie that
+ * moves does so through a server event, so a player looks at their money and
+ * the GM corrects it — and even the correction lands in the audit under
+ * „korekta MG". What the sheet still owns is the Lifestyle picker, because that
+ * is a choice, not a transaction.
+ */
+function WalletSection({
+  character,
+  data,
+  saveData,
+}: {
+  character: CharacterSheetView;
+  data: CpredCharacterData;
+  saveData: TabProps['saveData'];
+}) {
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
+  const [entries, setEntries] = useState<LedgerEntryView[]>([]);
+  const [payees, setPayees] = useState<{ id: string; name: string }[]>([]);
+  const [note, setNote] = useState<string | null>(null);
+  const [payeeId, setPayeeId] = useState('');
+  const [amount, setAmount] = useState('');
+  const [reason, setReason] = useState('');
+  const [open, setOpen] = useState(false);
+
+  const characterId = character.id;
+  const balance = data.eddies;
+  // The server's own timestamp, and deliberately not `balance`: a sheet edit
+  // lands in the store optimistically (`localPatch`), so the new number is
+  // already there before the request goes out — a refetch keyed on it would
+  // read the ledger a moment too early and show the row that is still missing.
+  const savedAt = character.updatedAt;
+
+  useEffect(() => {
+    if (!open) return;
+    let alive = true;
+    void fetchLedger(characterId).then((ack) => {
+      if (!alive || !ack.ok || !ack.data) return;
+      setEntries(ack.data.entries);
+      setPayees(ack.data.payees);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [characterId, open, savedAt]);
+
+  async function send() {
+    const value = Number.parseInt(amount, 10);
+    if (!payeeId || !Number.isInteger(value) || value <= 0) {
+      setNote('Podaj kwotę i odbiorcę.');
+      return;
+    }
+    const ack = await transferEddies({
+      fromCharacterId: characterId,
+      toCharacterId: payeeId,
+      amount: value,
+      ...(reason.trim() ? { note: reason.trim() } : {}),
+    });
+    if (!ack.ok) {
+      setNote(economyErrorText(ack.error));
+      return;
+    }
+    setAmount('');
+    setReason('');
+    const name = payees.find((p) => p.id === payeeId)?.name ?? 'odbiorcy';
+    setNote(`Przelano ${formatEddies(value)} ed do: ${name}.`);
+  }
+
+  const lifestyle = data.lifestyle;
+  const monthly = lifestyle ? monthlyCostOf(lifestyle) : null;
+
+  return (
+    <section className="sheet-wallet">
+      <div className="wallet-head">
+        <span className="wallet-balance" title="Eurodolce (ed) — zmienia je wyłącznie serwer">
+          {formatEddies(balance)} ed
+        </span>
+        {isGm ? (
+          <label className="wallet-adjust" title="Korekta MG — wpis „korekta MG” w historii">
+            korekta
+            <input
+              type="number"
+              min={0}
+              max={10_000_000}
+              value={balance}
+              onChange={(e) => {
+                const value = parseNumberInput(e);
+                if (value !== undefined) saveData({ eddies: value }, 'eddies');
+              }}
+            />
+          </label>
+        ) : null}
+        <button
+          type="button"
+          className="small-button"
+          onClick={() => setOpen((current) => !current)}
+          title="Historia operacji i przelew"
+        >
+          {open ? 'Zwiń kasę' : 'Kasa…'}
+        </button>
+      </div>
+
+      {open ? (
+        <div className="wallet-body">
+          <div className="wallet-transfer">
+            <select value={payeeId} onChange={(e) => setPayeeId(e.target.value)}>
+              <option value="">— przelew do… —</option>
+              {payees.map((payee) => (
+                <option key={payee.id} value={payee.id}>
+                  {payee.name}
+                </option>
+              ))}
+            </select>
+            <input
+              type="number"
+              min={1}
+              placeholder="ed"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+            />
+            <input
+              type="text"
+              maxLength={120}
+              placeholder="za co (opcjonalnie)"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+            />
+            <button type="button" className="small-button" onClick={() => void send()}>
+              Przelej
+            </button>
+          </div>
+
+          <label className="wallet-lifestyle">
+            Poziom życia
+            <select
+              value={lifestyle?.level ?? ''}
+              onChange={(e) => {
+                const level = e.target.value;
+                if (!isLifestyleLevel(level)) {
+                  saveData({ lifestyle: null }, 'lifestyle');
+                  return;
+                }
+                saveData(
+                  { lifestyle: { level, housing: lifestyle?.housing ?? 'street' } },
+                  'lifestyle',
+                );
+              }}
+            >
+              <option value="">— nie rozliczam —</option>
+              {LIFESTYLE_LEVELS.map((level) => (
+                <option key={level} value={level} title={LIFESTYLE_DEFINITIONS[level].note}>
+                  {LIFESTYLE_DEFINITIONS[level].label} —{' '}
+                  {formatEddies(LIFESTYLE_DEFINITIONS[level].monthly)} ed
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="wallet-lifestyle">
+            Zakwaterowanie
+            <select
+              value={lifestyle?.housing ?? 'street'}
+              disabled={!lifestyle}
+              onChange={(e) => {
+                const housing = e.target.value;
+                if (!lifestyle || !isHousingOption(housing)) return;
+                saveData({ lifestyle: { ...lifestyle, housing } }, 'lifestyle');
+              }}
+            >
+              {HOUSING_OPTIONS.map((option) => (
+                <option key={option} value={option} title={HOUSING_DEFINITIONS[option].note}>
+                  {HOUSING_DEFINITIONS[option].label}
+                  {HOUSING_DEFINITIONS[option].rent > 0
+                    ? ` — ${formatEddies(HOUSING_DEFINITIONS[option].rent)} ed`
+                    : ' — bez czynszu'}
+                </option>
+              ))}
+            </select>
+          </label>
+          {monthly ? (
+            <p className="sheet-hint">
+              Pierwszego dnia miesiąca: {formatEddies(monthly.total)} ed (jedzenie{' '}
+              {formatEddies(monthly.lifestyle)} + czynsz {formatEddies(monthly.rent)}). Pobiera je
+              MG przyciskiem „Rozlicz miesiąc”.
+            </p>
+          ) : (
+            <p className="sheet-hint">
+              Bez Poziomu życia ta postać nie jest rozliczana co miesiąc (tak zostają NPC-e i
+              statyści).
+            </p>
+          )}
+
+          <h4>Historia operacji</h4>
+          {entries.length === 0 ? (
+            <p className="sheet-hint">Na tym koncie nic się jeszcze nie zdarzyło.</p>
+          ) : (
+            <ul className="wallet-ledger">
+              {entries.map((row) => (
+                <li key={row.id}>
+                  <span
+                    className={row.amount < 0 ? 'ledger-out' : 'ledger-in'}
+                    title={new Date(row.createdAt).toLocaleString('pl-PL')}
+                  >
+                    {formatLedgerAmount(row.amount)}
+                  </span>
+                  <span className="ledger-label">
+                    {LEDGER_KIND_LABELS[row.kind]}: {row.label}
+                  </span>
+                  <span className="ledger-balance">{formatEddies(row.balance)} ed</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {note ? <p className="compendium-note">{note}</p> : null}
+        </div>
+      ) : null}
+    </section>
   );
 }
 
@@ -1363,6 +1586,7 @@ function CyberwareSection({
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const capacity = cyberwareCapacity(data.cyberware);
   const [confirmRow, setConfirmRow] = useState<string | null>(null);
+  const [freeTherapy, setFreeTherapy] = useState(false);
 
   function updateNotes(rowId: string, notes: string) {
     saveData(
@@ -1482,7 +1706,14 @@ function CyberwareSection({
               key={therapy}
               type="button"
               className="small-button"
-              onClick={() => sendCyberwareAction({ characterId, action: 'therapy', therapy })}
+              onClick={() =>
+                sendCyberwareAction({
+                  characterId,
+                  action: 'therapy',
+                  therapy,
+                  ...(freeTherapy ? { payment: 'none' as const } : {}),
+                })
+              }
               title={`${HUMANITY_THERAPY_DEFINITIONS[therapy].label} — PT ${
                 HUMANITY_THERAPY_DEFINITIONS[therapy].dv
               }, ${HUMANITY_THERAPY_DEFINITIONS[therapy].cost} ed`}
@@ -1490,6 +1721,16 @@ function CyberwareSection({
               +{HUMANITY_THERAPY_DEFINITIONS[therapy].notation}
             </button>
           ))}
+          {/* Stage 23b: the week costs 500 / 1000 ed (s. 375) and comes off the
+              sheet. „Bez opłaty" is the GM's waiver — a favour, a debt, a job. */}
+          <label title="Nie pobieraj eurodolców za terapię">
+            <input
+              type="checkbox"
+              checked={freeTherapy}
+              onChange={(e) => setFreeTherapy(e.target.checked)}
+            />
+            bez opłaty
+          </label>
         </div>
       )}
     </>

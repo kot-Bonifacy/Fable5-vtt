@@ -7,6 +7,7 @@ import type { CharacterView } from './characters.js';
 import type { CoverView } from './covers.js';
 import type { SmokeView } from './smoke.js';
 import type { CompendiumEntry, WeaponTypeDefinition } from './systems/cpred/compendium.js';
+import type { LedgerEntryView } from './systems/cpred/economy.js';
 import type { RollToss } from './dice.js';
 import type { DrawingView } from './drawings.js';
 import type { ExplorationMask } from './exploration.js';
@@ -215,8 +216,77 @@ export interface CharacterCyberwarePayload {
   rowId?: string;
   /** `therapy`: which of the two treatments of s. 230 was paid for. */
   therapy?: string;
+  /**
+   * Who pays for the hardware (stage 23b). „Znaleziona cyborgizacja" is a row
+   * of the price list (s. 375), so a piece pulled off a corpse costs the fitting
+   * and nothing else; `none` is the GM's gift and is refused for players.
+   */
+  payment?: 'full' | 'installOnly' | 'none';
   /** Present when the roll was thrown with the dice cup. */
   gesture?: RollGesture;
+}
+
+/* ------------------------------------------------------------------ *
+ * Eddies (stage 23b)
+ *
+ * Every one of these moves a balance, so every one of them is an event rather
+ * than a sheet patch: the sheet is the wallet, and a wallet the client may
+ * rewrite has no audit worth reading.
+ * ------------------------------------------------------------------ */
+
+/** Client → server payload of `economy:buy` — one catalogue entry, paid for. */
+export interface EconomyBuyPayload {
+  characterId: string;
+  /** Compendium id of the thing being bought. */
+  entryId: string;
+  /**
+   * GM's override of the printed price („u tego fixera to kosztuje 300"). Sent
+   * only by the GM; a player's override is refused rather than ignored.
+   */
+  price?: number;
+}
+
+/** Client → server payload of `economy:transfer` — eddies changing hands. */
+export interface EconomyTransferPayload {
+  /** Payer; must be the sender's own character unless the sender is the GM. */
+  fromCharacterId: string;
+  toCharacterId: string;
+  amount: number;
+  /** Optional one-liner shown on the chat line and in both ledgers. */
+  note?: string;
+}
+
+/** GM only: sets a balance outright (`economy:adjust`), leaving a ledger row. */
+export interface EconomyAdjustPayload {
+  characterId: string;
+  /** The new balance. A delta would race with the sheet the GM is reading. */
+  balance: number;
+  reason?: string;
+}
+
+/** GM only: `economy:settle` — the first of the month for the whole campaign. */
+export interface EconomySettlePayload {
+  /** Dry run: computes and reports the bill without touching a single wallet. */
+  preview?: boolean;
+}
+
+/** Client → server payload of `economy:history` — the audit of one character. */
+export interface EconomyHistoryPayload {
+  characterId: string;
+}
+
+/**
+ * What the wallet section of a sheet needs, in one round trip.
+ *
+ * The payee list rides along with the audit because a player's client holds
+ * only their **own** characters — sheets travel to their owner and the GM, and
+ * nobody else (stage 08). Paying somebody therefore needs a roster the client
+ * cannot assemble, and it is deliberately names only: „kto gra w tej kampanii"
+ * is written on every token already.
+ */
+export interface EconomyHistoryResult {
+  entries: LedgerEntryView[];
+  payees: { id: string; name: string }[];
 }
 
 /**

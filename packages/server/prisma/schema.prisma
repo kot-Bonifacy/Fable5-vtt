@@ -189,6 +189,7 @@ model Character {
   tokens   Token[]
   bots     BotProfile[]
   relations BotRelation[]
+  ledger    LedgerEntry[]
 
   @@index([campaignId])
 }
@@ -787,5 +788,38 @@ model CompendiumEntry {
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   @@unique([campaignId, slug])
+  @@index([campaignId])
+}
+
+/// One movement of eddies (stage 23b) — the answer to „gdzie się podziały
+/// pieniądze" halfway through a session.
+///
+/// A table rather than a chat line, for two reasons. A chat line can be deleted
+/// and cannot be summed, and the sheet's balance is a single number that says
+/// nothing about how it got there. `balance` is stored alongside the signed
+/// `amount` on purpose: the audit has to stay readable after a GM correction
+/// moves the wallet behind its back.
+model LedgerEntry {
+  id          Int    @id @default(autoincrement())
+  campaignId  String
+  characterId String
+  /// purchase | transfer | lifestyle | adjust | cyberware | therapy
+  kind String
+  /// Signed: negative is money leaving this character.
+  amount Int
+  /// Balance *after* the operation.
+  balance Int
+  /// Polish one-liner: „Zgrzyt 9", „Czynsz — Kontener", „od: Rico".
+  label String
+  /// The other side of a transfer; not a foreign key — a deleted character
+  /// must not take the payer's audit trail with it.
+  counterpartyId String?
+  /// Account that ordered the operation; null after the account is gone.
+  actorId   String?
+  createdAt DateTime @default(now())
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@index([characterId, id])
   @@index([campaignId])
 }

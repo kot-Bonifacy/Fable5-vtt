@@ -17,6 +17,7 @@ import {
 import type { PrismaClient } from '../db.js';
 import type { Character } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent } from './registry.js';
+import { applyBalance } from './economy.js';
 import { emitToCampaignUser } from './state.js';
 import { emitCharacterDelete, emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { emitTokensById, emitTokensOfCharacter } from './tokens.js';
@@ -125,17 +126,48 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
       await requireValidOwner(deps.ctx.prisma, campaignId, patch.ownerId);
       data.ownerId = patch.ownerId;
     }
+    // Stage 23b: eddies leave this path entirely. The GM's own number field is
+    // still a number field, but it lands as a correction with a ledger row —
+    // an audit with an unlogged back door next to it is decoration.
+    let adjustBalance: number | undefined;
     if ('data' in patch) {
       const result = validateCharacterDataPatch(patch.data, deps.ctx.cpred);
       if (!result.ok) throw new RealtimeError('INVALID_DATA');
+      const { eddies, ...sheet } = result.patch;
+      if (eddies !== undefined) {
+        if (!isGm) throw new RealtimeError('FORBIDDEN');
+        adjustBalance = eddies;
+      }
       const current = parseCharacterData(character.data, deps.ctx.cpred);
-      data.data = JSON.stringify(mergeCharacterData(current, result.patch));
+      data.data = JSON.stringify(mergeCharacterData(current, sheet));
     }
 
-    const updated = await deps.ctx.prisma.character.update({
+    let updated = await deps.ctx.prisma.character.update({
       where: { id: character.id },
       data,
     });
+    if (adjustBalance !== undefined) {
+      const current = parseCharacterData(updated.data, deps.ctx.cpred);
+      const delta = adjustBalance - current.eddies;
+      if (delta !== 0) {
+        // `emit: false` — the upsert two lines down carries the new balance
+        // anyway, and two upserts for one edit is how a sheet flickers.
+        await applyBalance(
+          deps,
+          campaignId,
+          updated,
+          current,
+          // „Korekta MG: ręczna zmiana salda" — the kind already says who, so
+          // the label says what, rather than repeating the word twice.
+          { kind: 'adjust', amount: delta, label: 'ręczna zmiana salda' },
+          user.id,
+          { merge: true, emit: false },
+        );
+        updated = await deps.ctx.prisma.character.findUniqueOrThrow({
+          where: { id: character.id },
+        });
+      }
+    }
     const view = toCharacterView(updated, deps.ctx.cpred);
     await emitCharacterUpsert(deps, campaignId, view);
     // HP and stats drive the bars of every token bound to this sheet.

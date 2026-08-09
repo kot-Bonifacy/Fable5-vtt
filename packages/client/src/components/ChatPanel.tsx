@@ -5,6 +5,7 @@ import type {
   BotTraceBroadcast,
   ChatMessageView,
   CombatActionLogEntry,
+  EconomyLogEntry,
   RollResult,
 } from '@vtt/shared';
 import { ROLE_GM } from '@vtt/shared';
@@ -235,6 +236,28 @@ function BotProposalRow({
           </div>
         )
       )}
+    </div>
+  );
+}
+
+/**
+ * Eddies changing hands (stage 23b). Never public — the card reaches the GM,
+ * the payer and the payee — so it needs no „who may see this" branch here: the
+ * server decided that before it left.
+ */
+function EconomyRow({ message, entry }: { message: ChatMessageView; entry: EconomyLogEntry }) {
+  return (
+    <div className="chat-message chat-economy">
+      <div className="chat-message-meta">
+        <span className="chat-message-author">{entry.title}</span>
+        <span className="chat-message-time">{formatTime(message.createdAt)}</span>
+      </div>
+      <ul className="chat-economy-lines">
+        {entry.lines.map((line, index) => (
+          <li key={index}>{line}</li>
+        ))}
+      </ul>
+      {entry.summary ? <p className="chat-economy-summary">{entry.summary}</p> : null}
     </div>
   );
 }
@@ -485,6 +508,12 @@ export function ChatPanel() {
                 message={item.message}
                 proposal={item.message.proposal}
                 canResolve={isGm || item.message.proposal.controllerUserId === user.id}
+              />
+            ) : item.message.kind === 'economy' && item.message.economy ? (
+              <EconomyRow
+                key={item.message.id}
+                message={item.message}
+                entry={item.message.economy}
               />
             ) : (item.message.kind === 'action' || item.message.kind === 'gmaction') &&
               item.message.action ? (

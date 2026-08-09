@@ -1,22 +1,30 @@
 import type { CompendiumEntry, CpredCharacterData, ResolvedWeapon } from '@vtt/shared';
-import { ITEM_ROWS_MAX } from '@vtt/shared';
-import { queueCharacterSave, sendCyberwareAction } from './socket.js';
+import { ITEM_ROWS_MAX, formatEddies, purchasedSheetRow } from '@vtt/shared';
+import {
+  buyCompendiumEntry,
+  economyErrorText,
+  queueCharacterSave,
+  sendCyberwareAction,
+} from './socket.js';
 import { useCharacterStore } from './stores/characterStore.js';
 
 /**
  * Putting a compendium entry on a character sheet (stage 13).
  *
- * The row keeps a `compendiumId` reference *and* a copy of the numbers it
- * needs. The reference is what the card and later stages look up; the copy is
- * what keeps an old sheet readable after the catalogue changes, and what the
- * GM may hand-edit for a one-off ("ten pistolet ma tylko 3 naboje").
+ * Two doors since stage 23b, and the difference is the wallet. „Dodaj postaci"
+ * is the GM's free one — loot, starting gear, a reward — and stays a plain
+ * sheet edit. „Kup" is everybody's and goes through the server, because the
+ * money and the goods have to move in one write.
+ *
+ * The row itself is built by `purchasedSheetRow` in `shared`, so a looted rifle
+ * and a bought one are the same row.
  */
 
 function nextRowId(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
-/** Adds the entry to the right list of the sheet; returns a Polish note. */
+/** Adds the entry to the right list of the sheet for free; returns a Polish note. */
 export async function addCompendiumItemToCharacter(
   characterId: string,
   entry: CompendiumEntry,
@@ -26,68 +34,52 @@ export async function addCompendiumItemToCharacter(
   if (!character) return 'Nie znaleziono postaci.';
   const data: CpredCharacterData = character.data;
 
-  const base = { id: nextRowId(), name: entry.name, compendiumId: entry.id };
-
-  switch (entry.category) {
-    case 'weapon': {
-      if (data.weapons.length >= ITEM_ROWS_MAX) return 'Lista broni jest pełna.';
-      const weapons = [
-        ...data.weapons,
-        {
-          ...base,
-          notes: (entry.features ?? []).join(', ').slice(0, 200),
-          damage: resolved?.damage ?? '',
-          // A bought weapon arrives loaded; a weapon whose type tracks no
-          // magazine (melee, bows) gets a zero counter the sheet hides.
-          ammoCurrent: resolved?.magazine ?? 0,
-          ammoMax: resolved?.magazine ?? 0,
-          ammoType: resolved?.ammoType ?? '',
-          rof: resolved ? String(resolved.rof) : '',
-        },
-      ];
-      queueCharacterSave(characterId, { data: { weapons } });
-      return `Dodano „${entry.name}” do broni.`;
-    }
-    case 'armor': {
-      if (data.armor.length >= ITEM_ROWS_MAX) return 'Lista pancerzy jest pełna.';
-      // Fresh armor is undamaged and worn where the catalogue says it sits
-      // (stage 15); a piece covering several spots lands on the body.
-      const location = entry.locations.includes('body') ? 'body' : (entry.locations[0] ?? 'body');
-      const armor = [
-        ...data.armor,
-        {
-          ...base,
-          notes: '',
-          sp: entry.sp,
-          spCurrent: entry.sp,
-          location,
-          // Stage 14c: heavy armor slows its wearer, and the turn budget reads
-          // the number off the row — so it is copied like SP, not looked up.
-          ...(entry.penalty ? { penalty: entry.penalty } : {}),
-        },
-      ];
-      queueCharacterSave(characterId, { data: { armor } });
-      return `Dodano „${entry.name}” do pancerza.`;
-    }
-    case 'criticalInjury':
-      // Injuries are drawn by the damage flow, never bought.
-      return 'Rany krytyczne trafiają na kartę z rzutu na obrażenia.';
-    case 'cyberware': {
-      if (data.cyberware.length >= ITEM_ROWS_MAX) return 'Lista cyborgizacji jest pełna.';
-      // Not a sheet edit like every other row here (stage 23a): the Humanity a
-      // piece of chrome costs is rolled on the server, so the client sends the
-      // intention and lets the card and the refreshed sheet come back.
-      sendCyberwareAction({ characterId, action: 'install', entryId: entry.id });
-      const cost = entry.humanityLoss ?? entry.humanityLossFixed;
-      return cost
-        ? `Instaluję „${entry.name}” — rzut na Utratę Człowieczeństwa (${cost}) idzie na czat.`
-        : `Instaluję „${entry.name}” — bez utraty Człowieczeństwa.`;
-    }
-    default: {
-      if (data.gear.length >= ITEM_ROWS_MAX) return 'Lista sprzętu jest pełna.';
-      const gear = [...data.gear, { ...base, notes: '', qty: 1 }];
-      queueCharacterSave(characterId, { data: { gear } });
-      return `Dodano „${entry.name}” do sprzętu.`;
-    }
+  if (entry.category === 'criticalInjury') {
+    // Injuries are drawn by the damage flow, never bought.
+    return 'Rany krytyczne trafiają na kartę z rzutu na obrażenia.';
   }
+  if (entry.category === 'cyberware') {
+    if (data.cyberware.length >= ITEM_ROWS_MAX) return 'Lista cyborgizacji jest pełna.';
+    // Not a sheet edit like every other row here (stage 23a): the Humanity a
+    // piece of chrome costs is rolled on the server, so the client sends the
+    // intention and lets the card and the refreshed sheet come back. Free here
+    // means free — the price rides on the „Zainstaluj" buttons of the card.
+    sendCyberwareAction({ characterId, action: 'install', entryId: entry.id, payment: 'none' });
+    const cost = entry.humanityLoss ?? entry.humanityLossFixed;
+    return cost
+      ? `Instaluję „${entry.name}” bez opłaty — rzut na Utratę Człowieczeństwa (${cost}) idzie na czat.`
+      : `Instaluję „${entry.name}” bez opłaty — bez utraty Człowieczeństwa.`;
+  }
+
+  const purchased = purchasedSheetRow(entry, resolved, nextRowId());
+  if (!purchased) return 'Tego wpisu nie dodaje się na kartę.';
+  if (data[purchased.list].length >= ITEM_ROWS_MAX) return 'Ta lista na karcie jest pełna.';
+
+  switch (purchased.list) {
+    case 'weapons':
+      queueCharacterSave(characterId, { data: { weapons: [...data.weapons, purchased.row] } });
+      return `Dodano „${entry.name}” do broni.`;
+    case 'armor':
+      queueCharacterSave(characterId, { data: { armor: [...data.armor, purchased.row] } });
+      return `Dodano „${entry.name}” do pancerza.`;
+    default:
+      queueCharacterSave(characterId, { data: { gear: [...data.gear, purchased.row] } });
+      return `Dodano „${entry.name}” do sprzętu.`;
+  }
+}
+
+/** Buys the entry for the character; the server decides whether it can afford it. */
+export async function buyCompendiumItemForCharacter(
+  characterId: string,
+  entry: CompendiumEntry,
+  price?: number,
+): Promise<string> {
+  const ack = await buyCompendiumEntry({
+    characterId,
+    entryId: entry.id,
+    ...(price !== undefined ? { price } : {}),
+  });
+  if (!ack.ok) return economyErrorText(ack.error);
+  const balance = ack.data ? formatEddies(ack.data.balance) : '?';
+  return `Kupiono „${entry.name}”. Zostało ${balance} ed.`;
 }

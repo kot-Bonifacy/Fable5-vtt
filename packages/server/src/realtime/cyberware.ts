@@ -11,11 +11,16 @@ import type {
   SessionUser,
 } from '@vtt/shared';
 import {
+  CYBERWARE_INSTALL_COST,
+  CYBERWARE_INSTALL_LABELS,
   CYBERWARE_TYPE_LABELS,
   HUMANITY_THERAPY_DEFINITIONS,
   ITEM_ROWS_MAX,
+  ROLE_GM,
   cyberpsychosisFor,
   cyberwareInstallationFrom,
+  entryPrice,
+  formatEddies,
   humanityMaxWith,
   isHumanityTherapy,
   mergeCharacterData,
@@ -30,6 +35,7 @@ import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { INCLUDE_CHAT_NAMES, deliverRollMessage, toChatMessageView } from './chat-io.js';
 import { sanitizeGesture } from './chat.js';
 import { createMixedRng } from './dice-rng.js';
+import { applyBalance } from './economy.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { emitTokensOfCharacter } from './tokens.js';
 
@@ -157,6 +163,39 @@ export const characterCyberwareEvent = defineEvent<
   },
 });
 
+/**
+ * The bill for fitting a piece of chrome (stage 23b).
+ *
+ * Two rows of the price list, not one: the hardware, and „Montaż znalezionej
+ * cyborgizacji" — 100 / 500 / 1000 ed by where it is done (s. 375). They come
+ * apart because the rulebook takes them apart: chrome pulled off a corpse costs
+ * the ripperdoc's time and nothing else.
+ */
+function installBill(
+  entry: CyberwareEntry,
+  payment: CharacterCyberwarePayload['payment'],
+  user: SessionUser,
+): { cost: number; label: string } {
+  const fitting = entry.install ? CYBERWARE_INSTALL_COST[entry.install] : 0;
+  const fittingLabel = entry.install ? CYBERWARE_INSTALL_LABELS[entry.install] : 'montaż';
+  if (payment === 'none') {
+    // „Na koszt MG" — a gift, a job's payment in kind, a Trauma Team favour.
+    if (user.role !== ROLE_GM) throw new RealtimeError('FORBIDDEN');
+    return { cost: 0, label: `${entry.name} — bez opłaty` };
+  }
+  if (payment === 'installOnly') {
+    return { cost: fitting, label: `${entry.name} — montaż (${fittingLabel})` };
+  }
+  const price = entryPrice(entry);
+  if (price === null) throw new RealtimeError('NO_PRICE');
+  return {
+    cost: price + fitting,
+    label:
+      `${entry.name} — ${formatEddies(price)} ed` +
+      (fitting > 0 ? ` + montaż ${formatEddies(fitting)} ed (${fittingLabel})` : ''),
+  };
+}
+
 async function installCyberware(
   deps: RealtimeDeps,
   campaignId: string,
@@ -168,6 +207,11 @@ async function installCyberware(
 ): Promise<{ messageId: number }> {
   const entry = requireCyberwareEntry(deps, payload.entryId);
   if (data.cyberware.length >= ITEM_ROWS_MAX) throw new RealtimeError('TOO_MANY_ROWS');
+
+  // Money is checked before the dice: a refusal after the roll would mean the
+  // table watched somebody lose Humanity to an operation that never happened.
+  const bill = installBill(entry, payload.payment, user);
+  if (data.eddies < bill.cost) throw new RealtimeError('NOT_ENOUGH_EDDIES');
 
   const { loss, result, notation } = rollHumanityLoss(entry, gesture?.entropy);
   const row: CpredCyberwareRow = {
@@ -181,11 +225,25 @@ async function installCyberware(
   };
   // The patch carries both halves at once on purpose: `mergeCharacterData`
   // clamps the pool against the ceiling, and the ceiling has just moved.
-  const updated = mergeCharacterData(data, {
+  const withRow = mergeCharacterData(data, {
     cyberware: [...data.cyberware, row],
     humanityCurrent: data.humanityCurrent - loss,
   });
-  await saveSheet(deps, campaignId, character, updated);
+  // One write for the chrome and the money — `applyBalance` saves the sheet it
+  // is handed, so a paid-for implant cannot end up on nobody's card.
+  let updated = withRow;
+  if (bill.cost > 0) {
+    updated = await applyBalance(
+      deps,
+      campaignId,
+      character,
+      withRow,
+      { kind: 'cyberware', amount: -bill.cost, label: bill.label },
+      user.id,
+    );
+  } else {
+    await saveSheet(deps, campaignId, character, withRow);
+  }
 
   result.title = `Utrata Człowieczeństwa — ${entry.name}`;
   result.actor = character.name;
@@ -198,6 +256,7 @@ async function installCyberware(
     detail:
       (entry.type ? `${CYBERWARE_TYPE_LABELS[entry.type]} · ` : '') +
       (entry.humanityLossHalved === true ? `${notation} / 2 w górę · ` : '') +
+      (bill.cost > 0 ? `${formatEddies(bill.cost)} ed · ` : '') +
       humanityLine(updated),
   };
   const messageId = await postCard(deps, campaignId, user, character, result);
@@ -257,6 +316,11 @@ async function runTherapy(
 ): Promise<{ messageId: number }> {
   if (!isHumanityTherapy(payload.therapy)) throw new RealtimeError('BAD_REQUEST');
   const therapy = HUMANITY_THERAPY_DEFINITIONS[payload.therapy];
+  // A week of a Medtech's time has a price (s. 375), and like the operation it
+  // is checked before the dice. `none` is the GM waiving it.
+  const cost = payload.payment === 'none' ? 0 : therapy.cost;
+  if (payload.payment === 'none' && user.role !== ROLE_GM) throw new RealtimeError('FORBIDDEN');
+  if (data.eddies < cost) throw new RealtimeError('NOT_ENOUGH_EDDIES');
   const parsed = parseRollNotation(therapy.notation);
   if (!parsed.ok) throw new RealtimeError('BAD_NOTATION');
   const result = rollFormula(parsed.formula, createMixedRng(gesture?.entropy), {
@@ -264,8 +328,20 @@ async function runTherapy(
   });
 
   const before = data.humanityCurrent;
-  const updated = mergeCharacterData(data, { humanityCurrent: before + result.total });
-  await saveSheet(deps, campaignId, character, updated);
+  const healed = mergeCharacterData(data, { humanityCurrent: before + result.total });
+  let updated = healed;
+  if (cost > 0) {
+    updated = await applyBalance(
+      deps,
+      campaignId,
+      character,
+      healed,
+      { kind: 'therapy', amount: -cost, label: therapy.label },
+      user.id,
+    );
+  } else {
+    await saveSheet(deps, campaignId, character, healed);
+  }
   const regained = updated.humanityCurrent - before;
 
   result.title = `Terapia — ${therapy.label}`;
@@ -275,7 +351,9 @@ async function runTherapy(
     label: `+${regained} Człowieczeństwa`,
     detail:
       (regained < result.total ? 'sufit osiągnięty · ' : '') +
-      `PT Technologii medycznej ${therapy.dv} · ${humanityLine(updated)}`,
+      `PT Technologii medycznej ${therapy.dv} · ` +
+      (cost > 0 ? `${formatEddies(cost)} ed · ` : '') +
+      humanityLine(updated),
   };
   const messageId = await postCard(deps, campaignId, user, character, result);
   return { messageId };

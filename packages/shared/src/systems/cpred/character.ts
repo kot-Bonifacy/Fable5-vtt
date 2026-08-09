@@ -10,6 +10,7 @@ import {
   type CyberwareInstall,
   type CyberwareInstallation,
 } from './cyberware.js';
+import { isHousingOption, isLifestyleLevel, type CpredLifestyle } from './economy.js';
 import {
   ARMOR_LOCATIONS,
   ARMOR_PENALTY_MIN,
@@ -370,7 +371,19 @@ export interface CpredCharacterData {
    * modifiers accumulate „dopóki nie zostaniesz ustabilizowany").
    */
   deathSaves: number;
+  /**
+   * Eurodollars. From stage 23b this number is written **only by the server**:
+   * a purchase, a transfer, the monthly settlement or a GM correction, each of
+   * them leaving a ledger row. A player's sheet patch carrying `eddies` is
+   * refused — the audit is worth nothing with a back door next to it.
+   */
   eddies: number;
+  /**
+   * Lifestyle and Accommodation (s. 376). Null means „ta postać nie prowadzi
+   * rachunków" and the monthly settlement skips it — most NPCs and every
+   * mannequin on a test scene never want a rent line.
+   */
+  lifestyle: CpredLifestyle | null;
   notes: string;
 }
 
@@ -393,6 +406,7 @@ export function createDefaultCharacterData(): CpredCharacterData {
     criticalInjuries: [],
     deathSaves: 0,
     eddies: 0,
+    lifestyle: null,
     notes: '',
   };
 }
@@ -862,6 +876,21 @@ function collectCharacterDataPatch(
       issues.push(issue('eddies', `Eurodolce muszą być liczbą od 0 do ${EDDIES_MAX}.`));
     } else {
       patch.eddies = value;
+    }
+  }
+  if ('lifestyle' in input) {
+    const raw = input.lifestyle;
+    if (raw === null) {
+      patch.lifestyle = null;
+    } else if (typeof raw === 'object') {
+      const row = raw as Record<string, unknown>;
+      if (isLifestyleLevel(row.level) && isHousingOption(row.housing)) {
+        patch.lifestyle = { level: row.level, housing: row.housing };
+      } else {
+        issues.push(issue('lifestyle', 'Nieznany Poziom życia albo Zakwaterowanie.'));
+      }
+    } else {
+      issues.push(issue('lifestyle', 'Nieprawidłowy format Poziomu życia.'));
     }
   }
   if ('notes' in input) {

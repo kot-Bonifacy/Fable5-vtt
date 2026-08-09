@@ -19,7 +19,23 @@ import type { BotActionProposal } from './bots/types.js';
  * as its speech has been since stage 11.
  */
 export type ChatKind =
-  'say' | 'whisper' | 'roll' | 'gmroll' | 'damage' | 'action' | 'gmaction' | 'proposal';
+  'say' | 'whisper' | 'roll' | 'gmroll' | 'damage' | 'action' | 'gmaction' | 'proposal' | 'economy';
+
+/**
+ * A movement of eddies, as the chat records it (stage 23b).
+ *
+ * Never public. A balance is not a secret worth a rule of its own, but it is
+ * nobody's business either, so the card reaches the GM, the payer and the payee
+ * — the whisper pattern, exactly like a refused action (`gmaction`).
+ */
+export interface EconomyLogEntry {
+  /** „Zakup", „Przelew", „Rozliczenie miesiąca". */
+  title: string;
+  /** One line per operation: „Rico — Zgrzyt 9 · −100 ed · saldo 400 ed". */
+  lines: string[];
+  /** Closing line of a settlement („Pobrano 3 400 ed · niedopłata 800 ed"). */
+  summary?: string;
+}
 
 /**
  * One combat action, as the chat log records it (stage 14b). Written by the
@@ -171,6 +187,8 @@ export interface ChatMessageView {
   action?: CombatActionLogEntry;
   /** A bot's intention awaiting approval — kind `proposal` only (stage 20a). */
   proposal?: BotActionProposal;
+  /** Eddies changing hands — kind `economy` only (stage 23b). */
+  economy?: EconomyLogEntry;
   /** ISO timestamp — always assigned by the server. */
   createdAt: string;
 }
