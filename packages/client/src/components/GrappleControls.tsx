@@ -18,6 +18,13 @@ import { sendFacedownConcede } from '../socket.js';
  */
 
 /**
+ * The penalty as the table reads it. Spelled with a typographic minus, like
+ * every other number in this UI — `${-2}` renders an ASCII hyphen and sits
+ * visibly crooked next to the „−8" on the same card.
+ */
+const FACEDOWN_PENALTY_LABEL = `−${Math.abs(CPRED_FACEDOWN_PENALTY)}`;
+
+/**
  * Is this a Konfrontacja? Told by the address only a Konfrontacja puts in the
  * system payload — the core `RollOpposedMeta` deliberately knows neither.
  */
@@ -98,7 +105,13 @@ export function OpposedRow({
         </span>
         <span className="chat-attack-detail">{opposed.detail}</span>
       </div>
-      {defender && !opposed.answered && opposed.answerLabel && (
+      {/*
+        Once the loser has accepted a consequence the contest has a settled
+        meaning and the dice stop (`FACEDOWN_ALREADY_SETTLED` on the server).
+        Offering „Postaw się" anyway was an invitation the server refuses —
+        found by clicking it during the 23c walkthrough.
+      */}
+      {defender && !opposed.answered && !opposed.concede?.chosen && opposed.answerLabel && (
         <div className="chat-attack-actions">
           <button
             type="button"
@@ -128,10 +141,10 @@ export function OpposedRow({
           <button
             type="button"
             className="small-button"
-            title={`Zostajesz, ale ${CPRED_FACEDOWN_PENALTY} do Akcji wymierzonych w ${opposed.concede.winnerName}, dopóki go nie pokonasz`}
+            title={`Zostajesz, ale ${FACEDOWN_PENALTY_LABEL} do Akcji wymierzonych w ${opposed.concede.winnerName}, dopóki go nie pokonasz`}
             onClick={() => sendFacedownConcede(message.id, 'stand')}
           >
-            Nie ustępuj ({CPRED_FACEDOWN_PENALTY})
+            Nie ustępuj ({FACEDOWN_PENALTY_LABEL})
           </button>
         </div>
       )}

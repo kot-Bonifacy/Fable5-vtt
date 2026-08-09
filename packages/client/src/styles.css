@@ -4940,3 +4940,16 @@ body.is-resizing {
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
 }
+
+/* Wiersz Konfrontacji niesie o jeden element więcej niż inne listy wyboru
+   (chip Reputacji obok imienia i dwa przyciski), a otwiera się w wąskim menu
+   kontekstowym tokenu. Bez zawijania `.combat-picker-name` ma `flex: 1` i
+   `min-width: 0`, więc imię wyzywającego zapadało się do zera — dokładnie ta
+   sama wpadka co z wierszem „Dodaj postaci" w etapie 23b. */
+.facedown-picker-row {
+  flex-wrap: wrap;
+}
+
+.facedown-picker-row .combat-picker-name {
+  min-width: 5rem;
+}

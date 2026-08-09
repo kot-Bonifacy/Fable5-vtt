@@ -498,7 +498,9 @@ export const facedownConcedeEvent = defineEvent<
         concede: { ...concede, chosen: choice },
         detail:
           choice === 'stand'
-            ? `${card.opposed.detail} · ${loser.name} nie ustąpił — ${CPRED_FACEDOWN_PENALTY} do Akcji przeciw ${concede.winnerName}`
+            ? `${card.opposed.detail} · ${loser.name} nie ustąpił — −${Math.abs(
+                CPRED_FACEDOWN_PENALTY,
+              )} do Akcji przeciw ${concede.winnerName}`
             : `${card.opposed.detail} · ${loser.name} wycofał się`,
       },
     };

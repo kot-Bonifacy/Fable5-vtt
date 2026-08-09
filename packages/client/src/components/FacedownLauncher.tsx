@@ -91,7 +91,7 @@ export function FacedownLauncher({
           characters[challenger.characterId]?.data.reputationSources ?? [],
         );
         return (
-          <li key={challenger.tokenId} className="combat-picker-row">
+          <li key={challenger.tokenId} className="combat-picker-row facedown-picker-row">
             <span className="combat-picker-name">{challenger.name}</span>
             {reputation.level > 0 && (
               <span className="combat-tag" title="Reputacja wchodzi do rzutu">
