@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import type { TokenView } from '@vtt/shared';
-import { ROLE_GM, cpredReputation } from '@vtt/shared';
-import { useAuthStore } from '../stores/authStore.js';
+import { cpredReputation } from '@vtt/shared';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useRollStore } from '../stores/rollStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
@@ -19,31 +18,38 @@ import { sendReputationRecognise } from '../socket.js';
  * Nothing here decides anything about the contest. The other side's total, the
  * Reputation on both sheets and the verdict are all the server's; this only
  * loads the cup, exactly the way the sheet's own roll buttons do.
+ *
+ * **Only the GM ever sees this.** Not an oversight and not a permission check
+ * living in the wrong place: the token context menu that opens it is GM-only
+ * (`MapArea.tsx`), and the rulebook puts the same sentence on it — „W takiej
+ * chwili **MG może przeprowadzić Konfrontację**" (s. 194). Players take part
+ * from the chat card instead, where „Postaw się" and the loser's two buttons
+ * are theirs to press. `facedown:attempt` itself stays open to a player who
+ * owns the figure, because the server should not depend on which menu a client
+ * happened to render — but nothing in the UI walks through that door today.
  */
 
-/** Figures on this scene the viewer may roll for, minus the one being stared at. */
+/** Figures with a sheet on this scene, minus the one being stared at. */
 function useChallengers(
   target: TokenView,
 ): { tokenId: string; characterId: string; name: string }[] {
   const tokens = useTokenStore((s) => s.tokens);
   const characters = useCharacterStore((s) => s.characters);
-  const userId = useAuthStore((s) => s.user?.id ?? null);
-  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
 
   return useMemo(
     () =>
       Object.values(tokens)
         .filter((token) => token.id !== target.id && token.characterId)
         .flatMap((token) => {
-          const character = characters[token.characterId!];
-          if (!character) return [];
           // A Konfrontacja is CHA + Reputacja off a sheet, so a statist cannot
           // start one — but can be on the receiving end of one, where the
           // server stands in an ordinary person's 5 for them.
-          if (!isGm && token.ownerId !== userId && character.ownerId !== userId) return [];
-          return [{ tokenId: token.id, characterId: character.id, name: character.name }];
+          const character = characters[token.characterId!];
+          return character
+            ? [{ tokenId: token.id, characterId: character.id, name: character.name }]
+            : [];
         }),
-    [tokens, characters, target.id, userId, isGm],
+    [tokens, characters, target.id],
   );
 }
 
@@ -62,7 +68,7 @@ export function FacedownLauncher({
   if (challengers.length === 0) {
     return (
       <p className="combat-hint">
-        Konfrontację rzuca się z karty postaci — na tej scenie nie masz figury z kartą.
+        Konfrontacja idzie z karty postaci — na tej scenie nie ma innej figury z kartą.
       </p>
     );
   }

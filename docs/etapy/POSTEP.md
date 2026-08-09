@@ -61,7 +61,9 @@ Ostatnio zamknięte: **23c** (Reputacja jako lista wyczynów, Konfrontacja rzute
 **09.08 głos wypadł z projektu** (sesja bez etapu, decyzja MG): etapy **12, 21 i 22** wycofane, kod TTS usunięty z repo. Szczegóły w `archiwum/dziennik-sesji.md` i w `archiwum/wycofane/README.md`.
 Następny etap: dowolny z **24–27** — kolejność w fazie H jest dowolna. Naturalny kolejny krok to **24 (handouty, dziennik kampanii, screamsheets)**, bo dziennik kampanii z 19c już istnieje i 24 go rozszerza.
 
-**⚠️ Etapu 23c nie oglądano w przeglądarce** — sesja skończyła się na ekranie logowania MG (haseł nie wpisuję). Kod jest pokryty 20 testami w `shared` i 16 dymnymi na żywych gniazdach, ale **żaden element UI etapu nie był klikany**. Lista niżej.
+**⚠️ Etap 23c obejrzany tylko z konta gracza (avatar9), i to skryptem.** Potwierdzone: strona wstaje bez błędów w konsoli, `reputationSources` domyślnie pusta na **istniejącej** karcie (zgodność wstecz), sekcja „Reputacja" **ukryta u gracza bez wyczynów**, zakładka „Biografia" renderuje się normalnie, a odmowa `ATTACKER_NOT_ON_SCENE` dociera do gracza po polsku („Ta postać nie ma tokenu na tej scenie"). **Całe UI MG nieodklikane** — okno MG stało w trybie incognito, którego rozszerzenie nie widzi (`list_connected_browsers` zwraca jedną instancję). Żeby dokończyć, MG musi być zalogowany w **zwykłym** oknie Chrome. Lista niżej.
+
+**Znalezione przy oględzinach 23c: menu kontekstowe tokenu jest w całości dla MG** (`MapArea.tsx:455` — `onTokenMenu` odpala się tylko przy `ROLE_GM`), więc „😠 Konfrontacja…" jest wejściem wyłącznie MG. Zostawione tak świadomie — podręcznik mówi „W takiej chwili **MG może przeprowadzić Konfrontację**" (s. 194), a gracz bierze udział z karty na czacie („Postaw się" i dwa przyciski przegranego). Przy okazji usunięty martwy filtr własności w `FacedownLauncher`, który sugerował wejście gracza; wpis o osobnych drzwiach dla gracza jest w `POMYSLY.md`.
 
 **⚠️ Etapu 20b nie oglądano w przeglądarce ani na żywym modelu** — cała sesja poszła na atrapie gatewaya i na testach. Zanim odhaczysz cokolwiek z 20b, odpal `pwsh ai-gateway/scripts/start-gateway.ps1`: bez gatewaya „Graj turę" wraca z `AI_UNAVAILABLE`. Lista nieodklikanego niżej.
 
@@ -81,9 +83,9 @@ Następny etap: dowolny z **24–27** — kolejność w fazie H jest dowolna. Na
 
 ### Otwarte zaległości (przechodzą między etapami)
 
-- **Etap 23c — CAŁE UI nieodklikane w przeglądarce.** Serwer i czysta logika są pokryte
-  (20 testów w `shared`, 16 dymnych), ale nic z tego nie było widziane na ekranie. Do
-  sprawdzenia przy stole, po kolei: (1) **sekcja „Reputacja" w zakładce „Biografia"** karty
+- **Etap 23c — UI MG nieodklikane** (strona gracza sprawdzona częściowo, patrz „Od czego
+  zacząć"). **Wymaga MG w zwykłym oknie Chrome, nie w incognito.** Do
+  sprawdzenia, po kolei: (1) **sekcja „Reputacja" w zakładce „Biografia"** karty
   postaci — liczba, zdanie z tabeli zasięgu („Cała okolica o tym mówi"), przycisk „+ Wyczyn",
   edycja poziomu/opisu/daty, checkbox „zła", kosz; wiersz, z którego liczy się bieżąca
   Reputacja, ma mieć pasek w kolorze akcentu. (2) **„😠 Konfrontacja…" w menu kontekstowym
