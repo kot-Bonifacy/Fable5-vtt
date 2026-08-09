@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ROLE_GM } from '@vtt/shared';
 import { PresenceList } from './PresenceList.js';
 import { ChatPanel } from './ChatPanel.js';
@@ -15,6 +15,7 @@ import { JournalPanel } from './JournalPanel.js';
 import { HandoutPanel } from './HandoutPanel.js';
 import { SidePanelResizer, useSidePanelWidth } from './SidePanelResizer.js';
 import { useAuthStore } from '../stores/authStore.js';
+import { useJournalStore } from '../stores/journalStore.js';
 
 type Tab =
   | 'chat'
@@ -44,6 +45,9 @@ const TABLE_TABS: { id: Tab; label: string }[] = [
   // Handouty stoją w rzędzie stołu, nie MG: to jedyna lista materiałów MG,
   // którą gracz też otwiera — u siebie widzi wyłącznie to, co dostał.
   { id: 'handouts', label: 'Handouty' },
+  // Dziennik przeszedł tu z rzędu MG w etapie 24b, z tego samego powodu:
+  // gracz czyta kronikę, tyle że wyłącznie wpisy odsłonięte stołowi.
+  { id: 'journal', label: 'Dziennik' },
 ];
 
 const GM_TABS: { id: Tab; label: string }[] = [
@@ -52,7 +56,6 @@ const GM_TABS: { id: Tab; label: string }[] = [
   { id: 'bots', label: 'Boty' },
   { id: 'rules', label: 'Zasady' },
   { id: 'knowledge', label: 'Wiedza' },
-  { id: 'journal', label: 'Dziennik' },
   { id: 'ai', label: 'AI' },
 ];
 
@@ -60,8 +63,15 @@ export function SidePanel() {
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const width = useSidePanelWidth();
   const [tab, setTab] = useState<Tab>('chat');
+  const journalFocus = useJournalStore((s) => s.focus);
   const gmOnly = GM_TABS.some((entry) => entry.id === tab);
   const activeTab: Tab = !isGm && gmOnly ? 'chat' : tab;
+
+  // „Otwórz" przy linii dziennika na czacie przełącza zakładkę; sam wpis
+  // rozwija już panel, który wtedy dostaje ognisko w store.
+  useEffect(() => {
+    if (journalFocus) setTab('journal');
+  }, [journalFocus]);
 
   const renderTab = (entry: { id: Tab; label: string }) => (
     <button

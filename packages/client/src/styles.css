@@ -316,11 +316,6 @@ body {
   }
 }
 
-.small-button--on {
-  border-color: #4c8f4c;
-  color: #9fe09f;
-}
-
 .bot-warning {
   margin: 0.2rem 0 0.4rem;
   color: #e5a54b;
@@ -724,6 +719,13 @@ button:disabled {
   background: var(--bg-panel);
   border: 1px solid var(--border);
   color: var(--text);
+}
+
+/* Musi stać PO `.small-button` — ta sama specyficzność, więc wcześniejsza
+   deklaracja przegrywała i stan „włączony" był niewidoczny (znalezione w 24b). */
+.small-button--on {
+  border-color: #4c8f4c;
+  color: #9fe09f;
 }
 
 .small-button--danger {
@@ -4794,6 +4796,153 @@ body.is-resizing {
 .journal-proposal-main {
   line-height: 1.4;
   overflow-wrap: anywhere;
+}
+
+/* Oś czasu dziennika (etap 24b) — ta sama lista u MG i u gracza, tyle że
+   u gracza bez chipów i bez przycisków. */
+.journal-panel {
+  gap: 0.5rem;
+}
+
+.journal-search {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.journal-search input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.journal-month {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.journal-month-label {
+  margin: 0.4rem 0 0;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.15rem;
+}
+
+.journal-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.journal-entry {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  padding: 0.35rem 0.45rem;
+}
+
+.journal-entry--open {
+  border-color: var(--accent);
+}
+
+.journal-entry-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  width: 100%;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+}
+
+.journal-entry-head:hover .knowledge-entry-title {
+  text-decoration: underline;
+}
+
+.journal-entry-arrow {
+  flex: 0 0 auto;
+  color: var(--text-dim);
+  font-size: 0.75rem;
+}
+
+.journal-entry-body {
+  margin-top: 0.35rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.35rem;
+}
+
+.journal-entry-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  margin-top: 0.4rem;
+}
+
+.knowledge-flag--shared {
+  color: #9fe09f;
+}
+
+/* Odnośniki do handoutów pod treścią wpisu. Lista przychodzi z serwera już
+   odsiana — wyszarzony przycisk znaczy „materiał wycofany", nie „nie dla Ciebie". */
+.journal-materials {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  margin-top: 0.4rem;
+}
+
+.journal-materials-label {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.journal-material {
+  padding: 0.2rem 0.5rem;
+  font-size: 0.78rem;
+  background: var(--bg-panel);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.journal-material:hover:not(:disabled) {
+  background: var(--bg-hover, var(--bg));
+}
+
+.journal-material:disabled {
+  border-color: var(--border);
+  color: var(--text-dim);
+  cursor: default;
+}
+
+.journal-share-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  margin: 0.2rem 0 0.4rem;
+}
+
+.journal-pin-list {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.25rem;
 }
 
 .bot-relations {

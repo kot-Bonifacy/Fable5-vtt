@@ -74,8 +74,9 @@ model Handout {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  campaign Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  shares   HandoutShare[]
+  campaign     Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  shares       HandoutShare[]
+  journalLinks JournalHandout[]
 
   @@index([campaignId])
 }
@@ -149,6 +150,13 @@ model JournalEntry {
   tags String @default("[]")
   /// gm = never reaches any bot prompt; bots = readable with a matching tag.
   visibility String @default("gm")
+  /// Whether the table reads this entry (stage 24b) — a column of its own, not a
+  /// third rung on `visibility`. The two permissions answer different questions
+  /// and are granted by different means: a bot recalls an entry through matching
+  /// tags, a player reads it because the GM decided the party may know it. An
+  /// entry can easily be one without the other, and folding them into one enum
+  /// would make „the players may read it" imply something about NPC memory.
+  sharedWithPlayers Boolean @default(false)
 
   /// Last chat message covered by this summary — the next „zakończ sesję" starts
   /// right after it, so nothing gets summarized twice. Null on a hand-written entry.
@@ -163,9 +171,28 @@ model JournalEntry {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  handouts JournalHandout[]
 
   @@index([campaignId])
+}
+
+/// A handout pinned to a journal entry (stage 24b).
+///
+/// A row is a link, never a permission: who may open the handout is still
+/// decided by `HandoutShare`, so an entry visible to the whole table shows each
+/// player only the materials they were given. Both sides cascade — a deleted
+/// handout leaves no dangling title in the chronicle.
+model JournalHandout {
+  id        String @id @default(cuid())
+  entryId   String
+  handoutId String
+
+  entry   JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  handout Handout      @relation(fields: [handoutId], references: [id], onDelete: Cascade)
+
+  @@unique([entryId, handoutId])
+  @@index([handoutId])
 }
 
 /// How one NPC feels about one player character (stage 19c).

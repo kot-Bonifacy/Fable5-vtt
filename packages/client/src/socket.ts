@@ -83,6 +83,8 @@ import type {
   JournalEntryView,
   JournalErrorBroadcast,
   JournalIndexStatus,
+  JournalPlayerSyncPayload,
+  JournalPlayerUpsertBroadcast,
   JournalProgressBroadcast,
   JournalSyncPayload,
   JournalUpsertBroadcast,
@@ -483,13 +485,27 @@ export function connectSocket(userId: string): Socket {
     useKnowledgeStore.getState().remove(broadcast.id, broadcast.index),
   );
 
-  // Dziennik kampanii i relacje NPC (etap 19c) — tak samo tylko do pokoju MG.
-  socket.on('journal:upsert', (broadcast: JournalUpsertBroadcast) =>
-    useJournalStore.getState().upsert(broadcast.entry, broadcast.index),
+  // Dziennik kampanii (19c) i jego wyjście do stołu (24b). Serwer wysyła MG
+  // i graczowi **dwa różne kształty** pod tą samą nazwą zdarzenia — gniazdo
+  // należy do jednego konta, więc rozstrzyga o tym rola, a nie zgadywanie po
+  // polach payloadu.
+  socket.on(
+    'journal:upsert',
+    (broadcast: JournalUpsertBroadcast | JournalPlayerUpsertBroadcast) => {
+      const store = useJournalStore.getState();
+      if (useAuthStore.getState().user?.role === ROLE_GM) {
+        const gm = broadcast as JournalUpsertBroadcast;
+        store.upsert(gm.entry, gm.index);
+      } else {
+        store.upsertShared(broadcast.entry);
+      }
+    },
   );
-  socket.on('journal:delete', (broadcast: JournalDeleteBroadcast) =>
-    useJournalStore.getState().remove(broadcast.id, broadcast.index),
-  );
+  socket.on('journal:delete', (broadcast: JournalDeleteBroadcast) => {
+    const store = useJournalStore.getState();
+    if (useAuthStore.getState().user?.role === ROLE_GM) store.remove(broadcast.id, broadcast.index);
+    else store.removeShared(broadcast.id);
+  });
   socket.on('journal:progress', (broadcast: JournalProgressBroadcast) =>
     useJournalStore.getState().setProgress(broadcast),
   );
@@ -1315,18 +1331,28 @@ export const deleteKnowledgeEntry = (id: string) => emitSceneAck('knowledge:dele
 export const reindexKnowledge = () =>
   emitSceneAck<KnowledgeIndexStatus>('knowledge:reindex', undefined);
 
-/** Dziennik kampanii (MG). Wołane przy wejściu w zakładkę, nie w `state:sync`. */
-export function fetchJournal(): Promise<JournalSyncPayload | null> {
+/**
+ * Dziennik kampanii. Wołane przy wejściu w zakładkę, nie w `state:sync`.
+ *
+ * Od 24b odpowiada też graczowi — samymi wpisami odsłoniętymi stołowi, bez
+ * narzędzi MG. Kształt rozstrzyga rola konta, tak jak przy rozgłoszeniach.
+ */
+export function fetchJournal(): Promise<JournalSyncPayload | JournalPlayerSyncPayload | null> {
   return new Promise((resolve) => {
     if (!socket) {
       resolve(null);
       return;
     }
-    socket.emit('journal:list', (ack: SocketAck<JournalSyncPayload>) => {
+    const isGm = useAuthStore.getState().user?.role === ROLE_GM;
+    socket.emit('journal:list', (ack: SocketAck<JournalSyncPayload | JournalPlayerSyncPayload>) => {
       if (ack.ok && ack.data) {
-        useJournalStore
-          .getState()
-          .replaceAll(ack.data.entries, ack.data.index, ack.data.pendingLines);
+        const store = useJournalStore.getState();
+        if (isGm) {
+          const data = ack.data as JournalSyncPayload;
+          store.replaceAll(data.entries, data.index, data.pendingLines, data.handouts);
+        } else {
+          store.replaceShared((ack.data as JournalPlayerSyncPayload).entries);
+        }
       }
       resolve(ack.ok ? (ack.data ?? null) : null);
     });
@@ -1379,7 +1405,14 @@ export const cancelSummary = () => socket?.emit('journal:cancel');
 
 /** Po polsku, z następnym krokiem — kody odmowy widzi tylko MG. */
 export function journalErrorText(code: string, detail?: string): string {
+  if (code.startsWith('INVALID_ENTRY:')) {
+    return code.slice('INVALID_ENTRY:'.length) || 'Nieprawidłowe dane wpisu.';
+  }
   switch (code) {
+    case 'ENTRY_NOT_FOUND':
+      return 'Tego wpisu już nie ma.';
+    case 'UNKNOWN_HANDOUT':
+      return 'Któryś z przypiętych materiałów nie należy do tej kampanii.';
     case 'JOURNAL_EMPTY_LOG':
       return 'Nie ma czego streścić — od ostatniego wpisu dziennika nikt nic nie powiedział na czacie.';
     case 'AI_UNAVAILABLE':

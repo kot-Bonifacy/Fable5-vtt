@@ -2,17 +2,22 @@ import { create } from 'zustand';
 import type {
   JournalDraft,
   JournalEntryView,
+  JournalHandoutLink,
   JournalIndexStatus,
+  JournalPlayerEntry,
   JournalProgressBroadcast,
   RelationProposal,
 } from '@vtt/shared';
 import { emptyJournalIndexStatus } from '@vtt/shared';
 
 /**
- * Dziennik kampanii u klienta (etap 19c).
+ * Dziennik kampanii u klienta (etap 19c, rozszerzony w 24b).
  *
- * Wpisy dostaje wyłącznie MG (serwer emituje do `gmRoom`), więc — jak w bazie
- * wiedzy — store nie istnieje po stronie gracza i nie ma tu nic do filtrowania.
+ * Od 24b store istnieje **po obu stronach stołu**, ale w dwóch rozdzielnych
+ * kolekcjach: `entries` to widok MG (tagi, widoczność, stan indeksu), `shared`
+ * to widok gracza (sam tekst plus odnośniki do materiałów, które dostał). Który
+ * z nich jest wypełniony, rozstrzyga rola konta — nic tu nie filtrujemy,
+ * bo filtr stoi w zapytaniu na serwerze.
  *
  * Szkic streszczenia żyje **tylko tutaj**, dopóki MG go nie zapisze: model niczego
  * nie wpisuje do dziennika sam, a propozycje relacji są listą do odklikania.
@@ -21,11 +26,18 @@ interface JournalState {
   entries: Record<string, JournalEntryView>;
   /** Kolejność wyświetlania: najnowsza sesja u góry. */
   order: string[];
+  /** Wpisy odsłonięte stołowi — wypełnione wyłącznie u gracza. */
+  shared: Record<string, JournalPlayerEntry>;
+  sharedOrder: string[];
+  /** Materiały, które MG może przypiąć do wpisu; u gracza pusta. */
+  handouts: JournalHandoutLink[];
   index: JournalIndexStatus;
   /** Ile linii czatu czeka na streszczenie. */
   pendingLines: number;
   /** Wpis otwarty w formularzu; `new` = nowy, null = formularz zamknięty. */
   editing: string | 'new' | null;
+  /** Wpis, na który ma skoczyć zakładka — ustawia go przycisk z czatu. */
+  focus: string | null;
   loaded: boolean;
 
   /** Trwające streszczanie: id żądania i ostatni postęp. */
@@ -36,11 +48,20 @@ interface JournalState {
   batches: number;
   error: string | null;
 
-  replaceAll: (entries: JournalEntryView[], index: JournalIndexStatus, pending: number) => void;
+  replaceAll: (
+    entries: JournalEntryView[],
+    index: JournalIndexStatus,
+    pending: number,
+    handouts: JournalHandoutLink[],
+  ) => void;
   upsert: (entry: JournalEntryView, index?: JournalIndexStatus) => void;
   remove: (id: string, index?: JournalIndexStatus) => void;
+  replaceShared: (entries: JournalPlayerEntry[]) => void;
+  upsertShared: (entry: JournalPlayerEntry) => void;
+  removeShared: (id: string) => void;
   setIndex: (index: JournalIndexStatus) => void;
   setEditing: (editing: string | 'new' | null) => void;
+  setFocus: (id: string | null) => void;
 
   startRun: (requestId: string) => void;
   setProgress: (progress: JournalProgressBroadcast) => void;
@@ -53,7 +74,8 @@ interface JournalState {
 
 const collator = new Intl.Collator('pl');
 
-function sortIds(entries: Record<string, JournalEntryView>): string[] {
+/** Najnowsza sesja u góry — ta sama kolejność po obu stronach stołu. */
+function sortIds<T extends JournalPlayerEntry>(entries: Record<string, T>): string[] {
   return Object.values(entries)
     .sort(
       (a, b) =>
@@ -67,9 +89,13 @@ function sortIds(entries: Record<string, JournalEntryView>): string[] {
 export const useJournalStore = create<JournalState>((set) => ({
   entries: {},
   order: [],
+  shared: {},
+  sharedOrder: [],
+  handouts: [],
   index: emptyJournalIndexStatus(),
   pendingLines: 0,
   editing: null,
+  focus: null,
   loaded: false,
   running: null,
   draft: null,
@@ -77,10 +103,17 @@ export const useJournalStore = create<JournalState>((set) => ({
   batches: 0,
   error: null,
 
-  replaceAll: (entries, index, pending) => {
+  replaceAll: (entries, index, pending, handouts) => {
     const byId: Record<string, JournalEntryView> = {};
     for (const entry of entries) byId[entry.id] = entry;
-    set({ entries: byId, order: sortIds(byId), index, pendingLines: pending, loaded: true });
+    set({
+      entries: byId,
+      order: sortIds(byId),
+      index,
+      pendingLines: pending,
+      handouts,
+      loaded: true,
+    });
   },
 
   upsert: (entry, index) =>
@@ -101,8 +134,33 @@ export const useJournalStore = create<JournalState>((set) => ({
       };
     }),
 
+  replaceShared: (entries) => {
+    const byId: Record<string, JournalPlayerEntry> = {};
+    for (const entry of entries) byId[entry.id] = entry;
+    set({ shared: byId, sharedOrder: sortIds(byId), loaded: true });
+  },
+
+  upsertShared: (entry) =>
+    set((state) => {
+      const shared = { ...state.shared, [entry.id]: entry };
+      return { shared, sharedOrder: sortIds(shared) };
+    }),
+
+  removeShared: (id) =>
+    set((state) => {
+      if (!(id in state.shared)) return {};
+      const shared = { ...state.shared };
+      delete shared[id];
+      return {
+        shared,
+        sharedOrder: sortIds(shared),
+        focus: state.focus === id ? null : state.focus,
+      };
+    }),
+
   setIndex: (index) => set({ index }),
   setEditing: (editing) => set({ editing }),
+  setFocus: (id) => set({ focus: id }),
 
   startRun: (requestId) =>
     set({ running: { requestId, progress: null }, draft: null, proposals: [], error: null }),

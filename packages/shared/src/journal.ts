@@ -19,9 +19,15 @@
  * 3. **Propozycje relacji są tekstem, nie JSON-em.** Model 9B potrafi wypisać
  *    „Barman | Vex | −2 | powód" znacznie pewniej niż poprawny JSON, a parser
  *    po naszej stronie i tak musi być tolerancyjny, bo nazwy przyjdą odmienione.
+ *
+ * Etap 24b dokłada czwartą: **uprawnienie gracza jest osobne od uprawnienia
+ * bota**. Bot pamięta wpis przez zgodny tag, gracz czyta go, bo MG uznał, że
+ * drużyna może wiedzieć — to dwa różne pytania, więc `sharedWithPlayers` jest
+ * osobnym polem, a nie trzecim szczeblem `visibility`.
  */
 
 import { estimatePromptTokens } from './bots/prompt.js';
+import { normalizeRecipientIds } from './handouts.js';
 import { fingerprint, normalizeKnowledgeTags, type KnowledgeVisibility } from './knowledge.js';
 import {
   clampRelation,
@@ -45,15 +51,48 @@ export function journalSource(entryId: string): string {
   return `session:${entryId}`;
 }
 
-/** Jeden wpis dziennika, jak widzi go MG. Nigdy nie opuszcza pokoju MG. */
-export interface JournalEntryView {
+/** Ile handoutów wolno przypiąć do jednego wpisu. Kronika, nie katalog. */
+export const JOURNAL_HANDOUTS_MAX = 12;
+
+/** Handout przypięty do wpisu — tyle, ile trzeba, żeby narysować odnośnik. */
+export interface JournalHandoutLink {
+  id: string;
+  title: string;
+  hasImage: boolean;
+}
+
+/**
+ * Wpis dziennika, jak widzi go gracz.
+ *
+ * Osobny, mniejszy kształt — nie okrojony widok MG. Tagi są językiem uprawnień
+ * botów, `visibility` mówi o pamięci NPC-ów, a stan indeksu jest sprawą
+ * gatewaya: żadna z tych rzeczy nie ma czego szukać po drugiej stronie stołu,
+ * więc nie ma jej w typie, którym serwer odpowiada graczowi.
+ */
+export interface JournalPlayerEntry {
   id: string;
   title: string;
   body: string;
   /** Dzień, którego dotyczy sesja (ISO, sama data) — po nim sortuje się dziennik. */
   sessionDate: string;
+  /**
+   * Handouty przypięte do wpisu. U gracza **wyłącznie te, które dostał** —
+   * filtruje je zapytanie na serwerze, nie widok.
+   */
+  handouts: JournalHandoutLink[];
+  createdAt: string;
+}
+
+/**
+ * Jeden wpis dziennika, jak widzi go MG: widok gracza plus wszystko, czego
+ * gracz nie dostaje. Rozszerzenie, a nie osobny typ, bo oś czasu i wyszukiwarka
+ * mają wtedy jedno wejście dla obu stron stołu.
+ */
+export interface JournalEntryView extends JournalPlayerEntry {
   tags: string[];
   visibility: KnowledgeVisibility;
+  /** Czy wpis czyta cały stół (etap 24b) — niezależne od uprawnienia botów. */
+  sharedWithPlayers: boolean;
   /**
    * Ostatnia wiadomość czatu objęta tym streszczeniem. Od niej startuje
    * następne — dzięki temu „zakończ sesję" nie streszcza po raz drugi tego,
@@ -90,6 +129,10 @@ export interface JournalUpsertPayload {
   sessionDate: string;
   tags: string[];
   visibility: KnowledgeVisibility;
+  /** Czy wpis widzi stół. Pominięte = bez zmiany (nowy wpis rodzi się ukryty). */
+  sharedWithPlayers?: boolean;
+  /** Pełna lista przypiętych handoutów — jak przy udostępnianiu, stan, nie różnica. */
+  handoutIds?: string[];
   /** Ustawiane tylko przy zapisie świeżo wygenerowanego streszczenia. */
   throughMessageId?: number | null;
   lineCount?: number;
@@ -104,6 +147,13 @@ export interface JournalSyncPayload {
   index: JournalIndexStatus;
   /** Ile linii czatu czeka na streszczenie (od ostatniego wpisu do teraz). */
   pendingLines: number;
+  /** Handouty, które MG może przypiąć do wpisu (etap 24b); u gracza pusta. */
+  handouts: JournalHandoutLink[];
+}
+
+/** Odpowiedź na `journal:list` u gracza — sam dziennik, bez narzędzi MG. */
+export interface JournalPlayerSyncPayload {
+  entries: JournalPlayerEntry[];
 }
 
 export interface JournalUpsertBroadcast {
@@ -111,9 +161,27 @@ export interface JournalUpsertBroadcast {
   index: JournalIndexStatus;
 }
 
+/** To samo zdarzenie u gracza — inny kształt, bo inny odbiorca. */
+export interface JournalPlayerUpsertBroadcast {
+  entry: JournalPlayerEntry;
+}
+
 export interface JournalDeleteBroadcast {
   id: string;
-  index: JournalIndexStatus;
+  index?: JournalIndexStatus;
+}
+
+/**
+ * Linia na czacie towarzysząca odsłonięciu wpisu (rodzaj wiadomości `journal`).
+ *
+ * Inaczej niż handout z 24a, wpis dziennika **nie wyskakuje** graczowi na ekran
+ * (rozstrzygnięcie MG, 09.08): kronikę czyta się przed grą, a nie w środku
+ * sceny — linia jest zaproszeniem, nie przerwaniem.
+ */
+export interface JournalLogEntry {
+  entryId: string;
+  title: string;
+  sessionDate: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -494,6 +562,14 @@ export function journalDocumentText(entry: {
   return `# ${entry.title}\n\nSesja z ${entry.sessionDate}.\n\n${entry.body}`;
 }
 
+/**
+ * Odcisk treści, którą trzyma indeks RAG.
+ *
+ * `sharedWithPlayers` świadomie tu NIE wchodzi: odsłonięcie wpisu graczom nie
+ * zmienia ani jednego bajtu tego, co widzi gateway, więc gdyby wchodziło,
+ * kliknięcie „pokaż stołowi" oznaczałoby cały wpis jako nieaktualny i kazało
+ * MG przeindeksować dziennik bez powodu.
+ */
 export function journalDigest(entry: {
   title: string;
   body: string;
@@ -526,7 +602,10 @@ export function validateJournalEntry(raw: unknown):
         sessionDate: string;
         tags: string[];
         visibility: KnowledgeVisibility;
+        sharedWithPlayers: boolean;
       };
+      /** Przypięte handouty — osobno, bo to nie kolumna wpisu, tylko relacja. */
+      handoutIds: string[];
     }
   | { ok: false; issues: JournalValidationIssue[] } {
   const issues: JournalValidationIssue[] = [];
@@ -564,6 +643,108 @@ export function validateJournalEntry(raw: unknown):
       // Wpis dziennika domyślnie NIE jest dla botów: streszczenie zna całą sesję,
       // także to, przy czym NPC-a nie było (rozstrzygnięcie MG, 08.08).
       visibility: input.visibility === 'bots' ? 'bots' : 'gm',
+      // …ani dla stołu, i z tego samego powodu: kronika rodzi się u MG.
+      sharedWithPlayers: input.sharedWithPlayers === true,
     },
+    handoutIds: normalizeHandoutIds(input.handoutIds),
   };
+}
+
+/**
+ * Lista id przypiętych handoutów: bez duplikatów, bez pustych, z limitem.
+ *
+ * Normalizacja jest ta sama co przy odbiorcach handoutu z 24a — „unikalne
+ * niepuste id w kolejności podania" — więc jedzie tą samą funkcją zamiast
+ * własnej kopii, która by się z nią kiedyś rozjechała.
+ */
+export function normalizeHandoutIds(raw: unknown): string[] {
+  return normalizeRecipientIds(raw).slice(0, JOURNAL_HANDOUTS_MAX);
+}
+
+// ---------------------------------------------------------------------------
+// Oś czasu i wyszukiwarka (etap 24b)
+// ---------------------------------------------------------------------------
+
+const MONTH_NAMES = [
+  'Styczeń',
+  'Luty',
+  'Marzec',
+  'Kwiecień',
+  'Maj',
+  'Czerwiec',
+  'Lipiec',
+  'Sierpień',
+  'Wrzesień',
+  'Październik',
+  'Listopad',
+  'Grudzień',
+];
+
+/** Nagłówek grupy na osi czasu: „Sierpień 2026". */
+export function journalMonthLabel(sessionDate: string): string {
+  const match = /^(\d{4})-(\d{2})/.exec(sessionDate);
+  if (!match) return 'Bez daty';
+  const month = MONTH_NAMES[Number(match[2]) - 1];
+  return month ? `${month} ${match[1]}` : `${match[1]}`;
+}
+
+/** Jedna grupa osi czasu — miesiąc sesji i wpisy z niego. */
+export interface JournalMonthGroup<T> {
+  /** `YYYY-MM`; „?" dla wpisu z popsutą datą. */
+  key: string;
+  label: string;
+  entries: T[];
+}
+
+/**
+ * Grupuje wpisy po miesiącu sesji, **zachowując podaną kolejność**.
+ *
+ * Sortowanie zostaje po stronie wołającego (store układa listę raz), więc ta
+ * funkcja jest czystym podziałem: dwie grupy o tym samym kluczu nie powstaną,
+ * bo lista przychodzi już posortowana malejąco po dacie.
+ */
+export function groupJournalByMonth<T extends { sessionDate: string }>(
+  entries: T[],
+): JournalMonthGroup<T>[] {
+  const groups: JournalMonthGroup<T>[] = [];
+  for (const entry of entries) {
+    const key = /^\d{4}-\d{2}/.exec(entry.sessionDate)?.[0] ?? '?';
+    const last = groups.at(-1);
+    if (last && last.key === key) last.entries.push(entry);
+    else groups.push({ key, label: journalMonthLabel(entry.sessionDate), entries: [entry] });
+  }
+  return groups;
+}
+
+/**
+ * Tekst porównywalny dla wyszukiwarki: małe litery bez znaków diakrytycznych.
+ *
+ * Bez tego „wjazd na Zaułek" nie znajdowałby się po wpisaniu „zaulek", a przy
+ * polskim stole to najczęstszy sposób pisania w pośpiechu. Rozkład NFD odcina
+ * ogonki i kreski jako znaki łączące (`\p{M}`), ale `ł` nie jest literą
+ * z akcentem i się nie rozkłada — stąd dla niego osobne przejście.
+ */
+export function foldForSearch(raw: string): string {
+  return raw
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .replace(/ł/g, 'l')
+    .replace(/Ł/g, 'L')
+    .toLowerCase();
+}
+
+/**
+ * Czy wpis pasuje do zapytania: **wszystkie** słowa muszą być w tytule albo
+ * w treści. Iloczyn, nie suma — dopisanie słowa ma zawężać listę.
+ *
+ * Wyszukiwanie liczy się u klienta, na wpisach, które i tak już przyszły. FTS5
+ * z 19a stoi po stronie gatewaya, więc oparcie o niego zakładki znaczyłoby, że
+ * z martwym gatewayem dziennika nie da się przeszukać — a dziennik ma działać
+ * wtedy tak samo (zasada degradacji z CLAUDE.md).
+ */
+export function journalMatches(entry: { title: string; body: string }, query: string): boolean {
+  const words = foldForSearch(query).split(/\s+/).filter(Boolean);
+  if (words.length === 0) return true;
+  const haystack = `${foldForSearch(entry.title)} ${foldForSearch(entry.body)}`;
+  return words.every((word) => haystack.includes(word));
 }

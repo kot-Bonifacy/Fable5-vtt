@@ -15,6 +15,7 @@ import { ROLE_GM, normalizeRecipientIds, validateHandout } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { deliverChatMessageTo, insertChatMessage } from './chat-io.js';
+import { journalEntriesWithHandout, refreshJournalEntries } from './journal.js';
 import { campaignRoom, gmRoom } from './state.js';
 
 /**
@@ -243,6 +244,9 @@ export const handoutDeleteEvent = defineEvent<HandoutIdPayload, void>({
   handler: async ({ deps, socket, payload }) => {
     const campaignId = requireCampaignId(socket.data);
     const row = await requireHandout(deps.ctx.prisma, campaignId, payload?.id);
+    // Wiersze łączące z dziennikiem (24b) znikną kaskadowo razem z handoutem,
+    // więc wpisy do odświeżenia trzeba znać wcześniej.
+    const linked = await journalEntriesWithHandout(deps.ctx.prisma, campaignId, row.id);
     await deps.ctx.prisma.handout.delete({ where: { id: row.id } });
 
     const broadcast: HandoutDeleteBroadcast = { id: row.id };
@@ -254,6 +258,7 @@ export const handoutDeleteEvent = defineEvent<HandoutIdPayload, void>({
       'handout:delete',
       broadcast,
     );
+    await refreshJournalEntries(deps, campaignId, linked);
   },
 });
 
@@ -310,6 +315,16 @@ export const handoutShareEvent = defineEvent<HandoutSharePayload, HandoutView>({
       const open: HandoutOpenBroadcast = { handout: toHandoutView(fresh, false) };
       await emitToUsers(deps, campaignId, added, 'handout:open', open);
       await announceShare(deps, campaignId, user.id, fresh, added);
+    }
+
+    // Odnośnik w kronice (24b) jest przecięciem wpisu z udostępnieniem, więc
+    // zmiana po tej stronie też musi dojechać do gracza.
+    if (added.length > 0 || removed.length > 0) {
+      await refreshJournalEntries(
+        deps,
+        campaignId,
+        await journalEntriesWithHandout(deps.ctx.prisma, campaignId, row.id),
+      );
     }
 
     return gmView;

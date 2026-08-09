@@ -142,7 +142,8 @@ function emitAck<T = undefined>(
 
 async function listHandouts(socket: ClientSocket): Promise<HandoutSyncPayload> {
   const ack = await emitAck<HandoutSyncPayload>(socket, 'handout:list');
-  if (!ack.ok || !ack.data) throw new Error(`handout:list failed: ${ack.error}`);
+  if (!ack.ok) throw new Error(`handout:list failed: ${ack.error}`);
+  if (!ack.data) throw new Error('handout:list bez danych');
   return ack.data;
 }
 

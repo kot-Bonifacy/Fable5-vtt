@@ -1,15 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import {
+  JOURNAL_HANDOUTS_MAX,
   JOURNAL_TITLE_MAX_LENGTH,
   buildRelationPrompt,
   buildSummaryMapPrompt,
   buildSummaryReducePrompt,
   fallbackTitle,
+  foldForSearch,
+  groupJournalByMonth,
   journalCollection,
   journalDigest,
   journalDocumentText,
+  journalMatches,
+  journalMonthLabel,
   journalSource,
   matchName,
+  normalizeHandoutIds,
   normalizeSessionDate,
   parseRelationLines,
   planBatches,
@@ -77,6 +83,88 @@ describe('walidacja wpisu', () => {
     expect(normalizeSessionDate('2026-08-08')).toBe('2026-08-08');
     expect(normalizeSessionDate('2026-08-08T21:37:00.000Z')).toBe('2026-08-08');
     expect(normalizeSessionDate('bzdura')).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it('nowy wpis nie jest widoczny dla stołu, dopóki MG nie powie inaczej', () => {
+    // Zgodność wstecz: istniejące wpisy z 19c mają w bazie `false`, a payload
+    // bez tego pola musi znaczyć to samo, co ich kolumna.
+    expect(validateJournalEntry({ title: 'Sesja', body: 'Treść' })).toMatchObject({
+      ok: true,
+      entry: { sharedWithPlayers: false },
+    });
+    expect(
+      validateJournalEntry({ title: 'Sesja', body: 'Treść', sharedWithPlayers: true }),
+    ).toMatchObject({ ok: true, entry: { sharedWithPlayers: true } });
+    // Nic poza `true` nie odsłania wpisu — „1" z formularza też nie.
+    expect(
+      validateJournalEntry({ title: 'Sesja', body: 'Treść', sharedWithPlayers: '1' }),
+    ).toMatchObject({ ok: true, entry: { sharedWithPlayers: false } });
+  });
+
+  it('odsłonięcie wpisu stołowi NIE zmienia odcisku indeksu', () => {
+    // Inaczej kliknięcie „Pokaż stołowi" oznaczałoby wpis jako nieaktualny
+    // i kazało MG przeindeksować dziennik bez jednej zmienionej litery.
+    expect(journalDigest({ ...ENTRY })).toBe(journalDigest({ ...ENTRY }));
+    const shared = { ...ENTRY, sharedWithPlayers: true } as typeof ENTRY;
+    expect(journalDigest(shared)).toBe(journalDigest(ENTRY));
+  });
+
+  it('czyści listę przypiętych materiałów i pilnuje limitu', () => {
+    expect(normalizeHandoutIds(['a', 'a', ' ', 'b', 7])).toEqual(['a', 'b']);
+    expect(normalizeHandoutIds('nie tablica')).toEqual([]);
+    const many = Array.from({ length: JOURNAL_HANDOUTS_MAX + 5 }, (_, index) => `h${index}`);
+    expect(normalizeHandoutIds(many)).toHaveLength(JOURNAL_HANDOUTS_MAX);
+  });
+
+  it('przenosi listę materiałów obok wpisu, nie w jego polach', () => {
+    const result = validateJournalEntry({ title: 'Sesja', body: 'Treść', handoutIds: ['h1'] });
+    expect(result.ok && result.handoutIds).toEqual(['h1']);
+  });
+});
+
+describe('oś czasu i wyszukiwarka', () => {
+  const entries = [
+    { id: '1', title: 'Zaułek', body: 'Ekipa weszła do zaułka.', sessionDate: '2026-08-09' },
+    { id: '2', title: 'Skład', body: 'Wyszli z dwiema skrzyniami.', sessionDate: '2026-08-01' },
+    { id: '3', title: 'Klub', body: 'Rozmowa z barmanem.', sessionDate: '2026-07-30' },
+  ];
+
+  it('grupuje po miesiącu sesji, zachowując podaną kolejność', () => {
+    const groups = groupJournalByMonth(entries);
+    expect(groups.map((group) => group.key)).toEqual(['2026-08', '2026-07']);
+    expect(groups[0]?.label).toBe('Sierpień 2026');
+    expect(groups[0]?.entries.map((entry) => entry.id)).toEqual(['1', '2']);
+    expect(groups[1]?.label).toBe('Lipiec 2026');
+  });
+
+  it('nie skleja dwóch grup tego samego miesiąca rozdzielonych innym', () => {
+    // Lista przychodzi posortowana, ale gdyby ktoś podał ją inaczej, podział ma
+    // odbić jej kolejność zamiast po cichu ją przestawiać.
+    const groups = groupJournalByMonth([entries[0]!, entries[2]!, entries[1]!]);
+    expect(groups.map((group) => group.key)).toEqual(['2026-08', '2026-07', '2026-08']);
+  });
+
+  it('radzi sobie z popsutą datą zamiast wywalać oś czasu', () => {
+    expect(journalMonthLabel('')).toBe('Bez daty');
+    expect(groupJournalByMonth([{ sessionDate: 'kiedyś' }])[0]?.key).toBe('?');
+  });
+
+  it('szuka bez znaków diakrytycznych i bez względu na wielkość liter', () => {
+    expect(foldForSearch('Zaułek ŻÓŁĆ')).toBe('zaulek zolc');
+    expect(journalMatches(entries[0]!, 'zaulek')).toBe(true);
+    expect(journalMatches(entries[0]!, 'ZAUŁEK')).toBe(true);
+  });
+
+  it('szuka i w tytule, i w treści, a słowa zawęża iloczynem', () => {
+    expect(journalMatches(entries[1]!, 'skrzyniami')).toBe(true);
+    expect(journalMatches(entries[1]!, 'skład skrzyniami')).toBe(true);
+    // Drugie słowo jest w innym wpisie — dopisanie go ma listę zawęzić.
+    expect(journalMatches(entries[1]!, 'skład barmanem')).toBe(false);
+  });
+
+  it('puste zapytanie przepuszcza wszystko', () => {
+    expect(journalMatches(entries[0]!, '')).toBe(true);
+    expect(journalMatches(entries[0]!, '   ')).toBe(true);
   });
 });
 

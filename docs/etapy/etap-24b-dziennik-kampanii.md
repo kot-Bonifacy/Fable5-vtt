@@ -13,18 +13,23 @@ widoczności — „pokaż graczom" — dzięki któremu streszczenie poprzednie
 
 ## Zakres
 
-- [ ] **Trzeci stan widoczności wpisu**: dziś `gm` / `bots`; dochodzi „widoczny dla graczy"
+- [x] **Trzeci stan widoczności wpisu**: dziś `gm` / `bots`; dochodzi „widoczny dla graczy"
       (POMYSLY 08.08). Uwaga: to nie jest prosty trzeci szczebel — bot czyta przez tagi, gracz
       przez udostępnienie, więc zdecyduj, czy widoczność dla graczy jest **osobną flagą** obok
-      istniejącej `visibility`
-- [ ] **Zakładka „Dziennik" u gracza** — tylko wpisy oznaczone jako widoczne, tylko do odczytu
-- [ ] **Oś czasu** zamiast płaskiej listy: grupowanie po dacie sesji, zwijanie starszych
-- [ ] **Wyszukiwanie pełnotekstowe** po tytule i treści wpisów (SQLite FTS5 jest już w projekcie
+      istniejącej `visibility` → **osobna kolumna `sharedWithPlayers`** (decyzja MG 09.08)
+- [x] **Zakładka „Dziennik" u gracza** — tylko wpisy oznaczone jako widoczne, tylko do odczytu
+      (przeniesiona z rzędu MG do rzędu stołu, jak „Handouty" w 24a)
+- [x] **Oś czasu** zamiast płaskiej listy: grupowanie po dacie sesji, zwijanie starszych
+      (nagłówki miesięcy; rozwinięty jest najnowszy widoczny wpis)
+- [x] **Wyszukiwanie pełnotekstowe** po tytule i treści wpisów (SQLite FTS5 jest już w projekcie
       z etapu 19a — sprawdź, czy warto go tu reużyć, czy wystarczy `LIKE` na kilkudziesięciu wpisach)
-- [ ] **Markdown w treści wpisu** — renderer z 24a
-- [ ] **Powiązanie wpis ↔ handout**: wpis dziennika może wskazywać handouty (z 24a), a gracz
-      widzi je jako odnośniki w treści
-- [ ] Testy: filtr widoczności na żywych gniazdach, wyszukiwanie, migracja zgodna wstecz
+      → **ani jedno, ani drugie: filtr u klienta**, bo FTS5 stoi po stronie gatewaya, a dziennik
+      ma się przeszukiwać także wtedy, gdy gateway leży
+- [x] **Markdown w treści wpisu** — renderer z 24a
+- [x] **Powiązanie wpis ↔ handout**: wpis dziennika może wskazywać handouty (z 24a), a gracz
+      widzi je jako odnośniki w treści → **sekcja „Materiały" pod treścią**, wybierana chipami
+      w edytorze (decyzja MG 09.08); znacznik w markdownie odrzucony
+- [x] Testy: filtr widoczności na żywych gniazdach, wyszukiwanie, migracja zgodna wstecz
 
 ## Poza zakresem
 
@@ -33,12 +38,12 @@ widoczności — „pokaż graczom" — dzięki któremu streszczenie poprzednie
 
 ## Kryteria ukończenia
 
-- MG dopisuje wpis ręczny i oznacza go jako widoczny dla graczy — pojawia się u gracza
-  w zakładce „Dziennik", a wpis nieoznaczony nie dociera do niego w żadnym payloadzie
-- Dziennik pokazuje streszczenie ostatniej sesji na osi czasu; wyszukiwarka znajduje wpis
-  po słowie z jego treści
-- Wpis linkujący do handoutu otwiera ten handout u gracza, który go ma; u gracza bez
-  udostępnienia odnośnik się nie pokazuje
+- [x] MG dopisuje wpis ręczny i oznacza go jako widoczny dla graczy — pojawia się u gracza
+      w zakładce „Dziennik", a wpis nieoznaczony nie dociera do niego w żadnym payloadzie
+- [x] Dziennik pokazuje streszczenie ostatniej sesji na osi czasu; wyszukiwarka znajduje wpis
+      po słowie z jego treści
+- [x] Wpis linkujący do handoutu otwiera ten handout u gracza, który go ma; u gracza bez
+      udostępnienia odnośnik się nie pokazuje
 
 ## Wskazówki techniczne
 

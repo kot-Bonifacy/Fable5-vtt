@@ -6,8 +6,13 @@ import type {
   JournalDraftBroadcast,
   JournalEntryView,
   JournalErrorBroadcast,
+  JournalHandoutLink,
   JournalIdPayload,
   JournalIndexStatus,
+  JournalLogEntry,
+  JournalPlayerEntry,
+  JournalPlayerSyncPayload,
+  JournalPlayerUpsertBroadcast,
   JournalProgressBroadcast,
   JournalSummarizePayload,
   JournalSyncPayload,
@@ -15,6 +20,7 @@ import type {
   JournalUpsertPayload,
   KnowledgeVisibility,
   RelationProposal,
+  SessionUser,
 } from '@vtt/shared';
 import {
   BOT_CONTEXT_FALLBACK_TOKENS,
@@ -46,7 +52,8 @@ import type { AiChatRequest, RagDocumentInput } from '../ai/gateway.js';
 import type { PrismaClient } from '../db.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { fetchBotRelations } from './relations.js';
-import { gmRoom } from './state.js';
+import { broadcastChatMessage, insertChatMessage } from './chat-io.js';
+import { campaignRoom, gmRoom } from './state.js';
 
 /**
  * Dziennik kampanii i streszczanie sesji (etap 19c).
@@ -64,6 +71,12 @@ import { gmRoom } from './state.js';
  *     a propozycje relacji jako lista do odklikania. Kryterium etapu brzmi
  *     „żadna relacja nie zmienia się bez kliknięcia MG" i jest tu dosłowne:
  *     ten plik nie ma ani jednego zapisu do `botRelation`.
+ *
+ * Etap 24b otworzył czwartą: **dziennik wychodzi do graczy, ale wpisem po
+ * wpisie**. Kanał gracza jest osobnym kształtem (`JournalPlayerEntry`), a nie
+ * okrojonym widokiem MG, i wszystko, co go dotyczy, filtruje zapytanie:
+ * `sharedWithPlayers` przy wpisie, `HandoutShare` przy przypiętym materiale.
+ * Wpis „tylko MG" nie pojawia się u gracza nawet jako id.
  */
 
 /** Ile sekund wolno zająć jednej generacji. Porcja to kilkaset tokenów. */
@@ -72,6 +85,11 @@ const GENERATION_TIMEOUT_MS = 120_000;
 /** Twardy limit porcji — zabezpieczenie przed logiem z tysiąca sesji. */
 const MAX_BATCHES = 40;
 
+/** Wiersz tabeli łączącej z doczytanym handoutem — tyle, ile trzeba na odnośnik. */
+interface JournalHandoutRow {
+  handout: { id: string; title: string; imageUrl: string | null };
+}
+
 interface JournalRow {
   id: string;
   title: string;
@@ -79,12 +97,38 @@ interface JournalRow {
   sessionDate: string;
   tags: string;
   visibility: string;
+  sharedWithPlayers: boolean;
   throughMessageId: number | null;
   lineCount: number;
   indexedDigest: string | null;
   indexedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  handouts: JournalHandoutRow[];
+}
+
+/**
+ * Przypięte handouty MG widzi wszystkie. Gracz — tylko te, które dostał, i to
+ * odsiewa `where` w zapytaniu (patrz `includeHandoutsFor`), a nie ta funkcja.
+ */
+const INCLUDE_HANDOUTS = {
+  handouts: { include: { handout: { select: { id: true, title: true, imageUrl: true } } } },
+} as const;
+
+/**
+ * Ten sam `include`, zawężony do materiałów udostępnionych temu graczowi.
+ *
+ * Filtr stoi w zapytaniu, nie w mapowaniu po fakcie — wpis dziennika może
+ * wskazywać handout, którego gracz nie dostał, i wtedy nawet **tytuł** tego
+ * materiału nie ma prawa opuścić serwera.
+ */
+function includeHandoutsFor(userId: string) {
+  return {
+    handouts: {
+      where: { handout: { shares: { some: { userId } } } },
+      include: { handout: { select: { id: true, title: true, imageUrl: true } } },
+    },
+  } as const;
 }
 
 function parseTags(raw: string): string[] {
@@ -98,6 +142,30 @@ function parseTags(raw: string): string[] {
   }
 }
 
+const collator = new Intl.Collator('pl');
+
+function toHandoutLinks(rows: JournalHandoutRow[]): JournalHandoutLink[] {
+  return rows
+    .map((row) => ({
+      id: row.handout.id,
+      title: row.handout.title,
+      hasImage: row.handout.imageUrl !== null,
+    }))
+    .sort((a, b) => collator.compare(a.title, b.title));
+}
+
+/** Wpis w kształcie gracza: bez tagów, bez widoczności, bez stanu indeksu. */
+function toPlayerEntry(row: JournalRow): JournalPlayerEntry {
+  return {
+    id: row.id,
+    title: row.title,
+    body: row.body,
+    sessionDate: row.sessionDate,
+    handouts: toHandoutLinks(row.handouts),
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
 function toEntryView(row: JournalRow): JournalEntryView {
   const visibility: KnowledgeVisibility = row.visibility === 'bots' ? 'bots' : 'gm';
   const tags = parseTags(row.tags);
@@ -109,17 +177,14 @@ function toEntryView(row: JournalRow): JournalEntryView {
     visibility,
   });
   return {
-    id: row.id,
-    title: row.title,
-    body: row.body,
-    sessionDate: row.sessionDate,
+    ...toPlayerEntry(row),
     tags,
     visibility,
+    sharedWithPlayers: row.sharedWithPlayers,
     throughMessageId: row.throughMessageId,
     lineCount: row.lineCount,
     indexedAt: row.indexedAt?.toISOString() ?? null,
     stale: row.indexedDigest !== digest,
-    createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
 }
@@ -140,9 +205,115 @@ export async function fetchJournalEntries(
 ): Promise<JournalEntryView[]> {
   const rows = await prisma.journalEntry.findMany({
     where: { campaignId },
+    include: INCLUDE_HANDOUTS,
     orderBy: [{ sessionDate: 'desc' }, { createdAt: 'desc' }],
   });
   return rows.map(toEntryView);
+}
+
+/**
+ * Dziennik, jak widzi go gracz: wyłącznie wpisy odsłonięte stołowi, z odnośnikami
+ * do materiałów, które ten konkretny gracz naprawdę dostał.
+ */
+export async function fetchSharedJournal(
+  prisma: PrismaClient,
+  campaignId: string,
+  userId: string,
+): Promise<JournalPlayerEntry[]> {
+  const rows = await prisma.journalEntry.findMany({
+    where: { campaignId, sharedWithPlayers: true },
+    include: includeHandoutsFor(userId),
+    orderBy: [{ sessionDate: 'desc' }, { createdAt: 'desc' }],
+  });
+  return rows.map(toPlayerEntry);
+}
+
+/** Materiały, które MG może przypiąć do wpisu — sama etykieta, bez treści. */
+async function fetchPinnableHandouts(
+  prisma: PrismaClient,
+  campaignId: string,
+): Promise<JournalHandoutLink[]> {
+  const rows = await prisma.handout.findMany({
+    where: { campaignId },
+    select: { id: true, title: true, imageUrl: true },
+  });
+  return rows
+    .map((row) => ({ id: row.id, title: row.title, hasImage: row.imageUrl !== null }))
+    .sort((a, b) => collator.compare(a.title, b.title));
+}
+
+/**
+ * Rozsyła wpis graczom — każdemu w jego własnym kształcie, bo lista przypiętych
+ * materiałów zależy od tego, co komu udostępniono.
+ *
+ * `null` znaczy „ten gracz nie ma prawa tego widzieć": wtedy zamiast treści
+ * jedzie `journal:delete`, bo z jego strony wpis przestaje istnieć — dokładnie
+ * jak przy cofniętym udostępnieniu handoutu w 24a.
+ */
+async function emitToPlayers(deps: RealtimeDeps, campaignId: string, entryId: string) {
+  const sockets = await deps.io.in(campaignRoom(campaignId)).fetchSockets();
+  const computed = new Map<string, JournalPlayerEntry | null>();
+  for (const socket of sockets) {
+    const user = (socket.data as { user: SessionUser }).user;
+    if (user.role === ROLE_GM) continue;
+    if (!computed.has(user.id)) {
+      const row = await deps.ctx.prisma.journalEntry.findFirst({
+        where: { id: entryId, campaignId, sharedWithPlayers: true },
+        include: includeHandoutsFor(user.id),
+      });
+      computed.set(user.id, row ? toPlayerEntry(row) : null);
+    }
+    const entry = computed.get(user.id) ?? null;
+    if (entry) {
+      const broadcast: JournalPlayerUpsertBroadcast = { entry };
+      socket.emit('journal:upsert', broadcast);
+    } else {
+      const broadcast: JournalDeleteBroadcast = { id: entryId };
+      socket.emit('journal:delete', broadcast);
+    }
+  }
+}
+
+/** „Tego wpisu już nie ma" — do wszystkich graczy przy stole. */
+async function emitDeleteToPlayers(deps: RealtimeDeps, campaignId: string, id: string) {
+  const sockets = await deps.io.in(campaignRoom(campaignId)).fetchSockets();
+  const broadcast: JournalDeleteBroadcast = { id };
+  for (const socket of sockets) {
+    const user = (socket.data as { user: SessionUser }).user;
+    if (user.role !== ROLE_GM) socket.emit('journal:delete', broadcast);
+  }
+}
+
+/**
+ * Odsłonięte wpisy, które wymieniają ten handout — pytane **przed** zmianą,
+ * bo skasowanie materiału zabiera ze sobą wiersze łączące.
+ */
+export async function journalEntriesWithHandout(
+  prisma: PrismaClient,
+  campaignId: string,
+  handoutId: string,
+): Promise<string[]> {
+  const links = await prisma.journalHandout.findMany({
+    where: { handoutId, entry: { campaignId, sharedWithPlayers: true } },
+    select: { entryId: true },
+  });
+  return links.map((link) => link.entryId);
+}
+
+/**
+ * Odświeża wskazane wpisy u graczy (etap 24b).
+ *
+ * Woła to moduł handoutów: gracz, któremu MG właśnie dał mapę, ma zobaczyć ją
+ * także jako odnośnik w kronice — bez przeładowywania zakładki. Odnośnik nie
+ * jest własnością wpisu, tylko przecięciem wpisu z udostępnieniem, więc zmiana
+ * po **którejkolwiek** stronie musi dojechać do gracza.
+ */
+export async function refreshJournalEntries(
+  deps: RealtimeDeps,
+  campaignId: string,
+  entryIds: string[],
+): Promise<void> {
+  for (const entryId of entryIds) await emitToPlayers(deps, campaignId, entryId);
 }
 
 async function indexStatus(
@@ -257,16 +428,30 @@ async function emitUpsert(
 // Zdarzenia — dziennik
 // ---------------------------------------------------------------------------
 
-export const journalListEvent = defineEvent<undefined, JournalSyncPayload>({
+/**
+ * Lista wpisów — jedyne zdarzenie tego modułu dostępne graczowi (etap 24b).
+ *
+ * Rola nie stoi w definicji, tylko w gałęzi: gracz i MG dostają **dwa różne
+ * kształty**, a nie ten sam obiekt z paroma polami wyciętymi po drodze. Reszta
+ * zdarzeń dziennika (zapis, kasowanie, reindeks, streszczanie) zostaje przy
+ * `ROLE_GM`.
+ */
+export const journalListEvent = defineEvent<
+  undefined,
+  JournalSyncPayload | JournalPlayerSyncPayload
+>({
   name: 'journal:list',
-  role: ROLE_GM,
-  handler: async ({ deps, socket }) => {
+  handler: async ({ deps, socket, user }) => {
     const campaignId = requireCampaignId(socket.data);
+    if (user.role !== ROLE_GM) {
+      return { entries: await fetchSharedJournal(deps.ctx.prisma, campaignId, user.id) };
+    }
     const entries = await fetchJournalEntries(deps.ctx.prisma, campaignId);
     return {
       entries,
       index: await indexStatus(deps, campaignId, entries),
       pendingLines: await pendingLineCount(deps.ctx.prisma, campaignId),
+      handouts: await fetchPinnableHandouts(deps.ctx.prisma, campaignId),
     };
   },
 });
@@ -274,17 +459,28 @@ export const journalListEvent = defineEvent<undefined, JournalSyncPayload>({
 export const journalUpsertEvent = defineEvent<JournalUpsertPayload, JournalEntryView>({
   name: 'journal:upsert',
   role: ROLE_GM,
-  handler: async ({ deps, socket, payload }) => {
+  handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
     const result = validateJournalEntry(payload);
     if (!result.ok) throw new RealtimeError(`INVALID_ENTRY:${result.issues[0]?.message ?? ''}`);
     const data = result.entry;
 
     const id = typeof payload?.id === 'string' && payload.id.length > 0 ? payload.id : null;
+    let wasShared = false;
     if (id) {
       const existing = await deps.ctx.prisma.journalEntry.findUnique({ where: { id } });
       if (!existing || existing.campaignId !== campaignId)
         throw new RealtimeError('ENTRY_NOT_FOUND');
+      wasShared = existing.sharedWithPlayers;
+    }
+
+    // Handout spoza kampanii nie da się przypiąć podrobionym payloadem —
+    // `JournalHandout` nie zna pojęcia kampanii, więc pilnuje tego ten warunek.
+    if (result.handoutIds.length > 0) {
+      const known = await deps.ctx.prisma.handout.count({
+        where: { campaignId, id: { in: result.handoutIds } },
+      });
+      if (known !== result.handoutIds.length) throw new RealtimeError('UNKNOWN_HANDOUT');
     }
 
     const covered =
@@ -294,6 +490,7 @@ export const journalUpsertEvent = defineEvent<JournalUpsertPayload, JournalEntry
       ? await deps.ctx.prisma.journalEntry.update({
           where: { id },
           data: { ...data, tags: JSON.stringify(data.tags) },
+          include: INCLUDE_HANDOUTS,
         })
       : await deps.ctx.prisma.journalEntry.create({
           data: {
@@ -303,12 +500,15 @@ export const journalUpsertEvent = defineEvent<JournalUpsertPayload, JournalEntry
             ...(covered !== undefined ? { throughMessageId: covered } : {}),
             ...(lineCount !== undefined ? { lineCount } : {}),
           },
+          include: INCLUDE_HANDOUTS,
         });
+
+    const fresh = await syncHandoutLinks(deps.ctx.prisma, stored, result.handoutIds);
 
     // Indeksujemy od razu, jak w 19b: wpis „boty z uprawnieniem" ma działać w
     // następnej wypowiedzi NPC-a, bez restartu gatewaya. Nieudane indeksowanie
     // nie cofa zapisu — zostaje widoczny stan „nieaktualny".
-    const entry = toEntryView(stored);
+    const entry = toEntryView(fresh);
     const indexed = await deps.ctx.ai.indexDocuments(journalCollection(campaignId), [
       toDocument(entry),
     ]);
@@ -323,9 +523,75 @@ export const journalUpsertEvent = defineEvent<JournalUpsertPayload, JournalEntry
       indexedAt: indexed.ok ? new Date().toISOString() : null,
     };
     await emitUpsert(deps, campaignId, view);
+    await emitToPlayers(deps, campaignId, view.id);
+
+    // Ślad na czacie tylko przy odsłonięciu, nie przy każdej poprawce
+    // odsłoniętego wpisu — „udostępnienie jest zdarzeniem", jak w 24a.
+    if (view.sharedWithPlayers && !wasShared) await announceEntry(deps, campaignId, user.id, view);
     return view;
   },
 });
+
+/**
+ * Ustawia przypięte materiały na dokładnie tę listę, którą przysłał MG.
+ *
+ * Stan, nie ciąg operacji: formularz wysyła zaznaczone chipy, a różnicę liczy
+ * serwer — ten sam kształt, co lista odbiorców handoutu w 24a.
+ */
+async function syncHandoutLinks(
+  prisma: PrismaClient,
+  stored: JournalRow,
+  wanted: string[],
+): Promise<JournalRow> {
+  const before = stored.handouts.map((row) => row.handout.id);
+  const removed = before.filter((handoutId) => !wanted.includes(handoutId));
+  const added = wanted.filter((handoutId) => !before.includes(handoutId));
+  if (removed.length === 0 && added.length === 0) return stored;
+
+  if (removed.length > 0) {
+    await prisma.journalHandout.deleteMany({
+      where: { entryId: stored.id, handoutId: { in: removed } },
+    });
+  }
+  if (added.length > 0) {
+    await prisma.journalHandout.createMany({
+      data: added.map((handoutId) => ({ entryId: stored.id, handoutId })),
+    });
+  }
+  return prisma.journalEntry.findUniqueOrThrow({
+    where: { id: stored.id },
+    include: INCLUDE_HANDOUTS,
+  });
+}
+
+/**
+ * Linia na czacie: „📓 Nowy wpis w dzienniku".
+ *
+ * Inaczej niż handout z 24a — jeden wiersz dla całego stołu, nie kopia na
+ * odbiorcę. Wpis dziennika jest odsłaniany wszystkim naraz, więc `visibleTo`
+ * przepuszcza rodzaj `journal` bez pytania o adresata, a wiersz może być
+ * zwyczajnym rozgłoszeniem z numerem sekwencji.
+ */
+async function announceEntry(
+  deps: RealtimeDeps,
+  campaignId: string,
+  gmId: string,
+  entry: JournalEntryView,
+): Promise<void> {
+  const log: JournalLogEntry = {
+    entryId: entry.id,
+    title: entry.title,
+    sessionDate: entry.sessionDate,
+  };
+  const message = await insertChatMessage(deps.ctx.prisma, {
+    campaignId,
+    authorId: gmId,
+    kind: 'journal',
+    text: entry.title,
+    payload: JSON.stringify(log),
+  });
+  broadcastChatMessage(deps, campaignId, message);
+}
 
 export const journalDeleteEvent = defineEvent<JournalIdPayload, void>({
   name: 'journal:delete',
@@ -347,6 +613,10 @@ export const journalDeleteEvent = defineEvent<JournalIdPayload, void>({
 
     const broadcast: JournalDeleteBroadcast = { id, index: await indexStatus(deps, campaignId) };
     deps.io.to(gmRoom(campaignId)).emit('journal:delete', broadcast);
+    // Bez rozróżniania, kto go miał: wpis odsłonięty stołowi jest odsłonięty
+    // całemu stołowi, a `journal:delete` na nieznane id jest u gracza pustą
+    // operacją.
+    await emitDeleteToPlayers(deps, campaignId, id);
   },
 });
 

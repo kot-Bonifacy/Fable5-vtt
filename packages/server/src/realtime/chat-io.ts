@@ -7,6 +7,7 @@ import type {
   DamageLogEntry,
   EconomyLogEntry,
   HandoutLogEntry,
+  JournalLogEntry,
   SessionUser,
 } from '@vtt/shared';
 import { CHAT_HISTORY_PAGE_SIZE, ROLE_GM } from '@vtt/shared';
@@ -103,6 +104,8 @@ export function toChatMessageView(message: StoredMessage): ChatMessageView {
     view.economy = JSON.parse(message.payload) as EconomyLogEntry;
   } else if (message.kind === 'handout' && message.payload) {
     view.handout = JSON.parse(message.payload) as HandoutLogEntry;
+  } else if (message.kind === 'journal' && message.payload) {
+    view.journal = JSON.parse(message.payload) as JournalLogEntry;
   }
   return view;
 }
@@ -191,7 +194,9 @@ export function visibleTo(user: SessionUser) {
         // cards are private, but the GM audits every one of them, including a
         // purchase a player made without asking. `handout` (stage 24a) follows
         // the same rule: the GM hands the material out, so every copy of the
-        // line is theirs to see, one per recipient.
+        // line is theirs to see, one per recipient. `journal` (stage 24b) needs
+        // no such reasoning on either list: a chronicle entry is opened to the
+        // whole table at once, so its line is public and carries no addressee.
         {
           kind: {
             in: [
@@ -204,6 +209,7 @@ export function visibleTo(user: SessionUser) {
               'proposal',
               'economy',
               'handout',
+              'journal',
             ],
           },
         },
@@ -218,7 +224,7 @@ export function visibleTo(user: SessionUser) {
   // their own, through the `authorId` clause below.
   return {
     OR: [
-      { kind: { in: ['say', 'roll', 'damage', 'action'] } },
+      { kind: { in: ['say', 'roll', 'damage', 'action', 'journal'] } },
       { authorId: user.id },
       { recipientId: user.id },
     ],

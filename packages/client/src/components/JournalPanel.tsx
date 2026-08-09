@@ -1,38 +1,54 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import type {
   JournalEntryView,
+  JournalHandoutLink,
   JournalIndexStatus,
+  JournalPlayerEntry,
   JournalProgressBroadcast,
+  JournalUpsertPayload,
   KnowledgeVisibility,
   RelationProposal,
 } from '@vtt/shared';
 import {
   JOURNAL_BODY_MAX_LENGTH,
+  JOURNAL_HANDOUTS_MAX,
   JOURNAL_HINT_MAX_LENGTH,
   JOURNAL_TITLE_MAX_LENGTH,
   KNOWLEDGE_TAGS_MAX,
   KNOWLEDGE_VISIBILITIES,
   KNOWLEDGE_VISIBILITY_LABELS,
+  ROLE_GM,
+  groupJournalByMonth,
+  journalMatches,
   normalizeKnowledgeTags,
   relationBadge,
 } from '@vtt/shared';
 import {
   cancelSummary,
   deleteJournalEntry,
+  fetchHandouts,
   fetchJournal,
+  journalErrorText,
   reindexJournal,
   saveJournalEntry,
   setRelation,
   summarizeSession,
 } from '../socket.js';
+import { useAuthStore } from '../stores/authStore.js';
+import { useHandoutStore } from '../stores/handoutStore.js';
 import { useJournalStore } from '../stores/journalStore.js';
+import { Markdown } from './Markdown.js';
 
 /**
- * Dziennik kampanii (etap 19c) — zakładka MG.
+ * Dziennik kampanii — zakładka MG (19c) i kronika stołu (24b).
  *
- * Panel prowadzi jedną drogę: „Zakończ sesję" → szkic do poprawy → „Zapisz do
- * dziennika". Model niczego nie zapisuje sam, więc szkic i propozycje relacji
- * są tu widoczne jako materiał do decyzji, a nie jako fakt dokonany.
+ * Panel MG prowadzi jedną drogę: „Zakończ sesję" → szkic do poprawy → „Zapisz
+ * do dziennika". Model niczego nie zapisuje sam, więc szkic i propozycje relacji
+ * są tu materiałem do decyzji, a nie faktem dokonanym.
+ *
+ * Od 24b ta sama zakładka istnieje u gracza — z osią czasu i wyszukiwarką, ale
+ * bez jednego pola do edycji. Nie ma tu gałęzi „ukryj u gracza": wpisów, których
+ * MG nie odsłonił, po tamtej stronie po prostu nie ma, bo serwer ich nie wysłał.
  */
 
 const STAGE_LABELS: Record<JournalProgressBroadcast['stage'], string> = {
@@ -217,6 +233,7 @@ function DraftSection() {
   const batches = useJournalStore((s) => s.batches);
   const [tagDraft, setTagDraft] = useState('');
   const [visibility, setVisibility] = useState<KnowledgeVisibility>('gm');
+  const [shared, setShared] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const tags = useMemo(() => parseTagInput(tagDraft), [tagDraft]);
@@ -234,16 +251,13 @@ function DraftSection() {
       sessionDate: draft.sessionDate,
       tags,
       visibility,
+      sharedWithPlayers: shared,
       throughMessageId: draft.throughMessageId,
       lineCount: draft.lineCount,
     });
     setBusy(false);
     if (!ack.ok) {
-      setError(
-        ack.error.startsWith('INVALID_ENTRY:')
-          ? ack.error.slice('INVALID_ENTRY:'.length)
-          : `Nie udało się zapisać wpisu: ${ack.error}`,
-      );
+      setError(journalErrorText(ack.error));
       return;
     }
     useJournalStore.getState().clearDraft();
@@ -309,6 +323,15 @@ function DraftSection() {
           : `Boty z pasującym tagiem przypomną sobie tę sesję (limit ${KNOWLEDGE_TAGS_MAX} tagów).`}
       </p>
 
+      <label className="journal-share-toggle">
+        <input
+          type="checkbox"
+          checked={shared}
+          onChange={(event) => setShared(event.target.checked)}
+        />
+        <span>Widzi stół — wpis pojawi się graczom w zakładce „Dziennik"</span>
+      </label>
+
       {proposals.length > 0 && (
         <>
           <h3>Propozycje zmian nastawienia ({proposals.length})</h3>
@@ -341,70 +364,289 @@ function DraftSection() {
   );
 }
 
-function EntryRow({ entry, onEdit }: { entry: JournalEntryView; onEdit: () => void }) {
-  const [confirming, setConfirming] = useState(false);
+// ---------------------------------------------------------------------------
+// Oś czasu — wspólna dla obu stron stołu (etap 24b)
+// ---------------------------------------------------------------------------
+
+/**
+ * Odnośniki do materiałów przypiętych do wpisu.
+ *
+ * Lista przychodzi z serwera już odsiana — u gracza są w niej wyłącznie
+ * handouty, które dostał — więc tutaj nie ma czego ukrywać. Przycisk otwiera
+ * okno z pamięci klienta, tak samo jak wiersz handoutu na czacie.
+ */
+function HandoutLinks({ handouts }: { handouts: JournalHandoutLink[] }) {
+  const known = useHandoutStore((s) => s.handouts);
+  const openHandout = useHandoutStore((s) => s.openHandout);
+  if (handouts.length === 0) return null;
   return (
-    <li className="knowledge-entry">
-      <button type="button" className="knowledge-entry-head" onClick={onEdit}>
-        <span className="knowledge-type knowledge-type--event">{entry.sessionDate}</span>
-        <span className="knowledge-entry-title">{entry.title}</span>
-        {entry.visibility === 'gm' && (
-          <span className="knowledge-flag" title="Ten wpis nigdy nie trafia do promptu bota">
-            🔒 tylko MG
+    <div className="journal-materials">
+      <span className="journal-materials-label">Materiały:</span>
+      {handouts.map((handout) => (
+        <button
+          key={handout.id}
+          type="button"
+          className="journal-material"
+          disabled={!(handout.id in known)}
+          title={handout.id in known ? 'Otwórz materiał' : 'Materiał wycofany'}
+          onClick={() => openHandout(handout.id)}
+        >
+          {handout.hasImage ? '🖼 ' : '📄 '}
+          {handout.title}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+interface TimelineProps<T extends JournalPlayerEntry> {
+  entries: T[];
+  /** Lista jest już wczytana — dopiero wtedy wolno rozstrzygać o ognisku. */
+  ready: boolean;
+  emptyText: string;
+  /** Chipy w nagłówku wiersza — MG dokłada widoczność i stan indeksu. */
+  badges?: (entry: T) => ReactNode;
+  /** Przyciski pod treścią rozwiniętego wpisu — u gracza żadnych. */
+  actions?: (entry: T) => ReactNode;
+}
+
+/**
+ * Oś czasu: nagłówki miesięcy, wiersze wpisów i wyszukiwarka.
+ *
+ * Rozwinięty jest **najnowszy wpis z widocznych** — a przy aktywnym szukaniu
+ * pierwsze trafienie, więc wpisanie słowa od razu pokazuje treść, zamiast
+ * kazać jeszcze klikać. Reszta zwija się do wiersza „data — tytuł", żeby
+ * zakładka nie rosła z liczbą sesji.
+ */
+function JournalTimeline<T extends JournalPlayerEntry>({
+  entries,
+  ready,
+  emptyText,
+  badges,
+  actions,
+}: TimelineProps<T>) {
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState<Record<string, boolean>>({});
+  const focus = useJournalStore((s) => s.focus);
+  const setFocus = useJournalStore((s) => s.setFocus);
+
+  const filtered = useMemo(
+    () => entries.filter((entry) => journalMatches(entry, query)),
+    [entries, query],
+  );
+  const groups = useMemo(() => groupJournalByMonth(filtered), [filtered]);
+  const newest = filtered[0]?.id;
+
+  // Przycisk „Otwórz" z czatu: wpis ma się rozwinąć i pokazać niezależnie od
+  // tego, co akurat jest wpisane w wyszukiwarkę.
+  //
+  // Czekamy na `ready`, bo panel montuje się razem z przełączeniem zakładki —
+  // gdyby ognisko gasło przed wczytaniem listy, wpis by się nie rozwinął. Gdy
+  // lista już jest, ognisko gaśnie **zawsze**, także dla wpisu, którego w niej
+  // nie ma: inaczej zostałoby zapalone na stałe i drugie kliknięcie „Otwórz"
+  // (ta sama wartość w store) nie wywołałoby już niczego.
+  useEffect(() => {
+    if (!focus || !ready) return;
+    const found = entries.some((entry) => entry.id === focus);
+    setFocus(null);
+    if (!found) return;
+    setQuery('');
+    setOpen((previous) => ({ ...previous, [focus]: true }));
+    requestAnimationFrame(() =>
+      document.getElementById(`journal-entry-${focus}`)?.scrollIntoView({ block: 'nearest' }),
+    );
+  }, [focus, ready, entries, setFocus]);
+
+  return (
+    <>
+      <div className="journal-search">
+        <input
+          type="search"
+          value={query}
+          placeholder="Szukaj w dzienniku — tytuł i treść"
+          onChange={(event) => setQuery(event.target.value)}
+        />
+        {query.length > 0 && (
+          <span className="ai-status-text">
+            {plural(filtered.length, 'wpis', 'wpisy', 'wpisów')}
           </span>
         )}
-        {entry.stale && (
-          <span
-            className="knowledge-flag knowledge-flag--stale"
-            title="Boty odpowiadają jeszcze ze starej wersji — użyj „Zaindeksuj wszystko”"
-          >
-            ⟳ nieaktualny
-          </span>
-        )}
+      </div>
+
+      {filtered.length === 0 ? (
+        <p className="placeholder-text">
+          {query.length > 0 ? 'Nic takiego w dzienniku nie ma.' : emptyText}
+        </p>
+      ) : (
+        groups.map((group) => (
+          <section key={group.key} className="journal-month">
+            <h4 className="journal-month-label">{group.label}</h4>
+            <ul className="journal-timeline">
+              {group.entries.map((entry) => {
+                const expanded = open[entry.id] ?? entry.id === newest;
+                return (
+                  <li
+                    key={entry.id}
+                    id={`journal-entry-${entry.id}`}
+                    className={`journal-entry ${expanded ? 'journal-entry--open' : ''}`}
+                  >
+                    <button
+                      type="button"
+                      className="journal-entry-head"
+                      aria-expanded={expanded}
+                      onClick={() =>
+                        setOpen((previous) => ({ ...previous, [entry.id]: !expanded }))
+                      }
+                    >
+                      <span className="journal-entry-arrow">{expanded ? '▾' : '▸'}</span>
+                      <span className="knowledge-type knowledge-type--event">
+                        {entry.sessionDate}
+                      </span>
+                      <span className="knowledge-entry-title">{entry.title}</span>
+                      {badges?.(entry)}
+                    </button>
+                    {expanded && (
+                      <div className="journal-entry-body">
+                        <Markdown source={entry.body} />
+                        <HandoutLinks handouts={entry.handouts} />
+                        {actions?.(entry)}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        ))
+      )}
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Widok MG
+// ---------------------------------------------------------------------------
+
+/** Pełny zapis wpisu z jedną zmienioną rzeczą — `journal:upsert` chce całości. */
+function entryPayload(
+  entry: JournalEntryView,
+  patch: Partial<JournalUpsertPayload>,
+): JournalUpsertPayload {
+  return {
+    id: entry.id,
+    title: entry.title,
+    body: entry.body,
+    sessionDate: entry.sessionDate,
+    tags: entry.tags,
+    visibility: entry.visibility,
+    sharedWithPlayers: entry.sharedWithPlayers,
+    handoutIds: entry.handouts.map((handout) => handout.id),
+    ...patch,
+  };
+}
+
+/** Przełącznik „widzi stół" i kosz — jedyne działania na wierszu listy. */
+function GmEntryActions({ entry }: { entry: JournalEntryView }) {
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const setEditing = useJournalStore((s) => s.setEditing);
+
+  async function toggleShared() {
+    setBusy(true);
+    setError(null);
+    const ack = await saveJournalEntry(
+      entryPayload(entry, { sharedWithPlayers: !entry.sharedWithPlayers }),
+    );
+    setBusy(false);
+    if (!ack.ok) setError(journalErrorText(ack.error));
+  }
+
+  return (
+    <div className="journal-entry-actions">
+      <button
+        type="button"
+        className={`small-button ${entry.sharedWithPlayers ? 'small-button--on' : ''}`}
+        disabled={busy}
+        onClick={() => void toggleShared()}
+        title={
+          entry.sharedWithPlayers
+            ? 'Zdejmij wpis ze stołu — zniknie graczom'
+            : 'Pokaż wpis graczom (zostawi linię na czacie)'
+        }
+      >
+        {entry.sharedWithPlayers ? '👁 Widzi stół' : '👁 Pokaż stołowi'}
       </button>
-      <p className="knowledge-entry-body">{entry.body}</p>
-      <div className="knowledge-entry-foot">
-        {entry.lineCount > 0 && (
-          <span className="knowledge-tag">
-            z {plural(entry.lineCount, 'wypowiedzi', 'wypowiedzi', 'wypowiedzi')}
-          </span>
-        )}
-        {entry.tags.map((tag) => (
-          <span key={tag} className="knowledge-tag">
-            #{tag}
-          </span>
-        ))}
-        {confirming ? (
-          <>
-            <span className="knowledge-flag">Usunąć?</span>
-            <button
-              type="button"
-              className="small-button character-delete"
-              onClick={() => void deleteJournalEntry(entry.id)}
-            >
-              Tak, usuń
-            </button>
-            <button type="button" className="small-button" onClick={() => setConfirming(false)}>
-              Anuluj
-            </button>
-          </>
-        ) : (
+      <button type="button" className="small-button" onClick={() => setEditing(entry.id)}>
+        ✎ Edytuj
+      </button>
+      {entry.lineCount > 0 && (
+        <span className="knowledge-tag">
+          z {plural(entry.lineCount, 'wypowiedzi', 'wypowiedzi', 'wypowiedzi')}
+        </span>
+      )}
+      {entry.tags.map((tag) => (
+        <span key={tag} className="knowledge-tag">
+          #{tag}
+        </span>
+      ))}
+      {confirming ? (
+        <>
+          <span className="knowledge-flag">Usunąć?</span>
           <button
             type="button"
             className="small-button character-delete"
-            title="Usuń wpis (zniknie też z pamięci botów)"
-            onClick={() => setConfirming(true)}
+            onClick={() => void deleteJournalEntry(entry.id)}
           >
-            ✕
+            Tak, usuń
           </button>
-        )}
-      </div>
-    </li>
+          <button type="button" className="small-button" onClick={() => setConfirming(false)}>
+            Anuluj
+          </button>
+        </>
+      ) : (
+        <button
+          type="button"
+          className="small-button character-delete"
+          title="Usuń wpis (zniknie też z pamięci botów i ze stołu)"
+          onClick={() => setConfirming(true)}
+        >
+          ✕
+        </button>
+      )}
+      {error && <span className="auth-error">{error}</span>}
+    </div>
+  );
+}
+
+function GmBadges({ entry }: { entry: JournalEntryView }) {
+  return (
+    <>
+      {entry.sharedWithPlayers && (
+        <span className="knowledge-flag knowledge-flag--shared" title="Gracze mają ten wpis">
+          👁 stół
+        </span>
+      )}
+      {entry.visibility === 'gm' && (
+        <span className="knowledge-flag" title="Ten wpis nigdy nie trafia do promptu bota">
+          🔒 tylko MG
+        </span>
+      )}
+      {entry.stale && (
+        <span
+          className="knowledge-flag knowledge-flag--stale"
+          title="Boty odpowiadają jeszcze ze starej wersji — użyj „Zaindeksuj wszystko”"
+        >
+          ⟳ nieaktualny
+        </span>
+      )}
+    </>
   );
 }
 
 /** Ręczna edycja wpisu — poprawka streszczenia albo notatka pisana od zera. */
 function EntryForm({ entry, onClose }: { entry: JournalEntryView | null; onClose: () => void }) {
+  const handouts = useJournalStore((s) => s.handouts);
   const [draft, setDraft] = useState(() =>
     entry
       ? {
@@ -413,6 +655,7 @@ function EntryForm({ entry, onClose }: { entry: JournalEntryView | null; onClose
           sessionDate: entry.sessionDate,
           tags: entry.tags.join(', '),
           visibility: entry.visibility,
+          sharedWithPlayers: entry.sharedWithPlayers,
         }
       : {
           title: '',
@@ -420,10 +663,25 @@ function EntryForm({ entry, onClose }: { entry: JournalEntryView | null; onClose
           sessionDate: new Date().toISOString().slice(0, 10),
           tags: '',
           visibility: 'gm' as KnowledgeVisibility,
+          sharedWithPlayers: false,
         },
   );
+  const [pinned, setPinned] = useState<string[]>(
+    () => entry?.handouts.map((handout) => handout.id) ?? [],
+  );
+  const [preview, setPreview] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  function togglePinned(id: string) {
+    setPinned((previous) =>
+      previous.includes(id)
+        ? previous.filter((pinnedId) => pinnedId !== id)
+        : previous.length >= JOURNAL_HANDOUTS_MAX
+          ? previous
+          : [...previous, id],
+    );
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -437,14 +695,12 @@ function EntryForm({ entry, onClose }: { entry: JournalEntryView | null; onClose
       sessionDate: draft.sessionDate,
       tags: parseTagInput(draft.tags),
       visibility: draft.visibility,
+      sharedWithPlayers: draft.sharedWithPlayers,
+      handoutIds: pinned,
     });
     setBusy(false);
     if (!ack.ok) {
-      setError(
-        ack.error.startsWith('INVALID_ENTRY:')
-          ? ack.error.slice('INVALID_ENTRY:'.length)
-          : `Nie udało się zapisać wpisu: ${ack.error}`,
-      );
+      setError(journalErrorText(ack.error));
       return;
     }
     onClose();
@@ -504,6 +760,17 @@ function EntryForm({ entry, onClose }: { entry: JournalEntryView | null; onClose
         </span>
       </label>
 
+      {/* Uprawnienie stołu jest osobne od uprawnienia botów: wpis może być
+          kroniką dla drużyny, nie będąc pamięcią żadnego NPC-a. */}
+      <label className="journal-share-toggle">
+        <input
+          type="checkbox"
+          checked={draft.sharedWithPlayers}
+          onChange={(event) => setDraft({ ...draft, sharedWithPlayers: event.target.checked })}
+        />
+        <span>Widzi stół — wpis pojawi się graczom w zakładce „Dziennik"</span>
+      </label>
+
       <label className="bot-field">
         <span className="auth-label">Treść</span>
         <textarea
@@ -514,9 +781,50 @@ function EntryForm({ entry, onClose }: { entry: JournalEntryView | null; onClose
           onChange={(event) => setDraft({ ...draft, body: event.target.value })}
         />
         <span className="bot-hint">
-          {draft.body.length} / {JOURNAL_BODY_MAX_LENGTH} znaków
+          Markdown jak w handoutach: <code>#</code> nagłówek, <code>**mocno**</code>, <code>-</code>{' '}
+          lista, <code>&gt;</code> cytat. {draft.body.length} / {JOURNAL_BODY_MAX_LENGTH} znaków
         </span>
       </label>
+
+      <div className="bot-row-inline">
+        <button type="button" className="small-button" onClick={() => setPreview(!preview)}>
+          {preview ? 'Ukryj podgląd' : 'Podgląd'}
+        </button>
+      </div>
+      {preview && (
+        <div className="handout-preview">
+          <Markdown source={draft.body} />
+        </div>
+      )}
+
+      <div className="bot-field">
+        <span className="auth-label">Materiały do wpisu</span>
+        {handouts.length === 0 ? (
+          <span className="bot-hint">
+            Nie ma jeszcze żadnego handoutu — załóż go w zakładce „Handouty".
+          </span>
+        ) : (
+          <>
+            <div className="journal-pin-list">
+              {handouts.map((handout) => (
+                <button
+                  key={handout.id}
+                  type="button"
+                  className={`handout-chip ${pinned.includes(handout.id) ? 'handout-chip--on' : ''}`}
+                  onClick={() => togglePinned(handout.id)}
+                >
+                  {handout.hasImage ? '🖼 ' : '📄 '}
+                  {handout.title}
+                </button>
+              ))}
+            </div>
+            <span className="bot-hint">
+              Odnośnik zobaczy tylko ten gracz, któremu handout jest udostępniony — reszcie stołu
+              wpis pokaże się bez niego.
+            </span>
+          </>
+        )}
+      </div>
 
       {error && <p className="auth-error">{error}</p>}
       <div className="bot-row-inline">
@@ -531,7 +839,7 @@ function EntryForm({ entry, onClose }: { entry: JournalEntryView | null; onClose
   );
 }
 
-export function JournalPanel() {
+function GmJournal() {
   const entries = useJournalStore((s) => s.entries);
   const order = useJournalStore((s) => s.order);
   const index = useJournalStore((s) => s.index);
@@ -540,27 +848,26 @@ export function JournalPanel() {
   const draft = useJournalStore((s) => s.draft);
   const setEditing = useJournalStore((s) => s.setEditing);
 
-  useEffect(() => {
-    void fetchJournal();
-  }, []);
+  const list = useMemo(
+    () => order.map((id) => entries[id]).filter((entry): entry is JournalEntryView => !!entry),
+    [order, entries],
+  );
 
   if (editing) {
     const entry = editing === 'new' ? null : (entries[editing] ?? null);
     return (
-      <section className="knowledge-panel">
-        <EntryForm
-          entry={entry}
-          onClose={() => {
-            setEditing(null);
-            void fetchJournal();
-          }}
-        />
-      </section>
+      <EntryForm
+        entry={entry}
+        onClose={() => {
+          setEditing(null);
+          void fetchJournal();
+        }}
+      />
     );
   }
 
   return (
-    <section className="knowledge-panel">
+    <>
       <IndexLine status={index} />
       <SummarySection />
       <DraftSection />
@@ -573,24 +880,54 @@ export function JournalPanel() {
               + Wpis ręcznie
             </button>
           </div>
-
-          <ul className="knowledge-list">
-            {order.length === 0 ? (
-              <li className="placeholder-text">
-                {!loaded
-                  ? 'Wczytuję…'
-                  : 'Dziennik jest pusty. Po sesji kliknij „Zakończ sesję i streść” — reszta to poprawki.'}
-              </li>
-            ) : (
-              order
-                .map((id) => entries[id])
-                .filter((entry): entry is JournalEntryView => !!entry)
-                .map((entry) => (
-                  <EntryRow key={entry.id} entry={entry} onEdit={() => setEditing(entry.id)} />
-                ))
-            )}
-          </ul>
+          <JournalTimeline
+            entries={list}
+            ready={loaded}
+            emptyText={
+              loaded
+                ? 'Dziennik jest pusty. Po sesji kliknij „Zakończ sesję i streść” — reszta to poprawki.'
+                : 'Wczytuję…'
+            }
+            badges={(entry) => <GmBadges entry={entry} />}
+            actions={(entry) => <GmEntryActions entry={entry} />}
+          />
         </>
+      )}
+    </>
+  );
+}
+
+export function JournalPanel() {
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
+  const shared = useJournalStore((s) => s.shared);
+  const sharedOrder = useJournalStore((s) => s.sharedOrder);
+  const loaded = useJournalStore((s) => s.loaded);
+
+  useEffect(() => {
+    void fetchJournal();
+    // Odnośniki do materiałów otwierają okno z pamięci klienta, a gracz mógł
+    // nigdy nie wejść w zakładkę „Handouty" — bez tego przycisk byłby martwy.
+    void fetchHandouts();
+  }, []);
+
+  const list = useMemo(
+    () =>
+      sharedOrder.map((id) => shared[id]).filter((entry): entry is JournalPlayerEntry => !!entry),
+    [sharedOrder, shared],
+  );
+
+  return (
+    <section className="knowledge-panel journal-panel">
+      {isGm ? (
+        <GmJournal />
+      ) : (
+        <JournalTimeline
+          entries={list}
+          ready={loaded}
+          emptyText={
+            loaded ? 'Mistrz Gry nie udostępnił jeszcze żadnego wpisu z kroniki.' : 'Wczytuję…'
+          }
+        />
       )}
     </section>
   );

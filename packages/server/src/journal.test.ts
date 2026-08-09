@@ -10,12 +10,17 @@ import type {
   BotTraceBroadcast,
   BotView,
   CampaignSummary,
+  ChatMessageBroadcast,
   CharacterView,
+  HandoutView,
   InvitationSummary,
+  JournalDeleteBroadcast,
   JournalDraftBroadcast,
   JournalEntryView,
   JournalErrorBroadcast,
   JournalIndexStatus,
+  JournalPlayerSyncPayload,
+  JournalPlayerUpsertBroadcast,
   JournalProgressBroadcast,
   JournalSyncPayload,
   KnowledgePreviewResult,
@@ -290,6 +295,17 @@ function dataOf<T>(ack: SocketAck<T>): T {
 
 const sleep = (ms: number) => new Promise((resolvePromise) => setTimeout(resolvePromise, ms));
 
+/** Pierwsze takie zdarzenie po gnieździe — rozgłoszenia nie mają acku. */
+function waitFor<T>(socket: ClientSocket, event: string, ms = 4000): Promise<T> {
+  return new Promise((resolvePromise, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${event} timeout`)), ms);
+    socket.once(event, (payload: T) => {
+      clearTimeout(timer);
+      resolvePromise(payload);
+    });
+  });
+}
+
 async function until<T>(check: () => T | undefined, ms = 8000): Promise<T> {
   const deadline = Date.now() + ms;
   for (;;) {
@@ -441,6 +457,7 @@ beforeEach(async () => {
 
   await built.prisma.botRelation.deleteMany({});
   await built.prisma.journalEntry.deleteMany({});
+  await built.prisma.handout.deleteMany({});
   await built.prisma.botProfile.deleteMany({});
   await built.prisma.character.deleteMany({});
   await built.prisma.chatMessage.deleteMany({});
@@ -535,7 +552,7 @@ describe('dziennik kampanii', () => {
     gm.socket.disconnect();
   });
 
-  it('cały dziennik trzyma się z dala od graczy', async () => {
+  it('wpis nieodsłonięty nie dociera do gracza w żadnym payloadzie', async () => {
     const gm = createSocket(gmCookie);
     await gm.firstSync;
     const player = createSocket(playerCookie);
@@ -544,11 +561,12 @@ describe('dziennik kampanii', () => {
     player.socket.on('journal:upsert', (payload: unknown) => seen.push(payload));
 
     await emitAck(gm.socket, 'journal:upsert', { title: 'Sesja', body: 'Sekrety fabuły' });
-    const listed = await emitAck<JournalSyncPayload>(player.socket, 'journal:list');
+    const listed = dataOf(await emitAck<JournalPlayerSyncPayload>(player.socket, 'journal:list'));
     await sleep(120);
 
-    expect(listed.ok).toBe(false);
-    if (!listed.ok) expect(listed.error).toBe('FORBIDDEN');
+    // Zakładka gracza istnieje od 24b, ale wpis „tylko MG" nie pojawia się
+    // w niej nawet jako id — filtr stoi w zapytaniu, nie w widoku.
+    expect(listed.entries).toEqual([]);
     expect(seen).toEqual([]);
     gm.socket.disconnect();
     player.socket.disconnect();
@@ -1003,5 +1021,277 @@ describe('bot czyta dziennik', () => {
     expect(preview.prompt).toContain('kanałami');
     expect(preview.prompt).toContain('dwóch ochroniarzy');
     gm.socket.disconnect();
+  });
+});
+
+/**
+ * Dziennik dla stołu (etap 24b) na żywych gniazdach.
+ *
+ * Testy pilnują dwóch granic, dla których ten etap istnieje: **wpis
+ * nieodsłonięty nie dociera do gracza w żadnym payloadzie**, a **odnośnik do
+ * materiału nie pokazuje nawet tytułu temu, komu MG tego materiału nie dał**.
+ * Asercje czytają to, co naprawdę przyszło po gnieździe, nie to, co ukryłoby UI.
+ */
+describe('dziennik dla stołu (24b)', () => {
+  const sharedIdsOf = async (socket: ClientSocket): Promise<string[]> =>
+    dataOf(await emitAck<JournalPlayerSyncPayload>(socket, 'journal:list')).entries.map(
+      (entry) => entry.id,
+    );
+
+  async function createHandout(socket: ClientSocket, title: string): Promise<string> {
+    return dataOf(
+      await emitAck<HandoutView>(socket, 'handout:upsert', {
+        title,
+        body: 'Treść materiału.',
+        image: null,
+      }),
+    ).id;
+  }
+
+  it('odsłonięty wpis dociera do gracza — bez tagów, widoczności i stanu indeksu', async () => {
+    const gm = createSocket(gmCookie);
+    await gm.firstSync;
+    const player = createSocket(playerCookie);
+    await player.firstSync;
+    const pushed = waitFor<JournalPlayerUpsertBroadcast>(player.socket, 'journal:upsert');
+
+    const entry = dataOf(
+      await emitAck<JournalEntryView>(gm.socket, 'journal:upsert', {
+        title: 'Wjazd na Zaułek',
+        body: 'Ekipa weszła bocznym wejściem.',
+        tags: ['sesje'],
+        visibility: 'bots',
+        sharedWithPlayers: true,
+      }),
+    );
+    expect(entry.sharedWithPlayers).toBe(true);
+
+    const seen = (await pushed).entry;
+    expect(seen.title).toBe('Wjazd na Zaułek');
+    expect(seen.handouts).toEqual([]);
+    // Tagi są językiem uprawnień botów, a `stale` sprawą gatewaya — po tamtej
+    // stronie stołu nie ma ich czego szukać.
+    expect(seen).not.toHaveProperty('tags');
+    expect(seen).not.toHaveProperty('visibility');
+    expect(seen).not.toHaveProperty('stale');
+    expect(await sharedIdsOf(player.socket)).toEqual([entry.id]);
+
+    gm.socket.disconnect();
+    player.socket.disconnect();
+  });
+
+  it('zostawia jedną linię na czacie i tylko przy odsłonięciu', async () => {
+    const gm = createSocket(gmCookie);
+    await gm.firstSync;
+    const player = createSocket(playerCookie);
+    await player.firstSync;
+    const line = waitFor<ChatMessageBroadcast>(player.socket, 'chat:message');
+
+    const entry = dataOf(
+      await emitAck<JournalEntryView>(gm.socket, 'journal:upsert', {
+        title: 'Wjazd na Zaułek',
+        body: 'Ekipa weszła bocznym wejściem.',
+        sharedWithPlayers: true,
+      }),
+    );
+
+    const message = (await line).message;
+    expect(message.kind).toBe('journal');
+    expect(message.journal).toEqual({
+      entryId: entry.id,
+      title: 'Wjazd na Zaułek',
+      sessionDate: entry.sessionDate,
+    });
+
+    // Poprawka literówki w odsłoniętym wpisie nie jest odsłonięciem, więc nie
+    // ma prawa zawiadamiać stołu drugi raz („udostępnienie jest zdarzeniem").
+    const silence: unknown[] = [];
+    player.socket.on('chat:message', (payload: unknown) => silence.push(payload));
+    await emitAck(gm.socket, 'journal:upsert', {
+      id: entry.id,
+      title: 'Wjazd na Zaułek',
+      body: 'Ekipa weszła bocznym wejściem, po cichu.',
+      sharedWithPlayers: true,
+    });
+    await sleep(150);
+    expect(silence).toEqual([]);
+
+    gm.socket.disconnect();
+    player.socket.disconnect();
+  });
+
+  it('zdjęcie ze stołu zabiera wpis graczowi bez przeładowania', async () => {
+    const gm = createSocket(gmCookie);
+    await gm.firstSync;
+    const player = createSocket(playerCookie);
+    await player.firstSync;
+
+    const entry = dataOf(
+      await emitAck<JournalEntryView>(gm.socket, 'journal:upsert', {
+        title: 'Sesja',
+        body: 'Treść',
+        sharedWithPlayers: true,
+      }),
+    );
+    expect(await sharedIdsOf(player.socket)).toEqual([entry.id]);
+
+    const revoked = waitFor<JournalDeleteBroadcast>(player.socket, 'journal:delete');
+    await emitAck(gm.socket, 'journal:upsert', {
+      id: entry.id,
+      title: 'Sesja',
+      body: 'Treść',
+      sharedWithPlayers: false,
+    });
+
+    expect((await revoked).id).toBe(entry.id);
+    expect(await sharedIdsOf(player.socket)).toEqual([]);
+
+    gm.socket.disconnect();
+    player.socket.disconnect();
+  });
+
+  it('usunięcie wpisu znika też graczowi', async () => {
+    const gm = createSocket(gmCookie);
+    await gm.firstSync;
+    const player = createSocket(playerCookie);
+    await player.firstSync;
+
+    const entry = dataOf(
+      await emitAck<JournalEntryView>(gm.socket, 'journal:upsert', {
+        title: 'Sesja',
+        body: 'Treść',
+        sharedWithPlayers: true,
+      }),
+    );
+    const gone = waitFor<JournalDeleteBroadcast>(player.socket, 'journal:delete');
+    await emitAck(gm.socket, 'journal:delete', { id: entry.id });
+
+    expect((await gone).id).toBe(entry.id);
+    expect(await sharedIdsOf(player.socket)).toEqual([]);
+
+    gm.socket.disconnect();
+    player.socket.disconnect();
+  });
+
+  it('gracz czyta kronikę, ale jej nie pisze', async () => {
+    const gm = createSocket(gmCookie);
+    await gm.firstSync;
+    const player = createSocket(playerCookie);
+    await player.firstSync;
+    const entry = dataOf(
+      await emitAck<JournalEntryView>(gm.socket, 'journal:upsert', {
+        title: 'Sesja',
+        body: 'Treść',
+        sharedWithPlayers: true,
+      }),
+    );
+
+    expect(
+      await emitAck(player.socket, 'journal:upsert', { title: 'Moja wersja', body: 'x' }),
+    ).toEqual({ ok: false, error: 'FORBIDDEN' });
+    expect(await emitAck(player.socket, 'journal:delete', { id: entry.id })).toEqual({
+      ok: false,
+      error: 'FORBIDDEN',
+    });
+    expect(await emitAck(player.socket, 'journal:summarize', {})).toEqual({
+      ok: false,
+      error: 'FORBIDDEN',
+    });
+    expect(await sharedIdsOf(player.socket)).toEqual([entry.id]);
+
+    gm.socket.disconnect();
+    player.socket.disconnect();
+  });
+
+  it('odnośnik do materiału widzi tylko gracz, któremu MG go dał', async () => {
+    const gm = createSocket(gmCookie);
+    await gm.firstSync;
+    const player = createSocket(playerCookie);
+    await player.firstSync;
+
+    const handoutId = await createHandout(gm.socket, 'Mapa Zaułka');
+    const entry = dataOf(
+      await emitAck<JournalEntryView>(gm.socket, 'journal:upsert', {
+        title: 'Wjazd na Zaułek',
+        body: 'Plan był na mapie.',
+        sharedWithPlayers: true,
+        handoutIds: [handoutId],
+      }),
+    );
+    // MG widzi przypięcie od razu.
+    expect(entry.handouts).toEqual([{ id: handoutId, title: 'Mapa Zaułka', hasImage: false }]);
+
+    // Gracz bez udostępnienia nie dostaje nawet tytułu materiału.
+    const before = dataOf(await emitAck<JournalPlayerSyncPayload>(player.socket, 'journal:list'));
+    expect(before.entries[0]?.handouts).toEqual([]);
+
+    // Udostępnienie handoutu odświeża odnośnik bez przeładowywania zakładki.
+    const linked = waitFor<JournalPlayerUpsertBroadcast>(player.socket, 'journal:upsert');
+    await emitAck(gm.socket, 'handout:share', { id: handoutId, userIds: [playerUserId] });
+    expect((await linked).entry.handouts).toEqual([
+      { id: handoutId, title: 'Mapa Zaułka', hasImage: false },
+    ]);
+
+    gm.socket.disconnect();
+    player.socket.disconnect();
+  });
+
+  it('usunięcie materiału zdejmuje odnośnik graczowi', async () => {
+    const gm = createSocket(gmCookie);
+    await gm.firstSync;
+    const player = createSocket(playerCookie);
+    await player.firstSync;
+
+    const handoutId = await createHandout(gm.socket, 'Mapa Zaułka');
+    await emitAck(gm.socket, 'handout:share', { id: handoutId, userIds: [playerUserId] });
+    // Na to rozgłoszenie trzeba poczekać, zanim nasłuchujemy następnego: ack MG
+    // wraca wcześniej, niż gniazdo gracza zdąży odebrać swoją kopię.
+    const linked = waitFor<JournalPlayerUpsertBroadcast>(player.socket, 'journal:upsert');
+    await emitAck<JournalEntryView>(gm.socket, 'journal:upsert', {
+      title: 'Wjazd na Zaułek',
+      body: 'Plan był na mapie.',
+      sharedWithPlayers: true,
+      handoutIds: [handoutId],
+    });
+    expect((await linked).entry.handouts).toHaveLength(1);
+
+    const updated = waitFor<JournalPlayerUpsertBroadcast>(player.socket, 'journal:upsert');
+    await emitAck(gm.socket, 'handout:delete', { id: handoutId });
+    expect((await updated).entry.handouts).toEqual([]);
+
+    gm.socket.disconnect();
+    player.socket.disconnect();
+  });
+
+  it('odrzuca przypięcie materiału spoza kampanii', async () => {
+    const gm = createSocket(gmCookie);
+    await gm.firstSync;
+    const ack = await emitAck(gm.socket, 'journal:upsert', {
+      title: 'Sesja',
+      body: 'Treść',
+      handoutIds: ['nie-ma-takiego'],
+    });
+    expect(ack).toEqual({ ok: false, error: 'UNKNOWN_HANDOUT' });
+    gm.socket.disconnect();
+  });
+
+  it('MG dostaje listę materiałów do przypięcia, gracz nie', async () => {
+    const gm = createSocket(gmCookie);
+    await gm.firstSync;
+    const player = createSocket(playerCookie);
+    await player.firstSync;
+    await createHandout(gm.socket, 'Mapa Zaułka');
+
+    const gmView = dataOf(await emitAck<JournalSyncPayload>(gm.socket, 'journal:list'));
+    expect(gmView.handouts.map((handout) => handout.title)).toEqual(['Mapa Zaułka']);
+    // Kształt gracza nie ma tego pola w ogóle — nie jest ono „puste", tylko go nie ma.
+    const playerView = dataOf(
+      await emitAck<JournalPlayerSyncPayload>(player.socket, 'journal:list'),
+    );
+    expect(playerView).not.toHaveProperty('handouts');
+    expect(playerView).not.toHaveProperty('index');
+
+    gm.socket.disconnect();
+    player.socket.disconnect();
   });
 });

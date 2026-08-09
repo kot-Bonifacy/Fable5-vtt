@@ -7,6 +7,7 @@ import type {
   CombatActionLogEntry,
   EconomyLogEntry,
   HandoutLogEntry,
+  JournalLogEntry,
   RollResult,
 } from '@vtt/shared';
 import { ROLE_GM } from '@vtt/shared';
@@ -23,6 +24,7 @@ import { DamageApplyControls, DamageRow } from './DamageControls.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useChatStore, type ChatItem } from '../stores/chatStore.js';
 import { useHandoutStore } from '../stores/handoutStore.js';
+import { useJournalStore } from '../stores/journalStore.js';
 import { useTypewriterStore } from '../stores/typewriterStore.js';
 
 const LOAD_MORE_THRESHOLD_PX = 48;
@@ -271,9 +273,14 @@ function EconomyRow({ message, entry }: { message: ChatMessageView; entry: Econo
  *
  * Przycisk otwiera okno z pamięci klienta; gdy handoutu tam nie ma (MG czyta
  * archiwalny wiersz materiału, który już usunął), pozostaje sama linia.
+ *
+ * Warunek `!s.loaded` jest tu tak samo istotny jak sama obecność w pamięci:
+ * listę handoutów przynosi dopiero wejście w zakładkę, więc na świeżo
+ * przeładowanej stronie brak wpisu znaczy „jeszcze nie pytałem", a nie
+ * „materiał wycofany" (błąd 24a, znaleziony przy 24b).
  */
 function HandoutRow({ message, entry }: { message: ChatMessageView; entry: HandoutLogEntry }) {
-  const known = useHandoutStore((s) => entry.handoutId in s.handouts);
+  const known = useHandoutStore((s) => !s.loaded || entry.handoutId in s.handouts);
   const openHandout = useHandoutStore((s) => s.openHandout);
   return (
     <div className="chat-message chat-handout">
@@ -298,6 +305,43 @@ function HandoutRow({ message, entry }: { message: ChatMessageView; entry: Hando
           </button>
         ) : (
           <span className="chat-handout-gone">materiał wycofany</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * „Nowy wpis w dzienniku" (etap 24b). Inaczej niż handout — nic nie wyskakuje
+ * samo (rozstrzygnięcie MG): kronikę czyta się przed grą, nie w środku sceny,
+ * więc wiersz jest zaproszeniem, a przycisk przenosi do zakładki „Dziennik".
+ */
+function JournalRow({ message, entry }: { message: ChatMessageView; entry: JournalLogEntry }) {
+  const setFocus = useJournalStore((s) => s.setFocus);
+  // Wpis może być skasowany albo zdjęty ze stołu, a wiersz na czacie zostaje —
+  // wtedy nie ma dokąd prowadzić. Ta sama zasada, co przy handoucie z 24a:
+  // sprawdzamy pamięć klienta (u MG `entries`, u gracza `shared`; wypełniona
+  // jest zawsze dokładnie jedna z nich).
+  // …ale dopiero gdy ta pamięć w ogóle istnieje: listę przynosi wejście
+  // w zakładkę, więc przed pierwszym wczytaniem „nie znam" znaczy „nie pytałem".
+  const known = useJournalStore(
+    (s) => !s.loaded || entry.entryId in s.entries || entry.entryId in s.shared,
+  );
+  return (
+    <div className="chat-message chat-handout">
+      <div className="chat-message-meta">
+        <span className="chat-message-author">📓 Wpis w dzienniku</span>
+        <span className="chat-message-whisper-target">sesja z {entry.sessionDate}</span>
+        <span className="chat-message-time">{formatTime(message.createdAt)}</span>
+      </div>
+      <div className="chat-handout-body">
+        <span className="chat-handout-title">{entry.title}</span>
+        {known ? (
+          <button type="button" className="small-button" onClick={() => setFocus(entry.entryId)}>
+            Otwórz
+          </button>
+        ) : (
+          <span className="chat-handout-gone">wpis wycofany</span>
         )}
       </div>
     </div>
@@ -562,6 +606,12 @@ export function ChatPanel() {
                 key={item.message.id}
                 message={item.message}
                 entry={item.message.handout}
+              />
+            ) : item.message.kind === 'journal' && item.message.journal ? (
+              <JournalRow
+                key={item.message.id}
+                message={item.message}
+                entry={item.message.journal}
               />
             ) : (item.message.kind === 'action' || item.message.kind === 'gmaction') &&
               item.message.action ? (

@@ -8,6 +8,7 @@ import {
 } from './dice.js';
 import type { BotActionProposal } from './bots/types.js';
 import type { HandoutLogEntry } from './handouts.js';
+import type { JournalLogEntry } from './journal.js';
 
 /**
  * `action` is the public log of a spent combat action (stage 14b); `gmaction`
@@ -29,7 +30,8 @@ export type ChatKind =
   | 'gmaction'
   | 'proposal'
   | 'economy'
-  | 'handout';
+  | 'handout'
+  | 'journal';
 
 /**
  * A movement of eddies, as the chat records it (stage 23b).
@@ -201,6 +203,8 @@ export interface ChatMessageView {
   economy?: EconomyLogEntry;
   /** Handout put in a player's hands — kind `handout` only (stage 24a). */
   handout?: HandoutLogEntry;
+  /** Journal entry opened to the table — kind `journal` only (stage 24b). */
+  journal?: JournalLogEntry;
   /** ISO timestamp — always assigned by the server. */
   createdAt: string;
 }
