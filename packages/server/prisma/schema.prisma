@@ -21,6 +21,7 @@ model User {
   whispersReceived ChatMessage[] @relation("ChatRecipient")
   tokens           Token[]
   drawings         MapDrawing[]
+  handoutsReceived HandoutShare[]
 }
 
 model Session {
@@ -48,6 +49,54 @@ model Campaign {
   compendium   CompendiumEntry[]
   knowledge    KnowledgeEntry[]
   journal      JournalEntry[]
+  handouts     Handout[]
+}
+
+/// A handout: the material the GM hands to the players (stage 24a).
+///
+/// The body is markdown and the image is an upload; both are optional on their
+/// own, but a handout with neither is a blank sheet, so `validateHandout` in
+/// `shared` refuses it. Rendering never goes through HTML — `markdown.ts`
+/// returns a block tree the client turns into React elements.
+///
+/// Copyright note (CLAUDE.md): like the knowledge base, the bodies are the GM's
+/// own writing about their campaign, so they live in the normal database.
+model Handout {
+  id          String  @id @default(cuid())
+  campaignId  String
+  title       String
+  /// Markdown; empty when the handout is just a picture.
+  body        String  @default("")
+  imageUrl    String?
+  imageWidth  Int?
+  imageHeight Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  campaign Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  shares   HandoutShare[]
+
+  @@index([campaignId])
+}
+
+/// One handout shared with one account (stage 24a).
+///
+/// The share list is the permission itself: a player who has no row here never
+/// receives the handout in any payload. It hangs off the account rather than
+/// the character, because a handout is read by the person at the table — one
+/// player with two characters still gets one copy.
+model HandoutShare {
+  id        String   @id @default(cuid())
+  handoutId String
+  userId    String
+  sharedAt  DateTime @default(now())
+
+  handout Handout @relation(fields: [handoutId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([handoutId, userId])
+  @@index([userId])
 }
 
 /// Campaign knowledge base (stage 19b): places, factions, NPCs and GM notes the

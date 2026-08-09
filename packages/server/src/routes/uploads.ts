@@ -3,7 +3,12 @@ import { basename, extname, join } from 'node:path';
 import { mkdir, writeFile } from 'node:fs/promises';
 import type { FastifyInstance } from 'fastify';
 import { imageSize } from 'image-size';
-import type { MapUploadResult, PortraitUploadResult, TokenAssetView } from '@vtt/shared';
+import type {
+  HandoutImage,
+  MapUploadResult,
+  PortraitUploadResult,
+  TokenAssetView,
+} from '@vtt/shared';
 import { SCENE_DIMENSION_MAX, TOKEN_NAME_MAX_LENGTH } from '@vtt/shared';
 import type { AppContext } from '../context.js';
 import { requireAuth, requireGm } from '../auth/guards.js';
@@ -14,6 +19,9 @@ export const MAX_TOKEN_UPLOAD_BYTES = 8 * 1024 * 1024;
 export const TOKEN_IMAGE_MAX_SIDE = 2048;
 export const MAX_PORTRAIT_UPLOAD_BYTES = 8 * 1024 * 1024;
 export const PORTRAIT_IMAGE_MAX_SIDE = 2048;
+/** Handout image (stage 24a): a district map may be far bigger than a portrait. */
+export const MAX_HANDOUT_UPLOAD_BYTES = 12 * 1024 * 1024;
+export const HANDOUT_IMAGE_MAX_SIDE = 4096;
 
 /** Formats we accept and serve; keyed by the type sniffed from file content. */
 const IMAGE_EXTENSIONS: Record<string, string> = {
@@ -157,6 +165,46 @@ export function registerUploadRoutes(app: FastifyInstance, ctx: AppContext): voi
     await writeFile(join(portraitsDir, filename), buffer);
 
     const result: PortraitUploadResult = { url: `/uploads/portraits/${filename}`, width, height };
+    return reply.code(201).send(result);
+  });
+
+  // Handout images (stage 24a) — GM only, like maps: a handout is material the
+  // GM hands out, and nobody else creates one.
+  app.post('/api/uploads/handouts', { preHandler: requireGm }, async (request, reply) => {
+    const file = await request.file({ limits: { fileSize: MAX_HANDOUT_UPLOAD_BYTES } });
+    if (!file) {
+      return reply.code(400).send({ error: 'NO_FILE' });
+    }
+
+    let buffer: Buffer;
+    try {
+      buffer = await file.toBuffer();
+    } catch {
+      return reply.code(413).send({ error: 'FILE_TOO_LARGE' });
+    }
+
+    let width: number;
+    let height: number;
+    let type: string | undefined;
+    try {
+      ({ width, height, type } = imageSize(buffer));
+    } catch {
+      return reply.code(400).send({ error: 'UNSUPPORTED_IMAGE' });
+    }
+    const extension = type ? IMAGE_EXTENSIONS[type] : undefined;
+    if (!extension) {
+      return reply.code(400).send({ error: 'UNSUPPORTED_IMAGE' });
+    }
+    if (width > HANDOUT_IMAGE_MAX_SIDE || height > HANDOUT_IMAGE_MAX_SIDE) {
+      return reply.code(400).send({ error: 'IMAGE_TOO_LARGE' });
+    }
+
+    const handoutsDir = join(ctx.config.uploadsDir, 'handouts');
+    await mkdir(handoutsDir, { recursive: true });
+    const filename = `${randomBytes(12).toString('base64url')}.${extension}`;
+    await writeFile(join(handoutsDir, filename), buffer);
+
+    const result: HandoutImage = { url: `/uploads/handouts/${filename}`, width, height };
     return reply.code(201).send(result);
   });
 

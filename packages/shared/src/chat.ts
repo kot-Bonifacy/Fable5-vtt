@@ -7,6 +7,7 @@ import {
   type RollResult,
 } from './dice.js';
 import type { BotActionProposal } from './bots/types.js';
+import type { HandoutLogEntry } from './handouts.js';
 
 /**
  * `action` is the public log of a spent combat action (stage 14b); `gmaction`
@@ -19,7 +20,16 @@ import type { BotActionProposal } from './bots/types.js';
  * as its speech has been since stage 11.
  */
 export type ChatKind =
-  'say' | 'whisper' | 'roll' | 'gmroll' | 'damage' | 'action' | 'gmaction' | 'proposal' | 'economy';
+  | 'say'
+  | 'whisper'
+  | 'roll'
+  | 'gmroll'
+  | 'damage'
+  | 'action'
+  | 'gmaction'
+  | 'proposal'
+  | 'economy'
+  | 'handout';
 
 /**
  * A movement of eddies, as the chat records it (stage 23b).
@@ -189,6 +199,8 @@ export interface ChatMessageView {
   proposal?: BotActionProposal;
   /** Eddies changing hands — kind `economy` only (stage 23b). */
   economy?: EconomyLogEntry;
+  /** Handout put in a player's hands — kind `handout` only (stage 24a). */
+  handout?: HandoutLogEntry;
   /** ISO timestamp — always assigned by the server. */
   createdAt: string;
 }

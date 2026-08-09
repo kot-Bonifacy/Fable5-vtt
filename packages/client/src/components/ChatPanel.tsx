@@ -6,6 +6,7 @@ import type {
   ChatMessageView,
   CombatActionLogEntry,
   EconomyLogEntry,
+  HandoutLogEntry,
   RollResult,
 } from '@vtt/shared';
 import { ROLE_GM } from '@vtt/shared';
@@ -21,6 +22,7 @@ import { OpposedRow } from './GrappleControls.js';
 import { DamageApplyControls, DamageRow } from './DamageControls.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useChatStore, type ChatItem } from '../stores/chatStore.js';
+import { useHandoutStore } from '../stores/handoutStore.js';
 import { useTypewriterStore } from '../stores/typewriterStore.js';
 
 const LOAD_MORE_THRESHOLD_PX = 48;
@@ -258,6 +260,46 @@ function EconomyRow({ message, entry }: { message: ChatMessageView; entry: Econo
         ))}
       </ul>
       {entry.summary ? <p className="chat-economy-summary">{entry.summary}</p> : null}
+    </div>
+  );
+}
+
+/**
+ * „Masz to w ręku" (etap 24a). Wiersz jest szeptem — jeden na odbiorcę — więc
+ * u gracza pojawia się tylko wtedy, gdy handout naprawdę do niego trafił,
+ * a u MG raz na każdego, komu go dał.
+ *
+ * Przycisk otwiera okno z pamięci klienta; gdy handoutu tam nie ma (MG czyta
+ * archiwalny wiersz materiału, który już usunął), pozostaje sama linia.
+ */
+function HandoutRow({ message, entry }: { message: ChatMessageView; entry: HandoutLogEntry }) {
+  const known = useHandoutStore((s) => entry.handoutId in s.handouts);
+  const openHandout = useHandoutStore((s) => s.openHandout);
+  return (
+    <div className="chat-message chat-handout">
+      <div className="chat-message-meta">
+        <span className="chat-message-author">
+          {entry.hasImage ? '🖼' : '📄'} Handout od {message.authorName}
+        </span>
+        {message.recipientName ? (
+          <span className="chat-message-whisper-target">do {message.recipientName}</span>
+        ) : null}
+        <span className="chat-message-time">{formatTime(message.createdAt)}</span>
+      </div>
+      <div className="chat-handout-body">
+        <span className="chat-handout-title">{entry.title}</span>
+        {known ? (
+          <button
+            type="button"
+            className="small-button"
+            onClick={() => openHandout(entry.handoutId)}
+          >
+            Otwórz
+          </button>
+        ) : (
+          <span className="chat-handout-gone">materiał wycofany</span>
+        )}
+      </div>
     </div>
   );
 }
@@ -514,6 +556,12 @@ export function ChatPanel() {
                 key={item.message.id}
                 message={item.message}
                 entry={item.message.economy}
+              />
+            ) : item.message.kind === 'handout' && item.message.handout ? (
+              <HandoutRow
+                key={item.message.id}
+                message={item.message}
+                entry={item.message.handout}
               />
             ) : (item.message.kind === 'action' || item.message.kind === 'gmaction') &&
               item.message.action ? (

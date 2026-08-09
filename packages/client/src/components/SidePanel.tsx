@@ -12,6 +12,7 @@ import { BotPanel } from './BotPanel.js';
 import { RulesPanel } from './RulesPanel.js';
 import { KnowledgePanel } from './KnowledgePanel.js';
 import { JournalPanel } from './JournalPanel.js';
+import { HandoutPanel } from './HandoutPanel.js';
 import { SidePanelResizer, useSidePanelWidth } from './SidePanelResizer.js';
 import { useAuthStore } from '../stores/authStore.js';
 
@@ -26,6 +27,7 @@ type Tab =
   | 'rules'
   | 'knowledge'
   | 'journal'
+  | 'handouts'
   | 'ai';
 
 /**
@@ -39,6 +41,9 @@ const TABLE_TABS: { id: Tab; label: string }[] = [
   { id: 'characters', label: 'Postacie' },
   { id: 'combat', label: 'Walka' },
   { id: 'compendium', label: 'Kompendium' },
+  // Handouty stoją w rzędzie stołu, nie MG: to jedyna lista materiałów MG,
+  // którą gracz też otwiera — u siebie widzi wyłącznie to, co dostał.
+  { id: 'handouts', label: 'Handouty' },
 ];
 
 const GM_TABS: { id: Tab; label: string }[] = [
@@ -100,6 +105,8 @@ export function SidePanel() {
         <KnowledgePanel />
       ) : activeTab === 'journal' ? (
         <JournalPanel />
+      ) : activeTab === 'handouts' ? (
+        <HandoutPanel />
       ) : activeTab === 'ai' ? (
         <AiPanel />
       ) : (

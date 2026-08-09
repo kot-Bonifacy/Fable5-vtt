@@ -72,6 +72,12 @@ import type {
   BotRelationView,
   FogShape,
   FogSyncBroadcast,
+  HandoutDeleteBroadcast,
+  HandoutOpenBroadcast,
+  HandoutSyncPayload,
+  HandoutUpsertBroadcast,
+  HandoutUpsertPayload,
+  HandoutView,
   JournalDeleteBroadcast,
   JournalDraftBroadcast,
   JournalEntryView,
@@ -164,6 +170,7 @@ import { useAiStore } from './stores/aiStore.js';
 import { useRulesStore } from './stores/rulesStore.js';
 import { useKnowledgeStore } from './stores/knowledgeStore.js';
 import { useJournalStore } from './stores/journalStore.js';
+import { useHandoutStore } from './stores/handoutStore.js';
 import { useRelationStore } from './stores/relationStore.js';
 import { useBotStore } from './stores/botStore.js';
 import { useCombatStore } from './stores/combatStore.js';
@@ -492,6 +499,21 @@ export function connectSocket(userId: string): Socket {
   socket.on('journal:error', (broadcast: JournalErrorBroadcast) =>
     useJournalStore.getState().fail(journalErrorText(broadcast.code, broadcast.detail)),
   );
+  // Handouty (etap 24a) — jedyna lista MG z wyjściem do gracza. Serwer wysyła
+  // je celowanym emitem do kont z udostępnieniem, więc klient nic nie odsiewa.
+  socket.on('handout:upsert', (broadcast: HandoutUpsertBroadcast) =>
+    useHandoutStore.getState().upsert(broadcast.handout),
+  );
+  socket.on('handout:delete', (broadcast: HandoutDeleteBroadcast) =>
+    useHandoutStore.getState().remove(broadcast.id),
+  );
+  // „Masz to w ręku" — okno wyskakuje samo, ale tylko świeżo dopisanym odbiorcom.
+  socket.on('handout:open', (broadcast: HandoutOpenBroadcast) => {
+    const store = useHandoutStore.getState();
+    store.upsert(broadcast.handout);
+    store.openHandout(broadcast.handout.id);
+  });
+
   socket.on('relation:upsert', (broadcast: RelationUpsertBroadcast) =>
     useRelationStore.getState().upsert(broadcast.relation),
   );
@@ -1317,6 +1339,34 @@ export const saveJournalEntry = (payload: JournalUpsertPayload) =>
 export const deleteJournalEntry = (id: string) => emitSceneAck('journal:delete', { id });
 
 export const reindexJournal = () => emitSceneAck<JournalIndexStatus>('journal:reindex', undefined);
+
+/**
+ * Handouty (etap 24a). Wołane przy wejściu w zakładkę, nie w `state:sync` —
+ * u gracza lista bywa pusta przez całą sesję, a u MG rośnie między sesjami.
+ */
+export function fetchHandouts(): Promise<HandoutSyncPayload | null> {
+  return new Promise((resolve) => {
+    if (!socket) {
+      resolve(null);
+      return;
+    }
+    socket.emit('handout:list', (ack: SocketAck<HandoutSyncPayload>) => {
+      if (ack.ok && ack.data) {
+        useHandoutStore.getState().replaceAll(ack.data.handouts, ack.data.recipients);
+      }
+      resolve(ack.ok ? (ack.data ?? null) : null);
+    });
+  });
+}
+
+export const saveHandout = (payload: HandoutUpsertPayload) =>
+  emitSceneAck<HandoutView>('handout:upsert', payload);
+
+export const deleteHandout = (id: string) => emitSceneAck('handout:delete', { id });
+
+/** Ustawia listę odbiorców na dokładnie tę — serwer wyliczy, kto doszedł. */
+export const shareHandout = (id: string, userIds: string[]) =>
+  emitSceneAck<HandoutView>('handout:share', { id, userIds });
 
 /**
  * „Zakończ sesję i streść". Ack niesie samo id żądania — wynik przychodzi

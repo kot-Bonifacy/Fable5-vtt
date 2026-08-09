@@ -38,7 +38,9 @@ Każdy etap to jedna sesja pracy z Claude. Etapy są pogrupowane w 8 faz. Szczeg
 | 20a | Akcje botów: structured output i rzuty              | F. Boty zaawansowane |                                |
 | 20b | Tura bota w walce                                   | F. Boty zaawansowane | 🏁 Pełne boty                  |
 | 23  | Cyberware, humanity, ekonomia, reputacja            | H. Świat CP RED      |                                |
-| 24  | Handouty, dziennik kampanii, screamsheets           | H. Świat CP RED      |                                |
+| 24a | Handouty                                            | H. Świat CP RED      |                                |
+| 24b | Dziennik kampanii dla stołu                         | H. Świat CP RED      |                                |
+| 24c | Screamsheets                                        | H. Świat CP RED      |                                |
 | 25  | Generator postaci (lifepath)                        | H. Świat CP RED      |                                |
 | 26  | Netrunning                                          | H. Świat CP RED      |                                |
 | 27  | Kości 3D i szlif UI                                 | I. Wykończenie       |                                |

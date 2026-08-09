@@ -6,6 +6,7 @@ import type {
   CombatActionLogEntry,
   DamageLogEntry,
   EconomyLogEntry,
+  HandoutLogEntry,
   SessionUser,
 } from '@vtt/shared';
 import { CHAT_HISTORY_PAGE_SIZE, ROLE_GM } from '@vtt/shared';
@@ -100,6 +101,8 @@ export function toChatMessageView(message: StoredMessage): ChatMessageView {
     view.proposal = JSON.parse(message.payload) as BotActionProposal;
   } else if (message.kind === 'economy' && message.payload) {
     view.economy = JSON.parse(message.payload) as EconomyLogEntry;
+  } else if (message.kind === 'handout' && message.payload) {
+    view.handout = JSON.parse(message.payload) as HandoutLogEntry;
   }
   return view;
 }
@@ -186,10 +189,22 @@ export function visibleTo(user: SessionUser) {
         // theirs to answer — including one authored under another GM account.
         // `economy` (stage 23b) is here for the mirror-image reason: the wallet
         // cards are private, but the GM audits every one of them, including a
-        // purchase a player made without asking.
+        // purchase a player made without asking. `handout` (stage 24a) follows
+        // the same rule: the GM hands the material out, so every copy of the
+        // line is theirs to see, one per recipient.
         {
           kind: {
-            in: ['say', 'roll', 'gmroll', 'damage', 'action', 'gmaction', 'proposal', 'economy'],
+            in: [
+              'say',
+              'roll',
+              'gmroll',
+              'damage',
+              'action',
+              'gmaction',
+              'proposal',
+              'economy',
+              'handout',
+            ],
           },
         },
         { authorId: user.id },

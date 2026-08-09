@@ -109,6 +109,12 @@ import {
   journalSummarizeEvent,
   journalUpsertEvent,
 } from './journal.js';
+import {
+  handoutDeleteEvent,
+  handoutListEvent,
+  handoutShareEvent,
+  handoutUpsertEvent,
+} from './handouts.js';
 import { relationDeleteEvent, relationListEvent, relationSetEvent } from './relations.js';
 import { sendStateSync, stateRequestEvent } from './sync.js';
 
@@ -232,6 +238,10 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   journalDeleteEvent,
   journalReindexEvent,
   journalSummarizeEvent,
+  handoutListEvent,
+  handoutUpsertEvent,
+  handoutDeleteEvent,
+  handoutShareEvent,
   relationListEvent,
   relationSetEvent,
   relationDeleteEvent,
