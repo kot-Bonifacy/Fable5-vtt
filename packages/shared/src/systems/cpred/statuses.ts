@@ -137,6 +137,14 @@ export const CPRED_STATUS_EFFECTS: Readonly<Record<string, CpredStatusEffect>> =
     name: 'EMP',
     reminder: 'Impuls EMP wyłączył ci dwie cyborgizacje — MG mówi które.',
   },
+  // Stage 23c. Deliberately empty of refusals: a lost Konfrontacja is −2 against
+  // *one* named opponent, and this table answers questions that have no target
+  // („may this token walk?"). The number lives beside the sticker, in
+  // `Token.statusData`, and is spliced in by whoever knows who is being shot at.
+  intimidated: {
+    name: 'Onieśmielony',
+    reminder: 'Przegrana Konfrontacja — −2 do Akcji wymierzonych w tego, kto cię przygasił.',
+  },
 };
 
 /** Ids of the statuses in the table, in the order refusals are checked. */

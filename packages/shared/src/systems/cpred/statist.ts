@@ -223,6 +223,10 @@ export function combatProfileSheet(
     // A statist has no wallet and pays no rent: the sheet is synthesised for
     // one fight and thrown away, and the monthly settlement skips a null.
     lifestyle: null,
+    // Nobody has heard of him (stage 23c). „Większość Postaci w Cyberpunku RED
+    // zaczyna grę z Reputacją 0", and a nameless ganger is the case that
+    // sentence describes — he faces down at bare CHA 5.
+    reputationSources: [],
     notes: '',
   };
 }

@@ -41,6 +41,12 @@ import {
   combatTerrainEvent,
 } from './combat-actions.js';
 import { grappleActionEvent, grappleAttemptEvent, grappleResistEvent } from './grapple.js';
+import {
+  facedownAttemptEvent,
+  facedownConcedeEvent,
+  facedownResistEvent,
+  reputationRecogniseEvent,
+} from './facedown.js';
 import { tokenEffectEvent } from './turn-effects.js';
 import { effectExpireEvent } from './timed-effects.js';
 import { characterCreateEvent, characterDeleteEvent, characterUpdateEvent } from './characters.js';
@@ -158,6 +164,10 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   grappleAttemptEvent,
   grappleResistEvent,
   grappleActionEvent,
+  facedownAttemptEvent,
+  facedownResistEvent,
+  facedownConcedeEvent,
+  reputationRecogniseEvent,
   tokenEffectEvent,
   effectExpireEvent,
   compendiumUpsertEvent,

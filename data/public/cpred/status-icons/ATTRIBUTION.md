@@ -28,6 +28,7 @@ zmienione na identyfikatory statusów CP RED używane w `../statuses.json`.
 | --------------- | --------------------------------------- | ------------- |
 | `drowning.svg`  | Tonący — postać nad falami (etap 14e)   | projekt (VTT) |
 | `emp.svg`       | Impuls EMP — błyskawica w falach (etap 16h) | projekt (VTT) |
+| `intimidated.svg` | Onieśmielony — spuszczona twarz w hełmie (etap 23c) | projekt (VTT) |
 
 Ikony w tej sekcji narysowano na potrzeby projektu i obowiązuje na nie ta sama licencja co na
 kod repozytorium.

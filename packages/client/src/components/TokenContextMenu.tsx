@@ -37,6 +37,7 @@ import { useCharacterStore } from '../stores/characterStore.js';
 import { useCombatStore } from '../stores/combatStore.js';
 import { useCompendiumStore } from '../stores/compendiumStore.js';
 import { AttackLauncher } from './AttackLauncher.js';
+import { FacedownLauncher } from './FacedownLauncher.js';
 import type { TokenMenuState } from './MapArea.js';
 
 const MENU_WIDTH = 240;
@@ -493,6 +494,7 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
   const combat = useCombatStore((s) => s.combat);
   const [editing, setEditing] = useState(false);
   const [aiming, setAiming] = useState(false);
+  const [staring, setStaring] = useState(false);
   const combatant = combat?.combatants.find((c) => c.tokenId === menu.tokenId) ?? null;
 
   // The token can vanish under the open menu (deleted in another tab).
@@ -596,6 +598,16 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
           🎯 Atak…
         </button>
         {aiming && <AttackLauncher token={token} onArmed={onClose} />}
+        {/* Stage 23c: „pojedynek spojrzeń" — the other way a conflict on the
+            Street gets settled, and the only one that costs no Action. */}
+        <button
+          type="button"
+          className="context-menu-item"
+          onClick={() => setStaring((open) => !open)}
+        >
+          😠 Konfrontacja…
+        </button>
+        {staring && <FacedownLauncher target={token} onArmed={onClose} />}
         <button
           type="button"
           className="context-menu-item"

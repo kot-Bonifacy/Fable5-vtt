@@ -5,6 +5,7 @@ import type {
   CombatGrappleResistPayload,
   CombatView,
   DamageLogEntry,
+  RollBreakdownEntry,
   RollGesture,
   RollOpposedMeta,
   RollResult,
@@ -43,6 +44,7 @@ import {
   readSheetBody,
   readSheetGrappleDv,
   sheetActionName,
+  sheetFacedownPenalty,
   sheetSituationModifiers,
   sheetWoundStatuses,
   type SheetGrappleDamage,
@@ -102,6 +104,18 @@ import { logSpentAction, actionEntry } from './combat-log.js';
  * `character-rolls.ts`), so it shows up in the breakdown where a player can see
  * where it came from.
  */
+
+/**
+ * The −2 a lost Konfrontacja puts on an Action aimed at that same opponent
+ * (stage 23c), as zero or one breakdown row.
+ */
+function facedownRows(actor: Token, opponentTokenId: string): RollBreakdownEntry[] {
+  const row = sheetFacedownPenalty(
+    { statuses: readTokenStatuses(actor.statuses), statusData: actor.statusData },
+    opponentTokenId,
+  );
+  return row ? [row] : [];
+}
 
 /** The Hold this participant is the Attacker of, or a refusal. */
 function requireHoldAsAttacker(combat: CombatRow, combatant: CombatantRow): CombatantRow {
@@ -269,10 +283,15 @@ export const grappleAttemptEvent = defineEvent<
         ...(payload?.luckSpent !== undefined ? { luckSpent: payload.luckSpent } : {}),
       },
       {
-        modifiers: sheetSituationModifiers({
-          grappled: attackerGrappled,
-          injuries: data.criticalInjuries,
-        }),
+        modifiers: [
+          ...sheetSituationModifiers({
+            grappled: attackerGrappled,
+            injuries: data.criticalInjuries,
+          }),
+          // A grab is an Action aimed at somebody, so a lost Konfrontacja costs
+          // the grabber −2 here too (s. 194, stage 23c).
+          ...facedownRows(attacker, target.id),
+        ],
       },
     );
     if (!planned.ok) throw new RealtimeError(planned.error);
@@ -422,10 +441,13 @@ export const grappleResistEvent = defineEvent<
       { kind: 'skill', skillId: CPRED_BRAWLING_SKILL_ID },
       // Whatever the stand-in charged them, the real roll is charged too.
       {
-        modifiers: sheetSituationModifiers({
-          grappled: system.defenderModifier !== 0,
-          injuries: data.criticalInjuries,
-        }),
+        modifiers: [
+          ...sheetSituationModifiers({
+            grappled: system.defenderModifier !== 0,
+            injuries: data.criticalInjuries,
+          }),
+          ...facedownRows(defenderToken, system.attackerTokenId),
+        ],
       },
     );
     if (!planned.ok) throw new RealtimeError(planned.error);

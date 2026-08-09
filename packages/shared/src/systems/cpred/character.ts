@@ -53,6 +53,12 @@ export const ITEM_FIELD_MAX_LENGTH = 32;
 export const ITEM_QTY_MAX = 999;
 export const CRITICAL_INJURY_ROWS_MAX = 12;
 export const CRITICAL_INJURY_EFFECT_MAX_LENGTH = 400;
+/** Levels the rulebook's Reputation table prints (s. 193, stage 23c). */
+export const REPUTATION_LEVEL_MIN = 1;
+export const REPUTATION_LEVEL_MAX = 10;
+/** Deeds one sheet may carry. Generous — it is a career, not an inventory. */
+export const REPUTATION_SOURCE_ROWS_MAX = 30;
+export const REPUTATION_NOTE_MAX_LENGTH = 160;
 /** Death Saves already taken — the counter only grows while at 0 HP. */
 export const DEATH_SAVES_MAX = 20;
 
@@ -333,6 +339,34 @@ export interface CpredTimedInjury {
 }
 
 /**
+ * One thing the character is known for on the Street (stage 23c).
+ *
+ * Lives here rather than in `reputation.ts` for the same reason
+ * `CpredCriticalInjuryRow` does: it is a row of the sheet, and the sheet's own
+ * module must stay importable without dragging the rules in behind it. What the
+ * rows *mean* — which one is current, what sign it takes in a Konfrontacja — is
+ * `reputation.ts`, which reads this type and never the other way round.
+ *
+ * The date is stored, not derived: „kiedy" is half the answer to „za co", and a
+ * list a GM can read back as a career needs it.
+ */
+export interface CpredReputationSource {
+  id: string;
+  /** 1–10 off the rulebook's table. */
+  level: number;
+  /** „Koncert w Afterlife, o którym mówiło całe Watson." */
+  note: string;
+  /**
+   * This is what they are *infamous* for — cowardice, betrayal, walking out on
+   * an ally. RAW: such a deed still gets a level, people still recognise them
+   * for it, and the number turns negative in a Konfrontacja.
+   */
+  notorious?: boolean;
+  /** ISO date of the deed (`2026-08-09`), as the GM entered it. */
+  at?: string;
+}
+
+/**
  * Extra Death Save difficulty carried by the injuries suffered right now.
  * Lives next to the row type (not in `damage.ts`) so the roll planner can use
  * it without the two modules importing each other.
@@ -384,6 +418,17 @@ export interface CpredCharacterData {
    * mannequin on a test scene never want a rent line.
    */
   lifestyle: CpredLifestyle | null;
+  /**
+   * What the Street knows this character for (stage 23c). The *list* is stored
+   * and the number is derived from it (`cpredReputation`), because RAW replaces
+   * a Reputation only with a higher one — a separately typed value would be a
+   * second home for one fact.
+   *
+   * Written by the GM alone: „Reputacja zawsze zależy od czynów i działań
+   * Postaci, i przydziela ją MG" (s. 193). A player's sheet patch carrying it is
+   * refused, the same way `eddies` is.
+   */
+  reputationSources: CpredReputationSource[];
   notes: string;
 }
 
@@ -407,6 +452,7 @@ export function createDefaultCharacterData(): CpredCharacterData {
     deathSaves: 0,
     eddies: 0,
     lifestyle: null,
+    reputationSources: [],
     notes: '',
   };
 }
@@ -691,6 +737,70 @@ function validateCriticalInjuries(
   return rows;
 }
 
+/**
+ * The deeds a character is known for (stage 23c). Rejected rather than dropped
+ * when malformed: they come from a GM's form, so a bad row is a typo somebody
+ * should see, not stale data to be quietly swallowed.
+ */
+function validateReputationSources(
+  raw: unknown,
+  issues: CpredValidationIssue[],
+): CpredReputationSource[] | undefined {
+  if (!Array.isArray(raw)) {
+    issues.push(issue('reputationSources', 'Nieprawidłowy format listy Reputacji.'));
+    return undefined;
+  }
+  if (raw.length > REPUTATION_SOURCE_ROWS_MAX) {
+    issues.push(
+      issue('reputationSources', `Za dużo wpisów Reputacji (limit ${REPUTATION_SOURCE_ROWS_MAX}).`),
+    );
+    return undefined;
+  }
+  const rows: CpredReputationSource[] = [];
+  for (const entry of raw) {
+    if (typeof entry !== 'object' || entry === null) {
+      issues.push(issue('reputationSources', 'Nieprawidłowy wiersz Reputacji.'));
+      return undefined;
+    }
+    const row = entry as Record<string, unknown>;
+    if (typeof row.id !== 'string' || row.id.length === 0 || row.id.length > 32) {
+      issues.push(issue('reputationSources', 'Nieprawidłowy wiersz Reputacji.'));
+      return undefined;
+    }
+    const level = row.level;
+    if (!isInteger(level) || level < REPUTATION_LEVEL_MIN || level > REPUTATION_LEVEL_MAX) {
+      issues.push(
+        issue(
+          'reputationSources',
+          `Poziom Reputacji musi być liczbą od ${REPUTATION_LEVEL_MIN} do ${REPUTATION_LEVEL_MAX}.`,
+        ),
+      );
+      return undefined;
+    }
+    const note = validateText(
+      row.note ?? '',
+      'reputationSources',
+      'Opis wyczynu',
+      REPUTATION_NOTE_MAX_LENGTH,
+      issues,
+    );
+    if (note === undefined) return undefined;
+    // The date is a label, not a timestamp — anything that is not a plain
+    // `YYYY-MM-DD` is dropped rather than refused, so a half-typed field never
+    // blocks the save the GM is in the middle of.
+    const at =
+      typeof row.at === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(row.at) ? row.at : undefined;
+    rows.push({
+      id: row.id,
+      level,
+      note,
+      ...(row.notorious === true ? { notorious: true as const } : {}),
+      ...(at ? { at } : {}),
+    });
+  }
+  return rows;
+}
+
 /** Validates every recognized top-level key, collecting problems as it goes. */
 function collectCharacterDataPatch(
   raw: unknown,
@@ -892,6 +1002,10 @@ function collectCharacterDataPatch(
     } else {
       issues.push(issue('lifestyle', 'Nieprawidłowy format Poziomu życia.'));
     }
+  }
+  if ('reputationSources' in input) {
+    const sources = validateReputationSources(input.reputationSources, issues);
+    if (sources) patch.reputationSources = sources;
   }
   if ('notes' in input) {
     const notes = validateText(input.notes, 'notes', 'Notatki', NOTES_MAX_LENGTH, issues);

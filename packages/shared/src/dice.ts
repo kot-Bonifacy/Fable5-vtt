@@ -328,12 +328,33 @@ export interface RollOpposedMeta {
   detail: string;
   /** Did the roller beat the other side? Ties go to the defender. */
   won: boolean;
+  /**
+   * Three-valued verdict, for contests where a draw is its own result (stage
+   * 23c's Konfrontacja: „w przypadku remisu … nic się nie dzieje"). Absent on
+   * every test that obeys the ordinary „remis = obrona wygrywa" rule, which is
+   * why `won` stays the field the card reads first.
+   */
+  outcome?: 'win' | 'tie' | 'loss';
   /** Token whose owner may answer with a roll of their own. */
   defenderTokenId?: string;
   /** Text of the button offered to them („Broń się"). */
   answerLabel?: string;
   /** Set once the answer was rolled — an opposed test is contested once. */
   answered?: boolean;
+  /**
+   * The losing side still owes the table a decision (stage 23c): withdraw, or
+   * stand and carry the −2. Names the token whose controller chooses, and is
+   * cleared once they have.
+   */
+  concede?: {
+    /** Who lost, and therefore who picks. */
+    loserTokenId: string;
+    /** Who they lost to — the opponent the −2 would apply against. */
+    winnerTokenId: string;
+    winnerName: string;
+    /** What they chose, once they have; absent while the card still asks. */
+    chosen?: 'withdraw' | 'stand';
+  };
 }
 
 /** One target's forced check — the card lists them under the attack. */

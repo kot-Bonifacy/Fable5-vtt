@@ -458,6 +458,57 @@ export interface CombatGrappleResistPayload<TGesture = unknown> {
   gesture?: TGesture;
 }
 
+/**
+ * Konfrontacja (stage 23c) — „pojedynek spojrzeń i siły woli".
+ *
+ * Shaped like `CombatGrapplePayload` and deliberately not folded into it: this
+ * one costs no Action, needs no combat to be running and measures no distance,
+ * because RAW puts it *before* the fight („dwóch ulicznych zabijaków staje
+ * naprzeciw siebie przed walką").
+ */
+export interface CombatFacedownPayload<TGesture = unknown> {
+  /** Sheet staring them down; defaults to the caller's own. */
+  characterId?: string;
+  /** Token doing the staring, when the sheet has several on the scene. */
+  challengerTokenId?: string;
+  /** Who is being stared down. */
+  targetTokenId: string;
+  modifier?: number;
+  luckSpent?: number;
+  gesture?: TGesture;
+}
+
+/** The other side answers a Konfrontacja with a roll of their own („Postaw się"). */
+export interface CombatFacedownResistPayload<TGesture = unknown> {
+  /** Chat card of the Konfrontacja being contested. */
+  messageId: number;
+  characterId?: string;
+  gesture?: TGesture;
+}
+
+/**
+ * What the loser of a Konfrontacja does about it (s. 194). RAW gives them the
+ * choice — „Wycofać się… albo Nie wycofywać się, ale otrzymać modyfikator −2" —
+ * so the VTT applies neither until somebody says which.
+ */
+export interface CombatFacedownConcedePayload {
+  /** Chat card of the Konfrontacja being settled. */
+  messageId: number;
+  choice: 'withdraw' | 'stand';
+}
+
+/**
+ * „Czy go znam?" (s. 193) — 1k10 against the other person's Reputation, rolled
+ * on meeting them. No gesture: it is a flat die with nothing to weigh up, and
+ * the answer is information, not a Check.
+ */
+export interface ReputationRecognisePayload {
+  /** Who is doing the recognising; defaults to the caller's own sheet. */
+  characterId?: string;
+  /** Whom they are looking at. */
+  targetTokenId: string;
+}
+
 /** Something only the Attacker of a Hold can do — no roll, just an Action. */
 export interface CombatGrappleActionPayload {
   /** Participant acting; defaults to the one the caller controls. */

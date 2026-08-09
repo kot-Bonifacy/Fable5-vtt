@@ -8,6 +8,7 @@ import type {
   CpredAmmoProfile,
   CpredPeriodicDamage,
   CpredRegistry,
+  CpredReputation,
   CpredTurnCarryInput,
   CpredTurnProblem,
   CpredTurnSpend,
@@ -27,7 +28,10 @@ import {
   CPRED_GRAPPLED_STATUS_ID,
   CPRED_GRAPPLE_PENALTY,
   CPRED_GRAPPLE_PENALTY_LABEL,
+  CPRED_FACEDOWN_PENALTY,
+  CPRED_FACEDOWN_PENALTY_LABEL,
   CPRED_HIT_LOCATIONS,
+  CPRED_INTIMIDATED_STATUS_ID,
   CPRED_ON_FIRE_STATUS_ID,
   CPRED_PRONE_STATUS_ID,
   CPRED_STAT_LABELS,
@@ -36,6 +40,8 @@ import {
   CPRED_TURN_PROBLEM_MESSAGES,
   CPRED_UNCONSCIOUS_STATUS_ID,
   CPRED_WOUND_LABELS,
+  NO_REPUTATION,
+  STATIST_DEFAULT_STAT,
   STATIST_WEAPON_ROW_ID,
   ammoAblation,
   ammoDamageNotes,
@@ -56,8 +62,11 @@ import {
   cpredMoveBudgetFromSheet,
   cpredMoveRefusal,
   cpredMovementBlock,
+  cpredFacedownBase,
+  cpredPassiveFacedownTotal,
   cpredPassiveGrappleDv,
   cpredPeriodicDamage,
+  cpredSheetReputation,
   cpredStatusHasDialableDamage,
   cpredTurnBlockReason,
   cpredTurnPhaseRan,
@@ -716,6 +725,16 @@ export type SheetStatusTimers = Record<string, CpredTimedEffect>;
 interface StatusEntry {
   damage?: number;
   timer?: CpredTimedEffect;
+  /**
+   * Tokens this one lost a Konfrontacja to and did not withdraw from (stage
+   * 23c) — the addresses the −2 applies against.
+   *
+   * A list rather than a single id because RAW ends the penalty when „uda ci
+   * się pokonać wroga", one enemy at a time: a punk who backed down twice in an
+   * evening is afraid of two people, and beating one of them does not make the
+   * other less frightening.
+   */
+  feared?: string[];
 }
 
 /**
@@ -741,7 +760,12 @@ function readStatusEntries(raw: string | null | undefined): Record<string, Statu
       }
       const timer = readStatusTimer((value as { timer?: unknown }).timer);
       if (timer) entry.timer = timer;
-      if (entry.damage !== undefined || entry.timer) entries[id] = entry;
+      const feared = (value as { feared?: unknown }).feared;
+      if (Array.isArray(feared)) {
+        const ids = feared.filter((id): id is string => typeof id === 'string' && id.length > 0);
+        if (ids.length > 0) entry.feared = ids;
+      }
+      if (entry.damage !== undefined || entry.timer || entry.feared) entries[id] = entry;
     }
     return entries;
   } catch {
@@ -791,6 +815,7 @@ function serializeStatusEntries(entries: Record<string, StatusEntry>): string {
         {
           ...(entry.damage !== undefined ? { damage: entry.damage } : {}),
           ...(entry.timer ? { timer: entry.timer } : {}),
+          ...(entry.feared ? { feared: entry.feared } : {}),
         },
       ]),
     ),
@@ -815,6 +840,100 @@ export function writeSheetStatusData(
   else entries[statusId] = { ...entries[statusId], damage: Math.max(0, Math.round(damage)) };
   return serializeStatusEntries(entries);
 }
+
+/**
+ * Whom this token backed down from and never got even with (stage 23c).
+ *
+ * The sticker is the authority, not this list: an entry whose status the GM has
+ * unchecked means nothing, which is what makes „zdejmij Onieśmielonego" a
+ * complete answer at the table. Callers therefore check `statuses` first —
+ * see `sheetFacedownPenalty`.
+ */
+export function readSheetFearedTokens(raw: string | null | undefined): string[] {
+  return readStatusEntries(raw)[CPRED_INTIMIDATED_STATUS_ID]?.feared ?? [];
+}
+
+/** Writes that list back; an empty one forgets the status data entirely. */
+export function writeSheetFearedTokens(
+  raw: string | null | undefined,
+  fearedTokenIds: readonly string[],
+): string {
+  const entries = readStatusEntries(raw);
+  const unique = [...new Set(fearedTokenIds.filter((id) => id.length > 0))];
+  const current = entries[CPRED_INTIMIDATED_STATUS_ID];
+  if (unique.length === 0) {
+    if (current) {
+      const { feared: _dropped, ...rest } = current;
+      if (Object.keys(rest).length === 0) delete entries[CPRED_INTIMIDATED_STATUS_ID];
+      else entries[CPRED_INTIMIDATED_STATUS_ID] = rest;
+    }
+  } else {
+    entries[CPRED_INTIMIDATED_STATUS_ID] = { ...current, feared: unique };
+  }
+  return serializeStatusEntries(entries);
+}
+
+/**
+ * The −2 this token owes for a Konfrontacja it lost to `opponentTokenId`, as a
+ * breakdown row — or nothing, which is the usual answer.
+ *
+ * Both halves have to line up: the sticker on the token *and* the address in
+ * its data. That is not belt and braces, it is the manual override — the GM
+ * takes the penalty off by unchecking the badge in the token menu, exactly as
+ * they take off every other status.
+ */
+export function sheetFacedownPenalty(
+  token: { statuses: readonly string[]; statusData: string | null },
+  opponentTokenId: string | null | undefined,
+): RollBreakdownEntry | null {
+  if (!opponentTokenId) return null;
+  if (!token.statuses.includes(CPRED_INTIMIDATED_STATUS_ID)) return null;
+  if (!readSheetFearedTokens(token.statusData).includes(opponentTokenId)) return null;
+  return {
+    label: CPRED_FACEDOWN_PENALTY_LABEL,
+    value: CPRED_FACEDOWN_PENALTY,
+    kind: 'situational',
+  };
+}
+
+/** Status the loser of a Konfrontacja wears while they carry the −2. */
+export const SHEET_INTIMIDATED_STATUS_ID = CPRED_INTIMIDATED_STATUS_ID;
+
+/** What the Street knows this sheet for — the level and its sign (stage 23c). */
+export function readSheetReputation(
+  character: Pick<Character, 'data'>,
+  registry: SheetRegistry,
+): CpredReputation {
+  return cpredSheetReputation(parseCharacterData(character.data, registry));
+}
+
+/**
+ * CHA + Reputacja* of a sheet — the fixed half of its Konfrontacja roll.
+ * A token with no sheet has neither: an unnamed ganger stares back at the
+ * statist default of 5 and a Reputation of 0.
+ */
+export function readSheetFacedownBase(
+  character: Pick<Character, 'data'>,
+  registry: SheetRegistry,
+): number {
+  const data = parseCharacterData(character.data, registry);
+  return cpredFacedownBase(data.stats.cool, cpredSheetReputation(data));
+}
+
+/** Stand-in total of a side that has not rolled: CHA + Reputacja* + half a die. */
+export function readSheetPassiveFacedown(
+  character: Pick<Character, 'data'>,
+  registry: SheetRegistry,
+): number {
+  const data = parseCharacterData(character.data, registry);
+  return cpredPassiveFacedownTotal(data.stats.cool, cpredSheetReputation(data));
+}
+
+/** The same, for a token nobody ever statted — bare CHA 5, no Reputation. */
+export const SHEET_STATIST_FACEDOWN_TOTAL = cpredPassiveFacedownTotal(
+  STATIST_DEFAULT_STAT,
+  NO_REPUTATION,
+);
 
 /** Writes one status's timer back, or clears it, leaving its damage alone. */
 export function writeSheetStatusTimer(

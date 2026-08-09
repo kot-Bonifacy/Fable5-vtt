@@ -23,6 +23,7 @@ import {
 } from '../sheets.js';
 import { createMixedRng } from './dice-rng.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
+import { clearFacedownFear } from './facedown.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { emitCombatOfScene } from './combat.js';
 import { emitCovers } from './covers.js';
@@ -266,6 +267,18 @@ export const damageApplyEvent = defineEvent<DamageApplyPayload, { messageId: num
       ammo?.ignites && log.damageThrough > 0
         ? await igniteToken(deps, campaignId, token.id, ammo.ignites)
         : null;
+
+    // „Modyfikator ... znika, gdy tylko uda ci się pokonać wroga" (s. 194,
+    // stage 23c). Zero Hit Points is where this project already draws „pokonany"
+    // — it is the line that makes somebody Mortally Wounded — so everybody who
+    // backed down from this one stops being afraid of them here.
+    //
+    // Known asymmetry: „Cofnij" puts the Hit Points back and does *not* put the
+    // fear back, because the damage card does not record whom it un-frightened.
+    // Re-ticking „Onieśmielony" in the token menu is the way back.
+    if (log.hp && log.hp.after <= 0) {
+      await clearFacedownFear(deps, campaignId, token.sceneId, token.id);
+    }
 
     const entry: DamageLogEntry = {
       ...log,

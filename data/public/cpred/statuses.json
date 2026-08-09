@@ -34,6 +34,11 @@
       "id": "suppressed",
       "name": "Przygwożdżony",
       "icon": "/public/cpred/status-icons/suppressed.svg"
+    },
+    {
+      "id": "intimidated",
+      "name": "Onieśmielony",
+      "icon": "/public/cpred/status-icons/intimidated.svg"
     }
   ]
 }

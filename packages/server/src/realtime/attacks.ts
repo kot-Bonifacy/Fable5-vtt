@@ -15,6 +15,7 @@ import type {
   ResolvedWeapon,
   RollAreaMeta,
   RollAttackMeta,
+  RollBreakdownEntry,
   RollForcedCheck,
   RollGesture,
   RollResult,
@@ -64,6 +65,7 @@ import {
   sheetCombatProfileEvasionDv,
   sheetDodgeBlock,
   sheetFromCombatProfile,
+  sheetFacedownPenalty,
   sheetHumanShieldCovers,
   sheetSituationModifiers,
   type SheetCombatProfile,
@@ -276,6 +278,22 @@ async function targetEvasionDv(
 function tokenHpOf(token: Token): TokenHp {
   if (token.hpMax === null) return { current: 1, max: 1 };
   return { current: token.hpCurrent ?? 0, max: token.hpMax };
+}
+
+/**
+ * The −2 this shooter owes a Konfrontacja they lost to this particular target
+ * (stage 23c), as zero or one breakdown row. Empty for a shot at a cover or at
+ * bare ground: fear is of a person, and neither of those is one.
+ */
+function facedownPenaltyRows(
+  attacker: Token,
+  targetTokenId: string | undefined,
+): RollBreakdownEntry[] {
+  const row = sheetFacedownPenalty(
+    { statuses: readTokenStatuses(attacker.statuses), statusData: attacker.statusData },
+    targetTokenId,
+  );
+  return row ? [row] : [];
 }
 
 /**
@@ -846,6 +864,12 @@ export async function performAttackRoll(
               grappled: attackerGrapple.grappled,
               injuries: data.criticalInjuries,
             }),
+            // „−2 do wszystkich Akcji wymierzonych w tego przeciwnika" (s. 194,
+            // stage 23c). Charged here rather than inside `sheetSituationModifiers`
+            // because it is the only modifier in this project that depends on
+            // *who* is being shot at — a shooter who backed down from this one
+            // is steady as a rock aiming at anybody else.
+            ...facedownPenaltyRows(attacker, target?.id),
             // Standing in smoke is −4 to everything the shooter does (s. 347,
             // stage 16h) — a named row in the breakdown like every other
             // situational modifier, never a silent correction of the total.

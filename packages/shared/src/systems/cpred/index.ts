@@ -19,5 +19,6 @@ export * from './movement.js';
 export * from './attacks.js';
 export * from './statist.js';
 export * from './grapple.js';
+export * from './reputation.js';
 export * from './turn.js';
 export * from './hotbar.js';

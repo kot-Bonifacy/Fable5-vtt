@@ -15,6 +15,7 @@ import type {
   CpredAttackMode,
   CpredCharacterData,
   CpredItemRow,
+  CpredReputationSource,
   CpredWeaponRow,
   LedgerEntryView,
   PortraitUploadResult,
@@ -43,12 +44,18 @@ import {
   LEDGER_KIND_LABELS,
   LIFESTYLE_DEFINITIONS,
   LIFESTYLE_LEVELS,
+  REPUTATION_LEVEL_MAX,
+  REPUTATION_LEVEL_MIN,
+  REPUTATION_LEVEL_REACH,
+  REPUTATION_NOTE_MAX_LENGTH,
+  REPUTATION_SOURCE_ROWS_MAX,
   ROLE_GM,
   ROLE_RANK_MAX,
   ROLE_RANK_MIN,
   SKILL_LEVEL_MAX,
   SKILL_LEVEL_MIN,
   ammoOptionsFor,
+  cpredReputation,
   cyberpsychosisFor,
   cyberwareCapacity,
   deathSaveTarget,
@@ -1790,6 +1797,8 @@ function BioTab({
         </label>
       </div>
 
+      <ReputationSection data={data} saveData={saveData} />
+
       <label className="sheet-notes-label">
         Notatki i biografia
         <textarea
@@ -1801,5 +1810,155 @@ function BioTab({
         />
       </label>
     </div>
+  );
+}
+
+/**
+ * Reputacja (stage 23c) — the number and the deeds behind it.
+ *
+ * The number is not editable, and that is the whole design: RAW replaces a
+ * Reputation only with a higher one, so the deed list *is* the value and a
+ * field beside it would be a second, disagreeing copy. The GM adds deeds; the
+ * player reads them (the server refuses their patch either way).
+ */
+function ReputationSection({
+  data,
+  saveData,
+}: {
+  data: CpredCharacterData;
+  saveData: TabProps['saveData'];
+}) {
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
+  const sources = data.reputationSources;
+  const current = cpredReputation(sources);
+
+  function write(rows: CpredReputationSource[]) {
+    saveData({ reputationSources: rows }, 'reputationSources');
+  }
+
+  function addDeed() {
+    write([
+      ...sources,
+      {
+        id: newRowId(),
+        level: 1,
+        note: '',
+        // Today, as the GM would have written it — a deed with no date reads
+        // like a deed that never happened.
+        at: new Date().toISOString().slice(0, 10),
+      },
+    ]);
+  }
+
+  function patchDeed(id: string, patch: Partial<CpredReputationSource>) {
+    write(
+      sources.map((row) =>
+        row.id === id
+          ? {
+              ...row,
+              ...patch,
+              // `notorious: false` must leave the row, not sit in it as a lie
+              // about the shape the validator produces.
+              ...(patch.notorious === false ? { notorious: undefined } : {}),
+            }
+          : row,
+      ) as CpredReputationSource[],
+    );
+  }
+
+  if (!isGm && sources.length === 0) return null;
+
+  return (
+    <section className="sheet-reputation">
+      <div className="reputation-head">
+        <span
+          className={`reputation-value ${current.notorious ? 'reputation-value--bad' : ''}`}
+          title={
+            current.notorious
+              ? 'Zła sława — w Konfrontacji liczy się jako wartość ujemna'
+              : 'Reputacja — wchodzi do Konfrontacji jako CHA + Reputacja + 1k10'
+          }
+        >
+          Reputacja {current.notorious ? `−${current.level}` : current.level}
+        </span>
+        <span className="reputation-reach">
+          {current.level > 0
+            ? (REPUTATION_LEVEL_REACH[current.level] ?? '')
+            : 'Nikt o tobie nie słyszał.'}
+        </span>
+        {isGm && (
+          <button
+            type="button"
+            className="small-button"
+            onClick={addDeed}
+            disabled={sources.length >= REPUTATION_SOURCE_ROWS_MAX}
+            title="Reputację przyznaje MG za czyny postaci (s. 193)"
+          >
+            + Wyczyn
+          </button>
+        )}
+      </div>
+
+      {sources.length > 0 && (
+        <ul className="reputation-list">
+          {sources.map((row) => (
+            <li
+              key={row.id}
+              className={`reputation-row ${row.id === current.source?.id ? 'reputation-row--current' : ''}`}
+            >
+              {isGm ? (
+                <>
+                  <input
+                    className="reputation-level"
+                    type="number"
+                    min={REPUTATION_LEVEL_MIN}
+                    max={REPUTATION_LEVEL_MAX}
+                    value={row.level}
+                    title="Poziom 1–10 wg tabeli na s. 193"
+                    onChange={(e) => {
+                      const value = parseNumberInput(e);
+                      if (value !== undefined) patchDeed(row.id, { level: value });
+                    }}
+                  />
+                  <input
+                    className="reputation-note"
+                    type="text"
+                    maxLength={REPUTATION_NOTE_MAX_LENGTH}
+                    value={row.note}
+                    placeholder="Za co — np. koncert w Afterlife"
+                    onChange={(e) => patchDeed(row.id, { note: e.target.value })}
+                  />
+                  <label className="reputation-bad" title="Zła sława — w Konfrontacji na minus">
+                    <input
+                      type="checkbox"
+                      checked={row.notorious === true}
+                      onChange={(e) => patchDeed(row.id, { notorious: e.target.checked })}
+                    />
+                    zła
+                  </label>
+                  <span className="reputation-date">{row.at ?? ''}</span>
+                  <button
+                    type="button"
+                    className="small-button"
+                    title="Usuń wyczyn"
+                    onClick={() => write(sources.filter((entry) => entry.id !== row.id))}
+                  >
+                    🗑
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span className="reputation-level">
+                    {row.notorious ? `−${row.level}` : row.level}
+                  </span>
+                  <span className="reputation-note">{row.note || '—'}</span>
+                  <span className="reputation-date">{row.at ?? ''}</span>
+                </>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

@@ -40,8 +40,12 @@ import type {
   CharacterUpsertBroadcast,
   CharacterView,
   CombatUpdateBroadcast,
+  CombatFacedownConcedePayload,
+  CombatFacedownPayload,
+  CombatFacedownResistPayload,
   CombatGrapplePayload,
   CombatGrappleResistPayload,
+  ReputationRecognisePayload,
   CombatView,
   CompendiumDeleteBroadcast,
   CompendiumEntry,
@@ -137,6 +141,7 @@ import type {
 import {
   CHAT_COMMANDS_HELP,
   CPRED_ATTACK_PROBLEM_MESSAGES,
+  CPRED_FACEDOWN_PROBLEM_MESSAGES,
   CPRED_GRAPPLE_PROBLEM_MESSAGES,
   MAX_DICE_PER_TERM,
   MAX_DIE_SIDES,
@@ -1663,6 +1668,76 @@ export const sendGrappleAction = (
     kind,
     ...(combatantId ? { combatantId } : {}),
   });
+
+/**
+ * Konfrontacja (stage 23c): starting one. Costs no Action and needs no combat,
+ * so unlike a Pochwycenie there is nothing here to be refused for being out of
+ * turn — only for being out of sight.
+ */
+export function sendFacedownAttempt(
+  characterId: string,
+  targetTokenId: string,
+  challengerTokenId?: string,
+  gesture?: RollGesture,
+): void {
+  const payload: CombatFacedownPayload<RollGesture> = {
+    characterId,
+    targetTokenId,
+    ...(challengerTokenId ? { challengerTokenId } : {}),
+    ...(gesture ? { gesture } : {}),
+  };
+  socket?.emit('facedown:attempt', payload, (ack: SocketAck<{ messageId: number }>) => {
+    if (!ack.ok) useChatStore.getState().addNote(facedownAckErrorText(ack.error));
+  });
+}
+
+/** „Postaw się": the other side answers with real dice instead of half a one. */
+export function sendFacedownResist(
+  messageId: number,
+  characterId: string,
+  gesture?: RollGesture,
+): void {
+  const payload: CombatFacedownResistPayload<RollGesture> = {
+    messageId,
+    characterId,
+    ...(gesture ? { gesture } : {}),
+  };
+  socket?.emit('facedown:resist', payload, (ack: SocketAck<{ total: number }>) => {
+    if (!ack.ok) useChatStore.getState().addNote(facedownAckErrorText(ack.error));
+  });
+}
+
+/** The loser picks: back off, or stand there and carry the −2. */
+export function sendFacedownConcede(messageId: number, choice: 'withdraw' | 'stand'): void {
+  const payload: CombatFacedownConcedePayload = { messageId, choice };
+  socket?.emit('facedown:concede', payload, (ack: SocketAck<{ choice: string }>) => {
+    if (!ack.ok) useChatStore.getState().addNote(facedownAckErrorText(ack.error));
+  });
+}
+
+/** „Czy go znam?" — 1k10 against the other person's Reputation (s. 193). */
+export function sendReputationRecognise(characterId: string, targetTokenId: string): void {
+  const payload: ReputationRecognisePayload = { characterId, targetTokenId };
+  socket?.emit('reputation:recognise', payload, (ack: SocketAck<{ known: boolean }>) => {
+    if (!ack.ok) useChatStore.getState().addNote(facedownAckErrorText(ack.error));
+  });
+}
+
+function facedownAckErrorText(code: string): string {
+  const known =
+    CPRED_FACEDOWN_PROBLEM_MESSAGES[code as keyof typeof CPRED_FACEDOWN_PROBLEM_MESSAGES];
+  if (known) return known;
+  switch (code) {
+    case 'ALREADY_ANSWERED':
+      return 'Ta Konfrontacja została już zakwestionowana.';
+    case 'NOT_THE_DEFENDER':
+      return 'Tylko druga strona Konfrontacji może się postawić.';
+    case 'ATTACKER_NOT_ON_SCENE':
+      return 'Ta postać nie ma tokenu na tej scenie.';
+    default:
+      return combatErrorText(code);
+  }
+}
 
 function grappleAckErrorText(code: string): string {
   const known = CPRED_GRAPPLE_PROBLEM_MESSAGES[code as keyof typeof CPRED_GRAPPLE_PROBLEM_MESSAGES];

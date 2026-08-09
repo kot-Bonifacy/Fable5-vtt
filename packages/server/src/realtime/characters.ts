@@ -138,6 +138,10 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
         if (!isGm) throw new RealtimeError('FORBIDDEN');
         adjustBalance = eddies;
       }
+      // Stage 23c: „Reputacja zawsze zależy od czynów i działań Postaci, i
+      // przydziela ją MG" (s. 193). Unlike eddies it stays on this path — there
+      // is no ledger to write, only a door to close.
+      if (sheet.reputationSources !== undefined && !isGm) throw new RealtimeError('FORBIDDEN');
       const current = parseCharacterData(character.data, deps.ctx.cpred);
       data.data = JSON.stringify(mergeCharacterData(current, sheet));
     }

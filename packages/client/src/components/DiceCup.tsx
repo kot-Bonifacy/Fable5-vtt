@@ -8,6 +8,8 @@ import {
   sendAttackRoll,
   sendCharacterRoll,
   sendChatInput,
+  sendFacedownAttempt,
+  sendFacedownResist,
   sendGrappleAttempt,
   sendGrappleResist,
   sendInitiativeRoll,
@@ -17,6 +19,7 @@ import {
   useRollStore,
   type PendingAttack,
   type PendingEvasion,
+  type PendingFacedown,
   type PendingGrapple,
   type PendingInitiative,
   type PendingRoll,
@@ -124,7 +127,8 @@ type CupMode =
   | { kind: 'initiative'; pending: PendingInitiative }
   | { kind: 'attack'; pending: PendingAttack }
   | { kind: 'evasion'; pending: PendingEvasion }
-  | { kind: 'grapple'; pending: PendingGrapple };
+  | { kind: 'grapple'; pending: PendingGrapple }
+  | { kind: 'facedown'; pending: PendingFacedown };
 
 /** Cup label for a loaded sheet check, e.g. `Percepcja (INT) +11`. */
 function sheetLabel(pending: PendingRoll): string {
@@ -160,6 +164,7 @@ export function DiceCup() {
   const attack = useRollStore((s) => s.attack);
   const evasion = useRollStore((s) => s.evasion);
   const grapple = useRollStore((s) => s.grapple);
+  const facedown = useRollStore((s) => s.facedown);
 
   const [shaking, setShaking] = useState(false);
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
@@ -179,6 +184,7 @@ export function DiceCup() {
     if (attack) return { kind: 'attack', pending: attack };
     if (evasion) return { kind: 'evasion', pending: evasion };
     if (grapple) return { kind: 'grapple', pending: grapple };
+    if (facedown) return { kind: 'facedown', pending: facedown };
     const parsed = parseChatInput(draft);
     if (parsed.kind === 'roll') {
       return {
@@ -188,18 +194,19 @@ export function DiceCup() {
       };
     }
     return { kind: 'fun' };
-  }, [draft, pending, initiative, attack, evasion, grapple]);
+  }, [draft, pending, initiative, attack, evasion, grapple, facedown]);
   modeRef.current = mode;
 
   // Esc puts a loaded check back on the shelf (as long as we are not mid-shake).
   useEffect(() => {
-    if ((!pending && !initiative && !attack && !evasion && !grapple) || shaking) return;
+    if ((!pending && !initiative && !attack && !evasion && !grapple && !facedown) || shaking)
+      return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') useRollStore.getState().clearCup();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [pending, initiative, attack, evasion, grapple, shaking]);
+  }, [pending, initiative, attack, evasion, grapple, facedown, shaking]);
 
   useEffect(() => {
     if (!shaking) return;
@@ -317,6 +324,25 @@ export function DiceCup() {
             );
           }
         });
+      } else if (current.kind === 'facedown') {
+        const { pending: loaded } = current;
+        lastFunNotation = '1d10';
+        useRollStore.getState().clearCup();
+        void digestSamples(samples).then((entropy) => {
+          const gesture: RollGesture = { entropy, strength, toss };
+          // One roll, two addresses (stage 23c) — the same shape the grapple
+          // slot above uses, and for the same reason.
+          if (loaded.resist) {
+            sendFacedownResist(loaded.resist.messageId, loaded.characterId, gesture);
+          } else if (loaded.attempt) {
+            sendFacedownAttempt(
+              loaded.characterId,
+              loaded.attempt.targetTokenId,
+              loaded.attempt.challengerTokenId,
+              gesture,
+            );
+          }
+        });
       } else if (current.kind === 'roll') {
         lastFunNotation = current.notation;
         void digestSamples(samples).then((entropy) => {
@@ -383,7 +409,7 @@ export function DiceCup() {
   const modeClass =
     mode.kind === 'attack'
       ? ' dice-cup--attack'
-      : mode.kind === 'evasion' || mode.kind === 'grapple'
+      : mode.kind === 'evasion' || mode.kind === 'grapple' || mode.kind === 'facedown'
         ? ' dice-cup--sheet'
         : mode.kind === 'initiative'
           ? ' dice-cup--sheet'
@@ -401,7 +427,7 @@ export function DiceCup() {
       ? `Potrząśnij i strzel: ${mode.pending.title} · Esc odkłada atak`
       : mode.kind === 'evasion'
         ? `Potrząśnij i rzuć: ${mode.pending.title} · Esc odkłada rzut`
-        : mode.kind === 'grapple'
+        : mode.kind === 'grapple' || mode.kind === 'facedown'
           ? `Potrząśnij i rzuć: ${mode.pending.title} · Esc odkłada rzut`
           : mode.kind === 'initiative'
             ? `Potrząśnij i rzuć inicjatywę: ${mode.pending.name} — ${initiativeLabel(mode.pending)} · Esc odkłada rzut`
@@ -439,9 +465,10 @@ export function DiceCup() {
         <circle cx="14" cy="13" r="1.2" fill="var(--bg, #14151a)" />
       </svg>
       {mode.kind === 'roll' && <span className="dice-cup-label">{mode.notation}</span>}
-      {(mode.kind === 'attack' || mode.kind === 'evasion' || mode.kind === 'grapple') && (
-        <span className="dice-cup-label">{mode.pending.title}</span>
-      )}
+      {(mode.kind === 'attack' ||
+        mode.kind === 'evasion' ||
+        mode.kind === 'grapple' ||
+        mode.kind === 'facedown') && <span className="dice-cup-label">{mode.pending.title}</span>}
       {mode.kind === 'sheet' && <span className="dice-cup-label">{sheetLabel(mode.pending)}</span>}
       {mode.kind === 'initiative' && (
         <span className="dice-cup-label">{initiativeLabel(mode.pending)}</span>

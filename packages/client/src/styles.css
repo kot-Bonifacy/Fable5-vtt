@@ -4850,3 +4850,93 @@ body.is-resizing {
   font-size: 0.72rem;
   color: var(--text-dim);
 }
+
+/* --- etap 23c: Reputacja i Konfrontacja --- */
+
+/* Remis w Konfrontacji nie jest ani wygraną, ani porażką: „obie strony nie są
+   pewne wyniku i nic się nie dzieje" (s. 194). Szara plakietka mówi to samo. */
+.chat-roll-badge--neutral {
+  background: rgb(127 127 127 / 15%);
+  color: var(--text-dim);
+}
+
+.sheet-reputation {
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--border);
+}
+
+.reputation-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.reputation-value {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+/* Zła sława to ta sama liczba ze znakiem minus — kolor mówi to, zanim gracz
+   doczyta wiersz, z którego się wzięła. */
+.reputation-value--bad {
+  color: var(--err);
+}
+
+.reputation-reach {
+  flex: 1;
+  min-width: 10rem;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.reputation-list {
+  margin: 0.4rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.reputation-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+}
+
+/* Wiersz, z którego liczy się bieżąca Reputacja — reszta to historia. */
+.reputation-row--current {
+  border-left: 3px solid var(--accent);
+  padding-left: 0.35rem;
+}
+
+.reputation-level {
+  width: 3rem;
+  flex: none;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.reputation-note {
+  flex: 1;
+  min-width: 8rem;
+}
+
+.reputation-bad {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.reputation-date {
+  flex: none;
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
