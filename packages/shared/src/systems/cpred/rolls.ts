@@ -20,6 +20,7 @@ import {
   type CpredRegistry,
 } from './character.js';
 import type { CpredAmmoProfile } from './ammo.js';
+import { effectiveCpredStats } from './cyberware.js';
 import { deathSaveTarget, hpMax } from './derived.js';
 import { CPRED_HIT_LOCATION_LABELS, type CpredHitLocation } from './locations.js';
 import { CPRED_STAT_LABELS, isCpredStatId, type CpredStatId, type CpredStats } from './stats.js';
@@ -308,16 +309,34 @@ export function planCpredRoll(
     if (!isCpredStatId(request.statId)) return { ok: false, error: 'UNKNOWN_STAT' };
     statId = request.statId;
     title = `${CPRED_STAT_LABELS[statId].name} (${CPRED_STAT_LABELS[statId].abbr})`;
-    breakdown.push({
-      label: `${CPRED_STAT_LABELS[statId].name} (${CPRED_STAT_LABELS[statId].abbr})`,
-      value: data.stats[statId],
-      kind: 'stat',
-    });
+    breakdown.push(statBreakdown(data, statId));
   } else {
     return { ok: false, error: 'BAD_REQUEST' };
   }
 
   return finishCheck(title, breakdown, state, modifier, luckSpent, {}, context);
+}
+
+/**
+ * One stat, as the card shows it.
+ *
+ * The value is the *effective* one (stage 23a): EMP follows the Humanity left
+ * after the chrome, so a character who sold six points of Empathy to a
+ * ripperdoc rolls with what is left. When it differs from the sheet the label
+ * says so — a player who reads „EMP 6" on their own sheet must not be quietly
+ * handed a 4 with no explanation.
+ */
+function statBreakdown(data: CpredCharacterData, statId: CpredStatId): RollBreakdownEntry {
+  const label = `${CPRED_STAT_LABELS[statId].name} (${CPRED_STAT_LABELS[statId].abbr})`;
+  const value = effectiveCpredStats(data.stats, data.humanityCurrent)[statId];
+  return {
+    label:
+      value === data.stats[statId]
+        ? label
+        : `${label} — obniżona Człowieczeństwem (baza ${data.stats[statId]})`,
+    value,
+    kind: 'stat',
+  };
 }
 
 /** The stat + skill pair every Check opens with, named the way the card shows it. */
@@ -327,11 +346,7 @@ function skillBreakdown(
 ): RollBreakdownEntry[] {
   const level = data.skills[skill.id] ?? 0;
   return [
-    {
-      label: `${CPRED_STAT_LABELS[skill.stat].name} (${CPRED_STAT_LABELS[skill.stat].abbr})`,
-      value: data.stats[skill.stat],
-      kind: 'stat',
-    },
+    statBreakdown(data, skill.stat),
     // RAW: an untrained skill simply contributes nothing — the check still
     // happens on the bare stat, and the card says so.
     {

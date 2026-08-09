@@ -22,6 +22,7 @@ Everything this script writes is gitignored. Outputs:
     data/private/cpred/compendium/weapon-types.json      (base weapon rows)
     data/private/cpred/compendium/weapons-base.json      (buyable base + exotic)
     data/private/cpred/compendium/armor.json
+    data/private/cpred/compendium/cyberware.json      (8 families, stage 23a)
     data/private/cpred/compendium/critical-injuries.json (both tables, official)
     data/private/cpred/compendium/import-report-manual.json
 
@@ -678,6 +679,161 @@ def describe_exotic(prose: str, name: str, names: list[str]) -> str | None:
     return clean(body)[:DESCRIPTION_MAX] or None
 
 
+# --- cyberware ---------------------------------------------------------------
+
+# Each family of the cyberware tables, in the order the chapter prints them.
+# The marker is the heading the glued table opens with; the last one is bounded
+# by the section that follows the tables entirely.
+CYBERWARE_SECTIONS: list[tuple[str, str]] = [
+    ("fashionware", "CYBORGIZACJE CYBERMODA"),
+    ("neuralware", "CYBERSYNAPSY (CYBORGIZACJA PODSTAWOWA"),
+    ("cyberoptics", "CYBEROPTYKA (CYBORGIZACJA PODSTAWOWA"),
+    ("cyberaudio", "CYBERAUDIO (CYBORGIZACJA PODSTAWOWA"),
+    ("internal", "CYBORGIZACJE WEWNĘTRZNE"),
+    ("external", "CYBORGIZACJE ZEWNĘTRZNE"),
+    ("cyberlimb", "CYBERKOŃCZYNY (CYBORGIZACJA PODSTAWOWA"),
+    ("borgware", "BORGIZACJE Nazwa"),
+]
+CYBERWARE_END = "### ULEPSZENIA SPRZĘTOWE CYBERDEKU"
+
+# The whole table is cut on this: „500 ed (Kosztowny)7 (2k6)" is the only shape
+# that repeats once per row and never inside a description. Anchoring on names
+# is impossible here — unlike weapons and armour, the rulebook never lists the
+# cyberware names anywhere else, so there is nothing to anchor on.
+CYBERWARE_TAIL = re.compile(
+    r"(?P<cost>\d[\d ]*)\s*ed\s*\(\s*(?P<band>[^)]{2,30}?)\s*\)\s*"
+    r"(?P<uc>\d+)\s*(?:\(\s*(?P<dice>[^)]*?)\s*\)|Nd\.)"
+)
+# „Nazwa Montaż…" — the mount column is one of four fixed words. It is usually
+# glued straight onto the description („GaleriaPo udanej"), so the boundary is
+# „a capital letter or whitespace", not `\b`: between „a" and „P" there is none.
+CYBERWARE_MOUNT = re.compile(
+    r"^(?P<name>.{2,70}?)\s*(?P<mount>Galeria|Klinika|Szpital|Nd\.)(?=\s|[A-ZŁŚŻĆÓĘĄŃ]|$)"
+)
+CYBERWARE_MOUNTS = {"Galeria": "gallery", "Klinika": "clinic", "Szpital": "hospital", "Nd.": "none"}
+# Repeated column header of a table continued on the next page.
+CYBERWARE_HEADER = re.compile(r"Nazwa\s*Montaż\s*Opis i informacje\s*Cena\s*UC")
+# „Ma 5 gniazd na modyfikacje…", „Każde cyberoko ma 3 gniazda…"
+CYBERWARE_SLOTS = re.compile(r"\bma\s+(?P<slots>\d+)\s+gniazd", re.IGNORECASE)
+# „zajmuje 2 gniazda modyfikacji" / „nie zajmuje gniazda modyfikacji"
+CYBERWARE_SLOT_COST = re.compile(r"(?P<no>nie\s+)?zajmuje\s+(?:(?P<n>\d+)\s+)?gniazd", re.IGNORECASE)
+# „Wymaga sprzęgu neuralnego", „Wymaga dwojga cyberoczu, sparowania i…"
+CYBERWARE_REQUIRES = re.compile(r"Wymaga\s+(?P<what>[^.,]{3,60})")
+# A chip pushed into a chip socket does not eat the neural link's own slots
+# („Modyfikacja gniazda czipów nie zajmuje gniazd modyfikacji sprzęgu").
+CYBERWARE_CHIP = "Modyfikacja gniazda czipów"
+
+
+def parse_cyberware(market: str) -> list[dict]:
+    """The eight cyberware tables of s. 358–366, one entry per printed row."""
+    bounds = []
+    for _, marker in CYBERWARE_SECTIONS:
+        index = market.find(marker)
+        if index == -1:
+            warn(f"cyborgizacje: nie znalazłem tabeli „{marker}”")
+        bounds.append(index)
+    stop = market.find(CYBERWARE_END)
+    if stop == -1:
+        stop = len(market)
+
+    entries: list[dict] = []
+    seen: set[str] = set()
+    for index, (family, marker) in enumerate(CYBERWARE_SECTIONS):
+        begin = bounds[index]
+        if begin == -1:
+            continue
+        end = next((value for value in bounds[index + 1 :] if value != -1), stop)
+        text = clean(market[begin:end])
+        page = page_of(market, begin)
+        cursor = 0
+        for tail in CYBERWARE_TAIL.finditer(text):
+            head = text[cursor : tail.start()]
+            cursor = tail.end()
+            # Drop the table heading and any repeated column header; whatever is
+            # left of the last one is the row's own name and description.
+            header = None
+            for header in CYBERWARE_HEADER.finditer(head):
+                pass
+            if header:
+                head = head[header.end() :]
+            elif index == 0 or head.startswith(marker):
+                head = head[len(marker) :] if head.startswith(marker) else head
+            # Leading dots are leftovers of the heading; the trailing one is the
+            # description's own full stop and has to survive.
+            head = head.strip().lstrip(".").strip()
+            entry = build_cyberware(family, head, tail, page)
+            if not entry:
+                continue
+            # „Zmiantakty" is printed twice — once as fashionware and once as a
+            # cyberoptics option, with different Humanity costs. Two rows in the
+            # book are two entries here, so the second one takes its family into
+            # the id rather than being dropped.
+            if entry["id"] in seen:
+                entry["id"] = f"{entry['id']}-{family}"
+            if entry["id"] in seen:
+                warn(f"cyborgizacje: powtórzone id „{entry['id']}” — pomijam")
+                continue
+            seen.add(entry["id"])
+            entries.append(entry)
+    return entries
+
+
+def build_cyberware(family: str, head: str, tail: re.Match[str], page: int | None) -> dict | None:
+    mount = CYBERWARE_MOUNT.search(head)
+    if not mount:
+        warn(f"cyborgizacje ({family}): nie odczytałem nazwy w „{head[:60]}…”")
+        return None
+    name = clean(mount.group("name")).strip(" .,–—")
+    # The dump doubles hyphens where the PDF broke a word across lines.
+    name = re.sub(r"-{2,}", "", name)
+    if not name:
+        warn(f"cyborgizacje ({family}): pusta nazwa w „{head[:60]}…”")
+        return None
+    description = clean(head[mount.end() :]).lstrip(" .")
+    cost, band = price(tail.group("cost"), tail.group("band"), f"cyborgizacja „{name}”")
+
+    entry: dict = {
+        "id": f"cyberware.{slugify(name)}",
+        "category": "cyberware",
+        "name": name,
+        "type": family,
+        "install": CYBERWARE_MOUNTS[mount.group("mount")],
+        "cost": cost,
+        "description": description[:DESCRIPTION_MAX],
+        "source": f"{SOURCE}, s. {page}" if page else SOURCE,
+    }
+    if band:
+        entry["costCategory"] = band
+
+    # „7 (2k6)": a flat 7 at character creation, a roll of 2k6 in play (s. 111).
+    fixed = int(tail.group("uc"))
+    if fixed > 0:
+        entry["humanityLossFixed"] = fixed
+    dice = (tail.group("dice") or "").strip()
+    notation = re.search(r"(\d+)\s*[kd]\s*6", dice, re.IGNORECASE)
+    if notation:
+        entry["humanityLoss"] = f"{notation.group(1)}k6"
+        if "/2" in dice:
+            entry["humanityLossHalved"] = True
+    elif fixed > 0:
+        warn(f"cyborgizacja „{name}”: UC {fixed} bez notacji kości")
+
+    slots = CYBERWARE_SLOTS.search(description)
+    if slots:
+        entry["foundation"] = True
+        entry["slots"] = int(slots.group("slots"))
+    else:
+        cost_match = CYBERWARE_SLOT_COST.search(description)
+        if CYBERWARE_CHIP in description or (cost_match and cost_match.group("no")):
+            entry["slotCost"] = 0
+        elif cost_match and cost_match.group("n"):
+            entry["slotCost"] = int(cost_match.group("n"))
+    requires = CYBERWARE_REQUIRES.search(description)
+    if requires:
+        entry["requires"] = clean(requires.group("what"))
+    return entry
+
+
 # --- critical injuries -------------------------------------------------------
 
 QUICK_FIX = r"Nd\.|Pierwsza pomoc lub Ratownictwo medyczne\s*PT\s*\d+|Ratownictwo medyczne\s*PT\s*\d+"
@@ -961,6 +1117,12 @@ def main() -> int:
         {"schemaVersion": SCHEMA_VERSION, "source": SOURCE, "entries": armor},
     )
 
+    cyberware = apply_overrides(parse_cyberware(market), overrides, "cyberware")
+    write(
+        COMPENDIUM_DIR / "cyberware.json",
+        {"schemaVersion": SCHEMA_VERSION, "source": SOURCE, "entries": cyberware},
+    )
+
     injuries = parse_injury_table(
         combat, "### RANY KRYTYCZNE CIAŁA", "### RANY KRYTYCZNE GŁOWY", "body"
     )
@@ -981,6 +1143,7 @@ def main() -> int:
             "weaponTypes": len(weapon_types),
             "weapons": len(entries),
             "armor": len(armor),
+            "cyberware": len(cyberware),
             "criticalInjuries": len(injuries),
         },
         "roleAbilities": role_abilities(roles),
@@ -993,6 +1156,7 @@ def main() -> int:
     print(f"Typy broni:       {len(weapon_types)}")
     print(f"Bronie (wpisy):   {len(entries)}")
     print(f"Pancerze:         {len(armor)}")
+    print(f"Cyborgizacje:     {len(cyberware)}")
     print(f"Rany krytyczne:   {len(injuries)}")
     if warnings:
         print(f"\nOstrzeżenia ({len(warnings)}):")

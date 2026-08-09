@@ -15,6 +15,11 @@ import {
   CRITICAL_INJURY_ROLL_MIN,
   CRITICAL_INJURY_TABLES,
   CRITICAL_INJURY_TABLE_LABELS,
+  CYBERWARE_INSTALLS,
+  CYBERWARE_INSTALL_LABELS,
+  CYBERWARE_SLOTS_MAX,
+  CYBERWARE_TYPES,
+  CYBERWARE_TYPE_LABELS,
   COST_CATEGORY_LABELS,
   WEAPON_QUALITIES,
   WEAPON_QUALITY_LABELS,
@@ -534,34 +539,101 @@ export function CompendiumEditor() {
           ) : null}
 
           {form.category === 'cyberware' ? (
-            <div className="bot-row-inline">
-              <label className="bot-field bot-field--inline">
-                Człowieczeństwo
-                <input
-                  value={form.humanityLoss}
-                  placeholder="2k6"
-                  onChange={(event) => patch({ humanityLoss: event.target.value })}
-                />
-              </label>
-              <label className="bot-field bot-field--inline">
-                Gniazda
-                <input
-                  type="number"
-                  min={0}
-                  max={10}
-                  value={form.slots}
-                  onChange={(event) => patch({ slots: event.target.value })}
-                />
-              </label>
-              <label className="bot-checkbox">
-                <input
-                  type="checkbox"
-                  checked={form.foundation}
-                  onChange={(event) => patch({ foundation: event.target.checked })}
-                />
-                Wszczep podstawowy
-              </label>
-            </div>
+            <>
+              <div className="bot-row-inline">
+                <label className="bot-field bot-field--inline">
+                  Rodzina
+                  <select
+                    value={form.cyberwareType}
+                    onChange={(event) => patch({ cyberwareType: event.target.value })}
+                  >
+                    <option value="">— nieokreślona —</option>
+                    {CYBERWARE_TYPES.map((type) => (
+                      <option key={type} value={type}>
+                        {CYBERWARE_TYPE_LABELS[type]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="bot-field bot-field--inline">
+                  Montaż
+                  <select
+                    value={form.cyberwareInstall}
+                    onChange={(event) => patch({ cyberwareInstall: event.target.value })}
+                  >
+                    <option value="">— nieokreślony —</option>
+                    {CYBERWARE_INSTALLS.map((install) => (
+                      <option key={install} value={install}>
+                        {CYBERWARE_INSTALL_LABELS[install]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              {/* „7 (2k6)" z tabeli: stała przy tworzeniu Postaci, kości w grze. */}
+              <div className="bot-row-inline">
+                <label className="bot-field bot-field--inline">
+                  UC stałe
+                  <input
+                    type="number"
+                    min={0}
+                    value={form.humanityLossFixed}
+                    placeholder="7"
+                    onChange={(event) => patch({ humanityLossFixed: event.target.value })}
+                  />
+                </label>
+                <label className="bot-field bot-field--inline">
+                  UC kośćmi
+                  <input
+                    value={form.humanityLoss}
+                    placeholder="2k6"
+                    onChange={(event) => patch({ humanityLoss: event.target.value })}
+                  />
+                </label>
+                <label className="bot-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={form.humanityLossHalved}
+                    onChange={(event) => patch({ humanityLossHalved: event.target.checked })}
+                  />
+                  Połowa, w górę
+                </label>
+              </div>
+              <div className="bot-row-inline">
+                <label className="bot-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={form.foundation}
+                    onChange={(event) => patch({ foundation: event.target.checked })}
+                  />
+                  Wszczep podstawowy
+                </label>
+                <label className="bot-field bot-field--inline">
+                  {form.foundation ? 'Daje gniazd' : 'Zajmuje gniazd'}
+                  <input
+                    type="number"
+                    min={0}
+                    max={CYBERWARE_SLOTS_MAX}
+                    value={form.foundation ? form.slots : form.slotCost}
+                    onChange={(event) =>
+                      patch(
+                        form.foundation
+                          ? { slots: event.target.value }
+                          : { slotCost: event.target.value },
+                      )
+                    }
+                  />
+                </label>
+                <label className="bot-field bot-field--inline">
+                  Wymaga
+                  <input
+                    value={form.cyberwareRequires}
+                    placeholder="cyberoka"
+                    onChange={(event) => patch({ cyberwareRequires: event.target.value })}
+                  />
+                </label>
+              </div>
+            </>
           ) : null}
 
           {form.category === 'criticalInjury' ? (
@@ -692,7 +764,13 @@ interface EditorForm {
   ammoSpreadDamage: string;
   ammoSpreadRange: string;
   humanityLoss: string;
+  humanityLossFixed: string;
+  humanityLossHalved: boolean;
+  cyberwareType: string;
+  cyberwareInstall: string;
   slots: string;
+  slotCost: string;
+  cyberwareRequires: string;
   foundation: boolean;
   injuryTable: string;
   injuryRoll: string;
@@ -762,7 +840,17 @@ function toForm(entry: CompendiumEntry | undefined): EditorForm {
     ammoSpreadRange:
       entry?.category === 'ammo' && entry.spread ? String(entry.spread.coneRangeM) : '',
     humanityLoss: entry?.category === 'cyberware' ? (entry.humanityLoss ?? '') : '',
+    humanityLossFixed:
+      entry?.category === 'cyberware' && entry.humanityLossFixed !== undefined
+        ? String(entry.humanityLossFixed)
+        : '',
+    humanityLossHalved: entry?.category === 'cyberware' ? Boolean(entry.humanityLossHalved) : false,
+    cyberwareType: entry?.category === 'cyberware' ? (entry.type ?? '') : '',
+    cyberwareInstall: entry?.category === 'cyberware' ? (entry.install ?? '') : '',
     slots: entry?.category === 'cyberware' && entry.slots !== undefined ? String(entry.slots) : '',
+    slotCost:
+      entry?.category === 'cyberware' && entry.slotCost !== undefined ? String(entry.slotCost) : '',
+    cyberwareRequires: entry?.category === 'cyberware' ? (entry.requires ?? '') : '',
     foundation: entry?.category === 'cyberware' ? Boolean(entry.foundation) : false,
     injuryTable: entry?.category === 'criticalInjury' ? entry.table : 'body',
     injuryRoll: entry?.category === 'criticalInjury' ? String(entry.roll) : '',
@@ -901,7 +989,13 @@ function fromForm(form: EditorForm, existingId: string | undefined): Record<stri
     return {
       ...base,
       humanityLoss: form.humanityLoss || undefined,
+      humanityLossFixed: numberOrUndefined(form.humanityLossFixed),
+      humanityLossHalved: form.humanityLossHalved,
+      type: form.cyberwareType || undefined,
+      install: form.cyberwareInstall || undefined,
       slots: numberOrUndefined(form.slots),
+      slotCost: numberOrUndefined(form.slotCost),
+      requires: form.cyberwareRequires || undefined,
       foundation: form.foundation,
     };
   }

@@ -116,6 +116,54 @@ describe('validateCompendiumEntry', () => {
     );
   });
 
+  it('keeps the whole cyberware row the tables print (stage 23a)', () => {
+    const result = validateCompendiumEntry({
+      category: 'cyberware',
+      name: 'Celownik optyczny',
+      type: 'cyberoptics',
+      install: 'clinic',
+      humanityLoss: '1k6',
+      humanityLossFixed: 3,
+      humanityLossHalved: true,
+      slotCost: 2,
+      requires: 'cyberoka',
+      cost: 500,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok || result.entry.category !== 'cyberware') return;
+    expect(result.entry).toMatchObject({
+      type: 'cyberoptics',
+      install: 'clinic',
+      humanityLossFixed: 3,
+      humanityLossHalved: true,
+      slotCost: 2,
+      requires: 'cyberoka',
+    });
+  });
+
+  it('drops an unknown cyberware family instead of refusing the entry', () => {
+    const result = validateCompendiumEntry({
+      category: 'cyberware',
+      name: 'Wszczep MG',
+      type: 'wynalazek',
+      cost: 100,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok || result.entry.category !== 'cyberware') return;
+    expect(result.entry.type).toBeUndefined();
+  });
+
+  it('refuses a slot count outside the schema', () => {
+    const result = validateCompendiumEntry({
+      category: 'cyberware',
+      name: 'Cyberręka',
+      slots: 99,
+      cost: 500,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.issues[0]?.field).toBe('slots');
+  });
+
   it('reports an unknown category instead of guessing', () => {
     const result = validateCompendiumEntry({ category: 'pojazd', name: 'Auto' });
     expect(result.ok).toBe(false);

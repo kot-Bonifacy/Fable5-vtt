@@ -1,6 +1,6 @@
 import type { CompendiumEntry, CpredCharacterData, ResolvedWeapon } from '@vtt/shared';
 import { ITEM_ROWS_MAX } from '@vtt/shared';
-import { queueCharacterSave } from './socket.js';
+import { queueCharacterSave, sendCyberwareAction } from './socket.js';
 import { useCharacterStore } from './stores/characterStore.js';
 
 /**
@@ -74,10 +74,14 @@ export async function addCompendiumItemToCharacter(
       return 'Rany krytyczne trafiają na kartę z rzutu na obrażenia.';
     case 'cyberware': {
       if (data.cyberware.length >= ITEM_ROWS_MAX) return 'Lista cyborgizacji jest pełna.';
-      const notes = entry.humanityLoss ? `Człowieczeństwo −${entry.humanityLoss}` : '';
-      const cyberware = [...data.cyberware, { ...base, notes }];
-      queueCharacterSave(characterId, { data: { cyberware } });
-      return `Dodano „${entry.name}” do cyborgizacji.`;
+      // Not a sheet edit like every other row here (stage 23a): the Humanity a
+      // piece of chrome costs is rolled on the server, so the client sends the
+      // intention and lets the card and the refreshed sheet come back.
+      sendCyberwareAction({ characterId, action: 'install', entryId: entry.id });
+      const cost = entry.humanityLoss ?? entry.humanityLossFixed;
+      return cost
+        ? `Instaluję „${entry.name}” — rzut na Utratę Człowieczeństwa (${cost}) idzie na czat.`
+        : `Instaluję „${entry.name}” — bez utraty Człowieczeństwa.`;
     }
     default: {
       if (data.gear.length >= ITEM_ROWS_MAX) return 'Lista sprzętu jest pełna.';

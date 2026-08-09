@@ -1,5 +1,15 @@
 import { isValidCompendiumId } from './ids.js';
-import { hpMax, humanityMax } from './derived.js';
+import { hpMax } from './derived.js';
+import {
+  CYBERWARE_SLOTS_MAX,
+  HUMANITY_MAX_PENALTY_BORGWARE,
+  HUMANITY_MIN,
+  humanityMaxWith,
+  isCyberwareInstall,
+  isCyberwareType,
+  type CyberwareInstall,
+  type CyberwareInstallation,
+} from './cyberware.js';
 import {
   ARMOR_LOCATIONS,
   ARMOR_PENALTY_MIN,
@@ -200,6 +210,21 @@ export interface CpredGearRow extends CpredItemRow {
   qty: number;
 }
 
+/**
+ * A piece of chrome that is already in the body (stage 23a).
+ *
+ * Everything the rules need is copied off the catalogue entry at install time —
+ * the family, the ceiling penalty, the slots — so the row answers „co to ze mną
+ * robi" without a second lookup, and stays truthful after the GM edits the
+ * table. What is *not* copied is the price: buying is stage 23b.
+ */
+export interface CpredCyberwareRow extends CpredItemRow, CyberwareInstallation {
+  /** Humanity this piece actually cost when it went in — provenance. */
+  humanityLoss?: number;
+  /** Where it was fitted, for the sheet's line („Klinika"). */
+  install?: CyberwareInstall;
+}
+
 export interface CpredWeaponRow extends CpredItemRow {
   /** Damage notation, e.g. "3k6" — free text until the compendium (stage 12). */
   damage: string;
@@ -322,7 +347,11 @@ export interface CpredCharacterData {
   hpCurrent: number;
   /** Clamped to [0, stats.luck]. */
   luckCurrent: number;
-  /** Clamped to [0, humanityMax(stats)]. */
+  /**
+   * Clamped to [HUMANITY_MIN, humanityMaxWith(stats, cyberware)]. Unlike every
+   * other pool this one may go **below zero** — „Ostra cyberpsychoza" is a state
+   * the rules name (s. 232), not an impossible number.
+   */
   humanityCurrent: number;
   /** One of the registry's role ids; null = no role picked yet. */
   roleId: string | null;
@@ -332,7 +361,7 @@ export interface CpredCharacterData {
   weapons: CpredWeaponRow[];
   armor: CpredArmorRow[];
   gear: CpredGearRow[];
-  cyberware: CpredItemRow[];
+  cyberware: CpredCyberwareRow[];
   /** Critical Injuries suffered right now (stage 15). */
   criticalInjuries: CpredCriticalInjuryRow[];
   /**
@@ -352,7 +381,8 @@ export function createDefaultCharacterData(): CpredCharacterData {
     stats,
     hpCurrent: hpMax(stats),
     luckCurrent: stats.luck,
-    humanityCurrent: humanityMax(stats),
+    // A fresh sheet has no chrome, so the ceiling is the bare EMP × 10.
+    humanityCurrent: humanityMaxWith(stats, []),
     roleId: null,
     roleAbilityRank: ROLE_RANK_MIN,
     skills: {},
@@ -663,7 +693,7 @@ function collectCharacterDataPatch(
     const stats = validateStats(input.stats, issues);
     if (stats) patch.stats = stats;
   }
-  for (const key of ['hpCurrent', 'luckCurrent', 'humanityCurrent'] as const) {
+  for (const key of ['hpCurrent', 'luckCurrent'] as const) {
     if (key in input) {
       const value = input[key];
       // Upper bounds depend on stats and are clamped in normalizeCharacterData.
@@ -672,6 +702,17 @@ function collectCharacterDataPatch(
       } else {
         patch[key] = value;
       }
+    }
+  }
+  if ('humanityCurrent' in input) {
+    const value = input.humanityCurrent;
+    // The one pool with a negative floor (s. 232) — see the field's comment.
+    if (!isInteger(value) || value < HUMANITY_MIN || value > 999) {
+      issues.push(
+        issue('humanityCurrent', `Człowieczeństwo musi być liczbą całkowitą od ${HUMANITY_MIN}.`),
+      );
+    } else {
+      patch.humanityCurrent = value;
     }
   }
   if ('roleId' in input) {
@@ -785,11 +826,33 @@ function collectCharacterDataPatch(
     if (gear) patch.gear = gear;
   }
   if ('cyberware' in input) {
-    const cyberware = validateRows<CpredItemRow>(
+    const cyberware = validateRows<CpredCyberwareRow>(
       input.cyberware,
       'cyberware',
       issues,
-      (base) => base,
+      (base, row) => {
+        // Every field here is optional and dropped when malformed rather than
+        // refused: rows written before stage 23a have none of them, and a row
+        // that lost its slot count is still a piece of chrome on the sheet.
+        const slots = row.slots;
+        const slotCost = row.slotCost;
+        const penalty = row.humanityMaxPenalty;
+        const loss = row.humanityLoss;
+        return {
+          ...base,
+          ...(isCyberwareType(row.type) ? { type: row.type } : {}),
+          ...(isCyberwareInstall(row.install) ? { install: row.install } : {}),
+          ...(row.foundation === true ? { foundation: true as const } : {}),
+          ...(isInteger(slots) && slots >= 0 && slots <= CYBERWARE_SLOTS_MAX ? { slots } : {}),
+          ...(isInteger(slotCost) && slotCost >= 0 && slotCost <= CYBERWARE_SLOTS_MAX
+            ? { slotCost }
+            : {}),
+          ...(isInteger(penalty) && penalty > 0 && penalty <= HUMANITY_MAX_PENALTY_BORGWARE
+            ? { humanityMaxPenalty: penalty }
+            : {}),
+          ...(isInteger(loss) && loss >= 0 && loss <= 999 ? { humanityLoss: loss } : {}),
+        };
+      },
     );
     if (cyberware) patch.cyberware = cyberware;
   }
@@ -834,7 +897,12 @@ export function normalizeCharacterData(data: CpredCharacterData): CpredCharacter
     ...data,
     hpCurrent,
     luckCurrent: Math.min(data.luckCurrent, data.stats.luck),
-    humanityCurrent: Math.min(data.humanityCurrent, humanityMax(data.stats)),
+    // The ceiling moves with the chrome (s. 230), so pulling a piece out raises
+    // it and installing one lowers it — the current value follows either way.
+    humanityCurrent: Math.max(
+      HUMANITY_MIN,
+      Math.min(data.humanityCurrent, humanityMaxWith(data.stats, data.cyberware)),
+    ),
     // Ablation can never leave a piece of armor above its undamaged SP.
     armor: data.armor.map((row) => (row.spCurrent > row.sp ? { ...row, spCurrent: row.sp } : row)),
     // RAW: the Death Save modifiers accumulate „dopóki nie zostaniesz

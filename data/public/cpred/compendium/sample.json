@@ -1,511 +1,544 @@
 {
- "schemaVersion": 1,
- "$comment": "Wszystkie liczby są wymyślone, także tabele PT — nie kopiuj tu wierszy z podręcznika. Prawdziwe dane wchodzą z data/private/ i nadpisują ten plik po id.",
- "source": "Dane przykładowe VTT (wymyślone — wolne od praw autorskich)",
- "weaponTypes": [
-  {
-   "id": "weapon-type.sample-rifle",
-   "name": "Karabin przykładowy",
-   "skillId": "shoulder-arms",
-   "damage": "5k6",
-   "magazine": 25,
-   "rof": 1,
-   "hands": 2,
-   "concealable": false,
-   "attachmentSlots": 3,
-   "melee": false,
-   "rangeDv": [
-    18,
-    16,
-    14,
-    14,
-    16,
-    21,
-    26,
-    31
-   ],
-   "autofire": {
-    "max": 4,
-    "rangeDv": [
-     21,
-     19,
-     16,
-     19,
-     24,
-     null,
-     null,
-     null
-    ]
-   },
-   "suppressive": true,
-   "ammoPatterns": [
-    "bullet"
-   ]
-  },
-  {
-   "id": "weapon-type.sample-blade",
-   "name": "Ostrze przykładowe",
-   "skillId": "melee-weapon",
-   "damage": "3k6",
-   "magazine": null,
-   "rof": 2,
-   "hands": 1,
-   "concealable": false,
-   "melee": true
-  },
-  {
-   "id": "weapon-type.sample-pistol",
-   "name": "Pistolet przykładowy",
-   "skillId": "handgun",
-   "damage": "2k6",
-   "magazine": 10,
-   "rof": 2,
-   "hands": 1,
-   "concealable": true,
-   "attachmentSlots": 3,
-   "melee": false,
-   "rangeDv": [
-    12,
-    14,
-    19,
-    24,
-    29,
-    29,
-    null,
-    null
-   ],
-   "ammoPatterns": [
-    "bullet"
-   ]
-  },
-  {
-   "id": "weapon-type.sample-shotgun",
-   "name": "Strzelba przykładowa",
-   "skillId": "shoulder-arms",
-   "damage": "5k6",
-   "magazine": 4,
-   "rof": 1,
-   "hands": 2,
-   "concealable": false,
-   "attachmentSlots": 3,
-   "melee": false,
-   "ammunition": "Pocisk przykładowy",
-   "ammoPatterns": [
-    "bullet",
-    "shell"
-   ],
-   "rangeDv": [
-    13,
-    15,
-    20,
-    25,
-    30,
-    35,
-    null,
-    null
-   ]
-  },
-  {
-   "id": "weapon-type.sample-flamer",
-   "name": "Zapalarka przykładowa",
-   "skillId": "shoulder-arms",
-   "damage": "5k6",
-   "magazine": 4,
-   "rof": 1,
-   "hands": 2,
-   "concealable": false,
-   "attachmentSlots": 0,
-   "melee": false,
-   "ammunition": "Nabój zapalarki",
-   "ammoPatterns": [
-    "shell"
-   ],
-   "ammoIds": [
-    "ammo.sample-flamer-shell"
-   ],
-   "rangeDv": [
-    13,
-    15,
-    20,
-    25,
-    30,
-    35,
-    null,
-    null
-   ],
-   "description": "Przykład broni, która strzela wyłącznie jednym rodzajem naboju."
-  },
-  {
-   "id": "weapon-type.sample-grenade",
-   "name": "Ładunek przykładowy",
-   "skillId": "athletics",
-   "damage": "4k6",
-   "magazine": null,
-   "rof": 1,
-   "hands": 1,
-   "concealable": true,
-   "melee": false,
-   "thrown": true,
-   "explosive": true,
-   "maxRangeM": 20,
-   "rangeDv": [
-    14,
-    14,
-    16,
-    18,
-    21,
-    24,
-    null,
-    null
-   ],
-   "ammoPatterns": [
-    "grenade"
-   ]
-  }
- ],
- "entries": [
-  {
-   "id": "weapon.zgrzyt-9",
-   "category": "weapon",
-   "name": "Zgrzyt 9",
-   "description": "Tania spluwa z warsztatu w Kotłowni. Zacina się, gdy najbardziej nie trzeba.",
-   "weaponTypeId": "weapon-type.sample-pistol",
-   "quality": "poor",
-   "cost": 50,
-   "costCategory": "costly"
-  },
-  {
-   "id": "weapon.iglica-tw",
-   "category": "weapon",
-   "name": "Iglica TW",
-   "description": "Warsztatowa przeróbka z celownikiem kolimatorowym.",
-   "weaponTypeId": "weapon-type.sample-pistol",
-   "quality": "excellent",
-   "cost": 500,
-   "costCategory": "expensive",
-   "features": [
-    "Złącze smartguna"
-   ]
-  },
-  {
-   "id": "weapon.grzechotnik",
-   "category": "weapon",
-   "name": "Grzechotnik",
-   "description": "Karabin składany na trzy części, popularny wśród kurierów z Pustkowi.",
-   "weaponTypeId": "weapon-type.sample-rifle",
-   "quality": "standard",
-   "cost": 500,
-   "costCategory": "expensive",
-   "features": [
-    "Wydłużony magazynek"
-   ]
-  },
-  {
-   "id": "weapon.szpon",
-   "category": "weapon",
-   "name": "Szpon",
-   "description": "Monoostrze z rękojeścią owiniętą taśmą izolacyjną.",
-   "weaponTypeId": "weapon-type.sample-blade",
-   "quality": "standard",
-   "cost": 100,
-   "costCategory": "premium"
-  },
-  {
-   "id": "armor.kurtka-warsztatowa",
-   "category": "armor",
-   "name": "Kurtka warsztatowa",
-   "description": "Gruby brezent z wszytymi płytkami. Cięższa niż wygląda.",
-   "sp": 7,
-   "locations": [
-    "body"
-   ],
-   "cost": 100,
-   "costCategory": "premium"
-  },
-  {
-   "id": "armor.helm-kurierski",
-   "category": "armor",
-   "name": "Hełm kurierski",
-   "description": "Kask z osłoną karku, standard na trasach międzymiastowych.",
-   "sp": 11,
-   "locations": [
-    "head"
-   ],
-   "penalty": -1,
-   "cost": 500,
-   "costCategory": "expensive"
-  },
-  {
-   "id": "gear.apteczka-polowa",
-   "category": "gear",
-   "name": "Apteczka polowa",
-   "description": "Zestaw opatrunków i klejów tkankowych na trzy użycia.",
-   "cost": 50,
-   "costCategory": "costly"
-  },
-  {
-   "id": "gear.latarka-taktyczna",
-   "category": "gear",
-   "name": "Latarka taktyczna",
-   "description": "Świeci na 100 metrów, mocowana na szynie.",
-   "cost": 20,
-   "costCategory": "everyday"
-  },
-  {
-   "id": "gear.lina-wspinaczkowa",
-   "category": "gear",
-   "name": "Lina wspinaczkowa",
-   "description": "Trzydzieści metrów plecionki z hakiem magnetycznym.",
-   "cost": 20,
-   "costCategory": "everyday"
-  },
-  {
-   "id": "gear.agent-kieszonkowy",
-   "category": "gear",
-   "name": "Agent kieszonkowy",
-   "description": "Sterowany głosem asystent w kieszeni. Nie zawsze słucha.",
-   "cost": 100,
-   "costCategory": "premium"
-  },
-  {
-   "id": "cyberware.oko-przykladowe",
-   "category": "cyberware",
-   "name": "Cyberoko przykładowe",
-   "description": "Wymiana gałki ocznej z gniazdami na wkładki optyczne.",
-   "cost": 100,
-   "costCategory": "premium",
-   "humanityLoss": "2k6",
-   "foundation": true,
-   "slots": 3
-  },
-  {
-   "id": "cyberware.wkladka-teleoptyczna",
-   "category": "cyberware",
-   "name": "Wkładka teleoptyczna",
-   "description": "Powiększenie obrazu; wymaga cyberoka.",
-   "cost": 500,
-   "costCategory": "expensive",
-   "humanityLoss": "1",
-   "slots": 1
-  },
-  {
-   "id": "cyberware.sprzeg-neuralny-przykladowy",
-   "category": "cyberware",
-   "name": "Sprzęg neuralny przykładowy",
-   "description": "Kręgosłupowa magistrala danych — podstawa pod resztę elektroniki.",
-   "cost": 500,
-   "costCategory": "expensive",
-   "humanityLoss": "2k6",
-   "foundation": true,
-   "slots": 5
-  },
-  {
-   "id": "weapon.puszka-hukowa",
-   "category": "weapon",
-   "name": "Puszka hukowa",
-   "description": "Zlepek z warsztatu w Kotłowni — rzuca się, licząc do trzech. Liczbę sztuk wpisz w polu magazynka.",
-   "weaponTypeId": "weapon-type.sample-grenade",
-   "quality": "standard",
-   "cost": 80,
-   "costCategory": "costly"
-  },
-  {
-   "id": "ammo.sample-standard",
-   "category": "ammo",
-   "name": "Nabój przykładowy",
-   "cost": 10,
-   "costCategory": "cheap",
-   "patterns": [
-    "bullet",
-    "shell",
-    "arrow"
-   ],
-   "description": "Zwykły nabój bez cech specjalnych — kształt wpisu bez flag."
-  },
-  {
-   "id": "ammo.sample-piercing",
-   "category": "ammo",
-   "name": "Nabój przebijający",
-   "cost": 100,
-   "costCategory": "premium",
-   "patterns": [
-    "bullet",
-    "arrow"
-   ],
-   "ablationBonus": 1,
-   "description": "Przykład naboju, który zdejmuje o punkt pancerza więcej niż zwykły."
-  },
-  {
-   "id": "ammo.sample-burning",
-   "category": "ammo",
-   "name": "Nabój ognisty",
-   "cost": 100,
-   "costCategory": "premium",
-   "patterns": [
-    "bullet",
-    "grenade"
-   ],
-   "ignites": {
-    "statusId": "on-fire",
-    "damage": 2
-   },
-   "description": "Przykład naboju, który podpala cel, gdy obrażenia przejdą przez pancerz."
-  },
-  {
-   "id": "ammo.sample-blunt",
-   "category": "ammo",
-   "name": "Nabój obezwładniający",
-   "cost": 10,
-   "costCategory": "cheap",
-   "patterns": [
-    "bullet",
-    "shell"
-   ],
-   "noCriticalInjury": true,
-   "noAblation": true,
-   "nonLethal": true,
-   "description": "Przykład naboju, który nie zabija: bez ran krytycznych, bez zużycia pancerza, z podłogą na 1 PW."
-  },
-  {
-   "id": "ammo.sample-shot",
-   "category": "ammo",
-   "name": "Nabój wachlarzowy",
-   "cost": 10,
-   "costCategory": "cheap",
-   "patterns": [
-    "shell"
-   ],
-   "spread": {
-    "dv": 13,
-    "damage": "3k6",
-    "coneRangeM": 6
-   },
-   "noAim": true,
-   "description": "Przykład naboju, który zamiast jednego celu obejmuje stożek przed strzelcem."
-  },
-  {
-   "id": "ammo.sample-flamer-shell",
-   "category": "ammo",
-   "name": "Nabój zapalarki",
-   "cost": 100,
-   "costCategory": "premium",
-   "patterns": [
-    "shell"
-   ],
-   "spread": {
-    "dv": 13,
-    "damage": "3k6",
-    "coneRangeM": 6
-   },
-   "noAim": true,
-   "noCriticalInjury": true,
-   "ignites": {
-    "statusId": "on-fire",
-    "damage": 4
-   },
-   "description": "Przykład naboju przypisanego do jednej broni — stożek plus podpalenie."
-  },
-  {
-   "id": "ammo.sample-sleeper",
-   "category": "ammo",
-   "name": "Nabój usypiający (przykład)",
-   "cost": 100,
-   "costCategory": "premium",
-   "patterns": [
-    "arrow",
-    "grenade"
-   ],
-   "noDamage": true,
-   "check": {
-    "skillId": "resist-torture-drugs",
-    "skillLabel": "Odporność na tortury/narkotyki",
-    "statId": "will",
-    "dv": 13,
-    "failure": {
-     "statuses": [
-      "prone",
-      "unconscious"
-     ],
-     "durationS": 60
+  "schemaVersion": 1,
+  "$comment": "Wszystkie liczby są wymyślone, także tabele PT — nie kopiuj tu wierszy z podręcznika. Prawdziwe dane wchodzą z data/private/ i nadpisują ten plik po id.",
+  "source": "Dane przykładowe VTT (wymyślone — wolne od praw autorskich)",
+  "weaponTypes": [
+    {
+      "id": "weapon-type.sample-rifle",
+      "name": "Karabin przykładowy",
+      "skillId": "shoulder-arms",
+      "damage": "5k6",
+      "magazine": 25,
+      "rof": 1,
+      "hands": 2,
+      "concealable": false,
+      "attachmentSlots": 3,
+      "melee": false,
+      "rangeDv": [
+        18,
+        16,
+        14,
+        14,
+        16,
+        21,
+        26,
+        31
+      ],
+      "autofire": {
+        "max": 4,
+        "rangeDv": [
+          21,
+          19,
+          16,
+          19,
+          24,
+          null,
+          null,
+          null
+        ]
+      },
+      "suppressive": true,
+      "ammoPatterns": [
+        "bullet"
+      ]
+    },
+    {
+      "id": "weapon-type.sample-blade",
+      "name": "Ostrze przykładowe",
+      "skillId": "melee-weapon",
+      "damage": "3k6",
+      "magazine": null,
+      "rof": 2,
+      "hands": 1,
+      "concealable": false,
+      "melee": true
+    },
+    {
+      "id": "weapon-type.sample-pistol",
+      "name": "Pistolet przykładowy",
+      "skillId": "handgun",
+      "damage": "2k6",
+      "magazine": 10,
+      "rof": 2,
+      "hands": 1,
+      "concealable": true,
+      "attachmentSlots": 3,
+      "melee": false,
+      "rangeDv": [
+        12,
+        14,
+        19,
+        24,
+        29,
+        29,
+        null,
+        null
+      ],
+      "ammoPatterns": [
+        "bullet"
+      ]
+    },
+    {
+      "id": "weapon-type.sample-shotgun",
+      "name": "Strzelba przykładowa",
+      "skillId": "shoulder-arms",
+      "damage": "5k6",
+      "magazine": 4,
+      "rof": 1,
+      "hands": 2,
+      "concealable": false,
+      "attachmentSlots": 3,
+      "melee": false,
+      "ammunition": "Pocisk przykładowy",
+      "ammoPatterns": [
+        "bullet",
+        "shell"
+      ],
+      "rangeDv": [
+        13,
+        15,
+        20,
+        25,
+        30,
+        35,
+        null,
+        null
+      ]
+    },
+    {
+      "id": "weapon-type.sample-flamer",
+      "name": "Zapalarka przykładowa",
+      "skillId": "shoulder-arms",
+      "damage": "5k6",
+      "magazine": 4,
+      "rof": 1,
+      "hands": 2,
+      "concealable": false,
+      "attachmentSlots": 0,
+      "melee": false,
+      "ammunition": "Nabój zapalarki",
+      "ammoPatterns": [
+        "shell"
+      ],
+      "ammoIds": [
+        "ammo.sample-flamer-shell"
+      ],
+      "rangeDv": [
+        13,
+        15,
+        20,
+        25,
+        30,
+        35,
+        null,
+        null
+      ],
+      "description": "Przykład broni, która strzela wyłącznie jednym rodzajem naboju."
+    },
+    {
+      "id": "weapon-type.sample-grenade",
+      "name": "Ładunek przykładowy",
+      "skillId": "athletics",
+      "damage": "4k6",
+      "magazine": null,
+      "rof": 1,
+      "hands": 1,
+      "concealable": true,
+      "melee": false,
+      "thrown": true,
+      "explosive": true,
+      "maxRangeM": 20,
+      "rangeDv": [
+        14,
+        14,
+        16,
+        18,
+        21,
+        24,
+        null,
+        null
+      ],
+      "ammoPatterns": [
+        "grenade"
+      ]
     }
-   },
-   "description": "Kształt wpisu bez obrażeń: trafiony zdaje test, a porażka kładzie go na minutę. Wartości wymyślone."
-  },
-  {
-   "id": "ammo.sample-gas",
-   "category": "ammo",
-   "name": "Nabój drażniący (przykład)",
-   "cost": 100,
-   "costCategory": "premium",
-   "patterns": [
-    "grenade"
-   ],
-   "noDamage": true,
-   "check": {
-    "skillId": "resist-torture-drugs",
-    "skillLabel": "Odporność na tortury/narkotyki",
-    "statId": "will",
-    "dv": 13,
-    "biologicalOnly": true,
-    "failure": {
-     "damage": "2k6",
-     "durationS": 60
+  ],
+  "entries": [
+    {
+      "id": "weapon.zgrzyt-9",
+      "category": "weapon",
+      "name": "Zgrzyt 9",
+      "description": "Tania spluwa z warsztatu w Kotłowni. Zacina się, gdy najbardziej nie trzeba.",
+      "weaponTypeId": "weapon-type.sample-pistol",
+      "quality": "poor",
+      "cost": 50,
+      "costCategory": "costly"
+    },
+    {
+      "id": "weapon.iglica-tw",
+      "category": "weapon",
+      "name": "Iglica TW",
+      "description": "Warsztatowa przeróbka z celownikiem kolimatorowym.",
+      "weaponTypeId": "weapon-type.sample-pistol",
+      "quality": "excellent",
+      "cost": 500,
+      "costCategory": "expensive",
+      "features": [
+        "Złącze smartguna"
+      ]
+    },
+    {
+      "id": "weapon.grzechotnik",
+      "category": "weapon",
+      "name": "Grzechotnik",
+      "description": "Karabin składany na trzy części, popularny wśród kurierów z Pustkowi.",
+      "weaponTypeId": "weapon-type.sample-rifle",
+      "quality": "standard",
+      "cost": 500,
+      "costCategory": "expensive",
+      "features": [
+        "Wydłużony magazynek"
+      ]
+    },
+    {
+      "id": "weapon.szpon",
+      "category": "weapon",
+      "name": "Szpon",
+      "description": "Monoostrze z rękojeścią owiniętą taśmą izolacyjną.",
+      "weaponTypeId": "weapon-type.sample-blade",
+      "quality": "standard",
+      "cost": 100,
+      "costCategory": "premium"
+    },
+    {
+      "id": "armor.kurtka-warsztatowa",
+      "category": "armor",
+      "name": "Kurtka warsztatowa",
+      "description": "Gruby brezent z wszytymi płytkami. Cięższa niż wygląda.",
+      "sp": 7,
+      "locations": [
+        "body"
+      ],
+      "cost": 100,
+      "costCategory": "premium"
+    },
+    {
+      "id": "armor.helm-kurierski",
+      "category": "armor",
+      "name": "Hełm kurierski",
+      "description": "Kask z osłoną karku, standard na trasach międzymiastowych.",
+      "sp": 11,
+      "locations": [
+        "head"
+      ],
+      "penalty": -1,
+      "cost": 500,
+      "costCategory": "expensive"
+    },
+    {
+      "id": "gear.apteczka-polowa",
+      "category": "gear",
+      "name": "Apteczka polowa",
+      "description": "Zestaw opatrunków i klejów tkankowych na trzy użycia.",
+      "cost": 50,
+      "costCategory": "costly"
+    },
+    {
+      "id": "gear.latarka-taktyczna",
+      "category": "gear",
+      "name": "Latarka taktyczna",
+      "description": "Świeci na 100 metrów, mocowana na szynie.",
+      "cost": 20,
+      "costCategory": "everyday"
+    },
+    {
+      "id": "gear.lina-wspinaczkowa",
+      "category": "gear",
+      "name": "Lina wspinaczkowa",
+      "description": "Trzydzieści metrów plecionki z hakiem magnetycznym.",
+      "cost": 20,
+      "costCategory": "everyday"
+    },
+    {
+      "id": "gear.agent-kieszonkowy",
+      "category": "gear",
+      "name": "Agent kieszonkowy",
+      "description": "Sterowany głosem asystent w kieszeni. Nie zawsze słucha.",
+      "cost": 100,
+      "costCategory": "premium"
+    },
+    {
+      "id": "cyberware.oko-przykladowe",
+      "category": "cyberware",
+      "name": "Cyberoko przykładowe",
+      "description": "Wymiana gałki ocznej z gniazdami na wkładki optyczne.",
+      "cost": 100,
+      "costCategory": "premium",
+      "humanityLoss": "2k6",
+      "foundation": true,
+      "type": "cyberoptics",
+      "install": "clinic",
+      "humanityLossFixed": 7,
+      "slots": 3
+    },
+    {
+      "id": "cyberware.wkladka-teleoptyczna",
+      "category": "cyberware",
+      "name": "Wkładka teleoptyczna",
+      "description": "Powiększenie obrazu; wymaga cyberoka.",
+      "cost": 500,
+      "costCategory": "expensive",
+      "humanityLoss": "1k6",
+      "type": "cyberoptics",
+      "install": "clinic",
+      "humanityLossFixed": 2,
+      "humanityLossHalved": true,
+      "slotCost": 2,
+      "requires": "cyberoka przykładowego"
+    },
+    {
+      "id": "cyberware.sprzeg-neuralny-przykladowy",
+      "category": "cyberware",
+      "name": "Sprzęg neuralny przykładowy",
+      "description": "Kręgosłupowa magistrala danych — podstawa pod resztę elektroniki.",
+      "cost": 500,
+      "costCategory": "expensive",
+      "humanityLoss": "2k6",
+      "foundation": true,
+      "type": "neuralware",
+      "install": "clinic",
+      "humanityLossFixed": 7,
+      "slots": 5
+    },
+    {
+      "id": "weapon.puszka-hukowa",
+      "category": "weapon",
+      "name": "Puszka hukowa",
+      "description": "Zlepek z warsztatu w Kotłowni — rzuca się, licząc do trzech. Liczbę sztuk wpisz w polu magazynka.",
+      "weaponTypeId": "weapon-type.sample-grenade",
+      "quality": "standard",
+      "cost": 80,
+      "costCategory": "costly"
+    },
+    {
+      "id": "ammo.sample-standard",
+      "category": "ammo",
+      "name": "Nabój przykładowy",
+      "cost": 10,
+      "costCategory": "cheap",
+      "patterns": [
+        "bullet",
+        "shell",
+        "arrow"
+      ],
+      "description": "Zwykły nabój bez cech specjalnych — kształt wpisu bez flag."
+    },
+    {
+      "id": "ammo.sample-piercing",
+      "category": "ammo",
+      "name": "Nabój przebijający",
+      "cost": 100,
+      "costCategory": "premium",
+      "patterns": [
+        "bullet",
+        "arrow"
+      ],
+      "ablationBonus": 1,
+      "description": "Przykład naboju, który zdejmuje o punkt pancerza więcej niż zwykły."
+    },
+    {
+      "id": "ammo.sample-burning",
+      "category": "ammo",
+      "name": "Nabój ognisty",
+      "cost": 100,
+      "costCategory": "premium",
+      "patterns": [
+        "bullet",
+        "grenade"
+      ],
+      "ignites": {
+        "statusId": "on-fire",
+        "damage": 2
+      },
+      "description": "Przykład naboju, który podpala cel, gdy obrażenia przejdą przez pancerz."
+    },
+    {
+      "id": "ammo.sample-blunt",
+      "category": "ammo",
+      "name": "Nabój obezwładniający",
+      "cost": 10,
+      "costCategory": "cheap",
+      "patterns": [
+        "bullet",
+        "shell"
+      ],
+      "noCriticalInjury": true,
+      "noAblation": true,
+      "nonLethal": true,
+      "description": "Przykład naboju, który nie zabija: bez ran krytycznych, bez zużycia pancerza, z podłogą na 1 PW."
+    },
+    {
+      "id": "ammo.sample-shot",
+      "category": "ammo",
+      "name": "Nabój wachlarzowy",
+      "cost": 10,
+      "costCategory": "cheap",
+      "patterns": [
+        "shell"
+      ],
+      "spread": {
+        "dv": 13,
+        "damage": "3k6",
+        "coneRangeM": 6
+      },
+      "noAim": true,
+      "description": "Przykład naboju, który zamiast jednego celu obejmuje stożek przed strzelcem."
+    },
+    {
+      "id": "ammo.sample-flamer-shell",
+      "category": "ammo",
+      "name": "Nabój zapalarki",
+      "cost": 100,
+      "costCategory": "premium",
+      "patterns": [
+        "shell"
+      ],
+      "spread": {
+        "dv": 13,
+        "damage": "3k6",
+        "coneRangeM": 6
+      },
+      "noAim": true,
+      "noCriticalInjury": true,
+      "ignites": {
+        "statusId": "on-fire",
+        "damage": 4
+      },
+      "description": "Przykład naboju przypisanego do jednej broni — stożek plus podpalenie."
+    },
+    {
+      "id": "ammo.sample-sleeper",
+      "category": "ammo",
+      "name": "Nabój usypiający (przykład)",
+      "cost": 100,
+      "costCategory": "premium",
+      "patterns": [
+        "arrow",
+        "grenade"
+      ],
+      "noDamage": true,
+      "check": {
+        "skillId": "resist-torture-drugs",
+        "skillLabel": "Odporność na tortury/narkotyki",
+        "statId": "will",
+        "dv": 13,
+        "failure": {
+          "statuses": [
+            "prone",
+            "unconscious"
+          ],
+          "durationS": 60
+        }
+      },
+      "description": "Kształt wpisu bez obrażeń: trafiony zdaje test, a porażka kładzie go na minutę. Wartości wymyślone."
+    },
+    {
+      "id": "ammo.sample-gas",
+      "category": "ammo",
+      "name": "Nabój drażniący (przykład)",
+      "cost": 100,
+      "costCategory": "premium",
+      "patterns": [
+        "grenade"
+      ],
+      "noDamage": true,
+      "check": {
+        "skillId": "resist-torture-drugs",
+        "skillLabel": "Odporność na tortury/narkotyki",
+        "statId": "will",
+        "dv": 13,
+        "biologicalOnly": true,
+        "failure": {
+          "damage": "2k6",
+          "durationS": 60
+        }
+      },
+      "description": "Kształt wpisu z obrażeniami bezpośrednimi po nieudanym teście. Wartości wymyślone."
+    },
+    {
+      "id": "ammo.sample-smoke",
+      "category": "ammo",
+      "name": "Nabój dymny (przykład)",
+      "cost": 50,
+      "costCategory": "costly",
+      "patterns": [
+        "grenade"
+      ],
+      "noDamage": true,
+      "smoke": {
+        "sideM": 10,
+        "penalty": -4
+      },
+      "description": "Kształt wpisu stawiającego na mapie kwadrat dymu. Wartości wymyślone."
+    },
+    {
+      "id": "ammo.sample-guided",
+      "category": "ammo",
+      "name": "Nabój naprowadzany (przykład)",
+      "cost": 100,
+      "costCategory": "premium",
+      "patterns": [
+        "bullet",
+        "rocket"
+      ],
+      "smart": {
+        "maxMiss": 4,
+        "bonus": 10,
+        "requires": "Celownik przykładowy"
+      },
+      "description": "Kształt wpisu proponującego drugi rzut po bliskim pudle. Wartości wymyślone."
+    },
+    {
+      "id": "weapon.huk-12",
+      "category": "weapon",
+      "name": "Huk 12",
+      "description": "Krótka strzelba warsztatowa. Bierze zarówno pociski, jak i wachlarzowy śrut.",
+      "weaponTypeId": "weapon-type.sample-shotgun",
+      "quality": "standard",
+      "cost": 500,
+      "costCategory": "expensive"
+    },
+    {
+      "id": "weapon.zapalarka",
+      "category": "weapon",
+      "name": "Zapalarka",
+      "description": "Przykład broni z jednym rodzajem naboju — strzela wyłącznie własnym ładunkiem zapalającym.",
+      "weaponTypeId": "weapon-type.sample-flamer",
+      "quality": "standard",
+      "cost": 500,
+      "costCategory": "expensive"
+    },
+    {
+      "id": "cyberware.tatuaz-przykladowy",
+      "category": "cyberware",
+      "name": "Tatuaż świecący przykładowy",
+      "type": "fashionware",
+      "install": "gallery",
+      "description": "Podskórne wzory świecące w rytm muzyki. Ozdoba — nie kosztuje Człowieczeństwa.",
+      "cost": 100,
+      "costCategory": "premium"
+    },
+    {
+      "id": "cyberware.ramownica-przykladowa",
+      "category": "cyberware",
+      "name": "Ramownica przykładowa",
+      "type": "borgware",
+      "install": "hospital",
+      "description": "Szkielet wspierający z hydrauliką — pełna przebudowa korpusu.",
+      "cost": 1000,
+      "costCategory": "veryExpensive",
+      "humanityLoss": "4k6",
+      "humanityLossFixed": 14
     }
-   },
-   "description": "Kształt wpisu z obrażeniami bezpośrednimi po nieudanym teście. Wartości wymyślone."
-  },
-  {
-   "id": "ammo.sample-smoke",
-   "category": "ammo",
-   "name": "Nabój dymny (przykład)",
-   "cost": 50,
-   "costCategory": "costly",
-   "patterns": [
-    "grenade"
-   ],
-   "noDamage": true,
-   "smoke": {
-    "sideM": 10,
-    "penalty": -4
-   },
-   "description": "Kształt wpisu stawiającego na mapie kwadrat dymu. Wartości wymyślone."
-  },
-  {
-   "id": "ammo.sample-guided",
-   "category": "ammo",
-   "name": "Nabój naprowadzany (przykład)",
-   "cost": 100,
-   "costCategory": "premium",
-   "patterns": [
-    "bullet",
-    "rocket"
-   ],
-   "smart": {
-    "maxMiss": 4,
-    "bonus": 10,
-    "requires": "Celownik przykładowy"
-   },
-   "description": "Kształt wpisu proponującego drugi rzut po bliskim pudle. Wartości wymyślone."
-  },
-  {
-   "id": "weapon.huk-12",
-   "category": "weapon",
-   "name": "Huk 12",
-   "description": "Krótka strzelba warsztatowa. Bierze zarówno pociski, jak i wachlarzowy śrut.",
-   "weaponTypeId": "weapon-type.sample-shotgun",
-   "quality": "standard",
-   "cost": 500,
-   "costCategory": "expensive"
-  },
-  {
-   "id": "weapon.zapalarka",
-   "category": "weapon",
-   "name": "Zapalarka",
-   "description": "Przykład broni z jednym rodzajem naboju — strzela wyłącznie własnym ładunkiem zapalającym.",
-   "weaponTypeId": "weapon-type.sample-flamer",
-   "quality": "standard",
-   "cost": 500,
-   "costCategory": "expensive"
-  }
- ]
+  ]
 }

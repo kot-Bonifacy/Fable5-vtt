@@ -24,6 +24,7 @@
  *    two clicks away in the token menu.
  */
 
+import { humanityMax } from './derived.js';
 import { isValidCompendiumId } from './ids.js';
 import { ARMOR_SP_MAX } from './locations.js';
 import { CPRED_STAT_MAX, CPRED_STAT_MIN, type CpredStats } from './stats.js';
@@ -194,7 +195,9 @@ export function combatProfileSheet(
     // number from BODY and WILL, and the two would disagree on screen.
     hpCurrent: Math.max(0, Math.min(hp.max, hp.current)),
     luckCurrent: 0,
-    humanityCurrent: 0,
+    // Full Humanity, not zero: EMP used in play is derived from it (stage 23a),
+    // and a thug with no sheet is not a cyberpsycho — he simply has no chrome.
+    humanityCurrent: humanityMax(stats),
     roleId: null,
     roleAbilityRank: 1,
     skills: { [CPRED_EVASION_SKILL_ID]: profile.evasion },

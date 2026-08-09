@@ -1,6 +1,7 @@
 export * from './stats.js';
 export * from './derived.js';
 export * from './locations.js';
+export * from './cyberware.js';
 export * from './character.js';
 export * from './rolls.js';
 export * from './ids.js';

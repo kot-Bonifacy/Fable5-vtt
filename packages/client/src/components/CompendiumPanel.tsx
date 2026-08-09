@@ -6,6 +6,10 @@ import {
   COMPENDIUM_CATEGORY_LABELS,
   CPRED_RANGE_BANDS,
   CPRED_AMMO_PATTERN_LABELS,
+  CYBERWARE_INSTALL_COST,
+  CYBERWARE_INSTALL_DV,
+  CYBERWARE_INSTALL_LABELS,
+  CYBERWARE_TYPE_LABELS,
   describeAmmoFailure,
   CRITICAL_INJURY_TABLE_LABELS,
   ROLE_GM,
@@ -357,22 +361,53 @@ function EntryCard({
         ) : null}
         {entry.category === 'cyberware' ? (
           <>
-            {entry.humanityLoss ? (
+            {entry.type ? <Stat label="Rodzina" value={CYBERWARE_TYPE_LABELS[entry.type]} /> : null}
+            {entry.install ? (
               <Stat
-                label="Utrata człowieczeństwa"
-                value={`−${entry.humanityLoss}`}
-                hint="Ile Człowieczeństwa kosztuje wszczepienie."
+                label="Montaż"
+                value={CYBERWARE_INSTALL_LABELS[entry.install]}
+                hint={
+                  CYBERWARE_INSTALL_DV[entry.install] === null
+                    ? 'Bez operacji — wystarczy gniazdo.'
+                    : `PT montażu ${CYBERWARE_INSTALL_DV[entry.install]}, ` +
+                      `koszt operacji ${CYBERWARE_INSTALL_COST[entry.install]} ed (s. 226).`
+                }
               />
             ) : null}
-            {entry.slots !== undefined ? (
-              <Stat label="Gniazda" value={String(entry.slots)} />
-            ) : null}
+            {entry.humanityLoss || entry.humanityLossFixed ? (
+              <Stat
+                label="Utrata człowieczeństwa"
+                value={
+                  // „7 (2k6)" — stała przy tworzeniu Postaci, kości w trakcie gry.
+                  `−${entry.humanityLossFixed ?? entry.humanityLoss}` +
+                  (entry.humanityLoss && entry.humanityLossFixed
+                    ? ` (${entry.humanityLoss}${entry.humanityLossHalved ? ' / 2 w górę' : ''})`
+                    : '')
+                }
+                hint="Stała wartość przy tworzeniu Postaci, rzut kośćmi w trakcie gry (s. 111)."
+              />
+            ) : (
+              <Stat
+                label="Utrata człowieczeństwa"
+                value="brak"
+                hint="Wszczep bez UC nie obniża też maksymalnego Człowieczeństwa (s. 230)."
+              />
+            )}
             {entry.foundation ? (
               <Stat
                 label="Wszczep podstawowy"
-                value="tak"
+                value={`${entry.slots ?? 0} gniazd`}
                 hint="Podstawa pod kolejne opcje (np. cyberoko przyjmuje wkładki)."
               />
+            ) : entry.slotCost !== undefined ? (
+              <Stat
+                label="Zajmuje gniazd"
+                value={String(entry.slotCost)}
+                hint="Ile gniazd modyfikacji zabiera w cyborgizacji podstawowej."
+              />
+            ) : null}
+            {entry.requires ? (
+              <Stat label="Wymaga" value={entry.requires} hint="Bez tego wszczep nie zadziała." />
             ) : null}
           </>
         ) : null}

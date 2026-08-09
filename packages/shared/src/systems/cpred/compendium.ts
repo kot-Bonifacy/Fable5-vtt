@@ -6,6 +6,14 @@ import {
   type CpredAmmoProfile,
 } from './ammo.js';
 import { SMOKE_PENALTY_MIN, SMOKE_SIDE_M_MAX } from '../../smoke.js';
+import {
+  CYBERWARE_SLOTS_MAX,
+  isCyberwareInstall,
+  isCyberwareType,
+  type CyberwareHumanityLoss,
+  type CyberwareInstall,
+  type CyberwareType,
+} from './cyberware.js';
 import { isValidCompendiumId, slugify } from './ids.js';
 import {
   ARMOR_LOCATIONS,
@@ -284,14 +292,20 @@ export interface GearEntry extends CompendiumEntryBase {
   category: 'gear';
 }
 
-export interface CyberwareEntry extends CompendiumEntryBase {
+export interface CyberwareEntry extends CompendiumEntryBase, CyberwareHumanityLoss {
   category: 'cyberware';
-  /** Humanity loss notation ("2k6") or a fixed number as text. */
-  humanityLoss?: string;
+  /** One of the eight families of the rulebook's tables (stage 23a). */
+  type?: CyberwareType;
+  /** „Montaż" — Galeria / Klinika / Szpital, or `none` for a plug-in chip. */
+  install?: CyberwareInstall;
   /** Foundational cyberware (a cyberarm) vs an option installed into one. */
   foundation?: boolean;
-  /** Option slots this piece provides (foundation) or takes (option). */
+  /** Option slots this piece provides — foundations only. */
   slots?: number;
+  /** Slots this piece takes in its family; absent means the table's one. */
+  slotCost?: number;
+  /** „Wymaga sprzęgu neuralnego" — prose, because the tables are prose. */
+  requires?: string;
 }
 
 /** The two Critical Injury tables of the rulebook (2d6 each). */
@@ -414,7 +428,8 @@ export const WEAPON_MAGAZINE_MAX = 500;
 /** Ceiling on a weapon type's hard range cap; guards imported data (stage 16d). */
 export const WEAPON_MAX_RANGE_M = 1000;
 export const WEAPON_SLOTS_MAX = 6;
-export const CYBERWARE_SLOTS_MAX = 10;
+/** Highest flat Humanity cost in the tables is 14 (borgware); leave room. */
+export const CYBERWARE_HUMANITY_LOSS_MAX = 30;
 
 export interface CompendiumIssue {
   field: string;
@@ -1144,13 +1159,37 @@ function validateCyberware(
     }
     cyberware.humanityLoss = input.humanityLoss;
   }
-  if (input.foundation === true) cyberware.foundation = true;
-  if (input.slots !== undefined && input.slots !== null) {
-    if (!isInteger(input.slots) || input.slots < 0 || input.slots > CYBERWARE_SLOTS_MAX) {
-      issues.push({ field: 'slots', message: `Gniazda: liczba od 0 do ${CYBERWARE_SLOTS_MAX}.` });
+  // The tables print both readings of the same cost — „7 (2k6)" is a flat 7 at
+  // character creation and a roll in play (s. 111) — so the entry carries both.
+  if (input.humanityLossFixed !== undefined && input.humanityLossFixed !== null) {
+    if (
+      !isInteger(input.humanityLossFixed) ||
+      input.humanityLossFixed < 0 ||
+      input.humanityLossFixed > CYBERWARE_HUMANITY_LOSS_MAX
+    ) {
+      issues.push({
+        field: 'humanityLossFixed',
+        message: `Stała utrata człowieczeństwa: liczba od 0 do ${CYBERWARE_HUMANITY_LOSS_MAX}.`,
+      });
       return undefined;
     }
-    cyberware.slots = input.slots;
+    if (input.humanityLossFixed > 0) cyberware.humanityLossFixed = input.humanityLossFixed;
+  }
+  if (input.humanityLossHalved === true) cyberware.humanityLossHalved = true;
+  if (isCyberwareType(input.type)) cyberware.type = input.type;
+  if (isCyberwareInstall(input.install)) cyberware.install = input.install;
+  if (input.foundation === true) cyberware.foundation = true;
+  for (const field of ['slots', 'slotCost'] as const) {
+    const value = input[field];
+    if (value === undefined || value === null) continue;
+    if (!isInteger(value) || value < 0 || value > CYBERWARE_SLOTS_MAX) {
+      issues.push({ field, message: `Gniazda: liczba od 0 do ${CYBERWARE_SLOTS_MAX}.` });
+      return undefined;
+    }
+    cyberware[field] = value;
+  }
+  if (typeof input.requires === 'string' && input.requires.trim().length > 0) {
+    cyberware.requires = input.requires.trim().slice(0, COMPENDIUM_FEATURE_MAX_LENGTH);
   }
   return cyberware;
 }

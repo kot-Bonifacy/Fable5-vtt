@@ -17,6 +17,7 @@ import {
   ROLE_GM,
   buildBotActionSchema,
   buildBotDecisionPrompt,
+  effectiveCpredStats,
   mentionsName,
   parseBotAction,
   parseBotData,
@@ -107,7 +108,9 @@ export function botSkillOptions(
     if (options.some((option) => option.label === skill.name)) return;
     seen.add(skill.id);
     const level = data.skills[skill.id] ?? 0;
-    const stat = data.stats[skill.stat] ?? 0;
+    // EMP bieżące, nie z karty (etap 23a) — menu ma pokazywać to, czym bot
+    // naprawdę rzuci, a nie wartość sprzed cyborgizacji.
+    const stat = effectiveCpredStats(data.stats, data.humanityCurrent)[skill.stat] ?? 0;
     options.push({
       id: skill.id,
       label: skill.name,

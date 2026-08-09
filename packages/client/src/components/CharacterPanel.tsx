@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import type { CampaignDetail } from '@vtt/shared';
-import { ROLE_GM } from '@vtt/shared';
+import type { CampaignDetail, CpredCharacterData } from '@vtt/shared';
+import { ROLE_GM, cyberpsychosisFor } from '@vtt/shared';
 import { apiGet } from '../api.js';
 import { createCharacter, deleteCharacter, updateCharacter } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
@@ -145,7 +145,10 @@ export function CharacterPanel() {
                     </span>
                   )}
                   <span className="character-row-text">
-                    <span className="character-row-name">{character.name}</span>
+                    <span className="character-row-name">
+                      {character.name}
+                      <CyberpsychosisChip data={character.data} />
+                    </span>
                     <span className="character-row-meta">
                       {roleName(character.data.roleId) || '—'}
                       {isGm ? ` · ${ownerName(character.ownerId)}` : ''}
@@ -211,5 +214,21 @@ export function CharacterPanel() {
 
       {error && <p className="auth-error">{error}</p>}
     </div>
+  );
+}
+
+/**
+ * How close this character is to the Edge (stage 23a), on the list rather than
+ * only inside their sheet — the GM has to see „kto stoi na granicy" without
+ * opening five windows. Silent above EMP 2, which is where the rules go quiet
+ * too (s. 232).
+ */
+function CyberpsychosisChip({ data }: { data: CpredCharacterData }) {
+  const state = cyberpsychosisFor(data.humanityCurrent);
+  if (state.level === 'none') return null;
+  return (
+    <span className={`character-psychosis character-psychosis--${state.level}`} title={state.note}>
+      EMP {state.emp} · {state.label}
+    </span>
   );
 }

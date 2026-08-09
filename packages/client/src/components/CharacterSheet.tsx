@@ -32,15 +32,24 @@ import {
   CPRED_STAT_MIN,
   CPRED_SUPPRESSIVE_RANGE_M,
   CPRED_WOUND_LABELS,
+  CYBERWARE_INSTALL_LABELS,
+  CYBERWARE_TYPE_LABELS,
+  HUMANITY_MIN,
+  HUMANITY_THERAPIES,
+  HUMANITY_THERAPY_DEFINITIONS,
+  ROLE_GM,
   ROLE_RANK_MAX,
   ROLE_RANK_MIN,
   SKILL_LEVEL_MAX,
   SKILL_LEVEL_MIN,
   ammoOptionsFor,
+  cyberpsychosisFor,
+  cyberwareCapacity,
   deathSaveTarget,
+  effectiveCpredStats,
   groupedSkills,
   hpMax,
-  humanityMax,
+  humanityMaxWith,
   isAmmoEntry,
   isValidDamageNotation,
   isWeaponEntry,
@@ -53,7 +62,13 @@ import {
   woundState,
 } from '@vtt/shared';
 import { ApiError, apiUpload } from '../api.js';
-import { flushCharacterSave, queueCharacterSave, reloadWeapon } from '../socket.js';
+import {
+  flushCharacterSave,
+  queueCharacterSave,
+  reloadWeapon,
+  sendCyberwareAction,
+} from '../socket.js';
+import { useAuthStore } from '../stores/authStore.js';
 import { useAttackStore } from '../stores/attackStore.js';
 import { useCompendiumStore } from '../stores/compendiumStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
@@ -264,7 +279,7 @@ function CharacterSheetWindow({
       <div className="sheet-body">
         {tab === 'stats' && <StatsTab character={character} data={data} saveData={saveData} />}
         {tab === 'combat' && <CombatTab character={character} data={data} saveData={saveData} />}
-        {tab === 'gear' && <GearTab data={data} saveData={saveData} />}
+        {tab === 'gear' && <GearTab character={character} data={data} saveData={saveData} />}
         {tab === 'bio' && (
           <BioTab character={character} data={data} saveData={saveData} setIssues={setIssues} />
         )}
@@ -294,6 +309,8 @@ function StatsTab({ character, data, saveData }: TabProps & { character: Charact
   const role = registry.roles.find((r) => r.id === data.roleId) ?? null;
   const wound = woundState(data.hpCurrent, data.stats);
   const woundPenalty = woundCheckPenalty(wound);
+  const humanityCeiling = humanityMaxWith(data.stats, data.cyberware);
+  const psychosis = cyberpsychosisFor(data.humanityCurrent);
 
   /**
    * Click opens the roll dialog, Shift+click loads the cup straight away with
@@ -414,20 +431,46 @@ function StatsTab({ character, data, saveData }: TabProps & { character: Charact
             <span> / {data.stats.luck}</span>
           </span>
         </label>
-        <label className="derived-box" title="Człowieczeństwo: obecne / maksymalne (EMP × 10)">
+        <label
+          className="derived-box"
+          title={
+            `Człowieczeństwo: obecne / maksymalne. Maksimum to EMP bazowe × 10 ` +
+            `minus 2 za każdą cyborgizację (4 za borgizację).`
+          }
+        >
           <span>Człowieczeństwo</span>
           <span className="derived-value">
             <input
               type="number"
-              min={0}
-              max={humanityMax(data.stats)}
+              min={HUMANITY_MIN}
+              max={humanityCeiling}
               value={data.humanityCurrent}
               onChange={(e) => setPool('humanityCurrent', e)}
             />
-            <span> / {humanityMax(data.stats)}</span>
+            <span> / {humanityCeiling}</span>
           </span>
         </label>
       </div>
+
+      {/* EMP bieżące i cyberpsychoza siedzą pod pulami, bo obie rzeczy są
+          skutkiem Człowieczeństwa, a nie osobną cechą do wpisania. */}
+      {(psychosis.level !== 'none' || psychosis.emp !== data.stats.emp) && (
+        <p
+          className={`humanity-state humanity-${psychosis.level}`}
+          title="Empatia użyta w rzutach wynika z Człowieczeństwa (s. 229)"
+        >
+          <strong>
+            EMP w grze {psychosis.emp}
+            {psychosis.emp !== data.stats.emp ? ` (baza ${data.stats.emp})` : ''}
+          </strong>
+          {psychosis.level !== 'none' && (
+            <>
+              {' · '}
+              <span className="humanity-warning">{psychosis.label}</span> {psychosis.note}
+            </>
+          )}
+        </p>
+      )}
 
       <div className="sheet-role-row">
         <label>
@@ -487,6 +530,10 @@ function SkillTable({
 }) {
   const registry = useCharacterStore((s) => s.registry);
   const groups = useMemo(() => groupedSkills(registry), [registry]);
+  // BAZA has to show what the roll will actually use: EMP follows Humanity
+  // once there is chrome in the body (stage 23a), and a sheet that printed the
+  // base value would disagree with every card the server sends back.
+  const effective = effectiveCpredStats(data.stats, data.humanityCurrent);
   const [open, setOpen] = useState<ReadonlySet<string>>(new Set());
   // The registry arrives after the first render, so the default cannot be a
   // useState initialiser; it is applied once, when the groups first show up.
@@ -585,7 +632,7 @@ function SkillTable({
                         }
                         title={rollTitle}
                       >
-                        {skillBase(data.stats[skill.stat], level)}
+                        {skillBase(effective[skill.stat], level)}
                       </button>
                     </td>
                   </tr>
@@ -1261,7 +1308,7 @@ function CriticalInjuries({ data, saveData }: TabProps) {
   );
 }
 
-function GearTab({ data, saveData }: TabProps) {
+function GearTab({ character, data, saveData }: TabProps & { character: CharacterSheetView }) {
   return (
     <div className="sheet-gear">
       <label className="sheet-eddies" title="Eurodolce (eb)">
@@ -1291,18 +1338,161 @@ function GearTab({ data, saveData }: TabProps) {
         onChange={(rows) => saveData({ gear: rows }, 'gear')}
       />
 
-      <h3>Cyborgizacje</h3>
-      <RowTable
-        rows={data.cyberware}
-        columns={[
-          { key: 'name', label: 'Nazwa' },
-          { key: 'notes', label: 'Uwagi', maxLength: 200 },
-        ]}
-        addLabel="Dodaj cyborgizację"
-        makeRow={() => ({ id: newRowId(), name: '', notes: '' })}
-        onChange={(rows) => saveData({ cyberware: rows }, 'cyberware')}
-      />
+      <CyberwareSection characterId={character.id} data={data} saveData={saveData} />
     </div>
+  );
+}
+
+/**
+ * Installed chrome (stage 23a).
+ *
+ * Not a `RowTable`: adding a row here is not an edit but a *procedure* — the
+ * server rolls what it costs — so the table has no „add" button at all. New
+ * hardware arrives from the Compendium tab, and the only thing the sheet lets
+ * you edit is the note beside it.
+ */
+function CyberwareSection({
+  characterId,
+  data,
+  saveData,
+}: {
+  characterId: string;
+  data: CpredCharacterData;
+  saveData: TabProps['saveData'];
+}) {
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
+  const capacity = cyberwareCapacity(data.cyberware);
+  const [confirmRow, setConfirmRow] = useState<string | null>(null);
+
+  function updateNotes(rowId: string, notes: string) {
+    saveData(
+      { cyberware: data.cyberware.map((row) => (row.id === rowId ? { ...row, notes } : row)) },
+      'cyberware',
+    );
+  }
+
+  return (
+    <>
+      <h3>Cyborgizacje</h3>
+      {data.cyberware.length === 0 ? (
+        <p className="sheet-hint">
+          Brak wszczepów. Cyborgizacje instaluje się z zakładki „Kompendium” — serwer rzuca wtedy na
+          Utratę Człowieczeństwa.
+        </p>
+      ) : (
+        <>
+          <ul className="cyberware-capacity">
+            {capacity.map((family) => (
+              <li
+                key={family.type}
+                className={
+                  family.missingFoundation || family.used > family.capacity
+                    ? 'capacity-over'
+                    : undefined
+                }
+                title={
+                  family.pool
+                    ? 'Rodzina bez cyborgizacji podstawowej — limit 7 sztuk (s. 111)'
+                    : 'Gniazda modyfikacji dawane przez cyborgizacje podstawowe tej rodziny'
+                }
+              >
+                {family.label}: {family.used} / {family.capacity}
+                {family.missingFoundation && ' — brak cyborgizacji podstawowej'}
+              </li>
+            ))}
+          </ul>
+          <div className="row-table-wrap">
+            <table className="sheet-table">
+              <thead>
+                <tr>
+                  <th>Nazwa</th>
+                  <th style={{ width: '9rem' }}>Rodzina</th>
+                  <th style={{ width: '5rem' }}>UC</th>
+                  <th>Uwagi</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {data.cyberware.map((row) => (
+                  <tr key={row.id}>
+                    <td>
+                      {row.name}
+                      {row.foundation && (
+                        <span className="cyberware-foundation" title="Cyborgizacja podstawowa">
+                          {' '}
+                          ⬡ {row.slots ?? 0} gniazd
+                        </span>
+                      )}
+                    </td>
+                    <td className="cyberware-family">
+                      {row.type ? CYBERWARE_TYPE_LABELS[row.type] : '—'}
+                      {row.install && (
+                        <span className="cyberware-install">
+                          {' · '}
+                          {CYBERWARE_INSTALL_LABELS[row.install]}
+                        </span>
+                      )}
+                    </td>
+                    <td title="Człowieczeństwo, które ten wszczep zabrał przy montażu">
+                      {row.humanityLoss ? `−${row.humanityLoss}` : '—'}
+                    </td>
+                    <td>
+                      <input
+                        type="text"
+                        maxLength={200}
+                        value={row.notes}
+                        onChange={(e) => updateNotes(row.id, e.target.value)}
+                      />
+                    </td>
+                    <td>
+                      {/* Dwustopniowo, jak kosz przy wpisie wiedzy z 19b:
+                          usunięcie wszczepu podnosi sufit Człowieczeństwa
+                          i zostawia ślad na czacie. */}
+                      <button
+                        type="button"
+                        className="small-button character-delete"
+                        onClick={() => {
+                          if (confirmRow !== row.id) {
+                            setConfirmRow(row.id);
+                            return;
+                          }
+                          setConfirmRow(null);
+                          sendCyberwareAction({ characterId, action: 'remove', rowId: row.id });
+                        }}
+                        title="Usuń wszczep (sufit Człowieczeństwa wraca, punkty nie)"
+                      >
+                        {confirmRow === row.id ? 'Tak, usuń' : '✕'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {isGm && (
+        <div className="cyberware-therapy">
+          <span title="Tydzień terapii u Medyka (s. 230). PT rozstrzyga MG — VTT rzuca sam zysk.">
+            Terapia:
+          </span>
+          {HUMANITY_THERAPIES.map((therapy) => (
+            <button
+              key={therapy}
+              type="button"
+              className="small-button"
+              onClick={() => sendCyberwareAction({ characterId, action: 'therapy', therapy })}
+              title={`${HUMANITY_THERAPY_DEFINITIONS[therapy].label} — PT ${
+                HUMANITY_THERAPY_DEFINITIONS[therapy].dv
+              }, ${HUMANITY_THERAPY_DEFINITIONS[therapy].cost} ed`}
+            >
+              +{HUMANITY_THERAPY_DEFINITIONS[therapy].notation}
+            </button>
+          ))}
+        </div>
+      )}
+    </>
   );
 }
 

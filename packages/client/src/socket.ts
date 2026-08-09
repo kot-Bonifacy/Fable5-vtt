@@ -33,6 +33,7 @@ import type {
   BotUpsertBroadcast,
   BotView,
   CharacterCreatePayload,
+  CharacterCyberwarePayload,
   CharacterDeleteBroadcast,
   CharacterPatch,
   CharacterRollPayload,
@@ -1835,6 +1836,48 @@ export function loadOlderHistory(): void {
     } else {
       chat.setLoadingHistory(false);
     }
+  });
+}
+
+/** Polish text for a refusal of `character:cyberware` (stage 23a). */
+function cyberwareErrorText(code: string | undefined): string {
+  switch (code) {
+    case 'ENTRY_NOT_FOUND':
+      return 'Nie znalazłem tej cyborgizacji w kompendium.';
+    case 'ROW_NOT_FOUND':
+      return 'Tej cyborgizacji nie ma już na karcie.';
+    case 'TOO_MANY_ROWS':
+      return 'Lista cyborgizacji jest pełna.';
+    case 'CHARACTER_NOT_FOUND':
+      return 'Nie możesz zmieniać tej karty.';
+    case 'OFFLINE':
+      return 'Brak połączenia z serwerem.';
+    default:
+      return 'Nie udało się wykonać operacji na cyborgizacji.';
+  }
+}
+
+/**
+ * Installs, removes or treats — the three ways Humanity moves (stage 23a).
+ *
+ * Not a sheet edit: the cost of a piece of chrome is rolled on the server, so
+ * the client sends the intention and reads the result off the card and the
+ * refreshed sheet, exactly like a Check.
+ */
+export function sendCyberwareAction(
+  payload: Omit<CharacterCyberwarePayload, 'gesture'>,
+  gesture?: RollGesture,
+): void {
+  if (!socket) {
+    useChatStore.getState().addNote(cyberwareErrorText('OFFLINE'));
+    return;
+  }
+  // Anything buffered would otherwise land after the server's own write and
+  // overwrite the freshly rolled Humanity with the pre-install value.
+  flushCharacterSave(payload.characterId);
+  const full: CharacterCyberwarePayload = { ...payload, ...(gesture ? { gesture } : {}) };
+  socket.emit('character:cyberware', full, (ack: SocketAck<{ messageId: number | null }>) => {
+    if (!ack.ok) useChatStore.getState().addNote(cyberwareErrorText(ack.error));
   });
 }
 

@@ -1689,6 +1689,90 @@ input[type='color'] {
   align-items: flex-start;
 }
 
+/* --- cyberware and Humanity (stage 23a) --- */
+
+.humanity-state {
+  margin: 0.35rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--text-dim);
+}
+
+.humanity-state strong {
+  color: var(--text);
+}
+
+.humanity-warning {
+  color: var(--warn);
+  font-weight: 600;
+}
+
+/* Ostra cyberpsychoza to nie ostrzeżenie, tylko postać w rękach MG. */
+.humanity-severe .humanity-warning,
+.humanity-cyberpsychosis .humanity-warning {
+  color: var(--accent);
+}
+
+.character-psychosis {
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.3rem;
+  border-radius: 4px;
+  border: 1px solid var(--warn);
+  color: var(--warn);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.character-psychosis--cyberpsychosis,
+.character-psychosis--severe {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.cyberware-capacity {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.7rem;
+  margin: 0.2rem 0 0.4rem;
+  padding: 0;
+  list-style: none;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.cyberware-capacity .capacity-over {
+  color: var(--warn);
+}
+
+.cyberware-family {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.cyberware-install,
+.cyberware-foundation {
+  color: var(--text-dim);
+  font-size: 0.72rem;
+}
+
+.cyberware-therapy {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.sheet-hint {
+  margin: 0.2rem 0 0.4rem;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--text-dim);
+}
+
 /* --- gear / bio tabs --- */
 
 .sheet-eddies {

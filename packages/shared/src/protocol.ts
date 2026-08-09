@@ -199,6 +199,27 @@ export interface CharacterRollPayload<TRequest = unknown> {
 }
 
 /**
+ * Client → server payload of `character:cyberware` (stage 23a).
+ *
+ * Installing is a server action rather than a sheet edit, because the Humanity
+ * it costs is *rolled* (s. 111): the client may not decide how much a piece of
+ * chrome took out of somebody. Removal and therapy ride the same event for the
+ * same reason — one of them moves the Humanity ceiling, the other rolls dice.
+ */
+export interface CharacterCyberwarePayload {
+  characterId: string;
+  action: 'install' | 'remove' | 'therapy';
+  /** `install`: compendium id of the entry being fitted. */
+  entryId?: string;
+  /** `remove`: id of the sheet row to pull out. */
+  rowId?: string;
+  /** `therapy`: which of the two treatments of s. 230 was paid for. */
+  therapy?: string;
+  /** Present when the roll was thrown with the dice cup. */
+  gesture?: RollGesture;
+}
+
+/**
  * A player (or the GM) rolls initiative for one participant. Lives here rather
  * than in `combat.ts` because it carries the cup gesture — the tracker itself
  * knows nothing about dice.

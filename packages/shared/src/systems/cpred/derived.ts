@@ -23,7 +23,14 @@ export function deathSaveTarget(stats: Pick<CpredStats, 'body'>): number {
   return stats.body;
 }
 
-/** Max humanity: EMP × 10 (cyberware reductions arrive in stage 22). */
+/**
+ * Humanity a character starts from: base EMP × 10 (s. 229).
+ *
+ * The *usable* maximum is lower once there is chrome in the body — that is
+ * `humanityMaxWith` in `cyberware.ts`, which subtracts the ceiling penalties.
+ * This one stays here because it is a pure function of the stats, and because
+ * the cyberware module builds on it rather than replacing it.
+ */
 export function humanityMax(stats: Pick<CpredStats, 'emp'>): number {
   return stats.emp * 10;
 }
