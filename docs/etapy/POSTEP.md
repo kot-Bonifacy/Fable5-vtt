@@ -61,15 +61,15 @@ Ostatnio zamknięte: **23c** (Reputacja jako lista wyczynów, Konfrontacja rzute
 **09.08 głos wypadł z projektu** (sesja bez etapu, decyzja MG): etapy **12, 21 i 22** wycofane, kod TTS usunięty z repo. Szczegóły w `archiwum/dziennik-sesji.md` i w `archiwum/wycofane/README.md`.
 Następny etap: dowolny z **24–27** — kolejność w fazie H jest dowolna. Naturalny kolejny krok to **24 (handouty, dziennik kampanii, screamsheets)**, bo dziennik kampanii z 19c już istnieje i 24 go rozszerza.
 
-**Etap 23c odklikany u MG w przeglądarce** (poza trzema punktami niżej) — na postaciach testowych „Test 23c" i „Test 23c-B", **których nie usunąłem**, bo sesja wygasła w trakcie. Potwierdzone: sekcja „Reputacja" z „+ Wyczyn", zdania z tabeli zasięgu dla poziomów 1/6/8/10, **niższy wyczyn nie zastępuje wyższego**, zła sława przejmuje po podniesieniu ponad dotychczasowy poziom i pokazuje się jako czerwone „Reputacja −8", „😠 Konfrontacja…" w menu tokenu, launcher z chipem „ZŁA SŁAWA 8", kubek „Konfrontacja: Test 23c → Test 23c-B", karta z plakietką **Przegrana**, rozbiciem „Charakter (CHA) +5 · zła sława 8 (Uciekl z ustawki pod klubem) −8" i linią „pojedynek spojrzeń · Test 23c-B: 25 (CHA + Reputacja + pół kości)", **„Nie ustępuj (−2)"** → status „Onieśmielony" na przegranym i **tylko na nim**, a potem **atak na zwycięzcę `1d10+7` z wierszem „Przegrana Konfrontacja = −2" wobec `1d10+9` na kogokolwiek innego**. Rzut na rozpoznanie: przeciw Reputacji 10 „Znasz tę osobę — Reputacja 10 (Legenda Night City)", przeciw statyście „Nic ci to imię nie mówi" **bez ujawniania poziomu**, oba szeptem do MG, notacja płaskie `1d10`.
+**Etap 23c odklikany u MG w przeglądarce w całości.** Na postaciach testowych „Test 23c" i „Test 23c-B", usuniętych po oględzinach. Potwierdzone: sekcja „Reputacja" z „+ Wyczyn", zdania z tabeli zasięgu dla poziomów 1/6/8/10, **niższy wyczyn nie zastępuje wyższego**, zła sława przejmuje po podniesieniu ponad dotychczasowy poziom i pokazuje się jako czerwone „Reputacja −8", „😠 Konfrontacja…" w menu tokenu, launcher z chipem „ZŁA SŁAWA 8", kubek „Konfrontacja: Test 23c → Test 23c-B", karta z plakietką **Przegrana**, rozbiciem „Charakter (CHA) +5 · zła sława 8 (Uciekl z ustawki pod klubem) −8" i linią „pojedynek spojrzeń · Test 23c-B: 25 (CHA + Reputacja + pół kości)", **„Nie ustępuj (−2)"** → status „Onieśmielony" na przegranym i **tylko na nim**, a potem **atak na zwycięzcę `1d10+7` z wierszem „Przegrana Konfrontacja = −2" wobec `1d10+9` na kogokolwiek innego**. Rzut na rozpoznanie: przeciw Reputacji 10 „Znasz tę osobę — Reputacja 10 (Legenda Night City)", przeciw statyście „Nic ci to imię nie mówi" **bez ujawniania poziomu**, oba szeptem do MG, notacja płaskie `1d10`.
 
 **Trzy błędy znalezione i naprawione przy oględzinach 23c:** (1) imię wyzywającego w launcherze **zapadało się do zera** przy chipie Reputacji w wąskim menu kontekstowym (brak `flex-wrap` — ta sama klasa błędu co „Dodaj postaci" w 23b); (2) karta **oferowała „Postaw się" po rozstrzygnięciu**, choć serwer odrzuca to jako `FACEDOWN_ALREADY_SETTLED` — przycisk znika teraz razem z wyborem przegranego; (3) kara pisała się ASCII-owym `-2` obok typograficznego `−8` na tej samej karcie.
 
-**⚠️ Do posprzątania w kampanii „Poligon bojowy":** zostały **dwie postacie testowe** („Test 23c" z dwoma wyczynami i bronią, „Test 23c-B" z Reputacją 10), **trzy tokeny** („Test 23c", „Test 23c-B", „Test 23c-C") oraz na czacie **dwie Konfrontacje, dwa ataki i dwa rzuty na rozpoznanie**. Token „Test 23c" nosi status „Onieśmielony". Scena, walka (RUNDA 1, tura Tony'ego), istniejące postacie i tokeny **nietknięte**.
+**Domknięte w drugim podejściu:** **„Postaw się"** (obrońca zastąpił PT zastępczy 2 prawdziwym rzutem — i rewanż poniósł karę z poprzedniej przegranej: „odpowiedź: Charakter (CHA) +5, zła sława 8 (…) −8, **Przegrana Konfrontacja −2**"; po odpowiedzi przycisk znika, plakietka została „Wygrana"); **zdjęcie strachu po powaleniu zwycięzcy** — po `damage:apply` zbijającym Test 23c-B z PW 1 → 0 status „Onieśmielony" zszedł z Test 23c sam, a kolejny atak na tego samego przeciwnika wrócił jako `1d10+9` zamiast `1d10+7`; **kosz przy wyczynie** — usunięcie złej sławy 8 przywróciło „Reputacja 6" ze zdaniem dla poziomu 6.
 
-**⚠️ Nieodklikane z 23c:** „Postaw się" (odpowiedź obrońcy prawdziwym rzutem), zdjęcie strachu po powaleniu zwycięzcy (`clearFacedownFear`) i kosz przy wierszu wyczynu. Pierwsze dwa są pokryte testami dymnymi.
+**Dane dopisane do kampanii „Poligon bojowy" przy oględzinach 23c (do skasowania, gdy przestaną być potrzebne):** postacie **„Test 23c" i „Test 23c-B"** oraz tokeny **Test 23c / -B / -C** zostały **usunięte** po oględzinach — lista wróciła do sześciu (Rico, Kaya, Manekin, Brutus, Tony, avatar9). Na czacie zostały **dwie Konfrontacje, trzy ataki, karta obrażeń i dwa rzuty na rozpoznanie**. Scena, walka (RUNDA 1, tura Tony'ego) i wszystkie istniejące postacie **nietknięte**.
 
-~~**⚠️ Etap 23c obejrzany tylko z konta gracza (avatar9), i to skryptem.**~~ Potwierdzone: strona wstaje bez błędów w konsoli, `reputationSources` domyślnie pusta na **istniejącej** karcie (zgodność wstecz), sekcja „Reputacja" **ukryta u gracza bez wyczynów**, zakładka „Biografia" renderuje się normalnie, a odmowa `ATTACKER_NOT_ON_SCENE` dociera do gracza po polsku („Ta postać nie ma tokenu na tej scenie"). **Całe UI MG nieodklikane** — okno MG stało w trybie incognito, którego rozszerzenie nie widzi (`list_connected_browsers` zwraca jedną instancję). Żeby dokończyć, MG musi być zalogowany w **zwykłym** oknie Chrome. Lista niżej.
+**Sprawdzone też z konta gracza (avatar9):** strona wstaje bez błędów w konsoli, `reputationSources` domyślnie pusta na **istniejącej** karcie (zgodność wstecz), sekcja „Reputacja" **ukryta u gracza bez wyczynów**, zakładka „Biografia" renderuje się normalnie, a odmowa `ATTACKER_NOT_ON_SCENE` dociera do gracza po polsku („Ta postać nie ma tokenu na tej scenie"). **Całe UI MG nieodklikane** — okno MG stało w trybie incognito, którego rozszerzenie nie widzi (`list_connected_browsers` zwraca jedną instancję). Żeby dokończyć, MG musi być zalogowany w **zwykłym** oknie Chrome. Lista niżej.
 
 **Znalezione przy oględzinach 23c: menu kontekstowe tokenu jest w całości dla MG** (`MapArea.tsx:455` — `onTokenMenu` odpala się tylko przy `ROLE_GM`), więc „😠 Konfrontacja…" jest wejściem wyłącznie MG. Zostawione tak świadomie — podręcznik mówi „W takiej chwili **MG może przeprowadzić Konfrontację**" (s. 194), a gracz bierze udział z karty na czacie („Postaw się" i dwa przyciski przegranego). Przy okazji usunięty martwy filtr własności w `FacedownLauncher`, który sugerował wejście gracza; wpis o osobnych drzwiach dla gracza jest w `POMYSLY.md`.
 
@@ -91,21 +91,13 @@ Następny etap: dowolny z **24–27** — kolejność w fazie H jest dowolna. Na
 
 ### Otwarte zaległości (przechodzą między etapami)
 
-- **Etap 23c — UI MG nieodklikane** (strona gracza sprawdzona częściowo, patrz „Od czego
-  zacząć"). **Wymaga MG w zwykłym oknie Chrome, nie w incognito.** Do
-  sprawdzenia, po kolei: (1) **sekcja „Reputacja" w zakładce „Biografia"** karty
-  postaci — liczba, zdanie z tabeli zasięgu („Cała okolica o tym mówi"), przycisk „+ Wyczyn",
-  edycja poziomu/opisu/daty, checkbox „zła", kosz; wiersz, z którego liczy się bieżąca
-  Reputacja, ma mieć pasek w kolorze akcentu. (2) **„😠 Konfrontacja…" w menu kontekstowym
-  tokenu** — rozwija listę figur, którymi można się zmierzyć, z chipem „Rep. N"; „Zmierz się"
-  ładuje kubek. (3) **Karta Konfrontacji na czacie** — plakietka Wygrana / Remis / Przegrana
-  (remis jest szary i **nie** stawia nikomu pytania), linia „pojedynek spojrzeń · Kolec: 25",
-  wiersz „Reputacja 10 (Koncert w Afterlife)" w rozbiciu rzutu. (4) **Dwa przyciski
-  przegranego** („Wycofaj się" / „Nie ustępuj (−2)") — widzi je sterujący przegranym albo MG,
-  nie zwycięzca. (5) **Status „Onieśmielony"** na tokenie po „Nie ustępuj" i wiersz
-  „Przegrana Konfrontacja −2" w rozbiciu ataku wymierzonego w tego jednego przeciwnika.
-  (6) **„Czy go znam?"** — karta rzutu 1k10 idąca **tylko** do rzucającego i MG.
-  (7) **„Postaw się"** na karcie u drugiej strony (tylko gdy ma kartę postaci).
+- **Etap 23c — strona gracza nieodklikana.** Sprawdzone u avatar9: strona wstaje bez błędów,
+  `reputationSources` domyślnie pusta na istniejącej karcie, sekcja „Reputacja" **ukryta
+  u gracza bez wyczynów** i odmowa `ATTACKER_NOT_ON_SCENE` po polsku. **Nieobejrzane:** sekcja
+  Reputacji u gracza, który **ma** wyczyny (ma być tylko do odczytu — bez pól, bez „+ Wyczyn",
+  bez kosza) oraz dwa przyciski przegranego na karcie czatu, gdy przegraną jest **figura gracza**
+  (pokryte testem `o wycofaniu decyduje przegrany, nie zwycięzca`). Wymaga drugiego profilu
+  przeglądarki — ten sam powód co przy 14b/14c.
 
 - **Etap 23c — „Cofnij" na karcie obrażeń nie przywraca strachu.** Świadome i opisane
   w `realtime/damage.ts`: gdy przeciwnik spada do 0 PW, status „Onieśmielony" schodzi ze
@@ -256,6 +248,15 @@ Następny etap: dowolny z **24–27** — kolejność w fazie H jest dowolna. Na
 
 - **HMR przy działającym Pixi wywala stronę** wyjątkiem `Ticker.remove` — po edycji plików klienta przeładuj kartę.
 - **`window.confirm` w panelach zawiesza sterowanie przeglądarką przez CDP** — omijaj przyciski „usuń" przy automatyzacji albo poproś użytkownika o kliknięcie.
+- **Menu kontekstowe tokenu DA się otworzyć automatem** (ustalone 09.08 przy 23c, koryguje
+  wpis niżej): `right_click` z CDP go nie dowozi, ale ręcznie wysłany
+  `canvas.dispatchEvent(new PointerEvent('pointerdown', { button: 2, clientX, clientY }))`
+  owszem — Pixi v8 słucha zdarzeń **wskaźnika**, nie mysich. Współrzędne trzeba przeliczyć ze
+  zrzutu na CSS-owe (`window.innerWidth / szerokość_zrzutu`). Tą drogą przeszły w 23c: menu,
+  launcher Konfrontacji i potrząśnięcie kubkiem (`pointerdown` na `.dice-cup`, seria
+  `pointermove` na `window`, `pointerup`). **Uwaga:** menu jest wystawiane **tylko MG**
+  (`MapArea.tsx:455`), więc u gracza nie otworzy się niezależnie od sposobu klikania.
+
 - ~~**Do warstwy Pixi nie dociera przez CDP ŻADNE zdarzenie wskaźnika na tokenie**~~ — **to była błędna diagnoza, obalona 31.07 w 16e.** Kliknięcia docierały zawsze; nie działał **hit-test**, i to dla wszystkich, także dla prawdziwej myszy. Pełnoekranowe warstwy przykrywające (płachta widoczności z 18a u gracza, mgła z 17a u każdego, kto ją ma włączoną) leżą **nad** warstwą tokenów i domyślnie biorą udział w trafianiu, więc Pixi zwracał jako cel `Viewport` zamiast `TokenNode`. Naprawa: `eventMode = 'none'` na warstwach czysto malarskich (`init` w `MapRenderer`). **Skutek dla planowania sesji:** oględziny rzeczy wymagających kliknięcia w token są znowu wykonalne automatem — sprawdzone w 16e (zaznaczenie, podgląd trasy, odmowa). Zanim zapiszesz „CDP tego nie dowozi", wypisz w logu `event.event.target` z `viewport.on('clicked')`: jeśli to `Viewport`, a nie `TokenNode`, problem jest w hit-teście, nie w automatyzacji.
 - **Zdarzenie wysłane bez potwierdzenia (`socket.emit('x', payload)`) docierało na serwer z pustym payloadem** — `registerEvents` uznawał jedyny argument za brakujący callback. Naprawione 31.07; objaw był zupełnie inny niż przyczyna (token skacze u obserwatorów, patrz notatka sesji). Nowe zdarzenie bez acku sprawdź testem serwera, bo klient nie dowie się o odmowie — nie ma czym.
 - **Dane CP RED (`skills.json`, `roles.json`) wczytywały się dopiero po otwarciu „Postaci" albo karty postaci** — `ensureCpredDataLoaded` wołały tylko te dwa komponenty. Dopóki każdy atak zaczynał się od karty, nikt tego nie zauważył; HUD z 16f zaczyna go z mapy, więc **każdy strzał wracał z „Nie wiem, jaką umiejętnością strzelać z tej broni"** (`UNKNOWN_SKILL` — pusty rejestr umiejętności, nie brak danych w kompendium). Naprawione 01.08: `MapArea` woła je razem z `ensureStatusesLoaded`. **Wniosek na przyszłość:** nowe wejście do mechaniki sprawdź na **świeżo przeładowanej karcie, bez otwierania żadnej zakładki** — to jedyny stan, w którym takie leniwe ładowanie widać.
