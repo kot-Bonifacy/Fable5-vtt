@@ -417,7 +417,6 @@ export function MapArea() {
     renderer.onLoadingChange = setLoading;
     renderer.onMapClick = handleMapClick;
     renderer.onTokenMove = (tokenId, x, y, final, path) => {
-      const before = useTokenStore.getState().tokens[tokenId];
       const ack = sendTokenMove(tokenId, x, y, final, path);
       void ack?.then((result) => {
         if (result.ok) {
@@ -431,7 +430,16 @@ export function MapArea() {
         // A refusal is also one of the four things that stop a march (16e):
         // walking on after the rules said no would be walking on a lie.
         renderer.interruptWalk(null);
-        if (before) renderer.snapTokenBack(tokenId, before.x, before.y);
+        // „Where the server still has it" has to be read *after* the refusal,
+        // not before the emit: intermediate drag frames are broadcast back to
+        // the mover as well, so a position captured on the drop is the last
+        // frame of the hand in motion, not the square the figure stands on.
+        // Snapping to it left the sprite metres away from the store on every
+        // refused drag longer than one throttle tick (found in the 14c
+        // walkthrough); the refusal broadcast that precedes the ack has
+        // already put the true position in the store.
+        const settled = useTokenStore.getState().tokens[tokenId];
+        if (settled) renderer.snapTokenBack(tokenId, settled.x, settled.y);
         useChatStore.getState().addNote(moveErrorText(result.error));
       });
     };

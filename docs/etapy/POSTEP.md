@@ -49,7 +49,7 @@ Pełne notatki z zamkniętych etapów: `archiwum/dziennik-sesji.md` (nie czytaj 
 | 23b | Ekonomia: eurodolce, zakupy, lifestyle        | ✅     | 2026-08-09      | saldo pisze wyłącznie serwer (audyt `LedgerEntry`); pasmo ceny = cena; Poziom życia opcjonalny |
 | 23c | Reputacja i Facedown                          | ✅     | 2026-08-09      | PL nazwa to „Konfrontacja"; Reputacja wyliczana z listy wyczynów, −2 wybiera przegrany         |
 | 24a | Handouty                                      | ✅     | 2026-08-09      | etap 24 podzielony na 24a/24b/24c 09.08; markdown własnym parserem w `shared`                  |
-| 24b | Dziennik kampanii dla stołu                   | ✅     | 2026-08-09      | uprawnienie gracza to osobna kolumna, nie trzeci szczebel `visibility`; szukanie u klienta      |
+| 24b | Dziennik kampanii dla stołu                   | ✅     | 2026-08-09      | uprawnienie gracza to osobna kolumna, nie trzeci szczebel `visibility`; szukanie u klienta     |
 | 24c | Screamsheets                                  | ⬜     |                 | screamsheet = handout z 24a w gazetowym szablonie                                              |
 | 25  | Generator postaci (lifepath)                  | ⬜     |                 |                                                                                                |
 | 26  | Netrunning                                    | ⬜     |                 | możliwy podział na 2 sesje                                                                     |
@@ -61,6 +61,13 @@ Pełne notatki z zamkniętych etapów: `archiwum/dziennik-sesji.md` (nie czytaj 
 Ostatnio zamknięte: **24b** (dziennik dla stołu: flaga „widzi stół”, zakładka „Dziennik” u gracza, oś czasu z nagłówkami miesięcy, wyszukiwarka i odnośniki do handoutów).
 
 **Etap 24 podzielony 09.08 na 24a/24b/24c** (decyzja MG) — trzy niezależne funkcje w jednym opisie. Następny etap: **24c (screamsheets)** — gazetowy szablon nad handoutem z 24a, treść pisze model. Reszta fazy H (**25–27**) w dowolnej kolejności.
+
+**10–11.08 (sesja bez etapu): spłacona zaległość „strona gracza nieodklikana".** Dwie sesje przy
+dwóch hostach (`localhost` = MG, `[::1]` = avatar9) zamknęły **14b, 14c, 16f, 20a, 20b, 23a, 23b,
+23c i 24a** po stronie gracza oraz blokady ze statusów z 14c. Otwarte zostały **trzy** rzeczy i
+każda z innego powodu niż automatyzacja: **14e** (MG nie ma czym nadać rany krytycznej), **14d
+Ludzka tarcza** (potrzeba trzeciej figury na scenie), **23b karta przelewu u odbiorcy** (potrzeba
+trzeciego hosta). Szczegóły w notatce sesji niżej.
 
 **Etap 24b odklikany po OBU stronach stołu — pierwszy raz w projekcie.** Blokada „druga sesja wylogowuje MG" **została obalona**: `http://[::1]:5173/` to dla ciasteczek **inny host** niż `localhost`, więc gracz i MG działają obok siebie w jednym oknie Chrome (szczegóły w „Pułapki dev" — to samo znosi kilkanaście zaległości „strona gracza nieodklikana" niżej). Na wpisie testowym „Test 24b — wjazd na Zaulek" i handoucie „Test 24b — plan Zaułka", **obu usuniętych po oględzinach**. Potwierdzone **u MG**: zakładka „Dziennik" w **rzędzie stołu**, nagłówek miesiąca „SIERPIEŃ 2026", najnowszy wpis rozwinięty i starszy zwinięty do wiersza, markdown w treści z **`<script>alert(1)</script>` jako tekstem**, chipy `👁 stół` / `🔒 tylko MG` / `⟳ nieaktualny`, przycisk „👁 Pokaż stołowi" ↔ „👁 Widzi stół", chipy materiałów w edytorze i linia na czacie „📓 Wpis w dzienniku · sesja z 2026-08-09" z „Otwórz", które przełącza zakładkę i rozwija wpis. **Wyszukiwarka**: `zaulek` i `ZAUŁEK` znajdują ten sam wpis (fold bez znaków diakrytycznych), `wejsciem` szuka w treści, `wjazd zaulek` zawęża iloczynem, `militech` nie znajduje nic. Potwierdzone **u gracza (avatar9)**: w zakładce **jeden** wpis — odsłonięty — a „Wycieczka do Afterlife" **nie dociera nawet do DOM-u**; zero chipów, zero przycisków, brak paska indeksu i „Zakończ sesję". Trzy rzeczy **na żywo, bez przeładowania**: udostępnienie handoutu dokleiło wiersz „Materiały: 📄 Test 24b — plan Zaułka", cofnięcie udostępnienia zdjęło go razem z otwartym oknem, a odznaczenie „Widzi stół" zabrało graczowi cały wpis („Mistrz Gry nie udostępnił jeszcze żadnego wpisu z kroniki"). Konsola czysta po obu stronach. Scena, walka (RUNDA 1, tura Tony'ego), tokeny i postacie **nietknięte**; na czacie zostały **dwie linie testowe** (wpis dziennika i handout), obie z etykietą „wycofany".
 
@@ -119,14 +126,6 @@ Ostatnio zamknięte: **24b** (dziennik dla stołu: flaga „widzi stół”, zak
   `AI_UNAVAILABLE` po polsku) i **kosz przy wpisie** — ten drugi kliknięty w 24b i działa
   dwustopniowo („Usunąć?" → „Tak, usuń").
 
-- **Etap 24a — strona gracza nieodklikana.** Pokryta 15 testami na żywych gniazdach (w tym
-  „trzeci gracz nie widzi handoutu **nawet w payloadzie**" i „powtórne udostępnienie nie
-  wyskakuje temu, kto już ma"), ale w przeglądarce nieoglądana — ten sam powód co przy 14b/14c
-  (drugi profil Chrome). **Do sprawdzenia:** czy okno wyskakuje **samo** w chwili udostępnienia,
-  czy zakładka „Handouty" u gracza pokazuje wyłącznie jego materiały, czy cofnięcie
-  udostępnienia zdejmuje handout **bez przeładowania** i czy gracz **nie widzi** listy
-  odbiorców ani przycisków udostępniania.
-
 - **Etap 24a — grafika po usunięciu handoutu zostaje na dysku.** `uploads/handouts/` nie ma
   sprzątacza: usunięcie handoutu (albo podmiana grafiki na inną) kasuje wiersz w bazie, ale
   plik zostaje. Świadome — dokładnie tak samo zachowują się mapy z etapu 04, portrety z 07
@@ -137,13 +136,11 @@ Ostatnio zamknięte: **24b** (dziennik dla stołu: flaga „widzi stół”, zak
   spoza PNG/JPG/WebP mają wrócić po polsku z `uploadErrorText`; sprawdzony był wyłącznie
   poprawny PNG. Ścieżka jest kopią routingu portretów z etapu 07.
 
-- **Etap 23c — strona gracza nieodklikana.** Sprawdzone u avatar9: strona wstaje bez błędów,
-  `reputationSources` domyślnie pusta na istniejącej karcie, sekcja „Reputacja" **ukryta
-  u gracza bez wyczynów** i odmowa `ATTACKER_NOT_ON_SCENE` po polsku. **Nieobejrzane:** sekcja
-  Reputacji u gracza, który **ma** wyczyny (ma być tylko do odczytu — bez pól, bez „+ Wyczyn",
-  bez kosza) oraz dwa przyciski przegranego na karcie czatu, gdy przegraną jest **figura gracza**
-  (pokryte testem `o wycofaniu decyduje przegrany, nie zwycięzca`). Wymaga drugiego profilu
-  przeglądarki — ten sam powód co przy 14b/14c.
+- **Etap 23c — zostały dwa przyciski przegranego u gracza.** Sekcja Reputacji u gracza, który
+  **ma** wyczyny, jest odklikana (11.08, niżej). **Nieobejrzane:** „Wycofaj się" / „Nie ustępuj
+  (−2)" na karcie czatu, gdy przegraną jest **figura gracza** (pokryte testem `o wycofaniu
+decyduje przegrany, nie zwycięzca`) — Konfrontacje z 10.08 szły z konta MG, więc przyciski
+  oglądał MG, nie gracz.
 
 - **Etap 23c — „Cofnij" na karcie obrażeń nie przywraca strachu.** Świadome i opisane
   w `realtime/damage.ts`: gdy przeciwnik spada do 0 PW, status „Onieśmielony" schodzi ze
@@ -156,10 +153,10 @@ Ostatnio zamknięte: **24b** (dziennik dla stołu: flaga „widzi stół”, zak
   (`sheetFacedownPenalty`). To celowe — dzięki temu odznaczenie statusu w menu tokenu jest
   pełnym „zdejmij karę" — ale znaczy też, że sama naklejka jest wtedy dekoracją.
 
-- **Etap 23b — cztery ścieżki nieodklikane.** (1) **Strona gracza**: czy gracz widzi saldo jako
-  liczbę bez pola edycji, czy „Kup" schodzi z jego konta i czy karta przelewu dociera do drugiego
-  gracza — pokryte 17 testami serwera, ale wymaga drugiego profilu przeglądarki (ten sam powód co
-  przy 14b/14c). (2) **Zakup pancerza i sprzętu** — sprawdzona tylko broń; wiersze pancerza
+- **Etap 23b — trzy ścieżki nieodklikane.** (1) **Karta przelewu na ekranie odbiorcy** — przelew
+  wychodzi z konta gracza poprawnie (11.08, niżej), a wiersz czatu ma `recipientId`, więc dociera
+  do obu stron i MG; nikt nie był jednak zalogowany jako **Tony**, żeby to zobaczyć. Potrzeba
+  trzeciego hosta — patrz „Pułapki dev". (2) **Zakup pancerza i sprzętu** — sprawdzona tylko broń; wiersze pancerza
   (`spCurrent`, lokacja, kara) i sprzętu idą tą samą funkcją `purchasedSheetRow` i mają test
   w `shared`, ale w przeglądarce nie były klikane. (3) **Wpis bez ceny liczbowej** — „Kup" ma być
   wtedy wyszarzony, a cena ma się liczyć z pasma; w kompendium kampanii wszystkie oglądane wpisy
@@ -171,12 +168,10 @@ Ostatnio zamknięte: **24b** (dziennik dla stołu: flaga „widzi stół”, zak
   Świadome: listę przynosi `economy:history` razem z audytem (klient gracza nie zna cudzych kart),
   a odświeżanie jej na każdą zmianę czegokolwiek w kampanii byłoby zapytaniem na każdy zapis karty.
 
-- **Etap 23a — trzy ścieżki nieodklikane.** (1) **Strona gracza**: czy gracz widzi kartę rzutu UC,
-  linię „EMP w grze" i sekcję cyborgizacji na własnej karcie — pokryte 13 testami serwera, ale
-  wymaga drugiego profilu przeglądarki (ten sam powód co przy 14b/14c). (2) **Chip cyberpsychozy
+- **Etap 23a — dwie ścieżki nieodklikane.** (1) **Chip cyberpsychozy
   na liście postaci** (`character-psychosis` w `CharacterPanel.tsx`) — dopisany **po** oględzinach,
   więc widziany tylko w kodzie; pokazuje się dopiero przy EMP ≤ 2, czyli po utracie ~40 punktów
-  Człowieczeństwa. (3) **Edytor MG wpisu cyborgizacji** z nowymi polami (rodzina, montaż, UC stałe
+  Człowieczeństwa. (2) **Edytor MG wpisu cyborgizacji** z nowymi polami (rodzina, montaż, UC stałe
   i kostkowe, „Połowa, w górę", gniazda, „Wymaga") — formularz nie był otwierany.
 
 - **Po wycofaniu głosu (09.08) zostały dwa katalogi na dysku — do skasowania ręcznie.**
@@ -212,16 +207,22 @@ Ostatnio zamknięte: **24b** (dziennik dla stołu: flaga „widzi stół”, zak
   szacunek to ~2 s (dwa przebiegi po 0,50–1,10 s z 20a), limit z etapu 11 to 20 s.
   (6) **Ruch po ścianach** — trasa liczy się A-gwiazdką na serwerze z `movementSegments`, więc
   bot nie powinien przejść przez mur; na Strzelnicy nie ma ścian, trzeba oglądać na scenie,
-  która je ma. (7) **Strona gracza** — sterujący gracz widzi kartę propozycji bojowej i może ją
-  zatwierdzić (pokryte testem, w przeglądarce nie — ten sam powód co przy 14b/14c: drugi profil
-  przeglądarki).
+  która je ma. ~~(7) Strona gracza~~ — **odklikane 10.08**: gracz zatwierdził propozycję bojową
+  bota ze swojego ekranu (linia „ZATWIERDZONE — AVATAR9" na czacie).
 
-- **Etap 20a — trzy ścieżki nieodklikane.** (1) **Tryb „kontrolowany"** — bot ma tylko mówić i nie
+- **Etap 20b — `NO_ROUTE` mówi „droga jest zablokowana", choć zwykle nie jest.** Ta sama odmowa
+  leci w **trzech** różnych sytuacjach (`bot-combat.ts:487` i pętla w okolicy 657): A\* nie znalazł
+  trasy, przycięcie do budżetu zostawiło mniej niż dwa punkty, albo przycięta trasa kończy się
+  **tam, gdzie się zaczęła** (bot już stoi przy celu). Ostatnia z nich jest najczęstsza i wtedy
+  zdanie kłamie — MG idzie szukać ściany, której nie ma. Widać to na czacie z 10.08 („Podejście
+  do: Tony … NIE DA SIĘ TAM DOJŚĆ — DROGA JEST ZABLOKOWANA"), gdzie figura bota stała już obok
+  celu. Rozdzielić na trzy zdania albo dopisać powód do karty.
+
+- **Etap 20a — jedna ścieżka nieodklikana.** **Tryb „kontrolowany"** — bot ma tylko mówić i nie
   dotykać mechaniki; pokryte testem (przebieg decyzyjny w ogóle nie dociera do modelu), w przeglądarce
-  nieoglądane. (2) **Sterowanie propozycją przez gracza** — pole „Propozycje zatwierdza też" istnieje
-  i jest pokryte testem na żywych gniazdach (kto widzi kartę, kto może kliknąć), ale wymaga drugiego
-  profilu przeglądarki — ten sam powód co przy 14b/14c. (3) **„Odrzuć"** — kliknięte tylko w teście;
-  w przeglądarce sprawdzone samo „Zatwierdź".
+  nieoglądane. ~~Sterowanie propozycją przez gracza i „Odrzuć"~~ — **odklikane 10.08**: gracz
+  zatwierdził propozycję rzutu na Percepcję i **odrzucił** propozycję rzutu na Atletykę ze swojego
+  ekranu (linie „ZATWIERDZONE — AVATAR9" i „ODRZUCONE — AVATAR9" na czacie).
 
 - **Etap 20a — gdy bot „nie chce rzucić", zajrzyj do dziennika decyzji.** Przy oględzinach „Kolec, rzuć
   na Wygadanie" wróciło jako „rozmowa" — i słusznie: **„Wygadanie" nie jest umiejętnością CP RED**, a Kaya
@@ -267,8 +268,6 @@ Ostatnio zamknięte: **24b** (dziennik dla stołu: flaga „widzi stół”, zak
 
 - **Etap 16c — strona MG odklikana 08.08.** Postawienie osłony przeciągnięciem, presety, gumka, dwustopniowy `Esc`, karta wyboru „Ostrzelaj osłonę / Strzelaj mimo osłony", obrażenia osłony z „Cofnij", wrak i to, że wrak **przestaje zasłaniać** — wszystko działa (szczegóły w pliku testów). **Zostało:** kosz **„usuń wszystkie osłony"**. Z gumki wyszedł **błąd #8**.
 
-- **Etap 16f — strona gracza odklikana w połowie (01.08, przy 16c).** **Potwierdzone na koncie Vex:** panel aktywnej postaci z portretem i paskiem PW, pasek akcji z bronią i chipami „seria"/„zapora" plus „Przeładuj", **celownik i dymek nad wrogiem bez żadnego modyfikatora** (czerwone narożniki, `Alt` niepotrzebny), **klik we wroga ładujący kubek**. **Zostało:** (1) pasek **wyszarzony z powodem** „To nie jest tura tej postaci" poza turą; (2) `Tab` pokazujący wyłącznie własne tokeny; (3) brak PW w panelu dla cudzego tokenu. Odmowy pokrywają testy `hotbar.test.ts`.
-
 - **Etap 16f — formularze paska nieodklikane**: Ustabilizowanie, Pochwycenie i Wstrzymanie Akcji otwierają w pasku **te same** komponenty co zakładka „Walka" (`CombatForms.tsx`), ale przez pasek nie były klikane — sprawdzone tylko to, że sloty się pojawiają i mają skróty.
 
 - **Etap 16e — odklikane częściowo (na koncie gracza), reszta czeka na mysz.** **Sprawdzone 31.07 na koncie Johnny:** klik w token → zaznaczenie (biały przerywany pierścień), podgląd trasy pod kursorem z licznikiem „15,2 m" i znacznikiem ✖, oraz odmowa poza turą (trasa przestaje się rysować). **Zostało do sprawdzenia:** (1) sam marsz po kliknięciu w podłoże i odsłanianie mgły w jego trakcie; (2) obejście rogu korytarza przez trasę; (3) klik za zasięgiem tury → ✖ na granicy budżetu i wygaszony ogon; (4) kursor „idź w tę stronę" nad czernią; (5) Esc / klik w trakcie marszu; (6) przerwanie marszu przez NPC wychodzącego zza rogu; (7) Shift+klik → żółty punkt załamania; (8) PPM w puste → odznaczenie; (9) **przeciąganie tokenu działa jak przed etapem** (najważniejszy test regresji — patrz `DRAG_CLICK_GRACE_MS`); (10) token 2×2 przy metrowych drzwiach. Punkty 1–8 wymagają tury dla postaci, którą się steruje — na scenie kampanii turę ma ukryty NPC, więc oględziny zrób na osobnej scenie albo po przekazaniu tury.
@@ -279,11 +278,25 @@ Ostatnio zamknięte: **24b** (dziennik dla stołu: flaga „widzi stół”, zak
 - **Etap 13 — UI kompendium odklikane tylko powierzchownie**: 30.07 (przy oględzinach 14b) potwierdzona sama zakładka „Kompendium" — chipy kategorii z licznikami (Broń 103, Pancerz 11, Sprzęt 5, Cyborgizacje 3, Rany krytyczne 22) i lista wpisów z obrażeniami i ceną. **Nadal nieodklikane:** karta przedmiotu z tabelą PT, edytor MG, dodanie przedmiotu na kartę postaci. Ścieżki serwerowe pokryte testami.
 - **Etap 09 — zakładka „AI" u MG niezweryfikowana wizualnie** (sesja toczyła się na koncie gracza). Późniejsze etapy oglądały u MG inne zakładki, więc to prawdopodobnie martwa zaległość — sprawdź przy okazji.
 - **Etapy 18d/18e — strona gracza nieodklikana**: ikona 🪟 u gracza, „Za daleko — podejdź do okna", „Okno zamknięte na skobel", „Zamknięte na klucz". Pokryte testami dymnymi na payloadzie.
-- **Etap 14e — strona gracza nieodklikana**: odmowa Akcji przy Urazie kręgosłupa i odmowa ruchu przy Urazie ucha widziane u MG jako wiersz „🩼" i jako blokada budżetu, ale karta odmowy u gracza (z jego zdaniem rany i przyciskiem „Przepuść" u MG) — nie. Pokryte 13 testami dymnymi w `turn-effects.test.ts`; ten sam powód co niżej.
-- **Etapy 14b/14c — strona gracza nieodklikana**: karta odmowy z przyciskiem „Przepuść" u MG i powtórzenie akcji przez gracza (14b), snap-back odrzuconego przeciągnięcia i komunikat „Za daleko o X m" (14c). Pokryte testami dymnymi na żywych gniazdach (`combat-actions.test.ts`, `movement.test.ts`), ale nie obejrzane w przeglądarce — **sesja gracza w tej samej przeglądarce wylogowuje MG** (wspólne ciasteczko `localhost:5173`), a hasła nie wpisuję. **Obalone 09.08 przy 24b** — nie trzeba drugiego profilu, wystarczy drugi host (`[::1]:5173`); patrz „Pułapki dev”.
-- **Etap 14c — blokady ze statusów nieodklikane**: Powalony/Pochwycony odmawiający ruchu i „Wstanie" zdejmujące status. Pokryte testami dymnymi; w przeglądarce nie do sprawdzenia, bo **statusy ustawia się z menu kontekstowego tokenu (prawy przycisk), którego CDP nie dowozi do warstwy Pixi** (pułapka niżej).
+- **Etap 14e — rany krytyczne są nieosiągalne ręcznie, więc karta odmowy u gracza zostaje nieobejrzana.**
+  Odmowa Akcji przy Urazie kręgosłupa i monit przy Urazie ucha widziane u MG, ale **nie** na
+  ekranie gracza. Próba z 11.08 utknęła nie na automatyzacji, tylko na tym, że **MG nie ma czym
+  nadać rany krytycznej**: na karcie postaci sekcja „Rany krytyczne" wyłącznie **usuwa** wiersze
+  (`CriticalInjuries` w `CharacterSheet.tsx`), karta wpisu w kompendium nie ma „Dodaj postaci",
+  a w menu tokenu są tylko statusy. Rana wchodzi **jedynie** z rzutu obrażeń z flagą
+  `criticalDamage` (dwie szóstki na 2k6 — 1/36) albo z nietrafionego testu amunicji z 16h
+  (`check.failure.injuries`). Do „Urazu kręgosłupa" trzeba jeszcze trafić 2k6 = 10 w tabeli
+  Korpusu (3/36), więc w oględzinach jest to nieosiągalne. **Sam mechanizm karty odmowy u gracza
+  jest już potwierdzony trzy razy** (budżet 14b, dystans 14c, status Powalony) — nieobejrzane
+  zostaje wyłącznie zdanie rany w treści karty. Wpis do `POMYSLY.md`: przycisk MG „nadaj ranę
+  krytyczną" (RAW i tak pozwala MG przypisać ranę narracyjnie).
 - **Ślad ścieżki przy przeciąganiu nieobejrzany**: `left_click_drag` z CDP jest natychmiastowy, więc łamana z licznikiem metrów rysuje się i znika między klatkami. Do sprawdzenia ręcznie — myszą.
-- **Etap 14d — strona gracza i „Broń się" nieodklikane**: karta testu spornego z przyciskiem „Broń się" u broniącego się gracza, odmowa Uniku Ludzkiej tarczy i odmowa ruchu Trzymanemu. Pokryte 19 testami dymnymi na żywych gniazdach (`grapple.test.ts`), ale nie obejrzane w przeglądarce — ten sam powód co w 14b/14c (sesja gracza wylogowuje MG).
+- **Etap 14d — została odmowa Uniku Ludzkiej tarczy**: karta testu spornego z „Broń się"
+  u broniącego się gracza i odmowa ruchu Trzymanemu są **odklikane 10.08** (na czacie
+  „Pochwycenie → Test P1 … Obrona Test P1: 5 → mimo wszystko udane" i „Odmowa: Pochwycony token
+  nie może wykonać własnej Akcji Ruchu"). Zostaje `SHIELD_CANNOT_DODGE` („Ludzka tarcza nie może
+  unikać ataków dystansowych") — wymaga **trzeciej figury na scenie**: ktoś musi strzelić do
+  trzymającego, żeby tarcza w ogóle dostała przycisk „Unik". Na Strzelnicy są dwie figury.
 - **Etap 16b — strona gracza i klik w cel nieodklikane**: klik w token ładujący kubek ataku, „🎯 Atak…" w menu kontekstowym tokenu i edytor profilu bojowego w „Edytuj…" — wszystkie trzy wymagają trafienia wskaźnikiem w warstwę Pixi, czego CDP nie dowozi (pułapka niżej). Pokryte 13 testami dymnymi w `attacks.test.ts`.
 - **Osłona nie blokuje ruchu po stronie serwera** — jak ściany. Trasa A* u klienta omija samochód i przeciągnięcie przez niego nie zostanie odrzucone; `validateTokenMove` dalej liczy sam dystans. Wraca razem z kolizjami ruchu (POMYSLY, 30.07).
 - **Etap 16b — statysta nie może aktywnie unikać**: PT obrony statysty liczy się z jego profilu (Unik), ale przycisk „Unik" na karcie ataku pojawia się wyłącznie dla celu z kartą postaci, bo `attack:evade` wymaga `characterId`. Do domknięcia razem z 16c albo osobnym wpisem w POMYSLY.
@@ -300,8 +313,25 @@ Ostatnio zamknięte: **24b** (dziennik dla stołu: flaga „widzi stół”, zak
   żywo. **`127.0.0.1` nie zadziała** — dev-serwer Vite nasłuchuje pod `localhost`, czyli na
   pętli IPv6. Link zaproszenia bierze się z „Panel MG"; token jest wielorazowy, więc powrót tego
   samego gracza nie tworzy nowego konta. To znosi powód, dla którego kilkanaście pozycji niżej
-  ma dopisek „wymaga drugiego profilu Chrome".
+  ma dopisek „wymaga drugiego profilu Chrome". **Trzeci gracz naraz wymagałby trzeciego hosta**
+  (dwa konta graczy w kampanii to Tony i avatar9) — do sprawdzenia, czy Vite wpuści np.
+  `localhost.` z kropką na końcu albo `[0:0:0:0:0:0:0:1]`; alternatywnie przelogowanie się
+  w karcie `[::1]` na drugie imię.
 
+- **Zrzut ekranu bywa WYCINKIEM okna, a nie całym oknem — i wtedy klikanie po współrzędnych
+  ze zrzutu chybia** (ustalone 11.08, kosztowało pół godziny). Narzędzie przelicza podane
+  współrzędne przez `innerWidth / szerokość_zrzutu`, ale gdy okno jest szersze niż ekran, zrzut
+  pokazuje tylko lewy-górny kawałek strony — obie skale się rozjeżdżają i klik ląduje kilkadziesiąt
+  pikseli obok. Objaw jest mylący: element **widać** na zrzucie, a klik w niego nic nie robi.
+  **Rozpoznanie:** weź dowolny przycisk, porównaj `getBoundingClientRect()` z jego pozycją na
+  zrzucie; jeśli iloraz nie równa się `innerWidth / szerokość_zrzutu`, zrzut jest przycięty.
+  **Obejście:** klikaj **referencjami** z `find` / `read_page` (nie współrzędnymi), a dla warstwy
+  Pixi licz `arg = CSS / (innerWidth / szerokość_zrzutu)`. `resize_window` na zmaksymalizowanym
+  oknie nic nie daje.
+- **Wielokrokowe przeciągnięcie tokenu DA się wysłać automatem** (11.08): `pointerdown` na
+  `canvas`, seria `pointermove` na `window` **i** `canvas` z przerwami ~70 ms, na końcu
+  `pointerup` — tak jak przy kubku w 23c. `left_click_drag` z CDP też dochodzi i też kończy się
+  odmową serwera, więc obie drogi nadają się do testów budżetu ruchu.
 - **HMR przy działającym Pixi wywala stronę** wyjątkiem `Ticker.remove` — po edycji plików klienta przeładuj kartę.
 - **`window.confirm` w panelach zawiesza sterowanie przeglądarką przez CDP** — omijaj przyciski „usuń" przy automatyzacji albo poproś użytkownika o kliknięcie.
 - **Menu kontekstowe tokenu DA się otworzyć automatem** (ustalone 09.08 przy 23c, koryguje
@@ -324,13 +354,60 @@ Ostatnio zamknięte: **24b** (dziennik dla stołu: flaga „widzi stół”, zak
 
 ## Notatki z dwóch ostatnich sesji
 
-- **2026-08-09 (etap 24b — dziennik kampanii dla stołu):** Kronika wyszła zza ekranu MG. **Cztery rozstrzygnięcia MG przed kodem.** (1) **Jedna flaga „widzi stół"**, nie lista odbiorców jak w handoutach — dziennik jest wspólną kroniką, a nie kartką do ręki. (2) **Materiały wybierane chipami** pod formularzem, a nie znacznikiem w treści markdownu. (3) **Linia na czacie bez wyskakiwania okna** — streszczenie czyta się przed grą, nie w środku sceny. (4) **Najnowszy wpis rozwinięty, starsze zwinięte** pod nagłówkami miesięcy. **Architektura — pięć rzeczy niesie etap.** Pierwsza: **uprawnienie gracza NIE jest trzecim szczeblem `visibility`**. Bot pamięta wpis przez zgodny tag, gracz czyta go, bo MG uznał, że drużyna może wiedzieć — to dwa różne pytania, więc `sharedWithPlayers` jest osobną kolumną boolean. Wniosek widać w `journalDigest`: odcisk indeksu **celowo nie obejmuje** tej flagi, bo odsłonięcie wpisu nie zmienia ani jednego bajtu tego, co widzi gateway — inaczej kliknięcie „Pokaż stołowi" oznaczałoby wpis jako „⟳ nieaktualny" i kazało MG przeindeksować dziennik bez powodu. Druga: **kanał gracza to osobny kształt, nie okrojony widok MG**. `JournalPlayerEntry` nie ma pól `tags`, `visibility`, `stale` ani `throughMessageId` — nie da się ich zapomnieć wyciąć, bo nie ma ich w typie; `JournalEntryView` **rozszerza** ten kształt, dzięki czemu oś czasu i wyszukiwarka mają jedno wejście dla obu stron stołu. Trzecia: **odnośnik do materiału jest przecięciem dwóch uprawnień**, nie własnością wpisu — `JournalHandout` mówi „ten wpis wskazuje ten handout", a `HandoutShare` mówi „ten gracz go dostał". Odsiewa to `where` w zapytaniu (`handouts: { where: { handout: { shares: { some: { userId } } } } }`), więc gracz bez udostępnienia nie dostaje **nawet tytułu**. Skutkiem ubocznym tej dwustronności jest jedyne miejsce, w którym moduł handoutów woła moduł dziennika: `handout:share` i `handout:delete` odświeżają wpisy wskazujące ten materiał, bo zmiana po **którejkolwiek** stronie musi dojechać do gracza bez przeładowania. Czwarta: **wyszukiwarka liczy się u klienta**, i to jest decyzja, nie skrót. FTS5 z 19a stoi po stronie gatewaya, więc oparcie o niego zakładki znaczyłoby, że z martwym gatewayem dziennika nie da się przeszukać — a wpisy i tak przyszły już w całości. `foldForSearch` zdejmuje znaki diakrytyczne (NFD + `\p{M}`, plus osobne przejście dla `ł`, które się nie rozkłada), a słowa zawężają **iloczynem**. Piąta: **`journal:list` nie ma roli w definicji, tylko gałąź w handlerze** — reszta zdarzeń dziennika (zapis, kosz, reindeks, streszczanie) zostaje przy `ROLE_GM`. Rozgłoszenia jadą pod tymi samymi nazwami w dwóch kształtach; gniazdo należy do jednego konta, więc u klienta rozstrzyga o tym rola, a nie zgadywanie po polach payloadu. **Migracja `20260809173824_stage24b_journal_for_table`** dokłada kolumnę `sharedWithPlayers` (domyślnie `false`, więc wszystkie wpisy z 19c zostają u MG) i tabelę `JournalHandout` z kaskadą po obu stronach — skasowany handout nie zostawia wiszącego tytułu w kronice. Nowy rodzaj wiadomości `journal` jest **publiczny**: kronikę odsłania się całemu stołowi naraz, więc wiersz nie potrzebuje adresata po żadnej ze stron `visibleTo` — inaczej niż handout z 24a, który jest jedną kopią na odbiorcę. **Zweryfikowane:** 939 testów w `shared` (10 nowych w `journal.test.ts`), 577 na serwerze (9 nowych w `journal.test.ts` na żywych gniazdach), typy, lint, Prettier i `pnpm build` czyste. **Odklikane po obu stronach stołu** — po raz pierwszy w projekcie, bo padła blokada „druga sesja wylogowuje MG" (patrz „Pułapki dev"); lista wyżej.
+- **2026-08-10 i 11.08 (sesja bez etapu — strona gracza dziewięciu etapów):** Pierwsza sesja przy
+  **dwóch kontach naraz**, na dwóch hostach (`localhost` = MG, `[::1]` = avatar9). **Zaczęło się od
+  sprzątania po przerwanej sesji z 10.08:** w drzewie leżała niezacommitowana poprawka
+  `MapArea.tsx`, a czat kampanii niósł ślad tego, co zdążyło się wydarzyć — po nim odtworzyłem, że
+  10.08 przeszły już **14b, 14c, 14d (Broń się + odmowa ruchu Trzymanemu), 20a (gracz zatwierdza
+  i odrzuca) i 20b (gracz zatwierdza propozycję bojową)**; etykiety „ZATWIERDZONE — AVATAR9"
+  i „ODRZUCONE — AVATAR9" są dowodem, że klikał gracz, nie MG. **Blokada na starcie nie była
+  zaplanowana:** token „avatar9" na Strzelnicy **nie miał ani właściciela, ani karty postaci**
+  (`ownerId` i `characterId` puste), więc gracz nie mógł go kliknąć, a MG widział „PW ukryte".
+  Podpięcie go do konta avatar9 i do karty avatar9 przez „Edytuj…" w menu tokenu odblokowało całą
+  resztę — **to jedyna zmiana w kampanii, której nie cofnąłem**, bo bez niej gracz nie ma czym
+  grać. **Odklikane u gracza (avatar9):** **16f** — pasek wyszarzony ze zdaniem „To nie jest tura
+  tej postaci — poczekaj na swoją kolej" (i to samo w `title` każdego slotu), `Tab` zjadany przez
+  aplikację bez wyjścia poza własne figury, a panel **w ogóle nie opisuje cudzego tokenu** (klik we
+  wroga nic nie ustawia, a dymek celowania pokazuje PW tylko dla osłony) — czyli punkt „brak PW dla
+  cudzego tokenu" jest spełniony konstrukcyjnie, nie regułą. **23a** — karta „Utrata Człowieczeństwa
+  — Cyberoko · 2d6 = 8", linia **„EMP w grze 4 (baza 5)"** i sekcja CYBORGIZACJE z licznikiem
+  „Cyberoptyka: 0 / 3". **23b** — saldo jako **goły napis „1 500 ed"** (pole „korekta" i blok
+  „Terapia" są wyłącznie u MG), zakup schodzący z konta gracza na jego oczach (1 500 → 900 ed),
+  własny audyt „Historia operacji" i **przelew wysłany przez gracza** (avatar9 → Tony, 150 ed).
+  **23c** — sekcja „Reputacja 6" z wyczynem **bez jednego pola i bez jednego przycisku** (w całej
+  karcie gracza zostają: imię, portret i notatki), a bez wyczynów sekcja nie istnieje. **24a** —
+  okno handoutu **wyskakujące samo** w chwili udostępnienia, zakładka pokazująca wyłącznie własne
+  materiały, **zero wycieku** drugiego handoutu (ani tytułu, ani treści w DOM-ie gracza) i
+  cofnięcie udostępnienia, które **bez przeładowania** zdejmuje wpis z listy, zamyka otwarte okno
+  i oznacza linię na czacie jako „materiał wycofany". **14b/14c powtórzone na żywo:** odmowa „Za
+  daleko o 48,8 m — zostało ci 10 m ruchu", token **wracający na swoje pole**, „Przepuść" u MG,
+  karta gracza przełączona na „PRZEPUSZCZONE — POWTÓRZ AKCJĘ" i powtórzony ruch, który przechodzi
+  jako „POZA BUDŻETEM TURY · PRZEPUSZCZONE PRZEZ MG". **Domknięta przy okazji zaległość 14c**
+  („blokady ze statusów"), bo menu kontekstowe tokenu daje się już otworzyć automatem: status
+  **Powalony** → „Odmowa: Powalony token musi najpierw wstać (Akcja „Wstanie")" na ekranie gracza,
+  a slot 8 „Wstanie" zdejmuje status. **Poprawka snap-backu z 10.08 potwierdzona** — odrzucone
+  przeciągnięcie (i wielokrokowe, i jednym skokiem CDP) zostawia token dokładnie tam, gdzie stoi
+  na serwerze. **Trzy rzeczy zostały i żadna z powodu automatyzacji** — opisane w zaległościach:
+  rany krytyczne 14e (nie ma ich jak nadać ręcznie), Ludzka tarcza 14d (trzeba trzeciej figury),
+  karta przelewu u odbiorcy 23b (trzeba trzeciego hosta). **Znalezione przy okazji:** `NO_ROUTE`
+  bota mówi „droga jest zablokowana" także wtedy, gdy droga jest wolna, a bot po prostu już stoi
+  przy celu. **Sprzątnięte:** dwa handouty testowe, wyczyn Reputacji, wszczep, saldo obu postaci
+  (avatar9 1 500 ed, Tony 200 ed), Człowieczeństwo 50/50, statusy, pozycja tokenu i tryb turowy
+  z powrotem na „Przed pierwszą rundą". **Zweryfikowane:** 939 testów w `shared`, 577 na serwerze,
+  typy, lint i Prettier czyste (jeden przebieg serwera pękł na znanym limicie czasu i przeszedł
+  powtórzony — patrz „Pułapki dev").
 
-- **2026-08-09 (etap 24a — handouty):** MG dostał czym podać graczom kartkę do ręki. **Etap 24 podzielony na 24a/24b/24c** (decyzja MG): jeden opis niósł trzy niezależne funkcje — handouty, przebudowę dziennika z 19c i generator screamsheetów na LLM. Handouty poszły pierwsze, bo 24c „zapisuje i udostępnia jak handout", a 24b linkuje do handoutów. **Trzy rozstrzygnięcia MG przed kodem.** (1) **Okno otwiera się samo** u odbiorcy plus linia na czacie — nie sam dzwonek przy zakładce. (2) **Markdown własnym parserem w `shared`**, nie biblioteką. (3) **Zakres minimalny** — jedna grafika plus tekst, płaska lista; galeria, foldery i zoom odrzucone. **Architektura — cztery rzeczy niesie etap.** Pierwsza: **markdown zwraca drzewo bloków, nie HTML**. `parseMarkdown` daje AST, `Markdown.tsx` zamienia każdy węzeł na element React, więc w całej drodze „treść MG → ekran gracza" nie ma ani `dangerouslySetInnerHTML`, ani sanitizera, którego trzeba pilnować. Przy handoutach to wygoda; w 24c, gdzie treść pisze **model językowy**, to będzie jedyna rzecz stojąca między stołem a wstrzykniętym znacznikiem. Odnośnik z `javascript:` przestaje być odnośnikiem i renderuje się jako tekst (`isSafeMarkdownHref`). Druga: **udostępnienie jest zdarzeniem, nie stanem**. `handout:share` dostaje **pełną listę** odbiorców i sam liczy różnicę — kto doszedł, dostaje `handout:open` i wiersz na czacie; kto już był, nie dostaje **nic**, bo inaczej dopisanie trzeciego gracza wyskakiwałoby dwóm pierwszym drugi raz. Trzecia: **widok MG i widok gracza to dwa kształty jednego typu**. `sharedWith` jest polem **opcjonalnym** i dokłada je wyłącznie `toHandoutView(row, true)`; gracz nie dowiaduje się, komu jeszcze MG pokazał materiał. Filtr stoi w zapytaniu (`shares: { some: { userId } }`), nie w mapowaniu po fakcie. Czwarta: **linia na czacie to jeden wiersz na odbiorcę**, wzorcem szeptu — bo po przeładowaniu strony historię odsiewa `visibleTo`, a ono zna tylko `authorId` i `recipientId`; wiersz bez adresata byłby albo niewidoczny dla graczy, albo widoczny dla wszystkich. **Dwa błędy złapane testami parsera, oba o znacznikach nacisku.** (1) `**niedomknięte` czytało się jako **pusta kursywa** — zamknięcie znaleziono na drugiej gwiazdce znacznika otwierającego; naprawa: zawartość nacisku musi być niepusta. (2) `**mocno i *bardziej***` gubiło wewnętrzną kursywę, bo pogrubienie brało **pierwsze** dwie gwiazdki z ciągu trzech; naprawa: ciąg dłuższy niż znacznik domyka się **od końca**, więc środkowa gwiazdka zostaje dla zagnieżdżenia. **Migracja `20260809145400_stage24a_handouts`** dokłada `Handout` i `HandoutShare` (para handout+konto z `@@unique`); udostępnienie wisi na **koncie, nie na postaci** — handout czyta człowiek, więc gracz z dwiema postaciami dostaje jedną kopię. Nowy rodzaj wiadomości `handout` i nowa trasa `POST /api/uploads/handouts` (MG, 12 MB, 4096 px — mapa dzielnicy bywa większa niż portret). **Zweryfikowane:** 929 testów w `shared` (24 nowe w `markdown.test.ts`, 12 w `handouts.test.ts`), 568 na serwerze (15 nowych w `handouts.test.ts` na żywych gniazdach), typy, lint, Prettier i `pnpm build` czyste. **Odklikane u MG w przeglądarce** — lista wyżej; strona gracza wymaga drugiego profilu Chrome i została w zaległościach.
+- **2026-08-09 (etap 24b — dziennik kampanii dla stołu):** Kronika wyszła zza ekranu MG. **Cztery rozstrzygnięcia MG przed kodem.** (1) **Jedna flaga „widzi stół"**, nie lista odbiorców jak w handoutach — dziennik jest wspólną kroniką, a nie kartką do ręki. (2) **Materiały wybierane chipami** pod formularzem, a nie znacznikiem w treści markdownu. (3) **Linia na czacie bez wyskakiwania okna** — streszczenie czyta się przed grą, nie w środku sceny. (4) **Najnowszy wpis rozwinięty, starsze zwinięte** pod nagłówkami miesięcy. **Architektura — pięć rzeczy niesie etap.** Pierwsza: **uprawnienie gracza NIE jest trzecim szczeblem `visibility`**. Bot pamięta wpis przez zgodny tag, gracz czyta go, bo MG uznał, że drużyna może wiedzieć — to dwa różne pytania, więc `sharedWithPlayers` jest osobną kolumną boolean. Wniosek widać w `journalDigest`: odcisk indeksu **celowo nie obejmuje** tej flagi, bo odsłonięcie wpisu nie zmienia ani jednego bajtu tego, co widzi gateway — inaczej kliknięcie „Pokaż stołowi" oznaczałoby wpis jako „⟳ nieaktualny" i kazało MG przeindeksować dziennik bez powodu. Druga: **kanał gracza to osobny kształt, nie okrojony widok MG**. `JournalPlayerEntry` nie ma pól `tags`, `visibility`, `stale` ani `throughMessageId` — nie da się ich zapomnieć wyciąć, bo nie ma ich w typie; `JournalEntryView` **rozszerza** ten kształt, dzięki czemu oś czasu i wyszukiwarka mają jedno wejście dla obu stron stołu. Trzecia: **odnośnik do materiału jest przecięciem dwóch uprawnień**, nie własnością wpisu — `JournalHandout` mówi „ten wpis wskazuje ten handout", a `HandoutShare` mówi „ten gracz go dostał". Odsiewa to `where` w zapytaniu (`handouts: { where: { handout: { shares: { some: { userId } } } } }`), więc gracz bez udostępnienia nie dostaje **nawet tytułu**. Skutkiem ubocznym tej dwustronności jest jedyne miejsce, w którym moduł handoutów woła moduł dziennika: `handout:share` i `handout:delete` odświeżają wpisy wskazujące ten materiał, bo zmiana po **którejkolwiek** stronie musi dojechać do gracza bez przeładowania. Czwarta: **wyszukiwarka liczy się u klienta**, i to jest decyzja, nie skrót. FTS5 z 19a stoi po stronie gatewaya, więc oparcie o niego zakładki znaczyłoby, że z martwym gatewayem dziennika nie da się przeszukać — a wpisy i tak przyszły już w całości. `foldForSearch` zdejmuje znaki diakrytyczne (NFD + `\p{M}`, plus osobne przejście dla `ł`, które się nie rozkłada), a słowa zawężają **iloczynem**. Piąta: **`journal:list` nie ma roli w definicji, tylko gałąź w handlerze** — reszta zdarzeń dziennika (zapis, kosz, reindeks, streszczanie) zostaje przy `ROLE_GM`. Rozgłoszenia jadą pod tymi samymi nazwami w dwóch kształtach; gniazdo należy do jednego konta, więc u klienta rozstrzyga o tym rola, a nie zgadywanie po polach payloadu. **Migracja `20260809173824_stage24b_journal_for_table`** dokłada kolumnę `sharedWithPlayers` (domyślnie `false`, więc wszystkie wpisy z 19c zostają u MG) i tabelę `JournalHandout` z kaskadą po obu stronach — skasowany handout nie zostawia wiszącego tytułu w kronice. Nowy rodzaj wiadomości `journal` jest **publiczny**: kronikę odsłania się całemu stołowi naraz, więc wiersz nie potrzebuje adresata po żadnej ze stron `visibleTo` — inaczej niż handout z 24a, który jest jedną kopią na odbiorcę. **Zweryfikowane:** 939 testów w `shared` (10 nowych w `journal.test.ts`), 577 na serwerze (9 nowych w `journal.test.ts` na żywych gniazdach), typy, lint, Prettier i `pnpm build` czyste. **Odklikane po obu stronach stołu** — po raz pierwszy w projekcie, bo padła blokada „druga sesja wylogowuje MG" (patrz „Pułapki dev"); lista wyżej.
 
 ## Skróty wcześniejszych sesji
 
 Uzupełniają kolumnę „Uwagi" w tabeli, nie powtarzają jej. Uzasadnienia decyzji, listy niezweryfikowanego i szczegóły migracji — `archiwum/dziennik-sesji.md`.
+
+- **24a (09.08)** — markdown handoutu zwraca **drzewo bloków, nie HTML**, więc na drodze „treść MG
+  → ekran gracza" nie stoi ani `dangerouslySetInnerHTML`, ani sanitizer do pilnowania; w 24c, gdzie
+  treść pisze model, będzie to jedyna bariera przed wstrzykniętym znacznikiem. Udostępnienie jest
+  **zdarzeniem, nie stanem**: `handout:share` dostaje pełną listę i sam liczy różnicę, żeby dopisanie
+  trzeciego gracza nie wyskoczyło oknem dwóm pierwszym. Pełna notatka w archiwum.
 
 - **23c (09.08)** — lista wyczynów **jest** wartością Reputacji: RAW zastępuje ją tylko wyższą,
   więc osobne pole liczbowe obok byłoby drugim, kłócącym się źródłem prawdy. Kara −2 za przegraną
