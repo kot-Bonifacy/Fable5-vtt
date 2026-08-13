@@ -19,15 +19,18 @@ interface HandoutState {
   /** Kandydaci na odbiorców — niepusta lista tylko u MG. */
   recipients: HandoutRecipient[];
   loaded: boolean;
-  /** Handout otwarty w edytorze MG; `new` = nowy, null = formularz zamknięty. */
-  editing: string | 'new' | null;
+  /**
+   * Handout otwarty w edytorze MG. `new` = nowa notatka, `new-screamsheet` =
+   * nowa gazeta (24c), id = edycja istniejącego, null = formularz zamknięty.
+   */
+  editing: string | 'new' | 'new-screamsheet' | null;
   /** Otwarte okna handoutów, od spodu stosu. */
   open: string[];
 
   replaceAll: (handouts: HandoutView[], recipients: HandoutRecipient[]) => void;
   upsert: (handout: HandoutView) => void;
   remove: (id: string) => void;
-  setEditing: (editing: string | 'new' | null) => void;
+  setEditing: (editing: string | 'new' | 'new-screamsheet' | null) => void;
   openHandout: (id: string) => void;
   closeHandout: (id: string) => void;
   focusHandout: (id: string) => void;

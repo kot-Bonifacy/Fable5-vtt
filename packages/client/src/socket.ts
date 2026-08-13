@@ -127,6 +127,8 @@ import type {
   SceneView,
   SceneViewBroadcast,
   ScenePoint,
+  ScreamsheetDraftBroadcast,
+  ScreamsheetErrorBroadcast,
   ServerHello,
   SocketAck,
   StateSyncPayload,
@@ -155,6 +157,7 @@ import {
   MAX_DIE_SIDES,
   MAX_ROLL_TERMS,
   ROLE_GM,
+  screamsheetErrorText,
   TOKEN_MOVE_RATE_HZ,
   TOKEN_PATH_MAX_POINTS,
   parseChatInput,
@@ -173,6 +176,7 @@ import { useRulesStore } from './stores/rulesStore.js';
 import { useKnowledgeStore } from './stores/knowledgeStore.js';
 import { useJournalStore } from './stores/journalStore.js';
 import { useHandoutStore } from './stores/handoutStore.js';
+import { useScreamsheetStore } from './stores/screamsheetStore.js';
 import { useRelationStore } from './stores/relationStore.js';
 import { useBotStore } from './stores/botStore.js';
 import { useCombatStore } from './stores/combatStore.js';
@@ -529,6 +533,20 @@ export function connectSocket(userId: string): Socket {
     store.upsert(broadcast.handout);
     store.openHandout(broadcast.handout.id);
   });
+
+  // Generator screamsheetów (24c) — artykuł przychodzi osobnym zdarzeniem,
+  // bo model pisze go kilkanaście sekund. Nic tu nie ląduje w bazie: szkic
+  // czeka w formularzu MG.
+  socket.on('screamsheet:draft', (broadcast: ScreamsheetDraftBroadcast) =>
+    useScreamsheetStore
+      .getState()
+      .complete(broadcast.requestId, broadcast.draft, broadcast.totalMs),
+  );
+  socket.on('screamsheet:error', (broadcast: ScreamsheetErrorBroadcast) =>
+    useScreamsheetStore
+      .getState()
+      .fail(broadcast.requestId, screamsheetErrorText(broadcast.code, broadcast.detail)),
+  );
 
   socket.on('relation:upsert', (broadcast: RelationUpsertBroadcast) =>
     useRelationStore.getState().upsert(broadcast.relation),
@@ -1393,6 +1411,27 @@ export const deleteHandout = (id: string) => emitSceneAck('handout:delete', { id
 /** Ustawia listę odbiorców na dokładnie tę — serwer wyliczy, kto doszedł. */
 export const shareHandout = (id: string, userIds: string[]) =>
   emitSceneAck<HandoutView>('handout:share', { id, userIds });
+
+/**
+ * „Napisz screamsheet". Jak przy streszczaniu: ack niesie tylko id żądania,
+ * a gotowy artykuł przychodzi osobnym `screamsheet:draft`. Odmowa z acka
+ * (martwy gateway, puste hasło) ląduje w store od razu — po polsku.
+ */
+export async function generateScreamsheet(topic: string, outlet: string): Promise<void> {
+  const store = useScreamsheetStore.getState();
+  store.start('');
+  const ack = await emitSceneAck<{ requestId: string }>('screamsheet:generate', { topic, outlet });
+  if (!ack.ok || !ack.data) {
+    store.fail(null, screamsheetErrorText(ack.ok ? 'AI_ERROR' : ack.error));
+    return;
+  }
+  store.start(ack.data.requestId);
+}
+
+export const cancelScreamsheet = () => {
+  socket?.emit('screamsheet:cancel');
+  useScreamsheetStore.getState().reset();
+};
 
 /**
  * „Zakończ sesję i streść". Ack niesie samo id żądania — wynik przychodzi

@@ -71,6 +71,15 @@ model Handout {
   imageWidth  Int?
   imageHeight Int?
 
+  /// note | screamsheet (etap 24c). Rodzaj zmienia wyłącznie sposób rysowania —
+  /// udostępnianie, kosz i odnośniki z kroniki są dla obu takie same.
+  kind String @default("note")
+  /// Trzy meble gazetowego szablonu; `null` przy zwykłej notatce. Osobne
+  /// kolumny zamiast JSON-a, bo to trzy skalary bez struktury do sparsowania.
+  lead     String?
+  outlet   String?
+  dateline String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

@@ -13,16 +13,16 @@ pisze nagłówek, lead i treść po polsku, a szablon HTML/CSS podaje to jako wy
 
 ## Zakres
 
-- [ ] **Generator LLM**: MG podaje temat/hasła → gateway zwraca nagłówek, lead i treść artykułu
+- [x] **Generator LLM**: MG podaje temat/hasła → gateway zwraca nagłówek, lead i treść artykułu
       w konwencji brukowca; `reasoning: false`, temperatura wyżej niż u NPC
-- [ ] **Edycja przed publikacją** — wygenerowana treść ląduje w formularzu, nie od razu u graczy
-- [ ] **Szablon graficzny**: komponent HTML/CSS stylizowany na druk gazetowy (wielki nagłówek,
+- [x] **Edycja przed publikacją** — wygenerowana treść ląduje w formularzu, nie od razu u graczy
+- [x] **Szablon graficzny**: komponent HTML/CSS stylizowany na druk gazetowy (wielki nagłówek,
       kolumny, stopka z datą Night City)
-- [ ] **Zapis i udostępnienie jak handout** — screamsheet jest rodzajem handoutu z 24a, nie
+- [x] **Zapis i udostępnienie jak handout** — screamsheet jest rodzajem handoutu z 24a, nie
       drugim bytem z własną listą odbiorców
-- [ ] **Działa bez LLM**: przy wyłączonym gatewayu MG wypełnia szablon ręcznie (degradacja
+- [x] **Działa bez LLM**: przy wyłączonym gatewayu MG wypełnia szablon ręcznie (degradacja
       wymagana przez CLAUDE.md)
-- [ ] Testy: parsowanie odpowiedzi modelu, degradacja z martwym gatewayem
+- [x] Testy: parsowanie odpowiedzi modelu, degradacja z martwym gatewayem
 
 ## Poza zakresem
 

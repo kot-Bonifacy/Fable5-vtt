@@ -1,16 +1,40 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { ROLE_GM, type HandoutImage, type HandoutView } from '@vtt/shared';
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import {
+  ROLE_GM,
+  type HandoutImage,
+  type HandoutKind,
+  type HandoutView,
+  type ScreamsheetDraft,
+  type ScreamsheetMeta,
+} from '@vtt/shared';
+import {
+  DEFAULT_SCREAMSHEET_DATELINE,
+  DEFAULT_SCREAMSHEET_OUTLET,
   HANDOUT_BODY_MAX_LENGTH,
   HANDOUT_TITLE_MAX_LENGTH,
+  SCREAMSHEET_DATELINE_MAX_LENGTH,
+  SCREAMSHEET_LEAD_MAX_LENGTH,
+  SCREAMSHEET_OUTLET_MAX_LENGTH,
+  SCREAMSHEET_TOPIC_MAX_LENGTH,
   handoutErrorText,
   markdownToPlainText,
+  normalizeScreamsheetMeta,
 } from '@vtt/shared';
 import { ApiError, apiUpload } from '../api.js';
-import { deleteHandout, fetchHandouts, saveHandout, shareHandout } from '../socket.js';
+import {
+  cancelScreamsheet,
+  deleteHandout,
+  fetchHandouts,
+  generateScreamsheet,
+  saveHandout,
+  shareHandout,
+} from '../socket.js';
+import { useAiStore } from '../stores/aiStore.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useHandoutStore } from '../stores/handoutStore.js';
+import { useScreamsheetStore } from '../stores/screamsheetStore.js';
 import { Markdown } from './Markdown.js';
+import { Screamsheet } from './Screamsheet.js';
 
 /**
  * Zakładka „Handouty" (etap 24a) — jedna dla całego stołu, dwa różne widoki.
@@ -37,9 +61,18 @@ function uploadErrorText(error: unknown): string {
 
 /** Pierwsze zdanie treści — na liście, gdzie nie ma miejsca na formatowanie. */
 function excerpt(handout: HandoutView): string {
-  const text = markdownToPlainText(handout.body);
+  // Przy gazecie zajawką jest lead: po to został napisany.
+  const source =
+    handout.kind === 'screamsheet' ? handout.screamsheet?.lead || handout.body : handout.body;
+  const text = markdownToPlainText(source);
   if (text.length === 0) return handout.image ? 'sama grafika' : '';
   return text.length <= 90 ? text : `${text.slice(0, 90)}…`;
+}
+
+/** Jedna ikona na rodzaj — 📰 odróżnia gazetę od kartki na liście i w oknie. */
+function handoutIcon(handout: HandoutView): string {
+  if (handout.kind === 'screamsheet') return '📰 ';
+  return handout.image ? '🖼 ' : '📄 ';
 }
 
 // ---------------------------------------------------------------------------
@@ -74,7 +107,7 @@ function PlayerList() {
               title="Otwórz handout"
             >
               <span className="handout-row-title">
-                {handout.image ? '🖼 ' : '📄 '}
+                {handoutIcon(handout)}
                 {handout.title}
               </span>
               <span className="handout-row-excerpt">{excerpt(handout)}</span>
@@ -174,7 +207,7 @@ function GmRow({ handout, onEdit }: { handout: HandoutView; onEdit: () => void }
           title="Podejrzyj handout"
         >
           <span className="handout-row-title">
-            {handout.image ? '🖼 ' : '📄 '}
+            {handoutIcon(handout)}
             {handout.title}
           </span>
           <span className="handout-row-excerpt">{excerpt(handout)}</span>
@@ -213,13 +246,119 @@ function GmRow({ handout, onEdit }: { handout: HandoutView; onEdit: () => void }
   );
 }
 
-function HandoutForm({ handout, onClose }: { handout: HandoutView | null; onClose: () => void }) {
+/**
+ * Generator brukowca (24c) — hasło MG i przycisk, który woła model.
+ *
+ * Wynik **wraca do formularza**, a nie do graczy: kryterium etapu mówi, że
+ * między modelem a stołem stoi decyzja MG. Bez gatewaya przycisk jest
+ * wyszarzony i mówi dlaczego — reszta formularza działa normalnie, więc
+ * screamsheet da się napisać ręcznie.
+ */
+function ScreamsheetGenerator({
+  outlet,
+  onDraft,
+}: {
+  outlet: string;
+  onDraft: (draft: ScreamsheetDraft) => void;
+}) {
+  const modelAvailable = useAiStore((s) => s.status.available);
+  const busy = useScreamsheetStore((s) => s.busy);
+  const draft = useScreamsheetStore((s) => s.draft);
+  const error = useScreamsheetStore((s) => s.error);
+  const totalMs = useScreamsheetStore((s) => s.totalMs);
+  const takeDraft = useScreamsheetStore((s) => s.takeDraft);
+  const [topic, setTopic] = useState('');
+
+  // Gotowy artykuł przepisuje się do pól formularza raz — dalej to już tekst
+  // MG, który może go dowolnie poprawić przed zapisem.
+  useEffect(() => {
+    if (!draft) return;
+    onDraft(draft);
+    takeDraft();
+  }, [draft, onDraft, takeDraft]);
+
+  useEffect(() => () => useScreamsheetStore.getState().reset(), []);
+
+  return (
+    <div className="bot-field screamsheet-generator">
+      <span className="auth-label">Napisz to za mnie</span>
+      <div className="bot-row-inline">
+        <input
+          type="text"
+          className="screamsheet-topic"
+          maxLength={SCREAMSHEET_TOPIC_MAX_LENGTH}
+          value={topic}
+          placeholder="np. strzelanina w Kabuki"
+          disabled={busy}
+          onChange={(event) => setTopic(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key !== 'Enter') return;
+            // Formularz zapisuje handout — hasło ma wołać model, nie zapis.
+            event.preventDefault();
+            if (!busy && topic.trim().length > 0 && modelAvailable) {
+              void generateScreamsheet(topic, outlet);
+            }
+          }}
+        />
+        {busy ? (
+          <button type="button" className="small-button" onClick={cancelScreamsheet}>
+            Przerwij
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="small-button"
+            disabled={topic.trim().length === 0 || !modelAvailable}
+            title={
+              modelAvailable
+                ? 'Model napisze nagłówek, lead i treść'
+                : 'AI Gateway nie odpowiada — wypełnij szablon ręcznie'
+            }
+            onClick={() => void generateScreamsheet(topic, outlet)}
+          >
+            ✨ Napisz artykuł
+          </button>
+        )}
+      </div>
+      {busy && <span className="bot-hint">Redakcja pisze… (zwykle kilkanaście sekund)</span>}
+      {!busy && !modelAvailable && (
+        <span className="bot-hint">
+          Generator jest niedostępny — AI Gateway nie odpowiada. Szablon wypełnisz ręcznie.
+        </span>
+      )}
+      {!busy && totalMs !== null && (
+        <span className="bot-hint">Artykuł napisany w {(totalMs / 1000).toFixed(1)} s.</span>
+      )}
+      {error && <span className="auth-error">{error}</span>}
+    </div>
+  );
+}
+
+function HandoutForm({
+  handout,
+  kind,
+  onClose,
+}: {
+  handout: HandoutView | null;
+  kind: HandoutKind;
+  onClose: () => void;
+}) {
   const [title, setTitle] = useState(handout?.title ?? '');
   const [body, setBody] = useState(handout?.body ?? '');
   const [image, setImage] = useState<HandoutImage | null>(handout?.image ?? null);
+  const [meta, setMeta] = useState<ScreamsheetMeta>(
+    () => handout?.screamsheet ?? normalizeScreamsheetMeta({}),
+  );
   const [preview, setPreview] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const isScreamsheet = kind === 'screamsheet';
+
+  const takeDraft = useCallback((draft: ScreamsheetDraft) => {
+    if (draft.headline.length > 0) setTitle(draft.headline.slice(0, HANDOUT_TITLE_MAX_LENGTH));
+    setMeta((current) => ({ ...current, lead: draft.lead }));
+    if (draft.body.length > 0) setBody(draft.body);
+  }, []);
 
   async function pickImage(file: File | undefined) {
     if (!file) return;
@@ -243,6 +382,8 @@ function HandoutForm({ handout, onClose }: { handout: HandoutView | null; onClos
       title,
       body,
       image,
+      kind,
+      screamsheet: isScreamsheet ? meta : null,
     });
     setBusy(false);
     if (!ack.ok) {
@@ -254,17 +395,56 @@ function HandoutForm({ handout, onClose }: { handout: HandoutView | null; onClos
 
   return (
     <form className="bot-form handout-form" onSubmit={(event) => void submit(event)}>
+      {isScreamsheet && <ScreamsheetGenerator outlet={meta.outlet} onDraft={takeDraft} />}
+
       <label className="bot-field">
-        <span className="auth-label">Tytuł</span>
+        <span className="auth-label">{isScreamsheet ? 'Nagłówek' : 'Tytuł'}</span>
         <input
           type="text"
           autoFocus
           maxLength={HANDOUT_TITLE_MAX_LENGTH}
           value={title}
-          placeholder="np. Mapa Kabuki"
+          placeholder={isScreamsheet ? 'np. Krwawa noc w Kabuki' : 'np. Mapa Kabuki'}
           onChange={(event) => setTitle(event.target.value)}
         />
       </label>
+
+      {isScreamsheet && (
+        <>
+          <label className="bot-field">
+            <span className="auth-label">Lead</span>
+            <textarea
+              rows={2}
+              maxLength={SCREAMSHEET_LEAD_MAX_LENGTH}
+              value={meta.lead}
+              placeholder="Jedno–dwa zdania, które streszczają całą sprawę."
+              onChange={(event) => setMeta({ ...meta, lead: event.target.value })}
+            />
+          </label>
+          <div className="bot-row-inline screamsheet-furniture">
+            <label className="bot-field">
+              <span className="auth-label">Brukowiec</span>
+              <input
+                type="text"
+                maxLength={SCREAMSHEET_OUTLET_MAX_LENGTH}
+                value={meta.outlet}
+                placeholder={DEFAULT_SCREAMSHEET_OUTLET}
+                onChange={(event) => setMeta({ ...meta, outlet: event.target.value })}
+              />
+            </label>
+            <label className="bot-field">
+              <span className="auth-label">Data w stopce</span>
+              <input
+                type="text"
+                maxLength={SCREAMSHEET_DATELINE_MAX_LENGTH}
+                value={meta.dateline}
+                placeholder={DEFAULT_SCREAMSHEET_DATELINE}
+                onChange={(event) => setMeta({ ...meta, dateline: event.target.value })}
+              />
+            </label>
+          </div>
+        </>
+      )}
 
       <div className="bot-field">
         <span className="auth-label">Grafika</span>
@@ -289,12 +469,16 @@ function HandoutForm({ handout, onClose }: { handout: HandoutView | null; onClos
       </div>
 
       <label className="bot-field">
-        <span className="auth-label">Treść</span>
+        <span className="auth-label">{isScreamsheet ? 'Treść artykułu' : 'Treść'}</span>
         <textarea
           rows={10}
           maxLength={HANDOUT_BODY_MAX_LENGTH}
           value={body}
-          placeholder={'## Nagłówek\n\nTekst z **pogrubieniem**, *kursywą* i listą:\n\n- punkt'}
+          placeholder={
+            isScreamsheet
+              ? 'Dwa–cztery krótkie akapity. Znaczniki markdownu działają tak samo jak w notatce.'
+              : '## Nagłówek\n\nTekst z **pogrubieniem**, *kursywą* i listą:\n\n- punkt'
+          }
           onChange={(event) => setBody(event.target.value)}
         />
         <span className="bot-hint">
@@ -311,7 +495,18 @@ function HandoutForm({ handout, onClose }: { handout: HandoutView | null; onClos
       </div>
       {preview && (
         <div className="handout-preview">
-          <Markdown source={body} />
+          {isScreamsheet ? (
+            // Ten sam komponent, który zobaczy gracz — podgląd nie jest
+            // przybliżeniem gazety, tylko gazetą.
+            <Screamsheet
+              title={title}
+              body={body}
+              image={image}
+              meta={normalizeScreamsheetMeta(meta)}
+            />
+          ) : (
+            <Markdown source={body} />
+          )}
         </div>
       )}
 
@@ -354,10 +549,15 @@ export function HandoutPanel() {
   }
 
   if (editing) {
-    const handout = editing === 'new' ? null : (handouts[editing] ?? null);
+    const handout =
+      editing === 'new' || editing === 'new-screamsheet' ? null : (handouts[editing] ?? null);
+    // Rodzaj istniejącego handoutu jest jego własnością; nowy bierze go
+    // z przycisku, którym MG otworzył formularz.
+    const kind: HandoutKind =
+      handout?.kind ?? (editing === 'new-screamsheet' ? 'screamsheet' : 'note');
     return (
       <section className="handout-panel">
-        <HandoutForm handout={handout} onClose={() => setEditing(null)} />
+        <HandoutForm handout={handout} kind={kind} onClose={() => setEditing(null)} />
       </section>
     );
   }
@@ -367,6 +567,14 @@ export function HandoutPanel() {
       <div className="compendium-head">
         <button type="button" className="small-button" onClick={() => setEditing('new')}>
           + Nowy handout
+        </button>
+        <button
+          type="button"
+          className="small-button"
+          onClick={() => setEditing('new-screamsheet')}
+          title="Zajawka w stylu brukowca Night City — treść może napisać model"
+        >
+          📰 + Screamsheet
         </button>
       </div>
       <ul className="handout-list">

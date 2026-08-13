@@ -1,3 +1,146 @@
+/* Kroje gazetowe screamsheetów (etap 24c). Pliki leżą w `public/fonts/`,
+   licencja SIL OFL 1.1 — pochodzenie i uzasadnienie w `docs/assety-screamsheet.md`.
+   Serwujemy je z własnego hosta, bo VTT ma działać bez internetu przy stole.
+   Podzestawy latin + latin-ext: bez tego drugiego brukowiec zgubiłby „ą" i „ł". */
+
+@font-face {
+  font-family: 'Anton';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/anton-400-latin-ext.woff2') format('woff2');
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'Anton';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/anton-400-latin.woff2') format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Oswald';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/oswald-500-latin-ext.woff2') format('woff2');
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'Oswald';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/oswald-500-latin.woff2') format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Oswald';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/oswald-700-latin-ext.woff2') format('woff2');
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'Oswald';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/oswald-700-latin.woff2') format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'PT Serif';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/pt-serif-400i-latin-ext.woff2') format('woff2');
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'PT Serif';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/pt-serif-400i-latin.woff2') format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'PT Serif';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/pt-serif-400-latin-ext.woff2') format('woff2');
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'PT Serif';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/pt-serif-400-latin.woff2') format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'PT Serif';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/pt-serif-700-latin-ext.woff2') format('woff2');
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'PT Serif';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/pt-serif-700-latin.woff2') format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -5381,4 +5524,171 @@ body.is-resizing {
 .chat-handout-gone {
   font-size: 0.75rem;
   color: var(--text-dim);
+}
+
+/* --- screamsheet (etap 24c) ----------------------------------------------
+   Wycinek z brukowca leży w ciemnym UI jak kartka na stole: własny, jasny
+   papier i własne kroje (Anton na nagłówek, Oswald na winietę, PT Serif na
+   tekst). Wszystkie kolory są tu wpisane wprost, a nie ze zmiennych motywu —
+   gazeta ma wyglądać jak papier niezależnie od tego, co dzieje się z resztą
+   interfejsu. */
+.screamsheet {
+  --paper: #e9e5da;
+  --ink: #17171b;
+  --ink-dim: #4a4a52;
+  --newsprint-rule: #b9b2a2;
+  background:
+    linear-gradient(115deg, rgba(0, 0, 0, 0.05) 0%, rgba(255, 255, 255, 0.06) 45%, transparent 70%),
+    var(--paper);
+  color: var(--ink);
+  font-family: 'PT Serif', Georgia, serif;
+  padding: 0.9rem 1rem 0.8rem;
+  border-radius: 3px;
+  box-shadow: inset 0 0 40px rgba(120, 105, 70, 0.18);
+}
+
+.screamsheet-masthead {
+  font-family: 'Oswald', 'Segoe UI', sans-serif;
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #b21212;
+  border-bottom: 3px double var(--ink);
+  padding-bottom: 0.3rem;
+  margin-bottom: 0.5rem;
+  overflow-wrap: anywhere;
+}
+
+.screamsheet-headline {
+  font-family: 'Anton', 'Oswald', Impact, sans-serif;
+  font-weight: 400;
+  /* Skaluje się z szerokością okna: ten sam nagłówek czyta się w wąskim oknie
+     handoutu i w szerokim podglądzie formularza. */
+  font-size: clamp(1.5rem, 5.5cqw + 0.6rem, 2.6rem);
+  line-height: 1.02;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  margin-bottom: 0.4rem;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+.screamsheet-lead {
+  font-weight: 700;
+  font-size: 0.95rem;
+  line-height: 1.35;
+  border-bottom: 1px solid var(--newsprint-rule);
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.55rem;
+}
+
+.screamsheet-photo {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-bottom: 0.6rem;
+  filter: grayscale(0.75) contrast(1.15);
+  border: 1px solid var(--newsprint-rule);
+}
+
+/* Szpalty zwijają się do jednej same, gdy okno jest wąskie — `column-width`
+   zamiast `column-count` robi to bez zapytania medialnego. */
+.screamsheet-body {
+  column-width: 15rem;
+  column-gap: 1.4rem;
+  column-rule: 1px solid var(--newsprint-rule);
+  text-align: justify;
+  hyphens: auto;
+}
+
+.screamsheet-body .markdown {
+  font-family: inherit;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+/* Pierwszy akapit zaczyna się przy krawędzi, następne z wcięciem — tak jak
+   w druku, gdzie odstępy między akapitami są luksusem. */
+.screamsheet-body .markdown > p + p {
+  margin-top: 0;
+  text-indent: 1.1em;
+}
+
+.screamsheet-body .markdown .md-h {
+  font-family: 'Oswald', 'Segoe UI', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.screamsheet-body .markdown .md-h3 {
+  color: var(--ink-dim);
+}
+
+.screamsheet-body .markdown .md-quote {
+  border-left-color: #b21212;
+  color: var(--ink-dim);
+}
+
+.screamsheet-body .markdown .md-rule {
+  border-top-color: var(--newsprint-rule);
+}
+
+.screamsheet-body .markdown .md-pre,
+.screamsheet-body .markdown .md-code {
+  background: rgba(0, 0, 0, 0.07);
+  border-color: var(--newsprint-rule);
+  color: var(--ink);
+}
+
+.screamsheet-body .markdown a {
+  color: #b21212;
+}
+
+.screamsheet-footer {
+  font-family: 'Oswald', 'Segoe UI', sans-serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  border-top: 3px double var(--ink);
+  margin-top: 0.7rem;
+  padding-top: 0.35rem;
+}
+
+/* Gazeta wypełnia okno po sam brzeg — margines wokół papieru wyglądałby jak
+   ramka, a nie jak wycinek. `container-type` karmi `cqw` w nagłówku. */
+.handout-window-body--screamsheet {
+  padding: 0;
+  container-type: inline-size;
+}
+
+.handout-preview:has(.screamsheet) {
+  padding: 0;
+  border-style: solid;
+  container-type: inline-size;
+}
+
+/* --- formularz screamsheetu ---------------------------------------------- */
+
+.screamsheet-generator {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.5rem 0.6rem;
+  background: var(--bg);
+}
+
+.screamsheet-topic {
+  flex: 1;
+  min-width: 0;
+}
+
+.screamsheet-furniture {
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+
+.screamsheet-furniture .bot-field {
+  flex: 1;
+  min-width: 0;
 }

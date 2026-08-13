@@ -13,6 +13,7 @@ import type {
 import { ROLE_GM } from '@vtt/shared';
 import {
   allowCombatAction,
+  fetchHandouts,
   loadOlderHistory,
   resolveBotProposal,
   sendChatInput,
@@ -280,13 +281,27 @@ function EconomyRow({ message, entry }: { message: ChatMessageView; entry: Econo
  * „materiał wycofany" (błąd 24a, znaleziony przy 24b).
  */
 function HandoutRow({ message, entry }: { message: ChatMessageView; entry: HandoutLogEntry }) {
+  const loaded = useHandoutStore((s) => s.loaded);
   const known = useHandoutStore((s) => !s.loaded || entry.handoutId in s.handouts);
   const openHandout = useHandoutStore((s) => s.openHandout);
+
+  /**
+   * Na świeżo przeładowanej stronie klient nie zna jeszcze żadnego handoutu —
+   * listę przynosi dopiero wejście w zakładkę. Bez tego pobrania „Otwórz"
+   * wpychało na stos okno, dla którego nie było treści, więc klik nie robił
+   * nic (błąd 24a, widziany po stronie gracza przy 24c).
+   */
+  async function open() {
+    if (!loaded) await fetchHandouts();
+    openHandout(entry.handoutId);
+  }
   return (
     <div className="chat-message chat-handout">
       <div className="chat-message-meta">
         <span className="chat-message-author">
-          {entry.hasImage ? '🖼' : '📄'} Handout od {message.authorName}
+          {entry.kind === 'screamsheet'
+            ? `📰 Screamsheet od ${message.authorName}`
+            : `${entry.hasImage ? '🖼' : '📄'} Handout od ${message.authorName}`}
         </span>
         {message.recipientName ? (
           <span className="chat-message-whisper-target">do {message.recipientName}</span>
@@ -296,11 +311,7 @@ function HandoutRow({ message, entry }: { message: ChatMessageView; entry: Hando
       <div className="chat-handout-body">
         <span className="chat-handout-title">{entry.title}</span>
         {known ? (
-          <button
-            type="button"
-            className="small-button"
-            onClick={() => openHandout(entry.handoutId)}
-          >
+          <button type="button" className="small-button" onClick={() => void open()}>
             Otwórz
           </button>
         ) : (

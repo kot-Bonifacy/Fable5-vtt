@@ -15,7 +15,18 @@
  *    etapu 05.
  * 3. **Treść jest markdownem, a nie HTML-em.** Renderuje ją `markdown.ts` do
  *    drzewa bloków; w całej drodze do ekranu nie ma wstrzykiwanego HTML-u.
+ *
+ * Etap 24c dokłada `kind`: screamsheet to ten sam handout w gazetowym
+ * przebraniu, więc udostępnianie, kosz i pływające okno nie mają o nim własnej
+ * gałęzi — różni się wyłącznie tym, jak się rysuje i o trzy pola `screamsheet`.
  */
+
+import {
+  normalizeScreamsheetMeta,
+  parseHandoutKind,
+  type HandoutKind,
+  type ScreamsheetMeta,
+} from './screamsheets.js';
 
 export const HANDOUT_TITLE_MAX_LENGTH = 120;
 /** Handout to kartka do ręki, nie rozdział — kilka ekranów tekstu wystarczy. */
@@ -37,6 +48,10 @@ export interface HandoutView {
   /** Markdown; pusty, gdy handout jest samą grafiką. */
   body: string;
   image: HandoutImage | null;
+  /** `note` — kartka z 24a, `screamsheet` — wycinek z brukowca (24c). */
+  kind: HandoutKind;
+  /** Lead, winieta i data; obecne wyłącznie przy `kind: 'screamsheet'`. */
+  screamsheet: ScreamsheetMeta | null;
   /** Id kont, którym MG go udostępnił — pole obecne TYLKO w widoku MG. */
   sharedWith?: string[];
   createdAt: string;
@@ -55,6 +70,8 @@ export interface HandoutUpsertPayload {
   title: string;
   body: string;
   image: HandoutImage | null;
+  kind?: HandoutKind;
+  screamsheet?: ScreamsheetMeta | null;
 }
 
 export interface HandoutIdPayload {
@@ -97,6 +114,8 @@ export interface HandoutLogEntry {
   handoutId: string;
   title: string;
   hasImage: boolean;
+  /** Brak pola = `note`: wiersze zapisane przed 24c zostają notatkami. */
+  kind?: HandoutKind;
 }
 
 export interface HandoutValidationIssue {
@@ -125,12 +144,13 @@ function parseImage(raw: unknown): HandoutImage | null {
  *
  * Reguła, której nie da się wyrazić limitem pola: **handout musi coś nieść**.
  * Sam tytuł bez grafiki i bez tekstu jest pustą kartką, a wyskakuje graczowi
- * na ekran jak każdy inny.
+ * na ekran jak każdy inny. Screamsheet ma tę regułę ostrzejszą: gazeta bez
+ * artykułu to sama winieta, więc sama grafika mu nie wystarczy (24c).
  */
 export function validateHandout(
   raw: unknown,
 ):
-  | { ok: true; handout: Omit<HandoutUpsertPayload, 'id'> }
+  | { ok: true; handout: Required<Omit<HandoutUpsertPayload, 'id'>> }
   | { ok: false; issues: HandoutValidationIssue[] } {
   const issues: HandoutValidationIssue[] = [];
   if (typeof raw !== 'object' || raw === null) {
@@ -156,12 +176,28 @@ export function validateHandout(
   }
 
   const image = parseImage(input.image);
-  if (body.length === 0 && !image) {
+  const kind = parseHandoutKind(input.kind);
+  if (kind === 'screamsheet') {
+    if (body.length === 0) {
+      issues.push({ field: 'body', message: 'Screamsheet musi mieć treść artykułu.' });
+    }
+  } else if (body.length === 0 && !image) {
     issues.push({ field: 'body', message: 'Handout musi mieć treść albo grafikę.' });
   }
 
   if (issues.length > 0) return { ok: false, issues };
-  return { ok: true, handout: { title, body, image } };
+  return {
+    ok: true,
+    handout: {
+      title,
+      body,
+      image,
+      kind,
+      // Meble gazety zapisujemy tylko przy gazecie — notatka, która kiedyś była
+      // screamsheetem, nie ma nosić po nim winiety.
+      screamsheet: kind === 'screamsheet' ? normalizeScreamsheetMeta(input.screamsheet) : null,
+    },
+  };
 }
 
 /** Lista id odbiorców w postaci porównywalnej: bez duplikatów, bez śmieci. */

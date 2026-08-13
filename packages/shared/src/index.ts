@@ -21,6 +21,7 @@ export * from './pathfinding.js';
 export * from './relations.js';
 export * from './rules-assistant.js';
 export * from './scenes.js';
+export * from './screamsheets.js';
 export * from './smoke.js';
 export * from './tokens.js';
 export * from './vision.js';

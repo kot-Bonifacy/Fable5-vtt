@@ -11,7 +11,13 @@ import type {
   HandoutView,
   SessionUser,
 } from '@vtt/shared';
-import { ROLE_GM, normalizeRecipientIds, validateHandout } from '@vtt/shared';
+import {
+  ROLE_GM,
+  normalizeRecipientIds,
+  normalizeScreamsheetMeta,
+  parseHandoutKind,
+  validateHandout,
+} from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { deliverChatMessageTo, insertChatMessage } from './chat-io.js';
@@ -45,6 +51,10 @@ interface HandoutRow {
   imageUrl: string | null;
   imageWidth: number | null;
   imageHeight: number | null;
+  kind: string;
+  lead: string | null;
+  outlet: string | null;
+  dateline: string | null;
   createdAt: Date;
   updatedAt: Date;
   shares?: { userId: string }[];
@@ -56,6 +66,7 @@ interface HandoutRow {
  * ktoś kiedyś zapomni usunąć przed wysyłką.
  */
 function toHandoutView(row: HandoutRow, withShares: boolean): HandoutView {
+  const kind = parseHandoutKind(row.kind);
   const view: HandoutView = {
     id: row.id,
     title: row.title,
@@ -63,6 +74,13 @@ function toHandoutView(row: HandoutRow, withShares: boolean): HandoutView {
     image:
       row.imageUrl && row.imageWidth !== null && row.imageHeight !== null
         ? { url: row.imageUrl, width: row.imageWidth, height: row.imageHeight }
+        : null,
+    kind,
+    // Meble gazety wychodzą z bazy znormalizowane, więc wiersz zapisany przed
+    // 24c (albo z pustą winietą) rysuje się jak każdy inny screamsheet.
+    screamsheet:
+      kind === 'screamsheet'
+        ? normalizeScreamsheetMeta({ lead: row.lead, outlet: row.outlet, dateline: row.dateline })
         : null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -215,13 +233,17 @@ export const handoutUpsertEvent = defineEvent<HandoutUpsertPayload, HandoutView>
     if (!result.ok) {
       throw new RealtimeError(`INVALID_HANDOUT:${result.issues[0]?.message ?? ''}`);
     }
-    const { title, body, image } = result.handout;
+    const { title, body, image, kind, screamsheet } = result.handout;
     const data = {
       title,
       body,
       imageUrl: image?.url ?? null,
       imageWidth: image?.width ?? null,
       imageHeight: image?.height ?? null,
+      kind,
+      lead: screamsheet?.lead ?? null,
+      outlet: screamsheet?.outlet ?? null,
+      dateline: screamsheet?.dateline ?? null,
     };
 
     const id = typeof payload?.id === 'string' && payload.id.length > 0 ? payload.id : null;
@@ -350,6 +372,7 @@ async function announceShare(
     handoutId: row.id,
     title: row.title,
     hasImage: row.imageUrl !== null,
+    kind: parseHandoutKind(row.kind),
   };
   const payload = JSON.stringify(entry);
   for (const recipientId of recipients) {

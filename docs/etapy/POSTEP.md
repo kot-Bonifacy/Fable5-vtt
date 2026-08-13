@@ -50,7 +50,7 @@ Pełne notatki z zamkniętych etapów: `archiwum/dziennik-sesji.md` (nie czytaj 
 | 23c | Reputacja i Facedown                          | ✅     | 2026-08-09      | PL nazwa to „Konfrontacja"; Reputacja wyliczana z listy wyczynów, −2 wybiera przegrany         |
 | 24a | Handouty                                      | ✅     | 2026-08-09      | etap 24 podzielony na 24a/24b/24c 09.08; markdown własnym parserem w `shared`                  |
 | 24b | Dziennik kampanii dla stołu                   | ✅     | 2026-08-09      | uprawnienie gracza to osobna kolumna, nie trzeci szczebel `visibility`; szukanie u klienta     |
-| 24c | Screamsheets                                  | ⬜     |                 | screamsheet = handout z 24a w gazetowym szablonie                                              |
+| 24c | Screamsheets                                  | ✅     | 2026-08-13      | `kind` na handoucie z 24a; kroje gazetowe (OFL) hostowane u siebie; nagłówek = tytuł handoutu  |
 | 25  | Generator postaci (lifepath)                  | ⬜     |                 |                                                                                                |
 | 26  | Netrunning                                    | ⬜     |                 | możliwy podział na 2 sesje                                                                     |
 | 27  | Kości 3D i szlif UI                           | ⬜     |                 |                                                                                                |
@@ -58,9 +58,37 @@ Pełne notatki z zamkniętych etapów: `archiwum/dziennik-sesji.md` (nie czytaj 
 
 ## Od czego zacząć
 
-Ostatnio zamknięte: **24b** (dziennik dla stołu: flaga „widzi stół”, zakładka „Dziennik” u gracza, oś czasu z nagłówkami miesięcy, wyszukiwarka i odnośniki do handoutów).
+Ostatnio zamknięte: **24c** (screamsheety: `kind` na handoucie, generator na LLM z hasła MG,
+gazetowy szablon z własnymi krojami, degradacja bez gatewaya).
 
-**Etap 24 podzielony 09.08 na 24a/24b/24c** (decyzja MG) — trzy niezależne funkcje w jednym opisie. Następny etap: **24c (screamsheets)** — gazetowy szablon nad handoutem z 24a, treść pisze model. Reszta fazy H (**25–27**) w dowolnej kolejności.
+**Faza H zamknięta w części „świat CP RED" — cały etap 24 (24a/24b/24c) gotowy.** Następne
+etapy do wyboru: **25 (generator postaci — lifepath)**, **26 (netrunning, możliwy podział na
+dwie sesje)**, **27 (kości 3D i szlif UI)**. Potem zostaje **28 (wdrożenie na VPS)**.
+
+**Etap 24c odklikany po OBU stronach stołu, na żywym modelu.** Na screamsheetach testowych
+„KABUKI W KRWI: STRZELANINA PRZERYWA NOCNE ŻYCIE MIASTA" (z generatora) i „Test 24c — ręcznie,
+bez modelu", **obu usuniętych po oględzinach** (lista handoutów jest znowu pusta; na czacie
+zostały trzy linie „📰 Screamsheet od MG"). Potwierdzone **u MG**: przycisk „📰 + Screamsheet"
+obok „+ Nowy handout", pole hasła z „✨ Napisz artykuł", **generacja z hasła „strzelanina
+w Kabuki" w 6,7 s** (nagłówek, lead i trzy akapity po polsku wpisane wprost do formularza),
+podgląd rysujący **tę samą gazetę, którą zobaczy gracz**, zapis, chipy odbiorców i dwustopniowy
+kosz. Szablon: czerwona winieta, nagłówek krojem Anton, wytłuszczony lead, **dwie szpalty**
+w oknie 560 px (jedna w wąskim panelu — `column-width`), stopka „NIGHT CITY, WRZESIEŃ 2045",
+polskie znaki diakrytyczne we wszystkich trzech krojach. Potwierdzone **u gracza (avatar9)**:
+linia „📰 Screamsheet od MG" na czacie z „Otwórz", **okno wyskakujące samo** w chwili
+udostępnienia, w zakładce **jeden** screamsheet (nieudostępniony nie dociera nawet do DOM-u),
+zajawka na liście to **lead**, zero chipów i przycisków MG. Cofnięcie udostępnienia **na żywo**
+zamknęło okno i oznaczyło linię czatu jako „materiał wycofany". **Degradacja przy zabitym
+gatewayu:** „✨ Napisz artykuł" wyszarzony, zdanie „Generator jest niedostępny — AI Gateway nie
+odpowiada. Szablon wypełnisz ręcznie." i **ręczny screamsheet zapisany bez modelu**, z
+`<script>alert(1)</script>` wyświetlonym jako tekst (0 elementów `script` w drzewie). Konsola
+czysta po obu stronach. Scena, walka, tokeny i postacie **nietknięte**.
+
+**Błąd znaleziony przy oględzinach 24c i naprawiony (pochodzi z 24a).** „Otwórz" przy linii
+handoutu na czacie **nic nie robiło na świeżo przeładowanej stronie**: listę materiałów
+przynosi dopiero wejście w zakładkę, więc klik wpychał na stos okno, dla którego nie było
+treści. Poprawka 24b zdjęła wtedy mylące „materiał wycofany", ale sam klik dalej był martwy —
+teraz `HandoutRow` dociąga listę przed otwarciem. Dotyczy tak samo handoutów z 24a.
 
 **10–11.08 (sesja bez etapu): spłacona zaległość „strona gracza nieodklikana".** Dwie sesje przy
 dwóch hostach (`localhost` = MG, `[::1]` = avatar9) zamknęły **14b, 14c, 16f, 20a, 20b, 23a, 23b,
@@ -106,6 +134,25 @@ trzeciego hosta). Szczegóły w notatce sesji niżej.
 **Stan oględzin 19a:** **odklikane u MG** — panel „Zasady", stan indeksu, indeksowanie z postępem, pięć pytań o zasady, rozwijanie cytatu. Cztery odpowiedzi poprawne od pierwszego razu, piąta wyszła pusta i wskazała błąd (patrz notatka sesji). Nieodklikane: powtórka bez rozumowania **po poprawce** i degradacja z martwym gatewayem — jedno i drugie pokryte testami dymnymi.
 
 ### Otwarte zaległości (przechodzą między etapami)
+
+- **Etap 24c — cztery ścieżki nieodklikane.** (1) **Zdjęcie prasowe** — screamsheet przyjmuje
+  grafikę handoutu i rysuje ją jako odbitkę gazetową (`grayscale`), ale przy oględzinach nic
+  nie wgrywano. (2) **„Przerwij" w trakcie generacji** — przycisk pojawia się na czas pisania
+  (`screamsheet:cancel`, pokryty ścieżką serwera), model odpowiadał jednak w 7 s i nie było
+  czego przerywać. (3) **Edycja zapisanego screamsheetu** przez ✎ — formularz ma wtedy wziąć
+  rodzaj z handoutu, a nie z przycisku (`handout?.kind ?? …`); klikane było tworzenie.
+  (4) **Drugi generator pod rząd** — czy szkic nadpisuje pola, w których MG już coś poprawił
+  (nadpisuje: takie jest zachowanie `takeDraft`).
+
+- **Etap 24c — polszczyzna 9B, nie kod.** W artykule z oględzin padło „tłumek zmyślonych
+  bogaczy" i „krzyki prosić o pomoc" — model gubi odmianę w dłuższych zdaniach. Przy
+  temperaturze 0,9 (świadomie wysokiej: brukowiec ma zmyślać) będzie się to zdarzać częściej
+  niż u kronikarza z 19c. Jeśli przeszkadza, pierwszą rzeczą do ruszenia jest
+  `SCREAMSHEET_TEMPERATURE` w `packages/shared/src/screamsheets.ts`.
+
+- **Etap 24c — 📰 rysuje się jednobarwnie.** Na Windowsie emoji gazety wypada z Segoe UI Emoji
+  do symbolicznego zamiennika, więc obok kolorowych 📄 i 🖼 wygląda jak ikona konturowa.
+  Kosmetyka; do zmiany razem ze szlifem UI w etapie 27.
 
 - **Etap 24b — wyszukiwarka nie zna polskiej odmiany.** Szukanie jest dopasowaniem podciągu
   po tekście bez znaków diakrytycznych, więc `barman` znajduje „barmana" i „barmanem", ale
@@ -354,6 +401,8 @@ decyduje przegrany, nie zwycięzca`) — Konfrontacje z 10.08 szły z konta MG, 
 
 ## Notatki z dwóch ostatnich sesji
 
+- **2026-08-13 (etap 24c — screamsheets):** Zajawka przygody dostała gazetowe przebranie i redakcję na LLM. **Trzy rozstrzygnięcia MG przed kodem.** (1) **Szablon czteropolowy** — winieta, wielki nagłówek, wytłuszczony lead, treść w szpaltach, stopka; podtytuł odpadł, żeby model 9B wypełniał trzy pola, a nie pięć. (2) **Data w stopce to pole MG** z domyślnym „Night City, wrzesień 2045", a nie liczenie „dziś + 19 lat" — kalendarz kampanii zna MG, nie VTT, i po roku gry automat zaczyna kłamać. (3) **Kroje pisma z gotowych assetów** (decyzja MG w trakcie sesji): Anton, Oswald i PT Serif na licencji OFL, **hostowane u siebie** w `public/fonts/` — CDN Google odpadł, bo VTT ma działać przy stole bez internetu, a wdrożenie z 28 nie zakłada zewnętrznego hosta. Każdy krój w dwóch podzestawach (`latin` + `latin-ext`), inaczej brukowiec gubiłby „ą" i „ł" na pierwszym słowie; razem 316 kB, licencje i pochodzenie w `docs/assety-screamsheet.md`. **Architektura — pięć rzeczy niesie etap.** Pierwsza: **screamsheet to `kind` na handoucie z 24a, nie drugi byt**. Udostępnianie, kosz, pływające okno, odnośniki z kroniki 24b i wiersz na czacie nie mają dla niego ani jednej gałęzi — różni się tym, jak się rysuje, i trzema polami `screamsheet` (lead, winieta, data). Skutek widać w migracji: `20260813181056_stage24c_screamsheets` dokłada cztery kolumny do `Handout` i **ani jednej tabeli**. Druga: **nagłówkiem jest tytuł handoutu**. Osobne pole „headline" znaczyłoby, że lista materiałów, belka okna i linia na czacie muszą wybierać, które z dwóch pól pokazać — a to pytanie nie ma dobrej odpowiedzi. Trzecia: **generator nie zapisuje niczego**. `screamsheet:generate` oddaje ackiem samo `requestId`, artykuł przychodzi osobnym `screamsheet:draft` (wzorzec `journal:summarize` z 19c) i ląduje **w formularzu MG**; między modelem a stołem stoi kliknięcie „Zapisz", i to jest sprawdzane testem („nie zapisuje niczego — szkic czeka na decyzję MG"). Czwarta: **parser odpowiedzi jest wyrozumiały z rozmysłem**. Prompt prosi o `NAGŁÓWEK:` / `LEAD:` / `TREŚĆ:` wielkimi literami, bo 9B trzyma się takiego formatu lepiej niż JSON-a, ale model bez etykiet też dostaje sens: pierwsza linia to nagłówek, druga lead, reszta treść — MG ma dostać coś do poprawienia, a nie komunikat o błędzie. Piąta: **treść zostaje markdownem**, więc jedyną barierą między tekstem modelu a ekranem gracza jest drzewo bloków z 24a — dokładnie to, co zapowiadała notatka z 24a. Sprawdzone na żywo: `<script>alert(1)</script>` w treści renderuje się jako tekst, w drzewie zero elementów `script`. **Jedna rzecz odwrotna niż w reszcie projektu:** temperatura **0,9** (kronikarz z 19c ma 0,2, asystent zasad 19a jeszcze mniej) — to jedyne miejsce, w którym zmyślanie modelu jest produktem, a nie ryzykiem, więc `reasoning: false` zostaje, ale wodze puszczone. **Zweryfikowane:** 955 testów w `shared` (16 nowych w `screamsheets.test.ts`), 589 na serwerze (12 nowych w `screamsheets.test.ts` na żywych gniazdach), typy, lint, Prettier i `pnpm build` czyste; jeden przebieg serwera pękł na znanym limicie czasu i przeszedł powtórzony (patrz „Pułapki dev"). **Odklikane po obu stronach stołu na żywym modelu** (Qwythos-9B Q8_0, artykuł w 6,7 s) — lista wyżej, razem z jednym błędem z 24a, który przy okazji wyszedł i został naprawiony.
+
 - **2026-08-10 i 11.08 (sesja bez etapu — strona gracza dziewięciu etapów):** Pierwsza sesja przy
   **dwóch kontach naraz**, na dwóch hostach (`localhost` = MG, `[::1]` = avatar9). **Zaczęło się od
   sprzątania po przerwanej sesji z 10.08:** w drzewie leżała niezacommitowana poprawka
@@ -397,11 +446,16 @@ decyduje przegrany, nie zwycięzca`) — Konfrontacje z 10.08 szły z konta MG, 
   typy, lint i Prettier czyste (jeden przebieg serwera pękł na znanym limicie czasu i przeszedł
   powtórzony — patrz „Pułapki dev").
 
-- **2026-08-09 (etap 24b — dziennik kampanii dla stołu):** Kronika wyszła zza ekranu MG. **Cztery rozstrzygnięcia MG przed kodem.** (1) **Jedna flaga „widzi stół"**, nie lista odbiorców jak w handoutach — dziennik jest wspólną kroniką, a nie kartką do ręki. (2) **Materiały wybierane chipami** pod formularzem, a nie znacznikiem w treści markdownu. (3) **Linia na czacie bez wyskakiwania okna** — streszczenie czyta się przed grą, nie w środku sceny. (4) **Najnowszy wpis rozwinięty, starsze zwinięte** pod nagłówkami miesięcy. **Architektura — pięć rzeczy niesie etap.** Pierwsza: **uprawnienie gracza NIE jest trzecim szczeblem `visibility`**. Bot pamięta wpis przez zgodny tag, gracz czyta go, bo MG uznał, że drużyna może wiedzieć — to dwa różne pytania, więc `sharedWithPlayers` jest osobną kolumną boolean. Wniosek widać w `journalDigest`: odcisk indeksu **celowo nie obejmuje** tej flagi, bo odsłonięcie wpisu nie zmienia ani jednego bajtu tego, co widzi gateway — inaczej kliknięcie „Pokaż stołowi" oznaczałoby wpis jako „⟳ nieaktualny" i kazało MG przeindeksować dziennik bez powodu. Druga: **kanał gracza to osobny kształt, nie okrojony widok MG**. `JournalPlayerEntry` nie ma pól `tags`, `visibility`, `stale` ani `throughMessageId` — nie da się ich zapomnieć wyciąć, bo nie ma ich w typie; `JournalEntryView` **rozszerza** ten kształt, dzięki czemu oś czasu i wyszukiwarka mają jedno wejście dla obu stron stołu. Trzecia: **odnośnik do materiału jest przecięciem dwóch uprawnień**, nie własnością wpisu — `JournalHandout` mówi „ten wpis wskazuje ten handout", a `HandoutShare` mówi „ten gracz go dostał". Odsiewa to `where` w zapytaniu (`handouts: { where: { handout: { shares: { some: { userId } } } } }`), więc gracz bez udostępnienia nie dostaje **nawet tytułu**. Skutkiem ubocznym tej dwustronności jest jedyne miejsce, w którym moduł handoutów woła moduł dziennika: `handout:share` i `handout:delete` odświeżają wpisy wskazujące ten materiał, bo zmiana po **którejkolwiek** stronie musi dojechać do gracza bez przeładowania. Czwarta: **wyszukiwarka liczy się u klienta**, i to jest decyzja, nie skrót. FTS5 z 19a stoi po stronie gatewaya, więc oparcie o niego zakładki znaczyłoby, że z martwym gatewayem dziennika nie da się przeszukać — a wpisy i tak przyszły już w całości. `foldForSearch` zdejmuje znaki diakrytyczne (NFD + `\p{M}`, plus osobne przejście dla `ł`, które się nie rozkłada), a słowa zawężają **iloczynem**. Piąta: **`journal:list` nie ma roli w definicji, tylko gałąź w handlerze** — reszta zdarzeń dziennika (zapis, kosz, reindeks, streszczanie) zostaje przy `ROLE_GM`. Rozgłoszenia jadą pod tymi samymi nazwami w dwóch kształtach; gniazdo należy do jednego konta, więc u klienta rozstrzyga o tym rola, a nie zgadywanie po polach payloadu. **Migracja `20260809173824_stage24b_journal_for_table`** dokłada kolumnę `sharedWithPlayers` (domyślnie `false`, więc wszystkie wpisy z 19c zostają u MG) i tabelę `JournalHandout` z kaskadą po obu stronach — skasowany handout nie zostawia wiszącego tytułu w kronice. Nowy rodzaj wiadomości `journal` jest **publiczny**: kronikę odsłania się całemu stołowi naraz, więc wiersz nie potrzebuje adresata po żadnej ze stron `visibleTo` — inaczej niż handout z 24a, który jest jedną kopią na odbiorcę. **Zweryfikowane:** 939 testów w `shared` (10 nowych w `journal.test.ts`), 577 na serwerze (9 nowych w `journal.test.ts` na żywych gniazdach), typy, lint, Prettier i `pnpm build` czyste. **Odklikane po obu stronach stołu** — po raz pierwszy w projekcie, bo padła blokada „druga sesja wylogowuje MG" (patrz „Pułapki dev"); lista wyżej.
-
 ## Skróty wcześniejszych sesji
 
 Uzupełniają kolumnę „Uwagi" w tabeli, nie powtarzają jej. Uzasadnienia decyzji, listy niezweryfikowanego i szczegóły migracji — `archiwum/dziennik-sesji.md`.
+
+- **24b (09.08)** — uprawnienie gracza do wpisu kroniki **nie jest trzecim szczeblem
+  `visibility`**: „bot to pamięta" i „drużyna może o tym wiedzieć" to dwa pytania, więc
+  `sharedWithPlayers` jest osobną kolumną, a odcisk indeksu jej nie obejmuje — odsłonięcie
+  wpisu nie może oznaczać go jako „⟳ nieaktualny". Kanał gracza to **osobny kształt**
+  (`JournalPlayerEntry`), którego pól MG nie da się zapomnieć wyciąć, a wyszukiwarka liczy się
+  u klienta, żeby martwy gateway nie zabierał kroniki. Pełna notatka w archiwum.
 
 - **24a (09.08)** — markdown handoutu zwraca **drzewo bloków, nie HTML**, więc na drodze „treść MG
   → ekran gracza" nie stoi ani `dangerouslySetInnerHTML`, ani sanitizer do pilnowania; w 24c, gdzie

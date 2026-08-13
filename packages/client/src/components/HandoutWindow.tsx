@@ -1,6 +1,7 @@
 import { useRef, useState, type PointerEvent } from 'react';
 import { useHandoutStore } from '../stores/handoutStore.js';
 import { Markdown } from './Markdown.js';
+import { Screamsheet } from './Screamsheet.js';
 
 /**
  * Handout jako pływające okno (etap 24a).
@@ -84,18 +85,35 @@ function HandoutWindow({ handoutId, stackIndex }: { handoutId: string; stackInde
           ✕
         </button>
       </div>
-      <div className="handout-window-body">
-        {handout.image ? (
-          // Proporcje znane z uploadu — obrazek nie przeskakuje po wczytaniu.
-          <img
-            className="handout-image"
-            src={handout.image.url}
-            width={handout.image.width}
-            height={handout.image.height}
-            alt={handout.title}
+      <div
+        className={`handout-window-body ${
+          handout.kind === 'screamsheet' ? 'handout-window-body--screamsheet' : ''
+        }`}
+      >
+        {handout.kind === 'screamsheet' && handout.screamsheet ? (
+          // Gazeta rysuje się własnym szablonem — okno, przeciąganie i zamykanie
+          // zostają te same, bo screamsheet jest handoutem, a nie drugim bytem.
+          <Screamsheet
+            title={handout.title}
+            body={handout.body}
+            image={handout.image}
+            meta={handout.screamsheet}
           />
-        ) : null}
-        <Markdown source={handout.body} />
+        ) : (
+          <>
+            {handout.image ? (
+              // Proporcje znane z uploadu — obrazek nie przeskakuje po wczytaniu.
+              <img
+                className="handout-image"
+                src={handout.image.url}
+                width={handout.image.width}
+                height={handout.image.height}
+                alt={handout.title}
+              />
+            ) : null}
+            <Markdown source={handout.body} />
+          </>
+        )}
       </div>
     </section>
   );

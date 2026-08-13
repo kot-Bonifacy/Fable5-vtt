@@ -115,6 +115,7 @@ import {
   handoutShareEvent,
   handoutUpsertEvent,
 } from './handouts.js';
+import { screamsheetGenerateEvent } from './screamsheets.js';
 import { relationDeleteEvent, relationListEvent, relationSetEvent } from './relations.js';
 import { sendStateSync, stateRequestEvent } from './sync.js';
 
@@ -242,6 +243,7 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   handoutUpsertEvent,
   handoutDeleteEvent,
   handoutShareEvent,
+  screamsheetGenerateEvent,
   relationListEvent,
   relationSetEvent,
   relationDeleteEvent,

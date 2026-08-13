@@ -18,7 +18,13 @@ describe('validateHandout', () => {
     });
     expect(result).toEqual({
       ok: true,
-      handout: { title: 'Mapa Kabuki', body: '**Uwaga**', image: null },
+      handout: {
+        title: 'Mapa Kabuki',
+        body: '**Uwaga**',
+        image: null,
+        kind: 'note',
+        screamsheet: null,
+      },
     });
   });
 

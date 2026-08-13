@@ -340,6 +340,7 @@ describe('handouty: tworzenie, udostępnianie i cofanie', () => {
       handoutId: notatkaId,
       title: 'Notatka fixera',
       hasImage: false,
+      kind: 'note',
     });
     await rogueSilent;
   });
