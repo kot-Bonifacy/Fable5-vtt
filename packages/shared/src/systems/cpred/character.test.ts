@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   CPRED_SCHEMA_VERSION,
+  SHEET_LINE_MAX_LENGTH,
   buildCpredRegistry,
   createDefaultCharacterData,
   groupedSkills,
@@ -158,6 +159,29 @@ describe('validateCharacterDataPatch', () => {
     const result = validateCharacterDataPatch({ eddies: -5 }, registry);
     expect(result.ok).toBe(false);
   });
+
+  // Stage 27b — the three prose lines of the printed sheet.
+  it('accepts the sheet lines and refuses an oversized one', () => {
+    const result = validateCharacterDataPatch(
+      { addictions: 'Dorph, dwa razy dziennie', style: 'Skóra i chrom', ammoStock: '9 mm × 60' },
+      registry,
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.patch.addictions).toBe('Dorph, dwa razy dziennie');
+      expect(result.patch.style).toBe('Skóra i chrom');
+      expect(result.patch.ammoStock).toBe('9 mm × 60');
+    }
+    const tooLong = validateCharacterDataPatch(
+      { addictions: 'x'.repeat(SHEET_LINE_MAX_LENGTH + 1) },
+      registry,
+    );
+    expect(tooLong.ok).toBe(false);
+    if (!tooLong.ok) {
+      expect(tooLong.issues[0]?.field).toBe('addictions');
+      expect(tooLong.issues[0]?.message).toContain('Uzależnienia');
+    }
+  });
 });
 
 describe('parseCharacterData', () => {
@@ -175,6 +199,15 @@ describe('parseCharacterData', () => {
     expect(data.eddies).toBe(1234);
     expect(data.roleId).toBeNull();
     expect(data.skills).toEqual({ handgun: 3 });
+  });
+
+  // Backwards compatibility for stage 27b: every sheet in the database was
+  // written before the three prose lines existed.
+  it('reads a sheet saved before the 27b lines as empty ones', () => {
+    const data = parseCharacterData(JSON.stringify({ eddies: 10 }), registry);
+    expect(data.addictions).toBe('');
+    expect(data.style).toBe('');
+    expect(data.ammoStock).toBe('');
   });
 });
 

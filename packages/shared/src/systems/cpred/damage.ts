@@ -22,7 +22,11 @@ import {
   type CriticalInjuryEntry,
   type CriticalInjuryTable,
 } from './compendium.js';
-import { CPRED_HIT_LOCATION_LABELS, type CpredHitLocation } from './locations.js';
+import {
+  CPRED_HIT_LOCATION_LABELS,
+  type ArmorLocation,
+  type CpredHitLocation,
+} from './locations.js';
 import { CPRED_WOUND_LABELS, woundStateFromHp, type CpredWoundState } from './rolls.js';
 
 /** Attack penalty of an Aimed Shot (RAW −8) — shown as a hint, applied in stage 16. */
@@ -191,10 +195,17 @@ export function resolveCpredDamage(input: CpredDamageInput): CpredDamageOutcome 
   };
 }
 
-/** The armor piece that protects a location: the highest SP still standing. */
+/**
+ * The armor piece that protects a location: the highest SP still standing.
+ *
+ * Takes an `ArmorLocation`, not a hit location, so the sheet's three printed
+ * rows (Głowa / Ciało / Tarcza — stage 27b) name the very piece the damage flow
+ * would use. A shield is never picked automatically for a hit; it is picked
+ * here only because the sheet has a row for it.
+ */
 export function effectiveArmor(
   armor: readonly CpredArmorRow[],
-  location: CpredHitLocation,
+  location: ArmorLocation,
 ): CpredArmorRow | null {
   let best: CpredArmorRow | null = null;
   for (const row of armor) {

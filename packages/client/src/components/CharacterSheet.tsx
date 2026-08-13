@@ -7,7 +7,6 @@ import {
   type ChangeEvent,
   type MouseEvent,
   type PointerEvent,
-  type ReactNode,
 } from 'react';
 import type {
   ArmorLocation,
@@ -54,6 +53,7 @@ import {
   ROLE_GM,
   ROLE_RANK_MAX,
   ROLE_RANK_MIN,
+  SHEET_LINE_MAX_LENGTH,
   SKILL_LEVEL_MAX,
   SKILL_LEVEL_MIN,
   ammoOptionsFor,
@@ -61,6 +61,7 @@ import {
   cyberpsychosisFor,
   cyberwareCapacity,
   deathSaveTarget,
+  effectiveArmor,
   effectiveCpredStats,
   formatEddies,
   formatLedgerAmount,
@@ -107,11 +108,17 @@ import {
   type RollTarget,
 } from '../stores/rollStore.js';
 
-type SheetTab = 'stats' | 'combat' | 'gear' | 'bio';
+type SheetTab = 'stats' | 'gear' | 'bio';
 
+/**
+ * Zakładki idą za stronami wydruku, nie za tematami.
+ *
+ * „Walka" zniknęła w etapie 27b: broń, pancerz i rany krytyczne drukują się na
+ * stronie pierwszej, więc tam wróciły. Zostawienie po nich pustej zakładki
+ * znaczyłoby, że to samo mieszka w dwóch miejscach.
+ */
 const TABS: { id: SheetTab; label: string }[] = [
   { id: 'stats', label: 'Karta' },
-  { id: 'combat', label: 'Walka' },
   { id: 'gear', label: 'Ekwipunek' },
   { id: 'bio', label: 'Biografia' },
 ];
@@ -308,7 +315,6 @@ function CharacterSheetWindow({
             setIssues={setIssues}
           />
         )}
-        {tab === 'combat' && <CombatTab character={character} data={data} saveData={saveData} />}
         {tab === 'gear' && <GearTab character={character} data={data} saveData={saveData} />}
         {tab === 'bio' && <BioTab data={data} saveData={saveData} />}
       </div>
@@ -332,13 +338,15 @@ interface TabProps {
 }
 
 /**
- * Strona pierwsza karty — układ oficjalnego arkusza CP RED (etap 27a).
+ * Strona pierwsza karty — układ oficjalnego arkusza CP RED (etap 27a + 27b).
  *
  * Trzy kolumny wydruku, od lewej: tożsamość (portret, ksywa, rola, zdolność,
- * notatki, pule), pionowa kolumna dziesięciu cech i umiejętności rozłożone na
- * trzy kolumny. Wszystko, co karta umiała wcześniej — rzut z cechy, rzut
- * z umiejętności, Test Przeżywalności, ostrzeżenie o cyberpsychozie — siedzi
- * dalej w tych samych miejscach, tylko ubrane w papier.
+ * notatki, pule, rany krytyczne, uzależnienia), pionowa kolumna dziesięciu cech
+ * i umiejętności rozłożone na trzy kolumny. Pod nimi, przez całą szerokość, pas
+ * „Broń i pancerz" — dokładnie tam, gdzie drukuje go karta (27b). Wszystko, co
+ * karta umiała wcześniej — rzut z cechy, atak z wiersza broni, Test
+ * Przeżywalności, ostrzeżenie o cyberpsychozie — siedzi dalej w tych samych
+ * miejscach, tylko ubrane w papier.
  */
 function FrontPage({
   character,
@@ -378,7 +386,32 @@ function FrontPage({
       />
       <StatColumn data={data} saveData={saveData} startRoll={startRoll} />
       <SkillColumns data={data} saveData={saveData} startRoll={startRoll} />
+      <Arsenal character={character} data={data} saveData={saveData} startRoll={startRoll} />
     </div>
+  );
+}
+
+/**
+ * Dolny pas strony pierwszej: „Broń i pancerz" (etap 27b).
+ *
+ * Na wydruku to jeden blok pod trzema kolumnami i tak samo jest tutaj — pas
+ * rozciąga się przez całą szerokość siatki strony.
+ */
+function Arsenal({
+  character,
+  data,
+  saveData,
+  startRoll,
+}: TabProps & {
+  character: CharacterSheetView;
+  startRoll: (target: Omit<RollTarget, 'characterId' | 'characterName'>, shift: boolean) => void;
+}) {
+  return (
+    <section className="cp-arsenal">
+      <h3 className="cp-section">Broń i pancerz</h3>
+      <WeaponStrip character={character} data={data} saveData={saveData} startRoll={startRoll} />
+      <ArmorStrip data={data} saveData={saveData} />
+    </section>
   );
 }
 
@@ -594,6 +627,23 @@ function IdentityColumn({
           <span>{psychosis.note}</span>
         </p>
       )}
+
+      <CriticalInjuries data={data} saveData={saveData} />
+
+      <div className="cp-panel">
+        <div
+          className="cp-field cp-notes cp-addictions"
+          title="Na czym postać siedzi — dorph, black lace, karta kredytowa. Przy stole to fabuła, nie modyfikator."
+        >
+          <span className="cp-label">Uzależnienia</span>
+          <textarea
+            maxLength={SHEET_LINE_MAX_LENGTH}
+            value={data.addictions}
+            onChange={(e) => saveData({ addictions: e.target.value }, 'addictions')}
+            aria-label="Uzależnienia"
+          />
+        </div>
+      </div>
     </div>
   );
 }
@@ -838,14 +888,13 @@ function layoutSkillColumns(
   return columns;
 }
 
-/** Generic editable row-list table used by the combat and gear tabs. */
+/** Generic editable row-list table, in the sheet's own paper-on-red style. */
 function RowTable<T extends CpredItemRow>({
   rows,
   columns,
   addLabel,
   makeRow,
   onChange,
-  action,
 }: {
   rows: T[];
   columns: {
@@ -859,16 +908,14 @@ function RowTable<T extends CpredItemRow>({
   addLabel: string;
   makeRow: () => T;
   onChange: (rows: T[]) => void;
-  /** Optional trailing cell, e.g. the weapon's damage-roll button. */
-  action?: { label: string; render: (row: T) => ReactNode };
 }) {
   function updateRow(rowId: string, key: keyof T & string, value: string | number) {
     onChange(rows.map((row) => (row.id === rowId ? { ...row, [key]: value } : row)));
   }
 
   return (
-    <div className="row-table-wrap">
-      <table className="sheet-table">
+    <div className="cp-strip">
+      <table className="cp-table">
         <thead>
           <tr>
             {columns.map((c) => (
@@ -876,7 +923,6 @@ function RowTable<T extends CpredItemRow>({
                 {c.label}
               </th>
             ))}
-            {action && <th>{action.label}</th>}
             <th />
           </tr>
         </thead>
@@ -891,6 +937,7 @@ function RowTable<T extends CpredItemRow>({
                       min={0}
                       max={c.max ?? 999}
                       value={row[c.key] as number}
+                      aria-label={c.label}
                       onChange={(e) => {
                         const value = parseNumberInput(e);
                         if (value !== undefined) updateRow(row.id, c.key, value);
@@ -901,16 +948,16 @@ function RowTable<T extends CpredItemRow>({
                       type="text"
                       maxLength={c.maxLength ?? 64}
                       value={row[c.key] as string}
+                      aria-label={c.label}
                       onChange={(e) => updateRow(row.id, c.key, e.target.value)}
                     />
                   )}
                 </td>
               ))}
-              {action && <td className="row-action-cell">{action.render(row)}</td>}
               <td>
                 <button
                   type="button"
-                  className="small-button character-delete"
+                  className="cp-mini-button cp-mini-button--danger"
                   onClick={() => onChange(rows.filter((r) => r.id !== row.id))}
                   title="Usuń wiersz"
                 >
@@ -921,7 +968,7 @@ function RowTable<T extends CpredItemRow>({
           ))}
         </tbody>
       </table>
-      <button type="button" className="small-button" onClick={() => onChange([...rows, makeRow()])}>
+      <button type="button" className="cp-add" onClick={() => onChange([...rows, makeRow()])}>
         {addLabel}
       </button>
     </div>
@@ -991,12 +1038,15 @@ function AmmoPicker({
 }
 
 /**
- * The weapon list (stage 16). Beyond editing the row it is the place combat
- * starts from: „Atak"/„Seria"/„Zapora" arm the map's crosshair, and the next
- * click on a token loads the cup. Which buttons appear follows the weapon's
- * catalogue entry — only a weapon whose type has autofire can fire a burst.
+ * Pas broni ze strony pierwszej: `BROŃ · OBR. · AMUNICJA · LA · UWAGI`
+ * (stage 16, przeprowadzka i skóra w 27b).
+ *
+ * Beyond editing the row it is the place combat starts from: „Atak"/„Seria"/
+ * „Zapora" arm the map's crosshair, and the next click on a token loads the cup.
+ * Which buttons appear follows the weapon's catalogue entry — only a weapon
+ * whose type has autofire can fire a burst.
  */
-function WeaponTable({
+function WeaponStrip({
   character,
   data,
   saveData,
@@ -1054,17 +1104,19 @@ function WeaponTable({
   }
 
   return (
-    <div className="row-table-wrap">
-      <table className="sheet-table weapon-table">
+    <div className="cp-strip">
+      <table className="cp-table weapon-table">
         <thead>
+          {/* Nagłówki dokładnie z wydruku; „Atak" i kosz to nasze dwie kolumny
+              więcej — karta papierowa nie ma czym strzelać. */}
           <tr>
-            <th>Nazwa</th>
-            <th style={{ width: '5.5rem' }}>Obrażenia</th>
+            <th>Broń</th>
+            <th style={{ width: '5.5rem' }}>Obr.</th>
             <th style={{ width: '7rem' }}>Amunicja</th>
             <th style={{ width: '3.5rem' }}>LA</th>
             <th>Uwagi</th>
             <th>Atak</th>
-            <th />
+            <th style={{ width: '2rem' }} />
           </tr>
         </thead>
         <tbody>
@@ -1224,7 +1276,7 @@ function WeaponTable({
       </table>
       <button
         type="button"
-        className="small-button"
+        className="cp-add"
         onClick={() =>
           saveData(
             {
@@ -1246,205 +1298,312 @@ function WeaponTable({
           )
         }
       >
-        Dodaj broń
+        + Broń
       </button>
     </div>
   );
 }
 
-function CombatTab({ character, data, saveData }: TabProps & { character: CharacterSheetView }) {
-  const registry = useCharacterStore((s) => s.registry);
+/** OB, jakie ma świeżo kupiona kurtka — tyle, ile najczęstszy pancerz z tabeli. */
+const ARMOR_DEFAULT_SP = 11;
 
-  /** Same path as a skill roll: dialog, or straight to the cup on Shift. */
-  function startRoll(target: Omit<RollTarget, 'characterId' | 'characterName'>, shift: boolean) {
-    const full: RollTarget = {
-      characterId: character.id,
-      characterName: character.name,
-      ...target,
-    };
-    if (shift) quickLoadCup(full, data, registry);
-    else useRollStore.getState().openDialog(full);
+/**
+ * Pancerz jak na wydruku: trzy wiersze — Głowa, Ciało, Tarcza (etap 27b).
+ *
+ * Wiersz pokazuje tę sztukę, która **naprawdę zatrzyma strzał**: wybiera ją
+ * `effectiveArmor`, czyli dokładnie ta funkcja, którą czyta silnik obrażeń
+ * z etapu 15 (najmocniejsza noszona w danej lokacji). Dzięki temu karta i karta
+ * obrażeń nigdy nie mówią dwóch różnych rzeczy.
+ *
+ * Sztuki zdjęte i drugie w tej samej lokacji schodzą pod spód, do listy „reszta
+ * pancerza" — bez niej trzy wiersze kłamałyby przez przemilczenie.
+ *
+ * Jedno odstępstwo od wydruku: kolumna „Uwagi". Papierowa karta jej tu nie ma,
+ * ale nasze wiersze noszą notatkę (własną albo z kompendium), a pas broni nad
+ * nimi taką kolumnę drukuje — dwie tabele jednego pasa czyta się lepiej, gdy
+ * kończą się w tym samym miejscu.
+ */
+function ArmorStrip({ data, saveData }: TabProps) {
+  function write(rows: CpredArmorRow[]) {
+    saveData({ armor: rows }, 'armor');
   }
 
+  function update(rowId: string, patch: Partial<CpredArmorRow>) {
+    write(data.armor.map((row) => (row.id === rowId ? { ...row, ...patch } : row)));
+  }
+
+  function addAt(location: ArmorLocation) {
+    write([
+      ...data.armor,
+      {
+        id: newRowId(),
+        name: '',
+        sp: ARMOR_DEFAULT_SP,
+        spCurrent: ARMOR_DEFAULT_SP,
+        location,
+        notes: '',
+      },
+    ]);
+  }
+
+  const printed = ARMOR_LOCATIONS.map((location) => ({
+    location,
+    row: effectiveArmor(data.armor, location),
+  }));
+  const printedIds = new Set(printed.map((slot) => slot.row?.id).filter(Boolean));
+  const rest = data.armor.filter((row) => !printedIds.has(row.id));
+
   return (
-    <div className="sheet-combat">
-      <h3>Broń</h3>
-      <WeaponTable character={character} data={data} saveData={saveData} startRoll={startRoll} />
+    <div className="cp-strip">
+      <table className="cp-table armor-table">
+        <thead>
+          <tr>
+            <th>Pancerz</th>
+            <th style={{ width: '5rem' }}>OB</th>
+            <th style={{ width: '3.5rem' }}>Kara</th>
+            <th>Uwagi</th>
+            <th style={{ width: '3.4rem' }} />
+          </tr>
+        </thead>
+        <tbody>
+          {printed.map(({ location, row }) => (
+            <tr key={location}>
+              <td className="armor-slot-cell">
+                <span className="cp-slot">{ARMOR_LOCATION_LABELS[location]}</span>
+                {row ? (
+                  <input
+                    type="text"
+                    maxLength={64}
+                    value={row.name}
+                    onChange={(e) => update(row.id, { name: e.target.value })}
+                    aria-label={`Pancerz: ${ARMOR_LOCATION_LABELS[location]}`}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    className="cp-add"
+                    onClick={() => addAt(location)}
+                    title={`Załóż pancerz w lokacji: ${ARMOR_LOCATION_LABELS[location]}`}
+                  >
+                    + Załóż
+                  </button>
+                )}
+              </td>
+              {row ? (
+                <>
+                  <td className="armor-sp-cell">
+                    <ArmorSp row={row} update={update} />
+                  </td>
+                  <td>
+                    <ArmorPenalty row={row} update={update} />
+                  </td>
+                  <td>
+                    <input
+                      type="text"
+                      maxLength={200}
+                      value={row.notes}
+                      onChange={(e) => update(row.id, { notes: e.target.value })}
+                      aria-label="Uwagi o pancerzu"
+                    />
+                  </td>
+                  <td className="armor-actions">
+                    <button
+                      type="button"
+                      className="cp-mini-button"
+                      title="Zdejmij — sztuka schodzi na dół i przestaje chronić"
+                      onClick={() => update(row.id, { equipped: false })}
+                    >
+                      ⤓
+                    </button>
+                    <button
+                      type="button"
+                      className="cp-mini-button cp-mini-button--danger"
+                      title="Usuń pancerz"
+                      onClick={() => write(data.armor.filter((r) => r.id !== row.id))}
+                    >
+                      ✕
+                    </button>
+                  </td>
+                </>
+              ) : (
+                <td colSpan={4} className="armor-empty">
+                  nic tu nie chroni
+                </td>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
 
-      <h3>Pancerz</h3>
-      <ArmorTable data={data} saveData={saveData} />
+      <p className="cp-note">Kara dotyczy REF, ZW i RUCHU</p>
 
-      <h3>Rany krytyczne</h3>
-      <CriticalInjuries data={data} saveData={saveData} />
+      {rest.length > 0 && (
+        <>
+          <div className="cp-bar cp-bar--sub" title="Zdjęte i zapasowe sztuki — nie chronią">
+            Reszta pancerza ({rest.length})
+          </div>
+          <table className="cp-table armor-table armor-table--rest">
+            <tbody>
+              {rest.map((row) => (
+                <tr key={row.id} className={row.equipped === false ? 'armor-row--stowed' : ''}>
+                  <td className="armor-slot-cell">
+                    <select
+                      value={row.location}
+                      onChange={(e) =>
+                        update(row.id, { location: e.target.value as ArmorLocation })
+                      }
+                      aria-label="Lokacja pancerza"
+                    >
+                      {ARMOR_LOCATIONS.map((id) => (
+                        <option key={id} value={id}>
+                          {ARMOR_LOCATION_LABELS[id]}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="text"
+                      maxLength={64}
+                      value={row.name}
+                      onChange={(e) => update(row.id, { name: e.target.value })}
+                      aria-label="Nazwa pancerza"
+                    />
+                  </td>
+                  <td className="armor-sp-cell">
+                    <ArmorSp row={row} update={update} />
+                  </td>
+                  <td>
+                    <ArmorPenalty row={row} update={update} />
+                  </td>
+                  <td>
+                    <input
+                      type="text"
+                      maxLength={200}
+                      value={row.notes}
+                      onChange={(e) => update(row.id, { notes: e.target.value })}
+                      aria-label="Uwagi o pancerzu"
+                    />
+                  </td>
+                  <td className="armor-actions">
+                    {/* Sztuka noszona, która i tak stoi tutaj, jest słabsza od
+                        wydrukowanej — mówimy to wprost, zamiast zostawiać MG
+                        z pytaniem, czemu jej nie widać wyżej. */}
+                    {row.equipped === false ? (
+                      <button
+                        type="button"
+                        className="cp-mini-button"
+                        title="Załóż"
+                        onClick={() => update(row.id, { equipped: true })}
+                      >
+                        ⤒
+                      </button>
+                    ) : (
+                      <span className="armor-weaker" title="Noszona, ale słabsza od wpisanej wyżej">
+                        słabsza
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      className="cp-mini-button cp-mini-button--danger"
+                      title="Usuń pancerz"
+                      onClick={() => write(data.armor.filter((r) => r.id !== row.id))}
+                    >
+                      ✕
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+
+      <button type="button" className="cp-add" onClick={() => addAt('body')}>
+        + Pancerz
+      </button>
     </div>
   );
 }
 
 /**
- * Worn armor: SP as bought, SP after ablation and where it sits. The damage
- * flow reads exactly these three (stage 15) — the highest worn SP of the hit
- * location is what stops the shot.
+ * OB w idiomie tej karty: „bieżące z bazowego", tak jak PW i Człowieczeństwo
+ * wyżej. Ablacja z etapu 15 zbija lewą liczbę, ↻ przywraca ją do prawej.
  */
-function ArmorTable({ data, saveData }: TabProps) {
-  function update(rowId: string, patch: Partial<CpredArmorRow>) {
-    saveData(
-      { armor: data.armor.map((row) => (row.id === rowId ? { ...row, ...patch } : row)) },
-      'armor',
-    );
-  }
-
+function ArmorSp({
+  row,
+  update,
+}: {
+  row: CpredArmorRow;
+  update: (rowId: string, patch: Partial<CpredArmorRow>) => void;
+}) {
+  const ablated = row.spCurrent < row.sp;
   return (
-    <div className="row-table-wrap">
-      <table className="sheet-table">
-        <thead>
-          <tr>
-            <th>Nazwa</th>
-            <th style={{ width: '6.5rem' }}>Lokacja</th>
-            <th style={{ width: '4rem' }}>OB</th>
-            <th style={{ width: '4.5rem' }}>Bieżące</th>
-            <th style={{ width: '4.5rem' }}>Kara</th>
-            <th style={{ width: '4rem' }}>Noszony</th>
-            <th>Uwagi</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {data.armor.map((row) => (
-            <tr key={row.id} className={row.equipped === false ? 'armor-row--stowed' : undefined}>
-              <td>
-                <input
-                  type="text"
-                  maxLength={64}
-                  value={row.name}
-                  onChange={(e) => update(row.id, { name: e.target.value })}
-                />
-              </td>
-              <td>
-                <select
-                  value={row.location}
-                  onChange={(e) => update(row.id, { location: e.target.value as ArmorLocation })}
-                  aria-label="Lokacja pancerza"
-                >
-                  {ARMOR_LOCATIONS.map((id) => (
-                    <option key={id} value={id}>
-                      {ARMOR_LOCATION_LABELS[id]}
-                    </option>
-                  ))}
-                </select>
-              </td>
-              <td>
-                <input
-                  type="number"
-                  min={0}
-                  max={ARMOR_SP_MAX}
-                  value={row.sp}
-                  onChange={(e) => {
-                    const value = parseNumberInput(e);
-                    if (value === undefined) return;
-                    update(row.id, { sp: value, spCurrent: Math.min(row.spCurrent, value) });
-                  }}
-                  aria-label="OB pancerza"
-                />
-              </td>
-              <td className={row.spCurrent < row.sp ? 'armor-ablated' : undefined}>
-                <input
-                  type="number"
-                  min={0}
-                  max={row.sp}
-                  value={row.spCurrent}
-                  onChange={(e) => {
-                    const value = parseNumberInput(e);
-                    if (value !== undefined) update(row.id, { spCurrent: Math.min(value, row.sp) });
-                  }}
-                  aria-label="Bieżące OB (po ablacji)"
-                  title="Ablacja: każde przebicie obniża OB o 1. Naprawa przywraca pełną wartość."
-                />
-              </td>
-              {/* Stage 14c: heavy armor slows the wearer (REF/ZW/RUCH). The
-                  turn budget reads exactly this field, and only from worn
-                  pieces — the worst one counts, they do not add up (s. 185). */}
-              <td>
-                <input
-                  type="number"
-                  min={ARMOR_PENALTY_MIN}
-                  max={0}
-                  value={row.penalty ?? 0}
-                  onChange={(e) => {
-                    const value = parseNumberInput(e);
-                    if (value === undefined) return;
-                    const clamped = Math.min(0, Math.max(ARMOR_PENALTY_MIN, value));
-                    update(row.id, { penalty: clamped === 0 ? undefined : clamped });
-                  }}
-                  aria-label="Kara pancerza do REF/ZW/RUCH"
-                  title="Kara do REF, ZW i RUCH-u. Liczy się najgorsza z noszonych sztuk, kary się nie sumują."
-                />
-              </td>
-              <td className="armor-worn-cell">
-                <input
-                  type="checkbox"
-                  checked={row.equipped !== false}
-                  onChange={(e) => update(row.id, { equipped: e.target.checked })}
-                  aria-label="Noszony"
-                />
-              </td>
-              <td>
-                <input
-                  type="text"
-                  maxLength={200}
-                  value={row.notes}
-                  onChange={(e) => update(row.id, { notes: e.target.value })}
-                />
-              </td>
-              <td className="armor-actions">
-                <button
-                  type="button"
-                  className="small-button"
-                  disabled={row.spCurrent >= row.sp}
-                  title="Napraw pancerz do pełnego OB"
-                  onClick={() => update(row.id, { spCurrent: row.sp })}
-                >
-                  Napraw
-                </button>
-                <button
-                  type="button"
-                  className="small-button character-delete"
-                  onClick={() =>
-                    saveData({ armor: data.armor.filter((r) => r.id !== row.id) }, 'armor')
-                  }
-                  title="Usuń pancerz"
-                >
-                  ✕
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <button
-        type="button"
-        className="small-button"
-        onClick={() =>
-          saveData(
-            {
-              armor: [
-                ...data.armor,
-                {
-                  id: newRowId(),
-                  name: '',
-                  sp: 11,
-                  spCurrent: 11,
-                  location: 'body' as ArmorLocation,
-                  notes: '',
-                },
-              ],
-            },
-            'armor',
-          )
-        }
-      >
-        Dodaj pancerz
-      </button>
-    </div>
+    <span className={`armor-sp${ablated ? ' armor-ablated' : ''}`}>
+      <input
+        type="number"
+        min={0}
+        max={row.sp}
+        value={row.spCurrent}
+        onChange={(e) => {
+          const value = parseNumberInput(e);
+          if (value !== undefined) update(row.id, { spCurrent: Math.min(value, row.sp) });
+        }}
+        aria-label="Bieżące OB (po ablacji)"
+        title="Ablacja: każde przebicie obniża OB o 1. Naprawa przywraca pełną wartość."
+      />
+      <span className="cp-of">z</span>
+      <input
+        type="number"
+        min={0}
+        max={ARMOR_SP_MAX}
+        value={row.sp}
+        onChange={(e) => {
+          const value = parseNumberInput(e);
+          if (value === undefined) return;
+          update(row.id, { sp: value, spCurrent: Math.min(row.spCurrent, value) });
+        }}
+        aria-label="OB pancerza (nieuszkodzonego)"
+      />
+      {ablated && (
+        <button
+          type="button"
+          className="cp-mini-button"
+          title="Napraw pancerz do pełnego OB"
+          onClick={() => update(row.id, { spCurrent: row.sp })}
+        >
+          ↻
+        </button>
+      )}
+    </span>
+  );
+}
+
+/**
+ * Stage 14c: heavy armor slows the wearer (REF/ZW/RUCH). The turn budget reads
+ * exactly this field, and only from worn pieces — the worst one counts, they do
+ * not add up (s. 185).
+ */
+function ArmorPenalty({
+  row,
+  update,
+}: {
+  row: CpredArmorRow;
+  update: (rowId: string, patch: Partial<CpredArmorRow>) => void;
+}) {
+  return (
+    <input
+      type="number"
+      min={ARMOR_PENALTY_MIN}
+      max={0}
+      value={row.penalty ?? 0}
+      onChange={(e) => {
+        const value = parseNumberInput(e);
+        if (value === undefined) return;
+        const clamped = Math.min(0, Math.max(ARMOR_PENALTY_MIN, value));
+        update(row.id, { penalty: clamped === 0 ? undefined : clamped });
+      }}
+      aria-label="Kara pancerza do REF/ZW/RUCH"
+      title="Kara do REF, ZW i RUCH-u. Liczy się najgorsza z noszonych sztuk, kary się nie sumują."
+    />
   );
 }
 
@@ -1452,75 +1611,206 @@ function ArmorTable({ data, saveData }: TabProps) {
  * Critical Injuries the character is suffering. They are drawn by the damage
  * flow; here they can be read (the effect is the rules text) and removed —
  * „Łatanie" and „Leczenie" are played out at the table, not automated.
+ *
+ * Od etapu 27b stoją w kolumnie tożsamości strony pierwszej, bo tam drukuje je
+ * karta — obok Uzależnień i pod Przeżywalnością.
  */
 function CriticalInjuries({ data, saveData }: TabProps) {
-  if (data.criticalInjuries.length === 0) {
-    return <p className="placeholder-text">Brak ran krytycznych.</p>;
-  }
   return (
-    <ul className="injury-list">
-      {data.criticalInjuries.map((injury, index) => (
-        <li key={`${injury.id}-${index}`} className="injury-row">
-          <div className="injury-head">
-            <span className="injury-name">{injury.name}</span>
-            {injury.rolled ? <span className="injury-roll">2k6 = {injury.rolled}</span> : null}
-            {/*
+    <div className="cp-panel cp-injuries">
+      <div className="cp-bar">Krytyczne Urazy</div>
+      {data.criticalInjuries.length === 0 ? (
+        <div className="cp-field cp-injuries-empty">bez ran krytycznych</div>
+      ) : (
+        <ul className="injury-list">
+          {data.criticalInjuries.map((injury, index) => (
+            <li key={`${injury.id}-${index}`} className="cp-field injury-row">
+              <div className="injury-head">
+                <span className="injury-name">{injury.name}</span>
+                {injury.rolled ? <span className="injury-roll">2k6 = {injury.rolled}</span> : null}
+                {/*
               A wound that heals by itself (stage 16h). Worth a badge of its own
               rather than a line in the effect text: „czy to zejdzie samo" is the
               first thing a player asks about a blinded eye, and the answer
               differs depending on whether a fight is running.
             */}
-            {injury.timed ? (
-              <span className="injury-roll" title={injury.timed.source}>
-                {describeCpredTimer(injury.timed)}
-              </span>
-            ) : null}
-            {injury.deathSavePenalty ? (
-              <span className="injury-penalty">
-                +{injury.deathSavePenalty} do Testu Przeżywalności
-              </span>
-            ) : null}
-            <button
-              type="button"
-              className="small-button character-delete"
-              title="Usuń ranę (wyleczona albo załatana)"
-              onClick={() =>
-                saveData(
-                  { criticalInjuries: data.criticalInjuries.filter((_, i) => i !== index) },
-                  'criticalInjuries',
-                )
-              }
-            >
-              ✕
-            </button>
-          </div>
-          <p className="injury-effect">{injury.effect}</p>
-        </li>
-      ))}
-    </ul>
+                {injury.timed ? (
+                  <span className="injury-roll" title={injury.timed.source}>
+                    {describeCpredTimer(injury.timed)}
+                  </span>
+                ) : null}
+                {injury.deathSavePenalty ? (
+                  <span className="injury-penalty">
+                    +{injury.deathSavePenalty} do Testu Przeżywalności
+                  </span>
+                ) : null}
+                <button
+                  type="button"
+                  className="cp-mini-button cp-mini-button--danger"
+                  title="Usuń ranę (wyleczona albo załatana)"
+                  onClick={() =>
+                    saveData(
+                      { criticalInjuries: data.criticalInjuries.filter((_, i) => i !== index) },
+                      'criticalInjuries',
+                    )
+                  }
+                >
+                  ✕
+                </button>
+              </div>
+              <p className="injury-effect">{injury.effect}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 
+/**
+ * Zakładka „Ekwipunek" — prawa kolumna strony drugiej wydruku (etap 27b).
+ *
+ * Kolejność jak na karcie: Wyposażenie, pod nim czarne plakietki Amunicji
+ * i Gotówki, a niżej Styl / Zakwaterowanie / Wynajem / Poziom życia. Cyborgizacje
+ * zostają na dole do etapu 27c — tam dostaną własną stronę z sylwetką.
+ */
 function GearTab({ character, data, saveData }: TabProps & { character: CharacterSheetView }) {
   return (
     <div className="sheet-gear">
-      <WalletSection character={character} data={data} saveData={saveData} />
-
-      <h3>Sprzęt</h3>
+      {/* Bez osobnej belki tytułowej — na wydruku tytułem tego bloku jest sam
+          nagłówek kolumny „Wyposażenie", a dwa te same słowa nad sobą to szum. */}
       <RowTable
         rows={data.gear}
         columns={[
-          { key: 'name', label: 'Nazwa' },
+          { key: 'name', label: 'Wyposażenie' },
           { key: 'qty', label: 'Ilość', numeric: true, width: '4rem' },
           { key: 'notes', label: 'Uwagi', maxLength: 200 },
         ]}
-        addLabel="Dodaj sprzęt"
+        addLabel="+ Wyposażenie"
         makeRow={() => ({ id: newRowId(), name: '', qty: 1, notes: '' })}
         onChange={(rows) => saveData({ gear: rows }, 'gear')}
       />
 
+      <div className="cp-panel cp-plaques">
+        <div
+          className="cp-field cp-plaque"
+          title="Zapas noszony poza magazynkami. Magazynki liczą się osobno, przy każdej broni."
+        >
+          <span className="cp-label">Amunicja</span>
+          <input
+            type="text"
+            maxLength={SHEET_LINE_MAX_LENGTH}
+            value={data.ammoStock}
+            placeholder="np. 9 mm × 60, śrut × 12"
+            onChange={(e) => saveData({ ammoStock: e.target.value }, 'ammoStock')}
+            aria-label="Amunicja (zapas)"
+          />
+        </div>
+        <WalletSection character={character} data={data} saveData={saveData} />
+      </div>
+
+      <LifestyleFields data={data} saveData={saveData} />
+
       <CyberwareSection characterId={character.id} data={data} saveData={saveData} />
     </div>
+  );
+}
+
+/**
+ * Styl, Zakwaterowanie, Wynajem i Poziom życia — cztery pola z dołu strony
+ * drugiej (etap 27b), spięte z ekonomią z 23b.
+ *
+ * „Wynajem" jest **tylko do odczytu**: czynsz wynika z wybranego Zakwaterowania
+ * (s. 376), a wpisywalna kopia byłaby drugą, kłócącą się liczbą — tak samo jak
+ * saldo, którego karta też nie pozwala pisać.
+ */
+function LifestyleFields({ data, saveData }: TabProps) {
+  const lifestyle = data.lifestyle;
+  const monthly = lifestyle ? monthlyCostOf(lifestyle) : null;
+
+  return (
+    <>
+      <div className="cp-panel cp-lifestyle">
+        <div className="cp-field cp-field--notch cp-row cp-span2">
+          <span className="cp-label">Styl</span>
+          <input
+            type="text"
+            maxLength={SHEET_LINE_MAX_LENGTH}
+            value={data.style}
+            placeholder="Jak się nosi — skóra, garnitur, chrom na wierzchu…"
+            onChange={(e) => saveData({ style: e.target.value }, 'style')}
+            aria-label="Styl"
+          />
+        </div>
+        <div className="cp-field cp-row">
+          <span className="cp-label">Zakwaterowanie</span>
+          <select
+            value={lifestyle?.housing ?? 'street'}
+            disabled={!lifestyle}
+            aria-label="Zakwaterowanie"
+            title={
+              lifestyle
+                ? 'Gdzie postać sypia — czynsz schodzi z konta pierwszego dnia miesiąca.'
+                : 'Najpierw wybierz Poziom życia — bez niego ta postać nie jest rozliczana.'
+            }
+            onChange={(e) => {
+              const housing = e.target.value;
+              if (!lifestyle || !isHousingOption(housing)) return;
+              saveData({ lifestyle: { ...lifestyle, housing } }, 'lifestyle');
+            }}
+          >
+            {HOUSING_OPTIONS.map((option) => (
+              <option key={option} value={option} title={HOUSING_DEFINITIONS[option].note}>
+                {HOUSING_DEFINITIONS[option].label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="cp-field cp-row" title="Czynsz wynika z Zakwaterowania (s. 376)">
+          <span className="cp-label">Wynajem</span>
+          <span className="cp-readout">
+            {monthly ? `${formatEddies(monthly.rent)} ed / mies.` : '—'}
+          </span>
+        </div>
+        <div className="cp-field cp-row cp-span2">
+          <span className="cp-label">Poziom życia</span>
+          <select
+            value={lifestyle?.level ?? ''}
+            aria-label="Poziom życia"
+            onChange={(e) => {
+              const level = e.target.value;
+              if (!isLifestyleLevel(level)) {
+                saveData({ lifestyle: null }, 'lifestyle');
+                return;
+              }
+              saveData(
+                { lifestyle: { level, housing: lifestyle?.housing ?? 'street' } },
+                'lifestyle',
+              );
+            }}
+          >
+            <option value="">— nie rozliczam —</option>
+            {LIFESTYLE_LEVELS.map((level) => (
+              <option key={level} value={level} title={LIFESTYLE_DEFINITIONS[level].note}>
+                {LIFESTYLE_DEFINITIONS[level].label} —{' '}
+                {formatEddies(LIFESTYLE_DEFINITIONS[level].monthly)} ed
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      {monthly ? (
+        <p className="sheet-hint">
+          Pierwszego dnia miesiąca: {formatEddies(monthly.total)} ed (jedzenie{' '}
+          {formatEddies(monthly.lifestyle)} + czynsz {formatEddies(monthly.rent)}). Pobiera je MG
+          przyciskiem „Rozlicz miesiąc”.
+        </p>
+      ) : (
+        <p className="sheet-hint">
+          Bez Poziomu życia ta postać nie jest rozliczana co miesiąc (tak zostają NPC-e i statyści).
+        </p>
+      )}
+    </>
   );
 }
 
@@ -1530,8 +1820,12 @@ function GearTab({ character, data, saveData }: TabProps & { character: Characte
  * The balance stopped being a field and became a **read-out**: every eddie that
  * moves does so through a server event, so a player looks at their money and
  * the GM corrects it — and even the correction lands in the audit under
- * „korekta MG". What the sheet still owns is the Lifestyle picker, because that
- * is a choice, not a transaction.
+ * „korekta MG".
+ *
+ * Od etapu 27b saldo jest czarną plakietką „Gotówka" z wydruku, a wybór Poziomu
+ * życia i Zakwaterowania przeniósł się wyżej, do pól karty (`LifestyleFields`) —
+ * to wybór, nie operacja na koncie. Za przyciskiem „Kasa…" zostaje to, co jest
+ * operacją: przelew i historia.
  */
 function WalletSection({
   character,
@@ -1594,11 +1888,9 @@ function WalletSection({
     setNote(`Przelano ${formatEddies(value)} ed do: ${name}.`);
   }
 
-  const lifestyle = data.lifestyle;
-  const monthly = lifestyle ? monthlyCostOf(lifestyle) : null;
-
   return (
-    <section className="sheet-wallet">
+    <section className="sheet-wallet cp-field cp-plaque">
+      <span className="cp-label">Gotówka</span>
       <div className="wallet-head">
         <span className="wallet-balance" title="Eurodolce (ed) — zmienia je wyłącznie serwer">
           {formatEddies(balance)} ed
@@ -1620,7 +1912,7 @@ function WalletSection({
         ) : null}
         <button
           type="button"
-          className="small-button"
+          className="cp-add"
           onClick={() => setOpen((current) => !current)}
           title="Historia operacji i przelew"
         >
@@ -1631,7 +1923,11 @@ function WalletSection({
       {open ? (
         <div className="wallet-body">
           <div className="wallet-transfer">
-            <select value={payeeId} onChange={(e) => setPayeeId(e.target.value)}>
+            <select
+              value={payeeId}
+              aria-label="Przelew do"
+              onChange={(e) => setPayeeId(e.target.value)}
+            >
               <option value="">— przelew do… —</option>
               {payees.map((payee) => (
                 <option key={payee.id} value={payee.id}>
@@ -1643,6 +1939,7 @@ function WalletSection({
               type="number"
               min={1}
               placeholder="ed"
+              aria-label="Kwota przelewu"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
             />
@@ -1650,72 +1947,14 @@ function WalletSection({
               type="text"
               maxLength={120}
               placeholder="za co (opcjonalnie)"
+              aria-label="Tytuł przelewu"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
             />
-            <button type="button" className="small-button" onClick={() => void send()}>
+            <button type="button" className="cp-add" onClick={() => void send()}>
               Przelej
             </button>
           </div>
-
-          <label className="wallet-lifestyle">
-            Poziom życia
-            <select
-              value={lifestyle?.level ?? ''}
-              onChange={(e) => {
-                const level = e.target.value;
-                if (!isLifestyleLevel(level)) {
-                  saveData({ lifestyle: null }, 'lifestyle');
-                  return;
-                }
-                saveData(
-                  { lifestyle: { level, housing: lifestyle?.housing ?? 'street' } },
-                  'lifestyle',
-                );
-              }}
-            >
-              <option value="">— nie rozliczam —</option>
-              {LIFESTYLE_LEVELS.map((level) => (
-                <option key={level} value={level} title={LIFESTYLE_DEFINITIONS[level].note}>
-                  {LIFESTYLE_DEFINITIONS[level].label} —{' '}
-                  {formatEddies(LIFESTYLE_DEFINITIONS[level].monthly)} ed
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="wallet-lifestyle">
-            Zakwaterowanie
-            <select
-              value={lifestyle?.housing ?? 'street'}
-              disabled={!lifestyle}
-              onChange={(e) => {
-                const housing = e.target.value;
-                if (!lifestyle || !isHousingOption(housing)) return;
-                saveData({ lifestyle: { ...lifestyle, housing } }, 'lifestyle');
-              }}
-            >
-              {HOUSING_OPTIONS.map((option) => (
-                <option key={option} value={option} title={HOUSING_DEFINITIONS[option].note}>
-                  {HOUSING_DEFINITIONS[option].label}
-                  {HOUSING_DEFINITIONS[option].rent > 0
-                    ? ` — ${formatEddies(HOUSING_DEFINITIONS[option].rent)} ed`
-                    : ' — bez czynszu'}
-                </option>
-              ))}
-            </select>
-          </label>
-          {monthly ? (
-            <p className="sheet-hint">
-              Pierwszego dnia miesiąca: {formatEddies(monthly.total)} ed (jedzenie{' '}
-              {formatEddies(monthly.lifestyle)} + czynsz {formatEddies(monthly.rent)}). Pobiera je
-              MG przyciskiem „Rozlicz miesiąc”.
-            </p>
-          ) : (
-            <p className="sheet-hint">
-              Bez Poziomu życia ta postać nie jest rozliczana co miesiąc (tak zostają NPC-e i
-              statyści).
-            </p>
-          )}
 
           <h4>Historia operacji</h4>
           {entries.length === 0 ? (

@@ -1997,20 +1997,6 @@ input[type='color'] {
   min-width: 0;
 }
 
-.wallet-lifestyle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  font-size: 0.78rem;
-  color: var(--text-dim);
-}
-
-.wallet-lifestyle select {
-  flex: 1 1 60%;
-  min-width: 0;
-}
-
 .wallet-ledger {
   list-style: none;
   margin: 0;
@@ -3694,77 +3680,8 @@ body.is-resizing {
   color: var(--text-dim);
 }
 
-/* Pancerz na karcie postaci */
-.armor-row--stowed input,
-.armor-row--stowed select {
-  opacity: 0.6;
-}
-
-.armor-ablated input {
-  color: #f59e0b;
-  font-weight: 600;
-}
-
-.armor-worn-cell {
-  text-align: center;
-}
-
-.armor-actions {
-  display: flex;
-  gap: 0.25rem;
-  white-space: nowrap;
-}
-
-.row-action-cell {
-  text-align: center;
-}
-
-/* Rany krytyczne na karcie postaci */
-.injury-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.injury-row {
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--err);
-  border-radius: 6px;
-  padding: 0.3rem 0.45rem;
-}
-
-.injury-head {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.injury-name {
-  font-weight: 600;
-}
-
-.injury-roll,
-.injury-penalty {
-  font-size: 0.72rem;
-  color: var(--text-dim);
-}
-
-.injury-penalty {
-  color: #f59e0b;
-}
-
-.injury-head .character-delete {
-  margin-left: auto;
-}
-
-.injury-effect {
-  margin: 0.2rem 0 0;
-  font-size: 0.78rem;
-  color: var(--text-dim);
-}
+/* Pancerz i rany krytyczne rysują się wyłącznie w skórze arkusza (etap 27b) —
+   ich reguły stoją w `sheet.css`, przy pozostałych blokach karty. */
 
 .death-save-button {
   margin-left: 0.5rem;

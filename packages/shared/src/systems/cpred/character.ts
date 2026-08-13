@@ -46,6 +46,13 @@ export const ROLE_RANK_MIN = 1;
 export const ROLE_RANK_MAX = 10;
 export const EDDIES_MAX = 10_000_000;
 export const NOTES_MAX_LENGTH = 10_000;
+/**
+ * Three short prose fields the official sheet prints and the model did not know
+ * until stage 27b: „Uzależnienia" beside the Critical Injuries, „Styl" and
+ * „Amunicja" in the equipment column. All three are lines on paper, not
+ * mechanics — nothing reads them but the sheet — so one modest cap serves them.
+ */
+export const SHEET_LINE_MAX_LENGTH = 400;
 export const ITEM_ROWS_MAX = 40;
 export const ITEM_NAME_MAX_LENGTH = 64;
 export const ITEM_NOTES_MAX_LENGTH = 200;
@@ -433,6 +440,30 @@ export interface CpredCharacterData {
    */
   reputationSources: CpredReputationSource[];
   notes: string;
+  /**
+   * Addictions the character carries (stage 27b) — the sheet prints them right
+   * under the Critical Injuries, and for the same reason: both are things done
+   * to the body that the table has to keep in view.
+   *
+   * Prose, not a row list. „Uzależnienie od dorpha, dwa razy dziennie" has no
+   * machine meaning in CP RED — no roll reads it — and a table of empty columns
+   * would be a worse home for it than one line.
+   */
+  addictions: string;
+  /**
+   * How the character dresses and carries themselves („Styl" on page two).
+   * Fiction the Konfrontacja and Wygląd lean on at the table, never a modifier.
+   */
+  style: string;
+  /**
+   * Spare ammunition carried outside the magazines („Amunicja" on page two),
+   * e.g. „9 mm × 60, śrut × 12".
+   *
+   * Deliberately free text and deliberately *not* wired to `ammoCurrent`: the
+   * rules track rounds in the gun (s. 344) and leave the backpack to the table,
+   * so a counter here would be a second, disagreeing truth about reloading.
+   */
+  ammoStock: string;
 }
 
 export function createDefaultCharacterData(): CpredCharacterData {
@@ -457,6 +488,9 @@ export function createDefaultCharacterData(): CpredCharacterData {
     lifestyle: null,
     reputationSources: [],
     notes: '',
+    addictions: '',
+    style: '',
+    ammoStock: '',
   };
 }
 
@@ -1013,6 +1047,33 @@ function collectCharacterDataPatch(
   if ('notes' in input) {
     const notes = validateText(input.notes, 'notes', 'Notatki', NOTES_MAX_LENGTH, issues);
     if (notes !== undefined) patch.notes = notes;
+  }
+  // Stage 27b — the three prose lines the printed sheet has and the model did
+  // not. Missing from an older row simply means „empty", which is what
+  // `createDefaultCharacterData` already says.
+  if ('addictions' in input) {
+    const value = validateText(
+      input.addictions,
+      'addictions',
+      'Uzależnienia',
+      SHEET_LINE_MAX_LENGTH,
+      issues,
+    );
+    if (value !== undefined) patch.addictions = value;
+  }
+  if ('style' in input) {
+    const value = validateText(input.style, 'style', 'Styl', SHEET_LINE_MAX_LENGTH, issues);
+    if (value !== undefined) patch.style = value;
+  }
+  if ('ammoStock' in input) {
+    const value = validateText(
+      input.ammoStock,
+      'ammoStock',
+      'Amunicja',
+      SHEET_LINE_MAX_LENGTH,
+      issues,
+    );
+    if (value !== undefined) patch.ammoStock = value;
   }
 
   return { patch, issues };

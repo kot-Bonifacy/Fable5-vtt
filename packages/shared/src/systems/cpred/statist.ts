@@ -228,6 +228,11 @@ export function combatProfileSheet(
     // sentence describes — he faces down at bare CHA 5.
     reputationSources: [],
     notes: '',
+    // Trzy linijki prozy z wydruku (27b). Statysta nie ma ich czym wypełnić —
+    // ta karta powstaje na jedną walkę i po niej znika.
+    addictions: '',
+    style: '',
+    ammoStock: '',
   };
 }
 

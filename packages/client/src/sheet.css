@@ -173,8 +173,14 @@
   border-bottom-color: var(--cp-red);
 }
 
+/* Kontener zapytań `@container` dla całego arkusza.
+   Musi nim być **rodzic** składanych bloków, a nie one same: `@container`
+   stylizuje potomków kontenera, nigdy jego samego — przez to reguła 700 px
+   wpisana w 27a na `.sheet-page` (która sama była kontenerem) nigdy nie
+   działała i przy wąskim oknie strona zostawała trójkolumnowa. */
 .sheet-window .sheet-body {
   background: var(--cp-back);
+  container-type: inline-size;
 }
 
 .sheet-window .sheet-issues {
@@ -298,6 +304,15 @@
   background: var(--cp-focus);
 }
 
+/* Pole wyłączone (np. Zakwaterowanie bez Poziomu życia) musi to widać —
+   bez tego wygląda jak zwykłe pole, w które klik nic nie robi. */
+.cp-field input:disabled,
+.cp-field select:disabled,
+.cp-field textarea:disabled {
+  color: var(--cp-ink-dim);
+  cursor: default;
+}
+
 .cp-field input[type='number'] {
   -moz-appearance: textfield;
   appearance: textfield;
@@ -313,7 +328,6 @@
 /* ===== Strona pierwsza ===== */
 
 .sheet-page {
-  container-type: inline-size;
   display: grid;
   grid-template-columns: 15rem 4.6rem minmax(0, 1fr);
   gap: 0.4rem;
@@ -351,6 +365,12 @@
 
   .cp-stat {
     flex: 1 1 4.2rem;
+  }
+
+  /* Pola z dołu strony drugiej też schodzą do jednej kolumny — w dwóch
+     „Zakwaterowanie" zostaje samą etykietą bez miejsca na wybór. */
+  .cp-lifestyle {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -682,6 +702,423 @@
 
 .cp-skill-base:hover {
   color: var(--cp-red);
+}
+
+/* ===== Pas „Broń i pancerz" i tabele arkusza (etap 27b) ===== */
+
+/* Dolny pas strony pierwszej idzie przez całą szerokość siatki — tak jak na
+   wydruku, gdzie leży pod trzema kolumnami. */
+.cp-arsenal {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+/* Tytuł bloku („Broń i pancerz", „Wyposażenie") — czerwona belka wydruku. */
+.sheet-window .cp-section {
+  margin: 0.2rem 0 0;
+  background: var(--cp-red);
+  color: #fff;
+  font-family: var(--font-cp-cond);
+  font-weight: 700;
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.6rem;
+  clip-path: polygon(var(--cp-notch) 0, 100% 0, 100% 100%, 0 100%, 0 var(--cp-notch));
+}
+
+.cp-strip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4rem;
+  min-width: 0;
+  width: 100%;
+}
+
+/* Czerwony przypis pod blokiem ciągnie się przez całą jego szerokość — inaczej
+   wyglądałby jak przycisk, a nie jak nadruk. */
+.cp-strip > .cp-note {
+  align-self: stretch;
+}
+
+/* Tabela w idiomie arkusza: czerwone tło prześwitujące między komórkami robi
+   rowek, więc żadna komórka nie potrzebuje obramowania. `border-spacing` jest
+   tu tym, czym `gap` w `.cp-panel`. */
+.cp-table {
+  width: 100%;
+  background: var(--cp-red);
+  border-collapse: separate;
+  border-spacing: var(--cp-gutter);
+  table-layout: auto;
+}
+
+.cp-table th {
+  background: var(--cp-bar);
+  color: var(--cp-bar-ink);
+  font-family: var(--font-cp-cond);
+  font-weight: 500;
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: left;
+  padding: 0.16rem 0.4rem;
+  border: none;
+}
+
+.cp-table td {
+  background: var(--cp-paper);
+  color: var(--cp-ink);
+  border: none;
+  padding: 0.1rem 0.3rem;
+  vertical-align: middle;
+  font-size: 0.82rem;
+}
+
+.cp-table input,
+.cp-table select {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  color: var(--cp-ink);
+  font-family: inherit;
+  font-size: 0.82rem;
+  width: 100%;
+  min-width: 0;
+  padding: 0.08rem 0.1rem;
+}
+
+.cp-table input:focus,
+.cp-table select:focus {
+  outline: none;
+  background: var(--cp-focus);
+}
+
+.cp-table input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+  text-align: center;
+  width: 2.4rem;
+}
+
+.cp-table input[type='number']::-webkit-outer-spin-button,
+.cp-table input[type='number']::-webkit-inner-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+/* Przycisk „+ Broń" / „+ Pancerz" / „Kasa…" — czarna plakietka z wydruku. */
+.sheet-window .cp-add {
+  background: var(--cp-bar);
+  color: var(--cp-bar-ink);
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+  font-family: var(--font-cp-cond);
+  font-weight: 500;
+  font-size: 0.7rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.6rem;
+}
+
+.sheet-window .cp-add:hover {
+  background: var(--cp-red);
+}
+
+.cp-mini-button--danger:hover:not(:disabled) {
+  color: var(--cp-red);
+}
+
+/* --- pas broni --- */
+
+.weapon-table .weapon-actions {
+  display: flex;
+  gap: var(--cp-gutter);
+  flex-wrap: wrap;
+}
+
+/* Przyciski ataku zostają tym, czym były — zmienia się tylko skóra. */
+.cp-table .small-button {
+  background: var(--cp-bar);
+  color: var(--cp-bar-ink);
+  border: none;
+  border-radius: 0;
+  font-family: var(--font-cp-cond);
+  font-weight: 500;
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.15rem 0.4rem;
+  cursor: pointer;
+}
+
+.cp-table .small-button:hover:not(:disabled) {
+  background: var(--cp-red);
+}
+
+.cp-table .small-button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.cp-table .weapon-ammo-cell {
+  white-space: nowrap;
+}
+
+.cp-table .weapon-ammo-input {
+  width: 2.2rem;
+  text-align: right;
+}
+
+.cp-table .weapon-ammo-input--empty {
+  color: var(--cp-red);
+  font-weight: 700;
+}
+
+.cp-table .weapon-ammo-max,
+.cp-table .weapon-ammo-none {
+  color: var(--cp-ink-dim);
+}
+
+.cp-table .weapon-ammo-type {
+  margin-top: 0.15rem;
+  font-size: 0.68rem;
+}
+
+/* --- pancerz: trzy wiersze wydruku --- */
+
+.armor-slot-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* Nazwa lokacji stoi w wierszu jak na karcie — kapitalikami, przed polem. */
+.cp-slot {
+  flex: none;
+  min-width: 3.4rem;
+  font-variant-caps: all-small-caps;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  font-size: 0.8rem;
+  line-height: 1.1;
+}
+
+.armor-sp {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.armor-sp input {
+  width: 1.7rem;
+  text-align: center;
+}
+
+.armor-sp.armor-ablated input:first-child {
+  color: var(--cp-red);
+  font-weight: 700;
+}
+
+.armor-empty {
+  color: var(--cp-ink-dim);
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.06em;
+}
+
+.armor-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  justify-content: center;
+}
+
+.armor-weaker {
+  color: var(--cp-ink-dim);
+  font-size: 0.68rem;
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.05em;
+}
+
+.armor-table--rest .armor-slot-cell select {
+  width: 5.5rem;
+  flex: none;
+}
+
+/* Sztuka zdjęta jest przygaszona tuszem, nie przezroczystością: `opacity`
+   przepuszczało czerwień panelu i zdjęty pancerz świecił mocniej niż noszony. */
+.armor-row--stowed td,
+.armor-row--stowed input,
+.armor-row--stowed select {
+  color: var(--cp-ink-dim);
+}
+
+/* Belka pomocnicza („Reszta pancerza") — cieńsza od kategorii umiejętności. */
+.cp-bar--sub {
+  align-self: stretch;
+  font-size: 0.66rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  min-height: 1.1rem;
+}
+
+/* --- rany krytyczne i uzależnienia w kolumnie tożsamości --- */
+
+.cp-injuries .injury-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--cp-gutter);
+}
+
+.cp-injuries .injury-row {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.1rem;
+  padding: 0.15rem 0.35rem 0.25rem;
+}
+
+.cp-injuries .injury-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.cp-injuries .injury-name {
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: var(--cp-ink);
+}
+
+.cp-injuries .injury-roll,
+.cp-injuries .injury-penalty {
+  font-size: 0.68rem;
+  color: var(--cp-ink-dim);
+}
+
+.cp-injuries .injury-penalty {
+  color: var(--cp-red);
+}
+
+.cp-injuries .injury-head .cp-mini-button {
+  margin-left: auto;
+}
+
+.cp-injuries .injury-effect {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.3;
+  color: var(--cp-ink-dim);
+}
+
+.cp-injuries-empty {
+  color: var(--cp-ink-dim);
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.06em;
+  font-size: 0.82rem;
+}
+
+.cp-addictions textarea {
+  min-height: 2.4rem;
+}
+
+/* --- ekwipunek: plakietki i pola z dołu strony drugiej --- */
+
+.cp-plaques {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--cp-gutter);
+  align-items: stretch;
+}
+
+.cp-plaque {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.1rem;
+  padding: 0.15rem 0.4rem 0.3rem;
+}
+
+.cp-plaque > .cp-label {
+  align-self: flex-start;
+}
+
+.cp-plaque input {
+  width: 100%;
+}
+
+.cp-lifestyle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--cp-gutter);
+}
+
+.cp-lifestyle > .cp-span2 {
+  grid-column: 1 / -1;
+}
+
+.cp-readout {
+  flex: 1;
+  text-align: right;
+  font-family: var(--font-cp-cond);
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--cp-ink);
+}
+
+/* Saldo z etapu 23b jako plakietka „Gotówka" — bez własnej ramki, bo ramką
+   jest pole papieru pod nim. */
+.sheet-window .sheet-wallet {
+  border: none;
+  border-radius: 0;
+  margin-bottom: 0;
+}
+
+.sheet-window .wallet-balance {
+  font-family: var(--font-cp-cond);
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--cp-ink);
+}
+
+.sheet-window .wallet-adjust {
+  color: var(--cp-ink-dim);
+}
+
+.sheet-window .wallet-adjust input {
+  width: 5.5rem;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  color: var(--cp-ink);
+}
+
+.sheet-window .wallet-adjust input:focus {
+  outline: none;
+  background: var(--cp-focus);
+}
+
+.sheet-window .wallet-body {
+  border-top: 1px solid var(--cp-red);
+}
+
+.sheet-window .wallet-transfer select,
+.sheet-window .wallet-transfer input {
+  background: var(--cp-back);
+  border: 1px solid var(--cp-red);
+  border-radius: 0;
+  color: var(--cp-ink);
+  padding: 0.15rem 0.3rem;
+}
+
+.sheet-window .wallet-ledger li {
+  border-bottom: 1px solid var(--cp-red);
 }
 
 /* ===== Drobiazgi spoza wydruku (nasze, mechaniczne) ===== */
