@@ -69,6 +69,14 @@ bo kreator wypełnia dokładnie te pola, które 27c rysuje), **27c** (Ścieżka 
 cyborgizacji — domyka kartę), **26** (netrunning, możliwy podział na dwie sesje). Potem
 zostają **27** (kości 3D, motyw dla reszty UI, wydajność) i **28** (VPS).
 
+**13.08 — sesja porządkowa: pięć zaległości zdjętych z listy** (bez etapu). Odklikane po obu
+stronach stołu na postaci testowej **„Test 27x"** (właściciel avatar9; **zostawiona w kampanii
+jako gotowa atrapa** — ma dwie sztuki pancerza na Korpusie, tarczę, wiersz wyposażenia i portret,
+więc te same ścieżki da się obejrzeć ponownie bez budowania ich od nowa). Zdjęte: **27a strona
+gracza**, **27b strona gracza**, **27b trzy ścieżki**, **27a cztery drobiazgi** i **`tsc` na
+`screamsheets.test.ts`**. Szczegóły w notatce sesji niżej. **Przy okazji znaleziony i naprawiony
+błąd, przez który nie dało się wpisać wielowyrazowej nazwy w żaden wiersz karty** — patrz notatka.
+
 **Zaległość porządkowa:** `POSTEP.md` ma 660+ wierszy i sekcja „Od czego zacząć" zbiera dziś
 wszystkie raporty „odklikane" z ostatnich kilkunastu etapów. Zgodnie z regułą 5 z `CLAUDE.md`
 ten plik ma zostać lekki — warto poświęcić kwadrans na przeniesienie starszych raportów do
@@ -112,14 +120,6 @@ ten plik ma zostać lekki — warto poświęcić kwadrans na przeniesienie stars
 
 ### Otwarte zaległości (przechodzą między etapami)
 
-- **Etap 27b — strona gracza nieodklikana.** Cała sesja poszła z konta MG. Do sprawdzenia
-  u gracza (`[::1]:5173`, konto avatar9): czy pas „Broń i pancerz" na własnej karcie w ogóle
-  się rysuje, czy „+ Broń" / „+ Pancerz" / kosz robią to, co powinny (serwer przyjmuje łatkę
-  broni i pancerza od właściciela karty, więc **powinny działać** — inaczej niż Reputacja
-  i saldo), czy „Atak" z wiersza broni uzbraja mapę tak samo jak u MG i czy plakietka „Gotówka"
-  jest u gracza samym napisem (pole „korekta" ma być tylko u MG — potwierdzone 11.08 w starym
-  układzie, ale plakietka jest nowa).
-
 - **Etap 27b — rana krytyczna w nowym panelu nieobejrzana.** „Krytyczne Urazy" w kolumnie
   tożsamości widziane wyłącznie w stanie pustym („bez ran krytycznych"), bo — jak przy 14e —
   **MG nie ma czym nadać rany ręcznie**; wchodzi tylko z rzutu obrażeń z dwiema szóstkami (1/36)
@@ -127,40 +127,11 @@ ten plik ma zostać lekki — warto poświęcić kwadrans na przeniesienie stars
   „+N do Testu Przeżywalności", efekt, kosz) jest przeniesiony bez zmian logiki — zmieniły się
   klasy. Wpis o przycisku MG „nadaj ranę krytyczną" jest w `POMYSLY.md` od 14e.
 
-- **Etap 27b — trzy ścieżki nieodklikane.** (1) **Dwie noszone sztuki w jednej lokacji** —
-  słabsza ma zejść do „Reszty pancerza" z napisem „słabsza" zamiast przycisku „Załóż";
-  oglądany był tylko wariant ze sztuką **zdjętą**. (2) **Wiersz „Tarcza"** — na Poligonie nikt
-  nie ma tarczy, więc trzeci wiersz widziany był wyłącznie pusty. (3) **Ekwipunek z wierszami** —
-  tabela „Wyposażenie" u Rica jest pusta, więc „+ Wyposażenie", edycja ilości i kosz w nowej
-  skórze nie były klikane (to ten sam `RowTable`, co przed etapem, z podmienionymi klasami).
-
-- **Etap 27a — strona gracza nieodklikana.** Cała sesja poszła z konta MG. Do sprawdzenia
-  u gracza: czy karta własnej postaci otwiera się w nowym układzie, czy pola, których gracz
-  nie może pisać, zachowują się jak dotąd (serwer i tak odmówi łatki) i czy przełącznik
-  dzień/noc działa na drugim hoście (`[::1]:5173`).
-
 - **Etap 27a — motyw dzienny kończy się na oknie karty.** To świadome i zapisane w zakresie:
   `data-theme='day'` przemalowuje `.sheet-window` (od 27b także pas broni i pancerza oraz stronę
   drugą; sekcja Cyborgizacji dalej jedzie na przesłoniętych `--bg`, `--text`, `--border`
   **wewnątrz** okna i dostanie własną skórę w 27c), ale mapa, panele boczne, czat i **okno kubka
   z rzutem** zostają ciemne. Reszta UI dochodzi w etapie 27.
-
-- **`packages/server/src/screamsheets.test.ts` nie przechodzi `tsc --noEmit`** (9 błędów
-  `Property 'data' does not exist on type 'SocketAck<…>'` — `ack.data` bez zawężenia po `ack.ok`).
-  Zastane, z etapu 24c; **testy przechodzą**, bo vitest transpiluje bez sprawdzania typów, a
-  `pnpm build` na serwerze idzie przez `tsup`, który testów nie obejmuje. Do sprzątnięcia przy
-  okazji — poprawka to dodanie `if (!ack.ok) throw …` albo `ack.ok && ack.data` w dziewięciu
-  miejscach jednego pliku.
-
-- **Etap 27a — cztery drobiazgi do obejrzenia przy stole.** (1) **Wgrywanie portretu** —
-  nakładka „Wgraj portret" pokazuje się po najechaniu na ramkę; kod jest przeniesiony
-  z „Biografii" bez zmian, ale kliknięty nie był. (2) **Pole „z" przy EMP** — pokazuje się
-  dopiero, gdy Człowieczeństwo zbije EMP poniżej bazy; Tony ma 50/50, więc było schowane.
-  (3) **Czerwone paski stanu** (Poważnie ranny, Test Przeżywalności, cyberpsychoza) — nowe
-  klasy `.cp-alert`, widziane tylko w kodzie. ~~(4) **Skrajne zwężenie** (< 700 px)~~ —
-  **domknięte w 27b, i po drodze naprawiony błąd**: reguła nigdy nie działała, bo kontenerem
-  zapytania była ta sama `.sheet-page`, którą miała złożyć. Teraz 680 px i 520 px dają jedną
-  kolumnę, bez poziomego paska.
 
 - **Etap 24c — cztery ścieżki nieodklikane.** (1) **Zdjęcie prasowe** — screamsheet przyjmuje
   grafikę handoutu i rysuje ją jako odbitkę gazetową (`grayscale`), ale przy oględzinach nic
@@ -428,6 +399,63 @@ decyduje przegrany, nie zwycięzca`) — Konfrontacje z 10.08 szły z konta MG, 
 
 ## Notatki z dwóch ostatnich sesji
 
+### Sesja 13.08 — porządki: pięć zaległości zdjętych z listy (bez etapu)
+
+**Cel: nie nowa funkcja, tylko skrócenie listy „Otwarte zaległości".** Zdjęte pięć pozycji:
+**27a strona gracza**, **27b strona gracza**, **27b trzy ścieżki**, **27a cztery drobiazgi**
+i **`tsc` na `screamsheets.test.ts`**.
+
+**Znaleziony i naprawiony błąd, którego nie widziała żadna wcześniejsza sesja: w żaden wiersz
+karty nie dało się wpisać wielowyrazowej nazwy.** Objaw wyglądał na usterkę automatyzacji —
+„Tarcza balistyczna" lądowało w polu jako „Tarczabalistyczna". Przyczyna była w kodzie:
+`validateRow` w `shared/systems/cpred/character.ts` robiło `name.trim()`, a karta zapisuje się
+**po każdym znaku**, więc spacja na końcu znikała, zanim zdążyła wejść następna litera. Spacja
+w środku wyrazu przeżywała — i to właśnie ona rozstrzygnęła diagnozę (`AB|CD` + spacja = `AB CD`,
+`ABCD` + spacja = `ABCD`). Dotyczyło **wszystkich** wierszy karty (broń, pancerz, wyposażenie),
+bo wszystkie idą przez `CpredItemRow`; nie było widać wcześniej, bo nazwy z kompendium wpisuje
+kod, nie palce. `trim()` zdjęty — `name` zachowuje się teraz tak jak `notes` i cała reszta prozy,
+która idzie przez `validateText` bez przycinania. Test regresyjny w `character.test.ts`. Zmiana
+jest bezpieczna, bo wiersze dopasowuje się po `id` i `compendiumId`, nigdy po nazwie.
+
+**`screamsheets.test.ts` przechodzi `tsc --noEmit`.** Dziewięć `ack.data` bez zawężenia po
+`ack.ok` zastąpił helper `data<T>(ack, what)` — ten sam, którego używa kilkanaście innych plików
+testowych serwera. 12 testów pliku bez zmian.
+
+**Odklikane po obu stronach stołu** (MG na `localhost:5173`, gracz avatar9 na `[::1]:5173`,
+obie sesje naraz w jednym oknie Chrome) na postaci testowej **„Test 27x"** — **zostawionej
+w kampanii jako atrapa**, bo ma już zbudowane dokładnie te układy, których te ścieżki wymagają.
+
+- **27b, trzy ścieżki.** (1) **Dwie noszone sztuki w jednej lokacji**: „Kevlar ciężki" OB 11
+  został w wierszu KORPUS, a słabsza „Kamizelka lekka" OB 7 zeszła do „Reszty pancerza (1)"
+  z napisem **„słabsza"** zamiast przycisku „Załóż". (2) **Wiersz „Tarcza"** wypełniony po raz
+  pierwszy („Tarcza balistyczna", `11 z 11`) — wcześniej widziany wyłącznie pusty. (3)
+  **Ekwipunek z wierszami**: „+ Wyposażenie" ×2, edycja ilości (1 → 4) i kosz kasujący wiersz.
+- **27a, cztery drobiazgi.** (1) **Wgrywanie portretu** — plik wszedł, ramka go pokazuje,
+  miniatura doklejała się też do belki okna. (2) **Pole „z" przy EMP** — po zbiciu
+  Człowieczeństwa 50 → 25 kostka EMP pokazała `5 z 2`, a bazy umiejętności EMP-owych
+  (Konwersacja, Odczytywanie emocji) zjechały 5 → 2 razem z nim. (3) **Czerwone paski
+  `.cp-alert`** w komplecie: „Poważnie ranny · −2" (przygaszony) przy PW 10, „Śmiertelnie
+  ranny · −4" z przyciskiem **„Test Przeżywalności"** przy PW 0 i „Na granicy" (cyberpsychoza)
+  przy EMP 2. Przy okazji, bez szukania, potwierdził się **chip cyberpsychozy na liście
+  postaci** z zaległości 23a — „EMP 2 · Na granicy" świeci u gracza przy nazwisku.
+- **27a i 27b, strona gracza.** Karta własnej postaci otwiera się u gracza w nowym układzie
+  (sprawdzone na „Test 27x" **i** na żywej „avatar9"), pas „Broń i pancerz" rysuje się
+  w całości, **„+ Broń" i „+ Pancerz" działają**, a dopisany wiersz pojawił się **na żywo
+  w otwartej karcie MG** — i tak samo zniknął po skasowaniu koszem z konta gracza. **„Atak"**
+  z wiersza broni uzbraja mapę u gracza tak samo jak u MG (pasek „avatar9 celuje: »Arasaka
+  Minami 10« — kliknij cel na mapie", `Esc` rozbraja). **Plakietka „Gotówka" u gracza to sam
+  napis** `0 ed` z przyciskiem „Kasa…" — pola **„korekta" nie ma**, w odróżnieniu od MG.
+  Przełącznik **☀ dzień / ☾ noc** działa też na drugim hoście. Konsola czysta po obu stronach.
+
+**Czego NIE sprawdzono, choć leżało blisko:** że serwer **odmawia** łatki na pola zastrzeżone
+dla MG — sprawdzone jest tylko to, że gracz **nie dostaje tych pól w UI** (korekta salda).
+Odmowa na poziomie gniazda zostaje pokryta testami z 23b.
+
+**Zweryfikowane:** 958 testów w `shared` (1 nowy), 589 na serwerze, `tsc --noEmit` czysty
+w `shared`, `client` i `server`. Pierwszy przebieg serwera pękł na `ammo.test.ts` — plik
+przeszedł osobno (19/19) i w powtórzonym pełnym przebiegu (589/589); to znane migotanie
+opisane w „Pułapkach dev", nie regresja.
+
 ### Sesja 13.08 — etap 27b (karta: broń, pancerz, ekwipunek)
 
 **Strona pierwsza karty ma teraz komplet z wydruku, a zakładka „Walka" zniknęła.** Broń,
@@ -499,77 +527,15 @@ tylko Vite (`[::1]:5173`); portu 3001 nie było. To nie jest błąd w kodzie: pr
 @vtt/server dev` z poprzedniej sesji zakończył się. Objaw („złe hasło" mimo poprawnego) jest
 mylący, więc warto zapamiętać rozpoznanie: `netstat -ano | grep LISTENING | grep 3001`.
 
-### Sesja 13.08 — etap 27a (karta jak oficjalna, strona pierwsza)
-
-**Karta postaci wygląda teraz jak oficjalny arkusz CP RED.** Wzorem był
-`C:\AI\materialy\CPR_Karta-Postaci-Edytowalna.pdf` (trzy strony A4 poziomo, 480 pól
-formularza). **Z PDF-a nie wzięto ani jednego bajtu** — odtworzony jest sam styl, własnym
-CSS-em; granica prawna i pochodzenie krojów opisane w `docs/assety-karta-postaci.md`.
-
-**Co widzi MG po otwarciu karty:** okno **1180 px** zamiast 680, czerwona belka tytułowa
-(TONY · ROCKER), zakładki `KARTA / WALKA / EKWIPUNEK / BIOGRAFIA`, a pod nimi strona pierwsza
-wydruku: portret + Ksywa + Rola + Zdolność Specjalna z czerwoną plakietką rangi + Notatki
-
-- Człowieczeństwo + Punkty Wytrz. / Poważnie Ranny / Przeżywalność z czerwonym przypisem
-  „−2 do wszystkich akcji…", pionowa kolumna dziesięciu cech (INT REF ZW TECH CHA SW SZ RUCH
-  BC EMP) i **trzy szpalty umiejętności** z czarnymi belkami kategorii i kolumnami
-  POZ. / CECHA / BAZA.
-
-**Odklikane u MG na żywej aplikacji** (Tony, kampania „Poligon bojowy"): rzut z umiejętności
-(klik w „Percepcja" → kubek `1k10 + 10`, „Anuluj"), edycja poziomu (Tropienie 0 → 4, BAZA
-skoczyła 10 → 14, **przywrócone do 0**), przełącznik **☀ dzień / ☾ noc** w górnym pasku
-(zmienia skórę bez przeładowania i **przeżywa przeładowanie**), zakładki Walka / Ekwipunek
-/ Biografia w obu trybach, zwężenie okna do 760 px (szpalty schodzą do dwóch, **bez poziomego
-paska**). Konsola czysta. **Stan kampanii nietknięty** — żadnej postaci, sceny ani tokenu nie
-zmieniono, na czacie nie przybyła ani jedna linia.
-
-**Trzy rzeczy zmienione poza samą skórą — warto o nich wiedzieć:**
-
-1. **Kolejność kategorii umiejętności była błędna.** `CPRED_SKILL_GROUPS` sortowało się
-   alfabetycznie po **angielskich** identyfikatorach, choć komentarz twierdził, że to kolejność
-   z podręcznika. Karta drukuje je alfabetycznie **po polsku** (Broń Dystansowa, Ciało,
-   Edukacja, Kontrola, Spostrzegawczość, Technika, Umiejętności Społeczne, Walka Wręcz,
-   Występy). Stała i test w `shared` poprawione.
-2. **Kolumna CECHA trzyma wartość cechy, nie skrót.** Tak jest na wydruku (skrót stoi przy
-   nazwie umiejętności) i tylko tak sumę w kolumnie BAZA da się sprawdzić wzrokiem.
-3. **Portret i pole „Notatki" przeniosły się z zakładki „Biografia" na stronę pierwszą**, bo
-   tam drukuje je karta. W „Biografii" została sama **Reputacja** — zakładka wypełni się
-   Ścieżką Życia w etapie 27c. Portret **nie jest kadrowany** (`object-fit: contain`, decyzja
-   MG w trakcie sesji): pokazuje się cały, nawet jeśli zostawi wokół siebie pasek papieru.
-
-**Przy okazji: Oswald przestał być deklarowany czterema blokami `@font-face` wskazującymi na
-dwa identyczne pliki** — to krój zmienny (oś 200–700), więc są teraz dwa bloki z zakresem wag,
-a pliki nazywają się `oswald-var-*`. Dwa zbędne pliki skasowane, screamsheet z 24c rysuje się
-bez zmian.
-
-**Etap 24c odklikany po OBU stronach stołu, na żywym modelu.** Na screamsheetach testowych
-„KABUKI W KRWI: STRZELANINA PRZERYWA NOCNE ŻYCIE MIASTA" (z generatora) i „Test 24c — ręcznie,
-bez modelu", **obu usuniętych po oględzinach** (lista handoutów jest znowu pusta; na czacie
-zostały trzy linie „📰 Screamsheet od MG"). Potwierdzone **u MG**: przycisk „📰 + Screamsheet"
-obok „+ Nowy handout", pole hasła z „✨ Napisz artykuł", **generacja z hasła „strzelanina
-w Kabuki" w 6,7 s** (nagłówek, lead i trzy akapity po polsku wpisane wprost do formularza),
-podgląd rysujący **tę samą gazetę, którą zobaczy gracz**, zapis, chipy odbiorców i dwustopniowy
-kosz. Szablon: czerwona winieta, nagłówek krojem Anton, wytłuszczony lead, **dwie szpalty**
-w oknie 560 px (jedna w wąskim panelu — `column-width`), stopka „NIGHT CITY, WRZESIEŃ 2045",
-polskie znaki diakrytyczne we wszystkich trzech krojach. Potwierdzone **u gracza (avatar9)**:
-linia „📰 Screamsheet od MG" na czacie z „Otwórz", **okno wyskakujące samo** w chwili
-udostępnienia, w zakładce **jeden** screamsheet (nieudostępniony nie dociera nawet do DOM-u),
-zajawka na liście to **lead**, zero chipów i przycisków MG. Cofnięcie udostępnienia **na żywo**
-zamknęło okno i oznaczyło linię czatu jako „materiał wycofany". **Degradacja przy zabitym
-gatewayu:** „✨ Napisz artykuł" wyszarzony, zdanie „Generator jest niedostępny — AI Gateway nie
-odpowiada. Szablon wypełnisz ręcznie." i **ręczny screamsheet zapisany bez modelu**, z
-`<script>alert(1)</script>` wyświetlonym jako tekst (0 elementów `script` w drzewie). Konsola
-czysta po obu stronach. Scena, walka, tokeny i postacie **nietknięte**.
-
-**Błąd znaleziony przy oględzinach 24c i naprawiony (pochodzi z 24a).** „Otwórz" przy linii
-handoutu na czacie **nic nie robiło na świeżo przeładowanej stronie**: listę materiałów
-przynosi dopiero wejście w zakładkę, więc klik wpychał na stos okno, dla którego nie było
-treści. Poprawka 24b zdjęła wtedy mylące „materiał wycofany", ale sam klik dalej był martwy —
-teraz `HandoutRow` dociąga listę przed otwarciem. Dotyczy tak samo handoutów z 24a.
-
 ## Skróty wcześniejszych sesji
 
 Uzupełniają kolumnę „Uwagi" w tabeli, nie powtarzają jej. Uzasadnienia decyzji, listy niezweryfikowanego i szczegóły migracji — `archiwum/dziennik-sesji.md`.
+
+- **27a (13.08)** — karta odtwarza styl oficjalnego arkusza **własnym CSS-em, bez jednego bajtu
+  z PDF-a**; portret i „Notatki" wróciły z „Biografii" na stronę pierwszą, bo tam drukuje je
+  wydruk. Przy okazji wyszło, że `CPRED_SKILL_GROUPS` sortowało kategorie po **angielskich**
+  identyfikatorach, choć komentarz obiecywał kolejność z podręcznika — karta chce alfabetu
+  **polskiego**. Pełna notatka w archiwum.
 
 - **24c (13.08)** — screamsheet to **`kind` na handoucie z 24a, nie drugi byt**: udostępnianie,
   kosz, okno i wiersz na czacie nie mają dla niego ani jednej gałęzi, a migracja dokłada cztery

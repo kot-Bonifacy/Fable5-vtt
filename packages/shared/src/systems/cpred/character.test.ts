@@ -104,6 +104,17 @@ describe('validateCharacterDataPatch', () => {
     }
   });
 
+  // Karta zapisuje się po każdym znaku, więc przycinanie nazwy wiersza znaczyło
+  // tyle, co „nie da się wpisać spacji": znikała, zanim wpadła następna litera.
+  it('keeps a trailing space in a row name so multi-word names can be typed', () => {
+    const result = validateCharacterDataPatch(
+      { armor: [{ id: 'a1', name: 'Ciężki pancerz ', sp: 11, spCurrent: 11, location: 'body' }] },
+      registry,
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.patch.armor?.[0]?.name).toBe('Ciężki pancerz ');
+  });
+
   it('rejects out-of-range stats with a Polish message', () => {
     const stats = { ...createDefaultCharacterData().stats, int: 11 };
     const result = validateCharacterDataPatch({ stats }, registry);

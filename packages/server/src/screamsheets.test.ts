@@ -173,6 +173,12 @@ function emitAck<T = undefined>(
   });
 }
 
+function data<T>(ack: SocketAck<T>, what: string): T {
+  if (!ack.ok) throw new Error(`${what} failed: ${ack.error}`);
+  if (ack.data === undefined) throw new Error(`${what} returned no data`);
+  return ack.data;
+}
+
 let gmSocket: ClientSocket;
 let playerSocket: ClientSocket;
 
@@ -253,7 +259,7 @@ describe('screamsheet:generate', () => {
     expect(ack.ok).toBe(true);
 
     const broadcast = await draftPromise;
-    expect(broadcast.requestId).toBe(ack.data?.requestId);
+    expect(broadcast.requestId).toBe(data(ack, 'screamsheet:generate').requestId);
     expect(broadcast.draft.headline).toBe('Krwawa noc w Kabuki');
     expect(broadcast.draft.lead).toBe('Trzy ciała przed klubem, NCPD milczy.');
     expect(broadcast.draft.body).toContain('Strzelanina zaczęła się');
@@ -267,14 +273,14 @@ describe('screamsheet:generate', () => {
 
   it('nie zapisuje niczego — szkic czeka na decyzję MG', async () => {
     const before = await emitAck<HandoutSyncPayload>(gmSocket, 'handout:list');
-    const countBefore = before.data?.handouts.length ?? 0;
+    const countBefore = data(before, 'handout:list').handouts.length;
 
     const draftPromise = waitFor<ScreamsheetDraftBroadcast>(gmSocket, 'screamsheet:draft');
     await emitAck(gmSocket, 'screamsheet:generate', { topic: 'nalot na Watson' });
     await draftPromise;
 
     const after = await emitAck<HandoutSyncPayload>(gmSocket, 'handout:list');
-    expect(after.data?.handouts).toHaveLength(countBefore);
+    expect(data(after, 'handout:list').handouts).toHaveLength(countBefore);
   });
 
   it('bez hasła nie pyta modelu', async () => {
@@ -325,7 +331,7 @@ describe('screamsheet jako handout', () => {
       },
     });
     expect(saved.ok).toBe(true);
-    const handout = saved.data!;
+    const handout = data(saved, 'handout:upsert');
     expect(handout.kind).toBe('screamsheet');
     expect(handout.screamsheet?.outlet).toBe('NET-54');
 
@@ -368,8 +374,9 @@ describe('screamsheet jako handout', () => {
       screamsheet: { lead: '', outlet: '', dateline: '' },
     });
     expect(ack.ok).toBe(true);
-    expect(ack.data?.screamsheet?.outlet).toBe('WIADOMOŚCI NIGHT CITY');
-    expect(ack.data?.screamsheet?.dateline).toBe('Night City, wrzesień 2045');
+    const handout = data(ack, 'handout:upsert');
+    expect(handout.screamsheet?.outlet).toBe('WIADOMOŚCI NIGHT CITY');
+    expect(handout.screamsheet?.dateline).toBe('Night City, wrzesień 2045');
   });
 
   it('zwykły handout zostaje notatką bez mebli gazety', async () => {
@@ -379,8 +386,9 @@ describe('screamsheet jako handout', () => {
       image: null,
     });
     expect(ack.ok).toBe(true);
-    expect(ack.data?.kind).toBe('note');
-    expect(ack.data?.screamsheet).toBeNull();
+    const handout = data(ack, 'handout:upsert');
+    expect(handout.kind).toBe('note');
+    expect(handout.screamsheet).toBeNull();
   });
 });
 
@@ -404,6 +412,6 @@ describe('degradacja bez gatewaya', () => {
       screamsheet: { lead: 'Bez modelu.', outlet: 'NET-54', dateline: '2045' },
     });
     expect(ack.ok).toBe(true);
-    expect(ack.data?.kind).toBe('screamsheet');
+    expect(data(ack, 'handout:upsert').kind).toBe('screamsheet');
   });
 });

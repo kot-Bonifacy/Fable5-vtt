@@ -641,7 +641,12 @@ function validateRowBase(
       : undefined;
   return {
     id: input.id,
-    name: name.trim(),
+    // Nie przycinamy nazwy. Karta zapisuje się po każdym znaku, więc `trim()`
+    // zjadał spację na końcu, zanim zdążyła wejść następna litera — żadnej
+    // wielowyrazowej nazwy („Ciężki pancerz bojowy") nie dało się wpisać
+    // ręcznie. Uwagi i pozostała proza idą przez `validateText` bez przycinania
+    // i zachowują się poprawnie; nazwa była tu jedynym wyjątkiem.
+    name,
     notes,
     ...(compendiumId ? { compendiumId } : {}),
   };
