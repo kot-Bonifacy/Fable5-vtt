@@ -191,9 +191,10 @@ describe('groupedSkills', () => {
     { roles: [] },
   );
 
-  it('keeps the rulebook order of categories and drops empty ones', () => {
-    // Body is printed before ranged weapons, whatever order the file uses.
-    expect(groupedSkills(grouped).map((group) => group.id)).toEqual(['body', 'ranged', 'other']);
+  it('keeps the printed order of categories and drops empty ones', () => {
+    // The official sheet prints "Broń Dystansowa" before "Ciało" — Polish
+    // alphabetical order, not the order of the ids in the data file.
+    expect(groupedSkills(grouped).map((group) => group.id)).toEqual(['ranged', 'body', 'other']);
   });
 
   it('puts skills without a category in a trailing group', () => {

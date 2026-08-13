@@ -63,20 +63,23 @@ export const REPUTATION_NOTE_MAX_LENGTH = 160;
 export const DEATH_SAVES_MAX = 20;
 
 /**
- * The nine skill categories of the rulebook, in the order it prints them.
- * The sheet groups its skill table by these, because the full list is 66 rows
- * long and nobody finds "Żegluga" in one flat column.
+ * The nine skill categories of the rulebook, in the order the official sheet
+ * prints them: alphabetical by the *Polish* label (Broń Dystansowa, Ciało,
+ * Edukacja, Kontrola, Spostrzegawczość, Technika, Umiejętności Społeczne,
+ * Walka Wręcz, Występy). Sorting by the English ids — which is what this list
+ * used to do, despite the comment claiming otherwise — put Ciało before Broń
+ * Dystansowa and made the sheet disagree with the printed one (stage 27a).
  */
 export const CPRED_SKILL_GROUPS = [
-  'awareness',
+  'ranged',
   'body',
-  'control',
   'education',
+  'control',
+  'awareness',
+  'technique',
+  'social',
   'melee',
   'performance',
-  'ranged',
-  'social',
-  'technique',
 ] as const;
 export type CpredSkillGroup = (typeof CPRED_SKILL_GROUPS)[number];
 

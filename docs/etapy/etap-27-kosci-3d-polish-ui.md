@@ -6,6 +6,13 @@
 
 Warstwa satysfakcji: animowane kości 3D nad stołem oraz przegląd i ujednolicenie całego UI w klimacie cyberpunk/Foundry.
 
+> **Podział (2026-08-13):** przegląd wyglądu **karty postaci** wyszedł z tego etapu do trzech
+> osobnych sesji — `etap-27a-karta-jak-oficjalna.md` (rama, motyw dzień/noc, strona 1),
+> `etap-27b-karta-walka-ekwipunek.md`, `etap-27c-karta-zycie-cyborgizacje.md`. Powód: MG chce
+> kartę wyglądającą jak oficjalny arkusz CP RED, a to jest osobny kawałek roboty, nie punkt
+> listy. Motyw dzień/noc powstaje w 27a **tylko dla karty** — rozciągnięcie go na resztę
+> aplikacji zostaje tutaj.
+
 > **Uwaga (2026-07-18):** podstawowe kości 3D zostały zrealizowane już w etapie 06 na życzenie
 > użytkownika — biblioteka `@3d-dice/dice-box-threejs` (wybrana zamiast `@3d-dice/dice-box`,
 > bo natywnie wspiera wymuszanie wyników serwera), integracja w `packages/client/src/dice3d.ts`,
@@ -19,6 +26,7 @@ Warstwa satysfakcji: animowane kości 3D nad stołem oraz przegląd i ujednolice
 - [ ] Ustawienia per użytkownik: wyłączenie animacji (dostępność/wydajność), głośność stuknięć kości
 - [ ] Przegląd UI całej aplikacji — ujednolicenie do spójnego motywu wzorowanego na Foundry (ciemny interfejs, panele boczne, okna przeciągalne) z akcentem cyberpunk (neonowe podświetlenia, monospace w elementach „terminalowych"):
   - wspólne tokeny designu (kolory, typografia, odstępy) w jednym pliku motywu
+  - **tryb dzień/noc dla całej aplikacji** — tokeny i przełącznik powstały w etapie 27a, ale ubierają wyłącznie kartę postaci; tutaj dochodzi reszta widoków
   - audyt każdego widoku: logowanie, stół, karta, kompendium, edytor botów, tracker, netrunning
   - okna (karta, kompendium, handouty) przeciągalne i zapamiętujące pozycję
 - [ ] UX: skróty klawiszowe zebrane i opisane (okno pomocy `?`), tooltips na ikonach, stany ładowania i puste stany z sensownymi komunikatami po polsku

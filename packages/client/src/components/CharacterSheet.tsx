@@ -1,4 +1,5 @@
 import {
+  Fragment,
   useEffect,
   useMemo,
   useRef,
@@ -12,6 +13,7 @@ import type {
   ArmorLocation,
   CompendiumEntry,
   CpredArmorRow,
+  CpredSkillDefinition,
   CpredAttackMode,
   CpredCharacterData,
   CpredItemRow,
@@ -108,7 +110,7 @@ import {
 type SheetTab = 'stats' | 'combat' | 'gear' | 'bio';
 
 const TABS: { id: SheetTab; label: string }[] = [
-  { id: 'stats', label: 'Statystyki i umiejętności' },
+  { id: 'stats', label: 'Karta' },
   { id: 'combat', label: 'Walka' },
   { id: 'gear', label: 'Ekwipunek' },
   { id: 'bio', label: 'Biografia' },
@@ -244,6 +246,7 @@ function CharacterSheetWindow({
   const issueList = Object.values(issues);
   const saveLabel =
     saveState === 'saving' ? 'Zapisywanie…' : saveState === 'error' ? 'Błąd zapisu!' : '';
+  const roleName = registry.roles.find((r) => r.id === data.roleId)?.name ?? '';
 
   return (
     <section
@@ -262,14 +265,12 @@ function CharacterSheetWindow({
         {character.portraitUrl ? (
           <img className="sheet-header-portrait" src={character.portraitUrl} alt="" />
         ) : null}
-        <input
-          className="sheet-name"
-          type="text"
-          maxLength={64}
-          value={character.name}
-          onChange={(e) => saveName(e.target.value)}
-          title="Imię / ksywa postaci"
-        />
+        {/* Belka tytułowa tylko pokazuje — ksywę edytuje się w jej własnym polu
+            na karcie, tak jak na wydruku. Dwa pola na to samo się rozjeżdżają. */}
+        <span className="sheet-title">
+          <span className="sheet-title-name">{character.name}</span>
+          {roleName && <span className="sheet-title-role">{roleName}</span>}
+        </span>
         <span className={`sheet-save sheet-save--${saveState ?? 'idle'}`}>{saveLabel}</span>
         <button
           type="button"
@@ -298,12 +299,18 @@ function CharacterSheetWindow({
       </nav>
 
       <div className="sheet-body">
-        {tab === 'stats' && <StatsTab character={character} data={data} saveData={saveData} />}
+        {tab === 'stats' && (
+          <FrontPage
+            character={character}
+            data={data}
+            saveData={saveData}
+            saveName={saveName}
+            setIssues={setIssues}
+          />
+        )}
         {tab === 'combat' && <CombatTab character={character} data={data} saveData={saveData} />}
         {tab === 'gear' && <GearTab character={character} data={data} saveData={saveData} />}
-        {tab === 'bio' && (
-          <BioTab character={character} data={data} saveData={saveData} setIssues={setIssues} />
-        )}
+        {tab === 'bio' && <BioTab data={data} saveData={saveData} />}
       </div>
 
       {issueList.length > 0 && (
@@ -324,14 +331,27 @@ interface TabProps {
   saveData: (patch: Partial<CpredCharacterData>, fieldKey: string) => void;
 }
 
-function StatsTab({ character, data, saveData }: TabProps & { character: CharacterSheetView }) {
+/**
+ * Strona pierwsza karty — układ oficjalnego arkusza CP RED (etap 27a).
+ *
+ * Trzy kolumny wydruku, od lewej: tożsamość (portret, ksywa, rola, zdolność,
+ * notatki, pule), pionowa kolumna dziesięciu cech i umiejętności rozłożone na
+ * trzy kolumny. Wszystko, co karta umiała wcześniej — rzut z cechy, rzut
+ * z umiejętności, Test Przeżywalności, ostrzeżenie o cyberpsychozie — siedzi
+ * dalej w tych samych miejscach, tylko ubrane w papier.
+ */
+function FrontPage({
+  character,
+  data,
+  saveData,
+  saveName,
+  setIssues,
+}: TabProps & {
+  character: CharacterSheetView;
+  saveName: (value: string) => void;
+  setIssues: (updater: (current: Record<string, string>) => Record<string, string>) => void;
+}) {
   const registry = useCharacterStore((s) => s.registry);
-  const maxHp = hpMax(data.stats);
-  const role = registry.roles.find((r) => r.id === data.roleId) ?? null;
-  const wound = woundState(data.hpCurrent, data.stats);
-  const woundPenalty = woundCheckPenalty(wound);
-  const humanityCeiling = humanityMaxWith(data.stats, data.cyberware);
-  const psychosis = cyberpsychosisFor(data.humanityCurrent);
 
   /**
    * Click opens the roll dialog, Shift+click loads the cup straight away with
@@ -347,55 +367,217 @@ function StatsTab({ character, data, saveData }: TabProps & { character: Charact
     else useRollStore.getState().openDialog(full);
   }
 
-  function setStat(statId: (typeof CPRED_STAT_IDS)[number], event: ChangeEvent<HTMLInputElement>) {
-    const value = parseNumberInput(event);
-    if (value === undefined) return;
-    saveData({ stats: { ...data.stats, [statId]: value } }, `stats.${statId}`);
+  return (
+    <div className="sheet-page">
+      <IdentityColumn
+        character={character}
+        data={data}
+        saveData={saveData}
+        saveName={saveName}
+        setIssues={setIssues}
+      />
+      <StatColumn data={data} saveData={saveData} startRoll={startRoll} />
+      <SkillColumns data={data} saveData={saveData} startRoll={startRoll} />
+    </div>
+  );
+}
+
+/** Lewa kolumna wydruku: kto to jest i ile w nim jeszcze zostało. */
+function IdentityColumn({
+  character,
+  data,
+  saveData,
+  saveName,
+  setIssues,
+}: TabProps & {
+  character: CharacterSheetView;
+  saveName: (value: string) => void;
+  setIssues: (updater: (current: Record<string, string>) => Record<string, string>) => void;
+}) {
+  const registry = useCharacterStore((s) => s.registry);
+  const [uploading, setUploading] = useState(false);
+  const role = registry.roles.find((r) => r.id === data.roleId) ?? null;
+  const maxHp = hpMax(data.stats);
+  const wound = woundState(data.hpCurrent, data.stats);
+  const woundPenalty = woundCheckPenalty(wound);
+  const humanityCeiling = humanityMaxWith(data.stats, data.cyberware);
+  const psychosis = cyberpsychosisFor(data.humanityCurrent);
+
+  async function uploadPortrait(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setUploading(true);
+    try {
+      const result = await apiUpload<PortraitUploadResult>('/api/uploads/portraits', file);
+      queueCharacterSave(character.id, { portraitUrl: result.url });
+      flushCharacterSave(character.id);
+      setIssues((current) => {
+        const next = { ...current };
+        delete next.portrait;
+        return next;
+      });
+    } catch (error) {
+      setIssues((current) => ({ ...current, portrait: portraitErrorText(error) }));
+    } finally {
+      setUploading(false);
+    }
   }
 
-  function setPool(
-    key: 'hpCurrent' | 'luckCurrent' | 'humanityCurrent',
-    event: ChangeEvent<HTMLInputElement>,
-  ) {
+  function setPool(key: 'hpCurrent' | 'humanityCurrent', event: ChangeEvent<HTMLInputElement>) {
     const value = parseNumberInput(event);
     if (value === undefined) return;
     saveData({ [key]: value }, key);
   }
 
   return (
-    <div className="sheet-stats">
-      <div className="stat-grid">
-        {CPRED_STAT_IDS.map((id) => (
-          <div key={id} className="stat-box" title={CPRED_STAT_LABELS[id].name}>
-            <button
-              type="button"
-              className="stat-abbr stat-roll"
-              onClick={(e: MouseEvent) => startRoll({ kind: 'stat', statId: id }, e.shiftKey)}
-              title={`Rzut: ${CPRED_STAT_LABELS[id].name} (Shift — bez okna)`}
-            >
-              {CPRED_STAT_LABELS[id].abbr}
-            </button>
+    <div className="cp-identity">
+      <div className="cp-panel">
+        <div className="cp-field cp-field--notch cp-portrait">
+          {character.portraitUrl ? (
+            <img src={character.portraitUrl} alt="Portret postaci" />
+          ) : (
+            <span className="cp-portrait-empty">brak portretu</span>
+          )}
+          <label className="cp-portrait-upload">
+            {uploading ? 'Wgrywanie…' : 'Wgraj portret'}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={(e) => void uploadPortrait(e)}
+              disabled={uploading}
+              hidden
+            />
+          </label>
+        </div>
+      </div>
+
+      <div className="cp-panel">
+        <div className="cp-field cp-field--notch cp-row">
+          <span className="cp-label">Ksywa</span>
+          <input
+            type="text"
+            maxLength={64}
+            value={character.name}
+            onChange={(e) => saveName(e.target.value)}
+            aria-label="Ksywa"
+          />
+        </div>
+        <div className="cp-field cp-row">
+          <span className="cp-label">Rola</span>
+          <select
+            value={data.roleId ?? ''}
+            onChange={(e) =>
+              saveData({ roleId: e.target.value === '' ? null : e.target.value }, 'roleId')
+            }
+            aria-label="Rola"
+          >
+            <option value="">— brak —</option>
+            {registry.roles.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="cp-field cp-row cp-ability">
+          <span className="cp-label">
+            Zdolność
+            <br />
+            Specjalna
+          </span>
+          <span className="cp-ability-name" title={role?.ability ?? ''}>
+            {role?.ability ?? '—'}
+          </span>
+          {role && (
+            <span className="cp-rank" title="Ranga zdolności roli">
+              <input
+                type="number"
+                min={ROLE_RANK_MIN}
+                max={ROLE_RANK_MAX}
+                value={data.roleAbilityRank}
+                onChange={(e) => {
+                  const value = parseNumberInput(e);
+                  if (value !== undefined) saveData({ roleAbilityRank: value }, 'roleAbilityRank');
+                }}
+                aria-label={`Ranga: ${role.ability}`}
+              />
+            </span>
+          )}
+        </div>
+        <div className="cp-field cp-notes">
+          <span className="cp-label">Notatki</span>
+          <textarea
+            maxLength={10_000}
+            value={data.notes}
+            placeholder="Ścieżka życia, kontakty, wrogowie, cele…"
+            onChange={(e) => saveData({ notes: e.target.value }, 'notes')}
+            aria-label="Notatki"
+          />
+        </div>
+      </div>
+
+      <div className="cp-panel">
+        <div
+          className="cp-field cp-field--notch cp-pool"
+          title="Człowieczeństwo: obecne z maksymalnego. Maksimum to EMP bazowe × 10 minus 2 za każdą cyborgizację (4 za borgizację)."
+        >
+          <span className="cp-label">Człowieczeństwo</span>
+          <span className="cp-pool-value">
             <input
               type="number"
-              min={CPRED_STAT_MIN}
-              max={CPRED_STAT_MAX}
-              value={data.stats[id]}
-              onChange={(e) => setStat(id, e)}
-              aria-label={CPRED_STAT_LABELS[id].name}
+              min={HUMANITY_MIN}
+              max={humanityCeiling}
+              value={data.humanityCurrent}
+              onChange={(e) => setPool('humanityCurrent', e)}
+              aria-label="Człowieczeństwo"
             />
-          </div>
-        ))}
+            <span className="cp-of">z</span>
+            <span className="cp-pool-max">{humanityCeiling}</span>
+          </span>
+        </div>
+      </div>
+
+      <div className="cp-panel cp-pools">
+        <div className="cp-field cp-field--notch cp-pool cp-span2" title="Punkty Wytrzymałości">
+          <span className="cp-label">Punkty Wytrz.</span>
+          <span className="cp-pool-value">
+            <input
+              type="number"
+              min={0}
+              max={maxHp}
+              value={data.hpCurrent}
+              onChange={(e) => setPool('hpCurrent', e)}
+              aria-label="Punkty Wytrzymałości"
+            />
+            <span className="cp-of">z</span>
+            <span className="cp-pool-max">{maxHp}</span>
+          </span>
+        </div>
+        <div
+          className="cp-field cp-pool cp-pool--flat"
+          title="Próg stanu Poważnie ranny (połowa PW)"
+        >
+          <span className="cp-label">Poważnie Ranny</span>
+          <span className="cp-pool-value">≤ {seriousWoundThreshold(data.stats)}</span>
+        </div>
+        <div
+          className="cp-field cp-pool cp-pool--flat"
+          title="Test Przeżywalności: rzuć poniżej tej wartości na 1k10"
+        >
+          <span className="cp-label">Przeżywalność</span>
+          <span className="cp-pool-value">{deathSaveTarget(data.stats)}</span>
+        </div>
+        <p className="cp-note">−2 do wszystkich akcji kiedy Poważnie Ranny</p>
       </div>
 
       {wound !== 'healthy' && (
-        <p className={`wound-badge wound-badge--${wound}`}>
-          {CPRED_WOUND_LABELS[wound]}
-          {woundPenalty !== 0 && ` — −${Math.abs(woundPenalty)} do wszystkich testów`}
-          {wound === 'mortal' && ' i Testy Przeżywalności'}
+        <p className={`cp-alert${wound === 'mortal' ? '' : ' cp-alert--muted'}`}>
+          <strong>{CPRED_WOUND_LABELS[wound]}</strong>
+          {woundPenalty !== 0 && <span>−{Math.abs(woundPenalty)} do wszystkich testów</span>}
           {wound === 'mortal' && (
             <button
               type="button"
-              className="small-button death-save-button"
               title={`Rzuć 1k10 pod BC ${deathSaveTarget(data.stats)}. Każdy kolejny test jest o 1 trudniejszy.`}
               onClick={() => loadDeathSaveCup(character.id, character.name, data, registry)}
             >
@@ -406,147 +588,113 @@ function StatsTab({ character, data, saveData }: TabProps & { character: Charact
         </p>
       )}
 
-      <div className="derived-strip">
-        <label className="derived-box" title="Punkty Wytrzymałości: obecne / maksymalne">
-          <span>PW</span>
-          <span className="derived-value">
-            <input
-              type="number"
-              min={0}
-              max={maxHp}
-              value={data.hpCurrent}
-              onChange={(e) => setPool('hpCurrent', e)}
-            />
-            <span> / {maxHp}</span>
-          </span>
-        </label>
-        <div className="derived-box" title="Próg stanu Poważnie ranny (połowa PW)">
-          <span>Poważnie ranny</span>
-          <span className="derived-value">≤ {seriousWoundThreshold(data.stats)}</span>
-        </div>
-        <div className="derived-box" title="Test Przeżywalności: rzuć poniżej tej wartości na 1k10">
-          <span>Przeżywalność</span>
-          <span className="derived-value">{deathSaveTarget(data.stats)}</span>
-        </div>
-        <label className="derived-box" title="Punkty Szczęścia: obecne / maksymalne (SZ)">
-          <span>
-            Szczęście
-            <button
-              type="button"
-              className="luck-refresh"
-              onClick={() => saveData({ luckCurrent: data.stats.luck }, 'luckCurrent')}
-              title="Odnów pulę Szczęścia (RAW: na początku każdej sesji)"
-              disabled={data.luckCurrent >= data.stats.luck}
-            >
-              ↻
-            </button>
-          </span>
-          <span className="derived-value">
-            <input
-              type="number"
-              min={0}
-              max={data.stats.luck}
-              value={data.luckCurrent}
-              onChange={(e) => setPool('luckCurrent', e)}
-            />
-            <span> / {data.stats.luck}</span>
-          </span>
-        </label>
-        <label
-          className="derived-box"
-          title={
-            `Człowieczeństwo: obecne / maksymalne. Maksimum to EMP bazowe × 10 ` +
-            `minus 2 za każdą cyborgizację (4 za borgizację).`
-          }
-        >
-          <span>Człowieczeństwo</span>
-          <span className="derived-value">
-            <input
-              type="number"
-              min={HUMANITY_MIN}
-              max={humanityCeiling}
-              value={data.humanityCurrent}
-              onChange={(e) => setPool('humanityCurrent', e)}
-            />
-            <span> / {humanityCeiling}</span>
-          </span>
-        </label>
-      </div>
-
-      {/* EMP bieżące i cyberpsychoza siedzą pod pulami, bo obie rzeczy są
-          skutkiem Człowieczeństwa, a nie osobną cechą do wpisania. */}
-      {(psychosis.level !== 'none' || psychosis.emp !== data.stats.emp) && (
-        <p
-          className={`humanity-state humanity-${psychosis.level}`}
-          title="Empatia użyta w rzutach wynika z Człowieczeństwa (s. 229)"
-        >
-          <strong>
-            EMP w grze {psychosis.emp}
-            {psychosis.emp !== data.stats.emp ? ` (baza ${data.stats.emp})` : ''}
-          </strong>
-          {psychosis.level !== 'none' && (
-            <>
-              {' · '}
-              <span className="humanity-warning">{psychosis.label}</span> {psychosis.note}
-            </>
-          )}
+      {psychosis.level !== 'none' && (
+        <p className="cp-alert" title="Empatia użyta w rzutach wynika z Człowieczeństwa (s. 229)">
+          <strong>{psychosis.label}</strong>
+          <span>{psychosis.note}</span>
         </p>
       )}
-
-      <div className="sheet-role-row">
-        <label>
-          Rola
-          <select
-            value={data.roleId ?? ''}
-            onChange={(e) =>
-              saveData({ roleId: e.target.value === '' ? null : e.target.value }, 'roleId')
-            }
-          >
-            <option value="">— brak —</option>
-            {registry.roles.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        {role && (
-          <label title={`Zdolność specjalna roli: ${role.ability}`}>
-            {role.ability} (ranga)
-            <input
-              type="number"
-              min={ROLE_RANK_MIN}
-              max={ROLE_RANK_MAX}
-              value={data.roleAbilityRank}
-              onChange={(e) => {
-                const value = parseNumberInput(e);
-                if (value !== undefined) saveData({ roleAbilityRank: value }, 'roleAbilityRank');
-              }}
-            />
-          </label>
-        )}
-      </div>
-
-      <SkillTable data={data} saveData={saveData} startRoll={startRoll} />
     </div>
   );
 }
 
 /**
- * The skill table, one collapsible block per rulebook category.
+ * Pionowa kolumna cech — kolejność jak na wydruku (INT REF ZW TECH CHA SW SZ
+ * RUCH BC EMP), skrót w prawym górnym rogu pola.
  *
- * The full rulebook list is 66 rows, so the sheet opens only the categories the
- * character has actually trained in — everything else is one click away. A
- * character with nothing trained yet (a fresh sheet) gets every block open,
- * because there is nothing to hide behind.
+ * Dwie cechy mają na karcie dodatkowe małe pole „z": Szczęście (ile puli
+ * zostało) i Empatia (ile jej realnie działa po cyborgizacjach). Pierwsze jest
+ * do wpisania, drugie liczy się z Człowieczeństwa i dlatego jest tylko do
+ * odczytu — inaczej byłaby to druga, kłócąca się kopia tej samej liczby.
  */
-function SkillTable({
+function StatColumn({
   data,
   saveData,
   startRoll,
-}: {
-  data: CpredCharacterData;
-  saveData: TabProps['saveData'];
+}: TabProps & {
+  startRoll: (target: Omit<RollTarget, 'characterId' | 'characterName'>, shift: boolean) => void;
+}) {
+  const psychosis = cyberpsychosisFor(data.humanityCurrent);
+
+  function setStat(statId: (typeof CPRED_STAT_IDS)[number], event: ChangeEvent<HTMLInputElement>) {
+    const value = parseNumberInput(event);
+    if (value === undefined) return;
+    saveData({ stats: { ...data.stats, [statId]: value } }, `stats.${statId}`);
+  }
+
+  return (
+    <div className="cp-panel cp-stats">
+      {CPRED_STAT_IDS.map((id) => (
+        <div key={id} className="cp-field cp-field--notch cp-stat">
+          <button
+            type="button"
+            className="cp-stat-abbr"
+            onClick={(e: MouseEvent) => startRoll({ kind: 'stat', statId: id }, e.shiftKey)}
+            title={`Rzut: ${CPRED_STAT_LABELS[id].name} (Shift — bez okna)`}
+          >
+            {CPRED_STAT_LABELS[id].abbr}
+          </button>
+          <input
+            className="cp-stat-value"
+            type="number"
+            min={CPRED_STAT_MIN}
+            max={CPRED_STAT_MAX}
+            value={data.stats[id]}
+            onChange={(e) => setStat(id, e)}
+            aria-label={CPRED_STAT_LABELS[id].name}
+          />
+          {id === 'luck' && (
+            <span className="cp-stat-sub" title="Punkty Szczęścia, które jeszcze zostały">
+              <span className="cp-of">z</span>
+              <input
+                type="number"
+                min={0}
+                max={data.stats.luck}
+                value={data.luckCurrent}
+                onChange={(e) => {
+                  const value = parseNumberInput(e);
+                  if (value !== undefined) saveData({ luckCurrent: value }, 'luckCurrent');
+                }}
+                aria-label="Szczęście: pula bieżąca"
+              />
+              <button
+                type="button"
+                className="cp-mini-button"
+                onClick={() => saveData({ luckCurrent: data.stats.luck }, 'luckCurrent')}
+                title="Odnów pulę Szczęścia (RAW: na początku każdej sesji)"
+                disabled={data.luckCurrent >= data.stats.luck}
+              >
+                ↻
+              </button>
+            </span>
+          )}
+          {id === 'emp' && psychosis.emp !== data.stats.emp && (
+            <span
+              className="cp-stat-sub"
+              title="Empatia użyta w rzutach — wynika z Człowieczeństwa (s. 229)"
+            >
+              <span className="cp-of">z</span>
+              <span className="cp-stat-sub-value">{psychosis.emp}</span>
+            </span>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Umiejętności w trzech kolumnach, jak na wydruku.
+ *
+ * Kolumna CECHA trzyma **wartość** cechy, nie jej skrót — tak jest na karcie
+ * (skrót stoi przy nazwie umiejętności) i tylko tak sumę w kolumnie BAZA da się
+ * sprawdzić wzrokiem.
+ */
+function SkillColumns({
+  data,
+  saveData,
+  startRoll,
+}: TabProps & {
   startRoll: (target: Omit<RollTarget, 'characterId' | 'characterName'>, shift: boolean) => void;
 }) {
   const registry = useCharacterStore((s) => s.registry);
@@ -555,99 +703,69 @@ function SkillTable({
   // once there is chrome in the body (stage 23a), and a sheet that printed the
   // base value would disagree with every card the server sends back.
   const effective = effectiveCpredStats(data.stats, data.humanityCurrent);
-  const [open, setOpen] = useState<ReadonlySet<string>>(new Set());
-  // The registry arrives after the first render, so the default cannot be a
-  // useState initialiser; it is applied once, when the groups first show up.
-  const defaultsApplied = useRef(false);
-  useEffect(() => {
-    if (defaultsApplied.current || groups.length === 0) return;
-    defaultsApplied.current = true;
-    const trained = groups.filter((group) =>
-      group.skills.some((skill) => (data.skills[skill.id] ?? 0) > 0),
-    );
-    setOpen(new Set((trained.length > 0 ? trained : groups).map((group) => group.id)));
-  }, [groups, data.skills]);
+  const columns = useMemo(() => layoutSkillColumns(groups, SKILL_COLUMN_COUNT), [groups]);
 
-  function toggle(id: string) {
-    setOpen((current) => {
-      const next = new Set(current);
-      if (!next.delete(id)) next.add(id);
-      return next;
-    });
+  function setLevel(skillId: string, event: ChangeEvent<HTMLInputElement>) {
+    const value = parseNumberInput(event);
+    if (value === undefined) return;
+    saveData({ skills: { ...data.skills, [skillId]: value } }, 'skills');
   }
 
   return (
-    <table className="sheet-table skill-table">
-      <thead>
-        <tr>
-          <th>Umiejętność</th>
-          <th>Cecha</th>
-          <th>Poz.</th>
-          <th title="Cecha + poziom">Baza</th>
-        </tr>
-      </thead>
-      {groups.map((group) => {
-        const isOpen = open.has(group.id);
-        const trained = group.skills.filter((skill) => (data.skills[skill.id] ?? 0) > 0).length;
-        return (
-          <tbody key={group.id}>
-            <tr className="skill-group">
-              <th colSpan={4}>
-                <button
-                  type="button"
-                  className="skill-group-toggle"
-                  onClick={() => toggle(group.id)}
-                  aria-expanded={isOpen}
-                >
-                  <span aria-hidden="true">{isOpen ? '▾' : '▸'}</span> {group.label}
-                  <span className="skill-group-count">
-                    {trained}/{group.skills.length}
-                  </span>
-                </button>
-              </th>
-            </tr>
-            {isOpen &&
-              group.skills.map((skill) => {
+    <div className="sheet-skills">
+      {columns.map((column, columnIndex) => (
+        <div key={columnIndex} className="cp-panel cp-skill-col">
+          {column.map((block, blockIndex) => (
+            <Fragment key={`${block.label}-${blockIndex}`}>
+              <div className="cp-bar">{block.label}</div>
+              <div className="cp-bar cp-bar--th">Poz.</div>
+              <div className="cp-bar cp-bar--th">Cecha</div>
+              <div className="cp-bar cp-bar--th" title="Cecha + poziom">
+                Baza
+              </div>
+              {block.skills.map((skill) => {
                 const level = data.skills[skill.id] ?? 0;
-                const rollTitle = `Rzut: ${skill.name} (${CPRED_STAT_LABELS[skill.stat].abbr}) — Shift pomija okno`;
+                const abbr = CPRED_STAT_LABELS[skill.stat].abbr;
+                const rollTitle = `Rzut: ${skill.name} (${abbr}) — Shift pomija okno`;
                 // The rulebook blurb only exists in the private data files.
                 const title = skill.description
-                  ? `${skill.description}\n\n${rollTitle}`
+                  ? `${skill.description}
+
+${rollTitle}`
                   : rollTitle;
                 return (
-                  <tr key={skill.id} className={level > 0 ? 'skill-trained' : ''}>
-                    <td>
+                  <Fragment key={skill.id}>
+                    <div
+                      className={`cp-field cp-skill-name${level > 0 ? ' cp-skill-name--trained' : ''}`}
+                    >
                       <button
                         type="button"
-                        className="skill-roll"
+                        className="cp-skill-roll"
                         onClick={(e: MouseEvent) =>
                           startRoll({ kind: 'skill', skillId: skill.id }, e.shiftKey)
                         }
                         title={title}
                       >
                         {skill.name}
-                        {skill.multiplier === 2 ? ' (×2)' : ''}
+                        {skill.multiplier === 2 ? ' (×2)' : ''}{' '}
+                        <span className="cp-skill-stat-abbr">({abbr})</span>
                       </button>
-                    </td>
-                    <td>{CPRED_STAT_LABELS[skill.stat].abbr}</td>
-                    <td>
+                    </div>
+                    <div className="cp-field cp-skill-cell">
                       <input
                         type="number"
                         min={SKILL_LEVEL_MIN}
                         max={SKILL_LEVEL_MAX}
                         value={level}
-                        onChange={(e) => {
-                          const value = parseNumberInput(e);
-                          if (value === undefined) return;
-                          saveData({ skills: { ...data.skills, [skill.id]: value } }, 'skills');
-                        }}
+                        onChange={(e) => setLevel(skill.id, e)}
                         aria-label={`Poziom: ${skill.name}`}
                       />
-                    </td>
-                    <td className="skill-base">
+                    </div>
+                    <div className="cp-field cp-skill-cell">{effective[skill.stat]}</div>
+                    <div className="cp-field cp-skill-cell">
                       <button
                         type="button"
-                        className="skill-roll skill-base-roll"
+                        className="cp-skill-base"
                         onClick={(e: MouseEvent) =>
                           startRoll({ kind: 'skill', skillId: skill.id }, e.shiftKey)
                         }
@@ -655,15 +773,69 @@ function SkillTable({
                       >
                         {skillBase(effective[skill.stat], level)}
                       </button>
-                    </td>
-                  </tr>
+                    </div>
+                  </Fragment>
                 );
               })}
-          </tbody>
-        );
-      })}
-    </table>
+            </Fragment>
+          ))}
+        </div>
+      ))}
+    </div>
   );
+}
+
+/** Trzy szpalty umiejętności — tyle, ile drukuje strona pierwsza karty. */
+const SKILL_COLUMN_COUNT = 3;
+
+/** Kawałek kategorii przypadający na jedną szpaltę. */
+interface SkillColumnBlock {
+  label: string;
+  skills: CpredSkillDefinition[];
+}
+
+/**
+ * Rozkłada kategorie na szpalty tak, żeby wyszły równej wysokości.
+ *
+ * Kategoria **może** przejść przez granicę szpalty — wtedy następna zaczyna się
+ * od powtórzonej belki z tą samą nazwą. Tak robi wydruk („Edukacja" stoi na
+ * karcie dwa razy) i tylko tak szpalty kończą się w jednej linii: sama „Edukacja"
+ * to prawie jedna trzecia listy, więc przy podziale bez rozcinania pierwsza
+ * szpalta wychodziła o połowę dłuższa od pozostałych.
+ *
+ * Miarą jest liczba wierszy: belka kategorii plus jej umiejętności.
+ */
+function layoutSkillColumns(
+  groups: readonly { label: string; skills: CpredSkillDefinition[] }[],
+  count: number,
+): SkillColumnBlock[][] {
+  const columns: SkillColumnBlock[][] = Array.from({ length: count }, () => []);
+  const totalRows = groups.reduce((sum, group) => sum + group.skills.length + 1, 0);
+  if (totalRows === 0) return columns;
+  const target = Math.ceil(totalRows / count);
+
+  let column = 0;
+  let height = 0;
+  for (const group of groups) {
+    let taken = 0;
+    while (taken < group.skills.length) {
+      if (height >= target && column < count - 1) {
+        column += 1;
+        height = 0;
+      }
+      const left = group.skills.length - taken;
+      // −1 na belkę kategorii; co najmniej jeden wiersz, żeby pętla zawsze ruszała.
+      const room = Math.max(1, target - height - 1);
+      const take = column === count - 1 ? left : Math.min(room, left);
+      columns[column]!.push({
+        label: group.label,
+        skills: group.skills.slice(taken, taken + take),
+      });
+      height += take + 1;
+      taken += take;
+    }
+  }
+  return columns;
 }
 
 /** Generic editable row-list table used by the combat and gear tabs. */
@@ -1744,71 +1916,17 @@ function CyberwareSection({
   );
 }
 
-function BioTab({
-  character,
-  data,
-  saveData,
-  setIssues,
-}: TabProps & {
-  character: CharacterSheetView;
-  setIssues: (updater: (current: Record<string, string>) => Record<string, string>) => void;
-}) {
-  const [uploading, setUploading] = useState(false);
-
-  async function uploadPortrait(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-    setUploading(true);
-    try {
-      const result = await apiUpload<PortraitUploadResult>('/api/uploads/portraits', file);
-      queueCharacterSave(character.id, { portraitUrl: result.url });
-      flushCharacterSave(character.id);
-      setIssues((current) => {
-        const next = { ...current };
-        delete next.portrait;
-        return next;
-      });
-    } catch (error) {
-      const message = portraitErrorText(error);
-      setIssues((current) => ({ ...current, portrait: message }));
-    } finally {
-      setUploading(false);
-    }
-  }
-
+/**
+ * Zakładka „Biografia” — dziś sama Reputacja.
+ *
+ * Portret i pole „Notatki” przeniosły się na stronę pierwszą (etap 27a), bo tam
+ * drukuje je oficjalna karta — a dwa edytory tego samego pola tylko mylą.
+ * Ścieżka Życia rozpisana na pola zamiast jednego pola prozy to etap 27c.
+ */
+function BioTab({ data, saveData }: TabProps) {
   return (
     <div className="sheet-bio">
-      <div className="sheet-portrait-row">
-        {character.portraitUrl ? (
-          <img className="sheet-portrait" src={character.portraitUrl} alt="Portret postaci" />
-        ) : (
-          <div className="sheet-portrait sheet-portrait--empty">brak portretu</div>
-        )}
-        <label className="small-button scene-upload-button">
-          {uploading ? 'Wgrywanie…' : 'Wgraj portret'}
-          <input
-            type="file"
-            accept="image/png,image/jpeg,image/webp"
-            onChange={(e) => void uploadPortrait(e)}
-            disabled={uploading}
-            hidden
-          />
-        </label>
-      </div>
-
       <ReputationSection data={data} saveData={saveData} />
-
-      <label className="sheet-notes-label">
-        Notatki i biografia
-        <textarea
-          className="sheet-notes"
-          maxLength={10_000}
-          value={data.notes}
-          placeholder="Ścieżka życia, kontakty, wrogowie, cele…"
-          onChange={(e) => saveData({ notes: e.target.value }, 'notes')}
-        />
-      </label>
     </div>
   );
 }

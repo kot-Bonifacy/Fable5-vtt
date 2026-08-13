@@ -1,0 +1,719 @@
+/* ============================================================================
+   Karta postaci w stylu oficjalnego arkusza CP RED (etap 27a)
+   ----------------------------------------------------------------------------
+   Wzorzec: `CPR_Karta-Postaci-Edytowalna.pdf` (wydanie polskie). Z pliku nie
+   pochodzi ani jeden bajt — odtwarzamy wyłącznie styl: siatkę, proporcje,
+   kolory (czerwień #CC2316 spróbkowana z wydruku) i typografię. Kroje z karty
+   są komercyjne (Futura PT, Tw Cen MT), więc gra je Jost + Oswald, oba OFL.
+   Szczegóły i granica prawna: `docs/assety-karta-postaci.md`.
+
+   Cała karta rysuje się z dwóch prymitywów:
+     .cp-panel — czerwony prostokąt z 3-pikselowym rowkiem między dziećmi,
+     .cp-field — pole „papieru" leżące na tym prostokącie.
+   Wydruk nie ma obramowań pól — ma czerwone tło, które prześwituje. Stąd brak
+   `border` gdziekolwiek niżej: rowek robi `gap`, a ścięty narożnik `clip-path`.
+   ========================================================================== */
+
+:root {
+  /* Noc: ten sam arkusz w negatywie. Czerwień rozjaśniona, bo #CC2316 na
+     czerni gaśnie i belki przestają być czytelne. */
+  --cp-red: #e0301f;
+  --cp-red-deep: #7e1810;
+  --cp-paper: #171514;
+  --cp-ink: #f1ece4;
+  --cp-ink-dim: #9a9187;
+  --cp-bar: #050505;
+  --cp-bar-ink: #ffffff;
+  --cp-back: #0b0a0a;
+  --cp-focus: #2b211a;
+  --cp-hover: #221c17;
+  --cp-notch: 10px;
+  --cp-gutter: 3px;
+  --font-cp: 'Jost', 'Segoe UI', system-ui, sans-serif;
+  --font-cp-cond: 'Oswald', 'Jost', 'Segoe UI', sans-serif;
+}
+
+:root[data-theme='day'] {
+  /* Dzień: wydrukowana kartka, kolory dokładnie z arkusza. */
+  --cp-red: #cc2316;
+  --cp-red-deep: #a81c11;
+  --cp-paper: #ffffff;
+  --cp-ink: #100e0d;
+  --cp-ink-dim: #6a625c;
+  --cp-bar: #000000;
+  --cp-bar-ink: #ffffff;
+  --cp-back: #ede8df;
+  --cp-focus: #fdf3cf;
+  --cp-hover: #f6f1e6;
+}
+
+/* Zakładki „Walka", „Ekwipunek" i „Biografia" trzymają jeszcze stare, ciemne
+   komponenty (dostaną wygląd karty w 27b/27c). Żeby nie świeciły czernią na
+   białym oknie, w trybie dziennym podmieniamy im paletę na miejscu — to te
+   same nazwy zmiennych, tylko przesłonięte wewnątrz okna karty. */
+:root[data-theme='day'] .sheet-window {
+  color-scheme: light;
+  --bg: #efeae1;
+  --bg-panel: #ffffff;
+  --bg-topbar: #e6e0d5;
+  --border: #c9c1b4;
+  --text: #14120f;
+  --text-dim: #6a625c;
+  --accent: #cc2316;
+}
+
+/* ===== Okno ===== */
+
+.sheet-window {
+  /* Arkusz jest poziomy: portret, kolumna cech i trzy kolumny umiejętności
+     mają się mieścić obok siebie, tak jak na wydruku. */
+  width: min(1180px, calc(100vw - 32px));
+  max-height: min(86vh, 900px);
+  background: var(--cp-back);
+  border: none;
+  border-radius: 0;
+  /* Ścięty lewy górny i prawy dolny narożnik — sygnatura arkusza. */
+  clip-path: polygon(
+    22px 0,
+    100% 0,
+    100% calc(100% - 22px),
+    calc(100% - 22px) 100%,
+    0 100%,
+    0 22px
+  );
+  box-shadow: 0 18px 50px rgb(0 0 0 / 60%);
+  font-family: var(--font-cp);
+  color: var(--cp-ink);
+}
+
+.sheet-header {
+  background: var(--cp-red);
+  border-bottom: none;
+  padding: 0.35rem 0.75rem 0.35rem 1.6rem;
+  gap: 0.6rem;
+}
+
+.sheet-header-portrait {
+  border-radius: 0;
+  width: 1.7rem;
+  height: 1.7rem;
+  outline: 2px solid #fff;
+}
+
+.sheet-title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  overflow: hidden;
+}
+
+.sheet-title-name {
+  font-family: var(--font-cp-cond);
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sheet-title-role {
+  font-size: 0.78rem;
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.08em;
+  color: rgb(255 255 255 / 78%);
+  white-space: nowrap;
+}
+
+.sheet-window .sheet-save {
+  color: rgb(255 255 255 / 85%);
+}
+
+.sheet-window .sheet-save--error {
+  color: #fff;
+  font-weight: 700;
+}
+
+.sheet-window .sheet-close {
+  color: rgb(255 255 255 / 85%);
+}
+
+.sheet-window .sheet-close:hover {
+  color: #fff;
+}
+
+.sheet-tabs {
+  background: var(--cp-bar);
+  border-bottom: none;
+  padding: 0 0 0 1.6rem;
+}
+
+.sheet-window .sheet-tab {
+  flex: none;
+  padding: 0.3rem 1.1rem;
+  font-family: var(--font-cp-cond);
+  font-weight: 500;
+  font-size: 0.76rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 62%);
+  border-bottom: 3px solid transparent;
+}
+
+.sheet-window .sheet-tab:hover {
+  color: #fff;
+}
+
+.sheet-window .sheet-tab--active {
+  color: #fff;
+  border-bottom-color: var(--cp-red);
+}
+
+.sheet-window .sheet-body {
+  background: var(--cp-back);
+}
+
+.sheet-window .sheet-issues {
+  background: var(--cp-red-deep);
+  border-top: none;
+  color: #fff;
+}
+
+.sheet-window .sheet-issues .auth-error {
+  color: #fff;
+}
+
+/* ===== Prymitywy arkusza ===== */
+
+.cp-panel {
+  background: var(--cp-red);
+  padding: var(--cp-gutter);
+  display: flex;
+  flex-direction: column;
+  gap: var(--cp-gutter);
+}
+
+.cp-field {
+  background: var(--cp-paper);
+  color: var(--cp-ink);
+  min-height: 1.35rem;
+  padding: 0.12rem 0.35rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.cp-field--notch {
+  clip-path: polygon(var(--cp-notch) 0, 100% 0, 100% 100%, 0 100%, 0 var(--cp-notch));
+}
+
+/* Etykieta pola — kapitaliki, jak na wydruku. Jost nie ma prawdziwych
+   kapitalików, więc przeglądarka je syntetyzuje; wygląda to jak w oryginale. */
+.cp-label {
+  font-variant-caps: all-small-caps;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  font-size: 0.82rem;
+  line-height: 1.1;
+  color: var(--cp-ink);
+  flex: none;
+}
+
+.cp-label--right {
+  margin-left: auto;
+  text-align: right;
+}
+
+/* Czarna belka: nazwa kategorii i nagłówki kolumn. */
+.cp-bar {
+  background: var(--cp-bar);
+  text-transform: capitalize;
+  color: var(--cp-bar-ink);
+  font-family: var(--font-cp-cond);
+  font-weight: 500;
+  font-size: 0.74rem;
+  letter-spacing: 0.03em;
+  padding: 0.14rem 0.4rem;
+  display: flex;
+  align-items: center;
+  min-height: 1.3rem;
+}
+
+.cp-bar--th {
+  justify-content: center;
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Czerwony przypis z arkusza („−2 do wszystkich akcji…"). */
+.cp-note {
+  background: var(--cp-red);
+  color: #fff;
+  font-variant-caps: all-small-caps;
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.03em;
+  line-height: 1.2;
+  padding: 0.2rem 0.4rem;
+  text-align: center;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+/* Mały czerwony kwadracik „z" rozdzielający wartość bieżącą od maksymalnej. */
+.cp-of {
+  background: var(--cp-red);
+  color: #fff;
+  font-size: 0.6rem;
+  line-height: 1;
+  padding: 0.15rem 0.28rem;
+  flex: none;
+}
+
+/* Pola formularza wewnątrz arkusza: bez ramek, bo ramką jest samo pole. */
+.cp-field input,
+.cp-field select,
+.cp-field textarea {
+  background: transparent;
+  border: none;
+  color: var(--cp-ink);
+  font-family: inherit;
+  font-size: 0.85rem;
+  min-width: 0;
+  padding: 0.05rem 0.15rem;
+}
+
+.cp-field input:focus,
+.cp-field select:focus,
+.cp-field textarea:focus {
+  outline: none;
+  background: var(--cp-focus);
+}
+
+.cp-field input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+  text-align: center;
+}
+
+.cp-field input[type='number']::-webkit-outer-spin-button,
+.cp-field input[type='number']::-webkit-inner-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+/* ===== Strona pierwsza ===== */
+
+.sheet-page {
+  container-type: inline-size;
+  display: grid;
+  grid-template-columns: 15rem 4.6rem minmax(0, 1fr);
+  gap: 0.4rem;
+  align-items: start;
+}
+
+.sheet-skills {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.4rem;
+  align-items: start;
+}
+
+/* Zwężone okno: najpierw trzy kolumny umiejętności schodzą do dwóch, potem
+   cała strona układa się w pion. Poziomego paska nie ma nigdy. */
+@container (max-width: 980px) {
+  .sheet-skills {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container (max-width: 700px) {
+  .sheet-page {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sheet-skills {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cp-stats {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .cp-stat {
+    flex: 1 1 4.2rem;
+  }
+}
+
+/* --- kolumna tożsamości --- */
+
+.cp-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.cp-portrait {
+  aspect-ratio: 4 / 5;
+  max-height: 13rem;
+  padding: 0.25rem;
+  position: relative;
+  align-items: stretch;
+  justify-content: center;
+}
+
+/* Zdjęcie wklejone w ramkę, nie kadr wypchany na siłę: `contain` pokazuje
+   cały portret, nawet jeśli zostawi wokół niego pasek papieru. Kadrowanie
+   ucinało postaciom głowy przy pionowych grafikach. */
+.cp-portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.cp-portrait-empty {
+  margin: auto;
+  color: var(--cp-ink-dim);
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.08em;
+  font-size: 0.85rem;
+}
+
+.cp-portrait-upload {
+  position: absolute;
+  inset: auto 0 0 0;
+  background: rgb(0 0 0 / 62%);
+  color: #fff;
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.06em;
+  font-size: 0.8rem;
+  text-align: center;
+  padding: 0.15rem;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.cp-portrait:hover .cp-portrait-upload,
+.cp-portrait-upload:focus-within {
+  opacity: 1;
+}
+
+.cp-row {
+  min-height: 1.55rem;
+}
+
+.cp-row input,
+.cp-row select {
+  flex: 1;
+  width: 100%;
+}
+
+.cp-row select {
+  cursor: pointer;
+}
+
+/* Zdolność Specjalna: nazwa zdolności i mała czerwona plakietka z rangą,
+   dokładnie jak pionowy pasek „ranga" na wydruku. */
+.cp-ability {
+  align-items: stretch;
+  padding-right: 0;
+}
+
+.cp-ability-name {
+  flex: 1;
+  align-self: center;
+  font-size: 0.82rem;
+  color: var(--cp-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cp-rank {
+  flex: none;
+  background: var(--cp-red);
+  display: flex;
+  align-items: center;
+}
+
+.cp-rank input {
+  width: 1.9rem;
+  color: #fff;
+  font-weight: 700;
+}
+
+.cp-rank input:focus {
+  background: var(--cp-red-deep);
+}
+
+.cp-notes {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.1rem;
+  padding-bottom: 0.25rem;
+}
+
+.cp-notes textarea {
+  resize: vertical;
+  min-height: 3.6rem;
+  width: 100%;
+  line-height: 1.35;
+}
+
+/* Pula: duża wartość bieżąca, czerwone „z", maksimum. */
+.cp-pool {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.05rem;
+  padding-bottom: 0.2rem;
+}
+
+.cp-pool .cp-label {
+  align-self: flex-end;
+}
+
+.cp-pool-value {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  font-family: var(--font-cp-cond);
+  font-weight: 700;
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.cp-pool-value input {
+  width: 2.6rem;
+  font: inherit;
+  text-align: center;
+}
+
+.cp-pool-max {
+  color: var(--cp-ink-dim);
+}
+
+.cp-pool--flat .cp-pool-value {
+  font-size: 1rem;
+}
+
+.cp-pools {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--cp-gutter);
+}
+
+.cp-pools > .cp-note,
+.cp-pools > .cp-span2 {
+  grid-column: 1 / -1;
+}
+
+/* --- kolumna cech --- */
+
+.cp-stats {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cp-gutter);
+}
+
+.cp-stat {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding: 0.1rem 0.25rem 0.15rem;
+  position: relative;
+}
+
+.cp-stat-abbr {
+  align-self: flex-end;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-cp-cond);
+  font-weight: 700;
+  font-size: 0.74rem;
+  letter-spacing: 0.04em;
+  color: var(--cp-ink);
+  padding: 0 0.1rem;
+  line-height: 1;
+}
+
+.cp-stat-abbr:hover {
+  color: var(--cp-red);
+}
+
+.cp-stat-value {
+  width: 100%;
+  font-family: var(--font-cp-cond);
+  font-weight: 700;
+  font-size: 1.3rem;
+  line-height: 1.1;
+  text-align: center;
+}
+
+/* Małe pole „z" pod cechą — bieżące Szczęście i EMP w grze. */
+.cp-stat-sub {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  margin-top: -0.1rem;
+}
+
+.cp-stat-sub input {
+  width: 1.8rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.cp-stat-sub-value {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0 0.2rem;
+}
+
+.cp-mini-button {
+  background: transparent;
+  border: none;
+  color: var(--cp-ink-dim);
+  cursor: pointer;
+  font-size: 0.7rem;
+  line-height: 1;
+  padding: 0.1rem;
+}
+
+.cp-mini-button:hover:not(:disabled) {
+  color: var(--cp-red);
+}
+
+.cp-mini-button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* --- kolumny umiejętności --- */
+
+.cp-skill-col {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 1.9rem 2.1rem 2.1rem;
+  gap: var(--cp-gutter);
+  align-content: start;
+}
+
+.cp-skill-col .cp-bar:first-child {
+  grid-column: 1;
+}
+
+.cp-skill-name {
+  padding: 0.1rem 0.35rem;
+  min-height: 1.3rem;
+}
+
+/* Nazwy umiejętności idą krojem wąskim — wydruk używa tu Futury Condensed
+   Book, a bez zwężenia dłuższe nazwy („Odporność na tortury/narkotyki") nie
+   mieszczą się w szpalcie i kończą wielokropkiem. */
+.cp-skill-roll {
+  background: transparent;
+  border: none;
+  color: var(--cp-ink);
+  cursor: pointer;
+  font-family: var(--font-cp-cond);
+  font-weight: 300;
+  font-size: 0.8rem;
+  line-height: 1.15;
+  text-align: left;
+  padding: 0;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cp-skill-roll:hover {
+  color: var(--cp-red);
+}
+
+/* Wyuczona umiejętność jest wytłuszczona — wydruk wytłuszcza umiejętności,
+   które każdy ma z automatu, a tej informacji w danych nie mamy. Odstępstwo
+   świadome: przy stole ważniejsze jest, w czym postać coś umie. */
+.cp-skill-name--trained .cp-skill-roll {
+  font-weight: 600;
+}
+
+.cp-skill-stat-abbr {
+  font-weight: 600;
+  color: var(--cp-ink-dim);
+  font-size: 0.72rem;
+}
+
+.cp-skill-cell {
+  justify-content: center;
+  padding: 0.1rem 0.15rem;
+  min-height: 1.3rem;
+}
+
+.cp-skill-cell input {
+  width: 100%;
+  font-size: 0.8rem;
+}
+
+.cp-skill-base {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-cp-cond);
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--cp-ink);
+  padding: 0;
+  width: 100%;
+}
+
+.cp-skill-base:hover {
+  color: var(--cp-red);
+}
+
+/* ===== Drobiazgi spoza wydruku (nasze, mechaniczne) ===== */
+
+.cp-alert {
+  background: var(--cp-red);
+  color: #fff;
+  padding: 0.25rem 0.45rem;
+  font-size: 0.8rem;
+  line-height: 1.3;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.cp-alert--muted {
+  background: var(--cp-bar);
+}
+
+.cp-alert button {
+  background: #fff;
+  color: var(--cp-red-deep);
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-cp-cond);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.15rem 0.5rem;
+}
+
+.cp-alert button:hover {
+  background: #ffe9e6;
+}

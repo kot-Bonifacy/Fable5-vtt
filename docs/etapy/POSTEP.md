@@ -53,17 +53,64 @@ Pełne notatki z zamkniętych etapów: `archiwum/dziennik-sesji.md` (nie czytaj 
 | 24c | Screamsheets                                  | ✅     | 2026-08-13      | `kind` na handoucie z 24a; kroje gazetowe (OFL) hostowane u siebie; nagłówek = tytuł handoutu  |
 | 25  | Generator postaci (lifepath)                  | ⬜     |                 |                                                                                                |
 | 26  | Netrunning                                    | ⬜     |                 | możliwy podział na 2 sesje                                                                     |
-| 27  | Kości 3D i szlif UI                           | ⬜     |                 |                                                                                                |
+| 27a | Karta jak oficjalna: strona pierwsza          | ✅     | 2026-08-13      | wydzielony z 27 dnia 13.08 (27a/27b/27c); motyw dzień/noc na razie tylko dla karty             |
+| 27b | Karta: broń, pancerz, ekwipunek               | ⬜     |                 | + Krytyczne Urazy i Uzależnienia w kolumnie tożsamości (nowe pole w `shared`)                  |
+| 27c | Karta: Ścieżka Życia i cyborgizacje           | ⬜     |                 | sensownie po etapie 25 — kreator lifepath wypełnia dokładnie te pola                           |
+| 27  | Kości 3D i szlif UI                           | ⬜     |                 | po wydzieleniu 27a–c zostaje: skórki kości, ustawienia, motyw dla reszty UI, wydajność         |
 | 28  | Wdrożenie na VPS                              | ⬜     |                 |                                                                                                |
 
 ## Od czego zacząć
 
-Ostatnio zamknięte: **24c** (screamsheety: `kind` na handoucie, generator na LLM z hasła MG,
-gazetowy szablon z własnymi krojami, degradacja bez gatewaya).
+Ostatnio zamknięte: **27a** (karta postaci w stylu oficjalnego arkusza: strona pierwsza,
+kroje Jost + Oswald, motyw dzień/noc).
 
-**Faza H zamknięta w części „świat CP RED" — cały etap 24 (24a/24b/24c) gotowy.** Następne
-etapy do wyboru: **25 (generator postaci — lifepath)**, **26 (netrunning, możliwy podział na
-dwie sesje)**, **27 (kości 3D i szlif UI)**. Potem zostaje **28 (wdrożenie na VPS)**.
+**Następne etapy do wyboru:** **27b** (broń, pancerz i ekwipunek w stylu karty — naturalna
+kontynuacja), **25** (generator postaci — lifepath; sensownie **przed** 27c, bo kreator
+wypełnia dokładnie te pola, które 27c rysuje), **26** (netrunning, możliwy podział na dwie
+sesje). Potem zostają **27** (kości 3D, motyw dla reszty UI, wydajność) i **28** (VPS).
+
+### Sesja 13.08 — etap 27a (karta jak oficjalna, strona pierwsza)
+
+**Karta postaci wygląda teraz jak oficjalny arkusz CP RED.** Wzorem był
+`C:\AI\materialy\CPR_Karta-Postaci-Edytowalna.pdf` (trzy strony A4 poziomo, 480 pól
+formularza). **Z PDF-a nie wzięto ani jednego bajtu** — odtworzony jest sam styl, własnym
+CSS-em; granica prawna i pochodzenie krojów opisane w `docs/assety-karta-postaci.md`.
+
+**Co widzi MG po otwarciu karty:** okno **1180 px** zamiast 680, czerwona belka tytułowa
+(TONY · ROCKER), zakładki `KARTA / WALKA / EKWIPUNEK / BIOGRAFIA`, a pod nimi strona pierwsza
+wydruku: portret + Ksywa + Rola + Zdolność Specjalna z czerwoną plakietką rangi + Notatki
+
+- Człowieczeństwo + Punkty Wytrz. / Poważnie Ranny / Przeżywalność z czerwonym przypisem
+  „−2 do wszystkich akcji…", pionowa kolumna dziesięciu cech (INT REF ZW TECH CHA SW SZ RUCH
+  BC EMP) i **trzy szpalty umiejętności** z czarnymi belkami kategorii i kolumnami
+  POZ. / CECHA / BAZA.
+
+**Odklikane u MG na żywej aplikacji** (Tony, kampania „Poligon bojowy"): rzut z umiejętności
+(klik w „Percepcja" → kubek `1k10 + 10`, „Anuluj"), edycja poziomu (Tropienie 0 → 4, BAZA
+skoczyła 10 → 14, **przywrócone do 0**), przełącznik **☀ dzień / ☾ noc** w górnym pasku
+(zmienia skórę bez przeładowania i **przeżywa przeładowanie**), zakładki Walka / Ekwipunek
+/ Biografia w obu trybach, zwężenie okna do 760 px (szpalty schodzą do dwóch, **bez poziomego
+paska**). Konsola czysta. **Stan kampanii nietknięty** — żadnej postaci, sceny ani tokenu nie
+zmieniono, na czacie nie przybyła ani jedna linia.
+
+**Trzy rzeczy zmienione poza samą skórą — warto o nich wiedzieć:**
+
+1. **Kolejność kategorii umiejętności była błędna.** `CPRED_SKILL_GROUPS` sortowało się
+   alfabetycznie po **angielskich** identyfikatorach, choć komentarz twierdził, że to kolejność
+   z podręcznika. Karta drukuje je alfabetycznie **po polsku** (Broń Dystansowa, Ciało,
+   Edukacja, Kontrola, Spostrzegawczość, Technika, Umiejętności Społeczne, Walka Wręcz,
+   Występy). Stała i test w `shared` poprawione.
+2. **Kolumna CECHA trzyma wartość cechy, nie skrót.** Tak jest na wydruku (skrót stoi przy
+   nazwie umiejętności) i tylko tak sumę w kolumnie BAZA da się sprawdzić wzrokiem.
+3. **Portret i pole „Notatki" przeniosły się z zakładki „Biografia" na stronę pierwszą**, bo
+   tam drukuje je karta. W „Biografii" została sama **Reputacja** — zakładka wypełni się
+   Ścieżką Życia w etapie 27c. Portret **nie jest kadrowany** (`object-fit: contain`, decyzja
+   MG w trakcie sesji): pokazuje się cały, nawet jeśli zostawi wokół siebie pasek papieru.
+
+**Przy okazji: Oswald przestał być deklarowany czterema blokami `@font-face` wskazującymi na
+dwa identyczne pliki** — to krój zmienny (oś 200–700), więc są teraz dwa bloki z zakresem wag,
+a pliki nazywają się `oswald-var-*`. Dwa zbędne pliki skasowane, screamsheet z 24c rysuje się
+bez zmian.
 
 **Etap 24c odklikany po OBU stronach stołu, na żywym modelu.** Na screamsheetach testowych
 „KABUKI W KRWI: STRZELANINA PRZERYWA NOCNE ŻYCIE MIASTA" (z generatora) i „Test 24c — ręcznie,
@@ -90,12 +137,7 @@ przynosi dopiero wejście w zakładkę, więc klik wpychał na stos okno, dla kt
 treści. Poprawka 24b zdjęła wtedy mylące „materiał wycofany", ale sam klik dalej był martwy —
 teraz `HandoutRow` dociąga listę przed otwarciem. Dotyczy tak samo handoutów z 24a.
 
-**10–11.08 (sesja bez etapu): spłacona zaległość „strona gracza nieodklikana".** Dwie sesje przy
-dwóch hostach (`localhost` = MG, `[::1]` = avatar9) zamknęły **14b, 14c, 16f, 20a, 20b, 23a, 23b,
-23c i 24a** po stronie gracza oraz blokady ze statusów z 14c. Otwarte zostały **trzy** rzeczy i
-każda z innego powodu niż automatyzacja: **14e** (MG nie ma czym nadać rany krytycznej), **14d
-Ludzka tarcza** (potrzeba trzeciej figury na scenie), **23b karta przelewu u odbiorcy** (potrzeba
-trzeciego hosta). Szczegóły w notatce sesji niżej.
+**10–11.08 (sesja bez etapu): spłacona duża część zaległości „strona gracza nieodklikana”.** Dwie sesje przy dwóch hostach (`localhost` = MG, `[::1]` = avatar9) zamknęły po stronie gracza **14b, 14c, 16f, 20a, 20b, 23a, 23b, 23c i 24a**. Otwarte zostały trzy rzeczy, każda z powodu innego niż automatyzacja: **14e** (MG nie ma czym nadać rany krytycznej), **14d Ludzka tarcza** (potrzeba trzeciej figury na scenie) i **23b karta przelewu u odbiorcy** (potrzeba trzeciego hosta). Pełna notatka w `archiwum/dziennik-sesji.md`.
 
 **Etap 24b odklikany po OBU stronach stołu — pierwszy raz w projekcie.** Blokada „druga sesja wylogowuje MG" **została obalona**: `http://[::1]:5173/` to dla ciasteczek **inny host** niż `localhost`, więc gracz i MG działają obok siebie w jednym oknie Chrome (szczegóły w „Pułapki dev" — to samo znosi kilkanaście zaległości „strona gracza nieodklikana" niżej). Na wpisie testowym „Test 24b — wjazd na Zaulek" i handoucie „Test 24b — plan Zaułka", **obu usuniętych po oględzinach**. Potwierdzone **u MG**: zakładka „Dziennik" w **rzędzie stołu**, nagłówek miesiąca „SIERPIEŃ 2026", najnowszy wpis rozwinięty i starszy zwinięty do wiersza, markdown w treści z **`<script>alert(1)</script>` jako tekstem**, chipy `👁 stół` / `🔒 tylko MG` / `⟳ nieaktualny`, przycisk „👁 Pokaż stołowi" ↔ „👁 Widzi stół", chipy materiałów w edytorze i linia na czacie „📓 Wpis w dzienniku · sesja z 2026-08-09" z „Otwórz", które przełącza zakładkę i rozwija wpis. **Wyszukiwarka**: `zaulek` i `ZAUŁEK` znajdują ten sam wpis (fold bez znaków diakrytycznych), `wejsciem` szuka w treści, `wjazd zaulek` zawęża iloczynem, `militech` nie znajduje nic. Potwierdzone **u gracza (avatar9)**: w zakładce **jeden** wpis — odsłonięty — a „Wycieczka do Afterlife" **nie dociera nawet do DOM-u**; zero chipów, zero przycisków, brak paska indeksu i „Zakończ sesję". Trzy rzeczy **na żywo, bez przeładowania**: udostępnienie handoutu dokleiło wiersz „Materiały: 📄 Test 24b — plan Zaułka", cofnięcie udostępnienia zdjęło go razem z otwartym oknem, a odznaczenie „Widzi stół" zabrało graczowi cały wpis („Mistrz Gry nie udostępnił jeszcze żadnego wpisu z kroniki"). Konsola czysta po obu stronach. Scena, walka (RUNDA 1, tura Tony'ego), tokeny i postacie **nietknięte**; na czacie zostały **dwie linie testowe** (wpis dziennika i handout), obie z etykietą „wycofany".
 
@@ -134,6 +176,24 @@ trzeciego hosta). Szczegóły w notatce sesji niżej.
 **Stan oględzin 19a:** **odklikane u MG** — panel „Zasady", stan indeksu, indeksowanie z postępem, pięć pytań o zasady, rozwijanie cytatu. Cztery odpowiedzi poprawne od pierwszego razu, piąta wyszła pusta i wskazała błąd (patrz notatka sesji). Nieodklikane: powtórka bez rozumowania **po poprawce** i degradacja z martwym gatewayem — jedno i drugie pokryte testami dymnymi.
 
 ### Otwarte zaległości (przechodzą między etapami)
+
+- **Etap 27a — strona gracza nieodklikana.** Cała sesja poszła z konta MG. Do sprawdzenia
+  u gracza: czy karta własnej postaci otwiera się w nowym układzie, czy pola, których gracz
+  nie może pisać, zachowują się jak dotąd (serwer i tak odmówi łatki) i czy przełącznik
+  dzień/noc działa na drugim hoście (`[::1]:5173`).
+
+- **Etap 27a — motyw dzienny kończy się na oknie karty.** To świadome i zapisane w zakresie:
+  `data-theme='day'` przemalowuje `.sheet-window` (również stare zakładki Walka / Ekwipunek
+  / Biografia, przez przesłonięcie `--bg`, `--text`, `--border` **wewnątrz** okna), ale mapa,
+  panele boczne, czat i **okno kubka z rzutem** zostają ciemne. Reszta UI dochodzi w etapie 27.
+
+- **Etap 27a — cztery drobiazgi do obejrzenia przy stole.** (1) **Wgrywanie portretu** —
+  nakładka „Wgraj portret" pokazuje się po najechaniu na ramkę; kod jest przeniesiony
+  z „Biografii" bez zmian, ale kliknięty nie był. (2) **Pole „z" przy EMP** — pokazuje się
+  dopiero, gdy Człowieczeństwo zbije EMP poniżej bazy; Tony ma 50/50, więc było schowane.
+  (3) **Czerwone paski stanu** (Poważnie ranny, Test Przeżywalności, cyberpsychoza) — nowe
+  klasy `.cp-alert`, widziane tylko w kodzie. (4) **Skrajne zwężenie** (< 700 px) — strona
+  składa się w jedną kolumnę, a cechy układają w siatkę; sprawdzone było 760 px.
 
 - **Etap 24c — cztery ścieżki nieodklikane.** (1) **Zdjęcie prasowe** — screamsheet przyjmuje
   grafikę handoutu i rysuje ją jako odbitkę gazetową (`grayscale`), ale przy oględzinach nic
