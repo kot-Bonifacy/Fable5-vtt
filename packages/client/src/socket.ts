@@ -14,6 +14,9 @@ import type {
   AttackRollPayload,
   AttackRollResult,
   CoverSyncBroadcast,
+  CpredCreationDraft,
+  CreationDraftView,
+  CreationFinishPayload,
   SmokeSyncBroadcast,
   CoverView,
   BotActionTraceBroadcast,
@@ -1927,6 +1930,51 @@ export function combatErrorText(code: string): string {
       return 'Rana krytyczna zabiera ci Akcję Ruchu w tej turze — szczegóły na karcie odmowy.';
     default:
       return `Błąd walki: ${code}`;
+  }
+}
+
+// ─────────────────────────── kreator postaci (25a) ───────────────────────────
+
+type CreationDraft = CreationDraftView<CpredCreationDraft>;
+
+/** Opens the wizard; returns the stored draft, or a fresh one. */
+export const startCreation = () => emitSceneAck<CreationDraft>('creation:start', undefined);
+
+export const patchCreation = (patch: Record<string, unknown>) =>
+  emitSceneAck<CreationDraft>('creation:patch', { patch });
+
+/** One 1d10 per stat, rolled by the server against the Role's template. */
+export const rollCreationStats = () => emitSceneAck<CreationDraft>('creation:roll', undefined);
+
+export const finishCreation = (payload: CreationFinishPayload = {}) =>
+  emitSceneAck<CharacterView>('creation:finish', payload);
+
+export const discardCreation = () => emitSceneAck('creation:discard', undefined);
+
+export function creationErrorText(code: string | undefined): string {
+  switch (code) {
+    case 'CREATION_DATA_MISSING':
+      return 'Brak danych tworzenia postaci — kreator nie ma z czego czytać tabel.';
+    case 'DRAFT_NOT_FOUND':
+      return 'Szkic postaci przepadł. Otwórz kreator jeszcze raz.';
+    case 'METHOD_DOES_NOT_ROLL':
+      return 'Ta metoda nie losuje Cech — Kompletny Pakiet je kupuje.';
+    case 'ROLE_NOT_CHOSEN':
+      return 'Najpierw wybierz Rolę.';
+    case 'ROLE_HAS_NO_TEMPLATE':
+      return 'Ta Rola nie ma w danych szablonu Cech — wybierz Kompletny Pakiet.';
+    case 'CREATION_INCOMPLETE':
+      return 'Postać nie jest jeszcze gotowa — sprawdź listę braków.';
+    case 'INVALID_NAME':
+      return 'Nieprawidłowe imię postaci (1–64 znaki).';
+    case 'INVALID_DATA':
+      return 'Serwer odrzucił tę zmianę.';
+    case 'OWNER_NOT_FOUND':
+      return 'Wybrany gracz nie należy do kampanii.';
+    case undefined:
+      return 'Nieznany błąd kreatora.';
+    default:
+      return `Błąd kreatora: ${code}`;
   }
 }
 

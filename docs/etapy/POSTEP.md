@@ -3,122 +3,97 @@
 Aktualizowany na koniec każdej sesji. Statusy: ⬜ nierozpoczęty · 🟨 w toku · ✅ ukończony · ⛔ wycofany.
 Pełne notatki z zamkniętych etapów: `archiwum/dziennik-sesji.md` (nie czytaj rutynowo — tylko gdy potrzebujesz szczegółu konkretnego etapu).
 
-| #   | Etap                                          | Status | Data ukończenia | Uwagi                                                                                          |
-| --- | --------------------------------------------- | ------ | --------------- | ---------------------------------------------------------------------------------------------- |
-| 01  | Szkielet projektu i środowisko                | ✅     | 2026-07-16      | repo: Fable5-vtt; shared konsumowany jako źródła TS (decyzja w README)                         |
-| 02  | Baza danych, użytkownicy, role                | ✅     | 2026-07-16      | Prisma 7 (adapter better-sqlite3); dodatkowy model `CampaignMember`                            |
-| 03  | Rdzeń realtime i czat                         | ✅     | 2026-07-17      | moduł `realtime` (rejestr zdarzeń z rolą); szepty bez seq; fix `pnpm dev` (`--raw`)            |
-| 04  | Mapa i sceny                                  | ✅     | 2026-07-17      | pixi-viewport 6 OK z Pixi v8; MG ma niezależny podgląd scen (pokoje per-scena)                 |
-| 05  | Tokeny                                        | ✅     | 2026-07-17      | HP widoczne tylko dla właściciela+MG; ikony statusów z game-icons (CC BY)                      |
-| 06  | Silnik kości CP RED                           | ✅     | 2026-07-18      | krytyk/fumble auto dla pojedynczej d10; /gr = autor+MG (styl Foundry)                          |
-| 07  | Karta postaci — model i edytor                | ✅     | 2026-07-18      | umiejętności Easy Mode (41) w data/public; gracz też tworzy postaci; okna pływające            |
-| 08  | Karta interaktywna i integracja               | ✅     | 2026-07-24      | rzuty z karty zawsze przez kubek; karta = źródło prawdy dla PW tokenu                          |
-| 09  | AI Gateway — fundament botów                  | ✅     | 2026-07-24      | ~80 tok/s, kontekst 32k; think sterowany per żądanie; model zmyśla zasady (RAG: 19)            |
-| 10  | Edytor botów                                  | ✅     | 2026-07-25      | + guardraile roli, auto-powtórka i nauka z korekt MG (rozszerzenie)                            |
-| 11  | Boty NPC na czacie                            | ✅     | 2026-07-25      | pamięć per scenka; wypowiedź bota nie do odróżnienia od `/jako` MG                             |
-| 12  | ~~TTS — głos botów~~                          | ⛔     | wycofany 09.08  | był gotowy 26.07 (Piper); kod usunięty, został sam maszynopis tekstu u klienta                 |
-| 13  | Dane z podręcznika i kompendium               | ✅     | 2026-07-27      | domknięty 26.07 na darmowych materiałach; 27.07 uzupełniony z podręcznika głównego             |
-| 14  | Inicjatywa i tury                             | ✅     | 2026-07-26      | tracker = pasek nad mapą + zakładka „Walka”; remisy: REF, przerzut RAW i drag                  |
-| 14b | Ekonomia akcji: budżet tury i katalog         | ✅     | 2026-07-30      | + Ustabilizowanie od zera (etap 15 go nie miał, wbrew opisowi); „przepuść" jako karta MG       |
-| 14c | Ruch w turze: budżet metrów na mapie          | ✅     | 2026-07-31      | metry po surowej ścieżce kursora (decyzja MG); kara pancerza i ran krytycznych jako dane       |
-| 14d | Zwarcie: Pochwycenie, Duszenie, Rzut          | ✅     | 2026-07-31      | etap 14d podzielony na 14d/14e; migotliwy test death save miał inną przyczynę niż notatka      |
-| 14e | Automaty tury: rany krytyczne, DoT, monity    | ✅     | 2026-07-31      | strażnik hooków w osobnej kolumnie (budżet tury jest odtwarzany); + kary płaskie z ran         |
-| 15  | Obrażenia, pancerz, krytyki, Death Save       | ✅     | 2026-07-27      | obie tabele ran z podręcznika głównego (nieoficjalna tabela głowy zastąpiona 27.07)            |
-| 16  | Zasięgi, DV z mapy, autofire                  | ✅     | 2026-07-28      | wręcz: PT zastępczy z karty celu + przycisk „Unik” (RAW nie zna statycznego PT)                |
-| 16b | Linia strzału i atak z mapy                   | ✅     | 2026-07-31      | etap 16b podzielony na 16b/16c; linia strzału = blokady wzroku strzelca, nie druga geometria   |
-| 16c | Osłony jako obiekty sceny                     | ✅     | 2026-08-01      | osłona jedzie do klienta (ściana nie); blokada miękka z kartą wyboru zamiast twardej           |
-| 16d | Granaty, obszary i rzut przedmiotem           | ✅     | 2026-08-01      | zwężony (amunicja → 16g); odchylenie pudła to zasada domowa — podręcznik jej nie ma            |
-| 16e | Ruch klikiem: zaznaczenie, automat chodzenia  | ✅     | 2026-07-31      | trasa gracza tylko po tym, co widzi teraz — maska eksploracji nie pamięta ścian                |
-| 16f | Celowanie kursorem i HUD walki                | ✅     | 2026-08-01      | model klasycznego CRPG (klik we wroga celuje, MG przez Alt); HUD w nowym lewym pasku           |
-| 16g | Amunicja specjalna: kule zmieniające rachunek | ✅     | 2026-08-07      | podzielony na 16g/16h 07.08; nabój = wpis kompendium, śrut jedzie tą samą drogą co wybuch      |
-| 16h | Amunicja bez obrażeń: testy, gaz i dym        | ✅     | 2026-08-07      | dym tylko utrudnia (−4), nie zasłania; minuta = 6 rund, poza walką zdejmuje MG przyciskiem     |
-| 17a | Fog of war i warstwa MG                       | ✅     | 2026-07-28      | etap 17 podzielony na 17a/17b; nowa scena startuje zakryta, mgła przełączalna                  |
-| 17b | Rysowanie po mapie                            | ✅     | 2026-07-28      | tekst skaluje się z mapą (odstępstwo od wskazówki); MG domyślnie rysuje u siebie               |
-| 18a | Ściany i widoczność tokenów                   | ✅     | 2026-07-29      | etap 18 podzielony na 18a/18b; ściany nie opuszczają serwera                                   |
-| 18b | Ciemność i źródła światła                     | ✅     | 2026-07-30      | zwężony 30.07 (eksploracja → 18c, drzwi/okna → 18d); 160 fps przy 10 światłach                 |
-| 18c | Eksploracja i mgła MG nad widocznością        | ✅     | 2026-07-30      | + „zapal pomieszczenie", tłumienie światła przez okno i wygładzenie gradientu                  |
-| 18d | Interakcje z drzwiami i oknami                | ✅     | 2026-07-30      | zasięg ręki 2 m, zamek MG; okno = firanka, a od dopisku 18e też otwierany otwór                |
-| 19a | Fundament RAG i asystent zasad MG             | ✅     | 2026-08-08      | etap 19 podzielony na 19a/19b/19c 08.08; embeddingi na CPU (0 GB VRAM), hybryda z FTS5         |
-| 19b | Baza wiedzy kampanii i kontekst botów         | ✅     | 2026-08-08      | tag = jedyny język uprawnień; filtr w SQL przed mnożeniem wektorów; podręcznika bot nie czyta  |
-| 19c | Streszczenia sesji, dziennik, relacje NPC     | ✅     | 2026-08-08      | dziennik = trzecia kolekcja RAG; wpis rodzi się „tylko MG"; relacja do karty postaci (−3…+3)   |
-| 20a | Akcje botów: structured output i rzuty        | ✅     | 2026-08-08      | etap 20 podzielony na 20a/20b 08.08; gramatyka GBNF tylko w decyzji, wypowiedź zostaje prozą   |
-| 20b | Tura bota w walce                             | ✅     | 2026-08-08      | „Graj turę” zawsze na klik (decyzja MG); ruch = podejdź/odsuń się, trasę liczy serwer          |
-| 21  | ~~STT — polecenia głosowe~~                   | ⛔     | wycofany 09.08  | nierozpoczęty; głos wypadł z projektu w całości                                                |
-| 22  | ~~WebRTC — czat głosowy graczy~~              | ⛔     | wycofany 09.08  | nierozpoczęty; głos graczy załatwia zewnętrzny komunikator                                     |
-| 23a | Cyborgizacje i człowieczeństwo                | ✅     | 2026-08-09      | etap 23 podzielony na 23a/23b/23c 09.08; EMP bieżące liczone z Człowieczeństwa wchodzi w rzuty |
-| 23b | Ekonomia: eurodolce, zakupy, lifestyle        | ✅     | 2026-08-09      | saldo pisze wyłącznie serwer (audyt `LedgerEntry`); pasmo ceny = cena; Poziom życia opcjonalny |
-| 23c | Reputacja i Facedown                          | ✅     | 2026-08-09      | PL nazwa to „Konfrontacja"; Reputacja wyliczana z listy wyczynów, −2 wybiera przegrany         |
-| 24a | Handouty                                      | ✅     | 2026-08-09      | etap 24 podzielony na 24a/24b/24c 09.08; markdown własnym parserem w `shared`                  |
-| 24b | Dziennik kampanii dla stołu                   | ✅     | 2026-08-09      | uprawnienie gracza to osobna kolumna, nie trzeci szczebel `visibility`; szukanie u klienta     |
-| 24c | Screamsheets                                  | ✅     | 2026-08-13      | `kind` na handoucie z 24a; kroje gazetowe (OFL) hostowane u siebie; nagłówek = tytuł handoutu  |
-| 25  | Generator postaci (lifepath)                  | ⬜     |                 |                                                                                                |
-| 26  | Netrunning                                    | ⬜     |                 | możliwy podział na 2 sesje                                                                     |
-| 27a | Karta jak oficjalna: strona pierwsza          | ✅     | 2026-08-13      | wydzielony z 27 dnia 13.08 (27a/27b/27c); motyw dzień/noc na razie tylko dla karty             |
-| 27b | Karta: broń, pancerz, ekwipunek               | ✅     | 2026-08-13      | zakładka „Walka" zniknęła; pancerz = 3 wiersze wydruku + reszta; trzy nowe pola prozy          |
-| 27c | Karta: Ścieżka Życia i cyborgizacje           | ⬜     |                 | sensownie po etapie 25 — kreator lifepath wypełnia dokładnie te pola                           |
-| 27  | Kości 3D i szlif UI                           | ⬜     |                 | po wydzieleniu 27a–c zostaje: skórki kości, ustawienia, motyw dla reszty UI, wydajność         |
-| 28  | Wdrożenie na VPS                              | ⬜     |                 |                                                                                                |
+| #   | Etap                                          | Status | Data ukończenia | Uwagi                                                                                           |
+| --- | --------------------------------------------- | ------ | --------------- | ----------------------------------------------------------------------------------------------- |
+| 01  | Szkielet projektu i środowisko                | ✅     | 2026-07-16      | repo: Fable5-vtt; shared konsumowany jako źródła TS (decyzja w README)                          |
+| 02  | Baza danych, użytkownicy, role                | ✅     | 2026-07-16      | Prisma 7 (adapter better-sqlite3); dodatkowy model `CampaignMember`                             |
+| 03  | Rdzeń realtime i czat                         | ✅     | 2026-07-17      | moduł `realtime` (rejestr zdarzeń z rolą); szepty bez seq; fix `pnpm dev` (`--raw`)             |
+| 04  | Mapa i sceny                                  | ✅     | 2026-07-17      | pixi-viewport 6 OK z Pixi v8; MG ma niezależny podgląd scen (pokoje per-scena)                  |
+| 05  | Tokeny                                        | ✅     | 2026-07-17      | HP widoczne tylko dla właściciela+MG; ikony statusów z game-icons (CC BY)                       |
+| 06  | Silnik kości CP RED                           | ✅     | 2026-07-18      | krytyk/fumble auto dla pojedynczej d10; /gr = autor+MG (styl Foundry)                           |
+| 07  | Karta postaci — model i edytor                | ✅     | 2026-07-18      | umiejętności Easy Mode (41) w data/public; gracz też tworzy postaci; okna pływające             |
+| 08  | Karta interaktywna i integracja               | ✅     | 2026-07-24      | rzuty z karty zawsze przez kubek; karta = źródło prawdy dla PW tokenu                           |
+| 09  | AI Gateway — fundament botów                  | ✅     | 2026-07-24      | ~80 tok/s, kontekst 32k; think sterowany per żądanie; model zmyśla zasady (RAG: 19)             |
+| 10  | Edytor botów                                  | ✅     | 2026-07-25      | + guardraile roli, auto-powtórka i nauka z korekt MG (rozszerzenie)                             |
+| 11  | Boty NPC na czacie                            | ✅     | 2026-07-25      | pamięć per scenka; wypowiedź bota nie do odróżnienia od `/jako` MG                              |
+| 12  | ~~TTS — głos botów~~                          | ⛔     | wycofany 09.08  | był gotowy 26.07 (Piper); kod usunięty, został sam maszynopis tekstu u klienta                  |
+| 13  | Dane z podręcznika i kompendium               | ✅     | 2026-07-27      | domknięty 26.07 na darmowych materiałach; 27.07 uzupełniony z podręcznika głównego              |
+| 14  | Inicjatywa i tury                             | ✅     | 2026-07-26      | tracker = pasek nad mapą + zakładka „Walka”; remisy: REF, przerzut RAW i drag                   |
+| 14b | Ekonomia akcji: budżet tury i katalog         | ✅     | 2026-07-30      | + Ustabilizowanie od zera (etap 15 go nie miał, wbrew opisowi); „przepuść" jako karta MG        |
+| 14c | Ruch w turze: budżet metrów na mapie          | ✅     | 2026-07-31      | metry po surowej ścieżce kursora (decyzja MG); kara pancerza i ran krytycznych jako dane        |
+| 14d | Zwarcie: Pochwycenie, Duszenie, Rzut          | ✅     | 2026-07-31      | etap 14d podzielony na 14d/14e; migotliwy test death save miał inną przyczynę niż notatka       |
+| 14e | Automaty tury: rany krytyczne, DoT, monity    | ✅     | 2026-07-31      | strażnik hooków w osobnej kolumnie (budżet tury jest odtwarzany); + kary płaskie z ran          |
+| 15  | Obrażenia, pancerz, krytyki, Death Save       | ✅     | 2026-07-27      | obie tabele ran z podręcznika głównego (nieoficjalna tabela głowy zastąpiona 27.07)             |
+| 16  | Zasięgi, DV z mapy, autofire                  | ✅     | 2026-07-28      | wręcz: PT zastępczy z karty celu + przycisk „Unik” (RAW nie zna statycznego PT)                 |
+| 16b | Linia strzału i atak z mapy                   | ✅     | 2026-07-31      | etap 16b podzielony na 16b/16c; linia strzału = blokady wzroku strzelca, nie druga geometria    |
+| 16c | Osłony jako obiekty sceny                     | ✅     | 2026-08-01      | osłona jedzie do klienta (ściana nie); blokada miękka z kartą wyboru zamiast twardej            |
+| 16d | Granaty, obszary i rzut przedmiotem           | ✅     | 2026-08-01      | zwężony (amunicja → 16g); odchylenie pudła to zasada domowa — podręcznik jej nie ma             |
+| 16e | Ruch klikiem: zaznaczenie, automat chodzenia  | ✅     | 2026-07-31      | trasa gracza tylko po tym, co widzi teraz — maska eksploracji nie pamięta ścian                 |
+| 16f | Celowanie kursorem i HUD walki                | ✅     | 2026-08-01      | model klasycznego CRPG (klik we wroga celuje, MG przez Alt); HUD w nowym lewym pasku            |
+| 16g | Amunicja specjalna: kule zmieniające rachunek | ✅     | 2026-08-07      | podzielony na 16g/16h 07.08; nabój = wpis kompendium, śrut jedzie tą samą drogą co wybuch       |
+| 16h | Amunicja bez obrażeń: testy, gaz i dym        | ✅     | 2026-08-07      | dym tylko utrudnia (−4), nie zasłania; minuta = 6 rund, poza walką zdejmuje MG przyciskiem      |
+| 17a | Fog of war i warstwa MG                       | ✅     | 2026-07-28      | etap 17 podzielony na 17a/17b; nowa scena startuje zakryta, mgła przełączalna                   |
+| 17b | Rysowanie po mapie                            | ✅     | 2026-07-28      | tekst skaluje się z mapą (odstępstwo od wskazówki); MG domyślnie rysuje u siebie                |
+| 18a | Ściany i widoczność tokenów                   | ✅     | 2026-07-29      | etap 18 podzielony na 18a/18b; ściany nie opuszczają serwera                                    |
+| 18b | Ciemność i źródła światła                     | ✅     | 2026-07-30      | zwężony 30.07 (eksploracja → 18c, drzwi/okna → 18d); 160 fps przy 10 światłach                  |
+| 18c | Eksploracja i mgła MG nad widocznością        | ✅     | 2026-07-30      | + „zapal pomieszczenie", tłumienie światła przez okno i wygładzenie gradientu                   |
+| 18d | Interakcje z drzwiami i oknami                | ✅     | 2026-07-30      | zasięg ręki 2 m, zamek MG; okno = firanka, a od dopisku 18e też otwierany otwór                 |
+| 19a | Fundament RAG i asystent zasad MG             | ✅     | 2026-08-08      | etap 19 podzielony na 19a/19b/19c 08.08; embeddingi na CPU (0 GB VRAM), hybryda z FTS5          |
+| 19b | Baza wiedzy kampanii i kontekst botów         | ✅     | 2026-08-08      | tag = jedyny język uprawnień; filtr w SQL przed mnożeniem wektorów; podręcznika bot nie czyta   |
+| 19c | Streszczenia sesji, dziennik, relacje NPC     | ✅     | 2026-08-08      | dziennik = trzecia kolekcja RAG; wpis rodzi się „tylko MG"; relacja do karty postaci (−3…+3)    |
+| 20a | Akcje botów: structured output i rzuty        | ✅     | 2026-08-08      | etap 20 podzielony na 20a/20b 08.08; gramatyka GBNF tylko w decyzji, wypowiedź zostaje prozą    |
+| 20b | Tura bota w walce                             | ✅     | 2026-08-08      | „Graj turę” zawsze na klik (decyzja MG); ruch = podejdź/odsuń się, trasę liczy serwer           |
+| 21  | ~~STT — polecenia głosowe~~                   | ⛔     | wycofany 09.08  | nierozpoczęty; głos wypadł z projektu w całości                                                 |
+| 22  | ~~WebRTC — czat głosowy graczy~~              | ⛔     | wycofany 09.08  | nierozpoczęty; głos graczy załatwia zewnętrzny komunikator                                      |
+| 23a | Cyborgizacje i człowieczeństwo                | ✅     | 2026-08-09      | etap 23 podzielony na 23a/23b/23c 09.08; EMP bieżące liczone z Człowieczeństwa wchodzi w rzuty  |
+| 23b | Ekonomia: eurodolce, zakupy, lifestyle        | ✅     | 2026-08-09      | saldo pisze wyłącznie serwer (audyt `LedgerEntry`); pasmo ceny = cena; Poziom życia opcjonalny  |
+| 23c | Reputacja i Facedown                          | ✅     | 2026-08-09      | PL nazwa to „Konfrontacja"; Reputacja wyliczana z listy wyczynów, −2 wybiera przegrany          |
+| 24a | Handouty                                      | ✅     | 2026-08-09      | etap 24 podzielony na 24a/24b/24c 09.08; markdown własnym parserem w `shared`                   |
+| 24b | Dziennik kampanii dla stołu                   | ✅     | 2026-08-09      | uprawnienie gracza to osobna kolumna, nie trzeci szczebel `visibility`; szukanie u klienta      |
+| 24c | Screamsheets                                  | ✅     | 2026-08-13      | `kind` na handoucie z 24a; kroje gazetowe (OFL) hostowane u siebie; nagłówek = tytuł handoutu   |
+| 25a | Kreator postaci: rola, cechy, umiejętności    | ✅     | 2026-08-14      | etap 25 podzielony na 25a/25b 14.08; dwie metody (Krawędziarz, Kompletny Pakiet), bez Szablonów |
+| 25b | Kreator: Ścieżka Życia i wyposażenie startowe | ⬜     |                 | tabele lifepath, zakupy startowe, portret, wróg → szkic bota                                    |
+| 26  | Netrunning                                    | ⬜     |                 | możliwy podział na 2 sesje                                                                      |
+| 27a | Karta jak oficjalna: strona pierwsza          | ✅     | 2026-08-13      | wydzielony z 27 dnia 13.08 (27a/27b/27c); motyw dzień/noc na razie tylko dla karty              |
+| 27b | Karta: broń, pancerz, ekwipunek               | ✅     | 2026-08-13      | zakładka „Walka" zniknęła; pancerz = 3 wiersze wydruku + reszta; trzy nowe pola prozy           |
+| 27c | Karta: Ścieżka Życia i cyborgizacje           | ⬜     |                 | sensownie po etapie 25 — kreator lifepath wypełnia dokładnie te pola                            |
+| 27  | Kości 3D i szlif UI                           | ⬜     |                 | po wydzieleniu 27a–c zostaje: skórki kości, ustawienia, motyw dla reszty UI, wydajność          |
+| 28  | Wdrożenie na VPS                              | ⬜     |                 |                                                                                                 |
 
 ## Od czego zacząć
 
-Ostatnio zamknięte: **27b** (broń, pancerz i ekwipunek w stylu karty; zakładka „Walka"
-zniknęła, bo wszystko z niej wróciło na stronę pierwszą).
+Ostatnio zamknięte: **25a** (kreator postaci — Rola, Cechy, Umiejętności; szkic w bazie,
+losowania na serwerze). Przy okazji naprawiony błąd, przez który karta w przeglądarce znała
+tylko 42 z 66 umiejętności — patrz notatka sesji niżej.
 
-**Następne etapy do wyboru:** **25** (generator postaci — lifepath; sensownie **przed** 27c,
-bo kreator wypełnia dokładnie te pola, które 27c rysuje), **27c** (Ścieżka Życia i sylwetka
-cyborgizacji — domyka kartę), **26** (netrunning, możliwy podział na dwie sesje). Potem
-zostają **27** (kości 3D, motyw dla reszty UI, wydajność) i **28** (VPS).
-
-**13.08 — sesja porządkowa: pięć zaległości zdjętych z listy** (bez etapu). Odklikane po obu
-stronach stołu na postaci testowej **„Test 27x"** (właściciel avatar9; **zostawiona w kampanii
-jako gotowa atrapa** — ma dwie sztuki pancerza na Korpusie, tarczę, wiersz wyposażenia i portret,
-więc te same ścieżki da się obejrzeć ponownie bez budowania ich od nowa). Zdjęte: **27a strona
-gracza**, **27b strona gracza**, **27b trzy ścieżki**, **27a cztery drobiazgi** i **`tsc` na
-`screamsheets.test.ts`**. Szczegóły w notatce sesji niżej. **Przy okazji znaleziony i naprawiony
-błąd, przez który nie dało się wpisać wielowyrazowej nazwy w żaden wiersz karty** — patrz notatka.
-
-**Zaległość porządkowa:** `POSTEP.md` ma 660+ wierszy i sekcja „Od czego zacząć" zbiera dziś
-wszystkie raporty „odklikane" z ostatnich kilkunastu etapów. Zgodnie z regułą 5 z `CLAUDE.md`
-ten plik ma zostać lekki — warto poświęcić kwadrans na przeniesienie starszych raportów do
-`archiwum/dziennik-sesji.md`.
-
-**Etap 24b odklikany po OBU stronach stołu — pierwszy raz w projekcie.** Blokada „druga sesja wylogowuje MG" **została obalona**: `http://[::1]:5173/` to dla ciasteczek **inny host** niż `localhost`, więc gracz i MG działają obok siebie w jednym oknie Chrome (szczegóły w „Pułapki dev" — to samo znosi kilkanaście zaległości „strona gracza nieodklikana" niżej). Na wpisie testowym „Test 24b — wjazd na Zaulek" i handoucie „Test 24b — plan Zaułka", **obu usuniętych po oględzinach**. Potwierdzone **u MG**: zakładka „Dziennik" w **rzędzie stołu**, nagłówek miesiąca „SIERPIEŃ 2026", najnowszy wpis rozwinięty i starszy zwinięty do wiersza, markdown w treści z **`<script>alert(1)</script>` jako tekstem**, chipy `👁 stół` / `🔒 tylko MG` / `⟳ nieaktualny`, przycisk „👁 Pokaż stołowi" ↔ „👁 Widzi stół", chipy materiałów w edytorze i linia na czacie „📓 Wpis w dzienniku · sesja z 2026-08-09" z „Otwórz", które przełącza zakładkę i rozwija wpis. **Wyszukiwarka**: `zaulek` i `ZAUŁEK` znajdują ten sam wpis (fold bez znaków diakrytycznych), `wejsciem` szuka w treści, `wjazd zaulek` zawęża iloczynem, `militech` nie znajduje nic. Potwierdzone **u gracza (avatar9)**: w zakładce **jeden** wpis — odsłonięty — a „Wycieczka do Afterlife" **nie dociera nawet do DOM-u**; zero chipów, zero przycisków, brak paska indeksu i „Zakończ sesję". Trzy rzeczy **na żywo, bez przeładowania**: udostępnienie handoutu dokleiło wiersz „Materiały: 📄 Test 24b — plan Zaułka", cofnięcie udostępnienia zdjęło go razem z otwartym oknem, a odznaczenie „Widzi stół" zabrało graczowi cały wpis („Mistrz Gry nie udostępnił jeszcze żadnego wpisu z kroniki"). Konsola czysta po obu stronach. Scena, walka (RUNDA 1, tura Tony'ego), tokeny i postacie **nietknięte**; na czacie zostały **dwie linie testowe** (wpis dziennika i handout), obie z etykietą „wycofany".
-
-**Trzy błędy znalezione przy oględzinach 24b, wszystkie naprawione.** (1) **`.small-button--on` był martwy w całym UI** — reguła stała w `styles.css` **przed** `.small-button`, więc przy tej samej specyficzności baza wygrywała i stan „włączony" nie różnił się niczym od wyłączonego; dotyczyło to też przełącznika maszynopisu „⌨" w górnym pasku, chipu odległości w `CombatActions` i dwóch edytorów rysunków. Reguła przeniosła się pod `.small-button`. (2) **„Otwórz" na wierszu handoutu mówił „materiał wycofany" na świeżo przeładowanej stronie** (błąd z 24a): listę handoutów przynosi dopiero wejście w zakładkę, więc brak wpisu w pamięci klienta znaczył „nie pytałem", a nie „skasowany". Ta sama poprawka objęła nowy wiersz dziennika. (3) Ognisko z czatu **nie gasło**, gdy wpisu już nie było — drugie kliknięcie „Otwórz" nie robiło wtedy nic.
+**Następne etapy do wyboru:** **25b** (Ścieżka Życia, wyposażenie startowe, portret, wróg →
+szkic bota — domyka kreator i wypełnia pola, które rysuje 27c), **27c** (Ścieżka Życia
+i sylwetka cyborgizacji na karcie), **26** (netrunning, możliwy podział na dwie sesje).
+Potem zostają **27** (kości 3D, motyw dla reszty UI, wydajność) i **28** (VPS).
 
 **09.08 głos wypadł z projektu** (sesja bez etapu, decyzja MG): etapy **12, 21 i 22** wycofane, kod TTS usunięty z repo. Szczegóły w `archiwum/dziennik-sesji.md` i w `archiwum/wycofane/README.md`.
 
-**Etap 24a odklikany u MG w przeglądarce.** Na dwóch handoutach testowych („Test 24a — notatka fixera" i „Test 24a — mapa dzielnicy"), **usuniętych po oględzinach** wraz z wgraną grafiką (`uploads/handouts/` jest znowu puste). Potwierdzone: zakładka **„Handouty" w rzędzie stołu**, pusta lista z zachętą, formularz z autofokusem na tytule, **podgląd markdownu** renderujący komplet (nagłówek, `**mocno**`, `*kursywa*`, lista, kod dosłowny, cytat z kreską, linia pozioma, odnośnik) i — kryterium etapu — **`<script>alert(1)</script>` wyświetlony jako tekst**, zajawka na liście z `markdownToPlainText`, **upload PNG** (miniatura + „320 × 200 px" + „Usuń grafikę"), handout **z samą grafiką bez treści** (zajawka „sama grafika"), chipy odbiorców przełączane jednym kliknięciem, **„Wszystkim"** zaznaczające obu graczy i wyszarzające się samo, **linia na czacie** „📄 Handout od MG **do avatar9**" z przyciskiem „Otwórz", **pływające okno** kładące się obok mapy (dwa naraz, piętrzone) i **dwustopniowy kosz** („Tak, usuń" / „Anuluj"). Scena, walka (RUNDA 1, tura Tony'ego), tokeny i postacie **nietknięte**; na czacie zostały **dwie linie handoutu**.
-
-**Etap 23c odklikany u MG w przeglądarce w całości.** Na postaciach testowych „Test 23c" i „Test 23c-B", usuniętych po oględzinach. Potwierdzone: sekcja „Reputacja" z „+ Wyczyn", zdania z tabeli zasięgu dla poziomów 1/6/8/10, **niższy wyczyn nie zastępuje wyższego**, zła sława przejmuje po podniesieniu ponad dotychczasowy poziom i pokazuje się jako czerwone „Reputacja −8", „😠 Konfrontacja…" w menu tokenu, launcher z chipem „ZŁA SŁAWA 8", kubek „Konfrontacja: Test 23c → Test 23c-B", karta z plakietką **Przegrana**, rozbiciem „Charakter (CHA) +5 · zła sława 8 (Uciekl z ustawki pod klubem) −8" i linią „pojedynek spojrzeń · Test 23c-B: 25 (CHA + Reputacja + pół kości)", **„Nie ustępuj (−2)"** → status „Onieśmielony" na przegranym i **tylko na nim**, a potem **atak na zwycięzcę `1d10+7` z wierszem „Przegrana Konfrontacja = −2" wobec `1d10+9` na kogokolwiek innego**. Rzut na rozpoznanie: przeciw Reputacji 10 „Znasz tę osobę — Reputacja 10 (Legenda Night City)", przeciw statyście „Nic ci to imię nie mówi" **bez ujawniania poziomu**, oba szeptem do MG, notacja płaskie `1d10`.
-
-**Trzy błędy znalezione i naprawione przy oględzinach 23c:** (1) imię wyzywającego w launcherze **zapadało się do zera** przy chipie Reputacji w wąskim menu kontekstowym (brak `flex-wrap` — ta sama klasa błędu co „Dodaj postaci" w 23b); (2) karta **oferowała „Postaw się" po rozstrzygnięciu**, choć serwer odrzuca to jako `FACEDOWN_ALREADY_SETTLED` — przycisk znika teraz razem z wyborem przegranego; (3) kara pisała się ASCII-owym `-2` obok typograficznego `−8` na tej samej karcie.
-
-**Domknięte w drugim podejściu:** **„Postaw się"** (obrońca zastąpił PT zastępczy 2 prawdziwym rzutem — i rewanż poniósł karę z poprzedniej przegranej: „odpowiedź: Charakter (CHA) +5, zła sława 8 (…) −8, **Przegrana Konfrontacja −2**"; po odpowiedzi przycisk znika, plakietka została „Wygrana"); **zdjęcie strachu po powaleniu zwycięzcy** — po `damage:apply` zbijającym Test 23c-B z PW 1 → 0 status „Onieśmielony" zszedł z Test 23c sam, a kolejny atak na tego samego przeciwnika wrócił jako `1d10+9` zamiast `1d10+7`; **kosz przy wyczynie** — usunięcie złej sławy 8 przywróciło „Reputacja 6" ze zdaniem dla poziomu 6.
-
-**Dane dopisane do kampanii „Poligon bojowy" przy oględzinach 23c (do skasowania, gdy przestaną być potrzebne):** postacie **„Test 23c" i „Test 23c-B"** oraz tokeny **Test 23c / -B / -C** zostały **usunięte** po oględzinach — lista wróciła do sześciu (Rico, Kaya, Manekin, Brutus, Tony, avatar9). Na czacie zostały **dwie Konfrontacje, trzy ataki, karta obrażeń i dwa rzuty na rozpoznanie**. Scena, walka (RUNDA 1, tura Tony'ego) i wszystkie istniejące postacie **nietknięte**.
-
-**Sprawdzone też z konta gracza (avatar9):** strona wstaje bez błędów w konsoli, `reputationSources` domyślnie pusta na **istniejącej** karcie (zgodność wstecz), sekcja „Reputacja" **ukryta u gracza bez wyczynów**, zakładka „Biografia" renderuje się normalnie, a odmowa `ATTACKER_NOT_ON_SCENE` dociera do gracza po polsku („Ta postać nie ma tokenu na tej scenie"). **Całe UI MG nieodklikane** — okno MG stało w trybie incognito, którego rozszerzenie nie widzi (`list_connected_browsers` zwraca jedną instancję). Żeby dokończyć, MG musi być zalogowany w **zwykłym** oknie Chrome. Lista niżej.
-
-**Znalezione przy oględzinach 23c: menu kontekstowe tokenu jest w całości dla MG** (`MapArea.tsx:455` — `onTokenMenu` odpala się tylko przy `ROLE_GM`), więc „😠 Konfrontacja…" jest wejściem wyłącznie MG. Zostawione tak świadomie — podręcznik mówi „W takiej chwili **MG może przeprowadzić Konfrontację**" (s. 194), a gracz bierze udział z karty na czacie („Postaw się" i dwa przyciski przegranego). Przy okazji usunięty martwy filtr własności w `FacedownLauncher`, który sugerował wejście gracza; wpis o osobnych drzwiach dla gracza jest w `POMYSLY.md`.
-
-**⚠️ Etapu 20b nie oglądano w przeglądarce ani na żywym modelu** — cała sesja poszła na atrapie gatewaya i na testach. Zanim odhaczysz cokolwiek z 20b, odpal `pwsh ai-gateway/scripts/start-gateway.ps1`: bez gatewaya „Graj turę" wraca z `AI_UNAVAILABLE`. Lista nieodklikanego niżej.
-
-**Dane dopisane do kampanii „Poligon bojowy" przy oględzinach 23b (do skasowania, gdy przestaną być potrzebne):** na czacie przybyło **pięć kart ekonomii** (zakup, przelew, podgląd miesiąca, rozliczenie miesiąca) i **jeden rzut** na Utratę Człowieczeństwa, wystawione przez **dwie postacie testowe „Test 23b" i „Test 23b-B"** — obie **usunięte** po oględzinach (razem z nimi kaskadowo zniknęły ich wiersze audytu), lista wróciła do pięciu (Rico, Kaya, Manekin, Brutus, Tony). **Żadnej istniejącej postaci nie ruszałem** — w szczególności nikomu nie ustawiłem Poziomu życia, więc „Rozlicz miesiąc" na tej kampanii dziś nikogo nie obciąży. Scena, tokeny i stan walki **nietknięte**.
-
-**Dane dopisane do kampanii „Poligon bojowy" przy oględzinach 23a (do skasowania, gdy przestaną być potrzebne):** na czacie przybyły **cztery karty** wystawione przez postać **„Test 23a"** (instalacja Kerenzikova −11, terapia +4, rzut Empatia 7, usunięcie wszczepu). Sama postać **została usunięta** — lista wróciła do pięciu (Rico, Kaya, Manekin, Brutus, Tony), a żadnej istniejącej karty nie ruszałem. **Wpadka do odnotowania:** przy pisaniu w wyszukiwarkę kompendium ognisko nie było w polu, więc „Kerenzikov" poszło w globalne skróty mapy i **tryb turowy przeskoczył z „PRZED WALKĄ" na RUNDĘ 1** (tura Tony'ego; ◀ nie cofa poza rundę 1). Uzbrojone narzędzie osłon rozbroiłem `Esc`, nic na mapie nie zostało postawione. To dokładnie pułapka opisana niżej — od tej pory ognisko ustawiam skryptem (`el.focus()`) i sprawdzam `document.activeElement` **przed** pisaniem.
-
-**Dane dopisane do kampanii „Poligon bojowy" przy oględzinach 20a (do skasowania, gdy przestaną być potrzebne):** na czacie przybyły **cztery linie MG i trzy karty** — jedna karta propozycji bota (Percepcja, oznaczona „ZATWIERDZONE — MG"), dwie karty rzutu wykonane **kartą Kai** (Percepcja 5 z fumble, Atletyka 16) i jedna wypowiedź Barmana. Bot **Barman** miał na czas oględzin podpiętą kartę postaci **Kaya** i tryb **Automat** — **jedno i drugie cofnięte** (karta: „— brak —", tryb: „Propozycja"), więc profil bota jest taki jak przed sesją. Scena, tokeny, stan walki i relacje **nietknięte**. Doszedł plik `data/private/bot-decisions.jsonl` (gitignore) z dziennikiem decyzji.
-
-**Dane dopisane do kampanii „Poligon bojowy" przy oględzinach 19c (do skasowania, gdy przestaną być potrzebne):** jeden wpis dziennika „Wycieczka do Afterlife" (widoczny dla botów, tag `#sesje`, objął 4 wypowiedzi — od niego liczy się następne streszczenie), bot **Barman** ma teraz zaznaczone drugie źródło „Dziennik kampanii" i **relację do Kai −2 (wrogi)** z notatką o utargu, a na czacie przybyły trzy linie (pytanie MG, odpowiedź bota i opis akcji Kai). Drugi szkic streszczenia został **odrzucony**, więc w dzienniku jest jeden wpis. Scena, tokeny i stan walki **nietknięte**.
-
-**Dane dopisane do kampanii „Poligon bojowy" przy oględzinach 19b (do skasowania, gdy przestaną być potrzebne):** dwa wpisy w zakładce „Wiedza" — „Klub Afterlife" (widoczny dla botów, tagi `#miejsca #watson`; treść po edycji mówi, że klub spłonął) i „Kto sypie ekipę" (🔒 tylko MG, tagi `#miejsca #intrygi`) — oraz bot **Barman** (NPC, aktywny w sesji, czyta bazę wiedzy bez filtra tagów, top-3). Na czacie przybyły cztery linie: dwa pytania MG i dwie odpowiedzi bota. Scena, tokeny i stan walki **nietknięte**.
-
-**Stan sceny „Strzelnica":** przy wejściu do przeglądarki tryb turowy stał na **RUNDZIE 3** (tura Brutusa), czyli inaczej niż zapisano 08.08 po resecie — walka toczyła się między sesjami. Nic w niej nie ruszałem.
-
-**Stan oględzin 19a:** **odklikane u MG** — panel „Zasady", stan indeksu, indeksowanie z postępem, pięć pytań o zasady, rozwijanie cytatu. Cztery odpowiedzi poprawne od pierwszego razu, piąta wyszła pusta i wskazała błąd (patrz notatka sesji). Nieodklikane: powtórka bez rozumowania **po poprawce** i degradacja z martwym gatewayem — jedno i drugie pokryte testami dymnymi.
-
 ### Otwarte zaległości (przechodzą między etapami)
+
+- **Etap 25a — cztery ścieżki nieodklikane.** (1) **Odmowa serwera przy przepełnionej puli** —
+  „Utwórz postać" jest wyszarzone, więc do `CREATION_INCOMPLETE` w przeglądarce się nie dojdzie;
+  pokryte testem serwera. (2) **Degradacja bez `creation.json`** — kreator ma wtedy powiedzieć
+  „Brak danych tworzenia postaci…" zamiast pustego okna (`CREATION_DATA_MISSING`); w repo jest
+  próbka publiczna, więc ten stan wymagałby skasowania obu plików. (3) **Wybór właściciela przez
+  MG** — pole „Właściciel" jest w podsumowaniu, ale przy oględzinach zostało na „NPC (MG)";
+  ścieżka z `ownerId` pokryta testem. (4) **Rangi Postaci inne niż „początkująca"** — selektor
+  pokazuje pięć pozycji (50–80 pkt), klikana była tylko domyślna 62.
+
+- **Etap 25a — kostki na karcie rozkładu świecą jak krytyki.** Rzut `10k10` rysuje dziesiątki
+  na zielono, a jedynki na czerwono, bo tak czat maluje **każdą** kostkę k10. Tu 10 i 1 to
+  numery wierszy szablonu, nie krytyk ani fumble (`roll.critical` jest puste i żadna plakietka
+  się nie pojawia). Kosmetyka; do rozważenia razem ze szlifem kubka w etapie 27.
+
+- **Etap 25a — nazwa umiejętności wielokrotnej nie ma gdzie zamieszkać.** „Nauka (wybierz 1)",
+  „Gra na instrumencie (wybierz 1)", „Język" i „Wiedza lokalna" to w podręczniku umiejętności ze
+  specjalizacją, a `CpredCharacterData.skills` trzyma samo `skillId → poziom`. Kreator zapisuje
+  więc „Nauka 4" bez dziedziny. Naturalne miejsce na poprawkę to **25b**, gdzie Ścieżka Życia
+  i tak nazywa język kultury pochodzenia; wpis w `POMYSLY.md`.
 
 - **Etap 27b — rana krytyczna w nowym panelu nieobejrzana.** „Krytyczne Urazy" w kolumnie
   tożsamości widziane wyłącznie w stanie pustym („bez ran krytycznych"), bo — jak przy 14e —
@@ -396,8 +371,107 @@ decyduje przegrany, nie zwycięzca`) — Konfrontacje z 10.08 szły z konta MG, 
 - **Edycja kodu w trakcie oględzin przeładowuje kartę, a wtedy pisanie staje się skrótami klawiszowymi.** Kosztowało to 08.08 przypadkowe przeskoczenie tury w żywej kampanii: po edycie `realtime/rules.ts` `tsx watch` zrestartował serwer, Vite przeładował stronę, ognisko wyszło z pola tekstowego — i wpisywane zdanie poleciało do globalnych skrótów mapy (**każde „e" to „koniec tury"**, litery uzbrajają narzędzia). **Zasada:** albo kończysz edycje przed wejściem do przeglądarki, albo przed każdym pisaniem robisz zrzut i sprawdzasz, że kursor stoi w polu. Po wpadce `Esc` rozbraja uzbrojone narzędzie.
 - **`reasoning_budget` w llama-server nie działa dla wartości dodatnich** — przyjmuje 640 bez błędu, ale egzekwuje wyłącznie 0 i −1. Każda ścieżka z `reasoning: true` musi umieć obsłużyć **pustą odpowiedź** po zużyciu całego `max_tokens` na blok think. Szczegóły w `ai-gateway/README.md`.
 - **Testy dymne serwera potrafią raz na kilka przebiegów pęknąć na limicie czasu** — każdy plik podnosi własny Fastify z Socket.IO, więc przy pełnym `pnpm --filter @vtt/server test` bywa ciasno. Zaobserwowane 08.08: dwa różne przypadki (`ammo.test.ts`, `ammo-effects.test.ts`) pękły po jednym razie na trzy przebiegi i **oba przeszły uruchomione osobno**. Zanim zaczniesz szukać regresji, powtórz sam plik.
+  **Korekta z 14.08:** w przypadku `ammo.test.ts` limit czasu **nie był przyczyną** — test „an
+  armour-piercing round takes two points of SP" pękał **także uruchomiony sam**, raz na kilka
+  przebiegów, i to z powodu dwóch źródeł losowości w samym teście (zdarty pancerz celu + rzut
+  2k6, który nie przechodzi przez pancerz). Naprawiony; 12 przebiegów bez porażki. **Wniosek
+  ogólny:** zanim uznasz migotanie za „ciasny limit czasu", sprawdź, czy komunikat mówi
+  o **czasie**, czy o **asercji** — ten mówił o asercji przez pół roku.
 
 ## Notatki z dwóch ostatnich sesji
+
+### Sesja 14.08 — etap 25a (kreator postaci: rola, cechy, umiejętności)
+
+**Postać da się zrobić od zera w oknie kreatora, a nie tylko wpisać ręcznie w pustą kartę.**
+Cztery kroki z dowolnym cofaniem — Rola → Cechy → Umiejętności → Podsumowanie — kończą się
+kartą z etapu 07, która otwiera się sama po utworzeniu.
+
+**Trzy rozstrzygnięcia MG przed kodem.** (1) **Podział etapu 25 na 25a/25b** — jeden worek
+niósł pipeline danych, sześciokrokowy kreator, szkic w bazie, zakupy startowe i wroga
+z lifepath przerabianego na bota; to zakres dwóch sesji, tak jak przy 14→14e i 16→16h.
+(2) **Dwie metody, nie trzy**: Krawędziarz (1k10 na Cechę z szablonu Roli) i Kompletny Pakiet
+(pula 62 punktów). **Ulicznik odpada** — to dziesięć gotowych postaci, a nie procedura.
+(3) **Kreator w pływającym oknie** (`sheet-window`), nie w panelu bocznym ani na pełnym ekranie.
+
+**Znaleziony i naprawiony błąd, którego nie widziała żadna wcześniejsza sesja: karta postaci
+w przeglądarce znała tylko 42 z 66 umiejętności.** Klient pobierał `/public/cpred/skills.json`
+ze statycznej trasy — czyli **próbkę Easy Mode z repo** — podczas gdy serwer ładuje pełną listę
+z `data/private/cpred/skills.json` (plik prywatny zastępuje publiczny). Skutek: 24 umiejętności
+istniały wyłącznie po stronie serwera i **nie dało się ich ustawić na żadnej karcie** —
+Cyberinżynieria, Podstawowe naprawy, Nauka, Język, Atrakcyjność, Handel, Naprawa broni, Sztuki
+walki, Broń ciężka, Łucznictwo, Materiały wybuchowe, Sztuka przetrwania i jeszcze dwanaście.
+Blokowało to 25a wprost (listy umiejętności Ról odwołują się do ośmiu z tych 24), więc doszła
+trasa **`GET /api/cpred/data`** za `requireAuth`, oddająca **efektywny** rejestr — ten sam,
+którym serwer waliduje karty. Wzorem była trasa `/api/cpred/covers` z 16c, założona dokładnie
+z tego powodu. Po poprawce karta pokazuje pełne 66 pozycji (sprawdzone w przeglądarce).
+
+**Architektura — cztery rzeczy niesie etap.** Pierwsza: **Cechy Krawędziarza pisze wyłącznie
+serwer.** `creation:roll` rzuca dziesięć 1k10 tym samym silnikiem co każdy inny rzut, odczytuje
+wartości z kolumny szablonu Roli i zapisuje je w szkicu; `creation:patch` niosący `stats` przy
+tej metodzie jest **odrzucany** (`INVALID_DATA`). Kompletny Pakiet kupuje Cechy, więc tam łatka
+jest jedyną drogą, a pula sprawdza się na końcu. Druga: **szkic to własna tabela**
+(`CharacterDraft`, jeden wiersz na użytkownika i kampanię), a nie `Character` z flagą —
+niedokończona postać nie może pojawić się na liście, w inicjatywie ani na tokenie. Stan siedzi
+w jednej kolumnie JSON jak przy `BotProfile`, bo kreator dostanie w 25b krok Ścieżki Życia.
+Trzecia: **zmiana Roli albo metody kasuje to, co unieważnia** — rozkład wylosowany z szablonu
+Solo nic nie znaczy na szablonie Netrunnera, a umiejętność kupiona z listy jednej Roli nie
+figuruje na liście drugiej. Czwarta: **jedna karta rzutu zamiast dziesięciu.** Rozbicie nazywa
+każdą Cechę („INT · rzut 9 +7"), a **suma na karcie to wartość rozkładu** (61 przy oględzinach)
+— jedyna liczba, którą stół realnie porównuje, bo Kompletny Pakiet ma do wydania 62.
+
+**Dane: `tools/import/parse-creation.py` → `data/private/cpred/creation.json`.** Dziesięć
+szablonów Cech (10 rzutów × 10 Cech), listy 20 umiejętności Ról, 13 umiejętności podstawowych,
+pule (62 / 86) i limity — wszystko z rozdziałów „Dusza i nowa maszyna" i „Wyposażony na
+Przyszłość". Próbka **własnego autorstwa** w `data/public/cpred/creation.json`, żeby świeży klon
+miał działający kreator. Dwie tabele wymagały czegoś więcej niż regexa: **szablony Cech** czyta
+się ze strumienia cyfr (zrzut skleja numery rzutów z wartościami), a **listy umiejętności Ról**
+to jeden ciąg nazw bez separatorów. Te drugie odtwarzają się z dwóch niezmienników, których
+pilnuje książka — **kolumna jest posortowana alfabetycznie** i **każda Rola ma dokładnie 20
+pozycji** — a jedyną komórkę, którą zrzut zgubił (Solo, drugi wiersz), podaje przykład drukowany
+na tej samej stronie; **pierwszy wiersz tabeli Ulicznika** (ta sama zawartość, s. 86) rozstrzyga,
+które z dwóch pasujących ułożeń jest prawdziwe. Skrypt mówi o tym wprost w ostrzeżeniu — jeśli
+przestanie, znaczy, że zrzut się zmienił.
+
+**Naprawione migotanie `ammo.test.ts` — i notatka z 08.08 wskazywała złą przyczynę.** To nie
+był limit czasu, tylko dwa źródła losowości w teście „an armour-piercing round takes two points
+of SP": (1) ochroniarz stoi w stożku śrutu przez cały plik, więc docierał do tego testu
+z pancerzem zdartym przez wcześniejsze przypadki — przy OB 1 nabój zbiera to, co zostało (nie
+dwa), a przy 0 nie ablatuje nic i karta nie ma linii pancerza (to jest owo „expected undefined
+to be defined"); (2) pancerz zużywa się tylko wtedy, gdy obrażenia przez niego **przejdą**,
+a 2k6 przeciw OB 4 nie przechodzi raz na dwanaście rzutów. Test przywraca teraz OB przed
+pomiarem i dodaje modyfikator obrażeń, którego pistolet nie zejdzie poniżej. **12 przebiegów
+pod rząd bez porażki** (wcześniej 3 na 20).
+
+**Drugi błąd, znaleziony przy oględzinach: „Utwórz postać" wymagało dwóch kliknięć.** Imię
+zapisywało się dopiero na `blur`, a przycisk jest wyszarzony, dopóki imię nie dotrze do serwera
+— więc kliknięcie, które zdejmowało ognisko z pola, trafiało w przycisk jeszcze nieaktywny.
+Imię idzie teraz do serwera z każdym znakiem, tak jak zapisuje się karta; surowa wartość
+(spacja w dwuwyrazowej ksywie musi przeżyć — patrz błąd z 13.08), a przycięcie robi serwer.
+
+**Zweryfikowane:** 1010 testów w `shared` (26 nowych w `creation.test.ts`), 603 na serwerze
+(14 nowych w `creation.test.ts` na żywych gniazdach), `tsc --noEmit` czysty w trzech pakietach,
+lint, Prettier i `pnpm build` bez uwag. Migracja: `20260814054327_stage25a_character_draft`
+(jedna tabela, zero zmian w istniejących).
+
+**Odklikane po OBU stronach stołu** (MG na `localhost:5173`, gracz avatar9 na `[::1]:5173`),
+na postaciach testowych **„Test 25a Ostrze" (Solo, NPC)** i **„Test 25a Gracz" (Fixer, avatar9)**
+— **obu usuniętych po oględzinach**, lista wróciła do siedmiu. Potwierdzone **u MG**: przycisk
+„🧬 Kreator postaci…" nad formularzem jednolinijkowym, okno w skórze karty, dziesięć Ról
+z nazwą Zdolności Specjalnej i liczbą umiejętności, **rzut Cech** (INT 7 z rzutu 9, REF 7 z rzutu
+1, … — wszystkie dziesięć zgodne z szablonem Solo z podręcznika), pochodne liczone na żywo
+(PW 45, Poważnie ranny 23, Przeżywalność 7, Człowieczeństwo 60), **karta na czacie** „Rozkład
+Cech — Solo · Krawędziarz (Na skróty) · 10k10" z sumą **61** i rozbiciem na dziesięć wierszy,
+krok umiejętności z chipem **×2** przy Ogniu ciągłym (poziom 1 = 2 pkt) i **Językiem za 0 pkt**,
+licznik „80 z 86", podsumowanie z listą braków i **wyszarzonym „Utwórz postać"** do czasu
+wpisania imienia, a po utworzeniu **karta otwiera się sama** — w nowym układzie z 27a/27b,
+ze Zdolnością Specjalną „Zmysł Walki 4" i **pełną listą 66 umiejętności**. Potwierdzone **przy
+Kompletnym Pakiecie**: wybór Rangi Postaci (5 pozycji, 50–80 pkt), pola liczbowe zamiast rzutu,
+licznik **czerwienieje przy 70 z 62**, a „🎲 Rzuć Cechy" w ogóle się nie pokazuje. **Szkic
+przeżył pełne przeładowanie strony** (metoda, krok i rozkład 60 z 62 wróciły z bazy).
+Potwierdzone **u gracza**: własny, niezależny szkic (krok 1, bez pola „Właściciel"), rzut Cech
+działa tak samo, a utworzona postać ma **właściciela avatar9** i pojawia się **na żywo na liście
+MG**. Konsola czysta po obu stronach. Scena, walka („PRZED WALKĄ"), tokeny i pozostałe postacie
+**nietknięte**; na czacie zostały **dwie karty rozkładu Cech**.
 
 ### Sesja 13.08 — porządki: pięć zaległości zdjętych z listy (bez etapu)
 
@@ -456,80 +530,16 @@ w `shared`, `client` i `server`. Pierwszy przebieg serwera pękł na `ammo.test.
 przeszedł osobno (19/19) i w powtórzonym pełnym przebiegu (589/589); to znane migotanie
 opisane w „Pułapkach dev", nie regresja.
 
-### Sesja 13.08 — etap 27b (karta: broń, pancerz, ekwipunek)
-
-**Strona pierwsza karty ma teraz komplet z wydruku, a zakładka „Walka" zniknęła.** Broń,
-pancerz i rany krytyczne wróciły tam, gdzie drukuje je oficjalny arkusz — pas „BROŃ I PANCERZ"
-pod trzema kolumnami umiejętności, „Krytyczne Urazy" i „Uzależnienia" w kolumnie tożsamości.
-Zakładki to dziś **KARTA / EKWIPUNEK / BIOGRAFIA**: pusta czwarta mówiłaby, że to samo mieszka
-w dwóch miejscach (decyzja MG przed kodem).
-
-**Trzy rozstrzygnięcia MG przed kodem.** (1) **Zakładka „Walka" usunięta**, a nie zostawiona
-z pasem w środku. (2) **Pancerz to trzy stałe wiersze wydruku plus lista reszty**, a nie
-dzisiejsza lista z wyborem lokacji przemalowana na czerwono. (3) **Trzy nowe pola prozy zamiast
-jednego wymaganego zakresem**: obok `Uzależnień` doszły `Styl` i `Amunicja` (zapas) — obu karta
-nie miała gdzie zapisać, a bez nich prawa kolumna strony drugiej byłaby niepełna.
-
-**Architektura — cztery rzeczy niesie etap.** Pierwsza: **trzy wiersze pancerza pokazują tę
-sztukę, która naprawdę zatrzyma strzał.** Wybiera ją `effectiveArmor` — dokładnie ta funkcja,
-którą czyta silnik obrażeń z etapu 15 (najmocniejsza noszona w danej lokacji) — więc karta
-i karta obrażeń nie mogą powiedzieć dwóch różnych rzeczy. Sygnatura rozszerzyła się
-z `CpredHitLocation` na `ArmorLocation`, bo tarcza nie jest lokacją trafienia, ale jest wierszem
-na wydruku. Sztuki zdjęte i słabsze schodzą pod spód, do listy „Reszta pancerza (N)": bez niej
-trzy wiersze kłamałyby przez przemilczenie, a „słabsza" przy wierszu odpowiada wprost na pytanie
-„czemu tego nie widać wyżej". Druga: **tabela w idiomie arkusza to `border-spacing`, nie
-obramowania.** `.cp-table` ma czerwone tło i 3-pikselowy odstęp między komórkami — czerwień
-prześwituje i robi rowek, tak jak `gap` w `.cp-panel` z 27a. Dzięki temu przeprowadzka tabel
-broni i sprzętu była zmianą klas, nie przepisaniem znaczników: przyciski „Atak / Seria / Zapora /
-◎ / OBR.", wybór naboju, licznik magazynka i ⟳ zostały tymi samymi elementami. Trzecia:
-**OB w idiomie tej karty to „bieżące z bazowego"** (`8 z 11`), jak PW i Człowieczeństwo wyżej,
-z ↻ pojawiającym się dopiero przy ablacji — jedno pole „OB" z wydruku nie pomieściłoby
-mechaniki z etapu 15, a dwie kolumny obok siebie przestałyby wyglądać jak karta. Czwarta:
-**„Wynajem" jest tylko do odczytu**, bo czynsz wynika z Zakwaterowania (s. 376); wpisywalna kopia
-byłaby drugą, kłócącą się liczbą — tak samo jak saldo, którego karta pisać nie pozwala. Wybór
-Poziomu życia i Zakwaterowania wyszedł spod przycisku „Kasa…" na pola karty (to wybór, nie
-operacja na koncie), a za przyciskiem został przelew i historia.
-
-**Migracji nie ma** — trzy nowe pola siedzą w JSON-ie karty i są zgodne wstecz: arkusz zapisany
-przed dzisiaj czyta się jako trzy puste linijki (test w `character.test.ts`). Limit dla wszystkich
-trzech to jedno `SHEET_LINE_MAX_LENGTH` (400 znaków) — to proza, której nie czyta żadna zasada.
-
-**Naprawiony błąd z etapu 27a: zapytanie kontenerowe nigdy nie składało strony w jedną kolumnę.**
-`container-type: inline-size` stało na `.sheet-page`, a reguła `@container (max-width: 700px)`
-próbowała przestawić `grid-template-columns` **tej samej** `.sheet-page` — a `@container`
-stylizuje potomków kontenera, nigdy jego samego. Skutek: przy wąskim oknie szpalty umiejętności
-schodziły do dwóch (bo `.sheet-skills` jest potomkiem) i na tym się kończyło, mimo że notatka
-z 27a zapowiadała jedną kolumnę poniżej 700 px. Kontener przeniósł się na `.sheet-body`.
-Sprawdzone pomiarem przy czterech szerokościach okna: 1180 → 3 + 3 kolumny, 900 → 3 + 2,
-680 → 1 + 1, 520 → 1 + 1, **poziomego paska nie ma przy żadnej**.
-
-**Zweryfikowane:** 957 testów w `shared` (2 nowe w `character.test.ts`), 589 na serwerze (bez
-zmian — pola dopisują się, niczego nie przestawiają), typy, lint, Prettier i `pnpm build` czyste.
-Jeden przebieg serwera pękł na znanym limicie czasu (`ammo.test.ts`, `ammo-effects.test.ts`)
-i przeszedł powtórzony — patrz „Pułapki dev".
-
-**Odklikane u MG na żywej kampanii („Poligon bojowy", karta Rico), stan cofnięty do wyjściowego.**
-Potwierdzone: pas „BROŃ I PANCERZ" z pięcioma wierszami broni (magazynki `3 /8` z ⟳, wybór naboju
-„Amunicja dymna", przyciski Seria/Zapora tylko przy broni, która je ma), trzy wiersze pancerza
-z „+ Załóż" w pustej Głowie i Tarczy, **⤓ zdejmij** → wiersz schodzi do „Reszta pancerza (1)"
-i Korpus pustoszeje, **⤒ załóż** → wraca na wydruk, **ablacja** 11 → 8 (bieżące na czerwono, ↻
-pojawia się) i **↻ Napraw** → z powrotem 11. **Atak z karty** uzbraja mapę (kursor krzyżyk, HUD
-„Esc — anuluj"), `Esc` rozbraja, **przeładowanie** ⟳ podnosi magazynek 3 → 8 bez linii na czacie
-(poza walką jest darmowe). **Trzy nowe pola przeszły pełną drogę do bazy i z powrotem**: wpisane,
-przeżyły przeładowanie strony, **wyczyszczone po oględzinach**. Zakładka Ekwipunek: plakietki
-Amunicja + Gotówka (`0 ed`, „korekta" tylko u MG), Styl, Zakwaterowanie **wyszarzone bez Poziomu
-życia**, Wynajem „—", „Kasa…" z przelewem i pustą historią. **Motyw dzienny** ubiera cały nowy
-pas i stronę drugą; przełączony z powrotem na noc. Konsola czysta. Scena, walka („PRZED WALKĄ"),
-tokeny i pozostałe postacie **nietknięte**; na czacie nie przybyła ani jedna linia.
-
-**Przy okazji: backend nie działał na starcie sesji** — MG zgłosił błąd logowania, a nasłuchiwał
-tylko Vite (`[::1]:5173`); portu 3001 nie było. To nie jest błąd w kodzie: proces `pnpm --filter
-@vtt/server dev` z poprzedniej sesji zakończył się. Objaw („złe hasło" mimo poprawnego) jest
-mylący, więc warto zapamiętać rozpoznanie: `netstat -ano | grep LISTENING | grep 3001`.
-
 ## Skróty wcześniejszych sesji
 
 Uzupełniają kolumnę „Uwagi" w tabeli, nie powtarzają jej. Uzasadnienia decyzji, listy niezweryfikowanego i szczegóły migracji — `archiwum/dziennik-sesji.md`.
+
+- **27b (13.08)** — strona pierwsza karty ma komplet z wydruku, a zakładka „Walka" **zniknęła**:
+  broń, pancerz i rany krytyczne wróciły tam, gdzie drukuje je arkusz. Trzy wiersze pancerza
+  pokazują tę sztukę, którą wybiera `effectiveArmor` — ta sama funkcja, którą czyta silnik
+  obrażeń — więc karta i karta obrażeń nie mogą powiedzieć dwóch różnych rzeczy. Przy okazji
+  naprawione zapytanie kontenerowe z 27a, które nigdy nie składało strony w jedną kolumnę.
+  Pełna notatka w archiwum.
 
 - **27a (13.08)** — karta odtwarza styl oficjalnego arkusza **własnym CSS-em, bez jednego bajtu
   z PDF-a**; portret i „Notatki" wróciły z „Biografii" na stronę pierwszą, bo tam drukuje je

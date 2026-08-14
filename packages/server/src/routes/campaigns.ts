@@ -1,8 +1,8 @@
 import { randomBytes } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
-import type { CampaignDetail, InvitationSummary } from '@vtt/shared';
+import type { CampaignDetail, CpredDataPayload, InvitationSummary } from '@vtt/shared';
 import type { AppContext } from '../context.js';
-import { requireGm } from '../auth/guards.js';
+import { requireAuth, requireGm } from '../auth/guards.js';
 import type { Invitation } from '../generated/prisma/client.js';
 
 const DEFAULT_INVITATION_TTL_HOURS = 7 * 24;
@@ -32,6 +32,26 @@ export function registerCampaignRoutes(app: FastifyInstance, ctx: AppContext): v
    * source of the numbers, on the side that decides them.
    */
   app.get('/api/cpred/covers', async () => ctx.covers);
+
+  /**
+   * Skills, Roles and the character-creation tables — the same registry the
+   * server validates sheets against.
+   *
+   * Same reason as the covers route above, and the same bug it was written to
+   * avoid: until stage 25a the client read `/public/cpred/skills.json` off the
+   * static route, so it knew the 42 sample skills while the server knew the 66
+   * imported from the rulebook. Twenty-four skills existed on one side of the
+   * socket only. Behind `requireAuth`, because the private files are rulebook
+   * content and the static route is open to anyone.
+   */
+  app.get('/api/cpred/data', { preHandler: requireAuth }, async () => {
+    const payload: CpredDataPayload = {
+      skills: ctx.cpred.skills,
+      roles: ctx.cpred.roles,
+      creation: ctx.cpred.creation,
+    };
+    return payload;
+  });
 
   app.get('/api/campaigns', gmOnly, async () => {
     const campaigns = await ctx.prisma.campaign.findMany({

@@ -242,11 +242,15 @@ describe('special ammunition', () => {
   }
 
   /** Rolls the damage the attack card offers, and returns its message id. */
-  async function rollDamage(weaponRowId: string, attackMessageId: number): Promise<number> {
+  async function rollDamage(
+    weaponRowId: string,
+    attackMessageId: number,
+    extra: Record<string, unknown> = {},
+  ): Promise<number> {
     const broadcast = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
     await emitAck(player, 'character:roll', {
       characterId,
-      request: { kind: 'damage', weaponRowId, attackMessageId },
+      request: { kind: 'damage', weaponRowId, attackMessageId, ...extra },
     });
     return (await broadcast).message.id;
   }
@@ -564,20 +568,40 @@ describe('special ammunition', () => {
 
   describe('what the round does to the damage', () => {
     /** Fires the pistol with `ammoId` loaded and applies the hit to a target. */
-    async function shootAndApply(ammoId: string | null, tokenId: string) {
+    async function shootAndApply(
+      ammoId: string | null,
+      tokenId: string,
+      damageRequest: Record<string, unknown> = {},
+    ) {
       await emitAck(player, 'weapon:reload', {
         characterId,
         weaponRowId: 'w-pistol',
         ammoId,
       });
       const { messageId } = await fire('w-pistol', tokenId);
-      const damageId = await rollDamage('w-pistol', messageId);
+      const damageId = await rollDamage('w-pistol', messageId, damageRequest);
       return applyDamage(damageId, tokenId);
     }
 
     it('an armour-piercing round takes two points of SP, and the card says so', async () => {
+      // Two sources of randomness used to make this the file's „raz na kilka
+      // przebiegów" failure — and neither of them was the timeout the 08.08
+      // note guessed at. First, the bodyguard stands in the shotgun cone for
+      // the whole file, so he arrives here with whatever SP those tests left
+      // him: at 1 the round takes what is left (not two) and at 0 nothing is
+      // ablated at all, which is the „expected undefined to be defined" that
+      // kept showing up. Second, armour only wears out when damage gets
+      // *through* it — and 2k6 against SP 4 falls short once in twelve. Reset
+      // the SP and give the damage a modifier the pistol could not roll below.
+      const worn = (await tokenOf(armouredTokenId)).combatProfile as Record<string, unknown>;
+      await emitAck(gm, 'token:update', {
+        tokenId: armouredTokenId,
+        patch: { combatProfile: { ...worn, armorSp: 4 } },
+      });
       const before = (await tokenOf(armouredTokenId)).combatProfile as { armorSp: number } | null;
-      const { entry } = await shootAndApply('ammo.sample-piercing', armouredTokenId);
+      const { entry } = await shootAndApply('ammo.sample-piercing', armouredTokenId, {
+        modifier: 6,
+      });
       expect(entry.armor).toBeDefined();
       expect(entry.armor!.before - entry.armor!.after).toBe(2);
       expect(entry.ammo?.name).toBe('Nabój przebijający');

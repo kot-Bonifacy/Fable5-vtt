@@ -61,6 +61,44 @@ export interface CharacterDeleteBroadcast {
   characterId: string;
 }
 
+/**
+ * Server → client: the wizard's stored draft (stage 25a).
+ *
+ * The draft's contents are opaque here for the same reason a sheet's are —
+ * their shape belongs to the game-system module, not to the VTT core.
+ */
+export interface CreationDraftView<TDraft = unknown> {
+  draft: TDraft;
+  updatedAt: string;
+}
+
+/** Client → server `creation:patch`; top-level keys replace the stored ones. */
+export interface CreationPatchPayload {
+  patch: Record<string, unknown>;
+}
+
+/** Client → server `creation:finish` — turns the draft into a real character. */
+export interface CreationFinishPayload {
+  /** GM only; players always own what they create. */
+  ownerId?: string | null;
+}
+
+/**
+ * Body of `GET /api/cpred` — the system data files as the **server** reads
+ * them.
+ *
+ * Until stage 25a the client fetched `/public/cpred/skills.json` straight off
+ * the static route, which meant it only ever saw the sample list in the repo
+ * while the server validated against the full private one: 24 skills existed
+ * on the server and could not be set on a sheet. One endpoint, one registry.
+ */
+export interface CpredDataPayload {
+  skills: unknown[];
+  roles: unknown[];
+  /** Character-creation tables (stage 25a); null when no data file was found. */
+  creation: unknown;
+}
+
 /** Ack data of the portrait upload (`POST /api/uploads/portraits`). */
 export interface PortraitUploadResult {
   url: string;

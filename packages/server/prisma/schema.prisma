@@ -22,6 +22,7 @@ model User {
   tokens           Token[]
   drawings         MapDrawing[]
   handoutsReceived HandoutShare[]
+  characterDrafts  CharacterDraft[]
 }
 
 model Session {
@@ -50,6 +51,7 @@ model Campaign {
   knowledge    KnowledgeEntry[]
   journal      JournalEntry[]
   handouts     Handout[]
+  drafts       CharacterDraft[]
 }
 
 /// A handout: the material the GM hands to the players (stage 24a).
@@ -277,6 +279,31 @@ model Character {
   ledger    LedgerEntry[]
 
   @@index([campaignId])
+}
+
+/// A character being built in the wizard (stage 25a).
+///
+/// One draft per user per campaign: the creator is a single window, and a
+/// half-built sheet outliving the browser tab is the whole reason it is in the
+/// database rather than in the client's memory. It is deliberately *not* a
+/// `Character` with a flag — an unfinished sheet must not turn up in the
+/// character list, in the initiative order or on a token.
+///
+/// The state is one JSON column (`CpredCreationDraft`), like `BotProfile`: the
+/// wizard grows a Lifepath step in 25b and a migration per field would be
+/// nothing but churn.
+model CharacterDraft {
+  id         String   @id @default(cuid())
+  campaignId String
+  userId     String
+  data       String   @default("{}")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, userId])
 }
 
 /**

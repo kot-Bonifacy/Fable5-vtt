@@ -41,7 +41,8 @@ Każdy etap to jedna sesja pracy z Claude. Etapy są pogrupowane w 8 faz. Szczeg
 | 24a | Handouty                                            | H. Świat CP RED      |                                |
 | 24b | Dziennik kampanii dla stołu                         | H. Świat CP RED      |                                |
 | 24c | Screamsheets                                        | H. Świat CP RED      |                                |
-| 25  | Generator postaci (lifepath)                        | H. Świat CP RED      |                                |
+| 25a | Kreator postaci: rola, cechy, umiejętności          | H. Świat CP RED      | podział 25 → 25a/25b (14.08)   |
+| 25b | Kreator: Ścieżka Życia i wyposażenie startowe       | H. Świat CP RED      |                                |
 | 26  | Netrunning                                          | H. Świat CP RED      |                                |
 | 27  | Kości 3D i szlif UI                                 | I. Wykończenie       |                                |
 | 28  | Wdrożenie na VPS                                    | I. Wykończenie       | 🏁 Produkcja                   |

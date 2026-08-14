@@ -11,6 +11,7 @@ import {
 } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { ensureCpredDataLoaded, useCharacterStore } from '../stores/characterStore.js';
+import { useCreationStore } from '../stores/creationStore.js';
 
 interface PlayerOption {
   id: string;
@@ -42,6 +43,7 @@ export function CharacterPanel() {
   const order = useCharacterStore((s) => s.order);
   const registry = useCharacterStore((s) => s.registry);
   const openSheet = useCharacterStore((s) => s.openSheet);
+  const openCreator = useCreationStore((s) => s.openCreator);
 
   const [players, setPlayers] = useState<PlayerOption[]>([]);
   const [newName, setNewName] = useState('');
@@ -235,6 +237,18 @@ export function CharacterPanel() {
           })}
         </ul>
       )}
+
+      {/* Stage 25a. Two doors on purpose: the wizard for a character somebody
+          will play, and the one-line form below for the mannequin a GM needs
+          on the map in five seconds. */}
+      <button
+        type="button"
+        className="small-button character-creator-open"
+        onClick={() => void openCreator()}
+        title="Kreator: Rola, Cechy i Umiejętności wg zasad podręcznika"
+      >
+        🧬 Kreator postaci…
+      </button>
 
       <form className="scene-editor-row character-create" onSubmit={(e) => void submitCreate(e)}>
         <input

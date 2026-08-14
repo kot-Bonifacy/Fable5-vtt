@@ -6,6 +6,7 @@ import { CombatHud } from './components/CombatHud.js';
 import { SidePanel } from './components/SidePanel.js';
 import { DiceCup } from './components/DiceCup.js';
 import { CharacterSheets } from './components/CharacterSheet.js';
+import { CharacterCreator } from './components/CharacterCreator.js';
 import { HandoutWindows } from './components/HandoutWindow.js';
 import { BotEditors } from './components/BotEditor.js';
 import { RollDialog } from './components/RollDialog.js';
@@ -52,6 +53,7 @@ function GameView() {
         <SidePanel />
       </main>
       <CharacterSheets />
+      <CharacterCreator />
       <HandoutWindows />
       <BotEditors />
       <RollDialog />

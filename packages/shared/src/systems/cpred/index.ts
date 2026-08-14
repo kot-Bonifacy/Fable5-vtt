@@ -4,6 +4,7 @@ export * from './locations.js';
 export * from './cyberware.js';
 export * from './economy.js';
 export * from './character.js';
+export * from './creation.js';
 export * from './shopping.js';
 export * from './rolls.js';
 export * from './ids.js';

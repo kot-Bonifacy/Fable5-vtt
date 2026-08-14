@@ -24,6 +24,9 @@ uv run --with pdfplumber python tools/import/extract-pdf-text.py
 # 2. podręcznik główny -> umiejętności, typy broni, pancerze, rany krytyczne
 python tools/import/parse-manual.py
 
+# 2.5. podręcznik główny -> dane tworzenia postaci (etap 25a)
+python tools/import/parse-creation.py
+
 # 3. DLC -> broń markowa (+ kontrola zgodności z podręcznikiem)
 uv run --with pdfplumber python tools/import/parse-compendium.py
 
@@ -82,6 +85,31 @@ Znane miejsca, gdzie zrzut gubi dane (i dlatego są w overrides):
   wartość w danych jest domyślną, a zastrzeżenie stoi w opisie typu.
 - **Bijatyka i Sztuki walki** — obrażenia zależą od Budowy Ciała, a progi w
   zrzucie sklejają się (`7 – 1011 lub więcej`); drabinka jest w opisie.
+
+## Tworzenie postaci (`parse-creation.py`)
+
+Czyta te same rozdziały co `parse-manual.py` i zapisuje jeden plik —
+`data/private/cpred/creation.json` — z którego kreator z etapu 25a bierze
+szablony Cech (10 ról × 10 rzutów × 10 Cech), listy 20 umiejętności Ról, listę
+umiejętności podstawowych, pule punktów i limity. Próbka **własnego autorstwa**
+leży w `data/public/cpred/creation.json`, więc świeży klon ma działający kreator
+bez podręcznika; plik prywatny ją zastępuje, tak jak przy `skills.json`.
+
+Dwie tabele wymagają czegoś więcej niż regexa i obie mają własną kontrolę:
+
+- **Szablony Cech** (s. 74–77) w zrzucie są strumieniem cyfr, w którym numery
+  rzutów sklejają się z wartościami (`…684 677657667757 7765677666 8…`). Parser
+  wyrzuca białe znaki i czyta „numer rzutu 1–10, po nim dokładnie dziesięć
+  cyfr”. Ten kształt nie ma już żadnej niejednoznaczności.
+- **Listy umiejętności Ról** (s. 88–89) to jeden ciąg nazw bez separatorów
+  (`AtletykaAtletykaAtletyka…`). Parser tnie go po znanym słowniku umiejętności,
+  a pięć kolumn odtwarza z dwóch niezmienników, których książka pilnuje:
+  **kolumna jest posortowana alfabetycznie** i **każda Rola ma dokładnie 20
+  pozycji**. Tabela Krawędziarza zgubiła w zrzucie jedną komórkę (Solo, drugi
+  wiersz): brakującą nazwę podaje przykład drukowany na tej samej stronie,
+  a **pierwszy wiersz tabeli Ulicznika** (s. 86, ta sama zawartość) rozstrzyga,
+  które z dwóch pasujących ułożeń jest prawdziwe. Skrypt mówi o tym wprost
+  w ostrzeżeniach — jeśli kiedyś przestanie, znaczy, że zrzut się zmienił.
 
 ## Broń markowa i statbloki (`parse-compendium.py`)
 

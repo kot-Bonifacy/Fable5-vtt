@@ -50,6 +50,13 @@ import {
 import { tokenEffectEvent } from './turn-effects.js';
 import { effectExpireEvent } from './timed-effects.js';
 import { characterCreateEvent, characterDeleteEvent, characterUpdateEvent } from './characters.js';
+import {
+  creationDiscardEvent,
+  creationFinishEvent,
+  creationPatchEvent,
+  creationRollEvent,
+  creationStartEvent,
+} from './creation.js';
 import { characterRollEvent } from './character-rolls.js';
 import { characterCyberwareEvent } from './cyberware.js';
 import {
@@ -182,6 +189,11 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   characterCreateEvent,
   characterUpdateEvent,
   characterDeleteEvent,
+  creationStartEvent,
+  creationPatchEvent,
+  creationRollEvent,
+  creationFinishEvent,
+  creationDiscardEvent,
   characterRollEvent,
   characterCyberwareEvent,
   economyBuyEvent,

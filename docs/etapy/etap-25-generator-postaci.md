@@ -1,39 +1,14 @@
-# Etap 25 — Generator postaci (lifepath)
+# Etap 25 — Generator postaci (lifepath) — **podzielony 2026-08-14**
 
-**Faza:** H — Świat CP RED · **Wymaga etapów:** 13, 23
+Ten etap nie jest już realizowany jako jedna sesja. Cały jego zakres przeszedł do dwóch
+plików; ten zostaje jako drogowskaz, żeby odnośniki z `00-przeglad.md` i `POSTEP.md` nie
+prowadziły w pustkę.
 
-⚠️ **Wymaga materiałów od Ciebie:** rozdziały podręcznika: tworzenie postaci (metody statystyk, pakiety umiejętności ról, wyposażenie startowe) i pełne tabele lifepath — przez pipeline z etapu 13.
+- **`etap-25a-kreator-cechy-umiejetnosci.md`** — dane tworzenia postaci w pipelinie z etapu 13,
+  szkielet kreatora ze szkicem w bazie, Rola, Cechy (Krawędziarz i Kompletny Pakiet),
+  Umiejętności, serwerowe losowania.
+- **`etap-25b-sciezka-zycia-ekwipunek.md`** — tabele Ścieżek Życia (ogólna i rolowe),
+  wyposażenie startowe za startowe eurodolce, imię i portret, wróg z lifepath → szkic bota.
 
-## Cel sesji
-
-Kreator postaci krok po kroku: od wyboru roli, przez statystyki i umiejętności, po lifepath z tabel — kończący się kompletną, grywalną kartą.
-
-## Zakres
-
-- [ ] Rozszerzenie pipeline'u o dane tworzenia postaci: tabele lifepath, pakiety startowe ról, metody generowania statystyk
-- [ ] Kreator wieloetapowy (wizard z możliwością cofania):
-  1. rola (opis + zdolność roli)
-  2. statystyki — metody z podręcznika (losowanie przez silnik kości / pakiety punktów) z podglądem pochodnych (HP, humanity)
-  3. umiejętności — pakiet roli + punkty do rozdania, walidacja limitów
-  4. lifepath — kolejne tabele (pochodzenie, rodzina, motywacje, przyjaciele, wrogowie, romanse…): losowanie `1d10` albo wybór ręczny; wynik jako sekcja biografii na karcie
-  5. wyposażenie startowe — pakiet roli + zakupy za startowe eddies (kompendium + ekonomia z etapu 23)
-  6. dane opisowe — imię, portret (upload), styl
-- [ ] Zapis w dowolnym momencie jako szkic; ukończenie tworzy pełną kartę (etap 07) z tokenem
-- [ ] Dostępność: MG zawsze; gracze — jeśli MG włączy (tworzenie własnych postaci)
-- [ ] Wrogowie/przyjaciele/romanse z lifepath zapisywani tak, by dało się ich jednym kliknięciem przekształcić w szkic NPC/bota (nazwa + relacja trafiają do profilu z etapu 10)
-
-## Poza zakresem
-
-- Generator kompletnych NPC jedną akcją (statbloki — POMYSLY.md), lifepath rozszerzeń/dodatków, wydruk karty
-
-## Kryteria ukończenia
-
-- Pełne przejście kreatora: od roli do gotowej karty z biografią z lifepath, poprawnymi statystykami (walidacja limitów potwierdzona testem) i startowym ekwipunkiem
-- Losowania w kreatorze idą przez serwerowy silnik kości i są logowane (uczciwość na sesji zerowej!)
-- Wróg z lifepath przekształcony w szkic bota pojawia się w edytorze botów
-
-## Wskazówki techniczne
-
-- Tabele lifepath to dane (etap 13), kreator tylko je odtwarza — żadnych treści tabel w kodzie
-- Stan kreatora trzymaj jako dokument szkicu w DB (odporność na zamknięcie karty przeglądarki w połowie)
-- Sesja zerowa z drużyną to najlepszy test tego etapu — zaplanuj ją po jego ukończeniu
+Powód podziału i decyzje MG z 14.08 (dwie metody zamiast trzech, kreator w pływającym oknie)
+opisuje nagłówek pliku **25a**.

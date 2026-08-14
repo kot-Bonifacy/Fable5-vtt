@@ -5615,3 +5615,357 @@ body.is-resizing {
   flex: 1;
   min-width: 0;
 }
+
+/* ===== Kreator postaci (etap 25a) ===== */
+
+/* Ten sam idiom co karta (`.sheet-window`), tylko szerszy: krok „Umiejętności"
+   przy Kompletnym Pakiecie pokazuje wszystkie 66 pozycji w kolumnach. */
+.creator-window {
+  width: min(860px, calc(100vw - 24px));
+  max-height: min(84vh, 900px);
+}
+
+.creator-steps .sheet-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+.creator-step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  font-size: 0.66rem;
+}
+
+.sheet-tab--active .creator-step-number {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.creator-body {
+  gap: 0.9rem;
+}
+
+.creator-step {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.creator-empty {
+  padding: 1.2rem;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+
+.creator-hint {
+  font-size: 0.74rem;
+  color: var(--text-dim);
+  line-height: 1.45;
+}
+
+.creator-methods {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.6rem 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.creator-methods legend {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  padding: 0 0.3rem;
+}
+
+.creator-method {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.creator-method > span {
+  display: flex;
+  flex-direction: column;
+}
+
+.creator-method-note {
+  font-size: 0.73rem;
+  color: var(--text-dim);
+}
+
+.creator-roles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.5rem;
+}
+
+.creator-role {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  align-items: flex-start;
+  padding: 0.5rem 0.6rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.creator-role:hover {
+  border-color: var(--text-dim);
+}
+
+.creator-role--chosen {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.creator-role-ability,
+.creator-role-skills {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.creator-stats-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.creator-rank {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.creator-pool {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.creator-pool--over {
+  color: var(--err);
+}
+
+.creator-stats {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.creator-stats th {
+  text-align: left;
+  font-weight: 500;
+  padding: 0.18rem 0.3rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.creator-stat-abbr {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  min-width: 2.6rem;
+}
+
+.creator-stat-name {
+  font-size: 0.85rem;
+}
+
+.creator-stats td {
+  padding: 0.18rem 0.3rem;
+}
+
+.creator-stat-value {
+  width: 5rem;
+}
+
+.creator-stat-value input {
+  width: 4rem;
+}
+
+.creator-stat-value strong {
+  font-size: 1rem;
+}
+
+.creator-stat-roll {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  text-align: right;
+}
+
+.creator-derived {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem 0.6rem;
+  background: var(--bg);
+}
+
+.creator-derived dt {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+
+.creator-derived dd {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.creator-skill-group h4 {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  margin-bottom: 0.25rem;
+}
+
+.creator-skill-group ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.15rem 0.8rem;
+  list-style: none;
+}
+
+.creator-skill {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.12rem 0.25rem;
+  border-radius: 5px;
+}
+
+.creator-skill:hover {
+  background: var(--bg);
+}
+
+.creator-skill-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.82rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+}
+
+.creator-skill-x2 {
+  font-size: 0.66rem;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  padding: 0 0.15rem;
+}
+
+/* Kropka przy podstawowej — ta, której nie wolno zostawić poniżej 2. */
+.creator-skill-basic-mark {
+  color: var(--text-dim);
+}
+
+.creator-skill-stat {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  min-width: 2.4rem;
+  text-align: right;
+}
+
+.creator-skill-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.creator-skill-controls .small-button {
+  padding: 0 0.35rem;
+  line-height: 1.3;
+}
+
+.creator-skill-controls strong {
+  min-width: 1.1rem;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.creator-skill-level--zero {
+  color: var(--text-dim);
+  font-weight: 400;
+}
+
+.creator-skill-cost {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  min-width: 3.2rem;
+  text-align: right;
+}
+
+.creator-summary .creator-name {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.76rem;
+  color: var(--text-dim);
+}
+
+.creator-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.7rem;
+  border-top: 1px solid var(--border);
+  background: var(--bg-topbar);
+}
+
+.creator-issues-count {
+  flex: 1;
+  font-size: 0.76rem;
+  color: var(--text-dim);
+}
+
+.creator-error {
+  padding: 0 0.7rem 0.5rem;
+}
+
+.creator-issues {
+  list-style: disc;
+  margin: 0 0 0.6rem 1.6rem;
+  font-size: 0.76rem;
+  color: var(--text-dim);
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.character-creator-open {
+  align-self: flex-start;
+  margin-top: 0.4rem;
+}
+
+/* Musi stać PO `.small-button` — patrz uwaga przy `.small-button--on`. */
+.small-button--primary {
+  border-color: var(--accent);
+  color: #ffd7d4;
+}
+
+.small-button--primary:disabled {
+  border-color: var(--border);
+  color: var(--text-dim);
+}

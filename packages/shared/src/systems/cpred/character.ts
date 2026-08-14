@@ -1,5 +1,8 @@
 import { isValidCompendiumId } from './ids.js';
 import { hpMax } from './derived.js';
+// Type-only on purpose: `creation.ts` reads the registry, so a value import
+// here would close a cycle around two module-level constants.
+import type { CpredCreationData } from './creation.js';
 import {
   CYBERWARE_SLOTS_MAX,
   HUMANITY_MAX_PENALTY_BORGWARE,
@@ -133,6 +136,12 @@ export interface CpredRegistry {
   skillIds: ReadonlySet<string>;
   roles: CpredRoleDefinition[];
   roleIds: ReadonlySet<string>;
+  /**
+   * Character-creation tables (stage 25a). Null until `withCreationData` puts
+   * them in — the creator is the only thing that reads them, and every other
+   * caller of `buildCpredRegistry` predates them.
+   */
+  creation: CpredCreationData | null;
 }
 
 export const EMPTY_CPRED_REGISTRY: CpredRegistry = {
@@ -140,6 +149,7 @@ export const EMPTY_CPRED_REGISTRY: CpredRegistry = {
   skillIds: new Set(),
   roles: [],
   roleIds: new Set(),
+  creation: null,
 };
 
 function isStatId(value: unknown): value is CpredSkillDefinition['stat'] {
@@ -179,6 +189,7 @@ export function buildCpredRegistry(rawSkills: unknown, rawRoles: unknown): Cpred
     skillIds: new Set(skills.map((s) => s.id)),
     roles,
     roleIds: new Set(roles.map((r) => r.id)),
+    creation: null,
   };
 }
 

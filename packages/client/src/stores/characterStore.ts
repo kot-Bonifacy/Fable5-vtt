@@ -3,10 +3,16 @@ import type {
   CharacterPatch,
   CharacterView,
   CpredCharacterData,
+  CpredDataPayload,
   CpredRegistry,
   StateSyncPayload,
 } from '@vtt/shared';
-import { EMPTY_CPRED_REGISTRY, buildCpredRegistry, mergeCharacterData } from '@vtt/shared';
+import {
+  EMPTY_CPRED_REGISTRY,
+  buildCpredRegistry,
+  mergeCharacterData,
+  withCreationData,
+} from '@vtt/shared';
 
 export type CharacterSheetView = CharacterView<CpredCharacterData>;
 
@@ -22,7 +28,7 @@ interface CharacterStoreState {
   /** Outstanding `character:update` acks per character (autosave in flight). */
   pendingSaves: Record<string, number>;
   saveStates: Record<string, SaveState>;
-  /** CP RED data files, fetched once from /public/cpred/. */
+  /** CP RED data files, fetched once from `/api/cpred/data`. */
   registry: CpredRegistry;
 
   applySync: (payload: StateSyncPayload) => void;
@@ -151,20 +157,24 @@ export const useCharacterStore = create<CharacterStoreState>((set, get) => ({
 
 let cpredDataRequested = false;
 
-/** Fetches the CP RED data files once per session (static, committed data). */
+/**
+ * Fetches the CP RED data files once per session.
+ *
+ * From stage 25a this goes through `/api/cpred/data` rather than the static
+ * `/public/cpred/*.json`, and that is a fix, not a refactor: the static route
+ * serves the **sample** files from the repo, while the server itself reads the
+ * full list out of `data/private/`. The sheet therefore knew 42 skills and the
+ * server 66 — twenty-four of them, `Cyberinżynieria` and `Podstawowe naprawy`
+ * among them, could not be set on any sheet. One endpoint, one registry.
+ */
 export function ensureCpredDataLoaded(): void {
   if (cpredDataRequested) return;
   cpredDataRequested = true;
-  Promise.all([
-    fetch('/public/cpred/skills.json').then((res) =>
-      res.ok ? res.json() : Promise.reject(new Error(String(res.status))),
-    ),
-    fetch('/public/cpred/roles.json').then((res) =>
-      res.ok ? res.json() : Promise.reject(new Error(String(res.status))),
-    ),
-  ])
-    .then(([skills, roles]) => {
-      useCharacterStore.getState().setRegistry(buildCpredRegistry(skills, roles));
+  fetch('/api/cpred/data')
+    .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
+    .then((payload: CpredDataPayload) => {
+      const registry = buildCpredRegistry({ skills: payload.skills }, { roles: payload.roles });
+      useCharacterStore.getState().setRegistry(withCreationData(registry, payload.creation));
     })
     .catch(() => {
       // Missing data only leaves the sheet without skill/role rows.

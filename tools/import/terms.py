@@ -302,6 +302,32 @@ STAT_IDS: dict[str, str] = {
     "EMP": "emp",
 }
 
+# Role name as printed above the character-creation tables -> role id of
+# `data/public/cpred/roles.json`. The names are already in the repo (roles.json
+# ships publicly), so they are anchors, not content.
+MANUAL_ROLE_NAMES: dict[str, str] = {
+    "ROCKER": "rockerboy",
+    "SOLO": "solo",
+    "NETRUNNER": "netrunner",
+    "TECHNIK": "tech",
+    "MEDYK": "medtech",
+    "MEDIA": "media",
+    "STRÓŻ PRAWA": "lawman",
+    "KORPO": "exec",
+    "FIXER": "fixer",
+    "NOMADA": "nomad",
+}
+
+# Spellings the creation tables use for skills the main list names differently.
+# Keys are matched after lowercasing, deleting whitespace and dropping every
+# "(…)" qualifier, so "Odporność na tortury/ narkotyki" and "Nauka (wybierz 1)"
+# need no entries of their own.
+MANUAL_SKILL_ALIASES: dict[str, str] = {
+    "Elektronika/zabezpieczenia": "Elektronika i zabezpieczenia",
+    "Naprawa pojazdów": "Naprawa pojazdów lądowych",
+    "Uniki": "Unik",
+}
+
 # Weapon skill named in the ranged weapon table -> skill id.
 MANUAL_WEAPON_SKILLS: dict[str, str] = {
     "Broń krótka": "handgun",
