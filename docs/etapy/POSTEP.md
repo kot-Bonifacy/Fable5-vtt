@@ -52,7 +52,8 @@ Pełne notatki z zamkniętych etapów: `archiwum/dziennik-sesji.md` (nie czytaj 
 | 24b | Dziennik kampanii dla stołu                   | ✅     | 2026-08-09      | uprawnienie gracza to osobna kolumna, nie trzeci szczebel `visibility`; szukanie u klienta      |
 | 24c | Screamsheets                                  | ✅     | 2026-08-13      | `kind` na handoucie z 24a; kroje gazetowe (OFL) hostowane u siebie; nagłówek = tytuł handoutu   |
 | 25a | Kreator postaci: rola, cechy, umiejętności    | ✅     | 2026-08-14      | etap 25 podzielony na 25a/25b 14.08; dwie metody (Krawędziarz, Kompletny Pakiet), bez Szablonów |
-| 25b | Kreator: Ścieżka Życia i wyposażenie startowe | ⬜     |                 | tabele lifepath, zakupy startowe, portret, wróg → szkic bota                                    |
+| 25b | Kreator: Ścieżka Życia                        | ✅     | 2026-08-14      | etap 25b podzielony na 25b/25c 14.08; 71 tabel, 522 wiersze; wróg → szkic bota jednym klikiem   |
+| 25c | Kreator: wyposażenie startowe i poziomy       | ⬜     |                 | zakupy startowe, poziomy dostępności przedmiotów (życzenie MG), ksywa, portret, token           |
 | 26  | Netrunning                                    | ⬜     |                 | możliwy podział na 2 sesje                                                                      |
 | 27a | Karta jak oficjalna: strona pierwsza          | ✅     | 2026-08-13      | wydzielony z 27 dnia 13.08 (27a/27b/27c); motyw dzień/noc na razie tylko dla karty              |
 | 27b | Karta: broń, pancerz, ekwipunek               | ✅     | 2026-08-13      | zakładka „Walka" zniknęła; pancerz = 3 wiersze wydruku + reszta; trzy nowe pola prozy           |
@@ -62,18 +63,55 @@ Pełne notatki z zamkniętych etapów: `archiwum/dziennik-sesji.md` (nie czytaj 
 
 ## Od czego zacząć
 
-Ostatnio zamknięte: **25a** (kreator postaci — Rola, Cechy, Umiejętności; szkic w bazie,
-losowania na serwerze). Przy okazji naprawiony błąd, przez który karta w przeglądarce znała
-tylko 42 z 66 umiejętności — patrz notatka sesji niżej.
+Ostatnio zamknięte: **25b** (Ścieżka Życia w kreatorze — 71 tabel z podręcznika, rzuty na
+serwerze, wróg → szkic bota). Przy okazji naprawiony błąd, przez który **wpisane w Ścieżce imię
+gubiło wszystkie znaki poza ostatnim** — patrz notatka sesji niżej.
 
-**Następne etapy do wyboru:** **25b** (Ścieżka Życia, wyposażenie startowe, portret, wróg →
-szkic bota — domyka kreator i wypełnia pola, które rysuje 27c), **27c** (Ścieżka Życia
-i sylwetka cyborgizacji na karcie), **26** (netrunning, możliwy podział na dwie sesje).
+**Następne etapy do wyboru:** **25c** (wyposażenie startowe + **poziomy dostępności przedmiotów**
+— życzenie MG z 14.08, opisane w `etap-25c-wyposazenie-startowe.md`; domyka kreator: ksywa,
+portret, żeton), **27c** (Ścieżka Życia i sylwetka cyborgizacji na karcie — pola już są, 25b je
+zdefiniował, zostaje sam widok), **26** (netrunning, możliwy podział na dwie sesje).
 Potem zostają **27** (kości 3D, motyw dla reszty UI, wydajność) i **28** (VPS).
+
+**Decyzja z 25c do potwierdzenia na starcie tamtej sesji:** cztery poziomy dostępności
+wyliczane z pasma ceny (Uliczne / Zawodowe / Korporacyjne / Czarny rynek), jeden odblokowany
+poziom na kampanię, zakupy startowe zawsze na poziomie 1. Propozycja jest w pliku etapu.
 
 **09.08 głos wypadł z projektu** (sesja bez etapu, decyzja MG): etapy **12, 21 i 22** wycofane, kod TTS usunięty z repo. Szczegóły w `archiwum/dziennik-sesji.md` i w `archiwum/wycofane/README.md`.
 
 ### Otwarte zaległości (przechodzą między etapami)
+
+- **Etap 25b — strona MG nieodklikana w całości.** W przeglądarce były zalogowane wyłącznie
+  dwa konta **graczy** (Marcin na `localhost`, avatar9 na `[::1]`), a hasła MG nie wpisuję
+  (patrz „Pułapki dev"). Nieobejrzane zostaje więc: (1) **przycisk 🤖 „zrób z tego szkic bota"**
+  przy wrogu, przyjacielu i dawnej miłości — jest wystawiany tylko MG, bo `bot:create` jest
+  `role: ROLE_GM`; ma utworzyć profil i **otworzyć edytor botów** z wypełnionymi polami
+  („Osobowość", „Motywacje", „Sekrety" = czym dysponuje poszkodowany, „Ludzie"); pokryte trzema
+  testami w `shared`. (2) **Odmowa `FORBIDDEN`**, gdyby gracz jakoś wywołał `bot:create`.
+  (3) **Wybór właściciela** w podsumowaniu (to samo, co zostało z 25a).
+
+- **Etap 25b — postać testowa „Test 25b Ścieżka" została w kampanii.** Utworzona na koncie
+  **Marcina** (Solo, Kompletny Pakiet, wszystkie Cechy 6, 13 podstawowych na 2) po to, żeby
+  sprawdzić, że Ścieżka Życia dojeżdża na kartę — i dojechała, razem z wypełnionym „Stylem".
+  **Gracz nie ma czym jej usunąć** (kosz przy postaci jest u MG), więc czeka na dwa kliknięcia
+  MG. Zawiera wroga „Stary Vex z Watson" z kompletem czterech kolumn — nadaje się na materiał
+  do odklikania punktu (1) wyżej.
+
+- **Etap 25b — dwie tabele Ścieżek Ról są nagłówkami, nie pytaniami.** `exec.relacje` („Obecne
+  stosunki z szefostwem") i `nomad.filozofia` („Ogólna filozofia watahy") wchodzą do danych
+  z pytaniem zastąpionym własnym nagłówkiem kolumny („Relacje", „Filozofia"), bo podręcznik
+  wprowadza je tytułem, a zrzut PDF-a skleja ten tytuł z ostatnim wierszem tabeli **wyżej**.
+  Czytelne przy stole, ale nie jest to zdanie z książki.
+
+- **Etap 25b — dwie binarne decyzje Ról zostały poza danymi.** „Masz partnera czy pracujesz
+  sam?" (Netrunner, Technik, Medyk, Fixer) i „Działasz w zespole czy solo?" (Rocker) to
+  w podręczniku wybór bez kości, więc parser ich nie czyta — bierze wyłącznie tabele kostkowe.
+  Skutek: kreator pokazuje pytanie o partnera bezwarunkowo, tak jak robi to książka („Jeśli
+  masz partnera, kim jest?"). Wpis w `POMYSLY.md`.
+
+- **Etap 25b — kostki na karcie Ścieżki świecą jak krytyki.** Ten sam drobiazg co przy rozkładzie
+  Cech z 25a: rzut `13k10 + 4k6` maluje dziesiątki na zielono, a jedynki na czerwono, choć to
+  numery wierszy tabel. Do rozważenia razem ze szlifem kubka w etapie 27.
 
 - **Etap 25a — cztery ścieżki nieodklikane.** (1) **Odmowa serwera przy przepełnionej puli** —
   „Utwórz postać" jest wyszarzone, więc do `CREATION_INCOMPLETE` w przeglądarce się nie dojdzie;
@@ -89,11 +127,12 @@ Potem zostają **27** (kości 3D, motyw dla reszty UI, wydajność) i **28** (VP
   numery wierszy szablonu, nie krytyk ani fumble (`roll.critical` jest puste i żadna plakietka
   się nie pojawia). Kosmetyka; do rozważenia razem ze szlifem kubka w etapie 27.
 
-- **Etap 25a — nazwa umiejętności wielokrotnej nie ma gdzie zamieszkać.** „Nauka (wybierz 1)",
-  „Gra na instrumencie (wybierz 1)", „Język" i „Wiedza lokalna" to w podręczniku umiejętności ze
-  specjalizacją, a `CpredCharacterData.skills` trzyma samo `skillId → poziom`. Kreator zapisuje
-  więc „Nauka 4" bez dziedziny. Naturalne miejsce na poprawkę to **25b**, gdzie Ścieżka Życia
-  i tak nazywa język kultury pochodzenia; wpis w `POMYSLY.md`.
+- **Etap 25a — nazwa umiejętności wielokrotnej nie ma gdzie zamieszkać (zostały trzy z czterech).**
+  „Nauka (wybierz 1)", „Gra na instrumencie (wybierz 1)" i „Wiedza lokalna" to w podręczniku
+  umiejętności ze specjalizacją, a `CpredCharacterData.skills` trzyma samo `skillId → poziom`,
+  więc kreator zapisuje „Nauka 4" bez dziedziny. **„Język" wypadł z tej listy w 25b** — nazwę
+  trzyma `lifepath.language`, wybierana z listy sąsiadującej z wylosowaną kulturą pochodzenia,
+  a podsumowanie kreatora mówi wprost „na poziomie 4 — Farsi". Wpis w `POMYSLY.md`.
 
 - **Etap 27b — rana krytyczna w nowym panelu nieobejrzana.** „Krytyczne Urazy" w kolumnie
   tożsamości widziane wyłącznie w stanie pustym („bez ran krytycznych"), bo — jak przy 14e —
@@ -380,6 +419,81 @@ decyduje przegrany, nie zwycięzca`) — Konfrontacje z 10.08 szły z konta MG, 
 
 ## Notatki z dwóch ostatnich sesji
 
+### Sesja 14.08 (druga tego dnia) — etap 25b (kreator: Ścieżka Życia)
+
+**Postać wychodzi z kreatora z życiorysem, a nie z samymi liczbami.** Czwarty krok — Ścieżka
+Życia — czyta **71 tabel z podręcznika** (19 ogólnych i 52 rolowe, razem 522 wiersze) i pozwala
+na każde pytanie albo rzucić, albo wybrać ręcznie. „Rzuć całą Ścieżkę" odpowiada na wszystkie
+naraz jednym rzutem (`13k10 + 4k6` przy Solo) i zostawia **jedną** kartę na czacie.
+
+**Podział etapu 25b na 25b/25c — do zatwierdzenia poszedł przed kodem.** Pierwotne 25b miało
+sześć pozycji zakresu, a MG dopisał siódmą (poziomy dostępności przedmiotów). Sam pipeline
+lifepath okazał się rozmiaru `parse-creation.py`, więc etap podzielił się na narrację (25b)
+i wyposażenie (25c). Opis 25c zawiera **konkretną propozycję poziomów** — cztery pasma
+wyliczane z ceny, jeden odblokowany poziom na kampanię, zakupy startowe zawsze na poziomie 1.
+
+**Architektura — trzy rzeczy niesie etap.** Pierwsza: **ogólna Ścieżka to pola, Ścieżka Roli to
+odpowiedzi.** Kultura, fryzura, tło rodzinne i jedenaście innych rubryk to te same pola na każdej
+karcie, więc dostały nazwy w `CpredLifepath` (27c je narysuje). Pytania Ról różnią się Rola od
+Roli, więc siedzą jako pary pytanie–odpowiedź; nazywanie 52 pól, z których każde wypełnia jedna
+Rola, byłoby złym interesem. Druga: **szkic i karta mają ten sam kształt**, więc „Utwórz postać"
+to kopia, nie tłumaczenie. Trzecia: **przy okazji domknął się otwarty problem z 25a** — język
+kultury pochodzenia miał gdzie zamieszkać (`lifepath.language`, wybierany z listy sąsiadującej
+z wylosowanym regionem), więc podsumowanie mówi już „na poziomie 4 — Farsi", a nie „nie wiadomo,
+jakim". Przy okazji karta dostaje wypełniony „Styl" z 27b: `Ubiór · Fryzura · Znak szczególny`.
+
+**Parser: `tools/import/parse-lifepath.py`.** Cztery rzeczy trzeba było odzyskać ze zrzutu, bo
+każda tabela jest w nim jednym ciągiem tekstu. (1) **Gdzie tabela się zaczyna** — na słowie
+„Wynik", nie na zdaniu „Rzuć 1k10 lub wybierz…": tabela Wrogów tego zdania nie ma
+(„rzucając raz w każdej kolumnie poniższej tabeli") i przy pierwszym podejściu przepadła bez
+śladu razem z dwiema sąsiednimi. (2) **Numery wierszy** — czytane po kolei, każdy poprzedzony
+spacją i zakończony wielką literą; to jedyne, co odróżnia numer od „(1k6/2) przyjaciółmi"
+i „odejmij 7, by sprawdzić". (3) **Kolumny** sklejone bez separatora — szew mała→WIELKA litera,
+i tylko przylegający: dopuszczenie spacji rozcina „Przedstawiciel Korpo" na pół. (4) **Koniec
+ostatniego wiersza**, który wchodzi w tekst drukowany obok — obcinany po kształcie (pytanie,
+nazwa Roli kapitalikami, rozstrzelona zakładka `z e s p ó ł`, „patrz str. 329"). Z 522 wierszy
+sześć wymagało wpisu w `manual-overrides.json`; parser wypisuje je jako ostrzeżenia i po
+poprawkach chodzi **bez żadnego**. Próbka własnego autorstwa w `data/public/cpred/lifepath.json`
+(19 tabel ogólnych po 10 wierszy + 2 tabele na Rolę), żeby świeży klon miał działającą Ścieżkę.
+
+**Znaleziony i naprawiony błąd, którego nie widziała żadna wcześniejsza sesja: pole tekstowe
+w Ścieżce gubiło wszystkie znaki poza ostatnim.** Wpisanie „Stary Vex" w imię wroga zostawiało
+„x". Przyczyna nie jest ta sama co przy 13.08: tam `trim()` zjadał spację, tu **każda łatka
+zastępuje całą Ścieżkę i buduje się z kopii szkicu, którą serwer ostatnio odesłał** — więc
+łatka drugiej litery powstawała na stanie sprzed pierwszej i ją nadpisywała. Karta postaci
+uchodzi z zapisem po każdym znaku dlatego, że łata **jedno pole**, a nie cały obiekt. Poprawka:
+`LifepathTextInput` trzyma wpisywany tekst lokalnie i wysyła go na `blur` (albo `Enter`);
+kolejka łatek serializuje resztę. Dotyczyło trzech pól: imienia osoby, „✎ własnymi słowami"
+i języka wpisywanego ręcznie.
+
+**Wróg → szkic bota.** Przycisk 🤖 przy wrogu, przyjacielu i dawnej miłości tworzy profil
+z etapu 10 i otwiera edytor: „Kim jest wróg" idzie w Osobowość, przyczyna konfliktu i Słodka
+Zemsta w Motywacje, a **czym dysponuje poszkodowany — w Sekrety**, bo to jedyna z tych rzeczy,
+której bot nie powinien wypalić przy pierwszym spotkaniu. Tylko MG, bo `bot:create` jest
+`role: ROLE_GM`.
+
+**Zweryfikowane:** 1012 testów w `shared` (28 nowych w `lifepath.test.ts`), 611 na serwerze
+(7 nowych w `creation.test.ts` na żywych gniazdach), `tsc --noEmit` czysty w trzech pakietach,
+lint, Prettier i `pnpm build` bez uwag. **Zero migracji** — Ścieżka Życia mieści się w kolumnach
+JSON, które już były (`Character.data`, `CharacterDraft.data`).
+
+**Odklikane na koncie gracza** (Marcin na `localhost:5173`, karty na czacie sprawdzone na
+drugim koncie gracza — avatar9 na `[::1]:5173`). Potwierdzone: pięć kroków w pasku kreatora
+z **Ścieżką Życia jako czwartym**; „Rzuć całą Ścieżkę" wypełniające **17 pytań** jednym rzutem
+(13 pól + 4 pytania Solo) i licznik „17 bez odpowiedzi" → „Ścieżka wypełniona"; **karta na
+czacie** „Ścieżka Życia — 17 pytań · 13k10 + 4k6" z sumą 17 i siedemnastoma wierszami
+(„Kultura pochodzenia — Azja Wschodnia +9"), widoczna u drugiego gracza; **akapit „Tła
+rodzinnego"** rysowany pod wierszem; **lista języków dopasowana do wylosowanej kultury**
+(Środkowy Wschód → Arabski, Berberyjski, Angielski, Farsi, Francuski, Hebrajski, Turecki) i to,
+że **ponowny rzut kultury czyści język**; **„🎲 ilu"** dla wrogów (cztery rzuty, wszystkie
+1k10 ≤ 7 ⇒ 0 — zgodnie z RAW) z kartą „Wrogowie — ile ich masz · 1k10 − 7"; **„+ dopisz"**
+i cztery kolumny wroga rzucane osobno (wiersz zakresowy pokazał się jako **„1–2 · Zignorować
+śmiecia"**); **„✎ własnymi słowami"** i to, że wpisana odpowiedź wraca do listy jako pozycja
+spoza tabeli; **podsumowanie** ze streszczeniem Ścieżki. Na koniec utworzona postać **„Test 25b
+Ścieżka"** — karta otworzyła się sama, a w bazie ma **komplet Ścieżki Życia** (wróg z czterema
+kolumnami, cztery odpowiedzi Solo) i **„Styl" złożony z trzech wierszy wyglądu**. Konsola czysta.
+Scena, walka i pozostałe postacie **nietknięte**; na czacie zostały karty rzutów.
+
 ### Sesja 14.08 — etap 25a (kreator postaci: rola, cechy, umiejętności)
 
 **Postać da się zrobić od zera w oknie kreatora, a nie tylko wpisać ręcznie w pustą kartę.**
@@ -485,66 +599,14 @@ działa tak samo, a utworzona postać ma **właściciela avatar9** i pojawia si�
 MG**. Konsola czysta po obu stronach. Scena, walka („PRZED WALKĄ"), tokeny i pozostałe postacie
 **nietknięte**; na czacie zostały **dwie karty rozkładu Cech**.
 
-### Sesja 13.08 — porządki: pięć zaległości zdjętych z listy (bez etapu)
-
-**Cel: nie nowa funkcja, tylko skrócenie listy „Otwarte zaległości".** Zdjęte pięć pozycji:
-**27a strona gracza**, **27b strona gracza**, **27b trzy ścieżki**, **27a cztery drobiazgi**
-i **`tsc` na `screamsheets.test.ts`**.
-
-**Znaleziony i naprawiony błąd, którego nie widziała żadna wcześniejsza sesja: w żaden wiersz
-karty nie dało się wpisać wielowyrazowej nazwy.** Objaw wyglądał na usterkę automatyzacji —
-„Tarcza balistyczna" lądowało w polu jako „Tarczabalistyczna". Przyczyna była w kodzie:
-`validateRow` w `shared/systems/cpred/character.ts` robiło `name.trim()`, a karta zapisuje się
-**po każdym znaku**, więc spacja na końcu znikała, zanim zdążyła wejść następna litera. Spacja
-w środku wyrazu przeżywała — i to właśnie ona rozstrzygnęła diagnozę (`AB|CD` + spacja = `AB CD`,
-`ABCD` + spacja = `ABCD`). Dotyczyło **wszystkich** wierszy karty (broń, pancerz, wyposażenie),
-bo wszystkie idą przez `CpredItemRow`; nie było widać wcześniej, bo nazwy z kompendium wpisuje
-kod, nie palce. `trim()` zdjęty — `name` zachowuje się teraz tak jak `notes` i cała reszta prozy,
-która idzie przez `validateText` bez przycinania. Test regresyjny w `character.test.ts`. Zmiana
-jest bezpieczna, bo wiersze dopasowuje się po `id` i `compendiumId`, nigdy po nazwie.
-
-**`screamsheets.test.ts` przechodzi `tsc --noEmit`.** Dziewięć `ack.data` bez zawężenia po
-`ack.ok` zastąpił helper `data<T>(ack, what)` — ten sam, którego używa kilkanaście innych plików
-testowych serwera. 12 testów pliku bez zmian.
-
-**Odklikane po obu stronach stołu** (MG na `localhost:5173`, gracz avatar9 na `[::1]:5173`,
-obie sesje naraz w jednym oknie Chrome) na postaci testowej **„Test 27x"** — **zostawionej
-w kampanii jako atrapa**, bo ma już zbudowane dokładnie te układy, których te ścieżki wymagają.
-
-- **27b, trzy ścieżki.** (1) **Dwie noszone sztuki w jednej lokacji**: „Kevlar ciężki" OB 11
-  został w wierszu KORPUS, a słabsza „Kamizelka lekka" OB 7 zeszła do „Reszty pancerza (1)"
-  z napisem **„słabsza"** zamiast przycisku „Załóż". (2) **Wiersz „Tarcza"** wypełniony po raz
-  pierwszy („Tarcza balistyczna", `11 z 11`) — wcześniej widziany wyłącznie pusty. (3)
-  **Ekwipunek z wierszami**: „+ Wyposażenie" ×2, edycja ilości (1 → 4) i kosz kasujący wiersz.
-- **27a, cztery drobiazgi.** (1) **Wgrywanie portretu** — plik wszedł, ramka go pokazuje,
-  miniatura doklejała się też do belki okna. (2) **Pole „z" przy EMP** — po zbiciu
-  Człowieczeństwa 50 → 25 kostka EMP pokazała `5 z 2`, a bazy umiejętności EMP-owych
-  (Konwersacja, Odczytywanie emocji) zjechały 5 → 2 razem z nim. (3) **Czerwone paski
-  `.cp-alert`** w komplecie: „Poważnie ranny · −2" (przygaszony) przy PW 10, „Śmiertelnie
-  ranny · −4" z przyciskiem **„Test Przeżywalności"** przy PW 0 i „Na granicy" (cyberpsychoza)
-  przy EMP 2. Przy okazji, bez szukania, potwierdził się **chip cyberpsychozy na liście
-  postaci** z zaległości 23a — „EMP 2 · Na granicy" świeci u gracza przy nazwisku.
-- **27a i 27b, strona gracza.** Karta własnej postaci otwiera się u gracza w nowym układzie
-  (sprawdzone na „Test 27x" **i** na żywej „avatar9"), pas „Broń i pancerz" rysuje się
-  w całości, **„+ Broń" i „+ Pancerz" działają**, a dopisany wiersz pojawił się **na żywo
-  w otwartej karcie MG** — i tak samo zniknął po skasowaniu koszem z konta gracza. **„Atak"**
-  z wiersza broni uzbraja mapę u gracza tak samo jak u MG (pasek „avatar9 celuje: »Arasaka
-  Minami 10« — kliknij cel na mapie", `Esc` rozbraja). **Plakietka „Gotówka" u gracza to sam
-  napis** `0 ed` z przyciskiem „Kasa…" — pola **„korekta" nie ma**, w odróżnieniu od MG.
-  Przełącznik **☀ dzień / ☾ noc** działa też na drugim hoście. Konsola czysta po obu stronach.
-
-**Czego NIE sprawdzono, choć leżało blisko:** że serwer **odmawia** łatki na pola zastrzeżone
-dla MG — sprawdzone jest tylko to, że gracz **nie dostaje tych pól w UI** (korekta salda).
-Odmowa na poziomie gniazda zostaje pokryta testami z 23b.
-
-**Zweryfikowane:** 958 testów w `shared` (1 nowy), 589 na serwerze, `tsc --noEmit` czysty
-w `shared`, `client` i `server`. Pierwszy przebieg serwera pękł na `ammo.test.ts` — plik
-przeszedł osobno (19/19) i w powtórzonym pełnym przebiegu (589/589); to znane migotanie
-opisane w „Pułapkach dev", nie regresja.
-
 ## Skróty wcześniejszych sesji
 
 Uzupełniają kolumnę „Uwagi" w tabeli, nie powtarzają jej. Uzasadnienia decyzji, listy niezweryfikowanego i szczegóły migracji — `archiwum/dziennik-sesji.md`.
+
+- **Porządki (13.08)** — pięć zaległości zdjętych z listy bez pisania nowej funkcji.
+  Przy okazji wyszło, że **w żaden wiersz karty nie dało się wpisać wielowyrazowej nazwy**:
+  `validateRow` przycinało `name`, a karta zapisuje się po każdym znaku, więc spacja znikała,
+  zanim zdążyła wejść następna litera. Pełna notatka w archiwum.
 
 - **27b (13.08)** — strona pierwsza karty ma komplet z wydruku, a zakładka „Walka" **zniknęła**:
   broń, pancerz i rany krytyczne wróciły tam, gdzie drukuje je arkusz. Trzy wiersze pancerza

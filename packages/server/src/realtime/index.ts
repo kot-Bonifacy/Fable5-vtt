@@ -53,6 +53,8 @@ import { characterCreateEvent, characterDeleteEvent, characterUpdateEvent } from
 import {
   creationDiscardEvent,
   creationFinishEvent,
+  creationLifepathCountEvent,
+  creationLifepathRollEvent,
   creationPatchEvent,
   creationRollEvent,
   creationStartEvent,
@@ -192,6 +194,8 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   creationStartEvent,
   creationPatchEvent,
   creationRollEvent,
+  creationLifepathRollEvent,
+  creationLifepathCountEvent,
   creationFinishEvent,
   creationDiscardEvent,
   characterRollEvent,

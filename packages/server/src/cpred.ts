@@ -5,6 +5,7 @@ import {
   EMPTY_CPRED_REGISTRY,
   buildCpredRegistry,
   withCreationData,
+  withLifepathData,
   type CpredRegistry,
 } from '@vtt/shared';
 
@@ -20,9 +21,10 @@ import {
  * behind. Sheets store `skillId -> level` and skip untrained skills, so
  * swapping the list adds rows at 0 without touching any character.
  *
- * `creation.json` (stage 25a) follows the same two-directory rule and is the
- * only file here that may legitimately be missing: the creator then refuses at
- * step one instead of building a sheet out of nothing.
+ * `creation.json` (stage 25a) and `lifepath.json` (stage 25b) follow the same
+ * two-directory rule and are the only files here that may legitimately be
+ * missing: the creator then refuses at that step instead of building a sheet
+ * out of nothing.
  */
 export async function loadCpredRegistry(
   dataPublicDir: string,
@@ -32,12 +34,19 @@ export async function loadCpredRegistry(
   const skills = await loadFile(dataPublicDir, dataPrivateDir, 'skills.json', log);
   const roles = await loadFile(dataPublicDir, dataPrivateDir, 'roles.json', log);
   const creation = await loadFile(dataPublicDir, dataPrivateDir, 'creation.json', log);
+  const lifepath = await loadFile(dataPublicDir, dataPrivateDir, 'lifepath.json', log);
   if (skills === undefined && roles === undefined) return EMPTY_CPRED_REGISTRY;
 
-  const registry = withCreationData(buildCpredRegistry(skills, roles), creation);
+  const registry = withLifepathData(
+    withCreationData(buildCpredRegistry(skills, roles), creation),
+    lifepath,
+  );
   if (registry.skills.length === 0) log.warn('cpred skills registry is empty');
   if (registry.creation !== null && registry.creation.roles.length === 0) {
     log.warn('cpred creation data has no roles');
+  }
+  if (registry.lifepath !== null && registry.lifepath.general.length === 0) {
+    log.warn('cpred lifepath data has no general tables');
   }
   return registry;
 }

@@ -12,6 +12,7 @@ import {
   buildCpredRegistry,
   mergeCharacterData,
   withCreationData,
+  withLifepathData,
 } from '@vtt/shared';
 
 export type CharacterSheetView = CharacterView<CpredCharacterData>;
@@ -174,7 +175,11 @@ export function ensureCpredDataLoaded(): void {
     .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
     .then((payload: CpredDataPayload) => {
       const registry = buildCpredRegistry({ skills: payload.skills }, { roles: payload.roles });
-      useCharacterStore.getState().setRegistry(withCreationData(registry, payload.creation));
+      useCharacterStore
+        .getState()
+        .setRegistry(
+          withLifepathData(withCreationData(registry, payload.creation), payload.lifepath),
+        );
     })
     .catch(() => {
       // Missing data only leaves the sheet without skill/role rows.

@@ -4,6 +4,8 @@ import {
   creationErrorText,
   discardCreation,
   patchCreation,
+  rollCreationLifepath,
+  rollCreationLifepathCount,
   rollCreationStats,
   startCreation,
 } from '../socket.js';
@@ -120,6 +122,38 @@ export async function rollCreationWithGesture(gesture?: RollGesture): Promise<vo
   store.setBusy(true);
   store.setError(null);
   const ack = await enqueue(() => rollCreationStats(gesture));
+  if (!ack.ok || !ack.data) {
+    store.setBusy(false);
+    store.setError(creationErrorText(ack.ok ? undefined : ack.error));
+    return;
+  }
+  store.setDraft(ack.data.draft);
+  store.setBusy(false);
+}
+
+/**
+ * Rolls Lifepath tables on the server and stores what came back (stage 25b).
+ *
+ * The list is passed through whole rather than one call per table: „Rzuć całą
+ * Ścieżkę" is one throw and one chat card, which is what keeps the session-zero
+ * log readable.
+ */
+export async function rollLifepathTables(tableIds: string[], index?: number): Promise<void> {
+  await runCreationRoll(() => rollCreationLifepath(tableIds, index));
+}
+
+/** „Rzuć 1k10 i odejmij 7" — how many friends, enemies or tragic loves. */
+export async function rollLifepathCount(group: string): Promise<void> {
+  await runCreationRoll(() => rollCreationLifepathCount(group));
+}
+
+async function runCreationRoll(
+  call: () => Promise<{ ok: boolean; error?: string; data?: { draft: CpredCreationDraft } }>,
+): Promise<void> {
+  const store = useCreationStore.getState();
+  store.setBusy(true);
+  store.setError(null);
+  const ack = await enqueue(call);
   if (!ack.ok || !ack.data) {
     store.setBusy(false);
     store.setError(creationErrorText(ack.ok ? undefined : ack.error));

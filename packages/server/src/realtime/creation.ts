@@ -3,9 +3,13 @@ import type {
   CharacterView,
   CpredCreationDraft,
   CpredCreationRole,
+  CpredLifepath,
+  CpredLifepathTable,
   CpredStatId,
   CreationDraftView,
   CreationFinishPayload,
+  CreationLifepathCountPayload,
+  CreationLifepathRollPayload,
   CreationPatchPayload,
   CreationRollPayload,
   RollBreakdownEntry,
@@ -16,15 +20,24 @@ import {
   CPRED_CREATION_METHOD_LABELS,
   CPRED_STAT_IDS,
   CPRED_STAT_LABELS,
+  LIFEPATH_GROUP_LABELS,
+  LIFEPATH_ROLL_TABLES_MAX,
   ROLE_GM,
+  applyLifepathEntry,
   applyRolledSpread,
   createDefaultCreationDraft,
   creationDataOf,
   creationIssues,
   creationRole,
   creationToCharacterData,
+  isLifepathGroup,
+  lifepathDataOf,
+  lifepathEntryFor,
+  lifepathGroupCount,
+  lifepathTable,
   mergeCreationDraft,
   parseCreationDraft,
+  resizeLifepathGroup,
   rollFormula,
   sanitizeCharacterName,
 } from '@vtt/shared';
@@ -223,13 +236,22 @@ async function publishSpread(
   const roleName = registry.roles.find((entry) => entry.id === role.id)?.name ?? role.id;
   result.title = `Rozkład Cech — ${roleName} · ${CPRED_CREATION_METHOD_LABELS.edgerunner}`;
   if (draft.name.trim().length > 0) result.actor = draft.name.trim();
+  await publishRoll(deps, campaignId, userId, result);
+}
 
+/** Puts a finished roll on the chat, where the whole table can check it. */
+async function publishRoll(
+  deps: RealtimeDeps,
+  campaignId: string,
+  userId: string,
+  result: RollResult,
+): Promise<void> {
   const stored = await deps.ctx.prisma.chatMessage.create({
     data: {
       campaignId,
       authorId: userId,
       kind: 'roll',
-      text: result.title,
+      text: result.title ?? 'Rzut',
       payload: JSON.stringify(result),
     },
     include: INCLUDE_CHAT_NAMES,
@@ -283,6 +305,147 @@ export const creationFinishEvent = defineEvent<CreationFinishPayload, CharacterV
     const view = toCharacterView(character, deps.ctx.cpred);
     await emitCharacterUpsert(deps, campaignId, view);
     return view;
+  },
+});
+
+/**
+ * Rolls one or many Lifepath tables in a single throw (stage 25b).
+ *
+ * Many, because that is how a table uses this chapter: „Rzuć całą Ścieżkę"
+ * answers fourteen questions at once, and fourteen separate chat cards would
+ * bury the session zero the cards exist to document. One card, one line per
+ * question, the die result beside each.
+ *
+ * The dice are grouped by their number of sides — the general tables are d10,
+ * a Role's are mostly d6 — and the faces are dealt back out in the order the
+ * tables were asked for, so the card and the draft cannot disagree about which
+ * die answered which question.
+ */
+export const creationLifepathRollEvent = defineEvent<
+  CreationLifepathRollPayload,
+  CreationDraftView<CpredCreationDraft>
+>({
+  name: 'creation:lifepath-roll',
+  handler: async ({ deps, socket, user, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    const lifepathData = lifepathDataOf(deps.ctx.cpred);
+    const existing = await loadDraft(deps, campaignId, user.id);
+    if (!existing) throw new RealtimeError('DRAFT_NOT_FOUND');
+    const current = toDraftView(existing, deps).draft;
+
+    const ids = Array.isArray(payload?.tableIds) ? payload.tableIds : [];
+    if (ids.length === 0 || ids.length > LIFEPATH_ROLL_TABLES_MAX) {
+      throw new RealtimeError('BAD_REQUEST');
+    }
+    const tables: CpredLifepathTable[] = [];
+    for (const id of ids) {
+      const table = lifepathTable(lifepathData, current.roleId, id);
+      if (table === null) throw new RealtimeError('LIFEPATH_TABLE_UNKNOWN');
+      tables.push(table);
+    }
+
+    const sides = [...new Set(tables.map((table) => table.sides))];
+    const result: RollResult = rollFormula(
+      {
+        terms: sides.map((count) => ({
+          kind: 'dice' as const,
+          sign: 1 as const,
+          count: tables.filter((table) => table.sides === count).length,
+          sides: count,
+        })),
+      },
+      createMixedRng(),
+      { checkRule: false },
+    );
+    const faces = new Map<number, number[]>();
+    for (const term of result.terms) {
+      if (term.kind === 'dice') faces.set(term.sides, [...term.rolls]);
+    }
+
+    let lifepath: CpredLifepath = current.lifepath;
+    const breakdown: RollBreakdownEntry[] = [];
+    for (const table of tables) {
+      const face = faces.get(table.sides)?.shift();
+      if (face === undefined) continue;
+      const entry = lifepathEntryFor(table, face);
+      if (entry === null) throw new RealtimeError('LIFEPATH_ROLL_MISSED');
+      const next = applyLifepathEntry(lifepath, table, entry, payload?.index);
+      if (next === null) throw new RealtimeError('LIFEPATH_TARGET_UNKNOWN');
+      lifepath = next;
+      breakdown.push({
+        label: `${table.label} — ${entry.text}`.slice(0, 120),
+        value: face,
+        kind: 'lifepath',
+      });
+    }
+
+    const next: CpredCreationDraft = { ...current, lifepath };
+    const saved = await saveDraft(deps, campaignId, user.id, next);
+    // The dice sum means nothing (the faces are row numbers), so the card
+    // counts answers instead — the same reasoning as the stat spread above.
+    result.total = breakdown.length;
+    result.breakdown = breakdown;
+    // Polish notation, like the stat spread's `10k10`: the two cards of the
+    // wizard sit side by side on the chat at session zero.
+    result.notation = sides
+      .map((count) => `${tables.filter((table) => table.sides === count).length}k${count}`)
+      .join(' + ');
+    result.title =
+      breakdown.length === 1
+        ? `Ścieżka Życia — ${tables[0]?.label ?? ''}`
+        : `Ścieżka Życia — ${breakdown.length} pytań`;
+    if (next.name.trim().length > 0) result.actor = next.name.trim();
+    await publishRoll(deps, campaignId, user.id, result);
+    return toDraftView(saved, deps);
+  },
+});
+
+/**
+ * „Rzuć 1k10 i od wyniku odejmij 7" — how many friends, enemies or tragic loves
+ * the character has (s. 50–52). One throw, three uses, so one handler.
+ */
+export const creationLifepathCountEvent = defineEvent<
+  CreationLifepathCountPayload,
+  CreationDraftView<CpredCreationDraft>
+>({
+  name: 'creation:lifepath-count',
+  handler: async ({ deps, socket, user, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    const group = payload?.group;
+    if (!isLifepathGroup(group)) throw new RealtimeError('BAD_REQUEST');
+    const lifepathData = lifepathDataOf(deps.ctx.cpred);
+    const existing = await loadDraft(deps, campaignId, user.id);
+    if (!existing) throw new RealtimeError('DRAFT_NOT_FOUND');
+    const current = toDraftView(existing, deps).draft;
+
+    const { sides, modifier } = lifepathData.groupRoll;
+    const result: RollResult = rollFormula(
+      {
+        terms: [
+          { kind: 'dice', sign: 1, count: 1, sides },
+          { kind: 'modifier', sign: modifier < 0 ? -1 : 1, value: Math.abs(modifier) },
+        ],
+      },
+      createMixedRng(),
+      { checkRule: false },
+    );
+    const term = result.terms[0];
+    const face = term && term.kind === 'dice' ? (term.rolls[0] ?? 0) : 0;
+    const count = lifepathGroupCount(face, lifepathData.groupRoll);
+    const next: CpredCreationDraft = {
+      ...current,
+      lifepath: resizeLifepathGroup(current.lifepath, group, count),
+    };
+    const saved = await saveDraft(deps, campaignId, user.id, next);
+
+    result.title = `${LIFEPATH_GROUP_LABELS[group]} — ile ich masz`;
+    result.notation = `1k${sides} − ${Math.abs(modifier)}`;
+    // RAW floors the count at zero, and the card has to say so rather than
+    // print „−4" next to a list of nobody.
+    result.total = count;
+    if (next.name.trim().length > 0) result.actor = next.name.trim();
+    await publishRoll(deps, campaignId, user.id, result);
+    return toDraftView(saved, deps);
   },
 });
 

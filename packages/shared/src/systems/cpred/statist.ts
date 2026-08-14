@@ -32,6 +32,7 @@ import { SKILL_LEVEL_MAX, SKILL_LEVEL_MIN, type CpredCharacterData } from './cha
 import { CPRED_SCHEMA_VERSION } from './character.js';
 import { CPRED_EVASION_SKILL_ID } from './attacks.js';
 import { WEAPON_AMMO_MAX } from './character.js';
+import { createDefaultLifepath } from './lifepath.js';
 
 /** Longest weapon name a profile will store — the sheet's own limit. */
 export const STATIST_WEAPON_NAME_MAX = 64;
@@ -233,6 +234,9 @@ export function combatProfileSheet(
     addictions: '',
     style: '',
     ammoStock: '',
+    // Ani Ścieżki Życia (25b): statysta nie ma kultury pochodzenia, wrogów
+    // ani celu życiowego — ma imię na żetonie i jedną broń.
+    lifepath: createDefaultLifepath(),
   };
 }
 

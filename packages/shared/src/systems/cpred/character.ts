@@ -15,6 +15,12 @@ import {
 } from './cyberware.js';
 import { isHousingOption, isLifestyleLevel, type CpredLifestyle } from './economy.js';
 import {
+  createDefaultLifepath,
+  validateLifepath,
+  type CpredLifepath,
+  type CpredLifepathData,
+} from './lifepath.js';
+import {
   ARMOR_LOCATIONS,
   ARMOR_PENALTY_MIN,
   ARMOR_SP_MAX,
@@ -142,6 +148,12 @@ export interface CpredRegistry {
    * caller of `buildCpredRegistry` predates them.
    */
   creation: CpredCreationData | null;
+  /**
+   * Lifepath tables (stage 25b). Null until `withLifepathData` puts them in;
+   * the Lifepath step of the creator and the sheet's page two are the only
+   * things that read them.
+   */
+  lifepath: CpredLifepathData | null;
 }
 
 export const EMPTY_CPRED_REGISTRY: CpredRegistry = {
@@ -150,6 +162,7 @@ export const EMPTY_CPRED_REGISTRY: CpredRegistry = {
   roles: [],
   roleIds: new Set(),
   creation: null,
+  lifepath: null,
 };
 
 function isStatId(value: unknown): value is CpredSkillDefinition['stat'] {
@@ -190,6 +203,7 @@ export function buildCpredRegistry(rawSkills: unknown, rawRoles: unknown): Cpred
     roles,
     roleIds: new Set(roles.map((r) => r.id)),
     creation: null,
+    lifepath: null,
   };
 }
 
@@ -475,6 +489,18 @@ export interface CpredCharacterData {
    * so a counter here would be a second, disagreeing truth about reloading.
    */
   ammoStock: string;
+  /**
+   * The Lifepath (stage 25b) — page two of the printed sheet: Culture of
+   * Origin and its language, style, family, friends, enemies, tragic loves,
+   * life goal and the Role's own questions.
+   *
+   * All prose, on purpose. „Jeśli wylosujesz coś, co nie pasuje do twojej wizji
+   * Postaci, odpowiednio zmień wynik" (s. 44) is the rule the whole chapter is
+   * written under, so nothing here may be a closed enum the GM cannot overrule.
+   * The one exception is the language, which stage 25a grants as a skill level
+   * and had nowhere to name — that name lives here.
+   */
+  lifepath: CpredLifepath;
 }
 
 export function createDefaultCharacterData(): CpredCharacterData {
@@ -502,6 +528,7 @@ export function createDefaultCharacterData(): CpredCharacterData {
     addictions: '',
     style: '',
     ammoStock: '',
+    lifepath: createDefaultLifepath(),
   };
 }
 
@@ -1090,6 +1117,12 @@ function collectCharacterDataPatch(
       issues,
     );
     if (value !== undefined) patch.ammoStock = value;
+  }
+  // Stage 25b. Tolerant rather than refusing — see `validateLifepath`: every
+  // field is prose the GM is invited to rewrite, so there is no wrong value
+  // here, only a too-long one.
+  if ('lifepath' in input) {
+    patch.lifepath = validateLifepath(input.lifepath, issues);
   }
 
   return { patch, issues };

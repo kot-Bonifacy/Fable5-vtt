@@ -1,0 +1,1666 @@
+{
+  "$comment": "Próbka WŁASNEGO AUTORSTWA — wymyślone tabele Ścieżki Życia, żeby świeży klon miał działający kreator. NIE są to tabele z podręcznika; pełne dane powstają przez tools/import/parse-lifepath.py do data/private/cpred/lifepath.json, który ten plik nadpisuje. Identyfikatory tabel są wspólne dla obu plików — po nich kreator wie, które pole karty wypełnia.",
+  "schemaVersion": 1,
+  "source": "Dane przykładowe VTT (własnego autorstwa)",
+  "groupRoll": {
+    "sides": 10,
+    "modifier": -7,
+    "min": 0
+  },
+  "general": [
+    {
+      "id": "culture",
+      "label": "Kultura pochodzenia",
+      "sides": 10,
+      "entries": [
+        {
+          "roll": 1,
+          "text": "Wybrzeże Bałtyckie",
+          "options": [
+            "Polski",
+            "Angielski",
+            "Niemiecki",
+            "Kaszubski"
+          ]
+        },
+        {
+          "roll": 2,
+          "text": "Stepy Naddnieprzańskie",
+          "options": [
+            "Ukraiński",
+            "Rosyjski",
+            "Angielski"
+          ]
+        },
+        {
+          "roll": 3,
+          "text": "Zagłębie Śląskie",
+          "options": [
+            "Polski",
+            "Śląski",
+            "Czeski",
+            "Angielski"
+          ]
+        },
+        {
+          "roll": 4,
+          "text": "Porty Adriatyku",
+          "options": [
+            "Chorwacki",
+            "Włoski",
+            "Angielski",
+            "Albański"
+          ]
+        },
+        {
+          "roll": 5,
+          "text": "Kotliny Karpackie",
+          "options": [
+            "Węgierski",
+            "Słowacki",
+            "Rumuński",
+            "Polski"
+          ]
+        },
+        {
+          "roll": 6,
+          "text": "Delty Nilu",
+          "options": [
+            "Arabski",
+            "Angielski",
+            "Koptyjski",
+            "Francuski"
+          ]
+        },
+        {
+          "roll": 7,
+          "text": "Archipelag Sundajski",
+          "options": [
+            "Indonezyjski",
+            "Malajski",
+            "Angielski",
+            "Jawajski"
+          ]
+        },
+        {
+          "roll": 8,
+          "text": "Kolonie Orbitalne",
+          "options": [
+            "Angielski",
+            "Mandaryński",
+            "Rosyjski",
+            "Hiszpański"
+          ]
+        },
+        {
+          "roll": 9,
+          "text": "Wielkie Jeziora",
+          "options": [
+            "Angielski",
+            "Francuski",
+            "Odżibwe",
+            "Hiszpański"
+          ]
+        },
+        {
+          "roll": 10,
+          "text": "Pas Andyjski",
+          "options": [
+            "Hiszpański",
+            "Keczua",
+            "Ajmara",
+            "Portugalski"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "personality",
+      "label": "Osobowość",
+      "sides": 10,
+      "entries": [
+        {
+          "roll": 1,
+          "text": "Cichy i uważny, mówisz dopiero, gdy masz co powiedzieć"
+        },
+        {
+          "roll": 2,
+          "text": "Wybuchowy i szczery aż do bólu"
+        },
+        {
+          "roll": 3,
+          "text": "Wyrachowany, liczysz koszty każdej przysługi"
+        },
+        {
+          "roll": 4,
+          "text": "Ciepły wobec swoich, lodowaty wobec obcych"
+        },
+        {
+          "roll": 5,
+          "text": "Nerwowy, sprawdzasz wyjścia w każdym pomieszczeniu"
+        },
+        {
+          "roll": 6,
+          "text": "Spokojny zawodowiec, zawsze z planem B"
+        },
+        {
+          "roll": 7,
+          "text": "Rozbrajająco naiwny, mimo wszystkiego, co widziałeś"
+        },
+        {
+          "roll": 8,
+          "text": "Skryty, nikt nie zna całej twojej historii"
+        },
+        {
+          "roll": 9,
+          "text": "Marzyciel z głową w cudzych danych"
+        },
+        {
+          "roll": 10,
+          "text": "Otwarty i głośny, znasz połowę dzielnicy"
+        }
+      ]
+    },
+    {
+      "id": "clothing",
+      "label": "Ubiór i styl",
+      "sides": 10,
+      "entries": [
+        {
+          "roll": 1,
+          "text": "Robocze (kombinezon, odblaski, praktyczność)"
+        },
+        {
+          "roll": 2,
+          "text": "Klubowe (folia, neon, jednorazowe)"
+        },
+        {
+          "roll": 3,
+          "text": "Uliczne (warstwy, kaptur, wygodne buty)"
+        },
+        {
+          "roll": 4,
+          "text": "Biurowe (garnitur z drugiej ręki, wyprasowany)"
+        },
+        {
+          "roll": 5,
+          "text": "Militarne (demobil, kieszenie, kamuflaż)"
+        },
+        {
+          "roll": 6,
+          "text": "Retro (skóra, dżins, dwadzieścia lat po premierze)"
+        },
+        {
+          "roll": 7,
+          "text": "Sceniczne (cekiny, futro, widać cię z ostatniego rzędu)"
+        },
+        {
+          "roll": 8,
+          "text": "Medyczne (fartuch, rękawiczki, zapach środka dezynfekcyjnego)"
+        },
+        {
+          "roll": 9,
+          "text": "Nomadzkie (kurz, pas z narzędziami, chusta)"
+        },
+        {
+          "roll": 10,
+          "text": "Szare (nijakie, żeby kamera cię nie zapamiętała)"
+        }
+      ]
+    },
+    {
+      "id": "hair",
+      "label": "Fryzura",
+      "sides": 10,
+      "entries": [
+        {
+          "roll": 1,
+          "text": "Wygolone na zero"
+        },
+        {
+          "roll": 2,
+          "text": "Długie, związane w węzeł"
+        },
+        {
+          "roll": 3,
+          "text": "Grzywka zasłaniająca oko"
+        },
+        {
+          "roll": 4,
+          "text": "Warkocze z wplecionym światłowodem"
+        },
+        {
+          "roll": 5,
+          "text": "Peruka, inna na każdą robotę"
+        },
+        {
+          "roll": 6,
+          "text": "Odrosty i resztki farby"
+        },
+        {
+          "roll": 7,
+          "text": "Krótkie, wojskowe"
+        },
+        {
+          "roll": 8,
+          "text": "Loki spięte spinaczem do kabli"
+        },
+        {
+          "roll": 9,
+          "text": "Pasy wygolone we wzór"
+        },
+        {
+          "roll": 10,
+          "text": "Włosy zawsze pod czapką"
+        }
+      ]
+    },
+    {
+      "id": "affectation",
+      "label": "Znak szczególny",
+      "sides": 10,
+      "entries": [
+        {
+          "roll": 1,
+          "text": "Blizna przez brew"
+        },
+        {
+          "roll": 2,
+          "text": "Stary zegarek na mechanizmie"
+        },
+        {
+          "roll": 3,
+          "text": "Rękawiczka tylko na jednej dłoni"
+        },
+        {
+          "roll": 4,
+          "text": "Tatuaż z kodem kreskowym na karku"
+        },
+        {
+          "roll": 5,
+          "text": "Kolczyk z łuski"
+        },
+        {
+          "roll": 6,
+          "text": "Okulary z pękniętym szkłem, nienaprawiane"
+        },
+        {
+          "roll": 7,
+          "text": "Zapach taniego dezodorantu z automatu"
+        },
+        {
+          "roll": 8,
+          "text": "Nieodłączna szarfa w kolorach dzielnicy"
+        },
+        {
+          "roll": 9,
+          "text": "Metalowy ząb"
+        },
+        {
+          "roll": 10,
+          "text": "Chodzisz z lekkim utykaniem, choć noga jest zdrowa"
+        }
+      ]
+    },
+    {
+      "id": "mostValuedPerson",
+      "label": "Najważniejsza osoba",
+      "sides": 10,
+      "entries": [
+        {
+          "roll": 1,
+          "text": "Młodsze rodzeństwo"
+        },
+        {
+          "roll": 2,
+          "text": "Dawny szef"
+        },
+        {
+          "roll": 3,
+          "text": "Sąsiadka z piętra"
+        },
+        {
+          "roll": 4,
+          "text": "Ktoś, kto już nie żyje"
+        },
+        {
+          "roll": 5,
+          "text": "Ty sam"
+        },
+        {
+          "roll": 6,
+          "text": "Pies ze złomowiska"
+        },
+        {
+          "roll": 7,
+          "text": "Nauczycielka z technikum"
+        },
+        {
+          "roll": 8,
+          "text": "Głos z anonimowego kanału"
+        },
+        {
+          "roll": 9,
+          "text": "Wspólnik z pierwszej roboty"
+        },
+        {
+          "roll": 10,
+          "text": "Nikt konkretny"
+        }
+      ]
+    },
+    {
+      "id": "valueMost",
+      "label": "Co cenisz najbardziej",
+      "sides": 10,
+      "entries": [
+        {
+          "roll": 1,
+          "text": "Spokój"
+        },
+        {
+          "roll": 2,
+          "text": "Dane"
+        },
+        {
+          "roll": 3,
+          "text": "Umowę"
+        },
+        {
+          "roll": 4,
+          "text": "Rodzinę"
+        },
+        {
+          "roll": 5,
+          "text": "Sprawiedliwość po swojemu"
+        },
+        {
+          "roll": 6,
+          "text": "Pieniądze"
+        },
+        {
+          "roll": 7,
+          "text": "Reputację"
+        },
+        {
+          "roll": 8,
+          "text": "Wolność ruchu"
+        },
+        {
+          "roll": 9,
+          "text": "Rewanż"
+        },
+        {
+          "roll": 10,
+          "text": "Dobrą robotę"
+        }
+      ]
+    },
+    {
+      "id": "feelingsAboutPeople",
+      "label": "Stosunek do ludzi",
+      "sides": 10,
+      "entries": [
+        {
+          "roll": 1,
+          "text": "Każdy zasługuje na jedną szansę"
+        },
+        {
+          "roll": 2,
+          "text": "Ludzie to koszt operacyjny"
+        },
+        {
+          "roll": 3,
+          "text": "Wolę zwierzęta"
+        },
+        {
+          "roll": 4,
+          "text": "Ufam tym, którzy mi coś winni"
+        },
+        {
+          "roll": 5,
+          "text": "Wszyscy kłamią, ty też"
+        },
+        {
+          "roll": 6,
+          "text": "Trzeba się trzymać razem albo zginąć osobno"
+        },
+        {
+          "roll": 7,
+          "text": "Zawsze pytaj, kto płaci"
+        },
+        {
+          "roll": 8,
+          "text": "Lubię ludzi, nie znoszę tłumów"
+        },
+        {
+          "roll": 9,
+          "text": "Nie oceniam, dopóki nie strzelą"
+        },
+        {
+          "roll": 10,
+          "text": "Świat byłby lepszy bez połowy z nich"
+        }
+      ]
+    },
+    {
+      "id": "mostValuedPossession",
+      "label": "Najważniejszy przedmiot",
+      "sides": 10,
+      "entries": [
+        {
+          "roll": 1,
+          "text": "Nóż po ojcu"
+        },
+        {
+          "roll": 2,
+          "text": "Karta pamięci bez opisu"
+        },
+        {
+          "roll": 3,
+          "text": "Kurtka z pierwszej wypłaty"
+        },
+        {
+          "roll": 4,
+          "text": "Zdjęcie z dzieciństwa"
+        },
+        {
+          "roll": 5,
+          "text": "Zeszyt z notatkami"
+        },
+        {
+          "roll": 6,
+          "text": "Nagranie czyjegoś głosu"
+        },
+        {
+          "roll": 7,
+          "text": "Rozstrojona gitara"
+        },
+        {
+          "roll": 8,
+          "text": "Pierścionek nie do sprzedania"
+        },
+        {
+          "roll": 9,
+          "text": "Pluszak z automatu"
+        },
+        {
+          "roll": 10,
+          "text": "Klucz do drzwi, których już nie ma"
+        }
+      ]
+    },
+    {
+      "id": "familyBackground",
+      "label": "Tło rodzinne",
+      "sides": 10,
+      "entries": [
+        {
+          "roll": 1,
+          "text": "Kadra korporacyjna",
+          "detail": "Ochrona pod domem, prywatna szkoła i kontrakt zamiast wychowania."
+        },
+        {
+          "roll": 2,
+          "text": "Technicy z konapu",
+          "detail": "Dwa etaty, jedno mieszkanie i wieczne pilnowanie rachunków."
+        },
+        {
+          "roll": 3,
+          "text": "Drobny handel",
+          "detail": "Kiosk, budka, stragan; rodzina znała każdego w promieniu kilometra."
+        },
+        {
+          "roll": 4,
+          "text": "Wataha w drodze",
+          "detail": "Dom to przyczepa, szkoła to warsztat, rodzina to trzydzieści osób."
+        },
+        {
+          "roll": 5,
+          "text": "Gang jako rodzina",
+          "detail": "Kolory zamiast nazwiska, lojalność zamiast czułości."
+        },
+        {
+          "roll": 6,
+          "text": "Ratownicy i medycy",
+          "detail": "Dyżury, karetki i rozmowy przy stole o rzeczach, o których się nie mówi."
+        },
+        {
+          "roll": 7,
+          "text": "Bez domu",
+          "detail": "Nocleg tam, gdzie się dało; dzieciństwo policzone w adresach."
+        },
+        {
+          "roll": 8,
+          "text": "Osadnicy z ruin",
+          "detail": "Odbudowa cudzego miasta cegła po cegle, w zamian za dach."
+        },
+        {
+          "roll": 9,
+          "text": "Wojsko i najemnicy",
+          "detail": "Rozkazy, przeprowadzki i puste krzesło przy kolacji."
+        },
+        {
+          "roll": 10,
+          "text": "Artyści z marginesu",
+          "detail": "Dużo hałasu, mało jedzenia, zawsze ktoś nocował na podłodze."
+        }
+      ]
+    },
+    {
+      "id": "familyCrisis",
+      "label": "Kryzys rodzinny",
+      "sides": 10,
+      "entries": [
+        {
+          "roll": 1,
+          "text": "Rodzinę wyrzucono z mieszkania z dnia na dzień"
+        },
+        {
+          "roll": 2,
+          "text": "Ktoś bliski zniknął i nikt nie szukał"
+        },
+        {
+          "roll": 3,
+          "text": "Rodzina wzięła dług, który spłacasz do dziś"
+        },
+        {
+          "roll": 4,
+          "text": "Wybuchł spór o spadek i zostały same procesy"
+        },
+        {
+          "roll": 5,
+          "text": "Rodzice rozjechali się po dwóch kontynentach"
+        },
+        {
+          "roll": 6,
+          "text": "Rodzinny warsztat spłonął razem z dokumentami"
+        },
+        {
+          "roll": 7,
+          "text": "Ktoś z rodziny poszedł siedzieć za was wszystkich"
+        },
+        {
+          "roll": 8,
+          "text": "Choroba zjadła oszczędności trzech pokoleń"
+        },
+        {
+          "roll": 9,
+          "text": "Rodzina weszła w układ, z którego nie da się wyjść"
+        },
+        {
+          "roll": 10,
+          "text": "Zostałeś sam, zanim skończyłeś szesnaście lat"
+        }
+      ]
+    },
+    {
+      "id": "childhoodEnvironment",
+      "label": "Środowisko",
+      "sides": 10,
+      "entries": [
+        {
+          "roll": 1,
+          "text": "Osiedle z jednym działającym windą na cztery wieżowce"
+        },
+        {
+          "roll": 2,
+          "text": "Zamknięta strefa korporacyjna z bramą i przepustkami"
+        },
+        {
+          "roll": 3,
+          "text": "Targowisko czynne dwadzieścia cztery godziny"
+        },
+        {
+          "roll": 4,
+          "text": "Trasa między portami, ciągle w ruchu"
+        },
+        {
+          "roll": 5,
+          "text": "Dzielnica po pożarze, odbudowywana od dziesięciu lat"
+        },
+        {
+          "roll": 6,
+          "text": "Hałaśliwy port lotniczy i hotele na godziny"
+        },
+        {
+          "roll": 7,
+          "text": "Blok socjalny z korytarzem zamiast podwórka"
+        },
+        {
+          "roll": 8,
+          "text": "Miasteczko przy kopalni, która stanęła"
+        },
+        {
+          "roll": 9,
+          "text": "Pływająca dzielnica na pontonach"
+        },
+        {
+          "roll": 10,
+          "text": "Apartament z ochroną, z którego rzadko wychodziłeś"
+        }
+      ]
+    },
+    {
+      "id": "friend",
+      "label": "Przyjaciel jest dla ciebie…",
+      "sides": 10,
+      "entries": [
+        {
+          "roll": 1,
+          "text": "Jak starsze rodzeństwo"
+        },
+        {
+          "roll": 2,
+          "text": "Jak młodsze rodzeństwo"
+        },
+        {
+          "roll": 3,
+          "text": "Mentorem, który wciąż cię poprawia"
+        },
+        {
+          "roll": 4,
+          "text": "Wspólnikiem w interesach"
+        },
+        {
+          "roll": 5,
+          "text": "Byłą miłością, z którą się dogadujesz"
+        },
+        {
+          "roll": 6,
+          "text": "Dawnym wrogiem, który zmienił stronę"
+        },
+        {
+          "roll": 7,
+          "text": "Kimś, komu uratowałeś życie"
+        },
+        {
+          "roll": 8,
+          "text": "Kimś, kto uratował twoje"
+        },
+        {
+          "roll": 9,
+          "text": "Sąsiadem, który zawsze otwiera drzwi"
+        },
+        {
+          "roll": 10,
+          "text": "Kimś, z kim łączy cię jeden sekret"
+        }
+      ]
+    },
+    {
+      "id": "enemyWho",
+      "label": "Kim jest wróg",
+      "sides": 10,
+      "entries": [
+        {
+          "roll": 1,
+          "text": "Dawny przyjaciel"
+        },
+        {
+          "roll": 2,
+          "text": "Były wspólnik"
+        },
+        {
+          "roll": 3,
+          "text": "Krewny, którego pominąłeś"
+        },
+        {
+          "roll": 4,
+          "text": "Rywal z czasów szkoły"
+        },
+        {
+          "roll": 5,
+          "text": "Twój dawny pracownik"
+        },
+        {
+          "roll": 6,
+          "text": "Twój dawny pracodawca"
+        },
+        {
+          "roll": 7,
+          "text": "Sąsiad z tego samego piętra"
+        },
+        {
+          "roll": 8,
+          "text": "Urzędnik korporacyjny"
+        },
+        {
+          "roll": 9,
+          "text": "Funkcjonariusz"
+        },
+        {
+          "roll": 10,
+          "text": "Ganger z sąsiedniej ulicy"
+        }
+      ]
+    },
+    {
+      "id": "enemyCause",
+      "label": "Przyczyna konfliktu",
+      "sides": 10,
+      "entries": [
+        {
+          "roll": 1,
+          "text": "Utrata twarzy przy świadkach"
+        },
+        {
+          "roll": 2,
+          "text": "Pieniądze, których nie oddałeś"
+        },
+        {
+          "roll": 3,
+          "text": "Zabrana robota"
+        },
+        {
+          "roll": 4,
+          "text": "Złamana obietnica"
+        },
+        {
+          "roll": 5,
+          "text": "Ktoś oberwał zamiast ciebie"
+        },
+        {
+          "roll": 6,
+          "text": "Odrzucona propozycja"
+        },
+        {
+          "roll": 7,
+          "text": "Zwykła niechęć bez powodu"
+        },
+        {
+          "roll": 8,
+          "text": "Rywalizacja o tę samą osobę"
+        },
+        {
+          "roll": 9,
+          "text": "Nagranie, które upubliczniłeś"
+        },
+        {
+          "roll": 10,
+          "text": "Wina, którą zrzucono na niewinnego"
+        }
+      ]
+    },
+    {
+      "id": "enemyResources",
+      "label": "Czym dysponuje poszkodowany",
+      "sides": 10,
+      "entries": [
+        {
+          "roll": 1,
+          "text": "Tylko sobą i to bez zapału"
+        },
+        {
+          "roll": 2,
+          "text": "Sobą i długą pamięcią"
+        },
+        {
+          "roll": 3,
+          "text": "Sobą i jednym przyjacielem"
+        },
+        {
+          "roll": 4,
+          "text": "Kilkoma znajomymi z podwórka"
+        },
+        {
+          "roll": 5,
+          "text": "Ekipą na telefon"
+        },
+        {
+          "roll": 6,
+          "text": "Całym gangiem"
+        },
+        {
+          "roll": 7,
+          "text": "Znajomościami wśród Stróżów Prawa"
+        },
+        {
+          "roll": 8,
+          "text": "Pieniędzmi na wynajęcie kogoś lepszego"
+        },
+        {
+          "roll": 9,
+          "text": "Działem prawnym korporacji"
+        },
+        {
+          "roll": 10,
+          "text": "Instytucją, której nie da się pozwać"
+        }
+      ]
+    },
+    {
+      "id": "revenge",
+      "label": "Słodka zemsta",
+      "sides": 10,
+      "entries": [
+        {
+          "roll": 1,
+          "text": "Udaje, że cię nie widzi"
+        },
+        {
+          "roll": 2,
+          "text": "Obgaduje cię, gdzie się da"
+        },
+        {
+          "roll": 3,
+          "text": "Podbiera ci zlecenia"
+        },
+        {
+          "roll": 4,
+          "text": "Wchodzi w drogę w najgorszym momencie"
+        },
+        {
+          "roll": 5,
+          "text": "Sypie cię tam, gdzie boli"
+        },
+        {
+          "roll": 6,
+          "text": "Zaczyna rękoczyny"
+        },
+        {
+          "roll": 7,
+          "text": "Niszczy ci sprzęt"
+        },
+        {
+          "roll": 8,
+          "text": "Idzie po kogoś z twoich bliskich"
+        },
+        {
+          "roll": 9,
+          "text": "Podkłada ci cudze przestępstwo"
+        },
+        {
+          "roll": 10,
+          "text": "Chce cię zabić i nie ukrywa tego"
+        }
+      ]
+    },
+    {
+      "id": "tragicLove",
+      "label": "Jak skończyła się miłość",
+      "sides": 10,
+      "entries": [
+        {
+          "roll": 1,
+          "text": "Odeszła bez słowa"
+        },
+        {
+          "roll": 2,
+          "text": "Zginął w robocie, która miała być łatwa"
+        },
+        {
+          "roll": 3,
+          "text": "Rozeszliście się o pieniądze"
+        },
+        {
+          "roll": 4,
+          "text": "Wybrała twojego wspólnika"
+        },
+        {
+          "roll": 5,
+          "text": "Wyjechał i nie wrócił"
+        },
+        {
+          "roll": 6,
+          "text": "Zostało po niej tylko nagranie"
+        },
+        {
+          "roll": 7,
+          "text": "Trafiła do aresztu i nie chce widzeń"
+        },
+        {
+          "roll": 8,
+          "text": "Zmienił się nie do poznania po wszczepach"
+        },
+        {
+          "roll": 9,
+          "text": "Rodzina jednego z was to załatwiła"
+        },
+        {
+          "roll": 10,
+          "text": "Nadal jesteście w kontakcie i to najgorsze"
+        }
+      ]
+    },
+    {
+      "id": "lifeGoal",
+      "label": "Cel życiowy",
+      "sides": 10,
+      "entries": [
+        {
+          "roll": 1,
+          "text": "Odkupić dawny błąd"
+        },
+        {
+          "roll": 2,
+          "text": "Zdobyć własny kąt, którego nikt nie zabierze"
+        },
+        {
+          "roll": 3,
+          "text": "Wyciągnąć kogoś z dołka"
+        },
+        {
+          "roll": 4,
+          "text": "Zemścić się i dopiero potem myśleć"
+        },
+        {
+          "roll": 5,
+          "text": "Zniknąć z rejestrów na dobre"
+        },
+        {
+          "roll": 6,
+          "text": "Zbudować coś, co przetrwa dłużej niż ty"
+        },
+        {
+          "roll": 7,
+          "text": "Odzyskać nazwisko rodziny"
+        },
+        {
+          "roll": 8,
+          "text": "Znaleźć osobę, która przepadła"
+        },
+        {
+          "roll": 9,
+          "text": "Zostać kimś, o kim się mówi"
+        },
+        {
+          "roll": 10,
+          "text": "Dożyć spokojnej starości, choć nikt w to nie wierzy"
+        }
+      ]
+    }
+  ],
+  "roles": [
+    {
+      "roleId": "rockerboy",
+      "tables": [
+        {
+          "id": "rockerboy.typ",
+          "label": "Typ",
+          "sides": 6,
+          "entries": [
+            {
+              "roll": 1,
+              "text": "Wokalista"
+            },
+            {
+              "roll": 2,
+              "text": "Poeta uliczny"
+            },
+            {
+              "roll": 3,
+              "text": "Didżej"
+            },
+            {
+              "roll": 4,
+              "text": "Performer"
+            },
+            {
+              "roll": 5,
+              "text": "Satyryk"
+            },
+            {
+              "roll": 6,
+              "text": "Agitator"
+            }
+          ],
+          "question": "Jakiego rodzaju Rockerem jesteś?"
+        },
+        {
+          "id": "rockerboy.scena",
+          "label": "Scena",
+          "sides": 6,
+          "entries": [
+            {
+              "roll": 1,
+              "text": "Piwnice klubowe"
+            },
+            {
+              "roll": 2,
+              "text": "Dachy bloków"
+            },
+            {
+              "roll": 3,
+              "text": "Nielegalne rave'y"
+            },
+            {
+              "roll": 4,
+              "text": "Sale koncertowe"
+            },
+            {
+              "roll": 5,
+              "text": "Transmisje z ukrycia"
+            },
+            {
+              "roll": 6,
+              "text": "Podwórka i przystanki"
+            }
+          ],
+          "question": "Gdzie występujesz?"
+        }
+      ]
+    },
+    {
+      "roleId": "solo",
+      "tables": [
+        {
+          "id": "solo.typ",
+          "label": "Typ",
+          "sides": 6,
+          "entries": [
+            {
+              "roll": 1,
+              "text": "Ochroniarz"
+            },
+            {
+              "roll": 2,
+              "text": "Zbir na godziny"
+            },
+            {
+              "roll": 3,
+              "text": "Eskorta konwojów"
+            },
+            {
+              "roll": 4,
+              "text": "Specjalista od wejść"
+            },
+            {
+              "roll": 5,
+              "text": "Trener ochrony"
+            },
+            {
+              "roll": 6,
+              "text": "Łowca nagród"
+            }
+          ],
+          "question": "Jakim rodzajem Solo jesteś?"
+        },
+        {
+          "id": "solo.kodeks",
+          "label": "Kodeks",
+          "sides": 6,
+          "entries": [
+            {
+              "roll": 1,
+              "text": "Nie ruszasz cywilów"
+            },
+            {
+              "roll": 2,
+              "text": "Chronisz słabszych"
+            },
+            {
+              "roll": 3,
+              "text": "Bierzesz każdą robotę poza jedną"
+            },
+            {
+              "roll": 4,
+              "text": "Liczy się kontrakt"
+            },
+            {
+              "roll": 5,
+              "text": "Naginasz zasady dla wyniku"
+            },
+            {
+              "roll": 6,
+              "text": "Nie masz żadnych zasad"
+            }
+          ],
+          "question": "Jak wygląda twój kompas moralny?"
+        }
+      ]
+    },
+    {
+      "roleId": "netrunner",
+      "tables": [
+        {
+          "id": "netrunner.typ",
+          "label": "Typ",
+          "sides": 6,
+          "entries": [
+            {
+              "roll": 1,
+              "text": "Freelancer na zlecenie"
+            },
+            {
+              "roll": 2,
+              "text": "Etatowiec korporacji"
+            },
+            {
+              "roll": 3,
+              "text": "Haktywista"
+            },
+            {
+              "roll": 4,
+              "text": "Kolekcjoner cudzych danych"
+            },
+            {
+              "roll": 5,
+              "text": "Członek stałej ekipy"
+            },
+            {
+              "roll": 6,
+              "text": "Wsparcie dla dziennikarzy"
+            }
+          ],
+          "question": "Jakiego rodzaju Netrunnerem jesteś?"
+        },
+        {
+          "id": "netrunner.legowisko",
+          "label": "Miejsce pracy",
+          "sides": 6,
+          "entries": [
+            {
+              "roll": 1,
+              "text": "Ściana ekranów"
+            },
+            {
+              "roll": 2,
+              "text": "Materac i wiązka kabli"
+            },
+            {
+              "roll": 3,
+              "text": "Boks w kafejce"
+            },
+            {
+              "roll": 4,
+              "text": "Kontener na dachu"
+            },
+            {
+              "roll": 5,
+              "text": "Sterylny pokój korporacji"
+            },
+            {
+              "roll": 6,
+              "text": "Nigdzie — pracujesz w ruchu"
+            }
+          ],
+          "question": "Jak wygląda twoje miejsce pracy?"
+        }
+      ]
+    },
+    {
+      "roleId": "tech",
+      "tables": [
+        {
+          "id": "tech.typ",
+          "label": "Typ",
+          "sides": 6,
+          "entries": [
+            {
+              "roll": 1,
+              "text": "Mechanik pojazdów"
+            },
+            {
+              "roll": 2,
+              "text": "Złota rączka"
+            },
+            {
+              "roll": 3,
+              "text": "Zbrojmistrz"
+            },
+            {
+              "roll": 4,
+              "text": "Spec od dronów"
+            },
+            {
+              "roll": 5,
+              "text": "Elektronik"
+            },
+            {
+              "roll": 6,
+              "text": "Wynalazca bez patentu"
+            }
+          ],
+          "question": "Jakiego rodzaju Technikiem jesteś?"
+        },
+        {
+          "id": "tech.czesci",
+          "label": "Źródło części",
+          "sides": 6,
+          "entries": [
+            {
+              "roll": 1,
+              "text": "Złomowiska"
+            },
+            {
+              "roll": 2,
+              "text": "Odzysk po strzelaninach"
+            },
+            {
+              "roll": 3,
+              "text": "Fixer z dzielnicy"
+            },
+            {
+              "roll": 4,
+              "text": "Kontrakt korporacyjny"
+            },
+            {
+              "roll": 5,
+              "text": "Magazyn, do którego masz klucz"
+            },
+            {
+              "roll": 6,
+              "text": "Nocny Market"
+            }
+          ],
+          "question": "Skąd bierzesz części?"
+        }
+      ]
+    },
+    {
+      "roleId": "medtech",
+      "tables": [
+        {
+          "id": "medtech.typ",
+          "label": "Typ",
+          "sides": 6,
+          "entries": [
+            {
+              "roll": 1,
+              "text": "Chirurg"
+            },
+            {
+              "roll": 2,
+              "text": "Ratownik"
+            },
+            {
+              "roll": 3,
+              "text": "Ripperdoc"
+            },
+            {
+              "roll": 4,
+              "text": "Farmaceuta"
+            },
+            {
+              "roll": 5,
+              "text": "Terapeuta"
+            },
+            {
+              "roll": 6,
+              "text": "Patolog"
+            }
+          ],
+          "question": "Jakiego rodzaju Medykiem jesteś?"
+        },
+        {
+          "id": "medtech.gabinet",
+          "label": "Gabinet",
+          "sides": 6,
+          "entries": [
+            {
+              "roll": 1,
+              "text": "Sterylne i drogie"
+            },
+            {
+              "roll": 2,
+              "text": "Zaplecze sklepu"
+            },
+            {
+              "roll": 3,
+              "text": "Furgonetka"
+            },
+            {
+              "roll": 4,
+              "text": "Piwnica z generatorem"
+            },
+            {
+              "roll": 5,
+              "text": "Skrzydło szpitala"
+            },
+            {
+              "roll": 6,
+              "text": "Stół w barze, gdy trzeba"
+            }
+          ],
+          "question": "Jak wygląda twoje miejsce pracy?"
+        }
+      ]
+    },
+    {
+      "roleId": "media",
+      "tables": [
+        {
+          "id": "media.typ",
+          "label": "Typ",
+          "sides": 6,
+          "entries": [
+            {
+              "roll": 1,
+              "text": "Bloger"
+            },
+            {
+              "roll": 2,
+              "text": "Reportażysta"
+            },
+            {
+              "roll": 3,
+              "text": "Dokumentalista"
+            },
+            {
+              "roll": 4,
+              "text": "Śledczy"
+            },
+            {
+              "roll": 5,
+              "text": "Felietonista"
+            },
+            {
+              "roll": 6,
+              "text": "Kronikarz dzielnicy"
+            }
+          ],
+          "question": "Jakiego rodzaju Media jesteś?"
+        },
+        {
+          "id": "media.kanal",
+          "label": "Kanał",
+          "sides": 6,
+          "entries": [
+            {
+              "roll": 1,
+              "text": "Kanał wideo"
+            },
+            {
+              "roll": 2,
+              "text": "Newsletter"
+            },
+            {
+              "roll": 3,
+              "text": "Radio z anteny na dachu"
+            },
+            {
+              "roll": 4,
+              "text": "Druk rozdawany na ulicy"
+            },
+            {
+              "roll": 5,
+              "text": "Serwis informacyjny"
+            },
+            {
+              "roll": 6,
+              "text": "Sieć znajomych"
+            }
+          ],
+          "question": "Jak docierasz do publiczności?"
+        }
+      ]
+    },
+    {
+      "roleId": "lawman",
+      "tables": [
+        {
+          "id": "lawman.etat",
+          "label": "Stanowisko",
+          "sides": 6,
+          "entries": [
+            {
+              "roll": 1,
+              "text": "Patrol"
+            },
+            {
+              "roll": 2,
+              "text": "Dzielnicowy"
+            },
+            {
+              "roll": 3,
+              "text": "Dochodzeniówka"
+            },
+            {
+              "roll": 4,
+              "text": "Oddział szturmowy"
+            },
+            {
+              "roll": 5,
+              "text": "Drogówka"
+            },
+            {
+              "roll": 6,
+              "text": "Sprawy wewnętrzne"
+            }
+          ],
+          "question": "Jakie masz stanowisko?"
+        },
+        {
+          "id": "lawman.teren",
+          "label": "Teren",
+          "sides": 6,
+          "entries": [
+            {
+              "roll": 1,
+              "text": "Jedno osiedle"
+            },
+            {
+              "roll": 2,
+              "text": "Dzielnica"
+            },
+            {
+              "roll": 3,
+              "text": "Strefy korporacyjne"
+            },
+            {
+              "roll": 4,
+              "text": "Obrzeża miasta"
+            },
+            {
+              "roll": 5,
+              "text": "Autostrady"
+            },
+            {
+              "roll": 6,
+              "text": "Wszędzie, gdzie was wyślą"
+            }
+          ],
+          "question": "Jak rozległa jest jurysdykcja twojej grupy?"
+        }
+      ]
+    },
+    {
+      "roleId": "exec",
+      "tables": [
+        {
+          "id": "exec.branza",
+          "label": "Branża",
+          "sides": 6,
+          "entries": [
+            {
+              "roll": 1,
+              "text": "Finanse"
+            },
+            {
+              "roll": 2,
+              "text": "Media"
+            },
+            {
+              "roll": 3,
+              "text": "Cybertechnika"
+            },
+            {
+              "roll": 4,
+              "text": "Farmacja"
+            },
+            {
+              "roll": 5,
+              "text": "Energetyka"
+            },
+            {
+              "roll": 6,
+              "text": "Nieruchomości"
+            }
+          ],
+          "question": "Dla jakiej Korporacji pracujesz?"
+        },
+        {
+          "id": "exec.dzial",
+          "label": "Dział",
+          "sides": 6,
+          "entries": [
+            {
+              "roll": 1,
+              "text": "Zaopatrzenie"
+            },
+            {
+              "roll": 2,
+              "text": "Produkcja"
+            },
+            {
+              "roll": 3,
+              "text": "Badania i rozwój"
+            },
+            {
+              "roll": 4,
+              "text": "Kadry"
+            },
+            {
+              "roll": 5,
+              "text": "Promocja"
+            },
+            {
+              "roll": 6,
+              "text": "Fuzje i przejęcia"
+            }
+          ],
+          "question": "W jakim dziale pracujesz?"
+        }
+      ]
+    },
+    {
+      "roleId": "fixer",
+      "tables": [
+        {
+          "id": "fixer.typ",
+          "label": "Typ",
+          "sides": 6,
+          "entries": [
+            {
+              "roll": 1,
+              "text": "Pośrednik między gangami"
+            },
+            {
+              "roll": 2,
+              "text": "Dostawca rzadkich rzeczy"
+            },
+            {
+              "roll": 3,
+              "text": "Handlarz informacją"
+            },
+            {
+              "roll": 4,
+              "text": "Organizator imprez"
+            },
+            {
+              "roll": 5,
+              "text": "Werbownik ekip"
+            },
+            {
+              "roll": 6,
+              "text": "Agent artystów"
+            }
+          ],
+          "question": "Jakiego rodzaju Fixerem jesteś?"
+        },
+        {
+          "id": "fixer.biuro",
+          "label": "Biuro",
+          "sides": 6,
+          "entries": [
+            {
+              "roll": 1,
+              "text": "Nie masz, jesteś w ruchu"
+            },
+            {
+              "roll": 2,
+              "text": "Stolik w knajpie"
+            },
+            {
+              "roll": 3,
+              "text": "Skrytka i numer telefonu"
+            },
+            {
+              "roll": 4,
+              "text": "Zaplecze sklepu"
+            },
+            {
+              "roll": 5,
+              "text": "Pustostan"
+            },
+            {
+              "roll": 6,
+              "text": "Hol hotelu"
+            }
+          ],
+          "question": "Jak wygląda twoje „biuro”?"
+        }
+      ]
+    },
+    {
+      "roleId": "nomad",
+      "tables": [
+        {
+          "id": "nomad.wataha",
+          "label": "Rozmiar watahy",
+          "sides": 6,
+          "entries": [
+            {
+              "roll": 1,
+              "text": "Jedna rodzina"
+            },
+            {
+              "roll": 2,
+              "text": "Dwadzieścia osób"
+            },
+            {
+              "roll": 3,
+              "text": "Pięćdziesiąt osób"
+            },
+            {
+              "roll": 4,
+              "text": "Ponad sto osób"
+            },
+            {
+              "roll": 5,
+              "text": "Klan"
+            },
+            {
+              "roll": 6,
+              "text": "Kilka klanów razem"
+            }
+          ],
+          "question": "Jak duża jest twoja wataha?"
+        },
+        {
+          "id": "nomad.robota",
+          "label": "Zajęcie",
+          "sides": 6,
+          "entries": [
+            {
+              "roll": 1,
+              "text": "Zwiad i negocjacje"
+            },
+            {
+              "roll": 2,
+              "text": "Eskorta"
+            },
+            {
+              "roll": 3,
+              "text": "Kierowca"
+            },
+            {
+              "roll": 4,
+              "text": "Transport ciężki"
+            },
+            {
+              "roll": 5,
+              "text": "Przemyt"
+            },
+            {
+              "roll": 6,
+              "text": "Zaopatrzenie"
+            }
+          ],
+          "question": "Jak wspierasz swoją watahę?"
+        }
+      ]
+    }
+  ]
+}

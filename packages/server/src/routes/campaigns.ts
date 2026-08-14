@@ -49,6 +49,7 @@ export function registerCampaignRoutes(app: FastifyInstance, ctx: AppContext): v
       skills: ctx.cpred.skills,
       roles: ctx.cpred.roles,
       creation: ctx.cpred.creation,
+      lifepath: ctx.cpred.lifepath,
     };
     return payload;
   });

@@ -102,6 +102,29 @@ export interface CreationFinishPayload {
 }
 
 /**
+ * Client → server `creation:lifepath-roll` (stage 25b) — one throw covering one
+ * or many Lifepath tables.
+ *
+ * Many, because „Rzuć całą Ścieżkę" is how a table actually uses this chapter:
+ * fourteen separate cards on the chat would bury the session zero it is meant
+ * to document, and one throw of fourteen dice is the same fourteen dice.
+ * `index` picks which friend, enemy or tragic love the row is for and is
+ * ignored by the tables that fill a single field.
+ */
+export interface CreationLifepathRollPayload {
+  tableIds: string[];
+  index?: number;
+}
+
+/**
+ * Client → server `creation:lifepath-count` — „Rzuć 1k10 i odejmij 7" for the
+ * number of friends, enemies or tragic loves (s. 50–52).
+ */
+export interface CreationLifepathCountPayload {
+  group: string;
+}
+
+/**
  * Body of `GET /api/cpred` — the system data files as the **server** reads
  * them.
  *
@@ -115,6 +138,8 @@ export interface CpredDataPayload {
   roles: unknown[];
   /** Character-creation tables (stage 25a); null when no data file was found. */
   creation: unknown;
+  /** Lifepath tables (stage 25b); null when no data file was found. */
+  lifepath: unknown;
 }
 
 /** Ack data of the portrait upload (`POST /api/uploads/portraits`). */

@@ -7,6 +7,63 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 13.08 — porządki: pięć zaległości zdjętych z listy (bez etapu)
+
+**Cel: nie nowa funkcja, tylko skrócenie listy „Otwarte zaległości".** Zdjęte pięć pozycji:
+**27a strona gracza**, **27b strona gracza**, **27b trzy ścieżki**, **27a cztery drobiazgi**
+i **`tsc` na `screamsheets.test.ts`**.
+
+**Znaleziony i naprawiony błąd, którego nie widziała żadna wcześniejsza sesja: w żaden wiersz
+karty nie dało się wpisać wielowyrazowej nazwy.** Objaw wyglądał na usterkę automatyzacji —
+„Tarcza balistyczna" lądowało w polu jako „Tarczabalistyczna". Przyczyna była w kodzie:
+`validateRow` w `shared/systems/cpred/character.ts` robiło `name.trim()`, a karta zapisuje się
+**po każdym znaku**, więc spacja na końcu znikała, zanim zdążyła wejść następna litera. Spacja
+w środku wyrazu przeżywała — i to właśnie ona rozstrzygnęła diagnozę (`AB|CD` + spacja = `AB CD`,
+`ABCD` + spacja = `ABCD`). Dotyczyło **wszystkich** wierszy karty (broń, pancerz, wyposażenie),
+bo wszystkie idą przez `CpredItemRow`; nie było widać wcześniej, bo nazwy z kompendium wpisuje
+kod, nie palce. `trim()` zdjęty — `name` zachowuje się teraz tak jak `notes` i cała reszta prozy,
+która idzie przez `validateText` bez przycinania. Test regresyjny w `character.test.ts`. Zmiana
+jest bezpieczna, bo wiersze dopasowuje się po `id` i `compendiumId`, nigdy po nazwie.
+
+**`screamsheets.test.ts` przechodzi `tsc --noEmit`.** Dziewięć `ack.data` bez zawężenia po
+`ack.ok` zastąpił helper `data<T>(ack, what)` — ten sam, którego używa kilkanaście innych plików
+testowych serwera. 12 testów pliku bez zmian.
+
+**Odklikane po obu stronach stołu** (MG na `localhost:5173`, gracz avatar9 na `[::1]:5173`,
+obie sesje naraz w jednym oknie Chrome) na postaci testowej **„Test 27x"** — **zostawionej
+w kampanii jako atrapa**, bo ma już zbudowane dokładnie te układy, których te ścieżki wymagają.
+
+- **27b, trzy ścieżki.** (1) **Dwie noszone sztuki w jednej lokacji**: „Kevlar ciężki" OB 11
+  został w wierszu KORPUS, a słabsza „Kamizelka lekka" OB 7 zeszła do „Reszty pancerza (1)"
+  z napisem **„słabsza"** zamiast przycisku „Załóż". (2) **Wiersz „Tarcza"** wypełniony po raz
+  pierwszy („Tarcza balistyczna", `11 z 11`) — wcześniej widziany wyłącznie pusty. (3)
+  **Ekwipunek z wierszami**: „+ Wyposażenie" ×2, edycja ilości (1 → 4) i kosz kasujący wiersz.
+- **27a, cztery drobiazgi.** (1) **Wgrywanie portretu** — plik wszedł, ramka go pokazuje,
+  miniatura doklejała się też do belki okna. (2) **Pole „z" przy EMP** — po zbiciu
+  Człowieczeństwa 50 → 25 kostka EMP pokazała `5 z 2`, a bazy umiejętności EMP-owych
+  (Konwersacja, Odczytywanie emocji) zjechały 5 → 2 razem z nim. (3) **Czerwone paski
+  `.cp-alert`** w komplecie: „Poważnie ranny · −2" (przygaszony) przy PW 10, „Śmiertelnie
+  ranny · −4" z przyciskiem **„Test Przeżywalności"** przy PW 0 i „Na granicy" (cyberpsychoza)
+  przy EMP 2. Przy okazji, bez szukania, potwierdził się **chip cyberpsychozy na liście
+  postaci** z zaległości 23a — „EMP 2 · Na granicy" świeci u gracza przy nazwisku.
+- **27a i 27b, strona gracza.** Karta własnej postaci otwiera się u gracza w nowym układzie
+  (sprawdzone na „Test 27x" **i** na żywej „avatar9"), pas „Broń i pancerz" rysuje się
+  w całości, **„+ Broń" i „+ Pancerz" działają**, a dopisany wiersz pojawił się **na żywo
+  w otwartej karcie MG** — i tak samo zniknął po skasowaniu koszem z konta gracza. **„Atak"**
+  z wiersza broni uzbraja mapę u gracza tak samo jak u MG (pasek „avatar9 celuje: »Arasaka
+  Minami 10« — kliknij cel na mapie", `Esc` rozbraja). **Plakietka „Gotówka" u gracza to sam
+  napis** `0 ed` z przyciskiem „Kasa…" — pola **„korekta" nie ma**, w odróżnieniu od MG.
+  Przełącznik **☀ dzień / ☾ noc** działa też na drugim hoście. Konsola czysta po obu stronach.
+
+**Czego NIE sprawdzono, choć leżało blisko:** że serwer **odmawia** łatki na pola zastrzeżone
+dla MG — sprawdzone jest tylko to, że gracz **nie dostaje tych pól w UI** (korekta salda).
+Odmowa na poziomie gniazda zostaje pokryta testami z 23b.
+
+**Zweryfikowane:** 958 testów w `shared` (1 nowy), 589 na serwerze, `tsc --noEmit` czysty
+w `shared`, `client` i `server`. Pierwszy przebieg serwera pękł na `ammo.test.ts` — plik
+przeszedł osobno (19/19) i w powtórzonym pełnym przebiegu (589/589); to znane migotanie
+opisane w „Pułapkach dev", nie regresja.
+
 - **2026-08-14 (porządki w `POSTEP.md`):** raporty „odklikane" z etapów 19a–24b oraz stan
   kampanii testowej, przeniesione z sekcji „Od czego zacząć" bez zmian w treści. Powód:
   reguła 5 z `CLAUDE.md` — `POSTEP.md` czyta się w całości na starcie każdej sesji.

@@ -27,6 +27,9 @@ python tools/import/parse-manual.py
 # 2.5. podręcznik główny -> dane tworzenia postaci (etap 25a)
 python tools/import/parse-creation.py
 
+# 2.6. podręcznik główny -> tabele Ścieżek Życia (etap 25b)
+python tools/import/parse-lifepath.py
+
 # 3. DLC -> broń markowa (+ kontrola zgodności z podręcznikiem)
 uv run --with pdfplumber python tools/import/parse-compendium.py
 
@@ -110,6 +113,43 @@ Dwie tabele wymagają czegoś więcej niż regexa i obie mają własną kontrol�
   a **pierwszy wiersz tabeli Ulicznika** (s. 86, ta sama zawartość) rozstrzyga,
   które z dwóch pasujących ułożeń jest prawdziwe. Skrypt mówi o tym wprost
   w ostrzeżeniach — jeśli kiedyś przestanie, znaczy, że zrzut się zmienił.
+
+## Ścieżki Życia (`parse-lifepath.py`)
+
+Czyta rozdział „Uliczne opowieści” (s. 43–70) i zapisuje
+`data/private/cpred/lifepath.json`: **19 tabel ogólnych** (kultura pochodzenia
+z listą języków, osobowość, ubiór, fryzura, znaki szczególne, wartości, tło
+i kryzys rodzinny, środowisko, przyjaciele, trzy kolumny wrogów, słodka zemsta,
+tragiczne miłości, cele życiowe) i **52 tabele rolowe** — razem 522 wiersze.
+Próbka **własnego autorstwa** leży w `data/public/cpred/lifepath.json`.
+
+Cztery rzeczy trzeba odzyskać ze zrzutu, bo każda tabela jest w nim jednym
+ciągiem tekstu:
+
+- **Gdzie tabela się zaczyna** — na słowie `Wynik`, nagłówku kolumny wyników,
+  a nie na zdaniu „Rzuć 1k10 lub wybierz…”. Tabela Wrogów tego zdania nie ma
+  („rzucając raz w każdej kolumnie poniższej tabeli”) i przy kotwiczeniu na
+  zdaniu przepada razem z dwiema sąsiednimi.
+- **Numery wierszy** — czytane po kolei (najpierw `1`, potem `2` za nim), każdy
+  poprzedzony spacją i zakończony wielką literą. To jedyne, co odróżnia numer
+  wiersza od „(1k6/2) przyjaciółmi” i „odejmij 7, by sprawdzić”. Skan kończy
+  się tam, gdzie brakuje następnej liczby, więc nikt nie musi mówić parserowi,
+  że dana tabela jest na k6.
+- **Kolumny** sklejone bez separatora (`Dawny przyjacielStrata twarzy`) — szew
+  mała→WIELKA litera, i tylko przylegający. Dopuszczenie spacji rozcina
+  „Przedstawiciel Korpo” na pół, więc szew ze spacją wchodzi dopiero wtedy,
+  gdy przylegających jest za mało. Ile kolumn ma tabela i z której strony ciąć,
+  mówi `GENERAL_SPECS` — zgadywanie tego wierszami zawodzi.
+- **Koniec ostatniego wiersza**, który wchodzi w tekst drukowany obok: pytanie
+  następnej tabeli, nazwa Roli kapitalikami, rozstrzelona zakładka
+  `z e s p ó ł`, przypis „patrz str. 329”. Obcinane po kształcie; czego kształt
+  nie złapie, poprawia sekcja `lifepath` w `manual-overrides.json` (tak samo jak
+  `roleSkills` w `parse-creation.py`). Parser wypisuje takie wiersze jako
+  ostrzeżenie „Podejrzanie długi ostatni wiersz”.
+
+Tabele Ról przypisuje się do Roli **po numerze strony**, prosto ze spisu, który
+książka drukuje na s. 53 („MEDIA STRONA 62KORPO STRONA 63…”). Kapitalikowe
+banery Ról do tego nie służą — zrzut stawia je **po** pierwszej tabeli bloku.
 
 ## Broń markowa i statbloki (`parse-compendium.py`)
 

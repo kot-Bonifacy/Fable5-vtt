@@ -2,6 +2,10 @@ import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
 import type {
   CampaignDetail,
   CpredCreationDraft,
+  CpredLifepath,
+  CpredLifepathBotKind,
+  CpredLifepathGroup,
+  CpredLifepathTable,
   CpredSkillDefinition,
   CpredStatId,
 } from '@vtt/shared';
@@ -12,6 +16,9 @@ import {
   CPRED_CREATION_STEP_LABELS,
   CPRED_STAT_IDS,
   CPRED_STAT_LABELS,
+  LIFEPATH_FIELD_TABLES,
+  LIFEPATH_GROUP_LABELS,
+  LIFEPATH_GROUP_MAX,
   ROLE_GM,
   creationAvailableSkills,
   creationDataOf,
@@ -23,17 +30,28 @@ import {
   creationStatPointsSpent,
   creationStatPool,
   creationStats,
+  emptyLifepathEnemy,
+  emptyLifepathPerson,
   groupedSkills,
+  isLifepathFieldTable,
+  lifepathBotDraft,
+  lifepathDataOf,
+  lifepathMissing,
+  lifepathRoleTables,
+  lifepathRollLabel,
 } from '@vtt/shared';
 import { apiGet } from '../api.js';
-import { creationErrorText, finishCreation } from '../socket.js';
+import { botErrorText, createBot, creationErrorText, finishCreation } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
+import { useBotStore } from '../stores/botStore.js';
 import { ensureCpredDataLoaded, useCharacterStore } from '../stores/characterStore.js';
 import {
   clearCreationCup,
   enqueueCreationCall,
   loadCreationCup,
   rollCreationWithGesture,
+  rollLifepathCount,
+  rollLifepathTables,
   useCreationStore,
 } from '../stores/creationStore.js';
 import { useRollStore } from '../stores/rollStore.js';
@@ -43,10 +61,11 @@ import { useRollStore } from '../stores/rollStore.js';
  * the sheet, so the map stays visible and the day/night theme from 27a already
  * fits it.
  *
- * Four steps with free movement between them: Role, Stats, Skills, Summary.
- * Nothing here computes a rule on its own — the pools, the ceilings and the
- * list of what is still missing all come from `shared/systems/cpred/creation`,
- * which is the same code the server refuses with.
+ * Five steps with free movement between them: Role, Stats, Skills, Lifepath
+ * (stage 25b) and Summary. Nothing here computes a rule on its own — the pools,
+ * the ceilings, the Lifepath tables and the list of what is still missing all
+ * come from `shared/systems/cpred`, which is the same code the server refuses
+ * with.
  */
 export function CharacterCreator() {
   const open = useCreationStore((s) => s.open);
@@ -192,6 +211,7 @@ function CreatorWindow() {
             {draft.step === 'role' && <RoleStep draft={draft} />}
             {draft.step === 'stats' && <StatsStep draft={draft} />}
             {draft.step === 'skills' && <SkillsStep draft={draft} />}
+            {draft.step === 'lifepath' && <LifepathStep draft={draft} />}
             {draft.step === 'summary' && (
               <SummaryStep
                 draft={draft}
@@ -570,7 +590,480 @@ function SkillRow({ skill, draft }: { skill: CpredSkillDefinition; draft: CpredC
   );
 }
 
-// ───────────────────────── krok 4: Podsumowanie ─────────────────────────
+// ───────────────────────── krok 4: Ścieżka Życia ─────────────────────────
+
+/**
+ * The Lifepath step (stage 25b).
+ *
+ * Every row is „wylosuj albo wybierz" — the two the book offers, side by side,
+ * and never one without the other: „Jeśli wylosujesz coś, co nie pasuje do
+ * twojej wizji Postaci, odpowiednio zmień wynik" (s. 44). The dice always
+ * belong to the server; the picker writes straight into the draft.
+ *
+ * The step is **not** required to finish the character. That is the book's own
+ * position on the chapter (a set of prompts, not a rule), and it keeps the GM's
+ * five-NPCs-an-evening path as short as it was in 25a.
+ */
+function LifepathStep({ draft }: { draft: CpredCreationDraft }) {
+  const registry = useCharacterStore((s) => s.registry);
+  const busy = useCreationStore((s) => s.busy);
+  const data = useMemo(() => lifepathDataOf(registry), [registry]);
+  const roleTables = useMemo(() => lifepathRoleTables(data, draft.roleId), [data, draft.roleId]);
+  const roleName = registry.roles.find((entry) => entry.id === draft.roleId)?.name ?? '';
+
+  if (data.general.length === 0) {
+    return (
+      <p className="creator-empty">
+        Brak danych Ścieżki Życia — kreator nie ma z czego czytać tabel. Uruchom
+        <code> tools/import/parse-lifepath.py</code>.
+      </p>
+    );
+  }
+
+  const fieldTables = data.general.filter((table) => isLifepathFieldTable(table.id));
+  const missing = lifepathMissing(draft.lifepath, data, draft.roleId);
+  // One throw for the whole path: fourteen questions, fourteen dice, one card.
+  const everything = [...fieldTables, ...roleTables].map((table) => table.id);
+
+  return (
+    <div className="creator-step">
+      <div className="creator-stats-head">
+        <button
+          type="button"
+          className="small-button small-button--primary"
+          disabled={busy || everything.length === 0}
+          onClick={() => void rollLifepathTables(everything)}
+        >
+          🎲 Rzuć całą Ścieżkę
+        </button>
+        <span className={`creator-pool ${missing > 0 ? '' : 'creator-pool--done'}`}>
+          {missing === 0 ? 'Ścieżka wypełniona' : `${missing} bez odpowiedzi`}
+        </span>
+        <span className="creator-hint">
+          Rzuca serwer i zostawia kartę na czacie. Każdy wynik można zmienić ręcznie — tak mówi
+          podręcznik.
+        </span>
+      </div>
+
+      <section className="creator-lifepath-group">
+        <h4>Kim jesteś</h4>
+        {fieldTables.map((table) => (
+          <LifepathFieldRow key={table.id} draft={draft} table={table} />
+        ))}
+      </section>
+
+      <LifepathPeople draft={draft} group="friends" tables={data.general} />
+      <LifepathPeople draft={draft} group="enemies" tables={data.general} />
+      <LifepathPeople draft={draft} group="tragicLoves" tables={data.general} />
+
+      {roleTables.length > 0 && (
+        <section className="creator-lifepath-group">
+          <h4>Ścieżka Życia Roli{roleName ? ` — ${roleName}` : ''}</h4>
+          {roleTables.map((table) => (
+            <LifepathFieldRow key={table.id} draft={draft} table={table} />
+          ))}
+        </section>
+      )}
+      {draft.roleId === null && (
+        <p className="creator-hint">
+          Ścieżka Życia Roli pojawi się po wybraniu Roli w kroku pierwszym.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Writes a whole Lifepath back to the server; every edit goes through here. */
+function useLifepathPatch() {
+  const patch = useCreationStore((s) => s.patch);
+  return (lifepath: CpredLifepath) => void patch({ lifepath });
+}
+
+/**
+ * A line of Lifepath prose — a friend's name, an answer written by hand.
+ *
+ * It keeps what is being typed locally and sends it on blur, and that is not a
+ * nicety. Every patch replaces the whole Lifepath and is built from the draft
+ * the server last returned, so a field that saved on each keystroke would build
+ * the second letter's patch on top of the state from before the first — typing
+ * „Stary Vex" into an enemy left „x" behind. The sheet gets away with
+ * per-keystroke saves because it patches one field at a time; this does not.
+ */
+function LifepathTextInput({
+  value,
+  placeholder,
+  className,
+  autoFocus,
+  onCommit,
+  onDone,
+}: {
+  value: string;
+  placeholder?: string;
+  className?: string;
+  autoFocus?: boolean;
+  onCommit: (next: string) => void;
+  onDone?: () => void;
+}) {
+  const [local, setLocal] = useState(value);
+  // A roll elsewhere brings a fresh draft back; nothing is in flight for this
+  // field at that moment, so following it is safe and keeps re-rolls visible.
+  useEffect(() => setLocal(value), [value]);
+
+  return (
+    <input
+      className={className}
+      type="text"
+      autoFocus={autoFocus}
+      value={local}
+      placeholder={placeholder}
+      onChange={(event) => setLocal(event.target.value)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') event.currentTarget.blur();
+      }}
+      onBlur={() => {
+        if (local !== value) onCommit(local);
+        onDone?.();
+      }}
+    />
+  );
+}
+
+/** The value a table currently holds on the draft, whatever kind of table it is. */
+function lifepathValue(lifepath: CpredLifepath, table: CpredLifepathTable): string {
+  if (isLifepathFieldTable(table.id)) return lifepath[LIFEPATH_FIELD_TABLES[table.id]];
+  return lifepath.roleAnswers.find((answer) => answer.id === table.id)?.answer ?? '';
+}
+
+/**
+ * One question: what it says now, a picker holding the table, and a die.
+ *
+ * The picker keeps an extra row for a value that is not in the table — an
+ * answer typed by hand, or one left over from an older import — so choosing
+ * nothing never silently rewrites what the player wrote.
+ */
+function LifepathFieldRow({
+  draft,
+  table,
+}: {
+  draft: CpredCreationDraft;
+  table: CpredLifepathTable;
+}) {
+  const busy = useCreationStore((s) => s.busy);
+  const write = useLifepathPatch();
+  const [typing, setTyping] = useState(false);
+  const value = lifepathValue(draft.lifepath, table);
+  const known = table.entries.some((entry) => entry.text === value);
+  const entry = table.entries.find((row) => row.text === value);
+
+  function set(next: string) {
+    const lifepath = { ...draft.lifepath };
+    if (isLifepathFieldTable(table.id)) {
+      lifepath[LIFEPATH_FIELD_TABLES[table.id]] = next;
+      // A new Culture means a new shortlist of languages; the old pick is a lie.
+      if (table.id === 'culture') lifepath.language = '';
+    } else {
+      const answers = [...lifepath.roleAnswers];
+      const at = answers.findIndex((answer) => answer.id === table.id);
+      const row = { id: table.id, question: table.question ?? table.label, answer: next };
+      if (at === -1) answers.push(row);
+      else answers[at] = row;
+      lifepath.roleAnswers = answers;
+    }
+    write(lifepath);
+  }
+
+  return (
+    <>
+      <div className="creator-lifepath-row">
+        <span className="creator-lifepath-label" title={table.question ?? table.label}>
+          {table.label}
+        </span>
+        {typing ? (
+          <LifepathTextInput
+            className="creator-lifepath-input"
+            autoFocus
+            value={value}
+            placeholder="Własnymi słowami…"
+            onCommit={set}
+            onDone={() => setTyping(false)}
+          />
+        ) : (
+          <select
+            className="creator-lifepath-select"
+            value={known ? value : ''}
+            onChange={(e) => set(e.target.value)}
+          >
+            <option value="">{value && !known ? value : '— nie wybrano —'}</option>
+            {table.entries.map((row) => (
+              <option key={row.roll} value={row.text}>
+                {lifepathRollLabel(row)} · {row.text}
+              </option>
+            ))}
+          </select>
+        )}
+        <button
+          type="button"
+          className="small-button"
+          title="Wpisz własnymi słowami"
+          onClick={() => setTyping((on) => !on)}
+        >
+          ✎
+        </button>
+        <button
+          type="button"
+          className="small-button"
+          disabled={busy}
+          title={`Rzuć 1k${table.sides}`}
+          onClick={() => void rollLifepathTables([table.id])}
+        >
+          🎲
+        </button>
+      </div>
+      {/* „Tło rodzinne" prints a paragraph beside the answer; it is the half of
+          that table a player actually reads back at the session. */}
+      {entry?.detail && <p className="creator-lifepath-detail">{entry.detail}</p>}
+      {table.id === 'culture' && <LifepathLanguageRow draft={draft} table={table} />}
+    </>
+  );
+}
+
+/**
+ * „Język ten traktuje się jak Umiejętność i jego początkowy poziom wynosi 4"
+ * (s. 45). Stage 25a granted the level and had nowhere to write the name — this
+ * row is that place, and it is why the Lifepath sits in the creator rather than
+ * only on the sheet.
+ */
+function LifepathLanguageRow({
+  draft,
+  table,
+}: {
+  draft: CpredCreationDraft;
+  table: CpredLifepathTable;
+}) {
+  const write = useLifepathPatch();
+  const entry = table.entries.find((row) => row.text === draft.lifepath.culture);
+  const options = entry?.options ?? [];
+
+  return (
+    <div className="creator-lifepath-row creator-lifepath-row--sub">
+      <span className="creator-lifepath-label">Język ojczysty</span>
+      {options.length > 0 ? (
+        <select
+          className="creator-lifepath-select"
+          value={draft.lifepath.language}
+          onChange={(e) => write({ ...draft.lifepath, language: e.target.value })}
+        >
+          <option value="">— nie wybrano —</option>
+          {options.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <LifepathTextInput
+          className="creator-lifepath-input"
+          value={draft.lifepath.language}
+          placeholder={
+            draft.lifepath.culture ? 'Wpisz język' : 'Najpierw ustal kulturę pochodzenia'
+          }
+          onCommit={(next) => write({ ...draft.lifepath, language: next })}
+        />
+      )}
+      <span className="creator-lifepath-note">poziom 4, za darmo</span>
+    </div>
+  );
+}
+
+/** Which kind of NPC each rolled list turns into (stage 10 bot profiles). */
+const BOT_KINDS: Record<CpredLifepathGroup, CpredLifepathBotKind> = {
+  friends: 'friend',
+  enemies: 'enemy',
+  tragicLoves: 'love',
+};
+
+/** Table ids that fill a cell of one of the three rolled lists. */
+const GROUP_COLUMNS: Record<CpredLifepathGroup, { tableId: string; field: string }[]> = {
+  friends: [{ tableId: 'friend', field: 'note' }],
+  enemies: [
+    { tableId: 'enemyWho', field: 'who' },
+    { tableId: 'enemyCause', field: 'cause' },
+    { tableId: 'enemyResources', field: 'resources' },
+    { tableId: 'revenge', field: 'revenge' },
+  ],
+  tragicLoves: [{ tableId: 'tragicLove', field: 'note' }],
+};
+
+/**
+ * Friends, enemies and tragic loves: a list whose *length* is rolled („1k10 − 7,
+ * minimum 0"), then one throw per column per row.
+ *
+ * The names are always typed. No table in the book names anybody — that is the
+ * table's job, and the sheet is where the name has to survive.
+ */
+function LifepathPeople({
+  draft,
+  group,
+  tables,
+}: {
+  draft: CpredCreationDraft;
+  group: CpredLifepathGroup;
+  tables: CpredLifepathTable[];
+}) {
+  const user = useAuthStore((s) => s.user);
+  const isGm = user?.role === ROLE_GM;
+  const busy = useCreationStore((s) => s.busy);
+  const setError = useCreationStore((s) => s.setError);
+  const write = useLifepathPatch();
+  const botKind = BOT_KINDS[group];
+
+  /**
+   * Somebody the Lifepath invented becomes a bot profile in one click.
+   *
+   * The whole point is that the enemy already exists — a reason and a grudge
+   * were rolled at session zero — and retyping that into the bot editor by hand
+   * is the step at which most of these NPCs quietly stop existing. GM only,
+   * because `bot:create` is; a player's enemy is the GM's to bring to life.
+   */
+  async function toBot(index: number) {
+    const person = draft.lifepath[group][index];
+    if (!person) return;
+    const seed = lifepathBotDraft(botKind, person, draft.name);
+    const ack = await enqueueCreationCall(() => createBot({ name: seed.name, data: seed.data }));
+    if (!ack.ok || !ack.data) {
+      setError(botErrorText(ack.ok ? 'INVALID_DATA' : ack.error));
+      return;
+    }
+    useBotStore.getState().openEditor(ack.data.id);
+  }
+  const columns = GROUP_COLUMNS[group].filter((column) =>
+    tables.some((table) => table.id === column.tableId),
+  );
+  const rows = draft.lifepath[group];
+
+  function add() {
+    const lifepath = { ...draft.lifepath };
+    const at = rows.length + 1;
+    if (group === 'enemies') {
+      lifepath.enemies = [...lifepath.enemies, emptyLifepathEnemy(`enemy${at}`)];
+    } else {
+      const prefix = group === 'friends' ? 'friend' : 'love';
+      lifepath[group] = [...lifepath[group], emptyLifepathPerson(`${prefix}${at}`)];
+    }
+    write(lifepath);
+  }
+
+  function remove(index: number) {
+    const lifepath = { ...draft.lifepath };
+    if (group === 'enemies') lifepath.enemies = lifepath.enemies.filter((_, i) => i !== index);
+    else lifepath[group] = lifepath[group].filter((_, i) => i !== index);
+    write(lifepath);
+  }
+
+  function edit(index: number, field: string, value: string) {
+    const lifepath = { ...draft.lifepath };
+    if (group === 'enemies') {
+      lifepath.enemies = lifepath.enemies.map((row, i) =>
+        i === index ? { ...row, [field]: value } : row,
+      );
+    } else {
+      lifepath[group] = lifepath[group].map((row, i) =>
+        i === index ? { ...row, [field]: value } : row,
+      );
+    }
+    write(lifepath);
+  }
+
+  return (
+    <section className="creator-lifepath-group">
+      <h4>
+        {LIFEPATH_GROUP_LABELS[group]}
+        <span className="creator-lifepath-count">{rows.length}</span>
+        <button
+          type="button"
+          className="small-button"
+          disabled={busy}
+          title="Rzuć 1k10 − 7 (minimum 0)"
+          onClick={() => void rollLifepathCount(group)}
+        >
+          🎲 ilu
+        </button>
+        <button
+          type="button"
+          className="small-button"
+          disabled={rows.length >= LIFEPATH_GROUP_MAX}
+          onClick={add}
+        >
+          + dopisz
+        </button>
+      </h4>
+      {rows.length === 0 && <p className="creator-hint">Na razie nikogo.</p>}
+      {rows.map((row, index) => (
+        <div key={row.id} className="creator-lifepath-person">
+          <LifepathTextInput
+            className="creator-lifepath-input creator-lifepath-input--name"
+            value={row.name}
+            placeholder={group === 'enemies' ? 'Kto to jest?' : 'Imię'}
+            onCommit={(next) => edit(index, 'name', next)}
+          />
+          {columns.map((column) => {
+            const table = tables.find((entry) => entry.id === column.tableId);
+            if (!table) return null;
+            const value = (row as unknown as Record<string, string>)[column.field] ?? '';
+            const known = table.entries.some((entry) => entry.text === value);
+            return (
+              <span key={column.tableId} className="creator-lifepath-cell">
+                <select
+                  className="creator-lifepath-select"
+                  title={table.label}
+                  value={known ? value : ''}
+                  onChange={(e) => edit(index, column.field, e.target.value)}
+                >
+                  <option value="">{value && !known ? value : `— ${table.label} —`}</option>
+                  {table.entries.map((entry) => (
+                    <option key={entry.roll} value={entry.text}>
+                      {lifepathRollLabel(entry)} · {entry.text}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="small-button"
+                  disabled={busy}
+                  title={`Rzuć: ${table.label}`}
+                  onClick={() => void rollLifepathTables([table.id], index)}
+                >
+                  🎲
+                </button>
+              </span>
+            );
+          })}
+          {isGm && (
+            <button
+              type="button"
+              className="small-button"
+              disabled={busy}
+              title="Zrób z tego szkic bota i otwórz edytor"
+              onClick={() => void toBot(index)}
+            >
+              🤖
+            </button>
+          )}
+          <button
+            type="button"
+            className="small-button small-button--danger"
+            title="Usuń"
+            onClick={() => remove(index)}
+          >
+            🗑
+          </button>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+// ───────────────────────── krok 5: Podsumowanie ─────────────────────────
 
 function SummaryStep({
   draft,
@@ -664,10 +1157,37 @@ function SummaryStep({
       </p>
       {data.freeLanguage && (
         <p className="creator-hint">
-          Język kultury pochodzenia wchodzi za darmo na poziomie {data.freeLanguage.level} — którym
-          językiem jest, ustala Ścieżka Życia (etap 25b).
+          Język kultury pochodzenia wchodzi za darmo na poziomie {data.freeLanguage.level}
+          {draft.lifepath.language ? ` — ${draft.lifepath.language}` : ' — jeszcze nie wybrany'}.
         </p>
       )}
+      <LifepathSummary draft={draft} />
     </div>
+  );
+}
+
+/** What the Lifepath step collected, in one paragraph. */
+function LifepathSummary({ draft }: { draft: CpredCreationDraft }) {
+  const { lifepath } = draft;
+  const said = [
+    lifepath.culture && `pochodzenie: ${lifepath.culture}`,
+    lifepath.personality && `charakter: ${lifepath.personality}`,
+    lifepath.familyBackground && `rodzina: ${lifepath.familyBackground}`,
+    lifepath.lifeGoal && `cel: ${lifepath.lifeGoal}`,
+  ].filter(Boolean);
+  const people = [
+    lifepath.friends.length > 0 && `przyjaciele: ${lifepath.friends.length}`,
+    lifepath.enemies.length > 0 && `wrogowie: ${lifepath.enemies.length}`,
+    lifepath.tragicLoves.length > 0 && `miłości: ${lifepath.tragicLoves.length}`,
+  ].filter(Boolean);
+
+  return (
+    <p className="creator-hint">
+      Ścieżka Życia:{' '}
+      {said.length === 0 && people.length === 0
+        ? 'pusta — można ją wypełnić teraz albo później na karcie'
+        : [...said, ...people].join(' · ')}
+      {lifepath.roleAnswers.length > 0 && ` · Rola: ${lifepath.roleAnswers.length} odpowiedzi`}
+    </p>
   );
 }

@@ -346,7 +346,7 @@ function rulesErrorText(code: string, detail?: string): string {
 }
 
 /** Polish messages for bot-editor failures (stage 10). */
-function botErrorText(code: string, detail?: string): string {
+export function botErrorText(code: string, detail?: string): string {
   switch (code) {
     case 'BOT_NOT_FOUND':
       return 'Nie znaleziono bota — odśwież stronę.';
@@ -1953,6 +1953,18 @@ export const patchCreation = (patch: Record<string, unknown>) =>
 export const rollCreationStats = (gesture?: RollGesture) =>
   emitSceneAck<CreationDraft>('creation:roll', { gesture });
 
+/**
+ * Rolls one or many Lifepath tables in a single throw (stage 25b). `index`
+ * picks the friend / enemy / tragic love the row belongs to and is ignored by
+ * the tables that fill a field of their own.
+ */
+export const rollCreationLifepath = (tableIds: string[], index?: number) =>
+  emitSceneAck<CreationDraft>('creation:lifepath-roll', { tableIds, index });
+
+/** „Rzuć 1k10 i odejmij 7" — how many friends, enemies or tragic loves. */
+export const rollCreationLifepathCount = (group: string) =>
+  emitSceneAck<CreationDraft>('creation:lifepath-count', { group });
+
 export const finishCreation = (payload: CreationFinishPayload = {}) =>
   emitSceneAck<CharacterView>('creation:finish', payload);
 
@@ -1978,6 +1990,12 @@ export function creationErrorText(code: string | undefined): string {
       return 'Serwer odrzucił tę zmianę.';
     case 'OWNER_NOT_FOUND':
       return 'Wybrany gracz nie należy do kampanii.';
+    case 'LIFEPATH_TABLE_UNKNOWN':
+      return 'Nie znam tej tabeli Ścieżki Życia — sprawdź, czy Rola się nie zmieniła.';
+    case 'LIFEPATH_TARGET_UNKNOWN':
+      return 'Nie ma takiego wiersza — najpierw rzuć, ilu masz przyjaciół, wrogów albo miłości.';
+    case 'LIFEPATH_ROLL_MISSED':
+      return 'Wynik kości nie trafił w żaden wiersz tabeli — dane Ścieżki Życia są niepełne.';
     case undefined:
       return 'Nieznany błąd kreatora.';
     default:

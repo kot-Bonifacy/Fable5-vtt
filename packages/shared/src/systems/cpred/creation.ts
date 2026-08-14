@@ -15,6 +15,12 @@ import {
 } from './character.js';
 import { humanityMaxWith } from './cyberware.js';
 import { hpMax } from './derived.js';
+import {
+  clearRoleAnswers,
+  createDefaultLifepath,
+  validateLifepath,
+  type CpredLifepath,
+} from './lifepath.js';
 
 /**
  * Character creation (stage 25a) — the mechanical half of the wizard.
@@ -47,13 +53,14 @@ export const CPRED_CREATION_METHOD_LABELS: Record<CpredCreationMethod, string> =
   complete: 'Kompletny Pakiet (Wyliczanie)',
 };
 
-export const CPRED_CREATION_STEPS = ['role', 'stats', 'skills', 'summary'] as const;
+export const CPRED_CREATION_STEPS = ['role', 'stats', 'skills', 'lifepath', 'summary'] as const;
 export type CpredCreationStep = (typeof CPRED_CREATION_STEPS)[number];
 
 export const CPRED_CREATION_STEP_LABELS: Record<CpredCreationStep, string> = {
   role: 'Rola',
   stats: 'Cechy',
   skills: 'Umiejętności',
+  lifepath: 'Ścieżka Życia',
   summary: 'Podsumowanie',
 };
 
@@ -151,6 +158,11 @@ export interface CpredCreationDraft {
   statRolls: Partial<Record<CpredStatId, number>>;
   /** skillId → level; a skill left at zero is absent. */
   skills: Record<string, number>;
+  /**
+   * The Lifepath as it is being filled in (stage 25b) — the same shape the
+   * sheet stores, so finishing is a copy rather than a translation.
+   */
+  lifepath: CpredLifepath;
   name: string;
 }
 
@@ -166,6 +178,7 @@ export function createDefaultCreationDraft(data: CpredCreationData): CpredCreati
     stats: {},
     statRolls: {},
     skills: {},
+    lifepath: createDefaultLifepath(),
     name: '',
   };
 }
@@ -534,6 +547,10 @@ export function mergeCreationDraft(
     if (roleId !== current.roleId) {
       next.stats = {};
       next.statRolls = {};
+      // „Jakim rodzajem Solo jesteś?" means nothing on a Netrunner's sheet, so
+      // the Role's own Lifepath answers go with the Role. The general half —
+      // culture, family, enemies — is the character's and stays.
+      next.lifepath = clearRoleAnswers(next.lifepath);
     }
     next.roleId = roleId;
   }
@@ -556,6 +573,12 @@ export function mergeCreationDraft(
     const skills = readSkillPatch(patch.skills, data, registry);
     if (skills === null) return null;
     next.skills = skills;
+  }
+  if ('lifepath' in patch) {
+    // Every Lifepath field is prose the player may rewrite („odpowiednio zmień
+    // wynik", s. 44), so the patch is cleaned rather than refused. What the
+    // *server* rolls comes in through `creation:lifepath-roll`, not through here.
+    next.lifepath = validateLifepath(patch.lifepath, []);
   }
   if ('name' in patch) {
     if (typeof patch.name !== 'string') return null;
@@ -603,6 +626,7 @@ export function parseCreationDraft(
     stats: readStoredStats(input.stats),
     statRolls: readStoredStats(input.statRolls),
     skills: readSkillPatch(input.skills, data, registry) ?? {},
+    lifepath: validateLifepath(input.lifepath, []),
     name: typeof input.name === 'string' ? input.name.slice(0, CREATION_NAME_MAX_LENGTH) : '',
   };
   const allowed = new Set(creationAvailableSkills(draft, data, registry));
@@ -726,5 +750,17 @@ export function creationToCharacterData(
     roleId: draft.roleId,
     roleAbilityRank: data.roleAbilityStart,
     skills,
+    // Copied, not translated: the draft and the sheet hold the same shape, so
+    // a Lifepath field the wizard collects cannot go missing on the sheet.
+    lifepath: draft.lifepath,
+    // „Styl" on page one (stage 27b) asks the same question the Lifepath has
+    // just answered three times over, so it is filled in rather than left for
+    // the player to copy by hand. It stays an ordinary editable line.
+    style: lifepathStyleLine(draft.lifepath),
   };
+}
+
+/** „Biznesowe · Krótkie i kręcone · Kolczyki w nosie" — the sheet's Styl line. */
+export function lifepathStyleLine(lifepath: CpredLifepath): string {
+  return [lifepath.clothing, lifepath.hair, lifepath.affectation].filter(Boolean).join(' · ');
 }

@@ -42,7 +42,8 @@ Każdy etap to jedna sesja pracy z Claude. Etapy są pogrupowane w 8 faz. Szczeg
 | 24b | Dziennik kampanii dla stołu                         | H. Świat CP RED      |                                |
 | 24c | Screamsheets                                        | H. Świat CP RED      |                                |
 | 25a | Kreator postaci: rola, cechy, umiejętności          | H. Świat CP RED      | podział 25 → 25a/25b (14.08)   |
-| 25b | Kreator: Ścieżka Życia i wyposażenie startowe       | H. Świat CP RED      |                                |
+| 25b | Kreator: Ścieżka Życia                              | H. Świat CP RED      | podział 25b → 25b/25c (14.08)  |
+| 25c | Kreator: wyposażenie startowe i poziomy dostępności | H. Świat CP RED      |                                |
 | 26  | Netrunning                                          | H. Świat CP RED      |                                |
 | 27  | Kości 3D i szlif UI                                 | I. Wykończenie       |                                |
 | 28  | Wdrożenie na VPS                                    | I. Wykończenie       | 🏁 Produkcja                   |
@@ -96,6 +97,16 @@ Fazy A→B→C odwzorowują priorytety MVP z ankiety (mapa+tokeny, kości, karty
    **20b** bierze pole bitwy. Rozstrzygnięcie, które ukształtowało 20a: **gramatyka JSON obsługuje
    wyłącznie przebieg decyzyjny**, a wypowiedź NPC-a zostaje swobodnym tekstem — inaczej stracimy
    wszystko, co etapy 10–11 zbudowały wokół polszczyzny.
+
+6. **Etapy 25a/25b/25c — kreator postaci** (podział 25→25a/25b 14.08.2026, 25b→25b/25c tego
+   samego dnia po zobaczeniu rozmiaru pipeline'u). Pierwotny etap 25 niósł naraz dane tworzenia
+   postaci, sześciokrokowy kreator, szkic w bazie, tabele Ścieżek Życia, zakupy startowe
+   i wroga przerabianego na bota. **25a** wziął mechanikę (Rola, Cechy, Umiejętności), **25b**
+   narrację (71 tabel Ścieżek Życia, 522 wiersze ze zrzutu PDF-a — rozmiar `parse-creation.py`),
+   **25c** bierze wyposażenie startowe, ksywę z portretem i żeton. Do 25c dopisał się dodatkowo
+   **życzenie MG spoza pierwotnego planu**: poziomy dostępności przedmiotów, które MG
+   odblokowuje w miarę kampanii — mechanizm kampanii, nie zasada podręcznika, więc siedzi na
+   `Campaign`, a nie w tabelach CP RED.
 
 ## Ryzyka i ograniczenia
 

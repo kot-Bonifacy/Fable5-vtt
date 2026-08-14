@@ -369,6 +369,133 @@ describe('kreator postaci', () => {
     expect(fresh.draft.roleId).toBeNull();
   });
 
+  /**
+   * The Lifepath (stage 25b), on the committed sample tables.
+   *
+   * The point of every case here is the same one the stage is built on: the
+   * dice are the server's. The wizard may pick a row by hand, but it may not
+   * roll one — and what a throw wrote must survive a reconnect, because session
+   * zero is a long evening.
+   */
+  describe('Ścieżka Życia', () => {
+    it('rolls one table on the server and writes the row into the draft', async () => {
+      await emitAck(vex, 'creation:discard');
+      data(await emitAck<Draft>(vex, 'creation:start'), 'creation:start');
+      await patch(vex, { roleId: 'solo', name: 'Zgrzyt' });
+
+      const card = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+      const rolled = data(
+        await emitAck<Draft>(vex, 'creation:lifepath-roll', { tableIds: ['lifeGoal'] }),
+        'creation:lifepath-roll',
+      );
+      expect(rolled.draft.lifepath.lifeGoal).not.toBe('');
+
+      // The card is the audit trail: „rzuciłem, słowo honoru" is worth nothing.
+      const broadcast = await card;
+      expect(broadcast.message.roll?.title).toContain('Ścieżka Życia');
+      expect(broadcast.message.roll?.breakdown?.[0]?.label).toContain(
+        rolled.draft.lifepath.lifeGoal,
+      );
+    });
+
+    it('answers every question of the path in one throw', async () => {
+      const before = data(await emitAck<Draft>(vex, 'creation:start'), 'creation:start');
+      const ids = [
+        'culture',
+        'personality',
+        'clothing',
+        'hair',
+        'affectation',
+        'familyBackground',
+        'solo.typ',
+      ];
+      const rolled = data(
+        await emitAck<Draft>(vex, 'creation:lifepath-roll', { tableIds: ids }),
+        'creation:lifepath-roll',
+      );
+      expect(rolled.draft.lifepath.culture).not.toBe('');
+      expect(rolled.draft.lifepath.hair).not.toBe('');
+      expect(rolled.draft.lifepath.familyBackground).not.toBe('');
+      // The Role's own question lands among the answers, not in a field.
+      expect(rolled.draft.lifepath.roleAnswers.map((a) => a.id)).toContain('solo.typ');
+      expect(before.draft.lifepath.culture).toBe('');
+    });
+
+    it('refuses a table the chosen Role does not have', async () => {
+      const ack = await emitAck<Draft>(vex, 'creation:lifepath-roll', {
+        tableIds: ['netrunner.typ'],
+      });
+      expect(refusal(ack)).toBe('LIFEPATH_TABLE_UNKNOWN');
+    });
+
+    it('drops the Role answers when the Role changes, and keeps the rest', async () => {
+      const before = data(await emitAck<Draft>(vex, 'creation:start'), 'creation:start');
+      expect(before.draft.lifepath.roleAnswers.length).toBeGreaterThan(0);
+      const switched = await patch(vex, { roleId: 'netrunner' });
+      expect(switched.draft.lifepath.roleAnswers).toEqual([]);
+      expect(switched.draft.lifepath.culture).toBe(before.draft.lifepath.culture);
+      await patch(vex, { roleId: 'solo' });
+    });
+
+    it('rolls how many enemies there are, then a row for each of them', async () => {
+      const counted = data(
+        await emitAck<Draft>(vex, 'creation:lifepath-count', { group: 'enemies' }),
+        'creation:lifepath-count',
+      );
+      // 1k10 − 7, minimum 0 — three is the most the throw can give.
+      expect(counted.draft.lifepath.enemies.length).toBeLessThanOrEqual(3);
+
+      const grown = await patch(vex, {
+        lifepath: {
+          ...counted.draft.lifepath,
+          enemies: [{ id: 'enemy1', name: 'Vex', who: '', cause: '', resources: '', revenge: '' }],
+        },
+      });
+      expect(grown.draft.lifepath.enemies).toHaveLength(1);
+
+      const rolled = data(
+        await emitAck<Draft>(vex, 'creation:lifepath-roll', {
+          tableIds: ['enemyWho', 'enemyCause'],
+          index: 0,
+        }),
+        'creation:lifepath-roll',
+      );
+      expect(rolled.draft.lifepath.enemies[0]?.name).toBe('Vex');
+      expect(rolled.draft.lifepath.enemies[0]?.who).not.toBe('');
+      expect(rolled.draft.lifepath.enemies[0]?.cause).not.toBe('');
+    });
+
+    it('refuses a row-bound roll aimed at somebody who is not on the list', async () => {
+      const ack = await emitAck<Draft>(vex, 'creation:lifepath-roll', {
+        tableIds: ['enemyWho'],
+        index: 9,
+      });
+      expect(refusal(ack)).toBe('LIFEPATH_TARGET_UNKNOWN');
+    });
+
+    it('carries the Lifepath onto the finished sheet, Styl line and all', async () => {
+      const draft = data(await emitAck<Draft>(vex, 'creation:start'), 'creation:start');
+      await patch(vex, {
+        lifepath: { ...draft.draft.lifepath, language: 'Polski' },
+        skills: Object.fromEntries(roleSkills.map((id) => [id, 2])),
+        name: 'Zgrzyt',
+      });
+      data(await emitAck<Draft>(vex, 'creation:roll'), 'creation:roll');
+
+      const character = data(
+        await emitAck<CharacterView>(vex, 'creation:finish'),
+        'creation:finish',
+      );
+      const sheet = character.data as CpredCharacterData;
+      expect(sheet.lifepath.culture).not.toBe('');
+      expect(sheet.lifepath.language).toBe('Polski');
+      expect(sheet.lifepath.enemies[0]?.name).toBe('Vex');
+      // „Styl" on page one is filled from the three appearance rows rather than
+      // left for the player to copy by hand.
+      expect(sheet.style).toContain(sheet.lifepath.clothing);
+    });
+  });
+
   it('gives the GM the same wizard, with a character that belongs to nobody', async () => {
     data(await emitAck<Draft>(gm, 'creation:start'), 'creation:start');
     await patch(gm, { method: 'complete', roleId: 'medtech', name: 'Doktor' });
