@@ -7,6 +7,7 @@ export * from './character.js';
 export * from './lifepath.js';
 export * from './creation.js';
 export * from './shopping.js';
+export * from './shop.js';
 export * from './rolls.js';
 export * from './ids.js';
 export * from './timed.js';

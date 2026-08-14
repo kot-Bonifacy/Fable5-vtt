@@ -1,20 +1,28 @@
 import { describe, expect, it } from 'vitest';
 import {
   CPRED_TEMPLATE_ROLLS,
+  CREATION_PURCHASE_QTY_MAX,
+  DEFAULT_CREATION_BUDGETS,
   createDefaultCreationDraft,
   creationAvailableSkills,
+  creationBudget,
   creationIssues,
   creationPreview,
+  creationPurchases,
   creationSkillCost,
   creationSkillPointsSpent,
+  creationSpentEddies,
   creationStatPointsSpent,
   creationStatPool,
   creationTemplateStat,
   creationToCharacterData,
+  mergeCreationDraft,
+  parseCreationDraft,
   withCreationData,
   type CpredCreationDraft,
 } from './creation.js';
 import { buildCpredRegistry, type CpredRegistry } from './character.js';
+import type { CompendiumEntry } from './compendium.js';
 import { CPRED_STAT_IDS, type CpredStatId } from './stats.js';
 
 /**
@@ -317,5 +325,166 @@ describe('creationToCharacterData', () => {
     expect(preview.seriousWound).toBe(20);
     expect(preview.deathSave).toBe(6);
     expect(preview.humanity).toBe(60);
+  });
+});
+
+/* ─────────────────────────── wyposażenie startowe ─────────────────────────── */
+
+const CATALOGUE: CompendiumEntry[] = [
+  { id: 'weapon.pistolet', category: 'weapon', name: 'Pistolet', cost: 50 } as CompendiumEntry,
+  {
+    id: 'armor.kurtka',
+    category: 'armor',
+    name: 'Kurtka',
+    cost: 100,
+    sp: 7,
+    locations: ['body'],
+  } as CompendiumEntry,
+  { id: 'gear.latarka', category: 'gear', name: 'Latarka', cost: null, costCategory: 'everyday' },
+  { id: 'gear.bez-ceny', category: 'gear', name: 'Bez ceny', cost: null },
+];
+
+const lookup = (entryId: string) => CATALOGUE.find((entry) => entry.id === entryId);
+
+describe('creationBudget', () => {
+  it('gives each method the money the rulebook gives it', () => {
+    expect(creationBudget(data(), draft({ method: 'edgerunner' }))).toBe(500);
+    expect(creationBudget(data(), draft({ method: 'complete' }))).toBe(2550);
+  });
+
+  it('falls back to the printed numbers when the data file says nothing', () => {
+    const parsed = data(registry({ ...RAW_CREATION, budgets: undefined }));
+    expect(parsed.budgets).toEqual(DEFAULT_CREATION_BUDGETS);
+  });
+
+  it('reads the budgets the parser wrote', () => {
+    const parsed = data(
+      registry({ ...RAW_CREATION, budgets: { edgerunner: 400, complete: 3000, fashion: 0 } }),
+    );
+    expect(parsed.budgets).toEqual({ edgerunner: 400, complete: 3000, fashion: 0 });
+  });
+});
+
+describe('creationPurchases', () => {
+  it('prices the basket off the catalogue, band included', () => {
+    const lines = creationPurchases(
+      draft({ purchases: { 'weapon.pistolet': 1, 'gear.latarka': 3 } }),
+      lookup,
+    );
+    expect(lines).toEqual([
+      { entryId: 'weapon.pistolet', name: 'Pistolet', qty: 1, price: 50, total: 50 },
+      // „Codzienne" is 20 ed on the ladder — an entry priced only by its band
+      // is still buyable (stage 23b).
+      { entryId: 'gear.latarka', name: 'Latarka', qty: 3, price: 20, total: 60 },
+    ]);
+    expect(creationSpentEddies(lines)).toBe(110);
+  });
+
+  it('drops a line the catalogue no longer sells rather than billing for it', () => {
+    const lines = creationPurchases(
+      draft({ purchases: { 'weapon.zniknal': 2, 'gear.bez-ceny': 1, 'gear.latarka': 1 } }),
+      lookup,
+    );
+    expect(lines.map((line) => line.entryId)).toEqual(['gear.latarka']);
+  });
+});
+
+describe('the basket and the wizard', () => {
+  it('refuses a draft that spent more than its budget', () => {
+    // Twenty pistols is 1000 ed; a Krawędziarz has 500.
+    const issues = creationIssues(
+      finished({ purchases: { 'weapon.pistolet': 20 } }),
+      data(),
+      registry(),
+      lookup,
+    );
+    expect(issues.map((issue) => issue.field)).toContain('purchases');
+    // `formatEddies` groups thousands with a narrow no-break space, so the
+    // number cannot wrap in the middle of itself.
+    expect(issues.find((issue) => issue.field === 'purchases')?.message).toContain(
+      '1 000 z 500 ed',
+    );
+  });
+
+  it('says nothing about shopping to a caller without a catalogue', () => {
+    expect(
+      creationIssues(finished({ purchases: { 'weapon.pistolet': 20 } }), data(), registry()),
+    ).toEqual([]);
+  });
+
+  it('lets the same basket through on the Complete Package', () => {
+    const issues = creationIssues(
+      finished({ method: 'complete', purchases: { 'weapon.pistolet': 20 } }),
+      data(),
+      registry(),
+      lookup,
+    );
+    expect(issues.filter((issue) => issue.field === 'purchases')).toEqual([]);
+  });
+});
+
+describe('mergeCreationDraft and the basket', () => {
+  it('refuses a patch that tries to write the basket itself', () => {
+    // The prices, the budget and the shop's tier are the server's to read.
+    expect(
+      mergeCreationDraft(draft(), { purchases: { 'weapon.pistolet': 99 } }, data(), registry()),
+    ).toBeNull();
+  });
+
+  it('empties the basket when the method changes, because the money changes', () => {
+    const current = draft({ method: 'complete', purchases: { 'weapon.pistolet': 4 } });
+    const next = mergeCreationDraft(current, { method: 'edgerunner' }, data(), registry());
+    expect(next?.purchases).toEqual({});
+  });
+
+  it('keeps the basket when only the step moves', () => {
+    const current = draft({ purchases: { 'weapon.pistolet': 1 } });
+    const next = mergeCreationDraft(current, { step: 'summary' }, data(), registry());
+    expect(next?.purchases).toEqual({ 'weapon.pistolet': 1 });
+  });
+
+  it('takes a portrait as a local upload path and nothing else', () => {
+    const ok = mergeCreationDraft(
+      draft(),
+      { portraitUrl: '/uploads/portraits/abc.png' },
+      data(),
+      registry(),
+    );
+    expect(ok?.portraitUrl).toBe('/uploads/portraits/abc.png');
+    expect(
+      mergeCreationDraft(draft(), { portraitUrl: 'https://zle.example/x.png' }, data(), registry()),
+    ).toBeNull();
+    expect(
+      mergeCreationDraft(draft(), { portraitUrl: null }, data(), registry())?.portraitUrl,
+    ).toBeNull();
+  });
+
+  it('takes the token switch as a boolean', () => {
+    expect(mergeCreationDraft(draft(), { placeToken: false }, data(), registry())?.placeToken).toBe(
+      false,
+    );
+    expect(mergeCreationDraft(draft(), { placeToken: 'tak' }, data(), registry())).toBeNull();
+  });
+});
+
+describe('parseCreationDraft and the basket', () => {
+  it('reads a stored basket back and floors the nonsense', () => {
+    const parsed = parseCreationDraft(
+      {
+        ...draft(),
+        purchases: { 'weapon.pistolet': 2, 'gear.latarka': 0, 'gear.zly': -3, 'gear.duzo': 999 },
+      },
+      data(),
+      registry(),
+    );
+    expect(parsed.purchases).toEqual({
+      'weapon.pistolet': 2,
+      'gear.duzo': CREATION_PURCHASE_QTY_MAX,
+    });
+  });
+
+  it('defaults the token switch to on — session zero ends with a figure on the map', () => {
+    expect(parseCreationDraft({}, data(), registry()).placeToken).toBe(true);
+    expect(parseCreationDraft({ placeToken: false }, data(), registry()).placeToken).toBe(false);
   });
 });

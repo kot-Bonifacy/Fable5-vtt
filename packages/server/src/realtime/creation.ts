@@ -1,17 +1,21 @@
 import type {
   ChatMessageView,
   CharacterView,
+  CompendiumEntry,
+  CpredCharacterData,
   CpredCreationDraft,
   CpredCreationRole,
   CpredLifepath,
   CpredLifepathTable,
   CpredStatId,
+  CreationBuyPayload,
   CreationDraftView,
   CreationFinishPayload,
   CreationLifepathCountPayload,
   CreationLifepathRollPayload,
   CreationPatchPayload,
   CreationRollPayload,
+  PurchasedRow,
   RollBreakdownEntry,
   RollGesture,
   RollResult,
@@ -20,33 +24,48 @@ import {
   CPRED_CREATION_METHOD_LABELS,
   CPRED_STAT_IDS,
   CPRED_STAT_LABELS,
+  CREATION_PURCHASE_QTY_MAX,
+  CREATION_SHOP_TIER,
   LIFEPATH_GROUP_LABELS,
   LIFEPATH_ROLL_TABLES_MAX,
   ROLE_GM,
   applyLifepathEntry,
   applyRolledSpread,
   createDefaultCreationDraft,
+  creationBudget,
   creationDataOf,
   creationIssues,
+  creationPurchases,
   creationRole,
+  creationSpentEddies,
   creationToCharacterData,
+  entryPrice,
   isLifepathGroup,
   lifepathDataOf,
   lifepathEntryFor,
   lifepathGroupCount,
   lifepathTable,
+  mergeCharacterData,
   mergeCreationDraft,
   parseCreationDraft,
+  purchasedSheetRow,
   resizeLifepathGroup,
+  resolveWeapon,
   rollFormula,
   sanitizeCharacterName,
+  shopTierOf,
 } from '@vtt/shared';
-import type { CharacterDraft } from '../generated/prisma/client.js';
+import type { Character, CharacterDraft } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { createMixedRng } from './dice-rng.js';
 import { sanitizeGesture } from './chat.js';
 import { INCLUDE_CHAT_NAMES, deliverRollMessage, toChatMessageView } from './chat-io.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
+import { campaignEntry } from './compendium.js';
+import { applyBalance, nextRowId } from './economy.js';
+import { getActiveScene } from './scenes.js';
+import { requireUnlockedTier } from './shop.js';
+import { createCharacterToken } from './tokens.js';
 
 /**
  * The character creator (stage 25a).
@@ -261,9 +280,91 @@ async function publishRoll(
 }
 
 /**
+ * The starting shop (stage 25c) — one item into or out of the basket.
+ *
+ * Everything that decides anything happens here: the price comes off the
+ * catalogue, the budget off the method, and the tier is fixed at street level
+ * for **everybody, the GM included**. That last one is deliberate and the only
+ * blocked path in the project a GM does not walk through: a starting kit
+ * limited to what any kiosk sells is the whole point of the restriction (the
+ * GM's wish, 14.08), and an exemption would turn it into a suggestion. The GM
+ * can still hand a new character a rifle afterwards — „Dodaj za darmo" on the
+ * catalogue card has never asked anybody's permission.
+ */
+export const creationBuyEvent = defineEvent<
+  CreationBuyPayload,
+  CreationDraftView<CpredCreationDraft>
+>({
+  name: 'creation:buy',
+  handler: async ({ deps, socket, user, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    const data = creationDataOf(deps.ctx.cpred);
+    const existing = await loadDraft(deps, campaignId, user.id);
+    if (!existing) throw new RealtimeError('DRAFT_NOT_FOUND');
+    const current = toDraftView(existing, deps).draft;
+
+    const entryId = payload?.entryId;
+    if (typeof entryId !== 'string' || entryId.length === 0) throw new RealtimeError('BAD_REQUEST');
+    const delta = payload?.delta;
+    if (delta !== 1 && delta !== -1) throw new RealtimeError('BAD_REQUEST');
+
+    const purchases = { ...current.purchases };
+    const held = purchases[entryId] ?? 0;
+    if (delta === -1) {
+      if (held <= 1) delete purchases[entryId];
+      else purchases[entryId] = held - 1;
+    } else {
+      const entry = await campaignEntry(deps, campaignId, entryId);
+      if (!entry) throw new RealtimeError('ENTRY_NOT_FOUND');
+      if (entryPrice(entry) === null) throw new RealtimeError('NO_PRICE');
+      // „Tego się tu nie kupuje" comes before „nie na tym poziomie": cyberware
+      // is fitted by its own event (the Humanity is rolled), a cartridge is
+      // loaded into a weapon and an injury is drawn by the damage flow — none
+      // of the three would become buyable if the GM opened the shop wider.
+      if (!purchasedSheetRow(entry, null, 'probe')) throw new RealtimeError('NOT_PURCHASABLE');
+      requireUnlockedTier(shopTierOf(entry), CREATION_SHOP_TIER);
+      if (held >= CREATION_PURCHASE_QTY_MAX) throw new RealtimeError('TOO_MANY_ROWS');
+      purchases[entryId] = held + 1;
+
+      const next: CpredCreationDraft = { ...current, purchases };
+      const lookup = await purchaseLookup(deps, campaignId, Object.keys(purchases));
+      if (creationSpentEddies(creationPurchases(next, lookup)) > creationBudget(data, next)) {
+        throw new RealtimeError('NOT_ENOUGH_EDDIES');
+      }
+    }
+
+    const next: CpredCreationDraft = { ...current, purchases };
+    return toDraftView(await saveDraft(deps, campaignId, user.id, next), deps);
+  },
+});
+
+/**
+ * Prices a whole basket in one go. The entries are fetched rather than read out
+ * of `ctx.compendium` because a campaign's own rows win over the files, and a
+ * wizard that priced them differently from the shop would be a second shop.
+ */
+async function purchaseLookup(
+  deps: RealtimeDeps,
+  campaignId: string,
+  entryIds: readonly string[],
+): Promise<(entryId: string) => CompendiumEntry | undefined> {
+  const byId = new Map<string, CompendiumEntry>();
+  for (const entryId of entryIds) {
+    const entry = await campaignEntry(deps, campaignId, entryId);
+    if (entry) byId.set(entryId, entry);
+  }
+  return (entryId) => byId.get(entryId);
+}
+
+/**
  * Turns the draft into a real sheet. The validation runs here again, on the
  * server's copy of the tables — the wizard's greyed-out button is a courtesy,
  * not a gate.
+ *
+ * Stage 25c added the two things that make the result playable rather than
+ * merely correct: the starting money and its shopping go through the **same**
+ * `applyBalance` as every later purchase (so session zero leaves an audit
+ * trail, not a mystery balance), and the finished character walks onto the map.
  */
 export const creationFinishEvent = defineEvent<CreationFinishPayload, CharacterView>({
   name: 'creation:finish',
@@ -274,7 +375,8 @@ export const creationFinishEvent = defineEvent<CreationFinishPayload, CharacterV
     if (!existing) throw new RealtimeError('DRAFT_NOT_FOUND');
 
     const draft = toDraftView(existing, deps).draft;
-    if (creationIssues(draft, data, deps.ctx.cpred).length > 0) {
+    const lookup = await purchaseLookup(deps, campaignId, Object.keys(draft.purchases));
+    if (creationIssues(draft, data, deps.ctx.cpred, lookup).length > 0) {
       throw new RealtimeError('CREATION_INCOMPLETE');
     }
     const name = sanitizeCharacterName(draft.name);
@@ -297,16 +399,98 @@ export const creationFinishEvent = defineEvent<CreationFinishPayload, CharacterV
         campaignId,
         name,
         ownerId,
+        portraitUrl: draft.portraitUrl,
         data: JSON.stringify(creationToCharacterData(draft, data)),
       },
     });
     await deps.ctx.prisma.characterDraft.delete({ where: { id: existing.id } });
 
-    const view = toCharacterView(character, deps.ctx.cpred);
+    await payStartingKit(deps, campaignId, character, draft, data, lookup, user.id);
+
+    // Re-read: the sheet has been rewritten once per basket line above.
+    const saved =
+      (await deps.ctx.prisma.character.findUnique({ where: { id: character.id } })) ?? character;
+    if (draft.placeToken) {
+      const scene = await getActiveScene(deps.ctx.prisma, campaignId);
+      // No active scene is not an error — the character is finished either way,
+      // and „nie udało się utworzyć postaci" would be a lie about a token.
+      if (scene) await createCharacterToken(deps, campaignId, scene, saved);
+    }
+
+    const view = toCharacterView(saved, deps.ctx.cpred);
     await emitCharacterUpsert(deps, campaignId, view);
     return view;
   },
 });
+
+/**
+ * Pays out the starting money and spends it, one ledger row at a time.
+ *
+ * The wallet starts at zero and is credited rather than simply set, so the
+ * audit answers „skąd te 2550 ed" from the first line instead of starting
+ * mid-story. Each basket line then goes down the ordinary purchase path.
+ */
+async function payStartingKit(
+  deps: RealtimeDeps,
+  campaignId: string,
+  character: Character,
+  draft: CpredCreationDraft,
+  data: ReturnType<typeof creationDataOf>,
+  lookup: (entryId: string) => CompendiumEntry | undefined,
+  actorId: string,
+): Promise<void> {
+  let sheet = creationToCharacterData(draft, data);
+  sheet = await applyBalance(
+    deps,
+    campaignId,
+    character,
+    sheet,
+    {
+      kind: 'starting',
+      amount: creationBudget(data, draft),
+      label: CPRED_CREATION_METHOD_LABELS[draft.method],
+    },
+    actorId,
+    { emit: false },
+  );
+
+  for (const line of creationPurchases(draft, lookup)) {
+    const entry = lookup(line.entryId);
+    if (!entry) continue;
+    const resolved =
+      entry.category === 'weapon'
+        ? resolveWeapon(entry, { weaponTypeById: deps.ctx.compendium.weaponTypeById })
+        : null;
+    let withGoods = sheet;
+    for (let copy = 0; copy < line.qty; copy += 1) {
+      const purchased = purchasedSheetRow(entry, resolved, nextRowId());
+      if (!purchased) continue;
+      withGoods = mergeCharacterData(withGoods, addPurchasedRow(withGoods, purchased));
+    }
+    sheet = await applyBalance(
+      deps,
+      campaignId,
+      character,
+      withGoods,
+      {
+        kind: 'purchase',
+        amount: -line.total,
+        label: line.qty > 1 ? `${line.name} ×${line.qty}` : line.name,
+      },
+      actorId,
+      { emit: false },
+    );
+  }
+}
+
+function addPurchasedRow(
+  data: CpredCharacterData,
+  purchased: PurchasedRow,
+): Partial<CpredCharacterData> {
+  if (purchased.list === 'weapons') return { weapons: [...data.weapons, purchased.row] };
+  if (purchased.list === 'armor') return { armor: [...data.armor, purchased.row] };
+  return { gear: [...data.gear, purchased.row] };
+}
 
 /**
  * Rolls one or many Lifepath tables in a single throw (stage 25b).

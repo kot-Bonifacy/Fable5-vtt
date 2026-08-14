@@ -27,11 +27,14 @@ import {
   purchasedSheetRow,
   resolveWeapon,
   settleMonth,
+  shopTierOf,
 } from '@vtt/shared';
 import type { Character } from '../generated/prisma/client.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
+import { campaignEntry } from './compendium.js';
 import { INCLUDE_CHAT_NAMES, deliverChatMessageTo, toChatMessageView } from './chat-io.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
+import { campaignShopTier, requireUnlockedTier } from './shop.js';
 import { emitTokensOfCharacter } from './tokens.js';
 
 /**
@@ -216,10 +219,19 @@ export const economyBuyEvent = defineEvent<EconomyBuyPayload, { balance: number 
     const campaign = socket.data.campaign;
     if (!campaign) throw new RealtimeError('NO_CAMPAIGN');
     const character = await requireWallet(deps, campaign.id, user, payload?.characterId);
-    const entry: CompendiumEntry | undefined = deps.ctx.compendium.entryById.get(
+    const entry: CompendiumEntry | undefined = await campaignEntry(
+      deps,
+      campaign.id,
       typeof payload?.entryId === 'string' ? payload.entryId : '',
     );
     if (!entry) throw new RealtimeError('ENTRY_NOT_FOUND');
+
+    // The tier check stands **before** the money moves, and before the row is
+    // built: a bot buys on the GM's account (stage 20a) and the GM is exempt,
+    // which is the same conclusion movement reached in `movement.ts:216`.
+    if (user.role !== ROLE_GM) {
+      requireUnlockedTier(shopTierOf(entry), await campaignShopTier(deps.ctx.prisma, campaign.id));
+    }
 
     const price = resolvePrice(entry, payload?.price, user);
     const data = parseCharacterData(character.data, deps.ctx.cpred);
@@ -291,7 +303,7 @@ function resolvePrice(entry: CompendiumEntry, override: unknown, user: SessionUs
 }
 
 /** Row ids are short and random, exactly like the ones the sheet editor mints. */
-function nextRowId(): string {
+export function nextRowId(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 

@@ -227,6 +227,11 @@ describe('eurodolce: zakupy, przelewy, rozliczenie miesiąca', () => {
     rogue = rogueConn.socket;
     await Promise.all([gmConn.firstSync, vexConn.firstSync, rogueConn.firstSync]);
 
+    // Stage 25c: a fresh campaign opens at availability level 1, which would
+    // refuse half the catalogue here. This suite is about the wallet, so the
+    // shop is opened all the way — the tier itself is tested in `creation`.
+    expect((await emitAck(gm, 'shop:tier', { tier: 4 })).ok).toBe(true);
+
     const kai = await emitAck<CharacterView>(gm, 'character:create', {
       name: 'Kai',
       ownerId: vexId,

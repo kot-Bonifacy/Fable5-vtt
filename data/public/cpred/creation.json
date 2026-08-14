@@ -1526,5 +1526,10 @@
       ]
     }
   ],
-  "freeLanguage": null
+  "freeLanguage": null,
+  "budgets": {
+    "edgerunner": 500,
+    "complete": 2550,
+    "fashion": 800
+  }
 }

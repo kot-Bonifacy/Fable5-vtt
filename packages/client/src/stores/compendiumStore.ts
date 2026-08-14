@@ -2,10 +2,11 @@ import { create } from 'zustand';
 import type {
   CompendiumCategory,
   CompendiumEntry,
+  ShopTier,
   StateSyncPayload,
   WeaponTypeDefinition,
 } from '@vtt/shared';
-import { searchCompendium } from '@vtt/shared';
+import { SHOP_TIER_MIN, searchCompendium } from '@vtt/shared';
 
 /**
  * The item catalogue (stage 13). Unlike characters or bots this is shared,
@@ -21,6 +22,12 @@ interface CompendiumStoreState {
   order: string[];
   weaponTypes: WeaponTypeDefinition[];
   weaponTypeById: Record<string, WeaponTypeDefinition>;
+  /**
+   * Highest availability tier this campaign has unlocked (stage 25c). Entries
+   * above it stay **visible and greyed out** rather than hidden: a player is
+   * meant to see what is worth working towards.
+   */
+  shopTier: ShopTier;
 
   /** Browse state of the side panel. */
   category: CompendiumCategory;
@@ -31,6 +38,7 @@ interface CompendiumStoreState {
   editing: string | null;
 
   applySync: (payload: StateSyncPayload) => void;
+  applyShopTier: (tier: ShopTier) => void;
   applyUpsert: (entry: CompendiumEntry) => void;
   applyDelete: (id: string) => void;
   setCategory: (category: CompendiumCategory) => void;
@@ -54,6 +62,7 @@ export const useCompendiumStore = create<CompendiumStoreState>((set) => ({
   order: [],
   weaponTypes: [],
   weaponTypeById: {},
+  shopTier: SHOP_TIER_MIN,
   category: 'weapon',
   query: '',
   selectedId: null,
@@ -67,11 +76,14 @@ export const useCompendiumStore = create<CompendiumStoreState>((set) => ({
         ...indexed,
         weaponTypes,
         weaponTypeById: Object.fromEntries(weaponTypes.map((type) => [type.id, type])),
+        shopTier: payload.shopTier ?? SHOP_TIER_MIN,
         // A selected entry that vanished falls back to the list.
         selectedId:
           state.selectedId && state.selectedId in indexed.entries ? state.selectedId : null,
       };
     }),
+
+  applyShopTier: (shopTier) => set({ shopTier }),
 
   applyUpsert: (entry) =>
     set((state) => ({

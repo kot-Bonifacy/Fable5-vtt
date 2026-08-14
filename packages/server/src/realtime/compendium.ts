@@ -32,6 +32,24 @@ function parseStoredEntry(row: StoredEntryRow): CompendiumEntry | null {
   }
 }
 
+/**
+ * One entry as this campaign sees it: its own row wins over the file, exactly
+ * as it does in `buildCompendiumSync`. Anything that spends money on an item
+ * has to look it up this way — a shop that could not sell the GM's own entries
+ * would be selling a different catalogue from the one the client is browsing.
+ */
+export async function campaignEntry(
+  deps: RealtimeDeps,
+  campaignId: string,
+  entryId: string,
+): Promise<CompendiumEntry | undefined> {
+  const row = await deps.ctx.prisma.compendiumEntry.findUnique({
+    where: { campaignId_slug: { campaignId, slug: entryId } },
+    select: { slug: true, data: true },
+  });
+  return (row ? parseStoredEntry(row) : null) ?? deps.ctx.compendium.entryById.get(entryId);
+}
+
 /** Campaign entries typed in by the GM, newest schema-valid rows only. */
 export async function fetchCustomEntries(
   prisma: PrismaClient,

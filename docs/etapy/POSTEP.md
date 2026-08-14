@@ -53,7 +53,7 @@ Pełne notatki z zamkniętych etapów: `archiwum/dziennik-sesji.md` (nie czytaj 
 | 24c | Screamsheets                                  | ✅     | 2026-08-13      | `kind` na handoucie z 24a; kroje gazetowe (OFL) hostowane u siebie; nagłówek = tytuł handoutu   |
 | 25a | Kreator postaci: rola, cechy, umiejętności    | ✅     | 2026-08-14      | etap 25 podzielony na 25a/25b 14.08; dwie metody (Krawędziarz, Kompletny Pakiet), bez Szablonów |
 | 25b | Kreator: Ścieżka Życia                        | ✅     | 2026-08-14      | etap 25b podzielony na 25b/25c 14.08; 71 tabel, 522 wiersze; wróg → szkic bota jednym klikiem   |
-| 25c | Kreator: wyposażenie startowe i poziomy       | ⬜     |                 | zakupy startowe, poziomy dostępności przedmiotów (życzenie MG), ksywa, portret, token           |
+| 25c | Kreator: wyposażenie startowe i poziomy       | ✅     | 2026-08-14      | 4 poziomy z ceny; +53 wpisy sprzętu z podręcznika (kompendium miało 5); pakiet Roli → POMYSŁY   |
 | 26  | Netrunning                                    | ⬜     |                 | możliwy podział na 2 sesje                                                                      |
 | 27a | Karta jak oficjalna: strona pierwsza          | ✅     | 2026-08-13      | wydzielony z 27 dnia 13.08 (27a/27b/27c); motyw dzień/noc na razie tylko dla karty              |
 | 27b | Karta: broń, pancerz, ekwipunek               | ✅     | 2026-08-13      | zakładka „Walka" zniknęła; pancerz = 3 wiersze wydruku + reszta; trzy nowe pola prozy           |
@@ -63,23 +63,43 @@ Pełne notatki z zamkniętych etapów: `archiwum/dziennik-sesji.md` (nie czytaj 
 
 ## Od czego zacząć
 
-Ostatnio zamknięte: **25b** (Ścieżka Życia w kreatorze — 71 tabel z podręcznika, rzuty na
-serwerze, wróg → szkic bota). Przy okazji naprawiony błąd, przez który **wpisane w Ścieżce imię
-gubiło wszystkie znaki poza ostatnim** — patrz notatka sesji niżej.
+Ostatnio zamknięte: **25c** (wyposażenie startowe, poziomy dostępności sklepu, ksywa, portret,
+żeton). **Kreator postaci jest kompletny** — od Roli do figury na mapie.
 
-**Następne etapy do wyboru:** **25c** (wyposażenie startowe + **poziomy dostępności przedmiotów**
-— życzenie MG z 14.08, opisane w `etap-25c-wyposazenie-startowe.md`; domyka kreator: ksywa,
-portret, żeton), **27c** (Ścieżka Życia i sylwetka cyborgizacji na karcie — pola już są, 25b je
-zdefiniował, zostaje sam widok), **26** (netrunning, możliwy podział na dwie sesje).
-Potem zostają **27** (kości 3D, motyw dla reszty UI, wydajność) i **28** (VPS).
+**⚠️ Jedna rzecz do zrobienia ręcznie: „Poligon bojowy" stoi teraz na poziomie sklepu 1
+(Uliczne).** Migracja daje każdej kampanii `shopTier = 1`, więc do czasu przesunięcia
+przełącznika gracz nie kupi niczego droższego niż 50 ed. Przełącznik 1–4 jest w zakładce
+**„Kompendium"** pod chipami kategorii; MG kupuje przez wszystkie poziomy niezależnie od niego.
 
-**Decyzja z 25c do potwierdzenia na starcie tamtej sesji:** cztery poziomy dostępności
-wyliczane z pasma ceny (Uliczne / Zawodowe / Korporacyjne / Czarny rynek), jeden odblokowany
-poziom na kampanię, zakupy startowe zawsze na poziomie 1. Propozycja jest w pliku etapu.
+**Następne etapy do wyboru:** **27c** (Ścieżka Życia i sylwetka cyborgizacji na karcie — pola
+już są, 25b je zdefiniował, zostaje sam widok), **26** (netrunning, możliwy podział na dwie
+sesje). Potem zostają **27** (kości 3D, motyw dla reszty UI, wydajność) i **28** (VPS).
+**Sesja zerowa z drużyną** jest teraz najlepszym testem 25a+25b+25c naraz.
 
 **09.08 głos wypadł z projektu** (sesja bez etapu, decyzja MG): etapy **12, 21 i 22** wycofane, kod TTS usunięty z repo. Szczegóły w `archiwum/dziennik-sesji.md` i w `archiwum/wycofane/README.md`.
 
 ### Otwarte zaległości (przechodzą między etapami)
+
+- **Etap 25c — cztery ścieżki nieodklikane, wszystkie po stronie gracza albo uploadu.**
+  (1) **Wgranie portretu w kreatorze** — przycisk widziany i naprawiony, ale pliku nie
+  wgrywano; trasa to ta sama `/api/uploads/portraits` co na karcie z etapu 07. (2) **Odmowa
+  poziomu u gracza** — „Kup" ma być wyszarzone, a serwer ma wrócić „Poza zasięgiem sklepu.
+  Poziom 2 (Zawodowe) — kampania ma odblokowany 1 (Uliczne)"; pokryte testem na żywych
+  gniazdach, w przeglądarce oglądane z konta MG (który jest z blokady zwolniony).
+  (3) **Druga sztuka tego samego przedmiotu** w koszyku (chip „×2" i wiersz „nazwa ×2"
+  w audycie) — klikane było „+" po jednej sztuce; pokryte testem. (4) **Kreator u gracza** —
+  cały krok wyposażenia oglądany był u MG; różnicy w kodzie nie ma (poziom 1 obowiązuje
+  obie strony), ale na koncie gracza nie był klikany.
+
+- **Etap 25c — Krawędziarz nie dostaje odgórnego pakietu Roli.** RAW (s. 98 i 103) daje mu
+  broń, pancerz, ekwipunek i modę z tabeli swojej Roli **plus** 500 ed; VTT daje na razie samą
+  gotówkę, a pakiet dokłada MG przyciskiem „Dodaj za darmo". Świadome (decyzja MG z 14.08):
+  te trzy tabele w zrzucie PDF-a to jeden sklejony ciąg dla pięciu Ról naraz. Wpis w `POMYSLY.md`.
+
+- **Etap 25c — 800 ed Kompletnego Pakietu „tylko na Modę" jest napisem, nie pieniędzmi.**
+  VTT nie ma katalogu ubrań (tabela Mody z s. 356 nie jest zaimportowana), więc krok
+  wyposażenia mówi o tych pieniądzach i ich nie wydaje. Dodanie ich do portfela byłoby
+  prezentem — za 800 ed można kupić karabin. Wpis w `POMYSLY.md`.
 
 - **Etap 25b — dwie tabele Ścieżek Ról są nagłówkami, nie pytaniami.** `exec.relacje` („Obecne
   stosunki z szefostwem") i `nomad.filozofia` („Ogólna filozofia watahy") wchodzą do danych
@@ -403,6 +423,74 @@ decyduje przegrany, nie zwycięzca`) — Konfrontacje z 10.08 szły z konta MG, 
 
 ## Notatki z dwóch ostatnich sesji
 
+### Sesja 14.08 (trzecia tego dnia) — etap 25c (wyposażenie startowe i poziomy sklepu)
+
+**Kreator jest kompletny: postać wychodzi z niego z bronią w ręku i figurą na mapie.** Doszły
+dwa kroki — **Wyposażenie** (zakupy z kompendium za startowe eurodolce) i **Opis** (ksywa,
+portret, przełącznik żetonu) — a „Utwórz postać" stawia żeton na aktywnej scenie.
+
+**Dwie korekty zakresu uzgodnione przed kodem.** (1) **Sklep był pusty.** Kompendium miało
+103 bronie, 11 pancerzy, 96 cyborgizacji i **pięć** pozycji „Sprzęt" — tabela Wyposażenia
+z podręcznika nigdy nie została zaimportowana, więc krok zakupów byłby sklepem z samą bronią.
+Doszedł `tools/import/parse-gear.py` i **53 wpisy** (Agent, latarka, torba medyka, cyberdek
+w trzech jakościach, technarzędzie…). (2) **Odgórny pakiet Roli Krawędziarza** (s. 98 i 103)
+został poza etapem — decyzja MG: na razie sama gotówka 500 ed, pakiet dokłada MG przyciskiem
+„Dodaj za darmo". Te trzy tabele w zrzucie PDF-a to jeden sklejony ciąg dla pięciu Ról naraz,
+czyli parser rozmiaru `parse-lifepath.py`. Wpis w `POMYSLY.md`.
+
+**Poziomy dostępności — cena JEST dostępnością.** Pasmo ceny w podręczniku mówi dokładnie to,
+co „jak trudno to zdobyć" („Tanie" to kiosk, „Luksusowe" to Fixer), więc poziom liczy się
+z ceny dla wszystkich 326 wpisów za darmo, a `tier` na wpisie istnieje po to, żeby MG mógł
+przesunąć **pojedynczą** pozycję (tani gnat, którego i tak nie ma na ulicy). Cztery poziomy:
+Uliczne ≤ 50 ed · Zawodowe ≤ 500 · Korporacyjne ≤ 1000 · Czarny rynek wyżej. Kampania trzyma
+jeden odblokowany poziom (`Campaign.shopTier`), MG przesuwa go **przełącznikiem w zakładce
+„Kompendium"** — odstępstwo od opisu etapu, który mówił „Panel MG": tam jest się poza sesją,
+a zmiana ma dojść do graczy **natychmiast** (rozgłoszenie `shop:tier`, poziom jedzie też
+w `state:sync`). Wpisy ponad poziomem **zostają na liście przygaszone, z chipem poziomu** —
+gracz ma widzieć, po co warto sięgnąć.
+
+**Jedyne miejsce w projekcie, gdzie blokada obowiązuje także MG: koszyk kreatora.** Wszędzie
+indziej MG jest z blokad zwolniony (ta sama zasada co przy ruchu, `movement.ts:216`) i tak
+zostało dla „Kup" w kompendium. W kreatorze poziom jest **twardo 1** dla wszystkich, bo
+o to prosił MG wprost — wyjątek zamieniłby ograniczenie w sugestię, a MG i tak może dosypać
+karabin po utworzeniu postaci.
+
+**Pieniądze idą tą samą drogą co każdy późniejszy zakup.** Postać powstaje z saldem **zero**,
+dostaje przelew „Gotówka startowa — Krawędziarz (Na skróty)" (nowy rodzaj wpisu `starting`,
+bo startowa kasa nie jest korektą MG), a potem każda pozycja koszyka schodzi przez
+`applyBalance` jak zwykły zakup. Audyt czyta się od pierwszej linii: +500 → −50 → −50 → −10.
+Koszyk **nie da się zapisać łatką** (`creation:patch` z `purchases` jest odrzucany) — ceny,
+budżet i poziom sklepu są serwera, a klient, który mógłby to napisać, kupowałby za darmo.
+
+**Przy okazji naprawiony błąd z 23b, którego nikt nie zauważył: własnych wpisów MG nie dało
+się kupić.** `economy:buy` czytał wyłącznie `ctx.compendium` (pliki z dysku), a wpisy
+kampanii siedzą w bazie i wygrywają dopiero w `buildCompendiumSync` — czyli sklep sprzedawał
+inny katalog niż ten, który klient przeglądał. Teraz obie drogi idą przez `campaignEntry`.
+
+**Zweryfikowane:** 1040 testów w `shared` (13 nowych w `shop.test.ts`, 15 w `creation.test.ts`),
+624 na serwerze (18 nowych w `creation.test.ts` na żywych gniazdach), `tsc --noEmit` czysty
+w trzech pakietach, lint, Prettier i `pnpm build` bez uwag. Migracja:
+`20260814162921_stage25c_shop_tier` (jedna kolumna na `Campaign`, zero zmian w danych).
+
+**Odklikane u MG** na postaci testowej **„Test 25c Kupiec" (usuniętej po oględzinach razem
+z żetonem)**. Potwierdzone: **siedem kroków** w pasku kreatora; krok „Wyposażenie" z licznikiem
+„500 ed · zostaje z 500 ed startowych", trzema półkami (Broń / Pancerz / Sprzęt) i **listą
+przyciętą do poziomu 1**; koszyk rosnący do trzech pozycji (450 → 400 → 390 ed) z „−" przy
+każdej i chipem „×1" w sklepie; krok „Opis" z ksywą, ramką „brak portretu" i **zaznaczonym
+„Postaw żeton na aktywnej scenie"**; podsumowanie z linią „Wyposażenie (3): … · w kieszeni
+zostaje 390 ed"; po „Utwórz postać" **karta otwiera się sama** z „Apteczka polowa" i „Czip
+pamięci" w ekwipunku, **gotówką 390 ed** i **czterowierszową historią operacji**; **żeton
+stanął na scenie** obok środka mapy. W zakładce „Kompendium": pasek „Sklep: Uliczne — do 50 ed…"
+z przełącznikiem 1–4, **chipy poziomów** przy przygaszonych wpisach („Zawodowe", „Korporacyjne",
+„Czarny rynek"), przesunięcie na 3 zmieniające opis i zdejmujące chipy, **„Sprzęt 60"** zamiast
+5 oraz wiersz „Dostępność 1 — Uliczne" na karcie wpisu. Konsola czysta; scena, walka i pozostałe
+postacie nietknięte.
+
+**Jeden błąd znaleziony przy oględzinach i naprawiony:** przycisk „Wgraj portret" w kroku
+„Opis" był **niewidzialny** — brał klasę `cp-portrait-upload` z karty postaci, a ta jest
+nakładką `position: absolute; opacity: 0`, pokazywaną dopiero po najechaniu na ramkę portretu
+karty. Kreator ma teraz własną etykietę w skórze `small-button`.
+
 ### Sesja 14.08 (druga tego dnia) — etap 25b (kreator: Ścieżka Życia)
 
 **Postać wychodzi z kreatora z życiorysem, a nie z samymi liczbami.** Czwarty krok — Ścieżka
@@ -501,114 +589,15 @@ w tym kroku i tak przechodzi przez jedną kolejkę, więc `disabled={busy}` zesz
 dostał **własną** blokadę na czas tworzenia (jedyne, co warto blokować, to drugi bot dla tej
 samej osoby).
 
-### Sesja 14.08 — etap 25a (kreator postaci: rola, cechy, umiejętności)
-
-**Postać da się zrobić od zera w oknie kreatora, a nie tylko wpisać ręcznie w pustą kartę.**
-Cztery kroki z dowolnym cofaniem — Rola → Cechy → Umiejętności → Podsumowanie — kończą się
-kartą z etapu 07, która otwiera się sama po utworzeniu.
-
-**Trzy rozstrzygnięcia MG przed kodem.** (1) **Podział etapu 25 na 25a/25b** — jeden worek
-niósł pipeline danych, sześciokrokowy kreator, szkic w bazie, zakupy startowe i wroga
-z lifepath przerabianego na bota; to zakres dwóch sesji, tak jak przy 14→14e i 16→16h.
-(2) **Dwie metody, nie trzy**: Krawędziarz (1k10 na Cechę z szablonu Roli) i Kompletny Pakiet
-(pula 62 punktów). **Ulicznik odpada** — to dziesięć gotowych postaci, a nie procedura.
-(3) **Kreator w pływającym oknie** (`sheet-window`), nie w panelu bocznym ani na pełnym ekranie.
-
-**Znaleziony i naprawiony błąd, którego nie widziała żadna wcześniejsza sesja: karta postaci
-w przeglądarce znała tylko 42 z 66 umiejętności.** Klient pobierał `/public/cpred/skills.json`
-ze statycznej trasy — czyli **próbkę Easy Mode z repo** — podczas gdy serwer ładuje pełną listę
-z `data/private/cpred/skills.json` (plik prywatny zastępuje publiczny). Skutek: 24 umiejętności
-istniały wyłącznie po stronie serwera i **nie dało się ich ustawić na żadnej karcie** —
-Cyberinżynieria, Podstawowe naprawy, Nauka, Język, Atrakcyjność, Handel, Naprawa broni, Sztuki
-walki, Broń ciężka, Łucznictwo, Materiały wybuchowe, Sztuka przetrwania i jeszcze dwanaście.
-Blokowało to 25a wprost (listy umiejętności Ról odwołują się do ośmiu z tych 24), więc doszła
-trasa **`GET /api/cpred/data`** za `requireAuth`, oddająca **efektywny** rejestr — ten sam,
-którym serwer waliduje karty. Wzorem była trasa `/api/cpred/covers` z 16c, założona dokładnie
-z tego powodu. Po poprawce karta pokazuje pełne 66 pozycji (sprawdzone w przeglądarce).
-
-**Architektura — cztery rzeczy niesie etap.** Pierwsza: **Cechy Krawędziarza pisze wyłącznie
-serwer.** `creation:roll` rzuca dziesięć 1k10 tym samym silnikiem co każdy inny rzut, odczytuje
-wartości z kolumny szablonu Roli i zapisuje je w szkicu; `creation:patch` niosący `stats` przy
-tej metodzie jest **odrzucany** (`INVALID_DATA`). Kompletny Pakiet kupuje Cechy, więc tam łatka
-jest jedyną drogą, a pula sprawdza się na końcu. Druga: **szkic to własna tabela**
-(`CharacterDraft`, jeden wiersz na użytkownika i kampanię), a nie `Character` z flagą —
-niedokończona postać nie może pojawić się na liście, w inicjatywie ani na tokenie. Stan siedzi
-w jednej kolumnie JSON jak przy `BotProfile`, bo kreator dostanie w 25b krok Ścieżki Życia.
-Trzecia: **zmiana Roli albo metody kasuje to, co unieważnia** — rozkład wylosowany z szablonu
-Solo nic nie znaczy na szablonie Netrunnera, a umiejętność kupiona z listy jednej Roli nie
-figuruje na liście drugiej. Czwarta: **jedna karta rzutu zamiast dziesięciu.** Rozbicie nazywa
-każdą Cechę („INT · rzut 9 +7"), a **suma na karcie to wartość rozkładu** (61 przy oględzinach)
-— jedyna liczba, którą stół realnie porównuje, bo Kompletny Pakiet ma do wydania 62.
-
-**Dane: `tools/import/parse-creation.py` → `data/private/cpred/creation.json`.** Dziesięć
-szablonów Cech (10 rzutów × 10 Cech), listy 20 umiejętności Ról, 13 umiejętności podstawowych,
-pule (62 / 86) i limity — wszystko z rozdziałów „Dusza i nowa maszyna" i „Wyposażony na
-Przyszłość". Próbka **własnego autorstwa** w `data/public/cpred/creation.json`, żeby świeży klon
-miał działający kreator. Dwie tabele wymagały czegoś więcej niż regexa: **szablony Cech** czyta
-się ze strumienia cyfr (zrzut skleja numery rzutów z wartościami), a **listy umiejętności Ról**
-to jeden ciąg nazw bez separatorów. Te drugie odtwarzają się z dwóch niezmienników, których
-pilnuje książka — **kolumna jest posortowana alfabetycznie** i **każda Rola ma dokładnie 20
-pozycji** — a jedyną komórkę, którą zrzut zgubił (Solo, drugi wiersz), podaje przykład drukowany
-na tej samej stronie; **pierwszy wiersz tabeli Ulicznika** (ta sama zawartość, s. 86) rozstrzyga,
-które z dwóch pasujących ułożeń jest prawdziwe. Skrypt mówi o tym wprost w ostrzeżeniu — jeśli
-przestanie, znaczy, że zrzut się zmienił.
-
-**Naprawione migotanie `ammo.test.ts` — i notatka z 08.08 wskazywała złą przyczynę.** To nie
-był limit czasu, tylko dwa źródła losowości w teście „an armour-piercing round takes two points
-of SP": (1) ochroniarz stoi w stożku śrutu przez cały plik, więc docierał do tego testu
-z pancerzem zdartym przez wcześniejsze przypadki — przy OB 1 nabój zbiera to, co zostało (nie
-dwa), a przy 0 nie ablatuje nic i karta nie ma linii pancerza (to jest owo „expected undefined
-to be defined"); (2) pancerz zużywa się tylko wtedy, gdy obrażenia przez niego **przejdą**,
-a 2k6 przeciw OB 4 nie przechodzi raz na dwanaście rzutów. Test przywraca teraz OB przed
-pomiarem i dodaje modyfikator obrażeń, którego pistolet nie zejdzie poniżej. **12 przebiegów
-pod rząd bez porażki** (wcześniej 3 na 20).
-
-**Dopisek po oględzinach (życzenie MG): rozkład Cech idzie przez kubek.** Rzut na Cechy był
-jedynym rzutem w projekcie, który wychodził z przycisku, a nie z potrząśnięcia — a to właśnie
-ten rzut gracz zapamięta z sesji zerowej. Kubek ma teraz **siódmy slot** (`PendingCreation`,
-obok checka z karty, inicjatywy, ataku, uniku, zwarcia i Konfrontacji): „🥤 Weź kubek i rzuć
-Cechy" ładuje rozkład, kubek w rogu **świeci cyjanem i pulsuje** z etykietą „Rozkład Cech —
-Nomada", a złapanie go, potrząśnięcie i puszczenie sypie na mapę **dziesięć czerwonych k10**
-i wpisuje wyniki do kreatora. Entropia potrząśnięcia miesza się do ziarna serwera dokładnie tak
-jak przy każdym innym rzucie, a `tossStrength` i kierunek rzutu jadą na kartę czatu, więc
-animację widzą wszyscy. **MG ma obok skrót „🎲 Rzuć od razu"** (pięciu NPC-ów w jeden wieczór to
-nie ceremonia) — gracz go nie widzi. `Esc` i zamknięcie okna odkładają kubek; przełączenie na
-Kompletny Pakiet też, bo tam nie ma czego rzucać.
-
-**Drugi błąd, znaleziony przy oględzinach: „Utwórz postać" wymagało dwóch kliknięć.** Imię
-zapisywało się dopiero na `blur`, a przycisk jest wyszarzony, dopóki imię nie dotrze do serwera
-— więc kliknięcie, które zdejmowało ognisko z pola, trafiało w przycisk jeszcze nieaktywny.
-Imię idzie teraz do serwera z każdym znakiem, tak jak zapisuje się karta; surowa wartość
-(spacja w dwuwyrazowej ksywie musi przeżyć — patrz błąd z 13.08), a przycięcie robi serwer.
-
-**Zweryfikowane:** 984 testy w `shared` (26 nowych w `creation.test.ts`), 604 na serwerze
-(15 nowych w `creation.test.ts` na żywych gniazdach), `tsc --noEmit` czysty w trzech pakietach,
-lint, Prettier i `pnpm build` bez uwag. Migracja: `20260814054327_stage25a_character_draft`
-(jedna tabela, zero zmian w istniejących).
-
-**Odklikane po OBU stronach stołu** (MG na `localhost:5173`, gracz avatar9 na `[::1]:5173`),
-na postaciach testowych **„Test 25a Ostrze" (Solo, NPC)** i **„Test 25a Gracz" (Fixer, avatar9)**
-— **obu usuniętych po oględzinach**, lista wróciła do siedmiu. Potwierdzone **u MG**: przycisk
-„🧬 Kreator postaci…" nad formularzem jednolinijkowym, okno w skórze karty, dziesięć Ról
-z nazwą Zdolności Specjalnej i liczbą umiejętności, **rzut Cech** (INT 7 z rzutu 9, REF 7 z rzutu
-1, … — wszystkie dziesięć zgodne z szablonem Solo z podręcznika), pochodne liczone na żywo
-(PW 45, Poważnie ranny 23, Przeżywalność 7, Człowieczeństwo 60), **karta na czacie** „Rozkład
-Cech — Solo · Krawędziarz (Na skróty) · 10k10" z sumą **61** i rozbiciem na dziesięć wierszy,
-krok umiejętności z chipem **×2** przy Ogniu ciągłym (poziom 1 = 2 pkt) i **Językiem za 0 pkt**,
-licznik „80 z 86", podsumowanie z listą braków i **wyszarzonym „Utwórz postać"** do czasu
-wpisania imienia, a po utworzeniu **karta otwiera się sama** — w nowym układzie z 27a/27b,
-ze Zdolnością Specjalną „Zmysł Walki 4" i **pełną listą 66 umiejętności**. Potwierdzone **przy
-Kompletnym Pakiecie**: wybór Rangi Postaci (5 pozycji, 50–80 pkt), pola liczbowe zamiast rzutu,
-licznik **czerwienieje przy 70 z 62**, a „🎲 Rzuć Cechy" w ogóle się nie pokazuje. **Szkic
-przeżył pełne przeładowanie strony** (metoda, krok i rozkład 60 z 62 wróciły z bazy).
-Potwierdzone **u gracza**: własny, niezależny szkic (krok 1, bez pola „Właściciel"), rzut Cech
-działa tak samo, a utworzona postać ma **właściciela avatar9** i pojawia się **na żywo na liście
-MG**. Konsola czysta po obu stronach. Scena, walka („PRZED WALKĄ"), tokeny i pozostałe postacie
-**nietknięte**; na czacie zostały **dwie karty rozkładu Cech**.
-
 ## Skróty wcześniejszych sesji
 
 Uzupełniają kolumnę „Uwagi" w tabeli, nie powtarzają jej. Uzasadnienia decyzji, listy niezweryfikowanego i szczegóły migracji — `archiwum/dziennik-sesji.md`.
+
+- **25a (14.08)** — kreator postaci w pływającym oknie: cztery kroki, dwie metody (Krawędziarz
+  i Kompletny Pakiet), szkic we własnej tabeli `CharacterDraft`. Przy okazji wyszło, że **karta
+  postaci w przeglądarce znała tylko 42 z 66 umiejętności** — klient czytał publiczną próbkę
+  zamiast efektywnego rejestru serwera; naprawione trasą `GET /api/cpred/data`. Rozkład Cech
+  idzie przez kubek (życzenie MG po oględzinach). Pełna notatka w archiwum.
 
 - **Porządki (13.08)** — pięć zaległości zdjętych z listy bez pisania nowej funkcji.
   Przy okazji wyszło, że **w żaden wiersz karty nie dało się wpisać wielowyrazowej nazwy**:

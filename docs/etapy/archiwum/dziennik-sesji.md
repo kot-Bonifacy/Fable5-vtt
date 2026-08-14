@@ -7,6 +7,111 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 14.08 — etap 25a (kreator postaci: rola, cechy, umiejętności)
+
+**Postać da się zrobić od zera w oknie kreatora, a nie tylko wpisać ręcznie w pustą kartę.**
+Cztery kroki z dowolnym cofaniem — Rola → Cechy → Umiejętności → Podsumowanie — kończą się
+kartą z etapu 07, która otwiera się sama po utworzeniu.
+
+**Trzy rozstrzygnięcia MG przed kodem.** (1) **Podział etapu 25 na 25a/25b** — jeden worek
+niósł pipeline danych, sześciokrokowy kreator, szkic w bazie, zakupy startowe i wroga
+z lifepath przerabianego na bota; to zakres dwóch sesji, tak jak przy 14→14e i 16→16h.
+(2) **Dwie metody, nie trzy**: Krawędziarz (1k10 na Cechę z szablonu Roli) i Kompletny Pakiet
+(pula 62 punktów). **Ulicznik odpada** — to dziesięć gotowych postaci, a nie procedura.
+(3) **Kreator w pływającym oknie** (`sheet-window`), nie w panelu bocznym ani na pełnym ekranie.
+
+**Znaleziony i naprawiony błąd, którego nie widziała żadna wcześniejsza sesja: karta postaci
+w przeglądarce znała tylko 42 z 66 umiejętności.** Klient pobierał `/public/cpred/skills.json`
+ze statycznej trasy — czyli **próbkę Easy Mode z repo** — podczas gdy serwer ładuje pełną listę
+z `data/private/cpred/skills.json` (plik prywatny zastępuje publiczny). Skutek: 24 umiejętności
+istniały wyłącznie po stronie serwera i **nie dało się ich ustawić na żadnej karcie** —
+Cyberinżynieria, Podstawowe naprawy, Nauka, Język, Atrakcyjność, Handel, Naprawa broni, Sztuki
+walki, Broń ciężka, Łucznictwo, Materiały wybuchowe, Sztuka przetrwania i jeszcze dwanaście.
+Blokowało to 25a wprost (listy umiejętności Ról odwołują się do ośmiu z tych 24), więc doszła
+trasa **`GET /api/cpred/data`** za `requireAuth`, oddająca **efektywny** rejestr — ten sam,
+którym serwer waliduje karty. Wzorem była trasa `/api/cpred/covers` z 16c, założona dokładnie
+z tego powodu. Po poprawce karta pokazuje pełne 66 pozycji (sprawdzone w przeglądarce).
+
+**Architektura — cztery rzeczy niesie etap.** Pierwsza: **Cechy Krawędziarza pisze wyłącznie
+serwer.** `creation:roll` rzuca dziesięć 1k10 tym samym silnikiem co każdy inny rzut, odczytuje
+wartości z kolumny szablonu Roli i zapisuje je w szkicu; `creation:patch` niosący `stats` przy
+tej metodzie jest **odrzucany** (`INVALID_DATA`). Kompletny Pakiet kupuje Cechy, więc tam łatka
+jest jedyną drogą, a pula sprawdza się na końcu. Druga: **szkic to własna tabela**
+(`CharacterDraft`, jeden wiersz na użytkownika i kampanię), a nie `Character` z flagą —
+niedokończona postać nie może pojawić się na liście, w inicjatywie ani na tokenie. Stan siedzi
+w jednej kolumnie JSON jak przy `BotProfile`, bo kreator dostanie w 25b krok Ścieżki Życia.
+Trzecia: **zmiana Roli albo metody kasuje to, co unieważnia** — rozkład wylosowany z szablonu
+Solo nic nie znaczy na szablonie Netrunnera, a umiejętność kupiona z listy jednej Roli nie
+figuruje na liście drugiej. Czwarta: **jedna karta rzutu zamiast dziesięciu.** Rozbicie nazywa
+każdą Cechę („INT · rzut 9 +7"), a **suma na karcie to wartość rozkładu** (61 przy oględzinach)
+— jedyna liczba, którą stół realnie porównuje, bo Kompletny Pakiet ma do wydania 62.
+
+**Dane: `tools/import/parse-creation.py` → `data/private/cpred/creation.json`.** Dziesięć
+szablonów Cech (10 rzutów × 10 Cech), listy 20 umiejętności Ról, 13 umiejętności podstawowych,
+pule (62 / 86) i limity — wszystko z rozdziałów „Dusza i nowa maszyna" i „Wyposażony na
+Przyszłość". Próbka **własnego autorstwa** w `data/public/cpred/creation.json`, żeby świeży klon
+miał działający kreator. Dwie tabele wymagały czegoś więcej niż regexa: **szablony Cech** czyta
+się ze strumienia cyfr (zrzut skleja numery rzutów z wartościami), a **listy umiejętności Ról**
+to jeden ciąg nazw bez separatorów. Te drugie odtwarzają się z dwóch niezmienników, których
+pilnuje książka — **kolumna jest posortowana alfabetycznie** i **każda Rola ma dokładnie 20
+pozycji** — a jedyną komórkę, którą zrzut zgubił (Solo, drugi wiersz), podaje przykład drukowany
+na tej samej stronie; **pierwszy wiersz tabeli Ulicznika** (ta sama zawartość, s. 86) rozstrzyga,
+które z dwóch pasujących ułożeń jest prawdziwe. Skrypt mówi o tym wprost w ostrzeżeniu — jeśli
+przestanie, znaczy, że zrzut się zmienił.
+
+**Naprawione migotanie `ammo.test.ts` — i notatka z 08.08 wskazywała złą przyczynę.** To nie
+był limit czasu, tylko dwa źródła losowości w teście „an armour-piercing round takes two points
+of SP": (1) ochroniarz stoi w stożku śrutu przez cały plik, więc docierał do tego testu
+z pancerzem zdartym przez wcześniejsze przypadki — przy OB 1 nabój zbiera to, co zostało (nie
+dwa), a przy 0 nie ablatuje nic i karta nie ma linii pancerza (to jest owo „expected undefined
+to be defined"); (2) pancerz zużywa się tylko wtedy, gdy obrażenia przez niego **przejdą**,
+a 2k6 przeciw OB 4 nie przechodzi raz na dwanaście rzutów. Test przywraca teraz OB przed
+pomiarem i dodaje modyfikator obrażeń, którego pistolet nie zejdzie poniżej. **12 przebiegów
+pod rząd bez porażki** (wcześniej 3 na 20).
+
+**Dopisek po oględzinach (życzenie MG): rozkład Cech idzie przez kubek.** Rzut na Cechy był
+jedynym rzutem w projekcie, który wychodził z przycisku, a nie z potrząśnięcia — a to właśnie
+ten rzut gracz zapamięta z sesji zerowej. Kubek ma teraz **siódmy slot** (`PendingCreation`,
+obok checka z karty, inicjatywy, ataku, uniku, zwarcia i Konfrontacji): „🥤 Weź kubek i rzuć
+Cechy" ładuje rozkład, kubek w rogu **świeci cyjanem i pulsuje** z etykietą „Rozkład Cech —
+Nomada", a złapanie go, potrząśnięcie i puszczenie sypie na mapę **dziesięć czerwonych k10**
+i wpisuje wyniki do kreatora. Entropia potrząśnięcia miesza się do ziarna serwera dokładnie tak
+jak przy każdym innym rzucie, a `tossStrength` i kierunek rzutu jadą na kartę czatu, więc
+animację widzą wszyscy. **MG ma obok skrót „🎲 Rzuć od razu"** (pięciu NPC-ów w jeden wieczór to
+nie ceremonia) — gracz go nie widzi. `Esc` i zamknięcie okna odkładają kubek; przełączenie na
+Kompletny Pakiet też, bo tam nie ma czego rzucać.
+
+**Drugi błąd, znaleziony przy oględzinach: „Utwórz postać" wymagało dwóch kliknięć.** Imię
+zapisywało się dopiero na `blur`, a przycisk jest wyszarzony, dopóki imię nie dotrze do serwera
+— więc kliknięcie, które zdejmowało ognisko z pola, trafiało w przycisk jeszcze nieaktywny.
+Imię idzie teraz do serwera z każdym znakiem, tak jak zapisuje się karta; surowa wartość
+(spacja w dwuwyrazowej ksywie musi przeżyć — patrz błąd z 13.08), a przycięcie robi serwer.
+
+**Zweryfikowane:** 984 testy w `shared` (26 nowych w `creation.test.ts`), 604 na serwerze
+(15 nowych w `creation.test.ts` na żywych gniazdach), `tsc --noEmit` czysty w trzech pakietach,
+lint, Prettier i `pnpm build` bez uwag. Migracja: `20260814054327_stage25a_character_draft`
+(jedna tabela, zero zmian w istniejących).
+
+**Odklikane po OBU stronach stołu** (MG na `localhost:5173`, gracz avatar9 na `[::1]:5173`),
+na postaciach testowych **„Test 25a Ostrze" (Solo, NPC)** i **„Test 25a Gracz" (Fixer, avatar9)**
+— **obu usuniętych po oględzinach**, lista wróciła do siedmiu. Potwierdzone **u MG**: przycisk
+„🧬 Kreator postaci…" nad formularzem jednolinijkowym, okno w skórze karty, dziesięć Ról
+z nazwą Zdolności Specjalnej i liczbą umiejętności, **rzut Cech** (INT 7 z rzutu 9, REF 7 z rzutu
+1, … — wszystkie dziesięć zgodne z szablonem Solo z podręcznika), pochodne liczone na żywo
+(PW 45, Poważnie ranny 23, Przeżywalność 7, Człowieczeństwo 60), **karta na czacie** „Rozkład
+Cech — Solo · Krawędziarz (Na skróty) · 10k10" z sumą **61** i rozbiciem na dziesięć wierszy,
+krok umiejętności z chipem **×2** przy Ogniu ciągłym (poziom 1 = 2 pkt) i **Językiem za 0 pkt**,
+licznik „80 z 86", podsumowanie z listą braków i **wyszarzonym „Utwórz postać"** do czasu
+wpisania imienia, a po utworzeniu **karta otwiera się sama** — w nowym układzie z 27a/27b,
+ze Zdolnością Specjalną „Zmysł Walki 4" i **pełną listą 66 umiejętności**. Potwierdzone **przy
+Kompletnym Pakiecie**: wybór Rangi Postaci (5 pozycji, 50–80 pkt), pola liczbowe zamiast rzutu,
+licznik **czerwienieje przy 70 z 62**, a „🎲 Rzuć Cechy" w ogóle się nie pokazuje. **Szkic
+przeżył pełne przeładowanie strony** (metoda, krok i rozkład 60 z 62 wróciły z bazy).
+Potwierdzone **u gracza**: własny, niezależny szkic (krok 1, bez pola „Właściciel"), rzut Cech
+działa tak samo, a utworzona postać ma **właściciela avatar9** i pojawia się **na żywo na liście
+MG**. Konsola czysta po obu stronach. Scena, walka („PRZED WALKĄ"), tokeny i pozostałe postacie
+**nietknięte**; na czacie zostały **dwie karty rozkładu Cech**.
+
 ### Sesja 13.08 — porządki: pięć zaległości zdjętych z listy (bez etapu)
 
 **Cel: nie nowa funkcja, tylko skrócenie listy „Otwarte zaległości".** Zdjęte pięć pozycji:

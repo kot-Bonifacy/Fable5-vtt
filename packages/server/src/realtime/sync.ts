@@ -12,7 +12,7 @@ import type {
   StateSyncPayload,
   WallView,
 } from '@vtt/shared';
-import { ROLE_GM } from '@vtt/shared';
+import { ROLE_GM, SHOP_TIER_MIN } from '@vtt/shared';
 import { defineEvent, type RealtimeDeps } from './registry.js';
 import { computePresence } from './presence.js';
 import { fetchHistoryPage } from './chat-io.js';
@@ -32,6 +32,7 @@ import { fetchCharactersFor } from './character-io.js';
 import { fetchBotsFor } from './bots.js';
 import { aiStatusFor } from './ai.js';
 import { buildCompendiumSync } from './compendium.js';
+import { campaignShopTier } from './shop.js';
 import { campaignRoom } from './state.js';
 
 /**
@@ -69,6 +70,7 @@ export async function buildStateSync(
       bots: [],
       ai: aiStatusFor(deps, user.role === ROLE_GM),
       compendium: await buildCompendiumSync(deps, null),
+      shopTier: SHOP_TIER_MIN,
       combat: null,
     };
   }
@@ -94,6 +96,7 @@ export async function buildStateSync(
     compendium,
     combat,
     exploration,
+    shopTier,
   ] = await Promise.all([
     computePresence(deps.io, campaign.id),
     fetchHistoryPage(deps.ctx.prisma, campaign.id, user),
@@ -155,6 +158,9 @@ export async function buildStateSync(
     // The party's memory of this map (stage 18c) — the same for everyone,
     // because it holds only what somebody has already seen.
     explorationMaskFor(deps.ctx.prisma, viewedScene),
+    // How far down the catalogue this campaign may shop (stage 25c) — public,
+    // because a player is meant to see what is still out of reach.
+    campaignShopTier(deps.ctx.prisma, campaign.id),
   ]);
   const scene: SceneView | null = viewedScene ? toSceneView(viewedScene) : null;
   return {
@@ -187,6 +193,7 @@ export async function buildStateSync(
     bots,
     ai: aiStatusFor(deps, user.role === ROLE_GM),
     compendium,
+    shopTier,
     combat,
   };
 }

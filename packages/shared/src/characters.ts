@@ -95,6 +95,20 @@ export interface CreationRollPayload {
   gesture?: RollGesture;
 }
 
+/**
+ * Client → server `creation:buy` (stage 25c) — one item into or out of the
+ * wizard's basket.
+ *
+ * A delta rather than a quantity, so two clicks on „+" that race each other
+ * cannot land on the same total: the server reads the basket, applies the step
+ * and writes it back, exactly as the skill „+" does with a patch.
+ */
+export interface CreationBuyPayload {
+  entryId: string;
+  /** +1 adds a copy, −1 removes one; nothing else is accepted. */
+  delta: number;
+}
+
 /** Client → server `creation:finish` — turns the draft into a real character. */
 export interface CreationFinishPayload {
   /** GM only; players always own what they create. */

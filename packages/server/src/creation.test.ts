@@ -496,6 +496,217 @@ describe('kreator postaci', () => {
     });
   });
 
+  /* ─────────────────── etap 25c: zakupy, opis, żeton ─────────────────── */
+
+  describe('wyposażenie startowe', () => {
+    /** A draft far enough along that only shopping is left to test. */
+    async function readyDraft(socket: ClientSocket, name: string): Promise<void> {
+      data(await emitAck<Draft>(socket, 'creation:start'), 'creation:start');
+      await patch(socket, { method: 'edgerunner', roleId: 'solo', name });
+      data(await emitAck<Draft>(socket, 'creation:roll'), 'creation:roll');
+    }
+
+    it('takes an item into the basket and back out of it', async () => {
+      await readyDraft(vex, 'Kupiec');
+      const bought = data(
+        await emitAck<Draft>(vex, 'creation:buy', { entryId: 'gear.latarka-taktyczna', delta: 1 }),
+        'creation:buy',
+      );
+      expect(bought.draft.purchases['gear.latarka-taktyczna']).toBe(1);
+
+      const twice = data(
+        await emitAck<Draft>(vex, 'creation:buy', { entryId: 'gear.latarka-taktyczna', delta: 1 }),
+        'creation:buy',
+      );
+      expect(twice.draft.purchases['gear.latarka-taktyczna']).toBe(2);
+
+      const back = data(
+        await emitAck<Draft>(vex, 'creation:buy', { entryId: 'gear.latarka-taktyczna', delta: -1 }),
+        'creation:buy',
+      );
+      expect(back.draft.purchases['gear.latarka-taktyczna']).toBe(1);
+    });
+
+    it('refuses an item above the level the creator shops at', async () => {
+      // „Kufer szmuglerski" is 5000 ed — level 4, and session zero shops at 1.
+      const ack = await emitAck<Draft>(vex, 'creation:buy', {
+        entryId: 'gear.kufer-szmuglerski',
+        delta: 1,
+      });
+      expect(refusal(ack)).toBe('SHOP_TIER_LOCKED:4:1');
+    });
+
+    it('refuses the same item to the GM — the starting kit is the point', async () => {
+      await readyDraft(gm, 'Handlarz');
+      const ack = await emitAck<Draft>(gm, 'creation:buy', {
+        entryId: 'weapon.szpon',
+        delta: 1,
+      });
+      expect(refusal(ack)).toBe('SHOP_TIER_LOCKED:2:1');
+    });
+
+    it('refuses a basket the budget cannot carry', async () => {
+      // A Krawędziarz has 500 ed; ten pistols at 50 ed each is exactly that,
+      // and the eleventh is one too many.
+      for (let bought = 0; bought < 9; bought += 1) {
+        data(
+          await emitAck<Draft>(vex, 'creation:buy', { entryId: 'weapon.zgrzyt-9', delta: 1 }),
+          'creation:buy',
+        );
+      }
+      // 9 × 50 + the flashlight already in the basket = 470 ed.
+      const tenth = await emitAck<Draft>(vex, 'creation:buy', {
+        entryId: 'weapon.zgrzyt-9',
+        delta: 1,
+      });
+      expect(refusal(tenth)).toBe('NOT_ENOUGH_EDDIES');
+    });
+
+    it('refuses what nobody can carry off a catalogue card', async () => {
+      const ack = await emitAck<Draft>(vex, 'creation:buy', {
+        entryId: 'cyberware.oko-przykladowe',
+        delta: 1,
+      });
+      expect(refusal(ack)).toBe('NOT_PURCHASABLE');
+    });
+
+    it('will not let a patch write the basket', async () => {
+      const ack = await emitAck<Draft>(vex, 'creation:patch', {
+        patch: { purchases: { 'weapon.zgrzyt-9': 99 } },
+      });
+      expect(refusal(ack)).toBe('INVALID_DATA');
+    });
+
+    it('writes the goods, the change and the audit when the wizard finishes', async () => {
+      const skills = Object.fromEntries(roleSkills.map((id) => [id, 2]));
+      await patch(vex, { skills, portraitUrl: '/uploads/portraits/test.png', placeToken: false });
+
+      const character = data(
+        await emitAck<CharacterView>(vex, 'creation:finish'),
+        'creation:finish',
+      );
+      const sheet = character.data as CpredCharacterData;
+      // Nine pistols and one flashlight: 470 ed of a 500 ed budget.
+      expect(sheet.weapons).toHaveLength(9);
+      expect(sheet.gear).toHaveLength(1);
+      expect(sheet.eddies).toBe(30);
+      expect(character.portraitUrl).toBe('/uploads/portraits/test.png');
+
+      const history = data(
+        await emitAck<{ entries: { kind: string; amount: number; label: string }[] }>(
+          vex,
+          'economy:history',
+          { characterId: character.id },
+        ),
+        'economy:history',
+      );
+      // The wallet starts at zero and is credited, so the audit answers
+      // „skąd te 500 ed" from its first line rather than starting mid-story.
+      const kinds = history.entries.map((entry) => entry.kind);
+      expect(kinds).toContain('starting');
+      expect(kinds.filter((kind) => kind === 'purchase')).toHaveLength(2);
+      const cash = history.entries.find((entry) => entry.kind === 'starting');
+      expect(cash?.amount).toBe(500);
+      expect(cash?.label).toContain('Krawędziarz');
+      const guns = history.entries.find((entry) => entry.label.startsWith('Zgrzyt 9'));
+      expect(guns?.amount).toBe(-450);
+      expect(guns?.label).toBe('Zgrzyt 9 ×9');
+    });
+  });
+
+  describe('żeton po zakończeniu', () => {
+    it('walks the finished character onto the active scene', async () => {
+      const scene = data(
+        await emitAck<{ id: string }>(gm, 'scene:create', { name: 'Zaułek' }),
+        'scene:create',
+      );
+      expect((await emitAck(gm, 'scene:activate', { sceneId: scene.id })).ok).toBe(true);
+
+      data(await emitAck<Draft>(vex, 'creation:start'), 'creation:start');
+      await patch(vex, { method: 'edgerunner', roleId: 'solo', name: 'Na scenie' });
+      data(await emitAck<Draft>(vex, 'creation:roll'), 'creation:roll');
+      await patch(vex, {
+        skills: Object.fromEntries(roleSkills.map((id) => [id, 2])),
+        portraitUrl: '/uploads/portraits/na-scenie.png',
+      });
+
+      const appeared = waitFor<{ token: { name: string; imageUrl: string | null } }>(
+        gm,
+        'token:upsert',
+      );
+      const character = data(
+        await emitAck<CharacterView>(vex, 'creation:finish'),
+        'creation:finish',
+      );
+      const token = (await appeared).token;
+      expect(token.name).toBe('Na scenie');
+      // The portrait doubles as the token's art until somebody picks another.
+      expect(token.imageUrl).toBe('/uploads/portraits/na-scenie.png');
+      expect(character.name).toBe('Na scenie');
+    });
+  });
+
+  describe('poziom sklepu', () => {
+    let shopper: CharacterView;
+
+    it('refuses a player the shelf the campaign has not unlocked', async () => {
+      shopper = data(
+        await emitAck<CharacterView>(gm, 'character:create', {
+          name: 'Kupujący',
+          ownerId: vexId,
+        }),
+        'character:create',
+      );
+      data(
+        await emitAck(gm, 'economy:adjust', { characterId: shopper.id, balance: 5000 }),
+        'economy:adjust',
+      );
+      // „Szpon" is 100 ed — level 2, and a fresh campaign stands at 1.
+      const ack = await emitAck(vex, 'economy:buy', {
+        characterId: shopper.id,
+        entryId: 'weapon.szpon',
+      });
+      expect(refusal(ack)).toBe('SHOP_TIER_LOCKED:2:1');
+    });
+
+    it('lets the GM buy through it — the dial paces the table, not the GM', async () => {
+      data(
+        await emitAck<{ balance: number }>(gm, 'economy:buy', {
+          characterId: shopper.id,
+          entryId: 'weapon.szpon',
+        }),
+        'economy:buy',
+      );
+    });
+
+    it('reaches every player the moment the GM moves it', async () => {
+      const heard = waitFor<{ tier: number }>(vex, 'shop:tier');
+      const ack = data(await emitAck<{ tier: number }>(gm, 'shop:tier', { tier: 3 }), 'shop:tier');
+      expect(ack.tier).toBe(3);
+      expect((await heard).tier).toBe(3);
+
+      // The same purchase the player was refused a moment ago.
+      const bought = data(
+        await emitAck<{ balance: number }>(vex, 'economy:buy', {
+          characterId: shopper.id,
+          entryId: 'weapon.szpon',
+        }),
+        'economy:buy',
+      );
+      expect(bought.balance).toBeLessThan(5000);
+    });
+
+    it('rides along in state:sync for whoever joins later', async () => {
+      const late = createSocket(vexCookie);
+      expect((await late.firstSync).shopTier).toBe(3);
+    });
+
+    it('refuses a level that is not one of the four, and anybody but the GM', async () => {
+      expect(refusal(await emitAck(gm, 'shop:tier', { tier: 7 }))).toBe('BAD_REQUEST');
+      expect(refusal(await emitAck(vex, 'shop:tier', { tier: 2 }))).toBe('FORBIDDEN');
+    });
+  });
+
   it('gives the GM the same wizard, with a character that belongs to nobody', async () => {
     data(await emitAck<Draft>(gm, 'creation:start'), 'creation:start');
     await patch(gm, { method: 'complete', roleId: 'medtech', name: 'Doktor' });

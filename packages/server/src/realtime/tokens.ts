@@ -338,6 +338,78 @@ function requireCampaignId(socketData: { campaign: { id: string } | null }): str
   return socketData.campaign.id;
 }
 
+/**
+ * Puts a freshly created character on the map (stage 25c).
+ *
+ * The character creator ends here: a sheet nobody can move is half a character,
+ * and „add a token by hand afterwards" is the step session zero forgets. It is
+ * the server placing the figure rather than a `token:create` from the client,
+ * which is what lets a **player** finish their own character with a token —
+ * `token:create` is GM-only, and rightly so.
+ *
+ * The portrait doubles as the token's art until somebody picks a proper one:
+ * a face on the map beats a blank disc, and the GM can change it in one click.
+ */
+export async function createCharacterToken(
+  deps: RealtimeDeps,
+  campaignId: string,
+  scene: Scene,
+  character: Character,
+): Promise<Token> {
+  const spot = await freeSpot(deps.ctx.prisma, scene);
+  const token = await deps.ctx.prisma.token.create({
+    data: {
+      sceneId: scene.id,
+      name: character.name,
+      imageUrl: character.portraitUrl,
+      x: spot.x,
+      y: spot.y,
+      size: 1,
+      ownerId: character.ownerId,
+      characterId: character.id,
+      // A linked token has no HP of its own — the sheet is the source of
+      // truth (stage 08), and two numbers would eventually disagree.
+      hpCurrent: null,
+      hpMax: null,
+    },
+  });
+  await emitTokenUpsert(deps, campaignId, scene, token, toLinkedSheet(character, deps.ctx.cpred));
+  return token;
+}
+
+/**
+ * A square near the middle of the scene that nobody is standing on. The search
+ * spirals outward in grid steps, so five gangers built in one evening line up
+ * instead of stacking into one disc.
+ */
+async function freeSpot(prisma: PrismaClient, scene: Scene): Promise<{ x: number; y: number }> {
+  const taken = await prisma.token.findMany({
+    where: { sceneId: scene.id },
+    select: { x: true, y: true },
+  });
+  const step = scene.gridSizePx > 0 ? scene.gridSizePx : 50;
+  const snap = toSnapScene(scene);
+  const occupied = new Set(taken.map((token) => `${Math.round(token.x)}:${Math.round(token.y)}`));
+
+  for (let ring = 0; ring < 12; ring += 1) {
+    for (let dy = -ring; dy <= ring; dy += 1) {
+      for (let dx = -ring; dx <= ring; dx += 1) {
+        // Only the ring's own edge; the inside was searched a lap earlier.
+        if (ring > 0 && Math.abs(dx) !== ring && Math.abs(dy) !== ring) continue;
+        const candidate = snapTokenPosition(
+          scene.width / 2 + dx * step,
+          scene.height / 2 + dy * step,
+          1,
+          snap,
+        );
+        if (!occupied.has(`${Math.round(candidate.x)}:${Math.round(candidate.y)}`))
+          return candidate;
+      }
+    }
+  }
+  return snapTokenPosition(scene.width / 2, scene.height / 2, 1, snap);
+}
+
 /** Loads the sheet a single token is linked to (null when standalone). */
 async function loadLinkedSheet(deps: RealtimeDeps, token: Token): Promise<LinkedSheet | null> {
   if (!token.characterId) return null;

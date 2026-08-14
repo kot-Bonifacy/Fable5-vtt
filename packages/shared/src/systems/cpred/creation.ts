@@ -21,6 +21,9 @@ import {
   validateLifepath,
   type CpredLifepath,
 } from './lifepath.js';
+import type { CompendiumEntry } from './compendium.js';
+import { entryPrice, formatEddies } from './economy.js';
+import { sanitizeTokenImageUrl } from '../../tokens.js';
 
 /**
  * Character creation (stage 25a) — the mechanical half of the wizard.
@@ -53,7 +56,15 @@ export const CPRED_CREATION_METHOD_LABELS: Record<CpredCreationMethod, string> =
   complete: 'Kompletny Pakiet (Wyliczanie)',
 };
 
-export const CPRED_CREATION_STEPS = ['role', 'stats', 'skills', 'lifepath', 'summary'] as const;
+export const CPRED_CREATION_STEPS = [
+  'role',
+  'stats',
+  'skills',
+  'lifepath',
+  'gear',
+  'details',
+  'summary',
+] as const;
 export type CpredCreationStep = (typeof CPRED_CREATION_STEPS)[number];
 
 export const CPRED_CREATION_STEP_LABELS: Record<CpredCreationStep, string> = {
@@ -61,6 +72,8 @@ export const CPRED_CREATION_STEP_LABELS: Record<CpredCreationStep, string> = {
   stats: 'Cechy',
   skills: 'Umiejętności',
   lifepath: 'Ścieżka Życia',
+  gear: 'Wyposażenie',
+  details: 'Opis',
   summary: 'Podsumowanie',
 };
 
@@ -101,6 +114,25 @@ export interface CpredCreationFreeLanguage {
   level: number;
 }
 
+/**
+ * Starting money (stage 25c, s. 41–42 and s. 98–104).
+ *
+ * Two methods, two very different opening hands: a Krawędziarz gets the Role's
+ * fixed package plus pocket money („Otrzymujesz też 500 ed, które możesz
+ * dowolnie wydać teraz lub już w czasie gry"), a Kompletny Pakiet buys
+ * everything („Masz 2550 ed… Do tego masz 800 ed do wydania tylko na Modę").
+ */
+export interface CpredCreationBudgets {
+  edgerunner: number;
+  complete: number;
+  /**
+   * The fashion-only half of the Complete Package's money. The VTT has no
+   * clothing catalogue, so this number is **shown and not spendable** — a
+   * wallet that could buy a rifle with it would be handing out 800 ed.
+   */
+  fashion: number;
+}
+
 /** Parsed `cpred/creation.json`. */
 export interface CpredCreationData {
   /** Stat ids in the order the Role templates print their columns. */
@@ -115,8 +147,15 @@ export interface CpredCreationData {
   /** Skills every character carries at `limits.skillMin` or better. */
   basicSkills: string[];
   freeLanguage: CpredCreationFreeLanguage | null;
+  budgets: CpredCreationBudgets;
   roles: CpredCreationRole[];
 }
+
+export const DEFAULT_CREATION_BUDGETS: CpredCreationBudgets = {
+  edgerunner: 500,
+  complete: 2550,
+  fashion: 800,
+};
 
 export const DEFAULT_CREATION_LIMITS: CpredCreationLimits = {
   statMin: 2,
@@ -139,6 +178,7 @@ export const EMPTY_CPRED_CREATION_DATA: CpredCreationData = {
   roleAbilityStart: ROLE_RANK_MIN,
   basicSkills: [],
   freeLanguage: null,
+  budgets: DEFAULT_CREATION_BUDGETS,
   roles: [],
 };
 
@@ -164,9 +204,23 @@ export interface CpredCreationDraft {
    */
   lifepath: CpredLifepath;
   name: string;
+  /**
+   * The basket (stage 25c): catalogue id → how many copies. It is filled by
+   * `creation:buy` on the server and **never by a patch** — the prices, the
+   * budget and the shop's unlocked tier are all the server's to read, and a
+   * client that could write this list would be shopping for free.
+   */
+  purchases: Record<string, number>;
+  /** Uploaded portrait (`/uploads/portraits/…`); copied onto the sheet. */
+  portraitUrl: string | null;
+  /** Whether finishing also puts a token on the scene. */
+  placeToken: boolean;
 }
 
 export const CREATION_NAME_MAX_LENGTH = 64;
+
+/** How many copies of one catalogue entry the basket may hold. */
+export const CREATION_PURCHASE_QTY_MAX = 20;
 
 export function createDefaultCreationDraft(data: CpredCreationData): CpredCreationDraft {
   return {
@@ -180,6 +234,11 @@ export function createDefaultCreationDraft(data: CpredCreationData): CpredCreati
     skills: {},
     lifepath: createDefaultLifepath(),
     name: '',
+    purchases: {},
+    portraitUrl: null,
+    // Session zero ends with a figure on the map, so the box starts ticked; a
+    // GM building five gangers in an evening unticks it once.
+    placeToken: true,
   };
 }
 
@@ -285,8 +344,19 @@ export function buildCreationData(raw: unknown, registry: CpredRegistry): CpredC
       (id): id is string => typeof id === 'string' && registry.skillIds.has(id),
     ),
     freeLanguage,
+    budgets: readBudgets(input.budgets),
     roles,
   };
+}
+
+function readBudgets(raw: unknown): CpredCreationBudgets {
+  const input = (raw ?? {}) as Record<string, unknown>;
+  const budgets = { ...DEFAULT_CREATION_BUDGETS };
+  for (const key of ['edgerunner', 'complete', 'fashion'] as const) {
+    const value = input[key];
+    if (isInteger(value) && value >= 0) budgets[key] = value;
+  }
+  return budgets;
 }
 
 /** Attaches parsed creation data to a registry built by `buildCpredRegistry`. */
@@ -373,6 +443,48 @@ export function creationTemplateStat(
   return row[column] ?? null;
 }
 
+/* ─────────────────────────── wyposażenie startowe ─────────────────────────── */
+
+/** One line of the basket, priced from the catalogue the server holds. */
+export interface CpredCreationPurchase {
+  entryId: string;
+  name: string;
+  qty: number;
+  /** Price of one copy. */
+  price: number;
+  total: number;
+}
+
+/** Eddies this method starts with — the shopping money, without the fashion half. */
+export function creationBudget(data: CpredCreationData, draft: CpredCreationDraft): number {
+  return draft.method === 'complete' ? data.budgets.complete : data.budgets.edgerunner;
+}
+
+/**
+ * The basket as lines, in catalogue order of whatever the lookup hands back.
+ * An entry the catalogue no longer knows, or one that lost its price, is
+ * dropped: the wizard must not bill for a row it cannot show.
+ */
+export function creationPurchases(
+  draft: CpredCreationDraft,
+  lookup: (entryId: string) => CompendiumEntry | undefined,
+): CpredCreationPurchase[] {
+  const lines: CpredCreationPurchase[] = [];
+  for (const [entryId, qty] of Object.entries(draft.purchases)) {
+    if (!isInteger(qty) || qty <= 0) continue;
+    const entry = lookup(entryId);
+    if (!entry) continue;
+    const price = entryPrice(entry);
+    if (price === null) continue;
+    lines.push({ entryId, name: entry.name, qty, price, total: price * qty });
+  }
+  return lines;
+}
+
+export function creationSpentEddies(lines: readonly CpredCreationPurchase[]): number {
+  return lines.reduce((sum, line) => sum + line.total, 0);
+}
+
 /** Derived values the wizard shows while the stats are still moving. */
 export interface CpredCreationPreview {
   hpMax: number;
@@ -412,6 +524,12 @@ export function creationIssues(
   draft: CpredCreationDraft,
   data: CpredCreationData,
   registry: CpredRegistry,
+  /**
+   * Catalogue lookup for the basket (stage 25c). Optional because the wizard's
+   * first four steps have nothing to do with shopping — and because a caller
+   * without a catalogue must not be told the basket is empty when it is not.
+   */
+  lookup?: (entryId: string) => CompendiumEntry | undefined,
 ): CpredValidationIssue[] {
   const issues: CpredValidationIssue[] = [];
   const role = creationRole(data, draft.roleId);
@@ -486,6 +604,19 @@ export function creationIssues(
     issues.push(issue('skills', `Punkty umiejętności: wydane ${spent} z ${data.skillPoints}.`));
   }
 
+  if (lookup) {
+    const budget = creationBudget(data, draft);
+    const spentEddies = creationSpentEddies(creationPurchases(draft, lookup));
+    if (spentEddies > budget) {
+      issues.push(
+        issue(
+          'purchases',
+          `Zakupy startowe: wydane ${formatEddies(spentEddies)} z ${formatEddies(budget)} ed.`,
+        ),
+      );
+    }
+  }
+
   const name = draft.name.trim();
   if (name.length === 0) {
     issues.push(issue('name', 'Wpisz imię postaci.'));
@@ -524,7 +655,11 @@ export function mergeCreationDraft(
     stats: { ...current.stats },
     statRolls: { ...current.statRolls },
     skills: { ...current.skills },
+    purchases: { ...current.purchases },
   };
+
+  // The basket is the server's ledger, not a form field — see `purchases`.
+  if ('purchases' in patch) return null;
 
   if ('step' in patch) {
     const step = patch.step;
@@ -537,6 +672,9 @@ export function mergeCreationDraft(
     if (method !== current.method) {
       next.stats = {};
       next.statRolls = {};
+      // The two methods shop with different money (500 vs 2550 ed), so a basket
+      // filled under one of them is not a bill the other agreed to.
+      next.purchases = {};
     }
     next.method = method;
   }
@@ -584,6 +722,17 @@ export function mergeCreationDraft(
     if (typeof patch.name !== 'string') return null;
     next.name = patch.name.slice(0, CREATION_NAME_MAX_LENGTH);
   }
+  if ('portraitUrl' in patch) {
+    // Same rule as a sheet's portrait (stage 07): a local upload path or
+    // nothing at all — never a URL somebody else's server can serve.
+    const portraitUrl = sanitizeTokenImageUrl(patch.portraitUrl ?? null);
+    if (portraitUrl === undefined) return null;
+    next.portraitUrl = portraitUrl;
+  }
+  if ('placeToken' in patch) {
+    if (typeof patch.placeToken !== 'boolean') return null;
+    next.placeToken = patch.placeToken;
+  }
 
   // A Role or method change may have orphaned skills; drop them rather than
   // leave the wizard showing a bill for rows it no longer displays.
@@ -628,12 +777,31 @@ export function parseCreationDraft(
     skills: readSkillPatch(input.skills, data, registry) ?? {},
     lifepath: validateLifepath(input.lifepath, []),
     name: typeof input.name === 'string' ? input.name.slice(0, CREATION_NAME_MAX_LENGTH) : '',
+    purchases: readPurchases(input.purchases),
+    portraitUrl: sanitizeTokenImageUrl(input.portraitUrl ?? null) ?? null,
+    placeToken: input.placeToken !== false,
   };
   const allowed = new Set(creationAvailableSkills(draft, data, registry));
   draft.skills = Object.fromEntries(
     Object.entries(draft.skills).filter(([skillId]) => allowed.has(skillId)),
   );
   return draft;
+}
+
+/**
+ * Reads the stored basket back. Ids are not checked against the catalogue here
+ * — `creationPurchases` drops what the shop no longer sells — but the counts
+ * are, so a hand-edited draft cannot bill for −3 rifles.
+ */
+export function readPurchases(raw: unknown): Record<string, number> {
+  if (typeof raw !== 'object' || raw === null) return {};
+  const purchases: Record<string, number> = {};
+  for (const [entryId, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (entryId.length === 0) continue;
+    if (!isInteger(value) || value <= 0) continue;
+    purchases[entryId] = Math.min(value, CREATION_PURCHASE_QTY_MAX);
+  }
+  return purchases;
 }
 
 function readStoredStats(raw: unknown): Partial<Record<CpredStatId, number>> {

@@ -112,6 +112,25 @@ export const COST_CATEGORY_LABELS: Record<CostCategory, string> = {
 };
 
 /**
+ * Availability tiers (stage 25c) — **not a rule of the rulebook**, a mechanism
+ * of the campaign: the GM unlocks bands of the catalogue as the campaign goes
+ * on rather than handing a starting party the whole shop.
+ *
+ * They live here, next to the price bands, because the tier is a property of
+ * the entry — the arithmetic that derives one from a price and the refusal that
+ * reads it are in `shop.ts`.
+ */
+export const SHOP_TIERS = [1, 2, 3, 4] as const;
+export type ShopTier = (typeof SHOP_TIERS)[number];
+
+export const SHOP_TIER_MIN: ShopTier = 1;
+export const SHOP_TIER_MAX: ShopTier = 4;
+
+export function isShopTier(value: unknown): value is ShopTier {
+  return typeof value === 'number' && (SHOP_TIERS as readonly number[]).includes(value);
+}
+
+/**
  * Range bands of the ranged-combat DV table, in metres. Every weapon type
  * carries one DV per band; `null` means the weapon cannot reach that far
  * ("Nd." in the Polish table).
@@ -240,6 +259,13 @@ interface CompendiumEntryBase {
   /** Price in eddies; null when the material gives only a band. */
   cost: number | null;
   costCategory?: CostCategory;
+  /**
+   * Availability tier (stage 25c). Absent means „derive it from the price" —
+   * which is what almost every entry does; the field exists so the GM can move
+   * a single item off the rung its price would put it on (a cheap gun that is
+   * still hard to come by, a pricey toy sold on every corner).
+   */
+  tier?: ShopTier;
   source?: string;
   incomplete?: boolean;
   /** True for entries the GM typed in — those are editable and deletable. */
@@ -558,6 +584,10 @@ export function validateCompendiumEntry(
       ? (input.costCategory as CostCategory)
       : undefined;
 
+  // An unusable tier is dropped rather than refused: the entry is still a
+  // perfectly good catalogue row, it just falls back to the price's own rung.
+  const tier = isShopTier(input.tier) ? input.tier : undefined;
+
   const base: CompendiumEntryBase = {
     id,
     name: name ?? '',
@@ -566,6 +596,7 @@ export function validateCompendiumEntry(
     ...(description ? { description } : {}),
     ...(descriptionOriginal ? { descriptionOriginal } : {}),
     ...(costCategory ? { costCategory } : {}),
+    ...(tier ? { tier } : {}),
     ...(source ? { source } : {}),
     ...(input.incomplete === true ? { incomplete: true as const } : {}),
     ...(input.custom === true ? { custom: true as const } : {}),

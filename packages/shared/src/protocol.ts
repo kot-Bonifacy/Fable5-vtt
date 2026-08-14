@@ -6,7 +6,11 @@ import type { CombatView } from './combat.js';
 import type { CharacterView } from './characters.js';
 import type { CoverView } from './covers.js';
 import type { SmokeView } from './smoke.js';
-import type { CompendiumEntry, WeaponTypeDefinition } from './systems/cpred/compendium.js';
+import type {
+  CompendiumEntry,
+  ShopTier,
+  WeaponTypeDefinition,
+} from './systems/cpred/compendium.js';
 import type { LedgerEntryView } from './systems/cpred/economy.js';
 import type { RollToss } from './dice.js';
 import type { DrawingView } from './drawings.js';
@@ -119,8 +123,24 @@ export interface StateSyncPayload {
   ai: AiStatus;
   /** Item catalogue — the same for everyone; players pick gear from it. */
   compendium: CompendiumSyncPayload;
+  /**
+   * Highest shop tier unlocked in this campaign (stage 25c). It rides here
+   * rather than on `campaign` above so that raising it can be one broadcast
+   * instead of a whole re-sync — and so it cannot go stale in `socket.data`.
+   */
+  shopTier: ShopTier;
   /** Combat of the viewed scene, filtered for this viewer; null = no fight. */
   combat: CombatView | null;
+}
+
+/** GM moves the campaign's shop tier (stage 25c). */
+export interface ShopTierPayload {
+  tier: number;
+}
+
+export interface ShopTierBroadcast {
+  seq: number;
+  tier: ShopTier;
 }
 
 /** Weapon base rows plus every entry: imported ones and the GM's own. */

@@ -13,14 +13,24 @@ import {
   describeAmmoFailure,
   CRITICAL_INJURY_TABLE_LABELS,
   ROLE_GM,
+  SHOP_TIERS,
+  SHOP_TIER_LABELS,
+  SHOP_TIER_NOTES,
   WEAPON_QUALITY_LABELS,
   entryPrice,
   formatCost,
   formatPurchasePrice,
   rangeBandLabel,
   resolveWeapon,
+  shopTierOf,
+  shopTierRefusalText,
 } from '@vtt/shared';
-import { deleteCompendiumEntry, sendCyberwareAction } from '../socket.js';
+import {
+  deleteCompendiumEntry,
+  economyErrorText,
+  sendCyberwareAction,
+  setShopTier,
+} from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { countByCategory, useCompendiumStore, visibleEntries } from '../stores/compendiumStore.js';
@@ -53,6 +63,7 @@ export function CompendiumPanel() {
   const entriesById = useCompendiumStore((s) => s.entries);
   const order = useCompendiumStore((s) => s.order);
   const weaponTypeById = useCompendiumStore((s) => s.weaponTypeById);
+  const shopTier = useCompendiumStore((s) => s.shopTier);
   const entries = useMemo(
     () => visibleEntries(entriesById, order, query, category),
     [entriesById, order, query, category],
@@ -91,6 +102,8 @@ export function CompendiumPanel() {
         ))}
       </nav>
 
+      <ShopTierBar isGm={isGm} />
+
       {selected ? (
         <EntryCard entry={selected} isGm={isGm} onBack={() => select(null)} />
       ) : (
@@ -98,27 +111,88 @@ export function CompendiumPanel() {
           {entries.length === 0 ? (
             <li className="placeholder-text">Brak wpisów w tej kategorii.</li>
           ) : null}
-          {entries.map((entry) => (
-            <li key={entry.id}>
-              <button type="button" className="compendium-row" onClick={() => select(entry.id)}>
-                <span className="compendium-row-name">
-                  {entry.name}
-                  {entry.custom ? <span className="compendium-tag">własny</span> : null}
-                  {entry.incomplete ? (
-                    <span className="compendium-tag compendium-tag--warn" title="Dane niepełne">
-                      ?
-                    </span>
-                  ) : null}
-                </span>
-                <span className="compendium-row-meta">{shortStats(entry, weaponTypeById)}</span>
-              </button>
-            </li>
-          ))}
+          {entries.map((entry) => {
+            const tier = shopTierOf(entry);
+            // Injuries are not merchandise, so the tier chip would be noise.
+            const priced = entry.category !== 'criticalInjury';
+            const locked = priced && tier > shopTier;
+            return (
+              <li key={entry.id}>
+                <button
+                  type="button"
+                  className={`compendium-row ${locked ? 'compendium-row--locked' : ''}`}
+                  onClick={() => select(entry.id)}
+                >
+                  <span className="compendium-row-name">
+                    {entry.name}
+                    {entry.custom ? <span className="compendium-tag">własny</span> : null}
+                    {entry.incomplete ? (
+                      <span className="compendium-tag compendium-tag--warn" title="Dane niepełne">
+                        ?
+                      </span>
+                    ) : null}
+                    {locked ? (
+                      <span
+                        className="compendium-tag compendium-tag--tier"
+                        title={shopTierRefusalText(tier, shopTier)}
+                      >
+                        {SHOP_TIER_LABELS[tier]}
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="compendium-row-meta">{shortStats(entry, weaponTypeById)}</span>
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
 
       {editing ? <CompendiumEditor /> : null}
     </section>
+  );
+}
+
+/**
+ * The shop's opening hours (stage 25c): a dial for the GM, a sentence for
+ * everybody else.
+ *
+ * It sits here rather than on the „Panel MG" page because this is where the GM
+ * is already looking at the catalogue — and because the change goes out over
+ * the socket, so a player watching the same list sees it open up mid-sentence.
+ */
+function ShopTierBar({ isGm }: { isGm: boolean }) {
+  const shopTier = useCompendiumStore((s) => s.shopTier);
+  const [note, setNote] = useState<string | null>(null);
+
+  async function move(tier: number) {
+    const ack = await setShopTier(tier);
+    setNote(ack.ok ? null : economyErrorText(ack.error));
+  }
+
+  return (
+    <div className="shop-tier">
+      <span className="shop-tier-label">
+        Sklep: <strong>{SHOP_TIER_LABELS[shopTier]}</strong>
+        <span className="shop-tier-note"> {SHOP_TIER_NOTES[shopTier]}</span>
+      </span>
+      {isGm ? (
+        <span className="shop-tier-steps">
+          {SHOP_TIERS.map((tier) => (
+            <button
+              key={tier}
+              type="button"
+              className={`shop-tier-step ${tier === shopTier ? 'shop-tier-step--active' : ''}`}
+              title={`${SHOP_TIER_LABELS[tier]} — ${SHOP_TIER_NOTES[tier]}`}
+              onClick={() => void move(tier)}
+            >
+              {tier}
+            </button>
+          ))}
+        </span>
+      ) : null}
+      {note ? <span className="compendium-note">{note}</span> : null}
+    </div>
   );
 }
 
@@ -183,6 +257,9 @@ function EntryCard({
   // same), so an entry priced only by its band is still buyable.
   const price = entryPrice(entry);
   const priceLabel = formatPurchasePrice(entry) ?? '—';
+  const shopTier = useCompendiumStore((s) => s.shopTier);
+  const tier = shopTierOf(entry);
+  const locked = tier > shopTier;
   const fitting =
     entry.category === 'cyberware' && entry.install ? CYBERWARE_INSTALL_COST[entry.install] : 0;
 
@@ -440,7 +517,18 @@ function EntryCard({
           </>
         ) : null}
         {entry.category === 'criticalInjury' ? null : (
-          <Stat label="Cena" value={formatCost(entry)} />
+          <>
+            <Stat label="Cena" value={formatCost(entry)} />
+            <Stat
+              label="Dostępność"
+              value={`${tier} — ${SHOP_TIER_LABELS[tier]}`}
+              hint={
+                entry.tier
+                  ? 'Poziom wpisany ręcznie przez MG — nie wynika z ceny.'
+                  : 'Poziom wyliczony z ceny. MG odblokowuje kolejne w miarę kampanii.'
+              }
+            />
+          </>
         )}
       </dl>
 
@@ -536,9 +624,13 @@ function EntryCard({
               title={
                 price === null
                   ? 'Ten wpis nie ma ceny — uzupełnij ją w kompendium.'
-                  : `Cena schodzi z konta postaci: ${priceLabel}`
+                  : locked
+                    ? shopTierRefusalText(tier, shopTier)
+                    : `Cena schodzi z konta postaci: ${priceLabel}`
               }
-              disabled={price === null}
+              // The GM buys through every tier — the dial paces the *table*,
+              // and the server exempts the GM for the same reason.
+              disabled={price === null || (locked && !isGm)}
               onClick={() => void buy()}
             >
               Kup{price === null ? '' : ` — ${price} ed`}

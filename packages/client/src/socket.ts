@@ -141,6 +141,7 @@ import type {
   TokenPatch,
   TokenSyncBroadcast,
   RollParseError,
+  ShopTierBroadcast,
   TokenUpsertBroadcast,
   TokenView,
   OpeningSyncBroadcast,
@@ -160,7 +161,9 @@ import {
   MAX_DIE_SIDES,
   MAX_ROLL_TERMS,
   ROLE_GM,
+  clampShopTier,
   screamsheetErrorText,
+  shopTierRefusalText,
   TOKEN_MOVE_RATE_HZ,
   TOKEN_PATH_MAX_POINTS,
   parseChatInput,
@@ -564,6 +567,11 @@ export function connectSocket(userId: string): Socket {
   });
   socket.on('compendium:delete', (broadcast: CompendiumDeleteBroadcast) => {
     useCompendiumStore.getState().applyDelete(broadcast.id);
+  });
+  // The GM's shop dial (stage 25c): a room broadcast, because a catalogue that
+  // opened up only after a reload is a catalogue the table argues about.
+  socket.on('shop:tier', (broadcast: ShopTierBroadcast) => {
+    useCompendiumStore.getState().applyShopTier(broadcast.tier);
   });
 
   // Character emissions are always targeted (owner + GM) and carry no seq.
@@ -1965,12 +1973,23 @@ export const rollCreationLifepath = (tableIds: string[], index?: number) =>
 export const rollCreationLifepathCount = (group: string) =>
   emitSceneAck<CreationDraft>('creation:lifepath-count', { group });
 
+/**
+ * One item into or out of the wizard's basket (stage 25c). A delta rather than
+ * a quantity: two quick clicks on „+" must not race each other onto the same
+ * total, and the server is the one holding the prices anyway.
+ */
+export const buyCreationItem = (entryId: string, delta: 1 | -1) =>
+  emitSceneAck<CreationDraft>('creation:buy', { entryId, delta });
+
 export const finishCreation = (payload: CreationFinishPayload = {}) =>
   emitSceneAck<CharacterView>('creation:finish', payload);
 
 export const discardCreation = () => emitSceneAck('creation:discard', undefined);
 
 export function creationErrorText(code: string | undefined): string {
+  // The creator always shops at level 1, so this one reads as „nie na start".
+  const locked = shopTierErrorText(code);
+  if (locked) return `${locked} Zakupy startowe idą wyłącznie po poziomie 1.`;
   switch (code) {
     case 'CREATION_DATA_MISSING':
       return 'Brak danych tworzenia postaci — kreator nie ma z czego czytać tabel.';
@@ -1996,6 +2015,16 @@ export function creationErrorText(code: string | undefined): string {
       return 'Nie ma takiego wiersza — najpierw rzuć, ilu masz przyjaciół, wrogów albo miłości.';
     case 'LIFEPATH_ROLL_MISSED':
       return 'Wynik kości nie trafił w żaden wiersz tabeli — dane Ścieżki Życia są niepełne.';
+    case 'NOT_ENOUGH_EDDIES':
+      return 'Za mało startowych eurodolców na ten zakup.';
+    case 'NO_PRICE':
+      return 'Ten wpis nie ma ceny — uzupełnij ją w kompendium.';
+    case 'NOT_PURCHASABLE':
+      return 'Tego się w kreatorze nie kupuje: cyborgizacje instaluje się z karty wpisu, amunicję ładuje się do broni.';
+    case 'ENTRY_NOT_FOUND':
+      return 'Nie znalazłem tego wpisu w kompendium.';
+    case 'TOO_MANY_ROWS':
+      return 'Więcej sztuk tego przedmiotu kreator nie przyjmie.';
     case undefined:
       return 'Nieznany błąd kreatora.';
     default:
@@ -2170,7 +2199,22 @@ export function sendCyberwareAction(
  * ------------------------------------------------------------------ */
 
 /** Polish text for a refusal of any of the `economy:*` events. */
+/**
+ * „SHOP_TIER_LOCKED:3:1" — the item's own level and the campaign's, in one
+ * code. Both numbers travel because „nie wolno" alone sends the player to ask
+ * the GM without knowing what to ask for.
+ */
+function shopTierErrorText(code: string | undefined): string | null {
+  if (!code?.startsWith('SHOP_TIER_LOCKED')) return null;
+  const [, entryTier, unlocked] = code.split(':');
+  const wanted = clampShopTier(Number(entryTier));
+  const open = clampShopTier(Number(unlocked));
+  return `Poza zasięgiem sklepu. ${shopTierRefusalText(wanted, open)}`;
+}
+
 export function economyErrorText(code: string | undefined): string {
+  const locked = shopTierErrorText(code);
+  if (locked) return locked;
   switch (code) {
     case 'NOT_ENOUGH_EDDIES':
       return 'Za mało eurodolców.';
@@ -2251,6 +2295,17 @@ export function saveCompendiumEntry(entry: unknown): Promise<SocketAck<Compendiu
       return;
     }
     socket.emit('compendium:upsert', { entry }, (ack: SocketAck<CompendiumEntry>) => resolve(ack));
+  });
+}
+
+/** GM: moves the campaign's shop tier (stage 25c); everyone hears about it. */
+export function setShopTier(tier: number): Promise<SocketAck<{ tier: number }>> {
+  return new Promise((resolve) => {
+    if (!socket) {
+      resolve({ ok: false, error: 'OFFLINE' });
+      return;
+    }
+    socket.emit('shop:tier', { tier }, (ack: SocketAck<{ tier: number }>) => resolve(ack));
   });
 }
 

@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type PointerEvent } from 'react';
 import type {
   CampaignDetail,
+  CompendiumCategory,
+  CompendiumEntry,
   CpredCreationDraft,
   CpredLifepath,
   CpredLifepathBotKind,
@@ -8,6 +10,7 @@ import type {
   CpredLifepathTable,
   CpredSkillDefinition,
   CpredStatId,
+  PortraitUploadResult,
 } from '@vtt/shared';
 import {
   CPRED_CREATION_METHODS,
@@ -16,22 +19,30 @@ import {
   CPRED_CREATION_STEP_LABELS,
   CPRED_STAT_IDS,
   CPRED_STAT_LABELS,
+  CREATION_SHOP_TIER,
   LIFEPATH_FIELD_TABLES,
   LIFEPATH_GROUP_LABELS,
   LIFEPATH_GROUP_MAX,
   ROLE_GM,
+  SHOP_TIER_LABELS,
   creationAvailableSkills,
+  creationBudget,
   creationDataOf,
   creationIssues,
   creationPreview,
+  creationPurchases,
   creationRole,
   creationSkillCost,
   creationSkillPointsSpent,
   creationStatPointsSpent,
   creationStatPool,
+  creationSpentEddies,
   creationStats,
   emptyLifepathEnemy,
   emptyLifepathPerson,
+  entryPrice,
+  entryWithinTier,
+  formatEddies,
   groupedSkills,
   isLifepathFieldTable,
   lifepathBotDraft,
@@ -39,13 +50,16 @@ import {
   lifepathMissing,
   lifepathRoleTables,
   lifepathRollLabel,
+  searchCompendium,
 } from '@vtt/shared';
-import { apiGet } from '../api.js';
+import { ApiError, apiGet, apiUpload } from '../api.js';
 import { botErrorText, createBot, creationErrorText, finishCreation } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useBotStore } from '../stores/botStore.js';
 import { ensureCpredDataLoaded, useCharacterStore } from '../stores/characterStore.js';
+import { useCompendiumStore } from '../stores/compendiumStore.js';
 import {
+  buyCreationEntry,
   clearCreationCup,
   enqueueCreationCall,
   loadCreationCup,
@@ -56,16 +70,31 @@ import {
 } from '../stores/creationStore.js';
 import { useRollStore } from '../stores/rollStore.js';
 
+/** Same wording as the sheet's own portrait upload (stage 07). */
+function portraitErrorText(error: unknown): string {
+  const code = error instanceof ApiError ? error.code : 'UNKNOWN';
+  switch (code) {
+    case 'FILE_TOO_LARGE':
+      return 'Plik jest za duży (limit 8 MB).';
+    case 'UNSUPPORTED_IMAGE':
+      return 'Nieobsługiwany format — użyj PNG, JPG lub WebP.';
+    case 'IMAGE_TOO_LARGE':
+      return 'Obraz jest za duży (maks. 2048 px na bok).';
+    default:
+      return 'Nie udało się wgrać portretu.';
+  }
+}
+
 /**
  * The character creator (stage 25a) — a floating window in the same idiom as
  * the sheet, so the map stays visible and the day/night theme from 27a already
  * fits it.
  *
- * Five steps with free movement between them: Role, Stats, Skills, Lifepath
- * (stage 25b) and Summary. Nothing here computes a rule on its own — the pools,
- * the ceilings, the Lifepath tables and the list of what is still missing all
- * come from `shared/systems/cpred`, which is the same code the server refuses
- * with.
+ * Seven steps with free movement between them: Role, Stats, Skills, Lifepath
+ * (stage 25b), Gear, Description and Summary (stage 25c). Nothing here computes
+ * a rule on its own — the pools, the ceilings, the Lifepath tables, the prices
+ * and the list of what is still missing all come from `shared/systems/cpred`,
+ * which is the same code the server refuses with.
  */
 export function CharacterCreator() {
   const open = useCreationStore((s) => s.open);
@@ -149,7 +178,12 @@ function CreatorWindow() {
     setDraft(null);
   }
 
-  const issues = draft ? creationIssues(draft, data, registry) : [];
+  // The catalogue goes in so the wizard can price the basket: without it the
+  // list of what is missing would quietly skip „wydane 3000 z 2550 ed".
+  const entriesById = useCompendiumStore((s) => s.entries);
+  const issues = draft
+    ? creationIssues(draft, data, registry, (entryId: string) => entriesById[entryId])
+    : [];
   const stepIndex = draft ? CPRED_CREATION_STEPS.indexOf(draft.step) : 0;
 
   return (
@@ -212,6 +246,8 @@ function CreatorWindow() {
             {draft.step === 'stats' && <StatsStep draft={draft} />}
             {draft.step === 'skills' && <SkillsStep draft={draft} />}
             {draft.step === 'lifepath' && <LifepathStep draft={draft} />}
+            {draft.step === 'gear' && <GearStep draft={draft} />}
+            {draft.step === 'details' && <DetailsStep draft={draft} />}
             {draft.step === 'summary' && (
               <SummaryStep
                 draft={draft}
@@ -1072,7 +1108,249 @@ function LifepathPeople({
   );
 }
 
-// ───────────────────────── krok 5: Podsumowanie ─────────────────────────
+// ───────────────────────── krok 5: Wyposażenie ─────────────────────────
+
+/** The three catalogue shelves a starting character can carry off. */
+const CREATOR_SHELVES: { id: CompendiumCategory; label: string }[] = [
+  { id: 'weapon', label: 'Broń' },
+  { id: 'armor', label: 'Pancerz' },
+  { id: 'gear', label: 'Sprzęt' },
+];
+
+/**
+ * Starting purchases (stage 25c).
+ *
+ * The shop is the catalogue of stage 13 and the money is the rulebook's
+ * (500 ed for a Krawędziarz, 2550 for a Kompletny Pakiet) — but the shelf is
+ * held to availability level 1, which is the GM's wish for session zero: a
+ * fresh character buys what any kiosk sells, not what a Fixer keeps in the back.
+ * Everything above that level is simply not on this list; the whole catalogue
+ * with its greyed-out rows is one tab away in „Kompendium".
+ */
+function GearStep({ draft }: { draft: CpredCreationDraft }) {
+  const registry = useCharacterStore((s) => s.registry);
+  const busy = useCreationStore((s) => s.busy);
+  const entriesById = useCompendiumStore((s) => s.entries);
+  const order = useCompendiumStore((s) => s.order);
+  const [shelf, setShelf] = useState<CompendiumCategory>('weapon');
+  const [query, setQuery] = useState('');
+  const data = creationDataOf(registry);
+
+  const lookup = useMemo(() => (entryId: string) => entriesById[entryId], [entriesById]);
+  const lines = useMemo(() => creationPurchases(draft, lookup), [draft, lookup]);
+  const spent = creationSpentEddies(lines);
+  const budget = creationBudget(data, draft);
+  const left = budget - spent;
+
+  const shelfEntries = useMemo(() => {
+    const all = order.map((id) => entriesById[id]).filter((e): e is CompendiumEntry => !!e);
+    return searchCompendium(all, query, shelf).filter(
+      (entry) => entryWithinTier(entry, CREATION_SHOP_TIER) && entryPrice(entry) !== null,
+    );
+  }, [entriesById, order, query, shelf]);
+
+  return (
+    <div className="creator-step creator-gear">
+      <div className="creator-budget">
+        <strong>{formatEddies(left)} ed</strong>
+        <span className="creator-hint">
+          zostaje z {formatEddies(budget)} ed startowych · wydane {formatEddies(spent)} ed
+        </span>
+        {draft.method === 'complete' && data.budgets.fashion > 0 ? (
+          <span className="creator-hint">
+            Podręcznik daje jeszcze {formatEddies(data.budgets.fashion)} ed wyłącznie na Modę — VTT
+            nie prowadzi katalogu ubrań, więc te pieniądze zostają na papierze.
+          </span>
+        ) : null}
+        {draft.method === 'edgerunner' ? (
+          <span className="creator-hint">
+            Krawędziarz dostaje w podręczniku dodatkowo odgórny pakiet Roli (broń, pancerz,
+            ekwipunek) — na razie dokłada go MG przyciskiem „Dodaj za darmo" w Kompendium.
+          </span>
+        ) : null}
+      </div>
+
+      {lines.length > 0 ? (
+        <ul className="creator-basket">
+          {lines.map((line) => (
+            <li key={line.entryId}>
+              <span className="creator-basket-name">
+                {line.name}
+                {line.qty > 1 ? <span className="creator-basket-qty">×{line.qty}</span> : null}
+              </span>
+              <span className="creator-basket-price">{formatEddies(line.total)} ed</span>
+              <button
+                type="button"
+                className="small-button"
+                disabled={busy}
+                title="Odłóż jedną sztukę"
+                onClick={() => void buyCreationEntry(line.entryId, -1)}
+              >
+                −
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="creator-hint">
+          Koszyk jest pusty. Wszystko można też dokupić później — eurodolce zostają na karcie.
+        </p>
+      )}
+
+      <div className="creator-shop-head">
+        {CREATOR_SHELVES.map((entry) => (
+          <button
+            key={entry.id}
+            type="button"
+            className={`compendium-category ${shelf === entry.id ? 'compendium-category--active' : ''}`}
+            onClick={() => setShelf(entry.id)}
+          >
+            {entry.label}
+          </button>
+        ))}
+        <input
+          className="compendium-search"
+          type="search"
+          value={query}
+          placeholder="Szukaj…"
+          onChange={(event) => setQuery(event.target.value)}
+        />
+      </div>
+
+      <ul className="creator-shop">
+        {shelfEntries.length === 0 ? (
+          <li className="placeholder-text">
+            Nic na poziomie 1 ({SHOP_TIER_LABELS[CREATION_SHOP_TIER]}) w tej kategorii.
+          </li>
+        ) : null}
+        {shelfEntries.map((entry) => {
+          const price = entryPrice(entry) ?? 0;
+          const held = draft.purchases[entry.id] ?? 0;
+          return (
+            <li key={entry.id}>
+              <button
+                type="button"
+                className="creator-shop-row"
+                disabled={busy || price > left}
+                title={price > left ? 'Za mało startowych eurodolców.' : `Dołóż — ${price} ed`}
+                onClick={() => void buyCreationEntry(entry.id, 1)}
+              >
+                <span className="creator-shop-name">
+                  {entry.name}
+                  {held > 0 ? <span className="creator-basket-qty">×{held}</span> : null}
+                </span>
+                <span className="creator-shop-price">{formatEddies(price)} ed</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+// ───────────────────────── krok 6: Opis ─────────────────────────
+
+/**
+ * Everything the sheet shows before a single number: the street name, the face
+ * and whether the character walks onto the map when the wizard closes.
+ */
+function DetailsStep({ draft }: { draft: CpredCreationDraft }) {
+  const patch = useCreationStore((s) => s.patch);
+  const busy = useCreationStore((s) => s.busy);
+  const [name, setName] = useState(draft.name);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  async function uploadPortrait(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const result = await apiUpload<PortraitUploadResult>('/api/uploads/portraits', file);
+      await patch({ portraitUrl: result.url });
+    } catch (error) {
+      setUploadError(portraitErrorText(error));
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div className="creator-step creator-details">
+      <label className="creator-name">
+        Ksywa na Ulicy
+        {/* Sent on every keystroke, like the sheet saves. Saving on blur alone
+            cost „Utwórz postać" a click in 25a: the button is disabled until
+            the name reaches the server, so the press that blurred the field
+            found it still greyed out. The raw value goes out (the space in a
+            two-word ksywa has to survive — that was the 13.08 bug) and the
+            server trims when it writes the character. */}
+        <input
+          type="text"
+          maxLength={64}
+          value={name}
+          placeholder="Zgrzyt"
+          onChange={(event) => {
+            setName(event.target.value);
+            void patch({ name: event.target.value });
+          }}
+        />
+      </label>
+
+      <div className="creator-portrait">
+        {draft.portraitUrl ? (
+          <img src={draft.portraitUrl} alt="Portret postaci" />
+        ) : (
+          <span className="creator-portrait-empty">brak portretu</span>
+        )}
+        {/* Its own label rather than the sheet's `cp-portrait-upload`: that one
+            is a hover overlay pinned to the sheet's portrait frame, and out
+            here it would simply be invisible. */}
+        <label className="small-button creator-portrait-upload">
+          {uploading ? 'Wgrywanie…' : draft.portraitUrl ? 'Zmień portret' : 'Wgraj portret'}
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            onChange={(event) => void uploadPortrait(event)}
+            disabled={uploading || busy}
+            hidden
+          />
+        </label>
+        {draft.portraitUrl ? (
+          <button
+            type="button"
+            className="small-button"
+            disabled={busy}
+            onClick={() => void patch({ portraitUrl: null })}
+          >
+            Usuń portret
+          </button>
+        ) : null}
+        {uploadError ? <p className="auth-error">{uploadError}</p> : null}
+      </div>
+
+      <label className="creator-checkbox">
+        <input
+          type="checkbox"
+          checked={draft.placeToken}
+          disabled={busy}
+          onChange={(event) => void patch({ placeToken: event.target.checked })}
+        />
+        <span>
+          Postaw żeton na aktywnej scenie
+          <span className="creator-hint">
+            Portret posłuży za obrazek żetonu, dopóki MG nie wybierze innego.
+          </span>
+        </span>
+      </label>
+    </div>
+  );
+}
+
+// ───────────────────────── krok 7: Podsumowanie ─────────────────────────
 
 function SummaryStep({
   draft,
@@ -1088,34 +1366,28 @@ function SummaryStep({
   onOwnerChange: (value: string) => void;
 }) {
   const registry = useCharacterStore((s) => s.registry);
-  const patch = useCreationStore((s) => s.patch);
+  const entriesById = useCompendiumStore((s) => s.entries);
   const data = creationDataOf(registry);
   const role = registry.roles.find((entry) => entry.id === draft.roleId);
   const preview = creationPreview(creationStats(draft, data));
-  const [name, setName] = useState(draft.name);
   const taken = Object.entries(draft.skills).filter(([, level]) => level > 0);
+  const lines = useMemo(
+    () => creationPurchases(draft, (entryId: string) => entriesById[entryId]),
+    [draft, entriesById],
+  );
+  const left = creationBudget(data, draft) - creationSpentEddies(lines);
 
   return (
     <div className="creator-step creator-summary">
-      <label className="creator-name">
-        Imię postaci
-        {/* Sent on every keystroke, like the sheet saves. Saving on blur alone
-            cost „Utwórz postać" a click: the button is disabled until the name
-            reaches the server, so the press that blurred the field found it
-            still greyed out and did nothing. The raw value goes out (the space
-            in a two-word ksywa has to survive — that was the 13.08 bug), and
-            the server trims when it writes the character. */}
-        <input
-          type="text"
-          maxLength={64}
-          value={name}
-          placeholder="Ksywa na Ulicy"
-          onChange={(e) => {
-            setName(e.target.value);
-            void patch({ name: e.target.value });
-          }}
-        />
-      </label>
+      {/* The name lives in „Opis" — one field, one place. Here it is what the
+          card will say, next to the face that goes with it. */}
+      <p className="creator-summary-name">
+        {draft.portraitUrl ? <img src={draft.portraitUrl} alt="" /> : null}
+        <strong>{draft.name.trim() || 'Bez imienia'}</strong>
+        <span className="creator-hint">
+          {draft.placeToken ? 'Żeton stanie na aktywnej scenie.' : 'Bez żetonu na scenie.'}
+        </span>
+      </p>
 
       {isGm && (
         <label className="creator-name">
@@ -1170,6 +1442,12 @@ function SummaryStep({
           {draft.lifepath.language ? ` — ${draft.lifepath.language}` : ' — jeszcze nie wybrany'}.
         </p>
       )}
+      <p className="creator-hint">
+        Wyposażenie ({lines.length}):{' '}
+        {lines.map((line) => `${line.name}${line.qty > 1 ? ` ×${line.qty}` : ''}`).join(' · ') ||
+          'nic kupionego'}
+        {' · '}w kieszeni zostaje {formatEddies(Math.max(0, left))} ed
+      </p>
       <LifepathSummary draft={draft} />
     </div>
   );

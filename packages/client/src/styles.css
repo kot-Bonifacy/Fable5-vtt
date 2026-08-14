@@ -3023,6 +3023,64 @@ input[type='color'] {
   border-color: #f0b429;
 }
 
+/* Etap 25c — poziomy dostępności sklepu. Wpis ponad poziomem kampanii zostaje
+   na liście, tylko przygaszony: gracz ma widzieć, po co warto sięgnąć. */
+.compendium-tag--tier {
+  color: #8ab4f8;
+  border-color: #8ab4f8;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.compendium-row--locked {
+  opacity: 0.5;
+}
+
+.compendium-row--locked:hover {
+  opacity: 0.8;
+}
+
+.shop-tier {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  padding: 0.3rem 0.1rem 0.45rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.74rem;
+  color: var(--text-dim);
+}
+
+.shop-tier-label {
+  flex: 1;
+  min-width: 10rem;
+}
+
+.shop-tier-note {
+  display: block;
+  font-size: 0.68rem;
+}
+
+.shop-tier-steps {
+  display: flex;
+  gap: 0.15rem;
+}
+
+.shop-tier-step {
+  width: 1.6rem;
+  padding: 0.1rem 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.shop-tier-step--active {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
 .compendium-card {
   display: flex;
   flex-direction: column;
@@ -6032,12 +6090,170 @@ body.is-resizing {
   color: var(--accent);
 }
 
-.creator-summary .creator-name {
+.creator-summary .creator-name,
+.creator-details .creator-name {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
   font-size: 0.76rem;
   color: var(--text-dim);
+}
+
+/* ── Etap 25c: wyposażenie startowe i dane opisowe ───────────────────────── */
+
+.creator-budget {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.creator-budget strong {
+  font-size: 1.1rem;
+  color: var(--text);
+}
+
+.creator-basket {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.creator-basket li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+}
+
+.creator-basket-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.creator-basket-qty {
+  margin-left: 0.3rem;
+  color: var(--accent);
+}
+
+.creator-basket-price {
+  flex: none;
+  font-size: 0.74rem;
+  color: var(--text-dim);
+}
+
+.creator-shop-head {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  padding-top: 0.3rem;
+  border-top: 1px solid var(--border);
+}
+
+.creator-shop {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  max-height: 16rem;
+  overflow-y: auto;
+}
+
+.creator-shop-row {
+  width: 100%;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.3rem 0.45rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-align: left;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.creator-shop-row:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.creator-shop-name {
+  min-width: 0;
+}
+
+.creator-shop-price {
+  flex: none;
+  font-size: 0.74rem;
+  color: var(--text-dim);
+}
+
+.creator-portrait {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.creator-portrait img {
+  width: 5.5rem;
+  height: 5.5rem;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.creator-portrait-empty {
+  width: 5.5rem;
+  height: 5.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+/* `small-button` is a button; this is a label wrapping a hidden file input. */
+.creator-portrait-upload {
+  cursor: pointer;
+}
+
+.creator-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+}
+
+.creator-checkbox .creator-hint {
+  display: block;
+}
+
+.creator-summary-name {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin: 0;
+}
+
+.creator-summary-name img {
+  width: 3rem;
+  height: 3rem;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  border-radius: 8px;
 }
 
 .creator-footer {

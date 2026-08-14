@@ -39,6 +39,10 @@ model Campaign {
   name      String
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
+  /// Highest shop availability tier unlocked in this campaign (stage 25c, 1–4).
+  /// Not a rule of Cyberpunk RED — a GM's dial: a starting party shops at 1,
+  /// and the catalogue opens up as the campaign goes on.
+  shopTier  Int      @default(1)
 
   invitations  Invitation[]
   members      CampaignMember[]

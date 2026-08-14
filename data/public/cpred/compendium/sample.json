@@ -539,6 +539,22 @@
       "costCategory": "veryExpensive",
       "humanityLoss": "4k6",
       "humanityLossFixed": 14
+    },
+    {
+      "id": "gear.racja-polowa",
+      "category": "gear",
+      "name": "Racja polowa",
+      "description": "Samopodgrzewająca się torebka z posiłkiem. Smakuje jak karton, syci jak obiad.",
+      "cost": 10,
+      "costCategory": "cheap"
+    },
+    {
+      "id": "gear.kufer-szmuglerski",
+      "category": "gear",
+      "name": "Kufer szmuglerski",
+      "description": "Kufer z podwójnym dnem i tłumikiem sygnału — przemyci wszystko, czego skaner nie zdąży zobaczyć. Przykład wpisu z najwyższego poziomu dostępności.",
+      "cost": 5000,
+      "costCategory": "luxury"
     }
   ]
 }

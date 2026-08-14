@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { CpredCreationDraft, RollGesture } from '@vtt/shared';
 import {
+  buyCreationItem,
   creationErrorText,
   discardCreation,
   patchCreation,
@@ -139,15 +140,24 @@ export async function rollCreationWithGesture(gesture?: RollGesture): Promise<vo
  * log readable.
  */
 export async function rollLifepathTables(tableIds: string[], index?: number): Promise<void> {
-  await runCreationRoll(() => rollCreationLifepath(tableIds, index));
+  await runCreationCall(() => rollCreationLifepath(tableIds, index));
 }
 
 /** „Rzuć 1k10 i odejmij 7" — how many friends, enemies or tragic loves. */
 export async function rollLifepathCount(group: string): Promise<void> {
-  await runCreationRoll(() => rollCreationLifepathCount(group));
+  await runCreationCall(() => rollCreationLifepathCount(group));
 }
 
-async function runCreationRoll(
+/**
+ * One item into or out of the starting basket (stage 25c). Same queue as the
+ * patches, for the same reason: holding „+" down fires two calls, and each one
+ * is a read-modify-write of the same stored draft.
+ */
+export async function buyCreationEntry(entryId: string, delta: 1 | -1): Promise<void> {
+  await runCreationCall(() => buyCreationItem(entryId, delta));
+}
+
+async function runCreationCall(
   call: () => Promise<{ ok: boolean; error?: string; data?: { draft: CpredCreationDraft } }>,
 ): Promise<void> {
   const store = useCreationStore.getState();

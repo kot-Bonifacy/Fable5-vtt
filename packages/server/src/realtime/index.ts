@@ -51,6 +51,7 @@ import { tokenEffectEvent } from './turn-effects.js';
 import { effectExpireEvent } from './timed-effects.js';
 import { characterCreateEvent, characterDeleteEvent, characterUpdateEvent } from './characters.js';
 import {
+  creationBuyEvent,
   creationDiscardEvent,
   creationFinishEvent,
   creationLifepathCountEvent,
@@ -97,6 +98,7 @@ import { explorationForgetEvent, sceneExploreEvent } from './exploration.js';
 import { drawingClearEvent, drawingCreateEvent, drawingDeleteEvent } from './drawings.js';
 import { noteCreateEvent, noteDeleteEvent, noteUpdateEvent } from './notes.js';
 import { compendiumDeleteEvent, compendiumUpsertEvent } from './compendium.js';
+import { shopTierEvent } from './shop.js';
 import { botCreateEvent, botDeleteEvent, botDuplicateEvent, botUpdateEvent } from './bots.js';
 import { botChatEvent, botTeachEvent } from './bot-chat.js';
 import { botSayEvent, botStopEvent } from './bot-turns.js';
@@ -188,6 +190,7 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   effectExpireEvent,
   compendiumUpsertEvent,
   compendiumDeleteEvent,
+  shopTierEvent,
   characterCreateEvent,
   characterUpdateEvent,
   characterDeleteEvent,
@@ -196,6 +199,7 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   creationRollEvent,
   creationLifepathRollEvent,
   creationLifepathCountEvent,
+  creationBuyEvent,
   creationFinishEvent,
   creationDiscardEvent,
   characterRollEvent,

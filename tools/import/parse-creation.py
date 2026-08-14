@@ -451,6 +451,29 @@ def parse_skill_points(chapter: str) -> int:
     return int(match.group(1))
 
 
+def parse_budgets(chapter: str) -> dict:
+    """Starting money of the two methods (s. 41–42, stage 25c).
+
+    Three numbers, three sentences, and each says what its money is *for* —
+    which is why the fashion half is read separately instead of being added to
+    the Complete Package's total.
+    """
+    flat = clean(chapter)
+    budgets = {"edgerunner": 500, "complete": 2550, "fashion": 800}
+    patterns = {
+        "edgerunner": r"Otrzymujesz też (\d+) ed",
+        "complete": r"Masz (\d+) ed, które możesz wydać",
+        "fashion": r"masz (\d+) ed do wydania tylko na Modę",
+    }
+    for key, pattern in patterns.items():
+        match = re.search(pattern, flat)
+        if match is None:
+            warn(f"Nie znalazłem startowych eurodolców ({key}) — zostaje {budgets[key]}")
+            continue
+        budgets[key] = int(match.group(1))
+    return budgets
+
+
 def parse_stat_ranks(chapter: str) -> list[dict]:
     """The „Ranga Postaci / Punkty Cech" table (s. 78)."""
     flat = clean(chapter)
@@ -552,6 +575,7 @@ def main() -> int:
         "roleAbilityStart": parse_role_ability_start(roles_chapter),
         "basicSkills": basic,
         "freeLanguage": free_language(roles_chapter),
+        "budgets": parse_budgets(roles_chapter),
         "roles": roles,
     }
     write(CPRED_DIR / "creation.json", payload)
@@ -562,6 +586,7 @@ def main() -> int:
     print(f"Listy umiejętności: {listed}/{len(roles)} ról po {SKILLS_PER_ROLE} pozycji")
     print(f"Podstawowe:         {len(basic)}")
     print(f"Pule:               Cechy {payload['statRanks']}, umiejętności {payload['skillPoints']}")
+    print(f"Eurodolce startowe: {payload['budgets']}")
     if warnings:
         print(f"\nOstrzeżenia ({len(warnings)}):")
         for message in warnings:

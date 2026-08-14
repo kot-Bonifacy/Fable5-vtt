@@ -30,6 +30,9 @@ python tools/import/parse-creation.py
 # 2.6. podręcznik główny -> tabele Ścieżek Życia (etap 25b)
 python tools/import/parse-lifepath.py
 
+# 2.7. podręcznik główny -> główna lista osprzętu (etap 25c)
+python tools/import/parse-gear.py
+
 # 3. DLC -> broń markowa (+ kontrola zgodności z podręcznikiem)
 uv run --with pdfplumber python tools/import/parse-compendium.py
 
@@ -150,6 +153,31 @@ ciągiem tekstu:
 Tabele Ról przypisuje się do Roli **po numerze strony**, prosto ze spisu, który
 książka drukuje na s. 53 („MEDIA STRONA 62KORPO STRONA 63…”). Kapitalikowe
 banery Ról do tego nie służą — zrzut stawia je **po** pierwszej tabeli bloku.
+
+## Osprzęt (`parse-gear.py`)
+
+Czyta sekcję „Główna lista osprzętu” z rozdziału „Nowa Ekonomia Uliczna”
+(s. 351–356) i zapisuje **53 wpisy** kategorii `gear` do
+`data/private/cpred/compendium/gear.json`. Do etapu 25c kompendium miało **pięć**
+pozycji sprzętu, więc sklep startowy w kreatorze nie miałby czym handlować.
+
+Sekcja ma dwie połowy i parser potrzebuje obu:
+
+- **Tabela cen** przeżywa zrzut jako jedna długa linia `Nazwa CENA ed (Pasmo)`
+  bez separatorów — ale po każdej nazwie stoi cena, więc **cena jest
+  separatorem**. Dopasowywanie nazwy byłoby zgadywaniem: „Cyberdek (doskonałej
+  jakości)” ma własne nawiasy.
+- **Opisy** są drukowane prozą pod tabelą, jako `Nazwa: opis`. Parser zna już
+  nazwy z tabeli cen, więc dzieli prozę po nazwach, którym ufa, a nie po
+  domysłach o wielkich literach.
+
+Obie połowy sprawdzają się nawzajem: nazwa bez akapitu i cena, która nie pasuje
+do swojego pasma na drabinie z s. 342, wychodzą jako ostrzeżenie. Dziś są dwa —
+„Czip pamięci” i „Radioodtwarzacz” po prostu nie mają akapitu w książce.
+
+**Uwaga na granicę sekcji:** tabela Mody (s. 356) zaczyna się w tej samej sekcji
+bez własnego nagłówka, więc bez znacznika `MODA Nogi` opis ostatniego przedmiotu
+połyka dziewięć kolumn cen ubrań.
 
 ## Broń markowa i statbloki (`parse-compendium.py`)
 
