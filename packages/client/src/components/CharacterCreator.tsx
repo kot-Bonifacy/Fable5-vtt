@@ -606,7 +606,6 @@ function SkillRow({ skill, draft }: { skill: CpredSkillDefinition; draft: CpredC
  */
 function LifepathStep({ draft }: { draft: CpredCreationDraft }) {
   const registry = useCharacterStore((s) => s.registry);
-  const busy = useCreationStore((s) => s.busy);
   const data = useMemo(() => lifepathDataOf(registry), [registry]);
   const roleTables = useMemo(() => lifepathRoleTables(data, draft.roleId), [data, draft.roleId]);
   const roleName = registry.roles.find((entry) => entry.id === draft.roleId)?.name ?? '';
@@ -631,7 +630,7 @@ function LifepathStep({ draft }: { draft: CpredCreationDraft }) {
         <button
           type="button"
           className="small-button small-button--primary"
-          disabled={busy || everything.length === 0}
+          disabled={everything.length === 0}
           onClick={() => void rollLifepathTables(everything)}
         >
           🎲 Rzuć całą Ścieżkę
@@ -748,7 +747,6 @@ function LifepathFieldRow({
   draft: CpredCreationDraft;
   table: CpredLifepathTable;
 }) {
-  const busy = useCreationStore((s) => s.busy);
   const write = useLifepathPatch();
   const [typing, setTyping] = useState(false);
   const value = lifepathValue(draft.lifepath, table);
@@ -812,7 +810,6 @@ function LifepathFieldRow({
         <button
           type="button"
           className="small-button"
-          disabled={busy}
           title={`Rzuć 1k${table.sides}`}
           onClick={() => void rollLifepathTables([table.id])}
         >
@@ -912,10 +909,14 @@ function LifepathPeople({
 }) {
   const user = useAuthStore((s) => s.user);
   const isGm = user?.role === ROLE_GM;
-  const busy = useCreationStore((s) => s.busy);
   const setError = useCreationStore((s) => s.setError);
   const write = useLifepathPatch();
   const botKind = BOT_KINDS[group];
+  // Its own flag rather than the window's `busy`: naming somebody and pressing
+  // 🤖 straight after put a patch in flight, and a button greyed out by `busy`
+  // simply swallowed the click. Everything here is queued anyway — the only
+  // thing worth blocking is a second bot for the same person.
+  const [makingBot, setMakingBot] = useState(false);
 
   /**
    * Somebody the Lifepath invented becomes a bot profile in one click.
@@ -926,10 +927,20 @@ function LifepathPeople({
    * because `bot:create` is; a player's enemy is the GM's to bring to life.
    */
   async function toBot(index: number) {
-    const person = draft.lifepath[group][index];
-    if (!person) return;
-    const seed = lifepathBotDraft(botKind, person, draft.name);
-    const ack = await enqueueCreationCall(() => createBot({ name: seed.name, data: seed.data }));
+    // The profile is built *inside* the queued call, from the store rather than
+    // from this render's props. Typing a name and clicking 🤖 straight after
+    // leaves the name's patch still in flight: the queue has already applied it
+    // by the time this runs, and the props have not caught up. Reading them
+    // here named the bot „Wróg — Kanciarz" instead of „Radna Okoye".
+    setMakingBot(true);
+    const ack = await enqueueCreationCall(() => {
+      const current = useCreationStore.getState().draft;
+      const person = current?.lifepath[group][index];
+      if (!person) return Promise.resolve({ ok: false as const, error: 'DRAFT_NOT_FOUND' });
+      const seed = lifepathBotDraft(botKind, person, current.name);
+      return createBot({ name: seed.name, data: seed.data });
+    });
+    setMakingBot(false);
     if (!ack.ok || !ack.data) {
       setError(botErrorText(ack.ok ? 'INVALID_DATA' : ack.error));
       return;
@@ -982,7 +993,6 @@ function LifepathPeople({
         <button
           type="button"
           className="small-button"
-          disabled={busy}
           title="Rzuć 1k10 − 7 (minimum 0)"
           onClick={() => void rollLifepathCount(group)}
         >
@@ -1029,7 +1039,6 @@ function LifepathPeople({
                 <button
                   type="button"
                   className="small-button"
-                  disabled={busy}
                   title={`Rzuć: ${table.label}`}
                   onClick={() => void rollLifepathTables([table.id], index)}
                 >
@@ -1042,7 +1051,7 @@ function LifepathPeople({
             <button
               type="button"
               className="small-button"
-              disabled={busy}
+              disabled={makingBot}
               title="Zrób z tego szkic bota i otwórz edytor"
               onClick={() => void toBot(index)}
             >

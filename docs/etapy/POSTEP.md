@@ -81,22 +81,6 @@ poziom na kampanię, zakupy startowe zawsze na poziomie 1. Propozycja jest w pli
 
 ### Otwarte zaległości (przechodzą między etapami)
 
-- **Etap 25b — strona MG nieodklikana w całości.** W przeglądarce były zalogowane wyłącznie
-  dwa konta **graczy** (Marcin na `localhost`, avatar9 na `[::1]`), a hasła MG nie wpisuję
-  (patrz „Pułapki dev"). Nieobejrzane zostaje więc: (1) **przycisk 🤖 „zrób z tego szkic bota"**
-  przy wrogu, przyjacielu i dawnej miłości — jest wystawiany tylko MG, bo `bot:create` jest
-  `role: ROLE_GM`; ma utworzyć profil i **otworzyć edytor botów** z wypełnionymi polami
-  („Osobowość", „Motywacje", „Sekrety" = czym dysponuje poszkodowany, „Ludzie"); pokryte trzema
-  testami w `shared`. (2) **Odmowa `FORBIDDEN`**, gdyby gracz jakoś wywołał `bot:create`.
-  (3) **Wybór właściciela** w podsumowaniu (to samo, co zostało z 25a).
-
-- **Etap 25b — postać testowa „Test 25b Ścieżka" została w kampanii.** Utworzona na koncie
-  **Marcina** (Solo, Kompletny Pakiet, wszystkie Cechy 6, 13 podstawowych na 2) po to, żeby
-  sprawdzić, że Ścieżka Życia dojeżdża na kartę — i dojechała, razem z wypełnionym „Stylem".
-  **Gracz nie ma czym jej usunąć** (kosz przy postaci jest u MG), więc czeka na dwa kliknięcia
-  MG. Zawiera wroga „Stary Vex z Watson" z kompletem czterech kolumn — nadaje się na materiał
-  do odklikania punktu (1) wyżej.
-
 - **Etap 25b — dwie tabele Ścieżek Ról są nagłówkami, nie pytaniami.** `exec.relacje` („Obecne
   stosunki z szefostwem") i `nomad.filozofia` („Ogólna filozofia watahy") wchodzą do danych
   z pytaniem zastąpionym własnym nagłówkiem kolumny („Relacje", „Filozofia"), bo podręcznik
@@ -117,9 +101,9 @@ poziom na kampanię, zakupy startowe zawsze na poziomie 1. Propozycja jest w pli
   „Utwórz postać" jest wyszarzone, więc do `CREATION_INCOMPLETE` w przeglądarce się nie dojdzie;
   pokryte testem serwera. (2) **Degradacja bez `creation.json`** — kreator ma wtedy powiedzieć
   „Brak danych tworzenia postaci…" zamiast pustego okna (`CREATION_DATA_MISSING`); w repo jest
-  próbka publiczna, więc ten stan wymagałby skasowania obu plików. (3) **Wybór właściciela przez
-  MG** — pole „Właściciel" jest w podsumowaniu, ale przy oględzinach zostało na „NPC (MG)";
-  ścieżka z `ownerId` pokryta testem. (4) **Rangi Postaci inne niż „początkująca"** — selektor
+  próbka publiczna, więc ten stan wymagałby skasowania obu plików. ~~(3) **Wybór właściciela przez MG**~~ —
+  **odklikane 14.08 przy 25b**: MG utworzył postać z listy „NPC (MG) / Tony / avatar9 / Marcin"
+  i w bazie stanęła z właścicielem **Marcin**. (4) **Rangi Postaci inne niż „początkująca"** — selektor
   pokazuje pięć pozycji (50–80 pkt), klikana była tylko domyślna 62.
 
 - **Etap 25a — kostki na karcie rozkładu świecą jak krytyki.** Rzut `10k10` rysuje dziesiątki
@@ -493,6 +477,29 @@ spoza tabeli; **podsumowanie** ze streszczeniem Ścieżki. Na koniec utworzona p
 Ścieżka"** — karta otworzyła się sama, a w bazie ma **komplet Ścieżki Życia** (wróg z czterema
 kolumnami, cztery odpowiedzi Solo) i **„Styl" złożony z trzech wierszy wyglądu**. Konsola czysta.
 Scena, walka i pozostałe postacie **nietknięte**; na czacie zostały karty rzutów.
+
+**Odklikane też u MG** (MG zalogowany przez użytkownika na `localhost:5173`, Rola Nomada —
+inna niż u gracza, żeby było widać własny szkic MG). Potwierdzone: **własny, niezależny szkic**
+z siedmioma tabelami Nomady (cztery wiersze „Typ" — lądowi, powietrzni, morscy i wspieranie
+watahy — dokładnie tak, jak drukuje je książka); **przycisk 🤖**, który u gracza nie istnieje,
+tworzy bota i **otwiera edytor**: nagłówek „Edytor bota: Radna Adeola Okoye", w zakładce „Rola"
+Osobowość („Przedstawiciele władz. Ma powód, żeby nienawidzić: Kanciarz."), Motywacje („Poszło
+o to: Zdrada lub zostawienie samopas. Przy spotkaniu zamierza: Wbić mu nóż w plecy.") i Sekrety
+(„Za sobą ma: Potężny szef gangu lub niewielka Korporacja."), a w „Wiedzy i modelu" pole Ludzie
+(„Kanciarz — wróg z przeszłości. Zatarg: …"); **selektor „Właściciel"** z listą „NPC (MG) / Tony
+/ avatar9 / Marcin" — postać stanęła w bazie z właścicielem **Marcin**, co zdejmuje zaległość
+z 25a. Obie postacie testowe i oba boty testowe **usunięte po oględzinach** — kampania wróciła
+do siedmiu postaci i dwóch botów, bez zawieszonych szkiców kreatora. Konsola czysta.
+
+**Dwa błędy znalezione dopiero po stronie MG — oba naprawione.** (1) **Nazwane przed chwilą
+osoby trafiały do bota pod nazwą zapasową** („Wróg — Kanciarz" zamiast „Radna Okoye"): profil
+budował się z propsów tego renderu, a łatka imienia była jeszcze w kolejce. Teraz buduje się
+**wewnątrz zakolejkowanego wywołania**, ze stanu store'a — czyli po zastosowaniu tej łatki.
+(2) **Klik w 🎲 albo 🤖 zaraz po wpisaniu tekstu nie robił nic**: przyciski były wyłączone przez
+globalne `busy`, a `blur` ustawiał je w stan „zajęty" dokładnie w chwili kliknięcia. Wszystko
+w tym kroku i tak przechodzi przez jedną kolejkę, więc `disabled={busy}` zeszło z kości, a bot
+dostał **własną** blokadę na czas tworzenia (jedyne, co warto blokować, to drugi bot dla tej
+samej osoby).
 
 ### Sesja 14.08 — etap 25a (kreator postaci: rola, cechy, umiejętności)
 
