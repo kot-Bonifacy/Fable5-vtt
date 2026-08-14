@@ -442,14 +442,26 @@ a 2k6 przeciw OB 4 nie przechodzi raz na dwanaście rzutów. Test przywraca tera
 pomiarem i dodaje modyfikator obrażeń, którego pistolet nie zejdzie poniżej. **12 przebiegów
 pod rząd bez porażki** (wcześniej 3 na 20).
 
+**Dopisek po oględzinach (życzenie MG): rozkład Cech idzie przez kubek.** Rzut na Cechy był
+jedynym rzutem w projekcie, który wychodził z przycisku, a nie z potrząśnięcia — a to właśnie
+ten rzut gracz zapamięta z sesji zerowej. Kubek ma teraz **siódmy slot** (`PendingCreation`,
+obok checka z karty, inicjatywy, ataku, uniku, zwarcia i Konfrontacji): „🥤 Weź kubek i rzuć
+Cechy" ładuje rozkład, kubek w rogu **świeci cyjanem i pulsuje** z etykietą „Rozkład Cech —
+Nomada", a złapanie go, potrząśnięcie i puszczenie sypie na mapę **dziesięć czerwonych k10**
+i wpisuje wyniki do kreatora. Entropia potrząśnięcia miesza się do ziarna serwera dokładnie tak
+jak przy każdym innym rzucie, a `tossStrength` i kierunek rzutu jadą na kartę czatu, więc
+animację widzą wszyscy. **MG ma obok skrót „🎲 Rzuć od razu"** (pięciu NPC-ów w jeden wieczór to
+nie ceremonia) — gracz go nie widzi. `Esc` i zamknięcie okna odkładają kubek; przełączenie na
+Kompletny Pakiet też, bo tam nie ma czego rzucać.
+
 **Drugi błąd, znaleziony przy oględzinach: „Utwórz postać" wymagało dwóch kliknięć.** Imię
 zapisywało się dopiero na `blur`, a przycisk jest wyszarzony, dopóki imię nie dotrze do serwera
 — więc kliknięcie, które zdejmowało ognisko z pola, trafiało w przycisk jeszcze nieaktywny.
 Imię idzie teraz do serwera z każdym znakiem, tak jak zapisuje się karta; surowa wartość
 (spacja w dwuwyrazowej ksywie musi przeżyć — patrz błąd z 13.08), a przycięcie robi serwer.
 
-**Zweryfikowane:** 984 testy w `shared` (26 nowych w `creation.test.ts`), 603 na serwerze
-(14 nowych w `creation.test.ts` na żywych gniazdach), `tsc --noEmit` czysty w trzech pakietach,
+**Zweryfikowane:** 984 testy w `shared` (26 nowych w `creation.test.ts`), 604 na serwerze
+(15 nowych w `creation.test.ts` na żywych gniazdach), `tsc --noEmit` czysty w trzech pakietach,
 lint, Prettier i `pnpm build` bez uwag. Migracja: `20260814054327_stage25a_character_draft`
 (jedna tabela, zero zmian w istniejących).
 

@@ -1,6 +1,13 @@
 import { create } from 'zustand';
-import type { CpredCreationDraft } from '@vtt/shared';
-import { creationErrorText, discardCreation, patchCreation, startCreation } from '../socket.js';
+import type { CpredCreationDraft, RollGesture } from '@vtt/shared';
+import {
+  creationErrorText,
+  discardCreation,
+  patchCreation,
+  rollCreationStats,
+  startCreation,
+} from '../socket.js';
+import { useRollStore } from './rollStore.js';
 
 /**
  * The character creator's window state (stage 25a).
@@ -58,13 +65,19 @@ export const useCreationStore = create<CreationStoreState>((set) => ({
     set({ draft: ack.data.draft, busy: false, error: null });
   },
 
-  closeCreator: () => set({ open: false, error: null }),
+  // Closing the window puts the cup back on the shelf: a spread waiting to be
+  // shaken for a wizard nobody can see would refuse into a hidden error.
+  closeCreator: () => {
+    clearCreationCup();
+    set({ open: false, error: null });
+  },
 
   setDraft: (draft) => set({ draft }),
   setError: (error) => set({ error }),
   setBusy: (busy) => set({ busy }),
 
   discard: async () => {
+    clearCreationCup();
     await enqueue(() => discardCreation());
     set({ open: false, draft: null, error: null, busy: false });
   },
@@ -84,4 +97,34 @@ export const useCreationStore = create<CreationStoreState>((set) => ({
 /** Runs a creation call through the same queue the patches use. */
 export function enqueueCreationCall<T>(task: () => Promise<T>): Promise<T> {
   return enqueue(task);
+}
+
+/** Puts the stat spread in the cup, waiting for a shake (stage 25a). */
+export function loadCreationCup(title: string): void {
+  useRollStore.getState().loadCreationCup({ title });
+}
+
+/** Takes it back out — window closed, method changed, `Esc` pressed. */
+export function clearCreationCup(): void {
+  if (useRollStore.getState().creation) useRollStore.getState().clearCup();
+}
+
+/**
+ * Rolls the spread with the cup's gesture and stores whatever came back.
+ *
+ * Lives here rather than in `DiceCup` because the draft is this store's
+ * business: the cup's job ends the moment the hand lets go.
+ */
+export async function rollCreationWithGesture(gesture?: RollGesture): Promise<void> {
+  const store = useCreationStore.getState();
+  store.setBusy(true);
+  store.setError(null);
+  const ack = await enqueue(() => rollCreationStats(gesture));
+  if (!ack.ok || !ack.data) {
+    store.setBusy(false);
+    store.setError(creationErrorText(ack.ok ? undefined : ack.error));
+    return;
+  }
+  store.setDraft(ack.data.draft);
+  store.setBusy(false);
 }

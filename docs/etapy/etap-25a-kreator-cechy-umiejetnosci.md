@@ -54,6 +54,9 @@ policzonymi wg zasad podręcznika — zapisywaną jako pełna karta z etapu 07.
   4. **Podsumowanie** — nazwa postaci i „Utwórz postać"
 - [x] **Losowania idą przez serwerowy silnik kości** (etap 06) i zostawiają ślad w dzienniku
       rzutów — uczciwość na sesji zerowej
+- [x] **Rozkład Cech rzuca się kubkiem** (dopisek MG po oględzinach): siódmy slot kubka,
+      podświetlenie i etykieta „Rozkład Cech — <Rola>", entropia potrząśnięcia w ziarnie
+      serwera, dziesięć k10 na mapie. MG ma obok skrót „Rzuć od razu"; gracz nie ma
 - [x] Dostępność: MG zawsze, gracz dla siebie (tak jak `character:create` z etapu 07)
 
 ## Poza zakresem

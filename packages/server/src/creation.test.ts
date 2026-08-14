@@ -109,6 +109,12 @@ function data<T>(ack: SocketAck<T>, what: string): T {
   return ack.data;
 }
 
+/** The refusal code of an ack that must have failed — narrows for `tsc`. */
+function refusal<T>(ack: SocketAck<T>): string {
+  if (ack.ok) throw new Error('oczekiwano odmowy, a zdarzenie przeszło');
+  return ack.error;
+}
+
 function waitFor<T>(socket: ClientSocket, event: string, ms = 3000): Promise<T> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error(`${event} timeout`)), ms);
@@ -225,8 +231,7 @@ describe('kreator postaci', () => {
 
   it('refuses a Role that is not in the data files', async () => {
     const ack = await emitAck<Draft>(vex, 'creation:patch', { patch: { roleId: 'wampir' } });
-    expect(ack.ok).toBe(false);
-    expect(ack.error).toBe('INVALID_DATA');
+    expect(refusal(ack)).toBe('INVALID_DATA');
   });
 
   it('refuses stats written by hand when the method is the one that rolls them', async () => {
@@ -234,8 +239,7 @@ describe('kreator postaci', () => {
     const ack = await emitAck<Draft>(vex, 'creation:patch', {
       patch: { stats: Object.fromEntries(CPRED_STAT_IDS.map((id) => [id, 8])) },
     });
-    expect(ack.ok).toBe(false);
-    expect(ack.error).toBe('INVALID_DATA');
+    expect(refusal(ack)).toBe('INVALID_DATA');
   });
 
   it('rolls the spread on the server and puts the card on the chat', async () => {
@@ -258,6 +262,23 @@ describe('kreator postaci', () => {
     const spread = CPRED_STAT_IDS.reduce((sum, id) => sum + (rolled.draft.stats[id] ?? 0), 0);
     expect(roll?.total).toBe(spread);
     expect(roll?.breakdown).toHaveLength(CPRED_STAT_IDS.length);
+  });
+
+  it('carries the cup gesture onto the card, so the throw animates for everyone', async () => {
+    const card = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+    data(
+      await emitAck<Draft>(vex, 'creation:roll', {
+        gesture: {
+          entropy: 'a1b2c3d4',
+          strength: 2,
+          toss: { dirX: 0, dirY: -1, originX: 0.5, originY: 0.9 },
+        },
+      }),
+      'creation:roll',
+    );
+    const roll = (await card).message.roll;
+    expect(roll?.tossStrength).toBe(2);
+    expect(roll?.toss?.dirY).toBe(-1);
   });
 
   it('reads every rolled stat out of the Role template, not out of thin air', async () => {
@@ -286,8 +307,7 @@ describe('kreator postaci', () => {
   it('will not roll for the method that buys its stats', async () => {
     await patch(vex, { method: 'complete' });
     const ack = await emitAck<Draft>(vex, 'creation:roll');
-    expect(ack.ok).toBe(false);
-    expect(ack.error).toBe('METHOD_DOES_NOT_ROLL');
+    expect(refusal(ack)).toBe('METHOD_DOES_NOT_ROLL');
     // Switching the method threw the rolled spread away — it was read off a
     // template this method never looks at.
     const back = data(await emitAck<Draft>(vex, 'creation:start'), 'creation:start');
@@ -308,8 +328,7 @@ describe('kreator postaci', () => {
 
   it('refuses to finish a draft the rules are still unhappy about', async () => {
     const ack = await emitAck<CharacterView>(vex, 'creation:finish');
-    expect(ack.ok).toBe(false);
-    expect(ack.error).toBe('CREATION_INCOMPLETE');
+    expect(refusal(ack)).toBe('CREATION_INCOMPLETE');
   });
 
   it('finishes into a real sheet the player owns, and the draft is gone', async () => {

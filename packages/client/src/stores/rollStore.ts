@@ -151,6 +151,20 @@ export interface PendingFacedown {
   resist?: { messageId: number };
 }
 
+/**
+ * The character creator's stat spread waiting in the cup (stage 25a).
+ *
+ * It carries nothing but a label, because unlike every other slot it names no
+ * character and no request: the server already knows whose draft it is and
+ * what to roll. What it borrows from the others is the only thing that matters
+ * here — the gesture, so a player rolls their Cechy the same way they roll
+ * everything else at this table.
+ */
+export interface PendingCreation {
+  /** Cup label, e.g. `Rozkład Cech — Solo`. */
+  title: string;
+}
+
 interface RollStoreState {
   /** Open roll dialog (null = closed). */
   target: RollTarget | null;
@@ -166,6 +180,8 @@ interface RollStoreState {
   grapple: PendingGrapple | null;
   /** Konfrontacja loaded into the cup (stage 23c). */
   facedown: PendingFacedown | null;
+  /** Character-creator stat spread loaded into the cup (stage 25a). */
+  creation: PendingCreation | null;
   /** Last dialog choices, reused for the next roll (and by Shift+click). */
   lastModifier: number;
   lastVisibility: 'public' | 'gm';
@@ -180,6 +196,7 @@ interface RollStoreState {
   loadEvasionCup: (evasion: PendingEvasion) => void;
   loadGrappleCup: (grapple: PendingGrapple) => void;
   loadFacedownCup: (facedown: PendingFacedown) => void;
+  loadCreationCup: (creation: PendingCreation) => void;
   clearCup: () => void;
   remember: (modifier: number, visibility: 'public' | 'gm') => void;
   rememberLocation: (location: CpredHitLocation) => void;
@@ -193,6 +210,7 @@ const EMPTY_CUP = {
   evasion: null,
   grapple: null,
   facedown: null,
+  creation: null,
 } as const;
 
 export const useRollStore = create<RollStoreState>((set) => ({
@@ -203,6 +221,7 @@ export const useRollStore = create<RollStoreState>((set) => ({
   evasion: null,
   grapple: null,
   facedown: null,
+  creation: null,
   lastModifier: 0,
   lastVisibility: 'public',
   lastLocation: 'body',
@@ -216,6 +235,7 @@ export const useRollStore = create<RollStoreState>((set) => ({
   loadEvasionCup: (evasion) => set({ ...EMPTY_CUP, evasion, target: null }),
   loadGrappleCup: (grapple) => set({ ...EMPTY_CUP, grapple, target: null }),
   loadFacedownCup: (facedown) => set({ ...EMPTY_CUP, facedown, target: null }),
+  loadCreationCup: (creation) => set({ ...EMPTY_CUP, creation, target: null }),
   clearCup: () => set({ ...EMPTY_CUP }),
   remember: (lastModifier, lastVisibility) => set({ lastModifier, lastVisibility }),
   rememberLocation: (lastLocation) => set({ lastLocation }),

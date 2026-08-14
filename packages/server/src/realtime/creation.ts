@@ -7,7 +7,9 @@ import type {
   CreationDraftView,
   CreationFinishPayload,
   CreationPatchPayload,
+  CreationRollPayload,
   RollBreakdownEntry,
+  RollGesture,
   RollResult,
 } from '@vtt/shared';
 import {
@@ -29,6 +31,7 @@ import {
 import type { CharacterDraft } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { createMixedRng } from './dice-rng.js';
+import { sanitizeGesture } from './chat.js';
 import { INCLUDE_CHAT_NAMES, deliverRollMessage, toChatMessageView } from './chat-io.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 
@@ -141,9 +144,12 @@ export const creationPatchEvent = defineEvent<
  * every stat and the total is the spread's point value, which is the number a
  * table actually compares (62 is what Kompletny Pakiet gets to spend).
  */
-export const creationRollEvent = defineEvent<undefined, CreationDraftView<CpredCreationDraft>>({
+export const creationRollEvent = defineEvent<
+  CreationRollPayload,
+  CreationDraftView<CpredCreationDraft>
+>({
   name: 'creation:roll',
-  handler: async ({ deps, socket, user }) => {
+  handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
     const data = creationDataOf(deps.ctx.cpred);
     const existing = await loadDraft(deps, campaignId, user.id);
@@ -158,11 +164,19 @@ export const creationRollEvent = defineEvent<undefined, CreationDraftView<CpredC
     // Ten real d10 through the same engine every other roll goes through — the
     // card is not decoration, it is the audit trail of session zero. The dice
     // land in `CPRED_STAT_IDS` order, which is the order the templates print.
+    //
+    // The cup's shake is mixed into the seed exactly as it is for a sheet
+    // check: the hand picks which of the equally likely spreads comes out, and
+    // the server still decides what „equally likely" means. A GM pressing the
+    // plain button rolls without a gesture and the seed is simply all-server.
+    const gesture: RollGesture | undefined = sanitizeGesture(payload?.gesture);
     const result: RollResult = rollFormula(
       { terms: [{ kind: 'dice', count: CPRED_STAT_IDS.length, sides: 10, sign: 1 }] },
-      createMixedRng(),
+      createMixedRng(gesture?.entropy),
       { checkRule: false },
     );
+    if (gesture && gesture.strength > 0) result.tossStrength = gesture.strength;
+    if (gesture?.toss) result.toss = gesture.toss;
     const term = result.terms[0];
     const faces = term && term.kind === 'dice' ? term.rolls : [];
     const rolls: Partial<Record<CpredStatId, number>> = {};

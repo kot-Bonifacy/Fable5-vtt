@@ -26,10 +26,17 @@ import {
   groupedSkills,
 } from '@vtt/shared';
 import { apiGet } from '../api.js';
-import { creationErrorText, finishCreation, rollCreationStats } from '../socket.js';
+import { creationErrorText, finishCreation } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { ensureCpredDataLoaded, useCharacterStore } from '../stores/characterStore.js';
-import { enqueueCreationCall, useCreationStore } from '../stores/creationStore.js';
+import {
+  clearCreationCup,
+  enqueueCreationCall,
+  loadCreationCup,
+  rollCreationWithGesture,
+  useCreationStore,
+} from '../stores/creationStore.js';
+import { useRollStore } from '../stores/rollStore.js';
 
 /**
  * The character creator (stage 25a) — a floating window in the same idiom as
@@ -320,30 +327,28 @@ function RoleStep({ draft }: { draft: CpredCreationDraft }) {
 // ─────────────────────────────── krok 2: Cechy ───────────────────────────────
 
 function StatsStep({ draft }: { draft: CpredCreationDraft }) {
+  const user = useAuthStore((s) => s.user);
+  const isGm = user?.role === ROLE_GM;
   const registry = useCharacterStore((s) => s.registry);
   const patch = useCreationStore((s) => s.patch);
   const busy = useCreationStore((s) => s.busy);
-  const setDraft = useCreationStore((s) => s.setDraft);
-  const setError = useCreationStore((s) => s.setError);
-  const setBusy = useCreationStore((s) => s.setBusy);
+  const inCup = useRollStore((s) => s.creation !== null);
   const data = creationDataOf(registry);
   const role = creationRole(data, draft.roleId);
+  const roleName = registry.roles.find((entry) => entry.id === draft.roleId)?.name ?? '';
 
   const preview = creationPreview(creationStats(draft, data));
   const pool = creationStatPool(data, draft);
   const spent = creationStatPointsSpent(draft);
 
-  async function roll() {
-    setBusy(true);
-    setError(null);
-    const ack = await enqueueCreationCall(() => rollCreationStats());
-    setBusy(false);
-    if (!ack.ok || !ack.data) {
-      setError(creationErrorText(ack.ok ? undefined : ack.error));
-      return;
-    }
-    setDraft(ack.data.draft);
-  }
+  const rollable = role !== null && draft.method === 'edgerunner' && role.statTemplates.length > 0;
+
+  // The cup may only hold a spread it can still throw. Switching to Kompletny
+  // Pakiet, or backing out of the Role, has to put it down.
+  useEffect(() => {
+    if (!rollable) clearCreationCup();
+    return clearCreationCup;
+  }, [rollable]);
 
   if (role === null) {
     return (
@@ -356,17 +361,37 @@ function StatsStep({ draft }: { draft: CpredCreationDraft }) {
       <div className="creator-stats-head">
         {draft.method === 'edgerunner' ? (
           <>
+            {/* The spread goes through the cup, like every other roll at this
+                table: shaking it is what a player came here for, and the shake
+                really seeds the server's dice. The GM keeps a plain button as
+                well — five NPCs in an evening is not a ceremony. */}
             <button
               type="button"
-              className="small-button small-button--primary"
+              className={`small-button ${inCup ? '' : 'small-button--primary'}`}
               disabled={busy}
-              onClick={() => void roll()}
+              onClick={() =>
+                inCup
+                  ? clearCreationCup()
+                  : loadCreationCup(`Rozkład Cech${roleName ? ` — ${roleName}` : ''}`)
+              }
             >
-              🎲 Rzuć Cechy (10 × 1k10)
+              {inCup ? '↩ Odłóż kubek' : '🥤 Weź kubek i rzuć Cechy'}
             </button>
+            {isGm && (
+              <button
+                type="button"
+                className="small-button"
+                disabled={busy}
+                onClick={() => void rollCreationWithGesture()}
+                title="Skrót dla MG: rzuca bez potrząsania kubkiem"
+              >
+                🎲 Rzuć od razu
+              </button>
+            )}
             <span className="creator-hint">
-              Rzuca serwer i zostawia kartę na czacie. Można rzucać ponownie — liczy się ostatni
-              rzut.
+              {inCup
+                ? 'Kubek czeka w rogu ekranu — złap go, potrząśnij i puść. Esc odkłada.'
+                : 'Rzuca serwer i zostawia kartę na czacie. Można rzucać ponownie — liczy się ostatni rzut.'}
             </span>
           </>
         ) : (

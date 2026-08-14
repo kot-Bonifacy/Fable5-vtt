@@ -8,6 +8,11 @@
  * room seq — the pattern used by whispers and gmrolls.
  */
 
+// Type-only: `protocol.ts` imports `CharacterView` from here, so a value
+// import would close a cycle. The gesture lives there with the other roll
+// payloads that carry one.
+import type { RollGesture } from './protocol.js';
+
 export const CHARACTER_NAME_MAX_LENGTH = 64;
 
 /** A character as seen by someone allowed to see it (the owner or the GM). */
@@ -75,6 +80,19 @@ export interface CreationDraftView<TDraft = unknown> {
 /** Client → server `creation:patch`; top-level keys replace the stored ones. */
 export interface CreationPatchPayload {
   patch: Record<string, unknown>;
+}
+
+/**
+ * Client → server `creation:roll` — the whole stat spread, one d10 per stat.
+ *
+ * The gesture is the point rather than a decoration: the shake's entropy is
+ * mixed into the server's RNG, so the hand that threw the cup genuinely picks
+ * which of the equally likely spreads comes out. A player rolls their character
+ * up the same way they roll everything else at this table; the GM has a plain
+ * button as well, because a GM builds five NPCs in an evening.
+ */
+export interface CreationRollPayload {
+  gesture?: RollGesture;
 }
 
 /** Client → server `creation:finish` — turns the draft into a real character. */

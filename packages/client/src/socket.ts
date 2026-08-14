@@ -1943,8 +1943,15 @@ export const startCreation = () => emitSceneAck<CreationDraft>('creation:start',
 export const patchCreation = (patch: Record<string, unknown>) =>
   emitSceneAck<CreationDraft>('creation:patch', { patch });
 
-/** One 1d10 per stat, rolled by the server against the Role's template. */
-export const rollCreationStats = () => emitSceneAck<CreationDraft>('creation:roll', undefined);
+/**
+ * One 1d10 per stat, rolled by the server against the Role's template.
+ *
+ * The gesture is present when the spread came out of the dice cup — a player
+ * shakes for their Cechy like for everything else; the GM's plain button rolls
+ * without one.
+ */
+export const rollCreationStats = (gesture?: RollGesture) =>
+  emitSceneAck<CreationDraft>('creation:roll', { gesture });
 
 export const finishCreation = (payload: CreationFinishPayload = {}) =>
   emitSceneAck<CharacterView>('creation:finish', payload);

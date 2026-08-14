@@ -15,9 +15,11 @@ import {
   sendInitiativeRoll,
 } from '../socket.js';
 import { useChatStore } from '../stores/chatStore.js';
+import { rollCreationWithGesture } from '../stores/creationStore.js';
 import {
   useRollStore,
   type PendingAttack,
+  type PendingCreation,
   type PendingEvasion,
   type PendingFacedown,
   type PendingGrapple,
@@ -128,7 +130,8 @@ type CupMode =
   | { kind: 'attack'; pending: PendingAttack }
   | { kind: 'evasion'; pending: PendingEvasion }
   | { kind: 'grapple'; pending: PendingGrapple }
-  | { kind: 'facedown'; pending: PendingFacedown };
+  | { kind: 'facedown'; pending: PendingFacedown }
+  | { kind: 'creation'; pending: PendingCreation };
 
 /** Cup label for a loaded sheet check, e.g. `Percepcja (INT) +11`. */
 function sheetLabel(pending: PendingRoll): string {
@@ -165,6 +168,7 @@ export function DiceCup() {
   const evasion = useRollStore((s) => s.evasion);
   const grapple = useRollStore((s) => s.grapple);
   const facedown = useRollStore((s) => s.facedown);
+  const creation = useRollStore((s) => s.creation);
 
   const [shaking, setShaking] = useState(false);
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
@@ -185,6 +189,7 @@ export function DiceCup() {
     if (evasion) return { kind: 'evasion', pending: evasion };
     if (grapple) return { kind: 'grapple', pending: grapple };
     if (facedown) return { kind: 'facedown', pending: facedown };
+    if (creation) return { kind: 'creation', pending: creation };
     const parsed = parseChatInput(draft);
     if (parsed.kind === 'roll') {
       return {
@@ -194,19 +199,22 @@ export function DiceCup() {
       };
     }
     return { kind: 'fun' };
-  }, [draft, pending, initiative, attack, evasion, grapple, facedown]);
+  }, [draft, pending, initiative, attack, evasion, grapple, facedown, creation]);
   modeRef.current = mode;
 
   // Esc puts a loaded check back on the shelf (as long as we are not mid-shake).
   useEffect(() => {
-    if ((!pending && !initiative && !attack && !evasion && !grapple && !facedown) || shaking)
+    if (
+      (!pending && !initiative && !attack && !evasion && !grapple && !facedown && !creation) ||
+      shaking
+    )
       return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') useRollStore.getState().clearCup();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [pending, initiative, attack, evasion, grapple, facedown, shaking]);
+  }, [pending, initiative, attack, evasion, grapple, facedown, creation, shaking]);
 
   useEffect(() => {
     if (!shaking) return;
@@ -343,6 +351,14 @@ export function DiceCup() {
             );
           }
         });
+      } else if (current.kind === 'creation') {
+        lastFunNotation = '10k10';
+        useRollStore.getState().clearCup();
+        void digestSamples(samples).then((entropy) => {
+          // The creator holds the draft, so it takes the answer; the cup's job
+          // ends with the gesture (stage 25a).
+          void rollCreationWithGesture({ entropy, strength, toss });
+        });
       } else if (current.kind === 'roll') {
         lastFunNotation = current.notation;
         void digestSamples(samples).then((entropy) => {
@@ -409,35 +425,39 @@ export function DiceCup() {
   const modeClass =
     mode.kind === 'attack'
       ? ' dice-cup--attack'
-      : mode.kind === 'evasion' || mode.kind === 'grapple' || mode.kind === 'facedown'
-        ? ' dice-cup--sheet'
-        : mode.kind === 'initiative'
+      : mode.kind === 'creation'
+        ? ' dice-cup--creation'
+        : mode.kind === 'evasion' || mode.kind === 'grapple' || mode.kind === 'facedown'
           ? ' dice-cup--sheet'
-          : mode.kind === 'sheet'
-            ? mode.pending.visibility === 'gm'
-              ? ' dice-cup--gm'
-              : ' dice-cup--sheet'
-            : mode.kind === 'roll'
-              ? mode.visibility === 'gm'
-                ? ' dice-cup--gm'
-                : ' dice-cup--hot'
-              : '';
-  const title =
-    mode.kind === 'attack'
-      ? `Potrząśnij i strzel: ${mode.pending.title} · Esc odkłada atak`
-      : mode.kind === 'evasion'
-        ? `Potrząśnij i rzuć: ${mode.pending.title} · Esc odkłada rzut`
-        : mode.kind === 'grapple' || mode.kind === 'facedown'
-          ? `Potrząśnij i rzuć: ${mode.pending.title} · Esc odkłada rzut`
           : mode.kind === 'initiative'
-            ? `Potrząśnij i rzuć inicjatywę: ${mode.pending.name} — ${initiativeLabel(mode.pending)} · Esc odkłada rzut`
+            ? ' dice-cup--sheet'
             : mode.kind === 'sheet'
-              ? `Potrząśnij i rzuć: ${mode.pending.characterName} — ${sheetLabel(mode.pending)}${
-                  mode.pending.visibility === 'gm' ? ' (do MG)' : ''
-                } · Esc odkłada rzut`
+              ? mode.pending.visibility === 'gm'
+                ? ' dice-cup--gm'
+                : ' dice-cup--sheet'
               : mode.kind === 'roll'
-                ? `Potrząśnij i rzuć: ${mode.notation}${mode.visibility === 'gm' ? ' (do MG)' : ''} — wynik liczy się w grze`
-                : 'Potrząśnij i rzuć na niby (wpisz /r <formuła>, by rzut się liczył)';
+                ? mode.visibility === 'gm'
+                  ? ' dice-cup--gm'
+                  : ' dice-cup--hot'
+                : '';
+  const title =
+    mode.kind === 'creation'
+      ? `Potrząśnij i rzuć Cechy: ${mode.pending.title} · Esc odkłada kubek`
+      : mode.kind === 'attack'
+        ? `Potrząśnij i strzel: ${mode.pending.title} · Esc odkłada atak`
+        : mode.kind === 'evasion'
+          ? `Potrząśnij i rzuć: ${mode.pending.title} · Esc odkłada rzut`
+          : mode.kind === 'grapple' || mode.kind === 'facedown'
+            ? `Potrząśnij i rzuć: ${mode.pending.title} · Esc odkłada rzut`
+            : mode.kind === 'initiative'
+              ? `Potrząśnij i rzuć inicjatywę: ${mode.pending.name} — ${initiativeLabel(mode.pending)} · Esc odkłada rzut`
+              : mode.kind === 'sheet'
+                ? `Potrząśnij i rzuć: ${mode.pending.characterName} — ${sheetLabel(mode.pending)}${
+                    mode.pending.visibility === 'gm' ? ' (do MG)' : ''
+                  } · Esc odkłada rzut`
+                : mode.kind === 'roll'
+                  ? `Potrząśnij i rzuć: ${mode.notation}${mode.visibility === 'gm' ? ' (do MG)' : ''} — wynik liczy się w grze`
+                  : 'Potrząśnij i rzuć na niby (wpisz /r <formuła>, by rzut się liczył)';
 
   return (
     <div
@@ -469,6 +489,7 @@ export function DiceCup() {
         mode.kind === 'evasion' ||
         mode.kind === 'grapple' ||
         mode.kind === 'facedown') && <span className="dice-cup-label">{mode.pending.title}</span>}
+      {mode.kind === 'creation' && <span className="dice-cup-label">{mode.pending.title}</span>}
       {mode.kind === 'sheet' && <span className="dice-cup-label">{sheetLabel(mode.pending)}</span>}
       {mode.kind === 'initiative' && (
         <span className="dice-cup-label">{initiativeLabel(mode.pending)}</span>

@@ -587,6 +587,28 @@ body {
   animation: dice-cup-pulse 1.6s ease-in-out infinite;
 }
 
+/* Rozkład Cech z kreatora (etap 25a). Własny kolor i mocniejszy oddech niż
+   przy zwykłym rzucie z karty: kubek stoi w rogu, a kreator zajmuje środek
+   ekranu, więc musi zawołać przez pół stołu. */
+.dice-cup--creation {
+  --cup-glow: 90 200 255;
+  color: #6fd0ff;
+  border-color: #6fd0ff;
+  animation: dice-cup-call 1.2s ease-in-out infinite;
+}
+
+@keyframes dice-cup-call {
+  0%,
+  100% {
+    box-shadow: 0 0 8px rgb(var(--cup-glow) / 45%);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 20px rgb(var(--cup-glow) / 85%);
+    transform: scale(1.08);
+  }
+}
+
 .dice-cup--shaking {
   cursor: grabbing;
   z-index: 80;
