@@ -9,7 +9,8 @@ kopiujemy:
 
 - grafiki ramki (czerwone narożniki, przerywana linia, pasek „kodu kreskowego" na dole strony),
 - logo „Cyberpunk RED",
-- renderu szkieletu ze strony trzeciej (dojdzie w 27c jako **własny** SVG sylwetki),
+- renderu szkieletu ze strony trzeciej — w 27c zastąpiony konturem z domeny publicznej
+  (patrz „Sylwetka" niżej),
 - treści podręcznikowych: opisów umiejętności, tabel, przykładów.
 
 Odtwarzamy wyłącznie **styl**: siatkę, proporcje, kolory i typografię — własnym CSS-em
@@ -82,3 +83,37 @@ Wydruk nie ma obramowań pól: ma czerwone tło, które prześwituje między nim
 nie ma ani jednego `border` — rowek robi `gap`, a charakterystyczny ścięty lewy górny narożnik
 `clip-path` (pole otoczone czerwienią panelu, więc cięcie odsłania czerwień, a nie dziurę).
 Ścięte narożniki całego okna to ten sam `clip-path` na `.sheet-window`.
+
+## Sylwetka ze strony trzeciej (etap 27c)
+
+Strona trzecia arkusza ma render ludzkiego ciała z gniazdami cyborgizacji. Ten render jest
+objęty tym samym prawem autorskim co reszta karty, więc go **nie kopiujemy**. W jego miejsce
+stoi gotowy kontur z zasobów publicznych — zgodnie z zasadą projektu „darmowy asset z sieci,
+hostowany u siebie, zamiast rysunku robionego na kolanie":
+
+| Pole       | Wartość                                                                                                    |
+| ---------- | ---------------------------------------------------------------------------------------------------------- |
+| Plik       | `Human body silhouette.svg`                                                                                |
+| Źródło     | https://commons.wikimedia.org/wiki/File:Human_body_silhouette.svg                                          |
+| Licencja   | **domena publiczna** („I grant anyone the right to use this work for any purpose, without any conditions") |
+| Autorzy    | Mikael Häggström (zdjęcie źródłowe), RexxS i -Strogoff- (obróbka do sylwetki)                              |
+| Gdzie leży | `packages/client/src/components/body-silhouette.ts`                                                        |
+
+To **jedna ścieżka SVG** — kontur stojącej postaci od przodu, ręce wzdłuż ciała, układ
+współrzędnych 970 × 2206 (głowa u góry). Zmienione wobec oryginału:
+
+- wtopiony `transform="translate(…)"` warstwy Inkscape'a (kontur zaczyna się w zerze),
+- precyzja współrzędnych obcięta do jednego miejsca po przecinku — **24 kB → 13 kB**,
+- kolor zdjęty z pliku: nadaje go CSS (`.cp-body-shape`), żeby sylwetka szła za motywem
+  dzień/noc razem z resztą karty.
+
+Nie jest to plik w `public/`, tylko stała w module TS — dzięki temu gniazda, odnośniki
+i kontur siedzą w jednym układzie współrzędnych, a `<img>` nie dałby się przemalować motywem.
+
+### Gniazda na sylwetce
+
+Osiem punktów (`SLOT_ANCHORS` w `CyberwareBody.tsx`) spróbkowanych z konturu: oczy, ucho,
+kark, ramiona i uda. **Strony są postaci, nie widza** — widok jest od przodu, więc prawe oko
+postaci leży po lewej stronie rysunku, i po lewej stronie stoją wszystkie „prawe" pudełka.
+Pudełka są zwykłym HTML-em pozycjonowanym w procentach **tego samego `viewBox`**, co SVG,
+więc odnośniki trafiają dokładnie w ich krawędź bez mierzenia czegokolwiek w JS.

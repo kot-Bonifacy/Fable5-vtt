@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  LIFEPATH_ENEMY_COLUMNS,
   LIFEPATH_GROUP_MAX,
+  LIFEPATH_SHEET_FIELDS,
   applyLifepathEntry,
   buildLifepathData,
   clearRoleAnswers,
@@ -379,5 +381,26 @@ describe('walidacja zapisu', () => {
     expect(sheet.lifepath.enemies[0]?.who).toBe('Eks');
     // Older rows simply have none of it.
     expect(parseCharacterData('{}', registry).lifepath.culture).toBe('');
+  });
+});
+
+describe('page two of the printed sheet (stage 27c)', () => {
+  it('labels every prose field of the Lifepath, without a data file in sight', () => {
+    const listed = LIFEPATH_SHEET_FIELDS.map((entry) => entry.field).sort();
+    const prose = Object.entries(createDefaultLifepath())
+      .filter(([, value]) => typeof value === 'string')
+      .map(([key]) => key)
+      .sort();
+    expect(listed).toEqual(prose);
+    for (const entry of LIFEPATH_SHEET_FIELDS) expect(entry.label.length).toBeGreaterThan(0);
+  });
+
+  it('names the four columns of the Enemies table', () => {
+    expect(LIFEPATH_ENEMY_COLUMNS.map((column) => column.field)).toEqual([
+      'who',
+      'cause',
+      'resources',
+      'revenge',
+    ]);
   });
 });

@@ -15,8 +15,13 @@ import type {
   CpredSkillDefinition,
   CpredAttackMode,
   CpredCharacterData,
+  CpredCyberwareRow,
   CpredItemRow,
+  CpredLifepath,
+  CpredLifepathEnemy,
+  CpredLifepathPerson,
   CpredReputationSource,
+  CyberwareBodySlot,
   CpredWeaponRow,
   LedgerEntryView,
   PortraitUploadResult,
@@ -35,6 +40,7 @@ import {
   CPRED_STAT_MIN,
   CPRED_SUPPRESSIVE_RANGE_M,
   CPRED_WOUND_LABELS,
+  CYBERWARE_BODY_SLOT_LABELS,
   CYBERWARE_INSTALL_LABELS,
   CYBERWARE_TYPE_LABELS,
   HOUSING_DEFINITIONS,
@@ -42,7 +48,12 @@ import {
   HUMANITY_MIN,
   HUMANITY_THERAPIES,
   HUMANITY_THERAPY_DEFINITIONS,
+  IMPROVEMENT_POINTS_MAX,
   LEDGER_KIND_LABELS,
+  LIFEPATH_ENEMY_COLUMNS,
+  LIFEPATH_GROUP_MAX,
+  LIFEPATH_LINE_MAX_LENGTH,
+  LIFEPATH_SHEET_FIELDS,
   LIFESTYLE_DEFINITIONS,
   LIFESTYLE_LEVELS,
   REPUTATION_LEVEL_MAX,
@@ -57,11 +68,14 @@ import {
   SKILL_LEVEL_MAX,
   SKILL_LEVEL_MIN,
   ammoOptionsFor,
+  bodySlotsForType,
   cpredReputation,
   cyberpsychosisFor,
   cyberwareCapacity,
   deathSaveTarget,
   effectiveArmor,
+  emptyLifepathEnemy,
+  emptyLifepathPerson,
   effectiveCpredStats,
   formatEddies,
   formatLedgerAmount,
@@ -69,6 +83,7 @@ import {
   hpMax,
   humanityMaxWith,
   isAmmoEntry,
+  isCyberwareBodySlot,
   isHousingOption,
   isLifestyleLevel,
   isValidDamageNotation,
@@ -83,6 +98,7 @@ import {
   woundState,
 } from '@vtt/shared';
 import { ApiError, apiUpload } from '../api.js';
+import { CyberwareBody } from './CyberwareBody.js';
 import {
   economyErrorText,
   fetchLedger,
@@ -108,19 +124,22 @@ import {
   type RollTarget,
 } from '../stores/rollStore.js';
 
-type SheetTab = 'stats' | 'gear' | 'bio';
+type SheetTab = 'stats' | 'bio' | 'chrome' | 'gear';
 
 /**
  * Zakładki idą za stronami wydruku, nie za tematami.
  *
  * „Walka" zniknęła w etapie 27b: broń, pancerz i rany krytyczne drukują się na
  * stronie pierwszej, więc tam wróciły. Zostawienie po nich pustej zakładki
- * znaczyłoby, że to samo mieszka w dwóch miejscach.
+ * znaczyłoby, że to samo mieszka w dwóch miejscach. W 27c doszły dwie
+ * pozostałe strony arkusza — Ścieżka Życia i sylwetka cyborgizacji — i stoją
+ * w kolejności druku; „Ekwipunek" zostaje na końcu, bo nie ma własnej strony.
  */
 const TABS: { id: SheetTab; label: string }[] = [
   { id: 'stats', label: 'Karta' },
+  { id: 'bio', label: 'Ścieżka Życia' },
+  { id: 'chrome', label: 'Cyborgizacje' },
   { id: 'gear', label: 'Ekwipunek' },
-  { id: 'bio', label: 'Biografia' },
 ];
 
 /** Short row id (validation caps ids at 32 chars — crypto UUIDs are longer). */
@@ -316,7 +335,10 @@ function CharacterSheetWindow({
           />
         )}
         {tab === 'gear' && <GearTab character={character} data={data} saveData={saveData} />}
-        {tab === 'bio' && <BioTab data={data} saveData={saveData} />}
+        {tab === 'bio' && <LifepathPage data={data} saveData={saveData} />}
+        {tab === 'chrome' && (
+          <ChromePage characterId={character.id} data={data} saveData={saveData} />
+        )}
       </div>
 
       {issueList.length > 0 && (
@@ -1710,8 +1732,6 @@ function GearTab({ character, data, saveData }: TabProps & { character: Characte
       </div>
 
       <LifestyleFields data={data} saveData={saveData} />
-
-      <CyberwareSection characterId={character.id} data={data} saveData={saveData} />
     </div>
   );
 }
@@ -1992,7 +2012,16 @@ function WalletSection({
  * hardware arrives from the Compendium tab, and the only thing the sheet lets
  * you edit is the note beside it.
  */
-function CyberwareSection({
+/**
+ * Strona trzecia arkusza (etap 27c): sylwetka z gniazdami, cztery listy boczne
+ * i pod nimi tabela wszystkich wszczepów.
+ *
+ * Podział pracy jest celowy: rysunek odpowiada na „co gdzie siedzi", tabela na
+ * „ile mnie kosztowało i jak to zdjąć". Wiersz wskazany na sylwetce podświetla
+ * się w tabeli — dzięki temu obie połowy mówią o tym samym przedmiocie, a nie
+ * o dwóch listach do porównywania wzrokiem.
+ */
+function ChromePage({
   characterId,
   data,
   saveData,
@@ -2001,10 +2030,54 @@ function CyberwareSection({
   data: CpredCharacterData;
   saveData: TabProps['saveData'];
 }) {
+  const [focusRowId, setFocusRowId] = useState<string | null>(null);
+
+  return (
+    <div className="sheet-chrome">
+      <CyberwareBody data={data} focusRowId={focusRowId} onFocusRow={setFocusRowId} />
+      <CyberwareSection
+        characterId={characterId}
+        data={data}
+        saveData={saveData}
+        focusRowId={focusRowId}
+      />
+    </div>
+  );
+}
+
+function CyberwareSection({
+  characterId,
+  data,
+  saveData,
+  focusRowId,
+}: {
+  characterId: string;
+  data: CpredCharacterData;
+  saveData: TabProps['saveData'];
+  focusRowId: string | null;
+}) {
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const capacity = cyberwareCapacity(data.cyberware);
   const [confirmRow, setConfirmRow] = useState<string | null>(null);
   const [freeTherapy, setFreeTherapy] = useState(false);
+
+  function updateSlot(rowId: string, bodySlot: CyberwareBodySlot | null) {
+    saveData(
+      {
+        cyberware: data.cyberware.map((row) =>
+          row.id === rowId
+            ? // Puste znaczy „jeszcze nie wiadomo", więc pole musi z wiersza
+              // zniknąć, a nie zostać w nim jako pusty napis.
+              ({
+                ...row,
+                ...(bodySlot ? { bodySlot } : { bodySlot: undefined }),
+              } as CpredCyberwareRow)
+            : row,
+        ),
+      },
+      'cyberware',
+    );
+  }
 
   function updateNotes(rowId: string, notes: string) {
     saveData(
@@ -2049,6 +2122,7 @@ function CyberwareSection({
                 <tr>
                   <th>Nazwa</th>
                   <th style={{ width: '9rem' }}>Rodzina</th>
+                  <th style={{ width: '9.5rem' }}>Gniazdo</th>
                   <th style={{ width: '5rem' }}>UC</th>
                   <th>Uwagi</th>
                   <th />
@@ -2056,7 +2130,10 @@ function CyberwareSection({
               </thead>
               <tbody>
                 {data.cyberware.map((row) => (
-                  <tr key={row.id}>
+                  <tr
+                    key={row.id}
+                    className={row.id === focusRowId ? 'cyberware-row--focus' : undefined}
+                  >
                     <td>
                       {row.name}
                       {row.foundation && (
@@ -2074,6 +2151,37 @@ function CyberwareSection({
                           {CYBERWARE_INSTALL_LABELS[row.install]}
                         </span>
                       )}
+                    </td>
+                    <td className="cyberware-slot">
+                      {/* Rodziny z jednym miejscem na ciele (Cyberaudio,
+                          Sprzęg neuralny) nie mają o co pytać — pokazują
+                          gniazdo i nie dają go zmienić. */}
+                      {(() => {
+                        const options = row.type ? bodySlotsForType(row.type) : [];
+                        if (options.length === 0) return <span className="cp-dim">—</span>;
+                        if (options.length === 1) {
+                          return <span>{CYBERWARE_BODY_SLOT_LABELS[options[0]!]}</span>;
+                        }
+                        return (
+                          <select
+                            value={row.bodySlot ?? ''}
+                            title="Gdzie na ciele siedzi ten wszczep — rysunek na górze bierze to stąd"
+                            onChange={(e) =>
+                              updateSlot(
+                                row.id,
+                                isCyberwareBodySlot(e.target.value) ? e.target.value : null,
+                              )
+                            }
+                          >
+                            <option value="">— wybierz —</option>
+                            {options.map((slot) => (
+                              <option key={slot} value={slot}>
+                                {CYBERWARE_BODY_SLOT_LABELS[slot]}
+                              </option>
+                            ))}
+                          </select>
+                        );
+                      })()}
                     </td>
                     <td title="Człowieczeństwo, które ten wszczep zabrał przy montażu">
                       {row.humanityLoss ? `−${row.humanityLoss}` : '—'}
@@ -2156,16 +2264,253 @@ function CyberwareSection({
 }
 
 /**
- * Zakładka „Biografia” — dziś sama Reputacja.
+ * Strona druga arkusza (etap 27c) — Ścieżka Życia rozpisana na pola.
  *
- * Portret i pole „Notatki” przeniosły się na stronę pierwszą (etap 27a), bo tam
- * drukuje je oficjalna karta — a dwa edytory tego samego pola tylko mylą.
- * Ścieżka Życia rozpisana na pola zamiast jednego pola prozy to etap 27c.
+ * Do 25b całe to życie mieszkało w jednym polu „Notatki”, a od 25b kreator
+ * zapisywał je w `data.lifepath`, którego karta nie umiała pokazać. Tutaj
+ * kończy się ta luka: postać wychodząca z kreatora ma życiorys, który widać.
+ *
+ * Wszystko jest edytowalne, bo taka jest zasada całego rozdziału: „Jeśli
+ * wylosujesz coś, co nie pasuje do twojej wizji Postaci, odpowiednio zmień
+ * wynik” (s. 44). Karta nie zna tu ani jednej listy zamkniętej.
  */
-function BioTab({ data, saveData }: TabProps) {
+function LifepathPage({ data, saveData }: TabProps) {
+  const lifepath = data.lifepath;
+
+  function writeLifepath(patch: Partial<CpredLifepath>) {
+    saveData({ lifepath: { ...lifepath, ...patch } }, 'lifepath');
+  }
+
   return (
     <div className="sheet-bio">
+      <div className="cp-panel cp-lifepath-head">
+        <div className="cp-field cp-field--notch cp-row cp-span2">
+          <span className="cp-label">Pseudonimy</span>
+          <input
+            type="text"
+            maxLength={SHEET_LINE_MAX_LENGTH}
+            value={data.aliases}
+            placeholder="Pod jakimi ksywami znają cię na Ulicy"
+            onChange={(e) => saveData({ aliases: e.target.value }, 'aliases')}
+            aria-label="Pseudonimy"
+          />
+        </div>
+        <div
+          className="cp-field cp-row"
+          title="PD przyznaje MG po sesji (s. 408). Karta trzyma sam licznik — na co je wydać, ustala się przy stole."
+        >
+          <span className="cp-label">Punkty Doświadczenia</span>
+          <input
+            type="number"
+            min={0}
+            max={IMPROVEMENT_POINTS_MAX}
+            value={data.improvementPoints}
+            onChange={(e) => {
+              const value = parseNumberInput(e);
+              if (value !== undefined) saveData({ improvementPoints: value }, 'improvementPoints');
+            }}
+            aria-label="Punkty Doświadczenia"
+          />
+        </div>
+      </div>
+
+      <div className="cp-panel cp-lifepath">
+        <div className="cp-bar cp-bar--plain">Ścieżka Życia</div>
+        {LIFEPATH_SHEET_FIELDS.map((entry) => (
+          <div key={entry.field} className={`cp-field cp-row ${entry.wide ? 'cp-span2' : ''}`}>
+            <span className="cp-label">{entry.label}</span>
+            <input
+              type="text"
+              maxLength={LIFEPATH_LINE_MAX_LENGTH}
+              value={lifepath[entry.field]}
+              onChange={(e) => writeLifepath({ [entry.field]: e.target.value })}
+              aria-label={entry.label}
+            />
+          </div>
+        ))}
+      </div>
+
+      <LifepathPeople
+        title="Przyjaciele"
+        people={lifepath.friends}
+        noteLabel="Kim jest dla ciebie"
+        onChange={(friends) => writeLifepath({ friends })}
+      />
+      <LifepathPeople
+        title="Tragiczna historia miłosna"
+        people={lifepath.tragicLoves}
+        noteLabel="Jak to się skończyło"
+        onChange={(tragicLoves) => writeLifepath({ tragicLoves })}
+      />
+      <LifepathEnemies enemies={lifepath.enemies} onChange={(e) => writeLifepath({ enemies: e })} />
+
+      {lifepath.roleAnswers.length > 0 && (
+        <div className="cp-panel cp-lifepath">
+          <div className="cp-bar cp-bar--plain">Ścieżka Życia Roli</div>
+          {lifepath.roleAnswers.map((answer, index) => (
+            <div key={answer.id} className="cp-field cp-row cp-span2">
+              <span className="cp-label">{answer.question}</span>
+              <input
+                type="text"
+                maxLength={LIFEPATH_LINE_MAX_LENGTH}
+                value={answer.answer}
+                onChange={(e) => {
+                  const roleAnswers = lifepath.roleAnswers.map((row, i) =>
+                    i === index ? { ...row, answer: e.target.value } : row,
+                  );
+                  writeLifepath({ roleAnswers });
+                }}
+                aria-label={answer.question}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
       <ReputationSection data={data} saveData={saveData} />
+    </div>
+  );
+}
+
+/**
+ * Przyjaciele i dawne miłości — dwie listy o tym samym kształcie (imię plus
+ * jedno zdanie), więc jeden komponent. Wrogowie mają cztery kolumny i własny.
+ */
+function LifepathPeople({
+  title,
+  people,
+  noteLabel,
+  onChange,
+}: {
+  title: string;
+  people: CpredLifepathPerson[];
+  noteLabel: string;
+  onChange: (people: CpredLifepathPerson[]) => void;
+}) {
+  function patch(index: number, fields: Partial<CpredLifepathPerson>) {
+    onChange(people.map((row, i) => (i === index ? { ...row, ...fields } : row)));
+  }
+
+  return (
+    <div className="cp-panel cp-lifepath-group">
+      <div className="cp-bar cp-bar--plain">
+        {title}
+        <button
+          type="button"
+          className="cp-bar-add"
+          title={`Dopisz — ${title.toLowerCase()}`}
+          disabled={people.length >= LIFEPATH_GROUP_MAX}
+          onClick={() => onChange([...people, emptyLifepathPerson(newRowId())])}
+        >
+          +
+        </button>
+      </div>
+      {people.length === 0 ? (
+        <div className="cp-field cp-body-list-empty">—</div>
+      ) : (
+        people.map((person, index) => (
+          <div key={person.id} className="cp-lifepath-person">
+            <div className="cp-field cp-row">
+              <span className="cp-label">Kto</span>
+              <input
+                type="text"
+                maxLength={LIFEPATH_LINE_MAX_LENGTH}
+                value={person.name}
+                placeholder="Imię albo ksywa"
+                onChange={(e) => patch(index, { name: e.target.value })}
+                aria-label={`${title} — kto`}
+              />
+            </div>
+            <div className="cp-field cp-row">
+              <span className="cp-label">{noteLabel}</span>
+              <input
+                type="text"
+                maxLength={LIFEPATH_LINE_MAX_LENGTH}
+                value={person.note}
+                onChange={(e) => patch(index, { note: e.target.value })}
+                aria-label={`${title} — ${noteLabel}`}
+              />
+            </div>
+            <button
+              type="button"
+              className="small-button character-delete"
+              title="Usuń z listy"
+              onClick={() => onChange(people.filter((_, i) => i !== index))}
+            >
+              ✕
+            </button>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
+/** Wrogowie: cztery kolumny tabeli z s. 51, każda jako osobne pole. */
+function LifepathEnemies({
+  enemies,
+  onChange,
+}: {
+  enemies: CpredLifepathEnemy[];
+  onChange: (enemies: CpredLifepathEnemy[]) => void;
+}) {
+  function patch(index: number, fields: Partial<CpredLifepathEnemy>) {
+    onChange(enemies.map((row, i) => (i === index ? { ...row, ...fields } : row)));
+  }
+
+  return (
+    <div className="cp-panel cp-lifepath-group">
+      <div className="cp-bar cp-bar--plain">
+        Wrogowie
+        <button
+          type="button"
+          className="cp-bar-add"
+          title="Dopisz wroga"
+          disabled={enemies.length >= LIFEPATH_GROUP_MAX}
+          onClick={() => onChange([...enemies, emptyLifepathEnemy(newRowId())])}
+        >
+          +
+        </button>
+      </div>
+      {enemies.length === 0 ? (
+        <div className="cp-field cp-body-list-empty">—</div>
+      ) : (
+        enemies.map((enemy, index) => (
+          <div key={enemy.id} className="cp-lifepath-enemy">
+            <div className="cp-field cp-row cp-span2">
+              <span className="cp-label">Kto</span>
+              <input
+                type="text"
+                maxLength={LIFEPATH_LINE_MAX_LENGTH}
+                value={enemy.name}
+                placeholder="Imię albo ksywa"
+                onChange={(e) => patch(index, { name: e.target.value })}
+                aria-label="Wróg — kto"
+              />
+              <button
+                type="button"
+                className="small-button character-delete"
+                title="Usuń wroga"
+                onClick={() => onChange(enemies.filter((_, i) => i !== index))}
+              >
+                ✕
+              </button>
+            </div>
+            {LIFEPATH_ENEMY_COLUMNS.map((column) => (
+              <div key={column.field} className="cp-field cp-row">
+                <span className="cp-label">{column.label}</span>
+                <input
+                  type="text"
+                  maxLength={LIFEPATH_LINE_MAX_LENGTH}
+                  value={enemy[column.field]}
+                  onChange={(e) => patch(index, { [column.field]: e.target.value })}
+                  aria-label={`Wróg — ${column.label}`}
+                />
+              </div>
+            ))}
+          </div>
+        ))
+      )}
     </div>
   );
 }

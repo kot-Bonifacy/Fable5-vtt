@@ -193,6 +193,26 @@ describe('validateCharacterDataPatch', () => {
       expect(tooLong.issues[0]?.message).toContain('Uzależnienia');
     }
   });
+
+  // Stage 27c — the two boxes at the head of page two.
+  it('accepts aliases and Improvement Points, and refuses a negative total', () => {
+    const result = validateCharacterDataPatch(
+      { aliases: 'Kolec, Szpila', improvementPoints: 120 },
+      registry,
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.patch.aliases).toBe('Kolec, Szpila');
+      expect(result.patch.improvementPoints).toBe(120);
+    }
+    const negative = validateCharacterDataPatch({ improvementPoints: -1 }, registry);
+    expect(negative.ok).toBe(false);
+    if (!negative.ok) {
+      expect(negative.issues[0]?.field).toBe('improvementPoints');
+      expect(negative.issues[0]?.message).toContain('Punkty Doświadczenia');
+    }
+    expect(validateCharacterDataPatch({ improvementPoints: 1.5 }, registry).ok).toBe(false);
+  });
 });
 
 describe('parseCharacterData', () => {
@@ -219,6 +239,15 @@ describe('parseCharacterData', () => {
     expect(data.addictions).toBe('');
     expect(data.style).toBe('');
     expect(data.ammoStock).toBe('');
+  });
+
+  // The same promise for stage 27c: a sheet written before page two existed
+  // opens with an empty header, not a broken one.
+  it('reads a sheet saved before page two as an empty header', () => {
+    const data = parseCharacterData(JSON.stringify({ eddies: 10 }), registry);
+    expect(data.aliases).toBe('');
+    expect(data.improvementPoints).toBe(0);
+    expect(data.lifepath.culture).toBe('');
   });
 });
 

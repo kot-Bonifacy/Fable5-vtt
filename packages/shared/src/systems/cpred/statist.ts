@@ -237,6 +237,10 @@ export function combatProfileSheet(
     // Ani Ścieżki Życia (25b): statysta nie ma kultury pochodzenia, wrogów
     // ani celu życiowego — ma imię na żetonie i jedną broń.
     lifepath: createDefaultLifepath(),
+    // Ani strony drugiej (27c): nikt go nie zna po ksywie i nikt nie przyznaje
+    // mu Punktów Doświadczenia.
+    aliases: '',
+    improvementPoints: 0,
   };
 }
 

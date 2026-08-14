@@ -8,8 +8,10 @@ import {
   HUMANITY_MAX_PENALTY_BORGWARE,
   HUMANITY_MIN,
   humanityMaxWith,
+  isCyberwareBodySlot,
   isCyberwareInstall,
   isCyberwareType,
+  type CyberwareBodySlot,
   type CyberwareInstall,
   type CyberwareInstallation,
 } from './cyberware.js';
@@ -265,6 +267,15 @@ export interface CpredCyberwareRow extends CpredItemRow, CyberwareInstallation {
   humanityLoss?: number;
   /** Where it was fitted, for the sheet's line („Klinika"). */
   install?: CyberwareInstall;
+  /**
+   * Which box of page three the piece sits in (stage 27c) — the answer to
+   * „które oko?", which stage 23a left to the prose because no rule reads it.
+   *
+   * Optional, and written by the player rather than the install: an eye or a
+   * limb with none simply waits beside the silhouette to be placed, and every
+   * other family has exactly one place it can go.
+   */
+  bodySlot?: CyberwareBodySlot;
 }
 
 export interface CpredWeaponRow extends CpredItemRow {
@@ -501,7 +512,29 @@ export interface CpredCharacterData {
    * and had nowhere to name — that name lives here.
    */
   lifepath: CpredLifepath;
+  /**
+   * „Pseudonimy" — the header of page two (stage 27c): the other names this
+   * character answers to, beside the one on page one.
+   *
+   * One line rather than a list, because that is what the sheet prints and
+   * because nothing reads it: a ksywa on the street is fiction the table uses,
+   * never a key anything is looked up by.
+   */
+  aliases: string;
+  /**
+   * „Gdy zdobywasz jakieś PD, zapisz ich liczbę na karcie postaci, w okienku
+   * Punkty Doświadczenia" (s. 408) — the box, and only the box.
+   *
+   * The sheet keeps the running total and nothing else: what a point may be
+   * spent on is a conversation between player and GM (s. 411), so an automatic
+   * ledger here would be a rule the book does not have. Plain and editable, as
+   * on paper; the GM awards, the player spends and writes the difference.
+   */
+  improvementPoints: number;
 }
+
+/** Cap on the „Punkty Doświadczenia" box — a campaign never gets near it. */
+export const IMPROVEMENT_POINTS_MAX = 99_999;
 
 export function createDefaultCharacterData(): CpredCharacterData {
   const stats = Object.fromEntries(CPRED_STAT_IDS.map((id) => [id, 5])) as CpredStats;
@@ -529,6 +562,8 @@ export function createDefaultCharacterData(): CpredCharacterData {
     style: '',
     ammoStock: '',
     lifepath: createDefaultLifepath(),
+    aliases: '',
+    improvementPoints: 0,
   };
 }
 
@@ -1046,6 +1081,7 @@ function collectCharacterDataPatch(
           ...base,
           ...(isCyberwareType(row.type) ? { type: row.type } : {}),
           ...(isCyberwareInstall(row.install) ? { install: row.install } : {}),
+          ...(isCyberwareBodySlot(row.bodySlot) ? { bodySlot: row.bodySlot } : {}),
           ...(row.foundation === true ? { foundation: true as const } : {}),
           ...(isInteger(slots) && slots >= 0 && slots <= CYBERWARE_SLOTS_MAX ? { slots } : {}),
           ...(isInteger(slotCost) && slotCost >= 0 && slotCost <= CYBERWARE_SLOTS_MAX
@@ -1123,6 +1159,30 @@ function collectCharacterDataPatch(
   // here, only a too-long one.
   if ('lifepath' in input) {
     patch.lifepath = validateLifepath(input.lifepath, issues);
+  }
+  // Stage 27c — the two boxes at the head of page two.
+  if ('aliases' in input) {
+    const value = validateText(
+      input.aliases,
+      'aliases',
+      'Pseudonimy',
+      SHEET_LINE_MAX_LENGTH,
+      issues,
+    );
+    if (value !== undefined) patch.aliases = value;
+  }
+  if ('improvementPoints' in input) {
+    const value = input.improvementPoints;
+    if (!isInteger(value) || value < 0 || value > IMPROVEMENT_POINTS_MAX) {
+      issues.push(
+        issue(
+          'improvementPoints',
+          `Punkty Doświadczenia muszą być liczbą od 0 do ${IMPROVEMENT_POINTS_MAX}.`,
+        ),
+      );
+    } else {
+      patch.improvementPoints = value;
+    }
   }
 
   return { patch, issues };

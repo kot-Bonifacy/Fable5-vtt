@@ -270,6 +270,149 @@ export function cyberpsychosisFor(humanityCurrent: number): CyberpsychosisState 
   };
 }
 
+// ───────────────────────── sylwetka ze strony trzeciej ─────────────────────────
+
+/**
+ * The boxes drawn around the body on page three of the printed sheet (stage
+ * 27c). Eight of them, exactly as the sheet prints: one Neural Link, one
+ * Cyberaudio, and a right/left pair for eyes, arms and legs.
+ *
+ * A *place on the body*, which is a different question from the *family* the
+ * catalogue puts a piece in. Cyberoptics tells you a thing goes in an eye;
+ * only this says which one — and `cyberlimb` covers arms and legs alike, so
+ * the family cannot answer even that much on its own.
+ */
+export const CYBERWARE_BODY_SLOTS = [
+  'neural',
+  'cyberaudio',
+  'eyeRight',
+  'eyeLeft',
+  'armRight',
+  'armLeft',
+  'legRight',
+  'legLeft',
+] as const;
+export type CyberwareBodySlot = (typeof CYBERWARE_BODY_SLOTS)[number];
+
+export const CYBERWARE_BODY_SLOT_LABELS: Record<CyberwareBodySlot, string> = {
+  neural: 'Sprzęg neuralny',
+  cyberaudio: 'Cyberaudio',
+  eyeRight: 'Prawe cyberoko',
+  eyeLeft: 'Lewe cyberoko',
+  armRight: 'Prawa cyberręka',
+  armLeft: 'Lewa cyberręka',
+  legRight: 'Prawa cybernoga',
+  legLeft: 'Lewa cybernoga',
+};
+
+/** Which family belongs in which box. */
+export const CYBERWARE_BODY_SLOT_TYPES: Record<CyberwareBodySlot, CyberwareType> = {
+  neural: 'neuralware',
+  cyberaudio: 'cyberaudio',
+  eyeRight: 'cyberoptics',
+  eyeLeft: 'cyberoptics',
+  armRight: 'cyberlimb',
+  armLeft: 'cyberlimb',
+  legRight: 'cyberlimb',
+  legLeft: 'cyberlimb',
+};
+
+export function isCyberwareBodySlot(value: unknown): value is CyberwareBodySlot {
+  return typeof value === 'string' && (CYBERWARE_BODY_SLOTS as readonly string[]).includes(value);
+}
+
+/**
+ * Boxes a family may be dropped into — what the sheet offers as a choice.
+ * Empty for the four families that have no box at all and print as side lists.
+ */
+export function bodySlotsForType(type: CyberwareType): CyberwareBodySlot[] {
+  return CYBERWARE_BODY_SLOTS.filter((slot) => CYBERWARE_BODY_SLOT_TYPES[slot] === type);
+}
+
+/**
+ * Where a piece goes when nobody has said. Only the two families with exactly
+ * one box get one: an eye and a limb are a genuine question („które oko?", the
+ * one stage 23a deliberately left to the prose), and answering it by guessing
+ * would put chrome in a leg the character does not have.
+ */
+export function defaultBodySlot(type: CyberwareType | undefined): CyberwareBodySlot | null {
+  if (!type) return null;
+  const slots = bodySlotsForType(type);
+  return slots.length === 1 ? slots[0]! : null;
+}
+
+/** A row as the silhouette needs to see it: its family and its declared box. */
+export interface CyberwarePlacement {
+  type?: CyberwareType;
+  bodySlot?: CyberwareBodySlot;
+}
+
+/**
+ * The four columns beside the silhouette on page three, in the sheet's order.
+ * Everything that is not fitted to a named place on the body prints here.
+ */
+export const CYBERWARE_BODY_LISTS = [
+  'internal',
+  'external',
+  'fashionware',
+  'borgware',
+] as const satisfies readonly CyberwareType[];
+export type CyberwareBodyList = (typeof CYBERWARE_BODY_LISTS)[number];
+
+export interface CyberwareBodyMap<T> {
+  /** Rows fitted to each box; a box with none prints empty, as on paper. */
+  slots: Record<CyberwareBodySlot, T[]>;
+  /** The four side columns. */
+  lists: Record<CyberwareBodyList, T[]>;
+  /**
+   * Eyes and limbs nobody has placed yet. They are *not* silently dropped into
+   * a box — the sheet asks, because the answer is the player's.
+   */
+  unplaced: T[];
+}
+
+/**
+ * Sorts a character's chrome onto page three.
+ *
+ * Family decides the destination, and a row with no family at all lands in
+ * „Cyborgizacje wewnętrzne": that is where the sheet's own catch-all sits, and
+ * rows written before stage 23a have no family to read.
+ */
+export function cyberwareBodyMap<T extends CyberwarePlacement>(
+  rows: readonly T[],
+): CyberwareBodyMap<T> {
+  const slots = Object.fromEntries(CYBERWARE_BODY_SLOTS.map((slot) => [slot, [] as T[]])) as Record<
+    CyberwareBodySlot,
+    T[]
+  >;
+  const lists = Object.fromEntries(CYBERWARE_BODY_LISTS.map((list) => [list, [] as T[]])) as Record<
+    CyberwareBodyList,
+    T[]
+  >;
+  const unplaced: T[] = [];
+
+  for (const row of rows) {
+    const type = row.type;
+    if (type && (CYBERWARE_BODY_LISTS as readonly CyberwareType[]).includes(type)) {
+      lists[type as CyberwareBodyList].push(row);
+      continue;
+    }
+    if (!type) {
+      lists.internal.push(row);
+      continue;
+    }
+    // A declared box wins, but only when it belongs to this family — a row that
+    // changed family in the catalogue must not stay in a leg.
+    const declared =
+      row.bodySlot && CYBERWARE_BODY_SLOT_TYPES[row.bodySlot] === type ? row.bodySlot : null;
+    const slot = declared ?? defaultBodySlot(type);
+    if (slot) slots[slot].push(row);
+    else unplaced.push(row);
+  }
+
+  return { slots, lists, unplaced };
+}
+
 /** Room left in one family of cyberware — what the sheet prints as „3 / 4". */
 export interface CyberwareCapacity {
   type: CyberwareType;

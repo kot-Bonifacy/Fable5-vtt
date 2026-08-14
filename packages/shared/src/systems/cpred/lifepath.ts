@@ -316,6 +316,51 @@ export const LIFEPATH_FIELD_TABLES = {
 
 export type CpredLifepathFieldTable = keyof typeof LIFEPATH_FIELD_TABLES;
 
+/**
+ * Page two of the printed sheet, in the order it prints (stage 27c).
+ *
+ * A second home for names the tables already carry in `label`, and on purpose:
+ * the sheet must be able to label its own boxes with no data file loaded at
+ * all. An old character opened on a fresh clone has a Lifepath and no tables —
+ * reading the labels off the tables would leave that sheet unlabelled.
+ */
+export type CpredLifepathTextField = {
+  [K in keyof CpredLifepath]: CpredLifepath[K] extends string ? K : never;
+}[keyof CpredLifepath];
+
+export const LIFEPATH_SHEET_FIELDS: readonly {
+  field: CpredLifepathTextField;
+  label: string;
+  /** Long answers („Tło rodzinne") get the full width of the sheet. */
+  wide?: boolean;
+}[] = [
+  { field: 'culture', label: 'Kultura pochodzenia' },
+  { field: 'language', label: 'Język ojczysty' },
+  { field: 'personality', label: 'Osobowość' },
+  { field: 'clothing', label: 'Ubiór i styl' },
+  { field: 'hair', label: 'Fryzura' },
+  { field: 'affectation', label: 'Znak szczególny' },
+  { field: 'valueMost', label: 'Co cenisz najbardziej' },
+  { field: 'feelingsAboutPeople', label: 'Stosunek do ludzi' },
+  { field: 'mostValuedPerson', label: 'Najważniejsza osoba', wide: true },
+  { field: 'mostValuedPossession', label: 'Najważniejszy przedmiot', wide: true },
+  { field: 'familyBackground', label: 'Tło rodzinne', wide: true },
+  { field: 'childhoodEnvironment', label: 'Środowisko', wide: true },
+  { field: 'familyCrisis', label: 'Kryzys rodzinny', wide: true },
+  { field: 'lifeGoal', label: 'Cel życiowy', wide: true },
+];
+
+/** Column headings of the Enemies table (s. 51), for the sheet's own list. */
+export const LIFEPATH_ENEMY_COLUMNS: readonly {
+  field: keyof Omit<CpredLifepathEnemy, 'id' | 'name'>;
+  label: string;
+}[] = [
+  { field: 'who', label: 'Kim jest' },
+  { field: 'cause', label: 'Przyczyna konfliktu' },
+  { field: 'resources', label: 'Czym dysponuje' },
+  { field: 'revenge', label: 'Co zamierza' },
+];
+
 export function isLifepathFieldTable(id: string): id is CpredLifepathFieldTable {
   return Object.prototype.hasOwnProperty.call(LIFEPATH_FIELD_TABLES, id);
 }

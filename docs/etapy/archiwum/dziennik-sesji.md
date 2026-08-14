@@ -7,6 +7,104 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 14.08 (druga tego dnia) — etap 25b (kreator: Ścieżka Życia)
+
+**Postać wychodzi z kreatora z życiorysem, a nie z samymi liczbami.** Czwarty krok — Ścieżka
+Życia — czyta **71 tabel z podręcznika** (19 ogólnych i 52 rolowe, razem 522 wiersze) i pozwala
+na każde pytanie albo rzucić, albo wybrać ręcznie. „Rzuć całą Ścieżkę" odpowiada na wszystkie
+naraz jednym rzutem (`13k10 + 4k6` przy Solo) i zostawia **jedną** kartę na czacie.
+
+**Podział etapu 25b na 25b/25c — do zatwierdzenia poszedł przed kodem.** Pierwotne 25b miało
+sześć pozycji zakresu, a MG dopisał siódmą (poziomy dostępności przedmiotów). Sam pipeline
+lifepath okazał się rozmiaru `parse-creation.py`, więc etap podzielił się na narrację (25b)
+i wyposażenie (25c). Opis 25c zawiera **konkretną propozycję poziomów** — cztery pasma
+wyliczane z ceny, jeden odblokowany poziom na kampanię, zakupy startowe zawsze na poziomie 1.
+
+**Architektura — trzy rzeczy niesie etap.** Pierwsza: **ogólna Ścieżka to pola, Ścieżka Roli to
+odpowiedzi.** Kultura, fryzura, tło rodzinne i jedenaście innych rubryk to te same pola na każdej
+karcie, więc dostały nazwy w `CpredLifepath` (27c je narysuje). Pytania Ról różnią się Rola od
+Roli, więc siedzą jako pary pytanie–odpowiedź; nazywanie 52 pól, z których każde wypełnia jedna
+Rola, byłoby złym interesem. Druga: **szkic i karta mają ten sam kształt**, więc „Utwórz postać"
+to kopia, nie tłumaczenie. Trzecia: **przy okazji domknął się otwarty problem z 25a** — język
+kultury pochodzenia miał gdzie zamieszkać (`lifepath.language`, wybierany z listy sąsiadującej
+z wylosowanym regionem), więc podsumowanie mówi już „na poziomie 4 — Farsi", a nie „nie wiadomo,
+jakim". Przy okazji karta dostaje wypełniony „Styl" z 27b: `Ubiór · Fryzura · Znak szczególny`.
+
+**Parser: `tools/import/parse-lifepath.py`.** Cztery rzeczy trzeba było odzyskać ze zrzutu, bo
+każda tabela jest w nim jednym ciągiem tekstu. (1) **Gdzie tabela się zaczyna** — na słowie
+„Wynik", nie na zdaniu „Rzuć 1k10 lub wybierz…": tabela Wrogów tego zdania nie ma
+(„rzucając raz w każdej kolumnie poniższej tabeli") i przy pierwszym podejściu przepadła bez
+śladu razem z dwiema sąsiednimi. (2) **Numery wierszy** — czytane po kolei, każdy poprzedzony
+spacją i zakończony wielką literą; to jedyne, co odróżnia numer od „(1k6/2) przyjaciółmi"
+i „odejmij 7, by sprawdzić". (3) **Kolumny** sklejone bez separatora — szew mała→WIELKA litera,
+i tylko przylegający: dopuszczenie spacji rozcina „Przedstawiciel Korpo" na pół. (4) **Koniec
+ostatniego wiersza**, który wchodzi w tekst drukowany obok — obcinany po kształcie (pytanie,
+nazwa Roli kapitalikami, rozstrzelona zakładka `z e s p ó ł`, „patrz str. 329"). Z 522 wierszy
+sześć wymagało wpisu w `manual-overrides.json`; parser wypisuje je jako ostrzeżenia i po
+poprawkach chodzi **bez żadnego**. Próbka własnego autorstwa w `data/public/cpred/lifepath.json`
+(19 tabel ogólnych po 10 wierszy + 2 tabele na Rolę), żeby świeży klon miał działającą Ścieżkę.
+
+**Znaleziony i naprawiony błąd, którego nie widziała żadna wcześniejsza sesja: pole tekstowe
+w Ścieżce gubiło wszystkie znaki poza ostatnim.** Wpisanie „Stary Vex" w imię wroga zostawiało
+„x". Przyczyna nie jest ta sama co przy 13.08: tam `trim()` zjadał spację, tu **każda łatka
+zastępuje całą Ścieżkę i buduje się z kopii szkicu, którą serwer ostatnio odesłał** — więc
+łatka drugiej litery powstawała na stanie sprzed pierwszej i ją nadpisywała. Karta postaci
+uchodzi z zapisem po każdym znaku dlatego, że łata **jedno pole**, a nie cały obiekt. Poprawka:
+`LifepathTextInput` trzyma wpisywany tekst lokalnie i wysyła go na `blur` (albo `Enter`);
+kolejka łatek serializuje resztę. Dotyczyło trzech pól: imienia osoby, „✎ własnymi słowami"
+i języka wpisywanego ręcznie.
+
+**Wróg → szkic bota.** Przycisk 🤖 przy wrogu, przyjacielu i dawnej miłości tworzy profil
+z etapu 10 i otwiera edytor: „Kim jest wróg" idzie w Osobowość, przyczyna konfliktu i Słodka
+Zemsta w Motywacje, a **czym dysponuje poszkodowany — w Sekrety**, bo to jedyna z tych rzeczy,
+której bot nie powinien wypalić przy pierwszym spotkaniu. Tylko MG, bo `bot:create` jest
+`role: ROLE_GM`.
+
+**Zweryfikowane:** 1012 testów w `shared` (28 nowych w `lifepath.test.ts`), 611 na serwerze
+(7 nowych w `creation.test.ts` na żywych gniazdach), `tsc --noEmit` czysty w trzech pakietach,
+lint, Prettier i `pnpm build` bez uwag. **Zero migracji** — Ścieżka Życia mieści się w kolumnach
+JSON, które już były (`Character.data`, `CharacterDraft.data`).
+
+**Odklikane na koncie gracza** (Marcin na `localhost:5173`, karty na czacie sprawdzone na
+drugim koncie gracza — avatar9 na `[::1]:5173`). Potwierdzone: pięć kroków w pasku kreatora
+z **Ścieżką Życia jako czwartym**; „Rzuć całą Ścieżkę" wypełniające **17 pytań** jednym rzutem
+(13 pól + 4 pytania Solo) i licznik „17 bez odpowiedzi" → „Ścieżka wypełniona"; **karta na
+czacie** „Ścieżka Życia — 17 pytań · 13k10 + 4k6" z sumą 17 i siedemnastoma wierszami
+(„Kultura pochodzenia — Azja Wschodnia +9"), widoczna u drugiego gracza; **akapit „Tła
+rodzinnego"** rysowany pod wierszem; **lista języków dopasowana do wylosowanej kultury**
+(Środkowy Wschód → Arabski, Berberyjski, Angielski, Farsi, Francuski, Hebrajski, Turecki) i to,
+że **ponowny rzut kultury czyści język**; **„🎲 ilu"** dla wrogów (cztery rzuty, wszystkie
+1k10 ≤ 7 ⇒ 0 — zgodnie z RAW) z kartą „Wrogowie — ile ich masz · 1k10 − 7"; **„+ dopisz"**
+i cztery kolumny wroga rzucane osobno (wiersz zakresowy pokazał się jako **„1–2 · Zignorować
+śmiecia"**); **„✎ własnymi słowami"** i to, że wpisana odpowiedź wraca do listy jako pozycja
+spoza tabeli; **podsumowanie** ze streszczeniem Ścieżki. Na koniec utworzona postać **„Test 25b
+Ścieżka"** — karta otworzyła się sama, a w bazie ma **komplet Ścieżki Życia** (wróg z czterema
+kolumnami, cztery odpowiedzi Solo) i **„Styl" złożony z trzech wierszy wyglądu**. Konsola czysta.
+Scena, walka i pozostałe postacie **nietknięte**; na czacie zostały karty rzutów.
+
+**Odklikane też u MG** (MG zalogowany przez użytkownika na `localhost:5173`, Rola Nomada —
+inna niż u gracza, żeby było widać własny szkic MG). Potwierdzone: **własny, niezależny szkic**
+z siedmioma tabelami Nomady (cztery wiersze „Typ" — lądowi, powietrzni, morscy i wspieranie
+watahy — dokładnie tak, jak drukuje je książka); **przycisk 🤖**, który u gracza nie istnieje,
+tworzy bota i **otwiera edytor**: nagłówek „Edytor bota: Radna Adeola Okoye", w zakładce „Rola"
+Osobowość („Przedstawiciele władz. Ma powód, żeby nienawidzić: Kanciarz."), Motywacje („Poszło
+o to: Zdrada lub zostawienie samopas. Przy spotkaniu zamierza: Wbić mu nóż w plecy.") i Sekrety
+(„Za sobą ma: Potężny szef gangu lub niewielka Korporacja."), a w „Wiedzy i modelu" pole Ludzie
+(„Kanciarz — wróg z przeszłości. Zatarg: …"); **selektor „Właściciel"** z listą „NPC (MG) / Tony
+/ avatar9 / Marcin" — postać stanęła w bazie z właścicielem **Marcin**, co zdejmuje zaległość
+z 25a. Obie postacie testowe i oba boty testowe **usunięte po oględzinach** — kampania wróciła
+do siedmiu postaci i dwóch botów, bez zawieszonych szkiców kreatora. Konsola czysta.
+
+**Dwa błędy znalezione dopiero po stronie MG — oba naprawione.** (1) **Nazwane przed chwilą
+osoby trafiały do bota pod nazwą zapasową** („Wróg — Kanciarz" zamiast „Radna Okoye"): profil
+budował się z propsów tego renderu, a łatka imienia była jeszcze w kolejce. Teraz buduje się
+**wewnątrz zakolejkowanego wywołania**, ze stanu store'a — czyli po zastosowaniu tej łatki.
+(2) **Klik w 🎲 albo 🤖 zaraz po wpisaniu tekstu nie robił nic**: przyciski były wyłączone przez
+globalne `busy`, a `blur` ustawiał je w stan „zajęty" dokładnie w chwili kliknięcia. Wszystko
+w tym kroku i tak przechodzi przez jedną kolejkę, więc `disabled={busy}` zeszło z kości, a bot
+dostał **własną** blokadę na czas tworzenia (jedyne, co warto blokować, to drugi bot dla tej
+samej osoby).
+
 ### Sesja 14.08 — etap 25a (kreator postaci: rola, cechy, umiejętności)
 
 **Postać da się zrobić od zera w oknie kreatora, a nie tylko wpisać ręcznie w pustą kartę.**

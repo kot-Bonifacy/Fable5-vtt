@@ -249,6 +249,13 @@
   min-height: 1.3rem;
 }
 
+/* Belka z nazwą własną, nie kategorią: „Cyborgizacje wewnętrzne" i „Tragiczna
+   historia miłosna" to zdania, a `capitalize` robi z nich Wielkie Litery
+   W Środku (znalezione przy oględzinach 27c). */
+.cp-bar--plain {
+  text-transform: none;
+}
+
 .cp-bar--th {
   justify-content: center;
   font-size: 0.62rem;
@@ -1153,4 +1160,319 @@
 
 .cp-alert button:hover {
   background: #ffe9e6;
+}
+
+/* ============================================================================
+   Strona druga — Ścieżka Życia (etap 27c)
+   ========================================================================== */
+
+.sheet-bio,
+.sheet-chrome {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+/* Nagłówek strony: Pseudonimy przez dwie trzecie szerokości, PD w okienku
+   obok — dokładnie tak, jak drukuje je arkusz. */
+.cp-lifepath-head {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(9rem, 1fr);
+  gap: var(--cp-gutter);
+}
+
+.cp-lifepath-head .cp-span2 {
+  grid-column: auto;
+}
+
+.cp-lifepath-head input[type='number'] {
+  width: 4rem;
+  margin-left: auto;
+  font-weight: 700;
+}
+
+/* Dwie kolumny krótkich rubryk; „Tło rodzinne" i reszta dłuższych bierze
+   całą szerokość (`wide` w LIFEPATH_SHEET_FIELDS). */
+.cp-lifepath {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--cp-gutter);
+}
+
+.cp-lifepath > .cp-bar,
+.cp-lifepath > .cp-span2 {
+  grid-column: 1 / -1;
+}
+
+.cp-lifepath .cp-label {
+  min-width: 8.5rem;
+}
+
+.cp-lifepath-group > .cp-bar {
+  gap: 0.4rem;
+}
+
+/* „+" w czarnej belce — jedyny przycisk, jaki wydruk mógłby mieć, gdyby
+   wydruk umiał dopisywać wiersze. */
+.cp-bar-add {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid var(--cp-bar-ink);
+  color: var(--cp-bar-ink);
+  cursor: pointer;
+  font-family: var(--font-cp-cond);
+  font-size: 0.8rem;
+  line-height: 1;
+  padding: 0 0.35rem;
+}
+
+.cp-bar-add:hover:not(:disabled) {
+  background: var(--cp-bar-ink);
+  color: var(--cp-bar);
+}
+
+.cp-bar-add:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.cp-lifepath-person {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1fr) minmax(0, 2fr) auto;
+  gap: var(--cp-gutter);
+  align-items: stretch;
+}
+
+.cp-lifepath-enemy {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--cp-gutter);
+}
+
+.cp-lifepath-enemy > .cp-span2 {
+  grid-column: 1 / -1;
+}
+
+.cp-lifepath-person .character-delete,
+.cp-lifepath-enemy .character-delete {
+  background: var(--cp-paper);
+  border: none;
+  border-radius: 0;
+  color: var(--cp-red);
+  cursor: pointer;
+  padding: 0 0.4rem;
+}
+
+.cp-lifepath-person .character-delete:hover,
+.cp-lifepath-enemy .character-delete:hover {
+  background: var(--cp-red);
+  color: #fff;
+}
+
+/* ============================================================================
+   Strona trzecia — sylwetka cyborgizacji (etap 27c)
+   ========================================================================== */
+
+.cp-chrome {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.cp-chrome-pools {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: var(--cp-gutter);
+}
+
+.cp-psychosis .cp-pool-value {
+  font-size: 0.8rem;
+}
+
+/* Ostrzeżenie na tych samych trzech szczeblach, na których ostrzega karta
+   z etapu 23a — czerwień znaczy „MG ma o tym wiedzieć". */
+.cp-psychosis--dissociative .cp-pool-value,
+.cp-psychosis--cyberpsychosis .cp-pool-value,
+.cp-psychosis--severe .cp-pool-value {
+  color: var(--cp-red);
+  font-weight: 700;
+}
+
+/* Rysunek i pudełka z nazwami leżą w jednym układzie współrzędnych: SVG
+   wypełnia kontener, a pudełka są pozycjonowane w procentach tego samego
+   `viewBox`, więc odnośniki trafiają dokładnie w ich krawędź. */
+.cp-body {
+  position: relative;
+  width: 100%;
+  max-width: 40rem;
+  margin: 0 auto;
+  aspect-ratio: 2090 / 2206;
+}
+
+.cp-body-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.cp-body-shape {
+  fill: var(--cp-red-deep);
+  opacity: 0.55;
+}
+
+.cp-body-lead line {
+  stroke: var(--cp-ink-dim);
+  stroke-width: 4;
+  stroke-dasharray: 18 14;
+}
+
+.cp-body-lead circle {
+  fill: var(--cp-paper);
+  stroke: var(--cp-ink-dim);
+  stroke-width: 6;
+}
+
+.cp-body-lead--on line {
+  stroke: var(--cp-red);
+  stroke-dasharray: none;
+}
+
+.cp-body-lead--on circle {
+  fill: var(--cp-red);
+  stroke: var(--cp-red);
+}
+
+.cp-slot {
+  position: absolute;
+  transform: translateY(-50%);
+  background: var(--cp-red);
+  padding: var(--cp-gutter);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.cp-slot-label {
+  background: var(--cp-bar);
+  color: var(--cp-bar-ink);
+  font-family: var(--font-cp-cond);
+  font-weight: 500;
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.1rem 0.35rem;
+}
+
+.cp-slot-empty {
+  background: var(--cp-paper);
+  color: var(--cp-ink-dim);
+  font-size: 0.72rem;
+  font-style: italic;
+  padding: 0.12rem 0.35rem;
+}
+
+.cp-slot-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.cp-slot-list button,
+.cp-body-list-item {
+  width: 100%;
+  background: var(--cp-paper);
+  border: none;
+  color: var(--cp-ink);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.76rem;
+  line-height: 1.25;
+  padding: 0.12rem 0.35rem;
+  text-align: left;
+}
+
+.cp-slot-list button:hover,
+.cp-body-list-item:hover {
+  background: var(--cp-hover);
+}
+
+.cp-slot-item--on {
+  background: var(--cp-focus) !important;
+  font-weight: 700;
+}
+
+.cp-body-unplaced {
+  background: var(--cp-red);
+  color: #fff;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  margin: 0;
+  padding: 0.3rem 0.45rem;
+}
+
+.cp-body-lists {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--cp-gutter);
+  align-items: start;
+}
+
+.cp-body-list-empty {
+  color: var(--cp-ink-dim);
+  justify-content: center;
+}
+
+.cp-dim {
+  color: var(--cp-ink-dim);
+}
+
+/* Wiersz wskazany na sylwetce — ten sam żółty papier, co pole z ogniskiem. */
+.sheet-window .cyberware-row--focus td {
+  background: var(--cp-focus);
+}
+
+.sheet-window .cyberware-row--focus td:first-child {
+  box-shadow: inset 3px 0 0 var(--cp-red);
+}
+
+.sheet-window .cyberware-slot select {
+  background: var(--cp-back);
+  border: 1px solid var(--cp-red);
+  border-radius: 0;
+  color: var(--cp-ink);
+  font-size: 0.72rem;
+  padding: 0.1rem 0.2rem;
+  width: 100%;
+}
+
+/* Wąskie okno: pudełka gniazd nie mieszczą się obok rysunku, więc rysunek
+   zwęża się razem z nimi. Poniżej ~34 rem czytelniejsza jest jedna kolumna
+   rubryk niż dwie ściśnięte. */
+@container (max-width: 560px) {
+  .cp-lifepath,
+  .cp-lifepath-enemy {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cp-lifepath-head {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cp-lifepath-person {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .cp-slot-label {
+    font-size: 0.58rem;
+  }
+
+  .cp-slot-list button,
+  .cp-slot-empty,
+  .cp-body-list-item {
+    font-size: 0.66rem;
+  }
 }

@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CYBERWARE_BODY_SLOTS,
   CYBERWARE_POOL_LIMIT,
   HUMANITY_MIN,
+  bodySlotsForType,
   cyberpsychosisFor,
+  cyberwareBodyMap,
   cyberwareCapacity,
+  defaultBodySlot,
   cyberwareHumanityMaxPenalty,
   cyberwareInstallationFrom,
   effectiveCpredStats,
@@ -279,5 +283,83 @@ describe('rzuty na obniżonym EMP', () => {
     expect(planned.ok).toBe(true);
     if (!planned.ok) return;
     expect(planned.plan.breakdown[0]?.value).toBe(1);
+  });
+});
+
+describe('sylwetka ze strony trzeciej', () => {
+  const piece = (
+    id: string,
+    type?: CyberwareInstallation['type'],
+    bodySlot?: (typeof CYBERWARE_BODY_SLOTS)[number],
+  ) => ({ id, ...(type ? { type } : {}), ...(bodySlot ? { bodySlot } : {}) });
+
+  it('rodzina z jednym gniazdem trafia tam sama, bez pytania', () => {
+    expect(defaultBodySlot('cyberaudio')).toBe('cyberaudio');
+    expect(defaultBodySlot('neuralware')).toBe('neural');
+    const map = cyberwareBodyMap([piece('a', 'cyberaudio'), piece('b', 'neuralware')]);
+    expect(map.slots.cyberaudio.map((r) => r.id)).toEqual(['a']);
+    expect(map.slots.neural.map((r) => r.id)).toEqual(['b']);
+    expect(map.unplaced).toHaveLength(0);
+  });
+
+  it('oko i kończyna czekają na odpowiedź gracza zamiast lądować w zgadywanym gnieździe', () => {
+    expect(defaultBodySlot('cyberoptics')).toBeNull();
+    expect(bodySlotsForType('cyberlimb')).toEqual(['armRight', 'armLeft', 'legRight', 'legLeft']);
+    const map = cyberwareBodyMap([piece('oko', 'cyberoptics'), piece('noga', 'cyberlimb')]);
+    expect(map.unplaced.map((r) => r.id)).toEqual(['oko', 'noga']);
+    for (const slot of CYBERWARE_BODY_SLOTS) expect(map.slots[slot]).toHaveLength(0);
+  });
+
+  it('wskazane gniazdo wygrywa, a gniazdo z obcej rodziny jest ignorowane', () => {
+    const map = cyberwareBodyMap([
+      piece('lewe', 'cyberoptics', 'eyeLeft'),
+      // Wpis, który zmienił rodzinę w kompendium: gniazdo nogi na cyberoptyce
+      // to nie jest miejsce, w którym ma zostać.
+      piece('zbłąkane', 'cyberoptics', 'legRight'),
+    ]);
+    expect(map.slots.eyeLeft.map((r) => r.id)).toEqual(['lewe']);
+    expect(map.slots.legRight).toHaveLength(0);
+    expect(map.unplaced.map((r) => r.id)).toEqual(['zbłąkane']);
+  });
+
+  it('cztery rodziny bez gniazda idą w listy boczne, a wszczep bez rodziny w wewnętrzne', () => {
+    const map = cyberwareBodyMap([
+      piece('w', 'internal'),
+      piece('z', 'external'),
+      piece('m', 'fashionware'),
+      piece('b', 'borgware'),
+      piece('stary'),
+    ]);
+    expect(map.lists.internal.map((r) => r.id)).toEqual(['w', 'stary']);
+    expect(map.lists.external.map((r) => r.id)).toEqual(['z']);
+    expect(map.lists.fashionware.map((r) => r.id)).toEqual(['m']);
+    expect(map.lists.borgware.map((r) => r.id)).toEqual(['b']);
+    expect(map.unplaced).toHaveLength(0);
+  });
+
+  it('gniazdo przeżywa zapis karty, a bzdura na jego miejscu jest wycinana', () => {
+    const good = validateCharacterDataPatch(
+      {
+        cyberware: [
+          { id: 'c1', name: 'Cyberoko', notes: '', type: 'cyberoptics', bodySlot: 'eyeRight' },
+        ],
+      },
+      registry,
+    );
+    expect(good.ok).toBe(true);
+    if (!good.ok) return;
+    expect((good.patch.cyberware?.[0] as CpredCyberwareRow).bodySlot).toBe('eyeRight');
+
+    const junk = validateCharacterDataPatch(
+      {
+        cyberware: [
+          { id: 'c2', name: 'Cyberoko', notes: '', type: 'cyberoptics', bodySlot: 'ucho' },
+        ],
+      },
+      registry,
+    );
+    expect(junk.ok).toBe(true);
+    if (!junk.ok) return;
+    expect((junk.patch.cyberware?.[0] as CpredCyberwareRow).bodySlot).toBeUndefined();
   });
 });

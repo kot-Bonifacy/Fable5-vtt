@@ -57,28 +57,48 @@ Pełne notatki z zamkniętych etapów: `archiwum/dziennik-sesji.md` (nie czytaj 
 | 26  | Netrunning                                    | ⬜     |                 | możliwy podział na 2 sesje                                                                      |
 | 27a | Karta jak oficjalna: strona pierwsza          | ✅     | 2026-08-13      | wydzielony z 27 dnia 13.08 (27a/27b/27c); motyw dzień/noc na razie tylko dla karty              |
 | 27b | Karta: broń, pancerz, ekwipunek               | ✅     | 2026-08-13      | zakładka „Walka" zniknęła; pancerz = 3 wiersze wydruku + reszta; trzy nowe pola prozy           |
-| 27c | Karta: Ścieżka Życia i cyborgizacje           | ⬜     |                 | sensownie po etapie 25 — kreator lifepath wypełnia dokładnie te pola                            |
+| 27c | Karta: Ścieżka Życia i cyborgizacje           | ✅     | 2026-08-14      | sylwetka = gotowy SVG z domeny publicznej; gniazdo na ciele to nowe pole wiersza wszczepu       |
 | 27  | Kości 3D i szlif UI                           | ⬜     |                 | po wydzieleniu 27a–c zostaje: skórki kości, ustawienia, motyw dla reszty UI, wydajność          |
 | 28  | Wdrożenie na VPS                              | ⬜     |                 |                                                                                                 |
 
 ## Od czego zacząć
 
-Ostatnio zamknięte: **25c** (wyposażenie startowe, poziomy dostępności sklepu, ksywa, portret,
-żeton). **Kreator postaci jest kompletny** — od Roli do figury na mapie.
+Ostatnio zamknięte: **27c** (strona druga i trzecia karty: Ścieżka Życia jako pola, sylwetka
+z gniazdami cyborgizacji). **Karta postaci ma komplet trzech stron wydruku**, a to, co kreator
+zapisuje od 25b, wreszcie widać.
 
 **⚠️ Jedna rzecz do zrobienia ręcznie: „Poligon bojowy" stoi teraz na poziomie sklepu 1
 (Uliczne).** Migracja daje każdej kampanii `shopTier = 1`, więc do czasu przesunięcia
 przełącznika gracz nie kupi niczego droższego niż 50 ed. Przełącznik 1–4 jest w zakładce
 **„Kompendium"** pod chipami kategorii; MG kupuje przez wszystkie poziomy niezależnie od niego.
 
-**Następne etapy do wyboru:** **27c** (Ścieżka Życia i sylwetka cyborgizacji na karcie — pola
-już są, 25b je zdefiniował, zostaje sam widok), **26** (netrunning, możliwy podział na dwie
-sesje). Potem zostają **27** (kości 3D, motyw dla reszty UI, wydajność) i **28** (VPS).
-**Sesja zerowa z drużyną** jest teraz najlepszym testem 25a+25b+25c naraz.
+**Następne etapy do wyboru:** **26** (netrunning — ostatnia duża mechanika; materiał jest
+w `data/private/rulebook/manual/CPRED-podrecznik/11-netrunner.md`, opis etapu sam proponuje
+podział na dwie sesje), **27** (kości 3D, motyw dzień/noc dla reszty UI, wydajność) i **28**
+(VPS). **Sesja zerowa z drużyną** jest teraz najlepszym testem 25a+25b+25c i obu nowych stron
+karty naraz.
 
 **09.08 głos wypadł z projektu** (sesja bez etapu, decyzja MG): etapy **12, 21 i 22** wycofane, kod TTS usunięty z repo. Szczegóły w `archiwum/dziennik-sesji.md` i w `archiwum/wycofane/README.md`.
 
 ### Otwarte zaległości (przechodzą między etapami)
+
+- **Etap 27c — trzy ścieżki nieodklikane, wszystkie po stronie gracza albo skrajnego przypadku.**
+  (1) **Strona gracza** — obie nowe strony oglądane były wyłącznie na koncie MG; różnicy w kodzie
+  nie ma (jedyne pole tylko dla MG na stronie drugiej to Reputacja, i było takie już w 23c),
+  ale gracz ich nie klikał. Zapis gracza jest za to pokryty testem na żywych gniazdach
+  (`characters.test.ts` — „the player writes their own page two and places their own chrome").
+  (2) **Postać wychodząca prosto z kreatora** — sprawdzona była karta, w którą Ścieżkę wpisano
+  ręcznie; przepływ „kreator wypełnia 17 pytań → strona druga je pokazuje" idzie tym samym
+  polem `data.lifepath`, więc rozjazd jest nieprawdopodobny, ale nie był oglądany.
+  (3) **Wąskie okno** — `@container (max-width: 560px)` zwęża rubryki do jednej kolumny
+  i zmniejsza pudełka gniazd; okno karty ma `min(1180px, 100vw − 32px)`, więc do tego progu
+  trzeba ekranu poniżej ~600 px, a `resize_window` na zmaksymalizowanym oknie nic nie daje.
+
+- **Etap 27c — cztery gniazda kończyn dzielą jedną pulę.** Rysunek pyta „która ręka?", ale
+  arytmetyka gniazd modyfikacji z 23a dalej liczy **per rodzina** (`cyberwareCapacity`), więc
+  „Cyberkończyny 2 / 8" nie mówi, czy obie modyfikacje siedzą w tej samej ręce. To świadome
+  uproszczenie z 23a i `bodySlot` go nie znosi — zniósłby je dopiero licznik gniazd per sztuka
+  sprzętu, czyli inny model danych. Wpis do rozważenia w `POMYSLY.md`.
 
 - **Etap 25c — cztery ścieżki nieodklikane, wszystkie po stronie gracza albo uploadu.**
   (1) **Wgranie portretu w kreatorze** — przycisk widziany i naprawiony, ale pliku nie
@@ -146,10 +166,10 @@ sesje). Potem zostają **27** (kości 3D, motyw dla reszty UI, wydajność) i **
   klasy. Wpis o przycisku MG „nadaj ranę krytyczną" jest w `POMYSLY.md` od 14e.
 
 - **Etap 27a — motyw dzienny kończy się na oknie karty.** To świadome i zapisane w zakresie:
-  `data-theme='day'` przemalowuje `.sheet-window` (od 27b także pas broni i pancerza oraz stronę
-  drugą; sekcja Cyborgizacji dalej jedzie na przesłoniętych `--bg`, `--text`, `--border`
-  **wewnątrz** okna i dostanie własną skórę w 27c), ale mapa, panele boczne, czat i **okno kubka
-  z rzutem** zostają ciemne. Reszta UI dochodzi w etapie 27.
+  `data-theme='day'` przemalowuje `.sheet-window` (od 27b także pas broni i pancerza, a od 27c
+  **wszystkie trzy strony wydruku razem z sylwetką** — sprawdzone 14.08 w obu motywach), ale
+  mapa, panele boczne, czat i **okno kubka z rzutem** zostają ciemne. Reszta UI dochodzi
+  w etapie 27.
 
 - **Etap 24c — cztery ścieżki nieodklikane.** (1) **Zdjęcie prasowe** — screamsheet przyjmuje
   grafikę handoutu i rysuje ją jako odbitkę gazetową (`grayscale`), ale przy oględzinach nic
@@ -423,6 +443,82 @@ decyduje przegrany, nie zwycięzca`) — Konfrontacje z 10.08 szły z konta MG, 
 
 ## Notatki z dwóch ostatnich sesji
 
+### Sesja 14.08 (czwarta tego dnia) — etap 27c (karta: Ścieżka Życia i sylwetka cyborgizacji)
+
+**Karta ma komplet trzech stron wydruku, a życiorys z kreatora wreszcie widać.** Zakładki idą
+teraz za stronami arkusza: **Karta · Ścieżka Życia · Cyborgizacje · Ekwipunek**. Sekcja
+cyborgizacji wyprowadziła się z „Ekwipunku" na własną stronę z sylwetką.
+
+**Luka, którą ten etap zamknął, powstała dwa etapy wcześniej.** Od 25b kreator zapisywał komplet
+Ścieżki Życia do `data.lifepath` — kulturę, język, tło rodzinne, wrogów z czterema kolumnami,
+odpowiedzi Roli — a karta pokazywała jedno pole „Notatki". Postać wychodziła z kreatora
+z życiorysem, którego nikt nie mógł przeczytać. **Ani jedno nowe pole Ścieżki nie było potrzebne:
+25b zdefiniował kształt dokładnie po to, żeby 27c go tylko narysował.**
+
+**Doszły natomiast etykiety w `shared`** (`LIFEPATH_SHEET_FIELDS`, `LIFEPATH_ENEMY_COLUMNS`) —
+drugi dom dla nazw, które tabele już niosą w `label`, i to **na celowo**: karta musi umieć
+podpisać własne rubryki **bez wczytanego pliku danych**. Stara postać otwarta na świeżym klonie
+ma Ścieżkę i nie ma tabel; czytanie etykiet z tabel zostawiłoby taką kartę bez podpisów.
+
+**Trzy nowe pola danych, każde z własnym uzasadnieniem.** (1) `aliases` — „Pseudonimy" z nagłówka
+strony drugiej, jedna linia, bo nic ich nie czyta. (2) `improvementPoints` — „Gdy zdobywasz jakieś
+PD, zapisz ich liczbę na karcie postaci, w okienku Punkty Doświadczenia" (s. 408), sam licznik
+i nic poza nim: na co wolno je wydać, ustala się przy stole (s. 411), więc automatyczna księga
+byłaby zasadą, której podręcznik nie ma. **Pole jest edytowalne przez gracza** — inaczej niż
+Reputacja i eurodolce, bo RAW mówi wprost „Gracze mogą wydawać Punkty Doświadczenia".
+(3) `CpredCyberwareRow.bodySlot` — patrz niżej.
+
+**Gniazdo na ciele: jedyne miejsce, w którym 27c poprawia decyzję z 23a.** Etap 23a liczył gniazda
+**per rodzina**, świadomie zostawiając prozie pytanie „które oko?" (`cyberwareCapacity` do dziś
+tak liczy). Strona trzecia ma jednak **osobne okienko na prawe i lewe oko** oraz cztery na
+kończyny, a rodzina `cyberlimb` nie odróżnia nawet ręki od nogi — rysunek bez tej odpowiedzi
+byłby po prostu nieprawdziwy. Stąd opcjonalne `bodySlot` na wierszu: rodziny z **jednym** miejscem
+(Cyberaudio, Sprzęg neuralny) trafiają tam same przez `defaultBodySlot`, a oko i kończyna
+**czekają na wybór gracza** zamiast wylądować w zgadywanym gnieździe — wypisane czerwonym paskiem
+„Bez gniazda: …" nad tabelą. Gniazdo z obcej rodziny (wpis, który zmienił rodzinę w kompendium)
+jest ignorowane, nie honorowane.
+
+**Sylwetka to gotowy asset z domeny publicznej, nie rysunek robiony na kolanie.** `Human body
+silhouette.svg` z Wikimedia Commons (public domain, autorzy: Mikael Häggström, RexxS,
+-Strogoff-): jedna ścieżka, kontur stojącej postaci od przodu. Wtopiony `translate()` warstwy
+Inkscape'a i precyzja obcięta do jednego miejsca po przecinku dały **24 kB → 13 kB**. Leży jako
+stała w `packages/client/src/components/body-silhouette.ts`, **nie** jako plik w `public/` —
+dzięki temu kontur, odnośniki i pudełka gniazd siedzą w jednym układzie współrzędnych (pudełka
+są HTML-em pozycjonowanym w procentach **tego samego `viewBox`**), a kolor nadaje CSS, więc
+sylwetka idzie za motywem dzień/noc. Pochodzenie i licencja: `docs/assety-karta-postaci.md`.
+
+**Rysunek jest mapą, nie edytorem.** Gniazdo, uwagi i kosz siedzą w tabeli pod nim; klik w nazwę
+na sylwetce podświetla wiersz w tabeli. To ta sama zasada, którą 27a zastosowało do portretu
+i „Notatek" — jedno pole, jeden edytor — i dlatego **Człowieczeństwo i EMP przy sylwetce są tylko
+do odczytu**: wpisuje się je na stronie pierwszej, a druga kopia kłóciłaby się z nią przy każdej
+terapii.
+
+**Zweryfikowane:** 1049 testów w `shared` (7 nowych: 5 w `cyberware.test.ts`, 1 w `lifepath.test.ts`,
+2 w `character.test.ts`), 625 na serwerze (1 nowy w `characters.test.ts` na żywych gniazdach),
+`tsc --noEmit` czysty w trzech pakietach, lint, Prettier i `pnpm build` bez uwag.
+**Zero migracji** — wszystko mieści się w kolumnie JSON, która już była.
+
+**Odklikane u MG** na postaci **„Test 27x"** (z 27a/27b; **stan przywrócony po oględzinach** —
+wszczepy usunięte, Ścieżka wyczyszczona, Człowieczeństwo z powrotem 25 z 50). Potwierdzone:
+**cztery zakładki** w kolejności druku; **stara karta z samym `notes` otwiera się bez błędu**
+i pokazuje pustą stronę drugą; wpisane ręcznie „Pseudonimy — Stary Vex, Ćma", „Kultura
+pochodzenia — Wybrzeże Bałtyku", **PD 45** i wróg „Radna Adeola Okoye / Przedstawiciele władz"
+**wróciły po przeładowaniu strony** (czyli wielowyrazowa nazwa też przeżywa — pułapka z 13.08 nie
+wróciła); **„+" w belce** dokłada wiersz z czterema kolumnami wroga z s. 51. Na stronie trzeciej:
+**„Zestaw cyberaudio" wskoczył sam** w gniazdo Cyberaudio (odnośnik i kółko zapaliły się na
+czerwono), **Cyberoko i Cyberręka trafiły na pasek „Bez gniazda"**, a po wybraniu w kolumnie
+„Gniazdo" stanęły w **Prawym cyberoku** i **Lewej cyberręce** — po lewej i prawej stronie rysunku,
+zgodnie z zasadą „strony są postaci, nie widza". Człowieczeństwo spadło 25 → 5, **EMP w grze 0**,
+chip **„Cyberpsychoza"** zapalił się na czerwono (i na liście postaci też). Klik w nazwę na
+sylwetce **podświetlił wiersz** w tabeli. **Motyw dzienny** sprawdzony na obu nowych stronach.
+Konsola czysta.
+
+**Dwie poprawki kosmetyczne po oględzinach.** (1) **Trzy kółka na głowie zlewały się w jedno** —
+oko i ucho na tej samej wysokości, promień 26 jednostek: cyberaudio wyglądało jak trzecie oko.
+Oczy rozsunięte, ucho zeszło niżej, sprzęg neuralny przesunięty z piersi na kark.
+(2) **`text-transform: capitalize` na belkach** robiło „Cyborgizacje Wewnętrzne" i „Tragiczna
+Historia Miłosna" — belki z nazwą własną dostały `.cp-bar--plain`.
+
 ### Sesja 14.08 (trzecia tego dnia) — etap 25c (wyposażenie startowe i poziomy sklepu)
 
 **Kreator jest kompletny: postać wychodzi z niego z bronią w ręku i figurą na mapie.** Doszły
@@ -491,107 +587,16 @@ postacie nietknięte.
 nakładką `position: absolute; opacity: 0`, pokazywaną dopiero po najechaniu na ramkę portretu
 karty. Kreator ma teraz własną etykietę w skórze `small-button`.
 
-### Sesja 14.08 (druga tego dnia) — etap 25b (kreator: Ścieżka Życia)
-
-**Postać wychodzi z kreatora z życiorysem, a nie z samymi liczbami.** Czwarty krok — Ścieżka
-Życia — czyta **71 tabel z podręcznika** (19 ogólnych i 52 rolowe, razem 522 wiersze) i pozwala
-na każde pytanie albo rzucić, albo wybrać ręcznie. „Rzuć całą Ścieżkę" odpowiada na wszystkie
-naraz jednym rzutem (`13k10 + 4k6` przy Solo) i zostawia **jedną** kartę na czacie.
-
-**Podział etapu 25b na 25b/25c — do zatwierdzenia poszedł przed kodem.** Pierwotne 25b miało
-sześć pozycji zakresu, a MG dopisał siódmą (poziomy dostępności przedmiotów). Sam pipeline
-lifepath okazał się rozmiaru `parse-creation.py`, więc etap podzielił się na narrację (25b)
-i wyposażenie (25c). Opis 25c zawiera **konkretną propozycję poziomów** — cztery pasma
-wyliczane z ceny, jeden odblokowany poziom na kampanię, zakupy startowe zawsze na poziomie 1.
-
-**Architektura — trzy rzeczy niesie etap.** Pierwsza: **ogólna Ścieżka to pola, Ścieżka Roli to
-odpowiedzi.** Kultura, fryzura, tło rodzinne i jedenaście innych rubryk to te same pola na każdej
-karcie, więc dostały nazwy w `CpredLifepath` (27c je narysuje). Pytania Ról różnią się Rola od
-Roli, więc siedzą jako pary pytanie–odpowiedź; nazywanie 52 pól, z których każde wypełnia jedna
-Rola, byłoby złym interesem. Druga: **szkic i karta mają ten sam kształt**, więc „Utwórz postać"
-to kopia, nie tłumaczenie. Trzecia: **przy okazji domknął się otwarty problem z 25a** — język
-kultury pochodzenia miał gdzie zamieszkać (`lifepath.language`, wybierany z listy sąsiadującej
-z wylosowanym regionem), więc podsumowanie mówi już „na poziomie 4 — Farsi", a nie „nie wiadomo,
-jakim". Przy okazji karta dostaje wypełniony „Styl" z 27b: `Ubiór · Fryzura · Znak szczególny`.
-
-**Parser: `tools/import/parse-lifepath.py`.** Cztery rzeczy trzeba było odzyskać ze zrzutu, bo
-każda tabela jest w nim jednym ciągiem tekstu. (1) **Gdzie tabela się zaczyna** — na słowie
-„Wynik", nie na zdaniu „Rzuć 1k10 lub wybierz…": tabela Wrogów tego zdania nie ma
-(„rzucając raz w każdej kolumnie poniższej tabeli") i przy pierwszym podejściu przepadła bez
-śladu razem z dwiema sąsiednimi. (2) **Numery wierszy** — czytane po kolei, każdy poprzedzony
-spacją i zakończony wielką literą; to jedyne, co odróżnia numer od „(1k6/2) przyjaciółmi"
-i „odejmij 7, by sprawdzić". (3) **Kolumny** sklejone bez separatora — szew mała→WIELKA litera,
-i tylko przylegający: dopuszczenie spacji rozcina „Przedstawiciel Korpo" na pół. (4) **Koniec
-ostatniego wiersza**, który wchodzi w tekst drukowany obok — obcinany po kształcie (pytanie,
-nazwa Roli kapitalikami, rozstrzelona zakładka `z e s p ó ł`, „patrz str. 329"). Z 522 wierszy
-sześć wymagało wpisu w `manual-overrides.json`; parser wypisuje je jako ostrzeżenia i po
-poprawkach chodzi **bez żadnego**. Próbka własnego autorstwa w `data/public/cpred/lifepath.json`
-(19 tabel ogólnych po 10 wierszy + 2 tabele na Rolę), żeby świeży klon miał działającą Ścieżkę.
-
-**Znaleziony i naprawiony błąd, którego nie widziała żadna wcześniejsza sesja: pole tekstowe
-w Ścieżce gubiło wszystkie znaki poza ostatnim.** Wpisanie „Stary Vex" w imię wroga zostawiało
-„x". Przyczyna nie jest ta sama co przy 13.08: tam `trim()` zjadał spację, tu **każda łatka
-zastępuje całą Ścieżkę i buduje się z kopii szkicu, którą serwer ostatnio odesłał** — więc
-łatka drugiej litery powstawała na stanie sprzed pierwszej i ją nadpisywała. Karta postaci
-uchodzi z zapisem po każdym znaku dlatego, że łata **jedno pole**, a nie cały obiekt. Poprawka:
-`LifepathTextInput` trzyma wpisywany tekst lokalnie i wysyła go na `blur` (albo `Enter`);
-kolejka łatek serializuje resztę. Dotyczyło trzech pól: imienia osoby, „✎ własnymi słowami"
-i języka wpisywanego ręcznie.
-
-**Wróg → szkic bota.** Przycisk 🤖 przy wrogu, przyjacielu i dawnej miłości tworzy profil
-z etapu 10 i otwiera edytor: „Kim jest wróg" idzie w Osobowość, przyczyna konfliktu i Słodka
-Zemsta w Motywacje, a **czym dysponuje poszkodowany — w Sekrety**, bo to jedyna z tych rzeczy,
-której bot nie powinien wypalić przy pierwszym spotkaniu. Tylko MG, bo `bot:create` jest
-`role: ROLE_GM`.
-
-**Zweryfikowane:** 1012 testów w `shared` (28 nowych w `lifepath.test.ts`), 611 na serwerze
-(7 nowych w `creation.test.ts` na żywych gniazdach), `tsc --noEmit` czysty w trzech pakietach,
-lint, Prettier i `pnpm build` bez uwag. **Zero migracji** — Ścieżka Życia mieści się w kolumnach
-JSON, które już były (`Character.data`, `CharacterDraft.data`).
-
-**Odklikane na koncie gracza** (Marcin na `localhost:5173`, karty na czacie sprawdzone na
-drugim koncie gracza — avatar9 na `[::1]:5173`). Potwierdzone: pięć kroków w pasku kreatora
-z **Ścieżką Życia jako czwartym**; „Rzuć całą Ścieżkę" wypełniające **17 pytań** jednym rzutem
-(13 pól + 4 pytania Solo) i licznik „17 bez odpowiedzi" → „Ścieżka wypełniona"; **karta na
-czacie** „Ścieżka Życia — 17 pytań · 13k10 + 4k6" z sumą 17 i siedemnastoma wierszami
-(„Kultura pochodzenia — Azja Wschodnia +9"), widoczna u drugiego gracza; **akapit „Tła
-rodzinnego"** rysowany pod wierszem; **lista języków dopasowana do wylosowanej kultury**
-(Środkowy Wschód → Arabski, Berberyjski, Angielski, Farsi, Francuski, Hebrajski, Turecki) i to,
-że **ponowny rzut kultury czyści język**; **„🎲 ilu"** dla wrogów (cztery rzuty, wszystkie
-1k10 ≤ 7 ⇒ 0 — zgodnie z RAW) z kartą „Wrogowie — ile ich masz · 1k10 − 7"; **„+ dopisz"**
-i cztery kolumny wroga rzucane osobno (wiersz zakresowy pokazał się jako **„1–2 · Zignorować
-śmiecia"**); **„✎ własnymi słowami"** i to, że wpisana odpowiedź wraca do listy jako pozycja
-spoza tabeli; **podsumowanie** ze streszczeniem Ścieżki. Na koniec utworzona postać **„Test 25b
-Ścieżka"** — karta otworzyła się sama, a w bazie ma **komplet Ścieżki Życia** (wróg z czterema
-kolumnami, cztery odpowiedzi Solo) i **„Styl" złożony z trzech wierszy wyglądu**. Konsola czysta.
-Scena, walka i pozostałe postacie **nietknięte**; na czacie zostały karty rzutów.
-
-**Odklikane też u MG** (MG zalogowany przez użytkownika na `localhost:5173`, Rola Nomada —
-inna niż u gracza, żeby było widać własny szkic MG). Potwierdzone: **własny, niezależny szkic**
-z siedmioma tabelami Nomady (cztery wiersze „Typ" — lądowi, powietrzni, morscy i wspieranie
-watahy — dokładnie tak, jak drukuje je książka); **przycisk 🤖**, który u gracza nie istnieje,
-tworzy bota i **otwiera edytor**: nagłówek „Edytor bota: Radna Adeola Okoye", w zakładce „Rola"
-Osobowość („Przedstawiciele władz. Ma powód, żeby nienawidzić: Kanciarz."), Motywacje („Poszło
-o to: Zdrada lub zostawienie samopas. Przy spotkaniu zamierza: Wbić mu nóż w plecy.") i Sekrety
-(„Za sobą ma: Potężny szef gangu lub niewielka Korporacja."), a w „Wiedzy i modelu" pole Ludzie
-(„Kanciarz — wróg z przeszłości. Zatarg: …"); **selektor „Właściciel"** z listą „NPC (MG) / Tony
-/ avatar9 / Marcin" — postać stanęła w bazie z właścicielem **Marcin**, co zdejmuje zaległość
-z 25a. Obie postacie testowe i oba boty testowe **usunięte po oględzinach** — kampania wróciła
-do siedmiu postaci i dwóch botów, bez zawieszonych szkiców kreatora. Konsola czysta.
-
-**Dwa błędy znalezione dopiero po stronie MG — oba naprawione.** (1) **Nazwane przed chwilą
-osoby trafiały do bota pod nazwą zapasową** („Wróg — Kanciarz" zamiast „Radna Okoye"): profil
-budował się z propsów tego renderu, a łatka imienia była jeszcze w kolejce. Teraz buduje się
-**wewnątrz zakolejkowanego wywołania**, ze stanu store'a — czyli po zastosowaniu tej łatki.
-(2) **Klik w 🎲 albo 🤖 zaraz po wpisaniu tekstu nie robił nic**: przyciski były wyłączone przez
-globalne `busy`, a `blur` ustawiał je w stan „zajęty" dokładnie w chwili kliknięcia. Wszystko
-w tym kroku i tak przechodzi przez jedną kolejkę, więc `disabled={busy}` zeszło z kości, a bot
-dostał **własną** blokadę na czas tworzenia (jedyne, co warto blokować, to drugi bot dla tej
-samej osoby).
-
 ## Skróty wcześniejszych sesji
 
 Uzupełniają kolumnę „Uwagi" w tabeli, nie powtarzają jej. Uzasadnienia decyzji, listy niezweryfikowanego i szczegóły migracji — `archiwum/dziennik-sesji.md`.
+
+- **25b (14.08)** — Ścieżka Życia w kreatorze: 71 tabel z podręcznika, „Rzuć całą Ścieżkę"
+  jednym rzutem, wróg → szkic bota jednym klikiem. Kluczowa decyzja: **ogólna Ścieżka to pola,
+  Ścieżka Roli to odpowiedzi** — 52 pól, z których każde wypełnia jedna Rola, nie warto nazywać.
+  Przy okazji znaleziony błąd, którego nie widziała żadna wcześniejsza sesja: pole tekstowe
+  gubiło wszystkie znaki poza ostatnim, bo każda łatka budowała się z kopii szkicu sprzed
+  poprzedniej litery. Pełna notatka w archiwum.
 
 - **25a (14.08)** — kreator postaci w pływającym oknie: cztery kroki, dwie metody (Krawędziarz
   i Kompletny Pakiet), szkic we własnej tabeli `CharacterDraft`. Przy okazji wyszło, że **karta

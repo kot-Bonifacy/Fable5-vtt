@@ -339,6 +339,35 @@ describe('characters', () => {
     if (!ack.ok || !ack.data) throw new Error('update failed');
     expect((ack.data.data as CpredCharacterData).skills).toEqual({ handgun: 6 });
   });
+
+  // Stage 27c — page two and page three of the printed sheet.
+  it('the player writes their own page two and places their own chrome', async () => {
+    // Wiersz należy teraz do gracza `rogue` — poprzedni przypadek przeniósł
+    // właściciela; ważne jest, że pisze go **gracz**, a nie MG.
+    const ack = await emitAck<CharacterView>(rogue, 'character:update', {
+      characterId: vexCharacterId,
+      patch: {
+        data: {
+          aliases: 'Kolec',
+          improvementPoints: 45,
+          lifepath: { culture: 'Europa Środkowa', language: 'Czeski', enemies: [{ name: 'Vex' }] },
+          cyberware: [
+            { id: 'eye1', name: 'Cyberoko', notes: '', type: 'cyberoptics', bodySlot: 'eyeLeft' },
+          ],
+        },
+      },
+    });
+    expect(ack.ok).toBe(true);
+    if (!ack.ok || !ack.data) throw new Error('update failed');
+    const data = ack.data.data as CpredCharacterData;
+    // „Gracze mogą wydawać Punkty Doświadczenia" (s. 411) — unlike Reputation
+    // and eddies, this box is not the GM's alone.
+    expect(data.aliases).toBe('Kolec');
+    expect(data.improvementPoints).toBe(45);
+    expect(data.lifepath.culture).toBe('Europa Środkowa');
+    expect(data.lifepath.enemies[0]?.name).toBe('Vex');
+    expect(data.cyberware[0]?.bodySlot).toBe('eyeLeft');
+  });
 });
 
 describe('portrait uploads', () => {
