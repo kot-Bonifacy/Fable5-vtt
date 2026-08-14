@@ -1,6 +1,10 @@
 import { useMemo, useState } from 'react';
 import type { CompendiumEntry, WeaponTypeDefinition } from '@vtt/shared';
 import {
+  NET_DEFENSE_KIND_LABELS,
+  NET_PROGRAM_CLASS_LABELS,
+  NET_PROGRAM_TARGET_LABELS,
+  netProgramSlots,
   ARMOR_LOCATION_LABELS,
   COMPENDIUM_CATEGORIES,
   COMPENDIUM_CATEGORY_LABELS,
@@ -221,6 +225,10 @@ function shortStats(
       return `OB ${entry.sp} · ${formatCost(entry)}`;
     case 'criticalInjury':
       return `2k6 = ${entry.roll} · ${CRITICAL_INJURY_TABLE_LABELS[entry.table]}`;
+    case 'program':
+      return `${entry.blackIce ? 'Czarny LOD' : NET_PROGRAM_CLASS_LABELS[entry.programClass]} · ATK ${entry.atk} / OBR ${entry.def} / REZ ${entry.rez} · ${formatCost(entry)}`;
+    case 'netDefense':
+      return `${NET_DEFENSE_KIND_LABELS[entry.defenseKind]} · Interfejs ${entry.interfaceRank} · ${formatCost(entry)}`;
     default:
       return formatCost(entry);
   }
@@ -437,6 +445,72 @@ function EntryCard({
             ) : null}
           </>
         ) : null}
+        {entry.category === 'program' ? (
+          <>
+            <Stat
+              label="Klasa"
+              value={
+                entry.blackIce
+                  ? `Czarny LOD ${entry.target ? NET_PROGRAM_TARGET_LABELS[entry.target] : ''}`.trim()
+                  : `${NET_PROGRAM_CLASS_LABELS[entry.programClass]}${entry.target ? ` ${NET_PROGRAM_TARGET_LABELS[entry.target]}` : ''}`
+              }
+              hint="Przeciwbiałkowy bije Netrunnera, przeciwprogramowy — jego Programy."
+            />
+            <Stat
+              label="ATK"
+              value={String(entry.atk)}
+              hint="Dodawane do Testu ataku tym Programem."
+            />
+            <Stat
+              label="OBR"
+              value={String(entry.def)}
+              hint="Dodawane do Testu obrony tym Programem."
+            />
+            <Stat
+              label="REZ"
+              value={String(entry.rez)}
+              hint="Wytrzymałość Programu — przy 0 zostaje zderezowany, nie zniszczony."
+            />
+            {entry.blackIce ? (
+              <>
+                <Stat
+                  label="PER"
+                  value={String(entry.per ?? 0)}
+                  hint="Trudność ucieczki temu LOD-owi za pomocą Ślizgu."
+                />
+                <Stat
+                  label="PRĘ"
+                  value={String(entry.speed ?? 0)}
+                  hint="Szybkość reakcji — decyduje o darmowym ataku przy wykryciu intruza."
+                />
+              </>
+            ) : null}
+            <Stat
+              label="Gniazda"
+              value={String(netProgramSlots(entry))}
+              hint="Ile miejsca zajmuje na cyberdeku."
+            />
+            {entry.icon ? <Stat label="Ikona" value={entry.icon} /> : null}
+          </>
+        ) : null}
+        {entry.category === 'netDefense' ? (
+          <>
+            <Stat label="Rodzaj" value={NET_DEFENSE_KIND_LABELS[entry.defenseKind]} />
+            <Stat label="REZ" value={String(entry.rez)} />
+            <Stat
+              label="Interfejs"
+              value={String(entry.interfaceRank)}
+              hint="Demon broni się Testem Interfejsu — nie ma wartości Obrony."
+            />
+            <Stat label="Akcje Sieciowe" value={String(entry.netActions)} />
+            <Stat
+              label="Wartość bojowa"
+              value={String(entry.combatValue)}
+              hint="Cecha + Umiejętność w jednej liczbie — tym rzuca obsługiwane urządzenie."
+            />
+            {entry.icon ? <Stat label="Ikona" value={entry.icon} /> : null}
+          </>
+        ) : null}
         {entry.category === 'criticalInjury' ? (
           <>
             <Stat
@@ -582,7 +656,11 @@ function EntryCard({
       {/* Ammunition is loaded into a weapon row (stage 16g), not carried as an
           item, so the sheet has nowhere to put it — the picker in the weapon
           table is where it belongs. */}
-      {targets.length > 0 && entry.category !== 'criticalInjury' && entry.category !== 'ammo' ? (
+      {targets.length > 0 &&
+      entry.category !== 'criticalInjury' &&
+      entry.category !== 'ammo' &&
+      entry.category !== 'program' &&
+      entry.category !== 'netDefense' ? (
         <div className="compendium-assign">
           <select value={target} onChange={(event) => setTargetId(event.target.value)}>
             {targets.map((character) => (

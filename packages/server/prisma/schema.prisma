@@ -56,6 +56,7 @@ model Campaign {
   journal      JournalEntry[]
   handouts     Handout[]
   drafts       CharacterDraft[]
+  architectures NetArchitecture[]
 }
 
 /// A handout: the material the GM hands to the players (stage 24a).
@@ -890,6 +891,33 @@ model Combatant {
 /// lives in JSON files under data/private and is never written here — this
 /// table only holds what the group made up itself, so the campaign database
 /// stays free of copyrighted content.
+/// One Net Architecture in the campaign's library (stage 26a).
+///
+/// Campaign data rather than scene data on purpose: the same architecture („sieć
+/// klubu Afterlife") may hang off several places on several maps, and a run has
+/// to survive a scene change. What attaches an architecture to a spot in the
+/// world is an access point, which is stage 26b's problem.
+///
+/// The shaft itself is one JSON column — floors, branches, DVs, which Black ICE
+/// waits where — validated with `validateNetArchitecture` from `shared` before
+/// it is written. Nothing in it reaches a player until they uncover the floor,
+/// so the whole row is GM-only on the wire.
+model NetArchitecture {
+  id         String @id @default(cuid())
+  campaignId String
+  name       String
+  /// basic | standard | high | advanced — the ladder of s. 210.
+  difficulty String @default("standard")
+  /// Full architecture as JSON: `{ branches: [{ parentFloor, floors: [...] }] }`.
+  data      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+}
+
 model CompendiumEntry {
   id         String   @id @default(cuid())
   campaignId String

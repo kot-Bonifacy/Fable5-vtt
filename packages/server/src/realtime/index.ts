@@ -114,6 +114,13 @@ import {
   knowledgeUpsertEvent,
 } from './knowledge.js';
 import {
+  netArchitectureDeleteEvent,
+  netArchitectureGetEvent,
+  netArchitectureListEvent,
+  netArchitectureRollEvent,
+  netArchitectureSaveEvent,
+} from './netrunning.js';
+import {
   journalDeleteEvent,
   journalListEvent,
   journalReindexEvent,
@@ -254,6 +261,11 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   knowledgeDeleteEvent,
   knowledgeReindexEvent,
   knowledgePreviewEvent,
+  netArchitectureListEvent,
+  netArchitectureGetEvent,
+  netArchitectureSaveEvent,
+  netArchitectureDeleteEvent,
+  netArchitectureRollEvent,
   journalListEvent,
   journalUpsertEvent,
   journalDeleteEvent,

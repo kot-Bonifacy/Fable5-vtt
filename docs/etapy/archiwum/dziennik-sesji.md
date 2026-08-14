@@ -7,6 +7,271 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 14.08 (trzecia tego dnia) — etap 25c (wyposażenie startowe i poziomy sklepu)
+
+**Kreator jest kompletny: postać wychodzi z niego z bronią w ręku i figurą na mapie.** Doszły
+dwa kroki — **Wyposażenie** (zakupy z kompendium za startowe eurodolce) i **Opis** (ksywa,
+portret, przełącznik żetonu) — a „Utwórz postać" stawia żeton na aktywnej scenie.
+
+**Dwie korekty zakresu uzgodnione przed kodem.** (1) **Sklep był pusty.** Kompendium miało
+103 bronie, 11 pancerzy, 96 cyborgizacji i **pięć** pozycji „Sprzęt" — tabela Wyposażenia
+z podręcznika nigdy nie została zaimportowana, więc krok zakupów byłby sklepem z samą bronią.
+Doszedł `tools/import/parse-gear.py` i **53 wpisy** (Agent, latarka, torba medyka, cyberdek
+w trzech jakościach, technarzędzie…). (2) **Odgórny pakiet Roli Krawędziarza** (s. 98 i 103)
+został poza etapem — decyzja MG: na razie sama gotówka 500 ed, pakiet dokłada MG przyciskiem
+„Dodaj za darmo". Te trzy tabele w zrzucie PDF-a to jeden sklejony ciąg dla pięciu Ról naraz,
+czyli parser rozmiaru `parse-lifepath.py`. Wpis w `POMYSLY.md`.
+
+**Poziomy dostępności — cena JEST dostępnością.** Pasmo ceny w podręczniku mówi dokładnie to,
+co „jak trudno to zdobyć" („Tanie" to kiosk, „Luksusowe" to Fixer), więc poziom liczy się
+z ceny dla wszystkich 326 wpisów za darmo, a `tier` na wpisie istnieje po to, żeby MG mógł
+przesunąć **pojedynczą** pozycję (tani gnat, którego i tak nie ma na ulicy). Cztery poziomy:
+Uliczne ≤ 50 ed · Zawodowe ≤ 500 · Korporacyjne ≤ 1000 · Czarny rynek wyżej. Kampania trzyma
+jeden odblokowany poziom (`Campaign.shopTier`), MG przesuwa go **przełącznikiem w zakładce
+„Kompendium"** — odstępstwo od opisu etapu, który mówił „Panel MG": tam jest się poza sesją,
+a zmiana ma dojść do graczy **natychmiast** (rozgłoszenie `shop:tier`, poziom jedzie też
+w `state:sync`). Wpisy ponad poziomem **zostają na liście przygaszone, z chipem poziomu** —
+gracz ma widzieć, po co warto sięgnąć.
+
+**Jedyne miejsce w projekcie, gdzie blokada obowiązuje także MG: koszyk kreatora.** Wszędzie
+indziej MG jest z blokad zwolniony (ta sama zasada co przy ruchu, `movement.ts:216`) i tak
+zostało dla „Kup" w kompendium. W kreatorze poziom jest **twardo 1** dla wszystkich, bo
+o to prosił MG wprost — wyjątek zamieniłby ograniczenie w sugestię, a MG i tak może dosypać
+karabin po utworzeniu postaci.
+
+**Pieniądze idą tą samą drogą co każdy późniejszy zakup.** Postać powstaje z saldem **zero**,
+dostaje przelew „Gotówka startowa — Krawędziarz (Na skróty)" (nowy rodzaj wpisu `starting`,
+bo startowa kasa nie jest korektą MG), a potem każda pozycja koszyka schodzi przez
+`applyBalance` jak zwykły zakup. Audyt czyta się od pierwszej linii: +500 → −50 → −50 → −10.
+Koszyk **nie da się zapisać łatką** (`creation:patch` z `purchases` jest odrzucany) — ceny,
+budżet i poziom sklepu są serwera, a klient, który mógłby to napisać, kupowałby za darmo.
+
+**Przy okazji naprawiony błąd z 23b, którego nikt nie zauważył: własnych wpisów MG nie dało
+się kupić.** `economy:buy` czytał wyłącznie `ctx.compendium` (pliki z dysku), a wpisy
+kampanii siedzą w bazie i wygrywają dopiero w `buildCompendiumSync` — czyli sklep sprzedawał
+inny katalog niż ten, który klient przeglądał. Teraz obie drogi idą przez `campaignEntry`.
+
+**Zweryfikowane:** 1040 testów w `shared` (13 nowych w `shop.test.ts`, 15 w `creation.test.ts`),
+624 na serwerze (18 nowych w `creation.test.ts` na żywych gniazdach), `tsc --noEmit` czysty
+w trzech pakietach, lint, Prettier i `pnpm build` bez uwag. Migracja:
+`20260814162921_stage25c_shop_tier` (jedna kolumna na `Campaign`, zero zmian w danych).
+
+**Odklikane u MG** na postaci testowej **„Test 25c Kupiec" (usuniętej po oględzinach razem
+z żetonem)**. Potwierdzone: **siedem kroków** w pasku kreatora; krok „Wyposażenie" z licznikiem
+„500 ed · zostaje z 500 ed startowych", trzema półkami (Broń / Pancerz / Sprzęt) i **listą
+przyciętą do poziomu 1**; koszyk rosnący do trzech pozycji (450 → 400 → 390 ed) z „−" przy
+każdej i chipem „×1" w sklepie; krok „Opis" z ksywą, ramką „brak portretu" i **zaznaczonym
+„Postaw żeton na aktywnej scenie"**; podsumowanie z linią „Wyposażenie (3): … · w kieszeni
+zostaje 390 ed"; po „Utwórz postać" **karta otwiera się sama** z „Apteczka polowa" i „Czip
+pamięci" w ekwipunku, **gotówką 390 ed** i **czterowierszową historią operacji**; **żeton
+stanął na scenie** obok środka mapy. W zakładce „Kompendium": pasek „Sklep: Uliczne — do 50 ed…"
+z przełącznikiem 1–4, **chipy poziomów** przy przygaszonych wpisach („Zawodowe", „Korporacyjne",
+„Czarny rynek"), przesunięcie na 3 zmieniające opis i zdejmujące chipy, **„Sprzęt 60"** zamiast
+5 oraz wiersz „Dostępność 1 — Uliczne" na karcie wpisu. Konsola czysta; scena, walka i pozostałe
+postacie nietknięte.
+
+**Jeden błąd znaleziony przy oględzinach i naprawiony:** przycisk „Wgraj portret" w kroku
+„Opis" był **niewidzialny** — brał klasę `cp-portrait-upload` z karty postaci, a ta jest
+nakładką `position: absolute; opacity: 0`, pokazywaną dopiero po najechaniu na ramkę portretu
+karty. Kreator ma teraz własną etykietę w skórze `small-button`.
+
+## Skróty wcześniejszych sesji
+
+Uzupełniają kolumnę „Uwagi" w tabeli, nie powtarzają jej. Uzasadnienia decyzji, listy niezweryfikowanego i szczegóły migracji — `archiwum/dziennik-sesji.md`.
+
+- **25b (14.08)** — Ścieżka Życia w kreatorze: 71 tabel z podręcznika, „Rzuć całą Ścieżkę"
+  jednym rzutem, wróg → szkic bota jednym klikiem. Kluczowa decyzja: **ogólna Ścieżka to pola,
+  Ścieżka Roli to odpowiedzi** — 52 pól, z których każde wypełnia jedna Rola, nie warto nazywać.
+  Przy okazji znaleziony błąd, którego nie widziała żadna wcześniejsza sesja: pole tekstowe
+  gubiło wszystkie znaki poza ostatnim, bo każda łatka budowała się z kopii szkicu sprzed
+  poprzedniej litery. Pełna notatka w archiwum.
+
+- **25a (14.08)** — kreator postaci w pływającym oknie: cztery kroki, dwie metody (Krawędziarz
+  i Kompletny Pakiet), szkic we własnej tabeli `CharacterDraft`. Przy okazji wyszło, że **karta
+  postaci w przeglądarce znała tylko 42 z 66 umiejętności** — klient czytał publiczną próbkę
+  zamiast efektywnego rejestru serwera; naprawione trasą `GET /api/cpred/data`. Rozkład Cech
+  idzie przez kubek (życzenie MG po oględzinach). Pełna notatka w archiwum.
+
+- **Porządki (13.08)** — pięć zaległości zdjętych z listy bez pisania nowej funkcji.
+  Przy okazji wyszło, że **w żaden wiersz karty nie dało się wpisać wielowyrazowej nazwy**:
+  `validateRow` przycinało `name`, a karta zapisuje się po każdym znaku, więc spacja znikała,
+  zanim zdążyła wejść następna litera. Pełna notatka w archiwum.
+
+- **27b (13.08)** — strona pierwsza karty ma komplet z wydruku, a zakładka „Walka" **zniknęła**:
+  broń, pancerz i rany krytyczne wróciły tam, gdzie drukuje je arkusz. Trzy wiersze pancerza
+  pokazują tę sztukę, którą wybiera `effectiveArmor` — ta sama funkcja, którą czyta silnik
+  obrażeń — więc karta i karta obrażeń nie mogą powiedzieć dwóch różnych rzeczy. Przy okazji
+  naprawione zapytanie kontenerowe z 27a, które nigdy nie składało strony w jedną kolumnę.
+  Pełna notatka w archiwum.
+
+- **27a (13.08)** — karta odtwarza styl oficjalnego arkusza **własnym CSS-em, bez jednego bajtu
+  z PDF-a**; portret i „Notatki" wróciły z „Biografii" na stronę pierwszą, bo tam drukuje je
+  wydruk. Przy okazji wyszło, że `CPRED_SKILL_GROUPS` sortowało kategorie po **angielskich**
+  identyfikatorach, choć komentarz obiecywał kolejność z podręcznika — karta chce alfabetu
+  **polskiego**. Pełna notatka w archiwum.
+
+- **24c (13.08)** — screamsheet to **`kind` na handoucie z 24a, nie drugi byt**: udostępnianie,
+  kosz, okno i wiersz na czacie nie mają dla niego ani jednej gałęzi, a migracja dokłada cztery
+  kolumny i zero tabel. Generator **niczego nie zapisuje** — artykuł ląduje w formularzu MG
+  i czeka na „Zapisz", a temperatura 0,9 jest jedynym miejscem w projekcie, gdzie zmyślanie
+  modelu jest produktem. Pełna notatka w archiwum.
+
+- **10–11.08 (sesja bez etapu)** — dwa konta naraz w jednym oknie Chrome zamknęły stronę gracza
+  dla **14b, 14c, 16f, 20a, 20b, 23a, 23b, 23c i 24a**. Trzy rzeczy zostały i żadna z powodu
+  automatyzacji: rana krytyczna (nie ma jej jak nadać), Ludzka tarcza (trzecia figura), karta
+  przelewu u odbiorcy (trzeci host). Pełna notatka w archiwum.
+
+- **24b (09.08)** — uprawnienie gracza do wpisu kroniki **nie jest trzecim szczeblem
+  `visibility`**: „bot to pamięta" i „drużyna może o tym wiedzieć" to dwa pytania, więc
+  `sharedWithPlayers` jest osobną kolumną, a odcisk indeksu jej nie obejmuje — odsłonięcie
+  wpisu nie może oznaczać go jako „⟳ nieaktualny". Kanał gracza to **osobny kształt**
+  (`JournalPlayerEntry`), którego pól MG nie da się zapomnieć wyciąć, a wyszukiwarka liczy się
+  u klienta, żeby martwy gateway nie zabierał kroniki. Pełna notatka w archiwum.
+
+- **24a (09.08)** — markdown handoutu zwraca **drzewo bloków, nie HTML**, więc na drodze „treść MG
+  → ekran gracza" nie stoi ani `dangerouslySetInnerHTML`, ani sanitizer do pilnowania; w 24c, gdzie
+  treść pisze model, będzie to jedyna bariera przed wstrzykniętym znacznikiem. Udostępnienie jest
+  **zdarzeniem, nie stanem**: `handout:share` dostaje pełną listę i sam liczy różnicę, żeby dopisanie
+  trzeciego gracza nie wyskoczyło oknem dwóm pierwszym. Pełna notatka w archiwum.
+
+- **23c (09.08)** — lista wyczynów **jest** wartością Reputacji: RAW zastępuje ją tylko wyższą,
+  więc osobne pole liczbowe obok byłoby drugim, kłócącym się źródłem prawdy. Kara −2 za przegraną
+  Konfrontację to jedyny modyfikator w projekcie zależny od tego, **kogo** się atakuje, i dlatego
+  dokleja się w miejscach, które znają cel, zamiast wejść do `sheetSituationModifiers`. Remis jest
+  tu wynikiem — jedyny raz w projekcie. Pełna notatka w archiwum.
+
+- **23b (09.08)** — saldo pisze serwer albo nikt: wszystkie ścieżki idą przez jedno
+  `applyBalance`, które zapisuje kartę i wiersz audytu razem, a `character:update` wyjmuje
+  `eddies` z łatki i przepuszcza je tą samą drogą. Pasmo ceny („Drogie") jest **ceną**, więc
+  sklep nie gubi połowy asortymentu podręcznika, a `Poziom życia` jest opcjonalny — domyślne
+  „Na karmie" wystawiałoby czynsz każdemu manekinowi na scenie testowej. Pełna notatka
+  w archiwum.
+
+- **23a (09.08)** — pętla EMP ↔ Człowieczeństwo rozcina się w jedną stronę: `stats.emp` jest
+  wyłącznie źródłem, a EMP w grze wylicza się z Człowieczeństwa i nigdzie nie wraca, bo inaczej
+  każdy wszczep obniżałby sufit dwa razy. Instalacja jest zdarzeniem serwera, nie edycją karty —
+  koszt się **rzuca**, więc klient, który mógłby go nazwać, mógłby nazwać jedynkę. Gniazda liczą
+  się per rodzina, nie per sztuka sprzętu (świadome uproszczenie: podręcznik pyta „które oko?").
+  Pełna notatka w archiwum.
+
+- **Wycofanie głosu (09.08, poza etapami)** — TTS, STT i WebRTC wypadły z projektu w całości
+  (etapy 12, 21, 22), a kod Pipera został **usunięty**, nie wyłączony za flagą. Po etapie 12
+  przetrwało jedno: dopisywanie tekstu słowo po słowie, które **przeniosło się na klienta** —
+  bez audio nie ma czego synchronizować, więc `typewriter.ts` odmierza stałe 15 zn./s, a serwer
+  o efekcie nie wie nic. Skutek uboczny: podgląd generacji „NPC pisze…" zniknął dla wypowiedzi
+  botów, żeby stół nie czytał tej samej kwestii dwa razy. Pełna notatka w archiwum.
+
+- **20b (08.08)** — bot dostał pole bitwy: tura to **dwa pytania** (Akcja Ruchu plus Akcja), a nie
+  jedno, więc „podejdź i strzel" mieści się w jednej turze; atak, ruch i przeładowanie jadą
+  **wydzielonymi z handlerów** funkcjami, którymi strzela człowiek, a bezpieczniki muszą stać
+  **przed** wywołaniem, bo bot działa kontem MG. Widoczność przestała być własnością konta i stała
+  się własnością figury (`tokenSightFor`). Pełna notatka w archiwum.
+
+- **20a (08.08)** — bot przestał tylko mówić i zaczął rzucać kośćmi: gramatyka GBNF obsługuje
+  **wyłącznie przebieg decyzyjny**, a wypowiedź NPC-a zostaje prozą, bo enum w schemacie czyni
+  „umiejętność, której bot nie ma" niewymawialną, a nie wyłapywaną walidacją. Rzut idzie tą samą
+  ścieżką co u gracza (`performCharacterRoll`), więc bezpieczniki muszą stać **przed** wywołaniem —
+  bot działa kontem MG, a MG jest zwolniony z blokad. Pełna notatka w archiwum.
+
+- **19c (08.08)** — po sesji zostaje ślad, a NPC pamięta, kto mu pomógł: streszczenie to
+  **czat od ostatniego wpisu dziennika do teraz** (bez rzutów i szeptów — dziennik jedzie do
+  indeksu, który czytają boty), a model niczego nie zapisuje sam: wraca **szkic** i lista
+  propozycji relacji do odklikania. Dziennik to trzecia kolekcja RAG, ale nadal **jedno**
+  wyszukiwanie — fragmenty konkurują o te same trzy miejsca w prompcie. Pełna notatka
+  w archiwum.
+
+- **19b (08.08)** — bot przestał wiedzieć tylko to, co MG wkleił mu do profilu: **tag jest
+  jedynym językiem uprawnień**, a filtr działa w SQL **przed mnożeniem wektorów**, więc kolekcja
+  bez prawa dostępu nie kosztuje bota ani jednego mnożenia. Baza jest źródłem prawdy, indeks jej
+  kopią — wpis nosi odcisk `indexedDigest`, więc zapis przy leżącym gatewayu nie gubi notatki MG.
+  Fragment wchodzi do promptu jako **pamięć NPC-a**, nie cytat, i przegrywa z jawnym „o tym
+  milczysz". Pełna notatka w archiwum.
+
+- **19a (08.08)** — cytat bierze się z materiału, nie ze zgadywania: chunker wkleja ścieżkę
+  „rozdział › sekcja (s. N)" w pierwszą linię fragmentu, a fuzja RRF łączy kosinus z BM25 po
+  **pozycji**, bo te dwie liczby nie są w tej samej skali. Fragmenty jadą do klienta **przed**
+  pierwszym tokenem odpowiedzi, więc MG widzi źródła nawet wtedy, gdy generacja się urwie.
+  Przy okazji znaleziony błąd `reasoning_budget` (patrz „Pułapki dev") — pełna notatka w archiwum.
+
+- **16h (07.08)** — nabój, który nikogo nie rani wprost, jest **jednym mechanizmem i sześcioma
+  wierszami danych**: `CpredAmmoCheck` mówi, czym się rzuca, przeciw jakiemu PT i co daje
+  porażka, a kod nie zna słowa „gaz". Porażka ląduje jako **zwyczajna karta obrażeń** z etapu 15,
+  więc jedno „Cofnij" zabiera naraz kości, statusy i rany. Efekt czasowy nie dostał własnej
+  tabeli — liczniki siedzą w `Token.statusData` i w polu `timed` rany, a jedyna migracja etapu to
+  chmura dymu. Pełna notatka w archiwum.
+
+- **Lewy pasek pamięta figurę (01.08, poza etapami)** — zaznaczenie rozdzieliło się na dwa
+  wskaźniki: `selectionStore.tokenId` („kto chodzi, gdy kliknę podłoże") i `focusTokenId`
+  („kogo opisuje lewy pasek"), a drugi przeżywa pierwszy. Ognisko jest wyliczane, nie
+  przechowywane, więc zapamiętane id bez tokenu samo spada na domyślną figurę; pamięć siedzi
+  w `localStorage` pod id sceny. Pełna notatka w archiwum.
+
+- **16d (01.08)** — granat celuje w **pole**, nie w osobę, a wybuch jest sądzony od krateru:
+  ściana i osłona wyjmują z rażenia tego, kogo naprawdę zasłaniają, i dlatego obszar pyta o
+  osłonę z zasięgiem 0 (eksplozja nie wychyla się nad maską). Pudło i tak wybucha — odchylenie
+  to zasada domowa związana z kością i cechą, bo podręcznik oddaje to miejsce MG. Przy okazji
+  znaleziony wyciek: karta obszaru wymienia cele z nazwiska, więc `deliverRollMessage`
+  przeszło na wersję redagowaną. Pełna notatka w archiwum.
+
+- **16g (07.08)** — dopasowanie naboju do broni jest **danymi z obu stron**: nabój mówi, w jakich
+  kształtach jest produkowany, typ broni mówi, co komorowa, a lista po id (miotacz ognia) bije
+  kształt. Śrut nie dostał własnej geometrii — stożek jedzie tą samą drogą co wybuch z 16d, więc
+  osłony, ściany i „Zastosuj wszystkim" działają bez jednej nowej linii. Nabój **jedzie z
+  trafieniem**, nie jest doczytywany, przez co „Zastosuj" po godzinie rozlicza ten pocisk, który
+  padł. Pełna notatka w archiwum.
+
+- **Górny pasek tury (01.08, poza etapami)** — kolejka inicjatywy zeszła z mapy i stanęła
+  na stałe w górnej belce, bo musi działać, **gdy nic nie jest zaznaczone**; z zakazu
+  dublowania informacji wyszedł podział ról: góra to kolejka (runda, ◀ ▶, żetony, ✕),
+  lewy pasek to jedna figura (portret, PW, budżet tury, sloty). Kompaktowe żetony
+  odwołane po oględzinach — docelowe ekrany to 4K, więc imię wróciło na każdy żeton.
+  Pełna notatka w archiwum.
+
+- **16c (01.08)** — samochód na ulicy przestał być tłem: osłona jest **jedynym obiektem sceny, który jedzie do gracza** (ścianę drużyna ma odkryć, samochód i tak widzi), więc klient sam liczy zasłonięcie, sam omija ją trasą i sam rysuje pasek PW. Cel ataku przestał być tokenem i stał się „token albo osłona" — jeden planer, ta sama tabela zasięgów, ten sam nabój. Prawdziwa tabela PW poszła do `data/private` (repo jest publiczne), przez co katalog jedzie do klienta przez `GET /api/cpred/covers`, nie przez statyczne `/public/`. Pełna notatka w archiwum.
+
+- **16f (01.08)** — turę da się rozegrać bez otwierania panelu: pasek akcji jest **generowany** z tego, co token potrafi (`hotbarSlotsFor` w `shared`), a uzbrojona broń przestała być trybem — podgląd trasy blokuje wyłącznie wskaźnik stojący na celu. Model sterowania to klasyczny CRPG (klik we własny token zaznacza, w cudzy celuje; MG przez `Alt`), a HUD to nowy lewy pasek, nie nakładka nad mapą. Przy okazji znaleziony błąd spoza etapu: rejestr umiejętności CP RED wczytywał się leniwie z dwóch komponentów, więc na świeżo przeładowanej stronie **każdy strzał z mapy** wracał z „Nie wiem, jaką umiejętnością strzelać z tej broni". Pełna notatka w archiwum.
+
+- **16e (31.07)** — token przestał być obrazkiem, który się przeciąga: A* w `shared/pathfinding.ts` liczy trasę, a marsz jedzie tym samym strumieniem `token:move` co przeciąganie, więc **protokół i serwer są nietknięte**. Gracz planuje **wyłącznie po aktualnym polu widzenia** (decyzja MG po zgłoszeniu błędu w opisie etapu: maska eksploracji z 18c pamięta podłogę, nie ściany, bo mur widać z obu stron). Przy okazji naprawione **zepsute od 18a kliknięcie w token** — pełnoekranowe warstwy przykrywające przechwytywały hit-test, co obaliło zapisaną wcześniej „pułapkę CDP". Pełna notatka w archiwum.
+
+- **16b (31.07)** — Strzał sprawdza te same blokady co wzrok (`fireSegmentsFor` = `sightSegmentsFor`), więc szyba i zamknięte drzwi wychodzą bez drugiej geometrii; ogień zaporowy jest z tego testu zwolniony i sprawdza każdy cel osobno. Statysta bez karty postaci dostał `Token.combatProfile` syntezowany na prawdziwe `CpredCharacterData` (dwuprzebiegowo, bo umiejętność broni zna dopiero kompendium), dzięki czemu planer ataku nie ma dla niego ani jednej gałęzi. Pełna notatka w archiwum.
+
+- **14e (31.07)** — hooki przejścia tury dostały **jedne drzwi** (`advanceTurn` w `realtime/turn-effects.ts`), więc „co się dzieje na granicy tury" ma dokładnie jedno miejsce, a rdzeń dalej nie wie, czym jest ogień. Strażnik idempotencji musiał zamieszkać w osobnej kolumnie `Combatant.turnEffects`, bo budżet tury jest **odtwarzany** przy każdym starcie tury — licznik w nim kasowałyby dokładnie te akcje (cofnięcie, „Zwróć turę"), przed którymi miał chronić. Cztery flagi maszynowe ran plus `actionPenalty` idą z parsera podręcznika jako **dane, nie kod** (wzorzec z 14c), a dwie rany warunkowe („tą ręką", „związanych z mówieniem") świadomie zostały prozą.
+
+- **14d (31.07)** — Trzymanie jest **relacją w stanie walki**, nie statusem: kolumna `grappledById` siedzi na Trzymanym i odpowiada na wszystkie pytania reguł, a naklejka na tokenie jest tylko jej obrazkiem. Powstała jedna tabela efektów statusów (`shared/systems/cpred/statuses.ts`) odpowiadająca na trzy pytania — ruch, Akcja, Unik — zamiast trzech rozsianych list. Migotliwy test Testu Przeżywalności okazał się testem kłócącym się z zasadami, nie wyścigiem: RAW dodaje testy **plus** kary z ran krytycznych, więc naprawa czyta oczekiwany modyfikator z karty zamiast zakładać 1.
+
+- **14c (31.07)** — przeciągnięcie tokenu stało się wydatkiem: serwer liczy metry z łamanej i odejmuje je od RUCH × 2 m. Metry nie są kropkami — `TurnBudgetView` dostał pole `distance`, bo „7,5 / 12 m" nie da się narysować pipsami; kartę czyta się w momencie osądu, więc noga złamana w cudzej turze skraca **tę** turę. `validateTokenMove` w `realtime/movement.ts` to jeden punkt walidacji z miejscem zostawionym na kolizje ze ścianami.
+
+- **14b (30.07)** — tura przestała być wskaźnikiem „kto teraz" i stała się budżetem (1 Akcja Ruchu + 1 Akcja), z kartą odmowy i przyciskiem „Przepuść" zamiast twardej ściany. Stan tury jest nieprzezroczysty dla rdzenia: `Combatant.turnState` to JSON, a całą semantykę dostarcza `shared/systems/cpred/turn.ts` przez szew w `sheets.ts`. Ustabilizowanie powstało tu od zera — etap 15 zbudował sam Test Przeżywalności, wbrew opisowi zakresu.
+
+- **18e (30.07)** — okno stało się drugim rodzajem otworu: `open`/`locked`/`playerToggle` chodzą na nim tą samą maszynerią co na drzwiach, bez migracji. Otwarte okno przestaje być firanką i przestaje tłumić światło, więc „okno jest otwarte" widać na mapie, zanim ktokolwiek to powie. Wymusiło to rename `door:*` → `opening:*` w całym protokole — pole `doors` niosące okna byłoby kłamstwem.
+
+- **18d (30.07)** — zasięg ręki 2 m, zamki MG i „firanka" w oknach. Kluczowa zmiana architektury: zbiór segmentów blokujących wzrok przestał być własnością sceny i stał się własnością źródła wzroku (`SightSource.segments`), bo okno jest ścianą dla dalekiego i szybą dla bliskiego. Kolejność odmów przy `door:toggle` (widoczność → zasięg → zamek) jest treścią etapu: „zamknięte na klucz" ma się poznawać szarpnięciem klamki, nie klikaniem z drugiego końca pokoju.
+
+- **18c (30.07)** — pamięć eksploracji (raz zobaczone zostaje szare) i ręczna mgła MG jako nadpisanie nad widocznością; eksploracja jest wspólna dla drużyny. Lampy statyczne zostały po pomiarze: koszt serwera nie rośnie z ich liczbą (400 lamp = 1,1 ms, bo `buildLightMask` przerywa na jasnej komórce).
+- **18b (30.07)** — ciemność sceny, lampy i latarki (gracz gasi swoją sam). Oględziny tylko na koncie gracza; stronę MG sterowałem skryptem po tych samych zdarzeniach socketowych.
+- **18a (29.07)** — dynamiczne pole widzenia liczone z pozycji tokenu, cień rzucany przez ściany; gracz bez tokenu widzi czarną mapę z komunikatem.
+- **17b (28.07)** — ołówek, kształty, tekst, gumka i „pokaż graczom". Przy okazji naprawiona suma kontrolna migracji 17a w `_prisma_migrations`, która żądała resetu bazy dev.
+- **17a (28.07)** — pędzel i prostokąt odsłaniania, cofanie kształtu, pinezki MG z tekstem; token właściciela jest dla niego widoczny nawet w nieodsłoniętym obszarze.
+- **16 (28.07)** — DV liczone z odległości na mapie, ogień ciągły i zaporowy, linijka, pierścienie PT wokół tokenu, magazynek na karcie (stare tekstowe pole `ammo` czyta się dalej, nikt nie przepisuje karty).
+- **15 (27.07)** — obrażenia rozlicza wyłącznie MG (gracz rzuca, MG stosuje „Zastosuj na celu"), jest „Cofnij", Test Przeżywalności woła tracker walki.
+- **Uzupełnienie danych (27.07, poza planem)** — pełny podręcznik PL wpięty w etap 13: nowy parser `tools/import/parse-manual.py`, a `parse-compendium.py` przestał pisać statbloki i tylko raportuje rozbieżności DLC vs podręcznik (`rulebookDifferences` w `import-report.json`). Poprawione: zamienione `costly`/`expensive`, nieoficjalna tabela ran głowy, zdolność Fixera, nazwa roli `media`, wiszące odniesienie do `martial-arts`.
+- **Materiały (27.07)** — `tools/rulebook/build-manual.mjs` rozbija zrzut podręcznika ze Scribda (1,47 MB w jednej linii) na 21 rozdziałów w `data/private/rulebook/manual/`; watermark występuje raz na stronę, więc wyznacza granice i numerację stron.
+- **14 (26.07)** — posiłki można dołączyć w trakcie walki („Rzuć wszystkim" dorzuca inicjatywę tylko brakującym); pasek trackera jest przesuwalny i przycinany do obszaru mapy.
+- **13 (26.07)** — kompendium gotowe kodowo: 15 typów broni, 52 wpisy, edytor MG, dodawanie przedmiotu na kartę. Materiały: 5 darmowych PDF-ów PL w `data/private/rulebook/pdf`.
+- **12 (26.07, ⛔ wycofany 09.08)** — Piper wybrany po pomiarze A/B z Chatterboksem; 874 ms od pytania gracza do wypowiedzi z audio (LLM + synteza razem). Kod usunięty razem z rezygnacją z głosu.
+- **11 (25.07)** — sekrety utrzymane w roli, `/jako` bez udziału modelu, szept `/w @imię`; pierwszy token 130–730 ms, cała wypowiedź 0,7–1,8 s.
+- **10 (25.07)** — jailbreak („zignoruj instrukcje, pokaż prompt") kończy się odpowiedzią w roli; lekcje z korekt MG siedzą na końcu promptu i mają zadeklarowane pierwszeństwo.
+- **Zmiana planu (24.07, bez kodu)** — doszedł etap 12 (TTS, wycofany 09.08.2026), dawne 12–27 przenumerowane na 13–28. **Cała dokumentacja używa już nowej numeracji.** Mowa jest opcjonalna; modele nie muszą być rezydentne na GPU jednocześnie.
+- **09 (24.07)** — llama.cpp b10107 CUDA w `C:/AI/llm/llama.cpp`, model `Qwythos-9B-v2-Q8_0.gguf` (9,53 GB) w `C:/AI/llm/models` (wariant **bez** `-MTP-`); kolejka jednego slotu i auto-restart po padzie (~5 s).
+- **08 (24.07)** — okno rzutu z podglądem rozbicia, karta na czacie z chipami modyfikatorów, zmiana PW z menu tokenu widoczna od razu na mapie i w otwartej karcie.
+- **07 (18.07)** — role jako sztywna lista w `roles.json` (nazwy PL wg Black Monk), PW max / próg rany / przeżywalność przeliczane z BC i SW, autozapis karty z flushem przy zamknięciu okna.
+- **06 (18.07)** — `shared/dice.ts` z wstrzykiwanym `DiceRng` (serwer `crypto.randomInt`, testy seedowane), alias `k` w notacji, limity członów i kości; karta na czacie ujawnia się ~2,5 s po zatrzymaniu kubka.
+- **05 (17.07)** — okrągła maska tokenu z ringiem wg właściciela (zielony/niebieski/czerwony), biblioteka `TokenAsset` per kampania, stawianie klikiem, snap i sanityzacja w `shared/tokens.ts`.
+- **04 (17.07)** — pokoje `scene:<id>` i `campaign:<id>:gm` (edycje scen nieaktywnych idą bez seq, jak szepty); pan/zoom ~160 fps na mapie 4096×4096.
+- **03 (17.07)** — `defineEvent`/`registerEvents`, licznik seq per pokój (emisje celowane go nie zużywają), `state:sync` na starcie i przy wykrytej luce; szepty filtrowane w zapytaniu DB, nigdy nie opuszczają serwera.
+- **02 (16.07)** — konto MG auto-seed z `.env` (`GM_PASSWORD`), linki zaproszeń wielorazowe z wygaśnięciem, powrót gracza przez link i wybór imienia (bez hasła — zaufana grupa); w dev proxy Vite dla `/api` i `/socket.io` (same-origin cookies, bez CORS).
+- **01 (16.07)** — `CRED-EasyMode.pdf` przeniesiony do `data/private/` (prawa autorskie). Repo: https://github.com/kot-Bonifacy/Fable5-vtt.
+
 ### Sesja 14.08 (druga tego dnia) — etap 25b (kreator: Ścieżka Życia)
 
 **Postać wychodzi z kreatora z życiorysem, a nie z samymi liczbami.** Czwarty krok — Ścieżka

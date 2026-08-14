@@ -60,6 +60,12 @@ PRICE_RE = re.compile(r"\s*(\d[\d\s ]*)\s*ed\s*\(([^)]+)\)\s*")
 # the gear list without a heading of its own.
 FASHION_TABLE_RE = re.compile(r"\bMODA\s+Nogi")
 
+# „Ten cyberdek ma 9 gniazd na Programy i ulepszenia sprzętowe" (stage 26a).
+# Chapter 11 prints the same three numbers as a column, but this chapter owns
+# the deck rows — name, price and description — so the slot count is read here
+# too rather than patched in from `parse-netrunning.py`: one owner per entry.
+DECK_SLOTS_RE = re.compile(r"(\d+)\s+gniazd\w*\s+na\s+Programy")
+
 # Bands as the Polish edition inflects them; the longer prefixes must be tested
 # first, or „B. kosztowny" reads as „Kosztowny" and the item gets the wrong rung.
 BAND_PREFIXES: list[tuple[str, str]] = [
@@ -220,6 +226,7 @@ def main() -> int:
         description = texts.get(name)
         if description is None:
             warn(f"{name}: brak akapitu z opisem")
+        slots = DECK_SLOTS_RE.search(description or "")
         entries.append(
             {
                 "id": entry_id,
@@ -227,6 +234,7 @@ def main() -> int:
                 "name": name,
                 "cost": price,
                 "costCategory": band,
+                **({"deckSlots": int(slots.group(1))} if slots else {}),
                 **({"description": description} if description else {}),
             }
         )

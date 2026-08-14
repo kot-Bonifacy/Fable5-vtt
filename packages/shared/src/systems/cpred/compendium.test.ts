@@ -397,3 +397,100 @@ describe('ammunition without damage (stage 16h)', () => {
     expect(entry?.smart).toEqual({ maxMiss: 4, bonus: 10, requires: 'Celownik optyczny' });
   });
 });
+
+/**
+ * Stage 26a — Programs, Black ICE and Demons. Numbers below are invented, like
+ * everything else in this suite.
+ */
+describe('program entries', () => {
+  function programInput(extra: Record<string, unknown> = {}) {
+    return {
+      category: 'program',
+      name: 'Iskra',
+      cost: 20,
+      programClass: 'booster',
+      atk: 0,
+      def: 0,
+      rez: 6,
+      ...extra,
+    };
+  }
+
+  it('takes a Booster and gives it one deck slot', () => {
+    const result = validateCompendiumEntry(programInput());
+    expect(result.ok).toBe(true);
+    if (!result.ok || result.entry.category !== 'program') return;
+    expect(result.entry.id).toBe('program.iskra');
+    expect(result.entry.programClass).toBe('booster');
+    expect(result.entry.slots).toBeUndefined();
+  });
+
+  it('refuses an entry with no class', () => {
+    const result = validateCompendiumEntry(programInput({ programClass: 'jakiś' }));
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.issues[0]?.field).toBe('programClass');
+  });
+
+  it('keeps PER and PRĘ on Black ICE and drops them everywhere else', () => {
+    const ice = validateCompendiumEntry(
+      programInput({ programClass: 'attacker', blackIce: true, per: 4, speed: 6 }),
+    );
+    expect(ice.ok && ice.entry.category === 'program' ? ice.entry.per : null).toBe(4);
+
+    const plain = validateCompendiumEntry(programInput({ per: 4, speed: 6 }));
+    expect(plain.ok && plain.entry.category === 'program' ? plain.entry.per : 'dropped').toBe(
+      undefined,
+    );
+  });
+
+  it('refuses a stat outside the range any Program could carry', () => {
+    expect(validateCompendiumEntry(programInput({ rez: 900 })).ok).toBe(false);
+  });
+
+  it('stores a slot count only when it differs from what the class implies', () => {
+    const implied = validateCompendiumEntry(
+      programInput({ programClass: 'attacker', blackIce: true, slots: 2 }),
+    );
+    expect(implied.ok && implied.entry.category === 'program' ? implied.entry.slots : 'set').toBe(
+      undefined,
+    );
+    const odd = validateCompendiumEntry(programInput({ slots: 3 }));
+    expect(odd.ok && odd.entry.category === 'program' ? odd.entry.slots : null).toBe(3);
+  });
+
+  it('takes a Demon under a slug the id rules allow', () => {
+    const result = validateCompendiumEntry({
+      category: 'netDefense',
+      name: 'Chochlik',
+      cost: 1000,
+      defenseKind: 'demon',
+      rez: 12,
+      interfaceRank: 3,
+      netActions: 2,
+      combatValue: 12,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok || result.entry.category !== 'netDefense') return;
+    expect(result.entry.id).toBe('demon.chochlik');
+    expect(result.entry.combatValue).toBe(12);
+  });
+
+  it('refuses a Net defender with no kind', () => {
+    const result = validateCompendiumEntry({ category: 'netDefense', name: 'Coś', cost: 0 });
+    expect(result.ok).toBe(false);
+  });
+
+  it('takes deck slots on gear and refuses a nonsense count', () => {
+    const deck = validateCompendiumEntry({
+      category: 'gear',
+      name: 'Dek przykładowy',
+      cost: 300,
+      deckSlots: 6,
+    });
+    expect(deck.ok && deck.entry.category === 'gear' ? deck.entry.deckSlots : null).toBe(6);
+    expect(
+      validateCompendiumEntry({ category: 'gear', name: 'Zły dek', cost: 0, deckSlots: 0 }).ok,
+    ).toBe(false);
+  });
+});

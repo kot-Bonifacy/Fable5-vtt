@@ -98,6 +98,12 @@ import type {
   KnowledgePreviewResult,
   KnowledgeSyncPayload,
   KnowledgeUpsertBroadcast,
+  NetArchitectureDeleteBroadcast,
+  NetArchitectureListPayload,
+  NetArchitectureRollPayload,
+  NetArchitectureRollResult,
+  NetArchitectureSavePayload,
+  NetArchitectureView,
   KnowledgeUpsertPayload,
   LightPatch,
   LightSyncBroadcast,
@@ -180,6 +186,7 @@ import { useCompendiumStore } from './stores/compendiumStore.js';
 import { useAiStore } from './stores/aiStore.js';
 import { useRulesStore } from './stores/rulesStore.js';
 import { useKnowledgeStore } from './stores/knowledgeStore.js';
+import { useNetStore } from './stores/netStore.js';
 import { useJournalStore } from './stores/journalStore.js';
 import { useHandoutStore } from './stores/handoutStore.js';
 import { useScreamsheetStore } from './stores/screamsheetStore.js';
@@ -493,6 +500,15 @@ export function connectSocket(userId: string): Socket {
   );
   socket.on('knowledge:delete', (broadcast: KnowledgeDeleteBroadcast) =>
     useKnowledgeStore.getState().remove(broadcast.id, broadcast.index),
+  );
+
+  // Biblioteka Architektur Sieciowych (26a) — ta sama zasada co wyżej: PT,
+  // Czarne LOD-y i notatki MG lecą wyłącznie do pokoju MG.
+  socket.on('net:architectures', (payload: NetArchitectureListPayload) =>
+    useNetStore.getState().replaceAll(payload.architectures),
+  );
+  socket.on('net:deleted', (broadcast: NetArchitectureDeleteBroadcast) =>
+    useNetStore.getState().remove(broadcast.id),
   );
 
   // Dziennik kampanii (19c) i jego wyjście do stołu (24b). Serwer wysyła MG
@@ -1359,6 +1375,34 @@ export const deleteKnowledgeEntry = (id: string) => emitSceneAck('knowledge:dele
 /** Pełny przebieg indeksowania bazy wiedzy — dogania to, co się rozjechało. */
 export const reindexKnowledge = () =>
   emitSceneAck<KnowledgeIndexStatus>('knowledge:reindex', undefined);
+
+/**
+ * Biblioteka Architektur Sieciowych (26a). Wołane przy wejściu w zakładkę,
+ * nie w `state:sync` — u gracza ta lista nie istnieje w ogóle.
+ */
+export function fetchNetArchitectures(): Promise<NetArchitectureListPayload | null> {
+  return new Promise((resolve) => {
+    if (!socket) {
+      resolve(null);
+      return;
+    }
+    socket.emit('net:list', (ack: SocketAck<NetArchitectureListPayload>) => {
+      if (ack.ok && ack.data) useNetStore.getState().replaceAll(ack.data.architectures);
+      resolve(ack.ok ? (ack.data ?? null) : null);
+    });
+  });
+}
+
+export const fetchNetArchitecture = (id: string) =>
+  emitSceneAck<NetArchitectureView>('net:get', { id });
+
+export const saveNetArchitecture = (payload: NetArchitectureSavePayload) =>
+  emitSceneAck<NetArchitectureView>('net:save', payload);
+
+export const deleteNetArchitecture = (id: string) => emitSceneAck('net:delete', { id });
+
+export const rollNetArchitecture = (payload: NetArchitectureRollPayload) =>
+  emitSceneAck<NetArchitectureRollResult>('net:roll', payload);
 
 /**
  * Dziennik kampanii. Wołane przy wejściu w zakładkę, nie w `state:sync`.

@@ -1,6 +1,15 @@
 import { useMemo, useState, type FormEvent } from 'react';
-import type { CompendiumCategory, CompendiumEntry, WeaponQuality } from '@vtt/shared';
+import type {
+  CompendiumCategory,
+  CompendiumEntry,
+  NetProgramClass,
+  WeaponQuality,
+} from '@vtt/shared';
 import {
+  NET_PROGRAM_CLASSES,
+  NET_PROGRAM_CLASS_LABELS,
+  NET_PROGRAM_TARGETS,
+  NET_PROGRAM_TARGET_LABELS,
   ARMOR_LOCATIONS,
   ARMOR_LOCATION_LABELS,
   COMPENDIUM_CATEGORIES,
@@ -636,6 +645,203 @@ export function CompendiumEditor() {
             </>
           ) : null}
 
+          {form.category === 'gear' ? (
+            <div className="bot-row-inline">
+              <label className="bot-field bot-field--inline">
+                Gniazda deku
+                <input
+                  type="number"
+                  min={1}
+                  max={16}
+                  value={form.deckSlots}
+                  title="Ile gniazd daje ten przedmiot — wypełnia się tylko przy cyberdekach"
+                  onChange={(event) => patch({ deckSlots: event.target.value })}
+                />
+              </label>
+              <label className="bot-field bot-field--inline">
+                Zajmuje gniazd
+                <input
+                  type="number"
+                  min={1}
+                  max={16}
+                  value={form.deckSlotCost}
+                  title="Ile gniazd zajmuje w deku — Ulepszenia Sprzętowe"
+                  onChange={(event) => patch({ deckSlotCost: event.target.value })}
+                />
+              </label>
+            </div>
+          ) : null}
+
+          {form.category === 'program' ? (
+            <>
+              <div className="bot-row-inline">
+                <label className="bot-field bot-field--inline">
+                  Klasa
+                  <select
+                    value={form.programClass}
+                    onChange={(event) =>
+                      patch({ programClass: event.target.value as NetProgramClass })
+                    }
+                  >
+                    {NET_PROGRAM_CLASSES.map((id) => (
+                      <option key={id} value={id}>
+                        {NET_PROGRAM_CLASS_LABELS[id]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="bot-field bot-field--inline">
+                  Cel
+                  <select
+                    value={form.programTarget}
+                    onChange={(event) => patch({ programTarget: event.target.value })}
+                  >
+                    <option value="">—</option>
+                    {NET_PROGRAM_TARGETS.map((id) => (
+                      <option key={id} value={id}>
+                        {NET_PROGRAM_TARGET_LABELS[id]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <label className="bot-checkbox">
+                <input
+                  type="checkbox"
+                  checked={form.programBlackIce}
+                  onChange={(event) => patch({ programBlackIce: event.target.checked })}
+                />
+                Czarny LOD (zajmuje 2 gniazda, ma PER i PRĘ)
+              </label>
+              <div className="bot-row-inline">
+                <label className="bot-field bot-field--inline">
+                  ATK
+                  <input
+                    type="number"
+                    min={0}
+                    max={30}
+                    value={form.programAtk}
+                    onChange={(event) => patch({ programAtk: event.target.value })}
+                  />
+                </label>
+                <label className="bot-field bot-field--inline">
+                  OBR
+                  <input
+                    type="number"
+                    min={0}
+                    max={30}
+                    value={form.programDef}
+                    onChange={(event) => patch({ programDef: event.target.value })}
+                  />
+                </label>
+                <label className="bot-field bot-field--inline">
+                  REZ
+                  <input
+                    type="number"
+                    min={0}
+                    max={30}
+                    value={form.programRez}
+                    onChange={(event) => patch({ programRez: event.target.value })}
+                  />
+                </label>
+              </div>
+              {form.programBlackIce ? (
+                <div className="bot-row-inline">
+                  <label className="bot-field bot-field--inline">
+                    PER
+                    <input
+                      type="number"
+                      min={0}
+                      max={30}
+                      value={form.programPer}
+                      title="Trudność ucieczki Ślizgiem"
+                      onChange={(event) => patch({ programPer: event.target.value })}
+                    />
+                  </label>
+                  <label className="bot-field bot-field--inline">
+                    PRĘ
+                    <input
+                      type="number"
+                      min={0}
+                      max={30}
+                      value={form.programSpeed}
+                      title="Szybkość reakcji przy wykryciu intruza"
+                      onChange={(event) => patch({ programSpeed: event.target.value })}
+                    />
+                  </label>
+                </div>
+              ) : null}
+              <label className="bot-field">
+                Ikona
+                <input
+                  value={form.programIcon}
+                  maxLength={200}
+                  placeholder="Jak Program wygląda w Sieci"
+                  onChange={(event) => patch({ programIcon: event.target.value })}
+                />
+              </label>
+            </>
+          ) : null}
+
+          {form.category === 'netDefense' ? (
+            <>
+              <div className="bot-row-inline">
+                <label className="bot-field bot-field--inline">
+                  REZ
+                  <input
+                    type="number"
+                    min={0}
+                    max={30}
+                    value={form.programRez}
+                    onChange={(event) => patch({ programRez: event.target.value })}
+                  />
+                </label>
+                <label className="bot-field bot-field--inline">
+                  Interfejs
+                  <input
+                    type="number"
+                    min={0}
+                    max={30}
+                    value={form.demonInterface}
+                    title="Demon broni się Testem Interfejsu — nie ma Obrony"
+                    onChange={(event) => patch({ demonInterface: event.target.value })}
+                  />
+                </label>
+              </div>
+              <div className="bot-row-inline">
+                <label className="bot-field bot-field--inline">
+                  Akcje Sieciowe
+                  <input
+                    type="number"
+                    min={0}
+                    max={30}
+                    value={form.demonActions}
+                    onChange={(event) => patch({ demonActions: event.target.value })}
+                  />
+                </label>
+                <label className="bot-field bot-field--inline">
+                  Wartość bojowa
+                  <input
+                    type="number"
+                    min={0}
+                    max={30}
+                    value={form.demonCombat}
+                    title="Cecha + Umiejętność w jednej liczbie"
+                    onChange={(event) => patch({ demonCombat: event.target.value })}
+                  />
+                </label>
+              </div>
+              <label className="bot-field">
+                Ikona
+                <input
+                  value={form.programIcon}
+                  maxLength={200}
+                  onChange={(event) => patch({ programIcon: event.target.value })}
+                />
+              </label>
+            </>
+          ) : null}
+
           {form.category === 'criticalInjury' ? (
             <>
               <div className="bot-row-inline">
@@ -723,6 +929,21 @@ export function CompendiumEditor() {
 
 interface EditorForm {
   category: CompendiumCategory;
+  /** Stage 26a — Programs, Black ICE and Demons share one block of numbers. */
+  programClass: NetProgramClass;
+  programTarget: string;
+  programBlackIce: boolean;
+  programAtk: string;
+  programDef: string;
+  programRez: string;
+  programPer: string;
+  programSpeed: string;
+  programIcon: string;
+  deckSlots: string;
+  deckSlotCost: string;
+  demonInterface: string;
+  demonActions: string;
+  demonCombat: string;
   name: string;
   description: string;
   cost: string;
@@ -786,6 +1007,27 @@ function toForm(entry: CompendiumEntry | undefined): EditorForm {
     description: entry?.description ?? '',
     cost: entry?.cost === null || entry?.cost === undefined ? '' : String(entry.cost),
     costCategory: entry?.costCategory ?? '',
+    programClass: entry?.category === 'program' ? entry.programClass : 'attacker',
+    programTarget: entry?.category === 'program' ? (entry.target ?? '') : '',
+    programBlackIce: entry?.category === 'program' ? Boolean(entry.blackIce) : false,
+    programAtk: entry?.category === 'program' ? String(entry.atk) : '',
+    programDef: entry?.category === 'program' ? String(entry.def) : '',
+    programRez:
+      entry?.category === 'program' || entry?.category === 'netDefense' ? String(entry.rez) : '',
+    programPer: entry?.category === 'program' && entry.per !== undefined ? String(entry.per) : '',
+    programSpeed:
+      entry?.category === 'program' && entry.speed !== undefined ? String(entry.speed) : '',
+    programIcon:
+      entry?.category === 'program' || entry?.category === 'netDefense' ? (entry.icon ?? '') : '',
+    deckSlots:
+      entry?.category === 'gear' && entry.deckSlots !== undefined ? String(entry.deckSlots) : '',
+    deckSlotCost:
+      entry?.category === 'gear' && entry.deckSlotCost !== undefined
+        ? String(entry.deckSlotCost)
+        : '',
+    demonInterface: entry?.category === 'netDefense' ? String(entry.interfaceRank) : '',
+    demonActions: entry?.category === 'netDefense' ? String(entry.netActions) : '',
+    demonCombat: entry?.category === 'netDefense' ? String(entry.combatValue) : '',
     weaponTypeId: entry?.category === 'weapon' ? (entry.weaponTypeId ?? '') : '',
     quality: entry?.category === 'weapon' ? entry.quality : 'standard',
     damage: entry?.category === 'weapon' ? (entry.damage ?? '') : '',
@@ -997,6 +1239,38 @@ function fromForm(form: EditorForm, existingId: string | undefined): Record<stri
       slotCost: numberOrUndefined(form.slotCost),
       requires: form.cyberwareRequires || undefined,
       foundation: form.foundation,
+    };
+  }
+  if (form.category === 'program') {
+    return {
+      ...base,
+      programClass: form.programClass,
+      target: form.programTarget || undefined,
+      blackIce: form.programBlackIce,
+      atk: numberOrUndefined(form.programAtk) ?? 0,
+      def: numberOrUndefined(form.programDef) ?? 0,
+      rez: numberOrUndefined(form.programRez) ?? 0,
+      per: numberOrUndefined(form.programPer),
+      speed: numberOrUndefined(form.programSpeed),
+      icon: form.programIcon || undefined,
+    };
+  }
+  if (form.category === 'netDefense') {
+    return {
+      ...base,
+      defenseKind: 'demon',
+      rez: numberOrUndefined(form.programRez) ?? 0,
+      interfaceRank: numberOrUndefined(form.demonInterface) ?? 0,
+      netActions: numberOrUndefined(form.demonActions) ?? 0,
+      combatValue: numberOrUndefined(form.demonCombat) ?? 0,
+      icon: form.programIcon || undefined,
+    };
+  }
+  if (form.category === 'gear') {
+    return {
+      ...base,
+      deckSlots: numberOrUndefined(form.deckSlots),
+      deckSlotCost: numberOrUndefined(form.deckSlotCost),
     };
   }
   if (form.category === 'criticalInjury') {

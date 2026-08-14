@@ -1,0 +1,498 @@
+{
+  "$comment": "Wszystkie liczby i nazwy są wymyślone — nie kopiuj tu tabel z podręcznika. Prawdziwe dane wchodzą z data/private/cpred/netrunning.json i zastępują ten plik w całości.",
+  "source": "Dane przykładowe VTT (wymyślone — wolne od praw autorskich)",
+  "netActions": [
+    {
+      "min": 1,
+      "max": 2,
+      "actions": 2
+    },
+    {
+      "min": 3,
+      "max": 5,
+      "actions": 3
+    },
+    {
+      "min": 6,
+      "max": 8,
+      "actions": 4
+    },
+    {
+      "min": 9,
+      "max": 10,
+      "actions": 5
+    }
+  ],
+  "difficulties": [
+    {
+      "id": "basic",
+      "dv": 5,
+      "suggestedInterface": 2
+    },
+    {
+      "id": "standard",
+      "dv": 7,
+      "suggestedInterface": 4
+    },
+    {
+      "id": "high",
+      "dv": 9,
+      "suggestedInterface": 6
+    },
+    {
+      "id": "advanced",
+      "dv": 11,
+      "suggestedInterface": 8
+    }
+  ],
+  "lobbyTable": [
+    {
+      "roll": 1,
+      "kind": "file",
+      "dv": 5
+    },
+    {
+      "roll": 2,
+      "kind": "password",
+      "dv": 5
+    },
+    {
+      "roll": 3,
+      "kind": "password",
+      "dv": 7
+    },
+    {
+      "roll": 4,
+      "kind": "ice",
+      "programIds": [
+        "program.osa"
+      ]
+    },
+    {
+      "roll": 5,
+      "kind": "controlNode",
+      "dv": 5
+    },
+    {
+      "roll": 6,
+      "kind": "ice",
+      "programIds": [
+        "program.tasak"
+      ]
+    }
+  ],
+  "contentTable": [
+    {
+      "roll": 3,
+      "basic": {
+        "kind": "ice",
+        "programIds": [
+          "program.osa"
+        ]
+      },
+      "standard": {
+        "kind": "ice",
+        "programIds": [
+          "program.osa"
+        ]
+      },
+      "high": {
+        "kind": "ice",
+        "programIds": [
+          "program.tasak"
+        ]
+      },
+      "advanced": {
+        "kind": "ice",
+        "programIds": [
+          "program.tasak",
+          "program.osa"
+        ]
+      }
+    },
+    {
+      "roll": 4,
+      "basic": {
+        "kind": "ice",
+        "programIds": [
+          "program.osa"
+        ]
+      },
+      "standard": {
+        "kind": "ice",
+        "programIds": [
+          "program.osa"
+        ]
+      },
+      "high": {
+        "kind": "ice",
+        "programIds": [
+          "program.tasak"
+        ]
+      },
+      "advanced": {
+        "kind": "ice",
+        "programIds": [
+          "program.tasak",
+          "program.osa"
+        ]
+      }
+    },
+    {
+      "roll": 5,
+      "basic": {
+        "kind": "ice",
+        "programIds": [
+          "program.osa"
+        ]
+      },
+      "standard": {
+        "kind": "ice",
+        "programIds": [
+          "program.osa"
+        ]
+      },
+      "high": {
+        "kind": "ice",
+        "programIds": [
+          "program.tasak"
+        ]
+      },
+      "advanced": {
+        "kind": "ice",
+        "programIds": [
+          "program.tasak",
+          "program.osa"
+        ]
+      }
+    },
+    {
+      "roll": 6,
+      "basic": {
+        "kind": "ice",
+        "programIds": [
+          "program.osa"
+        ]
+      },
+      "standard": {
+        "kind": "ice",
+        "programIds": [
+          "program.osa"
+        ]
+      },
+      "high": {
+        "kind": "ice",
+        "programIds": [
+          "program.tasak"
+        ]
+      },
+      "advanced": {
+        "kind": "ice",
+        "programIds": [
+          "program.tasak",
+          "program.osa"
+        ]
+      }
+    },
+    {
+      "roll": 7,
+      "basic": {
+        "kind": "ice",
+        "programIds": [
+          "program.osa"
+        ]
+      },
+      "standard": {
+        "kind": "ice",
+        "programIds": [
+          "program.osa"
+        ]
+      },
+      "high": {
+        "kind": "ice",
+        "programIds": [
+          "program.tasak"
+        ]
+      },
+      "advanced": {
+        "kind": "ice",
+        "programIds": [
+          "program.tasak",
+          "program.osa"
+        ]
+      }
+    },
+    {
+      "roll": 8,
+      "basic": {
+        "kind": "ice",
+        "programIds": [
+          "program.osa"
+        ]
+      },
+      "standard": {
+        "kind": "ice",
+        "programIds": [
+          "program.osa"
+        ]
+      },
+      "high": {
+        "kind": "ice",
+        "programIds": [
+          "program.tasak"
+        ]
+      },
+      "advanced": {
+        "kind": "ice",
+        "programIds": [
+          "program.tasak",
+          "program.osa"
+        ]
+      }
+    },
+    {
+      "roll": 9,
+      "basic": {
+        "kind": "password",
+        "dv": 5
+      },
+      "standard": {
+        "kind": "password",
+        "dv": 7
+      },
+      "high": {
+        "kind": "password",
+        "dv": 9
+      },
+      "advanced": {
+        "kind": "password",
+        "dv": 11
+      }
+    },
+    {
+      "roll": 10,
+      "basic": {
+        "kind": "file",
+        "dv": 5
+      },
+      "standard": {
+        "kind": "file",
+        "dv": 7
+      },
+      "high": {
+        "kind": "file",
+        "dv": 9
+      },
+      "advanced": {
+        "kind": "file",
+        "dv": 11
+      }
+    },
+    {
+      "roll": 11,
+      "basic": {
+        "kind": "controlNode",
+        "dv": 5
+      },
+      "standard": {
+        "kind": "controlNode",
+        "dv": 7
+      },
+      "high": {
+        "kind": "controlNode",
+        "dv": 9
+      },
+      "advanced": {
+        "kind": "controlNode",
+        "dv": 11
+      }
+    },
+    {
+      "roll": 12,
+      "basic": {
+        "kind": "password",
+        "dv": 5
+      },
+      "standard": {
+        "kind": "password",
+        "dv": 7
+      },
+      "high": {
+        "kind": "password",
+        "dv": 9
+      },
+      "advanced": {
+        "kind": "password",
+        "dv": 11
+      }
+    },
+    {
+      "roll": 13,
+      "basic": {
+        "kind": "ice",
+        "programIds": [
+          "program.osa"
+        ]
+      },
+      "standard": {
+        "kind": "ice",
+        "programIds": [
+          "program.osa"
+        ]
+      },
+      "high": {
+        "kind": "ice",
+        "programIds": [
+          "program.tasak"
+        ]
+      },
+      "advanced": {
+        "kind": "ice",
+        "programIds": [
+          "program.tasak",
+          "program.osa"
+        ]
+      }
+    },
+    {
+      "roll": 14,
+      "basic": {
+        "kind": "ice",
+        "programIds": [
+          "program.osa"
+        ]
+      },
+      "standard": {
+        "kind": "ice",
+        "programIds": [
+          "program.osa"
+        ]
+      },
+      "high": {
+        "kind": "ice",
+        "programIds": [
+          "program.tasak"
+        ]
+      },
+      "advanced": {
+        "kind": "ice",
+        "programIds": [
+          "program.tasak",
+          "program.osa"
+        ]
+      }
+    },
+    {
+      "roll": 15,
+      "basic": {
+        "kind": "ice",
+        "programIds": [
+          "program.osa"
+        ]
+      },
+      "standard": {
+        "kind": "ice",
+        "programIds": [
+          "program.osa"
+        ]
+      },
+      "high": {
+        "kind": "ice",
+        "programIds": [
+          "program.tasak"
+        ]
+      },
+      "advanced": {
+        "kind": "ice",
+        "programIds": [
+          "program.tasak",
+          "program.osa"
+        ]
+      }
+    },
+    {
+      "roll": 16,
+      "basic": {
+        "kind": "ice",
+        "programIds": [
+          "program.osa"
+        ]
+      },
+      "standard": {
+        "kind": "ice",
+        "programIds": [
+          "program.osa"
+        ]
+      },
+      "high": {
+        "kind": "ice",
+        "programIds": [
+          "program.tasak"
+        ]
+      },
+      "advanced": {
+        "kind": "ice",
+        "programIds": [
+          "program.tasak",
+          "program.osa"
+        ]
+      }
+    },
+    {
+      "roll": 17,
+      "basic": {
+        "kind": "ice",
+        "programIds": [
+          "program.osa"
+        ]
+      },
+      "standard": {
+        "kind": "ice",
+        "programIds": [
+          "program.osa"
+        ]
+      },
+      "high": {
+        "kind": "ice",
+        "programIds": [
+          "program.tasak"
+        ]
+      },
+      "advanced": {
+        "kind": "ice",
+        "programIds": [
+          "program.tasak",
+          "program.osa"
+        ]
+      }
+    },
+    {
+      "roll": 18,
+      "basic": {
+        "kind": "ice",
+        "programIds": [
+          "program.osa"
+        ]
+      },
+      "standard": {
+        "kind": "ice",
+        "programIds": [
+          "program.osa"
+        ]
+      },
+      "high": {
+        "kind": "ice",
+        "programIds": [
+          "program.tasak"
+        ]
+      },
+      "advanced": {
+        "kind": "ice",
+        "programIds": [
+          "program.tasak",
+          "program.osa"
+        ]
+      }
+    }
+  ]
+}

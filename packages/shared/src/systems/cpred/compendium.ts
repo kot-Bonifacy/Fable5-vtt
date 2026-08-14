@@ -23,6 +23,18 @@ import {
   INJURY_MOVE_PENALTY_MIN,
   type ArmorLocation,
 } from './locations.js';
+import {
+  NET_DEFENSE_KINDS,
+  NET_PROGRAM_CLASSES,
+  NET_PROGRAM_STAT_MAX,
+  NET_PROGRAM_TARGETS,
+  netProgramSlots,
+  type CpredNetDefenseProfile,
+  type CpredNetProgramProfile,
+  type NetDefenseKind,
+  type NetProgramClass,
+  type NetProgramTarget,
+} from './netrunning.js';
 import { CPRED_STAT_IDS, type CpredStatId } from './stats.js';
 
 /**
@@ -48,6 +60,8 @@ export const COMPENDIUM_CATEGORIES = [
   'armor',
   'gear',
   'cyberware',
+  'program',
+  'netDefense',
   'criticalInjury',
 ] as const;
 export type CompendiumCategory = (typeof COMPENDIUM_CATEGORIES)[number];
@@ -58,17 +72,25 @@ export const COMPENDIUM_CATEGORY_LABELS: Record<CompendiumCategory, string> = {
   armor: 'Pancerz',
   gear: 'Sprzęt',
   cyberware: 'Cyborgizacje',
+  program: 'Programy',
+  netDefense: 'Obrona Sieci',
   criticalInjury: 'Rany krytyczne',
 };
 
 /**
- * Categories that can be added to a character sheet. Two are excluded, for
- * opposite reasons: nobody buys a Critical Injury (the damage engine draws them,
- * stage 15), and ammunition is not carried as a row but *loaded* into a weapon
- * (stage 16g) — how much of it is in the backpack is stage 23's economy.
+ * Categories that can be added to a character sheet as a row of their own.
+ * Four are excluded, each for its own reason: nobody buys a Critical Injury
+ * (the damage engine draws them, stage 15); ammunition is not carried as a row
+ * but *loaded* into a weapon (stage 16g); a Program goes into a cyberdeck slot
+ * rather than the backpack (stage 26a); and Net defenders belong to an
+ * architecture, never to a person.
  */
 export const COMPENDIUM_ITEM_CATEGORIES = COMPENDIUM_CATEGORIES.filter(
-  (category) => category !== 'criticalInjury' && category !== 'ammo',
+  (category) =>
+    category !== 'criticalInjury' &&
+    category !== 'ammo' &&
+    category !== 'program' &&
+    category !== 'netDefense',
 );
 
 /** Weapon quality from the rulebook: poor jams on a 1, excellent adds +1. */
@@ -316,6 +338,36 @@ export interface ArmorEntry extends CompendiumEntryBase {
 
 export interface GearEntry extends CompendiumEntryBase {
   category: 'gear';
+  /**
+   * Slots this piece of gear *offers* — a cyberdeck, and nothing else so far
+   * (stage 26a). Read out of the item's own description by the importer, so a
+   * GM's home-made deck says how big it is in the same field.
+   */
+  deckSlots?: number;
+  /** Slots this piece *takes* in a deck — the hardware upgrades of s. 208. */
+  deckSlotCost?: number;
+}
+
+/**
+ * A Program: Booster, Defender, Aggressor or Black ICE (stage 26a, s. 201–207).
+ *
+ * One category for all four because they are one table in the rulebook and one
+ * thing in the fiction — software that sits in a deck slot and has ATK, OBR and
+ * REZ. What separates Black ICE is `blackIce` on the profile, not a category of
+ * its own: it costs two slots and carries PER/PRĘ, and every other rule about
+ * it reads those fields.
+ */
+export interface ProgramEntry extends CompendiumEntryBase, CpredNetProgramProfile {
+  category: 'program';
+}
+
+/**
+ * A Net defender that is not carried in a deck — a Demon for now (stage 26a).
+ * The drones, emplacements and environmental traps of s. 212–216 join this
+ * category in stage 26c, which is when their own fields get decided.
+ */
+export interface NetDefenseEntry extends CompendiumEntryBase, CpredNetDefenseProfile {
+  category: 'netDefense';
 }
 
 export interface CyberwareEntry extends CompendiumEntryBase, CyberwareHumanityLoss {
@@ -390,7 +442,14 @@ export interface CriticalInjuryEntry extends CompendiumEntryBase {
 }
 
 export type CompendiumEntry =
-  WeaponEntry | AmmoEntry | ArmorEntry | GearEntry | CyberwareEntry | CriticalInjuryEntry;
+  | WeaponEntry
+  | AmmoEntry
+  | ArmorEntry
+  | GearEntry
+  | CyberwareEntry
+  | ProgramEntry
+  | NetDefenseEntry
+  | CriticalInjuryEntry;
 
 export function isCriticalInjuryEntry(entry: CompendiumEntry): entry is CriticalInjuryEntry {
   return entry.category === 'criticalInjury';
@@ -534,8 +593,9 @@ export function validateCompendiumEntry(
   }
 
   const name = checkName(input.name, issues);
-  // Ids are slugs, so the category prefix has to be lowercase too.
-  const idPrefix = category === 'criticalInjury' ? 'injury' : category;
+  // Ids are slugs, so a camelCase category needs a lowercase prefix of its own.
+  const idPrefix =
+    category === 'criticalInjury' ? 'injury' : category === 'netDefense' ? 'demon' : category;
   const id =
     typeof input.id === 'string' && input.id.length > 0
       ? input.id
@@ -607,8 +667,10 @@ export function validateCompendiumEntry(
   else if (category === 'ammo') entry = validateAmmo(input, base, issues);
   else if (category === 'armor') entry = validateArmor(input, base, issues);
   else if (category === 'cyberware') entry = validateCyberware(input, base, issues);
+  else if (category === 'program') entry = validateProgram(input, base, issues);
+  else if (category === 'netDefense') entry = validateNetDefense(input, base, issues);
   else if (category === 'criticalInjury') entry = validateCriticalInjury(input, base, issues);
-  else entry = { ...base, category: 'gear' };
+  else entry = validateGear(input, base, issues);
 
   if (issues.length > 0 || !entry) return { ok: false, issues };
   return { ok: true, entry };
@@ -1063,6 +1125,153 @@ function validateArmor(
   return armor;
 }
 
+/** Deck slots must be a small positive count; anything else is dropped, not refused. */
+function slotCount(raw: unknown, field: string, issues: CompendiumIssue[]): number | undefined {
+  if (raw === undefined || raw === null || raw === '') return undefined;
+  if (!isInteger(raw) || raw < 1 || raw > WEAPON_SLOTS_MAX * 2) {
+    issues.push({
+      field,
+      message: `Liczba gniazd musi być liczbą całkowitą od 1 do ${WEAPON_SLOTS_MAX * 2}.`,
+    });
+    return undefined;
+  }
+  return raw;
+}
+
+function validateGear(
+  input: Record<string, unknown>,
+  base: CompendiumEntryBase,
+  issues: CompendiumIssue[],
+): GearEntry | undefined {
+  const deckSlots = slotCount(input.deckSlots, 'deckSlots', issues);
+  const deckSlotCost = slotCount(input.deckSlotCost, 'deckSlotCost', issues);
+  if (issues.length > 0) return undefined;
+  return {
+    ...base,
+    category: 'gear',
+    ...(deckSlots !== undefined ? { deckSlots } : {}),
+    ...(deckSlotCost !== undefined ? { deckSlotCost } : {}),
+  };
+}
+
+function programStat(
+  raw: unknown,
+  field: string,
+  label: string,
+  issues: CompendiumIssue[],
+): number | undefined {
+  if (raw === undefined || raw === null || raw === '') return 0;
+  if (!isInteger(raw) || raw < 0 || raw > NET_PROGRAM_STAT_MAX) {
+    issues.push({
+      field,
+      message: `${label} musi być liczbą całkowitą od 0 do ${NET_PROGRAM_STAT_MAX}.`,
+    });
+    return undefined;
+  }
+  return raw;
+}
+
+function validateProgram(
+  input: Record<string, unknown>,
+  base: CompendiumEntryBase,
+  issues: CompendiumIssue[],
+): ProgramEntry | undefined {
+  const programClass = (NET_PROGRAM_CLASSES as readonly unknown[]).includes(input.programClass)
+    ? (input.programClass as NetProgramClass)
+    : undefined;
+  if (!programClass) {
+    issues.push({ field: 'programClass', message: 'Wybierz klasę Programu.' });
+    return undefined;
+  }
+  const target = (NET_PROGRAM_TARGETS as readonly unknown[]).includes(input.target)
+    ? (input.target as NetProgramTarget)
+    : undefined;
+  const blackIce = input.blackIce === true;
+
+  const atk = programStat(input.atk, 'atk', 'ATK', issues);
+  const def = programStat(input.def, 'def', 'OBR', issues);
+  const rez = programStat(input.rez, 'rez', 'REZ', issues);
+  // PER and PRĘ only exist on Black ICE; on anything else they are dropped so a
+  // GM who switches a row back to „Agresor" is not left with orphan numbers.
+  const per = blackIce ? programStat(input.per, 'per', 'PER', issues) : undefined;
+  const speed = blackIce ? programStat(input.speed, 'speed', 'PRĘ', issues) : undefined;
+  const slots = slotCount(input.slots, 'slots', issues);
+  const icon = checkOptionalText(
+    input.icon,
+    'icon',
+    'Ikona',
+    COMPENDIUM_DESCRIPTION_MAX_LENGTH,
+    issues,
+  );
+  if (issues.length > 0 || atk === undefined || def === undefined || rez === undefined) {
+    return undefined;
+  }
+
+  const profile: CpredNetProgramProfile = {
+    programClass,
+    ...(target ? { target } : {}),
+    ...(blackIce ? { blackIce: true as const } : {}),
+    atk,
+    def,
+    rez,
+    ...(per !== undefined ? { per } : {}),
+    ...(speed !== undefined ? { speed } : {}),
+    ...(icon ? { icon } : {}),
+  };
+  // Slots are stored only when they differ from what the class already implies,
+  // so the „Black ICE takes two" rule stays in one place.
+  const implied = netProgramSlots(profile);
+  return {
+    ...base,
+    category: 'program',
+    ...profile,
+    ...(slots !== undefined && slots !== implied ? { slots } : {}),
+  };
+}
+
+function validateNetDefense(
+  input: Record<string, unknown>,
+  base: CompendiumEntryBase,
+  issues: CompendiumIssue[],
+): NetDefenseEntry | undefined {
+  const defenseKind = (NET_DEFENSE_KINDS as readonly unknown[]).includes(input.defenseKind)
+    ? (input.defenseKind as NetDefenseKind)
+    : undefined;
+  if (!defenseKind) {
+    issues.push({ field: 'defenseKind', message: 'Wybierz rodzaj obrony Sieci.' });
+    return undefined;
+  }
+  const rez = programStat(input.rez, 'rez', 'REZ', issues);
+  const interfaceRank = programStat(input.interfaceRank, 'interfaceRank', 'Interfejs', issues);
+  const netActions = programStat(input.netActions, 'netActions', 'Akcje Sieciowe', issues);
+  const combatValue = programStat(input.combatValue, 'combatValue', 'Wartość bojowa', issues);
+  const icon = checkOptionalText(
+    input.icon,
+    'icon',
+    'Ikona',
+    COMPENDIUM_DESCRIPTION_MAX_LENGTH,
+    issues,
+  );
+  if (
+    issues.length > 0 ||
+    rez === undefined ||
+    interfaceRank === undefined ||
+    netActions === undefined ||
+    combatValue === undefined
+  ) {
+    return undefined;
+  }
+  const profile: CpredNetDefenseProfile = {
+    defenseKind,
+    rez,
+    interfaceRank,
+    netActions,
+    combatValue,
+    ...(icon ? { icon } : {}),
+  };
+  return { ...base, category: 'netDefense', ...profile };
+}
+
 function validateCriticalInjury(
   input: Record<string, unknown>,
   base: CompendiumEntryBase,
@@ -1412,6 +1621,28 @@ export function isWeaponEntry(entry: CompendiumEntry): entry is WeaponEntry {
 
 export function isArmorEntry(entry: CompendiumEntry): entry is ArmorEntry {
   return entry.category === 'armor';
+}
+
+export function isGearEntry(entry: CompendiumEntry): entry is GearEntry {
+  return entry.category === 'gear';
+}
+
+export function isProgramEntry(entry: CompendiumEntry): entry is ProgramEntry {
+  return entry.category === 'program';
+}
+
+export function isNetDefenseEntry(entry: CompendiumEntry): entry is NetDefenseEntry {
+  return entry.category === 'netDefense';
+}
+
+/** Programs a cyberdeck can hold, catalogue order. */
+export function programEntries(entries: readonly CompendiumEntry[]): ProgramEntry[] {
+  return entries.filter(isProgramEntry);
+}
+
+/** Gear that offers deck slots — the cyberdecks, and whatever the GM invents. */
+export function cyberdeckEntries(entries: readonly CompendiumEntry[]): GearEntry[] {
+  return entries.filter((entry): entry is GearEntry => isGearEntry(entry) && !!entry.deckSlots);
 }
 
 /** Guard used before touching ammunition-only fields (stage 16g). */

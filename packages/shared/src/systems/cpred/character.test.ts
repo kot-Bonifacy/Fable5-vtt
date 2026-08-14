@@ -4,6 +4,8 @@ import {
   SHEET_LINE_MAX_LENGTH,
   buildCpredRegistry,
   createDefaultCharacterData,
+  cyberdeckSlotsFree,
+  cyberdeckSlotsUsed,
   groupedSkills,
   mergeCharacterData,
   parseCharacterData,
@@ -350,5 +352,115 @@ describe('timed critical injuries', () => {
     const row = result.ok ? result.patch.criticalInjuries?.[0] : undefined;
     // The safe failure is a wound that stays until somebody takes it off.
     expect(row?.timed).toBeUndefined();
+  });
+});
+
+/** Stage 26a — the cyberdeck on the sheet. */
+describe('cyberdeck', () => {
+  const registry = buildCpredRegistry({ skills: [] }, { roles: [] });
+
+  function deck(extra: Record<string, unknown> = {}) {
+    return {
+      cyberdeck: {
+        compendiumId: 'gear.dek-przykladowy',
+        name: 'Dek przykładowy',
+        slots: 6,
+        installed: [],
+        ...extra,
+      },
+    };
+  }
+
+  it('starts absent — most people at the table do not netrun', () => {
+    expect(createDefaultCharacterData().cyberdeck).toBeNull();
+  });
+
+  it('takes a deck and keeps the Program numbers copied onto the row', () => {
+    const result = validateCharacterDataPatch(
+      deck({
+        installed: [
+          {
+            id: 'row-1',
+            name: 'Osa',
+            notes: '',
+            compendiumId: 'program.osa',
+            kind: 'program',
+            slotCost: 2,
+            program: {
+              programClass: 'attacker',
+              target: 'antiPersonnel',
+              blackIce: true,
+              atk: 3,
+              def: 2,
+              rez: 12,
+              per: 4,
+              speed: 4,
+            },
+          },
+        ],
+      }),
+      registry,
+    );
+    expect(result.ok).toBe(true);
+    const installed = result.ok ? result.patch.cyberdeck?.installed[0] : undefined;
+    expect(installed?.program?.blackIce).toBe(true);
+    expect(installed?.slotCost).toBe(2);
+  });
+
+  it('falls back to the class default when a row forgets its slot cost', () => {
+    const result = validateCharacterDataPatch(
+      deck({
+        installed: [
+          {
+            id: 'row-1',
+            name: 'Osa',
+            notes: '',
+            kind: 'program',
+            program: { programClass: 'attacker', blackIce: true, atk: 3, def: 2, rez: 12 },
+          },
+        ],
+      }),
+      registry,
+    );
+    expect(result.ok && result.patch.cyberdeck?.installed[0]?.slotCost).toBe(2);
+  });
+
+  it('refuses a deck holding more than it has room for', () => {
+    const result = validateCharacterDataPatch(
+      deck({
+        slots: 2,
+        installed: [
+          { id: 'a', name: 'Osa', notes: '', kind: 'program', slotCost: 2 },
+          { id: 'b', name: 'Tasak', notes: '', kind: 'program', slotCost: 2 },
+        ],
+      }),
+      registry,
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.issues[0]?.message).toContain('gniazd');
+  });
+
+  it('refuses a deck with no slots at all', () => {
+    expect(validateCharacterDataPatch(deck({ slots: 0 }), registry).ok).toBe(false);
+  });
+
+  it('takes an explicit null as „this character has no deck”', () => {
+    const result = validateCharacterDataPatch({ cyberdeck: null }, registry);
+    expect(result.ok).toBe(true);
+    expect(result.ok ? result.patch.cyberdeck : undefined).toBeNull();
+  });
+
+  it('counts free slots from what is loaded', () => {
+    const loaded = {
+      name: 'Dek',
+      slots: 5,
+      installed: [
+        { id: 'a', name: 'Osa', notes: '', kind: 'program' as const, slotCost: 2 },
+        { id: 'b', name: 'Iskra', notes: '', kind: 'program' as const, slotCost: 1 },
+      ],
+    };
+    expect(cyberdeckSlotsUsed(loaded)).toBe(3);
+    expect(cyberdeckSlotsFree(loaded)).toBe(2);
   });
 });

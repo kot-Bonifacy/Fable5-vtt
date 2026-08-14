@@ -1476,3 +1476,93 @@
     font-size: 0.66rem;
   }
 }
+
+/* --- Cyberdek (etap 26a) ---------------------------------------------------
+
+   Dół zakładki „Ekwipunek". Wydruk CP RED nie ma okienka na dek, więc ta sekcja
+   jest dopisana w idiomie arkusza, a nie skopiowana z niego: czarna belka
+   z nazwą i licznikiem gniazd, pod nią tabela w tym samym rowku co Wyposażenie.
+   Wiersz Czarnego LOD-u dostaje czerwony pasek — dwa gniazda i polowanie na
+   ludzi to jedyna rzecz w deku, którą warto widzieć bez czytania.            */
+
+.cp-deck {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.cp-deck--empty {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.4rem;
+}
+
+/* Belka deku niesie cztery rzeczy naraz — nazwę, licznik, pojemność i kosz —
+   a `.cp-bar` sama nie rozstawia dzieci, więc bez tego zlewają się w jeden ciąg
+   („Cyberdekgniazda 7 / 7Gniazd"). Nazwa rozpycha resztę do prawej. */
+.cp-deck > .cp-bar {
+  gap: 0.5rem;
+}
+
+.cp-deck > .cp-bar > span:first-child {
+  margin-right: auto;
+}
+
+.cp-deck-slots {
+  font-family: var(--font-cp-cond);
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.cp-deck-slots--full {
+  color: var(--cp-red);
+}
+
+.cp-deck-capacity {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.68rem;
+}
+
+.cp-deck-capacity input {
+  width: 2.6rem;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid currentColor;
+  color: inherit;
+  font: inherit;
+  text-align: center;
+}
+
+.cp-deck-table td {
+  font-size: 0.8rem;
+}
+
+.cp-deck-table .cp-num {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  width: 2.8rem;
+}
+
+.cp-deck-row--ice td:first-child {
+  box-shadow: inset 3px 0 0 var(--cp-red);
+  padding-left: 0.55rem;
+}
+
+.cp-deck-tag {
+  margin-left: 0.35rem;
+  padding: 0 0.25rem;
+  border: 1px solid var(--cp-ink-dim);
+  border-radius: 2px;
+  font-family: var(--font-cp-cond);
+  font-size: 0.62rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--cp-ink-dim);
+}
+
+.cp-deck-install select {
+  width: 100%;
+}

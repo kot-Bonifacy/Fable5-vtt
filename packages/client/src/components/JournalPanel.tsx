@@ -37,6 +37,7 @@ import {
 import { useAuthStore } from '../stores/authStore.js';
 import { useHandoutStore } from '../stores/handoutStore.js';
 import { useJournalStore } from '../stores/journalStore.js';
+import { plural } from '../plural.js';
 import { Markdown } from './Markdown.js';
 
 /**
@@ -60,15 +61,6 @@ const STAGE_LABELS: Record<JournalProgressBroadcast['stage'], string> = {
 
 function parseTagInput(raw: string): string[] {
   return normalizeKnowledgeTags(raw.split(/[,\s]+/));
-}
-
-/** Polska liczba mnoga: 1 sesja, 2–4 sesje, 5+ sesji. */
-function plural(count: number, one: string, few: string, many: string): string {
-  const last = count % 10;
-  const teens = count % 100;
-  if (count === 1) return `${count} ${one}`;
-  if (last >= 2 && last <= 4 && (teens < 12 || teens > 14)) return `${count} ${few}`;
-  return `${count} ${many}`;
 }
 
 function IndexLine({ status }: { status: JournalIndexStatus }) {

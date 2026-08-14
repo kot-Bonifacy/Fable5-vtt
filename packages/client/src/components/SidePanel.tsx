@@ -11,6 +11,7 @@ import { AiPanel } from './AiPanel.js';
 import { BotPanel } from './BotPanel.js';
 import { RulesPanel } from './RulesPanel.js';
 import { KnowledgePanel } from './KnowledgePanel.js';
+import { NetPanel } from './NetPanel.js';
 import { JournalPanel } from './JournalPanel.js';
 import { HandoutPanel } from './HandoutPanel.js';
 import { SidePanelResizer, useSidePanelWidth } from './SidePanelResizer.js';
@@ -27,6 +28,7 @@ type Tab =
   | 'bots'
   | 'rules'
   | 'knowledge'
+  | 'net'
   | 'journal'
   | 'handouts'
   | 'ai';
@@ -56,6 +58,7 @@ const GM_TABS: { id: Tab; label: string }[] = [
   { id: 'bots', label: 'Boty' },
   { id: 'rules', label: 'Zasady' },
   { id: 'knowledge', label: 'Wiedza' },
+  { id: 'net', label: 'Sieć' },
   { id: 'ai', label: 'AI' },
 ];
 
@@ -113,6 +116,8 @@ export function SidePanel() {
         <RulesPanel />
       ) : activeTab === 'knowledge' ? (
         <KnowledgePanel />
+      ) : activeTab === 'net' ? (
+        <NetPanel />
       ) : activeTab === 'journal' ? (
         <JournalPanel />
       ) : activeTab === 'handouts' ? (

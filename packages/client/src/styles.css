@@ -6300,3 +6300,279 @@ body.is-resizing {
   border-color: var(--border);
   color: var(--text-dim);
 }
+
+/* ---------------------------------------------------------------------------
+   Sieć — biblioteka Architektur Sieciowych (etap 26a)
+
+   Panel MG jest listą, a szyb edytuje się w pływającym oknie: architektura jest
+   wysoka i szeroka, a boczna kolumna ma 320 px. Kolor neonu (--net-glow) niesie
+   sam sens — piętro z Czarnym LOD-em ma się rzucać w oczy bez czytania etykiety.
+   --------------------------------------------------------------------------- */
+
+.net-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.75rem;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.net-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.net-entry {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  padding: 0.35rem 0.45rem;
+}
+
+.net-entry-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  width: 100%;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+}
+
+.net-entry-title {
+  font-weight: 600;
+}
+
+.net-entry-meta {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+}
+
+.net-entry-foot {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+}
+
+.net-difficulty {
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0 0.3rem;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+.net-difficulty--high,
+.net-difficulty--advanced {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.net-generator {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.net-generator-row,
+.net-generator-foot {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* --- okno edytora --- */
+
+.net-window {
+  width: min(880px, 100vw - 32px);
+  max-height: calc(100vh - 96px);
+  display: flex;
+  flex-direction: column;
+}
+
+.net-window-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.7rem;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.net-window-meta {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.net-roll-summary {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 0.82rem;
+}
+
+.net-shaft {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.net-branch {
+  flex: 1 1 380px;
+  min-width: 320px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.45rem;
+  background: var(--bg);
+}
+
+.net-branch-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.35rem;
+}
+
+.net-branch-head h4 {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.net-branch-parent,
+.net-branch-depth {
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.net-floors {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 0 0 0.4rem;
+  padding: 0;
+  list-style: none;
+}
+
+/* Piętra idą w dół jak kabina windy, więc numer stoi w słupku po lewej —
+   to on jest osią, po której MG czyta architekturę. */
+.net-floor {
+  display: flex;
+  gap: 0.4rem;
+  align-items: flex-start;
+  border-left: 3px solid var(--border);
+  padding-left: 0.4rem;
+}
+
+.net-floor--ice,
+.net-floor--demon {
+  border-left-color: var(--accent);
+}
+
+.net-floor--password {
+  border-left-color: var(--warn);
+}
+
+.net-floor--file,
+.net-floor--controlNode {
+  border-left-color: var(--ok);
+}
+
+.net-floor-index {
+  width: 1.4rem;
+  text-align: right;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  padding-top: 0.25rem;
+}
+
+.net-floor-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.net-floor-line {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.net-floor-kind {
+  flex: 0 0 8.5rem;
+}
+
+.net-floor-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.net-floor-dv {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--text-dim);
+  font-size: 0.78rem;
+}
+
+.net-floor-dv input {
+  width: 3.4rem;
+}
+
+.net-floor-notes {
+  width: 100%;
+  font-size: 0.8rem;
+}
+
+.net-floor-programs {
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.net-program-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  padding: 0 0.25rem;
+  font-size: 0.78rem;
+}
+
+.net-program-chip button {
+  border: 0;
+  background: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+}
+
+.net-advice {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--warn);
+  font-size: 0.8rem;
+}

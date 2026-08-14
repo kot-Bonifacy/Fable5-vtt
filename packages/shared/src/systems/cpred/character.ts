@@ -31,6 +31,16 @@ import {
   type ArmorLocation,
 } from './locations.js';
 import {
+  NET_PROGRAM_CLASSES,
+  NET_PROGRAM_STAT_MAX,
+  NET_PROGRAM_TARGETS,
+  netProgramSlots,
+  type CpredNetProgramProfile,
+  type CpredNetrunningData,
+  type NetProgramClass,
+  type NetProgramTarget,
+} from './netrunning.js';
+import {
   CPRED_STAT_IDS,
   CPRED_STAT_LABELS,
   CPRED_STAT_MAX,
@@ -156,6 +166,12 @@ export interface CpredRegistry {
    * things that read them.
    */
   lifepath: CpredLifepathData | null;
+  /**
+   * Netrunning tables (stage 26a). Null until `withNetrunningData` puts them
+   * in; the architecture generator and the Net Action budget are the only
+   * things that read them.
+   */
+  netrunning: CpredNetrunningData | null;
 }
 
 export const EMPTY_CPRED_REGISTRY: CpredRegistry = {
@@ -165,6 +181,7 @@ export const EMPTY_CPRED_REGISTRY: CpredRegistry = {
   roleIds: new Set(),
   creation: null,
   lifepath: null,
+  netrunning: null,
 };
 
 function isStatId(value: unknown): value is CpredSkillDefinition['stat'] {
@@ -206,6 +223,7 @@ export function buildCpredRegistry(rawSkills: unknown, rawRoles: unknown): Cpred
     roleIds: new Set(roles.map((r) => r.id)),
     creation: null,
     lifepath: null,
+    netrunning: null,
   };
 }
 
@@ -531,6 +549,64 @@ export interface CpredCharacterData {
    * on paper; the GM awards, the player spends and writes the difference.
    */
   improvementPoints: number;
+  /**
+   * The cyberdeck this character is jacked into, with what sits in its slots
+   * (stage 26a). Null for everyone who is not a Netrunner — which is most of
+   * the table, and the reason this is one nullable field rather than three
+   * empty lists on every sheet.
+   *
+   * „Netrunner może być podłączony tylko do jednego cyberdeku naraz" (s. 196),
+   * so one deck, not a list of them. A second deck in the backpack is an
+   * ordinary `gear` row until it is the one being used.
+   */
+  cyberdeck: CpredCyberdeck | null;
+}
+
+/** Slots a deck may offer — the rulebook's best is 9, plus room for upgrades. */
+export const CYBERDECK_SLOTS_MAX = 16;
+
+/**
+ * What a deck holds, and how much room is left (stage 26a).
+ *
+ * The slot count is stored rather than looked up, for the same reason a weapon
+ * row stores its damage: „Kombinezon Bodyweight" and a deck built into a
+ * cyberarm each add a slot (s. 208), and the GM has to be able to say so
+ * without the catalogue growing a rule for every combination.
+ */
+export interface CpredCyberdeck {
+  /** Catalogue row the deck came from, e.g. „gear.cyberdek-zwyklej-jakosci". */
+  compendiumId?: string;
+  name: string;
+  slots: number;
+  installed: CpredNetInstallRow[];
+}
+
+/** What kind of thing occupies a deck slot. */
+export const NET_INSTALL_KINDS = ['program', 'hardware'] as const;
+export type NetInstallKind = (typeof NET_INSTALL_KINDS)[number];
+
+/**
+ * One thing loaded into a deck slot: a Program, or a Hardware Upgrade.
+ *
+ * The Program's numbers are copied in at load time — same rule as every other
+ * row on this sheet — so a deck stays readable after the GM edits the
+ * catalogue, and stage 26b never has to reach back into the compendium mid-run.
+ */
+export interface CpredNetInstallRow extends CpredItemRow {
+  kind: NetInstallKind;
+  /** Slots taken: one normally, two for Black ICE and some upgrades. */
+  slotCost: number;
+  /** Copied off the catalogue row; absent for hardware upgrades. */
+  program?: CpredNetProgramProfile;
+}
+
+/** Slots in use right now — the number the sheet prints beside the capacity. */
+export function cyberdeckSlotsUsed(deck: CpredCyberdeck): number {
+  return deck.installed.reduce((total, row) => total + Math.max(1, row.slotCost), 0);
+}
+
+export function cyberdeckSlotsFree(deck: CpredCyberdeck): number {
+  return Math.max(0, deck.slots - cyberdeckSlotsUsed(deck));
 }
 
 /** Cap on the „Punkty Doświadczenia" box — a campaign never gets near it. */
@@ -564,6 +640,7 @@ export function createDefaultCharacterData(): CpredCharacterData {
     lifepath: createDefaultLifepath(),
     aliases: '',
     improvementPoints: 0,
+    cyberdeck: null,
   };
 }
 
@@ -1184,8 +1261,120 @@ function collectCharacterDataPatch(
       patch.improvementPoints = value;
     }
   }
+  // Stage 26a — the deck and its slots.
+  if ('cyberdeck' in input) {
+    const deck = validateCyberdeck(input.cyberdeck, issues);
+    if (deck !== undefined) patch.cyberdeck = deck;
+  }
 
   return { patch, issues };
+}
+
+function isProgramClass(value: unknown): value is NetProgramClass {
+  return typeof value === 'string' && (NET_PROGRAM_CLASSES as readonly string[]).includes(value);
+}
+
+function isProgramTarget(value: unknown): value is NetProgramTarget {
+  return typeof value === 'string' && (NET_PROGRAM_TARGETS as readonly string[]).includes(value);
+}
+
+function programStat(raw: unknown): number | undefined {
+  return isInteger(raw) && raw >= 0 && raw <= NET_PROGRAM_STAT_MAX ? raw : undefined;
+}
+
+/**
+ * The Program numbers copied onto a deck row. Every field is dropped rather
+ * than refused when malformed — the same rule as the cyberware row above: a
+ * Program whose ATK went missing is still software in a slot, and refusing the
+ * whole sheet over it would be a worse answer than a zero the GM can retype.
+ */
+function validateInstalledProgram(raw: unknown): CpredNetProgramProfile | undefined {
+  if (typeof raw !== 'object' || raw === null) return undefined;
+  const row = raw as Record<string, unknown>;
+  if (!isProgramClass(row.programClass)) return undefined;
+  const per = programStat(row.per);
+  const speed = programStat(row.speed);
+  return {
+    programClass: row.programClass,
+    ...(isProgramTarget(row.target) ? { target: row.target } : {}),
+    ...(row.blackIce === true ? { blackIce: true as const } : {}),
+    atk: programStat(row.atk) ?? 0,
+    def: programStat(row.def) ?? 0,
+    rez: programStat(row.rez) ?? 0,
+    ...(per !== undefined ? { per } : {}),
+    ...(speed !== undefined ? { speed } : {}),
+  };
+}
+
+/**
+ * The deck itself. `undefined` means „the patch said nothing usable" and leaves
+ * the sheet alone; `null` is the deliberate „this character has no deck".
+ */
+function validateCyberdeck(
+  raw: unknown,
+  issues: CpredValidationIssue[],
+): CpredCyberdeck | null | undefined {
+  if (raw === null) return null;
+  if (typeof raw !== 'object') {
+    issues.push(issue('cyberdeck', 'Nieprawidłowy format cyberdeku.'));
+    return undefined;
+  }
+  const input = raw as Record<string, unknown>;
+  const name = validateText(
+    input.name,
+    'cyberdeck',
+    'Nazwa cyberdeku',
+    SHEET_LINE_MAX_LENGTH,
+    issues,
+  );
+  if (name === undefined) return undefined;
+
+  const slots = input.slots;
+  if (!isInteger(slots) || slots < 1 || slots > CYBERDECK_SLOTS_MAX) {
+    issues.push(
+      issue('cyberdeck', `Liczba gniazd musi być liczbą od 1 do ${CYBERDECK_SLOTS_MAX}.`),
+    );
+    return undefined;
+  }
+
+  const installed = validateRows<CpredNetInstallRow>(
+    input.installed ?? [],
+    'cyberdeck',
+    issues,
+    (base, row) => {
+      const program = validateInstalledProgram(row.program);
+      const kind: NetInstallKind = row.kind === 'hardware' ? 'hardware' : 'program';
+      const declared = row.slotCost;
+      const slotCost =
+        isInteger(declared) && declared >= 1 && declared <= CYBERDECK_SLOTS_MAX
+          ? declared
+          : program
+            ? netProgramSlots(program)
+            : 1;
+      return { ...base, kind, slotCost, ...(program ? { program } : {}) };
+    },
+  );
+  if (!installed) return undefined;
+
+  const deck: CpredCyberdeck = {
+    ...(typeof input.compendiumId === 'string' && isValidCompendiumId(input.compendiumId)
+      ? { compendiumId: input.compendiumId }
+      : {}),
+    name,
+    slots,
+    installed,
+  };
+  // The one hard rule of the deck: „dek nie pomieści wszystkiego" (s. 208).
+  if (cyberdeckSlotsUsed(deck) > slots) {
+    issues.push(
+      issue(
+        'cyberdeck',
+        `Cyberdek ma ${slots} gniazd, a zawartość zajmuje ${cyberdeckSlotsUsed(deck)}.`,
+      ),
+    );
+    return undefined;
+  }
+  return deck;
 }
 
 /**

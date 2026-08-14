@@ -140,6 +140,8 @@ export function countByCategory(
     armor: 0,
     gear: 0,
     cyberware: 0,
+    program: 0,
+    netDefense: 0,
     criticalInjury: 0,
   };
   for (const id of order) {

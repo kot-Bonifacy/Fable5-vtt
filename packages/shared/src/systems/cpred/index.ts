@@ -13,6 +13,7 @@ export * from './ids.js';
 export * from './timed.js';
 export * from './environment.js';
 export * from './ammo.js';
+export * from './netrunning.js';
 export * from './compendium.js';
 export * from './covers.js';
 export * from './areas.js';

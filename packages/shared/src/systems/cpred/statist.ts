@@ -241,6 +241,9 @@ export function combatProfileSheet(
     // mu Punktów Doświadczenia.
     aliases: '',
     improvementPoints: 0,
+    // Ani cyberdeku (26a): sieciuje Netrunner, a statysta ma być przeciwnikiem
+    // na jedną wymianę ognia — wrogi netrunner to osobna, prawdziwa karta.
+    cyberdeck: null,
   };
 }
 
