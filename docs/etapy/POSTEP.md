@@ -448,7 +448,7 @@ zapisywało się dopiero na `blur`, a przycisk jest wyszarzony, dopóki imię ni
 Imię idzie teraz do serwera z każdym znakiem, tak jak zapisuje się karta; surowa wartość
 (spacja w dwuwyrazowej ksywie musi przeżyć — patrz błąd z 13.08), a przycięcie robi serwer.
 
-**Zweryfikowane:** 1010 testów w `shared` (26 nowych w `creation.test.ts`), 603 na serwerze
+**Zweryfikowane:** 984 testy w `shared` (26 nowych w `creation.test.ts`), 603 na serwerze
 (14 nowych w `creation.test.ts` na żywych gniazdach), `tsc --noEmit` czysty w trzech pakietach,
 lint, Prettier i `pnpm build` bez uwag. Migracja: `20260814054327_stage25a_character_draft`
 (jedna tabela, zero zmian w istniejących).
