@@ -102,6 +102,15 @@ import type {
   NetArchitectureListPayload,
   NetArchitectureRollPayload,
   NetArchitectureRollResult,
+  NetAccessPointPlacePayload,
+  NetAccessPointSyncBroadcast,
+  NetAccessPointUpdatePayload,
+  NetAccessPointView,
+  NetRunAbilityPayload,
+  NetRunAbilityResult,
+  NetRunPayload,
+  NetRunSyncBroadcast,
+  CpredNetPosition,
   NetArchitectureSavePayload,
   NetArchitectureView,
   KnowledgeUpsertPayload,
@@ -187,6 +196,7 @@ import { useAiStore } from './stores/aiStore.js';
 import { useRulesStore } from './stores/rulesStore.js';
 import { useKnowledgeStore } from './stores/knowledgeStore.js';
 import { useNetStore } from './stores/netStore.js';
+import { useNetRunStore } from './stores/netRunStore.js';
 import { useJournalStore } from './stores/journalStore.js';
 import { useHandoutStore } from './stores/handoutStore.js';
 import { useScreamsheetStore } from './stores/screamsheetStore.js';
@@ -427,6 +437,10 @@ export function connectSocket(userId: string): Socket {
     useSmokeStore.getState().applySync(payload);
     useLightStore.getState().applySync(payload);
     useExplorationStore.getState().applySync(payload);
+    // Punkty dostępu i runy (26b) przychodzą już pocięte per widz — store
+    // nie ma tu czego filtrować.
+    useNetRunStore.getState().replacePoints(payload.accessPoints ?? []);
+    useNetRunStore.getState().replaceRuns(payload.netRuns ?? []);
     if (payload.ai) useAiStore.getState().setStatus(payload.ai);
   });
 
@@ -506,6 +520,12 @@ export function connectSocket(userId: string): Socket {
   // Czarne LOD-y i notatki MG lecą wyłącznie do pokoju MG.
   socket.on('net:architectures', (payload: NetArchitectureListPayload) =>
     useNetStore.getState().replaceAll(payload.architectures),
+  );
+  socket.on('netpoint:sync', (broadcast: NetAccessPointSyncBroadcast) =>
+    useNetRunStore.getState().replacePoints(broadcast.points),
+  );
+  socket.on('netrun:sync', (broadcast: NetRunSyncBroadcast) =>
+    useNetRunStore.getState().replaceRuns(broadcast.runs),
   );
   socket.on('net:deleted', (broadcast: NetArchitectureDeleteBroadcast) =>
     useNetStore.getState().remove(broadcast.id),
@@ -1403,6 +1423,38 @@ export const deleteNetArchitecture = (id: string) => emitSceneAck('net:delete', 
 
 export const rollNetArchitecture = (payload: NetArchitectureRollPayload) =>
   emitSceneAck<NetArchitectureRollResult>('net:roll', payload);
+
+/**
+ * Punkty dostępu i run (etap 26b).
+ *
+ * Bez własnego `fetch` na starcie: jedno i drugie jedzie w `state:sync`, bo
+ * punkt dostępu jest częścią sceny, a run trwa w tle całej sesji — gracz ma go
+ * zobaczyć od razu po wejściu, nie po otwarciu zakładki.
+ */
+export const placeNetAccessPoint = (payload: NetAccessPointPlacePayload) =>
+  emitSceneAck<NetAccessPointView>('netpoint:place', payload);
+
+export const updateNetAccessPoint = (payload: NetAccessPointUpdatePayload) =>
+  emitSceneAck<NetAccessPointView>('netpoint:update', payload);
+
+export const removeNetAccessPoint = (id: number) => emitSceneAck('netpoint:remove', { id });
+
+export const startNetRun = (tokenId: string, accessPointId: number) =>
+  emitSceneAck<NetRunPayload>('netrun:start', { tokenId, accessPointId });
+
+export const leaveNetRun = (runId: string) => emitSceneAck('netrun:leave', { runId });
+
+export const moveNetRun = (runId: string, to: CpredNetPosition) =>
+  emitSceneAck<NetRunPayload>('netrun:move', { runId, to });
+
+export const copyNetFile = (runId: string, floorId: string) =>
+  emitSceneAck<NetRunPayload>('netrun:copy', { runId, floorId });
+
+export const useNetAbility = (payload: NetRunAbilityPayload) =>
+  emitSceneAck<NetRunAbilityResult>('netrun:ability', payload);
+
+export const runNetScan = (tokenId: string, gesture?: RollGesture) =>
+  emitSceneAck<NetRunAbilityResult>('netrun:scan', { tokenId, gesture });
 
 /**
  * Dziennik kampanii. Wołane przy wejściu w zakładkę, nie w `state:sync`.

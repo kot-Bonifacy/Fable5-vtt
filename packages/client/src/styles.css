@@ -6576,3 +6576,250 @@ body.is-resizing {
   color: var(--warn);
   font-size: 0.8rem;
 }
+
+/* ── Run netrunnera: winda i punkty dostępu (etap 26b) ─────────────────────── */
+
+/*
+ * Okno „Sieć" jest terminalem, nie panelem: mapa zostaje pod nim widoczna
+ * (decyzja MG z 14.08), więc winda musi być wąska i czytelna z ukosa. Klasy są
+ * osobne od `.net-*` edytora architektur z 26a — te dwa okna wyglądają inaczej
+ * na celowo: jedno jest narzędziem MG poza sesją, drugie stoi przy stole.
+ */
+/* Podniesiona specyficzność: `sheet.css` wczytuje się po tym pliku i ustawia
+   `.sheet-window` na 1180 px — okno Sieci ma być wąskie jak terminal. */
+.sheet-window.net-run-window {
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 120px);
+  display: flex;
+  flex-direction: column;
+  border-color: #1c5f72;
+}
+
+.net-run-title {
+  flex: 1;
+  min-width: 0;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  letter-spacing: 0.08em;
+}
+
+.net-run-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.7rem;
+  overflow-y: auto;
+}
+
+/* Własny pasek zamiast `.cp-bar`: ten skleja dzieci w jeden ciąg i pisze je
+   Wielkimi Literami (poprawka z 26a) — „Punkt Dostępu" na pasku statusu runa
+   wyglądałoby jak nazwa własna. */
+.net-run-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.9rem;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid #123c48;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.net-run-shaft {
+  display: flex;
+  gap: 0.9rem;
+  align-items: flex-start;
+  overflow-x: auto;
+}
+
+.net-run-column {
+  min-width: 15rem;
+  flex: 1;
+}
+
+/* Odgałęzienie jest wcięte i podpięte pionową kreską — szyb ma wyglądać jak
+   szyb, a nie jak dwie niezależne listy obok siebie. */
+.net-run-column--branch {
+  margin-left: 0.4rem;
+  padding-left: 0.7rem;
+  border-left: 1px dashed #1c5f72;
+}
+
+.net-run-column-title {
+  margin: 0 0 0.3rem;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+}
+
+.net-run-floors {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.net-run-floor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  border: 1px solid #123c48;
+  border-radius: 4px;
+  background: rgba(6, 24, 30, 0.6);
+}
+
+/* Piętro, na którym stoi netrunner — jedyny element okna świecący na zielono. */
+.net-run-floor--here {
+  border-color: #35e0ff;
+  box-shadow: 0 0 0 1px rgba(53, 224, 255, 0.35) inset;
+}
+
+.net-run-floor-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  /* Chipy („złamane", „rozpoznany") schodzą do drugiej linii zamiast zjadać
+     nazwę piętra — „L…" zamiast „Listy przewozowe" to nie jest oszczędność. */
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0.28rem 0.4rem;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.net-run-floor-body:disabled {
+  cursor: default;
+}
+
+.net-run-floor-depth {
+  flex: 0 0 1.4rem;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  color: var(--text-dim);
+  font-size: 0.78rem;
+}
+
+.net-run-floor-glyph {
+  flex: 0 0 1.2rem;
+  text-align: center;
+}
+
+/* Nieodkryte piętro nie ma nazwy w payloadzie — i ma wyglądać na pustą kartę,
+   a nie na coś, co ktoś ukrył CSS-em. */
+.net-run-floor-glyph--unknown {
+  color: #4d6a75;
+}
+
+.net-run-floor-label {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
+.net-run-floor-dv {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.net-run-floor-flag {
+  font-size: 0.72rem;
+  border: 1px solid #1c5f72;
+  border-radius: 3px;
+  padding: 0 0.25rem;
+  color: #9fe6f7;
+}
+
+.net-run-floor-flag--ice {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.net-run-floor-notes {
+  width: 100%;
+  margin: 0;
+  padding: 0 0.45rem 0.3rem;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.net-abilities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.net-run-notice {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #9fe6f7;
+}
+
+.net-virus-form,
+.net-virus-list {
+  border-top: 1px solid #123c48;
+  padding-top: 0.5rem;
+}
+
+.net-virus-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.net-virus-list {
+  list-style: none;
+  margin: 0;
+  padding-left: 0;
+  font-size: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+/* Karta gniazda: mała, przypięta w rogu mapy — to nie jest okno do przesuwania,
+   tylko odpowiedź na jedno kliknięcie. */
+.net-point-panel {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 325;
+  width: min(320px, 100vw - 32px);
+  border: 1px solid #1c5f72;
+  border-radius: 6px;
+  background: var(--bg-panel);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.6rem;
+}
+
+.net-point-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.net-point-title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+}
+
+.net-point-form,
+.net-point-jack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.net-point-jack {
+  border-top: 1px solid #123c48;
+  padding-top: 0.45rem;
+}

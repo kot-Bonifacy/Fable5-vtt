@@ -6,6 +6,7 @@ import type {
   FogState,
   LightView,
   MapNoteView,
+  NetAccessPointView,
   SceneSummary,
   SceneView,
   SessionUser,
@@ -24,6 +25,7 @@ import { fetchSceneWalls } from './walls-io.js';
 import { fetchSceneCovers } from './covers-io.js';
 import { fetchSceneSmoke } from './smoke-io.js';
 import { fetchSceneLights } from './lights-io.js';
+import { fetchAccessPointsFor, fetchRunsFor } from './netrun-io.js';
 import { computeViewerVision, type ViewerVision } from './vision.js';
 import { fetchSceneList, getSceneById, toSceneView } from './scenes.js';
 import { fetchSceneTokensFor } from './tokens.js';
@@ -71,6 +73,8 @@ export async function buildStateSync(
       ai: aiStatusFor(deps, user.role === ROLE_GM),
       compendium: await buildCompendiumSync(deps, null),
       shopTier: SHOP_TIER_MIN,
+      accessPoints: [],
+      netRuns: [],
       combat: null,
     };
   }
@@ -97,6 +101,8 @@ export async function buildStateSync(
     combat,
     exploration,
     shopTier,
+    accessPoints,
+    netRuns,
   ] = await Promise.all([
     computePresence(deps.io, campaign.id),
     fetchHistoryPage(deps.ctx.prisma, campaign.id, user),
@@ -161,6 +167,14 @@ export async function buildStateSync(
     // How far down the catalogue this campaign may shop (stage 25c) — public,
     // because a player is meant to see what is still out of reach.
     campaignShopTier(deps.ctx.prisma, campaign.id),
+    // Net sockets of the viewed scene (stage 26b), already cut per viewer: a
+    // hidden one is absent from a player's list, not flagged in it.
+    viewedSceneId
+      ? fetchAccessPointsFor(deps.ctx.prisma, viewedSceneId, user)
+      : Promise.resolve<NetAccessPointView[]>([]),
+    // Runs are campaign-wide rather than scene-wide: „a run survives a scene
+    // change" was the reason 26a put the architecture on the campaign.
+    fetchRunsFor(deps.ctx.prisma, deps.ctx.cpred, campaign.id, user),
   ]);
   const scene: SceneView | null = viewedScene ? toSceneView(viewedScene) : null;
   return {
@@ -194,6 +208,8 @@ export async function buildStateSync(
     ai: aiStatusFor(deps, user.role === ROLE_GM),
     compendium,
     shopTier,
+    accessPoints,
+    netRuns,
     combat,
   };
 }

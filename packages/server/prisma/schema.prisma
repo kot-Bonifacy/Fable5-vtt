@@ -57,6 +57,7 @@ model Campaign {
   handouts     Handout[]
   drafts       CharacterDraft[]
   architectures NetArchitecture[]
+  netRuns       NetRun[]
 }
 
 /// A handout: the material the GM hands to the players (stage 24a).
@@ -456,6 +457,7 @@ model Token {
   character Character? @relation(fields: [characterId], references: [id], onDelete: SetNull)
   /// Removing a token pulls it out of any running combat.
   combatants Combatant[]
+  netRun     NetRun?
 
   @@index([sceneId])
   @@index([characterId])
@@ -552,6 +554,7 @@ model Scene {
   covers       Cover[]
   smoke        Smoke[]
   lights       MapLight[]
+  accessPoints NetAccessPoint[]
   exploration  SceneExploration?
 
   @@index([campaignId, active])
@@ -910,10 +913,71 @@ model NetArchitecture {
   difficulty String @default("standard")
   /// Full architecture as JSON: `{ branches: [{ parentFloor, floors: [...] }] }`.
   data      String
+  /// What runs have left behind (stage 26b): Viruses and the Maskowanie DV, as
+  /// `CpredNetRuntime` JSON. A separate column from `data` on purpose — the GM's
+  /// editor rewrites the shaft wholesale on every save, and a Virus swept away
+  /// by a typo fix would be a player's whole run undone.
+  runtime   String   @default("{}")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign     Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  accessPoints NetAccessPoint[]
+  runs         NetRun[]
+
+  @@index([campaignId])
+}
+
+/// A socket in the world an Architecture hangs off (stage 26b).
+///
+/// Scene data, unlike the architecture itself: one build may be reachable from
+/// the terminal behind the bar *and* from the junction box in the alley, and
+/// each of those is a place on a map. Hidden by default — finding it is what the
+/// Scanner is for, and a hidden row never reaches a player's payload.
+model NetAccessPoint {
+  id      Int    @id @default(autoincrement())
+  sceneId String
+  /// Library row this socket leads to; null = a socket the GM has not wired yet.
+  architectureId String?
+  name    String @default("Punkt dostępu")
+  /// Centre in scene (world) pixels.
+  x       Float
+  y       Float
+  hidden  Boolean @default(true)
+  /// GM's own note about what this socket really is.
+  notes   String  @default("")
+
+  createdAt DateTime @default(now())
+
+  scene        Scene            @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  architecture NetArchitecture? @relation(fields: [architectureId], references: [id], onDelete: SetNull)
+
+  @@index([sceneId])
+}
+
+/// One intrusion in progress (stage 26b).
+///
+/// A row exists exactly as long as somebody is jacked in: „Odłączenie resetuje
+/// obronę danej Architektury Sieciowej" (s. 198), so jacking out deletes it
+/// rather than archiving it — the uncovered floors are meant to be forgotten.
+/// What outlives the run is `NetArchitecture.runtime`.
+model NetRun {
+  id             String @id @default(cuid())
+  campaignId     String
+  architectureId String
+  accessPointId  Int
+  /// The netrunner's figure in the Soma — the 6 m range is measured from it.
+  tokenId        String @unique
+  characterId    String
+  /// `CpredNetRunState` JSON: position, what is uncovered, what is broken.
+  data           String @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  campaign     Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  architecture NetArchitecture @relation(fields: [architectureId], references: [id], onDelete: Cascade)
+  token        Token           @relation(fields: [tokenId], references: [id], onDelete: Cascade)
 
   @@index([campaignId])
 }

@@ -59,6 +59,7 @@ import { requireCampaignScene } from './scenes.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { emitCombatOfScene, findGrapple, loadCombat } from './combat.js';
 import { validateTokenMove } from './movement.js';
+import { enforceNetRunRange } from './netrun-io.js';
 
 function parseStatuses(raw: string): string[] {
   try {
@@ -1043,6 +1044,11 @@ export async function performTokenMove(
         dx: x - token.x,
         dy: y - token.y,
       });
+      // „Wyjście poza zasięg punktu dostępu bez uprzedniego odłączenia się
+      // powoduje automatyczne (awaryjne) odłączenie" (s. 198, stage 26b). Asked
+      // here rather than in the netrunning module because *walking* is what
+      // triggers it, and this is the one place every walk lands.
+      await enforceNetRunRange(deps, campaignId, scene, { ...token, x, y }, user);
     }
 
     await broadcast({ x, y }, final);

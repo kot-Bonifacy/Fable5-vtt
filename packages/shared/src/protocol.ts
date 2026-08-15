@@ -18,6 +18,7 @@ import type { ExplorationMask } from './exploration.js';
 import type { FogState } from './fog.js';
 import type { LightView } from './lights.js';
 import type { ScenePoint } from './measure.js';
+import type { NetAccessPointView, NetRunPayload } from './netrunning.js';
 import type { MapNoteView } from './notes.js';
 import type { SceneSummary, SceneView } from './scenes.js';
 import type { TokenView } from './tokens.js';
@@ -129,6 +130,18 @@ export interface StateSyncPayload {
    * instead of a whole re-sync — and so it cannot go stale in `socket.data`.
    */
   shopTier: ShopTier;
+  /**
+   * Net access points on the viewed scene (stage 26b), already cut for this
+   * viewer: a hidden socket is **absent** from a player's list rather than
+   * flagged in it, because finding one is what the Scanner is for.
+   */
+  accessPoints: NetAccessPointView[];
+  /**
+   * Runs this viewer may watch (stage 26b): the GM's copy of every one, or the
+   * netrunner's own. A player who is not netrunning gets an empty list — that a
+   * run is happening at all is the netrunner's business and the GM's.
+   */
+  netRuns: NetRunPayload[];
   /** Combat of the viewed scene, filtered for this viewer; null = no fight. */
   combat: CombatView | null;
 }

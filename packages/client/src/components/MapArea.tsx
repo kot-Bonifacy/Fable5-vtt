@@ -53,6 +53,8 @@ import {
   deleteCover,
   deleteDrawing,
   deleteLight,
+  placeNetAccessPoint,
+  removeNetAccessPoint,
   deleteWall,
   nextCombatTurn,
   paintFog,
@@ -84,6 +86,8 @@ import { sortedDrawings, useDrawingStore } from '../stores/drawingStore.js';
 import { clickableOpenings, useWallStore } from '../stores/wallStore.js';
 import { useSelectionStore } from '../stores/selectionStore.js';
 import { pickLightAt, useLightStore } from '../stores/lightStore.js';
+import { pickAccessPointAt, useNetRunStore } from '../stores/netRunStore.js';
+import { netErrorText } from '../netErrors.js';
 import { coverAt, useCoverStore } from '../stores/coverStore.js';
 import { useSmokeStore } from '../stores/smokeStore.js';
 import {
@@ -353,6 +357,7 @@ export function MapArea() {
   const wallSnapGrid = useMapToolStore((s) => s.wallSnapGrid);
   const coverMode = useMapToolStore((s) => s.coverMode);
   const lightMode = useMapToolStore((s) => s.lightMode);
+  const netPointMode = useMapToolStore((s) => s.netPointMode);
   const targeting = useAttackStore((s) => s.targeting);
   const hasVision = useWallStore((s) => s.hasVision);
   const seesNothing = useWallStore((s) => s.polygons.length === 0);
@@ -637,6 +642,36 @@ export function MapArea() {
       void updateLight(lightId, { enabled: !light.enabled }).then((ack) => {
         if (!ack.ok) useChatStore.getState().addNote(lightErrorText(ack.error));
       });
+    };
+    // Punkty dostępu do Sieci (26b). Stawia i kasuje wyłącznie MG; klik bez
+    // uzbrojonego narzędzia otwiera panel gniazda — u MG edytor, u gracza
+    // „Podłącz się", jeśli stoi w zasięgu.
+    renderer.onAccessPointPlace = (x, y) => {
+      const current = useSceneStore.getState().effectiveScene;
+      if (!current) return;
+      const tools = useMapToolStore.getState();
+      void placeNetAccessPoint({
+        sceneId: current.id,
+        x,
+        y,
+        hidden: tools.netPointHidden,
+        architectureId: tools.netPointArchitectureId || null,
+      }).then((ack) => {
+        if (!ack.ok) useChatStore.getState().addNote(netErrorText(ack.error));
+      });
+    };
+    renderer.onAccessPointErase = (x, y) => {
+      const current = useSceneStore.getState().effectiveScene;
+      if (!current) return;
+      const target = pickAccessPointAt(
+        useNetRunStore.getState().accessPoints,
+        { x, y },
+        lightGrabTolerance(current.grid.sizePx),
+      );
+      if (target) void removeNetAccessPoint(target.id);
+    };
+    renderer.onAccessPointOpen = (id) => {
+      useNetRunStore.getState().editPoint(id);
     };
     renderer.onRulerChange = (points) => {
       const current = useSceneStore.getState().effectiveScene;
@@ -952,6 +987,10 @@ export function MapArea() {
     });
     rendererRef.current?.setCoverTool({ armed: tool === 'cover' && isGm, mode: coverMode });
     rendererRef.current?.setLightTool({ armed: tool === 'light' && isGm, mode: lightMode });
+    rendererRef.current?.setAccessPointTool({
+      armed: tool === 'netpoint' && isGm,
+      mode: netPointMode,
+    });
   }, [
     ready,
     tool,
@@ -970,6 +1009,7 @@ export function MapArea() {
     wallSnapGrid,
     coverMode,
     lightMode,
+    netPointMode,
   ]);
 
   useEffect(() => {
@@ -1258,6 +1298,43 @@ export function MapArea() {
       unsubTokens();
     };
   }, [ready, scene, pushLights]);
+
+  /**
+   * Gniazda dostępowe (26b). Rysowane każdemu — serwer przysłał tylko te, które
+   * ten widz może zobaczyć — a filtr po scenie jest tu dlatego, że store trzyma
+   * listę oglądanej sceny, a MG bywa na podglądzie innej.
+   */
+  const pushAccessPoints = useCallback(() => {
+    const renderer = rendererRef.current;
+    if (!renderer) return;
+    const current = useSceneStore.getState().effectiveScene;
+    const points = useNetRunStore.getState().accessPoints;
+    renderer.setAccessPoints(
+      current
+        ? points
+            .filter((point) => point.sceneId === current.id)
+            .map((point) => ({
+              id: point.id,
+              x: point.x,
+              y: point.y,
+              name: point.name,
+              hidden: point.hidden,
+              dead: point.architectureId === null,
+            }))
+        : [],
+    );
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    pushAccessPoints();
+    const unsubPoints = useNetRunStore.subscribe(pushAccessPoints);
+    const unsubScene = useSceneStore.subscribe(pushAccessPoints);
+    return () => {
+      unsubPoints();
+      unsubScene();
+    };
+  }, [ready, scene, pushAccessPoints]);
 
   const pushNotes = useCallback(() => {
     rendererRef.current?.setNotes(Object.values(useNoteStore.getState().notes));

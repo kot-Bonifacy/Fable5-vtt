@@ -121,6 +121,17 @@ import {
   netArchitectureSaveEvent,
 } from './netrunning.js';
 import {
+  netPointPlaceEvent,
+  netPointRemoveEvent,
+  netPointUpdateEvent,
+  netRunAbilityEvent,
+  netRunCopyEvent,
+  netRunLeaveEvent,
+  netRunMoveEvent,
+  netRunStartEvent,
+  netScanEvent,
+} from './netrun.js';
+import {
   journalDeleteEvent,
   journalListEvent,
   journalReindexEvent,
@@ -266,6 +277,15 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   netArchitectureSaveEvent,
   netArchitectureDeleteEvent,
   netArchitectureRollEvent,
+  netPointPlaceEvent,
+  netPointUpdateEvent,
+  netPointRemoveEvent,
+  netRunStartEvent,
+  netRunLeaveEvent,
+  netRunMoveEvent,
+  netRunCopyEvent,
+  netRunAbilityEvent,
+  netScanEvent,
   journalListEvent,
   journalUpsertEvent,
   journalDeleteEvent,

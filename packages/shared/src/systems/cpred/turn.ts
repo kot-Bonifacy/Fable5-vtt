@@ -75,6 +75,19 @@ export const CPRED_ACTION_THROW = 'throw';
 export const CPRED_ACTION_HUMAN_SHIELD = 'human-shield';
 export const CPRED_ACTION_ESCAPE_GRAPPLE = 'escape-grapple';
 export const CPRED_ACTION_RELEASE_GRAPPLE = 'release-grapple';
+/**
+ * The Net Actions of a Turn (stage 26b). One Action of the turn, holding several
+ * uses — exactly the shape the Attack Action has, and for the same reason:
+ * „W swojej Turze Netrunner może wykonać albo Akcję w Somie, albo tyle Akcji
+ * sieciowych, na ile pozwala Interfejs" (s. 198) is arithmetic, not a branch.
+ */
+export const CPRED_ACTION_NET = 'net';
+/**
+ * The Scanner (stage 26b) — the one Interface ability that is *not* a Net
+ * Action: „W ramach Akcji w Somie znajdujesz położenie punktów dostępu"
+ * (s. 199). It takes the whole Action, like any other thing done with hands.
+ */
+export const CPRED_ACTION_SCANNER = 'net-scanner';
 
 /**
  * The catalogue itself (s. 168–169). Mechanics, not rulebook prose: the costs
@@ -222,10 +235,18 @@ export const CPRED_ACTIONS: readonly CpredActionDefinition[] = [
     hint: 'Niebezpieczny manewr pochłaniający całą uwagę kierowcy.',
   },
   {
-    id: 'net',
+    id: CPRED_ACTION_NET,
     name: 'Akcje Sieciowe',
     cost: 'action',
-    hint: 'Kilka Akcji wewnątrz Sieci (automatyka przyjdzie z netrunningiem).',
+    hint: 'Zamiast Akcji w Somie: 2–5 Akcji wewnątrz Sieci, wedle poziomu Interfejsu.',
+    handledElsewhere: true,
+  },
+  {
+    id: CPRED_ACTION_SCANNER,
+    name: 'Skaner',
+    cost: 'action',
+    hint: 'Akcja w Somie: szukasz w okolicy punktów dostępu do Architektur Sieciowych.',
+    handledElsewhere: true,
   },
   {
     id: 'draw-weapon',
@@ -273,12 +294,27 @@ export interface CpredAttackAction {
   closed: boolean;
 }
 
+/**
+ * The Net Actions spent inside this turn's Action (stage 26b). Interface buys
+ * 2–5 of them (s. 198) and they all come out of the one Action — which is why
+ * this hangs off `CpredSpentAction` rather than sitting beside it.
+ */
+export interface CpredNetActionUse {
+  count: number;
+  /** What the Interface rank allowed when the bundle was opened. */
+  max: number;
+  /** What they went to („Zwiad", „Backdoor"), for the tracker's tooltip. */
+  labels: string[];
+}
+
 /** The Action of the turn, once something claimed it. */
 export interface CpredSpentAction {
   id: string;
   label: string;
   /** Present only when the Action is an Attack Action. */
   attack?: CpredAttackAction;
+  /** Present only when the Action went to Net Actions (stage 26b). */
+  net?: CpredNetActionUse;
 }
 
 /**
@@ -468,6 +504,13 @@ export type CpredTurnSpend =
       rof: number;
       /** An aimed shot: one attack, and it takes the whole Action. */
       aimed?: boolean;
+    }
+  | {
+      kind: 'net';
+      /** The ability this Net Action goes to („Zwiad"). */
+      label: string;
+      /** Net Actions the Interface rank buys — 2 to 5 (stage 26b). */
+      max: number;
     };
 
 export type CpredTurnProblem =
@@ -480,7 +523,9 @@ export type CpredTurnProblem =
   /** A Critical Injury took this turn's Action away before it began (14e). */
   | 'ACTION_BLOCKED'
   /** The same for the Move Action. */
-  | 'MOVE_BLOCKED';
+  | 'MOVE_BLOCKED'
+  /** The Interface rank's Net Actions are all spent (stage 26b). */
+  | 'NO_NET_ACTIONS_LEFT';
 
 export type CpredTurnResult =
   { ok: true; state: CpredTurnState } | { ok: false; error: CpredTurnProblem };
@@ -550,6 +595,19 @@ export function readCpredTurn(raw: unknown): CpredTurnState {
         closed: attack.closed === true,
       };
     }
+    if (isReadable(stored.net)) {
+      const net = stored.net;
+      const labels = Array.isArray(net.labels)
+        ? net.labels.filter((label): label is string => typeof label === 'string')
+        : [];
+      action.net = {
+        count: Number.isInteger(net.count) ? Math.max(0, net.count as number) : labels.length,
+        max: Number.isInteger(net.max)
+          ? Math.max(1, net.max as number)
+          : Math.max(1, labels.length),
+        labels,
+      };
+    }
   }
   return {
     moveMax,
@@ -597,6 +655,7 @@ export function cpredMetresLeft(state: CpredTurnState): number | null {
 export function spendCpredTurn(state: CpredTurnState, spend: CpredTurnSpend): CpredTurnResult {
   if (spend.kind === 'move') return spendMove(state, spend);
   if (spend.kind === 'attack') return spendAttack(state, spend);
+  if (spend.kind === 'net') return spendNet(state, spend);
 
   const definition = cpredAction(spend.actionId);
   if (!definition) return { ok: false, error: 'UNKNOWN_ACTION' };
@@ -773,6 +832,50 @@ function spendAttack(
 }
 
 /**
+ * A Net Action (stage 26b). The first one claims the turn's Action; the rest sit
+ * inside it until the Interface rank runs out.
+ *
+ * Note what falls out of this for free: a netrunner who has already shot
+ * somebody this turn cannot netrun, and one who has started netrunning cannot
+ * shoot. That is „albo Akcję w Somie, albo Akcje Sieciowe" (s. 198), written
+ * once, in the same place every other Action of the turn is judged.
+ */
+function spendNet(
+  state: CpredTurnState,
+  spend: Extract<CpredTurnSpend, { kind: 'net' }>,
+): CpredTurnResult {
+  if (state.blockedAction !== null) return { ok: false, error: 'ACTION_BLOCKED' };
+  const max = Number.isFinite(spend.max) ? Math.max(1, Math.round(spend.max)) : 1;
+
+  if (state.action === null) {
+    return {
+      ok: true,
+      state: {
+        ...state,
+        action: {
+          id: CPRED_ACTION_NET,
+          label: 'Akcje Sieciowe',
+          net: { count: 1, max, labels: [spend.label] },
+        },
+      },
+    };
+  }
+  const open = state.action.net;
+  if (!open) return { ok: false, error: 'NO_ACTION_LEFT' };
+  if (open.count >= open.max) return { ok: false, error: 'NO_NET_ACTIONS_LEFT' };
+  return {
+    ok: true,
+    state: {
+      ...state,
+      action: {
+        ...state.action,
+        net: { ...open, count: open.count + 1, labels: [...open.labels, spend.label] },
+      },
+    },
+  };
+}
+
+/**
  * The same spend, forced through. Used for the GM's own NPCs, who are never
  * blocked — but the overspend is counted, so the tracker can say out loud that
  * this fight is being run past the rules.
@@ -823,6 +926,20 @@ export function forceCpredTurn(state: CpredTurnState, spend: CpredTurnSpend): Cp
       },
     };
   }
+  if (spend.kind === 'net') {
+    const open = overspent.action?.net;
+    const max = Number.isFinite(spend.max) ? Math.max(1, Math.round(spend.max)) : 1;
+    return {
+      ...overspent,
+      action: {
+        id: CPRED_ACTION_NET,
+        label: 'Akcje Sieciowe',
+        net: open
+          ? { ...open, count: open.count + 1, labels: [...open.labels, spend.label] }
+          : { count: 1, max, labels: [spend.label] },
+      },
+    };
+  }
   const definition = cpredAction(spend.actionId);
   if (!definition || definition.cost === 'free') return state;
   if (definition.cost === 'move') return { ...overspent, moveUsed: overspent.moveUsed + 1 };
@@ -844,12 +961,15 @@ export function cpredTurnBudget(
   moveNote?: string,
 ): TurnBudgetView {
   const attack = state.action?.attack;
+  const net = state.action?.net;
   const notes: string[] = [];
   if (state.action) {
     notes.push(
       attack && attack.weaponNames.length > 0
         ? `${state.action.label}: ${attack.weaponNames.join(' + ')}`
-        : state.action.label,
+        : net && net.labels.length > 0
+          ? `${state.action.label}: ${net.labels.join(' + ')}`
+          : state.action.label,
     );
   }
   // A blocked resource is painted as spent: the pips are what the GM glances at,
@@ -879,6 +999,9 @@ export function cpredTurnBudget(
         // is not coming.
         max: attack?.closed ? attack.count : CPRED_ATTACKS_PER_ACTION,
       },
+      // Net Actions only exist for a netrunner mid-run, so the row appears with
+      // the first one rather than sitting at „0/0" on every fighter's tracker.
+      ...(net ? [{ id: 'net', label: 'Sieć', used: net.count, max: net.max }] : []),
     ],
     // Metres are continuous, so they cannot be pips — the core paints them as
     // „7,5 / 12 m" without knowing that a metre is RUCH × 2 (stage 14c).
@@ -936,6 +1059,7 @@ export const CPRED_TURN_PROBLEM_MESSAGES: Record<CpredTurnProblem, string> = {
   // the fallbacks for a state that lost it.
   ACTION_BLOCKED: 'Rana krytyczna zabiera ci Akcję w tej turze.',
   MOVE_BLOCKED: 'Rana krytyczna zabiera ci Akcję Ruchu w tej turze.',
+  NO_NET_ACTIONS_LEFT: 'Nie masz już Akcji Sieciowych w tej turze.',
 };
 
 /** The sentence behind a blocked spend, when the state carries one. */

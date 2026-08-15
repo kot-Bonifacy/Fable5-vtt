@@ -351,6 +351,21 @@ export function IconLamp(props: IconProps) {
 }
 
 /**
+ * A wall socket with two pins and a lead running out of it — the net access
+ * point (stage 26b). Drawn as the thing on the wall rather than as a plug,
+ * because what the GM places is the socket; the netrunner is the plug.
+ */
+export function IconSocket(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M5.5 3.5h13a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2Z" />
+      <path d="M9.5 7.5v5M14.5 7.5v5" />
+      <path d="M12 16.5v2a2 2 0 0 1-2 2H6.5" />
+    </Svg>
+  );
+}
+
+/**
  * A bulb inside four walls — „light this room" (stage 18c). The room is what
  * distinguishes it from the plain lamp next to it in the toolbar: the button
  * places the same lamp, but lets the walls decide how far it reaches.

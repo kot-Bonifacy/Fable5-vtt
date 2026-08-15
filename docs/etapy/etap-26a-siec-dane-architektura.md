@@ -2,22 +2,26 @@
 
 **Faza:** H — Świat CP RED · **Wymaga etapów:** 13 (kompendium), 07 (karta postaci), 23b (ceny)
 
-> Pierwsza z trzech części podziału etapu 26, uzgodnionego z MG 14.08.
+> Pierwsza z czterech części podziału etapu 26, uzgodnionego z MG 14.08 i pogłębionego 15.08.
 
-## Dlaczego etap 26 został podzielony na trzy
+## Dlaczego etap 26 został podzielony na cztery
 
-Rozdział 11 podręcznika (s. 195–218) to w praktyce trzy niezależne kawałki roboty:
+Rozdział 11 podręcznika (s. 195–218) to w praktyce cztery niezależne kawałki roboty:
 
 1. **Katalog i architektura** — ~40 wpisów danych (4 Dopalacze, 3 Obrońcy, 8 Agresorów,
    12 Programów typu Czarny LOD, 3 Demony, 3 cyberdeki, 6 Ulepszeń Sprzętowych), model
    danych architektury sieciowej i narzędzie MG do jej budowania.
-2. **Run** — pionowa wizualizacja, dziewięć zdolności Interfejsu, każda z własnym rzutem
-   i własną zasadą, budżet Akcji Sieciowych, walka z Czarnym LOD-em spięta z PW karty.
-3. **Demony i Soma** — osobny bestiariusz (Wartość bojowa zamiast ATK/OBR), węzły kontrolne
+2. **Run** — punkty dostępu na mapie, pionowa wizualizacja, budżet Akcji Sieciowych wpięty
+   w tracker tury i siedem niebojowych zdolności Interfejsu, każda z własnym PT.
+3. **Walka w Sieci** — Programy z trzema klasami efektów, Paf, Ślizg, Czarny LOD z darmowym
+   atakiem, pościgiem i wstawką do kolejki inicjatywy, obrażenia w mózg i w REZ.
+4. **Demony i Soma** — osobny bestiariusz (Wartość bojowa zamiast ATK/OBR), węzły kontrolne
    sterujące rzeczami na mapie i trzy tabele systemów obronnych.
 
 Każdy z nich jest wielkości normalnego etapu tego projektu. Opis etapu 26 sugerował podział
-na dwa, ale wtedy druga sesja niosłaby run **i** bestiariusz Demonów naraz.
+na dwa, ale wtedy druga sesja niosłaby run **i** bestiariusz Demonów naraz. Podział na trzy
+(14.08) zostawiał z kolei w 26b run i całą walkę w Sieci naraz — stąd czwarta część,
+uzgodniona z MG 15.08 przed rozpoczęciem sesji 26b.
 
 **Decyzja MG z 14.08:** ekran Sieci dla netrunnera to **pływające okno** (jak karta postaci),
 nie zakładka panelu — run dzieje się w trakcie walki fizycznej, więc mapa musi zostać widoczna.

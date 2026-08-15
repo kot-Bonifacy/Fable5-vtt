@@ -1,6 +1,7 @@
 import {
   Application,
   Assets,
+  Circle,
   Container,
   Graphics,
   RenderTexture,
@@ -50,6 +51,7 @@ import {
   formatSquares,
   isOpening,
   metresPerPixel,
+  NET_ACCESS_RANGE_M,
   smokeSidePx,
   normalizeGridOffset,
   planWalk,
@@ -185,6 +187,27 @@ export type RenderGlow = LightGlow & { clip?: ScenePoint[] };
  * One lamp handle on the GM's layer (stage 18b). Already in scene pixels — the
  * renderer never sees metres, so the grid scale stays in one place.
  */
+/**
+ * Net access point on the map (stage 26b). Unlike a lamp, this one is drawn for
+ * **everybody** — a player who has found the socket has to be able to walk up
+ * to it. What is hidden never arrives: the server leaves it out of the payload.
+ */
+export interface AccessPointMarker {
+  id: number;
+  x: number;
+  y: number;
+  name: string;
+  /** GM only: still hidden from the players, so it is drawn ghosted. */
+  hidden: boolean;
+  /** No architecture behind it yet — a dead socket the GM has not wired. */
+  dead: boolean;
+}
+
+export interface AccessPointSettings {
+  armed: boolean;
+  mode: 'place' | 'erase';
+}
+
 export interface LightMarker {
   id: number;
   x: number;
@@ -621,6 +644,10 @@ export class MapRenderer {
   onOpeningToggle: ((wallId: number) => void) | null = null;
   /** Click with the light tool armed: place a lamp, or retune the one here. */
   onLightPlace: ((x: number, y: number) => void) | null = null;
+  onAccessPointPlace: ((x: number, y: number) => void) | null = null;
+  onAccessPointErase: ((x: number, y: number) => void) | null = null;
+  /** Clicking a socket with no tool armed: the GM edits it, a player jacks in. */
+  onAccessPointOpen: ((id: number) => void) | null = null;
   /** Click with the light eraser armed; the caller picks the lamp. */
   onLightErase: ((x: number, y: number) => void) | null = null;
   /** Click on a lamp marker with no tool armed — switch it on or off. */
@@ -734,6 +761,9 @@ export class MapRenderer {
   private visionOverrides: FogShapeView[] = [];
   /** Lamp markers — GM only, above the fog like the walls they usually accompany. */
   private readonly lightMarkerLayer = new Container();
+  private readonly netPointLayer = new Container();
+  private readonly netPointNodes = new Map<number, Container>();
+  private lastAccessPoints: AccessPointMarker[] = [];
   private readonly lightNodes = new Map<number, Container>();
   private readonly noteLayer = new Container();
   private readonly noteNodes = new Map<string, Container>();
@@ -809,6 +839,7 @@ export class MapRenderer {
   private wallCursor: ScenePoint | null = null;
   /** Light tool settings; `armed` decides whether a click places or removes. */
   private light: LightSettings = { armed: false, mode: 'place' };
+  private netPoint: AccessPointSettings = { armed: false, mode: 'place' };
   /** Cover tool settings (stage 16c); a drag draws, a click erases. */
   private cover: CoverSettings = { armed: false, mode: 'draw' };
   /** Corners of the rectangle being dragged, null when no drag is in flight. */
@@ -956,6 +987,13 @@ export class MapRenderer {
     // ruler sits above everything, because a measurement is meant to be read.
     this.rangeLayer.addChild(this.rangeGraphics);
     viewport.addChild(this.rangeLayer);
+    // Net sockets (stage 26b) are **scenery**, so they go under the figures
+    // rather than over them like the lamp handles. Not a cosmetic choice: the
+    // usual thing to do with a terminal is to walk up to it, and a marker over
+    // the tokens would take the click, the drag and the context menu away from
+    // whoever is standing on it. Unlike a lamp, this layer is not GM-only —
+    // once a Scanner has found a socket, the player has to see where to stand.
+    viewport.addChild(this.netPointLayer);
     viewport.addChild(this.tokenLayer);
     viewport.addChild(this.dragGhost);
     // Light is above the tokens — a torch has to warm the figure carrying it —
@@ -1460,6 +1498,12 @@ export class MapRenderer {
         // position and a reach set in the panel.
         if (this.light.mode === 'erase') this.onLightErase?.(point.x, point.y);
         else this.onLightPlace?.(point.x, point.y);
+        return;
+      }
+      if (this.netPoint.armed) {
+        // A socket is a spot on a wall — placed like a lamp, never dragged.
+        if (this.netPoint.mode === 'erase') this.onAccessPointErase?.(point.x, point.y);
+        else this.onAccessPointPlace?.(point.x, point.y);
         return;
       }
       if (this.wall.armed) {
@@ -3544,6 +3588,109 @@ export class MapRenderer {
     }
   }
 
+  /**
+   * Arms or disarms the access point tool (stage 26b) — GM only, like the lamps.
+   */
+  setAccessPointTool(settings: AccessPointSettings): void {
+    this.netPoint = settings;
+    this.applyMapCursor();
+  }
+
+  /**
+   * Draws the net sockets (stage 26b).
+   *
+   * Everybody gets this layer, unlike the lamp markers: what a player may know
+   * about is decided on the server, and a socket that reached the client is one
+   * they have found. Three states read at a glance — wired, dead (no
+   * Architecture behind it) and hidden (GM's own preview of what is still to be
+   * discovered).
+   *
+   * The 6 m ring is the point of the marker: „musisz być w promieniu 6 metrów"
+   * is a question about standing in the right place, and a glyph alone does not
+   * answer it.
+   */
+  setAccessPoints(points: AccessPointMarker[]): void {
+    if (this.destroyed) return;
+    this.lastAccessPoints = points;
+    const k = this.overlayScale();
+    const seen = new Set<number>();
+    const scene = this.scene;
+    const radiusPx = scene
+      ? (NET_ACCESS_RANGE_M * scene.grid.sizePx) / (scene.metersPerSquare || 2)
+      : 0;
+
+    for (const point of points) {
+      seen.add(point.id);
+      let node = this.netPointNodes.get(point.id);
+      let ring: Graphics;
+      if (!node) {
+        node = new Container();
+        ring = new Graphics();
+        node.addChild(ring);
+        const glyph = new Text({
+          text: '🔌',
+          style: { fontFamily: 'system-ui, sans-serif', fontSize: 20 },
+        });
+        glyph.anchor.set(0.5, 0.5);
+        node.addChild(glyph);
+        const label = new Text({
+          text: point.name,
+          style: {
+            fontFamily: 'system-ui, sans-serif',
+            fontSize: 13,
+            fill: 0xd6f5ff,
+            stroke: { color: 0x02121a, width: 4 },
+          },
+        });
+        label.anchor.set(0.5, 0);
+        label.position.set(0, 14);
+        node.addChild(label);
+        node.eventMode = 'static';
+        node.cursor = 'pointer';
+        node.on('pointerdown', (event: FederatedPointerEvent) => {
+          if (event.button !== 0) return;
+          // While the tool is armed the click belongs to the tool — the eraser
+          // has to be able to reach the socket under its own glyph.
+          if (this.netPoint.armed) return;
+          event.stopPropagation();
+          this.onAccessPointOpen?.(point.id);
+        });
+        // Only the glyph is a handle. Without this the container's hit area
+        // would be the union of its children — the 6 m ring and the label —
+        // and a figure standing on the socket could no longer be clicked,
+        // dragged or right-clicked, because the marker sits above the tokens.
+        node.hitArea = new Circle(0, 0, 1);
+        this.netPointNodes.set(point.id, node);
+        this.netPointLayer.addChild(node);
+      } else {
+        ring = node.children[0] as Graphics;
+      }
+      node.position.set(point.x, point.y);
+      const glyph = node.children[1];
+      if (glyph) glyph.scale.set(k);
+      // The handle is the glyph, so its reach follows the glyph's screen size.
+      (node.hitArea as Circle).radius = 13 * k;
+      const label = node.children[2] as Text | undefined;
+      if (label) {
+        label.text = point.name;
+        label.scale.set(k);
+        label.position.set(0, 14 * k);
+      }
+      ring
+        .clear()
+        .circle(0, 0, radiusPx)
+        .stroke({ color: point.dead ? 0x8b93a1 : 0x35e0ff, width: 2 * k, alpha: 0.6 });
+      // A socket the players cannot see yet is the GM's own preview.
+      node.alpha = point.hidden ? 0.45 : 1;
+    }
+
+    for (const [id, node] of this.netPointNodes) {
+      if (seen.has(id)) continue;
+      this.netPointNodes.delete(id);
+      node.destroy({ children: true });
+    }
+  }
+
   /** Draws the GM's note pins. Players never receive notes, so this stays empty. */
   setNotes(notes: MapNoteView[]): void {
     if (this.destroyed) return;
@@ -3605,6 +3752,10 @@ export class MapRenderer {
     // square is world geometry, the „−4" written on it is not.
     this.drawSmokeLayer();
     this.setLights(this.lastLights);
+    // Net sockets carry a screen-sized glyph and a screen-sized label too, and
+    // their hit area is measured in the same units — so they have to be redrawn
+    // with the rest of the handles rather than only when the list changes.
+    this.setAccessPoints(this.lastAccessPoints);
   }
 
   /**

@@ -22,8 +22,10 @@ import { useWallStore } from '../stores/wallStore.js';
 import { useCoverStore } from '../stores/coverStore.js';
 import { useSmokeStore } from '../stores/smokeStore.js';
 import { useLightStore } from '../stores/lightStore.js';
+import { useNetStore } from '../stores/netStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import {
+  fetchNetArchitectures,
   clearCovers,
   clearSmoke,
   clearDrawings,
@@ -61,6 +63,7 @@ import {
   IconWall,
   IconWindow,
   IconSnap,
+  IconSocket,
   IconText,
   IconTrash,
   IconTrashAll,
@@ -114,6 +117,15 @@ export function MapTools() {
   const coverTypeId = useMapToolStore((s) => s.coverTypeId);
   const setCoverTypeId = useMapToolStore((s) => s.setCoverTypeId);
   const coverCatalogue = useMapToolStore((s) => s.coverCatalogue);
+  const netPointMode = useMapToolStore((s) => s.netPointMode);
+  const setNetPointMode = useMapToolStore((s) => s.setNetPointMode);
+  const netPointArchitectureId = useMapToolStore((s) => s.netPointArchitectureId);
+  const setNetPointArchitectureId = useMapToolStore((s) => s.setNetPointArchitectureId);
+  const netPointHidden = useMapToolStore((s) => s.netPointHidden);
+  const setNetPointHidden = useMapToolStore((s) => s.setNetPointHidden);
+  // Biblioteka Architektur (26a) — sam MG ją dostaje, więc selektor gniazda
+  // czyta ten sam store co zakładka „Sieć".
+  const architectures = useNetStore((s) => s.architectures);
   const lightMode = useMapToolStore((s) => s.lightMode);
   const setLightMode = useMapToolStore((s) => s.setLightMode);
   const lightBrightM = useMapToolStore((s) => s.lightBrightM);
@@ -159,6 +171,12 @@ export function MapTools() {
   useEffect(() => {
     if (!brushAvailable && tool === 'fog') setTool('pointer');
   }, [brushAvailable, tool, setTool]);
+
+  // Lista Architektur jedzie tylko na żądanie (26a), a selektor gniazda jej
+  // potrzebuje — bez tego MG z nieotwartą zakładką „Sieć" ma pusty wybór.
+  useEffect(() => {
+    if (isGm && tool === 'netpoint') void fetchNetArchitectures();
+  }, [isGm, tool]);
 
   /** My newest drawing on this scene — what „cofnij" takes back. */
   const myNewest = useMemo(() => {
@@ -322,6 +340,15 @@ export function MapTools() {
             onClick={() => toggleTool('light')}
           >
             <IconLamp />
+          </button>
+          <button
+            type="button"
+            className={`map-tool${tool === 'netpoint' ? ' map-tool--active' : ''}`}
+            title="Punkty dostępu do Sieci — kliknij mapę, by postawić gniazdo; domyślnie ukryte, aż znajdzie je Skaner"
+            aria-pressed={tool === 'netpoint'}
+            onClick={() => toggleTool('netpoint')}
+          >
+            <IconSocket />
           </button>
           <button
             type="button"
@@ -726,6 +753,63 @@ export function MapTools() {
           >
             <IconTrashAll />
           </button>
+        </div>
+      )}
+
+      {isGm && tool === 'netpoint' && (
+        <div className="map-tool-options" role="group" aria-label="Ustawienia punktów dostępu">
+          <button
+            type="button"
+            className={`map-tool${netPointMode === 'place' ? ' map-tool--active' : ''}`}
+            title="Stawianie — kliknij mapę, by wbić gniazdo dostępowe"
+            aria-pressed={netPointMode === 'place'}
+            onClick={() => setNetPointMode('place')}
+          >
+            <IconSocket />
+          </button>
+          <button
+            type="button"
+            className={`map-tool${netPointMode === 'erase' ? ' map-tool--active' : ''}`}
+            title="Gumka — kliknij gniazdo, by je usunąć (kończy też run, który przez nie szedł)"
+            aria-pressed={netPointMode === 'erase'}
+            onClick={() => setNetPointMode('erase')}
+          >
+            <IconEraser />
+          </button>
+          {netPointMode === 'place' && (
+            <>
+              <span className="map-tools-sep" aria-hidden />
+              <label
+                className="map-tool-select"
+                title="Architektura, do której prowadzi to gniazdo"
+              >
+                <select
+                  value={netPointArchitectureId}
+                  onChange={(event) => setNetPointArchitectureId(event.target.value)}
+                >
+                  <option value="">— martwe gniazdo —</option>
+                  {architectures.map((entry) => (
+                    <option key={entry.id} value={entry.id}>
+                      {entry.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                className={`map-tool${netPointHidden ? ' map-tool--active' : ''}`}
+                title={
+                  netPointHidden
+                    ? 'Ukryte — gracz nie dostanie tego gniazda, dopóki nie znajdzie go Skanerem'
+                    : 'Widoczne od razu — gniazdo jedzie do graczy bez skanowania'
+                }
+                aria-pressed={netPointHidden}
+                onClick={() => setNetPointHidden(!netPointHidden)}
+              >
+                {netPointHidden ? <IconEyeOff /> : <IconEye />}
+              </button>
+            </>
+          )}
         </div>
       )}
 

@@ -93,11 +93,18 @@ function waitFor<T>(socket: ClientSocket, event: string, ms = 3000): Promise<T> 
   });
 }
 
+/**
+ * The ack, widened so a test may read `.data?` without narrowing on `.ok`
+ * first. Deliberately looser than `SocketAck<T>`: these tests assert on both
+ * halves of the union in the same expression.
+ */
+type LooseAck<T> = { ok: boolean; data?: T; error?: string };
+
 function emitAck<T = undefined>(
   socket: ClientSocket,
   event: string,
   payload?: unknown,
-): Promise<SocketAck<T>> {
+): Promise<LooseAck<T>> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error(`${event} ack timeout`)), 3000);
     const ack = (response: SocketAck<T>) => {

@@ -10,6 +10,8 @@ import { CharacterCreator } from './components/CharacterCreator.js';
 import { HandoutWindows } from './components/HandoutWindow.js';
 import { BotEditors } from './components/BotEditor.js';
 import { NetArchitectureEditor } from './components/NetArchitectureEditor.js';
+import { NetAccessPointPanel } from './components/NetAccessPointPanel.js';
+import { NetRunWindow } from './components/NetRunWindow.js';
 import { RollDialog } from './components/RollDialog.js';
 import { LoginPage } from './pages/LoginPage.js';
 import { JoinPage } from './pages/JoinPage.js';
@@ -58,6 +60,8 @@ function GameView() {
       <HandoutWindows />
       <BotEditors />
       <NetArchitectureEditor />
+      <NetRunWindow />
+      <NetAccessPointPanel />
       <RollDialog />
       <DiceCup />
     </div>

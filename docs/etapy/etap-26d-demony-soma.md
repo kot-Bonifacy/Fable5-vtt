@@ -1,8 +1,9 @@
-# Etap 26c — Demony, węzły kontrolne i systemy obronne
+# Etap 26d — Demony, węzły kontrolne i systemy obronne
 
-**Faza:** H — Świat CP RED · **Wymaga etapów:** 26b, 05 (tokeny), 16 (ataki)
+**Faza:** H — Świat CP RED · **Wymaga etapów:** 26c, 05 (tokeny), 16 (ataki)
 
-> Trzecia z trzech części podziału etapu 26 (patrz nagłówek `etap-26a-siec-dane-architektura.md`).
+> Czwarta z czterech części podziału etapu 26 (patrz nagłówek `etap-26a-siec-dane-architektura.md`).
+> Przenumerowana z 26c na 26d 15.08, gdy etap 26b został podzielony na 26b i 26c.
 
 ## Cel sesji
 

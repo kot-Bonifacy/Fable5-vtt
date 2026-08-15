@@ -207,6 +207,9 @@ export function sheetActionReserves(actionId: string): boolean {
 export function spendUsesAction(spend: SheetTurnSpend): boolean {
   if (spend.kind === 'move') return false;
   if (spend.kind === 'attack') return true;
+  // Net Actions come out of the turn's one Action (stage 26b) — the first of
+  // them claims it, and the rest are already inside what it claimed.
+  if (spend.kind === 'net') return true;
   return cpredAction(spend.actionId)?.cost === 'action';
 }
 

@@ -37,6 +37,7 @@ export const MAP_TOOLS = [
   'wall',
   'cover',
   'light',
+  'netpoint',
 ] as const;
 export type MapTool = (typeof MAP_TOOLS)[number];
 
@@ -66,6 +67,13 @@ export type CoverMode = 'draw' | 'erase';
  * is what makes the panel double as the editor — one control set, no dialog.
  */
 export type LightMode = 'place' | 'erase';
+
+/**
+ * What the access point tool does with a click (stage 26b). Two modes, like the
+ * lamps: dressing a floor plan with sockets means placing and removing them in
+ * the same breath, and a socket has no extent to drag out.
+ */
+export type NetPointMode = 'place' | 'erase';
 
 /** How the fog tool paints: a round brush, or a dragged rectangle. */
 export type FogBrushShape = 'brush' | 'rect';
@@ -195,6 +203,12 @@ interface MapToolStoreState extends DrawSettings {
    * already travels with the row.
    */
   coverCatalogue: CpredCoverCatalogue;
+  /** Access point tool: placing sockets, or removing them. */
+  netPointMode: NetPointMode;
+  /** Architecture the next placed socket leads to; '' = a dead socket. */
+  netPointArchitectureId: string;
+  /** Hidden until a Scanner finds it — the default, and the point of the flag. */
+  netPointHidden: boolean;
   /** Light tool: placing/retuning lamps, or removing them. */
   lightMode: LightMode;
   /** „Light this room": the server measures the walls and sizes the lamp. */
@@ -225,6 +239,9 @@ interface MapToolStoreState extends DrawSettings {
   setCoverMode: (coverMode: CoverMode) => void;
   setCoverTypeId: (coverTypeId: string) => void;
   setCoverCatalogue: (coverCatalogue: CpredCoverCatalogue) => void;
+  setNetPointMode: (netPointMode: NetPointMode) => void;
+  setNetPointArchitectureId: (netPointArchitectureId: string) => void;
+  setNetPointHidden: (netPointHidden: boolean) => void;
   setLightMode: (lightMode: LightMode) => void;
   setLightFitRoom: (lightFitRoom: boolean) => void;
   setLightBrightM: (lightBrightM: number) => void;
@@ -270,6 +287,9 @@ export const useMapToolStore = create<MapToolStoreState>((set, get) => {
     coverMode: 'draw',
     coverTypeId: '',
     coverCatalogue: EMPTY_COVER_CATALOGUE,
+    netPointMode: 'place',
+    netPointArchitectureId: '',
+    netPointHidden: true,
     lightMode: 'place',
     lightFitRoom: false,
     lightBrightM: LIGHT_DEFAULT_BRIGHT_M,
@@ -303,6 +323,9 @@ export const useMapToolStore = create<MapToolStoreState>((set, get) => {
         // never armed with nothing selected.
         coverTypeId: state.coverTypeId || (coverCatalogue.presets[0]?.id ?? ''),
       })),
+    setNetPointMode: (netPointMode) => set({ netPointMode }),
+    setNetPointArchitectureId: (netPointArchitectureId) => set({ netPointArchitectureId }),
+    setNetPointHidden: (netPointHidden) => set({ netPointHidden }),
     setLightMode: (lightMode) => set({ lightMode }),
     setLightFitRoom: (lightFitRoom) => set({ lightFitRoom }),
     setLightBrightM: (lightBrightM) => set({ lightBrightM }),

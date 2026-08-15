@@ -7,6 +7,82 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 14.08 (czwarta tego dnia) — etap 27c (karta: Ścieżka Życia i sylwetka cyborgizacji)
+
+**Karta ma komplet trzech stron wydruku, a życiorys z kreatora wreszcie widać.** Zakładki idą
+teraz za stronami arkusza: **Karta · Ścieżka Życia · Cyborgizacje · Ekwipunek**. Sekcja
+cyborgizacji wyprowadziła się z „Ekwipunku" na własną stronę z sylwetką.
+
+**Luka, którą ten etap zamknął, powstała dwa etapy wcześniej.** Od 25b kreator zapisywał komplet
+Ścieżki Życia do `data.lifepath` — kulturę, język, tło rodzinne, wrogów z czterema kolumnami,
+odpowiedzi Roli — a karta pokazywała jedno pole „Notatki". Postać wychodziła z kreatora
+z życiorysem, którego nikt nie mógł przeczytać. **Ani jedno nowe pole Ścieżki nie było potrzebne:
+25b zdefiniował kształt dokładnie po to, żeby 27c go tylko narysował.**
+
+**Doszły natomiast etykiety w `shared`** (`LIFEPATH_SHEET_FIELDS`, `LIFEPATH_ENEMY_COLUMNS`) —
+drugi dom dla nazw, które tabele już niosą w `label`, i to **na celowo**: karta musi umieć
+podpisać własne rubryki **bez wczytanego pliku danych**. Stara postać otwarta na świeżym klonie
+ma Ścieżkę i nie ma tabel; czytanie etykiet z tabel zostawiłoby taką kartę bez podpisów.
+
+**Trzy nowe pola danych, każde z własnym uzasadnieniem.** (1) `aliases` — „Pseudonimy" z nagłówka
+strony drugiej, jedna linia, bo nic ich nie czyta. (2) `improvementPoints` — „Gdy zdobywasz jakieś
+PD, zapisz ich liczbę na karcie postaci, w okienku Punkty Doświadczenia" (s. 408), sam licznik
+i nic poza nim: na co wolno je wydać, ustala się przy stole (s. 411), więc automatyczna księga
+byłaby zasadą, której podręcznik nie ma. **Pole jest edytowalne przez gracza** — inaczej niż
+Reputacja i eurodolce, bo RAW mówi wprost „Gracze mogą wydawać Punkty Doświadczenia".
+(3) `CpredCyberwareRow.bodySlot` — patrz niżej.
+
+**Gniazdo na ciele: jedyne miejsce, w którym 27c poprawia decyzję z 23a.** Etap 23a liczył gniazda
+**per rodzina**, świadomie zostawiając prozie pytanie „które oko?" (`cyberwareCapacity` do dziś
+tak liczy). Strona trzecia ma jednak **osobne okienko na prawe i lewe oko** oraz cztery na
+kończyny, a rodzina `cyberlimb` nie odróżnia nawet ręki od nogi — rysunek bez tej odpowiedzi
+byłby po prostu nieprawdziwy. Stąd opcjonalne `bodySlot` na wierszu: rodziny z **jednym** miejscem
+(Cyberaudio, Sprzęg neuralny) trafiają tam same przez `defaultBodySlot`, a oko i kończyna
+**czekają na wybór gracza** zamiast wylądować w zgadywanym gnieździe — wypisane czerwonym paskiem
+„Bez gniazda: …" nad tabelą. Gniazdo z obcej rodziny (wpis, który zmienił rodzinę w kompendium)
+jest ignorowane, nie honorowane.
+
+**Sylwetka to gotowy asset z domeny publicznej, nie rysunek robiony na kolanie.** `Human body
+silhouette.svg` z Wikimedia Commons (public domain, autorzy: Mikael Häggström, RexxS,
+-Strogoff-): jedna ścieżka, kontur stojącej postaci od przodu. Wtopiony `translate()` warstwy
+Inkscape'a i precyzja obcięta do jednego miejsca po przecinku dały **24 kB → 13 kB**. Leży jako
+stała w `packages/client/src/components/body-silhouette.ts`, **nie** jako plik w `public/` —
+dzięki temu kontur, odnośniki i pudełka gniazd siedzą w jednym układzie współrzędnych (pudełka
+są HTML-em pozycjonowanym w procentach **tego samego `viewBox`**), a kolor nadaje CSS, więc
+sylwetka idzie za motywem dzień/noc. Pochodzenie i licencja: `docs/assety-karta-postaci.md`.
+
+**Rysunek jest mapą, nie edytorem.** Gniazdo, uwagi i kosz siedzą w tabeli pod nim; klik w nazwę
+na sylwetce podświetla wiersz w tabeli. To ta sama zasada, którą 27a zastosowało do portretu
+i „Notatek" — jedno pole, jeden edytor — i dlatego **Człowieczeństwo i EMP przy sylwetce są tylko
+do odczytu**: wpisuje się je na stronie pierwszej, a druga kopia kłóciłaby się z nią przy każdej
+terapii.
+
+**Zweryfikowane:** 1049 testów w `shared` (7 nowych: 5 w `cyberware.test.ts`, 1 w `lifepath.test.ts`,
+2 w `character.test.ts`), 625 na serwerze (1 nowy w `characters.test.ts` na żywych gniazdach),
+`tsc --noEmit` czysty w trzech pakietach, lint, Prettier i `pnpm build` bez uwag.
+**Zero migracji** — wszystko mieści się w kolumnie JSON, która już była.
+
+**Odklikane u MG** na postaci **„Test 27x"** (z 27a/27b; **stan przywrócony po oględzinach** —
+wszczepy usunięte, Ścieżka wyczyszczona, Człowieczeństwo z powrotem 25 z 50). Potwierdzone:
+**cztery zakładki** w kolejności druku; **stara karta z samym `notes` otwiera się bez błędu**
+i pokazuje pustą stronę drugą; wpisane ręcznie „Pseudonimy — Stary Vex, Ćma", „Kultura
+pochodzenia — Wybrzeże Bałtyku", **PD 45** i wróg „Radna Adeola Okoye / Przedstawiciele władz"
+**wróciły po przeładowaniu strony** (czyli wielowyrazowa nazwa też przeżywa — pułapka z 13.08 nie
+wróciła); **„+" w belce** dokłada wiersz z czterema kolumnami wroga z s. 51. Na stronie trzeciej:
+**„Zestaw cyberaudio" wskoczył sam** w gniazdo Cyberaudio (odnośnik i kółko zapaliły się na
+czerwono), **Cyberoko i Cyberręka trafiły na pasek „Bez gniazda"**, a po wybraniu w kolumnie
+„Gniazdo" stanęły w **Prawym cyberoku** i **Lewej cyberręce** — po lewej i prawej stronie rysunku,
+zgodnie z zasadą „strony są postaci, nie widza". Człowieczeństwo spadło 25 → 5, **EMP w grze 0**,
+chip **„Cyberpsychoza"** zapalił się na czerwono (i na liście postaci też). Klik w nazwę na
+sylwetce **podświetlił wiersz** w tabeli. **Motyw dzienny** sprawdzony na obu nowych stronach.
+Konsola czysta.
+
+**Dwie poprawki kosmetyczne po oględzinach.** (1) **Trzy kółka na głowie zlewały się w jedno** —
+oko i ucho na tej samej wysokości, promień 26 jednostek: cyberaudio wyglądało jak trzecie oko.
+Oczy rozsunięte, ucho zeszło niżej, sprzęg neuralny przesunięty z piersi na kark.
+(2) **`text-transform: capitalize` na belkach** robiło „Cyborgizacje Wewnętrzne" i „Tragiczna
+Historia Miłosna" — belki z nazwą własną dostały `.cp-bar--plain`.
+
 ### Sesja 14.08 (trzecia tego dnia) — etap 25c (wyposażenie startowe i poziomy sklepu)
 
 **Kreator jest kompletny: postać wychodzi z niego z bronią w ręku i figurą na mapie.** Doszły

@@ -55,8 +55,9 @@ Pełne notatki z zamkniętych etapów: `archiwum/dziennik-sesji.md` (nie czytaj 
 | 25b | Kreator: Ścieżka Życia                        | ✅     | 2026-08-14      | etap 25b podzielony na 25b/25c 14.08; 71 tabel, 522 wiersze; wróg → szkic bota jednym klikiem   |
 | 25c | Kreator: wyposażenie startowe i poziomy       | ✅     | 2026-08-14      | 4 poziomy z ceny; +53 wpisy sprzętu z podręcznika (kompendium miało 5); pakiet Roli → POMYSŁY   |
 | 26a | Sieć: dane, architektura i cyberdek           | ✅     | 2026-08-14      | etap 26 podzielony na 26a/26b/26c 14.08; ekran Sieci = pływające okno (decyzja MG)              |
-| 26b | Run: winda, akcje sieciowe, walka w Sieci     | ⬜     |                 |                                                                                                 |
-| 26c | Demony, węzły kontrolne i systemy obronne     | ⬜     |                 |                                                                                                 |
+| 26b | Run: punkty dostępu, winda i Akcje Sieciowe   | ✅     | 2026-08-15      | etap 26b podzielony na 26b/26c 15.08; punkt dostępu = obiekt sceny, ukryty do Skanera           |
+| 26c | Walka w Sieci: Programy, Paf, Ślizg, LOD      | ⬜     |                 | wydzielone z 26b 15.08 (dawne 26c → 26d)                                                        |
+| 26d | Demony, węzły kontrolne i systemy obronne     | ⬜     |                 |                                                                                                 |
 | 27a | Karta jak oficjalna: strona pierwsza          | ✅     | 2026-08-13      | wydzielony z 27 dnia 13.08 (27a/27b/27c); motyw dzień/noc na razie tylko dla karty              |
 | 27b | Karta: broń, pancerz, ekwipunek               | ✅     | 2026-08-13      | zakładka „Walka" zniknęła; pancerz = 3 wiersze wydruku + reszta; trzy nowe pola prozy           |
 | 27c | Karta: Ścieżka Życia i cyborgizacje           | ✅     | 2026-08-14      | sylwetka = gotowy SVG z domeny publicznej; gniazdo na ciele to nowe pole wiersza wszczepu       |
@@ -65,24 +66,44 @@ Pełne notatki z zamkniętych etapów: `archiwum/dziennik-sesji.md` (nie czytaj 
 
 ## Od czego zacząć
 
-Ostatnio zamknięte: **26a** (katalog Sieci, model Architektury Sieciowej z edytorem MG
-i generatorem RAW, cyberdek z gniazdami na karcie). **Wszystko, czym 26b będzie poruszać,
-już istnieje jako dane** — brakuje samego runu.
+Ostatnio zamknięte: **26b** (punkty dostępu na mapie, run netrunnera z windą w pływającym
+oknie, budżet Akcji Sieciowych wpięty w tracker tury, siedem niebojowych zdolności Interfejsu).
+**Etap 26b został przy tej okazji podzielony na 26b i 26c** (decyzja MG z 15.08) — walka
+w Sieci wyprowadziła się do nowego **26c**, a Demony i Soma zjechały z 26c na **26d**.
 
 **⚠️ Jedna rzecz do zrobienia ręcznie: „Poligon bojowy" stoi teraz na poziomie sklepu 1
 (Uliczne).** Migracja daje każdej kampanii `shopTier = 1`, więc do czasu przesunięcia
 przełącznika gracz nie kupi niczego droższego niż 50 ed. Przełącznik 1–4 jest w zakładce
 **„Kompendium"** pod chipami kategorii; MG kupuje przez wszystkie poziomy niezależnie od niego.
 
-**Następne etapy do wyboru:** **26b** (run netrunnera: winda, dziewięć zdolności Interfejsu,
-budżet Akcji Sieciowych, walka z Czarnym LOD-em — mięso netrunningu i naturalna kontynuacja),
-**26c** (Demony, węzły kontrolne sięgające do Somy, systemy obronne), **27** (kości 3D, motyw
-dzień/noc dla reszty UI, wydajność) i **28** (VPS). **Sesja zerowa z drużyną** jest nadal
-najlepszym testem 25a+25b+25c i trzech stron karty naraz.
+**Następne etapy do wyboru:** **26c** (walka w Sieci: Programy z deku, Paf, Ślizg, Czarny LOD
+z darmowym atakiem i wstawką do kolejki inicjatywy, obrażenia w mózg — naturalna kontynuacja
+i jedyna rzecz, której 26b świadomie nie dowozi), **26d** (Demony, węzły kontrolne sięgające
+do Somy, systemy obronne), **27** (kości 3D, motyw dzień/noc dla reszty UI, wydajność)
+i **28** (VPS). **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech
+stron karty naraz.
 
 **09.08 głos wypadł z projektu** (sesja bez etapu, decyzja MG): etapy **12, 21 i 22** wycofane, kod TTS usunięty z repo. Szczegóły w `archiwum/dziennik-sesji.md` i w `archiwum/wycofane/README.md`.
 
 ### Otwarte zaległości (przechodzą między etapami)
+
+- **Etap 26b — zostały trzy ścieżki nieodklikane; reszta sprawdzona 15.08.** (1) **Budżet
+  Akcji Sieciowych w trackerze tury** („Sieć 1/4" i odmowa ataku po rozpoczęciu Akcji Sieciowych)
+  — do sprawdzenia trzeba **wystartować walkę** w żywej kampanii i dopisać netrunnera do kolejki,
+  więc oględziny się na to nie porwały; pokryte 8 testami w `netrun.test.ts` (shared) i ścieżką
+  `requireTurnSpend` na serwerze. (2) **Ściana między netrunnerem a gniazdem** (`NET_WALL_BLOCKS`)
+  — Poligon nie ma ścian na scenie „Strzelnica"; geometria to `hasLineOfFire` z 16b, ta sama, którą
+  16b odklikało. (3) **Odmowy `NET_NO_INTERFACE` i `NET_NO_DECK` w przeglądarce** — pokryte testami
+  serwera, u MG nieoglądane (przycisk „Podłącz się" po prostu wraca z odmową).
+
+- **Etap 26b — trzy rzeczy świadomie uproszczone, do rozważenia przy stole.** (1) **Promień
+  Skanera to wynik Testu w metrach** — podręcznik mówi „MG określa dokładną liczbę znalezionych
+  punktów dostępu" i nie daje żadnej liczby, więc to czytanie VTT, nie RAW; MG ma obok przycisk
+  „Odsłoń graczom" na karcie gniazda. (2) **Zwiad liczy piętra wszerz** (obie drogi w dół
+  z rozgałęzienia naraz), bo mapa, która patrzy tylko w trzon, ukrywałaby odgałęzienie, do
+  którego RAW każe zanieść Wirusa. (3) **Piętro z Czarnym LOD-em odkrywa się, ale nic się
+  na nim nie dzieje** — wchodzi to z 26c; okno pisze wprost „walka w Sieci dochodzi w etapie 26c",
+  a lista napotkanych LOD-ów jest już zapisywana (`metIce`) na poczet awaryjnego odłączenia.
 
 - **Etap 26a — trzy ścieżki nieodklikane, wszystkie po stronie MG albo skrajnego przypadku.**
   (1) **Formularz „Obrona Sieci"** w edytorze MG kompendium (REZ, Interfejs, Akcje Sieciowe,
@@ -476,6 +497,94 @@ decyduje przegrany, nie zwycięzca`) — Konfrontacje z 10.08 szły z konta MG, 
 
 ## Notatki z dwóch ostatnich sesji
 
+### Sesja 15.08 — etap 26b (run: punkty dostępu, winda i Akcje Sieciowe)
+
+**Etap 26b został przed rozpoczęciem podzielony na dwa** (decyzja MG). Pierwotny zakres niósł
+run **i** całą walkę w Sieci naraz: Programy z trzema klasami efektów, Pafa, Ślizg, Czarnego
+LOD-a z darmowym atakiem, pościgiem i wstawką do kolejki inicjatywy oraz obrażenia w mózg —
+to samo w sobie jest etapem wielkości 16b+16c. Walka wyprowadziła się do nowego **26c**,
+a dawne 26c (Demony i Soma) zostało przenumerowane na **26d**.
+
+**Punkt dostępu musiał powstać od zera i to on jest bramą do całego etapu.** Opis etapu wymieniał
+„6 m od punktu dostępu", ale takiego bytu w projekcie nie było. Powstał jako obiekt sceny
+(`NetAccessPoint`, wzorem osłon z 16c), stawiany narzędziem mapy 🔌 i wiązany z Architekturą
+z biblioteki 26a. **Domyślnie ukryty** (decyzja MG): gracz nie dostaje go w payloadzie, dopóki
+nie znajdzie go Skanerem albo dopóki MG go nie odsłoni — dzięki temu Skaner ma co robić.
+
+**Zasięg i ściana to ten sam rachunek co linia strzału z 16b.** `metresBetween` + `hasLineOfFire`,
+zero nowej geometrii — gdyby powstała druga, prędzej czy później drzwi przepuszczałyby kulę
+i nie przepuszczały kabla.
+
+**Akcje Sieciowe siedzą _w_ Akcji tury, nie obok niej.** Model jest kopią Akcji Ataku z 14b:
+jedna Akcja, w środku licznik użyć (`CpredNetActionUse` obok `CpredAttackAction`). Dzięki temu
+„albo Akcja w Somie, albo Akcje Sieciowe" (s. 198) wychodzi z arytmetyki, a nie z osobnego
+warunku — netrunner, który już strzelał, nie wejdzie do Sieci, i odwrotnie. Tracker pokazuje
+„Sieć 1/4" dopiero po pierwszej Akcji Sieciowej, więc reszcie stołu nic nie przybyło.
+
+**Szyb jest drzewem — i to jest cała odpowiedź na „nie możesz ominąć przeszkody".** Rodzicem
+piętra trzonu jest piętro nad nim, a pierwszego piętra odgałęzienia — piętro trzonu, z którego
+wyrasta. Trasa między dwoma piętrami jest więc jedna i nie ma czego omijać: wystarczy sprawdzić,
+czy po drodze nie stoi niezłamane hasło. Na samo hasło **wejść wolno** — inaczej nikt nigdy
+nie mógłby go złamać Backdoorem.
+
+**Wiedza o piętrze jest trójwartościowa i tnie ją serwer.** Nieodkryte piętro nie ma w payloadzie
+ani rodzaju, ani nazwy, ani PT; piętro ze Zwiadu ma rodzaj i nazwę, ale **nie PT** („Zwiad nie
+podaje Poziomów Trudności", s. 200); dopiero wejście odsłania wszystko. Notatka MG na Pliku jest
+wyjątkiem, który zarabia Ajdi: to jedyna zdolność, która ma co wypłacić.
+
+**Ślady przeżywają odłączenie, odkrycia nie.** „Odłączenie resetuje obronę Architektury"
+(s. 198), więc wiersz runa **kasuje się**, a Wirus i PT Maskowania idą do osobnej kolumny
+`NetArchitecture.runtime` — nie do `data`, którą edytor MG z 26a przepisuje w całości przy
+każdym zapisie. Wirus zamieciony poprawką literówki w nazwie piętra byłby całym runem gracza
+wyrzuconym do kosza.
+
+**Czat mówi dwie różne rzeczy dwóm widowniom.** Karta rzutu z PT idzie jako `gmroll`
+(netrunner + MG), bo PT jest sekretem Architektury; stół dostaje jedną linię „Kolec — Backdoor ·
+udane". Kryterium „reszta stołu widzi skrót, nie zawartość Architektury" to zasada o payloadach,
+nie o stylach.
+
+**Zweryfikowane:** 1125 testów w `shared` (34 nowe w `netrun.test.ts`), 658 na serwerze
+(17 nowych w `netrun.test.ts` na żywych gniazdach — w tym filtr pięter na payloadzie, odmowa
+spoza 6 m, awaryjne odłączenie po odejściu figury i to, że gracz nie widzi cudzego runa),
+`tsc --noEmit` czysty w trzech pakietach, ESLint bez uwag, `pnpm build` bez uwag. Migracja:
+`20260815083924_stage26b_net_run` (dwie nowe tabele + kolumna `runtime`, zero zmian w danych).
+Przy okazji naprawiony **błąd typów z 26a**: `emitAck` w `netrunning.test.ts` deklarował
+`SocketAck<T>`, a testy czytały `ack.data?` bez zawężania — `tsc` sypał 31 błędami w tym pliku
+od 14.08.
+
+**Odklikane u MG i u gracza** w kampanii „Poligon bojowy" (**stan przywrócony po oględzinach** —
+architektura, gniazdo i żeton skasowane, „Test 27x" z powrotem bez Roli i bez deku). Potwierdzone:
+**narzędzie 🔌** w pasku mapy z selektorem Architektury, przełącznikiem „ukryte" i gumką;
+**pierścień 6 m** wokół gniazda i przygaszona ikona, dopóki jest ukryte; **gracz nie dostaje
+ukrytego gniazda** (pusta lista w `state:sync`); **karta gniazda** z listą kandydatów i dystansem
+(„Kolec — 5,7 m"), a spoza zasięgu z napisem „Za daleko — trzeba stanąć w promieniu 6 m"
+i **wyszarzonym** „Podłącz się"; **okno „Sieć"** z trzonem, odgałęzieniem („z piętra 2") i cyjanową
+ramką na piętrze netrunnera; **Zwiad** („Odsłonięte piętra: 5"); **Backdoor** z chipem „złamane"
+i odmową ruchu przed nim; **Ajdi** odsłaniające notatkę MG na Pliku; **„Skopiuj Plik"** za darmo
+(chip „kopia na deku"); **Kontrola** („Węzeł przejęty — PT odebrania go tobie: 9");
+**Wirus przez dwie Akcje Sieciowe** („Wirus w budowie: 1 / 2" → „Wirus zostawiony — PT jego
+zniszczenia: 13"); **Maskowanie**; **Skaner** odsłaniający ukryte gniazdo graczowi;
+**awaryjne odłączenie** po odejściu figury poza 6 m (okno zamyka się u obu stron, na czacie
+„poza zasięgiem punktu dostępu (6 m)"). **Strona gracza** (avatar9, właściciel „Test 27x"):
+okno ma tytuł **„SIEĆ"** bez nazwy Architektury, piętro ze Zwiadu ma rodzaj i nazwę, ale
+**nie ma PT**, a czat niesie same skróty („Backdoor — udane"), bez kart rzutów. **Ponowne
+podłączenie** po odłączeniu: **Wirus PT 13 został**, a „złamane", „rozpoznany" i „przejęty"
+zniknęły — obrona Architektury wróciła do stanu wyjściowego. Konsola czysta.
+
+**Sześć poprawek po oględzinach — pięć z nich to błędy, które wyszły dopiero na mapie.**
+(1) **Gniazdo kradło kliknięcia figurze, która na nim stała** — warstwa markerów leżała nad
+tokenami, więc figura pod 🔌 nie dawała się kliknąć, przeciągnąć ani otworzyć PPM-em. Gniazdo
+zjechało **pod** warstwę tokenów: to scenery, a normalną rzeczą z terminalem jest podejść do niego.
+(2) **Marker nie skalował się przy zoomie** — `setAccessPoints` nie było wołane z przebiegu, który
+przerysowuje uchwyty ekranowe (lampy, pinezki, etykiety osłon). (3) **Okno „Sieć" miało 1180 px**
+— `sheet.css` wczytuje się **po** `styles.css` i ustawia `.sheet-window`, więc reguła szerokości
+musiała podnieść specyficzność do `.sheet-window.net-run-window`. (4) **Pasek statusu sklejał się
+w jeden ciąg i pisał Wielkimi Literami** („Punkt Dostępu") — dokładnie ta sama pułapka `.cp-bar`
+co przy belce deku w 26a; pasek dostał własne style. (5) **Nazwa piętra ucinała się do „L…"**,
+gdy przybywało chipów — wiersz zwija się teraz do drugiej linii zamiast zjadać nazwę.
+(6) **Selektor Architektury w karcie gniazda był pusty**, dopóki MG nie otworzył zakładki „Sieć"
+— biblioteka jedzie na żądanie (26a), więc karta dociąga ją sama.
+
 ### Sesja 14.08 (piąta tego dnia) — etap 26a (Sieć: dane, architektura, cyberdek)
 
 **Etap 26 podzielony na trzy, nie na dwa.** Opis etapu dopuszczał podział na „architektury
@@ -549,79 +658,10 @@ sama nie rozstawia dzieci.
 
 ### Sesja 14.08 (czwarta tego dnia) — etap 27c (karta: Ścieżka Życia i sylwetka cyborgizacji)
 
-**Karta ma komplet trzech stron wydruku, a życiorys z kreatora wreszcie widać.** Zakładki idą
-teraz za stronami arkusza: **Karta · Ścieżka Życia · Cyborgizacje · Ekwipunek**. Sekcja
-cyborgizacji wyprowadziła się z „Ekwipunku" na własną stronę z sylwetką.
-
-**Luka, którą ten etap zamknął, powstała dwa etapy wcześniej.** Od 25b kreator zapisywał komplet
-Ścieżki Życia do `data.lifepath` — kulturę, język, tło rodzinne, wrogów z czterema kolumnami,
-odpowiedzi Roli — a karta pokazywała jedno pole „Notatki". Postać wychodziła z kreatora
-z życiorysem, którego nikt nie mógł przeczytać. **Ani jedno nowe pole Ścieżki nie było potrzebne:
-25b zdefiniował kształt dokładnie po to, żeby 27c go tylko narysował.**
-
-**Doszły natomiast etykiety w `shared`** (`LIFEPATH_SHEET_FIELDS`, `LIFEPATH_ENEMY_COLUMNS`) —
-drugi dom dla nazw, które tabele już niosą w `label`, i to **na celowo**: karta musi umieć
-podpisać własne rubryki **bez wczytanego pliku danych**. Stara postać otwarta na świeżym klonie
-ma Ścieżkę i nie ma tabel; czytanie etykiet z tabel zostawiłoby taką kartę bez podpisów.
-
-**Trzy nowe pola danych, każde z własnym uzasadnieniem.** (1) `aliases` — „Pseudonimy" z nagłówka
-strony drugiej, jedna linia, bo nic ich nie czyta. (2) `improvementPoints` — „Gdy zdobywasz jakieś
-PD, zapisz ich liczbę na karcie postaci, w okienku Punkty Doświadczenia" (s. 408), sam licznik
-i nic poza nim: na co wolno je wydać, ustala się przy stole (s. 411), więc automatyczna księga
-byłaby zasadą, której podręcznik nie ma. **Pole jest edytowalne przez gracza** — inaczej niż
-Reputacja i eurodolce, bo RAW mówi wprost „Gracze mogą wydawać Punkty Doświadczenia".
-(3) `CpredCyberwareRow.bodySlot` — patrz niżej.
-
-**Gniazdo na ciele: jedyne miejsce, w którym 27c poprawia decyzję z 23a.** Etap 23a liczył gniazda
-**per rodzina**, świadomie zostawiając prozie pytanie „które oko?" (`cyberwareCapacity` do dziś
-tak liczy). Strona trzecia ma jednak **osobne okienko na prawe i lewe oko** oraz cztery na
-kończyny, a rodzina `cyberlimb` nie odróżnia nawet ręki od nogi — rysunek bez tej odpowiedzi
-byłby po prostu nieprawdziwy. Stąd opcjonalne `bodySlot` na wierszu: rodziny z **jednym** miejscem
-(Cyberaudio, Sprzęg neuralny) trafiają tam same przez `defaultBodySlot`, a oko i kończyna
-**czekają na wybór gracza** zamiast wylądować w zgadywanym gnieździe — wypisane czerwonym paskiem
-„Bez gniazda: …" nad tabelą. Gniazdo z obcej rodziny (wpis, który zmienił rodzinę w kompendium)
-jest ignorowane, nie honorowane.
-
-**Sylwetka to gotowy asset z domeny publicznej, nie rysunek robiony na kolanie.** `Human body
-silhouette.svg` z Wikimedia Commons (public domain, autorzy: Mikael Häggström, RexxS,
--Strogoff-): jedna ścieżka, kontur stojącej postaci od przodu. Wtopiony `translate()` warstwy
-Inkscape'a i precyzja obcięta do jednego miejsca po przecinku dały **24 kB → 13 kB**. Leży jako
-stała w `packages/client/src/components/body-silhouette.ts`, **nie** jako plik w `public/` —
-dzięki temu kontur, odnośniki i pudełka gniazd siedzą w jednym układzie współrzędnych (pudełka
-są HTML-em pozycjonowanym w procentach **tego samego `viewBox`**), a kolor nadaje CSS, więc
-sylwetka idzie za motywem dzień/noc. Pochodzenie i licencja: `docs/assety-karta-postaci.md`.
-
-**Rysunek jest mapą, nie edytorem.** Gniazdo, uwagi i kosz siedzą w tabeli pod nim; klik w nazwę
-na sylwetce podświetla wiersz w tabeli. To ta sama zasada, którą 27a zastosowało do portretu
-i „Notatek" — jedno pole, jeden edytor — i dlatego **Człowieczeństwo i EMP przy sylwetce są tylko
-do odczytu**: wpisuje się je na stronie pierwszej, a druga kopia kłóciłaby się z nią przy każdej
-terapii.
-
-**Zweryfikowane:** 1049 testów w `shared` (7 nowych: 5 w `cyberware.test.ts`, 1 w `lifepath.test.ts`,
-2 w `character.test.ts`), 625 na serwerze (1 nowy w `characters.test.ts` na żywych gniazdach),
-`tsc --noEmit` czysty w trzech pakietach, lint, Prettier i `pnpm build` bez uwag.
-**Zero migracji** — wszystko mieści się w kolumnie JSON, która już była.
-
-**Odklikane u MG** na postaci **„Test 27x"** (z 27a/27b; **stan przywrócony po oględzinach** —
-wszczepy usunięte, Ścieżka wyczyszczona, Człowieczeństwo z powrotem 25 z 50). Potwierdzone:
-**cztery zakładki** w kolejności druku; **stara karta z samym `notes` otwiera się bez błędu**
-i pokazuje pustą stronę drugą; wpisane ręcznie „Pseudonimy — Stary Vex, Ćma", „Kultura
-pochodzenia — Wybrzeże Bałtyku", **PD 45** i wróg „Radna Adeola Okoye / Przedstawiciele władz"
-**wróciły po przeładowaniu strony** (czyli wielowyrazowa nazwa też przeżywa — pułapka z 13.08 nie
-wróciła); **„+" w belce** dokłada wiersz z czterema kolumnami wroga z s. 51. Na stronie trzeciej:
-**„Zestaw cyberaudio" wskoczył sam** w gniazdo Cyberaudio (odnośnik i kółko zapaliły się na
-czerwono), **Cyberoko i Cyberręka trafiły na pasek „Bez gniazda"**, a po wybraniu w kolumnie
-„Gniazdo" stanęły w **Prawym cyberoku** i **Lewej cyberręce** — po lewej i prawej stronie rysunku,
-zgodnie z zasadą „strony są postaci, nie widza". Człowieczeństwo spadło 25 → 5, **EMP w grze 0**,
-chip **„Cyberpsychoza"** zapalił się na czerwono (i na liście postaci też). Klik w nazwę na
-sylwetce **podświetlił wiersz** w tabeli. **Motyw dzienny** sprawdzony na obu nowych stronach.
-Konsola czysta.
-
-**Dwie poprawki kosmetyczne po oględzinach.** (1) **Trzy kółka na głowie zlewały się w jedno** —
-oko i ucho na tej samej wysokości, promień 26 jednostek: cyberaudio wyglądało jak trzecie oko.
-Oczy rozsunięte, ucho zeszło niżej, sprzęg neuralny przesunięty z piersi na kark.
-(2) **`text-transform: capitalize` na belkach** robiło „Cyborgizacje Wewnętrzne" i „Tragiczna
-Historia Miłosna" — belki z nazwą własną dostały `.cp-bar--plain`.
+Karta ma komplet trzech stron wydruku: doszły „Ścieżka Życia" i „Cyborgizacje" z sylwetką
+z domeny publicznej, a życiorys, który kreator zapisywał od 25b, wreszcie ma gdzie się wyświetlić.
+Nowe pole `bodySlot` na wierszu wszczepu odpowiada na pytanie „które oko?", którego arytmetyka
+gniazd z 23a nie zadaje. Pełna notatka: `archiwum/dziennik-sesji.md`.
 
 ### Sesja 14.08 (trzecia tego dnia) — etap 25c (wyposażenie startowe i poziomy sklepu)
 
