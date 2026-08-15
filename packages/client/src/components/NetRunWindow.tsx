@@ -3,6 +3,7 @@ import type {
   CpredNetPosition,
   NetAbilityId,
   NetCombatView,
+  NetDeviceOperation,
   NetFloorView,
   NetIceView,
   NetProgramSlotView,
@@ -10,6 +11,8 @@ import type {
 } from '@vtt/shared';
 import {
   NET_ABILITIES_AVAILABLE,
+  NET_DEVICE_KIND_LABELS,
+  NET_DEVICE_OPERATION_LABELS,
   NET_FLOOR_KIND_LABELS,
   NET_ICE_MODE_LABELS,
   NET_PROGRAM_CLASS_LABELS,
@@ -25,11 +28,13 @@ import {
   iceTakesTurn,
   leaveNetRun,
   moveNetRun,
+  operateNetDevice,
   slideInNet,
   toggleNetProgram,
   useNetAbility,
 } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
+import { useTokenStore } from '../stores/tokenStore.js';
 import { currentRun, useNetRunStore } from '../stores/netRunStore.js';
 import { netErrorText } from '../netErrors.js';
 import { plural } from '../plural.js';
@@ -61,17 +66,122 @@ const FLOOR_GLYPHS: Record<string, string> = {
   demon: '👹',
 };
 
+/**
+ * Rzeczy podłączone do przejętego węzła (etap 26d).
+ *
+ * Sekcja pojawia się **dopiero po** udanej Kontroli — nie dlatego, że jest
+ * chowana, tylko dlatego, że przed przejęciem serwer nie przysyła listy
+ * urządzeń („po przejęciu kontroli nad węzłem", s. 199). Każdy przycisk to
+ * osobna Akcja Sieciowa, a cały węzeł gaśnie po pierwszym użyciu w Turze.
+ */
+function NodeDevices({
+  floor,
+  targets,
+  busy,
+  onOperate,
+}: {
+  floor: NetFloorView;
+  targets: { id: string; name: string }[];
+  busy: boolean;
+  onOperate: (deviceId: string, operation: NetDeviceOperation, targetTokenId?: string) => void;
+}) {
+  const [target, setTarget] = useState('');
+  const devices = floor.devices ?? [];
+  if (devices.length === 0) return null;
+  const spent = floor.nodeUsed === true;
+  return (
+    <div className="net-node-devices">
+      <span className="net-node-title">
+        Podłączone urządzenia
+        {spent && <span className="net-run-floor-flag">węzeł użyty w tej Turze</span>}
+      </span>
+      <ul className="net-node-list">
+        {devices.map((device) => (
+          <li
+            key={device.id}
+            className={`net-node-device${device.on ? '' : ' net-node-device--off'}`}
+          >
+            <span className="net-node-name">{device.name}</span>
+            <span className="net-node-kind">{NET_DEVICE_KIND_LABELS[device.deviceKind]}</span>
+            {!device.on && <span className="net-run-floor-flag">wyłączone</span>}
+            {device.turned && <span className="net-run-floor-flag">obrócona</span>}
+            {device.detail && <span className="net-deck-effect">{device.detail}</span>}
+            {device.notes && <p className="net-run-floor-notes">{device.notes}</p>}
+            <span className="net-node-buttons">
+              {device.operations.map((operation) => {
+                // „Włącz" przy działającym urządzeniu i „Wyłącz" przy wyłączonym
+                // to przyciski, które nic nie zmieniają — serwer je zresztą
+                // odrzuci, więc niech nie kuszą.
+                if (operation === 'on' && device.on) return null;
+                if (operation !== 'on' && !device.on) return null;
+                const needsTarget = operation === 'fire';
+                return (
+                  <button
+                    key={operation}
+                    type="button"
+                    className="small-button"
+                    disabled={
+                      busy ||
+                      spent ||
+                      (needsTarget && (!device.tokenId || target === '')) ||
+                      (operation === 'open' || operation === 'close'
+                        ? device.wallId === undefined
+                        : false)
+                    }
+                    title={
+                      needsTarget
+                        ? 'Strzał z tej figury Umiejętnościami netrunnera — kosztuje Akcję Sieciową'
+                        : 'Obsługa urządzenia kosztuje Akcję Sieciową, a węzeł działa raz na Turę'
+                    }
+                    onClick={() =>
+                      onOperate(device.id, operation, needsTarget ? target : undefined)
+                    }
+                  >
+                    {NET_DEVICE_OPERATION_LABELS[operation]}
+                  </button>
+                );
+              })}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {devices.some((device) => device.operations.includes('fire')) && (
+        <label className="net-node-target">
+          <span className="auth-label">Cel strzału</span>
+          <select value={target} onChange={(event) => setTarget(event.target.value)}>
+            <option value="">— wskaż figurę —</option>
+            {targets.map((entry) => (
+              <option key={entry.id} value={entry.id}>
+                {entry.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+    </div>
+  );
+}
+
 function FloorRow({
   floor,
   branchId,
   onMove,
   onCopy,
+  onOperate,
+  targets,
   busy,
 }: {
   floor: NetFloorView;
   branchId: string;
   onMove: (to: CpredNetPosition) => void;
   onCopy: (floorId: string) => void;
+  onOperate: (
+    floorId: string,
+    deviceId: string,
+    operation: NetDeviceOperation,
+    targetTokenId?: string,
+  ) => void;
+  targets: { id: string; name: string }[];
   busy: boolean;
 }) {
   const unknown = floor.kind === null;
@@ -122,6 +232,14 @@ function FloorRow({
           {plural(floor.programIds.length, 'Program', 'Programy', 'Programów')} — walka w Sieci
         </span>
       )}
+      <NodeDevices
+        floor={floor}
+        targets={targets}
+        busy={busy}
+        onOperate={(deviceId, operation, targetTokenId) =>
+          onOperate(floor.id, deviceId, operation, targetTokenId)
+        }
+      />
     </li>
   );
 }
@@ -130,11 +248,20 @@ function Branch({
   branch,
   onMove,
   onCopy,
+  onOperate,
+  targets,
   busy,
 }: {
   branch: NetShaftBranchView;
   onMove: (to: CpredNetPosition) => void;
   onCopy: (floorId: string) => void;
+  onOperate: (
+    floorId: string,
+    deviceId: string,
+    operation: NetDeviceOperation,
+    targetTokenId?: string,
+  ) => void;
+  targets: { id: string; name: string }[];
   busy: boolean;
 }) {
   return (
@@ -153,6 +280,8 @@ function Branch({
             branchId={branch.id}
             onMove={onMove}
             onCopy={onCopy}
+            onOperate={onOperate}
+            targets={targets}
             busy={busy}
           />
         ))}
@@ -439,6 +568,7 @@ export function NetRunWindow() {
   const notice = useNetRunStore((s) => s.notice);
   const setNotice = useNetRunStore((s) => s.setNotice);
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
+  const tokens = useTokenStore((s) => s.tokens);
   const [position, setPosition] = useState({ x: 200, y: 80 });
   const [busy, setBusy] = useState(false);
   const [virusOpen, setVirusOpen] = useState(false);
@@ -502,6 +632,15 @@ export function NetRunWindow() {
 
   const floors = run.run.branches.flatMap((branch) => branch.floors);
   const here = floors.find((floor) => floor.here);
+  /*
+   * Figury, w które wieżyczka może wycelować (etap 26d). Lista jest tym, co
+   * ten klient **i tak już widzi** na mapie — u gracza po filtrze widoczności
+   * z 18a, u MG wszystko. Serwer i tak sprawdza mgłę i ukrycie celu, więc to
+   * jest wygoda, nie uprawnienie.
+   */
+  const targets = Object.values(tokens)
+    .map((token) => ({ id: token.id, name: token.name }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'pl'));
   const virusPending = run.run.virus;
   const fightState = run.run.combat;
   /** Agresory, które mają czym uderzyć w Czarnego LOD-a (etap 26c). */
@@ -606,8 +745,20 @@ export function NetRunWindow() {
               key={branch.id}
               branch={branch}
               busy={busy}
+              targets={targets}
               onMove={(to) => void move(to)}
               onCopy={(floorId) => void guard(copyNetFile(run.runId, floorId))}
+              onOperate={(floorId, deviceId, operation, targetTokenId) =>
+                void fight(
+                  operateNetDevice({
+                    runId: run!.runId,
+                    floorId,
+                    deviceId,
+                    operation,
+                    ...(targetTokenId ? { targetTokenId } : {}),
+                  }),
+                )
+              }
             />
           ))}
         </div>

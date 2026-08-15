@@ -142,7 +142,7 @@ export async function roundOfScene(deps: RealtimeDeps, sceneId: string): Promise
  * bundle to open is exactly the one the sentence means — which is why this
  * needs no round arithmetic at all.
  */
-async function spendNetAction(
+export async function spendNetAction(
   deps: RealtimeDeps,
   input: {
     campaignId: string;

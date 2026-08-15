@@ -111,6 +111,7 @@ import type {
   NetRunAbilityResult,
   NetRunAttackPayload,
   NetRunPayload,
+  NetRunDevicePayload,
   NetRunProgramPayload,
   NetRunSlidePayload,
   NetRunSyncBroadcast,
@@ -1481,6 +1482,16 @@ export const iceTakesTurn = (payload: NetIceActPayload) =>
   emitSceneAck<NetRunAbilityResult>('netrun:ice:turn', payload);
 
 export const clearNetGlue = (runId: string) => emitSceneAck('netrun:glue', { runId });
+
+/* ── węzły kontrolne (etap 26d) ── */
+
+/**
+ * Obsługa jednej rzeczy podłączonej do przejętego węzła — po Akcji Sieciowej
+ * za każdą, a sam węzeł raz na Turę. Strzał z wieżyczki idzie tą samą drogą:
+ * `operation: 'fire'` plus cel, a serwer odpala silnik ataku z etapu 16.
+ */
+export const operateNetDevice = (payload: NetRunDevicePayload) =>
+  emitSceneAck<NetRunAbilityResult>('netrun:device', payload);
 
 /**
  * Dziennik kampanii. Wołane przy wejściu w zakładkę, nie w `state:sync`.

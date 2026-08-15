@@ -36,6 +36,7 @@ import {
   ammoFitsWeapon,
   ammoOffersSecondRoll,
   ammoProfilesOf,
+  combatProfileOperatedBy,
   concentrationBase,
   cpredSmokeModifiers,
   distanceToCover,
@@ -328,13 +329,19 @@ async function resolveStatistToken(
   user: SessionUser,
   sceneId: string,
   attackerTokenId: unknown,
+  /**
+   * Stage 26d: the caller has already proved the right to fire this one. A
+   * netrunner holding the turret's control node does not own its figure and
+   * never will — the node *is* the permission, and it was checked upstream.
+   */
+  authorised = false,
 ): Promise<Token> {
   if (typeof attackerTokenId !== 'string' || attackerTokenId.length === 0) {
     throw new RealtimeError('BAD_REQUEST');
   }
   const { token } = await requireCampaignToken(deps.ctx.prisma, campaignId, attackerTokenId);
   if (token.sceneId !== sceneId) throw new RealtimeError('ATTACKER_ON_OTHER_SCENE');
-  if (user.role !== ROLE_GM && token.ownerId !== user.id) {
+  if (!authorised && user.role !== ROLE_GM && token.ownerId !== user.id) {
     throw new RealtimeError('CHARACTER_NOT_FOUND');
   }
   return token;
@@ -652,6 +659,13 @@ async function buildStatistSource(
   registry: CpredRegistry,
   token: Token,
   request: CpredAttackRequest | undefined,
+  /**
+   * Stage 26d: whose Skills the trigger is pulled with. Present when a turret
+   * is fired from a control node — „rzucając na Umiejętności tego Netrunnera"
+   * (s. 213). The magazine and the plating stay the turret's either way, which
+   * is why the *stored* profile below is never the substituted one.
+   */
+  operator?: CpredCharacterData,
 ): Promise<AttackSource> {
   const profile = readSheetCombatProfile(token.combatProfile);
   if (!profile) throw new RealtimeError('TOKEN_HAS_NO_PROFILE');
@@ -665,12 +679,14 @@ async function buildStatistSource(
       ? CPRED_AUTOFIRE_SKILL_ID
       : (weapon.resolved?.skillId ?? request?.skillId ?? null);
 
-  // Pass two: the same sheet with that one skill at the profile's level.
+  // Pass two: the same sheet with that one skill at the profile's level — or at
+  // the operator's, when somebody else is aiming it.
+  const firing = operator ? combatProfileOperatedBy(profile, operator, skillId) : profile;
   return {
     kind: 'statist',
     token,
     profile,
-    data: sheetFromCombatProfile(profile, hp, skillId),
+    data: sheetFromCombatProfile(firing, hp, skillId),
   };
 }
 
@@ -698,10 +714,16 @@ export async function performAttackRoll(
     /** Whose permissions apply; a bot borrows the GM account (stage 11). */
     user: SessionUser;
     payload: AttackRollPayload<CpredAttackRequest> | undefined;
+    /**
+     * Stage 26d: a defence system fired from a control node. The token shoots,
+     * this sheet rolls, and the Net Action that bought the shot has already
+     * been billed — so the figure's own turn budget is left alone.
+     */
+    device?: { operator: CpredCharacterData };
   },
 ): Promise<AttackRollResult> {
   {
-    const { campaignId, user, payload } = options;
+    const { campaignId, user, payload, device } = options;
     {
       const registry = deps.ctx.cpred;
       // Stage 16b: an attack no longer has to come from a sheet. Naming no
@@ -759,7 +781,14 @@ export async function performAttackRoll(
             scene.id,
             payload?.attackerTokenId,
           )
-        : await resolveStatistToken(deps, campaignId, user, scene.id, payload?.attackerTokenId);
+        : await resolveStatistToken(
+            deps,
+            campaignId,
+            user,
+            scene.id,
+            payload?.attackerTokenId,
+            device !== undefined,
+          );
       if (target && attacker.id === target.id) throw new RealtimeError('BAD_REQUEST');
 
       const source = character
@@ -769,7 +798,14 @@ export async function performAttackRoll(
             token: attacker,
             data: parseCharacterData(character.data, registry),
           } satisfies AttackSource)
-        : await buildStatistSource(deps, campaignId, registry, attacker, payload?.request);
+        : await buildStatistSource(
+            deps,
+            campaignId,
+            registry,
+            attacker,
+            payload?.request,
+            device?.operator,
+          );
       const data = source.data;
 
       const sceneView = toSceneView(scene);
@@ -893,24 +929,31 @@ export async function performAttackRoll(
       // The turn budget is charged *before* anything is spent for real: an attack
       // that has no Action left must not eat ammunition or Luck on its way to the
       // refusal. „Liczba Ataków" decides whether this one fits (stage 14b).
-      await requireTurnSpend(
-        deps,
-        campaignId,
-        scene,
-        attacker.id,
-        {
-          kind: 'attack',
-          weaponRowId: meta.weaponRowId,
-          weaponName: meta.weaponName,
-          rof: weapon.resolved?.rof ?? 1,
-          ...(meta.aimed ? { aimed: true } : {}),
-        },
-        user,
-        CPRED_ACTION_ATTACK,
-        // The roll card that follows says „Zgrzyt → Kurier" already; a second
-        // line reading „Vex — Atak" underneath it is noise.
-        { silent: true },
-      );
+      //
+      // A turret fired from a control node is the one exception (stage 26d): the
+      // Net Action that bought the shot has already been charged to the
+      // netrunner, and the turret is a device, not a combatant with a Turn of
+      // its own. Billing it twice would make one Action cost two.
+      if (!device) {
+        await requireTurnSpend(
+          deps,
+          campaignId,
+          scene,
+          attacker.id,
+          {
+            kind: 'attack',
+            weaponRowId: meta.weaponRowId,
+            weaponName: meta.weaponName,
+            rof: weapon.resolved?.rof ?? 1,
+            ...(meta.aimed ? { aimed: true } : {}),
+          },
+          user,
+          CPRED_ACTION_ATTACK,
+          // The roll card that follows says „Zgrzyt → Kurier" already; a second
+          // line reading „Vex — Atak" underneath it is noise.
+          { silent: true },
+        );
+      }
 
       await spendAttackCosts(deps, campaignId, source, meta, plan.luckSpent);
 

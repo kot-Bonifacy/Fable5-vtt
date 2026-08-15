@@ -174,7 +174,7 @@ export async function buildStateSync(
       : Promise.resolve<NetAccessPointView[]>([]),
     // Runs are campaign-wide rather than scene-wide: „a run survives a scene
     // change" was the reason 26a put the architecture on the campaign.
-    fetchRunsFor(deps.ctx.prisma, deps.ctx.cpred, campaign.id, user),
+    fetchRunsFor(deps, campaign.id, user),
   ]);
   const scene: SceneView | null = viewedScene ? toSceneView(viewedScene) : null;
   return {

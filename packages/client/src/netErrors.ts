@@ -1,18 +1,20 @@
-import { NET_COMBAT_MESSAGES, NET_RUN_PROBLEM_MESSAGES } from '@vtt/shared';
+import { NET_COMBAT_MESSAGES, NET_DEVICE_MESSAGES, NET_RUN_PROBLEM_MESSAGES } from '@vtt/shared';
 
 /**
- * Polskie zdania za odmowami netrunningu (etapy 26b i 26c).
+ * Polskie zdania za odmowami netrunningu (etapy 26b, 26c i 26d).
  *
  * Większość tekstów mieszka w `shared` (`NET_RUN_PROBLEM_MESSAGES` dla runa,
- * `NET_COMBAT_MESSAGES` dla walki w Sieci), bo tymi samymi zdaniami odmawia
- * serwer — tutaj dochodzą wyłącznie kody rdzenia VTT (uprawnienia, brak
- * połączenia) i te, które serwer odsyła jako gotowe zdanie.
+ * `NET_COMBAT_MESSAGES` dla walki w Sieci, `NET_DEVICE_MESSAGES` dla węzłów
+ * kontrolnych), bo tymi samymi zdaniami odmawia serwer — tutaj dochodzą
+ * wyłącznie kody rdzenia VTT (uprawnienia, brak połączenia) i te, które serwer
+ * odsyła jako gotowe zdanie.
  */
 export function netErrorText(code: string | undefined): string {
   if (!code) return 'Nie udało się — nieznany błąd.';
   const known =
     NET_RUN_PROBLEM_MESSAGES[code as keyof typeof NET_RUN_PROBLEM_MESSAGES] ??
-    NET_COMBAT_MESSAGES[code as keyof typeof NET_COMBAT_MESSAGES];
+    NET_COMBAT_MESSAGES[code as keyof typeof NET_COMBAT_MESSAGES] ??
+    NET_DEVICE_MESSAGES[code as keyof typeof NET_DEVICE_MESSAGES];
   if (known) return known;
   switch (code) {
     case 'FORBIDDEN':

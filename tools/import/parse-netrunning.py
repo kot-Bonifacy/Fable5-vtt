@@ -435,6 +435,200 @@ def parse_demons(chapter: str) -> list[dict]:
     return entries
 
 
+# --------------------- systemy obronne (etap 26d) ---------------------
+
+# Trzy tabele z s. 213-216. Zrzut PDF-a skleja je w jeden ciag, ale kazdy wiersz
+# ma dokladnie jeden bezwarunkowy anchor - zdanie o unieszkodliwieniu Testem
+# Elektroniki i zabezpieczen - i to ono tnie strumien na wiersze. Reszta kolumn
+# („Inne") to liczby z etykieta, wiec czyta sie je regexem, a nie pozycja.
+#
+# Nazwa wiersza to jedyne miejsce, gdzie trzeba zgadywac: lezy miedzy ogonem
+# kolumny „Inne" poprzedniego wiersza a jego wlasnym opisem. Ratuje ja to, ze
+# nazwy w tych tabelach pisane sa wielka litera tylko na poczatku („Pajeczy dron
+# naziemny"), a opis zaczyna sie od kolejnej wielkiej litery. Wiersze rozdziela
+# powtarzalna komorka „Granica bronionej strefy"; tam, gdzie jej nie ma, wchodzi
+# heurystyka wielkich liter.
+
+DEFENSE_SECTIONS: list[tuple[str, str, str]] = [
+    ("drone", "AKTYWNE SYSTEMY OBRONNE", "STANOWISKA OBRONNE"),
+    ("emplacement", "STANOWISKA OBRONNE", "SYSTEMY OBRONY ŚRODOWISKOWEJ"),
+    ("environment", "SYSTEMY OBRONY ŚRODOWISKOWEJ", "Bezpieczny dom"),
+]
+
+DEFENSE_HEADER = re.compile(
+    r"(?::\s*NETRUNNER\s*)?Typ\s*Opis\s*Standardowa\s+[Aa]ktywacja\s*Inne"
+)
+DEFENSE_ANCHOR = re.compile(
+    r"PT (\d+) Elektronika i zabezpieczenia,\s*(\d+)\s*minut\w*,\s*by unieszkodliwić\."
+)
+# Powtarzalna komorka kolumny „Inne" - granica wiersza, nie tresc.
+DEFENSE_ZONE = "Granica bronionej strefy"
+DEFENSE_MARKERS = [
+    re.compile(r"RUCH\s*\d+"),
+    re.compile(r"\d+\s*PW"),
+    re.compile(r"Percepcja PT\s*\d+,\s*by zauważyć"),
+    re.compile(r"\bLA\s*\d+"),
+    re.compile(r"Wartość bojowa\s*\d+"),
+]
+CAPITAL = re.compile(r"^[A-ZĄĆĘŁŃÓŚŹŻ]")
+
+
+def defense_numbers(tail: str) -> dict[str, int]:
+    """Kolumna „Inne": RUCH, PW, PT zauwazenia i Wartosc bojowa."""
+    out: dict[str, int] = {}
+    move = re.search(r"RUCH\s*(\d+)", tail)
+    if move:
+        out["move"] = int(move.group(1))
+    hp = re.search(r"(\d+)\s*PW", tail)
+    if hp:
+        out["hp"] = int(hp.group(1))
+    spot = re.search(r"Percepcja PT\s*(\d+)", tail)
+    if spot:
+        out["spotDv"] = int(spot.group(1))
+    combat = re.search(r"Wartość bojowa\s*(\d+)", tail)
+    if combat:
+        # „Wartosc bojowa 1425 PW" - zrzut skleja Wartosc bojowa z PW. Jest
+        # dokladnie jeden podzial, przy ktorym obie liczby maja sens.
+        digits = combat.group(1)
+        split = None
+        for cut in range(1, len(digits)):
+            left, right = int(digits[:cut]), int(digits[cut:])
+            if 1 <= left <= 30 and 1 <= right <= 300:
+                split = (left, right)
+        if split:
+            out["combatValue"], out["hp"] = split
+        else:
+            out["combatValue"] = int(digits)
+    return out
+
+
+def defense_trigger(tail: str) -> str:
+    """„Standardowa aktywacja" - pierwsze zdanie ogona wiersza."""
+    body = DEFENSE_HEADER.sub(" ", tail).strip()
+    stop = body.find(".")
+    return clean(body[: stop + 1] if stop != -1 else body)
+
+
+def defense_strip(tail: str) -> str:
+    """Ogon wiersza bez aktywacji i bez liczb - zostaje „Inne", nazwa i opis."""
+    body = DEFENSE_HEADER.sub(" ", tail).strip()
+    stop = body.find(".")
+    if stop != -1:
+        body = body[stop + 1 :]
+    for pattern in DEFENSE_MARKERS:
+        body = pattern.sub(" ", body)
+    return re.sub(r"\s+", " ", re.sub(r"\s*[-–]\s*", " ", body)).strip()
+
+
+def defense_leading_name(text: str) -> tuple[str, str]:
+    """„Pajeczy dron naziemny Drony pajecze..." -> (nazwa, opis)."""
+    words = text.split(" ")
+    if not words or not CAPITAL.match(words[0]):
+        return "", text
+    index = 1
+    while index < len(words) and not CAPITAL.match(words[index]):
+        index += 1
+    return " ".join(words[:index]).strip(" ,.;:"), " ".join(words[index:]).strip()
+
+
+def defense_guess_name(text: str) -> tuple[str, str]:
+    """Ostatni ciag „Wielka + male" przed koncem pierwszego zdania."""
+    words = text.split(" ")
+    end = len(words)
+    for index, word in enumerate(words):
+        if word.endswith(".") or word.endswith(":"):
+            end = index + 1
+            break
+    best: tuple[int, int] | None = None
+    for index, word in enumerate(words):
+        if not CAPITAL.match(word):
+            continue
+        after = index + 1
+        while after < len(words) and not CAPITAL.match(words[after]):
+            after += 1
+        # Ostro mniejsze: wielka litera stojaca dokladnie na koncu zdania
+        # otwiera juz opis, a nie kolejna nazwe.
+        if after < len(words) and after < end:
+            best = (index, after)
+    if best is None:
+        return "", text
+    start, after = best
+    return " ".join(words[start:after]).strip(" ,.;:"), " ".join(words[after:]).strip()
+
+
+def defense_prices(chapter: str) -> dict[int, tuple[int, str | None]]:
+    """„PT 9 500 ed(Kosztowne)..." (s. 218) - cena zalezy od PT unieszkodliwienia."""
+    stream = clean(
+        slice_between(
+            chapter,
+            "PT unieszkodliwienia Testem Elektroniki i zabezpieczeń",
+            "PRZYKŁADOWY",
+            "ceny systemów obronnych",
+        )
+    )
+    prices: dict[int, tuple[int, str | None]] = {}
+    for match in re.finditer(r"PT\s*(\d+)\s*(\d[\d\s ]*)\s*ed\s*\(([^)]+)\)", stream):
+        prices[int(match.group(1))] = (
+            int(re.sub(r"\D", "", match.group(2))),
+            band_of(match.group(3)),
+        )
+    if not prices:
+        warn("systemy obronne: nie odczytałem tabeli cen (s. 218)")
+    return prices
+
+
+def parse_defenses(chapter: str) -> list[dict]:
+    prices = defense_prices(chapter)
+    entries: list[dict] = []
+    for kind, start, end in DEFENSE_SECTIONS:
+        blob = clean(slice_between(chapter, start, end, f"systemy obronne: {kind}"))
+        # Naglowek tabeli wraca po kazdym lamaniu strony, wiec pierwszy kawalek
+        # to wstep, a wszystkie nastepne - dalsze wiersze tej samej tabeli.
+        pieces = DEFENSE_HEADER.split(blob)
+        if len(pieces) < 2:
+            warn(f"systemy obronne: nie znalazłem nagłówka tabeli ({kind})")
+            continue
+        body = " ".join(piece.strip() for piece in pieces[1:])
+        parts = DEFENSE_ANCHOR.split(body)
+        rows = (len(parts) - 1) // 3
+        if rows == 0:
+            warn(f"systemy obronne: tabela {kind} nie ma ani jednego wiersza")
+            continue
+        for row in range(rows):
+            chunk = parts[3 * row] if row == 0 else defense_strip(parts[3 * row])
+            if row == 0:
+                name, description = defense_leading_name(clean(chunk))
+            elif DEFENSE_ZONE in chunk:
+                after = chunk[chunk.rindex(DEFENSE_ZONE) + len(DEFENSE_ZONE) :]
+                name, description = defense_leading_name(after.strip())
+            else:
+                name, description = defense_guess_name(chunk)
+            if not name:
+                warn(f"systemy obronne ({kind}): wiersz {row + 1} bez nazwy — pominięty")
+                continue
+            disable_dv = int(parts[3 * row + 1])
+            minutes = int(parts[3 * row + 2])
+            tail = parts[3 * (row + 1)] if 3 * (row + 1) < len(parts) else ""
+            cost, band = prices.get(disable_dv, (None, None))
+            trigger = defense_trigger(tail)
+            entries.append(
+                {
+                    "id": f"defense.{slugify(name)}",
+                    "category": "netDefense",
+                    "defenseKind": kind,
+                    "name": name,
+                    "description": trimmed(clean(description)),
+                    "disableDv": disable_dv,
+                    "disableMinutes": minutes,
+                    **defense_numbers(tail),
+                    **({"trigger": trigger} if trigger else {}),
+                    **({"cost": cost} if cost is not None else {}),
+                    **({"costCategory": band} if band else {}),
+                }
+            )
+    return entries
+
+
 def demon_prices(chapter: str) -> dict[str, tuple[int, str | None]]:
     stream = clean(
         slice_between(chapter, "DemonyCena", "INSTALACJA SYSTEMÓW OBRONNYCH", "ceny Demonów")
@@ -701,6 +895,7 @@ def main() -> int:
     programs = parse_programs(chapter)
     black_ice = parse_black_ice(chapter)
     demons = parse_demons(chapter)
+    defenses = parse_defenses(chapter)
     hardware = parse_hardware(chapter)
 
     ice_ids = {slugify(entry["name"]): entry["id"] for entry in black_ice}
@@ -709,7 +904,7 @@ def main() -> int:
     ladder = parse_difficulty_ladder(chapter)
     net_actions = parse_net_actions(chapter)
 
-    entries = programs + black_ice + demons + hardware
+    entries = programs + black_ice + demons + defenses + hardware
     seen: set[str] = set()
     unique: list[dict] = []
     for entry in entries:
@@ -746,7 +941,8 @@ def main() -> int:
 
     print(
         f"Sieć: {len(programs)} Programów, {len(black_ice)} Czarnych LOD-ów, "
-        f"{len(demons)} Demonów, {len(hardware)} ulepszeń -> {compendium_path}"
+        f"{len(demons)} Demonów, {len(defenses)} systemów obronnych, "
+        f"{len(hardware)} ulepszeń -> {compendium_path}"
     )
     print(
         f"      lobby {len(lobby)} wierszy, zawartość {len(content)} wierszy, "

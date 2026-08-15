@@ -7,6 +7,94 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 15.08 — etap 26b (run: punkty dostępu, winda i Akcje Sieciowe)
+
+**Etap 26b został przed rozpoczęciem podzielony na dwa** (decyzja MG). Pierwotny zakres niósł
+run **i** całą walkę w Sieci naraz: Programy z trzema klasami efektów, Pafa, Ślizg, Czarnego
+LOD-a z darmowym atakiem, pościgiem i wstawką do kolejki inicjatywy oraz obrażenia w mózg —
+to samo w sobie jest etapem wielkości 16b+16c. Walka wyprowadziła się do nowego **26c**,
+a dawne 26c (Demony i Soma) zostało przenumerowane na **26d**.
+
+**Punkt dostępu musiał powstać od zera i to on jest bramą do całego etapu.** Opis etapu wymieniał
+„6 m od punktu dostępu", ale takiego bytu w projekcie nie było. Powstał jako obiekt sceny
+(`NetAccessPoint`, wzorem osłon z 16c), stawiany narzędziem mapy 🔌 i wiązany z Architekturą
+z biblioteki 26a. **Domyślnie ukryty** (decyzja MG): gracz nie dostaje go w payloadzie, dopóki
+nie znajdzie go Skanerem albo dopóki MG go nie odsłoni — dzięki temu Skaner ma co robić.
+
+**Zasięg i ściana to ten sam rachunek co linia strzału z 16b.** `metresBetween` + `hasLineOfFire`,
+zero nowej geometrii — gdyby powstała druga, prędzej czy później drzwi przepuszczałyby kulę
+i nie przepuszczały kabla.
+
+**Akcje Sieciowe siedzą _w_ Akcji tury, nie obok niej.** Model jest kopią Akcji Ataku z 14b:
+jedna Akcja, w środku licznik użyć (`CpredNetActionUse` obok `CpredAttackAction`). Dzięki temu
+„albo Akcja w Somie, albo Akcje Sieciowe" (s. 198) wychodzi z arytmetyki, a nie z osobnego
+warunku — netrunner, który już strzelał, nie wejdzie do Sieci, i odwrotnie. Tracker pokazuje
+„Sieć 1/4" dopiero po pierwszej Akcji Sieciowej, więc reszcie stołu nic nie przybyło.
+
+**Szyb jest drzewem — i to jest cała odpowiedź na „nie możesz ominąć przeszkody".** Rodzicem
+piętra trzonu jest piętro nad nim, a pierwszego piętra odgałęzienia — piętro trzonu, z którego
+wyrasta. Trasa między dwoma piętrami jest więc jedna i nie ma czego omijać: wystarczy sprawdzić,
+czy po drodze nie stoi niezłamane hasło. Na samo hasło **wejść wolno** — inaczej nikt nigdy
+nie mógłby go złamać Backdoorem.
+
+**Wiedza o piętrze jest trójwartościowa i tnie ją serwer.** Nieodkryte piętro nie ma w payloadzie
+ani rodzaju, ani nazwy, ani PT; piętro ze Zwiadu ma rodzaj i nazwę, ale **nie PT** („Zwiad nie
+podaje Poziomów Trudności", s. 200); dopiero wejście odsłania wszystko. Notatka MG na Pliku jest
+wyjątkiem, który zarabia Ajdi: to jedyna zdolność, która ma co wypłacić.
+
+**Ślady przeżywają odłączenie, odkrycia nie.** „Odłączenie resetuje obronę Architektury"
+(s. 198), więc wiersz runa **kasuje się**, a Wirus i PT Maskowania idą do osobnej kolumny
+`NetArchitecture.runtime` — nie do `data`, którą edytor MG z 26a przepisuje w całości przy
+każdym zapisie. Wirus zamieciony poprawką literówki w nazwie piętra byłby całym runem gracza
+wyrzuconym do kosza.
+
+**Czat mówi dwie różne rzeczy dwóm widowniom.** Karta rzutu z PT idzie jako `gmroll`
+(netrunner + MG), bo PT jest sekretem Architektury; stół dostaje jedną linię „Kolec — Backdoor ·
+udane". Kryterium „reszta stołu widzi skrót, nie zawartość Architektury" to zasada o payloadach,
+nie o stylach.
+
+**Zweryfikowane:** 1125 testów w `shared` (34 nowe w `netrun.test.ts`), 658 na serwerze
+(17 nowych w `netrun.test.ts` na żywych gniazdach — w tym filtr pięter na payloadzie, odmowa
+spoza 6 m, awaryjne odłączenie po odejściu figury i to, że gracz nie widzi cudzego runa),
+`tsc --noEmit` czysty w trzech pakietach, ESLint bez uwag, `pnpm build` bez uwag. Migracja:
+`20260815083924_stage26b_net_run` (dwie nowe tabele + kolumna `runtime`, zero zmian w danych).
+Przy okazji naprawiony **błąd typów z 26a**: `emitAck` w `netrunning.test.ts` deklarował
+`SocketAck<T>`, a testy czytały `ack.data?` bez zawężania — `tsc` sypał 31 błędami w tym pliku
+od 14.08.
+
+**Odklikane u MG i u gracza** w kampanii „Poligon bojowy" (**stan przywrócony po oględzinach** —
+architektura, gniazdo i żeton skasowane, „Test 27x" z powrotem bez Roli i bez deku). Potwierdzone:
+**narzędzie 🔌** w pasku mapy z selektorem Architektury, przełącznikiem „ukryte" i gumką;
+**pierścień 6 m** wokół gniazda i przygaszona ikona, dopóki jest ukryte; **gracz nie dostaje
+ukrytego gniazda** (pusta lista w `state:sync`); **karta gniazda** z listą kandydatów i dystansem
+(„Kolec — 5,7 m"), a spoza zasięgu z napisem „Za daleko — trzeba stanąć w promieniu 6 m"
+i **wyszarzonym** „Podłącz się"; **okno „Sieć"** z trzonem, odgałęzieniem („z piętra 2") i cyjanową
+ramką na piętrze netrunnera; **Zwiad** („Odsłonięte piętra: 5"); **Backdoor** z chipem „złamane"
+i odmową ruchu przed nim; **Ajdi** odsłaniające notatkę MG na Pliku; **„Skopiuj Plik"** za darmo
+(chip „kopia na deku"); **Kontrola** („Węzeł przejęty — PT odebrania go tobie: 9");
+**Wirus przez dwie Akcje Sieciowe** („Wirus w budowie: 1 / 2" → „Wirus zostawiony — PT jego
+zniszczenia: 13"); **Maskowanie**; **Skaner** odsłaniający ukryte gniazdo graczowi;
+**awaryjne odłączenie** po odejściu figury poza 6 m (okno zamyka się u obu stron, na czacie
+„poza zasięgiem punktu dostępu (6 m)"). **Strona gracza** (avatar9, właściciel „Test 27x"):
+okno ma tytuł **„SIEĆ"** bez nazwy Architektury, piętro ze Zwiadu ma rodzaj i nazwę, ale
+**nie ma PT**, a czat niesie same skróty („Backdoor — udane"), bez kart rzutów. **Ponowne
+podłączenie** po odłączeniu: **Wirus PT 13 został**, a „złamane", „rozpoznany" i „przejęty"
+zniknęły — obrona Architektury wróciła do stanu wyjściowego. Konsola czysta.
+
+**Sześć poprawek po oględzinach — pięć z nich to błędy, które wyszły dopiero na mapie.**
+(1) **Gniazdo kradło kliknięcia figurze, która na nim stała** — warstwa markerów leżała nad
+tokenami, więc figura pod 🔌 nie dawała się kliknąć, przeciągnąć ani otworzyć PPM-em. Gniazdo
+zjechało **pod** warstwę tokenów: to scenery, a normalną rzeczą z terminalem jest podejść do niego.
+(2) **Marker nie skalował się przy zoomie** — `setAccessPoints` nie było wołane z przebiegu, który
+przerysowuje uchwyty ekranowe (lampy, pinezki, etykiety osłon). (3) **Okno „Sieć" miało 1180 px**
+— `sheet.css` wczytuje się **po** `styles.css` i ustawia `.sheet-window`, więc reguła szerokości
+musiała podnieść specyficzność do `.sheet-window.net-run-window`. (4) **Pasek statusu sklejał się
+w jeden ciąg i pisał Wielkimi Literami** („Punkt Dostępu") — dokładnie ta sama pułapka `.cp-bar`
+co przy belce deku w 26a; pasek dostał własne style. (5) **Nazwa piętra ucinała się do „L…"**,
+gdy przybywało chipów — wiersz zwija się teraz do drugiej linii zamiast zjadać nazwę.
+(6) **Selektor Architektury w karcie gniazda był pusty**, dopóki MG nie otworzył zakładki „Sieć"
+— biblioteka jedzie na żądanie (26a), więc karta dociąga ją sama.
+
 ### Sesja 14.08 (piąta tego dnia) — etap 26a (Sieć: dane, architektura, cyberdek)
 
 **Etap 26 podzielony na trzy, nie na dwa.** Opis etapu dopuszczał podział na „architektury

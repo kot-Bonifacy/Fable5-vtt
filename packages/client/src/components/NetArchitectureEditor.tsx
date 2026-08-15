@@ -3,13 +3,19 @@ import type {
   CompendiumEntry,
   CpredNetArchitecture,
   CpredNetBranch,
+  CpredNetDevice,
   CpredNetFloor,
+  NetDeviceKind,
   NetDifficulty,
   NetFloorKind,
 } from '@vtt/shared';
 import {
   NET_BRANCHES_MAX,
   NET_BRANCH_PARENT_MIN,
+  NET_DEVICES_PER_NODE_MAX,
+  NET_DEVICE_KINDS,
+  NET_DEVICE_KIND_LABELS,
+  NET_DEVICE_NAME_MAX,
   NET_DIFFICULTIES,
   NET_DIFFICULTY_LABELS,
   NET_FLOORS_MAX,
@@ -17,11 +23,14 @@ import {
   NET_FLOOR_DV_MIN,
   NET_FLOOR_KINDS,
   NET_FLOOR_KIND_LABELS,
+  NET_FLOOR_KINDS_WITH_DEVICES,
   NET_FLOOR_KINDS_WITH_DV,
   NET_FLOOR_KINDS_WITH_PROGRAMS,
   NET_FLOOR_PROGRAMS_MAX,
-  isNetDefenseEntry,
+  isOpening,
   isProgramEntry,
+  netDefenseSystemEntries,
+  netDemonEntries,
   netArchitectureAdvice,
   netBranchDepth,
   netDeepestBranch,
@@ -30,6 +39,8 @@ import {
 import { saveNetArchitecture } from '../socket.js';
 import { useCompendiumStore } from '../stores/compendiumStore.js';
 import { useNetStore } from '../stores/netStore.js';
+import { useTokenStore } from '../stores/tokenStore.js';
+import { useWallStore } from '../stores/wallStore.js';
 import { plural } from '../plural.js';
 
 /**
@@ -67,26 +78,192 @@ function floorKindOf(value: string): NetFloorKind {
 
 /** Programs the GM may drop on a floor: Black ICE for `ice`, Demons for `demon`. */
 function pickableFor(kind: NetFloorKind, entries: CompendiumEntry[]): CompendiumEntry[] {
-  if (kind === 'demon') return entries.filter(isNetDefenseEntry);
+  if (kind === 'demon') return netDemonEntries(entries);
   return entries.filter((entry) => isProgramEntry(entry) && entry.blackIce === true);
+}
+
+/**
+ * Rzeczy podłączone do węzła kontrolnego (etap 26d).
+ *
+ * Wiązanie jest **identyfikatorem**: wieżyczka wskazuje żeton stojący na
+ * scenie, drzwi wskazują ścianę z 18d. Kopii żadnej z tych rzeczy tu nie ma
+ * i być nie może — inaczej magazynek wieżyczki miałby dwa domy.
+ *
+ * Lista żetonów i drzwi bierze się z **oglądanej sceny**, bo tam MG stawia
+ * wieżyczkę; Architektura jest kampanijna i może wisieć przy kilku scenach,
+ * więc jeśli MG zwiąże urządzenie z żetonem innej sceny, wybór po prostu
+ * pokaże goły identyfikator zamiast nazwy.
+ */
+function DeviceRows({
+  floor,
+  entries,
+  tokens,
+  openings,
+  onChange,
+}: {
+  floor: CpredNetFloor;
+  entries: CompendiumEntry[];
+  tokens: { id: string; name: string }[];
+  openings: { id: number; label: string }[];
+  onChange: (next: CpredNetFloor) => void;
+}) {
+  const devices = floor.devices ?? [];
+  const systems = useMemo(() => netDefenseSystemEntries(entries), [entries]);
+
+  function setDevice(index: number, next: CpredNetDevice) {
+    onChange({ ...floor, devices: devices.map((entry, at) => (at === index ? next : entry)) });
+  }
+
+  return (
+    <div className="net-floor-devices">
+      {devices.map((device, index) => (
+        <div key={device.id} className="net-floor-device">
+          <div className="net-floor-line">
+            <select
+              value={device.deviceKind}
+              title="Czym jest ta rzecz — to decyduje, jakie przyciski dostaje netrunner"
+              onChange={(event) =>
+                setDevice(index, { ...device, deviceKind: deviceKindOf(event.target.value) })
+              }
+            >
+              {NET_DEVICE_KINDS.map((kind) => (
+                <option key={kind} value={kind}>
+                  {NET_DEVICE_KIND_LABELS[kind]}
+                </option>
+              ))}
+            </select>
+            <input
+              className="net-floor-label"
+              type="text"
+              maxLength={NET_DEVICE_NAME_MAX}
+              value={device.name}
+              placeholder="Nazwa przy stole, np. „Wieżyczka nad drzwiami”"
+              onChange={(event) => setDevice(index, { ...device, name: event.target.value })}
+            />
+            <button
+              type="button"
+              className="small-button character-delete"
+              title="Odłącz od węzła"
+              onClick={() =>
+                onChange({ ...floor, devices: devices.filter((_, at) => at !== index) })
+              }
+            >
+              ✕
+            </button>
+          </div>
+          <div className="net-floor-line">
+            <select
+              value={device.entryId ?? ''}
+              title="Wpis z kompendium — daje PT unieszkodliwienia, PW i Wartość bojową"
+              onChange={(event) => {
+                const next = { ...device };
+                if (event.target.value) next.entryId = event.target.value;
+                else delete next.entryId;
+                setDevice(index, next);
+              }}
+            >
+              <option value="">— bez wpisu kompendium —</option>
+              {systems.map((entry) => (
+                <option key={entry.id} value={entry.id}>
+                  {entry.name}
+                </option>
+              ))}
+            </select>
+            {device.deviceKind === 'door' ? (
+              <select
+                value={device.wallId === undefined ? '' : String(device.wallId)}
+                title="Drzwi albo okno z etapu 18d, które ten węzeł otwiera"
+                onChange={(event) => {
+                  const next = { ...device };
+                  const parsed = Number.parseInt(event.target.value, 10);
+                  if (Number.isInteger(parsed)) next.wallId = parsed;
+                  else delete next.wallId;
+                  setDevice(index, next);
+                }}
+              >
+                <option value="">— wskaż drzwi na scenie —</option>
+                {openings.map((opening) => (
+                  <option key={opening.id} value={String(opening.id)}>
+                    {opening.label}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <select
+                value={device.tokenId ?? ''}
+                title="Figura na scenie, z której to urządzenie strzela"
+                onChange={(event) => {
+                  const next = { ...device };
+                  if (event.target.value) next.tokenId = event.target.value;
+                  else delete next.tokenId;
+                  setDevice(index, next);
+                }}
+              >
+                <option value="">— bez figury na mapie —</option>
+                {tokens.map((token) => (
+                  <option key={token.id} value={token.id}>
+                    {token.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        </div>
+      ))}
+      {devices.length < NET_DEVICES_PER_NODE_MAX && (
+        <button
+          type="button"
+          className="small-button"
+          onClick={() =>
+            onChange({
+              ...floor,
+              devices: [
+                ...devices,
+                { id: makeId('dev'), name: 'Kamera', deviceKind: 'camera' as NetDeviceKind },
+              ],
+            })
+          }
+        >
+          + Urządzenie
+        </button>
+      )}
+      {systems.length === 0 && (
+        <span className="placeholder-text">
+          Kompendium nie ma jeszcze systemów obronnych — urządzenie i tak zadziała, tylko bez PT
+          unieszkodliwienia i PW.
+        </span>
+      )}
+    </div>
+  );
+}
+
+function deviceKindOf(value: string): NetDeviceKind {
+  return (NET_DEVICE_KINDS as readonly string[]).includes(value)
+    ? (value as NetDeviceKind)
+    : 'camera';
 }
 
 function FloorRow({
   floor,
   index,
   entries,
+  tokens,
+  openings,
   onChange,
   onRemove,
 }: {
   floor: CpredNetFloor;
   index: number;
   entries: CompendiumEntry[];
+  tokens: { id: string; name: string }[];
+  openings: { id: number; label: string }[];
   onChange: (next: CpredNetFloor) => void;
   onRemove: () => void;
 }) {
   const pickable = useMemo(() => pickableFor(floor.kind, entries), [floor.kind, entries]);
   const showDv = NET_FLOOR_KINDS_WITH_DV.includes(floor.kind);
   const showPrograms = NET_FLOOR_KINDS_WITH_PROGRAMS.includes(floor.kind);
+  const showDevices = NET_FLOOR_KINDS_WITH_DEVICES.includes(floor.kind);
   const programIds = floor.programIds ?? [];
 
   function setKind(kind: NetFloorKind) {
@@ -97,6 +274,9 @@ function FloorRow({
     if (NET_FLOOR_KINDS_WITH_DV.includes(kind) && floor.dv !== undefined) next.dv = floor.dv;
     if (NET_FLOOR_KINDS_WITH_PROGRAMS.includes(kind) && floor.programIds?.length) {
       next.programIds = floor.programIds;
+    }
+    if (NET_FLOOR_KINDS_WITH_DEVICES.includes(kind) && floor.devices?.length) {
+      next.devices = floor.devices;
     }
     if (floor.notes) next.notes = floor.notes;
     onChange(next);
@@ -199,6 +379,16 @@ function FloorRow({
           </div>
         )}
 
+        {showDevices && (
+          <DeviceRows
+            floor={floor}
+            entries={entries}
+            tokens={tokens}
+            openings={openings}
+            onChange={onChange}
+          />
+        )}
+
         <input
           className="net-floor-notes"
           type="text"
@@ -221,12 +411,16 @@ function BranchColumn({
   branch,
   trunkFloors,
   entries,
+  tokens,
+  openings,
   onChange,
   onRemove,
 }: {
   branch: CpredNetBranch;
   trunkFloors: number;
   entries: CompendiumEntry[];
+  tokens: { id: string; name: string }[];
+  openings: { id: number; label: string }[];
   onChange: (next: CpredNetBranch) => void;
   onRemove: (() => void) | null;
 }) {
@@ -275,6 +469,8 @@ function BranchColumn({
             floor={floor}
             index={isTrunk ? index : (branch.parentFloor ?? 0) + 1 + index}
             entries={entries}
+            tokens={tokens}
+            openings={openings}
             onChange={(next) => setFloor(index, next)}
             onRemove={() =>
               onChange({ ...branch, floors: branch.floors.filter((_, at) => at !== index) })
@@ -300,6 +496,8 @@ function EditorWindow({ architectureId }: { architectureId: string | 'new' }) {
   const close = useNetStore((s) => s.close);
   const entriesById = useCompendiumStore((s) => s.entries);
   const order = useCompendiumStore((s) => s.order);
+  const tokensById = useTokenStore((s) => s.tokens);
+  const walls = useWallStore((s) => s.walls);
 
   const [position, setPosition] = useState({ x: 140, y: 60 });
   const [error, setError] = useState<string | null>(null);
@@ -313,6 +511,27 @@ function EditorWindow({ architectureId }: { architectureId: string | 'new' }) {
     [entriesById, order],
   );
   const advice = useMemo(() => (draft ? netArchitectureAdvice(draft) : []), [draft]);
+
+  // Czym da się związać urządzenie węzła (26d): figury i otwory **oglądanej**
+  // sceny. Architektura jest kampanijna, więc to podpowiedź, nie ograniczenie —
+  // zapisany zostaje sam identyfikator.
+  const tokens = useMemo(
+    () =>
+      Object.values(tokensById)
+        .map((token) => ({ id: token.id, name: token.name }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'pl')),
+    [tokensById],
+  );
+  const openings = useMemo(
+    () =>
+      walls
+        .filter((wall) => isOpening(wall))
+        .map((wall) => ({
+          id: wall.id,
+          label: `${wall.kind === 'door' ? 'Drzwi' : 'Okno'} #${wall.id}${wall.locked ? ' (na klucz)' : ''}`,
+        })),
+    [walls],
+  );
 
   if (!draft) return null;
   const shaft = draft;
@@ -444,6 +663,8 @@ function EditorWindow({ architectureId }: { architectureId: string | 'new' }) {
               branch={trunk}
               trunkFloors={trunk.floors.length}
               entries={entries}
+              tokens={tokens}
+              openings={openings}
               onChange={(next) => setBranch(trunk.id, next)}
               onRemove={null}
             />
@@ -454,6 +675,8 @@ function EditorWindow({ architectureId }: { architectureId: string | 'new' }) {
               branch={branch}
               trunkFloors={trunk?.floors.length ?? 0}
               entries={entries}
+              tokens={tokens}
+              openings={openings}
               onChange={(next) => setBranch(branch.id, next)}
               onRemove={() =>
                 patch({ branches: shaft.branches.filter((entry) => entry.id !== branch.id) })

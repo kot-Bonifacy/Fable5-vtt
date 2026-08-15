@@ -57,7 +57,8 @@ Pełne notatki z zamkniętych etapów: `archiwum/dziennik-sesji.md` (nie czytaj 
 | 26a | Sieć: dane, architektura i cyberdek           | ✅     | 2026-08-14      | etap 26 podzielony na 26a/26b/26c 14.08; ekran Sieci = pływające okno (decyzja MG)              |
 | 26b | Run: punkty dostępu, winda i Akcje Sieciowe   | ✅     | 2026-08-15      | etap 26b podzielony na 26b/26c 15.08; punkt dostępu = obiekt sceny, ukryty do Skanera           |
 | 26c | Walka w Sieci: Programy, Paf, Ślizg, LOD      | ✅     | 2026-08-15      | efekt Programu = dane wpisu; `Combatant.tokenId` nullowalny — LOD stoi w kolejce bez figury      |
-| 26d | Demony, węzły kontrolne i systemy obronne     | ⬜     |                 |                                                                                                 |
+| 26d | Węzły kontrolne i systemy obronne             | ✅     | 2026-08-15      | etap 26d podzielony na 26d/26e 15.08; wieżyczka = żeton z profilem statysty z 16b               |
+| 26e | Demony i samodzielne systemy obronne          | ⬜     |                 |                                                                                                 |
 | 27a | Karta jak oficjalna: strona pierwsza          | ✅     | 2026-08-13      | wydzielony z 27 dnia 13.08 (27a/27b/27c); motyw dzień/noc na razie tylko dla karty              |
 | 27b | Karta: broń, pancerz, ekwipunek               | ✅     | 2026-08-13      | zakładka „Walka" zniknęła; pancerz = 3 wiersze wydruku + reszta; trzy nowe pola prozy           |
 | 27c | Karta: Ścieżka Życia i cyborgizacje           | ✅     | 2026-08-14      | sylwetka = gotowy SVG z domeny publicznej; gniazdo na ciele to nowe pole wiersza wszczepu       |
@@ -66,15 +67,19 @@ Pełne notatki z zamkniętych etapów: `archiwum/dziennik-sesji.md` (nie czytaj 
 
 ## Od czego zacząć
 
-Ostatnio zamknięte: **26c** (Programy z deku, Paf, Ślizg, Czarny LOD z darmowym atakiem
-i wstawką do kolejki inicjatywy, obrażenia w mózg z Pancerzem, rachunek za awaryjne odłączenie).
-Netrunning ma od teraz **komplet walki** — brakuje już tylko Demonów i systemów obronnych (26d).
+Ostatnio zamknięte: **26d** (węzeł kontrolny z listą urządzeń, 18 systemów obronnych z s. 213–216
+w kompendium, kamera / drzwi / przełącznik / **wieżyczka strzelająca silnikiem z 16 Umiejętnościami
+netrunnera**, PT odebrania węzła równe wynikowi Testu Kontroli). Sieć **sięga od tego etapu do
+mapy** — z rozdziału 11 zostają już tylko Demony i samodzielne wyzwalanie systemów (**26e**).
 
 **🎯 Poligon jest przygotowany pod stół — nic nie trzeba budować od nowa.** Na scenie
-„Strzelnica" stoi odsłonięty **„Punkt dostępu"** (Architektura „siec klub": piętro 1
-„Poczekalnia", piętro 2 „Strażnik piętra" z Piekielnym ogarem) i obok niego żeton **„Kolec"**
-związany z kartą **„Test 27x"** — Netrunner z Interfejsem 7 i cyberdekiem doskonałej jakości
-(Gumka, Pancerz, Miecz, Młot na wroga, Superklej, Szabloząb). Tryb turowy jest **wyłączony**;
+„Strzelnica" stoi odsłonięty **„Punkt dostępu"** i obok niego żeton **„Kolec"** związany z kartą
+**„Test 27x"** — Netrunner z Interfejsem 7 i cyberdekiem doskonałej jakości (Gumka, Pancerz,
+Miecz, Młot na wroga, Superklej, Szabloząb). Architektura **„siec klub"** ma teraz **trzy piętra**:
+1 „Poczekalnia", 2 „Strażnik piętra" z Piekielnym ogarem, 3 **„Węzeł ochrony" (PT 8)** z dwoma
+urządzeniami — **„Kamera nad bramą"** (wpis „Kamera obserwacyjna") i **„Grzechot"** (wpis
+„Automatyczna wieżyczka", związany z żetonem **„Automatyczna wieżyczka"** stojącym na mapie:
+REF 7, Umiejętność 7, karabin szturmowy 24/25, PW 25/25). Tryb turowy jest **wyłączony**;
 kolejka „PRZED WALKĄ" z Tonym i avatar9 wraca jednym kliknięciem „Włącz tryb turowy".
 
 **⚠️ Jedna rzecz do zrobienia ręcznie: „Poligon bojowy" stoi teraz na poziomie sklepu 1
@@ -82,14 +87,47 @@ kolejka „PRZED WALKĄ" z Tonym i avatar9 wraca jednym kliknięciem „Włącz 
 przełącznika gracz nie kupi niczego droższego niż 50 ed. Przełącznik 1–4 jest w zakładce
 **„Kompendium"** pod chipami kategorii; MG kupuje przez wszystkie poziomy niezależnie od niego.
 
-**Następne etapy do wyboru:** **26d** (Demony broniące się Testem Interfejsu, węzły kontrolne
-sięgające do Somy, trzy tabele systemów obronnych — domyka rozdział 11), **27** (kości 3D,
-motyw dzień/noc dla reszty UI, wydajność) i **28** (VPS). **Sesja zerowa z drużyną** jest nadal
-najlepszym testem 25a+25b+25c i trzech stron karty naraz.
+**Następne etapy do wyboru:** **26e** (Demony broniące się Testem Interfejsu, ich tura „najpierw
+węzły, Paf z resztek", samodzielne stanowiska obronne i strefa broniona — domyka rozdział 11),
+**27** (kości 3D, motyw dzień/noc dla reszty UI, wydajność) i **28** (VPS). **Sesja zerowa
+z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz.
 
 **09.08 głos wypadł z projektu** (sesja bez etapu, decyzja MG): etapy **12, 21 i 22** wycofane, kod TTS usunięty z repo. Szczegóły w `archiwum/dziennik-sesji.md` i w `archiwum/wycofane/README.md`.
 
 ### Otwarte zaległości (przechodzą między etapami)
+
+- **Etap 26d — cztery ścieżki nieodklikane; reszta sprawdzona 15.08 (patrz notatka sesji).**
+  (1) **„Raz na Turę"** — `NET_NODE_USED` ma polskie zdanie i test na żywych gniazdach, ale
+  w przeglądarce do niego nie doszło: rundy istnieją dopiero po **rozpoczęciu** walki (sam
+  „Włącz tryb turowy" zostawia stan „PRZED WALKĄ" i rundę 0), a rozkręcanie walki w żywej
+  kampanii zmieniłoby stan Poligonu bardziej niż warto. (2) **Drzwi z 18d** — na „Strzelnicy"
+  nie ma ani jednych; ścieżka jest kopią `opening:toggle` i ma test serwera, w oknie Sieci
+  klikane były kamera i wieżyczka. (3) **Odmowa `NET_DEVICE_OFF`** — z tego okna **nie da się**
+  do niej dojść i to jest zamierzone: wyłączone urządzenie pokazuje wyłącznie „Włącz". Zdanie
+  istnieje dla klienta, który by o tym nie wiedział, i ma test. (4) **Strona gracza** — całe okno
+  urządzeń oglądane było z konta MG. Różnica w kodzie **jest i jest zamierzona** (gracz nie
+  dostaje listy urządzeń, dopóki nie przejmie węzła — pokryte testem na payloadzie „nie przysyła
+  graczowi listy urządzeń"), ale nikt nie patrzył na to oczami gracza.
+
+- **Etap 26d — strzał z wieżyczki za osłoną kosztuje Akcję Sieciową i nie ma czym odpowiedzieć.**
+  „Ostrzelaj osłonę czy strzelaj mimo niej" (16c) wraca ze ścieżki ataku jako **pytanie**, a nie
+  karta — a Akcja Sieciowa jest zaksięgowana wcześniej, bo sprawdzenie osłony przed rachunkiem
+  znaczyłoby policzenie geometrii drugi raz. Odmowa mówi o tym wprost („Akcja Sieciowa poszła —
+  strzel jeszcze raz mimo osłony"), ale **okno Sieci nie ma przycisku „mimo osłony"**: pole
+  `request.ignoreCover` jedzie w payloadzie i nikt go stamtąd nie ustawia. Do dołożenia razem
+  z kartą wyboru dla urządzeń.
+
+- **Etap 26d — kamera „obrócona" jest faktem na czacie, nie stożkiem na mapie** (decyzja MG
+  z 15.08). VTT nie ma modelu widzenia kamery, więc obsługa zmienia stan urządzenia i pisze
+  zdanie („nie patrzy już na broniony obszar"), a resztę rozstrzyga MG — dokładnie tak jak dwa
+  ręczne haki Programów z 26c. Prawdziwy stożek liczony geometrią z 18a jest wpisem w `POMYSLY.md`.
+
+- **Etap 26d — parser tabel obronnych stoi na dwóch heurystykach i to on pierwszy pęknie przy
+  nowym zrzucie PDF-a.** Wiersze tnie zdanie „PT N Elektronika i zabezpieczenia, N minut…", a
+  nazwę wyłuskuje się zza powtarzalnej komórki „Granica bronionej strefy"; tam, gdzie tej komórki
+  nie ma (Kamera obserwacyjna), wchodzi reguła „ostatni ciąg Wielka + małe przed końcem pierwszego
+  zdania". Wyszło 18 z 18 nazw, ale gdyby zrzut się zmienił, `parse_defenses` jest miejscem do
+  obejrzenia w pierwszej kolejności.
 
 - **Etap 26c — pięć ścieżek nieodklikanych; reszta sprawdzona 15.08 (patrz notatka sesji).**
   (1) **Strona gracza** — całe okno walki oglądane było z konta MG; różnica w kodzie **jest**
@@ -522,6 +560,85 @@ decyduje przegrany, nie zwycięzca`) — Konfrontacje z 10.08 szły z konta MG, 
 
 ## Notatki z dwóch ostatnich sesji
 
+### Sesja 15.08 (trzecia tego dnia) — etap 26d (węzły kontrolne i systemy obronne)
+
+**Etap 26d został przed rozpoczęciem podzielony na dwa** (decyzja MG). Pierwotny zakres niósł
+naraz nowy typ uczestnika (Demon z własną turą, obroną Testem Interfejsu i wejściem na czoło
+kolejki), most między Architekturą a sceną, trzy tabele danych z s. 213–216 i figury strzelające
+na mapie — czyli tyle, ile 26b i 26c razem wzięte. Demony i samodzielne wyzwalanie systemów
+wyprowadziły się do nowego **26e**; 26d jest o tym, co netrunner robi **przejętym węzłem**.
+
+**Wieżyczka to żeton z profilem statysty z 16b, a nie nowy byt sceny** (decyzja MG). Dzięki temu
+strzela dokładnie tym samym `performAttackRoll`, co każdy inny wróg — i zasięg, PT z tabeli, osłona,
+linia strzału, magazynek i karta obrażeń działają przy niej bez jednej linijki nowego kodu.
+„Rzucając na Umiejętności tego Netrunnera" (s. 213) wchodzi **jednym podstawieniem na wejściu**:
+`combatProfileOperatedBy` robi z profilu wieżyczki profil z Cechami i Umiejętnością netrunnera,
+a `buildStatistSource` buduje z niego arkusz. Planer nie ma i nie może mieć gałęzi „strzela
+wieżyczka" — inaczej osłona i amunicja musiałyby się nauczyć drugiej drogi. Widać to na karcie
+z oględzin: strzał z „Automatycznej wieżyczki" (REF 7, Umiejętność 7) poszedł jako
+`1d10+5` z rozbiciem **„Refleks (REF) +5 · Broń długa (nietrenowana) +0"** — czyli liczbami Kolca,
+razem z uczciwą karą za to, że netrunner karabinu nie umie.
+
+**Stan urządzenia idzie do `NetArchitecture.runtime`, kontrola nad węzłem do runu.** To jedno
+zdanie rozstrzyga cały model: „gdy odłączasz się od Architektury, tracisz kontrolę nad wszystkimi
+węzłami" (s. 199), ale kamera wyłączona przez netrunnera **została wyłączona w prawdziwym
+świecie** i tam zostaje. Runtime to ta sama półka, na której 26b trzyma Wirusa i PT Maskowania.
+Odklikane: po „Odłącz się" i ponownym wejściu piętro straciło chip „przejęty · PT 10", a kamera
+dalej miała chip „obrócona".
+
+**„Raz na Turę" liczy się przy węźle, nie przy urządzeniu.** Podręcznik mówi obie rzeczy w dwóch
+sąsiednich zdaniach („osobna Akcja Sieciowa na każdą z tych rzeczy" i „dany węzeł kontrolny można
+aktywować tylko raz na Turę"), więc rejestr `nodeUse` jest kluczowany **piętrem** i siedzi
+w stanie runu obok `slideRound` z 26c. Netrunner trzymający dwa węzły naprawdę obsłuży dwie
+wieżyczki w jednej Turze — jeśli ma Akcje Sieciowe.
+
+**PT odebrania węzła bierze wyższą z dwóch liczb.** „PT odebrania kontroli … równe wartości Testu
+Kontroli, jaki wykonano" (s. 199) czytane dosłownie znaczyłoby, że węzeł o PT 15 przejęty
+wynikiem 12 staje się dla następnego łatwiejszy niż był. `netControlDv` bierze `max`: zamek nie
+mięknie od kiepskiego złodzieja. Cudze trzymanie żyje w **innym runie**, więc szuka się go po
+`architectureId` — i udane odebranie zdejmuje węzeł poprzedniemu właścicielowi, nie kończąc jego
+runa.
+
+**Kamera „obrócona" to fakt na czacie, nie stożek na mapie** (decyzja MG z 15.08). VTT nie ma
+modelu widzenia kamery; obsługa zmienia stan i pisze zdanie „nie patrzy już na broniony obszar",
+a resztę rozstrzyga MG — dokładnie tak, jak dwa ręczne haki Programów z 26c. Prawdziwy stożek
+liczony geometrią z 18a to osobny kawałek roboty i wpis w `POMYSLY.md`.
+
+**Import: 18 systemów obronnych z trzech tabel** (5 aktywnych, 3 stanowiska, 10 środowiskowych),
+wszystkie z PT unieszkodliwienia, czasem, PW, RUCH-em, Wartością bojową, PT zauważenia, warunkiem
+aktywacji i ceną z drabiny „PT → cena" ze s. 218. Zrzut PDF-a skleja każdą tabelę w jeden ciąg,
+ale każdy wiersz ma **dokładnie jeden** bezwarunkowy anchor — zdanie o unieszkodliwieniu Testem
+Elektroniki i zabezpieczeń — i to ono tnie strumień. Nazwy wyłuskuje powtarzalna komórka „Granica
+bronionej strefy"; jedyny wiersz, który jej nie ma (Kamera obserwacyjna), łapie heurystyka
+wielkich liter. Kategoria „Obrona Sieci" ma od tego etapu **cztery rodzaje**, a Demon jest jedynym,
+od którego walidacja wymaga kompletu czterech liczb — kamera bez Wartości bojowej to nie wiersz
+w połowie wypełniony, tylko kamera.
+
+**Zweryfikowane:** 1190 testów w `shared` (22 nowe w `netdevices.test.ts` + 3 w `compendium.test.ts`),
+687 na serwerze (11 nowych w `netdevices.test.ts` na żywych gniazdach), `tsc --noEmit` czysty
+w trzech pakietach, ESLint, Prettier i `pnpm build` bez uwag. **Migracji nie ma** — urządzenia
+i ich stan mieszczą się w kolumnach JSON, które 26a i 26b już mają.
+
+**Jeden błąd spoza etapu, znaleziony po drodze.** Wiersz listy w zakładce „Kompendium" miał
+`flex: none` na kolumnie z liczbami, więc dłuższy podpis (a systemy obronne mają dłuższy) wypychał
+wiersz poza panel i zapalał poziomy pasek przewijania. Wiersz zawija się teraz do drugiej linii,
+a sam podpis „Obrony Sieci" jest w liście skrócony — pełne „PT 17 Elektronika i zabezpieczenia ·
+5 min" zostało na karcie wpisu.
+
+**Odklikane u MG** w kampanii „Poligon bojowy". Potwierdzone: **25 wpisów „Obrona Sieci"** w liście
+i karta „Automatycznej wieżyczki" (Wartość bojowa 14 · 25 PW · PT 17 · 5 min · aktywacja · cena
+5000 ed); **nowe pole „+ Urządzenie"** na piętrze węzła w edytorze Architektury wraz z dwiema
+nowymi uwagami MG („węzeł kontrolny bez urządzeń", „nie ma żetonu na scenie — nie będzie czym
+strzelić"); **odmowa „Nie kontrolujesz tego węzła"** przed Kontrolą; **Kontrola** („PT 8 · 1d10+7 = 10
+→ Węzeł przejęty — PT odebrania go tobie: 10") odsłaniająca sekcję **PODŁĄCZONE URZĄDZENIA**;
+**„Obróć"** z chipem „obrócona" i zdaniem na czacie; **„Wyłącz"** przygaszające wiersz i zostawiające
+sam przycisk „Włącz"; **„Strzelaj"** z celem wybranym z listy figur; **przeżycie stanu urządzenia**
+przez odłączenie i utrata węzła razem z runem. Konsola czysta.
+
+**Poligon zostaje przygotowany pod stół** — patrz „Od czego zacząć": doszło trzecie piętro
+Architektury z węzłem i dwoma urządzeniami oraz żeton „Automatyczna wieżyczka" z profilem
+bojowym. Run jest zamknięty, kamera włączona i nieobrócona, tryb turowy dalej wyłączony.
+
 ### Sesja 15.08 (druga tego dnia) — etap 26c (walka w Sieci: Programy, Paf, Ślizg, Czarny LOD)
 
 **Efekt Programu jest danymi, nie kodem — i to jest cały etap w jednym zdaniu.** Podręcznik
@@ -623,91 +740,10 @@ która stała tam wcześniej, wraca jednym kliknięciem „Włącz tryb turowy".
 
 ### Sesja 15.08 — etap 26b (run: punkty dostępu, winda i Akcje Sieciowe)
 
-**Etap 26b został przed rozpoczęciem podzielony na dwa** (decyzja MG). Pierwotny zakres niósł
-run **i** całą walkę w Sieci naraz: Programy z trzema klasami efektów, Pafa, Ślizg, Czarnego
-LOD-a z darmowym atakiem, pościgiem i wstawką do kolejki inicjatywy oraz obrażenia w mózg —
-to samo w sobie jest etapem wielkości 16b+16c. Walka wyprowadziła się do nowego **26c**,
-a dawne 26c (Demony i Soma) zostało przenumerowane na **26d**.
-
-**Punkt dostępu musiał powstać od zera i to on jest bramą do całego etapu.** Opis etapu wymieniał
-„6 m od punktu dostępu", ale takiego bytu w projekcie nie było. Powstał jako obiekt sceny
-(`NetAccessPoint`, wzorem osłon z 16c), stawiany narzędziem mapy 🔌 i wiązany z Architekturą
-z biblioteki 26a. **Domyślnie ukryty** (decyzja MG): gracz nie dostaje go w payloadzie, dopóki
-nie znajdzie go Skanerem albo dopóki MG go nie odsłoni — dzięki temu Skaner ma co robić.
-
-**Zasięg i ściana to ten sam rachunek co linia strzału z 16b.** `metresBetween` + `hasLineOfFire`,
-zero nowej geometrii — gdyby powstała druga, prędzej czy później drzwi przepuszczałyby kulę
-i nie przepuszczały kabla.
-
-**Akcje Sieciowe siedzą _w_ Akcji tury, nie obok niej.** Model jest kopią Akcji Ataku z 14b:
-jedna Akcja, w środku licznik użyć (`CpredNetActionUse` obok `CpredAttackAction`). Dzięki temu
-„albo Akcja w Somie, albo Akcje Sieciowe" (s. 198) wychodzi z arytmetyki, a nie z osobnego
-warunku — netrunner, który już strzelał, nie wejdzie do Sieci, i odwrotnie. Tracker pokazuje
-„Sieć 1/4" dopiero po pierwszej Akcji Sieciowej, więc reszcie stołu nic nie przybyło.
-
-**Szyb jest drzewem — i to jest cała odpowiedź na „nie możesz ominąć przeszkody".** Rodzicem
-piętra trzonu jest piętro nad nim, a pierwszego piętra odgałęzienia — piętro trzonu, z którego
-wyrasta. Trasa między dwoma piętrami jest więc jedna i nie ma czego omijać: wystarczy sprawdzić,
-czy po drodze nie stoi niezłamane hasło. Na samo hasło **wejść wolno** — inaczej nikt nigdy
-nie mógłby go złamać Backdoorem.
-
-**Wiedza o piętrze jest trójwartościowa i tnie ją serwer.** Nieodkryte piętro nie ma w payloadzie
-ani rodzaju, ani nazwy, ani PT; piętro ze Zwiadu ma rodzaj i nazwę, ale **nie PT** („Zwiad nie
-podaje Poziomów Trudności", s. 200); dopiero wejście odsłania wszystko. Notatka MG na Pliku jest
-wyjątkiem, który zarabia Ajdi: to jedyna zdolność, która ma co wypłacić.
-
-**Ślady przeżywają odłączenie, odkrycia nie.** „Odłączenie resetuje obronę Architektury"
-(s. 198), więc wiersz runa **kasuje się**, a Wirus i PT Maskowania idą do osobnej kolumny
-`NetArchitecture.runtime` — nie do `data`, którą edytor MG z 26a przepisuje w całości przy
-każdym zapisie. Wirus zamieciony poprawką literówki w nazwie piętra byłby całym runem gracza
-wyrzuconym do kosza.
-
-**Czat mówi dwie różne rzeczy dwóm widowniom.** Karta rzutu z PT idzie jako `gmroll`
-(netrunner + MG), bo PT jest sekretem Architektury; stół dostaje jedną linię „Kolec — Backdoor ·
-udane". Kryterium „reszta stołu widzi skrót, nie zawartość Architektury" to zasada o payloadach,
-nie o stylach.
-
-**Zweryfikowane:** 1125 testów w `shared` (34 nowe w `netrun.test.ts`), 658 na serwerze
-(17 nowych w `netrun.test.ts` na żywych gniazdach — w tym filtr pięter na payloadzie, odmowa
-spoza 6 m, awaryjne odłączenie po odejściu figury i to, że gracz nie widzi cudzego runa),
-`tsc --noEmit` czysty w trzech pakietach, ESLint bez uwag, `pnpm build` bez uwag. Migracja:
-`20260815083924_stage26b_net_run` (dwie nowe tabele + kolumna `runtime`, zero zmian w danych).
-Przy okazji naprawiony **błąd typów z 26a**: `emitAck` w `netrunning.test.ts` deklarował
-`SocketAck<T>`, a testy czytały `ack.data?` bez zawężania — `tsc` sypał 31 błędami w tym pliku
-od 14.08.
-
-**Odklikane u MG i u gracza** w kampanii „Poligon bojowy" (**stan przywrócony po oględzinach** —
-architektura, gniazdo i żeton skasowane, „Test 27x" z powrotem bez Roli i bez deku). Potwierdzone:
-**narzędzie 🔌** w pasku mapy z selektorem Architektury, przełącznikiem „ukryte" i gumką;
-**pierścień 6 m** wokół gniazda i przygaszona ikona, dopóki jest ukryte; **gracz nie dostaje
-ukrytego gniazda** (pusta lista w `state:sync`); **karta gniazda** z listą kandydatów i dystansem
-(„Kolec — 5,7 m"), a spoza zasięgu z napisem „Za daleko — trzeba stanąć w promieniu 6 m"
-i **wyszarzonym** „Podłącz się"; **okno „Sieć"** z trzonem, odgałęzieniem („z piętra 2") i cyjanową
-ramką na piętrze netrunnera; **Zwiad** („Odsłonięte piętra: 5"); **Backdoor** z chipem „złamane"
-i odmową ruchu przed nim; **Ajdi** odsłaniające notatkę MG na Pliku; **„Skopiuj Plik"** za darmo
-(chip „kopia na deku"); **Kontrola** („Węzeł przejęty — PT odebrania go tobie: 9");
-**Wirus przez dwie Akcje Sieciowe** („Wirus w budowie: 1 / 2" → „Wirus zostawiony — PT jego
-zniszczenia: 13"); **Maskowanie**; **Skaner** odsłaniający ukryte gniazdo graczowi;
-**awaryjne odłączenie** po odejściu figury poza 6 m (okno zamyka się u obu stron, na czacie
-„poza zasięgiem punktu dostępu (6 m)"). **Strona gracza** (avatar9, właściciel „Test 27x"):
-okno ma tytuł **„SIEĆ"** bez nazwy Architektury, piętro ze Zwiadu ma rodzaj i nazwę, ale
-**nie ma PT**, a czat niesie same skróty („Backdoor — udane"), bez kart rzutów. **Ponowne
-podłączenie** po odłączeniu: **Wirus PT 13 został**, a „złamane", „rozpoznany" i „przejęty"
-zniknęły — obrona Architektury wróciła do stanu wyjściowego. Konsola czysta.
-
-**Sześć poprawek po oględzinach — pięć z nich to błędy, które wyszły dopiero na mapie.**
-(1) **Gniazdo kradło kliknięcia figurze, która na nim stała** — warstwa markerów leżała nad
-tokenami, więc figura pod 🔌 nie dawała się kliknąć, przeciągnąć ani otworzyć PPM-em. Gniazdo
-zjechało **pod** warstwę tokenów: to scenery, a normalną rzeczą z terminalem jest podejść do niego.
-(2) **Marker nie skalował się przy zoomie** — `setAccessPoints` nie było wołane z przebiegu, który
-przerysowuje uchwyty ekranowe (lampy, pinezki, etykiety osłon). (3) **Okno „Sieć" miało 1180 px**
-— `sheet.css` wczytuje się **po** `styles.css` i ustawia `.sheet-window`, więc reguła szerokości
-musiała podnieść specyficzność do `.sheet-window.net-run-window`. (4) **Pasek statusu sklejał się
-w jeden ciąg i pisał Wielkimi Literami** („Punkt Dostępu") — dokładnie ta sama pułapka `.cp-bar`
-co przy belce deku w 26a; pasek dostał własne style. (5) **Nazwa piętra ucinała się do „L…"**,
-gdy przybywało chipów — wiersz zwija się teraz do drugiej linii zamiast zjadać nazwę.
-(6) **Selektor Architektury w karcie gniazda był pusty**, dopóki MG nie otworzył zakładki „Sieć"
-— biblioteka jedzie na żądanie (26a), więc karta dociąga ją sama.
+Netrunner ma od tej sesji gniazdo na mapie, windę po piętrach i siedem niebojowych zdolności
+Interfejsu, a Akcje Sieciowe siedzą **w** Akcji tury zamiast obok niej. Etap 26b został przy tej
+okazji podzielony na 26b i 26c, bo pierwotny zakres niósł run i całą walkę w Sieci naraz.
+Pełna notatka: `archiwum/dziennik-sesji.md`.
 
 ### Sesja 14.08 (piąta tego dnia) — etap 26a (Sieć: dane, architektura, cyberdek)
 

@@ -139,6 +139,7 @@ import {
   netProgramEvent,
   netSlideEvent,
 } from './netcombat.js';
+import { netDeviceEvent } from './netdevices.js';
 import {
   journalDeleteEvent,
   journalListEvent,
@@ -300,6 +301,7 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   netIceDetectEvent,
   netIceTurnEvent,
   netGlueClearEvent,
+  netDeviceEvent,
   journalListEvent,
   journalUpsertEvent,
   journalDeleteEvent,

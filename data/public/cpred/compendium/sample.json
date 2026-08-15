@@ -687,6 +687,50 @@
       "costCategory": "veryExpensive",
       "description": "Wymyślony Demon obsługujący proste węzły kontrolne.",
       "icon": "Zielona kulka z mrugającym okiem."
+    },
+    {
+      "id": "defense.oko-korytarza",
+      "category": "netDefense",
+      "defenseKind": "environment",
+      "name": "Oko korytarza",
+      "description": "Wymyślona kamera obserwacyjna: patrzy na jeden korytarz i melduje, kto nim idzie.",
+      "disableDv": 9,
+      "disableMinutes": 1,
+      "hp": 5,
+      "spotDv": 17,
+      "trigger": "Cel wchodzi na korytarz.",
+      "cost": 500,
+      "costCategory": "expensive",
+      "icon": "Czarna półkula pod sufitem z zielonym oczkiem."
+    },
+    {
+      "id": "defense.grzechot",
+      "category": "netDefense",
+      "defenseKind": "emplacement",
+      "name": "Grzechot",
+      "description": "Wymyślona automatyczna wieżyczka sufitowa z krótką lufą i długą pamięcią.",
+      "disableDv": 17,
+      "disableMinutes": 5,
+      "hp": 25,
+      "combatValue": 14,
+      "trigger": "Cel bez przepustki wchodzi na strzeżony obszar.",
+      "cost": 5000,
+      "costCategory": "luxury"
+    },
+    {
+      "id": "defense.komar",
+      "category": "netDefense",
+      "defenseKind": "drone",
+      "name": "Komar",
+      "description": "Wymyślony miniaturowy dron latający — jeden nabój i dużo hałasu.",
+      "disableDv": 17,
+      "disableMinutes": 5,
+      "hp": 15,
+      "move": 6,
+      "combatValue": 12,
+      "trigger": "Cel bez przepustki wchodzi na strzeżony obszar.",
+      "cost": 5000,
+      "costCategory": "luxury"
     }
   ]
 }

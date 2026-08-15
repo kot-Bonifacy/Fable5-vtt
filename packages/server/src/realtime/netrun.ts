@@ -38,6 +38,7 @@ import {
   netIsBottom,
   netMove,
   netMoveGoesDeeper,
+  netControlDv,
   netMoveRefusal,
   netScoutReveal,
   parseCharacterData,
@@ -66,6 +67,8 @@ import {
   netAccessVerdict,
   netActionsForRun,
   readFullRun,
+  releaseNodeHold,
+  rivalNodeHold,
   saveRunState,
   saveRuntime,
   toAccessPointView,
@@ -478,7 +481,14 @@ export const netRunAbilityEvent = defineEvent<NetRunAbilityPayload, NetRunAbilit
       }
     }
 
-    const dv = abilityDv(ability.id, floor?.dv, state);
+    // Stage 26d: a node somebody else already holds is taken off *them*, and
+    // „PT odebrania … równe wartości Testu Kontroli, jaki wykonano" (s. 199)
+    // means the rival's total, not the node's printed DV.
+    const rival =
+      ability.id === 'control' && floor
+        ? await rivalNodeHold(deps.ctx.prisma, row.architectureId, floor.id, row.id)
+        : null;
+    const dv = abilityDv(ability.id, floor?.dv, rival?.dv);
     const roll = performInterfaceRoll(
       deps,
       character,
@@ -499,6 +509,7 @@ export const netRunAbilityEvent = defineEvent<NetRunAbilityPayload, NetRunAbilit
       total: roll.total,
       success,
       author: character.name,
+      ...(rival ? { rival } : {}),
     });
 
     roll.outcome = {
@@ -620,8 +631,13 @@ export const netScanEvent = defineEvent<
 // ──────────────────────────────── mechanika ────────────────────────────────
 
 /** Which DV this ability is rolled against; null = the total *is* the answer. */
-function abilityDv(id: NetAbilityId, floorDv: number | undefined, _state: CpredNetRunState) {
-  if (id === 'backdoor' || id === 'eyed' || id === 'control') return floorDv ?? null;
+function abilityDv(
+  id: NetAbilityId,
+  floorDv: number | undefined,
+  heldDv: number | undefined,
+): number | null {
+  if (id === 'control') return netControlDv(floorDv, heldDv);
+  if (id === 'backdoor' || id === 'eyed') return floorDv ?? null;
   return null;
 }
 
@@ -634,6 +650,8 @@ interface AbilityContext {
   total: number;
   success: boolean;
   author: string;
+  /** Stage 26d: the run this node is being taken off, when there is one. */
+  rival?: { runId: string; dv: number };
 }
 
 /** What a success writes down — the only place the seven abilities differ. */
@@ -697,8 +715,12 @@ async function applyAbility(
   }
 
   if (abilityId === 'control') {
+    const wanted = netControlDv(floor?.dv, context.rival?.dv);
     if (!success || !floor) {
-      return { summary: 'Węzeł nie ustąpił.', detail: `PT ${floor?.dv ?? '?'}` };
+      return {
+        summary: context.rival ? 'Węzeł został w cudzych rękach.' : 'Węzeł nie ustąpił.',
+        detail: `PT ${wanted ?? '?'}`,
+      };
     }
     await saveRunState(deps.ctx.prisma, context.run.id, {
       ...state,
@@ -707,9 +729,14 @@ async function applyAbility(
         { floorId: floor.id, dv: total },
       ],
     });
+    // „Odebranie kontroli" is exactly that: the previous holder stops holding
+    // it. Their own run keeps running — only this one node changes hands.
+    if (context.rival) await releaseNodeHold(deps.ctx.prisma, context.rival.runId, floor.id);
     return {
-      summary: `Węzeł przejęty — PT odebrania go tobie: ${total}.`,
-      detail: `PT ${floor.dv ?? '?'} · kontrola trzyma się do odłączenia`,
+      summary: context.rival
+        ? `Węzeł odebrany — PT odebrania go tobie: ${total}.`
+        : `Węzeł przejęty — PT odebrania go tobie: ${total}.`,
+      detail: `PT ${wanted ?? '?'} · kontrola trzyma się do odłączenia`,
     };
   }
 
@@ -899,7 +926,7 @@ async function myRun(
   tokenId: string,
   user: SessionUser,
 ): Promise<NetRunPayload | null> {
-  const runs = await fetchRunsFor(deps.ctx.prisma, deps.ctx.cpred, campaignId, user);
+  const runs = await fetchRunsFor(deps, campaignId, user);
   return runs.find((run) => run.tokenId === tokenId) ?? null;
 }
 

@@ -39,6 +39,8 @@ import { NET_FLOOR_KIND_LABELS, netTrunk } from './netrunning.js';
 // Type-only: `netcombat.ts` walks this file's shaft, so a value import back
 // would close a cycle. The fight it describes rides on the run's own view.
 import type { NetCombatView } from './netcombat.js';
+import type { CpredNetDeviceState, CpredNetNodeUse, NetDeviceView } from './netdevices.js';
+import { readNetDeviceStates, readNetNodeUses } from './netdevices.js';
 
 // ─────────────────────────── Interfejs jako zdolność ───────────────────────────
 
@@ -390,6 +392,13 @@ export interface CpredNetRunState {
   copied: string[];
   controlled: CpredNetHold[];
   /**
+   * Which control node was activated in which round (stage 26d). „Dany węzeł
+   * kontrolny można aktywować tylko raz na Turę" (s. 199) counts *nodes*, so
+   * this is keyed by floor and not by device — a netrunner holding two nodes
+   * really can work two turrets in one Turn, if they have the Net Actions.
+   */
+  nodeUse: CpredNetNodeUse[];
+  /**
    * Black ICE **floors** met during this entry. Stage 26c spawns an instance
    * per Program on such a floor (`CpredNetCombatState.ice`) and bills the
    * emergency jack-out from those, but the floor list is what tells it which
@@ -409,6 +418,7 @@ export function freshNetRun(position: CpredNetPosition, floorId: string): CpredN
     identified: [],
     copied: [],
     controlled: [],
+    nodeUse: [],
     metIce: [],
     virus: null,
   };
@@ -463,6 +473,7 @@ export function readNetRunState(raw: unknown): CpredNetRunState | null {
     identified: stringList(input.identified),
     copied: stringList(input.copied),
     controlled,
+    nodeUse: readNetNodeUses(input.nodeUse),
     metIce: stringList(input.metIce),
     virus,
   };
@@ -496,6 +507,15 @@ export interface CpredNetRuntime {
   maskDv?: number;
   /** Who masked the traces, for the GM's own reading of the same number. */
   maskedBy?: string;
+  /**
+   * What the control nodes' devices are doing (stage 26d).
+   *
+   * Here rather than in the run because it is a change in the *real* world: the
+   * hold on a node dies with the disconnection („tracisz kontrolę nad
+   * wszystkimi węzłami", s. 199), but a camera the netrunner switched off stays
+   * switched off. The same reasoning that put the Virus on this shelf.
+   */
+  devices?: CpredNetDeviceState[];
 }
 
 export const EMPTY_NET_RUNTIME: CpredNetRuntime = { viruses: [] };
@@ -525,10 +545,12 @@ export function readNetRuntime(raw: unknown): CpredNetRuntime {
       author: typeof entry.author === 'string' ? entry.author : '',
       createdAt: typeof entry.createdAt === 'string' ? entry.createdAt : '',
     }));
+  const devices = readNetDeviceStates(input.devices);
   return {
     viruses,
     ...(Number.isInteger(input.maskDv) ? { maskDv: input.maskDv as number } : {}),
     ...(typeof input.maskedBy === 'string' ? { maskedBy: input.maskedBy } : {}),
+    ...(devices.length > 0 ? { devices } : {}),
   };
 }
 
@@ -656,6 +678,15 @@ export interface NetFloorView {
   identified?: boolean;
   copied?: boolean;
   controlledDv?: number;
+  /**
+   * What this control node is wired to (stage 26d) — present only once the node
+   * has been taken, or for the GM. „Po przejęciu kontroli nad węzłem" is when
+   * the netrunner learns what hangs off it, so before that there is nothing in
+   * the payload to read.
+   */
+  devices?: NetDeviceView[];
+  /** Set when this node was already activated in the current round. */
+  nodeUsed?: boolean;
   here?: boolean;
 }
 
@@ -697,6 +728,14 @@ export function netRunView(
     netActionsMax: number;
     runtime?: CpredNetRuntime;
     combat: NetCombatView;
+    /**
+     * Stage 26d: the device list of a control node, already cut for this pair of
+     * eyes. Passed in rather than built here because a device names a catalogue
+     * entry, and looking one up is the server's business.
+     */
+    devicesOf?: (floor: CpredNetFloor) => NetDeviceView[];
+    /** Round the fight is in, for the „raz na Turę" flag on a node. */
+    round?: number | null;
   },
 ): NetRunView {
   const entered = new Set(state.entered);
@@ -705,6 +744,10 @@ export function netRunView(
   const identified = new Set(state.identified);
   const copied = new Set(state.copied);
   const holds = new Map(state.controlled.map((hold) => [hold.floorId, hold.dv]));
+  const round = options.round ?? null;
+  const usedNodes = new Set(
+    round === null ? [] : state.nodeUse.filter((use) => use.round === round).map((u) => u.floorId),
+  );
 
   const branches: NetShaftBranchView[] = architecture.branches.map((branch) => {
     const top = branchTop(branch);
@@ -741,6 +784,12 @@ export function netRunView(
         // fragment danych […] i poznać jego wartość" — so the GM's note on that
         // one floor stops being GM-only the moment the Check succeeds.
         const showNotes = options.gm || (floor.kind === 'file' && identified.has(floor.id));
+        // Stage 26d: the devices of a node are its payout, so they travel once
+        // the Check has been passed — and always to the GM, who authored them.
+        const devices =
+          floor.kind === 'controlNode' && (options.gm || holds.has(floor.id))
+            ? (options.devicesOf?.(floor) ?? [])
+            : [];
         return {
           id: floor.id,
           branchId: branch.id,
@@ -756,6 +805,8 @@ export function netRunView(
           ...(identified.has(floor.id) ? { identified: true } : {}),
           ...(copied.has(floor.id) ? { copied: true } : {}),
           ...(holds.has(floor.id) ? { controlledDv: holds.get(floor.id)! } : {}),
+          ...(devices.length > 0 ? { devices } : {}),
+          ...(usedNodes.has(floor.id) ? { nodeUsed: true } : {}),
           ...here,
         };
       }),

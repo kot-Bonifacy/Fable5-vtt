@@ -25,9 +25,13 @@ import {
 } from './locations.js';
 import {
   NET_DEFENSE_KINDS,
+  NET_DEFENSE_MINUTES_MAX,
+  NET_DEFENSE_STAT_MAX,
+  NET_DEFENSE_TRIGGER_MAX,
   NET_PROGRAM_CLASSES,
   NET_PROGRAM_STAT_MAX,
   NET_PROGRAM_TARGETS,
+  isNetDefenseSystem,
   netProgramSlots,
   readNetProgramEffects,
   type CpredNetDefenseProfile,
@@ -1235,6 +1239,37 @@ function validateProgram(
   };
 }
 
+/**
+ * A number a defence system's table prints, or nothing at all.
+ *
+ * Unlike `programStat`, a blank cell here means **absent**, not zero: „25 PW"
+ * and „PW: brak" are different rows in the same table, and a laser grid with no
+ * hit points is not a laser grid with none left.
+ */
+function defenseStat(
+  raw: unknown,
+  field: string,
+  label: string,
+  max: number,
+  issues: CompendiumIssue[],
+): number | undefined {
+  if (raw === undefined || raw === null || raw === '') return undefined;
+  if (!isInteger(raw) || raw < 0 || raw > max) {
+    issues.push({ field, message: `${label} musi być liczbą całkowitą od 0 do ${max}.` });
+    return undefined;
+  }
+  return raw;
+}
+
+/**
+ * „Obrona Sieci" — one category, four kinds, two very different sets of columns
+ * (stage 26d).
+ *
+ * A Demon is required to carry all four of its numbers, because every one of
+ * them is read by the rules the moment it acts. A defence system is required to
+ * carry none: the three tables of s. 213–216 leave most cells blank, and a
+ * camera with no Combat Value is not a half-filled row — it is a camera.
+ */
 function validateNetDefense(
   input: Record<string, unknown>,
   base: CompendiumEntryBase,
@@ -1247,10 +1282,6 @@ function validateNetDefense(
     issues.push({ field: 'defenseKind', message: 'Wybierz rodzaj obrony Sieci.' });
     return undefined;
   }
-  const rez = programStat(input.rez, 'rez', 'REZ', issues);
-  const interfaceRank = programStat(input.interfaceRank, 'interfaceRank', 'Interfejs', issues);
-  const netActions = programStat(input.netActions, 'netActions', 'Akcje Sieciowe', issues);
-  const combatValue = programStat(input.combatValue, 'combatValue', 'Wartość bojowa', issues);
   const icon = checkOptionalText(
     input.icon,
     'icon',
@@ -1258,21 +1289,74 @@ function validateNetDefense(
     COMPENDIUM_DESCRIPTION_MAX_LENGTH,
     issues,
   );
-  if (
-    issues.length > 0 ||
-    rez === undefined ||
-    interfaceRank === undefined ||
-    netActions === undefined ||
-    combatValue === undefined
-  ) {
-    return undefined;
+
+  if (defenseKind === 'demon') {
+    const rez = programStat(input.rez, 'rez', 'REZ', issues);
+    const interfaceRank = programStat(input.interfaceRank, 'interfaceRank', 'Interfejs', issues);
+    const netActions = programStat(input.netActions, 'netActions', 'Akcje Sieciowe', issues);
+    const combatValue = programStat(input.combatValue, 'combatValue', 'Wartość bojowa', issues);
+    if (
+      issues.length > 0 ||
+      rez === undefined ||
+      interfaceRank === undefined ||
+      netActions === undefined ||
+      combatValue === undefined
+    ) {
+      return undefined;
+    }
+    const profile: CpredNetDefenseProfile = {
+      defenseKind,
+      rez,
+      interfaceRank,
+      netActions,
+      combatValue,
+      ...(icon ? { icon } : {}),
+    };
+    return { ...base, category: 'netDefense', ...profile };
   }
+
+  const combatValue = defenseStat(
+    input.combatValue,
+    'combatValue',
+    'Wartość bojowa',
+    NET_DEFENSE_STAT_MAX,
+    issues,
+  );
+  const disableDv = defenseStat(
+    input.disableDv,
+    'disableDv',
+    'PT unieszkodliwienia',
+    NET_DEFENSE_STAT_MAX,
+    issues,
+  );
+  const disableMinutes = defenseStat(
+    input.disableMinutes,
+    'disableMinutes',
+    'Czas unieszkodliwienia',
+    NET_DEFENSE_MINUTES_MAX,
+    issues,
+  );
+  const hp = defenseStat(input.hp, 'hp', 'PW', NET_DEFENSE_STAT_MAX * 10, issues);
+  const move = defenseStat(input.move, 'move', 'RUCH', NET_DEFENSE_STAT_MAX, issues);
+  const spotDv = defenseStat(input.spotDv, 'spotDv', 'PT zauważenia', NET_DEFENSE_STAT_MAX, issues);
+  const trigger = checkOptionalText(
+    input.trigger,
+    'trigger',
+    'Standardowa aktywacja',
+    NET_DEFENSE_TRIGGER_MAX,
+    issues,
+  );
+  if (issues.length > 0) return undefined;
+
   const profile: CpredNetDefenseProfile = {
     defenseKind,
-    rez,
-    interfaceRank,
-    netActions,
-    combatValue,
+    ...(combatValue !== undefined ? { combatValue } : {}),
+    ...(disableDv !== undefined ? { disableDv } : {}),
+    ...(disableMinutes !== undefined ? { disableMinutes } : {}),
+    ...(hp !== undefined ? { hp } : {}),
+    ...(move !== undefined ? { move } : {}),
+    ...(spotDv !== undefined ? { spotDv } : {}),
+    ...(trigger ? { trigger } : {}),
     ...(icon ? { icon } : {}),
   };
   return { ...base, category: 'netDefense', ...profile };
@@ -1639,6 +1723,21 @@ export function isProgramEntry(entry: CompendiumEntry): entry is ProgramEntry {
 
 export function isNetDefenseEntry(entry: CompendiumEntry): entry is NetDefenseEntry {
   return entry.category === 'netDefense';
+}
+
+/** Demons only — what the architecture editor may drop on a `demon` floor. */
+export function netDemonEntries(entries: readonly CompendiumEntry[]): NetDefenseEntry[] {
+  return entries.filter(
+    (entry): entry is NetDefenseEntry => isNetDefenseEntry(entry) && entry.defenseKind === 'demon',
+  );
+}
+
+/** The three defence-system tables — what a control node may be wired to (26d). */
+export function netDefenseSystemEntries(entries: readonly CompendiumEntry[]): NetDefenseEntry[] {
+  return entries.filter(
+    (entry): entry is NetDefenseEntry =>
+      isNetDefenseEntry(entry) && isNetDefenseSystem(entry.defenseKind),
+  );
 }
 
 /** Programs a cyberdeck can hold, catalogue order. */

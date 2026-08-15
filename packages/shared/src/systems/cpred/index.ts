@@ -16,6 +16,7 @@ export * from './ammo.js';
 export * from './netrunning.js';
 export * from './netrun.js';
 export * from './netcombat.js';
+export * from './netdevices.js';
 export * from './compendium.js';
 export * from './covers.js';
 export * from './areas.js';

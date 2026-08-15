@@ -481,6 +481,64 @@ describe('program entries', () => {
     expect(result.ok).toBe(false);
   });
 
+  it('takes a defence system with only the cells its table prints (stage 26d)', () => {
+    // Kamera obserwacyjna nie ma Wartości bojowej ani RUCH-u i to nie jest
+    // wiersz w połowie wypełniony — to jest kamera.
+    const camera = validateCompendiumEntry({
+      category: 'netDefense',
+      name: 'Oko korytarza',
+      cost: 500,
+      defenseKind: 'environment',
+      disableDv: 9,
+      disableMinutes: 1,
+      hp: 5,
+      spotDv: 17,
+      trigger: 'Cel wchodzi na korytarz.',
+    });
+    expect(camera.ok).toBe(true);
+    if (!camera.ok || camera.entry.category !== 'netDefense') return;
+    expect(camera.entry.spotDv).toBe(17);
+    // Pusta komórka zostaje pusta: „PW: brak" to nie „PW 0".
+    expect(camera.entry.combatValue).toBeUndefined();
+    expect(camera.entry.rez).toBeUndefined();
+  });
+
+  it('keeps a turret’s Combat Value and refuses a nonsense one', () => {
+    const turret = validateCompendiumEntry({
+      category: 'netDefense',
+      name: 'Grzechot',
+      cost: 5000,
+      defenseKind: 'emplacement',
+      combatValue: 14,
+      hp: 25,
+      disableDv: 17,
+    });
+    expect(
+      turret.ok && turret.entry.category === 'netDefense' ? turret.entry.combatValue : null,
+    ).toBe(14);
+    expect(
+      validateCompendiumEntry({
+        category: 'netDefense',
+        name: 'Zły dron',
+        cost: 0,
+        defenseKind: 'drone',
+        move: -3,
+      }).ok,
+    ).toBe(false);
+  });
+
+  it('still demands all four numbers from a Demon', () => {
+    const result = validateCompendiumEntry({
+      category: 'netDefense',
+      name: 'Kulawy demon',
+      cost: 1000,
+      defenseKind: 'demon',
+      rez: 12,
+      interfaceRank: 'trzy',
+    });
+    expect(result.ok).toBe(false);
+  });
+
   it('takes deck slots on gear and refuses a nonsense count', () => {
     const deck = validateCompendiumEntry({
       category: 'gear',

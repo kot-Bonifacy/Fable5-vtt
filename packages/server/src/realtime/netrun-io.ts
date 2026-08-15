@@ -9,6 +9,7 @@ import type {
   CpredNetRuntime,
   NetAccessPointView,
   NetDeckRow,
+  NetDeviceView,
   NetRunPayload,
   SessionUser,
 } from '@vtt/shared';
@@ -17,11 +18,15 @@ import {
   NET_ACCESS_RANGE_M,
   ROLE_GM,
   cpredInterfaceRank,
+  describeNetDefense,
   describeNetProgramEffects,
+  isNetDefenseEntry,
   metresBetween,
   netActionsAfterDebt,
   netActionsForInterface,
   netCombatView,
+  netDeviceStateOf,
+  netDeviceView,
   netFloorAt,
   netSlideDestinations,
   netRunView,
@@ -37,6 +42,7 @@ import type { PrismaClient } from '../db.js';
 import type { NetAccessPoint, NetRun, Scene, Token } from '../generated/prisma/client.js';
 import type { RealtimeDeps } from './registry.js';
 import { campaignRoom } from './state.js';
+import { campaignEntry } from './compendium.js';
 import { INCLUDE_CHAT_NAMES, broadcastChatMessage, toChatMessageView } from './chat-io.js';
 import { toSceneView } from './scenes.js';
 import { hasLineOfFire, loadVisionContext } from './vision.js';
@@ -234,12 +240,14 @@ export function describeProgram(profile: CpredNetProgramProfile): string {
  * at all is the netrunner's business and the GM's.
  */
 export async function runPayloadFor(
-  prisma: PrismaClient,
-  cpred: Parameters<typeof netrunningDataOf>[0],
+  deps: RealtimeDeps,
+  campaignId: string,
   row: RunRow,
   user: SessionUser,
 ): Promise<NetRunPayload | null> {
   if (!controlsRun(row, user)) return null;
+  const prisma = deps.ctx.prisma;
+  const cpred = deps.ctx.cpred;
   const architecture = architectureOf(row.architecture);
   const state = readNetRunState(row.data);
   if (!architecture || !state) return null;
@@ -267,6 +275,15 @@ export async function runPayloadFor(
       (position) => ({ position, label: slideLabel(architecture, position) }),
     ),
   });
+  // Stage 26d: what hangs off each control node, and how each of those things
+  // is doing. Looked up once for the whole shaft rather than per floor — a
+  // catalogue read inside `netRunView` would be a database call inside a pure
+  // function, and the same camera appears in two viewers' payloads.
+  const devices = await deviceViewsOf(deps, campaignId, architecture, runtime, gm);
+  const combatRow = await prisma.combat.findUnique({
+    where: { sceneId: row.token.sceneId },
+    select: { round: true },
+  });
   return {
     runId: row.id,
     tokenId: row.tokenId,
@@ -276,8 +293,53 @@ export async function runPayloadFor(
     accessPointName: point?.name ?? 'Punkt dostępu',
     interfaceRank: rank,
     gmView: gm,
-    run: netRunView(architecture, state, { gm, netActionsMax: actions, runtime, combat }),
+    run: netRunView(architecture, state, {
+      gm,
+      netActionsMax: actions,
+      runtime,
+      combat,
+      devicesOf: (floor) => devices.get(floor.id) ?? [],
+      round: combatRow && combatRow.round > 0 ? combatRow.round : null,
+    }),
   };
+}
+
+/**
+ * Every control node's devices, dressed for one pair of eyes (stage 26d).
+ *
+ * The catalogue entry is read here and turned into one Polish line („PT 17
+ * Elektronika i zabezpieczenia · 25 PW · Wartość bojowa 14"), because a client
+ * that resolved the entry itself would need the whole „Obrona Sieci" catalogue
+ * to render a node the netrunner has just taken.
+ */
+async function deviceViewsOf(
+  deps: RealtimeDeps,
+  campaignId: string,
+  architecture: CpredNetArchitecture,
+  runtime: CpredNetRuntime,
+  gm: boolean,
+): Promise<Map<string, NetDeviceView[]>> {
+  const byFloor = new Map<string, NetDeviceView[]>();
+  for (const branch of architecture.branches) {
+    for (const floor of branch.floors) {
+      if (floor.kind !== 'controlNode' || !floor.devices?.length) continue;
+      const views: NetDeviceView[] = [];
+      for (const device of floor.devices) {
+        const entry = device.entryId
+          ? await campaignEntry(deps, campaignId, device.entryId)
+          : undefined;
+        const detail = entry && isNetDefenseEntry(entry) ? describeNetDefense(entry) : '';
+        views.push(
+          netDeviceView(device, netDeviceStateOf(runtime.devices, device.id), {
+            gm,
+            ...(detail ? { detail } : {}),
+          }),
+        );
+      }
+      byFloor.set(floor.id, views);
+    }
+  }
+  return byFloor;
 }
 
 /** „Piętro 3 — Plik" albo samo „Piętro 3", gdy netrunner jeszcze tam nie był. */
@@ -306,19 +368,18 @@ export function readFullRun(raw: string): (CpredNetRunState & CpredNetCombatStat
 }
 
 export async function fetchRunsFor(
-  prisma: PrismaClient,
-  cpred: Parameters<typeof netrunningDataOf>[0],
+  deps: RealtimeDeps,
   campaignId: string,
   user: SessionUser,
 ): Promise<NetRunPayload[]> {
-  const rows = (await prisma.netRun.findMany({
+  const rows = (await deps.ctx.prisma.netRun.findMany({
     where: { campaignId },
     orderBy: { createdAt: 'asc' },
     include: RUN_INCLUDE,
   })) as RunRow[];
   const payloads: NetRunPayload[] = [];
   for (const row of rows) {
-    const payload = await runPayloadFor(prisma, cpred, row, user);
+    const payload = await runPayloadFor(deps, campaignId, row, user);
     if (payload) payloads.push(payload);
   }
   return payloads;
@@ -329,9 +390,52 @@ export async function emitRuns(deps: RealtimeDeps, campaignId: string): Promise<
   const sockets = await deps.io.in(campaignRoom(campaignId)).fetchSockets();
   for (const member of sockets) {
     const data = member.data as { user: SessionUser };
-    const runs = await fetchRunsFor(deps.ctx.prisma, deps.ctx.cpred, campaignId, data.user);
+    const runs = await fetchRunsFor(deps, campaignId, data.user);
     member.emit('netrun:sync', { runs });
   }
+}
+
+/**
+ * The DV of taking this control node off whoever is holding it now.
+ *
+ * „PT odebrania kontroli nad węzłem innemu Netrunnerowi lub Demonowi jest równe
+ * wartości Testu Kontroli, jaki wykonano, by przejąć kontrolę nad tym węzłem"
+ * (s. 199). Rival holds live in the *other* runs against the same architecture,
+ * because that is where a hold lives at all — it dies with its run.
+ */
+export async function rivalNodeHold(
+  prisma: PrismaClient,
+  architectureId: string,
+  floorId: string,
+  exceptRunId: string,
+): Promise<{ runId: string; dv: number } | null> {
+  const rows = await prisma.netRun.findMany({
+    where: { architectureId },
+    select: { id: true, data: true },
+  });
+  let best: { runId: string; dv: number } | null = null;
+  for (const row of rows) {
+    if (row.id === exceptRunId) continue;
+    const state = readNetRunState(row.data);
+    const hold = state?.controlled.find((entry) => entry.floorId === floorId);
+    if (hold && (!best || hold.dv > best.dv)) best = { runId: row.id, dv: hold.dv };
+  }
+  return best;
+}
+
+/** Takes a node away from the run that used to hold it (stage 26d). */
+export async function releaseNodeHold(
+  prisma: PrismaClient,
+  runId: string,
+  floorId: string,
+): Promise<void> {
+  const row = await prisma.netRun.findUnique({ where: { id: runId }, select: { data: true } });
+  const state = row ? readFullRun(row.data) : null;
+  if (!state) return;
+  await saveRunState(prisma, runId, {
+    ...state,
+    controlled: state.controlled.filter((hold) => hold.floorId !== floorId),
+  });
 }
 
 /**

@@ -260,6 +260,37 @@ export function combatProfileSkillLevel(profile: CpredCombatProfile, skillId: st
 }
 
 /**
+ * The same turret, with somebody else's hands on it (stage 26d).
+ *
+ * „Gdy system jest pod kontrolą Netrunnera, wszelkie ataki i Testy obrony
+ * wykonuje, rzucając na Umiejętności tego Netrunnera, tak jakby ten strzelał
+ * z trzymanych w rękach broni" (s. 213). Everything about the *weapon* stays
+ * the turret's — its barrel, its magazine, its plating — and everything about
+ * the *shooter* becomes the operator's.
+ *
+ * A substitution rather than a branch in the planner, and that is the whole
+ * point: the attack that follows goes through `performAttackRoll` unchanged, so
+ * range, cover, line of fire, ammunition and the damage card all behave exactly
+ * as they do when a person pulls the trigger.
+ */
+export function combatProfileOperatedBy(
+  profile: CpredCombatProfile,
+  operator: Pick<CpredCharacterData, 'stats' | 'skills'>,
+  skillId: string | null,
+): CpredCombatProfile {
+  const skillLevel = skillId ? (operator.skills[skillId] ?? 0) : profile.skillLevel;
+  return {
+    ...profile,
+    ref: operator.stats.ref,
+    dex: operator.stats.dex,
+    body: operator.stats.body,
+    will: operator.stats.will,
+    skillLevel,
+    evasion: operator.skills[CPRED_EVASION_SKILL_ID] ?? 0,
+  };
+}
+
+/**
  * The sheet a statist rolls one particular skill with.
  *
  * `combatProfileSheet` gives every skill except Evasion a level of zero, which

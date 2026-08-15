@@ -2987,6 +2987,9 @@ input[type='color'] {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
+  /* Wpis „Obrony Sieci" (26d) niesie dłuższy skrót niż broń — niech spadnie
+     do drugiej linii, zamiast wypychać wiersz poza panel. */
+  flex-wrap: wrap;
   gap: 0.5rem;
   padding: 0.35rem 0.5rem;
   background: var(--bg);
@@ -2999,11 +3002,15 @@ input[type='color'] {
   display: flex;
   align-items: baseline;
   gap: 0.35rem;
+  flex: 1 1 auto;
   min-width: 0;
 }
 
 .compendium-row-meta {
-  flex: none;
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-left: auto;
+  text-align: right;
   font-size: 0.72rem;
   color: var(--text-dim);
 }
@@ -6969,4 +6976,88 @@ body.is-resizing {
 .net-point-jack {
   border-top: 1px solid #123c48;
   padding-top: 0.45rem;
+}
+
+/* ── węzły kontrolne i urządzenia (etap 26d) ── */
+
+/* Lista rzeczy przy przejętym węźle w oknie Sieci. Wcięcie i lewa krecha
+   mówią, że to nie kolejne piętro, tylko to, co z tego piętra wystaje. */
+.net-node-devices {
+  margin: 0.35rem 0 0.1rem 1.4rem;
+  padding-left: 0.5rem;
+  border-left: 2px solid #2c6f80;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.net-node-title {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #9fe6f7;
+}
+
+.net-node-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.net-node-device {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid #123c48;
+  border-radius: 5px;
+}
+
+.net-node-device--off {
+  opacity: 0.62;
+}
+
+.net-node-name {
+  font-weight: 600;
+}
+
+.net-node-kind {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.net-node-buttons {
+  margin-left: auto;
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.net-node-target {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+}
+
+/* Edytor Architektury: urządzenia wiszące u węzła kontrolnego. */
+.net-floor-devices {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.3rem 0 0.1rem 0.6rem;
+  border-left: 2px solid #2c6f80;
+}
+
+.net-floor-device {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }

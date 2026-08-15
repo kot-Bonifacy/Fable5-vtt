@@ -229,7 +229,19 @@ function shortStats(
     case 'program':
       return `${entry.blackIce ? 'Czarny LOD' : NET_PROGRAM_CLASS_LABELS[entry.programClass]} · ATK ${entry.atk} / OBR ${entry.def} / REZ ${entry.rez} · ${formatCost(entry)}`;
     case 'netDefense':
-      return `${NET_DEFENSE_KIND_LABELS[entry.defenseKind]} · Interfejs ${entry.interfaceRank} · ${formatCost(entry)}`;
+      // Wiersz listy niesie skrót; pełne „PT 17 Elektronika i zabezpieczenia ·
+      // 5 min" czeka na karcie wpisu, bo tam jest na nie miejsce.
+      return entry.defenseKind === 'demon'
+        ? `${NET_DEFENSE_KIND_LABELS[entry.defenseKind]} · Interfejs ${entry.interfaceRank ?? 0} · ${formatCost(entry)}`
+        : [
+            NET_DEFENSE_KIND_LABELS[entry.defenseKind],
+            entry.combatValue !== undefined ? `Wartość bojowa ${entry.combatValue}` : '',
+            entry.hp !== undefined ? `${entry.hp} PW` : '',
+            entry.disableDv !== undefined ? `PT ${entry.disableDv}` : '',
+            formatCost(entry),
+          ]
+            .filter(Boolean)
+            .join(' · ');
     default:
       return formatCost(entry);
   }
@@ -504,18 +516,45 @@ function EntryCard({
         {entry.category === 'netDefense' ? (
           <>
             <Stat label="Rodzaj" value={NET_DEFENSE_KIND_LABELS[entry.defenseKind]} />
-            <Stat label="REZ" value={String(entry.rez)} />
-            <Stat
-              label="Interfejs"
-              value={String(entry.interfaceRank)}
-              hint="Demon broni się Testem Interfejsu — nie ma wartości Obrony."
-            />
-            <Stat label="Akcje Sieciowe" value={String(entry.netActions)} />
-            <Stat
-              label="Wartość bojowa"
-              value={String(entry.combatValue)}
-              hint="Cecha + Umiejętność w jednej liczbie — tym rzuca obsługiwane urządzenie."
-            />
+            {entry.rez !== undefined ? <Stat label="REZ" value={String(entry.rez)} /> : null}
+            {entry.interfaceRank !== undefined ? (
+              <Stat
+                label="Interfejs"
+                value={String(entry.interfaceRank)}
+                hint="Demon broni się Testem Interfejsu — nie ma wartości Obrony."
+              />
+            ) : null}
+            {entry.netActions !== undefined ? (
+              <Stat label="Akcje Sieciowe" value={String(entry.netActions)} />
+            ) : null}
+            {entry.combatValue !== undefined ? (
+              <Stat
+                label="Wartość bojowa"
+                value={String(entry.combatValue)}
+                hint="Cecha + Umiejętność w jednej liczbie — tym rzuca obsługiwane urządzenie."
+              />
+            ) : null}
+            {entry.hp !== undefined ? <Stat label="PW" value={String(entry.hp)} /> : null}
+            {entry.move !== undefined ? <Stat label="RUCH" value={String(entry.move)} /> : null}
+            {entry.disableDv !== undefined ? (
+              <Stat
+                label="Unieszkodliwienie"
+                value={
+                  entry.disableMinutes !== undefined
+                    ? `PT ${entry.disableDv} · ${entry.disableMinutes} min`
+                    : `PT ${entry.disableDv}`
+                }
+                hint="Test Elektroniki i zabezpieczeń z Somy — niekontrolowany system."
+              />
+            ) : null}
+            {entry.spotDv !== undefined ? (
+              <Stat
+                label="Zauważenie"
+                value={`Percepcja PT ${entry.spotDv}`}
+                hint="Systemy środowiskowe są ukryte, dopóki ktoś ich nie wypatrzy."
+              />
+            ) : null}
+            {entry.trigger ? <Stat label="Standardowa aktywacja" value={entry.trigger} /> : null}
             {entry.icon ? <Stat label="Ikona" value={entry.icon} /> : null}
           </>
         ) : null}

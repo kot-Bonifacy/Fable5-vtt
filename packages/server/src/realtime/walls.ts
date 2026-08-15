@@ -47,7 +47,7 @@ async function emitWallsToGm(deps: RealtimeDeps, campaignId: string, sceneId: st
  * The full round trip of a wall change: the GM gets the new geometry, every
  * player gets what that geometry now lets them see.
  */
-async function afterWallChange(
+export async function afterWallChange(
   deps: RealtimeDeps,
   campaignId: string,
   scene: Scene,

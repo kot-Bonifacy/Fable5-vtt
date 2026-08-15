@@ -267,35 +267,127 @@ export function netProgramSlots(
 // ────────────────────────────── Demony (26c) ──────────────────────────────
 
 /**
- * Net defenders that are not Programs on a deck. Only Demons exist so far
- * (stage 26a imports them because the architecture editor places them on a
- * floor); the drones, emplacements and environmental traps of s. 212–216 come
- * with stage 26c, which is also when their fields get decided.
+ * Net defenders that are not Programs on a deck.
+ *
+ * Stage 26a only knew Demons; stage 26d adds the three tables of s. 212–216 —
+ * and they are three kinds rather than one, because the rulebook gives each
+ * table a different set of columns and a different sentence about who may
+ * operate it. A drone moves and needs a Demon or a netrunner behind it; an
+ * emplacement is bolted down and fights on its own Combat Value; an
+ * environmental system can only ever be switched on or off.
  */
-export const NET_DEFENSE_KINDS = ['demon'] as const;
+export const NET_DEFENSE_KINDS = ['demon', 'drone', 'emplacement', 'environment'] as const;
 export type NetDefenseKind = (typeof NET_DEFENSE_KINDS)[number];
 
 export const NET_DEFENSE_KIND_LABELS: Record<NetDefenseKind, string> = {
   demon: 'Demon',
+  drone: 'Aktywny system obronny',
+  emplacement: 'Stanowisko obronne',
+  environment: 'System obrony środowiskowej',
 };
 
+/** The three defence-system tables; a Demon is not one of them. */
+export const NET_DEFENSE_SYSTEM_KINDS: readonly NetDefenseKind[] = [
+  'drone',
+  'emplacement',
+  'environment',
+];
+
+export function isNetDefenseSystem(kind: NetDefenseKind): boolean {
+  return NET_DEFENSE_SYSTEM_KINDS.includes(kind);
+}
+
 /**
- * A Demon (s. 212). Not a Black ICE row with different labels: it has a Combat
- * Value instead of ATK/OBR, no PRĘ and no PER (passwords do not stop it, it
- * gets no free attack and Ślizg does not shake it off), and it defends with an
- * Interface Check like a netrunner. Keeping it a separate type is what stops
- * stage 26c from having to special-case a half-filled ICE.
+ * A Net defender's numbers. One interface for four kinds, with everything but
+ * the kind optional — because the rulebook prints four different sets of
+ * columns and half of them are blank in any given row.
+ *
+ * A **Demon** (s. 212) is not a Black ICE row with different labels: it has a
+ * Combat Value instead of ATK/OBR, no PRĘ and no PER (passwords do not stop it,
+ * it gets no free attack and Ślizg does not shake it off), and it defends with
+ * an Interface Check like a netrunner. Keeping it a separate type is what stops
+ * stage 26e from having to special-case a half-filled ICE.
+ *
+ * A **defence system** (s. 213–216) carries what the three tables print: the DV
+ * and the minutes of „Elektronika i zabezpieczenia" that shut it down, its hit
+ * points, a drone's MOVE, an emplacement's Combat Value, the Perception DV to
+ * notice an environmental one, and the sentence that sets it off.
  */
 export interface CpredNetDefenseProfile {
   defenseKind: NetDefenseKind;
-  rez: number;
-  /** „Interfejs" — what it rolls to defend, and how deep it reaches. */
-  interfaceRank: number;
+  /** Demon only — its Program hit points. */
+  rez?: number;
+  /** „Interfejs" — Demon only: what it rolls to defend, and how deep it reaches. */
+  interfaceRank?: number;
   /** Net Actions per turn; a Demon spends them on control nodes first. */
-  netActions: number;
+  netActions?: number;
   /** „Wartość bojowa" — Stat + Skill in one number, for the devices it runs. */
-  combatValue: number;
+  combatValue?: number;
+  /** „PT 17 Elektronika i zabezpieczenia" — shutting it down from the Soma. */
+  disableDv?: number;
+  /** „5 minut, by unieszkodliwić". */
+  disableMinutes?: number;
+  /** PW of the system itself: a camera has 5, a gas lift 60. */
+  hp?: number;
+  /** „RUCH 8" — active systems only. */
+  move?: number;
+  /** „Percepcja PT 17, by zauważyć" — environmental systems only. */
+  spotDv?: number;
+  /** „Standardowa aktywacja" — the trigger sentence, as prose. */
+  trigger?: string;
   icon?: string;
+}
+
+export const NET_DEFENSE_STAT_MAX = 99;
+export const NET_DEFENSE_MINUTES_MAX = 240;
+export const NET_DEFENSE_TRIGGER_MAX = 300;
+
+// ─────────────────── urządzenia przy węźle kontrolnym (26d) ───────────────────
+
+/**
+ * What a control node may be wired to (stage 26d).
+ *
+ * The kind decides which buttons the run window offers, and nothing else —
+ * „kamery, drony, wieżyczki, siatki laserowe, windy, spryskiwacze" (s. 199) is
+ * the rulebook's own list and it mixes things that shoot with things that only
+ * have a switch. What separates them here is not the compendium entry (a GM may
+ * wire anything to anything) but this one field.
+ */
+export const NET_DEVICE_KINDS = ['camera', 'turret', 'drone', 'door', 'environment'] as const;
+export type NetDeviceKind = (typeof NET_DEVICE_KINDS)[number];
+
+export const NET_DEVICE_KIND_LABELS: Record<NetDeviceKind, string> = {
+  camera: 'Kamera',
+  turret: 'Wieżyczka',
+  drone: 'Dron',
+  door: 'Drzwi lub winda',
+  environment: 'System środowiskowy',
+};
+
+export const NET_DEVICE_NAME_MAX = 60;
+export const NET_DEVICES_PER_NODE_MAX = 6;
+
+/**
+ * One thing hanging off a control node.
+ *
+ * The binding is an **identifier**, never a copy: `tokenId` points at the figure
+ * standing on the map (a turret, a drone), `wallId` at a door or window of stage
+ * 18d. A copy would be a second home for the turret's ammunition, and the two
+ * would drift apart the first time somebody reloaded it by hand.
+ */
+export interface CpredNetDevice {
+  id: string;
+  /** What the table calls it („Kamera nad barem"). */
+  name: string;
+  deviceKind: NetDeviceKind;
+  /** Catalogue row from „Obrona Sieci", when the GM picked one. */
+  entryId?: string;
+  /** Figure on the scene this device *is* — turrets and drones shoot from it. */
+  tokenId?: string;
+  /** Door or window of stage 18d this device opens. */
+  wallId?: number;
+  /** GM's own note; leaves the server only once the node has been taken. */
+  notes?: string;
 }
 
 // ──────────────────────────── Architektura Sieciowa ────────────────────────────
@@ -337,6 +429,9 @@ export const NET_FLOOR_KINDS_WITH_DV: readonly NetFloorKind[] = ['password', 'fi
 /** Floors filled with Programs rather than a DV. */
 export const NET_FLOOR_KINDS_WITH_PROGRAMS: readonly NetFloorKind[] = ['ice', 'demon'];
 
+/** Floors that may be wired to things in the real world (stage 26d). */
+export const NET_FLOOR_KINDS_WITH_DEVICES: readonly NetFloorKind[] = ['controlNode'];
+
 export const NET_FLOOR_DV_MIN = 1;
 export const NET_FLOOR_DV_MAX = 30;
 export const NET_FLOORS_MAX = 24;
@@ -362,6 +457,8 @@ export interface CpredNetFloor {
   dv?: number;
   /** Compendium ids of the Programs waiting here (Black ICE, or a Demon). */
   programIds?: string[];
+  /** What this control node is wired to (stage 26d); control nodes only. */
+  devices?: CpredNetDevice[];
   /** GM-only note; never leaves the server before the floor is uncovered. */
   notes?: string;
 }
@@ -454,6 +551,23 @@ export function netArchitectureAdvice(architecture: CpredNetArchitecture): strin
         advice.push(
           `${column}, piętro ${index + 1}: ${NET_FLOOR_KIND_LABELS[floor.kind]} bez wpisu.`,
         );
+      }
+      // Stage 26d: a control node wired to nothing is a Check with no payout,
+      // and a turret with no figure on the map has nothing to shoot from.
+      if (floor.kind === 'controlNode' && !floor.devices?.length) {
+        advice.push(`${column}, piętro ${index + 1}: węzeł kontrolny bez urządzeń.`);
+      }
+      for (const device of floor.devices ?? []) {
+        if ((device.deviceKind === 'turret' || device.deviceKind === 'drone') && !device.tokenId) {
+          advice.push(
+            `${column}, piętro ${index + 1}: „${device.name}" nie ma żetonu na scenie — nie będzie czym strzelić.`,
+          );
+        }
+        if (device.deviceKind === 'door' && device.wallId === undefined) {
+          advice.push(
+            `${column}, piętro ${index + 1}: „${device.name}" nie wskazuje drzwi ani okna.`,
+          );
+        }
       }
     });
   }
@@ -599,6 +713,8 @@ function validateFloor(
         .slice(0, NET_FLOOR_PROGRAMS_MAX)
     : [];
 
+  const devices = NET_FLOOR_KINDS_WITH_DEVICES.includes(kind) ? readNetDevices(input.devices) : [];
+
   const notes = text(input.notes, NET_NOTES_MAX);
   return {
     id: floorId(index, branchIndex, input.id),
@@ -606,8 +722,50 @@ function validateFloor(
     label: text(input.label, NET_FLOOR_LABEL_MAX),
     ...(dv !== undefined ? { dv } : {}),
     ...(programIds.length > 0 ? { programIds } : {}),
+    ...(devices.length > 0 ? { devices } : {}),
     ...(notes ? { notes } : {}),
   };
+}
+
+/**
+ * Reads the device list of a control node off whatever the editor produced.
+ *
+ * Silently drops what it does not understand rather than refusing the save, for
+ * the same reason `readNetProgramEffects` does: the GM is mid-build, and an
+ * editor that refuses „Zapisz" because one row has no name is an editor that
+ * eats work. A device with no binding is legal and useful — it is a switch the
+ * GM narrates.
+ */
+export function readNetDevices(raw: unknown): CpredNetDevice[] {
+  if (!Array.isArray(raw)) return [];
+  const devices: CpredNetDevice[] = [];
+  for (const entry of raw.slice(0, NET_DEVICES_PER_NODE_MAX)) {
+    if (typeof entry !== 'object' || entry === null) continue;
+    const input = entry as Record<string, unknown>;
+    const deviceKind = (NET_DEVICE_KINDS as readonly unknown[]).includes(input.deviceKind)
+      ? (input.deviceKind as NetDeviceKind)
+      : undefined;
+    if (!deviceKind) continue;
+    const name = text(input.name, NET_DEVICE_NAME_MAX);
+    if (!name) continue;
+    const id =
+      typeof input.id === 'string' && input.id ? input.id.slice(0, 40) : `d${devices.length}`;
+    const entryId = typeof input.entryId === 'string' && input.entryId ? input.entryId : undefined;
+    const tokenId = typeof input.tokenId === 'string' && input.tokenId ? input.tokenId : undefined;
+    const wallId =
+      typeof input.wallId === 'number' && Number.isInteger(input.wallId) ? input.wallId : undefined;
+    const notes = text(input.notes, NET_NOTES_MAX);
+    devices.push({
+      id,
+      name,
+      deviceKind,
+      ...(entryId ? { entryId } : {}),
+      ...(tokenId ? { tokenId } : {}),
+      ...(wallId !== undefined ? { wallId } : {}),
+      ...(notes ? { notes } : {}),
+    });
+  }
+  return devices;
 }
 
 /**

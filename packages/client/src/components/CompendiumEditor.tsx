@@ -12,6 +12,8 @@ import type {
 } from '@vtt/shared';
 import {
   NET_ABILITIES_AVAILABLE,
+  NET_DEFENSE_KINDS,
+  NET_DEFENSE_KIND_LABELS,
   NET_GLUE_DURATIONS,
   NET_GUARD_KINDS,
   NET_GUARD_KIND_LABELS,
@@ -964,52 +966,152 @@ export function CompendiumEditor() {
 
           {form.category === 'netDefense' ? (
             <>
-              <div className="bot-row-inline">
-                <label className="bot-field bot-field--inline">
-                  REZ
-                  <input
-                    type="number"
-                    min={0}
-                    max={30}
-                    value={form.programRez}
-                    onChange={(event) => patch({ programRez: event.target.value })}
-                  />
-                </label>
-                <label className="bot-field bot-field--inline">
-                  Interfejs
-                  <input
-                    type="number"
-                    min={0}
-                    max={30}
-                    value={form.demonInterface}
-                    title="Demon broni się Testem Interfejsu — nie ma Obrony"
-                    onChange={(event) => patch({ demonInterface: event.target.value })}
-                  />
-                </label>
-              </div>
-              <div className="bot-row-inline">
-                <label className="bot-field bot-field--inline">
-                  Akcje Sieciowe
-                  <input
-                    type="number"
-                    min={0}
-                    max={30}
-                    value={form.demonActions}
-                    onChange={(event) => patch({ demonActions: event.target.value })}
-                  />
-                </label>
-                <label className="bot-field bot-field--inline">
-                  Wartość bojowa
-                  <input
-                    type="number"
-                    min={0}
-                    max={30}
-                    value={form.demonCombat}
-                    title="Cecha + Umiejętność w jednej liczbie"
-                    onChange={(event) => patch({ demonCombat: event.target.value })}
-                  />
-                </label>
-              </div>
+              <label className="bot-field">
+                Rodzaj obrony
+                <select
+                  value={form.defenseKind}
+                  title="Demon ma REZ i Interfejs; trzy tabele systemów obronnych mają PT unieszkodliwienia, PW i Wartość bojową"
+                  onChange={(event) => patch({ defenseKind: event.target.value })}
+                >
+                  {NET_DEFENSE_KINDS.map((kind) => (
+                    <option key={kind} value={kind}>
+                      {NET_DEFENSE_KIND_LABELS[kind]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {form.defenseKind === 'demon' ? (
+                <>
+                  <div className="bot-row-inline">
+                    <label className="bot-field bot-field--inline">
+                      REZ
+                      <input
+                        type="number"
+                        min={0}
+                        max={30}
+                        value={form.programRez}
+                        onChange={(event) => patch({ programRez: event.target.value })}
+                      />
+                    </label>
+                    <label className="bot-field bot-field--inline">
+                      Interfejs
+                      <input
+                        type="number"
+                        min={0}
+                        max={30}
+                        value={form.demonInterface}
+                        title="Demon broni się Testem Interfejsu — nie ma Obrony"
+                        onChange={(event) => patch({ demonInterface: event.target.value })}
+                      />
+                    </label>
+                  </div>
+                  <div className="bot-row-inline">
+                    <label className="bot-field bot-field--inline">
+                      Akcje Sieciowe
+                      <input
+                        type="number"
+                        min={0}
+                        max={30}
+                        value={form.demonActions}
+                        onChange={(event) => patch({ demonActions: event.target.value })}
+                      />
+                    </label>
+                    <label className="bot-field bot-field--inline">
+                      Wartość bojowa
+                      <input
+                        type="number"
+                        min={0}
+                        max={30}
+                        value={form.demonCombat}
+                        title="Cecha + Umiejętność w jednej liczbie"
+                        onChange={(event) => patch({ demonCombat: event.target.value })}
+                      />
+                    </label>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="bot-row-inline">
+                    <label className="bot-field bot-field--inline">
+                      PT unieszkodliwienia
+                      <input
+                        type="number"
+                        min={0}
+                        max={99}
+                        value={form.defenseDisableDv}
+                        title="„PT 17 Elektronika i zabezpieczenia” — test z Somy"
+                        onChange={(event) => patch({ defenseDisableDv: event.target.value })}
+                      />
+                    </label>
+                    <label className="bot-field bot-field--inline">
+                      Minut na to
+                      <input
+                        type="number"
+                        min={0}
+                        max={240}
+                        value={form.defenseMinutes}
+                        onChange={(event) => patch({ defenseMinutes: event.target.value })}
+                      />
+                    </label>
+                  </div>
+                  <div className="bot-row-inline">
+                    <label className="bot-field bot-field--inline">
+                      PW
+                      <input
+                        type="number"
+                        min={0}
+                        max={990}
+                        value={form.defenseHp}
+                        onChange={(event) => patch({ defenseHp: event.target.value })}
+                      />
+                    </label>
+                    <label className="bot-field bot-field--inline">
+                      Wartość bojowa
+                      <input
+                        type="number"
+                        min={0}
+                        max={99}
+                        value={form.demonCombat}
+                        title="Stanowisko obronne rzuca nią, gdy nikt go nie kontroluje"
+                        onChange={(event) => patch({ demonCombat: event.target.value })}
+                      />
+                    </label>
+                  </div>
+                  <div className="bot-row-inline">
+                    <label className="bot-field bot-field--inline">
+                      RUCH
+                      <input
+                        type="number"
+                        min={0}
+                        max={99}
+                        value={form.defenseMove}
+                        title="Tylko aktywne systemy obronne — drony"
+                        onChange={(event) => patch({ defenseMove: event.target.value })}
+                      />
+                    </label>
+                    <label className="bot-field bot-field--inline">
+                      PT zauważenia
+                      <input
+                        type="number"
+                        min={0}
+                        max={99}
+                        value={form.defenseSpotDv}
+                        title="„Percepcja PT 17, by zauważyć” — systemy środowiskowe"
+                        onChange={(event) => patch({ defenseSpotDv: event.target.value })}
+                      />
+                    </label>
+                  </div>
+                  <label className="bot-field">
+                    Standardowa aktywacja
+                    <input
+                      value={form.defenseTrigger}
+                      maxLength={300}
+                      placeholder="Co uruchamia ten system, np. „Cel wchodzi na dywan”"
+                      onChange={(event) => patch({ defenseTrigger: event.target.value })}
+                    />
+                  </label>
+                </>
+              )}
               <label className="bot-field">
                 Ikona
                 <input
@@ -1182,9 +1284,16 @@ interface EditorForm {
   fxOncePerEntry: boolean;
   deckSlots: string;
   deckSlotCost: string;
+  defenseKind: string;
   demonInterface: string;
   demonActions: string;
   demonCombat: string;
+  defenseDisableDv: string;
+  defenseMinutes: string;
+  defenseHp: string;
+  defenseMove: string;
+  defenseSpotDv: string;
+  defenseTrigger: string;
   name: string;
   description: string;
   cost: string;
@@ -1281,9 +1390,18 @@ function toForm(entry: CompendiumEntry | undefined): EditorForm {
       entry?.category === 'gear' && entry.deckSlotCost !== undefined
         ? String(entry.deckSlotCost)
         : '',
-    demonInterface: entry?.category === 'netDefense' ? String(entry.interfaceRank) : '',
-    demonActions: entry?.category === 'netDefense' ? String(entry.netActions) : '',
-    demonCombat: entry?.category === 'netDefense' ? String(entry.combatValue) : '',
+    defenseKind: entry?.category === 'netDefense' ? entry.defenseKind : 'demon',
+    demonInterface: numberField(entry?.category === 'netDefense' ? entry.interfaceRank : undefined),
+    demonActions: numberField(entry?.category === 'netDefense' ? entry.netActions : undefined),
+    demonCombat: numberField(entry?.category === 'netDefense' ? entry.combatValue : undefined),
+    defenseDisableDv: numberField(entry?.category === 'netDefense' ? entry.disableDv : undefined),
+    defenseMinutes: numberField(
+      entry?.category === 'netDefense' ? entry.disableMinutes : undefined,
+    ),
+    defenseHp: numberField(entry?.category === 'netDefense' ? entry.hp : undefined),
+    defenseMove: numberField(entry?.category === 'netDefense' ? entry.move : undefined),
+    defenseSpotDv: numberField(entry?.category === 'netDefense' ? entry.spotDv : undefined),
+    defenseTrigger: entry?.category === 'netDefense' ? (entry.trigger ?? '') : '',
     weaponTypeId: entry?.category === 'weapon' ? (entry.weaponTypeId ?? '') : '',
     quality: entry?.category === 'weapon' ? entry.quality : 'standard',
     damage: entry?.category === 'weapon' ? (entry.damage ?? '') : '',
@@ -1371,6 +1489,11 @@ function idList(value: string): string[] {
     .split(',')
     .map((id) => id.trim())
     .filter(Boolean);
+}
+
+/** Puste pole formularza dla nieobecnej liczby — „PW: brak" to nie „PW 0". */
+function numberField(value: number | undefined): string {
+  return value === undefined ? '' : String(value);
 }
 
 function numberOrUndefined(value: string): number | undefined {
@@ -1513,13 +1636,30 @@ function fromForm(form: EditorForm, existingId: string | undefined): Record<stri
     };
   }
   if (form.category === 'netDefense') {
+    // Demon i system obronny mają rozłączne kolumny (26d), więc wysyłane są
+    // rozłączne pola — inaczej kamera przyjechałaby z „Interfejs 0", co jest
+    // liczbą, a nie pustym miejscem w tabeli.
+    if (form.defenseKind === 'demon') {
+      return {
+        ...base,
+        defenseKind: 'demon',
+        rez: numberOrUndefined(form.programRez) ?? 0,
+        interfaceRank: numberOrUndefined(form.demonInterface) ?? 0,
+        netActions: numberOrUndefined(form.demonActions) ?? 0,
+        combatValue: numberOrUndefined(form.demonCombat) ?? 0,
+        icon: form.programIcon || undefined,
+      };
+    }
     return {
       ...base,
-      defenseKind: 'demon',
-      rez: numberOrUndefined(form.programRez) ?? 0,
-      interfaceRank: numberOrUndefined(form.demonInterface) ?? 0,
-      netActions: numberOrUndefined(form.demonActions) ?? 0,
-      combatValue: numberOrUndefined(form.demonCombat) ?? 0,
+      defenseKind: form.defenseKind,
+      combatValue: numberOrUndefined(form.demonCombat),
+      disableDv: numberOrUndefined(form.defenseDisableDv),
+      disableMinutes: numberOrUndefined(form.defenseMinutes),
+      hp: numberOrUndefined(form.defenseHp),
+      move: numberOrUndefined(form.defenseMove),
+      spotDv: numberOrUndefined(form.defenseSpotDv),
+      trigger: form.defenseTrigger || undefined,
       icon: form.programIcon || undefined,
     };
   }

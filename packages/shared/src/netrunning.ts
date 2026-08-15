@@ -1,7 +1,9 @@
 import type {
+  CpredAttackRequest,
   CpredNetArchitecture,
   CpredNetPosition,
   NetAbilityId,
+  NetDeviceOperation,
   NetDifficulty,
   NetRunView,
 } from './systems/cpred/index.js';
@@ -241,4 +243,26 @@ export interface NetIceActPayload {
 
 export interface NetRunGluePayload {
   runId: string;
+}
+
+// ─────────────────────── węzły kontrolne (etap 26d) ───────────────────────
+
+/**
+ * Operating one thing hanging off a control node (s. 199).
+ *
+ * The node is named by its floor rather than by an id of its own, because a
+ * control node *is* a floor — that is where its DV, its hold and its
+ * once-per-Turn ledger already live. `targetTokenId` and `request` are the
+ * turret's shot: the very same fields `attack:roll` takes, so a turret firing
+ * a burst is one flag rather than a second protocol.
+ */
+export interface NetRunDevicePayload {
+  runId: string;
+  floorId: string;
+  deviceId: string;
+  operation: NetDeviceOperation;
+  /** Who the turret is aimed at; ignored by every other operation. */
+  targetTokenId?: string;
+  request?: CpredAttackRequest;
+  gesture?: RollGesture;
 }
