@@ -192,3 +192,53 @@ export interface NetRunAbilityResult {
   /** One Polish line the run window prints under the shaft. */
   summary: string;
 }
+
+// ─────────────────────────── walka w Sieci (etap 26c) ───────────────────────────
+
+/**
+ * Running or stopping a Program — one Net Action either way (s. 201).
+ *
+ * Aggressors are deliberately not addressable here: „są uruchomione przy
+ * Ataku, a kiedy zostaną użyte, wyłączają się automatycznie", so firing one is
+ * `netrun:attack` and there is nothing to keep running afterwards.
+ */
+export interface NetRunProgramPayload {
+  runId: string;
+  /** Deck row (`CpredNetInstallRow.id`) to run, or the copy's row to stop. */
+  rowId: string;
+  action: 'run' | 'stop';
+}
+
+/**
+ * One exchange of blows. `rowId` names the Aggressor being fired; leaving it
+ * out is Paf, „atak wymierzony w Program … bez Programu" (s. 201).
+ */
+export interface NetRunAttackPayload {
+  runId: string;
+  iceId: string;
+  rowId?: string;
+  gesture?: RollGesture;
+}
+
+/** „Ucieczka na sąsiednie piętro windy" — the destination the player picked. */
+export interface NetRunSlidePayload {
+  runId: string;
+  iceId: string;
+  to?: CpredNetPosition;
+  gesture?: RollGesture;
+}
+
+/**
+ * The GM's two buttons on a Black ICE (decision of 15.08: „wszystko na klik
+ * MG"). `detect` is the encounter of s. 205 — the Speed contest, the free hit
+ * and the jump to the head of the initiative queue; `turn` is one of its Turns.
+ */
+export interface NetIceActPayload {
+  runId: string;
+  iceId: string;
+  gesture?: RollGesture;
+}
+
+export interface NetRunGluePayload {
+  runId: string;
+}

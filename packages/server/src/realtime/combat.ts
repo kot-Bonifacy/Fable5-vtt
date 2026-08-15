@@ -64,10 +64,33 @@ import { sanitizeGesture } from './chat.js';
  * appears in a player's payload, so the tracker cannot betray an ambush.
  */
 
-/** A combatant row together with everything needed to render and roll it. */
+/**
+ * A combatant row together with everything needed to render and roll it.
+ *
+ * `token` is nullable since stage 26c: a Black ICE „zajmuje pierwsze miejsce
+ * w Kolejce Inicjatywy" (s. 205) without ever standing anywhere on the map. It
+ * is the only bodiless participant so far, and every rule that reaches for a
+ * figure — moving, being shot at, catching fire, being held — simply skips a
+ * row that has none. `combatantName` is what the tracker paints instead.
+ */
 export type CombatantRow = Combatant & {
+  token: (Token & { character: { id: string; ownerId: string | null } | null }) | null;
+};
+
+/** The same row, narrowed to the participants that have a figure on the map. */
+export type FiguredCombatantRow = CombatantRow & {
+  tokenId: string;
   token: Token & { character: { id: string; ownerId: string | null } | null };
 };
+
+export function hasFigure(row: CombatantRow): row is FiguredCombatantRow {
+  return row.token !== null && row.tokenId !== null;
+}
+
+/** „Kraken" — the name of a participant with no token to read it off. */
+export function combatantName(row: CombatantRow): string {
+  return row.token?.name ?? row.label ?? 'Uczestnik';
+}
 
 export type CombatRow = Combat & { combatants: CombatantRow[] };
 
@@ -79,9 +102,12 @@ const COMBAT_INCLUDE = {
   },
 } as const;
 
-/** Who controls a participant: the token's owner, or the linked sheet's. */
+/**
+ * Who controls a participant: the token's owner, or the linked sheet's. A
+ * bodiless one is the GM's — „LOD-y zawsze kontroluje MG" (s. 205).
+ */
 export function combatantOwnerId(row: CombatantRow): string | null {
-  return row.token.ownerId ?? row.token.character?.ownerId ?? null;
+  return row.token?.ownerId ?? row.token?.character?.ownerId ?? null;
 }
 
 /**
@@ -137,7 +163,7 @@ function grappleViewFor(combat: CombatRow, combatant: CombatantRow): GrappleView
   return {
     role: attacking ? 'attacker' : 'defender',
     otherId: other.id,
-    otherName: other.token.name,
+    otherName: combatantName(other),
     ...(pair.defender.humanShield ? { shield: true } : {}),
     ...(pair.defender.chokeStreak > 0 ? { chokeStreak: pair.defender.chokeStreak } : {}),
   };
@@ -147,14 +173,14 @@ export function toCombatantView(row: CombatantRow, combat: CombatRow): Combatant
   const view: CombatantView = {
     id: row.id,
     tokenId: row.tokenId,
-    name: row.token.name,
-    imageUrl: row.token.imageUrl,
+    name: combatantName(row),
+    imageUrl: row.token?.imageUrl ?? null,
     initiative: row.initiative,
     tieBreak: row.tieBreak,
     order: row.order,
     ownerId: combatantOwnerId(row),
   };
-  if (row.token.hidden) view.hidden = true;
+  if (row.token?.hidden) view.hidden = true;
   // The budget is the system's projection (stage 14b) — the tracker only paints
   // it. Absent until the participant's turn has actually begun.
   const budget = turnBudgetOf(row.turnState);
@@ -359,7 +385,7 @@ function initiativeInputsOf(
   registry: SheetRegistry,
   sheets: Map<string, string>,
 ): { modifier: number; tieBreak: number | null; label: string | null } {
-  const characterId = row.token.character?.id;
+  const characterId = row.token?.character?.id;
   const data = characterId ? sheets.get(characterId) : undefined;
   if (data === undefined) return { modifier: 0, tieBreak: null, label: null };
   const initiative = readSheetInitiative({ data }, registry);
@@ -372,7 +398,7 @@ async function loadCombatSheets(
   rows: CombatantRow[],
 ): Promise<Map<string, string>> {
   const ids = rows
-    .map((row) => row.token.character?.id)
+    .map((row) => row.token?.character?.id)
     .filter((id): id is string => typeof id === 'string');
   if (ids.length === 0) return new Map();
   const characters = await prisma.character.findMany({
@@ -613,7 +639,9 @@ async function applySpend(
     // the same table its own question and answers it in metres, so it is left
     // to `validateTokenMove`.
     if (spend.kind !== 'move') {
-      const message = sheetActionBlock(readTokenStatuses(combatant.token.statuses));
+      const message = combatant.token
+        ? sheetActionBlock(readTokenStatuses(combatant.token.statuses))
+        : null;
       if (message) {
         return {
           kind: 'refused',
@@ -668,7 +696,7 @@ export async function moveBudgetForCombatant(
   deps: RealtimeDeps,
   row: CombatantRow,
 ): Promise<SheetMoveBudget | null> {
-  const characterId = row.token.character?.id;
+  const characterId = row.token?.character?.id;
   if (!characterId) return null;
   const character = await deps.ctx.prisma.character.findUnique({
     where: { id: characterId },
@@ -784,9 +812,10 @@ export const combatRollAllEvent = defineEvent<CombatRollAllPayload, CombatView>(
     if (!combat) throw new RealtimeError('COMBAT_NOT_FOUND');
 
     const rerollAll = payload?.rerollAll === true;
-    const targets = rerollAll
-      ? combat.combatants
-      : combat.combatants.filter((row) => row.initiative === null);
+    // A Black ICE (stage 26c) is never rolled for: its place in the queue comes
+    // from the rule („o jeden punkt wyżej", s. 205), not from a die.
+    const rollable = combat.combatants.filter(hasFigure);
+    const targets = rerollAll ? rollable : rollable.filter((row) => row.initiative === null);
     await rollFor(deps, targets);
     const reloaded = await loadCombatById(deps.ctx.prisma, combat.id);
     await renumberOrder(deps.ctx.prisma, reloaded);
@@ -825,6 +854,9 @@ export const combatRollEvent = defineEvent<CombatRollPayload, { initiative: numb
       campaignId,
       payload?.combatantId,
     );
+    // A Black ICE takes its place „o jeden punkt wyżej" (s. 205) rather than
+    // rolling for it — there is no REF to add and nothing to reroll.
+    if (!hasFigure(combatant)) throw new RealtimeError('COMBATANT_HAS_NO_FIGURE');
     if (user.role !== ROLE_GM) {
       // A hidden participant must not even be confirmable by a player.
       if (combatant.token.hidden) throw new RealtimeError('COMBATANT_NOT_FOUND');
@@ -841,7 +873,7 @@ export const combatRollEvent = defineEvent<CombatRollPayload, { initiative: numb
       breakdown.push({ label: inputs.label, value: inputs.modifier, kind: 'stat' });
     }
     result.title = 'Inicjatywa';
-    result.actor = combatant.token.name;
+    result.actor = combatantName(combatant);
     if (breakdown.length > 0) result.breakdown = breakdown;
     if (gesture && gesture.strength > 0) result.tossStrength = gesture.strength;
     if (gesture?.toss) result.toss = gesture.toss;

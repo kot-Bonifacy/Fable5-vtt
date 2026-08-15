@@ -21,6 +21,7 @@ import {
   readNetRunState,
   readNetRuntime,
 } from './netrun.js';
+import { freshNetCombat, netCombatView, type NetCombatView } from './netcombat.js';
 import { buildCpredRegistry } from './character.js';
 import {
   CPRED_ACTION_NET,
@@ -207,6 +208,14 @@ describe('Zwiad', () => {
   });
 });
 
+/** Stage 26c rides on the same payload; these cases are about 26b's half. */
+const NO_FIGHT: NetCombatView = netCombatView(freshNetCombat(), {
+  deck: [],
+  gm: false,
+  currentFloorId: null,
+  describeEffect: () => '',
+});
+
 describe('widok filtrowany', () => {
   const state = runAt(TOP, {
     entered: ['f0', 'f1'],
@@ -216,7 +225,7 @@ describe('widok filtrowany', () => {
   });
 
   it('never puts an unopened floor in a player payload', () => {
-    const view = netRunView(ARCHITECTURE, state, { gm: false, netActionsMax: 3 });
+    const view = netRunView(ARCHITECTURE, state, { gm: false, netActionsMax: 3, combat: NO_FIGHT });
     const hidden = view.branches[0]!.floors.find((floor) => floor.id === 'f3')!;
     expect(hidden.knowledge).toBe('hidden');
     expect(hidden.kind).toBeNull();
@@ -224,7 +233,7 @@ describe('widok filtrowany', () => {
   });
 
   it('gives a scouted floor its kind but not its DV', () => {
-    const view = netRunView(ARCHITECTURE, state, { gm: false, netActionsMax: 3 });
+    const view = netRunView(ARCHITECTURE, state, { gm: false, netActionsMax: 3, combat: NO_FIGHT });
     const scouted = view.branches[0]!.floors.find((floor) => floor.id === 'f2')!;
     expect(scouted.knowledge).toBe('scouted');
     expect(scouted.kind).toBe('file');
@@ -236,17 +245,14 @@ describe('widok filtrowany', () => {
     const before = netRunView(
       ARCHITECTURE,
       { ...state, entered: ['f0', 'f1', 'f2'] },
-      {
-        gm: false,
-        netActionsMax: 3,
-      },
+      { gm: false, netActionsMax: 3, combat: NO_FIGHT },
     );
     expect(before.branches[0]!.floors.find((floor) => floor.id === 'f2')?.notes).toBeUndefined();
 
     const after = netRunView(
       ARCHITECTURE,
       { ...state, entered: ['f0', 'f1', 'f2'], identified: ['f2'] },
-      { gm: false, netActionsMax: 3 },
+      { gm: false, netActionsMax: 3, combat: NO_FIGHT },
     );
     expect(after.branches[0]!.floors.find((floor) => floor.id === 'f2')?.notes).toBe(
       'Manifest przemytu',
@@ -254,7 +260,7 @@ describe('widok filtrowany', () => {
   });
 
   it('shows the GM everything, whatever the netrunner has found', () => {
-    const view = netRunView(ARCHITECTURE, state, { gm: true, netActionsMax: 3 });
+    const view = netRunView(ARCHITECTURE, state, { gm: true, netActionsMax: 3, combat: NO_FIGHT });
     const floor = view.branches[0]!.floors.find((entry) => entry.id === 'f3')!;
     expect(floor.knowledge).toBe('entered');
     expect(floor.dv).toBe(10);
@@ -262,7 +268,7 @@ describe('widok filtrowany', () => {
   });
 
   it('marks where the netrunner is standing', () => {
-    const view = netRunView(ARCHITECTURE, state, { gm: false, netActionsMax: 3 });
+    const view = netRunView(ARCHITECTURE, state, { gm: false, netActionsMax: 3, combat: NO_FIGHT });
     expect(view.branches[0]!.floors.filter((floor) => floor.here)).toHaveLength(1);
     expect(view.branches[0]!.floors[0]!.here).toBe(true);
   });

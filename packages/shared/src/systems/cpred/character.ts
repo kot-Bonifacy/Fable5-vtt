@@ -35,6 +35,7 @@ import {
   NET_PROGRAM_STAT_MAX,
   NET_PROGRAM_TARGETS,
   netProgramSlots,
+  readNetProgramEffects,
   type CpredNetProgramProfile,
   type CpredNetrunningData,
   type NetProgramClass,
@@ -1294,6 +1295,7 @@ function validateInstalledProgram(raw: unknown): CpredNetProgramProfile | undefi
   if (!isProgramClass(row.programClass)) return undefined;
   const per = programStat(row.per);
   const speed = programStat(row.speed);
+  const effects = readNetProgramEffects(row.effects);
   return {
     programClass: row.programClass,
     ...(isProgramTarget(row.target) ? { target: row.target } : {}),
@@ -1303,6 +1305,12 @@ function validateInstalledProgram(raw: unknown): CpredNetProgramProfile | undefi
     rez: programStat(row.rez) ?? 0,
     ...(per !== undefined ? { per } : {}),
     ...(speed !== undefined ? { speed } : {}),
+    // The mechanical half of the „Efekt" column (stage 26c). Copied onto the
+    // row like every other number here: a deck has to stay readable after the
+    // GM edits the catalogue, and stage 26c must never reach back into the
+    // compendium in the middle of a run to find out what a Program does.
+    ...(effects ? { effects } : {}),
+    ...(typeof row.icon === 'string' && row.icon ? { icon: row.icon.slice(0, 200) } : {}),
   };
 }
 

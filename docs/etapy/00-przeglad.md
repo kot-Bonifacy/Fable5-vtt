@@ -123,7 +123,12 @@ Fazy A→B→C odwzorowują priorytety MVP z ankiety (mapa+tokeny, kości, karty
    w Sieci. **Decyzja MG z 14.08:** ekran Sieci dla netrunnera to pływające okno (jak karta
    postaci), nie zakładka panelu — run dzieje się w trakcie walki fizycznej, więc mapa musi zostać
    widoczna. **Decyzja MG z 15.08:** punkt dostępu jest obiektem sceny stawianym narzędziem mapy
-   i domyślnie ukrytym — odsłania go Skaner albo MG.
+   i domyślnie ukrytym — odsłania go Skaner albo MG. **Druga decyzja MG z 15.08 (etap 26c):**
+   Czarny LOD nigdy nie rusza się sam — MG ma przy nim dwa przyciski („LOD wykrywa intruza",
+   „Tura LOD-a"), a walka w Sieci działa także bez włączonego trybu turowego. Etap 26c dołożył
+   też jedyną zmianę w rdzeniu VTT, jakiej wymagał netrunning: **uczestnik kolejki inicjatywy
+   nie musi mieć figury na mapie** (`Combatant.tokenId` jest nullowalny), bo „LOD zajmuje
+   pierwsze miejsce w Kolejce Inicjatywy" (s. 205), nie stojąc nigdzie w Somie.
 
 ## Ryzyka i ograniczenia
 

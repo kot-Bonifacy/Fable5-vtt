@@ -36,6 +36,7 @@ import {
   cyberdeckSlotsUsed,
   isGearEntry,
   isProgramEntry,
+  netProgramProfileOf,
   netProgramSlots,
   programEntries,
   ARMOR_LOCATIONS,
@@ -1782,20 +1783,9 @@ function CyberdeckSection({ data, saveData }: TabProps) {
       notes: '',
       kind: isProgram ? 'program' : 'hardware',
       slotCost: cost,
-      ...(isProgram
-        ? {
-            program: {
-              programClass: entry.programClass,
-              ...(entry.target ? { target: entry.target } : {}),
-              ...(entry.blackIce ? { blackIce: true as const } : {}),
-              atk: entry.atk,
-              def: entry.def,
-              rez: entry.rez,
-              ...(entry.per !== undefined ? { per: entry.per } : {}),
-              ...(entry.speed !== undefined ? { speed: entry.speed } : {}),
-            },
-          }
-        : {}),
+      // Cała mechanika wpisu razem z „Efektem" (etap 26c) — kopiowana jedną
+      // funkcją z `shared`, żeby gniazdo deku nie mogło zapomnieć pola.
+      ...(isProgram ? { program: netProgramProfileOf(entry) } : {}),
     };
     patchDeck({ installed: [...deck.installed, row] });
   }

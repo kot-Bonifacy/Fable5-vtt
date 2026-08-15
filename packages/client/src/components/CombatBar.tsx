@@ -79,7 +79,7 @@ export function CombatBar() {
   // 14e). „Przygwożdżony" cannot be enforced — the map has no cover — so the
   // honest form of the rule is a sentence in front of the person it concerns.
   const reminders = useMemo(
-    () => (acting ? cpredTurnReminders(tokens[acting.tokenId]?.statuses ?? []) : []),
+    () => (acting?.tokenId ? cpredTurnReminders(tokens[acting.tokenId]?.statuses ?? []) : []),
     [acting, tokens],
   );
   // RAW: a Mortally Wounded character rolls at the start of each of their turns.

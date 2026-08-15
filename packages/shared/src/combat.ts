@@ -103,7 +103,13 @@ export interface GrappleView {
 /** One participant of a combat, as delivered to a client. */
 export interface CombatantView {
   id: string;
-  tokenId: string;
+  /**
+   * Figure this row stands for; null for a participant with no body in the
+   * Soma — so far only a Black ICE fighting in the Net (stage 26c), which takes
+   * its place in the queue („o jeden punkt wyżej", s. 205) without standing
+   * anywhere on the map. Anything that needs a figure skips such a row.
+   */
+  tokenId: string | null;
   /**
    * Name and portrait are denormalized from the token so a tracker row still
    * renders while the token layer is catching up (scene switch, resync).

@@ -14,29 +14,29 @@ inicjatywy. Obrażenia idą w obie strony: w REZ Programów i prosto w PW mózgu
 
 ## Zakres
 
-- [ ] **Programy netrunnera** — uruchamianie i zatrzymywanie (Akcja Sieciowa), stan „zrezowany"
+- [x] **Programy netrunnera** — uruchamianie i zatrzymywanie (Akcja Sieciowa), stan „zrezowany"
       per kopia, „tylko jedna kopia naraz" u Obrońców, „raz na wejście do Architektury",
       derez przy REZ 0 i dwie Akcje Sieciowe na przywrócenie (wyłącz + uruchom)
-- [ ] **Efekty trzech klas** — Dopalacze (+2 do Maskowania / Zwiadu / Backdooru, +2 Prędkości)
+- [x] **Efekty trzech klas** — Dopalacze (+2 do Maskowania / Zwiadu / Backdooru, +2 Prędkości)
       wchodzące w rzuty zdolności z 26b; Obrońcy (Pancerz −4 obrażeń w mózg, Powłoka zerująca
       ATK nie-LOD-ów, Tarcza kasująca pierwsze trafienie i derezująca się); Agresorzy z własnymi
       efektami (obrażenia, wyrzucenie z Architektury, kradzież Akcji Sieciowych, Superklej)
-- [ ] **Paf** — atak Akcją Sieciową bez Programu: Interfejs + 1k10 przeciw OBR + 1k10 Programu
+- [x] **Paf** — atak Akcją Sieciową bez Programu: Interfejs + 1k10 przeciw OBR + 1k10 Programu
       albo Interfejsowi + 1k10 netrunnera; 1k6 obrażeń
-- [ ] **Walka w Sieci** — `Interfejs + ATK Programu + 1k10` przeciw `Interfejs celu + 1k10`
+- [x] **Walka w Sieci** — `Interfejs + ATK Programu + 1k10` przeciw `Interfejs celu + 1k10`
       albo `OBR + 1k10`; klasa celu (przeciwbiałkowy / przeciwprogramowy) egzekwowana z danych
       26a, nie z nazw
-- [ ] **Czarny LOD w akcji** — darmowy atak przy wykryciu (Interfejs + premie do PRĘ + 1k10
+- [x] **Czarny LOD w akcji** — darmowy atak przy wykryciu (Interfejs + premie do PRĘ + 1k10
       przeciw PRĘ + 1k10), wskoczenie na czoło Kolejki Inicjatywy „o jeden punkt wyżej",
       atak raz na Turę, pościg po całej Architekturze, czyhanie po udanym Ślizgu
-- [ ] **Ślizg** — test sporny przeciw PER LOD-u, raz na Turę, ucieczka na sąsiednie piętro
+- [x] **Ślizg** — test sporny przeciw PER LOD-u, raz na Turę, ucieczka na sąsiednie piętro
       (hasła nie da się minąć); LOD zostaje jako czyhający
-- [ ] **Obrażenia w obie strony** — obrażenia „w mózg" idą w PW karty ścieżką `directDamage`
+- [x] **Obrażenia w obie strony** — obrażenia „w mózg" idą w PW karty ścieżką `directDamage`
       z 16h (pancerz ich nie zatrzymuje), obrażenia Programów schodzą z REZ; derez ≠ zniszczenie
-- [ ] **Wspólny tracker inicjatywy** — tura netrunnera i tury LOD-ów przeplatają się z turami
+- [x] **Wspólny tracker inicjatywy** — tura netrunnera i tury LOD-ów przeplatają się z turami
       reszty drużyny w jednej kolejce z etapu 14; tracker musi umieć **wstawić** uczestnika
       w trakcie rundy
-- [ ] **Awaryjne odłączenie z rachunkiem** — wyjście poza 6 m (26b) zbiera efekty wszystkich
+- [x] **Awaryjne odłączenie z rachunkiem** — wyjście poza 6 m (26b) zbiera efekty wszystkich
       zrezowanych LOD-ów napotkanych w tym wejściu
 
 ## Poza zakresem
@@ -47,14 +47,14 @@ inicjatywy. Obrażenia idą w obie strony: w REZ Programów i prosto w PW mózgu
 
 ## Kryteria ukończenia
 
-- [ ] Netrunner wchodzi na piętro z Czarnym LOD-em, dostaje darmowy atak przy wykryciu,
+- [x] Netrunner wchodzi na piętro z Czarnym LOD-em, dostaje darmowy atak przy wykryciu,
       LOD wskakuje do kolejki inicjatywy i atakuje w swojej Turze
-- [ ] Netrunner odpowiada Agresorem z deku i Pafem; LOD schodzi do REZ 0 i zostaje zderezowany
-- [ ] Obrażenia w mózg zdejmują PW z karty postaci z pominięciem pancerza; Pancerz (Program)
+- [x] Netrunner odpowiada Agresorem z deku i Pafem; LOD schodzi do REZ 0 i zostaje zderezowany
+- [x] Obrażenia w mózg zdejmują PW z karty postaci z pominięciem pancerza; Pancerz (Program)
       obniża je o 4
-- [ ] Udany Ślizg przenosi netrunnera piętro wyżej, a LOD zostaje jako czyhający
-- [ ] Walka w Sieci przeplata się z walką na mapie w jednym trackerze
-- [ ] Testy: każda klasa Programu, pełna wymiana ciosów z LOD-em i Ślizg w `shared`;
+- [x] Udany Ślizg przenosi netrunnera piętro wyżej, a LOD zostaje jako czyhający
+- [x] Walka w Sieci przeplata się z walką na mapie w jednym trackerze
+- [x] Testy: każda klasa Programu, pełna wymiana ciosów z LOD-em i Ślizg w `shared`;
       wstawka do kolejki inicjatywy i obrażenia w mózg na żywych gniazdach serwera
 
 ## Wskazówki techniczne
@@ -69,3 +69,26 @@ inicjatywy. Obrażenia idą w obie strony: w REZ Programów i prosto w PW mózgu
   pola wpisu, żeby MG mógł dopisać własny Program bez zmiany kodu.
 - **LOD nie jest tokenem na mapie**, a mimo to jest uczestnikiem kolejki. Najtańsza droga to
   `Combatant` bez `tokenId` — sprawdź, czy tracker z 14 to zniesie, zanim zaczniesz go zmieniać.
+
+## Jak to wyszło (15.08.2026)
+
+- **Efekt Programu jest wpisem, nie gałęzią `switch`.** `CpredNetProgramEffects` niesie kości
+  obrażeń wobec trzech rodzajów celu, premię Dopalacza, rodzaj Obrońcy, dziewięć nazwanych
+  haków i trzy flagi. Wszystkie 27 Programów podręcznika wypełnia `parse-netrunning.py`
+  (tabela `PROGRAM_EFFECTS`), a MG dopisuje własne sekcją „Efekt (mechanika)" w edytorze
+  kompendium — bez zmiany kodu, tak jak wymagała wskazówka wyżej.
+- **Agresor nie jest trzymany uruchomiony, tylko odpalany atakiem** (s. 201). Jedna Akcja
+  Sieciowa kupuje cały atak; w `rezzed` siedzą wyłącznie Dopalacze i Obrońcy.
+- **Obie strony wymiany rzucają się naraz** — po drugiej stronie jest Program, więc nie ma
+  komu podać „Broń się". Rzut netrunnera podlega zasadzie krytyka (to Test), rzut Programu nie.
+- **Czarny LOD rusza się wyłącznie na klik MG** (decyzja MG z 15.08): „LOD wykrywa intruza"
+  i „Tura LOD-a". Bez trybu turowego walka też działa — zasady liczone w rundach po prostu
+  wtedy nie obowiązują.
+- **`Combatant.tokenId` jest od tego etapu nullowalny**, a wiersz niesie `label`, `netRunId`
+  i `netIceId`. Nowy typ `FiguredCombatantRow` zawęża wiersz wszędzie, gdzie zasada mówi
+  o ciele; `combatantName` maluje resztę.
+- **Dwa haki zostają dla MG** — „1k6 INT/REF/ZW na godzinę" i „RUCH −1k6 na godzinę". Oba to
+  zegar spoza walki na Cechach, których karta nie umie obniżyć na godzinę i przywrócić.
+- **Świadomie pominięte:** „Program można aktywować tylko raz na rundę w Somie" (s. 201) —
+  rundy istnieją wyłącznie w trybie turowym, a zakres etapu wymienia inne ograniczenia,
+  które są egzekwowane. Wpis w `POMYSLY.md`.

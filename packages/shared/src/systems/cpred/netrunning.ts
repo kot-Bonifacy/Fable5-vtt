@@ -23,8 +23,11 @@
 
 import type { DiceRng } from '../../dice.js';
 // Type-only on purpose: `character.ts` imports this module for the registry
-// field, so a value import back would close a cycle.
+// field, so a value import back would close a cycle. The same goes for
+// `netrun.ts`, which imports the architecture model from here — a Booster names
+// the Interface ability it helps, and that name is defined over there.
 import type { CpredRegistry } from './character.js';
+import type { NetAbilityId } from './netrun.js';
 import { slugify } from './ids.js';
 
 // ───────────────────────────────── Programy ─────────────────────────────────
@@ -56,6 +59,113 @@ export const NET_PROGRAM_TARGET_LABELS: Record<NetProgramTarget, string> = {
 export const NET_BLACK_ICE_SLOTS = 2;
 export const NET_PROGRAM_STAT_MAX = 30;
 
+// ─────────────────────── efekt Programu jako dane (26c) ───────────────────────
+
+/**
+ * The „Efekt" column, in numbers instead of prose (stage 26c).
+ *
+ * Every Program in the rulebook prints one sentence saying what it does, and
+ * stage 26c has to act on it. Reading that sentence in code would mean a
+ * `switch` over Polish names — and a GM who invents „Kolczatka" would get a
+ * Program the engine politely ignores. So the sentence stays as the entry's
+ * description (what the table reads) and these fields carry what the engine
+ * needs (what the table gets). Adding a Program is filling a form, not a patch.
+ *
+ * Nothing here is required: an entry with no `effects` is a Program the GM
+ * adjudicates by hand, which is exactly how it worked before this stage.
+ */
+export const NET_PROGRAM_HOOKS = [
+  /** „wyrzucany z Architektury bez zachowania środków bezpieczeństwa" (s. 204). */
+  'eject',
+  /** „zmniejsza o 1 (do minimum 2) liczbę Akcji Sieciowych… w kolejnej Turze". */
+  'stealNetAction',
+  /** Superklej i Kraken: ani niżej, ani bezpiecznego odłączenia. */
+  'glue',
+  /** „cyberdek oraz ubranie zaczynają się palić" — status Podpalony z 16h. */
+  'burn',
+  /** Kruk: „derezuje jeden losowo wybrany, zrezowany Program obronny". */
+  'derezDefender',
+  /** Żmija, Trujący zgon: „niszczy jeden losowy Program… na cyberdeku celu". */
+  'destroyProgram',
+  /** Skunks: „wszystkie Testy Ślizgu z modyfikatorem −2". */
+  'slidePenalty',
+  /** Nerwosol, Lisz: „na godzinę obniża o 1k6 INT, REF oraz ZW" — stosuje MG. */
+  'statDrain',
+  /** Skorpion: „na następną godzinę RUCH spada o 1k6" — stosuje MG. */
+  'moveDrain',
+] as const;
+export type NetProgramHook = (typeof NET_PROGRAM_HOOKS)[number];
+
+export const NET_PROGRAM_HOOK_LABELS: Record<NetProgramHook, string> = {
+  eject: 'wyrzucenie z Architektury',
+  stealNetAction: '−1 Akcja Sieciowa w kolejnej Turze',
+  glue: 'ani niżej, ani bezpiecznego odłączenia',
+  burn: 'dek i ubranie płoną',
+  derezDefender: 'derez losowego Obrońcy',
+  destroyProgram: 'zniszczenie Programu na deku',
+  slidePenalty: '−2 do Testów Ślizgu',
+  statDrain: 'INT, REF i ZW −1k6 na godzinę',
+  moveDrain: 'RUCH −1k6 na godzinę',
+};
+
+/**
+ * Hooks the engine names and the **GM** applies (decision of 15.08).
+ *
+ * Both are „na godzinę": a clock that runs outside the fight, on a Stat the
+ * sheet has no way to lower for an hour and put back. Automating them would
+ * mean a temporary-modifier model the project does not have — so the card says
+ * what happened, in Polish, and the GM writes it down.
+ */
+export const NET_PROGRAM_HOOKS_MANUAL: readonly NetProgramHook[] = ['statDrain', 'moveDrain'];
+
+/** What a Defender does while it is rezzed (s. 203). */
+export const NET_GUARD_KINDS = ['armour', 'shell', 'shield'] as const;
+export type NetGuardKind = (typeof NET_GUARD_KINDS)[number];
+
+export const NET_GUARD_KIND_LABELS: Record<NetGuardKind, string> = {
+  armour: 'Pancerz — obniża obrażenia w mózg',
+  shell: 'Powłoka — zeruje ATK Agresorów spoza Czarnego LOD-u',
+  shield: 'Tarcza — kasuje pierwsze trafienie i derezuje się',
+};
+
+/** Default of „obniża obrażenia zadane mózgowi o 4" when the entry is silent. */
+export const NET_GUARD_ARMOUR_DEFAULT = 4;
+
+/** How long the glue holds: Superklej „1k6 Rund", Kraken „do końca kolejnej Tury". */
+export const NET_GLUE_DURATIONS = ['d6rounds', 'nextTurn'] as const;
+export type NetGlueDuration = (typeof NET_GLUE_DURATIONS)[number];
+
+export interface CpredNetProgramEffects {
+  /** k6 of damage against a Program that is not Black ICE. */
+  vsProgram?: number;
+  /** k6 of damage against Black ICE. */
+  vsBlackIce?: number;
+  /** k6 straight into the netrunner's HP — „bezpośrednio mózgowi". */
+  vsBrain?: number;
+  /** Dopalacz: „+2 do Testów Maskowania", „+2 Prędkości". */
+  boost?: {
+    value: number;
+    /** Interface ability ids the bonus applies to (`scout`, `cloak`, …). */
+    abilities?: NetAbilityId[];
+    /** True when the bonus goes to PRĘDKOŚĆ — the Black ICE detection contest. */
+    speed?: boolean;
+  };
+  /** Obrońca: which of the three it is, and how much when that is a number. */
+  guard?: { kind: NetGuardKind; value?: number };
+  hooks?: NetProgramHook[];
+  /** Only read when `hooks` contains `glue`. */
+  glue?: NetGlueDuration;
+  /** „Jeśli Program byłby zderezowany, zamiast tego zostaje zniszczony." */
+  destroys?: boolean;
+  /** „Można uruchomić tylko 1 kopię tego Programu naraz." */
+  singleCopy?: boolean;
+  /** „Danej kopii można użyć tylko raz na wejście do Architektury Sieciowej." */
+  oncePerEntry?: boolean;
+}
+
+export const NET_PROGRAM_DAMAGE_DICE_MAX = 12;
+export const NET_PROGRAM_BOOST_MAX = 10;
+
 /** The numbers printed in the Program and Black ICE tables (s. 203–207). */
 export interface CpredNetProgramProfile {
   programClass: NetProgramClass;
@@ -77,6 +187,73 @@ export interface CpredNetProgramProfile {
   slots?: number;
   /** „Ikona" — how the Program looks in the Net. Flavour the run window prints. */
   icon?: string;
+  /**
+   * What the „Efekt" column does, in numbers (stage 26c). Absent = a Program
+   * the GM adjudicates: it still runs, attacks and takes damage, it just has
+   * nothing automatic to hand out.
+   */
+  effects?: CpredNetProgramEffects;
+}
+
+/** „Zadaje 3k6 obrażeń Programom… lub 2k6 Programom typu Czarny LOD" (s. 203). */
+export function netProgramDamageDice(
+  profile: Pick<CpredNetProgramProfile, 'effects'>,
+  target: 'program' | 'blackIce' | 'brain',
+): number {
+  const effects = profile.effects;
+  if (!effects) return 0;
+  if (target === 'brain') return effects.vsBrain ?? 0;
+  if (target === 'blackIce') return effects.vsBlackIce ?? effects.vsProgram ?? 0;
+  return effects.vsProgram ?? 0;
+}
+
+/** True when this Program has something to do to a target of that kind. */
+export function netProgramHurts(
+  profile: Pick<CpredNetProgramProfile, 'effects' | 'target'>,
+  target: 'program' | 'blackIce' | 'brain',
+): boolean {
+  if (netProgramDamageDice(profile, target) > 0) return true;
+  const hooks = profile.effects?.hooks ?? [];
+  if (hooks.length === 0) return false;
+  // A hook that only makes sense against a netrunner does not make a Program
+  // an answer to Black ICE — „zadaje obrażenia tylko celom odpowiedniego
+  // rodzaju" (s. 201) is a rule about the target's kind, not about the wording.
+  const brainOnly: readonly NetProgramHook[] = [
+    'eject',
+    'stealNetAction',
+    'glue',
+    'burn',
+    'derezDefender',
+    'destroyProgram',
+    'slidePenalty',
+    'statDrain',
+    'moveDrain',
+  ];
+  return target === 'brain' ? hooks.some((hook) => brainOnly.includes(hook)) : false;
+}
+
+/**
+ * The numbers a catalogue row hands to whatever copies it — a deck slot, a
+ * floor of an architecture, a Black ICE spawned in a run.
+ *
+ * One function rather than four spread-and-pick blocks, because the list of
+ * fields grew twice already (PER/PRĘ in 26a, `effects` in 26c) and each time a
+ * copy that forgot one produced a Program that looked right and did nothing.
+ */
+export function netProgramProfileOf(entry: CpredNetProgramProfile): CpredNetProgramProfile {
+  return {
+    programClass: entry.programClass,
+    ...(entry.target ? { target: entry.target } : {}),
+    ...(entry.blackIce ? { blackIce: true as const } : {}),
+    atk: entry.atk,
+    def: entry.def,
+    rez: entry.rez,
+    ...(entry.per !== undefined ? { per: entry.per } : {}),
+    ...(entry.speed !== undefined ? { speed: entry.speed } : {}),
+    ...(entry.slots !== undefined ? { slots: entry.slots } : {}),
+    ...(entry.icon ? { icon: entry.icon } : {}),
+    ...(entry.effects ? { effects: entry.effects } : {}),
+  };
 }
 
 /** Slots a Program takes on a deck, with the Black ICE rule applied. */
@@ -286,6 +463,86 @@ export function netArchitectureAdvice(architecture: CpredNetArchitecture): strin
 export interface CpredNetIssue {
   field: string;
   message: string;
+}
+
+// ──────────────────── walidacja efektu Programu (26c) ────────────────────
+
+function diceCount(raw: unknown): number | undefined {
+  return typeof raw === 'number' &&
+    Number.isInteger(raw) &&
+    raw > 0 &&
+    raw <= NET_PROGRAM_DAMAGE_DICE_MAX
+    ? raw
+    : undefined;
+}
+
+/**
+ * Reads the mechanical half of a Program's effect off whatever the editor or
+ * the import script produced. Silently drops what it does not understand: an
+ * unknown hook is a Program the engine cannot help with, which is the same
+ * place a Program with no `effects` at all starts from — never a refused save.
+ */
+export function readNetProgramEffects(raw: unknown): CpredNetProgramEffects | undefined {
+  if (typeof raw !== 'object' || raw === null) return undefined;
+  const input = raw as Record<string, unknown>;
+
+  const vsProgram = diceCount(input.vsProgram);
+  const vsBlackIce = diceCount(input.vsBlackIce);
+  const vsBrain = diceCount(input.vsBrain);
+
+  let boost: CpredNetProgramEffects['boost'];
+  if (typeof input.boost === 'object' && input.boost !== null) {
+    const source = input.boost as Record<string, unknown>;
+    const value =
+      typeof source.value === 'number' && Number.isInteger(source.value)
+        ? Math.max(-NET_PROGRAM_BOOST_MAX, Math.min(NET_PROGRAM_BOOST_MAX, source.value))
+        : 0;
+    const abilities = (Array.isArray(source.abilities) ? source.abilities : []).filter(
+      (value): value is NetAbilityId => typeof value === 'string' && value.length > 0,
+    );
+    const speed = source.speed === true;
+    if (value !== 0 && (abilities.length > 0 || speed)) {
+      boost = {
+        value,
+        ...(abilities.length > 0 ? { abilities } : {}),
+        ...(speed ? { speed } : {}),
+      };
+    }
+  }
+
+  let guard: CpredNetProgramEffects['guard'];
+  if (typeof input.guard === 'object' && input.guard !== null) {
+    const source = input.guard as Record<string, unknown>;
+    if ((NET_GUARD_KINDS as readonly unknown[]).includes(source.kind)) {
+      const value =
+        typeof source.value === 'number' && Number.isInteger(source.value) && source.value > 0
+          ? source.value
+          : undefined;
+      guard = { kind: source.kind as NetGuardKind, ...(value !== undefined ? { value } : {}) };
+    }
+  }
+
+  const hooks = (Array.isArray(input.hooks) ? input.hooks : []).filter(
+    (value): value is NetProgramHook =>
+      typeof value === 'string' && (NET_PROGRAM_HOOKS as readonly string[]).includes(value),
+  );
+  const glue = (NET_GLUE_DURATIONS as readonly unknown[]).includes(input.glue)
+    ? (input.glue as NetGlueDuration)
+    : undefined;
+
+  const effects: CpredNetProgramEffects = {
+    ...(vsProgram !== undefined ? { vsProgram } : {}),
+    ...(vsBlackIce !== undefined ? { vsBlackIce } : {}),
+    ...(vsBrain !== undefined ? { vsBrain } : {}),
+    ...(boost ? { boost } : {}),
+    ...(guard ? { guard } : {}),
+    ...(hooks.length > 0 ? { hooks: [...new Set(hooks)] } : {}),
+    ...(glue && hooks.includes('glue') ? { glue } : {}),
+    ...(input.destroys === true ? { destroys: true } : {}),
+    ...(input.singleCopy === true ? { singleCopy: true } : {}),
+    ...(input.oncePerEntry === true ? { oncePerEntry: true } : {}),
+  };
+  return Object.keys(effects).length > 0 ? effects : undefined;
 }
 
 function isFloorKind(value: unknown): value is NetFloorKind {

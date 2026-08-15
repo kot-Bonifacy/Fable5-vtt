@@ -2,12 +2,23 @@ import { useMemo, useState, type FormEvent } from 'react';
 import type {
   CompendiumCategory,
   CompendiumEntry,
+  CpredNetProgramEffects,
+  NetAbilityId,
+  NetGlueDuration,
+  NetGuardKind,
   NetProgramClass,
+  NetProgramHook,
   WeaponQuality,
 } from '@vtt/shared';
 import {
+  NET_ABILITIES_AVAILABLE,
+  NET_GLUE_DURATIONS,
+  NET_GUARD_KINDS,
+  NET_GUARD_KIND_LABELS,
   NET_PROGRAM_CLASSES,
   NET_PROGRAM_CLASS_LABELS,
+  NET_PROGRAM_HOOKS,
+  NET_PROGRAM_HOOK_LABELS,
   NET_PROGRAM_TARGETS,
   NET_PROGRAM_TARGET_LABELS,
   ARMOR_LOCATIONS,
@@ -771,6 +782,174 @@ export function CompendiumEditor() {
                   </label>
                 </div>
               ) : null}
+              {/* Mechanika „Efektu" (etap 26c). Zdanie z podręcznika zostaje
+                  opisem, a te pola są tym, na czym działa silnik — dzięki temu
+                  wymyślony Program walczy tak samo jak Kraken. */}
+              <p className="panel-section-title">Efekt (mechanika)</p>
+              <div className="bot-row-inline">
+                <label className="bot-field bot-field--inline">
+                  k6 Programom
+                  <input
+                    type="number"
+                    min={0}
+                    max={12}
+                    value={form.fxVsProgram}
+                    title="Kości obrażeń wobec Programów, które nie są Czarnym LOD-em"
+                    onChange={(event) => patch({ fxVsProgram: event.target.value })}
+                  />
+                </label>
+                <label className="bot-field bot-field--inline">
+                  k6 Czarnym LOD-om
+                  <input
+                    type="number"
+                    min={0}
+                    max={12}
+                    value={form.fxVsBlackIce}
+                    onChange={(event) => patch({ fxVsBlackIce: event.target.value })}
+                  />
+                </label>
+                <label className="bot-field bot-field--inline">
+                  k6 w mózg
+                  <input
+                    type="number"
+                    min={0}
+                    max={12}
+                    value={form.fxVsBrain}
+                    title="Obrażenia bezpośrednie — pancerz ich nie zatrzymuje"
+                    onChange={(event) => patch({ fxVsBrain: event.target.value })}
+                  />
+                </label>
+              </div>
+              {form.programClass === 'booster' ? (
+                <div className="bot-row-inline">
+                  <label className="bot-field bot-field--inline">
+                    Premia
+                    <input
+                      type="number"
+                      min={-10}
+                      max={10}
+                      value={form.fxBoostValue}
+                      onChange={(event) => patch({ fxBoostValue: event.target.value })}
+                    />
+                  </label>
+                  <label className="bot-field bot-field--inline">
+                    Do Testów
+                    <select
+                      multiple
+                      size={4}
+                      value={form.fxBoostAbilities}
+                      onChange={(event) =>
+                        patch({
+                          fxBoostAbilities: [...event.target.selectedOptions].map(
+                            (option) => option.value as NetAbilityId,
+                          ),
+                        })
+                      }
+                    >
+                      {NET_ABILITIES_AVAILABLE.map((ability) => (
+                        <option key={ability.id} value={ability.id}>
+                          {ability.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="bot-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={form.fxBoostSpeed}
+                      onChange={(event) => patch({ fxBoostSpeed: event.target.checked })}
+                    />
+                    Do Prędkości (wykrycie przez LOD-a)
+                  </label>
+                </div>
+              ) : null}
+              {form.programClass === 'defender' ? (
+                <div className="bot-row-inline">
+                  <label className="bot-field bot-field--inline">
+                    Rodzaj obrony
+                    <select
+                      value={form.fxGuard}
+                      onChange={(event) => patch({ fxGuard: event.target.value })}
+                    >
+                      <option value="">—</option>
+                      {NET_GUARD_KINDS.map((kind) => (
+                        <option key={kind} value={kind}>
+                          {NET_GUARD_KIND_LABELS[kind]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {form.fxGuard === 'armour' ? (
+                    <label className="bot-field bot-field--inline">
+                      Obniża o
+                      <input
+                        type="number"
+                        min={1}
+                        max={30}
+                        value={form.fxGuardValue}
+                        onChange={(event) => patch({ fxGuardValue: event.target.value })}
+                      />
+                    </label>
+                  ) : null}
+                </div>
+              ) : null}
+              <div className="compendium-hooks">
+                {NET_PROGRAM_HOOKS.map((hook) => (
+                  <label key={hook} className="bot-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={form.fxHooks.includes(hook)}
+                      onChange={(event) =>
+                        patch({
+                          fxHooks: event.target.checked
+                            ? [...form.fxHooks, hook]
+                            : form.fxHooks.filter((id) => id !== hook),
+                        })
+                      }
+                    />
+                    {NET_PROGRAM_HOOK_LABELS[hook]}
+                  </label>
+                ))}
+              </div>
+              {form.fxHooks.includes('glue') ? (
+                <label className="bot-field bot-field--inline">
+                  Jak długo trzyma
+                  <select
+                    value={form.fxGlue}
+                    onChange={(event) => patch({ fxGlue: event.target.value })}
+                  >
+                    {NET_GLUE_DURATIONS.map((id) => (
+                      <option key={id} value={id}>
+                        {id === 'd6rounds' ? '1k6 Rund' : 'do końca kolejnej Tury'}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+              <label className="bot-checkbox">
+                <input
+                  type="checkbox"
+                  checked={form.fxDestroys}
+                  onChange={(event) => patch({ fxDestroys: event.target.checked })}
+                />
+                Zamiast derezować — niszczy
+              </label>
+              <label className="bot-checkbox">
+                <input
+                  type="checkbox"
+                  checked={form.fxSingleCopy}
+                  onChange={(event) => patch({ fxSingleCopy: event.target.checked })}
+                />
+                Tylko jedna kopia naraz
+              </label>
+              <label className="bot-checkbox">
+                <input
+                  type="checkbox"
+                  checked={form.fxOncePerEntry}
+                  onChange={(event) => patch({ fxOncePerEntry: event.target.checked })}
+                />
+                Raz na wejście do Architektury
+              </label>
               <label className="bot-field">
                 Ikona
                 <input
@@ -927,6 +1106,50 @@ export function CompendiumEditor() {
   );
 }
 
+/** Mechanika efektu wpisu, gdy w ogóle ma jakąś. */
+function programFx(entry: CompendiumEntry | null | undefined): CpredNetProgramEffects | undefined {
+  return entry?.category === 'program' ? entry.effects : undefined;
+}
+
+/** Pola formularza z powrotem w kształt, który rozumie silnik zasad. */
+function buildProgramEffects(form: EditorForm): CpredNetProgramEffects | undefined {
+  const boostValue = numberOrUndefined(form.fxBoostValue);
+  const effects: CpredNetProgramEffects = {
+    ...(numberOrUndefined(form.fxVsProgram)
+      ? { vsProgram: numberOrUndefined(form.fxVsProgram) }
+      : {}),
+    ...(numberOrUndefined(form.fxVsBlackIce)
+      ? { vsBlackIce: numberOrUndefined(form.fxVsBlackIce) }
+      : {}),
+    ...(numberOrUndefined(form.fxVsBrain) ? { vsBrain: numberOrUndefined(form.fxVsBrain) } : {}),
+    ...(boostValue && (form.fxBoostAbilities.length > 0 || form.fxBoostSpeed)
+      ? {
+          boost: {
+            value: boostValue,
+            ...(form.fxBoostAbilities.length > 0 ? { abilities: form.fxBoostAbilities } : {}),
+            ...(form.fxBoostSpeed ? { speed: true } : {}),
+          },
+        }
+      : {}),
+    ...(form.fxGuard
+      ? {
+          guard: {
+            kind: form.fxGuard as NetGuardKind,
+            ...(numberOrUndefined(form.fxGuardValue)
+              ? { value: numberOrUndefined(form.fxGuardValue) }
+              : {}),
+          },
+        }
+      : {}),
+    ...(form.fxHooks.length > 0 ? { hooks: form.fxHooks } : {}),
+    ...(form.fxHooks.includes('glue') ? { glue: form.fxGlue as NetGlueDuration } : {}),
+    ...(form.fxDestroys ? { destroys: true } : {}),
+    ...(form.fxSingleCopy ? { singleCopy: true } : {}),
+    ...(form.fxOncePerEntry ? { oncePerEntry: true } : {}),
+  };
+  return Object.keys(effects).length > 0 ? effects : undefined;
+}
+
 interface EditorForm {
   category: CompendiumCategory;
   /** Stage 26a — Programs, Black ICE and Demons share one block of numbers. */
@@ -939,6 +1162,24 @@ interface EditorForm {
   programPer: string;
   programSpeed: string;
   programIcon: string;
+  /**
+   * Mechanika „Efektu" (etap 26c). Osobne pola zamiast jednego JSON-a, żeby MG
+   * mógł dopisać własny Program tak samo, jak dopisuje broń — i żeby wpis od
+   * razu walczył, a nie czekał na zmianę kodu.
+   */
+  fxVsProgram: string;
+  fxVsBlackIce: string;
+  fxVsBrain: string;
+  fxBoostValue: string;
+  fxBoostAbilities: NetAbilityId[];
+  fxBoostSpeed: boolean;
+  fxGuard: string;
+  fxGuardValue: string;
+  fxHooks: NetProgramHook[];
+  fxGlue: string;
+  fxDestroys: boolean;
+  fxSingleCopy: boolean;
+  fxOncePerEntry: boolean;
   deckSlots: string;
   deckSlotCost: string;
   demonInterface: string;
@@ -1019,6 +1260,21 @@ function toForm(entry: CompendiumEntry | undefined): EditorForm {
       entry?.category === 'program' && entry.speed !== undefined ? String(entry.speed) : '',
     programIcon:
       entry?.category === 'program' || entry?.category === 'netDefense' ? (entry.icon ?? '') : '',
+    // Mechanika efektu (etap 26c). Trzymana w formularzu jako pola tekstowe,
+    // bo tak wygląda w nim każda inna liczba; składana z powrotem w `effects`.
+    fxVsProgram: programFx(entry)?.vsProgram ? String(programFx(entry)!.vsProgram) : '',
+    fxVsBlackIce: programFx(entry)?.vsBlackIce ? String(programFx(entry)!.vsBlackIce) : '',
+    fxVsBrain: programFx(entry)?.vsBrain ? String(programFx(entry)!.vsBrain) : '',
+    fxBoostValue: programFx(entry)?.boost ? String(programFx(entry)!.boost!.value) : '',
+    fxBoostAbilities: programFx(entry)?.boost?.abilities ?? [],
+    fxBoostSpeed: programFx(entry)?.boost?.speed === true,
+    fxGuard: programFx(entry)?.guard?.kind ?? '',
+    fxGuardValue: programFx(entry)?.guard?.value ? String(programFx(entry)!.guard!.value) : '',
+    fxHooks: programFx(entry)?.hooks ?? [],
+    fxGlue: programFx(entry)?.glue ?? 'd6rounds',
+    fxDestroys: programFx(entry)?.destroys === true,
+    fxSingleCopy: programFx(entry)?.singleCopy === true,
+    fxOncePerEntry: programFx(entry)?.oncePerEntry === true,
     deckSlots:
       entry?.category === 'gear' && entry.deckSlots !== undefined ? String(entry.deckSlots) : '',
     deckSlotCost:
@@ -1253,6 +1509,7 @@ function fromForm(form: EditorForm, existingId: string | undefined): Record<stri
       per: numberOrUndefined(form.programPer),
       speed: numberOrUndefined(form.programSpeed),
       icon: form.programIcon || undefined,
+      effects: buildProgramEffects(form),
     };
   }
   if (form.category === 'netDefense') {

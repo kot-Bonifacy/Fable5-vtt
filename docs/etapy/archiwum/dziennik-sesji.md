@@ -7,6 +7,77 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 14.08 (piąta tego dnia) — etap 26a (Sieć: dane, architektura, cyberdek)
+
+**Etap 26 podzielony na trzy, nie na dwa.** Opis etapu dopuszczał podział na „architektury
+
+- wizualizacja" i „programy + ICE", ale rozdział 11 to trzy niezależne kawałki roboty: katalog
+  z modelem architektury (**26a**), run z dziewięcioma zdolnościami Interfejsu i walką z Czarnym
+  LOD-em (**26b**) i osobny bestiariusz Demonów z węzłami sięgającymi do Somy (**26c**). Przy
+  podziale na dwa druga sesja niosłaby run **i** Demony naraz. **Decyzja MG:** ekran Sieci to
+  pływające okno, nie zakładka — run dzieje się w trakcie walki, więc mapa musi zostać widoczna.
+
+**Import: 15 Programów, 12 Czarnych LOD-ów, 3 Demony, 6 Ulepszeń Sprzętowych, dwie tabele
+losowania.** `parse-netrunning.py` kotwiczy się na **liczbach**, nie na kolumnach: każdy wiersz
+Programu to `Nazwa KLASA <cyfry> Efekt CENA ed(Pasmo) Ikona: …`, a nazwa **następnego** wiersza
+to ogon za ostatnią kropką ikony (ikony są zdaniami, nazwy nigdy nie mają kropki). Czarny LOD
+ma sześciocyfrowy ciąg zamiast trzycyfrowego (`462215` = PER 4, PRĘ 6, ATK 2, OBR 2, REZ 15).
+Tabela „pozostałych pięter" (16 wierszy × 4 poziomy trudności) wymagała dwóch osobnych reguł:
+numer wiersza to liczba **między spacjami i nie po „PT"** (inaczej `Hasło PT 12 10` gubi wiersz),
+a granica kolumn to szew mała-litera→wielka-litera z doklejaniem („Piekielny ogar" to jedna komórka).
+
+**Cyberdeki zostały u `parse-gear.py`, nie przeszły tutaj.** Rozdział 17 ma je z lepszą nazwą
+i pełniejszym opisem, a liczbę gniazd podaje własną prozą („Ten cyberdek ma 9 gniazd na
+Programy"). Jeden właściciel na wpis, zero łatania między parserami — `parse-gear.py` czyta
+`deckSlots` jednym regexem, który trafia dokładnie w te trzy wiersze.
+
+**Architektura to szyb windy: trzon plus odgałęzienia, każde z własnym piętrem-rodzicem.**
+Odgałęzienie gałęzi nie jest reprezentowalne i to jest celowe — RAW odgałęzia wyłącznie od
+głównej gałęzi. **Jedyna twarda reguła kształtu** („któraś gałąź zawsze musi być najdłuższa,
+tym samym tworząc wyraźne dno") ma dwie strony: `netDeepestBranch` zwraca `null` przy remisie
+zamiast zgadywać, a **generator znalazł na tym błąd** — przy czterech odgałęzieniach ostatnie
+sięgało głębiej niż trzon. Odgałęzienie, które się nie mieści, **oddaje piętra trzonowi**
+zamiast być wciśnięte na siłę: architektura bez dna nie ma gdzie przyjąć Wirusa.
+
+**Miękkie oczekiwania podręcznika nie blokują zapisu.** „Hasło bez PT" i „piętro LOD-u bez
+wpisu" wypisuje `netArchitectureAdvice` pod szybem — edytor, który odmawia zapisania architektury
+w połowie budowania, zjada MG robotę.
+
+**Losowanie nie zapisuje.** „Wylosuj" zwraca szkic do edytora ze śladem rzutu („pięter 3k6 = 8
+· odgałęzień 1k10: 1"), a MG zapisuje osobno — rzut, który się nie spodobał, nie kosztuje nic.
+Rzut idzie przez `createMixedRng` na serwerze, jak każda inna kość w projekcie.
+
+**Cyberdek siedzi w „Ekwipunku", nie przy cyborgizacjach.** W podręczniku to sprzęt: kupuje się
+go, wozi w plecaku i wymienia jedną Akcją w Somie. Sekcja pojawia się dopiero, gdy postać dek
+**ma** — większość stołu nie sieciuje. Liczba gniazd jest **zapisana i edytowalna**, nie liczona
+z katalogu: Kombinezon Bodyweight i cyberręka z dekiem dokładają po gnieździe (s. 208), a katalog
+nie ma jak tego wiedzieć.
+
+**Zweryfikowane:** 1091 testów w `shared` (27 nowych w `netrunning.test.ts`, 8 w `compendium.test.ts`,
+7 w `character.test.ts`), 638 na serwerze (13 nowych w `netrunning.test.ts` na żywych gniazdach),
+`tsc --noEmit` czysty w trzech pakietach, lint, Prettier i `pnpm build` bez uwag. Migracja:
+`20260814201641_stage26a_net_architecture` (jedna nowa tabela, zero zmian w danych).
+
+**Odklikane u MG** w kampanii „Poligon bojowy" (**stan przywrócony po oględzinach** — architektura
+skasowana, dek zdjęty z „Test 27x"). Potwierdzone: zakładka **„Sieć"** w rzędzie MG z pustym
+stanem; **generator** („Sieć magazynu Petrochem", 3k6 = 8 pięter, 1k10 dało jedno odgałęzienie)
+otwierający edytor ze śladem rzutu; **szyb** z trzonem sięgającym 6 i odgałęzieniem sięgającym 4,
+czyli **dnem w trzonie**; lobby wypełnione z własnej tabeli, reszta z kolumny „Standardowy";
+**zapis, ponowne otwarcie z kompletem ośmiu pięter, PT i nazwami LOD-ów**, edycja w miejscu
+(lista nie urosła) i **kasowanie dwustopniowe**. W „Kompendium": **Programy 32** i **Obrona
+Sieci 4**, karta „Piekielnego ogara" z ATK 6 / OBR 2 / REZ 20 / PER 6 / PRĘ 6 / gniazda 2,
+ikoną i pełnym efektem, **bez** selektora „dodaj postaci" (Program idzie do deku, nie do
+plecaka); formularz MG dla kategorii „Programy" z PER i PRĘ pojawiającymi się po zaznaczeniu
+„Czarny LOD". Na karcie „Test 27x": wybór deku z czterech pozycji z licznikiem gniazd,
+**Piekielny ogar zajmujący 2 gniazda**, chip „CZARNY LOD" na wierszu, licznik czerwieniejący
+przy 7 / 7, **wpisy 2-gniazdowe wyszarzone przy jednym wolnym** i „Brak wolnych gniazd" przy
+zerze. **Motyw dzienny** sprawdzony na sekcji deku. Konsola czysta.
+
+**Dwie poprawki po oględzinach.** (1) **„1 odgałęzień"** — polska odmiana; `plural` z 19c
+wyprowadził się z `JournalPanel.tsx` do `packages/client/src/plural.ts` i obsługuje teraz oba
+miejsca. (2) **Belka deku zlewała się w jeden ciąg** („Cyberdekgniazda 7 / 7Gniazd") — `.cp-bar`
+sama nie rozstawia dzieci.
+
 ### Sesja 14.08 (czwarta tego dnia) — etap 27c (karta: Ścieżka Życia i sylwetka cyborgizacji)
 
 **Karta ma komplet trzech stron wydruku, a życiorys z kreatora wreszcie widać.** Zakładki idą

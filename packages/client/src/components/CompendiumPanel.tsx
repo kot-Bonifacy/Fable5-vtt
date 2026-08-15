@@ -4,6 +4,7 @@ import {
   NET_DEFENSE_KIND_LABELS,
   NET_PROGRAM_CLASS_LABELS,
   NET_PROGRAM_TARGET_LABELS,
+  describeNetProgramEffects,
   netProgramSlots,
   ARMOR_LOCATION_LABELS,
   COMPENDIUM_CATEGORIES,
@@ -490,6 +491,13 @@ function EntryCard({
               value={String(netProgramSlots(entry))}
               hint="Ile miejsca zajmuje na cyberdeku."
             />
+            {describeNetProgramEffects(entry.effects) ? (
+              <Stat
+                label="Mechanika"
+                value={describeNetProgramEffects(entry.effects)}
+                hint="To, na czym działa silnik walki w Sieci — opis obok jest zdaniem z podręcznika, a to jest jego rachunkiem."
+              />
+            ) : null}
             {entry.icon ? <Stat label="Ikona" value={entry.icon} /> : null}
           </>
         ) : null}

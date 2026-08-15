@@ -49,8 +49,10 @@ import {
   spendTurnForCombatant,
   spendTurnForToken,
   toCombatView,
+  hasFigure,
   type CombatRow,
   type CombatantRow,
+  type FiguredCombatantRow,
   type TurnSpendOutcome,
 } from './combat.js';
 import { INCLUDE_CHAT_NAMES, deliverChatMessageTo, toChatMessageView } from './chat-io.js';
@@ -174,7 +176,7 @@ async function clearStatusAfterAction(
   deps: RealtimeDeps,
   campaignId: string,
   scene: Scene,
-  combatant: CombatantRow,
+  combatant: FiguredCombatantRow,
   actionId: string,
 ): Promise<void> {
   const statusId = STATUS_CLEARED_BY_ACTION[actionId];
@@ -202,14 +204,24 @@ async function resolveCombatant(
   campaignId: string,
   user: SessionUser,
   combatantId: unknown,
-): Promise<{ combat: CombatRow; combatant: CombatantRow; scene: Scene }> {
+): Promise<{ combat: CombatRow; combatant: FiguredCombatantRow; scene: Scene }> {
   const found = await requireCombatant(deps.ctx.prisma, campaignId, combatantId);
-  if (user.role === ROLE_GM) return found;
+  // The action catalogue is a list of things a body does. A Black ICE has none
+  // (stage 26c), so it is not a participant this path can act for — its own
+  // events drive it, and the tracker row only carries its Turn.
+  const combatant = requireFigure(found.combatant);
+  if (user.role === ROLE_GM) return { ...found, combatant };
   // A player may only ever spend their own budget — and must not be able to
   // confirm that a hidden participant exists by poking at its id.
-  if (found.combatant.token.hidden) throw new RealtimeError('COMBATANT_NOT_FOUND');
-  if (combatantOwnerId(found.combatant) !== user.id) throw new RealtimeError('FORBIDDEN');
-  return found;
+  if (combatant.token.hidden) throw new RealtimeError('COMBATANT_NOT_FOUND');
+  if (combatantOwnerId(combatant) !== user.id) throw new RealtimeError('FORBIDDEN');
+  return { ...found, combatant };
+}
+
+/** Narrows a tracker row to one that has a figure, or refuses politely. */
+export function requireFigure(row: CombatantRow): FiguredCombatantRow {
+  if (!hasFigure(row)) throw new RealtimeError('COMBATANT_HAS_NO_FIGURE');
+  return row;
 }
 
 /** The participant this player controls in the fight on their viewed scene. */
@@ -219,7 +231,7 @@ export async function myCombatant(
   user: SessionUser,
   sceneId: string | null,
   combatantId: unknown,
-): Promise<{ combat: CombatRow; combatant: CombatantRow; scene: Scene }> {
+): Promise<{ combat: CombatRow; combatant: FiguredCombatantRow; scene: Scene }> {
   if (typeof combatantId === 'string' && combatantId.length > 0) {
     return resolveCombatant(deps, campaignId, user, combatantId);
   }
@@ -235,10 +247,12 @@ export async function myCombatant(
     },
   });
   if (!combat) throw new RealtimeError('COMBAT_NOT_FOUND');
-  const mine = combat.combatants.filter((row) => combatantOwnerId(row) === user.id);
+  const mine = combat.combatants.filter(
+    (row) => hasFigure(row) && combatantOwnerId(row) === user.id,
+  );
   const combatant = mine.find((row) => row.id === combat.activeCombatantId) ?? mine[0] ?? undefined;
   if (!combatant) throw new RealtimeError('COMBATANT_NOT_FOUND');
-  return { combat, combatant, scene };
+  return { combat, combatant: requireFigure(combatant), scene };
 }
 
 /**
@@ -501,7 +515,9 @@ export const combatNextEvent = defineEvent<undefined, CombatView>({
 
     if (user.role !== ROLE_GM) {
       const active = combat.combatants.find((row) => row.id === combat.activeCombatantId);
-      if (!active || active.token.hidden) throw new RealtimeError('FORBIDDEN');
+      if (!active || active.token === null || active.token.hidden) {
+        throw new RealtimeError('FORBIDDEN');
+      }
       if (combatantOwnerId(active) !== user.id) throw new RealtimeError('FORBIDDEN');
     }
 

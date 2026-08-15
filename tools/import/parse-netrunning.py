@@ -301,6 +301,55 @@ def parse_black_ice(chapter: str) -> list[dict]:
     return entries
 
 
+# ─────────────────────── mechanika efektu Programu (etap 26c) ───────────────────────
+#
+# The „Efekt" column is one Polish sentence per Program, and stage 26c has to
+# act on it. Reading that sentence in code would mean a `switch` over names in
+# a game module; instead the sentence stays the entry's description and the
+# numbers it implies are written down here, keyed by the slug the row gets.
+#
+# What lives in this table is arithmetic and hook names — our own reading of the
+# rules, not the rulebook's text, which (like every other entry field) is written
+# only to the gitignored `data/private`.
+PROGRAM_EFFECTS: dict[str, dict] = {
+    # Dopalacze (s. 203)
+    "program.gumka": {"boost": {"value": 2, "abilities": ["cloak"]}},
+    "program.mam-cie": {"boost": {"value": 2, "abilities": ["scout"]}},
+    "program.szybki-bil": {"boost": {"value": 2, "speed": True}},
+    "program.robak": {"boost": {"value": 2, "abilities": ["backdoor"]}},
+    # Obrońcy (s. 203)
+    "program.pancerz": {
+        "guard": {"kind": "armour", "value": 4},
+        "singleCopy": True,
+        "oncePerEntry": True,
+    },
+    "program.powloka": {"guard": {"kind": "shell"}, "singleCopy": True, "oncePerEntry": True},
+    "program.tarcza": {"guard": {"kind": "shield"}, "singleCopy": True, "oncePerEntry": True},
+    # Agresorzy (s. 203–204)
+    "program.mlot-na-wroga": {"vsProgram": 3, "vsBlackIce": 2},
+    "program.miecz": {"vsProgram": 2, "vsBlackIce": 3},
+    "program.dekkrash": {"hooks": ["eject"]},
+    "program.piekielny-pocisk": {"vsBrain": 2, "hooks": ["burn"]},
+    "program.nerwosol": {"hooks": ["statDrain"]},
+    "program.trujacy-zgon": {"hooks": ["destroyProgram"]},
+    "program.superklej": {"hooks": ["glue"], "glue": "d6rounds", "oncePerEntry": True},
+    "program.mozgoklep": {"vsBrain": 1, "hooks": ["stealNetAction"]},
+    # Czarny LOD (s. 204–207)
+    "program.zmija": {"hooks": ["destroyProgram"]},
+    "program.olbrzym": {"vsBrain": 3, "hooks": ["eject"]},
+    "program.piekielny-ogar": {"vsBrain": 2, "hooks": ["burn"]},
+    "program.kraken": {"vsBrain": 3, "hooks": ["glue"], "glue": "nextTurn"},
+    "program.lisz": {"hooks": ["statDrain"]},
+    "program.kruk": {"vsBrain": 1, "hooks": ["derezDefender"]},
+    "program.skorpion": {"hooks": ["moveDrain"]},
+    "program.skunks": {"hooks": ["slidePenalty"]},
+    "program.bledny-ognik": {"vsBrain": 1, "hooks": ["stealNetAction"]},
+    "program.smok": {"vsProgram": 6, "vsBlackIce": 6, "destroys": True},
+    "program.zabojca": {"vsProgram": 4, "vsBlackIce": 4, "destroys": True},
+    "program.szablozab": {"vsProgram": 6, "vsBlackIce": 6, "destroys": True},
+}
+
+
 def program_entry(
     record: dict,
     program_class: str,
@@ -326,6 +375,11 @@ def program_entry(
         **({"costCategory": record["band"]} if record["band"] else {}),
         **({"description": trimmed(record["effect"])} if record["effect"] else {}),
         **({"icon": trimmed(record["icon"])} if record["icon"] else {}),
+        **(
+            {"effects": PROGRAM_EFFECTS[f"program.{slugify(record['name'])}"]}
+            if f"program.{slugify(record['name'])}" in PROGRAM_EFFECTS
+            else {}
+        ),
     }
 
 

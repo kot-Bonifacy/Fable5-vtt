@@ -58,8 +58,9 @@ import {
   requireCampaignId,
   type CombatRow,
   type CombatantRow,
+  type FiguredCombatantRow,
 } from './combat.js';
-import { myCombatant, requireTurnSpend } from './combat-actions.js';
+import { myCombatant, requireFigure, requireTurnSpend } from './combat-actions.js';
 import { addTokenStatus, beginGrapple, endGrapple } from './grapple-state.js';
 import { requireRollableCharacter } from './character-rolls.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
@@ -117,11 +118,15 @@ function facedownRows(actor: Token, opponentTokenId: string): RollBreakdownEntry
   return row ? [row] : [];
 }
 
-/** The Hold this participant is the Attacker of, or a refusal. */
-function requireHoldAsAttacker(combat: CombatRow, combatant: CombatantRow): CombatantRow {
+/**
+ * The Hold this participant is the Attacker of, or a refusal. The Defender is
+ * always a figure: „Pochwycenie" is two bodies, and the only participant
+ * without one is a Black ICE in the Net (stage 26c), which nobody wrestles.
+ */
+function requireHoldAsAttacker(combat: CombatRow, combatant: CombatantRow): FiguredCombatantRow {
   const pair = findGrapple(combat, combatant);
   if (!pair || pair.attacker.id !== combatant.id) throw new RealtimeError('NOT_GRAPPLING');
-  return pair.defender;
+  return requireFigure(pair.defender);
 }
 
 /* ------------------------------------------------------------------ *
@@ -605,7 +610,7 @@ export const grappleActionEvent = defineEvent<CombatGrappleActionPayload, Combat
 });
 
 /** The Attacker's BODY — the damage. A statist without a sheet punches at 5. */
-async function attackerBody(deps: RealtimeDeps, combatant: CombatantRow): Promise<number> {
+async function attackerBody(deps: RealtimeDeps, combatant: FiguredCombatantRow): Promise<number> {
   const characterId = combatant.token.character?.id;
   if (!characterId) return 5;
   const character = await deps.ctx.prisma.character.findUnique({
@@ -619,7 +624,7 @@ async function attackerBody(deps: RealtimeDeps, combatant: CombatantRow): Promis
 async function applyGrappleDamage(
   deps: RealtimeDeps,
   campaignId: string,
-  defender: CombatantRow,
+  defender: FiguredCombatantRow,
   request: { body: number; kind: 'choke' | 'throw'; roundsInARow: number },
 ): Promise<SheetGrappleDamage & { characterId: string | null }> {
   const characterId = defender.token.character?.id ?? null;
@@ -664,7 +669,7 @@ async function logGrappleDamage(
   deps: RealtimeDeps,
   campaignId: string,
   user: SessionUser,
-  defender: CombatantRow,
+  defender: FiguredCombatantRow,
   applied: SheetGrappleDamage & { characterId: string | null },
   kind: 'choke' | 'throw',
   rounds: number,

@@ -585,7 +585,15 @@
       "cost": 20,
       "costCategory": "everyday",
       "description": "Wymyślony Dopalacz: +1 do wybranego Testu Interfejsu, dopóki jest zrezowany.",
-      "icon": "Drobna, biała iskra krążąca wokół nadgarstka."
+      "icon": "Drobna, biała iskra krążąca wokół nadgarstka.",
+      "effects": {
+        "boost": {
+          "value": 1,
+          "abilities": [
+            "scout"
+          ]
+        }
+      }
     },
     {
       "id": "program.parasol",
@@ -598,7 +606,14 @@
       "cost": 20,
       "costCategory": "everyday",
       "description": "Wymyślony Obrońca: obniża obrażenia zadane mózgowi o 2.",
-      "icon": "Przezroczysta kopuła rozpinająca się nad Netrunnerem."
+      "icon": "Przezroczysta kopuła rozpinająca się nad Netrunnerem.",
+      "effects": {
+        "guard": {
+          "kind": "armour",
+          "value": 2
+        },
+        "singleCopy": true
+      }
     },
     {
       "id": "program.dziurkacz",
@@ -612,7 +627,11 @@
       "cost": 50,
       "costCategory": "costly",
       "description": "Wymyślony Agresor przeciwprogramowy: zadaje 2k6 obrażeń Programowi.",
-      "icon": "Wirujące, ząbkowane wiertło."
+      "icon": "Wirujące, ząbkowane wiertło.",
+      "effects": {
+        "vsProgram": 2,
+        "vsBlackIce": 2
+      }
     },
     {
       "id": "program.osa",
@@ -629,7 +648,10 @@
       "cost": 100,
       "costCategory": "premium",
       "description": "Wymyślony Czarny LOD: zadaje 1k6 obrażeń bezpośrednio mózgowi Netrunnera.",
-      "icon": "Metaliczna osa z neonowym żądłem."
+      "icon": "Metaliczna osa z neonowym żądłem.",
+      "effects": {
+        "vsBrain": 1
+      }
     },
     {
       "id": "program.tasak",
@@ -646,7 +668,11 @@
       "cost": 500,
       "costCategory": "expensive",
       "description": "Wymyślony Czarny LOD przeciwprogramowy: zadaje 3k6 obrażeń Programowi.",
-      "icon": "Rzeźnicki tasak z ostrzem z płynnego chromu."
+      "icon": "Rzeźnicki tasak z ostrzem z płynnego chromu.",
+      "effects": {
+        "vsProgram": 3,
+        "vsBlackIce": 3
+      }
     },
     {
       "id": "demon.chochlik",

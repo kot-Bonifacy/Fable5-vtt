@@ -76,10 +76,11 @@ function PeriodicEffects({ combat }: { combat: CombatView }) {
 
   const chosen = target ?? combat.activeCombatantId ?? combat.combatants[0]?.id ?? null;
   const row = combat.combatants.find((entry) => entry.id === chosen) ?? null;
-  const statuses = row ? (tokens[row.tokenId]?.statuses ?? []) : [];
+  // Wiersz bez figury to Czarny LOD z etapu 26c — nie ma czego oznaczać.
+  const statuses = row?.tokenId ? (tokens[row.tokenId]?.statuses ?? []) : [];
 
   async function set(statusId: string, active: boolean, damage?: number | null) {
-    if (!row) return;
+    if (!row?.tokenId) return;
     setError(null);
     const ack = await setTokenEffect(row.tokenId, statusId, active, damage);
     if (!ack.ok) setError(combatErrorText(ack.error));
@@ -305,7 +306,7 @@ export function CombatActions({
             {attackOpen ? 'Zwiń' : 'Broń…'}
           </button>
         </p>
-        {attackOpen && (
+        {attackOpen && combatant.tokenId && (
           <AttackLauncher
             token={tokenMap[combatant.tokenId]}
             onArmed={() => setAttackOpen(false)}

@@ -31,11 +31,13 @@ import {
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import {
   applyTurnPointer,
+  hasFigure,
   loadCombatById,
   readTokenStatuses,
   requireCampaignId,
   type CombatRow,
   type CombatantRow,
+  type FiguredCombatantRow,
 } from './combat.js';
 import { removeTokenStatus } from './grapple-state.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
@@ -140,6 +142,9 @@ export async function runTurnEnd(
   // The guard. Without it „cofnij turę" followed by „następna tura" is a second
   // helping of fire for a participant who only lived through the round once.
   if (turnPhaseAlreadyRan(combatant.turnEffects, 'turn-end', combat.round)) return;
+  // Nothing here means anything without a body: fire, poison and broken ribs
+  // are what a figure carries. A Black ICE (stage 26c) has none of that.
+  if (!hasFigure(combatant)) return;
 
   const statuses = readTokenStatuses(combatant.token.statuses);
   const sheet = await sheetOf(deps, combatant);
@@ -200,6 +205,7 @@ export async function runTurnStart(
   // own column: stepping the pointer back and forward hands this participant a
   // *fresh* budget, so a marker inside the budget would already be gone.
   if (turnPhaseAlreadyRan(combatant.turnEffects, 'turn-start', combat.round)) return;
+  if (!hasFigure(combatant)) return;
   await deps.ctx.prisma.combatant.update({
     where: { id: combatant.id },
     data: { turnEffects: markTurnPhase(combatant.turnEffects, 'turn-start', combat.round) },
@@ -220,7 +226,7 @@ export async function runTurnStart(
 }
 
 /** The sheet behind a participant, when they have one. */
-async function sheetOf(deps: RealtimeDeps, combatant: CombatantRow) {
+async function sheetOf(deps: RealtimeDeps, combatant: FiguredCombatantRow) {
   const characterId = combatant.token.character?.id;
   if (!characterId) return null;
   return deps.ctx.prisma.character.findUnique({ where: { id: characterId } });
@@ -252,7 +258,7 @@ function readCarry(combatant: CombatantRow): SheetTurnCarry | null {
 async function applyPeriodicDamage(
   deps: RealtimeDeps,
   campaignId: string,
-  combatant: CombatantRow,
+  combatant: FiguredCombatantRow,
   due: readonly SheetPeriodicDamage[],
 ): Promise<AppliedPeriodicDamage[]> {
   const applied: AppliedPeriodicDamage[] = [];
@@ -266,7 +272,7 @@ async function applyPeriodicDamage(
 async function applyOnePeriodicHit(
   deps: RealtimeDeps,
   campaignId: string,
-  combatant: CombatantRow,
+  combatant: FiguredCombatantRow,
   entry: SheetPeriodicDamage,
 ): Promise<DamageLogEntry | null> {
   const characterId = combatant.token.character?.id ?? null;
@@ -307,7 +313,7 @@ async function applyOnePeriodicHit(
 }
 
 function logEntryFor(
-  combatant: CombatantRow,
+  combatant: FiguredCombatantRow,
   entry: SheetPeriodicDamage,
   log: Omit<DamageLogEntry, 'targetTokenId' | 'targetName' | 'characterId' | 'targetOwnerId'>,
   characterId: string | null,
@@ -356,7 +362,7 @@ async function logTurnEffects(
   deps: RealtimeDeps,
   campaignId: string,
   user: SessionUser,
-  combatant: CombatantRow,
+  combatant: FiguredCombatantRow,
   applied: readonly AppliedPeriodicDamage[],
   carry: SheetTurnCarry | null,
   walked: number,
@@ -390,7 +396,7 @@ async function logTurnStart(
   deps: RealtimeDeps,
   campaignId: string,
   user: SessionUser,
-  combatant: CombatantRow,
+  combatant: FiguredCombatantRow,
   applied: readonly AppliedPeriodicDamage[],
   reminders: readonly string[],
 ): Promise<void> {

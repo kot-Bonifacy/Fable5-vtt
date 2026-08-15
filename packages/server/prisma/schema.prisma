@@ -831,7 +831,19 @@ model Combat {
 model Combatant {
   id       String @id @default(cuid())
   combatId String
-  tokenId  String
+  /// Figure on the map this row stands for. Null for a participant that has no
+  /// body in the Soma — so far exactly one thing: a Black ICE fighting in the
+  /// Net (stage 26c), which „zajmuje pierwsze miejsce w Kolejce Inicjatywy"
+  /// (s. 205) while living inside a run rather than on a scene.
+  tokenId  String?
+  /// Name to paint when there is no token to read it off. Denormalized on
+  /// purpose, the same way `token.name` effectively is: a tracker row has to
+  /// render even when whatever it points at is a JSON column two tables away.
+  label    String?
+  /// The run this participant belongs to (stage 26c), when it is a Black ICE.
+  netRunId String?
+  /// Its id inside that run's `CpredNetCombatState.ice`.
+  netIceId String?
   /// Rolled initiative (1d10 + REF in CP RED); null = not rolled yet.
   initiative Int?
   /// Secondary sort supplied by the game system (CP RED: REF); null = unknown.
@@ -884,7 +896,7 @@ model Combatant {
   createdAt DateTime @default(now())
 
   combat Combat @relation(fields: [combatId], references: [id], onDelete: Cascade)
-  token  Token  @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+  token  Token? @relation(fields: [tokenId], references: [id], onDelete: Cascade)
 
   @@unique([combatId, tokenId])
   @@index([combatId])

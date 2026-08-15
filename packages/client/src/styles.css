@@ -6760,6 +6760,153 @@ body.is-resizing {
   color: #9fe6f7;
 }
 
+/* Haki mechaniczne Programu w edytorze MG (etap 26c) — dziewięć pozycji,
+   więc kolumny zamiast jednej długiej listy. */
+.compendium-hooks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 0.15rem 0.6rem;
+}
+
+/* Walka w Sieci (etap 26c): dwie sekcje pod szybem — Czarny LOD i cyberdek.
+   Obie znikają, gdy nie ma z czym walczyć, więc okno netrunnera bez deku
+   wygląda dokładnie tak, jak w 26b. */
+.net-ice-list-wrap,
+.net-deck {
+  border-top: 1px solid #123c48;
+  padding-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.net-ice-list,
+.net-deck-slots {
+  list-style: none;
+  margin: 0;
+  padding-left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.net-ice {
+  border: 1px solid #5d2233;
+  border-radius: 5px;
+  background: rgba(94, 24, 42, 0.18);
+  padding: 0.4rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.net-ice--down {
+  opacity: 0.5;
+  border-color: #333;
+  background: transparent;
+}
+
+.net-ice-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.net-ice-glyph {
+  font-size: 1rem;
+  color: #ff7b8f;
+}
+
+.net-ice-name {
+  font-weight: 600;
+}
+
+.net-ice-rez {
+  margin-left: auto;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+/* Pasek REZ: jedyna liczba, o którą toczy się ta walka — dlatego widzi go
+   także gracz, choć ATK, OBR, PER i PRĘ zostają u MG. */
+.net-ice-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: #2a1119;
+  overflow: hidden;
+}
+
+.net-ice-bar > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #ff5470, #ffa07a);
+}
+
+.net-ice-effect,
+.net-ice-stats,
+.net-deck-effect,
+.net-deck-note {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.net-ice-stats {
+  font-variant-numeric: tabular-nums;
+}
+
+.net-ice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.net-ice-gm {
+  border-color: #7a3d18;
+}
+
+.net-deck-slot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.45rem;
+  border: 1px solid #123c48;
+  border-radius: 5px;
+}
+
+.net-deck-slot--rezzed {
+  border-color: #1f8fa8;
+  background: rgba(31, 143, 168, 0.12);
+}
+
+.net-deck-name {
+  font-weight: 600;
+}
+
+.net-deck-class {
+  font-size: 0.75rem;
+  color: #9fe6f7;
+}
+
+.net-deck-slot > .small-button {
+  margin-left: auto;
+}
+
+.net-run-debt {
+  color: var(--warn);
+}
+
+.net-run-notice--glue {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  color: #ffb38a;
+}
+
 .net-virus-form,
 .net-virus-list {
   border-top: 1px solid #123c48;

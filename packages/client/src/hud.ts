@@ -441,7 +441,9 @@ export function nextSteerableToken(from: string | null): string | null {
 
   let ordered: string[];
   if (isGm && combat && combat.combatants.length > 0) {
-    ordered = combat.combatants.map((row) => row.tokenId).filter((id) => id in tokens);
+    ordered = combat.combatants
+      .map((row) => row.tokenId)
+      .filter((id): id is string => id !== null && id in tokens);
   } else {
     ordered = Object.values(tokens)
       .filter((token) => isGm || token.ownerId === userId)

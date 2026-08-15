@@ -59,7 +59,8 @@ import { requireCampaignScene } from './scenes.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { emitCombatOfScene, findGrapple, loadCombat } from './combat.js';
 import { validateTokenMove } from './movement.js';
-import { enforceNetRunRange } from './netrun-io.js';
+import { enforceNetRunRange } from './netice.js';
+import { createMixedRng } from './dice-rng.js';
 
 function parseStatuses(raw: string): string[] {
   try {
@@ -909,7 +910,7 @@ async function dragGrappledToken(
   if (!combatant) return;
   const pair = findGrapple(combat, combatant);
   // Only the Attacker drags; being Held does not let you tow your captor.
-  if (!pair || pair.attacker.id !== combatant.id) return;
+  if (!pair || pair.attacker.id !== combatant.id || !pair.defender.tokenId) return;
 
   const held = await deps.ctx.prisma.token.findUnique({ where: { id: pair.defender.tokenId } });
   if (!held || held.sceneId !== scene.id) return;
@@ -1048,7 +1049,19 @@ export async function performTokenMove(
       // powoduje automatyczne (awaryjne) odłączenie" (s. 198, stage 26b). Asked
       // here rather than in the netrunning module because *walking* is what
       // triggers it, and this is the one place every walk lands.
-      await enforceNetRunRange(deps, campaignId, scene, { ...token, x, y }, user);
+      const jackedOut = await enforceNetRunRange(
+        deps,
+        campaignId,
+        scene,
+        { ...token, x, y },
+        user,
+        createMixedRng(),
+      );
+      // The bill an unsafe exit runs up (stage 26c) lands on sheets and on
+      // stickers, so whatever it touched has to go back out to the table.
+      if (jackedOut.tokenIds.length > 0) {
+        await emitTokensById(deps, campaignId, jackedOut.tokenIds);
+      }
     }
 
     await broadcast({ x, y }, final);

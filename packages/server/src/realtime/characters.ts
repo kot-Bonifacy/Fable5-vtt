@@ -20,6 +20,7 @@ import { RealtimeError, defineEvent } from './registry.js';
 import { applyBalance } from './economy.js';
 import { emitToCampaignUser } from './state.js';
 import { emitCharacterDelete, emitCharacterUpsert, toCharacterView } from './character-io.js';
+import { emitRuns } from './netrun-io.js';
 import { emitTokensById, emitTokensOfCharacter } from './tokens.js';
 
 /**
@@ -177,6 +178,15 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
     // HP and stats drive the bars of every token bound to this sheet.
     if ('data' in patch || 'ownerId' in patch || 'name' in patch) {
       await emitTokensOfCharacter(deps, campaignId, updated);
+    }
+    // The run window paints this sheet's cyberdeck (stage 26c), so a Program
+    // put in or taken out has to reach it — otherwise a netrunner mid-run sees
+    // a rack that is one save out of date.
+    if (
+      'data' in patch &&
+      (await deps.ctx.prisma.netRun.count({ where: { characterId: character.id } })) > 0
+    ) {
+      await emitRuns(deps, campaignId);
     }
     // A reassigned character vanishes from the previous owner's list.
     if (character.ownerId && character.ownerId !== updated.ownerId) {

@@ -65,7 +65,11 @@ export async function beginGrapple(
     where: { id: defender.id },
     data: { grappledById: attacker.id, chokeStreak: 0, chokeRound: null, humanShield: false },
   });
-  await addTokenStatus(deps, campaignId, defender.tokenId, SHEET_GRAPPLED_STATUS_ID);
+  // Nothing without a figure is ever Held, so the sticker simply has nowhere
+  // to go — the relation above is still worth writing for the tracker's sake.
+  if (defender.tokenId) {
+    await addTokenStatus(deps, campaignId, defender.tokenId, SHEET_GRAPPLED_STATUS_ID);
+  }
 }
 
 /**
@@ -81,7 +85,9 @@ export async function endGrapple(
     where: { id: defender.id },
     data: { grappledById: null, chokeStreak: 0, chokeRound: null, humanShield: false },
   });
-  await removeTokenStatus(deps, campaignId, defender.tokenId, SHEET_GRAPPLED_STATUS_ID);
+  if (defender.tokenId) {
+    await removeTokenStatus(deps, campaignId, defender.tokenId, SHEET_GRAPPLED_STATUS_ID);
+  }
 }
 
 /**

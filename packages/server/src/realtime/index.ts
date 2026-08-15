@@ -132,6 +132,14 @@ import {
   netScanEvent,
 } from './netrun.js';
 import {
+  netAttackEvent,
+  netGlueClearEvent,
+  netIceDetectEvent,
+  netIceTurnEvent,
+  netProgramEvent,
+  netSlideEvent,
+} from './netcombat.js';
+import {
   journalDeleteEvent,
   journalListEvent,
   journalReindexEvent,
@@ -286,6 +294,12 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   netRunCopyEvent,
   netRunAbilityEvent,
   netScanEvent,
+  netProgramEvent,
+  netAttackEvent,
+  netSlideEvent,
+  netIceDetectEvent,
+  netIceTurnEvent,
+  netGlueClearEvent,
   journalListEvent,
   journalUpsertEvent,
   journalDeleteEvent,

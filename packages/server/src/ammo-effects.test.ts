@@ -658,16 +658,18 @@ describe('ammunition that deals no damage', () => {
       expect(offered!.card.smart!.requires).toBe('Celownik przykładowy');
 
       const updated = waitFor<{
-        message: { roll?: { total: number; attack?: AttackCard } };
+        message: { roll?: { total: number; critical?: string; attack?: AttackCard } };
       }>(gm, 'chat:update');
       const ack = await emitAck<{ total: number; hit: boolean }>(player, 'attack:smart', {
         messageId: offered!.messageId,
         characterId,
       });
       const result = data(ack, 'attack:smart');
-      // 1d10 + 10 cannot come out below 11.
-      expect(result.total).toBeGreaterThanOrEqual(11);
+      // 1k10 + 10 wychodzi najmniej 11 — chyba że padła naturalna jedynka,
+      // która zgodnie z zasadą krytyka odejmuje kolejną k10. Test czekał tu na
+      // „nie mniej niż 11" i raz na kilkanaście przebiegów pękał na fumblu.
       const rewrittenRoll = (await updated).message.roll;
+      expect(result.total).toBeGreaterThanOrEqual(rewrittenRoll?.critical === 'failure' ? -9 : 11);
       const rewritten = rewrittenRoll?.attack;
       expect(rewritten?.detail).toContain('poprawka naboju');
       // The card shows the roll it now claims: one die, the round's bonus, and

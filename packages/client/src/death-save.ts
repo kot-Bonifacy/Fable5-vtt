@@ -44,7 +44,7 @@ export function useDeathSavePrompt(): DeathSavePrompt | null {
     if (!combat?.activeCombatantId || !user) return null;
     const active = combat.combatants.find((c) => c.id === combat.activeCombatantId);
     if (!active) return null;
-    const token = tokens[active.tokenId];
+    const token = active.tokenId ? tokens[active.tokenId] : undefined;
     const characterId = token?.characterId;
     if (!characterId) return null;
     const character = characters[characterId];

@@ -2,9 +2,13 @@ import type {
   ChatMessageView,
   CombatActionLogEntry,
   CpredNetArchitecture,
+  CpredNetCombatState,
+  CpredNetPosition,
+  CpredNetProgramProfile,
   CpredNetRunState,
   CpredNetRuntime,
   NetAccessPointView,
+  NetDeckRow,
   NetRunPayload,
   SessionUser,
 } from '@vtt/shared';
@@ -13,11 +17,17 @@ import {
   NET_ACCESS_RANGE_M,
   ROLE_GM,
   cpredInterfaceRank,
+  describeNetProgramEffects,
   metresBetween,
+  netActionsAfterDebt,
   netActionsForInterface,
+  netCombatView,
+  netFloorAt,
+  netSlideDestinations,
   netRunView,
   netrunningDataOf,
   parseCharacterData,
+  readNetCombatState,
   readNetRunState,
   readNetRuntime,
   tokenCentre,
@@ -163,11 +173,20 @@ export function controlsRun(row: RunRow, user: SessionUser): boolean {
   return row.token.ownerId === user.id || row.token.character?.ownerId === user.id;
 }
 
-/** Net Actions this run's netrunner buys with their Interface rank. */
+/**
+ * Net Actions this run's netrunner buys with their Interface rank, minus
+ * whatever a Mózgoklep took off the next bundle (stage 26c).
+ *
+ * The debt rides on the run rather than on the turn because it is dealt on
+ * somebody else's Turn: „zmniejsza … liczbę Akcji Sieciowych, które cel może
+ * wykonać w swojej kolejnej Turze" (s. 204). It is cleared when a bundle
+ * actually opens — see `netcombat.ts` on the server.
+ */
 export async function netActionsForRun(
   prisma: PrismaClient,
   cpred: Parameters<typeof netrunningDataOf>[0],
   characterId: string,
+  debt = 0,
 ): Promise<{ rank: number; actions: number }> {
   const character = await prisma.character.findUnique({
     where: { id: characterId },
@@ -176,7 +195,34 @@ export async function netActionsForRun(
   if (!character) return { rank: 0, actions: 0 };
   const data = parseCharacterData(character.data, cpred);
   const rank = cpredInterfaceRank(data, cpred) ?? 0;
-  return { rank, actions: netActionsForInterface(rank, netrunningDataOf(cpred)) };
+  const actions = netActionsForInterface(rank, netrunningDataOf(cpred));
+  return { rank, actions: netActionsAfterDebt(actions, debt) };
+}
+
+/** The Programs and Hardware in the deck of the sheet driving this run. */
+export async function deckRowsOf(
+  prisma: PrismaClient,
+  cpred: Parameters<typeof netrunningDataOf>[0],
+  characterId: string,
+): Promise<NetDeckRow[]> {
+  const character = await prisma.character.findUnique({
+    where: { id: characterId },
+    select: { data: true },
+  });
+  if (!character) return [];
+  const data = parseCharacterData(character.data, cpred);
+  return (data.cyberdeck?.installed ?? [])
+    .filter((row) => row.kind === 'program')
+    .map((row) => ({
+      id: row.id,
+      name: row.name,
+      ...(row.program ? { profile: row.program } : {}),
+    }));
+}
+
+/** One line of Polish for a Program's mechanical effect, wherever it shows. */
+export function describeProgram(profile: CpredNetProgramProfile): string {
+  return describeNetProgramEffects(profile.effects);
 }
 
 /**
@@ -197,14 +243,30 @@ export async function runPayloadFor(
   const architecture = architectureOf(row.architecture);
   const state = readNetRunState(row.data);
   if (!architecture || !state) return null;
+  const fight = readNetCombatState(safeParse(row.data));
 
   const point = await prisma.netAccessPoint.findUnique({
     where: { id: row.accessPointId },
     select: { name: true },
   });
-  const { rank, actions } = await netActionsForRun(prisma, cpred, row.characterId);
+  const { rank, actions } = await netActionsForRun(
+    prisma,
+    cpred,
+    row.characterId,
+    fight.netActionDebt,
+  );
   const gm = user.role === ROLE_GM;
   const runtime = readNetRuntime(row.architecture.runtime);
+  const deck = await deckRowsOf(prisma, cpred, row.characterId);
+  const combat = netCombatView(fight, {
+    deck,
+    gm,
+    currentFloorId: netFloorAt(architecture, state.position)?.id ?? null,
+    describeEffect: describeProgram,
+    slideTargets: netSlideDestinations(architecture, state.position, state.broken).map(
+      (position) => ({ position, label: slideLabel(architecture, position) }),
+    ),
+  });
   return {
     runId: row.id,
     tokenId: row.tokenId,
@@ -214,8 +276,33 @@ export async function runPayloadFor(
     accessPointName: point?.name ?? 'Punkt dostępu',
     interfaceRank: rank,
     gmView: gm,
-    run: netRunView(architecture, state, { gm, netActionsMax: actions, runtime }),
+    run: netRunView(architecture, state, { gm, netActionsMax: actions, runtime, combat }),
   };
+}
+
+/** „Piętro 3 — Plik" albo samo „Piętro 3", gdy netrunner jeszcze tam nie był. */
+function slideLabel(architecture: CpredNetArchitecture, position: CpredNetPosition): string {
+  const branch = architecture.branches.find((entry) => entry.id === position.branchId);
+  const depth =
+    (branch?.parentFloor === null || branch?.parentFloor === undefined
+      ? 0
+      : branch.parentFloor + 1) + position.floor;
+  return `Piętro ${depth + 1}`;
+}
+
+function safeParse(raw: string): unknown {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+/** Both halves of a stored run — 26b's shaft and 26c's fight, in one object. */
+export function readFullRun(raw: string): (CpredNetRunState & CpredNetCombatState) | null {
+  const state = readNetRunState(raw);
+  if (!state) return null;
+  return { ...state, ...readNetCombatState(safeParse(raw)) };
 }
 
 export async function fetchRunsFor(
@@ -247,12 +334,21 @@ export async function emitRuns(deps: RealtimeDeps, campaignId: string): Promise<
   }
 }
 
+/**
+ * Writes a run back.
+ *
+ * Both halves live in the one `data` column and both readers read the same
+ * object, so a partial write would quietly drop the other half — hence the
+ * merge here rather than at every call site.
+ */
 export async function saveRunState(
   prisma: PrismaClient,
   runId: string,
-  state: CpredNetRunState,
+  state: CpredNetRunState | (CpredNetRunState & CpredNetCombatState),
 ): Promise<void> {
-  await prisma.netRun.update({ where: { id: runId }, data: { data: JSON.stringify(state) } });
+  const current = await prisma.netRun.findUnique({ where: { id: runId }, select: { data: true } });
+  const merged = { ...readNetCombatState(safeParse(current?.data ?? '{}')), ...state };
+  await prisma.netRun.update({ where: { id: runId }, data: { data: JSON.stringify(merged) } });
 }
 
 export async function saveRuntime(
@@ -331,46 +427,4 @@ export async function logNetLine(
   const view = toChatMessageView(stored);
   broadcastChatMessage(deps, campaignId, view);
   return view;
-}
-
-/**
- * Called after every drop of every figure: has this one just walked out on its
- * own run? („Wyjście poza zasięg działania punktu dostępu bez uprzedniego
- * odłączenia się powoduje automatyczne (awaryjne) odłączenie", s. 198.)
- *
- * Stage 26c turns that into the beating the rules promise — the list of Black
- * ICE met on the way is already in `state.metIce`, written by 26b for exactly
- * this. Here it only ends the run and says so out loud.
- */
-export async function enforceNetRunRange(
-  deps: RealtimeDeps,
-  campaignId: string,
-  scene: Scene,
-  token: Pick<Token, 'id' | 'x' | 'y' | 'size'>,
-  user: SessionUser,
-): Promise<boolean> {
-  const run = await loadRunForToken(deps.ctx.prisma, token.id);
-  if (!run || run.campaignId !== campaignId) return false;
-  const point = await deps.ctx.prisma.netAccessPoint.findUnique({
-    where: { id: run.accessPointId },
-  });
-  // A socket the GM deleted mid-run is a socket that is no longer there.
-  const verdict = point
-    ? await netAccessVerdict(deps.ctx.prisma, scene, token, point)
-    : ({ ok: false, reason: 'range' } as const);
-  if (verdict.ok) return false;
-
-  await deps.ctx.prisma.netRun.delete({ where: { id: run.id } });
-  await logNetLine(
-    deps,
-    campaignId,
-    user,
-    run.token.character?.name ?? run.token.name,
-    'Awaryjne odłączenie',
-    verdict.reason === 'wall'
-      ? 'ściana odcięła połączenie z punktem dostępu'
-      : `poza zasięgiem punktu dostępu (${NET_ACCESS_RANGE_M} m)`,
-  );
-  await emitRuns(deps, campaignId);
-  return true;
 }

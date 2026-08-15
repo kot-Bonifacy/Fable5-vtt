@@ -570,8 +570,9 @@ async function humanShieldOf(
 ): Promise<{ tokenId: string; name: string } | null> {
   if (!sheetHumanShieldCovers({ melee: attack.melee, aimedAtHead: attack.aimed })) return null;
   const state = await grappleStateForToken(deps.ctx.prisma, sceneId, targetTokenId);
-  if (!state.shieldOf) return null;
-  return { tokenId: state.shieldOf.tokenId, name: state.shieldOf.token.name };
+  const shield = state.shieldOf;
+  if (!shield || !shield.token || !shield.tokenId) return null;
+  return { tokenId: shield.tokenId, name: shield.token.name };
 }
 
 /**

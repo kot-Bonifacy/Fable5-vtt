@@ -25,11 +25,20 @@ import { loadStabilizeCup, useRollStore } from '../stores/rollStore.js';
  */
 
 /** The sheet acting for a participant — needed for any roll, absent for a statist. */
+/**
+ * Uczestnik z figurą na mapie. Od etapu 26c kolejka inicjatywy może nieść też
+ * Czarnego LOD-a, który żadnego ciała nie ma — a wszystkie formularze poniżej
+ * mówią o ciałach (Ustabilizowanie, Pochwycenie, Wstrzymanie Akcji).
+ */
+function hasFigureRow(row: CombatantView): row is CombatantView & { tokenId: string } {
+  return typeof row.tokenId === 'string';
+}
+
 function useActingCharacter(combatant: CombatantView) {
   const tokens = useTokenStore((s) => s.tokens);
   const characters = useCharacterStore((s) => s.characters);
   return useMemo(() => {
-    const token = tokens[combatant.tokenId];
+    const token = combatant.tokenId ? tokens[combatant.tokenId] : undefined;
     if (!token?.characterId) return null;
     return characters[token.characterId] ?? null;
   }, [tokens, characters, combatant.tokenId]);
@@ -133,7 +142,9 @@ export function StabilizePicker({
 
   const targets = useMemo(
     () =>
-      combat.combatants.map((row) => {
+      // Uczestnik bez figury (Czarny LOD z 26c) nie jest celem żadnej z tych
+      // Akcji — Ustabilizowanie, Pochwycenie i reszta dotyczą ciał.
+      combat.combatants.filter(hasFigureRow).map((row) => {
         const hp = tokens[row.tokenId]?.hp ?? null;
         return {
           tokenId: row.tokenId,
@@ -218,7 +229,7 @@ export function GrapplePanel({
   const holding = grapple?.role === 'attacker';
   const held = grapple?.role === 'defender';
   /** Everybody else in the fight — targets for a grab or for a rescue. */
-  const others = combat.combatants.filter((row) => row.id !== combatant.id);
+  const others = combat.combatants.filter((row) => row.id !== combatant.id).filter(hasFigureRow);
 
   /** Duszenie, Rzut, Ludzka tarcza and letting go — no roll, just an Action. */
   async function holdAction(kind: 'choke' | 'throw' | 'human-shield' | 'release') {
@@ -243,7 +254,7 @@ export function GrapplePanel({
       characterName: acting.name,
       title: `${GRAPPLE_INTENT_LABELS[intent]} → ${targetName}`,
       modifierTotal: 0,
-      attempt: { targetTokenId, attackerTokenId: combatant.tokenId, intent },
+      attempt: { targetTokenId, attackerTokenId: combatant.tokenId ?? '', intent },
     });
     setOpen(false);
     onDone?.();

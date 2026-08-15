@@ -106,9 +106,13 @@ import type {
   NetAccessPointSyncBroadcast,
   NetAccessPointUpdatePayload,
   NetAccessPointView,
+  NetIceActPayload,
   NetRunAbilityPayload,
   NetRunAbilityResult,
+  NetRunAttackPayload,
   NetRunPayload,
+  NetRunProgramPayload,
+  NetRunSlidePayload,
   NetRunSyncBroadcast,
   CpredNetPosition,
   NetArchitectureSavePayload,
@@ -1456,6 +1460,28 @@ export const useNetAbility = (payload: NetRunAbilityPayload) =>
 export const runNetScan = (tokenId: string, gesture?: RollGesture) =>
   emitSceneAck<NetRunAbilityResult>('netrun:scan', { tokenId, gesture });
 
+/* ── walka w Sieci (etap 26c) ── */
+
+/** Uruchomienie albo zatrzymanie Programu — po jednej Akcji Sieciowej. */
+export const toggleNetProgram = (payload: NetRunProgramPayload) =>
+  emitSceneAck<NetRunAbilityResult>('netrun:program', payload);
+
+/** Atak Agresorem z deku albo Paf, gdy `rowId` nie ma. */
+export const attackInNet = (payload: NetRunAttackPayload) =>
+  emitSceneAck<NetRunAbilityResult>('netrun:attack', payload);
+
+export const slideInNet = (payload: NetRunSlidePayload) =>
+  emitSceneAck<NetRunAbilityResult>('netrun:slide', payload);
+
+/** Dwa przyciski MG: wykrycie intruza i Tura Czarnego LOD-u. */
+export const iceDetects = (payload: NetIceActPayload) =>
+  emitSceneAck<NetRunAbilityResult>('netrun:ice:detect', payload);
+
+export const iceTakesTurn = (payload: NetIceActPayload) =>
+  emitSceneAck<NetRunAbilityResult>('netrun:ice:turn', payload);
+
+export const clearNetGlue = (runId: string) => emitSceneAck('netrun:glue', { runId });
+
 /**
  * Dziennik kampanii. Wołane przy wejściu w zakładkę, nie w `state:sync`.
  *
@@ -1990,6 +2016,8 @@ export function combatErrorText(code: string): string {
       return 'Nie ma trwającej walki na tej scenie.';
     case 'COMBATANT_NOT_FOUND':
       return 'Nie znaleziono uczestnika walki — odśwież stronę.';
+    case 'COMBATANT_HAS_NO_FIGURE':
+      return 'Ten uczestnik nie ma figury na mapie — Czarny LOD działa tylko w Sieci.';
     case 'TOKEN_NOT_FOUND':
       return 'Nie znaleziono tokenu — odśwież stronę.';
     case 'TOO_MANY_COMBATANTS':

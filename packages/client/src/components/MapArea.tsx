@@ -262,7 +262,8 @@ function moveAllowanceOf(
 ): MoveAllowance | null {
   const active = activeCombatantOf(combat);
   const distance = active?.turn?.distance;
-  if (!active || !distance) return null;
+  // Uczestnik bez figury (Czarny LOD z 26c) nie chodzi po mapie.
+  if (!active || !distance || !active.tokenId) return null;
   if (!isGm && active.ownerId !== userId) return null;
   return {
     tokenId: active.tokenId,

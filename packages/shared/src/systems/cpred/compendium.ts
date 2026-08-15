@@ -29,6 +29,7 @@ import {
   NET_PROGRAM_STAT_MAX,
   NET_PROGRAM_TARGETS,
   netProgramSlots,
+  readNetProgramEffects,
   type CpredNetDefenseProfile,
   type CpredNetProgramProfile,
   type NetDefenseKind,
@@ -1207,6 +1208,10 @@ function validateProgram(
     return undefined;
   }
 
+  // The „Efekt" column as numbers (stage 26c). Never a refusal: a Program the
+  // engine cannot help with is still a Program the GM may want in the catalogue.
+  const effects = readNetProgramEffects(input.effects);
+
   const profile: CpredNetProgramProfile = {
     programClass,
     ...(target ? { target } : {}),
@@ -1217,6 +1222,7 @@ function validateProgram(
     ...(per !== undefined ? { per } : {}),
     ...(speed !== undefined ? { speed } : {}),
     ...(icon ? { icon } : {}),
+    ...(effects ? { effects } : {}),
   };
   // Slots are stored only when they differ from what the class already implies,
   // so the „Black ICE takes two" rule stays in one place.

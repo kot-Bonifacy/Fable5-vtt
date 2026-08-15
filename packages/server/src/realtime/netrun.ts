@@ -26,25 +26,28 @@ import {
   NET_ACCESS_RANGE_M,
   ROLE_GM,
   cpredInterfaceRank,
+  freshNetCombat,
   freshNetRun,
   metresBetween,
   netAbility,
+  netAbilityBonuses,
   netCanMove,
   netEntryPosition,
   netFloorAt,
+  netGlueHolds,
   netIsBottom,
   netMove,
+  netMoveGoesDeeper,
   netMoveRefusal,
   netScoutReveal,
   parseCharacterData,
-  readNetRunState,
   readNetRuntime,
   rollFormula,
   tokenCentre,
 } from '@vtt/shared';
 import type { Character, Token } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
-import { requireCampaignToken } from './tokens.js';
+import { emitTokensById, requireCampaignToken } from './tokens.js';
 import { requireCampaignScene, toSceneView } from './scenes.js';
 import { requireTurnSpend } from './combat-actions.js';
 import { sheetSituationModifiers } from '../sheets.js';
@@ -62,10 +65,13 @@ import {
   loadRunRow,
   netAccessVerdict,
   netActionsForRun,
+  readFullRun,
   saveRunState,
   saveRuntime,
   toAccessPointView,
 } from './netrun-io.js';
+import { dropRunFromQueue, emergencyJackOut, type FullRunState } from './netice.js';
+import { roundOfScene, spawnIceOnFloors } from './netcombat.js';
 
 /**
  * The run (stage 26b) — jacking in, walking the shaft and the seven Interface
@@ -172,6 +178,7 @@ export const netPointRemoveEvent = defineEvent<NetAccessPointIdPayload, void>({
     const row = await requireAccessPoint(deps, campaignId, payload?.id);
     // Runs hanging off this socket end with it — the cable was pulled.
     const orphaned = await deps.ctx.prisma.netRun.findMany({ where: { accessPointId: row.id } });
+    for (const run of orphaned) await dropRunFromQueue(deps, campaignId, run.id);
     await deps.ctx.prisma.netRun.deleteMany({ where: { accessPointId: row.id } });
     await deps.ctx.prisma.netAccessPoint.delete({ where: { id: row.id } });
     await emitAccessPoints(deps, campaignId, row.sceneId);
@@ -256,8 +263,15 @@ export const netRunStartEvent = defineEvent<NetRunStartPayload, NetRunPayload>({
     );
 
     const entryFloor = netFloorAt(architecture, entry);
-    const state = freshNetRun(entry, entryFloor?.id ?? '');
-    if (entryFloor?.kind === 'ice') state.metIce = [entryFloor.id];
+    // Both halves from the start (stage 26c): a run with no `rezzed` list is a
+    // run whose first Program would have nowhere to go.
+    let state: FullRunState = {
+      ...freshNetRun(entry, entryFloor?.id ?? ''),
+      ...freshNetCombat(),
+    };
+    if (entryFloor?.id) {
+      state = await spawnIceOnFloors(deps, campaignId, architecture, state, [entryFloor.id]);
+    }
     await deps.ctx.prisma.netRun.create({
       data: {
         campaignId,
@@ -281,8 +295,14 @@ export const netRunLeaveEvent = defineEvent<NetRunIdPayload, void>({
   name: 'netrun:leave',
   handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
-    const { row } = await requireRun(deps, campaignId, user, payload?.runId);
+    const { row, state } = await requireRun(deps, campaignId, user, payload?.runId);
     const { scene, token } = await requireCampaignToken(deps.ctx.prisma, campaignId, row.tokenId);
+
+    // „Nie może … bezpiecznie się odłączyć (choć wciąż może wykonać awaryjne
+    // odłączenie)" (s. 204) — the glue closes this door, never the other one.
+    if (netGlueHolds(state, await roundOfScene(deps, scene.id))) {
+      throw new RealtimeError('NET_GLUED');
+    }
 
     const { actions } = await netActionsForRun(deps.ctx.prisma, deps.ctx.cpred, row.characterId);
     await requireTurnSpend(
@@ -297,6 +317,9 @@ export const netRunLeaveEvent = defineEvent<NetRunIdPayload, void>({
     );
 
     await deps.ctx.prisma.netRun.delete({ where: { id: row.id } });
+    // „Odłączenie resetuje obronę Architektury" — a Black ICE that was chasing
+    // this run leaves the initiative queue with it (stage 26c).
+    await dropRunFromQueue(deps, campaignId, row.id);
     await logNetLine(
       deps,
       campaignId,
@@ -324,13 +347,25 @@ export const netRunMoveEvent = defineEvent<NetRunMovePayload, NetRunPayload>({
     const verdict = netCanMove(architecture, state, to);
     if (!verdict.ok || !verdict.path) throw new RealtimeError(netMoveRefusal(verdict));
 
+    // „Przez 1k6 Rund wrogi Netrunner nie może zejść na niższe poziomy
+    // Architektury" (s. 204, stage 26c). Only downwards: the glue holds you in
+    // place going deeper, it does not stop you climbing out.
+    const { scene } = await requireCampaignToken(deps.ctx.prisma, campaignId, row.tokenId);
+    const round = await roundOfScene(deps, scene.id);
+    if (netGlueHolds(state, round) && netMoveGoesDeeper(architecture, state.position, to)) {
+      throw new RealtimeError('NET_GLUED');
+    }
+
     // „Poruszanie się w Architekturze Sieciowej" costs nothing (s. 198) — the
     // only thing it spends is the secrecy of the floors walked through.
     const floorIds = verdict.path
       .map((step) => netFloorAt(architecture, step)?.id)
       .filter((id): id is string => typeof id === 'string');
-    let next = netMove(state, verdict.path, floorIds);
-    next = rememberIce(next, architecture, floorIds);
+    let next: FullRunState = { ...state, ...netMove(state, verdict.path, floorIds) };
+    // Opening a door is what puts a Black ICE in the shaft (stage 26c); what it
+    // does about the intruder waits for the GM's own click.
+    next = await spawnIceOnFloors(deps, campaignId, architecture, next, floorIds);
+    next = { ...next, ...rememberIce(next, architecture, floorIds) };
     await saveRunState(deps.ctx.prisma, row.id, next);
     await emitRuns(deps, campaignId);
     return requireMyRun(deps, campaignId, row.tokenId, user);
@@ -393,7 +428,20 @@ export const netRunAbilityEvent = defineEvent<NetRunAbilityPayload, NetRunAbilit
       ? await netAccessVerdict(deps.ctx.prisma, scene, token, point)
       : ({ ok: false, reason: 'range' } as const);
     if (!reach.ok) {
-      await emergencyJackOut(deps, campaignId, user, row.id, character.name);
+      // Stage 26c turned this into the beating the rules promise: the effects
+      // of every Black ICE still running that this entry has met (s. 198).
+      const bill = await emergencyJackOut(deps, {
+        campaignId,
+        user,
+        runId: row.id,
+        reason:
+          reach.reason === 'wall'
+            ? 'ściana odcięła połączenie z punktem dostępu'
+            : `poza zasięgiem punktu dostępu (${NET_ACCESS_RANGE_M} m)`,
+        round: await roundOfScene(deps, scene.id),
+        rng: createMixedRng(),
+      });
+      if (bill.tokenIds.length > 0) await emitTokensById(deps, campaignId, bill.tokenIds);
       throw new RealtimeError(reach.reason === 'wall' ? 'NET_WALL_BLOCKS' : 'NET_OUT_OF_RANGE');
     }
 
@@ -431,7 +479,15 @@ export const netRunAbilityEvent = defineEvent<NetRunAbilityPayload, NetRunAbilit
     }
 
     const dv = abilityDv(ability.id, floor?.dv, state);
-    const roll = performInterfaceRoll(deps, character, rank, ability.name, dv, payload?.gesture);
+    const roll = performInterfaceRoll(
+      deps,
+      character,
+      rank,
+      ability.name,
+      dv,
+      payload?.gesture,
+      netAbilityBonuses(state, ability.id),
+    );
     const success = dv === null ? true : roll.total > dv;
 
     const outcome = await applyAbility(deps, {
@@ -733,7 +789,11 @@ async function advanceVirus(
   return null;
 }
 
-/** „Interfejs + 1k10" with the wounds of the body it is running from. */
+/**
+ * „Interfejs + 1k10" with the wounds of the body it is running from — and,
+ * since stage 26c, with whatever Boosters are rezzed („+2 do Testów
+ * Maskowania, dopóki ten Program jest zrezowany", s. 203).
+ */
 function performInterfaceRoll(
   deps: RealtimeDeps,
   character: Character,
@@ -741,6 +801,7 @@ function performInterfaceRoll(
   title: string,
   dv: number | null,
   rawGesture: RollGesture | undefined,
+  boosts: readonly { label: string; value: number }[] = [],
 ): RollResult {
   const data = parseCharacterData(character.data, deps.ctx.cpred);
   const situational = sheetSituationModifiers({
@@ -749,6 +810,7 @@ function performInterfaceRoll(
   });
   const breakdown: RollBreakdownEntry[] = [
     { label: `Interfejs ${rank}`, value: rank, kind: 'skill' },
+    ...boosts.map((boost) => ({ label: boost.label, value: boost.value, kind: 'skill' as const })),
     ...situational,
   ];
   const modifierTotal = breakdown.reduce((sum, entry) => sum + entry.value, 0);
@@ -824,7 +886,9 @@ async function requireRun(
   if (!row) throw new RealtimeError('NET_NOT_JACKED');
   if (!controlsRun(row, user)) throw new RealtimeError('FORBIDDEN');
   const architecture = architectureOf(row.architecture);
-  const state = readNetRunState(row.data);
+  // Both halves of the run at once (stage 26c): 26b's shaft and the fight in
+  // it. A partial read here would be a partial write two lines later.
+  const state = readFullRun(row.data);
   if (!architecture || !state) throw new RealtimeError('ARCHITECTURE_NOT_FOUND');
   return { row, architecture, state };
 }
@@ -848,24 +912,4 @@ async function requireMyRun(
   const run = await myRun(deps, campaignId, tokenId, user);
   if (!run) throw new RealtimeError('NET_NOT_JACKED');
   return run;
-}
-
-/** Tearing a run down the hard way — see `enforceNetRunRange` for the other. */
-async function emergencyJackOut(
-  deps: RealtimeDeps,
-  campaignId: string,
-  user: SessionUser,
-  runId: string,
-  characterName: string,
-): Promise<void> {
-  await deps.ctx.prisma.netRun.deleteMany({ where: { id: runId } });
-  await logNetLine(
-    deps,
-    campaignId,
-    user,
-    characterName,
-    'Awaryjne odłączenie',
-    `poza zasięgiem punktu dostępu (${NET_ACCESS_RANGE_M} m)`,
-  );
-  await emitRuns(deps, campaignId);
 }

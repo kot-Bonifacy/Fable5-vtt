@@ -191,6 +191,7 @@ function CombatRow({
         <span className="combat-row-name">
           {combatant.name}
           {combatant.hidden && <span className="combat-tag">ukryty</span>}
+          {combatant.tokenId === null && <span className="combat-tag">w Sieci</span>}
         </span>
         <span className="combat-row-meta">
           {hp ? `PW ${hp.current}/${hp.max}` : ''}
@@ -330,8 +331,10 @@ export function CombatPanel() {
   }
 
   /** May this viewer roll for the participant? Owner or GM. */
+  // Uczestnik bez figury to Czarny LOD z etapu 26c: inicjatywy się nie rzuca,
+  // bo LOD wskakuje na czoło kolejki „o jeden punkt wyżej" (s. 205).
   const mayRoll = (combatant: CombatantView): boolean =>
-    isGm || (user !== null && combatant.ownerId === user.id);
+    combatant.tokenId !== null && (isGm || (user !== null && combatant.ownerId === user.id));
 
   /** The participant this viewer may spend a turn for, if any (stage 14b). */
   const active = combat.combatants.find((c) => c.id === combat.activeCombatantId) ?? null;
@@ -409,7 +412,7 @@ export function CombatPanel() {
 
       <ol className="combat-list">
         {combat.combatants.map((combatant, index) => {
-          const token = tokenMap[combatant.tokenId];
+          const token = combatant.tokenId ? tokenMap[combatant.tokenId] : undefined;
           return (
             <CombatRow
               key={combatant.id}

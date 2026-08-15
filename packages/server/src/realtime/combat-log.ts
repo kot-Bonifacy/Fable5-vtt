@@ -1,7 +1,7 @@
 import type { ChatMessageView, CombatActionLogEntry, SessionUser } from '@vtt/shared';
 import { turnProblemMessage } from '../sheets.js';
 import type { RealtimeDeps } from './registry.js';
-import type { CombatantRow, TurnSpendProblem } from './combat.js';
+import { combatantName, type CombatantRow, type TurnSpendProblem } from './combat.js';
 import {
   INCLUDE_CHAT_NAMES,
   broadcastChatMessage,
@@ -36,7 +36,7 @@ export function actionEntry(
 ): CombatActionLogEntry {
   return {
     combatantId: combatant.id,
-    actorName: combatant.token.name,
+    actorName: combatantName(combatant),
     actionId,
     actionName,
     ...(note ? { note } : {}),

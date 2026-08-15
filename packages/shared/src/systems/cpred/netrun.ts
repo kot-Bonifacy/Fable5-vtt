@@ -21,9 +21,11 @@
  *    What differs is where the DV comes from and what success writes down, so
  *    the differences live in a table rather than in nine functions.
  *
- * Stage 26c owns the two combat abilities (Ślizg, Paf), Programs and Black ICE;
- * they are listed in the catalogue below with `combat: true` so the run window
- * can grey them out honestly rather than pretend they do not exist.
+ * The two contested abilities (Ślizg, Paf) belong to stage 26c and live in
+ * `netcombat.ts`: both roll against a Black ICE rather than against a DV, so
+ * they need a target and cannot share `runAbility`. They stay in the catalogue
+ * below marked `combat: true`, which is how the run window knows to ask for
+ * that target instead of firing straight away.
  */
 
 import type { CpredCharacterData, CpredRegistry } from './character.js';
@@ -34,6 +36,9 @@ import type {
   NetFloorKind,
 } from './netrunning.js';
 import { NET_FLOOR_KIND_LABELS, netTrunk } from './netrunning.js';
+// Type-only: `netcombat.ts` walks this file's shaft, so a value import back
+// would close a cycle. The fight it describes rides on the run's own view.
+import type { NetCombatView } from './netcombat.js';
 
 // ─────────────────────────── Interfejs jako zdolność ───────────────────────────
 
@@ -97,7 +102,11 @@ export interface CpredNetAbility {
   /** The floor kind it needs under its feet, when it needs one. */
   floorKind?: NetFloorKind;
   hint: string;
-  /** Owned by stage 26c — Programs, Black ICE and the fighting. */
+  /**
+   * Contested against a Black ICE rather than rolled against a DV (stage 26c).
+   * Such an ability needs a target picked first, so it is resolved by its own
+   * event and not by the shared Check path.
+   */
   combat?: boolean;
 }
 
@@ -181,9 +190,14 @@ export function netAbility(id: string): CpredNetAbility | undefined {
   return NET_ABILITIES.find((entry) => entry.id === id);
 }
 
-/** The abilities stage 26b actually resolves — the run window's button row. */
+/** The abilities the shared Check path resolves — the run window's button row. */
 export const NET_ABILITIES_AVAILABLE: readonly CpredNetAbility[] = NET_ABILITIES.filter(
   (entry) => !entry.combat,
+);
+
+/** Ślizg and Paf — the two that need a Black ICE picked before they can fire. */
+export const NET_ABILITIES_CONTESTED: readonly CpredNetAbility[] = NET_ABILITIES.filter(
+  (entry) => entry.combat === true,
 );
 
 // ──────────────────────────────── pozycja i szyb ────────────────────────────────
@@ -376,9 +390,11 @@ export interface CpredNetRunState {
   copied: string[];
   controlled: CpredNetHold[];
   /**
-   * Black ICE floors met during this entry. Nothing in 26b reads it — it is
-   * written now because an emergency jack-out pays for exactly this list
-   * (s. 198), and stage 26c must not have to reconstruct it after the fact.
+   * Black ICE **floors** met during this entry. Stage 26c spawns an instance
+   * per Program on such a floor (`CpredNetCombatState.ice`) and bills the
+   * emergency jack-out from those, but the floor list is what tells it which
+   * doors have already been opened — a floor walked past twice must not put a
+   * second Kraken in the shaft.
    */
   metIce: string[];
   virus: CpredNetVirusProgress | null;
@@ -661,6 +677,8 @@ export interface NetRunView {
   virus: CpredNetVirusProgress | null;
   /** Viruses this viewer knows about: the GM's whole list, the runner's own. */
   viruses: CpredNetVirus[];
+  /** Programs, Black ICE and what is stuck to the netrunner (stage 26c). */
+  combat: NetCombatView;
 }
 
 /**
@@ -674,7 +692,12 @@ export interface NetRunView {
 export function netRunView(
   architecture: CpredNetArchitecture,
   state: CpredNetRunState,
-  options: { gm: boolean; netActionsMax: number; runtime?: CpredNetRuntime },
+  options: {
+    gm: boolean;
+    netActionsMax: number;
+    runtime?: CpredNetRuntime;
+    combat: NetCombatView;
+  },
 ): NetRunView {
   const entered = new Set(state.entered);
   const scouted = new Set(state.scouted);
@@ -747,6 +770,7 @@ export function netRunView(
     netActionsMax: options.netActionsMax,
     virus: state.virus,
     viruses: options.runtime?.viruses ?? [],
+    combat: options.combat,
   };
 }
 
@@ -815,7 +839,7 @@ export const NET_RUN_PROBLEM_MESSAGES: Record<NetRunProblem, string> = {
   NET_NOT_BOTTOM: 'Wirusa zostawia się wyłącznie na dnie Architektury.',
   NET_NO_ACTIONS: 'Nie masz już Akcji Sieciowych w tej turze.',
   NET_ABILITY_UNKNOWN: 'Nie znam takiej zdolności Interfejsu.',
-  NET_ABILITY_LATER: 'Ta zdolność wchodzi razem z walką w Sieci (etap 26c).',
+  NET_ABILITY_LATER: 'Ślizg i Paf to testy sporne — najpierw wskaż Czarnego LOD-a.',
   NET_ARCHITECTURE_EMPTY: 'Ta Architektura nie ma ani jednego piętra.',
   NET_NO_ACCESS_POINT: 'Nie ma tu punktu dostępu do Sieci.',
 };
