@@ -36,6 +36,7 @@ import {
   sheetActionBlock,
   readSheetInitiative,
   readSheetMoveBudget,
+  sheetSlowedMoveModifier,
   spendTurnState,
   spendUsesAction,
   turnBudgetOf,
@@ -702,7 +703,11 @@ export async function moveBudgetForCombatant(
     where: { id: characterId },
     select: { data: true },
   });
-  return character ? readSheetMoveBudget(character, deps.ctx.cpred) : null;
+  if (!character) return null;
+  // Stage 26f: what is stuck to this figure's legs lives on the *token*, not on
+  // the sheet — so the budget is asked for both and the note names both.
+  const slowed = row.token ? sheetSlowedMoveModifier(row.token) : null;
+  return readSheetMoveBudget(character, deps.ctx.cpred, slowed ? [slowed] : []);
 }
 
 /** The participant a token is playing in the fight running on its scene. */

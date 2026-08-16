@@ -6,6 +6,7 @@ import type { CombatView } from './combat.js';
 import type { CharacterView } from './characters.js';
 import type { CoverView } from './covers.js';
 import type { SmokeView } from './smoke.js';
+import type { DefenseZoneView } from './zones.js';
 import type {
   CompendiumEntry,
   ShopTier,
@@ -93,6 +94,13 @@ export interface StateSyncPayload {
    * −4.
    */
   smoke: SmokeView[];
+  /**
+   * Defended zones on the viewed scene (stage 26f), **already cut for this
+   * viewer**: a trap nobody has spotted is absent from a player's list, exactly
+   * like a hidden access point. The GM's copy carries every one, with the pass
+   * list and the control node it answers to.
+   */
+  zones: DefenseZoneView[];
   /**
    * Lights of the viewed scene (stage 18b) — **GM only, always empty for a
    * player**, for the reason the walls are: a light's shape is the shape of the

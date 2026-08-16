@@ -88,6 +88,13 @@ import {
 import { coverClearEvent, coverCreateEvent, coverDeleteEvent, coverUpdateEvent } from './covers.js';
 import { smokeClearEvent } from './smoke.js';
 import {
+  zoneClearEvent,
+  zoneCreateEvent,
+  zoneDeleteEvent,
+  zoneFireEvent,
+  zoneUpdateEvent,
+} from './zones.js';
+import {
   lightCreateEvent,
   lightDeleteEvent,
   lightUpdateEvent,
@@ -259,6 +266,11 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   coverDeleteEvent,
   coverClearEvent,
   smokeClearEvent,
+  zoneCreateEvent,
+  zoneUpdateEvent,
+  zoneDeleteEvent,
+  zoneClearEvent,
+  zoneFireEvent,
   lightCreateEvent,
   lightUpdateEvent,
   lightDeleteEvent,

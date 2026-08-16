@@ -3,6 +3,7 @@ import {
   NET_DEMON_MESSAGES,
   NET_DEVICE_MESSAGES,
   NET_RUN_PROBLEM_MESSAGES,
+  ZONE_MESSAGES,
 } from '@vtt/shared';
 
 /**
@@ -10,7 +11,8 @@ import {
  *
  * Większość tekstów mieszka w `shared` (`NET_RUN_PROBLEM_MESSAGES` dla runa,
  * `NET_COMBAT_MESSAGES` dla walki w Sieci, `NET_DEVICE_MESSAGES` dla węzłów
- * kontrolnych, `NET_DEMON_MESSAGES` dla Demonów), bo tymi samymi zdaniami
+ * kontrolnych, `NET_DEMON_MESSAGES` dla Demonów, `ZONE_MESSAGES` dla stref obronnych z 26f),
+ * bo tymi samymi zdaniami
  * odmawia serwer — tutaj dochodzą
  * wyłącznie kody rdzenia VTT (uprawnienia, brak połączenia) i te, które serwer
  * odsyła jako gotowe zdanie.
@@ -21,7 +23,8 @@ export function netErrorText(code: string | undefined): string {
     NET_RUN_PROBLEM_MESSAGES[code as keyof typeof NET_RUN_PROBLEM_MESSAGES] ??
     NET_COMBAT_MESSAGES[code as keyof typeof NET_COMBAT_MESSAGES] ??
     NET_DEVICE_MESSAGES[code as keyof typeof NET_DEVICE_MESSAGES] ??
-    NET_DEMON_MESSAGES[code as keyof typeof NET_DEMON_MESSAGES];
+    NET_DEMON_MESSAGES[code as keyof typeof NET_DEMON_MESSAGES] ??
+    ZONE_MESSAGES[code as keyof typeof ZONE_MESSAGES];
   if (known) return known;
   switch (code) {
     case 'FORBIDDEN':

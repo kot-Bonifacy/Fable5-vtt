@@ -218,7 +218,7 @@ export function DamageRow({
             numbers above (stage 16g) — the „Trzymanie −2" treatment. */}
         {entry.ammo && (
           <span className="chat-damage-detail">
-            nabój: {entry.ammo.name}
+            {entry.ammo.label ?? 'nabój'}: {entry.ammo.name}
             {entry.ammo.notes && entry.ammo.notes.length > 0
               ? ` · ${entry.ammo.notes.join(' · ')}`
               : ''}

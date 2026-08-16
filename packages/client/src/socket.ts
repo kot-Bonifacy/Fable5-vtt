@@ -14,6 +14,10 @@ import type {
   AttackRollPayload,
   AttackRollResult,
   CoverSyncBroadcast,
+  DefenseZoneCreatePayload,
+  DefenseZoneSyncBroadcast,
+  DefenseZoneUpdatePayload,
+  DefenseZoneView,
   CpredCreationDraft,
   CreationDraftView,
   CreationFinishPayload,
@@ -218,6 +222,7 @@ import { useLightStore } from './stores/lightStore.js';
 import { useExplorationStore } from './stores/explorationStore.js';
 import { useCoverStore } from './stores/coverStore.js';
 import { useSmokeStore } from './stores/smokeStore.js';
+import { useZoneStore } from './stores/zoneStore.js';
 import { offerCoverChoice, offerShieldChoice } from './attack-targeting.js';
 
 let socket: Socket | undefined;
@@ -441,6 +446,7 @@ export function connectSocket(userId: string): Socket {
     useWallStore.getState().applySync(payload);
     useCoverStore.getState().applySync(payload);
     useSmokeStore.getState().applySync(payload);
+    useZoneStore.getState().applySync(payload);
     useLightStore.getState().applySync(payload);
     useExplorationStore.getState().applySync(payload);
     // Punkty dostępu i runy (26b) przychodzą już pocięte per widz — store
@@ -835,6 +841,15 @@ export function connectSocket(userId: string): Socket {
     }
     if (viewingScene(broadcast.sceneId)) {
       useSmokeStore.getState().setSmoke(broadcast.sceneId, broadcast.smoke);
+    }
+  });
+  // Strefy bronione (26f) jadą per gniazdo, nie do pokoju: to, czy gracz ma
+  // pułapkę w payloadzie, zależy od tego, czy jego postać ją zauważyła — więc
+  // jeden broadcast dla wszystkich byłby wyciekiem. Bez `seq` z tego samego
+  // powodu, dla którego nie ma go `vision:sync`.
+  socket.on('zone:sync', (broadcast: DefenseZoneSyncBroadcast) => {
+    if (viewingScene(broadcast.sceneId)) {
+      useZoneStore.getState().setZones(broadcast.sceneId, broadcast.zones);
     }
   });
   socket.on('opening:sync', (broadcast: OpeningSyncBroadcast) => {
@@ -1275,6 +1290,34 @@ export const updateCover = (
 export const deleteCover = (coverId: number) => emitSceneAck('cover:delete', { coverId });
 
 export const clearCovers = (sceneId: string) => emitSceneAck('cover:clear', { sceneId });
+
+/* Strefy bronione (etap 26f). Tylko MG je stawia; liczby — PW, Wartość bojowa,
+   efekt — czyta serwer z kompendium, więc klient wysyła wyłącznie prostokąt
+   i wpis, dokładnie tak jak przy osłonie wyżej. */
+
+export const createZone = (
+  sceneId: string,
+  entryId: string,
+  rect: { x: number; y: number; width: number; height: number },
+  options: { name?: string; hidden?: boolean } = {},
+) =>
+  emitSceneAck<DefenseZoneView>('zone:create', {
+    sceneId,
+    entryId,
+    ...rect,
+    ...options,
+  } satisfies DefenseZoneCreatePayload);
+
+export const updateZone = (zoneId: number, patch: DefenseZoneUpdatePayload['patch']) =>
+  emitSceneAck<DefenseZoneView>('zone:update', { zoneId, patch });
+
+export const deleteZone = (zoneId: number) => emitSceneAck('zone:delete', { zoneId });
+
+export const clearZones = (sceneId: string) => emitSceneAck('zone:clear', { sceneId });
+
+/** „Odpal system" i „Tura systemu" — ten sam przycisk, bo to ten sam akt. */
+export const fireZone = (zoneId: number, tokenId?: string) =>
+  emitSceneAck<{ summary: string }>('zone:fire', { zoneId, ...(tokenId ? { tokenId } : {}) });
 
 /* Lights and darkness (stage 18b). GM-only except `toggleTokenLight`, which the
    controller of a token may use on their own torch — the server checks that,

@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import type { CompendiumEntry, WeaponTypeDefinition } from '@vtt/shared';
 import {
   NET_DEFENSE_KIND_LABELS,
+  describeNetDefenseEffects,
+  netDefenseActs,
   NET_PROGRAM_CLASS_LABELS,
   NET_PROGRAM_TARGET_LABELS,
   describeNetProgramEffects,
@@ -555,6 +557,13 @@ function EntryCard({
               />
             ) : null}
             {entry.trigger ? <Stat label="Standardowa aktywacja" value={entry.trigger} /> : null}
+            {netDefenseActs(entry.effects) ? (
+              <Stat
+                label="Efekt"
+                value={describeNetDefenseEffects(entry.effects)}
+                hint="To, co silnik zrobi sam, gdy ktoś wejdzie na strefę — opis obok jest zdaniem z podręcznika, a to jest jego rachunkiem."
+              />
+            ) : null}
             {entry.icon ? <Stat label="Ikona" value={entry.icon} /> : null}
           </>
         ) : null}

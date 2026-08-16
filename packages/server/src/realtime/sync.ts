@@ -2,6 +2,7 @@ import type { Socket } from 'socket.io';
 import type {
   CoverView,
   SmokeView,
+  DefenseZoneView,
   DrawingView,
   FogState,
   LightView,
@@ -24,6 +25,7 @@ import { fetchSceneNotes } from './notes.js';
 import { fetchSceneWalls } from './walls-io.js';
 import { fetchSceneCovers } from './covers-io.js';
 import { fetchSceneSmoke } from './smoke-io.js';
+import { fetchZonesFor } from './zones-io.js';
 import { fetchSceneLights } from './lights-io.js';
 import { fetchAccessPointsFor, fetchRunsFor } from './netrun-io.js';
 import { computeViewerVision, type ViewerVision } from './vision.js';
@@ -64,6 +66,7 @@ export async function buildStateSync(
       walls: [],
       covers: [],
       smoke: [],
+      zones: [],
       lights: [],
       vision: null,
       openings: [],
@@ -93,6 +96,7 @@ export async function buildStateSync(
     walls,
     covers,
     smoke,
+    zones,
     lights,
     vision,
     characters,
@@ -143,6 +147,11 @@ export async function buildStateSync(
     viewedSceneId
       ? fetchSceneSmoke(deps.ctx.prisma, viewedSceneId)
       : Promise.resolve<SmokeView[]>([]),
+    // Defended zones (stage 26f), already cut per viewer: a trap nobody has
+    // spotted is absent from a player's list, exactly like a hidden socket.
+    viewedSceneId
+      ? fetchZonesFor(deps.ctx.prisma, viewedSceneId, user)
+      : Promise.resolve<DefenseZoneView[]>([]),
     // Lights are GM data for the same reason walls are — the shape a lamp
     // throws is the shape of the room. Players get `vision.light` instead.
     viewedSceneId && user.role === ROLE_GM
@@ -192,6 +201,7 @@ export async function buildStateSync(
     walls,
     covers,
     smoke,
+    zones,
     lights,
     vision: vision
       ? {

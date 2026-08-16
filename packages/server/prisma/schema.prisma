@@ -555,6 +555,7 @@ model Scene {
   smoke        Smoke[]
   lights       MapLight[]
   accessPoints NetAccessPoint[]
+  defenseZones DefenseZone[]
   exploration  SceneExploration?
 
   @@index([campaignId, active])
@@ -936,6 +937,7 @@ model NetArchitecture {
   campaign     Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   accessPoints NetAccessPoint[]
   runs         NetRun[]
+  defenseZones DefenseZone[]
 
   @@index([campaignId])
 }
@@ -958,6 +960,63 @@ model NetAccessPoint {
   hidden  Boolean @default(true)
   /// GM's own note about what this socket really is.
   notes   String  @default("")
+
+  createdAt DateTime @default(now())
+
+  scene        Scene            @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  architecture NetArchitecture? @relation(fields: [architectureId], references: [id], onDelete: SetNull)
+
+  @@index([sceneId])
+}
+
+/// A defended zone standing on a scene (stage 26f).
+///
+/// The third rectangle on a map, after the cover of 16c and the smoke of 16h,
+/// and scene data for the reason those two are: „Podloga elektryczna" is one
+/// catalogue row, and the electrified floor in the lobby and the one in the
+/// server room are two things with two switches and two sets of body points.
+///
+/// Unlike a cover and like an access point it can be **hidden**: „Percepcja PT
+/// 17, by zauwazyc" (s. 216) is the whole point of a trap, so a zone nobody has
+/// spotted never reaches a player's socket. Who has spotted it lives in
+/// `sightings` rather than in a join table — the list is a handful of account
+/// ids per scene, and it dies with the zone.
+model DefenseZone {
+  id      Int    @id @default(autoincrement())
+  sceneId String
+  /// Compendium row the numbers come from ("defense.podloga-elektryczna").
+  entryId String
+  /// Label drawn on the map; defaults to the entry's name.
+  name    String
+  /// Top-left corner and size in scene (world) pixels; axis-aligned rectangle.
+  x      Float
+  y      Float
+  width  Float
+  height Float
+  /// Armed = it goes off by itself. The GM's switch, and the netrunner's when
+  /// the zone hangs off a control node.
+  armed  Boolean @default(true)
+  /// Hidden until somebody notices it; a hidden zone is absent from a player's
+  /// payload, never flagged in it.
+  hidden Boolean @default(true)
+  /// Body points of the system itself; 0/0 = a system nobody can shoot down.
+  hpMax     Int @default(0)
+  hpCurrent Int @default(0)
+  /// JSON array of token ids that carry a pass and walk through untouched.
+  exempt String @default("[]")
+  /// JSON `{ users: string[], tried: string[] }`: accounts that have spotted it,
+  /// and characters that already rolled and failed. The second list is what
+  /// stops a player from re-rolling Perception by stepping back and forth.
+  sightings String @default("{}")
+  /// The emplacement figure that fires for this zone; its weapon and magazine
+  /// live on the token, exactly as a turret's do since 26d.
+  tokenId String?
+  /// Control node this zone answers to: switching the device off disarms it.
+  architectureId String?
+  floorId        String?
+  deviceId       String?
+  /// GM's own note about what this thing really is.
+  notes String @default("")
 
   createdAt DateTime @default(now())
 

@@ -20,6 +20,14 @@
  */
 
 import type { ScenePoint } from './measure.js';
+import {
+  distanceToRect,
+  isPointInRect,
+  rectSegments,
+  sanitizeRect,
+  segmentCrossesRect,
+  type Rect,
+} from './rects.js';
 import type { Segment } from './vision.js';
 
 /** One stored cover as it goes over the wire — to every viewer, not just the GM. */
@@ -117,15 +125,7 @@ export function coverStanding(cover: Pick<CoverView, 'hpCurrent'>): boolean {
 
 /** The four edges of a cover, in scene pixels. */
 export function coverSegments(cover: Pick<CoverView, 'x' | 'y' | 'width' | 'height'>): Segment[] {
-  const { x, y, width, height } = cover;
-  const right = x + width;
-  const bottom = y + height;
-  return [
-    { x1: x, y1: y, x2: right, y2: y },
-    { x1: right, y1: y, x2: right, y2: bottom },
-    { x1: right, y1: bottom, x2: x, y2: bottom },
-    { x1: x, y1: bottom, x2: x, y2: y },
-  ];
+  return rectSegments(cover);
 }
 
 /** Is this point inside the rectangle (edges included)? */
@@ -133,12 +133,7 @@ export function isPointInCover(
   cover: Pick<CoverView, 'x' | 'y' | 'width' | 'height'>,
   point: ScenePoint,
 ): boolean {
-  return (
-    point.x >= cover.x &&
-    point.x <= cover.x + cover.width &&
-    point.y >= cover.y &&
-    point.y <= cover.y + cover.height
-  );
+  return isPointInRect(cover, point);
 }
 
 /** Shortest distance from a point to the rectangle, in scene pixels; 0 inside it. */
@@ -146,9 +141,7 @@ export function distanceToCover(
   point: ScenePoint,
   cover: Pick<CoverView, 'x' | 'y' | 'width' | 'height'>,
 ): number {
-  const dx = Math.max(cover.x - point.x, 0, point.x - (cover.x + cover.width));
-  const dy = Math.max(cover.y - point.y, 0, point.y - (cover.y + cover.height));
-  return Math.hypot(dx, dy);
+  return distanceToRect(point, cover);
 }
 
 /**
@@ -240,48 +233,7 @@ export function segmentCrossesCover(
   from: ScenePoint,
   to: ScenePoint,
 ): boolean {
-  if (isPointInCover(cover, from) || isPointInCover(cover, to)) return true;
-  for (const edge of coverSegments(cover)) {
-    if (segmentsIntersect(from, to, { x: edge.x1, y: edge.y1 }, { x: edge.x2, y: edge.y2 })) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/** Standard orientation test; collinear touching counts as an intersection. */
-function segmentsIntersect(
-  a1: ScenePoint,
-  a2: ScenePoint,
-  b1: ScenePoint,
-  b2: ScenePoint,
-): boolean {
-  const d1 = cross(b1, b2, a1);
-  const d2 = cross(b1, b2, a2);
-  const d3 = cross(a1, a2, b1);
-  const d4 = cross(a1, a2, b2);
-  if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) {
-    return true;
-  }
-  return (
-    (d1 === 0 && onSegment(b1, b2, a1)) ||
-    (d2 === 0 && onSegment(b1, b2, a2)) ||
-    (d3 === 0 && onSegment(a1, a2, b1)) ||
-    (d4 === 0 && onSegment(a1, a2, b2))
-  );
-}
-
-function cross(a: ScenePoint, b: ScenePoint, p: ScenePoint): number {
-  return (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
-}
-
-function onSegment(a: ScenePoint, b: ScenePoint, p: ScenePoint): boolean {
-  return (
-    Math.min(a.x, b.x) <= p.x &&
-    p.x <= Math.max(a.x, b.x) &&
-    Math.min(a.y, b.y) <= p.y &&
-    p.y <= Math.max(a.y, b.y)
-  );
+  return segmentCrossesRect(cover, from, to);
 }
 
 /**
@@ -298,32 +250,11 @@ export function pickCoverAt(covers: readonly CoverView[], point: ScenePoint): Co
 }
 
 /** A dragged rectangle normalised to a top-left corner and a positive size. */
-export interface CoverRect {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
+export type CoverRect = Rect;
 
-/**
- * Turns a drag into a stored rectangle, or null when it was a stray click.
- * Rounded to whole scene pixels — a cover is a thing in the world, and half a
- * pixel of a car is nothing anybody meant to draw.
- */
+/** Turns a drag into a stored cover rectangle, or null when it was a stray click. */
 export function sanitizeCoverRect(raw: unknown): CoverRect | null {
-  if (typeof raw !== 'object' || raw === null) return null;
-  const value = raw as Record<string, unknown>;
-  const numbers = [value.x, value.y, value.width, value.height];
-  if (!numbers.every((n): n is number => typeof n === 'number' && Number.isFinite(n))) return null;
-  const width = Math.round(Math.abs(value.width as number));
-  const height = Math.round(Math.abs(value.height as number));
-  if (width < COVER_MIN_SIZE_PX || height < COVER_MIN_SIZE_PX) return null;
-  if (width > COVER_MAX_SIZE_PX || height > COVER_MAX_SIZE_PX) return null;
-  // A drag may run in any direction; the stored rectangle always starts at its
-  // top-left corner so every later test can assume it.
-  const x = Math.round(Math.min(value.x as number, (value.x as number) + (value.width as number)));
-  const y = Math.round(Math.min(value.y as number, (value.y as number) + (value.height as number)));
-  return { x, y, width, height };
+  return sanitizeRect(raw, { min: COVER_MIN_SIZE_PX, max: COVER_MAX_SIZE_PX });
 }
 
 /** Trims a GM-typed label; empty means „keep the preset's name". */

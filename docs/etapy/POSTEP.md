@@ -59,7 +59,7 @@ Pełne notatki z zamkniętych etapów: `archiwum/dziennik-sesji.md` (nie czytaj 
 | 26c | Walka w Sieci: Programy, Paf, Ślizg, LOD      | ✅     | 2026-08-15      | efekt Programu = dane wpisu; `Combatant.tokenId` nullowalny — LOD stoi w kolejce bez figury     |
 | 26d | Węzły kontrolne i systemy obronne             | ✅     | 2026-08-15      | etap 26d podzielony na 26d/26e 15.08; wieżyczka = żeton z profilem statysty z 16b               |
 | 26e | Demony                                        | ✅     | 2026-08-16      | etap 26e podzielony na 26e/26f 16.08; Demon trzyma węzły od startu, tura jednym klikiem MG      |
-| 26f | Samodzielne systemy obronne i broniona strefa | ⬜     |                 | wydzielony z 26e 16.08; efekt systemu środowiskowego to dziś sama proza — wymaga modelu danych  |
+| 26f | Samodzielne systemy obronne i broniona strefa | ✅     | 2026-08-16      | strefa = trzeci prostokąt mapy (→ `rects.ts`); parser wyłuskał efekt z 13 z 18 wierszy          |
 | 27a | Karta jak oficjalna: strona pierwsza          | ✅     | 2026-08-13      | wydzielony z 27 dnia 13.08 (27a/27b/27c); motyw dzień/noc na razie tylko dla karty              |
 | 27b | Karta: broń, pancerz, ekwipunek               | ✅     | 2026-08-13      | zakładka „Walka" zniknęła; pancerz = 3 wiersze wydruku + reszta; trzy nowe pola prozy           |
 | 27c | Karta: Ścieżka Życia i cyborgizacje           | ✅     | 2026-08-14      | sylwetka = gotowy SVG z domeny publicznej; gniazdo na ciele to nowe pole wiersza wszczepu       |
@@ -68,11 +68,10 @@ Pełne notatki z zamkniętych etapów: `archiwum/dziennik-sesji.md` (nie czytaj 
 
 ## Od czego zacząć
 
-Ostatnio zamknięte: **26e** (Demon jako uczestnik runu — obrona **Testem Interfejsu** zamiast
-OBR-u, brak PRĘ i PER, więc żadnego darmowego ataku i żadnego Ślizgu; trzyma **wszystkie węzły
-swojej Architektury od startu**; „Tura Demona" jednym klikiem MG rozgrywa „najpierw węzły, Paf
-z resztek", a wieżyczka strzela jego **Wartością bojową** tym samym silnikiem co w 26d).
-Z rozdziału 11 zostają już tylko **samodzielne systemy obronne i broniona strefa (26f)**.
+Ostatnio zamknięte: **26f** (broniona strefa jako **prostokąt na mapie**, efekt systemu obronnego
+jako **dane** zamiast prozy, wyzwalanie na tym samym haku ruchu co awaryjne odłączenie z 26b,
+powtórka na koniec Tury, **Percepcja rzucana automatycznie** przy zbliżeniu i imienna lista
+przepustek). **Rozdział 11 podręcznika jest domknięty** — netrunning ma komplet 26a–26f.
 
 **🎯 Poligon jest przygotowany pod stół — nic nie trzeba budować od nowa.** Na scenie
 „Strzelnica" stoi odsłonięty **„Punkt dostępu"** i obok niego żeton **„Kolec"** związany z kartą
@@ -84,21 +83,61 @@ z dwoma urządzeniami — **„Kamera nad bramą"** (wpis „Kamera obserwacyjna
 REF 7, Umiejętność 7, karabin szturmowy 25/25, PW 25/25) — oraz 4 **„Serce sieci"** z **Diablikiem**
 (REZ 15, Interfejs 3, 2 Akcje Sieciowe, Wartość bojowa 14). Tryb turowy jest **wyłączony**;
 kolejka „PRZED WALKĄ" z Tonym i avatar9 wraca jednym kliknięciem „Włącz tryb turowy".
+**Od 26f na „Strzelnicy" leży też ⚠ „Podłoga elektryczna"** — prostokąt ~20 × 13 m nad żetonami,
+**uzbrojona i ukryta** (gracz jej nie dostanie, dopóki nie zda Percepcji PT 17 z 4 m). Kto na nią
+wejdzie, dostaje 6k6 przez pancerz i jeszcze raz na koniec każdej swojej Tury. Karta strefy
+otwiera się narzędziem ⚠ w trybie 📌; „Rozbrój" ją usypia, kosz usuwa.
 
 **⚠️ Jedna rzecz do zrobienia ręcznie: „Poligon bojowy" stoi teraz na poziomie sklepu 1
 (Uliczne).** Migracja daje każdej kampanii `shopTier = 1`, więc do czasu przesunięcia
 przełącznika gracz nie kupi niczego droższego niż 50 ed. Przełącznik 1–4 jest w zakładce
 **„Kompendium"** pod chipami kategorii; MG kupuje przez wszystkie poziomy niezależnie od niego.
 
-**Następne etapy do wyboru:** **26f** (samodzielne stanowiska obronne, broniona strefa jako obiekt
-sceny i model efektu systemu środowiskowego — domyka rozdział 11; **zacznij od modelu danych**,
-bo dziś te efekty są w kompendium samą prozą), **27** (kości 3D, motyw dzień/noc dla reszty UI,
-wydajność) i **28** (VPS). **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c
-i trzech stron karty naraz.
+**Następne etapy do wyboru:** zostały już tylko **27** (kości 3D: skórki i ustawienia kubka, motyw
+dzień/noc dla reszty UI, wydajność — plus kilka drobiazgów z listy niżej, m.in. „kostki świecą jak
+krytyki" z 25a/25b i jednobarwne 📰 z 24c) i **28** (VPS). **Sesja zerowa z drużyną** jest nadal
+najlepszym testem 25a+25b+25c i trzech stron karty naraz.
 
 **09.08 głos wypadł z projektu** (sesja bez etapu, decyzja MG): etapy **12, 21 i 22** wycofane, kod TTS usunięty z repo. Szczegóły w `archiwum/dziennik-sesji.md` i w `archiwum/wycofane/README.md`.
 
 ### Otwarte zaległości (przechodzą między etapami)
+
+- **Etap 26f — pięć ścieżek nieodklikanych; reszta sprawdzona 16.08 (patrz notatka sesji).**
+  (1) **Strona gracza** — cała: czy ukryta strefa naprawdę znika z jego ekranu, czy odsłonięta się
+  rysuje i czy po zdanej Percepcji dostaje ją tylko jego konto. Różnica **jest w payloadzie**
+  (`fetchZonesFor` filtruje przed emisją) i pokryta trzema testami na żywych gniazdach, ale nikt
+  nie patrzył na to oczami gracza — ta sama zaległość, co przy 26a–26e. (2) **Ślizgawka
+  i wymuszony Test** — w przeglądarce klikana była wyłącznie podłoga elektryczna; Test Atletyki
+  z wyzwalaczem „każdy ruch na obszarze" ma test serwera. (3) **Kara do RUCH-u (Maź)** — naklejka
+  **„Spowolniony"** (nowy status, ikona `slowed.svg` z game-icons) i jej liczba w budżecie ruchu
+  („Pancerz −2 · Spowolniony −7") widziane tylko w testach; **ikona nie była oglądana na żetonie**.
+  (4) **Strzał stanowiska** — ścieżka `fires` przeszła testem wyłącznie w wariancie „nie ma żetonu
+  na scenie"; prawdziwy strzał wieżyczki związanej ze strefą wymaga żetonu z bronią i celu w polu
+  ostrzału. (5) **Winda z gazem w Kolejce Inicjatywy** — wyzwalacz `turn` odpala **wyłącznie**
+  przyciskiem „Odpal system" (patrz akapit niżej), więc wiersz w trackerze zakłada MG ręcznie.
+
+- **Etap 26f — pułapka z własną Turą nie wstawia się do Kolejki sama.** Wyzwalacz `turn` (winda
+  z gazem, s. 216) jest w danych i jest **pomijany** przez hak ruchu; odpala go „Odpal system" na
+  karcie strefy. To świadome i zgodne z linią 26c/26e („nic nie rusza się samo, MG klika"), ale
+  znaczy, że zdanie „Pułapka zajmuje pierwsze miejsce w Kolejce Inicjatywy" MG realizuje sam —
+  dodając wiersz trackera i klikając przycisk w jego Turze. Automatyczna wstawka wzorem
+  `pushNetFoeIntoQueue` z 26c to wpis w `POMYSLY.md`.
+
+- **Etap 26f — promień zauważenia strefy (4 m) to czytanie VTT, nie RAW.** Podręcznik daje samo
+  „Percepcja PT 17, by zauważyć" i żadnej odległości — dokładnie jak przy promieniu Skanera z 26b.
+  4 m to dwa pola: dość blisko, żeby „widziałem druty w dywanie" dało się powiedzieć przy stole,
+  i dość daleko, żeby rzut padł **przed** pierwszym krokiem na pułapkę. Stała
+  `ZONE_SPOT_RANGE_M` w `packages/shared/src/zones.ts`.
+
+- **Etap 26f — rzut na Percepcję jest jeden na postać i nie da się go powtórzyć.** Bez tego
+  gracz cofałby się o metr i wracał, aż wyjdzie. Drugiej szansy nie ma nawet po zmianie sceny;
+  drogą obok nieudanego rzutu jest wyłącznie przycisk MG „Odsłoń graczom". Lista prób siedzi
+  w kolumnie `sightings` strefy i ginie razem z nią.
+
+- **Etap 26f — figura, która już stoi na strefie, nie wchodzi na nią drugi raz.** „Cel **wchodzi**
+  na broniony obszar" czytane dosłownie: ruch wewnątrz obszaru wyzwalacza `enter` nie odpala
+  (odpala `move`, czyli Ślizgawkę i Siatkę laserową). Podłoga elektryczna bije wtedy dopiero na
+  koniec Tury — i to jest ta sama liczba, którą podręcznik obiecuje.
 
 - **Etap 26e — cztery ścieżki nieodklikane; reszta sprawdzona 16.08 (patrz notatka sesji).**
   (1) **Strona gracza** — całe okno Demonów oglądane było z konta MG, i inaczej się nie da:
@@ -595,6 +634,74 @@ decyduje przegrany, nie zwycięzca`) — Konfrontacje z 10.08 szły z konta MG, 
 
 ## Notatki z dwóch ostatnich sesji
 
+### Sesja 16.08 (druga tego dnia) — etap 26f (samodzielne systemy obronne i broniona strefa)
+
+**Rozdział 11 podręcznika jest domknięty.** Netrunning ma komplet: 26a katalog i architektura,
+26b run, 26c walka w Sieci, 26d węzły kontrolne, 26e Demony, 26f podłoga, która gryzie sama.
+
+**Trzy decyzje MG z 16.08 niosą cały etap.** (1) **Percepcja rzuca się sama** — serwer robi rzut,
+gdy figura kończy ruch w promieniu 4 m od strefy, **raz na postać**, a MG ma obok przycisk
+„Odsłoń graczom". Jeden rzut, nie „aż wyjdzie": bez tego gracz cofałby się o metr i wracał.
+(2) **Strefa odpala się na każdego**, ale ma **imienną listę przepustek** — „Cel bez odpowiedniej
+przepustki lub identyfikatora" (s. 213) jest zdaniem o ochronie budynku, a nie o mechanice, więc
+kto ma identyfikator, mówi MG odhaczając figury. (3) **Stanowisko strzela na wejście w strefę**
+i dodatkowo na przycisk MG — to jedyne miejsce, w którym 26f odchodzi od linii „nic nie rusza się
+samo" z 26c i 26e, i odchodzi świadomie: kolumna „Standardowa aktywacja" mówi wprost, kiedy
+wieżyczka strzela.
+
+**Efekt systemu obronnego przestał być prozą.** Osiemnaście wierszy z s. 213–216 nosiło mechanikę
+wyłącznie w opisie („zadaje 6k6 obrażeń ciału", „udany Test Atletyki o PT 15 lub Przewróci się",
+„redukując RUCH o 2k6 punktów") — to wystarcza MG czytającemu kartę i jest bezużyteczne dla
+pułapki, która ma odpalić się sama. `CpredNetDefenseEffects` stanął obok `CpredNetProgramEffects`
+z 26c, a jego pole `check` jest **dosłownie** kształtem wymuszonego testu z 16h
+(`Omit<CpredAmmoCheck, 'failure'>`), więc `cpredCheckBase` rzuca pułapką dokładnie tak, jak rzuca
+gazem — statystom też. **Parser wyciągnął 13 z 18 wierszy**; pięć bez efektu to pięć dronów
+i kamera, czyli dokładnie te, które efektu nie mają.
+
+**Strefa jest trzecim prostokątem na mapie** (osłona 16c, kwadrat dymu 16h, strefa 26f), więc
+„czy ten punkt jest w środku" i „czy ta trasa go przecięła" wyprowadziły się do wspólnego
+`shared/src/rects.ts`, a `covers.ts` zostało cienką delegacją — API i testy 16c bez zmian.
+Wyzwalanie wisi na **tym samym haku**, na którym 26b powiesiło awaryjne odłączenie
+(`performTokenMove`, po zatwierdzeniu upuszczenia), i czyta **całą łamaną z 16e**, nie sam odcinek
+początek–koniec: kto przebiegł przez zelektryfikowaną podłogę, ten po niej przebiegł.
+
+**Obrażenia idą tam, gdzie idą obrażenia.** Z `damage:apply` wyszła `applyDamageToFigure` —
+cała ścieżka etapu 15, tylko bez karty — i strefa woła ją tak samo jak MG klikający „Zastosuj":
+pancerz bierze swoje, tabela ran krytycznych się rzuca, a „Cofnij" zabiera wszystko naraz.
+Obrażenia „bezpośrednio w PW" (krwawy rój) idą drugą, też cudzą drogą — `applyForcedFailureToSheet`
+z 16h. Jedyny nowy kawałek to `noAblation`, a i ten jest flagą, którą guma nosi od 16g.
+
+**Dwie rzeczy poza planem, obie wymuszone przez dane.** (1) Kara do RUCH-u ze strefy nie mogła
+jechać na „Unieruchomionym", bo ten **blokuje ruch całkiem** — doszedł status **„Spowolniony"**
+(ikona „Sticky boot" Delapouite z game-icons, CC BY) z liczbą w `statusData` i modyfikatorem
+wchodzącym do budżetu ruchu pod własną nazwą („Pancerz −2 · Spowolniony −7"). Naklejka schodzi
+**sama**, gdy figura zejdzie z obszaru — „dopóki cel … nie opuści bronionego obszaru" (s. 216).
+(2) Wpis „Obrona Sieci" wpisany ręcznie dostawał od 26d prefiks `demon.` **także wtedy, gdy był
+wieżyczką**; od 26f rozstrzyga `defenseKind`, więc katalog importowany i ręczny mówią jednym
+językiem — a to zaczęło mieć znaczenie, bo strefa wskazuje wpis po identyfikatorze.
+
+**Zweryfikowane:** 1245 testów w `shared` (12 w `zones.test.ts` + 19 w `netdefense.test.ts`
+
+- 2 w `compendium.test.ts`), 720 na serwerze (19 nowych w `zones.test.ts` na żywych gniazdach,
+  4 przebiegi bez migotania), `tsc --noEmit` czysty w trzech pakietach, ESLint, Prettier i
+  `pnpm build` bez uwag. **Migracja `20260816093838_stage26f_defense_zones`** — nowa tabela
+  `DefenseZone` (prostokąt, wpis, uzbrojenie, ukrycie, PW, przepustki, `sightings`, żeton
+  stanowiska i opcjonalne wiązanie z węzłem kontrolnym).
+
+**Odklikane u MG** w kampanii „Poligon bojowy": narzędzie **⚠** w pasku mapy z trzema trybami
+(prostokąt / karta / gumka), selektorem 21 systemów i przełącznikiem ukrycia; **przeciągnięcie
+strefy** („Podłoga elektryczna · 20/20 PW · uzbrojona", bursztynowy prostokąt ze szrafirunkiem);
+**karta strefy** z opisem złożonym z danych („20 PW · PT 13 Elektronika i zabezpieczenia · 1 min ·
+Percepcja PT 17, by zauważyć · 6k6 w ciało · powtórnie na koniec każdej Tury"), wyzwalaczem,
+suwakiem PW, wyborem stanowiska, listą przepustek i czwórką przycisków; **wejście w strefę**
+(karta obrażeń „Przebicie: 18 obr. · rzut 18 · bez pancerza · PW 25 → 7 · **system: Podłoga
+elektryczna · wejście na obszar** · Bez ran → Poważnie ranny" plus linia „Wejście na broniony
+obszar — Automatyczna wieżyczka: 6k6 = 18"); **„Cofnij"** przywracające 25/25; wiersz **EFEKT**
+na karcie wpisu w kompendium i **pełny formularz efektu** w edytorze MG. Konsola czysta.
+
+**Poligon zostaje przygotowany pod stół** — patrz „Od czego zacząć": na „Strzelnicy" leży teraz
+uzbrojona i ukryta „Podłoga elektryczna". Żeton wieżyczki wrócił na swoje miejsce z pełnymi PW.
+
 ### Sesja 16.08 — etap 26e (Demony)
 
 **Etap 26e został przed rozpoczęciem podzielony na dwa** (decyzja MG). Pierwotny zakres niósł
@@ -669,82 +776,11 @@ magazynek „Automatycznej wieżyczki" do 25/25. Tryb turowy dalej wyłączony.
 
 ### Sesja 15.08 (trzecia tego dnia) — etap 26d (węzły kontrolne i systemy obronne)
 
-**Etap 26d został przed rozpoczęciem podzielony na dwa** (decyzja MG). Pierwotny zakres niósł
-naraz nowy typ uczestnika (Demon z własną turą, obroną Testem Interfejsu i wejściem na czoło
-kolejki), most między Architekturą a sceną, trzy tabele danych z s. 213–216 i figury strzelające
-na mapie — czyli tyle, ile 26b i 26c razem wzięte. Demony i samodzielne wyzwalanie systemów
-wyprowadziły się do nowego **26e**; 26d jest o tym, co netrunner robi **przejętym węzłem**.
-
-**Wieżyczka to żeton z profilem statysty z 16b, a nie nowy byt sceny** (decyzja MG). Dzięki temu
-strzela dokładnie tym samym `performAttackRoll`, co każdy inny wróg — i zasięg, PT z tabeli, osłona,
-linia strzału, magazynek i karta obrażeń działają przy niej bez jednej linijki nowego kodu.
-„Rzucając na Umiejętności tego Netrunnera" (s. 213) wchodzi **jednym podstawieniem na wejściu**:
-`combatProfileOperatedBy` robi z profilu wieżyczki profil z Cechami i Umiejętnością netrunnera,
-a `buildStatistSource` buduje z niego arkusz. Planer nie ma i nie może mieć gałęzi „strzela
-wieżyczka" — inaczej osłona i amunicja musiałyby się nauczyć drugiej drogi. Widać to na karcie
-z oględzin: strzał z „Automatycznej wieżyczki" (REF 7, Umiejętność 7) poszedł jako
-`1d10+5` z rozbiciem **„Refleks (REF) +5 · Broń długa (nietrenowana) +0"** — czyli liczbami Kolca,
-razem z uczciwą karą za to, że netrunner karabinu nie umie.
-
-**Stan urządzenia idzie do `NetArchitecture.runtime`, kontrola nad węzłem do runu.** To jedno
-zdanie rozstrzyga cały model: „gdy odłączasz się od Architektury, tracisz kontrolę nad wszystkimi
-węzłami" (s. 199), ale kamera wyłączona przez netrunnera **została wyłączona w prawdziwym
-świecie** i tam zostaje. Runtime to ta sama półka, na której 26b trzyma Wirusa i PT Maskowania.
-Odklikane: po „Odłącz się" i ponownym wejściu piętro straciło chip „przejęty · PT 10", a kamera
-dalej miała chip „obrócona".
-
-**„Raz na Turę" liczy się przy węźle, nie przy urządzeniu.** Podręcznik mówi obie rzeczy w dwóch
-sąsiednich zdaniach („osobna Akcja Sieciowa na każdą z tych rzeczy" i „dany węzeł kontrolny można
-aktywować tylko raz na Turę"), więc rejestr `nodeUse` jest kluczowany **piętrem** i siedzi
-w stanie runu obok `slideRound` z 26c. Netrunner trzymający dwa węzły naprawdę obsłuży dwie
-wieżyczki w jednej Turze — jeśli ma Akcje Sieciowe.
-
-**PT odebrania węzła bierze wyższą z dwóch liczb.** „PT odebrania kontroli … równe wartości Testu
-Kontroli, jaki wykonano" (s. 199) czytane dosłownie znaczyłoby, że węzeł o PT 15 przejęty
-wynikiem 12 staje się dla następnego łatwiejszy niż był. `netControlDv` bierze `max`: zamek nie
-mięknie od kiepskiego złodzieja. Cudze trzymanie żyje w **innym runie**, więc szuka się go po
-`architectureId` — i udane odebranie zdejmuje węzeł poprzedniemu właścicielowi, nie kończąc jego
-runa.
-
-**Kamera „obrócona" to fakt na czacie, nie stożek na mapie** (decyzja MG z 15.08). VTT nie ma
-modelu widzenia kamery; obsługa zmienia stan i pisze zdanie „nie patrzy już na broniony obszar",
-a resztę rozstrzyga MG — dokładnie tak, jak dwa ręczne haki Programów z 26c. Prawdziwy stożek
-liczony geometrią z 18a to osobny kawałek roboty i wpis w `POMYSLY.md`.
-
-**Import: 18 systemów obronnych z trzech tabel** (5 aktywnych, 3 stanowiska, 10 środowiskowych),
-wszystkie z PT unieszkodliwienia, czasem, PW, RUCH-em, Wartością bojową, PT zauważenia, warunkiem
-aktywacji i ceną z drabiny „PT → cena" ze s. 218. Zrzut PDF-a skleja każdą tabelę w jeden ciąg,
-ale każdy wiersz ma **dokładnie jeden** bezwarunkowy anchor — zdanie o unieszkodliwieniu Testem
-Elektroniki i zabezpieczeń — i to ono tnie strumień. Nazwy wyłuskuje powtarzalna komórka „Granica
-bronionej strefy"; jedyny wiersz, który jej nie ma (Kamera obserwacyjna), łapie heurystyka
-wielkich liter. Kategoria „Obrona Sieci" ma od tego etapu **cztery rodzaje**, a Demon jest jedynym,
-od którego walidacja wymaga kompletu czterech liczb — kamera bez Wartości bojowej to nie wiersz
-w połowie wypełniony, tylko kamera.
-
-**Zweryfikowane:** 1190 testów w `shared` (22 nowe w `netdevices.test.ts` + 3 w `compendium.test.ts`),
-687 na serwerze (11 nowych w `netdevices.test.ts` na żywych gniazdach), `tsc --noEmit` czysty
-w trzech pakietach, ESLint, Prettier i `pnpm build` bez uwag. **Migracji nie ma** — urządzenia
-i ich stan mieszczą się w kolumnach JSON, które 26a i 26b już mają.
-
-**Jeden błąd spoza etapu, znaleziony po drodze.** Wiersz listy w zakładce „Kompendium" miał
-`flex: none` na kolumnie z liczbami, więc dłuższy podpis (a systemy obronne mają dłuższy) wypychał
-wiersz poza panel i zapalał poziomy pasek przewijania. Wiersz zawija się teraz do drugiej linii,
-a sam podpis „Obrony Sieci" jest w liście skrócony — pełne „PT 17 Elektronika i zabezpieczenia ·
-5 min" zostało na karcie wpisu.
-
-**Odklikane u MG** w kampanii „Poligon bojowy". Potwierdzone: **25 wpisów „Obrona Sieci"** w liście
-i karta „Automatycznej wieżyczki" (Wartość bojowa 14 · 25 PW · PT 17 · 5 min · aktywacja · cena
-5000 ed); **nowe pole „+ Urządzenie"** na piętrze węzła w edytorze Architektury wraz z dwiema
-nowymi uwagami MG („węzeł kontrolny bez urządzeń", „nie ma żetonu na scenie — nie będzie czym
-strzelić"); **odmowa „Nie kontrolujesz tego węzła"** przed Kontrolą; **Kontrola** („PT 8 · 1d10+7 = 10
-→ Węzeł przejęty — PT odebrania go tobie: 10") odsłaniająca sekcję **PODŁĄCZONE URZĄDZENIA**;
-**„Obróć"** z chipem „obrócona" i zdaniem na czacie; **„Wyłącz"** przygaszające wiersz i zostawiające
-sam przycisk „Włącz"; **„Strzelaj"** z celem wybranym z listy figur; **przeżycie stanu urządzenia**
-przez odłączenie i utrata węzła razem z runem. Konsola czysta.
-
-**Poligon zostaje przygotowany pod stół** — patrz „Od czego zacząć": doszło trzecie piętro
-Architektury z węzłem i dwoma urządzeniami oraz żeton „Automatyczna wieżyczka" z profilem
-bojowym. Run jest zamknięty, kamera włączona i nieobrócona, tryb turowy dalej wyłączony.
+Przejęty węzeł kontrolny obsługuje urządzenia, a wieżyczka okazała się **żetonem z profilem
+statysty z 16b** — strzela tym samym `performAttackRoll`, tylko z Cechami netrunnera podstawionymi
+na wejściu. Stan urządzenia mieszka w `NetArchitecture.runtime` (kamera wyłączona zostaje
+wyłączona po odłączeniu), a kontrola nad węzłem w runie. Doszło 18 systemów obronnych z trzech
+tabel s. 213–216. Pełna notatka: `archiwum/dziennik-sesji.md`.
 
 ### Sesja 15.08 (druga tego dnia) — etap 26c (walka w Sieci: Programy, Paf, Ślizg, Czarny LOD)
 

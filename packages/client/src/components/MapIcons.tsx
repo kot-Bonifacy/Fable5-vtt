@@ -305,6 +305,23 @@ export function IconCover(props: IconProps) {
   );
 }
 
+/**
+ * A hazard triangle over a strip of floor — the defended zone (stage 26f).
+ *
+ * Deliberately not a machine: the tool draws the *ground that will do something
+ * to you*, and the turret that does it is a token standing on the map.
+ */
+export function IconHazard(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 4.5l7.5 12.5h-15z" />
+      <path d="M12 9.5v4" />
+      <circle cx="12" cy="15.5" r="0.9" fill="currentColor" />
+      <path d="M3 20.5h18" />
+    </Svg>
+  );
+}
+
 /** A door leaf with its handle — the door kind, and the toggle. */
 export function IconDoor(props: IconProps) {
   return (

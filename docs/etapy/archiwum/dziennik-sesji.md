@@ -7,6 +7,85 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 15.08 (trzecia tego dnia) — etap 26d (węzły kontrolne i systemy obronne)
+
+**Etap 26d został przed rozpoczęciem podzielony na dwa** (decyzja MG). Pierwotny zakres niósł
+naraz nowy typ uczestnika (Demon z własną turą, obroną Testem Interfejsu i wejściem na czoło
+kolejki), most między Architekturą a sceną, trzy tabele danych z s. 213–216 i figury strzelające
+na mapie — czyli tyle, ile 26b i 26c razem wzięte. Demony i samodzielne wyzwalanie systemów
+wyprowadziły się do nowego **26e**; 26d jest o tym, co netrunner robi **przejętym węzłem**.
+
+**Wieżyczka to żeton z profilem statysty z 16b, a nie nowy byt sceny** (decyzja MG). Dzięki temu
+strzela dokładnie tym samym `performAttackRoll`, co każdy inny wróg — i zasięg, PT z tabeli, osłona,
+linia strzału, magazynek i karta obrażeń działają przy niej bez jednej linijki nowego kodu.
+„Rzucając na Umiejętności tego Netrunnera" (s. 213) wchodzi **jednym podstawieniem na wejściu**:
+`combatProfileOperatedBy` robi z profilu wieżyczki profil z Cechami i Umiejętnością netrunnera,
+a `buildStatistSource` buduje z niego arkusz. Planer nie ma i nie może mieć gałęzi „strzela
+wieżyczka" — inaczej osłona i amunicja musiałyby się nauczyć drugiej drogi. Widać to na karcie
+z oględzin: strzał z „Automatycznej wieżyczki" (REF 7, Umiejętność 7) poszedł jako
+`1d10+5` z rozbiciem **„Refleks (REF) +5 · Broń długa (nietrenowana) +0"** — czyli liczbami Kolca,
+razem z uczciwą karą za to, że netrunner karabinu nie umie.
+
+**Stan urządzenia idzie do `NetArchitecture.runtime`, kontrola nad węzłem do runu.** To jedno
+zdanie rozstrzyga cały model: „gdy odłączasz się od Architektury, tracisz kontrolę nad wszystkimi
+węzłami" (s. 199), ale kamera wyłączona przez netrunnera **została wyłączona w prawdziwym
+świecie** i tam zostaje. Runtime to ta sama półka, na której 26b trzyma Wirusa i PT Maskowania.
+Odklikane: po „Odłącz się" i ponownym wejściu piętro straciło chip „przejęty · PT 10", a kamera
+dalej miała chip „obrócona".
+
+**„Raz na Turę" liczy się przy węźle, nie przy urządzeniu.** Podręcznik mówi obie rzeczy w dwóch
+sąsiednich zdaniach („osobna Akcja Sieciowa na każdą z tych rzeczy" i „dany węzeł kontrolny można
+aktywować tylko raz na Turę"), więc rejestr `nodeUse` jest kluczowany **piętrem** i siedzi
+w stanie runu obok `slideRound` z 26c. Netrunner trzymający dwa węzły naprawdę obsłuży dwie
+wieżyczki w jednej Turze — jeśli ma Akcje Sieciowe.
+
+**PT odebrania węzła bierze wyższą z dwóch liczb.** „PT odebrania kontroli … równe wartości Testu
+Kontroli, jaki wykonano" (s. 199) czytane dosłownie znaczyłoby, że węzeł o PT 15 przejęty
+wynikiem 12 staje się dla następnego łatwiejszy niż był. `netControlDv` bierze `max`: zamek nie
+mięknie od kiepskiego złodzieja. Cudze trzymanie żyje w **innym runie**, więc szuka się go po
+`architectureId` — i udane odebranie zdejmuje węzeł poprzedniemu właścicielowi, nie kończąc jego
+runa.
+
+**Kamera „obrócona" to fakt na czacie, nie stożek na mapie** (decyzja MG z 15.08). VTT nie ma
+modelu widzenia kamery; obsługa zmienia stan i pisze zdanie „nie patrzy już na broniony obszar",
+a resztę rozstrzyga MG — dokładnie tak, jak dwa ręczne haki Programów z 26c. Prawdziwy stożek
+liczony geometrią z 18a to osobny kawałek roboty i wpis w `POMYSLY.md`.
+
+**Import: 18 systemów obronnych z trzech tabel** (5 aktywnych, 3 stanowiska, 10 środowiskowych),
+wszystkie z PT unieszkodliwienia, czasem, PW, RUCH-em, Wartością bojową, PT zauważenia, warunkiem
+aktywacji i ceną z drabiny „PT → cena" ze s. 218. Zrzut PDF-a skleja każdą tabelę w jeden ciąg,
+ale każdy wiersz ma **dokładnie jeden** bezwarunkowy anchor — zdanie o unieszkodliwieniu Testem
+Elektroniki i zabezpieczeń — i to ono tnie strumień. Nazwy wyłuskuje powtarzalna komórka „Granica
+bronionej strefy"; jedyny wiersz, który jej nie ma (Kamera obserwacyjna), łapie heurystyka
+wielkich liter. Kategoria „Obrona Sieci" ma od tego etapu **cztery rodzaje**, a Demon jest jedynym,
+od którego walidacja wymaga kompletu czterech liczb — kamera bez Wartości bojowej to nie wiersz
+w połowie wypełniony, tylko kamera.
+
+**Zweryfikowane:** 1190 testów w `shared` (22 nowe w `netdevices.test.ts` + 3 w `compendium.test.ts`),
+687 na serwerze (11 nowych w `netdevices.test.ts` na żywych gniazdach), `tsc --noEmit` czysty
+w trzech pakietach, ESLint, Prettier i `pnpm build` bez uwag. **Migracji nie ma** — urządzenia
+i ich stan mieszczą się w kolumnach JSON, które 26a i 26b już mają.
+
+**Jeden błąd spoza etapu, znaleziony po drodze.** Wiersz listy w zakładce „Kompendium" miał
+`flex: none` na kolumnie z liczbami, więc dłuższy podpis (a systemy obronne mają dłuższy) wypychał
+wiersz poza panel i zapalał poziomy pasek przewijania. Wiersz zawija się teraz do drugiej linii,
+a sam podpis „Obrony Sieci" jest w liście skrócony — pełne „PT 17 Elektronika i zabezpieczenia ·
+5 min" zostało na karcie wpisu.
+
+**Odklikane u MG** w kampanii „Poligon bojowy". Potwierdzone: **25 wpisów „Obrona Sieci"** w liście
+i karta „Automatycznej wieżyczki" (Wartość bojowa 14 · 25 PW · PT 17 · 5 min · aktywacja · cena
+5000 ed); **nowe pole „+ Urządzenie"** na piętrze węzła w edytorze Architektury wraz z dwiema
+nowymi uwagami MG („węzeł kontrolny bez urządzeń", „nie ma żetonu na scenie — nie będzie czym
+strzelić"); **odmowa „Nie kontrolujesz tego węzła"** przed Kontrolą; **Kontrola** („PT 8 · 1d10+7 = 10
+→ Węzeł przejęty — PT odebrania go tobie: 10") odsłaniająca sekcję **PODŁĄCZONE URZĄDZENIA**;
+**„Obróć"** z chipem „obrócona" i zdaniem na czacie; **„Wyłącz"** przygaszające wiersz i zostawiające
+sam przycisk „Włącz"; **„Strzelaj"** z celem wybranym z listy figur; **przeżycie stanu urządzenia**
+przez odłączenie i utrata węzła razem z runem. Konsola czysta.
+
+**Poligon zostaje przygotowany pod stół** — patrz „Od czego zacząć": doszło trzecie piętro
+Architektury z węzłem i dwoma urządzeniami oraz żeton „Automatyczna wieżyczka" z profilem
+bojowym. Run jest zamknięty, kamera włączona i nieobrócona, tryb turowy dalej wyłączony.
+
 ### Sesja 15.08 (druga tego dnia) — etap 26c (walka w Sieci: Programy, Paf, Ślizg, Czarny LOD)
 
 **Efekt Programu jest danymi, nie kodem — i to jest cały etap w jednym zdaniu.** Podręcznik

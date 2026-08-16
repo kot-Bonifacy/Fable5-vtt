@@ -36,6 +36,7 @@ export const MAP_TOOLS = [
   'erase',
   'wall',
   'cover',
+  'zone',
   'light',
   'netpoint',
 ] as const;
@@ -57,6 +58,16 @@ export type WallMode = 'draw' | 'erase' | 'lock';
  * for good has to be a deliberate gesture rather than a side effect of shooting.
  */
 export type CoverMode = 'draw' | 'erase';
+
+/**
+ * What the defended-zone tool does with a click (stage 26f).
+ *
+ * Three modes rather than the covers' two, and the third one is the reason: a
+ * trapped floor is usually a whole corridor, so „open the card" cannot be an
+ * ordinary click on the rectangle — it would take walking and aiming away from
+ * everybody standing in it. `edit` is that click, made deliberate.
+ */
+export type ZoneMode = 'draw' | 'edit' | 'erase';
 
 /**
  * What the light tool does with a click (stage 18b). Modes of one tool rather
@@ -203,6 +214,12 @@ interface MapToolStoreState extends DrawSettings {
    * already travels with the row.
    */
   coverCatalogue: CpredCoverCatalogue;
+  /** Zone tool: dragging a rectangle, opening its card, or removing it. */
+  zoneMode: ZoneMode;
+  /** Compendium entry the next dragged rectangle becomes; '' = nothing armed. */
+  zoneEntryId: string;
+  /** Hidden until somebody notices it; the default for a system with a spot DV. */
+  zoneHidden: boolean;
   /** Access point tool: placing sockets, or removing them. */
   netPointMode: NetPointMode;
   /** Architecture the next placed socket leads to; '' = a dead socket. */
@@ -239,6 +256,9 @@ interface MapToolStoreState extends DrawSettings {
   setCoverMode: (coverMode: CoverMode) => void;
   setCoverTypeId: (coverTypeId: string) => void;
   setCoverCatalogue: (coverCatalogue: CpredCoverCatalogue) => void;
+  setZoneMode: (zoneMode: ZoneMode) => void;
+  setZoneEntryId: (zoneEntryId: string) => void;
+  setZoneHidden: (zoneHidden: boolean) => void;
   setNetPointMode: (netPointMode: NetPointMode) => void;
   setNetPointArchitectureId: (netPointArchitectureId: string) => void;
   setNetPointHidden: (netPointHidden: boolean) => void;
@@ -287,6 +307,9 @@ export const useMapToolStore = create<MapToolStoreState>((set, get) => {
     coverMode: 'draw',
     coverTypeId: '',
     coverCatalogue: EMPTY_COVER_CATALOGUE,
+    zoneMode: 'draw',
+    zoneEntryId: '',
+    zoneHidden: true,
     netPointMode: 'place',
     netPointArchitectureId: '',
     netPointHidden: true,
@@ -323,6 +346,9 @@ export const useMapToolStore = create<MapToolStoreState>((set, get) => {
         // never armed with nothing selected.
         coverTypeId: state.coverTypeId || (coverCatalogue.presets[0]?.id ?? ''),
       })),
+    setZoneMode: (zoneMode) => set({ zoneMode }),
+    setZoneEntryId: (zoneEntryId) => set({ zoneEntryId }),
+    setZoneHidden: (zoneHidden) => set({ zoneHidden }),
     setNetPointMode: (netPointMode) => set({ netPointMode }),
     setNetPointArchitectureId: (netPointArchitectureId) => set({ netPointArchitectureId }),
     setNetPointHidden: (netPointHidden) => set({ netPointHidden }),

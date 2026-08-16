@@ -8,7 +8,7 @@ import type {
   TokenHp,
 } from '@vtt/shared';
 import { ARMOR_SP_MAX, ROLE_GM, damageTotal } from '@vtt/shared';
-import type { Character, Token } from '../generated/prisma/client.js';
+import type { Character, Scene, Token } from '../generated/prisma/client.js';
 import {
   SHEET_STATIST_ARMOR_ROW_ID,
   applyDamageToCover,
@@ -86,7 +86,7 @@ function tokenOwnHp(token: Token): TokenHp | null {
 }
 
 /** Persists the log entry as a chat message and pushes it to the room. */
-async function logDamage(
+export async function logDamage(
   deps: RealtimeDeps,
   campaignId: string,
   authorId: string,
@@ -206,58 +206,9 @@ export const damageApplyEvent = defineEvent<DamageApplyPayload, { messageId: num
       ...(ammo ? { ammo } : {}),
     };
 
-    let log: SheetDamageLog;
-    let character: Character | null = null;
-    if (token.characterId) {
-      character = await deps.ctx.prisma.character.findUnique({ where: { id: token.characterId } });
-    }
-
-    if (character) {
-      // The injury table is campaign data: imported files plus whatever the GM
-      // typed in (the head table has no free source — see tools/import).
-      const compendium = await buildCompendiumSync(deps, campaignId);
-      const applied = applyDamageToSheet(
-        character,
-        deps.ctx.cpred,
-        request,
-        compendium.entries,
-        createMixedRng(),
-      );
-      log = applied.log;
-      const saved = await deps.ctx.prisma.character.update({
-        where: { id: character.id },
-        data: { data: applied.data },
-      });
-      character = saved;
-      await emitCharacterUpsert(deps, campaignId, toCharacterView(saved, deps.ctx.cpred));
-      // Refreshes HP bars and, since stage 15, the wound status badges.
-      await emitTokensOfCharacter(deps, campaignId, saved);
-      // „Uraz kręgosłupa: w swojej kolejnej Turze nie możesz wykonać Akcji"
-      // (stage 14e). The debt is against a turn that has not begun — and this
-      // hit may well have landed on somebody else's turn — so it is written on
-      // the tracker row and spent when the victim's own turn starts.
-      if (applied.carry) {
-        await oweCarryToToken(deps, token.sceneId, token.id, applied.carry);
-        await emitCombatOfScene(deps, campaignId, scene);
-      }
-    } else {
-      const hp = tokenOwnHp(token);
-      if (!hp) throw new RealtimeError('TOKEN_HAS_NO_HP');
-      // Stage 16b: a statted extra brings its own Stopping Power, so the GM no
-      // longer types the armour into every hit — and it wears down like anyone's.
-      const profile = readSheetCombatProfile(token.combatProfile);
-      const applied = applyDamageToTokenHp(hp, request, profile);
-      log = applied.log;
-      await deps.ctx.prisma.token.update({
-        where: { id: token.id },
-        data: {
-          hpCurrent: applied.hp.current,
-          statuses: JSON.stringify(sheetWoundStatuses(parseTokenStatuses(token), applied.hp)),
-          ...(applied.profile ? { combatProfile: JSON.stringify(applied.profile) } : {}),
-        },
-      });
-      await emitTokensById(deps, campaignId, [token.id]);
-    }
+    const landed = await applyDamageToFigure(deps, campaignId, scene, token, request);
+    const log = landed.log;
+    const character = landed.character;
 
     // „Gdy ten typ amunicji po przejściu przez zbroję celu zadaje mu obrażenia,
     // cel zostaje także podpalony" (s. 346) — through the armour and *hurting*,
@@ -293,6 +244,79 @@ export const damageApplyEvent = defineEvent<DamageApplyPayload, { messageId: num
     return { messageId: view.id };
   },
 });
+
+/**
+ * One hit landing on one figure — the whole of stage 15, socket-free.
+ *
+ * Split out of `damage:apply` in stage 26f, when a defended zone needed to hurt
+ * somebody without a chat card to press „Zastosuj" on. Everything the GM's
+ * button did stays here: a sheet takes it through `applyDamageToSheet` (armour,
+ * ablation, the Critical Injury table, the spine wound's debt against the next
+ * turn), a statist takes it on its token with its own Stopping Power, and both
+ * push what changed back out to the table.
+ *
+ * What it deliberately does *not* do is write the chat card: the two callers
+ * carry different things on theirs (a source message id here, the system's name
+ * on the zone's), and a card is the one part of a hit that is not arithmetic.
+ */
+export async function applyDamageToFigure(
+  deps: RealtimeDeps,
+  campaignId: string,
+  scene: Scene,
+  token: Token,
+  request: SheetDamageRequest,
+): Promise<{ log: SheetDamageLog; character: Character | null }> {
+  let character: Character | null = null;
+  if (token.characterId) {
+    character = await deps.ctx.prisma.character.findUnique({ where: { id: token.characterId } });
+  }
+
+  if (character) {
+    // The injury table is campaign data: imported files plus whatever the GM
+    // typed in (the head table has no free source — see tools/import).
+    const compendium = await buildCompendiumSync(deps, campaignId);
+    const applied = applyDamageToSheet(
+      character,
+      deps.ctx.cpred,
+      request,
+      compendium.entries,
+      createMixedRng(),
+    );
+    const saved = await deps.ctx.prisma.character.update({
+      where: { id: character.id },
+      data: { data: applied.data },
+    });
+    await emitCharacterUpsert(deps, campaignId, toCharacterView(saved, deps.ctx.cpred));
+    // Refreshes HP bars and, since stage 15, the wound status badges.
+    await emitTokensOfCharacter(deps, campaignId, saved);
+    // „Uraz kręgosłupa: w swojej kolejnej Turze nie możesz wykonać Akcji"
+    // (stage 14e). The debt is against a turn that has not begun — and this
+    // hit may well have landed on somebody else's turn — so it is written on
+    // the tracker row and spent when the victim's own turn starts.
+    if (applied.carry) {
+      await oweCarryToToken(deps, token.sceneId, token.id, applied.carry);
+      await emitCombatOfScene(deps, campaignId, scene);
+    }
+    return { log: applied.log, character: saved };
+  }
+
+  const hp = tokenOwnHp(token);
+  if (!hp) throw new RealtimeError('TOKEN_HAS_NO_HP');
+  // Stage 16b: a statted extra brings its own Stopping Power, so the GM no
+  // longer types the armour into every hit — and it wears down like anyone's.
+  const profile = readSheetCombatProfile(token.combatProfile);
+  const applied = applyDamageToTokenHp(hp, request, profile);
+  await deps.ctx.prisma.token.update({
+    where: { id: token.id },
+    data: {
+      hpCurrent: applied.hp.current,
+      statuses: JSON.stringify(sheetWoundStatuses(parseTokenStatuses(token), applied.hp)),
+      ...(applied.profile ? { combatProfile: JSON.stringify(applied.profile) } : {}),
+    },
+  });
+  await emitTokensById(deps, campaignId, [token.id]);
+  return { log: applied.log, character: null };
+}
 
 /**
  * The round carried by a damage roll (stage 16g).

@@ -46,11 +46,13 @@ import {
 import {
   clearRuler,
   createCover,
+  createZone,
   createDrawing,
   createLight,
   createToken,
   createWalls,
   deleteCover,
+  deleteZone,
   deleteDrawing,
   deleteLight,
   placeNetAccessPoint,
@@ -89,6 +91,7 @@ import { pickLightAt, useLightStore } from '../stores/lightStore.js';
 import { pickAccessPointAt, useNetRunStore } from '../stores/netRunStore.js';
 import { netErrorText } from '../netErrors.js';
 import { coverAt, useCoverStore } from '../stores/coverStore.js';
+import { zoneAt, useZoneStore } from '../stores/zoneStore.js';
 import { useSmokeStore } from '../stores/smokeStore.js';
 import {
   currentDrawingStyle,
@@ -357,6 +360,7 @@ export function MapArea() {
   const wallKind = useMapToolStore((s) => s.wallKind);
   const wallSnapGrid = useMapToolStore((s) => s.wallSnapGrid);
   const coverMode = useMapToolStore((s) => s.coverMode);
+  const zoneMode = useMapToolStore((s) => s.zoneMode);
   const lightMode = useMapToolStore((s) => s.lightMode);
   const netPointMode = useMapToolStore((s) => s.netPointMode);
   const targeting = useAttackStore((s) => s.targeting);
@@ -598,6 +602,33 @@ export function MapArea() {
       void deleteCover(target.id).then((ack) => {
         if (!ack.ok) useChatStore.getState().addNote(coverErrorText(ack.error));
       });
+    };
+    // Strefa broniona (26f) — jak osłona: klient wysyła sam prostokąt i wpis,
+    // a PW, Wartość bojową i efekt czyta serwer z kompendium.
+    renderer.onZoneRect = (rect) => {
+      const current = useSceneStore.getState().effectiveScene;
+      if (!current) return;
+      const tools = useMapToolStore.getState();
+      if (!tools.zoneEntryId) {
+        useChatStore.getState().addNote('Wybierz system obronny w pasku narzędzi.');
+        return;
+      }
+      void createZone(current.id, tools.zoneEntryId, rect, { hidden: tools.zoneHidden }).then(
+        (ack) => {
+          if (!ack.ok) useChatStore.getState().addNote(netErrorText(ack.error));
+        },
+      );
+    };
+    renderer.onZoneErase = (x, y) => {
+      const target = zoneAt({ x, y });
+      if (!target) return;
+      void deleteZone(target.id).then((ack) => {
+        if (!ack.ok) useChatStore.getState().addNote(netErrorText(ack.error));
+      });
+    };
+    renderer.onZoneOpen = (x, y) => {
+      const target = zoneAt({ x, y });
+      useZoneStore.getState().editZone(target?.id ?? null);
     };
     renderer.onLightPlace = (x, y) => {
       const current = useSceneStore.getState().effectiveScene;
@@ -987,6 +1018,7 @@ export function MapArea() {
       snapGrid: wallSnapGrid,
     });
     rendererRef.current?.setCoverTool({ armed: tool === 'cover' && isGm, mode: coverMode });
+    rendererRef.current?.setZoneTool({ armed: tool === 'zone' && isGm, mode: zoneMode });
     rendererRef.current?.setLightTool({ armed: tool === 'light' && isGm, mode: lightMode });
     rendererRef.current?.setAccessPointTool({
       armed: tool === 'netpoint' && isGm,
@@ -1009,6 +1041,7 @@ export function MapArea() {
     wallKind,
     wallSnapGrid,
     coverMode,
+    zoneMode,
     lightMode,
     netPointMode,
   ]);
@@ -1162,6 +1195,18 @@ export function MapArea() {
     pushCovers();
     return useCoverStore.subscribe(pushCovers);
   }, [ready, pushCovers]);
+
+  // Strefy bronione (26f) jadą tą samą drogą co osłony: rozbrojenie systemu ma
+  // zgasić szrafirunek od razu, a nie po najbliższym renderze Reacta.
+  const pushZones = useCallback(() => {
+    rendererRef.current?.setZones(useZoneStore.getState().zones);
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    pushZones();
+    return useZoneStore.subscribe(pushZones);
+  }, [ready, pushZones]);
 
   // Smoke rides with the covers (stage 16h): a cloud the GM has just cleared
   // must stop shading the square before anybody rolls in it. The scene is a

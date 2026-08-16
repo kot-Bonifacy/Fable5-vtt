@@ -133,7 +133,17 @@ export interface DamageLogEntry {
    * (zamiast −1)", „cel zatrzymany na 1 PW". Named entries rather than a silent
    * correction, the treatment „Trzymanie −2" got in 14d.
    */
-  ammo?: { name: string; notes?: string[] };
+  ammo?: {
+    name: string;
+    notes?: string[];
+    /**
+     * What to call this line on the card; absent means „nabój" (stage 16g).
+     * A defended zone of stage 26f names itself „system" here, because
+     * „nabój: Podłoga elektryczna" would be the card lying about where the
+     * damage came from.
+     */
+    label?: string;
+  };
   /**
    * Statuses this hit put on the target token (stage 14d: a choke knocks out,
    * a throw knocks down). „Cofnij" takes them off again — restoring the HP and

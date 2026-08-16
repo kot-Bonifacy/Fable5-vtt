@@ -33,6 +33,7 @@ import {
   NET_PROGRAM_TARGETS,
   isNetDefenseSystem,
   netProgramSlots,
+  readNetDefenseEffects,
   readNetProgramEffects,
   type CpredNetDefenseProfile,
   type CpredNetProgramProfile,
@@ -599,8 +600,20 @@ export function validateCompendiumEntry(
 
   const name = checkName(input.name, issues);
   // Ids are slugs, so a camelCase category needs a lowercase prefix of its own.
+  //
+  // „Obrona Sieci" splits in two (corrected in 26f): the bestiary of s. 212 is
+  // `demon.…`, the three defence-system tables of s. 213–216 are `defense.…`.
+  // That is what the import writes, and a hand-typed turret landing under
+  // `demon.` would be the one row of the catalogue whose id lied about what it
+  // is — which matters now that a zone on the map points at one by id.
   const idPrefix =
-    category === 'criticalInjury' ? 'injury' : category === 'netDefense' ? 'demon' : category;
+    category === 'criticalInjury'
+      ? 'injury'
+      : category === 'netDefense'
+        ? input.defenseKind === 'demon'
+          ? 'demon'
+          : 'defense'
+        : category;
   const id =
     typeof input.id === 'string' && input.id.length > 0
       ? input.id
@@ -1348,6 +1361,11 @@ function validateNetDefense(
   );
   if (issues.length > 0) return undefined;
 
+  // Stage 26f: the „Efekt" column, in numbers. Read with the same forgiveness
+  // `readNetProgramEffects` gets — a malformed effect leaves a row the GM rules
+  // on, which is where every one of these rows stood before this stage.
+  const effects = readNetDefenseEffects(input.effects);
+
   const profile: CpredNetDefenseProfile = {
     defenseKind,
     ...(combatValue !== undefined ? { combatValue } : {}),
@@ -1357,6 +1375,7 @@ function validateNetDefense(
     ...(move !== undefined ? { move } : {}),
     ...(spotDv !== undefined ? { spotDv } : {}),
     ...(trigger ? { trigger } : {}),
+    ...(effects ? { effects } : {}),
     ...(icon ? { icon } : {}),
   };
   return { ...base, category: 'netDefense', ...profile };

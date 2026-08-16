@@ -36,6 +36,7 @@ import {
   CPRED_PRONE_STATUS_ID,
   CPRED_STAT_LABELS,
   CPRED_STATIST_GRAPPLE_DV,
+  CPRED_SLOWED_STATUS_ID,
   CPRED_SUPPRESSED_STATUS_ID,
   CPRED_TURN_PROBLEM_MESSAGES,
   CPRED_UNCONSCIOUS_STATUS_ID,
@@ -57,6 +58,7 @@ import {
   cpredInjuryCarryOnDraw,
   cpredInjuryDodgeBlock,
   cpredInjuryModifiers,
+  cpredSlowedMoveModifier,
   cpredInjuryTurnEnd,
   cpredMetresLeft,
   cpredMoveBudgetFromSheet,
@@ -100,7 +102,7 @@ import {
   toCriticalInjuryRow,
   woundTransitionLabel,
 } from '@vtt/shared';
-import type { Character } from './generated/prisma/client.js';
+import type { Character, Token } from './generated/prisma/client.js';
 
 /**
  * Bridge between the VTT core (tokens) and the active game system's sheet.
@@ -226,10 +228,17 @@ export interface SheetMoveBudget {
   note: string | null;
 }
 
-/** Movement allowance of a linked sheet: effective RUCH × 2, and what shrank it. */
+/**
+ * Movement allowance of a linked sheet: effective RUCH × 2, and what shrank it.
+ *
+ * `extra` carries the penalties that live on the *token* rather than on the
+ * sheet (stage 26f: „Maź — RUCH −7"), already rolled and already named, so the
+ * note reads „Pancerz −2 · Maź −7" and the player is never quietly slowed.
+ */
 export function readSheetMoveBudget(
   character: Pick<Character, 'data'>,
   registry: SheetRegistry,
+  extra: readonly { label: string; value: number }[] = [],
 ): SheetMoveBudget {
   const data = parseCharacterData(character.data, registry);
   const budget = cpredMoveBudgetFromSheet({
@@ -238,6 +247,7 @@ export function readSheetMoveBudget(
     hpMax: hpMax(data.stats),
     armor: data.armor,
     injuries: data.criticalInjuries,
+    extra,
   });
   const note = budget.modifiers
     .map(({ label, value }) => `${label} ${value > 0 ? '+' : '−'}${Math.abs(value)}`)
@@ -276,6 +286,31 @@ export function sheetDodgeBlock(
 
 /** Status the „Wstanie" Action takes off the token that paid for it. */
 export const SHEET_PRONE_STATUS_ID = CPRED_PRONE_STATUS_ID;
+
+/** Status a defence system's MOVE drain rides on (stage 26f). */
+export const SHEET_SLOWED_STATUS_ID = CPRED_SLOWED_STATUS_ID;
+
+/**
+ * The MOVE penalty this token carries from something standing on the map, as a
+ * named modifier ready for `readSheetMoveBudget` — or null when it carries none.
+ */
+export function sheetSlowedMoveModifier(
+  token: Pick<Token, 'statuses' | 'statusData'>,
+): { label: string; value: number } | null {
+  return cpredSlowedMoveModifier(
+    readTokenStatusList(token.statuses),
+    readSheetStatusData(token.statusData),
+  );
+}
+
+function readTokenStatusList(raw: string): string[] {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
+  } catch {
+    return [];
+  }
+}
 
 /* ------------------------------------------------------------------ *
  * Grappling (stage 14d). The tracker owns „who is holding whom"; every

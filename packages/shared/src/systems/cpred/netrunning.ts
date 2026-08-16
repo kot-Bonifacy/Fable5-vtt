@@ -28,7 +28,9 @@ import type { DiceRng } from '../../dice.js';
 // the Interface ability it helps, and that name is defined over there.
 import type { CpredRegistry } from './character.js';
 import type { NetAbilityId } from './netrun.js';
+import type { CpredAmmoCheck } from './ammo.js';
 import { slugify } from './ids.js';
+import { describeCpredDuration } from './timed.js';
 
 // ───────────────────────────────── Programy ─────────────────────────────────
 
@@ -335,12 +337,263 @@ export interface CpredNetDefenseProfile {
   spotDv?: number;
   /** „Standardowa aktywacja" — the trigger sentence, as prose. */
   trigger?: string;
+  /**
+   * What the „Efekt" prose means in numbers (stage 26f). Absent = a system the
+   * GM adjudicates: it still stands on the map, still has body points and still
+   * shuts down to an Electronics Check, it simply has nothing automatic to hand
+   * out. A camera is exactly that row, and always will be.
+   */
+  effects?: CpredNetDefenseEffects;
   icon?: string;
 }
 
 export const NET_DEFENSE_STAT_MAX = 99;
 export const NET_DEFENSE_MINUTES_MAX = 240;
 export const NET_DEFENSE_TRIGGER_MAX = 300;
+
+// ─────────────── efekt systemu obronnego jako dane (etap 26f) ───────────────
+
+/**
+ * *When* a defence system goes off — the machine half of „Standardowa
+ * aktywacja".
+ *
+ * Three values, and the rulebook's own eighteen rows need no more. Almost every
+ * one of them says „cel wchodzi na broniony obszar" (`enter`); two ask for
+ * movement *inside* it („Każdy, kto wykona Akcję Ruchu na tym obszarze" —
+ * Ślizgawka, s. 216; „przemieszcza się o 2 metry wewnątrz" — Siatka laserowa);
+ * and exactly one takes a place of its own in the queue and acts on its Turn
+ * („Pułapka zajmuje pierwsze miejsce w Kolejce Inicjatywy" — Winda z gazem).
+ *
+ * The prose stays in `trigger` next to it. This field says what the engine does;
+ * that one says what the table reads, and the two are not the same sentence.
+ */
+export const NET_DEFENSE_TRIGGERS = ['enter', 'move', 'turn'] as const;
+export type NetDefenseTrigger = (typeof NET_DEFENSE_TRIGGERS)[number];
+
+export const NET_DEFENSE_TRIGGER_LABELS: Record<NetDefenseTrigger, string> = {
+  enter: 'Wejście na broniony obszar',
+  move: 'Każdy ruch na bronionym obszarze',
+  turn: 'W Turze systemu — własne miejsce w Kolejce Inicjatywy',
+};
+
+export function isNetDefenseTrigger(value: unknown): value is NetDefenseTrigger {
+  return typeof value === 'string' && (NET_DEFENSE_TRIGGERS as readonly string[]).includes(value);
+}
+
+/**
+ * The check a defence system forces on whoever it catches.
+ *
+ * Deliberately the **same shape** stage 16h gave the rounds, minus the failure:
+ * what failing costs is spelled out by the fields around it here, because a
+ * defence system's failure can go *through armour* („zadając im 6k6 obrażeń
+ * w ciało. Pancerz redukuje te obrażenia") while a round's forced failure never
+ * does. Sharing the type is what lets `cpredCheckBase` roll both.
+ */
+export type CpredNetDefenseCheck = Omit<CpredAmmoCheck, 'failure'>;
+
+/**
+ * What a defence system actually does, in numbers (stage 26f).
+ *
+ * Until this stage the eighteen rows of s. 213–216 carried their effect as
+ * **prose only** — „zadaje 6k6 obrażeń ciału", „udany Test Atletyki o PT 15 lub
+ * Przewróci się", „redukując RUCH o 2k6 punktów" — which is fine for a GM
+ * reading a card and useless to a trap that has to go off by itself. This is
+ * the same move stage 26c made for Programs (`CpredNetProgramEffects`) and
+ * stage 16g made for ammunition: every field is optional, absent means „the
+ * system does not do that", and a row with no effects at all is a row the GM
+ * adjudicates — a camera, or a drone whose gun is a token on the map.
+ *
+ * The order the server resolves them in is the order the rulebook writes them:
+ * roll the check, and on a failure hand out the damage, the statuses and the
+ * wounds together as one undoable card.
+ */
+export interface CpredNetDefenseEffects {
+  /** When it goes off; absent means `enter`, which is what most rows say. */
+  when?: NetDefenseTrigger;
+  /** The check that avoids it („udany Test Atletyki o PT 15 lub Przewróci się"). */
+  check?: CpredNetDefenseCheck;
+  /**
+   * „Osoba, **która widzi** wiązki laserowe, może przejść przez broniony obszar,
+   * wykonując udany Test Umiejętności Człowiek guma o PT 17" (s. 216).
+   *
+   * The only check in the three tables reserved for somebody who has already
+   * noticed the trap — everywhere else the roll is a reflex and comes whether or
+   * not you knew. With this flag, a figure whose owner has not spotted the zone
+   * simply takes the effect without a roll.
+   */
+  awareOnly?: boolean;
+  /**
+   * Damage in dice notation. Dealt to whoever failed the check, or — when there
+   * is no check — to everybody the system caught.
+   */
+  damage?: string;
+  /**
+   * „obrażenia bezpośrednio w PW" (krwawy rój, s. 215): armour neither stops
+   * them nor wears down. Absent means the ordinary damage path of stage 15,
+   * where the vest takes its share.
+   */
+  direct?: boolean;
+  /** „Pancerz redukuje te obrażenia i sam nie ulega uszkodzeniu" (s. 216). */
+  noAblation?: boolean;
+  /** Statuses it puts on („Przewróci się" → Powalony). */
+  statuses?: string[];
+  /** Critical Injuries it inflicts, by compendium id. */
+  injuries?: string[];
+  /** Seconds those last; absent means „until somebody takes them off". */
+  durationS?: number;
+  /**
+   * „Nie otrzymują obrażeń dodatkowych z tych Ran Krytycznych" (panele
+   * ogłuszające, s. 216) — the wound is written down, the extra 5 is not.
+   */
+  noBonusDamage?: boolean;
+  /**
+   * „redukując RUCH o 2k6 punktów, dopóki cel … nie opuści bronionego obszaru"
+   * (maź, s. 216). Rolled once when it catches somebody and carried as a status
+   * value, exactly like the burning of stage 16g.
+   */
+  moveDrain?: string;
+  /**
+   * „Cel otrzymuje ponownie 6k6 obrażeń na koniec swojej kolejnej Tury oraz na
+   * koniec każdej kolejnej Tury, chyba że zejdzie z podłogi" (s. 216).
+   */
+  repeats?: boolean;
+  /**
+   * An emplacement pulls its own trigger at whoever set it off, „wykonując Test
+   * Wartości bojowej + 1k10" (s. 214). The gun is the figure bound to the zone,
+   * so this flag says *that it shoots*, never what with.
+   */
+  fires?: boolean;
+}
+
+/** Largest MOVE drain or damage notation a defence row may carry. */
+export const NET_DEFENSE_NOTATION_MAX = 16;
+/** Most statuses or wounds one system hands out at once. */
+export const NET_DEFENSE_EFFECT_LIST_MAX = 4;
+
+function notation(raw: unknown): string | undefined {
+  if (typeof raw !== 'string') return undefined;
+  const trimmed = raw.trim().slice(0, NET_DEFENSE_NOTATION_MAX);
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function idList(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const ids = raw.filter((value): value is string => typeof value === 'string' && value.length > 0);
+  return [...new Set(ids)].slice(0, NET_DEFENSE_EFFECT_LIST_MAX);
+}
+
+/**
+ * Reads the mechanical half of a defence system's effect, dropping whatever it
+ * does not understand — the bargain `readNetProgramEffects` struck in 26c. A row
+ * whose effect will not parse is a row the GM rules on, never a refused save.
+ */
+export function readNetDefenseEffects(raw: unknown): CpredNetDefenseEffects | undefined {
+  if (typeof raw !== 'object' || raw === null) return undefined;
+  const input = raw as Record<string, unknown>;
+
+  let check: CpredNetDefenseCheck | undefined;
+  if (typeof input.check === 'object' && input.check !== null) {
+    const source = input.check as Record<string, unknown>;
+    const dv = typeof source.dv === 'number' && Number.isInteger(source.dv) ? source.dv : undefined;
+    const skillId = typeof source.skillId === 'string' ? source.skillId.trim() : '';
+    // A check with no DV is not a check; a check with no skill would roll on
+    // „will" for reasons nobody wrote down.
+    if (dv !== undefined && dv > 0 && skillId.length > 0) {
+      check = {
+        skillId,
+        dv,
+        ...(typeof source.skillLabel === 'string' && source.skillLabel.trim().length > 0
+          ? { skillLabel: source.skillLabel.trim() }
+          : {}),
+        ...(typeof source.statId === 'string'
+          ? { statId: source.statId as CpredNetDefenseCheck['statId'] }
+          : {}),
+        ...(source.biologicalOnly === true ? { biologicalOnly: true } : {}),
+      };
+    }
+  }
+
+  const damage = notation(input.damage);
+  const moveDrain = notation(input.moveDrain);
+  const statuses = idList(input.statuses);
+  const injuries = idList(input.injuries);
+  const durationS =
+    typeof input.durationS === 'number' && Number.isFinite(input.durationS) && input.durationS > 0
+      ? Math.round(input.durationS)
+      : undefined;
+
+  const effects: CpredNetDefenseEffects = {
+    ...(isNetDefenseTrigger(input.when) && input.when !== 'enter' ? { when: input.when } : {}),
+    ...(check ? { check } : {}),
+    ...(check && input.awareOnly === true ? { awareOnly: true } : {}),
+    ...(damage ? { damage } : {}),
+    ...(input.direct === true ? { direct: true } : {}),
+    ...(input.noAblation === true ? { noAblation: true } : {}),
+    ...(statuses.length > 0 ? { statuses } : {}),
+    ...(injuries.length > 0 ? { injuries } : {}),
+    ...(durationS !== undefined ? { durationS } : {}),
+    ...(input.noBonusDamage === true ? { noBonusDamage: true } : {}),
+    ...(moveDrain ? { moveDrain } : {}),
+    ...(input.repeats === true ? { repeats: true } : {}),
+    ...(input.fires === true ? { fires: true } : {}),
+  };
+  return Object.keys(effects).length > 0 ? effects : undefined;
+}
+
+/** When this system goes off, with the default the rulebook uses most often. */
+export function netDefenseTrigger(effects: CpredNetDefenseEffects | undefined): NetDefenseTrigger {
+  return effects?.when ?? 'enter';
+}
+
+/** True when the engine has something to do with this row at all. */
+export function netDefenseActs(effects: CpredNetDefenseEffects | undefined): boolean {
+  if (!effects) return false;
+  return Boolean(
+    effects.damage ||
+    effects.check ||
+    effects.moveDrain ||
+    effects.fires ||
+    (effects.statuses?.length ?? 0) > 0 ||
+    (effects.injuries?.length ?? 0) > 0,
+  );
+}
+
+/**
+ * „Test Atletyki PT 15 · 6k6 w ciało · Powalony · na minutę" — one Polish line
+ * for the GM's form and the zone's card.
+ *
+ * Names rather than ids for the statuses and wounds, so the caller passes the
+ * labels it has already looked up — a card reading „injury.head-uraz-oka" would
+ * be the compendium leaking into the table's language, the same rule
+ * `describeAmmoFailure` follows.
+ */
+export function describeNetDefenseEffects(
+  effects: CpredNetDefenseEffects | undefined,
+  labels: { statuses?: readonly string[]; injuries?: readonly string[] } = {},
+): string {
+  if (!effects) return '';
+  const parts: string[] = [];
+  if (effects.check) {
+    const name = effects.check.skillLabel ?? effects.check.skillId;
+    parts.push(
+      effects.awareOnly
+        ? `Test ${name} PT ${effects.check.dv} (tylko dla tego, kto zauważył)`
+        : `Test ${name} PT ${effects.check.dv}`,
+    );
+  }
+  if (effects.damage) {
+    parts.push(effects.direct ? `${effects.damage} bezpośrednich` : `${effects.damage} w ciało`);
+  }
+  if (effects.fires) parts.push('stanowisko strzela Wartością bojową');
+  if (effects.moveDrain) parts.push(`RUCH −${effects.moveDrain}`);
+  const statuses = labels.statuses ?? effects.statuses ?? [];
+  if (statuses.length > 0) parts.push(statuses.join(', '));
+  const injuries = labels.injuries ?? effects.injuries ?? [];
+  if (injuries.length > 0) parts.push(injuries.join(', '));
+  if (effects.repeats) parts.push('powtórnie na koniec każdej Tury');
+  if (effects.durationS) parts.push(describeCpredDuration(effects.durationS));
+  return parts.join(' · ');
+}
 
 // ─────────────────── urządzenia przy węźle kontrolnym (26d) ───────────────────
 

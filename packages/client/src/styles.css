@@ -6978,6 +6978,25 @@ body.is-resizing {
   padding-top: 0.45rem;
 }
 
+/* ── strefy bronione (etap 26f) ── */
+
+/* Karta strefy pożycza całą geometrię od karty gniazda z 26b — różni się samą
+   ramką, bo to jest ostrzeżenie, a nie terminal. */
+.net-point-panel[aria-label^='Strefa broniona'] {
+  border-color: #7a5312;
+}
+
+/* Lista przepustek bywa długa (scena z dziesięcioma figurami), więc dostaje
+   własne przewijanie zamiast rozpychać kartę na całą wysokość ekranu. */
+.zone-exempt-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  max-height: 8.5rem;
+  overflow-y: auto;
+  padding-right: 0.2rem;
+}
+
 /* ── węzły kontrolne i urządzenia (etap 26d) ── */
 
 /* Lista rzeczy przy przejętym węźle w oknie Sieci. Wcięcie i lewa krecha

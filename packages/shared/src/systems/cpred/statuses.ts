@@ -92,6 +92,17 @@ export const CPRED_STATUS_EFFECTS: Readonly<Record<string, CpredStatusEffect>> =
     name: 'Pochwycony',
     noMove: 'Pochwycony token nie może wykonać własnej Akcji Ruchu.',
   },
+  // Stage 26f. „Maź … redukująca RUCH o 2k6 punktów, dopóki cel się jej nie
+  // pozbędzie lub w inny sposób nie opuści bronionego obszaru" (s. 216).
+  //
+  // Deliberately empty of refusals, like „Onieśmielony" from 23c: the number
+  // lives beside the sticker in `Token.statusData` and is spliced into the MOVE
+  // budget by whoever computes it. A status that refused movement outright would
+  // be „Unieruchomiony" — which is a different row of the rules.
+  slowed: {
+    name: 'Spowolniony',
+    reminder: 'Coś oblepia ci nogi — RUCH jest niższy, dopóki nie zejdziesz z obszaru.',
+  },
   'on-fire': {
     name: 'Podpalony',
     // „Płomienie zadają obrażenia na koniec każdej Tury i ignorują pancerz."
@@ -204,6 +215,26 @@ export const CPRED_EMP_STATUS_ID = 'emp';
 
 /** Generic poison: the same machinery as fire, with a value the GM picks. */
 export const CPRED_POISONED_STATUS_ID = 'poisoned';
+
+/** Legs oiled, glued or wired by a defence system (stage 26f). */
+export const CPRED_SLOWED_STATUS_ID = 'slowed';
+
+/**
+ * The MOVE penalty a Slowed token carries, as a named modifier.
+ *
+ * A modifier rather than a number, so a shrunken budget can say „Spowolniony
+ * −7" next to „Pancerz −2" — the rule 14c set for every penalty on this sheet:
+ * never quietly move the metres.
+ */
+export function cpredSlowedMoveModifier(
+  statuses: readonly string[],
+  values: Readonly<Record<string, number>>,
+): { label: string; value: number } | null {
+  if (!statuses.includes(CPRED_SLOWED_STATUS_ID)) return null;
+  const drain = values[CPRED_SLOWED_STATUS_ID] ?? 0;
+  if (drain <= 0) return null;
+  return { label: CPRED_STATUS_EFFECTS[CPRED_SLOWED_STATUS_ID]!.name, value: -drain };
+}
 
 /**
  * How fiercely something burns. RAW scales the damage with the fire rather than

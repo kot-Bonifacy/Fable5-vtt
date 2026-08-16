@@ -47,7 +47,9 @@ Każdy etap to jedna sesja pracy z Claude. Etapy są pogrupowane w 8 faz. Szczeg
 | 26a | Sieć: dane, architektura i cyberdek                 | H. Świat CP RED      | podział 26 → 26a–26d (14/15.08) |
 | 26b | Run: punkty dostępu, winda i Akcje Sieciowe         | H. Świat CP RED      |                                 |
 | 26c | Walka w Sieci: Programy, Paf, Ślizg, Czarny LOD     | H. Świat CP RED      | wydzielone z 26b (15.08)        |
-| 26d | Demony, węzły kontrolne i systemy obronne           | H. Świat CP RED      | dawne 26c                       |
+| 26d | Węzły kontrolne i systemy obronne                   | H. Świat CP RED      | dawne 26c                       |
+| 26e | Demony                                              | H. Świat CP RED      | wydzielone z 26d (15.08)        |
+| 26f | Samodzielne systemy obronne i broniona strefa       | H. Świat CP RED      | wydzielone z 26e (16.08)        |
 | 27  | Kości 3D i szlif UI                                 | I. Wykończenie       |                                 |
 | 28  | Wdrożenie na VPS                                    | I. Wykończenie       | 🏁 Produkcja                    |
 
@@ -111,14 +113,16 @@ Fazy A→B→C odwzorowują priorytety MVP z ankiety (mapa+tokeny, kości, karty
    odblokowuje w miarę kampanii — mechanizm kampanii, nie zasada podręcznika, więc siedzi na
    `Campaign`, a nie w tabelach CP RED.
 
-7. **Etapy 26a–26d — netrunning** (podział 14.08.2026, pogłębiony 15.08.2026). Opis etapu 26 sam
+7. **Etapy 26a–26f — netrunning** (podział 14.08.2026, pogłębiony 15.08 i 16.08.2026). Opis etapu 26 sam
    dopuszczał podział na dwa („architektury + wizualizacja" / „programy, ICE i walka"), ale
-   rozdział 11 podręcznika to w praktyce **cztery** niezależne kawałki roboty: katalog (~40 wpisów:
+   rozdział 11 podręcznika to w praktyce **sześć** niezależnych kawałków roboty: katalog (~40 wpisów:
    Programy, Czarny LOD, Demony, cyberdeki, Ulepszenia Sprzętowe) z modelem architektury
    i edytorem MG (**26a**), run — punkty dostępu, winda, budżet Akcji Sieciowych i siedem
    niebojowych zdolności Interfejsu (**26b**), walka w Sieci — Programy, Paf, Ślizg, Czarny LOD
-   i obrażenia w obie strony (**26c**) — oraz osobny bestiariusz Demonów z węzłami kontrolnymi
-   sięgającymi do Somy i trzema tabelami systemów obronnych (**26d**). Przy podziale na dwa druga
+   i obrażenia w obie strony (**26c**), węzły kontrolne sięgające do Somy wraz z trzema tabelami
+   systemów obronnych (**26d**), bestiariusz Demonów z ich własną Turą (**26e**) — oraz systemy
+   obronne, które działają **bez niczyjej ręki**: broniona strefa jako obiekt sceny, model efektu
+   jako dane i wyzwalanie na ruchu figury (**26f**). Przy podziale na dwa druga
    sesja niosłaby run **i** Demony naraz; przy podziale na trzy 26b niosłoby run **i** całą walkę
    w Sieci. **Decyzja MG z 14.08:** ekran Sieci dla netrunnera to pływające okno (jak karta
    postaci), nie zakładka panelu — run dzieje się w trakcie walki fizycznej, więc mapa musi zostać
@@ -129,6 +133,12 @@ Fazy A→B→C odwzorowują priorytety MVP z ankiety (mapa+tokeny, kości, karty
    też jedyną zmianę w rdzeniu VTT, jakiej wymagał netrunning: **uczestnik kolejki inicjatywy
    nie musi mieć figury na mapie** (`Combatant.tokenId` jest nullowalny), bo „LOD zajmuje
    pierwsze miejsce w Kolejce Inicjatywy" (s. 205), nie stojąc nigdzie w Somie.
+   **Trzy decyzje MG z 16.08 (etap 26f):** Percepcja przeciw ukrytej strefie rzuca się **sama**
+   przy zbliżeniu i tylko **raz na postać**; strefa odpala się na każdego, kto wejdzie, ale nosi
+   **imienną listę przepustek** (VTT nie wie, kto ma identyfikator, więc mówi to MG); stanowisko
+   obronne strzela **na wejście w strefę**, a nie wyłącznie na klik — to jedyne miejsce, w którym
+   rozdział 11 odchodzi od zasady „nic nie rusza się samo", bo kolumna „Standardowa aktywacja"
+   mówi wprost, kiedy wieżyczka strzela.
 
 ## Ryzyka i ograniczenia
 

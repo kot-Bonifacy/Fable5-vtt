@@ -48,6 +48,7 @@ import {
   requireCampaignToken,
 } from './tokens.js';
 import { sweepTimedEffects } from './timed-effects.js';
+import { runZonesAtTurnEnd } from './zones.js';
 import {
   INCLUDE_CHAT_NAMES,
   broadcastChatMessage,
@@ -164,6 +165,12 @@ export async function runTurnEnd(
   due.push(...fromInjuries.damage);
 
   const applied = await applyPeriodicDamage(deps, campaignId, combatant, due);
+
+  // „Cel otrzymuje ponownie 6k6 obrażeń na koniec swojej kolejnej Tury … chyba
+  // że zejdzie z podłogi" (s. 216, stage 26f). Next to the fire and the poison
+  // because it is the same sentence with a different source — the difference is
+  // only that this one asks where the figure is standing.
+  await runZonesAtTurnEnd(deps, { campaignId, user, scene, token: combatant.token });
 
   // „Przygwożdżony" is a one-round state: it goes away with the turn it cost.
   for (const statusId of sheetExpiringStatuses(statuses)) {

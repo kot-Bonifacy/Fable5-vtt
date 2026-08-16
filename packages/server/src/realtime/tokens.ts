@@ -60,6 +60,7 @@ import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { emitCombatOfScene, findGrapple, loadCombat } from './combat.js';
 import { validateTokenMove } from './movement.js';
 import { enforceNetRunRange } from './netice.js';
+import { runZonesAfterMove } from './zones.js';
 import { createMixedRng } from './dice-rng.js';
 
 function parseStatuses(raw: string): string[] {
@@ -1062,6 +1063,19 @@ export async function performTokenMove(
       if (jackedOut.tokenIds.length > 0) {
         await emitTokensById(deps, campaignId, jackedOut.tokenIds);
       }
+      // „Cel bez odpowiedniej przepustki wchodzi na strzeżony obszar" (s. 213,
+      // stage 26f). Asked here for the same reason the disconnect is: this is
+      // the one place every walk lands, and a second „a figure moved" would
+      // drift from this one the first time somebody changed either.
+      await runZonesAfterMove(deps, {
+        campaignId,
+        user,
+        scene,
+        token,
+        from: { x: token.x, y: token.y },
+        to: { x, y },
+        path: sanitizeTokenPath(payload.path) ?? [],
+      });
     }
 
     await broadcast({ x, y }, final);

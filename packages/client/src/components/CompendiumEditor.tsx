@@ -2,7 +2,10 @@ import { useMemo, useState, type FormEvent } from 'react';
 import type {
   CompendiumCategory,
   CompendiumEntry,
+  CpredNetDefenseEffects,
   CpredNetProgramEffects,
+  CpredStatId,
+  NetDefenseTrigger,
   NetAbilityId,
   NetGlueDuration,
   NetGuardKind,
@@ -13,6 +16,8 @@ import type {
 import {
   NET_ABILITIES_AVAILABLE,
   NET_DEFENSE_KINDS,
+  NET_DEFENSE_TRIGGERS,
+  NET_DEFENSE_TRIGGER_LABELS,
   NET_DEFENSE_KIND_LABELS,
   NET_GLUE_DURATIONS,
   NET_GUARD_KINDS,
@@ -1110,6 +1115,175 @@ export function CompendiumEditor() {
                       onChange={(event) => patch({ defenseTrigger: event.target.value })}
                     />
                   </label>
+
+                  {/*
+                    Efekt systemu jako dane (etap 26f). Do tego etapu kolumna
+                    „Opis” była wyłącznie prozą, więc pułapka nie miała jak
+                    odpalić się sama. Puste pola znaczą „MG rozstrzyga” —
+                    dokładnie tam, gdzie stały wszystkie te wiersze wcześniej.
+                  */}
+                  <label className="bot-field">
+                    Kiedy się odpala
+                    <select
+                      value={form.zoneWhen}
+                      title="Wejście na obszar; każdy ruch na obszarze (Ślizgawka); albo własna Tura w Kolejce Inicjatywy (winda z gazem)"
+                      onChange={(event) => patch({ zoneWhen: event.target.value })}
+                    >
+                      {NET_DEFENSE_TRIGGERS.map((trigger) => (
+                        <option key={trigger} value={trigger}>
+                          {NET_DEFENSE_TRIGGER_LABELS[trigger]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <div className="bot-row-inline">
+                    <label className="bot-field bot-field--inline">
+                      Test: umiejętność
+                      <input
+                        value={form.zoneCheckSkillId}
+                        placeholder="athletics"
+                        title="Identyfikator umiejętności z rejestru; puste = system nie daje szansy na unik"
+                        onChange={(event) => patch({ zoneCheckSkillId: event.target.value })}
+                      />
+                    </label>
+                    <label className="bot-field bot-field--inline">
+                      Nazwa
+                      <input
+                        value={form.zoneCheckSkillLabel}
+                        placeholder="Atletyka"
+                        title="Używana, gdy kampania nie ma tej umiejętności w rejestrze"
+                        onChange={(event) => patch({ zoneCheckSkillLabel: event.target.value })}
+                      />
+                    </label>
+                    <label className="bot-field bot-field--inline">
+                      Cecha
+                      <input
+                        value={form.zoneCheckStatId}
+                        placeholder="dex"
+                        title="Cecha, na której odbywa się test, gdy umiejętności brak (dex, will…)"
+                        onChange={(event) => patch({ zoneCheckStatId: event.target.value })}
+                      />
+                    </label>
+                    <label className="bot-field bot-field--inline">
+                      PT
+                      <input
+                        type="number"
+                        min={1}
+                        max={40}
+                        value={form.zoneCheckDv}
+                        placeholder="—"
+                        onChange={(event) => patch({ zoneCheckDv: event.target.value })}
+                      />
+                    </label>
+                  </div>
+                  <label className="bot-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={form.zoneCheckBiological}
+                      onChange={(event) => patch({ zoneCheckBiological: event.target.checked })}
+                    />
+                    Działa tylko na cele biologiczne
+                  </label>
+                  <label className="bot-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={form.zoneAwareOnly}
+                      onChange={(event) => patch({ zoneAwareOnly: event.target.checked })}
+                    />
+                    Test przysługuje tylko temu, kto strefę zauważył (siatka laserowa)
+                  </label>
+                  <div className="bot-row-inline">
+                    <label className="bot-field bot-field--inline">
+                      Obrażenia
+                      <input
+                        value={form.zoneDamage}
+                        placeholder="6k6"
+                        title="Notacja kości; pancerz je redukuje, chyba że zaznaczysz „bezpośrednie”"
+                        onChange={(event) => patch({ zoneDamage: event.target.value })}
+                      />
+                    </label>
+                    <label className="bot-field bot-field--inline">
+                      RUCH −
+                      <input
+                        value={form.zoneMoveDrain}
+                        placeholder="2k6"
+                        title="Kara do RUCH-u, dopóki cel nie zejdzie z obszaru (maź, podłoga obalająca)"
+                        onChange={(event) => patch({ zoneMoveDrain: event.target.value })}
+                      />
+                    </label>
+                    <label className="bot-field bot-field--inline">
+                      Czas (s)
+                      <input
+                        type="number"
+                        min={0}
+                        max={600}
+                        value={form.zoneDurationS}
+                        placeholder="60"
+                        title="Jak długo trzymają się statusy i rany; puste = do odwołania"
+                        onChange={(event) => patch({ zoneDurationS: event.target.value })}
+                      />
+                    </label>
+                  </div>
+                  <div className="bot-row-inline">
+                    <label className="bot-field bot-field--inline">
+                      Statusy
+                      <input
+                        value={form.zoneStatuses}
+                        placeholder="prone, unconscious"
+                        title="Identyfikatory statusów po przecinku"
+                        onChange={(event) => patch({ zoneStatuses: event.target.value })}
+                      />
+                    </label>
+                    <label className="bot-field bot-field--inline">
+                      Rany
+                      <input
+                        value={form.zoneInjuries}
+                        placeholder="injury.head-uraz-oka"
+                        title="Identyfikatory ran krytycznych z kompendium, po przecinku"
+                        onChange={(event) => patch({ zoneInjuries: event.target.value })}
+                      />
+                    </label>
+                  </div>
+                  <label className="bot-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={form.zoneDirect}
+                      onChange={(event) => patch({ zoneDirect: event.target.checked })}
+                    />
+                    Obrażenia bezpośrednie — pancerz ich nie zatrzymuje
+                  </label>
+                  <label className="bot-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={form.zoneNoAblation}
+                      onChange={(event) => patch({ zoneNoAblation: event.target.checked })}
+                    />
+                    Pancerz redukuje, ale sam nie ulega uszkodzeniu
+                  </label>
+                  <label className="bot-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={form.zoneRepeats}
+                      onChange={(event) => patch({ zoneRepeats: event.target.checked })}
+                    />
+                    Powtarza się na koniec każdej Tury, dopóki cel stoi na obszarze
+                  </label>
+                  <label className="bot-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={form.zoneNoBonusDamage}
+                      onChange={(event) => patch({ zoneNoBonusDamage: event.target.checked })}
+                    />
+                    Rany krytyczne bez obrażeń dodatkowych
+                  </label>
+                  <label className="bot-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={form.zoneFires}
+                      onChange={(event) => patch({ zoneFires: event.target.checked })}
+                    />
+                    Stanowisko strzela Wartością bojową do tego, kto je uruchomił
+                  </label>
                 </>
               )}
               <label className="bot-field">
@@ -1252,6 +1426,51 @@ function buildProgramEffects(form: EditorForm): CpredNetProgramEffects | undefin
   return Object.keys(effects).length > 0 ? effects : undefined;
 }
 
+/**
+ * Mechaniczna połowa kolumny „Opis" systemu obronnego (etap 26f).
+ *
+ * Ta sama umowa, co przy `buildProgramEffects` wyżej: pusty formularz daje
+ * `undefined`, czyli wiersz, który MG rozstrzyga sam — dokładnie tam, gdzie
+ * stały wszystkie osiemnaście wierszy przed tym etapem.
+ */
+function buildDefenseEffects(form: EditorForm): CpredNetDefenseEffects | undefined {
+  const checkDv = numberOrUndefined(form.zoneCheckDv);
+  const effects: CpredNetDefenseEffects = {
+    ...(form.zoneWhen && form.zoneWhen !== 'enter'
+      ? { when: form.zoneWhen as NetDefenseTrigger }
+      : {}),
+    ...(checkDv && form.zoneCheckSkillId.trim()
+      ? {
+          check: {
+            skillId: form.zoneCheckSkillId.trim(),
+            dv: checkDv,
+            ...(form.zoneCheckSkillLabel.trim()
+              ? { skillLabel: form.zoneCheckSkillLabel.trim() }
+              : {}),
+            ...(form.zoneCheckStatId.trim()
+              ? { statId: form.zoneCheckStatId.trim() as CpredStatId }
+              : {}),
+            ...(form.zoneCheckBiological ? { biologicalOnly: true } : {}),
+          },
+        }
+      : {}),
+    ...(checkDv && form.zoneAwareOnly ? { awareOnly: true } : {}),
+    ...(form.zoneDamage.trim() ? { damage: form.zoneDamage.trim() } : {}),
+    ...(form.zoneDirect ? { direct: true } : {}),
+    ...(form.zoneNoAblation ? { noAblation: true } : {}),
+    ...(form.zoneStatuses.trim() ? { statuses: idList(form.zoneStatuses) } : {}),
+    ...(form.zoneInjuries.trim() ? { injuries: idList(form.zoneInjuries) } : {}),
+    ...(numberOrUndefined(form.zoneDurationS)
+      ? { durationS: numberOrUndefined(form.zoneDurationS) }
+      : {}),
+    ...(form.zoneNoBonusDamage ? { noBonusDamage: true } : {}),
+    ...(form.zoneMoveDrain.trim() ? { moveDrain: form.zoneMoveDrain.trim() } : {}),
+    ...(form.zoneRepeats ? { repeats: true } : {}),
+    ...(form.zoneFires ? { fires: true } : {}),
+  };
+  return Object.keys(effects).length > 0 ? effects : undefined;
+}
+
 interface EditorForm {
   category: CompendiumCategory;
   /** Stage 26a — Programs, Black ICE and Demons share one block of numbers. */
@@ -1294,6 +1513,24 @@ interface EditorForm {
   defenseMove: string;
   defenseSpotDv: string;
   defenseTrigger: string;
+  /** Etap 26f — efekt systemu obronnego jako dane. */
+  zoneWhen: string;
+  zoneCheckSkillId: string;
+  zoneCheckSkillLabel: string;
+  zoneCheckStatId: string;
+  zoneCheckDv: string;
+  zoneCheckBiological: boolean;
+  zoneAwareOnly: boolean;
+  zoneDamage: string;
+  zoneDirect: boolean;
+  zoneNoAblation: boolean;
+  zoneStatuses: string;
+  zoneInjuries: string;
+  zoneDurationS: string;
+  zoneNoBonusDamage: boolean;
+  zoneMoveDrain: string;
+  zoneRepeats: boolean;
+  zoneFires: boolean;
   name: string;
   description: string;
   cost: string;
@@ -1402,6 +1639,7 @@ function toForm(entry: CompendiumEntry | undefined): EditorForm {
     defenseMove: numberField(entry?.category === 'netDefense' ? entry.move : undefined),
     defenseSpotDv: numberField(entry?.category === 'netDefense' ? entry.spotDv : undefined),
     defenseTrigger: entry?.category === 'netDefense' ? (entry.trigger ?? '') : '',
+    ...defenseEffectFields(entry?.category === 'netDefense' ? entry.effects : undefined),
     weaponTypeId: entry?.category === 'weapon' ? (entry.weaponTypeId ?? '') : '',
     quality: entry?.category === 'weapon' ? entry.quality : 'standard',
     damage: entry?.category === 'weapon' ? (entry.damage ?? '') : '',
@@ -1489,6 +1727,50 @@ function idList(value: string): string[] {
     .split(',')
     .map((id) => id.trim())
     .filter(Boolean);
+}
+
+/** Pola formularza z zapisanego efektu systemu obronnego (etap 26f). */
+function defenseEffectFields(
+  effects: CpredNetDefenseEffects | undefined,
+): Pick<
+  EditorForm,
+  | 'zoneWhen'
+  | 'zoneCheckSkillId'
+  | 'zoneCheckSkillLabel'
+  | 'zoneCheckStatId'
+  | 'zoneCheckDv'
+  | 'zoneCheckBiological'
+  | 'zoneAwareOnly'
+  | 'zoneDamage'
+  | 'zoneDirect'
+  | 'zoneNoAblation'
+  | 'zoneStatuses'
+  | 'zoneInjuries'
+  | 'zoneDurationS'
+  | 'zoneNoBonusDamage'
+  | 'zoneMoveDrain'
+  | 'zoneRepeats'
+  | 'zoneFires'
+> {
+  return {
+    zoneWhen: effects?.when ?? 'enter',
+    zoneCheckSkillId: effects?.check?.skillId ?? '',
+    zoneCheckSkillLabel: effects?.check?.skillLabel ?? '',
+    zoneCheckStatId: effects?.check?.statId ?? '',
+    zoneCheckDv: numberField(effects?.check?.dv),
+    zoneCheckBiological: effects?.check?.biologicalOnly === true,
+    zoneAwareOnly: effects?.awareOnly === true,
+    zoneDamage: effects?.damage ?? '',
+    zoneDirect: effects?.direct === true,
+    zoneNoAblation: effects?.noAblation === true,
+    zoneStatuses: (effects?.statuses ?? []).join(', '),
+    zoneInjuries: (effects?.injuries ?? []).join(', '),
+    zoneDurationS: numberField(effects?.durationS),
+    zoneNoBonusDamage: effects?.noBonusDamage === true,
+    zoneMoveDrain: effects?.moveDrain ?? '',
+    zoneRepeats: effects?.repeats === true,
+    zoneFires: effects?.fires === true,
+  };
 }
 
 /** Puste pole formularza dla nieobecnej liczby — „PW: brak" to nie „PW 0". */
@@ -1660,6 +1942,7 @@ function fromForm(form: EditorForm, existingId: string | undefined): Record<stri
       move: numberOrUndefined(form.defenseMove),
       spotDv: numberOrUndefined(form.defenseSpotDv),
       trigger: form.defenseTrigger || undefined,
+      effects: buildDefenseEffects(form),
       icon: form.programIcon || undefined,
     };
   }

@@ -539,6 +539,39 @@ describe('program entries', () => {
     expect(result.ok).toBe(false);
   });
 
+  it('keeps a defence system’s effect as data (stage 26f)', () => {
+    const floor = validateCompendiumEntry({
+      category: 'netDefense',
+      name: 'Podłoga pod ladą',
+      cost: 1000,
+      defenseKind: 'environment',
+      disableDv: 13,
+      hp: 20,
+      spotDv: 17,
+      trigger: 'Cel wchodzi na zelektryfikowany obszar.',
+      effects: { damage: '6k6', noAblation: true, repeats: true },
+    });
+    expect(floor.ok).toBe(true);
+    if (!floor.ok || floor.entry.category !== 'netDefense') return;
+    expect(floor.entry.effects).toEqual({ damage: '6k6', noAblation: true, repeats: true });
+  });
+
+  it('takes a defence system whose effect will not parse, and drops the effect', () => {
+    // Wiersz z połamanym efektem to wiersz, który MG rozstrzyga sam — tam, gdzie
+    // stały wszystkie te wiersze przed 26f. Odmowa zapisu byłaby regresją.
+    const broken = validateCompendiumEntry({
+      category: 'netDefense',
+      name: 'Coś dziwnego',
+      cost: 1000,
+      defenseKind: 'environment',
+      disableDv: 13,
+      effects: { damage: 42, check: { skillId: 'athletics' } },
+    });
+    expect(broken.ok).toBe(true);
+    if (!broken.ok || broken.entry.category !== 'netDefense') return;
+    expect(broken.entry.effects).toBeUndefined();
+  });
+
   it('takes deck slots on gear and refuses a nonsense count', () => {
     const deck = validateCompendiumEntry({
       category: 'gear',

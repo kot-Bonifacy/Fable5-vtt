@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import {
   cpredCoverPresetDetail,
+  netDefenseSystemEntries,
   DRAWING_COLORS,
   DRAWING_MAX_FONT_SIZE,
   DRAWING_MAX_WIDTH,
@@ -20,6 +21,8 @@ import { useRulerStore } from '../stores/rulerStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useWallStore } from '../stores/wallStore.js';
 import { useCoverStore } from '../stores/coverStore.js';
+import { useZoneStore } from '../stores/zoneStore.js';
+import { useCompendiumStore } from '../stores/compendiumStore.js';
 import { useSmokeStore } from '../stores/smokeStore.js';
 import { useLightStore } from '../stores/lightStore.js';
 import { useNetStore } from '../stores/netStore.js';
@@ -28,6 +31,7 @@ import {
   fetchNetArchitectures,
   clearCovers,
   clearSmoke,
+  clearZones,
   clearDrawings,
   clearWalls,
   deleteDrawing,
@@ -47,6 +51,7 @@ import {
   IconFill,
   IconFlicker,
   IconFog,
+  IconHazard,
   IconLamp,
   IconLock,
   IconRoomLight,
@@ -117,6 +122,24 @@ export function MapTools() {
   const coverTypeId = useMapToolStore((s) => s.coverTypeId);
   const setCoverTypeId = useMapToolStore((s) => s.setCoverTypeId);
   const coverCatalogue = useMapToolStore((s) => s.coverCatalogue);
+  const zoneMode = useMapToolStore((s) => s.zoneMode);
+  const setZoneMode = useMapToolStore((s) => s.setZoneMode);
+  const zoneEntryId = useMapToolStore((s) => s.zoneEntryId);
+  const setZoneEntryId = useMapToolStore((s) => s.setZoneEntryId);
+  const zoneHidden = useMapToolStore((s) => s.zoneHidden);
+  const setZoneHidden = useMapToolStore((s) => s.setZoneHidden);
+  const zoneCount = useZoneStore((s) => s.zones.length);
+  // Systemy obronne z kompendium (26d): wpisy „Obrona Sieci”, które NIE są
+  // Demonami — Demon jest uczestnikiem runa, nie kawałkiem podłogi.
+  const compendiumEntries = useCompendiumStore((s) => s.entries);
+  const compendiumOrder = useCompendiumStore((s) => s.order);
+  const defenseEntries = useMemo(
+    () =>
+      netDefenseSystemEntries(
+        compendiumOrder.map((id) => compendiumEntries[id]).filter((e) => e !== undefined),
+      ),
+    [compendiumEntries, compendiumOrder],
+  );
   const netPointMode = useMapToolStore((s) => s.netPointMode);
   const setNetPointMode = useMapToolStore((s) => s.setNetPointMode);
   const netPointArchitectureId = useMapToolStore((s) => s.netPointArchitectureId);
@@ -327,6 +350,15 @@ export function MapTools() {
             onClick={() => toggleTool('cover')}
           >
             <IconCover />
+          </button>
+          <button
+            type="button"
+            className={`map-tool${tool === 'zone' ? ' map-tool--active' : ''}`}
+            title="Strefy bronione — przeciągnij prostokąt; system obronny odpala się sam, gdy ktoś na niego wejdzie"
+            aria-pressed={tool === 'zone'}
+            onClick={() => toggleTool('zone')}
+          >
+            <IconHazard />
           </button>
           <button
             type="button"
@@ -753,6 +785,91 @@ export function MapTools() {
           >
             <IconTrashAll />
           </button>
+        </div>
+      )}
+
+      {isGm && tool === 'zone' && (
+        <div className="map-tool-options" role="group" aria-label="Ustawienia stref bronionych">
+          <button
+            type="button"
+            className={`map-tool${zoneMode === 'draw' ? ' map-tool--active' : ''}`}
+            title="Rysowanie — przeciągnij prostokąt bronionego obszaru"
+            aria-pressed={zoneMode === 'draw'}
+            onClick={() => setZoneMode('draw')}
+          >
+            <IconRect />
+          </button>
+          <button
+            type="button"
+            className={`map-tool${zoneMode === 'edit' ? ' map-tool--active' : ''}`}
+            title="Karta strefy — kliknij prostokąt, żeby otworzyć jej ustawienia"
+            aria-pressed={zoneMode === 'edit'}
+            onClick={() => setZoneMode('edit')}
+          >
+            <IconPin />
+          </button>
+          <button
+            type="button"
+            className={`map-tool${zoneMode === 'erase' ? ' map-tool--active' : ''}`}
+            title="Gumka — kliknij strefę, żeby ją usunąć"
+            aria-pressed={zoneMode === 'erase'}
+            onClick={() => setZoneMode('erase')}
+          >
+            <IconEraser />
+          </button>
+          {zoneMode === 'draw' && (
+            <>
+              <span className="map-tools-sep" aria-hidden />
+              <label
+                className="map-tool-select"
+                title="Wpis „Obrona Sieci” z kompendium — z niego serwer czyta PW, Wartość bojową i efekt"
+              >
+                <select
+                  value={zoneEntryId}
+                  onChange={(event) => setZoneEntryId(event.target.value)}
+                  aria-label="System obronny"
+                >
+                  <option value="">— wybierz system —</option>
+                  {defenseEntries.map((entry) => (
+                    <option key={entry.id} value={entry.id}>
+                      {entry.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                className={`map-tool${zoneHidden ? ' map-tool--active' : ''}`}
+                title={
+                  zoneHidden
+                    ? 'Ukryta — gracz nie dostanie tej strefy, dopóki jej nie zauważy Percepcją'
+                    : 'Widoczna od razu — strefa jedzie do graczy bez rzutu'
+                }
+                aria-pressed={zoneHidden}
+                onClick={() => setZoneHidden(!zoneHidden)}
+              >
+                {zoneHidden ? <IconEyeOff /> : <IconEye />}
+              </button>
+            </>
+          )}
+          <span className="map-tools-sep" aria-hidden />
+          <span className="map-tool-hint">
+            {zoneCount === 0 ? 'brak stref' : `stref: ${zoneCount}`}
+          </span>
+          <button
+            type="button"
+            className="map-tool map-tool--warn"
+            title="Usuń wszystkie strefy bronione z tej sceny"
+            disabled={!sceneId || zoneCount === 0}
+            onClick={() => sceneId && void clearZones(sceneId)}
+          >
+            <IconTrashAll />
+          </button>
+          {defenseEntries.length === 0 && (
+            <span className="map-tool-hint">
+              Kompendium nie ma wpisów „Obrona Sieci” — zaimportuj rozdział 11
+            </span>
+          )}
         </div>
       )}
 

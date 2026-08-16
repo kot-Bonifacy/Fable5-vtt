@@ -42,6 +42,16 @@ export interface CpredMoveInput {
   injuries?: readonly CpredCriticalInjuryRow[];
   /** Wound state — Mortally Wounded costs 6 points of RUCH. */
   wound?: CpredWoundState;
+  /**
+   * Penalties that do not come off the sheet at all (stage 26f).
+   *
+   * „Maź … redukująca RUCH o 2k6 punktów, dopóki cel … nie opuści bronionego
+   * obszaru" (s. 216) is a thing standing on the *token*, not a wound and not a
+   * piece of armour, and it is rolled once rather than derived — so the caller
+   * hands the finished modifier in, named, and it joins the same list every
+   * other penalty appears in.
+   */
+  extra?: readonly CpredMoveModifier[];
 }
 
 /** One line of „skąd ten RUCH" — shown to the GM, never guessed at. */
@@ -99,6 +109,9 @@ export function cpredMoveBudget(input: CpredMoveInput): CpredMoveBudget {
   for (const injury of input.injuries ?? []) {
     if (injury.movePenalty) modifiers.push({ label: injury.name, value: injury.movePenalty });
   }
+  for (const modifier of input.extra ?? []) {
+    if (modifier.value !== 0) modifiers.push(modifier);
+  }
 
   const base = Number.isFinite(input.move) ? Math.round(input.move) : CPRED_MIN_MOVE;
   const raw = base + modifiers.reduce((sum, modifier) => sum + modifier.value, 0);
@@ -118,11 +131,13 @@ export function cpredMoveBudgetFromSheet(input: {
   hpMax: number;
   armor?: readonly CpredArmorRow[];
   injuries?: readonly CpredCriticalInjuryRow[];
+  extra?: readonly CpredMoveModifier[];
 }): CpredMoveBudget {
   return cpredMoveBudget({
     move: input.move,
     armor: input.armor,
     injuries: input.injuries,
+    ...(input.extra ? { extra: input.extra } : {}),
     wound: woundStateFromHp(input.hpCurrent, input.hpMax),
   });
 }

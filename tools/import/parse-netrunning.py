@@ -502,6 +502,129 @@ def defense_numbers(tail: str) -> dict[str, int]:
     return out
 
 
+# ─────────────────────── efekt systemu obronnego (etap 26f) ───────────────────────
+#
+# Kolumna „Opis" jest proza i taka zostaje - ale zdania, ktorymi ta proza opisuje
+# MECHANIKE, powtarzaja sie w calej tabeli doslownie. Osiemnascie wierszy uzywa
+# szesciu konstrukcji („zadaje 6k6 obrazen cialu", „udany Test X o PT N",
+# „redukujac RUCH o 2k6", „Przewroci sie", „staje sie Nieprzytomny", „na koniec
+# swojej kolejnej Tury"), wiec parser wyciaga wlasnie je, a nie probuje rozumiec
+# zdania. Czego nie zlapie, to zostaje przy MG: formularz w kompendium ma komplet
+# pol, a wiersz bez `effects` zachowuje sie tak, jak zachowywal sie przed 26f.
+
+# Nazwa umiejetnosci wypada w tabeli raz w dopelniaczu („Test Atletyki"), raz
+# w mianowniku („rzut na Odpornosc"), wiec obie formy sa kluczami. Trzecia
+# pozycja to Cecha, na ktorej test sie odbywa, gdy kampania NIE MA tej
+# umiejetnosci w rejestrze - „Czlowiek guma" nie nalezy do 41 umiejetnosci Easy
+# Mode, wiec bez tego rzucaloby sie na SW zamiast na ZR.
+DEFENSE_SKILLS: dict[str, tuple[str, str, str]] = {
+    "atletyki": ("athletics", "Atletyka", "dex"),
+    "atletyka": ("athletics", "Atletyka", "dex"),
+    "odporności na tortury/narkotyki": (
+        "resist-torture-drugs",
+        "Odporność na tortury/narkotyki",
+        "will",
+    ),
+    "odporność na tortury/narkotyki": (
+        "resist-torture-drugs",
+        "Odporność na tortury/narkotyki",
+        "will",
+    ),
+    "człowiek guma": ("human-rubber", "Człowiek guma", "dex"),
+}
+DEFENSE_CHECK_RE = re.compile(
+    r"(?:Test(?:u)?|rzut na)\s+(?:Umiejętności\s+)?(.+?)\s+o\s+PT\s*(\d+)", re.IGNORECASE
+)
+DEFENSE_DAMAGE_RE = re.compile(r"(\d+k\d+)\s+obrażeń")
+DEFENSE_MOVE_DRAIN_RE = re.compile(r"RUCH\s*o\s*(\d+k\d+)")
+DEFENSE_INJURY_IDS: dict[str, str] = {
+    "uraz ucha": "injury.head-uraz-ucha",
+    "uraz oka": "injury.head-uraz-oka",
+}
+# „Kontakt z wiazka traktuje sie tak, jakby cel otrzymal cios w cialo Bardzo duza
+# bronia biala" - jedyny wiersz, ktory zamiast liczby podaje typ broni.
+DEFENSE_MELEE_DAMAGE: dict[str, str] = {
+    "bardzo dużą bronią białą": "4k6",
+    "dużą bronią białą": "3k6",
+}
+
+
+def defense_effects(description: str, trigger: str) -> dict:
+    """Mechaniczna polowa kolumny „Opis" - tyle, ile da sie wylowic ze zdan."""
+    text = clean(description)
+    low = text.lower()
+    out: dict = {}
+
+    # Kiedy. Winda z gazem bierze wlasne miejsce w Kolejce; Slizgawka i Siatka
+    # laserowa reaguja na ruch WEWNATRZ obszaru, nie na samo wejscie.
+    if "kolejce inicjatywy" in low:
+        out["when"] = "turn"
+    elif "akcję ruchu na tym obszarze" in low or "przemieszcza się o 2 metry" in (
+        trigger or ""
+    ).lower():
+        out["when"] = "move"
+
+    check = DEFENSE_CHECK_RE.search(text)
+    if check:
+        skill = clean(check.group(1)).strip(" ,.").lower()
+        known = DEFENSE_SKILLS.get(skill)
+        if known:
+            out["check"] = {
+                "skillId": known[0],
+                "skillLabel": known[1],
+                "statId": known[2],
+                "dv": int(check.group(2)),
+            }
+            # „Osoba, ktora WIDZI wiazki laserowe, moze przejsc przez broniony
+            # obszar" (s. 216) - jedyny test w tabeli zarezerwowany dla tego, kto
+            # pulapke zauwazyl. Reszta rzuca niezaleznie od tego, czy wie.
+            if "która widzi" in low:
+                out["awareOnly"] = True
+            # „Wszystkie stworzenia biologiczne w Somie" (krwawy roj, s. 215).
+            # VTT nie wie, kto jest z miesa - flaga pisze uwage na karcie, tak
+            # samo jak przy biotoksynie z 16h.
+            if "biologiczn" in low:
+                out["check"]["biologicalOnly"] = True
+
+    damage = DEFENSE_DAMAGE_RE.search(text)
+    if damage:
+        out["damage"] = damage.group(1)
+    else:
+        for phrase, dice in DEFENSE_MELEE_DAMAGE.items():
+            if phrase in low:
+                out["damage"] = dice
+                break
+
+    if "bezpośrednio w pw" in low or "obrażeń bezpośrednich" in low:
+        out["direct"] = True
+    if "nie ulega uszkodzeniu" in low:
+        out["noAblation"] = True
+    if "kolejnej tury" in low:
+        out["repeats"] = True
+
+    drain = DEFENSE_MOVE_DRAIN_RE.search(text)
+    if drain:
+        out["moveDrain"] = drain.group(1)
+
+    statuses: list[str] = []
+    if "przewróci się" in low:
+        statuses.append("prone")
+    if "nieprzytomny" in low:
+        statuses.append("unconscious")
+    if statuses:
+        out["statuses"] = statuses
+
+    injuries = [id for phrase, id in DEFENSE_INJURY_IDS.items() if phrase in low]
+    if injuries:
+        out["injuries"] = injuries
+    if "przez następną minutę" in low:
+        out["durationS"] = 60
+    if "nie otrzymują obrażeń dodatkowych" in low:
+        out["noBonusDamage"] = True
+
+    return out
+
+
 def defense_trigger(tail: str) -> str:
     """„Standardowa aktywacja" - pierwsze zdanie ogona wiersza."""
     body = DEFENSE_HEADER.sub(" ", tail).strip()
@@ -611,6 +734,14 @@ def parse_defenses(chapter: str) -> list[dict]:
             tail = parts[3 * (row + 1)] if 3 * (row + 1) < len(parts) else ""
             cost, band = prices.get(disable_dv, (None, None))
             trigger = defense_trigger(tail)
+            numbers = defense_numbers(tail)
+            effects = defense_effects(description, trigger)
+            # „W czasie samodzielnego dzialania systemy obronne okreslaja
+            # skutecznosc swoich dzialan, wykonujac Test Wartosci bojowej + 1k10"
+            # (s. 214). Stanowisko, ktore ma ta liczbe i nie ma wlasnych obrazen
+            # w opisie, strzela - a czym, mowi zeton zwiazany ze strefa.
+            if kind == "emplacement" and "combatValue" in numbers and "damage" not in effects:
+                effects["fires"] = True
             entries.append(
                 {
                     "id": f"defense.{slugify(name)}",
@@ -620,8 +751,9 @@ def parse_defenses(chapter: str) -> list[dict]:
                     "description": trimmed(clean(description)),
                     "disableDv": disable_dv,
                     "disableMinutes": minutes,
-                    **defense_numbers(tail),
+                    **numbers,
                     **({"trigger": trigger} if trigger else {}),
+                    **({"effects": effects} if effects else {}),
                     **({"cost": cost} if cost is not None else {}),
                     **({"costCategory": band} if band else {}),
                 }

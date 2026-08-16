@@ -19,6 +19,7 @@ zmienione na identyfikatory statusów CP RED używane w `../statuses.json`.
 | `prone.svg`            | Falling             | sbed       |
 | `poisoned.svg`         | Poison bottle       | Lorc       |
 | `suppressed.svg`       | Bullet impacts      | Delapouite |
+| `slowed.svg`           | Sticky boot         | Delapouite |
 
 Źródło: <https://github.com/game-icons/icons> (gałąź `master`).
 

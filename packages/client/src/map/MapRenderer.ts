@@ -14,6 +14,7 @@ import { Viewport } from 'pixi-viewport';
 import type {
   CoverView,
   SmokeView,
+  DefenseZoneView,
   DrawingShape,
   DrawingStyle,
   DrawingView,
@@ -35,6 +36,7 @@ import type {
 } from '@vtt/shared';
 import {
   COVER_MIN_SIZE_PX,
+  ZONE_MIN_SIZE_PX,
   CPRED_CONE_HALF_ANGLE_DEG,
   DRAWING_FILL_ALPHA,
   DRAWING_PATH_MAX_POINTS,
@@ -45,6 +47,8 @@ import {
   clampTokenPosition,
   clipWalkToBudget,
   coverStanding,
+  zoneLabel,
+  zoneStanding,
   decodeFlagRuns,
   decodeLevelRuns,
   formatMetres,
@@ -161,6 +165,16 @@ export interface CoverSettings {
 }
 
 /**
+ * The defended-zone tool's current setting (stage 26f). The same two modes the
+ * cover tool has, and for the same reason: a trapped floor is dragged out to the
+ * size of the floor, and removing one has to be deliberate.
+ */
+export interface ZoneSettings {
+  armed: boolean;
+  mode: 'draw' | 'edit' | 'erase';
+}
+
+/**
  * The light tool's current setting (stage 18b). The lamp's own parameters are
  * deliberately absent: the renderer only reports *where* the click landed, and
  * the caller — which already holds the toolbar state — decides whether that
@@ -244,6 +258,15 @@ const COVER_STROKE_COLOR = 0xcbd5e1;
 const SMOKE_FILL_COLOR = 0x9aa3ad;
 const SMOKE_STROKE_COLOR = 0xd7dce2;
 const COVER_WRECK_COLOR = 0x94a3b8;
+/**
+ * Defended zones (stage 26f). Hazard amber, deliberately the only warm colour in
+ * this half of the palette: a cover and a cloud are things the world put in your
+ * way, and a trapped floor is a thing that will *do something to you*. A
+ * disarmed one keeps the shape and loses the heat.
+ */
+const ZONE_FILL_COLOR = 0xd97706;
+const ZONE_STROKE_COLOR = 0xfbbf24;
+const ZONE_IDLE_COLOR = 0x9a8866;
 
 /** Green while it will hold, amber while it might, red when it is nearly gone. */
 function coverBarColor(ratio: number): number {
@@ -665,6 +688,21 @@ export class MapRenderer {
    * walk planner underneath.
    */
   onCoverClick: ((coverId: number) => boolean) | null = null;
+  /** A defended-zone rectangle was dragged out (stage 26f) — world pixels. */
+  onZoneRect: ((rect: { x: number; y: number; width: number; height: number }) => void) | null =
+    null;
+  /** Click with the zone eraser armed; the caller picks the rectangle. */
+  onZoneErase: ((x: number, y: number) => void) | null = null;
+  /**
+   * Click with the zone tool in „edit" mode — the GM's card for the rectangle
+   * under the pointer.
+   *
+   * A mode of the tool rather than a plain click on the layer, and that is the
+   * whole reason the tool has three modes instead of two: a defended zone is
+   * usually a *corridor*, and a card that opened on every click inside it would
+   * take walking, dragging and aiming away from everybody standing there.
+   */
+  onZoneOpen: ((x: number, y: number) => void) | null = null;
 
   private readonly app = new Application();
   private viewport: Viewport | null = null;
@@ -688,6 +726,14 @@ export class MapRenderer {
   private readonly smokeGraphics = new Graphics();
   /** One label per cloud („Dym −4"), kept in step with the rows. */
   private readonly smokeLabels = new Map<number, Text>();
+  /**
+   * Defended zones (stage 26f). Under the tokens like the covers and the smoke:
+   * the point of the layer is showing *who is standing in it*, and burying the
+   * figure would cost exactly that.
+   */
+  private readonly zoneLayer = new Container();
+  private readonly zoneGraphics = new Graphics();
+  private readonly zoneLabels = new Map<number, Text>();
   /** One label per cover („Samochód 18/25"), kept in step with the rows. */
   private readonly coverLabels = new Map<number, Text>();
   private readonly rangeLayer = new Container();
@@ -847,6 +893,11 @@ export class MapRenderer {
   private coverRectEnd: ScenePoint | null = null;
   private lastCovers: CoverView[] = [];
   private lastSmoke: SmokeView[] = [];
+  /** Zone tool settings (stage 26f); a drag draws, a click erases. */
+  private zone: ZoneSettings = { armed: false, mode: 'draw' };
+  private zoneRectStart: ScenePoint | null = null;
+  private zoneRectEnd: ScenePoint | null = null;
+  private lastZones: DefenseZoneView[] = [];
   /** Ticker phase for flickering lamps — renderer-side, never a network event. */
   private flickerPhase = 0;
   private hasFlicker = false;
@@ -983,6 +1034,10 @@ export class MapRenderer {
     // there — which is why both sit below the token layer.
     this.smokeLayer.addChild(this.smokeGraphics);
     viewport.addChild(this.smokeLayer);
+    // Defended zones (stage 26f) go with the covers and the smoke and for the
+    // same reason: the whole job of the layer is showing who is standing in one.
+    this.zoneLayer.addChild(this.zoneGraphics);
+    viewport.addChild(this.zoneLayer);
     // Range rings sit under the tokens so they never hide a portrait; the
     // ruler sits above everything, because a measurement is meant to be read.
     this.rangeLayer.addChild(this.rangeGraphics);
@@ -1052,6 +1107,7 @@ export class MapRenderer {
       // the same hit test the covering layers broke before stage 16e.
       this.coverLayer,
       this.smokeLayer,
+      this.zoneLayer,
       this.rangeLayer,
       this.dragGhost,
       this.lightLayer,
@@ -1294,6 +1350,7 @@ export class MapRenderer {
       this.draw.armed ||
       this.wall.armed ||
       this.cover.armed ||
+      this.zone.armed ||
       this.light.armed ||
       this.erasing;
     if (this.walkCursor && !toolArmed) {
@@ -1314,17 +1371,21 @@ export class MapRenderer {
               ? this.cover.mode === 'erase'
                 ? 'pointer'
                 : 'crosshair'
-              : this.light.armed
-                ? this.light.mode === 'erase'
-                  ? 'pointer'
-                  : 'copy'
-                : this.erasing
-                  ? 'pointer'
-                  : this.notePlacing
-                    ? 'copy'
-                    : this.rulerMode
-                      ? 'cell'
-                      : '';
+              : this.zone.armed
+                ? this.zone.mode === 'draw'
+                  ? 'crosshair'
+                  : 'pointer'
+                : this.light.armed
+                  ? this.light.mode === 'erase'
+                    ? 'pointer'
+                    : 'copy'
+                  : this.erasing
+                    ? 'pointer'
+                    : this.notePlacing
+                      ? 'copy'
+                      : this.rulerMode
+                        ? 'cell'
+                        : '';
   }
 
   private cancelFogGesture(): void {
@@ -1493,6 +1554,23 @@ export class MapRenderer {
         this.drawCoverLayer();
         return;
       }
+      if (this.zone.armed) {
+        if (this.zone.mode === 'erase') {
+          this.onZoneErase?.(point.x, point.y);
+          return;
+        }
+        if (this.zone.mode === 'edit') {
+          this.onZoneOpen?.(point.x, point.y);
+          return;
+        }
+        // A defended zone is an extent, like a cover: the GM drags out the piece
+        // of floor that is trapped.
+        this.zoneRectStart = point;
+        this.zoneRectEnd = { ...point };
+        viewport.plugins.pause('drag');
+        this.drawZoneLayer();
+        return;
+      }
       if (this.light.armed) {
         // A lamp is placed, not dragged: it has no extent of its own, only a
         // position and a reach set in the panel.
@@ -1613,6 +1691,11 @@ export class MapRenderer {
         this.drawCoverLayer();
         return;
       }
+      if (this.zoneRectStart) {
+        this.zoneRectEnd = point;
+        this.drawZoneLayer();
+        return;
+      }
 
       if (this.wallPoints) {
         const snapped = this.snapWall(point);
@@ -1658,6 +1741,15 @@ export class MapRenderer {
         this.viewport?.plugins.resume('drag');
         this.drawCoverLayer();
         if (rect) this.onCoverRect?.(rect);
+        return;
+      }
+      if (this.zoneRectStart) {
+        const rect = this.zoneGestureRect();
+        this.zoneRectStart = null;
+        this.zoneRectEnd = null;
+        this.viewport?.plugins.resume('drag');
+        this.drawZoneLayer();
+        if (rect) this.onZoneRect?.(rect);
         return;
       }
       if (this.fogStroke || this.fogRectStart) {
@@ -2838,6 +2930,128 @@ export class MapRenderer {
     const height = Math.abs(end.y - start.y);
     if (width < COVER_MIN_SIZE_PX || height < COVER_MIN_SIZE_PX) return null;
     return { x, y, width, height };
+  }
+
+  /**
+   * Arms or disarms the defended-zone tool (stage 26f) — the cover tool's own
+   * bargain, including dropping a half-dragged rectangle on the way out.
+   */
+  setZoneTool(settings: ZoneSettings): void {
+    this.zone = settings;
+    if (!settings.armed || settings.mode !== 'draw') this.cancelZoneRect();
+    this.applyMapCursor();
+  }
+
+  cancelZoneRect(): boolean {
+    if (!this.zoneRectStart) return false;
+    this.zoneRectStart = null;
+    this.zoneRectEnd = null;
+    this.viewport?.plugins.resume('drag');
+    this.drawZoneLayer();
+    return true;
+  }
+
+  private zoneGestureRect(): { x: number; y: number; width: number; height: number } | null {
+    const start = this.zoneRectStart;
+    const end = this.zoneRectEnd;
+    if (!start || !end) return null;
+    const x = Math.min(start.x, end.x);
+    const y = Math.min(start.y, end.y);
+    const width = Math.abs(end.x - start.x);
+    const height = Math.abs(end.y - start.y);
+    if (width < ZONE_MIN_SIZE_PX || height < ZONE_MIN_SIZE_PX) return null;
+    return { x, y, width, height };
+  }
+
+  /**
+   * The defended-zone layer (stage 26f).
+   *
+   * A zone has to read as „the ground here will do something to you", which is a
+   * different statement from a cover's „this will stop a bullet" and from smoke's
+   * „this makes things harder". So: hazard amber, a dashed edge, and no fill
+   * heavy enough to hide the floor — plus two states worth telling apart at a
+   * glance. A **disarmed** zone is drawn pale, because a switched-off trap is
+   * still a thing the GM has to see; a zone the viewer only has because somebody
+   * **spotted** it gets a dotted edge, so a player knows they are looking at
+   * something they found rather than at furniture.
+   */
+  setZones(zones: DefenseZoneView[]): void {
+    if (this.destroyed) return;
+    this.lastZones = zones;
+    this.drawZoneLayer();
+  }
+
+  private drawZoneLayer(): void {
+    if (this.destroyed) return;
+    const k = this.overlayScale();
+    this.zoneGraphics.clear();
+    const seen = new Set<number>();
+
+    for (const zone of this.lastZones) {
+      seen.add(zone.id);
+      const standing = zoneStanding(zone);
+      const live = standing && zone.armed;
+      this.zoneGraphics
+        .rect(zone.x, zone.y, zone.width, zone.height)
+        .fill({ color: ZONE_FILL_COLOR, alpha: live ? 0.22 : 0.08 })
+        .stroke({
+          color: live ? ZONE_STROKE_COLOR : ZONE_IDLE_COLOR,
+          width: (live ? 3 : 2) * k,
+          alpha: live ? 0.9 : 0.5,
+        });
+
+      // Diagonal hatching, drawn only while the system is live: it is the one
+      // mark that survives at table zoom without a legend, and it stops a
+      // disarmed zone from looking like an armed one at a glance.
+      if (live) {
+        const step = 22 * k;
+        const span = zone.width + zone.height;
+        for (let offset = 0; offset < span; offset += step) {
+          const x1 = zone.x + Math.min(offset, zone.width);
+          const y1 = zone.y + Math.max(0, offset - zone.width);
+          const x2 = zone.x + Math.max(0, offset - zone.height);
+          const y2 = zone.y + Math.min(offset, zone.height);
+          this.zoneGraphics
+            .moveTo(x1, y1)
+            .lineTo(x2, y2)
+            .stroke({ color: ZONE_STROKE_COLOR, width: 1 * k, alpha: 0.28 });
+        }
+      }
+
+      let label = this.zoneLabels.get(zone.id);
+      if (!label) {
+        label = new Text({
+          text: '',
+          style: {
+            fontFamily: 'system-ui, sans-serif',
+            fontSize: 14,
+            fill: 0xffe2b0,
+            stroke: { color: 0x000000, width: 3 },
+          },
+        });
+        label.anchor.set(0.5, 0.5);
+        this.zoneLabels.set(zone.id, label);
+        this.zoneLayer.addChild(label);
+      }
+      label.text = zoneLabel(zone);
+      label.scale.set(k);
+      label.alpha = live ? 0.95 : 0.55;
+      label.position.set(zone.x + zone.width / 2, zone.y + zone.height / 2);
+    }
+
+    for (const [id, label] of this.zoneLabels) {
+      if (seen.has(id)) continue;
+      this.zoneLabels.delete(id);
+      label.destroy();
+    }
+
+    const pending = this.zoneRectStart && this.zoneRectEnd ? this.zoneGestureRect() : null;
+    if (pending) {
+      this.zoneGraphics
+        .rect(pending.x, pending.y, pending.width, pending.height)
+        .fill({ color: ZONE_FILL_COLOR, alpha: 0.18 })
+        .stroke({ color: ZONE_STROKE_COLOR, width: 2 * k, alpha: 0.8 });
+    }
   }
 
   /**
