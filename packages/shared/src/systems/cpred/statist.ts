@@ -291,6 +291,29 @@ export function combatProfileOperatedBy(
 }
 
 /**
+ * The same turret with a machine's hand on it (stage 26e).
+ *
+ * „W czasie samodzielnego działania systemy obronne określają skuteczność
+ * swoich działań, wykonując Test Wartości bojowej + 1k10" (s. 214), and a Demon
+ * working a control node rolls the same single number (s. 212). Wartość bojowa
+ * is Stat *and* Skill merged into one figure, so it goes into the Skill half and
+ * the Stats go to zero: a machine has no reflexes to add, and the breakdown then
+ * reads honestly („Refleks (REF) +0 · Broń długa 14") instead of pretending the
+ * turret has a nervous system.
+ *
+ * Everything about the *weapon* stays the turret's, exactly as in 26d — the
+ * barrel, the magazine, the plating. Evasion goes to zero too: „nie mogą unikać
+ * ataków" (s. 214).
+ */
+export function combatProfileWithCombatValue(
+  profile: CpredCombatProfile,
+  combatValue: number,
+): CpredCombatProfile {
+  const value = Math.max(0, Math.round(combatValue));
+  return { ...profile, ref: 0, dex: 0, body: 0, will: 0, skillLevel: value, evasion: 0 };
+}
+
+/**
  * The sheet a statist rolls one particular skill with.
  *
  * `combatProfileSheet` gives every skill except Evasion a level of zero, which

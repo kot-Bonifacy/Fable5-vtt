@@ -691,6 +691,12 @@ export interface NetProgramSlotView {
    * of re-deriving the target rules from the effect sentence.
    */
   vsIce: number;
+  /**
+   * The same figure for an ordinary Program — which is what a Demon is (stage
+   * 26e). Two numbers rather than one, because the rulebook prints two damage
+   * columns and a Miecz really does hit a Demon harder than a Kraken.
+   */
+  vsProgram: number;
   icon?: string;
   /** Set while a copy of this row is running. */
   rezzedId?: string;
@@ -782,6 +788,10 @@ export function netCombatView(
         vsIce:
           netTargetAllowed(profile, 'blackIce') && netProgramHurts(profile, 'blackIce')
             ? netProgramDamageDice(profile, 'blackIce')
+            : 0,
+        vsProgram:
+          netTargetAllowed(profile, 'program') && netProgramHurts(profile, 'program')
+            ? netProgramDamageDice(profile, 'program')
             : 0,
         ...(profile.icon ? { icon: profile.icon } : {}),
         ...(copy

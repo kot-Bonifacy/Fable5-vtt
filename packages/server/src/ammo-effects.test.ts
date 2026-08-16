@@ -658,7 +658,7 @@ describe('ammunition that deals no damage', () => {
       expect(offered!.card.smart!.requires).toBe('Celownik przykładowy');
 
       const updated = waitFor<{
-        message: { roll?: { total: number; critical?: string; attack?: AttackCard } };
+        message: { roll?: { total: number; critical?: { type: string }; attack?: AttackCard } };
       }>(gm, 'chat:update');
       const ack = await emitAck<{ total: number; hit: boolean }>(player, 'attack:smart', {
         messageId: offered!.messageId,
@@ -666,10 +666,15 @@ describe('ammunition that deals no damage', () => {
       });
       const result = data(ack, 'attack:smart');
       // 1k10 + 10 wychodzi najmniej 11 — chyba że padła naturalna jedynka,
-      // która zgodnie z zasadą krytyka odejmuje kolejną k10. Test czekał tu na
-      // „nie mniej niż 11" i raz na kilkanaście przebiegów pękał na fumblu.
+      // która zgodnie z zasadą krytyka odejmuje kolejną k10 i schodzi wtedy
+      // najniżej do 1 (1 + 10 − 10). Uwaga na kształt: `critical` jest
+      // **obiektem** `{ type, extraRoll }`, a nie napisem — poprawka z 15.08
+      // porównywała go z `'failure'`, więc nigdy nie łapała fumbla i test dalej
+      // pękał, tyle że na naturalnej jedynce, czyli raz na dziesięć przebiegów.
       const rewrittenRoll = (await updated).message.roll;
-      expect(result.total).toBeGreaterThanOrEqual(rewrittenRoll?.critical === 'failure' ? -9 : 11);
+      expect(result.total).toBeGreaterThanOrEqual(
+        rewrittenRoll?.critical?.type === 'fumble' ? 1 : 11,
+      );
       const rewritten = rewrittenRoll?.attack;
       expect(rewritten?.detail).toContain('poprawka naboju');
       // The card shows the roll it now claims: one die, the round's bonus, and

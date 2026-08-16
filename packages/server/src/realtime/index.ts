@@ -140,6 +140,7 @@ import {
   netSlideEvent,
 } from './netcombat.js';
 import { netDeviceEvent } from './netdevices.js';
+import { netDemonDetectEvent, netDemonTurnEvent } from './netdemons.js';
 import {
   journalDeleteEvent,
   journalListEvent,
@@ -302,6 +303,8 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   netIceTurnEvent,
   netGlueClearEvent,
   netDeviceEvent,
+  netDemonDetectEvent,
+  netDemonTurnEvent,
   journalListEvent,
   journalUpsertEvent,
   journalDeleteEvent,

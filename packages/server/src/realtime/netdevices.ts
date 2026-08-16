@@ -1,9 +1,11 @@
 import type {
   CpredAttackRequest,
+  CpredCharacterData,
   CpredNetDevice,
   CpredNetFloor,
   NetRunAbilityResult,
   NetRunDevicePayload,
+  RollGesture,
   SessionUser,
 } from '@vtt/shared';
 import {
@@ -168,13 +170,27 @@ export const netDeviceEvent = defineEvent<NetRunDevicePayload, NetRunAbilityResu
     let summary: string;
     let messageId = 0;
     if (operation === 'fire') {
+      const character = await deps.ctx.prisma.character.findUnique({
+        where: { id: row.characterId },
+      });
+      if (!character) throw new RealtimeError('CHARACTER_NOT_FOUND');
       const shot = await fireDevice(deps, {
         campaignId,
         user,
         device,
-        characterId: row.characterId,
-        payload,
+        hands: { operator: parseCharacterData(character.data, deps.ctx.cpred) },
+        summary: `${device.name} — strzał Umiejętnością netrunnera.`,
+        ...(payload?.targetTokenId ? { targetTokenId: payload.targetTokenId } : {}),
+        ...(payload?.request ? { request: payload.request } : {}),
+        ...(payload?.gesture ? { gesture: payload.gesture } : {}),
       });
+      // „Ostrzelaj osłonę czy strzelaj mimo niej" (16c) wraca ze ścieżki ataku
+      // jako pytanie, a nie karta. Netrunner odpowiada na nie tak samo jak
+      // strzelec — strzelając jeszcze raz z `ignoreCover` — ale Akcja Sieciowa
+      // poszła już wcześniej i odmowa mówi to wprost. Sprawdzenie osłony przed
+      // rachunkiem znaczyłoby policzenie geometrii drugi raz, a jednej
+      // geometrii pilnuje 16b.
+      if (shot.blocked) throw new RealtimeError(`${shot.blocked} (Akcja Sieciowa poszła).`);
       messageId = shot.messageId;
       summary = shot.summary;
     } else if (operation === 'open' || operation === 'close') {
@@ -213,62 +229,62 @@ export const netDeviceEvent = defineEvent<NetRunDevicePayload, NetRunAbilityResu
 });
 
 /**
- * The turret pulls its own trigger, with the netrunner's Skills behind it.
+ * The turret pulls its own trigger, with somebody else's hand behind it.
  *
  * Nothing is re-implemented here: `performAttackRoll` does the range, the DV,
  * the cover, the line of fire, the magazine and the card with „Obrażenia" on
  * it. All this function does is say who is shooting from where, and hand over
- * the sheet the dice are read off.
+ * the numbers the dice are read off — a netrunner's Skills in 26d, a Demon's
+ * „Wartość bojowa" in 26e.
+ *
+ * The cover question comes back as a **value**, not an exception, because the
+ * two callers want different things from it: the netrunner is told to shoot
+ * again, while a Demon walking its Turn simply notes the miss and spends the
+ * next Net Action on something else.
  */
-async function fireDevice(
+export async function fireDevice(
   deps: RealtimeDeps,
   input: {
     campaignId: string;
     user: SessionUser;
     device: CpredNetDevice;
-    characterId: string;
-    payload: NetRunDevicePayload | undefined;
+    hands: { operator?: CpredCharacterData; combatValue?: number };
+    /** One Polish line for the log when the shot went through. */
+    summary: string;
+    targetTokenId?: string;
+    request?: CpredAttackRequest;
+    gesture?: RollGesture;
   },
-): Promise<{ messageId: number; summary: string }> {
-  const character = await deps.ctx.prisma.character.findUnique({
-    where: { id: input.characterId },
-  });
-  if (!character) throw new RealtimeError('CHARACTER_NOT_FOUND');
-  const operator = parseCharacterData(character.data, deps.ctx.cpred);
-
+): Promise<{ messageId: number; summary: string; blocked?: string }> {
   const result = await performAttackRoll(deps, {
     campaignId: input.campaignId,
     user: input.user,
     payload: {
       attackerTokenId: input.device.tokenId!,
-      ...(input.payload?.targetTokenId ? { targetTokenId: input.payload.targetTokenId } : {}),
+      ...(input.targetTokenId ? { targetTokenId: input.targetTokenId } : {}),
       // A turret has exactly one barrel, and it is the one row a statist sheet
-      // carries — so the netrunner never has to name it. Anything else the
-      // request asks for (celowany, seria) passes straight through.
+      // carries — so nobody ever has to name it. Anything else the request asks
+      // for (celowany, seria) passes straight through.
       request: {
         weaponRowId: SHEET_STATIST_WEAPON_ROW_ID,
-        ...(input.payload?.request ?? {}),
+        ...(input.request ?? {}),
       } as CpredAttackRequest,
-      ...(input.payload?.gesture ? { gesture: input.payload.gesture } : {}),
+      ...(input.gesture ? { gesture: input.gesture } : {}),
     },
-    device: { operator },
+    device: input.hands,
   });
-  // „Ostrzelaj osłonę czy strzelaj mimo niej" (16c) wraca jako pytanie, a nie
-  // karta. Netrunner odpowiada na nie tak samo jak strzelec — strzelając
-  // jeszcze raz z `ignoreCover` — ale Akcja Sieciowa poszła już wcześniej i
-  // odmowa mówi to wprost. Sprawdzenie osłony przed rachunkiem znaczyłoby
-  // policzenie geometrii drugi raz, a jednej geometrii pilnuje 16b.
   if (result.blocked) {
-    throw new RealtimeError(
-      result.blocked.kind === 'cover'
-        ? `${input.device.name}: strzał zasłania ${result.blocked.name} (Akcja Sieciowa poszła — strzel jeszcze raz mimo osłony).`
-        : `${input.device.name}: na linii strzału stoi ${result.blocked.name} (Akcja Sieciowa poszła).`,
-    );
+    // A blocked shot never became a card, so there is no message to point at.
+    return {
+      messageId: 0,
+      summary: input.summary,
+      blocked:
+        result.blocked.kind === 'cover'
+          ? `${input.device.name}: strzał zasłania ${result.blocked.name} — strzel jeszcze raz mimo osłony`
+          : `${input.device.name}: na linii strzału stoi ${result.blocked.name}`,
+    };
   }
-  return {
-    messageId: result.messageId ?? 0,
-    summary: `${input.device.name} — strzał Umiejętnością netrunnera.`,
-  };
+  return { messageId: result.messageId ?? 0, summary: input.summary };
 }
 
 /** Opening a door or window of stage 18d from the other end of the cable. */

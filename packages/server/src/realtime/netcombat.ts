@@ -1,6 +1,7 @@
 import type {
   ChatMessageView,
   CpredNetArchitecture,
+  CpredNetDemon,
   CpredNetIce,
   CpredNetPosition,
   NetBonus,
@@ -25,7 +26,11 @@ import {
   netAttackWins,
   netCanRunProgram,
   netCanSlide,
+  netDamageDemon,
   netDamageIce,
+  netDemonAttackPlan,
+  netDemonById,
+  netDemonZapPlan,
   netDetectionPlan,
   netIceAttackPlan,
   netProgramAttackPlan,
@@ -99,7 +104,7 @@ function requireCampaignId(socketData: { campaign: { id: string } | null }): str
   return socketData.campaign.id;
 }
 
-interface LoadedRun {
+export interface LoadedRun {
   row: NonNullable<Awaited<ReturnType<typeof loadRunRow>>>;
   architecture: CpredNetArchitecture;
   state: FullRunState;
@@ -107,7 +112,7 @@ interface LoadedRun {
   token: Token;
 }
 
-async function requireRun(
+export async function requireRun(
   deps: RealtimeDeps,
   campaignId: string,
   user: SessionUser,
@@ -242,7 +247,7 @@ export async function spawnIceOnFloors(
 // ──────────────────────────────── rzuty sporne ────────────────────────────────
 
 /** One side of an exchange: `1k10 + …`, with the modifiers named. */
-function rollSide(
+export function rollSide(
   bonuses: readonly NetBonus[],
   entropy: string | undefined,
   checkRule: boolean,
@@ -277,7 +282,7 @@ function rollSide(
  * Interface Check like every other in this chapter. A Program's side does not —
  * a Program has no Skill, and the rulebook ties the check rule to Skill Checks.
  */
-function rollExchange(
+export function rollExchange(
   plan: NetAttackPlan,
   input: { gesture?: RollGesture; attackerIsHuman: boolean; detail: string; actor: string },
 ): { roll: RollResult; attackTotal: number; defenceTotal: number; won: boolean } {
@@ -308,7 +313,7 @@ function rollExchange(
  * the state of a fight the rest of the table cannot see. What the room gets is
  * the one-line summary, exactly as in 26b.
  */
-async function postExchange(
+export async function postExchange(
   deps: RealtimeDeps,
   input: {
     campaignId: string;
@@ -377,15 +382,62 @@ function requireLiveIce(
   return ice;
 }
 
-/** Takes a beaten ICE out of the initiative queue, if it ever got into one. */
-async function dropIceFromQueue(
+/**
+ * What a netrunner may point a Program at (stage 26e).
+ *
+ * Two shapes rather than one, because the difference is not cosmetic: a Black
+ * ICE defends with a printed OBR and takes its Black-ICE column of damage,
+ * while a Demon defends with an Interface Check and takes the ordinary one.
+ * Everything *after* the plan — the Net Action, the card, the derez — is shared,
+ * which is why the fork lives in three small functions and not in two handlers.
+ */
+type NetFoe = { kind: 'ice'; ice: CpredNetIce } | { kind: 'demon'; demon: CpredNetDemon };
+
+function foeName(foe: NetFoe): string {
+  return foe.kind === 'ice' ? foe.ice.name : foe.demon.name;
+}
+
+/** Which column of a Program's damage this target reads. */
+function foeTargetKind(foe: NetFoe): 'blackIce' | 'program' {
+  return foe.kind === 'ice' ? 'blackIce' : 'program';
+}
+
+/**
+ * The foe named by a payload, with the refusals that come before any dice.
+ *
+ * A Demon needs no reach check: „hasła nie blokują Demona" and it watches the
+ * whole Architecture, so wherever the netrunner is standing, it is there too.
+ */
+function requireFoe(
+  state: FullRunState,
+  architecture: CpredNetArchitecture,
+  payload: { iceId?: string; demonId?: string } | undefined,
+  gm: boolean,
+): NetFoe {
+  if (typeof payload?.demonId === 'string' && payload.demonId.length > 0) {
+    const demon = netDemonById(state, payload.demonId);
+    // A Demon that has not started hunting is missing from the player's payload
+    // (stage 26e), so for them it does not exist — and naming its id must not
+    // be a way to find out that it does. „Nie ma takiego" is the truth from
+    // where they are standing.
+    if (!demon || (!gm && demon.mode === 'lurking')) throw new RealtimeError('NET_DEMON_UNKNOWN');
+    if (demon.mode === 'derezzed' || demon.mode === 'destroyed') {
+      throw new RealtimeError('NET_DEMON_DOWN');
+    }
+    return { kind: 'demon', demon };
+  }
+  return { kind: 'ice', ice: requireLiveIce(state, architecture, payload?.iceId) };
+}
+
+/** Takes a beaten Net participant out of the queue, if it ever got into one. */
+export async function dropNetFoeFromQueue(
   deps: RealtimeDeps,
   campaignId: string,
   scene: Scene,
-  ice: CpredNetIce,
+  combatantId: string | undefined,
 ): Promise<void> {
-  if (!ice.combatantId) return;
-  await deps.ctx.prisma.combatant.deleteMany({ where: { id: ice.combatantId } });
+  if (!combatantId) return;
+  await deps.ctx.prisma.combatant.deleteMany({ where: { id: combatantId } });
   await emitCombatOfScene(deps, campaignId, scene);
 }
 
@@ -463,7 +515,9 @@ export const netAttackEvent = defineEvent<NetRunAttackPayload, NetRunAbilityResu
       user,
       payload?.runId,
     );
-    const ice = requireLiveIce(state, architecture, payload?.iceId);
+    const foe = requireFoe(state, architecture, payload, user.role === ROLE_GM);
+    const targetKind = foeTargetKind(foe);
+    const name = foeName(foe);
     const { rank } = await netActionsForRun(deps.ctx.prisma, deps.ctx.cpred, row.characterId);
 
     const rowId = typeof payload?.rowId === 'string' ? payload.rowId : null;
@@ -478,18 +532,31 @@ export const netAttackEvent = defineEvent<NetRunAttackPayload, NetRunAbilityResu
       const slot = deck.find((entry) => entry.id === rowId);
       if (!slot?.profile) refuse('NET_PROGRAM_NOT_LOADED');
       if (state.spentRows.includes(rowId)) refuse('NET_PROGRAM_SPENT');
-      if (!netTargetAllowed(slot.profile, 'blackIce')) refuse('NET_PROGRAM_WRONG_TARGET');
-      if (!netProgramHurts(slot.profile, 'blackIce')) refuse('NET_PROGRAM_NO_EFFECT');
-      plan = netProgramAttackPlan({
-        interfaceRank: rank,
-        program: { name: slot.name, profile: slot.profile },
-        target: { name: ice.name, profile: ice.profile, kind: 'blackIce' },
-      });
+      if (!netTargetAllowed(slot.profile, targetKind)) refuse('NET_PROGRAM_WRONG_TARGET');
+      if (!netProgramHurts(slot.profile, targetKind)) refuse('NET_PROGRAM_NO_EFFECT');
+      plan =
+        foe.kind === 'demon'
+          ? netDemonAttackPlan({
+              interfaceRank: rank,
+              program: { name: slot.name, profile: slot.profile },
+              demon: foe.demon,
+            })
+          : netProgramAttackPlan({
+              interfaceRank: rank,
+              program: { name: slot.name, profile: slot.profile },
+              target: { name: foe.ice.name, profile: foe.ice.profile, kind: 'blackIce' },
+            });
       label = slot.name;
       destroys = slot.profile.effects?.destroys;
       if (slot.profile.effects?.oncePerEntry) spentRow = rowId;
     } else {
-      plan = netZapPlan({ interfaceRank: rank, target: { name: ice.name, profile: ice.profile } });
+      plan =
+        foe.kind === 'demon'
+          ? netDemonZapPlan({ interfaceRank: rank, demon: foe.demon })
+          : netZapPlan({
+              interfaceRank: rank,
+              target: { name: foe.ice.name, profile: foe.ice.profile },
+            });
       label = 'Paf';
     }
 
@@ -518,23 +585,32 @@ export const netAttackEvent = defineEvent<NetRunAttackPayload, NetRunAbilityResu
         { terms: [{ kind: 'dice', sign: 1, count: plan.dice, sides: 6 }] },
         rng,
       ).total;
-      const hit = netDamageIce(next, ice.id, damage, destroys);
+      const hit =
+        foe.kind === 'demon'
+          ? netDamageDemon(next, foe.demon.id, damage, destroys)
+          : netDamageIce(next, foe.ice.id, damage, destroys);
       next = { ...next, ...hit.state };
+      const before = foe.kind === 'demon' ? foe.demon.rezCurrent : foe.ice.rezCurrent;
       const verdict = hit.outcome?.destroyed
         ? 'zniszczony'
         : hit.outcome?.derezzed
           ? 'zderezowany'
-          : `REZ ${hit.outcome?.after ?? ice.rezCurrent}`;
-      summary = `${label} trafia: ${plan.dice}k6 = ${damage} — ${ice.name} ${verdict}.`;
+          : `REZ ${hit.outcome?.after ?? before}`;
+      summary = `${label} trafia: ${plan.dice}k6 = ${damage} — ${name} ${verdict}.`;
       exchange.roll.opposed = {
         ...exchange.roll.opposed!,
-        detail: `${exchange.roll.opposed!.detail} · ${plan.dice}k6 = ${damage} · ${ice.name}: ${verdict}`,
+        detail: `${exchange.roll.opposed!.detail} · ${plan.dice}k6 = ${damage} · ${name}: ${verdict}`,
       };
       if (hit.outcome?.derezzed || hit.outcome?.destroyed) {
-        await dropIceFromQueue(deps, campaignId, scene, ice);
+        await dropNetFoeFromQueue(
+          deps,
+          campaignId,
+          scene,
+          foe.kind === 'demon' ? foe.demon.combatantId : foe.ice.combatantId,
+        );
       }
     } else {
-      summary = `${label} nie przebija obrony ${ice.name}.`;
+      summary = `${label} nie przebija obrony ${name}.`;
     }
     if (spentRow) next = { ...next, spentRows: [...new Set([...next.spentRows, spentRow])] };
 
@@ -571,6 +647,12 @@ export const netSlideEvent = defineEvent<NetRunSlidePayload, NetRunAbilityResult
       user,
       payload?.runId,
     );
+    // „Demony nie mają Percepcji" (s. 212) — Ślizg is a Check against PER, so
+    // there is no number to beat and nothing to shake off. Refused before the
+    // Net Action is booked: this is a mistake, not a failed attempt.
+    if (typeof payload?.demonId === 'string' && payload.demonId.length > 0) {
+      throw new RealtimeError('NET_SLIDE_VS_DEMON');
+    }
     const ice = requireLiveIce(state, architecture, payload?.iceId);
     const round = await roundOfScene(deps, scene.id);
     if (!netCanSlide(state, round)) refuse('NET_SLIDE_USED');
@@ -626,7 +708,7 @@ export const netSlideEvent = defineEvent<NetRunSlidePayload, NetRunAbilityResult
         ),
       };
       next = await spawnIceOnFloors(deps, campaignId, architecture, next, floorId ? [floorId] : []);
-      await dropIceFromQueue(deps, campaignId, scene, ice);
+      await dropNetFoeFromQueue(deps, campaignId, scene, ice.combatantId);
       summary = `Ślizg udany — ucieczka o piętro. ${ice.name} zostaje czyhającym.`;
     } else {
       summary = `Ślizg nieudany — ${ice.name} nie daje się zgubić.`;
@@ -720,9 +802,10 @@ export const netIceDetectEvent = defineEvent<NetIceActPayload, NetRunAbilityResu
     }
 
     if (!ended) {
-      const combatantId = await pushIceIntoQueue(deps, campaignId, scene, {
+      const combatantId = await pushNetFoeIntoQueue(deps, campaignId, scene, {
         runId: row.id,
-        ice,
+        foeId: ice.id,
+        label: ice.name,
       });
       if (combatantId) {
         next = {
@@ -871,24 +954,29 @@ export const netIceTurnEvent = defineEvent<NetIceActPayload, NetRunAbilityResult
  * participant with no figure at all (stage 26c's one schema change). Without a
  * running fight there is nothing to insert into, and the GM's „Tura LOD-a"
  * button drives it instead.
+ *
+ * Stage 26e sends Demons through the same door, so `netIceId` carries the id of
+ * whichever **Net participant** the row stands for — a Black ICE or a Demon.
+ * They live in the same run and their ids never collide, so one column is
+ * enough; renaming it would be a migration that changes nothing.
  */
-async function pushIceIntoQueue(
+export async function pushNetFoeIntoQueue(
   deps: RealtimeDeps,
   campaignId: string,
   scene: Scene,
-  input: { runId: string; ice: CpredNetIce },
+  input: { runId: string; foeId: string; label: string },
 ): Promise<string | null> {
   const combat = await loadCombat(deps.ctx.prisma, scene.id);
   if (!combat) return null;
-  const existing = combat.combatants.find((entry) => entry.netIceId === input.ice.id);
+  const existing = combat.combatants.find((entry) => entry.netIceId === input.foeId);
   if (existing) return existing.id;
   const top = combat.combatants.reduce((best, entry) => Math.max(best, entry.initiative ?? 0), 0);
   const created = await deps.ctx.prisma.combatant.create({
     data: {
       combatId: combat.id,
-      label: input.ice.name,
+      label: input.label,
       netRunId: input.runId,
-      netIceId: input.ice.id,
+      netIceId: input.foeId,
       initiative: top + 1,
       order: -1,
     },

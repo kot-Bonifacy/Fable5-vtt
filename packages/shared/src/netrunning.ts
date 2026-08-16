@@ -214,10 +214,17 @@ export interface NetRunProgramPayload {
 /**
  * One exchange of blows. `rowId` names the Aggressor being fired; leaving it
  * out is Paf, „atak wymierzony w Program … bez Programu" (s. 201).
+ *
+ * Exactly one of `iceId` and `demonId` names the target (stage 26e). Two fields
+ * rather than one id and a kind, because the two live in different halves of
+ * the run's state and the server has to look them up in different places — a
+ * single field would only move that fork one line later.
  */
 export interface NetRunAttackPayload {
   runId: string;
-  iceId: string;
+  iceId?: string;
+  /** Stage 26e: a Demon, which defends with an Interface Check instead of OBR. */
+  demonId?: string;
   rowId?: string;
   gesture?: RollGesture;
 }
@@ -225,7 +232,9 @@ export interface NetRunAttackPayload {
 /** „Ucieczka na sąsiednie piętro windy" — the destination the player picked. */
 export interface NetRunSlidePayload {
   runId: string;
-  iceId: string;
+  iceId?: string;
+  /** Only ever a refusal: a Demon has no PER to slip away from (stage 26e). */
+  demonId?: string;
   to?: CpredNetPosition;
   gesture?: RollGesture;
 }
@@ -243,6 +252,22 @@ export interface NetIceActPayload {
 
 export interface NetRunGluePayload {
   runId: string;
+}
+
+// ─────────────────────────── Demony (etap 26e) ───────────────────────────
+
+/**
+ * The GM's two buttons on a Demon (decision of 16.08: „wszystko na klik MG",
+ * the same bargain 26c struck with the Black ICE).
+ *
+ * `detect` has no contest behind it — a Demon has no PRĘ, so noticing an
+ * intruder is a fact, not a roll: it starts hunting and takes the head of the
+ * initiative queue. `turn` plays its whole Turn at once, targets included.
+ */
+export interface NetDemonActPayload {
+  runId: string;
+  demonId: string;
+  gesture?: RollGesture;
 }
 
 // ─────────────────────── węzły kontrolne (etap 26d) ───────────────────────

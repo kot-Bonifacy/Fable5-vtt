@@ -1,6 +1,7 @@
 import type {
   ChatMessageView,
   CpredNetCombatState,
+  CpredNetDemonState,
   CpredNetIce,
   CpredNetRunState,
   DamageLogEntry,
@@ -59,7 +60,13 @@ import {
  *    uruchomionych Programów" — the class decides, not the name.
  */
 
-export type FullRunState = CpredNetRunState & CpredNetCombatState;
+/**
+ * Every slice of one run in one object: 26b's shaft, 26c's fight and 26e's
+ * Demons. Three interfaces rather than one because each stage's reader has to
+ * be able to run without the others — merged here, where the server actually
+ * needs all three at once.
+ */
+export type FullRunState = CpredNetRunState & CpredNetCombatState & CpredNetDemonState;
 
 /** Everything the caller has to refresh after an effect landed. */
 export interface IceEffectResult {
@@ -241,7 +248,7 @@ export async function applyIceEffect(
  * lower hit points: a netrunner burned down by a Kraken has to be restorable
  * exactly like somebody who breathed a gas grenade.
  */
-async function damageBrain(
+export async function damageBrain(
   deps: RealtimeDeps,
   input: {
     campaignId: string;

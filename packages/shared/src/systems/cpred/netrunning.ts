@@ -523,6 +523,40 @@ export function netDeepestBranch(architecture: CpredNetArchitecture): CpredNetBr
   return tied ? null : deepest;
 }
 
+/** „Jeden Demon na sześć pięter" (s. 218) — how many this shaft should carry. */
+export const NET_FLOORS_PER_DEMON = 6;
+
+/** Floors carrying a Demon, for whoever has to instantiate them (stage 26e). */
+export function netDemonFloors(architecture: CpredNetArchitecture): CpredNetFloor[] {
+  return architecture.branches
+    .flatMap((branch) => branch.floors)
+    .filter((floor) => floor.kind === 'demon' && (floor.programIds?.length ?? 0) > 0);
+}
+
+/**
+ * The rulebook's own budget for Demons, as advice rather than a refusal — the
+ * same bargain the rest of `netArchitectureAdvice` makes with every other soft
+ * expectation. Null when the shaft is within budget.
+ *
+ * Lives here rather than in `netdemons.ts` on purpose: that module reads this
+ * one, so the arrow may not point back. Counting Demons is a question about the
+ * *build*, which is this file's subject anyway.
+ */
+export function netDemonBudgetAdvice(architecture: CpredNetArchitecture): string | null {
+  let floors = 0;
+  let demons = 0;
+  for (const branch of architecture.branches) {
+    for (const floor of branch.floors) {
+      floors += 1;
+      if (floor.kind === 'demon') demons += floor.programIds?.length ?? 0;
+    }
+  }
+  if (demons === 0) return null;
+  const allowed = Math.max(1, Math.floor(floors / NET_FLOORS_PER_DEMON));
+  if (demons <= allowed) return null;
+  return `Demonów jest ${demons}, a Architektura ma ${floors} pięter — podręcznik radzi jednego Demona na ${NET_FLOORS_PER_DEMON} pięter (s. 218).`;
+}
+
 /**
  * Things the rulebook expects that a half-built architecture may not have yet.
  * Advice rather than refusal: the GM is mid-edit, and an editor that refuses to
@@ -536,6 +570,9 @@ export function netArchitectureAdvice(architecture: CpredNetArchitecture): strin
     advice.push('Architektura nie ma ani jednego piętra.');
     return advice;
   }
+  // Stage 26e: „jeden Demon na sześć pięter" (s. 218) — a budget, not a rule.
+  const demonBudget = netDemonBudgetAdvice(architecture);
+  if (demonBudget) advice.push(demonBudget);
   if (netDeepestBranch(architecture) === null) {
     advice.push(
       'Dwie gałęzie sięgają równie głęboko — nie ma wyraźnego dna, w którym można zostawić Wirusa.',

@@ -27,6 +27,7 @@ import {
   ROLE_GM,
   cpredInterfaceRank,
   freshNetCombat,
+  freshNetDemonState,
   freshNetRun,
   metresBetween,
   netAbility,
@@ -38,7 +39,6 @@ import {
   netIsBottom,
   netMove,
   netMoveGoesDeeper,
-  netControlDv,
   netMoveRefusal,
   netScoutReveal,
   parseCharacterData,
@@ -75,6 +75,7 @@ import {
 } from './netrun-io.js';
 import { dropRunFromQueue, emergencyJackOut, type FullRunState } from './netice.js';
 import { roundOfScene, spawnIceOnFloors } from './netcombat.js';
+import { netrunnerControlDv, releaseDemonHold, spawnDemons } from './netdemons.js';
 
 /**
  * The run (stage 26b) — jacking in, walking the shaft and the seven Interface
@@ -266,15 +267,20 @@ export const netRunStartEvent = defineEvent<NetRunStartPayload, NetRunPayload>({
     );
 
     const entryFloor = netFloorAt(architecture, entry);
-    // Both halves from the start (stage 26c): a run with no `rezzed` list is a
-    // run whose first Program would have nowhere to go.
+    // Every half from the start (26c, 26e): a run with no `rezzed` list is a run
+    // whose first Program would have nowhere to go.
     let state: FullRunState = {
       ...freshNetRun(entry, entryFloor?.id ?? ''),
       ...freshNetCombat(),
+      ...freshNetDemonState(),
     };
     if (entryFloor?.id) {
       state = await spawnIceOnFloors(deps, campaignId, architecture, state, [entryFloor.id]);
     }
+    // A Black ICE is met by opening its door; a Demon is simply there from the
+    // moment somebody jacks in — „wie o wszystkim, co dzieje się w jego
+    // Architekturze" (s. 212). The netrunner does not see it until it hunts.
+    state = await spawnDemons(deps, campaignId, architecture, state);
     await deps.ctx.prisma.netRun.create({
       data: {
         campaignId,
@@ -483,12 +489,17 @@ export const netRunAbilityEvent = defineEvent<NetRunAbilityPayload, NetRunAbilit
 
     // Stage 26d: a node somebody else already holds is taken off *them*, and
     // „PT odebrania … równe wartości Testu Kontroli, jaki wykonano" (s. 199)
-    // means the rival's total, not the node's printed DV.
+    // means the rival's total, not the node's printed DV. Stage 26e adds the
+    // third holder — the Architecture's own Demon, which starts out holding
+    // every node there is.
     const rival =
       ability.id === 'control' && floor
         ? await rivalNodeHold(deps.ctx.prisma, row.architectureId, floor.id, row.id)
         : null;
-    const dv = abilityDv(ability.id, floor?.dv, rival?.dv);
+    const dv =
+      ability.id === 'control' && floor
+        ? netrunnerControlDv(state, floor.id, floor.dv, rival?.dv)
+        : abilityDv(ability.id, floor?.dv);
     const roll = performInterfaceRoll(
       deps,
       character,
@@ -509,6 +520,7 @@ export const netRunAbilityEvent = defineEvent<NetRunAbilityPayload, NetRunAbilit
       total: roll.total,
       success,
       author: character.name,
+      dv,
       ...(rival ? { rival } : {}),
     });
 
@@ -630,13 +642,14 @@ export const netScanEvent = defineEvent<
 
 // ──────────────────────────────── mechanika ────────────────────────────────
 
-/** Which DV this ability is rolled against; null = the total *is* the answer. */
-function abilityDv(
-  id: NetAbilityId,
-  floorDv: number | undefined,
-  heldDv: number | undefined,
-): number | null {
-  if (id === 'control') return netControlDv(floorDv, heldDv);
+/**
+ * Which DV this ability is rolled against; null = the total *is* the answer.
+ *
+ * Kontrola is deliberately not here: since 26d its DV depends on who is holding
+ * the node and since 26e on whether a Demon has rolled for it, so it is worked
+ * out at the call site by `netrunnerControlDv`, which can see the run's state.
+ */
+function abilityDv(id: NetAbilityId, floorDv: number | undefined): number | null {
   if (id === 'backdoor' || id === 'eyed') return floorDv ?? null;
   return null;
 }
@@ -646,10 +659,12 @@ interface AbilityContext {
   campaignId: string;
   run: { id: string; architectureId: string; architecture: { runtime: string } };
   architecture: NonNullable<ReturnType<typeof architectureOf>>;
-  state: CpredNetRunState;
+  state: FullRunState;
   total: number;
   success: boolean;
   author: string;
+  /** The DV that was actually rolled against — computed once, at the call site. */
+  dv: number | null;
   /** Stage 26d: the run this node is being taken off, when there is one. */
   rival?: { runId: string; dv: number };
 }
@@ -715,17 +730,21 @@ async function applyAbility(
   }
 
   if (abilityId === 'control') {
-    const wanted = netControlDv(floor?.dv, context.rival?.dv);
+    const wanted = context.dv;
     if (!success || !floor) {
       return {
         summary: context.rival ? 'Węzeł został w cudzych rękach.' : 'Węzeł nie ustąpił.',
         detail: `PT ${wanted ?? '?'}`,
       };
     }
+    // Stage 26e: the Architecture's own Demon holds every node until somebody
+    // takes it, so a successful Kontrola takes it off the defence too — and if
+    // the Demon had rolled for this one, its raised DV goes with it.
+    const stripped = releaseDemonHold(state, floor.id);
     await saveRunState(deps.ctx.prisma, context.run.id, {
-      ...state,
+      ...stripped,
       controlled: [
-        ...state.controlled.filter((hold) => hold.floorId !== floor.id),
+        ...stripped.controlled.filter((hold) => hold.floorId !== floor.id),
         { floorId: floor.id, dv: total },
       ],
     });

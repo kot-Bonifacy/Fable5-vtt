@@ -5,6 +5,7 @@ import {
   combatProfileSheet,
   combatProfileSheetForSkill,
   combatProfileSkillLevel,
+  combatProfileWithCombatValue,
   createDefaultCombatProfile,
   parseCombatProfile,
   sanitizeCombatProfile,
@@ -212,5 +213,38 @@ describe('planCpredAttack accepts a synthesised statist sheet', () => {
       { name: 'Kurier', tokenId: 'token-2', metres: 14 },
     );
     expect(result).toEqual({ ok: false, error: 'NOT_ENOUGH_LUCK' });
+  });
+});
+
+describe('Wartość bojowa za spustem (etap 26e)', () => {
+  const profile = {
+    ...createDefaultCombatProfile(),
+    ref: 7,
+    dex: 6,
+    skillLevel: 7,
+    evasion: 4,
+    armorSp: 11,
+    weaponName: 'Karabin szturmowy',
+    weaponDamage: '5k6',
+    ammoCurrent: 24,
+    ammoMax: 25,
+  };
+
+  it('wkłada całą Wartość bojową w Umiejętność i zeruje Cechy', () => {
+    const machine = combatProfileWithCombatValue(profile, 14);
+    // „Test Wartości bojowej + 1k10" (s. 214) — jedna liczba, nie dwie.
+    expect(machine.skillLevel).toBe(14);
+    expect(machine.ref).toBe(0);
+    expect(machine.dex).toBe(0);
+    // „Nie mogą unikać ataków" (s. 214).
+    expect(machine.evasion).toBe(0);
+  });
+
+  it('nie rusza niczego, co należy do samej broni', () => {
+    const machine = combatProfileWithCombatValue(profile, 14);
+    expect(machine.weaponName).toBe('Karabin szturmowy');
+    expect(machine.weaponDamage).toBe('5k6');
+    expect(machine.ammoCurrent).toBe(24);
+    expect(machine.armorSp).toBe(11);
   });
 });

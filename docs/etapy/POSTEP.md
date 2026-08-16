@@ -56,9 +56,10 @@ Pełne notatki z zamkniętych etapów: `archiwum/dziennik-sesji.md` (nie czytaj 
 | 25c | Kreator: wyposażenie startowe i poziomy       | ✅     | 2026-08-14      | 4 poziomy z ceny; +53 wpisy sprzętu z podręcznika (kompendium miało 5); pakiet Roli → POMYSŁY   |
 | 26a | Sieć: dane, architektura i cyberdek           | ✅     | 2026-08-14      | etap 26 podzielony na 26a/26b/26c 14.08; ekran Sieci = pływające okno (decyzja MG)              |
 | 26b | Run: punkty dostępu, winda i Akcje Sieciowe   | ✅     | 2026-08-15      | etap 26b podzielony na 26b/26c 15.08; punkt dostępu = obiekt sceny, ukryty do Skanera           |
-| 26c | Walka w Sieci: Programy, Paf, Ślizg, LOD      | ✅     | 2026-08-15      | efekt Programu = dane wpisu; `Combatant.tokenId` nullowalny — LOD stoi w kolejce bez figury      |
+| 26c | Walka w Sieci: Programy, Paf, Ślizg, LOD      | ✅     | 2026-08-15      | efekt Programu = dane wpisu; `Combatant.tokenId` nullowalny — LOD stoi w kolejce bez figury     |
 | 26d | Węzły kontrolne i systemy obronne             | ✅     | 2026-08-15      | etap 26d podzielony na 26d/26e 15.08; wieżyczka = żeton z profilem statysty z 16b               |
-| 26e | Demony i samodzielne systemy obronne          | ⬜     |                 |                                                                                                 |
+| 26e | Demony                                        | ✅     | 2026-08-16      | etap 26e podzielony na 26e/26f 16.08; Demon trzyma węzły od startu, tura jednym klikiem MG      |
+| 26f | Samodzielne systemy obronne i broniona strefa | ⬜     |                 | wydzielony z 26e 16.08; efekt systemu środowiskowego to dziś sama proza — wymaga modelu danych  |
 | 27a | Karta jak oficjalna: strona pierwsza          | ✅     | 2026-08-13      | wydzielony z 27 dnia 13.08 (27a/27b/27c); motyw dzień/noc na razie tylko dla karty              |
 | 27b | Karta: broń, pancerz, ekwipunek               | ✅     | 2026-08-13      | zakładka „Walka" zniknęła; pancerz = 3 wiersze wydruku + reszta; trzy nowe pola prozy           |
 | 27c | Karta: Ścieżka Życia i cyborgizacje           | ✅     | 2026-08-14      | sylwetka = gotowy SVG z domeny publicznej; gniazdo na ciele to nowe pole wiersza wszczepu       |
@@ -67,19 +68,21 @@ Pełne notatki z zamkniętych etapów: `archiwum/dziennik-sesji.md` (nie czytaj 
 
 ## Od czego zacząć
 
-Ostatnio zamknięte: **26d** (węzeł kontrolny z listą urządzeń, 18 systemów obronnych z s. 213–216
-w kompendium, kamera / drzwi / przełącznik / **wieżyczka strzelająca silnikiem z 16 Umiejętnościami
-netrunnera**, PT odebrania węzła równe wynikowi Testu Kontroli). Sieć **sięga od tego etapu do
-mapy** — z rozdziału 11 zostają już tylko Demony i samodzielne wyzwalanie systemów (**26e**).
+Ostatnio zamknięte: **26e** (Demon jako uczestnik runu — obrona **Testem Interfejsu** zamiast
+OBR-u, brak PRĘ i PER, więc żadnego darmowego ataku i żadnego Ślizgu; trzyma **wszystkie węzły
+swojej Architektury od startu**; „Tura Demona" jednym klikiem MG rozgrywa „najpierw węzły, Paf
+z resztek", a wieżyczka strzela jego **Wartością bojową** tym samym silnikiem co w 26d).
+Z rozdziału 11 zostają już tylko **samodzielne systemy obronne i broniona strefa (26f)**.
 
 **🎯 Poligon jest przygotowany pod stół — nic nie trzeba budować od nowa.** Na scenie
 „Strzelnica" stoi odsłonięty **„Punkt dostępu"** i obok niego żeton **„Kolec"** związany z kartą
 **„Test 27x"** — Netrunner z Interfejsem 7 i cyberdekiem doskonałej jakości (Gumka, Pancerz,
-Miecz, Młot na wroga, Superklej, Szabloząb). Architektura **„siec klub"** ma teraz **trzy piętra**:
-1 „Poczekalnia", 2 „Strażnik piętra" z Piekielnym ogarem, 3 **„Węzeł ochrony" (PT 8)** z dwoma
-urządzeniami — **„Kamera nad bramą"** (wpis „Kamera obserwacyjna") i **„Grzechot"** (wpis
+Miecz, Młot na wroga, Superklej, Szabloząb). Architektura **„siec klub"** ma teraz **cztery
+piętra**: 1 „Poczekalnia", 2 „Strażnik piętra" z Piekielnym ogarem, 3 **„Węzeł ochrony" (PT 8)**
+z dwoma urządzeniami — **„Kamera nad bramą"** (wpis „Kamera obserwacyjna") i **„Grzechot"** (wpis
 „Automatyczna wieżyczka", związany z żetonem **„Automatyczna wieżyczka"** stojącym na mapie:
-REF 7, Umiejętność 7, karabin szturmowy 24/25, PW 25/25). Tryb turowy jest **wyłączony**;
+REF 7, Umiejętność 7, karabin szturmowy 25/25, PW 25/25) — oraz 4 **„Serce sieci"** z **Diablikiem**
+(REZ 15, Interfejs 3, 2 Akcje Sieciowe, Wartość bojowa 14). Tryb turowy jest **wyłączony**;
 kolejka „PRZED WALKĄ" z Tonym i avatar9 wraca jednym kliknięciem „Włącz tryb turowy".
 
 **⚠️ Jedna rzecz do zrobienia ręcznie: „Poligon bojowy" stoi teraz na poziomie sklepu 1
@@ -87,14 +90,39 @@ kolejka „PRZED WALKĄ" z Tonym i avatar9 wraca jednym kliknięciem „Włącz 
 przełącznika gracz nie kupi niczego droższego niż 50 ed. Przełącznik 1–4 jest w zakładce
 **„Kompendium"** pod chipami kategorii; MG kupuje przez wszystkie poziomy niezależnie od niego.
 
-**Następne etapy do wyboru:** **26e** (Demony broniące się Testem Interfejsu, ich tura „najpierw
-węzły, Paf z resztek", samodzielne stanowiska obronne i strefa broniona — domyka rozdział 11),
-**27** (kości 3D, motyw dzień/noc dla reszty UI, wydajność) i **28** (VPS). **Sesja zerowa
-z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz.
+**Następne etapy do wyboru:** **26f** (samodzielne stanowiska obronne, broniona strefa jako obiekt
+sceny i model efektu systemu środowiskowego — domyka rozdział 11; **zacznij od modelu danych**,
+bo dziś te efekty są w kompendium samą prozą), **27** (kości 3D, motyw dzień/noc dla reszty UI,
+wydajność) i **28** (VPS). **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c
+i trzech stron karty naraz.
 
 **09.08 głos wypadł z projektu** (sesja bez etapu, decyzja MG): etapy **12, 21 i 22** wycofane, kod TTS usunięty z repo. Szczegóły w `archiwum/dziennik-sesji.md` i w `archiwum/wycofane/README.md`.
 
 ### Otwarte zaległości (przechodzą między etapami)
+
+- **Etap 26e — cztery ścieżki nieodklikane; reszta sprawdzona 16.08 (patrz notatka sesji).**
+  (1) **Strona gracza** — całe okno Demonów oglądane było z konta MG, i inaczej się nie da:
+  netrunnerem Poligonu jest karta „Test 27x", która należy do MG, a nie do Tony'ego ani avatar9.
+  Różnica w kodzie **jest i jest zamierzona** (Demon „czuwający" w ogóle nie wchodzi do payloadu
+  gracza, a atak na niego wraca `NET_DEMON_UNKNOWN`) i pokryta dwoma testami na żywych gniazdach.
+  (2) **„Ten Demon miał już swoją Turę w tej Rundzie"** — na Poligonie tryb turowy jest wyłączony,
+  więc rund nie ma i odmowa nie ma jak paść; pokryta testem serwera. (3) **Wstawka Demona do
+  Kolejki Inicjatywy** — z tego samego powodu: bez rozpoczętej walki nie ma do czego wstawiać
+  (test serwera sprawdza inicjatywę „o jeden punkt wyżej" i wiersz bez figury). (4) **Uwaga
+  „jeden Demon na sześć pięter"** — Architektura Poligonu ma cztery piętra i jednego Demona, czyli
+  mieści się w budżecie; żeby zobaczyć zdanie, trzeba dołożyć drugiego (pokryte testem w `shared`).
+
+- **Etap 26e — Demon nie strzela sam z siebie do figur, których nie widzi netrunner.** Cel
+  wieżyczki wybiera silnik: **figura netrunnera**, gdy jest do niej linia strzału, a w przeciwnym
+  razie najbliższa figura, która nie jest urządzeniem tej Architektury. To **czytanie VTT, nie
+  RAW** — podręcznik zostawia wybór ofiary stołowi, a decyzja MG z 16.08 („jeden klik") kazała
+  komuś wybrać. Jeśli przy stole wyjdzie, że Demon strzela nie w tego, w kogo trzeba, pierwszym
+  miejscem do obejrzenia jest `pickTurretTarget` w `realtime/netdemons.ts`.
+
+- **Etap 26e — Demon nie obsługuje kamer ani drzwi, tylko strzela i Pafa.** `nextDemonStep` zna
+  trzy kroki (odbierz węzeł, strzel, Pafnij), bo tylko strzał ma w silniku konsekwencję, którą da
+  się rozliczyć. Obrócenie kamery czy zamknięcie bramy przez Demona zostaje **ręcznym hakiem MG** —
+  ta sama umowa, którą 26c zawarło z dwoma efektami „na godzinę", a 26d z widzeniem kamery.
 
 - **Etap 26d — cztery ścieżki nieodklikane; reszta sprawdzona 15.08 (patrz notatka sesji).**
   (1) **„Raz na Turę"** — `NET_NODE_USED` ma polskie zdanie i test na żywych gniazdach, ale
@@ -557,8 +585,87 @@ decyduje przegrany, nie zwycięzca`) — Konfrontacje z 10.08 szły z konta MG, 
   2k6, który nie przechodzi przez pancerz). Naprawiony; 12 przebiegów bez porażki. **Wniosek
   ogólny:** zanim uznasz migotanie za „ciasny limit czasu", sprawdź, czy komunikat mówi
   o **czasie**, czy o **asercji** — ten mówił o asercji przez pół roku.
+  **Korekta z 16.08:** bliźniacze migotanie `ammo-effects.test.ts` („1k10 + 10 nie wyjdzie
+  poniżej 11") było łatane 15.08 **warunkiem, który nigdy nie był prawdziwy**: `roll.critical`
+  to **obiekt** `{ type: 'fumble' | 'crit', extraRoll }`, a test porównywał go z napisem
+  `'failure'`. Poprawka nie zmieniła więc nic, a test pękał na każdej naturalnej jedynce, czyli
+  **raz na dziesięć przebiegów**. Naprawione (`critical?.type === 'fumble'`, dolna granica 1).
+  **Wniosek ogólny:** porównanie z literałem w teście sprawdź na prawdziwym kształcie danych —
+  TypeScript nie pomoże, jeśli lokalny typ wypisany w teście też zmyśla.
 
 ## Notatki z dwóch ostatnich sesji
+
+### Sesja 16.08 — etap 26e (Demony)
+
+**Etap 26e został przed rozpoczęciem podzielony na dwa** (decyzja MG). Pierwotny zakres niósł
+naraz Demona (walka w Sieci) i **bronioną strefę jako obiekt sceny** z samoczynnym wyzwalaniem —
+a to druga warstwa i osobny model danych: efekty systemów środowiskowych („6k6 obrażeń", „Test
+Atletyki PT 15", „RUCH −2k6") są w kompendium **wyłącznie prozą**, więc 26f musi zacząć od
+modelu efektu wzorem `CpredNetProgramEffects` z 26c. Samodzielne stanowiska obronne i strefy
+wyprowadziły się do nowego **26f**.
+
+**Trzy decyzje MG z 16.08 niosą cały etap.** (1) **Demon trzyma wszystkie węzły swojej
+Architektury od startu** — jest gospodarzem sieci, więc netrunner każdy węzeł musi mu odebrać;
+PT odebrania to PT wypisane na piętrze, dopóki Demon sam nie rzuci Testu Kontroli, a potem jego
+wynik. (2) **Tura Demona idzie jednym klikiem**, z celami wybranymi przez silnik — karta obrażeń
+ma „Cofnij", więc wybór, który MG się nie spodoba, kosztuje jedno kliknięcie. (3) Jak w 26c,
+**Demon nie rusza się sam**: dwa przyciski MG, „Demon wykrywa intruza" i „Tura Demona".
+
+**Wykrycie intruza nie jest rzutem.** Demon nie ma PRĘDKOŚCI, więc z encountera ze s. 205 zostaje
+tylko ta połowa, która coś znaczy przy stole: zaczyna ścigać i wchodzi na czoło Kolejki
+Inicjatywy. Nie ma też PER, więc **Ślizg przed nim nie działa** — w wierszu Demona zamiast
+przycisku stoi zdanie „Ślizg nie działa — Demon nie ma Percepcji", a serwer odmawia
+`NET_SLIDE_VS_DEMON` **przed** zaksięgowaniem Akcji Sieciowej (to pomyłka, nie nieudana próba).
+
+**Kolejność Tury jest czystą funkcją, ale wołaną krok po kroku.** `nextDemonStep` odpowiada „co
+teraz": najpierw odbierz węzeł, który trzyma netrunner, potem strzel z wieżyczki własnego węzła,
+a z resztek Pafnij. Krok po kroku, a nie z gotowej listy, bo **Test Kontroli może się nie udać** —
+a węzeł odebrany w tej Turze wolno w tej samej Turze wykorzystać. Widać to na czacie z oględzin:
+„Węzeł ochrony odebrany — PT odebrania go Demonowi: 13. · Grzechot strzela do: Kolec (Wartość
+bojowa 14)". Nieudany Test blokuje ten węzeł do końca Tury, żeby Demon nie przepalił wszystkich
+Akcji na jeden zamek.
+
+**Wieżyczka Demona strzela tą samą drogą co wieżyczka netrunnera z 26d.** `combatProfileOperatedBy`
+dostał brata: `combatProfileWithCombatValue` wkłada całą „Wartość bojową" w **Umiejętność**
+i zeruje Cechy oraz Unik („nie mogą unikać ataków", s. 214). Karta z oględzin czyta się wtedy
+uczciwie: „Karabin szturmowy → Kolec · 1d10+14 · **Refleks (REF) +0 · Broń długa +14** · 17 m
+(13–25 m) · PT 15 · magazynek 23/25". Maszyna nie ma refleksu, a jedna liczba nie udaje dwóch.
+26f użyje tej samej funkcji dla stanowisk obronnych.
+
+**Demon żyje w stanie runu, jak Czarny LOD z 26c**, i to jest trzeci plaster stanu
+(`CpredNetDemonState`) sklejany w `readFullRun`. Powód ten sam co przy LOD-zie: „Odłączenie
+resetuje obronę danej Architektury Sieciowej" (s. 198). Konsekwencja, którą warto znać przy stole:
+**pokonanie Demona otwiera jego węzły z powrotem na PT wypisane na piętrze** — `netDemonHoldDv`
+przestaje cokolwiek zwracać, gdy nie zostaje ani jeden żywy Demon.
+
+**Zweryfikowane:** 1212 testów w `shared` (20 nowych w `netdemons.test.ts` + 2 w `statist.test.ts`),
+701 na serwerze (14 nowych w `netdemons.test.ts` na żywych gniazdach, 5 przebiegów bez migotania),
+`tsc --noEmit` czysty w trzech pakietach, ESLint, Prettier i `pnpm build` bez uwag. **Migracji nie
+ma** — Demon mieści się w kolumnie JSON runu, a `Combatant.netIceId` niesie od tego etapu id
+**uczestnika Sieci**, Czarnego LOD-a albo Demona (zmiana samego komentarza w schemacie).
+
+**Odklikane u MG** w kampanii „Poligon bojowy". Potwierdzone: **czwarte piętro „Serce sieci"**
+z Diablikiem w edytorze Architektury (uwaga „Demon bez wpisu" znika po wybraniu wpisu); sekcja
+**DEMONY** w oknie Sieci obok sekcji **CZARNY LOD** (Diablik: „czuwa", REZ 15/15, u MG „Interfejs 3
+· Akcje Sieciowe 2 · Wartość bojowa 14"); **„Demon wykrywa intruza"** → chip „ściga" i zdanie
+„Diablik wie już o intruzie — Architektura zaczyna się bronić"; **lista broni czyta kolumnę
+Programów, nie Czarnych LOD-ów** („Miecz — 2k6, Młot na wroga — 3k6, Szabloząb — 6k6", Superklej
+przeciwbiałkowy nieobecny); **atak** („Młot na wroga → Diablik · 1d10+8 = 16 · **obrona 1d10+3 = 5**
+· 3k6 = 13 · Diablik: REZ 2") — obrona jest Testem Interfejsu, nie kolumną OBR; **Tura Demona**
+w dwóch wariantach („Grzechot strzela do: Kolec (Wartość bojowa 14). · Paf chybia" oraz „Węzeł
+ochrony — Test Kontroli nieudany (PT 12). · Paf: 1k6 = 5 bezpośrednio w mózg"); **PT w obie
+strony** — Demon rzucał „Kontrola — Węzeł ochrony · PT 12", a netrunner odbierał węzeł kartą
+„Kontrola (Interfejs) · PT 13". Konsola czysta.
+
+**Jeden błąd spoza etapu, znaleziony po drodze.** Migotanie `ammo-effects.test.ts` łatane 15.08
+wcale nie zniknęło: łatka porównywała `roll.critical` z napisem `'failure'`, a to **obiekt**
+`{ type: 'fumble', extraRoll }`, więc warunek nigdy nie był prawdziwy i test pękał na każdej
+naturalnej jedynce — raz na dziesięć przebiegów, nie „raz na kilkanaście". Naprawione; szczegóły
+w „Pułapkach dev".
+
+**Poligon zostaje przygotowany pod stół**: architektura „siec klub" ma teraz **cztery piętra**
+(doszło 4 „Serce sieci" z **Diablikiem**), run jest zamknięty, PW Kolca przywrócone do 35/35,
+magazynek „Automatycznej wieżyczki" do 25/25. Tryb turowy dalej wyłączony.
 
 ### Sesja 15.08 (trzecia tego dnia) — etap 26d (węzły kontrolne i systemy obronne)
 
@@ -641,102 +748,11 @@ bojowym. Run jest zamknięty, kamera włączona i nieobrócona, tryb turowy dale
 
 ### Sesja 15.08 (druga tego dnia) — etap 26c (walka w Sieci: Programy, Paf, Ślizg, Czarny LOD)
 
-**Efekt Programu jest danymi, nie kodem — i to jest cały etap w jednym zdaniu.** Podręcznik
-drukuje przy każdym Programie jedno zdanie („Zadaje 3k6 obrażeń Programom niebędącym Czarnym
-LOD-em lub 2k6 Programom typu Czarny LOD"), a 26c musi na nim działać. Czytanie tego zdania
-w kodzie znaczyłoby `switch` po polskich nazwach — i MG, który wymyśli własny Program,
-dostałby coś, co silnik grzecznie ignoruje. Więc zdanie zostaje opisem wpisu, a obok niego
-siedzi `CpredNetProgramEffects`: kości obrażeń wobec trzech rodzajów celu, premia Dopalacza,
-rodzaj Obrońcy, dziewięć nazwanych haków i trzy flagi („niszczy zamiast derezować", „tylko
-jedna kopia", „raz na wejście"). Wszystkie 27 Programów z podręcznika ma to wypełnione przez
-`parse-netrunning.py`, a MG dopisuje własne **formularzem** w edytorze kompendium.
-
-**Agresora się nie trzyma uruchomionego — odpala się go atakiem.** „Są uruchomione przy Ataku,
-a kiedy zostaną użyte, wyłączają się automatycznie" (s. 201), więc jedna Akcja Sieciowa kupuje
-cały atak, a w `rezzed` siedzą wyłącznie Dopalacze i Obrońcy. To także jedyne czytanie, przy
-którym wychodzi przykład Pafa ze s. 201: netrunner z czterema Akcjami Sieciowymi naprawdę
-zdąży odpalić trzy Programy ofensywne i jeszcze Pafnąć.
-
-**Obie strony wymiany rzuca się naraz.** Inaczej niż przy Pochwyceniu z 14d, drugą stroną jest
-Program — nie ma komu podać przycisku „Broń się". Karta pokazuje więc wymianę zamkniętą, a
-`opposed.won` jest jej wyrokiem; remis przegrywa, bo podręcznik mówi „większy od". **Rzut
-netrunnera eksploduje i fumbluje** (to Test), rzut Programu nie — Program nie ma Umiejętności,
-a zasada krytyka wisi w podręczniku przy Testach Umiejętności. Ta asymetria kosztowała trzy
-migotliwe testy serwera, zanim została nazwana.
-
-**Decyzja MG z 15.08: Czarny LOD rusza się wyłącznie na klik MG.** RAW odpala darmowy atak
-w chwili, gdy netrunner wejdzie na piętro; VTT stawia tam LOD-a jako **czyhającego** i daje MG
-dwa przyciski — „LOD wykrywa intruza" (test PRĘ, darmowy efekt przy przegranej, wskoczenie na
-czoło kolejki) oraz „Tura LOD-a". Druga decyzja MG: **bez trackera walka w Sieci też działa** —
-zasady liczone w rundach (raz na Turę, zegar Superkleju) po prostu wtedy nie gryzą.
-
-**Tracker nauczył się nieść uczestnika bez ciała.** „LOD zajmuje pierwsze miejsce w Kolejce
-Inicjatywy, o jeden punkt wyżej" (s. 205) — to wstawka, nie przerzut. `Combatant.tokenId` jest
-od tego etapu **nullowalny**, a wiersz niesie `label`, `netRunId` i `netIceId`. Zmiana przeszła
-przez 25 miejsc w serwerze i 16 u klienta i wszystkie znalazł kompilator: nowy typ
-`FiguredCombatantRow` zawęża wiersz tam, gdzie zasada mówi o ciele (Pochwycenie, ogień, statusy,
-rzut inicjatywy), a `combatantName` maluje resztę. Wiersz LOD-a w trackerze ma chip „W SIECI",
-nie ma kostki i znika razem z runem.
-
-**Obrażenia w mózg idą ścieżką `directDamage` z 16h.** Karta jest zwykłą kartą obrażeń
-z „Cofnij", pancerz ich nie zatrzymuje, a jedyne, co je obniża, to zrezowany **Pancerz
-(Program)** — bo to Program, nie zbroja. Podpalenie („cyberdek i ubranie zaczynają się palić")
-to ten sam status Podpalony i ten sam automat 2 obrażeń na koniec Tury, co w 16h.
-
-**Rachunek za awaryjne odłączenie wreszcie jest wystawiany.** 26b zapisywało listę napotkanych
-LOD-ów „na poczet 26c"; teraz wyjście poza 6 m bez odłączenia zbiera efekty **wszystkich, które
-jeszcze działają** (s. 198), a Olbrzym, który sam wyrzucił netrunnera, jest z rachunku wyłączony
-(„z wyjątkiem efektu tego Olbrzyma"). Kod dzieli się na trzy pliki, żeby to było w ogóle
-możliwe: `netice.ts` (efekty + awaryjne odłączenie) nie importuje `tokens.ts` i zwraca listę
-figur do odświeżenia, bo to `tokens.ts` woła go po każdym ruchu.
-
-**Ślizg zdejmuje LOD-a z ogona, a nie z Architektury.** Udany test odsyła netrunnera na
-sąsiednie piętro (hasła nie da się minąć), a LOD zostaje **czyhający na piętrze, z którego
-uciekł** — i przestaje być „wykryty", więc powrót to nowe „gdy się na niego natkniesz". Bez
-tego zresetowania czyhający LOD byłby po Ślizgu martwym meblem do końca runa.
-
-**Dwa haki zostają dla MG** (decyzja MG z 15.08): „na godzinę obniża 1k6 INT, REF i ZW" oraz
-„RUCH −1k6 na godzinę". Oba to zegar spoza walki na Cechach, których karta nie umie obniżyć
-na godzinę i przywrócić; karta czatu nazywa efekt po polsku, MG go zapisuje.
-
-**Zweryfikowane:** 1165 testów w `shared` (40 nowych w `netcombat.test.ts`), 676 na serwerze
-(18 nowych w `netcombat.test.ts` na żywych gniazdach — wymuszonych **danymi wpisów**, nie atrapą
-losowości: „Zawsze trafia" ma ATK 30, „Nigdy nie trafia" OBR 30), `tsc --noEmit` czysty
-w trzech pakietach, ESLint, Prettier i `pnpm build` bez uwag. Migracja:
-`20260815133929_stage26c_net_combat` (nullowalny `tokenId` + trzy kolumny, dane przeniesione 1:1).
-
-**Trzy błędy spoza etapu, znalezione po drodze.** (1) **Gniazdo deku gubiło mechanikę Programu** —
-`validateInstalledProgram` (26a) i `install()` u klienta kopiowały wybrane pola i nie znały
-`effects`; obie drogi chodzą teraz przez jedną funkcję `netProgramProfileOf`, która kopiuje wpis
-w całości. (2) **`ammo-effects.test.ts` pękał raz na kilkanaście przebiegów** na asercji „1k10 + 10
-nie wyjdzie poniżej 11" — wyjdzie, jeśli padnie naturalna jedynka; ta sama rodzina błędu, którą
-`POSTEP` opisuje przy `ammo.test.ts`. (3) **Zmiana karty w trakcie runa nie docierała do okna
-Sieci** — `character:update` emituje teraz `netrun:sync`, gdy postać ma otwarty run.
-
-**Odklikane u MG** w kampanii „Poligon bojowy". Potwierdzone: **sekcja CYBERDEK** w oknie Sieci
-z sześcioma Programami, klasą, mechaniką w jednej linii („2k6 Programom · 3k6 Czarnym LOD-om")
-i uczciwym „przeciwbiałkowy — Czarnemu LOD-owi nic nie zrobi" przy Superkleju; **Uruchom
-Pancerz** → „zrezowany · REZ 7/7", „zużyty na to wejście", nagłówek „CYBERDEK · PANCERZ ZDEJMUJE
-4 Z OBRAŻEŃ W MÓZG"; **wejście na piętro z LOD-em** stawiające „Piekielnego ogara" (czyha,
-REZ 20/20, u MG ATK 6 / OBR 2 / PER 6 / PRĘ 6); **atak Mieczem** („1d10+8 = 14 · obrona 1d10+2 = 12
-· 3k6 = 10 · REZ 10") z linią publiczną „Miecz — trafienie w Sieci"; **„LOD wykrywa intruza"**
-(wygrany test → bez darmowego ataku, LOD przechodzi w „ściga"); **„Tura LOD-a"** trafiająca
-w mózg („2k6 = 5, Pancerz zdjął 4 — 1 w mózg") z kartą obrażeń „PW 35 → 34" i „Cofnij";
-**Ślizg** („ucieczka o piętro, Piekielny ogar zostaje czyhającym") wraz z wyszarzeniem „Atakuj"
-i podpowiedzią „Ten Czarny LOD jest na innym piętrze"; **awaryjne odłączenie** przy wyjściu poza
-6 m z rachunkiem („rachunek za 1: Piekielny ogar: 2k6 = 7, Pancerz zdjął 4 — 3 w mózg");
-**wstawka do kolejki inicjatywy** — LOD na pozycji 1 z inicjatywą **21** nad Tonym (20), chipem
-„W SIECI" i bez kostki, przy Kolcu „Akcja 1/1 · Sieć 1/4"; **wyjście LOD-a z kolejki** razem
-z odłączeniem; **karta wpisu w kompendium** z wierszem „MECHANIKA"; **formularz MG** z sekcją
-„Efekt (mechanika)". Konsola czysta.
-
-**Poligon zostaje przygotowany pod stół** (inaczej niż po 26a i 26b, gdzie stan przywracano):
-architektura „siec klub" ma teraz piętro 1 „Poczekalnia" i piętro 2 „Strażnik piętra"
-z Piekielnym ogarem, na Strzelnicy stoi odsłonięty **„Punkt dostępu"**, obok niego żeton
-**„Kolec"** związany z kartą **„Test 27x"** (Netrunner, Interfejs 7, cyberdek doskonałej jakości
-z Gumką, Pancerzem, Mieczem, Młotem na wroga, Superklejem i Szablozębem). PW przywrócone do
-35/35, Podpalony zdjęty, tryb turowy **wyłączony** — kolejka „PRZED WALKĄ" z Tonym i avatar9,
-która stała tam wcześniej, wraca jednym kliknięciem „Włącz tryb turowy".
+Efekt Programu stał się **danymi wpisu** (`CpredNetProgramEffects`: kości wobec trzech rodzajów
+celu, dziewięć nazwanych haków, trzy flagi), a Agresora nie trzyma się uruchomionego — odpala się
+go atakiem. Tracker nauczył się nieść uczestnika bez ciała (`Combatant.tokenId` nullowalny), więc
+Czarny LOD stoi w kolejce inicjatywy bez figury na mapie. Migracja
+`20260815133929_stage26c_net_combat`; pełna notatka: `archiwum/dziennik-sesji.md`.
 
 ### Sesja 15.08 — etap 26b (run: punkty dostępu, winda i Akcje Sieciowe)
 

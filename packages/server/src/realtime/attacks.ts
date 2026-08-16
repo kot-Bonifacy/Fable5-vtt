@@ -37,6 +37,7 @@ import {
   ammoOffersSecondRoll,
   ammoProfilesOf,
   combatProfileOperatedBy,
+  combatProfileWithCombatValue,
   concentrationBase,
   cpredSmokeModifiers,
   distanceToCover,
@@ -660,12 +661,15 @@ async function buildStatistSource(
   token: Token,
   request: CpredAttackRequest | undefined,
   /**
-   * Stage 26d: whose Skills the trigger is pulled with. Present when a turret
-   * is fired from a control node — „rzucając na Umiejętności tego Netrunnera"
-   * (s. 213). The magazine and the plating stay the turret's either way, which
-   * is why the *stored* profile below is never the substituted one.
+   * Whose hand is on the trigger, when it is not the figure's own.
+   *
+   * Stage 26d: a netrunner's Skills — „rzucając na Umiejętności tego
+   * Netrunnera" (s. 213). Stage 26e: a Demon's single „Wartość bojowa", the one
+   * number a machine rolls with (s. 212, s. 214). The magazine and the plating
+   * stay the turret's in both cases, which is why the *stored* profile below is
+   * never the substituted one.
    */
-  operator?: CpredCharacterData,
+  hands?: { operator?: CpredCharacterData; combatValue?: number },
 ): Promise<AttackSource> {
   const profile = readSheetCombatProfile(token.combatProfile);
   if (!profile) throw new RealtimeError('TOKEN_HAS_NO_PROFILE');
@@ -681,7 +685,11 @@ async function buildStatistSource(
 
   // Pass two: the same sheet with that one skill at the profile's level — or at
   // the operator's, when somebody else is aiming it.
-  const firing = operator ? combatProfileOperatedBy(profile, operator, skillId) : profile;
+  const firing = hands?.operator
+    ? combatProfileOperatedBy(profile, hands.operator, skillId)
+    : hands?.combatValue !== undefined
+      ? combatProfileWithCombatValue(profile, hands.combatValue)
+      : profile;
   return {
     kind: 'statist',
     token,
@@ -715,11 +723,14 @@ export async function performAttackRoll(
     user: SessionUser;
     payload: AttackRollPayload<CpredAttackRequest> | undefined;
     /**
-     * Stage 26d: a defence system fired from a control node. The token shoots,
-     * this sheet rolls, and the Net Action that bought the shot has already
+     * A defence system fired from a control node. The token shoots, the hand
+     * named here rolls, and the Net Action that bought the shot has already
      * been billed — so the figure's own turn budget is left alone.
+     *
+     * Stage 26d puts a netrunner's whole sheet here; stage 26e puts a Demon's
+     * „Wartość bojowa", which is one number standing for Stat and Skill at once.
      */
-    device?: { operator: CpredCharacterData };
+    device?: { operator?: CpredCharacterData; combatValue?: number };
   },
 ): Promise<AttackRollResult> {
   {
@@ -798,14 +809,7 @@ export async function performAttackRoll(
             token: attacker,
             data: parseCharacterData(character.data, registry),
           } satisfies AttackSource)
-        : await buildStatistSource(
-            deps,
-            campaignId,
-            registry,
-            attacker,
-            payload?.request,
-            device?.operator,
-          );
+        : await buildStatistSource(deps, campaignId, registry, attacker, payload?.request, device);
       const data = source.data;
 
       const sceneView = toSceneView(scene);

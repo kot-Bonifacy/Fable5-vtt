@@ -39,6 +39,9 @@ import { NET_FLOOR_KIND_LABELS, netTrunk } from './netrunning.js';
 // Type-only: `netcombat.ts` walks this file's shaft, so a value import back
 // would close a cycle. The fight it describes rides on the run's own view.
 import type { NetCombatView } from './netcombat.js';
+// Same bargain for stage 26e's Demons: the view is built there, the run merely
+// carries it. Type-only, so the two modules never import each other's values.
+import type { NetDemonView } from './netdemons.js';
 import type { CpredNetDeviceState, CpredNetNodeUse, NetDeviceView } from './netdevices.js';
 import { readNetDeviceStates, readNetNodeUses } from './netdevices.js';
 
@@ -710,6 +713,11 @@ export interface NetRunView {
   viruses: CpredNetVirus[];
   /** Programs, Black ICE and what is stuck to the netrunner (stage 26c). */
   combat: NetCombatView;
+  /**
+   * Demons defending this Architecture (stage 26e). Already cut for the viewer:
+   * one that has not started hunting is absent from a player's copy entirely.
+   */
+  demons: NetDemonView[];
 }
 
 /**
@@ -728,6 +736,8 @@ export function netRunView(
     netActionsMax: number;
     runtime?: CpredNetRuntime;
     combat: NetCombatView;
+    /** Stage 26e, already filtered for this pair of eyes. */
+    demons?: NetDemonView[];
     /**
      * Stage 26d: the device list of a control node, already cut for this pair of
      * eyes. Passed in rather than built here because a device names a catalogue
@@ -822,6 +832,7 @@ export function netRunView(
     virus: state.virus,
     viruses: options.runtime?.viruses ?? [],
     combat: options.combat,
+    demons: options.demons ?? [],
   };
 }
 

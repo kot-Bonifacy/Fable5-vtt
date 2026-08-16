@@ -106,6 +106,7 @@ import type {
   NetAccessPointSyncBroadcast,
   NetAccessPointUpdatePayload,
   NetAccessPointView,
+  NetDemonActPayload,
   NetIceActPayload,
   NetRunAbilityPayload,
   NetRunAbilityResult,
@@ -1492,6 +1493,19 @@ export const clearNetGlue = (runId: string) => emitSceneAck('netrun:glue', { run
  */
 export const operateNetDevice = (payload: NetRunDevicePayload) =>
   emitSceneAck<NetRunAbilityResult>('netrun:device', payload);
+
+/* ── Demony (etap 26e) ── */
+
+/**
+ * Dwa przyciski MG przy Demonie. „Wykrycie" nie ma za sobą testu — Demon nie ma
+ * PRĘDKOŚCI — a „Tura" rozgrywa całą jego Turę naraz, z celami wybranymi przez
+ * silnik (decyzja MG z 16.08).
+ */
+export const demonDetects = (payload: NetDemonActPayload) =>
+  emitSceneAck<NetRunAbilityResult>('netrun:demon:detect', payload);
+
+export const demonTakesTurn = (payload: NetDemonActPayload) =>
+  emitSceneAck<NetRunAbilityResult>('netrun:demon:turn', payload);
 
 /**
  * Dziennik kampanii. Wołane przy wejściu w zakładkę, nie w `state:sync`.

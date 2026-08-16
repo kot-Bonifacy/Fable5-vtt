@@ -2,7 +2,6 @@ import type {
   ChatMessageView,
   CombatActionLogEntry,
   CpredNetArchitecture,
-  CpredNetCombatState,
   CpredNetPosition,
   CpredNetProgramProfile,
   CpredNetRunState,
@@ -25,6 +24,7 @@ import {
   netActionsAfterDebt,
   netActionsForInterface,
   netCombatView,
+  netDemonViews,
   netDeviceStateOf,
   netDeviceView,
   netFloorAt,
@@ -33,6 +33,7 @@ import {
   netrunningDataOf,
   parseCharacterData,
   readNetCombatState,
+  readNetDemonState,
   readNetRunState,
   readNetRuntime,
   tokenCentre,
@@ -40,6 +41,7 @@ import {
 } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
 import type { NetAccessPoint, NetRun, Scene, Token } from '../generated/prisma/client.js';
+import type { FullRunState } from './netice.js';
 import type { RealtimeDeps } from './registry.js';
 import { campaignRoom } from './state.js';
 import { campaignEntry } from './compendium.js';
@@ -252,6 +254,7 @@ export async function runPayloadFor(
   const state = readNetRunState(row.data);
   if (!architecture || !state) return null;
   const fight = readNetCombatState(safeParse(row.data));
+  const defence = readNetDemonState(safeParse(row.data));
 
   const point = await prisma.netAccessPoint.findUnique({
     where: { id: row.accessPointId },
@@ -298,6 +301,7 @@ export async function runPayloadFor(
       netActionsMax: actions,
       runtime,
       combat,
+      demons: netDemonViews(defence, { gm }),
       devicesOf: (floor) => devices.get(floor.id) ?? [],
       round: combatRow && combatRow.round > 0 ? combatRow.round : null,
     }),
@@ -360,11 +364,12 @@ function safeParse(raw: string): unknown {
   }
 }
 
-/** Both halves of a stored run — 26b's shaft and 26c's fight, in one object. */
-export function readFullRun(raw: string): (CpredNetRunState & CpredNetCombatState) | null {
+/** Every slice of a stored run — 26b's shaft, 26c's fight, 26e's Demons. */
+export function readFullRun(raw: string): FullRunState | null {
   const state = readNetRunState(raw);
   if (!state) return null;
-  return { ...state, ...readNetCombatState(safeParse(raw)) };
+  const parsed = safeParse(raw);
+  return { ...state, ...readNetCombatState(parsed), ...readNetDemonState(parsed) };
 }
 
 export async function fetchRunsFor(
@@ -448,10 +453,11 @@ export async function releaseNodeHold(
 export async function saveRunState(
   prisma: PrismaClient,
   runId: string,
-  state: CpredNetRunState | (CpredNetRunState & CpredNetCombatState),
+  state: CpredNetRunState | Partial<FullRunState>,
 ): Promise<void> {
   const current = await prisma.netRun.findUnique({ where: { id: runId }, select: { data: true } });
-  const merged = { ...readNetCombatState(safeParse(current?.data ?? '{}')), ...state };
+  const parsed = safeParse(current?.data ?? '{}');
+  const merged = { ...readNetCombatState(parsed), ...readNetDemonState(parsed), ...state };
   await prisma.netRun.update({ where: { id: runId }, data: { data: JSON.stringify(merged) } });
 }
 

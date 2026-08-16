@@ -3,6 +3,7 @@ import type {
   CpredNetPosition,
   NetAbilityId,
   NetCombatView,
+  NetDemonView,
   NetDeviceOperation,
   NetFloorView,
   NetIceView,
@@ -11,6 +12,7 @@ import type {
 } from '@vtt/shared';
 import {
   NET_ABILITIES_AVAILABLE,
+  NET_DEMON_MODE_LABELS,
   NET_DEVICE_KIND_LABELS,
   NET_DEVICE_OPERATION_LABELS,
   NET_FLOOR_KIND_LABELS,
@@ -24,6 +26,8 @@ import {
   attackInNet,
   clearNetGlue,
   copyNetFile,
+  demonDetects,
+  demonTakesTurn,
   iceDetects,
   iceTakesTurn,
   leaveNetRun,
@@ -54,6 +58,11 @@ import { plural } from '../plural.js';
  * napotkany Program, z paskiem REZ i przyciskami ataku) oraz **Cyberdek**
  * (gniazda z Programami). Obie są puste, dopóki nie ma czym walczyć — okno
  * netrunnera bez deku wygląda dokładnie tak, jak w 26b.
+ *
+ * Etap 26e dokłada trzecią: **Demony**. Wygląda jak lista LOD-ów i celowo — to
+ * ten sam rodzaj przeciwnika z ekranu netrunnera. Różnice widać w wierszu:
+ * zamiast ATK/OBR są Interfejs i Wartość bojowa (u MG), a zamiast przycisku
+ * Ślizgu stoi zdanie, dlaczego go nie ma.
  */
 
 /** Ikona piętra — jedno spojrzenie mówi, co za drzwiami. */
@@ -485,6 +494,111 @@ function IceRow({
   );
 }
 
+/**
+ * Jeden Demon (etap 26e).
+ *
+ * Od Czarnego LOD-a różni się trzema rzeczami i wszystkie trzy widać: broni się
+ * Testem Interfejsu, więc MG nie ma tu kolumny OBR; nie ma PER, więc nie ma
+ * przycisku Ślizgu, tylko zdanie dlaczego; i nie czyha na piętrze, tylko wie
+ * o wszystkim, więc nie ma plakietki „na tym piętrze".
+ *
+ * Gracz widzi Demona dopiero wtedy, gdy ten zacznie go ścigać — wcześniej nie
+ * ma go w payloadzie. Dwa przyciski MG to ta sama decyzja co przy LOD-zie
+ * z 26c: w Sieci nic nie rusza się samo.
+ */
+function DemonRow({
+  demon,
+  weapons,
+  isGm,
+  busy,
+  onAttack,
+  onDetect,
+  onTurn,
+}: {
+  demon: NetDemonView;
+  weapons: NetProgramSlotView[];
+  isGm: boolean;
+  busy: boolean;
+  onAttack: (demonId: string, rowId?: string) => void;
+  onDetect: (demonId: string) => void;
+  onTurn: (demonId: string) => void;
+}) {
+  const [weapon, setWeapon] = useState('');
+  const down = demon.mode === 'derezzed' || demon.mode === 'destroyed';
+  const rezPercent = demon.rezMax > 0 ? Math.round((demon.rezCurrent / demon.rezMax) * 100) : 0;
+  return (
+    <li className={`net-ice${down ? ' net-ice--down' : ''}`}>
+      <div className="net-ice-head">
+        <span className="net-ice-glyph">👹</span>
+        <span className="net-ice-name">{demon.name}</span>
+        <span className="net-run-floor-flag">{NET_DEMON_MODE_LABELS[demon.mode]}</span>
+        <span className="net-ice-rez">
+          REZ {demon.rezCurrent}/{demon.rezMax}
+        </span>
+      </div>
+      <div className="net-ice-bar">
+        <span style={{ width: `${rezPercent}%` }} />
+      </div>
+      {isGm && (
+        <p className="net-ice-stats">
+          Interfejs {demon.interfaceRank ?? '—'} · Akcje Sieciowe {demon.netActions ?? '—'} ·
+          Wartość bojowa {demon.combatValue ?? '—'}
+          {demon.holds ? ` · węzły z Testu Kontroli: ${demon.holds}` : ''}
+        </p>
+      )}
+      {!down && (
+        <div className="net-ice-actions">
+          <select
+            value={weapon}
+            disabled={busy}
+            title="Czym uderzyć — Demon to Program, więc czyta zwykłą kolumnę obrażeń"
+            onChange={(event) => setWeapon(event.target.value)}
+          >
+            <option value="">Paf (1k6, bez Programu)</option>
+            {weapons.map((slot) => (
+              <option key={slot.rowId} value={slot.rowId}>
+                {slot.name} — {slot.vsProgram}k6
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className="small-button"
+            disabled={busy}
+            title="Interfejs + ATK Programu + 1k10 przeciw Testowi Interfejsu Demona. Kosztuje Akcję Sieciową."
+            onClick={() => onAttack(demon.id, weapon || undefined)}
+          >
+            Atakuj
+          </button>
+          <span className="net-deck-note">Ślizg nie działa — Demon nie ma Percepcji.</span>
+          {isGm && demon.mode === 'lurking' && (
+            <button
+              type="button"
+              className="small-button net-ice-gm"
+              disabled={busy}
+              title="Demon nie ma PRĘDKOŚCI, więc nie ma tu testu spornego: zaczyna ścigać i wchodzi na czoło kolejki inicjatywy."
+              onClick={() => onDetect(demon.id)}
+            >
+              Demon wykrywa intruza
+            </button>
+          )}
+          {isGm && demon.mode === 'hunting' && (
+            <button
+              type="button"
+              className="small-button net-ice-gm"
+              disabled={busy}
+              title="Cała Tura naraz: najpierw odbiera węzły, potem strzela z wieżyczek, a z resztek Akcji Sieciowych Pafa netrunnera."
+              onClick={() => onTurn(demon.id)}
+            >
+              Tura Demona
+            </button>
+          )}
+        </div>
+      )}
+    </li>
+  );
+}
+
 /** „Opisz MG, co chcesz, by twój Wirus zrobił" (s. 200) — trzy pola, bez magii. */
 function VirusForm({
   onSubmit,
@@ -645,6 +759,8 @@ export function NetRunWindow() {
   const fightState = run.run.combat;
   /** Agresory, które mają czym uderzyć w Czarnego LOD-a (etap 26c). */
   const weapons = fightState.deck.filter((slot) => slot.vsIce > 0);
+  /** Te same Agresory wobec Demona, który jest zwykłym Programem (etap 26e). */
+  const demonWeapons = fightState.deck.filter((slot) => slot.vsProgram > 0);
   /*
    * „Gdy dotrzesz do najniższego poziomu Architektury, możesz zostawić tam
    * Wirusa" (s. 200). Liczone tu z widoku, nie zgadywane: dno to jedyne
@@ -792,6 +908,30 @@ export function NetRunWindow() {
                   }
                   onDetect={(iceId) => void fight(iceDetects({ runId: run!.runId, iceId }))}
                   onTurn={(iceId) => void fight(iceTakesTurn({ runId: run!.runId, iceId }))}
+                />
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {run.run.demons.length > 0 && (
+          <div className="net-ice-list-wrap">
+            <h4 className="net-run-column-title">Demony</h4>
+            <ul className="net-ice-list">
+              {run.run.demons.map((demon) => (
+                <DemonRow
+                  key={demon.id}
+                  demon={demon}
+                  weapons={demonWeapons}
+                  isGm={isGm}
+                  busy={busy}
+                  onAttack={(demonId, rowId) =>
+                    void fight(
+                      attackInNet({ runId: run!.runId, demonId, ...(rowId ? { rowId } : {}) }),
+                    )
+                  }
+                  onDetect={(demonId) => void fight(demonDetects({ runId: run!.runId, demonId }))}
+                  onTurn={(demonId) => void fight(demonTakesTurn({ runId: run!.runId, demonId }))}
                 />
               ))}
             </ul>

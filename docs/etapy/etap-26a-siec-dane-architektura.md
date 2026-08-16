@@ -2,11 +2,12 @@
 
 **Faza:** H — Świat CP RED · **Wymaga etapów:** 13 (kompendium), 07 (karta postaci), 23b (ceny)
 
-> Pierwsza z pięciu części podziału etapu 26, uzgodnionego z MG 14.08 i pogłębionego dwa razy 15.08.
+> Pierwsza z sześciu części podziału etapu 26, uzgodnionego z MG 14.08 i pogłębionego trzy razy
+> (dwa razy 15.08, raz 16.08).
 
-## Dlaczego etap 26 został podzielony na pięć
+## Dlaczego etap 26 został podzielony na sześć
 
-Rozdział 11 podręcznika (s. 195–218) to w praktyce pięć niezależnych kawałków roboty:
+Rozdział 11 podręcznika (s. 195–218) to w praktyce sześć niezależnych kawałków roboty:
 
 1. **Katalog i architektura** — ~40 wpisów danych (4 Dopalacze, 3 Obrońcy, 8 Agresorów,
    12 Programów typu Czarny LOD, 3 Demony, 3 cyberdeki, 6 Ulepszeń Sprzętowych), model
@@ -17,15 +18,19 @@ Rozdział 11 podręcznika (s. 195–218) to w praktyce pięć niezależnych kawa
    atakiem, pościgiem i wstawką do kolejki inicjatywy, obrażenia w mózg i w REZ.
 4. **Węzły kontrolne i systemy obronne** — most między Architekturą a sceną, trzy tabele
    systemów obronnych z s. 212–216 i wieżyczka strzelająca na mapie Umiejętnościami netrunnera.
-5. **Demony i samodzielna obrona** — osobny bestiariusz (Wartość bojowa zamiast ATK/OBR)
-   z własną turą i obroną Testem Interfejsu, plus systemy obronne odpalające się bez niczyjej ręki.
+5. **Demony** — osobny bestiariusz (Wartość bojowa zamiast ATK/OBR) z własną turą, obroną
+   Testem Interfejsu i węzłami kontrolnymi obracanymi przeciw drużynie.
+6. **Samodzielna obrona** — systemy obronne odpalające się bez niczyjej ręki i broniona strefa
+   jako obiekt sceny, przez który przechodzi figura.
 
 Każdy z nich jest wielkości normalnego etapu tego projektu. Opis etapu 26 sugerował podział
 na dwa, ale wtedy druga sesja niosłaby run **i** bestiariusz Demonów naraz. Podział na trzy
 (14.08) zostawiał z kolei w 26b run i całą walkę w Sieci naraz — stąd czwarta część,
 uzgodniona z MG 15.08 przed rozpoczęciem sesji 26b. Piąta doszła jeszcze tego samego dnia,
 przed rozpoczęciem 26d: dawne 26c niosło naraz nowy typ uczestnika i całą warstwę urządzeń
-na mapie, czyli tyle, ile 26b i 26c razem wzięte.
+na mapie, czyli tyle, ile 26b i 26c razem wzięte. Szósta doszła 16.08, przed rozpoczęciem 26e:
+Demon jest walką w Sieci, a broniona strefa jest obiektem sceny z własnym modelem efektu,
+narzędziem na mapie i hakiem w ruchu żetonu — dwie różne warstwy w jednej sesji.
 
 **Decyzja MG z 14.08:** ekran Sieci dla netrunnera to **pływające okno** (jak karta postaci),
 nie zakładka panelu — run dzieje się w trakcie walki fizycznej, więc mapa musi zostać widoczna.
