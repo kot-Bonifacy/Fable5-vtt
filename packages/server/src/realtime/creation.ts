@@ -201,11 +201,15 @@ export const creationRollEvent = defineEvent<
     // check: the hand picks which of the equally likely spreads comes out, and
     // the server still decides what „equally likely" means. A GM pressing the
     // plain button rolls without a gesture and the seed is simply all-server.
+    //
+    // `plain` (stage 27d) is what stops the card from painting the tens green
+    // and the ones red: these dice are template columns, not Checks, and a 10
+    // here means „the tenth spread", not a critical.
     const gesture: RollGesture | undefined = sanitizeGesture(payload?.gesture);
     const result: RollResult = rollFormula(
       { terms: [{ kind: 'dice', count: CPRED_STAT_IDS.length, sides: 10, sign: 1 }] },
       createMixedRng(gesture?.entropy),
-      { checkRule: false },
+      { checkRule: false, plain: true },
     );
     if (gesture && gesture.strength > 0) result.tossStrength = gesture.strength;
     if (gesture?.toss) result.toss = gesture.toss;
@@ -539,7 +543,7 @@ export const creationLifepathRollEvent = defineEvent<
         })),
       },
       createMixedRng(),
-      { checkRule: false },
+      { checkRule: false, plain: true },
     );
     const faces = new Map<number, number[]>();
     for (const term of result.terms) {
@@ -611,7 +615,7 @@ export const creationLifepathCountEvent = defineEvent<
         ],
       },
       createMixedRng(),
-      { checkRule: false },
+      { checkRule: false, plain: true },
     );
     const term = result.terms[0];
     const face = term && term.kind === 'dice' ? (term.rolls[0] ?? 0) : 0;

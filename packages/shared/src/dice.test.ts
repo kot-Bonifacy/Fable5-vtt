@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DEFAULT_DICE_SKIN,
+  DICE_SKIN_IDS,
   createSeededRng,
   formatRollNotation,
   isCheckFormula,
+  isDiceSkinId,
   parseRollNotation,
   rollCheck,
   rollFormula,
@@ -193,5 +196,35 @@ describe('createSeededRng', () => {
     const rollsA = Array.from({ length: 20 }, () => a(10));
     const rollsB = Array.from({ length: 20 }, () => b(10));
     expect(rollsA).not.toEqual(rollsB);
+  });
+});
+
+describe('dice skins (stage 27d)', () => {
+  it('accepts every catalogued id and nothing else', () => {
+    for (const id of DICE_SKIN_IDS) expect(isDiceSkinId(id)).toBe(true);
+    expect(isDiceSkinId(DEFAULT_DICE_SKIN)).toBe(true);
+    // A hand-edited row, an older client or a typo must not become a skin.
+    expect(isDiceSkinId('chrom')).toBe(false);
+    expect(isDiceSkinId('')).toBe(false);
+    expect(isDiceSkinId(undefined)).toBe(false);
+    expect(isDiceSkinId(7)).toBe(false);
+  });
+});
+
+describe('plain rolls (stage 27d)', () => {
+  it('marks a table roll so the card leaves its tens and ones unpainted', () => {
+    const formula = parse('10d10');
+    const values = [10, 1, 5, 5, 5, 5, 5, 5, 5, 5];
+    const result = rollFormula(formula, scriptedRng(values), { checkRule: false, plain: true });
+    expect(result.plain).toBe(true);
+    // `plain` is presentation only — the dice themselves are untouched.
+    expect(result.total).toBe(values.reduce((sum, value) => sum + value, 0));
+    expect(result.critical).toBeUndefined();
+  });
+
+  it('leaves the flag off for an ordinary check, so a 10 still reads as a crit', () => {
+    const result = rollFormula(parse('1d10+3'), scriptedRng([10, 4]));
+    expect(result.plain).toBeUndefined();
+    expect(result.critical).toEqual({ type: 'crit', extraRoll: 4 });
   });
 });

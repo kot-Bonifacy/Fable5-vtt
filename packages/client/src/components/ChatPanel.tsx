@@ -35,7 +35,13 @@ function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
 }
 
-/** The dice breakdown: one chip per die (max/min highlighted) plus modifiers. */
+/**
+ * The dice breakdown: one chip per die (max/min highlighted) plus modifiers.
+ *
+ * A `plain` roll leaves the extremes unpainted (stage 27d): the creator's
+ * stat and Lifepath throws are row numbers of a table, so a ten there means
+ * „the tenth row", not a critical, and green would be a lie.
+ */
 function RollDice({ roll }: { roll: RollResult }) {
   const parts: ReactNode[] = [];
   roll.terms.forEach((term, i) => {
@@ -48,8 +54,13 @@ function RollDice({ roll }: { roll: RollResult }) {
     }
     if (term.kind === 'dice') {
       term.rolls.forEach((value, j) => {
-        const extreme =
-          value === term.sides ? ' chat-die--max' : value === 1 ? ' chat-die--min' : '';
+        const extreme = roll.plain
+          ? ''
+          : value === term.sides
+            ? ' chat-die--max'
+            : value === 1
+              ? ' chat-die--min'
+              : '';
         parts.push(
           <span key={`die-${i}-${j}`} className={`chat-die${extreme}`} title={`d${term.sides}`}>
             {value}

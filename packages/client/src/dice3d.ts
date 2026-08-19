@@ -8,8 +8,11 @@
  * Degrades gracefully: when WebGL/init fails, rolls simply show as chat
  * cards without an animation.
  */
-import type { RollResult, RollToss } from '@vtt/shared';
+import type { DiceSkinId, RollResult, RollToss } from '@vtt/shared';
+import { DEFAULT_DICE_SKIN } from '@vtt/shared';
 import type DiceBoxClass from '@3d-dice/dice-box-threejs';
+import { CRIT_COLORSET, DICE_SKINS, FUMBLE_COLORSET, type DiceColorset } from './dice-skins.js';
+import { useSettingsStore } from './stores/settingsStore.js';
 
 /** Die sizes the library can render — anything else is skipped. */
 const RENDERABLE_SIDES = new Set([4, 6, 8, 10, 12, 20, 100]);
@@ -17,13 +20,21 @@ const RENDERABLE_SIDES = new Set([4, 6, 8, 10, 12, 20, 100]);
 const OVERLAY_ID = 'dice-overlay';
 /** Dice linger after settling until just past the chat-card reveal (~2.5 s). */
 const FADE_OUT_DELAY_MS = 3200;
+/**
+ * Beat between the first wave settling and the crit/fumble die rolling in
+ * (stage 27d). Long enough that the table reads the natural 10 before the
+ * extra die lands on it, short enough that nobody reaches for the mouse.
+ */
+const EXTRA_DIE_DELAY_MS = 550;
 
 /**
  * Builds the predetermined-outcome notation for a server roll: dice groups
- * joined with `+`, then `@` and every die value in spawn order. The
- * crit/fumble extra d10 is appended as its own group; the cup's shake
- * strength maps to the library's `!` toss boost. Returns null when the roll
- * contains no renderable dice.
+ * joined with `+`, then `@` and every die value in spawn order. The cup's
+ * shake strength maps to the library's `!` toss boost. Returns null when the
+ * roll contains no renderable dice.
+ *
+ * The crit/fumble die is **not** here: since stage 27d it rolls as its own
+ * wave, after this one settles, in a colour of its own (`extraNotation`).
  */
 export function toAnimationNotation(roll: RollResult): string | null {
   const groups: string[] = [];
@@ -33,13 +44,14 @@ export function toAnimationNotation(roll: RollResult): string | null {
     groups.push(`${term.count}d${term.sides}`);
     values.push(...term.rolls);
   }
-  if (roll.critical) {
-    groups.push('1d10');
-    values.push(roll.critical.extraRoll);
-  }
   if (groups.length === 0) return null;
   const boost = '!'.repeat(Math.min(Math.max(roll.tossStrength ?? 0, 0), 3));
   return `${boost}${groups.join('+')}@${values.join(',')}`;
+}
+
+/** The crit/fumble die of a check, thrown as the second wave. */
+export function extraNotation(roll: RollResult): string | null {
+  return roll.critical ? `1d10@${roll.critical.extraRoll}` : null;
 }
 
 interface DiceJob {
@@ -49,8 +61,15 @@ interface DiceJob {
   toss: RollToss | undefined;
   /** Shake strength 0–3 scaling the directed throw's speed. */
   strength: number;
+  /** Which dice are tumbling: the roller's skin, not the viewer's. */
+  skin: DiceSkinId;
+  /** Second wave: the crit/fumble die, in its own colour. */
+  extra?: { notation: string; type: 'crit' | 'fumble' };
   resolve: (played: boolean) => void;
 }
+
+/** Colour set currently loaded into the box — switching costs a theme reload. */
+let activeColorset: string | null = null;
 
 let box: DiceBoxClass | null = null;
 let initPromise: Promise<DiceBoxClass | null> | null = null;
@@ -141,23 +160,20 @@ async function ensureBox(): Promise<DiceBoxClass | null> {
     try {
       ensureOverlay();
       const { default: DiceBox } = await import('@3d-dice/dice-box-threejs');
+      // The box boots in this viewer's own skin; every roll then switches it
+      // to the roller's before the dice spawn (stage 27d).
+      const own = DICE_SKINS[useSettingsStore.getState().skin] ?? DICE_SKINS[DEFAULT_DICE_SKIN];
       const instance = new DiceBox(`#${OVERLAY_ID}`, {
         assetPath: '/dice/',
-        theme_customColorset: {
-          background: '#a11010',
-          foreground: '#f2f2f2',
-          outline: 'black',
-          texture: 'metal',
-          material: 'metal',
-        },
+        theme_customColorset: own.colorset,
         sounds: true,
-        volume: 50,
-        sound_dieMaterial: 'metal',
+        volume: useSettingsStore.getState().diceVolume,
         light_intensity: 0.9,
         shadows: true,
       });
       await instance.initialize();
       installDirectedThrow(instance);
+      activeColorset = own.colorset.name;
       box = instance;
       return instance;
     } catch (error) {
@@ -169,9 +185,42 @@ async function ensureBox(): Promise<DiceBoxClass | null> {
 }
 
 /**
+ * Loads a colour set into the box, skipping the reload when it is already
+ * there. `updateConfig` reaches only the theme — the library's own
+ * `Object.apply(this, config)` does nothing, so volume is assigned on the
+ * instance directly (see `applyVolume`).
+ *
+ * `loadSounds` afterwards is **not** optional. The box loads exactly one set
+ * of dice-hit samples at start-up — the one matching its material — and its
+ * collision handler indexes that set without checking. Switch a metal skin
+ * onto a box that booted on plastic and every single collision throws
+ * `Cannot read properties of undefined (reading 'length')`. `loadSounds`
+ * re-derives the material from the freshly loaded theme and fills the gap;
+ * it is a no-op once a material has been heard.
+ */
+async function applyColorset(dice: DiceBoxClass, colorset: DiceColorset): Promise<void> {
+  if (activeColorset === colorset.name) return;
+  await dice.updateConfig({ theme_customColorset: colorset });
+  await dice.loadSounds();
+  activeColorset = colorset.name;
+}
+
+/** Volume follows the slider live — the box reads it at playback time. */
+function applyVolume(dice: DiceBoxClass): void {
+  const volume = useSettingsStore.getState().diceVolume;
+  dice.volume = volume;
+  dice.sounds = volume > 0;
+}
+
+/**
  * Plays a roll immediately. No queueing: a new throw sweeps dice still on
  * the table (the superseded roll's promise resolves right away so its chat
  * card is never held back).
+ *
+ * A check that exploded rolls in **two waves** (stage 27d): the ordinary dice
+ * first, then — once they have settled — the crit or fumble die, gold or
+ * blood-red. The library keeps one theme for the whole table, so this is the
+ * only way to tell that die apart from the rest, and it reads better anyway.
  */
 async function play(job: DiceJob): Promise<void> {
   const generation = ++rollGeneration;
@@ -192,8 +241,22 @@ async function play(job: DiceJob): Promise<void> {
   overlay.classList.toggle('dice-overlay--fun', job.fun);
   let played = true;
   try {
+    const skin = DICE_SKINS[job.skin] ?? DICE_SKINS[DEFAULT_DICE_SKIN];
+    applyVolume(dice);
+    await applyColorset(dice, skin.colorset);
     pendingThrow = job.toss ? { toss: job.toss, strength: job.strength } : null;
     await dice.roll(job.notation);
+    if (job.extra && generation === rollGeneration) {
+      await new Promise((wait) => window.setTimeout(wait, EXTRA_DIE_DELAY_MS));
+      if (generation === rollGeneration) {
+        const colorset = job.extra.type === 'crit' ? CRIT_COLORSET : FUMBLE_COLORSET;
+        await applyColorset(dice, colorset);
+        // `add` throws onto the table instead of sweeping it, so the first
+        // wave stays where it landed and the extra die drops among it.
+        // No `pendingThrow`: this die falls out of a hand that already threw.
+        await dice.add(job.extra.notation);
+      }
+    }
   } catch (error) {
     console.warn('3D dice roll failed', error);
     played = false;
@@ -211,14 +274,9 @@ async function play(job: DiceJob): Promise<void> {
   }, FADE_OUT_DELAY_MS);
 }
 
-function enqueue(
-  notation: string,
-  fun: boolean,
-  toss: RollToss | undefined,
-  strength: number,
-): Promise<boolean> {
+function enqueue(job: Omit<DiceJob, 'resolve'>): Promise<boolean> {
   return new Promise((resolve) => {
-    void play({ notation, fun, toss, strength, resolve });
+    void play({ ...job, resolve });
   });
 }
 
@@ -240,11 +298,26 @@ export function sweepDice(): void {
  * Plays the 3D animation of a server roll. Call for live `chat:message`
  * broadcasts only — history and resyncs must not replay old rolls. Resolves
  * (true = animation actually played) once the dice have settled.
+ *
+ * Answers `false` at once when this viewer turned the animation off — that is
+ * what makes the chat card appear immediately instead of waiting for dice
+ * that will never roll.
  */
 export function playRollAnimation(roll: RollResult): Promise<boolean> {
+  if (!useSettingsStore.getState().animate) return Promise.resolve(false);
   const notation = toAnimationNotation(roll);
   if (!notation) return Promise.resolve(false);
-  return enqueue(notation, false, roll.toss, roll.tossStrength ?? 0);
+  const extra = extraNotation(roll);
+  return enqueue({
+    notation,
+    fun: false,
+    toss: roll.toss,
+    strength: roll.tossStrength ?? 0,
+    // Whose dice the table sees: the roller's, stamped by the server. A skin
+    // this build does not know falls back to the default rather than failing.
+    skin: roll.skin ?? DEFAULT_DICE_SKIN,
+    ...(extra && roll.critical ? { extra: { notation: extra, type: roll.critical.type } } : {}),
+  });
 }
 
 /**
@@ -252,6 +325,26 @@ export function playRollAnimation(roll: RollResult): Promise<boolean> {
  * nothing is sent to the server and no chat card appears.
  */
 export function playFunRoll(notation: string, strength: number, toss?: RollToss): Promise<boolean> {
+  if (!useSettingsStore.getState().animate) return Promise.resolve(false);
   const boost = '!'.repeat(Math.min(Math.max(strength, 0), 3));
-  return enqueue(`${boost}${notation}`, true, toss, strength);
+  return enqueue({
+    notation: `${boost}${notation}`,
+    fun: true,
+    toss,
+    strength,
+    // A toy roll is this browser's own — nobody else sees it, so it uses
+    // this viewer's dice rather than anyone else's.
+    skin: useSettingsStore.getState().skin,
+  });
+}
+
+/**
+ * Preview throw for the settings window (stage 27d): two dice in the chosen
+ * skin, physics only, nothing sent anywhere. Returns false when the viewer
+ * has animations turned off — there is then nothing to show and the window
+ * says so rather than pretending the click did something.
+ */
+export function previewSkin(skin: DiceSkinId): Promise<boolean> {
+  if (!useSettingsStore.getState().animate) return Promise.resolve(false);
+  return enqueue({ notation: '!1d10+1d6', fun: true, toss: undefined, strength: 1, skin });
 }

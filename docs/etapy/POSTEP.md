@@ -3,75 +3,83 @@
 Aktualizowany na koniec każdej sesji. Statusy: ⬜ nierozpoczęty · 🟨 w toku · ✅ ukończony · ⛔ wycofany.
 Pełne notatki z zamkniętych etapów: `archiwum/dziennik-sesji.md` (nie czytaj rutynowo — tylko gdy potrzebujesz szczegółu konkretnego etapu).
 
-| #   | Etap                                          | Status | Data ukończenia | Uwagi                                                                                           |
-| --- | --------------------------------------------- | ------ | --------------- | ----------------------------------------------------------------------------------------------- |
-| 01  | Szkielet projektu i środowisko                | ✅     | 2026-07-16      | repo: Fable5-vtt; shared konsumowany jako źródła TS (decyzja w README)                          |
-| 02  | Baza danych, użytkownicy, role                | ✅     | 2026-07-16      | Prisma 7 (adapter better-sqlite3); dodatkowy model `CampaignMember`                             |
-| 03  | Rdzeń realtime i czat                         | ✅     | 2026-07-17      | moduł `realtime` (rejestr zdarzeń z rolą); szepty bez seq; fix `pnpm dev` (`--raw`)             |
-| 04  | Mapa i sceny                                  | ✅     | 2026-07-17      | pixi-viewport 6 OK z Pixi v8; MG ma niezależny podgląd scen (pokoje per-scena)                  |
-| 05  | Tokeny                                        | ✅     | 2026-07-17      | HP widoczne tylko dla właściciela+MG; ikony statusów z game-icons (CC BY)                       |
-| 06  | Silnik kości CP RED                           | ✅     | 2026-07-18      | krytyk/fumble auto dla pojedynczej d10; /gr = autor+MG (styl Foundry)                           |
-| 07  | Karta postaci — model i edytor                | ✅     | 2026-07-18      | umiejętności Easy Mode (41) w data/public; gracz też tworzy postaci; okna pływające             |
-| 08  | Karta interaktywna i integracja               | ✅     | 2026-07-24      | rzuty z karty zawsze przez kubek; karta = źródło prawdy dla PW tokenu                           |
-| 09  | AI Gateway — fundament botów                  | ✅     | 2026-07-24      | ~80 tok/s, kontekst 32k; think sterowany per żądanie; model zmyśla zasady (RAG: 19)             |
-| 10  | Edytor botów                                  | ✅     | 2026-07-25      | + guardraile roli, auto-powtórka i nauka z korekt MG (rozszerzenie)                             |
-| 11  | Boty NPC na czacie                            | ✅     | 2026-07-25      | pamięć per scenka; wypowiedź bota nie do odróżnienia od `/jako` MG                              |
-| 12  | ~~TTS — głos botów~~                          | ⛔     | wycofany 09.08  | był gotowy 26.07 (Piper); kod usunięty, został sam maszynopis tekstu u klienta                  |
-| 13  | Dane z podręcznika i kompendium               | ✅     | 2026-07-27      | domknięty 26.07 na darmowych materiałach; 27.07 uzupełniony z podręcznika głównego              |
-| 14  | Inicjatywa i tury                             | ✅     | 2026-07-26      | tracker = pasek nad mapą + zakładka „Walka”; remisy: REF, przerzut RAW i drag                   |
-| 14b | Ekonomia akcji: budżet tury i katalog         | ✅     | 2026-07-30      | + Ustabilizowanie od zera (etap 15 go nie miał, wbrew opisowi); „przepuść" jako karta MG        |
-| 14c | Ruch w turze: budżet metrów na mapie          | ✅     | 2026-07-31      | metry po surowej ścieżce kursora (decyzja MG); kara pancerza i ran krytycznych jako dane        |
-| 14d | Zwarcie: Pochwycenie, Duszenie, Rzut          | ✅     | 2026-07-31      | etap 14d podzielony na 14d/14e; migotliwy test death save miał inną przyczynę niż notatka       |
-| 14e | Automaty tury: rany krytyczne, DoT, monity    | ✅     | 2026-07-31      | strażnik hooków w osobnej kolumnie (budżet tury jest odtwarzany); + kary płaskie z ran          |
-| 15  | Obrażenia, pancerz, krytyki, Death Save       | ✅     | 2026-07-27      | obie tabele ran z podręcznika głównego (nieoficjalna tabela głowy zastąpiona 27.07)             |
-| 16  | Zasięgi, DV z mapy, autofire                  | ✅     | 2026-07-28      | wręcz: PT zastępczy z karty celu + przycisk „Unik” (RAW nie zna statycznego PT)                 |
-| 16b | Linia strzału i atak z mapy                   | ✅     | 2026-07-31      | etap 16b podzielony na 16b/16c; linia strzału = blokady wzroku strzelca, nie druga geometria    |
-| 16c | Osłony jako obiekty sceny                     | ✅     | 2026-08-01      | osłona jedzie do klienta (ściana nie); blokada miękka z kartą wyboru zamiast twardej            |
-| 16d | Granaty, obszary i rzut przedmiotem           | ✅     | 2026-08-01      | zwężony (amunicja → 16g); odchylenie pudła to zasada domowa — podręcznik jej nie ma             |
-| 16e | Ruch klikiem: zaznaczenie, automat chodzenia  | ✅     | 2026-07-31      | trasa gracza tylko po tym, co widzi teraz — maska eksploracji nie pamięta ścian                 |
-| 16f | Celowanie kursorem i HUD walki                | ✅     | 2026-08-01      | model klasycznego CRPG (klik we wroga celuje, MG przez Alt); HUD w nowym lewym pasku            |
-| 16g | Amunicja specjalna: kule zmieniające rachunek | ✅     | 2026-08-07      | podzielony na 16g/16h 07.08; nabój = wpis kompendium, śrut jedzie tą samą drogą co wybuch       |
-| 16h | Amunicja bez obrażeń: testy, gaz i dym        | ✅     | 2026-08-07      | dym tylko utrudnia (−4), nie zasłania; minuta = 6 rund, poza walką zdejmuje MG przyciskiem      |
-| 17a | Fog of war i warstwa MG                       | ✅     | 2026-07-28      | etap 17 podzielony na 17a/17b; nowa scena startuje zakryta, mgła przełączalna                   |
-| 17b | Rysowanie po mapie                            | ✅     | 2026-07-28      | tekst skaluje się z mapą (odstępstwo od wskazówki); MG domyślnie rysuje u siebie                |
-| 18a | Ściany i widoczność tokenów                   | ✅     | 2026-07-29      | etap 18 podzielony na 18a/18b; ściany nie opuszczają serwera                                    |
-| 18b | Ciemność i źródła światła                     | ✅     | 2026-07-30      | zwężony 30.07 (eksploracja → 18c, drzwi/okna → 18d); 160 fps przy 10 światłach                  |
-| 18c | Eksploracja i mgła MG nad widocznością        | ✅     | 2026-07-30      | + „zapal pomieszczenie", tłumienie światła przez okno i wygładzenie gradientu                   |
-| 18d | Interakcje z drzwiami i oknami                | ✅     | 2026-07-30      | zasięg ręki 2 m, zamek MG; okno = firanka, a od dopisku 18e też otwierany otwór                 |
-| 19a | Fundament RAG i asystent zasad MG             | ✅     | 2026-08-08      | etap 19 podzielony na 19a/19b/19c 08.08; embeddingi na CPU (0 GB VRAM), hybryda z FTS5          |
-| 19b | Baza wiedzy kampanii i kontekst botów         | ✅     | 2026-08-08      | tag = jedyny język uprawnień; filtr w SQL przed mnożeniem wektorów; podręcznika bot nie czyta   |
-| 19c | Streszczenia sesji, dziennik, relacje NPC     | ✅     | 2026-08-08      | dziennik = trzecia kolekcja RAG; wpis rodzi się „tylko MG"; relacja do karty postaci (−3…+3)    |
-| 20a | Akcje botów: structured output i rzuty        | ✅     | 2026-08-08      | etap 20 podzielony na 20a/20b 08.08; gramatyka GBNF tylko w decyzji, wypowiedź zostaje prozą    |
-| 20b | Tura bota w walce                             | ✅     | 2026-08-08      | „Graj turę” zawsze na klik (decyzja MG); ruch = podejdź/odsuń się, trasę liczy serwer           |
-| 21  | ~~STT — polecenia głosowe~~                   | ⛔     | wycofany 09.08  | nierozpoczęty; głos wypadł z projektu w całości                                                 |
-| 22  | ~~WebRTC — czat głosowy graczy~~              | ⛔     | wycofany 09.08  | nierozpoczęty; głos graczy załatwia zewnętrzny komunikator                                      |
-| 23a | Cyborgizacje i człowieczeństwo                | ✅     | 2026-08-09      | etap 23 podzielony na 23a/23b/23c 09.08; EMP bieżące liczone z Człowieczeństwa wchodzi w rzuty  |
-| 23b | Ekonomia: eurodolce, zakupy, lifestyle        | ✅     | 2026-08-09      | saldo pisze wyłącznie serwer (audyt `LedgerEntry`); pasmo ceny = cena; Poziom życia opcjonalny  |
-| 23c | Reputacja i Facedown                          | ✅     | 2026-08-09      | PL nazwa to „Konfrontacja"; Reputacja wyliczana z listy wyczynów, −2 wybiera przegrany          |
-| 24a | Handouty                                      | ✅     | 2026-08-09      | etap 24 podzielony na 24a/24b/24c 09.08; markdown własnym parserem w `shared`                   |
-| 24b | Dziennik kampanii dla stołu                   | ✅     | 2026-08-09      | uprawnienie gracza to osobna kolumna, nie trzeci szczebel `visibility`; szukanie u klienta      |
-| 24c | Screamsheets                                  | ✅     | 2026-08-13      | `kind` na handoucie z 24a; kroje gazetowe (OFL) hostowane u siebie; nagłówek = tytuł handoutu   |
-| 25a | Kreator postaci: rola, cechy, umiejętności    | ✅     | 2026-08-14      | etap 25 podzielony na 25a/25b 14.08; dwie metody (Krawędziarz, Kompletny Pakiet), bez Szablonów |
-| 25b | Kreator: Ścieżka Życia                        | ✅     | 2026-08-14      | etap 25b podzielony na 25b/25c 14.08; 71 tabel, 522 wiersze; wróg → szkic bota jednym klikiem   |
-| 25c | Kreator: wyposażenie startowe i poziomy       | ✅     | 2026-08-14      | 4 poziomy z ceny; +53 wpisy sprzętu z podręcznika (kompendium miało 5); pakiet Roli → POMYSŁY   |
-| 26a | Sieć: dane, architektura i cyberdek           | ✅     | 2026-08-14      | etap 26 podzielony na 26a/26b/26c 14.08; ekran Sieci = pływające okno (decyzja MG)              |
-| 26b | Run: punkty dostępu, winda i Akcje Sieciowe   | ✅     | 2026-08-15      | etap 26b podzielony na 26b/26c 15.08; punkt dostępu = obiekt sceny, ukryty do Skanera           |
-| 26c | Walka w Sieci: Programy, Paf, Ślizg, LOD      | ✅     | 2026-08-15      | efekt Programu = dane wpisu; `Combatant.tokenId` nullowalny — LOD stoi w kolejce bez figury     |
-| 26d | Węzły kontrolne i systemy obronne             | ✅     | 2026-08-15      | etap 26d podzielony na 26d/26e 15.08; wieżyczka = żeton z profilem statysty z 16b               |
-| 26e | Demony                                        | ✅     | 2026-08-16      | etap 26e podzielony na 26e/26f 16.08; Demon trzyma węzły od startu, tura jednym klikiem MG      |
-| 26f | Samodzielne systemy obronne i broniona strefa | ✅     | 2026-08-16      | strefa = trzeci prostokąt mapy (→ `rects.ts`); parser wyłuskał efekt z 13 z 18 wierszy          |
-| 27a | Karta jak oficjalna: strona pierwsza          | ✅     | 2026-08-13      | wydzielony z 27 dnia 13.08 (27a/27b/27c); motyw dzień/noc na razie tylko dla karty              |
-| 27b | Karta: broń, pancerz, ekwipunek               | ✅     | 2026-08-13      | zakładka „Walka" zniknęła; pancerz = 3 wiersze wydruku + reszta; trzy nowe pola prozy           |
-| 27c | Karta: Ścieżka Życia i cyborgizacje           | ✅     | 2026-08-14      | sylwetka = gotowy SVG z domeny publicznej; gniazdo na ciele to nowe pole wiersza wszczepu       |
-| 27  | Kości 3D i szlif UI                           | ⬜     |                 | po wydzieleniu 27a–c zostaje: skórki kości, ustawienia, motyw dla reszty UI, wydajność          |
-| 28  | Wdrożenie na VPS                              | ⬜     |                 |                                                                                                 |
+| #   | Etap                                          | Status | Data ukończenia   | Uwagi                                                                                           |
+| --- | --------------------------------------------- | ------ | ----------------- | ----------------------------------------------------------------------------------------------- |
+| 01  | Szkielet projektu i środowisko                | ✅     | 2026-07-16        | repo: Fable5-vtt; shared konsumowany jako źródła TS (decyzja w README)                          |
+| 02  | Baza danych, użytkownicy, role                | ✅     | 2026-07-16        | Prisma 7 (adapter better-sqlite3); dodatkowy model `CampaignMember`                             |
+| 03  | Rdzeń realtime i czat                         | ✅     | 2026-07-17        | moduł `realtime` (rejestr zdarzeń z rolą); szepty bez seq; fix `pnpm dev` (`--raw`)             |
+| 04  | Mapa i sceny                                  | ✅     | 2026-07-17        | pixi-viewport 6 OK z Pixi v8; MG ma niezależny podgląd scen (pokoje per-scena)                  |
+| 05  | Tokeny                                        | ✅     | 2026-07-17        | HP widoczne tylko dla właściciela+MG; ikony statusów z game-icons (CC BY)                       |
+| 06  | Silnik kości CP RED                           | ✅     | 2026-07-18        | krytyk/fumble auto dla pojedynczej d10; /gr = autor+MG (styl Foundry)                           |
+| 07  | Karta postaci — model i edytor                | ✅     | 2026-07-18        | umiejętności Easy Mode (41) w data/public; gracz też tworzy postaci; okna pływające             |
+| 08  | Karta interaktywna i integracja               | ✅     | 2026-07-24        | rzuty z karty zawsze przez kubek; karta = źródło prawdy dla PW tokenu                           |
+| 09  | AI Gateway — fundament botów                  | ✅     | 2026-07-24        | ~80 tok/s, kontekst 32k; think sterowany per żądanie; model zmyśla zasady (RAG: 19)             |
+| 10  | Edytor botów                                  | ✅     | 2026-07-25        | + guardraile roli, auto-powtórka i nauka z korekt MG (rozszerzenie)                             |
+| 11  | Boty NPC na czacie                            | ✅     | 2026-07-25        | pamięć per scenka; wypowiedź bota nie do odróżnienia od `/jako` MG                              |
+| 12  | ~~TTS — głos botów~~                          | ⛔     | wycofany 09.08    | był gotowy 26.07 (Piper); kod usunięty, został sam maszynopis tekstu u klienta                  |
+| 13  | Dane z podręcznika i kompendium               | ✅     | 2026-07-27        | domknięty 26.07 na darmowych materiałach; 27.07 uzupełniony z podręcznika głównego              |
+| 14  | Inicjatywa i tury                             | ✅     | 2026-07-26        | tracker = pasek nad mapą + zakładka „Walka”; remisy: REF, przerzut RAW i drag                   |
+| 14b | Ekonomia akcji: budżet tury i katalog         | ✅     | 2026-07-30        | + Ustabilizowanie od zera (etap 15 go nie miał, wbrew opisowi); „przepuść" jako karta MG        |
+| 14c | Ruch w turze: budżet metrów na mapie          | ✅     | 2026-07-31        | metry po surowej ścieżce kursora (decyzja MG); kara pancerza i ran krytycznych jako dane        |
+| 14d | Zwarcie: Pochwycenie, Duszenie, Rzut          | ✅     | 2026-07-31        | etap 14d podzielony na 14d/14e; migotliwy test death save miał inną przyczynę niż notatka       |
+| 14e | Automaty tury: rany krytyczne, DoT, monity    | ✅     | 2026-07-31        | strażnik hooków w osobnej kolumnie (budżet tury jest odtwarzany); + kary płaskie z ran          |
+| 15  | Obrażenia, pancerz, krytyki, Death Save       | ✅     | 2026-07-27        | obie tabele ran z podręcznika głównego (nieoficjalna tabela głowy zastąpiona 27.07)             |
+| 16  | Zasięgi, DV z mapy, autofire                  | ✅     | 2026-07-28        | wręcz: PT zastępczy z karty celu + przycisk „Unik” (RAW nie zna statycznego PT)                 |
+| 16b | Linia strzału i atak z mapy                   | ✅     | 2026-07-31        | etap 16b podzielony na 16b/16c; linia strzału = blokady wzroku strzelca, nie druga geometria    |
+| 16c | Osłony jako obiekty sceny                     | ✅     | 2026-08-01        | osłona jedzie do klienta (ściana nie); blokada miękka z kartą wyboru zamiast twardej            |
+| 16d | Granaty, obszary i rzut przedmiotem           | ✅     | 2026-08-01        | zwężony (amunicja → 16g); odchylenie pudła to zasada domowa — podręcznik jej nie ma             |
+| 16e | Ruch klikiem: zaznaczenie, automat chodzenia  | ✅     | 2026-07-31        | trasa gracza tylko po tym, co widzi teraz — maska eksploracji nie pamięta ścian                 |
+| 16f | Celowanie kursorem i HUD walki                | ✅     | 2026-08-01        | model klasycznego CRPG (klik we wroga celuje, MG przez Alt); HUD w nowym lewym pasku            |
+| 16g | Amunicja specjalna: kule zmieniające rachunek | ✅     | 2026-08-07        | podzielony na 16g/16h 07.08; nabój = wpis kompendium, śrut jedzie tą samą drogą co wybuch       |
+| 16h | Amunicja bez obrażeń: testy, gaz i dym        | ✅     | 2026-08-07        | dym tylko utrudnia (−4), nie zasłania; minuta = 6 rund, poza walką zdejmuje MG przyciskiem      |
+| 17a | Fog of war i warstwa MG                       | ✅     | 2026-07-28        | etap 17 podzielony na 17a/17b; nowa scena startuje zakryta, mgła przełączalna                   |
+| 17b | Rysowanie po mapie                            | ✅     | 2026-07-28        | tekst skaluje się z mapą (odstępstwo od wskazówki); MG domyślnie rysuje u siebie                |
+| 18a | Ściany i widoczność tokenów                   | ✅     | 2026-07-29        | etap 18 podzielony na 18a/18b; ściany nie opuszczają serwera                                    |
+| 18b | Ciemność i źródła światła                     | ✅     | 2026-07-30        | zwężony 30.07 (eksploracja → 18c, drzwi/okna → 18d); 160 fps przy 10 światłach                  |
+| 18c | Eksploracja i mgła MG nad widocznością        | ✅     | 2026-07-30        | + „zapal pomieszczenie", tłumienie światła przez okno i wygładzenie gradientu                   |
+| 18d | Interakcje z drzwiami i oknami                | ✅     | 2026-07-30        | zasięg ręki 2 m, zamek MG; okno = firanka, a od dopisku 18e też otwierany otwór                 |
+| 19a | Fundament RAG i asystent zasad MG             | ✅     | 2026-08-08        | etap 19 podzielony na 19a/19b/19c 08.08; embeddingi na CPU (0 GB VRAM), hybryda z FTS5          |
+| 19b | Baza wiedzy kampanii i kontekst botów         | ✅     | 2026-08-08        | tag = jedyny język uprawnień; filtr w SQL przed mnożeniem wektorów; podręcznika bot nie czyta   |
+| 19c | Streszczenia sesji, dziennik, relacje NPC     | ✅     | 2026-08-08        | dziennik = trzecia kolekcja RAG; wpis rodzi się „tylko MG"; relacja do karty postaci (−3…+3)    |
+| 20a | Akcje botów: structured output i rzuty        | ✅     | 2026-08-08        | etap 20 podzielony na 20a/20b 08.08; gramatyka GBNF tylko w decyzji, wypowiedź zostaje prozą    |
+| 20b | Tura bota w walce                             | ✅     | 2026-08-08        | „Graj turę” zawsze na klik (decyzja MG); ruch = podejdź/odsuń się, trasę liczy serwer           |
+| 21  | ~~STT — polecenia głosowe~~                   | ⛔     | wycofany 09.08    | nierozpoczęty; głos wypadł z projektu w całości                                                 |
+| 22  | ~~WebRTC — czat głosowy graczy~~              | ⛔     | wycofany 09.08    | nierozpoczęty; głos graczy załatwia zewnętrzny komunikator                                      |
+| 23a | Cyborgizacje i człowieczeństwo                | ✅     | 2026-08-09        | etap 23 podzielony na 23a/23b/23c 09.08; EMP bieżące liczone z Człowieczeństwa wchodzi w rzuty  |
+| 23b | Ekonomia: eurodolce, zakupy, lifestyle        | ✅     | 2026-08-09        | saldo pisze wyłącznie serwer (audyt `LedgerEntry`); pasmo ceny = cena; Poziom życia opcjonalny  |
+| 23c | Reputacja i Facedown                          | ✅     | 2026-08-09        | PL nazwa to „Konfrontacja"; Reputacja wyliczana z listy wyczynów, −2 wybiera przegrany          |
+| 24a | Handouty                                      | ✅     | 2026-08-09        | etap 24 podzielony na 24a/24b/24c 09.08; markdown własnym parserem w `shared`                   |
+| 24b | Dziennik kampanii dla stołu                   | ✅     | 2026-08-09        | uprawnienie gracza to osobna kolumna, nie trzeci szczebel `visibility`; szukanie u klienta      |
+| 24c | Screamsheets                                  | ✅     | 2026-08-13        | `kind` na handoucie z 24a; kroje gazetowe (OFL) hostowane u siebie; nagłówek = tytuł handoutu   |
+| 25a | Kreator postaci: rola, cechy, umiejętności    | ✅     | 2026-08-14        | etap 25 podzielony na 25a/25b 14.08; dwie metody (Krawędziarz, Kompletny Pakiet), bez Szablonów |
+| 25b | Kreator: Ścieżka Życia                        | ✅     | 2026-08-14        | etap 25b podzielony na 25b/25c 14.08; 71 tabel, 522 wiersze; wróg → szkic bota jednym klikiem   |
+| 25c | Kreator: wyposażenie startowe i poziomy       | ✅     | 2026-08-14        | 4 poziomy z ceny; +53 wpisy sprzętu z podręcznika (kompendium miało 5); pakiet Roli → POMYSŁY   |
+| 26a | Sieć: dane, architektura i cyberdek           | ✅     | 2026-08-14        | etap 26 podzielony na 26a/26b/26c 14.08; ekran Sieci = pływające okno (decyzja MG)              |
+| 26b | Run: punkty dostępu, winda i Akcje Sieciowe   | ✅     | 2026-08-15        | etap 26b podzielony na 26b/26c 15.08; punkt dostępu = obiekt sceny, ukryty do Skanera           |
+| 26c | Walka w Sieci: Programy, Paf, Ślizg, LOD      | ✅     | 2026-08-15        | efekt Programu = dane wpisu; `Combatant.tokenId` nullowalny — LOD stoi w kolejce bez figury     |
+| 26d | Węzły kontrolne i systemy obronne             | ✅     | 2026-08-15        | etap 26d podzielony na 26d/26e 15.08; wieżyczka = żeton z profilem statysty z 16b               |
+| 26e | Demony                                        | ✅     | 2026-08-16        | etap 26e podzielony na 26e/26f 16.08; Demon trzyma węzły od startu, tura jednym klikiem MG      |
+| 26f | Samodzielne systemy obronne i broniona strefa | ✅     | 2026-08-16        | strefa = trzeci prostokąt mapy (→ `rects.ts`); parser wyłuskał efekt z 13 z 18 wierszy          |
+| 27a | Karta jak oficjalna: strona pierwsza          | ✅     | 2026-08-13        | wydzielony z 27 dnia 13.08 (27a/27b/27c); motyw dzień/noc na razie tylko dla karty              |
+| 27b | Karta: broń, pancerz, ekwipunek               | ✅     | 2026-08-13        | zakładka „Walka" zniknęła; pancerz = 3 wiersze wydruku + reszta; trzy nowe pola prozy           |
+| 27c | Karta: Ścieżka Życia i cyborgizacje           | ✅     | 2026-08-14        | sylwetka = gotowy SVG z domeny publicznej; gniazdo na ciele to nowe pole wiersza wszczepu       |
+| 27  | ~~Kości 3D i szlif UI~~                       | ⛔     | rozdzielony 19.08 | rozbity do końca na 27d–27g; plik etapu został jako rozdroże ze wskazaniami                     |
+| 27d | Kości 3D: skórki, dorzut, ustawienia          | 🟨     |                   | pięć skórek, skórka jedzie z rzutem (jak w Foundry), dorzut drugą falą, okno ⚙ Ustawienia       |
+| 27e | Motyw dzień/noc dla całej aplikacji           | ⬜     |                   | decyzja MG 19.08: dzień obejmuje CAŁE VTT, nie samą kartę (znosi „ciemny wystarczy” z 27)       |
+| 27f | Szlif UX: pomoc, tooltipy, stany, okna        | ⬜     |                   | okno skrótów `?`, stany puste, okna pamiętające pozycję i rozmiar                               |
+| 27g | Wydajność                                     | ⬜     |                   | re-rendery przy ruchu tokenów, bundle, lazy-loading, fps mapy                                   |
+| 28  | Wdrożenie na VPS                              | ⬜     |                   |                                                                                                 |
 
 ## Od czego zacząć
 
-Ostatnio zamknięte: **26f** (broniona strefa jako **prostokąt na mapie**, efekt systemu obronnego
-jako **dane** zamiast prozy, wyzwalanie na tym samym haku ruchu co awaryjne odłączenie z 26b,
-powtórka na koniec Tury, **Percepcja rzucana automatycznie** przy zbliżeniu i imienna lista
-przepustek). **Rozdział 11 podręcznika jest domknięty** — netrunning ma komplet 26a–26f.
+Ostatnio zamknięte: **27d** (pięć skórek kości, **skórka rzucającego widziana przez cały stół**,
+dorzut krytyka jako osobna druga fala i pierwsze **okno „⚙ Ustawienia"**, do którego przeniosły
+się ☀/☾ i ⌨ z górnego paska). Wcześniej **26f** domknęło rozdział 11 podręcznika — netrunning
+ma komplet 26a–26f.
+
+**Etap 27 jest rozdzielony do końca** na 27d (zrobione), **27e** (motyw dzień/noc dla całego
+VTT — decyzja MG z 19.08), **27f** (okno skrótów, stany puste, pozycje okien) i **27g**
+(wydajność). Plik `etap-27-…` został jako rozdroże ze wskazaniami, sam nie jest do realizacji.
 
 **🎯 Poligon jest przygotowany pod stół — nic nie trzeba budować od nowa.** Na scenie
 „Strzelnica" stoi odsłonięty **„Punkt dostępu"** i obok niego żeton **„Kolec"** związany z kartą
@@ -93,14 +101,23 @@ otwiera się narzędziem ⚠ w trybie 📌; „Rozbrój" ją usypia, kosz usuwa.
 przełącznika gracz nie kupi niczego droższego niż 50 ed. Przełącznik 1–4 jest w zakładce
 **„Kompendium"** pod chipami kategorii; MG kupuje przez wszystkie poziomy niezależnie od niego.
 
-**Następne etapy do wyboru:** zostały już tylko **27** (kości 3D: skórki i ustawienia kubka, motyw
-dzień/noc dla reszty UI, wydajność — plus kilka drobiazgów z listy niżej, m.in. „kostki świecą jak
-krytyki" z 25a/25b i jednobarwne 📰 z 24c) i **28** (VPS). **Sesja zerowa z drużyną** jest nadal
+**Następne etapy do wyboru: 27e** (motyw — największy z czwórki, bo `styles.css` ma 7000+ linii
+z zaszytymi kolorami), **27f**, **27g** i **28** (VPS). Drobiazg „kostki kreatora świecą jak
+krytyki" z 25a/25b **jest już zrobiony** (flaga `plain`); jednobarwne 📰 z 24c i 🔌 z 26b
+zostają do 27e razem z przeglądem emoji w UI. **Sesja zerowa z drużyną** jest nadal
 najlepszym testem 25a+25b+25c i trzech stron karty naraz.
 
 **09.08 głos wypadł z projektu** (sesja bez etapu, decyzja MG): etapy **12, 21 i 22** wycofane, kod TTS usunięty z repo. Szczegóły w `archiwum/dziennik-sesji.md` i w `archiwum/wycofane/README.md`.
 
 ### Otwarte zaległości (przechodzą między etapami)
+
+- **Etap 27d — trzy ścieżki nieodklikane; reszta sprawdzona 19.08 (patrz notatka sesji).**
+  (1) **Złoty dorzut krytyka** — na zrzucie ekranu złapany został fumble (dwie kości w dwóch
+  kolorach na stole), krytyka nie: 20% na rzut, a okno, w którym kość leży, trwa ~3 s. Ścieżka
+  jest **ta sama**, różni ją jeden zestaw kolorów. (2) **Wyłączenie animacji i głośność 0** —
+  obie prowadzą do wcześniejszego wyjścia z `playRollAnimation` / `playRattle` i były czytane
+  w kodzie, nie klikane. (3) **Rzut Cech w kreatorze bez zielonych dziesiątek** — flaga `plain`
+  ma test w `shared` i przechodzi przez serwer, ale kreatora nikt nie otwierał.
 
 - **Etap 26f — pięć ścieżek nieodklikanych; reszta sprawdzona 16.08 (patrz notatka sesji).**
   (1) **Strona gracza** — cała: czy ukryta strefa naprawdę znika z jego ekranu, czy odsłonięta się
@@ -634,6 +651,78 @@ decyduje przegrany, nie zwycięzca`) — Konfrontacje z 10.08 szły z konta MG, 
 
 ## Notatki z dwóch ostatnich sesji
 
+### Sesja 19.08 — etap 27d (kości 3D: skórki, dorzut, ustawienia)
+
+**Etap 27 został rozdzielony do końca.** Po wydzieleniu 27a–27c (karta postaci) niósł nadal
+cztery osobne kawałki roboty; rozbite na **27d** (ta sesja), **27e** (motyw całej aplikacji),
+**27f** (szlif UX), **27g** (wydajność). Plik `etap-27-…` został jako rozdroże ze wskazaniami.
+Przy okazji rozstrzygnięta **sprzeczność w jego treści**: „Zakres" chciał dnia dla całego VTT,
+„Poza zakresem" pisało „ciemny wystarczy". **Decyzja MG: tryb dzienny obejmuje całą aplikację**
+(27e).
+
+**Cztery decyzje MG z 19.08 niosą etap.** (1) Skórka jest **rzucającego** — jedzie z rzutem, tak
+jak siła potrząśnięcia kubkiem, więc przy stole widać cudze kości. (2) Dorzut krytyka to **druga
+fala**: pierwsza osiada, 550 ms pauzy, potem osobna k10 w złocie albo w czerni. (3) Ustawienia
+dostały **własne pływające okno „⚙"** — ☀/☾ i ⌨ wyprowadziły się z górnego paska (`ThemeToggle`
+i `TypewriterToggle` usunięte). (4) **Pięć skórek**, domyślnie Neon.
+
+**Skórka musiała trafić do bazy, i to jest jedyne takie ustawienie.** Reszta preferencji wyglądu
+zostaje w `localStorage`, bo dotyczy tylko właściciela przeglądarki; skórka ma dojechać do
+**cudzych** ekranów, więc siedzi w `User.diceSkin` (migracja
+`20260819194211_stage27d_dice_skin`), wchodzi do `SessionUser` przez jedyny konstruktor
+(`toSessionUser`) i jest **stemplowana na wyjściu** w `toChatMessageView` — nie zapisywana
+z rzutem. Skutek zamierzony: kto zmieni kości dzisiaj, ten zobaczy w nich także wczorajszą
+historię, a payload zostaje zapisem tego, co padło, a nie czyjegoś gustu.
+
+**Biblioteka trzyma skórkę globalnie — stąd dwie fale.** `parseNotation` nie zna koloru
+pojedynczej kości, więc jedynym sposobem na wyróżnienie dorzutu jest przełączenie motywu między
+rzutami: `updateConfig` + `add()` (`add` dokłada kości do stołu, `roll` go najpierw zamiata).
+**Trzy pułapki biblioteki**, wszystkie opisane w `docs/assety-kosci.md` i w komentarzach:
+(1) nazwy tekstur pochodzą z jej listy, nie z katalogu plików — `noise` leży w `public/`, ale
+lista go nie zna i kość wychodzi gładka bez ostrzeżenia; (2) `material` zapisuje się na
+**współdzielonym** deskryptorze tekstury, więc dwie skórki o tej samej teksturze muszą mieć ten
+sam materiał; (3) **`loadSounds()` po każdej zmianie motywu** — pudełko wczytuje jeden zestaw
+próbek uderzeń i indeksuje go bez sprawdzania, więc metal na pudełku, które wystartowało na
+plastiku, wywalał `Cannot read properties of undefined (reading 'length')` przy każdym stuknięciu
+kości. Ten błąd **złapały dopiero oględziny** — testy go nie widzą, bo fizyki nie ma w Node.
+
+**Trzy błędy znalezione i naprawione po drodze.** (1) Suwaki głośności startowały na zerze:
+`Number(localStorage.getItem(k))` daje 0 dla `null`, więc wartość domyślna nigdy nie wchodziła —
+każda świeża przeglądarka byłaby wyciszona. (2) Kolor dorzutu fumble'a (`#5c0c0c`) na stole nie
+dawał się odróżnić od skórki „Krew"; kontrast robi teraz jasność, nie odcień (`#150404`
+z cyframi `#ff3b30`). (3) **`zones.test.ts` z 26f nie kompilował się** — używał `CombatView` bez
+importu; `vitest` tego nie widzi (typy są zdejmowane), `tsc --noEmit` owszem.
+
+**Migotanie `cyberware.test.ts` miało prawdziwą przyczynę, nie „ciasny limit czasu".** Test
+„połowi utratę w górę" porównywał samą **różnicę** Człowieczeństwa z wynikiem rzutu, a pulę
+ciągnie w dół także **sufit** (−2 za każdy wszczep kosztujący Człowieczeństwo). Przy 2k6 = 2 na
+poprzednim wszczepie pula stała równo na suficie i przy `ceil(1k6/2) = 1` spadała o 2 — raz na
+~sto przebiegów. Asercja mówi teraz o suficie wprost. To ta sama rodzina co dwie korekty z 14.08
+i 16.08 w „Pułapkach dev".
+
+**Zweryfikowane:** 1248 testów w `shared` (3 nowe: katalog skórek i flaga `plain`), 723 na
+serwerze (3 nowe w `realtime.test.ts` na żywych gniazdach — stempel skórki u **obu** stron,
+odmowa `UNKNOWN_DICE_SKIN`, historia w bieżącej skórce), `tsc --noEmit` czysty w trzech
+pakietach, ESLint, Prettier i `pnpm build` bez uwag.
+
+**Odklikane w przeglądarce** (kampania „Poligon bojowy", MG na `localhost`, gracz avatar9 na
+`[::1]`): okno ⚙ z trzema sekcjami, przeciąganie za nagłówek, suwaki na 50, przełączanie przez
+wszystkie pięć skórek w obie strony po materiałach (plastik → metal → szkło → papier) **bez
+wyjątku w konsoli**, próbny rzut w wybranej skórce (czarna kość z cyjanowymi oczkami, czerwony
+metalik), rzut `/gr 1d10` w skórce MG, **druga fala fumble'a** (dwie kości na stole w dwóch
+różnych kolorach) i — najważniejsze — **rzut gracza w skórce gracza na ekranie MG**: avatar9
+z ustawionym „Kwasem" rzucił `/r 1d6`, a u MG (skórka „Krew") potoczyła się kość **zielona**.
+
+**Nieodklikane:** (1) **złoty dorzut krytyka na zrzucie ekranu** — fumble złapany, krytyka nie
+(20% na rzut, a okno, w którym kość leży na stole, trwa ~3 s); ścieżka jest ta sama co fumble'a,
+różni ją jeden zestaw kolorów. (2) **Wyłączenie animacji i głośność 0** — sprawdzone tylko
+w kodzie, nie w przeglądarce. (3) **Rzut Cech w kreatorze bez zielonych dziesiątek** — flaga
+`plain` ma test w `shared`, ale kreatora nie otwierałem.
+
+**Uwaga porządkowa:** w logu czatu MG została **~25 testowych linii `/gr 1d10`** z tej sesji.
+Są to rzuty do MG, więc gracze ich nie widzą, ale w historii zostają — nie ma ścieżki
+kasowania wiadomości.
+
 ### Sesja 16.08 (druga tego dnia) — etap 26f (samodzielne systemy obronne i broniona strefa)
 
 **Rozdział 11 podręcznika jest domknięty.** Netrunning ma komplet: 26a katalog i architektura,
@@ -704,75 +793,10 @@ uzbrojona i ukryta „Podłoga elektryczna". Żeton wieżyczki wrócił na swoje
 
 ### Sesja 16.08 — etap 26e (Demony)
 
-**Etap 26e został przed rozpoczęciem podzielony na dwa** (decyzja MG). Pierwotny zakres niósł
-naraz Demona (walka w Sieci) i **bronioną strefę jako obiekt sceny** z samoczynnym wyzwalaniem —
-a to druga warstwa i osobny model danych: efekty systemów środowiskowych („6k6 obrażeń", „Test
-Atletyki PT 15", „RUCH −2k6") są w kompendium **wyłącznie prozą**, więc 26f musi zacząć od
-modelu efektu wzorem `CpredNetProgramEffects` z 26c. Samodzielne stanowiska obronne i strefy
-wyprowadziły się do nowego **26f**.
-
-**Trzy decyzje MG z 16.08 niosą cały etap.** (1) **Demon trzyma wszystkie węzły swojej
-Architektury od startu** — jest gospodarzem sieci, więc netrunner każdy węzeł musi mu odebrać;
-PT odebrania to PT wypisane na piętrze, dopóki Demon sam nie rzuci Testu Kontroli, a potem jego
-wynik. (2) **Tura Demona idzie jednym klikiem**, z celami wybranymi przez silnik — karta obrażeń
-ma „Cofnij", więc wybór, który MG się nie spodoba, kosztuje jedno kliknięcie. (3) Jak w 26c,
-**Demon nie rusza się sam**: dwa przyciski MG, „Demon wykrywa intruza" i „Tura Demona".
-
-**Wykrycie intruza nie jest rzutem.** Demon nie ma PRĘDKOŚCI, więc z encountera ze s. 205 zostaje
-tylko ta połowa, która coś znaczy przy stole: zaczyna ścigać i wchodzi na czoło Kolejki
-Inicjatywy. Nie ma też PER, więc **Ślizg przed nim nie działa** — w wierszu Demona zamiast
-przycisku stoi zdanie „Ślizg nie działa — Demon nie ma Percepcji", a serwer odmawia
-`NET_SLIDE_VS_DEMON` **przed** zaksięgowaniem Akcji Sieciowej (to pomyłka, nie nieudana próba).
-
-**Kolejność Tury jest czystą funkcją, ale wołaną krok po kroku.** `nextDemonStep` odpowiada „co
-teraz": najpierw odbierz węzeł, który trzyma netrunner, potem strzel z wieżyczki własnego węzła,
-a z resztek Pafnij. Krok po kroku, a nie z gotowej listy, bo **Test Kontroli może się nie udać** —
-a węzeł odebrany w tej Turze wolno w tej samej Turze wykorzystać. Widać to na czacie z oględzin:
-„Węzeł ochrony odebrany — PT odebrania go Demonowi: 13. · Grzechot strzela do: Kolec (Wartość
-bojowa 14)". Nieudany Test blokuje ten węzeł do końca Tury, żeby Demon nie przepalił wszystkich
-Akcji na jeden zamek.
-
-**Wieżyczka Demona strzela tą samą drogą co wieżyczka netrunnera z 26d.** `combatProfileOperatedBy`
-dostał brata: `combatProfileWithCombatValue` wkłada całą „Wartość bojową" w **Umiejętność**
-i zeruje Cechy oraz Unik („nie mogą unikać ataków", s. 214). Karta z oględzin czyta się wtedy
-uczciwie: „Karabin szturmowy → Kolec · 1d10+14 · **Refleks (REF) +0 · Broń długa +14** · 17 m
-(13–25 m) · PT 15 · magazynek 23/25". Maszyna nie ma refleksu, a jedna liczba nie udaje dwóch.
-26f użyje tej samej funkcji dla stanowisk obronnych.
-
-**Demon żyje w stanie runu, jak Czarny LOD z 26c**, i to jest trzeci plaster stanu
-(`CpredNetDemonState`) sklejany w `readFullRun`. Powód ten sam co przy LOD-zie: „Odłączenie
-resetuje obronę danej Architektury Sieciowej" (s. 198). Konsekwencja, którą warto znać przy stole:
-**pokonanie Demona otwiera jego węzły z powrotem na PT wypisane na piętrze** — `netDemonHoldDv`
-przestaje cokolwiek zwracać, gdy nie zostaje ani jeden żywy Demon.
-
-**Zweryfikowane:** 1212 testów w `shared` (20 nowych w `netdemons.test.ts` + 2 w `statist.test.ts`),
-701 na serwerze (14 nowych w `netdemons.test.ts` na żywych gniazdach, 5 przebiegów bez migotania),
-`tsc --noEmit` czysty w trzech pakietach, ESLint, Prettier i `pnpm build` bez uwag. **Migracji nie
-ma** — Demon mieści się w kolumnie JSON runu, a `Combatant.netIceId` niesie od tego etapu id
-**uczestnika Sieci**, Czarnego LOD-a albo Demona (zmiana samego komentarza w schemacie).
-
-**Odklikane u MG** w kampanii „Poligon bojowy". Potwierdzone: **czwarte piętro „Serce sieci"**
-z Diablikiem w edytorze Architektury (uwaga „Demon bez wpisu" znika po wybraniu wpisu); sekcja
-**DEMONY** w oknie Sieci obok sekcji **CZARNY LOD** (Diablik: „czuwa", REZ 15/15, u MG „Interfejs 3
-· Akcje Sieciowe 2 · Wartość bojowa 14"); **„Demon wykrywa intruza"** → chip „ściga" i zdanie
-„Diablik wie już o intruzie — Architektura zaczyna się bronić"; **lista broni czyta kolumnę
-Programów, nie Czarnych LOD-ów** („Miecz — 2k6, Młot na wroga — 3k6, Szabloząb — 6k6", Superklej
-przeciwbiałkowy nieobecny); **atak** („Młot na wroga → Diablik · 1d10+8 = 16 · **obrona 1d10+3 = 5**
-· 3k6 = 13 · Diablik: REZ 2") — obrona jest Testem Interfejsu, nie kolumną OBR; **Tura Demona**
-w dwóch wariantach („Grzechot strzela do: Kolec (Wartość bojowa 14). · Paf chybia" oraz „Węzeł
-ochrony — Test Kontroli nieudany (PT 12). · Paf: 1k6 = 5 bezpośrednio w mózg"); **PT w obie
-strony** — Demon rzucał „Kontrola — Węzeł ochrony · PT 12", a netrunner odbierał węzeł kartą
-„Kontrola (Interfejs) · PT 13". Konsola czysta.
-
-**Jeden błąd spoza etapu, znaleziony po drodze.** Migotanie `ammo-effects.test.ts` łatane 15.08
-wcale nie zniknęło: łatka porównywała `roll.critical` z napisem `'failure'`, a to **obiekt**
-`{ type: 'fumble', extraRoll }`, więc warunek nigdy nie był prawdziwy i test pękał na każdej
-naturalnej jedynce — raz na dziesięć przebiegów, nie „raz na kilkanaście". Naprawione; szczegóły
-w „Pułapkach dev".
-
-**Poligon zostaje przygotowany pod stół**: architektura „siec klub" ma teraz **cztery piętra**
-(doszło 4 „Serce sieci" z **Diablikiem**), run jest zamknięty, PW Kolca przywrócone do 35/35,
-magazynek „Automatycznej wieżyczki" do 25/25. Tryb turowy dalej wyłączony.
+Demon prowadzi swoją Turę **jednym kliknięciem MG** (odbierz węzeł → strzel z wieżyczki → Pafnij
+netrunnera), a węzły trzyma od startu runa, więc netrunner odbija je zamiast zajmować puste.
+Wyłącza się go **wyłącznie** przez REZ ≤ 0, a „czuwający" nie wchodzi nawet do payloadu gracza.
+Migracja `20260816…` doszła razem z 26f; pełna notatka: `archiwum/dziennik-sesji.md`.
 
 ### Sesja 15.08 (trzecia tego dnia) — etap 26d (węzły kontrolne i systemy obronne)
 

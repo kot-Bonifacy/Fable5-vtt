@@ -10,6 +10,7 @@ import { defineEvent, registerEvents, type RealtimeDeps, type RealtimeEvent } fr
 import { RoomSequences, campaignRoom, gmRoom } from './state.js';
 import { broadcastPresence } from './presence.js';
 import { chatHistoryEvent, chatSendEvent } from './chat.js';
+import { diceSkinEvent } from './dice-skins.js';
 import {
   joinInitialScene,
   sceneActivateEvent,
@@ -188,6 +189,7 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   stateRequestEvent,
   chatSendEvent,
   chatHistoryEvent,
+  diceSkinEvent,
   sceneCreateEvent,
   sceneUpdateEvent,
   sceneDeleteEvent,

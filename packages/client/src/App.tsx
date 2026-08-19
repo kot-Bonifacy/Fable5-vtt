@@ -14,6 +14,7 @@ import { NetAccessPointPanel } from './components/NetAccessPointPanel.js';
 import { DefenseZonePanel } from './components/DefenseZonePanel.js';
 import { NetRunWindow } from './components/NetRunWindow.js';
 import { RollDialog } from './components/RollDialog.js';
+import { SettingsWindow } from './components/SettingsWindow.js';
 import { LoginPage } from './pages/LoginPage.js';
 import { JoinPage } from './pages/JoinPage.js';
 import { GmPanel } from './pages/GmPanel.js';
@@ -65,6 +66,7 @@ function GameView() {
       <NetAccessPointPanel />
       <DefenseZonePanel />
       <RollDialog />
+      <SettingsWindow />
       <DiceCup />
     </div>
   );

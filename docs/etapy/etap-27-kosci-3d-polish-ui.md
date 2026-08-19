@@ -6,6 +6,21 @@
 
 Warstwa satysfakcji: animowane kości 3D nad stołem oraz przegląd i ujednolicenie całego UI w klimacie cyberpunk/Foundry.
 
+> **⛔ Ten etap został rozdzielony do końca (2026-08-19) — nie realizuj go z tego pliku.**
+> Cztery kawałki, które zostały po wydzieleniu 27a–27c, mieszkają teraz osobno:
+>
+> | Plik                                | Zawartość                                                      |
+> | ----------------------------------- | -------------------------------------------------------------- |
+> | `etap-27d-kosci-kubek.md`           | skórki kości, dorzut krytyka, okno ustawień                    |
+> | `etap-27e-motyw-calej-aplikacji.md` | tokeny motywu, dzień/noc dla wszystkich widoków, audyt ekranów |
+> | `etap-27f-szlif-ux.md`              | okno pomocy `?`, tooltipy, stany puste, pozycje okien          |
+> | `etap-27g-wydajnosc.md`             | re-rendery, bundle, lazy-loading, fps mapy                     |
+>
+> **Sprzeczność rozstrzygnięta 2026-08-19:** sekcja „Poza zakresem" niżej mówi „tryb jasny
+> (ciemny wystarczy)", a sekcja „Zakres" — „tryb dzień/noc dla całej aplikacji". Zdanie
+> z „Poza zakresem" pochodzi sprzed etapu 27a, w którym dzień powstał dla karty. **Decyzja
+> MG: tryb dzienny obejmuje całą aplikację** (szczegóły w 27e).
+
 > **Podział (2026-08-13):** przegląd wyglądu **karty postaci** wyszedł z tego etapu do trzech
 > osobnych sesji — `etap-27a-karta-jak-oficjalna.md` (rama, motyw dzień/noc, strona 1),
 > `etap-27b-karta-walka-ekwipunek.md`, `etap-27c-karta-zycie-cyborgizacje.md`. Powód: MG chce
@@ -22,8 +37,8 @@ Warstwa satysfakcji: animowane kości 3D nad stołem oraz przegląd i ujednolice
 ## Zakres
 
 - [x] Kości 3D: biblioteka `@3d-dice/dice-box-threejs` (WebGL + fizyka) — animacja rzutu przy każdym rzucie na czacie; **wynik zawsze z serwera** — animacja jest deterministycznie doprowadzana do wartości serwera, nigdy odwrotnie _(zrobione w etapie 06)_
-- [ ] Skórki kości: d10/d6 w klimacie (neon na czarnym), rozróżnienie wizualne krytyka (dorzut wjeżdża osobną kością — _dorzut już działa, zostają skórki_)
-- [ ] Ustawienia per użytkownik: wyłączenie animacji (dostępność/wydajność), głośność stuknięć kości
+- [ ] Wybór różnych skórek kości: d10/d6 w tym w klimacie (neon na czarnym), rozróżnienie wizualne krytyka (dorzut wjeżdża osobną kością — _dorzut już działa, zostają skórki_)
+
 - [ ] Przegląd UI całej aplikacji — ujednolicenie do spójnego motywu wzorowanego na Foundry (ciemny interfejs, panele boczne, okna przeciągalne) z akcentem cyberpunk (neonowe podświetlenia, monospace w elementach „terminalowych"):
   - wspólne tokeny designu (kolory, typografia, odstępy) w jednym pliku motywu
   - **tryb dzień/noc dla całej aplikacji** — tokeny i przełącznik powstały w etapie 27a, ale ubierają wyłącznie kartę postaci; tutaj dochodzi reszta widoków
@@ -41,7 +56,6 @@ Warstwa satysfakcji: animowane kości 3D nad stołem oraz przegląd i ujednolice
 
 - Rzut `/r 2d6+3` toczy kości 3D, które zatrzymują się na wartościach zgodnych z wynikiem serwera; dorzut krytyka ma swoją animację; wyłączenie animacji w ustawieniach działa
 - Wszystkie widoki trzymają jeden motyw (bez „gołych" niestylowanych ekranów); okna przeciągalne
-- Test na drugim komputerze/laptopie z gorszym GPU: stół używalny, animacje nie zabijają płynności
 
 ## Wskazówki techniczne
 

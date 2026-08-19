@@ -1,6 +1,7 @@
 import { appendFile, mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import type { SessionUser } from '@vtt/shared';
+import { DEFAULT_DICE_SKIN, isDiceSkinId } from '@vtt/shared';
 import { RealtimeError, type RealtimeDeps } from './registry.js';
 
 /**
@@ -47,8 +48,15 @@ export async function logBotDecision(
 export async function botActorUser(deps: RealtimeDeps, authorId: string): Promise<SessionUser> {
   const user = await deps.ctx.prisma.user.findUnique({
     where: { id: authorId },
-    select: { id: true, name: true, role: true },
+    select: { id: true, name: true, role: true, diceSkin: true },
   });
   if (!user) throw new RealtimeError('INTERNAL');
-  return { id: user.id, name: user.name, role: user.role as SessionUser['role'] };
+  return {
+    id: user.id,
+    name: user.name,
+    role: user.role as SessionUser['role'],
+    // A bot rolls on the GM's account, so it rolls with the GM's dice — the
+    // same reason its chat line is indistinguishable from a GM speaking as it.
+    diceSkin: isDiceSkinId(user.diceSkin) ? user.diceSkin : DEFAULT_DICE_SKIN,
+  };
 }

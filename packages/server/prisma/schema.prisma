@@ -13,6 +13,10 @@ model User {
   role         String // "GM" | "PLAYER" (SQLite: no enum support in Prisma)
   passwordHash String?
   createdAt    DateTime @default(now())
+  /// Cosmetic dice skin this user rolls with (stage 27d), e.g. "neon".
+  /// Kept server-side rather than in the browser because the skin has to
+  /// reach OTHER tables: the roller's dice are what everyone sees tumbling.
+  diceSkin     String   @default("neon")
 
   sessions         Session[]
   memberships      CampaignMember[]

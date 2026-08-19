@@ -9,6 +9,7 @@ import type {
   CampaignSummary,
   ChatMessageBroadcast,
   CharacterView,
+  CombatView,
   CompendiumEntry,
   CpredCharacterData,
   DefenseZoneSyncBroadcast,

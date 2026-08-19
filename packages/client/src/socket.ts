@@ -135,6 +135,7 @@ import type {
   NoteDeleteBroadcast,
   NotePatch,
   NoteUpsertBroadcast,
+  DiceSkinId,
   PresenceBroadcast,
   RollGesture,
   RulerBroadcast,
@@ -223,6 +224,7 @@ import { useExplorationStore } from './stores/explorationStore.js';
 import { useCoverStore } from './stores/coverStore.js';
 import { useSmokeStore } from './stores/smokeStore.js';
 import { useZoneStore } from './stores/zoneStore.js';
+import { useSettingsStore } from './stores/settingsStore.js';
 import { offerCoverChoice, offerShieldChoice } from './attack-targeting.js';
 
 let socket: Socket | undefined;
@@ -1814,6 +1816,18 @@ function emitSceneAck<T = undefined>(event: string, payload: unknown): Promise<S
     }
     socket.emit(event, payload, (ack: SocketAck<T>) => resolve(ack));
   });
+}
+
+/**
+ * Zapisuje skórkę kości tego użytkownika (etap 27d).
+ *
+ * Jedyne ustawienie wyglądu, które opuszcza przeglądarkę — i musi, bo przy
+ * stole widać kości **rzucającego**. Serwer odsyła to, co naprawdę zapisał,
+ * więc klient, którego wartości nie przyjęto, i tak kończy zsynchronizowany.
+ */
+export async function sendDiceSkin(skin: DiceSkinId): Promise<void> {
+  const ack = await emitSceneAck<DiceSkinId>('dice:skin', { skin });
+  if (ack.ok && ack.data) useSettingsStore.getState().applySkin(ack.data);
 }
 
 export const createScene = (name: string) => emitSceneAck<SceneView>('scene:create', { name });

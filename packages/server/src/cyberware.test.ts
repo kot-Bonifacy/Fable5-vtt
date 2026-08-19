@@ -306,7 +306,13 @@ describe('cyborgizacje i człowieczeństwo', () => {
     expect(roll?.outcome?.detail).toContain('1k6 / 2 w górę');
 
     const after = await sheetOf(vex, characterId);
-    expect(before.humanityCurrent - after.humanityCurrent).toBe(expected);
+    // Pula spada o wynik rzutu, ALE nigdy nie zostaje nad sufitem, a sufit
+    // zjeżdża o 2 za każdy wszczep kosztujący Człowieczeństwo (oko + wkładka
+    // = 60 − 4). Porównywanie samej różnicy pękało raz na ~sto przebiegów:
+    // przy 2k6 = 2 pula stała równo na suficie i to sufit ciągnął ją w dół,
+    // a nie rzut (znalezione 19.08 przy etapie 27d).
+    const ceiling = 60 - 2 - 2;
+    expect(after.humanityCurrent).toBe(Math.min(before.humanityCurrent - expected, ceiling));
     expect(after.cyberware[1]?.slotCost).toBe(2);
   });
 

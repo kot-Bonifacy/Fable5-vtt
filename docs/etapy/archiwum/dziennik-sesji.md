@@ -7,6 +7,78 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 16.08 — etap 26e (Demony)
+
+**Etap 26e został przed rozpoczęciem podzielony na dwa** (decyzja MG). Pierwotny zakres niósł
+naraz Demona (walka w Sieci) i **bronioną strefę jako obiekt sceny** z samoczynnym wyzwalaniem —
+a to druga warstwa i osobny model danych: efekty systemów środowiskowych („6k6 obrażeń", „Test
+Atletyki PT 15", „RUCH −2k6") są w kompendium **wyłącznie prozą**, więc 26f musi zacząć od
+modelu efektu wzorem `CpredNetProgramEffects` z 26c. Samodzielne stanowiska obronne i strefy
+wyprowadziły się do nowego **26f**.
+
+**Trzy decyzje MG z 16.08 niosą cały etap.** (1) **Demon trzyma wszystkie węzły swojej
+Architektury od startu** — jest gospodarzem sieci, więc netrunner każdy węzeł musi mu odebrać;
+PT odebrania to PT wypisane na piętrze, dopóki Demon sam nie rzuci Testu Kontroli, a potem jego
+wynik. (2) **Tura Demona idzie jednym klikiem**, z celami wybranymi przez silnik — karta obrażeń
+ma „Cofnij", więc wybór, który MG się nie spodoba, kosztuje jedno kliknięcie. (3) Jak w 26c,
+**Demon nie rusza się sam**: dwa przyciski MG, „Demon wykrywa intruza" i „Tura Demona".
+
+**Wykrycie intruza nie jest rzutem.** Demon nie ma PRĘDKOŚCI, więc z encountera ze s. 205 zostaje
+tylko ta połowa, która coś znaczy przy stole: zaczyna ścigać i wchodzi na czoło Kolejki
+Inicjatywy. Nie ma też PER, więc **Ślizg przed nim nie działa** — w wierszu Demona zamiast
+przycisku stoi zdanie „Ślizg nie działa — Demon nie ma Percepcji", a serwer odmawia
+`NET_SLIDE_VS_DEMON` **przed** zaksięgowaniem Akcji Sieciowej (to pomyłka, nie nieudana próba).
+
+**Kolejność Tury jest czystą funkcją, ale wołaną krok po kroku.** `nextDemonStep` odpowiada „co
+teraz": najpierw odbierz węzeł, który trzyma netrunner, potem strzel z wieżyczki własnego węzła,
+a z resztek Pafnij. Krok po kroku, a nie z gotowej listy, bo **Test Kontroli może się nie udać** —
+a węzeł odebrany w tej Turze wolno w tej samej Turze wykorzystać. Widać to na czacie z oględzin:
+„Węzeł ochrony odebrany — PT odebrania go Demonowi: 13. · Grzechot strzela do: Kolec (Wartość
+bojowa 14)". Nieudany Test blokuje ten węzeł do końca Tury, żeby Demon nie przepalił wszystkich
+Akcji na jeden zamek.
+
+**Wieżyczka Demona strzela tą samą drogą co wieżyczka netrunnera z 26d.** `combatProfileOperatedBy`
+dostał brata: `combatProfileWithCombatValue` wkłada całą „Wartość bojową" w **Umiejętność**
+i zeruje Cechy oraz Unik („nie mogą unikać ataków", s. 214). Karta z oględzin czyta się wtedy
+uczciwie: „Karabin szturmowy → Kolec · 1d10+14 · **Refleks (REF) +0 · Broń długa +14** · 17 m
+(13–25 m) · PT 15 · magazynek 23/25". Maszyna nie ma refleksu, a jedna liczba nie udaje dwóch.
+26f użyje tej samej funkcji dla stanowisk obronnych.
+
+**Demon żyje w stanie runu, jak Czarny LOD z 26c**, i to jest trzeci plaster stanu
+(`CpredNetDemonState`) sklejany w `readFullRun`. Powód ten sam co przy LOD-zie: „Odłączenie
+resetuje obronę danej Architektury Sieciowej" (s. 198). Konsekwencja, którą warto znać przy stole:
+**pokonanie Demona otwiera jego węzły z powrotem na PT wypisane na piętrze** — `netDemonHoldDv`
+przestaje cokolwiek zwracać, gdy nie zostaje ani jeden żywy Demon.
+
+**Zweryfikowane:** 1212 testów w `shared` (20 nowych w `netdemons.test.ts` + 2 w `statist.test.ts`),
+701 na serwerze (14 nowych w `netdemons.test.ts` na żywych gniazdach, 5 przebiegów bez migotania),
+`tsc --noEmit` czysty w trzech pakietach, ESLint, Prettier i `pnpm build` bez uwag. **Migracji nie
+ma** — Demon mieści się w kolumnie JSON runu, a `Combatant.netIceId` niesie od tego etapu id
+**uczestnika Sieci**, Czarnego LOD-a albo Demona (zmiana samego komentarza w schemacie).
+
+**Odklikane u MG** w kampanii „Poligon bojowy". Potwierdzone: **czwarte piętro „Serce sieci"**
+z Diablikiem w edytorze Architektury (uwaga „Demon bez wpisu" znika po wybraniu wpisu); sekcja
+**DEMONY** w oknie Sieci obok sekcji **CZARNY LOD** (Diablik: „czuwa", REZ 15/15, u MG „Interfejs 3
+· Akcje Sieciowe 2 · Wartość bojowa 14"); **„Demon wykrywa intruza"** → chip „ściga" i zdanie
+„Diablik wie już o intruzie — Architektura zaczyna się bronić"; **lista broni czyta kolumnę
+Programów, nie Czarnych LOD-ów** („Miecz — 2k6, Młot na wroga — 3k6, Szabloząb — 6k6", Superklej
+przeciwbiałkowy nieobecny); **atak** („Młot na wroga → Diablik · 1d10+8 = 16 · **obrona 1d10+3 = 5**
+· 3k6 = 13 · Diablik: REZ 2") — obrona jest Testem Interfejsu, nie kolumną OBR; **Tura Demona**
+w dwóch wariantach („Grzechot strzela do: Kolec (Wartość bojowa 14). · Paf chybia" oraz „Węzeł
+ochrony — Test Kontroli nieudany (PT 12). · Paf: 1k6 = 5 bezpośrednio w mózg"); **PT w obie
+strony** — Demon rzucał „Kontrola — Węzeł ochrony · PT 12", a netrunner odbierał węzeł kartą
+„Kontrola (Interfejs) · PT 13". Konsola czysta.
+
+**Jeden błąd spoza etapu, znaleziony po drodze.** Migotanie `ammo-effects.test.ts` łatane 15.08
+wcale nie zniknęło: łatka porównywała `roll.critical` z napisem `'failure'`, a to **obiekt**
+`{ type: 'fumble', extraRoll }`, więc warunek nigdy nie był prawdziwy i test pękał na każdej
+naturalnej jedynce — raz na dziesięć przebiegów, nie „raz na kilkanaście". Naprawione; szczegóły
+w „Pułapkach dev".
+
+**Poligon zostaje przygotowany pod stół**: architektura „siec klub" ma teraz **cztery piętra**
+(doszło 4 „Serce sieci" z **Diablikiem**), run jest zamknięty, PW Kolca przywrócone do 35/35,
+magazynek „Automatycznej wieżyczki" do 25/25. Tryb turowy dalej wyłączony.
+
 ### Sesja 15.08 (trzecia tego dnia) — etap 26d (węzły kontrolne i systemy obronne)
 
 **Etap 26d został przed rozpoczęciem podzielony na dwa** (decyzja MG). Pierwotny zakres niósł

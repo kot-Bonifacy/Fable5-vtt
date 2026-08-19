@@ -1,4 +1,5 @@
 import type { Role, SessionUser } from '@vtt/shared';
+import { DEFAULT_DICE_SKIN, isDiceSkinId } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
 import type { User } from '../generated/prisma/client.js';
 
@@ -7,7 +8,14 @@ export const SESSION_COOKIE = 'vtt_sid';
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export function toSessionUser(user: User): SessionUser {
-  return { id: user.id, name: user.name, role: user.role as Role };
+  return {
+    id: user.id,
+    name: user.name,
+    role: user.role as Role,
+    // A skin the client does not know about (downgraded build, hand-edited
+    // row) falls back to the default rather than breaking the session.
+    diceSkin: isDiceSkinId(user.diceSkin) ? user.diceSkin : DEFAULT_DICE_SKIN,
+  };
 }
 
 export async function createSession(prisma: PrismaClient, userId: string, ttlDays: number) {

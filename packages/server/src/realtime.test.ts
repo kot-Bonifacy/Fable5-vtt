@@ -552,6 +552,72 @@ describe('dice rolls', () => {
   });
 });
 
+describe('dice skins (stage 27d)', () => {
+  it("stamps the roller's skin onto the card everyone sees", async () => {
+    const gm = createSocket(gmCookie);
+    const rogue = createSocket(rogueCookie);
+    await Promise.all([gm.firstSync, rogue.firstSync]);
+
+    // A new account starts on the default skin, and the card says so.
+    const beforeToGm = waitFor<ChatMessageBroadcast>(gm.socket, 'chat:message');
+    expect((await emitAck(rogue.socket, 'chat:send', { text: '/r 1d6' })).ok).toBe(true);
+    expect((await beforeToGm).message.roll?.skin).toBe('neon');
+
+    expect(await emitAck(rogue.socket, 'dice:skin', { skin: 'acid' })).toEqual({
+      ok: true,
+      data: 'acid',
+    });
+
+    // The point of the whole feature: the GM sees ROGUE'S dice, not their own.
+    const toGm = waitFor<ChatMessageBroadcast>(gm.socket, 'chat:message');
+    expect((await emitAck(rogue.socket, 'chat:send', { text: '/r 1d6' })).ok).toBe(true);
+    expect((await toGm).message.roll?.skin).toBe('acid');
+
+    // And the GM's own roll still carries the GM's skin.
+    const ownToGm = waitFor<ChatMessageBroadcast>(gm.socket, 'chat:message');
+    expect((await emitAck(gm.socket, 'chat:send', { text: '/r 1d6' })).ok).toBe(true);
+    expect((await ownToGm).message.roll?.skin).toBe('neon');
+
+    rogue.socket.disconnect();
+    gm.socket.disconnect();
+  });
+
+  it('refuses a skin it does not know instead of storing it', async () => {
+    const { socket, firstSync } = createSocket(rogueCookie);
+    await firstSync;
+
+    expect(await emitAck(socket, 'dice:skin', { skin: 'plaid' })).toEqual({
+      ok: false,
+      error: 'UNKNOWN_DICE_SKIN',
+    });
+    expect(await emitAck(socket, 'dice:skin', {})).toEqual({
+      ok: false,
+      error: 'UNKNOWN_DICE_SKIN',
+    });
+
+    socket.disconnect();
+  });
+
+  it("replays history in the roller's current skin, not the one stored with the roll", async () => {
+    const rogue = createSocket(rogueCookie);
+    await rogue.firstSync;
+
+    expect((await emitAck(rogue.socket, 'dice:skin', { skin: 'chrome' })).ok).toBe(true);
+    expect((await emitAck(rogue.socket, 'chat:send', { text: '/r 1d6 chromem' })).ok).toBe(true);
+    expect((await emitAck(rogue.socket, 'dice:skin', { skin: 'card' })).ok).toBe(true);
+
+    // The skin is stamped on the way out, so yesterday's rolls follow today's
+    // choice — the payload records what was rolled, not what it looked like.
+    const syncPromise = waitFor<StateSyncPayload>(rogue.socket, 'state:sync');
+    rogue.socket.emit('state:request');
+    const sync = await syncPromise;
+    const replay = sync.messages.find((message) => message.text.includes('chromem'));
+    expect(replay?.roll?.skin).toBe('card');
+
+    rogue.socket.disconnect();
+  });
+});
+
 describe('history pagination', () => {
   it('pages backwards with beforeId and reports hasMore', async () => {
     const { socket, firstSync } = createSocket(gmCookie);

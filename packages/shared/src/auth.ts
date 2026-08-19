@@ -1,3 +1,5 @@
+import type { DiceSkinId } from './dice.js';
+
 /** User roles. Exactly two by design — see the project survey. */
 export type Role = 'GM' | 'PLAYER';
 
@@ -9,6 +11,13 @@ export interface SessionUser {
   id: string;
   name: string;
   role: Role;
+  /**
+   * Cosmetic dice skin this user rolls with (stage 27d). It sits on the
+   * identity rather than in the browser because it has to reach OTHER
+   * tables: what the room sees tumbling are the roller's dice, so the server
+   * stamps it onto every published roll.
+   */
+  diceSkin: DiceSkinId;
 }
 
 export interface CampaignSummary {

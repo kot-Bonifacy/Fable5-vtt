@@ -377,6 +377,27 @@ export interface RollForcedCheck {
   effect?: string;
 }
 
+/**
+ * Cosmetic dice skins (stage 27d).
+ *
+ * Only the **id** lives here, because only the id travels: the server stamps
+ * the roller's skin onto every roll it publishes, so the whole table sees
+ * whose dice are tumbling — the same idea as the cup's shake strength. What
+ * a skin actually looks like (colours, texture, material) is a client
+ * concern and lives in `packages/client/src/dice3d.ts`; the rules
+ * engine must not know that a die can be green.
+ */
+export const DICE_SKIN_IDS = ['neon', 'blood', 'chrome', 'acid', 'card'] as const;
+
+export type DiceSkinId = (typeof DICE_SKIN_IDS)[number];
+
+/** The stage asks for „neon on black" — so that is what a new player gets. */
+export const DEFAULT_DICE_SKIN: DiceSkinId = 'neon';
+
+export function isDiceSkinId(value: unknown): value is DiceSkinId {
+  return typeof value === 'string' && (DICE_SKIN_IDS as readonly string[]).includes(value);
+}
+
 export interface RollResult {
   /** Canonical notation of what was rolled, e.g. `1d10+7`. */
   notation: string;
@@ -413,6 +434,19 @@ export interface RollResult {
   tossStrength?: number;
   /** Throw direction and release point of the cup gesture (cosmetic). */
   toss?: RollToss;
+  /**
+   * The roller's dice skin (stage 27d), stamped by the server from their
+   * saved preference. Cosmetic: an unknown value means the viewer simply
+   * keeps their own dice, and a missing one means the default skin.
+   */
+  skin?: DiceSkinId;
+  /**
+   * True when the dice are **not** a test — they are row numbers of a table
+   * (the creator's stat and Lifepath throws). The chat card must then leave
+   * tens and ones unpainted: on those cards a 10 is „row ten", not a critical
+   * (stage 27d, reported in POMYSLY.md on 2026-08-14).
+   */
+  plain?: boolean;
 }
 
 /** True when the formula's dice are exactly one added d10 — a CP RED check. */
@@ -431,6 +465,11 @@ export interface RollOptions {
    * initiative of 10 must not explode.
    */
   checkRule?: boolean;
+  /**
+   * Marks the result as row numbers rather than a test (stage 27d) — see
+   * `RollResult.plain`. Purely presentational: the engine rolls the same dice.
+   */
+  plain?: boolean;
 }
 
 /**
@@ -485,6 +524,7 @@ export function rollFormula(
     notation: formatRollNotation(formula),
     terms,
     ...(critical ? { critical } : {}),
+    ...(options.plain ? { plain: true } : {}),
     criticalDamage: sixes >= 2,
     total,
   };

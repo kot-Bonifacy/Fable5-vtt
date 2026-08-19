@@ -10,7 +10,7 @@ import type {
   JournalLogEntry,
   SessionUser,
 } from '@vtt/shared';
-import { CHAT_HISTORY_PAGE_SIZE, ROLE_GM } from '@vtt/shared';
+import { CHAT_HISTORY_PAGE_SIZE, ROLE_GM, isDiceSkinId } from '@vtt/shared';
 import type { RollResult } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
 import type { RealtimeDeps } from './registry.js';
@@ -47,7 +47,9 @@ export async function getRoster(prisma: PrismaClient, campaignId: string): Promi
 
 /** Relations needed to render any message, including NPC lines spoken by bots. */
 export const INCLUDE_CHAT_NAMES = {
-  author: { select: { name: true } },
+  // `diceSkin` rides along so a roll card knows whose dice to tumble
+  // (stage 27d): the skin belongs to the roller, not to the viewer.
+  author: { select: { name: true, diceSkin: true } },
   recipient: { select: { name: true } },
   bot: { select: { name: true, portraitUrl: true } },
   recipientBot: { select: { name: true } },
@@ -64,7 +66,7 @@ interface StoredMessage {
   recipientBotId: string | null;
   speakerName: string | null;
   createdAt: Date;
-  author: { name: string };
+  author: { name: string; diceSkin: string };
   recipient: { name: string } | null;
   bot: { name: string; portraitUrl: string | null } | null;
   recipientBot: { name: string } | null;
@@ -93,7 +95,12 @@ export function toChatMessageView(message: StoredMessage): ChatMessageView {
     view.recipientName = message.recipientBot?.name ?? '?';
   }
   if ((message.kind === 'roll' || message.kind === 'gmroll') && message.payload) {
-    view.roll = JSON.parse(message.payload) as RollResult;
+    const roll = JSON.parse(message.payload) as RollResult;
+    // Stamped on the way OUT, not stored with the roll: a player who changes
+    // their dice today should see yesterday's history in the new ones, and
+    // the payload stays a record of what was rolled, not of taste.
+    if (isDiceSkinId(message.author.diceSkin)) roll.skin = message.author.diceSkin;
+    view.roll = roll;
   } else if (message.kind === 'damage' && message.payload) {
     view.damage = JSON.parse(message.payload) as DamageLogEntry;
   } else if ((message.kind === 'action' || message.kind === 'gmaction') && message.payload) {

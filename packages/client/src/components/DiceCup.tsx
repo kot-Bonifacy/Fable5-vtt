@@ -15,6 +15,7 @@ import {
   sendInitiativeRoll,
 } from '../socket.js';
 import { useChatStore } from '../stores/chatStore.js';
+import { useSettingsStore } from '../stores/settingsStore.js';
 import { rollCreationWithGesture } from '../stores/creationStore.js';
 import {
   useRollStore,
@@ -115,10 +116,16 @@ function tailSpeed(recent: ShakeSample[], now: number): number {
   return path / (now - tail[0]!.t);
 }
 
-function playRattle(volume: number): void {
+/**
+ * `energy` (0–1) is how hard the hand is shaking; the user's cup slider
+ * (0–100, stage 27d) scales the whole thing, and zero silences it outright.
+ */
+function playRattle(energy: number): void {
+  const setting = useSettingsStore.getState().cupVolume / 100;
+  if (setting <= 0) return;
   const src = RATTLE_SOUNDS[Math.floor(Math.random() * RATTLE_SOUNDS.length)]!;
   const audio = new Audio(src);
-  audio.volume = Math.min(0.12 + volume * 0.25, 0.5);
+  audio.volume = Math.min(0.12 + energy * 0.25, 0.5) * setting;
   void audio.play().catch(() => undefined);
 }
 
