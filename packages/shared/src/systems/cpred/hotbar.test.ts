@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   CPRED_HOTBAR_KEYED_SLOTS,
   cpredFireModes,
+  cpredWeaponIcon,
   cpredWeaponOptions,
   hotbarSlotsFor,
   type CpredHotbarInput,
@@ -270,5 +271,47 @@ describe('hotbarSlotsFor — keys', () => {
   it('gives an unstatted token only the catalogue actions', () => {
     const slots = hotbarSlotsFor(input({ sheet: null, profile: null }));
     expect(slots.every((slot) => slot.kind === 'action')).toBe(true);
+  });
+});
+
+/**
+ * Stage 27h: the panel draws a picture per slot, and the picture is a rules
+ * decision — „which of these is a shotgun" is answered by the compendium, never
+ * by matching words in a weapon's name.
+ */
+describe('cpredWeaponIcon', () => {
+  it('reads the weapon type first, whatever the row is called', () => {
+    expect(cpredWeaponIcon({ ...pistol, typeId: 'weapon-type.shotgun' })).toBe('shotgun');
+    expect(cpredWeaponIcon({ ...pistol, typeId: 'weapon-type.very-heavy-pistol' })).toBe(
+      'revolver',
+    );
+    expect(cpredWeaponIcon({ ...smg, typeId: 'weapon-type.heavy-submachine-gun' })).toBe(
+      'smg-heavy',
+    );
+  });
+
+  it('falls back to the skill when the type is one nobody mapped', () => {
+    expect(
+      cpredWeaponIcon({ ...pistol, typeId: 'weapon-type.sample-rifle', skillId: 'shoulder-arms' }),
+    ).toBe('rifle');
+    expect(cpredWeaponIcon({ ...knife, typeId: undefined, skillId: 'melee-weapon' })).toBe('sword');
+  });
+
+  it('falls back to what the weapon does when it has neither', () => {
+    expect(cpredWeaponIcon({ ...pistol, skillId: null, explosive: true })).toBe('grenade');
+    expect(cpredWeaponIcon({ ...pistol, skillId: null, thrown: true })).toBe('knife');
+    expect(cpredWeaponIcon({ ...knife, skillId: null })).toBe('sword');
+    expect(cpredWeaponIcon(null)).toBe('pistol');
+  });
+
+  it('puts a picture on every slot the bar builds', () => {
+    const slots = hotbarSlotsFor(input({ resolve: () => smg }));
+    expect(slots.every((slot) => slot.icon.length > 0)).toBe(true);
+    const reload = slots.find((slot) => slot.kind === 'reload');
+    expect(reload?.icon).toBe('reload');
+    const stand = slots.find(
+      (slot) => slot.kind === 'action' && slot.actionId === CPRED_ACTION_STAND_UP,
+    );
+    expect(stand?.icon).toBe('stand-up');
   });
 });

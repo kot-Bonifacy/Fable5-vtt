@@ -68,6 +68,8 @@ Pełne notatki z zamkniętych etapów: `archiwum/dziennik-sesji.md` (nie czytaj 
 | 27e | Motyw dzień/noc dla całej aplikacji           | ✅     | 2026-08-20        | mapa i okno Sieci zostają nocne (decyzja MG); `theme.css` = jedyny plik z kolorem, pilnuje testu |
 | 27f | Szlif UX: pomoc, tooltipy, stany, okna        | ⬜     |                   | okno skrótów `?`, stany puste, okna pamiętające pozycję i rozmiar                                |
 | 27g | Wydajność                                     | ⬜     |                   | re-rendery przy ruchu tokenów, bundle, lazy-loading, fps mapy                                    |
+| 27h | Panel postaci: HUD, który wygląda jak gra     | ✅     | 2026-08-20        | dopisany 20.08 na wniosek MG; ikona slotu i waga statusu liczone w `shared`, nie w CSS   |
+| 27i | Mapa: tokeny, efekty walki i ruch             | ⬜     |                   | dopisany 20.08 razem z 27h; walka nie ma dziś na mapie żadnego efektu                     |
 | 28  | Wdrożenie na VPS                              | ⬜     |                   |                                                                                                  |
 
 ## Od czego zacząć
@@ -675,6 +677,82 @@ decyduje przegrany, nie zwycięzca`) — Konfrontacje z 10.08 szły z konta MG, 
 
 ## Notatki z dwóch ostatnich sesji
 
+### Sesja 20.08 (druga tego dnia) — etap 27h (panel postaci: HUD, który wygląda jak gra)
+
+**Etap dopisany w tej sesji, na wniosek MG:** „lewy panel wygląda bardzo generycznie, jak arkusz
+kalkulacyjny", „walka i przemieszczanie tokenów wygląda zbyt prymitywnie". Praca rozbita na dwa
+etapy — **27h** (panel, ta sesja) i **27i** (mapa: tokeny, efekty walki, ruch, SFX). Oba pliki
+w `docs/etapy/`; zdanie „przeprojektowanie układu paneli" z „Poza zakresem" etapu 27f jest tym
+zastąpione.
+
+**Cztery decyzje MG z 20.08.** (1) Kierunek wizualny: **struktura jak Argon Combat HUD z Foundry**
+(portret, sekcje akcji, kafle z ikonami) plus cienka warstwa cyberpunku — ścięty róg, wąski
+neonowy akcent, monospace tylko na liczbach; odrzucony pełny „ekran wszczepu" (nie do utrzymania
+w dziennym motywie). (2) Zakres obejmuje panel, tokeny, efekty walki **i** ruch. (3) Efekty
+mapy: sprite'y z paczek CC0 **plus dźwięki SFX** (27i). (4) Podział na dwie sesje zamiast jednej.
+
+**Największe odkrycie tej sesji dotyczy etapu 27i, nie 27h: walka nie ma na mapie żadnego
+efektu.** `MapRenderer` rysuje marsz, ślad trasy i celownik — i na tym koniec. Strzał, trafienie,
+pudło, wybuch i obrażenia istnieją wyłącznie jako wpis na czacie. To większa dziura niż wygląd
+panelu i dlatego 27i dostał własną sesję zamiast doklejki.
+
+**Ikona slotu jest wiedzą systemową i mieszka w `shared`.** `cpredWeaponIcon` czyta **typ broni
+z kompendium** (do tego doszło `ResolvedWeapon.typeId` obok istniejącego `typeName` — nazwa jest
+do czytania, id do rozgałęziania), potem umiejętność, a na końcu to, co broń robi (wybuchowa →
+granat, rzucana → nóż, biała → miecz). Panel dostaje nazwę **rzeczy** (`CpredSlotIcon`), nie
+ścieżkę pliku, więc podmiana sylwetki nigdy nie jest zmianą w regułach. Dwadzieścia typów broni
+z podręcznika ma mapowanie po ostatnim segmencie id, więc `weapon-type.sample-*` z danych
+publicznych spada na fallback po umiejętności i nie zostaje bez obrazka.
+
+**Błąd znaleziony przy oglądaniu: stany ran malowały się szaro jak „Onieśmielony".**
+`cpredStatusSeverity` wywodzi wagę z `CPRED_STATUS_EFFECTS` — a `seriously-wounded`
+i `mortally-wounded` **nie mają tam wiersza** i mieć nie powinny: nic nie odmawiają, ich kary
+(−2, −4, −6 do RUCH-u) liczy się z Punktów Wytrzymałości. Nazwane więc wprost, w osobnej tabelce
+z komentarzem, i przykryte testem, który pilnuje, że tabela efektów faktycznie ich nie zna.
+
+**Strażnik motywu z 27e zadziałał od razu.** Pierwsze uruchomienie testów przewróciło się na
+`--hud-icon` i `--hud-mag-color` — tokenach ustawianych per element (pierwszy podaje React,
+drugi zmienia się z zawartością magazynka). Dopisane do listy lokalnych, z uzasadnieniem. Żaden
+literał koloru nie wszedł do `styles.css`.
+
+**30 nowych ikon** (`packages/client/public/icons/hud/`, game-icons.net, CC BY 3.0, atrybucja
+w `public/icons/ATTRIBUTION.md`) rysowanych **maską CSS**, nie `<img>`: kafel ma cztery stany
+(zwykły, uzbrojony, odmówiony, pod kursorem), a maska barwi się `currentColor`, więc plik jest
+jeden zamiast czterech. Trzy ikony wymienione po obejrzeniu: `sbed/rifle` i `sbed/shotgun`
+wyglądają jak naboje, a `sbed/pulse` jak wiatraczek.
+
+**Zweryfikowane:** 1257 testów w `shared` (9 nowych: ikony broni i waga statusu), 723 na
+serwerze bez zmian, 5 w kliencie (strażnik motywu), `tsc --noEmit` czysty, ESLint, Prettier,
+`vite build` bez uwag.
+
+**Odklikane w przeglądarce** (Poligon bojowy, konto MG, oba motywy): karta tożsamości z rolą
+i chipami SP 11 · RUCH 5 · EMP 5, pasek PW w czterech stanach ran z widocznym progiem poważnej
+rany, **liczba obrażeń wypływająca z paska** (−9 czerwone, +25 zielone — sprawdzone przez DOM,
+bo animacja trwa 1,6 s), kapsułki statusów w trzech wagach, sekcje „BROŃ"/„AKCJE" z ikonami,
+magazynek jako kreski i jako pasek, kolory „mało" i „pusto", slot uzbrojony, slot odmówiony,
+baner „TURA TEJ FIGURY" z budżetem railowym, statysta bez karty (wieżyczka: portret zastępczy,
+SP z profilu, brak przeładowania), stan pusty i **pasek zwinięty** (portret + pionowy pasek PW).
+
+**Nieodklikane:** (1) **strona gracza** — wszystko oglądane z konta MG; różnica jest wyłącznie
+w danych, które i tak filtruje serwer (`hp` ukryte → „PW ukryte" zamiast paska), ale nikt nie
+patrzył na to oczami gracza. (2) **Prawdziwa tura** — baner i budżet railowy oglądane na stanie
+wstrzykniętym lokalnie do `combatStore`, bo na Poligonie tryb turowy jest wyłączony; kod czyta
+te same pola co pasek górny. (3) **Formularze w panelu** (Zwarcie, Wstrzymanie, Ustabilizowanie)
+— komponenty są te same co w zakładce „Walka" i nie były w tym etapie ruszane.
+
+**Dwie poprawki zgłoszone przez MG w trakcie sesji, obie o dolny róg panelu.** Kubek do kości
+(`position: fixed`, lewy dolny róg okna) siedzi **na** tym panelu i po poszerzeniu paska zaczął
+zasłaniać „Tab następna postać"; panel rezerwuje mu teraz 4,6 rem u dołu. Pierwsza wersja
+poprawki zostawiła jednak stopkę przyklejoną do dołu (`margin: auto 0 0` z 16f) i skróty zawisły
+**nad** kubkiem w pustce — stopka idzie więc teraz zaraz po slotach, jak każde inne zdanie
+w panelu, a dół należy do kubka. Kubek nie pamięta pozycji: przeciąganie służy potrząsaniu, a nie
+przestawianiu, więc miejsce trzeba było zostawić po stronie panelu.
+
+**Pułapka na przyszłość:** `await import('/src/stores/…')` z konsoli DevTools daje **inną
+instancję modułu** niż ta, z której renderuje aplikacja (`characters` widziane jako puste, choć
+panel rysował kartę). Do podglądania stanu nadaje się tylko wtedy, gdy zmiana jest widoczna
+w UI — inaczej ogląda się drugą kopię store'a.
+
 ### Sesja 20.08 — etap 27e (motyw dzień/noc dla całej aplikacji)
 
 **Reguła, która niosła cały etap: dzień ubiera chrom, nie fikcję.** Przełączają się paski,
@@ -752,75 +830,10 @@ stałe (nie mają wariantu dziennego), więc to okno **z definicji wygląda tak 
 
 ### Sesja 19.08 — etap 27d (kości 3D: skórki, dorzut, ustawienia)
 
-**Etap 27 został rozdzielony do końca.** Po wydzieleniu 27a–27c (karta postaci) niósł nadal
-cztery osobne kawałki roboty; rozbite na **27d** (ta sesja), **27e** (motyw całej aplikacji),
-**27f** (szlif UX), **27g** (wydajność). Plik `etap-27-…` został jako rozdroże ze wskazaniami.
-Przy okazji rozstrzygnięta **sprzeczność w jego treści**: „Zakres" chciał dnia dla całego VTT,
-„Poza zakresem" pisało „ciemny wystarczy". **Decyzja MG: tryb dzienny obejmuje całą aplikację**
-(27e).
-
-**Cztery decyzje MG z 19.08 niosą etap.** (1) Skórka jest **rzucającego** — jedzie z rzutem, tak
-jak siła potrząśnięcia kubkiem, więc przy stole widać cudze kości. (2) Dorzut krytyka to **druga
-fala**: pierwsza osiada, 550 ms pauzy, potem osobna k10 w złocie albo w czerni. (3) Ustawienia
-dostały **własne pływające okno „⚙"** — ☀/☾ i ⌨ wyprowadziły się z górnego paska (`ThemeToggle`
-i `TypewriterToggle` usunięte). (4) **Pięć skórek**, domyślnie Neon.
-
-**Skórka musiała trafić do bazy, i to jest jedyne takie ustawienie.** Reszta preferencji wyglądu
-zostaje w `localStorage`, bo dotyczy tylko właściciela przeglądarki; skórka ma dojechać do
-**cudzych** ekranów, więc siedzi w `User.diceSkin` (migracja
-`20260819194211_stage27d_dice_skin`), wchodzi do `SessionUser` przez jedyny konstruktor
-(`toSessionUser`) i jest **stemplowana na wyjściu** w `toChatMessageView` — nie zapisywana
-z rzutem. Skutek zamierzony: kto zmieni kości dzisiaj, ten zobaczy w nich także wczorajszą
-historię, a payload zostaje zapisem tego, co padło, a nie czyjegoś gustu.
-
-**Biblioteka trzyma skórkę globalnie — stąd dwie fale.** `parseNotation` nie zna koloru
-pojedynczej kości, więc jedynym sposobem na wyróżnienie dorzutu jest przełączenie motywu między
-rzutami: `updateConfig` + `add()` (`add` dokłada kości do stołu, `roll` go najpierw zamiata).
-**Trzy pułapki biblioteki**, wszystkie opisane w `docs/assety-kosci.md` i w komentarzach:
-(1) nazwy tekstur pochodzą z jej listy, nie z katalogu plików — `noise` leży w `public/`, ale
-lista go nie zna i kość wychodzi gładka bez ostrzeżenia; (2) `material` zapisuje się na
-**współdzielonym** deskryptorze tekstury, więc dwie skórki o tej samej teksturze muszą mieć ten
-sam materiał; (3) **`loadSounds()` po każdej zmianie motywu** — pudełko wczytuje jeden zestaw
-próbek uderzeń i indeksuje go bez sprawdzania, więc metal na pudełku, które wystartowało na
-plastiku, wywalał `Cannot read properties of undefined (reading 'length')` przy każdym stuknięciu
-kości. Ten błąd **złapały dopiero oględziny** — testy go nie widzą, bo fizyki nie ma w Node.
-
-**Trzy błędy znalezione i naprawione po drodze.** (1) Suwaki głośności startowały na zerze:
-`Number(localStorage.getItem(k))` daje 0 dla `null`, więc wartość domyślna nigdy nie wchodziła —
-każda świeża przeglądarka byłaby wyciszona. (2) Kolor dorzutu fumble'a (`#5c0c0c`) na stole nie
-dawał się odróżnić od skórki „Krew"; kontrast robi teraz jasność, nie odcień (`#150404`
-z cyframi `#ff3b30`). (3) **`zones.test.ts` z 26f nie kompilował się** — używał `CombatView` bez
-importu; `vitest` tego nie widzi (typy są zdejmowane), `tsc --noEmit` owszem.
-
-**Migotanie `cyberware.test.ts` miało prawdziwą przyczynę, nie „ciasny limit czasu".** Test
-„połowi utratę w górę" porównywał samą **różnicę** Człowieczeństwa z wynikiem rzutu, a pulę
-ciągnie w dół także **sufit** (−2 za każdy wszczep kosztujący Człowieczeństwo). Przy 2k6 = 2 na
-poprzednim wszczepie pula stała równo na suficie i przy `ceil(1k6/2) = 1` spadała o 2 — raz na
-~sto przebiegów. Asercja mówi teraz o suficie wprost. To ta sama rodzina co dwie korekty z 14.08
-i 16.08 w „Pułapkach dev".
-
-**Zweryfikowane:** 1248 testów w `shared` (3 nowe: katalog skórek i flaga `plain`), 723 na
-serwerze (3 nowe w `realtime.test.ts` na żywych gniazdach — stempel skórki u **obu** stron,
-odmowa `UNKNOWN_DICE_SKIN`, historia w bieżącej skórce), `tsc --noEmit` czysty w trzech
-pakietach, ESLint, Prettier i `pnpm build` bez uwag.
-
-**Odklikane w przeglądarce** (kampania „Poligon bojowy", MG na `localhost`, gracz avatar9 na
-`[::1]`): okno ⚙ z trzema sekcjami, przeciąganie za nagłówek, suwaki na 50, przełączanie przez
-wszystkie pięć skórek w obie strony po materiałach (plastik → metal → szkło → papier) **bez
-wyjątku w konsoli**, próbny rzut w wybranej skórce (czarna kość z cyjanowymi oczkami, czerwony
-metalik), rzut `/gr 1d10` w skórce MG, **druga fala fumble'a** (dwie kości na stole w dwóch
-różnych kolorach) i — najważniejsze — **rzut gracza w skórce gracza na ekranie MG**: avatar9
-z ustawionym „Kwasem" rzucił `/r 1d6`, a u MG (skórka „Krew") potoczyła się kość **zielona**.
-
-**Nieodklikane:** (1) **złoty dorzut krytyka na zrzucie ekranu** — fumble złapany, krytyka nie
-(20% na rzut, a okno, w którym kość leży na stole, trwa ~3 s); ścieżka jest ta sama co fumble'a,
-różni ją jeden zestaw kolorów. (2) **Wyłączenie animacji i głośność 0** — sprawdzone tylko
-w kodzie, nie w przeglądarce. (3) **Rzut Cech w kreatorze bez zielonych dziesiątek** — flaga
-`plain` ma test w `shared`, ale kreatora nie otwierałem.
-
-**Uwaga porządkowa:** w logu czatu MG została **~25 testowych linii `/gr 1d10`** z tej sesji.
-Są to rzuty do MG, więc gracze ich nie widzą, ale w historii zostają — nie ma ścieżki
-kasowania wiadomości.
+Pięć skórek kości, z których **skórka jedzie z rzutem** (`User.diceSkin`, stemplowana na wyjściu
+w `toChatMessageView`), dorzut krytyka jako druga fala po 550 ms i nowe pływające okno
+„⚙ Ustawienia", do którego wyprowadziły się ☀/☾ i ⌨. Przy okazji etap 27 został rozdzielony do
+końca na 27d–27g. Pełna notatka: `archiwum/dziennik-sesji.md`.
 
 ### Sesja 16.08 (druga tego dnia) — etap 26f (samodzielne systemy obronne i broniona strefa)
 

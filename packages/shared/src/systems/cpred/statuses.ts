@@ -192,6 +192,42 @@ export function cpredDodgeBlock(statuses: readonly string[]): string | null {
   return firstBlock(statuses, 'noDodge');
 }
 
+/**
+ * How loudly a status should be drawn (stage 27h).
+ *
+ * The panel has to paint seventeen stickers without seventeen decisions, and
+ * „which of these is bad" is a rules question, not a colour preference: a token
+ * that may not act is in a different kind of trouble from one that merely walks
+ * slower. Derived from the effects table rather than listed separately, so a
+ * status that gains a refusal gains its colour in the same commit.
+ */
+export type CpredStatusSeverity = 'critical' | 'warn' | 'info';
+
+/**
+ * Stickers whose price is charged somewhere else.
+ *
+ * The wound states are not in the effects table and must not be: nothing about
+ * them is refused, and their penalties (−2, −4, −6 to MOVE) are computed from
+ * Hit Points by `woundCheckPenalty` and `woundMovePenalty`. They are still the
+ * two worst things a character can be wearing, and a table that painted
+ * „Śmiertelnie ranny" the same grey as „Onieśmielony" would be lying about
+ * which one ends the fight.
+ */
+const WOUND_SEVERITY: Readonly<Record<string, CpredStatusSeverity>> = {
+  'mortally-wounded': 'critical',
+  'seriously-wounded': 'warn',
+};
+
+export function cpredStatusSeverity(statusId: string): CpredStatusSeverity {
+  const wound = WOUND_SEVERITY[statusId];
+  if (wound) return wound;
+  const effect = CPRED_STATUS_EFFECTS[statusId];
+  if (!effect) return 'info';
+  if (effect.noAction) return 'critical';
+  if (effect.noMove || effect.noDodge || effect.dot) return 'warn';
+  return 'info';
+}
+
 /** Status the „Wstanie" Action takes off the token that spent it. */
 export const CPRED_PRONE_STATUS_ID = 'prone';
 

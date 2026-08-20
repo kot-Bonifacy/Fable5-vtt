@@ -57,10 +57,12 @@ describe('motyw (etap 27e)', () => {
     const defined = new Set(tokensDefinedIn(read('theme.css')));
     const used = tokensUsedIn(['styles.css', 'sheet.css'].map(read).join('\u000a'));
     /**
-     * Tokeny ustawiane w miejscu przez samą regułę — nie należą do motywu, bo
-     * ich wartość zależy od stanu elementu, a nie od pory dnia.
+     * Tokeny ustawiane w miejscu przez samą regułę albo przez komponent — nie
+     * należą do motywu, bo ich wartość zależy od stanu elementu, a nie od pory
+     * dnia. `--hud-icon` przychodzi wprost z Reacta (`HudIcon` podaje adres
+     * pliku maski), `--hud-mag-color` zmienia się z zawartością magazynka.
      */
-    const local = new Set(['--hud-hp-color', '--rattle']);
+    const local = new Set(['--hud-hp-color', '--hud-icon', '--hud-mag-color', '--rattle']);
     expect([...used].filter((t) => !defined.has(t) && !local.has(t))).toEqual([]);
   });
 

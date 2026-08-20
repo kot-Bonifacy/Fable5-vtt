@@ -1,6 +1,7 @@
 import type {
   CombatView,
   CombatantView,
+  CpredCharacterData,
   CpredHotbarSlot,
   TokenView,
   TurnBudgetView,
@@ -10,7 +11,12 @@ import {
   CPRED_ACTION_HOLD,
   CPRED_ACTION_STABILIZE,
   ROLE_GM,
+  cpredMoveBudgetFromSheet,
+  effectiveArmorSp,
+  empFromHumanity,
   hotbarSlotsFor,
+  hpMax,
+  humanityMaxWith,
   isAmmoEntry,
   isWeaponEntry,
   resolveWeapon,
@@ -44,6 +50,25 @@ import { useTokenStore } from './stores/tokenStore.js';
  * of stage 16b.
  */
 
+/**
+ * The numbers under the portrait (stage 27h).
+ *
+ * Everything here is *derived*, never stored: SP ablates on the armour row,
+ * RUCH shrinks with wounds and injuries, and EMP falls out of Humanity. The
+ * panel asks the same functions the sheet and the turn tracker ask, so three
+ * places cannot disagree about how hurt somebody is.
+ */
+export interface HudVitals {
+  /** Role from the registry („Solo"), or null for an NPC nobody gave one. */
+  roleName: string | null;
+  /** Stopping Power still standing on the body and on the head. */
+  armor: { body: number; head: number } | null;
+  /** RUCH after penalties, with the metres one Move Action buys. */
+  move: { points: number; metres: number; note: string | null } | null;
+  /** EMP as play uses it — derived from current Humanity, not from the stat. */
+  emp: { current: number; max: number } | null;
+}
+
 /** Everything the HUD draws for one token, gathered from four stores. */
 export interface HudContext {
   token: TokenView | null;
@@ -52,6 +77,18 @@ export interface HudContext {
   /** Budget of that row; the tracker fills it once the fight has started. */
   turn: TurnBudgetView | null;
   slots: CpredHotbarSlot[];
+  /** Portrait numbers; null for a token with neither sheet nor profile. */
+  vitals: HudVitals | null;
+  /**
+   * Is this the figure the initiative queue is waiting on right now?
+   *
+   * Not the same question as `isActiveTurn`, which is „may this token act" and
+   * is true for everybody outside a fight. This one is „the queue has stopped
+   * here", and it is what puts the banner over the panel. A player whose view
+   * of the queue is blanked (a hidden NPC is up) gets false, which is honest:
+   * they do not know whose turn it is either.
+   */
+  acting: boolean;
   isGm: boolean;
   /** Is it this token's turn? Always true outside a fight — nothing is waiting. */
   isActiveTurn: boolean;
@@ -92,6 +129,62 @@ export function hudTurnRefusal(
   return null;
 }
 
+/**
+ * The three numbers under the portrait, for whichever kind of figure this is.
+ *
+ * A character reads its sheet; a statist (stage 16b) has one armour value and
+ * no Humanity at all, so it gets an armour chip and nothing else — an extra is
+ * a gun and a jacket, and inventing a RUCH for it would be inventing a rule.
+ * A token with neither is not described here at all: the panel then shows the
+ * name and the hit points, which is everything anybody knows about it.
+ */
+function hudVitalsFor(sheet: CpredCharacterData | null, token: TokenView): HudVitals | null {
+  if (sheet) {
+    const roles = useCharacterStore.getState().registry.roles;
+    const max = hpMax(sheet.stats);
+    const budget = cpredMoveBudgetFromSheet({
+      move: sheet.stats.move,
+      hpCurrent: sheet.hpCurrent,
+      hpMax: max,
+      armor: sheet.armor,
+      injuries: sheet.criticalInjuries,
+    });
+    const ceiling = humanityMaxWith(sheet.stats, sheet.cyberware);
+    return {
+      roleName: roles.find((role) => role.id === sheet.roleId)?.name ?? null,
+      armor: {
+        body: effectiveArmorSp(sheet.armor, 'body'),
+        head: effectiveArmorSp(sheet.armor, 'head'),
+      },
+      move: {
+        points: budget.move,
+        metres: budget.metresPerMove,
+        // Why it is not the printed RUCH — the same sentence the turn tracker
+        // shows, so a shrunken budget is never a mystery („Pancerz −2").
+        note:
+          budget.modifiers.length > 0
+            ? budget.modifiers
+                .map(
+                  (modifier) =>
+                    `${modifier.label} ${modifier.value > 0 ? '+' : ''}${modifier.value}`,
+                )
+                .join(' · ')
+            : null,
+      },
+      emp: { current: empFromHumanity(sheet.humanityCurrent), max: empFromHumanity(ceiling) },
+    };
+  }
+
+  const profile = token.combatProfile ? sanitizeCombatProfile(token.combatProfile) : null;
+  if (!profile) return null;
+  return {
+    roleName: null,
+    armor: { body: profile.armorSp, head: profile.armorSp },
+    move: null,
+    emp: null,
+  };
+}
+
 /** Builds the whole HUD state for one token by reading the stores. */
 export function hudContextFor(tokenId: string | null): HudContext {
   const isGm = useAuthStore.getState().user?.role === ROLE_GM;
@@ -110,6 +203,8 @@ export function hudContextFor(tokenId: string | null): HudContext {
       combatant: null,
       turn: null,
       slots: [],
+      vitals: null,
+      acting: false,
       isGm,
       isActiveTurn: false,
       refusal: null,
@@ -151,6 +246,8 @@ export function hudContextFor(tokenId: string | null): HudContext {
     token,
     combatant,
     turn,
+    vitals: hudVitalsFor(character?.data ?? null, token),
+    acting: combatant !== null && combat?.activeCombatantId === combatant.id,
     // „Not your turn" outranks everything the slot itself had to say: the
     // reason on the button has to be the one that will actually refuse it.
     slots: refusal ? slots.map((slot) => ({ ...slot, disabled: refusal })) : slots,
@@ -219,6 +316,8 @@ export function hudSignature(context: HudContext): string {
     token?.hp ?? null,
     token?.statuses ?? null,
     context.turn ?? null,
+    context.vitals ?? null,
+    context.acting,
     context.refusal,
     context.steering,
     context.combatant?.id ?? null,

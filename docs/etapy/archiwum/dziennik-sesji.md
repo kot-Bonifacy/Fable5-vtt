@@ -7,6 +7,78 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 19.08 — etap 27d (kości 3D: skórki, dorzut, ustawienia)
+
+**Etap 27 został rozdzielony do końca.** Po wydzieleniu 27a–27c (karta postaci) niósł nadal
+cztery osobne kawałki roboty; rozbite na **27d** (ta sesja), **27e** (motyw całej aplikacji),
+**27f** (szlif UX), **27g** (wydajność). Plik `etap-27-…` został jako rozdroże ze wskazaniami.
+Przy okazji rozstrzygnięta **sprzeczność w jego treści**: „Zakres" chciał dnia dla całego VTT,
+„Poza zakresem" pisało „ciemny wystarczy". **Decyzja MG: tryb dzienny obejmuje całą aplikację**
+(27e).
+
+**Cztery decyzje MG z 19.08 niosą etap.** (1) Skórka jest **rzucającego** — jedzie z rzutem, tak
+jak siła potrząśnięcia kubkiem, więc przy stole widać cudze kości. (2) Dorzut krytyka to **druga
+fala**: pierwsza osiada, 550 ms pauzy, potem osobna k10 w złocie albo w czerni. (3) Ustawienia
+dostały **własne pływające okno „⚙"** — ☀/☾ i ⌨ wyprowadziły się z górnego paska (`ThemeToggle`
+i `TypewriterToggle` usunięte). (4) **Pięć skórek**, domyślnie Neon.
+
+**Skórka musiała trafić do bazy, i to jest jedyne takie ustawienie.** Reszta preferencji wyglądu
+zostaje w `localStorage`, bo dotyczy tylko właściciela przeglądarki; skórka ma dojechać do
+**cudzych** ekranów, więc siedzi w `User.diceSkin` (migracja
+`20260819194211_stage27d_dice_skin`), wchodzi do `SessionUser` przez jedyny konstruktor
+(`toSessionUser`) i jest **stemplowana na wyjściu** w `toChatMessageView` — nie zapisywana
+z rzutem. Skutek zamierzony: kto zmieni kości dzisiaj, ten zobaczy w nich także wczorajszą
+historię, a payload zostaje zapisem tego, co padło, a nie czyjegoś gustu.
+
+**Biblioteka trzyma skórkę globalnie — stąd dwie fale.** `parseNotation` nie zna koloru
+pojedynczej kości, więc jedynym sposobem na wyróżnienie dorzutu jest przełączenie motywu między
+rzutami: `updateConfig` + `add()` (`add` dokłada kości do stołu, `roll` go najpierw zamiata).
+**Trzy pułapki biblioteki**, wszystkie opisane w `docs/assety-kosci.md` i w komentarzach:
+(1) nazwy tekstur pochodzą z jej listy, nie z katalogu plików — `noise` leży w `public/`, ale
+lista go nie zna i kość wychodzi gładka bez ostrzeżenia; (2) `material` zapisuje się na
+**współdzielonym** deskryptorze tekstury, więc dwie skórki o tej samej teksturze muszą mieć ten
+sam materiał; (3) **`loadSounds()` po każdej zmianie motywu** — pudełko wczytuje jeden zestaw
+próbek uderzeń i indeksuje go bez sprawdzania, więc metal na pudełku, które wystartowało na
+plastiku, wywalał `Cannot read properties of undefined (reading 'length')` przy każdym stuknięciu
+kości. Ten błąd **złapały dopiero oględziny** — testy go nie widzą, bo fizyki nie ma w Node.
+
+**Trzy błędy znalezione i naprawione po drodze.** (1) Suwaki głośności startowały na zerze:
+`Number(localStorage.getItem(k))` daje 0 dla `null`, więc wartość domyślna nigdy nie wchodziła —
+każda świeża przeglądarka byłaby wyciszona. (2) Kolor dorzutu fumble'a (`#5c0c0c`) na stole nie
+dawał się odróżnić od skórki „Krew"; kontrast robi teraz jasność, nie odcień (`#150404`
+z cyframi `#ff3b30`). (3) **`zones.test.ts` z 26f nie kompilował się** — używał `CombatView` bez
+importu; `vitest` tego nie widzi (typy są zdejmowane), `tsc --noEmit` owszem.
+
+**Migotanie `cyberware.test.ts` miało prawdziwą przyczynę, nie „ciasny limit czasu".** Test
+„połowi utratę w górę" porównywał samą **różnicę** Człowieczeństwa z wynikiem rzutu, a pulę
+ciągnie w dół także **sufit** (−2 za każdy wszczep kosztujący Człowieczeństwo). Przy 2k6 = 2 na
+poprzednim wszczepie pula stała równo na suficie i przy `ceil(1k6/2) = 1` spadała o 2 — raz na
+~sto przebiegów. Asercja mówi teraz o suficie wprost. To ta sama rodzina co dwie korekty z 14.08
+i 16.08 w „Pułapkach dev".
+
+**Zweryfikowane:** 1248 testów w `shared` (3 nowe: katalog skórek i flaga `plain`), 723 na
+serwerze (3 nowe w `realtime.test.ts` na żywych gniazdach — stempel skórki u **obu** stron,
+odmowa `UNKNOWN_DICE_SKIN`, historia w bieżącej skórce), `tsc --noEmit` czysty w trzech
+pakietach, ESLint, Prettier i `pnpm build` bez uwag.
+
+**Odklikane w przeglądarce** (kampania „Poligon bojowy", MG na `localhost`, gracz avatar9 na
+`[::1]`): okno ⚙ z trzema sekcjami, przeciąganie za nagłówek, suwaki na 50, przełączanie przez
+wszystkie pięć skórek w obie strony po materiałach (plastik → metal → szkło → papier) **bez
+wyjątku w konsoli**, próbny rzut w wybranej skórce (czarna kość z cyjanowymi oczkami, czerwony
+metalik), rzut `/gr 1d10` w skórce MG, **druga fala fumble'a** (dwie kości na stole w dwóch
+różnych kolorach) i — najważniejsze — **rzut gracza w skórce gracza na ekranie MG**: avatar9
+z ustawionym „Kwasem" rzucił `/r 1d6`, a u MG (skórka „Krew") potoczyła się kość **zielona**.
+
+**Nieodklikane:** (1) **złoty dorzut krytyka na zrzucie ekranu** — fumble złapany, krytyka nie
+(20% na rzut, a okno, w którym kość leży na stole, trwa ~3 s); ścieżka jest ta sama co fumble'a,
+różni ją jeden zestaw kolorów. (2) **Wyłączenie animacji i głośność 0** — sprawdzone tylko
+w kodzie, nie w przeglądarce. (3) **Rzut Cech w kreatorze bez zielonych dziesiątek** — flaga
+`plain` ma test w `shared`, ale kreatora nie otwierałem.
+
+**Uwaga porządkowa:** w logu czatu MG została **~25 testowych linii `/gr 1d10`** z tej sesji.
+Są to rzuty do MG, więc gracze ich nie widzą, ale w historii zostają — nie ma ścieżki
+kasowania wiadomości.
+
 ### Sesja 16.08 (druga tego dnia) — etap 26f (samodzielne systemy obronne i broniona strefa)
 
 **Rozdział 11 podręcznika jest domknięty.** Netrunning ma komplet: 26a katalog i architektura,

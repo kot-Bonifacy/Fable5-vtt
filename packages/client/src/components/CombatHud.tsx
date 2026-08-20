@@ -1,7 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CpredHotbarSlot } from '@vtt/shared';
-import { CPRED_WOUND_LABELS, ROLE_GM, woundStateFromHp } from '@vtt/shared';
-import { activateSlot, currentHudContext, hudSignature, type HudContext } from '../hud.js';
+import { CPRED_WOUND_LABELS, ROLE_GM, cpredStatusSeverity, woundStateFromHp } from '@vtt/shared';
+import {
+  activateSlot,
+  currentHudContext,
+  hudSignature,
+  type HudContext,
+  type HudVitals,
+} from '../hud.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useCombatStore } from '../stores/combatStore.js';
@@ -11,16 +17,24 @@ import { useRollStore } from '../stores/rollStore.js';
 import { useSelectionStore } from '../stores/selectionStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { GrapplePanel, HoldActionForm, StabilizePicker } from './CombatForms.js';
+import { HudIcon } from './HudIcon.js';
 import { TurnBudget } from './TurnBudget.js';
 
 /**
  * The combat HUD (stage 16f) — a rail down the left edge of the table.
  *
  * It answers the two questions a turn is made of without opening anything:
- * **who am I** (portrait, HP, statuses, what is left of the turn) and **what can
- * I do** (weapons with their fire modes, a reload, the handful of catalogue
- * actions worth a key). Everything it offers already existed behind a panel;
- * this stage only stops the fight from being played through panels.
+ * **who am I** (portrait, HP, armour, statuses, what is left of the turn) and
+ * **what can I do** (weapons with their fire modes, a reload, the handful of
+ * catalogue actions worth a key). Everything it offers already existed behind a
+ * panel; that stage only stopped the fight from being played through panels.
+ *
+ * Stage 27h gave it a face. Until then it was nine identical boxes with words
+ * in them — a weapon, a reload and an Action were the same rectangle, the
+ * magazine was a fraction to be read, and nothing on screen moved when the
+ * figure lost hit points. Now the shape of a slot says what kind of thing it is
+ * (`CpredSlotIcon` from `shared`), the magazine is a gauge, and damage arrives
+ * as a number that flies off the bar.
  *
  * Not a second rulebook. The slots come from `hotbarSlotsFor` in `shared` with
  * their refusals attached, the budget arrives from the server already computed,
@@ -29,33 +43,62 @@ import { TurnBudget } from './TurnBudget.js';
  * components the „Walka" tab renders.
  */
 
-/** Statuses as their registry icons — the same glyphs the token wears. */
-function StatusRow({ statuses }: { statuses: readonly string[] }) {
+/** Statuses as chips: the registry's glyph plus the name it prints. */
+function StatusChips({ statuses }: { statuses: readonly string[] }) {
   const registry = useTokenStore((s) => s.statuses);
   const byId = useMemo(() => new Map(registry.map((row) => [row.id, row])), [registry]);
   if (statuses.length === 0) return null;
   return (
-    <div className="hud-statuses">
+    <ul className="hud-statuses">
       {statuses.map((id) => {
         const definition = byId.get(id);
         // The registry's `icon` is a *file* („/public/cpred/status-icons/…"),
         // not a glyph — the map draws it as a sprite, so the panel draws it as
         // an image. A status whose registry entry has not arrived yet still
-        // gets a dot rather than vanishing.
+        // gets its id rather than vanishing.
         return (
-          <span key={id} className="hud-status" title={definition?.name ?? id}>
-            {definition ? <img src={definition.icon} alt={definition.name} /> : '•'}
-          </span>
+          <li key={id} className={`hud-status hud-status--${cpredStatusSeverity(id)}`}>
+            {definition && <img src={definition.icon} alt="" />}
+            <span>{definition?.name ?? id}</span>
+          </li>
         );
       })}
-    </div>
+    </ul>
   );
 }
 
-/** „28 / 35" plus the bar, coloured by the wound state the rules name. */
+/**
+ * „28 / 35" plus the bar, coloured by the wound state the rules name.
+ *
+ * Two things were added in 27h, and both exist to make a hit *visible*. The
+ * notch is the Seriously Wounded threshold — half the maximum, rounded up
+ * (`seriousWoundThreshold`), computed here from the maximum alone because that
+ * is all a token carries; crossing it is the moment every check turns −2.
+ * The number that flies off is the change itself: at the table the bar moving
+ * by four pixels is not something anybody notices in the middle of a turn.
+ */
 function HealthBar({ hp }: { hp: { current: number; max: number } }) {
   const state = woundStateFromHp(hp.current, hp.max);
   const ratio = hp.max > 0 ? Math.max(0, Math.min(1, hp.current / hp.max)) : 0;
+  const threshold = hp.max > 0 ? Math.ceil(hp.max / 2) / hp.max : 0;
+  const [delta, setDelta] = useState<{ value: number; id: number } | null>(null);
+  const previous = useRef(hp.current);
+
+  useEffect(() => {
+    const change = hp.current - previous.current;
+    previous.current = hp.current;
+    if (change === 0) return;
+    // Keyed by a counter rather than by the value: two hits for the same six
+    // points in a row have to restart the animation, and an identical key
+    // would leave the first number hanging where it was.
+    const id = Date.now();
+    setDelta({ value: change, id });
+    const timer = window.setTimeout(() => {
+      setDelta((current) => (current?.id === id ? null : current));
+    }, 1600);
+    return () => window.clearTimeout(timer);
+  }, [hp.current]);
+
   return (
     <div
       className={`hud-hp hud-hp--${state}`}
@@ -63,11 +106,57 @@ function HealthBar({ hp }: { hp: { current: number; max: number } }) {
     >
       <span className="hud-hp-track">
         <span className="hud-hp-fill" style={{ width: `${ratio * 100}%` }} />
+        {/* The rung stage 15 judges on, drawn where it actually falls. */}
+        <span className="hud-hp-notch" style={{ left: `${threshold * 100}%` }} />
       </span>
       <span className="hud-hp-value">
-        {hp.current} / {hp.max}
+        {hp.current}
+        <span className="hud-hp-max">/{hp.max}</span>
       </span>
+      {delta && (
+        <span
+          key={delta.id}
+          className={`hud-hp-delta${delta.value > 0 ? ' hud-hp-delta--heal' : ''}`}
+          aria-live="polite"
+        >
+          {delta.value > 0 ? `+${delta.value}` : delta.value}
+        </span>
+      )}
     </div>
+  );
+}
+
+/** Rounds left, as something to glance at rather than to read. */
+const MAGAZINE_PIP_LIMIT = 12;
+
+function Magazine({ ammo }: { ammo: { current: number; max: number } }) {
+  const ratio = ammo.max > 0 ? Math.max(0, Math.min(1, ammo.current / ammo.max)) : 0;
+  // „Empty" and „nearly empty" are the two states worth a colour: the first is
+  // a refusal waiting to happen, the second is the reason to reload *now*.
+  const level = ammo.current === 0 ? 'empty' : ratio <= 0.25 ? 'low' : 'ok';
+  return (
+    <span className={`hud-mag hud-mag--${level}`} title={`Magazynek: ${ammo.current}/${ammo.max}`}>
+      {/* A pistol's twelve rounds are countable; a rifle's thirty are not, and
+          thirty dots two pixels apart would be a texture rather than a number. */}
+      {ammo.max <= MAGAZINE_PIP_LIMIT ? (
+        <span className="hud-mag-pips" aria-hidden>
+          {Array.from({ length: ammo.max }, (_, index) => (
+            <span
+              key={index}
+              className={`hud-mag-pip${index < ammo.current ? ' hud-mag-pip--live' : ''}`}
+            />
+          ))}
+        </span>
+      ) : (
+        <span className="hud-mag-bar" aria-hidden>
+          <span className="hud-mag-bar-fill" style={{ width: `${ratio * 100}%` }} />
+        </span>
+      )}
+      <span className="hud-mag-count">
+        {ammo.current}
+        <span className="hud-mag-max">/{ammo.max}</span>
+      </span>
+    </span>
   );
 }
 
@@ -85,7 +174,7 @@ function HotbarSlot({
   return (
     <button
       type="button"
-      className={`hud-slot${armed ? ' hud-slot--armed' : ''}${
+      className={`hud-slot hud-slot--${slot.kind}${armed ? ' hud-slot--armed' : ''}${
         slot.disabled ? ' hud-slot--refused' : ''
       }`}
       // The refusal is the tooltip when there is one: „why is this grey" has to
@@ -97,22 +186,104 @@ function HotbarSlot({
       }
       onClick={onActivate}
     >
+      <HudIcon name={slot.icon} className="hud-slot-icon" />
+      <span className="hud-slot-body">
+        <span className="hud-slot-line">
+          <span className="hud-slot-label">{slot.label}</span>
+          {slot.kind === 'weapon' && slot.modeLabel && (
+            <span className="hud-chip hud-chip--mode">{slot.modeLabel}</span>
+          )}
+          {/* What is loaded (stage 16g): „Strzelba · Śrut" is a different attack
+              from „Strzelba · Zapalająca", and the slot has to say which. */}
+          {slot.kind === 'weapon' && slot.ammoLabel && (
+            <span className="hud-chip hud-chip--ammo">{slot.ammoLabel}</span>
+          )}
+        </span>
+        {ammo && <Magazine ammo={ammo} />}
+      </span>
       {slot.key && <span className="hud-slot-key">{slot.key}</span>}
-      <span className="hud-slot-label">{slot.label}</span>
-      {slot.kind === 'weapon' && slot.modeLabel && (
-        <span className="hud-slot-mode">{slot.modeLabel}</span>
-      )}
-      {/* What is loaded (stage 16g): „Strzelba · Śrut" is a different attack
-          from „Strzelba · Zapalająca", and the slot has to say which. */}
-      {slot.kind === 'weapon' && slot.ammoLabel && (
-        <span className="hud-slot-mode hud-slot-ammo-type">{slot.ammoLabel}</span>
-      )}
-      {ammo && (
-        <span className="hud-slot-ammo">
-          {ammo.current}/{ammo.max}
+    </button>
+  );
+}
+
+/** Portrait, name, role and the three numbers a fight is fought with. */
+function IdentityCard({
+  name,
+  imageUrl,
+  hp,
+  vitals,
+}: {
+  name: string;
+  imageUrl: string | null;
+  hp: { current: number; max: number } | null | undefined;
+  vitals: HudVitals | null;
+}) {
+  return (
+    <div className="hud-card">
+      <span className="hud-portrait-frame">
+        {imageUrl ? (
+          <img className="hud-portrait" src={imageUrl} alt="" />
+        ) : (
+          <span className="hud-portrait hud-portrait--empty">
+            {name.trim().charAt(0).toUpperCase() || '?'}
+          </span>
+        )}
+      </span>
+      <div className="hud-card-body">
+        <span className="hud-card-name" title={name}>
+          {name}
+        </span>
+        {vitals?.roleName && <span className="hud-card-role">{vitals.roleName}</span>}
+        {/* HP is redacted by the server (stage 05): a token whose points this
+            viewer may not see arrives without them, so „no bar" is the honest
+            rendering rather than a hidden one. */}
+        {hp ? <HealthBar hp={hp} /> : <span className="hud-hp-none">PW ukryte</span>}
+        {vitals && <Vitals vitals={vitals} />}
+      </div>
+    </div>
+  );
+}
+
+/** SP · RUCH · EMP — the numbers that decide a fight and never used to show. */
+function Vitals({ vitals }: { vitals: HudVitals }) {
+  const armor = vitals.armor;
+  return (
+    <div className="hud-vitals">
+      {armor && (
+        <span
+          className="hud-vital"
+          title={`Pancerz: korpus ${armor.body} SP, głowa ${armor.head} SP`}
+        >
+          <HudIcon name="armor" />
+          <span className="hud-vital-value">
+            {armor.body === armor.head ? armor.body : `${armor.body}/${armor.head}`}
+          </span>
         </span>
       )}
-    </button>
+      {vitals.move && (
+        <span
+          className="hud-vital"
+          title={
+            vitals.move.note
+              ? `RUCH ${vitals.move.points} — ${vitals.move.metres} m na Akcję Ruchu (${vitals.move.note})`
+              : `RUCH ${vitals.move.points} — ${vitals.move.metres} m na Akcję Ruchu`
+          }
+        >
+          <HudIcon name="move" />
+          <span className="hud-vital-value">{vitals.move.points}</span>
+          {vitals.move.note && <span className="hud-vital-flag">!</span>}
+        </span>
+      )}
+      {vitals.emp && (
+        <span
+          className="hud-vital"
+          title={`EMP z bieżącego Człowieczeństwa: ${vitals.emp.current} (maksimum ${vitals.emp.max})`}
+        >
+          <HudIcon name="emp" />
+          <span className="hud-vital-value">{vitals.emp.current}</span>
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -168,6 +339,8 @@ export function CombatHud() {
 
   const token = context.token;
   const armed = activeWeaponOf(activeWeapon, token?.id ?? null);
+  const weapons = context.slots.filter((slot) => slot.kind !== 'action');
+  const actions = context.slots.filter((slot) => slot.kind === 'action');
 
   /**
    * A freshly selected figure comes with its first weapon in hand.
@@ -210,9 +383,15 @@ export function CombatHud() {
     useHudStore.getState().setForm(null);
   }, [focusId]);
 
+  // Collapsed is a strip, not a hole: the portrait and a sliver of the health
+  // bar survive, because „I do not know how hurt I am" is not a saving of space
+  // anybody asked for.
   if (collapsed) {
     return (
-      <aside className="hud-rail hud-rail--collapsed">
+      <aside
+        className="hud-rail hud-rail--collapsed"
+        aria-label="Panel aktywnej postaci (zwinięty)"
+      >
         <button
           type="button"
           className="hud-collapse"
@@ -222,6 +401,34 @@ export function CombatHud() {
         >
           ▸
         </button>
+        {token && (
+          <span className="hud-collapsed-figure" title={token.name}>
+            {token.imageUrl ? (
+              <img className="hud-portrait" src={token.imageUrl} alt="" />
+            ) : (
+              <span className="hud-portrait hud-portrait--empty">
+                {token.name.trim().charAt(0).toUpperCase() || '?'}
+              </span>
+            )}
+            {token.hp && (
+              <span
+                className={`hud-collapsed-hp hud-hp--${woundStateFromHp(token.hp.current, token.hp.max)}`}
+                title={`Punkty Wytrzymałości: ${token.hp.current}/${token.hp.max}`}
+              >
+                <span
+                  className="hud-collapsed-hp-fill"
+                  style={{
+                    height: `${
+                      token.hp.max > 0
+                        ? Math.max(0, Math.min(1, token.hp.current / token.hp.max)) * 100
+                        : 0
+                    }%`,
+                  }}
+                />
+              </span>
+            )}
+          </span>
+        )}
       </aside>
     );
   }
@@ -229,7 +436,7 @@ export function CombatHud() {
   return (
     <aside className="hud-rail" aria-label="Panel aktywnej postaci">
       <div className="hud-head">
-        <span className="hud-head-title">{token ? token.name : 'Nikt nie wybrany'}</span>
+        <span className="hud-head-title">Postać</span>
         <button
           type="button"
           className="hud-collapse"
@@ -243,33 +450,31 @@ export function CombatHud() {
 
       {!token && (
         <p className="hud-empty">
-          Kliknij token, którym chcesz sterować. Potem klikaj podłoże, żeby iść, i przeciwnika, żeby
-          wycelować.
+          <HudIcon name="stand-up" className="hud-empty-icon" />
+          <span>
+            Kliknij token, którym chcesz sterować. Potem klikaj podłoże, żeby iść, i przeciwnika,
+            żeby wycelować.
+          </span>
         </p>
       )}
 
       {token && (
         <>
-          <div className="hud-identity">
-            {token.imageUrl ? (
-              <img className="hud-portrait" src={token.imageUrl} alt="" />
-            ) : (
-              <span className="hud-portrait hud-portrait--empty">
-                {token.name.trim().charAt(0).toUpperCase() || '?'}
-              </span>
-            )}
-            <div className="hud-identity-body">
-              {/* HP is redacted by the server (stage 05): a token whose points
-                  this viewer may not see arrives without them, so „no bar" is
-                  the honest rendering rather than a hidden one. */}
-              {token.hp ? (
-                <HealthBar hp={token.hp} />
-              ) : (
-                <span className="hud-hp-none">PW ukryte</span>
-              )}
-              <StatusRow statuses={token.statuses} />
-            </div>
-          </div>
+          {/* Whose turn it is, said where the hand already is. The queue itself
+              lives in the top bar (stage 16f) — this is the one fact from it
+              that concerns the figure in this panel. */}
+          {context.acting && (
+            <p className="hud-turn-banner">{context.isGm ? 'Tura tej figury' : 'Twoja tura'}</p>
+          )}
+
+          <IdentityCard
+            name={token.name}
+            imageUrl={token.imageUrl}
+            hp={token.hp}
+            vitals={context.vitals}
+          />
+
+          <StatusChips statuses={token.statuses} />
 
           {/* Showing is not steering: the rail fills itself in with this
               figure, but the map still belongs to nobody until the user says
@@ -281,34 +486,62 @@ export function CombatHud() {
             </p>
           )}
 
-          {context.turn && <TurnBudget budget={context.turn} />}
+          {context.turn && <TurnBudget budget={context.turn} variant="rail" />}
           {context.refusal && <p className="hud-refusal">{context.refusal}</p>}
 
           {/* Stepping the queue is not here on purpose: it belongs to the strip
               in the top bar, which owns the queue and works with nothing
               selected. „E" still ends the turn from the map. */}
 
-          <div className="hud-slots">
-            {context.slots.length === 0 && (
-              <p className="hud-empty">
+          {context.slots.length === 0 && (
+            <p className="hud-empty">
+              <HudIcon name="pistol" className="hud-empty-icon" />
+              <span>
                 Ten token nie ma broni ani profilu bojowego — podłącz kartę postaci albo uzupełnij
                 profil w „Edytuj…”.
-              </p>
-            )}
-            {context.slots.map((slot) => (
-              <HotbarSlot
-                key={slot.id}
-                slot={slot}
-                armed={armed?.slotId === slot.id}
-                onActivate={() => activateSlot(slot, token.id)}
-              />
-            ))}
-          </div>
+              </span>
+            </p>
+          )}
+
+          {weapons.length > 0 && (
+            <section className="hud-group">
+              <h3 className="hud-group-title">Broń</h3>
+              <div className="hud-slots">
+                {weapons.map((slot) => (
+                  <HotbarSlot
+                    key={slot.id}
+                    slot={slot}
+                    armed={armed?.slotId === slot.id}
+                    onActivate={() => activateSlot(slot, token.id)}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {actions.length > 0 && (
+            <section className="hud-group">
+              <h3 className="hud-group-title">Akcje</h3>
+              <div className="hud-slots">
+                {actions.map((slot) => (
+                  <HotbarSlot
+                    key={slot.id}
+                    slot={slot}
+                    armed={false}
+                    onActivate={() => activateSlot(slot, token.id)}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
 
           {armed && (
             <p className="hud-armed">
-              W ręku: <strong>{armed.name}</strong> — kliknij cel na mapie.
-              {isGm && <span className="hud-armed-hint"> Alt+klik celuje we własny token.</span>}
+              <span className="hud-armed-mark" aria-hidden />
+              <span>
+                W ręku: <strong>{armed.name}</strong> — kliknij cel na mapie.
+                {isGm && <span className="hud-armed-hint"> Alt+klik celuje we własny token.</span>}
+              </span>
             </p>
           )}
 

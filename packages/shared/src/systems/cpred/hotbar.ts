@@ -106,6 +106,110 @@ export function cpredFireModes(resolved: ResolvedWeapon | null): CpredAttackMode
   return modes;
 }
 
+/**
+ * Pictures a slot may wear (stage 27h).
+ *
+ * Names of *things*, not of files: the client owns the artwork and only needs
+ * to be told what the slot is holding. The list is deliberately short — three
+ * kinds of pistol share one silhouette, because at 18 px the difference between
+ * them is invisible and the name underneath already says which one it is.
+ */
+export type CpredSlotIcon =
+  | 'pistol'
+  | 'revolver'
+  | 'smg'
+  | 'smg-heavy'
+  | 'rifle'
+  | 'sniper'
+  | 'shotgun'
+  | 'flamethrower'
+  | 'grenade'
+  | 'launcher'
+  | 'rocket'
+  | 'crossbow'
+  | 'bow'
+  | 'knife'
+  | 'sword'
+  | 'broadsword'
+  | 'two-handed-sword'
+  | 'fist'
+  | 'martial-arts'
+  | 'reload'
+  | 'first-aid'
+  | 'grab'
+  | 'hourglass'
+  | 'stand-up'
+  | 'run';
+
+/** Weapon type id (last segment) → picture. */
+const WEAPON_TYPE_ICONS: Readonly<Record<string, CpredSlotIcon>> = {
+  'very-heavy-pistol': 'revolver',
+  'heavy-pistol': 'pistol',
+  'medium-pistol': 'pistol',
+  'submachine-gun': 'smg',
+  'heavy-submachine-gun': 'smg-heavy',
+  'assault-rifle': 'rifle',
+  'sniper-rifle': 'sniper',
+  shotgun: 'shotgun',
+  flamethrower: 'flamethrower',
+  grenade: 'grenade',
+  'grenade-launcher': 'launcher',
+  'rocket-launcher': 'rocket',
+  crossbow: 'crossbow',
+  bow: 'bow',
+  'light-melee': 'knife',
+  'medium-melee': 'sword',
+  'heavy-melee': 'broadsword',
+  'very-heavy-melee': 'two-handed-sword',
+  brawling: 'fist',
+  'martial-arts': 'martial-arts',
+};
+
+/** Skill the weapon fires with → picture, for a type nobody has mapped. */
+const SKILL_ICONS: Readonly<Record<string, CpredSlotIcon>> = {
+  handgun: 'pistol',
+  'shoulder-arms': 'rifle',
+  'heavy-weapons': 'launcher',
+  archery: 'bow',
+  'melee-weapon': 'sword',
+  brawling: 'fist',
+  'martial-arts': 'martial-arts',
+  athletics: 'grenade',
+};
+
+/**
+ * What to draw on a weapon slot.
+ *
+ * Three rungs, each one a step further from certainty: the weapon type the
+ * compendium named, the skill it is fired with, and finally what the weapon
+ * *does* — because a homebrew row with no type and no skill still explodes, is
+ * still thrown, or is still swung, and any of those is a better picture than a
+ * pistol nobody is holding.
+ */
+export function cpredWeaponIcon(resolved: ResolvedWeapon | null): CpredSlotIcon {
+  const typeId = resolved?.typeId;
+  if (typeId) {
+    const tail = typeId.slice(typeId.lastIndexOf('.') + 1);
+    const byType = WEAPON_TYPE_ICONS[tail];
+    if (byType) return byType;
+  }
+  const bySkill = resolved?.skillId ? SKILL_ICONS[resolved.skillId] : undefined;
+  if (bySkill) return bySkill;
+  if (resolved?.explosive) return 'grenade';
+  if (resolved?.thrown) return 'knife';
+  if (resolved?.melee) return 'sword';
+  return 'pistol';
+}
+
+/** Picture of a catalogue action; every hotbar action has one. */
+const ACTION_ICONS: Readonly<Record<string, CpredSlotIcon>> = {
+  [CPRED_ACTION_STABILIZE]: 'first-aid',
+  [CPRED_ACTION_GRAPPLE]: 'grab',
+  [CPRED_ACTION_HOLD]: 'hourglass',
+  [CPRED_ACTION_STAND_UP]: 'stand-up',
+  [CPRED_ACTION_RUN]: 'run',
+};
+
 /** Catalogue actions worth a key, in the order they appear on the bar. */
 export const CPRED_HOTBAR_ACTION_IDS: readonly string[] = [
   CPRED_ACTION_STABILIZE,
@@ -121,6 +225,8 @@ export const CPRED_HOTBAR_KEYED_SLOTS = 9;
 /** A weapon in one of its fire modes — clicking a target loads the cup. */
 export interface CpredHotbarWeaponSlot {
   kind: 'weapon';
+  /** What the slot draws (stage 27h) — a thing, not a file name. */
+  icon: CpredSlotIcon;
   /** The weapon's own name, with nothing appended. */
   label: string;
   id: string;
@@ -169,6 +275,7 @@ export interface CpredHotbarWeaponSlot {
 /** Refilling a magazine — its own event, and it books its own Action. */
 export interface CpredHotbarReloadSlot {
   kind: 'reload';
+  icon: CpredSlotIcon;
   id: string;
   label: string;
   hint: string;
@@ -181,6 +288,7 @@ export interface CpredHotbarReloadSlot {
 /** A catalogue action (14b). Some spend, some open a form — the UI decides. */
 export interface CpredHotbarActionSlot {
   kind: 'action';
+  icon: CpredSlotIcon;
   id: string;
   label: string;
   hint: string;
@@ -263,6 +371,7 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
     for (const mode of cpredFireModes(option.resolved)) {
       slots.push({
         kind: 'weapon',
+        icon: cpredWeaponIcon(option.resolved),
         id: `weapon:${option.rowId}:${mode}`,
         label: option.name,
         modeLabel: CPRED_ATTACK_MODE_SHORT[mode],
@@ -294,6 +403,7 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
     if (!option.ammo) continue;
     slots.push({
       kind: 'reload',
+      icon: 'reload',
       id: `reload:${option.rowId}`,
       label: `Przeładuj: ${option.name}`,
       hint: `Ładuje magazynek do pełna (${option.ammo.current}/${option.ammo.max}). Kosztuje Akcję.`,
@@ -309,6 +419,7 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
     if (!definition) continue;
     slots.push({
       kind: 'action',
+      icon: ACTION_ICONS[actionId] ?? 'hourglass',
       id: `action:${actionId}`,
       // One slot, three faces (stage 14d): whoever is Held wrestles, whoever
       // is holding chokes or throws, everybody else grabs. The catalogue keeps

@@ -1669,6 +1669,15 @@ export interface ResolvedWeapon {
   /** The only rounds it fires, when the catalogue names them (flamethrower). */
   ammoIds?: string[];
   typeName?: string;
+  /**
+   * Id of the weapon type this came from („weapon-type.assault-rifle").
+   *
+   * Carried alongside the name because the hotbar picks a slot's icon from it
+   * (stage 27h): a name is what the table reads, an id is what code may branch
+   * on, and „Karabin szturmowy" is one rename away from silently losing its
+   * picture.
+   */
+  typeId?: string;
   melee: boolean;
 }
 
@@ -1695,6 +1704,7 @@ export function resolveWeapon(
     ...(type?.ammoPatterns ? { ammoPatterns: type.ammoPatterns } : {}),
     ...(type?.ammoIds ? { ammoIds: type.ammoIds } : {}),
     ...(type ? { typeName: type.name } : {}),
+    ...(weapon.weaponTypeId ? { typeId: weapon.weaponTypeId } : {}),
     melee: type?.melee ?? false,
   };
 }

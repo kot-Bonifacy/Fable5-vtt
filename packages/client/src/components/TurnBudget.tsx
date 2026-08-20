@@ -9,11 +9,27 @@ import { formatMetres } from '@vtt/shared';
  * Its own file since stage 16f: the initiative bar over the map and the HUD's
  * character panel both draw the budget, and two renderings of one number is how
  * a table ends up arguing about which of them is right.
+ *
+ * Two shapes since 27h, one meaning. In the top bar it is a strip beside the
+ * queue and stays as narrow as it always was; in the left rail it is the thing
+ * a player looks at before every move, so the pips grow, the labels get a line
+ * of their own and the metres become a bar — a fraction in 0,72 rem is not what
+ * „how far can I still go" should cost to answer.
  */
-export function TurnBudget({ budget }: { budget: TurnBudgetView }) {
+export function TurnBudget({
+  budget,
+  variant = 'bar',
+}: {
+  budget: TurnBudgetView;
+  variant?: 'bar' | 'rail';
+}) {
+  const distanceRatio =
+    budget.distance && budget.distance.max > 0
+      ? Math.max(0, Math.min(1, budget.distance.used / budget.distance.max))
+      : 0;
   return (
     <div
-      className="combat-budget"
+      className={variant === 'rail' ? 'combat-budget combat-budget--rail' : 'combat-budget'}
       title={
         budget.note
           ? `${budget.note}${budget.overspent ? ` · przekroczenie ×${budget.overspent}` : ''}`
@@ -48,7 +64,23 @@ export function TurnBudget({ budget }: { budget: TurnBudgetView }) {
               : budget.distance.label
           }
         >
-          {formatMetres(budget.distance.used)} / {formatMetres(budget.distance.max)}
+          {variant === 'rail' && (
+            <span className="combat-budget-label">{budget.distance.label}</span>
+          )}
+          {/* The bar is the rail's only addition: metres spent fill it, so the
+              answer to „can I still reach that corner" is a shape rather than
+              two numbers to subtract. */}
+          {variant === 'rail' && (
+            <span className="combat-budget-track" aria-hidden>
+              <span
+                className="combat-budget-track-fill"
+                style={{ width: `${distanceRatio * 100}%` }}
+              />
+            </span>
+          )}
+          <span className="combat-budget-metres">
+            {formatMetres(budget.distance.used)} / {formatMetres(budget.distance.max)}
+          </span>
           {budget.distance.hard && (
             <span className="combat-budget-flag" title="Ruch utrudniony — podwójny koszt">
               ×2

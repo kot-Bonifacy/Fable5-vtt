@@ -10,6 +10,7 @@ import {
   cpredInjuryTurnEnd,
   cpredMovementBlock,
   cpredPeriodicDamage,
+  cpredStatusSeverity,
   cpredTurnReminders,
 } from './statuses.js';
 
@@ -180,5 +181,41 @@ describe('Critical Injuries with machine effects (stage 14e)', () => {
     expect(cpredInjuryModifiers([concussion, ribs])).toEqual([
       { label: 'Wstrząśnienie mózgu', value: -2 },
     ]);
+  });
+});
+
+describe('how loudly a status is drawn (stage 27h)', () => {
+  it('calls a status that stops every Action critical', () => {
+    expect(cpredStatusSeverity('dead')).toBe('critical');
+    expect(cpredStatusSeverity('unconscious')).toBe('critical');
+  });
+
+  it('warns for the ones that cost movement, a dodge or hit points', () => {
+    expect(cpredStatusSeverity('prone')).toBe('warn');
+    expect(cpredStatusSeverity('grappled')).toBe('warn');
+    expect(cpredStatusSeverity('on-fire')).toBe('warn');
+  });
+
+  it('leaves a sticker that only reminds at info — and never throws on one it has never heard of', () => {
+    expect(cpredStatusSeverity('intimidated')).toBe('info');
+    expect(cpredStatusSeverity('slowed')).toBe('info');
+    expect(cpredStatusSeverity('nie-ma-takiego')).toBe('info');
+  });
+
+  it('paints the wound states loudly even though the table has no row for them', () => {
+    // Their penalties come off the Hit Points (`woundCheckPenalty`), not off a
+    // refusal — which is exactly why they need naming here.
+    expect(CPRED_STATUS_EFFECTS['mortally-wounded']).toBeUndefined();
+    expect(cpredStatusSeverity('mortally-wounded')).toBe('critical');
+    expect(cpredStatusSeverity('seriously-wounded')).toBe('warn');
+  });
+
+  it('agrees with the effects table it is derived from', () => {
+    for (const [id, effect] of Object.entries(CPRED_STATUS_EFFECTS)) {
+      const severity = cpredStatusSeverity(id);
+      if (effect.noAction) expect(severity).toBe('critical');
+      else if (effect.noMove || effect.noDodge || effect.dot) expect(severity).toBe('warn');
+      else expect(severity).toBe('info');
+    }
   });
 });

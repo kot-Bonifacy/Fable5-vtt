@@ -4301,6 +4301,57 @@ body.is-resizing {
   color: var(--err);
 }
 
+/* Budget in the left rail (stage 27h): the same numbers, sized for the panel a
+   player looks at before every move. Stacked instead of strung along a strip,
+   because here there is a column to use and no queue to sit beside. */
+.combat-budget--rail {
+  flex-wrap: wrap;
+  gap: 0.35rem 0.5rem;
+  padding: 0.35rem 0.45rem;
+  border-left: none;
+  background: var(--veil-faint);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+}
+
+.combat-budget--rail .combat-budget-pip {
+  width: 0.62rem;
+  height: 0.62rem;
+}
+
+.combat-budget--rail .combat-budget-distance {
+  flex: 1 0 100%;
+  gap: 0.35rem;
+  font-size: 0.68rem;
+}
+
+/* Metres spent, as a shape. The fraction stays next to it — one is for the
+   glance, the other for the sentence said out loud at the table. */
+.combat-budget-track {
+  flex: 1;
+  height: 0.32rem;
+  min-width: 3rem;
+  border-radius: 2px;
+  background: var(--bg-inset);
+  overflow: hidden;
+}
+
+.combat-budget-track-fill {
+  display: block;
+  height: 100%;
+  background: var(--info);
+  transition: width 200ms ease-out;
+}
+
+.combat-budget-distance--over .combat-budget-track-fill {
+  background: var(--err);
+}
+
+.combat-budget-metres {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
 .combat-chip-held {
   font-size: 0.7rem;
   color: var(--warn);
@@ -4503,28 +4554,72 @@ body.is-resizing {
 
 /* ===== HUD walki — lewy pasek i celownik (etap 16f) ===== */
 
+/* ---- Panel postaci: HUD walki (etapy 16f i 27h) ---- */
+
 /* A rail rather than an overlay: the panel and the action bar are pressed
    constantly, and anything floating over the map eventually covers the tile
    somebody wants to click. It sits before `.map-area` in the flex row, so the
-   canvas simply gets narrower — Pixi resizes itself (`resizeTo` on the host). */
+   canvas simply gets narrower — Pixi resizes itself (`resizeTo` on the host).
+
+   Stage 27h widened it by two rem. Everything added there — the icon on a
+   slot, the magazine gauge, the armour and MOVE chips — is a thing the eye
+   lands on instead of a line it reads, and all of them need width to be worth
+   more than the words they replaced. */
 .hud-rail {
-  width: 15rem;
+  width: 17rem;
   flex: none;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
   min-height: 0;
-  padding: 0.5rem;
+  /* Miejsce u dołu jest zajęte: kubek do kości stoi na stałe w lewym dolnym
+     rogu okna (`.dice-cup`, `position: fixed`), czyli **na** tym panelu. Bez
+     rezerwacji siada dokładnie na stopce ze skrótami — 51 px kubka plus jego
+     1 rem odstępu od krawędzi, i jeszcze trochę na cień. */
+  padding: 0.55rem 0.55rem 4.6rem;
   overflow-y: auto;
   background: var(--bg-panel);
   border-right: 1px solid var(--border);
   user-select: none;
 }
 
+/* Collapsed keeps the portrait and a sliver of health: „give me back the map"
+   must not also mean „forget how hurt I am". */
 .hud-rail--collapsed {
-  width: 1.6rem;
-  padding: 0.35rem 0.15rem;
+  width: 2.6rem;
+  padding: 0.35rem 0.25rem 4.6rem;
+  gap: 0.4rem;
   align-items: center;
+}
+
+.hud-collapsed-figure {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+/* The strip is 2,6 rem wide: without a size of its own the portrait stretches
+   to fill it and pushes the health sliver out of the rail entirely. */
+.hud-rail--collapsed .hud-portrait {
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: 0.75rem;
+}
+
+.hud-collapsed-hp {
+  width: 0.3rem;
+  height: 2.1rem;
+  border-radius: 999px;
+  background: var(--bg-inset);
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+}
+
+.hud-collapsed-hp-fill {
+  width: 100%;
+  background: var(--hud-hp-color);
 }
 
 .hud-head {
@@ -4535,8 +4630,11 @@ body.is-resizing {
 
 .hud-head-title {
   flex: 1;
-  font-size: 0.85rem;
+  font-size: 0.62rem;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -4560,47 +4658,140 @@ body.is-resizing {
   color: var(--text);
 }
 
+/* One silhouette, four colours: the file is a mask, so the picture takes the
+   colour of whatever text it stands in — a refused slot greys its icon along
+   with its name without a second copy of the artwork. */
+.hud-icon {
+  display: inline-block;
+  width: 1.15rem;
+  height: 1.15rem;
+  flex: none;
+  background: currentColor;
+  -webkit-mask-image: var(--hud-icon);
+  mask-image: var(--hud-icon);
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
 .hud-empty {
+  display: flex;
+  gap: 0.4rem;
+  align-items: flex-start;
   margin: 0;
+  padding: 0.4rem 0.45rem;
   font-size: 0.72rem;
   line-height: 1.35;
   color: var(--text-dim);
+  background: var(--veil-faint);
+  border: 1px dashed var(--border);
+  border-radius: 5px;
 }
 
-.hud-identity {
+.hud-empty-icon {
+  width: 1.4rem;
+  height: 1.4rem;
+  opacity: 0.5;
+}
+
+/* „Twoja tura" — the one fact from the queue that belongs beside the figure.
+   The clipped corner is the whole of the cyberpunk in this panel: enough to
+   say the interface is diegetic, cheap enough to survive the day theme. */
+.hud-turn-banner {
+  margin: 0;
+  padding: 0.22rem 0.55rem;
+  font-size: 0.64rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--text-on-accent);
+  background: var(--accent);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0.6rem 100%, 0 calc(100% - 0.6rem));
+  animation: hud-banner-in 220ms ease-out;
+}
+
+@keyframes hud-banner-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.2rem);
+  }
+}
+
+/* ---- Karta tożsamości ---- */
+
+.hud-card {
   display: flex;
-  gap: 0.5rem;
-  align-items: center;
+  gap: 0.55rem;
+  align-items: flex-start;
+  padding: 0.45rem;
+  background: var(--bg-inset-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+/* The frame is a square with one corner cut, not a circle: the map already
+   draws this figure as a disc, and a panel that repeats the token is a panel
+   that says nothing new. */
+.hud-portrait-frame {
+  position: relative;
+  flex: none;
+  width: 3.6rem;
+  height: 3.6rem;
+  padding: 2px;
+  background: linear-gradient(140deg, var(--border-strong), var(--border));
+  clip-path: polygon(0 0, 100% 0, 100% 78%, 78% 100%, 0 100%);
 }
 
 .hud-portrait {
-  width: 2.6rem;
-  height: 2.6rem;
-  flex: none;
+  width: 100%;
+  height: 100%;
+  display: block;
   object-fit: cover;
-  border-radius: 50%;
-  border: 1px solid var(--border);
+  clip-path: polygon(0 0, 100% 0, 100% 78%, 78% 100%, 0 100%);
 }
 
 .hud-portrait--empty {
   display: grid;
   place-items: center;
   background: var(--bg-inset);
+  font-size: 1.4rem;
   font-weight: 700;
   color: var(--text-dim);
 }
 
-.hud-identity-body {
+.hud-card-body {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.28rem;
 }
+
+.hud-card-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hud-card-role {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+}
+
+/* ---- Punkty Wytrzymałości ---- */
 
 /* The wound state colours the bar, so „how bad is it" is answered by a glance
    rather than by dividing two numbers (the same rungs stage 15 judges on). */
 .hud-hp {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0.35rem;
@@ -4621,10 +4812,12 @@ body.is-resizing {
 }
 
 .hud-hp-track {
+  position: relative;
   flex: 1;
-  height: 0.45rem;
-  border-radius: 999px;
+  height: 0.6rem;
+  border-radius: 2px;
   background: var(--bg-inset);
+  border: 1px solid var(--border);
   overflow: hidden;
 }
 
@@ -4632,12 +4825,69 @@ body.is-resizing {
   display: block;
   height: 100%;
   background: var(--hud-hp-color);
+  /* Damage is a jump, healing is a jump — but a *visible* one: without this the
+     bar has already moved by the time anybody looks up from the dice. */
+  transition: width 260ms ease-out;
+}
+
+/* Seriously Wounded — half the maximum, rounded up. Every check turns −2 the
+   moment the fill crosses it, so the rung is drawn rather than remembered. */
+.hud-hp-notch {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--scrim);
 }
 
 .hud-hp-value {
   flex: none;
   font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.hud-hp-max {
+  font-weight: 400;
   color: var(--text-dim);
+}
+
+/* The number that flies off the bar: a hit has to be visible in the panel at
+   the moment it lands, not only in the chat log two seconds later. */
+.hud-hp-delta {
+  position: absolute;
+  right: 0;
+  top: -0.1rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--err);
+  text-shadow: 0 1px 2px var(--scrim);
+  pointer-events: none;
+  animation: hud-delta 1600ms ease-out forwards;
+}
+
+.hud-hp-delta--heal {
+  color: var(--ok);
+}
+
+@keyframes hud-delta {
+  0% {
+    opacity: 0;
+    transform: translateY(0.3rem) scale(0.9);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(0) scale(1.1);
+  }
+  70% {
+    opacity: 1;
+    transform: translateY(-0.5rem) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-1rem) scale(1);
+  }
 }
 
 .hud-hp-none {
@@ -4645,19 +4895,90 @@ body.is-resizing {
   color: var(--text-dim);
 }
 
+/* ---- SP · RUCH · EMP ---- */
+
+/* Three numbers that decide a fight and used to live only on the sheet: what
+   stops a bullet, how far one Move Action goes, and what is left of EMP. */
+.hud-vitals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.hud-vital {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.1rem 0.3rem;
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  background: var(--veil-soft);
+  border-radius: 3px;
+}
+
+.hud-vital .hud-icon {
+  width: 0.85rem;
+  height: 0.85rem;
+  opacity: 0.8;
+}
+
+.hud-vital-value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* „This number is not the printed one" — the tooltip says which penalty did
+   it (Pancerz −2, Złamana noga −4), the same wording the tracker uses. */
+.hud-vital-flag {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--warn);
+}
+
+/* ---- Statusy ---- */
+
+/* Chips with names since 27h: seventeen registry icons at 15 px are a rebus,
+   and „what is that skull" is not a question to ask in the middle of a turn.
+   The colour is the rules' own answer (`cpredStatusSeverity`): red cannot act,
+   amber pays for it somehow, grey merely reminds. */
 .hud-statuses {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.15rem;
-  line-height: 1;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-/* The registry ships SVG files, not glyphs — the same images the token wears
-   as badges, at the size a panel row can hold. */
+.hud-status {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.1rem 0.32rem 0.1rem 0.22rem;
+  font-size: 0.66rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--veil-soft);
+  color: var(--text-dim);
+}
+
 .hud-status img {
-  width: 0.95rem;
-  height: 0.95rem;
+  width: 0.85rem;
+  height: 0.85rem;
   display: block;
+}
+
+.hud-status--warn {
+  color: var(--warn);
+  border-color: rgb(var(--warn-rgb) / 45%);
+  background: rgb(var(--warn-rgb) / 12%);
+}
+
+.hud-status--critical {
+  color: var(--err-ink);
+  border-color: rgb(var(--err-rgb) / 50%);
+  background: rgb(var(--err-rgb) / 14%);
 }
 
 .hud-refusal {
@@ -4683,6 +5004,36 @@ body.is-resizing {
   border-radius: 3px;
 }
 
+/* ---- Sloty ---- */
+
+.hud-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+}
+
+/* A weapon, a reload and an Action stopped being the same rectangle in 27h;
+   the heading is what makes the row of them scannable rather than merely
+   different. */
+.hud-group-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-size: 0.58rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-dim);
+}
+
+.hud-group-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
 .hud-slots {
   display: flex;
   flex-direction: column;
@@ -4690,34 +5041,64 @@ body.is-resizing {
 }
 
 /* One row per slot rather than a grid of squares: a weapon is „Ciężki pistolet
-   — seria", and a name that long is unreadable in a box. The number key keeps
-   the left edge, which is where the eye goes when a hand is on the keyboard. */
+   — seria", and a name that long is unreadable in a box. The icon keeps the
+   left edge and the number key the right, so the eye finds the picture first
+   and the hand finds the key without reading anything. */
 .hud-slot {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.45rem;
   width: 100%;
-  padding: 0.28rem 0.4rem;
+  padding: 0.32rem 0.4rem;
   text-align: left;
   font-size: 0.74rem;
   color: var(--text);
   background: var(--bg-inset-2);
   border: 1px solid var(--border);
   border-radius: 4px;
+  border-left: 2px solid var(--border-strong);
   cursor: pointer;
+}
+
+/* The left edge carries the kind: a gun, a magazine, a manoeuvre. Three
+   colours the eye sorts without a legend. */
+.hud-slot--weapon {
+  border-left-color: var(--accent);
+}
+
+.hud-slot--reload {
+  border-left-color: var(--info);
+}
+
+.hud-slot--action {
+  border-left-color: var(--border-strong);
 }
 
 .hud-slot:hover {
   border-color: var(--border-strong);
+  background: var(--bg-inset);
 }
 
-.hud-slot-key {
-  flex: none;
-  min-width: 1rem;
-  text-align: center;
-  font-size: 0.62rem;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-dim);
+.hud-slot-icon {
+  width: 1.35rem;
+  height: 1.35rem;
+  opacity: 0.85;
+}
+
+.hud-slot-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.hud-slot-line {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
 }
 
 .hud-slot-label {
@@ -4727,35 +5108,116 @@ body.is-resizing {
   white-space: nowrap;
 }
 
-/* The fire mode is a chip, not part of the name: it is the only difference
-   between three slots of the same weapon, so it must never be the part that
-   gets truncated. */
-.hud-slot-mode {
+.hud-slot-key {
   flex: none;
-  padding: 0 0.22rem;
+  min-width: 1.05rem;
+  padding: 0.05rem 0;
+  text-align: center;
   font-size: 0.6rem;
-  color: var(--warn);
-  border: 1px solid var(--warn);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+  background: var(--veil-soft);
+  border: 1px solid var(--border);
   border-radius: 3px;
 }
 
-.hud-slot-ammo {
+/* The fire mode is a chip, not part of the name: it is the only difference
+   between three slots of the same weapon, so it must never be the part that
+   gets truncated. */
+.hud-chip {
   flex: none;
-  font-size: 0.65rem;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-dim);
+  padding: 0 0.22rem;
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-radius: 3px;
+}
+
+.hud-chip--mode {
+  color: var(--warn);
+  border: 1px solid var(--warn);
 }
 
 /* The round in the magazine (stage 16g) — the same chip as the fire mode,
    in a colder colour: both change what the shot does, and neither is the
    weapon's name. */
-.hud-slot-ammo-type {
+.hud-chip--ammo {
   color: var(--whisper);
-  border-color: var(--whisper);
+  border: 1px solid var(--whisper);
   max-width: 6.5rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* ---- Magazynek ---- */
+
+/* „30/30" stays, because a number is what a player says out loud; the gauge is
+   what stops „I am about to run dry" from needing to be read at all. */
+.hud-mag {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.62rem;
+  color: var(--text-dim);
+  --hud-mag-color: var(--border-strong);
+}
+
+.hud-mag--low {
+  --hud-mag-color: var(--warn);
+}
+
+.hud-mag--empty {
+  --hud-mag-color: var(--err);
+}
+
+.hud-mag-pips {
+  display: flex;
+  gap: 1px;
+}
+
+.hud-mag-pip {
+  width: 3px;
+  height: 0.5rem;
+  border-radius: 1px;
+  background: var(--veil);
+}
+
+.hud-mag-pip--live {
+  background: var(--hud-mag-color);
+}
+
+.hud-mag-bar {
+  flex: none;
+  width: 3rem;
+  height: 0.22rem;
+  border-radius: 1px;
+  background: var(--veil);
+  overflow: hidden;
+}
+
+.hud-mag-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--hud-mag-color);
+  transition: width 200ms ease-out;
+}
+
+.hud-mag-count {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+}
+
+/* Only trouble gets a colour on the number: „4/30" has to read differently
+   from „30/30" without the player counting anything. */
+.hud-mag--low .hud-mag-count,
+.hud-mag--empty .hud-mag-count {
+  color: var(--hud-mag-color);
+  font-weight: 600;
+}
+
+.hud-mag-max {
+  color: var(--text-dim);
 }
 
 /* The ammunition dropdown sits under the magazine counter in the weapon row. */
@@ -4769,21 +5231,49 @@ body.is-resizing {
    the pointer — the two marks are one state seen in two places. */
 .hud-slot--armed {
   border-color: var(--accent);
+  border-left-color: var(--accent);
   background: rgb(var(--accent-rgb) / 16%);
+  box-shadow: inset 0 0 0 1px rgb(var(--accent-rgb) / 25%);
+}
+
+.hud-slot--armed .hud-slot-icon {
+  opacity: 1;
 }
 
 /* Refused, not removed: a greyed slot with a reason in its tooltip is how the
    player learns the rule; a slot that vanished would just look like a bug. */
 .hud-slot--refused {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: not-allowed;
+  border-left-color: var(--border);
 }
 
 .hud-armed {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
   margin: 0;
   font-size: 0.7rem;
   line-height: 1.3;
   color: var(--text-dim);
+}
+
+/* A dot that will not sit still — the panel's way of saying the next click on
+   the map is a shot rather than a step. */
+.hud-armed-mark {
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-top: 0.22rem;
+  border-radius: 50%;
+  background: var(--armed);
+  animation: hud-armed-pulse 1400ms ease-in-out infinite;
+}
+
+@keyframes hud-armed-pulse {
+  50% {
+    opacity: 0.25;
+  }
 }
 
 .hud-armed-hint {
@@ -4795,8 +5285,12 @@ body.is-resizing {
   border-top: 1px solid var(--border);
 }
 
+/* Nie przyklejone do dołu, choć kiedyś było: kubek do kości stoi w lewym dolnym
+   rogu okna, a stopka dociśnięta pod niego wyglądała jak napis wiszący nad
+   kubkiem w pustce. Skróty idą więc zaraz po slotach — jak każde inne zdanie
+   w tym panelu — a dół zostaje kubkowi. */
 .hud-keys {
-  margin: auto 0 0;
+  margin: 0.15rem 0 0;
   font-size: 0.62rem;
   line-height: 1.5;
   color: var(--text-dim);
@@ -4808,6 +5302,16 @@ body.is-resizing {
   background: var(--bg-inset-2);
   border: 1px solid var(--border);
   border-radius: 3px;
+}
+
+/* Whoever asked the system for less motion gets less motion: the flying number
+   and the two pulses are the only things here that move on their own. */
+@media (prefers-reduced-motion: reduce) {
+  .hud-hp-delta,
+  .hud-armed-mark,
+  .hud-turn-banner {
+    animation: none;
+  }
 }
 
 /* The bubble follows the pointer, so it is fixed to the viewport and never
