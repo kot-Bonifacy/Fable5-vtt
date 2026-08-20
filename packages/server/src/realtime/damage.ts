@@ -4,6 +4,7 @@ import type {
   DamageApplyPayload,
   DamageLogEntry,
   DamageUndoPayload,
+  MapFxEffect,
   RollResult,
   TokenHp,
 } from '@vtt/shared';
@@ -35,6 +36,7 @@ import {
 } from './turn-effects.js';
 import { emitTokensById, emitTokensOfCharacter, requireCampaignToken } from './tokens.js';
 import { buildCompendiumSync } from './compendium.js';
+import { emitMapFx, fxCentre } from './fx.js';
 import { INCLUDE_CHAT_NAMES, broadcastRedactedChatMessage, toChatMessageView } from './chat-io.js';
 
 /**
@@ -260,6 +262,51 @@ export const damageApplyEvent = defineEvent<DamageApplyPayload, { messageId: num
  * on the zone's), and a card is the one part of a hit that is not arithmetic.
  */
 export async function applyDamageToFigure(
+  deps: RealtimeDeps,
+  campaignId: string,
+  scene: Scene,
+  token: Token,
+  request: SheetDamageRequest,
+): Promise<{ log: SheetDamageLog; character: Character | null }> {
+  const landed = await landDamageOnFigure(deps, campaignId, scene, token, request);
+  await emitMapFx(deps, campaignId, scene, damageMapFx(landed.log, token, scene));
+  return landed;
+}
+
+/**
+ * What a hit leaves on the map (stage 27i): a flash where it landed and the
+ * number that came out of it.
+ *
+ * The number is `hpLost` rather than `damageRolled`, because the map shows what
+ * the figure *lost*, not what the dice showed — a vest that ate all of it is
+ * the more interesting fact, and it gets said in a word instead of a „−0" the
+ * table would read as a bug. The Critical Injury rides along as its own label,
+ * staggered by the renderer, for the same reason the card lists it separately:
+ * it is a second thing that happened, not a bigger version of the first.
+ *
+ * Deliberately **not** gated on who may see the Hit Points. The chat card is
+ * already public down to the damage number (only the absolute HP is redacted,
+ * stage 15), and the effect channel gates on something stricter anyway: whether
+ * the figure is visible at all.
+ */
+function damageMapFx(
+  log: SheetDamageLog,
+  token: Token,
+  scene: Pick<Scene, 'gridSizePx'>,
+): MapFxEffect[] {
+  const at = fxCentre(token, scene);
+  const effects: MapFxEffect[] = [{ kind: 'spark', at, sound: 'impact' }];
+  effects.push(
+    log.hpLost > 0
+      ? { kind: 'float', at, text: `−${log.hpLost}`, tone: 'damage' }
+      : { kind: 'float', at, text: 'PANCERZ', tone: 'note' },
+  );
+  if (log.injury) effects.push({ kind: 'float', at, text: 'KRYTYK', tone: 'crit' });
+  return effects;
+}
+
+/** The arithmetic of one hit, with nothing drawn — see `applyDamageToFigure`. */
+async function landDamageOnFigure(
   deps: RealtimeDeps,
   campaignId: string,
   scene: Scene,

@@ -138,6 +138,7 @@ import type {
   DiceSkinId,
   PresenceBroadcast,
   RollGesture,
+  MapFxBroadcast,
   RulerBroadcast,
   RulerClearBroadcast,
   SceneVisibility,
@@ -195,6 +196,7 @@ import {
   parseChatInput,
 } from '@vtt/shared';
 import { playRollAnimation, toAnimationNotation } from './dice3d.js';
+import { receiveMapFx, releaseMapFx } from './map-fx.js';
 import { shouldTypeOut, typeOutMessage } from './typewriter.js';
 import { useConnectionStore } from './stores/connectionStore.js';
 import { oldestMessageId, useChatStore } from './stores/chatStore.js';
@@ -647,13 +649,21 @@ export function connectSocket(userId: string): Socket {
       return;
     }
     if (hold && roll) {
-      const reveal = () => useChatStore.getState().revealMessage(broadcast.message.id);
+      const reveal = () => {
+        useChatStore.getState().revealMessage(broadcast.message.id);
+        // …and with the card, whatever the map was holding behind it (27i).
+        releaseMapFx(broadcast.message.id);
+      };
       const guard = window.setTimeout(reveal, MAX_ANIMATION_WAIT_MS);
       void playRollAnimation(roll).then((played) => {
         window.clearTimeout(guard);
         window.setTimeout(reveal, played ? CARD_REVEAL_DELAY_MS : 0);
       });
+      return;
     }
+    // No dice to wait for — an ordinary message, or a table with the animation
+    // switched off. The card is already on screen, so the map may fire at once.
+    releaseMapFx(broadcast.message.id);
   });
   // A message that changed after the fact (stage 15: the GM took an applied
   // damage entry back) — replaced in place, never appended again.
@@ -733,6 +743,10 @@ export function connectSocket(userId: string): Socket {
   });
 
   // Rulers are ephemeral like intermediate drags: no seq, never resynced.
+  // Map effects (stage 27i) — never sequenced and never replayed on a resync,
+  // exactly like the ruler below: an effect is something that happened, not
+  // something that is.
+  socket.on('fx:play', (broadcast: MapFxBroadcast) => receiveMapFx(broadcast));
   socket.on('ruler:update', (broadcast: RulerBroadcast) => {
     if (!viewingScene(broadcast.sceneId)) return;
     useRulerStore.getState().receive(broadcast);

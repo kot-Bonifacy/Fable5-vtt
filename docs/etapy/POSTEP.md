@@ -68,20 +68,27 @@ Pełne notatki z zamkniętych etapów: `archiwum/dziennik-sesji.md` (nie czytaj 
 | 27e | Motyw dzień/noc dla całej aplikacji           | ✅     | 2026-08-20        | mapa i okno Sieci zostają nocne (decyzja MG); `theme.css` = jedyny plik z kolorem, pilnuje testu |
 | 27f | Szlif UX: pomoc, tooltipy, stany, okna        | ⬜     |                   | okno skrótów `?`, stany puste, okna pamiętające pozycję i rozmiar                                |
 | 27g | Wydajność                                     | ⬜     |                   | re-rendery przy ruchu tokenów, bundle, lazy-loading, fps mapy                                    |
-| 27h | Panel postaci: HUD, który wygląda jak gra     | ✅     | 2026-08-20        | dopisany 20.08 na wniosek MG; ikona slotu i waga statusu liczone w `shared`, nie w CSS   |
-| 27i | Mapa: tokeny, efekty walki i ruch             | ⬜     |                   | dopisany 20.08 razem z 27h; walka nie ma dziś na mapie żadnego efektu                     |
+| 27h | Panel postaci: HUD, który wygląda jak gra     | ✅     | 2026-08-20        | dopisany 20.08 na wniosek MG; ikona slotu i waga statusu liczone w `shared`, nie w CSS           |
+| 27i | Mapa: efekty walki                            | ✅     | 2026-08-20        | zwężony 20.08 (żetony → 27j); efekt przycinany per widz, bang czeka na kości                     |
+| 27j | Żetony i czytelny ruch                        | ⬜     |                   | dopisany 20.08 przy podziale 27i; PW jako łuk wokół figury (decyzja MG)                          |
 | 28  | Wdrożenie na VPS                              | ⬜     |                   |                                                                                                  |
 
 ## Od czego zacząć
 
-Ostatnio zamknięte: **27e** — przełącznik ☀/☾ przestał kłamać i ubiera **całe VTT**, a nie samą
-kartę. Kolor mieszka teraz wyłącznie w `packages/client/src/theme.css`; **mapa, okno Sieci
-i papier gazety zostają przy swoim świetle** (decyzja MG z 20.08). Wcześniej **27d** — pięć
-skórek kości i okno „⚙ Ustawienia".
+Ostatnio zamknięte: **27i** — strzał przestał być wyłącznie wpisem na czacie. Mapa ma warstwę
+efektów (smuga, błysk lufy, trafienie, pudło mijające figurę, wybuch, chmura, wyładowanie,
+liczby nad figurą) i własny suwak dźwięku w „⚙ Ustawienia". Wcześniej **27h** — lewy panel jako
+HUD, i **27e** — motyw dzień/noc dla całego VTT.
 
-**Etap 27 został rozdzielony do końca**: 27d i 27e zrobione, zostają **27f** (okno skrótów,
-stany puste, pozycje okien) i **27g** (wydajność). Plik `etap-27-…` jest rozdrożem ze
-wskazaniami, sam nie jest do realizacji.
+**Etap 27 został rozdzielony do końca**: 27d, 27e, 27h i 27i zrobione, zostają **27f** (okno
+skrótów, stany puste, pozycje okien), **27g** (wydajność) i **27j** (żetony: podstawka, łuk PW
+zamiast paska, stany ran, kierunek patrzenia — plus czytelny ruch). Plik `etap-27-…` jest
+rozdrożem ze wskazaniami, sam nie jest do realizacji.
+
+**Efekt mapy jest przycinany na serwerze, nie w rendererze.** `fx:play` jedzie **per gniazdo**:
+kto nie widzi lufy, nie dostaje ani jej, ani dźwięku; kto nie widzi żadnego końca strzału, nie
+dostaje niczego. Reguła jest czystą funkcją (`trimMapFxForViewer` w `shared/src/fx.ts`) i ma
+własne testy — nowy rodzaj efektu dopisuje się tam, nie w `MapFxLayer`.
 
 **Kolor dokłada się tylko w `theme.css` — i pilnuje tego test.** `packages/client/src/theme.test.ts`
 (pierwszy test w tym pakiecie) przewraca się, gdy w `styles.css` albo `sheet.css` pojawi się
@@ -109,14 +116,31 @@ otwiera się narzędziem ⚠ w trybie 📌; „Rozbrój" ją usypia, kosz usuwa.
 przełącznika gracz nie kupi niczego droższego niż 50 ed. Przełącznik 1–4 jest w zakładce
 **„Kompendium"** pod chipami kategorii; MG kupuje przez wszystkie poziomy niezależnie od niego.
 
-**Następne etapy do wyboru: 27f**, **27g** i **28** (VPS). Drobiazg „kostki kreatora świecą jak
-krytyki" z 25a/25b **jest zrobiony** (flaga `plain`), jednobarwne 📰 z 24c i 🔌 z 26b też — obie
-stały się sylwetkami z game-icons w 27e. **Sesja zerowa z drużyną** jest nadal najlepszym testem
-25a+25b+25c i trzech stron karty naraz.
+**Następne etapy do wyboru: 27j** (druga połowa pary z 27h/27i — żetony i ruch), **27f**,
+**27g** i **28** (VPS). Drobiazg „kostki kreatora świecą jak krytyki" z 25a/25b **jest zrobiony**
+(flaga `plain`), jednobarwne 📰 z 24c i 🔌 z 26b też — obie stały się sylwetkami z game-icons
+w 27e. **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty
+naraz — a od 27i także pierwszym, przy którym ktoś **usłyszy** dźwięki walki (dobrane bez
+odsłuchu, przyciski próbek są w „⚙ Ustawienia").
 
 **09.08 głos wypadł z projektu** (sesja bez etapu, decyzja MG): etapy **12, 21 i 22** wycofane, kod TTS usunięty z repo. Szczegóły w `archiwum/dziennik-sesji.md` i w `archiwum/wycofane/README.md`.
 
 ### Otwarte zaległości (przechodzą między etapami)
+
+- **Etap 27i — cztery ścieżki nieodklikane; reszta sprawdzona 20.08 (patrz notatka sesji).**
+  (1) **Wybuch, chmura gazu i wyładowanie strefy** — kod i oba arkusze CC0 sprawdzone
+  (krojenie klatek zweryfikowane w przeglądarce), ale animacji nikt nie widział: na Poligonie
+  nie ma postaci z granatem, a wejście na „Podłogę elektryczną" kosztuje 6k6. (2) **Liczba
+  obrażeń nad figurą** — ta sama ścieżka co widziane „PUDŁO", różni ją jedna linia w
+  `damageMapFx`. (3) **Dźwięki** — odtwarzane, ale nikt ich nie słyszał, a próbki dobrano po
+  nazwach plików w paczkach CC0; rządek przycisków odsłuchu jest w „⚙ Ustawienia" właśnie po to.
+  (4) **Strona gracza** — wszystko oglądane z konta MG; różnica jest w payloadzie i pokryta
+  trzema testami na żywych gniazdach, ale nikt nie patrzył na to oczami gracza.
+
+- **Etap 27i — pomiar fps nie objął sceny ze światłami i mgłą.** „Strzelnica" ma widoczność
+  `open`, więc 160,1 → 161,2 fps mierzy **samą warstwę efektów**, a nie najgorszy przypadek
+  z kryterium etapu. Warstwa rysuje na klatkę kilka ścieżek `Graphics` i najwyżej jeden sprite,
+  więc rezerwa jest duża — ale liczby dla sceny z dynamiczną widocznością nadal nie ma.
 
 - **Etap 27e — trzy ścieżki nieodklikane; reszta sprawdzona 20.08 (patrz notatka sesji).**
   (1) **Ekran dołączenia do stołu** (`/join/<token>`) — potrzebny świeży link zaproszenia, a ten
@@ -606,6 +630,23 @@ decyduje przegrany, nie zwycięzca`) — Konfrontacje z 10.08 szły z konta MG, 
 
 ### Pułapki dev (kosztowały czas więcej niż raz)
 
+- **Efektu mapy NIE DA SIĘ złapać zrzutem ekranu, a spowolnienie `performance.now` nic nie
+  daje** (ustalone 20.08 przy 27i, kosztowało pół godziny). Efekt trwa 300–800 ms, a runda
+  narzędzia zrzutu to około półtorej sekundy — więc widać zawsze pustą mapę i pierwsza myśl
+  („nie działa") jest fałszywa. `performance.now` nie spowalnia Pixi: `Ticker` v8 bierze czas
+  ze **znacznika `requestAnimationFrame`**, nie z zegara. **Obejście:** opakuj `rAF` tak, żeby
+  przeliczał znacznik (`cb(virt)` zamiast `cb(t)`), i ustaw współczynnik dopiero po pojawieniu
+  się karty na czacie — wcześniej spowolniłbyś też animację kości. **Rozpoznanie, zanim
+  zaczniesz szukać błędu w rysowaniu:** `graphics.getBounds()` w tym samym miejscu, w którym
+  rysujesz — niepuste bounds w sensownych współrzędnych ekranu znaczą, że Pixi ma geometrię
+  i problem jest wyłącznie w tym, kiedy patrzysz.
+
+- **Klik w puste pole mapy przy zaznaczonej figurze to rozkaz marszu** — i tak właśnie 20.08
+  Tony przeszedł pół Strzelnicy, bo zrzut ekranu miał inną skalę niż okno i kliknięcie „w żeton"
+  minęło go o kilkadziesiąt pikseli. Przy automatyzacji celuj **zdarzeniami wskaźnika
+  z policzonymi współrzędnymi CSS** (`canvas.dispatchEvent(new PointerEvent(...))`), nie
+  współrzędnymi ze zrzutu — patrz wpis o wycinku okna niżej.
+
 - **Sesję gracza i sesję MG DA się mieć naraz w jednym oknie Chrome** (ustalone 09.08 przy 24b,
   obala wpis „sesja gracza w tej samej przeglądarce wylogowuje MG"): ciasteczko jest kluczowane
   **hostem**, a `localhost` i `[::1]` to dwa różne hosty, mimo że Vite słucha na obu. MG zostaje na
@@ -676,6 +717,87 @@ decyduje przegrany, nie zwycięzca`) — Konfrontacje z 10.08 szły z konta MG, 
   TypeScript nie pomoże, jeśli lokalny typ wypisany w teście też zmyśla.
 
 ## Notatki z dwóch ostatnich sesji
+
+### Sesja 20.08 (trzecia tego dnia) — etap 27i (mapa: efekty walki)
+
+**Etap 27i zwężony na starcie** (decyzja MG): Token 2.0 i czytelny ruch wyprowadzone do nowego
+**27j** (`etap-27j-zetony-ruch.md`, PW jako **łuk wokół figury** zamiast paska nad głową). Ta
+sesja zamknęła efekty walki w całości — od kanału zdarzeń na serwerze po dźwięk.
+
+**Efekt to nie stan i dlatego ma własny kanał.** `fx:play` nie jest sekwencjonowany, nie wchodzi
+do `state:sync` i nie odtwarza się po resyncu — dokładnie jak wspólna linijka z etapu 16.
+Wysyłany **per gniazdo**, nigdy do pokoju sceny, bo każdy widz ma inną odpowiedź na pytanie „czy
+to widzisz". Przycinanie siedzi w `shared/src/fx.ts` (`trimMapFxForViewer`, czysta funkcja, 19
+testów), a serwerowy `realtime/fx.ts` tylko dokłada wiedzę, kto co widzi (`concealmentFor`
+z 17a/18a).
+
+**Strzał ma dwa końce i dwa różne sekrety.** Widać lufę, nie widać celu → linia jest ucinana
+(`to: null`), zostaje błysk i huk; kierunek wycieka świadomie, bo strzelca i tak widać. Widać
+cel, nie widać lufy → trafienie **bez dźwięku**: usłyszenie „pistolet" nazwałoby kaliber broni,
+której nikt nie zobaczył. Nie widać nic → nie jedzie nic, a nie pusta koperta.
+
+**Bang czeka na kości.** Karta rzutu jest u klienta wstrzymywana do wylądowania kości 3D (27d),
+więc efekt odpalony w chwili przyjścia pakietu ogłaszałby wynik jakieś pięć sekund przed kartą,
+która go niesie. `MapFxBroadcast.afterMessageId` wiąże paczkę z kartą, a `map-fx.ts` trzyma ją do
+odsłonięcia — z bezpiecznikiem 8 s i obsługą **obu** kolejności (karta bywa pierwsza, np. przy
+wyłączonej animacji).
+
+**Głos broni bierze się z ikony slotu z 27h.** `cpredWeaponFx` to jedna tabelka nad
+`cpredWeaponIcon`, więc broń nie może narysować pistoletu i huknąć jak strzelba. Rzucony nóż
+nadpisuje tabelę (leci, nie tnie) — granat nie, bo jest już `rocket` przez ikonę.
+
+**Assety CC0/CC BY, hostowane u siebie** (`public/fx/`, `public/sfx/`, obie z `ATTRIBUTION.md`).
+Wybuch: `boom3.png` StumpyStrust (8 × 8 klatek 128 px). Chmura: `Smoke Aura` Beast (5 × 3 klatek
+256 px), barwiona `tint`-em — ten sam plik jedzie jako gaz i jako dym. Strzały: jedna sesja
+strzelnicy (CZ-52, SKS, Mosin, strzelba), przycięte skryptem do samego huku, zsumowane do mono
+i znormalizowane — oryginały mają 7–15 s po dwa kanały. Reszta z paczek rubberducka,
+artisticdude'a i BMacZero. **Razem 403 kB dźwięku i 780 kB arkuszy.**
+
+**Wektor tam, gdzie sprite'y są złe.** Smuga, błysk lufy i łuk wyładowania to linie, których
+długość ustala scena — bitmapa by się rozciągnęła (broniona strefa Poligonu ma 20 × 13 m).
+Ogień i dym to turbulencja, której żadne `Graphics` nie udaje — stąd arkusze. Brak arkusza
+degraduje się do pierścienia, nie do pustki.
+
+**Trzy rzeczy poprawione po pierwszym spojrzeniu na mapę.** (1) **Liczby były rysowane
+w pikselach świata** — przy typowym oddaleniu (skala 0,28) „−12" miało dziewięć pikseli
+wysokości. Teraz `text.scale = overlayScale` co klatkę, jak podpisy linijki i pinezki notatek;
+ta sama pułapka, którą `MapRenderer` ma opisaną od 16f. (2) **Wszystkie czasy były o połowę za
+krótkie**: pocisk leciał 110 ms i był fizycznie uczciwy oraz zupełnie niewidoczny. Podniesione
+do ~220 ms lotu i 2,2 s dla liczby — tyle biorą moduły pociskowe w Foundry i mają rację.
+(3) Kolejność warstw: efekt jest **nad żetonami, pod światłem i mgłą**, żeby to, co przeszło
+filtr serwera, dalej mogło zostać połknięte przez ciemność u tego widza.
+
+**Zweryfikowane:** 1289 testów w `shared` (26 nowych: przycinanie, licznik smug, głos broni),
+730 na serwerze (7 nowych, `fx.test.ts` na żywych gniazdach), 5 w kliencie, `tsc --noEmit`
+czysty w obu pakietach, ESLint, Prettier, `vite build` bez uwag.
+
+**Odklikane w przeglądarce** (Poligon, konto MG): smuga pocisku z błyskiem lufy i zanikającą
+kreską, **pudło jako pocisk mijający figurę** z pierścieniem rykoszetu obok niej, czytelne
+„PUDŁO" nad celem, przeładowanie, oraz — po dwóch nieudanych podejściach — **cały łańcuch
+serwer → gniazdo → warstwa** wypisany do konsoli. Krojenie obu arkuszy sprawdzone w przeglądarce
+przez drugą instancję Pixi (1024² → 64 × 128 px, 1280×768 → 15 × 256 px).
+
+**Wydajność:** Strzelnica, 160,1 fps na spoczynku → **161,2 fps w trakcie efektu**, czyli koszt
+poniżej progu pomiaru (monitor 160 Hz). Zastrzeżenie: scena testowa **nie ma świateł ani mgły**,
+więc to pomiar samej warstwy, nie najgorszego przypadku.
+
+**Nieodklikane:** (1) **Wybuch, chmura gazu i wyładowanie strefy** — kod i arkusze sprawdzone,
+animacji nikt nie widział: na Poligonie nie ma postaci z granatem, a wejście na „Podłogę
+elektryczną" kosztuje 6k6. (2) **Liczba obrażeń** — ta sama ścieżka co „PUDŁO", różni ją jedna
+linia; wymagałaby trafienia, rzutu obrażeń i „Zastosuj" na żywej karcie. (3) **Dźwięki** —
+odtwarzane, ale nikt ich nie słyszał; próbki dobrane po nazwach plików. „⚙ Ustawienia" mają
+rządek przycisków odsłuchu właśnie po to. (4) **Strona gracza** — wszystko oglądane z konta MG;
+różnica jest w payloadzie i pokryta trzema testami na żywych gniazdach (mgła zdejmuje lufę
+i dźwięk, pełna mgła nie przysyła niczego), ale nikt nie patrzył na to oczami gracza.
+
+**Pułapka, która kosztowała pół godziny: efektu nie da się złapać zrzutem ekranu.** Trwa
+300–800 ms, a runda narzędzia to ~1,5 s. `performance.now` **nie spowalnia Pixi** — Ticker v8
+bierze czas ze znacznika `requestAnimationFrame`, więc spowolnić trzeba właśnie `rAF`
+(opakowanie przeliczające znacznik). Dopiero to dało zdjęcie pocisku w locie.
+
+**Stan Poligonu po sesji:** żeton **Tony przesunął się** (mój przypadkowy rozkaz marszu — klik
+w puste pole przy zaznaczonej figurze), a MG w trakcie sesji zbliżył do siebie żetony, żeby
+skrócić dystans. Magazynki obu Arasak wróciły do 30/30, obrażeń nikomu nie zastosowano.
 
 ### Sesja 20.08 (druga tego dnia) — etap 27h (panel postaci: HUD, który wygląda jak gra)
 
@@ -778,78 +900,12 @@ w UI — inaczej ogląda się drugą kopię store'a.
 
 ### Sesja 20.08 — etap 27e (motyw dzień/noc dla całej aplikacji)
 
-**Reguła, która niosła cały etap: dzień ubiera chrom, nie fikcję.** Przełączają się paski,
-panele, okna, czat, formularze, kompendium, kreator i tracker. **Nie przełączają się trzy
-powierzchnie**, bo należą do świata gry, a nie do interfejsu: **mapa** (decyzja MG z 20.08 —
-mgłę i ciemność rysuje Pixi, a pasek narzędzi wisi nad cudzą grafiką), **okno Sieci** (ekran
-cyberdeka) i **papier screamsheetu** (rekwizyt leżący na stole). Karta postaci ma własną parę
-skórek od 27a i przełącza się razem z resztą.
-
-**Migracja była mniejsza, niż zapowiadał opis etapu.** `styles.css` miał 7 238 linii, ale tylko
-**188 literałów koloru** — reszta już czytała z jedenastu zmiennych z 03. Nowy
-`packages/client/src/theme.css` (404 linie) niesie **pięć rodzin tokenów**: chrom (para
-noc/dzień), mapa, Sieć, karta (`--cp-*`, przeprowadzone tu z `sheet.css`) i gazeta. Po migracji
-w obu plikach nie ma **ani jednego** koloru poza jednym udokumentowanym wyjątkiem: `#000`
-w `mask-image` paska inicjatywy nie jest kolorem, tylko kanałem krycia.
-
-**Welony zamiast bieli.** Najechania i podkłady wiersza były pisane jako `rgba(255,255,255,.08)`
-— na jasnym tle taka warstwa **rozjaśnia to, co już jest jasne**, czyli znika. Stąd cztery tokeny
-`--veil-*`, które w nocy są białe, a w dzień czarne. To samo dotyczy `--scrim` i trzech cieni.
-
-**Cztery błędy znalezione i naprawione, wszystkie tej samej rodziny.** Gołe `button` w CSS maluje
-się jak przycisk główny (`background: var(--accent); color: biały`), więc każdy przycisk, który
-podmienia tło, a **nie podmienia koloru napisu**, wozi biały tekst. W ciemnym motywie tego nie
-widać — biały na ciemnym jest tym, czego się spodziewamy. W dzień: (1) **nazwy broni
-w kompendium** (`.compendium-row`) i (2) **nazwy botów** (`.bot-open`) stały się białe na
-kremowym — kontrast **1,2 : 1**; (1) zgłosił też MG w trakcie sesji. (3) **Numer kroku kreatora**
-miał `color: var(--text)`, a leży na czarnej belce zakładek arkusza — w dzień czarny na czarnym.
-(4) `.combat-effect-name` sięgało po `var(--muted)`, którego **nikt nigdy nie zdefiniował**, więc
-deklaracja była niepoprawna i nazwa efektu w ogóle nie była przygaszona — w żadnym z motywów.
-Tak samo `var(--bg-hover)` przy „doklej materiał" w dzienniku: przycisk nie reagował na najechanie.
-
-**Audyt zrobił skrypt, nie oko.** Zamiast klikać ekran po ekranie, do konsoli poszła funkcja
-licząca **kontrast WCAG** dla każdego elementu z własnym tekstem — z prawdziwym tłem składanym
-w górę drzewa, bo większość podkładów jest półprzezroczysta. Przeleciała wszystkie zakładki
-panelu bocznego u MG i u gracza, cztery strony karty, kreator, okno Sieci, edytory i dialogi.
-Po poprawkach **wszystko powyżej 4,2 : 1**, a jedyne, co zostało poniżej 4,5, to marka:
-`--accent` #CC2316 spróbkowana z wydruku karty (4,27 na górnym pasku). **Świadomie nie ruszona** —
-to ten sam kolor, który drukuje się na arkuszu, a etap mówi wprost: kontrast zdroworozsądkowo,
-certyfikacja nie. Przy okazji podniesione trzy powierzchnie dzienne i przyciemnione o stopień
-kolory znaczące — #34c759 na kremowym nie było już „udało się", tylko mgłą.
-
-**Emoji: przegląd zrobiony pomiarem, nie na oko.** Każdy z 42 znaków używanych w UI został
-narysowany na canvasie **krojem aplikacji** i policzony udział barwnych pikseli. Wynik: **📰 jest
-jednobarwna nawet z selektorem wariantu** (to emoji jest szare z natury) — stała się SVG. **🔌**
-też poszła do SVG, bo na mapie rysował ją Pixi jako tekst; teraz jest sprite'em z `tint`, czyli
-skaluje się i barwi. Osiemnaście innych znaków (⚠ ⚙ ☀ ⌨ ▶ ◀ ⏸ ✖ ↔ ↩ ☠ ⚔ ✏ 🗑 👁 🖼 🛰 🖌)
-wychodzi jednobarwnie **i tak ma zostać**: jednobarwny glif bierze `currentColor`, więc chodzi za
-motywem i umie pokazać stan kolorem. Jedyny wyjątek to **🖌 w pasku mapy**, który stał obok
-kolorowej pinezki i był stylowany jak ona — dostał U+FE0F i jest wreszcie kolorowy.
-
-**Ikony z game-icons (CC BY 3.0, Delapouite)**: `newspaper` i `jack-plug`. Leżą w dwóch postaciach —
-jako ścieżki w `components/UiIcons.tsx` (dla Reacta, `currentColor`) i jako pliki
-w `packages/client/public/icons/` (dla renderera mapy, który potrzebuje URL-a). Atrybucja obok
-plików, wzorem `data/public/cpred/status-icons/`.
-
-**Zweryfikowane:** 1248 testów w `shared`, 723 na serwerze, **5 nowych w `@vtt/client`**
-(`theme.test.ts` — pierwszy test w tym pakiecie), `tsc --noEmit` czysty w trzech pakietach,
-ESLint, Prettier i `pnpm build` bez uwag. **Bez migracji bazy** — motyw jest ustawieniem
-przeglądarki i zostaje w `localStorage` (inaczej niż skórka kości z 27d, która musi dojechać do
-cudzych ekranów).
-
-**Odklikane w przeglądarce** (kampania „Poligon bojowy", MG na `localhost`, gracz avatar9 na
-`[::1]`, oba motywy): stół z mapą i panelem, wszystkie zakładki panelu u MG (13) i u gracza (6),
-cztery strony karty postaci, kreator, kompendium z poziomami sklepu, edytor wpisu kompendium,
-edytor bota, edytor Architektury, okno „⚙ Ustawienia", lista handoutów, dziennik, ekran
-logowania. Sprawdzone też, że **noc wygląda dokładnie jak przed etapem** — audyt kontrastu
-w nocy zwraca wyłącznie pozycje, które istniały wcześniej (akcentowa czerwień na ciemnym).
-
-**Nieodklikane:** (1) **ekran dołączenia do stołu** (`/join/<token>`) — wymaga świeżego linku
-zaproszenia, a ważny wygasł; używa tych samych klas `.auth-*` co logowanie, które sprawdzone
-jest w obu trybach. (2) **Okno runa w Sieci od środka** — oglądany był edytor Architektury i karta
-punktu dostępu; sam ekran runa wymaga rozpoczęcia runa na żywej kampanii. Tokeny `--net-*` są
-stałe (nie mają wariantu dziennego), więc to okno **z definicji wygląda tak samo jak wczoraj**.
-(3) **Screamsheet** — lista handoutów Poligonu jest pusta; tokeny papieru też są stałe.
+Przełącznik ☀/☾ przestał ubierać samą kartę i ubiera **całe VTT**: kolor mieszka wyłącznie
+w `packages/client/src/theme.css`, a pilnuje tego pierwszy test klienta (`theme.test.ts`),
+który przewraca się na literale koloru w `styles.css`, na tokenie bez odbiorcy i na tokenie
+chromu bez pary dziennej. **Mapa, okno Sieci i papier gazety zostają przy swoim świetle**
+(decyzja MG) — są malowane na płótnie i w dzień przestałyby być czytelne. Pełna notatka:
+`archiwum/dziennik-sesji.md`.
 
 ### Sesja 19.08 — etap 27d (kości 3D: skórki, dorzut, ustawienia)
 

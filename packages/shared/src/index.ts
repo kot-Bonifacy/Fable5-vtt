@@ -10,6 +10,7 @@ export * from './dice.js';
 export * from './drawings.js';
 export * from './exploration.js';
 export * from './fog.js';
+export * from './fx.js';
 export * from './handouts.js';
 export * from './journal.js';
 export * from './knowledge.js';

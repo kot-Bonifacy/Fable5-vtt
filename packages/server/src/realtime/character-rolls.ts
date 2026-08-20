@@ -24,7 +24,8 @@ import {
   woundState,
   woundStateFromHp,
 } from '@vtt/shared';
-import type { Character } from '../generated/prisma/client.js';
+import type { Character, Token } from '../generated/prisma/client.js';
+import { emitMapFx, fxCentre } from './fx.js';
 import { sheetSituationModifiers } from '../sheets.js';
 import { createMixedRng } from './dice-rng.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
@@ -282,35 +283,37 @@ async function applyStabilization(
   deps: RealtimeDeps,
   campaignId: string,
   targetTokenId: string,
-): Promise<{ healed: boolean }> {
+): Promise<{ healed: boolean; token: Token | null; gained: number }> {
   const token = await deps.ctx.prisma.token.findUnique({ where: { id: targetTokenId } });
-  if (!token) return { healed: false };
+  if (!token) return { healed: false, token: null, gained: 0 };
   if (!token.characterId) {
     // A statist token keeps its own HP pair; lift it off the floor the same way.
     if (token.hpCurrent !== null && token.hpCurrent < 1) {
+      const gained = 1 - token.hpCurrent;
       await deps.ctx.prisma.token.update({
         where: { id: token.id },
         data: { hpCurrent: 1 },
       });
       await emitTokensById(deps, campaignId, [token.id]);
-      return { healed: true };
+      return { healed: true, token, gained };
     }
-    return { healed: false };
+    return { healed: false, token, gained: 0 };
   }
   const character = await deps.ctx.prisma.character.findUnique({
     where: { id: token.characterId },
   });
-  if (!character) return { healed: false };
+  if (!character) return { healed: false, token, gained: 0 };
   const data = parseCharacterData(character.data, deps.ctx.cpred);
-  if (data.hpCurrent >= 1) return { healed: false };
+  if (data.hpCurrent >= 1) return { healed: false, token, gained: 0 };
 
+  const gained = 1 - data.hpCurrent;
   const saved = await deps.ctx.prisma.character.update({
     where: { id: character.id },
     data: { data: JSON.stringify(mergeCharacterData(data, { hpCurrent: 1 })) },
   });
   await emitCharacterUpsert(deps, campaignId, toCharacterView(saved, deps.ctx.cpred));
   await emitTokensOfCharacter(deps, campaignId, saved);
-  return { healed: true };
+  return { healed: true, token, gained };
 }
 
 /**
@@ -476,11 +479,15 @@ export async function performCharacterRoll(
 
     // „Jeśli wynik Testu jest wyższy od PT, udało ci się" (s. 165) — the same
     // strictly-greater rule attacks use, in the one place it is written down.
+    let stabilized: { token: Token; gained: number } | null = null;
     if (plan.stabilize) {
       const success = result.total > plan.stabilize.dv;
       const applied = success
         ? await applyStabilization(deps, campaignId, plan.stabilize.targetTokenId)
-        : { healed: false };
+        : { healed: false, token: null, gained: 0 };
+      if (applied.healed && applied.token) {
+        stabilized = { token: applied.token, gained: applied.gained };
+      }
       result.outcome = {
         success,
         label: success ? 'Ustabilizowany' : 'Nie udało się',
@@ -503,6 +510,30 @@ export async function performCharacterRoll(
     });
     const view: ChatMessageView = toChatMessageView(stored);
     await deliverRollMessage(deps, campaignId, user.id, view);
+    // Somebody coming off the floor is the one green number the map draws
+    // (stage 27i). It waits for the card exactly as an attack's does — the
+    // Test is still rolling in 3D on everyone's screen.
+    if (stabilized) {
+      const scene = await deps.ctx.prisma.scene.findUnique({
+        where: { id: stabilized.token.sceneId },
+      });
+      if (scene) {
+        await emitMapFx(
+          deps,
+          campaignId,
+          scene,
+          [
+            {
+              kind: 'float',
+              at: fxCentre(stabilized.token, scene),
+              text: `+${stabilized.gained}`,
+              tone: 'heal',
+            },
+          ],
+          view.id,
+        );
+      }
+    }
     return { messageId: view.id };
   }
 }

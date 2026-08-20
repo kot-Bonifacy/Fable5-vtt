@@ -7,6 +7,81 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 20.08 — etap 27e (motyw dzień/noc dla całej aplikacji)
+
+**Reguła, która niosła cały etap: dzień ubiera chrom, nie fikcję.** Przełączają się paski,
+panele, okna, czat, formularze, kompendium, kreator i tracker. **Nie przełączają się trzy
+powierzchnie**, bo należą do świata gry, a nie do interfejsu: **mapa** (decyzja MG z 20.08 —
+mgłę i ciemność rysuje Pixi, a pasek narzędzi wisi nad cudzą grafiką), **okno Sieci** (ekran
+cyberdeka) i **papier screamsheetu** (rekwizyt leżący na stole). Karta postaci ma własną parę
+skórek od 27a i przełącza się razem z resztą.
+
+**Migracja była mniejsza, niż zapowiadał opis etapu.** `styles.css` miał 7 238 linii, ale tylko
+**188 literałów koloru** — reszta już czytała z jedenastu zmiennych z 03. Nowy
+`packages/client/src/theme.css` (404 linie) niesie **pięć rodzin tokenów**: chrom (para
+noc/dzień), mapa, Sieć, karta (`--cp-*`, przeprowadzone tu z `sheet.css`) i gazeta. Po migracji
+w obu plikach nie ma **ani jednego** koloru poza jednym udokumentowanym wyjątkiem: `#000`
+w `mask-image` paska inicjatywy nie jest kolorem, tylko kanałem krycia.
+
+**Welony zamiast bieli.** Najechania i podkłady wiersza były pisane jako `rgba(255,255,255,.08)`
+— na jasnym tle taka warstwa **rozjaśnia to, co już jest jasne**, czyli znika. Stąd cztery tokeny
+`--veil-*`, które w nocy są białe, a w dzień czarne. To samo dotyczy `--scrim` i trzech cieni.
+
+**Cztery błędy znalezione i naprawione, wszystkie tej samej rodziny.** Gołe `button` w CSS maluje
+się jak przycisk główny (`background: var(--accent); color: biały`), więc każdy przycisk, który
+podmienia tło, a **nie podmienia koloru napisu**, wozi biały tekst. W ciemnym motywie tego nie
+widać — biały na ciemnym jest tym, czego się spodziewamy. W dzień: (1) **nazwy broni
+w kompendium** (`.compendium-row`) i (2) **nazwy botów** (`.bot-open`) stały się białe na
+kremowym — kontrast **1,2 : 1**; (1) zgłosił też MG w trakcie sesji. (3) **Numer kroku kreatora**
+miał `color: var(--text)`, a leży na czarnej belce zakładek arkusza — w dzień czarny na czarnym.
+(4) `.combat-effect-name` sięgało po `var(--muted)`, którego **nikt nigdy nie zdefiniował**, więc
+deklaracja była niepoprawna i nazwa efektu w ogóle nie była przygaszona — w żadnym z motywów.
+Tak samo `var(--bg-hover)` przy „doklej materiał" w dzienniku: przycisk nie reagował na najechanie.
+
+**Audyt zrobił skrypt, nie oko.** Zamiast klikać ekran po ekranie, do konsoli poszła funkcja
+licząca **kontrast WCAG** dla każdego elementu z własnym tekstem — z prawdziwym tłem składanym
+w górę drzewa, bo większość podkładów jest półprzezroczysta. Przeleciała wszystkie zakładki
+panelu bocznego u MG i u gracza, cztery strony karty, kreator, okno Sieci, edytory i dialogi.
+Po poprawkach **wszystko powyżej 4,2 : 1**, a jedyne, co zostało poniżej 4,5, to marka:
+`--accent` #CC2316 spróbkowana z wydruku karty (4,27 na górnym pasku). **Świadomie nie ruszona** —
+to ten sam kolor, który drukuje się na arkuszu, a etap mówi wprost: kontrast zdroworozsądkowo,
+certyfikacja nie. Przy okazji podniesione trzy powierzchnie dzienne i przyciemnione o stopień
+kolory znaczące — #34c759 na kremowym nie było już „udało się", tylko mgłą.
+
+**Emoji: przegląd zrobiony pomiarem, nie na oko.** Każdy z 42 znaków używanych w UI został
+narysowany na canvasie **krojem aplikacji** i policzony udział barwnych pikseli. Wynik: **📰 jest
+jednobarwna nawet z selektorem wariantu** (to emoji jest szare z natury) — stała się SVG. **🔌**
+też poszła do SVG, bo na mapie rysował ją Pixi jako tekst; teraz jest sprite'em z `tint`, czyli
+skaluje się i barwi. Osiemnaście innych znaków (⚠ ⚙ ☀ ⌨ ▶ ◀ ⏸ ✖ ↔ ↩ ☠ ⚔ ✏ 🗑 👁 🖼 🛰 🖌)
+wychodzi jednobarwnie **i tak ma zostać**: jednobarwny glif bierze `currentColor`, więc chodzi za
+motywem i umie pokazać stan kolorem. Jedyny wyjątek to **🖌 w pasku mapy**, który stał obok
+kolorowej pinezki i był stylowany jak ona — dostał U+FE0F i jest wreszcie kolorowy.
+
+**Ikony z game-icons (CC BY 3.0, Delapouite)**: `newspaper` i `jack-plug`. Leżą w dwóch postaciach —
+jako ścieżki w `components/UiIcons.tsx` (dla Reacta, `currentColor`) i jako pliki
+w `packages/client/public/icons/` (dla renderera mapy, który potrzebuje URL-a). Atrybucja obok
+plików, wzorem `data/public/cpred/status-icons/`.
+
+**Zweryfikowane:** 1248 testów w `shared`, 723 na serwerze, **5 nowych w `@vtt/client`**
+(`theme.test.ts` — pierwszy test w tym pakiecie), `tsc --noEmit` czysty w trzech pakietach,
+ESLint, Prettier i `pnpm build` bez uwag. **Bez migracji bazy** — motyw jest ustawieniem
+przeglądarki i zostaje w `localStorage` (inaczej niż skórka kości z 27d, która musi dojechać do
+cudzych ekranów).
+
+**Odklikane w przeglądarce** (kampania „Poligon bojowy", MG na `localhost`, gracz avatar9 na
+`[::1]`, oba motywy): stół z mapą i panelem, wszystkie zakładki panelu u MG (13) i u gracza (6),
+cztery strony karty postaci, kreator, kompendium z poziomami sklepu, edytor wpisu kompendium,
+edytor bota, edytor Architektury, okno „⚙ Ustawienia", lista handoutów, dziennik, ekran
+logowania. Sprawdzone też, że **noc wygląda dokładnie jak przed etapem** — audyt kontrastu
+w nocy zwraca wyłącznie pozycje, które istniały wcześniej (akcentowa czerwień na ciemnym).
+
+**Nieodklikane:** (1) **ekran dołączenia do stołu** (`/join/<token>`) — wymaga świeżego linku
+zaproszenia, a ważny wygasł; używa tych samych klas `.auth-*` co logowanie, które sprawdzone
+jest w obu trybach. (2) **Okno runa w Sieci od środka** — oglądany był edytor Architektury i karta
+punktu dostępu; sam ekran runa wymaga rozpoczęcia runa na żywej kampanii. Tokeny `--net-*` są
+stałe (nie mają wariantu dziennego), więc to okno **z definicji wygląda tak samo jak wczoraj**.
+(3) **Screamsheet** — lista handoutów Poligonu jest pusta; tokeny papieru też są stałe.
+
 ### Sesja 19.08 — etap 27d (kości 3D: skórki, dorzut, ustawienia)
 
 **Etap 27 został rozdzielony do końca.** Po wydzieleniu 27a–27c (karta postaci) niósł nadal

@@ -1,10 +1,35 @@
 import { useRef, useState, type PointerEvent } from 'react';
+import type { MapFxSound } from '@vtt/shared';
 import { DICE_SKIN_LIST } from '../dice-skins.js';
+import { auditionFxSound } from '../sfx.js';
 import { previewSkin } from '../dice3d.js';
 import { sendDiceSkin } from '../socket.js';
 import { useSettingsStore } from '../stores/settingsStore.js';
 import { useThemeStore } from '../stores/themeStore.js';
 import { useTypewriterStore } from '../stores/typewriterStore.js';
+
+/**
+ * Próbki mapy do odsłuchu (etap 27i).
+ *
+ * Wybrane z paczek CC0 **bez odsłuchu** — nazwy plików w archiwach mówiły „hit",
+ * „metal", „spark", i to musiało wystarczyć. Ten rządek przycisków jest tego
+ * konsekwencją: podmiana źle dobranej próbki to jeden plik w `public/sfx/`
+ * i jeden wiersz w `SFX_FILES`, ale najpierw ktoś musi ją usłyszeć.
+ */
+const SFX_SAMPLES: readonly { id: MapFxSound; label: string }[] = [
+  { id: 'shot-pistol', label: 'Pistolet' },
+  { id: 'shot-rifle', label: 'Karabin' },
+  { id: 'shot-sniper', label: 'Snajperka' },
+  { id: 'shot-shotgun', label: 'Strzelba' },
+  { id: 'swing', label: 'Cięcie' },
+  { id: 'bowstring', label: 'Cięciwa' },
+  { id: 'impact', label: 'Trafienie' },
+  { id: 'ricochet', label: 'Rykoszet' },
+  { id: 'explosion', label: 'Wybuch' },
+  { id: 'gas', label: 'Gaz' },
+  { id: 'zap', label: 'Wyładowanie' },
+  { id: 'reload', label: 'Przeładowanie' },
+];
 
 /**
  * Okno ustawień (etap 27d).
@@ -28,6 +53,8 @@ export function SettingsWindow() {
   const setDiceVolume = useSettingsStore((s) => s.setDiceVolume);
   const cupVolume = useSettingsStore((s) => s.cupVolume);
   const setCupVolume = useSettingsStore((s) => s.setCupVolume);
+  const sfxVolume = useSettingsStore((s) => s.sfxVolume);
+  const setSfxVolume = useSettingsStore((s) => s.setSfxVolume);
   const skin = useSettingsStore((s) => s.skin);
 
   const theme = useThemeStore((s) => s.theme);
@@ -142,6 +169,43 @@ export function SettingsWindow() {
             />
             <span className="settings-value">{cupVolume}</span>
           </label>
+        </section>
+
+        <section className="settings-group">
+          <h3 className="settings-group-title">Efekty walki na mapie</h3>
+
+          <label className="settings-row">
+            <span className="settings-label">Głośność efektów</span>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={5}
+              value={sfxVolume}
+              onChange={(event) => setSfxVolume(Number(event.target.value))}
+            />
+            <span className="settings-value">{sfxVolume}</span>
+          </label>
+
+          <p className="settings-note">
+            Strzały, wybuchy i przeładowanie na mapie. Wyłączenie „Animacji 3D" wycisza je razem z
+            kośćmi — to jeden przełącznik na całe przedstawienie. Kliknij próbkę, żeby jej
+            posłuchać.
+          </p>
+
+          <div className="settings-samples">
+            {SFX_SAMPLES.map((entry) => (
+              <button
+                key={entry.id}
+                type="button"
+                className="settings-sample"
+                onClick={() => auditionFxSound(entry.id)}
+                title={`Posłuchaj: ${entry.label}`}
+              >
+                🔊 {entry.label}
+              </button>
+            ))}
+          </div>
         </section>
 
         <section className="settings-group">

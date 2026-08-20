@@ -11,6 +11,7 @@ import {
   type FederatedPointerEvent,
 } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
+import { MapFxLayer } from './MapFxLayer.js';
 import type {
   CoverView,
   SmokeView,
@@ -24,6 +25,7 @@ import type {
   FogState,
   LightGlow,
   LightMask,
+  MapFxEffect,
   MapNoteView,
   ScenePoint,
   SceneView,
@@ -749,6 +751,16 @@ export class MapRenderer {
   private readonly tokenLayer = new Container();
   private readonly dragGhost = new Graphics();
   /**
+   * Shots, blasts and floating numbers (stage 27i).
+   *
+   * Above the figures — a muzzle flash belongs in front of the man holding the
+   * gun — and below the light, the fog and the field of view, which is not a
+   * detail: an effect that survived the server's filter can still be standing
+   * in a corner this viewer has gone dark on, and it has to be swallowed by the
+   * same sheet that swallows the floor there.
+   */
+  private readonly fx = new MapFxLayer();
+  /**
    * The coloured glow of lamps this viewer can see (stage 18b) — above the
    * tokens, so a torch warms the figure holding it, and below the darkness
    * cover, which trims whatever the glow spills past a corner.
@@ -1059,6 +1071,7 @@ export class MapRenderer {
     viewport.addChild(this.netPointLayer);
     viewport.addChild(this.tokenLayer);
     viewport.addChild(this.dragGhost);
+    viewport.addChild(this.fx.container);
     // Light is above the tokens — a torch has to warm the figure carrying it —
     // and below the cover, which is what stops a glow leaking round a corner.
     viewport.addChild(this.lightLayer);
@@ -1129,6 +1142,7 @@ export class MapRenderer {
     this.viewport = viewport;
     this.app.ticker.add(this.tickFlicker);
     this.app.ticker.add(this.tickMarch);
+    this.app.ticker.add(this.tickFx);
 
     /**
      * What one left click on the map means — the whole order of precedence in
@@ -1196,6 +1210,7 @@ export class MapRenderer {
       this.setGlows([]);
       this.setVision([], false, null);
       this.fogSprite.visible = false;
+      this.fx.setScene(null);
       this.clearTokens();
       return;
     }
@@ -1214,6 +1229,9 @@ export class MapRenderer {
 
     this.updateBackground(scene);
     this.drawGrid(scene);
+    // The effect layer measures blasts in metres, so it needs the scene's scale
+    // — and a scene change wipes whatever was still burning on the old map.
+    this.fx.setScene(scene);
     // The scene's size drives the fog texture, so a resized (or swapped) map
     // has to recomposite it before the next frame.
     this.setFog(this.lastFog, this.lastFogPending, this.fogIsGm);
@@ -3718,6 +3736,29 @@ export class MapRenderer {
    * over the network would be an event per frame, and the alpha of a decorative
    * layer is exactly the kind of thing a client may decide for itself.
    */
+  /**
+   * Ages every live map effect (stage 27i).
+   *
+   * Driven by the Pixi ticker rather than by `setTimeout`, so a burst and the
+   * figures it is aimed at move on the same clock. A scene with nothing going
+   * off costs one comparison per frame — the bargain `tickFlicker` struck.
+   */
+  private readonly tickFx = (): void => {
+    if (this.destroyed || !this.fx.busy) return;
+    this.fx.setOverlayScale(this.overlayScale());
+    this.fx.tick(this.app.ticker.deltaMS);
+  };
+
+  /**
+   * Plays a batch the server sent. Nothing is validated here: what arrives has
+   * already been trimmed to what this viewer may see (`trimMapFxForViewer`).
+   */
+  playFx(effects: readonly MapFxEffect[]): void {
+    if (this.destroyed) return;
+    this.fx.setOverlayScale(this.overlayScale());
+    this.fx.play(effects);
+  }
+
   private readonly tickFlicker = (): void => {
     // A scene with no flickering lamp costs one comparison per frame.
     if (this.destroyed || !this.hasFlicker) return;
@@ -4258,6 +4299,10 @@ export class MapRenderer {
       this.unlitCanvas = null;
       this.app.ticker.remove(this.tickFlicker);
       this.app.ticker.remove(this.tickMarch);
+      this.app.ticker.remove(this.tickFx);
+      // The layer owns sprites and text of its own; the viewport teardown above
+      // reaches its container, but its item list still holds the references.
+      this.fx.destroy();
       this.app.destroy(true, { children: true });
       this.tokenNodes.clear();
       this.noteNodes.clear();

@@ -34,6 +34,7 @@ import {
 import { statusName } from '../statuses.js';
 import { buildCompendiumSync } from './compendium.js';
 import { applyDamageToFigure, logDamage } from './damage.js';
+import { emitMapFx } from './fx.js';
 import { createMixedRng } from './dice-rng.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { fireDevice } from './netdevices.js';
@@ -180,6 +181,21 @@ export async function fireZone(
     });
     if (summary.length > 0) lines.push(`${token.name}: ${summary}`);
     tokenIds.push(token.id);
+  }
+
+  // The system itself flashes once, over the whole rectangle (stage 27i) —
+  // never once per victim, because a floor going live is one event no matter
+  // how many people are standing on it. Only a zone that *hurts* lights up: a
+  // laser grid forcing an Athletics check has nothing to discharge, and the
+  // figures it caught already say so with their own numbers.
+  if (tokenIds.length > 0 && effects.damage) {
+    await emitMapFx(deps, campaignId, scene, [
+      {
+        kind: 'zap',
+        rect: { x: zone.x, y: zone.y, width: zone.width, height: zone.height },
+        sound: 'zap',
+      },
+    ]);
   }
 
   return { lines, tokenIds };

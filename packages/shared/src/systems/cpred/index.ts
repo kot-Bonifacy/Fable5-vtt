@@ -29,4 +29,5 @@ export * from './statist.js';
 export * from './grapple.js';
 export * from './reputation.js';
 export * from './turn.js';
+export * from './fx.js';
 export * from './hotbar.js';

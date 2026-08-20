@@ -6230,6 +6230,31 @@ body.is-resizing {
   font-weight: 600;
 }
 
+/* Rządek próbek dźwięku (27i). Przyciski są celowo małe i gęste: to nie jest
+   wybór ustawienia, tylko „posłuchaj, czy ta próbka pasuje" — jedna z rzeczy,
+   których nie dało się rozstrzygnąć przy dobieraniu paczek CC0. */
+.settings-samples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.settings-sample {
+  padding: 0.22rem 0.5rem;
+  font: inherit;
+  font-size: 0.76rem;
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.settings-sample:hover {
+  color: var(--text);
+  border-color: var(--text-dim);
+}
+
 /* --- markdown ------------------------------------------------------------ */
 
 .markdown {

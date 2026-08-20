@@ -67,6 +67,8 @@ import {
   updateWall,
 } from '../socket.js';
 import { loadAttackAtToken } from '../attack-targeting.js';
+import { bindMapFx } from '../map-fx.js';
+import { preloadFxSounds } from '../sfx.js';
 import {
   activateGroup,
   attackWithActiveWeapon,
@@ -751,6 +753,19 @@ export function MapArea() {
     // until the next token event.
     pushTokens();
   }, [ready, scene, pushTokens]);
+
+  // Where a shot arriving over the socket ends up (stage 27i). Bound to the
+  // scene id as well as to the renderer, so a batch that overtakes a scene
+  // switch is dropped rather than drawn on the wrong map.
+  useEffect(() => {
+    if (!ready || !scene) {
+      bindMapFx(null, null);
+      return;
+    }
+    preloadFxSounds();
+    bindMapFx(scene.id, (effects) => rendererRef.current?.playFx(effects));
+    return () => bindMapFx(null, null);
+  }, [ready, scene]);
 
   useEffect(() => {
     if (!ready) return;

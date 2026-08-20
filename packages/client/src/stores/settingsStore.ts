@@ -11,9 +11,10 @@ import { DEFAULT_DICE_SKIN, isDiceSkinId } from '@vtt/shared';
  * wiarygodne miejsce jest na serwerze (kolumna `User.diceSkin`). Tutaj leży
  * kopia, żeby okno ustawień miało co pokazać przed odpowiedzią serwera.
  *
- * Głośności są dwie, bo to dwie różne rzeczy: kości uderzają o stół
- * (biblioteka 3D), a kubek grzechocze w ręce (próbki odtwarzane u nas). Zero
- * wycisza jedno bez drugiego.
+ * Głośności są trzy, bo to trzy różne rzeczy: kości uderzają o stół
+ * (biblioteka 3D), kubek grzechocze w ręce (próbki odtwarzane u nas), a mapa
+ * strzela i wybucha (etap 27i). Zero wycisza każdą z osobna — stół, który chce
+ * grzechoczących kości i cichej mapy, istnieje.
  */
 export interface SettingsState {
   /** Wyłączone = rzut nie toczy kości, karta czatu pojawia się natychmiast. */
@@ -22,6 +23,8 @@ export interface SettingsState {
   diceVolume: number;
   /** 0–100, grzechot kubka podczas potrząsania. */
   cupVolume: number;
+  /** 0–100, efekty walki na mapie: strzały, wybuchy, przeładowanie (etap 27i). */
+  sfxVolume: number;
   /** Skórka TEGO użytkownika (kopia stanu serwera). */
   skin: DiceSkinId;
   /** Czy okno ustawień jest otwarte. */
@@ -30,6 +33,7 @@ export interface SettingsState {
   setAnimate: (animate: boolean) => void;
   setDiceVolume: (volume: number) => void;
   setCupVolume: (volume: number) => void;
+  setSfxVolume: (volume: number) => void;
   /** Ustawia kopię lokalną; wysyłką na serwer zajmuje się `socket.ts`. */
   applySkin: (skin: DiceSkinId) => void;
   setOpen: (open: boolean) => void;
@@ -39,6 +43,7 @@ export interface SettingsState {
 const ANIMATE_KEY = 'vtt.dice.animate';
 const DICE_VOLUME_KEY = 'vtt.dice.volume';
 const CUP_VOLUME_KEY = 'vtt.cup.volume';
+const SFX_VOLUME_KEY = 'vtt.sfx.volume';
 const SKIN_KEY = 'vtt.dice.skin';
 
 function readFlag(key: string, fallback: boolean): boolean {
@@ -84,6 +89,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   animate: readFlag(ANIMATE_KEY, true),
   diceVolume: readVolume(DICE_VOLUME_KEY, 50),
   cupVolume: readVolume(CUP_VOLUME_KEY, 50),
+  sfxVolume: readVolume(SFX_VOLUME_KEY, 50),
   skin: readSkin(),
   open: false,
 
@@ -102,6 +108,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     const clamped = Math.min(100, Math.max(0, Math.round(volume)));
     write(CUP_VOLUME_KEY, String(clamped));
     set({ cupVolume: clamped });
+  },
+
+  setSfxVolume: (volume) => {
+    const clamped = Math.min(100, Math.max(0, Math.round(volume)));
+    write(SFX_VOLUME_KEY, String(clamped));
+    set({ sfxVolume: clamped });
   },
 
   applySkin: (skin) => {

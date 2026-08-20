@@ -11,6 +11,7 @@ import type {
   CpredAttackRequest,
   CpredCharacterData,
   CpredRegistry,
+  MapFxEffect,
   RangeDvTable,
   ResolvedWeapon,
   RollAreaMeta,
@@ -31,6 +32,7 @@ import {
   CPRED_EVASION_SKILL_ID,
   CPRED_STAT_LABELS,
   CPRED_SUPPRESSIVE_RANGE_M,
+  MAP_FX_MAX_TRACERS,
   ROLE_GM,
   ammoDealsDamage,
   ammoFitsWeapon,
@@ -40,6 +42,7 @@ import {
   combatProfileWithCombatValue,
   concentrationBase,
   cpredSmokeModifiers,
+  cpredWeaponFx,
   distanceToCover,
   loadedAmmoFor,
   formatMetres,
@@ -83,6 +86,7 @@ import {
 } from './areas.js';
 import { resolveAmmoChecks, type AmmoCheckTarget } from './ammo-effects.js';
 import { placeSmoke, smokeModifiersAt } from './smoke.js';
+import { emitMapFx, fxCentre } from './fx.js';
 import { pinToken } from './turn-effects.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { grappleStateForToken, readTokenStatuses } from './combat.js';
@@ -128,6 +132,16 @@ import { sanitizeGesture } from './chat.js';
  * pressing „Obrażenia" is an ordinary damage roll that already knows its
  * target, and „Zastosuj" is the stage 15 flow, untouched.
  */
+
+/**
+ * Rounds a burst draws on the map.
+ *
+ * „Seria" spends ten rounds (`CPRED_BURST_AMMO_COST`) and ten separate tracers
+ * over a metre of screen are a smear, not a burst. Five reads as automatic fire
+ * and still lets the eye follow the line — the same „draw what is legible, not
+ * what is counted" call `MAP_FX_MAX_TRACERS` makes for suppressive fire.
+ */
+const CPRED_BURST_TRACERS = 5;
 
 function requireCampaignId(socketData: { campaign: { id: string } | null }): string {
   if (!socketData.campaign) throw new RealtimeError('NO_CAMPAIGN');
@@ -1022,6 +1036,18 @@ export async function performAttackRoll(
       });
       const view: ChatMessageView = toChatMessageView(stored);
       await deliverRollMessage(deps, campaignId, user.id, view);
+      // The map hears about it *after* the card has been sent, and holds the
+      // bang until that card is revealed (stage 27i): the dice are still
+      // rolling on everybody's screen, and a shot that landed before them
+      // would tell the table the verdict early. Emitting second also means
+      // every client already has the message the batch is waiting for.
+      await emitMapFx(
+        deps,
+        campaignId,
+        scene,
+        attackMapFx(meta, result.attack, weapon.resolved, origin, aimPoint),
+        view.id,
+      );
       return { messageId: view.id };
     }
   }
@@ -1206,6 +1232,89 @@ async function buildAttackMeta(
         }
       : {}),
   };
+}
+
+/**
+ * What one attack looks like on the map (stage 27i).
+ *
+ * A translation, not a decision: everything here is read off the card the rules
+ * already wrote — the verdict, where the charge went off, how wide the wedge
+ * was — so the picture and the chat entry can never disagree. Which is also why
+ * it takes `RollAttackMeta` rather than the raw roll: the scatter of a missed
+ * grenade has already been rolled by the time the card exists, and the flash has
+ * to happen where the charge landed, not where it was aimed.
+ *
+ * The one thing the map knows that the card does not is *the weapon's voice*,
+ * and that comes from `cpredWeaponFx` — one table on top of the slot picture of
+ * stage 27h, so a gun can never draw a shotgun and bang like a pistol.
+ */
+function attackMapFx(
+  meta: CpredAttackMeta,
+  attack: RollAttackMeta,
+  weapon: ResolvedWeapon | null,
+  origin: ScenePoint,
+  aimPoint: ScenePoint,
+): MapFxEffect[] {
+  const voice = cpredWeaponFx(weapon);
+  const area = attack.area;
+
+  // A spread of shot is a wedge in front of the muzzle, and the figure it was
+  // aimed at only set the direction (stage 16g) — so there is no line to draw
+  // and no single impact to flash.
+  if (area?.shape === 'cone' && area.cone) {
+    return [
+      {
+        kind: 'cone',
+        from: area.cone.origin,
+        angleDeg: area.cone.angleDeg,
+        halfAngleDeg: area.cone.halfAngleDeg,
+        rangeM: area.cone.rangeM,
+        sound: voice.sound,
+      },
+    ];
+  }
+
+  // Suppressive fire beats no DV — it *sets* one (stage 16). Nobody is hit and
+  // nothing lands, so it is a long spray down range and no verdict.
+  const suppressive = meta.dv === null;
+  const landing = area ? area.centre : aimPoint;
+  const hit = attack.hit === true;
+  const effects: MapFxEffect[] = [
+    {
+      kind: 'shot',
+      style: voice.style,
+      from: origin,
+      to: landing,
+      hit: hit && !suppressive,
+      shots: suppressive ? MAP_FX_MAX_TRACERS : meta.mode === 'single' ? 1 : CPRED_BURST_TRACERS,
+      sound: voice.sound,
+    },
+  ];
+
+  if (area) {
+    // „Ta amunicja nie zadaje obrażeń" (stage 16h): a gas or smoke round makes
+    // a cloud, not a fireball. Read off the same flag the card reads when it
+    // decides whether to offer a damage roll at all.
+    const harmless = !ammoDealsDamage(meta.ammo);
+    effects.push(
+      harmless
+        ? {
+            kind: 'cloud',
+            at: area.centre,
+            sideM: meta.ammo?.smoke?.sideM ?? area.sideM,
+            variant: meta.ammo?.smoke ? 'smoke' : 'gas',
+            sound: 'gas',
+          }
+        : { kind: 'blast', at: area.centre, sideM: area.sideM, sound: 'explosion' },
+    );
+  }
+
+  // A hit says so with its own impact and, a moment later, with the number the
+  // damage card puts there. A miss has nothing else coming, so it says it here.
+  if (!suppressive && !hit) {
+    effects.push({ kind: 'float', at: landing, text: 'PUDŁO', tone: 'miss' });
+  }
+  return effects;
 }
 
 /**
@@ -1607,8 +1716,38 @@ export async function performWeaponReload(
       ammoCurrent: row.ammoMax,
       ...(changing ? (nextAmmoId ? { ammoId: nextAmmoId } : { ammoId: undefined }) : {}),
     });
+    // A magazine going in is the one non-attack sound the map plays, and it
+    // earns it: „he is reloading" is the whole reason the other side breaks
+    // cover. No card to wait for — a reload writes a plain chat line, not a
+    // roll — so it goes off at once.
+    await emitReloadMapFx(deps, campaignId, sceneId, character);
     return { ammo: row.ammoMax };
   }
+}
+
+/**
+ * The click of a fresh magazine, over whichever token this character is playing.
+ *
+ * Silent off the map on purpose: a reload done from the sheet with no token on
+ * the viewed scene has nowhere to sound from, exactly as it has no Action to be
+ * charged (`spendCharacterAction` takes the same way out).
+ */
+async function emitReloadMapFx(
+  deps: RealtimeDeps,
+  campaignId: string,
+  sceneId: string | null,
+  character: Character,
+): Promise<void> {
+  if (!sceneId) return;
+  const scene = await deps.ctx.prisma.scene.findUnique({ where: { id: sceneId } });
+  if (!scene || scene.campaignId !== campaignId) return;
+  const token = await deps.ctx.prisma.token.findFirst({
+    where: { characterId: character.id, sceneId },
+  });
+  if (!token) return;
+  await emitMapFx(deps, campaignId, scene, [
+    { kind: 'spark', at: fxCentre(token, scene), sound: 'reload' },
+  ]);
 }
 
 /**
