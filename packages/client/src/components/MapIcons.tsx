@@ -105,6 +105,14 @@ export function IconSun(props: IconProps) {
  * look better than a two-colour line drawing at this size. The trade-off is
  * that an emoji cannot be tinted, so those two buttons show their armed state
  * with a glow instead of a colour change (see `.map-tool-emoji`).
+ *
+ * These two are the **only** emoji in the app that are meant to be in colour.
+ * Everywhere else (⚠ ⚙ ☀ ⌨ ▶ ◀ ⏸ ✖ ↔ ↩ ☠ ⚔ ✏ 🗑 👁) the bare
+ * code point resolves to a monochrome glyph from Segoe UI Symbol — which is
+ * what we want there: a monochrome glyph takes `currentColor`, so it follows
+ * the day/night theme and can show state by colour. Checked in the browser in
+ * stage 27e; the two that could not follow the theme (📰, 🔌) became SVG,
+ * see `UiIcons.tsx`.
  */
 export function IconPin() {
   return (
@@ -123,11 +131,18 @@ export function IconCloud(props: IconProps) {
   );
 }
 
-/** Brush — freehand fog painting. Emoji for the same reason as {@link IconPin}. */
+/**
+ * Brush — freehand fog painting. Emoji for the same reason as {@link IconPin}.
+ *
+ * The variation selector is load-bearing (stage 27e): U+1F58C defaults to
+ * **text** presentation, so bare 🖌 came out of Segoe UI Symbol as a flat
+ * monochrome glyph — next to a colour pushpin that reads as a broken pair.
+ * U+FE0F asks for the emoji font explicitly.
+ */
 export function IconBrush() {
   return (
     <span className="map-tool-emoji" aria-hidden>
-      🖌
+      🖌️
     </span>
   );
 }

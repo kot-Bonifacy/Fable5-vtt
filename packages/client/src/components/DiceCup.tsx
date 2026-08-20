@@ -488,8 +488,8 @@ export function DiceCup() {
           opacity="0.9"
         />
         <ellipse cx="12" cy="3" rx="7" ry="1.6" fill="currentColor" />
-        <circle cx="10" cy="10" r="1.2" fill="var(--bg, #14151a)" />
-        <circle cx="14" cy="13" r="1.2" fill="var(--bg, #14151a)" />
+        <circle cx="10" cy="10" r="1.2" fill="var(--bg)" />
+        <circle cx="14" cy="13" r="1.2" fill="var(--bg)" />
       </svg>
       {mode.kind === 'roll' && <span className="dice-cup-label">{mode.notation}</span>}
       {(mode.kind === 'attack' ||

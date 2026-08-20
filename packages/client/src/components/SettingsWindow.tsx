@@ -186,7 +186,8 @@ export function SettingsWindow() {
             <span>
               Tryb dzienny
               <span className="settings-hint">
-                Na razie ubiera samą kartę postaci — reszta widoków dołączy w etapie 27e.
+                Jasna skóra całego VTT. Mapa zostaje ciemna — mgła, ciemność i podpisy żetonów są
+                rysowane na płótnie i w dzień przestałyby być czytelne.
               </span>
             </span>
           </label>

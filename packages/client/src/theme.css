@@ -1,0 +1,404 @@
+/* ============================================================================
+   Motyw VTT — noc i dzień (etap 27e)
+   ----------------------------------------------------------------------------
+   Jedyne miejsce w kliencie, w którym wolno napisać kolor dosłownie. `styles.css`
+   i `sheet.css` czytają wyłącznie stąd, więc dołożenie trzeciej skórki (albo
+   podkręcenie kontrastu) to zmiana w jednym pliku, a nie polowanie po 8 800
+   liniach.
+
+   Przełącznik ☀/☾ (okno „⚙ Ustawienia", etap 27d) stawia `data-theme` na
+   `<html>`; noc jest domyślna i siedzi w gołym `:root`, żeby nawet ekran, który
+   ustawi się przed uruchomieniem Reacta, nie mignął bez kolorów.
+
+   ---------------------------------------------------------------------------
+   CO SIĘ PRZEŁĄCZA, A CO NIE (decyzje MG, 20.08.2026)
+
+   Dzień ubiera **chrom aplikacji**: paski, panele, okna, czat, formularze,
+   kompendium, kreator, tracker. Trzy powierzchnie zostają przy swoim świetle,
+   bo są **elementem fikcji, nie interfejsem**:
+
+     • mapa i wszystko, co na niej leży (`--map-*`) — mgła i ciemność rysują się
+       w Pixi, a pasek narzędzi wisi nad cudzą grafiką: jasny chrom nad jasną
+       mapą zniknąłby. Decyzja MG z 20.08: mapa zawsze nocna;
+     • okno Sieci (`--net-*`) — to ekran cyberdeka widziany oczami netrunnera;
+     • screamsheet (`--paper`, `--ink`) — papier jest papierem o każdej porze.
+
+   Karta postaci ma własną parę skórek od 27a (`--cp-*` niżej) i przełącza się
+   razem z resztą: w dzień jest wydrukiem, w nocy tym samym wydrukiem
+   w negatywie.
+
+   ---------------------------------------------------------------------------
+   JAK DOKŁADAĆ TOKENY
+
+   1. Kolor pełny (`--ok`) i jego składowe (`--ok-rgb`) chodzą w parze — składowe
+      istnieją tylko po to, żeby dało się napisać `rgb(var(--ok-rgb) / 15%)`.
+      `color-mix()` byłoby ładniejsze, ale odcina Safari < 16.2, a stół gra też
+      na iPadzie.
+   2. Welony (`--veil-*`) to warstwy „rozjaśnij/przyciemnij to, co pod spodem".
+      W nocy są białe, w dzień czarne — dlatego nie wolno pisać
+      `rgb(255 255 255 / 8%)` w miejscu, tylko sięgnąć po welon.
+   3. Nazwa mówi o **roli**, nie o barwie: `--warn`, nie `--amber`.
+   ========================================================================== */
+
+:root {
+  color-scheme: dark;
+
+  /* ===== Powierzchnie ===== */
+
+  /* Tło aplikacji — to, co widać pod mapą i między panelami. */
+  --bg: #14151a;
+  /* Panel boczny, pasek HUD-u, karta na czacie. */
+  --bg-panel: #1e2028;
+  /* Najciemniejszy chrom: górny pasek i belki okien. */
+  --bg-topbar: #0e0f13;
+  /* Korpus pływającego okna (kompendium, ustawienia, handout, kreator). W nocy
+     to ten sam kolor co panel — okno odcina się cieniem. W dzień jest bielsze od
+     tła, bo na kremowym papierze sam cień nie wystarcza, żeby powiedzieć
+     „to leży wyżej". */
+  --bg-float: #1e2028;
+  /* Pole formularza, tor paska postępu, pusty portret. */
+  --bg-inset: #2a2d36;
+  /* Drugi stopień wgłębienia: kafel slotu, klawisz `kbd`. */
+  --bg-inset-2: #23262f;
+
+  /* ===== Welony ===== */
+
+  /* Ledwie widoczny podkład wiersza listy. */
+  --veil-faint: rgb(255 255 255 / 2.5%);
+  /* Pasek/rząd odróżniony od tła. */
+  --veil-soft: rgb(255 255 255 / 4%);
+  /* Najechanie kursorem, wciśnięty element. */
+  --veil: rgb(255 255 255 / 8%);
+  /* Zasłona pod modalem. */
+  --scrim: rgb(0 0 0 / 55%);
+
+  /* ===== Krawędzie ===== */
+
+  --border: #33363f;
+  /* Linia w tabeli — ma dzielić wiersze, nie rysować kratkę. */
+  --border-soft: rgb(51 54 63 / 45%);
+  /* Krawędź podniesiona najechaniem. */
+  --border-strong: #4b4f5c;
+
+  /* ===== Tekst ===== */
+
+  --text: #d8dae0;
+  --text-dim: #7d818c;
+  /* Alias historyczny: kilka reguł z etapów 14b–14e pisze `var(--muted)`. */
+  --muted: #7d818c;
+  /* Napis leżący na plamie `--accent` (przycisk główny, belka karty). */
+  --text-on-accent: #ffffff;
+
+  /* ===== Kolory znaczące ===== */
+
+  /* Czerwień CP RED — kolor marki i przycisku głównego. */
+  --accent: #e01414;
+  --accent-rgb: 224 20 20;
+  /* Bledsza czerwień na napis wewnątrz przycisku głównego. */
+  --accent-ink: #ffd7d4;
+
+  --ok: #34c759;
+  --ok-rgb: 52 199 89;
+  /* Zielony na tekst — pełny `--ok` na ciemnym tle wibruje. */
+  --ok-ink: #9fe09f;
+  --ok-line: #4c8f4c;
+
+  --err: #ff3b30;
+  --err-rgb: 255 59 48;
+  --err-ink: #f87171;
+
+  /* Bursztyn MG: „widzę więcej niż gracze", czyja tura, budżet na wyczerpaniu. */
+  --warn: #d9a441;
+  --warn-rgb: 217 164 65;
+  /* Ostrzeżenie kompendium i licznika — jaśniejsze od `--warn`. */
+  --warn-bright: #f0b429;
+  /* Rana i stan, który boli: między `--warn` a `--err`. */
+  --hurt: #f59e0b;
+  --hurt-rgb: 245 158 11;
+  /* Pierwszy szczebel drabinki PW: „lekko ranny" jeszcze nie jest bursztynem. */
+  --hurt-light: #d4d94a;
+  /* Przypomnienie tury (etap 14e) — najcieplejszy z bursztynów. */
+  --remind-rgb: 255 179 0;
+
+  /* Szept na czacie. */
+  --whisper: #b48be0;
+  --whisper-rgb: 180 139 224;
+  /* Wypowiedź NPC-a: bot i `/jako` MG mają być nie do odróżnienia. */
+  --npc: #e5a54b;
+  /* Chip informacyjny bez ładunku emocjonalnego (poziom sklepu, ostrzeżenie). */
+  --info: #8ab4f8;
+  /* Plakietka „nic z tego nie wynika" — celowo bez odcienia. */
+  --neutral-rgb: 127 127 127;
+  /* Element uzbrojony, czekający na kliknięcie w mapę. */
+  --armed: #facc15;
+
+  /* ===== Cienie ===== */
+
+  --shadow-md: 0 8px 24px rgb(0 0 0 / 50%);
+  --shadow-lg: 0 12px 40px rgb(0 0 0 / 55%);
+  /* Karta postaci leży wyżej niż reszta okien i rzuca dłuższy cień. */
+  --shadow-sheet: 0 18px 50px rgb(0 0 0 / 60%);
+
+  /* ===== Kubek z kośćmi (etap 06) ===== */
+
+  /* Poświata kubka. Składowe RGB, bo animacja miesza je z przezroczystością. */
+  --cup-glow: var(--accent-rgb);
+  /* Kubek kreatora postaci (etap 25a) — własny, chłodny kolor, żeby rozkład
+     Cech nie wyglądał jak rzut na trafienie. */
+  --dice-creation: #6fd0ff;
+  --dice-creation-rgb: 90 200 255;
+  /* Ramka i połysk próbki skórki kości (etap 27d): próbka pokazuje kolor
+     ścianki, więc jej oprawa nie może zmieniać się razem z motywem — inaczej
+     „Karta" (bladożółta) rozpłynęłaby się w dziennym tle. */
+  --swatch-edge: rgb(0 0 0 / 50%);
+  --swatch-gloss: rgb(255 255 255 / 12%);
+
+  /* ===== Emoji ===== */
+
+  /* Jeden rozmiar dla każdego kolorowego emoji w aplikacji — pasek narzędzi
+     i wybierak notatek pokazują tę samą pinezkę, a dwie skale jednego znaku
+     czytają się jak błąd. */
+  --emoji-glyph-size: 1.15rem;
+}
+
+/* ============================================================================
+   DZIEŃ — ten sam interfejs na papierze
+   ----------------------------------------------------------------------------
+   Biel jest ciepła, nie szpitalna: karta postaci z 27a stoi na #ede8df i cała
+   aplikacja ma z nią współgrać, a nie odbijać się od niej. Kolory znaczące są
+   ściemnione — #34c759 na jasnym tle nie jest już „udało się", tylko mgłą.
+   ========================================================================== */
+
+:root[data-theme='day'] {
+  color-scheme: light;
+
+  --bg: #efeae1;
+  --bg-panel: #fbf8f2;
+  --bg-topbar: #e9e2d6;
+  --bg-float: #ffffff;
+  --bg-inset: #ece6da;
+  --bg-inset-2: #e3dccf;
+
+  --veil-faint: rgb(60 45 25 / 3%);
+  --veil-soft: rgb(60 45 25 / 5%);
+  --veil: rgb(60 45 25 / 9%);
+  --scrim: rgb(38 30 20 / 45%);
+
+  --border: #c9c1b4;
+  --border-soft: rgb(150 138 120 / 45%);
+  --border-strong: #a2988a;
+
+  --text: #14120f;
+  --text-dim: #5f574f;
+  --muted: #5f574f;
+  --text-on-accent: #ffffff;
+
+  --accent: #cc2316;
+  --accent-rgb: 204 35 22;
+  --accent-ink: #fff1ef;
+
+  --ok: #17662a;
+  --ok-rgb: 23 102 42;
+  --ok-ink: #12551f;
+  --ok-line: #4c8f4c;
+
+  --err: #b81f16;
+  --err-rgb: 184 31 22;
+  --err-ink: #9c1a12;
+
+  --warn: #7d590f;
+  --warn-rgb: 125 89 15;
+  --warn-bright: #7a5600;
+  --hurt: #94500a;
+  --hurt-rgb: 148 80 10;
+  --remind-rgb: 168 118 0;
+
+  --whisper: #6b3fa0;
+  --npc: #7f4a11;
+  --info: #2554a3;
+  --neutral-rgb: 110 100 88;
+  --armed: #8f6600;
+  --whisper-rgb: 107 63 160;
+  --hurt-light: #6f7412;
+
+  --shadow-md: 0 8px 24px rgb(60 45 25 / 18%);
+  --shadow-lg: 0 12px 40px rgb(60 45 25 / 22%);
+  --shadow-sheet: 0 18px 50px rgb(60 45 25 / 28%);
+}
+
+/* ============================================================================
+   MAPA — zawsze noc
+   ----------------------------------------------------------------------------
+   Te tokeny stoją poza parą noc/dzień celowo (decyzja MG z 20.08). Pasek
+   narzędzi, wybierak kolorów, edytor notatki, pole podpisu i dymek celownika
+   leżą **nad cudzą grafiką**, o której nic nie wiemy: jasny chrom nad jasną
+   mapą przestaje istnieć, a ciemny z własnym cieniem czyta się nad każdą.
+   Tak samo robi Foundry i tak samo działa mgła — rysuje ją Pixi, a nie CSS.
+   ========================================================================== */
+
+:root {
+  /* Tło pod płótnem: widać je tam, gdzie scena nie ma grafiki, i przez kratkę
+     zastępczą. Pixi rysuje na nim białe podpisy żetonów, więc musi zostać
+     ciemne — w dzień podpisy zniknęłyby. */
+  --map-backdrop: #14151a;
+  --map-grid: #33363f;
+  /* Ikona narzędzia i podpis pod suwakiem. */
+  --map-ink: #cbd5e1;
+  --map-ink-bright: #e2e8f0;
+  /* Podpowiedź pod polem edytora notatki. */
+  --map-ink-dim: #94a3b8;
+  /* Panel pływający nad mapą: edytor notatki, podpowiedź stawiania żetonu. */
+  --map-panel: rgb(15 18 25 / 96%);
+  /* Pole tekstowe nad mapą (podpis rysunku, treść notatki). */
+  --map-field: rgb(2 6 23 / 85%);
+  --map-field-soft: rgb(2 6 23 / 60%);
+  /* Kafel wybieraka rozmiaru liter. */
+  --map-chip: rgb(30 41 59 / 70%);
+  --map-chip-hover: rgb(51 65 85 / 80%);
+  /* Najechanie na ikonę narzędzia i stan „wybrane". */
+  --map-hover: rgb(148 163 184 / 14%);
+  --map-selected: rgb(148 163 184 / 18%);
+  /* Kreska rozdzielająca grupy narzędzi, obwódka kafla. */
+  --map-line: rgb(148 163 184 / 45%);
+  --map-line-soft: rgb(148 163 184 / 35%);
+  /* Obrys próbki koloru — ciemny, bo próbka bywa biała. */
+  --map-swatch-edge: rgb(15 23 42 / 70%);
+  /* Zaznaczona próbka: biała obwódka widoczna na każdej barwie. */
+  --map-swatch-active: #f8fafc;
+  /* Dymek celownika i plakietka trybu zabawy nad stołem z kośćmi. */
+  --map-tooltip: rgb(14 15 19 / 95%);
+  --map-badge: rgb(20 21 26 / 80%);
+
+  /* Cienie znad mapy: mocniejsze niż w chromie, bo tło bywa jasne. */
+  --map-shadow-glyph: drop-shadow(0 1px 2px rgb(0 0 0 / 95%)) drop-shadow(0 0 1px rgb(0 0 0 / 80%));
+  --map-shadow-emoji: drop-shadow(0 1px 1px rgb(0 0 0 / 55%));
+  --map-shadow-text: 0 1px 3px rgb(0 0 0 / 95%);
+  --map-shadow-panel: 0 10px 30px rgb(0 0 0 / 45%);
+  --map-shadow-tooltip: 0 8px 20px rgb(0 0 0 / 50%);
+  --map-shadow-slider: drop-shadow(0 1px 2px rgb(0 0 0 / 90%));
+  --map-shadow-swatch: 0 1px 3px rgb(0 0 0 / 70%);
+
+  /* Narzędzia z własnym znaczeniem koloru: „tylko dla mnie", noc, dzień. */
+  --map-warn: #fbbf24;
+  --map-night: #818cf8;
+  --map-day: #fbbf24;
+}
+
+/* ============================================================================
+   SIEĆ — ekran cyberdeka (etapy 26a–26f)
+   ----------------------------------------------------------------------------
+   Zielono-cyjanowy terminal jest częścią fikcji, nie chromem aplikacji, więc
+   nie przełącza się z motywem — dokładnie jak papier screamsheetu. Netrunner
+   patrzy w ekran, a ekran świeci tak samo w dzień i w nocy.
+   ========================================================================== */
+
+:root {
+  /* Krawędź panelu i ramka piętra. */
+  --net-line: #1c5f72;
+  /* Cichsza krawędź: podział wewnątrz panelu. */
+  --net-line-dim: #123c48;
+  /* Kreska szybu i podpięcie urządzeń pod węzeł. */
+  --net-line-branch: #2c6f80;
+  /* Napis terminala. */
+  --net-ink: #9fe6f7;
+  /* Piętro nieodkryte — pusta karta bez nazwy. */
+  --net-ink-dim: #4d6a75;
+  /* Piętro, na którym stoi netrunner: jedyny element świecący. */
+  --net-here: #35e0ff;
+  --net-here-glow: rgb(53 224 255 / 35%);
+  /* Tło karty piętra. */
+  --net-floor-bg: rgb(6 24 30 / 60%);
+  /* Program wgrany do dekaMauza. */
+  --net-rezzed: #1f8fa8;
+  --net-rezzed-bg: rgb(31 143 168 / 12%);
+
+  /* LÓD: druga rodzina barw tego okna — wroga, więc czerwona. */
+  --net-ice-line: #5d2233;
+  --net-ice-bg: rgb(94 24 42 / 18%);
+  --net-ice-ink: #ff7b8f;
+  --net-ice-track: #2a1119;
+  --net-ice-bar-from: #ff5470;
+  --net-ice-bar-to: #ffa07a;
+  --net-ice-down: #333333;
+  /* Panel MG nad LODem i strefa broniona — bursztyn właściciela systemu. */
+  --net-gm-line: #7a3d18;
+  --net-zone-line: #7a5312;
+  /* Superklej (etap 26c) — komunikat, który nie jest ani błędem, ani zgodą. */
+  --net-glue: #ffb38a;
+}
+
+/* ============================================================================
+   KARTA POSTACI (etapy 27a–27c)
+   ----------------------------------------------------------------------------
+   Odtwarzamy styl `CPR_Karta-Postaci-Edytowalna.pdf` (wydanie polskie): czerwień
+   #CC2316 spróbkowana z wydruku, papier, czarne belki. Z pliku nie pochodzi ani
+   jeden bajt. Szczegóły i granica prawna: `docs/assety-karta-postaci.md`.
+
+   Tokeny stały tu wcześniej w `sheet.css`; od 27e mieszkają razem z resztą
+   motywu, żeby „gdzie się zmienia kolor" miało jedną odpowiedź.
+   ========================================================================== */
+
+:root {
+  /* Noc: ten sam arkusz w negatywie. Czerwień rozjaśniona, bo #CC2316 na
+     czerni gaśnie i belki przestają być czytelne. */
+  --cp-red: #e0301f;
+  --cp-red-deep: #7e1810;
+  --cp-paper: #171514;
+  --cp-ink: #f1ece4;
+  --cp-ink-dim: #9a9187;
+  --cp-bar: #050505;
+  --cp-bar-ink: #ffffff;
+  --cp-back: #0b0a0a;
+  --cp-focus: #2b211a;
+  --cp-hover: #221c17;
+  /* Napis leżący na czerwonej belce — biały o każdej porze. */
+  --cp-on-red: #ffffff;
+  --cp-on-red-dim: rgb(255 255 255 / 78%);
+  --cp-on-red-soft: rgb(255 255 255 / 85%);
+  --cp-on-red-faint: rgb(255 255 255 / 62%);
+  /* Zasłona pod przyciskiem wgrania portretu. */
+  --cp-portrait-veil: rgb(0 0 0 / 62%);
+  /* Przycisk w komunikacie alarmowym: biała plama na czerwieni. */
+  --cp-alert-btn-hover: #ffe9e6;
+  --cp-notch: 10px;
+  --cp-gutter: 3px;
+  --font-cp: 'Jost', 'Segoe UI', system-ui, sans-serif;
+  --font-cp-cond: 'Oswald', 'Jost', 'Segoe UI', sans-serif;
+}
+
+:root[data-theme='day'] {
+  /* Dzień: wydrukowana kartka, kolory dokładnie z arkusza. */
+  --cp-red: #cc2316;
+  --cp-red-deep: #a81c11;
+  --cp-paper: #ffffff;
+  --cp-ink: #100e0d;
+  --cp-ink-dim: #6a625c;
+  --cp-bar: #000000;
+  --cp-bar-ink: #ffffff;
+  --cp-back: #ede8df;
+  --cp-focus: #fdf3cf;
+  --cp-hover: #f6f1e6;
+}
+
+/* ============================================================================
+   SCREAMSHEET (etap 24c) — papier o każdej porze
+   ----------------------------------------------------------------------------
+   Gazeta jest rekwizytem: gracz dostaje kartkę, a nie okno aplikacji. Dlatego
+   ani jeden z tych tokenów nie ma wariantu dziennego.
+   ========================================================================== */
+
+:root {
+  --paper: #e9e5da;
+  --ink: #17171b;
+  --ink-dim: #4a4a52;
+  --newsprint-rule: #b9b2a2;
+  /* Czerwień nagłówka gazety — druk offsetowy, nie ekran, więc ciemniejsza
+     i brudniejsza od `--accent`. */
+  --newsprint-red: #b21212;
+  /* Zabrudzenia papieru: cień w rogach i podkład bloku kodu. */
+  --paper-stain: rgb(120 105 70 / 18%);
+  --paper-shade: rgb(0 0 0 / 7%);
+  /* Ukośne światło na kartce — dwa przystanki jednego gradientu. */
+  --paper-shade-1: rgb(0 0 0 / 5%);
+  --paper-sheen: rgb(255 255 255 / 6%);
+}

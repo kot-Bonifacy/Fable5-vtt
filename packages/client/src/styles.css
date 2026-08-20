@@ -153,21 +153,6 @@
   padding: 0;
 }
 
-:root {
-  color-scheme: dark;
-  --bg: #14151a;
-  --bg-panel: #1e2028;
-  --bg-topbar: #0e0f13;
-  --border: #33363f;
-  --text: #d8dae0;
-  --text-dim: #7d818c;
-  --accent: #e01414;
-  --ok: #34c759;
-  --err: #ff3b30;
-  --warn: #d9a441;
-  --whisper: #b48be0;
-}
-
 html,
 body,
 #root {
@@ -241,15 +226,18 @@ body {
   min-height: 0;
 }
 
+/* Zawsze noc, tak jak samo płótno (etap 27e): kratka zastępcza i tło pod
+   sceną są tym, na czym Pixi rysuje białe podpisy żetonów i mglę. W trybie
+   dziennym te podpisy zrobiły się białe na kremowym — czyli nieczytelne. */
 .map-area {
   flex: 1;
   position: relative;
   min-width: 0;
   overflow: hidden;
   background:
-    linear-gradient(var(--border) 1px, transparent 1px) 0 0 / 48px 48px,
-    linear-gradient(90deg, var(--border) 1px, transparent 1px) 0 0 / 48px 48px,
-    var(--bg);
+    linear-gradient(var(--map-grid) 1px, transparent 1px) 0 0 / 48px 48px,
+    linear-gradient(90deg, var(--map-grid) 1px, transparent 1px) 0 0 / 48px 48px,
+    var(--map-backdrop);
 }
 
 .map-canvas-host {
@@ -423,13 +411,13 @@ body {
 .chat-portrait--empty {
   display: grid;
   place-items: center;
-  background: #2a2d36;
+  background: var(--bg-inset);
   color: var(--text-dim);
   font-size: 0.8rem;
 }
 
 .chat-message--npc .chat-message-author {
-  color: #e5a54b;
+  color: var(--npc);
 }
 
 .chat-message--pending .chat-message-text--pending {
@@ -455,7 +443,7 @@ body {
   height: 1em;
   margin-left: 0.1ch;
   vertical-align: text-bottom;
-  background: #e5a54b;
+  background: var(--npc);
   animation: typewriter-caret 1s steps(2, start) infinite;
 }
 
@@ -467,7 +455,7 @@ body {
 
 .bot-warning {
   margin: 0.2rem 0 0.4rem;
-  color: #e5a54b;
+  color: var(--npc);
   font-size: 0.82rem;
 }
 
@@ -532,7 +520,7 @@ body {
   transform: translateX(-50%);
   padding: 0.2rem 0.7rem;
   border-radius: 999px;
-  background: rgb(20 21 26 / 80%);
+  background: var(--map-badge);
   border: 1px solid var(--border);
   color: var(--text-dim);
   font-size: 0.78rem;
@@ -574,14 +562,14 @@ body {
 }
 
 .dice-cup--hot {
-  --cup-glow: 224 20 20;
+  --cup-glow: var(--accent-rgb);
   color: var(--accent);
   border-color: var(--accent);
   animation: dice-cup-pulse 1.6s ease-in-out infinite;
 }
 
 .dice-cup--gm {
-  --cup-glow: 180 139 224;
+  --cup-glow: var(--whisper-rgb);
   color: var(--whisper);
   border-color: var(--whisper);
   animation: dice-cup-pulse 1.6s ease-in-out infinite;
@@ -591,9 +579,9 @@ body {
    przy zwykłym rzucie z karty: kubek stoi w rogu, a kreator zajmuje środek
    ekranu, więc musi zawołać przez pół stołu. */
 .dice-cup--creation {
-  --cup-glow: 90 200 255;
-  color: #6fd0ff;
-  border-color: #6fd0ff;
+  --cup-glow: var(--dice-creation-rgb);
+  color: var(--dice-creation);
+  border-color: var(--dice-creation);
   animation: dice-cup-call 1.2s ease-in-out infinite;
 }
 
@@ -744,13 +732,13 @@ body {
 .chat-die--crit {
   border-color: var(--ok);
   color: var(--ok);
-  box-shadow: 0 0 5px rgb(52 199 89 / 45%);
+  box-shadow: 0 0 5px rgb(var(--ok-rgb) / 45%);
 }
 
 .chat-die--fumble {
   border-color: var(--err);
   color: var(--err);
-  box-shadow: 0 0 5px rgb(255 59 48 / 45%);
+  box-shadow: 0 0 5px rgb(var(--err-rgb) / 45%);
 }
 
 .chat-roll-sign,
@@ -775,17 +763,17 @@ body {
 }
 
 .chat-roll-badge--crit {
-  background: rgb(52 199 89 / 15%);
+  background: rgb(var(--ok-rgb) / 15%);
   color: var(--ok);
 }
 
 .chat-roll-badge--fumble {
-  background: rgb(255 59 48 / 15%);
+  background: rgb(var(--err-rgb) / 15%);
   color: var(--err);
 }
 
 .chat-roll-badge--injury {
-  background: rgb(224 20 20 / 18%);
+  background: rgb(var(--accent-rgb) / 18%);
   color: var(--accent);
 }
 
@@ -872,7 +860,7 @@ button {
   background: var(--accent);
   border: none;
   border-radius: 4px;
-  color: #fff;
+  color: var(--text-on-accent);
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
@@ -895,8 +883,8 @@ button:disabled {
 /* Musi stać PO `.small-button` — ta sama specyficzność, więc wcześniejsza
    deklaracja przegrywała i stan „włączony" był niewidoczny (znalezione w 24b). */
 .small-button--on {
-  border-color: #4c8f4c;
-  color: #9fe09f;
+  border-color: var(--ok-line);
+  color: var(--ok-ink);
 }
 
 .small-button--danger {
@@ -1083,7 +1071,7 @@ button:disabled {
 /* Second row: the GM's tools, visually subordinate to the shared row. */
 .side-tabs--gm {
   align-items: center;
-  background: rgba(255, 255, 255, 0.025);
+  background: var(--veil-faint);
   border-top: 1px solid var(--border);
 }
 
@@ -1245,8 +1233,8 @@ input[type='color'] {
   left: 50%;
   transform: translateX(-50%);
   padding: 0.4rem 0.9rem;
-  background: rgba(15, 18, 25, 0.9);
-  border: 1px solid var(--accent, #38bdf8);
+  background: var(--map-panel);
+  border: 1px solid var(--accent);
   border-radius: 6px;
   color: var(--text);
   font-size: 0.85rem;
@@ -1270,7 +1258,7 @@ input[type='color'] {
   background: var(--bg-panel);
   border: 1px solid var(--border);
   border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-md);
 }
 
 .context-menu-title {
@@ -1295,11 +1283,11 @@ input[type='color'] {
 }
 
 .context-menu-item:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--veil);
 }
 
 .context-menu-item--danger {
-  color: #f87171;
+  color: var(--err-ink);
 }
 
 .context-menu-section {
@@ -1326,7 +1314,7 @@ input[type='color'] {
 }
 
 .context-menu-status:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--veil);
 }
 
 .context-menu-status img {
@@ -1340,7 +1328,7 @@ input[type='color'] {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.55);
+  background: var(--scrim);
 }
 
 .dialog {
@@ -1352,7 +1340,7 @@ input[type='color'] {
   background: var(--bg-panel);
   border: 1px solid var(--border);
   border-radius: 10px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+  box-shadow: var(--shadow-lg);
 }
 
 .dialog select {
@@ -1394,12 +1382,12 @@ input[type='color'] {
 }
 
 .token-asset:hover {
-  border-color: var(--accent, #38bdf8);
+  border-color: var(--accent);
 }
 
 .token-asset--armed {
-  border-color: #facc15;
-  box-shadow: 0 0 0 1px #facc15;
+  border-color: var(--armed);
+  box-shadow: 0 0 0 1px var(--armed);
 }
 
 .token-asset img {
@@ -1536,10 +1524,10 @@ input[type='color'] {
   max-height: min(78vh, 860px);
   display: flex;
   flex-direction: column;
-  background: var(--bg-panel);
+  background: var(--bg-float);
   border: 1px solid var(--border);
   border-radius: 10px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+  box-shadow: var(--shadow-lg);
   overflow: hidden;
 }
 
@@ -1782,7 +1770,7 @@ input[type='color'] {
 
 .sheet-table td {
   padding: 0.15rem 0.3rem;
-  border-bottom: 1px solid rgba(51, 54, 63, 0.45);
+  border-bottom: 1px solid var(--border-soft);
 }
 
 .sheet-table input[type='number'] {
@@ -1831,7 +1819,7 @@ input[type='color'] {
   gap: 0.35rem;
   width: 100%;
   padding: 0.25rem 0.3rem;
-  background: rgba(51, 54, 63, 0.35);
+  background: var(--veil-soft);
   border: 0;
   color: var(--text-dim);
   font: inherit;
@@ -1845,7 +1833,7 @@ input[type='color'] {
 
 .skill-group-toggle:hover {
   color: var(--text);
-  background: rgba(51, 54, 63, 0.6);
+  background: var(--veil);
 }
 
 .skill-group-count {
@@ -2033,7 +2021,7 @@ input[type='color'] {
   gap: 0.4rem;
   align-items: baseline;
   padding: 0.12rem 0;
-  border-bottom: 1px solid rgb(255 255 255 / 4%);
+  border-bottom: 1px solid var(--veil-soft);
 }
 
 .ledger-out {
@@ -2111,7 +2099,7 @@ input[type='color'] {
 
 /* A check loaded into the cup from a character sheet. */
 .dice-cup--sheet {
-  --cup-glow: 52 199 89;
+  --cup-glow: var(--ok-rgb);
   color: var(--ok);
   border-color: var(--ok);
   animation: dice-cup-pulse 1.6s ease-in-out infinite;
@@ -2168,15 +2156,15 @@ input[type='color'] {
 }
 
 .wound-badge--serious {
-  color: #f59e0b;
-  border-color: #f59e0b;
-  background: rgb(245 158 11 / 0.08);
+  color: var(--hurt);
+  border-color: var(--hurt);
+  background: rgb(var(--hurt-rgb) / 8%);
 }
 
 .wound-badge--mortal {
   color: var(--err);
   border-color: var(--err);
-  background: rgb(255 59 48 / 0.1);
+  background: rgb(var(--err-rgb) / 10%);
 }
 
 .luck-refresh {
@@ -2223,7 +2211,7 @@ input[type='color'] {
 }
 
 .roll-preview--wound {
-  color: #f59e0b;
+  color: var(--hurt);
 }
 
 .roll-preview--luck {
@@ -2278,8 +2266,8 @@ input[type='color'] {
 }
 
 .chat-roll-source--wound {
-  color: #f59e0b;
-  border-color: #f59e0b;
+  color: var(--hurt);
+  border-color: var(--hurt);
 }
 
 .chat-roll-source--luck {
@@ -2626,7 +2614,7 @@ input[type='color'] {
 }
 
 .knowledge-flag--stale {
-  color: var(--warning, #d08a3a);
+  color: var(--warn);
 }
 
 .knowledge-entry-body {
@@ -2724,6 +2712,9 @@ input[type='color'] {
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 8px;
+  /* Bez tego wiersz bierze biel z gołego `button` (przycisk główny) — na
+     ciemnym motywie tego nie widać, w dzień nazwa bota znikała. */
+  color: var(--text);
   text-align: left;
   min-width: 0;
 }
@@ -2995,6 +2986,9 @@ input[type='color'] {
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 8px;
+  /* Patrz uwaga przy `.bot-open`: gołe `button` maluje się na bielą przycisku
+     głównego, więc wiersz musi wziąć kolor tekstu wprost. */
+  color: var(--text);
   text-align: left;
 }
 
@@ -3026,15 +3020,15 @@ input[type='color'] {
 }
 
 .compendium-tag--warn {
-  color: #f0b429;
-  border-color: #f0b429;
+  color: var(--warn-bright);
+  border-color: var(--warn-bright);
 }
 
 /* Etap 25c — poziomy dostępności sklepu. Wpis ponad poziomem kampanii zostaje
    na liście, tylko przygaszony: gracz ma widzieć, po co warto sięgnąć. */
 .compendium-tag--tier {
-  color: #8ab4f8;
-  border-color: #8ab4f8;
+  color: var(--info);
+  border-color: var(--info);
   text-transform: none;
   letter-spacing: 0;
 }
@@ -3191,7 +3185,7 @@ input[type='color'] {
 
 .compendium-warning {
   font-size: 0.72rem;
-  color: #f0b429;
+  color: var(--warn-bright);
 }
 
 .compendium-assign {
@@ -3381,6 +3375,9 @@ body.is-resizing {
 /* Faded edges are the only honest sign that the row continues past the bar.
    Applied only while it actually overflows, so a short queue keeps its first
    and last chip at full strength. */
+/* Wyjątek od reguły „żadnego koloru poza `theme.css`": `#000` w masce nie jest
+   kolorem, tylko kanałem krycia — znaczy „tutaj pokaż wszystko". Token
+   z motywu podstawiłby tu barwę i maska zaczęłaby wygaszać środek paska. */
 .combat-bar-queue--scrollable {
   mask-image: linear-gradient(
     90deg,
@@ -3398,14 +3395,14 @@ body.is-resizing {
   padding: 0.15rem 0.55rem 0.15rem 0.15rem;
   border: 1px solid var(--border);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--veil-faint);
   white-space: nowrap;
 }
 
 .combat-chip--active {
   border-color: var(--warn);
-  background: rgba(217, 164, 65, 0.16);
-  box-shadow: 0 0 0 1px rgba(217, 164, 65, 0.35);
+  background: rgb(var(--warn-rgb) / 16%);
+  box-shadow: 0 0 0 1px rgb(var(--warn-rgb) / 35%);
 }
 
 /* GM-only: a participant the players cannot see in their tracker. */
@@ -3478,7 +3475,7 @@ body.is-resizing {
   padding: 0.25rem 0.8rem;
   border: 1px solid var(--warn);
   border-radius: 999px;
-  background: rgba(217, 164, 65, 0.18);
+  background: rgb(var(--warn-rgb) / 18%);
   color: var(--warn);
   font-size: 0.8rem;
   font-weight: 600;
@@ -3587,12 +3584,12 @@ body.is-resizing {
   padding: 0.3rem 0.4rem;
   border: 1px solid var(--border);
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--veil-faint);
 }
 
 .combat-row--active {
   border-color: var(--warn);
-  background: rgba(217, 164, 65, 0.12);
+  background: rgb(var(--warn-rgb) / 12%);
 }
 
 .combat-row[draggable='true'] {
@@ -3684,22 +3681,22 @@ body.is-resizing {
 /* ---- Obrażenia, pancerz i rany krytyczne (etap 15) ---- */
 
 .chat-roll-badge--wound {
-  background: rgb(245 158 11 / 18%);
-  color: #f59e0b;
+  background: rgb(var(--hurt-rgb) / 18%);
+  color: var(--hurt);
 }
 
 .chat-roll-badge--success {
-  background: rgb(52 199 89 / 15%);
+  background: rgb(var(--ok-rgb) / 15%);
   color: var(--ok);
 }
 
 .chat-roll-badge--failure {
-  background: rgb(255 59 48 / 15%);
+  background: rgb(var(--err-rgb) / 15%);
   color: var(--err);
 }
 
 .chat-roll-badge--note {
-  background: rgb(127 127 127 / 15%);
+  background: rgb(var(--neutral-rgb) / 15%);
   color: var(--text-dim);
 }
 
@@ -3776,7 +3773,7 @@ body.is-resizing {
 
 .combat-bar-death-save {
   flex: none;
-  background: rgb(255 59 48 / 15%);
+  background: rgb(var(--err-rgb) / 15%);
   color: var(--err);
   border: 1px solid var(--err);
   border-radius: 6px;
@@ -3788,7 +3785,7 @@ body.is-resizing {
 }
 
 .combat-bar-death-save:hover {
-  background: rgb(255 59 48 / 25%);
+  background: rgb(var(--err-rgb) / 25%);
 }
 
 /* --- stage 16: ranged combat, ruler, range rings --- */
@@ -3820,7 +3817,7 @@ body.is-resizing {
   background: transparent;
   border: none;
   border-radius: 6px;
-  color: #cbd5e1;
+  color: var(--map-ink);
   cursor: pointer;
   transition:
     color 120ms ease,
@@ -3831,43 +3828,36 @@ body.is-resizing {
    hard edge to survive a bright map, while a colour emoji already carries its
    own outline and turns to mush under the same treatment. */
 .map-tool svg {
-  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 95%)) drop-shadow(0 0 1px rgb(0 0 0 / 80%));
+  filter: var(--map-shadow-glyph);
 }
 
 /* Hover brightens whatever colour the button already carries — setting a
    colour here instead would wash out the active state exactly when the
    pointer is on it, which is when it matters most. */
 .map-tool:hover:not(:disabled) {
-  background: rgb(148 163 184 / 14%);
+  background: var(--map-hover);
   transform: translateY(-1px);
   filter: brightness(1.35);
 }
 
 .map-tool:focus-visible {
-  outline: 2px solid var(--accent, #38bdf8);
+  outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
 
 .map-tool--active {
-  color: var(--accent, #38bdf8);
+  color: var(--accent);
 }
 
 /* Two buttons keep their colour emoji, which simply draw better than a line
    icon at this size — but an emoji cannot take `currentColor`, so those show
    „armed" with a glow instead. Sized well above the old 1rem: the complaint
    about the previous toolbar was never the glyphs, only how small they were. */
-/* One size for every colour emoji in the app, so the toolbar and the note
-   picker can never drift apart again — they show the same pushpin, and two
-   scales for one glyph read as a bug. */
-:root {
-  --emoji-glyph-size: 1.15rem;
-}
-
 .map-tool-emoji {
   font-size: var(--emoji-glyph-size);
   line-height: 1;
   /* Just enough to lift it off a pale map — anything more reads as blur. */
-  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 55%));
+  filter: var(--map-shadow-emoji);
 }
 
 /* An emoji cannot take `currentColor`, so an armed emoji button shows its
@@ -3876,23 +3866,23 @@ body.is-resizing {
    as „out of focus". */
 .map-tool--active .map-tool-emoji,
 .note-icon--active {
-  filter: drop-shadow(0 0 3px var(--accent, #38bdf8));
+  filter: drop-shadow(0 0 3px var(--accent));
 }
 
 /* „Widzę więcej niż gracze" — the private-measurement eye and anything else
    that hides information from the table reads amber, not accent-blue. */
 .map-tool--warn {
-  color: #fbbf24;
+  color: var(--map-warn);
 }
 
 /* The per-scene fog switch keeps its day/night colour at all times: it is a
    state indicator first and a button second. */
 .map-tool--night {
-  color: #818cf8;
+  color: var(--map-night);
 }
 
 .map-tool--day {
-  color: #fbbf24;
+  color: var(--map-day);
 }
 
 .map-tool:disabled {
@@ -3912,7 +3902,7 @@ body.is-resizing {
   height: 1.2rem;
   align-self: center;
   margin: 0 0.25rem;
-  background: rgb(148 163 184 / 45%);
+  background: var(--map-line);
 }
 
 .map-tool-options {
@@ -3926,14 +3916,14 @@ body.is-resizing {
   display: flex;
   gap: 0.4rem;
   align-items: center;
-  color: #e2e8f0;
+  color: var(--map-ink-bright);
   font-size: 0.75rem;
-  text-shadow: 0 1px 3px rgb(0 0 0 / 95%);
+  text-shadow: var(--map-shadow-text);
 }
 
 .map-tool-slider input {
   width: 7rem;
-  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 90%));
+  filter: var(--map-shadow-slider);
 }
 
 .map-tool-slider span {
@@ -3958,10 +3948,10 @@ body.is-resizing {
   width: 1.15rem;
   height: 1.15rem;
   padding: 0;
-  border: 1px solid rgb(15 23 42 / 70%);
+  border: 1px solid var(--map-swatch-edge);
   border-radius: 50%;
   cursor: pointer;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 70%);
+  box-shadow: var(--map-shadow-swatch);
   transition: transform 120ms ease;
 }
 
@@ -3970,21 +3960,21 @@ body.is-resizing {
 }
 
 .map-color--active {
-  outline: 2px solid #f8fafc;
+  outline: 2px solid var(--map-swatch-active);
   outline-offset: 2px;
 }
 
 .map-color:focus-visible {
-  outline: 2px solid var(--accent, #38bdf8);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
 /* Inline hint inside a tool's options row (the eraser has no settings). */
 .map-tool-hint {
   align-self: center;
-  color: #e2e8f0;
+  color: var(--map-ink-bright);
   font-size: 0.75rem;
-  text-shadow: 0 1px 3px rgb(0 0 0 / 95%);
+  text-shadow: var(--map-shadow-text);
 }
 
 /* The text tool's prompt reuses the note editor's panel, but it is three rows
@@ -3998,15 +3988,15 @@ body.is-resizing {
 
 .drawing-text-input {
   padding: 0.4rem 0.55rem;
-  background: rgb(2 6 23 / 85%);
-  color: #e2e8f0;
-  border: 1px solid rgb(148 163 184 / 45%);
+  background: var(--map-field);
+  color: var(--map-ink-bright);
+  border: 1px solid var(--map-line);
   border-radius: 6px;
   font-size: 0.9rem;
 }
 
 .drawing-text-input:focus-visible {
-  outline: 2px solid var(--accent, #38bdf8);
+  outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
 
@@ -4026,27 +4016,27 @@ body.is-resizing {
   width: 1.85rem;
   height: 1.7rem;
   padding: 0;
-  background: rgb(30 41 59 / 70%);
-  color: #cbd5e1;
-  border: 1px solid rgb(148 163 184 / 35%);
+  background: var(--map-chip);
+  color: var(--map-ink);
+  border: 1px solid var(--map-line-soft);
   border-radius: 6px;
   line-height: 1;
   cursor: pointer;
 }
 
 .text-size-chip:hover {
-  background: rgb(51 65 85 / 80%);
-  color: #f1f5f9;
+  background: var(--map-chip-hover);
+  color: var(--map-ink-bright);
 }
 
 .text-size-chip--active {
-  color: var(--accent, #38bdf8);
-  border-color: var(--accent, #38bdf8);
-  background: rgb(56 189 248 / 12%);
+  color: var(--accent);
+  border-color: var(--accent);
+  background: rgb(var(--accent-rgb) / 12%);
 }
 
 .text-size-chip:focus-visible {
-  outline: 2px solid var(--accent, #38bdf8);
+  outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
 
@@ -4060,10 +4050,10 @@ body.is-resizing {
   flex-direction: column;
   gap: 0.5rem;
   padding: 0.75rem;
-  background: rgb(15 18 25 / 96%);
-  border: 1px solid var(--accent, #38bdf8);
+  background: var(--map-panel);
+  border: 1px solid var(--accent);
   border-radius: 8px;
-  box-shadow: 0 10px 30px rgb(0 0 0 / 45%);
+  box-shadow: var(--map-shadow-panel);
   z-index: 30;
 }
 
@@ -4075,7 +4065,7 @@ body.is-resizing {
 }
 
 .note-editor-hint {
-  color: var(--text-dim, #94a3b8);
+  color: var(--map-ink-dim);
   font-size: 0.75rem;
 }
 
@@ -4110,12 +4100,12 @@ body.is-resizing {
 }
 
 .note-icon:hover {
-  background: rgb(148 163 184 / 14%);
+  background: var(--map-hover);
   transform: translateY(-1px);
 }
 
 .note-icon:focus-visible {
-  outline: 2px solid var(--accent, #38bdf8);
+  outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
 
@@ -4123,14 +4113,14 @@ body.is-resizing {
    transparent background above would otherwise win on source order and the
    chosen icon would be marked by its glow alone. */
 .note-icon--active {
-  background: rgb(148 163 184 / 18%);
+  background: var(--map-selected);
 }
 
 .note-editor-text {
   resize: vertical;
   min-height: 5rem;
   padding: 0.5rem;
-  background: rgb(2 6 23 / 60%);
+  background: var(--map-field-soft);
   border: 1px solid var(--border);
   border-radius: 6px;
   color: var(--text);
@@ -4157,7 +4147,7 @@ body.is-resizing {
 
 /* An attack loaded into the cup reads as dangerous, not as a plain check. */
 .dice-cup--attack {
-  --cup-glow: 255 59 48;
+  --cup-glow: var(--err-rgb);
   color: var(--err);
   border-color: var(--err);
   animation: dice-cup-pulse 1.2s ease-in-out infinite;
@@ -4206,8 +4196,8 @@ body.is-resizing {
 }
 
 .chat-roll-badge--suppressive {
-  background: rgb(56 189 248 / 15%);
-  color: var(--accent, #38bdf8);
+  background: rgb(var(--accent-rgb) / 15%);
+  color: var(--accent);
 }
 
 .chat-attack-checks {
@@ -4299,7 +4289,7 @@ body.is-resizing {
 .combat-budget-flag {
   padding: 0 0.3rem;
   border-radius: 3px;
-  background: rgb(217 164 65 / 18%);
+  background: rgb(var(--warn-rgb) / 18%);
   color: var(--warn);
   font-size: 0.6rem;
   text-transform: uppercase;
@@ -4307,7 +4297,7 @@ body.is-resizing {
 }
 
 .combat-budget-flag--over {
-  background: rgb(255 59 48 / 18%);
+  background: rgb(var(--err-rgb) / 18%);
   color: var(--err);
 }
 
@@ -4430,7 +4420,7 @@ body.is-resizing {
 .chat-action-badge {
   padding: 0 0.3rem;
   border-radius: 3px;
-  background: rgb(217 164 65 / 18%);
+  background: rgb(var(--warn-rgb) / 18%);
   color: var(--warn);
   font-size: 0.62rem;
   text-transform: uppercase;
@@ -4467,7 +4457,7 @@ body.is-resizing {
   padding: 0.25rem 0.5rem;
   border: 1px solid var(--warn);
   border-radius: 6px;
-  background: rgb(255 179 0 / 12%);
+  background: rgb(var(--remind-rgb) / 12%);
   color: var(--warn);
   font-size: 0.8rem;
 }
@@ -4595,7 +4585,7 @@ body.is-resizing {
 .hud-portrait--empty {
   display: grid;
   place-items: center;
-  background: #2a2d36;
+  background: var(--bg-inset);
   font-weight: 700;
   color: var(--text-dim);
 }
@@ -4619,7 +4609,7 @@ body.is-resizing {
 }
 
 .hud-hp--light {
-  --hud-hp-color: #d4d94a;
+  --hud-hp-color: var(--hurt-light);
 }
 
 .hud-hp--serious {
@@ -4634,7 +4624,7 @@ body.is-resizing {
   flex: 1;
   height: 0.45rem;
   border-radius: 999px;
-  background: #2a2d36;
+  background: var(--bg-inset);
   overflow: hidden;
 }
 
@@ -4676,7 +4666,7 @@ body.is-resizing {
   font-size: 0.7rem;
   line-height: 1.3;
   color: var(--warn);
-  background: rgb(217 164 65 / 12%);
+  background: rgb(var(--warn-rgb) / 12%);
   border-radius: 4px;
 }
 
@@ -4688,7 +4678,7 @@ body.is-resizing {
   font-size: 0.68rem;
   line-height: 1.3;
   color: var(--text-dim);
-  background: rgb(255 255 255 / 4%);
+  background: var(--veil-soft);
   border-left: 2px solid var(--border);
   border-radius: 3px;
 }
@@ -4711,14 +4701,14 @@ body.is-resizing {
   text-align: left;
   font-size: 0.74rem;
   color: var(--text);
-  background: #23262f;
+  background: var(--bg-inset-2);
   border: 1px solid var(--border);
   border-radius: 4px;
   cursor: pointer;
 }
 
 .hud-slot:hover {
-  border-color: #4b4f5c;
+  border-color: var(--border-strong);
 }
 
 .hud-slot-key {
@@ -4779,7 +4769,7 @@ body.is-resizing {
    the pointer — the two marks are one state seen in two places. */
 .hud-slot--armed {
   border-color: var(--accent);
-  background: rgb(224 20 20 / 16%);
+  background: rgb(var(--accent-rgb) / 16%);
 }
 
 /* Refused, not removed: a greyed slot with a reason in its tooltip is how the
@@ -4815,7 +4805,7 @@ body.is-resizing {
 .hud-keys kbd {
   padding: 0 0.2rem;
   font-family: inherit;
-  background: #23262f;
+  background: var(--bg-inset-2);
   border: 1px solid var(--border);
   border-radius: 3px;
 }
@@ -4829,10 +4819,10 @@ body.is-resizing {
   padding: 0.4rem 0.55rem;
   pointer-events: none;
   user-select: none;
-  background: rgba(14, 15, 19, 0.95);
+  background: var(--map-tooltip);
   border: 1px solid var(--border);
   border-radius: 6px;
-  box-shadow: 0 8px 20px rgb(0 0 0 / 50%);
+  box-shadow: var(--map-shadow-tooltip);
   font-size: 0.72rem;
 }
 
@@ -5044,7 +5034,7 @@ body.is-resizing {
 }
 
 .knowledge-flag--shared {
-  color: #9fe09f;
+  color: var(--ok-ink);
 }
 
 /* Odnośniki do handoutów pod treścią wpisu. Lista przychodzi z serwera już
@@ -5073,7 +5063,7 @@ body.is-resizing {
 }
 
 .journal-material:hover:not(:disabled) {
-  background: var(--bg-hover, var(--bg));
+  background: var(--veil);
 }
 
 .journal-material:disabled {
@@ -5158,7 +5148,7 @@ body.is-resizing {
 /* Remis w Konfrontacji nie jest ani wygraną, ani porażką: „obie strony nie są
    pewne wyniku i nic się nie dzieje" (s. 194). Szara plakietka mówi to samo. */
 .chat-roll-badge--neutral {
-  background: rgb(127 127 127 / 15%);
+  background: rgb(var(--neutral-rgb) / 15%);
   color: var(--text-dim);
 }
 
@@ -5365,7 +5355,7 @@ body.is-resizing {
 .handout-chip--on {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--text-on-accent);
 }
 
 .handout-chip:disabled {
@@ -5406,7 +5396,7 @@ body.is-resizing {
   background: var(--bg-panel);
   border: 1px solid var(--border);
   border-radius: 10px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+  box-shadow: var(--shadow-lg);
   overflow: hidden;
 }
 
@@ -5460,7 +5450,7 @@ body.is-resizing {
   background: var(--bg-panel);
   border: 1px solid var(--border);
   border-radius: 10px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+  box-shadow: var(--shadow-lg);
   overflow: hidden;
 }
 
@@ -5580,7 +5570,7 @@ body.is-resizing {
 
 .settings-skin--on {
   border-color: var(--accent);
-  background: rgba(224, 20, 20, 0.08);
+  background: rgb(var(--accent-rgb) / 8%);
 }
 
 /* Kropka podglądu: kolor oczek skórki na tle ścianki — dwie informacje
@@ -5591,8 +5581,8 @@ body.is-resizing {
   height: 1.05rem;
   margin-top: 0.1rem;
   border-radius: 50%;
-  border: 1px solid rgba(0, 0, 0, 0.5);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--swatch-edge);
+  box-shadow: inset 0 0 0 1px var(--swatch-gloss);
 }
 
 .settings-skin-text {
@@ -5693,24 +5683,20 @@ body.is-resizing {
 }
 
 /* --- screamsheet (etap 24c) ----------------------------------------------
-   Wycinek z brukowca leży w ciemnym UI jak kartka na stole: własny, jasny
-   papier i własne kroje (Anton na nagłówek, Oswald na winietę, PT Serif na
-   tekst). Wszystkie kolory są tu wpisane wprost, a nie ze zmiennych motywu —
-   gazeta ma wyglądać jak papier niezależnie od tego, co dzieje się z resztą
-   interfejsu. */
+   Wycinek z brukowca leży w UI jak kartka na stole: własny papier i własne
+   kroje (Anton na nagłówek, Oswald na winietę, PT Serif na tekst). Tokeny
+   `--paper`, `--ink`, `--ink-dim` i `--newsprint-*` żyją w `theme.css` **poza**
+   parą noc/dzień — gazeta ma wyglądać jak papier niezależnie od tego, co dzieje
+   się z resztą interfejsu. */
 .screamsheet {
-  --paper: #e9e5da;
-  --ink: #17171b;
-  --ink-dim: #4a4a52;
-  --newsprint-rule: #b9b2a2;
   background:
-    linear-gradient(115deg, rgba(0, 0, 0, 0.05) 0%, rgba(255, 255, 255, 0.06) 45%, transparent 70%),
+    linear-gradient(115deg, var(--paper-shade-1) 0%, var(--paper-sheen) 45%, transparent 70%),
     var(--paper);
   color: var(--ink);
   font-family: 'PT Serif', Georgia, serif;
   padding: 0.9rem 1rem 0.8rem;
   border-radius: 3px;
-  box-shadow: inset 0 0 40px rgba(120, 105, 70, 0.18);
+  box-shadow: inset 0 0 40px var(--paper-stain);
 }
 
 .screamsheet-masthead {
@@ -5719,7 +5705,7 @@ body.is-resizing {
   font-size: 0.78rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #b21212;
+  color: var(--newsprint-red);
   border-bottom: 3px double var(--ink);
   padding-bottom: 0.3rem;
   margin-bottom: 0.5rem;
@@ -5792,7 +5778,7 @@ body.is-resizing {
 }
 
 .screamsheet-body .markdown .md-quote {
-  border-left-color: #b21212;
+  border-left-color: var(--newsprint-red);
   color: var(--ink-dim);
 }
 
@@ -5802,13 +5788,13 @@ body.is-resizing {
 
 .screamsheet-body .markdown .md-pre,
 .screamsheet-body .markdown .md-code {
-  background: rgba(0, 0, 0, 0.07);
+  background: var(--paper-shade);
   border-color: var(--newsprint-rule);
   color: var(--ink);
 }
 
 .screamsheet-body .markdown a {
-  color: #b21212;
+  color: var(--newsprint-red);
 }
 
 .screamsheet-footer {
@@ -5886,9 +5872,12 @@ body.is-resizing {
   font-size: 0.66rem;
 }
 
+/* Krążek z numerem kroku leży na czarnej belce zakładek arkusza (`--cp-bar`),
+   a nie na tle panelu — więc bierze kolor napisu z belki. `var(--text)` stało tu
+   do 27e i w trybie dziennym robiło się czarne na czarnym. */
 .sheet-tab--active .creator-step-number {
   border-color: var(--accent);
-  color: var(--text);
+  color: var(--cp-bar-ink);
 }
 
 .creator-body {
@@ -6456,7 +6445,7 @@ body.is-resizing {
 /* Musi stać PO `.small-button` — patrz uwaga przy `.small-button--on`. */
 .small-button--primary {
   border-color: var(--accent);
-  color: #ffd7d4;
+  color: var(--accent-ink);
 }
 
 .small-button--primary:disabled {
@@ -6755,7 +6744,7 @@ body.is-resizing {
   max-height: calc(100vh - 120px);
   display: flex;
   flex-direction: column;
-  border-color: #1c5f72;
+  border-color: var(--net-line);
 }
 
 .net-run-title {
@@ -6781,7 +6770,7 @@ body.is-resizing {
   flex-wrap: wrap;
   gap: 0.15rem 0.9rem;
   padding: 0.25rem 0.4rem;
-  border: 1px solid #123c48;
+  border: 1px solid var(--net-line-dim);
   border-radius: 4px;
   font-size: 0.8rem;
   color: var(--text-dim);
@@ -6804,7 +6793,7 @@ body.is-resizing {
 .net-run-column--branch {
   margin-left: 0.4rem;
   padding-left: 0.7rem;
-  border-left: 1px dashed #1c5f72;
+  border-left: 1px dashed var(--net-line);
 }
 
 .net-run-column-title {
@@ -6829,15 +6818,15 @@ body.is-resizing {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.3rem;
-  border: 1px solid #123c48;
+  border: 1px solid var(--net-line-dim);
   border-radius: 4px;
-  background: rgba(6, 24, 30, 0.6);
+  background: var(--net-floor-bg);
 }
 
 /* Piętro, na którym stoi netrunner — jedyny element okna świecący na zielono. */
 .net-run-floor--here {
-  border-color: #35e0ff;
-  box-shadow: 0 0 0 1px rgba(53, 224, 255, 0.35) inset;
+  border-color: var(--net-here);
+  box-shadow: 0 0 0 1px var(--net-here-glow) inset;
 }
 
 .net-run-floor-body {
@@ -6877,7 +6866,7 @@ body.is-resizing {
 /* Nieodkryte piętro nie ma nazwy w payloadzie — i ma wyglądać na pustą kartę,
    a nie na coś, co ktoś ukrył CSS-em. */
 .net-run-floor-glyph--unknown {
-  color: #4d6a75;
+  color: var(--net-ink-dim);
 }
 
 .net-run-floor-label {
@@ -6892,10 +6881,10 @@ body.is-resizing {
 
 .net-run-floor-flag {
   font-size: 0.72rem;
-  border: 1px solid #1c5f72;
+  border: 1px solid var(--net-line);
   border-radius: 3px;
   padding: 0 0.25rem;
-  color: #9fe6f7;
+  color: var(--net-ink);
 }
 
 .net-run-floor-flag--ice {
@@ -6920,7 +6909,7 @@ body.is-resizing {
 .net-run-notice {
   margin: 0;
   font-size: 0.82rem;
-  color: #9fe6f7;
+  color: var(--net-ink);
 }
 
 /* Haki mechaniczne Programu w edytorze MG (etap 26c) — dziewięć pozycji,
@@ -6936,7 +6925,7 @@ body.is-resizing {
    wygląda dokładnie tak, jak w 26b. */
 .net-ice-list-wrap,
 .net-deck {
-  border-top: 1px solid #123c48;
+  border-top: 1px solid var(--net-line-dim);
   padding-top: 0.5rem;
   display: flex;
   flex-direction: column;
@@ -6954,9 +6943,9 @@ body.is-resizing {
 }
 
 .net-ice {
-  border: 1px solid #5d2233;
+  border: 1px solid var(--net-ice-line);
   border-radius: 5px;
-  background: rgba(94, 24, 42, 0.18);
+  background: var(--net-ice-bg);
   padding: 0.4rem 0.5rem;
   display: flex;
   flex-direction: column;
@@ -6965,7 +6954,7 @@ body.is-resizing {
 
 .net-ice--down {
   opacity: 0.5;
-  border-color: #333;
+  border-color: var(--net-ice-down);
   background: transparent;
 }
 
@@ -6978,7 +6967,7 @@ body.is-resizing {
 
 .net-ice-glyph {
   font-size: 1rem;
-  color: #ff7b8f;
+  color: var(--net-ice-ink);
 }
 
 .net-ice-name {
@@ -6996,14 +6985,14 @@ body.is-resizing {
 .net-ice-bar {
   height: 4px;
   border-radius: 2px;
-  background: #2a1119;
+  background: var(--net-ice-track);
   overflow: hidden;
 }
 
 .net-ice-bar > span {
   display: block;
   height: 100%;
-  background: linear-gradient(90deg, #ff5470, #ffa07a);
+  background: linear-gradient(90deg, var(--net-ice-bar-from), var(--net-ice-bar-to));
 }
 
 .net-ice-effect,
@@ -7027,7 +7016,7 @@ body.is-resizing {
 }
 
 .net-ice-gm {
-  border-color: #7a3d18;
+  border-color: var(--net-gm-line);
 }
 
 .net-deck-slot {
@@ -7036,13 +7025,13 @@ body.is-resizing {
   align-items: center;
   gap: 0.35rem;
   padding: 0.3rem 0.45rem;
-  border: 1px solid #123c48;
+  border: 1px solid var(--net-line-dim);
   border-radius: 5px;
 }
 
 .net-deck-slot--rezzed {
-  border-color: #1f8fa8;
-  background: rgba(31, 143, 168, 0.12);
+  border-color: var(--net-rezzed);
+  background: var(--net-rezzed-bg);
 }
 
 .net-deck-name {
@@ -7051,7 +7040,7 @@ body.is-resizing {
 
 .net-deck-class {
   font-size: 0.75rem;
-  color: #9fe6f7;
+  color: var(--net-ink);
 }
 
 .net-deck-slot > .small-button {
@@ -7067,12 +7056,12 @@ body.is-resizing {
   align-items: center;
   gap: 0.4rem;
   flex-wrap: wrap;
-  color: #ffb38a;
+  color: var(--net-glue);
 }
 
 .net-virus-form,
 .net-virus-list {
-  border-top: 1px solid #123c48;
+  border-top: 1px solid var(--net-line-dim);
   padding-top: 0.5rem;
 }
 
@@ -7100,10 +7089,10 @@ body.is-resizing {
   bottom: 1rem;
   z-index: 325;
   width: min(320px, 100vw - 32px);
-  border: 1px solid #1c5f72;
+  border: 1px solid var(--net-line);
   border-radius: 6px;
   background: var(--bg-panel);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+  box-shadow: var(--shadow-md);
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
@@ -7119,6 +7108,9 @@ body.is-resizing {
 .net-point-title {
   flex: 1;
   min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
   font-weight: 600;
 }
 
@@ -7130,7 +7122,7 @@ body.is-resizing {
 }
 
 .net-point-jack {
-  border-top: 1px solid #123c48;
+  border-top: 1px solid var(--net-line-dim);
   padding-top: 0.45rem;
 }
 
@@ -7139,7 +7131,7 @@ body.is-resizing {
 /* Karta strefy pożycza całą geometrię od karty gniazda z 26b — różni się samą
    ramką, bo to jest ostrzeżenie, a nie terminal. */
 .net-point-panel[aria-label^='Strefa broniona'] {
-  border-color: #7a5312;
+  border-color: var(--net-zone-line);
 }
 
 /* Lista przepustek bywa długa (scena z dziesięcioma figurami), więc dostaje
@@ -7160,7 +7152,7 @@ body.is-resizing {
 .net-node-devices {
   margin: 0.35rem 0 0.1rem 1.4rem;
   padding-left: 0.5rem;
-  border-left: 2px solid #2c6f80;
+  border-left: 2px solid var(--net-line-branch);
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
@@ -7173,7 +7165,7 @@ body.is-resizing {
   font-size: 0.75rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #9fe6f7;
+  color: var(--net-ink);
 }
 
 .net-node-list {
@@ -7191,7 +7183,7 @@ body.is-resizing {
   align-items: center;
   gap: 0.35rem;
   padding: 0.25rem 0.4rem;
-  border: 1px solid #123c48;
+  border: 1px solid var(--net-line-dim);
   border-radius: 5px;
 }
 
@@ -7228,7 +7220,7 @@ body.is-resizing {
   flex-direction: column;
   gap: 0.3rem;
   padding: 0.3rem 0 0.1rem 0.6rem;
-  border-left: 2px solid #2c6f80;
+  border-left: 2px solid var(--net-line-branch);
 }
 
 .net-floor-device {

@@ -14,52 +14,16 @@
    `border` gdziekolwiek niżej: rowek robi `gap`, a ścięty narożnik `clip-path`.
    ========================================================================== */
 
-:root {
-  /* Noc: ten sam arkusz w negatywie. Czerwień rozjaśniona, bo #CC2316 na
-     czerni gaśnie i belki przestają być czytelne. */
-  --cp-red: #e0301f;
-  --cp-red-deep: #7e1810;
-  --cp-paper: #171514;
-  --cp-ink: #f1ece4;
-  --cp-ink-dim: #9a9187;
-  --cp-bar: #050505;
-  --cp-bar-ink: #ffffff;
-  --cp-back: #0b0a0a;
-  --cp-focus: #2b211a;
-  --cp-hover: #221c17;
-  --cp-notch: 10px;
-  --cp-gutter: 3px;
-  --font-cp: 'Jost', 'Segoe UI', system-ui, sans-serif;
-  --font-cp-cond: 'Oswald', 'Jost', 'Segoe UI', sans-serif;
-}
+/* Tokeny `--cp-*` mieszkają w `theme.css` (etap 27e) razem z resztą motywu.
 
-:root[data-theme='day'] {
-  /* Dzień: wydrukowana kartka, kolory dokładnie z arkusza. */
-  --cp-red: #cc2316;
-  --cp-red-deep: #a81c11;
-  --cp-paper: #ffffff;
-  --cp-ink: #100e0d;
-  --cp-ink-dim: #6a625c;
-  --cp-bar: #000000;
-  --cp-bar-ink: #ffffff;
-  --cp-back: #ede8df;
-  --cp-focus: #fdf3cf;
-  --cp-hover: #f6f1e6;
-}
-
-/* Zakładki „Walka", „Ekwipunek" i „Biografia" trzymają jeszcze stare, ciemne
-   komponenty (dostaną wygląd karty w 27b/27c). Żeby nie świeciły czernią na
-   białym oknie, w trybie dziennym podmieniamy im paletę na miejscu — to te
-   same nazwy zmiennych, tylko przesłonięte wewnątrz okna karty. */
+   Zakładki „Walka", „Ekwipunek" i „Biografia" trzymały do 27e własną, ciemną
+   paletę podmienianą na miejscu w trybie dziennym. Ta łata jest już zbędna:
+   `--bg`, `--text` i reszta chromu przestawiają się globalnie, więc okno karty
+   dostaje dzień z tego samego źródła co pasek boczny. Zostało samo
+   `color-scheme` — kontrolki natywne (pole liczbowe, pasek przewijania)
+   czytają je z najbliższego przodka, a nie z tokenu. */
 :root[data-theme='day'] .sheet-window {
   color-scheme: light;
-  --bg: #efeae1;
-  --bg-panel: #ffffff;
-  --bg-topbar: #e6e0d5;
-  --border: #c9c1b4;
-  --text: #14120f;
-  --text-dim: #6a625c;
-  --accent: #cc2316;
 }
 
 /* ===== Okno ===== */
@@ -81,7 +45,7 @@
     0 100%,
     0 22px
   );
-  box-shadow: 0 18px 50px rgb(0 0 0 / 60%);
+  box-shadow: var(--shadow-sheet);
   font-family: var(--font-cp);
   color: var(--cp-ink);
 }
@@ -97,7 +61,7 @@
   border-radius: 0;
   width: 1.7rem;
   height: 1.7rem;
-  outline: 2px solid #fff;
+  outline: 2px solid var(--cp-on-red);
 }
 
 .sheet-title {
@@ -115,7 +79,7 @@
   font-size: 1.05rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #fff;
+  color: var(--cp-on-red);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -125,25 +89,25 @@
   font-size: 0.78rem;
   font-variant-caps: all-small-caps;
   letter-spacing: 0.08em;
-  color: rgb(255 255 255 / 78%);
+  color: var(--cp-on-red-dim);
   white-space: nowrap;
 }
 
 .sheet-window .sheet-save {
-  color: rgb(255 255 255 / 85%);
+  color: var(--cp-on-red-soft);
 }
 
 .sheet-window .sheet-save--error {
-  color: #fff;
+  color: var(--cp-on-red);
   font-weight: 700;
 }
 
 .sheet-window .sheet-close {
-  color: rgb(255 255 255 / 85%);
+  color: var(--cp-on-red-soft);
 }
 
 .sheet-window .sheet-close:hover {
-  color: #fff;
+  color: var(--cp-on-red);
 }
 
 .sheet-tabs {
@@ -160,16 +124,16 @@
   font-size: 0.76rem;
   letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: rgb(255 255 255 / 62%);
+  color: var(--cp-on-red-faint);
   border-bottom: 3px solid transparent;
 }
 
 .sheet-window .sheet-tab:hover {
-  color: #fff;
+  color: var(--cp-on-red);
 }
 
 .sheet-window .sheet-tab--active {
-  color: #fff;
+  color: var(--cp-on-red);
   border-bottom-color: var(--cp-red);
 }
 
@@ -186,11 +150,11 @@
 .sheet-window .sheet-issues {
   background: var(--cp-red-deep);
   border-top: none;
-  color: #fff;
+  color: var(--cp-on-red);
 }
 
 .sheet-window .sheet-issues .auth-error {
-  color: #fff;
+  color: var(--cp-on-red);
 }
 
 /* ===== Prymitywy arkusza ===== */
@@ -266,7 +230,7 @@
 /* Czerwony przypis z arkusza („−2 do wszystkich akcji…"). */
 .cp-note {
   background: var(--cp-red);
-  color: #fff;
+  color: var(--cp-on-red);
   font-variant-caps: all-small-caps;
   font-weight: 700;
   font-size: 0.78rem;
@@ -284,7 +248,7 @@
 /* Mały czerwony kwadracik „z" rozdzielający wartość bieżącą od maksymalnej. */
 .cp-of {
   background: var(--cp-red);
-  color: #fff;
+  color: var(--cp-on-red);
   font-size: 0.6rem;
   line-height: 1;
   padding: 0.15rem 0.28rem;
@@ -419,8 +383,8 @@
 .cp-portrait-upload {
   position: absolute;
   inset: auto 0 0 0;
-  background: rgb(0 0 0 / 62%);
-  color: #fff;
+  background: var(--cp-portrait-veil);
+  color: var(--cp-on-red);
   font-variant-caps: all-small-caps;
   letter-spacing: 0.06em;
   font-size: 0.8rem;
@@ -476,7 +440,7 @@
 
 .cp-rank input {
   width: 1.9rem;
-  color: #fff;
+  color: var(--cp-on-red);
   font-weight: 700;
 }
 
@@ -727,7 +691,7 @@
 .sheet-window .cp-section {
   margin: 0.2rem 0 0;
   background: var(--cp-red);
-  color: #fff;
+  color: var(--cp-on-red);
   font-family: var(--font-cp-cond);
   font-weight: 700;
   font-size: 0.8rem;
@@ -1132,7 +1096,7 @@
 
 .cp-alert {
   background: var(--cp-red);
-  color: #fff;
+  color: var(--cp-on-red);
   padding: 0.25rem 0.45rem;
   font-size: 0.8rem;
   line-height: 1.3;
@@ -1147,7 +1111,7 @@
 }
 
 .cp-alert button {
-  background: #fff;
+  background: var(--cp-on-red);
   color: var(--cp-red-deep);
   border: none;
   cursor: pointer;
@@ -1159,7 +1123,7 @@
 }
 
 .cp-alert button:hover {
-  background: #ffe9e6;
+  background: var(--cp-alert-btn-hover);
 }
 
 /* ============================================================================
@@ -1266,7 +1230,7 @@
 .cp-lifepath-person .character-delete:hover,
 .cp-lifepath-enemy .character-delete:hover {
   background: var(--cp-red);
-  color: #fff;
+  color: var(--cp-on-red);
 }
 
 /* ============================================================================
@@ -1407,7 +1371,7 @@
 
 .cp-body-unplaced {
   background: var(--cp-red);
-  color: #fff;
+  color: var(--cp-on-red);
   font-size: 0.78rem;
   line-height: 1.35;
   margin: 0;

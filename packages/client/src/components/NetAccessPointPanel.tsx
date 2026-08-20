@@ -13,6 +13,7 @@ import { useNetStore } from '../stores/netStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { netErrorText } from '../netErrors.js';
+import { IconJackPlug } from './UiIcons.js';
 
 /**
  * Karta punktu dostępu (etap 26b) — otwiera się klikiem w gniazdo na mapie.
@@ -100,7 +101,9 @@ export function NetAccessPointPanel() {
   return (
     <section className="net-point-panel" aria-label={`Punkt dostępu: ${point.name}`}>
       <div className="net-point-head">
-        <span className="net-point-title">🔌 {point.name}</span>
+        <span className="net-point-title">
+          <IconJackPlug /> {point.name}
+        </span>
         <button
           type="button"
           className="sheet-close"

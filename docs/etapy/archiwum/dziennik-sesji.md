@@ -7,6 +7,74 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 16.08 (druga tego dnia) — etap 26f (samodzielne systemy obronne i broniona strefa)
+
+**Rozdział 11 podręcznika jest domknięty.** Netrunning ma komplet: 26a katalog i architektura,
+26b run, 26c walka w Sieci, 26d węzły kontrolne, 26e Demony, 26f podłoga, która gryzie sama.
+
+**Trzy decyzje MG z 16.08 niosą cały etap.** (1) **Percepcja rzuca się sama** — serwer robi rzut,
+gdy figura kończy ruch w promieniu 4 m od strefy, **raz na postać**, a MG ma obok przycisk
+„Odsłoń graczom". Jeden rzut, nie „aż wyjdzie": bez tego gracz cofałby się o metr i wracał.
+(2) **Strefa odpala się na każdego**, ale ma **imienną listę przepustek** — „Cel bez odpowiedniej
+przepustki lub identyfikatora" (s. 213) jest zdaniem o ochronie budynku, a nie o mechanice, więc
+kto ma identyfikator, mówi MG odhaczając figury. (3) **Stanowisko strzela na wejście w strefę**
+i dodatkowo na przycisk MG — to jedyne miejsce, w którym 26f odchodzi od linii „nic nie rusza się
+samo" z 26c i 26e, i odchodzi świadomie: kolumna „Standardowa aktywacja" mówi wprost, kiedy
+wieżyczka strzela.
+
+**Efekt systemu obronnego przestał być prozą.** Osiemnaście wierszy z s. 213–216 nosiło mechanikę
+wyłącznie w opisie („zadaje 6k6 obrażeń ciału", „udany Test Atletyki o PT 15 lub Przewróci się",
+„redukując RUCH o 2k6 punktów") — to wystarcza MG czytającemu kartę i jest bezużyteczne dla
+pułapki, która ma odpalić się sama. `CpredNetDefenseEffects` stanął obok `CpredNetProgramEffects`
+z 26c, a jego pole `check` jest **dosłownie** kształtem wymuszonego testu z 16h
+(`Omit<CpredAmmoCheck, 'failure'>`), więc `cpredCheckBase` rzuca pułapką dokładnie tak, jak rzuca
+gazem — statystom też. **Parser wyciągnął 13 z 18 wierszy**; pięć bez efektu to pięć dronów
+i kamera, czyli dokładnie te, które efektu nie mają.
+
+**Strefa jest trzecim prostokątem na mapie** (osłona 16c, kwadrat dymu 16h, strefa 26f), więc
+„czy ten punkt jest w środku" i „czy ta trasa go przecięła" wyprowadziły się do wspólnego
+`shared/src/rects.ts`, a `covers.ts` zostało cienką delegacją — API i testy 16c bez zmian.
+Wyzwalanie wisi na **tym samym haku**, na którym 26b powiesiło awaryjne odłączenie
+(`performTokenMove`, po zatwierdzeniu upuszczenia), i czyta **całą łamaną z 16e**, nie sam odcinek
+początek–koniec: kto przebiegł przez zelektryfikowaną podłogę, ten po niej przebiegł.
+
+**Obrażenia idą tam, gdzie idą obrażenia.** Z `damage:apply` wyszła `applyDamageToFigure` —
+cała ścieżka etapu 15, tylko bez karty — i strefa woła ją tak samo jak MG klikający „Zastosuj":
+pancerz bierze swoje, tabela ran krytycznych się rzuca, a „Cofnij" zabiera wszystko naraz.
+Obrażenia „bezpośrednio w PW" (krwawy rój) idą drugą, też cudzą drogą — `applyForcedFailureToSheet`
+z 16h. Jedyny nowy kawałek to `noAblation`, a i ten jest flagą, którą guma nosi od 16g.
+
+**Dwie rzeczy poza planem, obie wymuszone przez dane.** (1) Kara do RUCH-u ze strefy nie mogła
+jechać na „Unieruchomionym", bo ten **blokuje ruch całkiem** — doszedł status **„Spowolniony"**
+(ikona „Sticky boot" Delapouite z game-icons, CC BY) z liczbą w `statusData` i modyfikatorem
+wchodzącym do budżetu ruchu pod własną nazwą („Pancerz −2 · Spowolniony −7"). Naklejka schodzi
+**sama**, gdy figura zejdzie z obszaru — „dopóki cel … nie opuści bronionego obszaru" (s. 216).
+(2) Wpis „Obrona Sieci" wpisany ręcznie dostawał od 26d prefiks `demon.` **także wtedy, gdy był
+wieżyczką**; od 26f rozstrzyga `defenseKind`, więc katalog importowany i ręczny mówią jednym
+językiem — a to zaczęło mieć znaczenie, bo strefa wskazuje wpis po identyfikatorze.
+
+**Zweryfikowane:** 1245 testów w `shared` (12 w `zones.test.ts` + 19 w `netdefense.test.ts`
+
+- 2 w `compendium.test.ts`), 720 na serwerze (19 nowych w `zones.test.ts` na żywych gniazdach,
+  4 przebiegi bez migotania), `tsc --noEmit` czysty w trzech pakietach, ESLint, Prettier i
+  `pnpm build` bez uwag. **Migracja `20260816093838_stage26f_defense_zones`** — nowa tabela
+  `DefenseZone` (prostokąt, wpis, uzbrojenie, ukrycie, PW, przepustki, `sightings`, żeton
+  stanowiska i opcjonalne wiązanie z węzłem kontrolnym).
+
+**Odklikane u MG** w kampanii „Poligon bojowy": narzędzie **⚠** w pasku mapy z trzema trybami
+(prostokąt / karta / gumka), selektorem 21 systemów i przełącznikiem ukrycia; **przeciągnięcie
+strefy** („Podłoga elektryczna · 20/20 PW · uzbrojona", bursztynowy prostokąt ze szrafirunkiem);
+**karta strefy** z opisem złożonym z danych („20 PW · PT 13 Elektronika i zabezpieczenia · 1 min ·
+Percepcja PT 17, by zauważyć · 6k6 w ciało · powtórnie na koniec każdej Tury"), wyzwalaczem,
+suwakiem PW, wyborem stanowiska, listą przepustek i czwórką przycisków; **wejście w strefę**
+(karta obrażeń „Przebicie: 18 obr. · rzut 18 · bez pancerza · PW 25 → 7 · **system: Podłoga
+elektryczna · wejście na obszar** · Bez ran → Poważnie ranny" plus linia „Wejście na broniony
+obszar — Automatyczna wieżyczka: 6k6 = 18"); **„Cofnij"** przywracające 25/25; wiersz **EFEKT**
+na karcie wpisu w kompendium i **pełny formularz efektu** w edytorze MG. Konsola czysta.
+
+**Poligon zostaje przygotowany pod stół** — patrz „Od czego zacząć": na „Strzelnicy" leży teraz
+uzbrojona i ukryta „Podłoga elektryczna". Żeton wieżyczki wrócił na swoje miejsce z pełnymi PW.
+
 ### Sesja 16.08 — etap 26e (Demony)
 
 **Etap 26e został przed rozpoczęciem podzielony na dwa** (decyzja MG). Pierwotny zakres niósł

@@ -320,6 +320,14 @@ const EXPLORED_ERASE_ALPHA = 1 - DIM_COVER_ALPHA;
  * is never covered, so their brush has nothing to erase — it is drawn as a
  * tint instead, and only strongly enough to be unmistakable while planning.
  */
+/**
+ * Sylwetka gniazda Sieci na mapie (etapy 26b i 27e). Plik leży w `public/`
+ * klienta, więc URL jest stały w dev i po zbudowaniu; barwi go `tint`, bo
+ * game-icons rysuje białą sylwetkę. Atrybucja: `public/icons/ATTRIBUTION.md`.
+ */
+const NET_POINT_GLYPH_URL = '/icons/jack-plug.svg';
+/** Bok ikony w pikselach sceny przy zoomie 1:1 — tyle, ile miało emoji. */
+const NET_POINT_GLYPH_PX = 22;
 const OVERRIDE_GM_HIDE_ALPHA = 0.5;
 const OVERRIDE_GM_REVEAL_ALPHA = 0.22;
 const OVERRIDE_GM_REVEAL_COLOR = 0x38bdf8;
@@ -3841,12 +3849,25 @@ export class MapRenderer {
         node = new Container();
         ring = new Graphics();
         node.addChild(ring);
-        const glyph = new Text({
-          text: '🔌',
-          style: { fontFamily: 'system-ui, sans-serif', fontSize: 20 },
-        });
+        // Sylwetka jacka zamiast emoji (etap 27e): 🔌 ma na Windowsie domyślną
+        // prezentację tekstową, więc Pixi rysowało czarny, płaski znak, który na
+        // ciemnej mapie znikał. Sprite ładuje się asynchronicznie — do czasu
+        // wczytania stoi pusty, dokładnie jak naklejki statusów na żetonach.
+        const glyph = new Sprite();
         glyph.anchor.set(0.5, 0.5);
+        glyph.setSize(NET_POINT_GLYPH_PX, NET_POINT_GLYPH_PX);
+        glyph.tint = 0xd6f5ff;
         node.addChild(glyph);
+        Assets.load<Texture>(NET_POINT_GLYPH_URL)
+          .then((texture) => {
+            if (glyph.destroyed) return;
+            glyph.texture = texture;
+            glyph.setSize(NET_POINT_GLYPH_PX, NET_POINT_GLYPH_PX);
+          })
+          .catch(() => {
+            // Brak pliku nie może zabrać gniazda z mapy — zostaje sam pierścień
+            // i podpis, które i tak niosą „tu jest punkt dostępu".
+          });
         const label = new Text({
           text: point.name,
           style: {
@@ -3880,8 +3901,11 @@ export class MapRenderer {
         ring = node.children[0] as Graphics;
       }
       node.position.set(point.x, point.y);
-      const glyph = node.children[1];
-      if (glyph) glyph.scale.set(k);
+      const glyph = node.children[1] as Sprite | undefined;
+      // `setSize` zapisuje się w skali sprite'a, więc mnożenie przez `k` musi iść
+      // przez rozmiar, a nie przez `scale` — inaczej pierwsze przełączenie zoomu
+      // składa ikonę do zera.
+      if (glyph) glyph.setSize(NET_POINT_GLYPH_PX * k, NET_POINT_GLYPH_PX * k);
       // The handle is the glyph, so its reach follows the glyph's screen size.
       (node.hitArea as Circle).radius = 13 * k;
       const label = node.children[2] as Text | undefined;

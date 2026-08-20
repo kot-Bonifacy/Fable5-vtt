@@ -20,6 +20,7 @@ import {
   stopBots,
 } from '../socket.js';
 import { AttackRow } from './AttackControls.js';
+import { IconNewspaper } from './UiIcons.js';
 import { OpposedRow } from './GrappleControls.js';
 import { DamageApplyControls, DamageRow } from './DamageControls.js';
 import { useAuthStore } from '../stores/authStore.js';
@@ -310,9 +311,13 @@ function HandoutRow({ message, entry }: { message: ChatMessageView; entry: Hando
     <div className="chat-message chat-handout">
       <div className="chat-message-meta">
         <span className="chat-message-author">
-          {entry.kind === 'screamsheet'
-            ? `📰 Screamsheet od ${message.authorName}`
-            : `${entry.hasImage ? '🖼' : '📄'} Handout od ${message.authorName}`}
+          {entry.kind === 'screamsheet' ? (
+            <>
+              <IconNewspaper /> Screamsheet od {message.authorName}
+            </>
+          ) : (
+            `${entry.hasImage ? '🖼️' : '📄'} Handout od ${message.authorName}`
+          )}
         </span>
         {message.recipientName ? (
           <span className="chat-message-whisper-target">do {message.recipientName}</span>

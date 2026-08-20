@@ -21,6 +21,7 @@ import {
   normalizeScreamsheetMeta,
 } from '@vtt/shared';
 import { ApiError, apiUpload } from '../api.js';
+import { IconNewspaper } from './UiIcons.js';
 import {
   cancelScreamsheet,
   deleteHandout,
@@ -69,10 +70,16 @@ function excerpt(handout: HandoutView): string {
   return text.length <= 90 ? text : `${text.slice(0, 90)}…`;
 }
 
-/** Jedna ikona na rodzaj — 📰 odróżnia gazetę od kartki na liście i w oknie. */
-function handoutIcon(handout: HandoutView): string {
-  if (handout.kind === 'screamsheet') return '📰 ';
-  return handout.image ? '🖼 ' : '📄 ';
+/**
+ * Jedna ikona na rodzaj — gazeta odróżnia się od kartki na liście i w oknie.
+ *
+ * Gazeta jedzie jako SVG (etap 27e): 📰 rysowało się na Windowsie jednobarwnie
+ * i nie przyjmowało koloru motywu. Pozostałe dwa emoji zostają — mają domyślną
+ * prezentację emoji, więc są kolorowe w obu trybach.
+ */
+function HandoutIcon({ handout }: { handout: HandoutView }) {
+  if (handout.kind === 'screamsheet') return <IconNewspaper />;
+  return <span className="handout-row-glyph">{handout.image ? '🖼️' : '📄'}</span>;
 }
 
 // ---------------------------------------------------------------------------
@@ -107,7 +114,7 @@ function PlayerList() {
               title="Otwórz handout"
             >
               <span className="handout-row-title">
-                {handoutIcon(handout)}
+                <HandoutIcon handout={handout} />
                 {handout.title}
               </span>
               <span className="handout-row-excerpt">{excerpt(handout)}</span>
@@ -207,7 +214,7 @@ function GmRow({ handout, onEdit }: { handout: HandoutView; onEdit: () => void }
           title="Podejrzyj handout"
         >
           <span className="handout-row-title">
-            {handoutIcon(handout)}
+            <HandoutIcon handout={handout} />
             {handout.title}
           </span>
           <span className="handout-row-excerpt">{excerpt(handout)}</span>
@@ -574,7 +581,7 @@ export function HandoutPanel() {
           onClick={() => setEditing('new-screamsheet')}
           title="Zajawka w stylu brukowca Night City — treść może napisać model"
         >
-          📰 + Screamsheet
+          <IconNewspaper /> + Screamsheet
         </button>
       </div>
       <ul className="handout-list">
