@@ -46,10 +46,29 @@ interface HudStoreState {
   form: HudFormKind | null;
   /** Is the left rail folded away? Remembered like the side panel's width. */
   collapsed: boolean;
+  /**
+   * Fire mode chosen per weapon (stage 27h), keyed `tokenId:weaponRowId`.
+   *
+   * A preference, not a fact about the world: it never travels, and it is not
+   * written to `localStorage` either — „do końca sesji" is what the GM asked
+   * for, and a burst remembered from last week is a magazine emptied by
+   * surprise. An absent entry means the weapon's first mode.
+   *
+   * Keyed by token as well as by row, because two figures can carry the same
+   * sheet row (a statist duplicated on the map) and one of them switching to
+   * suppressive must not re-aim the other.
+   */
+  fireModes: Record<string, CpredAttackMode>;
 
   setActiveWeapon: (weapon: HudActiveWeapon | null) => void;
   setForm: (form: HudFormKind | null) => void;
   setCollapsed: (collapsed: boolean) => void;
+  setFireMode: (tokenId: string, weaponRowId: string, mode: CpredAttackMode) => void;
+}
+
+/** The one place that spells the composite key, so nobody spells it twice. */
+export function fireModeKey(tokenId: string, weaponRowId: string): string {
+  return `${tokenId}:${weaponRowId}`;
 }
 
 const COLLAPSED_KEY = 'vtt.hudCollapsed';
@@ -67,8 +86,13 @@ export const useHudStore = create<HudStoreState>((set) => ({
   activeWeapon: null,
   form: null,
   collapsed: readCollapsed(),
+  fireModes: {},
 
   setActiveWeapon: (activeWeapon) => set({ activeWeapon }),
+  setFireMode: (tokenId, weaponRowId, mode) =>
+    set((state) => ({
+      fireModes: { ...state.fireModes, [fireModeKey(tokenId, weaponRowId)]: mode },
+    })),
   setForm: (form) => set({ form }),
   setCollapsed: (collapsed) => {
     try {

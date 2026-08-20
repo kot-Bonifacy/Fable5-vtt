@@ -2,7 +2,9 @@ import type {
   CombatView,
   CombatantView,
   CpredCharacterData,
+  CpredHotbarGroup,
   CpredHotbarSlot,
+  CpredHotbarWeaponGroup,
   TokenView,
   TurnBudgetView,
 } from '@vtt/shared';
@@ -11,7 +13,10 @@ import {
   CPRED_ACTION_HOLD,
   CPRED_ACTION_STABILIZE,
   ROLE_GM,
+  cpredHotbarGroups,
   cpredMoveBudgetFromSheet,
+  cpredNextWeaponMode,
+  cpredWeaponModeSlot,
   effectiveArmorSp,
   empFromHumanity,
   hotbarSlotsFor,
@@ -32,7 +37,7 @@ import { useCharacterStore } from './stores/characterStore.js';
 import { useChatStore } from './stores/chatStore.js';
 import { useCombatStore } from './stores/combatStore.js';
 import { useCompendiumStore } from './stores/compendiumStore.js';
-import { useHudStore, type HudActiveWeapon } from './stores/hudStore.js';
+import { fireModeKey, useHudStore, type HudActiveWeapon } from './stores/hudStore.js';
 import { useSelectionStore } from './stores/selectionStore.js';
 import { useTokenStore } from './stores/tokenStore.js';
 
@@ -77,6 +82,12 @@ export interface HudContext {
   /** Budget of that row; the tracker fills it once the fight has started. */
   turn: TurnBudgetView | null;
   slots: CpredHotbarSlot[];
+  /**
+   * The same slots as the panel draws them (stage 27h): one row per weapon,
+   * fire modes folded inside. This is what carries the number keys — `slots`
+   * keeps its own for nobody, because the bot reads that list by id.
+   */
+  groups: CpredHotbarGroup[];
   /** Portrait numbers; null for a token with neither sheet nor profile. */
   vitals: HudVitals | null;
   /**
@@ -203,6 +214,7 @@ export function hudContextFor(tokenId: string | null): HudContext {
       combatant: null,
       turn: null,
       slots: [],
+      groups: [],
       vitals: null,
       acting: false,
       isGm,
@@ -242,6 +254,8 @@ export function hudContextFor(tokenId: string | null): HudContext {
     grapple: combatant?.grapple?.role ?? null,
   });
 
+  const shown = refusal ? slots.map((slot) => ({ ...slot, disabled: refusal })) : slots;
+
   return {
     token,
     combatant,
@@ -250,7 +264,8 @@ export function hudContextFor(tokenId: string | null): HudContext {
     acting: combatant !== null && combat?.activeCombatantId === combatant.id,
     // „Not your turn" outranks everything the slot itself had to say: the
     // reason on the button has to be the one that will actually refuse it.
-    slots: refusal ? slots.map((slot) => ({ ...slot, disabled: refusal })) : slots,
+    slots: shown,
+    groups: cpredHotbarGroups(shown),
     isGm,
     isActiveTurn: refusal === null,
     refusal,
@@ -437,6 +452,43 @@ export function activateSlot(slot: CpredHotbarSlot, tokenId: string): void {
   void spendCombatAction(slot.actionId, undefined, combatantId).then((ack) => {
     if (!ack.ok) chat.addNote(combatErrorText(ack.error));
   });
+}
+
+/**
+ * Which mode a weapon row is set to right now (stage 27h).
+ *
+ * Reads the store rather than taking it as an argument, because three callers
+ * ask the same question — the panel, the number keys and the mode-cycling key —
+ * and a mode passed around by hand is a mode that ends up stale in one of them.
+ */
+export function hudWeaponSlot(group: CpredHotbarWeaponGroup, tokenId: string) {
+  const remembered = useHudStore.getState().fireModes[fireModeKey(tokenId, group.weaponRowId)];
+  return cpredWeaponModeSlot(group, remembered);
+}
+
+/** Runs a group: a weapon in its current mode, or the single thing inside. */
+export function activateGroup(group: CpredHotbarGroup, tokenId: string): void {
+  const slot = group.kind === 'weapon' ? hudWeaponSlot(group, tokenId) : group.slot;
+  activateSlot(slot, tokenId);
+}
+
+/**
+ * Moves a weapon to its next fire mode (Shift + the weapon's number key).
+ *
+ * Switching *while holding the gun* re-arms it, so the crosshair and the panel
+ * never disagree about what the next click will fire. Switching a weapon that
+ * is not in hand only remembers the choice — pressing Shift+2 to line up a
+ * burst must not quietly take the pistol out of somebody's hands.
+ */
+export function cycleGroupMode(group: CpredHotbarGroup, tokenId: string): void {
+  if (group.kind !== 'weapon' || group.modes.length < 2) return;
+  const current = hudWeaponSlot(group, tokenId);
+  const next = cpredNextWeaponMode(group, current.mode);
+  useHudStore.getState().setFireMode(tokenId, group.weaponRowId, next);
+  const armed = useHudStore.getState().activeWeapon;
+  if (armed?.tokenId === tokenId && armed.weaponRowId === group.weaponRowId) {
+    activateSlot(cpredWeaponModeSlot(group, next), tokenId);
+  }
 }
 
 /**

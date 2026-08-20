@@ -473,3 +473,115 @@ function actionSlotRefusal(
   }
   return actionRefusal;
 }
+
+/**
+ * One weapon on the panel, with the fire modes it offers folded inside it
+ * (stage 27h decision, 20.08).
+ *
+ * The flat list above stays exactly as it was, because it has a second reader:
+ * a bot's turn (`bot-combat.ts`) hands the model „Arasaka Minami 10 · seria" as
+ * one choice, and splitting weapon from mode there would mean asking a language
+ * model two questions where one will do. What changed is the *panel*: three
+ * boxes for one gun made a character with a single weapon look like a character
+ * with three, and burned three of the nine number keys on it.
+ */
+export interface CpredHotbarWeaponGroup {
+  kind: 'weapon';
+  /** Stable across mode changes — the weapon is what this row *is*. */
+  id: string;
+  label: string;
+  icon: CpredSlotIcon;
+  weaponRowId: string;
+  /** The weapon's modes, in the order `cpredFireModes` gives them. Never empty. */
+  modes: CpredHotbarWeaponSlot[];
+  key: string | null;
+}
+
+/** A reload or a catalogue action — one thing, one box, nothing to fold. */
+export interface CpredHotbarSingleGroup {
+  kind: 'reload' | 'action';
+  id: string;
+  label: string;
+  icon: CpredSlotIcon;
+  slot: CpredHotbarSlot;
+  key: string | null;
+}
+
+export type CpredHotbarGroup = CpredHotbarWeaponGroup | CpredHotbarSingleGroup;
+
+/**
+ * Folds the flat bar into what the panel draws.
+ *
+ * The number keys move here with it, and that is the point: they now count
+ * *weapons*, so a character with one gun presses `1` whatever it is loaded
+ * with, and `2` is the next real thing rather than the same gun again.
+ *
+ * Order is preserved — weapons in sheet order, then the reloads, then the
+ * catalogue — because that is the order a turn is played in and the one the
+ * keys were worth having in stage 16f.
+ */
+export function cpredHotbarGroups(slots: readonly CpredHotbarSlot[]): CpredHotbarGroup[] {
+  const groups: CpredHotbarGroup[] = [];
+  const weaponIndex = new Map<string, CpredHotbarWeaponGroup>();
+
+  for (const slot of slots) {
+    if (slot.kind === 'weapon') {
+      const existing = weaponIndex.get(slot.weaponRowId);
+      if (existing) {
+        existing.modes.push(slot);
+        continue;
+      }
+      const group: CpredHotbarWeaponGroup = {
+        kind: 'weapon',
+        id: `weapon:${slot.weaponRowId}`,
+        label: slot.label,
+        icon: slot.icon,
+        weaponRowId: slot.weaponRowId,
+        modes: [slot],
+        key: null,
+      };
+      weaponIndex.set(slot.weaponRowId, group);
+      groups.push(group);
+      continue;
+    }
+    groups.push({
+      kind: slot.kind,
+      id: slot.id,
+      label: slot.label,
+      icon: slot.icon,
+      slot,
+      key: null,
+    });
+  }
+
+  return groups.map((group, index) => ({
+    ...group,
+    key: index < CPRED_HOTBAR_KEYED_SLOTS ? String(index + 1) : null,
+  }));
+}
+
+/**
+ * The mode a weapon group should fire in, given what the user last picked.
+ *
+ * Falls back to the first mode rather than to `'single'`: the list comes from
+ * the weapon itself, and a homebrew row that somehow offers no single shot must
+ * still end up with something in hand. A remembered mode the weapon no longer
+ * has — the round in the magazine changed, the row was edited — is dropped
+ * rather than honoured.
+ */
+export function cpredWeaponModeSlot(
+  group: CpredHotbarWeaponGroup,
+  remembered: CpredAttackMode | undefined,
+): CpredHotbarWeaponSlot {
+  const wanted = remembered ? group.modes.find((slot) => slot.mode === remembered) : undefined;
+  return wanted ?? group.modes[0]!;
+}
+
+/** The next mode in the ring, for the „cycle this weapon's fire mode" key. */
+export function cpredNextWeaponMode(
+  group: CpredHotbarWeaponGroup,
+  current: CpredAttackMode,
+): CpredAttackMode {
+  const index = group.modes.findIndex((slot) => slot.mode === current);
+  return group.modes[(index + 1) % group.modes.length]!.mode;
+}

@@ -34,6 +34,10 @@ wszczepu" (nie do utrzymania w motywie dziennym) i czysty Foundry bez klimatu.
       kolorem
 - [x] **Sekcje „BROŃ” i „AKCJE”** — dziś dziewięć identycznych wierszy; broń, przeładowanie
       i akcja katalogowa mają być trzema różnymi rzeczami na pierwszy rzut oka
+- [x] **Jedna broń = jeden kafel** (dopisane 20.08 po uwadze MG) — tryby ognia schodzą do
+      rozwijanej szuflady pod kaflem, wzorem Argona; przeładowanie przenosi się do „AKCJI”,
+      bo jest Akcją, a nie bronią. Klawisze 1–9 numerują odtąd **bronie**, `Shift`+cyfra
+      przewija tryb
 - [x] **Ikony slotów** — typ broni (pistolet, rewolwer, SMG, karabin, strzelba, snajperka, łuk,
       broń biała, pięści, granat, ciężka) i akcje (apteczka, chwyt, klepsydra, wstanie, bieg)
       jako SVG z game-icons (CC BY 3.0) w `public/icons/hud/`, z atrybucją w `ATTRIBUTION.md`.
@@ -56,6 +60,12 @@ wszczepu" (nie do utrzymania w motywie dziennym) i czysty Foundry bez klimatu.
 
 ## Jak wyszło (2026-08-20)
 
+- **Jedna broń = jeden kafel** (decyzja MG z 20.08, po pierwszej wersji panelu). Pistolet
+  maszynowy dawał trzy wiersze i zjadał trzy z dziewięciu klawiszy; teraz tryby są w szufladzie
+  pod kaflem, a wybrany tryb pamięta się per broń do końca sesji (`hudStore.fireModes`, nigdy
+  `localStorage`). Płaska lista `hotbarSlotsFor` **została nietknięta**, bo czyta ją też tura
+  bota (`bot-combat.ts`), gdzie „broń · tryb" jako jeden wybór jest zaletą; panel dostał
+  `cpredHotbarGroups` — czystą funkcję w `shared`, z testami.
 - Ikona slotu jest decyzją **reguł, nie komponentu**: `cpredWeaponIcon` w `shared` czyta typ
   broni z kompendium (`ResolvedWeapon.typeId`, dołożony w tym etapie), potem umiejętność, a na
   końcu to, co broń *robi*. Panel dostaje nazwę rzeczy (`CpredSlotIcon`) i rysuje plik.

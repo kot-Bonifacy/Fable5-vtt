@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   CPRED_HOTBAR_KEYED_SLOTS,
   cpredFireModes,
+  cpredHotbarGroups,
+  cpredNextWeaponMode,
   cpredWeaponIcon,
+  cpredWeaponModeSlot,
   cpredWeaponOptions,
   hotbarSlotsFor,
   type CpredHotbarInput,
@@ -313,5 +316,72 @@ describe('cpredWeaponIcon', () => {
       (slot) => slot.kind === 'action' && slot.actionId === CPRED_ACTION_STAND_UP,
     );
     expect(stand?.icon).toBe('stand-up');
+  });
+});
+
+/**
+ * Stage 27h, second pass: the panel draws one box per weapon and folds the fire
+ * modes inside it, while the flat list keeps its shape for the bot's turn.
+ */
+describe('cpredHotbarGroups', () => {
+  it('folds one weapon into one row whatever it can do', () => {
+    const groups = cpredHotbarGroups(hotbarSlotsFor(input({ resolve: () => smg })));
+    const weapons = groups.filter((group) => group.kind === 'weapon');
+    expect(weapons).toHaveLength(1);
+    expect(weapons[0]!.kind === 'weapon' && weapons[0]!.modes.map((slot) => slot.mode)).toEqual([
+      'single',
+      'autofire',
+      'suppressive',
+    ]);
+  });
+
+  it('numbers weapons rather than modes, so one gun is one key', () => {
+    const groups = cpredHotbarGroups(hotbarSlotsFor(input({ resolve: () => smg })));
+    expect(groups[0]!.key).toBe('1');
+    // Before grouping the same bar spent keys 1–3 on that single weapon.
+    expect(groups[1]!.kind).toBe('reload');
+    expect(groups[1]!.key).toBe('2');
+  });
+
+  it('keeps a reload and an Action as rows of their own', () => {
+    const groups = cpredHotbarGroups(hotbarSlotsFor(input({ resolve: () => pistol })));
+    const kinds = groups.map((group) => group.kind);
+    expect(kinds).toContain('reload');
+    expect(kinds).toContain('action');
+    const action = groups.find((group) => group.kind === 'action');
+    expect(action?.kind === 'action' && action.slot.kind).toBe('action');
+  });
+
+  it('picks the remembered mode, and forgets one the weapon no longer has', () => {
+    const groups = cpredHotbarGroups(hotbarSlotsFor(input({ resolve: () => smg })));
+    const weapon = groups[0]!;
+    if (weapon.kind !== 'weapon') throw new Error('pierwsza grupa nie jest bronią');
+    expect(cpredWeaponModeSlot(weapon, 'suppressive').mode).toBe('suppressive');
+    expect(cpredWeaponModeSlot(weapon, undefined).mode).toBe('single');
+
+    const plain = cpredHotbarGroups(hotbarSlotsFor(input({ resolve: () => pistol })))[0]!;
+    if (plain.kind !== 'weapon') throw new Error('pierwsza grupa nie jest bronią');
+    expect(cpredWeaponModeSlot(plain, 'autofire').mode).toBe('single');
+  });
+
+  it('cycles the modes in a ring', () => {
+    const groups = cpredHotbarGroups(hotbarSlotsFor(input({ resolve: () => smg })));
+    const weapon = groups[0]!;
+    if (weapon.kind !== 'weapon') throw new Error('pierwsza grupa nie jest bronią');
+    expect(cpredNextWeaponMode(weapon, 'single')).toBe('autofire');
+    expect(cpredNextWeaponMode(weapon, 'autofire')).toBe('suppressive');
+    expect(cpredNextWeaponMode(weapon, 'suppressive')).toBe('single');
+
+    const plain = cpredHotbarGroups(hotbarSlotsFor(input({ resolve: () => pistol })))[0]!;
+    if (plain.kind !== 'weapon') throw new Error('pierwsza grupa nie jest bronią');
+    // A weapon with one mode cycles to itself rather than off the end.
+    expect(cpredNextWeaponMode(plain, 'single')).toBe('single');
+  });
+
+  it('leaves the flat list — the one a bot reads — untouched', () => {
+    const slots = hotbarSlotsFor(input({ resolve: () => smg }));
+    const weaponSlots = slots.filter((slot) => slot.kind === 'weapon');
+    expect(weaponSlots).toHaveLength(3);
+    expect(weaponSlots.every((slot) => slot.id.startsWith('weapon:'))).toBe(true);
   });
 });

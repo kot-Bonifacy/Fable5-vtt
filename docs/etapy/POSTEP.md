@@ -721,11 +721,13 @@ w `public/icons/ATTRIBUTION.md`) rysowanych **maską CSS**, nie `<img>`: kafel m
 jeden zamiast czterech. Trzy ikony wymienione po obejrzeniu: `sbed/rifle` i `sbed/shotgun`
 wyglądają jak naboje, a `sbed/pulse` jak wiatraczek.
 
-**Zweryfikowane:** 1257 testów w `shared` (9 nowych: ikony broni i waga statusu), 723 na
-serwerze bez zmian, 5 w kliencie (strażnik motywu), `tsc --noEmit` czysty, ESLint, Prettier,
-`vite build` bez uwag.
+**Zweryfikowane:** 1263 testy w `shared` (15 nowych: ikony broni, waga statusu, grupowanie
+kafli), 723 na serwerze bez zmian, 5 w kliencie (strażnik motywu), `tsc --noEmit` czysty,
+ESLint, Prettier, `vite build` bez uwag.
 
-**Odklikane w przeglądarce** (Poligon bojowy, konto MG, oba motywy): karta tożsamości z rolą
+**Odklikane w przeglądarce** (Poligon bojowy, konto MG, oba motywy): szuflada trybów ognia
+(otwarcie strzałką, wybór „Ogień ciągły", zamknięcie i przezbrojenie), **prawdziwy `Shift`+1
+z klawiatury** (pojedynczy → seria → zapora, z re-armem trzymanej broni), karta tożsamości z rolą
 i chipami SP 11 · RUCH 5 · EMP 5, pasek PW w czterech stanach ran z widocznym progiem poważnej
 rany, **liczba obrażeń wypływająca z paska** (−9 czerwone, +25 zielone — sprawdzone przez DOM,
 bo animacja trwa 1,6 s), kapsułki statusów w trzech wagach, sekcje „BROŃ"/„AKCJE" z ikonami,
@@ -739,6 +741,27 @@ patrzył na to oczami gracza. (2) **Prawdziwa tura** — baner i budżet railowy
 wstrzykniętym lokalnie do `combatStore`, bo na Poligonie tryb turowy jest wyłączony; kod czyta
 te same pola co pasek górny. (3) **Formularze w panelu** (Zwarcie, Wstrzymanie, Ustabilizowanie)
 — komponenty są te same co w zakładce „Walka" i nie były w tym etapie ruszane.
+
+**Druga decyzja MG tego dnia: jedna broń = jeden kafel.** Pierwsza wersja panelu dziedziczyła
+z 16f slot **na tryb ognia**, więc pistolet maszynowy zajmował trzy wiersze („Arasaka Minami 10"
+trzy razy) i trzy z dziewięciu klawiszy. Sprawdzone, jak robią to inni: **Cyberpunk RED Core
+w Foundry** trzyma broń jako jeden wpis, a autofire i zaporę wybiera się w oknie rzutu;
+**Argon Combat HUD** chowa warianty jednej pozycji w rozwijanej szufladzie; **Token Action HUD**
+w podmenu. Wszyscy zgodnie: tryb to stan broni, nie druga pozycja na pasku. Wybrany wariant
+(decyzja MG): **szuflada pod kaflem**, `Shift`+cyfra przewija tryb, wybór **pamiętany per broń
+do końca sesji**.
+
+**Płaska lista slotów została nietknięta — i to jest sedno tej zmiany.** `hotbarSlotsFor` czyta
+też **tura bota** (`packages/server/src/realtime/bot-combat.ts`), gdzie „Arasaka Minami 10 · seria"
+jako jeden wybór jest zaletą: model dostaje broń i tryb w jednym identyfikatorze. Panel dostał
+więc osobne, czyste `cpredHotbarGroups` w `shared` (+ `cpredWeaponModeSlot`, `cpredNextWeaponMode`,
+6 testów), a serwer i boty nie zmieniły się ani o linijkę. **Numery klawiszy przeniosły się na
+grupy** — 1–9 liczy teraz bronie, więc postać z jednym pistoletem ma `1` i koniec.
+Przeładowanie zjechało do sekcji „AKCJE", bo jest Akcją, a nie bronią.
+
+**Pułapka klawiaturowa:** `Shift`+1 przychodzi jako `event.key === '!'` (i inaczej na innym
+układzie), więc cyfry czyta się teraz z `event.code` (`Digit1`–`Digit9`). Stary warunek
+`event.key >= '1' && <= '9'` przy wciśniętym Shifcie nie łapał nic.
 
 **Dwie poprawki zgłoszone przez MG w trakcie sesji, obie o dolny róg panelu.** Kubek do kości
 (`position: fixed`, lewy dolny róg okna) siedzi **na** tym panelu i po poszerzeniu paska zaczął

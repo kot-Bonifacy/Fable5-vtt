@@ -5040,42 +5040,89 @@ body.is-resizing {
   gap: 0.25rem;
 }
 
-/* One row per slot rather than a grid of squares: a weapon is „Ciężki pistolet
-   — seria", and a name that long is unreadable in a box. The icon keeps the
-   left edge and the number key the right, so the eye finds the picture first
-   and the hand finds the key without reading anything. */
-.hud-slot {
+/* Kafel i jego szuflada trybów stoją jeden pod drugim i dzielą numer klawisza. */
+.hud-slot-stack {
+  display: flex;
+  flex-direction: column;
+}
+
+/* One row per weapon rather than per fire mode (decyzja MG z 20.08): trzy boxy
+   na jeden pistolet maszynowy kazały czytać tę samą nazwę trzy razy i zjadały
+   trzy z dziewięciu klawiszy. Ramka i tło siedzą na wierszu, nie na przycisku,
+   bo wiersz bywa dwoma przyciskami — akcją i strzałką od trybów — a wyglądać
+   ma jak jeden kafel. */
+.hud-slot-row {
   position: relative;
   display: flex;
-  align-items: center;
-  gap: 0.45rem;
+  align-items: stretch;
   width: 100%;
-  padding: 0.32rem 0.4rem;
-  text-align: left;
   font-size: 0.74rem;
   color: var(--text);
   background: var(--bg-inset-2);
   border: 1px solid var(--border);
   border-radius: 4px;
   border-left: 2px solid var(--border-strong);
+}
+
+/* The icon keeps the left edge and the number key the right, so the eye finds
+   the picture first and the hand finds the key without reading anything. */
+.hud-slot {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.32rem 0.4rem;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
   cursor: pointer;
+}
+
+/* Strzałka jest osobnym przyciskiem, bo przycisk w przycisku to nie HTML.
+   Kreska po lewej mówi, że to inna czynność niż strzał. */
+.hud-slot-drawer {
+  flex: none;
+  width: 1.5rem;
+  padding: 0;
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  background: transparent;
+  border: none;
+  border-left: 1px solid var(--border);
+  border-radius: 0 3px 3px 0;
+  cursor: pointer;
+  transition: transform 150ms ease-out;
+}
+
+.hud-slot-drawer:hover {
+  color: var(--text);
+}
+
+.hud-slot-drawer--open {
+  transform: rotate(180deg);
+  color: var(--text);
 }
 
 /* The left edge carries the kind: a gun, a magazine, a manoeuvre. Three
    colours the eye sorts without a legend. */
-.hud-slot--weapon {
+.hud-slot-row.hud-slot--weapon {
   border-left-color: var(--accent);
 }
 
-.hud-slot--reload {
+.hud-slot-row.hud-slot--reload {
   border-left-color: var(--info);
 }
 
-.hud-slot--action {
+.hud-slot-row.hud-slot--action {
   border-left-color: var(--border-strong);
 }
 
-.hud-slot:hover {
+.hud-slot-row:hover {
   border-color: var(--border-strong);
   background: var(--bg-inset);
 }
@@ -5099,6 +5146,19 @@ body.is-resizing {
   align-items: center;
   gap: 0.25rem;
   min-width: 0;
+}
+
+/* Druga linia kafla: magazynek i — tylko przy broni, która ma wybór — tryb,
+   w którym stoi. */
+.hud-slot-line--sub {
+  gap: 0.4rem;
+}
+
+.hud-slot-mode {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--warn);
 }
 
 .hud-slot-label {
@@ -5228,8 +5288,10 @@ body.is-resizing {
 }
 
 /* Armed reads as the crosshair's own colour, because that is what it does to
-   the pointer — the two marks are one state seen in two places. */
-.hud-slot--armed {
+   the pointer — the two marks are one state seen in two places. Od 27h dotyczy
+   **broni**, nie trybu: kafel jest jeden, więc przełączenie na serię nie może
+   zgasić podświetlenia trzymanej w ręku broni. */
+.hud-slot-row.hud-slot--armed {
   border-color: var(--accent);
   border-left-color: var(--accent);
   background: rgb(var(--accent-rgb) / 16%);
@@ -5242,10 +5304,80 @@ body.is-resizing {
 
 /* Refused, not removed: a greyed slot with a reason in its tooltip is how the
    player learns the rule; a slot that vanished would just look like a bug. */
-.hud-slot--refused {
+.hud-slot-row.hud-slot--refused {
   opacity: 0.4;
-  cursor: not-allowed;
   border-left-color: var(--border);
+}
+
+.hud-slot--refused .hud-slot {
+  cursor: not-allowed;
+}
+
+/* ---- Szuflada trybów ognia ---- */
+
+/* Wzór z Argona: warianty jednej pozycji rozwijają się **pod** nią, zamiast
+   mnożyć kafle. Wcięcie po lewej trzyma je wizualnie przy broni, do której
+   należą. */
+.hud-modes {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 1px 0 0 1.15rem;
+  padding: 0;
+  list-style: none;
+  animation: hud-modes-open 130ms ease-out;
+}
+
+@keyframes hud-modes-open {
+  from {
+    opacity: 0;
+    transform: translateY(-0.15rem);
+  }
+}
+
+.hud-mode {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.22rem 0.45rem;
+  text-align: left;
+  font: inherit;
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.hud-mode:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+.hud-mode--current {
+  color: var(--text);
+  border-color: var(--accent);
+  background: rgb(var(--accent-rgb) / 12%);
+}
+
+.hud-mode--refused {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.hud-mode-name {
+  flex: 1;
+}
+
+/* Dziesięć naboi to cały powód, dla którego seria jest decyzją, a nie
+   ustawieniem domyślnym — cena stoi więc przy nazwie, nie w podpowiedzi. */
+.hud-mode-cost {
+  flex: none;
+  font-size: 0.6rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--warn);
 }
 
 .hud-armed {

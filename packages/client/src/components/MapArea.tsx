@@ -68,9 +68,10 @@ import {
 } from '../socket.js';
 import { loadAttackAtToken } from '../attack-targeting.js';
 import {
-  activateSlot,
+  activateGroup,
   attackWithActiveWeapon,
   currentHudContext,
+  cycleGroupMode,
   hudFocusTokenId,
   hudTurnRefusal,
   nextSteerableToken,
@@ -1436,10 +1437,19 @@ export function MapArea() {
       if (typing && event.key !== 'Escape') return;
       // Combat keys first: they are the ones pressed every round, and none of
       // them collides with a map tool (`1`–`9`, Tab and E were all free).
-      if (event.key >= '1' && event.key <= '9') {
+      //
+      // Read off `code` rather than `key` since stage 27h: Shift+1 arrives as
+      // „!" (and as something else again on another layout), so the digit has
+      // to be identified by the *place* on the keyboard. Shift cycles that
+      // weapon's fire mode, a bare digit uses it.
+      const digit = /^Digit([1-9])$/.exec(event.code)?.[1];
+      if (digit) {
         const context = currentHudContext();
-        const slot = context.slots.find((entry) => entry.key === event.key);
-        if (slot && context.token) activateSlot(slot, context.token.id);
+        const group = context.groups.find((entry) => entry.key === digit);
+        if (group && context.token) {
+          if (event.shiftKey) cycleGroupMode(group, context.token.id);
+          else activateGroup(group, context.token.id);
+        }
         return;
       }
       if (event.key === 'Tab') {

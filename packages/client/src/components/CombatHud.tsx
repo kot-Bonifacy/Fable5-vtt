@@ -1,7 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { CpredHotbarSlot } from '@vtt/shared';
-import { CPRED_WOUND_LABELS, ROLE_GM, cpredStatusSeverity, woundStateFromHp } from '@vtt/shared';
+import type {
+  CpredAttackMode,
+  CpredHotbarSlot,
+  CpredHotbarWeaponGroup,
+  CpredHotbarWeaponSlot,
+} from '@vtt/shared';
 import {
+  CPRED_ATTACK_MODE_LABELS,
+  CPRED_BURST_AMMO_COST,
+  CPRED_WOUND_LABELS,
+  ROLE_GM,
+  cpredStatusSeverity,
+  cpredWeaponModeSlot,
+  woundStateFromHp,
+} from '@vtt/shared';
+import {
+  activateGroup,
   activateSlot,
   currentHudContext,
   hudSignature,
@@ -12,7 +26,7 @@ import { useAuthStore } from '../stores/authStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useCombatStore } from '../stores/combatStore.js';
 import { useCompendiumStore } from '../stores/compendiumStore.js';
-import { activeWeaponOf, useHudStore } from '../stores/hudStore.js';
+import { activeWeaponOf, fireModeKey, useHudStore } from '../stores/hudStore.js';
 import { useRollStore } from '../stores/rollStore.js';
 import { useSelectionStore } from '../stores/selectionStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
@@ -160,49 +174,132 @@ function Magazine({ ammo }: { ammo: { current: number; max: number } }) {
   );
 }
 
-/** One box on the bar. Its whole state — armed, refused, keyed — is in props. */
+/**
+ * One box on the bar — a weapon in the mode it is set to, a reload, or an
+ * Action. Its whole state (armed, refused, keyed) is in props.
+ *
+ * A weapon that offers more than a plain shot grows a second button: the arrow
+ * opens the drawer of its fire modes. Two buttons rather than one, because a
+ * button inside a button is not HTML — the shared frame is drawn by the row
+ * around them, so it still reads as a single tile.
+ */
 function HotbarSlot({
   slot,
+  keyLabel,
   armed,
+  modeCount,
+  drawerOpen,
   onActivate,
+  onToggleDrawer,
 }: {
   slot: CpredHotbarSlot;
+  keyLabel: string | null;
   armed: boolean;
+  modeCount: number;
+  drawerOpen: boolean;
   onActivate: () => void;
+  onToggleDrawer?: () => void;
 }) {
   const ammo = slot.kind === 'action' ? null : slot.ammo;
+  const hasDrawer = modeCount > 1 && onToggleDrawer !== undefined;
   return (
-    <button
-      type="button"
-      className={`hud-slot hud-slot--${slot.kind}${armed ? ' hud-slot--armed' : ''}${
+    <div
+      className={`hud-slot-row hud-slot--${slot.kind}${armed ? ' hud-slot--armed' : ''}${
         slot.disabled ? ' hud-slot--refused' : ''
       }`}
-      // The refusal is the tooltip when there is one: „why is this grey" has to
-      // be answerable without asking the GM.
-      title={
-        slot.disabled
-          ? `${slot.label} — ${slot.disabled}`
-          : `${slot.hint}${slot.key ? ` (${slot.key})` : ''}`
-      }
-      onClick={onActivate}
     >
-      <HudIcon name={slot.icon} className="hud-slot-icon" />
-      <span className="hud-slot-body">
-        <span className="hud-slot-line">
-          <span className="hud-slot-label">{slot.label}</span>
-          {slot.kind === 'weapon' && slot.modeLabel && (
-            <span className="hud-chip hud-chip--mode">{slot.modeLabel}</span>
-          )}
-          {/* What is loaded (stage 16g): „Strzelba · Śrut" is a different attack
-              from „Strzelba · Zapalająca", and the slot has to say which. */}
-          {slot.kind === 'weapon' && slot.ammoLabel && (
-            <span className="hud-chip hud-chip--ammo">{slot.ammoLabel}</span>
-          )}
+      <button
+        type="button"
+        className="hud-slot"
+        // The refusal is the tooltip when there is one: „why is this grey" has
+        // to be answerable without asking the GM.
+        title={
+          slot.disabled
+            ? `${slot.label} — ${slot.disabled}`
+            : `${slot.hint}${keyLabel ? ` (${keyLabel})` : ''}`
+        }
+        onClick={onActivate}
+      >
+        <HudIcon name={slot.icon} className="hud-slot-icon" />
+        <span className="hud-slot-body">
+          <span className="hud-slot-line">
+            <span className="hud-slot-label">{slot.label}</span>
+            {/* What is loaded (stage 16g): „Strzelba · Śrut" is a different
+                attack from „Strzelba · Zapalająca", and the slot has to say
+                which. The *mode* moved down to the magazine line in 27h — it
+                changes several times a fight, the round almost never does. */}
+            {slot.kind === 'weapon' && slot.ammoLabel && (
+              <span className="hud-chip hud-chip--ammo">{slot.ammoLabel}</span>
+            )}
+          </span>
+          <span className="hud-slot-line hud-slot-line--sub">
+            {ammo && <Magazine ammo={ammo} />}
+            {/* Only a weapon with a choice says which choice is live: on a
+                pistol „pojedynczy" is not information, it is noise. */}
+            {hasDrawer && (
+              <span className="hud-slot-mode">
+                {slot.kind === 'weapon' ? (slot.modeLabel ?? 'pojedynczy') : ''}
+              </span>
+            )}
+          </span>
         </span>
-        {ammo && <Magazine ammo={ammo} />}
-      </span>
-      {slot.key && <span className="hud-slot-key">{slot.key}</span>}
-    </button>
+        {keyLabel && <span className="hud-slot-key">{keyLabel}</span>}
+      </button>
+      {hasDrawer && (
+        <button
+          type="button"
+          className={`hud-slot-drawer${drawerOpen ? ' hud-slot-drawer--open' : ''}`}
+          title={`Tryb ognia${keyLabel ? ` (Shift+${keyLabel})` : ''}`}
+          aria-label="Tryb ognia"
+          aria-expanded={drawerOpen}
+          onClick={onToggleDrawer}
+        >
+          ▾
+        </button>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The fire modes of one weapon, opened under its tile (the shape Argon's HUD
+ * uses for variants of one item).
+ *
+ * Full names here, not the chips from the tile: this is the place where the
+ * choice is *made*, and „Ogień zaporowy" is what the rulebook calls it. The
+ * price in rounds is spelled out for the same reason — ten of them is the whole
+ * reason a burst is a decision rather than a default.
+ */
+function ModeDrawer({
+  group,
+  current,
+  onPick,
+}: {
+  group: CpredHotbarWeaponGroup;
+  current: CpredAttackMode;
+  onPick: (slot: CpredHotbarWeaponSlot) => void;
+}) {
+  return (
+    <ul className="hud-modes">
+      {group.modes.map((slot) => (
+        <li key={slot.id}>
+          <button
+            type="button"
+            className={`hud-mode${slot.mode === current ? ' hud-mode--current' : ''}${
+              slot.disabled ? ' hud-mode--refused' : ''
+            }`}
+            title={slot.disabled ?? slot.hint}
+            aria-current={slot.mode === current}
+            onClick={() => onPick(slot)}
+          >
+            <span className="hud-mode-name">{CPRED_ATTACK_MODE_LABELS[slot.mode]}</span>
+            {slot.mode !== 'single' && (
+              <span className="hud-mode-cost">{CPRED_BURST_AMMO_COST} naboi</span>
+            )}
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -339,8 +436,16 @@ export function CombatHud() {
 
   const token = context.token;
   const armed = activeWeaponOf(activeWeapon, token?.id ?? null);
-  const weapons = context.slots.filter((slot) => slot.kind !== 'action');
-  const actions = context.slots.filter((slot) => slot.kind === 'action');
+  const fireModes = useHudStore((s) => s.fireModes);
+  const setFireMode = useHudStore((s) => s.setFireMode);
+  // Which weapon has its fire modes open; one at a time, and never across a
+  // change of figure.
+  const [openDrawer, setOpenDrawer] = useState<string | null>(null);
+  const weapons = context.groups.filter((group) => group.kind === 'weapon');
+  // A reload is not a weapon: it is an Action that happens to name one, and
+  // leaving it among the guns is what made a character with a single pistol
+  // look like a character with an arsenal.
+  const actions = context.groups.filter((group) => group.kind !== 'weapon');
 
   /**
    * A freshly selected figure comes with its first weapon in hand.
@@ -378,9 +483,11 @@ export function CombatHud() {
     });
   }, [token, context.steering, context.slots]);
 
-  // A form belongs to the figure it was opened for; switching figures closes it.
+  // A form belongs to the figure it was opened for; switching figures closes it,
+  // and so does an open drawer of fire modes.
   useEffect(() => {
     useHudStore.getState().setForm(null);
+    setOpenDrawer(null);
   }, [focusId]);
 
   // Collapsed is a strip, not a hole: the portrait and a sliver of the health
@@ -507,14 +614,48 @@ export function CombatHud() {
             <section className="hud-group">
               <h3 className="hud-group-title">Broń</h3>
               <div className="hud-slots">
-                {weapons.map((slot) => (
-                  <HotbarSlot
-                    key={slot.id}
-                    slot={slot}
-                    armed={armed?.slotId === slot.id}
-                    onActivate={() => activateSlot(slot, token.id)}
-                  />
-                ))}
+                {weapons.map((group) => {
+                  if (group.kind !== 'weapon') return null;
+                  const slot = cpredWeaponModeSlot(
+                    group,
+                    fireModes[fireModeKey(token.id, group.weaponRowId)],
+                  );
+                  return (
+                    <div key={group.id} className="hud-slot-stack">
+                      <HotbarSlot
+                        slot={slot}
+                        keyLabel={group.key}
+                        // Armed is about the *weapon*: the tile is one box now,
+                        // so highlighting it per mode would leave the gun in
+                        // hand looking unarmed after a switch to burst.
+                        armed={armed?.weaponRowId === group.weaponRowId}
+                        modeCount={group.modes.length}
+                        drawerOpen={openDrawer === group.id}
+                        onActivate={() => {
+                          setOpenDrawer(null);
+                          activateGroup(group, token.id);
+                        }}
+                        onToggleDrawer={() =>
+                          setOpenDrawer((current) => (current === group.id ? null : group.id))
+                        }
+                      />
+                      {openDrawer === group.id && (
+                        <ModeDrawer
+                          group={group}
+                          current={slot.mode}
+                          onPick={(picked: CpredHotbarWeaponSlot) => {
+                            setFireMode(token.id, group.weaponRowId, picked.mode);
+                            setOpenDrawer(null);
+                            // Picking a mode also takes the weapon in hand: at
+                            // the table „przełączam na serię" and „strzelam
+                            // serią" are one sentence.
+                            activateSlot(picked, token.id);
+                          }}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </section>
           )}
@@ -523,12 +664,15 @@ export function CombatHud() {
             <section className="hud-group">
               <h3 className="hud-group-title">Akcje</h3>
               <div className="hud-slots">
-                {actions.map((slot) => (
+                {actions.map((group) => (
                   <HotbarSlot
-                    key={slot.id}
-                    slot={slot}
+                    key={group.id}
+                    slot={group.slot}
+                    keyLabel={group.key}
                     armed={false}
-                    onActivate={() => activateSlot(slot, token.id)}
+                    modeCount={1}
+                    drawerOpen={false}
+                    onActivate={() => activateGroup(group, token.id)}
                   />
                 ))}
               </div>
@@ -575,8 +719,8 @@ export function CombatHud() {
           )}
 
           <p className="hud-keys">
-            <kbd>1</kbd>–<kbd>9</kbd> sloty · <kbd>Tab</kbd> następna postać · <kbd>E</kbd> koniec
-            tury · <kbd>Esc</kbd> cofa
+            <kbd>1</kbd>–<kbd>9</kbd> sloty · <kbd>Shift</kbd>+cyfra tryb ognia · <kbd>Tab</kbd>{' '}
+            następna postać · <kbd>E</kbd> koniec tury · <kbd>Esc</kbd> cofa
           </p>
         </>
       )}
