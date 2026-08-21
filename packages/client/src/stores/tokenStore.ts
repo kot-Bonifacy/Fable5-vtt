@@ -39,7 +39,8 @@ interface TokenStoreState {
   /** Merges an upsert; absent keys (e.g. `hp` in public payloads) keep old values. */
   upsert: (token: TokenView, viewer: TokenViewerCtx) => void;
   remove: (tokenId: string) => void;
-  applyMove: (tokenId: string, x: number, y: number) => void;
+  /** `facing` is sent only on the drop (stage 27j); undefined leaves it alone. */
+  applyMove: (tokenId: string, x: number, y: number, facing?: number | null) => void;
   setStatuses: (statuses: StatusDefinition[]) => void;
   setPlacement: (placement: TokenPlacement | null) => void;
 }
@@ -78,11 +79,12 @@ export const useTokenStore = create<TokenStoreState>((set) => ({
       return { tokens };
     }),
 
-  applyMove: (tokenId, x, y) =>
+  applyMove: (tokenId, x, y, facing) =>
     set((state) => {
       const token = state.tokens[tokenId];
       if (!token) return state;
-      return { tokens: { ...state.tokens, [tokenId]: { ...token, x, y } } };
+      const moved = { ...token, x, y, ...(facing === undefined ? {} : { facing }) };
+      return { tokens: { ...state.tokens, [tokenId]: moved } };
     }),
 
   setStatuses: (statuses) => set({ statuses }),

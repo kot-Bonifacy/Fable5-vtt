@@ -738,7 +738,7 @@ export function connectSocket(userId: string): Socket {
       return;
     }
     if (viewingScene(broadcast.sceneId)) {
-      tokens().applyMove(broadcast.tokenId, broadcast.x, broadcast.y);
+      tokens().applyMove(broadcast.tokenId, broadcast.x, broadcast.y, broadcast.facing);
     }
   });
 
@@ -2344,6 +2344,16 @@ export function sendTokenMove(
     ...(path && path.length > 0 ? { path: path.slice(0, TOKEN_PATH_MAX_POINTS) } : {}),
   });
 }
+
+/**
+ * Turns a figure by hand (stage 27j) — the rotation knob on the selection ring.
+ *
+ * Its own event rather than a `token:update` patch for the reason the light
+ * switch has one: `token:update` is GM-only, and which way you are looking is a
+ * decision the person holding the figure makes during a fight.
+ */
+export const setTokenFacing = (tokenId: string, facing: number | null) =>
+  emitSceneAck<TokenView>('token:facing', { tokenId, facing });
 
 /** Requests the previous page of chat history (infinite scroll upwards). */
 export function loadOlderHistory(): void {

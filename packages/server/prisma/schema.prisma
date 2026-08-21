@@ -435,6 +435,17 @@ model Token {
    */
   combatProfile String?
   /**
+   * Which way the figure is turned, in degrees clockwise from up (stage 27j).
+   * Null = never turned; the map then draws no wedge at all rather than
+   * pretending everybody starts facing north.
+   *
+   * Written by walking (the last leg of a drop sets it) and by shooting (the
+   * attacker turns to the target), and overridable by hand — a sentry has to be
+   * able to watch a corridor nobody has walked yet. Cyberpunk RED has no facing
+   * rules, so nothing in the engine reads this column.
+   */
+  facing Float?
+  /**
    * How far this token sees, in metres (stage 18a). Null = as far as the walls
    * allow, which is the right default for a lit scene; darkness and light
    * sources arrive in 18b.

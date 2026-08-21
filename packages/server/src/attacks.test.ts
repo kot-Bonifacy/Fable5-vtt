@@ -16,6 +16,7 @@ import type {
   SocketAck,
   StateSyncPayload,
   TokenView,
+  TokenUpsertBroadcast,
 } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
@@ -346,6 +347,20 @@ describe('ranged combat from the map', () => {
     expect(far.system.dv).toBe(24); // band 26–50
     expect(far.system.metres).toBe(44);
     expect(far.detail).toContain('PT 24');
+  });
+
+  /**
+   * Stage 27j: shooting turns the shooter. The shooter stands at (0, 0) and
+   * every target of this suite is placed due east of it, so „he is looking at
+   * what he fired at" has exactly one right answer.
+   */
+  it('turns the shooter to face what they shot at', async () => {
+    await placeTargetAt(6);
+    const turned = waitFor<TokenUpsertBroadcast>(gm, 'token:upsert');
+    await attack({ weaponRowId: 'w-pistol', mode: 'single' });
+    const upsert = await turned;
+    expect(upsert.token.id).toBe(shooterTokenId);
+    expect(upsert.token.facing).toBe(90);
   });
 
   it('measures the distance itself — a client-sent one is ignored', async () => {

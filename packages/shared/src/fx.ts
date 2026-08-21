@@ -28,7 +28,9 @@ export type MapFxSound =
   | 'explosion'
   | 'gas'
   | 'zap'
-  | 'reload';
+  | 'reload'
+  /** A single footstep (stage 27j) — the only sound the map makes on its own. */
+  | 'step';
 
 /** Every sound, for the client's preloader and the settings' audition button. */
 export const MAP_FX_SOUNDS: readonly MapFxSound[] = [
@@ -44,6 +46,7 @@ export const MAP_FX_SOUNDS: readonly MapFxSound[] = [
   'gas',
   'zap',
   'reload',
+  'step',
 ];
 
 /** How the line between muzzle and target is drawn. */

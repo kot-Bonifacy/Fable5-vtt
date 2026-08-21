@@ -7,6 +7,105 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 20.08 (druga tego dnia) — etap 27h (panel postaci: HUD, który wygląda jak gra)
+
+**Etap dopisany w tej sesji, na wniosek MG:** „lewy panel wygląda bardzo generycznie, jak arkusz
+kalkulacyjny", „walka i przemieszczanie tokenów wygląda zbyt prymitywnie". Praca rozbita na dwa
+etapy — **27h** (panel, ta sesja) i **27i** (mapa: tokeny, efekty walki, ruch, SFX). Oba pliki
+w `docs/etapy/`; zdanie „przeprojektowanie układu paneli" z „Poza zakresem" etapu 27f jest tym
+zastąpione.
+
+**Cztery decyzje MG z 20.08.** (1) Kierunek wizualny: **struktura jak Argon Combat HUD z Foundry**
+(portret, sekcje akcji, kafle z ikonami) plus cienka warstwa cyberpunku — ścięty róg, wąski
+neonowy akcent, monospace tylko na liczbach; odrzucony pełny „ekran wszczepu" (nie do utrzymania
+w dziennym motywie). (2) Zakres obejmuje panel, tokeny, efekty walki **i** ruch. (3) Efekty
+mapy: sprite'y z paczek CC0 **plus dźwięki SFX** (27i). (4) Podział na dwie sesje zamiast jednej.
+
+**Największe odkrycie tej sesji dotyczy etapu 27i, nie 27h: walka nie ma na mapie żadnego
+efektu.** `MapRenderer` rysuje marsz, ślad trasy i celownik — i na tym koniec. Strzał, trafienie,
+pudło, wybuch i obrażenia istnieją wyłącznie jako wpis na czacie. To większa dziura niż wygląd
+panelu i dlatego 27i dostał własną sesję zamiast doklejki.
+
+**Ikona slotu jest wiedzą systemową i mieszka w `shared`.** `cpredWeaponIcon` czyta **typ broni
+z kompendium** (do tego doszło `ResolvedWeapon.typeId` obok istniejącego `typeName` — nazwa jest
+do czytania, id do rozgałęziania), potem umiejętność, a na końcu to, co broń robi (wybuchowa →
+granat, rzucana → nóż, biała → miecz). Panel dostaje nazwę **rzeczy** (`CpredSlotIcon`), nie
+ścieżkę pliku, więc podmiana sylwetki nigdy nie jest zmianą w regułach. Dwadzieścia typów broni
+z podręcznika ma mapowanie po ostatnim segmencie id, więc `weapon-type.sample-*` z danych
+publicznych spada na fallback po umiejętności i nie zostaje bez obrazka.
+
+**Błąd znaleziony przy oglądaniu: stany ran malowały się szaro jak „Onieśmielony".**
+`cpredStatusSeverity` wywodzi wagę z `CPRED_STATUS_EFFECTS` — a `seriously-wounded`
+i `mortally-wounded` **nie mają tam wiersza** i mieć nie powinny: nic nie odmawiają, ich kary
+(−2, −4, −6 do RUCH-u) liczy się z Punktów Wytrzymałości. Nazwane więc wprost, w osobnej tabelce
+z komentarzem, i przykryte testem, który pilnuje, że tabela efektów faktycznie ich nie zna.
+
+**Strażnik motywu z 27e zadziałał od razu.** Pierwsze uruchomienie testów przewróciło się na
+`--hud-icon` i `--hud-mag-color` — tokenach ustawianych per element (pierwszy podaje React,
+drugi zmienia się z zawartością magazynka). Dopisane do listy lokalnych, z uzasadnieniem. Żaden
+literał koloru nie wszedł do `styles.css`.
+
+**30 nowych ikon** (`packages/client/public/icons/hud/`, game-icons.net, CC BY 3.0, atrybucja
+w `public/icons/ATTRIBUTION.md`) rysowanych **maską CSS**, nie `<img>`: kafel ma cztery stany
+(zwykły, uzbrojony, odmówiony, pod kursorem), a maska barwi się `currentColor`, więc plik jest
+jeden zamiast czterech. Trzy ikony wymienione po obejrzeniu: `sbed/rifle` i `sbed/shotgun`
+wyglądają jak naboje, a `sbed/pulse` jak wiatraczek.
+
+**Zweryfikowane:** 1263 testy w `shared` (15 nowych: ikony broni, waga statusu, grupowanie
+kafli), 723 na serwerze bez zmian, 5 w kliencie (strażnik motywu), `tsc --noEmit` czysty,
+ESLint, Prettier, `vite build` bez uwag.
+
+**Odklikane w przeglądarce** (Poligon bojowy, konto MG, oba motywy): szuflada trybów ognia
+(otwarcie strzałką, wybór „Ogień ciągły", zamknięcie i przezbrojenie), **prawdziwy `Shift`+1
+z klawiatury** (pojedynczy → seria → zapora, z re-armem trzymanej broni), karta tożsamości z rolą
+i chipami SP 11 · RUCH 5 · EMP 5, pasek PW w czterech stanach ran z widocznym progiem poważnej
+rany, **liczba obrażeń wypływająca z paska** (−9 czerwone, +25 zielone — sprawdzone przez DOM,
+bo animacja trwa 1,6 s), kapsułki statusów w trzech wagach, sekcje „BROŃ"/„AKCJE" z ikonami,
+magazynek jako kreski i jako pasek, kolory „mało" i „pusto", slot uzbrojony, slot odmówiony,
+baner „TURA TEJ FIGURY" z budżetem railowym, statysta bez karty (wieżyczka: portret zastępczy,
+SP z profilu, brak przeładowania), stan pusty i **pasek zwinięty** (portret + pionowy pasek PW).
+
+**Nieodklikane:** (1) **strona gracza** — wszystko oglądane z konta MG; różnica jest wyłącznie
+w danych, które i tak filtruje serwer (`hp` ukryte → „PW ukryte" zamiast paska), ale nikt nie
+patrzył na to oczami gracza. (2) **Prawdziwa tura** — baner i budżet railowy oglądane na stanie
+wstrzykniętym lokalnie do `combatStore`, bo na Poligonie tryb turowy jest wyłączony; kod czyta
+te same pola co pasek górny. (3) **Formularze w panelu** (Zwarcie, Wstrzymanie, Ustabilizowanie)
+— komponenty są te same co w zakładce „Walka" i nie były w tym etapie ruszane.
+
+**Druga decyzja MG tego dnia: jedna broń = jeden kafel.** Pierwsza wersja panelu dziedziczyła
+z 16f slot **na tryb ognia**, więc pistolet maszynowy zajmował trzy wiersze („Arasaka Minami 10"
+trzy razy) i trzy z dziewięciu klawiszy. Sprawdzone, jak robią to inni: **Cyberpunk RED Core
+w Foundry** trzyma broń jako jeden wpis, a autofire i zaporę wybiera się w oknie rzutu;
+**Argon Combat HUD** chowa warianty jednej pozycji w rozwijanej szufladzie; **Token Action HUD**
+w podmenu. Wszyscy zgodnie: tryb to stan broni, nie druga pozycja na pasku. Wybrany wariant
+(decyzja MG): **szuflada pod kaflem**, `Shift`+cyfra przewija tryb, wybór **pamiętany per broń
+do końca sesji**.
+
+**Płaska lista slotów została nietknięta — i to jest sedno tej zmiany.** `hotbarSlotsFor` czyta
+też **tura bota** (`packages/server/src/realtime/bot-combat.ts`), gdzie „Arasaka Minami 10 · seria"
+jako jeden wybór jest zaletą: model dostaje broń i tryb w jednym identyfikatorze. Panel dostał
+więc osobne, czyste `cpredHotbarGroups` w `shared` (+ `cpredWeaponModeSlot`, `cpredNextWeaponMode`,
+6 testów), a serwer i boty nie zmieniły się ani o linijkę. **Numery klawiszy przeniosły się na
+grupy** — 1–9 liczy teraz bronie, więc postać z jednym pistoletem ma `1` i koniec.
+Przeładowanie zjechało do sekcji „AKCJE", bo jest Akcją, a nie bronią.
+
+**Pułapka klawiaturowa:** `Shift`+1 przychodzi jako `event.key === '!'` (i inaczej na innym
+układzie), więc cyfry czyta się teraz z `event.code` (`Digit1`–`Digit9`). Stary warunek
+`event.key >= '1' && <= '9'` przy wciśniętym Shifcie nie łapał nic.
+
+**Dwie poprawki zgłoszone przez MG w trakcie sesji, obie o dolny róg panelu.** Kubek do kości
+(`position: fixed`, lewy dolny róg okna) siedzi **na** tym panelu i po poszerzeniu paska zaczął
+zasłaniać „Tab następna postać"; panel rezerwuje mu teraz 4,6 rem u dołu. Pierwsza wersja
+poprawki zostawiła jednak stopkę przyklejoną do dołu (`margin: auto 0 0` z 16f) i skróty zawisły
+**nad** kubkiem w pustce — stopka idzie więc teraz zaraz po slotach, jak każde inne zdanie
+w panelu, a dół należy do kubka. Kubek nie pamięta pozycji: przeciąganie służy potrząsaniu, a nie
+przestawianiu, więc miejsce trzeba było zostawić po stronie panelu.
+
+**Pułapka na przyszłość:** `await import('/src/stores/…')` z konsoli DevTools daje **inną
+instancję modułu** niż ta, z której renderuje aplikacja (`characters` widziane jako puste, choć
+panel rysował kartę). Do podglądania stanu nadaje się tylko wtedy, gdy zmiana jest widoczna
+w UI — inaczej ogląda się drugą kopię store'a.
+
 ### Sesja 20.08 — etap 27e (motyw dzień/noc dla całej aplikacji)
 
 **Reguła, która niosła cały etap: dzień ubiera chrom, nie fikcję.** Przełączają się paski,

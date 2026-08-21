@@ -2,6 +2,7 @@ import type {
   FogShapeView,
   FogState,
   ScenePoint,
+  TokenFacingPayload,
   SceneView,
   SessionUser,
   TokenCombatProfile,
@@ -20,7 +21,10 @@ import type {
 import {
   ROLE_GM,
   clampTokenPosition,
+  facingFromDelta,
+  facingFromPath,
   isTokenInFog,
+  sanitizeFacing,
   tokenCentre,
   sanitizeTokenHp,
   sanitizeTokenImageUrl,
@@ -117,6 +121,9 @@ export function toTokenView(
     ownerId: token.ownerId,
     hidden: token.hidden,
     statuses: parseStatuses(token.statuses),
+    // Public on purpose (stage 27j): a sentry looking the wrong way is
+    // information the table is meant to be able to use.
+    facing: token.facing,
   };
   if (includePrivate) {
     view.characterId = token.characterId;
@@ -703,6 +710,7 @@ export const tokenUpdateEvent = defineEvent<TokenUpdatePayload, TokenView>({
     if (patch.hidden !== undefined) data.hidden = patch.hidden;
     if (patch.statuses !== undefined) data.statuses = JSON.stringify(patch.statuses);
     if (patch.visionRange !== undefined) data.visionRange = patch.visionRange;
+    if (patch.facing !== undefined) data.facing = patch.facing;
     if (patch.light !== undefined) {
       // Null takes the lamp away by zeroing its reach: „carries nothing" and
       // „carries a lamp of radius zero" must not be two states (see the schema).
@@ -814,6 +822,77 @@ export const tokenDeleteEvent = defineEvent<TokenIdPayload>({
     // The DB cascades the token out of any running fight — push the shorter
     // roster to everyone (killed enemies simply leave the tracker).
     await emitCombatOfScene(deps, campaignId, scene);
+  },
+});
+
+/**
+ * Turns a figure to look at a point (stage 27j) — what shooting does to the one
+ * who fired.
+ *
+ * Called after the card is on the table, never before: an attack that is
+ * refused (no line of fire, an empty magazine, a cover the shooter decided not
+ * to shoot through) must not leave the figure staring at somebody it never
+ * fired at. Silent when the angle is unchanged — a burst of ten is one turn,
+ * not ten broadcasts.
+ */
+export async function turnTokenToward(
+  deps: RealtimeDeps,
+  campaignId: string,
+  scene: Scene,
+  token: Token,
+  aim: ScenePoint,
+): Promise<void> {
+  const centre = tokenCentre(toTokenView(token, false), toGridScene(scene));
+  const facing = facingFromDelta(aim.x - centre.x, aim.y - centre.y);
+  if (facing === null || facing === token.facing) return;
+  const updated = await deps.ctx.prisma.token.update({
+    where: { id: token.id },
+    data: { facing },
+  });
+  await emitTokenUpsert(deps, campaignId, scene, updated);
+}
+
+/**
+ * Turning a figure by hand (stage 27j) — the second token operation a *player*
+ * performs, and it is here for the reason `token:light` is not in
+ * `token:update`: deciding which way you are looking is a tactical choice made
+ * during a fight, and routing it through the GM would turn it into paperwork.
+ *
+ * The automatic facing (walking, shooting) covers the common case; this covers
+ * the one it cannot — a sentry watching a corridor nobody has walked down yet.
+ * A hand-set angle holds until the next *move*, which then overwrites it: the
+ * GM's decision of 21.08, and the honest one, since a figure that walked
+ * backwards while still „facing" the door would be a lie the map told.
+ */
+export const tokenFacingEvent = defineEvent<TokenFacingPayload, TokenView>({
+  name: 'token:facing',
+  handler: async ({ deps, socket, user, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    const { token, scene } = await requireCampaignToken(
+      deps.ctx.prisma,
+      campaignId,
+      payload?.tokenId,
+    );
+    const isGm = user.role === ROLE_GM;
+    if (!isGm) {
+      // A hidden token is refused the way an unseen one is: the rejection must
+      // not become a way to learn the token is there.
+      if (token.hidden) throw new RealtimeError('TOKEN_NOT_FOUND');
+      const character = token.characterId
+        ? await deps.ctx.prisma.character.findUnique({ where: { id: token.characterId } })
+        : null;
+      const controls = token.ownerId === user.id || character?.ownerId === user.id;
+      if (!controls) throw new RealtimeError('FORBIDDEN');
+    }
+    const facing = sanitizeFacing(payload?.facing);
+    if (facing === undefined) throw new RealtimeError('BAD_REQUEST');
+
+    const updated = await deps.ctx.prisma.token.update({
+      where: { id: token.id },
+      data: { facing },
+    });
+    await emitTokenUpsert(deps, campaignId, scene, updated);
+    return toTokenView(updated, true);
   },
 });
 
@@ -970,6 +1049,17 @@ export async function performTokenMove(
       ? snapTokenPosition(payload.x, payload.y, token.size, snapScene)
       : clampTokenPosition(payload.x, payload.y, token.size, snapScene);
 
+    /**
+     * Which way walking left the figure looking (stage 27j).
+     *
+     * Set only once the drop has been paid for, and only when the walk was long
+     * enough to mean something: a refused move must not turn the figure, and
+     * neither must a drop half a pixel from where it started. Null keeps a
+     * hand-set facing — „manual holds until the next move" is the GM's decision
+     * of 21.08, and a move that never happened is not the next move.
+     */
+    let turnedTo: number | null = null;
+
     /** Sends one frame of this token's movement to everyone entitled to it. */
     const broadcast = async (
       position: { x: number; y: number },
@@ -982,6 +1072,7 @@ export async function performTokenMove(
         y: position.y,
         final: isFinal,
         byUserId: user.id,
+        ...(turnedTo === null ? {} : { facing: turnedTo }),
       };
       // Crossing the fog boundary changes *who the token exists for*, which a
       // move broadcast cannot express — so those frames go to the GM and the
@@ -1038,7 +1129,17 @@ export async function performTokenMove(
         await broadcast({ x: token.x, y: token.y }, true);
         throw error;
       }
-      await deps.ctx.prisma.token.update({ where: { id: token.id }, data: { x, y } });
+      // The route the hand actually took decides the facing, not the straight
+      // line to the landing square: a figure that walked round a corner is
+      // looking down the corridor it came out of, not back at where it started.
+      const walked = sanitizeTokenPath(payload.path);
+      turnedTo =
+        (walked ? facingFromPath([{ x: token.x, y: token.y }, ...walked]) : null) ??
+        facingFromDelta(x - token.x, y - token.y);
+      await deps.ctx.prisma.token.update({
+        where: { id: token.id },
+        data: { x, y, ...(turnedTo === null ? {} : { facing: turnedTo }) },
+      });
       // „Atakujący ciągnie go ze sobą, gdy wykonuje swoją Akcję Ruchu" (s. 176).
       // The metres were already charged to the one doing the dragging — the
       // Held one pays nothing, because they are not the one walking.

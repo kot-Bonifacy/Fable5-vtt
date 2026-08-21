@@ -1,3 +1,5 @@
+import type { TokenCondition } from './figures.js';
+import { sanitizeFacing } from './figures.js';
 import { sanitizeTokenLight, type TokenLight } from './lights.js';
 // Type-only, like `measure.ts` imports `TokenView` back — erased at runtime,
 // so the two modules describing the same map never form a real cycle.
@@ -41,6 +43,15 @@ export interface TokenView {
   hidden: boolean;
   /** Status ids — definitions (PL name, icon) live in data, not code. */
   statuses: string[];
+  /**
+   * Which way the figure is turned, in degrees clockwise from up (stage 27j);
+   * null = never turned, draw it facing nowhere.
+   *
+   * Public, unlike the HP: a sentry looking the other way is exactly the thing
+   * a player is supposed to be able to see and use. CP RED has no facing rules,
+   * so nothing in the engine reads this — it is legibility, not mechanics.
+   */
+  facing?: number | null;
   /**
    * HP shown on the token's bar. For a token linked to a character this
    * mirrors the sheet (the sheet is the single source of truth); standalone
@@ -89,6 +100,14 @@ export interface StatusDefinition {
   id: string;
   name: string;
   icon: string;
+  /**
+   * What wearing this sticker does to the figure on the map (stage 27j).
+   *
+   * Data rather than code, so the core VTT can draw „he is down" without
+   * knowing that Cyberpunk RED calls it Nieprzytomny. Absent for the seventeen
+   * statuses that change nothing about how the figure stands.
+   */
+  condition?: TokenCondition;
 }
 
 /** Ack data of the token image upload (`POST /api/uploads/tokens`). */
@@ -132,6 +151,8 @@ export interface TokenPatch {
   light?: TokenLight | null;
   /** Statist's fighting numbers; null takes the profile away (stage 16b). */
   combatProfile?: TokenCombatProfile | null;
+  /** Which way the figure looks; null puts it back to „turned nowhere". */
+  facing?: number | null;
 }
 
 /** Client → server payload of `token:update` (GM only). */
@@ -223,6 +244,20 @@ export interface TokenMoveBroadcast {
   y: number;
   final: boolean;
   byUserId: string;
+  /**
+   * Where the figure ended up looking (stage 27j) — sent only on the drop, and
+   * only when walking actually turned it. Rides the move rather than a second
+   * broadcast because it *is* part of the move: a figure that arrives and then
+   * pivots a frame later reads as two events at the table.
+   */
+  facing?: number | null;
+}
+
+/** Client → server `token:facing`: turn a figure by hand (stage 27j). */
+export interface TokenFacingPayload {
+  tokenId: string;
+  /** Degrees clockwise from up; null forgets the manual turn. */
+  facing: number | null;
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -324,6 +359,11 @@ export function sanitizeTokenPatch(
     const hp = sanitizeTokenHp(input.hp);
     if (hp === undefined) return null;
     patch.hp = hp;
+  }
+  if ('facing' in input) {
+    const facing = sanitizeFacing(input.facing);
+    if (facing === undefined) return null;
+    patch.facing = facing;
   }
   if ('characterId' in input) {
     if (input.characterId !== null && typeof input.characterId !== 'string') return null;

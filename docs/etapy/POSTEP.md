@@ -70,20 +70,26 @@ Pełne notatki z zamkniętych etapów: `archiwum/dziennik-sesji.md` (nie czytaj 
 | 27g | Wydajność                                     | ⬜     |                   | re-rendery przy ruchu tokenów, bundle, lazy-loading, fps mapy                                    |
 | 27h | Panel postaci: HUD, który wygląda jak gra     | ✅     | 2026-08-20        | dopisany 20.08 na wniosek MG; ikona slotu i waga statusu liczone w `shared`, nie w CSS           |
 | 27i | Mapa: efekty walki                            | ✅     | 2026-08-20        | zwężony 20.08 (żetony → 27j); efekt przycinany per widz, bang czeka na kości                     |
-| 27j | Żetony i czytelny ruch                        | ⬜     |                   | dopisany 20.08 przy podziale 27i; PW jako łuk wokół figury (decyzja MG)                          |
+| 27j | Żetony i czytelny ruch                        | ✅     | 2026-08-21        | kierunek patrzenia: automat z ruchu i strzału **plus** ręczna gałka (decyzja MG)                 |
 | 28  | Wdrożenie na VPS                              | ⬜     |                   |                                                                                                  |
 
 ## Od czego zacząć
 
-Ostatnio zamknięte: **27i** — strzał przestał być wyłącznie wpisem na czacie. Mapa ma warstwę
-efektów (smuga, błysk lufy, trafienie, pudło mijające figurę, wybuch, chmura, wyładowanie,
-liczby nad figurą) i własny suwak dźwięku w „⚙ Ustawienia". Wcześniej **27h** — lewy panel jako
-HUD, i **27e** — motyw dzień/noc dla całego VTT.
+Ostatnio zamknięte: **27j** — żeton przestał być kółkiem z paskiem nad głową. Ma cień
+i podstawkę (kolor podstawki = stan: ranny / nieprzytomny / martwy), **łuk PW zamiast paska**,
+nos pokazujący, w którą stronę patrzy, a tura świeci mocniej. Ruch pokazuje **zacienioną podłogę
+w zasięgu budżetu**, koszt każdego odcinka trasy w metrach i gasnący ślad po marszu — z krokiem
+w warstwie SFX. Wcześniej **27i** (efekty walki na mapie) i **27h** (lewy panel jako HUD).
 
-**Etap 27 został rozdzielony do końca**: 27d, 27e, 27h i 27i zrobione, zostają **27f** (okno
-skrótów, stany puste, pozycje okien), **27g** (wydajność) i **27j** (żetony: podstawka, łuk PW
-zamiast paska, stany ran, kierunek patrzenia — plus czytelny ruch). Plik `etap-27-…` jest
-rozdrożem ze wskazaniami, sam nie jest do realizacji.
+**Etap 27 został rozdzielony do końca**: 27d, 27e, 27h, 27i i 27j zrobione, zostają **27f** (okno
+skrótów, stany puste, pozycje okien) i **27g** (wydajność). Plik `etap-27-…` jest rozdrożem
+ze wskazaniami, sam nie jest do realizacji.
+
+**Kierunek patrzenia jest stanem serwera i publiczną częścią żetonu.** `Token.facing` (stopnie,
+0 = góra, zgodnie ze wskazówkami) pisze drop ruchu, strzał i gałka na pierścieniu zaznaczenia
+(`token:facing` — drugie po `token:light` zdarzenie tokenu, które wykonuje **gracz**). Ręczny kąt
+trzyma się do następnego **ruchu**, który go nadpisuje. Żadna reguła CP RED tego nie czyta —
+to czytelność, nie mechanika.
 
 **Efekt mapy jest przycinany na serwerze, nie w rendererze.** `fx:play` jedzie **per gniazdo**:
 kto nie widzi lufy, nie dostaje ani jej, ani dźwięku; kto nie widzi żadnego końca strzału, nie
@@ -116,16 +122,40 @@ otwiera się narzędziem ⚠ w trybie 📌; „Rozbrój" ją usypia, kosz usuwa.
 przełącznika gracz nie kupi niczego droższego niż 50 ed. Przełącznik 1–4 jest w zakładce
 **„Kompendium"** pod chipami kategorii; MG kupuje przez wszystkie poziomy niezależnie od niego.
 
-**Następne etapy do wyboru: 27j** (druga połowa pary z 27h/27i — żetony i ruch), **27f**,
-**27g** i **28** (VPS). Drobiazg „kostki kreatora świecą jak krytyki" z 25a/25b **jest zrobiony**
+**Następne etapy do wyboru: 27f**, **27g** i **28** (VPS). Drobiazg „kostki kreatora świecą jak krytyki" z 25a/25b **jest zrobiony**
 (flaga `plain`), jednobarwne 📰 z 24c i 🔌 z 26b też — obie stały się sylwetkami z game-icons
 w 27e. **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty
 naraz — a od 27i także pierwszym, przy którym ktoś **usłyszy** dźwięki walki (dobrane bez
-odsłuchu, przyciski próbek są w „⚙ Ustawienia").
+odsłuchu, przyciski próbek są w „⚙ Ustawienia"; od 27j jest wśród nich „Krok", który słychać
+przy **każdym** przejściu przez pokój i który ma własny wyłącznik).
 
 **09.08 głos wypadł z projektu** (sesja bez etapu, decyzja MG): etapy **12, 21 i 22** wycofane, kod TTS usunięty z repo. Szczegóły w `archiwum/dziennik-sesji.md` i w `archiwum/wycofane/README.md`.
 
 ### Otwarte zaległości (przechodzą między etapami)
+
+- **Etap 27j — trzy ścieżki nieodklikane; reszta sprawdzona 21.08 (patrz notatka sesji).**
+  (1) **Strona gracza** — wszystko oglądane z konta MG. Różnica jest tu **mniejsza niż zwykle
+  i to jest zamierzone**: `facing` jedzie w publicznej części `TokenView`, a stan figury liczy się
+  z naklejek, które gracz i tak dostaje — więc gracz widzi kierunek i upadek wroga, nie widząc
+  jego PW. Pokryte testami na żywych gniazdach (`token:facing` u właściciela, odmowa dla cudzej
+  i ukrytej figury), ale nikt nie patrzył na to oczami gracza. (2) **Zacienienie zasięgu wokół
+  ściany** — na „Strzelnicy" widoczność jest `open`, więc zalew nie miał czego omijać; że omija,
+  wiadomo z testu w `shared` („nie zacienia drugiej strony ściany"), nie z ekranu. (3) **Figura
+  2×2 lub większa** — suma kwadratów i test footprintu mają pokrycie w `shared`, ale na Poligonie
+  nie ma żetonu większego niż 1×1.
+
+- **Etap 27j — `down` czyta się słabiej niż `dead` i to jest świadomy kompromis.** Martwy dostaje
+  wielki czerwony ✕ przez portret, nieprzytomny tylko ciemnoczerwoną podstawkę i przyciemniony
+  portret (`tint` mnoży, więc nie odbarwia — Pixi nie da odsycenia bez filtra na figurę). Przy
+  zoomie stołowym oba są rozpoznawalne, ale ✕ widać z drugiego końca stołu, a podstawkę trzeba
+  chwilę poszukać. Gdyby przy stole wyszło, że to za mało, najtańszym krokiem jest **przechylenie
+  figury** dla `down` — z tym, że obrót kontenera obróciłby też imię i naklejki, więc trzeba by
+  przechylać sam portret.
+
+- **Etap 27j — figura na zerze PW zacienia jedno pole i wygląda to jak podświetlenie.** Przy
+  `metresLeft = 0` zalew zwraca samą kratkę startową, więc pod figurą pojawia się blady kwadrat
+  znaczący „nie masz jak stąd wyjść". To prawda, ale czyta się jak zaznaczenie. Do rozważenia
+  w 27f razem z resztą stanów pustych.
 
 - **Etap 27i — cztery ścieżki nieodklikane; reszta sprawdzona 20.08 (patrz notatka sesji).**
   (1) **Wybuch, chmura gazu i wyładowanie strefy** — kod i oba arkusze CC0 sprawdzone
@@ -718,6 +748,78 @@ decyduje przegrany, nie zwycięzca`) — Konfrontacje z 10.08 szły z konta MG, 
 
 ## Notatki z dwóch ostatnich sesji
 
+### Sesja 21.08 — etap 27j (żetony i czytelny ruch)
+
+**Decyzja MG z 21.08: kierunek patrzenia to jedno i drugie** — automat z ruchu i ze strzału
+**plus** ręczne nadpisanie, które trzyma się do następnego ruchu. Wariant „tylko automat" nie
+umiał postawić wartownika patrzącego w korytarz, którym nikt jeszcze nie szedł; wariant „tylko
+ręcznie" byłby kolejną rzeczą do pilnowania przy każdym kroku.
+
+**Kąt jest stanem serwera, nie ozdobą klienta.** Nowa kolumna `Token.facing` (stopnie, 0 = góra,
+zgodnie ze wskazówkami — konwencja `rotation` z Foundry), publiczna w `TokenView`: wartownik
+patrzący w drugą stronę to informacja, z której stół ma prawo korzystać, więc nie filtrujemy jej
+jak PW. Pisze ją **drop ruchu** (z ostatniego prawdziwego odcinka trasy, nie z prostej do
+lądowania — figura, która obeszła róg, patrzy w korytarz, z którego wyszła), **strzał**
+(`turnTokenToward` po wystawieniu karty, nigdy przed: atak odrzucony nie może zostawić figury
+gapiącej się na kogoś, do kogo nie strzeliła) i **gałka** (`token:facing`, wzorowana na
+`token:light` — drugie zdarzenie tokenu, które wykonuje *gracz*, bo to decyzja taktyczna, nie
+papierologia MG). CP RED nie zna zasad fasowania, więc **żadna reguła tego nie czyta**.
+
+**Klient wyprzedza serwer o jedną klatkę i to jest celowe.** `TokenNode.showFacing` obraca figurę
+lokalnie w trakcie marszu i przeciągania; serwer potwierdza ten sam kąt na dropie. Pułapka, którą
+to rodzi, ma własne pole: `serverFacing` pamięta **ostatni kąt z serwera**, bo każdy `state:sync`
+w trakcie marszu niesie kąt sprzed wyjścia i naiwne „bierz to, co mówi token" cofałoby nos
+w połowie drogi. Słowo serwera wchodzi w chwili, gdy **się zmieni**.
+
+**Pasek PW zniknął, PW to łuk wokół figury** (decyzja MG z 20.08). Miejsce nad głową należy teraz
+do liczb obrażeń z 27i, a pierścień należy do tego, co obejmuje — w tłumie pasek nie mówił, czyj
+jest. Pod figurą doszły **cień i podstawka**, a podstawka jest jedynym miejscem, gdzie mieszka
+stan: bursztyn = ranny, ciemna czerwień = nieprzytomny/wykrwawia się, czerń + czerwony ✕ na
+portrecie = martwy. Stan liczy `tokenCondition` w `shared/src/figures.ts` **z naklejek**, nie
+z PW — gracz nigdy nie dostaje PW wroga, a upadek ma widzieć.
+
+**Kolor stanu jest daną, nie kodem.** `StatusDefinition` dostał opcjonalne pole `condition`
+(`wounded` / `down` / `dead`) wypełniane w `data/public/cpred/statuses.json`; rdzeń VTT rysuje
+„leży", nie wiedząc, że Cyberpunk RED nazywa to Nieprzytomnym. Ta sama umowa co z ikonami z 05.
+
+**Podświetlenie zasięgu ruchu to Dijkstra, nie okrąg.** `reachableCells` w `shared/src/pathfinding.ts`
+zalewa siatkę tym samym kosztem, którym A* liczy trasę (1 na prosto, √2 na skos), z tymi samymi
+predykatami przechodniości — więc zacieniona podłoga **omija ściany**, czego okrąg zasięgu z 14c
+nigdy nie umiał. Rysowana jako **suma kwadratów** (nie jeden kwadrat na odpowiedź), bo figura 2×2
+daje jedną kotwicę i cztery pola podłogi, a nakładane wypełnienia zlepiłyby się w plamę; obrys to
+krawędzie, których nie zajął żaden sąsiad. Zacienienie widzi **także MG**, choć jego budżet nie
+jest egzekwowany (14b: przekroczenie jest logowane, nie odmawiane) — mówi, na ile tura starcza,
+a to jest prawdą dla obu stron.
+
+**Trasa mówi, ile kosztuje każdy odcinek, a nie tylko całość.** Gracz patrzący na „L" za rogiem
+pyta o **pierwszą** połowę, bo to ona decyduje, czy druga ma sens. Odcinki krótsze niż metr etykiet
+nie dostają (to rogi, nie decyzje), a trasa jednoodcinkowa też nie — jej jedyny odcinek *jest*
+sumą. Po marszu linia zostaje jeszcze 1,6 s i gaśnie: „którędy on wszedł?" pada **po** tym, jak
+ktoś się zatrzyma, a do tej pory ślad znikał w tej samej klatce.
+
+**Krok to jedyny dźwięk, który mapa wydaje sama z siebie** — dlatego dostał własny przełącznik
+(„Kroki figur" w ⚙ Ustawienia), a głośność bierze z suwaka efektów z 27i. Próbka:
+`Fantozzi-StoneL1.ogg` (CC0), lewa i prawa noga to ta sama próbka w dwóch wysokościach; krok co
+1,5 m przebytego gruntu, nie co N milisekund — marsz da się przerwać i wznowić, a tym, co jest
+krokiem, jest przebyty dystans.
+
+**Sprawdzone w przeglądarce** (konto MG, Poligon, stan przywrócony na koniec): gałka obrotu
+(kąt 135° dojechał do bazy), obrót z marszu (marsz na północ → `facing` 0 w bazie), zacienienie
+zasięgu przy 10 m budżetu (kształt zgadza się z okręgiem zasięgu), etykiety odcinków na trasie
+z zakrętem (4,5 m + 2,8 m przy sumie 7,3 m / 10 m), ślad po marszu, aureola tury, oraz **wszystkie
+cztery stany naraz przy zoomie stołowym** — martwy z ✕, nieprzytomny z czerwoną podstawką, ranny
+z bursztynową, i czyja jest tura. Kroki policzone instrumentacją `HTMLAudioElement.play`: pięć
+kroków co ~500 ms, naprzemienne 0,94/1,08, głośność 0,175 (suwak 0,5 × wzmocnienie 0,35).
+
+**Dwa błędy znalezione i naprawione przy oglądaniu.** (1) **Wąs na żetonie**: `arc` po `circle`
+w tym samym `Graphics` dorysowuje **linię łączącą** — Pixi trzyma jeden kursor ścieżki na obiekt,
+więc łuk PW wychodził z zielonym wąsem sterczącym z góry figury. Naprawa to `moveTo` przed
+`arc`. (2) **Gałka pod cudzą figurą**: gałka siedzi *poza* pierścieniem, więc regularnie ląduje
+na sąsiedniej figurze, a Pixi daje zdarzenie najpierw jej — bez sprawdzenia gałki w handlerze
+tokenu klik podnosiłby sąsiada dokładnie wtedy, gdy na mapie jest tłoczno. Puszczenie gałki
+ustawia też `dragEndedAt`, bo `pixi-viewport` nadal nazywa krótki gest klikiem w mapę pod spodem
+— czyli rozkazem marszu.
+
 ### Sesja 20.08 (trzecia tego dnia) — etap 27i (mapa: efekty walki)
 
 **Etap 27i zwężony na starcie** (decyzja MG): Token 2.0 i czytelny ruch wyprowadzone do nowego
@@ -801,102 +903,11 @@ skrócić dystans. Magazynki obu Arasak wróciły do 30/30, obrażeń nikomu nie
 
 ### Sesja 20.08 (druga tego dnia) — etap 27h (panel postaci: HUD, który wygląda jak gra)
 
-**Etap dopisany w tej sesji, na wniosek MG:** „lewy panel wygląda bardzo generycznie, jak arkusz
-kalkulacyjny", „walka i przemieszczanie tokenów wygląda zbyt prymitywnie". Praca rozbita na dwa
-etapy — **27h** (panel, ta sesja) i **27i** (mapa: tokeny, efekty walki, ruch, SFX). Oba pliki
-w `docs/etapy/`; zdanie „przeprojektowanie układu paneli" z „Poza zakresem" etapu 27f jest tym
-zastąpione.
-
-**Cztery decyzje MG z 20.08.** (1) Kierunek wizualny: **struktura jak Argon Combat HUD z Foundry**
-(portret, sekcje akcji, kafle z ikonami) plus cienka warstwa cyberpunku — ścięty róg, wąski
-neonowy akcent, monospace tylko na liczbach; odrzucony pełny „ekran wszczepu" (nie do utrzymania
-w dziennym motywie). (2) Zakres obejmuje panel, tokeny, efekty walki **i** ruch. (3) Efekty
-mapy: sprite'y z paczek CC0 **plus dźwięki SFX** (27i). (4) Podział na dwie sesje zamiast jednej.
-
-**Największe odkrycie tej sesji dotyczy etapu 27i, nie 27h: walka nie ma na mapie żadnego
-efektu.** `MapRenderer` rysuje marsz, ślad trasy i celownik — i na tym koniec. Strzał, trafienie,
-pudło, wybuch i obrażenia istnieją wyłącznie jako wpis na czacie. To większa dziura niż wygląd
-panelu i dlatego 27i dostał własną sesję zamiast doklejki.
-
-**Ikona slotu jest wiedzą systemową i mieszka w `shared`.** `cpredWeaponIcon` czyta **typ broni
-z kompendium** (do tego doszło `ResolvedWeapon.typeId` obok istniejącego `typeName` — nazwa jest
-do czytania, id do rozgałęziania), potem umiejętność, a na końcu to, co broń robi (wybuchowa →
-granat, rzucana → nóż, biała → miecz). Panel dostaje nazwę **rzeczy** (`CpredSlotIcon`), nie
-ścieżkę pliku, więc podmiana sylwetki nigdy nie jest zmianą w regułach. Dwadzieścia typów broni
-z podręcznika ma mapowanie po ostatnim segmencie id, więc `weapon-type.sample-*` z danych
-publicznych spada na fallback po umiejętności i nie zostaje bez obrazka.
-
-**Błąd znaleziony przy oglądaniu: stany ran malowały się szaro jak „Onieśmielony".**
-`cpredStatusSeverity` wywodzi wagę z `CPRED_STATUS_EFFECTS` — a `seriously-wounded`
-i `mortally-wounded` **nie mają tam wiersza** i mieć nie powinny: nic nie odmawiają, ich kary
-(−2, −4, −6 do RUCH-u) liczy się z Punktów Wytrzymałości. Nazwane więc wprost, w osobnej tabelce
-z komentarzem, i przykryte testem, który pilnuje, że tabela efektów faktycznie ich nie zna.
-
-**Strażnik motywu z 27e zadziałał od razu.** Pierwsze uruchomienie testów przewróciło się na
-`--hud-icon` i `--hud-mag-color` — tokenach ustawianych per element (pierwszy podaje React,
-drugi zmienia się z zawartością magazynka). Dopisane do listy lokalnych, z uzasadnieniem. Żaden
-literał koloru nie wszedł do `styles.css`.
-
-**30 nowych ikon** (`packages/client/public/icons/hud/`, game-icons.net, CC BY 3.0, atrybucja
-w `public/icons/ATTRIBUTION.md`) rysowanych **maską CSS**, nie `<img>`: kafel ma cztery stany
-(zwykły, uzbrojony, odmówiony, pod kursorem), a maska barwi się `currentColor`, więc plik jest
-jeden zamiast czterech. Trzy ikony wymienione po obejrzeniu: `sbed/rifle` i `sbed/shotgun`
-wyglądają jak naboje, a `sbed/pulse` jak wiatraczek.
-
-**Zweryfikowane:** 1263 testy w `shared` (15 nowych: ikony broni, waga statusu, grupowanie
-kafli), 723 na serwerze bez zmian, 5 w kliencie (strażnik motywu), `tsc --noEmit` czysty,
-ESLint, Prettier, `vite build` bez uwag.
-
-**Odklikane w przeglądarce** (Poligon bojowy, konto MG, oba motywy): szuflada trybów ognia
-(otwarcie strzałką, wybór „Ogień ciągły", zamknięcie i przezbrojenie), **prawdziwy `Shift`+1
-z klawiatury** (pojedynczy → seria → zapora, z re-armem trzymanej broni), karta tożsamości z rolą
-i chipami SP 11 · RUCH 5 · EMP 5, pasek PW w czterech stanach ran z widocznym progiem poważnej
-rany, **liczba obrażeń wypływająca z paska** (−9 czerwone, +25 zielone — sprawdzone przez DOM,
-bo animacja trwa 1,6 s), kapsułki statusów w trzech wagach, sekcje „BROŃ"/„AKCJE" z ikonami,
-magazynek jako kreski i jako pasek, kolory „mało" i „pusto", slot uzbrojony, slot odmówiony,
-baner „TURA TEJ FIGURY" z budżetem railowym, statysta bez karty (wieżyczka: portret zastępczy,
-SP z profilu, brak przeładowania), stan pusty i **pasek zwinięty** (portret + pionowy pasek PW).
-
-**Nieodklikane:** (1) **strona gracza** — wszystko oglądane z konta MG; różnica jest wyłącznie
-w danych, które i tak filtruje serwer (`hp` ukryte → „PW ukryte" zamiast paska), ale nikt nie
-patrzył na to oczami gracza. (2) **Prawdziwa tura** — baner i budżet railowy oglądane na stanie
-wstrzykniętym lokalnie do `combatStore`, bo na Poligonie tryb turowy jest wyłączony; kod czyta
-te same pola co pasek górny. (3) **Formularze w panelu** (Zwarcie, Wstrzymanie, Ustabilizowanie)
-— komponenty są te same co w zakładce „Walka" i nie były w tym etapie ruszane.
-
-**Druga decyzja MG tego dnia: jedna broń = jeden kafel.** Pierwsza wersja panelu dziedziczyła
-z 16f slot **na tryb ognia**, więc pistolet maszynowy zajmował trzy wiersze („Arasaka Minami 10"
-trzy razy) i trzy z dziewięciu klawiszy. Sprawdzone, jak robią to inni: **Cyberpunk RED Core
-w Foundry** trzyma broń jako jeden wpis, a autofire i zaporę wybiera się w oknie rzutu;
-**Argon Combat HUD** chowa warianty jednej pozycji w rozwijanej szufladzie; **Token Action HUD**
-w podmenu. Wszyscy zgodnie: tryb to stan broni, nie druga pozycja na pasku. Wybrany wariant
-(decyzja MG): **szuflada pod kaflem**, `Shift`+cyfra przewija tryb, wybór **pamiętany per broń
-do końca sesji**.
-
-**Płaska lista slotów została nietknięta — i to jest sedno tej zmiany.** `hotbarSlotsFor` czyta
-też **tura bota** (`packages/server/src/realtime/bot-combat.ts`), gdzie „Arasaka Minami 10 · seria"
-jako jeden wybór jest zaletą: model dostaje broń i tryb w jednym identyfikatorze. Panel dostał
-więc osobne, czyste `cpredHotbarGroups` w `shared` (+ `cpredWeaponModeSlot`, `cpredNextWeaponMode`,
-6 testów), a serwer i boty nie zmieniły się ani o linijkę. **Numery klawiszy przeniosły się na
-grupy** — 1–9 liczy teraz bronie, więc postać z jednym pistoletem ma `1` i koniec.
-Przeładowanie zjechało do sekcji „AKCJE", bo jest Akcją, a nie bronią.
-
-**Pułapka klawiaturowa:** `Shift`+1 przychodzi jako `event.key === '!'` (i inaczej na innym
-układzie), więc cyfry czyta się teraz z `event.code` (`Digit1`–`Digit9`). Stary warunek
-`event.key >= '1' && <= '9'` przy wciśniętym Shifcie nie łapał nic.
-
-**Dwie poprawki zgłoszone przez MG w trakcie sesji, obie o dolny róg panelu.** Kubek do kości
-(`position: fixed`, lewy dolny róg okna) siedzi **na** tym panelu i po poszerzeniu paska zaczął
-zasłaniać „Tab następna postać"; panel rezerwuje mu teraz 4,6 rem u dołu. Pierwsza wersja
-poprawki zostawiła jednak stopkę przyklejoną do dołu (`margin: auto 0 0` z 16f) i skróty zawisły
-**nad** kubkiem w pustce — stopka idzie więc teraz zaraz po slotach, jak każde inne zdanie
-w panelu, a dół należy do kubka. Kubek nie pamięta pozycji: przeciąganie służy potrząsaniu, a nie
-przestawianiu, więc miejsce trzeba było zostawić po stronie panelu.
-
-**Pułapka na przyszłość:** `await import('/src/stores/…')` z konsoli DevTools daje **inną
-instancję modułu** niż ta, z której renderuje aplikacja (`characters` widziane jako puste, choć
-panel rysował kartę). Do podglądania stanu nadaje się tylko wtedy, gdy zmiana jest widoczna
-w UI — inaczej ogląda się drugą kopię store'a.
+Lewy panel przestał być arkuszem kalkulacyjnym: portret, kafle akcji z sylwetkami i jedna broń
+= jeden kafel z szufladą trybów ognia. Obrazek kafla i waga naklejki liczą się w `shared`
+(`cpredWeaponIcon`, `cpredStatusSeverity`), nie w CSS — podmiana sylwetki nigdy nie jest zmianą
+w regułach. Ta sesja odkryła też dziurę, z której wyrósł 27i: walka nie miała na mapie **żadnego**
+efektu. Pełna notatka: `archiwum/dziennik-sesji.md`.
 
 ### Sesja 20.08 — etap 27e (motyw dzień/noc dla całej aplikacji)
 

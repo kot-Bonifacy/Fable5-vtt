@@ -37,6 +37,18 @@ ostrzejszego warunku: traktujemy je jak **CC BY 3.0** i podajemy oba nazwiska.
 | `swing.wav`     | `battle/swing.wav` | [RPG Sound Pack](https://opengameart.org/content/rpg-sound-pack)                         | artisticdude               | CC0      |
 | `zap.wav`       | `spark.wav`        | [Electricity Sound Effects](https://opengameart.org/content/electricity-sound-effects-0) | BMacZero (Brian MacIntosh) | CC0      |
 
+## Krok (etap 27j)
+
+| Plik       | Oryginał                   | Paczka                                                                                                           | Autor    | Licencja |
+| ---------- | -------------------------- | ---------------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| `step.ogg` | `ogg/Fantozzi-StoneL1.ogg` | [Fantozzi's Footsteps (Grass/Sand & Stone)](https://opengameart.org/content/fantozzis-footsteps-grasssand-stone) | Fantozzi | CC0      |
+
+Wybrany wariant **Stone** — miasto i wnętrza, nie las. Lewa i prawa noga to **ta sama próbka
+w dwóch wysokościach** (`playStepSound` w `sfx.ts`), a nie dwa pliki: paczka ma obie, ale drugi
+wpis w `MAP_FX_SOUNDS` znaczyłby drugi przycisk „Krok" w ustawieniach dla różnicy, której nikt
+nie nazwie. Krok ma własny przełącznik („Kroki figur"), bo to jedyna próbka odtwarzana za
+każdym razem, gdy ktoś przejdzie przez pokój.
+
 **Do przesłuchania przy stole:** `bowstring.ogg` jest najsłabszym dopasowaniem w tej tabeli —
 sprężyna udająca cięciwę, wybrana bez odsłuchu. „⚙ Ustawienia" mają przy suwaku SFX przycisk
 odsłuchu każdej próbki; jeśli któraś nie pasuje, wymiana to podmiana jednego pliku i jednego

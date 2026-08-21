@@ -4,19 +4,27 @@
     {
       "id": "seriously-wounded",
       "name": "Poważnie ranny",
-      "icon": "/public/cpred/status-icons/seriously-wounded.svg"
+      "icon": "/public/cpred/status-icons/seriously-wounded.svg",
+      "condition": "wounded"
     },
     {
       "id": "mortally-wounded",
       "name": "Śmiertelnie ranny",
-      "icon": "/public/cpred/status-icons/mortally-wounded.svg"
+      "icon": "/public/cpred/status-icons/mortally-wounded.svg",
+      "condition": "down"
     },
     {
       "id": "unconscious",
       "name": "Nieprzytomny",
-      "icon": "/public/cpred/status-icons/unconscious.svg"
+      "icon": "/public/cpred/status-icons/unconscious.svg",
+      "condition": "down"
     },
-    { "id": "dead", "name": "Martwy", "icon": "/public/cpred/status-icons/dead.svg" },
+    {
+      "id": "dead",
+      "name": "Martwy",
+      "icon": "/public/cpred/status-icons/dead.svg",
+      "condition": "dead"
+    },
     { "id": "on-fire", "name": "Podpalony", "icon": "/public/cpred/status-icons/on-fire.svg" },
     { "id": "blinded", "name": "Oślepiony", "icon": "/public/cpred/status-icons/blinded.svg" },
     { "id": "deafened", "name": "Ogłuszony (słuch)", "icon": "/public/cpred/status-icons/deafened.svg" },

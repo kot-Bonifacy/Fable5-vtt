@@ -465,6 +465,103 @@ export function planWalk(
   return { points: smoothed, truncated: !reached, visited };
 }
 
+/** Cells a figure can still stand on this turn (stage 27j). */
+export interface ReachOptions extends Omit<WalkPlanOptions, 'smooth'> {
+  /**
+   * How far the figure may walk, counted the way A* counts it: one per
+   * orthogonal step, √2 per diagonal. The caller converts its metres — it is
+   * the one that knows the scene's scale and what the going costs.
+   */
+  budgetCells: number;
+}
+
+/** One reachable cell: where the figure would stand and what getting there costs. */
+export interface ReachCell extends ScenePoint {
+  /** Cost in the same units as `budgetCells`, cheapest route first. */
+  cost: number;
+}
+
+/**
+ * Every square the figure can still reach this turn — the shaded floor a
+ * tactical game shows the moment you pick somebody up (stage 27j).
+ *
+ * Dijkstra rather than A*, because there is no goal: the question is „where
+ * *could* I go", and answering it for one square at a time is what made the old
+ * map a guessing game. The frontier is the budget itself, so the flood is
+ * bounded by the turn rather than by the map — a MOVE 6 character on a 100 px
+ * grid opens about a hundred and twenty cells, which is a frame's worth of work
+ * and is why this may run under the cursor.
+ *
+ * The start cell is included: standing still is always affordable, and leaving
+ * it out would draw a hole under the figure.
+ */
+export function reachableCells(from: ScenePoint, options: ReachOptions): ReachCell[] {
+  const { grid, isPassable, canStep } = options;
+  const size = Math.max(1, Math.round(options.size ?? 1));
+  const budget = options.budgetCells;
+  if (!Number.isFinite(budget) || budget < 0) return [];
+  if (grid.cols < size || grid.rows < size || grid.cell <= 0) return [];
+
+  const radius = Math.max(1, Math.round(options.radiusCells ?? WALK_RADIUS_CELLS));
+  const maxVisited = Math.max(1, Math.round(options.maxVisited ?? WALK_MAX_VISITED));
+  const start = cellOfPosition(grid, from);
+  if (!isNodeOpen(grid, isPassable, size, start.col, start.row)) return [];
+
+  const width = grid.cols;
+  const startIndex = start.row * width + start.col;
+  const cost = new Map<number, number>([[startIndex, 0]]);
+  const closed = new Set<number>();
+  const open = new NodeHeap();
+  open.push({ index: startIndex, f: 0, h: 0 });
+
+  const cells: ReachCell[] = [];
+  let visited = 0;
+  while (open.size > 0 && visited < maxVisited) {
+    const current = open.pop()!;
+    if (closed.has(current.index)) continue;
+    closed.add(current.index);
+    visited++;
+
+    const col = current.index % width;
+    const row = (current.index - col) / width;
+    const g = cost.get(current.index) ?? 0;
+    cells.push({ ...cellPosition(grid, col, row), cost: g });
+
+    for (const [dc, dr] of NEIGHBOURS) {
+      const nextCol = col + dc;
+      const nextRow = row + dr;
+      const nextIndex = nextRow * width + nextCol;
+      if (closed.has(nextIndex)) continue;
+      if (Math.max(Math.abs(nextCol - start.col), Math.abs(nextRow - start.row)) > radius) continue;
+      const step = dc !== 0 && dr !== 0 ? DIAGONAL : 1;
+      const tentative = g + step;
+      // The budget is the whole point of the flood: a square the turn cannot
+      // pay for is not shaded, and a hair of tolerance keeps floating-point
+      // sums of √2 from shaving the last ring off a diagonal walk.
+      if (tentative > budget + 1e-9) continue;
+      if (!isNodeOpen(grid, isPassable, size, nextCol, nextRow)) continue;
+      if (dc !== 0 && dr !== 0) {
+        if (!isNodeOpen(grid, isPassable, size, col + dc, row)) continue;
+        if (!isNodeOpen(grid, isPassable, size, col, row + dr)) continue;
+      }
+      if (
+        canStep &&
+        !canStep(
+          footprintCentre(grid, size, col, row),
+          footprintCentre(grid, size, nextCol, nextRow),
+        )
+      ) {
+        continue;
+      }
+      const known = cost.get(nextIndex);
+      if (known !== undefined && tentative >= known - 1e-9) continue;
+      cost.set(nextIndex, tentative);
+      open.push({ index: nextIndex, f: tentative, h: 0 });
+    }
+  }
+  return cells;
+}
+
 /**
  * Removes the waypoints a straight line already covers.
  *

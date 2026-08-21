@@ -53,6 +53,7 @@ import {
   zoneStanding,
   decodeFlagRuns,
   decodeLevelRuns,
+  facingFromDelta,
   formatMetres,
   formatSquares,
   isOpening,
@@ -62,6 +63,7 @@ import {
   normalizeGridOffset,
   planWalk,
   polylineMetres,
+  reachableCells,
   simplifyPath,
   snapToSquareCentre,
   snapTokenPosition,
@@ -73,6 +75,8 @@ import {
   TOKEN_PATH_MAX_POINTS,
 } from '@vtt/shared';
 import { TokenNode, type TokenNodeCtx } from './TokenNode.js';
+import { playStepSound } from '../sfx.js';
+import { useSettingsStore } from '../stores/settingsStore.js';
 
 /**
  * A template the pointer drags around (stages 16d, 16g): the square a charge
@@ -397,6 +401,35 @@ const WALK_SPEED_M_PER_S = 3;
  * decides, and it is always smaller than this.
  */
 const WALK_FREE_RANGE_M = 80;
+/**
+ * How long a walked route lingers behind the figure, in ms (stage 27j).
+ *
+ * The trail is not decoration: at a table two people ask „wait, which way did
+ * he come in?" the moment a figure stops, and by then the line the march drew
+ * has already been cleared. Long enough to answer that, short enough that a
+ * fight does not end up drawn over with green string.
+ */
+const TRAIL_FADE_MS = 1600;
+
+/**
+ * Metres of ground between footsteps (stage 27j).
+ *
+ * A stride, near enough — the walk speed is 3 m/s, so this is a step about
+ * every half second, which is the rate a person walking sounds like.
+ */
+const STEP_EVERY_M = 1.5;
+
+/**
+ * Shaded floor: the squares the turn can still pay for (stage 27j).
+ *
+ * Cool and faint on purpose. The route is the loud thing on this layer, and a
+ * fill that competed with it would turn „where may I go" and „where am I
+ * going" into one indistinguishable green.
+ */
+const REACH_FILL = 0x38bdf8;
+const REACH_FILL_ALPHA = 0.1;
+const REACH_EDGE_ALPHA = 0.45;
+
 /** Route preview colours: what will be walked, and what will not. */
 const WALK_COLOR = 0x4ade80;
 const WALK_COLOR_BEYOND = 0x94a3b8;
@@ -580,6 +613,18 @@ interface MarchState {
   walked: ScenePoint[];
   /** Scene pixels per second. */
   speedPx: number;
+  /** Metres walked when the last footstep was played (stage 27j). */
+  lastStepAt: number;
+  /**
+   * Where the figure was when it last turned (stage 27j).
+   *
+   * Not the previous frame: at three metres a second a frame is under a
+   * pixel of travel, which `facingFromDelta` rightly refuses to call a
+   * direction. Keeping the last *turn* as the anchor means the nose swings
+   * once the figure has actually gone somewhere.
+   */
+  lastFacingX: number;
+  lastFacingY: number;
   /** The plan was cut by the turn budget — say so when the figure stops. */
   clipped: boolean;
   /** Budget as it stood when the march started, for the landing arithmetic. */
@@ -639,6 +684,8 @@ export class MapRenderer {
   onWalkNote: ((text: string) => void) | null = null;
   /** A march began (token id) or ended (null) — the caller watches for interruptions. */
   onWalkStateChange: ((tokenId: string | null) => void) | null = null;
+  /** „Turn this figure by hand" (stage 27j) — the knob on the selection ring. */
+  onTokenFacing: ((tokenId: string, facing: number) => void) | null = null;
   /** Double-click on a token — opens its character sheet (stage 08). */
   onTokenActivate: ((tokenId: string) => void) | null = null;
   /** Click on a token while the crosshair is armed (stage 16). */
@@ -939,6 +986,26 @@ export class MapRenderer {
   /** The route under the cursor and the march, drawn above everything. */
   private readonly walkGraphics = new Graphics();
   /**
+   * The floor the turn can still pay for (stage 27j).
+   *
+   * Its own layer under the route, because the two answer different questions
+   * and change at different rates: the shading moves when the figure or its
+   * budget does, the route moves with every pointer event.
+   */
+  private readonly reachGraphics = new Graphics();
+  /** Cells the shading was computed for, keyed like `walkHover`. */
+  private reach: { key: string; cells: ScenePoint[] } | null = null;
+  /**
+   * The line a finished march leaves behind, and how much of its life is left.
+   *
+   * Kept as geometry rather than as a fading `Graphics.alpha` so a second march
+   * can start while the first is still fading without the two sharing a dial.
+   */
+  private trail: { points: ScenePoint[]; half: number; life: number } | null = null;
+  private readonly trailGraphics = new Graphics();
+  /** Whose turn it is, kept from the last token push so the pulse can find it. */
+  private activeTokenId: string | null = null;
+  /**
    * The third ring — „this figure obeys my clicks" (stage 16e).
    *
    * On the overlay rather than on the token, and that is not a layering
@@ -979,7 +1046,13 @@ export class MapRenderer {
   /** Centre of the square (snapped) or the point the cone is aimed at. */
   private areaHover: ScenePoint | null = null;
   private readonly blastGraphics = new Graphics();
-  private walkText: Text | null = null;
+  private walkTexts: Text[] = [];
+  /**
+   * The rotation knob on the selection ring (stage 27j), while it is being
+   * dragged. Null the rest of the time — the knob is drawn regardless, it is
+   * only *grabbed* rarely.
+   */
+  private rotating: { tokenId: string; facing: number } | null = null;
   /**
    * Last planned route, keyed by the goal cell. A* would otherwise run on every
    * pointer event — dozens of times a second — to produce the same polyline.
@@ -1098,6 +1171,10 @@ export class MapRenderer {
     this.overlayLayer.addChild(this.moveGraphics);
     this.overlayLayer.addChild(this.selectGraphics);
     this.overlayLayer.addChild(this.aimGraphics);
+    // The shaded floor goes under the route and the trail: it is the ground,
+    // and the two green lines are things drawn on it.
+    this.overlayLayer.addChild(this.reachGraphics);
+    this.overlayLayer.addChild(this.trailGraphics);
     this.overlayLayer.addChild(this.walkGraphics);
     this.overlayLayer.addChild(this.blastGraphics);
     this.overlayLayer.addChild(this.drawPreview);
@@ -1142,6 +1219,8 @@ export class MapRenderer {
     this.viewport = viewport;
     this.app.ticker.add(this.tickFlicker);
     this.app.ticker.add(this.tickMarch);
+    this.app.ticker.add(this.tickTrail);
+    this.app.ticker.add(this.tickTurn);
     this.app.ticker.add(this.tickFx);
 
     /**
@@ -1259,6 +1338,7 @@ export class MapRenderer {
   /** Reconciles the token layer with the store state (diff by id). */
   setTokens(tokens: TokenView[], ctx: TokenNodeCtx): void {
     if (!this.viewport || this.destroyed) return;
+    this.activeTokenId = ctx.activeTokenId;
     const seen = new Set<string>();
     for (const token of tokens) {
       seen.add(token.id);
@@ -1294,6 +1374,7 @@ export class MapRenderer {
     // the figure — every push that can move one has to redraw them.
     this.drawSelectionRing();
     this.drawAimReticle();
+    this.updateReach();
   }
 
   /**
@@ -1555,6 +1636,23 @@ export class MapRenderer {
       if (event.button !== 0 || this.drag) return;
       const world = viewport.toWorld(event.global.x, event.global.y);
       const point = { x: Math.round(world.x), y: Math.round(world.y) };
+
+      // The rotation knob outranks the bare map but not an armed tool (stage
+      // 27j): a click meant to paint fog must not turn a figure standing under
+      // the brush, and the knob is a handle on the selection, not a tool of
+      // its own.
+      const toolArmed =
+        this.rulerMode ||
+        this.fogBrush.armed ||
+        this.cover.armed ||
+        this.zone.armed ||
+        this.light.armed ||
+        this.netPoint.armed ||
+        this.wall.armed ||
+        this.draw.armed ||
+        this.erasing ||
+        this.notePlacing;
+      if (!toolArmed && this.grabFacingKnob(world)) return;
 
       if (this.fogBrush.armed) {
         if (this.fogBrush.shape === 'brush') {
@@ -1897,6 +1995,7 @@ export class MapRenderer {
     if (this.destroyed) return;
     this.moveAllowance = allowance;
     this.drawMoveOverlay();
+    this.updateReach();
   }
 
   /** Metres of the drag in progress, or null when nothing is being dragged. */
@@ -2010,6 +2109,7 @@ export class MapRenderer {
     this.clearAim();
     this.drawSelectionRing();
     this.drawWalkPreview();
+    this.updateReach();
     this.applyMapCursor();
     this.onSelectionChange?.(tokenId, reason);
   }
@@ -2037,7 +2137,102 @@ export class MapRenderer {
       this.selectGraphics.arc(node.x + half, node.y + half, radius, start, start + arc);
       this.selectGraphics.stroke({ color: 0xffffff, width: 2.5 * k, alpha: 0.95 });
     }
+
+    // The rotation knob (stage 27j). On the ring rather than in a menu, because
+    // turning is a thing you do *while looking at the map* — and on the overlay
+    // rather than on the token, so it stays a thumb-sized target at every zoom.
+    const knob = this.facingKnob();
+    if (!knob) return;
+    const grabbed = this.rotating !== null;
+    this.selectGraphics
+      .moveTo(node.x + half, node.y + half)
+      .lineTo(knob.x, knob.y)
+      .stroke({ color: 0xffffff, width: 1.5 * k, alpha: grabbed ? 0.55 : 0.25 })
+      .circle(knob.x, knob.y, 6 * k)
+      .fill({ color: grabbed ? 0xfacc15 : 0xe2e8f0, alpha: 0.95 })
+      .circle(knob.x, knob.y, 6 * k)
+      .stroke({ color: 0x0b1220, width: 1.5 * k, alpha: 0.9 });
   }
+
+  /**
+   * Where the rotation knob sits right now, or null when there is nothing to
+   * turn. Pointing „up" when the figure has never been turned, so the handle is
+   * always somewhere the hand can find it rather than nowhere at all.
+   */
+  private facingKnob(): (ScenePoint & { centre: ScenePoint }) | null {
+    const scene = this.scene;
+    const node = this.selectedTokenId ? this.tokenNodes.get(this.selectedTokenId) : undefined;
+    if (!scene || !node || node.destroyed) return null;
+    if (this.movableTokens.get(node.tokenId) === false) return null;
+    const half = (node.token.size * scene.grid.sizePx) / 2;
+    const k = this.overlayScale();
+    const centre = { x: node.x + half, y: node.y + half };
+    const distance = half + 22 * k;
+    const angle = (((this.rotating?.facing ?? node.facing ?? 0) - 90) * Math.PI) / 180;
+    return {
+      x: centre.x + Math.cos(angle) * distance,
+      y: centre.y + Math.sin(angle) * distance,
+      centre,
+    };
+  }
+
+  /** Did this click land on the rotation knob? Starts the turn if it did. */
+  private grabFacingKnob(point: ScenePoint): boolean {
+    const knob = this.facingKnob();
+    const node = this.selectedTokenId ? this.tokenNodes.get(this.selectedTokenId) : undefined;
+    if (!knob || !node) return false;
+    if (Math.hypot(point.x - knob.x, point.y - knob.y) > 11 * this.overlayScale()) return false;
+    this.rotating = { tokenId: node.tokenId, facing: node.facing ?? 0 };
+    this.viewport?.plugins.pause('drag');
+    this.app.stage.eventMode = 'static';
+    this.app.stage.on('pointermove', this.onRotateMove);
+    this.app.stage.on('pointerup', this.onRotateEnd);
+    this.app.stage.on('pointerupoutside', this.onRotateEnd);
+    this.drawSelectionRing();
+    return true;
+  }
+
+  private readonly onRotateMove = (event: FederatedPointerEvent): void => {
+    const rotating = this.rotating;
+    const viewport = this.viewport;
+    const knob = this.facingKnob();
+    if (!rotating || !viewport || !knob) return;
+    const world = viewport.toWorld(event.global.x, event.global.y);
+    const facing = facingFromDelta(world.x - knob.centre.x, world.y - knob.centre.y);
+    if (facing === null || facing === rotating.facing) return;
+    rotating.facing = facing;
+    // Turned locally first, reported on release: a figure that waited for the
+    // server on every degree would lag a hand that is drawing a circle.
+    this.tokenNodes.get(rotating.tokenId)?.showFacing(facing);
+    this.drawSelectionRing();
+  };
+
+  /**
+   * Puts a figure's nose back where the store has it — the undo of a refused
+   * turn. The local angle outranks the store's by design (see `TokenNode`), so
+   * a rejection has to say so out loud rather than wait for a sync.
+   */
+  showTokenFacing(tokenId: string, facing: number | null): void {
+    if (this.destroyed) return;
+    this.tokenNodes.get(tokenId)?.showFacing(facing);
+    this.drawSelectionRing();
+  }
+
+  private readonly onRotateEnd = (): void => {
+    const rotating = this.rotating;
+    this.rotating = null;
+    this.app.stage.off('pointermove', this.onRotateMove);
+    this.app.stage.off('pointerup', this.onRotateEnd);
+    this.app.stage.off('pointerupoutside', this.onRotateEnd);
+    this.viewport?.plugins.resume('drag');
+    // The release of a turn is not an order to walk — the same guard a token
+    // drag needs, and for the same reason: `pixi-viewport` still calls a short
+    // gesture a click on the map underneath it.
+    this.dragEndedAt = performance.now();
+    this.drawSelectionRing();
+    this.drawWalkPreview();
+    if (rotating) this.onTokenFacing?.(rotating.tokenId, rotating.facing);
+  };
 
   /**
    * Does the steered figure have a weapon in hand right now (stage 16f)?
@@ -2254,6 +2449,7 @@ export class MapRenderer {
     this.walkCanStep = canStep;
     this.walkHover = null;
     this.drawWalkPreview();
+    this.updateReach();
   }
 
   /**
@@ -2266,6 +2462,7 @@ export class MapRenderer {
     this.walkRefusal = reason;
     this.walkHover = null;
     this.drawWalkPreview();
+    this.updateReach();
     this.applyMapCursor();
   }
 
@@ -2386,6 +2583,10 @@ export class MapRenderer {
     const blocked =
       this.march !== null ||
       this.drag !== null ||
+      // Turning a figure is not planning a walk (stage 27j): the knob is
+      // dragged across the map, and every frame of that would otherwise draw a
+      // route to wherever the hand happened to be.
+      this.rotating !== null ||
       this.rulerMode ||
       // A charge in hand owns the click: the next one says where it lands, not
       // where the figure walks (stage 16d). A cone is *not* such a case — it is
@@ -2454,8 +2655,7 @@ export class MapRenderer {
    */
   private drawWalkPreview(): void {
     this.walkGraphics.clear();
-    this.walkText?.destroy();
-    this.walkText = null;
+    this.clearWalkTexts();
     const hover = this.walkHover;
     const scene = this.scene;
     const node = this.selectedTokenId ? this.tokenNodes.get(this.selectedTokenId) : undefined;
@@ -2497,27 +2697,258 @@ export class MapRenderer {
       .lineTo(cx - arm, cy + arm)
       .stroke({ color: hover.complete ? color : 0xf87171, width: 3 * k, alpha: 0.95 });
 
+    // What each leg costs, written on the leg (stage 27j).
+    //
+    // The total at the end was never the number being asked about: a player
+    // looking at an L round a corner wants to know whether the *first* half
+    // fits, because that is the half that decides whether the second one is
+    // worth planning. Legs under a metre carry no label — they are corners,
+    // not decisions, and a label on every one of them is a wall of digits.
+    // A straight route carries none either: its one leg *is* the total, and
+    // the same number printed twice a centimetre apart reads as a bug.
+    const legLabels = hover.walkable.length > 2;
+    for (let i = 1; legLabels && i < hover.walkable.length; i++) {
+      const from = hover.walkable[i - 1]!;
+      const to = hover.walkable[i]!;
+      const legMetres = polylineMetres(
+        [
+          { x: from.x + half, y: from.y + half },
+          { x: to.x + half, y: to.y + half },
+        ],
+        scene,
+      );
+      if (legMetres < 1) continue;
+      // Below the leg, while the total sits above the stop: the last leg's
+      // label and the total are a centimetre apart otherwise, and they were
+      // printing over each other.
+      this.addWalkLabel(
+        formatMetres(legMetres),
+        (from.x + to.x) / 2 + half + 8 * k,
+        (from.y + to.y) / 2 + half + 4 * k,
+        0xd1fae5,
+        13,
+      );
+    }
+
     const budget = this.walkBudget();
-    const label = new Text({
-      text: budget
+    this.addWalkLabel(
+      budget
         ? `${formatMetres(hover.spent)} / ${formatMetres(budget.metresLeft)}`
         : formatMetres(hover.metres),
+      cx + 14 * k,
+      cy - 30 * k,
+      hover.complete ? 0xbbf7d0 : 0xfca5a5,
+      18,
+    );
+  }
+
+  /** One number on the route layer, in screen-constant size. */
+  private addWalkLabel(text: string, x: number, y: number, fill: number, fontSize: number): void {
+    const label = new Text({
+      text,
       style: {
         fontFamily: 'system-ui, sans-serif',
-        fontSize: 18,
-        fill: hover.complete ? 0xbbf7d0 : 0xfca5a5,
+        fontSize,
+        fill,
         stroke: { color: 0x0b1220, width: 4 },
       },
     });
-    label.scale.set(k);
-    label.position.set(cx + 14 * k, cy - 30 * k);
+    label.scale.set(this.overlayScale());
+    label.position.set(x, y);
     this.overlayLayer.addChild(label);
-    this.walkText = label;
+    this.walkTexts.push(label);
+  }
+
+  private clearWalkTexts(): void {
+    for (const label of this.walkTexts) label.destroy();
+    this.walkTexts.length = 0;
+  }
+
+  /**
+   * The floor this turn can still pay for (stage 27j).
+   *
+   * Only inside a fight, where a turn has a number: out of combat the answer is
+   * „anywhere you can see", and flooding eighty metres of map to say so would
+   * be a lot of work to draw a shrug.
+   *
+   * Drawn for the GM too, whose budget is **not** enforced (14b: going over is
+   * logged, not refused). The shading says how far the turn pays for, which is
+   * as true for them as for a player — and it is the same bargain the reach
+   * circle already struck.
+   *
+   * Recomputed on the same three things that can change the answer — which
+   * figure is steered, where it stands, how much of its turn is left — and
+   * cached on exactly those, because the flood is a few hundred nodes and the
+   * pointer moves sixty times a second.
+   */
+  private updateReach(): void {
+    const scene = this.scene;
+    const node = this.selectedTokenId ? this.tokenNodes.get(this.selectedTokenId) : undefined;
+    const budget = this.walkBudget();
+    const isPassable = this.walkPassable;
+    const cell = scene?.grid.sizePx ?? 0;
+    const perPixel = scene ? metresPerPixel(scene) : 0;
+    if (
+      !scene ||
+      !node ||
+      node.destroyed ||
+      !isPassable ||
+      !budget ||
+      this.walkRefusal ||
+      cell <= 0 ||
+      perPixel <= 0
+    ) {
+      if (this.reach) {
+        this.reach = null;
+        this.reachGraphics.clear();
+      }
+      return;
+    }
+    const metresPerCell = cell * perPixel;
+    const budgetCells = budget.metresLeft / budget.costFactor / metresPerCell;
+    const key = [
+      node.tokenId,
+      Math.round(node.x),
+      Math.round(node.y),
+      budget.metresLeft,
+      budget.costFactor,
+      node.token.size,
+    ].join(':');
+    if (this.reach?.key === key) return;
+
+    const grid = walkGridForScene(
+      scene,
+      normalizeGridOffset(scene.grid.offsetX, cell),
+      normalizeGridOffset(scene.grid.offsetY, cell),
+    );
+    const cells = reachableCells(
+      { x: node.x, y: node.y },
+      {
+        grid,
+        isPassable,
+        ...(this.walkCanStep ? { canStep: this.walkCanStep } : {}),
+        size: node.token.size,
+        radiusCells: Math.min(WALK_RADIUS_CELLS, Math.max(1, Math.ceil(budgetCells) + 1)),
+        budgetCells,
+      },
+    );
+    this.reach = { key, cells };
+    this.drawReach();
+  }
+
+  /**
+   * Shades the reachable floor and draws a line round the outside of it.
+   *
+   * Drawn as a *union of squares*, not as one square per answer: a 2×2 figure
+   * gets one anchor per position and four squares of floor, and painting the
+   * footprints one on top of another would stack their alpha into a mess. The
+   * outline is the edges no neighbour claims, which is what makes the shape
+   * read as one area instead of a mosaic.
+   */
+  private drawReach(): void {
+    this.reachGraphics.clear();
+    const scene = this.scene;
+    const reach = this.reach;
+    const node = this.selectedTokenId ? this.tokenNodes.get(this.selectedTokenId) : undefined;
+    if (!scene || !reach || !node || node.destroyed) return;
+    const cell = scene.grid.sizePx;
+    const size = node.token.size;
+    const covered = new Set<string>();
+    for (const anchor of reach.cells) {
+      const col = Math.round((anchor.x - normalizeGridOffset(scene.grid.offsetX, cell)) / cell);
+      const row = Math.round((anchor.y - normalizeGridOffset(scene.grid.offsetY, cell)) / cell);
+      for (let dr = 0; dr < size; dr++) {
+        for (let dc = 0; dc < size; dc++) covered.add(`${col + dc},${row + dr}`);
+      }
+    }
+    const originX = normalizeGridOffset(scene.grid.offsetX, cell);
+    const originY = normalizeGridOffset(scene.grid.offsetY, cell);
+    for (const cellKey of covered) {
+      const [col, row] = cellKey.split(',').map(Number) as [number, number];
+      this.reachGraphics.rect(originX + col * cell, originY + row * cell, cell, cell);
+    }
+    this.reachGraphics.fill({ color: REACH_FILL, alpha: REACH_FILL_ALPHA });
+
+    const k = this.overlayScale();
+    for (const cellKey of covered) {
+      const [col, row] = cellKey.split(',').map(Number) as [number, number];
+      const x = originX + col * cell;
+      const y = originY + row * cell;
+      if (!covered.has(`${col},${row - 1}`)) this.reachGraphics.moveTo(x, y).lineTo(x + cell, y);
+      if (!covered.has(`${col},${row + 1}`)) {
+        this.reachGraphics.moveTo(x, y + cell).lineTo(x + cell, y + cell);
+      }
+      if (!covered.has(`${col - 1},${row}`)) this.reachGraphics.moveTo(x, y).lineTo(x, y + cell);
+      if (!covered.has(`${col + 1},${row}`)) {
+        this.reachGraphics.moveTo(x + cell, y).lineTo(x + cell, y + cell);
+      }
+    }
+    this.reachGraphics.stroke({ color: REACH_FILL, width: 2 * k, alpha: REACH_EDGE_ALPHA });
+  }
+
+  /**
+   * The „it is this one's turn" heartbeat (stage 27j).
+   *
+   * A halo that merely sits there is one more ring on a figure that already has
+   * three; a halo that breathes is the only thing on the map that moves while
+   * nothing is happening, and the eye finds it without being told. Slow — one
+   * beat every two seconds — because the point is to be findable, not urgent.
+   *
+   * Obeys „Animacja 3D" off, like every other moving thing (27d, 27i): that
+   * switch means „nie chcę przedstawienia", and this is a small one.
+   */
+  private readonly tickTurn = (): void => {
+    const id = this.activeTokenId;
+    if (!id) return;
+    const node = this.tokenNodes.get(id);
+    if (!node || node.destroyed) return;
+    if (!useSettingsStore.getState().animate) {
+      node.pulseTurn(1);
+      return;
+    }
+    const phase = 0.5 + 0.5 * Math.sin((performance.now() / 1000) * Math.PI);
+    node.pulseTurn(Math.round(phase * 20) / 20);
+  };
+
+  /** Fades the line a finished march left behind (stage 27j). */
+  private readonly tickTrail = (): void => {
+    const trail = this.trail;
+    if (!trail) return;
+    trail.life -= this.app.ticker.deltaMS;
+    if (trail.life <= 0) {
+      this.trail = null;
+      this.trailGraphics.clear();
+      return;
+    }
+    this.drawTrail();
+  };
+
+  private drawTrail(): void {
+    this.trailGraphics.clear();
+    const trail = this.trail;
+    if (!trail || trail.points.length < 2) return;
+    const alpha = Math.min(1, trail.life / TRAIL_FADE_MS) * 0.55;
+    const k = this.overlayScale();
+    const [first, ...rest] = trail.points;
+    this.trailGraphics.moveTo(first!.x + trail.half, first!.y + trail.half);
+    for (const point of rest) this.trailGraphics.lineTo(point.x + trail.half, point.y + trail.half);
+    this.trailGraphics.stroke({
+      color: WALK_COLOR,
+      width: 3 * k,
+      alpha,
+      cap: 'round',
+      join: 'round',
+    });
+    // A dot where the figure set off, so a trail that ends under a token still
+    // says which end of it is the beginning.
+    this.trailGraphics
+      .circle(first!.x + trail.half, first!.y + trail.half, 4 * k)
+      .fill({ color: WALK_COLOR, alpha });
   }
 
   /**
    * Shift+click: „go through here first". Only accepted where the figure can
-   * actually get to — a corner it cannot reach would silently end every route
+   * actually get to" — a corner it cannot reach would silently end every route
    * at the same place, which reads as the map being broken.
    */
   private addWalkWaypoint(worldX: number, worldY: number): void {
@@ -2576,6 +3007,9 @@ export class MapRenderer {
       distances,
       startedAt: performance.now(),
       lastTickAt: performance.now(),
+      lastStepAt: 0,
+      lastFacingX: node.x,
+      lastFacingY: node.y,
       x: node.x,
       y: node.y,
       walked: [],
@@ -2590,8 +3024,7 @@ export class MapRenderer {
     this.walkWaypoints = [];
     this.walkHover = null;
     this.walkGraphics.clear();
-    this.walkText?.destroy();
-    this.walkText = null;
+    this.clearWalkTexts();
     this.setWalkCursor('');
     this.onWalkStateChange?.(node.tokenId);
   }
@@ -2658,6 +3091,26 @@ export class MapRenderer {
     }
 
     march.node.position.set(march.x, march.y);
+    // The figure turns as it walks, one frame ahead of the server: the drop
+    // will confirm the same angle, and a figure that walked a corridor
+    // backwards until it arrived would be the map lying for four seconds.
+    const facing = facingFromDelta(march.x - march.lastFacingX, march.y - march.lastFacingY);
+    if (facing !== null) {
+      march.node.showFacing(facing);
+      march.lastFacingX = march.x;
+      march.lastFacingY = march.y;
+    }
+    // A step every stride of ground rather than every so many milliseconds:
+    // the march can be interrupted, resumed and stalled, and only distance
+    // walked is the same thing a footstep is.
+    const scene = this.scene;
+    if (scene) {
+      const walkedM = travelled * metresPerPixel(scene);
+      if (walkedM - march.lastStepAt >= STEP_EVERY_M) {
+        march.lastStepAt = walkedM;
+        playStepSound();
+      }
+    }
     this.drawSelectionRing();
     this.drawMarchTrail(march);
     this.onTokenMove?.(march.node.token.id, march.x, march.y, false);
@@ -2731,8 +3184,7 @@ export class MapRenderer {
     if (!march) return;
     this.march = null;
     this.walkGraphics.clear();
-    this.walkText?.destroy();
-    this.walkText = null;
+    this.clearWalkTexts();
 
     const scene = this.scene;
     if (commit && scene && !march.node.destroyed) {
@@ -2740,6 +3192,15 @@ export class MapRenderer {
       march.node.position.set(point.x, point.y);
       const path = thinWalk([...walked, point], TOKEN_PATH_MAX_POINTS);
       this.onTokenMove?.(march.node.token.id, point.x, point.y, true, path);
+      // The line the figure walked outlives the walk by a second and a half
+      // (stage 27j): „which way did he come in?" is asked *after* somebody
+      // stops, and until now the answer was cleared on the same frame.
+      this.trail = {
+        points: [march.start, ...walked, point],
+        half: (march.node.token.size * scene.grid.sizePx) / 2,
+        life: TRAIL_FADE_MS,
+      };
+      this.drawTrail();
     }
     this.onWalkStateChange?.(null);
     if (note) this.onWalkNote?.(note);
@@ -4019,6 +4480,8 @@ export class MapRenderer {
     this.drawSelectionRing();
     this.drawAimReticle();
     this.drawWalkPreview();
+    this.drawReach();
+    this.drawTrail();
     this.setRangeRings(this.lastRingCentre, this.lastRings);
     this.setNotes(this.lastNotes);
     // Wall handles, door glyphs and lamp handles are screen-sized, like the note
@@ -4050,8 +4513,12 @@ export class MapRenderer {
     this.walkGraphics.clear();
     this.selectGraphics.clear();
     this.aimGraphics.clear();
-    this.walkText?.destroy();
-    this.walkText = null;
+    this.reach = null;
+    this.reachGraphics.clear();
+    this.trail = null;
+    this.trailGraphics.clear();
+    this.rotating = null;
+    this.clearWalkTexts();
     this.setWalkCursor('');
     this.setSelection(null, 'scene');
   }
@@ -4110,6 +4577,19 @@ export class MapRenderer {
         this.erasing
       ) {
         return;
+      }
+      // The rotation knob (stage 27j) sits outside its figure's ring, which
+      // means it regularly lands *on top of another figure* — two people
+      // standing in adjacent squares is the normal case, not the odd one. Pixi
+      // hands the event to the deepest target first, so without this the knob
+      // would be unusable exactly when the map is crowded: the click would pick
+      // up the neighbour instead of turning the selection.
+      if (this.viewport) {
+        const world = this.viewport.toWorld(event.global.x, event.global.y);
+        if (this.grabFacingKnob(world)) {
+          event.stopPropagation();
+          return;
+        }
       }
       const now = performance.now();
       if (now - lastClickAt < DOUBLE_CLICK_MS) {
@@ -4172,6 +4652,13 @@ export class MapRenderer {
       token.size,
       snapScene,
     );
+    // The figure turns towards where the hand is taking it (stage 27j) — the
+    // same courtesy a march gets, measured from the previous *sample* rather
+    // than the previous frame, because a pixel of pointer travel is not a
+    // direction and `facingFromDelta` says so.
+    const lastSample = drag.path[drag.path.length - 1]!;
+    const dragFacing = facingFromDelta(pos.x - lastSample.x, pos.y - lastSample.y);
+    if (dragFacing !== null) drag.node.showFacing(dragFacing);
     drag.node.position.set(pos.x, pos.y);
     drag.lastX = pos.x;
     drag.lastY = pos.y;

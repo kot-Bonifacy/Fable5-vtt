@@ -19,7 +19,13 @@ import {
   sceneUpdateEvent,
   sceneViewEvent,
 } from './scenes.js';
-import { tokenCreateEvent, tokenDeleteEvent, tokenMoveEvent, tokenUpdateEvent } from './tokens.js';
+import {
+  tokenCreateEvent,
+  tokenDeleteEvent,
+  tokenFacingEvent,
+  tokenMoveEvent,
+  tokenUpdateEvent,
+} from './tokens.js';
 import {
   combatAddEvent,
   combatOrderEvent,
@@ -199,6 +205,7 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   tokenUpdateEvent,
   tokenDeleteEvent,
   tokenMoveEvent,
+  tokenFacingEvent,
   combatStartEvent,
   combatAddEvent,
   combatRemoveEvent,

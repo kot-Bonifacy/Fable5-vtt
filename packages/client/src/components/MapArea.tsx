@@ -6,6 +6,7 @@ import {
   ROLE_GM,
   blockingSegments,
   computeVisionPolygon,
+  conditionRegistry,
   coverMovementSegments,
   cpredMovementBlock,
   isOpening,
@@ -62,6 +63,7 @@ import {
   paintFog,
   sendRuler,
   sendTokenMove,
+  setTokenFacing,
   toggleOpening,
   updateLight,
   updateWall,
@@ -470,6 +472,22 @@ export function MapArea() {
     // The rail's buttons take control of the figure they belong to; the ring
     // and the walk preview live in the renderer, so the request goes there.
     setSteerHandler((tokenId) => renderer.setSelection(tokenId));
+    // Turning a figure by hand (stage 27j). Reported on release, not on every
+    // degree: the nose already followed the knob locally, and the server's job
+    // is to remember the angle, not to animate it.
+    renderer.onTokenFacing = (tokenId, facing) => {
+      void setTokenFacing(tokenId, facing).then((result) => {
+        // The accepted angle comes back as a `token:upsert` to everyone, this
+        // client included — there is nothing to apply here on success.
+        if (result.ok) return;
+        // Refused: the nose goes back to what the store still holds. The local
+        // angle outranks the store's by design (see `TokenNode`), so a
+        // rejection has to be said out loud rather than waited out.
+        const settled = useTokenStore.getState().tokens[tokenId];
+        renderer.showTokenFacing(tokenId, settled?.facing ?? null);
+        useChatStore.getState().addNote('Nie udało się obrócić figury.');
+      });
+    };
     renderer.onWalkNote = (text) => useChatStore.getState().addNote(text);
     renderer.onWalkStateChange = setMarchingTokenId;
     renderer.onTokenMenu = (tokenId, clientX, clientY) => {
@@ -740,6 +758,9 @@ export function MapArea() {
       myUserId: user?.id ?? null,
       isGm: user?.role === ROLE_GM,
       statusIcons: new Map(tokenState.statuses.map((s) => [s.id, s.icon])),
+      // What a sticker does to the figure comes from the same registry the
+      // icon does (stage 27j) — the map never learns what „unconscious" means.
+      conditions: conditionRegistry(tokenState.statuses),
       activeTokenId: activeTokenIdOf(useCombatStore.getState().combat),
     });
   }, []);

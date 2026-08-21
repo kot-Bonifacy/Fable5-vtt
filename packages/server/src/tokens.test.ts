@@ -405,6 +405,73 @@ describe('tokens', () => {
     expect(updated.ok && updated.data?.statuses).toEqual(['stunned', 'on-fire']);
   });
 
+  /**
+   * Stage 27j. The angle a figure is turned to is server state like everything
+   * else: walking writes it, a hand may overwrite it, and the next walk wins
+   * again. These four cover the whole contract.
+   */
+  it('turns a figure the way it walked, and says so on the drop', async () => {
+    const gmSees = waitFor<TokenMoveBroadcast>(gm, 'token:move');
+    // Straight up the map from (300, 500): the drop is the only frame that
+    // carries an angle, and „up" is negative Y.
+    const ack = await emitAck<{ x: number; y: number }>(player, 'token:move', {
+      tokenId: ownTokenId,
+      x: 300,
+      y: 100,
+      final: true,
+    });
+    expect(ack.ok).toBe(true);
+    expect(await gmSees).toMatchObject({ tokenId: ownTokenId, facing: 0 });
+
+    const payload = await roundTrip(player);
+    expect(payload.tokens.find((t) => t.id === ownTokenId)?.facing).toBe(0);
+  });
+
+  it('measures the turn from the route walked, not the line to the landing', async () => {
+    // Out east and then back north: the straight line to the landing square
+    // points north-east, the last leg of the route points north.
+    const ack = await emitAck<{ x: number; y: number }>(player, 'token:move', {
+      tokenId: ownTokenId,
+      x: 500,
+      y: 300,
+      final: true,
+      path: [
+        { x: 500, y: 100 },
+        { x: 500, y: 300 },
+      ],
+    });
+    expect(ack.ok).toBe(true);
+    const payload = await roundTrip(player);
+    // The last leg went *down* the map (y grows), so the figure faces down.
+    expect(payload.tokens.find((t) => t.id === ownTokenId)?.facing).toBe(180);
+  });
+
+  it('lets the owner turn their own figure by hand and everybody see it', async () => {
+    const gmSees = waitFor<TokenUpsertBroadcast>(gm, 'token:upsert');
+    const ack = await emitAck<TokenView>(player, 'token:facing', {
+      tokenId: ownTokenId,
+      facing: 271.4,
+    });
+    expect(ack.ok).toBe(true);
+    // Folded to a whole degree on the way in, like every other angle.
+    expect(ack.ok && ack.data?.facing).toBe(271);
+    expect((await gmSees).token).toMatchObject({ id: ownTokenId, facing: 271 });
+  });
+
+  it('refuses a hand-turn of a foreign figure, and hides that a hidden one exists', async () => {
+    const foreign = await emitAck(player, 'token:facing', { tokenId: npcTokenId, facing: 90 });
+    expect(foreign.ok).toBe(false);
+    expect(!foreign.ok && foreign.error).toBe('FORBIDDEN');
+
+    const hidden = await emitAck(player, 'token:facing', { tokenId: hiddenTokenId, facing: 90 });
+    expect(hidden.ok).toBe(false);
+    expect(!hidden.ok && hidden.error).toBe('TOKEN_NOT_FOUND');
+
+    const broken = await emitAck(player, 'token:facing', { tokenId: ownTokenId, facing: 'north' });
+    expect(broken.ok).toBe(false);
+    expect(!broken.ok && broken.error).toBe('BAD_REQUEST');
+  });
+
   it('deletes tokens campaign-wide', async () => {
     const gone = waitFor<TokenDeleteBroadcast>(player, 'token:delete');
     const ack = await emitAck(gm, 'token:delete', { tokenId: npcTokenId });

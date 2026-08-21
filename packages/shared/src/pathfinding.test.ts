@@ -3,6 +3,7 @@ import {
   WALK_MAX_VISITED,
   clipWalkToBudget,
   planWalk,
+  reachableCells,
   thinWalk,
   walkGridForScene,
   type ScenePoint,
@@ -258,5 +259,100 @@ describe('thinWalk', () => {
     expect(thinned).toHaveLength(10);
     expect(thinned[0]).toEqual(points[0]);
     expect(thinned[9]).toEqual(points[99]);
+  });
+});
+
+/**
+ * Stage 27j: the shaded floor. A budget is not a number in the corner of the
+ * screen — it is the set of squares the figure may still stand on, and the map
+ * has to be able to draw it before anybody clicks.
+ */
+describe('reachableCells (stage 27j)', () => {
+  /** „col,row" of every cell the flood returned, for set comparisons. */
+  function keys(cells: readonly { x: number; y: number }[], grid: WalkGrid = GRID): Set<string> {
+    return new Set(
+      cells.map(
+        (cell) => `${(cell.x - grid.originX) / grid.cell},${(cell.y - grid.originY) / grid.cell}`,
+      ),
+    );
+  }
+
+  it('always includes the square the figure is standing on', () => {
+    const cells = reachableCells(at(4, 4), { grid: GRID, isPassable: () => true, budgetCells: 0 });
+    expect(cells).toEqual([{ x: 400, y: 400, cost: 0 }]);
+  });
+
+  it('opens the eight neighbours for one step of budget, and no more', () => {
+    const cells = reachableCells(at(4, 4), { grid: GRID, isPassable: () => true, budgetCells: 1 });
+    // The four orthogonal ones cost 1; the diagonals cost √2 and are out of reach.
+    expect(keys(cells)).toEqual(new Set(['4,4', '3,4', '5,4', '4,3', '4,5']));
+  });
+
+  it('pays √2 for a diagonal, exactly as the route does', () => {
+    const cells = reachableCells(at(4, 4), {
+      grid: GRID,
+      isPassable: () => true,
+      budgetCells: Math.SQRT2,
+    });
+    const corner = cells.find((cell) => cell.x === 500 && cell.y === 500);
+    expect(corner?.cost).toBeCloseTo(Math.SQRT2, 6);
+  });
+
+  it('does not shade the far side of a wall', () => {
+    // A full-height wall in column 5 — everything east of it needs a way round
+    // that a three-cell budget cannot afford.
+    const wall = Array.from({ length: 10 }, (_, row) => `5,${row}`);
+    const cells = reachableCells(at(4, 4), {
+      grid: GRID,
+      isPassable: blocking(wall),
+      budgetCells: 3,
+    });
+    expect([...keys(cells)].some((key) => Number(key.split(',')[0]) >= 5)).toBe(false);
+  });
+
+  it('refuses to shade anything when the figure is standing somewhere impossible', () => {
+    expect(
+      reachableCells(at(4, 4), { grid: GRID, isPassable: () => false, budgetCells: 5 }),
+    ).toEqual([]);
+  });
+
+  it('needs the whole footprint of a big figure, not just its corner', () => {
+    // A 2×2 figure at (0,0) with a pillar at (2,0): the square east of it is
+    // affordable, but the figure would not fit on it.
+    const cells = reachableCells(at(0, 0), {
+      grid: GRID,
+      isPassable: blocking(['2,0']),
+      size: 2,
+      budgetCells: 1,
+    });
+    expect(keys(cells).has('1,0')).toBe(false);
+    expect(keys(cells).has('0,1')).toBe(true);
+  });
+
+  it('honours the edge test the GM hands in, the way the route does', () => {
+    // A line the figure may not cross between column 4 and column 5.
+    const cells = reachableCells(at(4, 4), {
+      grid: GRID,
+      isPassable: () => true,
+      canStep: (from, to) => !(from.x < 500 && to.x > 500) && !(from.x > 500 && to.x < 500),
+      budgetCells: 2,
+    });
+    expect(keys(cells).has('5,4')).toBe(false);
+    expect(keys(cells).has('3,4')).toBe(true);
+  });
+
+  it('reports the cheapest cost for every square, not the first one found', () => {
+    const cells = reachableCells(at(0, 0), { grid: GRID, isPassable: () => true, budgetCells: 4 });
+    const two = cells.find((cell) => cell.x === 200 && cell.y === 0);
+    expect(two?.cost).toBeCloseTo(2, 6);
+  });
+
+  it('stops at the node ceiling instead of flooding a huge map', () => {
+    const big: WalkGrid = { cell: 10, originX: 0, originY: 0, cols: 400, rows: 400 };
+    const cells = reachableCells(
+      { x: 2000, y: 2000 },
+      { grid: big, isPassable: () => true, budgetCells: 1000, maxVisited: 500 },
+    );
+    expect(cells.length).toBeLessThanOrEqual(500);
   });
 });

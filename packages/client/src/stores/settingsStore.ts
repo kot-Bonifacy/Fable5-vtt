@@ -25,6 +25,15 @@ export interface SettingsState {
   cupVolume: number;
   /** 0–100, efekty walki na mapie: strzały, wybuchy, przeładowanie (etap 27i). */
   sfxVolume: number;
+  /**
+   * Kroki figur na mapie (etap 27j) — własny przełącznik, nie własny suwak.
+   *
+   * Głośność bierze z suwaka efektów, bo to ten sam rodzaj dźwięku; wyłącznik
+   * jest osobny, bo to jedyna próbka odtwarzana **za każdym razem, gdy ktoś
+   * przejdzie przez pokój**, a nie raz na strzał. Zakres etapu mówi wprost:
+   * „o ile nie zmęczy przy stole".
+   */
+  stepSounds: boolean;
   /** Skórka TEGO użytkownika (kopia stanu serwera). */
   skin: DiceSkinId;
   /** Czy okno ustawień jest otwarte. */
@@ -34,6 +43,7 @@ export interface SettingsState {
   setDiceVolume: (volume: number) => void;
   setCupVolume: (volume: number) => void;
   setSfxVolume: (volume: number) => void;
+  setStepSounds: (on: boolean) => void;
   /** Ustawia kopię lokalną; wysyłką na serwer zajmuje się `socket.ts`. */
   applySkin: (skin: DiceSkinId) => void;
   setOpen: (open: boolean) => void;
@@ -44,6 +54,7 @@ const ANIMATE_KEY = 'vtt.dice.animate';
 const DICE_VOLUME_KEY = 'vtt.dice.volume';
 const CUP_VOLUME_KEY = 'vtt.cup.volume';
 const SFX_VOLUME_KEY = 'vtt.sfx.volume';
+const STEP_SOUNDS_KEY = 'vtt.sfx.steps';
 const SKIN_KEY = 'vtt.dice.skin';
 
 function readFlag(key: string, fallback: boolean): boolean {
@@ -90,6 +101,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   diceVolume: readVolume(DICE_VOLUME_KEY, 50),
   cupVolume: readVolume(CUP_VOLUME_KEY, 50),
   sfxVolume: readVolume(SFX_VOLUME_KEY, 50),
+  stepSounds: readFlag(STEP_SOUNDS_KEY, true),
   skin: readSkin(),
   open: false,
 
@@ -114,6 +126,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     const clamped = Math.min(100, Math.max(0, Math.round(volume)));
     write(SFX_VOLUME_KEY, String(clamped));
     set({ sfxVolume: clamped });
+  },
+
+  setStepSounds: (on) => {
+    write(STEP_SOUNDS_KEY, on ? '1' : '0');
+    set({ stepSounds: on });
   },
 
   applySkin: (skin) => {

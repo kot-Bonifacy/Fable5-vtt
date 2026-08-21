@@ -32,6 +32,7 @@ const SFX_FILES: Readonly<Record<MapFxSound, string>> = {
   gas: '/sfx/gas.ogg',
   zap: '/sfx/zap.wav',
   reload: '/sfx/reload.ogg',
+  step: '/sfx/step.ogg',
 };
 
 /**
@@ -55,6 +56,9 @@ const SFX_GAIN: Readonly<Record<MapFxSound, number>> = {
   gas: 0.7,
   zap: 0.75,
   reload: 0.7,
+  // Quiet on purpose. A footstep is punctuation, not an event — the stage said
+  // „o ile nie zmęczy przy stole", and a step at the volume of a gunshot would.
+  step: 0.35,
 };
 
 /**
@@ -113,6 +117,22 @@ export function playFxSound(sound: MapFxSound, options?: { pitch?: number; gain?
     // Not loaded yet — `play` starts it from the beginning anyway.
   }
   void audio.play().catch(() => undefined);
+}
+
+/**
+ * One footstep of a figure walking a planned route (stage 27j).
+ *
+ * Left and right are the same sample at two pitches rather than two files: the
+ * pack has both feet, but a second entry in `MAP_FX_SOUNDS` would put a second
+ * „Krok" button in the settings for a difference nobody can name out loud.
+ * Alternating is what makes a walk sound like a walk instead of a loop.
+ */
+let stepFoot = 0;
+
+export function playStepSound(): void {
+  if (!useSettingsStore.getState().stepSounds) return;
+  stepFoot ^= 1;
+  playFxSound('step', { pitch: stepFoot === 0 ? 0.94 : 1.08 });
 }
 
 /**

@@ -98,6 +98,7 @@ import {
   emitTokensOfCharacter,
   requireCampaignToken,
   toTokenView,
+  turnTokenToward,
 } from './tokens.js';
 import { buildCompendiumSync } from './compendium.js';
 import { fetchFogState } from './fog-io.js';
@@ -1036,6 +1037,11 @@ export async function performAttackRoll(
       });
       const view: ChatMessageView = toChatMessageView(stored);
       await deliverRollMessage(deps, campaignId, user.id, view);
+      // The shooter turns to look at what they shot at (stage 27j). After the
+      // card, for the same reason the bang is after it: an attack that never
+      // happened must not leave the figure staring down a corridor it never
+      // fired into.
+      await turnTokenToward(deps, campaignId, scene, attacker, aimPoint);
       // The map hears about it *after* the card has been sent, and holds the
       // bang until that card is revealed (stage 27i): the dice are still
       // rolling on everybody's screen, and a shot that landed before them

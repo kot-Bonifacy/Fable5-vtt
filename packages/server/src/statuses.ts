@@ -1,7 +1,16 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { FastifyBaseLogger } from 'fastify';
-import type { StatusDefinition } from '@vtt/shared';
+import type { StatusDefinition, TokenCondition } from '@vtt/shared';
+
+/** Conditions a status entry may declare (stage 27j); anything else is dropped. */
+const CONDITIONS: readonly TokenCondition[] = ['ok', 'wounded', 'down', 'dead'];
+
+function readCondition(value: unknown): TokenCondition | undefined {
+  return typeof value === 'string' && (CONDITIONS as readonly string[]).includes(value)
+    ? (value as TokenCondition)
+    : undefined;
+}
 
 /**
  * Data-driven token status registry. The definitions (id, PL name, icon path)
@@ -40,7 +49,16 @@ export async function loadStatusRegistry(
         typeof (entry as StatusDefinition).name === 'string' &&
         typeof (entry as StatusDefinition).icon === 'string',
     );
-    return { list, ids: new Set(list.map((s) => s.id)) };
+    const clean = list.map<StatusDefinition>((entry) => {
+      const condition = readCondition((entry as { condition?: unknown }).condition);
+      return {
+        id: entry.id,
+        name: entry.name,
+        icon: entry.icon,
+        ...(condition ? { condition } : {}),
+      };
+    });
+    return { list: clean, ids: new Set(clean.map((s) => s.id)) };
   } catch (error) {
     // Missing data must not take the VTT down — tokens just have no statuses.
     log.warn({ err: error, file }, 'status registry not loaded');

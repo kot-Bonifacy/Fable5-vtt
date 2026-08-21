@@ -29,6 +29,7 @@ const SFX_SAMPLES: readonly { id: MapFxSound; label: string }[] = [
   { id: 'gas', label: 'Gaz' },
   { id: 'zap', label: 'Wyładowanie' },
   { id: 'reload', label: 'Przeładowanie' },
+  { id: 'step', label: 'Krok' },
 ];
 
 /**
@@ -55,6 +56,8 @@ export function SettingsWindow() {
   const setCupVolume = useSettingsStore((s) => s.setCupVolume);
   const sfxVolume = useSettingsStore((s) => s.sfxVolume);
   const setSfxVolume = useSettingsStore((s) => s.setSfxVolume);
+  const stepSounds = useSettingsStore((s) => s.stepSounds);
+  const setStepSounds = useSettingsStore((s) => s.setStepSounds);
   const skin = useSettingsStore((s) => s.skin);
 
   const theme = useThemeStore((s) => s.theme);
@@ -192,6 +195,21 @@ export function SettingsWindow() {
             kośćmi — to jeden przełącznik na całe przedstawienie. Kliknij próbkę, żeby jej
             posłuchać.
           </p>
+
+          <label className="settings-row settings-row--switch">
+            <input
+              type="checkbox"
+              checked={stepSounds}
+              onChange={(event) => setStepSounds(event.target.checked)}
+            />
+            <span>
+              Kroki figur
+              <span className="settings-hint">
+                Cichy krok, gdy figura idzie zaplanowaną trasą. Jedyny dźwięk, który słychać bez
+                strzału — wyłącz, jeśli męczy.
+              </span>
+            </span>
+          </label>
 
           <div className="settings-samples">
             {SFX_SAMPLES.map((entry) => (
