@@ -73,6 +73,51 @@ describe('motyw (etap 27e)', () => {
     expect([...defined].filter((t) => !used.has(t))).toEqual([]);
   });
 
+  /**
+   * Umowa o przyciskach odwrócona w 27f: goły `button` jest neutralny, czerwień
+   * bierze się świadomie przez `.primary-button`. Do 27e było odwrotnie i to
+   * kosztowało dwa z czterech błędów tamtego etapu — przycisk, który podmieniał
+   * tło i zapominał o `color`, dostawał biały napis odziedziczony po akcencie.
+   *
+   * Po odwróceniu ta sama pomyłka wychodzi drugą stroną: mocne tło (akcent,
+   * czerwień karty, alarm) z odziedziczonym `--text` daje ciemny napis na
+   * czerwieni. Test pilnuje więc reguł **bazowych** przycisków — stany
+   * (`:hover`, `:disabled`) celowo pomija, bo one zmieniają samo tło, a kolor
+   * napisu dziedziczą po regule bazowej, która go ustawia.
+   */
+  it('przycisk z mocnym tłem nie zapomina o kolorze napisu', () => {
+    /** Tokeny, na których `--text` jest nieczytelny — same pełne, nasycone barwy. */
+    const STRONG =
+      /^var\(\s*--(accent|err|cp-red|cp-red-deep|hurt|armed|npc|whisper|warn|ok)\s*\)$/;
+    /** Stany zmieniają samo tło, kolor napisu dziedziczą po regule bazowej. */
+    const STATE = /:(hover|focus|active|disabled|focus-visible|not)/;
+    /** `.cp-table .small-button` → `.small-button`: liczy się to, co selektor trafia. */
+    const lastCompound = (selector: string) =>
+      selector
+        .split(/[\s>+~]+/)
+        .filter(Boolean)
+        .pop() ?? '';
+    /** `button`, `.small-button`, `.cp-mini-button`, `.map-tool` — ale nie `.cp-slot`. */
+    const isButton = (selector: string) =>
+      selector
+        .split(',')
+        .map((part) => lastCompound(part.trim()))
+        .some((compound) => /^(button|\.[a-z0-9-]*(button|tool))(?![a-z0-9-])/i.test(compound));
+    const offenders: string[] = [];
+    for (const file of ['styles.css', 'sheet.css']) {
+      for (const rule of stripComments(read(file)).matchAll(/([^{}]*)\{([^{}]*)\}/g)) {
+        const selector = (rule[1] ?? '').replace(/\s+/g, ' ').trim();
+        const body = rule[2] ?? '';
+        if (!isButton(selector) || STATE.test(selector)) continue;
+        const background = /(^|;)\s*background(-color)?\s*:([^;]*)/.exec(body)?.[3];
+        if (background === undefined || !STRONG.test(background.trim())) continue;
+        if (/(^|;)\s*color\s*:/.test(body)) continue;
+        offenders.push(`${file}: ${selector}`);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
   it('noc i dzień opisują ten sam zestaw tokenów chromu', () => {
     const theme = read('theme.css');
     /**

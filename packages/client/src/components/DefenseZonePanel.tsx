@@ -95,6 +95,7 @@ export function DefenseZonePanel() {
           className="sheet-close"
           onClick={() => editZone(null)}
           title="Zamknij"
+          aria-label="Zamknij"
         >
           ✕
         </button>

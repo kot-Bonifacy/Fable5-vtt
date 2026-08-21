@@ -718,10 +718,9 @@ export function CombatHud() {
             </p>
           )}
 
-          <p className="hud-keys">
-            <kbd>1</kbd>–<kbd>9</kbd> sloty · <kbd>Shift</kbd>+cyfra tryb ognia · <kbd>Tab</kbd>{' '}
-            następna postać · <kbd>E</kbd> koniec tury · <kbd>Esc</kbd> cofa
-          </p>
+          {/* Ściągawka ze skrótami zniknęła w 27f: pełną listę — z tymi
+              czterema i całą resztą — otwiera `?` w górnym pasku. Pasek boczny
+              wraca do tego, czym jest, czyli do stanu figury. */}
         </>
       )}
     </aside>

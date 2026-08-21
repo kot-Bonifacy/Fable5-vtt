@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type PointerEvent } from 'react';
+import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import type {
   CampaignDetail,
   CompendiumCategory,
@@ -69,6 +69,8 @@ import {
   useCreationStore,
 } from '../stores/creationStore.js';
 import { useRollStore } from '../stores/rollStore.js';
+import { useWindowPlacement } from '../window-placement.js';
+import { WindowResizeGrip } from './WindowResizeGrip.js';
 
 /** Same wording as the sheet's own portrait upload (stage 07). */
 function portraitErrorText(error: unknown): string {
@@ -117,12 +119,9 @@ function CreatorWindow() {
   const discard = useCreationStore((s) => s.discard);
   const openSheet = useCharacterStore((s) => s.openSheet);
 
-  const [position, setPosition] = useState(() => ({ x: 120, y: 60 }));
+  const placement = useWindowPlacement('creator', () => ({ x: 120, y: 60 }));
   const [ownerId, setOwnerId] = useState('');
   const [players, setPlayers] = useState<{ id: string; name: string }[]>([]);
-  const dragRef = useRef<{ startX: number; startY: number; baseX: number; baseY: number } | null>(
-    null,
-  );
 
   useEffect(() => {
     ensureCpredDataLoaded();
@@ -139,26 +138,6 @@ function CreatorWindow() {
   }, [isGm]);
 
   const data = useMemo(() => creationDataOf(registry), [registry]);
-
-  function startDrag(event: PointerEvent<HTMLDivElement>) {
-    if ((event.target as HTMLElement).closest('button, input, select')) return;
-    dragRef.current = {
-      startX: event.clientX,
-      startY: event.clientY,
-      baseX: position.x,
-      baseY: position.y,
-    };
-    event.currentTarget.setPointerCapture(event.pointerId);
-  }
-
-  function moveDrag(event: PointerEvent<HTMLDivElement>) {
-    const drag = dragRef.current;
-    if (!drag) return;
-    setPosition({
-      x: Math.max(0, Math.min(window.innerWidth - 160, drag.baseX + event.clientX - drag.startX)),
-      y: Math.max(0, Math.min(window.innerHeight - 60, drag.baseY + event.clientY - drag.startY)),
-    });
-  }
 
   async function finish() {
     setBusy(true);
@@ -188,17 +167,12 @@ function CreatorWindow() {
 
   return (
     <section
+      ref={placement.ref}
       className="sheet-window creator-window"
-      style={{ left: position.x, top: position.y, zIndex: 320 }}
+      style={{ ...placement.style, zIndex: 320 }}
       aria-label="Kreator postaci"
     >
-      <div
-        className="sheet-header"
-        onPointerDown={startDrag}
-        onPointerMove={moveDrag}
-        onPointerUp={() => (dragRef.current = null)}
-        onPointerCancel={() => (dragRef.current = null)}
-      >
+      <div className="sheet-header" {...placement.dragProps}>
         <span className="sheet-title">
           <span className="sheet-title-name">Kreator postaci</span>
           {draft && (
@@ -213,6 +187,7 @@ function CreatorWindow() {
           className="sheet-close"
           onClick={closeCreator}
           title="Schowaj kreator"
+          aria-label="Schowaj kreator"
         >
           ✕
         </button>
@@ -317,6 +292,7 @@ function CreatorWindow() {
           )}
         </>
       )}
+      <WindowResizeGrip resizeProps={placement.resizeProps} />
     </section>
   );
 }
@@ -611,11 +587,23 @@ function SkillRow({ skill, draft }: { skill: CpredSkillDefinition; draft: CpredC
       </span>
       <span className="creator-skill-stat">{CPRED_STAT_LABELS[skill.stat].abbr}</span>
       <span className="creator-skill-controls">
-        <button type="button" className="small-button" onClick={() => setLevel(level - 1)}>
+        <button
+          type="button"
+          className="small-button"
+          title={`Obniż poziom: ${skill.name}`}
+          aria-label={`Obniż poziom: ${skill.name}`}
+          onClick={() => setLevel(level - 1)}
+        >
           −
         </button>
         <strong className={level === 0 ? 'creator-skill-level--zero' : ''}>{level}</strong>
-        <button type="button" className="small-button" onClick={() => setLevel(level + 1)}>
+        <button
+          type="button"
+          className="small-button"
+          title={`Podnieś poziom: ${skill.name}`}
+          aria-label={`Podnieś poziom: ${skill.name}`}
+          onClick={() => setLevel(level + 1)}
+        >
           +
         </button>
       </span>
@@ -839,6 +827,7 @@ function LifepathFieldRow({
           type="button"
           className="small-button"
           title="Wpisz własnymi słowami"
+          aria-label="Wpisz własnymi słowami"
           onClick={() => setTyping((on) => !on)}
         >
           ✎
@@ -847,6 +836,7 @@ function LifepathFieldRow({
           type="button"
           className="small-button"
           title={`Rzuć 1k${table.sides}`}
+          aria-label={`Rzuć 1k${table.sides}`}
           onClick={() => void rollLifepathTables([table.id])}
         >
           🎲
@@ -1076,6 +1066,7 @@ function LifepathPeople({
                   type="button"
                   className="small-button"
                   title={`Rzuć: ${table.label}`}
+                  aria-label={`Rzuć: ${table.label}`}
                   onClick={() => void rollLifepathTables([table.id], index)}
                 >
                   🎲
@@ -1089,6 +1080,7 @@ function LifepathPeople({
               className="small-button"
               disabled={makingBot}
               title="Zrób z tego szkic bota i otwórz edytor"
+              aria-label="Zrób z tego szkic bota i otwórz edytor"
               onClick={() => void toBot(index)}
             >
               🤖
@@ -1098,6 +1090,7 @@ function LifepathPeople({
             type="button"
             className="small-button small-button--danger"
             title="Usuń"
+            aria-label="Usuń"
             onClick={() => remove(index)}
           >
             🗑
@@ -1184,6 +1177,7 @@ function GearStep({ draft }: { draft: CpredCreationDraft }) {
                 className="small-button"
                 disabled={busy}
                 title="Odłóż jedną sztukę"
+                aria-label="Odłóż jedną sztukę"
                 onClick={() => void buyCreationEntry(line.entryId, -1)}
               >
                 −

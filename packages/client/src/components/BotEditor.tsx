@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import type {
   BotAutonomy,
   BotKnowledgeSource,
@@ -63,6 +63,8 @@ import { useBotStore, type BotTestTurn } from '../stores/botStore.js';
 import { useAiStore } from '../stores/aiStore.js';
 import { useChatStore } from '../stores/chatStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
+import { useWindowPlacement } from '../window-placement.js';
+import { WindowResizeGrip } from './WindowResizeGrip.js';
 
 type EditorTab = 'role' | 'knowledge' | 'lessons' | 'chat' | 'prompt';
 
@@ -107,15 +109,12 @@ function BotEditorWindow({ botId, stackIndex }: { botId: string; stackIndex: num
   const focusEditor = useBotStore((s) => s.focusEditor);
 
   const [tab, setTab] = useState<EditorTab>('role');
-  const [position, setPosition] = useState(() => ({
+  const placement = useWindowPlacement(`bot:${botId}`, () => ({
     x: 120 + (stackIndex % 6) * 28,
     y: 60 + (stackIndex % 6) * 24,
   }));
   /** Prefilled by „zapisz jako wniosek" on a slip — shared with the lessons tab. */
   const [correctionDraft, setCorrectionDraft] = useState('');
-  const dragRef = useRef<{ startX: number; startY: number; baseX: number; baseY: number } | null>(
-    null,
-  );
 
   useEffect(() => {
     // Buffered edits must not be lost when the window unmounts.
@@ -123,30 +122,6 @@ function BotEditorWindow({ botId, stackIndex }: { botId: string; stackIndex: num
   }, [botId]);
 
   if (!bot) return null;
-
-  function startDrag(event: PointerEvent<HTMLDivElement>) {
-    if ((event.target as HTMLElement).closest('button, input')) return;
-    dragRef.current = {
-      startX: event.clientX,
-      startY: event.clientY,
-      baseX: position.x,
-      baseY: position.y,
-    };
-    event.currentTarget.setPointerCapture(event.pointerId);
-  }
-
-  function moveDrag(event: PointerEvent<HTMLDivElement>) {
-    const drag = dragRef.current;
-    if (!drag) return;
-    setPosition({
-      x: Math.max(0, Math.min(window.innerWidth - 120, drag.baseX + event.clientX - drag.startX)),
-      y: Math.max(0, Math.min(window.innerHeight - 60, drag.baseY + event.clientY - drag.startY)),
-    });
-  }
-
-  function endDrag() {
-    dragRef.current = null;
-  }
 
   function saveName(value: string) {
     if (value.trim().length === 0 || value.length > 48) return;
@@ -163,18 +138,13 @@ function BotEditorWindow({ botId, stackIndex }: { botId: string; stackIndex: num
 
   return (
     <section
+      ref={placement.ref}
       className="sheet-window bot-window"
-      style={{ left: position.x, top: position.y, zIndex: 300 + stackIndex }}
+      style={{ ...placement.style, zIndex: 300 + stackIndex }}
       onPointerDown={() => focusEditor(botId)}
       aria-label={`Edytor bota: ${bot.name}`}
     >
-      <div
-        className="sheet-header"
-        onPointerDown={startDrag}
-        onPointerMove={moveDrag}
-        onPointerUp={endDrag}
-        onPointerCancel={endDrag}
-      >
+      <div className="sheet-header" {...placement.dragProps}>
         {bot.portraitUrl ? (
           <img className="sheet-header-portrait" src={bot.portraitUrl} alt="" />
         ) : null}
@@ -192,6 +162,7 @@ function BotEditorWindow({ botId, stackIndex }: { botId: string; stackIndex: num
           className="sheet-close"
           onClick={() => closeEditor(botId)}
           title="Zamknij edytor"
+          aria-label="Zamknij edytor"
         >
           ✕
         </button>
@@ -235,6 +206,7 @@ function BotEditorWindow({ botId, stackIndex }: { botId: string; stackIndex: num
         )}
         {tab === 'prompt' && <PromptTab bot={bot} />}
       </div>
+      <WindowResizeGrip resizeProps={placement.resizeProps} />
     </section>
   );
 }
@@ -408,6 +380,7 @@ function RoleTab({ bot, saveData }: TabProps) {
               type="button"
               className="small-button"
               title="Usuń odzywkę"
+              aria-label="Usuń odzywkę"
               onClick={() =>
                 setPersona({
                   catchphrases: data.persona.catchphrases.filter((_, i) => i !== index),
@@ -809,6 +782,7 @@ function LessonsTab({
                 type="button"
                 className="small-button character-delete"
                 title="Usuń wniosek"
+                aria-label="Usuń wniosek"
                 onClick={() =>
                   saveData({ lessons: lessons.filter((entry) => entry.id !== lesson.id) })
                 }

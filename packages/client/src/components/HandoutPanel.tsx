@@ -220,7 +220,13 @@ function GmRow({ handout, onEdit }: { handout: HandoutView; onEdit: () => void }
           <span className="handout-row-excerpt">{excerpt(handout)}</span>
         </button>
         <div className="handout-row-actions">
-          <button type="button" className="small-button" onClick={onEdit} title="Edytuj handout">
+          <button
+            type="button"
+            className="small-button"
+            onClick={onEdit}
+            title="Edytuj handout"
+            aria-label="Edytuj handout"
+          >
             ✎
           </button>
           {confirming ? (
@@ -242,6 +248,7 @@ function GmRow({ handout, onEdit }: { handout: HandoutView; onEdit: () => void }
               className="small-button character-delete"
               onClick={() => setConfirming(true)}
               title="Usuń handout (zniknie też graczom)"
+              aria-label="Usuń handout (zniknie też graczom)"
             >
               ✕
             </button>

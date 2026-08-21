@@ -12,6 +12,7 @@ import {
 import { useAuthStore } from '../stores/authStore.js';
 import { ensureCpredDataLoaded, useCharacterStore } from '../stores/characterStore.js';
 import { useCreationStore } from '../stores/creationStore.js';
+import { plural } from '../plural.js';
 
 interface PlayerOption {
   id: string;
@@ -93,7 +94,8 @@ export function CharacterPanel() {
       .map((id) => store.characters[id])
       .filter((character) => character && character.data.luckCurrent < character.data.stats.luck);
     if (stale.length === 0) return;
-    if (!window.confirm(`Odnowić pulę Szczęścia ${stale.length} postaciom (nowa sesja)?`)) return;
+    const who = plural(stale.length, 'postaci', 'postaciom', 'postaciom');
+    if (!window.confirm(`Odnowić pulę Szczęścia ${who} (nowa sesja)?`)) return;
     for (const character of stale) {
       if (!character) continue;
       const ack = await updateCharacter(character.id, {
@@ -227,6 +229,7 @@ export function CharacterPanel() {
                       className="small-button character-delete"
                       onClick={() => void removeCharacter(id, character.name)}
                       title="Usuń postać"
+                      aria-label="Usuń postać"
                     >
                       ✕
                     </button>

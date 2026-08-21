@@ -66,7 +66,7 @@ Pełne notatki z zamkniętych etapów: `archiwum/dziennik-sesji.md` (nie czytaj 
 | 27  | ~~Kości 3D i szlif UI~~                       | ⛔     | rozdzielony 19.08 | rozbity do końca na 27d–27g; plik etapu został jako rozdroże ze wskazaniami                      |
 | 27d | Kości 3D: skórki, dorzut, ustawienia          | ✅     | 2026-08-19        | pięć skórek, skórka jedzie z rzutem (jak w Foundry), dorzut drugą falą, okno ⚙ Ustawienia        |
 | 27e | Motyw dzień/noc dla całej aplikacji           | ✅     | 2026-08-20        | mapa i okno Sieci zostają nocne (decyzja MG); `theme.css` = jedyny plik z kolorem, pilnuje testu |
-| 27f | Szlif UX: pomoc, tooltipy, stany, okna        | ⬜     |                   | okno skrótów `?`, stany puste, okna pamiętające pozycję i rozmiar                                |
+| 27f | Szlif UX: pomoc, tooltipy, stany, okna        | ✅     | 2026-08-21        | + odwrócona umowa o przyciskach (decyzja MG); skróty mapy: jedna tabela dla kodu i dla pomocy    |
 | 27g | Wydajność                                     | ⬜     |                   | re-rendery przy ruchu tokenów, bundle, lazy-loading, fps mapy                                    |
 | 27h | Panel postaci: HUD, który wygląda jak gra     | ✅     | 2026-08-20        | dopisany 20.08 na wniosek MG; ikona slotu i waga statusu liczone w `shared`, nie w CSS           |
 | 27i | Mapa: efekty walki                            | ✅     | 2026-08-20        | zwężony 20.08 (żetony → 27j); efekt przycinany per widz, bang czeka na kości                     |
@@ -75,15 +75,29 @@ Pełne notatki z zamkniętych etapów: `archiwum/dziennik-sesji.md` (nie czytaj 
 
 ## Od czego zacząć
 
-Ostatnio zamknięte: **27j** — żeton przestał być kółkiem z paskiem nad głową. Ma cień
-i podstawkę (kolor podstawki = stan: ranny / nieprzytomny / martwy), **łuk PW zamiast paska**,
-nos pokazujący, w którą stronę patrzy, a tura świeci mocniej. Ruch pokazuje **zacienioną podłogę
-w zasięgu budżetu**, koszt każdego odcinka trasy w metrach i gasnący ślad po marszu — z krokiem
-w warstwie SFX. Wcześniej **27i** (efekty walki na mapie) i **27h** (lewy panel jako HUD).
+Ostatnio zamknięte: **27f** — aplikacja przestała wymagać wiedzy tajemnej. **`?`** otwiera
+pełną listę skrótów (i ten sam klawisz ją zamyka), **okna pływające pamiętają pozycję i rozmiar**
+i rozciągają się za prawy dolny róg, listy tłumaczą swoją pustkę i podają pierwszy krok, a **goły
+`button` jest wreszcie neutralny** — czerwień bierze się świadomie przez `.primary-button`.
+Wcześniej **27j** (żetony i czytelny ruch) i **27i** (efekty walki na mapie).
 
-**Etap 27 został rozdzielony do końca**: 27d, 27e, 27h, 27i i 27j zrobione, zostają **27f** (okno
-skrótów, stany puste, pozycje okien) i **27g** (wydajność). Plik `etap-27-…` jest rozdrożem
-ze wskazaniami, sam nie jest do realizacji.
+**Etap 27 został rozdzielony do końca**: 27d, 27e, 27f, 27h, 27i i 27j zrobione, zostaje
+**27g** (wydajność). Plik `etap-27-…` jest rozdrożem ze wskazaniami, sam nie jest do realizacji.
+
+**Skróty klawiszowe mają jedno źródło i tak ma zostać.** `MAP_TOOL_KEYS` w
+`packages/client/src/shortcuts.ts` czyta obsługa klawiatury w `MapArea` **i** okno pomocy —
+nowe narzędzie mapy dopisuje się **tam**, nie w drabince `if`-ów. Pilnuje tego
+`shortcuts.test.ts`, który czyta `MapArea.tsx` jako tekst i przewraca się na literale
+`toggleTool('...')` w obsłudze klawiszy.
+
+**Pływające okno bierze się z `useWindowPlacement`, nie z własnego `dragRef`.** Nowe okno
+dostaje hook (`window-placement.ts`) plus `<WindowResizeGrip />` w rogu — i tyle. Uchwyt siedzi
+**13 px od krawędzi**, bo róg okna jest wycięty (`clip-path` karty z 27a, zaokrąglenie
+pozostałych okien) i uchwyt dosunięty do rogu przepuszcza kliknięcie na mapę pod spodem.
+
+**Ikonowy przycisk potrzebuje `title` i `aria-label`, ale tylko wtedy, gdy jego treścią jest
+znak.** Ikony SVG (`MapIcons`, `UiIcons`) są `aria-hidden`, więc tam `title` wystarcza za nazwę
+dostępną. Pilnuje tego `a11y.test.ts`.
 
 **Kierunek patrzenia jest stanem serwera i publiczną częścią żetonu.** `Token.facing` (stopnie,
 0 = góra, zgodnie ze wskazówkami) pisze drop ruchu, strzał i gałka na pierścieniu zaznaczenia
@@ -122,7 +136,7 @@ otwiera się narzędziem ⚠ w trybie 📌; „Rozbrój" ją usypia, kosz usuwa.
 przełącznika gracz nie kupi niczego droższego niż 50 ed. Przełącznik 1–4 jest w zakładce
 **„Kompendium"** pod chipami kategorii; MG kupuje przez wszystkie poziomy niezależnie od niego.
 
-**Następne etapy do wyboru: 27f**, **27g** i **28** (VPS). Drobiazg „kostki kreatora świecą jak krytyki" z 25a/25b **jest zrobiony**
+**Następne etapy do wyboru: 27g** (wydajność) i **28** (VPS). Drobiazg „kostki kreatora świecą jak krytyki" z 25a/25b **jest zrobiony**
 (flaga `plain`), jednobarwne 📰 z 24c i 🔌 z 26b też — obie stały się sylwetkami z game-icons
 w 27e. **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty
 naraz — a od 27i także pierwszym, przy którym ktoś **usłyszy** dźwięki walki (dobrane bez
@@ -132,6 +146,19 @@ przy **każdym** przejściu przez pokój i który ma własny wyłącznik).
 **09.08 głos wypadł z projektu** (sesja bez etapu, decyzja MG): etapy **12, 21 i 22** wycofane, kod TTS usunięty z repo. Szczegóły w `archiwum/dziennik-sesji.md` i w `archiwum/wycofane/README.md`.
 
 ### Otwarte zaległości (przechodzą między etapami)
+
+- **Etap 27f — dwie ścieżki nieodklikane; reszta sprawdzona 21.08 (patrz notatka sesji).**
+  (1) **Strona gracza** — okno `?` u gracza ma **mniej wierszy** niż u MG (ściany, mgła, osłony
+  i światła są `gmOnly`), co pokrywa test `shortcutGroupsFor(false)`, ale nikt nie patrzył na
+  to oczami gracza. (2) **Okno większe od przeglądarki** — sprowadzanie na ekran sprawdzone na
+  oknie, które się mieści; dla okna **większego** niż okno przeglądarki zostaje próg „róg zawsze
+  do złapania" i tej gałęzi nikt nie oglądał.
+
+- **Etap 27f — stany puste dostały listy, które bywają puste u MG.** Kompendium (trzy różne
+  pustki), baza wiedzy, dziennik, kolejka inicjatywy i lista figur sceny mają teraz zdanie
+  i pierwszy krok. **Nie przeszedłem** przez pustki, które widzi wyłącznie gracz (handouty bez
+  udostępnień, postacie przed pierwszą kartą) — zdania **są** tam z wcześniejszych etapów, ale
+  nie były oglądane razem z resztą i mogą mówić innym językiem.
 
 - **Etap 27j — trzy ścieżki nieodklikane; reszta sprawdzona 21.08 (patrz notatka sesji).**
   (1) **Strona gracza** — wszystko oglądane z konta MG. Różnica jest tu **mniejsza niż zwykle
@@ -155,7 +182,8 @@ przy **każdym** przejściu przez pokój i który ma własny wyłącznik).
 - **Etap 27j — figura na zerze PW zacienia jedno pole i wygląda to jak podświetlenie.** Przy
   `metresLeft = 0` zalew zwraca samą kratkę startową, więc pod figurą pojawia się blady kwadrat
   znaczący „nie masz jak stąd wyjść". To prawda, ale czyta się jak zaznaczenie. Do rozważenia
-  w 27f razem z resztą stanów pustych.
+  **27f jej nie ruszył** — stany puste tego etapu dotyczyły list w panelach, nie mapy. Wraca
+  przy pierwszej sesji, na której ktoś stanie na zerze budżetu.
 
 - **Etap 27i — cztery ścieżki nieodklikane; reszta sprawdzona 20.08 (patrz notatka sesji).**
   (1) **Wybuch, chmura gazu i wyładowanie strefy** — kod i oba arkusze CC0 sprawdzone
@@ -188,8 +216,9 @@ przy **każdym** przejściu przez pokój i który ma własny wyłącznik).
 - **Etap 27e — pułapka, która wróci: gołe `button` maluje się jak przycisk główny.** W `styles.css`
   selektor `button` ustawia `background: var(--accent)` i biały napis, więc każdy nowy przycisk,
   który podmieni tło i **zapomni o `color`**, dostanie biały tekst. W ciemnym motywie to niewidoczne;
-  w dziennym to białe na kremowym. Tak powstały dwa z czterech błędów tego etapu. Do 27f warto
-  rozważyć odwrócenie umowy (`button` neutralny, `.primary-button` czerwony) — wpis w `POMYSLY.md`.
+  w dziennym to białe na kremowym. Tak powstały dwa z czterech błędów tego etapu.
+  **Zamknięte w 27f**: umowa jest odwrócona (`button` neutralny, `.primary-button` czerwony),
+  a test motywu pilnuje, żeby przycisk z mocnym tłem nie zapominał o kolorze napisu.
 
 - **Etap 27d — trzy ścieżki nieodklikane; reszta sprawdzona 19.08 (patrz notatka sesji).**
   (1) **Złoty dorzut krytyka** — na zrzucie ekranu złapany został fumble (dwie kości w dwóch
@@ -748,6 +777,77 @@ decyduje przegrany, nie zwycięzca`) — Konfrontacje z 10.08 szły z konta MG, 
 
 ## Notatki z dwóch ostatnich sesji
 
+### Sesja 21.08 (druga tego dnia) — etap 27f (szlif UX: pomoc, tooltipy, stany, okna)
+
+**Trzy decyzje MG na starcie:** robimy 27f; okna dostają wspólny hook **i** uchwyt skalowania
+(nie samą pamięć pozycji); umowa o przyciskach zostaje **odwrócona** przy okazji.
+
+**Odwrócenie umowy o przyciskach kosztowało 13 przycisków, nie trzysta.** Pierwszy pomiar
+mówił „304 gołe `<button>`" i był błędny — `grep` liczył tylko te, które miały `className`
+w tej samej linii. Prawdziwa liczba to **15**, z czego 13 to akcje główne („Zaloguj się",
+„Wyślij", „Utwórz", „Weź kubek") i dostały `.primary-button`, a dwa mają własne style
+(`.cp-alert button`, ✕ przy chipie Programu). Baza `button` jest teraz neutralna, więc
+przycisk, który podmieni tło i zapomni o `color`, dostaje **czytelny** napis zamiast białego
+na kremowym. Pułapka wychodzi teraz drugą stroną (ciemny napis na czerwieni) i **to** pilnuje
+nowy test w `theme.test.ts` — sprawdzony celowym psuciem, nie samym „przechodzi".
+
+**Lista skrótów nie ma jak skłamać, bo nie ma dwóch list.** `MAP_TOOL_KEYS` w nowym
+`shortcuts.ts` zastąpiło osiem `if`-ów w obsłudze klawiatury `MapArea` i **jednocześnie**
+jest źródłem rozdziału „Narzędzia mapy" w oknie `?`. Reszta skrótów (cyfry, `Shift`+cyfra,
+`Tab`, `E`, drabina `Escape`) jest opisana ręcznie — te nie zamieniają się w tabelę bez
+udawania, że są prostsze, niż są. Test czyta `MapArea.tsx` jako tekst i przewraca się, gdy
+w obsłudze klawiatury znów pojawi się `toggleTool('...')` z literałem.
+
+**`?` czyta znak, nie miejsce na klawiaturze.** `event.key === '?'` jest właściwym testem
+(przeglądarka podaje znak, który klawisz _produkuje_, więc działa na każdym układzie), ale
+automat sterujący Chrome podaje `key: '/'` z `shiftKey` — i to samo robią niektóre
+przeglądarki. Druga droga (`code === 'Slash'` z Shiftem) kosztuje linię; tej samej ostrożności
+nauczył 27h przy cyfrach paska akcji.
+
+**Okna: jeden moduł zamiast siedmiu kopii.** `window-placement.ts` niesie przeciąganie,
+skalowanie za róg, zapis w `localStorage` (klucz `vtt.window.<userId>.<okno>`) i sprowadzanie
+okna na ekran. Klucz jest **per okno i per postać** (`sheet:<characterId>`), więc karta Tony'ego
+wraca tam, gdzie ją zostawiono, a nie tam, gdzie stała ostatnia karta.
+
+**Dwa błędy znalezione przy oglądaniu — oba w uchwycie skalowania.** (1) **Uchwyt w rogu nie
+dawał się złapać.** Karta postaci ma od 27a `clip-path` ścinający prawy dolny narożnik o 22 px,
+a pozostałe okna zaokrąglenie 10 px — jedno i drugie **wycina róg z trafień**, więc kliknięcie
+przechodziło do mapy pod spodem (i wydawało rozkaz marszu figurze!). Uchwyt siedzi teraz 13 px
+od obu krawędzi: najbliższy punkt sumuje się do 26, czyli z zapasem za skosem. (2) **Okno
+wracało na ekran samym rogiem.** Pierwsza wersja `clampPlacement` trzymała się progu „120 px
+belki widoczne" i sprowadzała okno z x = 9000 do `innerWidth − 120`. Teraz funkcja dostaje
+**zmierzony** rozmiar okna (znany dopiero po pierwszym renderze, bo szerokość zna sam CSS)
+i okno, które się mieści, wraca **całe**.
+
+**Stopka ze skrótami nad kubkiem zniknęła** (decyzja MG w trakcie sesji): `?` przejął jej rolę,
+a lewy pasek wrócił do tego, czym jest — do stanu figury.
+
+**Tooltipy: pięćdziesiąt przycisków miało sam `title`.** Ikony rysowane w SVG (`MapIcons`,
+`UiIcons`) są `aria-hidden`, więc **tam** `title` wystarcza za nazwę dostępną i nic nie trzeba
+było robić. Problem był przy przyciskach, których całą treścią jest **znak** (`✕`, `🎲`, `⟳`):
+bez `aria-label` czytnik odczytuje nazwę znaku Unicode. Poprawka była kodemodem (przepisanie
+`title` na `aria-label`), więc następny taki przycisk powstanie tak samo — stąd nowy
+`a11y.test.ts`, też sprawdzony celowym psuciem.
+
+**Stany puste rozróżniają teraz „pusto" od „nic nie pasuje".** Nowy `EmptyState` (zdanie
+
+- opcjonalny pierwszy krok) wszedł tam, gdzie panel wysyłał szukającego do zakładania czegoś,
+  co już ma: kompendium ma trzy różne pustki (pusta baza / pusta kategoria / pusty wynik szukania
+  z „Wyczyść szukanie"), baza wiedzy i dziennik dostały to samo wyjście z filtra, a kolejka
+  inicjatywy mówi graczowi, na co czeka.
+
+**Sprawdzone w przeglądarce** (konto MG, Poligon, stan przywrócony na koniec): `?` z klawiatury
+i z paska, `Esc` zamykający okno, przeciąganie okna z zapisem do `localStorage`, skalowanie
+karty postaci (1180 × 786 → 921 × 581, arkusz przeliczył szpalty), powrót okna z x = 9000 na
+ekran w całości, trafialność uchwytu w trzech punktach dla karty i dla ustawień, pusty wynik
+szukania w kompendium z przyciskiem, oba motywy okna `?` i zniknięta stopka HUD-u.
+
+**Przy oglądaniu przesunąłem żeton „Automatyczna wieżyczka"** (nietrafione przeciągnięcie
+uchwytu poszło do mapy jako rozkaz marszu). Wrócił na **(900, 1400)** — zgodnie z kopią
+`dev.db.bak-20260819-27d`. Czego **nie da się** odtworzyć, to jego `facing` sprzed tego ruchu:
+kolumna jest z 27j, a kopie są starsze. Wieżyczka patrzy teraz na 297° (tam, skąd wróciła);
+gałka na pierścieniu ustawi ją w jednym geście.
+
 ### Sesja 21.08 — etap 27j (żetony i czytelny ruch)
 
 **Decyzja MG z 21.08: kierunek patrzenia to jedno i drugie** — automat z ruchu i ze strzału
@@ -762,7 +862,7 @@ jak PW. Pisze ją **drop ruchu** (z ostatniego prawdziwego odcinka trasy, nie z 
 lądowania — figura, która obeszła róg, patrzy w korytarz, z którego wyszła), **strzał**
 (`turnTokenToward` po wystawieniu karty, nigdy przed: atak odrzucony nie może zostawić figury
 gapiącej się na kogoś, do kogo nie strzeliła) i **gałka** (`token:facing`, wzorowana na
-`token:light` — drugie zdarzenie tokenu, które wykonuje *gracz*, bo to decyzja taktyczna, nie
+`token:light` — drugie zdarzenie tokenu, które wykonuje _gracz_, bo to decyzja taktyczna, nie
 papierologia MG). CP RED nie zna zasad fasowania, więc **żadna reguła tego nie czyta**.
 
 **Klient wyprzedza serwer o jedną klatkę i to jest celowe.** `TokenNode.showFacing` obraca figurę
@@ -793,7 +893,7 @@ a to jest prawdą dla obu stron.
 
 **Trasa mówi, ile kosztuje każdy odcinek, a nie tylko całość.** Gracz patrzący na „L" za rogiem
 pyta o **pierwszą** połowę, bo to ona decyduje, czy druga ma sens. Odcinki krótsze niż metr etykiet
-nie dostają (to rogi, nie decyzje), a trasa jednoodcinkowa też nie — jej jedyny odcinek *jest*
+nie dostają (to rogi, nie decyzje), a trasa jednoodcinkowa też nie — jej jedyny odcinek _jest_
 sumą. Po marszu linia zostaje jeszcze 1,6 s i gaśnie: „którędy on wszedł?" pada **po** tym, jak
 ktoś się zatrzyma, a do tej pory ślad znikał w tej samej klatce.
 
@@ -814,7 +914,7 @@ kroków co ~500 ms, naprzemienne 0,94/1,08, głośność 0,175 (suwak 0,5 × wzm
 **Dwa błędy znalezione i naprawione przy oglądaniu.** (1) **Wąs na żetonie**: `arc` po `circle`
 w tym samym `Graphics` dorysowuje **linię łączącą** — Pixi trzyma jeden kursor ścieżki na obiekt,
 więc łuk PW wychodził z zielonym wąsem sterczącym z góry figury. Naprawa to `moveTo` przed
-`arc`. (2) **Gałka pod cudzą figurą**: gałka siedzi *poza* pierścieniem, więc regularnie ląduje
+`arc`. (2) **Gałka pod cudzą figurą**: gałka siedzi _poza_ pierścieniem, więc regularnie ląduje
 na sąsiedniej figurze, a Pixi daje zdarzenie najpierw jej — bez sprawdzenia gałki w handlerze
 tokenu klik podnosiłby sąsiada dokładnie wtedy, gdy na mapie jest tłoczno. Puszczenie gałki
 ustawia też `dragEndedAt`, bo `pixi-viewport` nadal nazywa krótki gest klikiem w mapę pod spodem
@@ -822,84 +922,10 @@ ustawia też `dragEndedAt`, bo `pixi-viewport` nadal nazywa krótki gest klikiem
 
 ### Sesja 20.08 (trzecia tego dnia) — etap 27i (mapa: efekty walki)
 
-**Etap 27i zwężony na starcie** (decyzja MG): Token 2.0 i czytelny ruch wyprowadzone do nowego
-**27j** (`etap-27j-zetony-ruch.md`, PW jako **łuk wokół figury** zamiast paska nad głową). Ta
-sesja zamknęła efekty walki w całości — od kanału zdarzeń na serwerze po dźwięk.
-
-**Efekt to nie stan i dlatego ma własny kanał.** `fx:play` nie jest sekwencjonowany, nie wchodzi
-do `state:sync` i nie odtwarza się po resyncu — dokładnie jak wspólna linijka z etapu 16.
-Wysyłany **per gniazdo**, nigdy do pokoju sceny, bo każdy widz ma inną odpowiedź na pytanie „czy
-to widzisz". Przycinanie siedzi w `shared/src/fx.ts` (`trimMapFxForViewer`, czysta funkcja, 19
-testów), a serwerowy `realtime/fx.ts` tylko dokłada wiedzę, kto co widzi (`concealmentFor`
-z 17a/18a).
-
-**Strzał ma dwa końce i dwa różne sekrety.** Widać lufę, nie widać celu → linia jest ucinana
-(`to: null`), zostaje błysk i huk; kierunek wycieka świadomie, bo strzelca i tak widać. Widać
-cel, nie widać lufy → trafienie **bez dźwięku**: usłyszenie „pistolet" nazwałoby kaliber broni,
-której nikt nie zobaczył. Nie widać nic → nie jedzie nic, a nie pusta koperta.
-
-**Bang czeka na kości.** Karta rzutu jest u klienta wstrzymywana do wylądowania kości 3D (27d),
-więc efekt odpalony w chwili przyjścia pakietu ogłaszałby wynik jakieś pięć sekund przed kartą,
-która go niesie. `MapFxBroadcast.afterMessageId` wiąże paczkę z kartą, a `map-fx.ts` trzyma ją do
-odsłonięcia — z bezpiecznikiem 8 s i obsługą **obu** kolejności (karta bywa pierwsza, np. przy
-wyłączonej animacji).
-
-**Głos broni bierze się z ikony slotu z 27h.** `cpredWeaponFx` to jedna tabelka nad
-`cpredWeaponIcon`, więc broń nie może narysować pistoletu i huknąć jak strzelba. Rzucony nóż
-nadpisuje tabelę (leci, nie tnie) — granat nie, bo jest już `rocket` przez ikonę.
-
-**Assety CC0/CC BY, hostowane u siebie** (`public/fx/`, `public/sfx/`, obie z `ATTRIBUTION.md`).
-Wybuch: `boom3.png` StumpyStrust (8 × 8 klatek 128 px). Chmura: `Smoke Aura` Beast (5 × 3 klatek
-256 px), barwiona `tint`-em — ten sam plik jedzie jako gaz i jako dym. Strzały: jedna sesja
-strzelnicy (CZ-52, SKS, Mosin, strzelba), przycięte skryptem do samego huku, zsumowane do mono
-i znormalizowane — oryginały mają 7–15 s po dwa kanały. Reszta z paczek rubberducka,
-artisticdude'a i BMacZero. **Razem 403 kB dźwięku i 780 kB arkuszy.**
-
-**Wektor tam, gdzie sprite'y są złe.** Smuga, błysk lufy i łuk wyładowania to linie, których
-długość ustala scena — bitmapa by się rozciągnęła (broniona strefa Poligonu ma 20 × 13 m).
-Ogień i dym to turbulencja, której żadne `Graphics` nie udaje — stąd arkusze. Brak arkusza
-degraduje się do pierścienia, nie do pustki.
-
-**Trzy rzeczy poprawione po pierwszym spojrzeniu na mapę.** (1) **Liczby były rysowane
-w pikselach świata** — przy typowym oddaleniu (skala 0,28) „−12" miało dziewięć pikseli
-wysokości. Teraz `text.scale = overlayScale` co klatkę, jak podpisy linijki i pinezki notatek;
-ta sama pułapka, którą `MapRenderer` ma opisaną od 16f. (2) **Wszystkie czasy były o połowę za
-krótkie**: pocisk leciał 110 ms i był fizycznie uczciwy oraz zupełnie niewidoczny. Podniesione
-do ~220 ms lotu i 2,2 s dla liczby — tyle biorą moduły pociskowe w Foundry i mają rację.
-(3) Kolejność warstw: efekt jest **nad żetonami, pod światłem i mgłą**, żeby to, co przeszło
-filtr serwera, dalej mogło zostać połknięte przez ciemność u tego widza.
-
-**Zweryfikowane:** 1289 testów w `shared` (26 nowych: przycinanie, licznik smug, głos broni),
-730 na serwerze (7 nowych, `fx.test.ts` na żywych gniazdach), 5 w kliencie, `tsc --noEmit`
-czysty w obu pakietach, ESLint, Prettier, `vite build` bez uwag.
-
-**Odklikane w przeglądarce** (Poligon, konto MG): smuga pocisku z błyskiem lufy i zanikającą
-kreską, **pudło jako pocisk mijający figurę** z pierścieniem rykoszetu obok niej, czytelne
-„PUDŁO" nad celem, przeładowanie, oraz — po dwóch nieudanych podejściach — **cały łańcuch
-serwer → gniazdo → warstwa** wypisany do konsoli. Krojenie obu arkuszy sprawdzone w przeglądarce
-przez drugą instancję Pixi (1024² → 64 × 128 px, 1280×768 → 15 × 256 px).
-
-**Wydajność:** Strzelnica, 160,1 fps na spoczynku → **161,2 fps w trakcie efektu**, czyli koszt
-poniżej progu pomiaru (monitor 160 Hz). Zastrzeżenie: scena testowa **nie ma świateł ani mgły**,
-więc to pomiar samej warstwy, nie najgorszego przypadku.
-
-**Nieodklikane:** (1) **Wybuch, chmura gazu i wyładowanie strefy** — kod i arkusze sprawdzone,
-animacji nikt nie widział: na Poligonie nie ma postaci z granatem, a wejście na „Podłogę
-elektryczną" kosztuje 6k6. (2) **Liczba obrażeń** — ta sama ścieżka co „PUDŁO", różni ją jedna
-linia; wymagałaby trafienia, rzutu obrażeń i „Zastosuj" na żywej karcie. (3) **Dźwięki** —
-odtwarzane, ale nikt ich nie słyszał; próbki dobrane po nazwach plików. „⚙ Ustawienia" mają
-rządek przycisków odsłuchu właśnie po to. (4) **Strona gracza** — wszystko oglądane z konta MG;
-różnica jest w payloadzie i pokryta trzema testami na żywych gniazdach (mgła zdejmuje lufę
-i dźwięk, pełna mgła nie przysyła niczego), ale nikt nie patrzył na to oczami gracza.
-
-**Pułapka, która kosztowała pół godziny: efektu nie da się złapać zrzutem ekranu.** Trwa
-300–800 ms, a runda narzędzia to ~1,5 s. `performance.now` **nie spowalnia Pixi** — Ticker v8
-bierze czas ze znacznika `requestAnimationFrame`, więc spowolnić trzeba właśnie `rAF`
-(opakowanie przeliczające znacznik). Dopiero to dało zdjęcie pocisku w locie.
-
-**Stan Poligonu po sesji:** żeton **Tony przesunął się** (mój przypadkowy rozkaz marszu — klik
-w puste pole przy zaznaczonej figurze), a MG w trakcie sesji zbliżył do siebie żetony, żeby
-skrócić dystans. Magazynki obu Arasak wróciły do 30/30, obrażeń nikomu nie zastosowano.
+Efekt walki dostał **własny kanał** (`fx:play` poza `state:sync`, więc nie odtwarza się po
+resyncu) i jest **przycinany na serwerze per gniazdo**: kto nie widzi lufy, nie dostaje ani
+jej, ani dźwięku. Etap zwężony na starcie — Token 2.0 pojechał do 27j. Pełna notatka:
+`archiwum/dziennik-sesji.md`.
 
 ### Sesja 20.08 (druga tego dnia) — etap 27h (panel postaci: HUD, który wygląda jak gra)
 

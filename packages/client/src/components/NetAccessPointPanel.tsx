@@ -109,6 +109,7 @@ export function NetAccessPointPanel() {
           className="sheet-close"
           onClick={() => editPoint(null)}
           title="Zamknij"
+          aria-label="Zamknij"
         >
           ✕
         </button>

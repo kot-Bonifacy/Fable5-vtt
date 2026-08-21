@@ -118,7 +118,11 @@ export function JoinPage() {
           autoFocus
         />
         {error && <p className="auth-error">{error}</p>}
-        <button type="submit" disabled={busy || name.trim().length === 0}>
+        <button
+          className="primary-button"
+          type="submit"
+          disabled={busy || name.trim().length === 0}
+        >
           {busy ? 'Dołączanie…' : 'Dołącz do gry'}
         </button>
       </form>

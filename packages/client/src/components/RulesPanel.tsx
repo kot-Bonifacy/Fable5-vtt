@@ -4,6 +4,7 @@ import { MAX_RULES_QUESTION_LENGTH, citationOf } from '@vtt/shared';
 import { askRules, fetchRulesStatus, indexRulebook } from '../socket.js';
 import { useAiStore } from '../stores/aiStore.js';
 import { useRulesStore, type RulesExchange } from '../stores/rulesStore.js';
+import { plural, pluralWord } from '../plural.js';
 
 /**
  * Asystent zasad (etap 19a) — zakładka MG.
@@ -66,7 +67,9 @@ function IndexStatusLine({ status }: { status: RulesIndexStatus }) {
           <>
             <dt>Indeks</dt>
             <dd>
-              {status.chunks.toLocaleString('pl-PL')} fragmentów z {status.documents} rozdziałów
+              {status.chunks.toLocaleString('pl-PL')}{' '}
+              {pluralWord(status.chunks, 'fragment', 'fragmenty', 'fragmentów')} z{' '}
+              {plural(status.documents, 'rozdziału', 'rozdziałów', 'rozdziałów')}
             </dd>
           </>
         )}
@@ -247,7 +250,7 @@ export function RulesPanel() {
             />
             <span>Pokaż rozumowanie</span>
           </label>
-          <button type="submit" disabled={!canAsk || !question.trim()}>
+          <button className="primary-button" type="submit" disabled={!canAsk || !question.trim()}>
             Zapytaj
           </button>
         </div>

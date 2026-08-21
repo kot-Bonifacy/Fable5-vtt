@@ -7,6 +7,87 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 20.08 (trzecia tego dnia) — etap 27i (mapa: efekty walki)
+
+**Etap 27i zwężony na starcie** (decyzja MG): Token 2.0 i czytelny ruch wyprowadzone do nowego
+**27j** (`etap-27j-zetony-ruch.md`, PW jako **łuk wokół figury** zamiast paska nad głową). Ta
+sesja zamknęła efekty walki w całości — od kanału zdarzeń na serwerze po dźwięk.
+
+**Efekt to nie stan i dlatego ma własny kanał.** `fx:play` nie jest sekwencjonowany, nie wchodzi
+do `state:sync` i nie odtwarza się po resyncu — dokładnie jak wspólna linijka z etapu 16.
+Wysyłany **per gniazdo**, nigdy do pokoju sceny, bo każdy widz ma inną odpowiedź na pytanie „czy
+to widzisz". Przycinanie siedzi w `shared/src/fx.ts` (`trimMapFxForViewer`, czysta funkcja, 19
+testów), a serwerowy `realtime/fx.ts` tylko dokłada wiedzę, kto co widzi (`concealmentFor`
+z 17a/18a).
+
+**Strzał ma dwa końce i dwa różne sekrety.** Widać lufę, nie widać celu → linia jest ucinana
+(`to: null`), zostaje błysk i huk; kierunek wycieka świadomie, bo strzelca i tak widać. Widać
+cel, nie widać lufy → trafienie **bez dźwięku**: usłyszenie „pistolet" nazwałoby kaliber broni,
+której nikt nie zobaczył. Nie widać nic → nie jedzie nic, a nie pusta koperta.
+
+**Bang czeka na kości.** Karta rzutu jest u klienta wstrzymywana do wylądowania kości 3D (27d),
+więc efekt odpalony w chwili przyjścia pakietu ogłaszałby wynik jakieś pięć sekund przed kartą,
+która go niesie. `MapFxBroadcast.afterMessageId` wiąże paczkę z kartą, a `map-fx.ts` trzyma ją do
+odsłonięcia — z bezpiecznikiem 8 s i obsługą **obu** kolejności (karta bywa pierwsza, np. przy
+wyłączonej animacji).
+
+**Głos broni bierze się z ikony slotu z 27h.** `cpredWeaponFx` to jedna tabelka nad
+`cpredWeaponIcon`, więc broń nie może narysować pistoletu i huknąć jak strzelba. Rzucony nóż
+nadpisuje tabelę (leci, nie tnie) — granat nie, bo jest już `rocket` przez ikonę.
+
+**Assety CC0/CC BY, hostowane u siebie** (`public/fx/`, `public/sfx/`, obie z `ATTRIBUTION.md`).
+Wybuch: `boom3.png` StumpyStrust (8 × 8 klatek 128 px). Chmura: `Smoke Aura` Beast (5 × 3 klatek
+256 px), barwiona `tint`-em — ten sam plik jedzie jako gaz i jako dym. Strzały: jedna sesja
+strzelnicy (CZ-52, SKS, Mosin, strzelba), przycięte skryptem do samego huku, zsumowane do mono
+i znormalizowane — oryginały mają 7–15 s po dwa kanały. Reszta z paczek rubberducka,
+artisticdude'a i BMacZero. **Razem 403 kB dźwięku i 780 kB arkuszy.**
+
+**Wektor tam, gdzie sprite'y są złe.** Smuga, błysk lufy i łuk wyładowania to linie, których
+długość ustala scena — bitmapa by się rozciągnęła (broniona strefa Poligonu ma 20 × 13 m).
+Ogień i dym to turbulencja, której żadne `Graphics` nie udaje — stąd arkusze. Brak arkusza
+degraduje się do pierścienia, nie do pustki.
+
+**Trzy rzeczy poprawione po pierwszym spojrzeniu na mapę.** (1) **Liczby były rysowane
+w pikselach świata** — przy typowym oddaleniu (skala 0,28) „−12" miało dziewięć pikseli
+wysokości. Teraz `text.scale = overlayScale` co klatkę, jak podpisy linijki i pinezki notatek;
+ta sama pułapka, którą `MapRenderer` ma opisaną od 16f. (2) **Wszystkie czasy były o połowę za
+krótkie**: pocisk leciał 110 ms i był fizycznie uczciwy oraz zupełnie niewidoczny. Podniesione
+do ~220 ms lotu i 2,2 s dla liczby — tyle biorą moduły pociskowe w Foundry i mają rację.
+(3) Kolejność warstw: efekt jest **nad żetonami, pod światłem i mgłą**, żeby to, co przeszło
+filtr serwera, dalej mogło zostać połknięte przez ciemność u tego widza.
+
+**Zweryfikowane:** 1289 testów w `shared` (26 nowych: przycinanie, licznik smug, głos broni),
+730 na serwerze (7 nowych, `fx.test.ts` na żywych gniazdach), 5 w kliencie, `tsc --noEmit`
+czysty w obu pakietach, ESLint, Prettier, `vite build` bez uwag.
+
+**Odklikane w przeglądarce** (Poligon, konto MG): smuga pocisku z błyskiem lufy i zanikającą
+kreską, **pudło jako pocisk mijający figurę** z pierścieniem rykoszetu obok niej, czytelne
+„PUDŁO" nad celem, przeładowanie, oraz — po dwóch nieudanych podejściach — **cały łańcuch
+serwer → gniazdo → warstwa** wypisany do konsoli. Krojenie obu arkuszy sprawdzone w przeglądarce
+przez drugą instancję Pixi (1024² → 64 × 128 px, 1280×768 → 15 × 256 px).
+
+**Wydajność:** Strzelnica, 160,1 fps na spoczynku → **161,2 fps w trakcie efektu**, czyli koszt
+poniżej progu pomiaru (monitor 160 Hz). Zastrzeżenie: scena testowa **nie ma świateł ani mgły**,
+więc to pomiar samej warstwy, nie najgorszego przypadku.
+
+**Nieodklikane:** (1) **Wybuch, chmura gazu i wyładowanie strefy** — kod i arkusze sprawdzone,
+animacji nikt nie widział: na Poligonie nie ma postaci z granatem, a wejście na „Podłogę
+elektryczną" kosztuje 6k6. (2) **Liczba obrażeń** — ta sama ścieżka co „PUDŁO", różni ją jedna
+linia; wymagałaby trafienia, rzutu obrażeń i „Zastosuj" na żywej karcie. (3) **Dźwięki** —
+odtwarzane, ale nikt ich nie słyszał; próbki dobrane po nazwach plików. „⚙ Ustawienia" mają
+rządek przycisków odsłuchu właśnie po to. (4) **Strona gracza** — wszystko oglądane z konta MG;
+różnica jest w payloadzie i pokryta trzema testami na żywych gniazdach (mgła zdejmuje lufę
+i dźwięk, pełna mgła nie przysyła niczego), ale nikt nie patrzył na to oczami gracza.
+
+**Pułapka, która kosztowała pół godziny: efektu nie da się złapać zrzutem ekranu.** Trwa
+300–800 ms, a runda narzędzia to ~1,5 s. `performance.now` **nie spowalnia Pixi** — Ticker v8
+bierze czas ze znacznika `requestAnimationFrame`, więc spowolnić trzeba właśnie `rAF`
+(opakowanie przeliczające znacznik). Dopiero to dało zdjęcie pocisku w locie.
+
+**Stan Poligonu po sesji:** żeton **Tony przesunął się** (mój przypadkowy rozkaz marszu — klik
+w puste pole przy zaznaczonej figurze), a MG w trakcie sesji zbliżył do siebie żetony, żeby
+skrócić dystans. Magazynki obu Arasak wróciły do 30/30, obrażeń nikomu nie zastosowano.
+
 ### Sesja 20.08 (druga tego dnia) — etap 27h (panel postaci: HUD, który wygląda jak gra)
 
 **Etap dopisany w tej sesji, na wniosek MG:** „lewy panel wygląda bardzo generycznie, jak arkusz

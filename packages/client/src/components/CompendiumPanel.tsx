@@ -46,6 +46,7 @@ import {
   buyCompendiumItemForCharacter,
 } from '../compendium-items.js';
 import { CompendiumEditor } from './CompendiumEditor.js';
+import { EmptyState } from './EmptyState.js';
 
 /**
  * Side-panel tab with the item catalogue (stage 13). Everyone browses the same
@@ -116,7 +117,26 @@ export function CompendiumPanel() {
       ) : (
         <ul className="compendium-list">
           {entries.length === 0 ? (
-            <li className="placeholder-text">Brak wpisów w tej kategorii.</li>
+            <li>
+              {/* Trzy różne pustki, trzy różne odpowiedzi (27f): pusta baza
+                  czeka na import, pusta kategoria na wpis, a pusty wynik
+                  szukania na skasowanie frazy — nie na zakładanie niczego. */}
+              {order.length === 0 ? (
+                <EmptyState text="Kompendium jest puste — MG wczytuje je z rozdziałów podręcznika (skrypt importu w narzędziach)." />
+              ) : query.trim().length > 0 ? (
+                <EmptyState
+                  text={`Nic nie pasuje do „${query.trim()}” w kategorii „${COMPENDIUM_CATEGORY_LABELS[category]}”.`}
+                  action={{ label: 'Wyczyść szukanie', onClick: () => setQuery('') }}
+                />
+              ) : (
+                <EmptyState
+                  text="Ta kategoria jest pusta."
+                  {...(isGm
+                    ? { action: { label: '+ Własny wpis', onClick: () => edit('new') } }
+                    : {})}
+                />
+              )}
+            </li>
           ) : null}
           {entries.map((entry) => {
             const tier = shopTierOf(entry);

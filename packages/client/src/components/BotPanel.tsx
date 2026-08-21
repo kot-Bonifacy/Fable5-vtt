@@ -248,6 +248,7 @@ export function BotPanel() {
                     className="small-button"
                     onClick={() => void copy(id)}
                     title="Duplikuj profil"
+                    aria-label="Duplikuj profil"
                   >
                     ⧉
                   </button>
@@ -264,6 +265,7 @@ export function BotPanel() {
                     className="small-button character-delete"
                     onClick={() => void remove(id, bot.name)}
                     title="Usuń bota"
+                    aria-label="Usuń bota"
                   >
                     ✕
                   </button>

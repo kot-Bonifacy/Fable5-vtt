@@ -39,6 +39,7 @@ import { useHandoutStore } from '../stores/handoutStore.js';
 import { useJournalStore } from '../stores/journalStore.js';
 import { plural } from '../plural.js';
 import { Markdown } from './Markdown.js';
+import { EmptyState } from './EmptyState.js';
 
 /**
  * Dziennik kampanii — zakładka MG (19c) i kronika stołu (24b).
@@ -466,9 +467,14 @@ function JournalTimeline<T extends JournalPlayerEntry>({
       </div>
 
       {filtered.length === 0 ? (
-        <p className="placeholder-text">
-          {query.length > 0 ? 'Nic takiego w dzienniku nie ma.' : emptyText}
-        </p>
+        query.length > 0 ? (
+          <EmptyState
+            text="Nic takiego w dzienniku nie ma."
+            action={{ label: 'Wyczyść szukanie', onClick: () => setQuery('') }}
+          />
+        ) : (
+          <EmptyState text={emptyText} />
+        )
       ) : (
         groups.map((group) => (
           <section key={group.key} className="journal-month">
@@ -601,6 +607,7 @@ function GmEntryActions({ entry }: { entry: JournalEntryView }) {
           type="button"
           className="small-button character-delete"
           title="Usuń wpis (zniknie też z pamięci botów i ze stołu)"
+          aria-label="Usuń wpis (zniknie też z pamięci botów i ze stołu)"
           onClick={() => setConfirming(true)}
         >
           ✕

@@ -1,4 +1,4 @@
-import { useRef, useState, type PointerEvent } from 'react';
+import { useState } from 'react';
 import type {
   CpredNetPosition,
   NetAbilityId,
@@ -42,6 +42,8 @@ import { useTokenStore } from '../stores/tokenStore.js';
 import { currentRun, useNetRunStore } from '../stores/netRunStore.js';
 import { netErrorText } from '../netErrors.js';
 import { plural } from '../plural.js';
+import { useWindowPlacement } from '../window-placement.js';
+import { WindowResizeGrip } from './WindowResizeGrip.js';
 
 /**
  * Ekran Sieci (etapy 26b i 26c) — pływające okno z windą (decyzja MG z 14.08).
@@ -683,34 +685,11 @@ export function NetRunWindow() {
   const setNotice = useNetRunStore((s) => s.setNotice);
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const tokens = useTokenStore((s) => s.tokens);
-  const [position, setPosition] = useState({ x: 200, y: 80 });
+  const placement = useWindowPlacement('net-run', () => ({ x: 200, y: 80 }));
   const [busy, setBusy] = useState(false);
   const [virusOpen, setVirusOpen] = useState(false);
-  const dragRef = useRef<{ startX: number; startY: number; baseX: number; baseY: number } | null>(
-    null,
-  );
 
   if (!run) return null;
-
-  function startDrag(event: PointerEvent<HTMLDivElement>) {
-    if ((event.target as HTMLElement).closest('button, input, select, textarea')) return;
-    dragRef.current = {
-      startX: event.clientX,
-      startY: event.clientY,
-      baseX: position.x,
-      baseY: position.y,
-    };
-    event.currentTarget.setPointerCapture(event.pointerId);
-  }
-
-  function moveDrag(event: PointerEvent<HTMLDivElement>) {
-    const drag = dragRef.current;
-    if (!drag) return;
-    setPosition({
-      x: Math.max(0, Math.min(window.innerWidth - 200, drag.baseX + event.clientX - drag.startX)),
-      y: Math.max(0, Math.min(window.innerHeight - 60, drag.baseY + event.clientY - drag.startY)),
-    });
-  }
 
   async function guard<T>(work: Promise<{ ok: boolean; error?: string; data?: T }>) {
     setBusy(true);
@@ -776,17 +755,12 @@ export function NetRunWindow() {
 
   return (
     <section
+      ref={placement.ref}
       className="sheet-window net-run-window"
-      style={{ left: position.x, top: position.y, zIndex: 330 }}
+      style={{ ...placement.style, zIndex: 330 }}
       aria-label={`Sieć: ${run.run.architectureName}`}
     >
-      <div
-        className="sheet-header"
-        onPointerDown={startDrag}
-        onPointerMove={moveDrag}
-        onPointerUp={() => (dragRef.current = null)}
-        onPointerCancel={() => (dragRef.current = null)}
-      >
+      <div className="sheet-header" {...placement.dragProps}>
         <span className="sheet-name net-run-title">
           {isGm ? run.run.architectureName : 'SIEĆ'}
           <span className="net-entry-meta"> · {run.characterName}</span>
@@ -1017,6 +991,7 @@ export function NetRunWindow() {
           </p>
         )}
       </div>
+      <WindowResizeGrip resizeProps={placement.resizeProps} />
     </section>
   );
 }

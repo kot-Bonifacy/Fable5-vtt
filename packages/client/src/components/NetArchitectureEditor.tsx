@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type PointerEvent } from 'react';
+import { useMemo, useState } from 'react';
 import type {
   CompendiumEntry,
   CpredNetArchitecture,
@@ -42,6 +42,8 @@ import { useNetStore } from '../stores/netStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { useWallStore } from '../stores/wallStore.js';
 import { plural } from '../plural.js';
+import { useWindowPlacement } from '../window-placement.js';
+import { WindowResizeGrip } from './WindowResizeGrip.js';
 
 /**
  * Edytor Architektury Sieciowej (etap 26a) — pływające okno MG.
@@ -144,6 +146,7 @@ function DeviceRows({
               type="button"
               className="small-button character-delete"
               title="Odłącz od węzła"
+              aria-label="Odłącz od węzła"
               onClick={() =>
                 onChange({ ...floor, devices: devices.filter((_, at) => at !== index) })
               }
@@ -329,6 +332,7 @@ function FloorRow({
             type="button"
             className="small-button character-delete"
             title="Usuń piętro"
+            aria-label="Usuń piętro"
             onClick={onRemove}
           >
             ✕
@@ -343,6 +347,7 @@ function FloorRow({
                 <button
                   type="button"
                   title="Zdejmij z piętra"
+                  aria-label="Zdejmij z piętra"
                   onClick={() =>
                     onChange({
                       ...floor,
@@ -499,12 +504,9 @@ function EditorWindow({ architectureId }: { architectureId: string | 'new' }) {
   const tokensById = useTokenStore((s) => s.tokens);
   const walls = useWallStore((s) => s.walls);
 
-  const [position, setPosition] = useState({ x: 140, y: 60 });
+  const placement = useWindowPlacement('net-architecture', () => ({ x: 140, y: 60 }));
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const dragRef = useRef<{ startX: number; startY: number; baseX: number; baseY: number } | null>(
-    null,
-  );
 
   const entries = useMemo(
     () => order.map((id) => entriesById[id]).filter((entry): entry is CompendiumEntry => !!entry),
@@ -539,26 +541,6 @@ function EditorWindow({ architectureId }: { architectureId: string | 'new' }) {
   const branches = shaft.branches.filter((branch) => branch.parentFloor !== null);
   const deepest = netDeepestBranch(shaft);
 
-  function startDrag(event: PointerEvent<HTMLDivElement>) {
-    if ((event.target as HTMLElement).closest('button, input, select')) return;
-    dragRef.current = {
-      startX: event.clientX,
-      startY: event.clientY,
-      baseX: position.x,
-      baseY: position.y,
-    };
-    event.currentTarget.setPointerCapture(event.pointerId);
-  }
-
-  function moveDrag(event: PointerEvent<HTMLDivElement>) {
-    const drag = dragRef.current;
-    if (!drag) return;
-    setPosition({
-      x: Math.max(0, Math.min(window.innerWidth - 160, drag.baseX + event.clientX - drag.startX)),
-      y: Math.max(0, Math.min(window.innerHeight - 60, drag.baseY + event.clientY - drag.startY)),
-    });
-  }
-
   function patch(next: Partial<CpredNetArchitecture>) {
     setDraft({ ...shaft, ...next } as CpredNetArchitecture);
   }
@@ -591,17 +573,12 @@ function EditorWindow({ architectureId }: { architectureId: string | 'new' }) {
 
   return (
     <section
+      ref={placement.ref}
       className="sheet-window net-window"
-      style={{ left: position.x, top: position.y, zIndex: 320 }}
+      style={{ ...placement.style, zIndex: 320 }}
       aria-label={`Architektura Sieciowa: ${shaft.name}`}
     >
-      <div
-        className="sheet-header"
-        onPointerDown={startDrag}
-        onPointerMove={moveDrag}
-        onPointerUp={() => (dragRef.current = null)}
-        onPointerCancel={() => (dragRef.current = null)}
-      >
+      <div className="sheet-header" {...placement.dragProps}>
         <input
           className="sheet-name"
           type="text"
@@ -613,7 +590,13 @@ function EditorWindow({ architectureId }: { architectureId: string | 'new' }) {
         <button type="button" className="small-button" onClick={() => void save()} disabled={busy}>
           {busy ? 'Zapisuję…' : 'Zapisz'}
         </button>
-        <button type="button" className="sheet-close" onClick={close} title="Zamknij edytor">
+        <button
+          type="button"
+          className="sheet-close"
+          onClick={close}
+          title="Zamknij edytor"
+          aria-label="Zamknij edytor"
+        >
           ✕
         </button>
       </div>
@@ -718,6 +701,7 @@ function EditorWindow({ architectureId }: { architectureId: string | 'new' }) {
         )}
         {error && <p className="ai-status-error">{error}</p>}
       </div>
+      <WindowResizeGrip resizeProps={placement.resizeProps} />
     </section>
   );
 }

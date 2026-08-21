@@ -28,6 +28,7 @@ import { useCombatStore } from '../stores/combatStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { useRollStore } from '../stores/rollStore.js';
+import { EmptyState } from './EmptyState.js';
 
 /** Tokens likely to fight: the players' characters come pre-ticked. */
 function defaultSelection(tokens: TokenView[]): string[] {
@@ -67,7 +68,11 @@ function CombatSetup({ tokens }: { tokens: TokenView[] }) {
         kontekstowego tokenu.
       </p>
       {tokens.length === 0 ? (
-        <p className="placeholder-text">Na scenie nie ma jeszcze żadnych tokenów.</p>
+        <EmptyState
+          text={
+            'Na scenie nie ma jeszcze żadnych figur — postaw je z zakładki „Tokeny”, zanim zaczniesz walkę.'
+          }
+        />
       ) : (
         <ul className="combat-picker">
           {tokens.map((token) => (
@@ -88,6 +93,7 @@ function CombatSetup({ tokens }: { tokens: TokenView[] }) {
       {error && <p className="auth-error">{error}</p>}
       <div className="scene-editor-row">
         <button
+          className="primary-button"
           type="button"
           onClick={() => void begin()}
           disabled={starting || selection.length === 0}
@@ -241,6 +247,7 @@ function CombatRow({
           className="small-button"
           onClick={loadCup}
           title="Załaduj kubek — rzut wykonasz potrząsając kubkiem"
+          aria-label="Załaduj kubek — rzut wykonasz potrząsając kubkiem"
         >
           🎲
         </button>
@@ -285,6 +292,7 @@ function CombatRow({
           className="small-button"
           onClick={() => void resetCombatTurn(combatant.id)}
           title="Zwróć turę — pełny budżet Ruchu i Akcji"
+          aria-label="Zwróć turę — pełny budżet Ruchu i Akcji"
         >
           ↺
         </button>
@@ -295,6 +303,7 @@ function CombatRow({
           className="small-button"
           onClick={() => void removeFromCombat(combatant.id)}
           title="Usuń z walki"
+          aria-label="Usuń z walki"
         >
           ✕
         </button>
@@ -325,7 +334,7 @@ export function CombatPanel() {
       <CombatSetup tokens={tokens} />
     ) : (
       <div className="combat-panel">
-        <p className="placeholder-text">Walka nie trwa.</p>
+        <EmptyState text="Walka nie trwa — Kolejka Inicjatywy pojawi się tutaj, gdy MG włączy tryb turowy." />
       </div>
     );
   }
@@ -368,6 +377,7 @@ export function CombatPanel() {
               className="small-button"
               onClick={() => void previousCombatTurn()}
               title="Poprzednia tura"
+              aria-label="Poprzednia tura"
             >
               ◀
             </button>
@@ -380,7 +390,11 @@ export function CombatPanel() {
 
       {isGm && (
         <div className="scene-editor-row">
-          <button type="button" onClick={() => void rollCombatInitiativeForAll(false)}>
+          <button
+            className="primary-button"
+            type="button"
+            onClick={() => void rollCombatInitiativeForAll(false)}
+          >
             Rzuć wszystkim
           </button>
           <button

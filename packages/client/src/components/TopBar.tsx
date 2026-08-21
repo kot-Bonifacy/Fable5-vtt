@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { CombatBar } from './CombatBar.js';
 import { ConnectionStatus } from './ConnectionStatus.js';
 import { SettingsButton } from './SettingsButton.js';
+import { ShortcutsButton } from './ShortcutsWindow.js';
 import { useAuthStore } from '../stores/authStore.js';
 
 export function TopBar() {
@@ -20,6 +21,7 @@ export function TopBar() {
         <ConnectionStatus />
         {/* Etap 27d: ☀/☾ i ⌨ przeniosły się do okna ustawień — pasek nosi
             stan gry, a nie listę preferencji jednego użytkownika. */}
+        <ShortcutsButton />
         <SettingsButton />
         {user && (
           <span className="top-bar-user">

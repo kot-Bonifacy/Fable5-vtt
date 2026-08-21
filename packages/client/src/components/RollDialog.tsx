@@ -197,7 +197,7 @@ function RollDialogBody({ target }: { target: RollTarget }) {
         {!planned.ok && <p className="auth-error">Nie można wykonać tego rzutu.</p>}
 
         <div className="scene-editor-row">
-          <button type="button" onClick={confirm} disabled={!planned.ok}>
+          <button className="primary-button" type="button" onClick={confirm} disabled={!planned.ok}>
             Weź kubek
           </button>
           <button type="button" className="small-button" onClick={closeDialog}>

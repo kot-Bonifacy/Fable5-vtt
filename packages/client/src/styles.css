@@ -787,6 +787,23 @@ body {
   min-width: 0;
 }
 
+/* Stan pusty listy (etap 27f): zdanie i — gdy jest sensowny — pierwszy krok.
+   Wyśrodkowanie jest celowe: pustka pośrodku panelu czyta się jak komunikat,
+   pustka dosunięta do lewej jak zapomniany wiersz listy. */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1.1rem 0.8rem;
+  text-align: center;
+}
+
+.empty-state .placeholder-text {
+  margin: 0;
+  max-width: 34ch;
+}
+
 .placeholder-text {
   color: var(--text-dim);
   font-size: 0.9rem;
@@ -855,12 +872,19 @@ input:focus {
   outline: 1px solid var(--accent);
 }
 
+/* Umowa o przyciskach odwrócona w 27f. Do 27e goły `button` malował się jak
+   przycisk główny (czerwone tło, biały napis), więc każdy nowy przycisk, który
+   podmieniał tło i zapominał o `color`, dostawał biały tekst — w nocy tego nie
+   widać, w dzień to białe na kremowym. Tak powstały dwa z czterech błędów 27e.
+   Teraz domyślny przycisk jest neutralny (a neutralny napis jest czytelny na
+   każdym neutralnym tle), a czerwień trzeba wziąć świadomie: `.primary-button`.
+   Pilnuje tego test „przycisk z akcentowym tłem nie zapomina o kolorze napisu". */
 button {
   padding: 0.55rem 0.9rem;
-  background: var(--accent);
-  border: none;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
   border-radius: 4px;
-  color: var(--text-on-accent);
+  color: var(--text);
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
@@ -869,6 +893,14 @@ button {
 button:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+/* Jedna akcja na widok, ta, po którą sięga się bez zastanowienia: „Zaloguj się",
+   „Wyślij", „Utwórz", „Weź kubek". Reszta zostaje neutralna. */
+.primary-button {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--text-on-accent);
 }
 
 .small-button {
@@ -1517,6 +1549,47 @@ input[type='color'] {
 }
 
 /* ===== Characters: floating sheet window ===== */
+
+/* ---------------------------------------------------------------------------
+   Pływające okna — uchwyt skalowania (etap 27f)
+
+   Okna są `overflow: hidden`, więc uchwyt musi siedzieć w środku ramki, nie za
+   nią. 16 px to kwadrat, który da się trafić bez celowania, a `nwse-resize`
+   mówi kursorem to samo, co trzy kreski mówią okiem.
+   --------------------------------------------------------------------------- */
+.window-resizer {
+  position: absolute;
+  /* Odsunięty od krawędzi, i to nie dla urody. Karta postaci ma od 27a **ścięty
+     prawy dolny narożnik** (`clip-path` z `sheet.css`, 22 px po każdej osi),
+     a pozostałe okna zaokrąglenie 10 px — jedno i drugie **wycina róg
+     z trafień**. Uchwyt dosunięty do rogu wyglądał dobrze i nie dawał się
+     złapać: kliknięcie przechodziło do mapy pod spodem (znalezione w 27f przy
+     oglądaniu karty). 13 px z każdej strony to najbliższy punkt sumujący się
+     do 26 — z zapasem za skosem i daleko za łukiem. */
+  right: 13px;
+  bottom: 13px;
+  width: 14px;
+  height: 14px;
+  cursor: nwse-resize;
+  /* Trzy ukośne kreski: pasek koloru, przerwa, pasek — powtórzone co 4 px. */
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent 0 2px,
+    var(--border-strong) 2px 3px,
+    transparent 3px 5px
+  );
+  touch-action: none;
+  z-index: 2;
+}
+
+.window-resizer:hover {
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent 0 2px,
+    var(--accent) 2px 3px,
+    transparent 3px 5px
+  );
+}
 
 .sheet-window {
   position: fixed;
@@ -5417,25 +5490,6 @@ body.is-resizing {
   border-top: 1px solid var(--border);
 }
 
-/* Nie przyklejone do dołu, choć kiedyś było: kubek do kości stoi w lewym dolnym
-   rogu okna, a stopka dociśnięta pod niego wyglądała jak napis wiszący nad
-   kubkiem w pustce. Skróty idą więc zaraz po slotach — jak każde inne zdanie
-   w tym panelu — a dół zostaje kubkowi. */
-.hud-keys {
-  margin: 0.15rem 0 0;
-  font-size: 0.62rem;
-  line-height: 1.5;
-  color: var(--text-dim);
-}
-
-.hud-keys kbd {
-  padding: 0 0.2rem;
-  font-family: inherit;
-  background: var(--bg-inset-2);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-}
-
 /* Whoever asked the system for less motion gets less motion: the flying number
    and the two pulses are the only things here that move on their own. */
 @media (prefers-reduced-motion: reduce) {
@@ -6121,6 +6175,71 @@ body.is-resizing {
   margin-top: 1.1rem;
   padding-top: 0.9rem;
   border-top: 1px solid var(--border);
+}
+
+/* ---------------------------------------------------------------------------
+   Okno skrótów `?` (etap 27f)
+
+   Dzieli chrom z oknem ustawień (belka, ciało, ✕) i różni się tylko treścią:
+   dwie kolumny, w lewej klawisz, w prawej zdanie. Szerokość klawisza jest
+   stała, żeby zdania zaczynały się w jednej linii pionowej — lista czyta się
+   wtedy jak spis, a nie jak akapit z pogrubieniami.
+   --------------------------------------------------------------------------- */
+.shortcuts-window {
+  width: min(520px, calc(100vw - 24px));
+}
+
+.shortcuts-group {
+  margin-bottom: 0.9rem;
+}
+
+.shortcuts-note {
+  margin: -0.3rem 0 0.45rem;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--text-dim);
+}
+
+.shortcuts-list {
+  margin: 0;
+}
+
+.shortcuts-row {
+  display: grid;
+  grid-template-columns: 7.5rem 1fr;
+  gap: 0.4rem;
+  align-items: baseline;
+  padding: 0.16rem 0;
+}
+
+.shortcuts-row dt {
+  margin: 0;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.shortcuts-row dd {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.shortcuts-row kbd {
+  display: inline-block;
+  min-width: 1.4rem;
+  padding: 0.05rem 0.32rem;
+  background: var(--bg-inset-2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-family: inherit;
+  font-size: 0.76rem;
+  text-align: center;
+}
+
+.shortcuts-plus {
+  padding: 0 0.15rem;
+  color: var(--text-dim);
+  font-size: 0.72rem;
 }
 
 .settings-group-title {

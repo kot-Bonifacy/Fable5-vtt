@@ -476,7 +476,12 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
 
         {error && <p className="auth-error">{error}</p>}
         <div className="scene-editor-row">
-          <button type="button" onClick={() => void save()} disabled={saving}>
+          <button
+            className="primary-button"
+            type="button"
+            onClick={() => void save()}
+            disabled={saving}
+          >
             {saving ? 'Zapisywanie…' : 'Zapisz'}
           </button>
           <button type="button" className="small-button" onClick={onClose}>

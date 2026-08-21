@@ -77,6 +77,7 @@ function ArchitectureRow({ entry }: { entry: NetArchitectureSummary }) {
             type="button"
             className="small-button character-delete"
             title="Usuń architekturę z biblioteki kampanii"
+            aria-label="Usuń architekturę z biblioteki kampanii"
             onClick={() => setConfirming(true)}
           >
             ✕

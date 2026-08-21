@@ -400,7 +400,12 @@ function SceneEditor({ onClose }: { onClose: () => void }) {
 
       {error && <p className="auth-error">{error}</p>}
       <div className="scene-editor-row">
-        <button type="button" onClick={() => void save()} disabled={saving || !draft}>
+        <button
+          className="primary-button"
+          type="button"
+          onClick={() => void save()}
+          disabled={saving || !draft}
+        >
           {saving ? 'Zapisywanie…' : 'Zapisz'}
         </button>
         <button type="button" className="small-button" onClick={cancel}>
@@ -461,7 +466,7 @@ export function ScenePanel() {
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
         />
-        <button type="submit" disabled={newName.trim().length === 0}>
+        <button className="primary-button" type="submit" disabled={newName.trim().length === 0}>
           Utwórz
         </button>
       </form>

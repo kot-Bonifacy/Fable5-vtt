@@ -98,6 +98,7 @@ import { netErrorText } from '../netErrors.js';
 import { coverAt, useCoverStore } from '../stores/coverStore.js';
 import { zoneAt, useZoneStore } from '../stores/zoneStore.js';
 import { useSmokeStore } from '../stores/smokeStore.js';
+import { MAP_TOOL_KEYS } from '../shortcuts.js';
 import {
   currentDrawingStyle,
   currentPlayerToggle,
@@ -1509,36 +1510,12 @@ export function MapArea() {
         if (isGm || myActiveCombatant(combat, user?.id ?? null)) void nextCombatTurn();
         return;
       }
-      if (event.key === 'm' || event.key === 'M') {
-        tools.toggleTool('ruler');
-        return;
-      }
-      if (event.key === 'r' || event.key === 'R') {
-        tools.toggleTool('draw');
-        return;
-      }
-      if (event.key === 'g' || event.key === 'G') {
-        tools.toggleTool('erase');
-        return;
-      }
-      if ((event.key === 'f' || event.key === 'F') && isGm) {
-        tools.toggleTool('fog');
-        return;
-      }
-      if ((event.key === 'n' || event.key === 'N') && isGm) {
-        tools.toggleTool('note');
-        return;
-      }
-      if ((event.key === 'w' || event.key === 'W') && isGm) {
-        tools.toggleTool('wall');
-        return;
-      }
-      if ((event.key === 'o' || event.key === 'O') && isGm) {
-        tools.toggleTool('cover');
-        return;
-      }
-      if ((event.key === 'l' || event.key === 'L') && isGm) {
-        tools.toggleTool('light');
+      // Narzędzia mapy idą z `MAP_TOOL_KEYS` (27f), a nie z drabinki `if`-ów:
+      // tę samą tabelę czyta okno pomocy `?`, więc lista skrótów nie ma jak
+      // rozjechać się z tym, co klawisze naprawdę robią.
+      const binding = MAP_TOOL_KEYS.find((entry) => entry.key === event.key.toLowerCase());
+      if (binding) {
+        if (!binding.gmOnly || isGm) tools.toggleTool(binding.tool);
         return;
       }
       // Enter closes the wall chain being traced, the way it ends a polygon in

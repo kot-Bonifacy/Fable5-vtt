@@ -41,7 +41,7 @@ export function LoginPage() {
           autoFocus
         />
         {error && <p className="auth-error">{error}</p>}
-        <button type="submit" disabled={busy || password.length === 0}>
+        <button className="primary-button" type="submit" disabled={busy || password.length === 0}>
           {busy ? 'Logowanie…' : 'Zaloguj się'}
         </button>
         <p className="auth-hint">Jesteś graczem? Poproś MG o link zaproszenia.</p>

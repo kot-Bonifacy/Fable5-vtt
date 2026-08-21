@@ -1,13 +1,4 @@
-import {
-  Fragment,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ChangeEvent,
-  type MouseEvent,
-  type PointerEvent,
-} from 'react';
+import { Fragment, useEffect, useMemo, useState, type ChangeEvent, type MouseEvent } from 'react';
 import type {
   ArmorLocation,
   CompendiumEntry,
@@ -134,6 +125,8 @@ import {
   useRollStore,
   type RollTarget,
 } from '../stores/rollStore.js';
+import { useWindowPlacement } from '../window-placement.js';
+import { WindowResizeGrip } from './WindowResizeGrip.js';
 
 type SheetTab = 'stats' | 'bio' | 'chrome' | 'gear';
 
@@ -205,14 +198,11 @@ function CharacterSheetWindow({
   const focusSheet = useCharacterStore((s) => s.focusSheet);
 
   const [tab, setTab] = useState<SheetTab>('stats');
-  const [position, setPosition] = useState(() => ({
+  const placement = useWindowPlacement(`sheet:${characterId}`, () => ({
     x: 90 + (stackIndex % 6) * 28,
     y: 70 + (stackIndex % 6) * 24,
   }));
   const [issues, setIssues] = useState<Record<string, string>>({});
-  const dragRef = useRef<{ startX: number; startY: number; baseX: number; baseY: number } | null>(
-    null,
-  );
 
   useEffect(() => {
     ensureCpredDataLoaded();
@@ -255,31 +245,6 @@ function CharacterSheetWindow({
     queueCharacterSave(characterId, { name: value });
   }
 
-  function startDrag(event: PointerEvent<HTMLDivElement>) {
-    // Buttons and inputs inside the header keep their normal behaviour.
-    if ((event.target as HTMLElement).closest('button, input')) return;
-    dragRef.current = {
-      startX: event.clientX,
-      startY: event.clientY,
-      baseX: position.x,
-      baseY: position.y,
-    };
-    event.currentTarget.setPointerCapture(event.pointerId);
-  }
-
-  function moveDrag(event: PointerEvent<HTMLDivElement>) {
-    const drag = dragRef.current;
-    if (!drag) return;
-    setPosition({
-      x: Math.max(0, Math.min(window.innerWidth - 120, drag.baseX + event.clientX - drag.startX)),
-      y: Math.max(0, Math.min(window.innerHeight - 60, drag.baseY + event.clientY - drag.startY)),
-    });
-  }
-
-  function endDrag() {
-    dragRef.current = null;
-  }
-
   const issueList = Object.values(issues);
   const saveLabel =
     saveState === 'saving' ? 'Zapisywanie…' : saveState === 'error' ? 'Błąd zapisu!' : '';
@@ -287,18 +252,13 @@ function CharacterSheetWindow({
 
   return (
     <section
+      ref={placement.ref}
       className="sheet-window"
-      style={{ left: position.x, top: position.y, zIndex: 300 + stackIndex }}
+      style={{ ...placement.style, zIndex: 300 + stackIndex }}
       onPointerDown={() => focusSheet(characterId)}
       aria-label={`Karta postaci: ${character.name}`}
     >
-      <div
-        className="sheet-header"
-        onPointerDown={startDrag}
-        onPointerMove={moveDrag}
-        onPointerUp={endDrag}
-        onPointerCancel={endDrag}
-      >
+      <div className="sheet-header" {...placement.dragProps}>
         {character.portraitUrl ? (
           <img className="sheet-header-portrait" src={character.portraitUrl} alt="" />
         ) : null}
@@ -314,6 +274,7 @@ function CharacterSheetWindow({
           className="sheet-close"
           onClick={() => closeSheet(characterId)}
           title="Zamknij kartę"
+          aria-label="Zamknij kartę"
         >
           ✕
         </button>
@@ -361,6 +322,7 @@ function CharacterSheetWindow({
           ))}
         </div>
       )}
+      <WindowResizeGrip resizeProps={placement.resizeProps} />
     </section>
   );
 }
@@ -745,6 +707,7 @@ function StatColumn({
                 className="cp-mini-button"
                 onClick={() => saveData({ luckCurrent: data.stats.luck }, 'luckCurrent')}
                 title="Odnów pulę Szczęścia (RAW: na początku każdej sesji)"
+                aria-label="Odnów pulę Szczęścia (RAW: na początku każdej sesji)"
                 disabled={data.luckCurrent >= data.stats.luck}
               >
                 ↻
@@ -993,6 +956,7 @@ function RowTable<T extends CpredItemRow>({
                   className="cp-mini-button cp-mini-button--danger"
                   onClick={() => onChange(rows.filter((r) => r.id !== row.id))}
                   title="Usuń wiersz"
+                  aria-label="Usuń wiersz"
                 >
                   ✕
                 </button>
@@ -1198,6 +1162,7 @@ function WeaponStrip({
                         className="small-button"
                         disabled={row.ammoCurrent >= row.ammoMax}
                         title={`Przeładuj do pełna${row.ammoType ? ` (${row.ammoType})` : ''}`}
+                        aria-label={`Przeładuj do pełna${row.ammoType ? ` (${row.ammoType})` : ''}`}
                         onClick={() => reloadWeapon(character.id, row.id)}
                       >
                         ⟳
@@ -1269,6 +1234,7 @@ function WeaponStrip({
                       type="button"
                       className="small-button"
                       title="Pokaż pierścienie przedziałów PT wokół swojego tokenu (kliknij ponownie, by schować)"
+                      aria-label="Pokaż pierścienie przedziałów PT wokół swojego tokenu (kliknij ponownie, by schować)"
                       onClick={() => showRangeRings(row, resolved)}
                     >
                       ◎
@@ -1298,6 +1264,7 @@ function WeaponStrip({
                       saveData({ weapons: data.weapons.filter((r) => r.id !== row.id) }, 'weapons')
                     }
                     title="Usuń wiersz"
+                    aria-label="Usuń wiersz"
                   >
                     ✕
                   </button>
@@ -1444,6 +1411,7 @@ function ArmorStrip({ data, saveData }: TabProps) {
                       type="button"
                       className="cp-mini-button"
                       title="Zdejmij — sztuka schodzi na dół i przestaje chronić"
+                      aria-label="Zdejmij — sztuka schodzi na dół i przestaje chronić"
                       onClick={() => update(row.id, { equipped: false })}
                     >
                       ⤓
@@ -1452,6 +1420,7 @@ function ArmorStrip({ data, saveData }: TabProps) {
                       type="button"
                       className="cp-mini-button cp-mini-button--danger"
                       title="Usuń pancerz"
+                      aria-label="Usuń pancerz"
                       onClick={() => write(data.armor.filter((r) => r.id !== row.id))}
                     >
                       ✕
@@ -1525,6 +1494,7 @@ function ArmorStrip({ data, saveData }: TabProps) {
                         type="button"
                         className="cp-mini-button"
                         title="Załóż"
+                        aria-label="Załóż"
                         onClick={() => update(row.id, { equipped: true })}
                       >
                         ⤒
@@ -1538,6 +1508,7 @@ function ArmorStrip({ data, saveData }: TabProps) {
                       type="button"
                       className="cp-mini-button cp-mini-button--danger"
                       title="Usuń pancerz"
+                      aria-label="Usuń pancerz"
                       onClick={() => write(data.armor.filter((r) => r.id !== row.id))}
                     >
                       ✕
@@ -1601,6 +1572,7 @@ function ArmorSp({
           type="button"
           className="cp-mini-button"
           title="Napraw pancerz do pełnego OB"
+          aria-label="Napraw pancerz do pełnego OB"
           onClick={() => update(row.id, { spCurrent: row.sp })}
         >
           ↻
@@ -1681,6 +1653,7 @@ function CriticalInjuries({ data, saveData }: TabProps) {
                   type="button"
                   className="cp-mini-button cp-mini-button--danger"
                   title="Usuń ranę (wyleczona albo załatana)"
+                  aria-label="Usuń ranę (wyleczona albo załatana)"
                   onClick={() =>
                     saveData(
                       { criticalInjuries: data.criticalInjuries.filter((_, i) => i !== index) },
@@ -1817,6 +1790,7 @@ function CyberdeckSection({ data, saveData }: TabProps) {
           type="button"
           className="cp-mini-button cp-mini-button--danger"
           title="Odłącz cyberdek od tej postaci"
+          aria-label="Odłącz cyberdek od tej postaci"
           onClick={() => saveData({ cyberdeck: null }, 'cyberdeck')}
         >
           ✕
@@ -1858,6 +1832,7 @@ function CyberdeckSection({ data, saveData }: TabProps) {
                     type="button"
                     className="cp-mini-button cp-mini-button--danger"
                     title="Wyjmij z gniazda"
+                    aria-label="Wyjmij z gniazda"
                     onClick={() =>
                       patchDeck({
                         installed: deck.installed.filter((entry) => entry.id !== row.id),
@@ -2617,6 +2592,7 @@ function LifepathPeople({
           type="button"
           className="cp-bar-add"
           title={`Dopisz — ${title.toLowerCase()}`}
+          aria-label={`Dopisz — ${title.toLowerCase()}`}
           disabled={people.length >= LIFEPATH_GROUP_MAX}
           onClick={() => onChange([...people, emptyLifepathPerson(newRowId())])}
         >
@@ -2653,6 +2629,7 @@ function LifepathPeople({
               type="button"
               className="small-button character-delete"
               title="Usuń z listy"
+              aria-label="Usuń z listy"
               onClick={() => onChange(people.filter((_, i) => i !== index))}
             >
               ✕
@@ -2684,6 +2661,7 @@ function LifepathEnemies({
           type="button"
           className="cp-bar-add"
           title="Dopisz wroga"
+          aria-label="Dopisz wroga"
           disabled={enemies.length >= LIFEPATH_GROUP_MAX}
           onClick={() => onChange([...enemies, emptyLifepathEnemy(newRowId())])}
         >
@@ -2709,6 +2687,7 @@ function LifepathEnemies({
                 type="button"
                 className="small-button character-delete"
                 title="Usuń wroga"
+                aria-label="Usuń wroga"
                 onClick={() => onChange(enemies.filter((_, i) => i !== index))}
               >
                 ✕
@@ -2861,6 +2840,7 @@ function ReputationSection({
                     type="button"
                     className="small-button"
                     title="Usuń wyczyn"
+                    aria-label="Usuń wyczyn"
                     onClick={() => write(sources.filter((entry) => entry.id !== row.id))}
                   >
                     🗑

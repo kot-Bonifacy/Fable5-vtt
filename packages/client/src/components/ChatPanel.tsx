@@ -534,6 +534,7 @@ function BotActivityRow({ entry, canStop }: { entry: BotActivityEntry; canStop: 
             type="button"
             className="small-button chat-stop"
             title="Przerwij wypowiedź bota"
+            aria-label="Przerwij wypowiedź bota"
             onClick={() => stopBots(entry.turnId)}
           >
             ✕
@@ -712,7 +713,11 @@ export function ChatPanel() {
           disabled={!synced || !campaign}
           aria-label="Wiadomość czatu"
         />
-        <button type="submit" disabled={!synced || !campaign || draft.trim().length === 0}>
+        <button
+          className="primary-button"
+          type="submit"
+          disabled={!synced || !campaign || draft.trim().length === 0}
+        >
           Wyślij
         </button>
       </form>

@@ -15,11 +15,13 @@ import { DefenseZonePanel } from './components/DefenseZonePanel.js';
 import { NetRunWindow } from './components/NetRunWindow.js';
 import { RollDialog } from './components/RollDialog.js';
 import { SettingsWindow } from './components/SettingsWindow.js';
+import { ShortcutsWindow } from './components/ShortcutsWindow.js';
 import { LoginPage } from './pages/LoginPage.js';
 import { JoinPage } from './pages/JoinPage.js';
 import { GmPanel } from './pages/GmPanel.js';
 import { useAuthStore } from './stores/authStore.js';
 import { connectSocket, disconnectSocket } from './socket.js';
+import { useHelpStore } from './stores/helpStore.js';
 
 /**
  * At the table the right button belongs to the game — it opens the token menu
@@ -44,8 +46,40 @@ function useGameContextMenu(): void {
   }, []);
 }
 
+/**
+ * `?` otwiera i zamyka listę skrótów (etap 27f).
+ *
+ * Nasłuch siedzi tu, a nie w `MapArea`, bo pytanie „jaki to był klawisz?"
+ * pada najczęściej wtedy, gdy kursor jest gdzie indziej niż nad mapą — nad
+ * kartą postaci, nad czatem, nad kolejką. Warunek „nikt nie pisze" jest ten
+ * sam, którym `MapArea` chroni skróty narzędzi: `?` w treści szeptu ma zostać
+ * znakiem zapytania. Panel MG go nie ma świadomie — żaden z tych skrótów tam
+ * nie działa.
+ */
+function useShortcutsKey(): void {
+  const toggleOpen = useHelpStore((s) => s.toggleOpen);
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      // Znak, nie miejsce na klawiaturze: `?` powstaje z Shift+/ na układzie
+      // polskim i amerykańskim, ale gdzie indziej z zupełnie innego klawisza.
+      // Druga droga (`Slash` z Shiftem) jest dla przeglądarek i automatów,
+      // które podają surowy klawisz zamiast znaku — tej samej ostrożności
+      // nauczył 27h przy cyfrach paska akcji.
+      const isQuestionMark = event.key === '?' || (event.code === 'Slash' && event.shiftKey);
+      if (!isQuestionMark) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
+      event.preventDefault();
+      toggleOpen();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [toggleOpen]);
+}
+
 function GameView() {
   useGameContextMenu();
+  useShortcutsKey();
   return (
     <div className="app-layout">
       <TopBar />
@@ -67,6 +101,7 @@ function GameView() {
       <DefenseZonePanel />
       <RollDialog />
       <SettingsWindow />
+      <ShortcutsWindow />
       <DiceCup />
     </div>
   );

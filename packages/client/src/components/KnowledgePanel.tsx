@@ -22,6 +22,8 @@ import {
   saveKnowledgeEntry,
 } from '../socket.js';
 import { useKnowledgeStore } from '../stores/knowledgeStore.js';
+import { plural } from '../plural.js';
+import { EmptyState } from './EmptyState.js';
 
 /**
  * Baza wiedzy kampanii (etap 19b) — zakładka MG.
@@ -55,11 +57,14 @@ function IndexLine({ status }: { status: KnowledgeIndexStatus }) {
         </span>
         {status.chunks > 0 && (
           <span className="ai-status-text">
-            {status.documents} wpisów · {status.chunks} fragmentów
+            {plural(status.documents, 'wpis', 'wpisy', 'wpisów')} ·{' '}
+            {plural(status.chunks, 'fragment', 'fragmenty', 'fragmentów')}
           </span>
         )}
         {status.pending > 0 && (
-          <span className="ai-status-text">{status.pending} czeka na indeks</span>
+          <span className="ai-status-text">
+            {plural(status.pending, 'wpis czeka', 'wpisy czekają', 'wpisów czeka')} na indeks
+          </span>
         )}
         <button
           type="button"
@@ -125,6 +130,7 @@ function EntryRow({ entry, onEdit }: { entry: KnowledgeEntryView; onEdit: () => 
             type="button"
             className="small-button character-delete"
             title="Usuń wpis (zniknie też z pamięci botów)"
+            aria-label="Usuń wpis (zniknie też z pamięci botów)"
             onClick={() => setConfirming(true)}
           >
             ✕
@@ -338,12 +344,17 @@ export function KnowledgePanel() {
 
       <ul className="knowledge-list">
         {visible.length === 0 ? (
-          <li className="placeholder-text">
-            {!loaded
-              ? 'Wczytuję…'
-              : order.length === 0
-                ? 'Baza jest pusta. Opisz miejsce, frakcję albo NPC-a — bot z uprawnieniem przypomni to sobie w rozmowie.'
-                : 'Nic nie pasuje do wyszukiwania.'}
+          <li>
+            {!loaded ? (
+              <EmptyState text="Wczytuję…" />
+            ) : order.length === 0 ? (
+              <EmptyState text="Baza jest pusta. Opisz miejsce, frakcję albo NPC-a — bot z uprawnieniem przypomni to sobie w rozmowie." />
+            ) : (
+              <EmptyState
+                text="Nic nie pasuje do wyszukiwania."
+                action={{ label: 'Wyczyść szukanie', onClick: () => setQuery('') }}
+              />
+            )}
           </li>
         ) : (
           visible.map((entry) => (

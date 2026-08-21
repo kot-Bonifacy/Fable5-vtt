@@ -1,4 +1,3 @@
-import { useRef, useState, type PointerEvent } from 'react';
 import type { MapFxSound } from '@vtt/shared';
 import { DICE_SKIN_LIST } from '../dice-skins.js';
 import { auditionFxSound } from '../sfx.js';
@@ -7,6 +6,8 @@ import { sendDiceSkin } from '../socket.js';
 import { useSettingsStore } from '../stores/settingsStore.js';
 import { useThemeStore } from '../stores/themeStore.js';
 import { useTypewriterStore } from '../stores/typewriterStore.js';
+import { useWindowPlacement } from '../window-placement.js';
+import { WindowResizeGrip } from './WindowResizeGrip.js';
 
 /**
  * Próbki mapy do odsłuchu (etap 27i).
@@ -65,39 +66,12 @@ export function SettingsWindow() {
   const typewriter = useTypewriterStore((s) => s.enabled);
   const setTypewriter = useTypewriterStore((s) => s.setEnabled);
 
-  const [position, setPosition] = useState(() => ({
+  const placement = useWindowPlacement('settings', () => ({
     x: Math.max(12, window.innerWidth - 420),
     y: 64,
   }));
-  const dragRef = useRef<{ startX: number; startY: number; baseX: number; baseY: number } | null>(
-    null,
-  );
 
   if (!open) return null;
-
-  function startDrag(event: PointerEvent<HTMLDivElement>) {
-    if ((event.target as HTMLElement).closest('button, input, a')) return;
-    dragRef.current = {
-      startX: event.clientX,
-      startY: event.clientY,
-      baseX: position.x,
-      baseY: position.y,
-    };
-    event.currentTarget.setPointerCapture(event.pointerId);
-  }
-
-  function moveDrag(event: PointerEvent<HTMLDivElement>) {
-    const drag = dragRef.current;
-    if (!drag) return;
-    setPosition({
-      x: Math.max(0, Math.min(window.innerWidth - 120, drag.baseX + event.clientX - drag.startX)),
-      y: Math.max(0, Math.min(window.innerHeight - 60, drag.baseY + event.clientY - drag.startY)),
-    });
-  }
-
-  function endDrag() {
-    dragRef.current = null;
-  }
 
   /** Wybór skórki: zapis na serwerze i od razu próbny rzut w nowych kościach. */
   function chooseSkin(id: (typeof DICE_SKIN_LIST)[number]['id']) {
@@ -107,23 +81,19 @@ export function SettingsWindow() {
 
   return (
     <section
+      ref={placement.ref}
       className="settings-window"
-      style={{ left: position.x, top: position.y }}
+      style={placement.style}
       aria-label="Ustawienia"
     >
-      <div
-        className="settings-window-header"
-        onPointerDown={startDrag}
-        onPointerMove={moveDrag}
-        onPointerUp={endDrag}
-        onPointerCancel={endDrag}
-      >
+      <div className="settings-window-header" {...placement.dragProps}>
         <span className="settings-window-title">⚙ Ustawienia</span>
         <button
           type="button"
           className="sheet-close"
           onClick={() => setOpen(false)}
           title="Zamknij ustawienia"
+          aria-label="Zamknij ustawienia"
         >
           ✕
         </button>
@@ -289,6 +259,7 @@ export function SettingsWindow() {
           </label>
         </section>
       </div>
+      <WindowResizeGrip resizeProps={placement.resizeProps} />
     </section>
   );
 }

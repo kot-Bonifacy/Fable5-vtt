@@ -201,7 +201,11 @@ export function AiPanel() {
             />
             <span>Pokaż rozumowanie (tryb asystenta MG)</span>
           </label>
-          <button type="submit" disabled={!status.available || !prompt.trim()}>
+          <button
+            className="primary-button"
+            type="submit"
+            disabled={!status.available || !prompt.trim()}
+          >
             {busy ? 'Wyślij (trwa generacja)' : 'Wyślij'}
           </button>
         </div>

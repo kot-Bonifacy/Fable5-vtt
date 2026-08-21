@@ -104,7 +104,7 @@ function CampaignCard({
           />
         ))}
       </ul>
-      <button type="button" onClick={() => void createInvitation()}>
+      <button className="primary-button" type="button" onClick={() => void createInvitation()}>
         Nowy link zaproszenia (ważny 7 dni)
       </button>
     </section>
@@ -167,7 +167,11 @@ export function GmPanel() {
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
           />
-          <button type="submit" disabled={busy || newName.trim().length === 0}>
+          <button
+            className="primary-button"
+            type="submit"
+            disabled={busy || newName.trim().length === 0}
+          >
             Utwórz
           </button>
         </div>
