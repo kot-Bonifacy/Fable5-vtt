@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   WALK_MAX_VISITED,
   clipWalkToBudget,
+  firstBlockedStep,
   planWalk,
   reachableCells,
   thinWalk,
@@ -354,5 +355,34 @@ describe('reachableCells (stage 27j)', () => {
       { grid: big, isPassable: () => true, budgetCells: 1000, maxVisited: 500 },
     );
     expect(cells.length).toBeLessThanOrEqual(500);
+  });
+});
+
+describe('firstBlockedStep', () => {
+  /** A wall down the middle of the lattice: x = 300, from y = 0 to y = 500. */
+  const WALL = [{ x1: 300, y1: 0, x2: 300, y2: 500 }];
+
+  it('lets a route through when nothing stands in the way', () => {
+    expect(firstBlockedStep([at(0, 0), at(2, 0), at(2, 4)], WALL)).toBeNull();
+  });
+
+  it('finds the step that goes through a wall and names both its ends', () => {
+    const blocked = firstBlockedStep([at(1, 1), at(5, 1)], WALL);
+    expect(blocked).toEqual({ from: at(1, 1), to: at(5, 1) });
+  });
+
+  it('passes a route that goes round the end of the wall', () => {
+    // The wall stops at y = 500, so row 6 is open ground.
+    expect(firstBlockedStep([at(1, 1), at(1, 6), at(5, 6), at(5, 1)], WALL)).toBeNull();
+  });
+
+  it('blames the crossing leg, not the first one', () => {
+    const blocked = firstBlockedStep([at(0, 0), at(2, 0), at(5, 0)], WALL);
+    expect(blocked).toEqual({ from: at(2, 0), to: at(5, 0) });
+  });
+
+  it('has nothing to say about an empty scene or a route of one point', () => {
+    expect(firstBlockedStep([at(1, 1), at(5, 1)], [])).toBeNull();
+    expect(firstBlockedStep([at(1, 1)], WALL)).toBeNull();
   });
 });

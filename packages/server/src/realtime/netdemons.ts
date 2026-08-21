@@ -416,7 +416,7 @@ export const netDemonTurnEvent = defineEvent<NetDemonActPayload, NetRunAbilityRe
         });
         lines.push(
           shot.blocked
-            ? `${shot.blocked}.`
+            ? `${shot.blocked.text}.`
             : `${device.name} strzela do: ${target.name} (Wartość bojowa ${netDemonCombatValue(demon.profile)}).`,
         );
         next = { ...next, nodeUse: netMarkNodeUse(next.nodeUse, floorId, round) };

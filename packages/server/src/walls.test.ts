@@ -307,6 +307,43 @@ describe('walls and dynamic vision', () => {
     await roundTrip(player);
   }, 30_000);
 
+  /**
+   * Walls stop bodies, not only sight (sesja naprawcza 21.08).
+   *
+   * Until this was enforced the server took any drop it could clamp: a player
+   * could pull their figure through the wall of a room they had never entered.
+   * The route planner of 16e already knew better, but a drag never asks it.
+   */
+  it('refuses a player dragged through a closed door, and allows it once open', async () => {
+    await emitAck(gm, 'opening:toggle', { wallId: doorId, open: false });
+    // Rogue stands at x = 450, the door is the gap at x = 1000 between
+    // y = 1400 and y = 1600, and the NPC waits inside at x = 1450.
+    const refused = await emitAck(player, 'token:move', {
+      tokenId: ownTokenId,
+      x: 1450,
+      y: 1450,
+      final: true,
+    });
+    expect(errorOf(refused)).toBe('MOVE_REFUSED');
+
+    await emitAck(gm, 'opening:toggle', { wallId: doorId, open: true });
+    const allowed = await emitAck(player, 'token:move', {
+      tokenId: ownTokenId,
+      x: 1450,
+      y: 1450,
+      final: true,
+    });
+    expect(allowed.ok).toBe(true);
+
+    // The refusal says nothing about *what* stopped them: a player who cannot
+    // see a wall must not map the building by bumping into it.
+    expect(JSON.stringify(refused)).not.toContain('door');
+    expect(JSON.stringify(refused)).not.toContain('1000');
+
+    await emitAck(gm, 'opening:toggle', { wallId: doorId, open: false });
+    await emitAck(gm, 'token:move', { tokenId: ownTokenId, x: 450, y: 1450, final: true });
+  });
+
   it('never sends a player the floor plan', async () => {
     const leaked = record<unknown>(player, 'wall:sync');
     await roundTrip(gm);

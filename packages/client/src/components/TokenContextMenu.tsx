@@ -8,6 +8,7 @@ import type {
 } from '@vtt/shared';
 import {
   ARMOR_SP_MAX,
+  CPRED_INTIMIDATED_STATUS_ID,
   CPRED_STAT_MAX,
   CPRED_STAT_MIN,
   LIGHT_COLORS,
@@ -493,6 +494,19 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
   );
 }
 
+/**
+ * Naklejki, które **same** niczego nie liczą — i muszą to powiedzieć.
+ *
+ * „Onieśmielony" bierze się z przegranej Konfrontacji (23c) i kara −2 wymaga
+ * dwóch rzeczy naraz: naklejki i adresu przeciwnika zapisanego przy figurze.
+ * Ręczne zaznaczenie daje wyłącznie naklejkę, więc bez tego zdania MG odhacza
+ * pole i odchodzi przekonany, że kara działa.
+ */
+const STATUS_HINTS: Record<string, string> = {
+  [CPRED_INTIMIDATED_STATUS_ID]:
+    'Sama naklejka nie nakłada −2 — kara bierze się z przegranej Konfrontacji, która zapamiętuje, kogo się boisz. Tutaj służy do zdejmowania jej i do oznaczania strachu opisowo.',
+};
+
 export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onClose: () => void }) {
   const token = useTokenStore((s) => s.tokens[menu.tokenId]);
   const statuses = useTokenStore((s) => s.statuses);
@@ -663,7 +677,11 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
             <p className="context-menu-section">Statusy</p>
             <div className="context-menu-statuses">
               {statuses.map((status) => (
-                <label key={status.id} className="context-menu-status">
+                <label
+                  key={status.id}
+                  className="context-menu-status"
+                  title={STATUS_HINTS[status.id] ?? status.name}
+                >
                   <input
                     type="checkbox"
                     checked={token.statuses.includes(status.id)}

@@ -234,7 +234,7 @@ async function fireEmplacement(
     summary: `${zone.name} → ${target.name}`,
   });
   return shot.blocked
-    ? `${shot.blocked}.`
+    ? `${shot.blocked.text}.`
     : `${zone.name} strzela do: ${target.name} (Wartość bojowa ${profile.combatValue}).`;
 }
 

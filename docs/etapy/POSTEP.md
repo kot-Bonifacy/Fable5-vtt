@@ -75,11 +75,18 @@ Pełne notatki z zamkniętych etapów: `archiwum/dziennik-sesji.md` (nie czytaj 
 
 ## Od czego zacząć
 
-Ostatnio zamknięte: **27f** — aplikacja przestała wymagać wiedzy tajemnej. **`?`** otwiera
-pełną listę skrótów (i ten sam klawisz ją zamyka), **okna pływające pamiętają pozycję i rozmiar**
-i rozciągają się za prawy dolny róg, listy tłumaczą swoją pustkę i podają pierwszy krok, a **goły
-`button` jest wreszcie neutralny** — czerwień bierze się świadomie przez `.primary-button`.
-Wcześniej **27j** (żetony i czytelny ruch) i **27i** (efekty walki na mapie).
+Ostatnia sesja była **naprawcza, poza etapami** (21.08): MG kazał przejrzeć otwarte zaległości
+i naprawić z nich to, co jest **błędem**, a nie długiem oględzin. Zamknięte pięć — autozapis karty
+gubiący wiersze, brak jakiejkolwiek kolizji ruchu na serwerze, martwe `ignoreCover` w oknie Sieci,
+strach nieprzywracany przez „Cofnij" i skrypt tłumaczeń, którego uruchomienie zepsułoby 271
+polskich opisów. Szczegóły w notatce sesji niżej. Wcześniej **27f** (szlif UX: `?`, pamięć okien,
+neutralny `button`) i **27j** (żetony i kierunek patrzenia).
+
+**Ruch gracza jest od 21.08 sprawdzany geometrią na serwerze.** `refuseWalkThroughSolid`
+w `realtime/movement.ts` odrzuca trasę przez ścianę, zamknięte okno i stojącą osłonę — **także
+poza walką**, i **odmowa nie nazywa przeszkody** (gracz nie może mapować budynku, wchodząc w nią).
+MG jest zwolniony. Nowe narzędzie, które stawia coś nieprzenikalnego, dokłada segmenty
+w `movementSegments`/`coverMovementSegments`, nie w nowej gałęzi walidacji.
 
 **Etap 27 został rozdzielony do końca**: 27d, 27e, 27f, 27h, 27i i 27j zrobione, zostaje
 **27g** (wydajność). Plik `etap-27-…` jest rozdrożem ze wskazaniami, sam nie jest do realizacji.
@@ -138,6 +145,11 @@ przełącznika gracz nie kupi niczego droższego niż 50 ed. Przełącznik 1–4
 
 **Następne etapy do wyboru: 27g** (wydajność) i **28** (VPS). Drobiazg „kostki kreatora świecą jak krytyki" z 25a/25b **jest zrobiony**
 (flaga `plain`), jednobarwne 📰 z 24c i 🔌 z 26b też — obie stały się sylwetkami z game-icons
+
+**Jedna rzecz czeka na włączony llama-server:** przebieg
+`uv run --with httpx python tools/import/translate-descriptions.py` przetłumaczy **70** opisów
+broni markowych (`--check` potwierdza: 70 do zrobienia, 271 pominiętych jako już polskie).
+Sam przebieg, bez zmian w kodzie — skrypt naprawiono 21.08.
 w 27e. **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty
 naraz — a od 27i także pierwszym, przy którym ktoś **usłyszy** dźwięki walki (dobrane bez
 odsłuchu, przyciski próbek są w „⚙ Ustawienia"; od 27j jest wśród nich „Krok", który słychać
@@ -302,13 +314,14 @@ przy **każdym** przejściu przez pokój i który ma własny wyłącznik).
   dostaje listy urządzeń, dopóki nie przejmie węzła — pokryte testem na payloadzie „nie przysyła
   graczowi listy urządzeń"), ale nikt nie patrzył na to oczami gracza.
 
-- **Etap 26d — strzał z wieżyczki za osłoną kosztuje Akcję Sieciową i nie ma czym odpowiedzieć.**
-  „Ostrzelaj osłonę czy strzelaj mimo niej" (16c) wraca ze ścieżki ataku jako **pytanie**, a nie
-  karta — a Akcja Sieciowa jest zaksięgowana wcześniej, bo sprawdzenie osłony przed rachunkiem
-  znaczyłoby policzenie geometrii drugi raz. Odmowa mówi o tym wprost („Akcja Sieciowa poszła —
-  strzel jeszcze raz mimo osłony"), ale **okno Sieci nie ma przycisku „mimo osłony"**: pole
-  `request.ignoreCover` jedzie w payloadzie i nikt go stamtąd nie ustawia. Do dołożenia razem
-  z kartą wyboru dla urządzeń.
+- ~~**Etap 26d — strzał z wieżyczki za osłoną nie ma czym odpowiedzieć.**~~ **Naprawione 21.08**
+  (sesja naprawcza). `request.ignoreCover` jechało w payloadzie i **nikt go stamtąd nie ustawiał**
+  — `NetRunWindow.tsx` w ogóle nie znało tego pola. Odmowa jest teraz **kodem**
+  (`NET_SHOT_COVERED` / `NET_SHOT_BLOCKED` w `NET_DEVICE_MESSAGES`), a nie gotowym zdaniem, więc
+  okno rozpoznaje ją i podstawia przycisk **„Strzelaj mimo osłony"**, powtarzający operację
+  z `ignoreCover`. `fireDevice` zwraca `blocked` jako `{ code, text }`: kod dla okna, zdanie dla
+  logu Demona (26e) i strefy (26f), które wstawiają je wprost na czat. **Druga Akcja Sieciowa
+  nadal się należy** — jej zwrot to osobny, świadomy wpis w `POMYSLY.md` (15.08).
 
 - **Etap 26d — kamera „obrócona" jest faktem na czacie, nie stożkiem na mapie** (decyzja MG
   z 15.08). VTT nie ma modelu widzenia kamery, więc obsługa zmienia stan urządzenia i pisze
@@ -376,12 +389,15 @@ przy **każdym** przejściu przez pokój i który ma własny wyłącznik).
   co pokrywa test „never lets a player near the library" (lista, odczyt i zapis odmawiają).
   W przeglądarce sprawdzone było tylko to, że u MG zakładka „Sieć" stoi w rzędzie MG.
 
-- **Etap 26a — szybka sekwencja zmian na karcie gubi część edycji (błąd spoza etapu).**
-  Cztery Programy wkładane do deku co 600 ms zostawiły dwa: `queueCharacterSave` łata store
-  optymistycznie, ale echo serwera (`endSave`) podmienia **całą** postać, więc łatka wysłana
-  w trakcie lotu poprzedniej przepada. Przy 1,6 s odstępu wszystko wchodzi. **To nie jest
-  regresja 26a** — dotyczy każdej listy na karcie (broń, sprzęt, pancerz) od etapu 07; deku
-  tylko łatwiej to wywołać, bo każda instalacja podmienia całą listę gniazd. Wpis w `POMYSLY.md`.
+- ~~**Etap 26a — szybka sekwencja zmian na karcie gubi część edycji.**~~ **Naprawione 21.08**
+  (sesja naprawcza). Przyczyna leżała o krok dalej, niż mówiła notatka: strażniki
+  `pendingSaves > 0` **były** i w `endSave`, i w `applyUpsert`, ale liczyły wyłącznie zapisy
+  **wysłane** — łatka czekająca w buforze debounce nie liczyła się wcale, więc ack poprzedniego
+  zapisu adoptował widok serwera i kasował ją ze store'a. Następny klik budował listę z okrojonego
+  stanu i wiersz przepadał bez śladu. Teraz `beginSave` idzie przy **kolejkowaniu**, nie przy
+  flushu (jeden bufor = jeden zapis). Ta sama poprawka w ścieżce botów, która miała identyczny
+  błąd. Pilnuje `packages/client/src/character-save.test.ts` — trzy testy na podstawionym
+  gnieździe, sprawdzone celowym cofnięciem poprawki.
 
 - **Etap 27c — trzy ścieżki nieodklikane, wszystkie po stronie gracza albo skrajnego przypadku.**
   (1) **Strona gracza** — obie nowe strony oglądane były wyłącznie na koncie MG; różnicy w kodzie
@@ -526,16 +542,20 @@ przy **każdym** przejściu przez pokój i który ma własny wyłącznik).
 decyduje przegrany, nie zwycięzca`) — Konfrontacje z 10.08 szły z konta MG, więc przyciski
   oglądał MG, nie gracz.
 
-- **Etap 23c — „Cofnij" na karcie obrażeń nie przywraca strachu.** Świadome i opisane
-  w `realtime/damage.ts`: gdy przeciwnik spada do 0 PW, status „Onieśmielony" schodzi ze
-  wszystkich, którzy się go bali (RAW: „znika, gdy tylko uda ci się pokonać wroga"), ale karta
-  obrażeń nie zapisuje, komu go zdjęła, więc cofnięcie obrażeń go nie wraca. Powrót: MG
-  zaznacza status ręcznie w menu tokenu.
+- ~~**Etap 23c — „Cofnij" na karcie obrażeń nie przywraca strachu.**~~ **Naprawione 21.08**
+  (sesja naprawcza). Wpis był w dodatku **mylący**: komentarz w `realtime/damage.ts` obiecywał,
+  że powrotem jest ręczne zaznaczenie „Onieśmielonego" w menu tokenu — a to nie działa, bo
+  `clearFacedownFear` kasuje **i naklejkę, i adres** w `statusData`, a `token:update` `statusData`
+  nigdy nie pisze. Karta obrażeń zapisuje teraz listę uwolnionych (`fearCleared` w
+  `DamageLogEntry`), a „Cofnij" woła `restoreFacedownFear`. Test w `facedown.test.ts` dowodzi
+  powrotu **rzutem**, nie samą naklejką — bo naklejka to połowa kary.
 
-- **Etap 23c — status „Onieśmielony" zaznaczony ręcznie nic nie robi.** Kara wymaga
-  **dwóch** rzeczy naraz: naklejki na tokenie i adresu przeciwnika w `Token.statusData`
-  (`sheetFacedownPenalty`). To celowe — dzięki temu odznaczenie statusu w menu tokenu jest
-  pełnym „zdejmij karę" — ale znaczy też, że sama naklejka jest wtedy dekoracją.
+- **Etap 23c — status „Onieśmielony" zaznaczony ręcznie nadal nic nie liczy, ale już to mówi.**
+  Kara wymaga **dwóch** rzeczy naraz: naklejki na tokenie i adresu przeciwnika w
+  `Token.statusData` (`sheetFacedownPenalty`). To celowe — dzięki temu odznaczenie statusu jest
+  pełnym „zdejmij karę". Od 21.08 pole w menu tokenu ma `title`, który mówi, że sama naklejka nie
+  nakłada −2 (`STATUS_HINTS` w `TokenContextMenu.tsx`); wcześniej MG odhaczał je przekonany,
+  że kara działa.
 
 - **Etap 23b — trzy ścieżki nieodklikane.** (1) **Karta przelewu na ekranie odbiorcy** — przelew
   wychodzi z konta gracza poprawnie (11.08, niżej), a wiersz czatu ma `recipientId`, więc dociera
@@ -557,14 +577,6 @@ decyduje przegrany, nie zwycięzca`) — Konfrontacje z 10.08 szły z konta MG, 
   więc widziany tylko w kodzie; pokazuje się dopiero przy EMP ≤ 2, czyli po utracie ~40 punktów
   Człowieczeństwa. (2) **Edytor MG wpisu cyborgizacji** z nowymi polami (rodzina, montaż, UC stałe
   i kostkowe, „Połowa, w górę", gniazda, „Wymaga") — formularz nie był otwierany.
-
-- **Po wycofaniu głosu (09.08) zostały dwa katalogi na dysku — do skasowania ręcznie.**
-  Nie usuwa ich żaden skrypt i nic ich już nie czyta:
-  `Remove-Item -Recurse -Force C:\AI\tts` (350 MB modeli głosu Pipera) oraz
-  `Remove-Item -Recurse -Force C:\AI\web\VTT\uploads\tts-cache` (772 KB zsyntezowanych
-  wypowiedzi). Katalog `uploads/voices/` nie powstał — próbek do klonowania nigdy nie wgrano.
-  Zmienne `GATEWAY_TTS_*` warto też skasować z lokalnego `ai-gateway/.env` (w `.env.example`
-  już ich nie ma; gateway ignoruje nieznane klucze, więc nic się przez nie nie psuje).
 
 - **Maszynopis wypowiedzi NPC-a (09.08) nieodklikany w przeglądarce.** Efekt jest czysto
   wizualny, więc żaden test go nie pokrywa. Do sprawdzenia przy stole: (1) **tempo** — 15 zn/s,
@@ -658,7 +670,7 @@ decyduje przegrany, nie zwycięzca`) — Konfrontacje z 10.08 szły z konta MG, 
 
 - **Kliknięcie w token było zepsute dla graczy od 18a — naprawione w 16e, ale zaległości oględzin z tego okresu warto powtórzyć.** Warstwy przykrywające przechwytywały hit-test (szczegóły w „Pułapki dev"), więc gracz na scenie z dynamiczną widocznością **nie mógł kliknąć ani przeciągnąć żadnego tokenu**. To prawdopodobnie realna przyczyna części wpisów „strona gracza nieodklikana" niżej — przy ich odhaczaniu sprawdź najpierw, czy rzecz w ogóle dawała się kliknąć.
 
-- **35 broni markowych ma opisy po angielsku** — wymaga przebiegu `tools/import/translate-descriptions.py` przy włączonym llama-serverze (`pwsh ai-gateway/scripts/start-gateway.ps1`, potem `uv run --with httpx python tools/import/translate-descriptions.py`). Bez GPU się nie da, więc czeka na sesję z gatewayem.
+- **70 broni markowych ma opisy po angielsku** (nie 35 — ta liczba brała się z komunikatu skryptu „35 już w pamięci podręcznej"). Angielskie opisy ma **wyłącznie** `weapons.json`; pozostałe 271 wpisów kompendium jest po polsku. **Skrypt był 21.08 pułapką i został naprawiony**: kwalifikował do tłumaczenia każdy wpis bez `descriptionOriginal`, czyli **341** — w tym 271 polskich, które model dostałby do „przetłumaczenia z angielskiego". Teraz `looks_english()` odsiewa je (`--check` mówi: 70 do zrobienia, 271 pominięto). Zostaje sam przebieg `tools/import/translate-descriptions.py` przy włączonym llama-serverze (`pwsh ai-gateway/scripts/start-gateway.ps1`, potem `uv run --with httpx python tools/import/translate-descriptions.py`). Bez GPU się nie da, więc czeka na sesję z gatewayem.
 - **Etap 13 — UI kompendium odklikane tylko powierzchownie**: 30.07 (przy oględzinach 14b) potwierdzona sama zakładka „Kompendium" — chipy kategorii z licznikami (Broń 103, Pancerz 11, Sprzęt 5, Cyborgizacje 3, Rany krytyczne 22) i lista wpisów z obrażeniami i ceną. **Nadal nieodklikane:** karta przedmiotu z tabelą PT, edytor MG, dodanie przedmiotu na kartę postaci. Ścieżki serwerowe pokryte testami.
 - **Etap 09 — zakładka „AI" u MG niezweryfikowana wizualnie** (sesja toczyła się na koncie gracza). Późniejsze etapy oglądały u MG inne zakładki, więc to prawdopodobnie martwa zaległość — sprawdź przy okazji.
 - **Etapy 18d/18e — strona gracza nieodklikana**: ikona 🪟 u gracza, „Za daleko — podejdź do okna", „Okno zamknięte na skobel", „Zamknięte na klucz". Pokryte testami dymnymi na payloadzie.
@@ -682,7 +694,7 @@ decyduje przegrany, nie zwycięzca`) — Konfrontacje z 10.08 szły z konta MG, 
   unikać ataków dystansowych") — wymaga **trzeciej figury na scenie**: ktoś musi strzelić do
   trzymającego, żeby tarcza w ogóle dostała przycisk „Unik". Na Strzelnicy są dwie figury.
 - **Etap 16b — strona gracza i klik w cel nieodklikane**: klik w token ładujący kubek ataku, „🎯 Atak…" w menu kontekstowym tokenu i edytor profilu bojowego w „Edytuj…" — wszystkie trzy wymagają trafienia wskaźnikiem w warstwę Pixi, czego CDP nie dowozi (pułapka niżej). Pokryte 13 testami dymnymi w `attacks.test.ts`.
-- **Osłona nie blokuje ruchu po stronie serwera** — jak ściany. Trasa A* u klienta omija samochód i przeciągnięcie przez niego nie zostanie odrzucone; `validateTokenMove` dalej liczy sam dystans. Wraca razem z kolizjami ruchu (POMYSLY, 30.07).
+- ~~**Osłona nie blokuje ruchu po stronie serwera**~~ — **naprawione 21.08** (sesja naprawcza), i szerzej, niż mówiła notatka: serwer nie sprawdzał **żadnej** geometrii ruchu, więc ściany też nie blokowały przeciągnięcia. `validateTokenMove` woła teraz `refuseWalkThroughSolid` (ściany + zamknięte okna + stojące osłony, `firstBlockedStep` w `shared/pathfinding.ts`), **także poza walką**; MG jest zwolniony, jak wszędzie w tym module. Odmowa nie nazywa przeszkody — gracz nie może mapować budynku, wchodząc w ściany. Testy: `covers.test.ts` (przez samochód, dookoła niego, MG bez blokady) i `walls.test.ts` (drzwi zamknięte vs otwarte). Stara treść wpisu; `validateTokenMove` dalej liczy sam dystans. Wraca razem z kolizjami ruchu (POMYSLY, 30.07).
 - **Etap 16b — statysta nie może aktywnie unikać**: PT obrony statysty liczy się z jego profilu (Unik), ale przycisk „Unik" na karcie ataku pojawia się wyłącznie dla celu z kartą postaci, bo `attack:evade` wymaga `characterId`. Do domknięcia razem z 16c albo osobnym wpisem w POMYSLY.
 - **Rany warunkowe zostają prozą**: „Strzaskane palce −4 do Akcji **tą ręką**" i „Złamana szczęka −4 do Akcji **związanych z mówieniem**" nie mają flagi maszynowej, bo VTT nie wie, co jest w której dłoni ani która czynność jest mówieniem. MG stosuje je ręcznie — wróci to razem ze śledzeniem broni w dłoniach (POMYSLY, 30.07).
 - **`data/private/rulebook/manual/tabela-ran-krytycznych.md` jest poza repo** — na czystej maszynie trzeba go dostarczyć albo wpisać tabelę głowy w edytorze.
@@ -777,6 +789,72 @@ decyduje przegrany, nie zwycięzca`) — Konfrontacje z 10.08 szły z konta MG, 
 
 ## Notatki z dwóch ostatnich sesji
 
+### Sesja 21.08 (trzecia tego dnia) — sesja naprawcza, poza etapami
+
+**Zlecenie MG: przejrzeć otwarte zaległości, wybrać z nich, co jest prawdziwym błędem, i to
+naprawić.** Z ~60 punktów sekcji „Otwarte zaległości" wyszło 11 pozycji do rozstrzygnięcia;
+MG wskazał grupę A — pięć rzeczy, które są **błędami**, a nie długiem oględzin. Wszystkie pięć
+potwierdziły się w kodzie, trzy okazały się **gorsze albo inne, niż mówiła notatka**.
+
+**1. Karta gubiła edycje — przyczyna leżała krok dalej, niż zapisano.** Notatka mówiła „echo
+serwera podmienia całą postać". Prawda: strażniki `pendingSaves > 0` **były** i w `endSave`,
+i w `applyUpsert` — tylko że liczyły zapisy **wysłane**, a łatka czekająca w buforze debounce
+nie liczyła się wcale. Ack poprzedniego zapisu adoptował widok serwera, kasował ją ze store'a,
+a następny klik budował listę z okrojonego stanu — wiersz przepadał bez śladu i bez komunikatu.
+Poprawka: `beginSave` przy **kolejkowaniu**, nie przy flushu (jeden bufor = jeden zapis). Ta sama
+dziura była w ścieżce botów. Trzy testy w `character-save.test.ts` na podstawionym gnieździe,
+sprawdzone celowym cofnięciem poprawki (dwa padają bez niej).
+
+**2. Serwer nie sprawdzał żadnej geometrii ruchu — nie tylko osłon.** Notatka mówiła „osłona nie
+blokuje ruchu, jak ściany", co sugeruje, że ściany blokują. Nie blokowały: `validateTokenMove`
+znało wyłącznie statusy i budżet tury, a `coverMovementSegments` miało **jedno** wywołanie w całym
+repo — w `MapArea.tsx`. Trasę planował klient, a drag nigdy planera nie pyta. Nowe:
+`firstBlockedStep` w `shared/pathfinding.ts` (na `isSegmentClear` z 18a) i `refuseWalkThroughSolid`
+w `movement.ts` — ściany, zamknięte okna i stojące osłony, **także poza walką**, bo ściana jest
+ścianą, gdy nikt nie liczy rund. Geometria liczona od **środka** figury, nie od rogu (to samo
+przeliczenie, które robiły metry — wydzielone do `pathCentres`). MG zwolniony, jak wszędzie
+w tym module: stawianie figur to połowa jego pracy z mapą. **Odmowa nie nazywa przeszkody** —
+gracz nie może mapować budynku, wchodząc w ściany (test tego pilnuje).
+
+**3. `ignoreCover` w oknie Sieci było polem, którego nikt nie ustawiał.** Cały łańcuch działał
+poza ostatnim ogniwem: typ miał pole, serwer je czytał, `attacks.ts` honorował — a `NetRunWindow`
+nie znało go w ogóle, więc netrunner tracił Akcję Sieciową i **nie miał czym odpowiedzieć**.
+Odmowa jest teraz kodem (`NET_SHOT_COVERED` / `NET_SHOT_BLOCKED`), nie gotowym zdaniem, więc okno
+ją rozpoznaje i podstawia przycisk „Strzelaj mimo osłony". `fireDevice` zwraca `blocked` jako
+`{ code, text }`, bo Demon (26e) i strefa (26f) wstawiają to zdanie **wprost na czat** — sam kod
+wypisałby im „NET_SHOT_COVERED." przy figurze.
+
+**4. Komentarz o Onieśmieleniu obiecywał drogę powrotną, której nie ma.** `damage.ts` twierdził:
+„Re-ticking «Onieśmielony» in the token menu is the way back". Nie jest — `clearFacedownFear`
+kasuje **i naklejkę, i adres** w `statusData`, a `token:update` `statusData` nigdy nie pisze
+(sprawdzone: pisze `name`, `imageUrl`, `ownerId`, `hidden`, `statuses`, `visionRange`, `facing`,
+`light` — i tyle). Karta obrażeń zapisuje teraz `fearCleared`, a „Cofnij" woła
+`restoreFacedownFear`. Test dowodzi powrotu **rzutem**, nie naklejką, bo naklejka to połowa kary.
+Drugą połowę problemu — że ręczne zaznaczenie nic nie liczy — zostawiono jako decyzję, ale pole
+dostało `title`, który to mówi.
+
+**5. Zaległość „35 broni po angielsku" była pułapką: jej wykonanie zepsułoby dane.** Liczba jest
+zła (angielskie są **wszystkie 70** wpisów `weapons.json`; 35 to „już w pamięci podręcznej"
+z komunikatu skryptu), ale gorsze było to, do czego notatka namawiała. `collect_entries()`
+kwalifikowało każdy wpis bez `descriptionOriginal` — **341**, w tym 271 opisów z polskiego
+podręcznika, które model dostałby do „przetłumaczenia z angielskiego na polski". `suspicious()`
+tylko dopisuje ostrzeżenie; `entry["description"] = translated` wykonuje się bezwarunkowo.
+Skrypt ma teraz `looks_english()` — świadomie stronniczy ku zostawianiu tekstu w spokoju:
+pominięty angielski wpis zostaje czytelny, zepsuty polski to szkoda. `--check` mówi dziś:
+**70 do zrobienia, 271 pominięto**.
+
+**Znalezione przy okazji, poza zleceniem:** wpis o dwóch katalogach do skasowania po TTS był
+martwy — `C:/AI/tts` i `uploads/tts-cache` nie istnieją, a `ai-gateway/.env` nie ma ani jednego
+klucza `GATEWAY_TTS_*`. Usunięty z listy zaległości.
+
+**Czego ta sesja nie ruszała:** długu oględzin (~31 wzmianek „nieodklikane"), reszty punktów
+z listy 11 i etapów 27g/28. Tłumaczenie 70 broni czeka na włączony llama-server — sam przebieg,
+bez zmian w kodzie.
+
+**Testy:** 1316 (shared) + 740 (server) + 16 (client). Nowe: 5 × `firstBlockedStep`,
+3 × autozapis karty, 3 × kolizje ruchu w `covers.test.ts`, 1 × ściana w `walls.test.ts`,
+1 × powrót strachu w `facedown.test.ts`. ESLint czysty, Prettier czysty.
+
 ### Sesja 21.08 (druga tego dnia) — etap 27f (szlif UX: pomoc, tooltipy, stany, okna)
 
 **Trzy decyzje MG na starcie:** robimy 27f; okna dostają wspólny hook **i** uchwyt skalowania
@@ -850,75 +928,10 @@ gałka na pierścieniu ustawi ją w jednym geście.
 
 ### Sesja 21.08 — etap 27j (żetony i czytelny ruch)
 
-**Decyzja MG z 21.08: kierunek patrzenia to jedno i drugie** — automat z ruchu i ze strzału
-**plus** ręczne nadpisanie, które trzyma się do następnego ruchu. Wariant „tylko automat" nie
-umiał postawić wartownika patrzącego w korytarz, którym nikt jeszcze nie szedł; wariant „tylko
-ręcznie" byłby kolejną rzeczą do pilnowania przy każdym kroku.
-
-**Kąt jest stanem serwera, nie ozdobą klienta.** Nowa kolumna `Token.facing` (stopnie, 0 = góra,
-zgodnie ze wskazówkami — konwencja `rotation` z Foundry), publiczna w `TokenView`: wartownik
-patrzący w drugą stronę to informacja, z której stół ma prawo korzystać, więc nie filtrujemy jej
-jak PW. Pisze ją **drop ruchu** (z ostatniego prawdziwego odcinka trasy, nie z prostej do
-lądowania — figura, która obeszła róg, patrzy w korytarz, z którego wyszła), **strzał**
-(`turnTokenToward` po wystawieniu karty, nigdy przed: atak odrzucony nie może zostawić figury
-gapiącej się na kogoś, do kogo nie strzeliła) i **gałka** (`token:facing`, wzorowana na
-`token:light` — drugie zdarzenie tokenu, które wykonuje _gracz_, bo to decyzja taktyczna, nie
-papierologia MG). CP RED nie zna zasad fasowania, więc **żadna reguła tego nie czyta**.
-
-**Klient wyprzedza serwer o jedną klatkę i to jest celowe.** `TokenNode.showFacing` obraca figurę
-lokalnie w trakcie marszu i przeciągania; serwer potwierdza ten sam kąt na dropie. Pułapka, którą
-to rodzi, ma własne pole: `serverFacing` pamięta **ostatni kąt z serwera**, bo każdy `state:sync`
-w trakcie marszu niesie kąt sprzed wyjścia i naiwne „bierz to, co mówi token" cofałoby nos
-w połowie drogi. Słowo serwera wchodzi w chwili, gdy **się zmieni**.
-
-**Pasek PW zniknął, PW to łuk wokół figury** (decyzja MG z 20.08). Miejsce nad głową należy teraz
-do liczb obrażeń z 27i, a pierścień należy do tego, co obejmuje — w tłumie pasek nie mówił, czyj
-jest. Pod figurą doszły **cień i podstawka**, a podstawka jest jedynym miejscem, gdzie mieszka
-stan: bursztyn = ranny, ciemna czerwień = nieprzytomny/wykrwawia się, czerń + czerwony ✕ na
-portrecie = martwy. Stan liczy `tokenCondition` w `shared/src/figures.ts` **z naklejek**, nie
-z PW — gracz nigdy nie dostaje PW wroga, a upadek ma widzieć.
-
-**Kolor stanu jest daną, nie kodem.** `StatusDefinition` dostał opcjonalne pole `condition`
-(`wounded` / `down` / `dead`) wypełniane w `data/public/cpred/statuses.json`; rdzeń VTT rysuje
-„leży", nie wiedząc, że Cyberpunk RED nazywa to Nieprzytomnym. Ta sama umowa co z ikonami z 05.
-
-**Podświetlenie zasięgu ruchu to Dijkstra, nie okrąg.** `reachableCells` w `shared/src/pathfinding.ts`
-zalewa siatkę tym samym kosztem, którym A* liczy trasę (1 na prosto, √2 na skos), z tymi samymi
-predykatami przechodniości — więc zacieniona podłoga **omija ściany**, czego okrąg zasięgu z 14c
-nigdy nie umiał. Rysowana jako **suma kwadratów** (nie jeden kwadrat na odpowiedź), bo figura 2×2
-daje jedną kotwicę i cztery pola podłogi, a nakładane wypełnienia zlepiłyby się w plamę; obrys to
-krawędzie, których nie zajął żaden sąsiad. Zacienienie widzi **także MG**, choć jego budżet nie
-jest egzekwowany (14b: przekroczenie jest logowane, nie odmawiane) — mówi, na ile tura starcza,
-a to jest prawdą dla obu stron.
-
-**Trasa mówi, ile kosztuje każdy odcinek, a nie tylko całość.** Gracz patrzący na „L" za rogiem
-pyta o **pierwszą** połowę, bo to ona decyduje, czy druga ma sens. Odcinki krótsze niż metr etykiet
-nie dostają (to rogi, nie decyzje), a trasa jednoodcinkowa też nie — jej jedyny odcinek _jest_
-sumą. Po marszu linia zostaje jeszcze 1,6 s i gaśnie: „którędy on wszedł?" pada **po** tym, jak
-ktoś się zatrzyma, a do tej pory ślad znikał w tej samej klatce.
-
-**Krok to jedyny dźwięk, który mapa wydaje sama z siebie** — dlatego dostał własny przełącznik
-(„Kroki figur" w ⚙ Ustawienia), a głośność bierze z suwaka efektów z 27i. Próbka:
-`Fantozzi-StoneL1.ogg` (CC0), lewa i prawa noga to ta sama próbka w dwóch wysokościach; krok co
-1,5 m przebytego gruntu, nie co N milisekund — marsz da się przerwać i wznowić, a tym, co jest
-krokiem, jest przebyty dystans.
-
-**Sprawdzone w przeglądarce** (konto MG, Poligon, stan przywrócony na koniec): gałka obrotu
-(kąt 135° dojechał do bazy), obrót z marszu (marsz na północ → `facing` 0 w bazie), zacienienie
-zasięgu przy 10 m budżetu (kształt zgadza się z okręgiem zasięgu), etykiety odcinków na trasie
-z zakrętem (4,5 m + 2,8 m przy sumie 7,3 m / 10 m), ślad po marszu, aureola tury, oraz **wszystkie
-cztery stany naraz przy zoomie stołowym** — martwy z ✕, nieprzytomny z czerwoną podstawką, ranny
-z bursztynową, i czyja jest tura. Kroki policzone instrumentacją `HTMLAudioElement.play`: pięć
-kroków co ~500 ms, naprzemienne 0,94/1,08, głośność 0,175 (suwak 0,5 × wzmocnienie 0,35).
-
-**Dwa błędy znalezione i naprawione przy oglądaniu.** (1) **Wąs na żetonie**: `arc` po `circle`
-w tym samym `Graphics` dorysowuje **linię łączącą** — Pixi trzyma jeden kursor ścieżki na obiekt,
-więc łuk PW wychodził z zielonym wąsem sterczącym z góry figury. Naprawa to `moveTo` przed
-`arc`. (2) **Gałka pod cudzą figurą**: gałka siedzi _poza_ pierścieniem, więc regularnie ląduje
-na sąsiedniej figurze, a Pixi daje zdarzenie najpierw jej — bez sprawdzenia gałki w handlerze
-tokenu klik podnosiłby sąsiada dokładnie wtedy, gdy na mapie jest tłoczno. Puszczenie gałki
-ustawia też `dragEndedAt`, bo `pixi-viewport` nadal nazywa krótki gest klikiem w mapę pod spodem
-— czyli rozkazem marszu.
+Kierunek patrzenia stał się stanem serwera (`Token.facing`, publiczny w `TokenView`): ustawia go
+automat z ruchu i strzału **plus** ręczna gałka na pierścieniu zaznaczenia, a ręczny kąt trzyma
+się do następnego ruchu. Stan figury (`down`, `dead`) liczy się z naklejek w `shared`, nie w CSS.
+Pełna notatka: `archiwum/dziennik-sesji.md`.
 
 ### Sesja 20.08 (trzecia tego dnia) — etap 27i (mapa: efekty walki)
 

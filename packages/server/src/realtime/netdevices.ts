@@ -3,6 +3,7 @@ import type {
   CpredCharacterData,
   CpredNetDevice,
   CpredNetFloor,
+  NetDeviceProblem,
   NetRunAbilityResult,
   NetRunDevicePayload,
   RollGesture,
@@ -190,7 +191,7 @@ export const netDeviceEvent = defineEvent<NetRunDevicePayload, NetRunAbilityResu
       // poszła już wcześniej i odmowa mówi to wprost. Sprawdzenie osłony przed
       // rachunkiem znaczyłoby policzenie geometrii drugi raz, a jednej
       // geometrii pilnuje 16b.
-      if (shot.blocked) throw new RealtimeError(`${shot.blocked} (Akcja Sieciowa poszła).`);
+      if (shot.blocked) throw new RealtimeError(shot.blocked.code);
       messageId = shot.messageId;
       summary = shot.summary;
     } else if (operation === 'open' || operation === 'close') {
@@ -252,10 +253,15 @@ export async function fireDevice(
     /** One Polish line for the log when the shot went through. */
     summary: string;
     targetTokenId?: string;
-    request?: CpredAttackRequest;
+    request?: Partial<CpredAttackRequest>;
     gesture?: RollGesture;
   },
-): Promise<{ messageId: number; summary: string; blocked?: string }> {
+): Promise<{
+  messageId: number;
+  summary: string;
+  /** Kod dla okna Sieci, zdanie dla logu — patrz `NET_DEVICE_MESSAGES`. */
+  blocked?: { code: NetDeviceProblem; text: string };
+}> {
   const result = await performAttackRoll(deps, {
     campaignId: input.campaignId,
     user: input.user,
@@ -280,8 +286,14 @@ export async function fireDevice(
       summary: input.summary,
       blocked:
         result.blocked.kind === 'cover'
-          ? `${input.device.name}: strzał zasłania ${result.blocked.name} — strzel jeszcze raz mimo osłony`
-          : `${input.device.name}: na linii strzału stoi ${result.blocked.name}`,
+          ? {
+              code: 'NET_SHOT_COVERED',
+              text: `${input.device.name}: strzał zasłania ${result.blocked.name} — strzel jeszcze raz mimo osłony`,
+            }
+          : {
+              code: 'NET_SHOT_BLOCKED',
+              text: `${input.device.name}: na linii strzału stoi ${result.blocked.name}`,
+            },
     };
   }
   return { messageId: result.messageId ?? 0, summary: input.summary };

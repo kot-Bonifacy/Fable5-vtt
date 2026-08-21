@@ -7,6 +7,78 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 21.08 — etap 27j (żetony i czytelny ruch)
+
+**Decyzja MG z 21.08: kierunek patrzenia to jedno i drugie** — automat z ruchu i ze strzału
+**plus** ręczne nadpisanie, które trzyma się do następnego ruchu. Wariant „tylko automat" nie
+umiał postawić wartownika patrzącego w korytarz, którym nikt jeszcze nie szedł; wariant „tylko
+ręcznie" byłby kolejną rzeczą do pilnowania przy każdym kroku.
+
+**Kąt jest stanem serwera, nie ozdobą klienta.** Nowa kolumna `Token.facing` (stopnie, 0 = góra,
+zgodnie ze wskazówkami — konwencja `rotation` z Foundry), publiczna w `TokenView`: wartownik
+patrzący w drugą stronę to informacja, z której stół ma prawo korzystać, więc nie filtrujemy jej
+jak PW. Pisze ją **drop ruchu** (z ostatniego prawdziwego odcinka trasy, nie z prostej do
+lądowania — figura, która obeszła róg, patrzy w korytarz, z którego wyszła), **strzał**
+(`turnTokenToward` po wystawieniu karty, nigdy przed: atak odrzucony nie może zostawić figury
+gapiącej się na kogoś, do kogo nie strzeliła) i **gałka** (`token:facing`, wzorowana na
+`token:light` — drugie zdarzenie tokenu, które wykonuje _gracz_, bo to decyzja taktyczna, nie
+papierologia MG). CP RED nie zna zasad fasowania, więc **żadna reguła tego nie czyta**.
+
+**Klient wyprzedza serwer o jedną klatkę i to jest celowe.** `TokenNode.showFacing` obraca figurę
+lokalnie w trakcie marszu i przeciągania; serwer potwierdza ten sam kąt na dropie. Pułapka, którą
+to rodzi, ma własne pole: `serverFacing` pamięta **ostatni kąt z serwera**, bo każdy `state:sync`
+w trakcie marszu niesie kąt sprzed wyjścia i naiwne „bierz to, co mówi token" cofałoby nos
+w połowie drogi. Słowo serwera wchodzi w chwili, gdy **się zmieni**.
+
+**Pasek PW zniknął, PW to łuk wokół figury** (decyzja MG z 20.08). Miejsce nad głową należy teraz
+do liczb obrażeń z 27i, a pierścień należy do tego, co obejmuje — w tłumie pasek nie mówił, czyj
+jest. Pod figurą doszły **cień i podstawka**, a podstawka jest jedynym miejscem, gdzie mieszka
+stan: bursztyn = ranny, ciemna czerwień = nieprzytomny/wykrwawia się, czerń + czerwony ✕ na
+portrecie = martwy. Stan liczy `tokenCondition` w `shared/src/figures.ts` **z naklejek**, nie
+z PW — gracz nigdy nie dostaje PW wroga, a upadek ma widzieć.
+
+**Kolor stanu jest daną, nie kodem.** `StatusDefinition` dostał opcjonalne pole `condition`
+(`wounded` / `down` / `dead`) wypełniane w `data/public/cpred/statuses.json`; rdzeń VTT rysuje
+„leży", nie wiedząc, że Cyberpunk RED nazywa to Nieprzytomnym. Ta sama umowa co z ikonami z 05.
+
+**Podświetlenie zasięgu ruchu to Dijkstra, nie okrąg.** `reachableCells` w `shared/src/pathfinding.ts`
+zalewa siatkę tym samym kosztem, którym A* liczy trasę (1 na prosto, √2 na skos), z tymi samymi
+predykatami przechodniości — więc zacieniona podłoga **omija ściany**, czego okrąg zasięgu z 14c
+nigdy nie umiał. Rysowana jako **suma kwadratów** (nie jeden kwadrat na odpowiedź), bo figura 2×2
+daje jedną kotwicę i cztery pola podłogi, a nakładane wypełnienia zlepiłyby się w plamę; obrys to
+krawędzie, których nie zajął żaden sąsiad. Zacienienie widzi **także MG**, choć jego budżet nie
+jest egzekwowany (14b: przekroczenie jest logowane, nie odmawiane) — mówi, na ile tura starcza,
+a to jest prawdą dla obu stron.
+
+**Trasa mówi, ile kosztuje każdy odcinek, a nie tylko całość.** Gracz patrzący na „L" za rogiem
+pyta o **pierwszą** połowę, bo to ona decyduje, czy druga ma sens. Odcinki krótsze niż metr etykiet
+nie dostają (to rogi, nie decyzje), a trasa jednoodcinkowa też nie — jej jedyny odcinek _jest_
+sumą. Po marszu linia zostaje jeszcze 1,6 s i gaśnie: „którędy on wszedł?" pada **po** tym, jak
+ktoś się zatrzyma, a do tej pory ślad znikał w tej samej klatce.
+
+**Krok to jedyny dźwięk, który mapa wydaje sama z siebie** — dlatego dostał własny przełącznik
+(„Kroki figur" w ⚙ Ustawienia), a głośność bierze z suwaka efektów z 27i. Próbka:
+`Fantozzi-StoneL1.ogg` (CC0), lewa i prawa noga to ta sama próbka w dwóch wysokościach; krok co
+1,5 m przebytego gruntu, nie co N milisekund — marsz da się przerwać i wznowić, a tym, co jest
+krokiem, jest przebyty dystans.
+
+**Sprawdzone w przeglądarce** (konto MG, Poligon, stan przywrócony na koniec): gałka obrotu
+(kąt 135° dojechał do bazy), obrót z marszu (marsz na północ → `facing` 0 w bazie), zacienienie
+zasięgu przy 10 m budżetu (kształt zgadza się z okręgiem zasięgu), etykiety odcinków na trasie
+z zakrętem (4,5 m + 2,8 m przy sumie 7,3 m / 10 m), ślad po marszu, aureola tury, oraz **wszystkie
+cztery stany naraz przy zoomie stołowym** — martwy z ✕, nieprzytomny z czerwoną podstawką, ranny
+z bursztynową, i czyja jest tura. Kroki policzone instrumentacją `HTMLAudioElement.play`: pięć
+kroków co ~500 ms, naprzemienne 0,94/1,08, głośność 0,175 (suwak 0,5 × wzmocnienie 0,35).
+
+**Dwa błędy znalezione i naprawione przy oglądaniu.** (1) **Wąs na żetonie**: `arc` po `circle`
+w tym samym `Graphics` dorysowuje **linię łączącą** — Pixi trzyma jeden kursor ścieżki na obiekt,
+więc łuk PW wychodził z zielonym wąsem sterczącym z góry figury. Naprawa to `moveTo` przed
+`arc`. (2) **Gałka pod cudzą figurą**: gałka siedzi _poza_ pierścieniem, więc regularnie ląduje
+na sąsiedniej figurze, a Pixi daje zdarzenie najpierw jej — bez sprawdzenia gałki w handlerze
+tokenu klik podnosiłby sąsiada dokładnie wtedy, gdy na mapie jest tłoczno. Puszczenie gałki
+ustawia też `dragEndedAt`, bo `pixi-viewport` nadal nazywa krótki gest klikiem w mapę pod spodem
+— czyli rozkazem marszu.
+
 ### Sesja 20.08 (trzecia tego dnia) — etap 27i (mapa: efekty walki)
 
 **Etap 27i zwężony na starcie** (decyzja MG): Token 2.0 i czytelny ruch wyprowadzone do nowego

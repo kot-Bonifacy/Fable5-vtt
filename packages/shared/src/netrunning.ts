@@ -288,6 +288,11 @@ export interface NetRunDevicePayload {
   operation: NetDeviceOperation;
   /** Who the turret is aimed at; ignored by every other operation. */
   targetTokenId?: string;
-  request?: CpredAttackRequest;
+  /**
+   * Only the parts of the shot the window has an opinion about — today that is
+   * `ignoreCover`, set by „Strzelaj mimo osłony" after a refusal. The weapon row
+   * is never named here: a turret has one barrel and the server picks it.
+   */
+  request?: Partial<CpredAttackRequest>;
   gesture?: RollGesture;
 }

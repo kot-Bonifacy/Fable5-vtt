@@ -28,6 +28,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import sys
 import time
 from pathlib import Path
@@ -126,21 +127,62 @@ def suspicious(original: str, translated: str) -> str | None:
     return None
 
 
-def collect_entries() -> list[tuple[Path, dict, list[dict]]]:
-    """Every compendium file with the entries that still need a translation."""
+# Function words that are common in English and are not Polish words.
+_ENGLISH_WORDS = frozenset(
+    """the this that these those with and of is are was were for you your it its has have had
+    can could which when where from they them their but not all any one two into out over off
+    by as at on in to a an""".split()
+)
+# Polish function words; none of them is an English word.
+_POLISH_WORDS = frozenset(
+    """jest są nie się który która które to na do za przez oraz ale może jak tego tym przy jego
+    jej ich lub albo bez pod nad gdy czy już tylko także wszystko jeden jedna dwa trzy być ma
+    mają można sobie nią nim""".split()
+)
+_WORD = re.compile(r"[^\W\d_]+", re.UNICODE)
+_POLISH_LETTERS = frozenset("ąćęłńóśźżĄĆĘŁŃÓŚŹŻ")
+
+
+def looks_english(text: str) -> bool:
+    """Whether this description still needs translating.
+
+    Most of the compendium came from the Polish rulebook (stage 13); only the
+    branded weapons of the free DLCs are English. `descriptionOriginal` cannot
+    tell them apart — the Polish entries never went through this script, so they
+    have no such field either, and running the model over them would have it
+    "translate" good Polish into whatever a 9B makes of it.
+
+    Deliberately biased towards leaving text alone: a missed English entry stays
+    readable and can be forced by hand, while a mangled Polish one is damage.
+    """
+    words = [word.lower() for word in _WORD.findall(text)]
+    english = sum(1 for word in words if word in _ENGLISH_WORDS)
+    polish = sum(1 for word in words if word in _POLISH_WORDS)
+    polish += sum(1 for ch in text if ch in _POLISH_LETTERS)
+    return english > polish
+
+
+def collect_entries() -> tuple[list[tuple[Path, dict, list[dict]]], int]:
+    """Every compendium file with the entries that still need a translation,
+    plus how many were left alone for already being Polish."""
     files: list[tuple[Path, dict, list[dict]]] = []
+    skipped = 0
     for path in sorted(COMPENDIUM_DIR.glob("*.json")):
         if path.name == "import-report.json":
             continue
         data = json.loads(path.read_text(encoding="utf-8"))
-        pending = [
-            entry
-            for entry in data.get("entries", [])
-            if entry.get("description") and not entry.get("descriptionOriginal")
-        ]
+        pending = []
+        for entry in data.get("entries", []):
+            description = entry.get("description")
+            if not description or entry.get("descriptionOriginal"):
+                continue
+            if not looks_english(description):
+                skipped += 1
+                continue
+            pending.append(entry)
         if pending:
             files.append((path, data, pending))
-    return files
+    return files, skipped
 
 
 def main() -> int:
@@ -149,10 +191,11 @@ def main() -> int:
     parser.add_argument("--force", action="store_true", help="ignore the cache")
     args = parser.parse_args()
 
-    files = collect_entries()
+    files, skipped = collect_entries()
     total = sum(len(pending) for _, _, pending in files)
+    polish_note = f", {skipped} pominięto jako już polskie" if skipped else ""
     if total == 0:
-        print("Nic do tłumaczenia — wszystkie opisy mają już wersję polską.")
+        print(f"Nic do tłumaczenia — wszystkie opisy mają już wersję polską{polish_note}.")
         return 0
 
     cache = {} if args.force else load_cache()
@@ -163,7 +206,12 @@ def main() -> int:
         for entry in pending
         if content_key(entry["description"]) in cache
     )
-    print(f"do przetłumaczenia: {total} opisów ({cached} już w pamięci podręcznej)")
+    print(
+        f"do przetłumaczenia: {total} opisów "
+        f"({cached} już w pamięci podręcznej{polish_note})"
+    )
+    for path, _, pending in files:
+        print(f"  {path.name}: {len(pending)}")
     if args.check:
         return 0
 

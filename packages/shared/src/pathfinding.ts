@@ -40,6 +40,7 @@
 
 import type { SceneView } from './scenes.js';
 import { polylineMetres, type ScenePoint } from './measure.js';
+import { isSegmentClear, type Segment } from './vision.js';
 
 /**
  * The lattice a route is planned on: cell (0, 0) has its top-left corner at
@@ -669,4 +670,32 @@ export function thinWalk(points: readonly ScenePoint[], limit: number): ScenePoi
   for (let i = 0; i < limit - 1; i++) result.push(points[Math.round(i * step)]!);
   result.push(points[points.length - 1]!);
   return result;
+}
+
+/**
+ * The first step of a walked route that goes through something solid, or null
+ * when the whole route is clear.
+ *
+ * The server's half of stage 16e's promise. The client plans routes that respect
+ * walls and covers, but planning is not enforcement: a **drag** never goes near
+ * the planner, so before this existed a player could pull their figure straight
+ * through a wall and the server stored it. The check has to live here rather
+ * than in the pathfinder because the two callers disagree about everything else
+ * — one plans, one judges — and agree only on the geometry.
+ *
+ * Returns the offending step rather than a boolean so the refusal can say
+ * *where* the route stopped, which is the difference between „nie da się" and
+ * „nie tędy".
+ */
+export function firstBlockedStep(
+  path: readonly ScenePoint[],
+  segments: readonly Segment[],
+): { from: ScenePoint; to: ScenePoint } | null {
+  if (segments.length === 0) return null;
+  for (let i = 1; i < path.length; i++) {
+    const from = path[i - 1]!;
+    const to = path[i]!;
+    if (!isSegmentClear(from, to, segments)) return { from, to };
+  }
+  return null;
 }

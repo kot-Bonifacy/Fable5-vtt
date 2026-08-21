@@ -514,6 +514,59 @@ describe('cover as an object on the scene', () => {
     expect(sync.covers.find((cover) => cover.id === carId)?.hpCurrent).toBe(5);
   });
 
+  it('stops a player walking their figure straight through the car', async () => {
+    // Stage 16e plans routes round covers; nothing enforced it, so a *drag*
+    // went through (sesja naprawcza 21.08). The car straddles x = 500 and the
+    // shooter starts at x = 0 — a drop on the far side crosses it.
+    const before = await roundTrip(player);
+    const start = before.tokens.find((t) => t.id === shooterTokenId)!;
+    const ack = await emitAck(player, 'token:move', {
+      tokenId: shooterTokenId,
+      x: 15 * PX_PER_M,
+      y: 0,
+      final: true,
+    });
+    expect(errorOf(ack)).toBe('MOVE_REFUSED');
+    // The refusal has to leave the figure where it stood, or the map and the
+    // database would disagree about where the player is.
+    const after = await roundTrip(player);
+    const stayed = after.tokens.find((t) => t.id === shooterTokenId)!;
+    expect({ x: stayed.x, y: stayed.y }).toEqual({ x: start.x, y: start.y });
+  });
+
+  it('lets that same player walk round it', async () => {
+    // The car is 200 px tall from y = 0, so y = 5 m clears its far edge.
+    const ack = await emitAck(player, 'token:move', {
+      tokenId: shooterTokenId,
+      x: 15 * PX_PER_M,
+      y: 5 * PX_PER_M,
+      final: true,
+      path: [
+        { x: 0, y: 5 * PX_PER_M },
+        { x: 15 * PX_PER_M, y: 5 * PX_PER_M },
+      ],
+    });
+    expect(ack.ok).toBe(true);
+    // Put the shooter back where the rest of the suite expects to find them.
+    await emitAck(gm, 'token:move', { tokenId: shooterTokenId, x: 0, y: 0, final: true });
+  });
+
+  it('does not stop the GM, who places figures for a living', async () => {
+    const ack = await emitAck(gm, 'token:move', {
+      tokenId: targetTokenId,
+      x: 10 * PX_PER_M,
+      y: 0,
+      final: true,
+    });
+    expect(ack.ok).toBe(true);
+    await emitAck(gm, 'token:move', {
+      tokenId: targetTokenId,
+      x: 20 * PX_PER_M,
+      y: 0,
+      final: true,
+    });
+  });
+
   it('never touches what anybody can see', async () => {
     // The scene is „open", so this is about the token list rather than about a
     // raycast: a cover must not filter anybody out of it the way a wall does.

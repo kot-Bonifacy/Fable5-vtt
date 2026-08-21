@@ -248,7 +248,9 @@ export type NetDeviceProblem =
   | 'NET_DEVICE_NO_TOKEN'
   | 'NET_DEVICE_NO_WALL'
   | 'NET_DEVICE_OFF'
-  | 'NET_DEVICE_WRONG_OPERATION';
+  | 'NET_DEVICE_WRONG_OPERATION'
+  | 'NET_SHOT_COVERED'
+  | 'NET_SHOT_BLOCKED';
 
 export const NET_DEVICE_MESSAGES: Record<NetDeviceProblem, string> = {
   NET_NODE_NOT_HELD: 'Nie kontrolujesz tego węzła — najpierw przejmij go Kontrolą.',
@@ -258,6 +260,16 @@ export const NET_DEVICE_MESSAGES: Record<NetDeviceProblem, string> = {
   NET_DEVICE_NO_WALL: 'To urządzenie nie wskazuje żadnych drzwi ani okna.',
   NET_DEVICE_OFF: 'Urządzenie jest wyłączone — najpierw je włącz.',
   NET_DEVICE_WRONG_OPERATION: 'Tego urządzenia nie da się tak obsłużyć.',
+  /**
+   * Osłona na linii strzału (16c) wraca z tej ścieżki jako **pytanie**, nie
+   * karta: strzelec przy mapie dostaje je w podglądzie, zanim zapłaci, ale
+   * urządzenie strzela od razu, więc Akcja Sieciowa jest już zaksięgowana.
+   * Odmowa mówi to wprost i zostawia netrunnerowi drugie podejście — przycisk
+   * „Strzelaj mimo osłony" powtarza operację z `ignoreCover`.
+   */
+  NET_SHOT_COVERED:
+    'Na linii strzału stoi osłona — Akcja Sieciowa poszła. Strzel jeszcze raz mimo niej albo ostrzelaj osłonę z mapy.',
+  NET_SHOT_BLOCKED: 'Na linii strzału stoi figura — z tego miejsca nie ma czystego strzału.',
 };
 
 // ──────────────────────────── widok dla klienta ────────────────────────────

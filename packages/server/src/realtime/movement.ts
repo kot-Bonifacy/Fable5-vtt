@@ -1,5 +1,14 @@
 import type { CombatActionLogEntry, ScenePoint, SessionUser } from '@vtt/shared';
-import { CPRED_ACTION_MOVE, ROLE_GM, formatMetres, polylineMetres, tokenCentre } from '@vtt/shared';
+import {
+  CPRED_ACTION_MOVE,
+  ROLE_GM,
+  coverMovementSegments,
+  firstBlockedStep,
+  formatMetres,
+  movementSegments,
+  polylineMetres,
+  tokenCentre,
+} from '@vtt/shared';
 import type { Scene, Token } from '../generated/prisma/client.js';
 import { sheetActionName, sheetMovementBlock, turnDistanceRefusal } from '../sheets.js';
 import { RealtimeError, type RealtimeDeps } from './registry.js';
@@ -12,6 +21,8 @@ import {
 } from './combat.js';
 import { actionEntry, logRefusedAction, logSpentAction, turnRefusalMessage } from './combat-log.js';
 import { toLightScene } from './lights-io.js';
+import { fetchSceneWalls } from './walls-io.js';
+import { fetchSceneCovers } from './covers-io.js';
 
 /**
  * The one place a move is judged (stage 14c).
@@ -26,10 +37,13 @@ import { toLightScene } from './lights-io.js';
  *     działa jak dotąd" is a decision of this stage, not an oversight.
  *  2. **May this token move at all?** Being Prone, Grappled or unconscious is a
  *     flat no, before any arithmetic — a corpse does not run out of metres.
- *  3. **Does the distance fit?** The path is measured *here*, from points the
+ *  3. **Is the way clear?** Walls, closed windows and standing covers stop a
+ *     body (sesja naprawcza 21.08). This one is asked **outside** a fight too:
+ *     a wall is a wall whether or not anybody is counting rounds, and until it
+ *     was asked here the client's route planner was the only thing enforcing
+ *     it — which a drag goes nowhere near.
+ *  4. **Does the distance fit?** The path is measured *here*, from points the
  *     client reported and ends the server owns, and charged against the turn.
- *  4. *(not yet)* **Is the way clear?** Collisions plug in exactly here, between
- *     „may they" and „did it fit", with the path already reconstructed.
  *
  * A refusal is never silent: the token snaps back and the GM gets the same kind
  * of card stage 14b gives them for a refused Action, „Przepuść" included.
@@ -37,6 +51,11 @@ import { toLightScene } from './lights-io.js';
 
 /** How a refused move is reported back to the client that tried it. */
 export const MOVE_REFUSED = 'MOVE_REFUSED';
+
+/** A route that went through a wall, a closed window or a standing cover. */
+export const MOVE_BLOCKED_BY_TERRAIN = 'MOVE_BLOCKED_BY_TERRAIN';
+export const MOVE_BLOCKED_BY_TERRAIN_MESSAGE =
+  'Coś stoi na drodze — tędy nie przejdziesz. Obejdź przeszkodę albo poproś MG.';
 
 /**
  * Rebuilds the route from what the client reported.
@@ -70,12 +89,23 @@ export function movementMetres(
   token: Pick<Token, 'size'>,
   path: readonly ScenePoint[],
 ): number {
-  const measureScene = toLightScene(scene);
+  return polylineMetres(pathCentres(scene, token, path), toLightScene(scene));
+}
+
+/**
+ * The same route measured from the figure's middle instead of its corner.
+ *
+ * Positions are stored top-left, but every question about geometry — how far,
+ * and now „through what" — is a question about where the figure *is*. A 2 × 2
+ * token dragged corner-first would otherwise be judged a metre and a half off.
+ */
+function pathCentres(
+  scene: Scene,
+  token: Pick<Token, 'size'>,
+  path: readonly ScenePoint[],
+): ScenePoint[] {
   const half = (token.size * scene.gridSizePx) / 2;
-  return polylineMetres(
-    path.map((point) => ({ x: point.x + half, y: point.y + half })),
-    measureScene,
-  );
+  return path.map((point) => ({ x: point.x + half, y: point.y + half }));
 }
 
 /** The move, as the caller describes it before anything has been judged. */
@@ -109,10 +139,13 @@ export async function validateTokenMove(
   intent: MoveIntent,
 ): Promise<MoveVerdict> {
   const { scene, token } = intent;
+  const walked = movementPath(intent.from, intent.to, intent.path);
+  await refuseWalkThroughSolid(deps, campaignId, user, intent, walked);
+
   const found = await findCombatantForToken(deps.ctx.prisma, scene.id, token.id);
   if (!found) return { metres: 0, enforced: false };
 
-  const path = movementPath(intent.from, intent.to, intent.path);
+  const path = walked;
   const metres = movementMetres(scene, token, path);
 
   const blocked = await refuseBlockedByStatus(
@@ -195,6 +228,50 @@ async function settleMovementSpend(
     ...(outcome.forced ? { overspent: true } : {}),
     ...(outcome.bypassed ? { passed: true } : {}),
   });
+}
+
+/**
+ * „Nie tędy" — the route walked through something solid (sesja naprawcza 21.08).
+ *
+ * The geometry is the client's own: `movementSegments` and `coverMovementSegments`
+ * are the very lists stage 16e hands its route planner, so a refusal here can
+ * only ever mean the figure did **not** come from the planner — a drag, a bot
+ * with a stale idea of the map, or a hand-made payload. That is the whole point:
+ * planning is not enforcement, and until this check existed the only thing
+ * standing between a player and a walk through a wall was their own client.
+ *
+ * The GM is exempt, like everywhere else in this module. Placing figures is
+ * half of what a GM does with a map, and a scene is built by dropping people
+ * into rooms whose doors are not cut yet.
+ */
+async function refuseWalkThroughSolid(
+  deps: RealtimeDeps,
+  campaignId: string,
+  user: SessionUser,
+  intent: MoveIntent,
+  walked: readonly ScenePoint[],
+): Promise<void> {
+  if (user.role === ROLE_GM) return;
+  const { scene, token } = intent;
+  const [walls, covers] = await Promise.all([
+    fetchSceneWalls(deps.ctx.prisma, scene.id),
+    fetchSceneCovers(deps.ctx.prisma, scene.id),
+  ]);
+  const solid = [...movementSegments(walls), ...coverMovementSegments(covers)];
+  const blocked = firstBlockedStep(pathCentres(scene, token, walked), solid);
+  if (!blocked) return;
+
+  // Nothing is named: the refusal says a route was blocked, never *by what*.
+  // A player who cannot see a wall must not learn its position by walking into
+  // it — the same reason walls never leave the server (stage 18a).
+  const found = await findCombatantForToken(deps.ctx.prisma, scene.id, token.id);
+  if (found) {
+    await logMovementRefusal(deps, campaignId, user, {
+      ...actionEntry(found.combatant, CPRED_ACTION_MOVE, sheetActionName(CPRED_ACTION_MOVE), ''),
+      refusal: { code: MOVE_BLOCKED_BY_TERRAIN, message: MOVE_BLOCKED_BY_TERRAIN_MESSAGE },
+    });
+  }
+  throw new RealtimeError(MOVE_REFUSED);
 }
 
 /**

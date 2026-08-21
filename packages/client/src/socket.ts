@@ -1735,9 +1735,14 @@ const BOT_SAVE_DEBOUNCE_MS = 600;
  * next line — the prompt is compiled from the stored profile every time.
  */
 export function queueBotSave(botId: string, patch: BotPatch): void {
-  useBotStore.getState().localPatch(botId, patch);
+  const store = useBotStore.getState();
+  store.localPatch(botId, patch);
 
-  const buffer = botSaveBuffers.get(botId) ?? { patch: {}, timer: 0 };
+  // Ta sama umowa co przy karcie postaci — patrz `queueCharacterSave`.
+  const open = botSaveBuffers.get(botId);
+  if (!open) store.beginSave(botId);
+
+  const buffer = open ?? { patch: {}, timer: 0 };
   const { data, ...rest } = patch;
   Object.assign(buffer.patch, rest);
   if (data) buffer.patch.data = { ...buffer.patch.data, ...data };
@@ -1753,8 +1758,8 @@ export function flushBotSave(botId: string): void {
   botSaveBuffers.delete(botId);
   window.clearTimeout(buffer.timer);
 
+  // `beginSave` już poszło przy kolejkowaniu — jeden bufor to jeden zapis.
   const store = useBotStore.getState();
-  store.beginSave(botId);
   if (!socket) {
     store.endSave(botId, null, false);
     return;
@@ -2280,7 +2285,17 @@ export function queueCharacterSave(characterId: string, patch: CharacterPatch): 
   const store = useCharacterStore.getState();
   store.localPatch(characterId, patch);
 
-  const buffer = characterSaveBuffers.get(characterId) ?? { patch: {}, timer: 0 };
+  /**
+   * A buffer counts as an in-flight save from the moment it opens, not from the
+   * moment it is sent. `endSave` adopts the server's view once nothing is
+   * pending, and the server does not know about a patch still waiting out its
+   * debounce — adopting then would roll the sheet back to the previous list and
+   * the next edit would rebuild it from that, losing the row for good.
+   */
+  const open = characterSaveBuffers.get(characterId);
+  if (!open) store.beginSave(characterId);
+
+  const buffer = open ?? { patch: {}, timer: 0 };
   const { data, ...rest } = patch;
   Object.assign(buffer.patch, rest);
   if (data) buffer.patch.data = { ...buffer.patch.data, ...data };
@@ -2299,8 +2314,8 @@ export function flushCharacterSave(characterId: string): void {
   characterSaveBuffers.delete(characterId);
   window.clearTimeout(buffer.timer);
 
+  // `beginSave` już poszło przy kolejkowaniu — jeden bufor to jeden zapis.
   const store = useCharacterStore.getState();
-  store.beginSave(characterId);
   if (!socket) {
     store.endSave(characterId, null, false);
     return;

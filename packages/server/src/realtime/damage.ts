@@ -24,7 +24,7 @@ import {
 } from '../sheets.js';
 import { createMixedRng } from './dice-rng.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
-import { clearFacedownFear } from './facedown.js';
+import { clearFacedownFear, restoreFacedownFear } from './facedown.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { emitCombatOfScene } from './combat.js';
 import { emitCovers } from './covers.js';
@@ -226,16 +226,18 @@ export const damageApplyEvent = defineEvent<DamageApplyPayload, { messageId: num
     // — it is the line that makes somebody Mortally Wounded — so everybody who
     // backed down from this one stops being afraid of them here.
     //
-    // Known asymmetry: „Cofnij" puts the Hit Points back and does *not* put the
-    // fear back, because the damage card does not record whom it un-frightened.
-    // Re-ticking „Onieśmielony" in the token menu is the way back.
-    if (log.hp && log.hp.after <= 0) {
-      await clearFacedownFear(deps, campaignId, token.sceneId, token.id);
-    }
+    // Whom it freed is written into the card, because „Cofnij" has to be able to
+    // put the fear back: re-ticking the sticker by hand restores half a penalty
+    // and no one can tell (the address in `statusData` is the other half).
+    const fearCleared =
+      log.hp && log.hp.after <= 0
+        ? await clearFacedownFear(deps, campaignId, token.sceneId, token.id)
+        : [];
 
     const entry: DamageLogEntry = {
       ...log,
       ...(ignited ? describeIgnition(log, ammo!.ignites!, ignited) : {}),
+      ...(fearCleared.length > 0 ? { fearCleared } : {}),
       sourceMessageId,
       targetTokenId: token.id,
       targetName: token.name,
@@ -466,6 +468,11 @@ export const damageUndoEvent = defineEvent<DamageUndoPayload, void>({
     // A fire this hit only made *fiercer* goes back to what it was (stage 16g).
     if (entry.targetTokenId && entry.statusValuesBefore) {
       await restoreStatusValues(deps, campaignId, entry.targetTokenId, entry.statusValuesBefore);
+    }
+    // The enemy never went down after all, so the Konfrontacja they lost is
+    // unwon again and the −2 comes back to everybody it left (stage 23c).
+    if (entry.targetTokenId && entry.fearCleared && entry.fearCleared.length > 0) {
+      await restoreFacedownFear(deps, campaignId, entry.fearCleared, entry.targetTokenId);
     }
 
     if (entry.characterId) {

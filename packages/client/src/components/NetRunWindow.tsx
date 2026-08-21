@@ -688,6 +688,19 @@ export function NetRunWindow() {
   const placement = useWindowPlacement('net-run', () => ({ x: 200, y: 80 }));
   const [busy, setBusy] = useState(false);
   const [virusOpen, setVirusOpen] = useState(false);
+  /**
+   * Strzał odrzucony przez osłonę (16c/26d) — czym go powtórzyć.
+   *
+   * Strzelec przy mapie dostaje kartę wyboru **przed** zapłatą, bo osłonę widać
+   * już w podglądzie. Urządzenie strzela od razu, więc tutaj wybór może przyjść
+   * dopiero po odmowie — i musi mieć przycisk, inaczej `ignoreCover` jest polem
+   * w protokole, którego nikt nie ma jak ustawić (zaległość z 26d).
+   */
+  const [covered, setCovered] = useState<{
+    floorId: string;
+    deviceId: string;
+    targetTokenId?: string;
+  } | null>(null);
 
   if (!run) return null;
 
@@ -697,6 +710,32 @@ export function NetRunWindow() {
     setBusy(false);
     if (!ack.ok) setNotice(netErrorText(ack.error));
     return ack;
+  }
+
+  /** Jedna obsługa urządzenia; `ignoreCover` wraca tu z przycisku powtórki. */
+  async function operate(
+    floorId: string,
+    deviceId: string,
+    operation: NetDeviceOperation,
+    targetTokenId?: string,
+    ignoreCover?: boolean,
+  ) {
+    const ack = await guard(
+      operateNetDevice({
+        runId: run!.runId,
+        floorId,
+        deviceId,
+        operation,
+        ...(targetTokenId ? { targetTokenId } : {}),
+        ...(ignoreCover ? { request: { ignoreCover: true } } : {}),
+      }),
+    );
+    if (ack.ok && ack.data) setNotice(ack.data.summary);
+    setCovered(
+      ack.error === 'NET_SHOT_COVERED'
+        ? { floorId, deviceId, ...(targetTokenId ? { targetTokenId } : {}) }
+        : null,
+    );
   }
 
   async function move(to: CpredNetPosition) {
@@ -839,15 +878,7 @@ export function NetRunWindow() {
               onMove={(to) => void move(to)}
               onCopy={(floorId) => void guard(copyNetFile(run.runId, floorId))}
               onOperate={(floorId, deviceId, operation, targetTokenId) =>
-                void fight(
-                  operateNetDevice({
-                    runId: run!.runId,
-                    floorId,
-                    deviceId,
-                    operation,
-                    ...(targetTokenId ? { targetTokenId } : {}),
-                  }),
-                )
+                void operate(floorId, deviceId, operation, targetTokenId)
               }
             />
           ))}
@@ -983,7 +1014,30 @@ export function NetRunWindow() {
           </ul>
         )}
 
-        {notice && <p className="net-run-notice">{notice}</p>}
+        {notice && (
+          <p className="net-run-notice">
+            {notice}
+            {covered && (
+              <button
+                type="button"
+                className="small-button"
+                disabled={busy}
+                title="Cel się wychylił — decyzja stołu, kosztuje drugą Akcję Sieciową"
+                onClick={() =>
+                  void operate(
+                    covered.floorId,
+                    covered.deviceId,
+                    'fire',
+                    covered.targetTokenId,
+                    true,
+                  )
+                }
+              >
+                Strzelaj mimo osłony
+              </button>
+            )}
+          </p>
+        )}
         {fightState.ice.length === 0 && (
           <p className="placeholder-text">
             {netAbility('slide')?.name} i {netAbility('zap')?.name} czekają na Czarnego LOD-a — oba

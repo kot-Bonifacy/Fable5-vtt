@@ -560,7 +560,7 @@ export async function clearFacedownFear(
   campaignId: string,
   sceneId: string,
   beatenTokenId: string,
-): Promise<void> {
+): Promise<string[]> {
   const tokens = await deps.ctx.prisma.token.findMany({
     where: { sceneId, statuses: { contains: SHEET_INTIMIDATED_STATUS_ID } },
   });
@@ -579,6 +579,45 @@ export async function clearFacedownFear(
           left.length > 0 ? statuses : statuses.filter((id) => id !== SHEET_INTIMIDATED_STATUS_ID),
         ),
         statusData: writeSheetFearedTokens(token.statusData, left),
+      },
+    });
+    touched.push(token.id);
+  }
+  if (touched.length > 0) await emitTokensById(deps, campaignId, touched);
+  return touched;
+}
+
+/**
+ * The way back from `clearFacedownFear`, for „Cofnij" on the damage card.
+ *
+ * Undoing the damage says the enemy never went down, so the Konfrontacja they
+ * lost is unwon again and the −2 returns. Re-ticking the sticker by hand cannot
+ * do this — the badge is only half of the penalty and the address that is the
+ * other half went with it — which is exactly why the damage card records who
+ * was freed instead of trusting the GM to remember.
+ */
+export async function restoreFacedownFear(
+  deps: RealtimeDeps,
+  campaignId: string,
+  tokenIds: readonly string[],
+  beatenTokenId: string,
+): Promise<void> {
+  if (tokenIds.length === 0) return;
+  const tokens = await deps.ctx.prisma.token.findMany({ where: { id: { in: [...tokenIds] } } });
+  const touched: string[] = [];
+  for (const token of tokens) {
+    const feared = readSheetFearedTokens(token.statusData);
+    if (feared.includes(beatenTokenId)) continue;
+    const statuses = readTokenStatuses(token.statuses);
+    await deps.ctx.prisma.token.update({
+      where: { id: token.id },
+      data: {
+        statuses: JSON.stringify(
+          statuses.includes(SHEET_INTIMIDATED_STATUS_ID)
+            ? statuses
+            : [...statuses, SHEET_INTIMIDATED_STATUS_ID],
+        ),
+        statusData: writeSheetFearedTokens(token.statusData, [...feared, beatenTokenId]),
       },
     });
     touched.push(token.id);

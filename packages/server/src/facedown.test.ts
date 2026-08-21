@@ -388,6 +388,9 @@ describe('reputacja i konfrontacja', () => {
     expect(roll.opposed?.concede?.winnerName).toBe('Rico');
   });
 
+  /** Karta obrażeń, którą następny test bierze z powrotem. */
+  let undoableDamageId = 0;
+
   it('kara −2 dochodzi do ataku wymierzonego w zwycięzcę i tylko w niego', async () => {
     const { messageId } = await faceDown(gm, cowardId, heroTokenId);
     await emitAck(gm, 'facedown:concede', { messageId, choice: 'stand' });
@@ -449,7 +452,7 @@ describe('reputacja i konfrontacja', () => {
       request: { kind: 'damage', weaponRowId: 'w1' },
     });
     const damageMessageId = (await damageCard).message.id;
-    const applied = await emitAck(gm, 'damage:apply', {
+    const applied = await emitAck<{ messageId: number }>(gm, 'damage:apply', {
       messageId: damageMessageId,
       tokenId: heroTokenId,
     });
@@ -458,6 +461,29 @@ describe('reputacja i konfrontacja', () => {
 
     // „Modyfikator ... znika, gdy tylko uda ci się pokonać wroga" (s. 194).
     expect(await statusesOf(cowardTokenId)).not.toContain('intimidated');
+    // Kartą do cofnięcia jest ta z *zastosowania* obrażeń, nie z ich rzutu.
+    undoableDamageId = applied.ok ? (applied.data?.messageId ?? 0) : 0;
+  });
+
+  it('„Cofnij" na karcie obrażeń przywraca strach razem z punktami życia', async () => {
+    // Rico nigdy nie padł, więc Konfrontacja, którą Kolec przegrał, jest nadal
+    // przegrana. Bez tego „Cofnij" oddawałby PW i zostawiał wygraną — połowiczne
+    // cofnięcie, którego nikt przy stole nie widzi (sesja naprawcza 21.08).
+    const undone = await emitAck(gm, 'damage:undo', { messageId: undoableDamageId });
+    expect(undone.ok).toBe(true);
+    expect((await sheetOf(gm, heroId)).hpCurrent).toBe(1);
+    expect(await statusesOf(cowardTokenId)).toContain('intimidated');
+
+    // Naklejka to połowa kary — druga to adres zwycięzcy przy figurze. Dowodem,
+    // że wróciły obie, jest rzut: sama naklejka nie dokłada do niego niczego.
+    const atHero = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+    await emitAck(gm, 'attack:roll', {
+      characterId: cowardId,
+      targetTokenId: heroTokenId,
+      request: { weaponRowId: 'w1', mode: 'single' },
+    });
+    const breakdown = (await atHero).message.roll?.breakdown ?? [];
+    expect(breakdown.find((row) => row.label === 'Przegrana Konfrontacja')?.value).toBe(-2);
   });
 
   it('odmawia Konfrontacji z samym sobą', async () => {

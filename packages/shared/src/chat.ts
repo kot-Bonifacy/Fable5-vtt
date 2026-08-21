@@ -174,6 +174,17 @@ export interface DamageLogEntry {
     /** Set once somebody pressed it, so the card stops offering it. */
     expired?: boolean;
   };
+  /**
+   * Tokens this hit stopped being afraid of the target (stage 23c): dropping to
+   * 0 HP is „pokonać wroga", so everybody who backed down from them loses the
+   * −2 there and then.
+   *
+   * Recorded for the same reason as `statusesAdded` — without it „Cofnij" puts
+   * the Hit Points back and leaves the Konfrontacja won, which is a half-undo
+   * nobody at the table can see. The list is addresses, not stickers: a token
+   * afraid of somebody else too keeps its badge either way.
+   */
+  fearCleared?: string[];
   /** Set once the GM took the application back. */
   undone?: boolean;
   undoneByName?: string;
