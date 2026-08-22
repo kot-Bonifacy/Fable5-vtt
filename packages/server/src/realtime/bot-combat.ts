@@ -484,7 +484,14 @@ const REFUSAL_TEXTS: Record<string, string> = {
   MOVE_REFUSED: 'Ten ruch został odrzucony przez zasady.',
   NO_MOVE_LEFT: 'Nie masz już metrów ruchu w tej turze.',
   NO_ACTION_LEFT: 'Nie masz już Akcji w tej turze.',
+  // Trzy różne powody, dla których podejście się nie odbyło. Do 22.08 wszystkie
+  // trzy jechały jako NO_ROUTE, więc MG czytał „droga jest zablokowana" i szedł
+  // szukać ściany, której nie ma — a najczęstszy przypadek jest odwrotny: bot
+  // stoi już przy celu. Zdanie idzie do modelu jako powód do poprawki, więc
+  // każde musi podpowiadać INNY następny ruch.
   NO_ROUTE: 'Nie da się tam dojść — droga jest zablokowana.',
+  NO_ROUTE_BUDGET: 'Za mało metrów ruchu w tej turze, żeby przejść w tamtą stronę.',
+  ALREADY_IN_PLACE: 'Już tam stoisz — podejście niczego nie zmieni.',
   NOT_YOUR_TURN: 'To nie jest tura tej figury.',
   STATUS_BLOCKED: 'Twój stan (np. Powalony) nie pozwala na tę akcję.',
   OUT_OF_RANGE: 'Cel jest poza zasięgiem tej broni.',
@@ -655,7 +662,17 @@ async function walkTowards(
       smooth: false,
     },
   );
-  if (!plan || plan.points.length < 2) throw new RealtimeError('NO_ROUTE');
+  // `planWalk` NIE odmawia celu nie do osiągnięcia — oddaje trasę do najbliższego
+  // pola, jakie znalazła, z `truncated`. Trasa jednopunktowa znaczy więc dokładnie
+  // jedno: najlepszym polem jest to, na którym figura stoi. Dwa powody, dwa różne
+  // następne ruchy dla modelu — albo bot już jest u celu, albo jest zamurowany.
+  if (!plan) throw new RealtimeError('SCENE_HAS_NO_SCALE');
+  if (plan.points.length < 2) {
+    const start = walkCellOf(grid, { x: actor.x, y: actor.y });
+    const goal = walkCellOf(grid, { x: aim.x - half, y: aim.y - half }, actor.size);
+    const sameCell = start.col === goal.col && start.row === goal.row;
+    throw new RealtimeError(sameCell ? 'ALREADY_IN_PLACE' : 'NO_ROUTE');
+  }
 
   const clipped = clipWalkToBudget(plan.points, sceneView, {
     metresLeft,
@@ -664,10 +681,11 @@ async function walkTowards(
   const points = thinWalk(clipped.points, TOKEN_PATH_MAX_POINTS);
   const last = points[points.length - 1];
   // Trasa, która donikąd nie prowadzi, nie jest ruchem: bez tego bot stojący
-  // przy ścianie spalałby Akcję Ruchu na przesunięcie o pół piksela.
-  if (!last || points.length < 2) throw new RealtimeError('NO_ROUTE');
+  // przy ścianie spalałby Akcję Ruchu na przesunięcie o pół piksela. Trasa
+  // ISTNIEJE (A* ją znalazł linijkę wyżej) — zabrakło budżetu na jej początek.
+  if (!last || points.length < 2) throw new RealtimeError('NO_ROUTE_BUDGET');
   if (Math.abs(last.x - actor.x) < 1 && Math.abs(last.y - actor.y) < 1) {
-    throw new RealtimeError('NO_ROUTE');
+    throw new RealtimeError('ALREADY_IN_PLACE');
   }
 
   await performTokenMove(deps, {
@@ -675,6 +693,30 @@ async function walkTowards(
     user: ctx.user,
     payload: { tokenId: actor.id, x: last.x, y: last.y, final: true, path: points },
   });
+}
+
+/**
+ * Pole, na które snapuje się pozycja — kopia `cellOfPosition` z `shared`, która
+ * jest tam prywatna. Trzymana tu, bo służy WYŁĄCZNIE do rozpoznania, czy trasa
+ * jednopunktowa znaczy „już tam stoję", czy „jestem zamurowany"; poszerzanie
+ * publicznego API `pathfinding` dla jednego `if`-a byłoby gorszym wyborem.
+ *
+ * `clampSpan` odwzorowuje przycięcie **celu** w `planWalk` (start nie jest tam
+ * przycinany, więc bez tego parametru nie przycina go i ta funkcja).
+ */
+function walkCellOf(
+  grid: { cell: number; originX: number; originY: number; cols: number; rows: number },
+  position: ScenePoint,
+  clampSpan?: number,
+): { col: number; row: number } {
+  const col = Math.round((position.x - grid.originX) / grid.cell);
+  const row = Math.round((position.y - grid.originY) / grid.cell);
+  if (clampSpan === undefined) return { col, row };
+  const span = Math.max(1, Math.round(clampSpan));
+  return {
+    col: Math.min(Math.max(col, 0), Math.max(0, grid.cols - span)),
+    row: Math.min(Math.max(row, 0), Math.max(0, grid.rows - span)),
+  };
 }
 
 /** Przesunięcie siatki sprowadzone do jednej komórki, jak u klienta. */

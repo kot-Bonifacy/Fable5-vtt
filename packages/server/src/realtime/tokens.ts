@@ -3,6 +3,7 @@ import type {
   FogState,
   ScenePoint,
   TokenFacingPayload,
+  TokenFearedPayload,
   SceneView,
   SessionUser,
   TokenCombatProfile,
@@ -20,6 +21,7 @@ import type {
 } from '@vtt/shared';
 import {
   ROLE_GM,
+  TOKEN_FEARED_MAX,
   clampTokenPosition,
   facingFromDelta,
   facingFromPath,
@@ -38,9 +40,11 @@ import {
 import type { PrismaClient } from '../db.js';
 import type { Character, Scene, Token } from '../generated/prisma/client.js';
 import {
+  readSheetFearedTokens,
   sheetCombatProfile,
   sheetWoundStatuses,
   toLinkedSheet,
+  writeSheetFearedTokens,
   writeSheetHp,
   type LinkedSheet,
   type SheetRegistry,
@@ -132,6 +136,9 @@ export function toTokenView(
     // design — it reads the column and forwards it, and never asks what a
     // Stopping Power is.
     view.combatProfile = parseCombatProfileColumn(token.combatProfile);
+    // Kogo ta figura się boi (23c) — bez tej listy naklejka „Onieśmielony"
+    // w menu żetonu nie miała jak pokazać, czy w ogóle nakłada karę.
+    view.feared = readSheetFearedTokens(token.statusData);
     // The lamp itself is private (the GM configures it, the controller flips
     // it); what everybody else gets is the lit corridor it produces.
     view.light = tokenLightOf(token);
@@ -890,6 +897,51 @@ export const tokenFacingEvent = defineEvent<TokenFacingPayload, TokenView>({
     const updated = await deps.ctx.prisma.token.update({
       where: { id: token.id },
       data: { facing },
+    });
+    await emitTokenUpsert(deps, campaignId, scene, updated);
+    return toTokenView(updated, true);
+  },
+});
+
+/**
+ * „Kogo się boisz?" (stage 23c) — the GM naming the winner of a Konfrontacja
+ * that happened at the table instead of through the app.
+ *
+ * Exists because the −2 needs **two** things at once: the „Onieśmielony"
+ * sticker and this list. Ticking the status by hand supplied only the first, so
+ * until 22.08 a GM could tick it, watch nothing happen to the dice, and have no
+ * way to find out why. `token:update` is the wrong door — it writes the columns
+ * a figure *is*, and never `statusData`, which is what the rules hang on.
+ *
+ * GM only. The loser of a stare-down does not get to decide whom they are
+ * afraid of, and the winner even less.
+ */
+export const tokenFearedEvent = defineEvent<TokenFearedPayload, TokenView>({
+  name: 'token:feared',
+  role: ROLE_GM,
+  handler: async ({ deps, socket, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    const { token, scene } = await requireCampaignToken(
+      deps.ctx.prisma,
+      campaignId,
+      payload?.tokenId,
+    );
+    const raw = payload?.fearedTokenIds;
+    if (!Array.isArray(raw)) throw new RealtimeError('BAD_REQUEST');
+    const ids = raw.filter((id): id is string => typeof id === 'string' && id.length > 0);
+    if (ids.length > TOKEN_FEARED_MAX) throw new RealtimeError('BAD_REQUEST');
+
+    // Somebody who is not on this scene cannot be staring anyone down on it,
+    // and an id nobody owns would be a penalty that can never be paid off.
+    const present = await deps.ctx.prisma.token.findMany({
+      where: { id: { in: ids }, sceneId: scene.id },
+      select: { id: true },
+    });
+    const valid = present.map((row) => row.id).filter((id) => id !== token.id);
+
+    const updated = await deps.ctx.prisma.token.update({
+      where: { id: token.id },
+      data: { statusData: writeSheetFearedTokens(token.statusData, valid) },
     });
     await emitTokenUpsert(deps, campaignId, scene, updated);
     return toTokenView(updated, true);

@@ -22,8 +22,13 @@ import type {
   ResolvedWeapon,
 } from '@vtt/shared';
 import {
+  CPRED_LANGUAGE_SKILL_ID,
   CRITICAL_INJURY_TABLE_LABELS,
   CYBERDECK_SLOTS_MAX,
+  SKILL_SPECIALTY_MAX_LENGTH,
+  cpredSkillLabel,
+  cpredSkillNeedsSpecialty,
+  cpredSkillSpecialty,
   isCriticalInjuryEntry,
   cyberdeckEntries,
   cyberdeckSlotsFree,
@@ -734,6 +739,21 @@ function StatColumn({
 }
 
 /**
+ * Podpowiedzi dla Umiejętności, które podręcznik każe nazwać (s. 81).
+ *
+ * Przykłady wprost z opisów w `skills.json` — bo to lista przykładów, nie enum:
+ * „Przykładowe specjalizacje to: Geologia, Matematyka, Fizyka…". Nazwa spoza
+ * listy jest równie poprawna, więc to `placeholder`, nie walidacja.
+ */
+const SPECIALTY_HINTS: Record<string, string> = {
+  science: 'np. Fizyka, Chemia, Historia',
+  'local-expert': 'np. Watson, Pacifica',
+  'play-instrument': 'np. gitara, śpiew',
+  'martial-arts': 'np. karate, aikido',
+  [CPRED_LANGUAGE_SKILL_ID]: 'np. Farsi (Ścieżka Życia)',
+};
+
+/**
  * Umiejętności w trzech kolumnach, jak na wydruku.
  *
  * Kolumna CECHA trzyma **wartość** cechy, nie jej skrót — tak jest na karcie
@@ -761,6 +781,20 @@ function SkillColumns({
     saveData({ skills: { ...data.skills, [skillId]: value } }, 'skills');
   }
 
+  /**
+   * „W czym?" — Nauka, Wiedza lokalna, Gra na instrumencie i Sztuki walki nie
+   * znaczą nic bez dziedziny (s. 81). Język pisze się do Ścieżki Życia, gdzie
+   * mieszka od 25b: jedno pole, dwa miejsca do jego wpisania (tu i na stronie
+   * drugiej), zawsze ta sama wartość.
+   */
+  function setSpecialty(skillId: string, value: string) {
+    if (skillId === CPRED_LANGUAGE_SKILL_ID) {
+      saveData({ lifepath: { ...data.lifepath, language: value } }, 'skills');
+      return;
+    }
+    saveData({ skillSpecialties: { ...data.skillSpecialties, [skillId]: value } }, 'skills');
+  }
+
   return (
     <div className="sheet-skills">
       {columns.map((column, columnIndex) => (
@@ -776,7 +810,7 @@ function SkillColumns({
               {block.skills.map((skill) => {
                 const level = data.skills[skill.id] ?? 0;
                 const abbr = CPRED_STAT_LABELS[skill.stat].abbr;
-                const rollTitle = `Rzut: ${skill.name} (${abbr}) — Shift pomija okno`;
+                const rollTitle = `Rzut: ${cpredSkillLabel(skill, data)} (${abbr}) — Shift pomija okno`;
                 // The rulebook blurb only exists in the private data files.
                 const title = skill.description
                   ? `${skill.description}
@@ -800,6 +834,20 @@ ${rollTitle}`
                         {skill.multiplier === 2 ? ' (×2)' : ''}{' '}
                         <span className="cp-skill-stat-abbr">({abbr})</span>
                       </button>
+                      {cpredSkillNeedsSpecialty(skill.id) && (
+                        <input
+                          type="text"
+                          className="cp-skill-specialty"
+                          value={cpredSkillSpecialty(data, skill.id)}
+                          maxLength={SKILL_SPECIALTY_MAX_LENGTH}
+                          placeholder={SPECIALTY_HINTS[skill.id] ?? 'w czym?'}
+                          onChange={(e) => setSpecialty(skill.id, e.target.value)}
+                          aria-label={`Specjalizacja: ${skill.name}`}
+                          title={`Ta Umiejętność wymaga wyboru — ${
+                            SPECIALTY_HINTS[skill.id] ?? 'wpisz dziedzinę'
+                          }`}
+                        />
+                      )}
                     </div>
                     <div className="cp-field cp-skill-cell">
                       <input
@@ -2367,6 +2415,32 @@ function CyberwareSection({
               >
                 {family.label}: {family.used} / {family.capacity}
                 {family.missingFoundation && ' — brak cyborgizacji podstawowej'}
+                {family.places && (
+                  <ul className="cyberware-places">
+                    {family.places.map((place) => (
+                      <li
+                        key={place.slot}
+                        className={
+                          place.missingFoundation || place.used > place.capacity
+                            ? 'capacity-over'
+                            : undefined
+                        }
+                        title="Gniazda w tym konkretnym miejscu — o tym, co gdzie siedzi, decyduje kolumna „Gniazdo” w tabeli niżej"
+                      >
+                        {place.label}: {place.used} / {place.capacity}
+                        {place.missingFoundation && ' — nie ma w czym'}
+                      </li>
+                    ))}
+                    {family.unplaced ? (
+                      <li
+                        className="capacity-unplaced"
+                        title="Liczą się do rodziny, ale nikt nie powiedział, gdzie siedzą — wybierz miejsce w kolumnie „Gniazdo”."
+                      >
+                        bez przypisanego miejsca: {family.unplaced}
+                      </li>
+                    ) : null}
+                  </ul>
+                )}
               </li>
             ))}
           </ul>

@@ -7,6 +7,72 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 21.08 (trzecia tego dnia) — sesja naprawcza, poza etapami
+
+**Zlecenie MG: przejrzeć otwarte zaległości, wybrać z nich, co jest prawdziwym błędem, i to
+naprawić.** Z ~60 punktów sekcji „Otwarte zaległości" wyszło 11 pozycji do rozstrzygnięcia;
+MG wskazał grupę A — pięć rzeczy, które są **błędami**, a nie długiem oględzin. Wszystkie pięć
+potwierdziły się w kodzie, trzy okazały się **gorsze albo inne, niż mówiła notatka**.
+
+**1. Karta gubiła edycje — przyczyna leżała krok dalej, niż zapisano.** Notatka mówiła „echo
+serwera podmienia całą postać". Prawda: strażniki `pendingSaves > 0` **były** i w `endSave`,
+i w `applyUpsert` — tylko że liczyły zapisy **wysłane**, a łatka czekająca w buforze debounce
+nie liczyła się wcale. Ack poprzedniego zapisu adoptował widok serwera, kasował ją ze store'a,
+a następny klik budował listę z okrojonego stanu — wiersz przepadał bez śladu i bez komunikatu.
+Poprawka: `beginSave` przy **kolejkowaniu**, nie przy flushu (jeden bufor = jeden zapis). Ta sama
+dziura była w ścieżce botów. Trzy testy w `character-save.test.ts` na podstawionym gnieździe,
+sprawdzone celowym cofnięciem poprawki (dwa padają bez niej).
+
+**2. Serwer nie sprawdzał żadnej geometrii ruchu — nie tylko osłon.** Notatka mówiła „osłona nie
+blokuje ruchu, jak ściany", co sugeruje, że ściany blokują. Nie blokowały: `validateTokenMove`
+znało wyłącznie statusy i budżet tury, a `coverMovementSegments` miało **jedno** wywołanie w całym
+repo — w `MapArea.tsx`. Trasę planował klient, a drag nigdy planera nie pyta. Nowe:
+`firstBlockedStep` w `shared/pathfinding.ts` (na `isSegmentClear` z 18a) i `refuseWalkThroughSolid`
+w `movement.ts` — ściany, zamknięte okna i stojące osłony, **także poza walką**, bo ściana jest
+ścianą, gdy nikt nie liczy rund. Geometria liczona od **środka** figury, nie od rogu (to samo
+przeliczenie, które robiły metry — wydzielone do `pathCentres`). MG zwolniony, jak wszędzie
+w tym module: stawianie figur to połowa jego pracy z mapą. **Odmowa nie nazywa przeszkody** —
+gracz nie może mapować budynku, wchodząc w ściany (test tego pilnuje).
+
+**3. `ignoreCover` w oknie Sieci było polem, którego nikt nie ustawiał.** Cały łańcuch działał
+poza ostatnim ogniwem: typ miał pole, serwer je czytał, `attacks.ts` honorował — a `NetRunWindow`
+nie znało go w ogóle, więc netrunner tracił Akcję Sieciową i **nie miał czym odpowiedzieć**.
+Odmowa jest teraz kodem (`NET_SHOT_COVERED` / `NET_SHOT_BLOCKED`), nie gotowym zdaniem, więc okno
+ją rozpoznaje i podstawia przycisk „Strzelaj mimo osłony". `fireDevice` zwraca `blocked` jako
+`{ code, text }`, bo Demon (26e) i strefa (26f) wstawiają to zdanie **wprost na czat** — sam kod
+wypisałby im „NET_SHOT_COVERED." przy figurze.
+
+**4. Komentarz o Onieśmieleniu obiecywał drogę powrotną, której nie ma.** `damage.ts` twierdził:
+„Re-ticking «Onieśmielony» in the token menu is the way back". Nie jest — `clearFacedownFear`
+kasuje **i naklejkę, i adres** w `statusData`, a `token:update` `statusData` nigdy nie pisze
+(sprawdzone: pisze `name`, `imageUrl`, `ownerId`, `hidden`, `statuses`, `visionRange`, `facing`,
+`light` — i tyle). Karta obrażeń zapisuje teraz `fearCleared`, a „Cofnij" woła
+`restoreFacedownFear`. Test dowodzi powrotu **rzutem**, nie naklejką, bo naklejka to połowa kary.
+Drugą połowę problemu — że ręczne zaznaczenie nic nie liczy — zostawiono jako decyzję, ale pole
+dostało `title`, który to mówi.
+
+**5. Zaległość „35 broni po angielsku" była pułapką: jej wykonanie zepsułoby dane.** Liczba jest
+zła (angielskie są **wszystkie 70** wpisów `weapons.json`; 35 to „już w pamięci podręcznej"
+z komunikatu skryptu), ale gorsze było to, do czego notatka namawiała. `collect_entries()`
+kwalifikowało każdy wpis bez `descriptionOriginal` — **341**, w tym 271 opisów z polskiego
+podręcznika, które model dostałby do „przetłumaczenia z angielskiego na polski". `suspicious()`
+tylko dopisuje ostrzeżenie; `entry["description"] = translated` wykonuje się bezwarunkowo.
+Skrypt ma teraz `looks_english()` — świadomie stronniczy ku zostawianiu tekstu w spokoju:
+pominięty angielski wpis zostaje czytelny, zepsuty polski to szkoda. `--check` mówi dziś:
+**70 do zrobienia, 271 pominięto**.
+
+**Znalezione przy okazji, poza zleceniem:** wpis o dwóch katalogach do skasowania po TTS był
+martwy — `C:/AI/tts` i `uploads/tts-cache` nie istnieją, a `ai-gateway/.env` nie ma ani jednego
+klucza `GATEWAY_TTS_*`. Usunięty z listy zaległości.
+
+**Czego ta sesja nie ruszała:** długu oględzin (~31 wzmianek „nieodklikane"), reszty punktów
+z listy 11 i etapów 27g/28. Tłumaczenie 70 broni czeka na włączony llama-server — sam przebieg,
+bez zmian w kodzie.
+
+**Testy:** 1316 (shared) + 740 (server) + 16 (client). Nowe: 5 × `firstBlockedStep`,
+3 × autozapis karty, 3 × kolizje ruchu w `covers.test.ts`, 1 × ściana w `walls.test.ts`,
+1 × powrót strachu w `facedown.test.ts`. ESLint czysty, Prettier czysty.
+
 ### Sesja 21.08 (druga tego dnia) — etap 27f (szlif UX: pomoc, tooltipy, stany, okna)
 
 **Trzy decyzje MG na starcie:** robimy 27f; okna dostają wspólny hook **i** uchwyt skalowania

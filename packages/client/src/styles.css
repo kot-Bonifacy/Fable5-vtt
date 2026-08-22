@@ -1330,6 +1330,13 @@ input[type='color'] {
   opacity: 0.7;
 }
 
+/* Pustka pod „Boi się:" — scena z jedną figurą nie ma kogo się bać (23c). */
+.context-menu-empty {
+  margin: 0 0.5rem 0.3rem;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
 .context-menu-statuses {
   max-height: 12rem;
   overflow-y: auto;
@@ -1978,6 +1985,22 @@ input[type='color'] {
 
 .cyberware-capacity .capacity-over {
   color: var(--warn);
+}
+
+/* Rozbicie gniazd na konkretne oko i konkretną kończynę (22.08). Wcięte pod
+   wierszem rodziny, bo rodzina zostaje nagłówkiem — to jej liczbę czyta
+   rachunek Człowieczeństwa, a te niżej odpowiadają tylko na „która ręka?". */
+.cyberware-places {
+  margin: 0.1rem 0 0;
+  padding: 0 0 0 0.7rem;
+  list-style: none;
+  font-size: 0.68rem;
+  line-height: 1.35;
+  border-left: 1px solid var(--border);
+}
+
+.cyberware-places .capacity-unplaced {
+  font-style: italic;
 }
 
 .cyberware-family {
@@ -8007,4 +8030,19 @@ body.is-resizing {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+}
+
+/* Dziedzina umiejętności, którą podręcznik każe wybrać (Nauka, Wiedza lokalna,
+   Gra na instrumencie, Sztuki walki — s. 81). Czerwona ramka, gdy poziom już
+   jest, a dziedziny nie ma: to jedyny powód, dla którego „Utwórz postać"
+   zostaje wyszarzone bez widocznej przyczyny. */
+.creator-skill-specialty {
+  flex: 0 1 9rem;
+  min-width: 0;
+  font-size: 0.74rem;
+  padding: 0.05rem 0.25rem;
+}
+
+.creator-skill-specialty--missing {
+  border-color: var(--accent);
 }

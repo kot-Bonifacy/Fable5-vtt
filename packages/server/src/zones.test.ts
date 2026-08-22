@@ -683,6 +683,75 @@ describe('defended zones on a scene', () => {
     expect(await hp()).toBeLessThan(afterEntry);
   });
 
+  // „Pułapka zajmuje pierwsze miejsce w Kolejce Inicjatywy" (s. 216). Do 22.08
+  // wiersz trackera zakładał MG ręcznie — hak ruchu pomijał wyzwalacz `turn`
+  // w całości, więc jedyną drogą do windy z gazem był przycisk „Odpal system".
+  it('a trap with a Turn of its own walks into the initiative queue by itself', async () => {
+    data(
+      await emitAck<CompendiumEntry>(gm, 'compendium:upsert', {
+        entry: {
+          category: 'netDefense',
+          name: 'Winda z gazem',
+          cost: 1000,
+          defenseKind: 'environment',
+          disableDv: 13,
+          hp: 10,
+          trigger: 'Pułapka zajmuje pierwsze miejsce w Kolejce Inicjatywy.',
+          effects: { when: 'turn', damage: '2k6' },
+        },
+      }),
+      'compendium:upsert (winda)',
+    );
+    const lift = data(
+      await emitAck<DefenseZoneView>(gm, 'zone:create', {
+        sceneId,
+        entryId: 'defense.winda-z-gazem',
+        x: 30 * PX_PER_M,
+        y: 0,
+        width: 4 * PX_PER_M,
+        height: 4 * PX_PER_M,
+        hidden: false,
+      }),
+      'zone:create (winda)',
+    );
+
+    data(
+      await emitAck<CombatView>(gm, 'combat:start', {
+        sceneId,
+        tokenIds: [runnerTokenId, guardTokenId],
+      }),
+      'combat:start',
+    );
+    await emitAck(gm, 'combat:roll-all');
+    const rolled = data(await emitAck<CombatView>(gm, 'combat:next'), 'combat:next');
+    const highest = rolled.combatants.reduce((best, row) => Math.max(best, row.initiative ?? 0), 0);
+
+    // Krok robi MG figurą NPC: w trwającej walce ruch gracza poza jego Turą
+    // jest odrzucany, więc pułapka nigdy by się nie obudziła z tego kroku.
+    data(await walk(gm, guardTokenId, 31 * PX_PER_M, 0), 'token:move (winda)');
+
+    const withTrap = await roundTrip(gm);
+    const trapRow = withTrap.combat?.combatants.find((row) => row.name === 'Winda z gazem');
+    expect(trapRow).toBeTruthy();
+    // Pierwsze miejsce, nie ostatnie: o punkt wyżej niż najwyższa inicjatywa.
+    expect(trapRow!.initiative).toBe(highest + 1);
+    // Wiersz bez figury — pułapka nie stoi nigdzie na mapie, tak jak Czarny LOD.
+    expect(trapRow!.tokenId).toBeNull();
+
+    // Drugie wejście nie dokłada drugiego wiersza.
+    await walk(gm, guardTokenId, 25 * PX_PER_M, 0);
+    await walk(gm, guardTokenId, 31 * PX_PER_M, 0);
+    const again = await roundTrip(gm);
+    expect(again.combat?.combatants.filter((row) => row.name === 'Winda z gazem')).toHaveLength(1);
+
+    // Rozbrojona pułapka nie ma czym zająć swojej Tury i wypada z kolejki.
+    await emitAck(gm, 'zone:update', { zoneId: lift.id, patch: { armed: false } });
+    const disarmed = await roundTrip(gm);
+    expect(disarmed.combat?.combatants.some((row) => row.name === 'Winda z gazem')).toBe(false);
+
+    await emitAck(gm, 'combat:end', { sceneId });
+  });
+
   it('clearing the scene removes every zone at once', async () => {
     await emitAck(gm, 'zone:clear', { sceneId });
     const sync = await roundTrip(gm);

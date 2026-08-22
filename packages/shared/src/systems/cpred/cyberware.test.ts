@@ -173,6 +173,62 @@ describe('gniazda modyfikacji', () => {
   it('pomija rodziny, których na karcie nie ma', () => {
     expect(cyberwareCapacity([{ type: 'internal' }])).toHaveLength(1);
   });
+
+  // Do 22.08 „Cyberkończyny 2 / 8" nie mówiło, czy obie modyfikacje siedzą
+  // w tej samej ręce — arytmetyka liczyła per rodzina, choć pudełko sylwetki
+  // (`bodySlot`, 27c) było w danych od dawna.
+  it('mówi, w której kończynie siedzą modyfikacje, nie tylko ile ich jest', () => {
+    const rows: CyberwareInstallation[] = [
+      { type: 'cyberlimb', foundation: true, slots: 4, bodySlot: 'armRight' },
+      { type: 'cyberlimb', foundation: true, slots: 4, bodySlot: 'armLeft' },
+      { type: 'cyberlimb', slotCost: 1, bodySlot: 'armRight' },
+      { type: 'cyberlimb', slotCost: 1, bodySlot: 'armRight' },
+    ];
+    const [limbs] = cyberwareCapacity(rows);
+    // Wiersz rodziny zostaje nagłówkiem i nie zmienia się ani o punkt.
+    expect(limbs).toMatchObject({ capacity: 8, used: 2 });
+    const right = limbs?.places?.find((place) => place.slot === 'armRight');
+    const left = limbs?.places?.find((place) => place.slot === 'armLeft');
+    expect(right).toMatchObject({ capacity: 4, used: 2 });
+    expect(left).toMatchObject({ capacity: 4, used: 0 });
+    // Nogi, których nie ma, też się wypisują — puste pudełko to prawdziwa odpowiedź.
+    expect(limbs?.places).toHaveLength(4);
+    expect(limbs?.unplaced).toBe(0);
+  });
+
+  it('woła o podstawę w tej samej kończynie, nie w dowolnej', () => {
+    const rows: CyberwareInstallation[] = [
+      { type: 'cyberlimb', foundation: true, slots: 4, bodySlot: 'armRight' },
+      // Modyfikacja w lewej ręce, której nikt nie zainstalował.
+      { type: 'cyberlimb', slotCost: 1, bodySlot: 'armLeft' },
+    ];
+    const [limbs] = cyberwareCapacity(rows);
+    // Rodzina ma podstawę, więc jej wiersz milczy — i to jest właśnie ta
+    // pomyłka, której licznik per rodzina nie umiał złapać.
+    expect(limbs?.missingFoundation).toBe(false);
+    expect(limbs?.places?.find((p) => p.slot === 'armLeft')?.missingFoundation).toBe(true);
+    expect(limbs?.places?.find((p) => p.slot === 'armRight')?.missingFoundation).toBe(false);
+  });
+
+  it('liczy nieprzypisane osobno, żeby obie sumy się zgadzały', () => {
+    const rows: CyberwareInstallation[] = [
+      { type: 'cyberoptics', foundation: true, slots: 3, bodySlot: 'eyeRight' },
+      { type: 'cyberoptics', slotCost: 2 },
+    ];
+    const [optics] = cyberwareCapacity(rows);
+    expect(optics).toMatchObject({ capacity: 3, used: 2, unplaced: 1 });
+    // Nieprzypisana modyfikacja nie doliczyła się do żadnego oka.
+    expect(optics?.places?.reduce((sum, place) => sum + place.used, 0)).toBe(0);
+  });
+
+  it('nie rozbija rodzin, które mają tylko jedno miejsce', () => {
+    const [audio] = cyberwareCapacity([
+      { type: 'cyberaudio', foundation: true, slots: 3 },
+      { type: 'cyberaudio', slotCost: 1 },
+    ]);
+    // Cyberaudio jest jedno — rozbicie powtarzałoby wiersz rodziny.
+    expect(audio?.places).toBeUndefined();
+  });
 });
 
 describe('karta postaci z chromem', () => {

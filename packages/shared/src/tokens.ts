@@ -86,6 +86,16 @@ export interface TokenView {
    * and a player learns those by being shot at.
    */
   combatProfile?: TokenCombatProfile | null;
+  /**
+   * Whom this figure backed down from and has not got even with (stage 23c) —
+   * the second half of the −2 the „Onieśmielony" sticker only *suggests*.
+   *
+   * Private like the HP, and for the same kind of reason: it is a list of who
+   * has this figure's number, which is exactly what the other side would like
+   * to know. The GM and whoever controls the figure get it; nobody else needs
+   * it, because the penalty is applied server-side on the roll.
+   */
+  feared?: string[];
 }
 
 /**
@@ -259,6 +269,26 @@ export interface TokenFacingPayload {
   /** Degrees clockwise from up; null forgets the manual turn. */
   facing: number | null;
 }
+
+/**
+ * Client → server `token:feared`: whom this figure backed down from (stage 23c).
+ *
+ * The −2 of a lost Konfrontacja needs **two** things — the „Onieśmielony"
+ * sticker and the name of who is owed it — and until 22.08 a hand-ticked status
+ * could only ever supply the first. This is the GM's way to supply the second,
+ * for the Konfrontacja that happened at the table rather than through the app.
+ *
+ * A list, not one id: „Możesz być Onieśmielony przez kilka osób naraz" falls out
+ * of the rule that each Konfrontacja is its own. An empty list forgets them all
+ * and leaves the sticker alone — the sticker is the authority.
+ */
+export interface TokenFearedPayload {
+  tokenId: string;
+  fearedTokenIds: string[];
+}
+
+/** How many opponents one figure may be Intimidated by at once — a cap, not a rule. */
+export const TOKEN_FEARED_MAX = 12;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));

@@ -1548,3 +1548,29 @@
 .cp-deck-install select {
   width: 100%;
 }
+
+/* Dziedzina Umiejętności, którą podręcznik każe wybrać (Nauka, Wiedza lokalna,
+   Gra na instrumencie, Sztuki walki, Język — s. 81). Siedzi pod nazwą w tej
+   samej komórce, żeby nie rozsuwać czterokolumnowej siatki umiejętności. */
+.cp-skill-specialty {
+  width: 100%;
+  border: none;
+  border-bottom: 1px dotted var(--cp-ink-dim);
+  background: transparent;
+  color: var(--cp-ink);
+  font-family: var(--font-cp-cond);
+  font-size: 0.72rem;
+  line-height: 1.1;
+  padding: 0 0 1px;
+  margin-top: 1px;
+}
+
+.cp-skill-specialty::placeholder {
+  color: var(--cp-ink-dim);
+  font-style: italic;
+}
+
+.cp-skill-specialty:focus {
+  outline: none;
+  border-bottom-color: var(--cp-red);
+}

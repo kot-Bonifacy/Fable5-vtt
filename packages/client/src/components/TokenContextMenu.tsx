@@ -31,6 +31,7 @@ import {
   deleteToken,
   removeFromCombat,
   toggleTokenLight,
+  setTokenFeared,
   updateToken,
 } from '../socket.js';
 import { useTokenStore } from '../stores/tokenStore.js';
@@ -499,13 +500,64 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
  *
  * „Onieśmielony" bierze się z przegranej Konfrontacji (23c) i kara −2 wymaga
  * dwóch rzeczy naraz: naklejki i adresu przeciwnika zapisanego przy figurze.
- * Ręczne zaznaczenie daje wyłącznie naklejkę, więc bez tego zdania MG odhacza
- * pole i odchodzi przekonany, że kara działa.
+ * Od 22.08 drugą połowę da się dopisać ręcznie — listą „Boi się:" pod statusami
+ * (`token:feared`) — więc zdanie mówi, gdzie ją znaleźć, zamiast samo ostrzegać.
  */
 const STATUS_HINTS: Record<string, string> = {
   [CPRED_INTIMIDATED_STATUS_ID]:
-    'Sama naklejka nie nakłada −2 — kara bierze się z przegranej Konfrontacji, która zapamiętuje, kogo się boisz. Tutaj służy do zdejmowania jej i do oznaczania strachu opisowo.',
+    'Sama naklejka nie nakłada −2 — kara należy się konkretnemu przeciwnikowi. Zaznacz go na liście „Boi się:" poniżej, inaczej naklejka jest tylko oznaczeniem opisowym.',
 };
+
+/**
+ * „Boi się:" — druga połowa kary za przegraną Konfrontację (23c).
+ *
+ * Lista figur sceny z polami wyboru, bo Konfrontacji można przegrać kilka
+ * naraz. Bez zaznaczonego kogoś naklejka „Onieśmielony" nic nie liczy, i to
+ * jest jedyny powód, dla którego ta sekcja istnieje — pokazuje się wyłącznie
+ * przy zaznaczonym statusie, żeby nie zaśmiecać menu każdego żetonu.
+ */
+function FearedPicker({ token }: { token: TokenView }) {
+  const tokens = useTokenStore((s) => s.tokens);
+  const feared = token.feared ?? [];
+  const others = Object.values(tokens)
+    .filter((other) => other.sceneId === token.sceneId && other.id !== token.id)
+    .sort((a, b) => a.name.localeCompare(b.name, 'pl'));
+
+  function toggle(otherId: string) {
+    const next = feared.includes(otherId)
+      ? feared.filter((id) => id !== otherId)
+      : [...feared, otherId];
+    void setTokenFeared(token.id, next);
+  }
+
+  return (
+    <>
+      <p className="context-menu-section">
+        Boi się{feared.length === 0 ? ' — nikogo, więc −2 nie działa' : ''}
+      </p>
+      {others.length === 0 ? (
+        <p className="context-menu-empty">Na scenie nie ma nikogo innego.</p>
+      ) : (
+        <div className="context-menu-statuses">
+          {others.map((other) => (
+            <label
+              key={other.id}
+              className="context-menu-status"
+              title={`−2 do Testów tej figury przeciwko: ${other.name}`}
+            >
+              <input
+                type="checkbox"
+                checked={feared.includes(other.id)}
+                onChange={() => toggle(other.id)}
+              />
+              {other.name}
+            </label>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
 
 export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onClose: () => void }) {
   const token = useTokenStore((s) => s.tokens[menu.tokenId]);
@@ -692,6 +744,7 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
                 </label>
               ))}
             </div>
+            {token.statuses.includes(CPRED_INTIMIDATED_STATUS_ID) && <FearedPicker token={token} />}
           </>
         )}
       </div>

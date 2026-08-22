@@ -15,6 +15,7 @@ import {
   type RollTerm,
 } from '../../dice.js';
 import {
+  cpredSkillLabel,
   injuryDeathSavePenalty,
   type CpredCharacterData,
   type CpredRegistry,
@@ -303,7 +304,9 @@ export function planCpredRoll(
     const skill = registry.skills.find((entry) => entry.id === request.skillId);
     if (!skill) return { ok: false, error: 'UNKNOWN_SKILL' };
     statId = skill.stat;
-    title = `${skill.name} (${CPRED_STAT_LABELS[statId].abbr})`;
+    // „Nauka (Fizyka) (INT)" — the specialised skills say what they were bought
+    // in, or nothing extra while nobody has named a field (stage 25a debt).
+    title = `${cpredSkillLabel(skill, data)} (${CPRED_STAT_LABELS[statId].abbr})`;
     breakdown.push(...skillBreakdown(data, skill));
   } else if (request.kind === 'stat') {
     if (!isCpredStatId(request.statId)) return { ok: false, error: 'UNKNOWN_STAT' };
@@ -345,12 +348,13 @@ function skillBreakdown(
   skill: { id: string; name: string; stat: CpredStatId },
 ): RollBreakdownEntry[] {
   const level = data.skills[skill.id] ?? 0;
+  const name = cpredSkillLabel(skill, data);
   return [
     statBreakdown(data, skill.stat),
     // RAW: an untrained skill simply contributes nothing — the check still
     // happens on the bare stat, and the card says so.
     {
-      label: level > 0 ? skill.name : `${skill.name} (nietrenowana)`,
+      label: level > 0 ? name : `${name} (nietrenowana)`,
       value: level,
       kind: 'skill',
     },

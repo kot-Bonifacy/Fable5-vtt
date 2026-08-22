@@ -7,7 +7,11 @@ import {
   type CpredStats,
 } from './stats.js';
 import {
+  CPRED_LANGUAGE_SKILL_ID,
+  CPRED_SPECIALTY_SKILL_IDS,
   ROLE_RANK_MIN,
+  SKILL_SPECIALTY_MAX_LENGTH,
+  cpredSkillNeedsSpecialty,
   createDefaultCharacterData,
   type CpredCharacterData,
   type CpredRegistry,
@@ -199,6 +203,13 @@ export interface CpredCreationDraft {
   /** skillId → level; a skill left at zero is absent. */
   skills: Record<string, number>;
   /**
+   * skillId → the field it was bought in, for the four skills the rulebook
+   * makes you name (s. 81). Collected here rather than left to the sheet,
+   * because „Nauka 4" without a specialisation is not a finished character —
+   * `creationIssues` refuses to finish one.
+   */
+  skillSpecialties: Record<string, string>;
+  /**
    * The Lifepath as it is being filled in (stage 25b) — the same shape the
    * sheet stores, so finishing is a copy rather than a translation.
    */
@@ -232,6 +243,7 @@ export function createDefaultCreationDraft(data: CpredCreationData): CpredCreati
     stats: {},
     statRolls: {},
     skills: {},
+    skillSpecialties: {},
     lifepath: createDefaultLifepath(),
     name: '',
     purchases: {},
@@ -586,6 +598,31 @@ export function creationIssues(
     }
   }
 
+  // „Zawsze, gdy podnosisz tę Umiejętność, musisz wybrać, którą specjalizację
+  // rozwijasz" (s. 81). Do 22.08 kreator zapisywał „Nauka 4" i nie pytał w czym,
+  // a karta nie miała gdzie tego trzymać — teraz ma i nie skończy bez odpowiedzi.
+  //
+  // Dwa wyjątki, oba świadome:
+  //  - **Język** ma swoją nazwę przy kulturze pochodzenia od 25b;
+  //  - **umiejętność podstawowa** (Wiedza lokalna jest na liście każdej Roli)
+  //    nie blokuje. Podstawowej się nie kupuje — dostaje ją każda postać, więc
+  //    wymóg wpisania obszaru byłby podatkiem od **każdego** NPC-a, a ten etap
+  //    trzyma ścieżkę „pięciu NPC-ów w jeden wieczór" tak krótką, jak była
+  //    w 25a. Pole i tak stoi w kreatorze i na karcie — tylko nie zatrzymuje.
+  for (const skillId of CPRED_SPECIALTY_SKILL_IDS) {
+    const level = draft.skills[skillId] ?? 0;
+    if (level <= 0) continue;
+    if (data.basicSkills.includes(skillId)) continue;
+    if ((draft.skillSpecialties[skillId] ?? '').trim()) continue;
+    const name = names.get(skillId) ?? skillId;
+    issues.push(
+      issue(
+        `skillSpecialties.${skillId}`,
+        `Umiejętność ${name} wymaga wyboru — wpisz, w czym postać się specjalizuje.`,
+      ),
+    );
+  }
+
   for (const skillId of data.basicSkills) {
     const level = draft.skills[skillId] ?? 0;
     if (level < data.limits.skillMin) {
@@ -655,6 +692,7 @@ export function mergeCreationDraft(
     stats: { ...current.stats },
     statRolls: { ...current.statRolls },
     skills: { ...current.skills },
+    skillSpecialties: { ...current.skillSpecialties },
     purchases: { ...current.purchases },
   };
 
@@ -711,6 +749,19 @@ export function mergeCreationDraft(
     const skills = readSkillPatch(patch.skills, data, registry);
     if (skills === null) return null;
     next.skills = skills;
+  }
+  if ('skillSpecialties' in patch) {
+    const raw = patch.skillSpecialties;
+    if (typeof raw !== 'object' || raw === null) return null;
+    const specialties: Record<string, string> = {};
+    for (const [skillId, value] of Object.entries(raw as Record<string, unknown>)) {
+      if (!registry.skillIds.has(skillId)) continue;
+      if (!cpredSkillNeedsSpecialty(skillId) || skillId === CPRED_LANGUAGE_SKILL_ID) continue;
+      if (typeof value !== 'string') return null;
+      const text = value.trim().slice(0, SKILL_SPECIALTY_MAX_LENGTH);
+      if (text) specialties[skillId] = text;
+    }
+    next.skillSpecialties = specialties;
   }
   if ('lifepath' in patch) {
     // Every Lifepath field is prose the player may rewrite („odpowiednio zmień
@@ -918,6 +969,7 @@ export function creationToCharacterData(
     roleId: draft.roleId,
     roleAbilityRank: data.roleAbilityStart,
     skills,
+    skillSpecialties: { ...draft.skillSpecialties },
     // Copied, not translated: the draft and the sheet hold the same shape, so
     // a Lifepath field the wizard collects cannot go missing on the sheet.
     lifepath: draft.lifepath,

@@ -17,6 +17,7 @@ import type {
   StateSyncPayload,
   TokenView,
 } from '@vtt/shared';
+import { CPRED_INTIMIDATED_STATUS_ID } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 
@@ -484,6 +485,66 @@ describe('reputacja i konfrontacja', () => {
     });
     const breakdown = (await atHero).message.roll?.breakdown ?? [];
     expect(breakdown.find((row) => row.label === 'Przegrana Konfrontacja')?.value).toBe(-2);
+  });
+
+  // Do 22.08 ręcznie zaznaczony „Onieśmielony" nie liczył nic i nie było jak
+  // tego naprawić: kara wymaga naklejki **i** adresu przeciwnika w `statusData`,
+  // a `token:update` `statusData` nigdy nie pisze. `token:feared` to druga połowa.
+  it('MG dopisuje ręcznie, kogo figura się boi, i kara zaczyna schodzić z rzutu', async () => {
+    // Czysty start: żadnej Konfrontacji przez aplikację, sama naklejka z menu.
+    await emitAck(gm, 'token:feared', { tokenId: cowardTokenId, fearedTokenIds: [] });
+    await emitAck(gm, 'token:update', {
+      tokenId: cowardTokenId,
+      patch: { statuses: [CPRED_INTIMIDATED_STATUS_ID] },
+    });
+
+    const beforeMsg = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+    await emitAck(gm, 'attack:roll', {
+      characterId: cowardId,
+      targetTokenId: heroTokenId,
+      request: { weaponRowId: 'w1', mode: 'single' },
+    });
+    const before = (await beforeMsg).message.roll?.breakdown ?? [];
+    // Sama naklejka — nadal nic, i to jest zamierzone.
+    expect(before.find((row) => row.label === 'Przegrana Konfrontacja')).toBeUndefined();
+
+    const named = data(
+      await emitAck<TokenView>(gm, 'token:feared', {
+        tokenId: cowardTokenId,
+        fearedTokenIds: [heroTokenId],
+      }),
+      'token:feared',
+    );
+    expect(named.feared).toEqual([heroTokenId]);
+
+    const afterMsg = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+    await emitAck(gm, 'attack:roll', {
+      characterId: cowardId,
+      targetTokenId: heroTokenId,
+      request: { weaponRowId: 'w1', mode: 'single' },
+    });
+    const after = (await afterMsg).message.roll?.breakdown ?? [];
+    expect(after.find((row) => row.label === 'Przegrana Konfrontacja')?.value).toBe(-2);
+  });
+
+  it('zdjęcie naklejki wyłącza karę, choć adres zostaje', async () => {
+    await emitAck(gm, 'token:update', { tokenId: cowardTokenId, patch: { statuses: [] } });
+    const msg = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+    await emitAck(gm, 'attack:roll', {
+      characterId: cowardId,
+      targetTokenId: heroTokenId,
+      request: { weaponRowId: 'w1', mode: 'single' },
+    });
+    const breakdown = (await msg).message.roll?.breakdown ?? [];
+    expect(breakdown.find((row) => row.label === 'Przegrana Konfrontacja')).toBeUndefined();
+  });
+
+  it('gracz nie dopisze sobie ani nikomu, kogo się boi', async () => {
+    const refused = await emitAck(player, 'token:feared', {
+      tokenId: cowardTokenId,
+      fearedTokenIds: [heroTokenId],
+    });
+    expect(refused.ok).toBe(false);
   });
 
   it('odmawia Konfrontacji z samym sobą', async () => {

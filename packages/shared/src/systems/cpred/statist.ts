@@ -202,6 +202,8 @@ export function combatProfileSheet(
     roleId: null,
     roleAbilityRank: 1,
     skills: { [CPRED_EVASION_SKILL_ID]: profile.evasion },
+    // Statysta nie ma czego nazywać: jego jedyną umiejętnością jest Unik.
+    skillSpecialties: {},
     weapons: [
       {
         id: STATIST_WEAPON_ROW_ID,

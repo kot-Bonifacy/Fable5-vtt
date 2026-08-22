@@ -38,6 +38,7 @@ import { buildCompendiumSync } from './compendium.js';
 import { INCLUDE_CHAT_NAMES, broadcastChatMessage, toChatMessageView } from './chat-io.js';
 import { createMixedRng } from './dice-rng.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
+import { emitCombatOfScene, loadCombat } from './combat.js';
 import { requireCampaignScene, toSceneView } from './scenes.js';
 import { emitTokensById } from './tokens.js';
 import { checkPerceptionOf, controllerOf, fireZone, type ZoneProfile } from './zone-effects.js';
@@ -216,6 +217,9 @@ export const zoneUpdateEvent = defineEvent<DefenseZoneUpdatePayload, DefenseZone
     if (Object.keys(data).length === 0) return toZoneView(row, true, false);
     const updated = await deps.ctx.prisma.defenseZone.update({ where: { id: row.id }, data });
     await emitZones(deps, campaignId, row.sceneId);
+    // Rozbrojona albo rozstrzelana pułapka nie ma już czym zająć swojej Tury.
+    const dead = updated.hpMax > 0 && updated.hpCurrent <= 0;
+    if (!updated.armed || dead) await dropZoneFromQueue(deps, campaignId, row.sceneId, row.id);
     return toZoneView(updated, true, false);
   },
 });
@@ -228,6 +232,7 @@ export const zoneDeleteEvent = defineEvent<DefenseZoneDeletePayload>({
     const row = await requireCampaignZone(deps, campaignId, payload?.zoneId);
     await deps.ctx.prisma.defenseZone.delete({ where: { id: row.id } });
     await emitZones(deps, campaignId, row.sceneId);
+    await dropZoneFromQueue(deps, campaignId, row.sceneId, row.id);
   },
 });
 
@@ -237,8 +242,18 @@ export const zoneClearEvent = defineEvent<DefenseZoneClearPayload>({
   handler: async ({ deps, socket, payload }) => {
     const campaignId = requireCampaignId(socket.data);
     const scene = await requireCampaignScene(deps.ctx.prisma, campaignId, payload?.sceneId);
+    const doomed = await deps.ctx.prisma.defenseZone.findMany({
+      where: { sceneId: scene.id },
+      select: { id: true },
+    });
     await deps.ctx.prisma.defenseZone.deleteMany({ where: { sceneId: scene.id } });
     await emitZones(deps, campaignId, scene.id);
+    await dropSceneZonesFromQueue(
+      deps,
+      campaignId,
+      scene,
+      doomed.map((z) => z.id),
+    );
   },
 });
 
@@ -352,8 +367,16 @@ export async function runZonesAfterMove(
 
     const trigger = netDefenseTrigger(profile.effects);
     // „W Turze pułapki" (s. 216) — a trap with its own place in the queue never
-    // answers a footstep; the GM's button is its only trigger.
-    if (trigger === 'turn') continue;
+    // answers a footstep. What the footstep DOES do is wake it: the trap takes
+    // „pierwsze miejsce w Kolejce Inicjatywy", and from there the GM's button
+    // fires it in its own Turn. Firing stays a click (the line 26c/26e drew);
+    // only the tracker row stopped being the GM's paperwork.
+    if (trigger === 'turn') {
+      if (pathTouchesZone(row, before, now, input.path, half)) {
+        await pushZoneIntoQueue(deps, campaignId, user, scene, row);
+      }
+      continue;
+    }
 
     const touched = pathTouchesZone(row, before, now, input.path, half);
     if (!touched) continue;
@@ -550,6 +573,84 @@ function readTokenStatuses(raw: string): string[] {
 }
 
 /** One line on the chat, in the `action` shape the tracker and the run use. */
+/**
+ * „Pułapka zajmuje pierwsze miejsce w Kolejce Inicjatywy" (s. 216) — wprost.
+ *
+ * Wzorowane na `pushNetFoeIntoQueue` z 26c i celowo tak samo skromne: wiersz
+ * bez figury (`tokenId: null`, nazwa z `label`), inicjatywa o punkt wyżej od
+ * najwyższej w kolejce, `order: -1`, żeby przy remisie stanął na górze. Nic
+ * poza wierszem — pułapkę odpala MG przyciskiem „Odpal system" w jej Turze.
+ *
+ * Cisza w trzech przypadkach, bo w każdym z nich wiersz byłby kłamstwem:
+ * walka nie trwa (nie ma kolejki), pułapka już w niej stoi, albo tryb turowy
+ * stoi na „PRZED WALKĄ" — wtedy kolejka istnieje, ale rund jeszcze nie ma.
+ */
+async function pushZoneIntoQueue(
+  deps: RealtimeDeps,
+  campaignId: string,
+  user: SessionUser,
+  scene: Scene,
+  zone: ZoneRow,
+): Promise<void> {
+  const combat = await loadCombat(deps.ctx.prisma, scene.id);
+  if (!combat) return;
+  // Runda 0 = „PRZED WALKĄ": inicjatywy są jeszcze nierzucone, więc „o punkt
+  // wyżej od najwyższej" dałoby pułapce 1 — czyli po rzutach OSTATNIE miejsce
+  // zamiast pierwszego. Wiersz poczeka na następne wejście na obszar.
+  if (combat.round < 1) return;
+  if (combat.combatants.some((entry) => entry.zoneId === zone.id)) return;
+  const top = combat.combatants.reduce((best, entry) => Math.max(best, entry.initiative ?? 0), 0);
+  await deps.ctx.prisma.combatant.create({
+    data: {
+      combatId: combat.id,
+      label: zone.name,
+      zoneId: zone.id,
+      initiative: top + 1,
+      order: -1,
+    },
+  });
+  await emitCombatOfScene(deps, campaignId, scene);
+  await logZoneLine(
+    deps,
+    campaignId,
+    user,
+    zone.name,
+    'Pułapka wchodzi do Kolejki Inicjatywy',
+    `pierwsze miejsce, inicjatywa ${top + 1} — odpal ją w jej Turze`,
+  );
+}
+
+/**
+ * Wiersz pułapki znika razem z powodem, dla którego stał w kolejce: rozbrojeniem,
+ * zniszczeniem albo usunięciem strefy. Bez tego kolejka trzymałaby Turę czegoś,
+ * co nie ma już jak zadziałać, a MG klikałby „dalej" przez martwy wiersz.
+ */
+async function dropZoneFromQueue(
+  deps: RealtimeDeps,
+  campaignId: string,
+  sceneId: string,
+  zoneId: number,
+): Promise<void> {
+  const removed = await deps.ctx.prisma.combatant.deleteMany({ where: { zoneId } });
+  if (removed.count === 0) return;
+  const scene = await deps.ctx.prisma.scene.findUnique({ where: { id: sceneId } });
+  if (scene) await emitCombatOfScene(deps, campaignId, scene);
+}
+
+/** Wszystkie wiersze pułapek sceny naraz — dla „wyczyść strefy". */
+async function dropSceneZonesFromQueue(
+  deps: RealtimeDeps,
+  campaignId: string,
+  scene: Scene,
+  zoneIds: number[],
+): Promise<void> {
+  if (zoneIds.length === 0) return;
+  const removed = await deps.ctx.prisma.combatant.deleteMany({
+    where: { zoneId: { in: zoneIds } },
+  });
+  if (removed.count > 0) await emitCombatOfScene(deps, campaignId, scene);
+}
+
 async function logZoneLine(
   deps: RealtimeDeps,
   campaignId: string,

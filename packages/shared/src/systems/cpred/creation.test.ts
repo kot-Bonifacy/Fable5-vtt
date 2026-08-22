@@ -36,6 +36,8 @@ const SKILLS = [
   { id: 'autofire', name: 'Ogień ciągły', stat: 'ref' as const, multiplier: 2 },
   { id: 'language', name: 'Język', stat: 'int' as const },
   { id: 'cryptography', name: 'Kryptografia', stat: 'int' as const },
+  // Umiejętność, którą podręcznik każe nazwać („Nauka", s. 81).
+  { id: 'science', name: 'Nauka', stat: 'int' as const },
 ];
 
 const ROLES = [
@@ -63,7 +65,11 @@ const RAW_CREATION = {
   freeLanguage: { skillId: 'language', level: 4 },
   roles: [
     { id: 'solo', statTemplates: templates(), skills: ['athletics', 'handgun', 'autofire'] },
-    { id: 'netrunner', statTemplates: templates(), skills: ['athletics', 'cryptography'] },
+    {
+      id: 'netrunner',
+      statTemplates: templates(),
+      skills: ['athletics', 'cryptography', 'science'],
+    },
   ],
 };
 
@@ -203,6 +209,91 @@ describe('creationAvailableSkills', () => {
     const reg = registry();
     const skills = creationAvailableSkills(finished({ method: 'complete' }), data(reg), reg);
     expect(skills).toEqual(SKILLS.map((skill) => skill.id));
+  });
+});
+
+describe('specjalizacje umiejętności', () => {
+  // „Zawsze, gdy podnosisz tę Umiejętność, musisz wybrać, którą specjalizację
+  // rozwijasz" (s. 81). Do 22.08 kreator zapisywał „Nauka 4" i nie pytał w czym.
+  it('refuses to finish a character who has Nauka 4 in nothing', () => {
+    const reg = registry();
+    const issues = creationIssues(
+      finished({ roleId: 'netrunner', skills: { athletics: 3, science: 4 } }),
+      data(reg),
+      reg,
+    );
+    expect(issues.map((entry) => entry.field)).toContain('skillSpecialties.science');
+  });
+
+  it('is satisfied the moment the field is named', () => {
+    const reg = registry();
+    const issues = creationIssues(
+      finished({
+        roleId: 'netrunner',
+        skills: { athletics: 3, science: 4 },
+        skillSpecialties: { science: 'Fizyka' },
+      }),
+      data(reg),
+      reg,
+    );
+    expect(issues).toEqual([]);
+  });
+
+  // Wiedza lokalna jest na liście podstawowej każdej Roli, więc twardy wymóg
+  // byłby podatkiem od każdego NPC-a — pole jest, ale nie zatrzymuje kreatora.
+  it('does not hold up a character over a basic skill', () => {
+    const reg = registry({
+      ...RAW_CREATION,
+      basicSkills: ['athletics', 'science'],
+      roles: [
+        { id: 'solo', statTemplates: templates(), skills: ['athletics', 'handgun', 'autofire'] },
+        {
+          id: 'netrunner',
+          statTemplates: templates(),
+          skills: ['athletics', 'cryptography', 'science'],
+        },
+      ],
+    });
+    const issues = creationIssues(
+      finished({ roleId: 'netrunner', skills: { athletics: 3, science: 4 } }),
+      data(reg),
+      reg,
+    );
+    expect(issues.some((entry) => entry.field.startsWith('skillSpecialties'))).toBe(false);
+  });
+
+  it('asks nothing of a skill nobody bought a level in', () => {
+    const reg = registry();
+    const issues = creationIssues(
+      finished({ roleId: 'netrunner', skills: { athletics: 3 } }),
+      data(reg),
+      reg,
+    );
+    expect(issues.some((entry) => entry.field.startsWith('skillSpecialties'))).toBe(false);
+  });
+
+  it('carries the field onto the finished sheet', () => {
+    const reg = registry();
+    const sheet = creationToCharacterData(
+      finished({
+        roleId: 'netrunner',
+        skills: { athletics: 3, science: 4 },
+        skillSpecialties: { science: 'Fizyka' },
+      }),
+      data(reg),
+    );
+    expect(sheet.skillSpecialties.science).toBe('Fizyka');
+  });
+
+  it('drops a specialisation written onto a skill that needs none', () => {
+    const reg = registry();
+    const merged = mergeCreationDraft(
+      draft(),
+      { skillSpecialties: { athletics: 'bieganie', science: 'Chemia' } },
+      data(reg),
+      reg,
+    );
+    expect(merged?.skillSpecialties).toEqual({ science: 'Chemia' });
   });
 });
 

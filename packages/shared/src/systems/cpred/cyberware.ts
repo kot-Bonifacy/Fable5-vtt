@@ -127,6 +127,11 @@ export interface CyberwareInstallation {
   slots?: number;
   /** Slots taken (option); absent means the table's default of one. */
   slotCost?: number;
+  /**
+   * Which box on the silhouette this piece sits in (stage 27c) — „która ręka?".
+   * Absent on a row nobody has placed yet, and on the families that have no box.
+   */
+  bodySlot?: CyberwareBodySlot;
 }
 
 /** What a piece of cyberware costs in Humanity, as printed in the tables. */
@@ -424,17 +429,48 @@ export interface CyberwareCapacity {
   pool: boolean;
   /** Options installed with no base piece to sit in („brak cyberoka"). */
   missingFoundation: boolean;
+  /**
+   * The same arithmetic done again per box on the silhouette (stage 27c), for
+   * the families that have boxes — so „Cyberkończyny 2 / 8" can finally say
+   * *which* limb the two are in.
+   *
+   * Absent for the families with no box at all (Cybermoda, Borgizacje…).
+   * Present but possibly all-zero for the others: an empty right arm is a real
+   * answer and the sheet prints it, exactly as page three prints empty boxes.
+   */
+  places?: CyberwarePlaceCapacity[];
+  /**
+   * Eyes and limbs nobody has assigned a box to. They still count in the family
+   * total above — they are in the body — but no box can account for them, so a
+   * per-limb sum that ignored them would quietly disagree with the family row.
+   */
+  unplaced?: number;
+}
+
+/** Slot arithmetic inside one box on the silhouette („prawa cyberręka"). */
+export interface CyberwarePlaceCapacity {
+  slot: CyberwareBodySlot;
+  label: string;
+  capacity: number;
+  used: number;
+  /** An option in this box with no base piece in the same box. */
+  missingFoundation: boolean;
 }
 
 /**
- * Slot arithmetic per family, deliberately *not* per piece of hardware.
+ * Slot arithmetic, per family **and** — since 22.08 — per box on the silhouette.
  *
- * The rulebook counts slots inside each individual cyberarm and each individual
- * eye, which at the table means asking „which eye?" on every install. Two eyes
- * give six slots and the question almost never changes the answer, so the sheet
- * pools them and leaves the placement to the prose. What it does catch is the
- * mistake worth catching: an option with nothing to plug into, and a family
- * filled past what its foundations can hold.
+ * Stage 23a counted per family only, because asking „which eye?" on every
+ * install was friction the table did not want, and two eyes giving six slots
+ * made the question rarely matter. Stage 27c then made the sheet ask anyway
+ * (the silhouette has boxes), so the answer was already in the data and only
+ * the arithmetic still ignored it: „Cyberkończyny 2 / 8" would not say whether
+ * both options sat in the same arm.
+ *
+ * The family row stays the headline — it is what the rulebook's Humanity ledger
+ * is written against, and it is the number that must not silently change. The
+ * per-box breakdown rides alongside in `places`, with everything nobody has
+ * placed counted once in `unplaced`, so the two views always add up.
  */
 export function cyberwareCapacity(rows: readonly CyberwareInstallation[]): CyberwareCapacity[] {
   return CYBERWARE_TYPES.flatMap<CyberwareCapacity>((type) => {
@@ -455,6 +491,15 @@ export function cyberwareCapacity(rows: readonly CyberwareInstallation[]): Cyber
     }
     const foundations = family.filter((row) => row.foundation === true);
     const options = family.filter((row) => row.foundation !== true);
+    // Tylko rodziny z WIĘCEJ niż jednym pudełkiem — „które oko?" i „która ręka?".
+    // Cybersynapsy i Cyberaudio mają po jednym, więc rozbicie powtarzałoby tam
+    // wiersz rodziny co do liczby i byłoby samym szumem.
+    const boxes = bodySlotsForType(type);
+    const perBox = boxes.length > 1;
+    const placed = (row: CyberwareInstallation) =>
+      row.bodySlot && CYBERWARE_BODY_SLOT_TYPES[row.bodySlot] === type
+        ? row.bodySlot
+        : defaultBodySlot(type);
     return [
       {
         type,
@@ -463,6 +508,23 @@ export function cyberwareCapacity(rows: readonly CyberwareInstallation[]): Cyber
         used: options.reduce((sum, row) => sum + (row.slotCost ?? 1), 0),
         pool: false,
         missingFoundation: options.length > 0 && foundations.length === 0,
+        ...(perBox
+          ? {
+              places: boxes.map((slot) => {
+                const here = family.filter((row) => placed(row) === slot);
+                const base = here.filter((row) => row.foundation === true);
+                const opts = here.filter((row) => row.foundation !== true);
+                return {
+                  slot,
+                  label: CYBERWARE_BODY_SLOT_LABELS[slot],
+                  capacity: base.reduce((sum, row) => sum + (row.slots ?? 0), 0),
+                  used: opts.reduce((sum, row) => sum + (row.slotCost ?? 1), 0),
+                  missingFoundation: opts.length > 0 && base.length === 0,
+                };
+              }),
+              unplaced: family.filter((row) => placed(row) === null).length,
+            }
+          : {}),
       },
     ];
   });

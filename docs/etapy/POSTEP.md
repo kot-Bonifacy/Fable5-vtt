@@ -2,6 +2,7 @@
 
 Aktualizowany na koniec każdej sesji. Statusy: ⬜ nierozpoczęty · 🟨 w toku · ✅ ukończony · ⛔ wycofany.
 Pełne notatki z zamkniętych etapów: `archiwum/dziennik-sesji.md` (nie czytaj rutynowo — tylko gdy potrzebujesz szczegółu konkretnego etapu).
+Świadome decyzje i uproszczenia (gdzie VTT czyta podręcznik po swojemu): `decyzje-i-uproszczenia.md` — **to nie są zaległości**, nie planuj ich do zrobienia. Też do czytania na żądanie.
 
 | #   | Etap                                          | Status | Data ukończenia   | Uwagi                                                                                            |
 | --- | --------------------------------------------- | ------ | ----------------- | ------------------------------------------------------------------------------------------------ |
@@ -75,15 +76,21 @@ Pełne notatki z zamkniętych etapów: `archiwum/dziennik-sesji.md` (nie czytaj 
 
 ## Od czego zacząć
 
-Ostatnia sesja była **naprawcza, poza etapami** (22.08) i druga z rzędu takiej: MG kazał wypisać
-~10 otwartych zaległości do triażu, a potem wykonać z nich **grupy A i B** — pięć potwierdzonych
-błędów w kodzie i trzy braki funkcjonalne. Zamknięte: przeciekający klik narzędzi mapy (błąd #8,
-szerszy niż opis — dotyczył też stref i gniazd), brak jakiejkolwiek drogi **przełączenia
+Ostatnia sesja była **naprawcza, poza etapami** (22.08, druga tego dnia): triaż zaległości plus
+**pięć pozycji z niego**. Zamknięte: kłamiące `NO_ROUTE` bota, **pułapka z własną Turą** wchodząca
+do Kolejki Inicjatywy sama, **specjalizacje umiejętności** („Nauka (Fizyka)") od kreatora po kartę
+i czat, **ręczny „Onieśmielony"**, który wreszcie nakłada −2, i **gniazda per kończyna**. Przy
+okazji przemeblowana dokumentacja: świadome decyzje wyszły do `decyzje-i-uproszczenia.md`, a dług
+oględzin „strona gracza" scalił się w jedną pozycję zbiorczą na górze sekcji zaległości. Szczegóły
+w notatce sesji niżej.
+
+Sesja przed nią (22.08, pierwsza) zamknęła **grupy A i B** z triażu: przeciekający klik narzędzi
+mapy (błąd #8, szerszy niż opis — dotyczył też stref i gniazd), brak drogi **przełączenia
 kampanii** (#1), surowe id rany na czacie i w kompendium (#6), dymek celowania ślepy na nabój
 w komorze (#4), chip naboju i etykieta odchylenia granatu (#5, #7), **przycisk MG „nadaj ranę
 krytyczną"**, **Unik dla figury bez karty** i **zbieracz osieroconych plików z `uploads/`**.
-Szczegóły w notatce sesji niżej. Dzień wcześniej (21.08) druga sesja naprawcza zamknęła pięć
-innych błędów, a przed nią **27f** i **27j**.
+Dzień wcześniej (21.08) trzecia sesja naprawcza zamknęła pięć innych błędów, a przed nią
+**27f** i **27j**.
 
 **Ruch gracza jest od 21.08 sprawdzany geometrią na serwerze.** `refuseWalkThroughSolid`
 w `realtime/movement.ts` odrzuca trasę przez ścianę, zamknięte okno i stojącą osłonę — **także
@@ -156,10 +163,11 @@ kolejka „PRZED WALKĄ" z Tonym i avatar9 wraca jednym kliknięciem „Włącz 
 wejdzie, dostaje 6k6 przez pancerz i jeszcze raz na koniec każdej swojej Tury. Karta strefy
 otwiera się narzędziem ⚠ w trybie 📌; „Rozbrój" ją usypia, kosz usuwa.
 
-**⚠️ Jedna rzecz do zrobienia ręcznie: „Poligon bojowy" stoi teraz na poziomie sklepu 1
-(Uliczne).** Migracja daje każdej kampanii `shopTier = 1`, więc do czasu przesunięcia
-przełącznika gracz nie kupi niczego droższego niż 50 ed. Przełącznik 1–4 jest w zakładce
-**„Kompendium"** pod chipami kategorii; MG kupuje przez wszystkie poziomy niezależnie od niego.
+**„Poligon bojowy" stoi na poziomie sklepu 2 (Zawodowe)** — przestawione 22.08 decyzją MG wprost
+w bazie (`Campaign.shopTier`), bo migracja dawała każdej kampanii `shopTier = 1` i gracz nie kupił
+by niczego droższego niż 50 ed. Przełącznik 1–4 jest w zakładce **„Kompendium"** pod chipami
+kategorii; MG kupuje przez wszystkie poziomy niezależnie od niego. **Do sprawdzenia przy pierwszym
+uruchomieniu:** czy przełącznik pokazuje 2, a nie 1 — wartość szła do bazy z pominięciem UI.
 
 **Następne etapy do wyboru: 27g** (wydajność) i **28** (VPS). Drobiazg „kostki kreatora świecą jak krytyki" z 25a/25b **jest zrobiony**
 (flaga `plain`), jednobarwne 📰 z 24c i 🔌 z 26b też — obie stały się sylwetkami z game-icons
@@ -177,27 +185,70 @@ przy **każdym** przejściu przez pokój i który ma własny wyłącznik).
 
 ### Otwarte zaległości (przechodzą między etapami)
 
-- **Etap 27f — dwie ścieżki nieodklikane; reszta sprawdzona 21.08 (patrz notatka sesji).**
-  (1) **Strona gracza** — okno `?` u gracza ma **mniej wierszy** niż u MG (ściany, mgła, osłony
-  i światła są `gmOnly`), co pokrywa test `shortcutGroupsFor(false)`, ale nikt nie patrzył na
-  to oczami gracza. (2) **Okno większe od przeglądarki** — sprowadzanie na ekran sprawdzone na
-  oknie, które się mieści; dla okna **większego** niż okno przeglądarki zostaje próg „róg zawsze
-  do złapania" i tej gałęzi nikt nie oglądał.
+- **ZBIORCZA — dług oględzin „strona gracza": 15 etapów, jedna sesja z drugiego konta.**
+  Scalone 22.08 z kilkunastu osobnych wpisów, bo to **nie jest kilkanaście zadań, tylko jedna
+  sesja** na koncie gracza. Wspólny mianownik wszystkich pozycji: wszystko oglądane było z konta
+  MG, różnica **jest w payloadzie** (serwer filtruje przed emisją, nie CSS ukrywa) i wszędzie ma
+  pokrycie testami na żywych gniazdach — nieobejrzany jest sam ekran. Zanim odhaczysz cokolwiek:
+  (a) **odmowy statusowe są u MG niesprawdzalne** — `realtime/movement.ts:216` zwalnia MG
+  z blokad; (b) przeczytaj wpis „Kliknięcie w token było zepsute dla graczy od 18a" niżej, bo
+  część tych pozycji mogła być nieodklikana **dlatego**, a nie z braku czasu; (c) ustawienie
+  stołu jest w „Pułapki dev" — MG na `http://localhost:5173/`, gracz na `http://[::1]:5173/`
+  (to dwa różne hosty dla ciasteczka sesji, więc wystarczy jedna przeglądarka).
 
-- **Etap 27f — stany puste dostały listy, które bywają puste u MG.** Kompendium (trzy różne
-  pustki), baza wiedzy, dziennik, kolejka inicjatywy i lista figur sceny mają teraz zdanie
-  i pierwszy krok. **Nie przeszedłem** przez pustki, które widzi wyłącznie gracz (handouty bez
-  udostępnień, postacie przed pierwszą kartą) — zdania **są** tam z wcześniejszych etapów, ale
-  nie były oglądane razem z resztą i mogą mówić innym językiem.
+  - [ ] **27f** — okno `?` u gracza ma **mniej wierszy** niż u MG (ściany, mgła, osłony i światła
+        są `gmOnly`); pokrywa test `shortcutGroupsFor(false)`.
+  - [ ] **27f** — stany puste, które widzi **wyłącznie** gracz: handouty bez udostępnień, postacie
+        przed pierwszą kartą. Zdania **są** tam z wcześniejszych etapów, ale nie były oglądane
+        razem z resztą i mogą mówić innym językiem niż pustki dopisane w 27f.
+  - [ ] **27j** — kierunek patrzenia i upadek figury. Różnica jest tu **mniejsza niż zwykle i to
+        jest zamierzone**: `facing` jedzie w publicznej części `TokenView`, a stan figury liczy
+        się z naklejek, które gracz i tak dostaje — widzi kierunek i upadek wroga, nie widząc
+        jego PW. Testy: `token:facing` u właściciela, odmowa dla cudzej i ukrytej figury.
+  - [ ] **27i** — efekty walki. `fx:play` jest przycinany **per gniazdo** (`trimMapFxForViewer`):
+        kto nie widzi lufy, nie dostaje ani jej, ani dźwięku. Trzy testy na żywych gniazdach.
+  - [ ] **27c** — obie nowe strony karty (Ścieżka Życia, sylwetka cyborgizacji). Różnicy w kodzie
+        nie ma — jedyne pole tylko dla MG to Reputacja, i było takie już w 23c. Zapis gracza
+        pokrywa test „the player writes their own page two and places their own chrome".
+  - [ ] **26f** — czy ukryta strefa znika z ekranu gracza, czy odsłonięta się rysuje i czy po
+        zdanej Percepcji dostaje ją **tylko jego** konto (`fetchZonesFor`); trzy testy.
+  - [ ] **26e** — okno Demonów. **Wymaga przepięcia karty**: netrunnerem Poligonu jest „Test 27x",
+        która należy do MG, a nie do Tony'ego ani avatar9. Demon „czuwający" w ogóle nie wchodzi
+        do payloadu gracza, a atak na niego wraca `NET_DEMON_UNKNOWN`; dwa testy.
+  - [ ] **26d** — okno urządzeń: gracz nie dostaje ich listy, dopóki nie przejmie węzła (test
+        „nie przysyła graczowi listy urządzeń").
+  - [ ] **26c** — okno walki w Sieci: gracz nie dostaje ATK/OBR/PER/PRĘ Czarnego LOD-a ani jego
+        efektu, dopóki ten go nie dopadnie (`netcombat.test.ts`).
+  - [ ] **26a** — zakładka „Sieć" nie istnieje dla gracza: `net:*` ma rolę `ROLE_GM` i emituje
+        wyłącznie do `gmRoom` (test „never lets a player near the library" — lista, odczyt i zapis
+        odmawiają). U MG sprawdzone było tylko to, że zakładka stoi w rzędzie MG.
+  - [ ] **25c** — odmowa poziomu sklepu („Kup" wyszarzone, serwer wraca „Poza zasięgiem sklepu.
+        Poziom 2 (Zawodowe) — kampania ma odblokowany N") **oraz** cały krok wyposażenia
+        w kreatorze. U MG niesprawdzalne: jest z blokady zwolniony.
+  - [ ] **23c** — „Wycofaj się" / „Nie ustępuj (−2)" na karcie czatu, gdy przegraną Konfrontacji
+        jest **figura gracza** (test `o wycofaniu decyduje przegrany, nie zwycięzca`). Konfrontacje
+        z 10.08 szły z konta MG, więc przyciski oglądał MG.
+  - [ ] **23b** — karta przelewu na **ekranie odbiorcy**. Wiersz czatu ma `recipientId`, więc
+        dociera do obu stron i MG; nikt nie był zalogowany jako Tony, żeby to zobaczyć.
+        **Potrzeba trzeciego hosta** — patrz „Pułapki dev".
+  - [ ] **18d/18e** — ikona 🪟 u gracza oraz odmowy „Za daleko — podejdź do okna", „Okno zamknięte
+        na skobel", „Zamknięte na klucz". Testy dymne na payloadzie.
+  - [ ] **16b** — klik w token ładujący kubek ataku, „🎯 Atak…" w menu kontekstowym tokenu
+        i edytor profilu bojowego w „Edytuj…". **Wymaga myszy**, nie automatu: CDP nie dowozi
+        trafienia wskaźnikiem w warstwę Pixi (patrz „Pułapki dev"). 13 testów w `attacks.test.ts`.
+  - [ ] **14e** — samo **zdanie rany** w treści karty odmowy (Uraz kręgosłupa, monit przy Urazie
+        ucha). Od 22.08 osiągalne w jednym kliknięciu: MG nadaje ranę z karty postaci. Mechanizm
+        karty odmowy u gracza jest już potwierdzony trzy razy (budżet 14b, dystans 14c, Powalony).
 
-- **Etap 27j — trzy ścieżki nieodklikane; reszta sprawdzona 21.08 (patrz notatka sesji).**
-  (1) **Strona gracza** — wszystko oglądane z konta MG. Różnica jest tu **mniejsza niż zwykle
-  i to jest zamierzone**: `facing` jedzie w publicznej części `TokenView`, a stan figury liczy się
-  z naklejek, które gracz i tak dostaje — więc gracz widzi kierunek i upadek wroga, nie widząc
-  jego PW. Pokryte testami na żywych gniazdach (`token:facing` u właściciela, odmowa dla cudzej
-  i ukrytej figury), ale nikt nie patrzył na to oczami gracza. (2) **Zacienienie zasięgu wokół
-  ściany** — na „Strzelnicy" widoczność jest `open`, więc zalew nie miał czego omijać; że omija,
-  wiadomo z testu w `shared` („nie zacienia drugiej strony ściany"), nie z ekranu. (3) **Figura
+- **Etap 27f — okno większe od przeglądarki nieodklikane; reszta sprawdzona 21.08 (patrz
+  notatka sesji).** Sprowadzanie na ekran sprawdzone na oknie, które się mieści; dla okna
+  **większego** niż okno przeglądarki zostaje próg „róg zawsze do złapania" i tej gałęzi nikt
+  nie oglądał. (Strona gracza → pozycja zbiorcza na górze sekcji.)
+
+- **Etap 27j — dwie ścieżki nieodklikane; reszta sprawdzona 21.08 (patrz notatka sesji).**
+  (Strona gracza → pozycja zbiorcza na górze sekcji.)
+  (1) **Zacienienie zasięgu wokół ściany** — na „Strzelnicy" widoczność jest `open`, więc zalew nie miał czego omijać; że omija,
+  wiadomo z testu w `shared` („nie zacienia drugiej strony ściany"), nie z ekranu. (2) **Figura
   2×2 lub większa** — suma kwadratów i test footprintu mają pokrycie w `shared`, ale na Poligonie
   nie ma żetonu większego niż 1×1.
 
@@ -215,15 +266,14 @@ przy **każdym** przejściu przez pokój i który ma własny wyłącznik).
   **27f jej nie ruszył** — stany puste tego etapu dotyczyły list w panelach, nie mapy. Wraca
   przy pierwszej sesji, na której ktoś stanie na zerze budżetu.
 
-- **Etap 27i — cztery ścieżki nieodklikane; reszta sprawdzona 20.08 (patrz notatka sesji).**
+- **Etap 27i — trzy ścieżki nieodklikane; reszta sprawdzona 20.08 (patrz notatka sesji).**
   (1) **Wybuch, chmura gazu i wyładowanie strefy** — kod i oba arkusze CC0 sprawdzone
   (krojenie klatek zweryfikowane w przeglądarce), ale animacji nikt nie widział: na Poligonie
   nie ma postaci z granatem, a wejście na „Podłogę elektryczną" kosztuje 6k6. (2) **Liczba
   obrażeń nad figurą** — ta sama ścieżka co widziane „PUDŁO", różni ją jedna linia w
   `damageMapFx`. (3) **Dźwięki** — odtwarzane, ale nikt ich nie słyszał, a próbki dobrano po
   nazwach plików w paczkach CC0; rządek przycisków odsłuchu jest w „⚙ Ustawienia" właśnie po to.
-  (4) **Strona gracza** — wszystko oglądane z konta MG; różnica jest w payloadzie i pokryta
-  trzema testami na żywych gniazdach, ale nikt nie patrzył na to oczami gracza.
+  (Strona gracza → pozycja zbiorcza na górze sekcji.)
 
 - **Etap 27i — pomiar fps nie objął sceny ze światłami i mgłą.** „Strzelnica" ma widoczność
   `open`, więc 160,1 → 161,2 fps mierzy **samą warstwę efektów**, a nie najgorszy przypadek
@@ -236,12 +286,6 @@ przy **każdym** przejściu przez pokój i który ma własny wyłącznik).
   jest sprawdzone. (2) **Okno runa w Sieci od środka** — wymaga rozpoczęcia runa na żywej
   kampanii. (3) **Screamsheet** — lista handoutów Poligonu jest pusta. Przy (2) i (3) różnica
   jest **żadna z definicji**: `--net-*` i `--paper` nie mają wariantu dziennego.
-
-- **Etap 27e — marka jest jedynym miejscem poniżej 4,5 : 1 i to jest decyzja, nie przeoczenie.**
-  `--accent` w dzień to **#CC2316 spróbkowane z wydruku karty postaci** (27a) i na górnym pasku
-  daje 4,27. Podbicie kontrastu znaczyłoby, że tytuł aplikacji i belki karty malują się dwoma
-  różnymi czerwieniami. Ta sama sytuacja jest w nocy: `--accent` #e01414 na ciemnym panelu daje
-  3,1–3,7 i **istniała przed tym etapem** — audyt nocny nie znalazł nic poza nią.
 
 - **Etap 27e — pułapka, która wróci: gołe `button` maluje się jak przycisk główny.** W `styles.css`
   selektor `button` ustawia `background: var(--accent)` i biały napis, więc każdy nowy przycisk,
@@ -258,68 +302,38 @@ przy **każdym** przejściu przez pokój i który ma własny wyłącznik).
   w kodzie, nie klikane. (3) **Rzut Cech w kreatorze bez zielonych dziesiątek** — flaga `plain`
   ma test w `shared` i przechodzi przez serwer, ale kreatora nikt nie otwierał.
 
-- **Etap 26f — pięć ścieżek nieodklikanych; reszta sprawdzona 16.08 (patrz notatka sesji).**
-  (1) **Strona gracza** — cała: czy ukryta strefa naprawdę znika z jego ekranu, czy odsłonięta się
-  rysuje i czy po zdanej Percepcji dostaje ją tylko jego konto. Różnica **jest w payloadzie**
-  (`fetchZonesFor` filtruje przed emisją) i pokryta trzema testami na żywych gniazdach, ale nikt
-  nie patrzył na to oczami gracza — ta sama zaległość, co przy 26a–26e. (2) **Ślizgawka
-  i wymuszony Test** — w przeglądarce klikana była wyłącznie podłoga elektryczna; Test Atletyki
-  z wyzwalaczem „każdy ruch na obszarze" ma test serwera. (3) **Kara do RUCH-u (Maź)** — naklejka
+- **Etap 26f — cztery ścieżki nieodklikane; reszta sprawdzona 16.08 (patrz notatka sesji).**
+  (Strona gracza → pozycja zbiorcza na górze sekcji.)
+  (1) **Ślizgawka i wymuszony Test** — w przeglądarce klikana była wyłącznie podłoga elektryczna; Test Atletyki
+  z wyzwalaczem „każdy ruch na obszarze" ma test serwera. (2) **Kara do RUCH-u (Maź)** — naklejka
   **„Spowolniony"** (nowy status, ikona `slowed.svg` z game-icons) i jej liczba w budżecie ruchu
   („Pancerz −2 · Spowolniony −7") widziane tylko w testach; **ikona nie była oglądana na żetonie**.
-  (4) **Strzał stanowiska** — ścieżka `fires` przeszła testem wyłącznie w wariancie „nie ma żetonu
+  (3) **Strzał stanowiska** — ścieżka `fires` przeszła testem wyłącznie w wariancie „nie ma żetonu
   na scenie"; prawdziwy strzał wieżyczki związanej ze strefą wymaga żetonu z bronią i celu w polu
-  ostrzału. (5) **Winda z gazem w Kolejce Inicjatywy** — wyzwalacz `turn` odpala **wyłącznie**
-  przyciskiem „Odpal system" (patrz akapit niżej), więc wiersz w trackerze zakłada MG ręcznie.
+  ostrzału. (4) **Winda z gazem w Kolejce Inicjatywy** — od 22.08 wiersz wstawia się sam przy wejściu na
+  obszar (patrz akapit niżej), ale nikt tego nie widział na ekranie: pokryte testem serwera.
 
-- **Etap 26f — pułapka z własną Turą nie wstawia się do Kolejki sama.** Wyzwalacz `turn` (winda
-  z gazem, s. 216) jest w danych i jest **pomijany** przez hak ruchu; odpala go „Odpal system" na
-  karcie strefy. To świadome i zgodne z linią 26c/26e („nic nie rusza się samo, MG klika"), ale
-  znaczy, że zdanie „Pułapka zajmuje pierwsze miejsce w Kolejce Inicjatywy" MG realizuje sam —
-  dodając wiersz trackera i klikając przycisk w jego Turze. Automatyczna wstawka wzorem
-  `pushNetFoeIntoQueue` z 26c to wpis w `POMYSLY.md`.
+- ~~**Etap 26f — pułapka z własną Turą nie wstawia się do Kolejki sama.**~~
+  **Naprawione 22.08.** Wejście na obszar pułapki z wyzwalaczem `turn` (winda z gazem, s. 216)
+  **zakłada jej wiersz w Kolejce Inicjatywy** — `pushZoneIntoQueue` w `zones.ts`, wzorowane na
+  `pushNetFoeIntoQueue` z 26c: wiersz bez figury (`Combatant.zoneId`, nowa kolumna + migracja),
+  inicjatywa o punkt wyżej od najwyższej, `order: -1`. **Odpalenie zostaje klikiem MG** — linia
+  26c/26e („nic nie rusza się samo") się nie zmienia; zniknęła tylko papierkowa robota.
+  Trzy przypadki milczenia, każdy świadomy: nie ma walki, pułapka już w kolejce stoi, albo
+  **runda 0 („PRZED WALKĄ")** — tam inicjatywy są nierzucone, więc „o punkt wyżej" dałoby
+  pułapce 1, czyli po rzutach miejsce **ostatnie**. Wiersz znika przy rozbrojeniu, rozstrzelaniu
+  i usunięciu strefy. Test w `zones.test.ts`.
 
-- **Etap 26f — promień zauważenia strefy (4 m) to czytanie VTT, nie RAW.** Podręcznik daje samo
-  „Percepcja PT 17, by zauważyć" i żadnej odległości — dokładnie jak przy promieniu Skanera z 26b.
-  4 m to dwa pola: dość blisko, żeby „widziałem druty w dywanie" dało się powiedzieć przy stole,
-  i dość daleko, żeby rzut padł **przed** pierwszym krokiem na pułapkę. Stała
-  `ZONE_SPOT_RANGE_M` w `packages/shared/src/zones.ts`.
-
-- **Etap 26f — rzut na Percepcję jest jeden na postać i nie da się go powtórzyć.** Bez tego
-  gracz cofałby się o metr i wracał, aż wyjdzie. Drugiej szansy nie ma nawet po zmianie sceny;
-  drogą obok nieudanego rzutu jest wyłącznie przycisk MG „Odsłoń graczom". Lista prób siedzi
-  w kolumnie `sightings` strefy i ginie razem z nią.
-
-- **Etap 26f — figura, która już stoi na strefie, nie wchodzi na nią drugi raz.** „Cel **wchodzi**
-  na broniony obszar" czytane dosłownie: ruch wewnątrz obszaru wyzwalacza `enter` nie odpala
-  (odpala `move`, czyli Ślizgawkę i Siatkę laserową). Podłoga elektryczna bije wtedy dopiero na
-  koniec Tury — i to jest ta sama liczba, którą podręcznik obiecuje.
-
-- **Etap 26e — cztery ścieżki nieodklikane; reszta sprawdzona 16.08 (patrz notatka sesji).**
-  (1) **Strona gracza** — całe okno Demonów oglądane było z konta MG, i inaczej się nie da:
-  netrunnerem Poligonu jest karta „Test 27x", która należy do MG, a nie do Tony'ego ani avatar9.
-  Różnica w kodzie **jest i jest zamierzona** (Demon „czuwający" w ogóle nie wchodzi do payloadu
-  gracza, a atak na niego wraca `NET_DEMON_UNKNOWN`) i pokryta dwoma testami na żywych gniazdach.
-  (2) **„Ten Demon miał już swoją Turę w tej Rundzie"** — na Poligonie tryb turowy jest wyłączony,
-  więc rund nie ma i odmowa nie ma jak paść; pokryta testem serwera. (3) **Wstawka Demona do
+- **Etap 26e — trzy ścieżki nieodklikane; reszta sprawdzona 16.08 (patrz notatka sesji).**
+  (Strona gracza → pozycja zbiorcza na górze sekcji.)
+  (1) **„Ten Demon miał już swoją Turę w tej Rundzie"** — na Poligonie tryb turowy jest wyłączony,
+  więc rund nie ma i odmowa nie ma jak paść; pokryta testem serwera. (2) **Wstawka Demona do
   Kolejki Inicjatywy** — z tego samego powodu: bez rozpoczętej walki nie ma do czego wstawiać
-  (test serwera sprawdza inicjatywę „o jeden punkt wyżej" i wiersz bez figury). (4) **Uwaga
+  (test serwera sprawdza inicjatywę „o jeden punkt wyżej" i wiersz bez figury). (3) **Uwaga
   „jeden Demon na sześć pięter"** — Architektura Poligonu ma cztery piętra i jednego Demona, czyli
   mieści się w budżecie; żeby zobaczyć zdanie, trzeba dołożyć drugiego (pokryte testem w `shared`).
 
-- **Etap 26e — Demon nie strzela sam z siebie do figur, których nie widzi netrunner.** Cel
-  wieżyczki wybiera silnik: **figura netrunnera**, gdy jest do niej linia strzału, a w przeciwnym
-  razie najbliższa figura, która nie jest urządzeniem tej Architektury. To **czytanie VTT, nie
-  RAW** — podręcznik zostawia wybór ofiary stołowi, a decyzja MG z 16.08 („jeden klik") kazała
-  komuś wybrać. Jeśli przy stole wyjdzie, że Demon strzela nie w tego, w kogo trzeba, pierwszym
-  miejscem do obejrzenia jest `pickTurretTarget` w `realtime/netdemons.ts`.
-
-- **Etap 26e — Demon nie obsługuje kamer ani drzwi, tylko strzela i Pafa.** `nextDemonStep` zna
-  trzy kroki (odbierz węzeł, strzel, Pafnij), bo tylko strzał ma w silniku konsekwencję, którą da
-  się rozliczyć. Obrócenie kamery czy zamknięcie bramy przez Demona zostaje **ręcznym hakiem MG** —
-  ta sama umowa, którą 26c zawarło z dwoma efektami „na godzinę", a 26d z widzeniem kamery.
-
-- **Etap 26d — cztery ścieżki nieodklikane; reszta sprawdzona 15.08 (patrz notatka sesji).**
+- **Etap 26d — trzy ścieżki nieodklikane; reszta sprawdzona 15.08 (patrz notatka sesji).**
   (1) **„Raz na Turę"** — `NET_NODE_USED` ma polskie zdanie i test na żywych gniazdach, ale
   w przeglądarce do niego nie doszło: rundy istnieją dopiero po **rozpoczęciu** walki (sam
   „Włącz tryb turowy" zostawia stan „PRZED WALKĄ" i rundę 0), a rozkręcanie walki w żywej
@@ -327,10 +341,8 @@ przy **każdym** przejściu przez pokój i który ma własny wyłącznik).
   nie ma ani jednych; ścieżka jest kopią `opening:toggle` i ma test serwera, w oknie Sieci
   klikane były kamera i wieżyczka. (3) **Odmowa `NET_DEVICE_OFF`** — z tego okna **nie da się**
   do niej dojść i to jest zamierzone: wyłączone urządzenie pokazuje wyłącznie „Włącz". Zdanie
-  istnieje dla klienta, który by o tym nie wiedział, i ma test. (4) **Strona gracza** — całe okno
-  urządzeń oglądane było z konta MG. Różnica w kodzie **jest i jest zamierzona** (gracz nie
-  dostaje listy urządzeń, dopóki nie przejmie węzła — pokryte testem na payloadzie „nie przysyła
-  graczowi listy urządzeń"), ale nikt nie patrzył na to oczami gracza.
+  istnieje dla klienta, który by o tym nie wiedział, i ma test.
+  (Strona gracza → pozycja zbiorcza na górze sekcji.)
 
 - ~~**Etap 26d — strzał z wieżyczki za osłoną nie ma czym odpowiedzieć.**~~ **Naprawione 21.08**
   (sesja naprawcza). `request.ignoreCover` jechało w payloadzie i **nikt go stamtąd nie ustawiał**
@@ -341,39 +353,19 @@ przy **każdym** przejściu przez pokój i który ma własny wyłącznik).
   logu Demona (26e) i strefy (26f), które wstawiają je wprost na czat. **Druga Akcja Sieciowa
   nadal się należy** — jej zwrot to osobny, świadomy wpis w `POMYSLY.md` (15.08).
 
-- **Etap 26d — kamera „obrócona" jest faktem na czacie, nie stożkiem na mapie** (decyzja MG
-  z 15.08). VTT nie ma modelu widzenia kamery, więc obsługa zmienia stan urządzenia i pisze
-  zdanie („nie patrzy już na broniony obszar"), a resztę rozstrzyga MG — dokładnie tak jak dwa
-  ręczne haki Programów z 26c. Prawdziwy stożek liczony geometrią z 18a jest wpisem w `POMYSLY.md`.
-
-- **Etap 26d — parser tabel obronnych stoi na dwóch heurystykach i to on pierwszy pęknie przy
-  nowym zrzucie PDF-a.** Wiersze tnie zdanie „PT N Elektronika i zabezpieczenia, N minut…", a
-  nazwę wyłuskuje się zza powtarzalnej komórki „Granica bronionej strefy"; tam, gdzie tej komórki
-  nie ma (Kamera obserwacyjna), wchodzi reguła „ostatni ciąg Wielka + małe przed końcem pierwszego
-  zdania". Wyszło 18 z 18 nazw, ale gdyby zrzut się zmienił, `parse_defenses` jest miejscem do
-  obejrzenia w pierwszej kolejności.
-
-- **Etap 26c — pięć ścieżek nieodklikanych; reszta sprawdzona 15.08 (patrz notatka sesji).**
-  (1) **Strona gracza** — całe okno walki oglądane było z konta MG; różnica w kodzie **jest**
-  i jest zamierzona (gracz nie dostaje ATK/OBR/PER/PRĘ LOD-a ani jego efektu, dopóki ten go nie
-  dopadnie), pokryta testem `netcombat.test.ts` na payloadzie, ale nikt na to nie patrzył oczami
-  gracza. (2) **Superklej i „Zdejmij" u MG** — hak `glue` ma test w `shared`, a w przeglądarce
-  do niego nie doszło: trzeba wrogiego LOD-a z tym efektem (Kraken) albo Superkleju w cudzym
-  deku. (3) **Paf** — sprawdzony testem serwera, w oknie klikany był tylko Miecz. (4) **LOD
+- **Etap 26c — cztery ścieżki nieodklikane; reszta sprawdzona 15.08 (patrz notatka sesji).**
+  (Strona gracza → pozycja zbiorcza na górze sekcji.)
+  (1) **Superklej i „Zdejmij" u MG** — hak `glue` ma test w `shared`, a w przeglądarce do niego
+  nie doszło: trzeba wrogiego LOD-a z tym efektem (Kraken) albo Superkleju w cudzym
+  deku. (2) **Paf** — sprawdzony testem serwera, w oknie klikany był tylko Miecz. (3) **LOD
   przeciwprogramowy** (bije w losowy zrezowany Program zamiast w mózg) — cały przypadek pokryty
-  testami, nieoglądany. (5) **Zderezowanie LOD-a przez gracza** i wypadnięcie go z kolejki —
+  testami, nieoglądany. (4) **Zderezowanie LOD-a przez gracza** i wypadnięcie go z kolejki —
   w oględzinach LOD schodził do REZ 10, nie do zera.
 
 - **Etap 26c — „raz na rundę w Somie" świadomie pominięte.** „Załadowany na cyberdek Program
   można aktywować tylko raz na rundę w Somie" (s. 201) nie jest egzekwowane: rundy istnieją
   wyłącznie w trybie turowym, a zakres etapu wymienia inne ograniczenia Programów („jedna kopia
   naraz", „raz na wejście", derez i dwie Akcje na przywrócenie), które są. Wpis w `POMYSLY.md`.
-
-- **Etap 26c — Powłoka i Tarcza są na razie martwe z samego RAW.** „Redukuje do 0 ATK
-  atakujących cię Programów typu Agresor, **niebędących Czarnym LOD-em**" i „pierwszy udany atak
-  Programu **niebędącego Czarnym LOD-em**" — a jedynym, co atakuje w Sieci przed 26d i przed
-  wrogim netrunnerem, są Czarne LOD-y. Kod obu obrońców jest napisany i pokryty testami
-  (`netShellActive`, `netShieldFor`); czeka na przeciwnika, którego zdanie nie wyklucza.
 
 - **Etap 26b — dwie ścieżki nieodklikane; „Sieć 1/4" domknięte 15.08 przy 26c.** (1) **Ściana
   między netrunnerem a gniazdem** (`NET_WALL_BLOCKS`) — Poligon nie ma ścian na scenie
@@ -382,15 +374,6 @@ przy **każdym** przejściu przez pokój i który ma własny wyłącznik).
   (przycisk „Podłącz się" po prostu wraca z odmową). ~~(3) Budżet Akcji Sieciowych w trackerze~~
   — **odklikane 15.08**: w RUNDZIE 1 wiersz Kolca pokazał „Akcja 1/1 · Sieć 1/4" po pierwszej
   Akcji Sieciowej.
-
-- **Etap 26b — trzy rzeczy świadomie uproszczone, do rozważenia przy stole.** (1) **Promień
-  Skanera to wynik Testu w metrach** — podręcznik mówi „MG określa dokładną liczbę znalezionych
-  punktów dostępu" i nie daje żadnej liczby, więc to czytanie VTT, nie RAW; MG ma obok przycisk
-  „Odsłoń graczom" na karcie gniazda. (2) **Zwiad liczy piętra wszerz** (obie drogi w dół
-  z rozgałęzienia naraz), bo mapa, która patrzy tylko w trzon, ukrywałaby odgałęzienie, do
-  którego RAW każe zanieść Wirusa. ~~(3) Piętro z Czarnym LOD-em odkrywa się, ale nic się na nim
-  nie dzieje~~ — **domknięte w 26c 15.08**: wejście na takie piętro stawia LOD-a w szybie,
-  a `metIce` służy dziś do tego, do czego było pisane — do rachunku za awaryjne odłączenie.
 
 - **Etap 26a — trzy ścieżki nieodklikane, wszystkie po stronie MG albo skrajnego przypadku.**
   (1) **Formularz „Obrona Sieci"** w edytorze MG kompendium (REZ, Interfejs, Akcje Sieciowe,
@@ -402,11 +385,6 @@ przy **każdym** przejściu przez pokój i który ma własny wyłącznik).
   wpisu; generator zawsze wypełnia oba, więc do tego stanu trzeba dojść ręczną edycją.
   Sam tekst jest pokryty testem w `netrunning.test.ts`.
 
-- **Etap 26a — biblioteka Architektur jest niewidoczna dla gracza z założenia, ale nikt nie
-  patrzył na to okiem gracza.** `net:*` ma rolę `ROLE_GM` i emituje wyłącznie do `gmRoom`,
-  co pokrywa test „never lets a player near the library" (lista, odczyt i zapis odmawiają).
-  W przeglądarce sprawdzone było tylko to, że u MG zakładka „Sieć" stoi w rzędzie MG.
-
 - ~~**Etap 26a — szybka sekwencja zmian na karcie gubi część edycji.**~~ **Naprawione 21.08**
   (sesja naprawcza). Przyczyna leżała o krok dalej, niż mówiła notatka: strażniki
   `pendingSaves > 0` **były** i w `endSave`, i w `applyUpsert`, ale liczyły wyłącznie zapisy
@@ -417,34 +395,33 @@ przy **każdym** przejściu przez pokój i który ma własny wyłącznik).
   błąd. Pilnuje `packages/client/src/character-save.test.ts` — trzy testy na podstawionym
   gnieździe, sprawdzone celowym cofnięciem poprawki.
 
-- **Etap 27c — trzy ścieżki nieodklikane, wszystkie po stronie gracza albo skrajnego przypadku.**
-  (1) **Strona gracza** — obie nowe strony oglądane były wyłącznie na koncie MG; różnicy w kodzie
-  nie ma (jedyne pole tylko dla MG na stronie drugiej to Reputacja, i było takie już w 23c),
-  ale gracz ich nie klikał. Zapis gracza jest za to pokryty testem na żywych gniazdach
-  (`characters.test.ts` — „the player writes their own page two and places their own chrome").
-  (2) **Postać wychodząca prosto z kreatora** — sprawdzona była karta, w którą Ścieżkę wpisano
+- **Etap 27c — dwie ścieżki nieodklikane, obie skrajne.**
+  (Strona gracza → pozycja zbiorcza na górze sekcji.)
+  (1) **Postać wychodząca prosto z kreatora** — sprawdzona była karta, w którą Ścieżkę wpisano
   ręcznie; przepływ „kreator wypełnia 17 pytań → strona druga je pokazuje" idzie tym samym
   polem `data.lifepath`, więc rozjazd jest nieprawdopodobny, ale nie był oglądany.
-  (3) **Wąskie okno** — `@container (max-width: 560px)` zwęża rubryki do jednej kolumny
+  (2) **Wąskie okno** — `@container (max-width: 560px)` zwęża rubryki do jednej kolumny
   i zmniejsza pudełka gniazd; okno karty ma `min(1180px, 100vw − 32px)`, więc do tego progu
   trzeba ekranu poniżej ~600 px, a `resize_window` na zmaksymalizowanym oknie nic nie daje.
 
-- **Etap 27c — cztery gniazda kończyn dzielą jedną pulę.** Rysunek pyta „która ręka?", ale
-  arytmetyka gniazd modyfikacji z 23a dalej liczy **per rodzina** (`cyberwareCapacity`), więc
-  „Cyberkończyny 2 / 8" nie mówi, czy obie modyfikacje siedzą w tej samej ręce. To świadome
-  uproszczenie z 23a i `bodySlot` go nie znosi — zniósłby je dopiero licznik gniazd per sztuka
-  sprzętu, czyli inny model danych. Wpis do rozważenia w `POMYSLY.md`.
+- ~~**Etap 27c — cztery gniazda kończyn dzielą jedną pulę.**~~ **Naprawione 22.08** — i taniej,
+  niż mówiła notatka: model danych **był już gotowy**, bo `bodySlot` (27c) siedzi na wierszu od
+  dawna i tylko arytmetyka go ignorowała. `cyberwareCapacity` liczy teraz **także per pudełko
+  sylwetki**: „Cyberkończyny 2 / 8" dostaje pod spodem „Prawa cyberręka: 2 / 4 · Lewa: 0 / 4".
+  Wiersz rodziny **zostaje nagłówkiem** i nie zmienia się ani o punkt — to jego liczbę czyta
+  rachunek Człowieczeństwa. Rozbicie (`places`) dostają wyłącznie rodziny z **więcej niż jednym**
+  pudełkiem (Cyberoptyka, Cyberkończyny); przy Cyberaudio powtarzałoby wiersz rodziny.
+  Wszczepy, których nikt nie umieścił, liczą się raz w `unplaced`, żeby obie sumy się zgadzały —
+  i **nie** wpadają do żadnej kończyny po cichu. Nowość, której licznik per rodzina nie umiał
+  złapać: modyfikacja w ręce, której nie ma („nie ma w czym"), gdy druga ręka jest cybernetyczna.
+  Cztery testy w `cyberware.test.ts`. **Nieodklikane w przeglądarce** — do obejrzenia na karcie
+  z chromem w obu rękach.
 
-- **Etap 25c — cztery ścieżki nieodklikane, wszystkie po stronie gracza albo uploadu.**
-  (1) **Wgranie portretu w kreatorze** — przycisk widziany i naprawiony, ale pliku nie
-  wgrywano; trasa to ta sama `/api/uploads/portraits` co na karcie z etapu 07. (2) **Odmowa
-  poziomu u gracza** — „Kup" ma być wyszarzone, a serwer ma wrócić „Poza zasięgiem sklepu.
-  Poziom 2 (Zawodowe) — kampania ma odblokowany 1 (Uliczne)"; pokryte testem na żywych
-  gniazdach, w przeglądarce oglądane z konta MG (który jest z blokady zwolniony).
-  (3) **Druga sztuka tego samego przedmiotu** w koszyku (chip „×2" i wiersz „nazwa ×2"
-  w audycie) — klikane było „+" po jednej sztuce; pokryte testem. (4) **Kreator u gracza** —
-  cały krok wyposażenia oglądany był u MG; różnicy w kodzie nie ma (poziom 1 obowiązuje
-  obie strony), ale na koncie gracza nie był klikany.
+- **Etap 25c — dwie ścieżki nieodklikane.** (1) **Wgranie portretu w kreatorze** — przycisk
+  widziany i naprawiony, ale pliku nie wgrywano; trasa to ta sama `/api/uploads/portraits` co
+  na karcie z etapu 07. (2) **Druga sztuka tego samego przedmiotu** w koszyku (chip „×2"
+  i wiersz „nazwa ×2" w audycie) — klikane było „+" po jednej sztuce; pokryte testem.
+  (Odmowa poziomu i krok wyposażenia u gracza → pozycja zbiorcza na górze sekcji.)
 
 - **Etap 25c — Krawędziarz nie dostaje odgórnego pakietu Roli.** RAW (s. 98 i 103) daje mu
   broń, pancerz, ekwipunek i modę z tabeli swojej Roli **plus** 500 ed; VTT daje na razie samą
@@ -456,22 +433,6 @@ przy **każdym** przejściu przez pokój i który ma własny wyłącznik).
   wyposażenia mówi o tych pieniądzach i ich nie wydaje. Dodanie ich do portfela byłoby
   prezentem — za 800 ed można kupić karabin. Wpis w `POMYSLY.md`.
 
-- **Etap 25b — dwie tabele Ścieżek Ról są nagłówkami, nie pytaniami.** `exec.relacje` („Obecne
-  stosunki z szefostwem") i `nomad.filozofia` („Ogólna filozofia watahy") wchodzą do danych
-  z pytaniem zastąpionym własnym nagłówkiem kolumny („Relacje", „Filozofia"), bo podręcznik
-  wprowadza je tytułem, a zrzut PDF-a skleja ten tytuł z ostatnim wierszem tabeli **wyżej**.
-  Czytelne przy stole, ale nie jest to zdanie z książki.
-
-- **Etap 25b — dwie binarne decyzje Ról zostały poza danymi.** „Masz partnera czy pracujesz
-  sam?" (Netrunner, Technik, Medyk, Fixer) i „Działasz w zespole czy solo?" (Rocker) to
-  w podręczniku wybór bez kości, więc parser ich nie czyta — bierze wyłącznie tabele kostkowe.
-  Skutek: kreator pokazuje pytanie o partnera bezwarunkowo, tak jak robi to książka („Jeśli
-  masz partnera, kim jest?"). Wpis w `POMYSLY.md`.
-
-- **Etap 25b — kostki na karcie Ścieżki świecą jak krytyki.** Ten sam drobiazg co przy rozkładzie
-  Cech z 25a: rzut `13k10 + 4k6` maluje dziesiątki na zielono, a jedynki na czerwono, choć to
-  numery wierszy tabel. Do rozważenia razem ze szlifem kubka w etapie 27.
-
 - **Etap 25a — cztery ścieżki nieodklikane.** (1) **Odmowa serwera przy przepełnionej puli** —
   „Utwórz postać" jest wyszarzone, więc do `CREATION_INCOMPLETE` w przeglądarce się nie dojdzie;
   pokryte testem serwera. (2) **Degradacja bez `creation.json`** — kreator ma wtedy powiedzieć
@@ -481,29 +442,28 @@ przy **każdym** przejściu przez pokój i który ma własny wyłącznik).
   i w bazie stanęła z właścicielem **Marcin**. (4) **Rangi Postaci inne niż „początkująca"** — selektor
   pokazuje pięć pozycji (50–80 pkt), klikana była tylko domyślna 62.
 
-- **Etap 25a — kostki na karcie rozkładu świecą jak krytyki.** Rzut `10k10` rysuje dziesiątki
-  na zielono, a jedynki na czerwono, bo tak czat maluje **każdą** kostkę k10. Tu 10 i 1 to
-  numery wierszy szablonu, nie krytyk ani fumble (`roll.critical` jest puste i żadna plakietka
-  się nie pojawia). Kosmetyka; do rozważenia razem ze szlifem kubka w etapie 27.
-
-- **Etap 25a — nazwa umiejętności wielokrotnej nie ma gdzie zamieszkać (zostały trzy z czterech).**
-  „Nauka (wybierz 1)", „Gra na instrumencie (wybierz 1)" i „Wiedza lokalna" to w podręczniku
-  umiejętności ze specjalizacją, a `CpredCharacterData.skills` trzyma samo `skillId → poziom`,
-  więc kreator zapisuje „Nauka 4" bez dziedziny. **„Język" wypadł z tej listy w 25b** — nazwę
-  trzyma `lifepath.language`, wybierana z listy sąsiadującej z wylosowaną kulturą pochodzenia,
-  a podsumowanie kreatora mówi wprost „na poziomie 4 — Farsi". Wpis w `POMYSLY.md`.
+- ~~**Etap 25a — nazwa umiejętności wielokrotnej nie ma gdzie zamieszkać.**~~
+  **Naprawione 22.08.** Karta ma `skillSpecialties` (skillId → dziedzina), a czyta się je
+  **wyłącznie** przez `cpredSkillSpecialty` / `cpredSkillLabel` w `shared` — bo Język odpowiada
+  z `lifepath.language`, gdzie mieszka od 25b, a pozostałe z nowej mapy. Etykieta „Nauka (Fizyka)"
+  idzie na kartę, w tytuł rzutu i w rozbicie na czacie. Kreator **pyta** i nie skończy postaci
+  bez odpowiedzi.
+  **Umiejętności są cztery, nie trzy** — do „Nauki", „Gry na instrumencie" i „Wiedzy lokalnej"
+  doszły **„Sztuki walki"** („każdego stylu musisz się uczyć osobno", s. 81), które notatka
+  pomijała.
+  **Dwa świadome ograniczenia.** (1) **Jedna dziedzina na umiejętność, nie wiele** — postać
+  znająca karate i judo ma tu jeden wiersz; RAW dałoby dwie osobne umiejętności, a to inny model
+  danych (`skills` kluczowane czymś więcej niż id). (2) **Umiejętność podstawowa nie blokuje
+  kreatora** — „Wiedza lokalna" jest na liście każdej Roli, więc twardy wymóg byłby podatkiem
+  od **każdego** NPC-a, a etap 25a wprost chroni ścieżkę „pięciu NPC-ów w jeden wieczór". Pole
+  i tak stoi w kreatorze i na karcie, tylko nie zatrzymuje. Jeśli przy stole wyjdzie, że ma
+  zatrzymywać — to jeden `if` w `creationIssues`.
 
 - **Etap 27b — rana krytyczna w nowym panelu nieobejrzana, ale od 22.08 **osiągalna w jednym
   kliknięciu**.** „Krytyczne Urazy" w kolumnie tożsamości widziane było wyłącznie w stanie pustym,
   bo MG nie miał czym nadać rany. Ma: lista wyboru + „Nadaj" pod listą ran (`character:injury`).
   Zostaje samo **obejrzenie** wiersza z raną — nazwa, `2k6 = N`, chip „na minutę", „+N do Testu
   Przeżywalności", efekt, kosz — w obu motywach i na wydruku.
-
-- **Etap 27a — motyw dzienny kończy się na oknie karty.** To świadome i zapisane w zakresie:
-  `data-theme='day'` przemalowuje `.sheet-window` (od 27b także pas broni i pancerza, a od 27c
-  **wszystkie trzy strony wydruku razem z sylwetką** — sprawdzone 14.08 w obu motywach), ale
-  mapa, panele boczne, czat i **okno kubka z rzutem** zostają ciemne. Reszta UI dochodzi
-  w etapie 27.
 
 - **Etap 24c — cztery ścieżki nieodklikane.** (1) **Zdjęcie prasowe** — screamsheet przyjmuje
   grafikę handoutu i rysuje ją jako odbitkę gazetową (`grayscale`), ale przy oględzinach nic
@@ -519,10 +479,6 @@ przy **każdym** przejściu przez pokój i który ma własny wyłącznik).
   temperaturze 0,9 (świadomie wysokiej: brukowiec ma zmyślać) będzie się to zdarzać częściej
   niż u kronikarza z 19c. Jeśli przeszkadza, pierwszą rzeczą do ruszenia jest
   `SCREAMSHEET_TEMPERATURE` w `packages/shared/src/screamsheets.ts`.
-
-- **Etap 24c — 📰 rysuje się jednobarwnie.** Na Windowsie emoji gazety wypada z Segoe UI Emoji
-  do symbolicznego zamiennika, więc obok kolorowych 📄 i 🖼 wygląda jak ikona konturowa.
-  Kosmetyka; do zmiany razem ze szlifem UI w etapie 27.
 
 - **Etap 24b — wyszukiwarka nie zna polskiej odmiany.** Szukanie jest dopasowaniem podciągu
   po tekście bez znaków diakrytycznych, więc `barman` znajduje „barmana" i „barmanem", ale
@@ -555,12 +511,6 @@ przy **każdym** przejściu przez pokój i który ma własny wyłącznik).
   spoza PNG/JPG/WebP mają wrócić po polsku z `uploadErrorText`; sprawdzony był wyłącznie
   poprawny PNG. Ścieżka jest kopią routingu portretów z etapu 07.
 
-- **Etap 23c — zostały dwa przyciski przegranego u gracza.** Sekcja Reputacji u gracza, który
-  **ma** wyczyny, jest odklikana (11.08, niżej). **Nieobejrzane:** „Wycofaj się" / „Nie ustępuj
-  (−2)" na karcie czatu, gdy przegraną jest **figura gracza** (pokryte testem `o wycofaniu
-decyduje przegrany, nie zwycięzca`) — Konfrontacje z 10.08 szły z konta MG, więc przyciski
-  oglądał MG, nie gracz.
-
 - ~~**Etap 23c — „Cofnij" na karcie obrażeń nie przywraca strachu.**~~ **Naprawione 21.08**
   (sesja naprawcza). Wpis był w dodatku **mylący**: komentarz w `realtime/damage.ts` obiecywał,
   że powrotem jest ręczne zaznaczenie „Onieśmielonego" w menu tokenu — a to nie działa, bo
@@ -569,27 +519,25 @@ decyduje przegrany, nie zwycięzca`) — Konfrontacje z 10.08 szły z konta MG, 
   `DamageLogEntry`), a „Cofnij" woła `restoreFacedownFear`. Test w `facedown.test.ts` dowodzi
   powrotu **rzutem**, nie samą naklejką — bo naklejka to połowa kary.
 
-- **Etap 23c — status „Onieśmielony" zaznaczony ręcznie nadal nic nie liczy, ale już to mówi.**
-  Kara wymaga **dwóch** rzeczy naraz: naklejki na tokenie i adresu przeciwnika w
-  `Token.statusData` (`sheetFacedownPenalty`). To celowe — dzięki temu odznaczenie statusu jest
-  pełnym „zdejmij karę". Od 21.08 pole w menu tokenu ma `title`, który mówi, że sama naklejka nie
-  nakłada −2 (`STATUS_HINTS` w `TokenContextMenu.tsx`); wcześniej MG odhaczał je przekonany,
-  że kara działa.
+- ~~**Etap 23c — status „Onieśmielony" zaznaczony ręcznie nic nie liczy.**~~
+  **Naprawione 22.08.** Kara nadal wymaga **dwóch** rzeczy naraz (naklejki i adresu przeciwnika
+  w `Token.statusData`) i tak ma zostać — dzięki temu zdjęcie naklejki jest pełnym „zdejmij karę".
+  Zmieniło się to, że **drugą połowę da się wreszcie dopisać ręcznie**: pod statusami w menu
+  żetonu stoi lista **„Boi się:"** z figurami sceny (`token:feared`, MG-only), a nagłówek mówi
+  wprost „nikogo, więc −2 nie działa". `token:update` był złą drogą i nią nie jest — pisze
+  kolumny, którymi figura **jest**, a nigdy `statusData`. Lista jedzie w prywatnej części
+  `TokenView` (`feared`) — MG i właściciel, jak PW. Trzy testy w `facedown.test.ts`: kara
+  schodzi z rzutu dopiero po wskazaniu kogo, zdjęcie naklejki ją wyłącza mimo zapisanego adresu,
+  gracz nie dopisze nikomu niczego.
 
-- **Etap 23b — trzy ścieżki nieodklikane.** (1) **Karta przelewu na ekranie odbiorcy** — przelew
-  wychodzi z konta gracza poprawnie (11.08, niżej), a wiersz czatu ma `recipientId`, więc dociera
-  do obu stron i MG; nikt nie był jednak zalogowany jako **Tony**, żeby to zobaczyć. Potrzeba
-  trzeciego hosta — patrz „Pułapki dev". (2) **Zakup pancerza i sprzętu** — sprawdzona tylko broń; wiersze pancerza
+- **Etap 23b — trzy ścieżki nieodklikane.**
+  (Karta przelewu u odbiorcy → pozycja zbiorcza na górze sekcji.)
+  (1) **Zakup pancerza i sprzętu** — sprawdzona tylko broń; wiersze pancerza
   (`spCurrent`, lokacja, kara) i sprzętu idą tą samą funkcją `purchasedSheetRow` i mają test
-  w `shared`, ale w przeglądarce nie były klikane. (3) **Wpis bez ceny liczbowej** — „Kup" ma być
+  w `shared`, ale w przeglądarce nie były klikane. (2) **Wpis bez ceny liczbowej** — „Kup" ma być
   wtedy wyszarzony, a cena ma się liczyć z pasma; w kompendium kampanii wszystkie oglądane wpisy
-  miały cenę. (4) **„Znaleziony — montaż N ed"** przy cyborgizacji (s. 375) — przycisk istnieje
+  miały cenę. (3) **„Znaleziony — montaż N ed"** przy cyborgizacji (s. 375) — przycisk istnieje
   i jest pokryty testem, klikany był tylko wariant pełnopłatny.
-
-- **Etap 23b — lista odbiorców przelewu odświeża się przy otwarciu „Kasy".** Postać utworzona,
-  gdy panel jest już rozwinięty, pojawi się na liście dopiero po zwinięciu i ponownym rozwinięciu.
-  Świadome: listę przynosi `economy:history` razem z audytem (klient gracza nie zna cudzych kart),
-  a odświeżanie jej na każdą zmianę czegokolwiek w kampanii byłoby zapytaniem na każdy zapis karty.
 
 - **Etap 23a — dwie ścieżki nieodklikane.** (1) **Chip cyberpsychozy
   na liście postaci** (`character-psychosis` w `CharacterPanel.tsx`) — dopisany **po** oględzinach,
@@ -625,13 +573,16 @@ decyduje przegrany, nie zwycięzca`) — Konfrontacje z 10.08 szły z konta MG, 
   która je ma. ~~(7) Strona gracza~~ — **odklikane 10.08**: gracz zatwierdził propozycję bojową
   bota ze swojego ekranu (linia „ZATWIERDZONE — AVATAR9" na czacie).
 
-- **Etap 20b — `NO_ROUTE` mówi „droga jest zablokowana", choć zwykle nie jest.** Ta sama odmowa
-  leci w **trzech** różnych sytuacjach (`bot-combat.ts:487` i pętla w okolicy 657): A\* nie znalazł
-  trasy, przycięcie do budżetu zostawiło mniej niż dwa punkty, albo przycięta trasa kończy się
-  **tam, gdzie się zaczęła** (bot już stoi przy celu). Ostatnia z nich jest najczęstsza i wtedy
-  zdanie kłamie — MG idzie szukać ściany, której nie ma. Widać to na czacie z 10.08 („Podejście
-  do: Tony … NIE DA SIĘ TAM DOJŚĆ — DROGA JEST ZABLOKOWANA"), gdzie figura bota stała już obok
-  celu. Rozdzielić na trzy zdania albo dopisać powód do karty.
+- ~~**Etap 20b — `NO_ROUTE` mówi „droga jest zablokowana", choć zwykle nie jest.**~~
+  **Naprawione 22.08.** Rozdzielone na trzy kody, bo powody były trzy — i przy okazji wyszło,
+  że stary komunikat kłamał **częściej**, niż mówiła notatka: `planWalk` **nigdy nie odmawia**
+  celu nie do osiągnięcia (oddaje trasę do najbliższego pola z `truncated`), więc „droga jest
+  zablokowana" nie było prawdą właściwie nigdy. Dziś: `NO_ROUTE` (figura naprawdę zamurowana —
+  najlepszym polem jest to, na którym stoi, a cel jest gdzie indziej), `NO_ROUTE_BUDGET`
+  („za mało metrów ruchu w tej turze") i `ALREADY_IN_PLACE` („już tam stoisz — podejście niczego
+  nie zmieni"). Zdanie idzie do modelu jako powód do poprawki, więc każde podpowiada **inny**
+  następny ruch. Rozróżnienie „już tam stoję" od „zamurowany" robi porównanie pola startowego
+  z docelowym (`walkCellOf` w `bot-combat.ts`). Testy w `bot-combat.test.ts`.
 
 - **Etap 20a — jedna ścieżka nieodklikana.** **Tryb „kontrolowany"** — bot ma tylko mówić i nie
   dotykać mechaniki; pokryte testem (przebieg decyzyjny w ogóle nie dociera do modelu), w przeglądarce
@@ -693,28 +644,11 @@ decyduje przegrany, nie zwycięzca`) — Konfrontacje z 10.08 szły z konta MG, 
 
 - **Etap 16e — odklikane częściowo (na koncie gracza), reszta czeka na mysz.** **Sprawdzone 31.07 na koncie Johnny:** klik w token → zaznaczenie (biały przerywany pierścień), podgląd trasy pod kursorem z licznikiem „15,2 m" i znacznikiem ✖, oraz odmowa poza turą (trasa przestaje się rysować). **Zostało do sprawdzenia:** (1) sam marsz po kliknięciu w podłoże i odsłanianie mgły w jego trakcie; (2) obejście rogu korytarza przez trasę; (3) klik za zasięgiem tury → ✖ na granicy budżetu i wygaszony ogon; (4) kursor „idź w tę stronę" nad czernią; (5) Esc / klik w trakcie marszu; (6) przerwanie marszu przez NPC wychodzącego zza rogu; (7) Shift+klik → żółty punkt załamania; (8) PPM w puste → odznaczenie; (9) **przeciąganie tokenu działa jak przed etapem** (najważniejszy test regresji — patrz `DRAG_CLICK_GRACE_MS`); (10) token 2×2 przy metrowych drzwiach. Punkty 1–8 wymagają tury dla postaci, którą się steruje — na scenie kampanii turę ma ukryty NPC, więc oględziny zrób na osobnej scenie albo po przekazaniu tury.
 
-- **Kliknięcie w token było zepsute dla graczy od 18a — naprawione w 16e, ale zaległości oględzin z tego okresu warto powtórzyć.** Warstwy przykrywające przechwytywały hit-test (szczegóły w „Pułapki dev"), więc gracz na scenie z dynamiczną widocznością **nie mógł kliknąć ani przeciągnąć żadnego tokenu**. To prawdopodobnie realna przyczyna części wpisów „strona gracza nieodklikana" niżej — przy ich odhaczaniu sprawdź najpierw, czy rzecz w ogóle dawała się kliknąć.
+- **Kliknięcie w token było zepsute dla graczy od 18a — naprawione w 16e, ale zaległości oględzin z tego okresu warto powtórzyć.** Warstwy przykrywające przechwytywały hit-test (szczegóły w „Pułapki dev"), więc gracz na scenie z dynamiczną widocznością **nie mógł kliknąć ani przeciągnąć żadnego tokenu**. To prawdopodobnie realna przyczyna części pozycji zbiorczej „strona gracza" na górze sekcji — przy jej odhaczaniu sprawdź najpierw, czy rzecz w ogóle dawała się kliknąć.
 
 - **70 broni markowych ma opisy po angielsku** (nie 35 — ta liczba brała się z komunikatu skryptu „35 już w pamięci podręcznej"). Angielskie opisy ma **wyłącznie** `weapons.json`; pozostałe 271 wpisów kompendium jest po polsku. **Skrypt był 21.08 pułapką i został naprawiony**: kwalifikował do tłumaczenia każdy wpis bez `descriptionOriginal`, czyli **341** — w tym 271 polskich, które model dostałby do „przetłumaczenia z angielskiego". Teraz `looks_english()` odsiewa je (`--check` mówi: 70 do zrobienia, 271 pominięto). Zostaje sam przebieg `tools/import/translate-descriptions.py` przy włączonym llama-serverze (`pwsh ai-gateway/scripts/start-gateway.ps1`, potem `uv run --with httpx python tools/import/translate-descriptions.py`). Bez GPU się nie da, więc czeka na sesję z gatewayem.
 - **Etap 13 — UI kompendium odklikane tylko powierzchownie**: 30.07 (przy oględzinach 14b) potwierdzona sama zakładka „Kompendium" — chipy kategorii z licznikami (Broń 103, Pancerz 11, Sprzęt 5, Cyborgizacje 3, Rany krytyczne 22) i lista wpisów z obrażeniami i ceną. **Nadal nieodklikane:** karta przedmiotu z tabelą PT, edytor MG, dodanie przedmiotu na kartę postaci. Ścieżki serwerowe pokryte testami.
 - **Etap 09 — zakładka „AI" u MG niezweryfikowana wizualnie** (sesja toczyła się na koncie gracza). Późniejsze etapy oglądały u MG inne zakładki, więc to prawdopodobnie martwa zaległość — sprawdź przy okazji.
-- **Etapy 18d/18e — strona gracza nieodklikana**: ikona 🪟 u gracza, „Za daleko — podejdź do okna", „Okno zamknięte na skobel", „Zamknięte na klucz". Pokryte testami dymnymi na payloadzie.
-- **Etap 14e — karta odmowy przy Urazie kręgosłupa u gracza nadal nieobejrzana, ale od 22.08 jest jak ją wywołać.**
-  MG nadaje ranę z karty postaci (lista + „Nadaj"), więc „Uraz kręgosłupa" nie wymaga już
-  trafienia 1/36 razy 3/36. Stara treść wpisu niżej — została, bo opisuje, **czego** dokładnie
-  nikt nie widział na ekranie gracza.
-
-  Odmowa Akcji przy Urazie kręgosłupa i monit przy Urazie ucha widziane u MG, ale **nie** na
-  ekranie gracza. Próba z 11.08 utknęła nie na automatyzacji, tylko na tym, że **MG nie ma czym
-  nadać rany krytycznej**: na karcie postaci sekcja „Rany krytyczne" wyłącznie **usuwa** wiersze
-  (`CriticalInjuries` w `CharacterSheet.tsx`), karta wpisu w kompendium nie ma „Dodaj postaci",
-  a w menu tokenu są tylko statusy. Rana wchodzi **jedynie** z rzutu obrażeń z flagą
-  `criticalDamage` (dwie szóstki na 2k6 — 1/36) albo z nietrafionego testu amunicji z 16h
-  (`check.failure.injuries`). Do „Urazu kręgosłupa" trzeba jeszcze trafić 2k6 = 10 w tabeli
-  Korpusu (3/36), więc w oględzinach jest to nieosiągalne. **Sam mechanizm karty odmowy u gracza
-  jest już potwierdzony trzy razy** (budżet 14b, dystans 14c, status Powalony) — nieobejrzane
-  zostaje wyłącznie zdanie rany w treści karty. Wpis do `POMYSLY.md`: przycisk MG „nadaj ranę
-  krytyczną" (RAW i tak pozwala MG przypisać ranę narracyjnie).
 - **Ślad ścieżki przy przeciąganiu nieobejrzany**: `left_click_drag` z CDP jest natychmiastowy, więc łamana z licznikiem metrów rysuje się i znika między klatkami. Do sprawdzenia ręcznie — myszą.
 - **Etap 14d — została odmowa Uniku Ludzkiej tarczy**: karta testu spornego z „Broń się"
   u broniącego się gracza i odmowa ruchu Trzymanemu są **odklikane 10.08** (na czacie
@@ -722,7 +656,6 @@ decyduje przegrany, nie zwycięzca`) — Konfrontacje z 10.08 szły z konta MG, 
   nie może wykonać własnej Akcji Ruchu"). Zostaje `SHIELD_CANNOT_DODGE` („Ludzka tarcza nie może
   unikać ataków dystansowych") — wymaga **trzeciej figury na scenie**: ktoś musi strzelić do
   trzymającego, żeby tarcza w ogóle dostała przycisk „Unik". Na Strzelnicy są dwie figury.
-- **Etap 16b — strona gracza i klik w cel nieodklikane**: klik w token ładujący kubek ataku, „🎯 Atak…" w menu kontekstowym tokenu i edytor profilu bojowego w „Edytuj…" — wszystkie trzy wymagają trafienia wskaźnikiem w warstwę Pixi, czego CDP nie dowozi (pułapka niżej). Pokryte 13 testami dymnymi w `attacks.test.ts`.
 - ~~**Osłona nie blokuje ruchu po stronie serwera**~~ — **naprawione 21.08** (sesja naprawcza), i szerzej, niż mówiła notatka: serwer nie sprawdzał **żadnej** geometrii ruchu, więc ściany też nie blokowały przeciągnięcia. `validateTokenMove` woła teraz `refuseWalkThroughSolid` (ściany + zamknięte okna + stojące osłony, `firstBlockedStep` w `shared/pathfinding.ts`), **także poza walką**; MG jest zwolniony, jak wszędzie w tym module. Odmowa nie nazywa przeszkody — gracz nie może mapować budynku, wchodząc w ściany. Testy: `covers.test.ts` (przez samochód, dookoła niego, MG bez blokady) i `walls.test.ts` (drzwi zamknięte vs otwarte). Stara treść wpisu; `validateTokenMove` dalej liczy sam dystans. Wraca razem z kolizjami ruchu (POMYSLY, 30.07).
 - ~~**Etap 16b — statysta nie może aktywnie unikać**~~ — **naprawione 22.08** (sesja naprawcza).
   `attack:evade` czyta obrońcę z zapisanej karty ataku, a kartę postaci bierze **tylko wtedy, gdy
@@ -823,6 +756,52 @@ decyduje przegrany, nie zwycięzca`) — Konfrontacje z 10.08 szły z konta MG, 
 
 ## Notatki z dwóch ostatnich sesji
 
+### Sesja 22.08 (druga tego dnia) — triaż zaległości i pięć pozycji z niego, poza etapami
+
+MG kazał wypisać ~10 otwartych zaległości do uporządkowania (bez rzeczy czekających na lokalny
+LLM, bez nieukończonych etapów), a potem wykonać **pozycje 1–5**.
+
+**Porządki w dokumentacji** (odpowiedzi MG na trzy pytania z triażu):
+
+- **Poziom sklepu Poligonu → 2 (Zawodowe).** Przestawione wprost w bazie (`Campaign.shopTier`),
+  bo aplikacja nie działała — **do sprawdzenia przy pierwszym uruchomieniu**, czy przełącznik
+  w „Kompendium" pokazuje 2. Kopia zapasowa bazy była robiona przed zapisem.
+- **13 wpisów przeniesionych** z „Otwartych zaległości" do nowego
+  `docs/etapy/decyzje-i-uproszczenia.md` — świadome czytania RAW i uproszczenia (promień 4 m,
+  Skaner, zwiad wszerz, Demon bez kamer i drzwi, kamera bez stożka, Powłoka i Tarcza, parser
+  tabel obronnych, dwie tabele Ścieżek, binarne decyzje Ról, lista odbiorców przelewu, kontrast
+  marki). **To nie są zadania** i plik ma to w nagłówku; czytać na żądanie.
+- **16 pozycji „strona gracza" scalonych w jedną** — checklista po etapach na górze sekcji
+  zaległości. To była jedna sesja oględzin z drugiego konta, nie kilkanaście zadań.
+- **Cztery wpisy skasowane jako nieaktualne** (sprawdzone w kodzie, nie na słowo): kostki
+  kreatora z 25a i 25b (`plain: true` w `creation.ts`), jednobarwne 📰 z 24c (`newspaper.svg`)
+  i „motyw dzienny kończy się na oknie karty" z 27a (27e dał globalne `[data-theme='day']`).
+- Sekcja zaległości zeszła z 558 do ~455 wierszy.
+
+**Pięć naprawionych pozycji** — szczegóły przy odpowiednich wpisach wyżej (wszystkie przekreślone):
+
+1. **`NO_ROUTE` bota rozdzielone na trzy kody.** Przy okazji wyszło, że stary komunikat kłamał
+   **częściej**, niż mówiła notatka: `planWalk` nigdy nie odmawia celu nie do osiągnięcia, więc
+   „droga jest zablokowana" nie było prawdą praktycznie nigdy.
+2. **Pułapka z wyzwalaczem `turn` wchodzi do Kolejki Inicjatywy sama.** Nowa kolumna
+   `Combatant.zoneId` + migracja `20260822130000_stage26f_zone_in_queue`. Odpalenie zostaje
+   klikiem MG — zmieniła się papierkowa robota, nie linia „nic nie rusza się samo".
+3. **Specjalizacje umiejętności.** `skillSpecialties` na karcie i w drafcie kreatora; czyta się
+   je **wyłącznie** przez `cpredSkillSpecialty` / `cpredSkillLabel`, bo Język odpowiada ze
+   Ścieżki Życia. Umiejętności okazały się **cztery**, nie trzy — doszły Sztuki walki.
+4. **Ręczny „Onieśmielony" wreszcie nakłada −2.** Nowe `token:feared` (MG-only) i lista
+   „Boi się:" pod statusami w menu żetonu; `feared` w prywatnej części `TokenView`.
+5. **Gniazda liczone per kończyna.** Model danych był gotowy od 27c (`bodySlot`) — ignorowała go
+   sama arytmetyka. Wiersz rodziny został nagłówkiem, rozbicie jedzie pod spodem.
+
+**Testy:** 1334 w `shared`, 759 na serwerze, 28 u klienta — wszystkie przechodzą. ESLint czysty,
+Prettier na dotkniętych plikach przepuszczony. Serwer wstaje (`Server listening`, kompendium 391
+wpisów, `/api/campaigns` bez sesji → 401).
+
+**Czego ta sesja NIE ruszyła:** pozycji 6–9 z triażu (wyposażenie Krawędziarza i Moda, odmiana
+w wyszukiwarce bazy wiedzy, czytelność figury na 0 PW i `down`, „raz na rundę w Somie") — MG
+wskazał 1–5. Żadna z pięciu poprawek **nie była oglądana w przeglądarce**; wszystkie mają testy.
+
 ### Sesja 22.08 — sesja naprawcza (grupy A i B z przeglądu zaległości), poza etapami
 
 **Zlecenie MG: wypisać ~10 otwartych zaległości do triażu, a potem wykonać grupy A i B** —
@@ -908,69 +887,11 @@ marki. To są pozycje 9–12 listy, MG zostawił je świadomie.
 
 ### Sesja 21.08 (trzecia tego dnia) — sesja naprawcza, poza etapami
 
-**Zlecenie MG: przejrzeć otwarte zaległości, wybrać z nich, co jest prawdziwym błędem, i to
-naprawić.** Z ~60 punktów sekcji „Otwarte zaległości" wyszło 11 pozycji do rozstrzygnięcia;
-MG wskazał grupę A — pięć rzeczy, które są **błędami**, a nie długiem oględzin. Wszystkie pięć
-potwierdziły się w kodzie, trzy okazały się **gorsze albo inne, niż mówiła notatka**.
-
-**1. Karta gubiła edycje — przyczyna leżała krok dalej, niż zapisano.** Notatka mówiła „echo
-serwera podmienia całą postać". Prawda: strażniki `pendingSaves > 0` **były** i w `endSave`,
-i w `applyUpsert` — tylko że liczyły zapisy **wysłane**, a łatka czekająca w buforze debounce
-nie liczyła się wcale. Ack poprzedniego zapisu adoptował widok serwera, kasował ją ze store'a,
-a następny klik budował listę z okrojonego stanu — wiersz przepadał bez śladu i bez komunikatu.
-Poprawka: `beginSave` przy **kolejkowaniu**, nie przy flushu (jeden bufor = jeden zapis). Ta sama
-dziura była w ścieżce botów. Trzy testy w `character-save.test.ts` na podstawionym gnieździe,
-sprawdzone celowym cofnięciem poprawki (dwa padają bez niej).
-
-**2. Serwer nie sprawdzał żadnej geometrii ruchu — nie tylko osłon.** Notatka mówiła „osłona nie
-blokuje ruchu, jak ściany", co sugeruje, że ściany blokują. Nie blokowały: `validateTokenMove`
-znało wyłącznie statusy i budżet tury, a `coverMovementSegments` miało **jedno** wywołanie w całym
-repo — w `MapArea.tsx`. Trasę planował klient, a drag nigdy planera nie pyta. Nowe:
-`firstBlockedStep` w `shared/pathfinding.ts` (na `isSegmentClear` z 18a) i `refuseWalkThroughSolid`
-w `movement.ts` — ściany, zamknięte okna i stojące osłony, **także poza walką**, bo ściana jest
-ścianą, gdy nikt nie liczy rund. Geometria liczona od **środka** figury, nie od rogu (to samo
-przeliczenie, które robiły metry — wydzielone do `pathCentres`). MG zwolniony, jak wszędzie
-w tym module: stawianie figur to połowa jego pracy z mapą. **Odmowa nie nazywa przeszkody** —
-gracz nie może mapować budynku, wchodząc w ściany (test tego pilnuje).
-
-**3. `ignoreCover` w oknie Sieci było polem, którego nikt nie ustawiał.** Cały łańcuch działał
-poza ostatnim ogniwem: typ miał pole, serwer je czytał, `attacks.ts` honorował — a `NetRunWindow`
-nie znało go w ogóle, więc netrunner tracił Akcję Sieciową i **nie miał czym odpowiedzieć**.
-Odmowa jest teraz kodem (`NET_SHOT_COVERED` / `NET_SHOT_BLOCKED`), nie gotowym zdaniem, więc okno
-ją rozpoznaje i podstawia przycisk „Strzelaj mimo osłony". `fireDevice` zwraca `blocked` jako
-`{ code, text }`, bo Demon (26e) i strefa (26f) wstawiają to zdanie **wprost na czat** — sam kod
-wypisałby im „NET_SHOT_COVERED." przy figurze.
-
-**4. Komentarz o Onieśmieleniu obiecywał drogę powrotną, której nie ma.** `damage.ts` twierdził:
-„Re-ticking «Onieśmielony» in the token menu is the way back". Nie jest — `clearFacedownFear`
-kasuje **i naklejkę, i adres** w `statusData`, a `token:update` `statusData` nigdy nie pisze
-(sprawdzone: pisze `name`, `imageUrl`, `ownerId`, `hidden`, `statuses`, `visionRange`, `facing`,
-`light` — i tyle). Karta obrażeń zapisuje teraz `fearCleared`, a „Cofnij" woła
-`restoreFacedownFear`. Test dowodzi powrotu **rzutem**, nie naklejką, bo naklejka to połowa kary.
-Drugą połowę problemu — że ręczne zaznaczenie nic nie liczy — zostawiono jako decyzję, ale pole
-dostało `title`, który to mówi.
-
-**5. Zaległość „35 broni po angielsku" była pułapką: jej wykonanie zepsułoby dane.** Liczba jest
-zła (angielskie są **wszystkie 70** wpisów `weapons.json`; 35 to „już w pamięci podręcznej"
-z komunikatu skryptu), ale gorsze było to, do czego notatka namawiała. `collect_entries()`
-kwalifikowało każdy wpis bez `descriptionOriginal` — **341**, w tym 271 opisów z polskiego
-podręcznika, które model dostałby do „przetłumaczenia z angielskiego na polski". `suspicious()`
-tylko dopisuje ostrzeżenie; `entry["description"] = translated` wykonuje się bezwarunkowo.
-Skrypt ma teraz `looks_english()` — świadomie stronniczy ku zostawianiu tekstu w spokoju:
-pominięty angielski wpis zostaje czytelny, zepsuty polski to szkoda. `--check` mówi dziś:
-**70 do zrobienia, 271 pominięto**.
-
-**Znalezione przy okazji, poza zleceniem:** wpis o dwóch katalogach do skasowania po TTS był
-martwy — `C:/AI/tts` i `uploads/tts-cache` nie istnieją, a `ai-gateway/.env` nie ma ani jednego
-klucza `GATEWAY_TTS_*`. Usunięty z listy zaległości.
-
-**Czego ta sesja nie ruszała:** długu oględzin (~31 wzmianek „nieodklikane"), reszty punktów
-z listy 11 i etapów 27g/28. Tłumaczenie 70 broni czeka na włączony llama-server — sam przebieg,
-bez zmian w kodzie.
-
-**Testy:** 1316 (shared) + 740 (server) + 16 (client). Nowe: 5 × `firstBlockedStep`,
-3 × autozapis karty, 3 × kolizje ruchu w `covers.test.ts`, 1 × ściana w `walls.test.ts`,
-1 × powrót strachu w `facedown.test.ts`. ESLint czysty, Prettier czysty.
+Pięć błędów, z których cztery leżały o krok dalej, niż mówiły notatki: serwer nie sprawdzał
+**żadnej** geometrii ruchu (nie tylko osłon), bufor debounce karty gubił edycje mimo strażników
+`pendingSaves`, `ignoreCover` jechało w payloadzie i nikt go nie ustawiał, a „Cofnij" nie
+przywracało strachu, bo `token:update` nigdy nie pisze `statusData`. Piąty to naprawiony skrypt
+tłumaczenia opisów broni. Pełna notatka: `archiwum/dziennik-sesji.md`.
 
 ### Sesja 21.08 (druga tego dnia) — etap 27f (szlif UX: pomoc, tooltipy, stany, okna)
 

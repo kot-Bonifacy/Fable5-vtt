@@ -761,6 +761,54 @@ describe('bezpieczniki', () => {
     gm.socket.disconnect();
   });
 
+  // Do 22.08 wszystkie trzy powody nieudanego podejścia jechały jako jedno
+  // zdanie „droga jest zablokowana", więc MG szedł szukać ściany, której nie ma.
+  it('says the bot already stands there instead of blaming a wall', async () => {
+    const gm = createSocket(gmCookie);
+    await gm.firstSync;
+    const seen = collect(gm.socket);
+    await createBot(gm.socket, { data: { autonomy: 'auto' } });
+    // Rico tuż obok: podejście zwija się do zera i nie jest ruchem.
+    await place(gm.socket, enemyTokenId, 1);
+    await startFight(gm.socket);
+    gateway.answers = [
+      decision({ akcja: 'podejście', cel: 'Rico', bron: 'Zgrzyt 9', powod: 'Podchodzę.' }),
+      decision({ akcja: 'pas', cel: 'Rico', bron: 'Zgrzyt 9', powod: '.' }),
+    ];
+
+    await emitAck(gm.socket, 'bot:play-turn', { tokenId: botTokenId });
+
+    const refused = await until(() => seen.traces.find((t) => t.refusal));
+    expect(refused.refusal).toContain('Już tam stoisz');
+    expect(refused.refusal).not.toContain('zablokowana');
+    await endFight(gm.socket);
+    gm.socket.disconnect();
+  });
+
+  it('blames the budget, not a wall, when the target is simply too far', async () => {
+    const gm = createSocket(gmCookie);
+    await gm.firstSync;
+    const seen = collect(gm.socket);
+    await createBot(gm.socket, { data: { autonomy: 'auto' } });
+    await place(gm.socket, enemyTokenId, 40);
+    await startFight(gm.socket);
+    // Cała Akcja Ruchu spalona podejściem, więc drugie „podejście" nie ma metrów.
+    gateway.answers = [
+      decision({ akcja: 'podejście', cel: 'Rico', bron: 'Zgrzyt 9', powod: 'Podchodzę.' }),
+      decision({ akcja: 'pas', cel: 'Rico', bron: 'Zgrzyt 9', powod: '.' }),
+    ];
+
+    await emitAck(gm.socket, 'bot:play-turn', { tokenId: botTokenId });
+
+    // Odmowy tu nie ma — chodzi o to, że droga JEST i bot nią idzie; test
+    // pilnuje, żeby rozdzielenie kodów nie zamieniło zwykłego marszu w odmowę.
+    const moved = await tokenOf(gm.socket, botTokenId);
+    expect(moved.x).toBeGreaterThan(0);
+    expect(seen.traces.some((t) => t.refusal?.includes('zablokowana'))).toBe(false);
+    await endFight(gm.socket);
+    gm.socket.disconnect();
+  });
+
   it('refuses a figure that no bot drives', async () => {
     const gm = createSocket(gmCookie);
     await gm.firstSync;

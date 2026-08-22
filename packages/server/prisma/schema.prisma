@@ -860,6 +860,12 @@ model Combatant {
   netRunId String?
   /// Its id inside that run's `CpredNetCombatState.ice`.
   netIceId String?
+  /// The defended zone this row stands for — a trap with a Turn of its own
+  /// („Pułapka zajmuje pierwsze miejsce w Kolejce Inicjatywy", s. 216). The
+  /// second bodiless participant after the Black ICE, and for the same reason:
+  /// it acts in the queue without standing anywhere on the map. Firing it stays
+  /// the GM's click on the zone card; only the ROW gets here by itself.
+  zoneId   Int?
   /// Rolled initiative (1d10 + REF in CP RED); null = not rolled yet.
   initiative Int?
   /// Secondary sort supplied by the game system (CP RED: REF); null = unknown.

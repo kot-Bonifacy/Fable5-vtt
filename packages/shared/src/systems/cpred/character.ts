@@ -128,6 +128,69 @@ export function isCpredSkillGroup(value: unknown): value is CpredSkillGroup {
   return typeof value === 'string' && (CPRED_SKILL_GROUPS as readonly string[]).includes(value);
 }
 
+/**
+ * „Język" — the skill whose name has lived in `lifepath.language` since 25b,
+ * because it is picked next to the Culture of Origin that grants it.
+ */
+export const CPRED_LANGUAGE_SKILL_ID = 'language';
+
+/**
+ * The skills the rulebook makes you *name* when you buy a level (s. 81):
+ * „Zawsze, gdy podnosisz tę Umiejętność, musisz wybrać, którą specjalizację
+ * rozwijasz" (Nauka) — and the same sentence under Wiedza lokalna, Gra na
+ * instrumencie and Sztuki walki.
+ *
+ * `language` is the fifth of them and is deliberately NOT here: it already had
+ * a home. Everything that displays a name goes through `cpredSkillSpecialty`,
+ * which knows about both.
+ */
+export const CPRED_SPECIALTY_SKILL_IDS = [
+  'science',
+  'local-expert',
+  'play-instrument',
+  'martial-arts',
+] as const;
+
+/** „Fizyka", „Karate", „Watson" — one line, not an essay. */
+export const SKILL_SPECIALTY_MAX_LENGTH = 60;
+
+/** Does this skill ask „w czym?" before a level on it means anything? */
+export function cpredSkillNeedsSpecialty(skillId: string): boolean {
+  return (
+    skillId === CPRED_LANGUAGE_SKILL_ID ||
+    (CPRED_SPECIALTY_SKILL_IDS as readonly string[]).includes(skillId)
+  );
+}
+
+/**
+ * The field a skill's level was bought in, or '' when nobody has named one.
+ *
+ * The only supported way to read it: `language` answers out of the Lifepath,
+ * the other four out of `skillSpecialties`, and a caller that reaches for
+ * either map by hand will get one of the two cases wrong.
+ */
+export function cpredSkillSpecialty(
+  data: Pick<CpredCharacterData, 'skillSpecialties' | 'lifepath'>,
+  skillId: string,
+): string {
+  if (skillId === CPRED_LANGUAGE_SKILL_ID) return data.lifepath?.language?.trim() ?? '';
+  return data.skillSpecialties?.[skillId]?.trim() ?? '';
+}
+
+/**
+ * „Nauka (Fizyka)" for the sheet, the roll card and the bot's menu — and plain
+ * „Nauka" while the field is still blank, because a lie in brackets is worse
+ * than a missing bracket.
+ */
+export function cpredSkillLabel(
+  skill: Pick<CpredSkillDefinition, 'id' | 'name'>,
+  data: Pick<CpredCharacterData, 'skillSpecialties' | 'lifepath'> | null | undefined,
+): string {
+  if (!data || !cpredSkillNeedsSpecialty(skill.id)) return skill.name;
+  const specialty = cpredSkillSpecialty(data, skill.id);
+  return specialty ? `${skill.name} (${specialty})` : skill.name;
+}
+
 /** One entry of `cpred/skills.json` (public samples or the private full set). */
 export interface CpredSkillDefinition {
   id: string;
@@ -458,6 +521,26 @@ export interface CpredCharacterData {
   roleAbilityRank: number;
   /** skillId → level 1–10; untrained skills are simply absent. */
   skills: Record<string, number>;
+  /**
+   * skillId → the field that level was bought in, for the skills the rulebook
+   * makes you name: „Zawsze, gdy podnosisz tę Umiejętność, musisz wybrać, którą
+   * specjalizację rozwijasz" (Nauka, s. 81) and the same sentence under Wiedza
+   * lokalna, Gra na instrumencie and Sztuki walki.
+   *
+   * Free text, because the rulebook's lists („Geologia, Matematyka, Fizyka…")
+   * are examples, not an enum — and a closed list is exactly what stage 25b
+   * refused for the whole Lifepath chapter.
+   *
+   * **One field per skill, not many.** A character who knows both Karate and
+   * Judo has one row here; RAW would give them two separate skills, and that is
+   * a different data model (`skills` keyed by more than an id). What this map
+   * fixes is the sheet that said „Nauka 4" and would not say of what.
+   *
+   * `language` is deliberately absent: its name has lived in `lifepath.language`
+   * since 25b, next to the Culture of Origin it comes from. Read both through
+   * `cpredSkillSpecialty`, never straight off this map.
+   */
+  skillSpecialties: Record<string, string>;
   weapons: CpredWeaponRow[];
   armor: CpredArmorRow[];
   gear: CpredGearRow[];
@@ -625,6 +708,7 @@ export function createDefaultCharacterData(): CpredCharacterData {
     roleId: null,
     roleAbilityRank: ROLE_RANK_MIN,
     skills: {},
+    skillSpecialties: {},
     weapons: [],
     armor: [],
     gear: [],
@@ -681,6 +765,39 @@ function validateStats(raw: unknown, issues: CpredValidationIssue[]): CpredStats
     stats[id] = value;
   }
   return stats;
+}
+
+/**
+ * „Nauka (Fizyka)" — the name half of a specialised skill.
+ *
+ * Kept apart from `validateSkills` rather than folded into it, because the two
+ * answer different questions and a level is written far more often than a name:
+ * a client that only bumps a level must not have to resend the names.
+ *
+ * A name on a skill that needs none is dropped, not refused — the same bargain
+ * unknown skill ids get one function down.
+ */
+function validateSkillSpecialties(
+  raw: unknown,
+  registry: CpredRegistry,
+  issues: CpredValidationIssue[],
+): Record<string, string> | undefined {
+  if (typeof raw !== 'object' || raw === null) {
+    issues.push(issue('skillSpecialties', 'Nieprawidłowy format specjalizacji.'));
+    return undefined;
+  }
+  const specialties: Record<string, string> = {};
+  for (const [id, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!registry.skillIds.has(id)) continue;
+    if (!cpredSkillNeedsSpecialty(id) || id === CPRED_LANGUAGE_SKILL_ID) continue;
+    if (typeof value !== 'string') {
+      issues.push(issue(`skillSpecialties.${id}`, 'Specjalizacja musi być tekstem.'));
+      return undefined;
+    }
+    const text = value.trim().slice(0, SKILL_SPECIALTY_MAX_LENGTH);
+    if (text) specialties[id] = text;
+  }
+  return specialties;
 }
 
 function validateSkills(
@@ -1057,6 +1174,10 @@ function collectCharacterDataPatch(
   if ('skills' in input) {
     const skills = validateSkills(input.skills, registry, issues);
     if (skills) patch.skills = skills;
+  }
+  if ('skillSpecialties' in input) {
+    const specialties = validateSkillSpecialties(input.skillSpecialties, registry, issues);
+    if (specialties) patch.skillSpecialties = specialties;
   }
   if ('weapons' in input) {
     const weapons = validateRows<CpredWeaponRow>(input.weapons, 'weapons', issues, (base, row) => {

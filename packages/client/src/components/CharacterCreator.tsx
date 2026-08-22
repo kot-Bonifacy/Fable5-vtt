@@ -25,6 +25,8 @@ import {
   LIFEPATH_GROUP_MAX,
   ROLE_GM,
   SHOP_TIER_LABELS,
+  SKILL_SPECIALTY_MAX_LENGTH,
+  cpredSkillNeedsSpecialty,
   creationAvailableSkills,
   creationBudget,
   creationDataOf,
@@ -560,6 +562,17 @@ function SkillsStep({ draft }: { draft: CpredCreationDraft }) {
   );
 }
 
+/**
+ * Przykłady dziedzin wprost z opisów umiejętności w danych — to lista
+ * przykładów, nie enum, więc podpowiedź, a nie wybór z listy.
+ */
+const CREATOR_SPECIALTY_HINTS: Record<string, string> = {
+  science: 'np. Fizyka',
+  'local-expert': 'np. Watson',
+  'play-instrument': 'np. gitara',
+  'martial-arts': 'np. karate',
+};
+
 function SkillRow({ skill, draft }: { skill: CpredSkillDefinition; draft: CpredCreationDraft }) {
   const registry = useCharacterStore((s) => s.registry);
   const patch = useCreationStore((s) => s.patch);
@@ -569,9 +582,18 @@ function SkillRow({ skill, draft }: { skill: CpredSkillDefinition; draft: CpredC
   const isFree = data.freeLanguage?.skillId === skill.id;
   const ceiling = isFree ? data.freeLanguage!.level : data.limits.skillMax;
 
+  // „W czym?" — Nauka, Wiedza lokalna, Gra na instrumencie i Sztuki walki nie
+  // znaczą nic bez dziedziny (s. 81), a Język ma swoją przy kulturze pochodzenia.
+  const needsSpecialty = cpredSkillNeedsSpecialty(skill.id) && !isFree;
+  const specialty = draft.skillSpecialties[skill.id] ?? '';
+
   function setLevel(next: number) {
     if (next < 0 || next > ceiling) return;
     void patch({ skills: { ...draft.skills, [skill.id]: next } });
+  }
+
+  function setSpecialty(next: string) {
+    void patch({ skillSpecialties: { ...draft.skillSpecialties, [skill.id]: next } });
   }
 
   return (
@@ -585,6 +607,24 @@ function SkillRow({ skill, draft }: { skill: CpredSkillDefinition; draft: CpredC
           </span>
         )}
       </span>
+      {needsSpecialty && (
+        <input
+          type="text"
+          className={`creator-skill-specialty${
+            level > 0 && !specialty.trim() ? ' creator-skill-specialty--missing' : ''
+          }`}
+          value={specialty}
+          maxLength={SKILL_SPECIALTY_MAX_LENGTH}
+          placeholder={CREATOR_SPECIALTY_HINTS[skill.id] ?? 'w czym?'}
+          onChange={(e) => setSpecialty(e.target.value)}
+          aria-label={`Specjalizacja: ${skill.name}`}
+          title={
+            level > 0 && !specialty.trim()
+              ? 'Bez tego nie da się skończyć postaci — podręcznik każe wybrać dziedzinę.'
+              : `Dziedzina, w której postać rozwija umiejętność ${skill.name}`
+          }
+        />
+      )}
       <span className="creator-skill-stat">{CPRED_STAT_LABELS[skill.stat].abbr}</span>
       <span className="creator-skill-controls">
         <button

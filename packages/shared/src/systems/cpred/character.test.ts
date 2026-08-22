@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   CPRED_SCHEMA_VERSION,
   SHEET_LINE_MAX_LENGTH,
+  SKILL_SPECIALTY_MAX_LENGTH,
   buildCpredRegistry,
+  cpredSkillLabel,
+  cpredSkillNeedsSpecialty,
+  cpredSkillSpecialty,
   createDefaultCharacterData,
   cyberdeckSlotsFree,
   cyberdeckSlotsUsed,
@@ -26,6 +30,9 @@ const registry: CpredRegistry = buildCpredRegistry(
     skills: [
       { id: 'handgun', name: 'Broń krótka', stat: 'ref' },
       { id: 'paramedic', name: 'Ratownictwo medyczne', stat: 'tech', multiplier: 2 },
+      // Dwie z pięciu umiejętności, które podręcznik każe nazwać (s. 81).
+      { id: 'science', name: 'Nauka', stat: 'int' },
+      { id: 'language', name: 'Język', stat: 'int' },
     ],
   },
   {
@@ -281,6 +288,64 @@ describe('groupedSkills', () => {
   it('lists every skill exactly once', () => {
     const ids = groupedSkills(grouped).flatMap((group) => group.skills.map((skill) => skill.id));
     expect(ids.sort()).toEqual(['archery', 'athletics', 'handgun', 'orphan']);
+  });
+});
+
+describe('specjalizacje umiejętności', () => {
+  const science = { id: 'science', name: 'Nauka' };
+  const language = { id: 'language', name: 'Język' };
+  const handgun = { id: 'handgun', name: 'Broń krótka' };
+
+  it('names the field on the label, and says nothing extra when there is none', () => {
+    const data = createDefaultCharacterData();
+    expect(cpredSkillLabel(science, data)).toBe('Nauka');
+    data.skillSpecialties.science = 'Fizyka';
+    expect(cpredSkillLabel(science, data)).toBe('Nauka (Fizyka)');
+    // Umiejętność, która nie wymaga wyboru, nie dostaje nawiasu nigdy.
+    expect(cpredSkillLabel(handgun, data)).toBe('Broń krótka');
+  });
+
+  it('reads Język out of the Lifepath, where it has lived since 25b', () => {
+    const data = createDefaultCharacterData();
+    data.lifepath = { ...data.lifepath, language: 'Farsi' };
+    expect(cpredSkillSpecialty(data, 'language')).toBe('Farsi');
+    expect(cpredSkillLabel(language, data)).toBe('Język (Farsi)');
+    // …i nie z mapy specjalizacji, nawet gdyby ktoś tam coś wpisał.
+    data.skillSpecialties.language = 'Suahili';
+    expect(cpredSkillLabel(language, data)).toBe('Język (Farsi)');
+  });
+
+  it('knows which five skills ask the question', () => {
+    for (const id of ['science', 'local-expert', 'play-instrument', 'martial-arts', 'language']) {
+      expect(cpredSkillNeedsSpecialty(id)).toBe(true);
+    }
+    expect(cpredSkillNeedsSpecialty('handgun')).toBe(false);
+  });
+
+  it('takes a specialisation through the patch, trimmed and capped', () => {
+    const result = validateCharacterDataPatch(
+      { skillSpecialties: { science: `  ${'x'.repeat(SKILL_SPECIALTY_MAX_LENGTH + 20)}  ` } },
+      registry,
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.patch.skillSpecialties?.science).toHaveLength(SKILL_SPECIALTY_MAX_LENGTH);
+  });
+
+  it('drops a name written onto a skill that needs none, and onto Język', () => {
+    const result = validateCharacterDataPatch(
+      { skillSpecialties: { handgun: 'z biodra', language: 'Farsi', science: 'Chemia' } },
+      registry,
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.patch.skillSpecialties).toEqual({ science: 'Chemia' });
+  });
+
+  it('gives an old sheet an empty map rather than undefined', () => {
+    const parsed = parseCharacterData({ schemaVersion: 2, skills: { science: 4 } }, registry);
+    expect(parsed.skillSpecialties).toEqual({});
+    expect(cpredSkillLabel({ id: 'science', name: 'Nauka' }, parsed)).toBe('Nauka');
   });
 });
 

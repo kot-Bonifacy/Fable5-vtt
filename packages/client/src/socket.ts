@@ -2426,6 +2426,17 @@ export function sendTokenMove(
 export const setTokenFacing = (tokenId: string, facing: number | null) =>
   emitSceneAck<TokenView>('token:facing', { tokenId, facing });
 
+/**
+ * Names whom a figure backed down from (stage 23c), so the „Onieśmielony"
+ * sticker the GM ticked by hand actually costs its −2.
+ *
+ * Separate from `token:update` because that event never writes `statusData`,
+ * which is where the rule looks — the sticker alone has always been half the
+ * condition, and until 22.08 the other half had no door.
+ */
+export const setTokenFeared = (tokenId: string, fearedTokenIds: string[]) =>
+  emitSceneAck<TokenView>('token:feared', { tokenId, fearedTokenIds });
+
 /** Requests the previous page of chat history (infinite scroll upwards). */
 export function loadOlderHistory(): void {
   const store = useChatStore.getState();
