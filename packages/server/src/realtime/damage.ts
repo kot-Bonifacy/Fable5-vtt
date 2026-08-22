@@ -1,5 +1,6 @@
 import type {
   ChatMessageView,
+  CharacterInjuryPayload,
   CpredAmmoProfile,
   DamageApplyPayload,
   DamageLogEntry,
@@ -8,11 +9,12 @@ import type {
   RollResult,
   TokenHp,
 } from '@vtt/shared';
-import { ARMOR_SP_MAX, ROLE_GM, damageTotal } from '@vtt/shared';
+import { ARMOR_SP_MAX, ROLE_GM, damageTotal, isCriticalInjuryEntry } from '@vtt/shared';
 import type { Character, Scene, Token } from '../generated/prisma/client.js';
 import {
   SHEET_STATIST_ARMOR_ROW_ID,
   applyDamageToCover,
+  applyForcedFailureToSheet,
   applyDamageToSheet,
   applyDamageToTokenHp,
   isValidHitLocation,
@@ -411,6 +413,84 @@ function parseTokenStatuses(token: Token): string[] {
     return [];
   }
 }
+
+/**
+ * MG nadaje ranę krytyczną z ręki (sesja naprawcza 22.08).
+ *
+ * Do tej pory rana wchodziła na kartę **wyłącznie** z rzutu obrażeń z dwiema
+ * szóstkami (1/36) albo z nietrafionego testu amunicji z 16h — a karta postaci
+ * potrafiła rany tylko usuwać. MG, który chciał komuś złamać rękę fabularnie
+ * („spadasz z drabiny"), nie miał czym; RAW zresztą pozwala mu ją przypisać.
+ * To blokowało też oględziny trzech ścieżek naraz (odmowa Akcji przy Urazie
+ * kręgosłupa z 14e, wiersz rany w panelu z 27b).
+ *
+ * Rana wchodzi **tą samą** funkcją co rzut (`applyForcedFailureToSheet`), więc
+ * niesie wszystko, co niosłaby wylosowana: karę do RUCH-u, dopłatę do Testu
+ * Przeżywalności, flagi tur z 14e i wpis w liczniku „na minutę". Karta na
+ * czacie jest zwykłą kartą obrażeń, dzięki czemu „Cofnij" zdejmuje ranę bez
+ * jednej nowej linii kodu.
+ */
+export const characterInjuryEvent = defineEvent<CharacterInjuryPayload>({
+  name: 'character:injury',
+  role: ROLE_GM,
+  handler: async ({ deps, socket, user, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    const characterId = payload?.characterId;
+    const injuryId = payload?.injuryId;
+    if (typeof characterId !== 'string' || typeof injuryId !== 'string') {
+      throw new RealtimeError('BAD_REQUEST');
+    }
+    const character = await deps.ctx.prisma.character.findUnique({ where: { id: characterId } });
+    if (!character || character.campaignId !== campaignId) {
+      throw new RealtimeError('CHARACTER_NOT_FOUND');
+    }
+
+    const compendium = await buildCompendiumSync(deps, campaignId);
+    const entry = compendium.entries.find(
+      (row) => row.id === injuryId && isCriticalInjuryEntry(row),
+    );
+    if (!entry) throw new RealtimeError('UNKNOWN_INJURY');
+
+    const applied = applyForcedFailureToSheet(
+      character,
+      deps.ctx.cpred,
+      { damage: 0, injuryIds: [injuryId] },
+      compendium.entries,
+    );
+    // Rana, którą postać już ma, nie dubluje się (ta sama reguła co przy
+    // drugim granacie w tej samej minucie) — i wtedy nie ma czego zapisywać.
+    if (!applied.log.injury) throw new RealtimeError('INJURY_ALREADY_THERE');
+
+    const saved = await deps.ctx.prisma.character.update({
+      where: { id: character.id },
+      data: { data: applied.data },
+    });
+    await emitCharacterUpsert(deps, campaignId, toCharacterView(saved, deps.ctx.cpred));
+    await emitTokensOfCharacter(deps, campaignId, saved);
+
+    // Rana nadana w środku walki zabiera to, co zabrałaby wylosowana (14e).
+    if (applied.carry) {
+      const tokens = await deps.ctx.prisma.token.findMany({
+        where: { characterId: character.id },
+        include: { scene: true },
+      });
+      for (const token of tokens) {
+        if (token.scene.campaignId !== campaignId) continue;
+        await oweCarryToToken(deps, token.sceneId, token.id, applied.carry);
+        await emitCombatOfScene(deps, campaignId, token.scene);
+      }
+    }
+
+    const log: DamageLogEntry = {
+      ...applied.log,
+      targetName: character.name,
+      characterId: character.id,
+      targetOwnerId: character.ownerId,
+      injuryNote: 'Ranę nadał MG — bez rzutu na obrażenia.',
+    };
+    await logDamage(deps, campaignId, user.id, log);
+  },
+});
 
 export const damageUndoEvent = defineEvent<DamageUndoPayload, void>({
   name: 'damage:undo',

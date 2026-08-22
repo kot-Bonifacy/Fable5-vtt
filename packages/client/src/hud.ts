@@ -337,7 +337,20 @@ export function hudSignature(context: HudContext): string {
     context.steering,
     context.combatant?.id ?? null,
     context.combatant?.grapple?.role ?? null,
-    context.slots.map((slot) => [slot.id, slot.label, slot.disabled, slot.key]),
+    // Co ze slotu **widać**. Nabój wpadł tu w sesji naprawczej 22.08 (błąd #5):
+    // po zmianie amunicji w broni bez magazynka (granat) zmieniał się wyłącznie
+    // chip naboju, a sygnatura tego nie widziała — panel zostawał przy starym
+    // widoku aż do przeładowania strony. Strzelba odświeżała się tylko dlatego,
+    // że przy okazji przeładowania zmieniał się licznik magazynka.
+    context.slots.map((slot) => [
+      slot.id,
+      slot.label,
+      slot.disabled,
+      slot.key,
+      slot.kind === 'weapon' ? slot.ammoLabel : null,
+      slot.kind === 'action' ? null : (slot.ammo ?? null),
+      slot.kind === 'weapon' ? slot.coneRangeM : null,
+    ]),
   ]);
 }
 

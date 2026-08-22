@@ -7,6 +7,77 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 21.08 (druga tego dnia) — etap 27f (szlif UX: pomoc, tooltipy, stany, okna)
+
+**Trzy decyzje MG na starcie:** robimy 27f; okna dostają wspólny hook **i** uchwyt skalowania
+(nie samą pamięć pozycji); umowa o przyciskach zostaje **odwrócona** przy okazji.
+
+**Odwrócenie umowy o przyciskach kosztowało 13 przycisków, nie trzysta.** Pierwszy pomiar
+mówił „304 gołe `<button>`" i był błędny — `grep` liczył tylko te, które miały `className`
+w tej samej linii. Prawdziwa liczba to **15**, z czego 13 to akcje główne („Zaloguj się",
+„Wyślij", „Utwórz", „Weź kubek") i dostały `.primary-button`, a dwa mają własne style
+(`.cp-alert button`, ✕ przy chipie Programu). Baza `button` jest teraz neutralna, więc
+przycisk, który podmieni tło i zapomni o `color`, dostaje **czytelny** napis zamiast białego
+na kremowym. Pułapka wychodzi teraz drugą stroną (ciemny napis na czerwieni) i **to** pilnuje
+nowy test w `theme.test.ts` — sprawdzony celowym psuciem, nie samym „przechodzi".
+
+**Lista skrótów nie ma jak skłamać, bo nie ma dwóch list.** `MAP_TOOL_KEYS` w nowym
+`shortcuts.ts` zastąpiło osiem `if`-ów w obsłudze klawiatury `MapArea` i **jednocześnie**
+jest źródłem rozdziału „Narzędzia mapy" w oknie `?`. Reszta skrótów (cyfry, `Shift`+cyfra,
+`Tab`, `E`, drabina `Escape`) jest opisana ręcznie — te nie zamieniają się w tabelę bez
+udawania, że są prostsze, niż są. Test czyta `MapArea.tsx` jako tekst i przewraca się, gdy
+w obsłudze klawiatury znów pojawi się `toggleTool('...')` z literałem.
+
+**`?` czyta znak, nie miejsce na klawiaturze.** `event.key === '?'` jest właściwym testem
+(przeglądarka podaje znak, który klawisz _produkuje_, więc działa na każdym układzie), ale
+automat sterujący Chrome podaje `key: '/'` z `shiftKey` — i to samo robią niektóre
+przeglądarki. Druga droga (`code === 'Slash'` z Shiftem) kosztuje linię; tej samej ostrożności
+nauczył 27h przy cyfrach paska akcji.
+
+**Okna: jeden moduł zamiast siedmiu kopii.** `window-placement.ts` niesie przeciąganie,
+skalowanie za róg, zapis w `localStorage` (klucz `vtt.window.<userId>.<okno>`) i sprowadzanie
+okna na ekran. Klucz jest **per okno i per postać** (`sheet:<characterId>`), więc karta Tony'ego
+wraca tam, gdzie ją zostawiono, a nie tam, gdzie stała ostatnia karta.
+
+**Dwa błędy znalezione przy oglądaniu — oba w uchwycie skalowania.** (1) **Uchwyt w rogu nie
+dawał się złapać.** Karta postaci ma od 27a `clip-path` ścinający prawy dolny narożnik o 22 px,
+a pozostałe okna zaokrąglenie 10 px — jedno i drugie **wycina róg z trafień**, więc kliknięcie
+przechodziło do mapy pod spodem (i wydawało rozkaz marszu figurze!). Uchwyt siedzi teraz 13 px
+od obu krawędzi: najbliższy punkt sumuje się do 26, czyli z zapasem za skosem. (2) **Okno
+wracało na ekran samym rogiem.** Pierwsza wersja `clampPlacement` trzymała się progu „120 px
+belki widoczne" i sprowadzała okno z x = 9000 do `innerWidth − 120`. Teraz funkcja dostaje
+**zmierzony** rozmiar okna (znany dopiero po pierwszym renderze, bo szerokość zna sam CSS)
+i okno, które się mieści, wraca **całe**.
+
+**Stopka ze skrótami nad kubkiem zniknęła** (decyzja MG w trakcie sesji): `?` przejął jej rolę,
+a lewy pasek wrócił do tego, czym jest — do stanu figury.
+
+**Tooltipy: pięćdziesiąt przycisków miało sam `title`.** Ikony rysowane w SVG (`MapIcons`,
+`UiIcons`) są `aria-hidden`, więc **tam** `title` wystarcza za nazwę dostępną i nic nie trzeba
+było robić. Problem był przy przyciskach, których całą treścią jest **znak** (`✕`, `🎲`, `⟳`):
+bez `aria-label` czytnik odczytuje nazwę znaku Unicode. Poprawka była kodemodem (przepisanie
+`title` na `aria-label`), więc następny taki przycisk powstanie tak samo — stąd nowy
+`a11y.test.ts`, też sprawdzony celowym psuciem.
+
+**Stany puste rozróżniają teraz „pusto" od „nic nie pasuje".** Nowy `EmptyState` (zdanie
+
+- opcjonalny pierwszy krok) wszedł tam, gdzie panel wysyłał szukającego do zakładania czegoś,
+  co już ma: kompendium ma trzy różne pustki (pusta baza / pusta kategoria / pusty wynik szukania
+  z „Wyczyść szukanie"), baza wiedzy i dziennik dostały to samo wyjście z filtra, a kolejka
+  inicjatywy mówi graczowi, na co czeka.
+
+**Sprawdzone w przeglądarce** (konto MG, Poligon, stan przywrócony na koniec): `?` z klawiatury
+i z paska, `Esc` zamykający okno, przeciąganie okna z zapisem do `localStorage`, skalowanie
+karty postaci (1180 × 786 → 921 × 581, arkusz przeliczył szpalty), powrót okna z x = 9000 na
+ekran w całości, trafialność uchwytu w trzech punktach dla karty i dla ustawień, pusty wynik
+szukania w kompendium z przyciskiem, oba motywy okna `?` i zniknięta stopka HUD-u.
+
+**Przy oglądaniu przesunąłem żeton „Automatyczna wieżyczka"** (nietrafione przeciągnięcie
+uchwytu poszło do mapy jako rozkaz marszu). Wrócił na **(900, 1400)** — zgodnie z kopią
+`dev.db.bak-20260819-27d`. Czego **nie da się** odtworzyć, to jego `facing` sprzed tego ruchu:
+kolumna jest z 27j, a kopie są starsze. Wieżyczka patrzy teraz na 297° (tam, skąd wróciła);
+gałka na pierścieniu ustawi ją w jednym geście.
+
 ### Sesja 21.08 — etap 27j (żetony i czytelny ruch)
 
 **Decyzja MG z 21.08: kierunek patrzenia to jedno i drugie** — automat z ruchu i ze strzału

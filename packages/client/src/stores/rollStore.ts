@@ -120,7 +120,8 @@ export interface PendingEvasion {
   kind?: 'evade' | 'smart';
   /** Chat message id of the attack being contested. */
   messageId: number;
-  characterId: string;
+  /** Null when a figure without a sheet dodges with its combat profile (16b). */
+  characterId: string | null;
   characterName: string;
   /**
    * Which figure is jumping clear of a blast (stage 16d). Absent for an

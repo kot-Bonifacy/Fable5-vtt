@@ -121,6 +121,31 @@ describe('scatter (house rule)', () => {
     const steady = rollBlastScatter(scriptedRng([3, 2]), 8, 'ZW', SCENE);
     expect(steady.metres).toBe(scatterMinMetres(SCENE));
     expect(steady.metres).toBe(2);
+    expect(steady.clamped).toBe('min');
+  });
+
+  /**
+   * Błąd #7 z sesji testów walki 08.08: karta wypisywała „odległość 1k10 = 5 −
+   * ZW 7 = 2 m", czyli odejmowanie, które się nie zgadza. Limit jest zamierzony
+   * (ładunek zawsze schodzi choć o pole), ale zdanie musi to powiedzieć — MG
+   * przy stole liczy na palcach i uznaje rozjazd za błąd.
+   */
+  it('says so when a limit caught the roll, instead of writing arithmetic that does not add up', () => {
+    const short = rollBlastScatter(scriptedRng([3, 5]), 7, 'ZW', SCENE);
+    expect(short.metres).toBe(2);
+    const line = describeScatter(short);
+    expect(line).toContain('odległość 1k10 = 5 − ZW 7');
+    expect(line).toContain('najmniej');
+    expect(line).not.toContain('= 2');
+
+    const far = rollBlastScatter(scriptedRng([3, 10]), 2, 'ZW', SCENE);
+    expect(far.metres).toBe(4);
+    expect(describeScatter(far)).toContain('najwyżej');
+
+    // Rzut wewnątrz zakresu zostaje przy zwykłym równaniu.
+    const plain = rollBlastScatter(scriptedRng([3, 7]), 4, 'ZW', SCENE);
+    expect(plain.clamped).toBeUndefined();
+    expect(describeScatter(plain)).toContain('− ZW 4 = 3');
   });
 
   it('never leaves the rulebook box — two squares is the cap', () => {
@@ -136,8 +161,12 @@ describe('scatter (house rule)', () => {
     expect(centre).toEqual({ x: 125, y: 25 });
   });
 
-  it('explains itself on the card', () => {
+  it('explains itself on the card, result included', () => {
     const scatter = rollBlastScatter(scriptedRng([7, 6]), 4, 'ZW', SCENE);
-    expect(describeScatter(scatter)).toBe('kierunek 1k10 = 7 (216°) · odległość 1k10 = 6 − ZW 4');
+    // Wynik należy do tego samego zdania, co odejmowanie — inaczej wołający
+    // dokleja go sam i limit przestaje być widoczny (błąd #7).
+    expect(describeScatter(scatter).replace(/\s/g, ' ')).toBe(
+      'kierunek 1k10 = 7 (216°) · odległość 1k10 = 6 − ZW 4 = 2 m',
+    );
   });
 });

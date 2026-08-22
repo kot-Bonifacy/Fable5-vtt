@@ -989,6 +989,24 @@
   color: var(--cp-ink-dim);
 }
 
+/*
+  Wiersz „nadaj ranę" MG (sesja naprawcza 22.08) — pod listą, w tej samej
+  kolumnie tożsamości. Wąski, bo kolumna jest wąska: lista sama się skraca,
+  a przycisk zostaje przy prawej krawędzi jak kosz w wierszu wyżej.
+*/
+.cp-injuries .injury-assign {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.35rem;
+}
+
+.cp-injuries .injury-assign select {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.72rem;
+}
+
 .cp-injuries-empty {
   color: var(--cp-ink-dim);
   font-variant-caps: all-small-caps;

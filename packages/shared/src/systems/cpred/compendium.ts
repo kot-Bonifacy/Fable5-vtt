@@ -466,6 +466,26 @@ export function criticalInjuryEffect(entry: CriticalInjuryEntry): string {
   return entry.description ?? '';
 }
 
+/**
+ * Names of Critical Injuries given by id — for a card that has to *say* which
+ * wound it means without writing the wound anywhere.
+ *
+ * An id nobody has in the compendium comes back as itself, because „Brak
+ * w kompendium rany: injury.x" is a message about the data, and hiding the id
+ * there would leave the GM with nothing to look up. Everywhere else the caller
+ * gets names, which is the whole point (bug #6 of the 08.08 combat session:
+ * a statist caught by tear gas was told „injury.head-uraz-oka").
+ */
+export function criticalInjuryNames(
+  entries: readonly CompendiumEntry[],
+  ids: readonly string[],
+): string[] {
+  return ids.map((id) => {
+    const entry = entries.find((row) => row.id === id && isCriticalInjuryEntry(row));
+    return entry?.name ?? id;
+  });
+}
+
 /** Injuries of one table, sorted by their 2d6 value. */
 export function criticalInjuryTable(
   entries: readonly CompendiumEntry[],

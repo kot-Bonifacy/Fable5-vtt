@@ -15,6 +15,7 @@ import { registerJoinRoutes } from './routes/join.js';
 import { registerCampaignRoutes } from './routes/campaigns.js';
 import { MAX_MAP_UPLOAD_BYTES, registerUploadRoutes } from './routes/uploads.js';
 import { setupRealtime } from './realtime/index.js';
+import { sweepUploadsInBackground } from './uploads-gc.js';
 import { loadStatusRegistry } from './statuses.js';
 import { loadCompendium } from './compendium.js';
 import { loadCpredRegistry } from './cpred.js';
@@ -30,6 +31,12 @@ export interface BuildAppOptions {
   logger?: boolean;
   /** Lets smoke tests stand in for the AI gateway without a running Python service. */
   aiFetch?: typeof fetch;
+  /**
+   * Przebieg zbieracza osieroconych plików przy starcie (domyślnie tak).
+   * Wyłączany w teście samego zbieracza — inaczej ten w tle sprząta pliki,
+   * które test dopiero kładzie.
+   */
+  sweepUploads?: boolean;
 }
 
 export async function buildApp(
@@ -108,6 +115,11 @@ export async function buildApp(
   });
 
   await ensureGmUser(prisma, config, app.log);
+  // Pliki, których nikt już nie wymienia (sesja naprawcza 22.08). W tle i po
+  // cichu: nic tu nie jest pilne, a start stołu nie ma na co czekać.
+  if (options.sweepUploads !== false) {
+    sweepUploadsInBackground(prisma, config.uploadsDir, app.log);
+  }
 
   return { app, io, prisma };
 }

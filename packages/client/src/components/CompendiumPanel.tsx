@@ -17,6 +17,7 @@ import {
   CYBERWARE_INSTALL_DV,
   CYBERWARE_INSTALL_LABELS,
   CYBERWARE_TYPE_LABELS,
+  criticalInjuryNames,
   describeAmmoFailure,
   CRITICAL_INJURY_TABLE_LABELS,
   ROLE_GM,
@@ -41,6 +42,7 @@ import {
 import { useAuthStore } from '../stores/authStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { countByCategory, useCompendiumStore, visibleEntries } from '../stores/compendiumStore.js';
+import { useTokenStore } from '../stores/tokenStore.js';
 import {
   addCompendiumItemToCharacter,
   buyCompendiumItemForCharacter,
@@ -279,6 +281,8 @@ function EntryCard({
   onBack: () => void;
 }) {
   const weaponTypeById = useCompendiumStore((s) => s.weaponTypeById);
+  const entriesById = useCompendiumStore((s) => s.entries);
+  const statusRegistry = useTokenStore((s) => s.statuses);
   const characters = useCharacterStore((s) => s.characters);
   const order = useCharacterStore((s) => s.order);
   const edit = useCompendiumStore((s) => s.edit);
@@ -435,9 +439,17 @@ function EntryCard({
               <Stat
                 label="Wymuszony test"
                 value={`${entry.check.skillLabel ?? entry.check.skillId} · PT ${entry.check.dv}`}
-                hint={`Porażka: ${describeAmmoFailure(entry.check.failure)}${
-                  entry.check.biologicalOnly ? ' · tylko cele biologiczne' : ''
-                }`}
+                hint={`Porażka: ${describeAmmoFailure(entry.check.failure, {
+                  // Nazwy, nie id — karta wpisu mówi „Powalony · Uraz oka",
+                  // a nie „prone · injury.head-uraz-oka" (błąd #6).
+                  statuses: (entry.check.failure.statuses ?? []).map(
+                    (id) => statusRegistry.find((status) => status.id === id)?.name ?? id,
+                  ),
+                  injuries: criticalInjuryNames(
+                    Object.values(entriesById),
+                    entry.check.failure.injuries ?? [],
+                  ),
+                })}${entry.check.biologicalOnly ? ' · tylko cele biologiczne' : ''}`}
               />
             ) : null}
             {entry.smoke ? (

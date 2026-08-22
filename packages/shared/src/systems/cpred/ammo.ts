@@ -351,17 +351,21 @@ export function cpredAmmoCheckOutcome(
  *
  * Names rather than ids, so the caller passes the labels it already looked up;
  * a card reading „injury.head-uraz-oka" would be the compendium leaking into
- * the table's language.
+ * the table's language. `labels` is **required** for exactly that reason: until
+ * the repair session of 22.08 it defaulted to the raw id lists, so a caller who
+ * simply forgot leaked them — which is what the card of a statist caught by
+ * tear gas did (bug #6 of the 08.08 combat session), and what the compendium
+ * entry of every such round did next to it.
  */
 export function describeAmmoFailure(
   failure: CpredAmmoCheckFailure,
-  labels: { statuses?: readonly string[]; injuries?: readonly string[] } = {},
+  labels: { statuses?: readonly string[]; injuries?: readonly string[] },
 ): string {
   const parts: string[] = [];
   if (failure.damage) parts.push(`${failure.damage} bezpośrednich`);
-  const statuses = labels.statuses ?? failure.statuses ?? [];
+  const statuses = labels.statuses ?? [];
   if (statuses.length > 0) parts.push(statuses.join(', '));
-  const injuries = labels.injuries ?? failure.injuries ?? [];
+  const injuries = labels.injuries ?? [];
   if (injuries.length > 0) parts.push(injuries.join(', '));
   if (failure.durationS) parts.push(describeCpredDuration(failure.durationS));
   return parts.join(' · ');

@@ -11,7 +11,6 @@ import {
   coneAreaTowards,
   coverInLineOfFire,
   describeScatter,
-  formatMetres,
   isInBlast,
   isInCone,
   metresBetween,
@@ -327,9 +326,7 @@ export function toAreaMeta(
   const view = toSceneView(scene);
   const common = {
     sceneId: scene.id,
-    ...(scatter
-      ? { scatter: `${describeScatter(scatter)} = ${formatMetres(scatter.metres)}` }
-      : {}),
+    ...(scatter ? { scatter: describeScatter(scatter) } : {}),
     targets: targets.map((entry) => entry.view),
   };
   if (shape.kind === 'blast') {

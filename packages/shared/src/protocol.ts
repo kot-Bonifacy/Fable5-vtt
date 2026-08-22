@@ -26,6 +26,19 @@ import type { TokenView } from './tokens.js';
 import type { VisionSyncBroadcast } from './vision.js';
 import type { WallView } from './walls.js';
 
+/**
+ * The active campaign changed under a connected client (`campaign:activate`).
+ *
+ * Arrives right after the `state:sync` that carries the new world, and says
+ * only what that payload cannot: which campaign it was, so the client can
+ * re-read the header and drop pointers into the old one. `null` means this
+ * viewer has no campaign any more — a player who is not a member of the new
+ * one, which is the same state they are in before their first invitation.
+ */
+export interface CampaignSwitchBroadcast {
+  campaign: CampaignSummary | null;
+}
+
 /** Server → client payload confirming a successful Socket.IO handshake. */
 export interface ServerHello {
   serverTime: string;
@@ -444,8 +457,15 @@ export type AttackRollResult =
 export interface AttackEvadePayload {
   /** Chat message id of the attack. */
   messageId: number;
-  /** Sheet rolling the evasion; must own the targeted token. */
-  characterId: string;
+  /**
+   * Sheet rolling the evasion; must own the targeted token.
+   *
+   * Absent when the target has no sheet at all (stage 16b's statist): from the
+   * repair session of 22.08 such a figure dodges with its combat profile, and
+   * there is no character id to name. The server reads the defender off the
+   * stored card either way — this only says *which sheet* is answering.
+   */
+  characterId?: string;
   /**
    * Which figure is jumping clear of an area attack (stage 16d).
    *

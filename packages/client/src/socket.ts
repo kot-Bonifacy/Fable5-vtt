@@ -13,6 +13,8 @@ import type {
   SmokeClearPayload,
   AttackRollPayload,
   AttackRollResult,
+  CampaignSwitchBroadcast,
+  CharacterInjuryPayload,
   CoverSyncBroadcast,
   DefenseZoneCreatePayload,
   DefenseZoneSyncBroadcast,
@@ -227,6 +229,8 @@ import { useCoverStore } from './stores/coverStore.js';
 import { useSmokeStore } from './stores/smokeStore.js';
 import { useZoneStore } from './stores/zoneStore.js';
 import { useSettingsStore } from './stores/settingsStore.js';
+import { useSelectionStore } from './stores/selectionStore.js';
+import { useHudStore } from './stores/hudStore.js';
 import { offerCoverChoice, offerShieldChoice } from './attack-targeting.js';
 
 let socket: Socket | undefined;
@@ -458,6 +462,26 @@ export function connectSocket(userId: string): Socket {
     useNetRunStore.getState().replacePoints(payload.accessPoints ?? []);
     useNetRunStore.getState().replaceRuns(payload.netRuns ?? []);
     if (payload.ai) useAiStore.getState().setStatus(payload.ai);
+  });
+
+  /**
+   * MG przełączył aktywną kampanię (błąd #1 z sesji testów walki 08.08).
+   *
+   * Świat przyszedł już w `state:sync`, który leci tuż przed tym zdarzeniem —
+   * tu zostaje to, czego tamten ładunek nie niesie: nazwa w górnym pasku
+   * (mieszka w sklepie logowania, karmionym RESTem) i wskaźniki tego widza,
+   * które pokazują na figury z poprzedniej kampanii.
+   */
+  socket.on('campaign:switch', (broadcast: CampaignSwitchBroadcast) => {
+    void useAuthStore.getState().initialize();
+    useSelectionStore.getState().resetFocus();
+    useHudStore.getState().setActiveWeapon(null);
+    useHudStore.getState().setForm(null);
+    chat().addNote(
+      broadcast.campaign
+        ? `Aktywna kampania: ${broadcast.campaign.name}.`
+        : 'Ta kampania nie jest już aktywna — MG przełączył stół.',
+    );
   });
 
   // Bot profiles are GM-only and targeted at the GM room — no seq, like whispers.
@@ -1015,6 +1039,28 @@ export function undoDamage(messageId: number): void {
   });
 }
 
+/**
+ * MG nadaje ranę krytyczną z ręki (sesja naprawcza 22.08).
+ *
+ * Ranę zapisuje serwer tą samą funkcją, co rzut na obrażenia, więc niesie
+ * wszystkie kary i flagi; na czacie ląduje zwykła karta obrażeń, którą „Cofnij"
+ * już umie zdjąć.
+ */
+export function assignCriticalInjury(payload: CharacterInjuryPayload): void {
+  socket?.emit('character:injury', payload, (ack: SocketAck) => {
+    if (ack.ok) return;
+    useChatStore
+      .getState()
+      .addNote(
+        ack.error === 'INJURY_ALREADY_THERE'
+          ? 'Ta postać już ma tę ranę.'
+          : ack.error === 'UNKNOWN_INJURY'
+            ? 'Nie znalazłem tej rany w kompendium.'
+            : damageAckErrorText(ack.error),
+      );
+  });
+}
+
 /** Polish hints for attack rejections (stage 16). */
 function attackAckErrorText(code: string): string {
   const known = CPRED_ATTACK_PROBLEM_MESSAGES[code as keyof typeof CPRED_ATTACK_PROBLEM_MESSAGES];
@@ -1108,14 +1154,15 @@ export function sendAttackRoll(
 /** The defender contests an attack: the DV is replaced by a real Evasion roll. */
 export function sendAttackEvade(
   messageId: number,
-  characterId: string,
+  /** Null for a figure without a sheet — it dodges with its combat profile. */
+  characterId: string | null,
   gesture?: RollGesture,
   /** The figure jumping clear of a blast (stage 16d); absent for a dodge. */
   tokenId?: string,
 ): void {
   const payload: AttackEvadePayload = {
     messageId,
-    characterId,
+    ...(characterId ? { characterId } : {}),
     ...(tokenId ? { tokenId } : {}),
     ...(gesture ? { gesture } : {}),
   };
@@ -1848,6 +1895,15 @@ export async function sendDiceSkin(skin: DiceSkinId): Promise<void> {
   const ack = await emitSceneAck<DiceSkinId>('dice:skin', { skin });
   if (ack.ok && ack.data) useSettingsStore.getState().applySkin(ack.data);
 }
+
+/**
+ * Przełącza aktywną kampanię (MG). Serwer przenosi **wszystkie** podpięte
+ * gniazda do nowej kampanii i odsyła każdemu pełny `state:sync` — dlatego to
+ * zdarzenie gniazda, a nie kolejna trasa REST: panel MG nie ma jak przestawić
+ * cudzego ekranu, a serwer ma.
+ */
+export const activateCampaign = (campaignId: string) =>
+  emitSceneAck('campaign:activate', { campaignId });
 
 export const createScene = (name: string) => emitSceneAck<SceneView>('scene:create', { name });
 

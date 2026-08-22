@@ -16,7 +16,7 @@
  */
 
 import type { DiceRng } from '../../dice.js';
-import { metresPerPixel, type ScenePoint } from '../../measure.js';
+import { formatMetres, metresPerPixel, type ScenePoint } from '../../measure.js';
 import type { SceneView } from '../../scenes.js';
 
 /** Scene fields an area needs: the grid it snaps to and its metre scale. */
@@ -197,6 +197,14 @@ export interface CpredScatter {
   angleDeg: number;
   /** Distance in metres, after the clamp. */
   metres: number;
+  /**
+   * Which end of the range caught the roll, when one did (stage 16d house
+   * rule). On the roll rather than derived at the card, because the card is
+   * where it was missed: „odległość 1k10 = 5 − ZW 7 = 2 m" is arithmetic that
+   * does not add up, and a GM reading it at the table counts on their fingers
+   * and calls it a bug (bug #7 of the 08.08 combat session).
+   */
+  clamped?: 'min' | 'max';
 }
 
 /** Closest a scattered charge may land: one square. */
@@ -220,7 +228,8 @@ export function rollBlastScatter(
   const distanceDie = rng(10);
   const min = scatterMinMetres(scene);
   const max = scatterMaxMetres(scene);
-  const metres = Math.min(Math.max(distanceDie - stat, min), max);
+  const rolled = distanceDie - stat;
+  const metres = Math.min(Math.max(rolled, min), max);
   return {
     directionDie,
     distanceDie,
@@ -229,6 +238,11 @@ export function rollBlastScatter(
     // Ten positions, 36° apart, starting due east.
     angleDeg: (directionDie - 1) * 36,
     metres,
+    ...(rolled < min
+      ? { clamped: 'min' as const }
+      : rolled > max
+        ? { clamped: 'max' as const }
+        : {}),
   };
 }
 
@@ -248,7 +262,17 @@ export function scatteredCentre(
 
 /** „kierunek 1k10 = 7 (216°) · odległość 1k10 = 6 − ZW 4 = 2 m" — card text. */
 export function describeScatter(scatter: CpredScatter): string {
-  return `kierunek 1k10 = ${scatter.directionDie} (${scatter.angleDeg}°) · odległość 1k10 = ${
+  const arithmetic = `kierunek 1k10 = ${scatter.directionDie} (${scatter.angleDeg}°) · odległość 1k10 = ${
     scatter.distanceDie
   } − ${scatter.statLabel} ${scatter.stat}`;
+  const result = formatMetres(scatter.metres);
+  // Kiedy zadziałał limit, karta mówi „→ najmniej/najwyżej", a nie „=" — bo
+  // odejmowanie i wynik przestały być tym samym zdaniem.
+  if (scatter.clamped === 'min') {
+    return `${arithmetic} → najmniej ${result} (ładunek zawsze schodzi o pole)`;
+  }
+  if (scatter.clamped === 'max') {
+    return `${arithmetic} → najwyżej ${result} (dalej niż o dwa pola nie odbija)`;
+  }
+  return `${arithmetic} = ${result}`;
 }

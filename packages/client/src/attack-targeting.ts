@@ -18,7 +18,9 @@ import {
   coverInLineOfFire,
   distanceToCover,
   formatMetres,
+  ammoProfilesOf,
   isWeaponEntry,
+  loadedAmmoFor,
   metresBetween,
   metresBetweenTokens,
   metresForRules,
@@ -183,11 +185,29 @@ export function planAttackPreview(
       ? coverBlockingShot(attackerToken, aim.point, scene)
       : null;
 
+  // Stage 16g: what is in the magazine changes the shot the bubble is pricing —
+  // buckshot has a flat DV and a 6 m cone instead of the range table. Read here
+  // for the same reason the server reads it in `resolveAttackWeapon`: the
+  // planner is handed facts, never a place to look them up. Until the repair
+  // session of 22.08 this was the one fact the client did not pass, so the
+  // crosshair quoted „Przedział 7–12 m · PT 15" for a round that cannot reach
+  // past six — and the refusal arrived only after the dice were picked up.
+  const ammo = loadedAmmoFor(
+    row,
+    resolved,
+    (id) => ammoProfilesOf(Object.values(compendium.entries)).find((p) => p.id === id) ?? null,
+  );
+
   const planned = planCpredAttack(
     data,
     useCharacterStore.getState().registry,
     request,
-    { row, resolved, typeId: entry && isWeaponEntry(entry) ? entry.weaponTypeId : null },
+    {
+      row,
+      resolved,
+      typeId: entry && isWeaponEntry(entry) ? entry.weaponTypeId : null,
+      ammo,
+    },
     aim.target,
     {
       ...(blocking

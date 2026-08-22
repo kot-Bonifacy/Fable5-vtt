@@ -582,4 +582,80 @@ describe('damage, armor and Death Saves', () => {
     const again = await emitAck(gm, 'damage:undo', { messageId: applied.messageId });
     expect(again).toMatchObject({ ok: false, error: 'ALREADY_UNDONE' });
   });
+
+  /**
+   * Rana nadana ręką MG (sesja naprawcza 22.08).
+   *
+   * Do tej pory rana wchodziła na kartę **wyłącznie** z rzutu z dwiema szóstkami
+   * (1/36) albo z nietrafionego testu amunicji z 16h, a karta postaci potrafiła
+   * je tylko usuwać — MG nie miał czym złamać komuś ręki fabularnie, choć RAW
+   * mu na to pozwala.
+   */
+  describe('the GM assigns a Critical Injury by hand', () => {
+    async function injuryEntryId(roll: number): Promise<string> {
+      const sync = await roundTrip(gm);
+      const entry = sync.compendium.entries.find(
+        (row) => row.category === 'criticalInjury' && row.name === `Rana testowa ${roll}`,
+      );
+      if (!entry) throw new Error('brak rany testowej w kompendium');
+      return entry.id;
+    }
+
+    it('puts the wound on the sheet with its full effect and posts an undoable card', async () => {
+      await emitAck(gm, 'character:update', {
+        characterId,
+        patch: { data: { hpCurrent: 35, criticalInjuries: [] } },
+      });
+      // Rana 2 jest jedyną z dopłatą do Testu Przeżywalności — na niej widać,
+      // że wchodzi z pełnymi liczbami, a nie jako sama nazwa.
+      const injuryId = await injuryEntryId(2);
+
+      const logged = waitForDamage(gm);
+      expect(await emitAck(gm, 'character:injury', { characterId, injuryId })).toEqual({
+        ok: true,
+      });
+      const card = (await logged).message.damage;
+      expect(card?.injury?.id).toBe(injuryId);
+      expect(card?.injuryNote).toContain('MG');
+      // Nadanie rany nie jest obrażeniami: punkty życia zostają tam, gdzie były.
+      expect(card?.hpLost).toBe(0);
+
+      const hurt = await sheetOf(characterId);
+      expect(hurt.hpCurrent).toBe(35);
+      expect(hurt.criticalInjuries).toHaveLength(1);
+      expect(hurt.criticalInjuries[0]?.deathSavePenalty).toBe(1);
+
+      // „Cofnij" działa na tej karcie tak samo jak na karcie z rzutu.
+      const messageId = (await logged).message.id;
+      expect(await emitAck(gm, 'damage:undo', { messageId })).toEqual({ ok: true });
+      expect((await sheetOf(characterId)).criticalInjuries).toHaveLength(0);
+    });
+
+    it('refuses a wound the character already has, an unknown one, and a player asking', async () => {
+      const injuryId = await injuryEntryId(3);
+      expect(await emitAck(gm, 'character:injury', { characterId, injuryId })).toEqual({
+        ok: true,
+      });
+      expect(await emitAck(gm, 'character:injury', { characterId, injuryId })).toMatchObject({
+        ok: false,
+        error: 'INJURY_ALREADY_THERE',
+      });
+      expect(
+        await emitAck(gm, 'character:injury', { characterId, injuryId: 'injury.nie-ma' }),
+      ).toMatchObject({ ok: false, error: 'UNKNOWN_INJURY' });
+      // Broń nie jest raną — kategoria wpisu decyduje, nie sama obecność id.
+      expect(
+        await emitAck(gm, 'character:injury', { characterId, injuryId: 'weapon.zgrzyt-9' }),
+      ).toMatchObject({ ok: false, error: 'UNKNOWN_INJURY' });
+      expect(await emitAck(player, 'character:injury', { characterId, injuryId })).toMatchObject({
+        ok: false,
+        error: 'FORBIDDEN',
+      });
+
+      await emitAck(gm, 'character:update', {
+        characterId,
+        patch: { data: { criticalInjuries: [] } },
+      });
+    });
+  });
 });

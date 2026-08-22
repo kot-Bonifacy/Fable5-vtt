@@ -11,6 +11,7 @@ import type {
   ChatMessageBroadcast,
   CharacterView,
   CombatView,
+  CompendiumEntry,
   CpredCharacterData,
   DamageLogEntry,
   InvitationSummary,
@@ -418,6 +419,69 @@ describe('ammunition that deals no damage', () => {
         expect(log.armorSp).toBe(0);
         expect(log.armor).toBeUndefined();
       }
+    });
+  });
+
+  /**
+   * Błąd #6 z sesji testów walki 08.08: figura z kartą dostawała czytelne
+   * „Uraz oka · na minutę", a statysta — „injury.head-uraz-oka · na minutę".
+   * Rana statysty nie jest nigdzie zapisywana (nie ma karty), więc nazwy nie
+   * było skąd wziąć i odzywał się fallback na surowe id z pliku amunicji.
+   */
+  describe('a wound on a figure without a sheet (bug #6)', () => {
+    it('names the injury on the card instead of printing its compendium id', async () => {
+      const injury = data(
+        await emitAck<CompendiumEntry>(gm, 'compendium:upsert', {
+          entry: {
+            category: 'criticalInjury',
+            name: 'Uraz oka (test)',
+            table: 'head',
+            roll: 4,
+            description: 'Widzisz podwójnie.',
+          },
+        }),
+        'compendium:upsert (injury)',
+      );
+      const round = data(
+        await emitAck<CompendiumEntry>(gm, 'compendium:upsert', {
+          entry: {
+            category: 'ammo',
+            name: 'Nabój łzawiący (test)',
+            cost: 100,
+            costCategory: 'premium',
+            patterns: ['grenade'],
+            noDamage: true,
+            check: {
+              skillId: 'resist-torture-drugs',
+              skillLabel: 'Odporność na tortury/narkotyki',
+              statId: 'will',
+              // PT, którego nie da się zdać — karta ma paść za każdym przebiegiem.
+              dv: 40,
+              failure: { damage: '1k6', injuries: [injury.id], durationS: 60 },
+            },
+          },
+        }),
+        'compendium:upsert (ammo)',
+      );
+
+      await load(round.id);
+      const { card, posted } = await lob();
+      const row = (card.forcedChecks ?? []).find((check) => check.name === 'Ganger');
+      expect(row?.success).toBe(false);
+      expect(row?.effect).toContain('Uraz oka (test)');
+      expect(row?.effect).not.toContain('injury.');
+
+      const knocked = posted.find(
+        (entry) =>
+          (entry.message.damage as DamageLogEntry | undefined)?.targetTokenId === mookTokenId,
+      );
+      const log = knocked?.message.damage as DamageLogEntry | undefined;
+      // Statysta nadal nie dostaje rany na żadną kartę — ale stół wie, o którą
+      // ranę chodzi, i to jest cała różnica.
+      expect(log?.injuryNote).toContain('Uraz oka (test)');
+      expect(log?.injuryNote).toContain('statysta nie ma karty');
+      expect(log?.injuryNote).not.toContain('injury.');
+      await load('ammo.sample-gas');
     });
   });
 

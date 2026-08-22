@@ -11,6 +11,7 @@ import type {
 import {
   cpredAmmoCheckOutcome,
   cpredCheckBase,
+  criticalInjuryNames,
   describeAmmoFailure,
   formatMetres,
   parseCharacterData,
@@ -221,6 +222,8 @@ async function applyAmmoFailure(
   let log: DamageLogEntry;
   let characterId: string | null = null;
   let ownerId: string | null = token.ownerId;
+  /** Nazwy ran figury bez karty — nigdzie nie zapisane, więc liczone tutaj. */
+  let statistInjuries: string[] = [];
 
   if (token.characterId) {
     const character = await deps.ctx.prisma.character.findUnique({
@@ -267,14 +270,19 @@ async function applyAmmoFailure(
         },
       });
     }
+    // Rana krytyczna nie ma gdzie zamieszkać, ale **nazwać** ją trzeba: to
+    // jedyne miejsce, w którym stół dowiaduje się, co statyście się stało.
+    statistInjuries = criticalInjuryNames(compendium, failure.injuryIds ?? []);
     log = {
       ...(applied?.log ?? emptyDamageLog()),
       targetTokenId: token.id,
       targetName: token.name,
       characterId: null,
       targetOwnerId: ownerId,
-      ...((failure.injuryIds ?? []).length > 0
-        ? { injuryNote: 'Statysta nie ma karty — ranę krytyczną rozstrzyga MG.' }
+      ...(statistInjuries.length > 0
+        ? {
+            injuryNote: `${statistInjuries.join(', ')} — statysta nie ma karty, ranę krytyczną rozstrzyga MG.`,
+          }
         : {}),
     };
   }
@@ -297,12 +305,13 @@ async function applyAmmoFailure(
   const statusLabels = (check.failure.statuses ?? []).map((id) =>
     statusName(deps.ctx.statuses, id),
   );
-  const injuryLabels = [log.injury?.name, log.injuryExtra?.name].filter(
+  const sheetInjuries = [log.injury?.name, log.injuryExtra?.name].filter(
     (name): name is string => typeof name === 'string',
   );
+  const injuryLabels = sheetInjuries.length > 0 ? sheetInjuries : statistInjuries;
   const summary = describeAmmoFailure(check.failure, {
     statuses: statusLabels,
-    injuries: injuryLabels.length > 0 ? injuryLabels : undefined,
+    ...(injuryLabels.length > 0 ? { injuries: injuryLabels } : {}),
   });
 
   // What the GM's „Minęła minuta" button will lift. Only what this hit actually

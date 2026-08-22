@@ -3,12 +3,11 @@ import type { Server as SocketIOServer } from 'socket.io';
 import type { CampaignSummary, SessionUser } from '@vtt/shared';
 import { ROLE_GM, createServerHello } from '@vtt/shared';
 import type { AppContext } from '../context.js';
-import type { PrismaClient } from '../db.js';
 import { SESSION_COOKIE, resolveSessionUser } from '../auth/sessions.js';
-import { getActiveCampaign } from '../routes/helpers.js';
 import { defineEvent, registerEvents, type RealtimeDeps, type RealtimeEvent } from './registry.js';
 import { RoomSequences, campaignRoom, gmRoom } from './state.js';
 import { broadcastPresence } from './presence.js';
+import { campaignActivateEvent, resolveSocketCampaign } from './campaigns.js';
 import { chatHistoryEvent, chatSendEvent } from './chat.js';
 import { diceSkinEvent } from './dice-skins.js';
 import {
@@ -76,7 +75,7 @@ import {
   economySettleEvent,
   economyTransferEvent,
 } from './economy.js';
-import { damageApplyEvent, damageUndoEvent } from './damage.js';
+import { characterInjuryEvent, damageApplyEvent, damageUndoEvent } from './damage.js';
 import {
   attackEvadeEvent,
   attackRollEvent,
@@ -192,6 +191,7 @@ const gmPingEvent = defineEvent({
 
 const EVENTS: RealtimeEvent<never, unknown>[] = [
   gmPingEvent,
+  campaignActivateEvent,
   stateRequestEvent,
   chatSendEvent,
   chatHistoryEvent,
@@ -255,6 +255,7 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   economyHistoryEvent,
   damageApplyEvent,
   damageUndoEvent,
+  characterInjuryEvent,
   attackRollEvent,
   attackEvadeEvent,
   attackSmartEvent,
@@ -364,23 +365,6 @@ async function authenticateHandshake(
   const unsigned = app.unsignCookie(raw);
   if (!unsigned.valid || !unsigned.value) return null;
   return resolveSessionUser(ctx.prisma, unsigned.value);
-}
-
-/**
- * The campaign a user's socket should join: the active campaign for the GM,
- * and for a player — only if they are a member of it.
- */
-async function resolveSocketCampaign(
-  prisma: PrismaClient,
-  user: SessionUser,
-): Promise<CampaignSummary | null> {
-  const campaign = await getActiveCampaign(prisma);
-  if (!campaign) return null;
-  if (user.role === ROLE_GM) return campaign;
-  const membership = await prisma.campaignMember.findUnique({
-    where: { campaignId_userId: { campaignId: campaign.id, userId: user.id } },
-  });
-  return membership ? campaign : null;
 }
 
 export function setupRealtime(io: SocketIOServer, app: FastifyInstance, ctx: AppContext): void {

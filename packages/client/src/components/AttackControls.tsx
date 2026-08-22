@@ -1,5 +1,6 @@
 import type { ChatMessageView, RollAttackMeta } from '@vtt/shared';
-import { formatMetres } from '@vtt/shared';
+import { ROLE_GM, formatMetres } from '@vtt/shared';
+import { useAuthStore } from '../stores/authStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useRollStore } from '../stores/rollStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
@@ -24,6 +25,8 @@ export function AttackRow({
 }) {
   const characters = useCharacterStore((s) => s.characters);
   const tokens = useTokenStore((s) => s.tokens);
+  const user = useAuthStore((s) => s.user);
+  const isGm = user?.role === ROLE_GM;
 
   const system = attack.system as {
     weaponRowId?: string;
@@ -44,6 +47,20 @@ export function AttackRow({
   const defender =
     targetToken?.characterId !== undefined && targetToken.characterId !== null
       ? characters[targetToken.characterId]
+      : undefined;
+  /**
+   * Figura bez karty też się uchyla (sesja naprawcza 22.08).
+   *
+   * PT obrony statysty liczy się z jego profilu bojowego od etapu 16b, ale
+   * przycisk pojawiał się wyłącznie dla celu z **kartą** — Zbir z Poligonu nie
+   * miał więc jak uniknąć niczego. Rzut idzie tym samym profilem, którym
+   * policzone było PT, więc bierna i czynna obrona nie mogą się rozjechać.
+   */
+  const statistDefender =
+    targetToken && !targetToken.characterId && targetToken.combatProfile
+      ? isGm || (user?.id !== undefined && targetToken.ownerId === user.id)
+        ? targetToken
+        : undefined
       : undefined;
 
   function rollDamage() {
@@ -111,12 +128,13 @@ export function AttackRow({
   }
 
   function rollEvasion() {
-    if (!defender) return;
+    const name = defender?.name ?? statistDefender?.name;
+    if (name === undefined) return;
     useRollStore.getState().loadEvasionCup({
       messageId: message.id,
-      characterId: defender.id,
-      characterName: defender.name,
-      title: `Unik: ${defender.name}`,
+      characterId: defender?.id ?? null,
+      characterName: name,
+      title: `Unik: ${name}`,
       modifierTotal: 0,
     });
   }
@@ -213,14 +231,14 @@ export function AttackRow({
               : (attack.damageNotation ?? '')}
           </button>
         )}
-        {!attack.evaded && attack.hit !== undefined && defender && (
+        {!attack.evaded && attack.hit !== undefined && (defender ?? statistDefender) && (
           <button
             type="button"
             className="small-button"
             title="Zamiast PT z tabeli — rzut ZW + Unik obrońcy (ładuje kubek)"
             onClick={rollEvasion}
           >
-            Unik: {defender.name}
+            Unik: {defender?.name ?? statistDefender?.name}
           </button>
         )}
         {/*

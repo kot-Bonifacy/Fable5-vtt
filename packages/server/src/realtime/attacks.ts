@@ -1372,22 +1372,49 @@ export const attackEvadeEvent = defineEvent<AttackEvadePayload, { total: number;
     // A car does not duck (stage 16c).
     if (!meta.targetTokenId) throw new RealtimeError('NOT_THE_TARGET');
 
-    // Only the target's own sheet may dodge — and only its owner or the GM.
-    const character = await requireRollableCharacter(deps, campaignId, user, payload.characterId);
-    const target = await deps.ctx.prisma.token.findUnique({ where: { id: meta.targetTokenId } });
-    if (!target || target.characterId !== character.id) throw new RealtimeError('NOT_THE_TARGET');
+    // Whoever is being shot at may duck — and only their owner or the GM says
+    // so. Until the repair session of 22.08 this asked for a **sheet**, which
+    // meant a statist could never press the button: their defence DV was read
+    // off their combat profile (stage 16b) but the dodge was not.
+    const target = await deps.ctx.prisma.token.findUnique({
+      where: { id: meta.targetTokenId },
+      include: { scene: true },
+    });
+    if (!target || target.scene.campaignId !== campaignId) {
+      throw new RealtimeError('NOT_THE_TARGET');
+    }
+
+    const registry = deps.ctx.cpred;
+    let defenderName: string;
+    let data: CpredCharacterData;
+    if (target.characterId) {
+      const character = await requireRollableCharacter(deps, campaignId, user, payload.characterId);
+      if (target.characterId !== character.id) throw new RealtimeError('NOT_THE_TARGET');
+      defenderName = character.name;
+      data = parseCharacterData(character.data, registry);
+    } else {
+      // A figure without a sheet dodges with the profile it defends with: the
+      // same synthesis `attack:roll` already rolls a statist's shots from, so
+      // the passive DV the shooter beat and the active roll cannot disagree.
+      if (user.role !== ROLE_GM && target.ownerId !== user.id) {
+        throw new RealtimeError('NOT_THE_TARGET');
+      }
+      const profile = readSheetCombatProfile(target.combatProfile);
+      if (!profile) throw new RealtimeError('TOKEN_HAS_NO_PROFILE');
+      defenderName = target.name;
+      data = sheetFromCombatProfile(profile, tokenHpOf(target), null);
+    }
 
     // „Dopóki ją trzymasz, twoja Ludzka tarcza nie może unikać Ataków
     // dystansowych, nawet jeśli jej REF wynosi 8 lub więcej" (s. 178). Melee is
     // untouched: being a shield does not stop you ducking a machete.
     const defence = await grappleStateForToken(deps.ctx.prisma, target.sceneId, target.id);
     if (defence.humanShield && !meta.melee) throw new RealtimeError('SHIELD_CANNOT_DODGE');
-    const registry = deps.ctx.cpred;
-    const data = parseCharacterData(character.data, registry);
     // A dodge is a reaction, not an Action, so the Hold's −2 stays off it
     // (stage 14d decision) — but the status table still gets a say, and from
     // stage 14e so do the Critical Injuries: „Odcięta noga … nie możesz Unikać
-    // ataków" lives on the sheet, not on the token.
+    // ataków" lives on the sheet, not on the token. A statist carries none of
+    // the latter, which is the same simplification stage 16b made of their gear.
     const dodgeBlock = sheetDodgeBlock(readTokenStatuses(target.statuses), data.criticalInjuries);
     if (dodgeBlock) throw new RealtimeError('DODGE_BLOCKED');
 
@@ -1411,7 +1438,7 @@ export const attackEvadeEvent = defineEvent<AttackEvadePayload, { total: number;
         ...roll.attack,
         hit: outcome.hit,
         evaded: true,
-        detail: `${roll.attack.detail} · Unik ${character.name}: ${evasion.total} → ${
+        detail: `${roll.attack.detail} · Unik ${defenderName}: ${evasion.total} → ${
           outcome.hit ? 'trafienie mimo uniku' : 'pudło'
         }`,
         ...(outcome.hit

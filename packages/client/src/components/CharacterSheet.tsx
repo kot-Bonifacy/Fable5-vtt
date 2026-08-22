@@ -16,12 +16,15 @@ import type {
   CpredReputationSource,
   CyberwareBodySlot,
   CpredWeaponRow,
+  CriticalInjuryEntry,
   LedgerEntryView,
   PortraitUploadResult,
   ResolvedWeapon,
 } from '@vtt/shared';
 import {
+  CRITICAL_INJURY_TABLE_LABELS,
   CYBERDECK_SLOTS_MAX,
+  isCriticalInjuryEntry,
   cyberdeckEntries,
   cyberdeckSlotsFree,
   cyberdeckSlotsUsed,
@@ -102,6 +105,7 @@ import {
 import { ApiError, apiUpload } from '../api.js';
 import { CyberwareBody } from './CyberwareBody.js';
 import {
+  assignCriticalInjury,
   economyErrorText,
   fetchLedger,
   flushCharacterSave,
@@ -623,7 +627,7 @@ function IdentityColumn({
         </p>
       )}
 
-      <CriticalInjuries data={data} saveData={saveData} />
+      <CriticalInjuries data={data} saveData={saveData} characterId={character.id} />
 
       <div className="cp-panel">
         <div
@@ -1620,7 +1624,28 @@ function ArmorPenalty({
  * Od etapu 27b stoją w kolumnie tożsamości strony pierwszej, bo tam drukuje je
  * karta — obok Uzależnień i pod Przeżywalnością.
  */
-function CriticalInjuries({ data, saveData }: TabProps) {
+function CriticalInjuries({ data, saveData, characterId }: TabProps & { characterId: string }) {
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
+  const entriesById = useCompendiumStore((s) => s.entries);
+  const order = useCompendiumStore((s) => s.order);
+  const [picked, setPicked] = useState('');
+  /**
+   * Tabela ran do wyboru — obie strony ciała, po numerze 2k6, tak jak drukuje
+   * je podręcznik. Rana, którą postać już ma, wypada z listy: serwer i tak jej
+   * nie zdubluje, a wybór, który zawsze kończy się odmową, jest gorszy niż brak
+   * wyboru.
+   */
+  const choices = useMemo(() => {
+    const taken = new Set(data.criticalInjuries.map((injury) => injury.id));
+    return order
+      .map((id) => entriesById[id])
+      .filter(
+        (entry): entry is CriticalInjuryEntry =>
+          entry !== undefined && isCriticalInjuryEntry(entry) && !taken.has(entry.id),
+      )
+      .sort((a, b) => (a.table === b.table ? a.roll - b.roll : a.table.localeCompare(b.table)));
+  }, [entriesById, order, data.criticalInjuries]);
+
   return (
     <div className="cp-panel cp-injuries">
       <div className="cp-bar">Krytyczne Urazy</div>
@@ -1668,6 +1693,42 @@ function CriticalInjuries({ data, saveData }: TabProps) {
             </li>
           ))}
         </ul>
+      )}
+      {/*
+        Ręczne nadanie rany (sesja naprawcza 22.08). RAW pozwala MG przypisać
+        ranę narracyjnie, a do tej pory jedyną drogą na kartę był rzut obrażeń
+        z dwiema szóstkami (1/36) albo nietrafiony test amunicji z 16h — więc
+        „spadasz z drabiny i łamiesz rękę" nie miało jak się wydarzyć.
+      */}
+      {isGm && choices.length > 0 && (
+        <div className="cp-field injury-assign">
+          <select
+            value={picked}
+            onChange={(e) => setPicked(e.target.value)}
+            aria-label="Rana krytyczna do nadania"
+            title="Rana wchodzi z pełnymi karami, tak jak wylosowana. Kartę na czacie można cofnąć."
+          >
+            <option value="">— nadaj ranę —</option>
+            {choices.map((entry) => (
+              <option key={entry.id} value={entry.id}>
+                {CRITICAL_INJURY_TABLE_LABELS[entry.table]} {entry.roll}: {entry.name}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className="cp-mini-button"
+            disabled={picked === ''}
+            title="Nadaje ranę bez rzutu — na czat idzie karta, którą da się cofnąć."
+            onClick={() => {
+              if (picked === '') return;
+              assignCriticalInjury({ characterId, injuryId: picked });
+              setPicked('');
+            }}
+          >
+            Nadaj
+          </button>
+        </div>
       )}
     </div>
   );

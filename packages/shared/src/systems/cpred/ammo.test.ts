@@ -275,8 +275,29 @@ describe('rounds that deal no damage (stage 16h)', () => {
         { statuses: ['Powalony'] },
       ),
     ).toBe('3k6 bezpośrednich · Powalony · na minutę');
-    // No labels supplied: the ids are printed rather than nothing at all.
-    expect(describeAmmoFailure({ damage: '2k6' })).toBe('2k6 bezpośrednich');
+    expect(describeAmmoFailure({ damage: '2k6' }, {})).toBe('2k6 bezpośrednich');
+  });
+
+  /**
+   * Błąd #6 z sesji testów walki 08.08: statyście złapanemu gazem karta
+   * wypisała „injury.head-uraz-oka · na minutę". Zdanie o tym, co się komuś
+   * stało, nie ma prawa nieść id z pliku danych — nawet gdy wołający zapomni
+   * podać nazw.
+   */
+  it('never leaks a compendium id into the sentence', () => {
+    const failure = {
+      damage: '2k6',
+      statuses: ['prone', 'unconscious'],
+      injuries: ['injury.head-uraz-oka'],
+      durationS: 60,
+    };
+    expect(describeAmmoFailure(failure, {})).toBe('2k6 bezpośrednich · na minutę');
+    expect(
+      describeAmmoFailure(failure, {
+        statuses: ['Powalony', 'Nieprzytomny'],
+        injuries: ['Uraz oka'],
+      }),
+    ).toBe('2k6 bezpośrednich · Powalony, Nieprzytomny · Uraz oka · na minutę');
   });
 });
 

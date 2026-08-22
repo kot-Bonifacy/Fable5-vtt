@@ -28,6 +28,17 @@ export interface CharacterView<TData = unknown> {
   updatedAt: string;
 }
 
+/**
+ * Klient → serwer: MG nadaje ranę krytyczną z ręki (sesja naprawcza 22.08).
+ *
+ * Sam identyfikator wpisu — resztę (nazwę, efekt, kary, flagi tur) serwer
+ * czyta z kompendium tą samą drogą, którą czyta ją rzut na obrażenia.
+ */
+export interface CharacterInjuryPayload {
+  characterId: string;
+  injuryId: string;
+}
+
 /** Client → server payload of `character:create`. */
 export interface CharacterCreatePayload {
   name: string;

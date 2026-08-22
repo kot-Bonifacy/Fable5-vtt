@@ -1060,6 +1060,79 @@ describe('ranged combat from the map', () => {
       expect(card.detail).toContain('Unik celu');
     });
 
+    /**
+     * Unik figury bez karty (sesja naprawcza 22.08).
+     *
+     * PT obrony statysty liczy się z jego profilu od etapu 16b, ale zdarzenie
+     * `attack:evade` wymagało **karty postaci** — więc przycisk „Unik" nigdy
+     * się dla niego nie pojawiał i bierna obrona była jedyną, jaką miał.
+     */
+    it('dodges with the same profile its passive DV is read from', async () => {
+      await emitAck(gm, 'token:move', {
+        tokenId: statistTokenId,
+        x: 2 * PX_PER_M,
+        y: 0,
+        final: true,
+      });
+      const message = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+      const ack = data(
+        await emitAck<{ messageId: number }>(player, 'attack:roll', {
+          characterId,
+          targetTokenId: statistTokenId,
+          attackerTokenId: shooterTokenId,
+          request: { weaponRowId: 'w-blade', mode: 'single' },
+        }),
+        'attack:roll',
+      );
+      await message;
+
+      const update = waitFor<ChatMessageBroadcast>(gm, 'chat:update');
+      const evaded = data(
+        await emitAck<{ total: number; hit: boolean }>(gm, 'attack:evade', {
+          messageId: ack.messageId,
+        }),
+        'attack:evade',
+      );
+      const rewritten = (await update).message.roll?.attack as AttackCard;
+      // Karta nazywa figurę, a nie kartę, której nie ma.
+      expect(rewritten.detail).toContain('Unik Ochroniarz');
+      expect(rewritten.hit).toBe(evaded.hit);
+      // Rzut jest rzutem: k10 w CP RED wybucha i pęka, więc żadnego przedziału
+      // nie da się tu obiecać — liczy się to, że **jakiś** rzut padł i że kartę
+      // przepisano jego wynikiem.
+      expect(Number.isInteger(evaded.total)).toBe(true);
+
+      // Jak przy karcie: raz.
+      expect(await emitAck(gm, 'attack:evade', { messageId: ack.messageId })).toEqual({
+        ok: false,
+        error: 'ALREADY_EVADED',
+      });
+    });
+
+    it('never lets a player dodge for a statist that is not theirs', async () => {
+      await emitAck(gm, 'token:move', {
+        tokenId: statistTokenId,
+        x: 2 * PX_PER_M,
+        y: 0,
+        final: true,
+      });
+      const message = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+      const ack = data(
+        await emitAck<{ messageId: number }>(player, 'attack:roll', {
+          characterId,
+          targetTokenId: statistTokenId,
+          attackerTokenId: shooterTokenId,
+          request: { weaponRowId: 'w-blade', mode: 'single' },
+        }),
+        'attack:roll',
+      );
+      await message;
+      expect(await emitAck(player, 'attack:evade', { messageId: ack.messageId })).toMatchObject({
+        ok: false,
+        error: 'NOT_THE_TARGET',
+      });
+    });
+
     /** RAW: armour stops the damage and wears down by one when it does. */
     it('applies and ablates the profile’s armour without the GM typing it', async () => {
       // SP 4 against the rifle's 5k6: the lowest possible roll still gets

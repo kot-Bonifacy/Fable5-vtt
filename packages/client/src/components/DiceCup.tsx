@@ -309,7 +309,7 @@ export function DiceCup() {
           // Stage 16h: the same gesture, the opposite side of the table. A
           // smart round is corrected by whoever fired it, so it goes to its own
           // event — which leaves the defender's dodge unspent.
-          if (loaded.kind === 'smart') {
+          if (loaded.kind === 'smart' && loaded.characterId) {
             sendAttackSmart(loaded.messageId, loaded.characterId, { entropy, strength, toss });
             return;
           }

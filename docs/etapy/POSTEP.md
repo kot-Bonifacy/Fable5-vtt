@@ -75,12 +75,15 @@ Pełne notatki z zamkniętych etapów: `archiwum/dziennik-sesji.md` (nie czytaj 
 
 ## Od czego zacząć
 
-Ostatnia sesja była **naprawcza, poza etapami** (21.08): MG kazał przejrzeć otwarte zaległości
-i naprawić z nich to, co jest **błędem**, a nie długiem oględzin. Zamknięte pięć — autozapis karty
-gubiący wiersze, brak jakiejkolwiek kolizji ruchu na serwerze, martwe `ignoreCover` w oknie Sieci,
-strach nieprzywracany przez „Cofnij" i skrypt tłumaczeń, którego uruchomienie zepsułoby 271
-polskich opisów. Szczegóły w notatce sesji niżej. Wcześniej **27f** (szlif UX: `?`, pamięć okien,
-neutralny `button`) i **27j** (żetony i kierunek patrzenia).
+Ostatnia sesja była **naprawcza, poza etapami** (22.08) i druga z rzędu takiej: MG kazał wypisać
+~10 otwartych zaległości do triażu, a potem wykonać z nich **grupy A i B** — pięć potwierdzonych
+błędów w kodzie i trzy braki funkcjonalne. Zamknięte: przeciekający klik narzędzi mapy (błąd #8,
+szerszy niż opis — dotyczył też stref i gniazd), brak jakiejkolwiek drogi **przełączenia
+kampanii** (#1), surowe id rany na czacie i w kompendium (#6), dymek celowania ślepy na nabój
+w komorze (#4), chip naboju i etykieta odchylenia granatu (#5, #7), **przycisk MG „nadaj ranę
+krytyczną"**, **Unik dla figury bez karty** i **zbieracz osieroconych plików z `uploads/`**.
+Szczegóły w notatce sesji niżej. Dzień wcześniej (21.08) druga sesja naprawcza zamknęła pięć
+innych błędów, a przed nią **27f** i **27j**.
 
 **Ruch gracza jest od 21.08 sprawdzany geometrią na serwerze.** `refuseWalkThroughSolid`
 w `realtime/movement.ts` odrzuca trasę przez ścianę, zamknięte okno i stojącą osłonę — **także
@@ -90,6 +93,21 @@ w `movementSegments`/`coverMovementSegments`, nie w nowej gałęzi walidacji.
 
 **Etap 27 został rozdzielony do końca**: 27d, 27e, 27f, 27h, 27i i 27j zrobione, zostaje
 **27g** (wydajność). Plik `etap-27-…` jest rozdrożem ze wskazaniami, sam nie jest do realizacji.
+
+**Nowe narzędzie mapy dopisuje się do dwóch getterów, nie do czterech list.** `MapRenderer`
+pyta o narzędzia w ręku wyłącznie przez `toolSpentThisClick` (gest rozliczony na `pointerdown`
+— ściany, lampy, gniazda, osłony, strefy) i `mapToolArmed` (wszystkie, pędzle włącznie).
+Pominięcie ich znaczy klik płacony dwa razy: narzędziu i grze pod spodem (błąd #8 z 08.08).
+Pilnuje tego `map-click.test.ts`, który czyta `MapRenderer.ts` jako tekst.
+
+**Aktywną kampanię przełącza `campaign:activate`, nie zapis w bazie.** Zdarzenie przenosi
+**wszystkie** podpięte gniazda (pokoje, scena, `state:sync`) i odsyła `campaign:switch`; trasa
+REST tworząca kampanię woła je zaraz po utworzeniu, żeby „utwórz" i „aktywuj" szły jedną drogą.
+Przycisk „Aktywuj" jest w Panelu MG przy każdej nieaktywnej kampanii.
+
+**Zdanie o tym, co się komuś stało, nie nosi id z pliku danych.** `describeAmmoFailure` wymaga
+teraz etykiet (parametr obowiązkowy), a nazwy ran daje `criticalInjuryNames` w `shared`. Nowy
+wołający, który zapomni podać nazw, zobaczy brak członu — nigdy `injury.head-uraz-oka`.
 
 **Skróty klawiszowe mają jedno źródło i tak ma zostać.** `MAP_TOOL_KEYS` w
 `packages/client/src/shortcuts.ts` czyta obsługa klawiatury w `MapArea` **i** okno pomocy —
@@ -475,12 +493,11 @@ przy **każdym** przejściu przez pokój i który ma własny wyłącznik).
   trzyma `lifepath.language`, wybierana z listy sąsiadującej z wylosowaną kulturą pochodzenia,
   a podsumowanie kreatora mówi wprost „na poziomie 4 — Farsi". Wpis w `POMYSLY.md`.
 
-- **Etap 27b — rana krytyczna w nowym panelu nieobejrzana.** „Krytyczne Urazy" w kolumnie
-  tożsamości widziane wyłącznie w stanie pustym („bez ran krytycznych"), bo — jak przy 14e —
-  **MG nie ma czym nadać rany ręcznie**; wchodzi tylko z rzutu obrażeń z dwiema szóstkami (1/36)
-  albo z nietrafionego testu amunicji z 16h. Sam JSX wiersza (nazwa, `2k6 = N`, chip „na minutę",
-  „+N do Testu Przeżywalności", efekt, kosz) jest przeniesiony bez zmian logiki — zmieniły się
-  klasy. Wpis o przycisku MG „nadaj ranę krytyczną" jest w `POMYSLY.md` od 14e.
+- **Etap 27b — rana krytyczna w nowym panelu nieobejrzana, ale od 22.08 **osiągalna w jednym
+  kliknięciu**.** „Krytyczne Urazy" w kolumnie tożsamości widziane było wyłącznie w stanie pustym,
+  bo MG nie miał czym nadać rany. Ma: lista wyboru + „Nadaj" pod listą ran (`character:injury`).
+  Zostaje samo **obejrzenie** wiersza z raną — nazwa, `2k6 = N`, chip „na minutę", „+N do Testu
+  Przeżywalności", efekt, kosz — w obu motywach i na wydruku.
 
 - **Etap 27a — motyw dzienny kończy się na oknie karty.** To świadome i zapisane w zakresie:
   `data-theme='day'` przemalowuje `.sheet-window` (od 27b także pas broni i pancerza, a od 27c
@@ -526,11 +543,13 @@ przy **każdym** przejściu przez pokój i który ma własny wyłącznik).
   `AI_UNAVAILABLE` po polsku) i **kosz przy wpisie** — ten drugi kliknięty w 24b i działa
   dwustopniowo („Usunąć?" → „Tak, usuń").
 
-- **Etap 24a — grafika po usunięciu handoutu zostaje na dysku.** `uploads/handouts/` nie ma
-  sprzątacza: usunięcie handoutu (albo podmiana grafiki na inną) kasuje wiersz w bazie, ale
-  plik zostaje. Świadome — dokładnie tak samo zachowują się mapy z etapu 04, portrety z 07
-  i tokeny z 05, a osobny mechanizm zbierania sierot dotyczyłby wszystkich czterech naraz.
-  Wpis w `POMYSLY.md`.
+- ~~**Etap 24a — grafika po usunięciu handoutu zostaje na dysku.**~~ **Naprawione 22.08**
+  (sesja naprawcza) i szerzej: sprzątacza nie miał **żaden** z czterech katalogów. `uploads-gc.ts`
+  chodzi w tle przy starcie serwera i kasuje plik **tylko** wtedy, gdy żadna kolumna go nie
+  wymienia i jest starszy niż godzina (portret w kreatorze powstaje, zanim istnieje postać).
+  Odnośniki zbierane są z kolumn z adresem **i** wyrażeniem regularnym z kolumn JSON (szkic
+  kreatora, ładunek czatu, dane karty) — **nowa kolumna z adresem musi trafić na tę listę**,
+  inaczej znaczy skasowany plik. Przebieg na sucho na żywych danych: 10 plików, 0 sierot.
 
 - **Etap 24a — odmowy uploadu nieodklikane.** Plik > 12 MB, obraz > 4096 px na bok i format
   spoza PNG/JPG/WebP mają wrócić po polsku z `uploadErrorText`; sprawdzony był wyłącznie
@@ -633,6 +652,12 @@ decyduje przegrany, nie zwycięzca`) — Konfrontacje z 10.08 szły z konta MG, 
 
 - **Etap 19a — dwie ścieżki nieodklikane po poprawce.** (1) **Powtórka bez rozumowania**: pytanie, przy którym model przemyśli całą pulę tokenów, ma teraz wrócić z odpowiedzią i przypisem „rozumowanie zajęło cały limit… pytanie poszło jeszcze raz bez rozumowania" — poprawka weszła po tym, jak błąd się pokazał, i nie została obejrzana na żywym modelu (pokryta testem `rules.test.ts`). Pytanie, które to wywołało: „Jak działa korzystanie z osłony w walce i co daje osłona?". (2) **Degradacja**: panel z zatrzymanym gatewayem ma pokazać „brak połączenia z AI Gateway", a nie pustą kartę. (3) Kosmetyka: pytanie o **PT strzału z odległości** to jedyne z zestawu pomiarowego, które nie trafia w tabelę PT — tabela jest w indeksie, ale wygrywają z nią sąsiednie akapity.
 
+- **Z ośmiu błędów sesji testów 08.08 nie został żaden nienaprawiony.** #2 i #3 padły tego samego
+  dnia, #4, #5, #6, #7 i #8 — 22.08 (sesja naprawcza), #1 razem z brakującym przełącznikiem
+  kampanii. Plik `docs/testy/sesja-testow-walki-2026-08-08.md` dalej jest wart czytania przed
+  odhaczaniem czegokolwiek, ale wyłącznie dla **poligonu i listy sprawdzonych ścieżek** — jego
+  rozdział „Znalezione błędy" jest już historią.
+
 - **⚠️ ZANIM ODHACZYSZ COKOLWIEK NIŻEJ: przeczytaj `docs/testy/sesja-testow-walki-2026-08-08.md`.**
   Sesja 08.08 zbudowała **gotowy poligon testowy** (kampania „Poligon bojowy", scena
   „Strzelnica", pięć uzbrojonych figur — nie buduj go od nowa) i **odklikała dużą część list
@@ -647,7 +672,7 @@ decyduje przegrany, nie zwycięzca`) — Konfrontacje z 10.08 szły z konta MG, 
   16c u MG** (poza „usuń wszystkie"), **etap 15 — śmiertelne rany, Test Przeżywalności,
   śmierć i Ustabilizowanie od zera**, **Pochwycenie z „Broń się"** z 14d, monity początku
   tury z 14e i zakładkę „AI". Doszły błędy **#7** (etykieta odchylenia granatu) i **#8**
-  (klik narzędziem osłon przecieka do warstwy gry — `MapRenderer.ts:1044`).
+  (klik narzędziem osłon przecieka do warstwy gry) — **oba naprawione 22.08**.
   Ustalenie ważne dla reszty list: **odmowy statusowe są u MG niesprawdzalne** —
   `realtime/movement.ts:216` zwalnia MG z blokad, więc wszystko, co „ma odmówić ruchu",
   trzeba oglądać na koncie gracza.
@@ -674,7 +699,11 @@ decyduje przegrany, nie zwycięzca`) — Konfrontacje z 10.08 szły z konta MG, 
 - **Etap 13 — UI kompendium odklikane tylko powierzchownie**: 30.07 (przy oględzinach 14b) potwierdzona sama zakładka „Kompendium" — chipy kategorii z licznikami (Broń 103, Pancerz 11, Sprzęt 5, Cyborgizacje 3, Rany krytyczne 22) i lista wpisów z obrażeniami i ceną. **Nadal nieodklikane:** karta przedmiotu z tabelą PT, edytor MG, dodanie przedmiotu na kartę postaci. Ścieżki serwerowe pokryte testami.
 - **Etap 09 — zakładka „AI" u MG niezweryfikowana wizualnie** (sesja toczyła się na koncie gracza). Późniejsze etapy oglądały u MG inne zakładki, więc to prawdopodobnie martwa zaległość — sprawdź przy okazji.
 - **Etapy 18d/18e — strona gracza nieodklikana**: ikona 🪟 u gracza, „Za daleko — podejdź do okna", „Okno zamknięte na skobel", „Zamknięte na klucz". Pokryte testami dymnymi na payloadzie.
-- **Etap 14e — rany krytyczne są nieosiągalne ręcznie, więc karta odmowy u gracza zostaje nieobejrzana.**
+- **Etap 14e — karta odmowy przy Urazie kręgosłupa u gracza nadal nieobejrzana, ale od 22.08 jest jak ją wywołać.**
+  MG nadaje ranę z karty postaci (lista + „Nadaj"), więc „Uraz kręgosłupa" nie wymaga już
+  trafienia 1/36 razy 3/36. Stara treść wpisu niżej — została, bo opisuje, **czego** dokładnie
+  nikt nie widział na ekranie gracza.
+
   Odmowa Akcji przy Urazie kręgosłupa i monit przy Urazie ucha widziane u MG, ale **nie** na
   ekranie gracza. Próba z 11.08 utknęła nie na automatyzacji, tylko na tym, że **MG nie ma czym
   nadać rany krytycznej**: na karcie postaci sekcja „Rany krytyczne" wyłącznie **usuwa** wiersze
@@ -695,7 +724,12 @@ decyduje przegrany, nie zwycięzca`) — Konfrontacje z 10.08 szły z konta MG, 
   trzymającego, żeby tarcza w ogóle dostała przycisk „Unik". Na Strzelnicy są dwie figury.
 - **Etap 16b — strona gracza i klik w cel nieodklikane**: klik w token ładujący kubek ataku, „🎯 Atak…" w menu kontekstowym tokenu i edytor profilu bojowego w „Edytuj…" — wszystkie trzy wymagają trafienia wskaźnikiem w warstwę Pixi, czego CDP nie dowozi (pułapka niżej). Pokryte 13 testami dymnymi w `attacks.test.ts`.
 - ~~**Osłona nie blokuje ruchu po stronie serwera**~~ — **naprawione 21.08** (sesja naprawcza), i szerzej, niż mówiła notatka: serwer nie sprawdzał **żadnej** geometrii ruchu, więc ściany też nie blokowały przeciągnięcia. `validateTokenMove` woła teraz `refuseWalkThroughSolid` (ściany + zamknięte okna + stojące osłony, `firstBlockedStep` w `shared/pathfinding.ts`), **także poza walką**; MG jest zwolniony, jak wszędzie w tym module. Odmowa nie nazywa przeszkody — gracz nie może mapować budynku, wchodząc w ściany. Testy: `covers.test.ts` (przez samochód, dookoła niego, MG bez blokady) i `walls.test.ts` (drzwi zamknięte vs otwarte). Stara treść wpisu; `validateTokenMove` dalej liczy sam dystans. Wraca razem z kolizjami ruchu (POMYSLY, 30.07).
-- **Etap 16b — statysta nie może aktywnie unikać**: PT obrony statysty liczy się z jego profilu (Unik), ale przycisk „Unik" na karcie ataku pojawia się wyłącznie dla celu z kartą postaci, bo `attack:evade` wymaga `characterId`. Do domknięcia razem z 16c albo osobnym wpisem w POMYSLY.
+- ~~**Etap 16b — statysta nie może aktywnie unikać**~~ — **naprawione 22.08** (sesja naprawcza).
+  `attack:evade` czyta obrońcę z zapisanej karty ataku, a kartę postaci bierze **tylko wtedy, gdy
+  cel ją ma**; figura z samym profilem bojowym rzuca tą samą syntezą (`sheetFromCombatProfile`),
+  którą policzone było jej bierne PT — więc obie liczby nie mają jak się rozjechać. Przycisk
+  dostaje MG albo właściciel żetonu, czyli ci, którym serwer i tak wysyła profil. Testy
+  w `attacks.test.ts` (Unik statysty przepisuje kartę; gracz nie uniknie za cudzą figurę).
 - **Rany warunkowe zostają prozą**: „Strzaskane palce −4 do Akcji **tą ręką**" i „Złamana szczęka −4 do Akcji **związanych z mówieniem**" nie mają flagi maszynowej, bo VTT nie wie, co jest w której dłoni ani która czynność jest mówieniem. MG stosuje je ręcznie — wróci to razem ze śledzeniem broni w dłoniach (POMYSLY, 30.07).
 - **`data/private/rulebook/manual/tabela-ran-krytycznych.md` jest poza repo** — na czystej maszynie trzeba go dostarczyć albo wpisać tabelę głowy w edytorze.
 
@@ -789,6 +823,89 @@ decyduje przegrany, nie zwycięzca`) — Konfrontacje z 10.08 szły z konta MG, 
 
 ## Notatki z dwóch ostatnich sesji
 
+### Sesja 22.08 — sesja naprawcza (grupy A i B z przeglądu zaległości), poza etapami
+
+**Zlecenie MG: wypisać ~10 otwartych zaległości do triażu, a potem wykonać grupy A i B** —
+osiem pozycji: pięć potwierdzonych błędów w kodzie i trzy braki funkcjonalne. Z listy wypadło
+wszystko wokół lokalnego LLM (MG wymienia model) i same niedokończone etapy (27g, 28).
+
+**A1. Klik narzędziem mapy przeciekał do warstwy gry — i był szerszy, niż mówił błąd #8.**
+`viewport.on('clicked')` w `MapRenderer.ts` wykluczał tylko ściany i lampy, a gest kończący
+się `return`-em na `pointerdown` mają **także** osłony (16c), strefy (26f) i gniazda sieciowe
+(26b). Przy okazji wyszło, że **cztery** miejsca pytają „czy narzędzie jest w ręku" czterema
+listami pisanymi z ręki i **trzy z nich się rozjechały**: celownik (`aimTargetFor`), podgląd
+trasy (`trackWalkHover`) i kursor mapy nie znały części narzędzi, więc z gumką osłon w ręku
+mapa dalej rysowała trasę pod kursorem. Teraz są dwa gettery — `toolSpentThisClick` (narzędzia
+rozliczone na `pointerdown`) i `mapToolArmed` (wszystkie, pędzle włącznie) — a `map-click.test.ts`
+przewraca się, gdy nowe narzędzie nie trafi do żadnego strażnika.
+
+**A2. Zmiana aktywnej kampanii nie ruszała podpiętych ekranów — bo nie było czym jej zmienić.**
+Błąd #1 mówił „zmienia się tylko nazwa w nagłówku"; w kodzie nie istniał **żaden** przycisk
+ani trasa aktywacji — kampanię dało się przełączyć wyłącznie tworząc nową (dokument testów
+z 08.08 opisuje „Panel MG → Aktywuj", którego nie było). Doszło zdarzenie `campaign:activate`
+(MG), które przenosi **każde** podpięte gniazdo: wyjście ze starych pokoi, wejście do nowych,
+scena aktywna nowej kampanii i pełny `state:sync` — czyli te same trzy kroki, które wykonuje
+świeże gniazdo. Klient dostaje `campaign:switch` i odświeża nazwę w pasku oraz wskaźniki
+(zaznaczenie, broń w ręku). Gracz spoza nowej kampanii dostaje `null`, nie cudzy stół.
+
+**A3. Statysta dostawał na czacie surowe id rany — a to samo robiła karta wpisu w kompendium.**
+`describeAmmoFailure` miało fallback na `failure.injuries`/`failure.statuses`, czyli na id
+z pliku danych, i odzywał się wszędzie, gdzie wołający zapomniał podać nazw: przy figurze bez
+karty (rana nie jest nigdzie zapisywana, więc nazwy nie było skąd wziąć) **i** w karcie wpisu
+amunicji w kompendium, która nazw nie podawała nigdy. Fallback zniknął, `labels` jest teraz
+parametrem **wymaganym** (TypeScript pilnuje wołających), a nazwy ran wyciąga wspólny
+`criticalInjuryNames` w `shared`. Test w `shared` pilnuje, że w zdaniu nie ma jak paść id.
+
+**A4. Dymek celowania nie wiedział, co jest w komorze.** `planCpredAttack` przyjmuje profil
+naboju od 16g i serwer mu go podaje — klient nie. Skutek: ze śrutem dymek wyceniał strzał
+z **tabeli kul** („Przedział 7–12 m · PT 15"), klik ładował kubek, a odmowa „poza zasięgiem"
+przychodziła dopiero po rzucie. Teraz podgląd czyta nabój tą samą drogą co serwer, więc za
+stożkiem odmawia od razu, a w stożku pokazuje stałe PT. `aim-preview.test.ts` chodzi po
+prawdziwym `planAttackPreview` z podstawionymi sklepami.
+
+**A5. Dwa drobiazgi.** (1) Chip naboju nie odświeżał się przy broni bez magazynka, bo
+`hudSignature` — to, po czym pasek akcji poznaje, że jest co przerysować — nie widziała
+`ammoLabel` ani `coneRangeM`; strzelba maskowała błąd, bo przy przeładowaniu zmieniał się
+licznik magazynka. (2) Etykieta odchylenia granatu pisała „5 − ZW 7 = 2 m"; `CpredScatter`
+niesie teraz `clamped`, a `describeScatter` mówi „→ najmniej 2 m (ładunek zawsze schodzi
+o pole)" i **sam** dokleja wynik, więc limit nie ma jak zniknąć u wołającego.
+
+**B6. MG może nadać ranę krytyczną.** Do tej pory rana wchodziła wyłącznie z rzutu z dwiema
+szóstkami (1/36) albo z nietrafionego testu amunicji z 16h, a karta postaci potrafiła je tylko
+usuwać — „spadasz z drabiny i łamiesz rękę" nie miało jak się wydarzyć, choć RAW na to pozwala.
+Nowe `character:injury` (MG) zapisuje ranę **tą samą** funkcją co rzut
+(`applyForcedFailureToSheet`), więc niesie karę do RUCH-u, dopłatę do Testu Przeżywalności
+i flagi tur z 14e; karta na czacie jest zwykłą kartą obrażeń, więc „Cofnij" działa bez jednej
+nowej linii. W karcie postaci, pod listą ran, MG ma listę wyboru + „Nadaj". **To odblokowuje
+trzy stare zaległości oględzin** (odmowa Akcji przy Urazie kręgosłupa z 14e, wiersz rany
+w panelu 27b, karta odmowy u gracza).
+
+**B7. Statysta może aktywnie unikać.** `attack:evade` wymagało karty postaci, więc figura
+z samym profilem bojowym (Zbir z Poligonu) nigdy nie dostawała przycisku „Unik", choć jej PT
+obrony liczy się z tego profilu od 16b. Rzut idzie teraz tą samą syntezą
+(`sheetFromCombatProfile`), którą policzone było bierne PT, więc obie liczby nie mają jak się
+rozjechać; prawo do kliknięcia ma MG albo właściciel żetonu — dokładnie ci, którym serwer
+i tak wysyła profil (`seesPrivate`).
+
+**B8. Nikt nie sprzątał `uploads/`.** Nowy `uploads-gc.ts` zbiera sieroty z czterech katalogów
+naraz i chodzi w tle przy starcie serwera. Zasada jest ostrożna: plik ginie **tylko** wtedy, gdy
+żadna kolumna go nie wymienia i jest starszy niż **godzina** — bo portret w kreatorze powstaje
+zanim istnieje postać. Odnośniki zbierane są dwiema drogami (kolumny z adresem + wyrażenie
+regularne po kolumnach JSON: szkic kreatora, ładunek czatu, dane karty), i **ta lista jest
+w jednym miejscu** — nowa kolumna z adresem, która na nią nie trafi, znaczy skasowany plik.
+Przebieg na sucho na żywych danych: 10 plików, 0 sierot.
+
+**Testy: 2099 przechodzi** (shared 1318, serwer 753, klient 28). Nowe: `map-click.test.ts`,
+`aim-preview.test.ts`, `hud-signature.test.ts` (klient), `campaign-switch.test.ts`,
+`uploads-gc.test.ts` + wpisy w `damage.test.ts`, `attacks.test.ts`, `ammo-effects.test.ts`
+(serwer), `ammo.test.ts`, `areas.test.ts` (shared). Cztery poprawki sprawdzone **celowym
+cofnięciem** (A1, A3, A4, plus zbieracz na sucho). ESLint i Prettier czyste, serwer wstaje,
+`vite build` przechodzi.
+
+**Czego ta sesja NIE ruszyła:** grupy C z przeglądu — dług oględzin („strona gracza"
+w kilkunastu etapach), czytelność `down` na mapie, odmiana w wyszukiwarce dziennika i kontrast
+marki. To są pozycje 9–12 listy, MG zostawił je świadomie.
+
 ### Sesja 21.08 (trzecia tego dnia) — sesja naprawcza, poza etapami
 
 **Zlecenie MG: przejrzeć otwarte zaległości, wybrać z nich, co jest prawdziwym błędem, i to
@@ -857,74 +974,11 @@ bez zmian w kodzie.
 
 ### Sesja 21.08 (druga tego dnia) — etap 27f (szlif UX: pomoc, tooltipy, stany, okna)
 
-**Trzy decyzje MG na starcie:** robimy 27f; okna dostają wspólny hook **i** uchwyt skalowania
-(nie samą pamięć pozycji); umowa o przyciskach zostaje **odwrócona** przy okazji.
-
-**Odwrócenie umowy o przyciskach kosztowało 13 przycisków, nie trzysta.** Pierwszy pomiar
-mówił „304 gołe `<button>`" i był błędny — `grep` liczył tylko te, które miały `className`
-w tej samej linii. Prawdziwa liczba to **15**, z czego 13 to akcje główne („Zaloguj się",
-„Wyślij", „Utwórz", „Weź kubek") i dostały `.primary-button`, a dwa mają własne style
-(`.cp-alert button`, ✕ przy chipie Programu). Baza `button` jest teraz neutralna, więc
-przycisk, który podmieni tło i zapomni o `color`, dostaje **czytelny** napis zamiast białego
-na kremowym. Pułapka wychodzi teraz drugą stroną (ciemny napis na czerwieni) i **to** pilnuje
-nowy test w `theme.test.ts` — sprawdzony celowym psuciem, nie samym „przechodzi".
-
-**Lista skrótów nie ma jak skłamać, bo nie ma dwóch list.** `MAP_TOOL_KEYS` w nowym
-`shortcuts.ts` zastąpiło osiem `if`-ów w obsłudze klawiatury `MapArea` i **jednocześnie**
-jest źródłem rozdziału „Narzędzia mapy" w oknie `?`. Reszta skrótów (cyfry, `Shift`+cyfra,
-`Tab`, `E`, drabina `Escape`) jest opisana ręcznie — te nie zamieniają się w tabelę bez
-udawania, że są prostsze, niż są. Test czyta `MapArea.tsx` jako tekst i przewraca się, gdy
-w obsłudze klawiatury znów pojawi się `toggleTool('...')` z literałem.
-
-**`?` czyta znak, nie miejsce na klawiaturze.** `event.key === '?'` jest właściwym testem
-(przeglądarka podaje znak, który klawisz _produkuje_, więc działa na każdym układzie), ale
-automat sterujący Chrome podaje `key: '/'` z `shiftKey` — i to samo robią niektóre
-przeglądarki. Druga droga (`code === 'Slash'` z Shiftem) kosztuje linię; tej samej ostrożności
-nauczył 27h przy cyfrach paska akcji.
-
-**Okna: jeden moduł zamiast siedmiu kopii.** `window-placement.ts` niesie przeciąganie,
-skalowanie za róg, zapis w `localStorage` (klucz `vtt.window.<userId>.<okno>`) i sprowadzanie
-okna na ekran. Klucz jest **per okno i per postać** (`sheet:<characterId>`), więc karta Tony'ego
-wraca tam, gdzie ją zostawiono, a nie tam, gdzie stała ostatnia karta.
-
-**Dwa błędy znalezione przy oglądaniu — oba w uchwycie skalowania.** (1) **Uchwyt w rogu nie
-dawał się złapać.** Karta postaci ma od 27a `clip-path` ścinający prawy dolny narożnik o 22 px,
-a pozostałe okna zaokrąglenie 10 px — jedno i drugie **wycina róg z trafień**, więc kliknięcie
-przechodziło do mapy pod spodem (i wydawało rozkaz marszu figurze!). Uchwyt siedzi teraz 13 px
-od obu krawędzi: najbliższy punkt sumuje się do 26, czyli z zapasem za skosem. (2) **Okno
-wracało na ekran samym rogiem.** Pierwsza wersja `clampPlacement` trzymała się progu „120 px
-belki widoczne" i sprowadzała okno z x = 9000 do `innerWidth − 120`. Teraz funkcja dostaje
-**zmierzony** rozmiar okna (znany dopiero po pierwszym renderze, bo szerokość zna sam CSS)
-i okno, które się mieści, wraca **całe**.
-
-**Stopka ze skrótami nad kubkiem zniknęła** (decyzja MG w trakcie sesji): `?` przejął jej rolę,
-a lewy pasek wrócił do tego, czym jest — do stanu figury.
-
-**Tooltipy: pięćdziesiąt przycisków miało sam `title`.** Ikony rysowane w SVG (`MapIcons`,
-`UiIcons`) są `aria-hidden`, więc **tam** `title` wystarcza za nazwę dostępną i nic nie trzeba
-było robić. Problem był przy przyciskach, których całą treścią jest **znak** (`✕`, `🎲`, `⟳`):
-bez `aria-label` czytnik odczytuje nazwę znaku Unicode. Poprawka była kodemodem (przepisanie
-`title` na `aria-label`), więc następny taki przycisk powstanie tak samo — stąd nowy
-`a11y.test.ts`, też sprawdzony celowym psuciem.
-
-**Stany puste rozróżniają teraz „pusto" od „nic nie pasuje".** Nowy `EmptyState` (zdanie
-
-- opcjonalny pierwszy krok) wszedł tam, gdzie panel wysyłał szukającego do zakładania czegoś,
-  co już ma: kompendium ma trzy różne pustki (pusta baza / pusta kategoria / pusty wynik szukania
-  z „Wyczyść szukanie"), baza wiedzy i dziennik dostały to samo wyjście z filtra, a kolejka
-  inicjatywy mówi graczowi, na co czeka.
-
-**Sprawdzone w przeglądarce** (konto MG, Poligon, stan przywrócony na koniec): `?` z klawiatury
-i z paska, `Esc` zamykający okno, przeciąganie okna z zapisem do `localStorage`, skalowanie
-karty postaci (1180 × 786 → 921 × 581, arkusz przeliczył szpalty), powrót okna z x = 9000 na
-ekran w całości, trafialność uchwytu w trzech punktach dla karty i dla ustawień, pusty wynik
-szukania w kompendium z przyciskiem, oba motywy okna `?` i zniknięta stopka HUD-u.
-
-**Przy oglądaniu przesunąłem żeton „Automatyczna wieżyczka"** (nietrafione przeciągnięcie
-uchwytu poszło do mapy jako rozkaz marszu). Wrócił na **(900, 1400)** — zgodnie z kopią
-`dev.db.bak-20260819-27d`. Czego **nie da się** odtworzyć, to jego `facing` sprzed tego ruchu:
-kolumna jest z 27j, a kopie są starsze. Wieżyczka patrzy teraz na 297° (tam, skąd wróciła);
-gałka na pierścieniu ustawi ją w jednym geście.
+Okno `?` czyta jedną tabelę skrótów (`MAP_TOOL_KEYS`), a pływające okna — jeden hook
+(`window-placement.ts`, pamięć w `localStorage` per okno i per postać). Umowa o przyciskach
+została odwrócona (`button` neutralny, `.primary-button` czerwony), co zamknęło pułapkę
+„białe na kremowym"; doszły `theme.test.ts` i `a11y.test.ts`, oba sprawdzone celowym psuciem.
+Pełna notatka: `archiwum/dziennik-sesji.md`.
 
 ### Sesja 21.08 — etap 27j (żetony i czytelny ruch)
 

@@ -37,14 +37,14 @@ Skrypt wypełniający karty (gdyby trzeba było odtworzyć):
 Manekin 8 · Zbir 7. Rico ma mocno przekroczony budżet tury (MG może).
 
 > **Sprzątanie na koniec testów:** utworzenie „Poligonu bojowego" **zdezaktywowało kampanię
-> „Ulice Night City"**. Trzeba ją przywrócić: Panel MG → „Ulice Night City" → _Aktywuj_,
-> a potem **przeładować kartę** (patrz błąd #1).
+> „Ulice Night City"**. Trzeba ją przywrócić: Panel MG → „Ulice Night City" → _Aktywuj_.
+> Od 22.08 przycisk istnieje i przenosi ekrany same — przeładowanie karty nie jest potrzebne.
 
 ---
 
 ## 2. Znalezione błędy
 
-### #1 — zmiana aktywnej kampanii nie odświeża klienta ⬜ NIEPOPRAWIONE
+### #1 — zmiana aktywnej kampanii nie odświeża klienta ✅ POPRAWIONE (22.08)
 
 Po utworzeniu albo aktywowaniu kampanii w Panelu MG zmienia się **tylko nazwa w nagłówku**.
 Mapa, czat (nagłówek „ONLINE — <stara kampania>"), tracker inicjatywy i lewy pasek nadal
@@ -52,6 +52,12 @@ należą do poprzedniej kampanii, aż do ręcznego przeładowania karty. MG moż
 scenie kampanii, której nazwy nagłówek już nie pokazuje.
 **Repro:** Panel MG → „Utwórz" nową kampanię (albo „Aktywuj" inną) → „← Wróć do gry".
 **Waga:** niska (rzadka ścieżka), ale mylące.
+**Poprawka (22.08):** przycisku „Aktywuj" w ogóle nie było — kampanię dało się przełączyć
+wyłącznie tworząc nową (ten dokument opisywał ścieżkę, która nie istniała). Doszło zdarzenie
+`campaign:activate` (MG), które przenosi **każde** podpięte gniazdo: stare pokoje → nowe,
+scena aktywna nowej kampanii, pełny `state:sync`, a na końcu `campaign:switch` odświeżające
+nazwę w pasku i wskaźniki klienta. Przycisk stoi przy każdej nieaktywnej kampanii w Panelu MG.
+Test: `packages/server/src/campaign-switch.test.ts`.
 
 ### #2 — statysta dostawał pięści zamiast wybranej broni ✅ POPRAWIONE
 
@@ -76,7 +82,7 @@ karty zapisane wcześniej dalej się renderowały); karta czyta pojemność stam
 **Test:** `packages/shared/src/systems/cpred/attacks.test.ts` — „carries the magazine size,
 which a burst cannot be back-computed from".
 
-### #6 — wymuszony test wypisuje statyście surowe id rany ⬜ NIEPOPRAWIONE (widoczne przy stole)
+### #6 — wymuszony test wypisuje statyście surowe id rany ✅ POPRAWIONE (22.08)
 
 Granat z gazem łzawiącym, karta wymuszonego testu. Figura **z kartą postaci** dostaje czytelne
 „Uraz oka · na minutę"; **statysta** dostaje „**injury.head-uraz-oka** · na minutę".
@@ -100,7 +106,7 @@ Statusy tej wady nie mają, bo `statusLabels` liczy się zawsze przez `statusNam
 i wymuś podawanie etykiet przez wołającego. Wymaga testu w `ammo-effects.test.ts`
 (statysta w obszarze gazu).
 
-### #5 — chip naboju nie odświeża się przy broni bez magazynka ⬜ NIEPOPRAWIONE (drobne)
+### #5 — chip naboju nie odświeża się przy broni bez magazynka ✅ POPRAWIONE (22.08)
 
 Po wybraniu amunicji dla **granatu** (`ammoMax = 0`) chip na pasku akcji **nie pojawia się
 do przeładowania strony**. Przy strzelbie chip pojawia się natychmiast, bo zmiana naboju
@@ -109,7 +115,7 @@ zdarzenie nie leci i pasek nie jest przerysowywany. Nabój **jest** zapisany pop
 (`ammoId: ammo.tear-gas` w bazie) i atak działa — mylący jest tylko brak potwierdzenia
 na ekranie.
 
-### #8 — klik narzędziem osłon przecieka do warstwy gry ⬜ NIEPOPRAWIONE (przy stole boli)
+### #8 — klik narzędziem osłon przecieka do warstwy gry ✅ POPRAWIONE (22.08)
 
 Z gumką osłon w ręku kliknięcie **kasuje osłonę i jednocześnie wykonuje ruch albo ładuje
 atak**. Zobaczone dwa razy z rzędu: skasowanie wraku wysłało Rica w marsz („Akcja Ruchu —
@@ -122,10 +128,13 @@ wypisuje kolejność znaczeń kliknięcia i pomija narzędzie osłon. Linia 1044
 `rulerMode || fogBrush.armed || draw.armed || erasing` — ale `this.cover.armed`
 **nie występuje nigdzie**, choć gałąź osłon w `pointerdown` (linia 1445) kończy się
 `return`, dokładnie jak ściany i lampy.
-**Proponowana poprawka:** dopisać `this.cover.armed` do warunku w linii 1044 (razem ze
-ścianami i lampami — ta sama przyczyna: klik już obsłużony na `pointerdown`).
+**Poprawka (22.08):** dwa gettery zamiast czterech list pisanych z ręki —
+`toolSpentThisClick` (narzędzia rozliczone na `pointerdown`: ściany, lampy, gniazda, osłony,
+strefy) i `mapToolArmed` (wszystkie, pędzle włącznie). Przy okazji wyszło, że błąd był
+**szerszy**: te same gałęzie mają strefy z 26f i gniazda sieciowe z 26b, a celownik, podgląd
+trasy i kursor mapy nie znały części narzędzi. Pilnuje `packages/client/src/map-click.test.ts`.
 
-### #7 — etykieta odchylenia granatu kłamie, gdy zadziała dolny limit ⬜ NIEPOPRAWIONE (drobne)
+### #7 — etykieta odchylenia granatu kłamie, gdy zadziała dolny limit ✅ POPRAWIONE (22.08)
 
 Pudło Puszką hukową wypisało „odległość 1k10 = 5 − ZW 7 = **2 m**". 5 − 7 = −2; te 2 m to
 dolny limit z `rollBlastScatter` (`packages/shared/src/systems/cpred/areas.ts:223`:
@@ -136,15 +145,17 @@ Tekst skleja `packages/server/src/realtime/areas.ts:331`
 (`${describeScatter(scatter)} = ${formatMetres(...)}`).
 **Propozycja:** gdy limit zadziałał, pisać np. „5 − ZW 7 → najmniej 2 m (jedno pole)".
 
-### #4 — dymek celowania ignoruje załadowany śrut ⬜ NIEPOPRAWIONE (drobne, UX)
+### #4 — dymek celowania ignoruje załadowany śrut ✅ POPRAWIONE (22.08)
 
 Z załadowaną **Amunicją śrutową** dymek nad celem pokazuje przedział i PT z **tabeli kul**
 (np. na 10 m: „Przedział 7–12 m · PT 15"), a nie stały PT śrutu i limit stożka 6 m. Klik
 ładuje kubek, a dopiero rzut wraca odmową „Cel jest poza zasięgiem tej broni".
 Karta po strzale jest już poprawna („PT 13 (śrut — stały) · stożek 6 m").
 **Repro:** Rico, slot Bulldog z Amunicją śrutową, cel dalej niż 6 m.
-**Propozycja:** dymek powinien czytać profil naboju (jak karta) i albo pokazać „stożek 6 m /
-poza zasięgiem", albo wyszarzyć celownik.
+**Poprawka (22.08):** `planAttackPreview` czyta nabój z komory tą samą drogą, którą czyta go
+serwer (`loadedAmmoFor` + katalog ze sklepu kompendium) i podaje go planerowi. Za stożkiem
+podgląd odmawia od razu, w stożku pokazuje stałe PT. Test:
+`packages/client/src/aim-preview.test.ts`.
 
 ---
 
@@ -652,12 +663,13 @@ Uwaga: `pnpm format` przeformatował przy okazji dziesięć plików `docs/etapy/
 markdown) — te zmiany zostały **cofnięte**, żeby nie zaszumiać commitu. Jeśli ktoś chce je
 wprowadzić, warto zrobić to osobnym commitem „format only".
 
-**Nic z błędów #1, #4–#8 nie jest poprawione.** Najpoważniejszy z nowych to **#8**
-(gumka osłon przesuwa figury) — poprawka to jedna linia w `MapRenderer.ts:1044`.
+**Wszystkie osiem błędów jest już poprawionych** (#2 i #3 tego samego dnia, reszta w sesjach
+naprawczych 21.08 i 22.08). Rozdział §2 zostaje jako historia — opisy przyczyn są nadal
+najlepszym opisem tych miejsc w kodzie — ale nie ma w nim nic do zrobienia.
 
 **Kampania „Ulice Night City" jest nadal zdezaktywowana.** Nie przywracaj jej, dopóki
 testy trwają — poligon musi być kampanią aktywną. Przywróć dopiero po zamknięciu listy z §5
-(Panel MG → „Ulice Night City" → _Aktywuj_ → **przeładuj kartę**, bo błąd #1).
+(Panel MG → „Ulice Night City" → _Aktywuj_; od 22.08 bez przeładowania karty).
 
 **Stan poligonu w bazie po drugiej sesji** (do odtworzenia sytuacji albo do wyzerowania):
 

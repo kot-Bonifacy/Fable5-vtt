@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import type { CampaignDetail, CampaignSummary, InvitationSummary } from '@vtt/shared';
 import { apiGet, apiPost } from '../api.js';
+import { activateCampaign } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
 
 function inviteUrl(token: string): string {
@@ -67,11 +68,28 @@ function CampaignCard({
     onChanged();
   }
 
+  /**
+   * Przełączenie stołu. Idzie gniazdem, nie RESTem, bo serwer musi przy okazji
+   * przenieść **wszystkie** podpięte ekrany — do 22.08 zmieniała się sama nazwa
+   * w nagłówku, a mapa, czat i kolejka inicjatywy zostawały przy poprzedniej
+   * kampanii do przeładowania karty.
+   */
+  async function activate() {
+    const ack = await activateCampaign(campaign.id);
+    if (ack.ok) onChanged();
+  }
+
   return (
     <section className="panel-card">
       <header className="panel-card-header">
         <h2>{campaign.name}</h2>
-        {campaign.active && <span className="badge badge--ok">aktywna</span>}
+        {campaign.active ? (
+          <span className="badge badge--ok">aktywna</span>
+        ) : (
+          <button type="button" className="small-button" onClick={() => void activate()}>
+            Aktywuj
+          </button>
+        )}
       </header>
 
       <h3 className="panel-section-title">Gracze ({campaign.players.length})</h3>
@@ -137,7 +155,10 @@ export function GmPanel() {
     if (trimmed.length === 0 || busy) return;
     setBusy(true);
     try {
-      await apiPost<CampaignSummary>('/api/campaigns', { name: trimmed });
+      const created = await apiPost<CampaignSummary>('/api/campaigns', { name: trimmed });
+      // Trasa REST zapisała już `active`, ale o przeniesieniu ekranów wie
+      // wyłącznie warstwa gniazd — jedna droga dla „utwórz" i „aktywuj".
+      if (created?.id) await activateCampaign(created.id);
       setNewName('');
       await refresh();
     } finally {

@@ -965,6 +965,49 @@ export class MapRenderer {
   private zoneRectStart: ScenePoint | null = null;
   private zoneRectEnd: ScenePoint | null = null;
   private lastZones: DefenseZoneView[] = [];
+  /**
+   * The tools whose click is answered on `pointerdown` and ends in a `return`
+   * there — walls, lamps, sockets, covers and zones. `viewport` still emits
+   * `clicked` on the release of that very gesture, so every one of them has to
+   * be named here or the click is spent twice: once on the tool, once on the
+   * game underneath. That was bug #8 of the 08.08 combat session — erasing a
+   * wreck sent the selected figure marching out of its turn budget, and erasing
+   * a car loaded the dice cup with an attack on it. Covers were the tool that
+   * showed it; zones (stage 26f) and sockets (stage 26b) arrived later with the
+   * same shape and the same hole.
+   *
+   * The brush-like tools (ruler, fog, drawing, eraser) are **not** here: their
+   * gesture ends on pointerup, and `clicked` refuses them a few lines further
+   * down instead.
+   */
+  private get toolSpentThisClick(): boolean {
+    return (
+      this.wall.armed ||
+      this.light.armed ||
+      this.netPoint.armed ||
+      this.cover.armed ||
+      this.zone.armed
+    );
+  }
+  /**
+   * „A map tool owns the pointer" — every tool, brushes included. The wider
+   * half of the same rule: while one of these is in hand the pointer is not
+   * aiming, not planning a walk and not picking figures up, because that
+   * gesture is already spoken for. Four places asked this question with four
+   * hand-written lists before the repair session of 22.08, and three of them
+   * had drifted — which is how the cover tool ended up drawing a route under
+   * the cursor and dragging the figure it was erasing scenery around.
+   */
+  private get mapToolArmed(): boolean {
+    return (
+      this.rulerMode ||
+      this.notePlacing ||
+      this.fogBrush.armed ||
+      this.draw.armed ||
+      this.erasing ||
+      this.toolSpentThisClick
+    );
+  }
   /** Ticker phase for flickering lamps — renderer-side, never a network event. */
   private flickerPhase = 0;
   private hasFlicker = false;
@@ -1234,9 +1277,10 @@ export class MapRenderer {
      *   → armed crosshair (16b) → steered token walks → empty click
      */
     viewport.on('clicked', (event) => {
-      // A wall or lamp click was already handled on pointerdown; letting it
-      // through here would also drop a token in the middle of a floor plan.
-      if (this.wall.armed || this.light.armed) return;
+      // The tools that finish their gesture on pointerdown have already spent
+      // this click; letting it through here would also drop a token in the
+      // middle of a floor plan or send a figure marching (see the getter).
+      if (this.toolSpentThisClick) return;
       if (this.notePlacing) {
         this.onNotePlace?.(Math.round(event.world.x), Math.round(event.world.y));
         return;
@@ -1449,18 +1493,7 @@ export class MapRenderer {
       canvas.style.cursor = 'crosshair';
       return;
     }
-    const toolArmed =
-      this.targeting ||
-      this.notePlacing ||
-      this.rulerMode ||
-      this.fogBrush.armed ||
-      this.draw.armed ||
-      this.wall.armed ||
-      this.cover.armed ||
-      this.zone.armed ||
-      this.light.armed ||
-      this.erasing;
-    if (this.walkCursor && !toolArmed) {
+    if (this.walkCursor && !this.targeting && !this.mapToolArmed) {
       canvas.style.cursor = this.walkCursor;
       return;
     }
@@ -1641,18 +1674,7 @@ export class MapRenderer {
       // 27j): a click meant to paint fog must not turn a figure standing under
       // the brush, and the knob is a handle on the selection, not a tool of
       // its own.
-      const toolArmed =
-        this.rulerMode ||
-        this.fogBrush.armed ||
-        this.cover.armed ||
-        this.zone.armed ||
-        this.light.armed ||
-        this.netPoint.armed ||
-        this.wall.armed ||
-        this.draw.armed ||
-        this.erasing ||
-        this.notePlacing;
-      if (!toolArmed && this.grabFacingKnob(world)) return;
+      if (!this.mapToolArmed && this.grabFacingKnob(world)) return;
 
       if (this.fogBrush.armed) {
         if (this.fogBrush.shape === 'brush') {
@@ -2355,17 +2377,7 @@ export class MapRenderer {
     if (!node || node.destroyed) return null;
     // A map tool owns the pointer while it is armed — a fog brush over a
     // portrait paints fog, and a crosshair there would be a lie.
-    if (
-      this.rulerMode ||
-      this.notePlacing ||
-      this.fogBrush.armed ||
-      this.draw.armed ||
-      this.wall.armed ||
-      this.light.armed ||
-      this.erasing
-    ) {
-      return null;
-    }
+    if (this.mapToolArmed) return null;
     if (this.targeting) return node;
     if (!this.aimReady || !this.selectedTokenId) return null;
     if (node.tokenId === this.selectedTokenId) return null;
@@ -2597,12 +2609,7 @@ export class MapRenderer {
       // pointer actually resting on a target does, because that click is
       // already spoken for.
       this.aimTokenId !== null ||
-      this.notePlacing ||
-      this.fogBrush.armed ||
-      this.draw.armed ||
-      this.wall.armed ||
-      this.light.armed ||
-      this.erasing;
+      this.mapToolArmed;
     if (!scene || !node || node.destroyed || blocked || !this.walkPassable) {
       if (this.walkHover || this.walkCursor) {
         this.walkHover = null;
@@ -4569,15 +4576,7 @@ export class MapRenderer {
       // click that was meant to paint fog or draw a line would *also* grab the
       // token underneath and drag it — the two gestures ran at once, because
       // Pixi bubbles the token's event up to the viewport as well.
-      if (
-        this.rulerMode ||
-        this.fogBrush.armed ||
-        this.draw.armed ||
-        this.wall.armed ||
-        this.erasing
-      ) {
-        return;
-      }
+      if (this.mapToolArmed) return;
       // The rotation knob (stage 27j) sits outside its figure's ring, which
       // means it regularly lands *on top of another figure* — two people
       // standing in adjacent squares is the normal case, not the odd one. Pixi
