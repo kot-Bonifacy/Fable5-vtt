@@ -1,23 +1,9 @@
 import { useEffect, useState, type ChangeEvent } from 'react';
 import type { TokenAssetView } from '@vtt/shared';
-import { ApiError, apiGet, apiUpload } from '../api.js';
+import { apiGet, apiUpload } from '../api.js';
+import { UPLOAD_ACCEPT_ATTRIBUTE, uploadRequirementText } from '@vtt/shared';
+import { fileRejectionText, uploadErrorText } from '../uploads.js';
 import { useTokenStore } from '../stores/tokenStore.js';
-
-function uploadErrorText(error: unknown): string {
-  const code = error instanceof ApiError ? error.code : 'UNKNOWN';
-  switch (code) {
-    case 'FILE_TOO_LARGE':
-      return 'Plik jest za duży (limit 8 MB).';
-    case 'UNSUPPORTED_IMAGE':
-      return 'Nieobsługiwany format — użyj PNG, JPG lub WebP.';
-    case 'IMAGE_TOO_LARGE':
-      return 'Obraz jest za duży (maks. 2048 px na bok).';
-    case 'NO_CAMPAIGN':
-      return 'Brak aktywnej kampanii.';
-    default:
-      return 'Nie udało się wgrać pliku.';
-  }
-}
 
 /**
  * GM tab: the campaign's token image library. Selecting an entry arms
@@ -41,13 +27,18 @@ export function TokenPanel() {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
+    const rejection = fileRejectionText(file, 'token');
+    if (rejection) {
+      setError(rejection);
+      return;
+    }
     setUploading(true);
     setError(null);
     try {
       const asset = await apiUpload<TokenAssetView>('/api/uploads/tokens', file);
       setAssets((current) => [asset, ...current]);
     } catch (err) {
-      setError(uploadErrorText(err));
+      setError(uploadErrorText(err, 'token'));
     } finally {
       setUploading(false);
     }
@@ -69,7 +60,8 @@ export function TokenPanel() {
         {uploading ? 'Wgrywanie…' : 'Wgraj grafikę tokenu'}
         <input
           type="file"
-          accept="image/png,image/jpeg,image/webp"
+          accept={UPLOAD_ACCEPT_ATTRIBUTE}
+          title={uploadRequirementText('token')}
           onChange={(e) => void upload(e)}
           disabled={uploading}
           hidden

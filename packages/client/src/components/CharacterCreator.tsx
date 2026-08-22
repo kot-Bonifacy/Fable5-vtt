@@ -54,7 +54,9 @@ import {
   lifepathRollLabel,
   searchCompendium,
 } from '@vtt/shared';
-import { ApiError, apiGet, apiUpload } from '../api.js';
+import { apiGet, apiUpload } from '../api.js';
+import { UPLOAD_ACCEPT_ATTRIBUTE, uploadRequirementText } from '@vtt/shared';
+import { fileRejectionText, uploadErrorText } from '../uploads.js';
 import { botErrorText, createBot, creationErrorText, finishCreation } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useBotStore } from '../stores/botStore.js';
@@ -75,19 +77,6 @@ import { useWindowPlacement } from '../window-placement.js';
 import { WindowResizeGrip } from './WindowResizeGrip.js';
 
 /** Same wording as the sheet's own portrait upload (stage 07). */
-function portraitErrorText(error: unknown): string {
-  const code = error instanceof ApiError ? error.code : 'UNKNOWN';
-  switch (code) {
-    case 'FILE_TOO_LARGE':
-      return 'Plik jest za duży (limit 8 MB).';
-    case 'UNSUPPORTED_IMAGE':
-      return 'Nieobsługiwany format — użyj PNG, JPG lub WebP.';
-    case 'IMAGE_TOO_LARGE':
-      return 'Obraz jest za duży (maks. 2048 px na bok).';
-    default:
-      return 'Nie udało się wgrać portretu.';
-  }
-}
 
 /**
  * The character creator (stage 25a) — a floating window in the same idiom as
@@ -1300,13 +1289,18 @@ function DetailsStep({ draft }: { draft: CpredCreationDraft }) {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
+    const rejection = fileRejectionText(file, 'portrait');
+    if (rejection) {
+      setUploadError(rejection);
+      return;
+    }
     setUploading(true);
     setUploadError(null);
     try {
       const result = await apiUpload<PortraitUploadResult>('/api/uploads/portraits', file);
       await patch({ portraitUrl: result.url });
     } catch (error) {
-      setUploadError(portraitErrorText(error));
+      setUploadError(uploadErrorText(error, 'portrait'));
     } finally {
       setUploading(false);
     }
@@ -1347,7 +1341,8 @@ function DetailsStep({ draft }: { draft: CpredCreationDraft }) {
           {uploading ? 'Wgrywanie…' : draft.portraitUrl ? 'Zmień portret' : 'Wgraj portret'}
           <input
             type="file"
-            accept="image/png,image/jpeg,image/webp"
+            accept={UPLOAD_ACCEPT_ATTRIBUTE}
+            title={uploadRequirementText('portrait')}
             onChange={(event) => void uploadPortrait(event)}
             disabled={uploading || busy}
             hidden

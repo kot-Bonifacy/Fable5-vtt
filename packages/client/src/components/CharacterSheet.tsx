@@ -107,7 +107,9 @@ import {
   woundCheckPenalty,
   woundState,
 } from '@vtt/shared';
-import { ApiError, apiUpload } from '../api.js';
+import { apiUpload } from '../api.js';
+import { UPLOAD_ACCEPT_ATTRIBUTE, uploadRequirementText } from '@vtt/shared';
+import { fileRejectionText, uploadErrorText } from '../uploads.js';
 import { CyberwareBody } from './CyberwareBody.js';
 import {
   assignCriticalInjury,
@@ -158,20 +160,6 @@ const TABS: { id: SheetTab; label: string }[] = [
 /** Short row id (validation caps ids at 32 chars — crypto UUIDs are longer). */
 function newRowId(): string {
   return Math.random().toString(36).slice(2, 10);
-}
-
-function portraitErrorText(error: unknown): string {
-  const code = error instanceof ApiError ? error.code : 'UNKNOWN';
-  switch (code) {
-    case 'FILE_TOO_LARGE':
-      return 'Plik jest za duży (limit 8 MB).';
-    case 'UNSUPPORTED_IMAGE':
-      return 'Nieobsługiwany format — użyj PNG, JPG lub WebP.';
-    case 'IMAGE_TOO_LARGE':
-      return 'Obraz jest za duży (maks. 2048 px na bok).';
-    default:
-      return 'Nie udało się wgrać portretu.';
-  }
 }
 
 /** Parses a number input; returns undefined for the transient empty state. */
@@ -444,6 +432,11 @@ function IdentityColumn({
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
+    const rejection = fileRejectionText(file, 'portrait');
+    if (rejection) {
+      setIssues((current) => ({ ...current, portrait: rejection }));
+      return;
+    }
     setUploading(true);
     try {
       const result = await apiUpload<PortraitUploadResult>('/api/uploads/portraits', file);
@@ -455,7 +448,7 @@ function IdentityColumn({
         return next;
       });
     } catch (error) {
-      setIssues((current) => ({ ...current, portrait: portraitErrorText(error) }));
+      setIssues((current) => ({ ...current, portrait: uploadErrorText(error, 'portrait') }));
     } finally {
       setUploading(false);
     }
@@ -480,7 +473,8 @@ function IdentityColumn({
             {uploading ? 'Wgrywanie…' : 'Wgraj portret'}
             <input
               type="file"
-              accept="image/png,image/jpeg,image/webp"
+              accept={UPLOAD_ACCEPT_ATTRIBUTE}
+              title={uploadRequirementText('portrait')}
               onChange={(e) => void uploadPortrait(e)}
               disabled={uploading}
               hidden

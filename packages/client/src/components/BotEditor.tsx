@@ -45,7 +45,9 @@ const RELATION_VALUES = Array.from(
   { length: RELATION_MAX - RELATION_MIN + 1 },
   (_, index) => RELATION_MIN + index,
 );
-import { ApiError, apiUpload } from '../api.js';
+import { apiUpload } from '../api.js';
+import { UPLOAD_ACCEPT_ATTRIBUTE, uploadRequirementText } from '@vtt/shared';
+import { fileRejectionText, uploadErrorText } from '../uploads.js';
 import {
   cancelBotChat,
   deleteRelation,
@@ -75,20 +77,6 @@ const TABS: { id: EditorTab; label: string }[] = [
   { id: 'chat', label: 'Rozmowa testowa' },
   { id: 'prompt', label: 'Prompt' },
 ];
-
-function portraitErrorText(error: unknown): string {
-  const code = error instanceof ApiError ? error.code : 'UNKNOWN';
-  switch (code) {
-    case 'FILE_TOO_LARGE':
-      return 'Plik jest za duży (limit 8 MB).';
-    case 'UNSUPPORTED_IMAGE':
-      return 'Nieobsługiwany format — użyj PNG, JPG lub WebP.';
-    case 'IMAGE_TOO_LARGE':
-      return 'Obraz jest za duży (maks. 2048 px na bok).';
-    default:
-      return 'Nie udało się wgrać portretu.';
-  }
-}
 
 /** Renders every open bot editor as its own floating window (last one on top). */
 export function BotEditors() {
@@ -294,6 +282,11 @@ function RoleTab({ bot, saveData }: TabProps) {
 
   async function uploadPortrait(file: File | undefined) {
     if (!file) return;
+    const rejection = fileRejectionText(file, 'portrait');
+    if (rejection) {
+      setUploadError(rejection);
+      return;
+    }
     setUploading(true);
     setUploadError(null);
     try {
@@ -301,7 +294,7 @@ function RoleTab({ bot, saveData }: TabProps) {
       queueBotSave(bot.id, { portraitUrl: result.url });
       flushBotSave(bot.id);
     } catch (error) {
-      setUploadError(portraitErrorText(error));
+      setUploadError(uploadErrorText(error, 'portrait'));
     } finally {
       setUploading(false);
     }
@@ -324,7 +317,8 @@ function RoleTab({ bot, saveData }: TabProps) {
           <span className="auth-label">Portret</span>
           <input
             type="file"
-            accept="image/png,image/jpeg,image/webp"
+            accept={UPLOAD_ACCEPT_ATTRIBUTE}
+            title={uploadRequirementText('portrait')}
             disabled={uploading}
             onChange={(e) => void uploadPortrait(e.target.files?.[0])}
           />

@@ -1,7 +1,9 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react';
 import type { MapUploadResult, SceneSummary, SceneVisibility } from '@vtt/shared';
 import { GRID_SIZE_MAX, GRID_SIZE_MIN, SCENE_DARK_SIGHT_MAX_M, formatMetres } from '@vtt/shared';
-import { apiUpload, ApiError } from '../api.js';
+import { apiUpload } from '../api.js';
+import { UPLOAD_ACCEPT_ATTRIBUTE, uploadRequirementText } from '@vtt/shared';
+import { fileRejectionText, uploadErrorText } from '../uploads.js';
 import {
   activateScene,
   createScene,
@@ -14,20 +16,6 @@ import {
   viewScene,
 } from '../socket.js';
 import { useSceneStore } from '../stores/sceneStore.js';
-
-function uploadErrorText(error: unknown): string {
-  const code = error instanceof ApiError ? error.code : 'UNKNOWN';
-  switch (code) {
-    case 'FILE_TOO_LARGE':
-      return 'Plik jest za duży (limit 40 MB).';
-    case 'UNSUPPORTED_IMAGE':
-      return 'Nieobsługiwany format — użyj PNG, JPG lub WebP.';
-    case 'IMAGE_TOO_LARGE':
-      return 'Obraz jest za duży (maks. 16384 px na bok).';
-    default:
-      return 'Nie udało się wgrać pliku.';
-  }
-}
 
 function SceneRow({
   scene,
@@ -104,6 +92,11 @@ function SceneEditor({ onClose }: { onClose: () => void }) {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
+    const rejection = fileRejectionText(file, 'map');
+    if (rejection) {
+      setError(rejection);
+      return;
+    }
     setUploading(true);
     setError(null);
     try {
@@ -111,7 +104,7 @@ function SceneEditor({ onClose }: { onClose: () => void }) {
       // Mirror the server default: a new map defines the playable area.
       patchDraft({ background: result, width: result.width, height: result.height });
     } catch (err) {
-      setError(uploadErrorText(err));
+      setError(uploadErrorText(err, 'map'));
     } finally {
       setUploading(false);
     }
@@ -162,7 +155,8 @@ function SceneEditor({ onClose }: { onClose: () => void }) {
           {uploading ? 'Wgrywanie…' : scene.background ? 'Zmień obraz' : 'Wgraj obraz'}
           <input
             type="file"
-            accept="image/png,image/jpeg,image/webp"
+            accept={UPLOAD_ACCEPT_ATTRIBUTE}
+            title={uploadRequirementText('map')}
             onChange={(e) => void upload(e)}
             disabled={uploading}
             hidden

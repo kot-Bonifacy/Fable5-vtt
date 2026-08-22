@@ -494,12 +494,19 @@ describe('Demony na żywych gniazdach', () => {
       }),
       'netrun:attack',
     );
-    // Interfejs 10 + ATK 1 + 1k10 zawsze przebija goły 1k10 obrony.
-    expect(hit.success).toBe(true);
-    // „3k6 Programom" — Demon nie jest Czarnym LOD-em, więc nie 1k6.
-    expect(hit.summary).toContain('3k6');
     const after = (await runOf(gm))?.run.demons.find((demon) => demon.id === WEAK)?.rezCurrent;
-    expect(after).toBeLessThan(before!);
+    // Interfejs 10 + ATK 1 + 1k10 przebija goły 1k10 obrony **prawie** zawsze:
+    // dziesiątka na obronie dorzuca i raz na kilkadziesiąt przebiegów wygrywa.
+    // Test jest o tym, co robi trafienie, więc pyta warunkowo zamiast zakładać
+    // wynik rzutu — inaczej migocze na czerwono bez winy kodu.
+    if (hit.success) {
+      // „3k6 Programom" — Demon nie jest Czarnym LOD-em, więc nie 1k6.
+      expect(hit.summary).toContain('3k6');
+      expect(after).toBeLessThan(before!);
+    } else {
+      expect(hit.summary).toContain('nie przebija obrony');
+      expect(after).toBe(before);
+    }
   });
 
   it('odmawia Ślizgu przed Demonem po polsku', async () => {

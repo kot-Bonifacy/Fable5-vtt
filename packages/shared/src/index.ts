@@ -28,6 +28,7 @@ export * from './scenes.js';
 export * from './screamsheets.js';
 export * from './smoke.js';
 export * from './tokens.js';
+export * from './uploads.js';
 export * from './vision.js';
 export * from './walls.js';
 export * from './zones.js';

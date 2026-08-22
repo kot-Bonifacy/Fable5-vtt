@@ -94,7 +94,7 @@ Cztery pytania, na które opis etapu nie dawał odpowiedzi — decyzje MG z 07.0
   `realtime/attacks.ts`) — z tą różnicą, że wynik czegoś **dotyczy**: obrażeń, statusu albo rany
 - Uwaga na wyciek z 16d: karta wymieniająca cele z nazwiska idzie przez `redactChatMessage`,
   więc lista trafionych musi być filtrowana do figur widza. Ogień zaporowy ma ten sam błąd
-  **niezałatany** (patrz „Otwarte zaległości” w POSTEP) — dobre miejsce, żeby domknąć oba
+  **niezałatany** (patrz `docs/etapy/zaleglosci.md`) — dobre miejsce, żeby domknąć oba
 - Rany „na minutę” to 6 rund po 10 s; licznik rund jest w trackerze walki, ale poza walką
   minuta nie ma czym płynąć — rozstrzygnij to jawnie w sesji
 - **Licencja:** nazwy, ceny i treść wierszy amunicji to podręcznik → `data/private/`

@@ -1,5 +1,10 @@
 import { Assets, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
-import { tokenCondition, type TokenCondition, type TokenView } from '@vtt/shared';
+import {
+  fallbackConditionStatusId,
+  tokenCondition,
+  type TokenCondition,
+  type TokenView,
+} from '@vtt/shared';
 
 /** Everything a node needs to draw itself for the local viewer. */
 export interface TokenNodeCtx {
@@ -56,20 +61,23 @@ const BASE_COLORS: Readonly<Record<TokenCondition, number>> = {
 /**
  * How the portrait itself is dressed by the condition.
  *
- * A figure that is out of the fight has to *look* out of the fight from across
- * the table, and neither a sticker nor a number does that at a fifth of scale.
- * Tint and alpha do: down is cold and pale, dead is grey and half gone.
+ * Death is the one state written on the portrait — greyed, half gone and
+ * crossed out — because it is final and has to read from across the table.
+ * Everything short of death says what it is with a sticker (decision of
+ * 22.08): a figure that is merely unconscious can be picked up, healed and
+ * played again, and a dimmed portrait made it look destroyed. `down` therefore
+ * keeps its dark red base and gets its icon, and the face stays a face.
  */
 const CONDITION_TINT: Readonly<Record<TokenCondition, number>> = {
   ok: 0xffffff,
   wounded: 0xffffff,
-  down: 0x7b8794,
+  down: 0xffffff,
   dead: 0x5b6270,
 };
 const CONDITION_ALPHA: Readonly<Record<TokenCondition, number>> = {
   ok: 1,
   wounded: 1,
-  down: 0.9,
+  down: 1,
   dead: 0.75,
 };
 
@@ -285,7 +293,7 @@ export class TokenNode extends Container {
     // figure's feet, and a name printed over it reads as a caption on a shadow.
     this.nameText.position.set(center, extent + Math.max(6, extent * 0.1));
 
-    this.updateStatuses(token, ctx, extent);
+    this.updateStatuses(token, ctx, extent, condition);
   }
 
   /**
@@ -479,12 +487,23 @@ export class TokenNode extends Container {
       .stroke({ color: 0xf87171, width, alpha: 0.95, cap: 'round' });
   }
 
-  private updateStatuses(token: TokenView, ctx: TokenNodeCtx, extent: number): void {
+  private updateStatuses(
+    token: TokenView,
+    ctx: TokenNodeCtx,
+    extent: number,
+    condition: TokenCondition,
+  ): void {
     this.statusLayer.removeChildren().forEach((child) => child.destroy());
-    if (token.statuses.length === 0) return;
+    // A figure can be out of the fight without wearing a status for it — a
+    // statist with no sheet simply hits zero hit points. Since the condition is
+    // told by its icon, that icon has to exist even then; it goes first, where
+    // the eye lands.
+    const fallback = fallbackConditionStatusId(token, condition, ctx.conditions);
+    const statuses = fallback ? [fallback, ...token.statuses] : token.statuses;
+    if (statuses.length === 0) return;
     const iconSize = Math.max(14, extent * 0.22);
     const perRow = Math.max(1, Math.floor(extent / (iconSize + 2)));
-    token.statuses.forEach((statusId, index) => {
+    statuses.forEach((statusId, index) => {
       const url = ctx.statusIcons.get(statusId);
       if (!url) return;
       const badge = new Sprite();

@@ -139,6 +139,35 @@ export function tokenCondition(
   return worst;
 }
 
+/**
+ * Status, którego ikonę trzeba dorysować, żeby stan figury był widoczny — albo
+ * `null`, gdy któraś z naklejek już go niesie.
+ *
+ * Od 27j o tym, że figura wypadła z walki, mówi ikona (decyzja MG z 22.08:
+ * przekreślony portret zostaje sam trupowi, reszta stanów ma się różnić
+ * naklejką). Tylko że `down` bierze się także z samych punktów życia —
+ * statysta bez karty schodzi do zera i nie dostaje żadnego statusu — a wtedy
+ * na żetonie nie byłoby niczego. Stąd domyślna naklejka: pierwsza w rejestrze,
+ * która ten stan opisuje.
+ *
+ * `ok` i `wounded` nie mają domyślnej naklejki i mieć nie powinny: zdrowa
+ * figura niczego nie potrzebuje, a rana ma własny status z mechaniki.
+ */
+export function fallbackConditionStatusId(
+  token: Pick<TokenView, 'statuses'>,
+  condition: TokenCondition,
+  conditions: ReadonlyMap<string, TokenCondition>,
+): string | null {
+  if (condition !== 'down' && condition !== 'dead') return null;
+  for (const statusId of token.statuses) {
+    if (conditions.get(statusId) === condition) return null;
+  }
+  for (const [statusId, value] of conditions) {
+    if (value === condition) return statusId;
+  }
+  return null;
+}
+
 /** Builds the id → condition lookup from the status registry. */
 export function conditionRegistry(
   statuses: readonly StatusDefinition[],

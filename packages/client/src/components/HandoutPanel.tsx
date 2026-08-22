@@ -20,7 +20,9 @@ import {
   markdownToPlainText,
   normalizeScreamsheetMeta,
 } from '@vtt/shared';
-import { ApiError, apiUpload } from '../api.js';
+import { apiUpload } from '../api.js';
+import { UPLOAD_ACCEPT_ATTRIBUTE, uploadRequirementText } from '@vtt/shared';
+import { fileRejectionText, uploadErrorText } from '../uploads.js';
 import { IconNewspaper } from './UiIcons.js';
 import {
   cancelScreamsheet,
@@ -45,20 +47,6 @@ import { Screamsheet } from './Screamsheet.js';
  * „ukryj u gracza" — u gracza tych handoutów po prostu nie ma, bo serwer ich
  * nie wysłał.
  */
-
-function uploadErrorText(error: unknown): string {
-  const code = error instanceof ApiError ? error.code : 'UNKNOWN';
-  switch (code) {
-    case 'FILE_TOO_LARGE':
-      return 'Plik jest za duży (limit 12 MB).';
-    case 'UNSUPPORTED_IMAGE':
-      return 'Nieobsługiwany format — użyj PNG, JPG lub WebP.';
-    case 'IMAGE_TOO_LARGE':
-      return 'Obraz jest za duży (maks. 4096 px na bok).';
-    default:
-      return 'Nie udało się wgrać grafiki.';
-  }
-}
 
 /** Pierwsze zdanie treści — na liście, gdzie nie ma miejsca na formatowanie. */
 function excerpt(handout: HandoutView): string {
@@ -376,12 +364,17 @@ function HandoutForm({
 
   async function pickImage(file: File | undefined) {
     if (!file) return;
+    const rejection = fileRejectionText(file, 'handout');
+    if (rejection) {
+      setError(rejection);
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
       setImage(await apiUpload<HandoutImage>('/api/uploads/handouts', file));
     } catch (uploadError) {
-      setError(uploadErrorText(uploadError));
+      setError(uploadErrorText(uploadError, 'handout'));
     }
     setBusy(false);
   }
@@ -475,7 +468,8 @@ function HandoutForm({
         ) : (
           <input
             type="file"
-            accept="image/png,image/jpeg,image/webp"
+            accept={UPLOAD_ACCEPT_ATTRIBUTE}
+            title={uploadRequirementText('handout')}
             disabled={busy}
             onChange={(event) => void pickImage(event.target.files?.[0])}
           />

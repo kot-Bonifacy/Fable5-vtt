@@ -2466,6 +2466,12 @@ export class MapRenderer {
     this.walkPassable = isPassable;
     this.walkCanStep = canStep;
     this.walkHover = null;
+    // New rules, so the shaded floor has to be flooded again even though the
+    // figure has not moved and its turn has not changed: those are all the
+    // cache key knows about. Without this line a wall drawn — or rubbed out —
+    // during somebody's turn left the old shape on the map until the token was
+    // nudged, which is exactly what it looked like when 27j was checked.
+    this.reach = null;
     this.drawWalkPreview();
     this.updateReach();
   }
@@ -2811,6 +2817,18 @@ export class MapRenderer {
       cell <= 0 ||
       perPixel <= 0
     ) {
+      if (this.reach) {
+        this.reach = null;
+        this.reachGraphics.clear();
+      }
+      return;
+    }
+    // A figure with nothing left to spend gets no shading at all (stage 27j
+    // backlog): the flood would answer with the starting cell alone, and one
+    // pale square under the feet reads as „this token is selected", not as
+    // „you have no way out of here". The route preview under the cursor still
+    // says no with its ✖, which is the message that was wanted.
+    if (budget.metresLeft <= 0) {
       if (this.reach) {
         this.reach = null;
         this.reachGraphics.clear();

@@ -9,6 +9,67 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Przeniesione 2026-08-22 (sesja naprawcza, triaż 1–8 — piąta sesja tego dnia)
+
+Zamknięte przy oględzinach z konta MG i gracza (`localhost` + `[::1]`) oraz trzema poprawkami
+w kodzie. Treść wpisów zostawiona bez zmian; co dokładnie widziano na ekranie, mówi notatka
+sesji w `POSTEP.md`.
+
+- **Etap 27j — dwie ścieżki nieodklikane; reszta sprawdzona 21.08 (patrz notatka sesji w `archiwum/dziennik-sesji.md`).**
+  (Strona gracza → odklikana 22.08, patrz `archiwum/zamkniete-zaleglosci.md`.)
+  (1) **Zacienienie zasięgu wokół ściany** — na „Strzelnicy" widoczność jest `open`, więc zalew nie miał czego omijać; że omija,
+  wiadomo z testu w `shared` („nie zacienia drugiej strony ściany"), nie z ekranu. (2) **Figura
+  2×2 lub większa** — suma kwadratów i test footprintu mają pokrycie w `shared`, ale na Poligonie
+  nie ma żetonu większego niż 1×1. Od 22.08 **kolizje ruchu** takiej figury mają test na żywych
+  gniazdach (`walls.test.ts`); nieoglądane zostaje to, jak wygląda na mapie.
+
+- **Etap 27j — `down` czyta się słabiej niż `dead` i to jest świadomy kompromis.** Martwy dostaje
+  wielki czerwony ✕ przez portret, nieprzytomny tylko ciemnoczerwoną podstawkę i przyciemniony
+  portret (`tint` mnoży, więc nie odbarwia — Pixi nie da odsycenia bez filtra na figurę). Przy
+  zoomie stołowym oba są rozpoznawalne, ale ✕ widać z drugiego końca stołu, a podstawkę trzeba
+  chwilę poszukać. Gdyby przy stole wyszło, że to za mało, najtańszym krokiem jest **przechylenie
+  figury** dla `down` — z tym, że obrót kontenera obróciłby też imię i naklejki, więc trzeba by
+  przechylać sam portret.
+
+- **Etap 27j — figura na zerze PW zacienia jedno pole i wygląda to jak podświetlenie.** Przy
+  `metresLeft = 0` zalew zwraca samą kratkę startową, więc pod figurą pojawia się blady kwadrat
+  znaczący „nie masz jak stąd wyjść". To prawda, ale czyta się jak zaznaczenie. Do rozważenia
+  **27f jej nie ruszył** — stany puste tego etapu dotyczyły list w panelach, nie mapy. Wraca
+  przy pierwszej sesji, na której ktoś stanie na zerze budżetu.
+
+- **Etap 27e — pułapka, która wróci: gołe `button` maluje się jak przycisk główny.** W `styles.css`
+  selektor `button` ustawia `background: var(--accent)` i biały napis, więc każdy nowy przycisk,
+  który podmieni tło i **zapomni o `color`**, dostanie biały tekst. W ciemnym motywie to niewidoczne;
+  w dziennym to białe na kremowym. Tak powstały dwa z czterech błędów tego etapu.
+  **Zamknięte w 27f**: umowa jest odwrócona (`button` neutralny, `.primary-button` czerwony),
+  a test motywu pilnuje, żeby przycisk z mocnym tłem nie zapominał o kolorze napisu.
+
+- **Etap 24a — odmowy uploadu nieodklikane.** Plik > 12 MB, obraz > 4096 px na bok i format
+  spoza PNG/JPG/WebP mają wrócić po polsku z `uploadErrorText`; sprawdzony był wyłącznie
+  poprawny PNG. Ścieżka jest kopią routingu portretów z etapu 07.
+
+- **Etap 23a — jedna ścieżka nieodklikana.** ~~(1) Chip cyberpsychozy na liście postaci~~ —
+  **odklikany 22.08** na liście gracza przy „Test 27x": „EMP 2 · Na granicy" (na karcie ten sam
+  stan stoi w nagłówku sylwetki jako „Cyberpsychoza: Na granicy"). Zostaje (2) **Edytor MG wpisu
+  cyborgizacji** z nowymi polami (rodzina, montaż, UC stałe i kostkowe, „Połowa, w górę", gniazda,
+  „Wymaga") — formularz nie był otwierany.
+
+- **Z ośmiu błędów sesji testów 08.08 nie został żaden nienaprawiony.** #2 i #3 padły tego samego
+  dnia, #4, #5, #6, #7 i #8 — 22.08 (sesja naprawcza), #1 razem z brakującym przełącznikiem
+  kampanii. Plik `docs/testy/sesja-testow-walki-2026-08-08.md` dalej jest wart czytania przed
+  odhaczaniem czegokolwiek, ale wyłącznie dla **poligonu i listy sprawdzonych ścieżek** — jego
+  rozdział „Znalezione błędy" jest już historią.
+
+- **Górny pasek tury (01.08, poza etapami) — strona MG odklikana 08.08 poza jednym punktem.** Przy resecie walki po wpadce z 19a sprawdziły się trzy z czterech: **„Włącz tryb turowy"** w pustej belce zakłada kolejkę z figur sceny jednym klikiem (wyszła piątka: Rico, Kaya, Manekin, Brutus, Zbir, stan „PRZED WALKĄ", inicjatywa nierzucona); **✕** rzeczywiście pyta „Wyłączyć tryb turowy?" i kasuje kolejkę; **żeton ukryty** (Zbir) jest przygaszony i widoczny tylko u MG. **Zostaje:** strzałki **◀ ▶** przesuwające turę **bez zaznaczonego tokenu** — to była główna przyczyna, dla której zostały na górze. Potwierdzone przy okazji: `window.confirm` da się przechwycić (`window.confirm = () => true`) i nie zawiesza sterowania przez CDP; przycisku wyszarzonego na scenie bez tokenów nie sprawdzano.
+
+- **Lewy pasek (01.08, poza etapami) — dwie ścieżki nieodklikane.** (1) **Przejęcie sterowania klikiem w slot**: sprawdzone na Vexie, ale wszystkie jego sloty były odmówione („Akcja w tej turze już wykorzystana"), a odmówiony slot celowo sterowania **nie** przejmuje — do powtórzenia na figurze z wolną Akcją (po naciśnięciu slotu ma zniknąć linia „Podgląd", a na tokenie ma pojawić się przerywany pierścień). (2) **Zmiana sceny**: pasek ma wtedy wczytać figurę zapamiętaną na nowej scenie, a nie zostać przy starej — ścieżka `SelectionChange = 'scene'`. Strona MG jest z założenia nietknięta (sama pamięć, bez domyślnej figury), więc u MG wystarczy sprawdzić, że pasek nadal zachowuje się jak przed zmianą.
+
+- **Etap 16c — strona MG odklikana 08.08.** Postawienie osłony przeciągnięciem, presety, gumka, dwustopniowy `Esc`, karta wyboru „Ostrzelaj osłonę / Strzelaj mimo osłony", obrażenia osłony z „Cofnij", wrak i to, że wrak **przestaje zasłaniać** — wszystko działa (szczegóły w pliku testów). **Zostało:** kosz **„usuń wszystkie osłony"**. Z gumki wyszedł **błąd #8**.
+
+- **Etap 16f — formularze paska nieodklikane**: Ustabilizowanie, Pochwycenie i Wstrzymanie Akcji otwierają w pasku **te same** komponenty co zakładka „Walka" (`CombatForms.tsx`), ale przez pasek nie były klikane — sprawdzone tylko to, że sloty się pojawiają i mają skróty.
+
+- **Etap 13 — UI kompendium odklikane tylko powierzchownie**: 30.07 (przy oględzinach 14b) potwierdzona sama zakładka „Kompendium" — chipy kategorii z licznikami (Broń 103, Pancerz 11, Sprzęt 5, Cyborgizacje 3, Rany krytyczne 22) i lista wpisów z obrażeniami i ceną. ~~karta przedmiotu z tabelą PT~~ — **odklikana 22.08** z konta gracza (Arasaka Wss Sniper System: obrażenia, magazynek, chwyt, jakość, gniazda, dostępność i pełny rządek PT 30/25/25/20/15/16). **Nadal nieodklikane:** edytor MG i dodanie przedmiotu na kartę postaci. Ścieżki serwerowe pokryte testami.
+
 ## Przeniesione 2026-08-22 (sesja naprawcza, grupy z triażu 1–6)
 
 - ~~**ZBIORCZA — dług oględzin „strona gracza": 15 etapów, jedna sesja z drugiego konta.**~~

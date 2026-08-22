@@ -11,6 +11,7 @@ import {
   sanitizeFacing,
   tokenCondition,
   type StatusDefinition,
+  fallbackConditionStatusId,
   type TokenCondition,
 } from './index.js';
 
@@ -116,5 +117,37 @@ describe('token condition (stage 27j)', () => {
 
   it('ignores statuses the data gave no condition', () => {
     expect(conditionRegistry(REGISTRY).has('stunned')).toBe(false);
+  });
+});
+
+describe('naklejka stanu, gdy nie niesie go żaden status', () => {
+  // Ten sam rejestr, którym żyje mapa: dwa statusy opisują „down", jeden „dead".
+  const registry = new Map<string, TokenCondition>([
+    ['mortally-wounded', 'down'],
+    ['unconscious', 'down'],
+    ['dead', 'dead'],
+    ['seriously-wounded', 'wounded'],
+  ]);
+
+  it('daje domyślną naklejkę figurze na zerze PW bez żadnego statusu', () => {
+    expect(fallbackConditionStatusId({ statuses: [] }, 'down', registry)).toBe('mortally-wounded');
+  });
+
+  it('milczy, gdy stan niesie już własna naklejka', () => {
+    expect(fallbackConditionStatusId({ statuses: ['unconscious'] }, 'down', registry)).toBeNull();
+  });
+
+  it('nie podstawia naklejki „down" pod martwego — trup ma swoją', () => {
+    expect(fallbackConditionStatusId({ statuses: [] }, 'dead', registry)).toBe('dead');
+  });
+
+  it('nie dokłada niczego zdrowej ani rannej figurze', () => {
+    expect(fallbackConditionStatusId({ statuses: [] }, 'ok', registry)).toBeNull();
+    expect(fallbackConditionStatusId({ statuses: [] }, 'wounded', registry)).toBeNull();
+  });
+
+  it('milczy, gdy rejestr nie zna takiego stanu', () => {
+    const empty = new Map<string, TokenCondition>();
+    expect(fallbackConditionStatusId({ statuses: [] }, 'down', empty)).toBeNull();
   });
 });

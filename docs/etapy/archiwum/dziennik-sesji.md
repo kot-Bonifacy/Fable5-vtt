@@ -7,6 +7,64 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 22.08 (trzecia tego dnia) — oględziny „strona gracza", poza etapami
+
+**Zlecenie MG:** z listy dziesięciu zaległości wybrał pozycję 1 — **zbiorczy dług oględzin
+„strona gracza"** — i dopisał w trakcie: „testy uruchamiaj też z konta gracza, nie tylko z MG".
+Sesja poszła więc na dwóch kontach naraz: MG na `http://localhost:5173/`, gracz **avatar9** na
+`http://[::1]:5173/join/<token>`, w jednym oknie Chrome (ciasteczko jest kluczowane hostem).
+Świeży link zaproszenia z Panelu MG — ten z Poligonu wygasł 15.08.
+
+**Sesja zaczęła się od błędu, który ją blokował.** Wejście na „Panel MG" **wywalało całą
+aplikację na biały ekran**: `MapRenderer.destroy` niszczy viewport przez
+`destroy({ children: true })`, co dosięga `Graphics` warstwy efektów, a `MapFxLayer.destroy`
+wołał zaraz potem `clear()` na już zniszczonym obiekcie. `Graphics.clear()` na zniszczonym
+rzuca, a rzut w sprzątaniu efektu Reacta zabiera całe drzewo. To dokładnie ta sama rodzina, co
+naprawiona wcześniej kolejność w `MapRenderer.destroy` (komentarz w tym pliku ostrzega przed nią
+wprost) — 27i wprowadziło ją z powrotem jednym piętro niżej. Naprawa: `clear()` pomija
+zniszczone dzieci (`if (!this.graphics.destroyed)`, `!sprite.destroyed`, `!text.destroyed`).
+
+**Drugi błąd wyszedł w pierwszej minucie oględzin.** Okno `?` u gracza pokazywało drabinkę `Esc`
+jako **„1, 2, 3, 4, 6, 7"** — numery były wpisane na sztywno w treść wierszy, a krok 5
+(„Porzuca rysowany łańcuch ścian albo prostokąt osłony") jest `gmOnly`. Numerowanie przeniesione
+do `shortcutGroupsFor`, czyli **za** filtr roli; grupa prosi o nie flagą `numbered`. Dwa testy
+w `shortcuts.test.ts`: numeracja jest ciągła w obu rolach, a **żaden wiersz katalogu nie nosi
+numeru w treści** (drugi sprawdzony celowym cofnięciem poprawki — przewraca się).
+
+**Z szesnastu pozycji zbiorczych czternaście przeszło bez zastrzeżeń.** Szczegóły przy samej
+pozycji w „Otwarte zaległości"; tu tylko to, co było niespodzianką:
+
+- **Efekt walki dało się złapać zrzutem** — sztuczką z „Pułapek dev": `requestAnimationFrame`
+  opakowany tak, żeby liczył **wirtualny** znacznik czasu, a współczynnik ustawiony dopiero
+  w chwili, gdy karta rzutu wpada na czat. Przy 0,05× smuga pocisku i napis „PUDŁO" stoją na
+  ekranie kilkanaście sekund. Bez tego widać zawsze pustą mapę.
+- **`Nieprzytomny` kontra `Martwy` — kompromis z 27j potwierdzony na ekranie.** Martwy dostaje
+  wielki czerwony ✕ przez portret i widać go natychmiast; nieprzytomny tylko ciemnoczerwoną
+  podstawkę, której trzeba poszukać. Wpis w `POMYSLY.md` („przechylenie figury") zostaje.
+- **Reputacja u gracza jest do odczytu, nie ukryta.** Notatka mówiąca „jedyne pole tylko dla MG
+  to Reputacja" była nieprecyzyjna: sekcja **znika**, dopiero gdy nie ma żadnego wyczynu, a przy
+  wyczynie gracz widzi liczbę i wiersze — bez „+ Wyczyn" i bez pól edycji. Tak ma być.
+- **Klik w token z konta gracza CDP dowozi.** Dopisek „16b wymaga myszy" był nieaktualny od 16e
+  (naprawiony hit-test). Kubek załadował się, dymek celowania pokazał chip naboju „30 → 29”.
+
+**Trzy rzeczy w danych Poligonu nie zgadzały się z opisem w tym pliku.** (1) „Test 27x" należy do
+**avatar9**, nie do MG — przepinania karty, o którym mówiła notatka 26e, nie było trzeba.
+(2) Żeton **„Kolec" nie miał właściciela**, więc gracz nie mógł nim ani skanować, ani podłączyć
+się do Sieci mimo posiadania karty; przepisany na avatar9. (3) Punkt dostępu miał `hidden = 1`,
+choć notatka mówiła „stoi odsłonięty" — odsłonięty przyciskiem „Odsłoń graczom" i taki zostaje.
+
+**Cztery znaleziska, których nie naprawiałem** (wpisy w `POMYSLY.md`, każdy z gotową diagnozą):
+wyszarzona Akcja zabrana przez Uraz kręgosłupa mówi „już wykorzystana"; netrunner nie ma czym
+uruchomić Skanera, dopóki nie widzi gniazda (a gniazdo odsłania właśnie Skaner); MG nie zmieni
+udostępnienia postawionych drzwi ani okna; oraz postulat MG — **oznaczyć kampanię jako testową
+albo produkcyjną**, żeby nie trzeba było pytać, co wolno na niej zepsuć.
+
+**Stan Poligonu po sesji.** Przywrócone: tryb turowy wyłączony, rana zdjęta, wszystkie ściany
+i okna skasowane, widoczność z powrotem „Pełna". Zostawione świadomie: punkt dostępu odsłonięty
+(tak opisuje go ten plik), „Kolec" u avatar9, avatar9 dwie kratki niżej z naklejką „Onieśmielony"
+i +50 ed z testowego przelewu. Testy: **1334 w `shared`, 759 na serwerze, 30 u klienta** — wszystkie
+zielone.
+
 ### Sesja 22.08 (druga tego dnia) — triaż zaległości i pięć pozycji z niego, poza etapami
 
 MG kazał wypisać ~10 otwartych zaległości do uporządkowania (bez rzeczy czekających na lokalny

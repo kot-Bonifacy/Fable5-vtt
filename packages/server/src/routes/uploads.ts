@@ -9,19 +9,22 @@ import type {
   PortraitUploadResult,
   TokenAssetView,
 } from '@vtt/shared';
-import { SCENE_DIMENSION_MAX, TOKEN_NAME_MAX_LENGTH } from '@vtt/shared';
+import { SCENE_DIMENSION_MAX, TOKEN_NAME_MAX_LENGTH, UPLOAD_LIMITS } from '@vtt/shared';
 import type { AppContext } from '../context.js';
 import { requireAuth, requireGm } from '../auth/guards.js';
 import { getActiveCampaign } from './helpers.js';
 
-export const MAX_MAP_UPLOAD_BYTES = 40 * 1024 * 1024;
-export const MAX_TOKEN_UPLOAD_BYTES = 8 * 1024 * 1024;
-export const TOKEN_IMAGE_MAX_SIDE = 2048;
-export const MAX_PORTRAIT_UPLOAD_BYTES = 8 * 1024 * 1024;
-export const PORTRAIT_IMAGE_MAX_SIDE = 2048;
+// The numbers themselves live in `shared/src/uploads.ts`, because the client
+// builds its refusal sentences from the same pair — a limit tightened here and
+// nowhere else used to leave the panel promising the old one.
+export const MAX_MAP_UPLOAD_BYTES = UPLOAD_LIMITS.map.maxBytes;
+export const MAX_TOKEN_UPLOAD_BYTES = UPLOAD_LIMITS.token.maxBytes;
+export const TOKEN_IMAGE_MAX_SIDE = UPLOAD_LIMITS.token.maxSidePx;
+export const MAX_PORTRAIT_UPLOAD_BYTES = UPLOAD_LIMITS.portrait.maxBytes;
+export const PORTRAIT_IMAGE_MAX_SIDE = UPLOAD_LIMITS.portrait.maxSidePx;
 /** Handout image (stage 24a): a district map may be far bigger than a portrait. */
-export const MAX_HANDOUT_UPLOAD_BYTES = 12 * 1024 * 1024;
-export const HANDOUT_IMAGE_MAX_SIDE = 4096;
+export const MAX_HANDOUT_UPLOAD_BYTES = UPLOAD_LIMITS.handout.maxBytes;
+export const HANDOUT_IMAGE_MAX_SIDE = UPLOAD_LIMITS.handout.maxSidePx;
 
 /** Formats we accept and serve; keyed by the type sniffed from file content. */
 const IMAGE_EXTENSIONS: Record<string, string> = {
