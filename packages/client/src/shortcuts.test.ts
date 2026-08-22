@@ -39,6 +39,35 @@ describe('katalog skrótów (etap 27f)', () => {
     expect(player.filter((group) => group.items.length === 0)).toEqual([]);
   });
 
+  /**
+   * Drabina `Esc` ma krok tylko dla MG, a numery są nadawane po filtrze roli.
+   * Zanim tak było, gracz oglądał „1, 2, 3, 4, 6, 7" (22.08, oględziny z konta
+   * gracza) — dziura brała się z numerów wpisanych na sztywno w treść wierszy.
+   */
+  it('numerowana grupa jest ciągła w obu rolach', () => {
+    for (const isGm of [true, false]) {
+      for (const group of shortcutGroupsFor(isGm)) {
+        if (!group.numbered) continue;
+        const numbers = group.items.map((item) => Number.parseInt(item.what, 10));
+        expect(numbers, `${group.title} (MG: ${isGm})`).toEqual(
+          group.items.map((_, index) => index + 1),
+        );
+      }
+    }
+  });
+
+  it('żaden wiersz katalogu nie nosi numeru w treści', () => {
+    // Numer jest wyłącznie ozdobą nadawaną przy odczycie. Wpisany w `what`
+    // albo zrobi graczowi dziurę (gdy grupa nie jest `numbered`), albo podwoi
+    // się na „1. 1." (gdy jest) — obie drogi wracają tu jako porażka.
+    for (const group of SHORTCUT_GROUPS) {
+      expect(
+        group.items.filter((item) => /^\d+\.\s/.test(item.what)).map((item) => item.what),
+        group.title,
+      ).toEqual([]);
+    }
+  });
+
   it('każda grupa ma tytuł i przynajmniej jeden wiersz', () => {
     for (const group of SHORTCUT_GROUPS) {
       expect(group.title.length, group.title).toBeGreaterThan(0);

@@ -76,21 +76,23 @@ Pełne notatki z zamkniętych etapów: `archiwum/dziennik-sesji.md` (nie czytaj 
 
 ## Od czego zacząć
 
-Ostatnia sesja była **naprawcza, poza etapami** (22.08, druga tego dnia): triaż zaległości plus
-**pięć pozycji z niego**. Zamknięte: kłamiące `NO_ROUTE` bota, **pułapka z własną Turą** wchodząca
-do Kolejki Inicjatywy sama, **specjalizacje umiejętności** („Nauka (Fizyka)") od kreatora po kartę
-i czat, **ręczny „Onieśmielony"**, który wreszcie nakłada −2, i **gniazda per kończyna**. Przy
-okazji przemeblowana dokumentacja: świadome decyzje wyszły do `decyzje-i-uproszczenia.md`, a dług
-oględzin „strona gracza" scalił się w jedną pozycję zbiorczą na górze sekcji zaległości. Szczegóły
-w notatce sesji niżej.
+Ostatnia sesja była **oględzinami z konta gracza, poza etapami** (22.08, trzecia tego dnia)
+i zamknęła **całą pozycję zbiorczą „strona gracza"** — czternaście z szesnastu punktów bez
+zastrzeżeń, dwa zostały (pusty stan listy postaci, atak na Demona). Po drodze naprawione **dwa
+błędy**: wejście do Panelu MG **wywalało aplikację na biały ekran** (`MapFxLayer.clear()` na
+`Graphics` zniszczonym już przez teardown viewportu — ta sama rodzina, przed którą ostrzega
+komentarz w `MapRenderer.destroy`) oraz **dziura w numeracji drabinki `Esc`** u gracza („1, 2, 3,
+4, 6, 7" — krok 5 jest `gmOnly`, a numery były wpisane w treść). Znaleziska, których **nie**
+naprawiałem, poszły do `POMYSLY.md` (cztery, z gotową diagnozą). Szczegóły w notatce sesji niżej.
 
-Sesja przed nią (22.08, pierwsza) zamknęła **grupy A i B** z triażu: przeciekający klik narzędzi
-mapy (błąd #8, szerszy niż opis — dotyczył też stref i gniazd), brak drogi **przełączenia
-kampanii** (#1), surowe id rany na czacie i w kompendium (#6), dymek celowania ślepy na nabój
-w komorze (#4), chip naboju i etykieta odchylenia granatu (#5, #7), **przycisk MG „nadaj ranę
-krytyczną"**, **Unik dla figury bez karty** i **zbieracz osieroconych plików z `uploads/`**.
-Dzień wcześniej (21.08) trzecia sesja naprawcza zamknęła pięć innych błędów, a przed nią
-**27f** i **27j**.
+Sesje przed nią (22.08, pierwsza i druga) zamknęły **triaż zaległości** i wszystkie osiem błędów
+z sesji testów 08.08; dzień wcześniej (21.08) trzecia sesja naprawcza zamknęła pięć innych,
+a przed nią **27f** i **27j**.
+
+**Poligon nie jest już zgodny ze swoim opisem w trzech miejscach — to poprawki, nie regresje.**
+Karta „Test 27x" należy do **avatar9** (nigdy do MG), żeton „Kolec" dostał **właściciela**
+(bez tego gracz nie mógł się podłączyć do Sieci mimo posiadania karty), a punkt dostępu jest
+**odsłonięty** (w bazie miał `hidden = 1`, choć ten plik twierdził inaczej).
 
 **Ruch gracza jest od 21.08 sprawdzany geometrią na serwerze.** `refuseWalkThroughSolid`
 w `realtime/movement.ts` odrzuca trasę przez ścianę, zamknięte okno i stojącą osłonę — **także
@@ -166,8 +168,8 @@ otwiera się narzędziem ⚠ w trybie 📌; „Rozbrój" ją usypia, kosz usuwa.
 **„Poligon bojowy" stoi na poziomie sklepu 2 (Zawodowe)** — przestawione 22.08 decyzją MG wprost
 w bazie (`Campaign.shopTier`), bo migracja dawała każdej kampanii `shopTier = 1` i gracz nie kupił
 by niczego droższego niż 50 ed. Przełącznik 1–4 jest w zakładce **„Kompendium"** pod chipami
-kategorii; MG kupuje przez wszystkie poziomy niezależnie od niego. **Do sprawdzenia przy pierwszym
-uruchomieniu:** czy przełącznik pokazuje 2, a nie 1 — wartość szła do bazy z pominięciem UI.
+kategorii; MG kupuje przez wszystkie poziomy niezależnie od niego. **Sprawdzone 22.08:** Kompendium pokazuje „Sklep: **Zawodowe** · Do 500 ed", a wpisy wyższych
+poziomów są wyszarzone z powodem — wartość z bazy dociera do UI poprawnie.
 
 **Następne etapy do wyboru: 27g** (wydajność) i **28** (VPS). Drobiazg „kostki kreatora świecą jak krytyki" z 25a/25b **jest zrobiony**
 (flaga `plain`), jednobarwne 📰 z 24c i 🔌 z 26b też — obie stały się sylwetkami z game-icons
@@ -185,60 +187,55 @@ przy **każdym** przejściu przez pokój i który ma własny wyłącznik).
 
 ### Otwarte zaległości (przechodzą między etapami)
 
-- **ZBIORCZA — dług oględzin „strona gracza": 15 etapów, jedna sesja z drugiego konta.**
-  Scalone 22.08 z kilkunastu osobnych wpisów, bo to **nie jest kilkanaście zadań, tylko jedna
-  sesja** na koncie gracza. Wspólny mianownik wszystkich pozycji: wszystko oglądane było z konta
-  MG, różnica **jest w payloadzie** (serwer filtruje przed emisją, nie CSS ukrywa) i wszędzie ma
-  pokrycie testami na żywych gniazdach — nieobejrzany jest sam ekran. Zanim odhaczysz cokolwiek:
-  (a) **odmowy statusowe są u MG niesprawdzalne** — `realtime/movement.ts:216` zwalnia MG
-  z blokad; (b) przeczytaj wpis „Kliknięcie w token było zepsute dla graczy od 18a" niżej, bo
-  część tych pozycji mogła być nieodklikana **dlatego**, a nie z braku czasu; (c) ustawienie
-  stołu jest w „Pułapki dev" — MG na `http://localhost:5173/`, gracz na `http://[::1]:5173/`
-  (to dwa różne hosty dla ciasteczka sesji, więc wystarczy jedna przeglądarka).
+- ~~**ZBIORCZA — dług oględzin „strona gracza": 15 etapów, jedna sesja z drugiego konta.**~~
+  **Odklikane 22.08** (trzecia sesja tego dnia) — MG na `http://localhost:5173/`, gracz **avatar9**
+  na `http://[::1]:5173/join/<token>`, obie sesje w jednym oknie Chrome. Z szesnastu pozycji
+  **czternaście przeszło bez zastrzeżeń**, dwie zostały (niżej). Sesja wyprodukowała przy okazji
+  **dwa naprawione błędy** (biały ekran przy wejściu do Panelu MG, dziura w numeracji drabinki
+  `Esc` u gracza) i **cztery znaleziska** dopisane do `POMYSLY.md`.
 
-  - [ ] **27f** — okno `?` u gracza ma **mniej wierszy** niż u MG (ściany, mgła, osłony i światła
-        są `gmOnly`); pokrywa test `shortcutGroupsFor(false)`.
-  - [ ] **27f** — stany puste, które widzi **wyłącznie** gracz: handouty bez udostępnień, postacie
-        przed pierwszą kartą. Zdania **są** tam z wcześniejszych etapów, ale nie były oglądane
-        razem z resztą i mogą mówić innym językiem niż pustki dopisane w 27f.
-  - [ ] **27j** — kierunek patrzenia i upadek figury. Różnica jest tu **mniejsza niż zwykle i to
-        jest zamierzone**: `facing` jedzie w publicznej części `TokenView`, a stan figury liczy
-        się z naklejek, które gracz i tak dostaje — widzi kierunek i upadek wroga, nie widząc
-        jego PW. Testy: `token:facing` u właściciela, odmowa dla cudzej i ukrytej figury.
-  - [ ] **27i** — efekty walki. `fx:play` jest przycinany **per gniazdo** (`trimMapFxForViewer`):
-        kto nie widzi lufy, nie dostaje ani jej, ani dźwięku. Trzy testy na żywych gniazdach.
-  - [ ] **27c** — obie nowe strony karty (Ścieżka Życia, sylwetka cyborgizacji). Różnicy w kodzie
-        nie ma — jedyne pole tylko dla MG to Reputacja, i było takie już w 23c. Zapis gracza
-        pokrywa test „the player writes their own page two and places their own chrome".
-  - [ ] **26f** — czy ukryta strefa znika z ekranu gracza, czy odsłonięta się rysuje i czy po
-        zdanej Percepcji dostaje ją **tylko jego** konto (`fetchZonesFor`); trzy testy.
-  - [ ] **26e** — okno Demonów. **Wymaga przepięcia karty**: netrunnerem Poligonu jest „Test 27x",
-        która należy do MG, a nie do Tony'ego ani avatar9. Demon „czuwający" w ogóle nie wchodzi
-        do payloadu gracza, a atak na niego wraca `NET_DEMON_UNKNOWN`; dwa testy.
-  - [ ] **26d** — okno urządzeń: gracz nie dostaje ich listy, dopóki nie przejmie węzła (test
-        „nie przysyła graczowi listy urządzeń").
-  - [ ] **26c** — okno walki w Sieci: gracz nie dostaje ATK/OBR/PER/PRĘ Czarnego LOD-a ani jego
-        efektu, dopóki ten go nie dopadnie (`netcombat.test.ts`).
-  - [ ] **26a** — zakładka „Sieć" nie istnieje dla gracza: `net:*` ma rolę `ROLE_GM` i emituje
-        wyłącznie do `gmRoom` (test „never lets a player near the library" — lista, odczyt i zapis
-        odmawiają). U MG sprawdzone było tylko to, że zakładka stoi w rzędzie MG.
-  - [ ] **25c** — odmowa poziomu sklepu („Kup" wyszarzone, serwer wraca „Poza zasięgiem sklepu.
-        Poziom 2 (Zawodowe) — kampania ma odblokowany N") **oraz** cały krok wyposażenia
-        w kreatorze. U MG niesprawdzalne: jest z blokady zwolniony.
-  - [ ] **23c** — „Wycofaj się" / „Nie ustępuj (−2)" na karcie czatu, gdy przegraną Konfrontacji
-        jest **figura gracza** (test `o wycofaniu decyduje przegrany, nie zwycięzca`). Konfrontacje
-        z 10.08 szły z konta MG, więc przyciski oglądał MG.
-  - [ ] **23b** — karta przelewu na **ekranie odbiorcy**. Wiersz czatu ma `recipientId`, więc
-        dociera do obu stron i MG; nikt nie był zalogowany jako Tony, żeby to zobaczyć.
-        **Potrzeba trzeciego hosta** — patrz „Pułapki dev".
-  - [ ] **18d/18e** — ikona 🪟 u gracza oraz odmowy „Za daleko — podejdź do okna", „Okno zamknięte
-        na skobel", „Zamknięte na klucz". Testy dymne na payloadzie.
-  - [ ] **16b** — klik w token ładujący kubek ataku, „🎯 Atak…" w menu kontekstowym tokenu
-        i edytor profilu bojowego w „Edytuj…". **Wymaga myszy**, nie automatu: CDP nie dowozi
-        trafienia wskaźnikiem w warstwę Pixi (patrz „Pułapki dev"). 13 testów w `attacks.test.ts`.
-  - [ ] **14e** — samo **zdanie rany** w treści karty odmowy (Uraz kręgosłupa, monit przy Urazie
-        ucha). Od 22.08 osiągalne w jednym kliknięciu: MG nadaje ranę z karty postaci. Mechanizm
-        karty odmowy u gracza jest już potwierdzony trzy razy (budżet 14b, dystans 14c, Powalony).
+  Odklikane: **27f** (okno `?` ma u gracza 3 narzędzia mapy zamiast 11; pusty stan handoutów
+  „Mistrz Gry nie dał ci jeszcze żadnego materiału."), **27j** (wskaźniki kierunku rysują się
+  także dla cudzych figur; `Nieprzytomny` = ciemna podstawka, `Martwy` = wielki ✕ — różnica
+  czytelności potwierdzona na ekranie), **27i** (smuga pocisku i napis „PUDŁO" złapane
+  spowolnionym `rAF` — patrz „Pułapki dev"), **27c** (obie strony karty; Reputacja u gracza jest
+  **do odczytu**, bez „+ Wyczyn" — notatka mówiąca „pole tylko dla MG" była nieprecyzyjna),
+  **26a** (rząd zakładek gracza ma 6 pozycji, bez „Sieć" i bez rzędu MG), **26b–26e** (run
+  z konta gracza: trzon pokazuje odwiedzone piętro, resztę jako „? ?"; Czarny LOD ma u gracza
+  **sam REZ 20/20**, bez ATK/OBR/PER/PRĘ), **26f** (strefa „Podłoga elektryczna" jest u MG,
+  u gracza jej nie ma), **25c** („Kup" wyszarzony z powodem „Poziom 3 (Korporacyjne) — kampania
+  ma odblokowany 2 (Zawodowe)."; cały krok wyposażenia w kreatorze wraz z chipem „×2"),
+  **23b** (karta „Przelew" u odbiorcy, z oboma saldami), **23c** („Postaw się" / „Wycofaj się" /
+  „Nie ustępuj (−2)" trafiły do **przegranego gracza**, a karta zaktualizowała się na
+  „avatar9 nie ustąpił — −2 do Akcji przeciw Tony"), **18d/18e** (ikona 🪟, „Za daleko — podejdź
+  do okna (na jedną kratkę).", otwarcie okna, „Okno zamknięte na skobel — nie ustąpi."),
+  **16b** (klik w token ładuje kubek — **CDP to dowozi**, wbrew dopiskowi „wymaga myszy"; dymek
+  celowania z chipem naboju „30 → 29"), **14e** (karta rany krytycznej dociera do gracza z pełnym
+  opisem efektu).
+
+  Domknięte przy okazji, spoza tej listy: **27e** (ekran `/join/<token>` i okno runa od środka),
+  **23a** (chip cyberpsychozy „EMP 2 · Na granicy" na liście postaci gracza), **27b** (wiersz rany
+  krytycznej z nazwą, efektem i koszem), **13** (karta przedmiotu z tabelą PT), **16e** (marsz po
+  kliknięciu w podłoże — i to, że **marsz przestawia `facing`**), **27j** (zalew zasięgu ruchu
+  **omija okno** — zacienienie za przeszkodą, którego na scenie `open` nie było jak zobaczyć),
+  oraz potwierdzenie, że **przełącznik poziomu sklepu pokazuje 2 („Zawodowe"), a nie 1**.
+
+  - [ ] **27f** — pusty stan **listy postaci** u gracza (`'Nie masz jeszcze żadnej postaci.'`).
+        Sprawdzony w kodzie i mówi tym samym językiem co pustka handoutów, ale na ekranie go nie
+        było: avatar9 ma dwie postacie, a Tony i Marcin też mają swoje. Do zobaczenia trzeba
+        dołączyć do stołu **nowym imieniem**, czyli założyć konto-śmiecia.
+  - [ ] **26e** — **atak na Demona** (`NET_DEMON_UNKNOWN`). Demon Poligonu siedzi na piętrze 4,
+        a gracz nie widzi pięter, na których nie stanął — więc z UI nie ma jak go zaatakować.
+        Pokryte testem serwera; do obejrzenia trzeba przejść run do końca.
+
+  **Ustalenia, które unieważniają część starych dopisków.** (1) Notatka „netrunnerem Poligonu jest
+  „Test 27x", która należy do MG" była **nieprawdziwa** — karta należy do avatar9; przepinania nie
+  było trzeba. (2) Żeton **„Kolec" nie miał właściciela** (`ownerId = null`), więc gracz nie mógł
+  nim ani skanować, ani się podłączyć mimo posiadania karty — **przepisany 22.08 na avatar9**.
+  (3) Punkt dostępu miał w bazie `hidden = 1`, choć notatka mówiła „stoi odsłonięty" —
+  **odsłonięty 22.08** przyciskiem „Odsłoń graczom" i taki zostaje. (4) „Potrzeba trzeciego hosta"
+  przy 23b **nie była potrzebna**: przelew robi się z karty postaci, więc MG wysłał go z karty
+  Tony'ego, a odbiorcą był zalogowany gracz.
 
 - **Etap 27f — okno większe od przeglądarki nieodklikane; reszta sprawdzona 21.08 (patrz
   notatka sesji).** Sprowadzanie na ekran sprawdzone na oknie, które się mieści; dla okna
@@ -280,12 +277,11 @@ przy **każdym** przejściu przez pokój i który ma własny wyłącznik).
   z kryterium etapu. Warstwa rysuje na klatkę kilka ścieżek `Graphics` i najwyżej jeden sprite,
   więc rezerwa jest duża — ale liczby dla sceny z dynamiczną widocznością nadal nie ma.
 
-- **Etap 27e — trzy ścieżki nieodklikane; reszta sprawdzona 20.08 (patrz notatka sesji).**
-  (1) **Ekran dołączenia do stołu** (`/join/<token>`) — potrzebny świeży link zaproszenia, a ten
-  z Poligonu wygasł; ekran używa tych samych klas `.auth-*` co logowanie, które w obu trybach
-  jest sprawdzone. (2) **Okno runa w Sieci od środka** — wymaga rozpoczęcia runa na żywej
-  kampanii. (3) **Screamsheet** — lista handoutów Poligonu jest pusta. Przy (2) i (3) różnica
-  jest **żadna z definicji**: `--net-*` i `--paper` nie mają wariantu dziennego.
+- **Etap 27e — jedna ścieżka nieodklikana; reszta sprawdzona 20.08 i 22.08.**
+  ~~(1) Ekran dołączenia do stołu~~ i ~~(2) Okno runa w Sieci od środka~~ — **odklikane 22.08**
+  przy oględzinach z konta gracza (świeży link zaproszenia z Panelu MG, run na żywej kampanii).
+  Zostaje (3) **Screamsheet** — lista handoutów Poligonu jest pusta; różnica jest tu **żadna
+  z definicji**, bo `--paper` nie ma wariantu dziennego.
 
 - **Etap 27e — pułapka, która wróci: gołe `button` maluje się jak przycisk główny.** W `styles.css`
   selektor `button` ustawia `background: var(--accent)` i biały napis, więc każdy nowy przycisk,
@@ -420,8 +416,9 @@ przy **każdym** przejściu przez pokój i który ma własny wyłącznik).
 - **Etap 25c — dwie ścieżki nieodklikane.** (1) **Wgranie portretu w kreatorze** — przycisk
   widziany i naprawiony, ale pliku nie wgrywano; trasa to ta sama `/api/uploads/portraits` co
   na karcie z etapu 07. (2) **Druga sztuka tego samego przedmiotu** w koszyku (chip „×2"
-  i wiersz „nazwa ×2" w audycie) — klikane było „+" po jednej sztuce; pokryte testem.
-  (Odmowa poziomu i krok wyposażenia u gracza → pozycja zbiorcza na górze sekcji.)
+  i wiersz „nazwa ×2" w audycie) — **odklikane 22.08** z konta gracza: dwa kliknięcia w „Średni
+  pistolet" dały chip „×2", wiersz „Średni pistolet ×2 — 100 ed" i budżet 500 → 400 ed.
+  (Odmowa poziomu i krok wyposażenia u gracza — **odklikane 22.08**, patrz pozycja zbiorcza.)
 
 - **Etap 25c — Krawędziarz nie dostaje odgórnego pakietu Roli.** RAW (s. 98 i 103) daje mu
   broń, pancerz, ekwipunek i modę z tabeli swojej Roli **plus** 500 ed; VTT daje na razie samą
@@ -459,11 +456,10 @@ przy **każdym** przejściu przez pokój i który ma własny wyłącznik).
   i tak stoi w kreatorze i na karcie, tylko nie zatrzymuje. Jeśli przy stole wyjdzie, że ma
   zatrzymywać — to jeden `if` w `creationIssues`.
 
-- **Etap 27b — rana krytyczna w nowym panelu nieobejrzana, ale od 22.08 **osiągalna w jednym
-  kliknięciu**.** „Krytyczne Urazy" w kolumnie tożsamości widziane było wyłącznie w stanie pustym,
-  bo MG nie miał czym nadać rany. Ma: lista wyboru + „Nadaj" pod listą ran (`character:injury`).
-  Zostaje samo **obejrzenie** wiersza z raną — nazwa, `2k6 = N`, chip „na minutę", „+N do Testu
-  Przeżywalności", efekt, kosz — w obu motywach i na wydruku.
+- ~~**Etap 27b — rana krytyczna w nowym panelu nieobejrzana.**~~ **Odklikane 22.08.** MG nadał
+  avatar9 „Uraz kręgosłupa" listą + „Nadaj"; wiersz pokazał nazwę, „+1 do Testu Przeżywalności",
+  pełny efekt („W swojej kolejnej Turze nie możesz wykonać Akcji…") i kosz, który ranę zdjął.
+  Nieoglądane zostaje to samo **na wydruku** i w motywie dziennym.
 
 - **Etap 24c — cztery ścieżki nieodklikane.** (1) **Zdjęcie prasowe** — screamsheet przyjmuje
   grafikę handoutu i rysuje ją jako odbitkę gazetową (`grayscale`), ale przy oględzinach nic
@@ -539,11 +535,11 @@ przy **każdym** przejściu przez pokój i który ma własny wyłącznik).
   miały cenę. (3) **„Znaleziony — montaż N ed"** przy cyborgizacji (s. 375) — przycisk istnieje
   i jest pokryty testem, klikany był tylko wariant pełnopłatny.
 
-- **Etap 23a — dwie ścieżki nieodklikane.** (1) **Chip cyberpsychozy
-  na liście postaci** (`character-psychosis` w `CharacterPanel.tsx`) — dopisany **po** oględzinach,
-  więc widziany tylko w kodzie; pokazuje się dopiero przy EMP ≤ 2, czyli po utracie ~40 punktów
-  Człowieczeństwa. (2) **Edytor MG wpisu cyborgizacji** z nowymi polami (rodzina, montaż, UC stałe
-  i kostkowe, „Połowa, w górę", gniazda, „Wymaga") — formularz nie był otwierany.
+- **Etap 23a — jedna ścieżka nieodklikana.** ~~(1) Chip cyberpsychozy na liście postaci~~ —
+  **odklikany 22.08** na liście gracza przy „Test 27x": „EMP 2 · Na granicy" (na karcie ten sam
+  stan stoi w nagłówku sylwetki jako „Cyberpsychoza: Na granicy"). Zostaje (2) **Edytor MG wpisu
+  cyborgizacji** z nowymi polami (rodzina, montaż, UC stałe i kostkowe, „Połowa, w górę", gniazda,
+  „Wymaga") — formularz nie był otwierany.
 
 - **Maszynopis wypowiedzi NPC-a (09.08) nieodklikany w przeglądarce.** Efekt jest czysto
   wizualny, więc żaden test go nie pokrywa. Do sprawdzenia przy stole: (1) **tempo** — 15 zn/s,
@@ -642,12 +638,12 @@ przy **każdym** przejściu przez pokój i który ma własny wyłącznik).
 
 - **Etap 16f — formularze paska nieodklikane**: Ustabilizowanie, Pochwycenie i Wstrzymanie Akcji otwierają w pasku **te same** komponenty co zakładka „Walka" (`CombatForms.tsx`), ale przez pasek nie były klikane — sprawdzone tylko to, że sloty się pojawiają i mają skróty.
 
-- **Etap 16e — odklikane częściowo (na koncie gracza), reszta czeka na mysz.** **Sprawdzone 31.07 na koncie Johnny:** klik w token → zaznaczenie (biały przerywany pierścień), podgląd trasy pod kursorem z licznikiem „15,2 m" i znacznikiem ✖, oraz odmowa poza turą (trasa przestaje się rysować). **Zostało do sprawdzenia:** (1) sam marsz po kliknięciu w podłoże i odsłanianie mgły w jego trakcie; (2) obejście rogu korytarza przez trasę; (3) klik za zasięgiem tury → ✖ na granicy budżetu i wygaszony ogon; (4) kursor „idź w tę stronę" nad czernią; (5) Esc / klik w trakcie marszu; (6) przerwanie marszu przez NPC wychodzącego zza rogu; (7) Shift+klik → żółty punkt załamania; (8) PPM w puste → odznaczenie; (9) **przeciąganie tokenu działa jak przed etapem** (najważniejszy test regresji — patrz `DRAG_CLICK_GRACE_MS`); (10) token 2×2 przy metrowych drzwiach. Punkty 1–8 wymagają tury dla postaci, którą się steruje — na scenie kampanii turę ma ukryty NPC, więc oględziny zrób na osobnej scenie albo po przekazaniu tury.
+- **Etap 16e — odklikane częściowo (na koncie gracza), reszta czeka na mysz.** **Sprawdzone 31.07 na koncie Johnny:** klik w token → zaznaczenie (biały przerywany pierścień), podgląd trasy pod kursorem z licznikiem „15,2 m" i znacznikiem ✖, oraz odmowa poza turą (trasa przestaje się rysować). **Odklikane 22.08 z konta gracza:** (1) **sam marsz po kliknięciu w podłoże** — figura przeszła dwie kratki, na czacie stanęła „Akcja Ruchu", a **`facing` przestawił się na kierunek marszu**; przy okazji widziany był zalew zasięgu ruchu **omijający okno**. **Zostało do sprawdzenia:** odsłanianie mgły w trakcie marszu; (2) obejście rogu korytarza przez trasę; (3) klik za zasięgiem tury → ✖ na granicy budżetu i wygaszony ogon; (4) kursor „idź w tę stronę" nad czernią; (5) Esc / klik w trakcie marszu; (6) przerwanie marszu przez NPC wychodzącego zza rogu; (7) Shift+klik → żółty punkt załamania; (8) PPM w puste → odznaczenie; (9) **przeciąganie tokenu działa jak przed etapem** (najważniejszy test regresji — patrz `DRAG_CLICK_GRACE_MS`); (10) token 2×2 przy metrowych drzwiach. Punkty 1–8 wymagają tury dla postaci, którą się steruje — na scenie kampanii turę ma ukryty NPC, więc oględziny zrób na osobnej scenie albo po przekazaniu tury.
 
 - **Kliknięcie w token było zepsute dla graczy od 18a — naprawione w 16e, ale zaległości oględzin z tego okresu warto powtórzyć.** Warstwy przykrywające przechwytywały hit-test (szczegóły w „Pułapki dev"), więc gracz na scenie z dynamiczną widocznością **nie mógł kliknąć ani przeciągnąć żadnego tokenu**. To prawdopodobnie realna przyczyna części pozycji zbiorczej „strona gracza" na górze sekcji — przy jej odhaczaniu sprawdź najpierw, czy rzecz w ogóle dawała się kliknąć.
 
 - **70 broni markowych ma opisy po angielsku** (nie 35 — ta liczba brała się z komunikatu skryptu „35 już w pamięci podręcznej"). Angielskie opisy ma **wyłącznie** `weapons.json`; pozostałe 271 wpisów kompendium jest po polsku. **Skrypt był 21.08 pułapką i został naprawiony**: kwalifikował do tłumaczenia każdy wpis bez `descriptionOriginal`, czyli **341** — w tym 271 polskich, które model dostałby do „przetłumaczenia z angielskiego". Teraz `looks_english()` odsiewa je (`--check` mówi: 70 do zrobienia, 271 pominięto). Zostaje sam przebieg `tools/import/translate-descriptions.py` przy włączonym llama-serverze (`pwsh ai-gateway/scripts/start-gateway.ps1`, potem `uv run --with httpx python tools/import/translate-descriptions.py`). Bez GPU się nie da, więc czeka na sesję z gatewayem.
-- **Etap 13 — UI kompendium odklikane tylko powierzchownie**: 30.07 (przy oględzinach 14b) potwierdzona sama zakładka „Kompendium" — chipy kategorii z licznikami (Broń 103, Pancerz 11, Sprzęt 5, Cyborgizacje 3, Rany krytyczne 22) i lista wpisów z obrażeniami i ceną. **Nadal nieodklikane:** karta przedmiotu z tabelą PT, edytor MG, dodanie przedmiotu na kartę postaci. Ścieżki serwerowe pokryte testami.
+- **Etap 13 — UI kompendium odklikane tylko powierzchownie**: 30.07 (przy oględzinach 14b) potwierdzona sama zakładka „Kompendium" — chipy kategorii z licznikami (Broń 103, Pancerz 11, Sprzęt 5, Cyborgizacje 3, Rany krytyczne 22) i lista wpisów z obrażeniami i ceną. ~~karta przedmiotu z tabelą PT~~ — **odklikana 22.08** z konta gracza (Arasaka Wss Sniper System: obrażenia, magazynek, chwyt, jakość, gniazda, dostępność i pełny rządek PT 30/25/25/20/15/16). **Nadal nieodklikane:** edytor MG i dodanie przedmiotu na kartę postaci. Ścieżki serwerowe pokryte testami.
 - **Etap 09 — zakładka „AI" u MG niezweryfikowana wizualnie** (sesja toczyła się na koncie gracza). Późniejsze etapy oglądały u MG inne zakładki, więc to prawdopodobnie martwa zaległość — sprawdź przy okazji.
 - **Ślad ścieżki przy przeciąganiu nieobejrzany**: `left_click_drag` z CDP jest natychmiastowy, więc łamana z licznikiem metrów rysuje się i znika między klatkami. Do sprawdzenia ręcznie — myszą.
 - **Etap 14d — została odmowa Uniku Ludzkiej tarczy**: karta testu spornego z „Broń się"
@@ -756,6 +752,64 @@ przy **każdym** przejściu przez pokój i który ma własny wyłącznik).
 
 ## Notatki z dwóch ostatnich sesji
 
+### Sesja 22.08 (trzecia tego dnia) — oględziny „strona gracza", poza etapami
+
+**Zlecenie MG:** z listy dziesięciu zaległości wybrał pozycję 1 — **zbiorczy dług oględzin
+„strona gracza"** — i dopisał w trakcie: „testy uruchamiaj też z konta gracza, nie tylko z MG".
+Sesja poszła więc na dwóch kontach naraz: MG na `http://localhost:5173/`, gracz **avatar9** na
+`http://[::1]:5173/join/<token>`, w jednym oknie Chrome (ciasteczko jest kluczowane hostem).
+Świeży link zaproszenia z Panelu MG — ten z Poligonu wygasł 15.08.
+
+**Sesja zaczęła się od błędu, który ją blokował.** Wejście na „Panel MG" **wywalało całą
+aplikację na biały ekran**: `MapRenderer.destroy` niszczy viewport przez
+`destroy({ children: true })`, co dosięga `Graphics` warstwy efektów, a `MapFxLayer.destroy`
+wołał zaraz potem `clear()` na już zniszczonym obiekcie. `Graphics.clear()` na zniszczonym
+rzuca, a rzut w sprzątaniu efektu Reacta zabiera całe drzewo. To dokładnie ta sama rodzina, co
+naprawiona wcześniej kolejność w `MapRenderer.destroy` (komentarz w tym pliku ostrzega przed nią
+wprost) — 27i wprowadziło ją z powrotem jednym piętro niżej. Naprawa: `clear()` pomija
+zniszczone dzieci (`if (!this.graphics.destroyed)`, `!sprite.destroyed`, `!text.destroyed`).
+
+**Drugi błąd wyszedł w pierwszej minucie oględzin.** Okno `?` u gracza pokazywało drabinkę `Esc`
+jako **„1, 2, 3, 4, 6, 7"** — numery były wpisane na sztywno w treść wierszy, a krok 5
+(„Porzuca rysowany łańcuch ścian albo prostokąt osłony") jest `gmOnly`. Numerowanie przeniesione
+do `shortcutGroupsFor`, czyli **za** filtr roli; grupa prosi o nie flagą `numbered`. Dwa testy
+w `shortcuts.test.ts`: numeracja jest ciągła w obu rolach, a **żaden wiersz katalogu nie nosi
+numeru w treści** (drugi sprawdzony celowym cofnięciem poprawki — przewraca się).
+
+**Z szesnastu pozycji zbiorczych czternaście przeszło bez zastrzeżeń.** Szczegóły przy samej
+pozycji w „Otwarte zaległości"; tu tylko to, co było niespodzianką:
+
+- **Efekt walki dało się złapać zrzutem** — sztuczką z „Pułapek dev": `requestAnimationFrame`
+  opakowany tak, żeby liczył **wirtualny** znacznik czasu, a współczynnik ustawiony dopiero
+  w chwili, gdy karta rzutu wpada na czat. Przy 0,05× smuga pocisku i napis „PUDŁO" stoją na
+  ekranie kilkanaście sekund. Bez tego widać zawsze pustą mapę.
+- **`Nieprzytomny` kontra `Martwy` — kompromis z 27j potwierdzony na ekranie.** Martwy dostaje
+  wielki czerwony ✕ przez portret i widać go natychmiast; nieprzytomny tylko ciemnoczerwoną
+  podstawkę, której trzeba poszukać. Wpis w `POMYSLY.md` („przechylenie figury") zostaje.
+- **Reputacja u gracza jest do odczytu, nie ukryta.** Notatka mówiąca „jedyne pole tylko dla MG
+  to Reputacja" była nieprecyzyjna: sekcja **znika**, dopiero gdy nie ma żadnego wyczynu, a przy
+  wyczynie gracz widzi liczbę i wiersze — bez „+ Wyczyn" i bez pól edycji. Tak ma być.
+- **Klik w token z konta gracza CDP dowozi.** Dopisek „16b wymaga myszy" był nieaktualny od 16e
+  (naprawiony hit-test). Kubek załadował się, dymek celowania pokazał chip naboju „30 → 29”.
+
+**Trzy rzeczy w danych Poligonu nie zgadzały się z opisem w tym pliku.** (1) „Test 27x" należy do
+**avatar9**, nie do MG — przepinania karty, o którym mówiła notatka 26e, nie było trzeba.
+(2) Żeton **„Kolec" nie miał właściciela**, więc gracz nie mógł nim ani skanować, ani podłączyć
+się do Sieci mimo posiadania karty; przepisany na avatar9. (3) Punkt dostępu miał `hidden = 1`,
+choć notatka mówiła „stoi odsłonięty" — odsłonięty przyciskiem „Odsłoń graczom" i taki zostaje.
+
+**Cztery znaleziska, których nie naprawiałem** (wpisy w `POMYSLY.md`, każdy z gotową diagnozą):
+wyszarzona Akcja zabrana przez Uraz kręgosłupa mówi „już wykorzystana"; netrunner nie ma czym
+uruchomić Skanera, dopóki nie widzi gniazda (a gniazdo odsłania właśnie Skaner); MG nie zmieni
+udostępnienia postawionych drzwi ani okna; oraz postulat MG — **oznaczyć kampanię jako testową
+albo produkcyjną**, żeby nie trzeba było pytać, co wolno na niej zepsuć.
+
+**Stan Poligonu po sesji.** Przywrócone: tryb turowy wyłączony, rana zdjęta, wszystkie ściany
+i okna skasowane, widoczność z powrotem „Pełna". Zostawione świadomie: punkt dostępu odsłonięty
+(tak opisuje go ten plik), „Kolec" u avatar9, avatar9 dwie kratki niżej z naklejką „Onieśmielony"
+i +50 ed z testowego przelewu. Testy: **1334 w `shared`, 759 na serwerze, 30 u klienta** — wszystkie
+zielone.
+
 ### Sesja 22.08 (druga tego dnia) — triaż zaległości i pięć pozycji z niego, poza etapami
 
 MG kazał wypisać ~10 otwartych zaległości do uporządkowania (bez rzeczy czekających na lokalny
@@ -804,86 +858,12 @@ wskazał 1–5. Żadna z pięciu poprawek **nie była oglądana w przeglądarce*
 
 ### Sesja 22.08 — sesja naprawcza (grupy A i B z przeglądu zaległości), poza etapami
 
-**Zlecenie MG: wypisać ~10 otwartych zaległości do triażu, a potem wykonać grupy A i B** —
-osiem pozycji: pięć potwierdzonych błędów w kodzie i trzy braki funkcjonalne. Z listy wypadło
-wszystko wokół lokalnego LLM (MG wymienia model) i same niedokończone etapy (27g, 28).
-
-**A1. Klik narzędziem mapy przeciekał do warstwy gry — i był szerszy, niż mówił błąd #8.**
-`viewport.on('clicked')` w `MapRenderer.ts` wykluczał tylko ściany i lampy, a gest kończący
-się `return`-em na `pointerdown` mają **także** osłony (16c), strefy (26f) i gniazda sieciowe
-(26b). Przy okazji wyszło, że **cztery** miejsca pytają „czy narzędzie jest w ręku" czterema
-listami pisanymi z ręki i **trzy z nich się rozjechały**: celownik (`aimTargetFor`), podgląd
-trasy (`trackWalkHover`) i kursor mapy nie znały części narzędzi, więc z gumką osłon w ręku
-mapa dalej rysowała trasę pod kursorem. Teraz są dwa gettery — `toolSpentThisClick` (narzędzia
-rozliczone na `pointerdown`) i `mapToolArmed` (wszystkie, pędzle włącznie) — a `map-click.test.ts`
-przewraca się, gdy nowe narzędzie nie trafi do żadnego strażnika.
-
-**A2. Zmiana aktywnej kampanii nie ruszała podpiętych ekranów — bo nie było czym jej zmienić.**
-Błąd #1 mówił „zmienia się tylko nazwa w nagłówku"; w kodzie nie istniał **żaden** przycisk
-ani trasa aktywacji — kampanię dało się przełączyć wyłącznie tworząc nową (dokument testów
-z 08.08 opisuje „Panel MG → Aktywuj", którego nie było). Doszło zdarzenie `campaign:activate`
-(MG), które przenosi **każde** podpięte gniazdo: wyjście ze starych pokoi, wejście do nowych,
-scena aktywna nowej kampanii i pełny `state:sync` — czyli te same trzy kroki, które wykonuje
-świeże gniazdo. Klient dostaje `campaign:switch` i odświeża nazwę w pasku oraz wskaźniki
-(zaznaczenie, broń w ręku). Gracz spoza nowej kampanii dostaje `null`, nie cudzy stół.
-
-**A3. Statysta dostawał na czacie surowe id rany — a to samo robiła karta wpisu w kompendium.**
-`describeAmmoFailure` miało fallback na `failure.injuries`/`failure.statuses`, czyli na id
-z pliku danych, i odzywał się wszędzie, gdzie wołający zapomniał podać nazw: przy figurze bez
-karty (rana nie jest nigdzie zapisywana, więc nazwy nie było skąd wziąć) **i** w karcie wpisu
-amunicji w kompendium, która nazw nie podawała nigdy. Fallback zniknął, `labels` jest teraz
-parametrem **wymaganym** (TypeScript pilnuje wołających), a nazwy ran wyciąga wspólny
-`criticalInjuryNames` w `shared`. Test w `shared` pilnuje, że w zdaniu nie ma jak paść id.
-
-**A4. Dymek celowania nie wiedział, co jest w komorze.** `planCpredAttack` przyjmuje profil
-naboju od 16g i serwer mu go podaje — klient nie. Skutek: ze śrutem dymek wyceniał strzał
-z **tabeli kul** („Przedział 7–12 m · PT 15"), klik ładował kubek, a odmowa „poza zasięgiem"
-przychodziła dopiero po rzucie. Teraz podgląd czyta nabój tą samą drogą co serwer, więc za
-stożkiem odmawia od razu, a w stożku pokazuje stałe PT. `aim-preview.test.ts` chodzi po
-prawdziwym `planAttackPreview` z podstawionymi sklepami.
-
-**A5. Dwa drobiazgi.** (1) Chip naboju nie odświeżał się przy broni bez magazynka, bo
-`hudSignature` — to, po czym pasek akcji poznaje, że jest co przerysować — nie widziała
-`ammoLabel` ani `coneRangeM`; strzelba maskowała błąd, bo przy przeładowaniu zmieniał się
-licznik magazynka. (2) Etykieta odchylenia granatu pisała „5 − ZW 7 = 2 m"; `CpredScatter`
-niesie teraz `clamped`, a `describeScatter` mówi „→ najmniej 2 m (ładunek zawsze schodzi
-o pole)" i **sam** dokleja wynik, więc limit nie ma jak zniknąć u wołającego.
-
-**B6. MG może nadać ranę krytyczną.** Do tej pory rana wchodziła wyłącznie z rzutu z dwiema
-szóstkami (1/36) albo z nietrafionego testu amunicji z 16h, a karta postaci potrafiła je tylko
-usuwać — „spadasz z drabiny i łamiesz rękę" nie miało jak się wydarzyć, choć RAW na to pozwala.
-Nowe `character:injury` (MG) zapisuje ranę **tą samą** funkcją co rzut
-(`applyForcedFailureToSheet`), więc niesie karę do RUCH-u, dopłatę do Testu Przeżywalności
-i flagi tur z 14e; karta na czacie jest zwykłą kartą obrażeń, więc „Cofnij" działa bez jednej
-nowej linii. W karcie postaci, pod listą ran, MG ma listę wyboru + „Nadaj". **To odblokowuje
-trzy stare zaległości oględzin** (odmowa Akcji przy Urazie kręgosłupa z 14e, wiersz rany
-w panelu 27b, karta odmowy u gracza).
-
-**B7. Statysta może aktywnie unikać.** `attack:evade` wymagało karty postaci, więc figura
-z samym profilem bojowym (Zbir z Poligonu) nigdy nie dostawała przycisku „Unik", choć jej PT
-obrony liczy się z tego profilu od 16b. Rzut idzie teraz tą samą syntezą
-(`sheetFromCombatProfile`), którą policzone było bierne PT, więc obie liczby nie mają jak się
-rozjechać; prawo do kliknięcia ma MG albo właściciel żetonu — dokładnie ci, którym serwer
-i tak wysyła profil (`seesPrivate`).
-
-**B8. Nikt nie sprzątał `uploads/`.** Nowy `uploads-gc.ts` zbiera sieroty z czterech katalogów
-naraz i chodzi w tle przy starcie serwera. Zasada jest ostrożna: plik ginie **tylko** wtedy, gdy
-żadna kolumna go nie wymienia i jest starszy niż **godzina** — bo portret w kreatorze powstaje
-zanim istnieje postać. Odnośniki zbierane są dwiema drogami (kolumny z adresem + wyrażenie
-regularne po kolumnach JSON: szkic kreatora, ładunek czatu, dane karty), i **ta lista jest
-w jednym miejscu** — nowa kolumna z adresem, która na nią nie trafi, znaczy skasowany plik.
-Przebieg na sucho na żywych danych: 10 plików, 0 sierot.
-
-**Testy: 2099 przechodzi** (shared 1318, serwer 753, klient 28). Nowe: `map-click.test.ts`,
-`aim-preview.test.ts`, `hud-signature.test.ts` (klient), `campaign-switch.test.ts`,
-`uploads-gc.test.ts` + wpisy w `damage.test.ts`, `attacks.test.ts`, `ammo-effects.test.ts`
-(serwer), `ammo.test.ts`, `areas.test.ts` (shared). Cztery poprawki sprawdzone **celowym
-cofnięciem** (A1, A3, A4, plus zbieracz na sucho). ESLint i Prettier czyste, serwer wstaje,
-`vite build` przechodzi.
-
-**Czego ta sesja NIE ruszyła:** grupy C z przeglądu — dług oględzin („strona gracza"
-w kilkunastu etapach), czytelność `down` na mapie, odmiana w wyszukiwarce dziennika i kontrast
-marki. To są pozycje 9–12 listy, MG zostawił je świadomie.
+**Skrót** (pełna notatka w `archiwum/dziennik-sesji.md`). Osiem pozycji z triażu: przeciekający
+klik narzędzi mapy (błąd #8, szerszy niż opis), brak drogi przełączenia kampanii (#1), surowe id
+rany na czacie i w kompendium (#6), dymek celowania ślepy na nabój w komorze (#4), chip naboju
+i etykieta odchylenia granatu (#5, #7), przycisk MG „nadaj ranę krytyczną", Unik dla figury bez
+karty i zbieracz osieroconych plików z `uploads/`. Po niej z ośmiu błędów sesji testów 08.08 nie
+został żaden nienaprawiony.
 
 ### Sesja 21.08 (trzecia tego dnia) — sesja naprawcza, poza etapami
 

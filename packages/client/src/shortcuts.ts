@@ -31,6 +31,12 @@ export interface ShortcutGroup {
   title: string;
   /** Zdanie nad tabelką: kiedy te skróty w ogóle działają. */
   note?: string;
+  /**
+   * Wiersze są krokami po kolei, więc dostają numery — nadaje je
+   * `shortcutGroupsFor` **po** odsianiu wierszy MG. Numer wpisany w `what`
+   * zostawiłby u gracza dziurę („1, 2, 3, 4, 6, 7"), bo krok 5 jest `gmOnly`.
+   */
+  numbered?: boolean;
   items: Shortcut[];
 }
 
@@ -87,18 +93,19 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
   {
     title: 'Esc — drabina wyjścia',
     note: 'Jedno wciśnięcie cofa jedną rzecz, od najświeższej. Nigdy nie zrzuca wszystkiego naraz.',
+    numbered: true,
     items: [
-      { keys: 'Esc', what: '1. Przerywa trwający marsz figury' },
-      { keys: 'Esc', what: '2. Rozbraja celowanie bronią' },
-      { keys: 'Esc', what: '3. Zamyka otwartą kartę HUD-u walki' },
-      { keys: 'Esc', what: '4. Opuszcza wybraną broń' },
+      { keys: 'Esc', what: 'Przerywa trwający marsz figury' },
+      { keys: 'Esc', what: 'Rozbraja celowanie bronią' },
+      { keys: 'Esc', what: 'Zamyka otwartą kartę HUD-u walki' },
+      { keys: 'Esc', what: 'Opuszcza wybraną broń' },
       {
         keys: 'Esc',
-        what: '5. Porzuca rysowany łańcuch ścian albo prostokąt osłony',
+        what: 'Porzuca rysowany łańcuch ścian albo prostokąt osłony',
         gmOnly: true,
       },
-      { keys: 'Esc', what: '6. Odkłada narzędzie mapy' },
-      { keys: 'Esc', what: '7. Zdejmuje zaznaczenie figury' },
+      { keys: 'Esc', what: 'Odkłada narzędzie mapy' },
+      { keys: 'Esc', what: 'Zdejmuje zaznaczenie figury' },
     ],
   },
   {
@@ -119,10 +126,22 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
   },
 ];
 
-/** Filtr roli: gracz nie ogląda skrótów, których u niego nie ma. */
+/**
+ * Filtr roli: gracz nie ogląda skrótów, których u niego nie ma.
+ *
+ * Numerowanie idzie **po** filtrze i dlatego siedzi tutaj, a nie w oknie
+ * pomocy: drabina `Esc` ma krok tylko dla MG, więc numery wpisane w treść
+ * wierszy pokazywały graczowi „1, 2, 3, 4, 6, 7" (znalezione 22.08 przy
+ * oględzinach z konta gracza).
+ */
 export function shortcutGroupsFor(isGm: boolean): ShortcutGroup[] {
-  return SHORTCUT_GROUPS.map((group) => ({
-    ...group,
-    items: group.items.filter((item) => isGm || !item.gmOnly),
-  })).filter((group) => group.items.length > 0);
+  return SHORTCUT_GROUPS.map((group) => {
+    const items = group.items.filter((item) => isGm || !item.gmOnly);
+    return {
+      ...group,
+      items: group.numbered
+        ? items.map((item, index) => ({ ...item, what: `${index + 1}. ${item.what}` }))
+        : items,
+    };
+  }).filter((group) => group.items.length > 0);
 }

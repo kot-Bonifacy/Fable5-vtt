@@ -7,6 +7,90 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 22.08 — sesja naprawcza (grupy A i B z przeglądu zaległości), poza etapami
+
+**Zlecenie MG: wypisać ~10 otwartych zaległości do triażu, a potem wykonać grupy A i B** —
+osiem pozycji: pięć potwierdzonych błędów w kodzie i trzy braki funkcjonalne. Z listy wypadło
+wszystko wokół lokalnego LLM (MG wymienia model) i same niedokończone etapy (27g, 28).
+
+**A1. Klik narzędziem mapy przeciekał do warstwy gry — i był szerszy, niż mówił błąd #8.**
+`viewport.on('clicked')` w `MapRenderer.ts` wykluczał tylko ściany i lampy, a gest kończący
+się `return`-em na `pointerdown` mają **także** osłony (16c), strefy (26f) i gniazda sieciowe
+(26b). Przy okazji wyszło, że **cztery** miejsca pytają „czy narzędzie jest w ręku" czterema
+listami pisanymi z ręki i **trzy z nich się rozjechały**: celownik (`aimTargetFor`), podgląd
+trasy (`trackWalkHover`) i kursor mapy nie znały części narzędzi, więc z gumką osłon w ręku
+mapa dalej rysowała trasę pod kursorem. Teraz są dwa gettery — `toolSpentThisClick` (narzędzia
+rozliczone na `pointerdown`) i `mapToolArmed` (wszystkie, pędzle włącznie) — a `map-click.test.ts`
+przewraca się, gdy nowe narzędzie nie trafi do żadnego strażnika.
+
+**A2. Zmiana aktywnej kampanii nie ruszała podpiętych ekranów — bo nie było czym jej zmienić.**
+Błąd #1 mówił „zmienia się tylko nazwa w nagłówku"; w kodzie nie istniał **żaden** przycisk
+ani trasa aktywacji — kampanię dało się przełączyć wyłącznie tworząc nową (dokument testów
+z 08.08 opisuje „Panel MG → Aktywuj", którego nie było). Doszło zdarzenie `campaign:activate`
+(MG), które przenosi **każde** podpięte gniazdo: wyjście ze starych pokoi, wejście do nowych,
+scena aktywna nowej kampanii i pełny `state:sync` — czyli te same trzy kroki, które wykonuje
+świeże gniazdo. Klient dostaje `campaign:switch` i odświeża nazwę w pasku oraz wskaźniki
+(zaznaczenie, broń w ręku). Gracz spoza nowej kampanii dostaje `null`, nie cudzy stół.
+
+**A3. Statysta dostawał na czacie surowe id rany — a to samo robiła karta wpisu w kompendium.**
+`describeAmmoFailure` miało fallback na `failure.injuries`/`failure.statuses`, czyli na id
+z pliku danych, i odzywał się wszędzie, gdzie wołający zapomniał podać nazw: przy figurze bez
+karty (rana nie jest nigdzie zapisywana, więc nazwy nie było skąd wziąć) **i** w karcie wpisu
+amunicji w kompendium, która nazw nie podawała nigdy. Fallback zniknął, `labels` jest teraz
+parametrem **wymaganym** (TypeScript pilnuje wołających), a nazwy ran wyciąga wspólny
+`criticalInjuryNames` w `shared`. Test w `shared` pilnuje, że w zdaniu nie ma jak paść id.
+
+**A4. Dymek celowania nie wiedział, co jest w komorze.** `planCpredAttack` przyjmuje profil
+naboju od 16g i serwer mu go podaje — klient nie. Skutek: ze śrutem dymek wyceniał strzał
+z **tabeli kul** („Przedział 7–12 m · PT 15"), klik ładował kubek, a odmowa „poza zasięgiem"
+przychodziła dopiero po rzucie. Teraz podgląd czyta nabój tą samą drogą co serwer, więc za
+stożkiem odmawia od razu, a w stożku pokazuje stałe PT. `aim-preview.test.ts` chodzi po
+prawdziwym `planAttackPreview` z podstawionymi sklepami.
+
+**A5. Dwa drobiazgi.** (1) Chip naboju nie odświeżał się przy broni bez magazynka, bo
+`hudSignature` — to, po czym pasek akcji poznaje, że jest co przerysować — nie widziała
+`ammoLabel` ani `coneRangeM`; strzelba maskowała błąd, bo przy przeładowaniu zmieniał się
+licznik magazynka. (2) Etykieta odchylenia granatu pisała „5 − ZW 7 = 2 m"; `CpredScatter`
+niesie teraz `clamped`, a `describeScatter` mówi „→ najmniej 2 m (ładunek zawsze schodzi
+o pole)" i **sam** dokleja wynik, więc limit nie ma jak zniknąć u wołającego.
+
+**B6. MG może nadać ranę krytyczną.** Do tej pory rana wchodziła wyłącznie z rzutu z dwiema
+szóstkami (1/36) albo z nietrafionego testu amunicji z 16h, a karta postaci potrafiła je tylko
+usuwać — „spadasz z drabiny i łamiesz rękę" nie miało jak się wydarzyć, choć RAW na to pozwala.
+Nowe `character:injury` (MG) zapisuje ranę **tą samą** funkcją co rzut
+(`applyForcedFailureToSheet`), więc niesie karę do RUCH-u, dopłatę do Testu Przeżywalności
+i flagi tur z 14e; karta na czacie jest zwykłą kartą obrażeń, więc „Cofnij" działa bez jednej
+nowej linii. W karcie postaci, pod listą ran, MG ma listę wyboru + „Nadaj". **To odblokowuje
+trzy stare zaległości oględzin** (odmowa Akcji przy Urazie kręgosłupa z 14e, wiersz rany
+w panelu 27b, karta odmowy u gracza).
+
+**B7. Statysta może aktywnie unikać.** `attack:evade` wymagało karty postaci, więc figura
+z samym profilem bojowym (Zbir z Poligonu) nigdy nie dostawała przycisku „Unik", choć jej PT
+obrony liczy się z tego profilu od 16b. Rzut idzie teraz tą samą syntezą
+(`sheetFromCombatProfile`), którą policzone było bierne PT, więc obie liczby nie mają jak się
+rozjechać; prawo do kliknięcia ma MG albo właściciel żetonu — dokładnie ci, którym serwer
+i tak wysyła profil (`seesPrivate`).
+
+**B8. Nikt nie sprzątał `uploads/`.** Nowy `uploads-gc.ts` zbiera sieroty z czterech katalogów
+naraz i chodzi w tle przy starcie serwera. Zasada jest ostrożna: plik ginie **tylko** wtedy, gdy
+żadna kolumna go nie wymienia i jest starszy niż **godzina** — bo portret w kreatorze powstaje
+zanim istnieje postać. Odnośniki zbierane są dwiema drogami (kolumny z adresem + wyrażenie
+regularne po kolumnach JSON: szkic kreatora, ładunek czatu, dane karty), i **ta lista jest
+w jednym miejscu** — nowa kolumna z adresem, która na nią nie trafi, znaczy skasowany plik.
+Przebieg na sucho na żywych danych: 10 plików, 0 sierot.
+
+**Testy: 2099 przechodzi** (shared 1318, serwer 753, klient 28). Nowe: `map-click.test.ts`,
+`aim-preview.test.ts`, `hud-signature.test.ts` (klient), `campaign-switch.test.ts`,
+`uploads-gc.test.ts` + wpisy w `damage.test.ts`, `attacks.test.ts`, `ammo-effects.test.ts`
+(serwer), `ammo.test.ts`, `areas.test.ts` (shared). Cztery poprawki sprawdzone **celowym
+cofnięciem** (A1, A3, A4, plus zbieracz na sucho). ESLint i Prettier czyste, serwer wstaje,
+`vite build` przechodzi.
+
+**Czego ta sesja NIE ruszyła:** grupy C z przeglądu — dług oględzin („strona gracza"
+w kilkunastu etapach), czytelność `down` na mapie, odmiana w wyszukiwarce dziennika i kontrast
+marki. To są pozycje 9–12 listy, MG zostawił je świadomie.
+
+
 ### Sesja 21.08 (trzecia tego dnia) — sesja naprawcza, poza etapami
 
 **Zlecenie MG: przejrzeć otwarte zaległości, wybrać z nich, co jest prawdziwym błędem, i to

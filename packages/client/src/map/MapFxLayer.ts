@@ -200,11 +200,17 @@ export class MapFxLayer {
   /** Anything still on screen goes; a scene change is not a slow fade. */
   clear(): void {
     for (const item of this.items) {
-      if (item.kind === 'sprite') item.sprite.destroy();
-      if (item.kind === 'label') item.text.destroy();
+      if (item.kind === 'sprite' && !item.sprite.destroyed) item.sprite.destroy();
+      if (item.kind === 'label' && !item.text.destroyed) item.text.destroy();
     }
     this.items.length = 0;
-    this.graphics.clear();
+    // Every child here may already be gone: `destroy()` runs *after*
+    // `viewport.destroy({ children: true })` in `MapRenderer.destroy`, which
+    // reaches this layer's container. `Graphics.clear()` on a destroyed one
+    // throws, and the throw takes the whole app down with a white screen —
+    // the same shape as the viewport-order bug documented in that method,
+    // hit by leaving the map for the GM panel.
+    if (!this.graphics.destroyed) this.graphics.clear();
   }
 
   destroy(): void {
