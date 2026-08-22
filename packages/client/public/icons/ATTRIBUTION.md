@@ -44,6 +44,7 @@ plików również usunięto czarne tło. Nazwę ikony wybiera `shared`
 | `hud/revolver.svg` | Revolver | Delapouite | slot broni: bardzo ciężki pistolet |
 | `hud/rifle.svg` | Autogun | Lorc | slot broni: karabin szturmowy |
 | `hud/rocket.svg` | Rocket | Lorc | slot broni: wyrzutnia rakiet |
+| `hud/scanner.svg` | Radar sweep | Lorc | akcja „Skaner” (26b) w panelu postaci |
 | `hud/run.svg` | Run | Lorc | akcja „Bieg” |
 | `hud/shotgun.svg` | Sawed off shotgun | Delapouite | slot broni: strzelba |
 | `hud/smg.svg` | Uzi | Delapouite | slot broni: pistolet maszynowy |

@@ -596,6 +596,15 @@ describe('turn automation', () => {
     const combatantId = rowOf(await tracker(), vexTokenId).id;
     const refused = await emitAck(player, 'combat:action', { actionId: 'skill', combatantId });
     expect(refused).toEqual({ ok: false, error: 'ACTION_BLOCKED' });
+    // The sentence travels on the resource itself, not only in the notes: the
+    // action bar greys its buttons out and has to say *why*, and „Akcja w tej
+    // turze już wykorzystana" would blame the player for a turn they never had
+    // (fixed 22.08).
+    const action = rowOf(await tracker(), vexTokenId).turn?.resources.find(
+      (resource) => resource.id === 'action',
+    );
+    expect(action?.used).toBe(1);
+    expect(action?.blocked).toContain('nie wykonujesz Akcji');
     // „…ale możesz wykonać Akcję Ruchu" — the half of the rule that is easy to
     // lose when a block is implemented as „the turn is over".
     expect((await drag(player, vexTokenId, 4)).ok).toBe(true);

@@ -28,6 +28,15 @@ export interface TurnResourceView {
   label: string;
   used: number;
   max: number;
+  /**
+   * Why this resource cannot be used at all, in the system's own words („Uraz
+   * kręgosłupa: w kolejnej Turze nie możesz wykonać Akcji").
+   *
+   * Absent when nothing is blocking it — and a resource merely *spent* is not
+   * blocked. The difference is the whole point: both paint the pip as used, but
+   * only one of them can tell the button underneath why it refuses.
+   */
+  blocked?: string;
 }
 
 /**

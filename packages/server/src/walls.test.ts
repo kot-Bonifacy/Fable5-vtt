@@ -344,6 +344,61 @@ describe('walls and dynamic vision', () => {
     await emitAck(gm, 'token:move', { tokenId: ownTokenId, x: 450, y: 1450, final: true });
   });
 
+  /**
+   * Stage 27j's open end, closed 22.08: the check traced the centre of the
+   * figure, so a 2×2 token walked through the wall with half of itself while
+   * its middle went through the gap. Same drag, same door, two sizes.
+   */
+  it('refuses a 2×2 figure the gap its centre would fit through', async () => {
+    await emitAck(gm, 'opening:toggle', { wallId: doorId, open: true });
+    // Narrow the doorway from below: what is left of the gap is y = 1400…1520,
+    // wide enough for one figure and not for two abreast. Deliberately off the
+    // grid — a stub ending exactly on the centre line would refuse both sizes
+    // and prove nothing.
+    const stubId = data(
+      await emitAck<WallView[]>(gm, 'wall:create', {
+        sceneId,
+        kind: 'wall',
+        points: [
+          { x: 1000, y: 1520 },
+          { x: 1000, y: 1600 },
+        ],
+      }),
+      'wall:create stub',
+    )[0]!.id;
+
+    try {
+      await emitAck(gm, 'token:move', { tokenId: ownTokenId, x: 400, y: 1400, final: true });
+      const oneByOne = await emitAck(player, 'token:move', {
+        tokenId: ownTokenId,
+        x: 1400,
+        y: 1400,
+        final: true,
+      });
+      expect(oneByOne.ok).toBe(true);
+
+      await emitAck(gm, 'token:move', { tokenId: ownTokenId, x: 400, y: 1400, final: true });
+      await emitAck(gm, 'token:update', { tokenId: ownTokenId, patch: { size: 2 } });
+      const twoByTwo = await emitAck(player, 'token:move', {
+        tokenId: ownTokenId,
+        x: 1400,
+        y: 1400,
+        final: true,
+      });
+      // Its centre walks the same clear line; its lower half walks into the stub.
+      expect(errorOf(twoByTwo)).toBe('MOVE_REFUSED');
+      // …and says nothing about what stopped it, like every refusal in here.
+      expect(JSON.stringify(twoByTwo)).not.toContain('1520');
+    } finally {
+      // Unconditionally: the scene is shared with every test below, and a
+      // stray stub wall would make five of them fail for the wrong reason.
+      await emitAck(gm, 'token:update', { tokenId: ownTokenId, patch: { size: 1 } });
+      await emitAck(gm, 'wall:delete', { wallId: stubId });
+      await emitAck(gm, 'opening:toggle', { wallId: doorId, open: false });
+      await emitAck(gm, 'token:move', { tokenId: ownTokenId, x: 450, y: 1450, final: true });
+    }
+  });
+
   it('never sends a player the floor plan', async () => {
     const leaked = record<unknown>(player, 'wall:sync');
     await roundTrip(gm);

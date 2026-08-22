@@ -154,7 +154,7 @@ export interface DrawSettings {
 /** The wall tool's current setting, pushed in from the toolbar (stages 18a, 18d). */
 export interface WallSettings {
   armed: boolean;
-  mode: 'draw' | 'erase' | 'lock';
+  mode: 'draw' | 'erase' | 'lock' | 'share';
   kind: WallKind;
   snapGrid: boolean;
 }
@@ -720,6 +720,8 @@ export class MapRenderer {
   onWallErase: ((x: number, y: number) => void) | null = null;
   /** Click with the bolt armed (stage 18d); the caller picks the door. */
   onWallLock: ((x: number, y: number) => void) | null = null;
+  /** Klik trybem „udostępnienie" — przełącza uchwyt drzwi/okna dla graczy (18d). */
+  onWallShare: ((x: number, y: number) => void) | null = null;
   /** Click on a door or window glyph — open or close it. */
   onOpeningToggle: ((wallId: number) => void) | null = null;
   /** Click with the light tool armed: place a lamp, or retune the one here. */
@@ -1739,6 +1741,10 @@ export class MapRenderer {
           // Like the eraser, this reports where the click landed and lets the
           // caller pick the segment — it holds the wall list already.
           this.onWallLock?.(point.x, point.y);
+          return;
+        }
+        if (this.wall.mode === 'share') {
+          this.onWallShare?.(point.x, point.y);
           return;
         }
         // Walls are traced click by click, not dragged: a floor plan is a

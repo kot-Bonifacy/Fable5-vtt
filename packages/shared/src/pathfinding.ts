@@ -690,12 +690,46 @@ export function thinWalk(points: readonly ScenePoint[], limit: number): ScenePoi
 export function firstBlockedStep(
   path: readonly ScenePoint[],
   segments: readonly Segment[],
+  footprint?: { size: number; cell: number },
 ): { from: ScenePoint; to: ScenePoint } | null {
   if (segments.length === 0) return null;
+  const lanes = footprintLanes(footprint);
   for (let i = 1; i < path.length; i++) {
     const from = path[i - 1]!;
     const to = path[i]!;
-    if (!isSegmentClear(from, to, segments)) return { from, to };
+    for (const lane of lanes) {
+      const a = { x: from.x + lane.x, y: from.y + lane.y };
+      const b = { x: to.x + lane.x, y: to.y + lane.y };
+      if (!isSegmentClear(a, b, segments)) return { from, to };
+    }
   }
   return null;
+}
+
+/**
+ * Offsets from a figure's centre to the centre of every cell it stands on.
+ *
+ * A 1×1 token is one lane through its middle, which is what this check has
+ * always traced. Anything bigger is *four* lanes or more, and the difference is
+ * not academic: a 2×2 figure walking a corridor keeps its centre a whole metre
+ * away from each wall, so a single centre line lets half the token pass through
+ * masonry (stage 27j, 21.08).
+ *
+ * Cell centres rather than the outline, because that is what the planner tests
+ * (`isNodeOpen` samples the same points): the server's verdict and the route the
+ * client drew have to be able to agree, and they can only do that by asking the
+ * geometry the same question.
+ */
+function footprintLanes(footprint?: { size: number; cell: number }): ScenePoint[] {
+  const size = Math.max(1, Math.round(footprint?.size ?? 1));
+  const cell = footprint?.cell ?? 0;
+  if (size === 1 || cell <= 0) return [{ x: 0, y: 0 }];
+  const lanes: ScenePoint[] = [];
+  const first = -((size - 1) / 2) * cell;
+  for (let row = 0; row < size; row++) {
+    for (let col = 0; col < size; col++) {
+      lanes.push({ x: first + col * cell, y: first + row * cell });
+    }
+  }
+  return lanes;
 }

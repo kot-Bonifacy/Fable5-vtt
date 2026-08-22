@@ -50,7 +50,7 @@ export type MapTool = (typeof MAP_TOOLS)[number];
  *
  * `lock` clicks a door rather than a corner: it throws or draws its bolt.
  */
-export type WallMode = 'draw' | 'erase' | 'lock';
+export type WallMode = 'draw' | 'erase' | 'lock' | 'share';
 
 /**
  * What the cover tool does with a click (stage 16c). Two modes, and the eraser

@@ -385,4 +385,43 @@ describe('firstBlockedStep', () => {
     expect(firstBlockedStep([at(1, 1), at(5, 1)], [])).toBeNull();
     expect(firstBlockedStep([at(1, 1)], WALL)).toBeNull();
   });
+
+  /**
+   * Stage 27j's open end: the check traced the centre of the figure, and a 2×2
+   * token keeps its centre a whole metre away from the wall its edge is walking
+   * through. The route below is the smallest example — the middle stops short of
+   * x = 300, the right-hand column does not.
+   */
+  describe('a figure bigger than one square', () => {
+    /** Centres, not corners: this is the shape `pathCentres` hands in. */
+    const stepPastTheWall = [
+      { x: 200, y: 250 },
+      { x: 260, y: 250 },
+    ];
+
+    it('lets the centre line through, exactly as it always did', () => {
+      expect(firstBlockedStep(stepPastTheWall, WALL)).toBeNull();
+      // …and says the same when the footprint is one square, whatever the cell.
+      expect(firstBlockedStep(stepPastTheWall, WALL, { size: 1, cell: 100 })).toBeNull();
+    });
+
+    it('refuses the same route to a 2×2 figure, whose right column crosses', () => {
+      expect(firstBlockedStep(stepPastTheWall, WALL, { size: 2, cell: 100 })).toEqual({
+        from: stepPastTheWall[0],
+        to: stepPastTheWall[1],
+      });
+    });
+
+    it('still lets a 2×2 figure walk the corridor beside the wall', () => {
+      const alongside = [
+        { x: 150, y: 100 },
+        { x: 150, y: 400 },
+      ];
+      expect(firstBlockedStep(alongside, WALL, { size: 2, cell: 100 })).toBeNull();
+    });
+
+    it('falls back to the centre line when the grid has no size to speak of', () => {
+      expect(firstBlockedStep(stepPastTheWall, WALL, { size: 2, cell: 0 })).toBeNull();
+    });
+  });
 });

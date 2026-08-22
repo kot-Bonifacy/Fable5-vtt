@@ -11,9 +11,11 @@ import type {
 import {
   CPRED_ACTION_GRAPPLE,
   CPRED_ACTION_HOLD,
+  CPRED_ACTION_SCANNER,
   CPRED_ACTION_STABILIZE,
   ROLE_GM,
   cpredHotbarGroups,
+  cpredInterfaceRank,
   cpredMoveBudgetFromSheet,
   cpredNextWeaponMode,
   cpredWeaponModeSlot,
@@ -30,7 +32,8 @@ import {
 } from '@vtt/shared';
 import { loadAttackFor } from './attack-targeting.js';
 import { coverAt } from './stores/coverStore.js';
-import { combatErrorText, reloadWeapon, spendCombatAction } from './socket.js';
+import { combatErrorText, reloadWeapon, runNetScan, spendCombatAction } from './socket.js';
+import { netErrorText } from './netErrors.js';
 import { useAttackStore } from './stores/attackStore.js';
 import { useAuthStore } from './stores/authStore.js';
 import { useCharacterStore } from './stores/characterStore.js';
@@ -248,10 +251,15 @@ export function hudContextFor(tokenId: string | null): HudContext {
       ? {
           actionSpent: turn.resources.find((row) => row.id === 'action')?.used === 1,
           moveSpent: (turn.resources.find((row) => row.id === 'move')?.used ?? 0) > 0,
+          // Why the resource is gone, when it was never there to spend: a wound
+          // that took the Action away carries its own sentence (stage 14e).
+          blockedAction: turn.resources.find((row) => row.id === 'action')?.blocked ?? null,
+          blockedMove: turn.resources.find((row) => row.id === 'move')?.blocked ?? null,
         }
       : null,
     isGm,
     grapple: combatant?.grapple?.role ?? null,
+    netrunner: isNetrunnerSheet(character?.data ?? null),
   });
 
   const shown = refusal ? slots.map((slot) => ({ ...slot, disabled: refusal })) : slots;
@@ -271,6 +279,21 @@ export function hudContextFor(tokenId: string | null): HudContext {
     refusal,
     steering,
   };
+}
+
+/**
+ * Can this sheet run the Net (stage 26b)?
+ *
+ * The same two conditions the server checks before it will scan — an Interface
+ * rank and a cyberdeck — asked here so the Scanner slot appears for exactly the
+ * figures whose click would be honoured. The registry is the one the character
+ * store already loaded; without it (a sheet opened before `roles.json` arrived)
+ * the answer is „no", and the slot appears a moment later with the data.
+ */
+function isNetrunnerSheet(data: CpredCharacterData | null): boolean {
+  if (!data || !data.cyberdeck) return false;
+  const registry = useCharacterStore.getState().registry;
+  return cpredInterfaceRank(data, registry) !== null;
 }
 
 /**
@@ -456,6 +479,15 @@ export function activateSlot(slot: CpredHotbarSlot, tokenId: string): void {
   }
   if (slot.actionId === CPRED_ACTION_STABILIZE) {
     hud.setForm('stabilize');
+    return;
+  }
+  // The Scanner rolls where the figure stands and has its own event: the server
+  // books the Action itself (`netrun:scan`), so sending a second spend here
+  // would charge the turn twice.
+  if (slot.actionId === CPRED_ACTION_SCANNER) {
+    void runNetScan(tokenId).then((ack) => {
+      if (!ack.ok) chat.addNote(netErrorText(ack.error));
+    });
     return;
   }
 

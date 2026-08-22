@@ -983,12 +983,18 @@ export function cpredTurnBudget(
         label: 'Ruch',
         used: state.blockedMove ? state.moveMax : state.moveUsed,
         max: state.moveMax,
+        // The sentence travels with the pip, not only in the notes above it:
+        // the action bar greys a button out and has to say why, and „Akcja w
+        // tej turze już wykorzystana" is the wrong answer when the turn never
+        // had one to spend (stage 14e; found in the player-side pass of 22.08).
+        ...(state.blockedMove ? { blocked: state.blockedMove } : {}),
       },
       {
         id: 'action',
         label: 'Akcja',
         used: state.action || state.blockedAction ? 1 : 0,
         max: 1,
+        ...(state.blockedAction ? { blocked: state.blockedAction } : {}),
       },
       {
         id: 'attacks',

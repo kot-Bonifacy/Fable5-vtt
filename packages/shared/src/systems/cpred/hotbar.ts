@@ -30,6 +30,7 @@ import {
   CPRED_ACTION_GRAPPLE,
   CPRED_ACTION_HOLD,
   CPRED_ACTION_RUN,
+  CPRED_ACTION_SCANNER,
   CPRED_ACTION_STABILIZE,
   CPRED_ACTION_STAND_UP,
   cpredAction,
@@ -139,7 +140,8 @@ export type CpredSlotIcon =
   | 'grab'
   | 'hourglass'
   | 'stand-up'
-  | 'run';
+  | 'run'
+  | 'scanner';
 
 /** Weapon type id (last segment) → picture. */
 const WEAPON_TYPE_ICONS: Readonly<Record<string, CpredSlotIcon>> = {
@@ -208,6 +210,7 @@ const ACTION_ICONS: Readonly<Record<string, CpredSlotIcon>> = {
   [CPRED_ACTION_HOLD]: 'hourglass',
   [CPRED_ACTION_STAND_UP]: 'stand-up',
   [CPRED_ACTION_RUN]: 'run',
+  [CPRED_ACTION_SCANNER]: 'scanner',
 };
 
 /** Catalogue actions worth a key, in the order they appear on the bar. */
@@ -218,6 +221,18 @@ export const CPRED_HOTBAR_ACTION_IDS: readonly string[] = [
   CPRED_ACTION_STAND_UP,
   CPRED_ACTION_RUN,
 ];
+
+/**
+ * Actions only some figures have at all (stage 26b, fixed 22.08).
+ *
+ * The Scanner is an Akcja w Somie like any other — „w ramach Akcji w Somie
+ * znajdujesz położenie punktów dostępu" (s. 199) — but it belongs to whoever
+ * has an Interface and a deck to run it on, and to nobody else. It lived only
+ * inside the access point's card until now, which made it unreachable by the
+ * one thing it exists for: the first *hidden* socket, which is not on the map
+ * until the Scanner finds it.
+ */
+export const CPRED_HOTBAR_NETRUNNER_ACTION_IDS: readonly string[] = [CPRED_ACTION_SCANNER];
 
 /** Slots that get a `1`–`9` key; the rest of the bar is mouse-only. */
 export const CPRED_HOTBAR_KEYED_SLOTS = 9;
@@ -314,8 +329,19 @@ export interface CpredHotbarInput {
   /**
    * Is this participant in a fight, and has their Action already gone? Absent
    * outside combat, where weapons still work and no budget is charged.
+   *
+   * `blockedAction` / `blockedMove` are the sentences a wound or a status left
+   * on the turn itself (stage 14e) — „Uraz kręgosłupa: …". They are a different
+   * thing from a resource that was *spent*, and the slot has to say which:
+   * a greyed button reading „Akcja w tej turze już wykorzystana" sends a player
+   * looking for the Action they never got to use.
    */
-  turn: { actionSpent: boolean; moveSpent: boolean } | null;
+  turn: {
+    actionSpent: boolean;
+    moveSpent: boolean;
+    blockedAction?: string | null;
+    blockedMove?: string | null;
+  } | null;
   /**
    * The GM is never blocked by a budget (stage 14b logs the overspend and lets
    * it through), so their slots stay live. A status still greys them out —
@@ -324,6 +350,12 @@ export interface CpredHotbarInput {
   isGm: boolean;
   /** Side of a Hold this participant is on, if any (stage 14d). */
   grapple?: 'attacker' | 'defender' | null;
+  /**
+   * This sheet can run the Net (stage 26b): an Interface rank *and* a cyberdeck,
+   * which is exactly what the server demands before it will scan. Adds the
+   * Scanner slot; everything else on the bar is unaffected.
+   */
+  netrunner?: boolean;
 }
 
 /** Reason a weapon cannot fire right now, or null. */
@@ -360,7 +392,13 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
   // refused one (14b). Both cases leave only the statuses to say no.
   const budgetSpent = !input.isGm && input.turn?.actionSpent === true;
   const noAction = 'Akcja w tej turze już wykorzystana.';
-  const actionRefusal = statusActionBlock ?? (budgetSpent ? noAction : null);
+  // Order is the order of truth: a status refuses first, then the wound that
+  // took the Action away before the turn began, and only then the budget. The
+  // last one is the only sentence that is about *spending*, and putting it
+  // first is how a blocked figure ended up being told it had already acted.
+  const actionRefusal =
+    statusActionBlock ?? input.turn?.blockedAction ?? (budgetSpent ? noAction : null);
+  const moveRefusal = statusMoveBlock ?? input.turn?.blockedMove ?? null;
 
   const slots: CpredHotbarSlot[] = [];
 
@@ -414,7 +452,10 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
     });
   }
 
-  for (const actionId of CPRED_HOTBAR_ACTION_IDS) {
+  const actionIds = input.netrunner
+    ? [...CPRED_HOTBAR_ACTION_IDS, ...CPRED_HOTBAR_NETRUNNER_ACTION_IDS]
+    : CPRED_HOTBAR_ACTION_IDS;
+  for (const actionId of actionIds) {
     const definition = cpredAction(actionId);
     if (!definition) continue;
     slots.push({
@@ -435,8 +476,11 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
           : definition.name,
       hint: definition.hint,
       actionId,
-      needsForm: actionId !== CPRED_ACTION_STAND_UP && actionId !== CPRED_ACTION_RUN,
-      disabled: actionSlotRefusal(actionId, input, actionRefusal, statusMoveBlock),
+      needsForm:
+        actionId !== CPRED_ACTION_STAND_UP &&
+        actionId !== CPRED_ACTION_RUN &&
+        actionId !== CPRED_ACTION_SCANNER,
+      disabled: actionSlotRefusal(actionId, input, actionRefusal, moveRefusal),
       key: null,
     });
   }

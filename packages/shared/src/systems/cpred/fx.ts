@@ -52,6 +52,7 @@ const ICON_FX: Readonly<Record<CpredSlotIcon, CpredWeaponFx>> = {
   hourglass: { style: 'melee', sound: null },
   'stand-up': { style: 'melee', sound: null },
   run: { style: 'melee', sound: null },
+  scanner: { style: 'melee', sound: null },
 };
 
 /**

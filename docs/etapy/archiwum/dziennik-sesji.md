@@ -7,6 +7,52 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 22.08 (druga tego dnia) — triaż zaległości i pięć pozycji z niego, poza etapami
+
+MG kazał wypisać ~10 otwartych zaległości do uporządkowania (bez rzeczy czekających na lokalny
+LLM, bez nieukończonych etapów), a potem wykonać **pozycje 1–5**.
+
+**Porządki w dokumentacji** (odpowiedzi MG na trzy pytania z triażu):
+
+- **Poziom sklepu Poligonu → 2 (Zawodowe).** Przestawione wprost w bazie (`Campaign.shopTier`),
+  bo aplikacja nie działała — **do sprawdzenia przy pierwszym uruchomieniu**, czy przełącznik
+  w „Kompendium" pokazuje 2. Kopia zapasowa bazy była robiona przed zapisem.
+- **13 wpisów przeniesionych** z „Otwartych zaległości" do nowego
+  `docs/etapy/decyzje-i-uproszczenia.md` — świadome czytania RAW i uproszczenia (promień 4 m,
+  Skaner, zwiad wszerz, Demon bez kamer i drzwi, kamera bez stożka, Powłoka i Tarcza, parser
+  tabel obronnych, dwie tabele Ścieżek, binarne decyzje Ról, lista odbiorców przelewu, kontrast
+  marki). **To nie są zadania** i plik ma to w nagłówku; czytać na żądanie.
+- **16 pozycji „strona gracza" scalonych w jedną** — checklista po etapach na górze sekcji
+  zaległości. To była jedna sesja oględzin z drugiego konta, nie kilkanaście zadań.
+- **Cztery wpisy skasowane jako nieaktualne** (sprawdzone w kodzie, nie na słowo): kostki
+  kreatora z 25a i 25b (`plain: true` w `creation.ts`), jednobarwne 📰 z 24c (`newspaper.svg`)
+  i „motyw dzienny kończy się na oknie karty" z 27a (27e dał globalne `[data-theme='day']`).
+- Sekcja zaległości zeszła z 558 do ~455 wierszy.
+
+**Pięć naprawionych pozycji** — szczegóły przy odpowiednich wpisach wyżej (wszystkie przekreślone):
+
+1. **`NO_ROUTE` bota rozdzielone na trzy kody.** Przy okazji wyszło, że stary komunikat kłamał
+   **częściej**, niż mówiła notatka: `planWalk` nigdy nie odmawia celu nie do osiągnięcia, więc
+   „droga jest zablokowana" nie było prawdą praktycznie nigdy.
+2. **Pułapka z wyzwalaczem `turn` wchodzi do Kolejki Inicjatywy sama.** Nowa kolumna
+   `Combatant.zoneId` + migracja `20260822130000_stage26f_zone_in_queue`. Odpalenie zostaje
+   klikiem MG — zmieniła się papierkowa robota, nie linia „nic nie rusza się samo".
+3. **Specjalizacje umiejętności.** `skillSpecialties` na karcie i w drafcie kreatora; czyta się
+   je **wyłącznie** przez `cpredSkillSpecialty` / `cpredSkillLabel`, bo Język odpowiada ze
+   Ścieżki Życia. Umiejętności okazały się **cztery**, nie trzy — doszły Sztuki walki.
+4. **Ręczny „Onieśmielony" wreszcie nakłada −2.** Nowe `token:feared` (MG-only) i lista
+   „Boi się:" pod statusami w menu żetonu; `feared` w prywatnej części `TokenView`.
+5. **Gniazda liczone per kończyna.** Model danych był gotowy od 27c (`bodySlot`) — ignorowała go
+   sama arytmetyka. Wiersz rodziny został nagłówkiem, rozbicie jedzie pod spodem.
+
+**Testy:** 1334 w `shared`, 759 na serwerze, 28 u klienta — wszystkie przechodzą. ESLint czysty,
+Prettier na dotkniętych plikach przepuszczony. Serwer wstaje (`Server listening`, kompendium 391
+wpisów, `/api/campaigns` bez sesji → 401).
+
+**Czego ta sesja NIE ruszyła:** pozycji 6–9 z triażu (wyposażenie Krawędziarza i Moda, odmiana
+w wyszukiwarce bazy wiedzy, czytelność figury na 0 PW i `down`, „raz na rundę w Somie") — MG
+wskazał 1–5. Żadna z pięciu poprawek **nie była oglądana w przeglądarce**; wszystkie mają testy.
+
 ### Sesja 22.08 — sesja naprawcza (grupy A i B z przeglądu zaległości), poza etapami
 
 **Zlecenie MG: wypisać ~10 otwartych zaległości do triażu, a potem wykonać grupy A i B** —

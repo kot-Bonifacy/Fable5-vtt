@@ -594,6 +594,19 @@ export function MapTools() {
           >
             <IconLock />
           </button>
+          {/* Ten sam gest co zamek, ale o widoczności uchwytu: przełącznik oka
+              obok dotyczy otworów **nowych**, a ten — postawionych. Bez niego
+              okno z domyślnym „tylko dla MG" trzeba było skasować i narysować
+              jeszcze raz (18d). */}
+          <button
+            type="button"
+            className={`map-tool${wallMode === 'share' ? ' map-tool--active' : ''}`}
+            title="Udostępnienie — kliknij postawione drzwi albo okno, by je oddać graczom (lub zabrać). Nie myl z przełącznikiem oka: tamten dotyczy dopiero rysowanych"
+            aria-pressed={wallMode === 'share'}
+            onClick={() => setWallMode('share')}
+          >
+            <IconEye />
+          </button>
 
           {wallMode === 'draw' && (
             <>

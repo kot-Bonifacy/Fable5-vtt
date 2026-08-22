@@ -595,6 +595,37 @@ export function MapArea() {
         if (!ack.ok) useChatStore.getState().addNote(wallErrorText(ack.error));
       });
     };
+    // Udostępnienie po fakcie (18d, naprawione 22.08). Przełącznik oka w pasku
+    // narzędzi dotyczy **nowych** otworów, więc okno postawione z domyślnym
+    // „tylko dla MG" trzeba było skasować i postawić od nowa. Nowy stan nie
+    // widać na mapie inaczej niż po uchwycie u gracza, więc klik odpowiada
+    // zdaniem — inaczej MG nie wie, co właśnie zrobił.
+    renderer.onWallShare = (x, y) => {
+      const current = useSceneStore.getState().effectiveScene;
+      if (!current) return;
+      const tolerance = Math.max(8, current.grid.sizePx / 5);
+      const openings = useWallStore.getState().walls.filter(isOpening);
+      const target = pickWallAt(openings, { x, y }, tolerance);
+      if (!target) {
+        useChatStore.getState().addNote('Kliknij drzwi albo okno — udostępnia się tylko otwory.');
+        return;
+      }
+      const next = !target.playerToggle;
+      void updateWall(target.id, { playerToggle: next }).then((ack) => {
+        if (!ack.ok) {
+          useChatStore.getState().addNote(wallErrorText(ack.error));
+          return;
+        }
+        const what = target.kind === 'door' ? 'Drzwi' : 'Okno';
+        useChatStore
+          .getState()
+          .addNote(
+            next
+              ? `${what}: gracze mogą je otwierać (zobaczą uchwyt, gdy będą w polu widzenia).`
+              : `${what}: tylko dla MG — gracze nie zobaczą uchwytu ani go nie ruszą.`,
+          );
+      });
+    };
     renderer.onOpeningToggle = (wallId) => {
       const state = useWallStore.getState();
       const kind = [...state.walls, ...state.openings].find((wall) => wall.id === wallId)?.kind;
@@ -1623,7 +1654,9 @@ export function MapArea() {
             ? 'Kliknij ścianę, by ją usunąć (Esc kończy)'
             : wallMode === 'lock'
               ? 'Kliknij drzwi albo okno, by założyć lub zdjąć zamek (zakładanie je zamyka; Esc kończy)'
-              : 'Klikaj kolejne narożniki; Enter lub klik w ostatni punkt kończy ścianę (Esc anuluje)'}
+              : wallMode === 'share'
+                ? 'Kliknij drzwi albo okno, by je udostępnić graczom lub schować (Esc kończy)'
+                : 'Klikaj kolejne narożniki; Enter lub klik w ostatni punkt kończy ścianę (Esc anuluje)'}
         </div>
       )}
       {isGm && tool === 'light' && (

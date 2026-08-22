@@ -14,7 +14,7 @@ import {
 import type { ResolvedWeapon } from './compendium.js';
 import type { CpredWeaponRow } from './character.js';
 import { createDefaultCombatProfile } from './statist.js';
-import { CPRED_ACTION_RUN, CPRED_ACTION_STAND_UP } from './turn.js';
+import { CPRED_ACTION_RUN, CPRED_ACTION_SCANNER, CPRED_ACTION_STAND_UP } from './turn.js';
 
 /**
  * Stage 16f: the action bar is generated from what the token can do, so the
@@ -233,6 +233,70 @@ describe('hotbarSlotsFor — what a status and a spent turn forbid', () => {
       slots.find((slot) => slot.kind === 'action' && slot.actionId === CPRED_ACTION_RUN);
     expect(runOf(before)?.disabled).toMatch(/Bieg wymaga/);
     expect(runOf(after)?.disabled).toBeNull();
+  });
+});
+
+describe('hotbarSlotsFor — a wound says why, a spent Action says when', () => {
+  const spine = 'Uraz kręgosłupa: w kolejnej Turze nie możesz wykonać Akcji.';
+
+  it('puts the wound’s own sentence on the slot instead of „już wykorzystana"', () => {
+    const slots = hotbarSlotsFor(
+      input({ turn: { actionSpent: true, moveSpent: false, blockedAction: spine } }),
+    );
+    // The Action *is* counted as spent (that is how the tracker paints it), so
+    // without the reason the button would blame the player for using it.
+    expect(weaponSlots(slots)[0]!.disabled).toBe(spine);
+  });
+
+  it('says the same thing to the GM, because it is a fact about the figure', () => {
+    const slots = hotbarSlotsFor(
+      input({ turn: { actionSpent: true, moveSpent: false, blockedAction: spine }, isGm: true }),
+    );
+    expect(weaponSlots(slots)[0]!.disabled).toBe(spine);
+  });
+
+  it('lets a status outrank the wound — both are true, one is being looked at', () => {
+    const slots = hotbarSlotsFor(
+      input({
+        statuses: ['unconscious'],
+        turn: { actionSpent: true, moveSpent: false, blockedAction: spine },
+      }),
+    );
+    expect(weaponSlots(slots)[0]!.disabled).not.toBe(spine);
+  });
+
+  it('carries the movement block to Bieg the same way', () => {
+    const leg = 'Złamana noga: w tej Turze nie wykonasz Akcji Ruchu.';
+    const slots = hotbarSlotsFor(
+      input({ turn: { actionSpent: false, moveSpent: true, blockedMove: leg } }),
+    );
+    const run = slots.find((slot) => slot.kind === 'action' && slot.actionId === CPRED_ACTION_RUN);
+    expect(run?.disabled).toBe(leg);
+  });
+});
+
+describe('hotbarSlotsFor — Skaner (26b)', () => {
+  const scannerOf = (slots: ReturnType<typeof hotbarSlotsFor>) =>
+    slots.find((slot) => slot.kind === 'action' && slot.actionId === CPRED_ACTION_SCANNER);
+
+  it('gives the slot to a netrunner — the only figure whose click the server honours', () => {
+    const slots = hotbarSlotsFor(input({ netrunner: true }));
+    expect(scannerOf(slots)?.label).toBe('Skaner');
+    // No form: the roll happens where the figure stands, with nothing to fill in.
+    expect(scannerOf(slots)?.kind === 'action' && scannerOf(slots)).toMatchObject({
+      needsForm: false,
+    });
+  });
+
+  it('leaves it off every other bar', () => {
+    expect(scannerOf(hotbarSlotsFor(input()))).toBeUndefined();
+  });
+
+  it('costs an Action like anything else — a spent turn greys it out', () => {
+    const slots = hotbarSlotsFor(
+      input({ netrunner: true, turn: { actionSpent: true, moveSpent: false } }),
+    );
+    expect(scannerOf(slots)?.disabled).toMatch(/już wykorzystana/);
   });
 });
 

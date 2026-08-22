@@ -258,7 +258,13 @@ async function refuseWalkThroughSolid(
     fetchSceneCovers(deps.ctx.prisma, scene.id),
   ]);
   const solid = [...movementSegments(walls), ...coverMovementSegments(covers)];
-  const blocked = firstBlockedStep(pathCentres(scene, token, walked), solid);
+  // Not the centre line alone: a 2×2 figure keeps its middle a metre clear of
+  // the wall its edge is walking through (stage 27j). The footprint traces one
+  // lane per cell, which is the same geometry the client's planner respects.
+  const blocked = firstBlockedStep(pathCentres(scene, token, walked), solid, {
+    size: token.size,
+    cell: scene.gridSizePx,
+  });
   if (!blocked) return;
 
   // Nothing is named: the refusal says a route was blocked, never *by what*.
