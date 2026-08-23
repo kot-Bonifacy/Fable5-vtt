@@ -279,10 +279,24 @@ postaci.'` jest sprawdzony w kodzie i mówi tym samym językiem co pustka handou
   z komunikatem „Koniec ruchu w tej turze", a ogon poza budżetem jest wygaszony kolorem
   (bursztyn = zasięg Biegu, szary = poza turą). ✖ na granicy **nie ma** — MG kazał go zdjąć,
   bo granicę widać kolorem.
+  **Odklikane 23.08 przez MG:** (10) **token 2×2 obok ścian** — po naprawie planera (opis
+  w `archiwum/zamkniete-zaleglosci.md`) figura obchodzi mur zamiast przez niego przechodzić.
+  Werdykt MG: „w miarę ok, tylko odrobinę za blisko przechodzi ściany" — **zaakceptowane**,
+  patrz pozycja o marginesie niżej.
   **Zostało:** (1) odsłanianie mgły w trakcie marszu; (6) przerwanie marszu przez NPC
-  wychodzącego zza rogu; (10) token 2×2 przy metrowych drzwiach — błąd trasy figur 2×2, który to
-  blokował, **naprawiony 23.08** (opis w `archiwum/zamkniete-zaleglosci.md`), ale sama ścieżka
-  nadal czeka na ręczne odklikanie.
+  wychodzącego zza rogu.
+
+- **🟡 ZAAKCEPTOWANE (MG, 23.08) — figura przechodzi odrobinę za blisko ścian.** Po naprawie
+  trasy 2×2 mur jest omijany poprawnie, ale margines bywa ciasny: żeton potrafi otrzeć się
+  o ścianę. **Powód jest w projekcie, nie w błędzie:** planer pyta o **środki kratek** — zarówno
+  `isNodeOpen` (środek każdego pola footprintu), jak i `laneClear` (linia przez środek pola) —
+  a nie o **obrys** figury, który sięga jeszcze pół kratki dalej. Trasa może więc legalnie musnąć
+  ścianę na do pół kratki (1 m). Tak jest **celowo**: dokładnie te same punkty sprawdza serwer
+  (`firstBlockedStep`/`footprintLanes`), więc podgląd i werdykt nie mają jak się rozjechać.
+  **Zwężenie marginesu wymaga zmiany po obu stronach naraz** — planera w `shared` i walidacji
+  ruchu na serwerze — i albo testu obrysu zamiast środków, albo wciągnięcia footprintu o kilka
+  procent. MG uznał obecne zachowanie za akceptowalne; ruszać tylko, gdy zacznie przeszkadzać
+  przy stole.
 
 - **Kliknięcie w token było zepsute dla graczy od 18a — naprawione w 16e, ale zaległości oględzin z tego okresu warto powtórzyć.** Warstwy przykrywające przechwytywały hit-test (szczegóły w `pulapki-dev.md`), więc gracz na scenie z dynamiczną widocznością **nie mógł kliknąć ani przeciągnąć żadnego tokenu**. To prawdopodobnie realna przyczyna części pozycji zbiorczej „strona gracza" (zamknięta 22.08, `archiwum/zamkniete-zaleglosci.md`) — przy jej odhaczaniu sprawdź najpierw, czy rzecz w ogóle dawała się kliknąć.
 

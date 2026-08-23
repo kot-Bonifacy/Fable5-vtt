@@ -36,11 +36,13 @@ Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notat
   figury 2×2, którą jej środek mija. Bez poprawki padają dwa z nich (trasa i zalew), a trzeci —
   że figurze 1×1 ta sama ściana nie przeszkadza poniżej jej końca — przechodzi w obu wersjach.
 
-  **Nie odklikane w przeglądarce.** Zbudowanie sceny automatem się nie udało: narzędzie ścian nie
-  przyjmuje syntetycznych zdarzeń wskaźnika (rysuje podgląd, ale nic nie zapisuje), a wstawiona
-  wprost do bazy ściana i żeton 2×2 nie dały jednoznacznego odczytu — z zapisu WebGL nie da się
-  odczytać pikseli, a marsz żetonem bez karty postaci nie ruszył. Punkt **10 etapu 16e**
-  („token 2×2 przy metrowych drzwiach") nadal czeka na ręczne sprawdzenie.
+  **Odklikane 23.08 — przez MG, nie automatem.** Zbudowania sceny nie dało się zrobić z poziomu
+  automatyzacji (narzędzie ścian nie przyjmuje syntetycznych zdarzeń wskaźnika, z płótna Pixi nie
+  odczytasz pikseli, żeton bez karty postaci nie przyjmuje rozkazu marszu — szczegóły
+  w `pulapki-dev.md`), więc sprawdził to MG ręcznie. Werdykt: figura 2×2 **obchodzi ściany**,
+  zamiast przez nie przechodzić. Została jedna rzecz: przechodzi **odrobinę za blisko** muru —
+  świadoma konsekwencja tego, że planer i serwer pytają o **środki kratek**, a nie o obrys figury.
+  MG uznał to za akceptowalne; pozycja o marginesie została w `zaleglosci.md`.
 
 ## Przeniesione 2026-08-22 (sesja naprawcza, triaż 1–8 — piąta sesja tego dnia)
 

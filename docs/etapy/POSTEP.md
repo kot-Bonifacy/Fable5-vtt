@@ -95,10 +95,11 @@ szary jest poza turą. Trasę rysują same ślady butów (bez liczb, kresek i �
 kolejno w trakcie oględzin). Przy okazji naprawiona regresja cięcia trasy do budżetu i zamknięty
 punkt 16e (3). Sesja przed nią (22.08, piąta tego dnia) zamknęła triaż zaległości 1–6 i 8.
 
-**Błąd „figura 2×2 planuje trasę przez ściany" jest naprawiony (23.08)** — siedział w planerze
-w `shared`, nie u klienta: `canStep` szedł jedną linią przez środek figury. Opis w
-`archiwum/zamkniete-zaleglosci.md`. **Poprawki nikt jeszcze nie odklikał w przeglądarce**, więc
-punkt 10 oględzin 16e („2×2 w metrowych drzwiach") nadal jest otwarty.
+**Błąd „figura 2×2 planuje trasę przez ściany" jest naprawiony i odklikany (23.08)** — siedział
+w planerze w `shared`, nie u klienta: `canStep` szedł jedną linią przez środek figury. Opis
+w `archiwum/zamkniete-zaleglosci.md`. Zostało jedno, **świadomie zaakceptowane przez MG**: figura
+przechodzi odrobinę za blisko ścian, bo planer i serwer pytają o środki kratek, a nie o obrys —
+zwężenie marginesu wymaga zmiany po obu stronach naraz (pozycja w `zaleglosci.md`).
 
 **Do wyboru zostały dwa etapy: 27g** (wydajność) i **28** (wdrożenie na VPS). Etap 27 jest
 rozdzielony do końca, więc plik `etap-27-…` to rozdroże ze wskazaniami, a nie zakres do zrobienia.
@@ -232,7 +233,10 @@ nie było, więc został nietknięty.
    linii na każde pole footprintu od 21.08) — stąd „podgląd rysuje drogę, marsz staje po ułamku
    metra". Nowe `laneClear` w `pathfinding.ts` robi u planera to samo w trzech miejscach: krok A\*,
    zalew zasięgu i wygładzanie. Trzy testy odtwarzają geometrię; bez poprawki padają dwa.
-   **Nie odklikane w przeglądarce** — patrz „Czego nie udało się sprawdzić" niżej.
+   **Odklikane przez MG** (mnie automat nie wpuścił — patrz „Czego nie udało się sprawdzić"):
+   figura 2×2 obchodzi mur. Zostało jedno: przechodzi **odrobinę za blisko** ścian — świadoma
+   konsekwencja tego, że planer i serwer pytają o środki kratek, a nie o obrys. MG uznał to za
+   akceptowalne; pozycja w `zaleglosci.md`.
 2. **Repozytorium jest zgodne z prettierem.** Z 61 niezgodnych plików 41 to wygenerowany klient
    Prismy — poszedł do `.prettierignore` (i tak przepisuje go `prisma generate`). Reszta to
    dokumentacja i `shared/src/index.ts`. Jeden plik, `etap-18d-…md`, prettier przepisywał w kółko:
