@@ -8,17 +8,6 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
 
 ## Pozycje
 
-- **🐞 BŁĄD — figura 2×2 planuje trasę **przez** ściany (klient, 22.08).** Na scenie testowej
-  ze ścianą pionową ta sama droga wygląda inaczej dla dwóch figur: żeton **1×1** obchodzi mur
-  (38 m wzdłuż niego, potem 16,1 m do celu), a żeton **2×2** dostaje podgląd trasy **przecinający
-  obie ściany na wylot** (30 m · 2,8 m · 15,6 m). Serwer trzyma się zasad — marsz 2×2 kończy się
-  po ułamku metra zamiast przejść — więc **kłamie sam podgląd**, a figura zatrzymuje się bez
-  wyjaśnienia. `planWalk` w `shared` przechodzi test na tę sytuację (sprawdzone osobnym testem
-  z ścianą na krawędzi kratek, oba rozmiary zdały), więc szukać trzeba **po stronie klienta**:
-  `planWalkRoute`/`updateReach` w `MapRenderer.ts` (kotwica footprintu, `radiusCells`, wygładzanie)
-  albo w tym, co `MapArea` podaje jako `canStep`. Blokuje ostatni punkt 16e (2×2 w metrowych
-  drzwiach).
-
 - **Kosz „usuń wszystkie osłony" kasuje bez pytania i bez cofnięcia.** `MapTools.tsx` woła
   `clearCovers(sceneId)` prosto z `onClick`, a scena potrafi mieć kilkanaście osłon budowanych
   przez pół sesji. Wszystkie inne kosze w aplikacji (wpis dziennika, handout, scena) pytają
@@ -33,7 +22,7 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
   22.08 trzeba było skasować wpis wprost w bazie (`tokenAsset`) i plik z dysku.
 
 - **Etap 27f — pusty stan listy postaci u gracza nieodklikany.** `'Nie masz jeszcze żadnej
-  postaci.'` jest sprawdzony w kodzie i mówi tym samym językiem co pustka handoutów, ale na
+postaci.'` jest sprawdzony w kodzie i mówi tym samym językiem co pustka handoutów, ale na
   ekranie go nie było: avatar9 ma dwie postacie, a Tony i Marcin też mają swoje. Do zobaczenia
   trzeba dołączyć do stołu **nowym imieniem**, czyli założyć konto-śmiecia.
 
@@ -291,8 +280,9 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
   (bursztyn = zasięg Biegu, szary = poza turą). ✖ na granicy **nie ma** — MG kazał go zdjąć,
   bo granicę widać kolorem.
   **Zostało:** (1) odsłanianie mgły w trakcie marszu; (6) przerwanie marszu przez NPC
-  wychodzącego zza rogu; (10) token 2×2 przy metrowych drzwiach — **zablokowane przez błąd
-  trasy figur 2×2**, patrz pozycja niżej.
+  wychodzącego zza rogu; (10) token 2×2 przy metrowych drzwiach — błąd trasy figur 2×2, który to
+  blokował, **naprawiony 23.08** (opis w `archiwum/zamkniete-zaleglosci.md`), ale sama ścieżka
+  nadal czeka na ręczne odklikanie.
 
 - **Kliknięcie w token było zepsute dla graczy od 18a — naprawione w 16e, ale zaległości oględzin z tego okresu warto powtórzyć.** Warstwy przykrywające przechwytywały hit-test (szczegóły w `pulapki-dev.md`), więc gracz na scenie z dynamiczną widocznością **nie mógł kliknąć ani przeciągnąć żadnego tokenu**. To prawdopodobnie realna przyczyna części pozycji zbiorczej „strona gracza" (zamknięta 22.08, `archiwum/zamkniete-zaleglosci.md`) — przy jej odhaczaniu sprawdź najpierw, czy rzecz w ogóle dawała się kliknąć.
 
@@ -306,4 +296,3 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
   unikać ataków dystansowych") — wymaga **trzeciej figury na scenie**: ktoś musi strzelić do
   trzymającego, żeby tarcza w ogóle dostała przycisk „Unik". Na Strzelnicy są dwie figury.
 - **`data/private/rulebook/manual/tabela-ran-krytycznych.md` jest poza repo** — na czystej maszynie trzeba go dostarczyć albo wpisać tabelę głowy w edytorze.
-

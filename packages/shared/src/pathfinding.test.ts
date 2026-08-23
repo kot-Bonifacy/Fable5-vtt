@@ -3,11 +3,13 @@ import {
   WALK_MAX_VISITED,
   clipWalkToBudget,
   firstBlockedStep,
+  isSegmentClear,
   planWalk,
   reachableCells,
   thinWalk,
   walkGridForScene,
   type ScenePoint,
+  type Segment,
   type WalkGrid,
 } from './index.js';
 
@@ -355,6 +357,74 @@ describe('reachableCells (stage 27j)', () => {
       { grid: big, isPassable: () => true, budgetCells: 1000, maxVisited: 500 },
     );
     expect(cells.length).toBeLessThanOrEqual(500);
+  });
+});
+
+describe('planWalk z figurą większą niż kratka', () => {
+  /**
+   * Ściana między kolumną 4 a 5, wysoka **tylko** na górny rząd figury.
+   *
+   * Środek żetonu 2×2 stojącego w rzędach 0–1 leży na `y = 100`, czyli całą
+   * kratkę pod końcem tej ściany — a do 23.08 planer prowadził dokładnie jedną
+   * linię, środkiem. Podgląd trasy przechodził przez mur na wylot, serwer
+   * (`firstBlockedStep`, od 21.08 po wszystkich pasach footprintu) marsz
+   * odrzucał po ułamku metra i figura stawała bez wyjaśnienia.
+   */
+  const STUB: Segment[] = [{ x1: 425, y1: 0, x2: 425, y2: 80 }];
+  const canStep = (from: ScenePoint, to: ScenePoint) => isSegmentClear(from, to, STUB);
+
+  /** Środki figury na kolejnych punktach trasy — tego pyta serwer. */
+  const centres = (points: readonly ScenePoint[], size: number) =>
+    points.map((point) => ({
+      x: point.x + (size * GRID.cell) / 2,
+      y: point.y + (size * GRID.cell) / 2,
+    }));
+
+  it('nie przeprowadza figury 2×2 przez ścianę, którą omija sam jej środek', () => {
+    const plan = planWalk(at(0, 0), at(8, 0), {
+      grid: GRID,
+      isPassable: () => true,
+      canStep,
+      size: 2,
+    });
+    expect(plan).not.toBeNull();
+    // Werdykt serwera na trasie narysowanej przez klienta: żaden pas figury nie
+    // może przeciąć ściany. Przed poprawką trasa szła prosto i ten test padał.
+    expect(
+      firstBlockedStep(centres(plan!.points, 2), STUB, { size: 2, cell: GRID.cell }),
+    ).toBeNull();
+  });
+
+  it('zalew zasięgu też pilnuje całej figury, nie jej środka', () => {
+    // Budżet 5 kratek: prosto za ścianę jest dokładnie 5, obejście dołem
+    // (po skosie pod koniec muru i z powrotem) kosztuje 5,83 — czyli za drogo.
+    const cells = reachableCells(at(0, 0), {
+      grid: GRID,
+      isPassable: () => true,
+      canStep,
+      size: 2,
+      budgetCells: 5,
+    });
+    // Kratka za ścianą w tym samym rzędzie: dojście do niej wymaga przekroczenia
+    // muru górnym pasem figury. Przed poprawką zalew podświetlał ją za 5.
+    expect(cells.find((cell) => cell.x === 500 && cell.y === 0)).toBeUndefined();
+    // Kratka przed ścianą zostaje osiągalna — poprawka nie zamyka mapy.
+    expect(cells.some((cell) => cell.x === 200 && cell.y === 0)).toBe(true);
+  });
+
+  it('figurze 1×1 ta sama ściana nie przeszkadza poniżej jej końca', () => {
+    const plan = planWalk(at(0, 1), at(8, 1), {
+      grid: GRID,
+      isPassable: () => true,
+      canStep,
+      size: 1,
+    });
+    expect(plan).not.toBeNull();
+    expect(
+      firstBlockedStep(centres(plan!.points, 1), STUB, { size: 1, cell: GRID.cell }),
+    ).toBeNull();
+    // Rząd 1 leży pod ścianą, więc trasa nie musi nadkładać drogi.
+    expect(plan!.points).toEqual([at(0, 1), at(8, 1)]);
   });
 });
 

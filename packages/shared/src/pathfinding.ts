@@ -203,6 +203,36 @@ function isNodeOpen(
 }
 
 /**
+ * Does the **whole figure** clear the edges on a straight step?
+ *
+ * `canStep` answers about a line, and until 23.08 the planner drew exactly one
+ * of them: centre to centre. For a 1×1 token that line *is* the body, but a 2×2
+ * figure keeps its centre a whole cell away from each wall, so a single centre
+ * line let half the token walk through masonry — the preview drew a route
+ * straight across two walls that the server then refused after a few
+ * centimetres, and the figure stopped with no explanation.
+ *
+ * One line per cell of the footprint, the same lanes `firstBlockedStep` has
+ * traced since 21.08, so the route the client draws and the verdict the server
+ * gives ask the geometry the same question.
+ */
+function laneClear(
+  canStep: WalkStep,
+  lanes: readonly ScenePoint[],
+  from: ScenePoint,
+  to: ScenePoint,
+): boolean {
+  for (const lane of lanes) {
+    if (
+      !canStep({ x: from.x + lane.x, y: from.y + lane.y }, { x: to.x + lane.x, y: to.y + lane.y })
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
  * Is the footprint clear all the way along a straight run between two nodes?
  *
  * Used by the smoothing pass, and strict on purpose: the token is sampled every
@@ -214,6 +244,7 @@ function isRunOpen(
   grid: WalkGrid,
   isPassable: WalkPassable,
   canStep: WalkStep | undefined,
+  lanes: readonly ScenePoint[],
   size: number,
   from: ScenePoint,
   to: ScenePoint,
@@ -221,12 +252,13 @@ function isRunOpen(
   const extent = size * grid.cell;
   // A straightened leg crosses everything the steps it replaces crossed, so the
   // edge test has to hold over the whole run — measured centre to centre, which
-  // is where every other distance in the project is measured.
+  // is where every other distance in the project is measured, and once per lane
+  // of the footprint.
   if (canStep) {
     const half = extent / 2;
-    if (!canStep({ x: from.x + half, y: from.y + half }, { x: to.x + half, y: to.y + half })) {
-      return false;
-    }
+    const fromCentre = { x: from.x + half, y: from.y + half };
+    const toCentre = { x: to.x + half, y: to.y + half };
+    if (!laneClear(canStep, lanes, fromCentre, toCentre)) return false;
   }
   const distance = Math.hypot(to.x - from.x, to.y - from.y);
   const steps = Math.max(1, Math.ceil((distance / grid.cell) * 2));
@@ -360,6 +392,9 @@ export function planWalk(
 ): WalkPlan | null {
   const { grid, isPassable, canStep } = options;
   const size = Math.max(1, Math.round(options.size ?? 1));
+  // One lane per cell of the footprint, worked out once: the edge test runs on
+  // every neighbour of every node, and a 2×2 figure has four of them.
+  const lanes = footprintLanes({ size, cell: grid.cell });
   const radius = Math.max(1, Math.round(options.radiusCells ?? WALK_RADIUS_CELLS));
   const maxVisited = Math.max(1, Math.round(options.maxVisited ?? WALK_MAX_VISITED));
   if (grid.cols < size || grid.rows < size || grid.cell <= 0) return null;
@@ -428,7 +463,9 @@ export function planWalk(
       // Areas are answered by the cell tests above; lines need this one.
       if (
         canStep &&
-        !canStep(
+        !laneClear(
+          canStep,
+          lanes,
           footprintCentre(grid, size, col, row),
           footprintCentre(grid, size, nextCol, nextRow),
         )
@@ -499,6 +536,9 @@ export interface ReachCell extends ScenePoint {
 export function reachableCells(from: ScenePoint, options: ReachOptions): ReachCell[] {
   const { grid, isPassable, canStep } = options;
   const size = Math.max(1, Math.round(options.size ?? 1));
+  // One lane per cell of the footprint, worked out once: the edge test runs on
+  // every neighbour of every node, and a 2×2 figure has four of them.
+  const lanes = footprintLanes({ size, cell: grid.cell });
   const budget = options.budgetCells;
   if (!Number.isFinite(budget) || budget < 0) return [];
   if (grid.cols < size || grid.rows < size || grid.cell <= 0) return [];
@@ -547,7 +587,9 @@ export function reachableCells(from: ScenePoint, options: ReachOptions): ReachCe
       }
       if (
         canStep &&
-        !canStep(
+        !laneClear(
+          canStep,
+          lanes,
           footprintCentre(grid, size, col, row),
           footprintCentre(grid, size, nextCol, nextRow),
         )
@@ -580,12 +622,13 @@ function smoothWalk(
   size: number,
 ): ScenePoint[] {
   if (points.length <= 2) return [...points];
+  const lanes = footprintLanes({ size, cell: grid.cell });
   const result: ScenePoint[] = [points[0]!];
   let anchor = 0;
   while (anchor < points.length - 1) {
     let next = anchor + 1;
     for (let candidate = points.length - 1; candidate > anchor + 1; candidate--) {
-      if (isRunOpen(grid, isPassable, canStep, size, points[anchor]!, points[candidate]!)) {
+      if (isRunOpen(grid, isPassable, canStep, lanes, size, points[anchor]!, points[candidate]!)) {
         next = candidate;
         break;
       }

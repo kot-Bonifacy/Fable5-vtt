@@ -5,9 +5,42 @@ i odklikane ścieżki, każda z diagnozą i opisem naprawy. Przeniesione tu 2026
 `POSTEP.md` (czytany w całości na starcie każdej sesji) wrócił do rozmiaru, w którym da się
 go czytać.
 
-**Tego pliku nie czyta się rutynowo.** Sięgaj po niego, gdy szukasz, *jak* coś naprawiono,
+**Tego pliku nie czyta się rutynowo.** Sięgaj po niego, gdy szukasz, _jak_ coś naprawiono,
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
+
+## Przeniesione 2026-08-23 (sesja pasów zasięgu na trasie ruchu)
+
+- **🐞 BŁĄD — figura 2×2 planuje trasę **przez** ściany (klient, 22.08).** Na scenie testowej
+  ze ścianą pionową ta sama droga wygląda inaczej dla dwóch figur: żeton **1×1** obchodzi mur
+  (38 m wzdłuż niego, potem 16,1 m do celu), a żeton **2×2** dostaje podgląd trasy **przecinający
+  obie ściany na wylot** (30 m · 2,8 m · 15,6 m). Serwer trzyma się zasad — marsz 2×2 kończy się
+  po ułamku metra zamiast przejść — więc **kłamie sam podgląd**, a figura zatrzymuje się bez
+  wyjaśnienia. `planWalk` w `shared` przechodzi test na tę sytuację (sprawdzone osobnym testem
+  z ścianą na krawędzi kratek, oba rozmiary zdały), więc szukać trzeba **po stronie klienta**:
+  `planWalkRoute`/`updateReach` w `MapRenderer.ts` (kotwica footprintu, `radiusCells`, wygładzanie)
+  albo w tym, co `MapArea` podaje jako `canStep`. Blokuje ostatni punkt 16e (2×2 w metrowych
+  drzwiach).
+
+  **Naprawione 23.08.** Winny był **planer w `shared`**, nie klient. `canStep` — test krawędzi,
+  który klient podaje jako `isSegmentClear` po ścianach i osłonach — był wołany **jedną linią,
+  od środka figury do środka figury**. Dla żetonu 1×1 ta linia jest całym ciałem, ale środek
+  figury 2×2 trzyma się o całą kratkę od ściany, więc połowa tokenu przechodziła przez mur.
+  Serwer tego problemu nie miał: `firstBlockedStep` od 21.08 prowadzi po jednej linii na każde
+  pole footprintu (`footprintLanes`) — i właśnie dlatego marsz kończył się po ułamku metra, choć
+  podgląd rysował drogę na wylot. Poprawka to nowe `laneClear` w `pathfinding.ts`, które robi
+  u planera dokładnie to samo, w trzech miejscach: krok A*, zalew zasięgu i wygładzanie trasy
+  (`isRunOpen`). Pasy liczone są raz na wywołanie, nie na każdego sąsiada.
+
+  Trzy testy w `pathfinding.test.ts` odtwarzają geometrię: ściana wysoka tylko na górny pas
+  figury 2×2, którą jej środek mija. Bez poprawki padają dwa z nich (trasa i zalew), a trzeci —
+  że figurze 1×1 ta sama ściana nie przeszkadza poniżej jej końca — przechodzi w obu wersjach.
+
+  **Nie odklikane w przeglądarce.** Zbudowanie sceny automatem się nie udało: narzędzie ścian nie
+  przyjmuje syntetycznych zdarzeń wskaźnika (rysuje podgląd, ale nic nie zapisuje), a wstawiona
+  wprost do bazy ściana i żeton 2×2 nie dały jednoznacznego odczytu — z zapisu WebGL nie da się
+  odczytać pikseli, a marsz żetonem bez karty postaci nie ruszył. Punkt **10 etapu 16e**
+  („token 2×2 przy metrowych drzwiach") nadal czeka na ręczne sprawdzenie.
 
 ## Przeniesione 2026-08-22 (sesja naprawcza, triaż 1–8 — piąta sesja tego dnia)
 

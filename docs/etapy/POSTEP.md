@@ -5,87 +5,87 @@ Aktualizowany na koniec każdej sesji. Statusy: ⬜ nierozpoczęty · 🟨 w tok
 **Ten plik czytasz w całości na starcie każdej sesji, więc ma zostać krótki.** Szczegóły mieszkają
 w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
-| plik                              | co w nim                                                     | kiedy czytać                                          |
-| --------------------------------- | ------------------------------------------------------------ | ----------------------------------------------------- |
-| `zaleglosci.md`                   | otwarte zaległości (dług oględzin, drobne braki)             | gdy odhaczasz zaległości albo ruszasz etap z tej listy |
-| `umowy-kodu.md`                   | gdzie dopisuje się nową rzecz — pełne wersje indeksu niżej   | **zanim** dołożysz coś w danym obszarze                |
-| `pulapki-dev.md`                  | pułapki, które kosztowały czas — pełne wersje indeksu niżej  | **zanim** zaczniesz szukać błędu w danym obszarze      |
-| `poligon.md`                      | stan sceny testowej „Poligon bojowy"                          | przed oględzinami w przeglądarce                       |
-| `decyzje-i-uproszczenia.md`       | świadome odstępstwa od podręcznika — **to nie są zaległości** | gdy coś wygląda na błąd w mechanice CP RED             |
-| `POMYSLY.md`                      | pomysły spoza zakresu etapów                                  | gdy masz pomysł do zapisania albo szukasz drobiazgu    |
-| `archiwum/dziennik-sesji.md`      | pełne notatki starszych sesji                                 | gdy potrzebujesz szczegółu konkretnej sesji            |
-| `archiwum/zamkniete-zaleglosci.md`| zamknięte zaległości z diagnozą i opisem naprawy              | gdy wraca coś, co już raz naprawiono                   |
-| `archiwum/uwagi-etapow.md`        | kolumna „Uwagi" z tabeli niżej (jedno zdanie na etap)         | gdy chcesz szybkie „co było w etapie N"                |
+| plik                               | co w nim                                                      | kiedy czytać                                           |
+| ---------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------ |
+| `zaleglosci.md`                    | otwarte zaległości (dług oględzin, drobne braki)              | gdy odhaczasz zaległości albo ruszasz etap z tej listy |
+| `umowy-kodu.md`                    | gdzie dopisuje się nową rzecz — pełne wersje indeksu niżej    | **zanim** dołożysz coś w danym obszarze                |
+| `pulapki-dev.md`                   | pułapki, które kosztowały czas — pełne wersje indeksu niżej   | **zanim** zaczniesz szukać błędu w danym obszarze      |
+| `poligon.md`                       | stan sceny testowej „Poligon bojowy"                          | przed oględzinami w przeglądarce                       |
+| `decyzje-i-uproszczenia.md`        | świadome odstępstwa od podręcznika — **to nie są zaległości** | gdy coś wygląda na błąd w mechanice CP RED             |
+| `POMYSLY.md`                       | pomysły spoza zakresu etapów                                  | gdy masz pomysł do zapisania albo szukasz drobiazgu    |
+| `archiwum/dziennik-sesji.md`       | pełne notatki starszych sesji                                 | gdy potrzebujesz szczegółu konkretnej sesji            |
+| `archiwum/zamkniete-zaleglosci.md` | zamknięte zaległości z diagnozą i opisem naprawy              | gdy wraca coś, co już raz naprawiono                   |
+| `archiwum/uwagi-etapow.md`         | kolumna „Uwagi" z tabeli niżej (jedno zdanie na etap)         | gdy chcesz szybkie „co było w etapie N"                |
 
-| #   | Etap                                          | Status | Data ukończenia |
-| --- | --------------------------------------------- | ------ | ---------- |
-| 01  | Szkielet projektu i środowisko                | ✅      | 2026-07-16 |
-| 02  | Baza danych, użytkownicy, role                | ✅      | 2026-07-16 |
-| 03  | Rdzeń realtime i czat                         | ✅      | 2026-07-17 |
-| 04  | Mapa i sceny                                  | ✅      | 2026-07-17 |
-| 05  | Tokeny                                        | ✅      | 2026-07-17 |
-| 06  | Silnik kości CP RED                           | ✅      | 2026-07-18 |
-| 07  | Karta postaci — model i edytor                | ✅      | 2026-07-18 |
-| 08  | Karta interaktywna i integracja               | ✅      | 2026-07-24 |
-| 09  | AI Gateway — fundament botów                  | ✅      | 2026-07-24 |
-| 10  | Edytor botów                                  | ✅      | 2026-07-25 |
-| 11  | Boty NPC na czacie                            | ✅      | 2026-07-25 |
-| 12  | ~~TTS — głos botów~~                          | ⛔      | wycofany 09.08 |
-| 13  | Dane z podręcznika i kompendium               | ✅      | 2026-07-27 |
-| 14  | Inicjatywa i tury                             | ✅      | 2026-07-26 |
-| 14b | Ekonomia akcji: budżet tury i katalog         | ✅      | 2026-07-30 |
-| 14c | Ruch w turze: budżet metrów na mapie          | ✅      | 2026-07-31 |
-| 14d | Zwarcie: Pochwycenie, Duszenie, Rzut          | ✅      | 2026-07-31 |
-| 14e | Automaty tury: rany krytyczne, DoT, monity    | ✅      | 2026-07-31 |
-| 15  | Obrażenia, pancerz, krytyki, Death Save       | ✅      | 2026-07-27 |
-| 16  | Zasięgi, DV z mapy, autofire                  | ✅      | 2026-07-28 |
-| 16b | Linia strzału i atak z mapy                   | ✅      | 2026-07-31 |
-| 16c | Osłony jako obiekty sceny                     | ✅      | 2026-08-01 |
-| 16d | Granaty, obszary i rzut przedmiotem           | ✅      | 2026-08-01 |
-| 16e | Ruch klikiem: zaznaczenie, automat chodzenia  | ✅      | 2026-07-31 |
-| 16f | Celowanie kursorem i HUD walki                | ✅      | 2026-08-01 |
-| 16g | Amunicja specjalna: kule zmieniające rachunek | ✅      | 2026-08-07 |
-| 16h | Amunicja bez obrażeń: testy, gaz i dym        | ✅      | 2026-08-07 |
-| 17a | Fog of war i warstwa MG                       | ✅      | 2026-07-28 |
-| 17b | Rysowanie po mapie                            | ✅      | 2026-07-28 |
-| 18a | Ściany i widoczność tokenów                   | ✅      | 2026-07-29 |
-| 18b | Ciemność i źródła światła                     | ✅      | 2026-07-30 |
-| 18c | Eksploracja i mgła MG nad widocznością        | ✅      | 2026-07-30 |
-| 18d | Interakcje z drzwiami i oknami                | ✅      | 2026-07-30 |
-| 19a | Fundament RAG i asystent zasad MG             | ✅      | 2026-08-08 |
-| 19b | Baza wiedzy kampanii i kontekst botów         | ✅      | 2026-08-08 |
-| 19c | Streszczenia sesji, dziennik, relacje NPC     | ✅      | 2026-08-08 |
-| 20a | Akcje botów: structured output i rzuty        | ✅      | 2026-08-08 |
-| 20b | Tura bota w walce                             | ✅      | 2026-08-08 |
-| 21  | ~~STT — polecenia głosowe~~                   | ⛔      | wycofany 09.08 |
-| 22  | ~~WebRTC — czat głosowy graczy~~              | ⛔      | wycofany 09.08 |
-| 23a | Cyborgizacje i człowieczeństwo                | ✅      | 2026-08-09 |
-| 23b | Ekonomia: eurodolce, zakupy, lifestyle        | ✅      | 2026-08-09 |
-| 23c | Reputacja i Facedown                          | ✅      | 2026-08-09 |
-| 24a | Handouty                                      | ✅      | 2026-08-09 |
-| 24b | Dziennik kampanii dla stołu                   | ✅      | 2026-08-09 |
-| 24c | Screamsheets                                  | ✅      | 2026-08-13 |
-| 25a | Kreator postaci: rola, cechy, umiejętności    | ✅      | 2026-08-14 |
-| 25b | Kreator: Ścieżka Życia                        | ✅      | 2026-08-14 |
-| 25c | Kreator: wyposażenie startowe i poziomy       | ✅      | 2026-08-14 |
-| 26a | Sieć: dane, architektura i cyberdek           | ✅      | 2026-08-14 |
-| 26b | Run: punkty dostępu, winda i Akcje Sieciowe   | ✅      | 2026-08-15 |
-| 26c | Walka w Sieci: Programy, Paf, Ślizg, LOD      | ✅      | 2026-08-15 |
-| 26d | Węzły kontrolne i systemy obronne             | ✅      | 2026-08-15 |
-| 26e | Demony                                        | ✅      | 2026-08-16 |
-| 26f | Samodzielne systemy obronne i broniona strefa | ✅      | 2026-08-16 |
-| 27a | Karta jak oficjalna: strona pierwsza          | ✅      | 2026-08-13 |
-| 27b | Karta: broń, pancerz, ekwipunek               | ✅      | 2026-08-13 |
-| 27c | Karta: Ścieżka Życia i cyborgizacje           | ✅      | 2026-08-14 |
-| 27  | ~~Kości 3D i szlif UI~~                       | ⛔      | rozdzielony 19.08 |
-| 27d | Kości 3D: skórki, dorzut, ustawienia          | ✅      | 2026-08-19 |
-| 27e | Motyw dzień/noc dla całej aplikacji           | ✅      | 2026-08-20 |
-| 27f | Szlif UX: pomoc, tooltipy, stany, okna        | ✅      | 2026-08-21 |
-| 27g | Wydajność                                     | ⬜      |            |
-| 27h | Panel postaci: HUD, który wygląda jak gra     | ✅      | 2026-08-20 |
-| 27i | Mapa: efekty walki                            | ✅      | 2026-08-20 |
-| 27j | Żetony i czytelny ruch                        | ✅      | 2026-08-21 |
-| 28  | Wdrożenie na VPS                              | ⬜      |            |
+| #   | Etap                                          | Status | Data ukończenia   |
+| --- | --------------------------------------------- | ------ | ----------------- |
+| 01  | Szkielet projektu i środowisko                | ✅     | 2026-07-16        |
+| 02  | Baza danych, użytkownicy, role                | ✅     | 2026-07-16        |
+| 03  | Rdzeń realtime i czat                         | ✅     | 2026-07-17        |
+| 04  | Mapa i sceny                                  | ✅     | 2026-07-17        |
+| 05  | Tokeny                                        | ✅     | 2026-07-17        |
+| 06  | Silnik kości CP RED                           | ✅     | 2026-07-18        |
+| 07  | Karta postaci — model i edytor                | ✅     | 2026-07-18        |
+| 08  | Karta interaktywna i integracja               | ✅     | 2026-07-24        |
+| 09  | AI Gateway — fundament botów                  | ✅     | 2026-07-24        |
+| 10  | Edytor botów                                  | ✅     | 2026-07-25        |
+| 11  | Boty NPC na czacie                            | ✅     | 2026-07-25        |
+| 12  | ~~TTS — głos botów~~                          | ⛔     | wycofany 09.08    |
+| 13  | Dane z podręcznika i kompendium               | ✅     | 2026-07-27        |
+| 14  | Inicjatywa i tury                             | ✅     | 2026-07-26        |
+| 14b | Ekonomia akcji: budżet tury i katalog         | ✅     | 2026-07-30        |
+| 14c | Ruch w turze: budżet metrów na mapie          | ✅     | 2026-07-31        |
+| 14d | Zwarcie: Pochwycenie, Duszenie, Rzut          | ✅     | 2026-07-31        |
+| 14e | Automaty tury: rany krytyczne, DoT, monity    | ✅     | 2026-07-31        |
+| 15  | Obrażenia, pancerz, krytyki, Death Save       | ✅     | 2026-07-27        |
+| 16  | Zasięgi, DV z mapy, autofire                  | ✅     | 2026-07-28        |
+| 16b | Linia strzału i atak z mapy                   | ✅     | 2026-07-31        |
+| 16c | Osłony jako obiekty sceny                     | ✅     | 2026-08-01        |
+| 16d | Granaty, obszary i rzut przedmiotem           | ✅     | 2026-08-01        |
+| 16e | Ruch klikiem: zaznaczenie, automat chodzenia  | ✅     | 2026-07-31        |
+| 16f | Celowanie kursorem i HUD walki                | ✅     | 2026-08-01        |
+| 16g | Amunicja specjalna: kule zmieniające rachunek | ✅     | 2026-08-07        |
+| 16h | Amunicja bez obrażeń: testy, gaz i dym        | ✅     | 2026-08-07        |
+| 17a | Fog of war i warstwa MG                       | ✅     | 2026-07-28        |
+| 17b | Rysowanie po mapie                            | ✅     | 2026-07-28        |
+| 18a | Ściany i widoczność tokenów                   | ✅     | 2026-07-29        |
+| 18b | Ciemność i źródła światła                     | ✅     | 2026-07-30        |
+| 18c | Eksploracja i mgła MG nad widocznością        | ✅     | 2026-07-30        |
+| 18d | Interakcje z drzwiami i oknami                | ✅     | 2026-07-30        |
+| 19a | Fundament RAG i asystent zasad MG             | ✅     | 2026-08-08        |
+| 19b | Baza wiedzy kampanii i kontekst botów         | ✅     | 2026-08-08        |
+| 19c | Streszczenia sesji, dziennik, relacje NPC     | ✅     | 2026-08-08        |
+| 20a | Akcje botów: structured output i rzuty        | ✅     | 2026-08-08        |
+| 20b | Tura bota w walce                             | ✅     | 2026-08-08        |
+| 21  | ~~STT — polecenia głosowe~~                   | ⛔     | wycofany 09.08    |
+| 22  | ~~WebRTC — czat głosowy graczy~~              | ⛔     | wycofany 09.08    |
+| 23a | Cyborgizacje i człowieczeństwo                | ✅     | 2026-08-09        |
+| 23b | Ekonomia: eurodolce, zakupy, lifestyle        | ✅     | 2026-08-09        |
+| 23c | Reputacja i Facedown                          | ✅     | 2026-08-09        |
+| 24a | Handouty                                      | ✅     | 2026-08-09        |
+| 24b | Dziennik kampanii dla stołu                   | ✅     | 2026-08-09        |
+| 24c | Screamsheets                                  | ✅     | 2026-08-13        |
+| 25a | Kreator postaci: rola, cechy, umiejętności    | ✅     | 2026-08-14        |
+| 25b | Kreator: Ścieżka Życia                        | ✅     | 2026-08-14        |
+| 25c | Kreator: wyposażenie startowe i poziomy       | ✅     | 2026-08-14        |
+| 26a | Sieć: dane, architektura i cyberdek           | ✅     | 2026-08-14        |
+| 26b | Run: punkty dostępu, winda i Akcje Sieciowe   | ✅     | 2026-08-15        |
+| 26c | Walka w Sieci: Programy, Paf, Ślizg, LOD      | ✅     | 2026-08-15        |
+| 26d | Węzły kontrolne i systemy obronne             | ✅     | 2026-08-15        |
+| 26e | Demony                                        | ✅     | 2026-08-16        |
+| 26f | Samodzielne systemy obronne i broniona strefa | ✅     | 2026-08-16        |
+| 27a | Karta jak oficjalna: strona pierwsza          | ✅     | 2026-08-13        |
+| 27b | Karta: broń, pancerz, ekwipunek               | ✅     | 2026-08-13        |
+| 27c | Karta: Ścieżka Życia i cyborgizacje           | ✅     | 2026-08-14        |
+| 27  | ~~Kości 3D i szlif UI~~                       | ⛔     | rozdzielony 19.08 |
+| 27d | Kości 3D: skórki, dorzut, ustawienia          | ✅     | 2026-08-19        |
+| 27e | Motyw dzień/noc dla całej aplikacji           | ✅     | 2026-08-20        |
+| 27f | Szlif UX: pomoc, tooltipy, stany, okna        | ✅     | 2026-08-21        |
+| 27g | Wydajność                                     | ⬜     |                   |
+| 27h | Panel postaci: HUD, który wygląda jak gra     | ✅     | 2026-08-20        |
+| 27i | Mapa: efekty walki                            | ✅     | 2026-08-20        |
+| 27j | Żetony i czytelny ruch                        | ✅     | 2026-08-21        |
+| 28  | Wdrożenie na VPS                              | ⬜     |                   |
 
 ## Od czego zacząć
 
@@ -95,10 +95,10 @@ szary jest poza turą. Trasę rysują same ślady butów (bez liczb, kresek i �
 kolejno w trakcie oględzin). Przy okazji naprawiona regresja cięcia trasy do budżetu i zamknięty
 punkt 16e (3). Sesja przed nią (22.08, piąta tego dnia) zamknęła triaż zaległości 1–6 i 8.
 
-**Uwaga na jeden świeży błąd:** podgląd trasy figury **2×2 przechodzi przez ściany** (dla 1×1 ta
-sama droga je omija, a serwer ruchu nie wykonuje). Pierwsza pozycja w `zaleglosci.md`, z hipotezą,
-gdzie szukać — blokuje ostatni punkt oględzin 16e. Siedzi w kodzie ruszanym 23.08
-(`planWalkRoute`), ale został **nietknięty**: MG nie zdecydował, czy naprawiać przy okazji.
+**Błąd „figura 2×2 planuje trasę przez ściany" jest naprawiony (23.08)** — siedział w planerze
+w `shared`, nie u klienta: `canStep` szedł jedną linią przez środek figury. Opis w
+`archiwum/zamkniete-zaleglosci.md`. **Poprawki nikt jeszcze nie odklikał w przeglądarce**, więc
+punkt 10 oględzin 16e („2×2 w metrowych drzwiach") nadal jest otwarty.
 
 **Do wyboru zostały dwa etapy: 27g** (wydajność) i **28** (wdrożenie na VPS). Etap 27 jest
 rozdzielony do końca, więc plik `etap-27-…` to rozdroże ze wskazaniami, a nie zakres do zrobienia.
@@ -169,12 +169,13 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 - **Skrótu klawiszowego nie odpalisz syntetycznym `KeyboardEvent`** — Esc musi przyjść z CDP, inaczej marsz się nie przerwie.
 - **Zacienienie zasięgu ma cache bez ścian** — zmiana zasad chodzenia musi wyzerować `this.reach` (naprawione 22.08).
 - **`clipWalkToBudget` tnie na punkcie zwrotnym, nie na metrze** — na wygładzonej prostej zostawia sam start; u klienta tnie `clipToBudget` w `MapRenderer` (metr → przyciągnięcie → ponowne sprawdzenie).
+- **Narzędzia mapy nie odpalisz syntetycznym zdarzeniem wskaźnika** — ściana rysuje się w podglądzie i znika; menu kontekstowe żetonu owszem, ale **we współrzędnych CSS**, nie tych ze zrzutu (skala ≈0,8).
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
-### Sesja 23.08 — pasy zasięgu na trasie ruchu, poza etapami
+### Sesja 23.08 — pasy zasięgu na trasie ruchu, trasa figur 2×2, prettier; poza etapami
 
 **Zlecenie MG:** wskazując kursorem cel, gracz ma **z góry** widzieć kolorem, dokąd sięga w tej
 turze. Na pytania uzupełniające MG wybrał: **dwa progi + reszta** (zielony — budżet Akcji Ruchu,
@@ -186,6 +187,7 @@ rozmiar tokenu (nie ekranu), palce mają być rozstawione **na zewnątrz**, a ś
 nie bosą stopą.
 
 **Co powstało.**
+
 1. **`TurnDistanceView.extra`** w `shared/src/combat.ts` — systemowo neutralne „ile jeszcze da się
    dokupić i jak ten handel się nazywa". Wypełnia je `cpredRunMetres` (`systems/cpred/turn.ts`,
    6 nowych testów): metry Biegu, dopóki Akcja jest wolna, zero po ataku i przy blokadzie rany.
@@ -221,7 +223,30 @@ u gracza" — ✖ zniknął, ale granica jest widoczna kolorem, i to sprawdzone 
 w `zaleglosci.md`) siedzi w dokładnie tym kodzie — proponowałem naprawić przy okazji, decyzji
 nie było, więc został nietknięty.
 
-**Testy:** 1366 w `shared`, 760 na serwerze, 36 u klienta — zielone.
+**Potem, na zlecenie MG, dwie rzeczy poza pasami.**
+
+1. **Figura 2×2 planowała trasę przez ściany — naprawione.** Wbrew hipotezie z 22.08 winny był
+   **planer w `shared`**, nie klient: `canStep` szedł **jedną linią, od środka figury do środka**.
+   Dla 1×1 ta linia jest całym ciałem; środek figury 2×2 trzyma się o kratkę od muru, więc połowa
+   tokenu przechodziła przez ścianę. Serwer pytał inaczej (`firstBlockedStep` prowadzi po jednej
+   linii na każde pole footprintu od 21.08) — stąd „podgląd rysuje drogę, marsz staje po ułamku
+   metra". Nowe `laneClear` w `pathfinding.ts` robi u planera to samo w trzech miejscach: krok A\*,
+   zalew zasięgu i wygładzanie. Trzy testy odtwarzają geometrię; bez poprawki padają dwa.
+   **Nie odklikane w przeglądarce** — patrz „Czego nie udało się sprawdzić" niżej.
+2. **Repozytorium jest zgodne z prettierem.** Z 61 niezgodnych plików 41 to wygenerowany klient
+   Prismy — poszedł do `.prettierignore` (i tak przepisuje go `prisma generate`). Reszta to
+   dokumentacja i `shared/src/index.ts`. Jeden plik, `etap-18d-…md`, prettier przepisywał w kółko:
+   miał puste linie w środku punktów listy i kontynuacje na 14 spacjach, co czyta się raz jako
+   akapit, raz jako blok kodu. Struktura list poprawiona, treść bez zmian.
+
+**Czego nie udało się sprawdzić.** Zbudowania sceny 2×2 ze ścianą **nie da się zrobić automatem**:
+narzędzie ścian rysuje podgląd, ale syntetycznych zdarzeń wskaźnika nie zapisuje (ściana znika po
+wyłączeniu narzędzia), z płótna Pixi nie da się odczytać pikseli do powiększenia, a żeton bez karty
+postaci nie przyjmuje rozkazu marszu u gracza. Ściana i żeton wstawione wprost do bazy też nie dały
+jednoznacznego odczytu. **Poligon został przywrócony co do żetonu i ściany** (sprawdzone zapytaniem
+do bazy: cztery żetony na swoich miejscach, zero ścian, tryb turowy wyłączony).
+
+**Testy:** 1369 w `shared`, 760 na serwerze, 36 u klienta — zielone.
 
 ### Sesja 22.08 (piąta tego dnia) — triaż zaległości 1–8, poza etapami
 
@@ -232,6 +257,7 @@ uzupełniające MG odpowiedział: stan `down` ma się różnić **ikoną**, prze
 śmierci; migotliwy test naprawić od razu; tabela ran krytycznych poza repo czeka na etap 28.
 
 **Trzy poprawki w kodzie.**
+
 1. **Zerowy budżet ruchu nie maluje już podświetlenia.** Przy `metresLeft = 0` zalew zwracał samą
    kratkę startową i pod figurą świecił blady kwadrat czytany jak zaznaczenie; `updateReach`
    wychodzi teraz wcześniej. Widziane na ekranie: Kolec po wyczerpaniu 10 m („12 m / 10 m”,
