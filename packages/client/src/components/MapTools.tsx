@@ -11,12 +11,14 @@ import {
   FOG_BRUSH_MIN_RADIUS,
   LIGHT_COLORS,
   ROLE_GM,
+  sceneObjectNominative,
 } from '@vtt/shared';
 import { useAttackStore } from '../stores/attackStore.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useDrawingStore } from '../stores/drawingStore.js';
 import { useFogStore } from '../stores/fogStore.js';
 import { useMapToolStore } from '../stores/mapToolStore.js';
+import { useSceneSelectionStore } from '../stores/sceneSelectionStore.js';
 import { useRulerStore } from '../stores/rulerStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useWallStore } from '../stores/wallStore.js';
@@ -26,10 +28,13 @@ import { useCompendiumStore } from '../stores/compendiumStore.js';
 import { useSmokeStore } from '../stores/smokeStore.js';
 import { useLightStore } from '../stores/lightStore.js';
 import { useNetStore } from '../stores/netStore.js';
+import { useNetRunStore } from '../stores/netRunStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import {
   fetchNetArchitectures,
   clearCovers,
+  clearLights,
+  clearNetAccessPoints,
   clearSmoke,
   clearZones,
   clearDrawings,
@@ -117,13 +122,9 @@ export function MapTools() {
   const setWindowPlayerToggle = useMapToolStore((s) => s.setWindowPlayerToggle);
   const wallSnapGrid = useMapToolStore((s) => s.wallSnapGrid);
   const setWallSnapGrid = useMapToolStore((s) => s.setWallSnapGrid);
-  const coverMode = useMapToolStore((s) => s.coverMode);
-  const setCoverMode = useMapToolStore((s) => s.setCoverMode);
   const coverTypeId = useMapToolStore((s) => s.coverTypeId);
   const setCoverTypeId = useMapToolStore((s) => s.setCoverTypeId);
   const coverCatalogue = useMapToolStore((s) => s.coverCatalogue);
-  const zoneMode = useMapToolStore((s) => s.zoneMode);
-  const setZoneMode = useMapToolStore((s) => s.setZoneMode);
   const zoneEntryId = useMapToolStore((s) => s.zoneEntryId);
   const setZoneEntryId = useMapToolStore((s) => s.setZoneEntryId);
   const zoneHidden = useMapToolStore((s) => s.zoneHidden);
@@ -140,8 +141,6 @@ export function MapTools() {
       ),
     [compendiumEntries, compendiumOrder],
   );
-  const netPointMode = useMapToolStore((s) => s.netPointMode);
-  const setNetPointMode = useMapToolStore((s) => s.setNetPointMode);
   const netPointArchitectureId = useMapToolStore((s) => s.netPointArchitectureId);
   const setNetPointArchitectureId = useMapToolStore((s) => s.setNetPointArchitectureId);
   const netPointHidden = useMapToolStore((s) => s.netPointHidden);
@@ -149,8 +148,6 @@ export function MapTools() {
   // Biblioteka Architektur (26a) — sam MG ją dostaje, więc selektor gniazda
   // czyta ten sam store co zakładka „Sieć".
   const architectures = useNetStore((s) => s.architectures);
-  const lightMode = useMapToolStore((s) => s.lightMode);
-  const setLightMode = useMapToolStore((s) => s.setLightMode);
   const lightBrightM = useMapToolStore((s) => s.lightBrightM);
   const setLightBrightM = useMapToolStore((s) => s.setLightBrightM);
   const lightDimM = useMapToolStore((s) => s.lightDimM);
@@ -180,7 +177,44 @@ export function MapTools() {
   const smokeCount = useSmokeStore((s) => s.smoke.length);
   const sceneIsDark = useSceneStore((s) => s.effectiveScene?.dark ?? false);
   const lightCount = useLightStore((s) => s.lights.length);
+  const netPointCount = useNetRunStore(
+    (s) => s.accessPoints.filter((point) => point.sceneId === sceneId).length,
+  );
   const tokens = useTokenStore((s) => s.tokens);
+  const sceneSelected = useSceneSelectionStore((s) => s.selected);
+
+  /**
+   * Jedno zdanie pod paskiem (etap 27k): co zrobi klik na tej warstwie, albo co
+   * zrobi `Delete` z tym, co już zaznaczone. Zaznaczenie wygrywa, bo jest
+   * świeższe niż instrukcja obsługi narzędzia.
+   *
+   * Warstwy wymienione z ręki, a nie wzięte z `MAP_TOOLS`: linijka i mgła też
+   * są narzędziami, tylko nie zostawiają po sobie obiektów, które dałoby się
+   * zaznaczyć.
+   */
+  const layerHint = sceneSelected
+    ? `Zaznaczono: ${sceneObjectNominative(sceneSelected.kind)} · Delete usuwa · Ctrl+Z cofa`
+    : tool === 'wall' && isGm
+      ? wallMode === 'lock'
+        ? 'Kliknij drzwi albo okno, by założyć lub zdjąć zamek (zakładanie je zamyka)'
+        : wallMode === 'share'
+          ? 'Kliknij drzwi albo okno, by je udostępnić graczom lub schować'
+          : 'Klikaj narożniki — Enter kończy ścianę. Klik w środek istniejącej zaznacza ją'
+      : tool === 'light' && isGm
+        ? 'Kliknij mapę, by postawić światło; klik w istniejące zaznacza, dwuklik przestraja je na ustawienia z paska'
+        : tool === 'note' && isGm
+          ? 'Kliknij mapę, by wbić pinezkę; klik w istniejącą zaznacza, dwuklik otwiera jej treść'
+          : tool === 'netpoint' && isGm
+            ? 'Kliknij mapę, by postawić gniazdo; klik w istniejące zaznacza, dwuklik otwiera kartę'
+            : tool === 'cover' && isGm
+              ? 'Przeciągnij prostokąt, by postawić osłonę; klik w istniejącą zaznacza ją'
+              : tool === 'zone' && isGm
+                ? 'Przeciągnij prostokąt bronionego obszaru; klik w istniejący zaznacza, dwuklik otwiera kartę'
+                : tool === 'draw'
+                  ? drawTool === 'text'
+                    ? 'Kliknij mapę, by postawić podpis; klik w istniejący rysunek zaznacza go'
+                    : 'Przeciągnij, by rysować; klik w istniejący rysunek zaznacza go'
+                  : null;
 
   // Switching fog off mid-session must put the brush away too — otherwise the
   // settings row lingers next to a disabled tool button, and a stray drag
@@ -295,19 +329,6 @@ export function MapTools() {
         onClick={() => toggleTool('draw')}
       >
         <IconPencil />
-      </button>
-      <button
-        type="button"
-        className={`map-tool${tool === 'erase' ? ' map-tool--active' : ''}`}
-        title={
-          isGm
-            ? 'Gumka (G) — kliknij rysunek, by go usunąć (możesz usuwać także cudze)'
-            : 'Gumka (G) — kliknij własny rysunek, by go usunąć'
-        }
-        aria-pressed={tool === 'erase'}
-        onClick={() => toggleTool('erase')}
-      >
-        <IconEraser />
       </button>
 
       {isGm && (
@@ -555,16 +576,6 @@ export function MapTools() {
         </div>
       )}
 
-      {tool === 'erase' && (
-        <div className="map-tool-options" role="group" aria-label="Ustawienia gumki">
-          <span className="map-tool-hint">
-            {isGm ? 'Kliknij rysunek, by go usunąć' : 'Kliknij swój rysunek, by go usunąć'}
-          </span>
-          <span className="map-tools-sep" aria-hidden />
-          {drawingButtons}
-        </div>
-      )}
-
       {isGm && tool === 'wall' && (
         <div className="map-tool-options" role="group" aria-label="Ustawienia ścian">
           <button
@@ -575,15 +586,6 @@ export function MapTools() {
             onClick={() => setWallMode('draw')}
           >
             <IconLine />
-          </button>
-          <button
-            type="button"
-            className={`map-tool${wallMode === 'erase' ? ' map-tool--active' : ''}`}
-            title="Gumka — kliknij ścianę, by ją usunąć"
-            aria-pressed={wallMode === 'erase'}
-            onClick={() => setWallMode('erase')}
-          >
-            <IconEraser />
           </button>
           <button
             type="button"
@@ -715,54 +717,30 @@ export function MapTools() {
 
       {isGm && tool === 'cover' && (
         <div className="map-tool-options" role="group" aria-label="Ustawienia osłon">
-          <button
-            type="button"
-            className={`map-tool${coverMode === 'draw' ? ' map-tool--active' : ''}`}
-            title="Rysowanie — przeciągnij prostokąt na mapie"
-            aria-pressed={coverMode === 'draw'}
-            onClick={() => setCoverMode('draw')}
-          >
-            <IconRect />
-          </button>
-          <button
-            type="button"
-            className={`map-tool${coverMode === 'erase' ? ' map-tool--active' : ''}`}
-            title="Gumka — kliknij osłonę, by ją usunąć (także wrak)"
-            aria-pressed={coverMode === 'erase'}
-            onClick={() => setCoverMode('erase')}
-          >
-            <IconEraser />
-          </button>
-
-          {coverMode === 'draw' && (
-            <>
-              <span className="map-tools-sep" aria-hidden />
-              {/* The catalogue decides the material and the body points; this is
+          {/* The catalogue decides the material and the body points; this is
                   only which row of it the next rectangle uses. „Gips cienki" is
                   absent from the list on purpose — the table gives it 0 PW,
                   which is the rulebook saying it is not cover. */}
-              <label
-                className="map-tool-slider"
-                title="Rodzaj osłony (materiał i grubość z podręcznika, s. 180)"
-              >
-                <select
-                  value={coverTypeId}
-                  onChange={(event) => setCoverTypeId(event.target.value)}
-                  aria-label="Rodzaj osłony"
-                >
-                  {coverCatalogue.presets.map((preset) => (
-                    <option key={preset.id} value={preset.id}>
-                      {preset.name} — {cpredCoverPresetDetail(coverCatalogue, preset)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {coverCatalogue.presets.length === 0 && (
-                <span className="map-tool-hint">
-                  Brak katalogu osłon — sprawdź data/public/cpred/covers.json
-                </span>
-              )}
-            </>
+          <label
+            className="map-tool-slider"
+            title="Rodzaj osłony (materiał i grubość z podręcznika, s. 180)"
+          >
+            <select
+              value={coverTypeId}
+              onChange={(event) => setCoverTypeId(event.target.value)}
+              aria-label="Rodzaj osłony"
+            >
+              {coverCatalogue.presets.map((preset) => (
+                <option key={preset.id} value={preset.id}>
+                  {preset.name} — {cpredCoverPresetDetail(coverCatalogue, preset)}
+                </option>
+              ))}
+            </select>
+          </label>
+          {coverCatalogue.presets.length === 0 && (
+            <span className="map-tool-hint">
+              Brak katalogu osłon — sprawdź data/public/cpred/covers.json
+            </span>
           )}
 
           <span className="map-tools-sep" aria-hidden />
@@ -803,68 +781,36 @@ export function MapTools() {
 
       {isGm && tool === 'zone' && (
         <div className="map-tool-options" role="group" aria-label="Ustawienia stref bronionych">
+          <label
+            className="map-tool-select"
+            title="Wpis „Obrona Sieci” z kompendium — z niego serwer czyta PW, Wartość bojową i efekt"
+          >
+            <select
+              value={zoneEntryId}
+              onChange={(event) => setZoneEntryId(event.target.value)}
+              aria-label="System obronny"
+            >
+              <option value="">— wybierz system —</option>
+              {defenseEntries.map((entry) => (
+                <option key={entry.id} value={entry.id}>
+                  {entry.name}
+                </option>
+              ))}
+            </select>
+          </label>
           <button
             type="button"
-            className={`map-tool${zoneMode === 'draw' ? ' map-tool--active' : ''}`}
-            title="Rysowanie — przeciągnij prostokąt bronionego obszaru"
-            aria-pressed={zoneMode === 'draw'}
-            onClick={() => setZoneMode('draw')}
+            className={`map-tool${zoneHidden ? ' map-tool--active' : ''}`}
+            title={
+              zoneHidden
+                ? 'Ukryta — gracz nie dostanie tej strefy, dopóki jej nie zauważy Percepcją'
+                : 'Widoczna od razu — strefa jedzie do graczy bez rzutu'
+            }
+            aria-pressed={zoneHidden}
+            onClick={() => setZoneHidden(!zoneHidden)}
           >
-            <IconRect />
+            {zoneHidden ? <IconEyeOff /> : <IconEye />}
           </button>
-          <button
-            type="button"
-            className={`map-tool${zoneMode === 'edit' ? ' map-tool--active' : ''}`}
-            title="Karta strefy — kliknij prostokąt, żeby otworzyć jej ustawienia"
-            aria-pressed={zoneMode === 'edit'}
-            onClick={() => setZoneMode('edit')}
-          >
-            <IconPin />
-          </button>
-          <button
-            type="button"
-            className={`map-tool${zoneMode === 'erase' ? ' map-tool--active' : ''}`}
-            title="Gumka — kliknij strefę, żeby ją usunąć"
-            aria-pressed={zoneMode === 'erase'}
-            onClick={() => setZoneMode('erase')}
-          >
-            <IconEraser />
-          </button>
-          {zoneMode === 'draw' && (
-            <>
-              <span className="map-tools-sep" aria-hidden />
-              <label
-                className="map-tool-select"
-                title="Wpis „Obrona Sieci” z kompendium — z niego serwer czyta PW, Wartość bojową i efekt"
-              >
-                <select
-                  value={zoneEntryId}
-                  onChange={(event) => setZoneEntryId(event.target.value)}
-                  aria-label="System obronny"
-                >
-                  <option value="">— wybierz system —</option>
-                  {defenseEntries.map((entry) => (
-                    <option key={entry.id} value={entry.id}>
-                      {entry.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button
-                type="button"
-                className={`map-tool${zoneHidden ? ' map-tool--active' : ''}`}
-                title={
-                  zoneHidden
-                    ? 'Ukryta — gracz nie dostanie tej strefy, dopóki jej nie zauważy Percepcją'
-                    : 'Widoczna od razu — strefa jedzie do graczy bez rzutu'
-                }
-                aria-pressed={zoneHidden}
-                onClick={() => setZoneHidden(!zoneHidden)}
-              >
-                {zoneHidden ? <IconEyeOff /> : <IconEye />}
-              </button>
-            </>
-          )}
           <span className="map-tools-sep" aria-hidden />
           <span className="map-tool-hint">
             {zoneCount === 0 ? 'brak stref' : `stref: ${zoneCount}`}
@@ -888,58 +834,47 @@ export function MapTools() {
 
       {isGm && tool === 'netpoint' && (
         <div className="map-tool-options" role="group" aria-label="Ustawienia punktów dostępu">
+          <label className="map-tool-select" title="Architektura, do której prowadzi to gniazdo">
+            <select
+              value={netPointArchitectureId}
+              onChange={(event) => setNetPointArchitectureId(event.target.value)}
+            >
+              <option value="">— martwe gniazdo —</option>
+              {architectures.map((entry) => (
+                <option key={entry.id} value={entry.id}>
+                  {entry.name}
+                </option>
+              ))}
+            </select>
+          </label>
           <button
             type="button"
-            className={`map-tool${netPointMode === 'place' ? ' map-tool--active' : ''}`}
-            title="Stawianie — kliknij mapę, by wbić gniazdo dostępowe"
-            aria-pressed={netPointMode === 'place'}
-            onClick={() => setNetPointMode('place')}
+            className={`map-tool${netPointHidden ? ' map-tool--active' : ''}`}
+            title={
+              netPointHidden
+                ? 'Ukryte — gracz nie dostanie tego gniazda, dopóki nie znajdzie go Skanerem'
+                : 'Widoczne od razu — gniazdo jedzie do graczy bez skanowania'
+            }
+            aria-pressed={netPointHidden}
+            onClick={() => setNetPointHidden(!netPointHidden)}
           >
-            <IconSocket />
+            {netPointHidden ? <IconEyeOff /> : <IconEye />}
           </button>
+          {/* Kosz warstwy gniazd (27k) — do tej sesji jedynym sposobem na
+              sprzątnięcie sceny było klikanie ich po jednym. */}
+          <span className="map-tools-sep" aria-hidden />
+          <span className="map-tool-hint">
+            {netPointCount === 0 ? 'brak gniazd' : `gniazd: ${netPointCount}`}
+          </span>
           <button
             type="button"
-            className={`map-tool${netPointMode === 'erase' ? ' map-tool--active' : ''}`}
-            title="Gumka — kliknij gniazdo, by je usunąć (kończy też run, który przez nie szedł)"
-            aria-pressed={netPointMode === 'erase'}
-            onClick={() => setNetPointMode('erase')}
+            className="map-tool map-tool--warn"
+            title="Usuń wszystkie punkty dostępu z tej sceny (kończy też runy, które przez nie szły). Ctrl+Z cofa"
+            disabled={!sceneId || netPointCount === 0}
+            onClick={() => sceneId && void clearNetAccessPoints(sceneId)}
           >
-            <IconEraser />
+            <IconTrashAll />
           </button>
-          {netPointMode === 'place' && (
-            <>
-              <span className="map-tools-sep" aria-hidden />
-              <label
-                className="map-tool-select"
-                title="Architektura, do której prowadzi to gniazdo"
-              >
-                <select
-                  value={netPointArchitectureId}
-                  onChange={(event) => setNetPointArchitectureId(event.target.value)}
-                >
-                  <option value="">— martwe gniazdo —</option>
-                  {architectures.map((entry) => (
-                    <option key={entry.id} value={entry.id}>
-                      {entry.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button
-                type="button"
-                className={`map-tool${netPointHidden ? ' map-tool--active' : ''}`}
-                title={
-                  netPointHidden
-                    ? 'Ukryte — gracz nie dostanie tego gniazda, dopóki nie znajdzie go Skanerem'
-                    : 'Widoczne od razu — gniazdo jedzie do graczy bez skanowania'
-                }
-                aria-pressed={netPointHidden}
-                onClick={() => setNetPointHidden(!netPointHidden)}
-              >
-                {netPointHidden ? <IconEyeOff /> : <IconEye />}
-              </button>
-            </>
-          )}
         </div>
       )}
 
@@ -947,108 +882,94 @@ export function MapTools() {
         <div className="map-tool-options" role="group" aria-label="Ustawienia świateł">
           <button
             type="button"
-            className={`map-tool${lightMode === 'place' ? ' map-tool--active' : ''}`}
-            title="Stawianie — kliknij mapę; klik w istniejące światło zmienia je na te ustawienia"
-            aria-pressed={lightMode === 'place'}
-            onClick={() => setLightMode('place')}
+            className={`map-tool${lightFitRoom ? ' map-tool--active' : ''}`}
+            title={
+              lightFitRoom
+                ? 'Dopasowanie do pomieszczenia włączone — zasięg liczą ściany, suwaki nie mają nic do powiedzenia'
+                : 'Zapal pomieszczenie — kliknij w środku pokoju, a zasięg dobierze się do jego ścian'
+            }
+            aria-pressed={lightFitRoom}
+            onClick={() => setLightFitRoom(!lightFitRoom)}
           >
-            <IconLamp />
+            <IconRoomLight />
           </button>
-          <button
-            type="button"
-            className={`map-tool${lightMode === 'erase' ? ' map-tool--active' : ''}`}
-            title="Gumka — kliknij światło, by je usunąć"
-            aria-pressed={lightMode === 'erase'}
-            onClick={() => setLightMode('erase')}
-          >
-            <IconEraser />
-          </button>
-
-          {lightMode === 'place' && (
-            <>
-              <span className="map-tools-sep" aria-hidden />
-              <button
-                type="button"
-                className={`map-tool${lightFitRoom ? ' map-tool--active' : ''}`}
-                title={
-                  lightFitRoom
-                    ? 'Dopasowanie do pomieszczenia włączone — zasięg liczą ściany, suwaki nie mają nic do powiedzenia'
-                    : 'Zapal pomieszczenie — kliknij w środku pokoju, a zasięg dobierze się do jego ścian'
-                }
-                aria-pressed={lightFitRoom}
-                onClick={() => setLightFitRoom(!lightFitRoom)}
-              >
-                <IconRoomLight />
-              </button>
-              {/* Left out rather than hidden while the walls do the measuring:
+          {/* Left out rather than hidden while the walls do the measuring:
                   `hidden` loses to the class's own `display`, and two sliders
                   that visibly do nothing are worse than no sliders. */}
-              {!lightFitRoom && (
-                <>
-                  <label className="map-tool-slider" title="Zasięg światła jasnego (metry)">
-                    <span className="map-tool-hint">jasno</span>
-                    <input
-                      type="range"
-                      min={0}
-                      max={40}
-                      step={1}
-                      value={lightBrightM}
-                      onChange={(event) => setLightBrightM(Number(event.target.value))}
-                      aria-label="Zasięg światła jasnego w metrach"
-                    />
-                    <span>{lightBrightM} m</span>
-                  </label>
-                  <label className="map-tool-slider" title="Zasięg światła przyćmionego (metry)">
-                    <span className="map-tool-hint">mrok</span>
-                    <input
-                      type="range"
-                      min={0}
-                      max={60}
-                      step={1}
-                      value={lightDimM}
-                      onChange={(event) => setLightDimM(Number(event.target.value))}
-                      aria-label="Zasięg światła przyćmionego w metrach"
-                    />
-                    <span>{Math.max(lightBrightM, lightDimM)} m</span>
-                  </label>
-                </>
-              )}
-              {lightFitRoom && <span className="map-tool-hint">zasięg z pomieszczenia</span>}
-              <div className="map-color-row" role="group" aria-label="Barwa światła">
-                {LIGHT_COLORS.map((color) => (
-                  <button
-                    key={color}
-                    type="button"
-                    className={`map-color${lightColor === color ? ' map-color--active' : ''}`}
-                    style={{ background: color }}
-                    title={`Barwa ${color}`}
-                    aria-label={`Barwa ${color}`}
-                    aria-pressed={lightColor === color}
-                    onClick={() => setLightColor(color)}
-                  />
-                ))}
-              </div>
-              <button
-                type="button"
-                className={`map-tool${lightFlicker ? ' map-tool--active' : ''}`}
-                title={
-                  lightFlicker
-                    ? 'Migotanie włączone — świeca, ognisko, psujący się neon'
-                    : 'Światło stałe — kliknij, by migotało'
-                }
-                aria-pressed={lightFlicker}
-                onClick={() => setLightFlicker(!lightFlicker)}
-              >
-                <IconFlicker />
-              </button>
+          {!lightFitRoom && (
+            <>
+              <label className="map-tool-slider" title="Zasięg światła jasnego (metry)">
+                <span className="map-tool-hint">jasno</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={40}
+                  step={1}
+                  value={lightBrightM}
+                  onChange={(event) => setLightBrightM(Number(event.target.value))}
+                  aria-label="Zasięg światła jasnego w metrach"
+                />
+                <span>{lightBrightM} m</span>
+              </label>
+              <label className="map-tool-slider" title="Zasięg światła przyćmionego (metry)">
+                <span className="map-tool-hint">mrok</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={60}
+                  step={1}
+                  value={lightDimM}
+                  onChange={(event) => setLightDimM(Number(event.target.value))}
+                  aria-label="Zasięg światła przyćmionego w metrach"
+                />
+                <span>{Math.max(lightBrightM, lightDimM)} m</span>
+              </label>
             </>
           )}
+          {lightFitRoom && <span className="map-tool-hint">zasięg z pomieszczenia</span>}
+          <div className="map-color-row" role="group" aria-label="Barwa światła">
+            {LIGHT_COLORS.map((color) => (
+              <button
+                key={color}
+                type="button"
+                className={`map-color${lightColor === color ? ' map-color--active' : ''}`}
+                style={{ background: color }}
+                title={`Barwa ${color}`}
+                aria-label={`Barwa ${color}`}
+                aria-pressed={lightColor === color}
+                onClick={() => setLightColor(color)}
+              />
+            ))}
+          </div>
+          <button
+            type="button"
+            className={`map-tool${lightFlicker ? ' map-tool--active' : ''}`}
+            title={
+              lightFlicker
+                ? 'Migotanie włączone — świeca, ognisko, psujący się neon'
+                : 'Światło stałe — kliknij, by migotało'
+            }
+            aria-pressed={lightFlicker}
+            onClick={() => setLightFlicker(!lightFlicker)}
+          >
+            <IconFlicker />
+          </button>
 
           <span className="map-tools-sep" aria-hidden />
           <span className="map-tool-hint">
             {lightCount === 0 ? 'brak świateł' : `świateł: ${lightCount}`}
           </span>
-          {lightFitRoom && lightMode === 'place' && !hasWalls && (
+          {/* Kosz warstwy świateł (27k) — bliźniak kosza gniazd. */}
+          <button
+            type="button"
+            className="map-tool map-tool--warn"
+            title="Usuń wszystkie światła z tej sceny. Ctrl+Z cofa"
+            disabled={!sceneId || lightCount === 0}
+            onClick={() => sceneId && void clearLights(sceneId)}
+          >
+            <IconTrashAll />
+          </button>
+          {lightFitRoom && !hasWalls && (
             <span className="map-tool-hint">
               Scena nie ma ścian — dopasowanie do pomieszczenia zwróci maksymalny zasięg
             </span>
@@ -1058,6 +979,22 @@ export function MapTools() {
               Scena nie jest ciemna — światła nic jeszcze nie zmieniają (zakładka „Sceny”)
             </span>
           )}
+        </div>
+      )}
+
+      {/*
+        Podpowiedź kontekstowa warstwy (etap 27k) — **wewnątrz** paska, jako
+        jego ostatni wiersz, a nie jako pływające pudełko nad mapą. Wypróbowane
+        było i to drugie: `.map-placement-hint` stoi wyśrodkowane u góry mapy,
+        a pasek jest szeroki na 38 rem, więc zdanie kładło się wprost na
+        ikonach narzędzi. Tu układ zajmuje się tym sam.
+      */}
+      {layerHint && (
+        <div
+          className={`map-tool-tip${sceneSelected ? ' map-tool-tip--selected' : ''}`}
+          role="status"
+        >
+          {layerHint}
         </div>
       )}
 

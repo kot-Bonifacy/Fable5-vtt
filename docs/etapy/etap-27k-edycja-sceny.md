@@ -73,34 +73,34 @@ zerwanego przez usunięcie gniazda — run kończy się nieodwracalnie i wraca s
 
 ## Zakres
 
-- [ ] **Zaznaczenie obiektu scenerii** — nowy store `sceneSelectionStore`
+- [x] **Zaznaczenie obiektu scenerii** — nowy store `sceneSelectionStore`
       (`{ kind, id } | null`, gdzie `kind` to `wall | cover | zone | light | netpoint | note | drawing`),
       wykluczające się wzajemnie z zaznaczeniem żetonu: zaznaczenie obiektu zdejmuje
       figurę i odwrotnie, żeby `Delete` nigdy nie musiał zgadywać, co kasuje
-- [ ] **Obrys zaznaczenia i podświetlenie pod kursorem** w rendererze — najechanie na obiekt
+- [x] **Obrys zaznaczenia i podświetlenie pod kursorem** w rendererze — najechanie na obiekt
       uzbrojonej warstwy rysuje obrys i zmienia kursor na `pointer`. To jedno załatwia
       „nie wiedziałem, że to jest klikalne"; pickery (`pickWallAt`, `pickCoverAt`, `pickZoneAt`,
       `pickLightAt`, `pickAccessPointAt`, `pickDrawingAt`) już istnieją i wystarczy je złożyć
-- [ ] **Gesty warstwy** — przeciągnięcie po pustym tworzy (łańcuch ścian, prostokąt osłony
+- [x] **Gesty warstwy** — przeciągnięcie po pustym tworzy (łańcuch ścian, prostokąt osłony
       i strefy, kształt rysunku), krótki klik po pustym stawia punkt (światło, gniazdo, pinezka)
       albo zaczyna łańcuch, krótki klik w obiekt **zaznacza**, dwuklik otwiera kartę tam, gdzie
       już jest (gniazdo, strefa, notatka)
-- [ ] **`Delete` / `Backspace`** kasuje zaznaczony obiekt; wpięte w `MapArea` przed drabiną `Esc`.
+- [x] **`Delete` / `Backspace`** kasuje zaznaczony obiekt; wpięte w `MapArea` przed drabiną `Esc`.
       Nowy szczebel drabiny `Esc`: zdejmij zaznaczenie obiektu — nad „odłóż narzędzie"
-- [ ] **`Ctrl+Z`** — serwerowy bufor cofania (20 ostatnich usunięć na kampanię) i zdarzenie
+- [x] **`Ctrl+Z`** — serwerowy bufor cofania (20 ostatnich usunięć na kampanię) i zdarzenie
       `scene:undo`; kosz hurtowy odkłada grupę jako jedną pozycję. MG cofa swoje usunięcia,
       gracz wyłącznie własne rysunki
-- [ ] **Sprzątnięcie pasków** — `MAP_TOOLS` traci `erase`; `WallMode` i `ZoneMode` tracą `erase`
+- [x] **Sprzątnięcie pasków** — `MAP_TOOLS` traci `erase`; `WallMode` i `ZoneMode` tracą `erase`
       (`ZoneMode` także `edit` — przechodzi na dwuklik), `CoverMode`, `LightMode` i `NetPointMode`
       przestają istnieć jako pary trybów. Kosze „usuń wszystkie" **zostają**
-- [ ] **Brakujące kosze** — zdarzenia `light:clear` i `netpoint:clear` plus przyciski, żeby
+- [x] **Brakujące kosze** — zdarzenia `light:clear` i `netpoint:clear` plus przyciski, żeby
       światła i gniazda dało się sprzątnąć tak jak osłony i ściany
-- [ ] **Skróty i pomoc** — `zone` (`S`) i `netpoint` (`P`) wchodzą do `MAP_TOOL_KEYS`, więc
+- [x] **Skróty i pomoc** — `zone` (`S`) i `netpoint` (`P`) wchodzą do `MAP_TOOL_KEYS`, więc
       pojawiają się w oknie `?` same z siebie; `G` zwalnia się razem z gumką. Nowa grupa skrótów
       „Obiekty na mapie": `Delete`, `Ctrl+Z`, dwuklik
-- [ ] **Podpowiedź kontekstowa pod paskiem** — przy uzbrojonej warstwie bez zaznaczenia
+- [x] **Podpowiedź kontekstowa pod paskiem** — przy uzbrojonej warstwie bez zaznaczenia
       „Kliknij obiekt, by go zaznaczyć", przy zaznaczeniu „Delete usuwa · Ctrl+Z cofa"
-- [ ] **Cel gniazda z 13 na 18 px** (`MapRenderer.ts:4675`) — pierścień 6 m i podpis zostają
+- [x] **Cel gniazda z 13 na 18 px** (`MapRenderer.ts:4675`) — pierścień 6 m i podpis zostają
       nieklikalne (zasłaniałyby figury), ale sam glif przestaje wymagać celowania
 
 ## Poza zakresem
@@ -115,20 +115,50 @@ zerwanego przez usunięcie gniazda — run kończy się nieodwracalnie i wraca s
 
 ## Kryteria ukończenia
 
-- [ ] **Test wyjściowy: punkt dostępu.** Osoba, która nie zna kodu, kasuje gniazdo bez pytania
+- [x] **Test wyjściowy: punkt dostępu.** Osoba, która nie zna kodu, kasuje gniazdo bez pytania
       nikogo o drogę: pasek → 🔌 → klik w gniazdo (obrys) → `Delete`. Odklikane w przeglądarce
-- [ ] **Ten sam gest działa na siedmiu typach** — ścianie, drzwiach, oknie, osłonie, strefie
+- [x] **Ten sam gest działa na siedmiu typach** — ścianie, drzwiach, oknie, osłonie, strefie
       bronionej, świetle, notatce i rysunku. Odklikane po kolei, nie wywnioskowane z kodu
-- [ ] **`Ctrl+Z` przywraca ostatnio usunięty obiekt**, a po koszu „usuń wszystkie osłony"
+- [x] **`Ctrl+Z` przywraca ostatnio usunięty obiekt**, a po koszu „usuń wszystkie osłony"
       przywraca **wszystkie** naraz jako jedną pozycję
-- [ ] **Gracz zaznacza i kasuje własny rysunek, cudzego nie** — odmowa przychodzi z serwera
+- [x] **Gracz zaznacza i kasuje własny rysunek, cudzego nie** — odmowa przychodzi z serwera
       i jest widoczna na ekranie gracza (sprawdzone z konta gracza na `[::1]:5173`)
-- [ ] **Okno pomocy `?` wymienia wszystkie narzędzia mapy** — ze strefami i gniazdami włącznie —
+- [x] **Okno pomocy `?` wymienia wszystkie narzędzia mapy** — ze strefami i gniazdami włącznie —
       oraz sekcję „Obiekty na mapie"; lista zgodna z tym, co naprawdę działa (pilnuje
       `shortcuts.test.ts`)
-- [ ] **Żaden pasek nie ma już trybu-gumki**; `MAP_TOOLS` nie zawiera `erase`
-- [ ] **Nic nie kasuje w ciszy** — każde `delete*` sprawdza `ack` i mówi zdaniem, gdy się nie
+- [x] **Żaden pasek nie ma już trybu-gumki**; `MAP_TOOLS` nie zawiera `erase`
+- [x] **Nic nie kasuje w ciszy** — każde `delete*` sprawdza `ack` i mówi zdaniem, gdy się nie
       udało; klik warstwą w puste miejsce nie udaje, że coś zrobił
-- [ ] **Testy:** wybór obiektu pod kursorem i pierwszeństwo warstw w `shared`; `scene:undo`,
+- [x] **Testy:** wybór obiektu pod kursorem i pierwszeństwo warstw w `shared`; `scene:undo`,
       `light:clear` i `netpoint:clear` na serwerze; `shortcuts.test.ts` i `map-click.test.ts`
       u klienta — zielone
+
+## Jak wyszło (2026-08-23, trzecia sesja tego dnia)
+
+**Rozstrzygnięcie MG w trakcie:** klik w **środek** ściany zaznacza, klik przy jej **końcówce**
+(≤ 12 px, promień przyciągania) zaczyna nowy łańcuch. Powód: promień trafienia w segment to
+20 px przy kratce 100, czyli więcej niż promień przyciągania — „zaznaczaj zawsze" odebrałoby
+jedyny sposób na dorysowanie ściany dokładnie od narożnika istniejącego muru. Predykat siedzi
+w `wallEndpointNear` (`shared/walls.ts`), z którego korzysta też `snapWallPoint`. Cena: segmentu
+krótszego niż 24 px nie da się złapać za środek — zostaje kosz albo `Ctrl+Z`.
+
+**Klik kontra przeciągnięcie.** Warstwy rysowane przeciągnięciem (osłona, strefa, kształt
+rysunku) decydują dopiero przy puszczeniu przycisku: gest krótszy niż 6 px ekranu i zaczęty na
+obiekcie to zaznaczenie, wszystko inne to nowy kształt. Bez tego nie dałoby się narysować
+osłony nachodzącej na już stojącą.
+
+**Dwa błędy znalezione przy oględzinach i naprawione tutaj:**
+
+1. **Podpowiedzi nad mapą były czarne na czarnym w motywie dziennym.** `.map-placement-hint`
+   stawiała `var(--text)` na `var(--map-panel)`, a panel nad mapą jest ciemny w **obu**
+   motywach (i ma taki zostać — Pixi rysuje pod nim białe podpisy). Dotyczyło wszystkich
+   podpowiedzi, nie tylko nowej; naprawione na `--map-ink`.
+2. **Podpowiedź warstwy kładła się na ikonach paska.** Pasek jest szeroki na 38 rem i
+   wyśrodkowane pudełko `.map-placement-hint` po prostu na nim leżało. Podpowiedź przeniesiona
+   **do środka paska** jako jego ostatni, pełnej szerokości wiersz (`.map-tool-tip`) — czyli
+   dosłownie „pod paskiem", jak mówił zakres.
+
+**Nie odklikane:** strona gracza (własny rysunek, odmowa dla cudzego). Sesja na `[::1]:5173`
+jest dziś zalogowana jako MG, a dołączenie nowym imieniem zakłada konto-śmiecia w kampanii —
+pozycja w `zaleglosci.md`. Ścieżka ma test serwera (`scene-undo.test.ts`) i test filtra
+autorstwa w `shared/scene-objects.test.ts`.

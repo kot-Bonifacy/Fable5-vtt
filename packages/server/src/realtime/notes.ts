@@ -12,6 +12,7 @@ import type { MapNote } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { requireCampaignScene } from './scenes.js';
 import { gmRoom } from './state.js';
+import { rememberDeletion, scalarRow } from './undo-buffer.js';
 
 /**
  * The GM layer (stage 17): pinned notes only the GM ever receives.
@@ -70,7 +71,7 @@ async function requireCampaignNote(
   return row as MapNote;
 }
 
-function emitNoteUpsert(deps: RealtimeDeps, campaignId: string, note: MapNoteView): void {
+export function emitNoteUpsert(deps: RealtimeDeps, campaignId: string, note: MapNoteView): void {
   deps.io.to(gmRoom(campaignId)).emit('note:upsert', { note } satisfies NoteUpsertBroadcast);
 }
 
@@ -131,9 +132,16 @@ export const noteUpdateEvent = defineEvent<NoteUpdatePayload, MapNoteView>({
 export const noteDeleteEvent = defineEvent<NoteIdPayload>({
   name: 'note:delete',
   role: ROLE_GM,
-  handler: async ({ deps, socket, payload }) => {
+  handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
     const note = await requireCampaignNote(deps.ctx.prisma, campaignId, payload?.noteId);
+    rememberDeletion({
+      campaignId,
+      userId: user.id,
+      sceneId: note.sceneId,
+      kind: 'note',
+      rows: [scalarRow(note)],
+    });
     await deps.ctx.prisma.mapNote.delete({ where: { id: note.id } });
     deps.io.to(gmRoom(campaignId)).emit('note:delete', {
       sceneId: note.sceneId,

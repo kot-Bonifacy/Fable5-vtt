@@ -344,6 +344,50 @@ export function drawingTextBounds(shape: DrawingText): {
 }
 
 /**
+ * Prostokąt otaczający kształt (etap 27k) — tyle, ile trzeba, żeby narysować
+ * wokół zaznaczonego rysunku obrys.
+ *
+ * Świadomie **bez** szerokości pióra: obrys i tak rysuje się z marginesem, a
+ * doliczanie tu połowy kreski dawałoby dla grubego flamastra ramkę wyraźnie
+ * większą niż to, co widać. Ścieżka jednopunktowa (kropka po kliknięciu
+ * ołówkiem) ma zerowy rozmiar i to jest uczciwa odpowiedź — margines obrysu
+ * robi z niej widoczne kółko.
+ */
+export function drawingBounds(shape: DrawingShape): {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+} {
+  if (shape.kind === 'path') {
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const point of shape.points) {
+      if (point.x < minX) minX = point.x;
+      if (point.y < minY) minY = point.y;
+      if (point.x > maxX) maxX = point.x;
+      if (point.y > maxY) maxY = point.y;
+    }
+    if (!Number.isFinite(minX)) return { x: 0, y: 0, width: 0, height: 0 };
+    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+  }
+  if (shape.kind === 'rect') {
+    return { x: shape.x, y: shape.y, width: shape.width, height: shape.height };
+  }
+  if (shape.kind === 'ellipse') {
+    return {
+      x: shape.x - shape.radiusX,
+      y: shape.y - shape.radiusY,
+      width: shape.radiusX * 2,
+      height: shape.radiusY * 2,
+    };
+  }
+  return drawingTextBounds(shape);
+}
+
+/**
  * Did the user click this drawing? Used by the eraser, so it is deliberately
  * generous: `tolerance` (scene pixels) widens the hit area beyond the stroke
  * so a thin line can still be grabbed at low zoom.

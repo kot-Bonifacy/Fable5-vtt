@@ -124,3 +124,41 @@ postaci — biblioteka żetonów zostaje przy `requireGm`. `POST /api/uploads/po
 wprost na kartę) też przeszło na `requireGm`; gracz nie ma już żadnej trasy, którą wstawiłby
 plik do `uploads/`. Wspólny komponent to `PortraitPicker` — używają go i karta postaci, i
 kreator; nowe miejsce z portretem bierze jego, nie własnego `<input type="file">`.
+
+**Nowy rodzaj obiektu na mapie dopisuje się do `SCENE_OBJECT_KINDS` w `shared/scene-objects.ts`
+— i nigdzie indziej nie wolno zapomnieć (etap 27k).** Od 27k wszystko, co stoi na scenie,
+kasuje się jednym gestem: warstwa → klik w obiekt → `Delete`, a `Ctrl+Z` cofa. Ta jedna lista
+trzyma to razem w czterech miejscach naraz:
+
+- `pickSceneObject` w `shared` odpowiada „co jest pod kursorem" — po **jednym rodzaju naraz**,
+  bo wywołujący podaje tylko te kolekcje, których dotyczy jego uzbrojone narzędzie. To jest cała
+  reguła „warstwa": narzędzie świateł nie złapie osłony, choćby leżała dokładnie pod kursorem.
+  Kolejność wpisów w tablicy to kolejność **od wierzchu** (pinezka wygrywa z gniazdem, gniazdo
+  z lampą, rysunek przegrywa ze wszystkim) i jest odwrotnością kolejności rysowania warstw
+  w `MapRenderer`;
+- `armedLayerKind()` w `MapRenderer` mapuje uzbrojone narzędzie na rodzaj; brak wpisu znaczy
+  warstwę, która niczego nie łapie (linijka, mgła — nie zostawiają obiektów);
+- `deleteSceneObject` w `MapArea` to **jedyna** droga kasowania i jest `switch`-em, nie drabinką
+  warunków: ósmy rodzaj nie skompiluje się, dopóki nie dostanie tam swojej gałęzi. Każda ścieżka
+  sprawdza `ack` i mówi zdaniem, gdy się nie udało — trzy gumki tego nie robiły i chybiony klik
+  nie tłumaczył niczego (to był jeden z trzech błędów zamkniętych w 27k);
+- `restoreRows` w `realtime/scene-undo.ts` odtwarza wiersz **z tym samym id**. Tam też dopisuje
+  się emiter, którym nowy rodzaj rozsyła swoją zmianę.
+
+**Cofanie żyje na serwerze, w pamięci procesu.** `rememberDeletion` (`realtime/undo-buffer.ts`)
+wołane **przed** `delete`, z całym wierszem Prismy przepuszczonym przez `scalarRow`. Kosz hurtowy
+odkłada całą grupę jako **jedną** pozycję, więc jedno `Ctrl+Z` cofa cały kosz — to zastąpiło okna
+potwierdzenia, których kosze nie miały. `undo-buffer.ts` nie importuje **żadnego** modułu zdarzeń
+i to jest jedyny powód jego istnienia: zapisuje do niego siedem plików naraz, a odtwarzanie
+(które musi znać ich emitery) mieszka piętro wyżej w `scene-undo.ts`.
+
+**Ściany: końcówka rysuje, środek zaznacza.** `wallEndpointNear` w `shared/walls.ts` rozstrzyga
+klik przy narożniku (≤ `WALL_ENDPOINT_SNAP_PX`) na korzyść **rysowania łańcucha**, bo promień
+trafienia w segment jest większy od promienia przyciągania i bez tego wyjątku nie dałoby się
+zacząć nowej ściany dokładnie na rogu istniejącej. Trwający łańcuch wygrywa z jednym i drugim.
+Tryby `lock` i `share` nie zaznaczają nic — tam klik znaczy „przekręć rygiel" i „oddaj graczom".
+
+**Podpowiedź nad mapą pisze się `--map-ink`, nie `--text`.** `--map-panel` jest ciemny w **obu**
+motywach i taki ma zostać (Pixi rysuje pod nim białe podpisy żetonów), więc kolor pisma
+aplikacji daje w dzień czarne na czarnym. Znalezione 23.08 przy 27k; dotyczyło wszystkich
+podpowiedzi nad mapą.

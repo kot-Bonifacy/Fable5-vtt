@@ -9,6 +9,43 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Przeniesione 2026-08-23 (etap 27k — edycja sceny)
+
+Wszystkie trzy poniższe zamknął etap 27k razem z przepisaniem gramatyki kasowania. Treść
+pozycji zostawiona bez zmian; pod nią, wcięte, to, co naprawdę je zamknęło.
+
+- **Trzy błędy edycji sceny — objęte etapem 27k** (`etap-27k-edycja-sceny.md`, dopisany 23.08).
+  Zostawione tutaj na wypadek, gdyby etap się przesunął, bo każdy da się naprawić osobno.
+  (1) **Ciche gumki:** `MapArea.tsx:584, 728, 762` — `deleteWall`, `deleteLight`
+  i `removeNetAccessPoint` idą bez sprawdzenia `ack` i bez słowa przy chybieniu, więc klik obok
+  obiektu nie robi nic i nie tłumaczy dlaczego (osłony i strefy robią to poprawnie).
+  (2) **Brak koszy dla świateł i gniazd:** nie ma zdarzeń `light:clear` ani `netpoint:clear`,
+  choć ściany, osłony, strefy i rysunki mają swoje — scena zaśmiecona lampami wymaga klikania
+  ich po jednej. (3) **`zone` i `netpoint` nie są w `MAP_TOOL_KEYS`** (`shortcuts.ts:52`), więc
+  nie mają skrótu i **nie pokazują się w oknie pomocy `?`** — narzędzie punktów dostępu jest
+  jedynym, o którym pomoc milczy, i to była bezpośrednia przyczyna pytania MG z 23.08.
+
+  **Zamknięte 23.08 przez 27k.** (1) Ciche gumki zniknęły razem z gumkami: kasowanie idzie
+  jedną drogą (`deleteSceneObject` w `MapArea.tsx`), która sprawdza `ack` i mówi zdaniem przy
+  każdej odmowie — pilnuje tego `client/scene-edit.test.ts`. (2) `light:clear` i `netpoint:clear`
+  dopisane na serwerze wraz z koszami w pasku; obydwa odkładają całą grupę jako jedną pozycję
+  cofania (`server/scene-undo.test.ts`). (3) `zone` (`S`) i `netpoint` (`P`) weszły do
+  `MAP_TOOL_KEYS`, więc pojawiły się w oknie `?` same z siebie; nowy test „każde narzędzie mapy
+  ma klawisz i wiersz w pomocy" przewraca się, gdy ktoś doda narzędzie i o wpisie zapomni.
+
+- **Kosz „usuń wszystkie osłony" kasuje bez pytania i bez cofnięcia.** `MapTools.tsx` woła
+  `clearCovers(sceneId)` prosto z `onClick`, a scena potrafi mieć kilkanaście osłon budowanych
+  przez pół sesji. Wszystkie inne kosze w aplikacji (wpis dziennika, handout, scena) pytają
+  dwustopniowo. Sprawdzone 22.08: jeden klik zdjął „Samochód 25/25" i licznik od razu pokazał
+  „brak osłon". **Rozwiązanie zaplanowane w 27k** i inne, niż zakładała ta pozycja: nie okno
+  potwierdzenia, tylko `Ctrl+Z` — kosz odkłada całą grupę jako **jedną** pozycję cofania.
+
+  **Zamknięte 23.08 przez 27k, innym rozwiązaniem, niż zakładała pozycja.** Nie okno
+  potwierdzenia, tylko `Ctrl+Z`: `cover:clear` odkłada wszystkie osłony sceny jako **jedną**
+  pozycję w serwerowym buforze cofania, więc jedno wciśnięcie klawisza przywraca je razem —
+  z bieżącymi PW, których `cover:create` nie przyjmuje. Odklikane 23.08 na „Strzelnicy"
+  (na gniazdach, bo to była większa grupa: kosz zdjął 6, `Ctrl+Z` oddał 6).
+
 ## Przeniesione 2026-08-23 (sesja triażu zaległości: kompendium, portrety, kości, wybuch)
 
 - **🐞 BŁĄD — „Usuń" przy własnym wpisie kompendium kasował bez pytania.** `CompendiumPanel.tsx`

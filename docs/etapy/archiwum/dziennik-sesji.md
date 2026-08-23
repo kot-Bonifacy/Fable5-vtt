@@ -7,6 +7,82 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 23.08 — pasy zasięgu na trasie ruchu, trasa figur 2×2, prettier; poza etapami
+
+**Zlecenie MG:** wskazując kursorem cel, gracz ma **z góry** widzieć kolorem, dokąd sięga w tej
+turze. Na pytania uzupełniające MG wybrał: **dwa progi + reszta** (zielony — budżet Akcji Ruchu,
+bursztyn — dosięgalne po oddaniu Akcji za Bieg, szary — poza turą), **ślady butów** zamiast linii,
+klik w bursztyn **bez zmiany zachowania** (nadal do granicy zielonego) i **bez ruszania**
+zacienienia zasięgu. W trakcie oględzin MG zdejmował kolejne warstwy: najpierw linię pod śladami,
+potem wszystkie liczby, kreski graniczne i ✖ — „wystarczy sam kolor". Doszło też: ślad ma trzymać
+rozmiar tokenu (nie ekranu), palce mają być rozstawione **na zewnątrz**, a ślad ma być **butem**,
+nie bosą stopą.
+
+**Co powstało.**
+
+1. **`TurnDistanceView.extra`** w `shared/src/combat.ts` — systemowo neutralne „ile jeszcze da się
+   dokupić i jak ten handel się nazywa". Wypełnia je `cpredRunMetres` (`systems/cpred/turn.ts`,
+   6 nowych testów): metry Biegu, dopóki Akcja jest wolna, zero po ataku i przy blokadzie rany.
+   `requiresSpentMove` **nie** jest tu sprawdzane — dojście za pierwszą Akcję Ruchu wydaje ją po
+   drodze, więc próg widać, zanim Bieg da się kliknąć. Mapa nie zna słowa „Bieg" (umowa kodu).
+2. **Ślady butów zamiast trasy.** `boot-print.svg` — lewy but wycięty z pary `boot-prints`
+   (Lorc, CC BY 3.0, wiersz w `ATTRIBUTION.md`); prawy to jego lustro. Ślad co metr, na przemian
+   z obu stron osi, palcami w kierunku marszu i rozstawiony o `FOOTPRINT_TOE_OUT` na zewnątrz.
+   Rozmiar liczony **szerokością tokenu** (`FOOTPRINT_*_RATIO`), nie `overlayScale()` — trail
+   trzyma jeden rozmiar przy każdym przybliżeniu, a duża figura zostawia duże ślady.
+3. **Wszystko inne zdjęte.** Z podglądu wypadły: linia trasy, etykiety metrów (noga, suma,
+   „Bieg: +X"), kreski na granicach pasów i ✖ na kratce lądowania — razem z martwą maszynerią
+   (`addWalkLabel`, `walkTexts`, `bandTick`, `routeAt`). Zostały ślady i kółka punktów trasy.
+
+**Jedna regresja własna, złapana i naprawiona.** Promień szukania trasy trzeba było rozszerzyć
+o pas Biegu (inaczej bursztyn nie miałby czego malować) — i to odsłoniło, że `clipWalkToBudget`
+z `shared` tnie na **punkcie zwrotnym**. Na wygładzonej prostej (dwa punkty) cięcie zostawiało
+sam start, więc gracz klikający poza budżet dostawał „Nie starcza ruchu w tej turze" zamiast
+przejść, ile się da. Nowe `clipToBudget` w `MapRenderer` tnie **na metrze**, przyciąga
+(`snapTokenPosition`), sprawdza budżet i przejście ponownie, a gdy się nie mieści — cofa się
+o kratkę. Wpis w `pulapki-dev.md`.
+
+**Odklikane w przeglądarce.** MG (budżet nieegzekwowany): trasa rysowana przez wszystkie trzy
+pasy. Gracz (avatar9, budżet 10 m): zielony kończy się dokładnie na granicy zasięgu, klik daleko
+poza budżet przeszedł **10 m / 10 m** z komunikatem „Koniec ruchu w tej turze" — czyli ścieżka,
+którą regresja psuła. Po wyczerpaniu Ruchu cała trasa robi się bursztynowa (Bieg jeszcze płaci),
+a przy zerowym budżecie nie ma zielonego wcale. Zamyka to zaległość „16e (3) ✖ na granicy budżetu
+u gracza" — ✖ zniknął, ale granica jest widoczna kolorem, i to sprawdzone na żywo.
+
+**Poligon przywrócony:** tryb turowy wyłączony, żeton avatar9 wrócił na swoje miejsce.
+
+**Nie ruszone:** błąd „podgląd trasy figury 2×2 przechodzi przez ściany" (pierwsza pozycja
+w `zaleglosci.md`) siedzi w dokładnie tym kodzie — proponowałem naprawić przy okazji, decyzji
+nie było, więc został nietknięty.
+
+**Potem, na zlecenie MG, dwie rzeczy poza pasami.**
+
+1. **Figura 2×2 planowała trasę przez ściany — naprawione.** Wbrew hipotezie z 22.08 winny był
+   **planer w `shared`**, nie klient: `canStep` szedł **jedną linią, od środka figury do środka**.
+   Dla 1×1 ta linia jest całym ciałem; środek figury 2×2 trzyma się o kratkę od muru, więc połowa
+   tokenu przechodziła przez ścianę. Serwer pytał inaczej (`firstBlockedStep` prowadzi po jednej
+   linii na każde pole footprintu od 21.08) — stąd „podgląd rysuje drogę, marsz staje po ułamku
+   metra". Nowe `laneClear` w `pathfinding.ts` robi u planera to samo w trzech miejscach: krok A\*,
+   zalew zasięgu i wygładzanie. Trzy testy odtwarzają geometrię; bez poprawki padają dwa.
+   **Odklikane przez MG** (mnie automat nie wpuścił — patrz „Czego nie udało się sprawdzić"):
+   figura 2×2 obchodzi mur. Zostało jedno: przechodzi **odrobinę za blisko** ścian — świadoma
+   konsekwencja tego, że planer i serwer pytają o środki kratek, a nie o obrys. MG uznał to za
+   akceptowalne; pozycja w `zaleglosci.md`.
+2. **Repozytorium jest zgodne z prettierem.** Z 61 niezgodnych plików 41 to wygenerowany klient
+   Prismy — poszedł do `.prettierignore` (i tak przepisuje go `prisma generate`). Reszta to
+   dokumentacja i `shared/src/index.ts`. Jeden plik, `etap-18d-…md`, prettier przepisywał w kółko:
+   miał puste linie w środku punktów listy i kontynuacje na 14 spacjach, co czyta się raz jako
+   akapit, raz jako blok kodu. Struktura list poprawiona, treść bez zmian.
+
+**Czego nie udało się sprawdzić.** Zbudowania sceny 2×2 ze ścianą **nie da się zrobić automatem**:
+narzędzie ścian rysuje podgląd, ale syntetycznych zdarzeń wskaźnika nie zapisuje (ściana znika po
+wyłączeniu narzędzia), z płótna Pixi nie da się odczytać pikseli do powiększenia, a żeton bez karty
+postaci nie przyjmuje rozkazu marszu u gracza. Ściana i żeton wstawione wprost do bazy też nie dały
+jednoznacznego odczytu. **Poligon został przywrócony co do żetonu i ściany** (sprawdzone zapytaniem
+do bazy: cztery żetony na swoich miejscach, zero ścian, tryb turowy wyłączony).
+
+**Testy:** 1369 w `shared`, 760 na serwerze, 36 u klienta — zielone.
+
 ### Sesja 22.08 (piąta tego dnia) — triaż zaległości 1–8, poza etapami
 
 **Zlecenie MG:** wypisać ~10 otwartych zaległości (bez rzeczy czekających na lokalny LLM i bez

@@ -10,6 +10,7 @@ import type {
 import { ROLE_GM, WALL_MAX_PER_SCENE, isOpening, isWallKind, sanitizeWallChain } from '@vtt/shared';
 import type { Scene } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
+import { rememberDeletion, scalarRow } from './undo-buffer.js';
 import { requireCampaignScene } from './scenes.js';
 import { gmRoom } from './state.js';
 import { emitSceneTokensToPlayers } from './tokens.js';
@@ -151,7 +152,7 @@ export const wallUpdateEvent = defineEvent<WallUpdatePayload, WallView>({
 export const wallDeleteEvent = defineEvent<WallDeletePayload>({
   name: 'wall:delete',
   role: ROLE_GM,
-  handler: async ({ deps, socket, payload }) => {
+  handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
     const wallId = payload?.wallId;
     if (typeof wallId !== 'number' || !Number.isInteger(wallId)) {
@@ -163,6 +164,16 @@ export const wallDeleteEvent = defineEvent<WallDeletePayload>({
     });
     if (!row || row.scene.campaignId !== campaignId) throw new RealtimeError('WALL_NOT_FOUND');
 
+    // Odłożone **przed** usunięciem — po `delete` wiersza już nie ma czego
+    // zapamiętać, a `Ctrl+Z` ma wstawić dokładnie ten sam segment z tym samym
+    // id, zamkiem i flagą „gracze mogą" (etap 27k).
+    rememberDeletion({
+      campaignId,
+      userId: user.id,
+      sceneId: row.sceneId,
+      kind: 'wall',
+      rows: [scalarRow(row)],
+    });
     await deps.ctx.prisma.wall.delete({ where: { id: row.id } });
     await afterWallChange(deps, campaignId, row.scene);
   },
@@ -171,9 +182,19 @@ export const wallDeleteEvent = defineEvent<WallDeletePayload>({
 export const wallClearEvent = defineEvent<WallClearPayload>({
   name: 'wall:clear',
   role: ROLE_GM,
-  handler: async ({ deps, socket, payload }) => {
+  handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
     const scene = await requireCampaignScene(deps.ctx.prisma, campaignId, payload?.sceneId);
+    // Kosz odkłada **całą grupę jako jedną pozycję**, więc jedno `Ctrl+Z` cofa
+    // cały kosz — to jest to, co zastąpiło okna potwierdzenia (etap 27k).
+    const doomed = await deps.ctx.prisma.wall.findMany({ where: { sceneId: scene.id } });
+    rememberDeletion({
+      campaignId,
+      userId: user.id,
+      sceneId: scene.id,
+      kind: 'wall',
+      rows: doomed.map(scalarRow),
+    });
     await deps.ctx.prisma.wall.deleteMany({ where: { sceneId: scene.id } });
     await afterWallChange(deps, campaignId, scene);
   },

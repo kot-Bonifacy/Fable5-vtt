@@ -1,4 +1,5 @@
 import type {
+  LightClearPayload,
   LightCreatePayload,
   LightDeletePayload,
   LightSyncBroadcast,
@@ -26,6 +27,7 @@ import {
 import type { Scene } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { fetchSceneLights, toLightScene, toLightView } from './lights-io.js';
+import { rememberDeletion, scalarRow } from './undo-buffer.js';
 import { fetchSceneWalls } from './walls-io.js';
 import { requireCampaignScene, toSceneView } from './scenes.js';
 import { campaignRoom, gmRoom, sceneRoom } from './state.js';
@@ -64,7 +66,7 @@ async function emitLightsToGm(deps: RealtimeDeps, campaignId: string, sceneId: s
  * The full round trip of a light change: the GM gets the new list, every player
  * gets what that light now lets them see.
  */
-async function afterLightChange(
+export async function afterLightChange(
   deps: RealtimeDeps,
   campaignId: string,
   scene: Scene,
@@ -190,11 +192,45 @@ export const lightUpdateEvent = defineEvent<LightUpdatePayload, LightView>({
 export const lightDeleteEvent = defineEvent<LightDeletePayload>({
   name: 'light:delete',
   role: ROLE_GM,
-  handler: async ({ deps, socket, payload }) => {
+  handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
     const row = await requireCampaignLight(deps, campaignId, payload?.lightId);
+    rememberDeletion({
+      campaignId,
+      userId: user.id,
+      sceneId: row.sceneId,
+      kind: 'light',
+      rows: [scalarRow(row)],
+    });
     await deps.ctx.prisma.mapLight.delete({ where: { id: row.id } });
     await afterLightChange(deps, campaignId, row.scene);
+  },
+});
+
+/**
+ * Kosz warstwy świateł (etap 27k).
+ *
+ * Ściany, osłony, strefy i rysunki miały swój kosz od dawna, lampy nie — więc
+ * scena zaśmiecona eksperymentem z oświetleniem wymagała klikania ich po
+ * jednej. Jak każdy kosz od 27k: żadnego okna potwierdzenia, cała grupa idzie
+ * do bufora cofania jako **jedna** pozycja.
+ */
+export const lightClearEvent = defineEvent<LightClearPayload>({
+  name: 'light:clear',
+  role: ROLE_GM,
+  handler: async ({ deps, socket, user, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    const scene = await requireCampaignScene(deps.ctx.prisma, campaignId, payload?.sceneId);
+    const doomed = await deps.ctx.prisma.mapLight.findMany({ where: { sceneId: scene.id } });
+    rememberDeletion({
+      campaignId,
+      userId: user.id,
+      sceneId: scene.id,
+      kind: 'light',
+      rows: doomed.map(scalarRow),
+    });
+    await deps.ctx.prisma.mapLight.deleteMany({ where: { sceneId: scene.id } });
+    await afterLightChange(deps, campaignId, scene);
   },
 });
 

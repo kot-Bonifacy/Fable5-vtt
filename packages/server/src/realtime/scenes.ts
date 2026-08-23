@@ -21,6 +21,7 @@ import {
 import type { PrismaClient } from '../db.js';
 import type { Scene } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
+import { forgetScene } from './undo-buffer.js';
 import { campaignRoom, gmRoom, sceneRoom } from './state.js';
 
 export function toSceneView(scene: Scene): SceneView {
@@ -220,6 +221,10 @@ export const sceneDeleteEvent = defineEvent<SceneIdPayload>({
     if (scene.active) throw new RealtimeError('SCENE_ACTIVE');
 
     await deps.ctx.prisma.scene.delete({ where: { id: scene.id } });
+    // Bufor cofania (27k) trzyma całe wiersze z `sceneId` w środku. Scena poszła
+    // kaskadą, więc pozycja, która chciałaby je odtworzyć, wysadziłaby `Ctrl+Z`
+    // błędem klucza obcego — zapominamy ją razem ze sceną.
+    forgetScene(campaignId, scene.id);
 
     // Kick remaining viewers (GM tabs) of the deleted scene back to nothing.
     const viewers = await deps.io.in(sceneRoom(scene.id)).fetchSockets();

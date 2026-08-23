@@ -133,6 +133,11 @@ export interface NetAccessPointIdPayload {
   id: number;
 }
 
+/** Kosz warstwy gniazd (etap 27k) — bliźniak `LightClearPayload`. */
+export interface NetAccessPointClearPayload {
+  sceneId: string;
+}
+
 // ──────────────────────────────── run (etap 26b) ────────────────────────────────
 
 /**

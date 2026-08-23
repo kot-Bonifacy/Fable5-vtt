@@ -17,6 +17,7 @@ import type { PrismaClient } from '../db.js';
 import type { MapDrawing, Scene } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { requireCampaignScene } from './scenes.js';
+import { rememberDeletion, scalarRow } from './undo-buffer.js';
 import { campaignRoom, gmRoom, sceneRoom } from './state.js';
 
 /**
@@ -42,7 +43,7 @@ import { campaignRoom, gmRoom, sceneRoom } from './state.js';
 type DrawingRow = MapDrawing & { author: { name: string } };
 
 /** Rebuilds a stored row into the shared view; null when the JSON is unusable. */
-function toDrawingView(row: DrawingRow): DrawingView | null {
+export function toDrawingView(row: DrawingRow): DrawingView | null {
   let geometry: unknown;
   try {
     geometry = JSON.parse(row.data);
@@ -102,7 +103,7 @@ function requireCampaignId(socketData: { campaign: { id: string } | null }): str
  * when it goes campaign-wide (a targeted emission must never consume a seq —
  * the gap would make every other client think it had missed an event).
  */
-function emitDrawingEvent(
+export function emitDrawingEvent(
   deps: RealtimeDeps,
   campaignId: string,
   scene: Pick<Scene, 'id' | 'active'>,
@@ -180,6 +181,17 @@ export const drawingDeleteEvent = defineEvent<DrawingDeletePayload>({
     // The shared whiteboard rule: your own lines are yours, the GM owns the map.
     if (user.role !== ROLE_GM && row.authorId !== user.id) throw new RealtimeError('FORBIDDEN');
 
+    // Także graczowi: `Ctrl+Z` u gracza cofa jego własną kreskę, bo to jedyna
+    // rzecz, którą gracz w ogóle może usunąć (etap 27k). Rozstrzyga `userId` w
+    // buforze, nie rola.
+    const { scene: _scene, ...columns } = row;
+    rememberDeletion({
+      campaignId,
+      userId: user.id,
+      sceneId: row.sceneId,
+      kind: 'drawing',
+      rows: [scalarRow(columns)],
+    });
     await deps.ctx.prisma.mapDrawing.delete({ where: { id: row.id } });
     emitDrawingEvent(
       deps,
@@ -202,9 +214,16 @@ export const drawingClearEvent = defineEvent<DrawingClearPayload>({
     if (scope === 'all' && user.role !== ROLE_GM) throw new RealtimeError('FORBIDDEN');
 
     const authorId = scope === 'mine' ? user.id : null;
-    await deps.ctx.prisma.mapDrawing.deleteMany({
-      where: { sceneId: scene.id, ...(authorId ? { authorId } : {}) },
+    const where = { sceneId: scene.id, ...(authorId ? { authorId } : {}) };
+    const doomed = await deps.ctx.prisma.mapDrawing.findMany({ where });
+    rememberDeletion({
+      campaignId,
+      userId: user.id,
+      sceneId: scene.id,
+      kind: 'drawing',
+      rows: doomed.map(scalarRow),
     });
+    await deps.ctx.prisma.mapDrawing.deleteMany({ where });
 
     // The broadcast carries the rule rather than the resulting list: every
     // client already holds the drawings it is allowed to see, so „drop the

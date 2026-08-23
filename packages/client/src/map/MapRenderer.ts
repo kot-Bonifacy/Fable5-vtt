@@ -27,6 +27,8 @@ import type {
   LightMask,
   MapFxEffect,
   MapNoteView,
+  SceneObjectKind,
+  SceneObjectRef,
   ScenePoint,
   SceneView,
   TokenSnapScene,
@@ -50,6 +52,7 @@ import {
   coverStanding,
   zoneLabel,
   zoneStanding,
+  drawingBounds,
   decodeFlagRuns,
   decodeLevelRuns,
   facingFromDelta,
@@ -58,6 +61,7 @@ import {
   isOpening,
   metresPerPixel,
   NET_ACCESS_RANGE_M,
+  pickSceneObject,
   smokeSidePx,
   normalizeGridOffset,
   planWalk,
@@ -70,6 +74,7 @@ import {
   squaresForDistance,
   thinWalk,
   walkGridForScene,
+  wallEndpointNear,
   wallMidpoint,
   TOKEN_PATH_MAX_POINTS,
 } from '@vtt/shared';
@@ -153,7 +158,8 @@ export interface DrawSettings {
 /** The wall tool's current setting, pushed in from the toolbar (stages 18a, 18d). */
 export interface WallSettings {
   armed: boolean;
-  mode: 'draw' | 'erase' | 'lock' | 'share';
+  /** Od 27k bez `erase`: kasuje się zaznaczeniem i `Delete`, jak wszędzie. */
+  mode: 'draw' | 'lock' | 'share';
   kind: WallKind;
   snapGrid: boolean;
 }
@@ -166,7 +172,6 @@ export interface WallSettings {
  */
 export interface CoverSettings {
   armed: boolean;
-  mode: 'draw' | 'erase';
 }
 
 /**
@@ -176,7 +181,6 @@ export interface CoverSettings {
  */
 export interface ZoneSettings {
   armed: boolean;
-  mode: 'draw' | 'edit' | 'erase';
 }
 
 /**
@@ -188,7 +192,6 @@ export interface ZoneSettings {
  */
 export interface LightSettings {
   armed: boolean;
-  mode: 'place' | 'erase';
 }
 
 /**
@@ -224,7 +227,6 @@ export interface AccessPointMarker {
 
 export interface AccessPointSettings {
   armed: boolean;
-  mode: 'place' | 'erase';
 }
 
 export interface LightMarker {
@@ -378,6 +380,18 @@ const MAX_ZOOM = 8;
 const DRAG_THRESHOLD_PX = 4;
 /** Max gap between two clicks on a token to count as a double-click. */
 const DOUBLE_CLICK_MS = 350;
+/** Ile pikseli ekranu wolno drgnąć ręce, żeby gest liczył się jeszcze jako klik. */
+const TAP_SLOP_PX = 6;
+
+/**
+ * Czy to ten sam obiekt scenerii (etap 27k). Porównanie po wartości, bo każdy
+ * `pickSceneObject` oddaje świeżą parę `{ kind, id }` — porównanie referencji
+ * nie zgodziłoby się nigdy, więc obrys przerysowywałby się na każdym ruchu myszy.
+ */
+function sameRef(a: SceneObjectRef | null, b: SceneObjectRef | null): boolean {
+  if (a === null || b === null) return a === b;
+  return a.kind === b.kind && a.id === b.id;
+}
 /** How long after a drop a map click is still the drop's own pointer release. */
 const DRAG_CLICK_GRACE_MS = 250;
 /**
@@ -778,12 +792,8 @@ export class MapRenderer {
   onDrawingCreate: ((shape: DrawingShape) => void) | null = null;
   /** Click with the text tool armed: the caller asks for the words (world px). */
   onDrawingTextPlace: ((x: number, y: number) => void) | null = null;
-  /** Click with the eraser armed; the caller decides which drawing that hits. */
-  onDrawingErase: ((x: number, y: number) => void) | null = null;
   /** A wall chain was closed — send its points to the server (stage 18a). */
   onWallChain: ((points: ScenePoint[]) => void) | null = null;
-  /** Click with the wall eraser armed; the caller picks the segment. */
-  onWallErase: ((x: number, y: number) => void) | null = null;
   /** Click with the bolt armed (stage 18d); the caller picks the door. */
   onWallLock: ((x: number, y: number) => void) | null = null;
   /** Klik trybem „udostępnienie" — przełącza uchwyt drzwi/okna dla graczy (18d). */
@@ -793,18 +803,13 @@ export class MapRenderer {
   /** Click with the light tool armed: place a lamp, or retune the one here. */
   onLightPlace: ((x: number, y: number) => void) | null = null;
   onAccessPointPlace: ((x: number, y: number) => void) | null = null;
-  onAccessPointErase: ((x: number, y: number) => void) | null = null;
   /** Clicking a socket with no tool armed: the GM edits it, a player jacks in. */
   onAccessPointOpen: ((id: number) => void) | null = null;
-  /** Click with the light eraser armed; the caller picks the lamp. */
-  onLightErase: ((x: number, y: number) => void) | null = null;
   /** Click on a lamp marker with no tool armed — switch it on or off. */
   onLightToggle: ((lightId: number) => void) | null = null;
   /** A cover rectangle was dragged out (stage 16c) — world pixels. */
   onCoverRect: ((rect: { x: number; y: number; width: number; height: number }) => void) | null =
     null;
-  /** Click with the cover eraser armed; the caller picks the rectangle. */
-  onCoverErase: ((x: number, y: number) => void) | null = null;
   /**
    * Click on a cover with no tool armed (stage 16c) — „ostrzelaj samochód".
    *
@@ -816,18 +821,16 @@ export class MapRenderer {
   /** A defended-zone rectangle was dragged out (stage 26f) — world pixels. */
   onZoneRect: ((rect: { x: number; y: number; width: number; height: number }) => void) | null =
     null;
-  /** Click with the zone eraser armed; the caller picks the rectangle. */
-  onZoneErase: ((x: number, y: number) => void) | null = null;
   /**
-   * Click with the zone tool in „edit" mode — the GM's card for the rectangle
-   * under the pointer.
-   *
-   * A mode of the tool rather than a plain click on the layer, and that is the
-   * whole reason the tool has three modes instead of two: a defended zone is
-   * usually a *corridor*, and a card that opened on every click inside it would
-   * take walking, dragging and aiming away from everybody standing there.
+   * Zaznaczono obiekt scenerii na uzbrojonej warstwie (etap 27k). Renderer
+   * maluje obrys sam; wywołanie jest po to, żeby store i pasek narzędzi
+   * wiedziały, co `Delete` skasuje.
    */
-  onZoneOpen: ((x: number, y: number) => void) | null = null;
+  onSceneSelect: ((ref: SceneObjectRef | null) => void) | null = null;
+  /** Dwuklik w obiekt: otwórz jego kartę tam, gdzie taka istnieje. */
+  onSceneActivate: ((ref: SceneObjectRef) => void) | null = null;
+  /** Obiekt pod kursorem — służy wyłącznie podpowiedzi pod paskiem narzędzi. */
+  onSceneHover: ((ref: SceneObjectRef | null) => void) | null = null;
 
   private readonly app = new Application();
   private viewport: Viewport | null = null;
@@ -990,7 +993,6 @@ export class MapRenderer {
     fontSize: 48,
   };
   /** Eraser armed: a click reports the world point, the caller picks the shape. */
-  private erasing = false;
   /** Drawing gesture in progress: freehand samples, or the drag's two corners. */
   private drawPoints: ScenePoint[] | null = null;
   private drawStart: ScenePoint | null = null;
@@ -1019,20 +1021,57 @@ export class MapRenderer {
   private wallPoints: ScenePoint[] | null = null;
   private wallCursor: ScenePoint | null = null;
   /** Light tool settings; `armed` decides whether a click places or removes. */
-  private light: LightSettings = { armed: false, mode: 'place' };
-  private netPoint: AccessPointSettings = { armed: false, mode: 'place' };
+  private light: LightSettings = { armed: false };
+  private netPoint: AccessPointSettings = { armed: false };
   /** Cover tool settings (stage 16c); a drag draws, a click erases. */
-  private cover: CoverSettings = { armed: false, mode: 'draw' };
+  private cover: CoverSettings = { armed: false };
   /** Corners of the rectangle being dragged, null when no drag is in flight. */
   private coverRectStart: ScenePoint | null = null;
   private coverRectEnd: ScenePoint | null = null;
   private lastCovers: CoverView[] = [];
   private lastSmoke: SmokeView[] = [];
   /** Zone tool settings (stage 26f); a drag draws, a click erases. */
-  private zone: ZoneSettings = { armed: false, mode: 'draw' };
+  private zone: ZoneSettings = { armed: false };
   private zoneRectStart: ScenePoint | null = null;
   private zoneRectEnd: ScenePoint | null = null;
   private lastZones: DefenseZoneView[] = [];
+  private lastDrawings: DrawingView[] = [];
+  /**
+   * Zaznaczony i najechany obiekt scenerii (etap 27k) — lustro
+   * `sceneSelectionStore`, tak jak `selectedTokenId` jest lustrem
+   * `selectionStore`. Renderer trzyma własną kopię, bo maluje obrys w każdej
+   * klatce przeskalowania, a store czyta React.
+   */
+  private sceneSelected: SceneObjectRef | null = null;
+  private sceneHovered: SceneObjectRef | null = null;
+  private readonly sceneSelectGraphics = new Graphics();
+  /**
+   * Kto patrzy — potrzebne wyłącznie po to, żeby gracz nie łapał obrysem cudzej
+   * kreski. Uzupełniane z `setTokens`, które i tak niesie te dwa pola.
+   */
+  private viewerIsGm = false;
+  private viewerId: string | null = null;
+  /**
+   * Ostatnie trafienie i jego czas — Pixi nie ma dwukliku, więc liczymy dwa
+   * szybkie kliknięcia w ten sam obiekt (tak samo jak otwieranie karty figury).
+   */
+  private lastScenePick: { ref: SceneObjectRef; at: number } | null = null;
+  /**
+   * Czy `pointerdown` już zużył ten klik na zaznaczenie.
+   *
+   * Potrzebne dla **notatek**: pinezka stawia się w `clicked`, a nie w
+   * `pointerdown`, więc bez tej flagi klik w istniejącą pinezkę zaznaczyłby ją
+   * i od razu wbił obok drugą. Zerowane na początku każdego `pointerdown`, więc
+   * gest przerwany przeciągnięciem niczego nie zostawia na potem.
+   */
+  private layerPickSpent = false;
+  /**
+   * Gdzie zaczął się gest na warstwie rysowanej przeciągnięciem i co pod nim
+   * leżało. Prostokąt osłony, strefy i kształt rysunku powstają z **ruchu**, a
+   * krótkie kliknięcie w istniejący obiekt ma go zaznaczyć — więc decyzja
+   * zapada dopiero przy puszczeniu przycisku (patrz `tapPick`).
+   */
+  private dragPick: { ref: SceneObjectRef; at: ScenePoint } | null = null;
   /**
    * The tools whose click is answered on `pointerdown` and ends in a `return`
    * there — walls, lamps, sockets, covers and zones. `viewport` still emits
@@ -1072,7 +1111,6 @@ export class MapRenderer {
       this.notePlacing ||
       this.fogBrush.armed ||
       this.draw.armed ||
-      this.erasing ||
       this.toolSpentThisClick
     );
   }
@@ -1303,6 +1341,10 @@ export class MapRenderer {
     viewport.addChild(this.noteLayer);
     this.overlayLayer.addChild(this.rulerGraphics);
     this.overlayLayer.addChild(this.moveGraphics);
+    // Obrys zaznaczonej scenerii pod pierścieniem figury: jedno i drugie nigdy
+    // nie świeci naraz (zaznaczenia wykluczają się wzajemnie), ale kolejność
+    // ma znaczenie w chwili przełączenia.
+    this.overlayLayer.addChild(this.sceneSelectGraphics);
     this.overlayLayer.addChild(this.selectGraphics);
     this.overlayLayer.addChild(this.aimGraphics);
     // The shaded floor goes under the route and the trail: it is the ground,
@@ -1376,6 +1418,10 @@ export class MapRenderer {
       // this click; letting it through here would also drop a token in the
       // middle of a floor plan or send a figure marching (see the getter).
       if (this.toolSpentThisClick) return;
+      // `pointerdown` zaznaczył obiekt na tej warstwie — ten klik jest zużyty
+      // (27k). Bez tego klik w istniejącą pinezkę zaznaczyłby ją i od razu wbił
+      // obok drugą, bo notatka stawia się dopiero tutaj.
+      if (this.layerPickSpent) return;
       if (this.notePlacing) {
         this.onNotePlace?.(Math.round(event.world.x), Math.round(event.world.y));
         return;
@@ -1384,7 +1430,7 @@ export class MapRenderer {
       // A weapon in hand used to swallow this click; since stage 16f it does
       // not — the ground under an armed figure still means „walk there", which
       // is the difference between a crosshair and a modal targeting mode.
-      if (this.rulerMode || this.fogBrush.armed || this.draw.armed || this.erasing) return;
+      if (this.rulerMode || this.fogBrush.armed || this.draw.armed) return;
       // A click that landed on a token has already been answered by the token
       // itself — selecting it, opening its sheet, stopping a march.
       if (isTokenTarget(event.event.target)) return;
@@ -1456,6 +1502,13 @@ export class MapRenderer {
     this.setVision(this.lastVisionPolygons, this.visionActive);
     if (sceneChanged) {
       this.clearTokens();
+      // Zaznaczenie obiektu należy do sceny — id ściany z poprzedniej mapy
+      // narysowałoby obrys w pustce (27k).
+      this.sceneSelected = null;
+      this.sceneHovered = null;
+      this.lastScenePick = null;
+      this.drawSceneSelectOutline();
+      this.onSceneSelect?.(null);
       this.setDrawings([]);
       this.setWalls([], []);
       this.setLights([]);
@@ -1478,6 +1531,10 @@ export class MapRenderer {
   setTokens(tokens: TokenView[], ctx: TokenNodeCtx): void {
     if (!this.viewport || this.destroyed) return;
     this.activeTokenId = ctx.activeTokenId;
+    // Kto patrzy — wyłącznie po to, by gracz nie łapał obrysem cudzej kreski
+    // (etap 27k). Nie nowe wejście do renderera: te dwa pola i tak tu jadą.
+    this.viewerIsGm = ctx.isGm;
+    this.viewerId = ctx.myUserId;
     const seen = new Set<string>();
     for (const token of tokens) {
       seen.add(token.id);
@@ -1512,6 +1569,9 @@ export class MapRenderer {
     // The ring and the reticle live on the overlay, so they do not travel with
     // the figure — every push that can move one has to redraw them.
     this.drawSelectionRing();
+    // Obrys zaznaczonej scenerii ma stałą grubość na ekranie, jak pierścień
+    // figury nad nim (27k).
+    this.drawSceneSelectOutline();
     this.drawAimReticle();
     this.updateReach();
   }
@@ -1564,13 +1624,6 @@ export class MapRenderer {
     this.applyMapCursor();
   }
 
-  /** Arms the eraser: a click reports the world point it landed on. */
-  setErasing(active: boolean): void {
-    if (this.erasing === active) return;
-    this.erasing = active;
-    this.applyMapCursor();
-  }
-
   /**
    * The pointer says what the click will do. Tools come first — an armed brush
    * means the same thing everywhere — and the walk cursor fills the gap left
@@ -1592,6 +1645,14 @@ export class MapRenderer {
       canvas.style.cursor = this.walkCursor;
       return;
     }
+    // Obiekt pod kursorem na uzbrojonej warstwie wygrywa z kształtem samego
+    // narzędzia (etap 27k). To jedno załatwia „nie wiedziałem, że to jest
+    // klikalne" — dłoń nad gniazdem mówi, że klik czegoś dotyczy, zanim
+    // ktokolwiek przeczyta podpowiedź pod paskiem.
+    if (this.sceneHovered) {
+      canvas.style.cursor = 'pointer';
+      return;
+    }
     canvas.style.cursor = this.targeting
       ? 'crosshair'
       : this.fogBrush.armed
@@ -1603,19 +1664,13 @@ export class MapRenderer {
               ? 'crosshair'
               : 'pointer'
             : this.cover.armed
-              ? this.cover.mode === 'erase'
-                ? 'pointer'
-                : 'crosshair'
+              ? 'crosshair'
               : this.zone.armed
-                ? this.zone.mode === 'draw'
-                  ? 'crosshair'
-                  : 'pointer'
+                ? 'crosshair'
                 : this.light.armed
-                  ? this.light.mode === 'erase'
-                    ? 'pointer'
-                    : 'copy'
-                  : this.erasing
-                    ? 'pointer'
+                  ? 'copy'
+                  : this.netPoint.armed
+                    ? 'copy'
                     : this.notePlacing
                       ? 'copy'
                       : this.rulerMode
@@ -1714,6 +1769,10 @@ export class MapRenderer {
    */
   setDrawings(drawings: DrawingView[]): void {
     if (this.destroyed) return;
+    // Trzymamy listę, mimo że węzły są diffowane po id: od 27k warstwa rysunku
+    // daje się zaznaczyć, a trafienie liczy geometria z `shared`, nie hit-test
+    // Pixi (kreska ma szerokość jednego piksela ekranu przy oddaleniu 0,18×).
+    this.lastDrawings = drawings;
     const seen = new Set<number>();
 
     for (const drawing of drawings) {
@@ -1764,6 +1823,10 @@ export class MapRenderer {
       if (event.button !== 0 || this.drag) return;
       const world = viewport.toWorld(event.global.x, event.global.y);
       const point = { x: Math.round(world.x), y: Math.round(world.y) };
+      // Nowy gest zaczyna się z czystym kontem: flaga „ten klik już poszedł na
+      // zaznaczenie" nie może przeżyć do następnego naciśnięcia (etap 27k).
+      this.layerPickSpent = false;
+      this.dragPick = null;
 
       // The rotation knob outranks the bare map but not an armed tool (stage
       // 27j): a click meant to paint fog must not turn a figure standing under
@@ -1783,10 +1846,11 @@ export class MapRenderer {
         return;
       }
       if (this.cover.armed) {
-        if (this.cover.mode === 'erase') {
-          this.onCoverErase?.(point.x, point.y);
-          return;
-        }
+        // Warstwa rysowana przeciągnięciem (27k): gest zaczyna się normalnie,
+        // a decyzja „to było zaznaczenie, nie nowy prostokąt" zapada dopiero
+        // przy puszczeniu przycisku — inaczej nie dałoby się narysować osłony
+        // nachodzącej na już stojącą.
+        this.rememberDragPick(point);
         // A cover *is* an extent, so unlike a lamp it is dragged out: the GM
         // draws the car the size the car is.
         this.coverRectStart = point;
@@ -1796,14 +1860,7 @@ export class MapRenderer {
         return;
       }
       if (this.zone.armed) {
-        if (this.zone.mode === 'erase') {
-          this.onZoneErase?.(point.x, point.y);
-          return;
-        }
-        if (this.zone.mode === 'edit') {
-          this.onZoneOpen?.(point.x, point.y);
-          return;
-        }
+        this.rememberDragPick(point);
         // A defended zone is an extent, like a cover: the GM drags out the piece
         // of floor that is trapped.
         this.zoneRectStart = point;
@@ -1814,21 +1871,53 @@ export class MapRenderer {
       }
       if (this.light.armed) {
         // A lamp is placed, not dragged: it has no extent of its own, only a
-        // position and a reach set in the panel.
-        if (this.light.mode === 'erase') this.onLightErase?.(point.x, point.y);
-        else this.onLightPlace?.(point.x, point.y);
+        // position and a reach set in the panel. Klik w istniejącą lampę ją
+        // **zaznacza** (27k); przestrojenie do ustawień z paska przeszło na
+        // dwuklik, bo pierwszy klik musi znaczyć to samo co na każdej warstwie.
+        const hit = this.pickOnArmedLayer(point);
+        if (hit) {
+          this.takeScenePick(hit);
+          return;
+        }
+        this.onLightPlace?.(point.x, point.y);
         return;
       }
       if (this.netPoint.armed) {
         // A socket is a spot on a wall — placed like a lamp, never dragged.
-        if (this.netPoint.mode === 'erase') this.onAccessPointErase?.(point.x, point.y);
-        else this.onAccessPointPlace?.(point.x, point.y);
+        const hit = this.pickOnArmedLayer(point);
+        if (hit) {
+          this.takeScenePick(hit);
+          return;
+        }
+        this.onAccessPointPlace?.(point.x, point.y);
         return;
       }
-      if (this.wall.armed) {
-        if (this.wall.mode === 'erase') {
-          this.onWallErase?.(point.x, point.y);
+      // Pinezka MG. Sama się stawia dopiero w `clicked`, więc tu jest wyłącznie
+      // łapanie istniejącej — a `layerPickSpent` pilnuje, żeby po zaznaczeniu
+      // nie wbić obok drugiej.
+      if (this.notePlacing) {
+        const hit = this.pickOnArmedLayer(point);
+        if (hit) {
+          this.takeScenePick(hit);
           return;
+        }
+      }
+      if (this.wall.armed) {
+        // „Końcówka rysuje, środek zaznacza" (decyzja MG z 23.08). Promień
+        // trafienia w segment jest większy od promienia przyciągania do
+        // narożnika, więc bez tego wyjątku nie dałoby się rozpocząć nowego
+        // łańcucha dokładnie na rogu istniejącego muru. Trwający łańcuch ma
+        // pierwszeństwo nad jednym i drugim: raz zaczętego obrysu pokoju nie
+        // przerywa się zaznaczeniem.
+        if (this.wall.mode === 'draw' && !this.wallPoints) {
+          const onEndpoint = wallEndpointNear(this.lastWalls, point) !== null;
+          if (!onEndpoint) {
+            const hit = this.pickOnArmedLayer(point);
+            if (hit) {
+              this.takeScenePick(hit);
+              return;
+            }
+          }
         }
         if (this.wall.mode === 'lock') {
           // Like the eraser, this reports where the click landed and lets the
@@ -1864,17 +1953,20 @@ export class MapRenderer {
         this.drawWallLayer();
         return;
       }
-      if (this.erasing) {
-        this.onDrawingErase?.(point.x, point.y);
-        return;
-      }
       if (this.draw.armed) {
         // Text is placed, not dragged: the click only says where, the words
-        // come from a dialog.
+        // come from a dialog — więc na tej jednej odmianie narzędzia
+        // zaznaczenie musi zapaść od razu, jak przy lampie.
         if (this.draw.tool === 'text') {
+          const hit = this.pickOnArmedLayer(point);
+          if (hit) {
+            this.takeScenePick(hit);
+            return;
+          }
           this.onDrawingTextPlace?.(point.x, point.y);
           return;
         }
+        this.rememberDragPick(point);
         if (this.draw.tool === 'pencil') {
           this.drawPoints = [point];
         } else if (this.draw.tool === 'line') {
@@ -1913,6 +2005,12 @@ export class MapRenderer {
       // …and the explosion template follows it in the same breath, for the same
       // reason: with a grenade in hand it *is* what the map looks like.
       this.trackAreaHover(point);
+      // Obrys pod kursorem na uzbrojonej warstwie (27k). Tylko poza trwającym
+      // gestem: w połowie ciągnięcia prostokąta pytanie „co tu leży" nie ma
+      // adresata, a pickowanie na każdym `pointermove` kosztowałoby za darmo.
+      if (!this.gestureInFlight()) {
+        this.setSceneHover(this.armedLayerKind() ? this.pickOnArmedLayer(point) : null);
+      }
 
       if (this.fogStroke) {
         const last = this.fogStroke[this.fogStroke.length - 1]!;
@@ -1981,19 +2079,23 @@ export class MapRenderer {
     const end = () => {
       if (this.coverRectStart) {
         const rect = this.coverGestureRect();
+        const at = this.coverRectEnd;
         this.coverRectStart = null;
         this.coverRectEnd = null;
         this.viewport?.plugins.resume('drag');
         this.drawCoverLayer();
+        if (this.tapPick(at)) return;
         if (rect) this.onCoverRect?.(rect);
         return;
       }
       if (this.zoneRectStart) {
         const rect = this.zoneGestureRect();
+        const at = this.zoneRectEnd;
         this.zoneRectStart = null;
         this.zoneRectEnd = null;
         this.viewport?.plugins.resume('drag');
         this.drawZoneLayer();
+        if (this.tapPick(at)) return;
         if (rect) this.onZoneRect?.(rect);
         return;
       }
@@ -2014,10 +2116,15 @@ export class MapRenderer {
         if (shape?.kind === 'path' && this.draw.tool === 'pencil') {
           shape = { kind: 'path', points: simplifyPath(shape.points, DRAW_SIMPLIFY_TOLERANCE) };
         }
+        const at = this.drawEnd ?? this.drawPoints?.[this.drawPoints.length - 1] ?? null;
         this.drawPoints = null;
         this.drawStart = null;
         this.drawEnd = null;
         this.viewport?.plugins.resume('drag');
+        if (this.tapPick(at)) {
+          this.drawPreview.clear();
+          return;
+        }
         // The preview stays on screen until the server answers, so a stroke
         // never blinks out of existence while the ack is in flight.
         if (shape) this.onDrawingCreate?.(shape);
@@ -2273,6 +2380,237 @@ export class MapRenderer {
       .fill({ color: grabbed ? 0xfacc15 : 0xe2e8f0, alpha: 0.95 })
       .circle(knob.x, knob.y, 6 * k)
       .stroke({ color: 0x0b1220, width: 1.5 * k, alpha: 0.9 });
+  }
+
+  // ─────────────── sceneria: zaznaczanie, obrys i dwuklik (27k) ───────────────
+
+  /**
+   * Która warstwa jest uzbrojona — a więc co wolno pod nią złapać.
+   *
+   * To jest **cała** reguła „warstwa" z etapu 27k, zapisana w jednym miejscu:
+   * narzędzie świateł nie zaznaczy osłony, choćby leżała dokładnie pod
+   * kursorem. Wskaźnik (`pointer`) nie łapie niczego i to też jest decyzja —
+   * klik w puste pole przy zaznaczonej figurze jest rozkazem marszu, a warstwa
+   * scenerii pod wskaźnikiem odbierałaby ten klik w połowie sesji walki.
+   */
+  private armedLayerKind(): SceneObjectKind | null {
+    // Tryby `lock` i `share` **nie** zaznaczają: tam klik znaczy „przekręć
+    // rygiel" i „oddaj graczom", a obrys pod kursorem obiecywałby coś innego.
+    if (this.wall.armed) return this.wall.mode === 'draw' ? 'wall' : null;
+    if (this.cover.armed) return 'cover';
+    if (this.zone.armed) return 'zone';
+    if (this.light.armed) return 'light';
+    if (this.netPoint.armed) return 'netpoint';
+    if (this.notePlacing) return 'note';
+    if (this.draw.armed) return 'drawing';
+    return null;
+  }
+
+  /** Co leży pod tym punktem na uzbrojonej warstwie (i tylko na niej). */
+  private pickOnArmedLayer(point: ScenePoint): SceneObjectRef | null {
+    const kind = this.armedLayerKind();
+    if (!kind) return null;
+    const gridSizePx = this.scene?.grid.sizePx ?? 100;
+    return pickSceneObject(
+      point,
+      {
+        wall: { walls: this.lastWalls },
+        cover: { covers: this.lastCovers },
+        zone: { zones: this.lastZones },
+        light: { lights: this.lastLights },
+        netpoint: { netpoints: this.lastAccessPoints },
+        note: { notes: this.lastNotes },
+        drawing: { drawings: this.lastDrawings },
+      }[kind],
+      {
+        gridSizePx,
+        // Gracz sięga przez cudzą kreskę do własnej pod nią — ta sama reguła,
+        // którą serwer i tak wymusza przy usuwaniu.
+        canPickDrawing: (drawing) =>
+          this.viewerIsGm || (this.viewerId !== null && drawing.authorId === this.viewerId),
+      },
+    );
+  }
+
+  /**
+   * Lustro `sceneSelectionStore`: obrys idzie za tym, co wybrał React.
+   *
+   * Renderer trzyma własną kopię zamiast czytać store w pętli rysowania, bo
+   * obrys przerysowuje się przy każdej zmianie powiększenia — tak samo jak
+   * pierścień zaznaczonej figury.
+   */
+  setSceneSelection(ref: SceneObjectRef | null): void {
+    if (this.destroyed) return;
+    if (sameRef(this.sceneSelected, ref)) return;
+    this.sceneSelected = ref;
+    this.drawSceneSelectOutline();
+  }
+
+  /** Podświetlenie pod kursorem — zgłaszane na zewnątrz, żeby pasek mógł mówić. */
+  private setSceneHover(ref: SceneObjectRef | null): void {
+    if (sameRef(this.sceneHovered, ref)) return;
+    this.sceneHovered = ref;
+    this.drawSceneSelectOutline();
+    this.applyMapCursor();
+    this.onSceneHover?.(ref);
+  }
+
+  /**
+   * Klik na uzbrojonej warstwie: zaznacza, a przy drugim szybkim kliknięciu w
+   * to samo — otwiera kartę.
+   *
+   * Zwraca `true`, gdy klik został zużyty. Wywołujący ma wtedy **nie** tworzyć
+   * niczego nowego, bo gest znaczył „ten obiekt", a nie „tutaj".
+   */
+  private takeScenePick(ref: SceneObjectRef): boolean {
+    const now = performance.now();
+    const previous = this.lastScenePick;
+    this.lastScenePick = { ref, at: now };
+    this.layerPickSpent = true;
+    if (previous && sameRef(previous.ref, ref) && now - previous.at < DOUBLE_CLICK_MS) {
+      // Dwuklik nie zdejmuje zaznaczenia: karta otwiera się nad obiektem, który
+      // nadal jest wybrany, więc `Delete` po jej zamknięciu robi to samo.
+      this.onSceneActivate?.(ref);
+      return true;
+    }
+    this.setSceneSelection(ref);
+    this.onSceneSelect?.(ref);
+    return true;
+  }
+
+  /** Czy właśnie trwa gest rysowania — prostokąt, kształt albo łańcuch ścian. */
+  private gestureInFlight(): boolean {
+    return (
+      this.coverRectStart !== null ||
+      this.zoneRectStart !== null ||
+      this.drawPoints !== null ||
+      this.drawStart !== null ||
+      this.wallPoints !== null ||
+      this.fogStroke !== null ||
+      this.fogRectStart !== null
+    );
+  }
+
+  /**
+   * Zapamiętuje, co leżało pod początkiem gestu na warstwie rysowanej
+   * przeciągnięciem (osłona, strefa, kształt rysunku).
+   */
+  private rememberDragPick(point: ScenePoint): void {
+    const hit = this.pickOnArmedLayer(point);
+    this.dragPick = hit ? { ref: hit, at: point } : null;
+  }
+
+  /**
+   * Czy ten gest był krótkim kliknięciem w obiekt, a nie rysowaniem?
+   *
+   * Próg liczony w pikselach **ekranu**, nie sceny: przy oddaleniu 0,18× ta
+   * sama drobna nieuwaga ręki to trzydzieści kilka pikseli mapy, więc stały
+   * próg w jednostkach świata robiłby z każdego kliknięcia przeciągnięcie.
+   */
+  private tapPick(at: ScenePoint | null): boolean {
+    const pending = this.dragPick;
+    this.dragPick = null;
+    if (!pending) return false;
+    const slop = TAP_SLOP_PX * this.overlayScale();
+    if (at && Math.hypot(at.x - pending.at.x, at.y - pending.at.y) > slop) return false;
+    return this.takeScenePick(pending.ref);
+  }
+
+  /**
+   * Obrys zaznaczenia i podświetlenie pod kursorem.
+   *
+   * Jedna ścieżka `Graphics` na oba stany, bo nigdy nie ma ich więcej niż dwa,
+   * a osobna warstwa na najechanie kosztowałaby tyle samo rysowania i jeden
+   * dodatkowy powód do rozjechania się. Grubość liczona `overlayScale()` —
+   * obrys ma być tak samo widoczny przy każdym powiększeniu, jak pierścień
+   * figury obok niego.
+   */
+  private drawSceneSelectOutline(): void {
+    if (this.destroyed) return;
+    const g = this.sceneSelectGraphics;
+    g.clear();
+    const k = this.overlayScale();
+    // Najechanie najpierw, żeby zaznaczenie rysowało się nad nim, gdy to ten
+    // sam obiekt (kursor stoi nad tym, co się właśnie kliknęło — częsty stan).
+    if (this.sceneHovered && !sameRef(this.sceneHovered, this.sceneSelected)) {
+      this.strokeSceneObject(g, this.sceneHovered, 0xd6f5ff, 2 * k, 0.55, 4 * k);
+    }
+    if (this.sceneSelected) {
+      this.strokeSceneObject(g, this.sceneSelected, 0xffd166, 3 * k, 0.95, 6 * k);
+    }
+  }
+
+  /** Rysuje obrys jednego obiektu — kształt zależy od tego, czym obiekt jest. */
+  private strokeSceneObject(
+    g: Graphics,
+    ref: SceneObjectRef,
+    color: number,
+    width: number,
+    alpha: number,
+    pad: number,
+  ): void {
+    const stroke = { color, width, alpha };
+    switch (ref.kind) {
+      case 'wall': {
+        const wall = this.lastWalls.find((entry) => entry.id === ref.id);
+        if (!wall) return;
+        g.moveTo(wall.x1, wall.y1)
+          .lineTo(wall.x2, wall.y2)
+          .stroke({ ...stroke, width: width * 2 });
+        // Kropki na końcach: bez nich zaznaczona ściana jest tylko grubszą
+        // kreską i nie widać, gdzie się kończy w łańcuchu sąsiadów.
+        for (const end of [
+          { x: wall.x1, y: wall.y1 },
+          { x: wall.x2, y: wall.y2 },
+        ]) {
+          g.circle(end.x, end.y, pad * 0.7).fill({ color, alpha });
+        }
+        return;
+      }
+      case 'cover': {
+        const cover = this.lastCovers.find((entry) => entry.id === ref.id);
+        if (!cover) return;
+        g.rect(cover.x - pad, cover.y - pad, cover.width + pad * 2, cover.height + pad * 2).stroke(
+          stroke,
+        );
+        return;
+      }
+      case 'zone': {
+        const zone = this.lastZones.find((entry) => entry.id === ref.id);
+        if (!zone) return;
+        g.rect(zone.x - pad, zone.y - pad, zone.width + pad * 2, zone.height + pad * 2).stroke(
+          stroke,
+        );
+        return;
+      }
+      case 'light': {
+        const light = this.lastLights.find((entry) => entry.id === ref.id);
+        if (!light) return;
+        g.circle(light.x, light.y, pad * 2.2).stroke(stroke);
+        return;
+      }
+      case 'netpoint': {
+        const point = this.lastAccessPoints.find((entry) => entry.id === ref.id);
+        if (!point) return;
+        g.circle(point.x, point.y, pad * 2.2).stroke(stroke);
+        return;
+      }
+      case 'note': {
+        const note = this.lastNotes.find((entry) => entry.id === ref.id);
+        if (!note) return;
+        // Pinezka ma kotwicę u dołu (`anchor.set(0.5, 1)`), więc kółko wokół
+        // punktu minęłoby się z glifem o całą jego wysokość.
+        g.circle(note.x, note.y - pad * 1.4, pad * 2.2).stroke(stroke);
+        return;
+      }
+      case 'drawing': {
+        const drawing = this.lastDrawings.find((entry) => entry.id === ref.id);
+        if (!drawing) return;
+        const box = drawingBounds(drawing.shape);
+        g.rect(box.x - pad, box.y - pad, box.width + pad * 2, box.height + pad * 2).stroke(stroke);
+        return;
+      }
+    }
   }
 
   /**
@@ -3664,7 +4002,7 @@ export class MapRenderer {
    */
   setCoverTool(settings: CoverSettings): void {
     this.cover = settings;
-    if (!settings.armed || settings.mode !== 'draw') this.cancelCoverRect();
+    if (!settings.armed) this.cancelCoverRect();
     this.applyMapCursor();
   }
 
@@ -3702,7 +4040,7 @@ export class MapRenderer {
    */
   setZoneTool(settings: ZoneSettings): void {
     this.zone = settings;
-    if (!settings.armed || settings.mode !== 'draw') this.cancelZoneRect();
+    if (!settings.armed) this.cancelZoneRect();
     this.applyMapCursor();
   }
 
@@ -4730,6 +5068,11 @@ export class MapRenderer {
         node.cursor = 'pointer';
         node.on('pointerdown', (event: FederatedPointerEvent) => {
           if (event.button !== 0) return;
+          // Przy uzbrojonym narzędziu notatek klik należy do warstwy (27k):
+          // pierwszy zaznacza pinezkę, dwuklik otwiera jej kartę. Bez wypuszcz-
+          // enia zdarzenia dalej `pointerdown` na widoku nigdy by go nie
+          // zobaczył — dokładnie ta sama umowa, którą mają gniazda i lampy.
+          if (this.notePlacing) return;
           event.stopPropagation();
           this.onNoteActivate?.(note.id);
         });

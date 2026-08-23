@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { MAP_TOOLS } from './stores/mapToolStore.js';
 import { MAP_TOOL_KEYS, SHORTCUT_GROUPS, shortcutGroupsFor } from './shortcuts.js';
 
 /**
@@ -30,6 +31,34 @@ describe('katalog skrótów (etap 27f)', () => {
 
   it('każdy klawisz to jedna mała litera', () => {
     expect(MAP_TOOL_KEYS.filter((entry) => !/^[a-z]$/.test(entry.key))).toEqual([]);
+  });
+
+  /**
+   * Kryterium 27k: „okno pomocy `?` wymienia **wszystkie** narzędzia mapy".
+   *
+   * To nie jest teoretyczne. Do 27k `zone` i `netpoint` nie miały wpisu, więc
+   * nie miały klawisza **i nie pokazywały się w pomocy** — narzędzie punktów
+   * dostępu było jedynym, o którym pomoc milczała, i to była bezpośrednia
+   * przyczyna pytania MG „nie wiem, jak skasować punkt dostępu".
+   */
+  it('każde narzędzie mapy ma klawisz i wiersz w pomocy', () => {
+    const documented = new Set(MAP_TOOL_KEYS.map((entry) => entry.tool));
+    const missing = MAP_TOOLS.filter((tool) => tool !== 'pointer' && !documented.has(tool));
+    expect(missing, 'narzędzie bez wiersza w oknie pomocy').toEqual([]);
+  });
+
+  it('tabela nie opisuje narzędzia, którego już nie ma', () => {
+    const real = new Set<string>(MAP_TOOLS);
+    expect(MAP_TOOL_KEYS.filter((entry) => !real.has(entry.tool))).toEqual([]);
+  });
+
+  /** Gramatyka z 27k istnieje w pomocy jako własna grupa, nie jako przypis. */
+  it('pomoc mówi o zaznaczaniu, kasowaniu i cofaniu', () => {
+    const group = SHORTCUT_GROUPS.find((entry) => entry.title === 'Obiekty na mapie');
+    expect(group, 'brak grupy „Obiekty na mapie"').toBeDefined();
+    const keys = group!.items.map((item) => item.keys);
+    expect(keys).toContain('Delete');
+    expect(keys).toContain('Ctrl + Z');
   });
 
   it('gracz nie ogląda skrótów MG', () => {

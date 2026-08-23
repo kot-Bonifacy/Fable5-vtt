@@ -155,6 +155,7 @@ import type {
   SceneActivateBroadcast,
   SceneListBroadcast,
   ScenePatch,
+  SceneUndoResult,
   SceneUpdateBroadcast,
   SceneView,
   SceneViewBroadcast,
@@ -1398,6 +1399,9 @@ export const updateLight = (lightId: number, patch: LightPatch, fitRoom?: boolea
 
 export const deleteLight = (lightId: number) => emitSceneAck('light:delete', { lightId });
 
+/** Kosz warstwy świateł (etap 27k) — jak `clearWalls`, cofalny jednym `Ctrl+Z`. */
+export const clearLights = (sceneId: string) => emitSceneAck('light:clear', { sceneId });
+
 /** Zapal/zgaś — the one light action a player performs, on a token they control. */
 export const toggleTokenLight = (tokenId: string, on?: boolean) =>
   emitSceneAck<TokenView>('token:light', { tokenId, on });
@@ -1550,6 +1554,10 @@ export const updateNetAccessPoint = (payload: NetAccessPointUpdatePayload) =>
   emitSceneAck<NetAccessPointView>('netpoint:update', payload);
 
 export const removeNetAccessPoint = (id: number) => emitSceneAck('netpoint:remove', { id });
+
+/** Kosz warstwy gniazd (etap 27k). */
+export const clearNetAccessPoints = (sceneId: string) =>
+  emitSceneAck('netpoint:clear', { sceneId });
 
 export const startNetRun = (tokenId: string, accessPointId: number) =>
   emitSceneAck<NetRunPayload>('netrun:start', { tokenId, accessPointId });
@@ -1873,6 +1881,16 @@ export const askBotToAct = (botId: string, request: string) =>
  */
 export const playBotTurn = (tokenId: string) =>
   emitSceneAck<BotPlayTurnResult>('bot:play-turn', { tokenId });
+
+/**
+ * `Ctrl+Z` — cofnij ostatnie własne usunięcie na tej scenie (etap 27k).
+ *
+ * Bez wskazania, co cofnąć: bufor jest stosem na serwerze, a klient zna tylko
+ * własne wciśnięcie klawisza. Serwer odsyła gotowe zdanie na czat, bo tylko on
+ * wie, ile wierszy naprawdę wróciło.
+ */
+export const undoSceneDelete = (sceneId: string) =>
+  emitSceneAck<SceneUndoResult>('scene:undo', { sceneId });
 
 function emitSceneAck<T = undefined>(event: string, payload: unknown): Promise<SocketAck<T>> {
   return new Promise((resolve) => {

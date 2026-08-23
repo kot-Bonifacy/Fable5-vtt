@@ -102,6 +102,7 @@ import {
   zoneUpdateEvent,
 } from './zones.js';
 import {
+  lightClearEvent,
   lightCreateEvent,
   lightDeleteEvent,
   lightUpdateEvent,
@@ -111,6 +112,7 @@ import {
 import { explorationForgetEvent, sceneExploreEvent } from './exploration.js';
 import { drawingClearEvent, drawingCreateEvent, drawingDeleteEvent } from './drawings.js';
 import { noteCreateEvent, noteDeleteEvent, noteUpdateEvent } from './notes.js';
+import { sceneUndoEvent } from './scene-undo.js';
 import { compendiumDeleteEvent, compendiumUpsertEvent } from './compendium.js';
 import { shopTierEvent } from './shop.js';
 import { botCreateEvent, botDeleteEvent, botDuplicateEvent, botUpdateEvent } from './bots.js';
@@ -135,6 +137,7 @@ import {
   netArchitectureSaveEvent,
 } from './netrunning.js';
 import {
+  netPointClearEvent,
   netPointPlaceEvent,
   netPointRemoveEvent,
   netPointUpdateEvent,
@@ -286,6 +289,7 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   lightCreateEvent,
   lightUpdateEvent,
   lightDeleteEvent,
+  lightClearEvent,
   tokenLightToggleEvent,
   sceneLightingEvent,
   sceneExploreEvent,
@@ -296,6 +300,7 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   noteCreateEvent,
   noteUpdateEvent,
   noteDeleteEvent,
+  sceneUndoEvent,
   aiAskEvent,
   aiRefreshEvent,
   rulesAskEvent,
@@ -314,6 +319,7 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   netPointPlaceEvent,
   netPointUpdateEvent,
   netPointRemoveEvent,
+  netPointClearEvent,
   netRunStartEvent,
   netRunLeaveEvent,
   netRunMoveEvent,

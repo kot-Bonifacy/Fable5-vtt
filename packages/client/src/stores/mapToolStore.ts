@@ -33,7 +33,6 @@ export const MAP_TOOLS = [
   'fog',
   'note',
   'draw',
-  'erase',
   'wall',
   'cover',
   'zone',
@@ -43,48 +42,18 @@ export const MAP_TOOLS = [
 export type MapTool = (typeof MAP_TOOLS)[number];
 
 /**
- * What the wall tool does with a click (stages 18a, 18d). Drawing, erasing and
- * bolting are modes of one tool rather than three tools, because they share
- * everything else — the snapping, the visible wall layer — and the GM alternates
- * between them constantly while dressing a floor plan.
+ * What the wall tool does with a click (stages 18a, 18d).
  *
- * `lock` clicks a door rather than a corner: it throws or draws its bolt.
- */
-export type WallMode = 'draw' | 'erase' | 'lock' | 'share';
-
-/**
- * What the cover tool does with a click (stage 16c). Two modes, and the eraser
- * is not optional: a wrecked car stays on the map as scenery, so removing one
- * for good has to be a deliberate gesture rather than a side effect of shooting.
- */
-export type CoverMode = 'draw' | 'erase';
-
-/**
- * What the defended-zone tool does with a click (stage 26f).
+ * Do 27k był tu jeszcze `erase` — i to on był powodem, dla którego nikt nie
+ * umiał znaleźć kasowania: gumka siedziała **wewnątrz** narzędzia, inaczej niż
+ * gumka rysunków, inaczej niż kosz notatki. Od 27k kasuje się wszędzie tak
+ * samo (klik w obiekt → `Delete`), a tutaj zostały dwa tryby, które **nie są**
+ * kasowaniem: `lock` rzuca albo zdejmuje rygiel, `share` oddaje otwór graczom.
  *
- * Three modes rather than the covers' two, and the third one is the reason: a
- * trapped floor is usually a whole corridor, so „open the card" cannot be an
- * ordinary click on the rectangle — it would take walking and aiming away from
- * everybody standing in it. `edit` is that click, made deliberate.
+ * Osłona, strefa, lampa i gniazdo straciły przy tej okazji swoje pary trybów
+ * w całości — po odjęciu gumki nie zostawało im nic do wybierania.
  */
-export type ZoneMode = 'draw' | 'edit' | 'erase';
-
-/**
- * What the light tool does with a click (stage 18b). Modes of one tool rather
- * than two tools, for the reason the wall tool has them: dressing a scene with
- * lamps means placing, adjusting and removing them in the same breath.
- *
- * `place` on an existing lamp *retunes* it to the settings in the panel, which
- * is what makes the panel double as the editor — one control set, no dialog.
- */
-export type LightMode = 'place' | 'erase';
-
-/**
- * What the access point tool does with a click (stage 26b). Two modes, like the
- * lamps: dressing a floor plan with sockets means placing and removing them in
- * the same breath, and a socket has no extent to drag out.
- */
-export type NetPointMode = 'place' | 'erase';
+export type WallMode = 'draw' | 'lock' | 'share';
 
 /** How the fog tool paints: a round brush, or a dragged rectangle. */
 export type FogBrushShape = 'brush' | 'rect';
@@ -193,7 +162,7 @@ interface MapToolStoreState extends DrawSettings {
   fogShape: FogBrushShape;
   /** Brush radius in scene pixels. */
   fogRadius: number;
-  /** Wall tool: drawing a chain, or erasing segments. */
+  /** Wall tool: tracing a chain, bolting an opening, or sharing it. */
   wallMode: WallMode;
   /** What the next drawn chain becomes. */
   wallKind: WallKind;
@@ -203,8 +172,6 @@ interface MapToolStoreState extends DrawSettings {
   windowPlayerToggle: boolean;
   /** Snap drawn points to the grid (endpoints of existing walls always win). */
   wallSnapGrid: boolean;
-  /** Cover tool: dragging a rectangle, or removing one. */
-  coverMode: CoverMode;
   /** Preset the next dragged rectangle becomes („car", „concrete-bollard"…). */
   coverTypeId: string;
   /**
@@ -214,20 +181,14 @@ interface MapToolStoreState extends DrawSettings {
    * already travels with the row.
    */
   coverCatalogue: CpredCoverCatalogue;
-  /** Zone tool: dragging a rectangle, opening its card, or removing it. */
-  zoneMode: ZoneMode;
   /** Compendium entry the next dragged rectangle becomes; '' = nothing armed. */
   zoneEntryId: string;
   /** Hidden until somebody notices it; the default for a system with a spot DV. */
   zoneHidden: boolean;
-  /** Access point tool: placing sockets, or removing them. */
-  netPointMode: NetPointMode;
   /** Architecture the next placed socket leads to; '' = a dead socket. */
   netPointArchitectureId: string;
   /** Hidden until a Scanner finds it — the default, and the point of the flag. */
   netPointHidden: boolean;
-  /** Light tool: placing/retuning lamps, or removing them. */
-  lightMode: LightMode;
   /** „Light this room": the server measures the walls and sizes the lamp. */
   lightFitRoom: boolean;
   /** What the next placed lamp gets, in metres. */
@@ -253,16 +214,12 @@ interface MapToolStoreState extends DrawSettings {
   setWallPlayerToggle: (wallPlayerToggle: boolean) => void;
   setWindowPlayerToggle: (windowPlayerToggle: boolean) => void;
   setWallSnapGrid: (wallSnapGrid: boolean) => void;
-  setCoverMode: (coverMode: CoverMode) => void;
   setCoverTypeId: (coverTypeId: string) => void;
   setCoverCatalogue: (coverCatalogue: CpredCoverCatalogue) => void;
-  setZoneMode: (zoneMode: ZoneMode) => void;
   setZoneEntryId: (zoneEntryId: string) => void;
   setZoneHidden: (zoneHidden: boolean) => void;
-  setNetPointMode: (netPointMode: NetPointMode) => void;
   setNetPointArchitectureId: (netPointArchitectureId: string) => void;
   setNetPointHidden: (netPointHidden: boolean) => void;
-  setLightMode: (lightMode: LightMode) => void;
   setLightFitRoom: (lightFitRoom: boolean) => void;
   setLightBrightM: (lightBrightM: number) => void;
   setLightDimM: (lightDimM: number) => void;
@@ -304,16 +261,12 @@ export const useMapToolStore = create<MapToolStoreState>((set, get) => {
     // matters with a single click.
     windowPlayerToggle: false,
     wallSnapGrid: true,
-    coverMode: 'draw',
     coverTypeId: '',
     coverCatalogue: EMPTY_COVER_CATALOGUE,
-    zoneMode: 'draw',
     zoneEntryId: '',
     zoneHidden: true,
-    netPointMode: 'place',
     netPointArchitectureId: '',
     netPointHidden: true,
-    lightMode: 'place',
     lightFitRoom: false,
     lightBrightM: LIGHT_DEFAULT_BRIGHT_M,
     lightDimM: LIGHT_DEFAULT_DIM_M,
@@ -337,7 +290,6 @@ export const useMapToolStore = create<MapToolStoreState>((set, get) => {
     setWallPlayerToggle: (wallPlayerToggle) => set({ wallPlayerToggle }),
     setWindowPlayerToggle: (windowPlayerToggle) => set({ windowPlayerToggle }),
     setWallSnapGrid: (wallSnapGrid) => set({ wallSnapGrid }),
-    setCoverMode: (coverMode) => set({ coverMode }),
     setCoverTypeId: (coverTypeId) => set({ coverTypeId }),
     setCoverCatalogue: (coverCatalogue) =>
       set((state) => ({
@@ -346,13 +298,10 @@ export const useMapToolStore = create<MapToolStoreState>((set, get) => {
         // never armed with nothing selected.
         coverTypeId: state.coverTypeId || (coverCatalogue.presets[0]?.id ?? ''),
       })),
-    setZoneMode: (zoneMode) => set({ zoneMode }),
     setZoneEntryId: (zoneEntryId) => set({ zoneEntryId }),
     setZoneHidden: (zoneHidden) => set({ zoneHidden }),
-    setNetPointMode: (netPointMode) => set({ netPointMode }),
     setNetPointArchitectureId: (netPointArchitectureId) => set({ netPointArchitectureId }),
     setNetPointHidden: (netPointHidden) => set({ netPointHidden }),
-    setLightMode: (lightMode) => set({ lightMode }),
     setLightFitRoom: (lightFitRoom) => set({ lightFitRoom }),
     setLightBrightM: (lightBrightM) => set({ lightBrightM }),
     setLightDimM: (lightDimM) => set({ lightDimM }),

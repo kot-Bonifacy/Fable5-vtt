@@ -175,6 +175,15 @@ export interface LightDeletePayload {
 }
 
 /**
+ * Kosz warstwy świateł (etap 27k). Ściany, osłony, strefy i rysunki miały swój
+ * od dawna; lampy nie, więc scena zaśmiecona po eksperymencie z oświetleniem
+ * wymagała klikania ich pojedynczo.
+ */
+export interface LightClearPayload {
+  sceneId: string;
+}
+
+/**
  * Client → server payload of `token:light` — the switch on a carried light.
  *
  * Its own event rather than a field of `TokenPatch`, because `token:update` is

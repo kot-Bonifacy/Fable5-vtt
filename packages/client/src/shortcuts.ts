@@ -52,12 +52,13 @@ export const MAP_TOOL_KEYS: readonly {
 }[] = [
   { key: 'm', tool: 'ruler', what: 'Linijka — mierzy odległość po mapie', gmOnly: false },
   { key: 'r', tool: 'draw', what: 'Rysowanie po mapie', gmOnly: false },
-  { key: 'g', tool: 'erase', what: 'Gumka — zdejmuje rysunek', gmOnly: false },
   { key: 'f', tool: 'fog', what: 'Mgła wojny — odsłanianie i zakrywanie', gmOnly: true },
   { key: 'n', tool: 'note', what: 'Notatka MG — pinezka na mapie', gmOnly: true },
   { key: 'w', tool: 'wall', what: 'Ściany, drzwi i okna', gmOnly: true },
   { key: 'o', tool: 'cover', what: 'Osłony — prostokąt zatrzymujący kule', gmOnly: true },
+  { key: 's', tool: 'zone', what: 'Strefy bronione — pułapka na podłodze', gmOnly: true },
   { key: 'l', tool: 'light', what: 'Źródła światła', gmOnly: true },
+  { key: 'p', tool: 'netpoint', what: 'Punkty dostępu do Sieci', gmOnly: true },
 ];
 
 /** Wiersze narzędzi mapy budowane z tej samej tabeli, którą czyta `MapArea`. */
@@ -84,6 +85,19 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
     items: MAP_TOOL_SHORTCUTS,
   },
   {
+    title: 'Obiekty na mapie',
+    note: 'Wejdź w warstwę (klawisz wyżej), kliknij obiekt, a potem — jedna reguła na wszystko, co stoi na mapie.',
+    items: [
+      { keys: 'klik', what: 'Zaznacza obiekt uzbrojonej warstwy (obrys pod kursorem)' },
+      { keys: 'dwuklik', what: 'Otwiera kartę obiektu tam, gdzie taka jest' },
+      { keys: 'Delete', what: 'Usuwa zaznaczony obiekt (figur nie dotyka — te z menu pod PPM)' },
+      {
+        keys: 'Ctrl + Z',
+        what: 'Cofa twoje ostatnie usunięcie na tej scenie; kosz cofa się w całości',
+      },
+    ],
+  },
+  {
     title: 'Rysowanie i mierzenie',
     items: [
       { keys: 'Spacja', what: 'Dokłada załamanie do mierzonej linijki' },
@@ -104,6 +118,7 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
         what: 'Porzuca rysowany łańcuch ścian albo prostokąt osłony',
         gmOnly: true,
       },
+      { keys: 'Esc', what: 'Zdejmuje zaznaczenie obiektu na mapie' },
       { keys: 'Esc', what: 'Odkłada narzędzie mapy' },
       { keys: 'Esc', what: 'Zdejmuje zaznaczenie figury' },
     ],

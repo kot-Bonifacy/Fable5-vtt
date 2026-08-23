@@ -38,6 +38,7 @@ import { buildCompendiumSync } from './compendium.js';
 import { INCLUDE_CHAT_NAMES, broadcastChatMessage, toChatMessageView } from './chat-io.js';
 import { createMixedRng } from './dice-rng.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
+import { rememberDeletion, scalarRow } from './undo-buffer.js';
 import { emitCombatOfScene, loadCombat } from './combat.js';
 import { requireCampaignScene, toSceneView } from './scenes.js';
 import { emitTokensById } from './tokens.js';
@@ -227,9 +228,16 @@ export const zoneUpdateEvent = defineEvent<DefenseZoneUpdatePayload, DefenseZone
 export const zoneDeleteEvent = defineEvent<DefenseZoneDeletePayload>({
   name: 'zone:delete',
   role: ROLE_GM,
-  handler: async ({ deps, socket, payload }) => {
+  handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
     const row = await requireCampaignZone(deps, campaignId, payload?.zoneId);
+    rememberDeletion({
+      campaignId,
+      userId: user.id,
+      sceneId: row.sceneId,
+      kind: 'zone',
+      rows: [scalarRow(row)],
+    });
     await deps.ctx.prisma.defenseZone.delete({ where: { id: row.id } });
     await emitZones(deps, campaignId, row.sceneId);
     await dropZoneFromQueue(deps, campaignId, row.sceneId, row.id);
@@ -239,12 +247,18 @@ export const zoneDeleteEvent = defineEvent<DefenseZoneDeletePayload>({
 export const zoneClearEvent = defineEvent<DefenseZoneClearPayload>({
   name: 'zone:clear',
   role: ROLE_GM,
-  handler: async ({ deps, socket, payload }) => {
+  handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
     const scene = await requireCampaignScene(deps.ctx.prisma, campaignId, payload?.sceneId);
-    const doomed = await deps.ctx.prisma.defenseZone.findMany({
-      where: { sceneId: scene.id },
-      select: { id: true },
+    // Całe wiersze, nie same id: kosz odkłada je jako jedną pozycję cofania
+    // (etap 27k), a strefa niesie PW, uzbrojenie i listę zwolnionych z pułapki.
+    const doomed = await deps.ctx.prisma.defenseZone.findMany({ where: { sceneId: scene.id } });
+    rememberDeletion({
+      campaignId,
+      userId: user.id,
+      sceneId: scene.id,
+      kind: 'zone',
+      rows: doomed.map(scalarRow),
     });
     await deps.ctx.prisma.defenseZone.deleteMany({ where: { sceneId: scene.id } });
     await emitZones(deps, campaignId, scene.id);

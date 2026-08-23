@@ -16,11 +16,12 @@ import {
   metresPerPixel,
   metresToPixels,
   movementSegments,
-  pickDrawingAt,
   pickWallAt,
+  sceneObjectAccusative,
   sceneBoundsSegments,
   tokenCentre,
   type CombatView,
+  type SceneObjectRef,
   type ScenePoint,
   type TokenView,
   type WallKind,
@@ -58,8 +59,10 @@ import {
   deleteLight,
   placeNetAccessPoint,
   removeNetAccessPoint,
+  deleteNote,
   deleteWall,
   nextCombatTurn,
+  undoSceneDelete,
   paintFog,
   sendRuler,
   sendTokenMove,
@@ -92,11 +95,12 @@ import { useNoteStore } from '../stores/noteStore.js';
 import { sortedDrawings, useDrawingStore } from '../stores/drawingStore.js';
 import { clickableOpenings, useWallStore } from '../stores/wallStore.js';
 import { useSelectionStore } from '../stores/selectionStore.js';
-import { pickLightAt, useLightStore } from '../stores/lightStore.js';
-import { pickAccessPointAt, useNetRunStore } from '../stores/netRunStore.js';
+import { useSceneSelectionStore } from '../stores/sceneSelectionStore.js';
+import { useLightStore } from '../stores/lightStore.js';
+import { useNetRunStore } from '../stores/netRunStore.js';
 import { netErrorText } from '../netErrors.js';
-import { coverAt, useCoverStore } from '../stores/coverStore.js';
-import { zoneAt, useZoneStore } from '../stores/zoneStore.js';
+import { useCoverStore } from '../stores/coverStore.js';
+import { useZoneStore } from '../stores/zoneStore.js';
 import { useSmokeStore } from '../stores/smokeStore.js';
 import { MAP_TOOL_KEYS } from '../shortcuts.js';
 import {
@@ -181,15 +185,6 @@ function coverErrorText(code: string | undefined): string {
   }
 }
 
-/**
- * How close a click has to be to a lamp handle to hit it, in scene pixels.
- * Scaled with the grid for the reason the wall and drawing erasers are: at a
- * typical 0.18× map zoom a fixed pixel radius is a target nobody can hit.
- */
-function lightGrabTolerance(gridSizePx: number): number {
-  return Math.max(12, gridSizePx / 3);
-}
-
 /** Polish hints for the rejections the light events can come back with. */
 function lightErrorText(code: string | undefined): string {
   switch (code) {
@@ -256,6 +251,83 @@ function moveErrorText(code: string | undefined): string {
       return 'Nie znaleziono tokenu — odśwież stronę.';
     default:
       return `Nie udało się przesunąć tokenu: ${code ?? 'nieznany błąd'}.`;
+  }
+}
+
+/** Odmowa `scene:undo` — bufor jest w pamięci serwera, więc bywa po prostu pusty. */
+function undoErrorText(code: string | undefined): string {
+  switch (code) {
+    case 'NOTHING_TO_UNDO':
+      return 'Nie ma czego cofnąć na tej scenie.';
+    case 'UNDO_FAILED':
+      return 'Nie udało się przywrócić — obiekt nie mieści się już na tej scenie.';
+    case 'SCENE_NOT_VIEWED':
+      return 'Cofać można tylko na oglądanej scenie.';
+    default:
+      return `Nie udało się cofnąć: ${code ?? 'nieznany błąd'}.`;
+  }
+}
+
+/**
+ * Kasowanie zaznaczonego obiektu scenerii (etap 27k) — jedna droga na siedem
+ * rodzajów naraz.
+ *
+ * Do 27k każdy rodzaj miał własną gramatykę i własne miejsce w kodzie; ta
+ * funkcja jest tym, co je zastąpiło. **Każda ścieżka sprawdza `ack`** i mówi
+ * zdaniem, gdy się nie udało — trzy gumki (`deleteWall`, `deleteLight`,
+ * `removeNetAccessPoint`) tego nie robiły i chybiony klik nie tłumaczył
+ * niczego, co było jednym z trzech błędów zamykanych w tym etapie.
+ */
+async function deleteSceneObject(ref: SceneObjectRef): Promise<boolean> {
+  const numeric = Number(ref.id);
+  // `switch` zamiast drabinki warunków, bo TypeScript wymusza na nim komplet:
+  // ósmy rodzaj dopisany do `SCENE_OBJECT_KINDS` nie skompiluje się, dopóki nie
+  // dostanie tutaj swojej drogi. To jest cały mechanizm „jedna gramatyka".
+  const request = ((): Promise<{ ok: boolean; error?: string }> => {
+    switch (ref.kind) {
+      case 'wall':
+        return deleteWall(numeric);
+      case 'cover':
+        return deleteCover(numeric);
+      case 'zone':
+        return deleteZone(numeric);
+      case 'light':
+        return deleteLight(numeric);
+      case 'netpoint':
+        return removeNetAccessPoint(numeric);
+      case 'note':
+        return deleteNote(String(ref.id));
+      case 'drawing':
+        return deleteDrawing(numeric);
+    }
+  })();
+  const ack = await request;
+  if (ack.ok) {
+    useChatStore.getState().addNote(`Usunięto ${sceneObjectAccusative(ref.kind)} — Ctrl+Z cofa.`);
+    return true;
+  }
+  useChatStore.getState().addNote(sceneDeleteErrorText(ref.kind, ack.error));
+  return false;
+}
+
+/** Odmowa serwera przy kasowaniu — po rodzaju, bo każdy ma własny słownik. */
+function sceneDeleteErrorText(kind: SceneObjectRef['kind'], code: string | undefined): string {
+  switch (kind) {
+    case 'wall':
+      return wallErrorText(code);
+    case 'cover':
+      return coverErrorText(code);
+    case 'light':
+      return lightErrorText(code);
+    case 'drawing':
+      return drawingErrorText(code);
+    case 'zone':
+    case 'netpoint':
+      return netErrorText(code);
+    case 'note':
+      return code === 'NOTE_NOT_FOUND'
+        ? 'Ta notatka już nie istnieje — odśwież stronę.'
+        : `Nie udało się usunąć notatki: ${code ?? 'nieznany błąd'}.`;
   }
 }
 
@@ -371,10 +443,6 @@ export function MapArea() {
   const wallMode = useMapToolStore((s) => s.wallMode);
   const wallKind = useMapToolStore((s) => s.wallKind);
   const wallSnapGrid = useMapToolStore((s) => s.wallSnapGrid);
-  const coverMode = useMapToolStore((s) => s.coverMode);
-  const zoneMode = useMapToolStore((s) => s.zoneMode);
-  const lightMode = useMapToolStore((s) => s.lightMode);
-  const netPointMode = useMapToolStore((s) => s.netPointMode);
   const targeting = useAttackStore((s) => s.targeting);
   const hasVision = useWallStore((s) => s.hasVision);
   const seesNothing = useWallStore((s) => s.polygons.length === 0);
@@ -544,25 +612,6 @@ export function MapArea() {
       });
     };
     renderer.onDrawingTextPlace = (x, y) => useDrawingStore.getState().setTextDraft({ x, y });
-    renderer.onDrawingErase = (x, y) => {
-      const current = useSceneStore.getState().effectiveScene;
-      const user = useAuthStore.getState().user;
-      if (!current || !user) return;
-      // Scale the grab radius with the zoom: at 0.18× a six-pixel line is one
-      // screen pixel wide, and „click exactly on it" would be unusable.
-      const tolerance = Math.max(6, current.grid.sizePx / 6);
-      const target = pickDrawingAt(
-        sortedDrawings(useDrawingStore.getState().drawings).filter(
-          (drawing) => drawing.sceneId === current.id,
-        ),
-        { x, y },
-        tolerance,
-        // A player reaches through someone else's line to their own beneath it;
-        // the server enforces the same rule regardless of what the UI offers.
-        (drawing) => user.role === ROLE_GM || drawing.authorId === user.id,
-      );
-      if (target) void deleteDrawing(target.id);
-    };
     renderer.onWallChain = (points) => {
       const current = useSceneStore.getState().effectiveScene;
       if (!current) return;
@@ -572,16 +621,6 @@ export function MapArea() {
           if (!ack.ok) useChatStore.getState().addNote(wallErrorText(ack.error));
         },
       );
-    };
-    renderer.onWallErase = (x, y) => {
-      const current = useSceneStore.getState().effectiveScene;
-      if (!current) return;
-      // The same zoom-scaled grab radius the drawing eraser uses: at 0.18x a
-      // wall is a couple of screen pixels and „click exactly on it" is not a
-      // thing anyone can do.
-      const tolerance = Math.max(8, current.grid.sizePx / 5);
-      const target = pickWallAt(useWallStore.getState().walls, { x, y }, tolerance);
-      if (target) void deleteWall(target.id);
     };
     renderer.onWallLock = (x, y) => {
       const current = useSceneStore.getState().effectiveScene;
@@ -655,13 +694,6 @@ export function MapArea() {
         if (!ack.ok) useChatStore.getState().addNote(coverErrorText(ack.error));
       });
     };
-    renderer.onCoverErase = (x, y) => {
-      const target = coverAt({ x, y });
-      if (!target) return;
-      void deleteCover(target.id).then((ack) => {
-        if (!ack.ok) useChatStore.getState().addNote(coverErrorText(ack.error));
-      });
-    };
     // Strefa broniona (26f) — jak osłona: klient wysyła sam prostokąt i wpis,
     // a PW, Wartość bojową i efekt czyta serwer z kompendium.
     renderer.onZoneRect = (rect) => {
@@ -678,17 +710,6 @@ export function MapArea() {
         },
       );
     };
-    renderer.onZoneErase = (x, y) => {
-      const target = zoneAt({ x, y });
-      if (!target) return;
-      void deleteZone(target.id).then((ack) => {
-        if (!ack.ok) useChatStore.getState().addNote(netErrorText(ack.error));
-      });
-    };
-    renderer.onZoneOpen = (x, y) => {
-      const target = zoneAt({ x, y });
-      useZoneStore.getState().editZone(target?.id ?? null);
-    };
     renderer.onLightPlace = (x, y) => {
       const current = useSceneStore.getState().effectiveScene;
       if (!current) return;
@@ -702,30 +723,14 @@ export function MapArea() {
       // „Light this room" (stage 18c): the radii are worked out on the server,
       // because that is where the walls are. The colour and the flicker still
       // come from the panel — those are taste, not measurement.
-      const fitRoom = tools.lightFitRoom;
-      // Clicking a lamp that is already there retunes it to the panel's
-      // settings — which is what makes the panel double as the editor.
-      const existing = pickLightAt(
-        useLightStore.getState().lights,
-        { x, y },
-        lightGrabTolerance(current.grid.sizePx),
-      );
-      const request = existing
-        ? updateLight(existing.id, spec, fitRoom)
-        : createLight(current.id, x, y, { ...spec, fitRoom });
-      void request.then((ack) => {
+      //
+      // Zawsze **nowa** lampa: od 27k renderer woła to dopiero wtedy, gdy pod
+      // kursorem nic nie było. Klik w istniejącą lampę ją zaznacza, a
+      // przestrojenie do ustawień z paska przeszło na dwuklik
+      // (`onSceneActivate`).
+      void createLight(current.id, x, y, { ...spec, fitRoom: tools.lightFitRoom }).then((ack) => {
         if (!ack.ok) useChatStore.getState().addNote(lightErrorText(ack.error));
       });
-    };
-    renderer.onLightErase = (x, y) => {
-      const current = useSceneStore.getState().effectiveScene;
-      if (!current) return;
-      const target = pickLightAt(
-        useLightStore.getState().lights,
-        { x, y },
-        lightGrabTolerance(current.grid.sizePx),
-      );
-      if (target) void deleteLight(target.id);
     };
     renderer.onLightToggle = (lightId) => {
       const light = useLightStore.getState().lights.find((entry) => entry.id === lightId);
@@ -751,18 +756,48 @@ export function MapArea() {
         if (!ack.ok) useChatStore.getState().addNote(netErrorText(ack.error));
       });
     };
-    renderer.onAccessPointErase = (x, y) => {
-      const current = useSceneStore.getState().effectiveScene;
-      if (!current) return;
-      const target = pickAccessPointAt(
-        useNetRunStore.getState().accessPoints,
-        { x, y },
-        lightGrabTolerance(current.grid.sizePx),
-      );
-      if (target) void removeNetAccessPoint(target.id);
-    };
     renderer.onAccessPointOpen = (id) => {
       useNetRunStore.getState().editPoint(id);
+    };
+    // ── sceneria: zaznaczenie i karta pod dwuklikiem (etap 27k) ──────────────
+    renderer.onSceneSelect = (ref) => useSceneSelectionStore.getState().select(ref);
+    renderer.onSceneHover = (ref) => useSceneSelectionStore.getState().setHovered(ref);
+    renderer.onSceneActivate = (ref) => {
+      // Karty istnieją dziś dla trzech rodzajów; ściana, osłona i rysunek
+      // dostaną swoje w 27l. Do tego czasu dwuklik w lampę robi to, co dawniej
+      // robił klik z uzbrojonym narzędziem — przestraja ją do ustawień z paska
+      // (świadome rozwiązanie pomostowe zapisane w zakresie etapu).
+      if (ref.kind === 'netpoint') {
+        useNetRunStore.getState().editPoint(Number(ref.id));
+        return;
+      }
+      if (ref.kind === 'zone') {
+        useZoneStore.getState().editZone(Number(ref.id));
+        return;
+      }
+      if (ref.kind === 'note') {
+        useNoteStore.getState().setEditing(String(ref.id));
+        return;
+      }
+      if (ref.kind === 'light') {
+        const tools = useMapToolStore.getState();
+        void updateLight(
+          Number(ref.id),
+          {
+            brightM: tools.lightBrightM,
+            dimM: tools.lightDimM,
+            color: tools.lightColor,
+            flicker: tools.lightFlicker,
+          },
+          tools.lightFitRoom,
+        ).then((ack) => {
+          useChatStore
+            .getState()
+            .addNote(
+              ack.ok ? 'Światło przestrojone do ustawień z paska.' : lightErrorText(ack.error),
+            );
+        });
+      }
     };
     renderer.onRulerChange = (points) => {
       const current = useSceneStore.getState().effectiveScene;
@@ -1085,20 +1120,16 @@ export function MapArea() {
       gmOnly: isGm && drawGmOnly,
       fontSize: drawFontSize,
     });
-    rendererRef.current?.setErasing(tool === 'erase');
     rendererRef.current?.setWallMode({
       armed: tool === 'wall' && isGm,
       mode: wallMode,
       kind: wallKind,
       snapGrid: wallSnapGrid,
     });
-    rendererRef.current?.setCoverTool({ armed: tool === 'cover' && isGm, mode: coverMode });
-    rendererRef.current?.setZoneTool({ armed: tool === 'zone' && isGm, mode: zoneMode });
-    rendererRef.current?.setLightTool({ armed: tool === 'light' && isGm, mode: lightMode });
-    rendererRef.current?.setAccessPointTool({
-      armed: tool === 'netpoint' && isGm,
-      mode: netPointMode,
-    });
+    rendererRef.current?.setCoverTool({ armed: tool === 'cover' && isGm });
+    rendererRef.current?.setZoneTool({ armed: tool === 'zone' && isGm });
+    rendererRef.current?.setLightTool({ armed: tool === 'light' && isGm });
+    rendererRef.current?.setAccessPointTool({ armed: tool === 'netpoint' && isGm });
   }, [
     ready,
     tool,
@@ -1115,16 +1146,31 @@ export function MapArea() {
     wallMode,
     wallKind,
     wallSnapGrid,
-    coverMode,
-    zoneMode,
-    lightMode,
-    netPointMode,
   ]);
 
   useEffect(() => {
     if (!ready) return;
     rendererRef.current?.setTargeting(targeting !== null);
   }, [ready, targeting]);
+
+  /**
+   * Zaznaczenie obiektu należy do warstwy (27k): odłożenie narzędzia albo
+   * przejście na inne zdejmuje obrys. Inaczej po przejściu ze ścian na światła
+   * `Delete` skasowałby ścianę, której nikt już nie widzi jako wybranej.
+   */
+  useEffect(() => {
+    useSceneSelectionStore.getState().clear();
+  }, [tool]);
+
+  // Store jest źródłem prawdy, renderer maluje. Esc i klik w figurę zmieniają
+  // zaznaczenie z pominięciem renderera, więc obrys musi iść za store'em.
+  useEffect(() => {
+    if (!ready) return;
+    const push = () =>
+      rendererRef.current?.setSceneSelection(useSceneSelectionStore.getState().selected);
+    push();
+    return useSceneSelectionStore.subscribe(push);
+  }, [ready]);
 
   /**
    * Does the steered figure have a weapon in hand (stage 16f)? That single flag
@@ -1547,6 +1593,36 @@ export function MapArea() {
         if (isGm || myActiveCombatant(combat, user?.id ?? null)) void nextCombatTurn();
         return;
       }
+      // Cofanie usunięcia (27k). Przed tabelą narzędzi, bo `Ctrl+Z` nie może
+      // przejść przez wyszukiwanie po samej literze — a i tak żaden klawisz
+      // narzędzia nie chce modyfikatora.
+      if ((event.ctrlKey || event.metaKey) && (event.key === 'z' || event.key === 'Z')) {
+        const current = useSceneStore.getState().effectiveScene;
+        if (!current) return;
+        event.preventDefault();
+        void undoSceneDelete(current.id).then((ack) => {
+          useChatStore
+            .getState()
+            .addNote(
+              ack.ok && ack.data ? ack.data.note : undoErrorText(ack.ok ? undefined : ack.error),
+            );
+        });
+        return;
+      }
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      // Kasowanie zaznaczonego obiektu scenerii (27k). `Backspace` obok
+      // `Delete`, bo na laptopie bez bloku numerycznego to ten sam gest.
+      // Figur to **nie** dotyczy — świadome odstępstwo od Foundry: id żetonu
+      // noszą inicjatywa i runy Sieci, a klik obok niego jest rozkazem marszu.
+      if (event.key === 'Delete' || event.key === 'Backspace') {
+        const selected = useSceneSelectionStore.getState().selected;
+        if (!selected) return;
+        event.preventDefault();
+        void deleteSceneObject(selected).then((removed) => {
+          if (removed) useSceneSelectionStore.getState().select(null);
+        });
+        return;
+      }
       // Narzędzia mapy idą z `MAP_TOOL_KEYS` (27f), a nie z drabinki `if`-ów:
       // tę samą tabelę czyta okno pomocy `?`, więc lista skrótów nie ma jak
       // rozjechać się z tym, co klawisze naprawdę robią.
@@ -1600,6 +1676,13 @@ export function MapArea() {
         // The cover tool gets the same two-step treatment (stage 16c): the
         // first Esc drops the rectangle being dragged out, the second the tool.
         if (tools.tool === 'cover' && renderer?.cancelCoverRect()) return;
+        // Szczebel z 27k: zaznaczony obiekt schodzi **przed** narzędziem.
+        // Odwrotna kolejność zabierałaby warstwę razem z zaznaczeniem, więc
+        // „nie ten kamień" kosztowałoby ponowne wciśnięcie klawisza narzędzia.
+        if (useSceneSelectionStore.getState().selected) {
+          useSceneSelectionStore.getState().select(null);
+          return;
+        }
         if (tools.tool !== 'pointer') {
           tools.setTool('pointer');
           return;
@@ -1649,38 +1732,12 @@ export function MapArea() {
           {' — kliknij cel na mapie (Esc anuluje)'}
         </div>
       )}
-      {isGm && tool === 'note' && (
-        <div className="map-placement-hint">
-          Kliknij na mapie, by wbić pinezkę notatki (Esc anuluje)
-        </div>
-      )}
-      {isGm && tool === 'wall' && (
-        <div className="map-placement-hint">
-          {wallMode === 'erase'
-            ? 'Kliknij ścianę, by ją usunąć (Esc kończy)'
-            : wallMode === 'lock'
-              ? 'Kliknij drzwi albo okno, by założyć lub zdjąć zamek (zakładanie je zamyka; Esc kończy)'
-              : wallMode === 'share'
-                ? 'Kliknij drzwi albo okno, by je udostępnić graczom lub schować (Esc kończy)'
-                : 'Klikaj kolejne narożniki; Enter lub klik w ostatni punkt kończy ścianę (Esc anuluje)'}
-        </div>
-      )}
-      {isGm && tool === 'light' && (
-        <div className="map-placement-hint">
-          {lightMode === 'erase'
-            ? 'Kliknij światło, by je usunąć (Esc kończy)'
-            : 'Kliknij mapę, by postawić światło; klik w istniejące zmienia je na ustawienia z panelu (Esc kończy)'}
-        </div>
-      )}
       {/* Visibility comes from tokens alone, so „no token" means „no map". The
           hint is what keeps that from reading as a broken connection. */}
       {!isGm && scene?.visibility === 'dynamic' && hasVision && seesNothing && (
         <div className="map-placement-hint">
           Nie masz tokenu na tej scenie — MG musi go wystawić, żebyś cokolwiek zobaczył
         </div>
-      )}
-      {tool === 'draw' && drawTool === 'text' && (
-        <div className="map-placement-hint">Kliknij na mapie, by postawić podpis (Esc anuluje)</div>
       )}
       <MapTools />
       <TargetTooltip hover={aimHover} />

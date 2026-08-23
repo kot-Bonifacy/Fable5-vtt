@@ -3,6 +3,7 @@ import type {
   CpredNetPosition,
   CpredNetRunState,
   NetAbilityId,
+  NetAccessPointClearPayload,
   NetAccessPointIdPayload,
   NetAccessPointPlacePayload,
   NetAccessPointUpdatePayload,
@@ -48,6 +49,7 @@ import {
 } from '@vtt/shared';
 import type { Character, Token } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
+import { rememberDeletion, scalarRow } from './undo-buffer.js';
 import { emitTokensById, requireCampaignToken } from './tokens.js';
 import { requireCampaignScene, toSceneView } from './scenes.js';
 import { requireTurnSpend } from './combat-actions.js';
@@ -177,15 +179,53 @@ export const netPointUpdateEvent = defineEvent<NetAccessPointUpdatePayload, NetA
 export const netPointRemoveEvent = defineEvent<NetAccessPointIdPayload, void>({
   name: 'netpoint:remove',
   role: ROLE_GM,
-  handler: async ({ deps, socket, payload }) => {
+  handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
     const row = await requireAccessPoint(deps, campaignId, payload?.id);
     // Runs hanging off this socket end with it — the cable was pulled.
     const orphaned = await deps.ctx.prisma.netRun.findMany({ where: { accessPointId: row.id } });
     for (const run of orphaned) await dropRunFromQueue(deps, campaignId, run.id);
     await deps.ctx.prisma.netRun.deleteMany({ where: { accessPointId: row.id } });
+    // Cofnięcie przywraca **samo gniazdo** — zerwany run zostaje zerwany.
+    // Świadome uproszczenie z 27k: run niesie stan walki w Sieci, a wskrzeszenie
+    // go razem z kablem znaczyłoby odtworzenie tury, którą wszyscy już widzieli.
+    rememberDeletion({
+      campaignId,
+      userId: user.id,
+      sceneId: row.sceneId,
+      kind: 'netpoint',
+      rows: [scalarRow(row)],
+    });
     await deps.ctx.prisma.netAccessPoint.delete({ where: { id: row.id } });
     await emitAccessPoints(deps, campaignId, row.sceneId);
+    if (orphaned.length > 0) await emitRuns(deps, campaignId);
+  },
+});
+
+/** Kosz warstwy gniazd (etap 27k) — bliźniak `light:clear`, z tą samą regułą. */
+export const netPointClearEvent = defineEvent<NetAccessPointClearPayload, void>({
+  name: 'netpoint:clear',
+  role: ROLE_GM,
+  handler: async ({ deps, socket, user, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    const scene = await requireCampaignScene(deps.ctx.prisma, campaignId, payload?.sceneId);
+    const doomed = await deps.ctx.prisma.netAccessPoint.findMany({ where: { sceneId: scene.id } });
+    if (doomed.length === 0) return;
+    const ids = doomed.map((point) => point.id);
+    const orphaned = await deps.ctx.prisma.netRun.findMany({
+      where: { accessPointId: { in: ids } },
+    });
+    for (const run of orphaned) await dropRunFromQueue(deps, campaignId, run.id);
+    await deps.ctx.prisma.netRun.deleteMany({ where: { accessPointId: { in: ids } } });
+    rememberDeletion({
+      campaignId,
+      userId: user.id,
+      sceneId: scene.id,
+      kind: 'netpoint',
+      rows: doomed.map(scalarRow),
+    });
+    await deps.ctx.prisma.netAccessPoint.deleteMany({ where: { sceneId: scene.id } });
+    await emitAccessPoints(deps, campaignId, scene.id);
     if (orphaned.length > 0) await emitRuns(deps, campaignId);
   },
 });

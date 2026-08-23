@@ -1268,7 +1268,12 @@ input[type='color'] {
   background: var(--map-panel);
   border: 1px solid var(--accent);
   border-radius: 6px;
-  color: var(--text);
+  /* `--map-ink`, nie `--text`: panel nad mapą jest ciemny w obu motywach
+     (`--map-panel` nie ma pary dziennej i mieć nie ma), więc tekst w kolorze
+     pisma aplikacji znikał w dzień — czarne na czarnym. Znalezione 23.08 przy
+     oględzinach 27k; dotyczyło wszystkich podpowiedzi nad mapą, nie tylko
+     nowej. */
+  color: var(--map-ink);
   font-size: 0.85rem;
   pointer-events: none;
   user-select: none;
@@ -4006,6 +4011,29 @@ body.is-resizing {
   display: flex;
   gap: 0.3rem;
   align-items: center;
+}
+
+/* Podpowiedź warstwy (etap 27k): ostatni, pełnej szerokości wiersz paska
+   narzędzi. `flex-basis: 100%` wypycha ją do własnej linii, więc nigdy nie
+   kładzie się na ikonach — czego pływające pudełko nad mapą nie potrafiło. */
+.map-tool-tip {
+  flex-basis: 100%;
+  max-width: 100%;
+  padding: 0.25rem 0.5rem;
+  border-left: 3px solid var(--accent);
+  background: var(--map-panel);
+  border-radius: 4px;
+  color: var(--map-ink);
+  font-size: 0.75rem;
+  line-height: 1.35;
+  user-select: none;
+}
+
+/* Coś jest pod ręką i `Delete` to skasuje — bursztyn, nie akcent: ten sam
+   kolor niósłby tu „ktoś do kogoś mierzy". */
+.map-tool-tip--selected {
+  border-left-color: var(--warn);
+  color: var(--warn-bright);
 }
 
 .map-tool-slider {

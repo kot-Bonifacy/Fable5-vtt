@@ -20,6 +20,7 @@ import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { fetchSceneCovers, toCoverView } from './covers-io.js';
 import { requireCampaignScene } from './scenes.js';
 import { campaignRoom, sceneRoom } from './state.js';
+import { rememberDeletion, scalarRow } from './undo-buffer.js';
 
 /**
  * Cover on the map (stage 16c) — core VTT storage, with one CP RED lookup.
@@ -183,9 +184,16 @@ export const coverUpdateEvent = defineEvent<CoverUpdatePayload, CoverView>({
 export const coverDeleteEvent = defineEvent<CoverDeletePayload>({
   name: 'cover:delete',
   role: ROLE_GM,
-  handler: async ({ deps, socket, payload }) => {
+  handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
     const row = await requireCampaignCover(deps, campaignId, payload?.coverId);
+    rememberDeletion({
+      campaignId,
+      userId: user.id,
+      sceneId: row.sceneId,
+      kind: 'cover',
+      rows: [scalarRow(row)],
+    });
     await deps.ctx.prisma.cover.delete({ where: { id: row.id } });
     await emitCovers(deps, campaignId, row.scene);
   },
@@ -194,9 +202,19 @@ export const coverDeleteEvent = defineEvent<CoverDeletePayload>({
 export const coverClearEvent = defineEvent<CoverClearPayload>({
   name: 'cover:clear',
   role: ROLE_GM,
-  handler: async ({ deps, socket, payload }) => {
+  handler: async ({ deps, socket, user, payload }) => {
     const campaignId = requireCampaignId(socket.data);
     const scene = await requireCampaignScene(deps.ctx.prisma, campaignId, payload?.sceneId);
+    // Jedna pozycja cofania na cały kosz — zamyka zaległość „kosz osłon kasuje
+    // bez pytania i bez cofnięcia" (etap 27k).
+    const doomed = await deps.ctx.prisma.cover.findMany({ where: { sceneId: scene.id } });
+    rememberDeletion({
+      campaignId,
+      userId: user.id,
+      sceneId: scene.id,
+      kind: 'cover',
+      rows: doomed.map(scalarRow),
+    });
     await deps.ctx.prisma.cover.deleteMany({ where: { sceneId: scene.id } });
     await emitCovers(deps, campaignId, scene);
   },

@@ -94,3 +94,30 @@ przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — ni
   daje 4,27. Podbicie kontrastu znaczyłoby, że tytuł aplikacji i belki karty malują się dwoma
   różnymi czerwieniami. Ta sama sytuacja jest w nocy: `--accent` #e01414 na ciemnym panelu daje
   3,1–3,7 i **istniała przed tym etapem** — audyt nocny nie znalazł nic poza nią.
+
+## Edycja sceny (etap 27k)
+
+- **`Ctrl+Z` nie przywraca runu w Sieci zerwanego przez usunięcie gniazda.** Wraca samo gniazdo,
+  z nazwą, notatką i tym samym id; run kończy się nieodwracalnie. Powód: run niesie stan walki
+  w Sieci (pozycję na piętrach, zrezowane Programy, kolejkę LOD-ów), a wskrzeszenie go razem
+  z kablem znaczyłoby odtworzenie tury, którą wszyscy przy stole już widzieli. Zapisane
+  w `realtime/netrun.ts` przy `netpoint:remove`.
+
+- **Kasowanie nie pyta — cofa się `Ctrl+Z`.** Decyzja MG z 23.08, dotyczy także koszy hurtowych,
+  które wcześniej kasowały bez pytania **i** bez odwrotu. Dodatkowy powód techniczny:
+  `window.confirm` zawiesza sterowanie przeglądarką przez CDP, więc każde okno potwierdzenia
+  zabiera możliwość oględzin automatem (patrz `pulapki-dev.md`).
+
+- **Bufor cofania ginie z restartem serwera i trzyma 20 ostatnich usunięć na kampanię.** To jest
+  „ojej, nie to" z ostatniej minuty pracy MG, a nie historia kampanii — dlatego pamięć procesu,
+  nie baza. Cofa wyłącznie ten, kto usunął, i wyłącznie na scenie, którą ogląda.
+
+- **`Delete` nie dotyka żetonów** — świadome odstępstwo od Foundry. U nas żeton siedzi w środku
+  walki (`selectedTokenId` obsługuje celowanie, HUD i budżet ruchu w ~20 miejscach
+  `MapRenderer.ts`), klik w pustą kratkę obok niego to rozkaz marszu, a jego id noszą inicjatywa
+  i runy Sieci. Figury kasuje się dalej z menu pod prawym przyciskiem.
+
+- **Segmentu ściany krótszego niż ~24 px nie da się zaznaczyć klikiem.** Końcówki (po 12 px
+  z każdej strony) należą do rysowania łańcucha, więc na bardzo krótkim kawałku nie zostaje
+  środek. Zostaje kosz warstwy albo `Ctrl+Z` tuż po postawieniu. Ściany rysuje się po kratce
+  (100 px), więc w praktyce nie występuje.

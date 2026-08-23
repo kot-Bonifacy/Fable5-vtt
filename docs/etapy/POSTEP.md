@@ -85,42 +85,36 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 | 27h | Panel postaci: HUD, który wygląda jak gra     | ✅     | 2026-08-20        |
 | 27i | Mapa: efekty walki                            | ✅     | 2026-08-20        |
 | 27j | Żetony i czytelny ruch                        | ✅     | 2026-08-21        |
-| 27k | Edycja sceny: zaznacz, skasuj, cofnij         | ⬜     |                   |
+| 27k | Edycja sceny: zaznacz, skasuj, cofnij         | ✅     | 2026-08-23        |
 | 27l | Karty obiektów sceny                          | ⬜     |                   |
 | 28  | Wdrożenie na VPS                              | ⬜     |                   |
 
 ## Od czego zacząć
 
-**Ostatnia sesja (23.08, druga tego dnia) była poza etapami: triaż zaległości.** Kosz kompendium
-pyta przed skasowaniem, powstała **pula portretów kampanii** (dokłada MG, gracz wybiera), a przy
-oględzinach wyszła **naprawa danych broni**: importer wycinał `explosive` i `ammoPatterns`, więc
-w kampanii nic nie wybuchało i naboje nie pasowały do broni. Odklikane: całe 27d (kości 3D),
-wybuch i liczba obrażeń nad figurą z 27i. **Od czego zacząć: pozycje 3, 4 i 5 z triażu** —
-Sieć (26a–26f), resztki walki (16d/16g/16h) i dwie ostatnie ścieżki ruchu z 16e — plus świeży
-błąd „statysta nie ma jak zadać obrażeń" (pierwsza pozycja w `zaleglosci.md`). Scena testowa
-**„Efekty 23x"** stoi gotowa (opis w `poligon.md`).
+**Ostatnia sesja (23.08, trzecia tego dnia) zamknęła etap 27k — edycję sceny.** Wszystko, co
+stoi na mapie, kasuje się teraz jednym gestem: **warstwa → klik w obiekt → `Delete`**, a
+`Ctrl+Z` cofa (bufor na serwerze, kosz hurtowy wraca w całości jednym wciśnięciem). Tryby-gumki
+i narzędzie „Gumka" (`G`) zniknęły. Zamknięte przy okazji trzy błędy z zaległości (ciche gumki,
+brak koszy dla świateł i gniazd, brak `zone`/`netpoint` w oknie pomocy) i dwa znalezione w
+oględzinach (czarne na czarnym podpowiedzi nad mapą w motywie dziennym; podpowiedź kładąca się
+na ikonach paska).
 
-**Sesja przed nią (23.08, pierwsza): podgląd trasy ruchu mówi kolorem, dokąd figura
-sięga w tej turze** — zielony to budżet Akcji Ruchu, bursztyn to zasięg po oddaniu Akcji za Bieg,
-szary jest poza turą. Trasę rysują same ślady butów (bez liczb, kresek i ✖ — MG zdejmował je
-kolejno w trakcie oględzin). Przy okazji naprawiona regresja cięcia trasy do budżetu i zamknięty
-punkt 16e (3). Sesja przed nią (22.08, piąta tego dnia) zamknęła triaż zaległości 1–6 i 8.
+**Od czego zacząć: 27l — karty obiektów sceny** (`etap-27l-karty-obiektow.md`). To bezpośrednia
+kontynuacja: dwuklik w gniazdo, strefę i notatkę otwiera dziś kartę, a w ścianę, osłonę i
+rysunek nie robi nic — 27l te trzy karty dokłada (razem z uchwytami do przesuwania i skalowania).
+Pozycja jest też w `zaleglosci.md`.
 
-**Błąd „figura 2×2 planuje trasę przez ściany" jest naprawiony i odklikany (23.08)** — siedział
-w planerze w `shared`, nie u klienta: `canStep` szedł jedną linią przez środek figury. Opis
-w `archiwum/zamkniete-zaleglosci.md`. Zostało jedno, **świadomie zaakceptowane przez MG**: figura
-przechodzi odrobinę za blisko ścian, bo planer i serwer pytają o środki kratek, a nie o obrys —
-zwężenie marginesu wymaga zmiany po obu stronach naraz (pozycja w `zaleglosci.md`).
+**Poza tym do wyboru: 27g** (wydajność) i **28** (wdrożenie na VPS). Z długu oględzin nadal
+czekają **pozycje 3, 4 i 5 z triażu 23.08** — Sieć (26a–26f), resztki walki (16d/16g/16h) i dwie
+ostatnie ścieżki ruchu z 16e — oraz **świeży błąd „statysta nie ma jak zadać obrażeń"** (pierwsza
+pozycja w `zaleglosci.md`). Etap 27 jest rozdzielony do końca, więc plik `etap-27-…` to rozdroże
+ze wskazaniami, a nie zakres do zrobienia.
 
-**Następny w kolejce: 27k — edycja sceny** (`etap-27k-edycja-sceny.md`), dopisany 23.08 na
-zlecenie MG po pytaniu „nie wiem, jak skasować punkt dostępu". Kasowanie obiektów mapy ma dziś
-trzy różne gramatyki; 27k zastępuje je jedną (warstwa → klik w obiekt → `Delete`, `Ctrl+Z` cofa)
-i przy okazji naprawia trzy znalezione błędy: ciche gumki, brak koszy dla świateł i gniazd,
-brak `zone`/`netpoint` w `MAP_TOOL_KEYS` (czyli i w oknie pomocy `?`). Karty właściwości
-ściany, osłony, światła i rysunku wydzielone do **27l**, żeby oba etapy zmieściły się w sesji.
-
-**Poza tym do wyboru: 27g** (wydajność) i **28** (wdrożenie na VPS). Etap 27 jest
-rozdzielony do końca, więc plik `etap-27-…` to rozdroże ze wskazaniami, a nie zakres do zrobienia.
+**Oględziny 27k szły na „Strzelnicy"** (aktywna scena kampanii) i została przywrócona co do
+obiektu: 6 gniazd, 3 segmenty ściany, zero świateł, osłon, stref, notatek i rysunków. Scena
+**„Efekty 23x"** nietknięta. **Uwaga: `poligon.md` rozjechał się ze stanem Strzelnicy** —
+brakuje na niej ⚠ „Podłogi elektrycznej" z 26f i osłony „Samochód 25/25", obie zniknęły przed
+tą sesją; opis poprawiony.
 
 **Otwarte zaległości: 45 pozycji w `zaleglosci.md`** — w większości dług oględzin („ścieżka ma
 test, ale nikt jej nie kliknął w przeglądarce"), nie błędy. Zaglądaj tam, gdy siadasz do
@@ -136,7 +130,7 @@ czeka na sesję z nowym modelem.
 a od 27i pierwszym, przy którym ktoś **usłyszy** dźwięki walki (dobrane bez odsłuchu, przyciski
 próbek są w „⚙ Ustawienia"; od 27j jest wśród nich „Krok" z własnym wyłącznikiem).
 
-**Testy na koniec ostatniej sesji:** 1366 w `shared`, 760 na serwerze, 36 u klienta — zielone.
+**Testy na koniec ostatniej sesji:** 1379 w `shared`, 772 na serwerze, 45 u klienta — zielone.
 
 **09.08 głos wypadł z projektu** (decyzja MG): etapy **12, 21 i 22** wycofane, kod TTS usunięty
 z repo. Szczegóły w `archiwum/dziennik-sesji.md` i `archiwum/wycofane/README.md`.
@@ -164,6 +158,10 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 - **Nowe pole typu broni** — dopisz je **razem** do `CpredWeaponTypeInput` i do białej listy `schema_fields` w `tools/import/parse-manual.py`; pominięta lista wycina pole po cichu (tak zginęły `explosive` i `ammoPatterns`).
 - **Portret w nowym miejscu** — komponent `PortraitPicker` (pula kampanii); pliki wgrywa wyłącznie MG, listę puli widzi każdy zalogowany.
 - **Podgląd trasy** — same ślady butów: kolor = pas, odstęp = metr. Żadnych liczb, kresek granicznych ani ✖; rozmiar śladu liczony szerokością tokenu, nie `overlayScale()`.
+- **Nowy rodzaj obiektu na mapie** — `SCENE_OBJECT_KINDS` w `shared/scene-objects.ts`; ta jedna lista trzyma `pickSceneObject`, `armedLayerKind`, `deleteSceneObject` (`switch`, więc kompilator pilnuje kompletu) i `restoreRows`. Kolejność wpisów = kolejność od wierzchu.
+- **Kasowanie ze sceny** — `deleteSceneObject` w `MapArea` to jedyna droga; każda ścieżka sprawdza `ack` i mówi zdaniem. Cofanie odkłada `rememberDeletion` **przed** `delete`, całym wierszem; kosz hurtowy to jedna pozycja.
+- **Ściana pod klikiem** — końcówka (`wallEndpointNear`, ≤ 12 px) rysuje łańcuch, środek zaznacza; trwający łańcuch wygrywa z obydwoma, tryby `lock`/`share` nie zaznaczają nic.
+- **Podpowiedź nad mapą** — kolor pisma to `--map-ink`, nie `--text`: `--map-panel` jest ciemny w obu motywach, więc `--text` daje w dzień czarne na czarnym.
 
 ## Pułapki dev — indeks
 
@@ -193,10 +191,67 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 - **Mechanika bez danych wygląda jak zepsuty kod** — zanim uznasz „nie działa", sprawdź, czy pole (np. `explosive`) jest w `data/private/.../weapon-types.json`; testy jadą na publicznej próbce, która je ma.
 - **Rzut z karty to dwa kliknięcia** (Shift+klik ładuje kubek, klik w kubek rzuca), złota kość dorzutu spada 550 ms po pierwszej fali, a stół kości chowa się **pod** oknem karty postaci.
 - **Narzędzia mapy nie odpalisz syntetycznym zdarzeniem wskaźnika** — ściana rysuje się w podglądzie i znika; menu kontekstowe żetonu owszem, ale **we współrzędnych CSS**, nie tych ze zrzutu (skala ≈0,8).
+- **Podpowiedź wyśrodkowana nad mapą kładzie się na pasku narzędzi** — pasek ma 38 rem i sięga poza środek; podpowiedź należąca do paska renderuj **w nim** (`.map-tool-tip`).
+- **Automat CDP jednak buduje scenę** (ściany, lampy, osłony, strefy, pinezki) — koryguje „nie da się" z 23.08; kursor płótna mówi, czy pod wskaźnikiem jest chwytalny obiekt.
+- **Zrzut ekranu bywa ciemniejszy, niż mówi DOM** — Chrome przyciemnia obraz; motyw czytaj z `dataset.theme` i `getComputedStyle`, nie ze zrzutu.
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 23.08 (trzecia tego dnia) — etap 27k: edycja sceny, jedna gramatyka kasowania
+
+**Zakres z pliku etapu, w całości.** Kasowanie obiektów mapy miało trzy różne gramatyki (tryb
+gumki wewnątrz narzędzia, osobne narzędzie „Gumka", przycisk wyłącznie na karcie) i dwa typy
+obiektów bez kosza hurtowego. Teraz jest jedna reguła na wszystko, co stoi na scenie: **wejdź
+w warstwę → kliknij obiekt → `Delete`**, a `Ctrl+Z` cofa. Tryby-gumki zniknęły całkowicie
+razem z narzędziem `G`.
+
+**Jedno rozstrzygnięcie MG w trakcie** (pytanie zadane przed kodowaniem): przy narzędziu ścian
+klik w **środek** segmentu zaznacza, klik przy **końcówce** (≤ 12 px) zaczyna nowy łańcuch.
+Bez tego wyjątku nie dałoby się dorysować ściany od narożnika istniejącego muru, bo promień
+trafienia w segment jest większy od promienia przyciągania.
+
+**Co powstało.**
+
+1. **`shared/scene-objects.ts`** — `SCENE_OBJECT_KINDS` (siedem rodzajów, w kolejności od
+   wierzchu), `pickSceneObject` (jedna odpowiedź na „co jest pod kursorem", po jednym rodzaju
+   naraz — to jest cała reguła „warstwa"), promienie chwytania i polskie nazwy z odmianą przez
+   liczbę. Plus `wallEndpointNear` w `walls.ts` i `drawingBounds` w `drawings.ts`.
+2. **Serwerowy bufor cofania** — `realtime/undo-buffer.ts` (pamięć procesu, 20 pozycji na
+   kampanię, cofa tylko ten, kto usunął, i tylko na oglądanej scenie) i `realtime/scene-undo.ts`
+   ze zdarzeniem `scene:undo`. Siedem ścieżek usuwania i pięć koszy odkłada tam całe wiersze
+   Prismy **przed** skasowaniem, więc obiekt wraca **z tym samym id** i z polami, których
+   zdarzenia tworzące nie przyjmują (zamek ściany, bieżące PW osłony, notatka gniazda).
+3. **Dwa brakujące kosze** — `light:clear` i `netpoint:clear`, oba cofalne jednym `Ctrl+Z`.
+4. **Klient** — `sceneSelectionStore` (wyklucza się z zaznaczeniem figury), obrys zaznaczenia
+   i podświetlenie pod kursorem w `MapRenderer`, `Delete`/`Backspace`, `Ctrl+Z`, nowy szczebel
+   drabiny `Esc` (zaznaczenie obiektu schodzi **przed** narzędziem) i podpowiedź kontekstowa
+   jako ostatni wiersz paska narzędzi.
+5. **Skróty i pomoc** — `zone` (`S`) i `netpoint` (`P`) weszły do `MAP_TOOL_KEYS`, `G` się
+   zwolniło, doszła grupa „Obiekty na mapie".
+
+**Dwa błędy znalezione przy oględzinach i naprawione.** (1) Wszystkie podpowiedzi nad mapą były
+**czarne na czarnym w motywie dziennym** (`--text` na `--map-panel`, a panel jest ciemny w obu
+motywach) — naprawione na `--map-ink`. (2) Podpowiedź warstwy **kładła się na ikonach paska**,
+bo pasek ma 38 rem szerokości, a pudełko podpowiedzi jest wyśrodkowane; przeniesiona do środka
+paska jako jego własny wiersz.
+
+**Odklikane w przeglądarce na scenie „Strzelnica"** (MG): test wyjściowy etapu — pasek → 🔌 →
+klik w gniazdo → obrys → `Delete` → „Usunięto punkt dostępu — Ctrl+Z cofa." → `Ctrl+Z` →
+„Przywrócono punkt dostępu.". Kosz gniazd zdjął **6** naraz, jedno `Ctrl+Z` oddało **6**
+(„Przywrócono 6 punktów dostępu."). Ten sam gest sprawdzony po kolei na **wszystkich siedmiu
+rodzajach**: ścianie, świetle, osłonie, strefie bronionej, rysunku, notatce i gnieździe.
+Dwuklik: karta strefy się otwiera, lampa przestraja się do ustawień z paska. Klik w **końcówkę**
+ściany zaczyna łańcuch (a `Esc` go porzuca, nic nie zostawiając). `Delete` przy zaznaczonej
+figurze **nie kasuje figury**. `Esc` zdejmuje najpierw zaznaczenie obiektu, potem narzędzie.
+Okno `?` wymienia wszystkie dziewięć narzędzi i drabina `Esc` ma ciągłe 8 kroków. Scena
+przywrócona co do obiektu (6 gniazd, 3 ściany, reszta pusta).
+
+**Nie odklikane:** strona gracza — pozycja w `zaleglosci.md` z wyjaśnieniem, czemu serwerowej
+odmowy nie da się wywołać z UI.
+
+**Testy:** 1379 w `shared`, 772 na serwerze, 45 u klienta — zielone.
 
 ### Sesja 23.08 (druga tego dnia) — triaż zaległości: kompendium, pula portretów, kości, wybuch; poza etapami
 
@@ -236,79 +291,3 @@ w `zaleglosci.md`. Z 27i zostają chmura gazu, wyładowanie strefy i dźwięki; 
 z triażu (Sieć, walka, ruch) nie były ruszane** — od nich zacząć następną sesję.
 
 **Testy:** 1369 w `shared`, 764 na serwerze, 36 u klienta — zielone.
-
-### Sesja 23.08 — pasy zasięgu na trasie ruchu, trasa figur 2×2, prettier; poza etapami
-
-**Zlecenie MG:** wskazując kursorem cel, gracz ma **z góry** widzieć kolorem, dokąd sięga w tej
-turze. Na pytania uzupełniające MG wybrał: **dwa progi + reszta** (zielony — budżet Akcji Ruchu,
-bursztyn — dosięgalne po oddaniu Akcji za Bieg, szary — poza turą), **ślady butów** zamiast linii,
-klik w bursztyn **bez zmiany zachowania** (nadal do granicy zielonego) i **bez ruszania**
-zacienienia zasięgu. W trakcie oględzin MG zdejmował kolejne warstwy: najpierw linię pod śladami,
-potem wszystkie liczby, kreski graniczne i ✖ — „wystarczy sam kolor". Doszło też: ślad ma trzymać
-rozmiar tokenu (nie ekranu), palce mają być rozstawione **na zewnątrz**, a ślad ma być **butem**,
-nie bosą stopą.
-
-**Co powstało.**
-
-1. **`TurnDistanceView.extra`** w `shared/src/combat.ts` — systemowo neutralne „ile jeszcze da się
-   dokupić i jak ten handel się nazywa". Wypełnia je `cpredRunMetres` (`systems/cpred/turn.ts`,
-   6 nowych testów): metry Biegu, dopóki Akcja jest wolna, zero po ataku i przy blokadzie rany.
-   `requiresSpentMove` **nie** jest tu sprawdzane — dojście za pierwszą Akcję Ruchu wydaje ją po
-   drodze, więc próg widać, zanim Bieg da się kliknąć. Mapa nie zna słowa „Bieg" (umowa kodu).
-2. **Ślady butów zamiast trasy.** `boot-print.svg` — lewy but wycięty z pary `boot-prints`
-   (Lorc, CC BY 3.0, wiersz w `ATTRIBUTION.md`); prawy to jego lustro. Ślad co metr, na przemian
-   z obu stron osi, palcami w kierunku marszu i rozstawiony o `FOOTPRINT_TOE_OUT` na zewnątrz.
-   Rozmiar liczony **szerokością tokenu** (`FOOTPRINT_*_RATIO`), nie `overlayScale()` — trail
-   trzyma jeden rozmiar przy każdym przybliżeniu, a duża figura zostawia duże ślady.
-3. **Wszystko inne zdjęte.** Z podglądu wypadły: linia trasy, etykiety metrów (noga, suma,
-   „Bieg: +X"), kreski na granicach pasów i ✖ na kratce lądowania — razem z martwą maszynerią
-   (`addWalkLabel`, `walkTexts`, `bandTick`, `routeAt`). Zostały ślady i kółka punktów trasy.
-
-**Jedna regresja własna, złapana i naprawiona.** Promień szukania trasy trzeba było rozszerzyć
-o pas Biegu (inaczej bursztyn nie miałby czego malować) — i to odsłoniło, że `clipWalkToBudget`
-z `shared` tnie na **punkcie zwrotnym**. Na wygładzonej prostej (dwa punkty) cięcie zostawiało
-sam start, więc gracz klikający poza budżet dostawał „Nie starcza ruchu w tej turze" zamiast
-przejść, ile się da. Nowe `clipToBudget` w `MapRenderer` tnie **na metrze**, przyciąga
-(`snapTokenPosition`), sprawdza budżet i przejście ponownie, a gdy się nie mieści — cofa się
-o kratkę. Wpis w `pulapki-dev.md`.
-
-**Odklikane w przeglądarce.** MG (budżet nieegzekwowany): trasa rysowana przez wszystkie trzy
-pasy. Gracz (avatar9, budżet 10 m): zielony kończy się dokładnie na granicy zasięgu, klik daleko
-poza budżet przeszedł **10 m / 10 m** z komunikatem „Koniec ruchu w tej turze" — czyli ścieżka,
-którą regresja psuła. Po wyczerpaniu Ruchu cała trasa robi się bursztynowa (Bieg jeszcze płaci),
-a przy zerowym budżecie nie ma zielonego wcale. Zamyka to zaległość „16e (3) ✖ na granicy budżetu
-u gracza" — ✖ zniknął, ale granica jest widoczna kolorem, i to sprawdzone na żywo.
-
-**Poligon przywrócony:** tryb turowy wyłączony, żeton avatar9 wrócił na swoje miejsce.
-
-**Nie ruszone:** błąd „podgląd trasy figury 2×2 przechodzi przez ściany" (pierwsza pozycja
-w `zaleglosci.md`) siedzi w dokładnie tym kodzie — proponowałem naprawić przy okazji, decyzji
-nie było, więc został nietknięty.
-
-**Potem, na zlecenie MG, dwie rzeczy poza pasami.**
-
-1. **Figura 2×2 planowała trasę przez ściany — naprawione.** Wbrew hipotezie z 22.08 winny był
-   **planer w `shared`**, nie klient: `canStep` szedł **jedną linią, od środka figury do środka**.
-   Dla 1×1 ta linia jest całym ciałem; środek figury 2×2 trzyma się o kratkę od muru, więc połowa
-   tokenu przechodziła przez ścianę. Serwer pytał inaczej (`firstBlockedStep` prowadzi po jednej
-   linii na każde pole footprintu od 21.08) — stąd „podgląd rysuje drogę, marsz staje po ułamku
-   metra". Nowe `laneClear` w `pathfinding.ts` robi u planera to samo w trzech miejscach: krok A\*,
-   zalew zasięgu i wygładzanie. Trzy testy odtwarzają geometrię; bez poprawki padają dwa.
-   **Odklikane przez MG** (mnie automat nie wpuścił — patrz „Czego nie udało się sprawdzić"):
-   figura 2×2 obchodzi mur. Zostało jedno: przechodzi **odrobinę za blisko** ścian — świadoma
-   konsekwencja tego, że planer i serwer pytają o środki kratek, a nie o obrys. MG uznał to za
-   akceptowalne; pozycja w `zaleglosci.md`.
-2. **Repozytorium jest zgodne z prettierem.** Z 61 niezgodnych plików 41 to wygenerowany klient
-   Prismy — poszedł do `.prettierignore` (i tak przepisuje go `prisma generate`). Reszta to
-   dokumentacja i `shared/src/index.ts`. Jeden plik, `etap-18d-…md`, prettier przepisywał w kółko:
-   miał puste linie w środku punktów listy i kontynuacje na 14 spacjach, co czyta się raz jako
-   akapit, raz jako blok kodu. Struktura list poprawiona, treść bez zmian.
-
-**Czego nie udało się sprawdzić.** Zbudowania sceny 2×2 ze ścianą **nie da się zrobić automatem**:
-narzędzie ścian rysuje podgląd, ale syntetycznych zdarzeń wskaźnika nie zapisuje (ściana znika po
-wyłączeniu narzędzia), z płótna Pixi nie da się odczytać pikseli do powiększenia, a żeton bez karty
-postaci nie przyjmuje rozkazu marszu u gracza. Ściana i żeton wstawione wprost do bazy też nie dały
-jednoznacznego odczytu. **Poligon został przywrócony co do żetonu i ściany** (sprawdzone zapytaniem
-do bazy: cztery żetony na swoich miejscach, zero ścian, tryb turowy wyłączony).
-
-**Testy:** 1369 w `shared`, 760 na serwerze, 36 u klienta — zielone.

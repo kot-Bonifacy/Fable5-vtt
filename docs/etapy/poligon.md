@@ -62,3 +62,22 @@ gazowej w magazynku, do wyładowania — strefy „Podłoga elektryczna" narzęd
 
 **Uwaga:** karta ataku statysty nie ma przycisku „Obrażenia" (błąd opisany w `zaleglosci.md`),
 więc rzut obrażeń obszarowych wymaga figury z **kartą postaci** albo naprawy tego błędu.
+
+## Stan po oględzinach 23.08 (etap 27k — edycja sceny)
+
+**Rozjazd z opisem wyżej, zastany na starcie sesji (nie spowodowany przez 27k):**
+
+- **⚠ „Podłogi elektrycznej" nie ma na Strzelnicy.** Licznik stref w pasku pokazywał „brak stref"
+  jeszcze zanim cokolwiek w tej sesji ruszono. Opis z 26f jest w tym punkcie nieaktualny.
+- **Osłony „Samochód 25/25" też nie ma.** Licznik osłon startował od zera. Poprzedni wpis
+  (22.08, piąta sesja) mówi, że została odtworzona presetem — od tego czasu zniknęła.
+- **Punktów dostępu jest sześć, nie jeden.** Opis z 22.08 wymienia jeden odsłonięty „Punkt
+  dostępu"; pięć kolejnych doszło później.
+- **Na Strzelnicy leży ściana w kształcie L** (3 segmenty). Opis z 22.08 mówi „wszystkie ściany
+  skasowane" — ta jest zostawiona po testach figury 2×2 z 23.08.
+
+**Przywrócone po oględzinach 27k:** wszystko, czego dotknęła ta sesja. Kasowanie i `Ctrl+Z`
+sprawdzono na siedmiu rodzajach obiektów; każdy albo wrócił cofnięciem, albo był stworzony na
+potrzeby testu i został skasowany. Stan końcowy Strzelnicy: **6 gniazd, 3 segmenty ściany,
+0 świateł, 0 osłon, 0 stref, 0 notatek, 0 rysunków.** Zaznaczenie żetonu jest lokalne i nic nie
+zapisuje. Scena **„Efekty 23x" nietknięta**.

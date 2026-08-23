@@ -419,19 +419,24 @@ export function pickWallAt(
 }
 
 /**
- * Where a drawn point should actually land. An existing wall endpoint wins over
- * the grid: closing a room exactly is what makes the difference between a sealed
- * wall and a slit that lights the whole map, and the GM cannot see a two-pixel
- * gap at the zoom a floor plan is traced at.
+ * Czy ten punkt leży przy końcówce istniejącej ściany (etap 27k)?
+ *
+ * Rozstrzyga spór, który powstał, gdy klik w ścianę zaczął ją **zaznaczać**:
+ * promień trafienia w segment (20 px przy kratce 100) jest większy od promienia
+ * przyciągania do końcówki (12 px), więc „zaznaczaj zawsze" odebrałoby MG
+ * jedyny sposób na dorysowanie ściany dokładnie od narożnika istniejącego muru.
+ * Decyzja MG z 23.08: **końcówka rysuje, środek zaznacza**.
+ *
+ * Zwraca samą końcówkę, bo wywołujący i tak chce ją mieć jako pierwszy punkt
+ * łańcucha; `null` znaczy „to jest środek segmentu albo puste pole".
  */
-export function snapWallPoint(
-  point: ScenePoint,
+export function wallEndpointNear(
   walls: readonly WallView[],
-  options: { gridSizePx: number | null; snapRadiusPx?: number },
-): ScenePoint {
-  const snapRadius = options.snapRadiusPx ?? WALL_ENDPOINT_SNAP_PX;
+  point: ScenePoint,
+  radiusPx: number = WALL_ENDPOINT_SNAP_PX,
+): ScenePoint | null {
   let best: ScenePoint | null = null;
-  let bestDistance = snapRadius;
+  let bestDistance = radiusPx;
   for (const wall of walls) {
     for (const candidate of [
       { x: wall.x1, y: wall.y1 },
@@ -444,7 +449,22 @@ export function snapWallPoint(
       }
     }
   }
-  if (best) return { ...best };
+  return best ? { ...best } : null;
+}
+
+/**
+ * Where a drawn point should actually land. An existing wall endpoint wins over
+ * the grid: closing a room exactly is what makes the difference between a sealed
+ * wall and a slit that lights the whole map, and the GM cannot see a two-pixel
+ * gap at the zoom a floor plan is traced at.
+ */
+export function snapWallPoint(
+  point: ScenePoint,
+  walls: readonly WallView[],
+  options: { gridSizePx: number | null; snapRadiusPx?: number },
+): ScenePoint {
+  const best = wallEndpointNear(walls, point, options.snapRadiusPx ?? WALL_ENDPOINT_SNAP_PX);
+  if (best) return best;
 
   const size = options.gridSizePx;
   if (size !== null && Number.isFinite(size) && size > 0) {

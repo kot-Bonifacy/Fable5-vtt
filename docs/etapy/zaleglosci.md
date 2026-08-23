@@ -22,23 +22,21 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
   Sprawdzone 23.08 na „Efekty 23x": trafienie granatnikiem 24 vs PT 17, „obszar 10×10 m ·
   Cel 23x — 0 m od środka", jedyny przycisk na karcie to „Unik: Cel 23x".
 
-- **Trzy błędy edycji sceny — objęte etapem 27k** (`etap-27k-edycja-sceny.md`, dopisany 23.08).
-  Zostawione tutaj na wypadek, gdyby etap się przesunął, bo każdy da się naprawić osobno.
-  (1) **Ciche gumki:** `MapArea.tsx:584, 728, 762` — `deleteWall`, `deleteLight`
-  i `removeNetAccessPoint` idą bez sprawdzenia `ack` i bez słowa przy chybieniu, więc klik obok
-  obiektu nie robi nic i nie tłumaczy dlaczego (osłony i strefy robią to poprawnie).
-  (2) **Brak koszy dla świateł i gniazd:** nie ma zdarzeń `light:clear` ani `netpoint:clear`,
-  choć ściany, osłony, strefy i rysunki mają swoje — scena zaśmiecona lampami wymaga klikania
-  ich po jednej. (3) **`zone` i `netpoint` nie są w `MAP_TOOL_KEYS`** (`shortcuts.ts:52`), więc
-  nie mają skrótu i **nie pokazują się w oknie pomocy `?`** — narzędzie punktów dostępu jest
-  jedynym, o którym pomoc milczy, i to była bezpośrednia przyczyna pytania MG z 23.08.
+- **Etap 27k — strona gracza nieodklikana.** Gracz ma zaznaczać i kasować **własny** rysunek,
+  a cudzego nie. Sesja na `[::1]:5173` jest dziś zalogowana jako MG, a dołączenie do stołu nowym
+  imieniem zakłada w kampanii konto-śmiecia — więc ścieżki nikt nie kliknął. Pokryta z dwóch
+  stron testami: filtr autorstwa u klienta (`shared/scene-objects.test.ts`, „gracz sięga przez
+  cudzą kreskę do własnej pod nią") i cofanie własnego usunięcia na żywych gniazdach
+  (`server/scene-undo.test.ts`, „gracz cofa własny rysunek; usunięcie MG zostaje MG").
+  **Uwaga przy odklikiwaniu:** serwerowej odmowy `FORBIDDEN` **nie da się** wywołać z UI i to
+  jest zamierzone — filtr u klienta nie pozwala gracza nawet zaznaczyć cudzej kreski, tak jak
+  nie pozwalał jej zetrzeć gumką od 17b. Odmowa istnieje dla klienta, który by o tym nie
+  wiedział, i ma test.
 
-- **Kosz „usuń wszystkie osłony" kasuje bez pytania i bez cofnięcia.** `MapTools.tsx` woła
-  `clearCovers(sceneId)` prosto z `onClick`, a scena potrafi mieć kilkanaście osłon budowanych
-  przez pół sesji. Wszystkie inne kosze w aplikacji (wpis dziennika, handout, scena) pytają
-  dwustopniowo. Sprawdzone 22.08: jeden klik zdjął „Samochód 25/25" i licznik od razu pokazał
-  „brak osłon". **Rozwiązanie zaplanowane w 27k** i inne, niż zakładała ta pozycja: nie okno
-  potwierdzenia, tylko `Ctrl+Z` — kosz odkłada całą grupę jako **jedną** pozycję cofania.
+- **Etap 27k — dwuklik w ścianę, osłonę i rysunek nie robi nic (zamierzone do 27l).** Kart
+  właściwości dla tych trzech jeszcze nie ma; pierwszy klik je zaznacza, drugi jest pusty i
+  aplikacja tego nie tłumaczy. Domknie to **27l** (`etap-27l-karty-obiektow.md`), które te karty
+  dokłada. Do tego czasu nie jest to błąd, tylko brak — ale przy stole wygląda tak samo.
 
 - **Biblioteka grafik tokenów nie ma kosza.** Raz wgrana grafika zostaje w zakładce „Tokeny"
   na zawsze — nie da się jej usunąć z UI, a plik zostaje w `uploads/tokens`. Przy oględzinach

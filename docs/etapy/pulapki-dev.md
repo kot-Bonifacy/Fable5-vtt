@@ -159,3 +159,26 @@ dotyczy.
   nią, dopiero ~3 s pokazuje obie. Stół kości to pełnoekranowa nakładka **pod** oknem karty
   postaci: przy otwartej karcie kości są niewidoczne, więc do łapania rzutów kartę trzeba
   zamknąć (kubek zostaje naładowany).
+
+- **Podpowiedź wyśrodkowana nad mapą kładzie się na pasku narzędzi** (23.08, etap 27k). Pasek
+  `.map-tools` stoi w lewym górnym rogu mapy, ale ma `max-width: 38rem` i się zawija, więc
+  na szerokiej mapie sięga daleko poza środek — a `.map-placement-hint` jest `left: 50%`.
+  Efekt: zdanie leży wprost na ikonach i wygląda, jakby ich nie było. **Obejście:** podpowiedź
+  należąca do paska renderuje się **w nim**, jako wiersz z `flex-basis: 100%` (`.map-tool-tip`);
+  pływające pudełko zostaw na rzeczy, które paska nie dotyczą (stawianie żetonu, celowanie).
+
+- **Zrzut ekranu z przeglądarki bywa renderowany ciemniej, niż mówi DOM** (23.08). Przy oględzinach
+  27k `getComputedStyle(document.body).backgroundColor` dawało jasny motyw dzienny, a zrzut
+  pokazywał ciemny interfejs — to Chrome nakłada własne przyciemnienie na obraz, nie strona.
+  **Nie zgaduj motywu ze zrzutu:** czytaj `document.documentElement.dataset.theme` i tokeny
+  z `getComputedStyle`, inaczej szukasz błędu kontrastu w złym motywie.
+
+- **Automat CDP _jednak_ buduje scenę: ściany, lampy, osłony, strefy i pinezki** (23.08,
+  koryguje notatkę z sesji o pasy zasięgu, która mówiła „nie da się"). Narzędzie `computer`
+  wysyła zdarzenia przez CDP, a nie syntetyczne `PointerEvent`, i Pixi je przyjmuje: w tej sesji
+  automatem postawiono lampę, przeciągnięto osłonę i strefę, wbito pinezkę, rozpoczęto i
+  porzucono łańcuch ścian oraz zaznaczono i skasowano po kolei siedem rodzajów obiektów.
+  Nietrafiona pozostaje tylko wcześniejsza obserwacja o `dispatchEvent` z ręki. Praktycznie:
+  klikaj współrzędnymi ekranu z pełnego zrzutu, sprawdzaj skutek `zoom`-em na wycinku, a stan
+  narzędzia czytaj z DOM — `document.querySelector('.map-canvas-host canvas').style.cursor`
+  mówi, czy kursor stoi nad obiektem, który da się złapać.
