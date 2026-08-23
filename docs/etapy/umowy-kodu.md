@@ -13,6 +13,26 @@ w `movementSegments`/`coverMovementSegments`, nie w nowej gałęzi walidacji.
 linię na każde pole footprintu — te same punkty, które sprawdza planer u klienta (`isNodeOpen`),
 więc serwerowa odmowa i narysowana trasa nie mają jak się rozjechać.
 
+**Drugi pas zasięgu tury jedzie jako `TurnDistanceView.extra`, a rdzeń nie zna słowa „Bieg".**
+Podgląd trasy maluje dwa progi: ile figura przejdzie z Akcji Ruchu i dokąd sięgnie, oddając
+za to Akcję. Nazwę tego handlu i liczbę metrów wystawia **system**: `cpredRunMetres`
+w `systems/cpred/turn.ts` dokłada `distance.extra = { label, max }`, a `combat.ts` opisuje pole
+jako „ile jeszcze da się dokupić, oddając coś innego" — bez CP RED w typie. `MapRenderer`
+dostaje z `MapArea` samo `extraMetres`/`extraLabel` i maluje bursztyn, nigdy nie pytając, co za
+to płaci; separacja rdzeń/system trzyma się tu na jednym polu, więc nowy system RPG dokłada
+własne `extra`, a mapa nie zmienia ani linijki. Uwaga na jeden szczegół: `cpredRunMetres`
+**nie** sprawdza `requiresSpentMove` — dojście za pierwszą Akcję Ruchu wydaje ją po drodze,
+więc próg widać, zanim Bieg stanie się klikalny. Zeruje go dopiero wydana Akcja albo blokada
+(rana, status).
+
+**Podgląd trasy nie pisze liczb i nie stawia znaczników.** Trasa mówi **wyłącznie** śladami
+butów: kolor = pas zasięgu, odstęp = metr, kierunek = dokąd idzie figura. Etykiety metrów
+(noga, suma, „Bieg: +X"), kreski na granicach pasów i ✖ na kratce lądowania były po kolei
+dokładane i po kolei zdjęte (MG, 23.08) — każde z nich mówiło drugi raz to, co mówi kolor,
+z dokładnością, do której nikt nie planuje tury. Dokładny metr daje linijka. Ślad skaluje się
+**szerokością tokenu** (`FOOTPRINT_*_RATIO`), nie `overlayScale()`, więc trzyma rozmiar przy
+każdym przybliżeniu; pilnuje tego `walk-bands.test.ts`.
+
 **Powód odmowy jedzie na zasobie tury, nie w prozie obok niej.** `TurnResourceView.blocked`
 niesie zdanie, którym rana albo status zabrały Akcję (14e), a `hotbarSlotsFor` stawia je
 **przed** „Akcja w tej turze już wykorzystana". Kolejność prawdy jest trzystopniowa: status,

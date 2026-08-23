@@ -7,6 +7,71 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 22.08 (czwarta tego dnia) — pozycje 1–6 z triażu zaległości, poza etapami
+
+**Zlecenie MG:** wypisać ~10 otwartych zaległości (bez rzeczy czekających na lokalny LLM, bo
+model idzie do wymiany, i bez nieukończonych etapów), a potem naprawić **pozycje 1–6**.
+Odpowiedzi na pytania z triażu: przekreślić nieaktualne wiersze w `POMYSLY.md`, a `POSTEP.md`
+sprzątnąć wariantem **(a)** — przenieść zamknięte pozycje do archiwum, zostawiając strukturę.
+
+**1. Netrunner nie miał czym uruchomić Skanera.** „🛰 Skaner" siedział wyłącznie
+w `NetAccessPointPanel`, który otwiera się klikiem w **narysowany** punkt dostępu — a punkt
+dostępu jest domyślnie ukryty i odsłania go właśnie Skaner. Teraz Skaner jest **slotem paska
+akcji**: `CPRED_HOTBAR_NETRUNNER_ACTION_IDS` w `shared/hotbar.ts` (nowa, obok listy, którą
+dostaje każdy), warunek `netrunner` liczony z karty tymi samymi dwiema rzeczami, których żąda
+serwer (ranga Interfejsu **i** cyberdek), ikona `scanner.svg` (Radar sweep, Lorc, CC BY 3.0).
+`activateSlot` woła `netrun:scan` i **nie** dokłada `spendCombatAction` — serwer księguje swoją
+Akcję sam. **Odklikane:** panel Kolca pokazał slot „Skaner 7", a klik wyprodukował kartę
+„Skaner (Interfejs) · 1d10+7 = 9 · Zasięg 9 m — nic w promieniu skanu".
+
+**2. MG nie zmieniał udostępnienia postawionych drzwi ani okna.** `wall:update` przyjmowało
+`playerToggle` od zawsze, ale klient wołał je **wyłącznie** z `locked`, więc okno postawione
+z domyślnym „tylko dla MG" trzeba było skasować i narysować od nowa. Narzędzie ścian ma teraz
+**czwarty tryb** (oko, obok rysowania, gumki i zamka): klik w otwór przełącza flagę i odpowiada
+zdaniem, bo na mapie nie widać po tym różnicy. **Odklikane:** postawione drzwi → „Drzwi: tylko
+dla MG…" → „Drzwi: gracze mogą je otwierać…" → gumka; scena wróciła do stanu sprzed testu.
+
+**3. Wyszarzona Akcja zabrana przez ranę kłamała o powodzie.** Przycisk mówił „Akcja w tej
+turze już wykorzystana", choć Akcja nie została wykorzystana, tylko **zabrana** (Uraz
+kręgosłupa, 14e). Zdanie rany jechało tylko w `notes` obok wskaźnika AKCJA. Teraz niesie je sam
+zasób tury (`TurnResourceView.blocked` — pole rdzenia, bo „zasób zablokowany" to nie to samo co
+„wydany"), a `hotbarSlotsFor` układa powody w kolejności: status → rana zapisana na turze →
+budżet. Dotyczy **też MG**, bo to fakt o figurze, nie o tym, czyja jest tura — tak samo jak
+status. Testy: cztery w `hotbar.test.ts`, jeden dopisany w `turn-effects.test.ts`.
+
+**4. Atak na Demona — błędu nie ma; notatka była nieprawdziwa.** Wpis mówił, że „gracz nie widzi
+pięter, na których nie stanął, więc z UI nie ma jak zaatakować Demona". W kodzie jest inaczej:
+`DemonRow` w `NetRunWindow` stoi w **osobnej sekcji „Demony"**, nie na piętrze, przycisk
+„Atakuj" dostaje każdy, a `netDemonViews` wysyła Demona graczowi, gdy tylko przestanie być
+`lurking`. Dowodzą tego testy serwera z 26e (gracz trafia Demona z `deck-sword`, REZ spada).
+Jedyną bramką jest klik MG „Demon wykrywa intruza" — **świadoma decyzja 26e** („w Sieci nic nie
+rusza się samo"), nie brak. Zaległość skasowana zamiast naprawiona.
+
+**5. Kolizje ruchu nie znały rozmiaru figury.** `refuseWalkThroughSolid` prowadziło **jedną**
+linię — środkiem żetonu — więc figura 2×2 przechodziła przez ścianę połową siebie, mając środek
+w prześwicie. `firstBlockedStep` przyjmuje teraz footprint i sprawdza **po linii na każde pole**
+(dla 1×1 to dokładnie stara ścieżka). Punkty są te same, które sprawdza planer u klienta
+(`isNodeOpen`), więc odmowa serwera i narysowana trasa nie mają jak się rozjechać. Testy: cztery
+w `pathfinding.test.ts` i jeden na żywych gniazdach w `walls.test.ts` (ta sama trasa, dwa
+rozmiary — 1×1 przechodzi, 2×2 dostaje `MOVE_REFUSED`), sprawdzony celowym cofnięciem poprawki.
+Sprzątanie w tym teście jest w `finally`: scena jest wspólna dla całego pliku, a zostawiony
+kikut ściany wywracał pięć testów niżej z zupełnie innego powodu.
+
+**6. Porządki w dokumentacji.** Z „Otwartych zaległości" wyszło **13 zamkniętych pozycji**
+(~150 linii) do nowego `archiwum/zamkniete-zaleglosci.md`; w `POSTEP.md` zostały same rzeczy
+otwarte, a tam, gdzie zamknięty wpis miał otwarty ogon (27b, 27c, pusty stan listy postaci),
+został po nim krótki wpis. Osiem odsyłaczy „patrz pozycja zbiorcza na górze sekcji" pokazuje
+teraz archiwum. Pełna notatka sesji 22.08 (drugiej) pojechała do `archiwum/dziennik-sesji.md`,
+bo pełne zostają **dwie** ostatnie. W `POMYSLY.md` przekreślonych **dziewięć** wierszy: cztery
+z dzisiaj i pięć, które były zrobione wcześniej, a nikt tam nie wrócił (aktywacja kampanii,
+gubione edycje karty, dziedzina umiejętności, „strzelaj mimo osłony" z węzła, pułapka
+w Kolejce). `POSTEP.md`: 99,7 → 86 kB.
+
+**Nie zmieniałem** stanu Poligonu: door postawiony do testu punktu 2 został skasowany, żeton
+Kolec wrócił bez zmian, a jedynym śladem na czacie są dwa rzuty Skanera. Przy starcie serwera
+`uploads-gc` z 22.08 zmiótł **4 osierocone pliki** (16,7 MB) — pierwszy przebieg na żywych
+danych po tamtej naprawie.
+
 ### Sesja 22.08 (trzecia tego dnia) — oględziny „strona gracza", poza etapami
 
 **Zlecenie MG:** z listy dziesięciu zaległości wybrał pozycję 1 — **zbiorczy dług oględzin

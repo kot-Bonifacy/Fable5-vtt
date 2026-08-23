@@ -47,7 +47,6 @@ import {
   LIGHT_DIM,
   WALK_RADIUS_CELLS,
   clampTokenPosition,
-  clipWalkToBudget,
   coverStanding,
   zoneLabel,
   zoneStanding,
@@ -433,8 +432,64 @@ const REACH_EDGE_ALPHA = 0.45;
 /** Route preview colours: what will be walked, and what will not. */
 const WALK_COLOR = 0x4ade80;
 const WALK_COLOR_BEYOND = 0x94a3b8;
+/**
+ * The second reach band: ground this turn still reaches, but only by taking the
+ * trade the system offers („Bieg" — the Action spent on another Move Action).
+ *
+ * Amber because the two questions are „will I get there" and „what will it
+ * cost me", and a second green would answer the first one twice. It is a
+ * *line* colour: the one warm **fill** on the map is still the blast template
+ * below, which nothing else may take.
+ */
+const WALK_COLOR_EXTRA = 0xfbbf24;
 /** „Walk that way" — a route that ends at the edge of what is known. */
 const WALK_COLOR_UNKNOWN = 0x38bdf8;
+/**
+ * A single **left** boot sole, pointing up the −Y axis (Lorc, CC BY 3.0).
+ *
+ * A boot rather than a bare foot (MG, 23.08): people walk in boots, and a row
+ * of naked soles on a Night City street reads as somebody's very bad day.
+ * Mirrored on x it becomes the right boot — which is the whole reason the
+ * glyph is one print and not the artist's pair.
+ */
+const FOOTPRINT_GLYPH_URL = '/icons/boot-print.svg';
+/**
+ * How much ground one boot print stands for, in metres.
+ *
+ * A stride, so the trail reads as somebody walking rather than as a dotted
+ * line — and it doubles as a gauge: counting prints is counting metres, which
+ * is the question this whole preview exists to answer.
+ */
+const FOOTPRINT_STEP_M = 1;
+/**
+ * Print size and side offset, as a share of the **token's own width**.
+ *
+ * Map units, not screen units (MG, 23.08): a trail that swelled as the map was
+ * zoomed out belonged to the screen rather than to the figure walking it, and
+ * next to a token it was never the same size twice. Tied to the token, a big
+ * figure leaves big prints and the trail keeps one size at every zoom.
+ *
+ * The ratios are the glyph's own: 200 × 478 in its viewBox, so `W` over `H` is
+ * kept near 1 : 2.4 or the boot comes out squashed.
+ */
+const FOOTPRINT_W_RATIO = 0.17;
+const FOOTPRINT_H_RATIO = 0.4;
+const FOOTPRINT_OFFSET_RATIO = 0.13;
+/**
+ * How far each boot turns away from the centre line, in radians.
+ *
+ * Toes out, never in (MG, 23.08). Feet planted dead parallel — or worse,
+ * splayed the wrong way — read as a mannequin being dragged; a few degrees of
+ * toe-out is what a walking human actually leaves behind.
+ */
+const FOOTPRINT_TOE_OUT = 0.09;
+/**
+ * Least room a print gets before the trail thins itself out, as a multiple of
+ * the print's own length. Below this the boots overlap into a smear.
+ */
+const FOOTPRINT_GAP_RATIO = 1.15;
+/** Ceiling on prints per route, so a long GM route cannot flood the layer. */
+const FOOTPRINT_MAX = 160;
 /**
  * The explosion template (stage 16d). Amber, and it is the only warm fill on
  * the map: everything else the overlay draws is a line, so a filled patch in a
@@ -653,6 +708,17 @@ export interface MoveAllowance {
    * does not have.
    */
   enforced?: boolean;
+  /**
+   * Metres of budget the participant could still buy by taking the trade the
+   * system offers — absent when that trade is gone.
+   *
+   * Orientation only, exactly like the rest of this record: the route is drawn
+   * a second colour that far, and *nothing here spends anything*. Taking the
+   * trade is still a button in the action bar, and the server still books it.
+   */
+  extraMetres?: number;
+  /** What the system calls that trade („Bieg"), for the label on the map. */
+  extraLabel?: string;
 }
 
 /**
@@ -1031,6 +1097,18 @@ export class MapRenderer {
   /** The route under the cursor and the march, drawn above everything. */
   private readonly walkGraphics = new Graphics();
   /**
+   * Footprints along that route (repair session 23.08).
+   *
+   * Their own container rather than more `Graphics`, because each print is a
+   * rotated, mirrored, tinted sprite — and because a pool of sprites can be
+   * reused frame after frame, which a redrawn path cannot. Purely painterly, so
+   * it must never be what a click lands on (the hit-test pitfall of 27i).
+   */
+  private readonly footprintLayer = new Container();
+  private footprintTexture: Texture | null = null;
+  /** Prints made once and re-aimed since; `visible` decides how many are in use. */
+  private readonly footprints: Sprite[] = [];
+  /**
    * The floor the turn can still pay for (stage 27j).
    *
    * Its own layer under the route, because the two answer different questions
@@ -1091,7 +1169,6 @@ export class MapRenderer {
   /** Centre of the square (snapped) or the point the cone is aimed at. */
   private areaHover: ScenePoint | null = null;
   private readonly blastGraphics = new Graphics();
-  private walkTexts: Text[] = [];
   /**
    * The rotation knob on the selection ring (stage 27j), while it is being
    * dragged. Null the rest of the time — the knob is drawn regardless, it is
@@ -1144,6 +1221,18 @@ export class MapRenderer {
       return;
     }
     host.appendChild(this.app.canvas);
+    // Fire and forget: the route reads perfectly well as a line, so a missing
+    // or slow glyph must not hold the map up. The first route drawn after it
+    // lands gets the prints.
+    void Assets.load<Texture>(FOOTPRINT_GLYPH_URL)
+      .then((texture) => {
+        if (this.destroyed) return;
+        this.footprintTexture = texture;
+        this.drawWalkPreview();
+      })
+      .catch(() => {
+        // Brak pliku zostawia samą linię — trasa nadal mówi wszystko, co musi.
+      });
 
     const viewport = new Viewport({
       events: this.app.renderer.events,
@@ -1221,6 +1310,10 @@ export class MapRenderer {
     this.overlayLayer.addChild(this.reachGraphics);
     this.overlayLayer.addChild(this.trailGraphics);
     this.overlayLayer.addChild(this.walkGraphics);
+    // Prints over the line, not under it: the line is the thin thing holding
+    // the shape together, the prints are what the eye actually reads.
+    this.footprintLayer.eventMode = 'none';
+    this.overlayLayer.addChild(this.footprintLayer);
     this.overlayLayer.addChild(this.blastGraphics);
     this.overlayLayer.addChild(this.drawPreview);
     viewport.addChild(this.overlayLayer);
@@ -2506,13 +2599,22 @@ export class MapRenderer {
   }
 
   /** The turn's remaining movement, but only when it belongs to the steered token. */
-  private walkBudget(): { metresLeft: number; costFactor: number; enforced: boolean } | null {
+  private walkBudget(): {
+    metresLeft: number;
+    costFactor: number;
+    enforced: boolean;
+    extraMetres: number;
+    extraLabel: string | null;
+  } | null {
     const allowance = this.moveAllowance;
     if (!allowance || allowance.tokenId !== this.selectedTokenId) return null;
+    const extra = allowance.extraMetres ?? 0;
     return {
       metresLeft: allowance.metresLeft,
       costFactor: allowance.costFactor > 0 ? allowance.costFactor : 1,
       enforced: allowance.enforced !== false,
+      extraMetres: extra > 0 ? extra : 0,
+      extraLabel: extra > 0 ? (allowance.extraLabel ?? null) : null,
     };
   }
 
@@ -2553,7 +2655,13 @@ export class MapRenderer {
     const enforced = budget?.enforced ? budget : null;
     // The search reaches exactly as far as the turn can pay for, plus a cell of
     // slack so the route may bulge round a corner on its way to the far edge.
-    const reachM = enforced ? enforced.metresLeft / enforced.costFactor : WALK_FREE_RANGE_M;
+    // „What the turn can pay for" now includes the trade — a band the player is
+    // not allowed to walk into is still a band they have to be able to *see*,
+    // and a route that stops at the green edge cannot show them where the amber
+    // one ends.
+    const reachM = enforced
+      ? (enforced.metresLeft + enforced.extraMetres) / enforced.costFactor
+      : WALK_FREE_RANGE_M;
     const radiusCells = Math.min(
       WALK_RADIUS_CELLS,
       Math.max(1, Math.ceil(reachM / (cell * perPixel)) + 1),
@@ -2583,7 +2691,7 @@ export class MapRenderer {
         break;
       }
     }
-    const clipped = clipWalkToBudget(points, scene, enforced);
+    const clipped = this.clipToBudget(points, scene, node.token.size, enforced);
     return {
       points,
       walkable: clipped.points,
@@ -2592,6 +2700,102 @@ export class MapRenderer {
       spent: clipped.spent,
       complete: clipped.complete,
     };
+  }
+
+  /**
+   * How much of a planned route the turn can actually pay for.
+   *
+   * `clipWalkToBudget` in `shared` cuts on a **waypoint**, which is right for
+   * the bot — its routes are planned unsmoothed precisely so that every cell is
+   * a waypoint the cut can land on (20b) — and wrong here. A smoothed route
+   * across open ground has exactly two points, start and end, so that cut
+   * collapses to the start: „idź, ile starczy" would answer „nie ruszysz się"
+   * for every click past the budget, which is what the search radius used to
+   * hide by never planning that far in the first place.
+   *
+   * So the cut lands **on the metre** — and then snaps, because the server
+   * snaps whatever landing it is sent and bills the path it arrives with
+   * (`movementPath` appends the snapped position). An unsnapped end would be
+   * nudged up to half a square further and refused for the difference, which is
+   * the same trap `marchLanding` walks back out of. A snap that no longer fits
+   * steps back a square at a time; a route with nowhere left to stand falls
+   * back to the last whole waypoint, which is where this started.
+   */
+  private clipToBudget(
+    points: readonly ScenePoint[],
+    scene: SceneView,
+    size: number,
+    budget: { metresLeft: number; costFactor: number } | null,
+  ): { points: ScenePoint[]; metres: number; spent: number; complete: boolean } {
+    const first = points[0];
+    const factor = budget && budget.costFactor > 0 ? budget.costFactor : 1;
+    const full = polylineMetres(points, scene);
+    if (!first) return { points: [], metres: 0, spent: 0, complete: true };
+    if (!budget) return { points: [...points], metres: full, spent: full * factor, complete: true };
+
+    // A tenth of a metre of slack: the metre count is rounded to one decimal on
+    // both ends of the wire, and „12 m of 12 m" must not come back refused.
+    const allowed = Math.max(0, budget.metresLeft) / factor;
+    if (full <= allowed + 0.05) {
+      return { points: [...points], metres: full, spent: full * factor, complete: true };
+    }
+
+    const kept: ScenePoint[] = [first];
+    let overflow = 1;
+    for (; overflow < points.length; overflow++) {
+      const candidate = [...kept, points[overflow]!];
+      if (polylineMetres(candidate, scene) > allowed + 0.05) break;
+      kept.push(points[overflow]!);
+    }
+    const short = (): {
+      points: ScenePoint[];
+      metres: number;
+      spent: number;
+      complete: boolean;
+    } => {
+      const metres = polylineMetres(kept, scene);
+      return { points: kept, metres, spent: metres * factor, complete: false };
+    };
+
+    const from = kept[kept.length - 1]!;
+    const to = points[overflow];
+    const snapScene = this.snapScene();
+    const perPixel = metresPerPixel(scene);
+    const cell = scene.grid.sizePx;
+    if (!to || !snapScene || perPixel <= 0 || cell <= 0) return short();
+    const legPx = Math.hypot(to.x - from.x, to.y - from.y);
+    if (legPx <= 0) return short();
+
+    const half = (size * cell) / 2;
+    let along = (allowed - polylineMetres(kept, scene)) / perPixel;
+    for (let tries = 0; tries < 6 && along > 0; tries++, along -= cell) {
+      const reach = Math.min(along, legPx);
+      const landing = snapTokenPosition(
+        from.x + ((to.x - from.x) * reach) / legPx,
+        from.y + ((to.y - from.y) * reach) / legPx,
+        size,
+        snapScene,
+      );
+      // A snap that lands back where the figure already stands is not a step.
+      if (Math.abs(landing.x - from.x) < 1 && Math.abs(landing.y - from.y) < 1) continue;
+      const candidate = [...kept, landing];
+      const metres = polylineMetres(candidate, scene);
+      if (metres > allowed + 0.05) continue;
+      // The leg was planned clear for the whole figure, but the snap moves the
+      // landing off it by up to half a square — enough to clip the corner of a
+      // wall the route was hugging.
+      if (
+        this.walkCanStep &&
+        !this.walkCanStep(
+          { x: from.x + half, y: from.y + half },
+          { x: landing.x + half, y: landing.y + half },
+        )
+      ) {
+        continue;
+      }
+      return { points: candidate, metres, spent: metres * factor, complete: false };
+    }
+    return short();
   }
 
   /**
@@ -2648,6 +2852,7 @@ export class MapRenderer {
       Math.floor(point.y / cell),
       budget ? budget.metresLeft : -1,
       budget ? budget.costFactor : 1,
+      budget ? budget.extraMetres : 0,
       this.walkWaypoints.length,
     ].join(':');
     if (this.walkHover?.key === key) return;
@@ -2665,16 +2870,32 @@ export class MapRenderer {
   }
 
   /**
-   * Paints the route: solid green for the part that will be walked, an ✖ where
-   * the figure will stop, and a dim tail for the part the turn cannot pay for.
+   * Paints the route as a trail of boot prints, coloured by how much of the
+   * turn each metre of it costs: green while this turn's movement pays for it,
+   * amber where it is reached only by taking the trade the system offers
+   * („Bieg" — the Action spent on a second Move Action), grey where the turn
+   * cannot reach at all. Where the green runs out is where the figure stops.
    *
-   * The tail is the whole of „idź, ile starczy" (decision of stage 16e): the
-   * click is not refused, it is *shortened*, and the player can see by how much
-   * before they commit — which is the difference between a budget and a trap.
+   * The bands are the point of the preview (repair session 23.08). „Idź, ile
+   * starczy" (16e) told the player where they would *land*; it never told them
+   * how far this turn could go **at most**, and that is the number a plan is
+   * made of — whether the cover across the street is one Action away or two
+   * decides the turn before a single metre is spent.
+   *
+   * Prints and nothing else (MG, 23.08). The route started out with a line
+   * under the prints, a number on every leg, a total and a „Bieg" figure, a bar
+   * where each band ended and an ✖ on the landing square; one by one they all
+   * came off. What is left says the same thing: the prints have a direction, a
+   * gait and a spacing of one metre, and their colour is the answer. Precision
+   * past that is the ruler's job, not the route's.
+   *
+   * The amber band is *information only*: clicking into it still walks to the
+   * green edge, because the Action is spent by the action bar and booked by the
+   * server, never by a click on the floor.
    */
   private drawWalkPreview(): void {
     this.walkGraphics.clear();
-    this.clearWalkTexts();
+    this.hideFootprints();
     const hover = this.walkHover;
     const scene = this.scene;
     const node = this.selectedTokenId ? this.tokenNodes.get(this.selectedTokenId) : undefined;
@@ -2683,20 +2904,20 @@ export class MapRenderer {
 
     const half = (node.token.size * scene.grid.sizePx) / 2;
     const k = this.overlayScale();
-    const stroke = (points: readonly ScenePoint[], color: number, alpha: number) => {
-      const [first, ...rest] = points;
-      if (!first || rest.length === 0) return;
-      this.walkGraphics.moveTo(first.x + half, first.y + half);
-      for (const point of rest) this.walkGraphics.lineTo(point.x + half, point.y + half);
-      this.walkGraphics.stroke({ color, width: 3 * k, alpha, cap: 'round', join: 'round' });
-    };
-
-    // The unaffordable tail first, so the green line is drawn over its join.
-    if (!hover.complete) {
-      stroke(hover.points.slice(Math.max(0, hover.walkable.length - 1)), WALK_COLOR_BEYOND, 0.5);
-    }
+    const budget = this.walkBudget();
     const color = hover.truncated ? WALK_COLOR_UNKNOWN : WALK_COLOR;
-    stroke(hover.walkable, color, 0.9);
+    // Band edges in metres of *ground*, which is what the route is measured in;
+    // the budget is in metres of turn, and hard going makes the two differ.
+    const moveGround = budget ? budget.metresLeft / budget.costFactor : Infinity;
+    const extraGround = budget
+      ? (budget.metresLeft + budget.extraMetres) / budget.costFactor
+      : Infinity;
+    const bandAt = (metres: number): { color: number; alpha: number } => {
+      if (metres <= moveGround + 0.05) return { color, alpha: 0.95 };
+      if (metres <= extraGround + 0.05) return { color: WALK_COLOR_EXTRA, alpha: 0.9 };
+      return { color: WALK_COLOR_BEYOND, alpha: 0.45 };
+    };
+    this.drawFootprints(hover.points, scene, half, bandAt);
 
     // The corners the player insisted on, so „I asked for this route" is visible
     // while it is being built rather than only inferable from its shape.
@@ -2704,83 +2925,107 @@ export class MapRenderer {
       this.walkGraphics.circle(waypoint.x, waypoint.y, 5 * k).fill({ color: 0xfacc15, alpha: 0.9 });
     }
 
-    const stop = hover.walkable[hover.walkable.length - 1];
-    if (!stop) return;
-    const cx = stop.x + half;
-    const cy = stop.y + half;
-    const arm = 9 * k;
-    this.walkGraphics
-      .moveTo(cx - arm, cy - arm)
-      .lineTo(cx + arm, cy + arm)
-      .moveTo(cx + arm, cy - arm)
-      .lineTo(cx - arm, cy + arm)
-      .stroke({ color: hover.complete ? color : 0xf87171, width: 3 * k, alpha: 0.95 });
-
-    // What each leg costs, written on the leg (stage 27j).
+    // Nothing else on the route (MG, 23.08).
     //
-    // The total at the end was never the number being asked about: a player
-    // looking at an L round a corner wants to know whether the *first* half
-    // fits, because that is the half that decides whether the second one is
-    // worth planning. Legs under a metre carry no label — they are corners,
-    // not decisions, and a label on every one of them is a wall of digits.
-    // A straight route carries none either: its one leg *is* the total, and
-    // the same number printed twice a centimetre apart reads as a bug.
-    const legLabels = hover.walkable.length > 2;
-    for (let i = 1; legLabels && i < hover.walkable.length; i++) {
-      const from = hover.walkable[i - 1]!;
-      const to = hover.walkable[i]!;
-      const legMetres = polylineMetres(
-        [
-          { x: from.x + half, y: from.y + half },
-          { x: to.x + half, y: to.y + half },
-        ],
-        scene,
-      );
-      if (legMetres < 1) continue;
-      // Below the leg, while the total sits above the stop: the last leg's
-      // label and the total are a centimetre apart otherwise, and they were
-      // printing over each other.
-      this.addWalkLabel(
-        formatMetres(legMetres),
-        (from.x + to.x) / 2 + half + 8 * k,
-        (from.y + to.y) / 2 + half + 4 * k,
-        0xd1fae5,
-        13,
-      );
+    // The preview grew a bar where each band ended, a big ✖ on the landing
+    // square, a number on every leg, a total, and what „Bieg" would buy — and
+    // one by one they all came off. Each was a second way of saying what the
+    // colours already say, drawn at a precision nobody plans a turn to. Where
+    // the green runs out is where the figure stops; that is the whole message,
+    // and anyone who wants the exact metre has the ruler.
+  }
+
+  /**
+   * Walks the route once and drops a boot print every metre of it, tinted by
+   * the band that metre falls in.
+   *
+   * Prints rather than dashes because the question is „how far do I get", and a
+   * trail of boots answers it by being *countable*: four prints to the corner
+   * is four metres, without reading a single label. They alternate left and
+   * right off the centre line, so the trail has a gait — a single file of
+   * identical marks reads as a dotted line and loses that.
+   *
+   * Sized off the token rather than off the screen, so the trail stays the same
+   * size at every zoom, and thinned to whole metres when a print would be
+   * longer than the metre it stands on.
+   */
+  private drawFootprints(
+    points: readonly ScenePoint[],
+    scene: SceneView,
+    half: number,
+    bandAt: (metres: number) => { color: number; alpha: number },
+  ): void {
+    if (!this.footprintTexture) return;
+    const perPixel = metresPerPixel(scene);
+    if (perPixel <= 0) return;
+    const metrePx = FOOTPRINT_STEP_M / perPixel;
+    if (metrePx <= 0) return;
+    const tokenPx = half * 2;
+    const printW = tokenPx * FOOTPRINT_W_RATIO;
+    const printH = tokenPx * FOOTPRINT_H_RATIO;
+    const offsetPx = tokenPx * FOOTPRINT_OFFSET_RATIO;
+    // Whole metres only, so „one print = one metre" survives the thinning as
+    // „one print = two metres" rather than becoming an arbitrary spacing.
+    const stride = Math.max(1, Math.ceil((printH * FOOTPRINT_GAP_RATIO) / metrePx));
+    const stepPx = stride * metrePx;
+
+    let used = 0;
+    let travelled = 0;
+    let next = stepPx;
+    for (let i = 1; i < points.length && used < FOOTPRINT_MAX; i++) {
+      const from = points[i - 1]!;
+      const to = points[i]!;
+      const dx = to.x - from.x;
+      const dy = to.y - from.y;
+      const length = Math.hypot(dx, dy);
+      if (length <= 0) continue;
+      const ux = dx / length;
+      const uy = dy / length;
+      const angle = Math.atan2(dy, dx);
+      while (next <= travelled + length && used < FOOTPRINT_MAX) {
+        const along = next - travelled;
+        // +1 is the walker's right — the perpendicular below is their right
+        // hand, because the map's y runs down the screen.
+        const side = used % 2 === 0 ? 1 : -1;
+        const offset = offsetPx * side;
+        // Each print asks for itself: the band is a question about the metre it
+        // stands on, not about the leg it happens to lie in, so a boundary
+        // falling in the middle of a long straight still lands in the right
+        // place.
+        const band = bandAt(next * perPixel);
+        const print = this.footprintAt(used);
+        print.visible = true;
+        print.tint = band.color;
+        print.alpha = band.alpha;
+        // Turned out of the line of travel, so the pair reads as a gait.
+        print.rotation = angle + Math.PI / 2 + FOOTPRINT_TOE_OUT * side;
+        print.setSize(printW, printH);
+        // The glyph is the left boot, so the right one is the mirrored print.
+        print.scale.x = Math.abs(print.scale.x) * -side;
+        print.position.set(
+          from.x + half + ux * along - uy * offset,
+          from.y + half + uy * along + ux * offset,
+        );
+        used += 1;
+        next += stepPx;
+      }
+      travelled += length;
     }
-
-    const budget = this.walkBudget();
-    this.addWalkLabel(
-      budget
-        ? `${formatMetres(hover.spent)} / ${formatMetres(budget.metresLeft)}`
-        : formatMetres(hover.metres),
-      cx + 14 * k,
-      cy - 30 * k,
-      hover.complete ? 0xbbf7d0 : 0xfca5a5,
-      18,
-    );
   }
 
-  /** One number on the route layer, in screen-constant size. */
-  private addWalkLabel(text: string, x: number, y: number, fill: number, fontSize: number): void {
-    const label = new Text({
-      text,
-      style: {
-        fontFamily: 'system-ui, sans-serif',
-        fontSize,
-        fill,
-        stroke: { color: 0x0b1220, width: 4 },
-      },
-    });
-    label.scale.set(this.overlayScale());
-    label.position.set(x, y);
-    this.overlayLayer.addChild(label);
-    this.walkTexts.push(label);
+  /** One print from the pool, made on first use and re-aimed ever after. */
+  private footprintAt(index: number): Sprite {
+    const existing = this.footprints[index];
+    if (existing) return existing;
+    const print = new Sprite(this.footprintTexture ?? Texture.EMPTY);
+    print.anchor.set(0.5);
+    this.footprintLayer.addChild(print);
+    this.footprints[index] = print;
+    return print;
   }
 
-  private clearWalkTexts(): void {
-    for (const label of this.walkTexts) label.destroy();
-    this.walkTexts.length = 0;
+  private hideFootprints(): void {
+    for (const print of this.footprints) print.visible = false;
   }
 
   /**
@@ -3055,7 +3300,7 @@ export class MapRenderer {
     this.walkWaypoints = [];
     this.walkHover = null;
     this.walkGraphics.clear();
-    this.clearWalkTexts();
+    this.hideFootprints();
     this.setWalkCursor('');
     this.onWalkStateChange?.(node.tokenId);
   }
@@ -3153,6 +3398,7 @@ export class MapRenderer {
   /** The line behind a walking figure, so the table can see which way it went. */
   private drawMarchTrail(march: MarchState): void {
     this.walkGraphics.clear();
+    this.hideFootprints();
     const scene = this.scene;
     if (!scene) return;
     const half = (march.node.token.size * scene.grid.sizePx) / 2;
@@ -3215,7 +3461,7 @@ export class MapRenderer {
     if (!march) return;
     this.march = null;
     this.walkGraphics.clear();
-    this.clearWalkTexts();
+    this.hideFootprints();
 
     const scene = this.scene;
     if (commit && scene && !march.node.destroyed) {
@@ -4542,6 +4788,7 @@ export class MapRenderer {
     this.walkWaypoints = [];
     this.walkHover = null;
     this.walkGraphics.clear();
+    this.hideFootprints();
     this.selectGraphics.clear();
     this.aimGraphics.clear();
     this.reach = null;
@@ -4549,7 +4796,6 @@ export class MapRenderer {
     this.trail = null;
     this.trailGraphics.clear();
     this.rotating = null;
-    this.clearWalkTexts();
     this.setWalkCursor('');
     this.setSelection(null, 'scene');
   }

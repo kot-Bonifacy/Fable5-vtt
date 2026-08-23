@@ -89,15 +89,16 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 ## Od czego zacząć
 
-**Ostatnia sesja (22.08, piąta tego dnia) była naprawcza, poza etapami.** Z triażu dziesięciu
-zaległości MG wybrał 1–6 i 8 (7 i 10 kazał skasować) — zamknięte, razem z trzema poprawkami
-w kodzie i dwiema przy okazji; szczegóły w notatce niżej. Cztery sesje przed nią (22.08 i 21.08)
-zamknęły pozycje 1–6 poprzedniego triażu, całą pozycję zbiorczą „strona gracza" i **wszystkie
-osiem błędów z sesji testów 08.08**.
+**Ostatnia sesja (23.08) była poza etapami: podgląd trasy ruchu mówi teraz kolorem, dokąd figura
+sięga w tej turze** — zielony to budżet Akcji Ruchu, bursztyn to zasięg po oddaniu Akcji za Bieg,
+szary jest poza turą. Trasę rysują same ślady butów (bez liczb, kresek i ✖ — MG zdejmował je
+kolejno w trakcie oględzin). Przy okazji naprawiona regresja cięcia trasy do budżetu i zamknięty
+punkt 16e (3). Sesja przed nią (22.08, piąta tego dnia) zamknęła triaż zaległości 1–6 i 8.
 
 **Uwaga na jeden świeży błąd:** podgląd trasy figury **2×2 przechodzi przez ściany** (dla 1×1 ta
 sama droga je omija, a serwer ruchu nie wykonuje). Pierwsza pozycja w `zaleglosci.md`, z hipotezą,
-gdzie szukać — blokuje ostatni punkt oględzin 16e.
+gdzie szukać — blokuje ostatni punkt oględzin 16e. Siedzi w kodzie ruszanym 23.08
+(`planWalkRoute`), ale został **nietknięty**: MG nie zdecydował, czy naprawiać przy okazji.
 
 **Do wyboru zostały dwa etapy: 27g** (wydajność) i **28** (wdrożenie na VPS). Etap 27 jest
 rozdzielony do końca, więc plik `etap-27-…` to rozdroże ze wskazaniami, a nie zakres do zrobienia.
@@ -116,7 +117,7 @@ czeka na sesję z nowym modelem.
 a od 27i pierwszym, przy którym ktoś **usłyszy** dźwięki walki (dobrane bez odsłuchu, przyciski
 próbek są w „⚙ Ustawienia"; od 27j jest wśród nich „Krok" z własnym wyłącznikiem).
 
-**Testy na koniec ostatniej sesji:** 1362 w `shared`, 760 na serwerze, 30 u klienta — zielone.
+**Testy na koniec ostatniej sesji:** 1366 w `shared`, 760 na serwerze, 36 u klienta — zielone.
 
 **09.08 głos wypadł z projektu** (decyzja MG): etapy **12, 21 i 22** wycofane, kod TTS usunięty
 z repo. Szczegóły w `archiwum/dziennik-sesji.md` i `archiwum/wycofane/README.md`.
@@ -140,6 +141,8 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 - **Efekt mapy** — przycinany na serwerze per gniazdo (`trimMapFxForViewer` w `shared/src/fx.ts`), nie w `MapFxLayer`.
 - **Limity wgrywanego obrazu** — `shared/src/uploads.ts` (serwer re-eksportuje); odmowa zawsze z pełnym wymaganiem, `accept` i sprawdzenie przed wysyłką z tego samego miejsca.
 - **Stan figury na żetonie** — ✕ tylko dla `dead`, reszta mówi ikoną; `fallbackConditionStatusId` dokłada naklejkę, gdy stan wynika z samych PW.
+- **Drugi pas zasięgu tury** — `TurnDistanceView.extra` (`{ label, max }`) wystawia system (`cpredRunMetres`), mapa maluje bursztyn i nie zna słowa „Bieg".
+- **Podgląd trasy** — same ślady butów: kolor = pas, odstęp = metr. Żadnych liczb, kresek granicznych ani ✖; rozmiar śladu liczony szerokością tokenu, nie `overlayScale()`.
 
 ## Pułapki dev — indeks
 
@@ -165,10 +168,60 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 - **Rozkaz marszu automatem wymaga ustalonego hovera** — trasa liczy się na `pointermove`; klik w tej samej porcji zdarzeń nic nie robi.
 - **Skrótu klawiszowego nie odpalisz syntetycznym `KeyboardEvent`** — Esc musi przyjść z CDP, inaczej marsz się nie przerwie.
 - **Zacienienie zasięgu ma cache bez ścian** — zmiana zasad chodzenia musi wyzerować `this.reach` (naprawione 22.08).
+- **`clipWalkToBudget` tnie na punkcie zwrotnym, nie na metrze** — na wygładzonej prostej zostawia sam start; u klienta tnie `clipToBudget` w `MapRenderer` (metr → przyciągnięcie → ponowne sprawdzenie).
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 23.08 — pasy zasięgu na trasie ruchu, poza etapami
+
+**Zlecenie MG:** wskazując kursorem cel, gracz ma **z góry** widzieć kolorem, dokąd sięga w tej
+turze. Na pytania uzupełniające MG wybrał: **dwa progi + reszta** (zielony — budżet Akcji Ruchu,
+bursztyn — dosięgalne po oddaniu Akcji za Bieg, szary — poza turą), **ślady butów** zamiast linii,
+klik w bursztyn **bez zmiany zachowania** (nadal do granicy zielonego) i **bez ruszania**
+zacienienia zasięgu. W trakcie oględzin MG zdejmował kolejne warstwy: najpierw linię pod śladami,
+potem wszystkie liczby, kreski graniczne i ✖ — „wystarczy sam kolor". Doszło też: ślad ma trzymać
+rozmiar tokenu (nie ekranu), palce mają być rozstawione **na zewnątrz**, a ślad ma być **butem**,
+nie bosą stopą.
+
+**Co powstało.**
+1. **`TurnDistanceView.extra`** w `shared/src/combat.ts` — systemowo neutralne „ile jeszcze da się
+   dokupić i jak ten handel się nazywa". Wypełnia je `cpredRunMetres` (`systems/cpred/turn.ts`,
+   6 nowych testów): metry Biegu, dopóki Akcja jest wolna, zero po ataku i przy blokadzie rany.
+   `requiresSpentMove` **nie** jest tu sprawdzane — dojście za pierwszą Akcję Ruchu wydaje ją po
+   drodze, więc próg widać, zanim Bieg da się kliknąć. Mapa nie zna słowa „Bieg" (umowa kodu).
+2. **Ślady butów zamiast trasy.** `boot-print.svg` — lewy but wycięty z pary `boot-prints`
+   (Lorc, CC BY 3.0, wiersz w `ATTRIBUTION.md`); prawy to jego lustro. Ślad co metr, na przemian
+   z obu stron osi, palcami w kierunku marszu i rozstawiony o `FOOTPRINT_TOE_OUT` na zewnątrz.
+   Rozmiar liczony **szerokością tokenu** (`FOOTPRINT_*_RATIO`), nie `overlayScale()` — trail
+   trzyma jeden rozmiar przy każdym przybliżeniu, a duża figura zostawia duże ślady.
+3. **Wszystko inne zdjęte.** Z podglądu wypadły: linia trasy, etykiety metrów (noga, suma,
+   „Bieg: +X"), kreski na granicach pasów i ✖ na kratce lądowania — razem z martwą maszynerią
+   (`addWalkLabel`, `walkTexts`, `bandTick`, `routeAt`). Zostały ślady i kółka punktów trasy.
+
+**Jedna regresja własna, złapana i naprawiona.** Promień szukania trasy trzeba było rozszerzyć
+o pas Biegu (inaczej bursztyn nie miałby czego malować) — i to odsłoniło, że `clipWalkToBudget`
+z `shared` tnie na **punkcie zwrotnym**. Na wygładzonej prostej (dwa punkty) cięcie zostawiało
+sam start, więc gracz klikający poza budżet dostawał „Nie starcza ruchu w tej turze" zamiast
+przejść, ile się da. Nowe `clipToBudget` w `MapRenderer` tnie **na metrze**, przyciąga
+(`snapTokenPosition`), sprawdza budżet i przejście ponownie, a gdy się nie mieści — cofa się
+o kratkę. Wpis w `pulapki-dev.md`.
+
+**Odklikane w przeglądarce.** MG (budżet nieegzekwowany): trasa rysowana przez wszystkie trzy
+pasy. Gracz (avatar9, budżet 10 m): zielony kończy się dokładnie na granicy zasięgu, klik daleko
+poza budżet przeszedł **10 m / 10 m** z komunikatem „Koniec ruchu w tej turze" — czyli ścieżka,
+którą regresja psuła. Po wyczerpaniu Ruchu cała trasa robi się bursztynowa (Bieg jeszcze płaci),
+a przy zerowym budżecie nie ma zielonego wcale. Zamyka to zaległość „16e (3) ✖ na granicy budżetu
+u gracza" — ✖ zniknął, ale granica jest widoczna kolorem, i to sprawdzone na żywo.
+
+**Poligon przywrócony:** tryb turowy wyłączony, żeton avatar9 wrócił na swoje miejsce.
+
+**Nie ruszone:** błąd „podgląd trasy figury 2×2 przechodzi przez ściany" (pierwsza pozycja
+w `zaleglosci.md`) siedzi w dokładnie tym kodzie — proponowałem naprawić przy okazji, decyzji
+nie było, więc został nietknięty.
+
+**Testy:** 1366 w `shared`, 760 na serwerze, 36 u klienta — zielone.
 
 ### Sesja 22.08 (piąta tego dnia) — triaż zaległości 1–8, poza etapami
 
@@ -230,68 +283,3 @@ osłona „Samochód 25/25” odtworzona presetem w tym samym miejscu; wpis test
 dodany wiersz broni Tony'ego usunięte; grafika tokenu „dobry” skasowana z bazy i z `uploads/tokens`;
 tryb turowy wyłączony, Kolec wrócił pod punkt dostępu. Testy: **1362 w `shared`, 760 na serwerze,
 30 u klienta** — zielone.
-
-### Sesja 22.08 (czwarta tego dnia) — pozycje 1–6 z triażu zaległości, poza etapami
-
-**Zlecenie MG:** wypisać ~10 otwartych zaległości (bez rzeczy czekających na lokalny LLM, bo
-model idzie do wymiany, i bez nieukończonych etapów), a potem naprawić **pozycje 1–6**.
-Odpowiedzi na pytania z triażu: przekreślić nieaktualne wiersze w `POMYSLY.md`, a `POSTEP.md`
-sprzątnąć wariantem **(a)** — przenieść zamknięte pozycje do archiwum, zostawiając strukturę.
-
-**1. Netrunner nie miał czym uruchomić Skanera.** „🛰 Skaner" siedział wyłącznie
-w `NetAccessPointPanel`, który otwiera się klikiem w **narysowany** punkt dostępu — a punkt
-dostępu jest domyślnie ukryty i odsłania go właśnie Skaner. Teraz Skaner jest **slotem paska
-akcji**: `CPRED_HOTBAR_NETRUNNER_ACTION_IDS` w `shared/hotbar.ts` (nowa, obok listy, którą
-dostaje każdy), warunek `netrunner` liczony z karty tymi samymi dwiema rzeczami, których żąda
-serwer (ranga Interfejsu **i** cyberdek), ikona `scanner.svg` (Radar sweep, Lorc, CC BY 3.0).
-`activateSlot` woła `netrun:scan` i **nie** dokłada `spendCombatAction` — serwer księguje swoją
-Akcję sam. **Odklikane:** panel Kolca pokazał slot „Skaner 7", a klik wyprodukował kartę
-„Skaner (Interfejs) · 1d10+7 = 9 · Zasięg 9 m — nic w promieniu skanu".
-
-**2. MG nie zmieniał udostępnienia postawionych drzwi ani okna.** `wall:update` przyjmowało
-`playerToggle` od zawsze, ale klient wołał je **wyłącznie** z `locked`, więc okno postawione
-z domyślnym „tylko dla MG" trzeba było skasować i narysować od nowa. Narzędzie ścian ma teraz
-**czwarty tryb** (oko, obok rysowania, gumki i zamka): klik w otwór przełącza flagę i odpowiada
-zdaniem, bo na mapie nie widać po tym różnicy. **Odklikane:** postawione drzwi → „Drzwi: tylko
-dla MG…" → „Drzwi: gracze mogą je otwierać…" → gumka; scena wróciła do stanu sprzed testu.
-
-**3. Wyszarzona Akcja zabrana przez ranę kłamała o powodzie.** Przycisk mówił „Akcja w tej
-turze już wykorzystana", choć Akcja nie została wykorzystana, tylko **zabrana** (Uraz
-kręgosłupa, 14e). Zdanie rany jechało tylko w `notes` obok wskaźnika AKCJA. Teraz niesie je sam
-zasób tury (`TurnResourceView.blocked` — pole rdzenia, bo „zasób zablokowany" to nie to samo co
-„wydany"), a `hotbarSlotsFor` układa powody w kolejności: status → rana zapisana na turze →
-budżet. Dotyczy **też MG**, bo to fakt o figurze, nie o tym, czyja jest tura — tak samo jak
-status. Testy: cztery w `hotbar.test.ts`, jeden dopisany w `turn-effects.test.ts`.
-
-**4. Atak na Demona — błędu nie ma; notatka była nieprawdziwa.** Wpis mówił, że „gracz nie widzi
-pięter, na których nie stanął, więc z UI nie ma jak zaatakować Demona". W kodzie jest inaczej:
-`DemonRow` w `NetRunWindow` stoi w **osobnej sekcji „Demony"**, nie na piętrze, przycisk
-„Atakuj" dostaje każdy, a `netDemonViews` wysyła Demona graczowi, gdy tylko przestanie być
-`lurking`. Dowodzą tego testy serwera z 26e (gracz trafia Demona z `deck-sword`, REZ spada).
-Jedyną bramką jest klik MG „Demon wykrywa intruza" — **świadoma decyzja 26e** („w Sieci nic nie
-rusza się samo"), nie brak. Zaległość skasowana zamiast naprawiona.
-
-**5. Kolizje ruchu nie znały rozmiaru figury.** `refuseWalkThroughSolid` prowadziło **jedną**
-linię — środkiem żetonu — więc figura 2×2 przechodziła przez ścianę połową siebie, mając środek
-w prześwicie. `firstBlockedStep` przyjmuje teraz footprint i sprawdza **po linii na każde pole**
-(dla 1×1 to dokładnie stara ścieżka). Punkty są te same, które sprawdza planer u klienta
-(`isNodeOpen`), więc odmowa serwera i narysowana trasa nie mają jak się rozjechać. Testy: cztery
-w `pathfinding.test.ts` i jeden na żywych gniazdach w `walls.test.ts` (ta sama trasa, dwa
-rozmiary — 1×1 przechodzi, 2×2 dostaje `MOVE_REFUSED`), sprawdzony celowym cofnięciem poprawki.
-Sprzątanie w tym teście jest w `finally`: scena jest wspólna dla całego pliku, a zostawiony
-kikut ściany wywracał pięć testów niżej z zupełnie innego powodu.
-
-**6. Porządki w dokumentacji.** Z „Otwartych zaległości" wyszło **13 zamkniętych pozycji**
-(~150 linii) do nowego `archiwum/zamkniete-zaleglosci.md`; w `POSTEP.md` zostały same rzeczy
-otwarte, a tam, gdzie zamknięty wpis miał otwarty ogon (27b, 27c, pusty stan listy postaci),
-został po nim krótki wpis. Osiem odsyłaczy „patrz pozycja zbiorcza na górze sekcji" pokazuje
-teraz archiwum. Pełna notatka sesji 22.08 (drugiej) pojechała do `archiwum/dziennik-sesji.md`,
-bo pełne zostają **dwie** ostatnie. W `POMYSLY.md` przekreślonych **dziewięć** wierszy: cztery
-z dzisiaj i pięć, które były zrobione wcześniej, a nikt tam nie wrócił (aktywacja kampanii,
-gubione edycje karty, dziedzina umiejętności, „strzelaj mimo osłony" z węzła, pułapka
-w Kolejce). `POSTEP.md`: 99,7 → 86 kB.
-
-**Nie zmieniałem** stanu Poligonu: door postawiony do testu punktu 2 został skasowany, żeton
-Kolec wrócił bez zmian, a jedynym śladem na czacie są dwa rzuty Skanera. Przy starcie serwera
-`uploads-gc` z 22.08 zmiótł **4 osierocone pliki** (16,7 MB) — pierwszy przebieg na żywych
-danych po tamtej naprawie.

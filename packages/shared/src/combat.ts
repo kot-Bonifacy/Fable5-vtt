@@ -54,6 +54,17 @@ export interface TurnDistanceView {
   hard?: boolean;
   /** Why the maximum is what it is („Pancerz −2 · Złamana noga −4"). */
   note?: string;
+  /**
+   * Distance the participant could still buy by trading something else away,
+   * and what the system calls that trade („Bieg").
+   *
+   * Absent when the trade is no longer on the table. The core knows only „this
+   * many more units are available at a price"; which resource pays for them is
+   * the system's business (CP RED: the turn's one Action buys a second Move
+   * Action, s. 168). The map draws it as a second reach band so a player can
+   * see how far this turn goes *at most* before they commit to a route.
+   */
+  extra?: { label: string; max: number };
 }
 
 /** A participant's turn budget, filled in by the active game system. */

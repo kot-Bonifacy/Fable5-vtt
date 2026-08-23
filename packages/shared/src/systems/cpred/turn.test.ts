@@ -9,6 +9,7 @@ import {
   cpredAction,
   cpredMetresLeft,
   cpredMoveRefusal,
+  cpredRunMetres,
   cpredTurnBlockReason,
   cpredTurnPhaseRan,
   cpredTurnBudget,
@@ -337,13 +338,47 @@ describe('cpred movement budget', () => {
 
   it('paints the distance as „used / max m" for the tracker', () => {
     const budget = cpredTurnBudget(walk(walker(), 7.5));
-    expect(budget.distance).toEqual({ label: 'Dystans', used: 7.5, max: 12, unit: 'm' });
+    expect(budget.distance).toEqual({
+      label: 'Dystans',
+      used: 7.5,
+      max: 12,
+      unit: 'm',
+      // The Action is still unspent, so a Bieg is still on the table.
+      extra: { label: 'Bieg', max: 12 },
+    });
     expect(budget.resources.find((r) => r.id === 'move')).toEqual({
       id: 'move',
       label: 'Ruch',
       used: 1,
       max: 1,
     });
+  });
+
+  it('offers a Bieg as a second Move Action while the Action is unspent', () => {
+    expect(cpredRunMetres(walker())).toBe(12);
+    expect(cpredRunMetres(walk(walker(), 12))).toBe(12);
+  });
+
+  it('takes the Bieg off the table once the Action is gone', () => {
+    const attacked = spendAll(walker(), [fast()]);
+    expect(cpredRunMetres(attacked)).toBe(0);
+    expect(cpredTurnBudget(attacked).distance?.extra).toBeUndefined();
+    // A wound that took the Action (14e) closes the same door, and so does one
+    // that took the Move Action — a Bieg would only grant a move it refuses.
+    expect(cpredRunMetres(freshCpredTurn({ metresPerMove: 12 }, { noAction: 'Uraz' }))).toBe(0);
+    expect(cpredRunMetres(freshCpredTurn({ metresPerMove: 12 }, { noMove: 'Uraz' }))).toBe(0);
+  });
+
+  it('folds the Bieg into the maximum once it is actually taken', () => {
+    const run = spendAll(walk(walker(), 12), [{ kind: 'action', actionId: CPRED_ACTION_RUN }]);
+    // The metres moved from „extra" into „max": there is nothing left to trade,
+    // and the map must not draw the same ten metres as a second band twice.
+    expect(cpredTurnBudget(run).distance?.max).toBe(24);
+    expect(cpredRunMetres(run)).toBe(0);
+  });
+
+  it('offers nothing to a participant without a sheet', () => {
+    expect(cpredRunMetres(freshCpredTurn())).toBe(0);
   });
 
   it('explains a refusal in metres, not in rules', () => {
@@ -360,6 +395,7 @@ describe('cpred movement budget', () => {
       used: 20,
       max: 12,
       unit: 'm',
+      extra: { label: 'Bieg', max: 12 },
     });
   });
 

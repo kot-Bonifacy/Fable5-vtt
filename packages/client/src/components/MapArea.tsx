@@ -282,6 +282,12 @@ function moveAllowanceOf(
     // „poza budżetem" and happens (stage 14b) — so their route is drawn against
     // the budget but never cut by it.
     enforced: !isGm,
+    // The second reach band: how much further this turn goes if the trade the
+    // system offers is taken (CP RED: the Action spent on „Bieg"). The name
+    // comes with the number, because the core has no business knowing it.
+    ...(distance.extra && distance.extra.max > 0
+      ? { extraMetres: distance.extra.max, extraLabel: distance.extra.label }
+      : {}),
   };
 }
 

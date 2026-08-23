@@ -12,7 +12,13 @@ Pełna wizja i decyzje: `docs/etapy/00-przeglad.md`. Źródłowa ankieta: `vtt-a
 2. Na początku sesji przeczytaj `docs/etapy/POSTEP.md` (co ukończone, co w toku) oraz plik bieżącego etapu. Nie zaczynaj etapu, którego zależności nie są ukończone.
 3. **Trzymaj się zakresu etapu.** Pomysły spoza zakresu dopisuj do `docs/etapy/POMYSLY.md` zamiast implementować.
 4. Etap jest ukończony, gdy spełnione są wszystkie jego **Kryteria ukończenia**. Wtedy zaktualizuj `POSTEP.md` (status, data, odstępstwa od planu) i odhacz checklisty w pliku etapu.
-5. **`POSTEP.md` musi zostać lekki — czytasz go w całości na starcie każdej sesji.** Trzymaj w nim: tabelę etapów, „Od czego zacząć" (z otwartymi zaległościami), **pełne notatki najwyżej dwóch ostatnich sesji** i jednoakapitowe skróty starszych. Zamykając etap, przenieś notatkę wypartą z tej dwójki do `docs/etapy/archiwum/dziennik-sesji.md` (dopisz na górze, treść bez zmian) i zostaw po niej skrót ≤ 3 zdań, który nie powtarza kolumny „Uwagi". Archiwum czytaj wyłącznie na żądanie, nigdy rutynowo.
+5. **`POSTEP.md` musi zostać krótki — czytasz go w całości na starcie każdej sesji (decyzja z 22.08.2026, zastępuje wcześniejszą).** Trzyma **wyłącznie**: tabelę etapów (numer, nazwa, status, data — bez kolumny „Uwagi"), „Od czego zacząć", jednolinijkowe indeksy umów kodu i pułapek dev oraz **pełne notatki najwyżej dwóch ostatnich sesji**. Wszystko inne mieszka w plikach obok i **czyta się je na żądanie, nigdy rutynowo** (spis z „kiedy czytać" jest na górze `POSTEP.md`):
+   - `docs/etapy/zaleglosci.md` — otwarte zaległości; `archiwum/zamkniete-zaleglosci.md` — zamknięte,
+   - `docs/etapy/umowy-kodu.md` i `docs/etapy/pulapki-dev.md` — pełne wersje wpisów z indeksów,
+   - `docs/etapy/poligon.md` — stan sceny testowej,
+   - `docs/etapy/archiwum/dziennik-sesji.md` — pełne notatki starszych sesji; `archiwum/uwagi-etapow.md` — jednozdaniowe „co było w etapie N".
+
+   Kończąc sesję: dopisz notatkę na górę sekcji notatek, a notatkę wypartą z dwójki przenieś **w całości i bez zmian** na górę `dziennik-sesji.md` — **bez zostawiania skrótu** w `POSTEP.md`. Nowa zaległość idzie od razu do `zaleglosci.md`, nowa umowa lub pułapka — do swojego pliku plus jeden wiersz indeksu.
 6. Przed zakończeniem sesji: testy przechodzą, aplikacja się uruchamia, zmiany zacommitowane. Jeśli etap nie został dokończony — zapisz w `POSTEP.md` dokładnie, co zostało i od czego zacząć.
 7. Jeśli w trakcie etapu okaże się, że plan wymaga korekty (np. podziału etapu na dwa) — zaproponuj zmianę użytkownikowi i po akceptacji zaktualizuj pliki etapów.
 

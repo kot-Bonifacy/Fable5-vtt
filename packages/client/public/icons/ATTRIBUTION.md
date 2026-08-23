@@ -6,10 +6,11 @@ usunięto czarny prostokąt tła (game-icons rysuje ikony jako białą sylwetkę
 kwadracie) — została sama sylwetka w bieli, którą klient barwi `tint`-em albo
 `currentColor`-em.
 
-| Plik            | Oryginalna ikona | Autor      | Gdzie używana                            |
-| --------------- | ---------------- | ---------- | ---------------------------------------- |
-| `newspaper.svg` | Newspaper        | Delapouite | screamsheet: lista handoutów, czat (24c) |
-| `jack-plug.svg` | Jack plug        | Delapouite | punkt dostępu do Sieci na mapie (26b)    |
+| Plik             | Oryginalna ikona | Autor      | Gdzie używana                                  |
+| ---------------- | ---------------- | ---------- | ---------------------------------------------- |
+| `newspaper.svg`  | Newspaper        | Delapouite | screamsheet: lista handoutów, czat (24c)       |
+| `jack-plug.svg`  | Jack plug        | Delapouite | punkt dostępu do Sieci na mapie (26b)          |
+| `boot-print.svg` | Boot prints      | Lorc       | ślady butów na trasie ruchu (27j; lewy z pary) |
 
 Źródło: <https://github.com/game-icons/icons> (gałąź `master`).
 

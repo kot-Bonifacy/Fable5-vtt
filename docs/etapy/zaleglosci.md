@@ -285,9 +285,13 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
   („10 m", „14,1 m") z sumą przy ✖; (8) **PPM w puste** — zaznaczenie znika, pasek wraca do
   „Kliknij token, którym chcesz sterować."; (9) **przeciąganie tokenu** (regresja) — figura
   przejechała przez pół sceny i ruch został zaksięgowany.
-  **Zostało:** (1) odsłanianie mgły w trakcie marszu; (3) klik za zasięgiem tury → ✖ na granicy
-  budżetu i wygaszony ogon (u MG niesprawdzalne — `enforced: false`); (6) przerwanie marszu przez
-  NPC wychodzącego zza rogu; (10) token 2×2 przy metrowych drzwiach — **zablokowane przez błąd
+  **Odklikane 23.08** (sesja pasów zasięgu, gracz avatar9 na „Poligonie"): (3) **klik za zasięgiem
+  tury** — trasa jest cięta na granicy budżetu, klik daleko poza nią przeszedł **10 m / 10 m**
+  z komunikatem „Koniec ruchu w tej turze", a ogon poza budżetem jest wygaszony kolorem
+  (bursztyn = zasięg Biegu, szary = poza turą). ✖ na granicy **nie ma** — MG kazał go zdjąć,
+  bo granicę widać kolorem.
+  **Zostało:** (1) odsłanianie mgły w trakcie marszu; (6) przerwanie marszu przez NPC
+  wychodzącego zza rogu; (10) token 2×2 przy metrowych drzwiach — **zablokowane przez błąd
   trasy figur 2×2**, patrz pozycja niżej.
 
 - **Kliknięcie w token było zepsute dla graczy od 18a — naprawione w 16e, ale zaległości oględzin z tego okresu warto powtórzyć.** Warstwy przykrywające przechwytywały hit-test (szczegóły w `pulapki-dev.md`), więc gracz na scenie z dynamiczną widocznością **nie mógł kliknąć ani przeciągnąć żadnego tokenu**. To prawdopodobnie realna przyczyna części pozycji zbiorczej „strona gracza" (zamknięta 22.08, `archiwum/zamkniete-zaleglosci.md`) — przy jej odhaczaniu sprawdź najpierw, czy rzecz w ogóle dawała się kliknąć.

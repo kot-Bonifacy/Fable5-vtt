@@ -1020,12 +1020,41 @@ export function cpredTurnBudget(
             unit: 'm',
             ...(state.hardTerrain ? { hard: true } : {}),
             ...((moveNote ?? state.moveNote) ? { note: moveNote ?? state.moveNote! } : {}),
+            ...(cpredRunMetres(state) > 0
+              ? {
+                  extra: {
+                    label: cpredAction(CPRED_ACTION_RUN)?.name ?? 'Bieg',
+                    max: cpredRunMetres(state),
+                  },
+                }
+              : {}),
           },
         }
       : {}),
     ...(notes.length > 0 ? { note: notes.join(' · ') } : {}),
     ...(state.overspent > 0 ? { overspent: state.overspent } : {}),
   };
+}
+
+/**
+ * Metres a Bieg would still add to this turn — 0 when that trade is gone.
+ *
+ * „Bieg" is the Action spent on a second Move Action (s. 168), so the answer is
+ * one Move Action's worth of metres for as long as the Action is unspent and
+ * unblocked. RAW also wants a Move Action *already spent* before the Bieg is
+ * declared, and that is not checked here on purpose: this number answers „how
+ * far can this turn reach at most", and reaching past the first Move Action
+ * spends it on the way. Nothing is charged from here — the map draws a second
+ * reach band with it, and the Action is still spent by `spendCpredTurn`.
+ *
+ * A blocked Move Action (14e) takes the whole trade away: a Bieg would grant a
+ * Move Action the wound refuses anyway.
+ */
+export function cpredRunMetres(state: CpredTurnState): number {
+  if (state.metresPerMove === null) return 0;
+  if (state.action !== null || state.blockedAction !== null || state.blockedMove !== null) return 0;
+  const definition = cpredAction(CPRED_ACTION_RUN);
+  return roundMetres(state.metresPerMove * (definition?.grantsMove ?? 1));
 }
 
 /** Budget a path of this length would cost, hard going included (stage 14c). */
