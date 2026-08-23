@@ -7184,6 +7184,113 @@ body.is-resizing {
   cursor: pointer;
 }
 
+/* ===== Pula portretów kampanii (zaległość 23.08) ===== */
+
+.portrait-pool {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.portrait-pool-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.portrait-pool-upload {
+  cursor: pointer;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.portrait-pool-empty {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.portrait-pool-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.2rem, 1fr));
+  gap: 0.4rem;
+}
+
+.portrait-pool-item {
+  position: relative;
+  display: flex;
+}
+
+.portrait-pool-pick {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.35rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.portrait-pool-pick:hover {
+  border-color: var(--accent);
+}
+
+.portrait-pool-item--picked .portrait-pool-pick {
+  border-color: var(--armed);
+  box-shadow: 0 0 0 1px var(--armed);
+}
+
+.portrait-pool-pick img {
+  width: 3.2rem;
+  height: 3.2rem;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.portrait-pool-name {
+  font-size: 0.68rem;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Kosz siedzi w rogu kafelka i wychodzi dopiero pod kursorem — pula ma być
+   siatką portretów, nie siatką przycisków „usuń". */
+.portrait-pool-remove {
+  position: absolute;
+  top: 0.15rem;
+  right: 0.15rem;
+  padding: 0 0.25rem;
+  opacity: 0;
+}
+
+.portrait-pool-item:hover .portrait-pool-remove,
+.portrait-pool-remove:focus-visible {
+  opacity: 1;
+}
+
+.portrait-pool-confirm {
+  position: absolute;
+  inset: auto 0 0 0;
+  display: flex;
+  gap: 0.2rem;
+  justify-content: center;
+  padding: 0.15rem;
+  background: var(--bg);
+  border-radius: 0 0 8px 8px;
+}
+
 .creator-checkbox {
   display: flex;
   align-items: flex-start;

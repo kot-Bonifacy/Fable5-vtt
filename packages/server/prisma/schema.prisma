@@ -54,6 +54,7 @@ model Campaign {
   scenes       Scene[]
   chatMessages ChatMessage[]
   tokenAssets  TokenAsset[]
+  portraitAssets PortraitAsset[]
   bots         BotProfile[]
   compendium   CompendiumEntry[]
   knowledge    KnowledgeEntry[]
@@ -483,6 +484,28 @@ model TokenAsset {
   id         String   @id @default(cuid())
   campaignId String
   /** Display name, defaults to the uploaded file's base name. */
+  name       String
+  url        String
+  width      Int
+  height     Int
+  createdAt  DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+}
+
+/**
+ * Pula portretów kampanii (etap zaległościowy 23.08).
+ *
+ * Grafiki portretów dokłada wyłącznie MG; gracz wybiera z puli, bo inaczej
+ * każdy wgrywałby własne pliki i nikt nie panowałby nad tym, co leży na dysku.
+ * Bliźniak `TokenAsset` — ta sama zasada, inny katalog `uploads/`.
+ */
+model PortraitAsset {
+  id         String   @id @default(cuid())
+  campaignId String
+  /** Nazwa w bibliotece; domyślnie nazwa wgranego pliku bez rozszerzenia. */
   name       String
   url        String
   width      Int

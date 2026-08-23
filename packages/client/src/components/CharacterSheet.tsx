@@ -122,6 +122,7 @@ import {
   transferEddies,
 } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
+import { PortraitPicker } from './PortraitPicker.js';
 import { useAttackStore } from '../stores/attackStore.js';
 import { useCompendiumStore } from '../stores/compendiumStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
@@ -420,6 +421,7 @@ function IdentityColumn({
   setIssues: (updater: (current: Record<string, string>) => Record<string, string>) => void;
 }) {
   const registry = useCharacterStore((s) => s.registry);
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const [uploading, setUploading] = useState(false);
   const role = registry.roles.find((r) => r.id === data.roleId) ?? null;
   const maxHp = hpMax(data.stats);
@@ -469,18 +471,29 @@ function IdentityColumn({
           ) : (
             <span className="cp-portrait-empty">brak portretu</span>
           )}
-          <label className="cp-portrait-upload">
-            {uploading ? 'Wgrywanie…' : 'Wgraj portret'}
-            <input
-              type="file"
-              accept={UPLOAD_ACCEPT_ATTRIBUTE}
-              title={uploadRequirementText('portrait')}
-              onChange={(e) => void uploadPortrait(e)}
-              disabled={uploading}
-              hidden
-            />
-          </label>
+          {/* Wgranie własnego pliku zostało **przy MG** (23.08) — gracz
+              wybiera portret z puli kampanii pod ramką. */}
+          {isGm ? (
+            <label className="cp-portrait-upload">
+              {uploading ? 'Wgrywanie…' : 'Wgraj portret'}
+              <input
+                type="file"
+                accept={UPLOAD_ACCEPT_ATTRIBUTE}
+                title={uploadRequirementText('portrait')}
+                onChange={(e) => void uploadPortrait(e)}
+                disabled={uploading}
+                hidden
+              />
+            </label>
+          ) : null}
         </div>
+        <PortraitPicker
+          selectedUrl={character.portraitUrl}
+          onPick={(url) => {
+            queueCharacterSave(character.id, { portraitUrl: url });
+            flushCharacterSave(character.id);
+          }}
+        />
       </div>
 
       <div className="cp-panel">

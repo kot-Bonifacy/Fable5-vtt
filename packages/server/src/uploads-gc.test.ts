@@ -109,6 +109,24 @@ describe('referencedUploadUrls', () => {
     // Portret kreatora nie ma jeszcze postaci — żyje wyłącznie w JSON-ie szkicu.
     expect(urls.has(portrait)).toBe(true);
   });
+
+  /**
+   * Pula portretów (23.08) trzyma pliki, których **żadna karta nie wymienia** —
+   * na tym polega bycie pulą. Bez własnej linii w `referencedUploadUrls`
+   * zbieracz skasowałby ją w godzinę po wgraniu.
+   */
+  it('counts the campaign portrait pool, which no character points at', async () => {
+    const inPool = putFile('portraits', 'z-puli.png');
+    await built.prisma.portraitAsset.create({
+      data: { campaignId, name: 'Z puli', url: inPool, width: 1, height: 1 },
+    });
+
+    const urls = await referencedUploadUrls(built.prisma);
+    expect(urls.has(inPool)).toBe(true);
+
+    const result = await sweepOrphanUploads(built.prisma, UPLOADS, { dryRun: true });
+    expect(result.removed).not.toContain(inPool);
+  });
 });
 
 describe('sweepOrphanUploads', () => {

@@ -6,10 +6,16 @@ import { imageSize } from 'image-size';
 import type {
   HandoutImage,
   MapUploadResult,
+  PortraitAssetView,
   PortraitUploadResult,
   TokenAssetView,
 } from '@vtt/shared';
-import { SCENE_DIMENSION_MAX, TOKEN_NAME_MAX_LENGTH, UPLOAD_LIMITS } from '@vtt/shared';
+import {
+  PORTRAIT_NAME_MAX_LENGTH,
+  SCENE_DIMENSION_MAX,
+  TOKEN_NAME_MAX_LENGTH,
+  UPLOAD_LIMITS,
+} from '@vtt/shared';
 import type { AppContext } from '../context.js';
 import { requireAuth, requireGm } from '../auth/guards.js';
 import { getActiveCampaign } from './helpers.js';
@@ -132,8 +138,10 @@ export function registerUploadRoutes(app: FastifyInstance, ctx: AppContext): voi
     return reply.code(201).send(result);
   });
 
-  // Character portraits — any authenticated user (players set their own sheet's).
-  app.post('/api/uploads/portraits', { preHandler: requireAuth }, async (request, reply) => {
+  // Portret wgrywany wprost na kartę albo w kreatorze — od 23.08 **tylko MG**.
+  // Gracz nie dokłada plików: wybiera z puli kampanii (`/api/portrait-assets`),
+  // żeby o tym, co leży w `uploads/portraits`, decydowało jedno konto.
+  app.post('/api/uploads/portraits', { preHandler: requireGm }, async (request, reply) => {
     const file = await request.file({ limits: { fileSize: MAX_PORTRAIT_UPLOAD_BYTES } });
     if (!file) {
       return reply.code(400).send({ error: 'NO_FILE' });
@@ -209,6 +217,107 @@ export function registerUploadRoutes(app: FastifyInstance, ctx: AppContext): voi
 
     const result: HandoutImage = { url: `/uploads/handouts/${filename}`, width, height };
     return reply.code(201).send(result);
+  });
+
+  /**
+   * Pula portretów kampanii — dokłada wyłącznie MG.
+   *
+   * Bliźniak `/api/uploads/tokens`: ta sama walidacja, inny katalog i inna
+   * publiczność listy niżej.
+   */
+  app.post('/api/uploads/portrait-assets', { preHandler: requireGm }, async (request, reply) => {
+    const campaign = await getActiveCampaign(ctx.prisma);
+    if (!campaign) {
+      return reply.code(409).send({ error: 'NO_CAMPAIGN' });
+    }
+    const file = await request.file({ limits: { fileSize: MAX_PORTRAIT_UPLOAD_BYTES } });
+    if (!file) {
+      return reply.code(400).send({ error: 'NO_FILE' });
+    }
+
+    let buffer: Buffer;
+    try {
+      buffer = await file.toBuffer();
+    } catch {
+      return reply.code(413).send({ error: 'FILE_TOO_LARGE' });
+    }
+
+    let width: number;
+    let height: number;
+    let type: string | undefined;
+    try {
+      ({ width, height, type } = imageSize(buffer));
+    } catch {
+      return reply.code(400).send({ error: 'UNSUPPORTED_IMAGE' });
+    }
+    const extension = type ? IMAGE_EXTENSIONS[type] : undefined;
+    if (!extension) {
+      return reply.code(400).send({ error: 'UNSUPPORTED_IMAGE' });
+    }
+    if (width > PORTRAIT_IMAGE_MAX_SIDE || height > PORTRAIT_IMAGE_MAX_SIDE) {
+      return reply.code(400).send({ error: 'IMAGE_TOO_LARGE' });
+    }
+
+    const portraitsDir = join(ctx.config.uploadsDir, 'portraits');
+    await mkdir(portraitsDir, { recursive: true });
+    const filename = `${randomBytes(12).toString('base64url')}.${extension}`;
+    await writeFile(join(portraitsDir, filename), buffer);
+
+    const original = basename(file.filename ?? 'portret');
+    const name = (original.slice(0, original.length - extname(original).length) || 'portret').slice(
+      0,
+      PORTRAIT_NAME_MAX_LENGTH,
+    );
+
+    const asset = await ctx.prisma.portraitAsset.create({
+      data: { campaignId: campaign.id, name, url: `/uploads/portraits/${filename}`, width, height },
+    });
+    const result: PortraitAssetView = {
+      id: asset.id,
+      name: asset.name,
+      url: asset.url,
+      width: asset.width,
+      height: asset.height,
+    };
+    return reply.code(201).send(result);
+  });
+
+  // Listę widzi **każdy zalogowany** — to z niej gracz wybiera portret.
+  app.get('/api/portrait-assets', { preHandler: requireAuth }, async (_request, reply) => {
+    const campaign = await getActiveCampaign(ctx.prisma);
+    if (!campaign) {
+      return reply.send([]);
+    }
+    const assets = await ctx.prisma.portraitAsset.findMany({
+      where: { campaignId: campaign.id },
+      orderBy: { createdAt: 'desc' },
+    });
+    const views: PortraitAssetView[] = assets.map((a) => ({
+      id: a.id,
+      name: a.name,
+      url: a.url,
+      width: a.width,
+      height: a.height,
+    }));
+    return reply.send(views);
+  });
+
+  /**
+   * Zdjęcie portretu z puli — MG.
+   *
+   * Kasuje sam wpis biblioteki; plik z dysku zabiera `uploads-gc.ts`, o ile
+   * nie trzyma go już żadna karta. Portret wybrany wcześniej na czyjejś karcie
+   * zostaje na niej — usunięcie z puli znaczy „nie proponuj tego dalej", nie
+   * „odbierz komuś obrazek".
+   */
+  app.delete('/api/portrait-assets/:id', { preHandler: requireGm }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const asset = await ctx.prisma.portraitAsset.findUnique({ where: { id } });
+    if (!asset) {
+      return reply.code(404).send({ error: 'NOT_FOUND' });
+    }
+    await ctx.prisma.portraitAsset.delete({ where: { id } });
+    return reply.code(204).send();
   });
 
   app.get('/api/token-assets', { preHandler: requireGm }, async (_request, reply) => {

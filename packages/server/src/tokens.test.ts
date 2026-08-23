@@ -11,6 +11,7 @@ import type {
   SceneView,
   SocketAck,
   StateSyncPayload,
+  PortraitAssetView,
   TokenAssetView,
   TokenDeleteBroadcast,
   TokenMoveBroadcast,
@@ -221,6 +222,90 @@ describe('token asset library', () => {
       headers: { cookie: playerCookie },
     });
     expect(forbidden.statusCode).toBe(403);
+  });
+});
+
+/**
+ * Pula portretów (zaległość 23.08): dokłada MG, ogląda cały stół.
+ *
+ * Różnica wobec biblioteki żetonów wyżej jest jedna i jest celowa — listę
+ * portretów **widzi gracz**, bo to z niej wybiera obrazek swojej postaci.
+ */
+describe('portrait pool', () => {
+  let assetId = '';
+
+  it('takes a GM upload and shows it to players; a player cannot upload', async () => {
+    const { payload, headers } = multipartBody('Rache Bartmoss.png', PNG_1X1);
+    const res = await built.app.inject({
+      method: 'POST',
+      url: '/api/uploads/portrait-assets',
+      headers: { ...headers, cookie: gmCookie },
+      payload,
+    });
+    expect(res.statusCode).toBe(201);
+    const asset = res.json() as PortraitAssetView;
+    assetId = asset.id;
+    expect(asset.name).toBe('Rache Bartmoss');
+    expect(asset.url).toMatch(/^\/uploads\/portraits\/.+\.png$/);
+
+    const seenByPlayer = await built.app.inject({
+      method: 'GET',
+      url: '/api/portrait-assets',
+      headers: { cookie: playerCookie },
+    });
+    expect(seenByPlayer.statusCode).toBe(200);
+    expect((seenByPlayer.json() as PortraitAssetView[]).map((a) => a.id)).toContain(assetId);
+
+    const asPlayer = multipartBody('gracz.png', PNG_1X1);
+    const refused = await built.app.inject({
+      method: 'POST',
+      url: '/api/uploads/portrait-assets',
+      headers: { ...asPlayer.headers, cookie: playerCookie },
+      payload: asPlayer.payload,
+    });
+    expect(refused.statusCode).toBe(403);
+  });
+
+  it('keeps the direct portrait upload for the GM alone', async () => {
+    const { payload, headers } = multipartBody('wprost.png', PNG_1X1);
+    const refused = await built.app.inject({
+      method: 'POST',
+      url: '/api/uploads/portraits',
+      headers: { ...headers, cookie: playerCookie },
+      payload,
+    });
+    expect(refused.statusCode).toBe(403);
+
+    const allowed = await built.app.inject({
+      method: 'POST',
+      url: '/api/uploads/portraits',
+      headers: { ...headers, cookie: gmCookie },
+      payload,
+    });
+    expect(allowed.statusCode).toBe(201);
+  });
+
+  it('lets the GM take a portrait off the pool, and nobody else', async () => {
+    const refused = await built.app.inject({
+      method: 'DELETE',
+      url: `/api/portrait-assets/${assetId}`,
+      headers: { cookie: playerCookie },
+    });
+    expect(refused.statusCode).toBe(403);
+
+    const removed = await built.app.inject({
+      method: 'DELETE',
+      url: `/api/portrait-assets/${assetId}`,
+      headers: { cookie: gmCookie },
+    });
+    expect(removed.statusCode).toBe(204);
+
+    const list = await built.app.inject({
+      method: 'GET',
+      url: '/api/portrait-assets',
+      headers: { cookie: gmCookie },
+    });
+    expect((list.json() as PortraitAssetView[]).map((a) => a.id)).not.toContain(assetId);
   });
 });
 

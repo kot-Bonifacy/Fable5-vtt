@@ -174,6 +174,24 @@ export interface PortraitUploadResult {
   height: number;
 }
 
+/**
+ * Jeden portret z puli kampanii (`GET /api/portrait-assets`).
+ *
+ * Pula jest wspólna dla stołu: dokłada do niej wyłącznie MG, a gracz wybiera
+ * z gotowego zestawu — stąd widok jest publiczny dla każdego zalogowanego,
+ * inaczej niż biblioteka żetonów, którą ogląda sam MG.
+ */
+export interface PortraitAssetView {
+  id: string;
+  name: string;
+  url: string;
+  width: number;
+  height: number;
+}
+
+/** Najdłuższa nazwa portretu w bibliotece — jak przy żetonach. */
+export const PORTRAIT_NAME_MAX_LENGTH = 60;
+
 /** Trims and validates a character name; returns null when invalid. */
 export function sanitizeCharacterName(name: unknown): string | null {
   if (typeof name !== 'string') return null;

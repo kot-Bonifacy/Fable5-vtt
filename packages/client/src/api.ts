@@ -42,3 +42,23 @@ export async function apiUpload<T>(url: string, file: File): Promise<T> {
   const response = await fetch(url, { method: 'POST', body: form });
   return handleResponse<T>(response);
 }
+
+/**
+ * Kasowanie zasobu HTTP (na razie: portret z puli kampanii).
+ *
+ * Serwer odpowiada `204 No Content`, więc nie ma czego parsować — stąd własna
+ * ścieżka zamiast `request`, które zawsze próbuje odczytać JSON.
+ */
+export async function apiDelete(url: string): Promise<void> {
+  const response = await fetch(url, { method: 'DELETE' });
+  if (!response.ok) {
+    let code = 'UNKNOWN';
+    try {
+      const data = (await response.json()) as { error?: string };
+      if (data.error) code = data.error;
+    } catch {
+      // pusta odpowiedź odmowy — zostaje kod ogólny
+    }
+    throw new ApiError(response.status, code);
+  }
+}

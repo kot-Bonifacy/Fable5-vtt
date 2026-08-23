@@ -59,6 +59,7 @@ import { UPLOAD_ACCEPT_ATTRIBUTE, uploadRequirementText } from '@vtt/shared';
 import { fileRejectionText, uploadErrorText } from '../uploads.js';
 import { botErrorText, createBot, creationErrorText, finishCreation } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
+import { PortraitPicker } from './PortraitPicker.js';
 import { useBotStore } from '../stores/botStore.js';
 import { ensureCpredDataLoaded, useCharacterStore } from '../stores/characterStore.js';
 import { useCompendiumStore } from '../stores/compendiumStore.js';
@@ -1281,6 +1282,7 @@ function GearStep({ draft }: { draft: CpredCreationDraft }) {
 function DetailsStep({ draft }: { draft: CpredCreationDraft }) {
   const patch = useCreationStore((s) => s.patch);
   const busy = useCreationStore((s) => s.busy);
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const [name, setName] = useState(draft.name);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -1334,20 +1336,23 @@ function DetailsStep({ draft }: { draft: CpredCreationDraft }) {
         ) : (
           <span className="creator-portrait-empty">brak portretu</span>
         )}
-        {/* Its own label rather than the sheet's `cp-portrait-upload`: that one
-            is a hover overlay pinned to the sheet's portrait frame, and out
-            here it would simply be invisible. */}
-        <label className="small-button creator-portrait-upload">
-          {uploading ? 'Wgrywanie…' : draft.portraitUrl ? 'Zmień portret' : 'Wgraj portret'}
-          <input
-            type="file"
-            accept={UPLOAD_ACCEPT_ATTRIBUTE}
-            title={uploadRequirementText('portrait')}
-            onChange={(event) => void uploadPortrait(event)}
-            disabled={uploading || busy}
-            hidden
-          />
-        </label>
+        {/* Wgranie wprost z kreatora zostaje **tylko MG** (23.08); gracz
+            wybiera z puli niżej. Osobna etykieta zamiast arkuszowej
+            `cp-portrait-upload`: tamta jest nakładką przypiętą do ramki
+            portretu na karcie i tutaj byłaby niewidoczna. */}
+        {isGm ? (
+          <label className="small-button creator-portrait-upload">
+            {uploading ? 'Wgrywanie…' : draft.portraitUrl ? 'Zmień portret' : 'Wgraj portret'}
+            <input
+              type="file"
+              accept={UPLOAD_ACCEPT_ATTRIBUTE}
+              title={uploadRequirementText('portrait')}
+              onChange={(event) => void uploadPortrait(event)}
+              disabled={uploading || busy}
+              hidden
+            />
+          </label>
+        ) : null}
         {draft.portraitUrl ? (
           <button
             type="button"
@@ -1359,6 +1364,11 @@ function DetailsStep({ draft }: { draft: CpredCreationDraft }) {
           </button>
         ) : null}
         {uploadError ? <p className="auth-error">{uploadError}</p> : null}
+        <PortraitPicker
+          selectedUrl={draft.portraitUrl}
+          disabled={busy}
+          onPick={(url) => void patch({ portraitUrl: url })}
+        />
       </div>
 
       <label className="creator-checkbox">

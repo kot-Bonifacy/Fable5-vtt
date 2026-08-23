@@ -52,6 +52,10 @@ export async function referencedUploadUrls(prisma: PrismaClient): Promise<Set<st
     add(row.imageUrl);
   }
   for (const row of await prisma.tokenAsset.findMany({ select: { url: true } })) add(row.url);
+  // Pula portretów kampanii (23.08): plik leży w bibliotece, zanim ktokolwiek
+  // wybierze go na kartę — bez tej linii zbieracz skasowałby całą pulę po
+  // godzinie od wgrania.
+  for (const row of await prisma.portraitAsset.findMany({ select: { url: true } })) add(row.url);
   for (const row of await prisma.handout.findMany({ select: { imageUrl: true } })) {
     add(row.imageUrl);
   }

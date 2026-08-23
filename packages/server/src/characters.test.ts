@@ -371,17 +371,30 @@ describe('characters', () => {
 });
 
 describe('portrait uploads', () => {
-  it('accepts an authenticated player upload and rejects anonymous ones', async () => {
+  /**
+   * Od 23.08 pliki portretów dokłada **wyłącznie MG** — gracz wybiera z puli
+   * kampanii (`/api/portrait-assets`, testy w `tokens.test.ts`). Wcześniej ta
+   * trasa stała na `requireAuth` i każdy wgrywał, co chciał.
+   */
+  it('accepts a GM upload and refuses players and anonymous alike', async () => {
     const { payload, headers } = multipartBody('portret.png', PNG_1X1);
     const res = await built.app.inject({
       method: 'POST',
       url: '/api/uploads/portraits',
-      headers: { ...headers, cookie: vexCookie },
+      headers: { ...headers, cookie: gmCookie },
       payload,
     });
     expect(res.statusCode).toBe(201);
     const result = res.json() as PortraitUploadResult;
     expect(result.url).toMatch(/^\/uploads\/portraits\/.+\.png$/);
+
+    const player = await built.app.inject({
+      method: 'POST',
+      url: '/api/uploads/portraits',
+      headers: { ...headers, cookie: vexCookie },
+      payload,
+    });
+    expect(player.statusCode).toBe(403);
 
     const anonymous = await built.app.inject({
       method: 'POST',

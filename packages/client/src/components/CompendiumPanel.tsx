@@ -288,6 +288,7 @@ function EntryCard({
   const edit = useCompendiumStore((s) => s.edit);
   const [note, setNote] = useState<string | null>(null);
   const [targetId, setTargetId] = useState('');
+  const [confirming, setConfirming] = useState(false);
 
   const resolved = useMemo(
     () =>
@@ -343,13 +344,29 @@ function EntryCard({
             <button type="button" className="small-button" onClick={() => edit(entry.id)}>
               Edytuj
             </button>
-            <button
-              type="button"
-              className="small-button small-button--danger"
-              onClick={() => void deleteCompendiumEntry(entry.id)}
-            >
-              Usuń
-            </button>
+            {confirming ? (
+              <>
+                <span className="knowledge-flag">Usunąć?</span>
+                <button
+                  type="button"
+                  className="small-button small-button--danger"
+                  onClick={() => void deleteCompendiumEntry(entry.id)}
+                >
+                  Tak, usuń
+                </button>
+                <button type="button" className="small-button" onClick={() => setConfirming(false)}>
+                  Anuluj
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                className="small-button small-button--danger"
+                onClick={() => setConfirming(true)}
+              >
+                Usuń
+              </button>
+            )}
           </span>
         ) : null}
       </div>
