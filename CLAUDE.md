@@ -19,6 +19,7 @@ Pełna wizja i decyzje: `docs/etapy/00-przeglad.md`. Źródłowa ankieta: `vtt-a
    - `docs/etapy/archiwum/dziennik-sesji.md` — pełne notatki starszych sesji; `archiwum/uwagi-etapow.md` — jednozdaniowe „co było w etapie N".
 
    Kończąc sesję: dopisz notatkę na górę sekcji notatek, a notatkę wypartą z dwójki przenieś **w całości i bez zmian** na górę `dziennik-sesji.md` — **bez zostawiania skrótu** w `POSTEP.md`. Nowa zaległość idzie od razu do `zaleglosci.md`, nowa umowa lub pułapka — do swojego pliku plus jeden wiersz indeksu.
+
 6. Przed zakończeniem sesji: testy przechodzą, aplikacja się uruchamia, zmiany zacommitowane. Jeśli etap nie został dokończony — zapisz w `POSTEP.md` dokładnie, co zostało i od czego zacząć.
 7. Jeśli w trakcie etapu okaże się, że plan wymaga korekty (np. podziału etapu na dwa) — zaproponuj zmianę użytkownikowi i po akceptacji zaktualizuj pliki etapów.
 

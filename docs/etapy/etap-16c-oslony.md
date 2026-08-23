@@ -75,7 +75,7 @@ Cztery rozstrzygnięcia spoza opisu etapu, uzgodnione przed startem:
    przywrócić; „znika z mapy" w kryterium czytamy jako „przestaje być osłoną".
 3. **PW osłony widzą wszyscy.** Reguła „PW tylko właściciel + MG" z etapu 05 dotyczy
    ludzi; samochód jest przedmiotem, na który patrzy cały stół.
-4. **Blokada miękka zamiast twardej** — *odstępstwo od kryterium*. Strzał w cel za
+4. **Blokada miękka zamiast twardej** — _odstępstwo od kryterium_. Strzał w cel za
    osłoną nie leci od razu, ale też nie jest bezwarunkowo odrzucany: zamiast kubka
    pojawia się karta „Cel za osłoną: Samochód (PW z katalogu)" z przyciskami **„Ostrzelaj
    osłonę"** i **„Strzelaj mimo osłony"**. Nikt nie strzela przez samochód

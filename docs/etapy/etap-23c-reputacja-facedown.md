@@ -48,7 +48,7 @@ w rzucie na rozpoznanie przy pierwszym spotkaniu (1k10 **niższe** od Reputacji 
 2. **Reputacja jest wyliczana z listy wyczynów**, nie wpisywana — RAW zastępuje ją tylko wyższą,
    więc osobne pole liczbowe byłoby drugim źródłem prawdy dla jednego faktu.
 3. **Rzut na rozpoznanie wchodzi w zakres** (przycisk „Czy go znam?" w menu tokenu).
-4. **Konfrontacja nie kosztuje Akcji** — podręcznik stawia ją *przed* walką i nie ma jej
+4. **Konfrontacja nie kosztuje Akcji** — podręcznik stawia ją _przed_ walką i nie ma jej
    w katalogu akcji z 14b.
 
 **Odstępstwo od decyzji 1, zgodne z RAW:** −2 **nie nakłada się automatycznie**. „Przegrany

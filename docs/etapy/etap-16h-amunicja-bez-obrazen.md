@@ -101,15 +101,15 @@ Cztery pytania, na które opis etapu nie dawał odpowiedzi — decyzje MG z 07.0
 
 ## Co powstało
 
-| Warstwa      | Plik                                              | Rola                                                              |
-| ------------ | ------------------------------------------------- | ----------------------------------------------------------------- |
-| shared       | `systems/cpred/timed.ts`                          | minuta = 6 rund; runda wygaśnięcia albo `null` poza walką          |
-| shared       | `systems/cpred/environment.ts`                    | co daje stanie w chmurze — nazwane wiersze rozbicia, kumulują się  |
-| shared       | `smoke.ts` (rdzeń)                                | geometria kwadratu i „kto w nim stoi"; bez importu z `cpred`       |
-| shared       | `systems/cpred/ammo.ts`                           | `check`, `smoke`, `smart`, `noDamage` + osądzenie testu            |
-| serwer       | `realtime/ammo-effects.ts`                        | rzut testu, skutki porażki, karta obrażeń do cofnięcia             |
-| serwer       | `realtime/timed-effects.ts`                       | zamiatanie po rundach + `effect:expire` (przycisk MG)              |
-| serwer       | `realtime/smoke.ts`, `realtime/smoke-io.ts`       | stawianie chmury, `smoke:clear`, modyfikator dla rzutu             |
-| klient       | `stores/smokeStore.ts`, warstwa dymu w rendererze | rysowanie kwadratu pod tokenami                                    |
-| dane (prywatne) | `compendium/ammo.json`                         | 8 wierszy dostało mechanikę; zniknęły dopiski „NIE ZAUTOMATYZOWANY" |
-| dane (publiczne) | `compendium/sample.json`, `statuses.json`     | 4 próbki o tym samym kształcie, status i ikona „EMP"               |
+| Warstwa          | Plik                                              | Rola                                                                |
+| ---------------- | ------------------------------------------------- | ------------------------------------------------------------------- |
+| shared           | `systems/cpred/timed.ts`                          | minuta = 6 rund; runda wygaśnięcia albo `null` poza walką           |
+| shared           | `systems/cpred/environment.ts`                    | co daje stanie w chmurze — nazwane wiersze rozbicia, kumulują się   |
+| shared           | `smoke.ts` (rdzeń)                                | geometria kwadratu i „kto w nim stoi"; bez importu z `cpred`        |
+| shared           | `systems/cpred/ammo.ts`                           | `check`, `smoke`, `smart`, `noDamage` + osądzenie testu             |
+| serwer           | `realtime/ammo-effects.ts`                        | rzut testu, skutki porażki, karta obrażeń do cofnięcia              |
+| serwer           | `realtime/timed-effects.ts`                       | zamiatanie po rundach + `effect:expire` (przycisk MG)               |
+| serwer           | `realtime/smoke.ts`, `realtime/smoke-io.ts`       | stawianie chmury, `smoke:clear`, modyfikator dla rzutu              |
+| klient           | `stores/smokeStore.ts`, warstwa dymu w rendererze | rysowanie kwadratu pod tokenami                                     |
+| dane (prywatne)  | `compendium/ammo.json`                            | 8 wierszy dostało mechanikę; zniknęły dopiski „NIE ZAUTOMATYZOWANY" |
+| dane (publiczne) | `compendium/sample.json`, `statuses.json`         | 4 próbki o tym samym kształcie, status i ikona „EMP"                |

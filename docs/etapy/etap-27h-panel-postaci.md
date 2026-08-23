@@ -68,7 +68,7 @@ wszczepu" (nie do utrzymania w motywie dziennym) i czysty Foundry bez klimatu.
   `cpredHotbarGroups` — czystą funkcję w `shared`, z testami.
 - Ikona slotu jest decyzją **reguł, nie komponentu**: `cpredWeaponIcon` w `shared` czyta typ
   broni z kompendium (`ResolvedWeapon.typeId`, dołożony w tym etapie), potem umiejętność, a na
-  końcu to, co broń *robi*. Panel dostaje nazwę rzeczy (`CpredSlotIcon`) i rysuje plik.
+  końcu to, co broń _robi_. Panel dostaje nazwę rzeczy (`CpredSlotIcon`) i rysuje plik.
 - Waga statusu też jest w `shared` (`cpredStatusSeverity`) i wywodzi się z tabeli efektów.
   **Wyjątkiem są stany ran** — nie mają wiersza w tabeli, bo ich kary liczy się z PW, więc
   „Śmiertelnie ranny" wychodził szary jak „Onieśmielony". Nazwane wprost, z testem.

@@ -18,6 +18,7 @@ Notatki z etapu 04. Gdzie brać grafiki map, czego pilnować licencyjnie i jak g
   ```
   uv run --with pillow python -c "from PIL import Image; Image.open('mapa.png').convert('RGB').save('mapa.webp','WEBP',quality=90,method=6)"
   ```
+
 - Zawartość: skrzyżowanie z przejściami dla pieszych, auta w ruchu i przy krawężniku, cztery narożniki zabudowy z wnętrzami (bar, sklepy, parking, lądowisko na dachu), neony i mokry asfalt. **Bez wrysowanej siatki i bez tekstu** — siatkę rysuje VTT.
 - **Skala jest wiążąca dla wrażenia z mapy** (1 kratka = 2 m): przy 100 px/kratkę te 2508 px to ~50 × 50 m, przy 60 px/kratkę ~84 × 84 m. Kalibrację robi się suwakami w edytorze sceny — dopasuj kratkę do szerokości jezdni, a nie do okrągłej liczby.
 - Wnętrza budynków są widoczne, więc mapa dobrze współgra ze ścianami i mgłą MG z etapów 17a–18e.

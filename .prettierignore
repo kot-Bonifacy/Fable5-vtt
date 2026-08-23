@@ -3,3 +3,7 @@ node_modules/
 pnpm-lock.yaml
 data/
 uploads/
+
+# Wygenerowany klient Prismy — przepisywany przez `prisma generate`,
+# więc formatowanie go i tak nie przetrwa następnej migracji.
+packages/server/src/generated/

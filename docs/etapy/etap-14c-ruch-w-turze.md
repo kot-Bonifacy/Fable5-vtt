@@ -25,8 +25,7 @@ modyfikują efektywny RUCH.
       Bieg (Akcja z 14b) dodaje drugie RUCH × 2 m
 - [x] Efektywny RUCH liczony w shared z metadanych, nie hardkodu per przypadek:
       baza z karty + kara ciężkiego pancerza (REF/ZW/RUCH — dziś nieliczona nigdzie,
-      dane pancerza mają pole kary od etapu 13) + Śmiertelnie Ranny −6 (minimum 1, etap 15)
-      + modyfikatory ran krytycznych (Zapadnięte płuco −2, Złamana noga −4, Odcięta noga −6,
+      dane pancerza mają pole kary od etapu 13) + Śmiertelnie Ranny −6 (minimum 1, etap 15) + modyfikatory ran krytycznych (Zapadnięte płuco −2, Złamana noga −4, Odcięta noga −6,
       minimum 1) — wartości efektów przy statusach jako dane (wzorzec z etapu 15)
 - [x] `token:move` świadomy walki: dla uczestnika aktywnej walki serwer liczy długość ścieżki
       (klient wysyła łamaną z przeciągania; pojedynczy drag bez punktów pośrednich = odcinek),

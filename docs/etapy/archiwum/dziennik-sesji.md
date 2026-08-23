@@ -259,7 +259,6 @@ cofnięciem** (A1, A3, A4, plus zbieracz na sucho). ESLint i Prettier czyste, se
 w kilkunastu etapach), czytelność `down` na mapie, odmiana w wyszukiwarce dziennika i kontrast
 marki. To są pozycje 9–12 listy, MG zostawił je świadomie.
 
-
 ### Sesja 21.08 (trzecia tego dnia) — sesja naprawcza, poza etapami
 
 **Zlecenie MG: przejrzeć otwarte zaległości, wybrać z nich, co jest prawdziwym błędem, i to

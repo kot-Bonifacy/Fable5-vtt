@@ -50,6 +50,7 @@ kryterium etapu brzmi „wymusza testy i loguje wyniki", a wymuszony test z defi
 czeka na decyzję celu.
 
 **Znalezione i naprawione błędy w danych:**
+
 - `rangeDv` w publicznej próbce (`data/public/cpred/compendium/sample.json`) było dosłownym
   przepisaniem wierszy tabeli z podręcznika — podmienione na liczby wymyślone (repo jest
   publiczne);

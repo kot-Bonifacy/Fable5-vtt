@@ -26,10 +26,10 @@ więc A* ograniczony do wnętrza tego obszaru omija mury, **nie wiedząc, że is
 To ta sama tożsamość, na której stoi 16b („linia strzału = blokady wzroku strzelca”) —
 i tak samo jak tam, oba trudne przypadki wychodzą za darmo:
 
-| Kto idzie | Skąd bierze przechodniość | Co z tego wynika |
-| --------- | ------------------------- | ---------------- |
+| Kto idzie | Skąd bierze przechodniość                           | Co z tego wynika                                             |
+| --------- | --------------------------------------------------- | ------------------------------------------------------------ |
 | MG        | pełne ściany (`movementSegments`, `isSegmentClear`) | trasa po prawdziwej geometrii, także przez nieodkryte pokoje |
-| Gracz     | `isPointVisible` (widzę teraz) | trasa dokładna co do piksela, bez wycieku planu budynku |
+| Gracz     | `isPointVisible` (widzę teraz)                      | trasa dokładna co do piksela, bez wycieku planu budynku      |
 
 > **Poprawka z sesji wdrożeniowej (31.07):** wiersz gracza brzmiał pierwotnie
 > „widzę teraz ∪ `isPointExplored` (pamiętam)”. Maska eksploracji **nie pamięta ścian** — mur
