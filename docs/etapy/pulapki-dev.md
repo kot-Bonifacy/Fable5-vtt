@@ -142,3 +142,20 @@ dotyczy.
   **Ostrzeżenie na przyszłość:** z płótna Pixi **nie odczytasz pikseli** (`drawImage` z canvasu
   WebGL daje przezroczysty obraz), więc powiększenia fragmentu mapy nie da się zrobić z poziomu
   strony — zostaje `zoom` narzędzia albo przybliżenie samej mapy kółkiem.
+
+- **Dane kampanii mogą nie mieć pola, które kod obsługuje — a testy tego nie złapią.**
+  23.08 wyszło, że granatnik w kampanii nie robił obszaru wybuchu, choć etap 16d był
+  „ukończony i odklikany". Przyczyna nie leżała w kodzie: `explosive` wypadało z
+  `weapon-types.json` przez białą listę w importerze (opis w `umowy-kodu.md`), a testy
+  przechodziły, bo publiczna próbka danych **ma** typ z `explosive`. Objaw był mylący —
+  atak trafiał, tylko nie miał obszaru, listy trafionych ani rzutu obrażeń. Zanim uznasz
+  „mechanika nie działa" za błąd kodu, sprawdź, czy pole w ogóle jest w danych:
+  `python -c "import json;d=json.load(open('data/private/cpred/compendium/weapon-types.json',encoding='utf8'));print([t['id'] for t in d['weaponTypes'] if t.get('explosive')])"`.
+
+- **Rzut z karty postaci idzie dwoma kliknięciami: `Shift`+klik ładuje kubek, klik w kubek
+  rzuca.** Zrzut zaraz po pierwszym kliknięciu pokazuje pusty stół i wygląda jak awaria.
+  Kości leżą 3,2 s po ustaniu (`FADE_OUT_DELAY_MS`), a **złota kość dorzutu krytyka spada
+  dopiero 550 ms po pierwszej fali** (`EXTRA_DIE_DELAY_MS`) — zrzut po 2 s łapie moment przed
+  nią, dopiero ~3 s pokazuje obie. Stół kości to pełnoekranowa nakładka **pod** oknem karty
+  postaci: przy otwartej karcie kości są niewidoczne, więc do łapania rzutów kartę trzeba
+  zamknąć (kubek zostaje naładowany).

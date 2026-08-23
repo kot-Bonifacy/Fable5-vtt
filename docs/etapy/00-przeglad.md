@@ -50,7 +50,9 @@ Każdy etap to jedna sesja pracy z Claude. Etapy są pogrupowane w 8 faz. Szczeg
 | 26d | Węzły kontrolne i systemy obronne                   | H. Świat CP RED      | dawne 26c                       |
 | 26e | Demony                                              | H. Świat CP RED      | wydzielone z 26d (15.08)        |
 | 26f | Samodzielne systemy obronne i broniona strefa       | H. Świat CP RED      | wydzielone z 26e (16.08)        |
-| 27  | Kości 3D i szlif UI                                 | I. Wykończenie       | rozbity na 27a–27i (13–20.08)   |
+| 27  | Kości 3D i szlif UI                                 | I. Wykończenie       | rozbity na 27a–27l (13–23.08)   |
+| 27k | Edycja sceny: zaznacz, skasuj, cofnij               | I. Wykończenie       | dopisany 23.08 (zlecenie MG)    |
+| 27l | Karty obiektów sceny                                | I. Wykończenie       | wydzielone z 27k (23.08)        |
 | 28  | Wdrożenie na VPS                                    | I. Wykończenie       | 🏁 Produkcja                    |
 
 ## Kolejność i zależności

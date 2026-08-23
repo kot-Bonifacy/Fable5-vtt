@@ -9,6 +9,48 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Przeniesione 2026-08-23 (sesja triażu zaległości: kompendium, portrety, kości, wybuch)
+
+- **🐞 BŁĄD — „Usuń" przy własnym wpisie kompendium kasował bez pytania.** `CompendiumPanel.tsx`
+  wołał `deleteCompendiumEntry` prosto z `onClick`, więc wpis MG ginął jednym kliknięciem, choć
+  wszystkie inne kosze w aplikacji (dziennik, handout, scena, architektura Sieci) pytają
+  dwustopniowo. **Naprawione 23.08** tym samym wzorcem co reszta: „Usunąć?" → „Tak, usuń" /
+  „Anuluj". **Odklikane 23.08** na wpisie „Kosz testowy 23x": pierwszy klik pyta, „Anuluj"
+  cofa i zostawia wpis, „Tak, usuń" kasuje (wyszukiwarka pokazuje wtedy „Nic nie pasuje").
+
+- **🕳 Wgranie portretu w kreatorze (25c) — rozwiązane inaczej, niż zakładała pozycja.**
+  Zamiast odklikać wgrywanie po stronie gracza, MG zdecydował 23.08, że **pliki portretów
+  dokłada wyłącznie MG**, a gracz wybiera z puli kampanii. Powstała biblioteka `PortraitAsset`
+  (bliźniak `TokenAsset`) z pickerem `PortraitPicker` na karcie postaci i w kreatorze; MG
+  zachował też wgranie wprost na kartę. **Odklikane 23.08**: dwa portrety wgrane do puli
+  przyciskiem „+ Dodaj", wybór z puli podświetlił kafelek i przeżył przeładowanie strony
+  (portret karty = adres wybranego kafelka). Opis umowy w `umowy-kodu.md`.
+
+- **Etap 27d — kości 3D odklikane w całości 23.08.** (1) **Złoty dorzut krytyka** — złapany na
+  stole: kremowa dziesiątka i **złota** kość obok, a na czacie „17 = 10 + 5 + 2 · Krytyk!
+  dorzut +2" w zielonej ramce. (2) **Wyłączenie animacji i głośność 0** — przy odznaczonej
+  „Animacji 3D" stół zostaje pusty, a karta rzutu jest na czacie natychmiast; suwaki zeszły do 0.
+  (3) **Rzut Cech w kreatorze bez zielonych dziesiątek** — w jednym rzucie 10k10 padła naturalna
+  **10** (RUCH) i naturalna **1** (BC), a żadna kość nie zmieniła koloru i nic się nie dorzuciło,
+  czyli flaga `plain` działa. Metoda łapania rzutów opisana w `pulapki-dev.md`.
+
+- **Etap 27i — wybuch i liczba obrażeń nad figurą odklikane 23.08.** Liczba: nad „Celem 23x"
+  stanęło czerwone **„−2"** i popłynęło w górę (karta obrażeń: „Przebicie: 2 obr. · rzut 9 − OB 7
+  · PW 35 → 33 · Pancerz: OB 7 → 6"). Wybuch: pocisk poleciał wzdłuż trasy i rozbłysnął w kwadracie
+  10×10 m na celu — ale dopiero **po naprawie danych** (patrz pozycja niżej), bo wcześniej granatnik
+  w ogóle nie tworzył obszaru. Zostają: chmura gazu, wyładowanie strefy i dźwięki.
+
+- **🐞 BŁĄD (dane + importer) — granaty i granatniki nie wybuchały, a naboje nie pasowały do broni.**
+  `tools/import/parse-manual.py` zapisuje `weapon-types.json` przez białą listę `schema_fields`,
+  w której **nie było** `explosive` ani `ammoPatterns`. `manual-overrides.json` ustawiał obie
+  flagi Granatnikowi i Wyrzutni rakiet od początku, a filtr wycinał je przy każdym imporcie —
+  w kampanii MG żaden z 20 typów broni nie miał `explosive`, więc mechanika obszaru z 16d była
+  martwa mimo gotowego kodu i zielonych testów (testy przechodzą na **publicznej** próbce, która
+  `explosive` ma). **Naprawione 23.08**: pola dopisane do białej listy w importerze, flagi
+  uzupełnione w danych kampanii z overrides (`weapon-type.grenade` dostał wpis w overrides,
+  bo go nie miał), kopie zapasowe obok plików (`*.bak-23x`). Po restarcie serwera granatnik
+  od razu rysuje kwadrat obszaru, a karta ataku pisze „obszar 10×10 m" z listą trafionych.
+
 ## Przeniesione 2026-08-23 (sesja pasów zasięgu na trasie ruchu)
 
 - **🐞 BŁĄD — figura 2×2 planuje trasę **przez** ściany (klient, 22.08).** Na scenie testowej

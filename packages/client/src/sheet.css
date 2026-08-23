@@ -474,6 +474,26 @@
   align-self: flex-end;
 }
 
+/* Pula portretów (23.08) leży wprost na czerwonym panelu tożsamości, więc
+   bierze kolory karty, nie globalne — globalny `--text-dim` na `--cp-red`
+   znikał zupełnie. */
+.cp-identity .portrait-pool-head,
+.cp-identity .portrait-pool-empty {
+  color: var(--cp-on-red-dim);
+}
+
+.cp-identity .portrait-pool-pick {
+  background: var(--cp-paper);
+  color: var(--cp-ink);
+  border-color: var(--cp-red-deep);
+  border-radius: 0;
+}
+
+.cp-identity .portrait-pool-confirm {
+  background: var(--cp-paper);
+  border-radius: 0;
+}
+
 .cp-pool-value {
   display: flex;
   align-items: center;

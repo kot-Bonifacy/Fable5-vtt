@@ -8,18 +8,44 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
 
 ## Pozycje
 
+- **🐞 BŁĄD — statysta trafia, ale nie ma czym zadać obrażeń (znalezione 23.08).**
+  `AttackControls.tsx:38` szuka atakującego wyłącznie wśród **kart postaci**
+  (`characters.find(c => c.data.weapons.some(w => w.id === weaponRowId))`), a przycisk
+  „Obrażenia" wisi na warunku `(attack.hit || attack.area) && attacker`. Figura z **profilem
+  bojowym** (statysta bez karty — na Poligonie „Zbir", na scenie testowej „Strzelec 23x") nie
+  ma takiej karty, więc jej karta ataku pokazuje trafienie i listę objętych obszarem, ale
+  **żadnego rzutu na obrażenia**; MG musi liczyć ręcznie i wpisywać PW skrótami ±5 z menu
+  żetonu. To ta sama luka, którą 22.08 zamknięto po stronie **obrony** (`statistDefender`
+  w tym samym pliku, komentarz „Figura bez karty też się uchyla") — strona atakująca została
+  nietknięta. Naprawa idzie tym samym wzorcem: obrażenia statysty liczy się z jego profilu
+  (broń profilu ma `damage` z typu, więc notacja jest znana bez karty).
+  Sprawdzone 23.08 na „Efekty 23x": trafienie granatnikiem 24 vs PT 17, „obszar 10×10 m ·
+  Cel 23x — 0 m od środka", jedyny przycisk na karcie to „Unik: Cel 23x".
+
+- **Trzy błędy edycji sceny — objęte etapem 27k** (`etap-27k-edycja-sceny.md`, dopisany 23.08).
+  Zostawione tutaj na wypadek, gdyby etap się przesunął, bo każdy da się naprawić osobno.
+  (1) **Ciche gumki:** `MapArea.tsx:584, 728, 762` — `deleteWall`, `deleteLight`
+  i `removeNetAccessPoint` idą bez sprawdzenia `ack` i bez słowa przy chybieniu, więc klik obok
+  obiektu nie robi nic i nie tłumaczy dlaczego (osłony i strefy robią to poprawnie).
+  (2) **Brak koszy dla świateł i gniazd:** nie ma zdarzeń `light:clear` ani `netpoint:clear`,
+  choć ściany, osłony, strefy i rysunki mają swoje — scena zaśmiecona lampami wymaga klikania
+  ich po jednej. (3) **`zone` i `netpoint` nie są w `MAP_TOOL_KEYS`** (`shortcuts.ts:52`), więc
+  nie mają skrótu i **nie pokazują się w oknie pomocy `?`** — narzędzie punktów dostępu jest
+  jedynym, o którym pomoc milczy, i to była bezpośrednia przyczyna pytania MG z 23.08.
+
 - **Kosz „usuń wszystkie osłony" kasuje bez pytania i bez cofnięcia.** `MapTools.tsx` woła
   `clearCovers(sceneId)` prosto z `onClick`, a scena potrafi mieć kilkanaście osłon budowanych
   przez pół sesji. Wszystkie inne kosze w aplikacji (wpis dziennika, handout, scena) pytają
   dwustopniowo. Sprawdzone 22.08: jeden klik zdjął „Samochód 25/25" i licznik od razu pokazał
-  „brak osłon".
-
-- **„Usuń" przy własnym wpisie kompendium też nie pyta.** Ta sama uwaga co wyżej, ta sama
-  waga: wpis MG ginie jednym kliknięciem (sprawdzone 22.08 na wpisie testowym).
+  „brak osłon". **Rozwiązanie zaplanowane w 27k** i inne, niż zakładała ta pozycja: nie okno
+  potwierdzenia, tylko `Ctrl+Z` — kosz odkłada całą grupę jako **jedną** pozycję cofania.
 
 - **Biblioteka grafik tokenów nie ma kosza.** Raz wgrana grafika zostaje w zakładce „Tokeny"
   na zawsze — nie da się jej usunąć z UI, a plik zostaje w `uploads/tokens`. Przy oględzinach
-  22.08 trzeba było skasować wpis wprost w bazie (`tokenAsset`) i plik z dysku.
+  22.08 trzeba było skasować wpis wprost w bazie (`tokenAsset`) i plik z dysku. **Odłożone
+  świadomie 23.08** (decyzja MG: „w tej sesji nie robimy"). Wzorzec jest już gotowy do
+  przepisania: pula portretów z tego samego dnia ma kosz dwustopniowy i trasę
+  `DELETE /api/portrait-assets/:id`, a plik z dysku i tak zbiera `uploads-gc`.
 
 - **Etap 27f — pusty stan listy postaci u gracza nieodklikany.** `'Nie masz jeszcze żadnej
 postaci.'` jest sprawdzony w kodzie i mówi tym samym językiem co pustka handoutów, ale na
@@ -31,14 +57,13 @@ postaci.'` jest sprawdzony w kodzie i mówi tym samym językiem co pustka handou
   **większego** niż okno przeglądarki zostaje próg „róg zawsze do złapania" i tej gałęzi nikt
   nie oglądał. (Strona gracza → odklikana 22.08, patrz `archiwum/zamkniete-zaleglosci.md`.)
 
-- **Etap 27i — trzy ścieżki nieodklikane; reszta sprawdzona 20.08 (patrz notatka sesji w `archiwum/dziennik-sesji.md`).**
-  (1) **Wybuch, chmura gazu i wyładowanie strefy** — kod i oba arkusze CC0 sprawdzone
-  (krojenie klatek zweryfikowane w przeglądarce), ale animacji nikt nie widział: na Poligonie
-  nie ma postaci z granatem, a wejście na „Podłogę elektryczną" kosztuje 6k6. (2) **Liczba
-  obrażeń nad figurą** — ta sama ścieżka co widziane „PUDŁO", różni ją jedna linia w
-  `damageMapFx`. (3) **Dźwięki** — odtwarzane, ale nikt ich nie słyszał, a próbki dobrano po
-  nazwach plików w paczkach CC0; rządek przycisków odsłuchu jest w „⚙ Ustawienia" właśnie po to.
-  (Strona gracza → odklikana 22.08, patrz `archiwum/zamkniete-zaleglosci.md`.)
+- **Etap 27i — zostały dwie ścieżki i dźwięki.** ~~Wybuch~~ i ~~liczba obrażeń nad figurą~~ —
+  **odklikane 23.08** na scenie „Efekty 23x" (patrz `archiwum/zamkniete-zaleglosci.md`; wybuch
+  wymagał wcześniej naprawy danych broni). Zostają: (1) **chmura gazu** i **wyładowanie strefy** —
+  gaz potrzebuje wpisu amunicji gazowej w magazynku, wyładowanie strefy „Podłogi elektrycznej"
+  na scenie; (2) **dźwięki** — odtwarzane, ale nikt ich nie **słyszał**, a próbki dobrano po
+  nazwach plików w paczkach CC0; rządek przycisków odsłuchu jest w „⚙ Ustawienia" właśnie po to
+  i tej pozycji nie odhaczy nikt poza człowiekiem przy głośnikach.
 
 - **Etap 27i — pomiar fps nie objął sceny ze światłami i mgłą.** „Strzelnica" ma widoczność
   `open`, więc 160,1 → 161,2 fps mierzy **samą warstwę efektów**, a nie najgorszy przypadek
@@ -50,14 +75,6 @@ postaci.'` jest sprawdzony w kodzie i mówi tym samym językiem co pustka handou
   przy oględzinach z konta gracza (świeży link zaproszenia z Panelu MG, run na żywej kampanii).
   Zostaje (3) **Screamsheet** — lista handoutów Poligonu jest pusta; różnica jest tu **żadna
   z definicji**, bo `--paper` nie ma wariantu dziennego.
-
-- **Etap 27d — trzy ścieżki nieodklikane; reszta sprawdzona 19.08 (patrz notatka sesji w `archiwum/dziennik-sesji.md`).**
-  (1) **Złoty dorzut krytyka** — na zrzucie ekranu złapany został fumble (dwie kości w dwóch
-  kolorach na stole), krytyka nie: 20% na rzut, a okno, w którym kość leży, trwa ~3 s. Ścieżka
-  jest **ta sama**, różni ją jeden zestaw kolorów. (2) **Wyłączenie animacji i głośność 0** —
-  obie prowadzą do wcześniejszego wyjścia z `playRollAnimation` / `playRattle` i były czytane
-  w kodzie, nie klikane. (3) **Rzut Cech w kreatorze bez zielonych dziesiątek** — flaga `plain`
-  ma test w `shared` i przechodzi przez serwer, ale kreatora nikt nie otwierał.
 
 - **Etap 26f — cztery ścieżki nieodklikane; reszta sprawdzona 16.08 (patrz notatka sesji w `archiwum/dziennik-sesji.md`).**
   (Strona gracza → odklikana 22.08, patrz `archiwum/zamkniete-zaleglosci.md`.)
@@ -130,9 +147,9 @@ postaci.'` jest sprawdzony w kodzie i mówi tym samym językiem co pustka handou
   ma cztery testy w `cyberware.test.ts` i nikt jej nie widział — do obejrzenia na karcie
   z chromem w obu rękach.
 
-- **Etap 25c — dwie ścieżki nieodklikane.** (1) **Wgranie portretu w kreatorze** — przycisk
-  widziany i naprawiony, ale pliku nie wgrywano; trasa to ta sama `/api/uploads/portraits` co
-  na karcie z etapu 07. (2) **Druga sztuka tego samego przedmiotu** w koszyku (chip „×2"
+- **Etap 25c — jedna ścieżka nieodklikana.** ~~(1) Wgranie portretu w kreatorze~~ —
+  **zamknięte 23.08 inaczej, niż zakładała pozycja**: portrety wgrywa dziś wyłącznie MG do puli
+  kampanii, a kreator wybiera z niej (`PortraitPicker`). Patrz `archiwum/zamkniete-zaleglosci.md`. (2) **Druga sztuka tego samego przedmiotu** w koszyku (chip „×2"
   i wiersz „nazwa ×2" w audycie) — **odklikane 22.08** z konta gracza: dwa kliknięcia w „Średni
   pistolet" dały chip „×2", wiersz „Średni pistolet ×2 — 100 ed" i budżet 500 → 400 ed.
   (Odmowa poziomu i krok wyposażenia u gracza — **odklikane 22.08**, patrz pozycja zbiorcza.)

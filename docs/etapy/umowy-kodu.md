@@ -106,3 +106,21 @@ ikoną statusu i ciemnoczerwoną podstawką, a wielki ✕ przez twarz ma **wył�
 Ponieważ `down` bierze się także z samych punktów życia, `fallbackConditionStatusId`
 (`shared/src/figures.ts`) dokłada domyślną naklejkę figurze, której żaden status tego nie mówi
 — statysta bez karty na zerze PW nie może wyglądać jak zdrowy. Pilnuje tego `figures.test.ts`.
+
+**Pole typu broni musi trafić na białą listę importera.** `tools/import/parse-manual.py`
+zapisuje `weapon-types.json` przez filtr `schema_fields` — zbiór nazw pól, które przechodzą.
+Pole spoza zbioru ginie **po cichu**, także wtedy, gdy dopisał je `manual-overrides.json`.
+Kosztowało to całą mechanikę obszaru: `explosive` (Granatnik, Wyrzutnia rakiet) i `ammoPatterns`
+(dobór naboi do broni) były w overrides od początku, a filtr wycinał je przy każdym imporcie,
+więc w kampanii nic nie wybuchało i żaden nabój nie pasował do żadnej broni — mimo gotowego
+kodu z etapów 16d i 16g i mimo testów, które przechodziły na **publicznej** próbce
+(`data/public/.../sample.json` ma `explosive`). Dokładając pole do `CpredWeaponTypeInput`
+w `shared/src/systems/cpred/compendium.ts`, dołóż je **w tej samej zmianie** do `schema_fields`.
+
+**Pula portretów kampanii — pliki portretów dokłada wyłącznie MG (23.08).** `PortraitAsset`
+jest bliźniakiem `TokenAsset` (model, trasy, kosz dwustopniowy), z jedną różnicą: listę
+`GET /api/portrait-assets` widzi **każdy zalogowany**, bo to z niej gracz wybiera portret swojej
+postaci — biblioteka żetonów zostaje przy `requireGm`. `POST /api/uploads/portraits` (wgranie
+wprost na kartę) też przeszło na `requireGm`; gracz nie ma już żadnej trasy, którą wstawiłby
+plik do `uploads/`. Wspólny komponent to `PortraitPicker` — używają go i karta postaci, i
+kreator; nowe miejsce z portretem bierze jego, nie własnego `<input type="file">`.

@@ -45,3 +45,20 @@ wiersz broni Tony'ego usunięte. Scena testowa **„Korytarz 16e"** (ściany, tr
 figura 2×2) powstała na czas oględzin i została skasowana razem z zawartością — jeśli będzie
 znów potrzebna, zbuduj ją od nowa: scena z widocznością „Dynamiczna", ściana w kształcie L,
 żeton 1×1 z profilem bojowym i paskiem HP oraz żeton 2×2.
+
+## Scena „Efekty 23x" (23.08, sesja triażu zaległości)
+
+Osobna scena w tej samej kampanii, zbudowana **zamiast ruszania Strzelnicy** (decyzja MG).
+Widoczność `open`, pusta siatka 100 px, dwie figury 1×1:
+
+- **Strzelec 23x** — statysta (profil bojowy): Umiejętność 10, Unik 2, pancerz OB 0,
+  broń **Granatnik**, magazynek wystrzelany do 0/2 (przeładowanie kosztuje Akcję).
+- **Cel 23x** — statysta: pancerz **OB 6** (zaczynał od 7, ablacja zdjęła jeden), PW 33/35.
+
+Do czego służy: efekty walki z 27i (wybuch odklikany, **zostają gaz i wyładowanie strefy**)
+i wszystko, co wymaga trybu turowego bez dotykania Strzelnicy. Walka jest zakończona, scena
+stoi w podglądzie — aktywna jest z powrotem „Strzelnica". Do gazu trzeba wpisu amunicji
+gazowej w magazynku, do wyładowania — strefy „Podłoga elektryczna" narzędziem stref.
+
+**Uwaga:** karta ataku statysty nie ma przycisku „Obrażenia" (błąd opisany w `zaleglosci.md`),
+więc rzut obrażeń obszarowych wymaga figury z **kartą postaci** albo naprawy tego błędu.

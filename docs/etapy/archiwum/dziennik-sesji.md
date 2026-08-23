@@ -7,6 +7,68 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 22.08 (piąta tego dnia) — triaż zaległości 1–8, poza etapami
+
+**Zlecenie MG:** wypisać ~10 otwartych zaległości (bez rzeczy czekających na lokalny LLM i bez
+nieukończonych etapów), a potem zrobić **pozycje 1–6 i 8**, skasować **7** (lematyzacja wyszukiwarki
+→ zostaje w `POMYSLY.md`) i **10** (świadome pominięcia mechaniki → też POMYSLY). Na pytania
+uzupełniające MG odpowiedział: stan `down` ma się różnić **ikoną**, przekreślony portret zostaje
+śmierci; migotliwy test naprawić od razu; tabela ran krytycznych poza repo czeka na etap 28.
+
+**Trzy poprawki w kodzie.**
+
+1. **Zerowy budżet ruchu nie maluje już podświetlenia.** Przy `metresLeft = 0` zalew zwracał samą
+   kratkę startową i pod figurą świecił blady kwadrat czytany jak zaznaczenie; `updateReach`
+   wychodzi teraz wcześniej. Widziane na ekranie: Kolec po wyczerpaniu 10 m („12 m / 10 m”,
+   chip „+1”) nie ma pod sobą niczego poza pierścieniem zaznaczenia.
+2. **Stan `down` mówi ikoną, nie przygaszeniem.** `CONDITION_TINT`/`CONDITION_ALPHA` dla `down`
+   wróciły do neutralnych, ✕ zostaje `dead`, a nowa `fallbackConditionStatusId` w `shared`
+   dokłada domyślną naklejkę figurze, która jest `down` **z samych punktów życia** (statysta bez
+   karty). Odklikane w trzech wariantach: status „Nieprzytomny” (ikona + czerwona podstawka,
+   portret w pełnym kolorze), status „Martwy” (✕ przez twarz), 0 PW bez statusu (ikona
+   „Śmiertelnie ranny” dorysowana przez fallback). Pięć nowych testów w `figures.test.ts`.
+3. **Limity uploadu mają jedno źródło i pełne zdania odmowy.** Sześć kopii `uploadErrorText`
+   w panelach klienta i osobne stałe serwera zastąpił `shared/src/uploads.ts` (+12 testów) i
+   `client/src/uploads.ts`; każdy `<input type="file">` bierze `accept` i podpowiedź z tego
+   samego miejsca, a plik jest sprawdzany **przed** wysyłką. Odklikane na czterech plikach:
+   GIF → „Nieobsługiwany format. Wymagany PNG, JPG lub WebP, maks. 2048 px na bok, do 8 MB.”,
+   9 MB PNG → „Plik jest za duży (limit 8 MB)…”, 3000 px → „Obraz tokenu ma za dużą
+   rozdzielczość…”, poprawny PNG → wszedł do biblioteki.
+
+**Dwie poprawki przy okazji.** Migotliwy test `netdemons.test.ts` („atak zawsze przebija obronę”
+— nieprawda, obrona rzuca 1k10 z dorzutem za 10) pyta teraz warunkowo i asertuje obie gałęzie.
+`setWalkPassable` czyści cache zacienienia zasięgu — bez tego skasowana ściana zostawiała na
+mapie stary kształt zalewu (zobaczone na żywo).
+
+**Odklikane w przeglądarce** (MG na `localhost`, gracz avatar9 na `[::1]`, scena testowa
+„Korytarz 16e” zbudowana i skasowana): **poz. 8** — strzałki ◀ ▶ przesuwają turę bez zaznaczonego
+tokenu (PRZED WALKĄ → RUNDA 1 → avatar9 → z powrotem), klik w slot przejmuje sterowanie (znika
+„Podgląd”, na żetonie przerywany pierścień), zmiana sceny wczytuje figurę zapamiętaną na nowej
+scenie (Strzelnica → Tony, nie Biegacz z korytarza). **poz. 4** — kosz „usuń wszystkie osłony”,
+„Rzuć” zwykłą bronią (kubek „Ciężki pistolet testowy → avatar9 · 22 m · PT 15”), trzy formularze
+paska z 16f (Ustabilizowanie, Pochwycenie, Wstrzymanie Akcji). **poz. 5** — edytor MG kompendium
+(wpis „Obrona Sieci” zapisany, odczytany i skasowany; licznik 25 → 26 → 25), formularz cyborgizacji
+z kompletem pól, „Dodaj za darmo” dokładające broń na kartę, ręczne budowanie architektury Sieci
+(„+ Nowa” → pusty trzon → „+ Piętro”). **poz. 1** — sześć z dziesięciu ścieżek 16e (szczegóły
+w `zaleglosci.md`). Przy okazji domknięte **27j**: zalew zasięgu **zatrzymuje się na ścianie**
+(zrzut z Tonym) i figura **2×2** wygląda na mapie tak, jak powinna.
+
+**Znaleziska.** Nowy **błąd**: podgląd trasy figury **2×2 przechodzi przez ściany**, choć dla 1×1
+ta sama droga je omija, a serwer ruchu nie wykonuje — opisany w `zaleglosci.md` z hipotezą, gdzie
+szukać. Trzy uwagi UX: kosz osłon, „Usuń” w kompendium i brak kosza w bibliotece grafik tokenów.
+Dwie nowe pułapki dev (klik po hoverze, syntetyczny `KeyboardEvent`) — w `pulapki-dev.md`.
+
+**Nie zrobione z listy:** 16e (1) mgła w trakcie marszu, (3) ✖ na granicy budżetu u gracza,
+(6) przerwanie przez NPC, (10) 2×2 w metrowych drzwiach (blokuje błąd wyżej); 16d „zasłonięty:
+Samochód”, 16g i 16h — te trzy wymagają granatu i amunicji specjalnej na karcie postaci, czyli
+zmiany danych żywej kampanii; zostają w `zaleglosci.md`.
+
+**Stan Poligonu po sesji.** Scena „Korytarz 16e” skasowana razem ze ścianami i żetonami testowymi;
+osłona „Samochód 25/25” odtworzona presetem w tym samym miejscu; wpis testowy w kompendium i
+dodany wiersz broni Tony'ego usunięte; grafika tokenu „dobry” skasowana z bazy i z `uploads/tokens`;
+tryb turowy wyłączony, Kolec wrócił pod punkt dostępu. Testy: **1362 w `shared`, 760 na serwerze,
+30 u klienta** — zielone.
+
 ### Sesja 22.08 (czwarta tego dnia) — pozycje 1–6 z triażu zaległości, poza etapami
 
 **Zlecenie MG:** wypisać ~10 otwartych zaległości (bez rzeczy czekających na lokalny LLM, bo

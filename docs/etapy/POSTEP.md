@@ -85,11 +85,22 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 | 27h | Panel postaci: HUD, który wygląda jak gra     | ✅     | 2026-08-20        |
 | 27i | Mapa: efekty walki                            | ✅     | 2026-08-20        |
 | 27j | Żetony i czytelny ruch                        | ✅     | 2026-08-21        |
+| 27k | Edycja sceny: zaznacz, skasuj, cofnij         | ⬜     |                   |
+| 27l | Karty obiektów sceny                          | ⬜     |                   |
 | 28  | Wdrożenie na VPS                              | ⬜     |                   |
 
 ## Od czego zacząć
 
-**Ostatnia sesja (23.08) była poza etapami: podgląd trasy ruchu mówi teraz kolorem, dokąd figura
+**Ostatnia sesja (23.08, druga tego dnia) była poza etapami: triaż zaległości.** Kosz kompendium
+pyta przed skasowaniem, powstała **pula portretów kampanii** (dokłada MG, gracz wybiera), a przy
+oględzinach wyszła **naprawa danych broni**: importer wycinał `explosive` i `ammoPatterns`, więc
+w kampanii nic nie wybuchało i naboje nie pasowały do broni. Odklikane: całe 27d (kości 3D),
+wybuch i liczba obrażeń nad figurą z 27i. **Od czego zacząć: pozycje 3, 4 i 5 z triażu** —
+Sieć (26a–26f), resztki walki (16d/16g/16h) i dwie ostatnie ścieżki ruchu z 16e — plus świeży
+błąd „statysta nie ma jak zadać obrażeń" (pierwsza pozycja w `zaleglosci.md`). Scena testowa
+**„Efekty 23x"** stoi gotowa (opis w `poligon.md`).
+
+**Sesja przed nią (23.08, pierwsza): podgląd trasy ruchu mówi kolorem, dokąd figura
 sięga w tej turze** — zielony to budżet Akcji Ruchu, bursztyn to zasięg po oddaniu Akcji za Bieg,
 szary jest poza turą. Trasę rysują same ślady butów (bez liczb, kresek i ✖ — MG zdejmował je
 kolejno w trakcie oględzin). Przy okazji naprawiona regresja cięcia trasy do budżetu i zamknięty
@@ -101,10 +112,17 @@ w `archiwum/zamkniete-zaleglosci.md`. Zostało jedno, **świadomie zaakceptowane
 przechodzi odrobinę za blisko ścian, bo planer i serwer pytają o środki kratek, a nie o obrys —
 zwężenie marginesu wymaga zmiany po obu stronach naraz (pozycja w `zaleglosci.md`).
 
-**Do wyboru zostały dwa etapy: 27g** (wydajność) i **28** (wdrożenie na VPS). Etap 27 jest
+**Następny w kolejce: 27k — edycja sceny** (`etap-27k-edycja-sceny.md`), dopisany 23.08 na
+zlecenie MG po pytaniu „nie wiem, jak skasować punkt dostępu". Kasowanie obiektów mapy ma dziś
+trzy różne gramatyki; 27k zastępuje je jedną (warstwa → klik w obiekt → `Delete`, `Ctrl+Z` cofa)
+i przy okazji naprawia trzy znalezione błędy: ciche gumki, brak koszy dla świateł i gniazd,
+brak `zone`/`netpoint` w `MAP_TOOL_KEYS` (czyli i w oknie pomocy `?`). Karty właściwości
+ściany, osłony, światła i rysunku wydzielone do **27l**, żeby oba etapy zmieściły się w sesji.
+
+**Poza tym do wyboru: 27g** (wydajność) i **28** (wdrożenie na VPS). Etap 27 jest
 rozdzielony do końca, więc plik `etap-27-…` to rozdroże ze wskazaniami, a nie zakres do zrobienia.
 
-**Otwarte zaległości: 41 pozycji w `zaleglosci.md`** — w większości dług oględzin („ścieżka ma
+**Otwarte zaległości: 45 pozycji w `zaleglosci.md`** — w większości dług oględzin („ścieżka ma
 test, ale nikt jej nie kliknął w przeglądarce"), nie błędy. Zaglądaj tam, gdy siadasz do
 odhaczania albo ruszasz etap, który na tej liście występuje.
 
@@ -143,6 +161,8 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 - **Limity wgrywanego obrazu** — `shared/src/uploads.ts` (serwer re-eksportuje); odmowa zawsze z pełnym wymaganiem, `accept` i sprawdzenie przed wysyłką z tego samego miejsca.
 - **Stan figury na żetonie** — ✕ tylko dla `dead`, reszta mówi ikoną; `fallbackConditionStatusId` dokłada naklejkę, gdy stan wynika z samych PW.
 - **Drugi pas zasięgu tury** — `TurnDistanceView.extra` (`{ label, max }`) wystawia system (`cpredRunMetres`), mapa maluje bursztyn i nie zna słowa „Bieg".
+- **Nowe pole typu broni** — dopisz je **razem** do `CpredWeaponTypeInput` i do białej listy `schema_fields` w `tools/import/parse-manual.py`; pominięta lista wycina pole po cichu (tak zginęły `explosive` i `ammoPatterns`).
+- **Portret w nowym miejscu** — komponent `PortraitPicker` (pula kampanii); pliki wgrywa wyłącznie MG, listę puli widzi każdy zalogowany.
 - **Podgląd trasy** — same ślady butów: kolor = pas, odstęp = metr. Żadnych liczb, kresek granicznych ani ✖; rozmiar śladu liczony szerokością tokenu, nie `overlayScale()`.
 
 ## Pułapki dev — indeks
@@ -170,11 +190,52 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 - **Skrótu klawiszowego nie odpalisz syntetycznym `KeyboardEvent`** — Esc musi przyjść z CDP, inaczej marsz się nie przerwie.
 - **Zacienienie zasięgu ma cache bez ścian** — zmiana zasad chodzenia musi wyzerować `this.reach` (naprawione 22.08).
 - **`clipWalkToBudget` tnie na punkcie zwrotnym, nie na metrze** — na wygładzonej prostej zostawia sam start; u klienta tnie `clipToBudget` w `MapRenderer` (metr → przyciągnięcie → ponowne sprawdzenie).
+- **Mechanika bez danych wygląda jak zepsuty kod** — zanim uznasz „nie działa", sprawdź, czy pole (np. `explosive`) jest w `data/private/.../weapon-types.json`; testy jadą na publicznej próbce, która je ma.
+- **Rzut z karty to dwa kliknięcia** (Shift+klik ładuje kubek, klik w kubek rzuca), złota kość dorzutu spada 550 ms po pierwszej fali, a stół kości chowa się **pod** oknem karty postaci.
 - **Narzędzia mapy nie odpalisz syntetycznym zdarzeniem wskaźnika** — ściana rysuje się w podglądzie i znika; menu kontekstowe żetonu owszem, ale **we współrzędnych CSS**, nie tych ze zrzutu (skala ≈0,8).
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 23.08 (druga tego dnia) — triaż zaległości: kompendium, pula portretów, kości, wybuch; poza etapami
+
+**Zlecenie MG:** wypisać ~10 otwartych zaległości (bez rzeczy czekających na lokalny LLM, bo
+model idzie do wymiany, i bez nierozpoczętych etapów), a potem zrobić te, które MG wskaże.
+Wybór MG: **1 zrób** (kosz kompendium), **2 nie w tej sesji** (kosz biblioteki tokenów),
+**3–7 zrób** (Sieć, walka, ruch, efekty 27i, kości 27d), **8** → decyzja produktowa: _„wgranie
+portretu gracz może wykonać z puli wgranych portretów przez MG (tylko on może dodawać różne
+grafiki portretów)"_. Na pytania uzupełniające MG wybrał: pozycje 9 i 10 zostają w zaległościach,
+**Poligonu nie ruszamy — nowa scena testowa**, MG zachowuje **obie** drogi wgrywania portretu
+(wprost na kartę i do puli), kolejność: kod → oględziny.
+
+**Co powstało (kod).**
+
+1. **Kosz kompendium pyta.** `CompendiumPanel` dostał dwustopniowe potwierdzenie jak reszta
+   aplikacji („Usunąć?" → „Tak, usuń" / „Anuluj").
+2. **Pula portretów kampanii** — model `PortraitAsset` + migracja `portrait_asset_library`,
+   trasy `POST /api/uploads/portrait-assets` (MG), `GET /api/portrait-assets` (**każdy
+   zalogowany** — inaczej niż biblioteka żetonów), `DELETE /api/portrait-assets/:id` (MG),
+   wspólny komponent `PortraitPicker` na karcie postaci i w kreatorze, kosz dwustopniowy.
+   `POST /api/uploads/portraits` przeszło z `requireAuth` na `requireGm` — gracz nie ma już
+   żadnej trasy, którą wstawiłby plik do `uploads/`. Pula dopisana do `uploads-gc` (bez tego
+   sprzątacz zjadłby ją po godzinie — sprawdzone testem i na żywym sprzątaniu).
+3. **Naprawa danych broni** (opis w `archiwum/zamkniete-zaleglosci.md`): biała lista
+   `schema_fields` w `tools/import/parse-manual.py` wycinała `explosive` i `ammoPatterns`,
+   więc w kampanii **nic nie wybuchało** i żaden nabój nie pasował do broni. Pola dopisane do
+   importera i uzupełnione w danych kampanii z `manual-overrides.json` (kopie `*.bak-23x`).
+
+**Co odklikane w przeglądarce.** Cały **27d** (złoty dorzut krytyka złapany na stole, wyłączona
+animacja, rzut Cech bez zielonych dziesiątek), z **27i** — wybuch i liczba obrażeń nad figurą,
+oraz kosz kompendium i pula portretów. Do oględzin powstała scena **„Efekty 23x"** (opis
+w `poligon.md`); Strzelnica nietknięta i z powrotem aktywna, ustawienia kości MG przywrócone.
+
+**Znalezione i niezamknięte:** karta ataku **statysty** nie ma przycisku „Obrażenia"
+(`AttackControls.tsx:38` szuka atakującego wyłącznie wśród kart postaci) — pozycja pierwsza
+w `zaleglosci.md`. Z 27i zostają chmura gazu, wyładowanie strefy i dźwięki; **pozycje 3, 4 i 5
+z triażu (Sieć, walka, ruch) nie były ruszane** — od nich zacząć następną sesję.
+
+**Testy:** 1369 w `shared`, 764 na serwerze, 36 u klienta — zielone.
 
 ### Sesja 23.08 — pasy zasięgu na trasie ruchu, trasa figur 2×2, prettier; poza etapami
 
@@ -251,65 +312,3 @@ jednoznacznego odczytu. **Poligon został przywrócony co do żetonu i ściany**
 do bazy: cztery żetony na swoich miejscach, zero ścian, tryb turowy wyłączony).
 
 **Testy:** 1369 w `shared`, 760 na serwerze, 36 u klienta — zielone.
-
-### Sesja 22.08 (piąta tego dnia) — triaż zaległości 1–8, poza etapami
-
-**Zlecenie MG:** wypisać ~10 otwartych zaległości (bez rzeczy czekających na lokalny LLM i bez
-nieukończonych etapów), a potem zrobić **pozycje 1–6 i 8**, skasować **7** (lematyzacja wyszukiwarki
-→ zostaje w `POMYSLY.md`) i **10** (świadome pominięcia mechaniki → też POMYSLY). Na pytania
-uzupełniające MG odpowiedział: stan `down` ma się różnić **ikoną**, przekreślony portret zostaje
-śmierci; migotliwy test naprawić od razu; tabela ran krytycznych poza repo czeka na etap 28.
-
-**Trzy poprawki w kodzie.**
-
-1. **Zerowy budżet ruchu nie maluje już podświetlenia.** Przy `metresLeft = 0` zalew zwracał samą
-   kratkę startową i pod figurą świecił blady kwadrat czytany jak zaznaczenie; `updateReach`
-   wychodzi teraz wcześniej. Widziane na ekranie: Kolec po wyczerpaniu 10 m („12 m / 10 m”,
-   chip „+1”) nie ma pod sobą niczego poza pierścieniem zaznaczenia.
-2. **Stan `down` mówi ikoną, nie przygaszeniem.** `CONDITION_TINT`/`CONDITION_ALPHA` dla `down`
-   wróciły do neutralnych, ✕ zostaje `dead`, a nowa `fallbackConditionStatusId` w `shared`
-   dokłada domyślną naklejkę figurze, która jest `down` **z samych punktów życia** (statysta bez
-   karty). Odklikane w trzech wariantach: status „Nieprzytomny” (ikona + czerwona podstawka,
-   portret w pełnym kolorze), status „Martwy” (✕ przez twarz), 0 PW bez statusu (ikona
-   „Śmiertelnie ranny” dorysowana przez fallback). Pięć nowych testów w `figures.test.ts`.
-3. **Limity uploadu mają jedno źródło i pełne zdania odmowy.** Sześć kopii `uploadErrorText`
-   w panelach klienta i osobne stałe serwera zastąpił `shared/src/uploads.ts` (+12 testów) i
-   `client/src/uploads.ts`; każdy `<input type="file">` bierze `accept` i podpowiedź z tego
-   samego miejsca, a plik jest sprawdzany **przed** wysyłką. Odklikane na czterech plikach:
-   GIF → „Nieobsługiwany format. Wymagany PNG, JPG lub WebP, maks. 2048 px na bok, do 8 MB.”,
-   9 MB PNG → „Plik jest za duży (limit 8 MB)…”, 3000 px → „Obraz tokenu ma za dużą
-   rozdzielczość…”, poprawny PNG → wszedł do biblioteki.
-
-**Dwie poprawki przy okazji.** Migotliwy test `netdemons.test.ts` („atak zawsze przebija obronę”
-— nieprawda, obrona rzuca 1k10 z dorzutem za 10) pyta teraz warunkowo i asertuje obie gałęzie.
-`setWalkPassable` czyści cache zacienienia zasięgu — bez tego skasowana ściana zostawiała na
-mapie stary kształt zalewu (zobaczone na żywo).
-
-**Odklikane w przeglądarce** (MG na `localhost`, gracz avatar9 na `[::1]`, scena testowa
-„Korytarz 16e” zbudowana i skasowana): **poz. 8** — strzałki ◀ ▶ przesuwają turę bez zaznaczonego
-tokenu (PRZED WALKĄ → RUNDA 1 → avatar9 → z powrotem), klik w slot przejmuje sterowanie (znika
-„Podgląd”, na żetonie przerywany pierścień), zmiana sceny wczytuje figurę zapamiętaną na nowej
-scenie (Strzelnica → Tony, nie Biegacz z korytarza). **poz. 4** — kosz „usuń wszystkie osłony”,
-„Rzuć” zwykłą bronią (kubek „Ciężki pistolet testowy → avatar9 · 22 m · PT 15”), trzy formularze
-paska z 16f (Ustabilizowanie, Pochwycenie, Wstrzymanie Akcji). **poz. 5** — edytor MG kompendium
-(wpis „Obrona Sieci” zapisany, odczytany i skasowany; licznik 25 → 26 → 25), formularz cyborgizacji
-z kompletem pól, „Dodaj za darmo” dokładające broń na kartę, ręczne budowanie architektury Sieci
-(„+ Nowa” → pusty trzon → „+ Piętro”). **poz. 1** — sześć z dziesięciu ścieżek 16e (szczegóły
-w `zaleglosci.md`). Przy okazji domknięte **27j**: zalew zasięgu **zatrzymuje się na ścianie**
-(zrzut z Tonym) i figura **2×2** wygląda na mapie tak, jak powinna.
-
-**Znaleziska.** Nowy **błąd**: podgląd trasy figury **2×2 przechodzi przez ściany**, choć dla 1×1
-ta sama droga je omija, a serwer ruchu nie wykonuje — opisany w `zaleglosci.md` z hipotezą, gdzie
-szukać. Trzy uwagi UX: kosz osłon, „Usuń” w kompendium i brak kosza w bibliotece grafik tokenów.
-Dwie nowe pułapki dev (klik po hoverze, syntetyczny `KeyboardEvent`) — w `pulapki-dev.md`.
-
-**Nie zrobione z listy:** 16e (1) mgła w trakcie marszu, (3) ✖ na granicy budżetu u gracza,
-(6) przerwanie przez NPC, (10) 2×2 w metrowych drzwiach (blokuje błąd wyżej); 16d „zasłonięty:
-Samochód”, 16g i 16h — te trzy wymagają granatu i amunicji specjalnej na karcie postaci, czyli
-zmiany danych żywej kampanii; zostają w `zaleglosci.md`.
-
-**Stan Poligonu po sesji.** Scena „Korytarz 16e” skasowana razem ze ścianami i żetonami testowymi;
-osłona „Samochód 25/25” odtworzona presetem w tym samym miejscu; wpis testowy w kompendium i
-dodany wiersz broni Tony'ego usunięte; grafika tokenu „dobry” skasowana z bazy i z `uploads/tokens`;
-tryb turowy wyłączony, Kolec wrócił pod punkt dostępu. Testy: **1362 w `shared`, 760 na serwerze,
-30 u klienta** — zielone.

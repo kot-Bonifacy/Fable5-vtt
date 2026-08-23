@@ -1090,10 +1090,15 @@ def main() -> int:
     # poor/excellent copy of a weapon is something the GM mints in the editor.
     quality = parse_quality_prices(market)
 
+    # Biała lista, nie czarna: pole spoza schematu ginie tu po cichu. Kosztowało
+    # to `explosive` — overrides ustawiały je Granatnikowi i Wyrzutni rakiet
+    # (podręcznik, s. 92, „Eksplozja”), a ten filtr wycinał je przy zapisie, więc
+    # w kampanii nic nie wybuchało mimo gotowej mechaniki obszaru z etapu 16d.
+    # Dokładając pole do `CpredWeaponTypeInput`, dołóż je również tutaj.
     schema_fields = {
         "id", "name", "nameOriginal", "skillId", "damage", "magazine", "rof", "hands",
         "concealable", "attachmentSlots", "melee", "rangeDv", "autofire", "suppressive",
-        "ammunition", "description", "source", "incomplete",
+        "explosive", "ammoPatterns", "ammunition", "description", "source", "incomplete",
     }
     write(
         COMPENDIUM_DIR / "weapon-types.json",
