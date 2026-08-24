@@ -27,19 +27,19 @@ narzędzia ścian („udostępnij"), który po 27k i tak nie ma gdzie mieszkać.
 
 ## Zakres
 
-- [ ] **Karta ściany, drzwi i okna** — rodzaj (ściana / drzwi / okno), zamek, „gracze mogą
+- [x] **Karta ściany, drzwi i okna** — rodzaj (ściana / drzwi / okno), zamek, „gracze mogą
       otwierać", długość odcinka w metrach. Zastępuje tryby `lock` i `share` narzędzia ścian,
       które po 27k zostają jako ostatnie tryby-nie-gumki na pasku
-- [ ] **Karta osłony** — preset, nazwa, PW bieżące i maksymalne (czyli także **naprawa** osłony
+- [x] **Karta osłony** — preset, nazwa, PW bieżące i maksymalne (czyli także **naprawa** osłony
       rozwalonej w poprzedniej walce, czego dziś nie da się zrobić inaczej niż stawiając nową)
-- [ ] **Karta światła** — promień jasny i przyćmiony, kolor, migotanie, włącznik, „dopasuj do
+- [x] **Karta światła** — promień jasny i przyćmiony, kolor, migotanie, włącznik, „dopasuj do
       pokoju". Zastępuje pomostowe „dwuklik przestraja lampę do ustawień z paska" z 27k
-- [ ] **Karta rysunku** — kolor, grubość, wypełnienie, przeniesienie między warstwą MG a wspólną
+- [x] **Karta rysunku** — kolor, grubość, wypełnienie, przeniesienie między warstwą MG a wspólną
       (dziś `drawGmOnly` dotyczy wyłącznie **następnego** kształtu)
-- [ ] **Uchwyty przesuwania i skalowania** przy zaznaczonym obiekcie — przeciągnięcie obrysu
+- [x] **Uchwyty przesuwania i skalowania** przy zaznaczonym obiekcie — przeciągnięcie obrysu
       przesuwa, uchwyt w rogu skaluje prostokąt osłony i strefy. Ściany dostają uchwyty na
       końcach odcinka
-- [ ] **Jedno miejsce dla wszystkich kart** — istniejące karty gniazda, strefy i notatki
+- [x] **Jedno miejsce dla wszystkich kart** — istniejące karty gniazda, strefy i notatki
       przechodzą na ten sam mechanizm okna (`useWindowPlacement` + `<WindowResizeGrip />`,
       umowa kodu z 27f), żeby siedem kart nie miało siedmiu zachowań
 
@@ -51,13 +51,32 @@ narzędzia ścian („udostępnij"), który po 27k i tak nie ma gdzie mieszkać.
 
 ## Kryteria ukończenia
 
-- [ ] **Każdy z siedmiu typów obiektów ma kartę pod dwuklikiem** i każda karta zachowuje się
+- [x] **Każdy z siedmiu typów obiektów ma kartę pod dwuklikiem** i każda karta zachowuje się
       tak samo: to samo okno, to samo zamykanie, ta sama reakcja na `Esc`
-- [ ] **Okno postawione jako „tylko dla MG" da się udostępnić graczom bez kasowania go** —
+- [x] **Okno postawione jako „tylko dla MG" da się udostępnić graczom bez kasowania go** —
       ścieżka, która była powodem komentarza w `MapArea.tsx` z 22.08
-- [ ] **Rozwaloną osłonę da się naprawić z karty**, bez stawiania nowej
-- [ ] **Lampę da się przestroić z karty**, a pomostowe zachowanie z 27k („dwuklik przestraja
+- [x] **Rozwaloną osłonę da się naprawić z karty**, bez stawiania nowej
+- [x] **Lampę da się przestroić z karty**, a pomostowe zachowanie z 27k („dwuklik przestraja
       do ustawień paska") znika razem z powodem, dla którego istniało
-- [ ] **Zaznaczony obiekt da się przesunąć i przeskalować** bez kasowania i stawiania od nowa
-- [ ] **Testy:** walidacja pól kart na serwerze (osłona nie przyjmie PW ponad maksimum, światło
+- [x] **Zaznaczony obiekt da się przesunąć i przeskalować** bez kasowania i stawiania od nowa
+- [x] **Testy:** walidacja pól kart na serwerze (osłona nie przyjmie PW ponad maksimum, światło
       promienia poza zakresem); `a11y.test.ts` i `theme.test.ts` zielone po dołożeniu siedmiu kart
+
+## Jak wyszło (24.08.2026)
+
+**Zakres zrobiony w całości.** Cztery rozstrzygnięcia MG przed kodowaniem:
+
+1. **Przeciągnięcie zaznaczonego przesuwa**, przeciągnięcie obok rysuje nowy obiekt — bez
+   modyfikatora. Klik zaznacza, więc drugi gest _z_ obiektu znaczy „przesuń to".
+2. **Przyciąganie do kratki domyślnie**, `Ctrl` je wyłącza na czas gestu. Końcówka ściany łapie
+   końcówki innych ścian przed kratką, tak jak przy rysowaniu.
+3. **Karta rysunku zmienia też treść etykiety** i rozmiar pisma, nie tylko wygląd i warstwę.
+4. **Tryby „🔒 Zamek" i „👁 Udostępnij" znikają z paska ścian** — pasek robi już tylko jedno.
+
+**Poza planem doszły dwie rzeczy**, obie dlatego, że bez nich karta obiecywałaby coś, czego nie
+umie: **preset osłony** jest edytowalny (serwer odczytuje z katalogu nową wytrzymałość) i
+**wytrzymałość maksymalna** też, bo preset jest punktem wyjścia, a nie wyrokiem.
+
+**Pięć błędów znalezionych przy oględzinach i naprawionych** — opisane w notatce sesji
+w `POSTEP.md`; wszystkie były skutkiem tego, że przed 27l obiekt sceny nigdy się nie zmieniał,
+tylko powstawał i znikał.

@@ -83,6 +83,12 @@ export interface CoverCreatePayload {
 export interface CoverUpdatePayload {
   coverId: number;
   patch: {
+    /**
+     * Inny preset z katalogu (etap 27l) — „to jednak nie samochód, to kontener".
+     * Serwer odczytuje z niego nową wytrzymałość, bo katalog mieszka po jego
+     * stronie; klient wysyła samo id.
+     */
+    typeId?: string;
     x?: number;
     y?: number;
     width?: number;
@@ -90,6 +96,13 @@ export interface CoverUpdatePayload {
     name?: string;
     /** Current body points; the GM's way to dent or repair one by hand. */
     hpCurrent?: number;
+    /**
+     * Wytrzymałość maksymalna (etap 27l). Do karty osłony dołożona dlatego,
+     * że preset z katalogu jest **punktem wyjścia**, nie wyrokiem: MG, który
+     * chce mieć „samochód, ale opancerzony", nie ma innego miejsca, żeby to
+     * powiedzieć. Serwer przycina `hpCurrent` do nowego maksimum.
+     */
+    hpMax?: number;
   };
 }
 

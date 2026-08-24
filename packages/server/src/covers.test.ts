@@ -496,6 +496,59 @@ describe('cover as an object on the scene', () => {
     expect(result.card?.hit).toBe(true);
   });
 
+  it('repairs and re-rates a cover from its card, and refuses nonsense', async () => {
+    // Naprawa wraka z karty (etap 27l) — dotąd jedyną drogą było postawienie
+    // nowej osłony w to samo miejsce.
+    await emitAck(gm, 'cover:update', { coverId: carId, patch: { hpCurrent: 0 } });
+    const repaired = data(
+      await emitAck<CoverView>(gm, 'cover:update', {
+        coverId: carId,
+        patch: { hpCurrent: CAR_HP },
+      }),
+      'cover:update repair',
+    );
+    expect(repaired.hpCurrent).toBe(CAR_HP);
+
+    // Preset jest punktem wyjścia, nie wyrokiem: „samochód, ale opancerzony".
+    const tougher = data(
+      await emitAck<CoverView>(gm, 'cover:update', {
+        coverId: carId,
+        patch: { hpMax: CAR_HP + 10, hpCurrent: CAR_HP + 10 },
+      }),
+      'cover:update hpMax up',
+    );
+    expect(tougher.hpMax).toBe(CAR_HP + 10);
+    expect(tougher.hpCurrent).toBe(CAR_HP + 10);
+
+    // Obniżone maksimum ściąga za sobą bieżące PW — „12/10" byłoby wrakiem,
+    // który raportuje więcej życia, niż go ma.
+    const weaker = data(
+      await emitAck<CoverView>(gm, 'cover:update', { coverId: carId, patch: { hpMax: CAR_HP } }),
+      'cover:update hpMax down',
+    );
+    expect(weaker.hpMax).toBe(CAR_HP);
+    expect(weaker.hpCurrent).toBe(CAR_HP);
+
+    // Bieżące PW ponad maksimum są przycinane, nie odrzucane — suwak, który
+    // zatrzymuje się na końcu, jest tym, o co prosi wywołujący.
+    expect(
+      data(
+        await emitAck<CoverView>(gm, 'cover:update', {
+          coverId: carId,
+          patch: { hpCurrent: 9999 },
+        }),
+        'cover:update clamp',
+      ).hpCurrent,
+    ).toBe(CAR_HP);
+
+    expect(
+      errorOf(await emitAck(gm, 'cover:update', { coverId: carId, patch: { hpMax: 0 } })),
+    ).toBe('BAD_REQUEST');
+    expect(
+      errorOf(await emitAck(gm, 'cover:update', { coverId: carId, patch: { hpMax: 2.5 } })),
+    ).toBe('BAD_REQUEST');
+  });
+
   it('puts the wreck back together on „Cofnij"', async () => {
     await emitAck(gm, 'cover:update', { coverId: carId, patch: { hpCurrent: 5 } });
     const shot = await shoot({ targetCoverId: carId });

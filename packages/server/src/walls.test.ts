@@ -647,6 +647,44 @@ describe('walls and dynamic vision', () => {
     await emitAck(gm, 'opening:toggle', { wallId: doorId, open: false });
   });
 
+  it('moves a segment from its card, and refuses one squashed to a point', async () => {
+    const moved = data(
+      await emitAck<WallView>(gm, 'wall:update', {
+        wallId: farDoorId,
+        patch: { x1: 100, y1: 200, x2: 300, y2: 200 },
+      }),
+      'wall:update geometry',
+    );
+    expect([moved.x1, moved.y1, moved.x2, moved.y2]).toEqual([100, 200, 300, 200]);
+    // Retypowanie i przesunięcie w jednym patchu — karta wysyła, co widzi.
+    const retyped = data(
+      await emitAck<WallView>(gm, 'wall:update', {
+        wallId: farDoorId,
+        patch: { kind: 'window', y2: 400 },
+      }),
+      'wall:update kind + geometry',
+    );
+    expect(retyped.kind).toBe('window');
+    expect([retyped.x1, retyped.y1, retyped.x2, retyped.y2]).toEqual([100, 200, 300, 400]);
+
+    // Odcinek zwinięty do punktu nie zasłania niczego, a raycast dostaje
+    // kierunek, którego nie umie policzyć.
+    expect(
+      errorOf(
+        await emitAck(gm, 'wall:update', {
+          wallId: farDoorId,
+          patch: { x1: 100, y1: 200, x2: 101, y2: 200 },
+        }),
+      ),
+    ).toBe('BAD_REQUEST');
+    expect(
+      errorOf(await emitAck(gm, 'wall:update', { wallId: farDoorId, patch: { x2: 'daleko' } })),
+    ).toBe('BAD_REQUEST');
+
+    // Przywrócone, żeby dalsze testy zastały ścianę tam, gdzie ją zostawiły.
+    await emitAck(gm, 'wall:update', { wallId: farDoorId, patch: { kind: 'door' } });
+  });
+
   it('erases one wall and then the lot', async () => {
     const before = (await roundTrip(gm)).walls.length;
     await emitAck(gm, 'wall:delete', { wallId: privateDoorId });

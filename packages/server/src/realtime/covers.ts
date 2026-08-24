@@ -131,12 +131,14 @@ export const coverUpdateEvent = defineEvent<CoverUpdatePayload, CoverView>({
     if (typeof patch !== 'object' || patch === null) throw new RealtimeError('BAD_REQUEST');
 
     const data: {
+      typeId?: string;
+      name?: string;
       x?: number;
       y?: number;
       width?: number;
       height?: number;
-      name?: string;
       hpCurrent?: number;
+      hpMax?: number;
     } = {};
 
     // Geometry is validated as a whole rectangle even when only one corner
@@ -158,10 +160,46 @@ export const coverUpdateEvent = defineEvent<CoverUpdatePayload, CoverView>({
       Object.assign(data, rect);
     }
 
+    // Zmiana presetu (etap 27l). Wytrzymałość czyta **serwer** z katalogu, tak
+    // samo jak przy stawianiu: klient nie ma jak wpisać samochodowi własnych PW.
+    if (patch.typeId !== undefined) {
+      const preset =
+        typeof patch.typeId === 'string' ? cpredCoverPreset(deps.ctx.covers, patch.typeId) : null;
+      if (!preset) throw new RealtimeError('UNKNOWN_COVER_TYPE');
+      const hpMax = cpredCoverPresetHp(deps.ctx.covers, preset.id);
+      if (hpMax <= 0) throw new RealtimeError('COVER_HAS_NO_HP');
+      data.typeId = preset.id;
+      data.hpMax = hpMax;
+      if (row.hpCurrent > hpMax) data.hpCurrent = hpMax;
+      // Nazwa idzie za presetem tylko wtedy, gdy nikt jej nie zmieniał: osłona
+      // nazwana „Radiowóz" ma tak zostać, ale „Samochód" przerobiony na słupek
+      // nie może dalej nazywać się samochodem.
+      const previous = cpredCoverPreset(deps.ctx.covers, row.typeId);
+      if (previous && row.name === previous.name) data.name = preset.name;
+    }
+
     if (patch.name !== undefined) {
       const name = sanitizeCoverName(patch.name);
       if (!name) throw new RealtimeError('BAD_REQUEST');
       data.name = name;
+    }
+
+    // Wytrzymałość maksymalna (etap 27l): preset z katalogu jest punktem
+    // wyjścia, nie wyrokiem. Idzie **przed** `hpCurrent`, bo to ono wyznacza
+    // sufit dla bieżących PW w tym samym patchu — karta wysyła oba naraz.
+    if (patch.hpMax !== undefined) {
+      if (
+        typeof patch.hpMax !== 'number' ||
+        !Number.isInteger(patch.hpMax) ||
+        patch.hpMax < 1 ||
+        patch.hpMax > COVER_HP_MAX
+      ) {
+        throw new RealtimeError('BAD_REQUEST');
+      }
+      data.hpMax = patch.hpMax;
+      // Obniżone maksimum ściąga za sobą bieżące PW: osłona z „12/10" byłaby
+      // wrakiem, który raportuje więcej życia, niż go ma.
+      if (row.hpCurrent > patch.hpMax) data.hpCurrent = patch.hpMax;
     }
 
     // The GM's hand on the body points: dent one without shooting it, or weld a
@@ -171,7 +209,8 @@ export const coverUpdateEvent = defineEvent<CoverUpdatePayload, CoverView>({
       if (typeof patch.hpCurrent !== 'number' || !Number.isInteger(patch.hpCurrent)) {
         throw new RealtimeError('BAD_REQUEST');
       }
-      data.hpCurrent = Math.max(0, Math.min(patch.hpCurrent, Math.min(row.hpMax, COVER_HP_MAX)));
+      const ceiling = Math.min(data.hpMax ?? row.hpMax, COVER_HP_MAX);
+      data.hpCurrent = Math.max(0, Math.min(patch.hpCurrent, ceiling));
     }
 
     if (Object.keys(data).length === 0) return toCoverView(row);

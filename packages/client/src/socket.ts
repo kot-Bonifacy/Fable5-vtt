@@ -24,6 +24,7 @@ import type {
   CreationDraftView,
   CreationFinishPayload,
   SmokeSyncBroadcast,
+  CoverUpdatePayload,
   CoverView,
   BotActionTraceBroadcast,
   BotActivityBroadcast,
@@ -75,6 +76,7 @@ import type {
   DrawingDeleteBroadcast,
   DrawingShape,
   DrawingStyle,
+  DrawingUpdatePayload,
   DrawingUpsertBroadcast,
   DrawingView,
   FogPaintBroadcast,
@@ -178,6 +180,7 @@ import type {
   ExplorationSyncBroadcast,
   VisionSyncBroadcast,
   WallKind,
+  WallUpdatePayload,
   WallSyncBroadcast,
   WallView,
   WeaponReloadPayload,
@@ -1300,6 +1303,10 @@ export const createDrawing = (
   gmOnly: boolean,
 ) => emitSceneAck<DrawingView>('drawing:create', { sceneId, shape, style, gmOnly });
 
+/** Karta rysunku (etap 27l): kolor, grubość, wypełnienie, warstwa, kształt. */
+export const updateDrawing = (drawingId: number, patch: DrawingUpdatePayload['patch']) =>
+  emitSceneAck<DrawingView>('drawing:update', { drawingId, patch });
+
 export const deleteDrawing = (drawingId: number) => emitSceneAck('drawing:delete', { drawingId });
 
 export const clearDrawings = (sceneId: string, scope: 'mine' | 'all') =>
@@ -1317,10 +1324,8 @@ export const createWalls = (
   playerToggle: boolean,
 ) => emitSceneAck<WallView[]>('wall:create', { sceneId, points, kind, playerToggle });
 
-export const updateWall = (
-  wallId: number,
-  patch: { kind?: WallKind; playerToggle?: boolean; locked?: boolean },
-) => emitSceneAck<WallView>('wall:update', { wallId, patch });
+export const updateWall = (wallId: number, patch: WallUpdatePayload['patch']) =>
+  emitSceneAck<WallView>('wall:update', { wallId, patch });
 
 export const deleteWall = (wallId: number) => emitSceneAck('wall:delete', { wallId });
 
@@ -1339,17 +1344,8 @@ export const createCover = (
   rect: { x: number; y: number; width: number; height: number },
 ) => emitSceneAck<CoverView>('cover:create', { sceneId, typeId, ...rect });
 
-export const updateCover = (
-  coverId: number,
-  patch: {
-    x?: number;
-    y?: number;
-    width?: number;
-    height?: number;
-    name?: string;
-    hpCurrent?: number;
-  },
-) => emitSceneAck<CoverView>('cover:update', { coverId, patch });
+export const updateCover = (coverId: number, patch: CoverUpdatePayload['patch']) =>
+  emitSceneAck<CoverView>('cover:update', { coverId, patch });
 
 export const deleteCover = (coverId: number) => emitSceneAck('cover:delete', { coverId });
 

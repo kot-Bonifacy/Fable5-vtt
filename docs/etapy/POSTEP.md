@@ -86,37 +86,31 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 | 27i | Mapa: efekty walki                            | ✅     | 2026-08-20        |
 | 27j | Żetony i czytelny ruch                        | ✅     | 2026-08-21        |
 | 27k | Edycja sceny: zaznacz, skasuj, cofnij         | ✅     | 2026-08-23        |
-| 27l | Karty obiektów sceny                          | ⬜     |                   |
+| 27l | Karty obiektów sceny                          | ✅     | 2026-08-24        |
 | 28  | Wdrożenie na VPS                              | ⬜     |                   |
 
 ## Od czego zacząć
 
-**Ostatnia sesja (23.08, trzecia tego dnia) zamknęła etap 27k — edycję sceny.** Wszystko, co
-stoi na mapie, kasuje się teraz jednym gestem: **warstwa → klik w obiekt → `Delete`**, a
-`Ctrl+Z` cofa (bufor na serwerze, kosz hurtowy wraca w całości jednym wciśnięciem). Tryby-gumki
-i narzędzie „Gumka" (`G`) zniknęły. Zamknięte przy okazji trzy błędy z zaległości (ciche gumki,
-brak koszy dla świateł i gniazd, brak `zone`/`netpoint` w oknie pomocy) i dwa znalezione w
-oględzinach (czarne na czarnym podpowiedzi nad mapą w motywie dziennym; podpowiedź kładąca się
-na ikonach paska).
+**Ostatnia sesja (24.08) zamknęła etap 27l — karty obiektów sceny.** Dwuklik w **każdy** z
+siedmiu rodzajów otwiera teraz **jedno i to samo okno**: ściana, osłona, światło i rysunek
+dostały karty, których nie miały, a gniazdo, strefa i notatka przeniosły się na ten sam
+mechanizm (`useWindowPlacement` + `<WindowResizeGrip />`). Zaznaczony obiekt daje się
+**przesunąć i przeskalować** uchwytami: przeciągnięcie obrysu przesuwa, róg prostokąta i
+koniec ściany skalują, `Ctrl` wyłącza przyciąganie do kratki. Tryby „🔒 Zamek" i „👁 Udostępnij"
+zniknęły z paska ścian — rygiel i „gracze mogą otwierać" mieszkają na karcie segmentu.
 
-**Od czego zacząć: 27l — karty obiektów sceny** (`etap-27l-karty-obiektow.md`). To bezpośrednia
-kontynuacja: dwuklik w gniazdo, strefę i notatkę otwiera dziś kartę, a w ścianę, osłonę i
-rysunek nie robi nic — 27l te trzy karty dokłada (razem z uchwytami do przesuwania i skalowania).
-Pozycja jest też w `zaleglosci.md`.
+**Od czego zacząć: do wyboru 27g** (wydajność) i **28** (wdrożenie na VPS) — to jedyne dwa
+nierozpoczęte etapy. Z długu oględzin nadal czekają **pozycje 3, 4 i 5 z triażu 23.08** — Sieć
+(26a–26f), resztki walki (16d/16g/16h) i dwie ostatnie ścieżki ruchu z 16e — oraz **błąd
+„statysta nie ma jak zadać obrażeń"** (pierwsza pozycja w `zaleglosci.md`). Etap 27 jest
+rozdzielony do końca, więc plik `etap-27-…` to rozdroże ze wskazaniami, a nie zakres do zrobienia.
 
-**Poza tym do wyboru: 27g** (wydajność) i **28** (wdrożenie na VPS). Z długu oględzin nadal
-czekają **pozycje 3, 4 i 5 z triażu 23.08** — Sieć (26a–26f), resztki walki (16d/16g/16h) i dwie
-ostatnie ścieżki ruchu z 16e — oraz **świeży błąd „statysta nie ma jak zadać obrażeń"** (pierwsza
-pozycja w `zaleglosci.md`). Etap 27 jest rozdzielony do końca, więc plik `etap-27-…` to rozdroże
-ze wskazaniami, a nie zakres do zrobienia.
+**Oględziny 27l szły na nowej scenie „Karty 24x"** (opis w `poligon.md`) — leży na niej po
+jednym obiekcie każdego z siedmiu rodzajów, żeby następna sesja nie musiała ich stawiać od nowa.
+**„Strzelnica" jest nietknięta** (6 gniazd, 3 segmenty ściany, reszta zero) i z powrotem aktywna;
+scena **„Efekty 23x"** też nietknięta.
 
-**Oględziny 27k szły na „Strzelnicy"** (aktywna scena kampanii) i została przywrócona co do
-obiektu: 6 gniazd, 3 segmenty ściany, zero świateł, osłon, stref, notatek i rysunków. Scena
-**„Efekty 23x"** nietknięta. **Uwaga: `poligon.md` rozjechał się ze stanem Strzelnicy** —
-brakuje na niej ⚠ „Podłogi elektrycznej" z 26f i osłony „Samochód 25/25", obie zniknęły przed
-tą sesją; opis poprawiony.
-
-**Otwarte zaległości: 45 pozycji w `zaleglosci.md`** — w większości dług oględzin („ścieżka ma
+**Otwarte zaległości: 46 pozycji w `zaleglosci.md`** — w większości dług oględzin („ścieżka ma
 test, ale nikt jej nie kliknął w przeglądarce"), nie błędy. Zaglądaj tam, gdy siadasz do
 odhaczania albo ruszasz etap, który na tej liście występuje.
 
@@ -130,7 +124,7 @@ czeka na sesję z nowym modelem.
 a od 27i pierwszym, przy którym ktoś **usłyszy** dźwięki walki (dobrane bez odsłuchu, przyciski
 próbek są w „⚙ Ustawienia"; od 27j jest wśród nich „Krok" z własnym wyłącznikiem).
 
-**Testy na koniec ostatniej sesji:** 1379 w `shared`, 772 na serwerze, 45 u klienta — zielone.
+**Testy na koniec ostatniej sesji:** 1399 w `shared`, 779 na serwerze, 50 u klienta — zielone.
 
 **09.08 głos wypadł z projektu** (decyzja MG): etapy **12, 21 i 22** wycofane, kod TTS usunięty
 z repo. Szczegóły w `archiwum/dziennik-sesji.md` i `archiwum/wycofane/README.md`.
@@ -162,6 +156,9 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 - **Kasowanie ze sceny** — `deleteSceneObject` w `MapArea` to jedyna droga; każda ścieżka sprawdza `ack` i mówi zdaniem. Cofanie odkłada `rememberDeletion` **przed** `delete`, całym wierszem; kosz hurtowy to jedna pozycja.
 - **Ściana pod klikiem** — końcówka (`wallEndpointNear`, ≤ 12 px) rysuje łańcuch, środek zaznacza; trwający łańcuch wygrywa z obydwoma, tryby `lock`/`share` nie zaznaczają nic.
 - **Podpowiedź nad mapą** — kolor pisma to `--map-ink`, nie `--text`: `--map-panel` jest ciemny w obu motywach, więc `--text` daje w dzień czarne na czarnym.
+- **Nowa karta obiektu sceny** — gałąź w `findSceneObject` (`SceneObjectCard.tsx`, `switch`, więc kompilator pilnuje kompletu), ikona **ta sama, co narzędzie na pasku**, i gałąź w `moveSceneObject` w `MapArea`, jeśli obiekt da się przesunąć. Karta nie kasuje sama — `onDelete` prowadzi do `deleteSceneObject`.
+- **`Esc` w karcie** — obsługiwany przez `onKeyDown` samej karty, bo globalna drabina odrzuca każdy klawisz naciśnięty w polu tekstowym, a karta notatki sama ustawia tam kursor.
+- **Uchwyty obiektu** — geometria w `shared/scene-handles.ts` (trzy kształty na siedem rodzajów); renderer woła `onSceneTransform(ref, shape)` i **nie wysyła nic sam**. Róg wygrywa z wnętrzem; przyciąganie domyślne, `Ctrl` je wyłącza.
 
 ## Pułapki dev — indeks
 
@@ -194,10 +191,80 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 - **Podpowiedź wyśrodkowana nad mapą kładzie się na pasku narzędzi** — pasek ma 38 rem i sięga poza środek; podpowiedź należąca do paska renderuj **w nim** (`.map-tool-tip`).
 - **Automat CDP jednak buduje scenę** (ściany, lampy, osłony, strefy, pinezki) — koryguje „nie da się" z 23.08; kursor płótna mówi, czy pod wskaźnikiem jest chwytalny obiekt.
 - **Zrzut ekranu bywa ciemniejszy, niż mówi DOM** — Chrome przyciemnia obraz; motyw czytaj z `dataset.theme` i `getComputedStyle`, nie ze zrzutu.
+- **Obiekt sceny mógł się dotąd tylko pojawić i zniknąć, nigdy zmienić** — stąd pięć błędów 27l naraz (obrys w starym miejscu, stara treść etykiety, rysunek niezmieniający warstwy). Setter listy musi wołać `refreshSceneSelectOutline`, a węzły rysunków nieść odcisk.
+- **Chwyt uchwytu zjada drugie kliknięcie dwukliku** — gest bez ruchu musi wrócić jako zwykłe kliknięcie, inaczej karta nie otworzy się na obiekcie już zaznaczonym.
+- **Otwarte okno łatwo zabiera klawisze narzędzi mapy** — strażnik „czy ktoś pisze" ma obejmować wyłącznie kartę, która sama ustawia kursor w treści (notatka).
+- **Sprawdź, czy strona naprawdę się przeładowała**, zanim uznasz poprawkę za nieskuteczną — HMR podmienia moduł, ale globalny `keydown` zostaje po starym efekcie.
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 24.08 — etap 27l: karty obiektów sceny, jedno okno na siedem rodzajów
+
+**Zakres z pliku etapu, w całości.** 27k dało **jeden gest** na wszystko, co stoi na mapie
+(warstwa → klik → `Delete`); ta sesja daje **jedno miejsce**, w którym się to coś ogląda
+i zmienia. Do 27l karty miały trzy różne domy, cztery rodzaje obiektów nie miały karty w ogóle,
+a właściwości ściany, osłony, światła i rysunku ustawiało się **zanim** się je postawiło.
+
+**Cztery rozstrzygnięcia MG przed kodowaniem** (pytania zadane przed pierwszą linią):
+przeciągnięcie **zaznaczonego** obiektu przesuwa, a przeciągnięcie obok rysuje nowy;
+przyciąganie do kratki **domyślnie**, `Ctrl` je wyłącza na czas gestu; karta rysunku zmienia
+też **treść etykiety**, nie tylko wygląd; tryby „🔒 Zamek" i „👁 Udostępnij" **znikają** z paska
+ścian.
+
+**Co powstało.**
+
+1. **`shared/scene-handles.ts`** — siedem rodzajów sprowadzonych do **trzech kształtów** (punkt,
+   prostokąt, odcinek) i dwie odpowiedzi: `pickSceneHandle` („co kursor złapał") i
+   `dragSceneShape` („gdzie to wyląduje"). Plus `translateDrawingShape` w `drawings.ts`
+   i `sanitizeWallSegment` w `walls.ts`. 20 nowych testów jednostkowych.
+2. **Serwer** — geometria w `wall:update`, **nowe zdarzenie `drawing:update`** (kolor, grubość,
+   wypełnienie, warstwa, kształt), `hpMax` **i `typeId`** w `cover:update`, `x`/`y`
+   w `netpoint:update`. Najtrudniejszą częścią `drawing:update` nie jest zapis, tylko **zmiana
+   publiczności**: rysunek zdjęty ze wspólnej warstwy trzeba graczom **zabrać** (`drawing:delete`
+   do publiczności przed upsertem do MG), bo ich klienty trzymają go od chwili udostępnienia.
+3. **Klient** — `sceneCardStore`, `SceneObjectCard` (ramka + `switch` po rodzaju) i cztery nowe
+   treści kart; `DefenseZonePanel` → `SceneCardZone`, `NetAccessPointPanel` → `SceneCardNetPoint`,
+   `NoteEditor` → `SceneCardNote` (trzy stany `editing*` w store'ach zniknęły). Uchwyty
+   w `MapRenderer` (obrys podglądu, kwadraciki w rogach, kursor `nwse-resize`/`grab`),
+   nowy szczebel drabiny `Esc` (karta schodzi **przed** zaznaczeniem) i `mapErrors.ts` wydzielone
+   z `MapArea`, żeby karta tłumaczyła odmowy tym samym zdaniem.
+4. **Poza planem** doszły **preset osłony** i **wytrzymałość maksymalna** — bez nich karta
+   obiecywałaby coś, czego nie umie: „to jednak nie samochód, to kontener" nie może znaczyć
+   „skasuj i narysuj prostokąt jeszcze raz".
+
+**Pięć błędów znalezionych przy oględzinach i naprawionych.** Cztery z nich mają jedną przyczynę,
+zapisaną w `pulapki-dev.md`: **obiekt sceny mógł się dotąd tylko pojawić i zniknąć, nigdy
+zmienić.** (1) Obrys zaznaczenia zostawał tam, gdzie obiekt stał przed przesunięciem.
+(2) Poprawiona literówka w etykiecie nie docierała na mapę — `setDrawings` miało w komentarzu
+„a drawing is immutable once stored" i pomijało istniejące id. (3) Ten sam brak nie przenosił
+rysunku między warstwą MG a wspólną. (4) Chwyt uchwytu **zjadał drugie kliknięcie dwukliku**,
+więc karta nie otwierała się nigdy na obiekcie już zaznaczonym. (5) Strażnik „czy ktoś pisze"
+objął **każdą** kartę, więc po jej otwarciu `O` przestawało przełączać na osłony — a `Esc`
+z kursorem w treści notatki przestał zamykać kartę (regresja po skasowaniu prywatnego listenera
+`NoteEditor`).
+
+**Poprawka przy okazji:** `snapWallPoint` ignorowało przesunięcie kratki (`grid.offsetX/Y`),
+choć żeton honoruje je od etapu 05 — na scenie z kratką narysowaną od 30 px ściana przyciągała
+się **obok** narysowanej linii. Dołożone jako pola opcjonalne, więc zwykła mapa liczy się tak
+samo jak przedtem.
+
+**Odklikane w przeglądarce na nowej scenie „Karty 24x"** (MG): karta pod dwuklikiem dla
+**siedmiu rodzajów po kolei**. Ściana → Drzwi → „Gracze mogą otwierać" → rygiel (zamyka drzwi
+i blokuje „Otwórz") → „Otwórz" (tytuł karty zmienia się na „Drzwi — otwarte"). Osłona:
+„Rozwal" → „Samochód (wrak)" → **„Napraw" → 25/25**, potem róg (skalowanie) i wnętrze
+(przesunięcie). Lampa: kolor na różowy, „💡 Świeci" → „🌑 Zgaszona". Etykieta: literówka
+poprawiona z karty **na żywo**, warstwa MG → wspólna. Gniazdo: przesunięte uchwytem, `Delete`
+(„Usunięto punkt dostępu — Ctrl+Z cofa.") i `Ctrl+Z` („Przywrócono punkt dostępu."). Notatka:
+zapisana i otwarta ponownie dwuklikiem, `Esc` z kursorem w treści zamyka kartę i **zostawia
+zaznaczenie**. Strefa: ⚠ „Podłoga elektryczna" z pełną kartą 26f w nowej ramce. Ściana
+przesunięta końcówką: długość na karcie przeliczyła się z 28,0 m na 43,2 m.
+
+**Nie odklikane:** strona gracza (dwie karty, które gracz w ogóle widzi) — pozycja
+w `zaleglosci.md` z tym samym wyjaśnieniem, co przy 27k.
+
+**Testy:** 1399 w `shared`, 779 na serwerze, 50 u klienta — zielone.
 
 ### Sesja 23.08 (trzecia tego dnia) — etap 27k: edycja sceny, jedna gramatyka kasowania
 
@@ -252,42 +319,3 @@ przywrócona co do obiektu (6 gniazd, 3 ściany, reszta pusta).
 odmowy nie da się wywołać z UI.
 
 **Testy:** 1379 w `shared`, 772 na serwerze, 45 u klienta — zielone.
-
-### Sesja 23.08 (druga tego dnia) — triaż zaległości: kompendium, pula portretów, kości, wybuch; poza etapami
-
-**Zlecenie MG:** wypisać ~10 otwartych zaległości (bez rzeczy czekających na lokalny LLM, bo
-model idzie do wymiany, i bez nierozpoczętych etapów), a potem zrobić te, które MG wskaże.
-Wybór MG: **1 zrób** (kosz kompendium), **2 nie w tej sesji** (kosz biblioteki tokenów),
-**3–7 zrób** (Sieć, walka, ruch, efekty 27i, kości 27d), **8** → decyzja produktowa: _„wgranie
-portretu gracz może wykonać z puli wgranych portretów przez MG (tylko on może dodawać różne
-grafiki portretów)"_. Na pytania uzupełniające MG wybrał: pozycje 9 i 10 zostają w zaległościach,
-**Poligonu nie ruszamy — nowa scena testowa**, MG zachowuje **obie** drogi wgrywania portretu
-(wprost na kartę i do puli), kolejność: kod → oględziny.
-
-**Co powstało (kod).**
-
-1. **Kosz kompendium pyta.** `CompendiumPanel` dostał dwustopniowe potwierdzenie jak reszta
-   aplikacji („Usunąć?" → „Tak, usuń" / „Anuluj").
-2. **Pula portretów kampanii** — model `PortraitAsset` + migracja `portrait_asset_library`,
-   trasy `POST /api/uploads/portrait-assets` (MG), `GET /api/portrait-assets` (**każdy
-   zalogowany** — inaczej niż biblioteka żetonów), `DELETE /api/portrait-assets/:id` (MG),
-   wspólny komponent `PortraitPicker` na karcie postaci i w kreatorze, kosz dwustopniowy.
-   `POST /api/uploads/portraits` przeszło z `requireAuth` na `requireGm` — gracz nie ma już
-   żadnej trasy, którą wstawiłby plik do `uploads/`. Pula dopisana do `uploads-gc` (bez tego
-   sprzątacz zjadłby ją po godzinie — sprawdzone testem i na żywym sprzątaniu).
-3. **Naprawa danych broni** (opis w `archiwum/zamkniete-zaleglosci.md`): biała lista
-   `schema_fields` w `tools/import/parse-manual.py` wycinała `explosive` i `ammoPatterns`,
-   więc w kampanii **nic nie wybuchało** i żaden nabój nie pasował do broni. Pola dopisane do
-   importera i uzupełnione w danych kampanii z `manual-overrides.json` (kopie `*.bak-23x`).
-
-**Co odklikane w przeglądarce.** Cały **27d** (złoty dorzut krytyka złapany na stole, wyłączona
-animacja, rzut Cech bez zielonych dziesiątek), z **27i** — wybuch i liczba obrażeń nad figurą,
-oraz kosz kompendium i pula portretów. Do oględzin powstała scena **„Efekty 23x"** (opis
-w `poligon.md`); Strzelnica nietknięta i z powrotem aktywna, ustawienia kości MG przywrócone.
-
-**Znalezione i niezamknięte:** karta ataku **statysty** nie ma przycisku „Obrażenia"
-(`AttackControls.tsx:38` szuka atakującego wyłącznie wśród kart postaci) — pozycja pierwsza
-w `zaleglosci.md`. Z 27i zostają chmura gazu, wyładowanie strefy i dźwięki; **pozycje 3, 4 i 5
-z triażu (Sieć, walka, ruch) nie były ruszane** — od nich zacząć następną sesję.
-
-**Testy:** 1369 w `shared`, 764 na serwerze, 36 u klienta — zielone.

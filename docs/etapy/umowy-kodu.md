@@ -156,9 +156,39 @@ i to jest jedyny powód jego istnienia: zapisuje do niego siedem plików naraz, 
 klik przy narożniku (≤ `WALL_ENDPOINT_SNAP_PX`) na korzyść **rysowania łańcucha**, bo promień
 trafienia w segment jest większy od promienia przyciągania i bez tego wyjątku nie dałoby się
 zacząć nowej ściany dokładnie na rogu istniejącej. Trwający łańcuch wygrywa z jednym i drugim.
-Tryby `lock` i `share` nie zaznaczają nic — tam klik znaczy „przekręć rygiel" i „oddaj graczom".
+(Tryby `lock` i `share`, które do 27l nie zaznaczały nic, **przestały istnieć** — rygiel
+i „gracze mogą otwierać" przeszły na kartę segmentu.)
 
 **Podpowiedź nad mapą pisze się `--map-ink`, nie `--text`.** `--map-panel` jest ciemny w **obu**
 motywach i taki ma zostać (Pixi rysuje pod nim białe podpisy żetonów), więc kolor pisma
 aplikacji daje w dzień czarne na czarnym. Znalezione 23.08 przy 27k; dotyczyło wszystkich
 podpowiedzi nad mapą.
+
+**Nowa karta obiektu sceny — trzy miejsca, nie siedem** (etap 27l). Karta jest **jedna** dla
+wszystkich rodzajów: ramkę, belkę, zamykanie, `Esc` i kosz daje `SceneObjectCard`, a rodzaj
+dokłada wyłącznie **treść** (`SceneCardWall`, `SceneCardCover`, …). Dopisując rodzaj:
+
+- gałąź w `findSceneObject` w `SceneObjectCard.tsx` — `switch` po `SceneObjectKind`, więc
+  kompilator nie przepuści braku; tam też zapada, czy karta ma kosz i kto ją w ogóle widzi;
+- ikona w `ICONS` — **ta sama, którą nosi narzędzie na pasku**, bo karta ma się czytać jako
+  „to, co przed chwilą kliknąłem tamtym narzędziem";
+- gałąź w `moveSceneObject` w `MapArea.tsx`, jeśli obiekt da się przesunąć.
+
+Karta **nie kasuje sama**: `onDelete` przychodzi z `MapArea` i prowadzi do `deleteSceneObject`,
+czyli tej samej jedynej drogi, którą idzie `Delete` (umowa z 27k). Okno ma **jeden** klucz
+`useWindowPlacement('scene-object')` — karta lampy otwiera się tam, gdzie MG zostawił kartę
+ściany, i to jest część zdania „to samo okno" z kryteriów etapu.
+
+**`Esc` wewnątrz karty zamyka kartę na miejscu.** Globalna drabina `Esc` w `MapArea` odrzuca
+**każdy** klawisz naciśnięty w polu tekstowym (pierwszy warunek jej obsługi), a karta notatki
+sama ustawia kursor w treści — więc karta ma własny `onKeyDown` na `<section>`. Do 27l robił to
+prywatny listener `NoteEditor`; przy scalaniu kart trzeba go było przenieść, nie skasować.
+
+**Uchwyty przesuwania i skalowania: geometria w `shared`, decyzja u klienta** (etap 27l).
+`shared/scene-handles.ts` sprowadza siedem rodzajów do **trzech kształtów** (punkt, prostokąt,
+odcinek) i odpowiada na dwa pytania: `pickSceneHandle` („co kursor złapał") i `dragSceneShape`
+(„gdzie to wyląduje"). Renderer nie wysyła nic sam — woła `onSceneTransform(ref, shape)`, a to
+`MapArea` wie, którym zdarzeniem obiekt danego rodzaju się zapisuje. Reguły, które łatwo złamać:
+róg wygrywa z wnętrzem (inaczej prostokąta nie da się przeskalować), rogi ma tylko to, co da się
+rozciągnąć (rysunek jest w prostokąt **wpisany**, więc dostaje sam ruch), a przyciąganie jest
+domyślne i wyłącza je `Ctrl` na czas gestu.

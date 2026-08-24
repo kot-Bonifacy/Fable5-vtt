@@ -336,6 +336,27 @@ describe('run netrunnera na żywych gniazdach', () => {
     expect(errorOf(ack)).toBe('ACCESS_POINT_NOT_FOUND');
   });
 
+  it('moves a socket from its card, in both axes at once', async () => {
+    const moved = data(
+      await emitAck<NetAccessPointView>(gm, 'netpoint:update', { id: pointId, x: 640, y: 320 }),
+      'netpoint:update position',
+    );
+    expect([moved.x, moved.y]).toEqual([640, 320]);
+    // Jedna oś w patchu bierze drugą z wiersza — gniazdo nie jeździ po linii.
+    expect(
+      data(
+        await emitAck<NetAccessPointView>(gm, 'netpoint:update', { id: pointId, x: 700 }),
+        'netpoint:update one axis',
+      ).y,
+    ).toBe(320);
+    expect(errorOf(await emitAck(gm, 'netpoint:update', { id: pointId, x: 'tam' }))).toBe(
+      'BAD_REQUEST',
+    );
+    // Z powrotem na środek pierwszego pola: dalsze testy mierzą stąd zasięg
+    // podłączenia, więc gniazdo ma zastać ich tam, gdzie je postawiono.
+    await emitAck(gm, 'netpoint:update', { id: pointId, x: 50, y: 50 });
+  });
+
   it('gives a revealed socket to the player without the GM half of it', async () => {
     await emitAck(gm, 'netpoint:update', {
       id: pointId,

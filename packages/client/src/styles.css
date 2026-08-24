@@ -4164,35 +4164,11 @@ body.is-resizing {
   outline-offset: 1px;
 }
 
-/* GM note editor — a small floating panel, never shown to a player. */
-.note-editor {
-  position: absolute;
-  top: 4.5rem;
-  left: 0.75rem;
-  width: min(22rem, calc(100% - 1.5rem));
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.75rem;
-  background: var(--map-panel);
-  border: 1px solid var(--accent);
-  border-radius: 8px;
-  box-shadow: var(--map-shadow-panel);
-  z-index: 30;
-}
-
-.note-editor-header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-
-.note-editor-hint {
-  color: var(--map-ink-dim);
-  font-size: 0.75rem;
-}
-
+/* Pinezka MG: wybór ikony i pole treści. Od 27l mieszkają w karcie obiektu
+   sceny, czyli na chromie aplikacji, a nie na ciemnym panelu nad mapą — stąd
+   `--bg` pod polem tekstowym zamiast ciemnego tła panelu mapy, które
+   w motywie dziennym dawało czarne na czarnym (ta sama pułapka, co przy
+   podpowiedziach nad mapą w 27k). */
 /* Two clean rows of five rather than a flex row that wraps 9 + 1. */
 .note-editor-icons {
   display: grid;
@@ -4244,22 +4220,12 @@ body.is-resizing {
   resize: vertical;
   min-height: 5rem;
   padding: 0.5rem;
-  background: var(--map-field-soft);
+  background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 6px;
   color: var(--text);
   font: inherit;
   font-size: 0.85rem;
-}
-
-.note-editor-actions {
-  display: flex;
-  gap: 0.4rem;
-  align-items: center;
-}
-
-.note-editor-actions .spacer {
-  flex: 1;
 }
 
 /* „X celuje…" — same banner as token placement, in the attack colour. It has
@@ -6179,6 +6145,140 @@ body.is-resizing {
   margin-bottom: 0.7rem;
 }
 
+/* --- karta obiektu sceny (etap 27l) ---------------------------------------
+
+   Jedno okno na siedem rodzajów tego, co stoi na mapie. Do 27l karty miały
+   trzy różne domy — gniazdo i strefa wisiały przypięte w rogu mapy, notatka
+   miała własny panel pod paskiem — a cztery rodzaje nie miały karty w ogóle.
+   Geometria jest tą samą, którą mają pozostałe pływające okna (`handout-window`
+   z 24a), bo „to samo okno" z kryteriów etapu znaczy także „tak samo się je
+   przesuwa i skaluje". */
+
+.scene-card {
+  position: fixed;
+  z-index: 325;
+  width: min(360px, calc(100vw - 24px));
+  max-height: min(72vh, 780px);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  /* Cień „panelu nad mapą", ten sam, który nosił edytor notatki do 27l: karta
+     leży na mapie, a nie na tle aplikacji. */
+  box-shadow: var(--map-shadow-panel);
+  overflow: hidden;
+}
+
+/* Ramka mówi, na co się patrzy, zanim przeczyta się tytuł — to samo
+   rozróżnienie, które karty gniazda i strefy miały osobno do 26f. */
+.scene-card[data-kind='netpoint'] {
+  border-color: var(--net-line);
+}
+
+.scene-card[data-kind='zone'] {
+  border-color: var(--net-zone-line);
+}
+
+.scene-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.55rem;
+  background: var(--bg-topbar);
+  border-bottom: 1px solid var(--border);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.scene-card-header:active {
+  cursor: grabbing;
+}
+
+/* Ikona jest tą samą, którą nosi narzędzie na pasku: karta ma się czytać jako
+   „to, co przed chwilą kliknąłem tamtym narzędziem". */
+.scene-card-icon {
+  display: grid;
+  place-items: center;
+  width: 1.3rem;
+  color: var(--map-ink-bright);
+}
+
+.scene-card-title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scene-card-body {
+  padding: 0.6rem 0.7rem;
+  overflow-y: auto;
+}
+
+.scene-card-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+/* Druga sekcja karty gniazda („kto się podłącza") — jedyna, którą widzi gracz,
+   więc jest oddzielona kreską od edytora MG nad nią. */
+.scene-card-jack {
+  border-top: 1px solid var(--border-soft);
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+}
+
+/* Rząd przycisków-wyborów: rodzaj ściany, rozmiar pisma, warstwa rysunku. */
+.scene-card-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.scene-card-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+/* Próbka koloru: barwa przychodzi z danych (`style`), więc arkusz odpowiada
+   wyłącznie za kształt i za to, którą widać jako wybraną. */
+.scene-card-swatch {
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 2px solid var(--swatch-edge);
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.scene-card-swatch--on {
+  border-color: var(--map-swatch-active);
+  box-shadow: var(--map-shadow-swatch);
+}
+
+.scene-card-foot {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.7rem 0.6rem;
+  border-top: 1px solid var(--border-soft);
+}
+
+/* Zdanie obok kosza mówi to samo, co pasek narzędzi nad mapą — kasowanie ma
+   jedną gramatykę (27k) i karta jej nie zmienia, tylko o niej przypomina. */
+.scene-card-hint {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
 /* --- okno ustawień (etap 27d) --------------------------------------------- */
 
 .settings-window {
@@ -8019,58 +8119,7 @@ body.is-resizing {
   gap: 0.2rem;
 }
 
-/* Karta gniazda: mała, przypięta w rogu mapy — to nie jest okno do przesuwania,
-   tylko odpowiedź na jedno kliknięcie. */
-.net-point-panel {
-  position: fixed;
-  right: 1rem;
-  bottom: 1rem;
-  z-index: 325;
-  width: min(320px, 100vw - 32px);
-  border: 1px solid var(--net-line);
-  border-radius: 6px;
-  background: var(--bg-panel);
-  box-shadow: var(--shadow-md);
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-  padding: 0.6rem;
-}
-
-.net-point-head {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.net-point-title {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-weight: 600;
-}
-
-.net-point-form,
-.net-point-jack {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.net-point-jack {
-  border-top: 1px solid var(--net-line-dim);
-  padding-top: 0.45rem;
-}
-
 /* ── strefy bronione (etap 26f) ── */
-
-/* Karta strefy pożycza całą geometrię od karty gniazda z 26b — różni się samą
-   ramką, bo to jest ostrzeżenie, a nie terminal. */
-.net-point-panel[aria-label^='Strefa broniona'] {
-  border-color: var(--net-zone-line);
-}
 
 /* Lista przepustek bywa długa (scena z dziesięcioma figurami), więc dostaje
    własne przewijanie zamiast rozpychać kartę na całą wysokość ekranu. */

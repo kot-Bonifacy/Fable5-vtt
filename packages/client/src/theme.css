@@ -245,13 +245,10 @@
   /* Ikona narzędzia i podpis pod suwakiem. */
   --map-ink: #cbd5e1;
   --map-ink-bright: #e2e8f0;
-  /* Podpowiedź pod polem edytora notatki. */
-  --map-ink-dim: #94a3b8;
-  /* Panel pływający nad mapą: edytor notatki, podpowiedź stawiania żetonu. */
+  /* Panel pływający nad mapą: podpowiedź stawiania żetonu, pasek narzędzi. */
   --map-panel: rgb(15 18 25 / 96%);
   /* Pole tekstowe nad mapą (podpis rysunku, treść notatki). */
   --map-field: rgb(2 6 23 / 85%);
-  --map-field-soft: rgb(2 6 23 / 60%);
   /* Kafel wybieraka rozmiaru liter. */
   --map-chip: rgb(30 41 59 / 70%);
   --map-chip-hover: rgb(51 65 85 / 80%);

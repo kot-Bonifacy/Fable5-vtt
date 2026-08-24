@@ -9,22 +9,22 @@ import {
   conditionRegistry,
   coverMovementSegments,
   cpredMovementBlock,
-  isOpening,
+  drawingBounds,
   isPointInPolygon,
   isPointVisible,
   isSegmentClear,
   metresPerPixel,
   metresToPixels,
   movementSegments,
-  pickWallAt,
   sceneObjectAccusative,
   sceneBoundsSegments,
   tokenCentre,
+  translateDrawingShape,
   type CombatView,
   type SceneObjectRef,
+  type SceneObjectShape,
   type ScenePoint,
   type TokenView,
-  type WallKind,
 } from '@vtt/shared';
 import {
   MapRenderer,
@@ -68,8 +68,13 @@ import {
   sendTokenMove,
   setTokenFacing,
   toggleOpening,
+  updateCover,
+  updateDrawing,
   updateLight,
+  updateNetAccessPoint,
+  updateNote,
   updateWall,
+  updateZone,
 } from '../socket.js';
 import { loadAttackAtToken } from '../attack-targeting.js';
 import { bindMapFx } from '../map-fx.js';
@@ -95,7 +100,15 @@ import { useNoteStore } from '../stores/noteStore.js';
 import { sortedDrawings, useDrawingStore } from '../stores/drawingStore.js';
 import { clickableOpenings, useWallStore } from '../stores/wallStore.js';
 import { useSelectionStore } from '../stores/selectionStore.js';
-import { useSceneSelectionStore } from '../stores/sceneSelectionStore.js';
+import { sameSceneObject, useSceneSelectionStore } from '../stores/sceneSelectionStore.js';
+import { useSceneCardStore } from '../stores/sceneCardStore.js';
+import {
+  coverErrorText,
+  drawingErrorText,
+  lightErrorText,
+  openingErrorText,
+  wallErrorText,
+} from '../mapErrors.js';
 import { useLightStore } from '../stores/lightStore.js';
 import { useNetRunStore } from '../stores/netRunStore.js';
 import { netErrorText } from '../netErrors.js';
@@ -112,7 +125,7 @@ import {
 import { TokenContextMenu } from './TokenContextMenu.js';
 import { DrawingTextEditor } from './DrawingTextEditor.js';
 import { MapTools } from './MapTools.js';
-import { NoteEditor } from './NoteEditor.js';
+import { SceneObjectCard } from './SceneObjectCard.js';
 import { TargetTooltip, type AimHover } from './TargetTooltip.js';
 
 export interface TokenMenuState {
@@ -139,101 +152,6 @@ function openSheetOfToken(tokenId: string): void {
     return;
   }
   characterStore.openSheet(token.characterId);
-}
-
-/** Polish hints for the rejections `drawing:create` can come back with. */
-function drawingErrorText(code: string | undefined): string {
-  switch (code) {
-    case 'DRAWING_LIMIT_REACHED':
-      return 'Na tej scenie jest już maksymalna liczba rysunków — wyczyść część z nich.';
-    case 'SCENE_NOT_VIEWED':
-      return 'Ta scena nie jest już wyświetlana — rysunek nie został zapisany.';
-    case 'NOT_CONNECTED':
-      return 'Brak połączenia z serwerem — rysunek nie został zapisany.';
-    default:
-      return `Nie udało się zapisać rysunku: ${code ?? 'nieznany błąd'}.`;
-  }
-}
-
-/** Polish hints for the rejections `wall:create` can come back with. */
-function wallErrorText(code: string | undefined): string {
-  switch (code) {
-    case 'WALL_LIMIT_REACHED':
-      return 'Na tej scenie jest już maksymalna liczba ścian.';
-    case 'NOT_CONNECTED':
-      return 'Brak połączenia z serwerem — ściana nie została zapisana.';
-    default:
-      return `Nie udało się zapisać ściany: ${code ?? 'nieznany błąd'}.`;
-  }
-}
-
-/** Polish hints for the rejections the cover events can come back with. */
-function coverErrorText(code: string | undefined): string {
-  switch (code) {
-    case 'COVER_LIMIT_REACHED':
-      return 'Na tej scenie jest już maksymalna liczba osłon.';
-    case 'COVER_NOT_FOUND':
-      return 'Ta osłona już nie istnieje — odśwież stronę.';
-    case 'UNKNOWN_COVER_TYPE':
-      return 'Nie znam takiego rodzaju osłony — sprawdź katalog w data/public.';
-    case 'COVER_HAS_NO_HP':
-      return 'To nie jest osłona: taki materiał nie zatrzyma kuli (podręcznik, s. 179).';
-    case 'NOT_CONNECTED':
-      return 'Brak połączenia z serwerem — osłona nie została zapisana.';
-    default:
-      return `Nie udało się zmienić osłony: ${code ?? 'nieznany błąd'}.`;
-  }
-}
-
-/** Polish hints for the rejections the light events can come back with. */
-function lightErrorText(code: string | undefined): string {
-  switch (code) {
-    case 'LIGHT_LIMIT_REACHED':
-      return 'Na tej scenie jest już maksymalna liczba świateł.';
-    case 'LIGHT_NOT_FOUND':
-      return 'To światło już nie istnieje — odśwież stronę.';
-    case 'NO_LIGHT':
-      return 'Ten token nie ma latarki — MG musi ją najpierw ustawić.';
-    case 'FORBIDDEN':
-      return 'To nie twój token.';
-    case 'NOT_CONNECTED':
-      return 'Brak połączenia z serwerem — zmiana światła nie została zapisana.';
-    default:
-      return `Nie udało się zmienić światła: ${code ?? 'nieznany błąd'}.`;
-  }
-}
-
-/**
- * Polish hints for `opening:toggle`, worded for whichever thing was clicked.
- *
- * The kind comes from the client's own list rather than from the ack: the server
- * says why it refused, and the map already knows what the player reached for.
- */
-function openingErrorText(code: string | undefined, kind: WallKind | undefined): string {
-  const isWindow = kind === 'window';
-  switch (code) {
-    case 'FORBIDDEN':
-      return isWindow
-        ? 'Tego okna nie ruszysz — MG go nie udostępnił.'
-        : 'Tych drzwi nie otworzysz — MG ich nie udostępnił.';
-    case 'WALL_NOT_FOUND':
-      return isWindow ? 'Nie widzisz tego okna.' : 'Nie widzisz tych drzwi.';
-    // Stage 18d. „Za daleko" names the thing, which is safe — the player was
-    // shown it. „Zamknięte na klucz" is only ever said to someone whose token
-    // stands at the handle, so the message is the character's discovery.
-    case 'OPENING_OUT_OF_REACH':
-      return isWindow
-        ? 'Za daleko — podejdź do okna (na jedną kratkę).'
-        : 'Za daleko — podejdź do drzwi (na jedną kratkę).';
-    case 'OPENING_LOCKED':
-      return isWindow
-        ? 'Okno zamknięte na skobel — nie ustąpi.'
-        : 'Zamknięte na klucz — same drzwi nie ustąpią.';
-    default:
-      return isWindow
-        ? `Nie udało się poruszyć oknem: ${code ?? 'nieznany błąd'}.`
-        : `Nie udało się poruszyć drzwiami: ${code ?? 'nieznany błąd'}.`;
-  }
 }
 
 /**
@@ -308,6 +226,84 @@ async function deleteSceneObject(ref: SceneObjectRef): Promise<boolean> {
   }
   useChatStore.getState().addNote(sceneDeleteErrorText(ref.kind, ack.error));
   return false;
+}
+
+/**
+ * Zapis przesunięcia albo przeskalowania obiektu (etap 27l).
+ *
+ * `switch` po rodzaju, jak przy kasowaniu, i z tego samego powodu: kompilator
+ * pilnuje kompletu, więc ósmy rodzaj obiektu nie skompiluje się, dopóki nie
+ * dostanie tu swojej drogi. Niedopasowany kształt (prostokąt tam, gdzie
+ * powinien być odcinek) jest błędem programu, nie danych — dlatego kończy się
+ * cichym `return`, a nie zdaniem do gracza.
+ */
+async function moveSceneObject(ref: SceneObjectRef, shape: SceneObjectShape): Promise<void> {
+  const numeric = Number(ref.id);
+  const request = ((): Promise<{ ok: boolean; error?: string }> | null => {
+    switch (ref.kind) {
+      case 'wall':
+        return shape.form === 'segment'
+          ? updateWall(numeric, { x1: shape.x1, y1: shape.y1, x2: shape.x2, y2: shape.y2 })
+          : null;
+      case 'cover':
+        return shape.form === 'rect'
+          ? updateCover(numeric, {
+              x: shape.x,
+              y: shape.y,
+              width: shape.width,
+              height: shape.height,
+            })
+          : null;
+      case 'zone':
+        return shape.form === 'rect'
+          ? updateZone(numeric, {
+              x: shape.x,
+              y: shape.y,
+              width: shape.width,
+              height: shape.height,
+            })
+          : null;
+      case 'light':
+        return shape.form === 'point' ? updateLight(numeric, { x: shape.x, y: shape.y }) : null;
+      case 'netpoint':
+        return shape.form === 'point'
+          ? updateNetAccessPoint({ id: numeric, x: shape.x, y: shape.y })
+          : null;
+      case 'note':
+        return shape.form === 'point'
+          ? updateNote(String(ref.id), { x: shape.x, y: shape.y })
+          : null;
+      case 'drawing': {
+        // Rysunek przesuwa się **cały**, punkt po punkcie: renderer zna tylko
+        // prostokąt, w który kreska jest wpisana, więc przesunięcie liczy się
+        // z różnicy jego narożnika (patrz `translateDrawingShape`).
+        const drawing = useDrawingStore.getState().drawings[numeric];
+        if (!drawing || shape.form !== 'rect') return null;
+        const box = drawingBounds(drawing.shape);
+        return updateDrawing(numeric, {
+          shape: translateDrawingShape(drawing.shape, shape.x - box.x, shape.y - box.y),
+        });
+      }
+    }
+  })();
+  if (!request) return;
+  const ack = await request;
+  if (!ack.ok) useChatStore.getState().addNote(sceneDeleteErrorText(ref.kind, ack.error));
+}
+
+/**
+ * Kasowanie obiektu i sprzątanie po nim (etap 27l): `Delete` i kosz na karcie
+ * wchodzą tędy, więc jedno i drugie zostawia dokładnie ten sam stan — bez
+ * obrysu nad pustym miejscem i bez karty bez obiektu.
+ */
+async function removeSceneObject(ref: SceneObjectRef): Promise<void> {
+  const removed = await deleteSceneObject(ref);
+  if (!removed) return;
+  const selection = useSceneSelectionStore.getState();
+  if (sameSceneObject(selection.selected, ref)) selection.select(null);
+  // Karta otwarta klikiem bez narzędzia nie ma zaznaczenia, którego zdjęcie
+  // zamknęłoby ją przez subskrypcję — trzeba ją zamknąć wprost.
+  if (sameSceneObject(useSceneCardStore.getState().open, ref)) useSceneCardStore.getState().close();
 }
 
 /** Odmowa serwera przy kasowaniu — po rodzaju, bo każdy ma własny słownik. */
@@ -440,7 +436,6 @@ export function MapArea() {
   const drawFilled = useMapToolStore((s) => s.drawFilled);
   const drawFontSize = useMapToolStore((s) => s.drawFontSize);
   const drawGmOnly = useMapToolStore((s) => s.drawGmOnly);
-  const wallMode = useMapToolStore((s) => s.wallMode);
   const wallKind = useMapToolStore((s) => s.wallKind);
   const wallSnapGrid = useMapToolStore((s) => s.wallSnapGrid);
   const targeting = useAttackStore((s) => s.targeting);
@@ -596,8 +591,9 @@ export function MapArea() {
         if (!ack.ok) useFogStore.getState().setPending(null);
       });
     };
-    renderer.onNotePlace = (x, y) => useNoteStore.getState().setDraft({ x, y });
-    renderer.onNoteActivate = (noteId) => useNoteStore.getState().setEditing(noteId);
+    renderer.onNotePlace = (x, y) => useSceneCardStore.getState().startNoteDraft({ x, y });
+    renderer.onNoteActivate = (noteId) =>
+      useSceneCardStore.getState().openCard({ kind: 'note', id: noteId });
     renderer.onDrawingCreate = (shape) => {
       const current = useSceneStore.getState().effectiveScene;
       if (!current) return;
@@ -621,55 +617,6 @@ export function MapArea() {
           if (!ack.ok) useChatStore.getState().addNote(wallErrorText(ack.error));
         },
       );
-    };
-    renderer.onWallLock = (x, y) => {
-      const current = useSceneStore.getState().effectiveScene;
-      if (!current) return;
-      const tolerance = Math.max(8, current.grid.sizePx / 5);
-      // Openings only: a bolt on a plain wall would be a promise nothing keeps,
-      // and letting the pick land on one would silently do nothing.
-      const openings = useWallStore.getState().walls.filter(isOpening);
-      const target = pickWallAt(openings, { x, y }, tolerance);
-      if (!target) {
-        useChatStore
-          .getState()
-          .addNote('Kliknij drzwi albo okno — zamek zakłada się tylko na nich.');
-        return;
-      }
-      void updateWall(target.id, { locked: !target.locked }).then((ack) => {
-        if (!ack.ok) useChatStore.getState().addNote(wallErrorText(ack.error));
-      });
-    };
-    // Udostępnienie po fakcie (18d, naprawione 22.08). Przełącznik oka w pasku
-    // narzędzi dotyczy **nowych** otworów, więc okno postawione z domyślnym
-    // „tylko dla MG" trzeba było skasować i postawić od nowa. Nowy stan nie
-    // widać na mapie inaczej niż po uchwycie u gracza, więc klik odpowiada
-    // zdaniem — inaczej MG nie wie, co właśnie zrobił.
-    renderer.onWallShare = (x, y) => {
-      const current = useSceneStore.getState().effectiveScene;
-      if (!current) return;
-      const tolerance = Math.max(8, current.grid.sizePx / 5);
-      const openings = useWallStore.getState().walls.filter(isOpening);
-      const target = pickWallAt(openings, { x, y }, tolerance);
-      if (!target) {
-        useChatStore.getState().addNote('Kliknij drzwi albo okno — udostępnia się tylko otwory.');
-        return;
-      }
-      const next = !target.playerToggle;
-      void updateWall(target.id, { playerToggle: next }).then((ack) => {
-        if (!ack.ok) {
-          useChatStore.getState().addNote(wallErrorText(ack.error));
-          return;
-        }
-        const what = target.kind === 'door' ? 'Drzwi' : 'Okno';
-        useChatStore
-          .getState()
-          .addNote(
-            next
-              ? `${what}: gracze mogą je otwierać (zobaczą uchwyt, gdy będą w polu widzenia).`
-              : `${what}: tylko dla MG — gracze nie zobaczą uchwytu ani go nie ruszą.`,
-          );
-      });
     };
     renderer.onOpeningToggle = (wallId) => {
       const state = useWallStore.getState();
@@ -757,48 +704,23 @@ export function MapArea() {
       });
     };
     renderer.onAccessPointOpen = (id) => {
-      useNetRunStore.getState().editPoint(id);
+      // Klik w gniazdo **bez** uzbrojonego narzędzia — jedyna karta obiektu,
+      // którą otwiera także gracz („podłączyć się?"). Zaznaczenia nie stawia,
+      // bo obrys i `Delete` należą do warstwy (27k).
+      useSceneCardStore.getState().openCard({ kind: 'netpoint', id });
     };
     // ── sceneria: zaznaczenie i karta pod dwuklikiem (etap 27k) ──────────────
     renderer.onSceneSelect = (ref) => useSceneSelectionStore.getState().select(ref);
     renderer.onSceneHover = (ref) => useSceneSelectionStore.getState().setHovered(ref);
-    renderer.onSceneActivate = (ref) => {
-      // Karty istnieją dziś dla trzech rodzajów; ściana, osłona i rysunek
-      // dostaną swoje w 27l. Do tego czasu dwuklik w lampę robi to, co dawniej
-      // robił klik z uzbrojonym narzędziem — przestraja ją do ustawień z paska
-      // (świadome rozwiązanie pomostowe zapisane w zakresie etapu).
-      if (ref.kind === 'netpoint') {
-        useNetRunStore.getState().editPoint(Number(ref.id));
-        return;
-      }
-      if (ref.kind === 'zone') {
-        useZoneStore.getState().editZone(Number(ref.id));
-        return;
-      }
-      if (ref.kind === 'note') {
-        useNoteStore.getState().setEditing(String(ref.id));
-        return;
-      }
-      if (ref.kind === 'light') {
-        const tools = useMapToolStore.getState();
-        void updateLight(
-          Number(ref.id),
-          {
-            brightM: tools.lightBrightM,
-            dimM: tools.lightDimM,
-            color: tools.lightColor,
-            flicker: tools.lightFlicker,
-          },
-          tools.lightFitRoom,
-        ).then((ack) => {
-          useChatStore
-            .getState()
-            .addNote(
-              ack.ok ? 'Światło przestrojone do ustawień z paska.' : lightErrorText(ack.error),
-            );
-        });
-      }
-    };
+    // Dwuklik otwiera kartę — **tę samą** dla wszystkich siedmiu rodzajów
+    // (etap 27l). Do 27l dwuklik w ścianę, osłonę i rysunek nie robił nic,
+    // a w lampę przestrajał ją do ustawień z paska; jedno i drugie zniknęło
+    // razem z powodem, dla którego istniało.
+    renderer.onSceneActivate = (ref) => useSceneCardStore.getState().openCard(ref);
+    // Uchwyt puszczony (27l): jedno zdarzenie na rodzaj, ta sama droga, którą
+    // idą pozostałe zmiany obiektu. Renderer podaje **kształt**, nie payload —
+    // to tutaj wie się, którym zdarzeniem obiekt tego rodzaju się zapisuje.
+    renderer.onSceneTransform = (ref, shape) => void moveSceneObject(ref, shape);
     renderer.onRulerChange = (points) => {
       const current = useSceneStore.getState().effectiveScene;
       useRulerStore.getState().setLocal(points);
@@ -1120,9 +1042,8 @@ export function MapArea() {
       gmOnly: isGm && drawGmOnly,
       fontSize: drawFontSize,
     });
-    rendererRef.current?.setWallMode({
+    rendererRef.current?.setWallTool({
       armed: tool === 'wall' && isGm,
-      mode: wallMode,
       kind: wallKind,
       snapGrid: wallSnapGrid,
     });
@@ -1143,7 +1064,6 @@ export function MapArea() {
     drawFilled,
     drawFontSize,
     drawGmOnly,
-    wallMode,
     wallKind,
     wallSnapGrid,
   ]);
@@ -1549,11 +1469,16 @@ export function MapArea() {
       // words. Focus alone is not a reliable guard: a click anywhere outside
       // the field puts it back on the body, and the next keystroke would then
       // change tools under an open editor instead of typing into it.
-      const noteState = useNoteStore.getState();
+      // Wyłącznie karta **notatki**, nie każda karta obiektu. Otwarta karta
+      // ściany czy lampy nie może zabierać klawiszy narzędzi — MG stawia lampy
+      // seriami i przełącza się między warstwami z kartą na wierzchu (błąd
+      // znaleziony przy oględzinach 24.08: po otwarciu karty `O` przestawało
+      // przełączać na osłony i dorysowywało ścianę).
+      const card = useSceneCardStore.getState();
       const typing =
         useDrawingStore.getState().textDraft !== null ||
-        noteState.draft !== null ||
-        noteState.editingId !== null;
+        card.noteDraft !== null ||
+        card.open?.kind === 'note';
       if (typing && event.key !== 'Escape') return;
       // Combat keys first: they are the ones pressed every round, and none of
       // them collides with a map tool (`1`–`9`, Tab and E were all free).
@@ -1618,9 +1543,7 @@ export function MapArea() {
         const selected = useSceneSelectionStore.getState().selected;
         if (!selected) return;
         event.preventDefault();
-        void deleteSceneObject(selected).then((removed) => {
-          if (removed) useSceneSelectionStore.getState().select(null);
-        });
+        void removeSceneObject(selected);
         return;
       }
       // Narzędzia mapy idą z `MAP_TOOL_KEYS` (27f), a nie z drabinki `if`-ów:
@@ -1676,6 +1599,14 @@ export function MapArea() {
         // The cover tool gets the same two-step treatment (stage 16c): the
         // first Esc drops the rectangle being dragged out, the second the tool.
         if (tools.tool === 'cover' && renderer?.cancelCoverRect()) return;
+        // Szczebel z 27l: otwarta karta schodzi **przed** zaznaczeniem. Karta
+        // jest ostatnią rzeczą, którą się otworzyło, a `Esc` znaczy „cofnij to,
+        // co przed chwilą" — zdjęcie razem z nią obrysu kosztowałoby drugie
+        // kliknięcie w ten sam kamień.
+        if (useSceneCardStore.getState().open || useSceneCardStore.getState().noteDraft) {
+          useSceneCardStore.getState().close();
+          return;
+        }
         // Szczebel z 27k: zaznaczony obiekt schodzi **przed** narzędziem.
         // Odwrotna kolejność zabierałaby warstwę razem z zaznaczeniem, więc
         // „nie ten kamień" kosztowałoby ponowne wciśnięcie klawisza narzędzia.
@@ -1742,7 +1673,7 @@ export function MapArea() {
       <MapTools />
       <TargetTooltip hover={aimHover} />
       <DrawingTextEditor />
-      {isGm && <NoteEditor />}
+      <SceneObjectCard onDelete={(ref) => void removeSceneObject(ref)} />
       {menu && <TokenContextMenu menu={menu} onClose={() => setMenu(null)} />}
     </section>
   );

@@ -89,7 +89,15 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
     note: 'Wejdź w warstwę (klawisz wyżej), kliknij obiekt, a potem — jedna reguła na wszystko, co stoi na mapie.',
     items: [
       { keys: 'klik', what: 'Zaznacza obiekt uzbrojonej warstwy (obrys pod kursorem)' },
-      { keys: 'dwuklik', what: 'Otwiera kartę obiektu tam, gdzie taka jest' },
+      { keys: 'dwuklik', what: 'Otwiera kartę obiektu — jedną i tę samą dla wszystkich siedmiu' },
+      {
+        keys: 'przeciągnięcie',
+        what: 'Przesuwa zaznaczony obiekt; róg prostokąta i koniec ściany go skalują',
+      },
+      {
+        keys: 'Ctrl + przeciągnięcie',
+        what: 'To samo bez przyciągania do kratki — piksel po pikselu',
+      },
       { keys: 'Delete', what: 'Usuwa zaznaczony obiekt (figur nie dotyka — te z menu pod PPM)' },
       {
         keys: 'Ctrl + Z',
@@ -118,6 +126,7 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
         what: 'Porzuca rysowany łańcuch ścian albo prostokąt osłony',
         gmOnly: true,
       },
+      { keys: 'Esc', what: 'Zamyka otwartą kartę obiektu sceny' },
       { keys: 'Esc', what: 'Zdejmuje zaznaczenie obiektu na mapie' },
       { keys: 'Esc', what: 'Odkłada narzędzie mapy' },
       { keys: 'Esc', what: 'Zdejmuje zaznaczenie figury' },

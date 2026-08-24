@@ -16,7 +16,7 @@ import type {
   TokenView,
   WallView,
 } from '@vtt/shared';
-import { LIGHT_DARK, decodeLevelRuns } from '@vtt/shared';
+import { LIGHT_DARK, LIGHT_RADIUS_MAX_METRES, decodeLevelRuns } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 
@@ -554,6 +554,41 @@ describe('darkness, lamps and torches', () => {
     expect(errorOf(await emitAck(gm, 'scene:lighting', { sceneId, darkSightM: 'dużo' }))).toBe(
       'BAD_REQUEST',
     );
+    // Promień poza zakresem odrzucony — karta lampy (etap 27l) wysyła te same
+    // dwie liczby co pasek, więc suwak z zerem po drugiej stronie nie może
+    // przejść cicho.
+    const lampId = data(
+      await emitAck<LightView>(gm, 'light:create', { sceneId, x: 3200, y: 3200 }),
+      'light:create for validation',
+    ).id;
+    // Liczba poza zakresem jest **przycinana**, nie odrzucana — suwak karty
+    // zatrzymuje się na końcu skali i to jest to, o co prosi wywołujący.
+    const dark = data(
+      await emitAck<LightView>(gm, 'light:update', {
+        lightId: lampId,
+        patch: { brightM: -5, dimM: -5 },
+      }),
+      'light:update below zero',
+    );
+    expect([dark.brightM, dark.dimM]).toEqual([0, 0]);
+    expect(
+      data(
+        await emitAck<LightView>(gm, 'light:update', {
+          lightId: lampId,
+          patch: { brightM: LIGHT_RADIUS_MAX_METRES + 500 },
+        }),
+        'light:update above ceiling',
+      ).brightM,
+    ).toBe(LIGHT_RADIUS_MAX_METRES);
+    // …ale wartość, która w ogóle nie jest liczbą ani kolorem, jest odmową.
+    expect(
+      errorOf(await emitAck(gm, 'light:update', { lightId: lampId, patch: { dimM: 'daleko' } })),
+    ).toBe('BAD_REQUEST');
+    expect(
+      errorOf(await emitAck(gm, 'light:update', { lightId: lampId, patch: { color: 'czerwony' } })),
+    ).toBe('BAD_REQUEST');
+    await emitAck(gm, 'light:delete', { lightId: lampId });
+
     // The dim radius is the outer one: an inverted pair is widened, not refused.
     const lamp = data(
       await emitAck<LightView>(gm, 'light:create', {

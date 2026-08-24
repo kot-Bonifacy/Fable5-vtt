@@ -118,6 +118,16 @@ export interface WallUpdatePayload {
     playerToggle?: boolean;
     /** Openings only (stage 18d); bolting one also shuts it. */
     locked?: boolean;
+    /**
+     * Nowe położenie odcinka (etap 27l) — uchwyty na końcach i przesunięcie
+     * całej ściany. Cała czwórka albo nic: pół geometrii to ściana, która
+     * jednym końcem stoi tam, gdzie stała, a drugim gdzie indziej, i to nie
+     * jest stan, o który ktokolwiek prosi.
+     */
+    x1?: number;
+    y1?: number;
+    x2?: number;
+    y2?: number;
   };
 }
 
@@ -384,6 +394,35 @@ export function sanitizeWallChain(raw: unknown): Segment[] | null {
   return segments;
 }
 
+/**
+ * Validates one moved segment (etap 27l) — uchwyt na końcu ściany i
+ * przeciągnięcie całej ściany kończą się tutaj, po obu stronach drutu.
+ *
+ * Odrzuca odcinek krótszy niż `WALL_MIN_LENGTH` z tego samego powodu, dla
+ * którego łańcuch pomija powtórzone punkty: ściana zwinięta do punktu nie
+ * zasłania niczego, a raycast dostaje kierunek, którego nie umie policzyć.
+ */
+export function sanitizeWallSegment(raw: unknown): Segment | null {
+  if (typeof raw !== 'object' || raw === null) return null;
+  const input = raw as Record<string, unknown>;
+  if (
+    !finiteNumber(input.x1) ||
+    !finiteNumber(input.y1) ||
+    !finiteNumber(input.x2) ||
+    !finiteNumber(input.y2)
+  ) {
+    return null;
+  }
+  const segment: Segment = {
+    x1: Math.round(input.x1),
+    y1: Math.round(input.y1),
+    x2: Math.round(input.x2),
+    y2: Math.round(input.y2),
+  };
+  if (Math.hypot(segment.x2 - segment.x1, segment.y2 - segment.y1) < WALL_MIN_LENGTH) return null;
+  return segment;
+}
+
 /** Shortest distance from a point to a wall, in scene pixels. */
 export function distanceToWall(point: ScenePoint, wall: Segment): number {
   const dx = wall.x2 - wall.x1;
@@ -461,7 +500,18 @@ export function wallEndpointNear(
 export function snapWallPoint(
   point: ScenePoint,
   walls: readonly WallView[],
-  options: { gridSizePx: number | null; snapRadiusPx?: number },
+  options: {
+    gridSizePx: number | null;
+    snapRadiusPx?: number;
+    /**
+     * Przesunięcie kratki ze sceny (etap 27l). Domyślne zero zachowuje wynik
+     * z 18a dla każdej zwykłej mapy; na scenie z kratką narysowaną od 30 px
+     * pominięcie tego pola przyciągało ścianę **obok** narysowanej linii —
+     * żeton honorował offset od 05, ściana nie.
+     */
+    gridOffsetX?: number;
+    gridOffsetY?: number;
+  },
 ): ScenePoint {
   const best = wallEndpointNear(walls, point, options.snapRadiusPx ?? WALL_ENDPOINT_SNAP_PX);
   if (best) return best;
@@ -470,7 +520,12 @@ export function snapWallPoint(
   if (size !== null && Number.isFinite(size) && size > 0) {
     // Walls run along the edges of squares, not through their middles, so the
     // grid snap targets intersections.
-    return { x: Math.round(point.x / size) * size, y: Math.round(point.y / size) * size };
+    const ox = options.gridOffsetX ?? 0;
+    const oy = options.gridOffsetY ?? 0;
+    return {
+      x: Math.round((point.x - ox) / size) * size + ox,
+      y: Math.round((point.y - oy) / size) * size + oy,
+    };
   }
   return { x: Math.round(point.x), y: Math.round(point.y) };
 }

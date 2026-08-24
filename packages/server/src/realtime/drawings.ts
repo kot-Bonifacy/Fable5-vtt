@@ -4,6 +4,7 @@ import type {
   DrawingCreatePayload,
   DrawingDeleteBroadcast,
   DrawingDeletePayload,
+  DrawingUpdatePayload,
   DrawingUpsertBroadcast,
   DrawingView,
 } from '@vtt/shared';
@@ -158,6 +159,105 @@ export const drawingCreateEvent = defineEvent<DrawingCreatePayload, DrawingView>
     const view = toDrawingView(row);
     if (!view) throw new RealtimeError('INTERNAL');
 
+    emitDrawingEvent(deps, campaignId, scene, gmOnly, 'drawing:upsert', {
+      drawing: view,
+    } satisfies Omit<DrawingUpsertBroadcast, 'seq'>);
+    return view;
+  },
+});
+
+/**
+ * Karta rysunku (etap 27l) — kolor, grubość, wypełnienie, warstwa i treść
+ * etykiety **po** postawieniu kreski.
+ *
+ * Do 27l kreska była niezmienna: literówka w podpisie albo szkic postawiony
+ * na warstwie MG znaczyły „skasuj i narysuj od nowa". Prawo do edycji jest tu
+ * dokładnie takie jak prawo do gumki — swoje kreski są twoje, mapa należy do
+ * MG — bo to jest ta sama umowa wspólnej tablicy.
+ *
+ * Najtrudniejszą częścią nie jest zapis, tylko **zmiana publiczności**.
+ * Przeniesienie z warstwy MG na wspólną daje graczom rysunek, którego nigdy
+ * nie dostali (zwykły `drawing:upsert`), ale przeniesienie w drugą stronę
+ * musi im go **zabrać**: ich klienty trzymają go od chwili narysowania i żaden
+ * upsert do pokoju MG tego nie odwróci. Stąd `drawing:delete` do publiczności
+ * przed upsertem do MG — inaczej „schowałem to za ekran" byłoby wyłącznie
+ * moim wrażeniem.
+ */
+export const drawingUpdateEvent = defineEvent<DrawingUpdatePayload, DrawingView>({
+  name: 'drawing:update',
+  handler: async ({ deps, socket, user, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    const drawingId = payload?.drawingId;
+    if (typeof drawingId !== 'number' || !Number.isInteger(drawingId)) {
+      throw new RealtimeError('BAD_REQUEST');
+    }
+    const row = await deps.ctx.prisma.mapDrawing.findUnique({
+      where: { id: drawingId },
+      include: { scene: { select: { campaignId: true, active: true } } },
+    });
+    if (!row || row.scene.campaignId !== campaignId) throw new RealtimeError('DRAWING_NOT_FOUND');
+    if (socket.data.viewedSceneId !== row.sceneId) throw new RealtimeError('SCENE_NOT_VIEWED');
+    // Ta sama reguła, co przy gumce: swoje kreski są twoje, mapa należy do MG.
+    if (user.role !== ROLE_GM && row.authorId !== user.id) throw new RealtimeError('FORBIDDEN');
+
+    const patch = payload?.patch;
+    if (typeof patch !== 'object' || patch === null) throw new RealtimeError('BAD_REQUEST');
+
+    const style = sanitizeDrawingStyle({
+      color: patch.style?.color ?? row.color,
+      width: patch.style?.width ?? row.width,
+      filled: patch.style?.filled ?? row.filled,
+    });
+
+    let geometry: { kind: string; data: string } | null = null;
+    if (patch.shape !== undefined) {
+      const shape = sanitizeDrawingShape(patch.shape);
+      if (!shape) throw new RealtimeError('BAD_REQUEST');
+      // Rodzaj kształtu jest tożsamością rysunku, nie jego ustawieniem: karta
+      // otwarta nad prostokątem nie ma jak zamienić go w napis, a payload,
+      // który tego próbuje, jest pomyłką klienta.
+      if (shape.kind !== row.kind) throw new RealtimeError('BAD_REQUEST');
+      geometry = toDrawingRowData(shape);
+    }
+
+    // Warstwa MG jest rolą, nie flagą klienta — gracz, który o nią prosi,
+    // po prostu rysuje publicznie (tak samo jak przy `drawing:create`).
+    const gmOnly =
+      user.role === ROLE_GM && patch.gmOnly !== undefined ? patch.gmOnly === true : row.gmOnly;
+
+    const updated = await deps.ctx.prisma.mapDrawing.update({
+      where: { id: row.id },
+      data: {
+        ...(geometry ?? {}),
+        color: style.color,
+        width: style.width,
+        filled: style.filled,
+        gmOnly,
+      },
+      include: { author: { select: { name: true } } },
+    });
+    const view = toDrawingView(updated);
+    if (!view) throw new RealtimeError('INTERNAL');
+
+    const scene = { id: row.sceneId, active: row.scene.active };
+    if (row.gmOnly && !gmOnly) {
+      // Za ekran → na stół: gracze dostają go pierwszy raz, więc zwykły upsert
+      // do publiczności wystarcza.
+      emitDrawingEvent(deps, campaignId, scene, false, 'drawing:upsert', {
+        drawing: view,
+      } satisfies Omit<DrawingUpsertBroadcast, 'seq'>);
+      return view;
+    }
+    if (!row.gmOnly && gmOnly) {
+      emitDrawingEvent(deps, campaignId, scene, false, 'drawing:delete', {
+        sceneId: row.sceneId,
+        drawingId: row.id,
+      } satisfies Omit<DrawingDeleteBroadcast, 'seq'>);
+      emitDrawingEvent(deps, campaignId, scene, true, 'drawing:upsert', {
+        drawing: view,
+      } satisfies Omit<DrawingUpsertBroadcast, 'seq'>);
+      return view;
+    }
     emitDrawingEvent(deps, campaignId, scene, gmOnly, 'drawing:upsert', {
       drawing: view,
     } satisfies Omit<DrawingUpsertBroadcast, 'seq'>);

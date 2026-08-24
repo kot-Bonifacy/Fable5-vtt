@@ -41,19 +41,15 @@ export const MAP_TOOLS = [
 ] as const;
 export type MapTool = (typeof MAP_TOOLS)[number];
 
-/**
- * What the wall tool does with a click (stages 18a, 18d).
+/*
+ * Narzędzie ścian nie ma już trybów (etap 27l).
  *
- * Do 27k był tu jeszcze `erase` — i to on był powodem, dla którego nikt nie
- * umiał znaleźć kasowania: gumka siedziała **wewnątrz** narzędzia, inaczej niż
- * gumka rysunków, inaczej niż kosz notatki. Od 27k kasuje się wszędzie tak
- * samo (klik w obiekt → `Delete`), a tutaj zostały dwa tryby, które **nie są**
- * kasowaniem: `lock` rzuca albo zdejmuje rygiel, `share` oddaje otwór graczom.
- *
- * Osłona, strefa, lampa i gniazdo straciły przy tej okazji swoje pary trybów
- * w całości — po odjęciu gumki nie zostawało im nic do wybierania.
+ * Do 27k był tu `WallMode` z gumką w środku — powód, dla którego nikt nie
+ * umiał znaleźć kasowania. 27k zabrało gumkę i zostawiło `lock` i `share`;
+ * 27l zabrało i je, bo rygiel i „gracze mogą otwierać" przeszły na kartę
+ * segmentu, gdzie widać, którego otworu dotyczą. Po każdym z tych kroków
+ * zostawało mniej stanu do pamiętania, a pasek robi jedną rzecz: rysuje.
  */
-export type WallMode = 'draw' | 'lock' | 'share';
 
 /** How the fog tool paints: a round brush, or a dragged rectangle. */
 export type FogBrushShape = 'brush' | 'rect';
@@ -162,8 +158,6 @@ interface MapToolStoreState extends DrawSettings {
   fogShape: FogBrushShape;
   /** Brush radius in scene pixels. */
   fogRadius: number;
-  /** Wall tool: tracing a chain, bolting an opening, or sharing it. */
-  wallMode: WallMode;
   /** What the next drawn chain becomes. */
   wallKind: WallKind;
   /** Doors: may the players open them themselves? */
@@ -209,7 +203,6 @@ interface MapToolStoreState extends DrawSettings {
   setDrawFilled: (drawFilled: boolean) => void;
   setDrawFontSize: (drawFontSize: number) => void;
   setDrawGmOnly: (drawGmOnly: boolean) => void;
-  setWallMode: (wallMode: WallMode) => void;
   setWallKind: (wallKind: WallKind) => void;
   setWallPlayerToggle: (wallPlayerToggle: boolean) => void;
   setWindowPlayerToggle: (windowPlayerToggle: boolean) => void;
@@ -249,7 +242,6 @@ export const useMapToolStore = create<MapToolStoreState>((set, get) => {
     fogMode: 'reveal',
     fogShape: 'brush',
     fogRadius: FOG_DEFAULT_BRUSH_RADIUS,
-    wallMode: 'draw',
     wallKind: 'wall',
     // Doors default to the players' — the GM who wants a secret door unticks
     // it, which is the rarer case and the one worth a deliberate click.
@@ -285,7 +277,6 @@ export const useMapToolStore = create<MapToolStoreState>((set, get) => {
     setDrawFilled: (drawFilled) => persist({ drawFilled }),
     setDrawFontSize: (drawFontSize) => persist({ drawFontSize }),
     setDrawGmOnly: (drawGmOnly) => persist({ drawGmOnly }),
-    setWallMode: (wallMode) => set({ wallMode }),
     setWallKind: (wallKind) => set({ wallKind }),
     setWallPlayerToggle: (wallPlayerToggle) => set({ wallPlayerToggle }),
     setWindowPlayerToggle: (windowPlayerToggle) => set({ windowPlayerToggle }),

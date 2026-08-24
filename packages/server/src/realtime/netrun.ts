@@ -147,6 +147,24 @@ export const netPointPlaceEvent = defineEvent<NetAccessPointPlacePayload, NetAcc
   },
 });
 
+/**
+ * Nowe położenie gniazda albo `null`, gdy patch go nie rusza (etap 27l).
+ *
+ * Brakujące pole bierze się z wiersza, tak samo jak przy prostokącie osłony:
+ * uchwyt przesuwa gniazdo w dwóch osiach naraz, a patch z jedną liczbą jest
+ * chybionym gestem, nie prośbą o przesunięcie po linii.
+ */
+function accessPointPosition(
+  payload: NetAccessPointUpdatePayload | undefined,
+  row: { x: number; y: number },
+): { x: number; y: number } | null {
+  if (payload?.x === undefined && payload?.y === undefined) return null;
+  const x = payload.x ?? row.x;
+  const y = payload.y ?? row.y;
+  if (!Number.isFinite(x) || !Number.isFinite(y)) throw new RealtimeError('BAD_REQUEST');
+  return { x: Math.round(x), y: Math.round(y) };
+}
+
 export const netPointUpdateEvent = defineEvent<NetAccessPointUpdatePayload, NetAccessPointView>({
   name: 'netpoint:update',
   role: ROLE_GM,
@@ -157,6 +175,7 @@ export const netPointUpdateEvent = defineEvent<NetAccessPointUpdatePayload, NetA
       payload?.architectureId === undefined
         ? undefined
         : await resolveArchitectureId(deps, campaignId, payload.architectureId);
+    const position = accessPointPosition(payload, row);
     const updated = await deps.ctx.prisma.netAccessPoint.update({
       where: { id: row.id },
       data: {
@@ -168,6 +187,10 @@ export const netPointUpdateEvent = defineEvent<NetAccessPointUpdatePayload, NetA
         ...(payload?.notes !== undefined
           ? { notes: text(payload.notes, ACCESS_POINT_NOTES_MAX) }
           : {}),
+        // Przesunięcie gniazda (etap 27l). Para, nie dwa osobne pola: gniazdo
+        // z nowym X i starym Y wylądowałoby na ścianie obok tej, na której
+        // wisi — a zasięg podłączenia liczy się od tego punktu.
+        ...(position ?? {}),
       },
       include: { architecture: { select: { name: true } } },
     });

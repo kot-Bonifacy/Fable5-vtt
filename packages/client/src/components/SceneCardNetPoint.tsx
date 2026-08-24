@@ -1,22 +1,23 @@
 import { useEffect, useMemo, useState } from 'react';
-import { NET_ACCESS_RANGE_M, ROLE_GM, metresBetween, tokenCentre } from '@vtt/shared';
 import {
-  fetchNetArchitectures,
-  removeNetAccessPoint,
-  runNetScan,
-  startNetRun,
-  updateNetAccessPoint,
-} from '../socket.js';
+  NET_ACCESS_RANGE_M,
+  ROLE_GM,
+  metresBetween,
+  tokenCentre,
+  type NetAccessPointView,
+} from '@vtt/shared';
+import { fetchNetArchitectures, runNetScan, startNetRun, updateNetAccessPoint } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
-import { useNetRunStore } from '../stores/netRunStore.js';
 import { useNetStore } from '../stores/netStore.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { netErrorText } from '../netErrors.js';
-import { IconJackPlug } from './UiIcons.js';
 
 /**
  * Karta punktu dostępu (etap 26b) — otwiera się klikiem w gniazdo na mapie.
+ *
+ * Od 27l to jest **treść** karty, nie całe okno: ramkę, belkę, zamykanie i kosz
+ * daje `SceneObjectCard`, wspólny dla siedmiu rodzajów obiektów sceny.
  *
  * Dwie strony, jedna karta. **MG** dostaje edytor: nazwa, Architektura,
  * ukrycie, notatka i kosz. **Gracz** dostaje jedno pytanie — „podłączyć się?" —
@@ -24,10 +25,13 @@ import { IconJackPlug } from './UiIcons.js';
  * żeby napisać „za daleko o 3 m" **zanim** serwer odmówi. Rozstrzyga i tak
  * serwer, razem ze ścianą, której klient gracza nie zna.
  */
-export function NetAccessPointPanel() {
-  const editingPointId = useNetRunStore((s) => s.editingPointId);
-  const points = useNetRunStore((s) => s.accessPoints);
-  const editPoint = useNetRunStore((s) => s.editPoint);
+export function SceneCardNetPoint({
+  point,
+  onClose,
+}: {
+  point: NetAccessPointView;
+  onClose: () => void;
+}) {
   const architectures = useNetStore((s) => s.architectures);
   const scene = useSceneStore((s) => s.effectiveScene);
   const tokens = useTokenStore((s) => s.tokens);
@@ -36,14 +40,12 @@ export function NetAccessPointPanel() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const point = points.find((entry) => entry.id === editingPointId) ?? null;
-
   // Biblioteka Architektur jedzie tylko na żądanie (26a), a selektor niżej jej
   // potrzebuje — bez tego MG, który nie otwierał zakładki „Sieć", zobaczyłby
   // wyłącznie „martwe gniazdo" i nie miałby czym gniazda podpiąć.
   useEffect(() => {
-    if (isGm && point) void fetchNetArchitectures();
-  }, [isGm, point?.id]);
+    if (isGm) void fetchNetArchitectures();
+  }, [isGm, point.id]);
 
   /**
    * Figury, którymi da się tu podłączyć: własne (u gracza) albo wszystkie
@@ -51,7 +53,7 @@ export function NetAccessPointPanel() {
    * klient nie wie, czy ktoś ma Interfejs i cyberdek.
    */
   const candidates = useMemo(() => {
-    if (!point || !scene) return [];
+    if (!scene) return [];
     return Object.values(tokens)
       .filter((token) => token.sceneId === scene.id && token.characterId)
       .filter((token) => isGm || token.ownerId === user?.id)
@@ -67,17 +69,16 @@ export function NetAccessPointPanel() {
   }, [point, scene, tokens, isGm, user?.id]);
 
   const [tokenId, setTokenId] = useState('');
-  if (!point) return null;
   const chosen = candidates.find((entry) => entry.token.id === tokenId) ?? candidates[0] ?? null;
 
   async function jackIn() {
-    if (!chosen || !point) return;
+    if (!chosen) return;
     setBusy(true);
     setError(null);
     const ack = await startNetRun(chosen.token.id, point.id);
     setBusy(false);
     if (!ack.ok) setError(netErrorText(ack.error));
-    else editPoint(null);
+    else onClose();
   }
 
   async function scan() {
@@ -99,24 +100,9 @@ export function NetAccessPointPanel() {
   const tooFar = chosen ? chosen.metres > NET_ACCESS_RANGE_M : false;
 
   return (
-    <section className="net-point-panel" aria-label={`Punkt dostępu: ${point.name}`}>
-      <div className="net-point-head">
-        <span className="net-point-title">
-          <IconJackPlug /> {point.name}
-        </span>
-        <button
-          type="button"
-          className="sheet-close"
-          onClick={() => editPoint(null)}
-          title="Zamknij"
-          aria-label="Zamknij"
-        >
-          ✕
-        </button>
-      </div>
-
+    <>
       {isGm && (
-        <div className="net-point-form">
+        <div className="scene-card-form">
           <label className="bot-field">
             <span className="auth-label">Nazwa</span>
             <input
@@ -165,23 +151,11 @@ export function NetAccessPointPanel() {
             >
               {point.hidden ? 'Odsłoń graczom' : 'Ukryj'}
             </button>
-            <button
-              type="button"
-              className="small-button character-delete"
-              title="Usuń gniazdo (kończy też run, który przez nie szedł)"
-              disabled={busy}
-              onClick={() => {
-                void removeNetAccessPoint(point.id);
-                editPoint(null);
-              }}
-            >
-              Usuń
-            </button>
           </div>
         </div>
       )}
 
-      <div className="net-point-jack">
+      <div className="scene-card-form scene-card-jack">
         {candidates.length === 0 ? (
           <p className="placeholder-text">
             Nie ma tu figury z kartą postaci, którą dałoby się podłączyć.
@@ -235,6 +209,6 @@ export function NetAccessPointPanel() {
         )}
         {error && <p className="ai-status-error">{error}</p>}
       </div>
-    </section>
+    </>
   );
 }

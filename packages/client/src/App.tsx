@@ -10,8 +10,6 @@ import { CharacterCreator } from './components/CharacterCreator.js';
 import { HandoutWindows } from './components/HandoutWindow.js';
 import { BotEditors } from './components/BotEditor.js';
 import { NetArchitectureEditor } from './components/NetArchitectureEditor.js';
-import { NetAccessPointPanel } from './components/NetAccessPointPanel.js';
-import { DefenseZonePanel } from './components/DefenseZonePanel.js';
 import { NetRunWindow } from './components/NetRunWindow.js';
 import { RollDialog } from './components/RollDialog.js';
 import { SettingsWindow } from './components/SettingsWindow.js';
@@ -97,8 +95,6 @@ function GameView() {
       <BotEditors />
       <NetArchitectureEditor />
       <NetRunWindow />
-      <NetAccessPointPanel />
-      <DefenseZonePanel />
       <RollDialog />
       <SettingsWindow />
       <ShortcutsWindow />

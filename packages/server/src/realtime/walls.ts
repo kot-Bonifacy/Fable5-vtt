@@ -7,7 +7,14 @@ import type {
   WallUpdatePayload,
   WallView,
 } from '@vtt/shared';
-import { ROLE_GM, WALL_MAX_PER_SCENE, isOpening, isWallKind, sanitizeWallChain } from '@vtt/shared';
+import {
+  ROLE_GM,
+  WALL_MAX_PER_SCENE,
+  isOpening,
+  isWallKind,
+  sanitizeWallChain,
+  sanitizeWallSegment,
+} from '@vtt/shared';
 import type { Scene } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { rememberDeletion, scalarRow } from './undo-buffer.js';
@@ -114,6 +121,25 @@ export const wallUpdateEvent = defineEvent<WallUpdatePayload, WallView>({
 
     const patch = payload?.patch ?? {};
     const data: Record<string, unknown> = {};
+    // Geometria (etap 27l): uchwyt na końcu ściany i przeciągnięcie całego
+    // odcinka. Sprawdzana **w całości**, jak prostokąt osłony — segment, który
+    // przyjechał w połowie, jest tym samym chybionym gestem, czy przyszedł
+    // w jednym polu, czy w czterech.
+    if (
+      patch.x1 !== undefined ||
+      patch.y1 !== undefined ||
+      patch.x2 !== undefined ||
+      patch.y2 !== undefined
+    ) {
+      const segment = sanitizeWallSegment({
+        x1: patch.x1 ?? row.x1,
+        y1: patch.y1 ?? row.y1,
+        x2: patch.x2 ?? row.x2,
+        y2: patch.y2 ?? row.y2,
+      });
+      if (!segment) throw new RealtimeError('BAD_REQUEST');
+      Object.assign(data, segment);
+    }
     if (patch.kind !== undefined) {
       if (!isWallKind(patch.kind)) throw new RealtimeError('BAD_REQUEST');
       data.kind = patch.kind;

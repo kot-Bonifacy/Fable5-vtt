@@ -127,6 +127,9 @@ export interface NetAccessPointUpdatePayload {
   architectureId?: string | null;
   hidden?: boolean;
   notes?: string;
+  /** Nowe położenie na mapie (etap 27l) — uchwyt przesuwania gniazda. */
+  x?: number;
+  y?: number;
 }
 
 export interface NetAccessPointIdPayload {

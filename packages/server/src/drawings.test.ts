@@ -375,6 +375,137 @@ describe('map drawings', () => {
     expect(errorOf(missing)).toBe('DRAWING_NOT_FOUND');
   });
 
+  // ── karta rysunku (etap 27l) ──────────────────────────────────────────────
+
+  it('lets the author restyle their own drawing and refuses a foreign one', async () => {
+    const mine = data(
+      await emitAck<DrawingView>(player, 'drawing:create', {
+        sceneId,
+        shape: path(600, 100),
+        style,
+      }),
+      'drawing:create',
+    );
+    const gmPublic = data(
+      await emitAck<DrawingView>(gm, 'drawing:create', { sceneId, shape: path(700, 100), style }),
+      'drawing:create',
+    );
+
+    const seen = waitFor<DrawingUpsertBroadcast>(gm, 'drawing:upsert');
+    const restyled = data(
+      await emitAck<DrawingView>(player, 'drawing:update', {
+        drawingId: mine.id,
+        patch: { style: { color: '#facc15', width: 20, filled: true } },
+      }),
+      'drawing:update',
+    );
+    expect(restyled.style).toEqual({ color: '#facc15', width: 20, filled: true });
+    expect((await seen).drawing.style.color).toBe('#facc15');
+
+    const refused = await emitAck(player, 'drawing:update', {
+      drawingId: gmPublic.id,
+      patch: { style: { color: '#facc15' } },
+    });
+    expect(refused.ok).toBe(false);
+    expect(errorOf(refused)).toBe('FORBIDDEN');
+  });
+
+  it('moves a drawing without changing what kind of shape it is', async () => {
+    const mine = data(
+      await emitAck<DrawingView>(player, 'drawing:create', {
+        sceneId,
+        shape: path(800, 100),
+        style,
+      }),
+      'drawing:create',
+    );
+    const moved = data(
+      await emitAck<DrawingView>(player, 'drawing:update', {
+        drawingId: mine.id,
+        patch: { shape: path(900, 400) },
+      }),
+      'drawing:update',
+    );
+    expect(moved.shape).toEqual({
+      kind: 'path',
+      points: [
+        { x: 900, y: 400 },
+        { x: 1000, y: 450 },
+      ],
+    });
+
+    // Rodzaj kształtu jest tożsamością rysunku, nie jego ustawieniem.
+    const refused = await emitAck(player, 'drawing:update', {
+      drawingId: mine.id,
+      patch: { shape: { kind: 'rect', x: 0, y: 0, width: 50, height: 50 } },
+    });
+    expect(refused.ok).toBe(false);
+    expect(errorOf(refused)).toBe('BAD_REQUEST');
+  });
+
+  it('hands a GM-layer drawing to the table and takes a public one back', async () => {
+    const secret = data(
+      await emitAck<DrawingView>(gm, 'drawing:create', {
+        sceneId,
+        shape: { kind: 'text', x: 900, y: 900, text: 'właz serwisowy', fontSize: 60 },
+        style,
+        gmOnly: true,
+      }),
+      'drawing:create',
+    );
+    expect((await roundTrip(player)).drawings.map((d) => d.id)).not.toContain(secret.id);
+
+    // Za ekran → na stół: gracz dostaje go pierwszy raz.
+    const shared = waitFor<DrawingUpsertBroadcast>(player, 'drawing:upsert');
+    expect(
+      data(
+        await emitAck<DrawingView>(gm, 'drawing:update', {
+          drawingId: secret.id,
+          patch: { gmOnly: false },
+        }),
+        'drawing:update',
+      ).gmOnly,
+    ).toBe(false);
+    expect((await shared).drawing.id).toBe(secret.id);
+    expect((await roundTrip(player)).drawings.map((d) => d.id)).toContain(secret.id);
+
+    // …i z powrotem. Sam upsert do pokoju MG nie wystarczy — klient gracza
+    // trzyma rysunek od chwili udostępnienia, więc musi dostać `drawing:delete`.
+    const taken = waitFor<DrawingDeleteBroadcast>(player, 'drawing:delete');
+    expect(
+      data(
+        await emitAck<DrawingView>(gm, 'drawing:update', {
+          drawingId: secret.id,
+          patch: { gmOnly: true },
+        }),
+        'drawing:update',
+      ).gmOnly,
+    ).toBe(true);
+    expect((await taken).drawingId).toBe(secret.id);
+    const playerSync = await roundTrip(player);
+    expect(playerSync.drawings.map((d) => d.id)).not.toContain(secret.id);
+    expect(JSON.stringify(playerSync.drawings)).not.toContain('właz serwisowy');
+  });
+
+  it('refuses the GM layer to a player on update too', async () => {
+    const mine = data(
+      await emitAck<DrawingView>(player, 'drawing:create', {
+        sceneId,
+        shape: path(1000, 100),
+        style,
+      }),
+      'drawing:create',
+    );
+    const updated = data(
+      await emitAck<DrawingView>(player, 'drawing:update', {
+        drawingId: mine.id,
+        patch: { gmOnly: true },
+      }),
+      'drawing:update',
+    );
+    expect(updated.gmOnly).toBe(false);
+  });
+
   it('refuses to draw on a scene the socket is not viewing', async () => {
     const other = data(
       await emitAck<SceneView>(gm, 'scene:create', { name: 'Inna scena' }),

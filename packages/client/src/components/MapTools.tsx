@@ -58,7 +58,6 @@ import {
   IconFog,
   IconHazard,
   IconLamp,
-  IconLock,
   IconRoomLight,
   IconLine,
   IconPencil,
@@ -112,8 +111,6 @@ export function MapTools() {
   const setDrawFontSize = useMapToolStore((s) => s.setDrawFontSize);
   const drawGmOnly = useMapToolStore((s) => s.drawGmOnly);
   const setDrawGmOnly = useMapToolStore((s) => s.setDrawGmOnly);
-  const wallMode = useMapToolStore((s) => s.wallMode);
-  const setWallMode = useMapToolStore((s) => s.setWallMode);
   const wallKind = useMapToolStore((s) => s.wallKind);
   const setWallKind = useMapToolStore((s) => s.setWallKind);
   const wallPlayerToggle = useMapToolStore((s) => s.wallPlayerToggle);
@@ -195,24 +192,20 @@ export function MapTools() {
   const layerHint = sceneSelected
     ? `Zaznaczono: ${sceneObjectNominative(sceneSelected.kind)} · Delete usuwa · Ctrl+Z cofa`
     : tool === 'wall' && isGm
-      ? wallMode === 'lock'
-        ? 'Kliknij drzwi albo okno, by założyć lub zdjąć zamek (zakładanie je zamyka)'
-        : wallMode === 'share'
-          ? 'Kliknij drzwi albo okno, by je udostępnić graczom lub schować'
-          : 'Klikaj narożniki — Enter kończy ścianę. Klik w środek istniejącej zaznacza ją'
+      ? 'Klikaj narożniki — Enter kończy ścianę. Klik w środek istniejącej zaznacza ją, dwuklik otwiera kartę'
       : tool === 'light' && isGm
-        ? 'Kliknij mapę, by postawić światło; klik w istniejące zaznacza, dwuklik przestraja je na ustawienia z paska'
+        ? 'Kliknij mapę, by postawić światło; klik w istniejące zaznacza, dwuklik otwiera kartę'
         : tool === 'note' && isGm
-          ? 'Kliknij mapę, by wbić pinezkę; klik w istniejącą zaznacza, dwuklik otwiera jej treść'
+          ? 'Kliknij mapę, by wbić pinezkę; klik w istniejącą zaznacza, dwuklik otwiera kartę'
           : tool === 'netpoint' && isGm
             ? 'Kliknij mapę, by postawić gniazdo; klik w istniejące zaznacza, dwuklik otwiera kartę'
             : tool === 'cover' && isGm
-              ? 'Przeciągnij prostokąt, by postawić osłonę; klik w istniejącą zaznacza ją'
+              ? 'Przeciągnij prostokąt, by postawić osłonę; klik w istniejącą zaznacza, dwuklik otwiera kartę'
               : tool === 'zone' && isGm
                 ? 'Przeciągnij prostokąt bronionego obszaru; klik w istniejący zaznacza, dwuklik otwiera kartę'
                 : tool === 'draw'
                   ? drawTool === 'text'
-                    ? 'Kliknij mapę, by postawić podpis; klik w istniejący rysunek zaznacza go'
+                    ? 'Kliknij mapę, by postawić podpis; klik w istniejący rysunek zaznacza, dwuklik otwiera kartę'
                     : 'Przeciągnij, by rysować; klik w istniejący rysunek zaznacza go'
                   : null;
 
@@ -578,124 +571,87 @@ export function MapTools() {
 
       {isGm && tool === 'wall' && (
         <div className="map-tool-options" role="group" aria-label="Ustawienia ścian">
+          {/* Do 27l stały tu jeszcze trzy przyciski trybu — „Rysuj", „Zamek"
+              i „Udostępnij" — ostatni ślad gramatyki „tryb wewnątrz narzędzia"
+              po 27k. Rygiel i „gracze mogą otwierać" przeszły na kartę
+              segmentu (dwuklik), więc pasek robi już tylko jedno: rysuje. */}
           <button
             type="button"
-            className={`map-tool${wallMode === 'draw' ? ' map-tool--active' : ''}`}
-            title="Rysowanie — klikaj kolejne narożniki"
-            aria-pressed={wallMode === 'draw'}
-            onClick={() => setWallMode('draw')}
+            className={`map-tool${wallKind === 'wall' ? ' map-tool--active' : ''}`}
+            title="Ściana pełna — zawsze blokuje widok"
+            aria-pressed={wallKind === 'wall'}
+            onClick={() => setWallKind('wall')}
           >
-            <IconLine />
+            <IconWall />
           </button>
           <button
             type="button"
-            className={`map-tool${wallMode === 'lock' ? ' map-tool--active' : ''}`}
-            title="Zamek — kliknij drzwi albo okno, by je zamknąć na klucz (lub zdjąć zamek). Gracz dowie się o zamku tylko po próbie otwarcia"
-            aria-pressed={wallMode === 'lock'}
-            onClick={() => setWallMode('lock')}
+            className={`map-tool${wallKind === 'door' ? ' map-tool--active' : ''}`}
+            title="Drzwi — blokują widok, dopóki są zamknięte; kliknięcie na mapie je otwiera"
+            aria-pressed={wallKind === 'door'}
+            onClick={() => setWallKind('door')}
           >
-            <IconLock />
+            <IconDoor />
           </button>
-          {/* Ten sam gest co zamek, ale o widoczności uchwytu: przełącznik oka
-              obok dotyczy otworów **nowych**, a ten — postawionych. Bez niego
-              okno z domyślnym „tylko dla MG" trzeba było skasować i narysować
-              jeszcze raz (18d). */}
           <button
             type="button"
-            className={`map-tool${wallMode === 'share' ? ' map-tool--active' : ''}`}
-            title="Udostępnienie — kliknij postawione drzwi albo okno, by je oddać graczom (lub zabrać). Nie myl z przełącznikiem oka: tamten dotyczy dopiero rysowanych"
-            aria-pressed={wallMode === 'share'}
-            onClick={() => setWallMode('share')}
+            className={`map-tool${wallKind === 'window' ? ' map-tool--active' : ''}`}
+            title="Okno — z dystansu zasłania jak ściana („firanka”), przepuszcza przygaszone światło; otwarte jest dziurą w ścianie"
+            aria-pressed={wallKind === 'window'}
+            onClick={() => setWallKind('window')}
           >
-            <IconEye />
+            <IconWindow />
           </button>
 
-          {wallMode === 'draw' && (
-            <>
-              <span className="map-tools-sep" aria-hidden />
-              <button
-                type="button"
-                className={`map-tool${wallKind === 'wall' ? ' map-tool--active' : ''}`}
-                title="Ściana pełna — zawsze blokuje widok"
-                aria-pressed={wallKind === 'wall'}
-                onClick={() => setWallKind('wall')}
-              >
-                <IconWall />
-              </button>
-              <button
-                type="button"
-                className={`map-tool${wallKind === 'door' ? ' map-tool--active' : ''}`}
-                title="Drzwi — blokują widok, dopóki są zamknięte; kliknięcie na mapie je otwiera"
-                aria-pressed={wallKind === 'door'}
-                onClick={() => setWallKind('door')}
-              >
-                <IconDoor />
-              </button>
-              <button
-                type="button"
-                className={`map-tool${wallKind === 'window' ? ' map-tool--active' : ''}`}
-                title="Okno — z dystansu zasłania jak ściana („firanka”), przepuszcza przygaszone światło; otwarte jest dziurą w ścianie"
-                aria-pressed={wallKind === 'window'}
-                onClick={() => setWallKind('window')}
-              >
-                <IconWindow />
-              </button>
+          {wallKind === 'door' && (
+            <button
+              type="button"
+              className={`map-tool${wallPlayerToggle ? ' map-tool--active' : ' map-tool--warn'}`}
+              title={
+                wallPlayerToggle
+                  ? 'Gracze mogą otwierać te drzwi (widzą je, gdy są w polu widzenia)'
+                  : 'Drzwi tylko dla MG — gracze ich nie zobaczą ani nie otworzą'
+              }
+              aria-pressed={wallPlayerToggle}
+              onClick={() => setWallPlayerToggle(!wallPlayerToggle)}
+            >
+              {wallPlayerToggle ? <IconEye /> : <IconEyeOff />}
+            </button>
+          )}
 
-              {wallKind === 'door' && (
-                <button
-                  type="button"
-                  className={`map-tool${
-                    wallPlayerToggle ? ' map-tool--active' : ' map-tool--warn'
-                  }`}
-                  title={
-                    wallPlayerToggle
-                      ? 'Gracze mogą otwierać te drzwi (widzą je, gdy są w polu widzenia)'
-                      : 'Drzwi tylko dla MG — gracze ich nie zobaczą ani nie otworzą'
-                  }
-                  aria-pressed={wallPlayerToggle}
-                  onClick={() => setWallPlayerToggle(!wallPlayerToggle)}
-                >
-                  {wallPlayerToggle ? <IconEye /> : <IconEyeOff />}
-                </button>
-              )}
-
-              {/* Windows keep their own answer to the same question, and default
+          {/* Windows keep their own answer to the same question, and default
                   to „no": a whole elevation of them would otherwise be a wall of
                   handles inviting the party to climb in anywhere. */}
-              {wallKind === 'window' && (
-                <button
-                  type="button"
-                  className={`map-tool${
-                    windowPlayerToggle ? ' map-tool--active' : ' map-tool--warn'
-                  }`}
-                  title={
-                    windowPlayerToggle
-                      ? 'Gracze mogą otwierać to okno (widzą je, gdy jest w polu widzenia) — otwarte przestaje zasłaniać i przepuszcza pełne światło'
-                      : 'Okno tylko dla MG — gracze go nie ruszą ani nie zobaczą jako uchwytu'
-                  }
-                  aria-pressed={windowPlayerToggle}
-                  onClick={() => setWindowPlayerToggle(!windowPlayerToggle)}
-                >
-                  {windowPlayerToggle ? <IconEye /> : <IconEyeOff />}
-                </button>
-              )}
-
-              <span className="map-tools-sep" aria-hidden />
-              <button
-                type="button"
-                className={`map-tool${wallSnapGrid ? ' map-tool--active' : ''}`}
-                title={
-                  wallSnapGrid
-                    ? 'Przyciąganie do siatki włączone (końce istniejących ścian mają pierwszeństwo)'
-                    : 'Bez przyciągania do siatki — końce ścian nadal łapią'
-                }
-                aria-pressed={wallSnapGrid}
-                onClick={() => setWallSnapGrid(!wallSnapGrid)}
-              >
-                <IconSnap />
-              </button>
-            </>
+          {wallKind === 'window' && (
+            <button
+              type="button"
+              className={`map-tool${windowPlayerToggle ? ' map-tool--active' : ' map-tool--warn'}`}
+              title={
+                windowPlayerToggle
+                  ? 'Gracze mogą otwierać to okno (widzą je, gdy jest w polu widzenia) — otwarte przestaje zasłaniać i przepuszcza pełne światło'
+                  : 'Okno tylko dla MG — gracze go nie ruszą ani nie zobaczą jako uchwytu'
+              }
+              aria-pressed={windowPlayerToggle}
+              onClick={() => setWindowPlayerToggle(!windowPlayerToggle)}
+            >
+              {windowPlayerToggle ? <IconEye /> : <IconEyeOff />}
+            </button>
           )}
+
+          <span className="map-tools-sep" aria-hidden />
+          <button
+            type="button"
+            className={`map-tool${wallSnapGrid ? ' map-tool--active' : ''}`}
+            title={
+              wallSnapGrid
+                ? 'Przyciąganie do siatki włączone (końce istniejących ścian mają pierwszeństwo)'
+                : 'Bez przyciągania do siatki — końce ścian nadal łapią'
+            }
+            aria-pressed={wallSnapGrid}
+            onClick={() => setWallSnapGrid(!wallSnapGrid)}
+          >
+            <IconSnap />
+          </button>
 
           <span className="map-tools-sep" aria-hidden />
           <button

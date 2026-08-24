@@ -7,6 +7,45 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 23.08 (druga tego dnia) — triaż zaległości: kompendium, pula portretów, kości, wybuch; poza etapami
+
+**Zlecenie MG:** wypisać ~10 otwartych zaległości (bez rzeczy czekających na lokalny LLM, bo
+model idzie do wymiany, i bez nierozpoczętych etapów), a potem zrobić te, które MG wskaże.
+Wybór MG: **1 zrób** (kosz kompendium), **2 nie w tej sesji** (kosz biblioteki tokenów),
+**3–7 zrób** (Sieć, walka, ruch, efekty 27i, kości 27d), **8** → decyzja produktowa: _„wgranie
+portretu gracz może wykonać z puli wgranych portretów przez MG (tylko on może dodawać różne
+grafiki portretów)"_. Na pytania uzupełniające MG wybrał: pozycje 9 i 10 zostają w zaległościach,
+**Poligonu nie ruszamy — nowa scena testowa**, MG zachowuje **obie** drogi wgrywania portretu
+(wprost na kartę i do puli), kolejność: kod → oględziny.
+
+**Co powstało (kod).**
+
+1. **Kosz kompendium pyta.** `CompendiumPanel` dostał dwustopniowe potwierdzenie jak reszta
+   aplikacji („Usunąć?" → „Tak, usuń" / „Anuluj").
+2. **Pula portretów kampanii** — model `PortraitAsset` + migracja `portrait_asset_library`,
+   trasy `POST /api/uploads/portrait-assets` (MG), `GET /api/portrait-assets` (**każdy
+   zalogowany** — inaczej niż biblioteka żetonów), `DELETE /api/portrait-assets/:id` (MG),
+   wspólny komponent `PortraitPicker` na karcie postaci i w kreatorze, kosz dwustopniowy.
+   `POST /api/uploads/portraits` przeszło z `requireAuth` na `requireGm` — gracz nie ma już
+   żadnej trasy, którą wstawiłby plik do `uploads/`. Pula dopisana do `uploads-gc` (bez tego
+   sprzątacz zjadłby ją po godzinie — sprawdzone testem i na żywym sprzątaniu).
+3. **Naprawa danych broni** (opis w `archiwum/zamkniete-zaleglosci.md`): biała lista
+   `schema_fields` w `tools/import/parse-manual.py` wycinała `explosive` i `ammoPatterns`,
+   więc w kampanii **nic nie wybuchało** i żaden nabój nie pasował do broni. Pola dopisane do
+   importera i uzupełnione w danych kampanii z `manual-overrides.json` (kopie `*.bak-23x`).
+
+**Co odklikane w przeglądarce.** Cały **27d** (złoty dorzut krytyka złapany na stole, wyłączona
+animacja, rzut Cech bez zielonych dziesiątek), z **27i** — wybuch i liczba obrażeń nad figurą,
+oraz kosz kompendium i pula portretów. Do oględzin powstała scena **„Efekty 23x"** (opis
+w `poligon.md`); Strzelnica nietknięta i z powrotem aktywna, ustawienia kości MG przywrócone.
+
+**Znalezione i niezamknięte:** karta ataku **statysty** nie ma przycisku „Obrażenia"
+(`AttackControls.tsx:38` szuka atakującego wyłącznie wśród kart postaci) — pozycja pierwsza
+w `zaleglosci.md`. Z 27i zostają chmura gazu, wyładowanie strefy i dźwięki; **pozycje 3, 4 i 5
+z triażu (Sieć, walka, ruch) nie były ruszane** — od nich zacząć następną sesję.
+
+**Testy:** 1369 w `shared`, 764 na serwerze, 36 u klienta — zielone.
+
 ### Sesja 23.08 — pasy zasięgu na trasie ruchu, trasa figur 2×2, prettier; poza etapami
 
 **Zlecenie MG:** wskazując kursorem cel, gracz ma **z góry** widzieć kolorem, dokąd sięga w tej

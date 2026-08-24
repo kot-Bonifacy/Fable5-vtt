@@ -182,3 +182,31 @@ dotyczy.
   klikaj współrzędnymi ekranu z pełnego zrzutu, sprawdzaj skutek `zoom`-em na wycinku, a stan
   narzędzia czytaj z DOM — `document.querySelector('.map-canvas-host canvas').style.cursor`
   mówi, czy kursor stoi nad obiektem, który da się złapać.
+
+- **Obiekt sceny mógł się dotąd tylko pojawić i zniknąć, nigdy zmienić** (24.08, etap 27l). To
+  jedno zdanie stoi za **pięcioma** błędami tej sesji, a każdy wyglądał na inny: obrys zaznaczenia
+  zostawał tam, gdzie obiekt stał przed przesunięciem (`drawSceneSelectOutline` wołane tylko przy
+  zmianie zaznaczenia); poprawiona literówka w etykiecie nie docierała na mapę, bo `setDrawings`
+  miało w komentarzu „a drawing is immutable once stored" i pomijało istniejące id; przeniesienie
+  rysunku między warstwą MG a wspólną nie zmieniało rodzica węzła z tego samego powodu.
+  **Obejście:** każdy setter listy obiektów woła `refreshSceneSelectOutline(kind)`, a węzły
+  rysunków niosą odcisk (`drawingSignature`) i przy zmianie powstają od nowa. Dokładając rodzaj
+  obiektu, który da się **edytować**, sprawdź oba miejsca.
+
+- **Chwyt uchwytu zjada drugie kliknięcie dwukliku** (24.08, etap 27l). Uchwyt „przesuń" pokrywa
+  cały zaznaczony obiekt, więc po pierwszym kliknięciu (które zaznacza) drugie ląduje na uchwycie,
+  a nie na warstwie — i karta nie otwiera się **nigdy na obiekcie, który jest już zaznaczony**.
+  **Obejście:** gest bez ruchu wraca jako zwykłe kliknięcie (`releaseSceneHandle` woła wtedy
+  `takeScenePick`), dokładnie tak jak `tapPick` robi to dla prostokątów.
+
+- **Otwarte pływające okno łatwo zabiera klawisze narzędzi mapy** (24.08, etap 27l). Strażnik
+  „czy ktoś pisze" w `MapArea` obejmował przez chwilę **każdą** kartę obiektu, więc po otwarciu
+  karty ściany `O` przestawało przełączać na osłony i dorysowywało kolejny segment. Do pola
+  tekstowego należy wyłącznie karta, która **sama ustawia kursor w treści** (notatka);
+  reszta ma tylko przyciski i suwaki, a te i tak wyłapuje pierwszy warunek (`closest('input, …')`).
+
+- **Sprawdź, czy strona naprawdę się przeładowała, zanim uznasz poprawkę za nieskuteczną**
+  (24.08). Przy oględzinach 27l ta sama poprawka wyglądała raz na działającą, raz nie — HMR
+  podmienił moduł, ale globalny `keydown` został zarejestrowany przez stary efekt. Kosztowało to
+  kilka minut szukania błędu, którego już nie było. Zgodne z wpisem o HMR przy Pixi wyżej:
+  **po edycji klienta przeładuj kartę i dopiero wtedy powtarzaj test.**

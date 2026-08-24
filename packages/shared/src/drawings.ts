@@ -165,6 +165,30 @@ export interface DrawingCreatePayload {
   gmOnly?: boolean;
 }
 
+/**
+ * Client → server `drawing:update` (etap 27l) — karta rysunku.
+ *
+ * Do 27l kreska była **niezmienna**: zły kolor, zła grubość albo literówka
+ * w podpisie znaczyły „skasuj i narysuj jeszcze raz", a szkic postawiony na
+ * warstwie MG nie miał jak trafić na wspólną (`drawGmOnly` dotyczyło zawsze
+ * *następnego* kształtu). Patch niesie dowolny podzbiór.
+ *
+ * `shape` jedzie **w całości**, nie jako delta: sanitizer kształtów już
+ * istnieje i jest jedynym miejscem, które wie, co jest poprawnym kształtem —
+ * druga ścieżka „przesuń o (dx, dy)" byłaby drugim miejscem, w którym da się
+ * o czymś zapomnieć.
+ */
+export interface DrawingUpdatePayload {
+  drawingId: number;
+  patch: {
+    style?: Partial<DrawingStyle>;
+    /** Przeniesienie między warstwą MG a wspólną; wyłącznie dla MG. */
+    gmOnly?: boolean;
+    /** Nowe położenie albo nowa treść etykiety; ten sam rodzaj kształtu. */
+    shape?: DrawingShape;
+  };
+}
+
 /** Client → server payload of `drawing:delete` (the eraser). */
 export interface DrawingDeletePayload {
   drawingId: number;
@@ -311,6 +335,33 @@ export function sanitizeDrawingShape(raw: unknown): DrawingShape | null {
   }
 
   return null;
+}
+
+/**
+ * Ten sam kształt, przesunięty o (dx, dy) — uchwyt przesuwania rysunku
+ * (etap 27l).
+ *
+ * Osobno od `drawingBounds`, bo przesunięcie musi ruszyć **każdy** punkt
+ * ścieżki, a nie prostokąt, w który się ona wpisuje: kreska przesunięta jako
+ * pudełko byłaby kreską narysowaną od nowa po przekątnej.
+ */
+export function translateDrawingShape(shape: DrawingShape, dx: number, dy: number): DrawingShape {
+  const x = Math.round(dx);
+  const y = Math.round(dy);
+  if (x === 0 && y === 0) return shape;
+  switch (shape.kind) {
+    case 'path':
+      return {
+        kind: 'path',
+        points: shape.points.map((point) => ({ x: point.x + x, y: point.y + y })),
+      };
+    case 'rect':
+      return { ...shape, x: shape.x + x, y: shape.y + y };
+    case 'ellipse':
+      return { ...shape, x: shape.x + x, y: shape.y + y };
+    case 'text':
+      return { ...shape, x: shape.x + x, y: shape.y + y };
+  }
 }
 
 /** Shortest distance from a point to a segment, in scene pixels. */

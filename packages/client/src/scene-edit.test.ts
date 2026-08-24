@@ -20,6 +20,7 @@ import { SCENE_OBJECT_KINDS } from '@vtt/shared';
 const MAP_AREA = readFileSync(join(import.meta.dirname, 'components', 'MapArea.tsx'), 'utf8');
 const MAP_TOOLS_SRC = readFileSync(join(import.meta.dirname, 'components', 'MapTools.tsx'), 'utf8');
 const RENDERER = readFileSync(join(import.meta.dirname, 'map', 'MapRenderer.ts'), 'utf8');
+const CARD = readFileSync(join(import.meta.dirname, 'components', 'SceneObjectCard.tsx'), 'utf8');
 
 describe('edycja sceny: jedna gramatyka (etap 27k)', () => {
   it('nie ma już narzędzia „Gumka" ani trybów-gumek', () => {
@@ -86,5 +87,67 @@ describe('edycja sceny: jedna gramatyka (etap 27k)', () => {
     const body = MAP_AREA.slice(start, MAP_AREA.indexOf('\n}\n', start));
     expect(body).toContain('if (ack.ok)');
     expect(body).toContain('sceneDeleteErrorText');
+  });
+});
+
+/**
+ * Strażnik kart obiektów (etap 27l).
+ *
+ * 27k dało jeden gest na kasowanie; 27l daje **jedno okno** na oglądanie
+ * i zmienianie. Ten opis pilnuje trzech zdań, które łatwo złamać przy
+ * następnym rodzaju obiektu: karta jest jedna, uchwyty mają jedną drogę
+ * zapisu, a tryby-nie-gumki paska ścian nie wracają.
+ */
+describe('karty obiektów sceny (etap 27l)', () => {
+  it('każdy z siedmiu rodzajów ma gałąź w jednej karcie', () => {
+    const start = CARD.indexOf('function findSceneObject');
+    expect(start, 'nie znalazłem findSceneObject').toBeGreaterThan(0);
+    const body = CARD.slice(start, CARD.indexOf('\n  }\n', start));
+    for (const kind of SCENE_OBJECT_KINDS) {
+      expect(body, `brak karty dla ${kind}`).toContain(`case '${kind}'`);
+    }
+  });
+
+  it('nie ma już trybów paska ścian — rygiel i udostępnienie są na karcie', () => {
+    for (const gone of ['wallMode', 'setWallMode', 'onWallLock', 'onWallShare']) {
+      expect(MAP_TOOLS_SRC, `${gone} wrócił do paska`).not.toContain(gone);
+      expect(MAP_AREA, `${gone} wrócił do MapArea`).not.toContain(gone);
+    }
+    // Renderer ma `setWallTool` (uzbrojenie narzędzia), ale nie ma trybów —
+    // nazwa przestała kłamać razem z nimi.
+    expect(RENDERER).not.toContain("mode === 'lock'");
+    expect(RENDERER).not.toContain("mode === 'share'");
+  });
+
+  it('każdy rodzaj ma dokładnie jedną drogę zapisu przesunięcia', () => {
+    const start = MAP_AREA.indexOf('async function moveSceneObject');
+    expect(start, 'nie znalazłem moveSceneObject').toBeGreaterThan(0);
+    const body = MAP_AREA.slice(start, MAP_AREA.indexOf('\n}\n', start));
+    for (const kind of SCENE_OBJECT_KINDS) {
+      expect(body, `brak gałęzi ruchu dla ${kind}`).toContain(`case '${kind}'`);
+    }
+    // Renderer podaje kształt, `MapArea` wybiera zdarzenie — renderer nie ma
+    // prawa wysyłać niczego sam (ta sama umowa, co przy pozostałych gestach).
+    expect(RENDERER).toContain('onSceneTransform');
+    expect(RENDERER).not.toContain('updateWall(');
+  });
+
+  it('uchwyty czytają geometrię z `shared`, a nie z własnej arytmetyki', () => {
+    for (const fn of ['pickSceneHandle', 'dragSceneShape', 'sceneHandlesOf', 'snapScenePoint']) {
+      expect(RENDERER, `${fn} nie jest używane`).toContain(fn);
+    }
+  });
+
+  it('karta nie kasuje sama — kosz idzie tą samą drogą, co `Delete`', () => {
+    expect(CARD).toContain('onDelete');
+    for (const gone of [
+      'deleteWall',
+      'deleteCover',
+      'deleteZone',
+      'deleteLight',
+      'deleteDrawing',
+    ]) {
+      expect(CARD, `${gone} kasuje z pominięciem jednej drogi`).not.toContain(gone);
+    }
   });
 });

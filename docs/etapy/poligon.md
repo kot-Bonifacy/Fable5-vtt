@@ -81,3 +81,28 @@ sprawdzono na siedmiu rodzajach obiektów; każdy albo wrócił cofnięciem, alb
 potrzeby testu i został skasowany. Stan końcowy Strzelnicy: **6 gniazd, 3 segmenty ściany,
 0 świateł, 0 osłon, 0 stref, 0 notatek, 0 rysunków.** Zaznaczenie żetonu jest lokalne i nic nie
 zapisuje. Scena **„Efekty 23x" nietknięta**.
+
+## Scena „Karty 24x" (24.08, etap 27l — karty obiektów sceny)
+
+Trzecia scena testowa w tej samej kampanii, znów zbudowana **zamiast ruszania Strzelnicy**.
+Widoczność „Ręczna mgła", siatka 100 px, mapa pusta — na scenie stoi **po jednym obiekcie
+każdego z siedmiu rodzajów**, dokładnie po to, żeby dwuklik w każdy z nich otwierał kartę:
+
+| rodzaj  | co konkretnie                                                                       |
+| ------- | ----------------------------------------------------------------------------------- |
+| ściana  | pionowy odcinek (zwykła ściana)                                                     |
+| drzwi   | ukośny odcinek, **otwarte, gracze mogą otwierać, bez rygla** — przestawione z karty |
+| osłona  | „Samochód 25/25", przesunięta i przeskalowana uchwytami                             |
+| strefa  | ⚠ „Podłoga elektryczna" 20 PW, uzbrojona                                            |
+| światło | lampa różowa, **zgaszona** (przestrojona z karty)                                   |
+| notatka | pinezka 📌 „Za drzwiami czeka zasadzka"                                             |
+| rysunek | etykieta „Magazyn B" — literówka poprawiona z karty, warstwa **wspólna**            |
+
+Do czego służy: wszystko, co robi karta obiektu — zmiana rodzaju przegrody, rygiel,
+„gracze mogą otwierać", naprawa osłony, przestrojenie lampy, treść etykiety, przeniesienie
+rysunku między warstwami — plus **uchwyty**: przeciągnięcie obrysu przesuwa, róg prostokąta
+i koniec ściany skalują, `Ctrl` wyłącza przyciąganie do kratki.
+
+Aktywna jest z powrotem **„Strzelnica"**; ta scena stoi w podglądzie. Strzelnica po tej sesji:
+**6 gniazd, 3 segmenty ściany, 0 świateł, 0 osłon, 0 stref, 0 notatek, 0 rysunków** — czyli
+dokładnie tak, jak ją zostawiło 27k. Scena **„Efekty 23x" nietknięta**.

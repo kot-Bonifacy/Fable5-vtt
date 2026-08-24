@@ -24,6 +24,7 @@ export * from './pathfinding.js';
 export * from './rects.js';
 export * from './relations.js';
 export * from './rules-assistant.js';
+export * from './scene-handles.js';
 export * from './scene-objects.js';
 export * from './scenes.js';
 export * from './screamsheets.js';

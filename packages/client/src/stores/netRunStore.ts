@@ -10,6 +10,10 @@ import type { NetAccessPointView, NetRunPayload } from '@vtt/shared';
  * przysyła już wyłącznie to, co dany widz może zobaczyć: ukryte punkty dostępu
  * po prostu nie przychodzą, a piętra, na których netrunner nie był, mają
  * `kind: null` i żadnej nazwy.
+ *
+ * Które gniazdo jest otwarte na karcie, **nie jest** tutaj od 27l: to jest stan
+ * karty, wspólny dla siedmiu rodzajów obiektów sceny, więc mieszka
+ * w `sceneCardStore`.
  */
 interface NetRunState {
   /** Punkty dostępu oglądanej sceny — u gracza tylko te już znalezione. */
@@ -18,15 +22,12 @@ interface NetRunState {
   runs: NetRunPayload[];
   /** Run otwarty w oknie „Sieć"; null = okno zamknięte. */
   openRunId: string | null;
-  /** Punkt dostępu otwarty w edytorze MG. */
-  editingPointId: number | null;
   /** Ostatni komunikat pod szybem („Hasło złamane…"). */
   notice: string | null;
 
   replacePoints: (points: NetAccessPointView[]) => void;
   replaceRuns: (runs: NetRunPayload[]) => void;
   openRun: (runId: string | null) => void;
-  editPoint: (id: number | null) => void;
   setNotice: (notice: string | null) => void;
 }
 
@@ -34,17 +35,12 @@ export const useNetRunStore = create<NetRunState>((set) => ({
   accessPoints: [],
   runs: [],
   openRunId: null,
-  editingPointId: null,
   notice: null,
 
-  replacePoints: (accessPoints) =>
-    set((state) => ({
-      accessPoints,
-      // Punkt zdjęty ze sceny zabiera ze sobą swój edytor.
-      editingPointId: accessPoints.some((point) => point.id === state.editingPointId)
-        ? state.editingPointId
-        : null,
-    })),
+  // Karta gniazda zdjętego ze sceny zamyka się sama — pilnuje tego
+  // `SceneObjectCard`, bo obiekt znika spod niej tak samo w każdym z siedmiu
+  // store'ów (etap 27l).
+  replacePoints: (accessPoints) => set({ accessPoints }),
 
   replaceRuns: (runs) =>
     set((state) => ({
@@ -59,7 +55,6 @@ export const useNetRunStore = create<NetRunState>((set) => ({
     })),
 
   openRun: (openRunId) => set({ openRunId, notice: null }),
-  editPoint: (editingPointId) => set({ editingPointId }),
   setNotice: (notice) => set({ notice }),
 }));
 

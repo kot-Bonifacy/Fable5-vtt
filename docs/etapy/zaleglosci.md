@@ -22,6 +22,18 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
   Sprawdzone 23.08 na „Efekty 23x": trafienie granatnikiem 24 vs PT 17, „obszar 10×10 m ·
   Cel 23x — 0 m od środka", jedyny przycisk na karcie to „Unik: Cel 23x".
 
+- **Etap 27l — strona gracza nieodklikana (drugi raz z tego samego powodu).** Gracz widzi
+  dokładnie dwie karty obiektu: **gniazdo** („podłączyć się?") i **własny rysunek**. Żadnej nie
+  kliknięto, bo sesja na `[::1]:5173` jest zalogowana jako MG, a dołączenie nowym imieniem
+  zakłada konto-śmiecia (ten sam powód, co przy 27k niżej). Pokryte testami serwera:
+  `drawing:update` odmawia cudzego rysunku (`FORBIDDEN`), a warstwy MG graczowi nie odda
+  (`gmOnly` zostaje `false`).
+
+- **Etap 27l — skalowanie rysunku poza zakresem.** Rysunek dostaje **sam ruch**, bez rogów:
+  ścieżka wpisana w prostokąt to nie to samo, co prostokąt, a rozciąganie kresek jest osobną
+  operacją (przeliczenie każdego punktu, minimalna grubość, tekst, który nie skaluje się jak
+  kształt). Zapisane jako świadome ograniczenie, nie brak — pomysł jest w `POMYSLY.md`.
+
 - **Etap 27k — strona gracza nieodklikana.** Gracz ma zaznaczać i kasować **własny** rysunek,
   a cudzego nie. Sesja na `[::1]:5173` jest dziś zalogowana jako MG, a dołączenie do stołu nowym
   imieniem zakłada w kampanii konto-śmiecia — więc ścieżki nikt nie kliknął. Pokryta z dwóch
@@ -32,11 +44,6 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
   jest zamierzone — filtr u klienta nie pozwala gracza nawet zaznaczyć cudzej kreski, tak jak
   nie pozwalał jej zetrzeć gumką od 17b. Odmowa istnieje dla klienta, który by o tym nie
   wiedział, i ma test.
-
-- **Etap 27k — dwuklik w ścianę, osłonę i rysunek nie robi nic (zamierzone do 27l).** Kart
-  właściwości dla tych trzech jeszcze nie ma; pierwszy klik je zaznacza, drugi jest pusty i
-  aplikacja tego nie tłumaczy. Domknie to **27l** (`etap-27l-karty-obiektow.md`), które te karty
-  dokłada. Do tego czasu nie jest to błąd, tylko brak — ale przy stole wygląda tak samo.
 
 - **Biblioteka grafik tokenów nie ma kosza.** Raz wgrana grafika zostaje w zakładce „Tokeny"
   na zawsze — nie da się jej usunąć z UI, a plik zostaje w `uploads/tokens`. Przy oględzinach

@@ -27,8 +27,10 @@ import type {
   LightMask,
   MapFxEffect,
   MapNoteView,
+  SceneHandleId,
   SceneObjectKind,
   SceneObjectRef,
+  SceneObjectShape,
   ScenePoint,
   SceneView,
   TokenSnapScene,
@@ -61,7 +63,13 @@ import {
   isOpening,
   metresPerPixel,
   NET_ACCESS_RANGE_M,
+  pickSceneHandle,
   pickSceneObject,
+  dragSceneShape,
+  sceneHandleCursor,
+  sceneHandlesOf,
+  snapScenePoint,
+  SCENE_HANDLE_SIZE_PX,
   smokeSidePx,
   normalizeGridOffset,
   planWalk,
@@ -159,7 +167,6 @@ export interface DrawSettings {
 export interface WallSettings {
   armed: boolean;
   /** Od 27k bez `erase`: kasuje się zaznaczeniem i `Delete`, jak wszędzie. */
-  mode: 'draw' | 'lock' | 'share';
   kind: WallKind;
   snapGrid: boolean;
 }
@@ -605,6 +612,14 @@ function isTokenTarget(target: unknown): boolean {
 }
 
 /** A label as it sits on the map: sized in scene pixels, so it zooms with it. */
+/**
+ * Odcisk namalowanego rysunku (etap 27l): kształt, styl i warstwa. Węzeł
+ * przemalowuje się dokładnie wtedy, gdy odcisk się zmienił.
+ */
+function drawingSignature(drawing: DrawingView): string {
+  return JSON.stringify([drawing.shape, drawing.style, drawing.gmOnly]);
+}
+
 function createDrawingText(text: string, fontSize: number, style: DrawingStyle): Text {
   const label = new Text({
     text,
@@ -794,10 +809,6 @@ export class MapRenderer {
   onDrawingTextPlace: ((x: number, y: number) => void) | null = null;
   /** A wall chain was closed — send its points to the server (stage 18a). */
   onWallChain: ((points: ScenePoint[]) => void) | null = null;
-  /** Click with the bolt armed (stage 18d); the caller picks the door. */
-  onWallLock: ((x: number, y: number) => void) | null = null;
-  /** Klik trybem „udostępnienie" — przełącza uchwyt drzwi/okna dla graczy (18d). */
-  onWallShare: ((x: number, y: number) => void) | null = null;
   /** Click on a door or window glyph — open or close it. */
   onOpeningToggle: ((wallId: number) => void) | null = null;
   /** Click with the light tool armed: place a lamp, or retune the one here. */
@@ -831,6 +842,14 @@ export class MapRenderer {
   onSceneActivate: ((ref: SceneObjectRef) => void) | null = null;
   /** Obiekt pod kursorem — służy wyłącznie podpowiedzi pod paskiem narzędzi. */
   onSceneHover: ((ref: SceneObjectRef | null) => void) | null = null;
+  /**
+   * Uchwyt puszczony (etap 27l): obiekt ma stanąć tam, gdzie pokazuje kształt.
+   *
+   * Renderer nie wysyła niczego sam — to samo rozdzielenie, które ma reszta
+   * gestów mapy: renderer wie, gdzie jest kursor, a wywołujący wie, którym
+   * zdarzeniem się to zapisuje.
+   */
+  onSceneTransform: ((ref: SceneObjectRef, shape: SceneObjectShape) => void) | null = null;
 
   private readonly app = new Application();
   private viewport: Viewport | null = null;
@@ -841,6 +860,13 @@ export class MapRenderer {
   /** GM-layer drawings — above the fog, next to the note pins. */
   private readonly gmDrawLayer = new Container();
   private readonly drawNodes = new Map<number, Container>();
+  /**
+   * Czym namalowano węzeł rysunku — kształt, styl i warstwa w jednym napisie
+   * (etap 27l). Porównanie napisów zamiast pola po polu, bo kształtów jest
+   * cztery i każdy ma inne pola; koszt to jedno `JSON.stringify` na rysunek
+   * przy zdarzeniu, a zdarzenia przychodzą tylko wtedy, gdy ktoś coś zmienił.
+   */
+  private readonly drawSignatures = new Map<number, string>();
   /** The gesture in progress; never leaves the renderer until it is finished. */
   private readonly drawPreview = new Graphics();
   /**
@@ -1016,7 +1042,7 @@ export class MapRenderer {
   private lastGlows: RenderGlow[] = [];
   private lastLights: LightMarker[] = [];
   /** Wall tool settings; `armed` decides whether a click traces or erases. */
-  private wall: WallSettings = { armed: false, mode: 'draw', kind: 'wall', snapGrid: true };
+  private wall: WallSettings = { armed: false, kind: 'wall', snapGrid: true };
   /** The chain being traced: confirmed points plus the one under the pointer. */
   private wallPoints: ScenePoint[] | null = null;
   private wallCursor: ScenePoint | null = null;
@@ -1072,6 +1098,25 @@ export class MapRenderer {
    * zapada dopiero przy puszczeniu przycisku (patrz `tapPick`).
    */
   private dragPick: { ref: SceneObjectRef; at: ScenePoint } | null = null;
+  /**
+   * Trwające przeciąganie uchwytu zaznaczonego obiektu (etap 27l).
+   *
+   * `base` to kształt sprzed gestu, `current` to jego podgląd — obrys idzie za
+   * kursorem, a obiekt przeskakuje dopiero na puszczenie przycisku. Podgląd
+   * zamiast ruchu na żywo z tego samego powodu, dla którego trasa figury jest
+   * podglądem: przesunięcie ściany o piksel to przeliczenie widoczności całej
+   * sceny na serwerze, więc dwadzieścia razy na sekundę byłoby dwadzieścia
+   * razy za dużo.
+   */
+  private sceneDrag: {
+    ref: SceneObjectRef;
+    handle: SceneHandleId;
+    origin: ScenePoint;
+    base: SceneObjectShape;
+    current: SceneObjectShape;
+    /** Rysunki wolno przesuwać, ale nie skalować — ścieżki nie da się rozciągnąć. */
+    moveOnly: boolean;
+  } | null = null;
   /**
    * The tools whose click is answered on `pointerdown` and ends in a `return`
    * there — walls, lamps, sockets, covers and zones. `viewport` still emits
@@ -1660,9 +1705,7 @@ export class MapRenderer {
         : this.draw.armed
           ? 'crosshair'
           : this.wall.armed
-            ? this.wall.mode === 'draw'
-              ? 'crosshair'
-              : 'pointer'
+            ? 'crosshair'
             : this.cover.armed
               ? 'crosshair'
               : this.zone.armed
@@ -1762,10 +1805,16 @@ export class MapRenderer {
   }
 
   /**
-   * Reconciles the drawing layers with the store (diff by id). A drawing is
-   * immutable once stored — there is no `drawing:update` — so a node that
-   * already exists never has to be repainted, which keeps a scene with a few
-   * hundred sketches free of per-frame work.
+   * Reconciles the drawing layers with the store (diff by id).
+   *
+   * Do 27l rysunek był **niezmienny** — nie istniało `drawing:update` — więc
+   * węzeł raz namalowany nigdy nie musiał się przemalować i wystarczyło pytać
+   * o samo id. Karta rysunku to zmieniła: kolor, grubość, treść etykiety i
+   * **warstwa** dają się teraz zmienić po fakcie, a poprawiona literówka
+   * zostawała na mapie w starym brzmieniu (błąd znaleziony przy oględzinach
+   * 24.08). Stąd odcisk: gdy się różni, węzeł powstaje od nowa — co przy okazji
+   * jest jedynym poprawnym sposobem na przeniesienie go między warstwą MG
+   * a wspólną, bo to jest zmiana rodzica, a nie właściwości.
    */
   setDrawings(drawings: DrawingView[]): void {
     if (this.destroyed) return;
@@ -1777,7 +1826,14 @@ export class MapRenderer {
 
     for (const drawing of drawings) {
       seen.add(drawing.id);
-      if (this.drawNodes.has(drawing.id)) continue;
+      const signature = drawingSignature(drawing);
+      const existing = this.drawNodes.get(drawing.id);
+      if (existing) {
+        if (this.drawSignatures.get(drawing.id) === signature) continue;
+        this.drawNodes.delete(drawing.id);
+        existing.destroy({ children: true });
+      }
+      this.drawSignatures.set(drawing.id, signature);
       const layer = drawing.gmOnly ? this.gmDrawLayer : this.drawLayer;
       let node: Container;
       if (drawing.shape.kind === 'text') {
@@ -1799,8 +1855,10 @@ export class MapRenderer {
     for (const [id, node] of this.drawNodes) {
       if (seen.has(id)) continue;
       this.drawNodes.delete(id);
+      this.drawSignatures.delete(id);
       node.destroy({ children: true });
     }
+    this.refreshSceneSelectOutline('drawing');
   }
 
   /**
@@ -1833,6 +1891,11 @@ export class MapRenderer {
       // the brush, and the knob is a handle on the selection, not a tool of
       // its own.
       if (!this.mapToolArmed && this.grabFacingKnob(world)) return;
+
+      // Uchwyty zaznaczonego obiektu (27l) wyprzedzają wszystkie narzędzia:
+      // klik zaznaczył, więc drugi gest **z niego** znaczy „przesuń to", a nie
+      // „narysuj obok". Rozstrzygnięcie MG z 24.08.
+      if (this.grabSceneHandle(point)) return;
 
       if (this.fogBrush.armed) {
         if (this.fogBrush.shape === 'brush') {
@@ -1909,7 +1972,7 @@ export class MapRenderer {
         // łańcucha dokładnie na rogu istniejącego muru. Trwający łańcuch ma
         // pierwszeństwo nad jednym i drugim: raz zaczętego obrysu pokoju nie
         // przerywa się zaznaczeniem.
-        if (this.wall.mode === 'draw' && !this.wallPoints) {
+        if (!this.wallPoints) {
           const onEndpoint = wallEndpointNear(this.lastWalls, point) !== null;
           if (!onEndpoint) {
             const hit = this.pickOnArmedLayer(point);
@@ -1918,16 +1981,6 @@ export class MapRenderer {
               return;
             }
           }
-        }
-        if (this.wall.mode === 'lock') {
-          // Like the eraser, this reports where the click landed and lets the
-          // caller pick the segment — it holds the wall list already.
-          this.onWallLock?.(point.x, point.y);
-          return;
-        }
-        if (this.wall.mode === 'share') {
-          this.onWallShare?.(point.x, point.y);
-          return;
         }
         // Walls are traced click by click, not dragged: a floor plan is a
         // sequence of corners, and holding the button down for twenty metres
@@ -2005,11 +2058,19 @@ export class MapRenderer {
       // …and the explosion template follows it in the same breath, for the same
       // reason: with a grenade in hand it *is* what the map looks like.
       this.trackAreaHover(point);
+      // Przeciąganie uchwytu wyprzedza wszystko poniżej (27l): to jest gest,
+      // a nie stan mapy, i trwa aż do puszczenia przycisku.
+      if (this.sceneDrag) {
+        this.moveSceneHandle(point, event.ctrlKey || event.metaKey);
+        return;
+      }
+
       // Obrys pod kursorem na uzbrojonej warstwie (27k). Tylko poza trwającym
       // gestem: w połowie ciągnięcia prostokąta pytanie „co tu leży" nie ma
       // adresata, a pickowanie na każdym `pointermove` kosztowałoby za darmo.
       if (!this.gestureInFlight()) {
         this.setSceneHover(this.armedLayerKind() ? this.pickOnArmedLayer(point) : null);
+        this.applyHandleCursor(point);
       }
 
       if (this.fogStroke) {
@@ -2077,6 +2138,12 @@ export class MapRenderer {
     });
 
     const end = () => {
+      // Uchwyt puszczony (27l) — przed wszystkimi gestami rysowania, bo żaden
+      // z nich nie mógł się zacząć: chwyt uchwytu kończy `pointerdown`.
+      if (this.sceneDrag) {
+        this.releaseSceneHandle();
+        return;
+      }
       if (this.coverRectStart) {
         const rect = this.coverGestureRect();
         const at = this.coverRectEnd;
@@ -2394,9 +2461,7 @@ export class MapRenderer {
    * scenerii pod wskaźnikiem odbierałaby ten klik w połowie sesji walki.
    */
   private armedLayerKind(): SceneObjectKind | null {
-    // Tryby `lock` i `share` **nie** zaznaczają: tam klik znaczy „przekręć
-    // rygiel" i „oddaj graczom", a obrys pod kursorem obiecywałby coś innego.
-    if (this.wall.armed) return this.wall.mode === 'draw' ? 'wall' : null;
+    if (this.wall.armed) return 'wall';
     if (this.cover.armed) return 'cover';
     if (this.zone.armed) return 'zone';
     if (this.light.armed) return 'light';
@@ -2536,8 +2601,276 @@ export class MapRenderer {
       this.strokeSceneObject(g, this.sceneHovered, 0xd6f5ff, 2 * k, 0.55, 4 * k);
     }
     if (this.sceneSelected) {
-      this.strokeSceneObject(g, this.sceneSelected, 0xffd166, 3 * k, 0.95, 6 * k);
+      // W trakcie przeciągania obrys pokazuje **cel**, nie stan zapisany:
+      // to jest jedyna informacja zwrotna, jaką gest ma przed puszczeniem.
+      const drag = this.sceneDrag;
+      if (drag && sameRef(drag.ref, this.sceneSelected)) {
+        this.strokeSceneShape(g, drag.current, 0xffd166, 3 * k, 0.95, 6 * k, drag.ref.kind);
+      } else {
+        this.strokeSceneObject(g, this.sceneSelected, 0xffd166, 3 * k, 0.95, 6 * k);
+      }
+      this.drawSceneHandles(g, k);
     }
+  }
+
+  /**
+   * Kwadraciki w rogach prostokąta i na końcach odcinka (etap 27l).
+   *
+   * Obiekty punktowe i rysunki ich nie dostają: lampa nie ma czego skalować,
+   * a rysunek jest w prostokąt tylko **wpisany** — kwadracik w jego rogu
+   * obiecywałby rozciąganie, którego nie ma. Jedno i drugie przesuwa się
+   * chwytając samo siebie.
+   */
+  private drawSceneHandles(g: Graphics, k: number): void {
+    const ref = this.sceneSelected;
+    if (!ref) return;
+    const drag = this.sceneDrag;
+    const found =
+      drag && sameRef(drag.ref, ref)
+        ? { shape: drag.current, moveOnly: drag.moveOnly }
+        : this.sceneShapeOf(ref);
+    if (!found || found.moveOnly) return;
+    const side = SCENE_HANDLE_SIZE_PX * k;
+    for (const handle of sceneHandlesOf(found.shape)) {
+      g.rect(handle.x - side / 2, handle.y - side / 2, side, side)
+        .fill({ color: 0x0b1220, alpha: 0.9 })
+        .stroke({ color: 0xffd166, width: 2 * k, alpha: 0.95 });
+    }
+  }
+
+  /** Obrys dowolnego z trzech kształtów — używany przez podgląd przeciągania. */
+  private strokeSceneShape(
+    g: Graphics,
+    shape: SceneObjectShape,
+    color: number,
+    width: number,
+    alpha: number,
+    pad: number,
+    kind: SceneObjectKind,
+  ): void {
+    const stroke = { color, width, alpha };
+    if (shape.form === 'segment') {
+      g.moveTo(shape.x1, shape.y1)
+        .lineTo(shape.x2, shape.y2)
+        .stroke({ ...stroke, width: width * 2 });
+      for (const end of [
+        { x: shape.x1, y: shape.y1 },
+        { x: shape.x2, y: shape.y2 },
+      ]) {
+        g.circle(end.x, end.y, pad * 0.7).fill({ color, alpha });
+      }
+      return;
+    }
+    if (shape.form === 'point') {
+      // Pinezka ma kotwicę u dołu, więc jej obrys siedzi wyżej niż punkt —
+      // ta sama poprawka, którą ma `strokeSceneObject`. Bez niej kółko
+      // przeskakiwałoby o własną wysokość w chwili złapania uchwytu.
+      const dy = kind === 'note' ? pad * 1.4 : 0;
+      g.circle(shape.x, shape.y - dy, pad * 2.2).stroke(stroke);
+      return;
+    }
+    g.rect(shape.x - pad, shape.y - pad, shape.width + pad * 2, shape.height + pad * 2).stroke(
+      stroke,
+    );
+  }
+
+  /**
+   * Geometria zaznaczonego obiektu sprowadzona do trzech kształtów (etap 27l).
+   *
+   * `moveOnly` odróżnia rysunek od osłony: prostokąt osłony da się rozciągnąć
+   * za róg, a rysunek jest tylko **wpisany** w prostokąt — jego rogi nie są
+   * niczyimi uchwytami, bo skalowanie ścieżki to inna operacja niż przesunięcie
+   * jej ramki (i osobny pomysł, nie ten etap).
+   */
+  private sceneShapeOf(ref: SceneObjectRef): { shape: SceneObjectShape; moveOnly: boolean } | null {
+    switch (ref.kind) {
+      case 'wall': {
+        const wall = this.lastWalls.find((entry) => entry.id === ref.id);
+        return wall
+          ? {
+              shape: { form: 'segment', x1: wall.x1, y1: wall.y1, x2: wall.x2, y2: wall.y2 },
+              moveOnly: false,
+            }
+          : null;
+      }
+      case 'cover': {
+        const cover = this.lastCovers.find((entry) => entry.id === ref.id);
+        return cover
+          ? {
+              shape: {
+                form: 'rect',
+                x: cover.x,
+                y: cover.y,
+                width: cover.width,
+                height: cover.height,
+              },
+              moveOnly: false,
+            }
+          : null;
+      }
+      case 'zone': {
+        const zone = this.lastZones.find((entry) => entry.id === ref.id);
+        return zone
+          ? {
+              shape: { form: 'rect', x: zone.x, y: zone.y, width: zone.width, height: zone.height },
+              moveOnly: false,
+            }
+          : null;
+      }
+      case 'light': {
+        const light = this.lastLights.find((entry) => entry.id === ref.id);
+        return light ? { shape: { form: 'point', x: light.x, y: light.y }, moveOnly: true } : null;
+      }
+      case 'netpoint': {
+        const point = this.lastAccessPoints.find((entry) => entry.id === ref.id);
+        return point ? { shape: { form: 'point', x: point.x, y: point.y }, moveOnly: true } : null;
+      }
+      case 'note': {
+        const note = this.lastNotes.find((entry) => entry.id === ref.id);
+        return note ? { shape: { form: 'point', x: note.x, y: note.y }, moveOnly: true } : null;
+      }
+      case 'drawing': {
+        const drawing = this.lastDrawings.find((entry) => entry.id === ref.id);
+        if (!drawing) return null;
+        const box = drawingBounds(drawing.shape);
+        return {
+          shape: { form: 'rect', x: box.x, y: box.y, width: box.width, height: box.height },
+          moveOnly: true,
+        };
+      }
+    }
+  }
+
+  /**
+   * Kursor mówi, że coś da się złapać — jedyna podpowiedź, jaką uchwyt ma
+   * przed pierwszym przeciągnięciem. Bez wpisu zostawia kursor warstwy, którym
+   * zajmuje się `applyMapCursor`.
+   */
+  private applyHandleCursor(point: ScenePoint): void {
+    const ref = this.sceneSelected;
+    const canvas = this.app.canvas as HTMLCanvasElement | undefined;
+    if (!canvas) return;
+    if (!ref || this.armedLayerKind() !== ref.kind) return;
+    const found = this.sceneShapeOf(ref);
+    if (!found) return;
+    const handle = pickSceneHandle(found.shape, point, this.handleTolerance());
+    if (!handle || (found.moveOnly && handle !== 'move')) {
+      this.applyMapCursor();
+      return;
+    }
+    canvas.style.cursor = sceneHandleCursor(handle);
+  }
+
+  /**
+   * Obiekt spod obrysu się zmienił — przerysuj obrys i uchwyty (etap 27l).
+   *
+   * Wołane z każdego settera list obiektów, bo obrys nie jest kopiowany: rysuje
+   * się z **bieżącej** geometrii. Bez tego przesunięta ściana zostawiała żółty
+   * ślad tam, gdzie stała przed chwilą — pierwszy błąd znaleziony przy
+   * oględzinach 24.08. Redraw kosztuje jedną ścieżkę `Graphics`, a listy
+   * przychodzą tylko wtedy, gdy MG coś zmienił.
+   */
+  private refreshSceneSelectOutline(kind: SceneObjectKind): void {
+    if (this.sceneSelected?.kind !== kind && this.sceneHovered?.kind !== kind) return;
+    this.drawSceneSelectOutline();
+  }
+
+  /** Promień trafienia w uchwyt w pikselach **sceny** — stały na ekranie. */
+  private handleTolerance(): number {
+    return SCENE_HANDLE_SIZE_PX * this.overlayScale();
+  }
+
+  /**
+   * Czy ten `pointerdown` złapał uchwyt zaznaczonego obiektu?
+   *
+   * Uchwyty należą do warstwy, tak samo jak zaznaczenie (27k): narzędzie
+   * świateł nie przesunie osłony, choćby leżała pod kursorem. Trwający łańcuch
+   * ścian wygrywa z uchwytami — raz zaczętego obrysu pokoju nie przerywa się
+   * przesunięciem sąsiedniego muru.
+   */
+  private grabSceneHandle(point: ScenePoint): boolean {
+    const ref = this.sceneSelected;
+    if (!ref || this.wallPoints) return false;
+    if (this.armedLayerKind() !== ref.kind) return false;
+    const found = this.sceneShapeOf(ref);
+    if (!found) return false;
+    const handle = pickSceneHandle(found.shape, point, this.handleTolerance());
+    if (!handle) return false;
+    if (found.moveOnly && handle !== 'move') return false;
+    this.sceneDrag = {
+      ref,
+      handle,
+      origin: point,
+      base: found.shape,
+      current: found.shape,
+      moveOnly: found.moveOnly,
+    };
+    this.viewport?.plugins.pause('drag');
+    return true;
+  }
+
+  /**
+   * Dokąd trafi przeciągany punkt. Przyciąganie do kratki jest domyślne,
+   * `Ctrl` je wyłącza na czas gestu (rozstrzygnięcie MG z 24.08) — a końcówka
+   * ściany łapie **końcówki innych ścian** przed kratką, dokładnie tak jak
+   * przy rysowaniu, bo szczelina między dwoma murami jest dziurą, przez którą
+   * leje się światło.
+   */
+  private snapForDrag(ref: SceneObjectRef, precise: boolean): (point: ScenePoint) => ScenePoint {
+    const scene = this.scene;
+    const grid = scene
+      ? { sizePx: scene.grid.sizePx, offsetX: scene.grid.offsetX, offsetY: scene.grid.offsetY }
+      : null;
+    if (ref.kind === 'wall') {
+      const others = this.lastWalls.filter((wall) => wall.id !== ref.id);
+      // Przełącznik „przyciągaj do kratki" z paska nadal obowiązuje — tak jak
+      // przy rysowaniu, gdzie jego opis obiecuje „końce ścian nadal łapią".
+      const useGrid = this.wall.snapGrid && !precise;
+      return (point) =>
+        snapWallPoint(point, others, {
+          gridSizePx: useGrid ? (grid?.sizePx ?? null) : null,
+          gridOffsetX: grid?.offsetX,
+          gridOffsetY: grid?.offsetY,
+        });
+    }
+    if (precise) return (point) => ({ x: Math.round(point.x), y: Math.round(point.y) });
+    return (point) => snapScenePoint(point, grid);
+  }
+
+  /** Uchwyt jedzie za kursorem; obiekt stoi, dopóki nie puścimy przycisku. */
+  private moveSceneHandle(point: ScenePoint, precise: boolean): void {
+    const drag = this.sceneDrag;
+    if (!drag) return;
+    drag.current = dragSceneShape(drag.base, drag.handle, point, {
+      origin: drag.origin,
+      snap: this.snapForDrag(drag.ref, precise),
+    });
+    this.drawSceneSelectOutline();
+  }
+
+  /**
+   * Koniec gestu. Ruch idzie do wywołującego; **gest bez ruchu wraca jako
+   * zwykłe kliknięcie** i to jest tu najważniejsze zdanie.
+   *
+   * Uchwyt „przesuń" pokrywa cały zaznaczony obiekt, więc drugie kliknięcie
+   * dwukliku ląduje na nim, a nie na warstwie. Bez tego przejścia karta nie
+   * otwierałaby się nigdy na obiekcie, który jest już zaznaczony — czyli
+   * dokładnie na tym, w który MG właśnie kliknął (znalezione przy oględzinach
+   * 24.08).
+   */
+  private releaseSceneHandle(): void {
+    const drag = this.sceneDrag;
+    if (!drag) return;
+    this.sceneDrag = null;
+    this.viewport?.plugins.resume('drag');
+    this.drawSceneSelectOutline();
+    this.applyMapCursor();
+    if (JSON.stringify(drag.base) === JSON.stringify(drag.current)) {
+      this.takeScenePick(drag.ref);
+      return;
+    }
+    this.onSceneTransform?.(drag.ref, drag.current);
+    this.layerPickSpent = true;
   }
 
   /** Rysuje obrys jednego obiektu — kształt zależy od tego, czym obiekt jest. */
@@ -4081,6 +4414,7 @@ export class MapRenderer {
     if (this.destroyed) return;
     this.lastZones = zones;
     this.drawZoneLayer();
+    this.refreshSceneSelectOutline('zone');
   }
 
   private drawZoneLayer(): void {
@@ -4170,6 +4504,7 @@ export class MapRenderer {
     if (this.destroyed) return;
     this.lastCovers = covers;
     this.drawCoverLayer();
+    this.refreshSceneSelectOutline('cover');
   }
 
   private drawCoverLayer(): void {
@@ -4307,14 +4642,13 @@ export class MapRenderer {
    * Arms or disarms the wall tool. Like every other map tool it takes the left
    * button off the viewport — a drag has to mean one thing at a time.
    */
-  setWallMode(settings: WallSettings): void {
-    const wasDrawing = this.wall.armed && this.wall.mode === 'draw';
+  setWallTool(settings: WallSettings): void {
+    const wasArmed = this.wall.armed;
     this.wall = settings;
-    // Leaving the pencil drops the chain being traced, whether the tool was put
-    // away or merely switched to the eraser or the bolt. Half a wall left hanging
-    // while the next click means something else also leaves the map un-draggable,
-    // because tracing pauses the drag plugin.
-    if (wasDrawing && !(settings.armed && settings.mode === 'draw')) this.cancelWallChain();
+    // Putting the tool away drops the chain being traced. Half a wall left
+    // hanging while the next click means something else also leaves the map
+    // un-draggable, because tracing pauses the drag plugin.
+    if (wasArmed && !settings.armed) this.cancelWallChain();
     this.drawWallLayer();
     this.applyMapCursor();
   }
@@ -4370,6 +4704,7 @@ export class MapRenderer {
     this.lastWalls = walls;
     this.lastOpenings = openings;
     this.drawWallLayer();
+    this.refreshSceneSelectOutline('wall');
   }
 
   private drawWallLayer(): void {
@@ -4467,9 +4802,10 @@ export class MapRenderer {
         node.cursor = 'pointer';
         node.on('pointerdown', (event: FederatedPointerEvent) => {
           if (event.button !== 0) return;
-          // The eraser and the bolt both have to reach the segment under the
-          // glyph, so they keep the click while they are armed.
-          if (this.wall.armed && this.wall.mode !== 'draw') return;
+          // Przy uzbrojonym narzędziu ścian klik należy do warstwy (27k):
+          // pierwszy zaznacza segment, dwuklik otwiera jego kartę. Klamka
+          // działa wtedy, gdy narzędzie jest odłożone — tak jak przy stole.
+          if (this.wall.armed) return;
           event.stopPropagation();
           this.onOpeningToggle?.(opening.id);
         });
@@ -4925,6 +5261,7 @@ export class MapRenderer {
       this.lightNodes.delete(id);
       node.destroy({ children: true });
     }
+    this.refreshSceneSelectOutline('light');
   }
 
   /**
@@ -5044,6 +5381,7 @@ export class MapRenderer {
       this.netPointNodes.delete(id);
       node.destroy({ children: true });
     }
+    this.refreshSceneSelectOutline('netpoint');
   }
 
   /** Draws the GM's note pins. Players never receive notes, so this stays empty. */
@@ -5090,6 +5428,7 @@ export class MapRenderer {
       this.noteNodes.delete(id);
       node.destroy({ children: true });
     }
+    this.refreshSceneSelectOutline('note');
   }
 
   /** Re-renders the overlays at the current zoom (labels are screen-sized). */

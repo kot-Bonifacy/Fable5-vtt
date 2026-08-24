@@ -11,34 +11,26 @@ import { pickZoneAt } from '@vtt/shared';
  * zauważone przez jego postać, więc klient nie ma czego ukrywać i niczego nie
  * filtruje.
  *
- * `editingZoneId` działa jak `editingPointId` w `netRunStore` z 26b: klik
- * w prostokąt otwiera kartę MG, a nie okno modalne.
+ * Która strefa jest otwarta na karcie, **nie jest** tutaj od 27l: to jest stan
+ * karty, wspólny dla siedmiu rodzajów obiektów sceny, więc mieszka
+ * w `sceneCardStore`. Ten store trzyma same dane.
  */
 interface ZoneStoreState {
   /** Rosnąco po id — to jest kolejność malowania i kolejność klikania. */
   zones: DefenseZoneView[];
-  /** Strefa otwarta na karcie MG; null = karta zamknięta. */
-  editingZoneId: number | null;
 
   applySync: (payload: StateSyncPayload) => void;
   setZones: (sceneId: string, zones: DefenseZoneView[]) => void;
-  editZone: (zoneId: number | null) => void;
 }
 
 export const useZoneStore = create<ZoneStoreState>((set) => ({
   zones: [],
-  editingZoneId: null,
 
   applySync: (payload) => set({ zones: payload.zones }),
-  setZones: (_sceneId, zones) =>
-    set((state) => ({
-      zones,
-      // Karta otwarta na strefie, którą MG właśnie skasował, zamyka się sama.
-      editingZoneId: zones.some((zone) => zone.id === state.editingZoneId)
-        ? state.editingZoneId
-        : null,
-    })),
-  editZone: (editingZoneId) => set({ editingZoneId }),
+  // Karta otwarta na strefie, którą MG właśnie skasował, zamyka się sama —
+  // pilnuje tego `SceneObjectCard`, bo obiekt znika spod niej tak samo
+  // w każdym z siedmiu store'ów.
+  setZones: (_sceneId, zones) => set({ zones }),
 }));
 
 /** Strefa pod punktem, od wierzchu; null, gdy klik trafił w czyste podłoże. */
