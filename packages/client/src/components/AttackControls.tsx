@@ -32,12 +32,38 @@ export function AttackRow({
     weaponRowId?: string;
     weaponName?: string;
     dvSource?: string;
+    attackerTokenId?: string;
   };
 
   /** The sheet that fired — needed to roll its weapon's damage. */
-  const attacker = Object.values(characters).find((character) =>
+  const attackerSheet = Object.values(characters).find((character) =>
     character.data.weapons.some((weapon) => weapon.id === system.weaponRowId),
   );
+
+  /**
+   * Figura bez karty też zadaje obrażenia (zaległość z 23.08).
+   *
+   * Statysta strzela z własnego profilu od etapu 16b, ale atakującego szukało
+   * się wyłącznie wśród **kart postaci** — więc jego karta ataku pokazywała
+   * trafienie i nikogo nie raniła, a MG odejmował PW ręcznie skrótami ±5.
+   * To ta sama luka, którą 22.08 zamknięto po stronie obrony (`statistDefender`
+   * niżej); rzut idzie profilem, z którego policzone były same obrażenia, więc
+   * broń, która wystrzeliła, i broń, która rani, nie mają jak się rozjechać.
+   */
+  const attackerToken = system.attackerTokenId ? tokens[system.attackerTokenId] : undefined;
+  const statistAttacker =
+    !attackerSheet && attackerToken && !attackerToken.characterId && attackerToken.combatProfile
+      ? isGm || (user?.id !== undefined && attackerToken.ownerId === user.id)
+        ? attackerToken
+        : undefined
+      : undefined;
+
+  /** Whoever the damage roll is loaded for: a sheet, or a figure without one. */
+  const shooter = attackerSheet
+    ? { name: attackerSheet.name, address: { characterId: attackerSheet.id } }
+    : statistAttacker
+      ? { name: statistAttacker.name, address: { attackerTokenId: statistAttacker.id } }
+      : undefined;
 
   /**
    * The defender's sheet, if this viewer may act for it. A player sees only
@@ -64,10 +90,10 @@ export function AttackRow({
       : undefined;
 
   function rollDamage() {
-    if (!attacker || !system.weaponRowId) return;
+    if (!shooter || !system.weaponRowId) return;
     useRollStore.getState().loadCup({
-      characterId: attacker.id,
-      characterName: attacker.name,
+      ...shooter.address,
+      characterName: shooter.name,
       kind: 'damage',
       weaponRowId: system.weaponRowId,
       // The server reads notation, multiplier, location and target off the
@@ -116,12 +142,12 @@ export function AttackRow({
    * about the shot can drift between the two rolls.
    */
   function rollSmart() {
-    if (!attacker || !attack.smart) return;
+    if (!attackerSheet || !attack.smart) return;
     useRollStore.getState().loadEvasionCup({
       kind: 'smart',
       messageId: message.id,
-      characterId: attacker.id,
-      characterName: attacker.name,
+      characterId: attackerSheet.id,
+      characterName: attackerSheet.name,
       title: `Poprawka naboju: +${attack.smart.bonus}`,
       modifierTotal: attack.smart.bonus,
     });
@@ -214,7 +240,7 @@ export function AttackRow({
       )}
 
       <div className="chat-attack-actions">
-        {(attack.hit || attack.area) && attacker && (
+        {(attack.hit || attack.area) && shooter && (
           <button
             type="button"
             className="small-button"
@@ -246,7 +272,7 @@ export function AttackRow({
           (stage 16h). Only the shooter sees it, because only their sheet may
           spend the Luck the second roll allows.
         */}
-        {attack.smart && attacker && (
+        {attack.smart && attackerSheet && (
           <button
             type="button"
             className="small-button"

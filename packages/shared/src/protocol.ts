@@ -245,7 +245,18 @@ export interface ChatSendPayload {
  * core protocol only carries it; the server's system module validates it.
  */
 export interface CharacterRollPayload<TRequest = unknown> {
-  characterId: string;
+  /**
+   * Sheet making the roll. Omitted for a statist (stage 16b) — a figure with no
+   * sheet, rolling from the combat profile stored on its token. `attackerTokenId`
+   * is then required, because there is nothing else to look the roller up by.
+   */
+  characterId?: string;
+  /**
+   * Token rolling instead of a sheet. Read only when `characterId` is absent,
+   * and only a damage roll may arrive this way: every other Check a statist
+   * makes has an event of its own (`attack:roll`, `attack:evade`).
+   */
+  attackerTokenId?: string;
   request: TRequest;
   /** `gm` = result visible to the author and the GM only (whisper pattern). */
   visibility: 'public' | 'gm';

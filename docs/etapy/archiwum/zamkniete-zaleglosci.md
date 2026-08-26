@@ -9,6 +9,90 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Przeniesione 2026-08-26 (pakiet P1 — karta ataku i obrażeń)
+
+Jedna naprawa i pięć ścieżek zamkniętych testem. Treść pozycji zostawiona bez zmian; pod
+każdą, wcięte, to, co naprawdę ją zamknęło.
+
+- **🐞 BŁĄD — statysta trafia, ale nie ma czym zadać obrażeń (znalezione 23.08).**
+  `AttackControls.tsx:38` szuka atakującego wyłącznie wśród **kart postaci**
+  (`characters.find(c => c.data.weapons.some(w => w.id === weaponRowId))`), a przycisk
+  „Obrażenia" wisi na warunku `(attack.hit || attack.area) && attacker`. Figura z **profilem
+  bojowym** (statysta bez karty — na Poligonie „Zbir", na scenie testowej „Strzelec 23x") nie
+  ma takiej karty, więc jej karta ataku pokazuje trafienie i listę objętych obszarem, ale
+  **żadnego rzutu na obrażenia**; MG musi liczyć ręcznie i wpisywać PW skrótami ±5 z menu
+  żetonu. To ta sama luka, którą 22.08 zamknięto po stronie **obrony** (`statistDefender`
+  w tym samym pliku, komentarz „Figura bez karty też się uchyla") — strona atakująca została
+  nietknięta.
+
+  **Naprawione 26.08.** Diagnoza z pozycji była trafna, ale niepełna: **brakowało adresu**.
+  Karta ataku nie niosła żadnego wskazania na strzelca — `CpredAttackMeta` miała
+  `targetTokenId`, nie miała `attackerTokenId` — więc klient nie miał czego szukać, gdy szukanie
+  po wierszu broni zawodziło. Naprawa w czterech miejscach, wzorcem `statistDefender`:
+  (1) `CpredAttackMeta.attackerTokenId` w `shared`, wypełniane **na serwerze** w `buildAttackMeta`
+  (obie gałęzie: zwykła i ogień zaporowy) — jak każdy inny adres na tej karcie;
+  (2) `CharacterRollPayload.characterId` stało się opcjonalne, a obok stanął `attackerTokenId`
+  — dokładnie tak, jak wygląda `AttackRollPayload` od 16b;
+  (3) `performCharacterRoll` dostał `RollSource` (`character` | `statist`) w kształcie
+  `AttackSource` z `attacks.ts`: statysta wchodzi z `sheetFromCombatProfile`, a trzy miejsca,
+  które **piszą** (Szczęście, Test Przeżywalności, Ustabilizowanie), pytają, którą to gałęzią;
+  statysta rzuca **wyłącznie** na obrażenia (`STATIST_CANNOT_ROLL_THIS`), bo wszystko inne ma
+  własne zdarzenie;
+  (4) `AttackControls` szuka strzelca najpierw wśród kart, potem wśród żetonów z profilem —
+  z tym samym sprawdzeniem właściciela, co obrona.
+  **Serwer nie wymagał niczego więcej:** `resolveRollRequest` czytał notację, mnożnik, lokację
+  i cel ze **zapisanego ataku** już wcześniej, więc karta atakującego nie była mu do niczego
+  potrzebna — blokował wyłącznie klient.
+  Przy okazji `tokenHpOf` z `attacks.ts` przeniesione do `sheets.ts` jako `sheetTokenHp`
+  (czwarta kopia reguły „figura bez paska ma 1/1" byłaby o jedną za dużo).
+  **Siedem testów serwera** w `attacks.test.ts` („damage from a figure that has no sheet"):
+  żeton na karcie, rzut bez karty postaci, „Zastosuj" schodzące z PW, odmowa rzutu innego niż
+  obrażenia, żeton bez profilu, cudzy statysta u gracza.
+  **Odklikane 26.08** na scenie „Efekty 23x": „Strzelec 23x" rzucił Granatnikiem w „Cel 23x"
+  (21 vs PT 17, obszar 10×10 m), karta pokazała **„Obrażenia 6k6"**, kubek wrócił kartą
+  **„Strzelec 23x — Granatnik — obrażenia (Korpus) · 6d6 = 23 · Rana krytyczna!"**,
+  a „Zastosuj wszystkim (1)" zdjęło **PW 33 → 11** i pancerz OB 6 → 5. „Cofnij" przywróciło
+  jedno i drugie. Stara karta z 21:24 leży na czacie tuż nad nową i nadal ma sam „Unik" —
+  różnicę widać w jednym oknie.
+
+- **Etap 16d — odklikany poza jednym punktem.** Zostaje „zasłonięty: Samochód" na liście
+  trafionych obszarem — wymaga granatu i figury za osłoną.
+
+  **Zamknięte 26.08 testem** (kryterium MG z tej sesji: test pokrywający ścieżkę wystarczy).
+  `server/areas.test.ts` sprawdza dokładnie ten wiersz na żywych gniazdach:
+  `expect(hider?.spared).toBe('cover')` i `expect(hider?.sparedBy).toBe('Samochód')`.
+
+- **Etap 16g — odklikany 08.08 poza dwoma punktami.** Zostają: (6) linia „pancerz −2" na
+  karcie obrażeń i (7) **Podpalony** po amunicji zapalającej wraz z „Cofnij" gaszącym status.
+
+  **Zamknięte 26.08 testami.** (6) `server/ammo.test.ts` — `entry.ammo?.notes` na karcie
+  obrażeń zawiera „pancerz −2", a `shared/systems/cpred/ammo.test.ts` pilnuje samego zdania
+  („names the extra point of ablation rather than hiding it"). (7) `server/ammo.test.ts`,
+  „an incendiary round sets the target alight at its own intensity": status `on-fire` ląduje
+  na żetonie, karta mówi „Podpalony", a `damage:undo` ogień gasi — cały wariant z „Cofnij".
+
+- **Etap 16h — odklikany 08.08 poza jednym punktem.** Zostaje wyłącznie chip „na minutę — do
+  rundy N" **na karcie postaci** (na karcie obrażeń jest).
+
+  **Zamknięte 26.08 nowym testem.** Chip rysuje `describeCpredTimer(injury.timed)`
+  (`CharacterSheet.tsx`), więc jedyne, czego brakowało, to dowód, że **wiersz rany na karcie
+  postaci** w ogóle niesie `timed` — bez tego pola komponent nie ma czego narysować.
+  `server/ammo-effects.test.ts`, „writes the timer onto the sheet's injury row — the chip's
+  only source": w rundzie 1 nabój z `durationS: 60` kładzie ranę na kartę, a wiersz wraca
+  z `expiresAtRound: 7` i napisem **„na minutę — do rundy 7"** — tą samą funkcją, którą woła
+  klient.
+
+- **Etap 14d — została odmowa Uniku Ludzkiej tarczy**: zostaje `SHIELD_CANNOT_DODGE`
+  („Ludzka tarcza nie może unikać ataków dystansowych") — wymaga **trzeciej figury na scenie**:
+  ktoś musi strzelić do trzymającego, żeby tarcza w ogóle dostała przycisk „Unik".
+
+  **Zamknięte 26.08 — okazało się pokryte z obu stron.** `server/grapple.test.ts` ma trzy
+  figury i obie połowy mechanizmu: „stops a bullet aimed at whoever is holding the shield"
+  (strzał w trzymającego wraca `blocked: { kind: 'shield' }` i nazywa tarczę) oraz „forbids
+  a Ludzka tarcza to dodge an incoming bullet" (`attack:evade` na tarczy → `SHIELD_CANNOT_DODGE`).
+  Odmowa nie zależy od tego, **kto** strzela — `attack:evade` czyta stan zwarcia celu — więc
+  trzecia figura zmienia drogę do przycisku, nie sprawdzaną gałąź.
+
 ## Przeniesione 2026-08-23 (etap 27k — edycja sceny)
 
 Wszystkie trzy poniższe zamknął etap 27k razem z przepisaniem gramatyki kasowania. Treść

@@ -23,6 +23,7 @@ import type {
   StateSyncPayload,
   TokenView,
 } from '@vtt/shared';
+import { describeCpredTimer } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 
@@ -582,6 +583,97 @@ describe('ammunition that deals no damage', () => {
       } finally {
         // A fight left running would refuse every reload in the tests below.
         await emitAck(gm, 'combat:end', { sceneId });
+      }
+    }, 30_000);
+
+    /**
+     * Chip „na minutę — do rundy N" na karcie postaci (etap 16h).
+     *
+     * Na karcie obrażeń timer był od początku; na **karcie postaci** rysuje go
+     * `describeCpredTimer(injury.timed)` — czyli bez pola `timed` na wierszu
+     * rany nie ma czego narysować, choćby komponent był bez zarzutu. Ten test
+     * pilnuje tego pola i tego, co z niego wychodzi, bo tekst chipu jest tu
+     * dokładnie tą samą funkcją co u klienta.
+     */
+    it('writes the timer onto the sheet’s injury row — the chip’s only source', async () => {
+      const injury = data(
+        await emitAck<CompendiumEntry>(gm, 'compendium:upsert', {
+          entry: {
+            category: 'criticalInjury',
+            name: 'Zwichnięta szczęka (test)',
+            table: 'head',
+            roll: 5,
+            description: 'Mówisz niewyraźnie.',
+          },
+        }),
+        'compendium:upsert (injury)',
+      );
+      const round = data(
+        await emitAck<CompendiumEntry>(gm, 'compendium:upsert', {
+          entry: {
+            category: 'ammo',
+            name: 'Nabój ogłuszający (test)',
+            cost: 100,
+            costCategory: 'premium',
+            patterns: ['grenade'],
+            noDamage: true,
+            check: {
+              skillId: 'resist-torture-drugs',
+              skillLabel: 'Odporność na tortury/narkotyki',
+              statId: 'will',
+              // PT nie do zdania: rana ma paść za każdym przebiegiem.
+              dv: 40,
+              failure: { damage: '1k6', injuries: [injury.id], durationS: 60 },
+            },
+          },
+        }),
+        'compendium:upsert (ammo)',
+      );
+
+      const hurt = data(
+        await emitAck<CharacterView>(gm, 'character:create', { name: 'Zula' }),
+        'character:create',
+      );
+      const hurtTokenId = data(
+        await emitAck<TokenView>(gm, 'token:create', {
+          sceneId,
+          name: 'Zula',
+          x: AIM.x - 50,
+          y: AIM.y - 50 + 2 * PX_PER_M,
+          characterId: hurt.id,
+          hp: { current: 30, max: 30 },
+        }),
+        'token:create',
+      ).id;
+
+      // Reload first: a fight in progress refuses every reload.
+      await load(round.id);
+      const combat = data(
+        await emitAck<CombatView>(gm, 'combat:start', { sceneId, tokenIds: [hurtTokenId] }),
+        'combat:start',
+      );
+      try {
+        for (const row of combat.combatants) {
+          await emitAck(gm, 'combat:set-initiative', { combatantId: row.id, initiative: 10 });
+        }
+        // Round 1 begins — without it there is no round to count down to.
+        await emitAck(gm, 'combat:next', {});
+        await lob();
+
+        const sync = waitFor<StateSyncPayload>(gm, 'state:sync');
+        await emitAck(gm, 'state:request');
+        const sheet = (await sync).characters.find((entry) => entry.id === hurt.id)
+          ?.data as CpredCharacterData;
+        const row = sheet.criticalInjuries.find((entry) => entry.id === injury.id);
+        expect(row).toBeDefined();
+        expect(row?.timed?.durationS).toBe(60);
+        expect(row?.timed?.expiresAtRound).toBe(7);
+        // Ten sam napis, który rysuje chip na karcie postaci.
+        expect(describeCpredTimer(row!.timed!)).toBe('na minutę — do rundy 7');
+      } finally {
+        await emitAck(gm, 'combat:end', { sceneId });
+        await emitAck(gm, 'token:delete', { tokenId: hurtTokenId });
+        await load('ammo.sample-gas');
       }
     }, 30_000);
   });

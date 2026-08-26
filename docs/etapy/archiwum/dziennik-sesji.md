@@ -7,6 +7,60 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 23.08 (trzecia tego dnia) — etap 27k: edycja sceny, jedna gramatyka kasowania
+
+**Zakres z pliku etapu, w całości.** Kasowanie obiektów mapy miało trzy różne gramatyki (tryb
+gumki wewnątrz narzędzia, osobne narzędzie „Gumka", przycisk wyłącznie na karcie) i dwa typy
+obiektów bez kosza hurtowego. Teraz jest jedna reguła na wszystko, co stoi na scenie: **wejdź
+w warstwę → kliknij obiekt → `Delete`**, a `Ctrl+Z` cofa. Tryby-gumki zniknęły całkowicie
+razem z narzędziem `G`.
+
+**Jedno rozstrzygnięcie MG w trakcie** (pytanie zadane przed kodowaniem): przy narzędziu ścian
+klik w **środek** segmentu zaznacza, klik przy **końcówce** (≤ 12 px) zaczyna nowy łańcuch.
+Bez tego wyjątku nie dałoby się dorysować ściany od narożnika istniejącego muru, bo promień
+trafienia w segment jest większy od promienia przyciągania.
+
+**Co powstało.**
+
+1. **`shared/scene-objects.ts`** — `SCENE_OBJECT_KINDS` (siedem rodzajów, w kolejności od
+   wierzchu), `pickSceneObject` (jedna odpowiedź na „co jest pod kursorem", po jednym rodzaju
+   naraz — to jest cała reguła „warstwa"), promienie chwytania i polskie nazwy z odmianą przez
+   liczbę. Plus `wallEndpointNear` w `walls.ts` i `drawingBounds` w `drawings.ts`.
+2. **Serwerowy bufor cofania** — `realtime/undo-buffer.ts` (pamięć procesu, 20 pozycji na
+   kampanię, cofa tylko ten, kto usunął, i tylko na oglądanej scenie) i `realtime/scene-undo.ts`
+   ze zdarzeniem `scene:undo`. Siedem ścieżek usuwania i pięć koszy odkłada tam całe wiersze
+   Prismy **przed** skasowaniem, więc obiekt wraca **z tym samym id** i z polami, których
+   zdarzenia tworzące nie przyjmują (zamek ściany, bieżące PW osłony, notatka gniazda).
+3. **Dwa brakujące kosze** — `light:clear` i `netpoint:clear`, oba cofalne jednym `Ctrl+Z`.
+4. **Klient** — `sceneSelectionStore` (wyklucza się z zaznaczeniem figury), obrys zaznaczenia
+   i podświetlenie pod kursorem w `MapRenderer`, `Delete`/`Backspace`, `Ctrl+Z`, nowy szczebel
+   drabiny `Esc` (zaznaczenie obiektu schodzi **przed** narzędziem) i podpowiedź kontekstowa
+   jako ostatni wiersz paska narzędzi.
+5. **Skróty i pomoc** — `zone` (`S`) i `netpoint` (`P`) weszły do `MAP_TOOL_KEYS`, `G` się
+   zwolniło, doszła grupa „Obiekty na mapie".
+
+**Dwa błędy znalezione przy oględzinach i naprawione.** (1) Wszystkie podpowiedzi nad mapą były
+**czarne na czarnym w motywie dziennym** (`--text` na `--map-panel`, a panel jest ciemny w obu
+motywach) — naprawione na `--map-ink`. (2) Podpowiedź warstwy **kładła się na ikonach paska**,
+bo pasek ma 38 rem szerokości, a pudełko podpowiedzi jest wyśrodkowane; przeniesiona do środka
+paska jako jego własny wiersz.
+
+**Odklikane w przeglądarce na scenie „Strzelnica"** (MG): test wyjściowy etapu — pasek → 🔌 →
+klik w gniazdo → obrys → `Delete` → „Usunięto punkt dostępu — Ctrl+Z cofa." → `Ctrl+Z` →
+„Przywrócono punkt dostępu.". Kosz gniazd zdjął **6** naraz, jedno `Ctrl+Z` oddało **6**
+(„Przywrócono 6 punktów dostępu."). Ten sam gest sprawdzony po kolei na **wszystkich siedmiu
+rodzajach**: ścianie, świetle, osłonie, strefie bronionej, rysunku, notatce i gnieździe.
+Dwuklik: karta strefy się otwiera, lampa przestraja się do ustawień z paska. Klik w **końcówkę**
+ściany zaczyna łańcuch (a `Esc` go porzuca, nic nie zostawiając). `Delete` przy zaznaczonej
+figurze **nie kasuje figury**. `Esc` zdejmuje najpierw zaznaczenie obiektu, potem narzędzie.
+Okno `?` wymienia wszystkie dziewięć narzędzi i drabina `Esc` ma ciągłe 8 kroków. Scena
+przywrócona co do obiektu (6 gniazd, 3 ściany, reszta pusta).
+
+**Nie odklikane:** strona gracza — pozycja w `zaleglosci.md` z wyjaśnieniem, czemu serwerowej
+odmowy nie da się wywołać z UI.
+
+**Testy:** 1379 w `shared`, 772 na serwerze, 45 u klienta — zielone.
+
 ### Sesja 23.08 (druga tego dnia) — triaż zaległości: kompendium, pula portretów, kości, wybuch; poza etapami
 
 **Zlecenie MG:** wypisać ~10 otwartych zaległości (bez rzeczy czekających na lokalny LLM, bo

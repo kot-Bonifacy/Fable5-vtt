@@ -26,7 +26,12 @@ import {
 } from '@vtt/shared';
 import type { Character, Token } from '../generated/prisma/client.js';
 import { emitMapFx, fxCentre } from './fx.js';
-import { sheetSituationModifiers } from '../sheets.js';
+import {
+  readSheetCombatProfile,
+  sheetFromCombatProfile,
+  sheetSituationModifiers,
+  sheetTokenHp,
+} from '../sheets.js';
 import { createMixedRng } from './dice-rng.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { grappleStateForToken } from './combat.js';
@@ -65,6 +70,76 @@ export async function requireRollableCharacter(
     throw new RealtimeError('CHARACTER_NOT_FOUND');
   }
   return character;
+}
+
+/**
+ * Who is making this roll: a sheet, or a figure that has none (stage 16b).
+ *
+ * The same shape `AttackSource` has in `attacks.ts`, and for the same reason —
+ * both arms carry a `CpredCharacterData`, so the planner, the breakdown and the
+ * chat card never learn that statists exist. What differs is only where the
+ * numbers came from and what may be written back afterwards: a synthesised
+ * sheet has nowhere to record spent Luck or a Death Save, which is why the two
+ * places that write are the only ones that ask which arm this is.
+ */
+type RollSource =
+  | { kind: 'character'; character: Character; data: CpredCharacterData }
+  | { kind: 'statist'; token: Token; data: CpredCharacterData };
+
+/** Name the card names as the actor — the sheet's, or the token's. */
+function rollSourceName(source: RollSource): string {
+  return source.kind === 'character' ? source.character.name : source.token.name;
+}
+
+/**
+ * The figure this roll is made with.
+ *
+ * Naming no character means „the token itself is rolling", exactly as it does
+ * for `attack:roll` — and the refusals reuse the codes the character path
+ * already speaks, so the client's error table did not have to grow a second
+ * vocabulary for the same two answers.
+ *
+ * Only a damage roll may arrive this way. Everything else a statist rolls has
+ * an event of its own (`attack:roll` fires its gun, `attack:evade` ducks), and
+ * the two things this path would otherwise have to support — spending Luck and
+ * booking a Death Save — need a sheet to write to.
+ */
+async function resolveRollSource(
+  deps: RealtimeDeps,
+  campaignId: string,
+  user: SessionUser,
+  payload: CharacterRollPayload<CpredRollRequest> | undefined,
+  request: CpredRollRequest,
+): Promise<RollSource> {
+  const registry = deps.ctx.cpred;
+  if (typeof payload?.characterId === 'string' && payload.characterId.length > 0) {
+    const character = await requireRollableCharacter(deps, campaignId, user, payload.characterId);
+    return { kind: 'character', character, data: parseCharacterData(character.data, registry) };
+  }
+
+  if (request.kind !== 'damage') throw new RealtimeError('STATIST_CANNOT_ROLL_THIS');
+  if (typeof payload?.attackerTokenId !== 'string' || payload.attackerTokenId.length === 0) {
+    throw new RealtimeError('BAD_REQUEST');
+  }
+  const { token } = await requireCampaignToken(
+    deps.ctx.prisma,
+    campaignId,
+    payload.attackerTokenId,
+  );
+  // A statist has no owner in the sheet sense, so control follows the token.
+  if (user.role !== ROLE_GM && token.ownerId !== user.id) {
+    throw new RealtimeError('CHARACTER_NOT_FOUND');
+  }
+  const profile = readSheetCombatProfile(token.combatProfile);
+  if (!profile) throw new RealtimeError('TOKEN_HAS_NO_PROFILE');
+  // The same synthesis the shot itself was rolled from, so the weapon that
+  // fired and the weapon that wounds cannot disagree: its one row is the row
+  // the attack card points back at.
+  return {
+    kind: 'statist',
+    token,
+    data: sheetFromCombatProfile(profile, sheetTokenHp(token), null),
+  };
 }
 
 /** The natural die of a roll — the first die of the first dice term. */
@@ -395,34 +470,42 @@ export async function performCharacterRoll(
 ): Promise<{ messageId: number }> {
   {
     const { user, payload, sceneId, campaignId } = options;
-    const character = await requireRollableCharacter(deps, campaignId, user, payload?.characterId);
 
     const registry = deps.ctx.cpred;
-    const data = parseCharacterData(character.data, registry);
     const request = await resolveRollRequest(deps, campaignId, user, payload?.request);
+    const source = await resolveRollSource(deps, campaignId, user, payload, request);
+    const data = source.data;
     // „Obaj walczący ... otrzymują modyfikator −2 do wszystkich Akcji" (s. 176):
     // every Check made from the sheet carries it, named, so the player can see
     // where it came from. A Death Save is not an Action and is exempt — the
     // planner ignores the context for that kind anyway (stage 14d decision).
-    const context = await situationForCharacter(deps, campaignId, sceneId, character, data);
+    //
+    // A statist arrives here for damage and nothing else, and damage is not a
+    // Check: no wound penalty, no Hold, nothing situational to name.
+    const context =
+      source.kind === 'character'
+        ? await situationForCharacter(deps, campaignId, sceneId, source.character, data)
+        : { modifiers: [] };
     const planned = planCpredRoll(data, registry, request, context);
     if (!planned.ok) throw new RealtimeError(planned.error);
     const { plan } = planned;
 
     // Stabilizing is an Action (s. 169) — booked before the dice, so a medic
     // with nothing left in the turn does not roll and then get told no.
-    if (plan.stabilize) {
-      await spendStabilizeAction(deps, campaignId, sceneId, character, user);
+    if (plan.stabilize && source.kind === 'character') {
+      await spendStabilizeAction(deps, campaignId, sceneId, source.character, user);
     }
 
     const visibility: 'public' | 'gm' = payload?.visibility === 'gm' ? 'gm' : 'public';
     const gesture: RollGesture | undefined = sanitizeGesture(payload?.gesture);
 
     // Luck is spent whether the roll succeeds or not (RAW: declared upfront).
-    if (plan.luckSpent > 0) {
+    // A statist never gets here with anything to spend — its synthesised sheet
+    // has no Luck at all, and the planner refuses the request long before this.
+    if (plan.luckSpent > 0 && source.kind === 'character') {
       const spent = mergeCharacterData(data, { luckCurrent: data.luckCurrent - plan.luckSpent });
       const saved = await deps.ctx.prisma.character.update({
-        where: { id: character.id },
+        where: { id: source.character.id },
         data: { data: JSON.stringify(spent) },
       });
       await emitCharacterUpsert(deps, campaignId, toCharacterView(saved, registry));
@@ -433,7 +516,7 @@ export async function performCharacterRoll(
       checkRule: plan.checkRule,
     });
     result.title = plan.title;
-    result.actor = character.name;
+    result.actor = rollSourceName(source);
     result.breakdown = plan.breakdown;
     if (gesture && gesture.strength > 0) result.tossStrength = gesture.strength;
     if (gesture?.toss) result.toss = gesture.toss;
@@ -462,7 +545,7 @@ export async function performCharacterRoll(
 
     // A Death Save is judged by the rules, not by the reader: the card shows
     // the verdict, and the sheet's counter makes the next save harder.
-    if (plan.deathSave) {
+    if (plan.deathSave && source.kind === 'character') {
       const natural = firstDieRoll(result);
       const outcome = resolveCpredDeathSave(natural, plan.deathSave);
       result.outcome = {
@@ -474,7 +557,7 @@ export async function performCharacterRoll(
             ? `${outcome.natural} + ${outcome.modifier} = ${outcome.total} · próg BC ${outcome.target}`
             : `${outcome.natural} · próg BC ${outcome.target}`,
       };
-      await recordDeathSave(deps, campaignId, character, data, outcome.survived);
+      await recordDeathSave(deps, campaignId, source.character, data, outcome.survived);
     }
 
     // „Jeśli wynik Testu jest wyższy od PT, udało ci się" (s. 165) — the same

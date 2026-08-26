@@ -34,7 +34,15 @@ export interface RollTarget {
 }
 
 /** A check waiting in the cup: everything the server needs, plus the label. */
-export interface PendingRoll extends RollTarget {
+export interface PendingRoll extends Omit<RollTarget, 'characterId'> {
+  /**
+   * Sheet making the roll. Absent for a statist (stage 16b) — the dialog never
+   * opens one, but an attack card can load a damage roll for a figure that has
+   * no sheet, and until it could, „Obrażenia" was simply missing from its card.
+   */
+  characterId?: string;
+  /** Token rolling instead of a sheet; the only address the server then has. */
+  attackerTokenId?: string;
   request: CpredRollRequest;
   visibility: 'public' | 'gm';
   /** Chat-card title, e.g. `Percepcja (INT)`. */

@@ -8,20 +8,6 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
 
 ## Pozycje
 
-- **🐞 BŁĄD — statysta trafia, ale nie ma czym zadać obrażeń (znalezione 23.08).**
-  `AttackControls.tsx:38` szuka atakującego wyłącznie wśród **kart postaci**
-  (`characters.find(c => c.data.weapons.some(w => w.id === weaponRowId))`), a przycisk
-  „Obrażenia" wisi na warunku `(attack.hit || attack.area) && attacker`. Figura z **profilem
-  bojowym** (statysta bez karty — na Poligonie „Zbir", na scenie testowej „Strzelec 23x") nie
-  ma takiej karty, więc jej karta ataku pokazuje trafienie i listę objętych obszarem, ale
-  **żadnego rzutu na obrażenia**; MG musi liczyć ręcznie i wpisywać PW skrótami ±5 z menu
-  żetonu. To ta sama luka, którą 22.08 zamknięto po stronie **obrony** (`statistDefender`
-  w tym samym pliku, komentarz „Figura bez karty też się uchyla") — strona atakująca została
-  nietknięta. Naprawa idzie tym samym wzorcem: obrażenia statysty liczy się z jego profilu
-  (broń profilu ma `damage` z typu, więc notacja jest znana bez karty).
-  Sprawdzone 23.08 na „Efekty 23x": trafienie granatnikiem 24 vs PT 17, „obszar 10×10 m ·
-  Cel 23x — 0 m od środka", jedyny przycisk na karcie to „Unik: Cel 23x".
-
 - **Etap 27l — strona gracza nieodklikana (drugi raz z tego samego powodu).** Gracz widzi
   dokładnie dwie karty obiektu: **gniazdo** („podłączyć się?") i **własny rysunek**. Żadnej nie
   kliknięto, bo sesja na `[::1]:5173` jest zalogowana jako MG, a dołączenie nowym imieniem
@@ -275,17 +261,6 @@ postaci.'` jest sprawdzony w kodzie i mówi tym samym językiem co pustka handou
   `realtime/movement.ts:216` zwalnia MG z blokad, więc wszystko, co „ma odmówić ruchu",
   trzeba oglądać na koncie gracza.
 
-- **Etap 16g — odklikany 08.08 poza dwoma punktami.** Zostają: (6) linia „pancerz −2" na karcie obrażeń i (7) **Podpalony** po amunicji zapalającej wraz z „Cofnij" gaszącym status. Reszta sprawdzona; przy okazji wyszły błędy #2, #3, #4 i #5. ~~Do sprawdzenia: (1) **wybór naboju** na wierszu broni w karcie postaci (nowy `select` w kolumnie „Amunicja"; ma pokazywać tylko naboje pasujące do tej broni, a przy Miotaczu ognia być wyszarzony); (2) **koszt zmiany naboju w walce** — poza walką zmiana jest darmowa, w turze ma zejść Akcja i magazynek ma się napełnić; (3) **chip naboju na slocie paska akcji** (fioletowa ramka obok „seria"/„zapora"); (4) **pomarańczowy stożek 6 m** chodzący za kursorem, gdy w ręku jest broń ze śrutem — i to, że **klik dalej celuje w figurę**, a nie w pole (inaczej niż granat); (5) **karta ataku** z listą trafionych w stożku i wierszem „zasłonięty ścianą"; (6) **karta obrażeń** z linią „nabój: … · pancerz −2 (zamiast −1)"; (7) **Podpalony** na tokenie po trafieniu zapalającą i „Cofnij" gaszące go; (8) kategoria **„Amunicja"** w zakładce Kompendium (chip z licznikiem, karta wpisu z „Pasuje do", edytor MG z polami naboju).~~ Kampanii nie ruszałem — wpisy amunicji i miotacz ognia są w `data/private`, na żadnej karcie postaci nic nie zostało dopisane, więc do oględzin trzeba komuś dać strzelbę.
-
-- **Etap 16h — odklikany 08.08 poza jednym punktem.** Zostaje wyłącznie chip „na minutę — do rundy N" **na karcie postaci** (na karcie obrażeń jest). Reszta poniżej — sprawdzona, opisy zostawione dla kontekstu. ~~Do sprawdzenia: (1) **karta ataku gazem** — brak przycisku „Obrażenia", linia „test Odporność na tortury/narkotyki PT 13" i wiersze „nie oparł się — 2k6 bezpośrednich"; (2) **karta obrażeń** z linią „nabój: …" i przyciskiem **„Minęła minuta"** u MG (i to, że po kliknięciu przycisk znika, a PW zostają); (3) **statusy na tokenie** po amunicji usypiającej (Powalony + Nieprzytomny) i **ikona EMP** po nabojach EMP; (4) **rana krytyczna „na minutę"** na karcie postaci — nowy chip „na minutę — do rundy N" obok nazwy rany; (5) **kwadrat dymu** na mapie (szary, pod tokenami, z napisem „Dym −4”), a w rzucie z jego wnętrza **nazwany wiersz „Dym −4"** w rozbiciu; (6) **gumka dymu** przy narzędziu osłon (licznik „dymu: N" i kosz); (7) przycisk **„Popraw strzał 1k10+10"** po pudle o ≤ 4 amunicją inteligentną, wraz z ostrzeżeniem o Celowniku optycznym; (8) **edytor MG** wpisu amunicji z nowymi polami (test, porażka, dym, poprawka).~~ Kampanii nie ruszałem — wpisy amunicji są w `data/private`, więc do oględzin trzeba komuś dać granat i wpisać nabój przez Przeładowanie.
-
-- **Etap 16d — odklikany poza jednym punktem.** Zostaje „zasłonięty: Samochód" na liście
-  trafionych obszarem — wymaga granatu i figury za osłoną. ~~„Rzuć" zwykłą bronią~~ —
-  **odklikane 22.08**: w zakładce „Walka" wiersz broni ma obok „Celuj" przycisk **„Rzuć"**,
-  a klik w cel załadował kubek „Ciężki pistolet testowy → avatar9 · 22 m · PT 15" (PT z wiersza
-  Granatnika, zgodnie z 16d). Pudło z odchyleniem, `Esc`, „Odskocz", „Zastosuj wszystkim"
-  i regresja 16e — sprawdzone 08.08.
-
 - **Etap 16e — zostały cztery ścieżki z dziesięciu.** **Odklikane 22.08** (piąta sesja, scena
   testowa „Korytarz 16e" ze ścianą w kształcie L, skasowana po oględzinach): (2) **obejście rogu**
   — trasa poszła 30,6 m wzdłuż ściany, opłynęła jej koniec i wróciła 18,4 m do celu, zamiast
@@ -325,10 +300,4 @@ postaci.'` jest sprawdzony w kodzie i mówi tym samym językiem co pustka handou
 - **70 broni markowych ma opisy po angielsku** (nie 35 — ta liczba brała się z komunikatu skryptu „35 już w pamięci podręcznej"). Angielskie opisy ma **wyłącznie** `weapons.json`; pozostałe 271 wpisów kompendium jest po polsku. **Skrypt był 21.08 pułapką i został naprawiony**: kwalifikował do tłumaczenia każdy wpis bez `descriptionOriginal`, czyli **341** — w tym 271 polskich, które model dostałby do „przetłumaczenia z angielskiego". Teraz `looks_english()` odsiewa je (`--check` mówi: 70 do zrobienia, 271 pominięto). Zostaje sam przebieg `tools/import/translate-descriptions.py` przy włączonym llama-serverze (`pwsh ai-gateway/scripts/start-gateway.ps1`, potem `uv run --with httpx python tools/import/translate-descriptions.py`). Bez GPU się nie da, więc czeka na sesję z gatewayem.
 - **Etap 09 — zakładka „AI" u MG niezweryfikowana wizualnie** (sesja toczyła się na koncie gracza). Późniejsze etapy oglądały u MG inne zakładki, więc to prawdopodobnie martwa zaległość — sprawdź przy okazji.
 - **Ślad ścieżki przy przeciąganiu nieobejrzany**: `left_click_drag` z CDP jest natychmiastowy, więc łamana z licznikiem metrów rysuje się i znika między klatkami. Do sprawdzenia ręcznie — myszą.
-- **Etap 14d — została odmowa Uniku Ludzkiej tarczy**: karta testu spornego z „Broń się"
-  u broniącego się gracza i odmowa ruchu Trzymanemu są **odklikane 10.08** (na czacie
-  „Pochwycenie → Test P1 … Obrona Test P1: 5 → mimo wszystko udane" i „Odmowa: Pochwycony token
-  nie może wykonać własnej Akcji Ruchu"). Zostaje `SHIELD_CANNOT_DODGE` („Ludzka tarcza nie może
-  unikać ataków dystansowych") — wymaga **trzeciej figury na scenie**: ktoś musi strzelić do
-  trzymającego, żeby tarcza w ogóle dostała przycisk „Unik". Na Strzelnicy są dwie figury.
 - **`data/private/rulebook/manual/tabela-ran-krytycznych.md` jest poza repo** — na czystej maszynie trzeba go dostarczyć albo wpisać tabelę głowy w edytorze.

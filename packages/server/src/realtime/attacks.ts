@@ -22,7 +22,6 @@ import type {
   RollResult,
   ScenePoint,
   SessionUser,
-  TokenHp,
   WeaponReloadPayload,
 } from '@vtt/shared';
 import {
@@ -73,6 +72,7 @@ import {
   sheetFacedownPenalty,
   sheetHumanShieldCovers,
   sheetSituationModifiers,
+  sheetTokenHp,
   type SheetCombatProfile,
 } from '../sheets.js';
 import {
@@ -288,13 +288,7 @@ async function targetEvasionDv(
   }
   const profile = readSheetCombatProfile(token.combatProfile);
   if (!profile) return undefined;
-  return sheetCombatProfileEvasionDv(profile, registry, tokenHpOf(token));
-}
-
-/** The token's own HP pair, with a sane stand-in for a token that has no bar. */
-function tokenHpOf(token: Token): TokenHp {
-  if (token.hpMax === null) return { current: 1, max: 1 };
-  return { current: token.hpCurrent ?? 0, max: token.hpMax };
+  return sheetCombatProfileEvasionDv(profile, registry, sheetTokenHp(token));
 }
 
 /**
@@ -688,7 +682,7 @@ async function buildStatistSource(
 ): Promise<AttackSource> {
   const profile = readSheetCombatProfile(token.combatProfile);
   if (!profile) throw new RealtimeError('TOKEN_HAS_NO_PROFILE');
-  const hp = tokenHpOf(token);
+  const hp = sheetTokenHp(token);
 
   // Pass one: a sheet good enough to look the weapon up with.
   const bare = sheetFromCombatProfile(profile, hp, null);
@@ -1089,13 +1083,18 @@ async function buildAttackMeta(
   blast?: AreaRequest,
 ): Promise<RollAttackMeta> {
   const label = `${meta.weaponName} → ${meta.targetName}`;
+  // Who fired, written onto the card (stage 16b). The planner never learns that
+  // statists exist, so the token is stamped on here — and from here, because
+  // both arms below return the same `system` and a shooter must not be on only
+  // one of them.
+  const system: CpredAttackMeta = { ...meta, attackerTokenId: attacker.id };
 
   if (meta.dv === null) {
     // Suppressive fire sets the DV instead of beating one.
     const targets = await suppressionTargets(deps, scene, attacker, fire);
     const checks = await resolveSuppression(deps, campaignId, registry, targets, result.total);
     return {
-      system: { ...meta },
+      system: { ...system },
       label: `${meta.weaponName} → ogień zaporowy`,
       // Deliberately countless (stage 16h). „w zasięgu 25 m: 4" walked straight
       // past the per-viewer filter on the rows below and told the table exactly
@@ -1215,7 +1214,7 @@ async function buildAttackMeta(
 
   return {
     system: {
-      ...meta,
+      ...system,
       margin: outcome.margin,
       ...(outcome.multiplier ? { multiplier: outcome.multiplier } : {}),
     },
@@ -1402,7 +1401,7 @@ export const attackEvadeEvent = defineEvent<AttackEvadePayload, { total: number;
       const profile = readSheetCombatProfile(target.combatProfile);
       if (!profile) throw new RealtimeError('TOKEN_HAS_NO_PROFILE');
       defenderName = target.name;
-      data = sheetFromCombatProfile(profile, tokenHpOf(target), null);
+      data = sheetFromCombatProfile(profile, sheetTokenHp(target), null);
     }
 
     // „Dopóki ją trzymasz, twoja Ludzka tarcza nie może unikać Ataków

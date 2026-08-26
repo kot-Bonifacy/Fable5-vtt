@@ -266,6 +266,16 @@ export interface CpredAttackMeta {
    * Absent when the shot is aimed at a cover (stage 16c).
    */
   targetTokenId?: string;
+  /**
+   * The figure that fired, so the damage roll can find a shooter who has no
+   * sheet (stage 16b). A character is found by its weapon row; a statist has
+   * nothing to be found by, and „Obrażenia" was missing from its card for as
+   * long as this field was.
+   *
+   * Server-filled, like every other address on this card: the token is read off
+   * the attack that actually happened, never off the client's word for it.
+   */
+  attackerTokenId?: string;
   /** Cover being shot at instead of a token (stage 16c). */
   targetCoverId?: number;
   metres: number;

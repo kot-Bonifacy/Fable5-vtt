@@ -417,6 +417,19 @@ export function sheetFromCombatProfile(
   return combatProfileSheetForSkill(profile, hp, skillId);
 }
 
+/**
+ * The token's own HP pair, with a sane stand-in for a token that has no bar.
+ *
+ * Here rather than beside each caller because it is a rule, not an accessor:
+ * a synthesised sheet reads its wound state off these two numbers, and „a
+ * figure nobody gave hit points to is unhurt" has to mean the same thing in
+ * every path that dresses a token as a sheet.
+ */
+export function sheetTokenHp(token: Pick<Token, 'hpCurrent' | 'hpMax'>): TokenHp {
+  if (token.hpMax === null) return { current: 1, max: 1 };
+  return { current: token.hpCurrent ?? 0, max: token.hpMax };
+}
+
 /** Stand-in DV a statist defends with: its own DEX + Unik + half a die. */
 export function sheetCombatProfileEvasionDv(
   profile: SheetCombatProfile,

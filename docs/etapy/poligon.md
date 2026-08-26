@@ -60,8 +60,9 @@ i wszystko, co wymaga trybu turowego bez dotykania Strzelnicy. Walka jest zakoń
 stoi w podglądzie — aktywna jest z powrotem „Strzelnica". Do gazu trzeba wpisu amunicji
 gazowej w magazynku, do wyładowania — strefy „Podłoga elektryczna" narzędziem stref.
 
-**Uwaga:** karta ataku statysty nie ma przycisku „Obrażenia" (błąd opisany w `zaleglosci.md`),
-więc rzut obrażeń obszarowych wymaga figury z **kartą postaci** albo naprawy tego błędu.
+**Naprawione 26.08:** karta ataku statysty **ma już przycisk „Obrażenia"** — rzut obrażeń
+obszarowych nie wymaga figury z kartą postaci. Na tej scenie to sprawdzano (pakiet P1);
+po oględzinach magazynek Granatnika wrócił do **0/2**, a „Cel 23x" do **PW 33/35, OB 6**.
 
 ## Stan po oględzinach 23.08 (etap 27k — edycja sceny)
 

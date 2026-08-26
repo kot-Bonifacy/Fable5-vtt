@@ -91,26 +91,30 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 ## Od czego zacząć
 
-**Ostatnia sesja (24.08) zamknęła etap 27l — karty obiektów sceny.** Dwuklik w **każdy** z
-siedmiu rodzajów otwiera teraz **jedno i to samo okno**: ściana, osłona, światło i rysunek
-dostały karty, których nie miały, a gniazdo, strefa i notatka przeniosły się na ten sam
-mechanizm (`useWindowPlacement` + `<WindowResizeGrip />`). Zaznaczony obiekt daje się
-**przesunąć i przeskalować** uchwytami: przeciągnięcie obrysu przesuwa, róg prostokąta i
-koniec ściany skalują, `Ctrl` wyłącza przyciąganie do kratki. Tryby „🔒 Zamek" i „👁 Udostępnij"
-zniknęły z paska ścian — rygiel i „gracze mogą otwierać" mieszkają na karcie segmentu.
+**Ostatnia sesja (26.08) zrobiła pakiet P1 — kartę ataku i obrażeń; poza etapami.**
+Naprawiony jedyny prawdziwy błąd z listy: **statysta trafiał, ale nie miał czym zadać obrażeń**
+— karta ataku niesie teraz `attackerTokenId`, a `performCharacterRoll` przyjmuje figurę bez
+karty przez `RollSource` (umowa w indeksie niżej). Pozostałe pięć pozycji P1 (16d, 16g×2, 16h,
+14d) zamkniętych testem — **MG ustalił 26.08, że test pokrywający ścieżkę wystarcza za
+odklikanie w przeglądarce**.
 
 **Od czego zacząć: do wyboru 27g** (wydajność) i **28** (wdrożenie na VPS) — to jedyne dwa
-nierozpoczęte etapy. Z długu oględzin nadal czekają **pozycje 3, 4 i 5 z triażu 23.08** — Sieć
-(26a–26f), resztki walki (16d/16g/16h) i dwie ostatnie ścieżki ruchu z 16e — oraz **błąd
-„statysta nie ma jak zadać obrażeń"** (pierwsza pozycja w `zaleglosci.md`). Etap 27 jest
-rozdzielony do końca, więc plik `etap-27-…` to rozdroże ze wskazaniami, a nie zakres do zrobienia.
+nierozpoczęte etapy. Z długu oględzin czekają dalej: **Sieć (26a–26f)** — najdroższy pakiet,
+bo wymaga rozpoczętej walki i sceny ze ścianami; **strefy i efekty (26f + 27i)**; **karta
+postaci i kreator (27b/27c/25a)**; **ekonomia (23b)**; **kosz w bibliotece grafik tokenów**
+(realny brak funkcji, wzorzec gotowy w puli portretów); dwie ostatnie ścieżki ruchu z 16e.
+Osobno leży **konto testowe gracza** — cztery pozycje „strona gracza nieodklikana" mają tę samą
+przyczynę (dołączenie nowym imieniem zakłada konto-śmiecia), a **MG zgodził się 26.08 na
+dopisanie skryptów seedujących**. Etap 27 jest rozdzielony do końca, więc plik `etap-27-…`
+to rozdroże ze wskazaniami, a nie zakres do zrobienia.
 
 **Oględziny 27l szły na nowej scenie „Karty 24x"** (opis w `poligon.md`) — leży na niej po
 jednym obiekcie każdego z siedmiu rodzajów, żeby następna sesja nie musiała ich stawiać od nowa.
-**„Strzelnica" jest nietknięta** (6 gniazd, 3 segmenty ściany, reszta zero) i z powrotem aktywna;
-scena **„Efekty 23x"** też nietknięta.
+**„Strzelnica" jest nietknięta** (6 gniazd, 3 segmenty ściany, reszta zero) i z powrotem aktywna.
+Na scenie **„Efekty 23x"** sesja 26.08 sprawdzała naprawę obrażeń statysty i **przywróciła** ją
+w całości (magazynek Granatnika 0/2, „Cel 23x" 33/35 z OB 6).
 
-**Otwarte zaległości: 46 pozycji w `zaleglosci.md`** — w większości dług oględzin („ścieżka ma
+**Otwarte zaległości: 41 pozycji w `zaleglosci.md`** — w większości dług oględzin („ścieżka ma
 test, ale nikt jej nie kliknął w przeglądarce"), nie błędy. Zaglądaj tam, gdy siadasz do
 odhaczania albo ruszasz etap, który na tej liście występuje.
 
@@ -124,7 +128,7 @@ czeka na sesję z nowym modelem.
 a od 27i pierwszym, przy którym ktoś **usłyszy** dźwięki walki (dobrane bez odsłuchu, przyciski
 próbek są w „⚙ Ustawienia"; od 27j jest wśród nich „Krok" z własnym wyłącznikiem).
 
-**Testy na koniec ostatniej sesji:** 1399 w `shared`, 779 na serwerze, 50 u klienta — zielone.
+**Testy na koniec ostatniej sesji:** 1399 w `shared`, 786 na serwerze, 50 u klienta — zielone.
 
 **09.08 głos wypadł z projektu** (decyzja MG): etapy **12, 21 i 22** wycofane, kod TTS usunięty
 z repo. Szczegóły w `archiwum/dziennik-sesji.md` i `archiwum/wycofane/README.md`.
@@ -158,6 +162,7 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 - **Podpowiedź nad mapą** — kolor pisma to `--map-ink`, nie `--text`: `--map-panel` jest ciemny w obu motywach, więc `--text` daje w dzień czarne na czarnym.
 - **Nowa karta obiektu sceny** — gałąź w `findSceneObject` (`SceneObjectCard.tsx`, `switch`, więc kompilator pilnuje kompletu), ikona **ta sama, co narzędzie na pasku**, i gałąź w `moveSceneObject` w `MapArea`, jeśli obiekt da się przesunąć. Karta nie kasuje sama — `onDelete` prowadzi do `deleteSceneObject`.
 - **`Esc` w karcie** — obsługiwany przez `onKeyDown` samej karty, bo globalna drabina odrzuca każdy klawisz naciśnięty w polu tekstowym, a karta notatki sama ustawia tam kursor.
+- **Rzut figury bez karty** — `RollSource` w `character-rolls.ts` (bliźniak `AttackSource`); statysta wchodzi przez `sheetFromCombatProfile`, o gałąź pyta **tylko to, co pisze**, a adres strzelca niesie `CpredAttackMeta.attackerTokenId` wypełniane na serwerze. Przez `character:roll` statysta rzuca wyłącznie na obrażenia.
 - **Uchwyty obiektu** — geometria w `shared/scene-handles.ts` (trzy kształty na siedem rodzajów); renderer woła `onSceneTransform(ref, shape)` i **nie wysyła nic sam**. Róg wygrywa z wnętrzem; przyciąganie domyślne, `Ctrl` je wyłącza.
 
 ## Pułapki dev — indeks
@@ -199,6 +204,57 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 26.08 — pakiet P1: karta ataku i obrażeń; poza etapami
+
+**Zlecenie MG:** wypisać kilkanaście otwartych zaległości pogrupowanych tak, żeby dały się
+zrobić w jednej sesji (bez rzeczy czekających na lokalny LLM — model idzie do wymiany — i bez
+nierozpoczętych etapów), a potem zrobić pakiet, który MG wskaże. Powstało dziewięć pakietów;
+MG wybrał **P1 — karta ataku i obrażeń** i odpowiedział na cztery pytania: **wolno** dopisywać
+skrypty seedujące, **wolno** dowolnie modyfikować kampanie (wszystkie są testowe), oględziny
+klika **Claude przez Chrome**, a **test pokrywający ścieżkę wystarcza za odklikanie**.
+
+**Naprawiony błąd: statysta trafiał, ale nie miał czym zadać obrażeń.** Diagnoza z zaległości
+(23.08) była trafna, ale niepełna — **brakowało adresu**: karta ataku nie niosła żadnego
+wskazania na strzelca (`CpredAttackMeta` miała `targetTokenId`, nie miała `attackerTokenId`),
+więc gdy szukanie po wierszu broni zawodziło, klient nie miał czego szukać. Naprawa idzie
+wzorcem `statistDefender` z 22.08 i dotknęła czterech miejsc: pole `attackerTokenId` w metadanych
+ataku (wypełniane **na serwerze**, w obu gałęziach `buildAttackMeta`), opcjonalne `characterId`
+plus `attackerTokenId` w `CharacterRollPayload` (dokładnie jak `AttackRollPayload` od 16b),
+`RollSource` w `performCharacterRoll` (bliźniak `AttackSource` — gałęzi pytają wyłącznie te trzy
+miejsca, które **piszą** na karcie) i wyszukiwanie strzelca w `AttackControls`.
+**Serwer nie wymagał niczego więcej:** `resolveRollRequest` czytał notację, mnożnik, lokację
+i cel ze zapisanego ataku już wcześniej, więc karty atakującego nie potrzebował — blokował
+sam klient. Statysta rzuca tą drogą **tylko** na obrażenia (`STATIST_CANNOT_ROLL_THIS`).
+Przy okazji `tokenHpOf` przeniesione z `attacks.ts` do `sheets.ts` jako `sheetTokenHp`.
+
+**Odklikane w przeglądarce** (MG, scena „Efekty 23x", pełny łańcuch): „Strzelec 23x" — figura
+bez karty — rzucił Granatnikiem w „Cel 23x" (21 vs PT 17, obszar 10×10 m), karta pokazała
+**„Obrażenia 6k6"**, kubek wrócił kartą **„Strzelec 23x — Granatnik — obrażenia (Korpus) ·
+6d6 = 23 · Rana krytyczna!"**, a „Zastosuj wszystkim (1)" zdjęło **PW 33 → 11** i pancerz
+OB 6 → 5; „Cofnij" przywróciło jedno i drugie. Stara karta z 21:24 leży na czacie tuż nad nową
+i nadal ma sam „Unik" — różnicę widać w jednym oknie. **Poligon przywrócony:** magazynek
+Granatnika z powrotem 0/2, „Cel 23x" 33/35 z OB 6, „Strzelnica" znów aktywna i oglądana.
+
+**Pięć pozostałych pozycji P1 zamkniętych testem** (kryterium MG z tej sesji). Cztery były już
+pokryte i wystarczyło to sprawdzić: **16d** „zasłonięty: Samochód" (`areas.test.ts` sprawdza
+`spared: 'cover'` i `sparedBy: 'Samochód'`), **16g (6)** „pancerz −2" na karcie obrażeń
+(`ammo.test.ts` + test zdania w `shared`), **16g (7)** Podpalony z „Cofnij" gaszącym ogień
+(`ammo.test.ts`), **14d** `SHIELD_CANNOT_DODGE` — okazało się pokryte z obu stron, z trzema
+figurami (`grapple.test.ts`: przekierowanie strzału na tarczę **i** odmowa Uniku). Piąta,
+**16h** chip „na minutę — do rundy N" na karcie postaci, dostała **nowy test**: chip rysuje
+`describeCpredTimer(injury.timed)`, więc brakowało dowodu, że wiersz rany **na karcie postaci**
+w ogóle niesie `timed` — `ammo-effects.test.ts` sprawdza teraz `expiresAtRound: 7` i napis
+„na minutę — do rundy 7" tą samą funkcją, którą woła klient.
+
+**Zaległości: 46 → 41.** Pięć pozycji przeniesionych w całości do
+`archiwum/zamkniete-zaleglosci.md` z opisem naprawy. **Nie ruszone:** sześć pozycji, które
+w triażu tej sesji zaproponowano do skasowania jako świadome decyzje, a nie dług (skalowanie
+rysunku, margines ścian, zakładka AI z etapu 09, `NET_DEVICE_OFF` i `FORBIDDEN` nieosiągalne
+z UI, screamsheet w motywie dziennym, degradacja bez `creation.json`) — MG nie wypowiedział się
+o nich, więc zostają otwarte.
+
+**Testy:** 1399 w `shared`, **786** na serwerze (+7), 50 u klienta — zielone. Lint i prettier czyste.
 
 ### Sesja 24.08 — etap 27l: karty obiektów sceny, jedno okno na siedem rodzajów
 
@@ -265,57 +321,3 @@ przesunięta końcówką: długość na karcie przeliczyła się z 28,0 m na 43,
 w `zaleglosci.md` z tym samym wyjaśnieniem, co przy 27k.
 
 **Testy:** 1399 w `shared`, 779 na serwerze, 50 u klienta — zielone.
-
-### Sesja 23.08 (trzecia tego dnia) — etap 27k: edycja sceny, jedna gramatyka kasowania
-
-**Zakres z pliku etapu, w całości.** Kasowanie obiektów mapy miało trzy różne gramatyki (tryb
-gumki wewnątrz narzędzia, osobne narzędzie „Gumka", przycisk wyłącznie na karcie) i dwa typy
-obiektów bez kosza hurtowego. Teraz jest jedna reguła na wszystko, co stoi na scenie: **wejdź
-w warstwę → kliknij obiekt → `Delete`**, a `Ctrl+Z` cofa. Tryby-gumki zniknęły całkowicie
-razem z narzędziem `G`.
-
-**Jedno rozstrzygnięcie MG w trakcie** (pytanie zadane przed kodowaniem): przy narzędziu ścian
-klik w **środek** segmentu zaznacza, klik przy **końcówce** (≤ 12 px) zaczyna nowy łańcuch.
-Bez tego wyjątku nie dałoby się dorysować ściany od narożnika istniejącego muru, bo promień
-trafienia w segment jest większy od promienia przyciągania.
-
-**Co powstało.**
-
-1. **`shared/scene-objects.ts`** — `SCENE_OBJECT_KINDS` (siedem rodzajów, w kolejności od
-   wierzchu), `pickSceneObject` (jedna odpowiedź na „co jest pod kursorem", po jednym rodzaju
-   naraz — to jest cała reguła „warstwa"), promienie chwytania i polskie nazwy z odmianą przez
-   liczbę. Plus `wallEndpointNear` w `walls.ts` i `drawingBounds` w `drawings.ts`.
-2. **Serwerowy bufor cofania** — `realtime/undo-buffer.ts` (pamięć procesu, 20 pozycji na
-   kampanię, cofa tylko ten, kto usunął, i tylko na oglądanej scenie) i `realtime/scene-undo.ts`
-   ze zdarzeniem `scene:undo`. Siedem ścieżek usuwania i pięć koszy odkłada tam całe wiersze
-   Prismy **przed** skasowaniem, więc obiekt wraca **z tym samym id** i z polami, których
-   zdarzenia tworzące nie przyjmują (zamek ściany, bieżące PW osłony, notatka gniazda).
-3. **Dwa brakujące kosze** — `light:clear` i `netpoint:clear`, oba cofalne jednym `Ctrl+Z`.
-4. **Klient** — `sceneSelectionStore` (wyklucza się z zaznaczeniem figury), obrys zaznaczenia
-   i podświetlenie pod kursorem w `MapRenderer`, `Delete`/`Backspace`, `Ctrl+Z`, nowy szczebel
-   drabiny `Esc` (zaznaczenie obiektu schodzi **przed** narzędziem) i podpowiedź kontekstowa
-   jako ostatni wiersz paska narzędzi.
-5. **Skróty i pomoc** — `zone` (`S`) i `netpoint` (`P`) weszły do `MAP_TOOL_KEYS`, `G` się
-   zwolniło, doszła grupa „Obiekty na mapie".
-
-**Dwa błędy znalezione przy oględzinach i naprawione.** (1) Wszystkie podpowiedzi nad mapą były
-**czarne na czarnym w motywie dziennym** (`--text` na `--map-panel`, a panel jest ciemny w obu
-motywach) — naprawione na `--map-ink`. (2) Podpowiedź warstwy **kładła się na ikonach paska**,
-bo pasek ma 38 rem szerokości, a pudełko podpowiedzi jest wyśrodkowane; przeniesiona do środka
-paska jako jego własny wiersz.
-
-**Odklikane w przeglądarce na scenie „Strzelnica"** (MG): test wyjściowy etapu — pasek → 🔌 →
-klik w gniazdo → obrys → `Delete` → „Usunięto punkt dostępu — Ctrl+Z cofa." → `Ctrl+Z` →
-„Przywrócono punkt dostępu.". Kosz gniazd zdjął **6** naraz, jedno `Ctrl+Z` oddało **6**
-(„Przywrócono 6 punktów dostępu."). Ten sam gest sprawdzony po kolei na **wszystkich siedmiu
-rodzajach**: ścianie, świetle, osłonie, strefie bronionej, rysunku, notatce i gnieździe.
-Dwuklik: karta strefy się otwiera, lampa przestraja się do ustawień z paska. Klik w **końcówkę**
-ściany zaczyna łańcuch (a `Esc` go porzuca, nic nie zostawiając). `Delete` przy zaznaczonej
-figurze **nie kasuje figury**. `Esc` zdejmuje najpierw zaznaczenie obiektu, potem narzędzie.
-Okno `?` wymienia wszystkie dziewięć narzędzi i drabina `Esc` ma ciągłe 8 kroków. Scena
-przywrócona co do obiektu (6 gniazd, 3 ściany, reszta pusta).
-
-**Nie odklikane:** strona gracza — pozycja w `zaleglosci.md` z wyjaśnieniem, czemu serwerowej
-odmowy nie da się wywołać z UI.
-
-**Testy:** 1379 w `shared`, 772 na serwerze, 45 u klienta — zielone.

@@ -192,3 +192,25 @@ odcinek) i odpowiada na dwa pytania: `pickSceneHandle` („co kursor złapał") 
 róg wygrywa z wnętrzem (inaczej prostokąta nie da się przeskalować), rogi ma tylko to, co da się
 rozciągnąć (rysunek jest w prostokąt **wpisany**, więc dostaje sam ruch), a przyciąganie jest
 domyślne i wyłącza je `Ctrl` na czas gestu.
+
+**Figura bez karty rzuca przez `RollSource`, a jej adres niesie karta ataku** (naprawa 26.08).
+Statysta jest „kartą postaci uszytą na jedną walkę" (`systems/cpred/statist.ts`) i tak wchodzi
+do każdej mechaniki: `sheetFromCombatProfile` daje `CpredCharacterData`, więc planer, rozbicie
+i karta na czacie **nigdy nie dowiadują się, że statyści istnieją**. Nowe wejście do mechaniki
+dokłada się dwoma krokami, oboma po istniejącym wzorcu:
+
+- **na serwerze** — union `kind: 'character' | 'statist'` (`AttackSource` w `attacks.ts`,
+  `RollSource` w `character-rolls.ts`). Gałęzi pyta **wyłącznie to, co pisze**: Szczęście,
+  Test Przeżywalności, Ustabilizowanie, magazynek. Wszystko, co tylko czyta, bierze `source.data`
+  i nie zagląda głębiej. Odmowy reużywają kodów ścieżki z kartą (`CHARACTER_NOT_FOUND` dla
+  cudzej figury), żeby tablica błędów u klienta nie rosła o drugie słownictwo na tę samą
+  odpowiedź;
+- **na karcie** — adres figury jedzie w `CpredAttackMeta` i jest **wypełniany na serwerze**
+  (`buildAttackMeta`), nigdy przyjmowany od klienta. `attackerTokenId` powstał dokładnie
+  dlatego, że go nie było: klient szukał strzelca po wierszu broni, a statysta nie ma karty,
+  w której ten wiersz by leżał — więc przycisk „Obrażenia" po prostu nie istniał.
+
+Statysta rzuca przez `character:roll` **tylko na obrażenia** (`STATIST_CANNOT_ROLL_THIS`).
+Nie z ostrożności: jego atak ma `attack:roll`, jego Unik `attack:evade`, a Szczęścia i Testu
+Przeżywalności nie ma gdzie zapisać. Nowy rodzaj rzutu dla figury bez karty dostaje własne
+zdarzenie albo rozszerza tę listę świadomie.

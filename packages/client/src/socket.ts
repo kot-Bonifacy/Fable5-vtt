@@ -981,6 +981,10 @@ function rollAckErrorText(code: string): string {
       return 'Nieznana cecha — odśwież stronę.';
     case 'BAD_MODIFIER':
       return 'Modyfikator sytuacyjny poza dozwolonym zakresem.';
+    case 'TOKEN_HAS_NO_PROFILE':
+      return 'Ta figura nie ma profilu bojowego — uzupełnij go w menu żetonu.';
+    case 'STATIST_CANNOT_ROLL_THIS':
+      return 'Figura bez karty rzuca tylko na obrażenia z karty ataku.';
     default:
       return `Błąd rzutu: ${code}`;
   }
@@ -992,13 +996,16 @@ function rollAckErrorText(code: string): string {
  * declares the intention and hands over the cup gesture.
  */
 export function sendCharacterRoll(
-  characterId: string,
+  /** Sheet rolling; omitted for a statist, whose token carries the numbers. */
+  characterId: string | undefined,
   request: CpredRollRequest,
   visibility: 'public' | 'gm',
   gesture?: RollGesture,
+  /** Figure rolling when there is no sheet — read only without a character. */
+  attackerTokenId?: string,
 ): void {
   const payload: CharacterRollPayload<CpredRollRequest> = {
-    characterId,
+    ...(characterId ? { characterId } : { attackerTokenId }),
     request,
     visibility,
     ...(gesture ? { gesture } : {}),

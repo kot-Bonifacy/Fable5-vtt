@@ -1171,6 +1171,165 @@ describe('ranged combat from the map', () => {
       await undone;
       expect(await profileOf(statistTokenId)).toMatchObject({ armorSp: 4 });
     });
+
+    /**
+     * Obrażenia figury bez karty (zaległość z 23.08).
+     *
+     * Statysta strzelał od etapu 16b, ale karta ataku szukała atakującego
+     * wyłącznie wśród kart postaci — trafienie było, przycisku „Obrażenia" nie
+     * było, a MG odejmował PW ręcznie. Naprawa idzie wzorcem, którym 22.08
+     * naprawiono jego Unik: rzut zna figurę po żetonie zapisanym na karcie.
+     */
+    describe('damage from a figure that has no sheet', () => {
+      /** Fires until something lands, and returns the card's message id. */
+      async function landHit(): Promise<number> {
+        await emitAck(gm, 'token:move', {
+          tokenId: statistTokenId,
+          x: 4 * PX_PER_M,
+          y: 4 * PX_PER_M,
+          final: true,
+        });
+        await placeTargetAt(4);
+        for (let attempt = 0; attempt < 40; attempt++) {
+          // Magazine back to full: forty attempts would empty ten rounds.
+          await emitAck(gm, 'token:update', {
+            tokenId: statistTokenId,
+            patch: { combatProfile: PROFILE },
+          });
+          const message = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+          const ack = await emitAck<{ messageId: number }>(gm, 'attack:roll', {
+            targetTokenId,
+            attackerTokenId: statistTokenId,
+            request: { weaponRowId: 'statist-weapon', mode: 'single' },
+          });
+          const card = (await message).message.roll?.attack as AttackCard | undefined;
+          if (card?.hit && ack.ok && ack.data) return ack.data.messageId;
+        }
+        throw new Error('the statist never landed a shot in forty attempts');
+      }
+
+      it('names the shooter on the card, so the damage roll has something to find', async () => {
+        const message = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+        await emitAck(gm, 'attack:roll', {
+          targetTokenId,
+          attackerTokenId: statistTokenId,
+          request: { weaponRowId: 'statist-weapon', mode: 'single' },
+        });
+        const card = (await message).message.roll?.attack as AttackCard | undefined;
+        if (!card) throw new Error('roll message carried no attack card');
+        expect(card.system.attackerTokenId).toBe(statistTokenId);
+      });
+
+      it('rolls the profile’s damage without a character sheet', async () => {
+        const hitMessageId = await landHit();
+
+        const damageMessage = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+        const ack = await emitAck<{ messageId: number }>(gm, 'character:roll', {
+          attackerTokenId: statistTokenId,
+          request: {
+            kind: 'damage',
+            weaponRowId: 'statist-weapon',
+            attackMessageId: hitMessageId,
+          },
+          visibility: 'public',
+        });
+        expect(ack.ok).toBe(true);
+        const roll = (await damageMessage).message.roll;
+        // The profile's own notation, its own name on the card, and the target
+        // read off the stored attack — the same three things a sheet gets.
+        expect(roll?.notation).toBe('2d6');
+        expect(roll?.actor).toBe('Ochroniarz');
+        expect(roll?.damage?.targetTokenId).toBe(targetTokenId);
+      });
+
+      it('lands on the target through „Zastosuj", exactly as a sheet’s damage does', async () => {
+        const hitMessageId = await landHit();
+        const before = data(
+          await emitAck<TokenView>(gm, 'token:update', {
+            tokenId: targetTokenId,
+            patch: { hp: { current: 40, max: 40 } },
+          }),
+          'token:update',
+        );
+        expect(before.hp?.current).toBe(40);
+
+        const damageMessage = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+        const rolled = data(
+          await emitAck<{ messageId: number }>(gm, 'character:roll', {
+            attackerTokenId: statistTokenId,
+            request: {
+              kind: 'damage',
+              weaponRowId: 'statist-weapon',
+              attackMessageId: hitMessageId,
+            },
+            visibility: 'public',
+          }),
+          'character:roll',
+        );
+        const total = (await damageMessage).message.roll?.total ?? 0;
+
+        const applied = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+        const ack = await emitAck(gm, 'damage:apply', {
+          messageId: rolled.messageId,
+          tokenId: targetTokenId,
+        });
+        expect(ack.ok).toBe(true);
+        const entry = (await applied).message.damage;
+        // The number the dice showed reaches the target's HP bar: what the
+        // GM used to type in by hand after doing the arithmetic themselves.
+        expect(entry?.damageRolled).toBe(total);
+        expect(entry?.targetTokenId).toBe(targetTokenId);
+        expect(entry?.hp?.before).toBe(40);
+        expect(entry?.hp?.after).toBe(40 - (entry?.hpLost ?? 0));
+      });
+
+      it('refuses a statist roll that is not damage', async () => {
+        const ack = await emitAck(gm, 'character:roll', {
+          attackerTokenId: statistTokenId,
+          request: { kind: 'skill', skillId: 'evasion' },
+          visibility: 'public',
+        });
+        expect(ack).toEqual({ ok: false, error: 'STATIST_CANNOT_ROLL_THIS' });
+      });
+
+      it('refuses to roll damage for a token nobody has statted', async () => {
+        const hitMessageId = await landHit();
+        const bare = data(
+          await emitAck<TokenView>(gm, 'token:create', {
+            sceneId,
+            name: 'Gap',
+            x: 9 * PX_PER_M,
+            y: 9 * PX_PER_M,
+          }),
+          'token:create',
+        ).id;
+        const ack = await emitAck(gm, 'character:roll', {
+          attackerTokenId: bare,
+          request: {
+            kind: 'damage',
+            weaponRowId: 'statist-weapon',
+            attackMessageId: hitMessageId,
+          },
+          visibility: 'public',
+        });
+        expect(ack).toEqual({ ok: false, error: 'TOKEN_HAS_NO_PROFILE' });
+        await emitAck(gm, 'token:delete', { tokenId: bare });
+      });
+
+      it('never lets a player roll damage for a statist that is not theirs', async () => {
+        const hitMessageId = await landHit();
+        const ack = await emitAck(player, 'character:roll', {
+          attackerTokenId: statistTokenId,
+          request: {
+            kind: 'damage',
+            weaponRowId: 'statist-weapon',
+            attackMessageId: hitMessageId,
+          },
+          visibility: 'public',
+        });
+        expect(ack).toEqual({ ok: false, error: 'CHARACTER_NOT_FOUND' });
+      });
+    });
   });
 
   it('rejects a malformed ruler line', async () => {

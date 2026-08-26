@@ -271,7 +271,13 @@ export function DiceCup() {
         useRollStore.getState().clearCup();
         void digestSamples(samples).then((entropy) => {
           const gesture: RollGesture = { entropy, strength, toss };
-          sendCharacterRoll(loaded.characterId, loaded.request, loaded.visibility, gesture);
+          sendCharacterRoll(
+            loaded.characterId,
+            loaded.request,
+            loaded.visibility,
+            gesture,
+            loaded.attackerTokenId,
+          );
         });
       } else if (current.kind === 'initiative') {
         const { pending: loaded } = current;
