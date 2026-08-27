@@ -7,6 +7,72 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 24.08 — etap 27l: karty obiektów sceny, jedno okno na siedem rodzajów
+
+**Zakres z pliku etapu, w całości.** 27k dało **jeden gest** na wszystko, co stoi na mapie
+(warstwa → klik → `Delete`); ta sesja daje **jedno miejsce**, w którym się to coś ogląda
+i zmienia. Do 27l karty miały trzy różne domy, cztery rodzaje obiektów nie miały karty w ogóle,
+a właściwości ściany, osłony, światła i rysunku ustawiało się **zanim** się je postawiło.
+
+**Cztery rozstrzygnięcia MG przed kodowaniem** (pytania zadane przed pierwszą linią):
+przeciągnięcie **zaznaczonego** obiektu przesuwa, a przeciągnięcie obok rysuje nowy;
+przyciąganie do kratki **domyślnie**, `Ctrl` je wyłącza na czas gestu; karta rysunku zmienia
+też **treść etykiety**, nie tylko wygląd; tryby „🔒 Zamek" i „👁 Udostępnij" **znikają** z paska
+ścian.
+
+**Co powstało.**
+
+1. **`shared/scene-handles.ts`** — siedem rodzajów sprowadzonych do **trzech kształtów** (punkt,
+   prostokąt, odcinek) i dwie odpowiedzi: `pickSceneHandle` („co kursor złapał") i
+   `dragSceneShape` („gdzie to wyląduje"). Plus `translateDrawingShape` w `drawings.ts`
+   i `sanitizeWallSegment` w `walls.ts`. 20 nowych testów jednostkowych.
+2. **Serwer** — geometria w `wall:update`, **nowe zdarzenie `drawing:update`** (kolor, grubość,
+   wypełnienie, warstwa, kształt), `hpMax` **i `typeId`** w `cover:update`, `x`/`y`
+   w `netpoint:update`. Najtrudniejszą częścią `drawing:update` nie jest zapis, tylko **zmiana
+   publiczności**: rysunek zdjęty ze wspólnej warstwy trzeba graczom **zabrać** (`drawing:delete`
+   do publiczności przed upsertem do MG), bo ich klienty trzymają go od chwili udostępnienia.
+3. **Klient** — `sceneCardStore`, `SceneObjectCard` (ramka + `switch` po rodzaju) i cztery nowe
+   treści kart; `DefenseZonePanel` → `SceneCardZone`, `NetAccessPointPanel` → `SceneCardNetPoint`,
+   `NoteEditor` → `SceneCardNote` (trzy stany `editing*` w store'ach zniknęły). Uchwyty
+   w `MapRenderer` (obrys podglądu, kwadraciki w rogach, kursor `nwse-resize`/`grab`),
+   nowy szczebel drabiny `Esc` (karta schodzi **przed** zaznaczeniem) i `mapErrors.ts` wydzielone
+   z `MapArea`, żeby karta tłumaczyła odmowy tym samym zdaniem.
+4. **Poza planem** doszły **preset osłony** i **wytrzymałość maksymalna** — bez nich karta
+   obiecywałaby coś, czego nie umie: „to jednak nie samochód, to kontener" nie może znaczyć
+   „skasuj i narysuj prostokąt jeszcze raz".
+
+**Pięć błędów znalezionych przy oględzinach i naprawionych.** Cztery z nich mają jedną przyczynę,
+zapisaną w `pulapki-dev.md`: **obiekt sceny mógł się dotąd tylko pojawić i zniknąć, nigdy
+zmienić.** (1) Obrys zaznaczenia zostawał tam, gdzie obiekt stał przed przesunięciem.
+(2) Poprawiona literówka w etykiecie nie docierała na mapę — `setDrawings` miało w komentarzu
+„a drawing is immutable once stored" i pomijało istniejące id. (3) Ten sam brak nie przenosił
+rysunku między warstwą MG a wspólną. (4) Chwyt uchwytu **zjadał drugie kliknięcie dwukliku**,
+więc karta nie otwierała się nigdy na obiekcie już zaznaczonym. (5) Strażnik „czy ktoś pisze"
+objął **każdą** kartę, więc po jej otwarciu `O` przestawało przełączać na osłony — a `Esc`
+z kursorem w treści notatki przestał zamykać kartę (regresja po skasowaniu prywatnego listenera
+`NoteEditor`).
+
+**Poprawka przy okazji:** `snapWallPoint` ignorowało przesunięcie kratki (`grid.offsetX/Y`),
+choć żeton honoruje je od etapu 05 — na scenie z kratką narysowaną od 30 px ściana przyciągała
+się **obok** narysowanej linii. Dołożone jako pola opcjonalne, więc zwykła mapa liczy się tak
+samo jak przedtem.
+
+**Odklikane w przeglądarce na nowej scenie „Karty 24x"** (MG): karta pod dwuklikiem dla
+**siedmiu rodzajów po kolei**. Ściana → Drzwi → „Gracze mogą otwierać" → rygiel (zamyka drzwi
+i blokuje „Otwórz") → „Otwórz" (tytuł karty zmienia się na „Drzwi — otwarte"). Osłona:
+„Rozwal" → „Samochód (wrak)" → **„Napraw" → 25/25**, potem róg (skalowanie) i wnętrze
+(przesunięcie). Lampa: kolor na różowy, „💡 Świeci" → „🌑 Zgaszona". Etykieta: literówka
+poprawiona z karty **na żywo**, warstwa MG → wspólna. Gniazdo: przesunięte uchwytem, `Delete`
+(„Usunięto punkt dostępu — Ctrl+Z cofa.") i `Ctrl+Z` („Przywrócono punkt dostępu."). Notatka:
+zapisana i otwarta ponownie dwuklikiem, `Esc` z kursorem w treści zamyka kartę i **zostawia
+zaznaczenie**. Strefa: ⚠ „Podłoga elektryczna" z pełną kartą 26f w nowej ramce. Ściana
+przesunięta końcówką: długość na karcie przeliczyła się z 28,0 m na 43,2 m.
+
+**Nie odklikane:** strona gracza (dwie karty, które gracz w ogóle widzi) — pozycja
+w `zaleglosci.md` z tym samym wyjaśnieniem, co przy 27k.
+
+**Testy:** 1399 w `shared`, 779 na serwerze, 50 u klienta — zielone.
+
 ### Sesja 23.08 (trzecia tego dnia) — etap 27k: edycja sceny, jedna gramatyka kasowania
 
 **Zakres z pliku etapu, w całości.** Kasowanie obiektów mapy miało trzy różne gramatyki (tryb

@@ -91,30 +91,27 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 ## Od czego zacząć
 
-**Ostatnia sesja (26.08) zrobiła pakiet P1 — kartę ataku i obrażeń; poza etapami.**
-Naprawiony jedyny prawdziwy błąd z listy: **statysta trafiał, ale nie miał czym zadać obrażeń**
-— karta ataku niesie teraz `attackerTokenId`, a `performCharacterRoll` przyjmuje figurę bez
-karty przez `RollSource` (umowa w indeksie niżej). Pozostałe pięć pozycji P1 (16d, 16g×2, 16h,
-14d) zamkniętych testem — **MG ustalił 26.08, że test pokrywający ścieżkę wystarcza za
-odklikanie w przeglądarce**.
+**Ostatnia sesja (27.08) zrobiła pakiet A+B+X1 — konto testowe gracza, kosz w bibliotece
+grafik żetonów i bezpiecznik przy tabeli ran krytycznych.** Powstało konto `Tester`
+(`/join/tester-dev`, opis w `poligon.md`), którym odklikano cztery zaległości „strona gracza":
+27f, 27k, 27l i odmowę statusową ruchu. Kosz biblioteki zdejmuje grafikę **także z żetonów**
+(zdarzenie `token:asset-delete`, umowa w indeksie niżej).
 
 **Od czego zacząć: do wyboru 27g** (wydajność) i **28** (wdrożenie na VPS) — to jedyne dwa
-nierozpoczęte etapy. Z długu oględzin czekają dalej: **Sieć (26a–26f)** — najdroższy pakiet,
-bo wymaga rozpoczętej walki i sceny ze ścianami; **strefy i efekty (26f + 27i)**; **karta
-postaci i kreator (27b/27c/25a)**; **ekonomia (23b)**; **kosz w bibliotece grafik tokenów**
-(realny brak funkcji, wzorzec gotowy w puli portretów); dwie ostatnie ścieżki ruchu z 16e.
-Osobno leży **konto testowe gracza** — cztery pozycje „strona gracza nieodklikana" mają tę samą
-przyczynę (dołączenie nowym imieniem zakłada konto-śmiecia), a **MG zgodził się 26.08 na
-dopisanie skryptów seedujących**. Etap 27 jest rozdzielony do końca, więc plik `etap-27-…`
-to rozdroże ze wskazaniami, a nie zakres do zrobienia.
+nierozpoczęte etapy. Z długu oględzin czekają: **Sieć (26a–26f)** — najdroższy pakiet, bo wymaga
+**rozpoczętej** walki (sam „Włącz tryb turowy" nie robi rund) i drzwi na scenie; uwaga, pozycja
+26b twierdzi, że Strzelnica nie ma ścian — **ma, w kształcie L**, więc `NET_WALL_BLOCKS` jest
+odklikywalne od ręki. Dalej: **strefy i efekty (26f + 27i)** — sprawdź najpierw, czy ⚠ „Podłoga
+elektryczna" wciąż leży na Strzelnicy, bo opisy się rozjeżdżały; **karta postaci i kreator
+(27b/27c/25a)**; **ekonomia (23b)**; dwie ostatnie ścieżki ruchu z 16e. Etap 27 jest rozdzielony
+do końca, więc plik `etap-27-…` to rozdroże ze wskazaniami, a nie zakres do zrobienia.
 
-**Oględziny 27l szły na nowej scenie „Karty 24x"** (opis w `poligon.md`) — leży na niej po
-jednym obiekcie każdego z siedmiu rodzajów, żeby następna sesja nie musiała ich stawiać od nowa.
-**„Strzelnica" jest nietknięta** (6 gniazd, 3 segmenty ściany, reszta zero) i z powrotem aktywna.
-Na scenie **„Efekty 23x"** sesja 26.08 sprawdzała naprawę obrażeń statysty i **przywróciła** ją
-w całości (magazynek Granatnika 0/2, „Cel 23x" 33/35 z OB 6).
+**Sceny testowe:** aktywna jest **„Strzelnica"** i po 27.08 wróciła do stanu z 27l (4 żetony,
+0 rysunków, biblioteka 4 grafiki). **„Karty 24x"** ma po jednym obiekcie każdego z siedmiu
+rodzajów, **„Efekty 23x"** stoi nietknięta od 26.08 (magazynek Granatnika 0/2, „Cel 23x" 33/35
+z OB 6). Do oględzin z konta gracza nie zakładaj już nowego imienia — jest `Tester`.
 
-**Otwarte zaległości: 41 pozycji w `zaleglosci.md`** — w większości dług oględzin („ścieżka ma
+**Otwarte zaległości: 37 pozycji w `zaleglosci.md`** — w większości dług oględzin („ścieżka ma
 test, ale nikt jej nie kliknął w przeglądarce"), nie błędy. Zaglądaj tam, gdy siadasz do
 odhaczania albo ruszasz etap, który na tej liście występuje.
 
@@ -128,7 +125,7 @@ czeka na sesję z nowym modelem.
 a od 27i pierwszym, przy którym ktoś **usłyszy** dźwięki walki (dobrane bez odsłuchu, przyciski
 próbek są w „⚙ Ustawienia"; od 27j jest wśród nich „Krok" z własnym wyłącznikiem).
 
-**Testy na koniec ostatniej sesji:** 1399 w `shared`, 786 na serwerze, 50 u klienta — zielone.
+**Testy na koniec ostatniej sesji:** 1399 w `shared`, 789 na serwerze, 50 u klienta — zielone.
 
 **09.08 głos wypadł z projektu** (decyzja MG): etapy **12, 21 i 22** wycofane, kod TTS usunięty
 z repo. Szczegóły w `archiwum/dziennik-sesji.md` i `archiwum/wycofane/README.md`.
@@ -164,6 +161,7 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 - **`Esc` w karcie** — obsługiwany przez `onKeyDown` samej karty, bo globalna drabina odrzuca każdy klawisz naciśnięty w polu tekstowym, a karta notatki sama ustawia tam kursor.
 - **Rzut figury bez karty** — `RollSource` w `character-rolls.ts` (bliźniak `AttackSource`); statysta wchodzi przez `sheetFromCombatProfile`, o gałąź pyta **tylko to, co pisze**, a adres strzelca niesie `CpredAttackMeta.attackerTokenId` wypełniane na serwerze. Przez `character:roll` statysta rzuca wyłącznie na obrażenia.
 - **Uchwyty obiektu** — geometria w `shared/scene-handles.ts` (trzy kształty na siedem rodzajów); renderer woła `onSceneTransform(ref, shape)` i **nie wysyła nic sam**. Róg wygrywa z wnętrzem; przyciąganie domyślne, `Ctrl` je wyłącza.
+- **Kosz w bibliotece, która stoi na scenie** — zdarzenie gniazda (`token:asset-delete`), nie trasa REST: zdjęta grafika schodzi też z żetonów (`emitTokensById` → `token:upsert`), a ack mówi `clearedTokens`. REST wgrywa plik, gniazdo zmienia stan stołu.
 
 ## Pułapki dev — indeks
 
@@ -204,6 +202,45 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 27.08 — pakiet A+B+X1: konto testowe gracza, kosz biblioteki żetonów, tabela ran
+
+**Zlecenie MG:** znów wypisać pogrupowane zaległości (bez rzeczy czekających na lokalny LLM
+i bez nierozpoczętych etapów), a potem zrobić wskazany pakiet. Powstało osiem pakietów; MG wybrał
+**A + B + X1** — jedyne trzy pozycje z realnym kodem — i rozstrzygnął dwa pytania: kasowana
+grafika żetonu ma **zdejmować obrazek z żetonów** (nie odmawiać), a seed konta testowego ma być
+**jednorazowy, bez śladu w repo**, z jawnym adresem wejścia.
+
+**A — konto testowe `Tester`.** Cztery zaległości „strona gracza nieodklikana" miały jedną
+przyczynę: dołączenie nowym imieniem zakładało konto-śmiecia. W bazie dev stoi teraz gracz
+`Tester` (członek wszystkich kampanii, **bez postaci**) i zaproszenie o stałym adresie
+`/join/tester-dev`; szczegóły i uzasadnienie jawności linku — w `poligon.md`. Odklikane z tego
+konta: **27f** (pusty stan listy postaci), **27k** (zaznacz → `Delete` → `Ctrl+Z` na własnym
+rysunku; klik w cudzy nie zaznacza), **27l** (karta własnego rysunku, ze zmianą koloru na żywo;
+karta gniazda w wariancie „nie ma tu figury z kartą postaci") i **odmowa statusowa ruchu**
+(„Nieprzytomny token nie może się poruszać." — u MG niesprawdzalna z definicji).
+
+**B — kosz w bibliotece grafik żetonów.** Jedyna pozycja, przy której trzeba było grzebać
+w bazie. Zrobiony wzorem puli portretów, ale z jedną różnicą, którą wybrał MG: zdjęta grafika
+**schodzi też z żetonów**, które ją noszą, i te wracają do krążka. Stąd zdarzenie gniazda
+`token:asset-delete`, a nie trasa REST — umowa w indeksie wyżej. Ack niesie `clearedTokens`,
+panel mówi „Zdjęto „X"; 1 żeton wrócił do krążka.". Po pierwszych oględzinach doszła poprawka
+układu: dwa przyciski potwierdzenia nie mieściły się w kafelku o połowę węższym niż portretowy
+i rozpychały siatkę — teraz stoją w kolumnie mniejszym pismem.
+
+**X1 — tabela ran krytycznych okazała się w połowie nieaktualna.** Zaległość mówiła, że na
+czystej maszynie trzeba dostarczyć ręczny plik. Sprawdzenie: kompendium ma **obie** tabele 2k6
+(11 + 11) z podręcznika głównego przez `parse-manual.py`, a ręczny plik obsługuje wyłącznie
+wariant „mam sam Easy Mode". **Prawdziwy problem był inny:** oba skrypty piszą pod ten sam adres,
+więc `parse-critical-injuries.py` po cichu zubożyłby kompendium, a brak ręcznej tabeli przechodził
+bez słowa. Skrypt ma teraz bezpiecznik (`--force` wymagany, gdy zastany plik nie pochodzi z Easy
+Mode) i głośne ostrzeżenie, a w repo leży wzór formatu z **wymyślonymi** ranami
+(`data/public/cpred/tabela-ran-krytycznych.wzor.md`), sprawdzony parserem.
+
+**Zamknięte zaległości:** 4 pozycje przeniesione do archiwum + dwie zaktualizowane; lista otwartych
+zeszła z 41 do **37**.
+
+**Testy:** 1399 w `shared`, **789** na serwerze (+3), 50 u klienta — zielone. Lint i prettier czyste.
 
 ### Sesja 26.08 — pakiet P1: karta ataku i obrażeń; poza etapami
 
@@ -255,69 +292,3 @@ z UI, screamsheet w motywie dziennym, degradacja bez `creation.json`) — MG nie
 o nich, więc zostają otwarte.
 
 **Testy:** 1399 w `shared`, **786** na serwerze (+7), 50 u klienta — zielone. Lint i prettier czyste.
-
-### Sesja 24.08 — etap 27l: karty obiektów sceny, jedno okno na siedem rodzajów
-
-**Zakres z pliku etapu, w całości.** 27k dało **jeden gest** na wszystko, co stoi na mapie
-(warstwa → klik → `Delete`); ta sesja daje **jedno miejsce**, w którym się to coś ogląda
-i zmienia. Do 27l karty miały trzy różne domy, cztery rodzaje obiektów nie miały karty w ogóle,
-a właściwości ściany, osłony, światła i rysunku ustawiało się **zanim** się je postawiło.
-
-**Cztery rozstrzygnięcia MG przed kodowaniem** (pytania zadane przed pierwszą linią):
-przeciągnięcie **zaznaczonego** obiektu przesuwa, a przeciągnięcie obok rysuje nowy;
-przyciąganie do kratki **domyślnie**, `Ctrl` je wyłącza na czas gestu; karta rysunku zmienia
-też **treść etykiety**, nie tylko wygląd; tryby „🔒 Zamek" i „👁 Udostępnij" **znikają** z paska
-ścian.
-
-**Co powstało.**
-
-1. **`shared/scene-handles.ts`** — siedem rodzajów sprowadzonych do **trzech kształtów** (punkt,
-   prostokąt, odcinek) i dwie odpowiedzi: `pickSceneHandle` („co kursor złapał") i
-   `dragSceneShape` („gdzie to wyląduje"). Plus `translateDrawingShape` w `drawings.ts`
-   i `sanitizeWallSegment` w `walls.ts`. 20 nowych testów jednostkowych.
-2. **Serwer** — geometria w `wall:update`, **nowe zdarzenie `drawing:update`** (kolor, grubość,
-   wypełnienie, warstwa, kształt), `hpMax` **i `typeId`** w `cover:update`, `x`/`y`
-   w `netpoint:update`. Najtrudniejszą częścią `drawing:update` nie jest zapis, tylko **zmiana
-   publiczności**: rysunek zdjęty ze wspólnej warstwy trzeba graczom **zabrać** (`drawing:delete`
-   do publiczności przed upsertem do MG), bo ich klienty trzymają go od chwili udostępnienia.
-3. **Klient** — `sceneCardStore`, `SceneObjectCard` (ramka + `switch` po rodzaju) i cztery nowe
-   treści kart; `DefenseZonePanel` → `SceneCardZone`, `NetAccessPointPanel` → `SceneCardNetPoint`,
-   `NoteEditor` → `SceneCardNote` (trzy stany `editing*` w store'ach zniknęły). Uchwyty
-   w `MapRenderer` (obrys podglądu, kwadraciki w rogach, kursor `nwse-resize`/`grab`),
-   nowy szczebel drabiny `Esc` (karta schodzi **przed** zaznaczeniem) i `mapErrors.ts` wydzielone
-   z `MapArea`, żeby karta tłumaczyła odmowy tym samym zdaniem.
-4. **Poza planem** doszły **preset osłony** i **wytrzymałość maksymalna** — bez nich karta
-   obiecywałaby coś, czego nie umie: „to jednak nie samochód, to kontener" nie może znaczyć
-   „skasuj i narysuj prostokąt jeszcze raz".
-
-**Pięć błędów znalezionych przy oględzinach i naprawionych.** Cztery z nich mają jedną przyczynę,
-zapisaną w `pulapki-dev.md`: **obiekt sceny mógł się dotąd tylko pojawić i zniknąć, nigdy
-zmienić.** (1) Obrys zaznaczenia zostawał tam, gdzie obiekt stał przed przesunięciem.
-(2) Poprawiona literówka w etykiecie nie docierała na mapę — `setDrawings` miało w komentarzu
-„a drawing is immutable once stored" i pomijało istniejące id. (3) Ten sam brak nie przenosił
-rysunku między warstwą MG a wspólną. (4) Chwyt uchwytu **zjadał drugie kliknięcie dwukliku**,
-więc karta nie otwierała się nigdy na obiekcie już zaznaczonym. (5) Strażnik „czy ktoś pisze"
-objął **każdą** kartę, więc po jej otwarciu `O` przestawało przełączać na osłony — a `Esc`
-z kursorem w treści notatki przestał zamykać kartę (regresja po skasowaniu prywatnego listenera
-`NoteEditor`).
-
-**Poprawka przy okazji:** `snapWallPoint` ignorowało przesunięcie kratki (`grid.offsetX/Y`),
-choć żeton honoruje je od etapu 05 — na scenie z kratką narysowaną od 30 px ściana przyciągała
-się **obok** narysowanej linii. Dołożone jako pola opcjonalne, więc zwykła mapa liczy się tak
-samo jak przedtem.
-
-**Odklikane w przeglądarce na nowej scenie „Karty 24x"** (MG): karta pod dwuklikiem dla
-**siedmiu rodzajów po kolei**. Ściana → Drzwi → „Gracze mogą otwierać" → rygiel (zamyka drzwi
-i blokuje „Otwórz") → „Otwórz" (tytuł karty zmienia się na „Drzwi — otwarte"). Osłona:
-„Rozwal" → „Samochód (wrak)" → **„Napraw" → 25/25**, potem róg (skalowanie) i wnętrze
-(przesunięcie). Lampa: kolor na różowy, „💡 Świeci" → „🌑 Zgaszona". Etykieta: literówka
-poprawiona z karty **na żywo**, warstwa MG → wspólna. Gniazdo: przesunięte uchwytem, `Delete`
-(„Usunięto punkt dostępu — Ctrl+Z cofa.") i `Ctrl+Z` („Przywrócono punkt dostępu."). Notatka:
-zapisana i otwarta ponownie dwuklikiem, `Esc` z kursorem w treści zamyka kartę i **zostawia
-zaznaczenie**. Strefa: ⚠ „Podłoga elektryczna" z pełną kartą 26f w nowej ramce. Ściana
-przesunięta końcówką: długość na karcie przeliczyła się z 28,0 m na 43,2 m.
-
-**Nie odklikane:** strona gracza (dwie karty, które gracz w ogóle widzi) — pozycja
-w `zaleglosci.md` z tym samym wyjaśnieniem, co przy 27k.
-
-**Testy:** 1399 w `shared`, 779 na serwerze, 50 u klienta — zielone.

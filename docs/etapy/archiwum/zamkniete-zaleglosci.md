@@ -9,6 +9,87 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Przeniesione 2026-08-27 (pakiet A+B+X1 — konto testowe, kosz biblioteki, tabela ran)
+
+Jedna zrobiona funkcja, jeden bezpiecznik i cztery ścieżki odklikane z konta gracza. Treść
+pozycji zostawiona bez zmian; pod każdą, wcięte, to, co naprawdę ją zamknęło.
+
+- **Etap 27l — strona gracza nieodklikana (drugi raz z tego samego powodu).** Gracz widzi
+  dokładnie dwie karty obiektu: **gniazdo** („podłączyć się?") i **własny rysunek**. Żadnej nie
+  kliknięto, bo sesja na `[::1]:5173` jest zalogowana jako MG, a dołączenie nowym imieniem
+  zakłada konto-śmiecia (ten sam powód, co przy 27k niżej). Pokryte testami serwera:
+  `drawing:update` odmawia cudzego rysunku (`FORBIDDEN`), a warstwy MG graczowi nie odda
+  (`gmOnly` zostaje `false`).
+
+  **Odklikane 27.08 na koncie `Tester`** (seed opisany w `poligon.md`). Gracz dostał **kartę
+  własnego rysunku** — nagłówek „Prostokąt", sześć próbek koloru, suwak grubości, „Wypełnienie",
+  „Usuń… albo klawisz Delete. Ctrl+Z cofa." — i **zmienił z niej kolor** (cyjan → zielony), czyli
+  `drawing:update` na własnym rysunku przechodzi. Karta **gniazda** też się otworzyła, ale
+  w wariancie odmownym: „Nie ma tu figury z kartą postaci, którą dałoby się podłączyć." — konto
+  testowe nie ma postaci ani żetonu z Interfejsem. Wariant „podłączyć się?" należy do pakietu
+  Sieci (26a–26b) i tam czeka.
+
+- **Etap 27k — strona gracza nieodklikana.** Gracz ma zaznaczać i kasować **własny** rysunek,
+  a cudzego nie. Sesja na `[::1]:5173` jest dziś zalogowana jako MG, a dołączenie do stołu nowym
+  imieniem zakłada w kampanii konto-śmiecia — więc ścieżki nikt nie kliknął. Pokryta z dwóch
+  stron testami: filtr autorstwa u klienta (`shared/scene-objects.test.ts`, „gracz sięga przez
+  cudzą kreskę do własnej pod nią") i cofanie własnego usunięcia na żywych gniazdach
+  (`server/scene-undo.test.ts`, „gracz cofa własny rysunek; usunięcie MG zostaje MG").
+  **Uwaga przy odklikiwaniu:** serwerowej odmowy `FORBIDDEN` **nie da się** wywołać z UI i to
+  jest zamierzone — filtr u klienta nie pozwala gracza nawet zaznaczyć cudzej kreski, tak jak
+  nie pozwalał jej zetrzeć gumką od 17b. Odmowa istnieje dla klienta, który by o tym nie
+  wiedział, i ma test.
+
+  **Odklikane 27.08 na koncie `Tester`.** Trzy kroki gramatyki 27k po kolei: klik zaznaczył
+  **własny** rysunek (bursztynowy obrys, pasek „Zaznaczono: rysunek · Delete usuwa · Ctrl+Z
+  cofa"), `Delete` go skasował („Usunięto rysunek — Ctrl+Z cofa." na czacie), `Ctrl+Z` przywrócił
+  („Przywrócono rysunek."). Klik w **cudzy** rysunek (MG, warstwa wspólna) nie zaznaczył niczego —
+  dokładnie tak, jak zapowiadała pozycja: serwerowej odmowy `FORBIDDEN` z UI nie da się wywołać.
+  Przy okazji potwierdzone, że rysunek MG z **warstwy MG** do gracza w ogóle nie dociera.
+
+- **Biblioteka grafik tokenów nie ma kosza.** Raz wgrana grafika zostaje w zakładce „Tokeny"
+  na zawsze — nie da się jej usunąć z UI, a plik zostaje w `uploads/tokens`. Przy oględzinach
+  22.08 trzeba było skasować wpis wprost w bazie (`tokenAsset`) i plik z dysku. **Odłożone
+  świadomie 23.08** (decyzja MG: „w tej sesji nie robimy"). Wzorzec jest już gotowy do
+  przepisania: pula portretów z tego samego dnia ma kosz dwustopniowy i trasę
+  `DELETE /api/portrait-assets/:id`, a plik z dysku i tak zbiera `uploads-gc`.
+
+  **Zrobione 27.08 — z jedną świadomą różnicą wobec puli portretów.** Kosz jest dwustopniowy
+  („✕" → „Tak, usuń" / „Anuluj"), ale zdjęcie grafiki **schodzi też z żetonów**, które ją noszą
+  (decyzja MG: wariant „kasujemy, a tokeny lecą na domyślną grafikę"). Dlatego to **zdarzenie
+  gniazda** `token:asset-delete`, a nie trasa REST obok `GET /api/token-assets`: zmiana rusza
+  scenę, więc musi dojechać do wszystkich ekranów przez `emitTokensById` → `token:upsert`.
+  Ack niesie `clearedTokens`, a panel powtarza tę liczbę zdaniem („Zdjęto „Test kosza"; 1 żeton
+  wrócił do krążka."). Trzy testy w `tokens.test.ts` (kasowanie z żetonem, odmowy: gracz →
+  `FORBIDDEN`, drugi przebieg → `ASSET_NOT_FOUND`, pusty payload → `BAD_REQUEST`, brak adresu
+  w stanie po usunięciu). Odklikane u MG w obie strony: z żetonem (wrócił do krążka) i bez
+  („Zdjęto „Test układu" z biblioteki."). Plik z dysku zbiera `uploads-gc`, bo nikt go już nie
+  wymienia.
+
+- **Etap 27f — pusty stan listy postaci u gracza nieodklikany.** `'Nie masz jeszcze żadnej
+postaci.'` jest sprawdzony w kodzie i mówi tym samym językiem co pustka handoutów, ale na
+  ekranie go nie było: avatar9 ma dwie postacie, a Tony i Marcin też mają swoje. Do zobaczenia
+  trzeba dołączyć do stołu **nowym imieniem**, czyli założyć konto-śmiecia.
+
+  **Odklikane 27.08.** Konto `Tester` nie ma żadnej postaci, więc zakładka „Postacie" pokazała
+  „Nie masz jeszcze żadnej postaci." nad „Kreator postaci…" i polem „Imię nowej postaci" — bez
+  zakładania konta-śmiecia, bo konto testowe jest stałym mieszkańcem kampanii.
+
+- **`tabela-ran-krytycznych.md` poza repo — pozycja okazała się w połowie nieaktualna.**
+  Pierwotne zdanie („na czystej maszynie trzeba go dostarczyć albo wpisać tabelę głowy
+  w edytorze") opisywało stan sprzed importu podręcznika głównego. **Sprawdzone 27.08:**
+  `critical-injuries.json` ma dziś 22 wpisy — 11 korpusu i 11 głowy — wszystkie ze źródłem
+  „podręcznik główny, s. 187–188", czyli z `parse-manual.py`. Ręczna tabela jest potrzebna
+  **wyłącznie** temu, kto ma sam Easy Mode.
+
+  **Prawdziwy problem był inny i został naprawiony:** oba skrypty piszą pod **ten sam adres**,
+  a `parse-critical-injuries.py` (Easy Mode) po cichu zastąpiłby oficjalne 22 wpisy uboższym
+  zestawem — brak ręcznego pliku też przechodził **bez słowa**. Od 27.08 skrypt czyta `source`
+  zastanego pliku i odmawia nadpisania czegoś spoza Easy Mode bez `--force`, a brak (albo pusty
+  odczyt) ręcznej tabeli wypisuje ścieżkę, wzór i alternatywę. Wzór formatu — z wymyślonymi
+  ranami, bo repo jest publiczne — leży w `data/public/cpred/tabela-ran-krytycznych.wzor.md`
+  i jest sprawdzony parserem (3 wiersze, `movePenalty` i `deathSavePenalty` rozpoznane).
+
 ## Przeniesione 2026-08-26 (pakiet P1 — karta ataku i obrażeń)
 
 Jedna naprawa i pięć ścieżek zamkniętych testem. Treść pozycji zostawiona bez zmian; pod

@@ -8,40 +8,10 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
 
 ## Pozycje
 
-- **Etap 27l — strona gracza nieodklikana (drugi raz z tego samego powodu).** Gracz widzi
-  dokładnie dwie karty obiektu: **gniazdo** („podłączyć się?") i **własny rysunek**. Żadnej nie
-  kliknięto, bo sesja na `[::1]:5173` jest zalogowana jako MG, a dołączenie nowym imieniem
-  zakłada konto-śmiecia (ten sam powód, co przy 27k niżej). Pokryte testami serwera:
-  `drawing:update` odmawia cudzego rysunku (`FORBIDDEN`), a warstwy MG graczowi nie odda
-  (`gmOnly` zostaje `false`).
-
 - **Etap 27l — skalowanie rysunku poza zakresem.** Rysunek dostaje **sam ruch**, bez rogów:
   ścieżka wpisana w prostokąt to nie to samo, co prostokąt, a rozciąganie kresek jest osobną
   operacją (przeliczenie każdego punktu, minimalna grubość, tekst, który nie skaluje się jak
   kształt). Zapisane jako świadome ograniczenie, nie brak — pomysł jest w `POMYSLY.md`.
-
-- **Etap 27k — strona gracza nieodklikana.** Gracz ma zaznaczać i kasować **własny** rysunek,
-  a cudzego nie. Sesja na `[::1]:5173` jest dziś zalogowana jako MG, a dołączenie do stołu nowym
-  imieniem zakłada w kampanii konto-śmiecia — więc ścieżki nikt nie kliknął. Pokryta z dwóch
-  stron testami: filtr autorstwa u klienta (`shared/scene-objects.test.ts`, „gracz sięga przez
-  cudzą kreskę do własnej pod nią") i cofanie własnego usunięcia na żywych gniazdach
-  (`server/scene-undo.test.ts`, „gracz cofa własny rysunek; usunięcie MG zostaje MG").
-  **Uwaga przy odklikiwaniu:** serwerowej odmowy `FORBIDDEN` **nie da się** wywołać z UI i to
-  jest zamierzone — filtr u klienta nie pozwala gracza nawet zaznaczyć cudzej kreski, tak jak
-  nie pozwalał jej zetrzeć gumką od 17b. Odmowa istnieje dla klienta, który by o tym nie
-  wiedział, i ma test.
-
-- **Biblioteka grafik tokenów nie ma kosza.** Raz wgrana grafika zostaje w zakładce „Tokeny"
-  na zawsze — nie da się jej usunąć z UI, a plik zostaje w `uploads/tokens`. Przy oględzinach
-  22.08 trzeba było skasować wpis wprost w bazie (`tokenAsset`) i plik z dysku. **Odłożone
-  świadomie 23.08** (decyzja MG: „w tej sesji nie robimy"). Wzorzec jest już gotowy do
-  przepisania: pula portretów z tego samego dnia ma kosz dwustopniowy i trasę
-  `DELETE /api/portrait-assets/:id`, a plik z dysku i tak zbiera `uploads-gc`.
-
-- **Etap 27f — pusty stan listy postaci u gracza nieodklikany.** `'Nie masz jeszcze żadnej
-postaci.'` jest sprawdzony w kodzie i mówi tym samym językiem co pustka handoutów, ale na
-  ekranie go nie było: avatar9 ma dwie postacie, a Tony i Marcin też mają swoje. Do zobaczenia
-  trzeba dołączyć do stołu **nowym imieniem**, czyli założyć konto-śmiecia.
 
 - **Etap 27f — okno większe od przeglądarki nieodklikane; reszta sprawdzona 21.08 (patrz
   notatka sesji).** Sprowadzanie na ekran sprawdzone na oknie, które się mieści; dla okna
@@ -260,6 +230,9 @@ postaci.'` jest sprawdzony w kodzie i mówi tym samym językiem co pustka handou
   Ustalenie ważne dla reszty list: **odmowy statusowe są u MG niesprawdzalne** —
   `realtime/movement.ts:216` zwalnia MG z blokad, więc wszystko, co „ma odmówić ruchu",
   trzeba oglądać na koncie gracza.
+  **Odklikane 27.08 na koncie `Tester`:** żeton gracza ze statusem **Nieprzytomny** nie ruszył
+  się z miejsca, na czacie stanęło „Nieprzytomny token nie może się poruszać.", a wszystkie
+  Akcje w panelu postaci były wyszarzone.
 
 - **Etap 16e — zostały cztery ścieżki z dziesięciu.** **Odklikane 22.08** (piąta sesja, scena
   testowa „Korytarz 16e" ze ścianą w kształcie L, skasowana po oględzinach): (2) **obejście rogu**
@@ -300,4 +273,9 @@ postaci.'` jest sprawdzony w kodzie i mówi tym samym językiem co pustka handou
 - **70 broni markowych ma opisy po angielsku** (nie 35 — ta liczba brała się z komunikatu skryptu „35 już w pamięci podręcznej"). Angielskie opisy ma **wyłącznie** `weapons.json`; pozostałe 271 wpisów kompendium jest po polsku. **Skrypt był 21.08 pułapką i został naprawiony**: kwalifikował do tłumaczenia każdy wpis bez `descriptionOriginal`, czyli **341** — w tym 271 polskich, które model dostałby do „przetłumaczenia z angielskiego". Teraz `looks_english()` odsiewa je (`--check` mówi: 70 do zrobienia, 271 pominięto). Zostaje sam przebieg `tools/import/translate-descriptions.py` przy włączonym llama-serverze (`pwsh ai-gateway/scripts/start-gateway.ps1`, potem `uv run --with httpx python tools/import/translate-descriptions.py`). Bez GPU się nie da, więc czeka na sesję z gatewayem.
 - **Etap 09 — zakładka „AI" u MG niezweryfikowana wizualnie** (sesja toczyła się na koncie gracza). Późniejsze etapy oglądały u MG inne zakładki, więc to prawdopodobnie martwa zaległość — sprawdź przy okazji.
 - **Ślad ścieżki przy przeciąganiu nieobejrzany**: `left_click_drag` z CDP jest natychmiastowy, więc łamana z licznikiem metrów rysuje się i znika między klatkami. Do sprawdzenia ręcznie — myszą.
-- **`data/private/rulebook/manual/tabela-ran-krytycznych.md` jest poza repo** — na czystej maszynie trzeba go dostarczyć albo wpisać tabelę głowy w edytorze.
+- **`data/private/rulebook/manual/tabela-ran-krytycznych.md` jest poza repo — ale od 27.08 nie
+  jest już nikomu potrzebny.** Kompendium ma dziś **obie** tabele 2k6 (11 ran korpusu + 11 głowy,
+  s. 187–188) prosto z podręcznika przez `parse-manual.py`; ręczna tabela obsługuje wyłącznie
+  wariant „mam sam Easy Mode". Zostawione jako **ostrzeżenie**, nie zadanie: patrz
+  `archiwum/zamkniete-zaleglosci.md` (bezpiecznik przed nadpisaniem i wzór formatu w
+  `data/public/cpred/tabela-ran-krytycznych.wzor.md`).

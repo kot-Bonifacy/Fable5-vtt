@@ -107,3 +107,33 @@ i koniec ściany skalują, `Ctrl` wyłącza przyciąganie do kratki.
 Aktywna jest z powrotem **„Strzelnica"**; ta scena stoi w podglądzie. Strzelnica po tej sesji:
 **6 gniazd, 3 segmenty ściany, 0 świateł, 0 osłon, 0 stref, 0 notatek, 0 rysunków** — czyli
 dokładnie tak, jak ją zostawiło 27k. Scena **„Efekty 23x" nietknięta**.
+
+## Konto testowe gracza `Tester` (27.08) — zamiast konta-śmiecia
+
+Cztery zaległości typu „strona gracza nieodklikana" miały jedną przyczynę: dołączenie do stołu
+**nowym imieniem** zakładało w kampanii kolejne konto-śmiecia, więc nikt tego nie robił. Od 27.08
+w bazie dev siedzi na stałe gracz **`Tester`** — członek **wszystkich** kampanii, **bez żadnej
+postaci** (to jego zadanie: pokazuje pusty stan listy postaci z 27f).
+
+- **Wejście na konto:** `http://localhost:5173/join/tester-dev` → na ekranie dołączenia kliknij
+  **„Tester"** (zaproszenie o stałym adresie, ważne do sierpnia 2027, wskazuje aktywną kampanię).
+  Gracze **nie mają haseł** — `routes/auth.ts` loguje wyłącznie MG — więc link zaproszenia jest
+  całą procedurą i dlatego może stać jawnie w repo: prowadzi do lokalnej bazy dev, a `dev.db`
+  jest w `.gitignore`.
+- **Tym samym ekranem wraca się na dowolne inne konto** (Tony / avatar9 / Marcin) — imię, które
+  już jest w kampanii, to ten sam użytkownik, nie nowy.
+- **Dwie sesje naraz w jednym Chrome** działają jak dotąd: `localhost:5173` i `[::1]:5173`
+  (`127.0.0.1` **nie działa** — Vite tam nie słucha; sprawdzone 27.08). Który host trzyma MG,
+  a który gracza, zależy od ciasteczek — sprawdź nagłówek okna, nie zakładaj.
+- **Seed był jednorazowy, skryptu nie ma w repo** (decyzja MG): konto i zaproszenie żyją w bazie.
+  Gdyby `dev.db` kiedyś zniknęło, wystarczy dołączyć do stołu imieniem `Tester` i nie dawać mu
+  żadnej postaci.
+
+## Stan po oględzinach 27.08 (pakiet A+B+X1)
+
+Sesja pracowała na **„Strzelnicy"** i **wszystko po sobie posprzątała** — scena wróciła do stanu
+z 27l: **4 żetony** (Tony, avatar9, Automatyczna wieżyczka, testowy 2x2), **0 rysunków**,
+biblioteka grafik żetonów znów ma **4 pozycje** (avatar22, avatar14, avatar11, avatar9).
+Po drodze były i zniknęły: żeton „Tester 27x" (właściciel `Tester`, status Nieprzytomny),
+dwie grafiki testowe w bibliotece i trzy rysunki (jeden gracza, dwa MG — w tym jeden na warstwie MG).
+Status **„Onieśmielony" na żetonie avatar9 jest zastany**, nie z tej sesji.
