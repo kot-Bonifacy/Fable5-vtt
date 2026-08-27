@@ -192,6 +192,23 @@ sekcję `rulebookDifferences` — miejsca, w których statbloki nie zgadzają si
 podręcznikiem. Rozbieżność nie musi być błędem (NPC może nosić broń niskiej
 jakości), ale jest jedynym sygnałem, że któryś z parserów się pomylił.
 
+## Rany krytyczne bez podręcznika głównego (`parse-critical-injuries.py`)
+
+**Ścieżka awaryjna, poza krokami wyżej.** Krok 2 (`parse-manual.py`) czyta
+z podręcznika **obie** tabele 2k6 — 11 ran korpusu i 11 głowy — i to jego wynik
+stoi w `critical-injuries.json`. Skrypt `parse-critical-injuries.py` jest dla
+kogoś, kto ma wyłącznie darmowy Easy Mode: ten niesie sam korpus, więc tabelę
+dla głowy trzeba wtedy dopisać ręcznie w
+`data/private/rulebook/manual/tabela-ran-krytycznych.md` (poza repo — wzór
+formatu leży w `data/public/cpred/tabela-ran-krytycznych.wzor.md`) albo wpisać
+w edytorze kompendium MG.
+
+Oba skrypty piszą **pod ten sam adres**, więc uruchomiony po kroku 2 zubożyłby
+kompendium do połowy tabel. Od 27.08 pilnuje tego bezpiecznik: skrypt czyta
+`source` zastanego pliku i odmawia nadpisania czegoś, co nie pochodzi z Easy
+Mode, dopóki nie dostanie `--force`. Brak ręcznej tabeli też nie przechodzi już
+po cichu — wypisuje ścieżkę, wzór i alternatywę.
+
 ## Tłumaczenie opisów
 
 Materiały RTG są po angielsku, a przy stole gramy po polsku, więc opisy

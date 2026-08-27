@@ -11,6 +11,13 @@ lista zawiera w sobie jedynie połowę Ran Krytycznych opisanych w podręczniku
 głównym"). The head table has no free source at all, so the GM types it into
 the compendium editor; nothing here invents it.
 
+**Ścieżka awaryjna, nie podstawowa (ustalone 27.08).** Mając podręcznik główny,
+obie tabele czyta `parse-manual.py` i to jego wynik stoi dziś w kompendium
+(11 ran korpusu + 11 głowy, s. 187–188). Ten skrypt jest dla kogoś, kto ma sam
+Easy Mode — i pisze **do tego samego pliku**, więc uruchomiony po `parse-manual.py`
+podmieniłby oficjalne wpisy na uboższe. Stąd bezpiecznik niżej: skrypt odmawia
+nadpisania cudzej roboty bez `--force`.
+
 Output (gitignored, rulebook-derived):
     data/private/cpred/compendium/critical-injuries.json
 
@@ -35,6 +42,9 @@ MANUAL_PATH = REPO_ROOT / "data" / "private" / "rulebook" / "manual" / "tabela-r
 
 SOURCE = "Cyberpunk RED — Easy Mode (PL), s. 22"
 MANUAL_SOURCE = "Materiały własne MG — tabela nieoficjalna, do weryfikacji z podręcznikiem"
+
+# Wzór formatu ręcznej tabeli — w repo, bo nie ma w nim treści podręcznika.
+TEMPLATE_PATH = REPO_ROOT / "data" / "public" / "cpred" / "tabela-ran-krytycznych.wzor.md"
 
 # Column x-ranges of the table, read off the header row ("Rzut / Rana / Efekt
 # rany / Łatanie / Leczenie"). The sidebar note sits at x < 60 and is excluded
@@ -226,7 +236,29 @@ def parse_markdown_table(path: Path, heading: str, table: str) -> list[dict]:
     return injuries
 
 
+def existing_source(path: Path) -> str | None:
+    """`source` pliku, który już leży pod adresem wyjściowym (albo None)."""
+    if not path.exists():
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf8")).get("source")
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
 def main() -> int:
+    force = "--force" in sys.argv
+    previous = existing_source(OUT_PATH)
+    if previous and "Easy Mode" not in previous and not force:
+        for line in (
+            f"Odmowa: {OUT_PATH.name} pochodzi z innego źródła niż Easy Mode",
+            f'  („{previous}")',
+            "  — to zwykle wynik `parse-manual.py`, który czyta OBIE tabele",
+            "  z podręcznika głównego i jest lepszym źródłem niż ten skrypt.",
+            "  Nadpisanie go zubożyłoby kompendium. Powtórz z --force, jeśli wiesz, co robisz.",
+        ):
+            print(line, file=sys.stderr)
+        return 1
     if not PDF_PATH.exists():
         print(f"Brak pliku {PDF_PATH} — materiały prywatne są poza repo.", file=sys.stderr)
         return 1
@@ -253,13 +285,23 @@ def main() -> int:
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     OUT_PATH.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf8")
 
+    template = TEMPLATE_PATH.relative_to(REPO_ROOT)
     print(f"Zapisano {len(injuries)} ran krytycznych (tabela: korpus) -> {OUT_PATH}")
     if missing:
         print(f"  ! brak wyników 2k6: {missing}")
     if head:
         print(f"  + {len(head)} ran z tabeli głowy ({MANUAL_PATH.name}) — źródło NIEOFICJALNE")
+    elif MANUAL_PATH.exists():
+        print(f"  ! {MANUAL_PATH.name} istnieje, ale nie wyczytałem z niego ani jednego wiersza.")
+        print(f'    Sprawdź nagłówek („głowy") i kolumny wg wzoru: {template}')
     else:
-        print("  Tabela dla głowy nie występuje w darmowych materiałach — wpisz ją w edytorze MG.")
+        # Do 27.08 brak pliku przechodził bez słowa: kompendium wychodziło
+        # z samym korpusem, a strzał w głowę nie miał czego wylosować. Cisza
+        # w tym miejscu wygląda jak zepsuty kod — więc jej tu nie ma.
+        print("  ! Tabeli dla głowy nie ma w darmowych materiałach, a ręcznej też nie:")
+        print(f"    {MANUAL_PATH}")
+        print(f"    Wzór formatu: {template}")
+        print("    Alternatywa: wpisz tabelę w edytorze kompendium MG.")
     return 0
 
 
