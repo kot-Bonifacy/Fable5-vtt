@@ -241,3 +241,10 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
   wariant „mam sam Easy Mode". Zostawione jako **ostrzeżenie**, nie zadanie: patrz
   `archiwum/zamkniete-zaleglosci.md` (bezpiecznik przed nadpisaniem i wzór formatu w
   `data/public/cpred/tabela-ran-krytycznych.wzor.md`).
+
+- **`ai-gateway/src/vtt_gateway/tts/` został po wycofanym etapie 12 — pytanie otwarte (MG, 27.08).**
+  W repozytorium katalog jest **pusty** (`git ls-files` nic nie zwraca), na dysku leżą w nim same
+  `__pycache__` z 08.08, czyli sprzed usunięcia kodu TTS. Nic tego nie importuje i nic się przez to
+  nie psuje — koszt sprzątnięcia to jedno `rm -rf`, ale MG postanowił zostawić decyzję otwartą.
+  **Nie kasuj bez pytania** i nie zgłaszaj tego jako nowego znaleziska.
+

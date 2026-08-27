@@ -115,8 +115,9 @@ Do oględzin z konta gracza jest `Tester` (`/join/tester-dev`), ale **do Sieci t
 to on ma kartę netrunnera. Od 27.08 w kampanii stoi też **„Rudy Kwiatkowski"** — jedyna postać
 zrobiona kreatorem od zera; nie kasuj jej bez potrzeby (uzasadnienie w `poligon.md`).
 
-**Otwarte zaległości: 29 pozycji w `zaleglosci.md`** (było 33) — w większości dług oględzin,
-nie błędy. **Czeka na Twoją decyzję triaż** z 23.08 i 27.08: dziesięć pozycji, które są
+**Otwarte zaległości: 30 pozycji w `zaleglosci.md`** (było 33; sześć zamkniętych, trzy dopisane) — w większości dług oględzin,
+nie błędy. **Triaż jest odłożony świadomie — MG 27.08: „niech czeka do kolejnej sesji".**
+Nie podnoś go sam jako nowego odkrycia; to te same dziesięć pozycji z 23.08 i 27.08, które są
 świadomymi decyzjami albo ścieżkami nieosiągalnymi z UI, a nie długiem — lista jest w notatce
 sesji z 27.08 (drugiej) w `archiwum/dziennik-sesji.md`. Dwie z nich sesja 27.08 (trzecia)
 **potwierdziła po drodze**: „Utwórz postać" jest wyszarzone do końca, więc `CREATION_INCOMPLETE`

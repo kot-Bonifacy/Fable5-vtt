@@ -28,7 +28,7 @@ narzędziem ⚠ w trybie 📌; „Rozbrój" ją usypia, kosz usuwa.
 
 **Od 27.08 w kampanii stoi „Rudy Kwiatkowski" — jedyna postać zrobiona kreatorem od zera.**
 Fixer (Znajomości 4, PW 40, Człowieczeństwo 60), bez portretu i bez żetonu, właściciel „NPC (MG)".
-Powstał przy odklikiwaniu 27c i **zostawiony celowo**: to jedyny w bazie dowód, że pełny przebieg
+Powstał przy odklikiwaniu 27c i **zostaje decyzją MG (27.08)**: to jedyny w bazie dowód, że pełny przebieg
 kreatora dowozi komplet — 17 odpowiedzi Ścieżki Życia na stronie drugiej, „Wiedza lokalna:
 Pacifica" i „Język: Angielski" na stronie pierwszej. Ta ostatnia rzecz jest dowodem na naprawę
 z 27.08 (kreator gubił specjalizacje) — kasując go, tracisz jedyny egzemplarz do porównania.
