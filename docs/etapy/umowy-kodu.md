@@ -231,3 +231,32 @@ w `routes/uploads.ts` — ale ich kosze **muszą się różnić** i różnią si
 Reguła ogólna: **REST wgrywa plik, gniazdo zmienia stan stołu.** Nowy kosz w bibliotece czegoś,
 co leży na scenie, dokłada zdarzenie i mówi w acku, ilu figur dotknął (`clearedTokens`) — panel
 powtarza tę liczbę zdaniem, bo „usunięto" nie mówi, że komuś właśnie zniknęła twarz z mapy.
+
+
+## Nowe pole w szkicu kreatora postaci
+
+Szkic kreatora przechodzi przez **dwie** funkcje w `shared/systems/cpred/creation.ts` i nowe
+pole trzeba dopisać do **obu**:
+
+- `applyCreationPatch` — zapis, czyli co wolno przysłać klientowi;
+- `parseCreationDraft` — odczyt, czyli co wraca do klienta z bazy.
+
+`parseCreationDraft` składa szkic z domyślnego (`createDefaultCreationDraft`) i przepisuje pola
+**po nazwie**, więc pominięte pole nie wywołuje żadnego błędu — po prostu wraca puste przy
+każdym odczycie. Tak zginęły `skillSpecialties` (naprawione 27.08): zapis działał, w bazie
+wartość siedziała, a pola „w czym?" nie dało się wypełnić, bo ack zawsze przynosił `{}`.
+Objaw jest mylący — wygląda jak zepsute pole tekstowe, nie jak zgubiony odczyt.
+
+Walidacja ma być **jedną funkcją wołaną przez obie strony** (wzór: `readSkillSpecialties`),
+a nie skopiowaną pętlą — inaczej zapis i odczyt rozjadą się przy pierwszej zmianie reguł.
+
+## Reindeks RAG-u (dziennik, baza wiedzy)
+
+`knowledge:reindex` i `journal:reindex` **rozsyłają odświeżone wpisy**, nie tylko status indeksu.
+Chip „⟳ nieaktualny" siedzi na **wierszu**, a nie w nagłówku, więc sam `KnowledgeIndexStatus`
+w acku zdejmuje licznik „czeka na indeks" i zostawia czerwone chipy aż do przeładowania strony.
+Klient obsługuje `knowledge:upsert`/`journal:upsert` od 19b, więc wystarczy je wysłać do pokoju
+MG. Dwie rzeczy, które łatwo zrobić źle: status licz **raz** dla całej paczki (`emitUpsert`
+liczyłby go per wpis, czyli N zapytań pod rząd), a wpisy czytaj z bazy **po** `markIndexed` —
+doklejenie `stale: false` do kopii sprzed zapisu wysyła wiersz z `indexedAt: null`.
+

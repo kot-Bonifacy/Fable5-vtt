@@ -13,15 +13,6 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
   operacją (przeliczenie każdego punktu, minimalna grubość, tekst, który nie skaluje się jak
   kształt). Zapisane jako świadome ograniczenie, nie brak — pomysł jest w `POMYSLY.md`.
 
-- **Etap 27f — okno większe od przeglądarki nieodklikane; reszta sprawdzona 21.08 (patrz
-  notatka sesji).** Sprowadzanie na ekran sprawdzone na oknie, które się mieści; dla okna
-  **większego** niż okno przeglądarki zostaje próg „róg zawsze do złapania" i tej gałęzi nikt
-  nie oglądał. (Strona gracza → odklikana 22.08, patrz `archiwum/zamkniete-zaleglosci.md`.)
-  **To jest tańsze, niż wygląda (ustalone 27.08):** `window-placement.ts` ma `MIN_WIDTH = 280`
-  i **żadnego górnego ograniczenia** przy przeciąganiu `WindowResizeGrip`, więc dowolne okno
-  z uchwytem (karta postaci, kreator, okno runa, karta obiektu) rozciąga się ponad rozmiar
-  przeglądarki jednym gestem — nie trzeba zmieniać rozdzielczości ekranu.
-
 - **Etap 27i — zostały dwie ścieżki i dźwięki.** ~~Wybuch~~ i ~~liczba obrażeń nad figurą~~ —
   **odklikane 23.08** na scenie „Efekty 23x" (patrz `archiwum/zamkniete-zaleglosci.md`; wybuch
   wymagał wcześniej naprawy danych broni). Zostają: (1) **chmura gazu** i **wyładowanie strefy** —
@@ -66,18 +57,6 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
   **Obie pozycje są kandydatami do skasowania** przy triażu „odmowy nieosiągalne z UI".
   (Strona gracza → odklikana 22.08, patrz `archiwum/zamkniete-zaleglosci.md`.)
 
-- **Etap 27c — dwie ścieżki nieodklikane, obie skrajne.**
-  (Strona gracza → odklikana 22.08, patrz `archiwum/zamkniete-zaleglosci.md`.)
-  (1) **Postać wychodząca prosto z kreatora** — sprawdzona była karta, w którą Ścieżkę wpisano
-  ręcznie; przepływ „kreator wypełnia 17 pytań → strona druga je pokazuje" idzie tym samym
-  polem `data.lifepath`, więc rozjazd jest nieprawdopodobny, ale nie był oglądany.
-  (2) **Wąskie okno** — `@container (max-width: 560px)` zwęża rubryki do jednej kolumny
-  i zmniejsza pudełka gniazd. ~~Do tego progu trzeba ekranu poniżej ~600 px~~ — **nieprawda,
-  poprawione 27.08:** `.sheet-window` ma wprawdzie `width: min(1180px, 100vw − 32px)`, ale
-  `useWindowPlacement` nadpisuje szerokość **stylem w linii**, gdy ktoś pociągnie uchwyt,
-  a dolna granica to `MIN_WIDTH = 280`. Wystarczy więc przeciągnąć róg karty — bez ruszania
-  rozdzielczości ekranu (ta sama uwaga dotyczy 27f wyżej).
-
 - **Etap 27c — rozbicie gniazd per pudełko sylwetki nieodklikane.** Poprawka z 22.08 (rodzina
   z więcej niż jednym pudełkiem dostaje pod wierszem „Prawa cyberręka: 2 / 4 · Lewa: 0 / 4”)
   ma cztery testy w `cyberware.test.ts` i nikt jej nie widział — do obejrzenia na karcie
@@ -99,9 +78,6 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
   i w bazie stanęła z właścicielem **Marcin**. (4) **Rangi Postaci inne niż „początkująca"** — selektor
   pokazuje pięć pozycji (50–80 pkt), klikana była tylko domyślna 62.
 
-- **Etap 27b — wiersz rany krytycznej nieoglądany na wydruku i w motywie dziennym.** Sam panel
-  odklikany 22.08: nazwa, „+1 do Testu Przeżywalności”, pełny efekt i kosz, który ranę zdjął.
-
 - **Etap 24c — cztery ścieżki nieodklikane.** (1) **Zdjęcie prasowe** — screamsheet przyjmuje
   grafikę handoutu i rysuje ją jako odbitkę gazetową (`grayscale`), ale przy oględzinach nic
   nie wgrywano. (2) **„Przerwij" w trakcie generacji** — przycisk pojawia się na czas pisania
@@ -117,20 +93,6 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
   niż u kronikarza z 19c. Jeśli przeszkadza, pierwszą rzeczą do ruszenia jest
   `SCREAMSHEET_TEMPERATURE` w `packages/shared/src/screamsheets.ts`.
 
-- **Etap 24b — trzy ścieżki nieodklikane.** (1) **Oś czasu przez granicę miesiąca i roku** —
-  w kampanii są dwa wpisy, oba z sierpnia 2026, więc widziany był jeden nagłówek grupy; podział
-  pokrywa test w `shared`. (2) **Powtórne odsłonięcie wpisu** zostawia **drugą** linię na czacie
-  (świadome: „udostępnienie jest zdarzeniem" — ta sama zasada co przy handoucie z 24a), sprawdzone
-  testem, w przeglądarce nie. (3) **Limit 12 przypiętych materiałów** (`JOURNAL_HANDOUTS_MAX`) —
-  w kampanii był jeden handout, więc chip ponad limit nie był klikany.
-
-- **Etap 24b domknął przy okazji dwie zaległości 19c.** Widziane na żywo z **zatrzymanym**
-  gatewayem: zapis wpisu zostawia chip „⟳ nieaktualny" i licznik „1 czeka na indeks" obok
-  „Zaindeksuj wszystko", a panel pokazuje „brak połączenia z AI Gateway (fetch failed)" zamiast
-  pustej karty. Nieodklikane zostaje samo **„Zakończ sesję"** przy leżącym gatewayu (ma wrócić
-  `AI_UNAVAILABLE` po polsku) i **kosz przy wpisie** — ten drugi kliknięty w 24b i działa
-  dwustopniowo („Usunąć?" → „Tak, usuń").
-
 - **Etap 23b — trzy ścieżki nieodklikane.**
   (Karta przelewu u odbiorcy → odklikana 22.08, patrz archiwum.)
   (1) **Zakup pancerza i sprzętu** — sprawdzona tylko broń; wiersze pancerza
@@ -139,6 +101,25 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
   wtedy wyszarzony, a cena ma się liczyć z pasma; w kompendium kampanii wszystkie oglądane wpisy
   miały cenę. (3) **„Znaleziony — montaż N ed"** przy cyborgizacji (s. 375) — przycisk istnieje
   i jest pokryty testem, klikany był tylko wariant pełnopłatny.
+
+- **Trzy drobiazgi UI z sesji 27.08 (pakiet D+A) — kosmetyka, nie błędy mechaniki.**
+  (1) **Czerwony komunikat o braku gatewaya nie znika, gdy gateway wróci** — po kliknięciu
+  „Zakończ sesję i streść" przy leżącym gatewayu zdanie „Brak połączenia z AI Gateway —
+  streszczanie wymaga modelu." wisi w panelu dziennika także wtedy, gdy gateway już stoi;
+  zdejmuje je dopiero kolejna akcja. (2) **Wiersz stanu indeksu łamie się w wąską kolumnę** —
+  „3 wpisy czekają na indeks" renderuje się jako pięć linijek jedna pod drugą, bo w `.ai-status-main`
+  nie mieszczą się trzy elementy plus przycisk. (3) **Górny pasek zachodzi sam na siebie przy
+  wąskim oknie** — przy szerokości ~900 px „VTT — Cyberpunk RED", „Włącz tryb turowy" i nazwa
+  kampanii nachodzą na siebie.
+
+- **Odciski wpisów wiedzy z 08.08 nie zgadzały się z niczym — po reindeksie problem znikł.**
+  Oba wpisy („Klub Afterlife", „Kto sypie ekipe") pokazywały „⟳ nieaktualny" mimo zapisanego
+  `indexedDigest`. Sprawdzenie **kodem aplikacji**: długość ładunku zgadzała się co do znaku
+  (`4t` = 173, `5l` = 201), a hasz nie — i **nie zgadzał się w żadnym z dwóch historycznych
+  wariantów** `knowledgeDigest` (`join('')` z 19b ani `join(' ')` z 19c). Przyczyny nie ustalono;
+  po „Zaindeksuj wszystko" odciski są spójne i chipy nie wracają. Zostawione jako **ostrzeżenie**:
+  gdyby chip „nieaktualny" pojawił się znowu na wpisach, których nikt nie ruszał, to jest ten
+  sam trop — a nie regres poprawki reindeksu z 27.08.
 
 - **Maszynopis wypowiedzi NPC-a (09.08) nieodklikany w przeglądarce.** Efekt jest czysto
   wizualny, więc żaden test go nie pokrywa. Do sprawdzenia przy stole: (1) **tempo** — 15 zn/s,
@@ -179,13 +160,20 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
   nie ma żadnej umiejętności perswazji. `data/private/bot-decisions.jsonl` (gitignore, jedna linia JSON
   na decyzję) ma pole `options` z pełnym menu, które bot dostał — to zwykle wystarcza za diagnozę.
 
-- **Etap 19c — cztery ścieżki nieodklikane.** (1) **Mapowanie-redukcja na żywym modelu**: w przeglądarce log miał 4 wypowiedzi, czyli jedną porcję; podział na porcje jest pokryty testem serwera z ciasnym kontekstem (`journal.test.ts`, atrapa raportuje 2048 tokenów) i testem czystej funkcji w `shared`, ale na 32k modelu wymagałoby kilku tysięcy linii czatu. (2) **Relacja u gracza**: sprawdzona na żywym modelu skryptem A/B na tym samym prompcie (wrogi / przyjazny / bez relacji — odpowiedzi różnią się tonem nie do pomylenia) i testem serwera, ale **nie z konta gracza w przeglądarce** — wszystkie postacie w kampanii to „NPC (MG)", a relacja wiąże się z postać gracza. (3) **Kosz przy wpisie dziennika** (dwustopniowy, jak w 19b) i **„+ Wpis ręcznie"** — formularz nie był otwierany. (4) **Degradacja z martwym gatewayem**: „Zakończ sesję" ma wrócić z `AI_UNAVAILABLE` i po polsku — pokryte testem dymnym, w przeglądarce nieoglądane.
+- **Etap 19c — dwie ścieżki nieodklikane; obie wymagają żywego modelu.** ~~Kosz przy wpisie
+  i „+ Wpis ręcznie"~~ oraz ~~degradacja „Zakończ sesję"~~ — **odklikane 27.08**, patrz archiwum.
+  (1) **Mapowanie-redukcja na żywym modelu**: w przeglądarce log miał 4 wypowiedzi, czyli jedną porcję; podział na porcje jest pokryty testem serwera z ciasnym kontekstem (`journal.test.ts`, atrapa raportuje 2048 tokenów) i testem czystej funkcji w `shared`, ale na 32k modelu wymagałoby kilku tysięcy linii czatu. (2) **Relacja u gracza**: sprawdzona na żywym modelu skryptem A/B na tym samym prompcie (wrogi / przyjazny / bez relacji — odpowiedzi różnią się tonem nie do pomylenia) i testem serwera, ale **nie z konta gracza w przeglądarce** — wszystkie postacie w kampanii to „NPC (MG)", a relacja wiąże się z postać gracza.
 
-- **Etap 19b — trzy ścieżki nieodklikane.** (1) **Degradacja z martwym gatewayem**: zapis wpisu ma zostawić chip „⟳ nieaktualny" i licznik „N czeka na indeks", a „Zaindeksuj wszystko" po powrocie gatewaya ma go zdjąć — pokryte testami dymnymi (`knowledge.test.ts`), w przeglądarce nieoglądane. (2) **Filtr tagów u bota**: sprawdzone, że bot **bez** dostępu nic nie dostaje i że bot **z** dostępem dostaje wpis; nieoglądany przypadek pośredni — bot z tagiem, który nie pasuje do żadnego wpisu (test to pokrywa). (3) **Kosz przy wpisie** pyta dwustopniowo („Usunąć?" → „Tak, usuń") i nie był klikany — usunięcie wpisu ma też zabrać go z indeksu.
+- **Etap 19b — jedna ścieżka nieodklikana.** ~~Degradacja z martwym gatewayem~~ i ~~kosz przy
+  wpisie~~ — **odklikane 27.08**, przy okazji naprawiony błąd (reindeks nie zdejmował chipów
+  z wierszy); patrz archiwum. Zostaje: **Filtr tagów u bota**: sprawdzone, że bot **bez** dostępu nic nie dostaje i że bot **z** dostępem dostaje wpis; nieoglądany przypadek pośredni — bot z tagiem, który nie pasuje do żadnego wpisu (test to pokrywa).
 
 - **Jakość polszczyzny modelu, nie kodu:** przy sprawdzaniu odpowiedzi bez wiedzy model powiedział „w moim pamięci nic mi o tym nie mówi" i „w moim wymiarze pojęcia…". To 9B, nie błąd promptu — ale jeśli takie potknięcia będą się powtarzać przy stole, warto rozważyć wniosek MG („Mów poprawną polszczyzną") jako lekcję albo wzmocnić zasadę 3.
 
-- **Etap 19a — dwie ścieżki nieodklikane po poprawce.** (1) **Powtórka bez rozumowania**: pytanie, przy którym model przemyśli całą pulę tokenów, ma teraz wrócić z odpowiedzią i przypisem „rozumowanie zajęło cały limit… pytanie poszło jeszcze raz bez rozumowania" — poprawka weszła po tym, jak błąd się pokazał, i nie została obejrzana na żywym modelu (pokryta testem `rules.test.ts`). Pytanie, które to wywołało: „Jak działa korzystanie z osłony w walce i co daje osłona?". (2) **Degradacja**: panel z zatrzymanym gatewayem ma pokazać „brak połączenia z AI Gateway", a nie pustą kartę. (3) Kosmetyka: pytanie o **PT strzału z odległości** to jedyne z zestawu pomiarowego, które nie trafia w tabelę PT — tabela jest w indeksie, ale wygrywają z nią sąsiednie akapity.
+- **Etap 19a — dwie ścieżki nieodklikane po poprawce.** ~~Degradacja panelu~~ — **odklikana
+  27.08** (chip „brak indeksu", czerwone „brak połączenia z AI Gateway (fetch failed)",
+  podpowiedź „Model offline — uruchom AI Gateway"), patrz archiwum.
+  (1) **Powtórka bez rozumowania**: pytanie, przy którym model przemyśli całą pulę tokenów, ma teraz wrócić z odpowiedzią i przypisem „rozumowanie zajęło cały limit… pytanie poszło jeszcze raz bez rozumowania" — poprawka weszła po tym, jak błąd się pokazał, i nie została obejrzana na żywym modelu (pokryta testem `rules.test.ts`). Pytanie, które to wywołało: „Jak działa korzystanie z osłony w walce i co daje osłona?". (2) Kosmetyka: pytanie o **PT strzału z odległości** to jedyne z zestawu pomiarowego, które nie trafia w tabelę PT — tabela jest w indeksie, ale wygrywają z nią sąsiednie akapity.
 
 - **⚠️ ZANIM ODHACZYSZ COKOLWIEK NIŻEJ: przeczytaj `docs/testy/sesja-testow-walki-2026-08-08.md`.**
   Sesja 08.08 zbudowała **gotowy poligon testowy** (kampania „Poligon bojowy", scena
@@ -245,7 +233,6 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
 
 - **Kliknięcie w token było zepsute dla graczy od 18a — naprawione w 16e, ale zaległości oględzin z tego okresu warto powtórzyć.** Warstwy przykrywające przechwytywały hit-test (szczegóły w `pulapki-dev.md`), więc gracz na scenie z dynamiczną widocznością **nie mógł kliknąć ani przeciągnąć żadnego tokenu**. To prawdopodobnie realna przyczyna części pozycji zbiorczej „strona gracza" (zamknięta 22.08, `archiwum/zamkniete-zaleglosci.md`) — przy jej odhaczaniu sprawdź najpierw, czy rzecz w ogóle dawała się kliknąć.
 
-- **70 broni markowych ma opisy po angielsku** (nie 35 — ta liczba brała się z komunikatu skryptu „35 już w pamięci podręcznej"). Angielskie opisy ma **wyłącznie** `weapons.json`; pozostałe 271 wpisów kompendium jest po polsku. **Skrypt był 21.08 pułapką i został naprawiony**: kwalifikował do tłumaczenia każdy wpis bez `descriptionOriginal`, czyli **341** — w tym 271 polskich, które model dostałby do „przetłumaczenia z angielskiego". Teraz `looks_english()` odsiewa je (`--check` mówi: 70 do zrobienia, 271 pominięto). Zostaje sam przebieg `tools/import/translate-descriptions.py` przy włączonym llama-serverze (`pwsh ai-gateway/scripts/start-gateway.ps1`, potem `uv run --with httpx python tools/import/translate-descriptions.py`). Bez GPU się nie da, więc czeka na sesję z gatewayem.
 - **Etap 09 — zakładka „AI" u MG niezweryfikowana wizualnie** (sesja toczyła się na koncie gracza). Późniejsze etapy oglądały u MG inne zakładki, więc to prawdopodobnie martwa zaległość — sprawdź przy okazji.
 - **Ślad ścieżki przy przeciąganiu nieobejrzany**: `left_click_drag` z CDP jest natychmiastowy, więc łamana z licznikiem metrów rysuje się i znika między klatkami. Do sprawdzenia ręcznie — myszą.
 - **`data/private/rulebook/manual/tabela-ran-krytycznych.md` jest poza repo — ale od 27.08 nie

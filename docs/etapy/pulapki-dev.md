@@ -235,3 +235,19 @@ dotyczy.
   `destroys` (Szabloząb, Zabójca, Smok) **niszczy zamiast derezować** — chip na wierszu mówi
   „zniszczony", nie „zderezowany". Jeśli test albo oględziny mają dowieść derezowania, bij
   Mieczem albo Młotem; różnicy nie widać w REZ (obie drogi kończą się 0), tylko w chipie.
+
+- **Pole tekstowe, które „nie przyjmuje znaków", bywa zgubionym odczytem, nie zepsutym polem**
+  (27.08). Specjalizacja umiejętności w kreatorze wyglądała na martwy input: klik ustawiał
+  ognisko, znak leciał, wartość zostawała pusta. Sprawdzenie po kolei: pole nie jest `readOnly`
+  ani `disabled`, pisanie w **innym** polu na tej samej stronie działa, a wartość **jest**
+  w bazie (`CharacterDraft`) — więc winny był odczyt (`parseCreationDraft`), nie klawiatura.
+  Kolejność, która to rozstrzyga najszybciej: (1) `document.activeElement` — czy to na pewno to
+  pole, (2) atrybuty pola, (3) inne pole obok, (4) **zajrzyj do bazy**. Dopiero potem podejrzewaj
+  automat.
+
+- **Chip „⟳ nieaktualny" na wpisie, którego nikt nie ruszał, to zwykle stary odcisk, nie regres**
+  (27.08). `stale` liczy się jako `indexedDigest !== knowledgeDigest(...)`, więc wystarczy, że
+  odcisk zapisano inną wersją funkcji. Zanim zaczniesz szukać błędu w indeksowaniu, policz
+  odcisk **kodem aplikacji** (nie przepisanym do Pythona — łatwo o różnicę) i porównaj z bazą;
+  „Zaindeksuj wszystko" i tak to naprawia.
+

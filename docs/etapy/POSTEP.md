@@ -91,19 +91,20 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 ## Od czego zacząć
 
-**Ostatnia sesja (27.08, druga tego dnia) zamknęła dług oględzin Sieci** — dwanaście ścieżek
-z 26a–26e w jednym runie na „Strzelnicy". Cztery pozycje zeszły z listy w całości (26a, 26b,
-26c, 26e), piąta (26d) skurczyła się do dwóch odmów **nieosiągalnych z UI**. Kodu nie
-ruszano — to była czysta sesja oględzin.
+**Ostatnia sesja (27.08, trzecia tego dnia) była pierwszą od dawna sesją z kodem** — pakiet D+A
+zamknął 13 ścieżek długu oględzin i **wysypał trzy błędy, których testy nie łapały**. Najgroźniejszy:
+kreator gubił specjalizacje umiejętności, więc postaci z Nauką, Sztukami walki albo Grą na
+instrumencie **nie dało się skończyć**. Wszystkie trzy naprawione, opisy w archiwum zamkniętych.
 
 **Od czego zacząć: do wyboru 27g** (wydajność) i **28** (wdrożenie na VPS) — nadal jedyne dwa
 nierozpoczęte etapy. Z długu oględzin najbliżej gotowego są teraz: **strefy i efekty
 (26f + 27i)** — jedyna nietknięta pozycja Sieci plus gaz i wyładowanie strefy (uwaga: ⚠ „Podłoga
-elektryczna" leży na **„Kartach 24x"**, nie na Strzelnicy); **karta postaci i kreator
-(27b/27c/25a)** — z korektą, że wąskie i przerośnięte okno robi się **uchwytem okna**, a nie
-rozdzielczością ekranu; **ekonomia (23b)**; **dziennik i handouty (24b/24c bez generatora)**;
-dwie ostatnie ścieżki ruchu z 16e. Etap 27 jest rozdzielony do końca, więc plik `etap-27-…`
-to rozdroże ze wskazaniami, a nie zakres do zrobienia.
+elektryczna" leży na **„Kartach 24x"**, nie na Strzelnicy — `poligon.md` twierdził inaczej i został
+poprawiony 27.08); **ekonomia (23b)** razem z **gniazdami chromu (27c)**, bo zakup cyborgizacji
+tworzy stan, którego 27c wymaga, a **żadna z 9 postaci nie ma dziś ani jednej cyborgizacji**;
+**kreator (25a)** — zostały tam głównie pozycje triażowe plus Rangi Postaci; dwie ostatnie
+ścieżki ruchu z 16e. Etap 27 jest rozdzielony do końca, więc plik `etap-27-…` to rozdroże
+ze wskazaniami, a nie zakres do zrobienia.
 
 **Sceny testowe:** aktywna jest **„Strzelnica"** i po 27.08 ma **komplet pod Sieć** — żeton
 „Kolec" (karta „Test 27x") przy odsłoniętym gnieździe, drugie gniazdo **„Gniazdo za ścianą"**
@@ -111,24 +112,29 @@ po drugiej stronie muru L i **drzwi #59 „Brama serwerowni"** podpięte do węz
 Szczegóły i wszystkie współrzędne — w `poligon.md`. **„Karty 24x"** ma po jednym obiekcie
 każdego z siedmiu rodzajów (w tym uzbrojoną strefę), **„Efekty 23x"** stoi nietknięta od 26.08.
 Do oględzin z konta gracza jest `Tester` (`/join/tester-dev`), ale **do Sieci trzeba avatar9** —
-to on ma kartę netrunnera.
+to on ma kartę netrunnera. Od 27.08 w kampanii stoi też **„Rudy Kwiatkowski"** — jedyna postać
+zrobiona kreatorem od zera; nie kasuj jej bez potrzeby (uzasadnienie w `poligon.md`).
 
-**Otwarte zaległości: 33 pozycje w `zaleglosci.md`** (było 37) — w większości dług oględzin,
+**Otwarte zaległości: 29 pozycji w `zaleglosci.md`** (było 33) — w większości dług oględzin,
 nie błędy. **Czeka na Twoją decyzję triaż** z 23.08 i 27.08: dziesięć pozycji, które są
 świadomymi decyzjami albo ścieżkami nieosiągalnymi z UI, a nie długiem — lista jest w notatce
-sesji niżej.
+sesji z 27.08 (drugiej) w `archiwum/dziennik-sesji.md`. Dwie z nich sesja 27.08 (trzecia)
+**potwierdziła po drodze**: „Utwórz postać" jest wyszarzone do końca, więc `CREATION_INCOMPLETE`
+z 25a naprawdę jest nieosiągalne z UI.
 
-**Jedna rzecz czeka na włączony llama-server:** przebieg
-`uv run --with httpx python tools/import/translate-descriptions.py` przetłumaczy **70** opisów
-broni markowych (`--check` potwierdza: 70 do zrobienia, 271 pominiętych jako już polskie). Sam
-przebieg, bez zmian w kodzie — skrypt naprawiono 21.08. Model idzie do wymiany, więc to zadanie
-czeka na sesję z nowym modelem.
+**Nic już nie czeka na llama-server.** 70 opisów broni markowych przetłumaczono ręcznie 27.08
+(MG: „rzeczy, które miał zrobić bot, zrób sam"), a `translate-descriptions.py` nie wymaga już
+modelu, gdy wszystko pokrywają ręczne tłumaczenia. Na sesję z **nowym** modelem zostają wyłącznie
+rzeczy, które muszą zobaczyć żywy model: 20a/20b, screamsheety (24c), mapowanie-redukcja i relacje
+z 19c, powtórka bez rozumowania z 19a oraz maszynopis wypowiedzi bota.
 
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
 a od 27i pierwszym, przy którym ktoś **usłyszy** dźwięki walki (dobrane bez odsłuchu, przyciski
 próbek są w „⚙ Ustawienia"; od 27j jest wśród nich „Krok" z własnym wyłącznikiem).
 
-**Testy na koniec ostatniej sesji:** 1399 w `shared`, 789 na serwerze, 50 u klienta — zielone.
+**Testy na koniec ostatniej sesji:** 1400 w `shared`, 791 na serwerze, 50 u klienta — zielone.
+Uwaga: `packages/server/src/realtime/index.ts` jest niesformatowany **od przed 27.08** i został
+świadomie nietknięty — `prettier --check` na całym repo będzie na niego krzyczał.
 
 **09.08 głos wypadł z projektu** (decyzja MG): etapy **12, 21 i 22** wycofane, kod TTS usunięty
 z repo. Szczegóły w `archiwum/dziennik-sesji.md` i `archiwum/wycofane/README.md`.
@@ -164,6 +170,8 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 - **`Esc` w karcie** — obsługiwany przez `onKeyDown` samej karty, bo globalna drabina odrzuca każdy klawisz naciśnięty w polu tekstowym, a karta notatki sama ustawia tam kursor.
 - **Rzut figury bez karty** — `RollSource` w `character-rolls.ts` (bliźniak `AttackSource`); statysta wchodzi przez `sheetFromCombatProfile`, o gałąź pyta **tylko to, co pisze**, a adres strzelca niesie `CpredAttackMeta.attackerTokenId` wypełniane na serwerze. Przez `character:roll` statysta rzuca wyłącznie na obrażenia.
 - **Uchwyty obiektu** — geometria w `shared/scene-handles.ts` (trzy kształty na siedem rodzajów); renderer woła `onSceneTransform(ref, shape)` i **nie wysyła nic sam**. Róg wygrywa z wnętrzem; przyciąganie domyślne, `Ctrl` je wyłącza.
+- **Nowe pole w szkicu kreatora** — dopisz je do **obu** funkcji w `creation.ts`: `applyCreationPatch` (zapis) i `parseCreationDraft` (odczyt). Pominięte w odczycie wraca puste bez żadnego błędu — tak zginęły `skillSpecialties`. Walidacja to jedna funkcja wołana przez obie strony.
+- **Reindeks RAG-u** — `knowledge:reindex`/`journal:reindex` rozsyłają **odświeżone wpisy** (`*:upsert` do pokoju MG), nie sam status: chip „nieaktualny" siedzi na wierszu. Status licz raz, wpisy czytaj z bazy **po** `markIndexed`.
 - **Kosz w bibliotece, która stoi na scenie** — zdarzenie gniazda (`token:asset-delete`), nie trasa REST: zdjęta grafika schodzi też z żetonów (`emitTokensById` → `token:upsert`), a ack mówi `clearedTokens`. REST wgrywa plik, gniazdo zmienia stan stołu.
 
 ## Pułapki dev — indeks
@@ -197,6 +205,8 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 - **Podpowiedź wyśrodkowana nad mapą kładzie się na pasku narzędzi** — pasek ma 38 rem i sięga poza środek; podpowiedź należąca do paska renderuj **w nim** (`.map-tool-tip`).
 - **Automat CDP jednak buduje scenę** (ściany, lampy, osłony, strefy, pinezki) — koryguje „nie da się" z 23.08; kursor płótna mówi, czy pod wskaźnikiem jest chwytalny obiekt.
 - **Zrzut ekranu bywa ciemniejszy, niż mówi DOM** — Chrome przyciemnia obraz; motyw czytaj z `dataset.theme` i `getComputedStyle`, nie ze zrzutu.
+- **Pole tekstowe, które „nie przyjmuje znaków", bywa zgubionym odczytem** — sprawdź po kolei `activeElement`, atrybuty pola, inne pole obok, a potem **bazę**; automat podejrzewaj ostatni.
+- **Chip „⟳ nieaktualny" na nietkniętym wpisie to zwykle stary odcisk**, nie regres indeksowania — policz digest kodem aplikacji i porównaj z bazą.
 - **Obiekt sceny mógł się dotąd tylko pojawić i zniknąć, nigdy zmienić** — stąd pięć błędów 27l naraz (obrys w starym miejscu, stara treść etykiety, rysunek niezmieniający warstwy). Setter listy musi wołać `refreshSceneSelectOutline`, a węzły rysunków nieść odcisk.
 - **Chwyt uchwytu zjada drugie kliknięcie dwukliku** — gest bez ruchu musi wrócić jako zwykłe kliknięcie, inaczej karta nie otworzy się na obiekcie już zaznaczonym.
 - **Otwarte okno łatwo zabiera klawisze narzędzi mapy** — strażnik „czy ktoś pisze" ma obejmować wyłącznie kartę, która sama ustawia kursor w treści (notatka).
@@ -209,6 +219,66 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 27.08 (trzecia) — pakiet D+A: dziennik, wiedza, degradacja, okna karty + 70 tłumaczeń
+
+**Zlecenie MG:** znów pogrupowane zaległości (bez lokalnego LLM, bez nierozpoczętych etapów),
+z wyborem pakietu po stronie MG. Powstało osiem pakietów; MG wybrał **D + A** i dołożył polecenie:
+**„rzeczy, które miał zrobić bot, zrób sam"** — czyli tłumaczenie 70 opisów broni ręcznie zamiast
+przebiegiem przez model. Do tego zgoda na grzebanie w całym projekcie i informacja, że gateway
+mogę ubijać.
+
+**Sesja z kodem — trzy błędy znalezione i naprawione, wszystkie przez oględziny, nie przez testy.**
+
+**BŁĄD #1 — reindeks nie zdejmował chipów z wierszy.** `knowledge:reindex` i `journal:reindex`
+odsyłały sam status indeksu, więc po „Zaindeksuj wszystko" licznik „czeka na indeks" znikał,
+a „⟳ nieaktualny" zostawał na **każdym** wierszu aż do przeładowania strony. Naprawa: rozesłanie
+odświeżonych wpisów (`*:upsert` do pokoju MG), status liczony raz, wpisy czytane z bazy **po**
+`markIndexed`. Umowa w indeksie niżej, dwa testy serwera.
+
+**BŁĄD #2 — limit 12 materiałów milczał.** Trzynasty chip przestawał reagować bez wyszarzenia,
+tooltipa i komunikatu. Teraz jest `disabled` z tytułem, a pod chipami staje „Przypięto 12 z 12".
+
+**BŁĄD #3 — kreator gubił specjalizacje umiejętności (najpoważniejszy).** `applyCreationPatch`
+zapisywał `skillSpecialties` do bazy poprawnie, ale `parseCreationDraft` przepisuje pola szkicu
+**po nazwie** i tego pola tam nie było — odczyt zawsze zwracał `{}`. Skutkiem pola „w czym?"
+**nie dało się wypełnić**, a **postaci z poziomem w Nauce, Sztukach walki albo Grze na
+instrumencie nie dawało się skończyć w kreatorze** (kryterium etapu 25a). To wyjaśnia też
+notatkę z poprzedniej sesji o „normalizacji zapisu" (`skillSpecialties: {}` na karcie „Test 27x")
+— to nie była normalizacja. Naprawa: `readSkillSpecialties` wołane przez zapis i odczyt.
+
+**Co odklikano (13 ścieżek).** Pakiet D: degradacja panelu zasad (19a), pełna pętla chipu
+„nieaktualny" i „Zaindeksuj wszystko" (19b), kosze przy wpisach wiedzy i dziennika (19b, 19c),
+„+ Wpis ręcznie" (19c), `AI_UNAVAILABLE` po polsku przy „Zakończ sesję" (19c), oś czasu przez
+granicę miesiąca **i** roku, powtórne odsłonięcie wpisu i limit 12 materiałów (24b). Pakiet A:
+rana krytyczna w motywie dziennym i na miejscu z wydruku (27b), postać prosto z kreatora i wąskie
+okno karty (27c), okno zapisane jako większe od przeglądarki (27f).
+
+**Trzy sprostowania do zaległości.** (1) **„Wydruk" w 27b to układ oficjalnej karty papierowej**,
+nie Ctrl+P — aplikacja nie ma funkcji drukowania ani `@media print`. (2) **„Powtórne odsłonięcie"
+w 24b wymaga trzech kliknięć**, bo przycisk jest przełącznikiem; schowanie linii nie zostawia.
+(3) **27f jest mocniejsze, niż mówiła pozycja**: `clampPlacement` przycina rozmiar do
+`innerWidth − 16`, więc okno nie tylko ma „róg do złapania" — wraca **całe**, a gałąź „treść
+szersza niż viewport" jest dla karty nieosiągalna (`min(1180px, 100vw − 32px)`).
+
+**Tłumaczenia (X).** 35 brakujących opisów przetłumaczonych ręcznie do
+`translations-override.json`; `--check` mówi „Nic do tłumaczenia", 70 wpisów `weapons.json` ma
+polski `description` i angielski `descriptionOriginal`. Przy okazji naprawione **5 opisów
+uszkodzonych przez import DLC** (cztery ze stopką strony PDF-a w treści, jeden urwany na
+dzieleniu wyrazu — „assassination" odtworzone ze źródła) i `translate-descriptions.py` przestał
+wymagać llama-servera, gdy nic go nie potrzebuje. **Parser nadal tego nie umie** — przy kolejnym
+imporcie śmieci wrócą.
+
+**Sprzątnięte po oględzinach:** 13 handoutów testowych, wpis dziennika z 2025, rana krytyczna
+Tony'ego, motyw z powrotem nocny, sierota w indeksie RAG. **Zostawione celowo:** postać
+**„Rudy Kwiatkowski"** (jedyny dowód, że pełny przebieg kreatora dowozi komplet — patrz
+`poligon.md`) i dwie linie o wpisie dziennika na czacie (czat jest logiem).
+
+**Zamknięte zaległości:** 6 pozycji w całości, 3 skurczone, 2 nowe (kosmetyka UI i ostrzeżenie
+o odciskach) — lista otwartych zeszła z 33 do **29**.
+
+**Testy:** **1400** w `shared` (+1), **791** na serwerze (+2), 50 u klienta — zielone. ESLint
+i Prettier czyste (`realtime/index.ts` był niesformatowany przed sesją i został nietknięty).
 
 ### Sesja 27.08 (druga) — pakiet Sieci A+B: cały dług oględzin 26a–26e w jednym runie
 
@@ -269,42 +339,3 @@ poprawione; lista otwartych zeszła z 37 do **33**.
 
 **Testy:** 1399 w `shared`, 789 na serwerze, 50 u klienta — zielone. Kodu nie zmieniano,
 drzewo robocze poza `docs/` czyste.
-
-### Sesja 27.08 — pakiet A+B+X1: konto testowe gracza, kosz biblioteki żetonów, tabela ran
-
-**Zlecenie MG:** znów wypisać pogrupowane zaległości (bez rzeczy czekających na lokalny LLM
-i bez nierozpoczętych etapów), a potem zrobić wskazany pakiet. Powstało osiem pakietów; MG wybrał
-**A + B + X1** — jedyne trzy pozycje z realnym kodem — i rozstrzygnął dwa pytania: kasowana
-grafika żetonu ma **zdejmować obrazek z żetonów** (nie odmawiać), a seed konta testowego ma być
-**jednorazowy, bez śladu w repo**, z jawnym adresem wejścia.
-
-**A — konto testowe `Tester`.** Cztery zaległości „strona gracza nieodklikana" miały jedną
-przyczynę: dołączenie nowym imieniem zakładało konto-śmiecia. W bazie dev stoi teraz gracz
-`Tester` (członek wszystkich kampanii, **bez postaci**) i zaproszenie o stałym adresie
-`/join/tester-dev`; szczegóły i uzasadnienie jawności linku — w `poligon.md`. Odklikane z tego
-konta: **27f** (pusty stan listy postaci), **27k** (zaznacz → `Delete` → `Ctrl+Z` na własnym
-rysunku; klik w cudzy nie zaznacza), **27l** (karta własnego rysunku, ze zmianą koloru na żywo;
-karta gniazda w wariancie „nie ma tu figury z kartą postaci") i **odmowa statusowa ruchu**
-(„Nieprzytomny token nie może się poruszać." — u MG niesprawdzalna z definicji).
-
-**B — kosz w bibliotece grafik żetonów.** Jedyna pozycja, przy której trzeba było grzebać
-w bazie. Zrobiony wzorem puli portretów, ale z jedną różnicą, którą wybrał MG: zdjęta grafika
-**schodzi też z żetonów**, które ją noszą, i te wracają do krążka. Stąd zdarzenie gniazda
-`token:asset-delete`, a nie trasa REST — umowa w indeksie wyżej. Ack niesie `clearedTokens`,
-panel mówi „Zdjęto „X"; 1 żeton wrócił do krążka.". Po pierwszych oględzinach doszła poprawka
-układu: dwa przyciski potwierdzenia nie mieściły się w kafelku o połowę węższym niż portretowy
-i rozpychały siatkę — teraz stoją w kolumnie mniejszym pismem.
-
-**X1 — tabela ran krytycznych okazała się w połowie nieaktualna.** Zaległość mówiła, że na
-czystej maszynie trzeba dostarczyć ręczny plik. Sprawdzenie: kompendium ma **obie** tabele 2k6
-(11 + 11) z podręcznika głównego przez `parse-manual.py`, a ręczny plik obsługuje wyłącznie
-wariant „mam sam Easy Mode". **Prawdziwy problem był inny:** oba skrypty piszą pod ten sam adres,
-więc `parse-critical-injuries.py` po cichu zubożyłby kompendium, a brak ręcznej tabeli przechodził
-bez słowa. Skrypt ma teraz bezpiecznik (`--force` wymagany, gdy zastany plik nie pochodzi z Easy
-Mode) i głośne ostrzeżenie, a w repo leży wzór formatu z **wymyślonymi** ranami
-(`data/public/cpred/tabela-ran-krytycznych.wzor.md`), sprawdzony parserem.
-
-**Zamknięte zaległości:** 4 pozycje przeniesione do archiwum + dwie zaktualizowane; lista otwartych
-zeszła z 41 do **37**.
-
-**Testy:** 1399 w `shared`, **789** na serwerze (+3), 50 u klienta — zielone. Lint i prettier czyste.

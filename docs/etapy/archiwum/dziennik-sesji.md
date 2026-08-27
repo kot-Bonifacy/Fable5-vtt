@@ -7,6 +7,45 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 27.08 — pakiet A+B+X1: konto testowe gracza, kosz biblioteki żetonów, tabela ran
+
+**Zlecenie MG:** znów wypisać pogrupowane zaległości (bez rzeczy czekających na lokalny LLM
+i bez nierozpoczętych etapów), a potem zrobić wskazany pakiet. Powstało osiem pakietów; MG wybrał
+**A + B + X1** — jedyne trzy pozycje z realnym kodem — i rozstrzygnął dwa pytania: kasowana
+grafika żetonu ma **zdejmować obrazek z żetonów** (nie odmawiać), a seed konta testowego ma być
+**jednorazowy, bez śladu w repo**, z jawnym adresem wejścia.
+
+**A — konto testowe `Tester`.** Cztery zaległości „strona gracza nieodklikana" miały jedną
+przyczynę: dołączenie nowym imieniem zakładało konto-śmiecia. W bazie dev stoi teraz gracz
+`Tester` (członek wszystkich kampanii, **bez postaci**) i zaproszenie o stałym adresie
+`/join/tester-dev`; szczegóły i uzasadnienie jawności linku — w `poligon.md`. Odklikane z tego
+konta: **27f** (pusty stan listy postaci), **27k** (zaznacz → `Delete` → `Ctrl+Z` na własnym
+rysunku; klik w cudzy nie zaznacza), **27l** (karta własnego rysunku, ze zmianą koloru na żywo;
+karta gniazda w wariancie „nie ma tu figury z kartą postaci") i **odmowa statusowa ruchu**
+(„Nieprzytomny token nie może się poruszać." — u MG niesprawdzalna z definicji).
+
+**B — kosz w bibliotece grafik żetonów.** Jedyna pozycja, przy której trzeba było grzebać
+w bazie. Zrobiony wzorem puli portretów, ale z jedną różnicą, którą wybrał MG: zdjęta grafika
+**schodzi też z żetonów**, które ją noszą, i te wracają do krążka. Stąd zdarzenie gniazda
+`token:asset-delete`, a nie trasa REST — umowa w indeksie wyżej. Ack niesie `clearedTokens`,
+panel mówi „Zdjęto „X"; 1 żeton wrócił do krążka.". Po pierwszych oględzinach doszła poprawka
+układu: dwa przyciski potwierdzenia nie mieściły się w kafelku o połowę węższym niż portretowy
+i rozpychały siatkę — teraz stoją w kolumnie mniejszym pismem.
+
+**X1 — tabela ran krytycznych okazała się w połowie nieaktualna.** Zaległość mówiła, że na
+czystej maszynie trzeba dostarczyć ręczny plik. Sprawdzenie: kompendium ma **obie** tabele 2k6
+(11 + 11) z podręcznika głównego przez `parse-manual.py`, a ręczny plik obsługuje wyłącznie
+wariant „mam sam Easy Mode". **Prawdziwy problem był inny:** oba skrypty piszą pod ten sam adres,
+więc `parse-critical-injuries.py` po cichu zubożyłby kompendium, a brak ręcznej tabeli przechodził
+bez słowa. Skrypt ma teraz bezpiecznik (`--force` wymagany, gdy zastany plik nie pochodzi z Easy
+Mode) i głośne ostrzeżenie, a w repo leży wzór formatu z **wymyślonymi** ranami
+(`data/public/cpred/tabela-ran-krytycznych.wzor.md`), sprawdzony parserem.
+
+**Zamknięte zaległości:** 4 pozycje przeniesione do archiwum + dwie zaktualizowane; lista otwartych
+zeszła z 41 do **37**.
+
+**Testy:** 1399 w `shared`, **789** na serwerze (+3), 50 u klienta — zielone. Lint i prettier czyste.
+
 ### Sesja 26.08 — pakiet P1: karta ataku i obrażeń; poza etapami
 
 **Zlecenie MG:** wypisać kilkanaście otwartych zaległości pogrupowanych tak, żeby dały się

@@ -18,10 +18,20 @@ z dwoma urządzeniami — **„Kamera nad bramą"** (wpis „Kamera obserwacyjna
 REF 7, Umiejętność 7, karabin szturmowy 25/25, PW 25/25) — oraz 4 **„Serce sieci"** z **Diablikiem**
 (REZ 15, Interfejs 3, 2 Akcje Sieciowe, Wartość bojowa 14). Tryb turowy jest **wyłączony**;
 kolejka „PRZED WALKĄ" z Tonym i avatar9 wraca jednym kliknięciem „Włącz tryb turowy".
-**Od 26f na „Strzelnicy" leży też ⚠ „Podłoga elektryczna"** — prostokąt ~20 × 13 m nad żetonami,
-**uzbrojona i ukryta** (gracz jej nie dostanie, dopóki nie zda Percepcji PT 17 z 4 m). Kto na nią
-wejdzie, dostaje 6k6 przez pancerz i jeszcze raz na koniec każdej swojej Tury. Karta strefy
-otwiera się narzędziem ⚠ w trybie 📌; „Rozbrój" ją usypia, kosz usuwa.
+**Na „Strzelnicy" nie ma żadnej strefy — poprawione 27.08 (trzecia sesja).** Ten akapit
+obiecywał tu ⚠ „Podłogę elektryczną" od 26f; sprawdzenie w bazie mówi, że w całym projekcie jest
+**jedna** `DefenseZone` i stoi na **„Kartach 24x"** (id 3, 20 PW, uzbrojona i ukryta). Ta ze
+Strzelnicy została skasowana przy którymś porządkowaniu sceny i nikt tego nie odnotował. Strefa
+z „Kart 24x": kto na nią wejdzie, dostaje 6k6 przez pancerz i jeszcze raz na koniec każdej swojej
+Tury; gracz jej nie zobaczy, dopóki nie zda Percepcji PT 17 z 4 m. Karta strefy otwiera się
+narzędziem ⚠ w trybie 📌; „Rozbrój" ją usypia, kosz usuwa.
+
+**Od 27.08 w kampanii stoi „Rudy Kwiatkowski" — jedyna postać zrobiona kreatorem od zera.**
+Fixer (Znajomości 4, PW 40, Człowieczeństwo 60), bez portretu i bez żetonu, właściciel „NPC (MG)".
+Powstał przy odklikiwaniu 27c i **zostawiony celowo**: to jedyny w bazie dowód, że pełny przebieg
+kreatora dowozi komplet — 17 odpowiedzi Ścieżki Życia na stronie drugiej, „Wiedza lokalna:
+Pacifica" i „Język: Angielski" na stronie pierwszej. Ta ostatnia rzecz jest dowodem na naprawę
+z 27.08 (kreator gubił specjalizacje) — kasując go, tracisz jedyny egzemplarz do porównania.
 
 **„Poligon bojowy" stoi na poziomie sklepu 2 (Zawodowe)** — przestawione 22.08 decyzją MG wprost
 w bazie (`Campaign.shopTier`), bo migracja dawała każdej kampanii `shopTier = 1` i gracz nie kupił

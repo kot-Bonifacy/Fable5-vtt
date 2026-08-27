@@ -9,6 +9,94 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Przeniesione 2026-08-27 (pakiet D+A — dziennik, wiedza, degradacja i okna karty)
+
+Trzynaście ścieżek w jednej sesji: osiem z pakietu D (dziennik, baza wiedzy, degradacja przy
+zgaszonym gatewayu) i cztery z pakietu A (okna karty postaci), plus tłumaczenie 70 opisów broni
+zrobione ręcznie zamiast modelem. **Sesja z kodem** — po drodze wyszły trzy błędy i wszystkie
+naprawiono; opisy przy pozycjach, których dotyczą.
+
+- **Etap 19a — degradacja panelu zasad.** Panel z zgaszonym gatewayem pokazuje chip
+  **„brak indeksu"**, czerwone **„brak połączenia z AI Gateway (fetch failed)"** i pole pytania
+  z podpowiedzią **„Model offline — uruchom AI Gateway"** — a nie pustą kartę. Zostają w
+  `zaleglosci.md` dwie ścieżki wymagające żywego modelu (powtórka bez rozumowania, PT strzału).
+
+- **Etap 19b — degradacja, chip „⟳ nieaktualny" i „Zaindeksuj wszystko".** Odklikana cała pętla:
+  przy zgaszonym gatewayu zapis wpisu zostawia chip i licznik (**„1 wpis czeka na indeks"**,
+  poprawna liczba pojedyncza), a po powrocie gatewaya **„Zaindeksuj wszystko"** chip zdejmuje.
+  **Za pierwszym razem nie zdejmował** — patrz błąd niżej.
+  **BŁĄD #1 (naprawiony): reindeks odsyłał sam status, nie wpisy.** `knowledge:reindex`
+  i `journal:reindex` zwracały wyłącznie `KnowledgeIndexStatus`/`JournalIndexStatus`, więc
+  licznik „czeka na indeks" znikał, a chip „⟳ nieaktualny" zostawał **na każdym wierszu aż do
+  przeładowania strony** — MG widział zielony nagłówek nad czerwonymi wierszami. Klient od 19b
+  umie broadcast `knowledge:upsert`/`journal:upsert`, więc naprawa to rozesłanie odświeżonych
+  wpisów do pokoju MG; status liczony **raz**, nie per wpis. Wpisy czytane z bazy **po**
+  `markIndexed`, bo doklejanie `stale: false` do kopii sprzed zapisu dawało `indexedAt: null`
+  (złapał to test, nie oględziny). Dwa testy serwera.
+
+- **Etap 19b — kosz przy wpisie bazy wiedzy.** Dwustopniowy („Usunąć?" → „Tak, usuń" / „Anuluj"),
+  a po skasowaniu indeks zszedł z **„3 wpisy · 3 fragmenty"** na **„2 wpisy · 2 fragmenty"** —
+  czyli wpis wyszedł też z pamięci botów. Zostaje pośredni przypadek filtra tagów u bota.
+
+- **Etap 19c — kosz przy wpisie dziennika i „+ Wpis ręcznie".** Formularz ręcznego wpisu
+  wypełniony i zapisany (tytuł, data sesji, widoczność, treść); kosz dwustopniowy tak samo jak
+  w bazie wiedzy, indeks zszedł z „3 sesje · 3 fragmenty" na „2 sesje · 2 fragmenty".
+
+- **Etap 19c — „Zakończ sesję" przy leżącym gatewayu.** Wraca po polsku:
+  **„Brak połączenia z AI Gateway — streszczanie wymaga modelu."**, nie surowym kodem.
+
+- **Etap 24b — trzy ścieżki nieodklikane.** (1) **Oś czasu przez granicę miesiąca i roku** —
+  przy wpisach z 2026-09-02, 2026-08-08 i 2025-12-20 stanęły trzy nagłówki grup,
+  **WRZESIEŃ 2026 / SIERPIEŃ 2026 / GRUDZIEŃ 2025**, od najnowszego. (2) **Powtórne odsłonięcie**
+  zostawia **drugą** linię na czacie (21:16 i 21:17) — **z poprawką do treści pozycji: przycisk
+  jest przełącznikiem** (`sharedWithPlayers: !entry.sharedWithPlayers`), więc „powtórne
+  odsłonięcie" to **trzy** kliknięcia, a schowanie linii nie zostawia. (3) **Limit 12
+  przypiętych materiałów** — sprawdzony na 13 handoutach.
+  **BŁĄD #2 (naprawiony): limit milczał.** Po przypięciu dwunastego trzynasty chip przestawał
+  reagować **bez słowa** — bez wyszarzenia, bez tooltipa, bez komunikatu (`togglePinned`
+  zwracał `previous`). MG widział martwy przycisk. Teraz chip ponad limit jest `disabled`
+  (jest już na to CSS), ma tytuł „Przypięto już 12 materiałów — odepnij któryś, żeby dodać ten",
+  a pod chipami staje zdanie „Przypięto 12 z 12 — więcej materiałów wpis nie przyjmie.".
+
+- **Etap 27b — wiersz rany krytycznej.** Panel „Krytyczne Urazy" stoi w kolumnie tożsamości
+  strony pierwszej — dokładnie tam, gdzie drukuje go oficjalna karta (to jest „wydruk"
+  z kryterium etapu; **aplikacja nie ma funkcji drukowania ani `@media print`**, więc innego
+  wydruku nie ma czego oglądać). W motywie dziennym wiersz czyta się bez zarzutu: nazwa czarna,
+  „+1 do Testu Przeżywalności" czerwone, pełny efekt szary, ✕ widoczne.
+
+- **Etap 27c — dwie ścieżki skrajne.** (1) **Postać prosto z kreatora** — „Rudy Kwiatkowski"
+  (Fixer) przeszedł wszystkie siedem kroków i strona druga pokazała **komplet 17 odpowiedzi**:
+  12 ogólnych (kultura, język, osobowość, ubiór, fryzura, znak szczególny, najważniejsza osoba,
+  co cenisz, stosunek do ludzi, najważniejszy przedmiot, tło rodzinne, kryzys, środowisko, cel)
+  i 5 z „Ścieżki Życia Roli" Fixera. (2) **Wąskie okno** — uchwyt zwęził kartę do **521 px**
+  (poniżej progu `@container 560px`): rubryki złożyły się do jednej kolumny, cechy stanęły jedna
+  pod drugą, nic nie wyszło poza okno.
+  **BŁĄD #3 (naprawiony, najpoważniejszy): kreator gubił specjalizacje umiejętności.**
+  `applyCreationPatch` zapisywał `skillSpecialties` poprawnie (widać było w `CharacterDraft`
+  w bazie), ale `parseCreationDraft` przepisuje pola ze składowanego szkicu **po nazwie**
+  i `skillSpecialties` **nie było na tej liście** — więc odczyt zawsze zwracał `{}`. Skutkiem
+  pola „w czym?" **nie dało się wypełnić**: znak wpadał, patch szedł na serwer, ack wracał pusty.
+  Wiedza lokalna jest podstawowa i nie blokuje, ale **postaci z poziomem w Nauce, Sztukach walki
+  albo Grze na instrumencie nie dawało się skończyć w kreatorze** — kryterium etapu 25a.
+  Naprawa: `readSkillSpecialties` wyciągnięte z gałęzi patcha, używane przez zapis i odczyt.
+  Test w `creation.test.ts`. To wyjaśnia też notatkę z 27.08 o „normalizacji zapisu"
+  (`skillSpecialties: {}` na karcie „Test 27x") — to nie była normalizacja, tylko ten błąd.
+
+- **Etap 27f — okno większe od przeglądarki.** Okno zapisane jako **4000 × 3000 na pozycji
+  (9000, 6000)** wraca jako **970 × 361 w punkcie (16, 16)**: `clampPlacement` przycina rozmiar
+  do `innerWidth/innerHeight − 16`, więc gwarancja jest **mocniejsza niż „róg do złapania"** —
+  okno wraca całe, z belką i uchwytem w zasięgu. Gałąź „zmierzona treść szersza niż viewport"
+  jest dla karty **nieosiągalna**, bo `.sheet-window` ma `min(1180px, 100vw − 32px)`.
+
+- **70 broni markowych po angielsku — przetłumaczone ręcznie, bez GPU.** Zamiast przebiegu
+  przez lokalny model 35 brakujących opisów przetłumaczono w sesji i wpisano do
+  `translations-override.json` (to miejsce z założenia bije model i pamięć podręczną).
+  Terminologia zgodna z pozostałymi 35 ręcznymi wpisami: „złącze smartguna", „wydłużony
+  magazynek", „magazynek bębnowy", „dodatki magazynkowe", „4. Wojny Korporacji". `--check`
+  mówi teraz „Nic do tłumaczenia"; 70 wpisów `weapons.json` ma polski `description` i angielski
+  `descriptionOriginal`. Przy okazji `translate-descriptions.py` przestał wymagać llama-servera,
+  gdy wszystko pokrywają ręczne tłumaczenia i pamięć podręczna.
+
 ## Przeniesione 2026-08-27 (pakiet Sieci A+B — dług oględzin 26a–26e)
 
 Dwanaście ścieżek odklikanych w jednej sesji runu na „Strzelnicy": pięć sprzed walki i siedem
