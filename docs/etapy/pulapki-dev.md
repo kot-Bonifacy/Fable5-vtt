@@ -210,3 +210,28 @@ dotyczy.
   podmienił moduł, ale globalny `keydown` został zarejestrowany przez stary efekt. Kosztowało to
   kilka minut szukania błędu, którego już nie było. Zgodne z wpisem o HMR przy Pixi wyżej:
   **po edycji klienta przeładuj kartę i dopiero wtedy powtarzaj test.**
+
+- **Zanim zaczniesz szukać, dlaczego odmowa z serwera „nie chce paść" — sprawdź, czy klient
+  w ogóle da ci ją wywołać** (27.08, pakiet Sieci). `NET_NODE_USED` figurowało w zaległościach
+  jako „nie da się, bo na Poligonie nie ma rund". Rundy zrobiono, walkę rozkręcono — i przycisk
+  i tak nie chciał zadziałać, bo `NetRunWindow` **sam wyszarza wszystkie przyciski urządzeń**
+  (`spent = floor.nodeUsed`) i zamiast odmowy pisze chip „węzeł użyty w tej Turze". Ta sama
+  rodzina co `NET_DEVICE_OFF` i `FORBIDDEN` przy cudzym rysunku: **odmowa istnieje dla klienta,
+  który by o tym nie wiedział, a UI nie pozwala do niej dojść.** Zanim zbudujesz pod taką
+  odmowę scenę, przeczytaj warunek `disabled` przycisku, który miałby ją wywołać.
+
+- **Ślizg i Paf pojawiają się dopiero, gdy Czarny LOD stanie w szybie** (27.08). Okno runa
+  pisze wtedy wprost: „Ślizg i Paf czekają na Czarnego LOD-a — oba są testami spornymi
+  i pojawiają się przy nim". Szukanie ich w rządku zdolności obok Backdoora to strata czasu —
+  są **w wierszu LOD-a**, razem z „Atakuj" i selektorem Programu.
+
+- **Czarny LOD nie spawnuje się drugi raz na tym samym piętrze** (27.08). `spawnIceOnFloors`
+  pomija piętra z `state.metIce`, więc dołożenie Programu do piętra, na którym netrunner **już
+  stał**, nie da nic — trzeba dołożyć go na piętro jeszcze nieodwiedzone (albo przerobić na LOD
+  piętro, przez które biegła dotąd sama droga: `metIce` zbiera **wyłącznie** piętra rodzaju
+  `ice`, więc `empty` → `ice` spawnuje normalnie).
+
+- **„Zderezowany" i „zniszczony" to dwa różne końce Czarnego LOD-a** (27.08). Program z flagą
+  `destroys` (Szabloząb, Zabójca, Smok) **niszczy zamiast derezować** — chip na wierszu mówi
+  „zniszczony", nie „zderezowany". Jeśli test albo oględziny mają dowieść derezowania, bij
+  Mieczem albo Młotem; różnicy nie widać w REZ (obie drogi kończą się 0), tylko w chipie.

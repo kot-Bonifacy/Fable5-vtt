@@ -17,6 +17,10 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
   notatka sesji).** Sprowadzanie na ekran sprawdzone na oknie, które się mieści; dla okna
   **większego** niż okno przeglądarki zostaje próg „róg zawsze do złapania" i tej gałęzi nikt
   nie oglądał. (Strona gracza → odklikana 22.08, patrz `archiwum/zamkniete-zaleglosci.md`.)
+  **To jest tańsze, niż wygląda (ustalone 27.08):** `window-placement.ts` ma `MIN_WIDTH = 280`
+  i **żadnego górnego ograniczenia** przy przeciąganiu `WindowResizeGrip`, więc dowolne okno
+  z uchwytem (karta postaci, kreator, okno runa, karta obiektu) rozciąga się ponad rozmiar
+  przeglądarki jednym gestem — nie trzeba zmieniać rozdzielczości ekranu.
 
 - **Etap 27i — zostały dwie ścieżki i dźwięki.** ~~Wybuch~~ i ~~liczba obrażeń nad figurą~~ —
   **odklikane 23.08** na scenie „Efekty 23x" (patrz `archiwum/zamkniete-zaleglosci.md`; wybuch
@@ -48,51 +52,19 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
   ostrzału. (4) **Winda z gazem w Kolejce Inicjatywy** — od 22.08 wiersz wstawia się sam przy wejściu na
   obszar (patrz akapit niżej), ale nikt tego nie widział na ekranie: pokryte testem serwera.
 
-- **Etap 26e — trzy ścieżki nieodklikane; reszta sprawdzona 16.08 (patrz notatka sesji w `archiwum/dziennik-sesji.md`).**
+- **Etap 26d — zostały dwie odmowy, obie nieosiągalne z UI.** ~~Drzwi z 18d~~ — **odklikane
+  27.08** (drzwi #59 „Brama serwerowni" na węźle kontrolnym, patrz archiwum).
+  (1) **`NET_NODE_USED` „Raz na Turę"** — **sprawdzone 27.08 i powód okazał się inny, niż
+  mówiła ta pozycja**: rundy istnieją (walkę rozkręcono), ale klient sam **wyszarza wszystkie
+  przyciski urządzeń**, gdy węzeł był już użyty w tej Turze (`spent = floor.nodeUsed`
+  w `NetRunWindow`), i zamiast odmowy pisze chip **„węzeł użyty w tej Turze"** obok
+  „Podłączone urządzenia". Tak samo jak przy (2) niżej: zdanie istnieje dla klienta, który by
+  o tym nie wiedział, i ma test na żywych gniazdach.
+  (2) **Odmowa `NET_DEVICE_OFF`** — z tego okna **nie da się** do niej dojść i to jest
+  zamierzone: wyłączone urządzenie pokazuje wyłącznie „Włącz". Zdanie istnieje dla klienta,
+  który by o tym nie wiedział, i ma test.
+  **Obie pozycje są kandydatami do skasowania** przy triażu „odmowy nieosiągalne z UI".
   (Strona gracza → odklikana 22.08, patrz `archiwum/zamkniete-zaleglosci.md`.)
-  (1) **„Ten Demon miał już swoją Turę w tej Rundzie"** — na Poligonie tryb turowy jest wyłączony,
-  więc rund nie ma i odmowa nie ma jak paść; pokryta testem serwera. (2) **Wstawka Demona do
-  Kolejki Inicjatywy** — z tego samego powodu: bez rozpoczętej walki nie ma do czego wstawiać
-  (test serwera sprawdza inicjatywę „o jeden punkt wyżej" i wiersz bez figury). (3) **Uwaga
-  „jeden Demon na sześć pięter"** — Architektura Poligonu ma cztery piętra i jednego Demona, czyli
-  mieści się w budżecie; żeby zobaczyć zdanie, trzeba dołożyć drugiego (pokryte testem w `shared`).
-
-- **Etap 26d — trzy ścieżki nieodklikane; reszta sprawdzona 15.08 (patrz notatka sesji w `archiwum/dziennik-sesji.md`).**
-  (1) **„Raz na Turę"** — `NET_NODE_USED` ma polskie zdanie i test na żywych gniazdach, ale
-  w przeglądarce do niego nie doszło: rundy istnieją dopiero po **rozpoczęciu** walki (sam
-  „Włącz tryb turowy" zostawia stan „PRZED WALKĄ" i rundę 0), a rozkręcanie walki w żywej
-  kampanii zmieniłoby stan Poligonu bardziej niż warto. (2) **Drzwi z 18d** — na „Strzelnicy"
-  nie ma ani jednych; ścieżka jest kopią `opening:toggle` i ma test serwera, w oknie Sieci
-  klikane były kamera i wieżyczka. (3) **Odmowa `NET_DEVICE_OFF`** — z tego okna **nie da się**
-  do niej dojść i to jest zamierzone: wyłączone urządzenie pokazuje wyłącznie „Włącz". Zdanie
-  istnieje dla klienta, który by o tym nie wiedział, i ma test.
-  (Strona gracza → odklikana 22.08, patrz `archiwum/zamkniete-zaleglosci.md`.)
-
-- **Etap 26c — cztery ścieżki nieodklikane; reszta sprawdzona 15.08 (patrz notatka sesji w `archiwum/dziennik-sesji.md`).**
-  (Strona gracza → odklikana 22.08, patrz `archiwum/zamkniete-zaleglosci.md`.)
-  (1) **Superklej i „Zdejmij" u MG** — hak `glue` ma test w `shared`, a w przeglądarce do niego
-  nie doszło: trzeba wrogiego LOD-a z tym efektem (Kraken) albo Superkleju w cudzym
-  deku. (2) **Paf** — sprawdzony testem serwera, w oknie klikany był tylko Miecz. (3) **LOD
-  przeciwprogramowy** (bije w losowy zrezowany Program zamiast w mózg) — cały przypadek pokryty
-  testami, nieoglądany. (4) **Zderezowanie LOD-a przez gracza** i wypadnięcie go z kolejki —
-  w oględzinach LOD schodził do REZ 10, nie do zera.
-
-- **Etap 26b — dwie ścieżki nieodklikane; „Sieć 1/4" domknięte 15.08 przy 26c.** (1) **Ściana
-  między netrunnerem a gniazdem** (`NET_WALL_BLOCKS`) — Poligon nie ma ścian na scenie
-  „Strzelnica"; geometria to `hasLineOfFire` z 16b, ta sama, którą 16b odklikało. (2) **Odmowy
-  `NET_NO_INTERFACE` i `NET_NO_DECK` w przeglądarce** — pokryte testami serwera, u MG nieoglądane
-  (przycisk „Podłącz się" po prostu wraca z odmową). ~~(3) Budżet Akcji Sieciowych w trackerze~~
-  — **odklikane 15.08**: w RUNDZIE 1 wiersz Kolca pokazał „Akcja 1/1 · Sieć 1/4" po pierwszej
-  Akcji Sieciowej.
-
-- **Etap 26a — jedna ścieżka nieodklikana.** ~~(1) Formularz „Obrona Sieci"~~ i ~~(2) ręczne
-  budowanie architektury od zera~~ — **odklikane 22.08** (piąta sesja): wpis „Odźwierny testowy 27x"
-  z REZ 12, Interfejsem 4, 2 Akcjami Sieciowymi i Wartością bojową 10 zapisał się, wrócił na karcie
-  wpisu w komplecie (licznik kategorii 25 → 26) i został skasowany; „+ Nowa" otwiera pusty trzon
-  („0 pięter · bez wyraźnego dna"), a „+ Piętro" dokłada piętra z wyborem zawartości. Zostaje
-  (3) **pasek „Uwagi" pod szybem** (`netArchitectureAdvice`) — hasło bez PT i piętro LOD-u bez
-  wpisu; generator zawsze wypełnia oba, więc do tego stanu trzeba dojść ręczną edycją.
-  Sam tekst jest pokryty testem w `netrunning.test.ts`.
 
 - **Etap 27c — dwie ścieżki nieodklikane, obie skrajne.**
   (Strona gracza → odklikana 22.08, patrz `archiwum/zamkniete-zaleglosci.md`.)
@@ -100,8 +72,11 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
   ręcznie; przepływ „kreator wypełnia 17 pytań → strona druga je pokazuje" idzie tym samym
   polem `data.lifepath`, więc rozjazd jest nieprawdopodobny, ale nie był oglądany.
   (2) **Wąskie okno** — `@container (max-width: 560px)` zwęża rubryki do jednej kolumny
-  i zmniejsza pudełka gniazd; okno karty ma `min(1180px, 100vw − 32px)`, więc do tego progu
-  trzeba ekranu poniżej ~600 px, a `resize_window` na zmaksymalizowanym oknie nic nie daje.
+  i zmniejsza pudełka gniazd. ~~Do tego progu trzeba ekranu poniżej ~600 px~~ — **nieprawda,
+  poprawione 27.08:** `.sheet-window` ma wprawdzie `width: min(1180px, 100vw − 32px)`, ale
+  `useWindowPlacement` nadpisuje szerokość **stylem w linii**, gdy ktoś pociągnie uchwyt,
+  a dolna granica to `MIN_WIDTH = 280`. Wystarczy więc przeciągnąć róg karty — bez ruszania
+  rozdzielczości ekranu (ta sama uwaga dotyczy 27f wyżej).
 
 - **Etap 27c — rozbicie gniazd per pudełko sylwetki nieodklikane.** Poprawka z 22.08 (rodzina
   z więcej niż jednym pudełkiem dostaje pod wierszem „Prawa cyberręka: 2 / 4 · Lewa: 0 / 4”)

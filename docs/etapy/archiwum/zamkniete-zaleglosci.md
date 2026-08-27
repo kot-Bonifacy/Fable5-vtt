@@ -9,6 +9,98 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Przeniesione 2026-08-27 (pakiet Sieci A+B — dług oględzin 26a–26e)
+
+Dwanaście ścieżek odklikanych w jednej sesji runu na „Strzelnicy": pięć sprzed walki i siedem
+w rozpoczętej walce (RUNDA 1–4). Cztery pozycje zamknięte w całości (26a, 26b, 26c, 26e),
+piąta (26d) skurczona do dwóch odmów nieosiągalnych z UI. Treść pozycji zostawiona bez zmian;
+pod każdą, wcięte, to, co ją zamknęło.
+
+- **Etap 26b — dwie ścieżki nieodklikane; „Sieć 1/4" domknięte 15.08 przy 26c.** (1) **Ściana
+  między netrunnerem a gniazdem** (`NET_WALL_BLOCKS`) — Poligon nie ma ścian na scenie
+  „Strzelnica"; geometria to `hasLineOfFire` z 16b, ta sama, którą 16b odklikało. (2) **Odmowy
+  `NET_NO_INTERFACE` i `NET_NO_DECK` w przeglądarce** — pokryte testami serwera, u MG nieoglądane
+  (przycisk „Podłącz się" po prostu wraca z odmową).
+
+  **Odklikane 27.08.** Zdanie „Poligon nie ma ścian" było **nieaktualne** — od 23.08 na
+  Strzelnicy leży ściana w kształcie L (3 segmenty, x = 1700, y = 1900–2900). Postawione zostało
+  gniazdo **„Gniazdo za ścianą"** (id 10, world 1600 × 2400, odsłonięte, podpięte do „siec klub")
+  po zachodniej stronie muru, a żeton **„Kolec"** po wschodniej — 5,1 m, czyli w zasięgu 6 m.
+  Karta gniazda u gracza (avatar9) odpowiedziała: **„Między tobą a punktem dostępu stoi
+  ściana."** — czyli `netAccessVerdict` sprawdza mur, choć klient gracza ścian nie widzi.
+  **`NET_NO_INTERFACE`**: ten sam formularz z wybraną figurą **avatar9** (Solo, 3,2 m) →
+  **„Ta postać nie ma zdolności Interfejs — bez niej nie da się sieciować."** — kolejność
+  sprawdzeń w `netRunStartEvent` stawia kartę **przed** geometrią, więc ściana w tym wariancie
+  nie ma znaczenia. **`NET_NO_DECK`**: z karty „Test 27x" zdjęto cyberdek przyciskiem ✕
+  („Odłącz cyberdek od tej postaci", zakładka „Ekwipunek”) → **„Ta postać nie ma cyberdeku.
+  Bez deku nie ma czym się podłączyć."**; dek przywrócono w komplecie ze zrzutu (6 Programów:
+  Gumka, Pancerz, Miecz, Młot na wroga, Superklej, Szabloząb).
+
+- **Etap 26a — jedna ścieżka nieodklikana.** Zostaje (3) **pasek „Uwagi" pod szybem**
+  (`netArchitectureAdvice`) — hasło bez PT i piętro LOD-u bez wpisu; generator zawsze wypełnia
+  oba, więc do tego stanu trzeba dojść ręczną edycją.
+
+  **Odklikane 27.08.** W edytorze „siec klub" dołożono piętro 5 rodzaju **Hasło** z pustym PT
+  i piętro 6 rodzaju **Czarny LOD** bez wpisu. Pasek „Uwagi" pod „+ Odgałęzienie" wypisał
+  w bursztynie trzy wiersze naraz: „Trzon, piętro 5: **Hasło bez PT**.", „Trzon, piętro 6:
+  **Czarny LOD bez wpisu**." i wiersz budżetu Demonów (niżej). Edytor **zamknięto bez zapisu** —
+  architektura wróciła do czterech pięter.
+
+- **Etap 26e — trzy ścieżki nieodklikane; reszta sprawdzona 16.08.**
+  (1) **„Ten Demon miał już swoją Turę w tej Rundzie"** — na Poligonie tryb turowy jest wyłączony,
+  więc rund nie ma i odmowa nie ma jak paść; pokryta testem serwera. (2) **Wstawka Demona do
+  Kolejki Inicjatywy** — z tego samego powodu: bez rozpoczętej walki nie ma do czego wstawiać
+  (test serwera sprawdza inicjatywę „o jeden punkt wyżej" i wiersz bez figury). (3) **Uwaga
+  „jeden Demon na sześć pięter"** — Architektura Poligonu ma cztery piętra i jednego Demona.
+
+  **Odklikane 27.08** (walka rozpoczęta, RUNDA 2). (2) Przycisk MG **„Demon wykrywa intruza"**
+  zmienił chip Diablika z „czuwa" na **„ściga"** i **wstawił do kolejki wiersz „D Diablik 1"** —
+  przed Tonym, z inicjatywą **1**, gdy pozostali mają „—" (kolejka zakładana bez rzutu), czyli
+  „o jeden punkt wyżej" zgadza się. (3) Do „Serca sieci" dołożono **Chochlika** obok Diablika:
+  pasek „Uwagi" napisał **„Demonów jest 2, a Architektura ma 6 pięter — podręcznik radzi jednego
+  Demona na 6 pięter (s. 218)."** (1) Po pierwszym kliknięciu **„Tura Demona"** (rzut poszedł,
+  kość spadła) drugie kliknięcie w tej samej Rundzie wróciło z **„Ten Demon miał już swoją Turę
+  w tej Rundzie."**
+
+- **Etap 26c — cztery ścieżki nieodklikane; reszta sprawdzona 15.08.**
+  (1) **Superklej i „Zdejmij" u MG** — hak `glue` ma test w `shared`, a w przeglądarce do niego
+  nie doszło: trzeba wrogiego LOD-a z tym efektem (Kraken) albo Superkleju w cudzym
+  deku. (2) **Paf** — sprawdzony testem serwera, w oknie klikany był tylko Miecz. (3) **LOD
+  przeciwprogramowy** (bije w losowy zrezowany Program zamiast w mózg) — cały przypadek pokryty
+  testami, nieoglądany. (4) **Zderezowanie LOD-a przez gracza** i wypadnięcie go z kolejki —
+  w oględzinach LOD schodził do REZ 10, nie do zera.
+
+  **Odklikane 27.08 — cała czwórka.** (2) **Paf** na Piekielnym ogarze: „Paf trafia: 1k6 = 5 —
+  Piekielny ogar REZ 15." (REZ 20 → 15); przycisk pojawia się dopiero, gdy LOD stanie w szybie —
+  wcześniej okno pisze „Ślizg i Paf czekają na Czarnego LOD-a". (3) **LOD przeciwprogramowy**:
+  na piętro 2 dołożono **Zabójcę** (`target: antiProgram`), gracz zrezował **Pancerz**, a MG
+  kliknął „LOD wykrywa intruza" → **„Zabójca wyprowadza darmowy atak: Pancerz: 4k6 = 17 —
+  zniszczony."** Program dostał chip „zużyty na to wejście", mózg netrunnera nie oberwał wcale.
+  (4) **Zderezowanie**: Miecz (3k6 Czarnym LOD-om) sprowadził Zabójcę 20 → 16 → 8 → **0/20**,
+  chip zmienił się na **„zderezowany"**, a **wiersz „Z Zabójca 2" zniknął z Kolejki Inicjatywy**
+  (został sam „D Diablik 1"). Uwaga na różnicę: **Szabloząb „niszczy zamiast derezować"** —
+  Piekielny ogar zszedł nim do 0/20 z chipem **„zniszczony"**, nie „zderezowany".
+  (1) **Klej**: Superklej jest **przeciwbiałkowy** i w oknie **nie pojawia się** ani przy Czarnym
+  LOD-zie, ani przy Demonie — Demon liczy się jak Program, więc listę ataków na niego zapełniają
+  same agresory przeciwprogramowe. Hak `glue` obejrzano więc drugą dozwoloną drogą: na piętro 1
+  wstawiono **Krakena** (`hooks: ["glue"]`), MG zagrał „Turę LOD-a" i padło **„Kraken trafia:
+  3k6 = 8 bezpośrednio w mózg. Kraken przykleił netrunnera na 1 — ani niżej, ani bezpiecznego
+  odłączenia."** Nad szybem stanął pas **„Kraken: ani niżej, ani bezpiecznego odłączenia — do
+  rundy 5. Awaryjne odłączenie wciąż działa."** z przyciskiem **„Zdejmij"** widocznym **tylko
+  u MG** — kliknięcie zdjęło pas.
+
+- **Etap 26d — ścieżka „drzwi z 18d" (2).** Na „Strzelnicy" nie ma ani jednych drzwi; ścieżka
+  jest kopią `opening:toggle` i ma test serwera, w oknie Sieci klikane były kamera i wieżyczka.
+
+  **Odklikane 27.08.** Na scenie postawiono segment **drzwi #59** (world 2400 × 1900–2200)
+  i podpięto go do „Węzła ochrony" jako trzecie urządzenie **„Brama serwerowni"** (rodzaj
+  „Drzwi lub winda", selektor „— wskaż drzwi na scenie —" → „Drzwi #59"). Gracz przejął węzeł
+  **Kontrolą** („Węzeł przejęty — PT odebrania go tobie: 13"), po czym **„Otwórz"** wróciło
+  z **„Brama serwerowni — otwarte."**, a w bazie `Wall#59.open` przeskoczyło na `true` — czyli
+  okno Sieci naprawdę rusza drzwiami z 18d, nie własną kopią stanu.
+  Pozostałe dwie podpozycje 26d **zostają otwarte** (odmowy nieosiągalne z UI) — patrz
+  `zaleglosci.md`.
+
 ## Przeniesione 2026-08-27 (pakiet A+B+X1 — konto testowe, kosz biblioteki, tabela ran)
 
 Jedna zrobiona funkcja, jeden bezpiecznik i cztery ścieżki odklikane z konta gracza. Treść

@@ -137,3 +137,37 @@ biblioteka grafik żetonów znów ma **4 pozycje** (avatar22, avatar14, avatar11
 Po drodze były i zniknęły: żeton „Tester 27x" (właściciel `Tester`, status Nieprzytomny),
 dwie grafiki testowe w bibliotece i trzy rysunki (jeden gracza, dwa MG — w tym jeden na warstwie MG).
 Status **„Onieśmielony" na żetonie avatar9 jest zastany**, nie z tej sesji.
+
+## Stan po oględzinach 27.08 (pakiet Sieci A+B) — Strzelnica ma teraz komplet pod Sieć
+
+**Rozjazd zastany na starcie: żetonu „Kolec" nie było w bazie w ogóle** (opis na górze tego
+pliku obiecywał go od 22.08; zniknął gdzieś między 23.08 a 27.08). **Odtworzony** — i przy okazji
+wyszło, że **z UI nie da się dorobić żetonu skasowanej postaci**: `token:create` przyjmuje
+`characterId`, ale jedynym miejscem, które go wypełnia, jest kreator postaci (`creation.ts`),
+a panel „Tokeny" stawia wyłącznie puste żetony. Żeton odtworzono zdarzeniem `token:create`
+z konsoli; pomysł na przycisk „Postaw na scenie" przy wierszu postaci → `POMYSLY.md`.
+
+Scena **„Strzelnica"** po tej sesji — **wszystko, co doszło, zostawiono świadomie**, bo dopiero
+z tym kompletem Sieć da się przeklikać bez budowania czegokolwiek od nowa:
+
+| co                              | gdzie / stan                                                                                                                                                                                 |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| żeton **„Kolec"**               | world 1500 × 700, właściciel `avatar9`, karta **„Test 27x"** (Netrunner, Interfejs 7), PW 35/35 — tuż przy odsłoniętym „Punkcie dostępu" (1537 × 761)                                        |
+| gniazdo **„Gniazdo za ścianą"** | id 10, world 1600 × 2400, **odsłonięte**, podpięte do „siec klub" — leży po **drugiej stronie** pionowego segmentu ściany L (x = 1700), więc `NET_WALL_BLOCKS` jest odklikywalne w dwa ruchy |
+| **drzwi #59**                   | world 2400 × 1900–2200, zamknięte, bez rygla — podpięte do „Węzła ochrony" jako urządzenie **„Brama serwerowni"** (rodzaj „Drzwi lub winda")                                                 |
+
+Reszta bez zmian: **5 żetonów** (Tony, avatar9, Automatyczna wieżyczka, testowy 2x2, Kolec),
+3 segmenty ściany, 0 świateł, 0 osłon, 0 stref, 0 notatek, 0 rysunków, **7 punktów dostępu**.
+Tryb turowy **wyłączony** (kolejka skasowana), żadnego runu w bazie.
+
+**Architektura „siec klub" przywrócona do czterech pięter** — w trakcie sesji dokładano do niej
+Zabójcę (piętro 2), Krakena (piętro 1), drugiego Demona i dwa piętra-atrapy pod pasek „Uwagi";
+wszystko zdjęte. Została **tylko** trzecia pozycja urządzeń na „Węźle ochrony" (drzwi).
+
+**Karta „Test 27x" sprawdzona bajt po bajcie ze zrzutem sprzed sesji** — jedyna różnica to
+`skillSpecialties: {}` zamiast braku klucza (normalizacja, którą robi każdy zapis karty).
+Cyberdek wrócił w komplecie: Gumka, Pancerz, Miecz, Młot na wroga, Superklej, Szabloząb;
+PW 35/35, bez ran krytycznych.
+
+**Uwaga na przyszłość:** biblioteka grafik żetonów ma dziś **5 pozycji** (doszedł `avatar25`),
+a nie 4, jak mówi notatka z 27.08 w `POSTEP.md` — nie ruszała tego ta sesja.

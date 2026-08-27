@@ -7,6 +7,57 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 26.08 — pakiet P1: karta ataku i obrażeń; poza etapami
+
+**Zlecenie MG:** wypisać kilkanaście otwartych zaległości pogrupowanych tak, żeby dały się
+zrobić w jednej sesji (bez rzeczy czekających na lokalny LLM — model idzie do wymiany — i bez
+nierozpoczętych etapów), a potem zrobić pakiet, który MG wskaże. Powstało dziewięć pakietów;
+MG wybrał **P1 — karta ataku i obrażeń** i odpowiedział na cztery pytania: **wolno** dopisywać
+skrypty seedujące, **wolno** dowolnie modyfikować kampanie (wszystkie są testowe), oględziny
+klika **Claude przez Chrome**, a **test pokrywający ścieżkę wystarcza za odklikanie**.
+
+**Naprawiony błąd: statysta trafiał, ale nie miał czym zadać obrażeń.** Diagnoza z zaległości
+(23.08) była trafna, ale niepełna — **brakowało adresu**: karta ataku nie niosła żadnego
+wskazania na strzelca (`CpredAttackMeta` miała `targetTokenId`, nie miała `attackerTokenId`),
+więc gdy szukanie po wierszu broni zawodziło, klient nie miał czego szukać. Naprawa idzie
+wzorcem `statistDefender` z 22.08 i dotknęła czterech miejsc: pole `attackerTokenId` w metadanych
+ataku (wypełniane **na serwerze**, w obu gałęziach `buildAttackMeta`), opcjonalne `characterId`
+plus `attackerTokenId` w `CharacterRollPayload` (dokładnie jak `AttackRollPayload` od 16b),
+`RollSource` w `performCharacterRoll` (bliźniak `AttackSource` — gałęzi pytają wyłącznie te trzy
+miejsca, które **piszą** na karcie) i wyszukiwanie strzelca w `AttackControls`.
+**Serwer nie wymagał niczego więcej:** `resolveRollRequest` czytał notację, mnożnik, lokację
+i cel ze zapisanego ataku już wcześniej, więc karty atakującego nie potrzebował — blokował
+sam klient. Statysta rzuca tą drogą **tylko** na obrażenia (`STATIST_CANNOT_ROLL_THIS`).
+Przy okazji `tokenHpOf` przeniesione z `attacks.ts` do `sheets.ts` jako `sheetTokenHp`.
+
+**Odklikane w przeglądarce** (MG, scena „Efekty 23x", pełny łańcuch): „Strzelec 23x" — figura
+bez karty — rzucił Granatnikiem w „Cel 23x" (21 vs PT 17, obszar 10×10 m), karta pokazała
+**„Obrażenia 6k6"**, kubek wrócił kartą **„Strzelec 23x — Granatnik — obrażenia (Korpus) ·
+6d6 = 23 · Rana krytyczna!"**, a „Zastosuj wszystkim (1)" zdjęło **PW 33 → 11** i pancerz
+OB 6 → 5; „Cofnij" przywróciło jedno i drugie. Stara karta z 21:24 leży na czacie tuż nad nową
+i nadal ma sam „Unik" — różnicę widać w jednym oknie. **Poligon przywrócony:** magazynek
+Granatnika z powrotem 0/2, „Cel 23x" 33/35 z OB 6, „Strzelnica" znów aktywna i oglądana.
+
+**Pięć pozostałych pozycji P1 zamkniętych testem** (kryterium MG z tej sesji). Cztery były już
+pokryte i wystarczyło to sprawdzić: **16d** „zasłonięty: Samochód" (`areas.test.ts` sprawdza
+`spared: 'cover'` i `sparedBy: 'Samochód'`), **16g (6)** „pancerz −2" na karcie obrażeń
+(`ammo.test.ts` + test zdania w `shared`), **16g (7)** Podpalony z „Cofnij" gaszącym ogień
+(`ammo.test.ts`), **14d** `SHIELD_CANNOT_DODGE` — okazało się pokryte z obu stron, z trzema
+figurami (`grapple.test.ts`: przekierowanie strzału na tarczę **i** odmowa Uniku). Piąta,
+**16h** chip „na minutę — do rundy N" na karcie postaci, dostała **nowy test**: chip rysuje
+`describeCpredTimer(injury.timed)`, więc brakowało dowodu, że wiersz rany **na karcie postaci**
+w ogóle niesie `timed` — `ammo-effects.test.ts` sprawdza teraz `expiresAtRound: 7` i napis
+„na minutę — do rundy 7" tą samą funkcją, którą woła klient.
+
+**Zaległości: 46 → 41.** Pięć pozycji przeniesionych w całości do
+`archiwum/zamkniete-zaleglosci.md` z opisem naprawy. **Nie ruszone:** sześć pozycji, które
+w triażu tej sesji zaproponowano do skasowania jako świadome decyzje, a nie dług (skalowanie
+rysunku, margines ścian, zakładka AI z etapu 09, `NET_DEVICE_OFF` i `FORBIDDEN` nieosiągalne
+z UI, screamsheet w motywie dziennym, degradacja bez `creation.json`) — MG nie wypowiedział się
+o nich, więc zostają otwarte.
+
+**Testy:** 1399 w `shared`, **786** na serwerze (+7), 50 u klienta — zielone. Lint i prettier czyste.
+
 ### Sesja 24.08 — etap 27l: karty obiektów sceny, jedno okno na siedem rodzajów
 
 **Zakres z pliku etapu, w całości.** 27k dało **jeden gest** na wszystko, co stoi na mapie

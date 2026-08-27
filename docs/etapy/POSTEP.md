@@ -91,29 +91,32 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 ## Od czego zacząć
 
-**Ostatnia sesja (27.08) zrobiła pakiet A+B+X1 — konto testowe gracza, kosz w bibliotece
-grafik żetonów i bezpiecznik przy tabeli ran krytycznych.** Powstało konto `Tester`
-(`/join/tester-dev`, opis w `poligon.md`), którym odklikano cztery zaległości „strona gracza":
-27f, 27k, 27l i odmowę statusową ruchu. Kosz biblioteki zdejmuje grafikę **także z żetonów**
-(zdarzenie `token:asset-delete`, umowa w indeksie niżej).
+**Ostatnia sesja (27.08, druga tego dnia) zamknęła dług oględzin Sieci** — dwanaście ścieżek
+z 26a–26e w jednym runie na „Strzelnicy". Cztery pozycje zeszły z listy w całości (26a, 26b,
+26c, 26e), piąta (26d) skurczyła się do dwóch odmów **nieosiągalnych z UI**. Kodu nie
+ruszano — to była czysta sesja oględzin.
 
-**Od czego zacząć: do wyboru 27g** (wydajność) i **28** (wdrożenie na VPS) — to jedyne dwa
-nierozpoczęte etapy. Z długu oględzin czekają: **Sieć (26a–26f)** — najdroższy pakiet, bo wymaga
-**rozpoczętej** walki (sam „Włącz tryb turowy" nie robi rund) i drzwi na scenie; uwaga, pozycja
-26b twierdzi, że Strzelnica nie ma ścian — **ma, w kształcie L**, więc `NET_WALL_BLOCKS` jest
-odklikywalne od ręki. Dalej: **strefy i efekty (26f + 27i)** — sprawdź najpierw, czy ⚠ „Podłoga
-elektryczna" wciąż leży na Strzelnicy, bo opisy się rozjeżdżały; **karta postaci i kreator
-(27b/27c/25a)**; **ekonomia (23b)**; dwie ostatnie ścieżki ruchu z 16e. Etap 27 jest rozdzielony
-do końca, więc plik `etap-27-…` to rozdroże ze wskazaniami, a nie zakres do zrobienia.
+**Od czego zacząć: do wyboru 27g** (wydajność) i **28** (wdrożenie na VPS) — nadal jedyne dwa
+nierozpoczęte etapy. Z długu oględzin najbliżej gotowego są teraz: **strefy i efekty
+(26f + 27i)** — jedyna nietknięta pozycja Sieci plus gaz i wyładowanie strefy (uwaga: ⚠ „Podłoga
+elektryczna" leży na **„Kartach 24x"**, nie na Strzelnicy); **karta postaci i kreator
+(27b/27c/25a)** — z korektą, że wąskie i przerośnięte okno robi się **uchwytem okna**, a nie
+rozdzielczością ekranu; **ekonomia (23b)**; **dziennik i handouty (24b/24c bez generatora)**;
+dwie ostatnie ścieżki ruchu z 16e. Etap 27 jest rozdzielony do końca, więc plik `etap-27-…`
+to rozdroże ze wskazaniami, a nie zakres do zrobienia.
 
-**Sceny testowe:** aktywna jest **„Strzelnica"** i po 27.08 wróciła do stanu z 27l (4 żetony,
-0 rysunków, biblioteka 4 grafiki). **„Karty 24x"** ma po jednym obiekcie każdego z siedmiu
-rodzajów, **„Efekty 23x"** stoi nietknięta od 26.08 (magazynek Granatnika 0/2, „Cel 23x" 33/35
-z OB 6). Do oględzin z konta gracza nie zakładaj już nowego imienia — jest `Tester`.
+**Sceny testowe:** aktywna jest **„Strzelnica"** i po 27.08 ma **komplet pod Sieć** — żeton
+„Kolec" (karta „Test 27x") przy odsłoniętym gnieździe, drugie gniazdo **„Gniazdo za ścianą"**
+po drugiej stronie muru L i **drzwi #59 „Brama serwerowni"** podpięte do węzła kontrolnego.
+Szczegóły i wszystkie współrzędne — w `poligon.md`. **„Karty 24x"** ma po jednym obiekcie
+każdego z siedmiu rodzajów (w tym uzbrojoną strefę), **„Efekty 23x"** stoi nietknięta od 26.08.
+Do oględzin z konta gracza jest `Tester` (`/join/tester-dev`), ale **do Sieci trzeba avatar9** —
+to on ma kartę netrunnera.
 
-**Otwarte zaległości: 37 pozycji w `zaleglosci.md`** — w większości dług oględzin („ścieżka ma
-test, ale nikt jej nie kliknął w przeglądarce"), nie błędy. Zaglądaj tam, gdy siadasz do
-odhaczania albo ruszasz etap, który na tej liście występuje.
+**Otwarte zaległości: 33 pozycje w `zaleglosci.md`** (było 37) — w większości dług oględzin,
+nie błędy. **Czeka na Twoją decyzję triaż** z 23.08 i 27.08: dziesięć pozycji, które są
+świadomymi decyzjami albo ścieżkami nieosiągalnymi z UI, a nie długiem — lista jest w notatce
+sesji niżej.
 
 **Jedna rzecz czeka na włączony llama-server:** przebieg
 `uv run --with httpx python tools/import/translate-descriptions.py` przetłumaczy **70** opisów
@@ -198,10 +201,74 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 - **Chwyt uchwytu zjada drugie kliknięcie dwukliku** — gest bez ruchu musi wrócić jako zwykłe kliknięcie, inaczej karta nie otworzy się na obiekcie już zaznaczonym.
 - **Otwarte okno łatwo zabiera klawisze narzędzi mapy** — strażnik „czy ktoś pisze" ma obejmować wyłącznie kartę, która sama ustawia kursor w treści (notatka).
 - **Sprawdź, czy strona naprawdę się przeładowała**, zanim uznasz poprawkę za nieskuteczną — HMR podmienia moduł, ale globalny `keydown` zostaje po starym efekcie.
+- **Odmowa serwera, która „nie chce paść"** — najpierw przeczytaj `disabled` przycisku, który miałby ją wywołać: `NET_NODE_USED` blokuje sam klient (chip „węzeł użyty w tej Turze").
+- **Ślizg i Paf są w wierszu Czarnego LOD-a**, nie w rządku zdolności — pojawiają się dopiero, gdy jakiś LOD stanie w szybie.
+- **Czarny LOD nie spawnuje się drugi raz na tym samym piętrze** (`metIce`); dołóż go na piętro jeszcze nieodwiedzone albo przerób `empty` → `ice`.
+- **„Zderezowany" ≠ „zniszczony"** — Program z `destroys` (Szabloząb, Zabójca, Smok) niszczy zamiast derezować; różnicę widać w chipie, nie w REZ.
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 27.08 (druga) — pakiet Sieci A+B: cały dług oględzin 26a–26e w jednym runie
+
+**Zlecenie MG:** znów pogrupowane zaległości (bez rzeczy czekających na lokalny LLM i bez
+etapów nierozpoczętych), tym razem z wyborem pakietu zostawionym mnie. Powstało dziewięć
+pakietów; wybrany **A + B = Sieć** (12 ścieżek), bo MG dał na to trzy zgody naraz: rozkręcić
+walkę na Strzelnicy, grzebać w architekturze do woli i nie zamykać jeszcze pozycji triażowych.
+
+**Sesja bez ani jednej linijki kodu** — 12 ścieżek odklikanych, 4 pozycje zamknięte w całości
+(26a, 26b, 26c, 26e), piąta skurczona. Pełne opisy w `archiwum/zamkniete-zaleglosci.md`; tu
+tylko to, co zmienia sposób pracy.
+
+**Trzy zdania w zaległościach były nieaktualne albo wprost nieprawdziwe.**
+(1) „Poligon nie ma ścian na Strzelnicy" — **ma** ścianę L od 23.08, więc `NET_WALL_BLOCKS`
+wystarczyło postawić gniazdo po drugiej stronie muru. (2) `NET_NODE_USED` „nie da się, bo nie
+ma rund" — rundy zrobiono i **odmowa i tak nie pada**: klient wyszarza wszystkie przyciski
+urządzeń i pisze chip „węzeł użyty w tej Turze". To ta sama rodzina co `NET_DEVICE_OFF`, więc
+26d zostaje na liście **wyłącznie** jako dwie odmowy nieosiągalne z UI. (3) 27c „wąskie okno"
+i 27f „okno większe od przeglądarki" — obie pozycje twierdzą, że trzeba zmieniać rozdzielczość
+ekranu; **nieprawda**: `window-placement.ts` ma `MIN_WIDTH = 280` i żadnej górnej granicy,
+więc oba progi osiąga się **przeciągnięciem rogu okna**. Poprawki wpisane do `zaleglosci.md`.
+
+**Żetonu „Kolec" nie było w bazie** — mimo że `poligon.md` obiecywał go od 22.08, a karta
+„Test 27x" stała nietknięta. Przy odtwarzaniu wyszło, że **z UI nie da się dorobić żetonu
+istniejącej postaci**: `token:create` przyjmuje `characterId`, ale wypełnia go wyłącznie kreator
+postaci, a panel „Tokeny" stawia same puste żetony. Żeton odtworzono zdarzeniem z konsoli,
+pomysł na „Postaw na scenie" → `POMYSLY.md`.
+
+**Co odklikano** (skrót; RUNDA 1–4 na Strzelnicy, MG na `[::1]`, gracz avatar9 na `localhost`):
+`NET_WALL_BLOCKS`, `NET_NO_INTERFACE`, `NET_NO_DECK`, pasek „Uwagi" z trzema wierszami naraz,
+budżet Demonów („jeden Demon na 6 pięter"), wstawka Demona do kolejki z inicjatywą **1**,
+`NET_DEMON_ALREADY_ACTED`, **Paf** (1k6), **LOD przeciwprogramowy** (Zabójca zniszczył zrezowany
+Pancerz zamiast bić w mózg), **zderezowanie** Zabójcy do 0/20 z wypadnięciem z Kolejki
+Inicjatywy, **klej** Krakena z przyciskiem **„Zdejmij" widocznym tylko u MG** oraz **drzwi 18d
+z okna Sieci** (`Wall#59.open` przeskoczyło w bazie na `true`).
+
+**Uwaga, która kosztowała najwięcej czasu:** **Superklej nie pojawia się w oknie runa ani przy
+Czarnym LOD-zie, ani przy Demonie** — jest przeciwbiałkowy, a Demon liczy się jak Program.
+Hak `glue` obejrzano więc drugą dozwoloną drogą (Kraken), dokładnie tak, jak przewidywała
+pozycja zaległości.
+
+**Poligon przywrócony — i świadomie rozbudowany:** architektura „siec klub" wróciła do czterech
+pięter (Zabójca, Kraken, drugi Demon i dwa piętra-atrapy zdjęte), karta „Test 27x" sprawdzona
+bajt po bajcie ze zrzutem sprzed sesji (jedyna różnica: `skillSpecialties: {}` — normalizacja
+zapisu), walka zakończona, drzwi zamknięte, żetony na swoich miejscach. **Zostawione, bo dopiero
+z tym Sieć da się przeklikać bez budowania czegokolwiek:** żeton „Kolec", gniazdo „Gniazdo za
+ścianą" za murem i drzwi „Brama serwerowni" na węźle kontrolnym. Opis w `poligon.md`.
+
+**Do decyzji MG w następnej sesji — dziesięć pozycji, które nie są długiem:** skalowanie
+rysunku (27l), margines ścian (zaakceptowany 23.08), `NET_DEVICE_OFF` **i teraz też
+`NET_NODE_USED`** (26d), `CREATION_INCOMPLETE` i degradacja bez `creation.json` (25a),
+screamsheet w motywie dziennym (27e — `--paper` **z założenia** nie ma wariantu dziennego,
+komentarz w `theme.css`), zakładka „AI" u MG (etap 09), pomiar fps ze światłami (materiał na
+27g) i notatka historyczna o zepsutym klikaniu w token od 18a.
+
+**Zamknięte zaległości:** 4 pozycje przeniesione do archiwum + jedna skurczona i dwie
+poprawione; lista otwartych zeszła z 37 do **33**.
+
+**Testy:** 1399 w `shared`, 789 na serwerze, 50 u klienta — zielone. Kodu nie zmieniano,
+drzewo robocze poza `docs/` czyste.
 
 ### Sesja 27.08 — pakiet A+B+X1: konto testowe gracza, kosz biblioteki żetonów, tabela ran
 
@@ -241,54 +308,3 @@ Mode) i głośne ostrzeżenie, a w repo leży wzór formatu z **wymyślonymi** r
 zeszła z 41 do **37**.
 
 **Testy:** 1399 w `shared`, **789** na serwerze (+3), 50 u klienta — zielone. Lint i prettier czyste.
-
-### Sesja 26.08 — pakiet P1: karta ataku i obrażeń; poza etapami
-
-**Zlecenie MG:** wypisać kilkanaście otwartych zaległości pogrupowanych tak, żeby dały się
-zrobić w jednej sesji (bez rzeczy czekających na lokalny LLM — model idzie do wymiany — i bez
-nierozpoczętych etapów), a potem zrobić pakiet, który MG wskaże. Powstało dziewięć pakietów;
-MG wybrał **P1 — karta ataku i obrażeń** i odpowiedział na cztery pytania: **wolno** dopisywać
-skrypty seedujące, **wolno** dowolnie modyfikować kampanie (wszystkie są testowe), oględziny
-klika **Claude przez Chrome**, a **test pokrywający ścieżkę wystarcza za odklikanie**.
-
-**Naprawiony błąd: statysta trafiał, ale nie miał czym zadać obrażeń.** Diagnoza z zaległości
-(23.08) była trafna, ale niepełna — **brakowało adresu**: karta ataku nie niosła żadnego
-wskazania na strzelca (`CpredAttackMeta` miała `targetTokenId`, nie miała `attackerTokenId`),
-więc gdy szukanie po wierszu broni zawodziło, klient nie miał czego szukać. Naprawa idzie
-wzorcem `statistDefender` z 22.08 i dotknęła czterech miejsc: pole `attackerTokenId` w metadanych
-ataku (wypełniane **na serwerze**, w obu gałęziach `buildAttackMeta`), opcjonalne `characterId`
-plus `attackerTokenId` w `CharacterRollPayload` (dokładnie jak `AttackRollPayload` od 16b),
-`RollSource` w `performCharacterRoll` (bliźniak `AttackSource` — gałęzi pytają wyłącznie te trzy
-miejsca, które **piszą** na karcie) i wyszukiwanie strzelca w `AttackControls`.
-**Serwer nie wymagał niczego więcej:** `resolveRollRequest` czytał notację, mnożnik, lokację
-i cel ze zapisanego ataku już wcześniej, więc karty atakującego nie potrzebował — blokował
-sam klient. Statysta rzuca tą drogą **tylko** na obrażenia (`STATIST_CANNOT_ROLL_THIS`).
-Przy okazji `tokenHpOf` przeniesione z `attacks.ts` do `sheets.ts` jako `sheetTokenHp`.
-
-**Odklikane w przeglądarce** (MG, scena „Efekty 23x", pełny łańcuch): „Strzelec 23x" — figura
-bez karty — rzucił Granatnikiem w „Cel 23x" (21 vs PT 17, obszar 10×10 m), karta pokazała
-**„Obrażenia 6k6"**, kubek wrócił kartą **„Strzelec 23x — Granatnik — obrażenia (Korpus) ·
-6d6 = 23 · Rana krytyczna!"**, a „Zastosuj wszystkim (1)" zdjęło **PW 33 → 11** i pancerz
-OB 6 → 5; „Cofnij" przywróciło jedno i drugie. Stara karta z 21:24 leży na czacie tuż nad nową
-i nadal ma sam „Unik" — różnicę widać w jednym oknie. **Poligon przywrócony:** magazynek
-Granatnika z powrotem 0/2, „Cel 23x" 33/35 z OB 6, „Strzelnica" znów aktywna i oglądana.
-
-**Pięć pozostałych pozycji P1 zamkniętych testem** (kryterium MG z tej sesji). Cztery były już
-pokryte i wystarczyło to sprawdzić: **16d** „zasłonięty: Samochód" (`areas.test.ts` sprawdza
-`spared: 'cover'` i `sparedBy: 'Samochód'`), **16g (6)** „pancerz −2" na karcie obrażeń
-(`ammo.test.ts` + test zdania w `shared`), **16g (7)** Podpalony z „Cofnij" gaszącym ogień
-(`ammo.test.ts`), **14d** `SHIELD_CANNOT_DODGE` — okazało się pokryte z obu stron, z trzema
-figurami (`grapple.test.ts`: przekierowanie strzału na tarczę **i** odmowa Uniku). Piąta,
-**16h** chip „na minutę — do rundy N" na karcie postaci, dostała **nowy test**: chip rysuje
-`describeCpredTimer(injury.timed)`, więc brakowało dowodu, że wiersz rany **na karcie postaci**
-w ogóle niesie `timed` — `ammo-effects.test.ts` sprawdza teraz `expiresAtRound: 7` i napis
-„na minutę — do rundy 7" tą samą funkcją, którą woła klient.
-
-**Zaległości: 46 → 41.** Pięć pozycji przeniesionych w całości do
-`archiwum/zamkniete-zaleglosci.md` z opisem naprawy. **Nie ruszone:** sześć pozycji, które
-w triażu tej sesji zaproponowano do skasowania jako świadome decyzje, a nie dług (skalowanie
-rysunku, margines ścian, zakładka AI z etapu 09, `NET_DEVICE_OFF` i `FORBIDDEN` nieosiągalne
-z UI, screamsheet w motywie dziennym, degradacja bez `creation.json`) — MG nie wypowiedział się
-o nich, więc zostają otwarte.
-
-**Testy:** 1399 w `shared`, **786** na serwerze (+7), 50 u klienta — zielone. Lint i prettier czyste.
