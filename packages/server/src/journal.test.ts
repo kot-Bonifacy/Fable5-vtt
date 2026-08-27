@@ -23,6 +23,7 @@ import type {
   JournalPlayerUpsertBroadcast,
   JournalProgressBroadcast,
   JournalSyncPayload,
+  JournalUpsertBroadcast,
   KnowledgePreviewResult,
   RelationSyncPayload,
   SceneView,
@@ -549,6 +550,28 @@ describe('dziennik kampanii', () => {
 
     expect(status.pending).toBe(0);
     expect([...gateway.index.get(journalCollectionName)!.keys()]).not.toContain('session:znikla');
+    gm.socket.disconnect();
+  });
+
+  it('reindeks rozsyła odświeżone wpisy, a nie sam licznik', async () => {
+    const gm = createSocket(gmCookie);
+    await gm.firstSync;
+    const entry = dataOf(
+      await emitAck<JournalEntryView>(gm.socket, 'journal:upsert', {
+        title: 'Sesja',
+        body: 'Treść',
+      }),
+    );
+
+    const broadcasts: JournalUpsertBroadcast[] = [];
+    gm.socket.on('journal:upsert', (payload: JournalUpsertBroadcast) => broadcasts.push(payload));
+
+    await emitAck<JournalIndexStatus>(gm.socket, 'journal:reindex', undefined);
+
+    // Bez tego chip „nieaktualny" wisiałby na wierszu aż do przeładowania strony.
+    const broadcast = await until(() => broadcasts.find((one) => one.entry.id === entry.id));
+    expect(broadcast.entry.stale).toBe(false);
+    expect(broadcast.index.pending).toBe(0);
     gm.socket.disconnect();
   });
 

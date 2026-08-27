@@ -751,16 +751,8 @@ export function mergeCreationDraft(
     next.skills = skills;
   }
   if ('skillSpecialties' in patch) {
-    const raw = patch.skillSpecialties;
-    if (typeof raw !== 'object' || raw === null) return null;
-    const specialties: Record<string, string> = {};
-    for (const [skillId, value] of Object.entries(raw as Record<string, unknown>)) {
-      if (!registry.skillIds.has(skillId)) continue;
-      if (!cpredSkillNeedsSpecialty(skillId) || skillId === CPRED_LANGUAGE_SKILL_ID) continue;
-      if (typeof value !== 'string') return null;
-      const text = value.trim().slice(0, SKILL_SPECIALTY_MAX_LENGTH);
-      if (text) specialties[skillId] = text;
-    }
+    const specialties = readSkillSpecialties(patch.skillSpecialties, registry);
+    if (specialties === null) return null;
     next.skillSpecialties = specialties;
   }
   if ('lifepath' in patch) {
@@ -795,6 +787,31 @@ export function mergeCreationDraft(
 }
 
 /**
+ * Nazwane dziedziny umiejętności, wspólne dla zapisu i odczytu szkicu.
+ *
+ * Musi to być **jedna** funkcja: dopóki czytał ją tylko patch, `parseCreationDraft`
+ * nie przepisywał `skillSpecialties` ze składowanego szkicu i gubił je przy każdym
+ * odczycie — pola „w czym?" nie dało się wypełnić, bo wracało puste.
+ *
+ * `null` znaczy „szkic jest popsuty, nie tykaj go"; puste `{}` to legalny wynik.
+ */
+function readSkillSpecialties(
+  raw: unknown,
+  registry: CpredRegistry,
+): Record<string, string> | null {
+  if (typeof raw !== 'object' || raw === null) return null;
+  const specialties: Record<string, string> = {};
+  for (const [skillId, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!registry.skillIds.has(skillId)) continue;
+    if (!cpredSkillNeedsSpecialty(skillId) || skillId === CPRED_LANGUAGE_SKILL_ID) continue;
+    if (typeof value !== 'string') return null;
+    const text = value.trim().slice(0, SKILL_SPECIALTY_MAX_LENGTH);
+    if (text) specialties[skillId] = text;
+  }
+  return specialties;
+}
+
+/**
  * Reads a stored draft back. Unlike `mergeCreationDraft` this trusts the stats
  * — the server wrote them — but it still drops anything the data files have
  * stopped knowing about, so a re-imported `creation.json` cannot resurrect a
@@ -826,6 +843,7 @@ export function parseCreationDraft(
     stats: readStoredStats(input.stats),
     statRolls: readStoredStats(input.statRolls),
     skills: readSkillPatch(input.skills, data, registry) ?? {},
+    skillSpecialties: readSkillSpecialties(input.skillSpecialties, registry) ?? {},
     lifepath: validateLifepath(input.lifepath, []),
     name: typeof input.name === 'string' ? input.name.slice(0, CREATION_NAME_MAX_LENGTH) : '',
     purchases: readPurchases(input.purchases),

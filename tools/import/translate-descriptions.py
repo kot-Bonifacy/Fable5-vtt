@@ -215,27 +215,43 @@ def main() -> int:
     if args.check:
         return 0
 
-    try:
-        import httpx
-    except ImportError:
-        print("brak httpx — uruchom przez: uv run --with httpx python ...", file=sys.stderr)
-        return 1
+    # Hand-written overrides and the cache need no GPU. Only entries missing from
+    # both do, so a run that is fully covered by human work must not demand one —
+    # the 70 branded weapons were translated by hand and this is that run.
+    needs_model = sum(
+        1
+        for _, _, pending in files
+        for entry in pending
+        if entry["id"] not in overrides and content_key(entry["description"]) not in cache
+    )
+
+    client = None
+    if needs_model:
+        try:
+            import httpx
+        except ImportError:
+            print("brak httpx — uruchom przez: uv run --with httpx python ...", file=sys.stderr)
+            return 1
+        client = httpx.Client()
+        try:
+            client.get("http://127.0.0.1:8080/health", timeout=5.0)
+        except Exception:
+            client.close()
+            print(
+                f"llama-server nie odpowiada na :8080, a {needs_model} opisów nie ma\n"
+                "ani ręcznego tłumaczenia, ani wpisu w pamięci podręcznej — uruchom\n"
+                "  pwsh ai-gateway/scripts/start-gateway.ps1",
+                file=sys.stderr,
+            )
+            return 1
+    else:
+        print("model niepotrzebny — wszystko pokrywają ręczne tłumaczenia i pamięć podręczna")
 
     warnings: list[str] = []
     done = 0
     started = time.monotonic()
 
-    with httpx.Client() as client:
-        try:
-            client.get("http://127.0.0.1:8080/health", timeout=5.0)
-        except Exception:
-            print(
-                "llama-server nie odpowiada na :8080 — uruchom\n"
-                "  pwsh ai-gateway/scripts/start-gateway.ps1",
-                file=sys.stderr,
-            )
-            return 1
-
+    try:
         for path, data, pending in files:
             for entry in pending:
                 original = entry["description"]
@@ -261,6 +277,9 @@ def main() -> int:
             path.write_text(
                 json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
             )
+    finally:
+        if client is not None:
+            client.close()
 
     elapsed = time.monotonic() - started
     print(f"\nprzetłumaczono {done}/{total} w {elapsed:.0f} s")

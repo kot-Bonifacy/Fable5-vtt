@@ -641,11 +641,17 @@ export const journalReindexEvent = defineEvent<undefined, JournalIndexStatus>({
     const orphans = (await deps.ctx.ai.forgetOrphans(collection, alive)) ?? 0;
     if (orphans > 0) deps.log.info({ campaignId, orphans }, 'journal index pruned');
 
-    return indexStatus(
-      deps,
-      campaignId,
-      entries.map((entry) => ({ ...entry, stale: false })),
-    );
+    // To samo, co w knowledge.ts: bez rozesłania wpisów chip „nieaktualny" wisi
+    // na każdym wierszu aż do przeładowania strony. Gracz nic tu nie dostaje —
+    // świeżość indeksu to wiedza MG.
+    // To samo co w knowledge.ts — wpis ma przyjechać z prawdziwym `indexedAt`.
+    const fresh = await fetchJournalEntries(deps.ctx.prisma, campaignId);
+    const status = await indexStatus(deps, campaignId, fresh);
+    for (const entry of fresh) {
+      const broadcast: JournalUpsertBroadcast = { entry, index: status };
+      deps.io.to(gmRoom(campaignId)).emit('journal:upsert', broadcast);
+    }
+    return status;
   },
 });
 

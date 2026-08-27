@@ -295,8 +295,18 @@ export const knowledgeReindexEvent = defineEvent<undefined, KnowledgeIndexStatus
     const orphans = (await deps.ctx.ai.forgetOrphans(collection, alive)) ?? 0;
     if (orphans > 0) deps.log.info({ campaignId, orphans }, 'knowledge index pruned');
 
-    const fresh = entries.map((entry) => ({ ...entry, stale: false }));
-    return indexStatus(deps, campaignId, fresh);
+    // Wiersze u MG niosą własny chip „nieaktualny", więc sam status indeksu ich
+    // nie zdejmie — dopiero rozesłanie odświeżonych wpisów. Status liczymy raz:
+    // `emitUpsert` liczyłby go dla każdego wpisu z osobna, czyli N razy pod rząd.
+    // Czytamy z bazy po `markIndexed`, a nie doklejamy `stale: false` do kopii
+    // sprzed zapisu — inaczej wiersz przyjechałby z `indexedAt: null`.
+    const fresh = await fetchKnowledgeEntries(deps.ctx.prisma, campaignId);
+    const status = await indexStatus(deps, campaignId, fresh);
+    for (const entry of fresh) {
+      const broadcast: KnowledgeUpsertBroadcast = { entry, index: status };
+      deps.io.to(gmRoom(campaignId)).emit('knowledge:upsert', broadcast);
+    }
+    return status;
   },
 });
 

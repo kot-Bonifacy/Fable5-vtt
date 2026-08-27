@@ -805,19 +805,34 @@ function EntryForm({ entry, onClose }: { entry: JournalEntryView | null; onClose
         ) : (
           <>
             <div className="journal-pin-list">
-              {handouts.map((handout) => (
-                <button
-                  key={handout.id}
-                  type="button"
-                  className={`handout-chip ${pinned.includes(handout.id) ? 'handout-chip--on' : ''}`}
-                  onClick={() => togglePinned(handout.id)}
-                >
-                  {handout.hasImage ? '🖼 ' : '📄 '}
-                  {handout.title}
-                </button>
-              ))}
+              {handouts.map((handout) => {
+                const on = pinned.includes(handout.id);
+                // Przy komplecie chip przestawał reagować bez słowa — MG widział
+                // martwy przycisk, nie limit. Wyszarzenie mówi to samo, co zdanie niżej.
+                const full = !on && pinned.length >= JOURNAL_HANDOUTS_MAX;
+                return (
+                  <button
+                    key={handout.id}
+                    type="button"
+                    className={`handout-chip ${on ? 'handout-chip--on' : ''}`}
+                    disabled={full}
+                    title={
+                      full
+                        ? `Przypięto już ${JOURNAL_HANDOUTS_MAX} materiałów — odepnij któryś, żeby dodać ten`
+                        : undefined
+                    }
+                    onClick={() => togglePinned(handout.id)}
+                  >
+                    {handout.hasImage ? '🖼 ' : '📄 '}
+                    {handout.title}
+                  </button>
+                );
+              })}
             </div>
             <span className="bot-hint">
+              {pinned.length >= JOURNAL_HANDOUTS_MAX
+                ? `Przypięto ${pinned.length} z ${JOURNAL_HANDOUTS_MAX} — więcej materiałów wpis nie przyjmie. `
+                : ''}
               Odnośnik zobaczy tylko ten gracz, któremu handout jest udostępniony — reszcie stołu
               wpis pokaże się bez niego.
             </span>

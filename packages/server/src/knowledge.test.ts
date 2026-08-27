@@ -544,6 +544,33 @@ describe('knowledge CRUD', () => {
     gm.socket.disconnect();
   });
 
+  it('reindex takes the stale flag off the rows, not just off the counter', async () => {
+    const gm = createSocket(gmCookie);
+    await gm.firstSync;
+    gateway.refuseIndex = true;
+    const entry = await addEntry(gm.socket, KLUB);
+    expect(entry.stale).toBe(true);
+    gateway.refuseIndex = false;
+
+    const broadcasts: KnowledgeUpsertBroadcast[] = [];
+    gm.socket.on('knowledge:upsert', (payload: KnowledgeUpsertBroadcast) =>
+      broadcasts.push(payload),
+    );
+
+    const status = dataOf(
+      await emitAck<KnowledgeIndexStatus>(gm.socket, 'knowledge:reindex', undefined),
+    );
+
+    // Sam status nie wystarczy: chip „nieaktualny" siedzi na wierszu, więc bez
+    // rozesłania wpisu MG widziałby zielony nagłówek nad czerwonymi wierszami.
+    expect(status.pending).toBe(0);
+    const broadcast = await until(() => broadcasts.find((one) => one.entry.id === entry.id));
+    expect(broadcast.entry.stale).toBe(false);
+    expect(broadcast.entry.indexedAt).not.toBeNull();
+    expect(broadcast.index.pending).toBe(0);
+    gm.socket.disconnect();
+  });
+
   it('reindexing twice adds nothing', async () => {
     const gm = createSocket(gmCookie);
     await gm.firstSync;

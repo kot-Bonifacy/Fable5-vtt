@@ -239,6 +239,23 @@ describe('specjalizacje umiejętności', () => {
     expect(issues).toEqual([]);
   });
 
+  // Zapis działał, odczyt nie: `parseCreationDraft` przepisuje pola po nazwie,
+  // a `skillSpecialties` na tej liście nie było. Skutkiem pole „w czym?" wracało
+  // puste przy każdym odczycie i postaci z Nauką nie dawało się skończyć.
+  it('reads a named field back out of a stored draft', () => {
+    const reg = registry();
+    const stored = {
+      roleId: 'netrunner',
+      step: 'skills',
+      skills: { science: 4 },
+      skillSpecialties: { science: 'Fizyka', language: 'Farsi', athletics: 'bieg' },
+    };
+
+    const parsed = parseCreationDraft(stored, data(reg), reg);
+
+    expect(parsed.skillSpecialties).toEqual({ science: 'Fizyka' });
+  });
+
   // Wiedza lokalna jest na liście podstawowej każdej Roli, więc twardy wymóg
   // byłby podatkiem od każdego NPC-a — pole jest, ale nie zatrzymuje kreatora.
   it('does not hold up a character over a basic skill', () => {
