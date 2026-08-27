@@ -167,6 +167,7 @@ import type {
   ServerHello,
   SocketAck,
   StateSyncPayload,
+  TokenAssetDeleteResult,
   TokenCreatePayload,
   TokenDeleteBroadcast,
   TokenMoveBroadcast,
@@ -1953,6 +1954,14 @@ export const updateToken = (tokenId: string, patch: TokenPatch) =>
   emitSceneAck<TokenView>('token:update', { tokenId, patch });
 
 export const deleteToken = (tokenId: string) => emitSceneAck('token:delete', { tokenId });
+
+/**
+ * Zdejmuje grafikę z biblioteki żetonów (MG). Ack mówi, ile figur na mapie
+ * wróciło przez to do krążka — panel powtarza tę liczbę, bo kosz biblioteki
+ * potrafi zmienić scenę, a nie tylko listę.
+ */
+export const deleteTokenAsset = (assetId: string) =>
+  emitSceneAck<TokenAssetDeleteResult>('token:asset-delete', { assetId });
 
 /* Combat tracker (stage 14). Every call resolves with the fresh combat view;
    the same state also arrives as a broadcast, so the UI may ignore the ack. */

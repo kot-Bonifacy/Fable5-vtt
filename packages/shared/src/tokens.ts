@@ -129,6 +129,23 @@ export interface TokenAssetView {
   height: number;
 }
 
+/** Client → server payload of `token:asset-delete` (GM only). */
+export interface TokenAssetDeletePayload {
+  assetId: string;
+}
+
+/**
+ * Ack of `token:asset-delete`: ile figur na mapie straciło przez to grafikę.
+ *
+ * Kosz biblioteki mówi liczbą, a nie samym „usunięto", bo zdjęcie grafiki
+ * z puli **zmienia scenę** — decyzja MG z 27.08: żeton, który stał na tej
+ * grafice, wraca do krążka, zamiast pokazywać zepsuty obrazek. Tym różni się
+ * ten kosz od kosza puli portretów, gdzie portret raz wybrany zostaje na karcie.
+ */
+export interface TokenAssetDeleteResult {
+  clearedTokens: number;
+}
+
 /** Client → server payload of `token:create` (GM only). */
 export interface TokenCreatePayload {
   sceneId: string;

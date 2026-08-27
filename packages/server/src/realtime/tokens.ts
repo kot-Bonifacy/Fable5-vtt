@@ -2,6 +2,8 @@ import type {
   FogShapeView,
   FogState,
   ScenePoint,
+  TokenAssetDeletePayload,
+  TokenAssetDeleteResult,
   TokenFacingPayload,
   TokenFearedPayload,
   SceneView,
@@ -829,6 +831,60 @@ export const tokenDeleteEvent = defineEvent<TokenIdPayload>({
     // The DB cascades the token out of any running fight — push the shorter
     // roster to everyone (killed enemies simply leave the tracker).
     await emitCombatOfScene(deps, campaignId, scene);
+  },
+});
+
+/**
+ * Kosz biblioteki grafik żetonów (zaległość z 22.08, zrobiona 27.08).
+ *
+ * Wgrana grafika zostawała w zakładce „Tokeny" na zawsze — jedyną drogą było
+ * skasowanie wiersza `tokenAsset` wprost w bazie. Wzorem jest kosz puli
+ * portretów, ale z **jedną świadomą różnicą**, którą wybrał MG: portret zdjęty
+ * z puli zostaje na karcie, a grafika zdjęta z biblioteki **schodzi też
+ * z żetonów**, które ją noszą. Powód jest w tym, czym każda z nich jest:
+ * portret to obrazek na papierze, a grafika żetonu to figura, którą widać na
+ * stole — gdyby plik zniknął spod niej (a `uploads-gc` zabierze go, gdy nikt go
+ * już nie wymienia), na mapie zostałby zepsuty obrazek zamiast czegokolwiek.
+ *
+ * Dlatego to zdarzenie gniazda, a nie trasa REST obok `GET /api/token-assets`:
+ * zmiana dotyczy żetonów na scenie, więc musi dojechać do wszystkich ekranów
+ * tą samą drogą, co każda inna zmiana żetonu (`emitTokensById` → `token:upsert`).
+ */
+export const tokenAssetDeleteEvent = defineEvent<TokenAssetDeletePayload, TokenAssetDeleteResult>({
+  name: 'token:asset-delete',
+  role: ROLE_GM,
+  handler: async ({ deps, socket, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    const assetId = payload?.assetId;
+    if (typeof assetId !== 'string' || assetId.length === 0) {
+      throw new RealtimeError('BAD_REQUEST');
+    }
+    const asset = await deps.ctx.prisma.tokenAsset.findUnique({ where: { id: assetId } });
+    if (!asset || asset.campaignId !== campaignId) {
+      throw new RealtimeError('ASSET_NOT_FOUND');
+    }
+
+    // Żetony tej kampanii, które noszą właśnie ten plik. Adres jest jedyną
+    // więzią między biblioteką a żetonem (`Token.imageUrl` trzyma ścieżkę, nie
+    // klucz obcy) — dlatego szukamy po nim, a nie po relacji, której nie ma.
+    const wearing = await deps.ctx.prisma.token.findMany({
+      where: { imageUrl: asset.url, scene: { campaignId } },
+      select: { id: true },
+    });
+
+    await deps.ctx.prisma.tokenAsset.delete({ where: { id: asset.id } });
+    if (wearing.length > 0) {
+      await deps.ctx.prisma.token.updateMany({
+        where: { id: { in: wearing.map((row) => row.id) } },
+        data: { imageUrl: null },
+      });
+      await emitTokensById(
+        deps,
+        campaignId,
+        wearing.map((row) => row.id),
+      );
+    }
+    return { clearedTokens: wearing.length };
   },
 });
 

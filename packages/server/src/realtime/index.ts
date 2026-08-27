@@ -19,6 +19,7 @@ import {
   sceneViewEvent,
 } from './scenes.js';
 import {
+  tokenAssetDeleteEvent,
   tokenCreateEvent,
   tokenDeleteEvent,
   tokenFacingEvent,
@@ -213,6 +214,7 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   tokenCreateEvent,
   tokenUpdateEvent,
   tokenDeleteEvent,
+  tokenAssetDeleteEvent,
   tokenMoveEvent,
   tokenFacingEvent,
   tokenFearedEvent,

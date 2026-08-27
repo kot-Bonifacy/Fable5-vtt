@@ -564,3 +564,90 @@ describe('tokens', () => {
     expect(await gone).toMatchObject({ tokenId: npcTokenId });
   });
 });
+
+/**
+ * Kosz biblioteki żetonów (zaległość z 22.08, zrobiona 27.08).
+ *
+ * Odwrotnie niż w puli portretów wyżej: zdjęcie grafiki **rusza scenę**, bo
+ * żeton, który ją nosił, wraca do krążka. Dlatego to zdarzenie gniazda, a nie
+ * trasa REST — i dlatego test patrzy nie tylko na listę, ale i na `token:upsert`.
+ */
+describe('token library bin', () => {
+  let gm: ClientSocket;
+  let player: ClientSocket;
+  let assetId = '';
+  let assetUrl = '';
+  let tokenId = '';
+
+  it('clears the picture off every figure wearing it', async () => {
+    const gmConn = createSocket(gmCookie);
+    const playerConn = createSocket(playerCookie);
+    gm = gmConn.socket;
+    player = playerConn.socket;
+    await Promise.all([gmConn.firstSync, playerConn.firstSync]);
+
+    const { payload, headers } = multipartBody('Do skasowania.png', PNG_1X1);
+    const upload = await built.app.inject({
+      method: 'POST',
+      url: '/api/uploads/tokens',
+      headers: { ...headers, cookie: gmCookie },
+      payload,
+    });
+    const asset = upload.json() as TokenAssetView;
+    assetId = asset.id;
+    assetUrl = asset.url;
+
+    const scene = await emitAck<SceneView>(gm, 'scene:create', { name: 'Kosz biblioteki' });
+    if (!scene.ok || !scene.data) throw new Error('scene:create failed');
+    await emitAck(gm, 'scene:visibility', { sceneId: scene.data.id, visibility: 'open' });
+    await emitAck(gm, 'scene:activate', { sceneId: scene.data.id });
+
+    const token = await emitAck<TokenView>(gm, 'token:create', {
+      sceneId: scene.data.id,
+      name: 'Nosi tę grafikę',
+      imageUrl: assetUrl,
+      x: 100,
+      y: 100,
+    });
+    if (!token.ok || !token.data) throw new Error('token:create failed');
+    tokenId = token.data.id;
+    expect(token.data.imageUrl).toBe(assetUrl);
+
+    const upsert = waitFor<TokenUpsertBroadcast>(gm, 'token:upsert');
+    const removed = await emitAck<{ clearedTokens: number }>(gm, 'token:asset-delete', { assetId });
+    expect(removed).toMatchObject({ ok: true, data: { clearedTokens: 1 } });
+    expect((await upsert).token).toMatchObject({ id: tokenId, imageUrl: null });
+
+    const list = await built.app.inject({
+      method: 'GET',
+      url: '/api/token-assets',
+      headers: { cookie: gmCookie },
+    });
+    expect((list.json() as TokenAssetView[]).map((a) => a.id)).not.toContain(assetId);
+  });
+
+  it('refuses a player, an unknown id and a second run', async () => {
+    expect(await emitAck(player, 'token:asset-delete', { assetId })).toMatchObject({
+      ok: false,
+      error: 'FORBIDDEN',
+    });
+    expect(await emitAck(gm, 'token:asset-delete', { assetId })).toMatchObject({
+      ok: false,
+      error: 'ASSET_NOT_FOUND',
+    });
+    expect(await emitAck(gm, 'token:asset-delete', {})).toMatchObject({
+      ok: false,
+      error: 'BAD_REQUEST',
+    });
+  });
+
+  /**
+   * Plik zostaje na dysku do najbliższego przebiegu `uploads-gc` — ale nikt go
+   * już nie wymienia, więc zbieracz ma go zabrać. Tu wystarczy sprawdzić samą
+   * przesłankę: żaden żeton ani wpis biblioteki nie trzyma już tego adresu.
+   */
+  it('leaves the file unreferenced for the sweeper', async () => {
+    const state = await roundTrip(gm);
+    expect(JSON.stringify(state)).not.toContain(assetUrl);
+  });
+});

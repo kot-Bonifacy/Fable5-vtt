@@ -1412,7 +1412,13 @@ input[type='color'] {
   gap: 0.4rem;
 }
 
+.token-asset-item {
+  position: relative;
+  display: flex;
+}
+
 .token-asset {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1446,6 +1452,41 @@ input[type='color'] {
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Kosz biblioteki (27.08) — te same trzy reguły, co przy puli portretów:
+   ✕ wychodzi spod kursora, potwierdzenie siada na dole kafelka. */
+.token-asset-remove {
+  position: absolute;
+  top: 0.15rem;
+  right: 0.15rem;
+  padding: 0 0.25rem;
+  opacity: 0;
+}
+
+.token-asset-item:hover .token-asset-remove,
+.token-asset-remove:focus-visible {
+  opacity: 1;
+}
+
+.token-asset-confirm {
+  position: absolute;
+  inset: auto 0 0 0;
+  /* Kafelek żetonu jest o połowę węższy od portretowego (4,2 rem), więc dwa
+     przyciski obok siebie rozpychały siatkę — stąd kolumna i mniejsze pismo. */
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  align-items: stretch;
+  padding: 0.15rem;
+  background: var(--bg);
+  border-radius: 0 0 8px 8px;
+}
+
+.token-asset-confirm .small-button {
+  padding: 0.05rem 0.2rem;
+  font-size: 0.6rem;
   white-space: nowrap;
 }
 
