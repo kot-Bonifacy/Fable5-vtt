@@ -260,3 +260,25 @@ MG. Dwie rzeczy, które łatwo zrobić źle: status licz **raz** dla całej pacz
 liczyłby go per wpis, czyli N zapytań pod rząd), a wpisy czytaj z bazy **po** `markIndexed` —
 doklejenie `stale: false` do kopii sprzed zapisu wysyła wiersz z `indexedAt: null`.
 
+## Nowa próbka dźwiękowa mapy
+
+Dźwięk mapy żyje w **pięciu** miejscach i wszystkie pięć musi się zgadzać, bo cztery z nich nie
+mają typu, który by tego pilnował:
+
+1. **plik** w `packages/client/public/sfx/` (`.wav` albo `.ogg` — paczki się różnią),
+2. `MapFxSound` i `MAP_FX_SOUNDS` w `packages/shared/src/fx.ts` — rdzeń zna nazwę dźwięku, nie
+   nazwę pliku,
+3. `SFX_FILES` **i** `SFX_GAIN` w `packages/client/src/sfx.ts` (`Record<MapFxSound, …>`, więc te
+   dwa pilnuje kompilator),
+4. wiersz w `SFX_SAMPLES` w `SettingsWindow.tsx` — bez niego nikt próbki nie **usłyszy**, dopóki
+   nie trafi na nią w walce,
+5. wiersz w `public/sfx/ATTRIBUTION.md` z paczką, autorem i licencją.
+
+Który dźwięk gra która broń, rozstrzyga **jedna tabela** — `ICON_FX` w
+`shared/src/systems/cpred/fx.ts`, indeksowana ikoną z `cpredWeaponIcon`. Nie dokładaj drugiego
+rozgałęzienia „czy to strzelba" po stronie klienta: renderer ma nie wiedzieć, co to Cyberpunk.
+
+Kompletu pilnuje `packages/client/src/sfx.test.ts` (dźwięk bez pliku, plik-sierota i dźwięk bez
+przycisku odsłuchu wywalają test) — tak wyszedł zapomniany `bowstring.ogg` po wymianie próbki
+cięciwy na `bowstring.wav` 28.08.
+

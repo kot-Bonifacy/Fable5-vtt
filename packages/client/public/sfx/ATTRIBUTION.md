@@ -32,10 +32,35 @@ ostrzejszego warunku: traktujemy je jak **CC BY 3.0** i podajemy oba nazwiska.
 | `impact.ogg`    | `hit_02.ogg`       | [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx)                               | rubberduck                 | CC0      |
 | `ricochet.ogg`  | `metal_02.ogg`     | [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx)                               | rubberduck                 | CC0      |
 | `gas.ogg`       | `noise_01.ogg`     | [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx)                               | rubberduck                 | CC0      |
-| `bowstring.ogg` | `spring_03.ogg`    | [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx)                               | rubberduck                 | CC0      |
 | `reload.ogg`    | `lock_02.ogg`      | [80 CC0 RPG SFX](https://opengameart.org/content/80-cc0-rpg-sfx)                         | rubberduck                 | CC0      |
 | `swing.wav`     | `battle/swing.wav` | [RPG Sound Pack](https://opengameart.org/content/rpg-sound-pack)                         | artisticdude               | CC0      |
 | `zap.wav`       | `spark.wav`        | [Electricity Sound Effects](https://opengameart.org/content/electricity-sound-effects-0) | BMacZero (Brian MacIntosh) | CC0      |
+
+## Pięść, ogień i wyrzutnie (audyt 28.08)
+
+Przegląd tabeli `ICON_FX` (`packages/shared/src/systems/cpred/fx.ts`) wyłapał cztery rodzaje
+broni grające cudzą próbką: **Bijatyka i Sztuki walki** świszczały ostrzem, **Miotacz ognia**
+huczał strzelbą, **Granatnik i Wyrzutnia rakiet** strzelały Mosinem, a **Kusza i Łuk** miały
+sprężynę.
+
+| Plik            | Oryginał                          | Paczka                                                                       | Autor                              | Licencja            |
+| --------------- | --------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------- | ------------------- |
+| `punch.ogg`     | `qubodupPunch01.ogg`              | [Punch](https://opengameart.org/content/punch)                               | qubodup (Iwan Gabovitch)           | CC0                 |
+| `flame.ogg`     | `flame.ogg`                       | [Catching fire](https://opengameart.org/content/catching-fire)               | themightyglider (na bazie qubodup) | CC0                 |
+| `launch.wav`    | `launch.wav`, wycinek 1,35–2,75 s | [Rocket launch](https://opengameart.org/content/rocket-launch)               | qubodup (Iwan Gabovitch)           | CC0                 |
+| `bowstring.wav` | `Bow.wav`                         | [Battle Sound Effects](https://opengameart.org/content/battle-sound-effects) | artisticdude (zgłosił Ogrebane)    | CC0 (wielolicencja) |
+
+Uwagi do tej czwórki:
+
+- **`launch.wav` jest jedyną próbką wyciętą ze środka nagrania**, a nie od pierwszego dźwięku:
+  pierwsze 1,3 s oryginału to zapłon i syk, a ryk silnika narasta dopiero potem. Wycinek ma 1,4 s
+  i 0,18 s wygaszenia, żeby nie urwał się w pół ryku.
+- **`bowstring.wav` zastąpił `bowstring.ogg`** — sprężynę `spring_03`, opisaną wyżej jako
+  najsłabsze dopasowanie w całej paczce. Nowa próbka pochodzi od tego samego autora co
+  `swing.wav`, więc biała broń i cięciwa brzmią jak jedna rodzina.
+- **`punch.ogg` obsługuje też Pochwycenie** (`grab`) — zwarcie z 14d brzmiało dotąd ostrzem.
+- **Granat rzucony ręką dalej gra `swing.wav`** i to jest wybór, nie przeoczenie: to świst
+  zamachu, a nie odpalenie, więc wyrzutnia i granat celowo brzmią inaczej.
 
 ## Krok (etap 27j)
 
@@ -49,7 +74,8 @@ wpis w `MAP_FX_SOUNDS` znaczyłby drugi przycisk „Krok" w ustawieniach dla ró
 nie nazwie. Krok ma własny przełącznik („Kroki figur"), bo to jedyna próbka odtwarzana za
 każdym razem, gdy ktoś przejdzie przez pokój.
 
-**Do przesłuchania przy stole:** `bowstring.ogg` jest najsłabszym dopasowaniem w tej tabeli —
-sprężyna udająca cięciwę, wybrana bez odsłuchu. „⚙ Ustawienia" mają przy suwaku SFX przycisk
-odsłuchu każdej próbki; jeśli któraś nie pasuje, wymiana to podmiana jednego pliku i jednego
-wiersza w `SFX_FILES` (`packages/client/src/sfx.ts`).
+**Do przesłuchania przy stole: cała tabela.** Żadnej z tych próbek nikt jeszcze nie słyszał —
+dobrano je po nazwach plików i opisach w paczkach. „⚙ Ustawienia" mają przy suwaku SFX przycisk
+odsłuchu **każdej** próbki; jeśli któraś nie pasuje, wymiana to podmiana jednego pliku i jednego
+wiersza w `SFX_FILES` (`packages/client/src/sfx.ts`). Kompletu pilnuje `sfx.test.ts` u klienta:
+dźwięk bez pliku, plik bez dźwięku i dźwięk bez przycisku odsłuchu wywalają test.

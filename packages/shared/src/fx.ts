@@ -23,6 +23,12 @@ export type MapFxSound =
   | 'shot-shotgun'
   | 'bowstring'
   | 'swing'
+  /** Bare hands — Bijatyka i Sztuki walki mają własny odgłos, nie świst ostrza. */
+  | 'punch'
+  /** Miotacz ognia: buchnięcie, nie huk strzelby. */
+  | 'flame'
+  /** Granatnik i wyrzutnia rakiet: odpalenie, nie wystrzał z karabinu. */
+  | 'launch'
   | 'impact'
   | 'ricochet'
   | 'explosion'
@@ -40,6 +46,9 @@ export const MAP_FX_SOUNDS: readonly MapFxSound[] = [
   'shot-shotgun',
   'bowstring',
   'swing',
+  'punch',
+  'flame',
+  'launch',
   'impact',
   'ricochet',
   'explosion',
