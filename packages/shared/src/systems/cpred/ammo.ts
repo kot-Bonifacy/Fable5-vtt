@@ -328,13 +328,19 @@ export interface CpredAmmoCheckOutcome {
   die: number;
   modifier: number;
   total: number;
-  /** True when the target beat the DV. Ties go to the round, as everywhere. */
+  /** True when the target met or beat the DV — a tie is a success (s. 132). */
   resisted: boolean;
 }
 
 /**
  * Judges one forced check. `die` comes from the caller's RNG, `modifier` is the
  * target's stat plus skill — the same shape suppressive fire has used since 16.
+ *
+ * A tie is a **success**: this is a check against a static DV, where RAW says
+ * „equal or higher succeeds". The other rule — „a tie goes to the defender"
+ * (s. 169) — belongs to *opposed* rolls, and lives where those are resolved:
+ * `resolveCpredAttack` and suppressive fire, whose DV is another character's
+ * total. Do not unify the two comparisons (GM's ruling, 28.08.2026).
  */
 export function cpredAmmoCheckOutcome(
   die: number,
@@ -342,7 +348,7 @@ export function cpredAmmoCheckOutcome(
   dv: number,
 ): CpredAmmoCheckOutcome {
   const total = die + modifier;
-  return { die, modifier, total, resisted: total > dv };
+  return { die, modifier, total, resisted: total >= dv };
 }
 
 /**

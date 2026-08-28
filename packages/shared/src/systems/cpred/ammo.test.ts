@@ -261,11 +261,14 @@ describe('rounds that deal no damage (stage 16h)', () => {
     expect(gas.check?.failure.injuries).toEqual(['injury.head-uraz-oka']);
   });
 
-  it('judges a forced check with ties going to the round', () => {
-    // 13 vs DV 13 is a tie, and a tie means the round got through.
-    expect(cpredAmmoCheckOutcome(5, 8, 13).resisted).toBe(false);
+  it('judges a forced check with ties going to the target', () => {
+    // A check against a static DV: „equal or higher succeeds", so 13 vs DV 13
+    // is a save. The tie-goes-to-the-defender rule is for opposed rolls only
+    // (GM's ruling, 28.08.2026) and stays in `resolveCpredAttack`.
+    expect(cpredAmmoCheckOutcome(4, 8, 13).resisted).toBe(false);
+    expect(cpredAmmoCheckOutcome(5, 8, 13).resisted).toBe(true);
+    expect(cpredAmmoCheckOutcome(5, 8, 13).total).toBe(13);
     expect(cpredAmmoCheckOutcome(6, 8, 13).resisted).toBe(true);
-    expect(cpredAmmoCheckOutcome(6, 8, 13).total).toBe(14);
   });
 
   it('writes what failing cost in one Polish line', () => {
