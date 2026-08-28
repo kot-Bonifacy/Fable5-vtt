@@ -65,6 +65,7 @@ export function registerCampaignRoutes(app: FastifyInstance, ctx: AppContext): v
     const detail: CampaignDetail[] = campaigns.map((c) => ({
       id: c.id,
       name: c.name,
+      sandbox: c.sandbox,
       active: c.active,
       createdAt: c.createdAt.toISOString(),
       players: c.members.map((m) => ({
@@ -89,7 +90,27 @@ export function registerCampaignRoutes(app: FastifyInstance, ctx: AppContext): v
       await tx.campaign.updateMany({ data: { active: false } });
       return tx.campaign.create({ data: { name: trimmed, active: true } });
     });
-    return reply.code(201).send({ id: campaign.id, name: campaign.name });
+    return reply
+      .code(201)
+      .send({ id: campaign.id, name: campaign.name, sandbox: campaign.sandbox });
+  });
+
+  /**
+   * „To jest poligon" / „to jest stół" (postulat MG z 22.08).
+   *
+   * Osobna trasa, a nie pole w tworzeniu kampanii, bo odpowiedź zmienia się
+   * w trakcie życia kampanii: „Poligon bojowy" powstał jako zwykły stół i
+   * dopiero z czasem stał się miejscem, w którym wolno wszystko. Flaga niczego
+   * nie blokuje — o tym, co robi, mówi komentarz przy kolumnie w schemacie.
+   */
+  app.post('/api/campaigns/:id/sandbox', gmOnly, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const { sandbox } = (request.body ?? {}) as { sandbox?: unknown };
+    if (typeof sandbox !== 'boolean') return reply.code(400).send({ error: 'BAD_REQUEST' });
+    const campaign = await ctx.prisma.campaign.findUnique({ where: { id } });
+    if (!campaign) return reply.code(404).send({ error: 'CAMPAIGN_NOT_FOUND' });
+    const updated = await ctx.prisma.campaign.update({ where: { id }, data: { sandbox } });
+    return { id: updated.id, name: updated.name, sandbox: updated.sandbox };
   });
 
   app.post('/api/campaigns/:id/invitations', gmOnly, async (request, reply) => {

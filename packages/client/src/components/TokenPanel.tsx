@@ -5,7 +5,7 @@ import { UPLOAD_ACCEPT_ATTRIBUTE, uploadRequirementText } from '@vtt/shared';
 import { fileRejectionText, uploadErrorText } from '../uploads.js';
 import { plural } from '../plural.js';
 import { deleteTokenAsset } from '../socket.js';
-import { useTokenStore } from '../stores/tokenStore.js';
+import { useMapToolStore } from '../stores/mapToolStore.js';
 
 /**
  * GM tab: the campaign's token image library. Selecting an entry arms
@@ -17,8 +17,10 @@ import { useTokenStore } from '../stores/tokenStore.js';
  * zdarzeniem `token:asset-delete` — patrz komentarz przy nim.
  */
 export function TokenPanel() {
-  const placement = useTokenStore((s) => s.placement);
-  const setPlacement = useTokenStore((s) => s.setPlacement);
+  // Żeton w ręku mieszka od 28.08 w store narzędzi mapy, razem z wyborem
+  // narzędzia — jeden tryb na raz (patrz `TokenPlacement`).
+  const placement = useMapToolStore((s) => s.tokenPlacement);
+  const setPlacement = useMapToolStore((s) => s.setTokenPlacement);
   const [assets, setAssets] = useState<TokenAssetView[]>([]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);

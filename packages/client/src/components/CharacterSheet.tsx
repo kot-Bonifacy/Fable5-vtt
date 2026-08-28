@@ -111,6 +111,7 @@ import { apiUpload } from '../api.js';
 import { UPLOAD_ACCEPT_ATTRIBUTE, uploadRequirementText } from '@vtt/shared';
 import { fileRejectionText, uploadErrorText } from '../uploads.js';
 import { CyberwareBody } from './CyberwareBody.js';
+import { FacedownFromSheet } from './FacedownLauncher.js';
 import {
   assignCriticalInjury,
   economyErrorText,
@@ -305,7 +306,7 @@ function CharacterSheetWindow({
           />
         )}
         {tab === 'gear' && <GearTab character={character} data={data} saveData={saveData} />}
-        {tab === 'bio' && <LifepathPage data={data} saveData={saveData} />}
+        {tab === 'bio' && <LifepathPage character={character} data={data} saveData={saveData} />}
         {tab === 'chrome' && (
           <ChromePage characterId={character.id} data={data} saveData={saveData} />
         )}
@@ -2609,7 +2610,7 @@ function CyberwareSection({
  * wylosujesz coś, co nie pasuje do twojej wizji Postaci, odpowiednio zmień
  * wynik” (s. 44). Karta nie zna tu ani jednej listy zamkniętej.
  */
-function LifepathPage({ data, saveData }: TabProps) {
+function LifepathPage({ character, data, saveData }: TabProps & { character: CharacterSheetView }) {
   const lifepath = data.lifepath;
 
   function writeLifepath(patch: Partial<CpredLifepath>) {
@@ -2702,7 +2703,7 @@ function LifepathPage({ data, saveData }: TabProps) {
         </div>
       )}
 
-      <ReputationSection data={data} saveData={saveData} />
+      <ReputationSection character={character} data={data} saveData={saveData} />
     </div>
   );
 }
@@ -2863,9 +2864,11 @@ function LifepathEnemies({
  * player reads them (the server refuses their patch either way).
  */
 function ReputationSection({
+  character,
   data,
   saveData,
 }: {
+  character: CharacterSheetView;
   data: CpredCharacterData;
   saveData: TabProps['saveData'];
 }) {
@@ -2927,6 +2930,11 @@ function ReputationSection({
             ? (REPUTATION_LEVEL_REACH[current.level] ?? '')
             : 'Nikt o tobie nie słyszał.'}
         </span>
+        {/* Drzwi gracza do Konfrontacji (28.08). Stoją przy Reputacji, bo to
+            ona wchodzi do rzutu — a nie w pasku akcji, bo Konfrontacja nie jest
+            Akcją tury i nie ma jej płacić z budżetu walki. MG ma swoje wejście
+            w menu żetonu i widzi oba. */}
+        <FacedownFromSheet characterId={character.id} characterName={character.name} />
         {isGm && (
           <button
             type="button"

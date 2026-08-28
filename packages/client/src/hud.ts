@@ -118,6 +118,22 @@ export interface HudContext {
    * the user commits by clicking the figure (or pressing one of its slots).
    */
   steering: boolean;
+  /**
+   * „Ta figura ma kartę, tylko nie twoją" — jedyny powód pustego paska, którego
+   * do 28.08 nic nie tłumaczyło.
+   *
+   * Żeton może należeć do gracza, a jego karta mieć `ownerId = null` (NPC MG)
+   * albo cudzego właściciela. Serwer wysyła graczowi **wyłącznie** karty, które
+   * są jego (`fetchCharactersFor`), więc `characters[token.characterId]` jest
+   * wtedy puste i `hotbarSlotsFor` dostaje `sheet: null`: pasek pokazuje same
+   * Akcje, bez jednej broni, i wygląda dokładnie jak zepsuty. Karta nadal nie
+   * jedzie do gracza — zmienia się tylko to, że pasek mówi, czego brakuje
+   * i kto to naprawia.
+   *
+   * Zawsze `false` u MG: MG ma wszystkie karty, więc ten stan u niego nie
+   * istnieje.
+   */
+  sheetNotMine: boolean;
 }
 
 /**
@@ -224,6 +240,7 @@ export function hudContextFor(tokenId: string | null): HudContext {
       isActiveTurn: false,
       refusal: null,
       steering: false,
+      sheetNotMine: false,
     };
   }
 
@@ -278,6 +295,8 @@ export function hudContextFor(tokenId: string | null): HudContext {
     isActiveTurn: refusal === null,
     refusal,
     steering,
+    sheetNotMine:
+      !isGm && token.characterId !== null && token.characterId !== undefined && !character,
   };
 }
 
@@ -358,6 +377,7 @@ export function hudSignature(context: HudContext): string {
     context.acting,
     context.refusal,
     context.steering,
+    context.sheetNotMine,
     context.combatant?.id ?? null,
     context.combatant?.grapple?.role ?? null,
     // Co ze slotu **widać**. Nabój wpadł tu w sesji naprawczej 22.08 (błąd #5):

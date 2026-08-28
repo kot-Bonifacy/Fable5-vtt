@@ -600,6 +600,19 @@ export function CombatHud() {
               in the top bar, which owns the queue and works with nothing
               selected. „E" still ends the turn from the map. */}
 
+          {/* Karta jest, ale nie twoja (28.08) — i to **nie** jest przypadek
+              pustego paska niżej. Akcje z katalogu (Ustabilizowanie, Bieg…)
+              nie potrzebują karty, więc `slots` nigdy nie jest puste i wygląda
+              to jak figura, która po prostu nie ma broni. Przy oględzinach
+              wyszło, że pierwsza wersja tej poprawki wisiała pod
+              `slots.length === 0` i z tego powodu nie pokazywała się nigdy. */}
+          {context.sheetNotMine && (
+            <p className="hud-refusal">
+              Ta figura ma kartę postaci, ale nie jest przypisana do ciebie — dlatego pasek nie zna
+              jej broni. Poproś MG, żeby ustawił cię właścicielem karty.
+            </p>
+          )}
+
           {context.slots.length === 0 && (
             <p className="hud-empty">
               <HudIcon name="pistol" className="hud-empty-icon" />

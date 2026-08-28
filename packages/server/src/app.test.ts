@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { io as ioClient, type Socket as ClientSocket } from 'socket.io-client';
 import type {
   AuthState,
+  CampaignDetail,
   CampaignSummary,
   InvitationSummary,
   JoinInfo,
@@ -154,6 +155,56 @@ describe('campaigns and invitations (GM)', () => {
     });
     expect(res.statusCode).toBe(201);
     campaignId = (res.json() as CampaignSummary).id;
+  });
+
+  /**
+   * Poligon czy stół (postulat MG z 22.08). Flaga jest **stanem**, nie
+   * uprawnieniem — trasa niczego nie blokuje, a wartość ma dojechać do klienta
+   * tą samą drogą, co nazwa kampanii, bo w interfejsie stoją obok siebie.
+   */
+  it('marks a campaign as a sandbox and back', async () => {
+    const created = await built.app.inject({
+      method: 'GET',
+      url: '/api/campaigns',
+      headers: { cookie: gmCookie },
+    });
+    expect((created.json() as CampaignDetail[])[0]?.sandbox).toBe(false);
+
+    const on = await built.app.inject({
+      method: 'POST',
+      url: `/api/campaigns/${campaignId}/sandbox`,
+      headers: { cookie: gmCookie },
+      payload: { sandbox: true },
+    });
+    expect(on.statusCode).toBe(200);
+    expect((on.json() as CampaignSummary).sandbox).toBe(true);
+
+    // Ta sama flaga w `/api/auth/me`: chip w pasku czyta aktywną kampanię
+    // stamtąd, nie z listy kampanii.
+    const me = await built.app.inject({
+      method: 'GET',
+      url: '/api/auth/me',
+      headers: { cookie: gmCookie },
+    });
+    expect((me.json() as AuthState).activeCampaign?.sandbox).toBe(true);
+
+    const off = await built.app.inject({
+      method: 'POST',
+      url: `/api/campaigns/${campaignId}/sandbox`,
+      headers: { cookie: gmCookie },
+      payload: { sandbox: false },
+    });
+    expect((off.json() as CampaignSummary).sandbox).toBe(false);
+  });
+
+  it('refuses a sandbox flag that is not a boolean', async () => {
+    const res = await built.app.inject({
+      method: 'POST',
+      url: `/api/campaigns/${campaignId}/sandbox`,
+      headers: { cookie: gmCookie },
+      payload: { sandbox: 'tak' },
+    });
+    expect(res.statusCode).toBe(400);
   });
 
   it('creates an invitation link', async () => {

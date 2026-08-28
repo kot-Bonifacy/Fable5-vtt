@@ -18,6 +18,19 @@ export function TopBar() {
       <CombatBar />
       <div className="top-bar-right">
         {activeCampaign && <span className="top-bar-campaign">{activeCampaign.name}</span>}
+        {/* Chip poligonu (postulat MG z 22.08). `flex: none` jak każdy nowy
+            element prawej grupy — miejsce oddaje wyłącznie tytuł i nazwa
+            kampanii. Kampania produkcyjna nie nosi nic: brak chipu **jest**
+            drugim stanem, a dwa chipy obok siebie zamieniłyby ostrzeżenie
+            w ozdobę. */}
+        {activeCampaign?.sandbox && (
+          <span
+            className="top-bar-sandbox"
+            title="Kampania testowa — wolno tu wszystko zepsuć. Chip zdejmuje się w Panelu MG."
+          >
+            poligon
+          </span>
+        )}
         <ConnectionStatus />
         {/* Etap 27d: ☀/☾ i ⌨ przeniosły się do okna ustawień — pasek nosi
             stan gry, a nie listę preferencji jednego użytkownika. */}

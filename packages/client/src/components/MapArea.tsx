@@ -424,7 +424,7 @@ export function MapArea() {
   /** Token under the crosshair and where the pointer is (stage 16f). */
   const [aimHover, setAimHover] = useState<AimHover | null>(null);
   const scene = useSceneStore((s) => s.effectiveScene);
-  const placement = useTokenStore((s) => s.placement);
+  const placement = useMapToolStore((s) => s.tokenPlacement);
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const tool = useMapToolStore((s) => s.tool);
   const fogMode = useMapToolStore((s) => s.fogMode);
@@ -458,7 +458,7 @@ export function MapArea() {
   }, []);
 
   const placeToken = useCallback((worldX: number, worldY: number): boolean => {
-    const pending = useTokenStore.getState().placement;
+    const pending = useMapToolStore.getState().tokenPlacement;
     const current = useSceneStore.getState().effectiveScene;
     if (!pending || !current) return false;
     const extent = current.grid.sizePx;
@@ -469,8 +469,15 @@ export function MapArea() {
       // Center the new token on the clicked point; the server snaps it.
       x: worldX - extent / 2,
       y: worldY - extent / 2,
+      // Żeton postaci (28.08): wiązanie z kartą i właściciel przepisany z niej,
+      // dokładnie tak, jak stawia figurę kreator (`createCharacterToken`).
+      // Bez `characterId` powstaje pusty żeton z biblioteki — i to jest różnica
+      // między „dorobiłem żeton Kolca" a „postawiłem krążek o tej samej nazwie".
+      ...(pending.characterId
+        ? { characterId: pending.characterId, ownerId: pending.ownerId ?? null }
+        : {}),
     });
-    useTokenStore.getState().setPlacement(null);
+    useMapToolStore.getState().setTokenPlacement(null);
     return true;
   }, []);
 
@@ -1018,7 +1025,7 @@ export function MapArea() {
   useEffect(() => {
     if (!placement) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') useTokenStore.getState().setPlacement(null);
+      if (event.key === 'Escape') useMapToolStore.getState().setTokenPlacement(null);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);

@@ -41,6 +41,31 @@ export const MAP_TOOLS = [
 ] as const;
 export type MapTool = (typeof MAP_TOOLS)[number];
 
+/**
+ * Żeton czekający na postawienie — uzbrojony w zakładce „Tokeny" albo przy
+ * wierszu postaci; następny klik w mapę stawia go w tym miejscu.
+ *
+ * Mieszka **w tym samym store co `tool`** i to jest cała treść poprawki
+ * z 28.08. Do tej pory był w `tokenStore`, czyli obok wyboru narzędzia, a nie
+ * w nim — więc „uzbrojone narzędzie" i „żeton w ręku" były dwoma niezależnymi
+ * stanami i dało się mieć oba naraz. Przy oględzinach 26b jeden klik postawił
+ * **i** punkt dostępu, **i** żeton. Sam podwójny skutek zniknął z `clicked`
+ * w sesji naprawczej 22.08 (`toolSpentThisClick`), ale zostawił gorszy objaw:
+ * żeton wisiał w ręku niewidzialnie, a każdy klik szedł na narzędzie — i nic
+ * tego nie tłumaczyło. Jedno pole na tryb znaczy, że dwóch mieć się nie da.
+ */
+export interface TokenPlacement {
+  name: string;
+  imageUrl: string | null;
+  /**
+   * Karta, do której nowy żeton ma być przywiązany (etap 28.08, „Postaw na
+   * scenie" przy wierszu postaci). Bez niej powstaje pusty żeton z biblioteki.
+   */
+  characterId?: string | null;
+  /** Właściciel przepisany z karty — żeton postaci gracza ma być jego. */
+  ownerId?: string | null;
+}
+
 /*
  * Narzędzie ścian nie ma już trybów (etap 27l).
  *
@@ -153,6 +178,8 @@ function saveDrawSettings(settings: DrawSettings): void {
 
 interface MapToolStoreState extends DrawSettings {
   tool: MapTool;
+  /** Żeton w ręku, czekający na klik w mapę; null = ręka pusta. */
+  tokenPlacement: TokenPlacement | null;
   /** Painting or erasing fog — the same two shapes serve both directions. */
   fogMode: FogMode;
   fogShape: FogBrushShape;
@@ -194,6 +221,8 @@ interface MapToolStoreState extends DrawSettings {
   setTool: (tool: MapTool) => void;
   /** Clicking the armed tool again puts it away. */
   toggleTool: (tool: MapTool) => void;
+  /** Bierze żeton do ręki (albo odkłada go, gdy `null`). */
+  setTokenPlacement: (placement: TokenPlacement | null) => void;
   setFogMode: (fogMode: FogMode) => void;
   setFogShape: (fogShape: FogBrushShape) => void;
   setFogRadius: (fogRadius: number) => void;
@@ -266,8 +295,18 @@ export const useMapToolStore = create<MapToolStoreState>((set, get) => {
     lightFlicker: false,
     ...loadDrawSettings(),
 
-    setTool: (tool) => set({ tool }),
-    toggleTool: (tool) => set({ tool: get().tool === tool ? 'pointer' : tool }),
+    tokenPlacement: null,
+
+    // „Jedno kliknięcie trafia w jedną rzecz" — a to znaczy, że jednym
+    // przypisaniem odkłada się poprzedni tryb. Narzędzie wytrąca żeton z ręki
+    // i odwrotnie; `pointer` niczego nie wytrąca, bo to jest stan „ręce wolne".
+    setTool: (tool) => set(tool === 'pointer' ? { tool } : { tool, tokenPlacement: null }),
+    toggleTool: (tool) => {
+      const next = get().tool === tool ? 'pointer' : tool;
+      set(next === 'pointer' ? { tool: next } : { tool: next, tokenPlacement: null });
+    },
+    setTokenPlacement: (tokenPlacement) =>
+      set(tokenPlacement === null ? { tokenPlacement } : { tokenPlacement, tool: 'pointer' }),
     setFogMode: (fogMode) => set({ fogMode }),
     setFogShape: (fogShape) => set({ fogShape }),
     setFogRadius: (fogRadius) => set({ fogRadius }),

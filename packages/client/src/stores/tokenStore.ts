@@ -7,12 +7,6 @@ export interface TokenViewerCtx {
   isGm: boolean;
 }
 
-/** Pending "place a token" action started from the GM token panel. */
-export interface TokenPlacement {
-  name: string;
-  imageUrl: string | null;
-}
-
 /**
  * Defense-in-depth mirror of the server rule: a player keeps HP only for
  * tokens they own. The server never sends foreign HP, but a token that
@@ -31,7 +25,6 @@ interface TokenStoreState {
   tokens: Record<string, TokenView>;
   /** Status registry fetched from `/public/cpred/statuses.json`. */
   statuses: StatusDefinition[];
-  placement: TokenPlacement | null;
 
   applySync: (payload: StateSyncPayload, viewer: TokenViewerCtx) => void;
   /** Replaces the whole list — used by `token:sync` after a fog repaint. */
@@ -42,13 +35,11 @@ interface TokenStoreState {
   /** `facing` is sent only on the drop (stage 27j); undefined leaves it alone. */
   applyMove: (tokenId: string, x: number, y: number, facing?: number | null) => void;
   setStatuses: (statuses: StatusDefinition[]) => void;
-  setPlacement: (placement: TokenPlacement | null) => void;
 }
 
 export const useTokenStore = create<TokenStoreState>((set) => ({
   tokens: {},
   statuses: [],
-  placement: null,
 
   applySync: (payload, viewer) =>
     set(() => {
@@ -88,7 +79,6 @@ export const useTokenStore = create<TokenStoreState>((set) => ({
     }),
 
   setStatuses: (statuses) => set({ statuses }),
-  setPlacement: (placement) => set({ placement }),
 }));
 
 let statusesRequested = false;

@@ -79,6 +79,15 @@ function CampaignCard({
     if (ack.ok) onChanged();
   }
 
+  /**
+   * Poligon czy stół (postulat MG z 22.08). Bez potwierdzenia w obie strony —
+   * flaga niczego nie kasuje i przestawia się jednym kliknięciem z powrotem.
+   */
+  async function toggleSandbox() {
+    await apiPost(`/api/campaigns/${campaign.id}/sandbox`, { sandbox: !campaign.sandbox });
+    onChanged();
+  }
+
   return (
     <section className="panel-card">
       <header className="panel-card-header">
@@ -90,6 +99,18 @@ function CampaignCard({
             Aktywuj
           </button>
         )}
+        <button
+          type="button"
+          className={`small-button ${campaign.sandbox ? 'small-button--on' : ''}`}
+          onClick={() => void toggleSandbox()}
+          title={
+            campaign.sandbox
+              ? 'Kampania testowa: chip „poligon" w pasku, kasowanie nie dopytuje o nazwę'
+              : 'Oznacz jako testową — wtedy widać w pasku, że wolno tu wszystko zepsuć'
+          }
+        >
+          {campaign.sandbox ? '🧪 Poligon' : 'Oznacz jako poligon'}
+        </button>
       </header>
 
       <h3 className="panel-section-title">Gracze ({campaign.players.length})</h3>

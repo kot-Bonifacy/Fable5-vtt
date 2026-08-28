@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import type { CampaignDetail, CpredCharacterData } from '@vtt/shared';
 import { ROLE_GM, cyberpsychosisFor, formatEddies } from '@vtt/shared';
 import { apiGet } from '../api.js';
+import { confirmDestructive } from '../confirm.js';
 import {
   createCharacter,
   deleteCharacter,
@@ -12,6 +13,8 @@ import {
 import { useAuthStore } from '../stores/authStore.js';
 import { ensureCpredDataLoaded, useCharacterStore } from '../stores/characterStore.js';
 import { useCreationStore } from '../stores/creationStore.js';
+import { useMapToolStore } from '../stores/mapToolStore.js';
+import { useTokenStore } from '../stores/tokenStore.js';
 import { plural } from '../plural.js';
 
 interface PlayerOption {
@@ -131,7 +134,7 @@ export function CharacterPanel() {
   }
 
   async function removeCharacter(characterId: string, name: string) {
-    if (!window.confirm(`Usunąć postać „${name}”? Tej operacji nie można cofnąć.`)) return;
+    if (!confirmDestructive(`Usunąć postać „${name}”?`)) return;
     const ack = await deleteCharacter(characterId);
     if (!ack.ok) setError(ackErrorText(ack.error));
   }
@@ -212,6 +215,12 @@ export function CharacterPanel() {
                 </button>
                 {isGm && (
                   <span className="character-row-actions">
+                    <PlaceOnSceneButton
+                      characterId={id}
+                      name={character.name}
+                      portraitUrl={character.portraitUrl}
+                      ownerId={character.ownerId}
+                    />
                     <select
                       value={character.ownerId ?? ''}
                       onChange={(e) => void changeOwner(id, e.target.value)}
@@ -298,5 +307,61 @@ function CyberpsychosisChip({ data }: { data: CpredCharacterData }) {
     <span className={`character-psychosis character-psychosis--${state.level}`} title={state.note}>
       EMP {state.emp} · {state.label}
     </span>
+  );
+}
+
+/**
+ * „Postaw na scenie" — druga droga do żetonu postaci (28.08).
+ *
+ * Do tej pory żeton związany z kartą powstawał **wyłącznie** w kreatorze
+ * (`creation.ts` woła `createCharacterToken`). Kto skasował żeton — albo dostał
+ * kartę zaimportowaną, nie zbudowaną — nie miał jak dorobić drugiego: panel
+ * „Tokeny" stawia same krążki z biblioteki, a `token:create` przyjmuje
+ * `characterId` od zawsze, tylko nikt go z UI nie podawał. Wyszło przy
+ * odtwarzaniu „Kolca" na Poligonie: karta stała nietknięta, figury nie było
+ * i jedyną drogą była konsola.
+ *
+ * Portret idzie na żeton, a właściciel przepisuje się z karty — te same dwie
+ * decyzje, które podejmuje kreator, żeby żeton dorobiony ręcznie niczym się nie
+ * różnił od postawionego automatem.
+ */
+function PlaceOnSceneButton({
+  characterId,
+  name,
+  portraitUrl,
+  ownerId,
+}: {
+  characterId: string;
+  name: string;
+  portraitUrl: string | null;
+  ownerId: string | null;
+}) {
+  const armed = useMapToolStore((s) => s.tokenPlacement?.characterId === characterId);
+  // Figura tej postaci już na scenie — przycisk nadal działa (dubler bywa
+  // potrzebny), ale mówi, że to będzie druga.
+  const onScene = useTokenStore((s) =>
+    Object.values(s.tokens).some((token) => token.characterId === characterId),
+  );
+
+  return (
+    <button
+      type="button"
+      className={`small-button ${armed ? 'small-button--armed' : ''}`}
+      onClick={() =>
+        useMapToolStore
+          .getState()
+          .setTokenPlacement(armed ? null : { name, imageUrl: portraitUrl, characterId, ownerId })
+      }
+      title={
+        armed
+          ? 'Kliknij na mapie, żeby postawić figurę (Esc anuluje)'
+          : onScene
+            ? `Ta postać ma już figurę na scenie — postawi się druga`
+            : 'Postaw figurę tej postaci na aktywnej scenie'
+      }
+      aria-label={`Postaw na scenie: ${name}`}
+    >
+      {armed ? '◎' : '⊕'}
+    </button>
   );
 }

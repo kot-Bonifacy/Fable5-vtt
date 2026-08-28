@@ -10,7 +10,7 @@ export async function getActiveCampaign(prisma: PrismaClient): Promise<CampaignS
     where: { active: true },
     orderBy: { createdAt: 'desc' },
   });
-  return campaign ? { id: campaign.id, name: campaign.name } : null;
+  return campaign ? { id: campaign.id, name: campaign.name, sandbox: campaign.sandbox } : null;
 }
 
 export function setSessionCookie(reply: FastifyReply, session: Session): void {

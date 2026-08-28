@@ -23,15 +23,15 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
   `open`, więc 160,1 → 161,2 fps mierzy **samą warstwę efektów**, a nie najgorszy przypadek
   z kryterium etapu. Warstwa rysuje na klatkę kilka ścieżek `Graphics` i najwyżej jeden sprite,
   więc rezerwa jest duża — ale liczby dla sceny z dynamiczną widocznością nadal nie ma.
+  **Decyzja MG z 28.08: pomiar idzie do etapu 27g**, a nie do najbliższej sesji zaległości —
+  scena, na której się go robi, już stoi („Korytarz 16e", widoczność Dynamiczna).
 
-- **Etap 24c — cztery ścieżki nieodklikane.** (1) **Zdjęcie prasowe** — screamsheet przyjmuje
-  grafikę handoutu i rysuje ją jako odbitkę gazetową (`grayscale`), ale przy oględzinach nic
-  nie wgrywano. (2) **„Przerwij" w trakcie generacji** — przycisk pojawia się na czas pisania
-  (`screamsheet:cancel`, pokryty ścieżką serwera), model odpowiadał jednak w 7 s i nie było
-  czego przerywać. (3) **Edycja zapisanego screamsheetu** przez ✎ — formularz ma wtedy wziąć
-  rodzaj z handoutu, a nie z przycisku (`handout?.kind ?? …`); klikane było tworzenie.
-  (4) **Drugi generator pod rząd** — czy szkic nadpisuje pola, w których MG już coś poprawił
-  (nadpisuje: takie jest zachowanie `takeDraft`).
+- **Etap 24c — zostały dwie ścieżki, obie wymagają modelu.** ~~(1) Zdjęcie prasowe~~
+  i ~~(3) edycja zapisanego screamsheetu przez ✎~~ — **odklikane 28.08**, patrz
+  `archiwum/zamkniete-zaleglosci.md`. Zostają: (2) **„Przerwij" w trakcie generacji** — przycisk
+  pojawia się na czas pisania (`screamsheet:cancel`, pokryty ścieżką serwera), model odpowiadał
+  jednak w 7 s i nie było czego przerywać. (4) **Drugi generator pod rząd** — czy szkic nadpisuje
+  pola, w których MG już coś poprawił (nadpisuje: takie jest zachowanie `takeDraft`).
 
 - **Etap 24c — polszczyzna 9B, nie kod.** W artykule z oględzin padło „tłumek zmyślonych
   bogaczy" i „krzyki prosić o pomoc" — model gubi odmianę w dłuższych zdaniach. Przy
@@ -114,35 +114,3 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
   **Odklikane 27.08 na koncie `Tester`:** żeton gracza ze statusem **Nieprzytomny** nie ruszył
   się z miejsca, na czacie stanęło „Nieprzytomny token nie może się poruszać.", a wszystkie
   Akcje w panelu postaci były wyszarzone.
-
-- **Etap 16e — zostały dwie ścieżki z dziesięciu.** **Odklikane 22.08** (piąta sesja, scena
-  testowa „Korytarz 16e" ze ścianą w kształcie L, skasowana po oględzinach): (2) **obejście rogu**
-  — trasa poszła 30,6 m wzdłuż ściany, opłynęła jej koniec i wróciła 18,4 m do celu, zamiast
-  przeciąć mur; (4) **kursor nad czernią** — u gracza trasa przestaje być liczona i zostaje
-  niebieska prosta z ✖ i licznikiem („22,8 m"); (5) **Esc w trakcie marszu** — na czacie stanęło
-  „Marsz przerwany." i **„Akcja Ruchu — 12,8 m ścieżki"**, czyli zapłacone za przebyty odcinek,
-  nie za porzucony plan; (7) **Shift+klik** — żółty punkt załamania i dwa podpisane odcinki
-  („10 m", „14,1 m") z sumą przy ✖; (8) **PPM w puste** — zaznaczenie znika, pasek wraca do
-  „Kliknij token, którym chcesz sterować."; (9) **przeciąganie tokenu** (regresja) — figura
-  przejechała przez pół sceny i ruch został zaksięgowany.
-  **Odklikane 23.08** (sesja pasów zasięgu, gracz avatar9 na „Poligonie"): (3) **klik za zasięgiem
-  tury** — trasa jest cięta na granicy budżetu, klik daleko poza nią przeszedł **10 m / 10 m**
-  z komunikatem „Koniec ruchu w tej turze", a ogon poza budżetem jest wygaszony kolorem
-  (bursztyn = zasięg Biegu, szary = poza turą). ✖ na granicy **nie ma** — MG kazał go zdjąć,
-  bo granicę widać kolorem.
-  **Odklikane 23.08 przez MG:** (10) **token 2×2 obok ścian** — po naprawie planera (opis
-  w `archiwum/zamkniete-zaleglosci.md`) figura obchodzi mur zamiast przez niego przechodzić.
-  Werdykt MG: „w miarę ok, tylko odrobinę za blisko przechodzi ściany" — **zaakceptowane**,
-  patrz pozycja o marginesie niżej.
-  **Zostało:** (1) odsłanianie mgły w trakcie marszu; (6) przerwanie marszu przez NPC
-  wychodzącego zza rogu.
-
-- **Kliknięcie w token było zepsute dla graczy od 18a — naprawione w 16e, ale zaległości oględzin z tego okresu warto powtórzyć.** Warstwy przykrywające przechwytywały hit-test (szczegóły w `pulapki-dev.md`), więc gracz na scenie z dynamiczną widocznością **nie mógł kliknąć ani przeciągnąć żadnego tokenu**. To prawdopodobnie realna przyczyna części pozycji zbiorczej „strona gracza" (zamknięta 22.08, `archiwum/zamkniete-zaleglosci.md`) — przy jej odhaczaniu sprawdź najpierw, czy rzecz w ogóle dawała się kliknąć.
-
-- **Etap 09 — zakładka „AI" u MG niezweryfikowana wizualnie** (sesja toczyła się na koncie gracza). Późniejsze etapy oglądały u MG inne zakładki, więc to prawdopodobnie martwa zaległość — sprawdź przy okazji.
-- **Ślad ścieżki przy przeciąganiu nieobejrzany**: `left_click_drag` z CDP jest natychmiastowy, więc łamana z licznikiem metrów rysuje się i znika między klatkami. Do sprawdzenia ręcznie — myszą.
-- **`ai-gateway/src/vtt_gateway/tts/` został po wycofanym etapie 12 — pytanie otwarte (MG, 27.08).**
-  W repozytorium katalog jest **pusty** (`git ls-files` nic nie zwraca), na dysku leżą w nim same
-  `__pycache__` z 08.08, czyli sprzed usunięcia kodu TTS. Nic tego nie importuje i nic się przez to
-  nie psuje — koszt sprzątnięcia to jedno `rm -rf`, ale MG postanowił zostawić decyzję otwartą.
-  **Nie kasuj bez pytania** i nie zgłaszaj tego jako nowego znaleziska.

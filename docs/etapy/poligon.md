@@ -228,3 +228,35 @@ Reszta bez zmian: 6 żetonów, 3 segmenty ściany, 7 punktów dostępu, 0 świat
 **Rozjazdy z opisem wyżej, zastane na starcie sesji:** (1) **„Rudy Kwiatkowski" ma żeton**
 (2000 × 1500) — akapit z 27.08 mówi „bez żetonu"; postawił go kreator, bo `creation.ts` jako jedyny
 wypełnia `characterId` przy `token:create`. (2) Żetonów jest **sześć**, nie pięć.
+
+## Scena „Korytarz 16e" (28.08, sesja pakietu A+B+D+E) — **czwarta scena stała**
+
+Zbudowana od nowa i **zostawiona na stałe** decyzją MG z 28.08. Do tej pory powstawała i ginęła
+przy każdej sesji, która potrzebowała dynamicznej widoczności (ostatnio 22.08), i za każdym
+razem płaciliśmy za nią drugi raz. Poligon nie miał ani jednej stałej sceny z widocznością
+`dynamic` — a to jest jedyny tryb, w którym da się oglądać cień ścian, przerwania marszu
+i (w etapie 27g) najgorszy przypadek wydajności.
+
+**Ustawienia:** widoczność **Dynamiczna**, pamięć eksploracji **włączona**, ciemna scena
+wyłączona, siatka 100 px, mapa pusta.
+
+**Geometria:** jeden łańcuch ścian w kształcie **litery L** — odcinek poziomy przez środek
+sceny i krótszy pionowy w górę z jego prawego końca. Wystarczy do trzech rzeczy naraz:
+cień z jednej strony, obejście rogu i „ktoś wychodzi zza rogu".
+
+**Figury:** `avatar9` (postać gracza, po lewej pod murem) i **„Rudy Kwiatkowski"** (NPC,
+początkowo za murem — niewidoczny dla gracza; w trakcie oględzin przeciągnięty na stronę
+gracza i tam został). Obie postawione **nowym przyciskiem ⊕ „Postaw na scenie"**, nie kreatorem.
+
+**Aktywna z powrotem jest „Strzelnica"** — ta scena stoi w podglądzie, jak „Efekty 23x"
+i „Karty 24x". Strzelnica po tej sesji ma **drugą figurę Rudego** (postawioną przy sprawdzaniu
+przycisku ⊕, właściciel przestawiony na **avatar9** przy sprawdzaniu pustego paska gracza) —
+zostawiona świadomie: to jedyna figura w bazie, na której widać zdanie „Ta figura ma kartę
+postaci, ale nie jest przypisana do ciebie".
+
+**Kampania „Poligon bojowy" jest od 28.08 oznaczona jako poligon** (`sandbox = true`) — chip
+„POLIGON" w górnym pasku i krótkie pytanie przy kasowaniu. Nie zdejmuj tej flagi bez powodu:
+to jedyna kampania, na której wolno wszystko zepsuć.
+
+**Handout „Kto zostawił krążek na Poligonie?"** (screamsheet z wgraną grafiką) został jako
+dowód odbitki gazetowej z 24c — jedyny screamsheet w kampanii ze zdjęciem.

@@ -301,3 +301,29 @@ dotyczy.
   odpytuje ją co 10 s (`AI_HEALTH_INTERVAL_MS`), `ctx.ai.onStatusChange` rozsyła `ai:status`
   i wszystkie ścieżki „gateway wrócił" można obejrzeć bez `llama-server`. Wzór leżał w
   scratchpadzie sesji 28.08 — pisze się szybciej, niż się szuka.
+
+**Łańcuch ściany kończy `Enter`, nie `Esc` — `Esc` go porzuca.** Podpowiedź paska mówi to wprost
+(„Klikaj narożniki — Enter kończy ścianę"), ale odruch z każdego innego narzędzia to `Esc`,
+i wtedy mur po prostu znika razem z podglądem: wygląda jak „automat nie umie rysować ścian",
+a jest zwykłym anulowaniem. Kosztowało jeden przebieg budowy „Korytarza 16e" 28.08.
+
+**Uzbrojona broń zjada rozkaz marszu.** Klik w podłoże przy broni „w ręku" jest strzałem
+w wybrane pole, nie marszem — pasek mówi to małą linijką „W ręku: … — kliknij cel na mapie",
+której łatwo nie zauważyć. Objaw: figura stoi, a na czacie ląduje „Marsz przerwany.". Zanim
+uznasz, że rozkaz nie dochodzi, rozbrój broń (drugi klik w slot) i powtórz.
+
+**Marsz automatem wymaga serii ruchów, nie jednego.** Jeden `pointermove` przed klikiem bywa za
+mało — trasa liczy się przyrostowo, więc ustal hover **kilkoma** ruchami z przerwami ~180 ms po
+linii, którą figura ma iść, i dopiero wtedy klikaj. Rozszerza wcześniejszą pułapkę o „ustalonym
+hoverze": chodzi o serię, a nie o pojedyncze zdarzenie.
+
+**`window.confirm` da się podmienić i wtedy nic nie wisi** — `window.confirm = m => { zapisz(m);
+return false; }` pozwala **przeczytać treść pytania** bez klikania w natywne okno i bez ryzyka,
+że coś naprawdę zniknie. Tak sprawdzono obie gałęzie `confirmDestructive` 28.08. Podmiana ginie
+przy przeładowaniu karty — po każdym `location.reload()` trzeba ją założyć od nowa.
+
+**Flaga kampanii nie rozchodzi się sama po podpiętych ekranach.** `Campaign.sandbox` jedzie
+w `CampaignSummary`, czyli w stanie logowania — trasa REST ją zapisuje, ale **nie** broadcastuje,
+więc chip „poligon" u innego klienta pojawi się dopiero po przeładowaniu albo po
+`campaign:activate`. Dla dialu MG to akceptowalne; gdyby kiedyś zaczęło przeszkadzać, drogą jest
+`campaign:switch` (to on przenosi wszystkie ekrany), a nie drugie źródło prawdy u klienta.

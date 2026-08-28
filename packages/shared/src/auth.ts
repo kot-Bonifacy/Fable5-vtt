@@ -23,6 +23,15 @@ export interface SessionUser {
 export interface CampaignSummary {
   id: string;
   name: string;
+  /**
+   * Poligon czy stół, przy którym ktoś naprawdę gra (postulat MG z 22.08)?
+   *
+   * Jedzie razem z nazwą, a nie osobną trasą, bo odpowiedź jest potrzebna
+   * wszędzie tam, gdzie widać nazwę — w nagłówku i przed czynnościami, których
+   * nie da się cofnąć. Nie jest uprawnieniem: niczego nie blokuje, tylko mówi,
+   * gdzie się stoi.
+   */
+  sandbox: boolean;
 }
 
 /** Response of /api/auth/me, /api/auth/login and POST /api/join/:token. */

@@ -7,6 +7,49 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 28.08 — pakiet A + E: strefy i efekty walki, dźwięki broni, triaż zaległości
+
+**Zlecenie MG:** znów pogrupowane zaległości (bez lokalnego LLM, bez etapów nierozpoczętych),
+MG wybrał **A + E** i dołożył dwie rzeczy: **dźwięki dobrać z sieci pod opis i nazwę konkretnych
+broni** (ze wskazaniem: „zweryfikuj, czy jest atak wręcz/pięścią/bez broni"), a **triaż
+rozstrzygnąć samodzielnie**.
+
+**Pakiet A — sześć ścieżek, wszystkie odklikane na „Strzelnicy".** Postawione tam **pięć stref
+bronionych** (wieżyczka, podłoga elektryczna, ślizgawka, maź, winda z gazem) i **zostają na
+scenie** — pełna tabela ze współrzędnymi w `poligon.md`. Potwierdzone: błyskawica przez cały
+prostokąt strefy i 6k6 z „Cofnij" (27i), zielona chmura gazu wielkości pola wybuchu razem
+z testem Odporności i „Urazem oka" (27i + 16h), Atletyka PT 15 ze Ślizgawki, **naklejka
+„Spowolniony" na żetonie i podpowiedź „Dystans: Spowolniony −10 (RUCH minimum 1)"** w panelu
+(liczba, która dotąd istniała tylko w testach), samodzielny strzał wieżyczki Wartością bojową 14
+oraz **wiersz pułapki na pierwszym miejscu Kolejki Inicjatywy**. Diagnozy przy pozycjach —
+`archiwum/zamkniete-zaleglosci.md`. Stan sceny przywrócony (Tony, Rudy, magazynek wieżyczki,
+tryb turowy wyłączony); strefy zostawione świadomie.
+
+**Dźwięki — audyt tabeli `ICON_FX` wyłapał cztery rodzaje broni grające cudzą próbką.**
+Bijatyka i Sztuki walki świszczały **ostrzem** (`swing` z paczki RPG), Miotacz ognia huczał
+**strzelbą**, Granatnik i Wyrzutnia rakiet strzelały **Mosinem**, a Kusza i Łuk miały **sprężynę**.
+Doszły cztery próbki CC0 z OpenGameArt (`punch.ogg`, `flame.ogg`, `launch.wav` i nowy
+`bowstring.wav` w miejsce ogg-a), wszystkie opisane w `public/sfx/ATTRIBUTION.md`; `punch`
+obsługuje też **Pochwycenie**. Granat rzucony ręką **celowo** zostaje przy świście zamachu.
+Nowy `sfx.test.ts` u klienta pilnuje kompletu (dźwięk bez pliku, plik-sierota, dźwięk bez
+przycisku odsłuchu) — i od razu złapał zapomniany `bowstring.ogg`. **Nikt tych próbek nadal nie
+słyszał** — to zostaje w zaległościach, teraz jako 16 przycisków odsłuchu zamiast 13.
+
+**Pakiet E — triaż: 30 pozycji → 22.** Sześć zdjętych bez roboty (nieosiągalne z UI albo
+„różnica żadna z definicji") wylądowało w `decyzje-i-uproszczenia.md` jako sekcja „Ścieżki,
+których nie da się odklikać", dwie jako ostrzeżenia w `pulapki-dev.md`, jedna zniknęła jako
+pokryta istniejącą pułapką, a wpis 25c okazał się **od dawna pusty**. Otwarte zostaje pytanie MG
+o katalog `ai-gateway/.../tts/` — nie kasuję bez odpowiedzi.
+
+**Znalezisko do rozstrzygnięcia przez MG (nie naprawione).** Wymuszony test przegrywa **remis**:
+`cpredAmmoCheckOutcome` liczy `resisted: total > dv`, więc Atletyka 15 przeciw PT 15 to porażka.
+Dla **testu na PT** RAW mówi „równy lub wyższy = sukces"; reguła „remis wygrywa obrona" (s. 169)
+dotyczy rzutów **przeciwstawnych**, i tam kod ma ją osobno (`resolveCpredAttack`). Ta sama
+nierówność stoi w ogniu zaporowym (`attacks.ts:624`). Zmiana to dwa znaki plus poprawka testu
+„judges a forced check with ties going to the round" — ale to decyzja o zasadach, nie o kodzie.
+
+**Testy na koniec:** 1400 w `shared`, 53 u klienta (3 nowe), serwer bez zmian.
+
 ### Sesja 27.08 (trzecia) — pakiet D+A: dziennik, wiedza, degradacja, okna karty + 70 tłumaczeń
 
 **Zlecenie MG:** znów pogrupowane zaległości (bez lokalnego LLM, bez nierozpoczętych etapów),

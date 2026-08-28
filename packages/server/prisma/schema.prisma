@@ -47,6 +47,15 @@ model Campaign {
   /// Not a rule of Cyberpunk RED — a GM's dial: a starting party shops at 1,
   /// and the catalogue opens up as the campaign goes on.
   shopTier  Int      @default(1)
+  /// Is this a sandbox — a table nobody is really playing at (postulat MG 22.08)?
+  ///
+  /// Nothing in the system told a test campaign apart from the one a group
+  /// plays at, so every inspection session started with „co wolno tu zepsuć".
+  /// The flag answers that in the header: a sandbox wears a chip, and the
+  /// handful of genuinely irreversible actions elsewhere say the campaign's
+  /// name out loud when it is NOT one. Deliberately not a permission — the GM
+  /// is not to be stopped from doing anything, only told where they are.
+  sandbox   Boolean  @default(false)
 
   invitations  Invitation[]
   members      CampaignMember[]

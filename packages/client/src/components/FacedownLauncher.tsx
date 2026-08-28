@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { TokenView } from '@vtt/shared';
 import { cpredReputation } from '@vtt/shared';
 import { useCharacterStore } from '../stores/characterStore.js';
@@ -19,14 +19,18 @@ import { sendReputationRecognise } from '../socket.js';
  * Reputation on both sheets and the verdict are all the server's; this only
  * loads the cup, exactly the way the sheet's own roll buttons do.
  *
- * **Only the GM ever sees this.** Not an oversight and not a permission check
- * living in the wrong place: the token context menu that opens it is GM-only
- * (`MapArea.tsx`), and the rulebook puts the same sentence on it — „W takiej
- * chwili **MG może przeprowadzić Konfrontację**" (s. 194). Players take part
- * from the chat card instead, where „Postaw się" and the loser's two buttons
- * are theirs to press. `facedown:attempt` itself stays open to a player who
- * owns the figure, because the server should not depend on which menu a client
- * happened to render — but nothing in the UI walks through that door today.
+ * **Menu żetonu widzi tylko MG** — nie przeoczenie i nie kontrola uprawnień
+ * w złym miejscu: menu kontekstowe jest MG-owe (`MapArea.tsx`), a podręcznik
+ * pisze to samo zdanie — „W takiej chwili **MG może przeprowadzić
+ * Konfrontację**" (s. 194).
+ *
+ * Od 28.08 gracz ma jednak **własne drzwi**: `FacedownFromSheet` na karcie
+ * postaci, gdzie wybiera się nie napastnika, tylko **cel**. Powód jest ten sam,
+ * dla którego `facedown:attempt` od 23c przyjmuje gracza: serwer nie miał
+ * zależeć od tego, które menu wyrenderował klient — a przez rok nikt tą drogą
+ * nie chodził, bo w UI jej nie było. „Postaw się" na karcie z czatu i dwa
+ * przyciski przegranego były jedynym, co gracz mógł kliknąć, i tylko wtedy,
+ * gdy Konfrontację **zaczął ktoś inny**.
  */
 
 /** Figures with a sheet on this scene, minus the one being stared at. */
@@ -124,5 +128,90 @@ export function FacedownLauncher({
         );
       })}
     </ul>
+  );
+}
+
+/**
+ * „Postaw się" z własnej karty (28.08) — lustro `FacedownLauncher`.
+ *
+ * Ta sama mechanika i to samo zdarzenie, odwrócone stroną: napastnik jest
+ * znany (to właściciel karty), więc pyta się o **cel**. Lista to figury, które
+ * ten klient widzi — a widzi dokładnie tyle, ile serwer mu wysłał, więc ukryty
+ * NPC nie da się onieśmielić przez pomyłkę i nie zdradzi się tym, że go nie ma
+ * na liście.
+ *
+ * Wymaga figury tej postaci na scenie: `facedown:attempt` nosi adres żetonu
+ * napastnika, bo Konfrontacja dzieje się między figurami, nie między kartami.
+ */
+export function FacedownFromSheet({
+  characterId,
+  characterName,
+}: {
+  characterId: string;
+  characterName: string;
+}) {
+  const tokens = useTokenStore((s) => s.tokens);
+  const cupBusy = useRollStore((s) => s.facedown !== null || s.grapple !== null);
+  const [open, setOpen] = useState(false);
+
+  const mine = useMemo(
+    () => Object.values(tokens).find((token) => token.characterId === characterId) ?? null,
+    [tokens, characterId],
+  );
+  const targets = useMemo(
+    () =>
+      mine
+        ? Object.values(tokens)
+            .filter((token) => token.sceneId === mine.sceneId && token.id !== mine.id)
+            .sort((a, b) => a.name.localeCompare(b.name, 'pl'))
+        : [],
+    [tokens, mine],
+  );
+
+  function stare(target: { id: string; name: string }) {
+    useRollStore.getState().loadFacedownCup({
+      characterId,
+      characterName,
+      title: `Konfrontacja: ${characterName} → ${target.name}`,
+      modifierTotal: 0,
+      attempt: { targetTokenId: target.id, challengerTokenId: mine!.id },
+    });
+    setOpen(false);
+  }
+
+  if (!mine) return null;
+
+  return (
+    <div className="facedown-from-sheet">
+      <button
+        type="button"
+        className="small-button"
+        disabled={cupBusy}
+        onClick={() => setOpen((current) => !current)}
+        title="Konfrontacja — CHA + Reputacja + 1k10 przeciw drugiej stronie (s. 194)"
+      >
+        😠 Postaw się…
+      </button>
+      {open &&
+        (targets.length === 0 ? (
+          <p className="combat-hint">Na tej scenie nie ma nikogo, komu można się postawić.</p>
+        ) : (
+          <ul className="combat-picker">
+            {targets.map((target) => (
+              <li key={target.id} className="combat-picker-row facedown-picker-row">
+                <span className="combat-picker-name">{target.name}</span>
+                <button
+                  type="button"
+                  className="small-button"
+                  disabled={cupBusy}
+                  onClick={() => stare(target)}
+                >
+                  Zmierz się
+                </button>
+              </li>
+            ))}
+          </ul>
+        ))}
+    </div>
   );
 }

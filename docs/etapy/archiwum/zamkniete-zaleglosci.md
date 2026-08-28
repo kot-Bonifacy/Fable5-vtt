@@ -9,6 +9,54 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Przeniesione 2026-08-28 (pakiet A+B+D+E — ruch i mgła, screamsheet, brakujące drzwi w UI)
+
+Trzecia sesja tego dnia. Pięć pozycji zamkniętych w całości, dwie połówki i trzy pozycje zdjęte
+decyzją MG. Oględziny szły na dwóch sesjach naraz: MG na `[::1]:5173`, gracz **avatar9**
+na `localhost:5173`.
+
+- **Etap 16e — dwie ostatnie ścieżki z dziesięciu. ZAMKNIĘTE.** Scena **„Korytarz 16e"**
+  zbudowana od nowa (widoczność Dynamiczna, mur w kształcie litery L, pamięć eksploracji)
+  i **zostawiona na stałe** — decyzja MG z 28.08, bo dynamicznej widoczności brakowało w całym
+  poligonie i płaciliśmy za jej odtwarzanie drugi raz.
+  (1) **Odsłanianie mgły w trakcie marszu**: żeton avatar9 przeszedł ~16 m wzdłuż muru, a cień
+  rzucany przez ścianę miał w trzech kolejnych chwilach marszu **trzy różne kształty** (prawy
+  skraj cofał się kolejno z x≈985 przez x≈838 do x≈790) — mgła przelicza się na bieżąco, nie
+  jednym skokiem po dojściu.
+  (2) **Przerwanie marszu przez NPC wychodzącego zza rogu**: gracz ruszył w długi marsz, a MG
+  w tym samym czasie przeciągnął figurę „Rudy Kwiatkowski" zza muru w jego pole widzenia.
+  Na czacie stanęło **„Ktoś pojawił się w polu widzenia — marsz przerwany."**, figura stanęła
+  w połowie zaplanowanej trasy (zielona linia biegła dalej do porzuconego celu), a NPC był na
+  ekranie gracza widoczny dopiero od chwili, w której wyszedł zza rogu.
+
+- **Regresja hit-testu z 18a — sprawdzona i martwa.** Ta sama sesja: gracz na scenie
+  z **dynamiczną widocznością** normalnie klikał swój żeton (pasek wypełnił się kartą avatar9),
+  zaznaczał go i wysyłał w marsz. Naprawa z 16e trzyma; pozycja „warto powtórzyć zaległości
+  z tego okresu" traci powód.
+
+- **Etap 24c — zdjęcie prasowe.** Do screamsheetu „Kto zostawił krążek na Poligonie?" wgrana
+  grafika 256×256; podgląd rysuje ją jako odbitkę gazetową — `.screamsheet-photo` ma policzony
+  `filter: grayscale(0.75) contrast(1.15)`. Handout został na Poligonie jako dowód (opis
+  w `poligon.md`).
+
+- **Etap 24c — edycja zapisanego screamsheetu przez ✎.** Po zapisaniu i ponownym otwarciu przez
+  ✎ formularz wrócił **jako screamsheet**: pola „Brukowiec" (KURIER POLIGONU), „Data w stopce",
+  „Lead" i przycisk generatora były na miejscu, wypełnione zapisanymi wartościami, razem
+  z grafiką. Rodzaj przyszedł z handoutu (`handout?.kind ?? …`), nie z przycisku, którym się go
+  tworzyło. Przy okazji potwierdzona **degradacja generatora bez modelu**: „Generator jest
+  niedostępny — AI Gateway nie odpowiada. Szablon wypełnisz ręcznie."
+
+- **Katalog `ai-gateway/src/vtt_gateway/tts/` — pozycja była martwa od rana.** Skasowany
+  w drugiej sesji 28.08 (patrz sekcja niżej), ale wiersz został na liście otwartych i zawyżał
+  ją o jeden: `grep -c` liczył 18 pozycji, otwartych było 17. Zdjęty.
+
+- **Zdjęte decyzją MG (28.08), bez roboty.** (1) **Etap 09 — zakładka „AI" u MG
+  niezweryfikowana wizualnie**: późniejsze etapy oglądały u MG panele AI wielokrotnie, ostatnio
+  w pakiecie B tego samego dnia (wiersz stanu indeksu w czterech panelach) — zaległość martwa.
+  (2) **Ślad ścieżki przy przeciąganiu żetonu**: efekt czysto wizualny, nikt go nie zgłosił jako
+  problem od 22.08, a łamana z licznikiem metrów nadal jest w kodzie (`drawMoveOverlay`
+  w `MapRenderer`) i jest czymś innym niż ślady butów z 27j. Do kosza, nie do roboty.
+
 ## Przeniesione 2026-08-28 (pakiet A+B — ekonomia, chrom, kreator, kosmetyka UI)
 
 Druga sesja tego dnia. Cztery pozycje w całości; wszystko na kampanii „Poligon bojowy",

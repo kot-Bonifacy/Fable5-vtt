@@ -91,38 +91,49 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 ## Od czego zacząć
 
-**Ostatnia sesja (28.08, druga) zamknęła ekonomię, chrom, kreator i kosmetykę UI** — pakiet A
-odkliknął całe 23b, 27c i 25a, pakiet B naprawił trzy drobiazgi z 27.08 i dołożył formatowanie
-`realtime/index.ts`. Lista zaległości zeszła z 22 do **18**. **avatar9 ma teraz chrom** (dwie
-cyberręce, Człowieczeństwo 28/44) i zostaje taki celowo — to jedyny egzemplarz, na którym widać
-rozbicie gniazd z 27c; kopia kart sprzed sesji jest w `data/private/backups/`, opis w `poligon.md`.
+**Ostatnia sesja (28.08, trzecia) zamknęła 16e, dwie ścieżki 24c i pięć brakujących drzwi w UI.**
+Lista zaległości zeszła z 17 do **13** (18 było błędem — pozycja o katalogu `tts/` wisiała
+otwarta, choć katalog skasowano rano). Doszła **czwarta stała scena „Korytarz 16e"** z widocznością
+Dynamiczną i murem w kształcie L — pierwsza w poligonie, na której da się oglądać cień ścian
+i przerwania marszu; **nie kasuj jej**, bo za każdym razem odtwarzaliśmy ją od zera.
 
 **Od czego zacząć: do wyboru 27g** (wydajność) i **28** (wdrożenie na VPS) — nadal jedyne dwa
-nierozpoczęte etapy. Z długu oględzin bez modelu zostały właściwie **dwie rzeczy**: **odsłuch
-16 próbek dźwiękowych** (człowiek przy głośnikach, rządek przycisków w „⚙ Ustawienia") i **dwie
-ostatnie ścieżki ruchu z 16e** (odsłanianie mgły w marszu, przerwanie marszu przez NPC zza rogu,
-oba wymagają dwóch sesji naraz). Cała reszta listy czeka na **żywy model** — MG zapowiedział
-wymianę wersji, więc 20a/20b, 19a–19c, 24c i maszynopis wypowiedzi idą do sesji po wymianie.
-Etap 27 jest rozdzielony do końca, więc plik `etap-27-…` to rozdroże ze wskazaniami, a nie zakres
-do zrobienia.
+nierozpoczęte etapy. **27g ma teraz gotowy poligon**: pomiar fps na scenie ze światłami i mgłą
+(zaległość po 27i) MG świadomie przesunął właśnie tam, a „Korytarz 16e" jest sceną, na której się
+go robi. Z długu oględzin **bez modelu** została praktycznie jedna rzecz: **odsłuch 16 próbek
+dźwiękowych** (człowiek przy głośnikach, rządek przycisków w „⚙ Ustawienia"). Cała reszta — **9
+z 13 pozycji** — czeka na **żywy model**: 20a/20b, 19a–19c, dwie ścieżki 24c i maszynopis
+wypowiedzi idą do sesji po wymianie wersji. Etap 27 jest rozdzielony do końca, więc plik
+`etap-27-…` to rozdroże ze wskazaniami, a nie zakres do zrobienia.
 
-**Sceny testowe:** aktywna jest **„Strzelnica"** i po 27.08 ma **komplet pod Sieć** — żeton
-„Kolec" (karta „Test 27x") przy odsłoniętym gnieździe, drugie gniazdo **„Gniazdo za ścianą"**
-po drugiej stronie muru L i **drzwi #59 „Brama serwerowni"** podpięte do węzła kontrolnego.
-Od 28.08 stoi na niej też **komplet pięciu stref bronionych** (wieżyczka, podłoga elektryczna,
-ślizgawka, maź, winda z gazem) — wszystkie **uzbrojone i ukryte**, więc figura, która na nie
-wejdzie, naprawdę oberwie. Szczegóły i wszystkie współrzędne — w `poligon.md`. **„Karty 24x"** ma
-po jednym obiekcie każdego z siedmiu rodzajów (w tym uzbrojoną strefę), **„Efekty 23x"** stoi
-nietknięta od 26.08.
+**Sceny testowe — od 28.08 są cztery.** Aktywna jest **„Strzelnica"**: komplet pod Sieć (żeton
+„Kolec" przy odsłoniętym gnieździe, „Gniazdo za ścianą" za murem L, drzwi #59 podpięte do węzła)
+i **pięć uzbrojonych stref bronionych** (wieżyczka, podłoga elektryczna, ślizgawka, maź, winda
+z gazem) — figura, która na nie wejdzie, naprawdę oberwie. Od 28.08 stoi na niej też **druga
+figura „Rudy Kwiatkowski" z właścicielem avatar9, a kartą NPC** — zostawiona świadomie, bo to
+jedyne miejsce, gdzie widać zdanie „Ta figura ma kartę postaci, ale nie jest przypisana do
+ciebie". W podglądzie: **„Korytarz 16e"** (dynamiczna widoczność, mur L), **„Karty 24x"** (po
+jednym obiekcie z siedmiu rodzajów) i **„Efekty 23x"** (nietknięta od 26.08). Wszystkie
+współrzędne — w `poligon.md`.
 Do oględzin z konta gracza jest `Tester` (`/join/tester-dev`), ale **do Sieci trzeba avatar9** —
-to on ma kartę netrunnera. Od 27.08 w kampanii stoi też **„Rudy Kwiatkowski"** — jedyna postać
-zrobiona kreatorem od zera; nie kasuj jej bez potrzeby (uzasadnienie w `poligon.md`).
+to on ma kartę netrunnera. **avatar9 ma chrom** (dwie cyberręce, Człowieczeństwo 28/44) i zostaje
+taki celowo; kopia kart sprzed 28.08 jest w `data/private/backups/`.
 
-**Otwarte zaległości: 18 pozycji w `zaleglosci.md`** (było 22). Triaż z 28.08 zostaje w mocy —
-sześć pozycji „nieosiągalnych z UI albo bez widocznej różnicy" siedzi w `decyzje-i-uproszczenia.md`
+**Kampania „Poligon bojowy" jest od 28.08 oznaczona jako poligon** — chip „POLIGON" w górnym
+pasku i krótkie pytanie przy kasowaniu postaci, sceny i bota. Przy kampanii **bez** tej flagi
+pytanie niesie jej nazwę. Flaga niczego nie blokuje: mówi, gdzie się stoi. Przestawia się
+w Panelu MG i **nie rozchodzi się sama** po podpiętych ekranach (patrz pułapki).
+
+**Otwarte zaległości: 13 pozycji w `zaleglosci.md`.** Triaż z 28.08 zostaje w mocy — siedem
+pozycji „nieosiągalnych z UI albo bez widocznej różnicy" siedzi w `decyzje-i-uproszczenia.md`
 (sekcja „Ścieżki, których nie da się odklikać") i **nie wciągaj ich z powrotem** jako nowych
-odkryć. Od 28.08 dołączyła tam siódma: **cena liczona z pasma** (23b) — ścieżka ma test, ale
-w danych kampanii nie ma ani jednego wpisu z pasmem bez ceny.
+odkryć. Dwie kolejne poszły 28.08 **do kosza decyzją MG**: zakładka „AI" z etapu 09 (martwa) i
+ślad ścieżki przy przeciąganiu żetonu (efekt czysto wizualny, nikt go nie zgłosił).
+
+**Zanim ruszysz pozycję z `POMYSLY.md`, sprawdź ją w kodzie.** Dwa wpisy z tej listy okazały się
+28.08 nieaktualne — jeden opisywał katalog skasowany tego samego dnia rano, drugi funkcję
+zrobioną 22.08, której nikt nie odhaczył. Lista jest zapisem chwili, w której coś zauważono, a nie
+stanu repozytorium.
 
 **Rozstrzygnięte 28.08 (MG): remis w teście na PT to sukces.** `cpredAmmoCheckOutcome` liczy
 `total >= dv`; ogień zaporowy zostaje przy „remis wygrywa obrońca", bo tam PT to wynik rzutu
@@ -133,8 +144,8 @@ a od 27i pierwszym, przy którym ktoś **usłyszy** dźwięki walki (dobrane bez
 próbek są w „⚙ Ustawienia"; od 27j jest wśród nich „Krok" z własnym wyłącznikiem, a od 28.08 —
 „Cios pięścią", „Miotacz ognia" i „Wyrzutnia").
 
-**Testy na koniec ostatniej sesji:** 1400 w `shared`, 791 na serwerze, 56 u klienta — zielone.
-**Prettier na całym repo jest czysty** — `realtime/index.ts` sformatowany 28.08.
+**Testy na koniec ostatniej sesji:** 1400 w `shared`, 793 na serwerze, 62 u klienta — zielone.
+ESLint i Prettier czyste na całym repo.
 
 ## Umowy kodu — indeks
 
@@ -173,6 +184,10 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 - **Komunikat zależny od zewnętrznej usługi** niesie kod odmowy (`journalStore.fail(msg, code)`), a powrót usługi go zdejmuje (`ai:status` → `clearAiError`) — inaczej wisi do następnej akcji MG; pilnuje `journal-error.test.ts`.
 - **Nowy element górnego paska** — do prawej grupy tylko `flex: none`; miejsce oddają wyłącznie tytuł i nazwa kampanii (wielokropek), a `.combat-bar` ma `min-width: min-content`, żeby nie malować przycisków po sąsiadach.
 - **Nowa próbka dźwiękowa mapy** — pięć miejsc naraz: plik w `public/sfx/`, `MAP_FX_SOUNDS` w `shared/fx.ts`, `SFX_FILES` + `SFX_GAIN`, wiersz w `SFX_SAMPLES` (`SettingsWindow`) i wiersz w `ATTRIBUTION.md`. Którą broń co gra, rozstrzyga wyłącznie `ICON_FX`; kompletu pilnuje `sfx.test.ts`.
+- **Nowy tryb kliknięcia w mapę** — do `mapToolStore`, obok `tool` i `tokenPlacement`: jedno pole na tryb, więc dwóch mieć się nie da. Pilnuje `map-mode.test.ts`.
+- **Żeton postaci z UI** — przez `TokenPlacement.characterId` (+ `ownerId` z karty); bez tego powstaje pusty krążek o tej samej nazwie, nie figura postaci.
+- **Czynność, której nic nie cofa** — `confirmDestructive` (`confirm.ts`), nie gołe `window.confirm`: poza poligonem pytanie niesie nazwę kampanii. Nie kłóci się z „kasowanie nie pyta" z 23.08 — tamto dotyczy obiektów sceny, które wracają `Ctrl+Z`.
+- **Zdanie „czego brakuje" w pasku postaci** — `HudContext.sheetNotMine`, renderowane **niezależnie** od `slots.length`: Akcje z katalogu nie potrzebują karty, więc pasek gracza nigdy nie jest pusty.
 
 ## Pułapki dev — indeks
 
@@ -222,10 +237,73 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 - **Wąskie okno symuluje `documentElement.style.width`**, gdy `resize_window` nic nie robi — ale `@media` czyta viewport, a Pixi potrafi zamulić kartę (zrzut nadal działa).
 - **Powrót gatewaya odklikasz atrapą `/health` na :8100** — kilkanaście linijek `node:http`, bez modelu; serwer odpytuje ją co 10 s.
 - **Ręczna `tabela-ran-krytycznych.md` jest poza repo i od 27.08 zbędna** — kompendium ma obie tabele 2k6 z podręcznika; plik obsługuje wyłącznie wariant „mam sam Easy Mode".
+- **Łańcuch ściany kończy `Enter`, nie `Esc`** — `Esc` go porzuca i mur znika razem z podglądem; wygląda jak „automat nie umie rysować ścian".
+- **Uzbrojona broń zjada rozkaz marszu** — klik w podłoże jest wtedy strzałem; objaw to „Marsz przerwany." i stojąca figura. Rozbrój slot i powtórz.
+- **Marsz automatem wymaga serii `pointermove`**, nie jednego — po linii, którą figura ma iść, z przerwami ~180 ms.
+- **`window.confirm` da się podmienić i przeczytać treść pytania** bez klikania i bez ryzyka; podmiana ginie przy przeładowaniu karty.
+- **`Campaign.sandbox` nie rozchodzi się sama** — jedzie w stanie logowania, więc chip „poligon" u innego klienta czeka na przeładowanie albo `campaign:activate`.
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 28.08 (trzecia) — pakiet A+B+D+E: ruch i mgła, screamsheet, brakujące drzwi w UI
+
+**Zlecenie MG:** znów pogrupowane zaległości bez lokalnego LLM i bez etapów nierozpoczętych.
+MG wybrał **wszystkie pięć pakietów**, ale **C (odsłuch 16 próbek) wypadł** — „teraz nie mam
+czasu na odsłuchy", więc zgodnie z zapowiedzią wyleciał z sesji zamiast być przenoszony
+w nieskończoność. Cztery rozstrzygnięcia MG: scenę z dynamiczną widocznością **zbudować
+i zostawić** jako czwartą stałą, **pomiar fps zostawić do 27g**, a dwie pozycje (zakładka „AI"
+z etapu 09 i ślad ścieżki przy przeciąganiu) **do kosza, nie do roboty**.
+
+**Dwa błędy w dokumentacji, oba znalezione przed pisaniem kodu.** (1) Pozycja o katalogu
+`ai-gateway/…/tts/` wisiała jako otwarta, choć poprzednia sesja go skasowała — `grep -c` liczył
+18 zaległości, otwartych było 17. (2) Pomysł **„Ręczne nadanie Onieśmielenia z adresem
+przeciwnika"** był **od 22.08 zrobiony**: sesja naprawcza dodała zdarzenie `token:feared`
+i listę „Boi się:" w menu żetonu (`FearedPicker`), tylko nikt nie odhaczył wiersza. Z pakietu E
+zostało więc pięć pozycji, nie sześć — i to jest argument za tym, żeby przed kodowaniem
+sprawdzać w kodzie, a nie ufać liście.
+
+**Pakiet E — pięć pozycji, wszystkie odklikane w przeglądarce.**
+**„Postaw na scenie" (⊕ przy wierszu postaci)**: `TokenPlacement` niesie teraz `characterId`
+i `ownerId`, więc żeton dorobiony ręcznie jest **związany z kartą** — menu postawionej figury
+pokazało „📄 Otwórz kartę postaci" i PW 40/40 z karty, a nie pusty krążek o tej samej nazwie.
+**Jedno kliknięcie, jeden tryb**: `tokenPlacement` przeniesiony z `tokenStore` do
+`mapToolStore`, do tego samego pola co wybór narzędzia. Uzbrojenie gniazd wytrąciło żeton z ręki
+(podpowiedź, kursor i obwódka przycisku znikły), a wzięcie żetonu odłożyło narzędzie — obie
+strony sprawdzone. **Konfrontacja u gracza**: `FacedownFromSheet` przy Reputacji na karcie;
+avatar9 wybrał cel z listy widocznych figur, kubek się załadował, a na czacie stanęła pełna
+karta („Konfrontacja → Tony · 3 + 4 · Charakter (CHA) +5 · Reputacja 1 +1 · Przegrana
+Konfrontacja −2 · **Przegrana**") z dwoma przyciskami przegranego. **Flaga poligonu**:
+`Campaign.sandbox` + migracja, chip „POLIGON" w pasku (u MG i u gracza) i `confirmDestructive` —
+obie gałęzie odczytane podmienionym `window.confirm`, bez kasowania czegokolwiek.
+
+**Mój błąd, który znalazła dopiero przeglądarka.** Zdanie „ta figura ma kartę, ale nie twoją"
+powiesiłem najpierw pod `slots.length === 0` — i **nie pokazywało się nigdy**, bo Akcje
+z katalogu (Ustabilizowanie, Bieg) nie potrzebują karty, więc pasek gracza nigdy nie jest pusty.
+Poprawione na warunek niezależny od liczby slotów; żaden test by tego nie złapał, bo test
+sprawdzał pole w kontekście, a nie to, kiedy się rysuje.
+
+**Pakiet A — 16e zamknięte w całości.** Scena **„Korytarz 16e"** (mur w kształcie L, widoczność
+Dynamiczna, pamięć eksploracji) stoi na stałe. (1) **Mgła w marszu**: cień rzucany przez ścianę
+miał w trzech kolejnych chwilach jednego marszu trzy różne kształty — przelicza się na bieżąco,
+nie jednym skokiem na końcu. (6) **NPC zza rogu**: MG przeciągnął figurę zza muru w pole
+widzenia gracza w trakcie marszu i na czacie stanęło **„Ktoś pojawił się w polu widzenia —
+marsz przerwany."**, a figura stanęła w połowie trasy. Przy okazji **odklikana regresja
+hit-testu z 18a** — gracz na scenie dynamicznej normalnie klika i prowadzi swój żeton.
+
+**Pakiet B — dwie ścieżki 24c bez modelu.** Screamsheet wypełniony ręcznie (generator zgłosił
+degradację: „Generator jest niedostępny — AI Gateway nie odpowiada"), wgrana grafika 256×256 —
+`.screamsheet-photo` ma `filter: grayscale(0.75) contrast(1.15)`, czyli odbitka gazetowa działa.
+Po zapisaniu i otwarciu przez ✎ formularz wrócił **jako screamsheet**, z „Brukowcem", „Datą
+w stopce", leadem i grafiką — rodzaj przyszedł z handoutu, nie z przycisku.
+
+**Zaległości: 17 → 13.** Zamknięte w całości: 16e, regresja 18a, dwie ścieżki 24c, martwy `tts/`;
+dwie zdjęte decyzją MG. Zostało **13 pozycji, z czego 9 czeka na żywy model** — po wymianie
+wersji zostaną praktycznie same dźwięki i pomiar fps (ten do 27g).
+
+**Testy:** 1400 w `shared`, **793** na serwerze (+2 na trasę `sandbox`), **62** u klienta
+(+6 w nowym `map-mode.test.ts`) — zielone. ESLint i Prettier czyste na całym repo.
 
 ### Sesja 28.08 (druga) — pakiet A+B: ekonomia i chrom, kreator, kosmetyka UI
 
@@ -273,46 +351,3 @@ przeniesiona do `decyzje-i-uproszczenia.md` — lista otwartych zeszła z 22 do 
 
 **Testy:** 1400 w `shared`, 791 na serwerze, **56** u klienta (+3 nowe w `journal-error.test.ts`)
 — zielone. ESLint i Prettier czyste na całym repo.
-
-### Sesja 28.08 — pakiet A + E: strefy i efekty walki, dźwięki broni, triaż zaległości
-
-**Zlecenie MG:** znów pogrupowane zaległości (bez lokalnego LLM, bez etapów nierozpoczętych),
-MG wybrał **A + E** i dołożył dwie rzeczy: **dźwięki dobrać z sieci pod opis i nazwę konkretnych
-broni** (ze wskazaniem: „zweryfikuj, czy jest atak wręcz/pięścią/bez broni"), a **triaż
-rozstrzygnąć samodzielnie**.
-
-**Pakiet A — sześć ścieżek, wszystkie odklikane na „Strzelnicy".** Postawione tam **pięć stref
-bronionych** (wieżyczka, podłoga elektryczna, ślizgawka, maź, winda z gazem) i **zostają na
-scenie** — pełna tabela ze współrzędnymi w `poligon.md`. Potwierdzone: błyskawica przez cały
-prostokąt strefy i 6k6 z „Cofnij" (27i), zielona chmura gazu wielkości pola wybuchu razem
-z testem Odporności i „Urazem oka" (27i + 16h), Atletyka PT 15 ze Ślizgawki, **naklejka
-„Spowolniony" na żetonie i podpowiedź „Dystans: Spowolniony −10 (RUCH minimum 1)"** w panelu
-(liczba, która dotąd istniała tylko w testach), samodzielny strzał wieżyczki Wartością bojową 14
-oraz **wiersz pułapki na pierwszym miejscu Kolejki Inicjatywy**. Diagnozy przy pozycjach —
-`archiwum/zamkniete-zaleglosci.md`. Stan sceny przywrócony (Tony, Rudy, magazynek wieżyczki,
-tryb turowy wyłączony); strefy zostawione świadomie.
-
-**Dźwięki — audyt tabeli `ICON_FX` wyłapał cztery rodzaje broni grające cudzą próbką.**
-Bijatyka i Sztuki walki świszczały **ostrzem** (`swing` z paczki RPG), Miotacz ognia huczał
-**strzelbą**, Granatnik i Wyrzutnia rakiet strzelały **Mosinem**, a Kusza i Łuk miały **sprężynę**.
-Doszły cztery próbki CC0 z OpenGameArt (`punch.ogg`, `flame.ogg`, `launch.wav` i nowy
-`bowstring.wav` w miejsce ogg-a), wszystkie opisane w `public/sfx/ATTRIBUTION.md`; `punch`
-obsługuje też **Pochwycenie**. Granat rzucony ręką **celowo** zostaje przy świście zamachu.
-Nowy `sfx.test.ts` u klienta pilnuje kompletu (dźwięk bez pliku, plik-sierota, dźwięk bez
-przycisku odsłuchu) — i od razu złapał zapomniany `bowstring.ogg`. **Nikt tych próbek nadal nie
-słyszał** — to zostaje w zaległościach, teraz jako 16 przycisków odsłuchu zamiast 13.
-
-**Pakiet E — triaż: 30 pozycji → 22.** Sześć zdjętych bez roboty (nieosiągalne z UI albo
-„różnica żadna z definicji") wylądowało w `decyzje-i-uproszczenia.md` jako sekcja „Ścieżki,
-których nie da się odklikać", dwie jako ostrzeżenia w `pulapki-dev.md`, jedna zniknęła jako
-pokryta istniejącą pułapką, a wpis 25c okazał się **od dawna pusty**. Otwarte zostaje pytanie MG
-o katalog `ai-gateway/.../tts/` — nie kasuję bez odpowiedzi.
-
-**Znalezisko do rozstrzygnięcia przez MG (nie naprawione).** Wymuszony test przegrywa **remis**:
-`cpredAmmoCheckOutcome` liczy `resisted: total > dv`, więc Atletyka 15 przeciw PT 15 to porażka.
-Dla **testu na PT** RAW mówi „równy lub wyższy = sukces"; reguła „remis wygrywa obrona" (s. 169)
-dotyczy rzutów **przeciwstawnych**, i tam kod ma ją osobno (`resolveCpredAttack`). Ta sama
-nierówność stoi w ogniu zaporowym (`attacks.ts:624`). Zmiana to dwa znaki plus poprawka testu
-„judges a forced check with ties going to the round" — ale to decyzja o zasadach, nie o kodzie.
-
-**Testy na koniec:** 1400 w `shared`, 53 u klienta (3 nowe), serwer bez zmian.

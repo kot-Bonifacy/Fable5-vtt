@@ -70,7 +70,11 @@ export function registerJoinRoutes(app: FastifyInstance, ctx: AppContext): void 
     setSessionCookie(reply, session);
     const state: AuthState = {
       user: toSessionUser(user),
-      activeCampaign: { id: invitation.campaign.id, name: invitation.campaign.name },
+      activeCampaign: {
+        id: invitation.campaign.id,
+        name: invitation.campaign.name,
+        sandbox: invitation.campaign.sandbox,
+      },
     };
     return state;
   });

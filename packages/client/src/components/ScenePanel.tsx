@@ -3,6 +3,7 @@ import type { MapUploadResult, SceneSummary, SceneVisibility } from '@vtt/shared
 import { GRID_SIZE_MAX, GRID_SIZE_MIN, SCENE_DARK_SIGHT_MAX_M, formatMetres } from '@vtt/shared';
 import { apiUpload } from '../api.js';
 import { UPLOAD_ACCEPT_ATTRIBUTE, uploadRequirementText } from '@vtt/shared';
+import { confirmDestructive } from '../confirm.js';
 import { fileRejectionText, uploadErrorText } from '../uploads.js';
 import {
   activateScene,
@@ -29,7 +30,7 @@ function SceneRow({
   const [error, setError] = useState<string | null>(null);
 
   async function remove() {
-    if (!window.confirm(`Usunąć scenę „${scene.name}”?`)) return;
+    if (!confirmDestructive(`Usunąć scenę „${scene.name}”?`)) return;
     const ack = await deleteScene(scene.id);
     if (!ack.ok) {
       setError(ack.error === 'SCENE_ACTIVE' ? 'Najpierw aktywuj inną scenę.' : 'Błąd usuwania.');

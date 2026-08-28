@@ -15,6 +15,7 @@ import {
   stopBots,
   updateBot,
 } from '../socket.js';
+import { confirmDestructive } from '../confirm.js';
 import { useAiStore } from '../stores/aiStore.js';
 import { ensureBotTemplatesLoaded, useBotStore } from '../stores/botStore.js';
 import { useChatStore } from '../stores/chatStore.js';
@@ -141,7 +142,7 @@ export function BotPanel() {
   }
 
   async function remove(botId: string, name: string) {
-    if (!window.confirm(`Usunąć bota „${name}”? Tej operacji nie można cofnąć.`)) return;
+    if (!confirmDestructive(`Usunąć bota „${name}”?`)) return;
     const ack = await deleteBot(botId);
     if (!ack.ok) setError(ackErrorText(ack.error));
   }
