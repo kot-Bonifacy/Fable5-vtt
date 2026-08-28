@@ -232,7 +232,6 @@ Reguła ogólna: **REST wgrywa plik, gniazdo zmienia stan stołu.** Nowy kosz w 
 co leży na scenie, dokłada zdarzenie i mówi w acku, ilu figur dotknął (`clearedTokens`) — panel
 powtarza tę liczbę zdaniem, bo „usunięto" nie mówi, że komuś właśnie zniknęła twarz z mapy.
 
-
 ## Nowe pole w szkicu kreatora postaci
 
 Szkic kreatora przechodzi przez **dwie** funkcje w `shared/systems/cpred/creation.ts` i nowe
@@ -282,3 +281,18 @@ Kompletu pilnuje `packages/client/src/sfx.test.ts` (dźwięk bez pliku, plik-sie
 przycisku odsłuchu wywalają test) — tak wyszedł zapomniany `bowstring.ogg` po wymianie próbki
 cięciwy na `bowstring.wav` 28.08.
 
+**Komunikat o błędzie, który może przestać być prawdą, niesie kod odmowy.** Dziennik trzyma błąd
+u siebie (`journalStore.error`), a nie w statusie z serwera, więc nic go sam z siebie nie
+odświeża — „Brak połączenia z AI Gateway" wisiał po powrocie gatewaya do następnej akcji MG.
+Od 28.08 `fail(message, code)` zapisuje też `errorCode`, a odbiór `ai:status` z
+`available: true` woła `clearAiError()`, który zdejmuje **wyłącznie** `AI_UNAVAILABLE` —
+„nie ma czego streścić" ma wisieć, dopóki nie ma. Dokładając komunikat, który zależy od stanu
+zewnętrznej usługi, dołóż kod i sprzątanie w tym samym miejscu; pilnują tego trzy testy
+w `journal-error.test.ts`.
+
+**Nowy element w górnym pasku ma nie kurczyć się w nieskończoność.** `.top-bar` to trzy grupy:
+tytuł, `.combat-bar` i `.top-bar-right`. Miejsce oddają **tylko** te, które mogą (tytuł
+i nazwa kampanii — wielokropkiem); przyciski i stan połączenia są `flex: none`, a kolejka
+inicjatywy ma `min-width: min-content`, żeby nie zwinąć się do zera i nie wypuścić swoich
+przycisków na sąsiadów (tak powstało nachodzenie przy ~900 px). Dokładając coś do prawej grupy,
+sprawdź pasek przy ~900 px — poniżej 1000 px tytuł aplikacji znika i to jest cały zapas.

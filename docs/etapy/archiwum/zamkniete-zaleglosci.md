@@ -9,6 +9,77 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Przeniesione 2026-08-28 (pakiet A+B — ekonomia, chrom, kreator, kosmetyka UI)
+
+Druga sesja tego dnia. Cztery pozycje w całości; wszystko na kampanii „Poligon bojowy",
+guinea pigi: **avatar9** (zakupy i chrom) i **Tony** (sprzęt). Kopia wszystkich kart sprzed
+sesji leży w `data/private/backups/characters-2026-08-28.json` — jednym `UPDATE` wraca stan
+sprzed zakupów.
+
+- **Etap 23b — zakup pancerza i sprzętu.** Kupiona **„Ciężka kurtka kuloodporna"** (500 ed,
+  Kosztowne) dla avatar9: saldo **1550 → 1050**, karta na czacie („Zakup — … · −500 ed ·
+  saldo 1050 ed"), a wiersz pancerza na karcie ma komplet — **OB 13 z 13**, **KARA −2**,
+  lokacja **Korpus** (wpis chroni Głowę i Korpus, więc `purchasedSheetRow` sadza go na
+  korpusie) i `compendiumId`. Sprzęt sprawdzony osobno: **„Apteczka polowa"** (50 ed) dla
+  Tony'ego, który miał **dokładnie 50 ed** — przeszło, saldo zeszło do zera, wiersz
+  „Apteczka polowa · ILOŚĆ 1" stanął w tabeli WYPOSAŻENIE. Drugie kliknięcie tego samego
+  przycisku wróciło z **„Za mało eurodolców."** w panelu.
+
+- **Etap 23b — wpis bez ceny liczbowej.** Jedyny taki wpis w kompendium kampanii to
+  **„Faisal's Onlychance"** (`cost: null`, bez pasma): karta pokazuje **CENA —**, przycisk
+  **„Kup" jest wyszarzony** z tytułem „Ten wpis nie ma ceny — uzupełnij ją w kompendium.",
+  a MG nadal ma „Dodaj za darmo". Drugiej połowy tej pozycji (**cena z pasma**, czyli
+  `cost: null` + `costCategory`) **nie da się dziś odkliknąć** — w całych danych kampanii nie
+  ma ani jednego takiego wpisu; szczegóły przeniesione do `decyzje-i-uproszczenia.md`.
+
+- **Etap 23b — „Znaleziony — montaż N ed".** Cyberręka ma montaż **szpitalny (1000 ed)**, więc
+  przycisk pełny mówi „Zainstaluj — 1500 ed", a znaleziony „Znaleziony — montaż 1000 ed".
+  Kliknięty **dwa razy** (dwie ręce): saldo schodziło po 1000 ed, nie po 1500, a rzut na Utratę
+  Człowieczeństwa poszedł na czat (−8 i −7). Pełnopłatna ścieżka odklikana przy okazji na
+  dodatkach: „Pazury" (200 ed) i „Chwytna Dłoń" (600 ed).
+
+- **Etap 27c — rozbicie gniazd per pudełko sylwetki.** Po wszczepieniu **dwóch cyberrąk**
+  sylwetka najpierw powiedziała czerwonym paskiem **„Bez gniazda: Cyberręka, Cyberręka. Wskaż je
+  w kolumnie »Gniazdo«…"** (rozbicie liczyło wtedy „bez przypisanego miejsca: 2"), a po wskazaniu
+  gniazd w tabeli wiersz rodziny rozpisał się dokładnie tak, jak obiecywała poprawka z 22.08:
+
+  ```
+  Cyberkończyny: 2 / 8
+    Prawa cyberręka: 2 / 4
+    Lewa cyberręka: 0 / 4
+    Prawa cybernoga: 0 / 0
+    Lewa cybernoga: 0 / 0
+  ```
+
+  Dwójka w prawej ręce to „Pazury" (1 gniazdo) i „Chwytna Dłoń" (1 gniazdo); w pudełkach
+  sylwetki stoją nazwy wszczepów, puste pudełka nadal piszą „PUSTE". Przy okazji widać było
+  księgę Człowieczeństwa z 23a: **50/50 → 28/44**, EMP w grze **5 → 2** i chip „EMP 2 · Na
+  granicy" przy postaci na liście.
+
+- **Etap 25a — Rangi Postaci inne niż „początkująca".** Selektor w kroku 2 („Kompletny Pakiet")
+  ma pięć pozycji: **Podrzędna postać tła 50**, **Postać początkująca 62**, **Ważna postać tła
+  70**, **Podrzędny bohater 75**, **Znaczący bohater 80**. Wybrany „Znaczący bohater" przestawił
+  licznik na **„Punkty Cech: 0 z 80"**, a rozdanie po 8 na wszystkie dziesięć Cech dało
+  **„80 z 80"** i przeliczone PW 50 / Poważnie ranny 25 / Przeżywalność 8 / Człowieczeństwo 80.
+  Zejście rangą na „Podrzędną postać tła" przy tych samych Cechach zapaliło **czerwone
+  „Punkty Cech: 80 z 50"** i podniosło licznik braków (14 → 15), czyli ranga naprawdę steruje
+  walidacją, nie tylko podpisem. Ranga **nie wchodzi na kartę** — `statRankId` żyje w szkicu
+  i gaśnie razem z nim, więc to cała jej rola.
+
+- **Trzy drobiazgi UI z sesji 27.08 — wszystkie naprawione i obejrzane.** (1) **Wiersz stanu
+  indeksu** (`.ai-status-main`, wspólny dla czterech paneli AI) nie zawijał się, więc trzy
+  elementy plus przycisk ściskały się do jednego słowa w linijce; teraz zawija **całymi
+  elementami** (`flex-wrap` + `flex-basis: 11rem`) i „3 wpisy czekają na indeks" stoi w jednej
+  linii. (2) **Górny pasek nachodził sam na siebie przy ~900 px** — nie z braku miejsca, tylko
+  dlatego, że tytuł i prawa grupa miały `flex: none`, a `.combat-bar` z `flex-basis: 0` kurczyła
+  się do zera i wypuszczała „Włącz tryb turowy" na sąsiadów. Teraz kolejka nie schodzi poniżej
+  swojej treści (`min-width: min-content`), nazwa kampanii i tytuł oddają miejsce wielokropkiem,
+  a poniżej 1000 px tytuł znika. (3) **Czerwone „Brak połączenia z AI Gateway — streszczanie
+  wymaga modelu." wisiało po powrocie gatewaya** — błąd dziennika żyje u klienta i nic go nie
+  odświeżało. Teraz `journal:error` niesie **kod**, a `ai:status` z `available: true` woła
+  `clearAiError()`, który zdejmuje wyłącznie `AI_UNAVAILABLE`. Odklikane bez modelu: atrapa
+  `/health` na :8100 (opis w `pulapki-dev.md`) — zdanie zniknęło samo, bez żadnej akcji MG.
+
 ## Przeniesione 2026-08-28 (pakiet A — strefy i efekty walki)
 
 Sześć ścieżek w jednej sesji, wszystkie na **„Strzelnicy"** i wszystkie na pięciu strefach

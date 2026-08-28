@@ -274,3 +274,30 @@ dotyczy.
   formatu są w `data/public/cpred/tabela-ran-krytycznych.wzor.md` (opis w
   `archiwum/zamkniete-zaleglosci.md`).
 
+- **Kliknięcia narzędzia `computer` idą we współrzędnych ZRZUTU, nie CSS** (28.08, kosztowało
+  dwa kliknięcia w próżnię). Wpis obok mówi o **syntetycznych zdarzeniach wskaźnika** — te biorą
+  CSS. Narzędzie `computer` (CDP) bierze piksele zrzutu, a zrzut bywa przeskalowany: przy oknie
+  1697 px CSS i `devicePixelRatio` 1,5 zrzut ma 1350 px, czyli skala **0,795**. Przelicz
+  `getBoundingClientRect()` przez `szerokość_zrzutu / window.innerWidth` albo klikaj `ref`-em
+  z `find`. Klik poza zakresem zrzutu po prostu nic nie robi — bez błędu.
+
+- **Nie klikaj „✕" hurtem w oknie karty postaci** (28.08, skasowany świeżo kupiony wiersz
+  sprzętu). Skrypt zamykający okno szukał `button` o treści „✕" wewnątrz `[class*=sheet]` — a taki
+  sam znak noszą **kosze przy wierszach** broni, pancerza, sprzętu i cyborgizacji, więc
+  `querySelectorAll(...).forEach(click)` skasował wiersz zamiast zamknąć okno. Okno zamyka
+  przycisk w **nagłówku** (`.sheet-window header ✕`); wiersze mają swój ✕ w ostatniej kolumnie.
+  Kasowanie wiersza karty **nie pyta o potwierdzenie**.
+
+- **Wąskie okno symuluje się `document.documentElement.style.width = '900px'`**, gdy
+  `resize_window` nic nie robi (okno zmaksymalizowane — `outerWidth` wraca wtedy jako bzdura).
+  Układ przelicza się naprawdę i widać nachodzenie elementów. Dwa zastrzeżenia: **`@media` czyta
+  viewport**, nie tę szerokość (reguł progowych tym nie sprawdzisz), a Pixi dostaje kaskadę
+  `resize` i potrafi zamulić kartę tak, że `Runtime.evaluate` wraca timeoutem — **zrzut ekranu
+  nadal działa**, a przywrócenie (`style.cssText = ''`) przechodzi normalnie. Do samego układu
+  paska wystarczy klon węzła w kontenerze o stałej szerokości — bez ruszania płótna.
+
+- **Powrót gatewaya da się odkliknąć bez modelu**: atrapa `/health` na `127.0.0.1:8100`
+  (kilkanaście linijek `node:http`, zwraca `{"status":"ok","llama":"external",…}`). Serwer VTT
+  odpytuje ją co 10 s (`AI_HEALTH_INTERVAL_MS`), `ctx.ai.onStatusChange` rozsyła `ai:status`
+  i wszystkie ścieżki „gateway wrócił" można obejrzeć bez `llama-server`. Wzór leżał w
+  scratchpadzie sesji 28.08 — pisze się szybciej, niż się szuka.

@@ -59,6 +59,17 @@ przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — ni
   nie dzieje~~ — **domknięte w 26c 15.08**: wejście na takie piętro stawia LOD-a w szybie,
   a `metIce` służy dziś do tego, do czego było pisane — do rachunku za awaryjne odłączenie.
 
+**Remis w teście na PT to sukces; remis w rzucie przeciwstawnym wygrywa obrońca (decyzja MG,
+28.08.2026).** Do 28.08 `cpredAmmoCheckOutcome` liczyło `resisted: total > dv`, więc Atletyka 15
+przeciw PT 15 (Ślizgawka z 26f) była porażką — reguła „remis wygrywa obrona" (s. 169) została tam
+zastosowana do rzutu, który **nie jest** przeciwstawny. RAW dla testu na PT mówi „równy lub wyższy
+= sukces", więc nierówność zmieniona na `>=`; dotyczy trzech wywołań: pocisków bez obrażeń
+(`ammo-effects.ts`), efektów stref (`zone-effects.ts`) i wypatrywania strefy (`zones.ts`).
+**Ogień zaporowy zostaje bez zmian** — tam PT to wynik rzutu strzelca, czyli rzut przeciwstawny,
+i remis ma wygrywać obrońca (`realtime/attacks.ts`, „Ties go to the defender here too"). Notatka
+z 28.08 mówiąca, że „ta sama nierówność stoi w ogniu zaporowym" i trzeba ją zmienić w obu
+miejscach, była **błędna** — poprawiona przy okazji naprawy.
+
 ## Dane z podręcznika — co parser zgubił świadomie
 
 - **Etap 26d — parser tabel obronnych stoi na dwóch heurystykach i to on pierwszy pęknie przy
@@ -146,6 +157,14 @@ test; zdanie po polsku istnieje dla klienta, który by o tej blokadzie nie wiedz
 - **Etap 27e — screamsheet w motywie dziennym.** `--paper` nie ma wariantu dziennego, bo papier
   jest rekwizytem świata gry, nie chromem interfejsu (decyzja 27e). Różnica między dniem a nocą
   jest tu **żadna z definicji** — nie ma czego oglądać.
+
+- **Etap 23b — cena liczona z pasma.** `entryPrice` bierze `cost`, a gdy go nie ma —
+  `COST_CATEGORY_PRICE[costCategory]`, i wtedy przycisk mówi „Kup — 50 ed", a tytuł „50 ed
+  (cena pasma Drogie)". Ścieżka jest pokryta testem (`economy.test.ts`), ale **w danych
+  kampanii nie ma ani jednego wpisu z pasmem bez ceny** (skan 28.08: 0 na 1000+ wpisów — importer
+  zawsze wpisuje obie wartości, choć `cost: None` potrafi wystawić). Żeby to obejrzeć, trzeba by
+  najpierw zmyślić wpis. Wyszarzenie przy **całkowitym** braku ceny odklikane 28.08 na
+  „Faisal's Onlychance".
 
 - **Etap 27l — skalowanie rysunku poza zakresem.** Rysunek dostaje sam ruch, bez rogów: ścieżka
   wpisana w prostokąt to nie prostokąt, a rozciąganie kresek jest osobną operacją (przeliczenie

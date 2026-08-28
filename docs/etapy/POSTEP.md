@@ -91,20 +91,19 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 ## Od czego zacząć
 
-**Ostatnia sesja (28.08) zamknęła strefy i efekty walki** — pakiet A odkliknął cały dług 26f
-i dwa ostatnie efekty z 27i, a przy okazji **audyt dźwięków wyłapał cztery rodzaje broni grające
-cudzą próbką** (pięść świszczała ostrzem, miotacz ognia huczał strzelbą, wyrzutnie strzelały
-karabinem, kusza miała sprężynę). Triaż ściął listę zaległości z 30 do 22. **Jedno znalezisko
-czeka na decyzję MG:** wymuszony test przegrywa remis (`resisted: total > dv`) — dla testu na PT
-RAW mówi „równy lub wyższy = sukces"; szczegóły w notatce sesji niżej.
+**Ostatnia sesja (28.08, druga) zamknęła ekonomię, chrom, kreator i kosmetykę UI** — pakiet A
+odkliknął całe 23b, 27c i 25a, pakiet B naprawił trzy drobiazgi z 27.08 i dołożył formatowanie
+`realtime/index.ts`. Lista zaległości zeszła z 22 do **18**. **avatar9 ma teraz chrom** (dwie
+cyberręce, Człowieczeństwo 28/44) i zostaje taki celowo — to jedyny egzemplarz, na którym widać
+rozbicie gniazd z 27c; kopia kart sprzed sesji jest w `data/private/backups/`, opis w `poligon.md`.
 
 **Od czego zacząć: do wyboru 27g** (wydajność) i **28** (wdrożenie na VPS) — nadal jedyne dwa
-nierozpoczęte etapy. Z długu oględzin najbliżej gotowego są teraz: **ekonomia (23b)** razem
-z **gniazdami chromu (27c)**, bo zakup cyborgizacji tworzy stan, którego 27c wymaga, a **żadna
-z 9 postaci nie ma dziś ani jednej cyborgizacji**; **kosmetyka UI** — trzy drobiazgi z 27.08
-(łamiący się wiersz stanu indeksu, nachodzący pasek przy ~900 px, wiszący komunikat o gatewayu);
-**kreator (25a)** — została tam sama Ranga Postaci; dwie ostatnie ścieżki ruchu z 16e. Etap 27
-jest rozdzielony do końca, więc plik `etap-27-…` to rozdroże ze wskazaniami, a nie zakres
+nierozpoczęte etapy. Z długu oględzin bez modelu zostały właściwie **dwie rzeczy**: **odsłuch
+16 próbek dźwiękowych** (człowiek przy głośnikach, rządek przycisków w „⚙ Ustawienia") i **dwie
+ostatnie ścieżki ruchu z 16e** (odsłanianie mgły w marszu, przerwanie marszu przez NPC zza rogu,
+oba wymagają dwóch sesji naraz). Cała reszta listy czeka na **żywy model** — MG zapowiedział
+wymianę wersji, więc 20a/20b, 19a–19c, 24c i maszynopis wypowiedzi idą do sesji po wymianie.
+Etap 27 jest rozdzielony do końca, więc plik `etap-27-…` to rozdroże ze wskazaniami, a nie zakres
 do zrobienia.
 
 **Sceny testowe:** aktywna jest **„Strzelnica"** i po 27.08 ma **komplet pod Sieć** — żeton
@@ -119,30 +118,23 @@ Do oględzin z konta gracza jest `Tester` (`/join/tester-dev`), ale **do Sieci t
 to on ma kartę netrunnera. Od 27.08 w kampanii stoi też **„Rudy Kwiatkowski"** — jedyna postać
 zrobiona kreatorem od zera; nie kasuj jej bez potrzeby (uzasadnienie w `poligon.md`).
 
-**Otwarte zaległości: 22 pozycje w `zaleglosci.md`** (było 30; siedem odklikanych 28.08, reszta
-zdjęta triażem). **Triaż jest zrobiony 28.08** — sześć pozycji „nieosiągalnych z UI albo bez
-widocznej różnicy" siedzi teraz w `decyzje-i-uproszczenia.md` (sekcja „Ścieżki, których nie da
-się odklikać"), dwa ostrzeżenia w `pulapki-dev.md`. **Nie wciągaj ich z powrotem** jako nowych
-odkryć. Z tego, co zostało, **ponad połowa czeka na żywy model** (20a/20b, 19a–19c, 24c,
-maszynopis wypowiedzi), więc lista dla sesji „bez LLM" jest krótka.
+**Otwarte zaległości: 18 pozycji w `zaleglosci.md`** (było 22). Triaż z 28.08 zostaje w mocy —
+sześć pozycji „nieosiągalnych z UI albo bez widocznej różnicy" siedzi w `decyzje-i-uproszczenia.md`
+(sekcja „Ścieżki, których nie da się odklikać") i **nie wciągaj ich z powrotem** jako nowych
+odkryć. Od 28.08 dołączyła tam siódma: **cena liczona z pasma** (23b) — ścieżka ma test, ale
+w danych kampanii nie ma ani jednego wpisu z pasmem bez ceny.
 
-**Nic już nie czeka na llama-server.** 70 opisów broni markowych przetłumaczono ręcznie 27.08
-(MG: „rzeczy, które miał zrobić bot, zrób sam"), a `translate-descriptions.py` nie wymaga już
-modelu, gdy wszystko pokrywają ręczne tłumaczenia. Na sesję z **nowym** modelem zostają wyłącznie
-rzeczy, które muszą zobaczyć żywy model: 20a/20b, screamsheety (24c), mapowanie-redukcja i relacje
-z 19c, powtórka bez rozumowania z 19a oraz maszynopis wypowiedzi bota.
+**Rozstrzygnięte 28.08 (MG): remis w teście na PT to sukces.** `cpredAmmoCheckOutcome` liczy
+`total >= dv`; ogień zaporowy zostaje przy „remis wygrywa obrońca", bo tam PT to wynik rzutu
+strzelca. Pełny zapis w `decyzje-i-uproszczenia.md`.
 
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
 a od 27i pierwszym, przy którym ktoś **usłyszy** dźwięki walki (dobrane bez odsłuchu, przyciski
 próbek są w „⚙ Ustawienia"; od 27j jest wśród nich „Krok" z własnym wyłącznikiem, a od 28.08 —
 „Cios pięścią", „Miotacz ognia" i „Wyrzutnia").
 
-**Testy na koniec ostatniej sesji:** 1400 w `shared`, 791 na serwerze, 53 u klienta — zielone.
-Uwaga: `packages/server/src/realtime/index.ts` jest niesformatowany **od przed 27.08** i został
-świadomie nietknięty — `prettier --check` na całym repo będzie na niego krzyczał.
-
-**09.08 głos wypadł z projektu** (decyzja MG): etapy **12, 21 i 22** wycofane, kod TTS usunięty
-z repo. Szczegóły w `archiwum/dziennik-sesji.md` i `archiwum/wycofane/README.md`.
+**Testy na koniec ostatniej sesji:** 1400 w `shared`, 791 na serwerze, 56 u klienta — zielone.
+**Prettier na całym repo jest czysty** — `realtime/index.ts` sformatowany 28.08.
 
 ## Umowy kodu — indeks
 
@@ -178,6 +170,8 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 - **Nowe pole w szkicu kreatora** — dopisz je do **obu** funkcji w `creation.ts`: `applyCreationPatch` (zapis) i `parseCreationDraft` (odczyt). Pominięte w odczycie wraca puste bez żadnego błędu — tak zginęły `skillSpecialties`. Walidacja to jedna funkcja wołana przez obie strony.
 - **Reindeks RAG-u** — `knowledge:reindex`/`journal:reindex` rozsyłają **odświeżone wpisy** (`*:upsert` do pokoju MG), nie sam status: chip „nieaktualny" siedzi na wierszu. Status licz raz, wpisy czytaj z bazy **po** `markIndexed`.
 - **Kosz w bibliotece, która stoi na scenie** — zdarzenie gniazda (`token:asset-delete`), nie trasa REST: zdjęta grafika schodzi też z żetonów (`emitTokensById` → `token:upsert`), a ack mówi `clearedTokens`. REST wgrywa plik, gniazdo zmienia stan stołu.
+- **Komunikat zależny od zewnętrznej usługi** niesie kod odmowy (`journalStore.fail(msg, code)`), a powrót usługi go zdejmuje (`ai:status` → `clearAiError`) — inaczej wisi do następnej akcji MG; pilnuje `journal-error.test.ts`.
+- **Nowy element górnego paska** — do prawej grupy tylko `flex: none`; miejsce oddają wyłącznie tytuł i nazwa kampanii (wielokropek), a `.combat-bar` ma `min-width: min-content`, żeby nie malować przycisków po sąsiadach.
 - **Nowa próbka dźwiękowa mapy** — pięć miejsc naraz: plik w `public/sfx/`, `MAP_FX_SOUNDS` w `shared/fx.ts`, `SFX_FILES` + `SFX_GAIN`, wiersz w `SFX_SAMPLES` (`SettingsWindow`) i wiersz w `ATTRIBUTION.md`. Którą broń co gra, rozstrzyga wyłącznie `ICON_FX`; kompletu pilnuje `sfx.test.ts`.
 
 ## Pułapki dev — indeks
@@ -223,11 +217,62 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 - **„Zderezowany" ≠ „zniszczony"** — Program z `destroys` (Szabloząb, Zabójca, Smok) niszczy zamiast derezować; różnicę widać w chipie, nie w REZ.
 - **Spowolnione `rAF` rozdmuchuje chmurę gazu na cały ekran** — sprite rośnie na klatkę, nie na milisekundę; przy 0,03 urośnie 120×. Rozmiar oceniaj przy 0,3, nie niżej.
 - **Atak obszarowy z mapy to trzy kliknięcia** — uzbrój slot, kliknij pole (to **ładuje kubek**), kliknij kubek. Pominięcie któregoś = zwykły rozkaz marszu; slot rozbraja się po zmianie tury.
+- **Kliknięcia `computer` idą we współrzędnych zrzutu**, nie CSS (skala ≈ 0,8 przy DPR 1,5) — syntetyczne zdarzenia wskaźnika biorą CSS; klik poza zrzutem nie robi nic i nie zgłasza błędu.
+- **Nie klikaj „✕" hurtem w oknie karty** — ten sam znak nosi kosz przy wierszu, kasuje bez potwierdzenia; okno zamyka ✕ z nagłówka.
+- **Wąskie okno symuluje `documentElement.style.width`**, gdy `resize_window` nic nie robi — ale `@media` czyta viewport, a Pixi potrafi zamulić kartę (zrzut nadal działa).
+- **Powrót gatewaya odklikasz atrapą `/health` na :8100** — kilkanaście linijek `node:http`, bez modelu; serwer odpytuje ją co 10 s.
 - **Ręczna `tabela-ran-krytycznych.md` jest poza repo i od 27.08 zbędna** — kompendium ma obie tabele 2k6 z podręcznika; plik obsługuje wyłącznie wariant „mam sam Easy Mode".
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 28.08 (druga) — pakiet A+B: ekonomia i chrom, kreator, kosmetyka UI
+
+**Zlecenie MG:** pogrupowane zaległości bez lokalnego LLM i bez etapów nierozpoczętych; MG wybrał
+**A + B** i rozstrzygnął dwie rzeczy z listy pytań: **remis w teście na PT ma być sukcesem** oraz
+**skasować katalog `ai-gateway/.../tts/`** („ale nie skasuj przypadkiem czegoś więcej").
+
+**Sprzątanie i reguła.** Katalog `tts/` usunięty ostrożnie — najpierw `git ls-files` (pusto,
+katalog nigdy nie był w repo) i `grep -i tts` po `ai-gateway/src` i `tests` (zero importów), potem
+same `.pyc` i dwa `rmdir` (kasuje **tylko puste** katalogi, więc nic obok nie mogło zniknąć);
+`git status` po operacji czysty. Wzmianka o Piperze w `ai-gateway/README.md` została celowo — to
+zapis historyczny wycofanego etapu 12. **Remis:** `cpredAmmoCheckOutcome` liczy teraz `total >= dv`
+(trzy wywołania: pociski bez obrażeń, efekty stref, wypatrywanie strefy). **Sprostowanie do
+notatki z rana:** ogień zaporowy **nie** dostał tej zmiany i dostać jej nie miał — tam PT to wynik
+rzutu strzelca, czyli rzut przeciwstawny, w którym remis wygrywa obrońca (s. 169).
+
+**Pakiet B — trzy drobiazgi UI, wszystkie naprawione i obejrzane.** Wiersz stanu indeksu zawija
+teraz całymi elementami (`.ai-status-main`, wspólny dla czterech paneli AI); górny pasek przestał
+nachodzić sam na siebie — przyczyną nie był brak miejsca, tylko `.combat-bar` z `flex-basis: 0`,
+która kurczyła się do zera i wypuszczała „Włącz tryb turowy" na sąsiadów; wiszący komunikat
+o gatewayu zdejmuje teraz powrót usługi, bo `journal:error` niesie kod, a `ai:status` woła
+`clearAiError()`. Do odklikania ostatniego punktu **bez modelu** posłużyła **atrapa `/health`
+na :8100** — zdanie zniknęło samo po ~10 s (opis w `pulapki-dev.md`). Przy okazji sformatowany
+`realtime/index.ts`, więc `prettier --check` na całym repo jest wreszcie czysty.
+
+**Pakiet A — 23b, 27c i 25a odklikane w całości.** Zakup pancerza (500 ed, wiersz z OB 13/13,
+karą −2 i lokacją Korpus), zakup sprzętu przy saldzie **równym cenie** (przeszło, potem „Za mało
+eurodolców."), wpis bez ceny (przycisk „Kup" wyszarzony z powodem), „Znaleziony — montaż 1000 ed"
+dwa razy pod rząd. Na tym stanął **27c**: dwie cyberręce najpierw zapaliły czerwone „Bez gniazda:
+Cyberręka, Cyberręka", a po wskazaniu gniazd karta rozpisała rodzinę na pudełka —
+**„Prawa cyberręka: 2 / 4 · Lewa cyberręka: 0 / 4"**. **25a**: selektor Rang ma pięć pozycji
+(50–80 pkt), „Znaczący bohater" przestawił pulę na „0 z 80", a zejście na rangę 50 przy
+rozdanych 80 punktach zapaliło czerwone „80 z 50" i podniosło licznik braków — ranga steruje
+walidacją, nie tylko podpisem.
+
+**Mój błąd w oględzinach.** Skrypt zamykający okno karty kliknął **wszystkie** „✕" wewnątrz okna,
+a taki sam znak nosi kosz przy wierszu — skasował świeżo kupioną „Apteczkę polową" Tony'ego
+(zakup był już potwierdzony w bazie, na karcie i kartą na czacie). Tony przywrócony do stanu
+sprzed sesji korektą MG (50 ed); pułapka dopisana. **avatar9 zostaje z chromem** — to jedyna
+postać w bazie, na której widać rozbicie gniazd; kopia wszystkich kart sprzed sesji leży
+w `data/private/backups/characters-2026-08-28.json`.
+
+**Zamknięte zaległości:** 4 pozycje w całości (23b, 27c, 25a, kosmetyka UI), jedna połówka
+przeniesiona do `decyzje-i-uproszczenia.md` — lista otwartych zeszła z 22 do **18**.
+
+**Testy:** 1400 w `shared`, 791 na serwerze, **56** u klienta (+3 nowe w `journal-error.test.ts`)
+— zielone. ESLint i Prettier czyste na całym repo.
 
 ### Sesja 28.08 — pakiet A + E: strefy i efekty walki, dźwięki broni, triaż zaległości
 
@@ -271,63 +316,3 @@ nierówność stoi w ogniu zaporowym (`attacks.ts:624`). Zmiana to dwa znaki plu
 „judges a forced check with ties going to the round" — ale to decyzja o zasadach, nie o kodzie.
 
 **Testy na koniec:** 1400 w `shared`, 53 u klienta (3 nowe), serwer bez zmian.
-
-### Sesja 27.08 (trzecia) — pakiet D+A: dziennik, wiedza, degradacja, okna karty + 70 tłumaczeń
-
-**Zlecenie MG:** znów pogrupowane zaległości (bez lokalnego LLM, bez nierozpoczętych etapów),
-z wyborem pakietu po stronie MG. Powstało osiem pakietów; MG wybrał **D + A** i dołożył polecenie:
-**„rzeczy, które miał zrobić bot, zrób sam"** — czyli tłumaczenie 70 opisów broni ręcznie zamiast
-przebiegiem przez model. Do tego zgoda na grzebanie w całym projekcie i informacja, że gateway
-mogę ubijać.
-
-**Sesja z kodem — trzy błędy znalezione i naprawione, wszystkie przez oględziny, nie przez testy.**
-
-**BŁĄD #1 — reindeks nie zdejmował chipów z wierszy.** `knowledge:reindex` i `journal:reindex`
-odsyłały sam status indeksu, więc po „Zaindeksuj wszystko" licznik „czeka na indeks" znikał,
-a „⟳ nieaktualny" zostawał na **każdym** wierszu aż do przeładowania strony. Naprawa: rozesłanie
-odświeżonych wpisów (`*:upsert` do pokoju MG), status liczony raz, wpisy czytane z bazy **po**
-`markIndexed`. Umowa w indeksie niżej, dwa testy serwera.
-
-**BŁĄD #2 — limit 12 materiałów milczał.** Trzynasty chip przestawał reagować bez wyszarzenia,
-tooltipa i komunikatu. Teraz jest `disabled` z tytułem, a pod chipami staje „Przypięto 12 z 12".
-
-**BŁĄD #3 — kreator gubił specjalizacje umiejętności (najpoważniejszy).** `applyCreationPatch`
-zapisywał `skillSpecialties` do bazy poprawnie, ale `parseCreationDraft` przepisuje pola szkicu
-**po nazwie** i tego pola tam nie było — odczyt zawsze zwracał `{}`. Skutkiem pola „w czym?"
-**nie dało się wypełnić**, a **postaci z poziomem w Nauce, Sztukach walki albo Grze na
-instrumencie nie dawało się skończyć w kreatorze** (kryterium etapu 25a). To wyjaśnia też
-notatkę z poprzedniej sesji o „normalizacji zapisu" (`skillSpecialties: {}` na karcie „Test 27x")
-— to nie była normalizacja. Naprawa: `readSkillSpecialties` wołane przez zapis i odczyt.
-
-**Co odklikano (13 ścieżek).** Pakiet D: degradacja panelu zasad (19a), pełna pętla chipu
-„nieaktualny" i „Zaindeksuj wszystko" (19b), kosze przy wpisach wiedzy i dziennika (19b, 19c),
-„+ Wpis ręcznie" (19c), `AI_UNAVAILABLE` po polsku przy „Zakończ sesję" (19c), oś czasu przez
-granicę miesiąca **i** roku, powtórne odsłonięcie wpisu i limit 12 materiałów (24b). Pakiet A:
-rana krytyczna w motywie dziennym i na miejscu z wydruku (27b), postać prosto z kreatora i wąskie
-okno karty (27c), okno zapisane jako większe od przeglądarki (27f).
-
-**Trzy sprostowania do zaległości.** (1) **„Wydruk" w 27b to układ oficjalnej karty papierowej**,
-nie Ctrl+P — aplikacja nie ma funkcji drukowania ani `@media print`. (2) **„Powtórne odsłonięcie"
-w 24b wymaga trzech kliknięć**, bo przycisk jest przełącznikiem; schowanie linii nie zostawia.
-(3) **27f jest mocniejsze, niż mówiła pozycja**: `clampPlacement` przycina rozmiar do
-`innerWidth − 16`, więc okno nie tylko ma „róg do złapania" — wraca **całe**, a gałąź „treść
-szersza niż viewport" jest dla karty nieosiągalna (`min(1180px, 100vw − 32px)`).
-
-**Tłumaczenia (X).** 35 brakujących opisów przetłumaczonych ręcznie do
-`translations-override.json`; `--check` mówi „Nic do tłumaczenia", 70 wpisów `weapons.json` ma
-polski `description` i angielski `descriptionOriginal`. Przy okazji naprawione **5 opisów
-uszkodzonych przez import DLC** (cztery ze stopką strony PDF-a w treści, jeden urwany na
-dzieleniu wyrazu — „assassination" odtworzone ze źródła) i `translate-descriptions.py` przestał
-wymagać llama-servera, gdy nic go nie potrzebuje. **Parser nadal tego nie umie** — przy kolejnym
-imporcie śmieci wrócą.
-
-**Sprzątnięte po oględzinach:** 13 handoutów testowych, wpis dziennika z 2025, rana krytyczna
-Tony'ego, motyw z powrotem nocny, sierota w indeksie RAG. **Zostawione celowo:** postać
-**„Rudy Kwiatkowski"** (jedyny dowód, że pełny przebieg kreatora dowozi komplet — patrz
-`poligon.md`) i dwie linie o wpisie dziennika na czacie (czat jest logiem).
-
-**Zamknięte zaległości:** 6 pozycji w całości, 3 skurczone, 2 nowe (kosmetyka UI i ostrzeżenie
-o odciskach) — lista otwartych zeszła z 33 do **29**.
-
-**Testy:** **1400** w `shared` (+1), **791** na serwerze (+2), 50 u klienta — zielone. ESLint
-i Prettier czyste (`realtime/index.ts` był niesformatowany przed sesją i został nietknięty).

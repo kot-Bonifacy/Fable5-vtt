@@ -39,6 +39,23 @@ by niczego droższego niż 50 ed. Przełącznik 1–4 jest w zakładce **„Komp
 kategorii; MG kupuje przez wszystkie poziomy niezależnie od niego. **Sprawdzone 22.08:** Kompendium pokazuje „Sklep: **Zawodowe** · Do 500 ed", a wpisy wyższych
 poziomów są wyszarzone z powodem — wartość z bazy dociera do UI poprawnie.
 
+## Stan kart po sesji 28.08 (pakiet A+B — ekonomia i chrom)
+
+**avatar9 jest od 28.08 jedyną postacią w bazie z chromem** i zostaje taki celowo: to jedyny
+egzemplarz, na którym widać rozbicie gniazd z 27c i księgę Człowieczeństwa z 23a. Ma
+**dwie Cyberręce** (prawa: „Pazury" + „Chwytna Dłoń", lewa pusta), **„Ciężką kurtkę kuloodporną"**
+(OB 13, kara −2) w pancerzu, **Człowieczeństwo 28/44**, **EMP w grze 2** (chip „EMP 2 · Na
+granicy" na liście postaci) i **200 ed**. Saldo po drodze podbiła korekta MG do 3000 ed, żeby
+starczyło na cztery montaże — bez niej nie było czego klikać.
+
+**Tony wrócił do stanu sprzed sesji** (50 ed, jeden pusty wiersz sprzętu). Kupiona mu
+„Apteczka polowa" została skasowana omyłkowym kliknięciem kosza — opis w `pulapki-dev.md`;
+zakup zdążył zostać potwierdzony w bazie, na karcie i kartą na czacie.
+
+**Kopia wszystkich dziewięciu kart sprzed sesji:**
+`data/private/backups/characters-2026-08-28.json` (gitignore). Jeśli chrom avatar9 zacznie
+przeszkadzać w innych oględzinach, stan wraca stamtąd jednym `UPDATE Character SET data = …`.
+
 ## Stan po ostatnich oględzinach (22.08, trzecia sesja tego dnia)
 
 Przywrócone: tryb turowy wyłączony, rana zdjęta, wszystkie ściany i okna skasowane, widoczność

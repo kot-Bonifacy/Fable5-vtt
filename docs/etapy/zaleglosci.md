@@ -24,16 +24,6 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
   z kryterium etapu. Warstwa rysuje na klatkę kilka ścieżek `Graphics` i najwyżej jeden sprite,
   więc rezerwa jest duża — ale liczby dla sceny z dynamiczną widocznością nadal nie ma.
 
-- **Etap 27c — rozbicie gniazd per pudełko sylwetki nieodklikane.** Poprawka z 22.08 (rodzina
-  z więcej niż jednym pudełkiem dostaje pod wierszem „Prawa cyberręka: 2 / 4 · Lewa: 0 / 4”)
-  ma cztery testy w `cyberware.test.ts` i nikt jej nie widział — do obejrzenia na karcie
-  z chromem w obu rękach.
-
-- **Etap 25a — jedna ścieżka nieodklikana.** **Rangi Postaci inne niż „początkująca"** — selektor
-  pokazuje pięć pozycji (50–80 pkt), klikana była tylko domyślna 62. (Wybór właściciela przez MG
-  odklikany 14.08; dwie odmowy nieosiągalne z UI przeniesione 28.08 do
-  `decyzje-i-uproszczenia.md`.)
-
 - **Etap 24c — cztery ścieżki nieodklikane.** (1) **Zdjęcie prasowe** — screamsheet przyjmuje
   grafikę handoutu i rysuje ją jako odbitkę gazetową (`grayscale`), ale przy oględzinach nic
   nie wgrywano. (2) **„Przerwij" w trakcie generacji** — przycisk pojawia się na czas pisania
@@ -48,25 +38,6 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
   temperaturze 0,9 (świadomie wysokiej: brukowiec ma zmyślać) będzie się to zdarzać częściej
   niż u kronikarza z 19c. Jeśli przeszkadza, pierwszą rzeczą do ruszenia jest
   `SCREAMSHEET_TEMPERATURE` w `packages/shared/src/screamsheets.ts`.
-
-- **Etap 23b — trzy ścieżki nieodklikane.**
-  (Karta przelewu u odbiorcy → odklikana 22.08, patrz archiwum.)
-  (1) **Zakup pancerza i sprzętu** — sprawdzona tylko broń; wiersze pancerza
-  (`spCurrent`, lokacja, kara) i sprzętu idą tą samą funkcją `purchasedSheetRow` i mają test
-  w `shared`, ale w przeglądarce nie były klikane. (2) **Wpis bez ceny liczbowej** — „Kup" ma być
-  wtedy wyszarzony, a cena ma się liczyć z pasma; w kompendium kampanii wszystkie oglądane wpisy
-  miały cenę. (3) **„Znaleziony — montaż N ed"** przy cyborgizacji (s. 375) — przycisk istnieje
-  i jest pokryty testem, klikany był tylko wariant pełnopłatny.
-
-- **Trzy drobiazgi UI z sesji 27.08 (pakiet D+A) — kosmetyka, nie błędy mechaniki.**
-  (1) **Czerwony komunikat o braku gatewaya nie znika, gdy gateway wróci** — po kliknięciu
-  „Zakończ sesję i streść" przy leżącym gatewayu zdanie „Brak połączenia z AI Gateway —
-  streszczanie wymaga modelu." wisi w panelu dziennika także wtedy, gdy gateway już stoi;
-  zdejmuje je dopiero kolejna akcja. (2) **Wiersz stanu indeksu łamie się w wąską kolumnę** —
-  „3 wpisy czekają na indeks" renderuje się jako pięć linijek jedna pod drugą, bo w `.ai-status-main`
-  nie mieszczą się trzy elementy plus przycisk. (3) **Górny pasek zachodzi sam na siebie przy
-  wąskim oknie** — przy szerokości ~900 px „VTT — Cyberpunk RED", „Włącz tryb turowy" i nazwa
-  kampanii nachodzą na siebie.
 
 - **Maszynopis wypowiedzi NPC-a (09.08) nieodklikany w przeglądarce.** Efekt jest czysto
   wizualny, więc żaden test go nie pokrywa. Do sprawdzenia przy stole: (1) **tempo** — 15 zn/s,
@@ -175,4 +146,3 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
   `__pycache__` z 08.08, czyli sprzed usunięcia kodu TTS. Nic tego nie importuje i nic się przez to
   nie psuje — koszt sprzątnięcia to jedno `rm -rf`, ale MG postanowił zostawić decyzję otwartą.
   **Nie kasuj bez pytania** i nie zgłaszaj tego jako nowego znaleziska.
-

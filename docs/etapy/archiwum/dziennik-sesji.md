@@ -7,6 +7,66 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 27.08 (trzecia) — pakiet D+A: dziennik, wiedza, degradacja, okna karty + 70 tłumaczeń
+
+**Zlecenie MG:** znów pogrupowane zaległości (bez lokalnego LLM, bez nierozpoczętych etapów),
+z wyborem pakietu po stronie MG. Powstało osiem pakietów; MG wybrał **D + A** i dołożył polecenie:
+**„rzeczy, które miał zrobić bot, zrób sam"** — czyli tłumaczenie 70 opisów broni ręcznie zamiast
+przebiegiem przez model. Do tego zgoda na grzebanie w całym projekcie i informacja, że gateway
+mogę ubijać.
+
+**Sesja z kodem — trzy błędy znalezione i naprawione, wszystkie przez oględziny, nie przez testy.**
+
+**BŁĄD #1 — reindeks nie zdejmował chipów z wierszy.** `knowledge:reindex` i `journal:reindex`
+odsyłały sam status indeksu, więc po „Zaindeksuj wszystko" licznik „czeka na indeks" znikał,
+a „⟳ nieaktualny" zostawał na **każdym** wierszu aż do przeładowania strony. Naprawa: rozesłanie
+odświeżonych wpisów (`*:upsert` do pokoju MG), status liczony raz, wpisy czytane z bazy **po**
+`markIndexed`. Umowa w indeksie niżej, dwa testy serwera.
+
+**BŁĄD #2 — limit 12 materiałów milczał.** Trzynasty chip przestawał reagować bez wyszarzenia,
+tooltipa i komunikatu. Teraz jest `disabled` z tytułem, a pod chipami staje „Przypięto 12 z 12".
+
+**BŁĄD #3 — kreator gubił specjalizacje umiejętności (najpoważniejszy).** `applyCreationPatch`
+zapisywał `skillSpecialties` do bazy poprawnie, ale `parseCreationDraft` przepisuje pola szkicu
+**po nazwie** i tego pola tam nie było — odczyt zawsze zwracał `{}`. Skutkiem pola „w czym?"
+**nie dało się wypełnić**, a **postaci z poziomem w Nauce, Sztukach walki albo Grze na
+instrumencie nie dawało się skończyć w kreatorze** (kryterium etapu 25a). To wyjaśnia też
+notatkę z poprzedniej sesji o „normalizacji zapisu" (`skillSpecialties: {}` na karcie „Test 27x")
+— to nie była normalizacja. Naprawa: `readSkillSpecialties` wołane przez zapis i odczyt.
+
+**Co odklikano (13 ścieżek).** Pakiet D: degradacja panelu zasad (19a), pełna pętla chipu
+„nieaktualny" i „Zaindeksuj wszystko" (19b), kosze przy wpisach wiedzy i dziennika (19b, 19c),
+„+ Wpis ręcznie" (19c), `AI_UNAVAILABLE` po polsku przy „Zakończ sesję" (19c), oś czasu przez
+granicę miesiąca **i** roku, powtórne odsłonięcie wpisu i limit 12 materiałów (24b). Pakiet A:
+rana krytyczna w motywie dziennym i na miejscu z wydruku (27b), postać prosto z kreatora i wąskie
+okno karty (27c), okno zapisane jako większe od przeglądarki (27f).
+
+**Trzy sprostowania do zaległości.** (1) **„Wydruk" w 27b to układ oficjalnej karty papierowej**,
+nie Ctrl+P — aplikacja nie ma funkcji drukowania ani `@media print`. (2) **„Powtórne odsłonięcie"
+w 24b wymaga trzech kliknięć**, bo przycisk jest przełącznikiem; schowanie linii nie zostawia.
+(3) **27f jest mocniejsze, niż mówiła pozycja**: `clampPlacement` przycina rozmiar do
+`innerWidth − 16`, więc okno nie tylko ma „róg do złapania" — wraca **całe**, a gałąź „treść
+szersza niż viewport" jest dla karty nieosiągalna (`min(1180px, 100vw − 32px)`).
+
+**Tłumaczenia (X).** 35 brakujących opisów przetłumaczonych ręcznie do
+`translations-override.json`; `--check` mówi „Nic do tłumaczenia", 70 wpisów `weapons.json` ma
+polski `description` i angielski `descriptionOriginal`. Przy okazji naprawione **5 opisów
+uszkodzonych przez import DLC** (cztery ze stopką strony PDF-a w treści, jeden urwany na
+dzieleniu wyrazu — „assassination" odtworzone ze źródła) i `translate-descriptions.py` przestał
+wymagać llama-servera, gdy nic go nie potrzebuje. **Parser nadal tego nie umie** — przy kolejnym
+imporcie śmieci wrócą.
+
+**Sprzątnięte po oględzinach:** 13 handoutów testowych, wpis dziennika z 2025, rana krytyczna
+Tony'ego, motyw z powrotem nocny, sierota w indeksie RAG. **Zostawione celowo:** postać
+**„Rudy Kwiatkowski"** (jedyny dowód, że pełny przebieg kreatora dowozi komplet — patrz
+`poligon.md`) i dwie linie o wpisie dziennika na czacie (czat jest logiem).
+
+**Zamknięte zaległości:** 6 pozycji w całości, 3 skurczone, 2 nowe (kosmetyka UI i ostrzeżenie
+o odciskach) — lista otwartych zeszła z 33 do **29**.
+
+**Testy:** **1400** w `shared` (+1), **791** na serwerze (+2), 50 u klienta — zielone. ESLint
+i Prettier czyste (`realtime/index.ts` był niesformatowany przed sesją i został nietknięty).
+
 ### Sesja 27.08 (druga) — pakiet Sieci A+B: cały dług oględzin 26a–26e w jednym runie
 
 **Zlecenie MG:** znów pogrupowane zaległości (bez rzeczy czekających na lokalny LLM i bez
