@@ -41,6 +41,7 @@ import {
   combatProfileWithCombatValue,
   concentrationBase,
   cpredSmokeModifiers,
+  cpredReloadSound,
   cpredWeaponFx,
   distanceToCover,
   loadedAmmoFor,
@@ -1752,7 +1753,7 @@ export async function performWeaponReload(
     // earns it: „he is reloading" is the whole reason the other side breaks
     // cover. No card to wait for — a reload writes a plain chat line, not a
     // roll — so it goes off at once.
-    await emitReloadMapFx(deps, campaignId, sceneId, character);
+    await emitReloadMapFx(deps, campaignId, sceneId, character, data, row.id);
     return { ammo: row.ammoMax };
   }
 }
@@ -1769,6 +1770,8 @@ async function emitReloadMapFx(
   campaignId: string,
   sceneId: string | null,
   character: Character,
+  data: CpredCharacterData,
+  weaponRowId: string,
 ): Promise<void> {
   if (!sceneId) return;
   const scene = await deps.ctx.prisma.scene.findUnique({ where: { id: sceneId } });
@@ -1777,8 +1780,12 @@ async function emitReloadMapFx(
     where: { characterId: character.id, sceneId },
   });
   if (!token) return;
+  // Which magazine went in: a handgun's two beats or a long arm's four. The
+  // catalogue is only opened once there is a token to sound from — a reload
+  // done off the map costs nothing and looks nothing up.
+  const { resolved } = await resolveWeaponRow(deps, campaignId, data, weaponRowId);
   await emitMapFx(deps, campaignId, scene, [
-    { kind: 'spark', at: fxCentre(token, scene), sound: 'reload' },
+    { kind: 'spark', at: fxCentre(token, scene), sound: cpredReloadSound(resolved) },
   ]);
 }
 

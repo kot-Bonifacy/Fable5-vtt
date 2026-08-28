@@ -32,7 +32,8 @@ const SFX_SAMPLES: readonly { id: MapFxSound; label: string }[] = [
   { id: 'explosion', label: 'Wybuch' },
   { id: 'gas', label: 'Gaz' },
   { id: 'zap', label: 'Wyładowanie' },
-  { id: 'reload', label: 'Przeładowanie' },
+  { id: 'reload-pistol', label: 'Magazynek — pistolet' },
+  { id: 'reload-rifle', label: 'Magazynek — karabin' },
   { id: 'step', label: 'Krok' },
 ];
 

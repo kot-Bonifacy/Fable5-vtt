@@ -46,7 +46,7 @@ const ICON_FX: Readonly<Record<CpredSlotIcon, CpredWeaponFx>> = {
   'martial-arts': { style: 'melee', sound: 'punch' },
   // Never reached from a weapon — the icon table lists actions too, and a
   // `Record` that skipped them would stop compiling the day one is renamed.
-  reload: { style: 'bullet', sound: 'reload' },
+  reload: { style: 'bullet', sound: 'reload-pistol' },
   'first-aid': { style: 'melee', sound: null },
   grab: { style: 'melee', sound: 'punch' },
   hourglass: { style: 'melee', sound: null },
@@ -54,6 +54,30 @@ const ICON_FX: Readonly<Record<CpredSlotIcon, CpredWeaponFx>> = {
   run: { style: 'melee', sound: null },
   scanner: { style: 'melee', sound: null },
 };
+
+/**
+ * Broń długa — ta, której magazynek wchodzi na cztery takty, nie na dwa.
+ *
+ * Domyślny jest pistolet, i to jest wybór, nie przeoczenie: nowa ikona
+ * (albo homebrew bez typu) zabrzmi krócej niż powinna, a nie odwrotnie —
+ * karabinowy czterotakt pod pistoletem słychać od razu, pistoletowy dwutakt
+ * pod karabinem nie kłuje w ucho. Nóż i pięść nigdy tu nie trafią: serwer
+ * odzywa się dopiero po udanym przeładowaniu, a te mają `ammoMax` równe zeru.
+ */
+const LONG_ARMS: ReadonlySet<CpredSlotIcon> = new Set([
+  'smg-heavy',
+  'rifle',
+  'sniper',
+  'shotgun',
+  'flamethrower',
+  'launcher',
+  'rocket',
+]);
+
+/** Odgłos świeżego magazynka w tej właśnie broni. */
+export function cpredReloadSound(resolved: ResolvedWeapon | null): MapFxSound {
+  return LONG_ARMS.has(cpredWeaponIcon(resolved)) ? 'reload-rifle' : 'reload-pistol';
+}
 
 /**
  * The map effect one weapon fires.

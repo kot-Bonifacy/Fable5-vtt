@@ -69,6 +69,13 @@ const BURST_STAGGER_MS = 55;
 const LABEL_STAGGER_MS = 240;
 /** Bangs one batch may play — a ten-round burst is not ten samples. */
 const MAX_SOUNDS_PER_SHOT = 4;
+/**
+ * …and rykoszety, których jest mniej.
+ *
+ * Huk niesie się od lufy, a odbicie od ściany za figurą — cztery odbicia
+ * z jednej serii brzmią jak grzechotka, dwa jak seria, która poszła w mur.
+ */
+const MAX_RICOCHETS_PER_SHOT = 2;
 
 /** A miss carries past the figure by this much, in metres. */
 const MISS_OVERSHOOT_M = 1.6;
@@ -132,6 +139,9 @@ type FxItem = Timed &
         sound: MapFxSound | null;
         soundPitch: number;
         played: boolean;
+        /** …and what the far end says when the round gets there. */
+        landSound: MapFxSound | null;
+        landPlayed: boolean;
       }
     | { kind: 'cone'; from: ScenePoint; angle: number; half: number; reach: number }
     | { kind: 'zap'; x: number; y: number; width: number; height: number; seed: number }
@@ -309,6 +319,10 @@ export class MapFxLayer {
             sound: effect.sound,
             soundPitch: 1,
             played: false,
+            // A spark *is* the far end — its one sound already plays at the
+            // muzzle slot above, so there is nothing left for the landing.
+            landSound: null,
+            landPlayed: true,
           });
           break;
         case 'float':
@@ -361,6 +375,16 @@ export class MapFxLayer {
         // is enough to stop that without turning the gun into a cartoon.
         soundPitch: 1 + (round === 0 ? 0 : (Math.random() - 0.5) * 0.14),
         played: false,
+        // The other secret of a shot (see `MapFxEffect`): a round that missed
+        // hits whatever stood behind the figure, and *that* is a sound the far
+        // end owns — it plays where the round lands, only if that end survived
+        // the viewer trim, and only for bullets. A sword that misses swishes;
+        // an arrow that misses sticks into a wall; neither ricochets.
+        landSound:
+          effect.style === 'bullet' && !effect.hit && round < MAX_RICOCHETS_PER_SHOT
+            ? 'ricochet'
+            : null,
+        landPlayed: false,
       });
     }
   }
@@ -546,6 +570,12 @@ export class MapFxLayer {
     // The far end. With no muzzle the round simply arrives, so it lands at once.
     const landed = from ? item.age - item.flight : item.age;
     if (landed >= 0 && landed < IMPACT_MS) {
+      if (!item.landPlayed) {
+        item.landPlayed = true;
+        if (item.landSound) {
+          playFxSound(item.landSound, { pitch: 1 + (Math.random() - 0.5) * 0.18 });
+        }
+      }
       this.drawImpact(to, landed, item.hit, k);
     }
   }

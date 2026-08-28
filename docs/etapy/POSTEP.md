@@ -91,18 +91,18 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 ## Od czego zacząć
 
-**Ostatnia sesja (28.08, trzecia) zamknęła 16e, dwie ścieżki 24c i pięć brakujących drzwi w UI.**
-Lista zaległości zeszła z 17 do **13** (18 było błędem — pozycja o katalogu `tts/` wisiała
-otwarta, choć katalog skasowano rano). Doszła **czwarta stała scena „Korytarz 16e"** z widocznością
-Dynamiczną i murem w kształcie L — pierwsza w poligonie, na której da się oglądać cień ścian
-i przerwania marszu; **nie kasuj jej**, bo za każdym razem odtwarzaliśmy ją od zera.
+**Ostatnia sesja (28.08, czwarta) zamknęła odsłuch dźwięków mapy** — sześć próbek wymienionych
+albo poprawionych, przeładowanie rozdzielone na pistoletowe i karabinowe, rykoszet po raz
+pierwszy podpięty pod pudło. Lista zaległości zeszła z 13 do **12**. Sesja przed nią zamknęła
+16e, dwie ścieżki 24c i pięć brakujących drzwi w UI, i zostawiła **czwartą stałą scenę
+„Korytarz 16e"** (widoczność Dynamiczna, mur L) — **nie kasuj jej**, bo za każdym razem
+odtwarzaliśmy ją od zera.
 
 **Od czego zacząć: do wyboru 27g** (wydajność) i **28** (wdrożenie na VPS) — nadal jedyne dwa
 nierozpoczęte etapy. **27g ma teraz gotowy poligon**: pomiar fps na scenie ze światłami i mgłą
 (zaległość po 27i) MG świadomie przesunął właśnie tam, a „Korytarz 16e" jest sceną, na której się
-go robi. Z długu oględzin **bez modelu** została praktycznie jedna rzecz: **odsłuch 16 próbek
-dźwiękowych** (człowiek przy głośnikach, rządek przycisków w „⚙ Ustawienia"). Cała reszta — **9
-z 13 pozycji** — czeka na **żywy model**: 20a/20b, 19a–19c, dwie ścieżki 24c i maszynopis
+go robi. Z długu oględzin **bez modelu** został już tylko ten pomiar. Cała reszta — **9
+z 12 pozycji** — czeka na **żywy model**: 20a/20b, 19a–19c, dwie ścieżki 24c i maszynopis
 wypowiedzi idą do sesji po wymianie wersji. Etap 27 jest rozdzielony do końca, więc plik
 `etap-27-…` to rozdroże ze wskazaniami, a nie zakres do zrobienia.
 
@@ -213,6 +213,7 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 - **Rozkaz marszu automatem wymaga ustalonego hovera** — trasa liczy się na `pointermove`; klik w tej samej porcji zdarzeń nic nie robi.
 - **Skrótu klawiszowego nie odpalisz syntetycznym `KeyboardEvent`** — Esc musi przyjść z CDP, inaczej marsz się nie przerwie.
 - **Zacienienie zasięgu ma cache bez ścian** — zmiana zasad chodzenia musi wyzerować `this.reach` (naprawione 22.08).
+- **Próbka z paczki bywa dwoma zdarzeniami** — `shot-rifle` grał dwa strzały przez pół roku; nową próbkę obejrzyj obwiednią, zanim ją wepniesz.
 - **`clipWalkToBudget` tnie na punkcie zwrotnym, nie na metrze** — na wygładzonej prostej zostawia sam start; u klienta tnie `clipToBudget` w `MapRenderer` (metr → przyciągnięcie → ponowne sprawdzenie).
 - **Mechanika bez danych wygląda jak zepsuty kod** — zanim uznasz „nie działa", sprawdź, czy pole (np. `explosive`) jest w `data/private/.../weapon-types.json`; testy jadą na publicznej próbce, która je ma.
 - **Rzut z karty to dwa kliknięcia** (Shift+klik ładuje kubek, klik w kubek rzuca), złota kość dorzutu spada 550 ms po pierwszej fali, a stół kości chowa się **pod** oknem karty postaci.
@@ -246,6 +247,54 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 28.08 (czwarta) — odsłuch dźwięków mapy
+
+**Zlecenie MG:** pierwszy odsłuch szesnastu próbek na głośnikach i poprawa sześciu, które
+nie przeszły. Wprost: „Dźwięki szukaj w necie".
+
+**Wyniki odsłuchu.** Dziesięć próbek przeszło bez uwag. Sześć do poprawki, w tym **jedna
+prawdziwa wada pliku, a nie kwestia gustu**: `shot-rifle.wav` grał **dwa strzały** — oryginał
+`sks.wav` ma drugą detonację w 0,315 s, więc strzał pojedynczy brzmiał jak dublet, a seria jak
+dublety na dublecie. Plik przycięty do 0,305 s z 90 ms wygaszenia; pozostałe trzy huki
+sprawdzone obwiednią (po jednym strzale każdy) i zostawione. Reszta to podmiany źródeł:
+**trafienie** (uderzenie w ciało, bo tę próbkę gra każde zadane obrażenie — też nóż i pięść),
+**rykoszet**, **gaz** (syk uchodzącej pary zamiast szumu) i **wyładowanie** (`continuousspark`
+zamiast `spark` z tej samej paczki — MG chciał kilku iskier zamiast jednej).
+
+**Przeładowanie rozdzielone na dwie próbki.** MG wybrał wariant z rozróżnieniem: `reload-pistol`
+(dwutakt) i `reload-rifle` (czterotakt), wybierane po ikonie broni przez nowe
+`cpredReloadSound` — tą samą klasyfikacją, którą tabela `ICON_FX` dobiera huk. Broń długa
+siedzi w zbiorze `LONG_ARMS`, wszystko inne dostaje pistolet: zły domyślny wariant ma być
+za krótki, nie za długi, bo czterotakt pod pistoletem słychać od razu.
+
+**Rykoszet po raz pierwszy w ogóle się odzywa.** Przy okazji wyszło, że `ricochet` był
+**martwym wpisem**: miał plik, wzmocnienie i przycisk odsłuchu, ale żadne miejsce na serwerze
+go nie emitowało — a komentarz przy `MapFxEffect.sound` w `shared/src/fx.ts` od 27i opisywał
+zachowanie, którego nie było („co robi pocisk na drugim końcu wybiera klient z `hit`"). Teraz
+wybiera: chybiony **pocisk** (nie strzała, nie ostrze) gra odbicie w chwili dolotu smugi,
+najwyżej dwa razy na serię i tylko wtedy, gdy daleki koniec przetrwał przycięcie dla widza.
+Decyzja MG — podmienić plik **i** podpiąć pod pudło.
+
+**Obróbka.** Bez ffmpeg na tej maszynie: skrypt-jednorazówka w czystym Pythonie (moduł `wave`)
+robił mono, przycięcie, normalizację do −0,7 dBFS i wygaszenia. Nowość wobec 27i: **skracanie
+ciszy dłuższej niż 0,30 s do 0,18 s z zachowaniem szmeru tła** (sklejka wypada tam, gdzie nic
+się nie dzieje) w obu przeładowaniach, oraz **trzykrotna pętla z 3 ms przenikaniem** przy
+`zap.wav`, żeby trzaski pokryły 620 ms animacji zamiast 220. Wszystkie źródła z OpenGameArt,
+licencje i opis obróbki w `packages/client/public/sfx/ATTRIBUTION.md`.
+
+**Uwaga licencyjna.** `ricochet.ogg` (Red Eclipse) to **jedyny plik na CC BY-SA** w katalogu
+i jedyny **nietknięty** — kopia bez zmian nie jest utworem zależnym, więc warunek „na tych
+samych zasadach" nie sięga dalej. Gdyby ktoś kiedyś tę próbkę przyciął, wynik trzeba oznaczyć
+jako CC BY-SA 3.0 albo znaleźć zamiennik: rykoszetu na CC0 na OpenGameArt praktycznie nie ma.
+
+**Zaległości: 13 → 12.** Pozycja „Etap 27i — zostały same dźwięki" **zamknięta** — to była
+jedyna rzecz z długu oględzin, która nie potrzebowała ani modelu, ani przeglądarki, tylko
+człowieka przy głośnikach.
+
+**Testy:** 1400 w `shared` (+4 nowe na `cpredReloadSound`), 793 na serwerze, 62 u klienta
+— zielone. ESLint i Prettier czyste. Klient podany na `:5199` — komplet siedmiu nowych
+plików wraca z 200, a `reload.ogg` z podmianki SPA, czyli faktycznie zniknął.
 
 ### Sesja 28.08 (trzecia) — pakiet A+B+D+E: ruch i mgła, screamsheet, brakujące drzwi w UI
 
@@ -304,50 +353,3 @@ wersji zostaną praktycznie same dźwięki i pomiar fps (ten do 27g).
 
 **Testy:** 1400 w `shared`, **793** na serwerze (+2 na trasę `sandbox`), **62** u klienta
 (+6 w nowym `map-mode.test.ts`) — zielone. ESLint i Prettier czyste na całym repo.
-
-### Sesja 28.08 (druga) — pakiet A+B: ekonomia i chrom, kreator, kosmetyka UI
-
-**Zlecenie MG:** pogrupowane zaległości bez lokalnego LLM i bez etapów nierozpoczętych; MG wybrał
-**A + B** i rozstrzygnął dwie rzeczy z listy pytań: **remis w teście na PT ma być sukcesem** oraz
-**skasować katalog `ai-gateway/.../tts/`** („ale nie skasuj przypadkiem czegoś więcej").
-
-**Sprzątanie i reguła.** Katalog `tts/` usunięty ostrożnie — najpierw `git ls-files` (pusto,
-katalog nigdy nie był w repo) i `grep -i tts` po `ai-gateway/src` i `tests` (zero importów), potem
-same `.pyc` i dwa `rmdir` (kasuje **tylko puste** katalogi, więc nic obok nie mogło zniknąć);
-`git status` po operacji czysty. Wzmianka o Piperze w `ai-gateway/README.md` została celowo — to
-zapis historyczny wycofanego etapu 12. **Remis:** `cpredAmmoCheckOutcome` liczy teraz `total >= dv`
-(trzy wywołania: pociski bez obrażeń, efekty stref, wypatrywanie strefy). **Sprostowanie do
-notatki z rana:** ogień zaporowy **nie** dostał tej zmiany i dostać jej nie miał — tam PT to wynik
-rzutu strzelca, czyli rzut przeciwstawny, w którym remis wygrywa obrońca (s. 169).
-
-**Pakiet B — trzy drobiazgi UI, wszystkie naprawione i obejrzane.** Wiersz stanu indeksu zawija
-teraz całymi elementami (`.ai-status-main`, wspólny dla czterech paneli AI); górny pasek przestał
-nachodzić sam na siebie — przyczyną nie był brak miejsca, tylko `.combat-bar` z `flex-basis: 0`,
-która kurczyła się do zera i wypuszczała „Włącz tryb turowy" na sąsiadów; wiszący komunikat
-o gatewayu zdejmuje teraz powrót usługi, bo `journal:error` niesie kod, a `ai:status` woła
-`clearAiError()`. Do odklikania ostatniego punktu **bez modelu** posłużyła **atrapa `/health`
-na :8100** — zdanie zniknęło samo po ~10 s (opis w `pulapki-dev.md`). Przy okazji sformatowany
-`realtime/index.ts`, więc `prettier --check` na całym repo jest wreszcie czysty.
-
-**Pakiet A — 23b, 27c i 25a odklikane w całości.** Zakup pancerza (500 ed, wiersz z OB 13/13,
-karą −2 i lokacją Korpus), zakup sprzętu przy saldzie **równym cenie** (przeszło, potem „Za mało
-eurodolców."), wpis bez ceny (przycisk „Kup" wyszarzony z powodem), „Znaleziony — montaż 1000 ed"
-dwa razy pod rząd. Na tym stanął **27c**: dwie cyberręce najpierw zapaliły czerwone „Bez gniazda:
-Cyberręka, Cyberręka", a po wskazaniu gniazd karta rozpisała rodzinę na pudełka —
-**„Prawa cyberręka: 2 / 4 · Lewa cyberręka: 0 / 4"**. **25a**: selektor Rang ma pięć pozycji
-(50–80 pkt), „Znaczący bohater" przestawił pulę na „0 z 80", a zejście na rangę 50 przy
-rozdanych 80 punktach zapaliło czerwone „80 z 50" i podniosło licznik braków — ranga steruje
-walidacją, nie tylko podpisem.
-
-**Mój błąd w oględzinach.** Skrypt zamykający okno karty kliknął **wszystkie** „✕" wewnątrz okna,
-a taki sam znak nosi kosz przy wierszu — skasował świeżo kupioną „Apteczkę polową" Tony'ego
-(zakup był już potwierdzony w bazie, na karcie i kartą na czacie). Tony przywrócony do stanu
-sprzed sesji korektą MG (50 ed); pułapka dopisana. **avatar9 zostaje z chromem** — to jedyna
-postać w bazie, na której widać rozbicie gniazd; kopia wszystkich kart sprzed sesji leży
-w `data/private/backups/characters-2026-08-28.json`.
-
-**Zamknięte zaległości:** 4 pozycje w całości (23b, 27c, 25a, kosmetyka UI), jedna połówka
-przeniesiona do `decyzje-i-uproszczenia.md` — lista otwartych zeszła z 22 do **18**.
-
-**Testy:** 1400 w `shared`, 791 na serwerze, **56** u klienta (+3 nowe w `journal-error.test.ts`)
-— zielone. ESLint i Prettier czyste na całym repo.

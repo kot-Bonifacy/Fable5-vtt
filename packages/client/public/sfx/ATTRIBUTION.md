@@ -26,15 +26,14 @@ ostrzejszego warunku: traktujemy je jak **CC BY 3.0** i podajemy oba nazwiska.
 
 ## Reszta
 
-| Plik            | Oryginał           | Paczka                                                                                   | Autor                      | Licencja |
-| --------------- | ------------------ | ---------------------------------------------------------------------------------------- | -------------------------- | -------- |
-| `explosion.ogg` | `explosion_01.ogg` | [50 CC0 Sci-Fi SFX](https://opengameart.org/content/50-cc0-sci-fi-sfx)                   | rubberduck                 | CC0      |
-| `impact.ogg`    | `hit_02.ogg`       | [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx)                               | rubberduck                 | CC0      |
-| `ricochet.ogg`  | `metal_02.ogg`     | [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx)                               | rubberduck                 | CC0      |
-| `gas.ogg`       | `noise_01.ogg`     | [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx)                               | rubberduck                 | CC0      |
-| `reload.ogg`    | `lock_02.ogg`      | [80 CC0 RPG SFX](https://opengameart.org/content/80-cc0-rpg-sfx)                         | rubberduck                 | CC0      |
-| `swing.wav`     | `battle/swing.wav` | [RPG Sound Pack](https://opengameart.org/content/rpg-sound-pack)                         | artisticdude               | CC0      |
-| `zap.wav`       | `spark.wav`        | [Electricity Sound Effects](https://opengameart.org/content/electricity-sound-effects-0) | BMacZero (Brian MacIntosh) | CC0      |
+| Plik            | Oryginał           | Paczka                                                                 | Autor        | Licencja |
+| --------------- | ------------------ | ---------------------------------------------------------------------- | ------------ | -------- |
+| `explosion.ogg` | `explosion_01.ogg` | [50 CC0 Sci-Fi SFX](https://opengameart.org/content/50-cc0-sci-fi-sfx) | rubberduck   | CC0      |
+| `swing.wav`     | `battle/swing.wav` | [RPG Sound Pack](https://opengameart.org/content/rpg-sound-pack)       | artisticdude | CC0      |
+
+Pozostałe cztery pozycje tej paczki — `impact`, `ricochet`, `gas` i `reload` — **zostały
+wymienione po odsłuchu 28.08**; patrz sekcja „Odsłuch przy stole" na dole pliku. `zap.wav`
+został w tej samej paczce, ale na innym pliku.
 
 ## Pięść, ogień i wyrzutnie (audyt 28.08)
 
@@ -79,3 +78,66 @@ dobrano je po nazwach plików i opisach w paczkach. „⚙ Ustawienia" mają prz
 odsłuchu **każdej** próbki; jeśli któraś nie pasuje, wymiana to podmiana jednego pliku i jednego
 wiersza w `SFX_FILES` (`packages/client/src/sfx.ts`). Kompletu pilnuje `sfx.test.ts` u klienta:
 dźwięk bez pliku, plik bez dźwięku i dźwięk bez przycisku odsłuchu wywalają test.
+
+## Odsłuch przy stole (28.08, wieczór)
+
+Pierwszy raz ktoś **usłyszał** te próbki zamiast czytać nazwy plików w archiwach — i sześć
+z szesnastu poszło do wymiany. To jest ta sesja, o którą prosiła zaległość etapu 27i.
+
+### Karabin strzelał dwa razy
+
+`shot-rifle.wav` **nie został podmieniony, tylko przycięty**: w oryginale (`sks.wav`, ta sama
+sesja strzelnicy co pozostałe trzy huki) padają **dwa strzały**, drugi startuje w 0,315 s. Przy
+strzale pojedynczym słychać było dublet, przy serii — dublety na dublecie. Plik ma teraz 0,305 s
+i kończy się 90 ms wygaszenia, a wielokrotność bierze się wyłącznie z liczby pocisków
+(`addShot` gra do `MAX_SOUNDS_PER_SHOT` próbek co 55 ms). Reszta rodziny została nietknięta —
+`shot-pistol`, `shot-sniper` i `shot-shotgun` mają po jednym huku, sprawdzone obwiednią.
+
+### Nowe źródła
+
+| Plik                | Oryginał                       | Paczka                                                                                   | Autor                         | Licencja     |
+| ------------------- | ------------------------------ | ---------------------------------------------------------------------------------------- | ----------------------------- | ------------ |
+| `impact.wav`        | `bodyimpact_jack_01.wav`       | [FPS Placeholder Sounds](https://opengameart.org/content/fps-placeholder-sounds)         | Jack Menhorn                  | CC BY 3.0    |
+| `ricochet.ogg`      | `sounds/weapons/ricochet.ogg`  | [Red Eclipse sounds](https://opengameart.org/content/red-eclipse-sounds)                 | Red Eclipse (zgłosił Calinou) | CC BY-SA 3.0 |
+| `gas.wav`           | `steam hisses - Marker #3.wav` | [Steam release sounds](https://opengameart.org/content/steam-release-sounds)             | bart                          | CC0          |
+| `zap.wav`           | `continuousspark.wav`          | [Electricity Sound Effects](https://opengameart.org/content/electricity-sound-effects-0) | BMacZero (Brian MacIntosh)    | CC0          |
+| `reload-pistol.wav` | `gunreload1.wav`               | [Gun reload sounds](https://opengameart.org/content/gun-reload-sounds)                   | SpringySpringo                | CC0          |
+| `reload-rifle.wav`  | `assaultriflereload1.wav`      | [Gun reload sounds](https://opengameart.org/content/gun-reload-sounds)                   | SpringySpringo                | CC0          |
+
+**`ricochet.ogg` jest jedynym plikiem w katalogu na licencji CC BY-SA** i jedynym, którego
+**nie tknięto** — leży dokładnie tak, jak wyszedł z paczki. To nie przypadek: SA obowiązuje
+utwory zależne, a kopia bez zmian żadnym nie jest, więc reszta repozytorium nie łapie
+warunku „na tych samych zasadach". Gdyby ta próbka miała kiedyś zostać przycięta albo
+zmiksowana, **wynik trzeba oznaczyć jako CC BY-SA 3.0** — albo poszukać zamiennika. Sam
+rykoszet w paczkach CC0 na OpenGameArt praktycznie nie występuje; szukane były `ricochet`,
+`zing`, `ping`, `deflect`, `whiz` i `bounce`.
+
+### Co zrobiono z próbkami
+
+Wszystkie nowe pliki są **mono, znormalizowane do −0,7 dBFS** i wygaszone na końcu, tym samym
+skryptem-jednorazówką co w etapie 27i (pure Python, moduł `wave` — na tej maszynie nie ma
+ffmpeg). Poza tym:
+
+- **`impact.wav`** — sam obcięty i podbity; oryginał leżał 11 dB za cicho. Głuche uderzenie
+  w ciało zamiast wcześniejszego interfejsowego stuknięcia, bo tę próbkę gra **każde zadane
+  obrażenie**, nie tylko postrzał — nóż i pięść też.
+- **`gas.wav`** — 0,85 s syku pary z 1,85 s oryginału (reszta to cisza), z 250 ms wygaszenia
+  pod chmurą, która żyje 1,6 s. Poprzedni `noise_01.ogg` był szumem, a nie ulatnianiem się.
+- **`zap.wav`** — ta sama paczka, ale plik `continuousspark` zamiast `spark`, zapętlony
+  **trzykrotnie** z 3 ms przenikaniem na szwach: ~0,65 s trzasków pod 620 ms animacji
+  (`ZAP_MS`) zamiast jednej iskry na 0,22 s.
+- **oba przeładowania** — ciszy dłuższej niż 0,30 s skrócono do 0,18 s, **zachowując szmer
+  tła zamiast wstawiać cyfrowe zero**, więc sklejki wypadają tam, gdzie nic się nie dzieje.
+  Pistolet: magazynek → manipulacja → zamek, 1,33 s. Karabin: zwolnienie → magazynek → zamek,
+  1,07 s. Obie próbki pochodzą z jednej paczki, więc długa i krótka broń brzmią jak jedna
+  rodzina — ten sam argument, co przy czterech hukach na górze pliku.
+
+### Rykoszet wreszcie coś znaczy
+
+Do 28.08 `ricochet` **nie odzywał się nigdy**: był w `MAP_FX_SOUNDS`, miał plik, wzmocnienie
+i przycisk odsłuchu, ale żadne miejsce na serwerze go nie emitowało. Komentarz przy polu
+`sound` w `packages/shared/src/fx.ts` opisywał zachowanie, którego nie było — „co robi
+pocisk na drugim końcu […] wybiera klient z `hit`". Teraz wybiera: chybiony **pocisk**
+(nie strzała, nie ostrze) gra odbicie w chwili, gdy smuga dolatuje, najwyżej dwa razy na
+serię (`MAX_RICOCHETS_PER_SHOT`) i tylko wtedy, gdy daleki koniec przetrwał przycięcie dla
+widza — czyli tak, jak od początku obiecywał tamten komentarz.

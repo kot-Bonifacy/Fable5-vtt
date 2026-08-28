@@ -7,6 +7,53 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 28.08 (druga) — pakiet A+B: ekonomia i chrom, kreator, kosmetyka UI
+
+**Zlecenie MG:** pogrupowane zaległości bez lokalnego LLM i bez etapów nierozpoczętych; MG wybrał
+**A + B** i rozstrzygnął dwie rzeczy z listy pytań: **remis w teście na PT ma być sukcesem** oraz
+**skasować katalog `ai-gateway/.../tts/`** („ale nie skasuj przypadkiem czegoś więcej").
+
+**Sprzątanie i reguła.** Katalog `tts/` usunięty ostrożnie — najpierw `git ls-files` (pusto,
+katalog nigdy nie był w repo) i `grep -i tts` po `ai-gateway/src` i `tests` (zero importów), potem
+same `.pyc` i dwa `rmdir` (kasuje **tylko puste** katalogi, więc nic obok nie mogło zniknąć);
+`git status` po operacji czysty. Wzmianka o Piperze w `ai-gateway/README.md` została celowo — to
+zapis historyczny wycofanego etapu 12. **Remis:** `cpredAmmoCheckOutcome` liczy teraz `total >= dv`
+(trzy wywołania: pociski bez obrażeń, efekty stref, wypatrywanie strefy). **Sprostowanie do
+notatki z rana:** ogień zaporowy **nie** dostał tej zmiany i dostać jej nie miał — tam PT to wynik
+rzutu strzelca, czyli rzut przeciwstawny, w którym remis wygrywa obrońca (s. 169).
+
+**Pakiet B — trzy drobiazgi UI, wszystkie naprawione i obejrzane.** Wiersz stanu indeksu zawija
+teraz całymi elementami (`.ai-status-main`, wspólny dla czterech paneli AI); górny pasek przestał
+nachodzić sam na siebie — przyczyną nie był brak miejsca, tylko `.combat-bar` z `flex-basis: 0`,
+która kurczyła się do zera i wypuszczała „Włącz tryb turowy" na sąsiadów; wiszący komunikat
+o gatewayu zdejmuje teraz powrót usługi, bo `journal:error` niesie kod, a `ai:status` woła
+`clearAiError()`. Do odklikania ostatniego punktu **bez modelu** posłużyła **atrapa `/health`
+na :8100** — zdanie zniknęło samo po ~10 s (opis w `pulapki-dev.md`). Przy okazji sformatowany
+`realtime/index.ts`, więc `prettier --check` na całym repo jest wreszcie czysty.
+
+**Pakiet A — 23b, 27c i 25a odklikane w całości.** Zakup pancerza (500 ed, wiersz z OB 13/13,
+karą −2 i lokacją Korpus), zakup sprzętu przy saldzie **równym cenie** (przeszło, potem „Za mało
+eurodolców."), wpis bez ceny (przycisk „Kup" wyszarzony z powodem), „Znaleziony — montaż 1000 ed"
+dwa razy pod rząd. Na tym stanął **27c**: dwie cyberręce najpierw zapaliły czerwone „Bez gniazda:
+Cyberręka, Cyberręka", a po wskazaniu gniazd karta rozpisała rodzinę na pudełka —
+**„Prawa cyberręka: 2 / 4 · Lewa cyberręka: 0 / 4"**. **25a**: selektor Rang ma pięć pozycji
+(50–80 pkt), „Znaczący bohater" przestawił pulę na „0 z 80", a zejście na rangę 50 przy
+rozdanych 80 punktach zapaliło czerwone „80 z 50" i podniosło licznik braków — ranga steruje
+walidacją, nie tylko podpisem.
+
+**Mój błąd w oględzinach.** Skrypt zamykający okno karty kliknął **wszystkie** „✕" wewnątrz okna,
+a taki sam znak nosi kosz przy wierszu — skasował świeżo kupioną „Apteczkę polową" Tony'ego
+(zakup był już potwierdzony w bazie, na karcie i kartą na czacie). Tony przywrócony do stanu
+sprzed sesji korektą MG (50 ed); pułapka dopisana. **avatar9 zostaje z chromem** — to jedyna
+postać w bazie, na której widać rozbicie gniazd; kopia wszystkich kart sprzed sesji leży
+w `data/private/backups/characters-2026-08-28.json`.
+
+**Zamknięte zaległości:** 4 pozycje w całości (23b, 27c, 25a, kosmetyka UI), jedna połówka
+przeniesiona do `decyzje-i-uproszczenia.md` — lista otwartych zeszła z 22 do **18**.
+
+**Testy:** 1400 w `shared`, 791 na serwerze, **56** u klienta (+3 nowe w `journal-error.test.ts`)
+— zielone. ESLint i Prettier czyste na całym repo.
+
 ### Sesja 28.08 — pakiet A + E: strefy i efekty walki, dźwięki broni, triaż zaległości
 
 **Zlecenie MG:** znów pogrupowane zaległości (bez lokalnego LLM, bez etapów nierozpoczętych),

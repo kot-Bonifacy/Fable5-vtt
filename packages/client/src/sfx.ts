@@ -29,12 +29,13 @@ const SFX_FILES: Readonly<Record<MapFxSound, string>> = {
   punch: '/sfx/punch.ogg',
   flame: '/sfx/flame.ogg',
   launch: '/sfx/launch.wav',
-  impact: '/sfx/impact.ogg',
+  impact: '/sfx/impact.wav',
   ricochet: '/sfx/ricochet.ogg',
   explosion: '/sfx/explosion.ogg',
-  gas: '/sfx/gas.ogg',
+  gas: '/sfx/gas.wav',
   zap: '/sfx/zap.wav',
-  reload: '/sfx/reload.ogg',
+  'reload-pistol': '/sfx/reload-pistol.wav',
+  'reload-rifle': '/sfx/reload-rifle.wav',
   step: '/sfx/step.ogg',
 };
 
@@ -61,7 +62,10 @@ const SFX_GAIN: Readonly<Record<MapFxSound, number>> = {
   explosion: 0.85,
   gas: 0.7,
   zap: 0.75,
-  reload: 0.7,
+  // Obie próbki przeładowania są znormalizowane do 0 dBFS, a magazynek nie jest
+  // wystrzałem: schodzą niżej niż broń, którą ładują.
+  'reload-pistol': 0.6,
+  'reload-rifle': 0.6,
   // Quiet on purpose. A footstep is punctuation, not an event — the stage said
   // „o ile nie zmęczy przy stole", and a step at the volume of a gunshot would.
   step: 0.35,

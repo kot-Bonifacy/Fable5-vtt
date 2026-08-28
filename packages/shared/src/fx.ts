@@ -29,12 +29,17 @@ export type MapFxSound =
   | 'flame'
   /** Granatnik i wyrzutnia rakiet: odpalenie, nie wystrzał z karabinu. */
   | 'launch'
+  /** Kula albo pięść dochodzi do celu — głuche uderzenie w ciało. */
   | 'impact'
+  /** Chybiony pocisk odbija się od tego, co stało za figurą. */
   | 'ricochet'
   | 'explosion'
   | 'gas'
   | 'zap'
-  | 'reload'
+  /** Magazynek do pistoletu: dwa takty — magazynek i zamek. */
+  | 'reload-pistol'
+  /** …i do broni długiej: zwolnienie, magazynek, zamek. */
+  | 'reload-rifle'
   /** A single footstep (stage 27j) — the only sound the map makes on its own. */
   | 'step';
 
@@ -54,7 +59,8 @@ export const MAP_FX_SOUNDS: readonly MapFxSound[] = [
   'explosion',
   'gas',
   'zap',
-  'reload',
+  'reload-pistol',
+  'reload-rifle',
   'step',
 ];
 

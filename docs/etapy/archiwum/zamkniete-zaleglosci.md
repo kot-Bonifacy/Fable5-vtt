@@ -9,6 +9,25 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Przeniesione 2026-08-28 (odsłuch dźwięków mapy)
+
+Czwarta sesja tego dnia, jedna pozycja.
+
+- **Etap 27i — zostały same dźwięki. ZAMKNIĘTE.** MG przesłuchał wszystkie szesnaście próbek
+  przyciskami odsłuchu w „⚙ Ustawienia" — czyli dokładnie tak, jak ta pozycja od trzech tygodni
+  zakładała, i to jedyny sposób, w jaki mogła zostać zamknięta. Dziesięć próbek przeszło bez
+  uwag; sześć poszło do poprawki:
+  (1) **Karabin strzelał dwa razy** — nie dobór próbki, tylko wada pliku: w `sks.wav` padają
+  dwa strzały, drugi w 0,315 s. Przycięte, nie podmienione — reszta rodziny huków jest z tej
+  samej sesji strzelnicy i sprawdzono obwiednią, że każdy ma po jednym strzale.
+  (2) **Trafienie**, (3) **Rykoszet**, (4) **Gaz** i (5) **Przeładowanie** — nowe źródła.
+  (6) **Wyładowanie** zostało w swojej paczce, ale na pliku `continuousspark` zamiast `spark`:
+  MG chciał kilku iskier zamiast jednej.
+  Przy okazji **przeładowanie rozdzieliło się na dwie próbki** (`reload-pistol` dwutaktowy,
+  `reload-rifle` czterotaktowy, wybierane po ikonie broni przez `cpredReloadSound`), a **rykoszet
+  po raz pierwszy w ogóle się odzywa** — do tej sesji był martwym wpisem, słyszalnym wyłącznie
+  z przycisku odsłuchu. Licencje i opis obróbki: `packages/client/public/sfx/ATTRIBUTION.md`.
+
 ## Przeniesione 2026-08-28 (pakiet A+B+D+E — ruch i mgła, screamsheet, brakujące drzwi w UI)
 
 Trzecia sesja tego dnia. Pięć pozycji zamkniętych w całości, dwie połówki i trzy pozycje zdjęte

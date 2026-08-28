@@ -327,3 +327,11 @@ w `CampaignSummary`, czyli w stanie logowania — trasa REST ją zapisuje, ale *
 więc chip „poligon" u innego klienta pojawi się dopiero po przeładowaniu albo po
 `campaign:activate`. Dla dialu MG to akceptowalne; gdyby kiedyś zaczęło przeszkadzać, drogą jest
 `campaign:switch` (to on przenosi wszystkie ekrany), a nie drugie źródło prawdy u klienta.
+
+**Próbka dźwiękowa z paczki bywa dwoma zdarzeniami, a nie jednym.** `shot-rifle.wav` grał
+**dwa strzały** od etapu 27i do 28.08 — oryginał `sks.wav` z paczki „Gunshot Sounds" ma drugą
+detonację w 0,315 s. Nazwa pliku tego nie mówi, a przy strzale pojedynczym słychać dublet
+dopiero na głośnikach. **Nową próbkę obejrzyj obwiednią, zanim ją wepniesz** — na tej maszynie
+nie ma ffmpeg, ale wystarczy moduł `wave` z biblioteki standardowej Pythona: co 5–10 ms
+maksimum wartości bezwzględnej, wypisane jako jedna linijka cyfr 0–9. Drugi szczyt po zaniku
+pierwszego widać w tym gołym okiem, tak samo jak sekundę ciszy doklejoną na końcu.

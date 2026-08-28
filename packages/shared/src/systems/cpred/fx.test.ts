@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cpredWeaponFx } from './fx.js';
+import { cpredReloadSound, cpredWeaponFx } from './fx.js';
 import type { ResolvedWeapon } from './compendium.js';
 
 function weapon(patch: Partial<ResolvedWeapon>): ResolvedWeapon {
@@ -54,5 +54,32 @@ describe('cpredWeaponFx', () => {
 
   it('answers for a weapon with no numbers at all', () => {
     expect(cpredWeaponFx(null)).toEqual({ style: 'bullet', sound: 'shot-pistol' });
+  });
+});
+
+describe('cpredReloadSound', () => {
+  it('gives a handgun two beats and a long arm four', () => {
+    expect(cpredReloadSound(weapon({ typeId: 'weapon-type.heavy-pistol' }))).toBe('reload-pistol');
+    expect(cpredReloadSound(weapon({ typeId: 'weapon-type.assault-rifle' }))).toBe('reload-rifle');
+  });
+
+  it('counts a shotgun and a sniper rifle as long arms', () => {
+    expect(cpredReloadSound(weapon({ typeId: 'weapon-type.shotgun' }))).toBe('reload-rifle');
+    expect(cpredReloadSound(weapon({ typeId: 'weapon-type.sniper-rifle' }))).toBe('reload-rifle');
+  });
+
+  it('keeps an SMG on the handgun sample and a heavy SMG off it', () => {
+    // The same split `ICON_FX` already makes for the bang: a Cyberpunk SMG is a
+    // pistol that fires faster, a heavy one is a rifle that fits in a coat.
+    expect(cpredReloadSound(weapon({ typeId: 'weapon-type.submachine-gun' }))).toBe(
+      'reload-pistol',
+    );
+    expect(cpredReloadSound(weapon({ typeId: 'weapon-type.heavy-submachine-gun' }))).toBe(
+      'reload-rifle',
+    );
+  });
+
+  it('falls back to the handgun for a weapon nobody could classify', () => {
+    expect(cpredReloadSound(null)).toBe('reload-pistol');
   });
 });

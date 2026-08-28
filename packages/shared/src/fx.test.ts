@@ -70,7 +70,7 @@ describe('trimMapFxForViewer — everything with one place', () => {
     { kind: 'blast', at: MUZZLE, sideM: 4, sound: 'explosion' },
     { kind: 'cloud', at: MUZZLE, sideM: 10, variant: 'gas', sound: 'gas' },
     { kind: 'float', at: MUZZLE, text: '−12', tone: 'damage' },
-    { kind: 'spark', at: MUZZLE, sound: 'reload' },
+    { kind: 'spark', at: MUZZLE, sound: 'reload-pistol' },
     {
       kind: 'cone',
       from: MUZZLE,

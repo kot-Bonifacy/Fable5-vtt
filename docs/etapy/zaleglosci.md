@@ -8,17 +8,6 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
 
 ## Pozycje
 
-- **Etap 27i — zostały same dźwięki.** ~~Wybuch~~, ~~liczba obrażeń nad figurą~~ (23.08),
-  ~~chmura gazu~~ i ~~wyładowanie strefy~~ (28.08) — **odklikane**, patrz
-  `archiwum/zamkniete-zaleglosci.md`. Zostają **dźwięki**: odtwarzane, ale nikt ich nie
-  **usłyszał**, a próbki dobrano po nazwach plików i opisach w paczkach CC0. Rządek przycisków
-  odsłuchu jest w „⚙ Ustawienia" właśnie po to i tej pozycji nie odhaczy nikt poza człowiekiem
-  przy głośnikach. **Od 28.08 do przesłuchania jest 16 próbek, nie 13** — audyt tabeli `ICON_FX`
-  wyłapał cztery rodzaje broni grające cudzym dźwiękiem i doszły **Cios pięścią**, **Miotacz
-  ognia**, **Wyrzutnia** oraz nowa **Cięciwa** (szczegóły i licencje w
-  `packages/client/public/sfx/ATTRIBUTION.md`). Wymiana próbki, która nie pasuje, to jeden plik
-  w `public/sfx/` i jeden wiersz w `SFX_FILES`; kompletu pilnuje `sfx.test.ts`.
-
 - **Etap 27i — pomiar fps nie objął sceny ze światłami i mgłą.** „Strzelnica" ma widoczność
   `open`, więc 160,1 → 161,2 fps mierzy **samą warstwę efektów**, a nie najgorszy przypadek
   z kryterium etapu. Warstwa rysuje na klatkę kilka ścieżek `Graphics` i najwyżej jeden sprite,
