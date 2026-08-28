@@ -8,75 +8,31 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
 
 ## Pozycje
 
-- **Etap 27l — skalowanie rysunku poza zakresem.** Rysunek dostaje **sam ruch**, bez rogów:
-  ścieżka wpisana w prostokąt to nie to samo, co prostokąt, a rozciąganie kresek jest osobną
-  operacją (przeliczenie każdego punktu, minimalna grubość, tekst, który nie skaluje się jak
-  kształt). Zapisane jako świadome ograniczenie, nie brak — pomysł jest w `POMYSLY.md`.
-
-- **Etap 27i — zostały dwie ścieżki i dźwięki.** ~~Wybuch~~ i ~~liczba obrażeń nad figurą~~ —
-  **odklikane 23.08** na scenie „Efekty 23x" (patrz `archiwum/zamkniete-zaleglosci.md`; wybuch
-  wymagał wcześniej naprawy danych broni). Zostają: (1) **chmura gazu** i **wyładowanie strefy** —
-  gaz potrzebuje wpisu amunicji gazowej w magazynku, wyładowanie strefy „Podłogi elektrycznej"
-  na scenie; (2) **dźwięki** — odtwarzane, ale nikt ich nie **słyszał**, a próbki dobrano po
-  nazwach plików w paczkach CC0; rządek przycisków odsłuchu jest w „⚙ Ustawienia" właśnie po to
-  i tej pozycji nie odhaczy nikt poza człowiekiem przy głośnikach.
+- **Etap 27i — zostały same dźwięki.** ~~Wybuch~~, ~~liczba obrażeń nad figurą~~ (23.08),
+  ~~chmura gazu~~ i ~~wyładowanie strefy~~ (28.08) — **odklikane**, patrz
+  `archiwum/zamkniete-zaleglosci.md`. Zostają **dźwięki**: odtwarzane, ale nikt ich nie
+  **usłyszał**, a próbki dobrano po nazwach plików i opisach w paczkach CC0. Rządek przycisków
+  odsłuchu jest w „⚙ Ustawienia" właśnie po to i tej pozycji nie odhaczy nikt poza człowiekiem
+  przy głośnikach. **Od 28.08 do przesłuchania jest 16 próbek, nie 13** — audyt tabeli `ICON_FX`
+  wyłapał cztery rodzaje broni grające cudzym dźwiękiem i doszły **Cios pięścią**, **Miotacz
+  ognia**, **Wyrzutnia** oraz nowa **Cięciwa** (szczegóły i licencje w
+  `packages/client/public/sfx/ATTRIBUTION.md`). Wymiana próbki, która nie pasuje, to jeden plik
+  w `public/sfx/` i jeden wiersz w `SFX_FILES`; kompletu pilnuje `sfx.test.ts`.
 
 - **Etap 27i — pomiar fps nie objął sceny ze światłami i mgłą.** „Strzelnica" ma widoczność
   `open`, więc 160,1 → 161,2 fps mierzy **samą warstwę efektów**, a nie najgorszy przypadek
   z kryterium etapu. Warstwa rysuje na klatkę kilka ścieżek `Graphics` i najwyżej jeden sprite,
   więc rezerwa jest duża — ale liczby dla sceny z dynamiczną widocznością nadal nie ma.
 
-- **Etap 27e — jedna ścieżka nieodklikana; reszta sprawdzona 20.08 i 22.08.**
-  ~~(1) Ekran dołączenia do stołu~~ i ~~(2) Okno runa w Sieci od środka~~ — **odklikane 22.08**
-  przy oględzinach z konta gracza (świeży link zaproszenia z Panelu MG, run na żywej kampanii).
-  Zostaje (3) **Screamsheet** — lista handoutów Poligonu jest pusta; różnica jest tu **żadna
-  z definicji**, bo `--paper` nie ma wariantu dziennego.
-
-- **Etap 26f — cztery ścieżki nieodklikane; reszta sprawdzona 16.08 (patrz notatka sesji w `archiwum/dziennik-sesji.md`).**
-  (Strona gracza → odklikana 22.08, patrz `archiwum/zamkniete-zaleglosci.md`.)
-  (1) **Ślizgawka i wymuszony Test** — w przeglądarce klikana była wyłącznie podłoga elektryczna; Test Atletyki
-  z wyzwalaczem „każdy ruch na obszarze" ma test serwera. (2) **Kara do RUCH-u (Maź)** — naklejka
-  **„Spowolniony"** (nowy status, ikona `slowed.svg` z game-icons) i jej liczba w budżecie ruchu
-  („Pancerz −2 · Spowolniony −7") widziane tylko w testach; **ikona nie była oglądana na żetonie**.
-  (3) **Strzał stanowiska** — ścieżka `fires` przeszła testem wyłącznie w wariancie „nie ma żetonu
-  na scenie"; prawdziwy strzał wieżyczki związanej ze strefą wymaga żetonu z bronią i celu w polu
-  ostrzału. (4) **Winda z gazem w Kolejce Inicjatywy** — od 22.08 wiersz wstawia się sam przy wejściu na
-  obszar (patrz akapit niżej), ale nikt tego nie widział na ekranie: pokryte testem serwera.
-
-- **Etap 26d — zostały dwie odmowy, obie nieosiągalne z UI.** ~~Drzwi z 18d~~ — **odklikane
-  27.08** (drzwi #59 „Brama serwerowni" na węźle kontrolnym, patrz archiwum).
-  (1) **`NET_NODE_USED` „Raz na Turę"** — **sprawdzone 27.08 i powód okazał się inny, niż
-  mówiła ta pozycja**: rundy istnieją (walkę rozkręcono), ale klient sam **wyszarza wszystkie
-  przyciski urządzeń**, gdy węzeł był już użyty w tej Turze (`spent = floor.nodeUsed`
-  w `NetRunWindow`), i zamiast odmowy pisze chip **„węzeł użyty w tej Turze"** obok
-  „Podłączone urządzenia". Tak samo jak przy (2) niżej: zdanie istnieje dla klienta, który by
-  o tym nie wiedział, i ma test na żywych gniazdach.
-  (2) **Odmowa `NET_DEVICE_OFF`** — z tego okna **nie da się** do niej dojść i to jest
-  zamierzone: wyłączone urządzenie pokazuje wyłącznie „Włącz". Zdanie istnieje dla klienta,
-  który by o tym nie wiedział, i ma test.
-  **Obie pozycje są kandydatami do skasowania** przy triażu „odmowy nieosiągalne z UI".
-  (Strona gracza → odklikana 22.08, patrz `archiwum/zamkniete-zaleglosci.md`.)
-
 - **Etap 27c — rozbicie gniazd per pudełko sylwetki nieodklikane.** Poprawka z 22.08 (rodzina
   z więcej niż jednym pudełkiem dostaje pod wierszem „Prawa cyberręka: 2 / 4 · Lewa: 0 / 4”)
   ma cztery testy w `cyberware.test.ts` i nikt jej nie widział — do obejrzenia na karcie
   z chromem w obu rękach.
 
-- **Etap 25c — jedna ścieżka nieodklikana.** ~~(1) Wgranie portretu w kreatorze~~ —
-  **zamknięte 23.08 inaczej, niż zakładała pozycja**: portrety wgrywa dziś wyłącznie MG do puli
-  kampanii, a kreator wybiera z niej (`PortraitPicker`). Patrz `archiwum/zamkniete-zaleglosci.md`. (2) **Druga sztuka tego samego przedmiotu** w koszyku (chip „×2"
-  i wiersz „nazwa ×2" w audycie) — **odklikane 22.08** z konta gracza: dwa kliknięcia w „Średni
-  pistolet" dały chip „×2", wiersz „Średni pistolet ×2 — 100 ed" i budżet 500 → 400 ed.
-  (Odmowa poziomu i krok wyposażenia u gracza — **odklikane 22.08**, patrz pozycja zbiorcza.)
-
-- **Etap 25a — cztery ścieżki nieodklikane.** (1) **Odmowa serwera przy przepełnionej puli** —
-  „Utwórz postać" jest wyszarzone, więc do `CREATION_INCOMPLETE` w przeglądarce się nie dojdzie;
-  pokryte testem serwera. (2) **Degradacja bez `creation.json`** — kreator ma wtedy powiedzieć
-  „Brak danych tworzenia postaci…" zamiast pustego okna (`CREATION_DATA_MISSING`); w repo jest
-  próbka publiczna, więc ten stan wymagałby skasowania obu plików. ~~(3) **Wybór właściciela przez MG**~~ —
-  **odklikane 14.08 przy 25b**: MG utworzył postać z listy „NPC (MG) / Tony / avatar9 / Marcin"
-  i w bazie stanęła z właścicielem **Marcin**. (4) **Rangi Postaci inne niż „początkująca"** — selektor
-  pokazuje pięć pozycji (50–80 pkt), klikana była tylko domyślna 62.
+- **Etap 25a — jedna ścieżka nieodklikana.** **Rangi Postaci inne niż „początkująca"** — selektor
+  pokazuje pięć pozycji (50–80 pkt), klikana była tylko domyślna 62. (Wybór właściciela przez MG
+  odklikany 14.08; dwie odmowy nieosiągalne z UI przeniesione 28.08 do
+  `decyzje-i-uproszczenia.md`.)
 
 - **Etap 24c — cztery ścieżki nieodklikane.** (1) **Zdjęcie prasowe** — screamsheet przyjmuje
   grafikę handoutu i rysuje ją jako odbitkę gazetową (`grayscale`), ale przy oględzinach nic
@@ -111,15 +67,6 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
   nie mieszczą się trzy elementy plus przycisk. (3) **Górny pasek zachodzi sam na siebie przy
   wąskim oknie** — przy szerokości ~900 px „VTT — Cyberpunk RED", „Włącz tryb turowy" i nazwa
   kampanii nachodzą na siebie.
-
-- **Odciski wpisów wiedzy z 08.08 nie zgadzały się z niczym — po reindeksie problem znikł.**
-  Oba wpisy („Klub Afterlife", „Kto sypie ekipe") pokazywały „⟳ nieaktualny" mimo zapisanego
-  `indexedDigest`. Sprawdzenie **kodem aplikacji**: długość ładunku zgadzała się co do znaku
-  (`4t` = 173, `5l` = 201), a hasz nie — i **nie zgadzał się w żadnym z dwóch historycznych
-  wariantów** `knowledgeDigest` (`join('')` z 19b ani `join(' ')` z 19c). Przyczyny nie ustalono;
-  po „Zaindeksuj wszystko" odciski są spójne i chipy nie wracają. Zostawione jako **ostrzeżenie**:
-  gdyby chip „nieaktualny" pojawił się znowu na wpisach, których nikt nie ruszał, to jest ten
-  sam trop — a nie regres poprawki reindeksu z 27.08.
 
 - **Maszynopis wypowiedzi NPC-a (09.08) nieodklikany w przeglądarce.** Efekt jest czysto
   wizualny, więc żaden test go nie pokrywa. Do sprawdzenia przy stole: (1) **tempo** — 15 zn/s,
@@ -197,7 +144,7 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
   się z miejsca, na czacie stanęło „Nieprzytomny token nie może się poruszać.", a wszystkie
   Akcje w panelu postaci były wyszarzone.
 
-- **Etap 16e — zostały cztery ścieżki z dziesięciu.** **Odklikane 22.08** (piąta sesja, scena
+- **Etap 16e — zostały dwie ścieżki z dziesięciu.** **Odklikane 22.08** (piąta sesja, scena
   testowa „Korytarz 16e" ze ścianą w kształcie L, skasowana po oględzinach): (2) **obejście rogu**
   — trasa poszła 30,6 m wzdłuż ściany, opłynęła jej koniec i wróciła 18,4 m do celu, zamiast
   przeciąć mur; (4) **kursor nad czernią** — u gracza trasa przestaje być liczona i zostaje
@@ -219,29 +166,10 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
   **Zostało:** (1) odsłanianie mgły w trakcie marszu; (6) przerwanie marszu przez NPC
   wychodzącego zza rogu.
 
-- **🟡 ZAAKCEPTOWANE (MG, 23.08) — figura przechodzi odrobinę za blisko ścian.** Po naprawie
-  trasy 2×2 mur jest omijany poprawnie, ale margines bywa ciasny: żeton potrafi otrzeć się
-  o ścianę. **Powód jest w projekcie, nie w błędzie:** planer pyta o **środki kratek** — zarówno
-  `isNodeOpen` (środek każdego pola footprintu), jak i `laneClear` (linia przez środek pola) —
-  a nie o **obrys** figury, który sięga jeszcze pół kratki dalej. Trasa może więc legalnie musnąć
-  ścianę na do pół kratki (1 m). Tak jest **celowo**: dokładnie te same punkty sprawdza serwer
-  (`firstBlockedStep`/`footprintLanes`), więc podgląd i werdykt nie mają jak się rozjechać.
-  **Zwężenie marginesu wymaga zmiany po obu stronach naraz** — planera w `shared` i walidacji
-  ruchu na serwerze — i albo testu obrysu zamiast środków, albo wciągnięcia footprintu o kilka
-  procent. MG uznał obecne zachowanie za akceptowalne; ruszać tylko, gdy zacznie przeszkadzać
-  przy stole.
-
 - **Kliknięcie w token było zepsute dla graczy od 18a — naprawione w 16e, ale zaległości oględzin z tego okresu warto powtórzyć.** Warstwy przykrywające przechwytywały hit-test (szczegóły w `pulapki-dev.md`), więc gracz na scenie z dynamiczną widocznością **nie mógł kliknąć ani przeciągnąć żadnego tokenu**. To prawdopodobnie realna przyczyna części pozycji zbiorczej „strona gracza" (zamknięta 22.08, `archiwum/zamkniete-zaleglosci.md`) — przy jej odhaczaniu sprawdź najpierw, czy rzecz w ogóle dawała się kliknąć.
 
 - **Etap 09 — zakładka „AI" u MG niezweryfikowana wizualnie** (sesja toczyła się na koncie gracza). Późniejsze etapy oglądały u MG inne zakładki, więc to prawdopodobnie martwa zaległość — sprawdź przy okazji.
 - **Ślad ścieżki przy przeciąganiu nieobejrzany**: `left_click_drag` z CDP jest natychmiastowy, więc łamana z licznikiem metrów rysuje się i znika między klatkami. Do sprawdzenia ręcznie — myszą.
-- **`data/private/rulebook/manual/tabela-ran-krytycznych.md` jest poza repo — ale od 27.08 nie
-  jest już nikomu potrzebny.** Kompendium ma dziś **obie** tabele 2k6 (11 ran korpusu + 11 głowy,
-  s. 187–188) prosto z podręcznika przez `parse-manual.py`; ręczna tabela obsługuje wyłącznie
-  wariant „mam sam Easy Mode". Zostawione jako **ostrzeżenie**, nie zadanie: patrz
-  `archiwum/zamkniete-zaleglosci.md` (bezpiecznik przed nadpisaniem i wzór formatu w
-  `data/public/cpred/tabela-ran-krytycznych.wzor.md`).
-
 - **`ai-gateway/src/vtt_gateway/tts/` został po wycofanym etapie 12 — pytanie otwarte (MG, 27.08).**
   W repozytorium katalog jest **pusty** (`git ls-files` nic nie zwraca), na dysku leżą w nim same
   `__pycache__` z 08.08, czyli sprzed usunięcia kodu TTS. Nic tego nie importuje i nic się przez to

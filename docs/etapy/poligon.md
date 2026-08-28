@@ -181,3 +181,33 @@ PW 35/35, bez ran krytycznych.
 
 **Uwaga na przyszłość:** biblioteka grafik żetonów ma dziś **5 pozycji** (doszedł `avatar25`),
 a nie 4, jak mówi notatka z 27.08 w `POSTEP.md` — nie ruszała tego ta sesja.
+
+## Stan po oględzinach 28.08 (pakiet A) — Strzelnica ma teraz komplet stref
+
+**Pięć stref bronionych zostaje na scenie świadomie**, tą samą decyzją, którą 27.08 zostawiło
+komplet pod Sieć: dopiero z nimi 26f i efekty z 27i da się przeklikać bez budowania czegokolwiek
+od nowa. **Wszystkie są uzbrojone i ukryte** (`hidden = 1`, więc gracz ich nie widzi, dopóki nie
+zda Percepcji PT 17 z 4 m) — **żeton, który na nie wejdzie, naprawdę oberwie**.
+
+| id  | strefa                      | world (x, y, szer., wys.) | co robi                                                                        |
+| --- | --------------------------- | ------------------------- | ------------------------------------------------------------------------------ |
+| 7   | ⚠ Automatyczna wieżyczka    | 1549, 1251, 296 × 300     | strzela żetonem **„Automatyczna wieżyczka"** (pole „Stanowisko"), WB 14        |
+| 4   | ⚠ Podłoga elektryczna       | 2346, 1652, 296 × 299     | 6k6 przez pancerz przy wejściu i na koniec każdej Tury na obszarze             |
+| 8   | ⚠ Ślizgawka                 | 1949, 2359, 296 × 295     | każdy **ruch** na obszarze wymusza Atletykę PT 15, porażka = Powalony          |
+| 5   | ⚠ Maź                       | 2346, 2452, 296 × 296     | RUCH −2k6 i naklejka „Spowolniony", dopóki figura nie zejdzie z obszaru        |
+| 6   | ⚠ Winda z gazem usypiającym | 2346, 2849, 296 × 296     | wchodzi **pierwszym miejscem do Kolejki Inicjatywy**; odpala ją MG w jej Turze |
+
+Wieżyczka jest tu **dwa razy** i to jest zaleta, nie pomyłka: ten sam żeton jest urządzeniem
+„Grzechot" na „Węźle ochrony" w architekturze „siec klub", więc netrunner może go wyłączyć
+z Sieci, a strefa przestaje strzelać (`zoneDisarmedByNetrunner`). To jedyne miejsce na Poligonie,
+gdzie Sieć i mapa spotykają się w jednym obiekcie.
+
+**Przywrócone po sesji:** Tony (900 × 1500, bez statusów, PW 35/35, dwie bronie — Granatnik
+z gazem był dodany na czas oględzin i został skasowany), Rudy Kwiatkowski (2000 × 1500),
+magazynek wieżyczki 25/25, tryb turowy **wyłączony** (kolejka razem z wierszem pułapki skasowana).
+Reszta bez zmian: 6 żetonów, 3 segmenty ściany, 7 punktów dostępu, 0 świateł, 0 osłon,
+0 notatek, 0 rysunków.
+
+**Rozjazdy z opisem wyżej, zastane na starcie sesji:** (1) **„Rudy Kwiatkowski" ma żeton**
+(2000 × 1500) — akapit z 27.08 mówi „bez żetonu"; postawił go kreator, bo `creation.ts` jako jedyny
+wypełnia `characterId` przy `token:create`. (2) Żetonów jest **sześć**, nie pięć.

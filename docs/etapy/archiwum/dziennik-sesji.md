@@ -7,6 +7,66 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 27.08 (druga) — pakiet Sieci A+B: cały dług oględzin 26a–26e w jednym runie
+
+**Zlecenie MG:** znów pogrupowane zaległości (bez rzeczy czekających na lokalny LLM i bez
+etapów nierozpoczętych), tym razem z wyborem pakietu zostawionym mnie. Powstało dziewięć
+pakietów; wybrany **A + B = Sieć** (12 ścieżek), bo MG dał na to trzy zgody naraz: rozkręcić
+walkę na Strzelnicy, grzebać w architekturze do woli i nie zamykać jeszcze pozycji triażowych.
+
+**Sesja bez ani jednej linijki kodu** — 12 ścieżek odklikanych, 4 pozycje zamknięte w całości
+(26a, 26b, 26c, 26e), piąta skurczona. Pełne opisy w `archiwum/zamkniete-zaleglosci.md`; tu
+tylko to, co zmienia sposób pracy.
+
+**Trzy zdania w zaległościach były nieaktualne albo wprost nieprawdziwe.**
+(1) „Poligon nie ma ścian na Strzelnicy" — **ma** ścianę L od 23.08, więc `NET_WALL_BLOCKS`
+wystarczyło postawić gniazdo po drugiej stronie muru. (2) `NET_NODE_USED` „nie da się, bo nie
+ma rund" — rundy zrobiono i **odmowa i tak nie pada**: klient wyszarza wszystkie przyciski
+urządzeń i pisze chip „węzeł użyty w tej Turze". To ta sama rodzina co `NET_DEVICE_OFF`, więc
+26d zostaje na liście **wyłącznie** jako dwie odmowy nieosiągalne z UI. (3) 27c „wąskie okno"
+i 27f „okno większe od przeglądarki" — obie pozycje twierdzą, że trzeba zmieniać rozdzielczość
+ekranu; **nieprawda**: `window-placement.ts` ma `MIN_WIDTH = 280` i żadnej górnej granicy,
+więc oba progi osiąga się **przeciągnięciem rogu okna**. Poprawki wpisane do `zaleglosci.md`.
+
+**Żetonu „Kolec" nie było w bazie** — mimo że `poligon.md` obiecywał go od 22.08, a karta
+„Test 27x" stała nietknięta. Przy odtwarzaniu wyszło, że **z UI nie da się dorobić żetonu
+istniejącej postaci**: `token:create` przyjmuje `characterId`, ale wypełnia go wyłącznie kreator
+postaci, a panel „Tokeny" stawia same puste żetony. Żeton odtworzono zdarzeniem z konsoli,
+pomysł na „Postaw na scenie" → `POMYSLY.md`.
+
+**Co odklikano** (skrót; RUNDA 1–4 na Strzelnicy, MG na `[::1]`, gracz avatar9 na `localhost`):
+`NET_WALL_BLOCKS`, `NET_NO_INTERFACE`, `NET_NO_DECK`, pasek „Uwagi" z trzema wierszami naraz,
+budżet Demonów („jeden Demon na 6 pięter"), wstawka Demona do kolejki z inicjatywą **1**,
+`NET_DEMON_ALREADY_ACTED`, **Paf** (1k6), **LOD przeciwprogramowy** (Zabójca zniszczył zrezowany
+Pancerz zamiast bić w mózg), **zderezowanie** Zabójcy do 0/20 z wypadnięciem z Kolejki
+Inicjatywy, **klej** Krakena z przyciskiem **„Zdejmij" widocznym tylko u MG** oraz **drzwi 18d
+z okna Sieci** (`Wall#59.open` przeskoczyło w bazie na `true`).
+
+**Uwaga, która kosztowała najwięcej czasu:** **Superklej nie pojawia się w oknie runa ani przy
+Czarnym LOD-zie, ani przy Demonie** — jest przeciwbiałkowy, a Demon liczy się jak Program.
+Hak `glue` obejrzano więc drugą dozwoloną drogą (Kraken), dokładnie tak, jak przewidywała
+pozycja zaległości.
+
+**Poligon przywrócony — i świadomie rozbudowany:** architektura „siec klub" wróciła do czterech
+pięter (Zabójca, Kraken, drugi Demon i dwa piętra-atrapy zdjęte), karta „Test 27x" sprawdzona
+bajt po bajcie ze zrzutem sprzed sesji (jedyna różnica: `skillSpecialties: {}` — normalizacja
+zapisu), walka zakończona, drzwi zamknięte, żetony na swoich miejscach. **Zostawione, bo dopiero
+z tym Sieć da się przeklikać bez budowania czegokolwiek:** żeton „Kolec", gniazdo „Gniazdo za
+ścianą" za murem i drzwi „Brama serwerowni" na węźle kontrolnym. Opis w `poligon.md`.
+
+**Do decyzji MG w następnej sesji — dziesięć pozycji, które nie są długiem:** skalowanie
+rysunku (27l), margines ścian (zaakceptowany 23.08), `NET_DEVICE_OFF` **i teraz też
+`NET_NODE_USED`** (26d), `CREATION_INCOMPLETE` i degradacja bez `creation.json` (25a),
+screamsheet w motywie dziennym (27e — `--paper` **z założenia** nie ma wariantu dziennego,
+komentarz w `theme.css`), zakładka „AI" u MG (etap 09), pomiar fps ze światłami (materiał na
+27g) i notatka historyczna o zepsutym klikaniu w token od 18a.
+
+**Zamknięte zaległości:** 4 pozycje przeniesione do archiwum + jedna skurczona i dwie
+poprawione; lista otwartych zeszła z 37 do **33**.
+
+**Testy:** 1399 w `shared`, 789 na serwerze, 50 u klienta — zielone. Kodu nie zmieniano,
+drzewo robocze poza `docs/` czyste.
+
 ### Sesja 27.08 — pakiet A+B+X1: konto testowe gracza, kosz biblioteki żetonów, tabela ran
 
 **Zlecenie MG:** znów wypisać pogrupowane zaległości (bez rzeczy czekających na lokalny LLM

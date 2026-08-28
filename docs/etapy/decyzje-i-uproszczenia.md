@@ -121,3 +121,41 @@ przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — ni
   z każdej strony) należą do rysowania łańcucha, więc na bardzo krótkim kawałku nie zostaje
   środek. Zostaje kosz warstwy albo `Ctrl+Z` tuż po postawieniu. Ściany rysuje się po kratce
   (100 px), więc w praktyce nie występuje.
+
+## Ścieżki, których nie da się odklikać (triaż 28.08)
+
+Sześć pozycji zdjętych z `zaleglosci.md` decyzją z 28.08. Wszystkie leżały tam jako „dług
+oględzin", a żadna nie była zadaniem: to albo **odmowy nieosiągalne z UI** (klient wyszarza
+przycisk, zanim serwer zdąży odmówić), albo **różnica, której z definicji nie widać**. Każda ma
+test; zdanie po polsku istnieje dla klienta, który by o tej blokadzie nie wiedział. Zapisane tu,
+żeby nie wróciły za miesiąc jako nowe odkrycie.
+
+- **Etap 26d — `NET_NODE_USED` i `NET_DEVICE_OFF`.** Okno runa **samo** wyszarza przyciski
+  urządzeń, gdy węzeł był już użyty w tej Turze (`spent = floor.nodeUsed` w `NetRunWindow`, chip
+  „węzeł użyty w tej Turze"), a wyłączone urządzenie pokazuje wyłącznie „Włącz". Do obu odmów nie
+  da się dojść myszą i **tak ma być** — rozpoznanie z 27.08 jest w `pulapki-dev.md` („Odmowa
+  serwera, która nie chce paść").
+
+- **Etap 25a — `CREATION_INCOMPLETE`.** „Utwórz postać" jest wyszarzone do końca, dopóki szkic nie
+  jest kompletny; potwierdzone przy pełnym przebiegu kreatora 27.08 (powstał „Rudy Kwiatkowski").
+
+- **Etap 25a — degradacja bez `creation.json`.** Kreator ma wtedy powiedzieć „Brak danych
+  tworzenia postaci…" (`CREATION_DATA_MISSING`), ale w repo leży próbka publiczna obok prywatnych
+  danych, więc stan wymagałby **skasowania obu plików naraz**. Sabotaż danych to nie oględziny.
+
+- **Etap 27e — screamsheet w motywie dziennym.** `--paper` nie ma wariantu dziennego, bo papier
+  jest rekwizytem świata gry, nie chromem interfejsu (decyzja 27e). Różnica między dniem a nocą
+  jest tu **żadna z definicji** — nie ma czego oglądać.
+
+- **Etap 27l — skalowanie rysunku poza zakresem.** Rysunek dostaje sam ruch, bez rogów: ścieżka
+  wpisana w prostokąt to nie prostokąt, a rozciąganie kresek jest osobną operacją (przeliczenie
+  każdego punktu, minimalna grubość, tekst, który nie skaluje się jak kształt). Pomysł stoi
+  w `POMYSLY.md`.
+
+- **Etap 16e — figura przechodzi odrobinę za blisko ścian.** 🟡 **Zaakceptowane przez MG 23.08.**
+  Planer pyta o **środki kratek** (`isNodeOpen`, `laneClear`), nie o obrys figury, więc trasa może
+  legalnie musnąć ścianę na do pół kratki (1 m). Tak jest celowo: dokładnie te same punkty sprawdza
+  serwer (`firstBlockedStep`/`footprintLanes`), więc podgląd i werdykt nie mają jak się rozjechać.
+  Zwężenie marginesu wymaga zmiany **po obu stronach naraz** — planera w `shared` i walidacji ruchu
+  na serwerze — plus testu obrysu zamiast środków. Ruszać dopiero, gdy zacznie przeszkadzać
+  przy stole.

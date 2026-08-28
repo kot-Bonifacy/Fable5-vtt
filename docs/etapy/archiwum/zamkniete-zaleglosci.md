@@ -9,6 +9,54 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Przeniesione 2026-08-28 (pakiet A — strefy i efekty walki)
+
+Sześć ścieżek w jednej sesji, wszystkie na **„Strzelnicy"** i wszystkie na pięciu strefach
+postawionych narzędziem ⚠ (opis i współrzędne w `poligon.md` — strefy **zostają** na scenie).
+Guinea pig: **Tony**, właściciel wieżyczki: **Rudy Kwiatkowski**; stan obu przywrócony po sesji.
+
+- **Etap 27i — wyładowanie strefy.** Żeton wchodzi na ⚠ „Podłogę elektryczną" i przez cały
+  prostokąt strefy przelatuje **niebieska błyskawica**, a nad żetonem wypływa czerwona liczba
+  obrażeń. Sprawdzone dwa razy: raz z wejścia (`Przebicie: 14 obr. · rzut 14 · bez pancerza ·
+PW 35 → 21 · system: Podłoga elektryczna · wejście na obszar`, „Bez ran → Lekko ranny"),
+  raz przyciskiem **„Odpal system"** z karty strefy (`Tura systemu`, 6k6 = 19). Obie karty mają
+  „Cofnij" i obie cofnięto. Efekt złapany zrzutem przy spowolnionym `rAF` — patrz `pulapki-dev.md`.
+
+- **Etap 27i — chmura gazu.** Tony dostał (na czas oględzin) Granatnik **Tsunami Arms Type-18**
+  i **Amunicję z gazem łzawiącym**; strzał w pole rysuje **zieloną chmurę** wielkości pola
+  wybuchu (10×10 m), a mechanika 16h jedzie za nią: `Tony — 3 m · Odporność na
+tortury/narkotyki 7+5 = 12 vs PT 13 · Uraz oka · na minutę`. **Ostrzeżenie o fałszywym
+  alarmie:** przy mocno spowolnionym `rAF` chmura rozlewa się na całe płótno — to artefakt
+  pomiaru, nie błąd rozmiaru (opis w `pulapki-dev.md`).
+
+- **Etap 26f — Ślizgawka i wymuszony Test.** Ruch na obszarze wymusza Test Atletyki:
+  `Ślizgawka — Ruch na bronionym obszarze — Tony — Atletyka 5+10 = 15 vs PT 15 — nie oparł się ·
+Tony: Powalony`, naklejka „Powalony" ląduje na żetonie. **Uwaga do rachunku:** remis
+  (15 vs PT 15) liczy się jako **porażkę** — to świadoma reguła z 16g (`resisted: total > dv`,
+  test „ties going to the round"), a nie pomyłka w tej sesji.
+
+- **Etap 26f — kara do RUCH-u (Maź) widziana na ekranie.** Wejście na ⚠ „Maź" daje
+  `Tony: RUCH −10 · Spowolniony`, na żetonie staje **druga naklejka** (ikona `slowed.svg` obok
+  „Powalonego"), a w panelu postaci wiersz **DYSTANS** pokazuje `0 m / 2 m` z podpowiedzią
+  **„Dystans: Spowolniony −10 (RUCH minimum 1)"** — czyli dokładnie ta liczba, która dotąd
+  istniała wyłącznie w testach. Zejście z obszaru zdejmuje status samo.
+
+- **Etap 26f — strzał stanowiska.** ⚠ „Automatyczna wieżyczka" związana z żetonem wieżyczki
+  (pole „Stanowisko" na karcie strefy) strzeliła sama, gdy Rudy wszedł na obszar:
+  `Karabin szturmowy → Rudy Kwiatkowski · 1d10+14 = 22 · Trafienie · 16 m (13–25 m) · PT 15 ·
+magazynek 23/25`, modyfikator opisany jako **„Broń długa +14"**, czyli podstawiona Wartość
+  bojowa z 26e. Magazynek przywrócony do 25/25.
+
+- **Etap 26f — winda z gazem w Kolejce Inicjatywy.** Wejście na ⚠ „Windę z gazem usypiającym"
+  wstawia do kolejki **wiersz bez figury**: `Winda z gazem usypiającym — Pułapka wchodzi do
+Kolejki Inicjatywy — pierwsze miejsce, inicjatywa 1 — odpal ją w jej Turze`. W górnym pasku
+  stoi jako pierwszy chip „W", a w bazie jako `Combatant` z `tokenId = NULL`, `zoneId = 6`
+  i `order = -1`. W **rundzie 2** kolejka faktycznie zatrzymała się na nim.
+
+- **Etap 25c — pozycja była już pusta.** Obie ścieżki („wgranie portretu", „druga sztuka
+  przedmiotu") zamknięto 23.08 i 22.08; wpis został w `zaleglosci.md` przez przeoczenie
+  i zdjęto go przy triażu 28.08.
+
 ## Przeniesione 2026-08-27 (pakiet D+A — dziennik, wiedza, degradacja i okna karty)
 
 Trzynaście ścieżek w jednej sesji: osiem z pakietu D (dziennik, baza wiedzy, degradacja przy

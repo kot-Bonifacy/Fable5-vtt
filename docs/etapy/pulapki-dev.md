@@ -251,3 +251,26 @@ dotyczy.
   odcisk **kodem aplikacji** (nie przepisanym do Pythona — łatwo o różnicę) i porównaj z bazą;
   „Zaindeksuj wszystko" i tak to naprawia.
 
+- **Spowolnione `rAF` rozdmuchuje chmurę gazu na cały ekran — to artefakt oględzin, nie błąd**
+  (28.08, przy odklikiwaniu 27i). Sprite chmury rośnie **na klatkę**, nie na milisekundę
+  (`sprite.scale.set(scale * 1.0015, …)` w `drawSprite`), więc przy normalnym tempie urośnie o 15%
+  w ciągu życia efektu, a przy współczynniku 0,03 — **sto dwadzieścia razy** i zieleń zalewa całe
+  płótno. Przy takim widoku nie zgłaszaj błędu w rozmiarze obszaru: sprawdź to samo przy 0,3
+  (chmura ma wtedy jakieś 10×10 m, tyle co pole wybuchu z karty). Uczciwe zastrzeżenie: rosnięcie
+  na klatkę **jest** zależnością od odświeżania ekranu — na 144 Hz chmura urośnie o 41% zamiast
+  o 15% — ale przy stole nikt tego nie nazwie.
+
+- **Atak obszarowy z mapy to trzy kliknięcia, nie jedno** (28.08). Kolejność, bez której klik
+  w podłogę jest **rozkazem marszu**: (1) uzbrój slot broni w panelu postaci (`W ręku: …` musi
+  wymieniać tę broń — po zmianie tury slot się rozbraja i wraca slot 1), (2) klik w pole mapy —
+  to **ładuje kubek**, nie strzela (`throwAtPoint` wymaga `weapon.tokenId === selectedTokenId`),
+  (3) klik w **kubek** w lewym dolnym rogu — dopiero on rzuca. Objaw pomylenia kroków: figura
+  spokojnie przechodzi pół sceny, a magazynek stoi.
+
+- **`data/private/rulebook/manual/tabela-ran-krytycznych.md` jest poza repo i od 27.08 nie jest
+  nikomu potrzebny.** Kompendium ma dziś **obie** tabele 2k6 (11 ran korpusu + 11 głowy, s. 187–188)
+  prosto z podręcznika przez `parse-manual.py`; ręczna tabela obsługuje wyłącznie wariant „mam sam
+  Easy Mode". Zostawione jako ostrzeżenie, nie zadanie: bezpiecznik przed nadpisaniem i wzór
+  formatu są w `data/public/cpred/tabela-ran-krytycznych.wzor.md` (opis w
+  `archiwum/zamkniete-zaleglosci.md`).
+
