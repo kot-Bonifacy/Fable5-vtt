@@ -47,6 +47,13 @@ interface JournalState {
   /** Ile porcji przeszło przez model — widać, kiedy log wymagał mapy-redukcji. */
   batches: number;
   error: string | null;
+  /**
+   * Kod odmowy, który stoi za `error` — po to, żeby dało się zdjąć **tylko** ten
+   * komunikat, który przestał być prawdą. „Brak połączenia z AI Gateway"
+   * przeżywał powrót gatewaya i wisiał do następnej akcji MG; „nie ma czego
+   * streścić" ma wisieć, dopóki nie ma.
+   */
+  errorCode: string | null;
 
   replaceAll: (
     entries: JournalEntryView[],
@@ -69,7 +76,9 @@ interface JournalState {
   patchDraft: (patch: Partial<JournalDraft>) => void;
   dropProposal: (botId: string, characterId: string) => void;
   clearDraft: () => void;
-  fail: (message: string) => void;
+  fail: (message: string, code?: string | null) => void;
+  /** Woła to powrót gatewaya (`ai:status`) — czyści wyłącznie `AI_UNAVAILABLE`. */
+  clearAiError: () => void;
 }
 
 const collator = new Intl.Collator('pl');
@@ -102,6 +111,7 @@ export const useJournalStore = create<JournalState>((set) => ({
   proposals: [],
   batches: 0,
   error: null,
+  errorCode: null,
 
   replaceAll: (entries, index, pending, handouts) => {
     const byId: Record<string, JournalEntryView> = {};
@@ -163,7 +173,13 @@ export const useJournalStore = create<JournalState>((set) => ({
   setFocus: (id) => set({ focus: id }),
 
   startRun: (requestId) =>
-    set({ running: { requestId, progress: null }, draft: null, proposals: [], error: null }),
+    set({
+      running: { requestId, progress: null },
+      draft: null,
+      proposals: [],
+      error: null,
+      errorCode: null,
+    }),
   setProgress: (progress) =>
     set((state) =>
       state.running?.requestId === progress.requestId
@@ -180,5 +196,10 @@ export const useJournalStore = create<JournalState>((set) => ({
       ),
     })),
   clearDraft: () => set({ draft: null, proposals: [], batches: 0, running: null }),
-  fail: (message) => set({ error: message, running: null }),
+  fail: (message, code = null) => set({ error: message, errorCode: code, running: null }),
+
+  clearAiError: () =>
+    set((state) =>
+      state.errorCode === 'AI_UNAVAILABLE' ? { error: null, errorCode: null } : state,
+    ),
 }));

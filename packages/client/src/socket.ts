@@ -517,7 +517,13 @@ export function connectSocket(userId: string): Socket {
   // AI status/streams are targeted, carry no seq and are never persisted —
   // the gateway is an external service, not game state.
   const ai = () => useAiStore.getState();
-  socket.on('ai:status', (broadcast: AiStatusBroadcast) => ai().setStatus(broadcast.status));
+  socket.on('ai:status', (broadcast: AiStatusBroadcast) => {
+    ai().setStatus(broadcast.status);
+    // Gateway wrócił — zdejmij zdanie, które właśnie przestało być prawdą.
+    // Dziennik trzyma swój błąd u siebie (nie w statusie z serwera), więc bez
+    // tego „Brak połączenia z AI Gateway" wisiał w panelu do następnej akcji MG.
+    if (broadcast.status.available) useJournalStore.getState().clearAiError();
+  });
   socket.on('ai:queue', (broadcast: AiQueueBroadcast) =>
     ai().setQueuePosition(broadcast.requestId, broadcast.position),
   );
@@ -604,7 +610,9 @@ export function connectSocket(userId: string): Socket {
     useJournalStore.getState().setDraft(broadcast.draft, broadcast.proposals, broadcast.batches),
   );
   socket.on('journal:error', (broadcast: JournalErrorBroadcast) =>
-    useJournalStore.getState().fail(journalErrorText(broadcast.code, broadcast.detail)),
+    useJournalStore
+      .getState()
+      .fail(journalErrorText(broadcast.code, broadcast.detail), broadcast.code),
   );
   // Handouty (etap 24a) — jedyna lista MG z wyjściem do gracza. Serwer wysyła
   // je celowanym emitem do kont z udostępnieniem, więc klient nic nie odsiewa.

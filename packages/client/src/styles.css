@@ -188,12 +188,32 @@ body {
 
 /* The whole row is scaled to the taller bar (01.08): at the distance a GM sits
    from a 4K screen, the old 0.85rem labels read as small print. */
+/*
+ * Pasek ma trzy grupy i przy ~900 px przestawały się w nim mieścić. Nadmiar nie
+ * ucinał się, tylko *nachodził*: tytuł i prawa grupa miały `flex: none`, więc
+ * przy ujemnej przestrzeni całą różnicę brał na siebie środek — a `.combat-bar`
+ * ma `flex-basis: 0`, czyli kurczy się do zera i wypuszcza swoje przyciski
+ * („Włącz tryb turowy") na boki, na sąsiadów. Stąd trzy poprawki naraz:
+ * kolejka nie schodzi poniżej swojej treści (`min-width: min-content` niżej),
+ * nazwa kampanii i tytuł oddają miejsce wielokropkiem, a poniżej 1000 px tytuł
+ * znika — jest dekoracją, a „Wyloguj" i kolejka inicjatywy nie są.
+ */
 .top-bar-title {
-  flex: none;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 1.1rem;
   font-weight: 600;
   letter-spacing: 0.04em;
   color: var(--accent);
+}
+
+@media (max-width: 1000px) {
+  .top-bar-title {
+    display: none;
+  }
 }
 
 .connection-status {
@@ -940,13 +960,25 @@ button:disabled {
 /* --- Top bar additions --- */
 
 .top-bar-right {
-  flex: none;
+  /* Grupa oddaje miejsce, ale wyłącznie nazwą kampanii — przyciski i stan
+     połączenia zostają w całości. */
+  flex: 0 1 auto;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 1rem;
 }
 
+.top-bar-right > * {
+  flex: none;
+}
+
 .top-bar-campaign {
+  flex: 0 1 auto;
+  min-width: 3rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 0.95rem;
   color: var(--text);
 }
@@ -2471,14 +2503,29 @@ input[type='color'] {
   background: var(--bg-panel);
 }
 
+/*
+ * Wiersz stanu indeksu: plakietka, jedno lub dwa zdania i przycisk. W wąskiej
+ * kolumnie (panel „Wiedza" przy zwężonym oknie) trzy elementy plus przycisk się
+ * nie mieszczą, a bez zawijania każdy z nich kurczył się do jednego słowa
+ * w linijce — „3 wpisy czekają na indeks" renderowało się jako pięć linijek
+ * jedna pod drugą. Zawijanie przenosi cały element do nowego wiersza, zamiast
+ * ściskać go do zera; `flex-basis` mówi, poniżej jakiej szerokości zdanie
+ * przestaje mieć sens w jednej linii z resztą.
+ */
 .ai-status-main {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem 0.5rem;
+}
+
+.ai-status-main > .badge,
+.ai-status-main > .small-button {
+  flex: 0 0 auto;
 }
 
 .ai-status-text {
-  flex: 1;
+  flex: 1 1 11rem;
   font-size: 0.85rem;
   color: var(--text-dim);
 }
@@ -3430,7 +3477,10 @@ body.is-resizing {
      never leave „RUNDA 1" or a name highlighted. */
   user-select: none;
   flex: 1;
-  min-width: 0;
+  /* Nie „0": pas oddaje miejsce tylko tym, co samo umie się zwinąć — kolejka
+     ma własne przewijanie, więc do `min-content` się nie liczy — a przyciski
+     trzyma w swoich granicach, zamiast malować je po sąsiadach. */
+  min-width: min-content;
   display: flex;
   align-items: center;
   justify-content: center;

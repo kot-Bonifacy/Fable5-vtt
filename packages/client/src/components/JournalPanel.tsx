@@ -121,6 +121,7 @@ function SummarySection() {
           ack.error === 'AI_UNAVAILABLE'
             ? 'Brak połączenia z AI Gateway — streszczanie wymaga modelu.'
             : `Nie udało się zacząć streszczania: ${ack.error}`,
+          ack.error,
         );
       return;
     }
