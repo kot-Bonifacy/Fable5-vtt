@@ -3,6 +3,7 @@ import type {
   CpredChokeOutcome,
   CpredCharacterData,
   CpredCombatProfile,
+  CpredAimPoint,
   CpredCriticalInjuryRow,
   CpredHitLocation,
   CpredAmmoProfile,
@@ -23,6 +24,9 @@ import type {
 } from '@vtt/shared';
 import {
   CPRED_ACTIONS,
+  CPRED_AIM_POINT_LABELS,
+  CPRED_BROKEN_LEG_ROLL,
+  CPRED_BROKEN_LEG_TABLE,
   CPRED_EMP_STATUS_ID,
   CPRED_FIRE_INTENSITIES,
   CPRED_GRAPPLED_STATUS_ID,
@@ -78,6 +82,7 @@ import {
   describeCpredTimer,
   setCpredHardTerrain,
   withCpredMoveAllowance,
+  criticalInjuryAt,
   drawCriticalInjury,
   effectiveArmor,
   forceCpredTurn,
@@ -1268,6 +1273,15 @@ export interface SheetDamageRequest {
   /** Two or more sixes came up — a Critical Injury was scored. */
   criticalInjury: boolean;
   location: string;
+  /**
+   * The Aimed Shot this hit came from (s. 170), when it came from one.
+   *
+   * Read off the stored attack, never off the client — like `ammo`, and for the
+   * same reason: it decides whether a leg breaks. The head needs nothing here
+   * (its ×2 is `location: 'head'`); a leg and a held item both arrive as
+   * `location: 'body'` and are told apart only by this field.
+   */
+  aimedAt?: CpredAimPoint;
   /** GM override of the SP protecting the target (statists, cover…). */
   armorSp?: number;
   ignoreArmor?: boolean;
@@ -1475,6 +1489,46 @@ export function applyDamageToSheet(
     }
   }
 
+  // The Aimed Shot's own consequence (s. 170). Both surviving aim points share
+  // one condition — „Jeśli przez pancerz na ciele celu przejdzie choć jeden
+  // punkt obrażeń" — so a vest that swallowed the whole burst costs the target
+  // nothing beyond the dent. The head is not here: its ×2 already happened.
+  if (request.aimedAt && request.aimedAt !== 'head' && outcome.damageThrough > 0) {
+    log.aimedAt = CPRED_AIM_POINT_LABELS[request.aimedAt];
+    if (request.aimedAt === 'heldItem') {
+      log.aimNote =
+        'Cel upuszcza trzymany przedmiot (wybór atakującego) — pada na ziemię przed nim.';
+    } else {
+      const carried = new Set([
+        ...data.criticalInjuries.map((injury) => injury.id),
+        ...(patch.criticalInjuries ?? []).map((injury) => injury.id),
+      ]);
+      const entry = criticalInjuryAt(
+        injuries.filter(isCriticalInjuryEntry),
+        CPRED_BROKEN_LEG_TABLE,
+        CPRED_BROKEN_LEG_ROLL,
+      );
+      if (!entry) {
+        // The GM retyped the table and the eight is gone. Say so rather than
+        // silently dropping the half of the rule that hurts.
+        log.aimNote = 'Brak „Złamanej nogi" w tabeli ran korpusu — uzupełnij kompendium.';
+      } else if (carried.has(entry.id)) {
+        // „(jeśli ma niezłamaną nogę)" — the rules stop at one.
+        log.aimNote = `Cel ma już ranę „${entry.name}" — trafienie w nogę nic nie dokłada.`;
+      } else {
+        // Nobody rolled for this one — the aim named it — so the sheet must not
+        // print a 2k6 that never happened.
+        const row: CpredCriticalInjuryRow = {
+          ...toCriticalInjuryRow(entry, CPRED_BROKEN_LEG_ROLL),
+        };
+        delete row.rolled;
+        log.injuryAimed = { id: row.id, name: row.name, effect: row.effect };
+        carry = mergeSheetCarry(carry, cpredInjuryCarryOnDraw(row) ?? {});
+        patch.criticalInjuries = [...(patch.criticalInjuries ?? data.criticalInjuries), row];
+      }
+    }
+  }
+
   // What the round itself did, as named entries rather than silent arithmetic.
   if (ammo) {
     log.ammo = ammoLogEntry(ammo, {
@@ -1560,6 +1614,18 @@ export function applyDamageToTokenHp(
     ...(outcome.criticalInjury
       ? { injuryNote: 'Cel bez karty postaci — ranę krytyczną rozegraj ręcznie.' }
       : {}),
+    // The same for an Aimed Shot's own consequence: the sentence is all a
+    // sheetless token can be given, and it is the whole of the held-item rule
+    // anyway (s. 170).
+    ...(request.aimedAt && request.aimedAt !== 'head' && outcome.damageThrough > 0
+      ? {
+          aimedAt: CPRED_AIM_POINT_LABELS[request.aimedAt],
+          aimNote:
+            request.aimedAt === 'heldItem'
+              ? 'Cel upuszcza trzymany przedmiot (wybór atakującego) — pada na ziemię przed nim.'
+              : 'Cel bez karty postaci — „Złamaną nogę" rozegraj ręcznie.',
+        }
+      : {}),
     ...(ammo
       ? {
           ammo: ammoLogEntry(ammo, {
@@ -1596,15 +1662,16 @@ export function undoDamageOnSheet(
       row.id === entry.armor!.rowId ? { ...row, spCurrent: entry.armor!.before } : row,
     );
   }
-  // Remove one instance of each drawn injury, not every injury of that id. Two
-  // of them when a dumdum round chewed its way in (stage 16g).
-  const drawn = [entry.injury, entry.injuryExtra].filter(
-    (injury): injury is NonNullable<DamageLogEntry['injury']> => injury !== undefined,
+  // Remove one instance of each wound this hit added, not every injury of that
+  // id. Two of them when a dumdum round chewed its way in (stage 16g), and a
+  // third when an aimed leg shot broke the leg on top of the draw (s. 170).
+  const drawn = [entry.injury?.id, entry.injuryExtra?.id, entry.injuryAimed?.id].filter(
+    (id): id is string => id !== undefined,
   );
   if (drawn.length > 0) {
     let remaining = [...data.criticalInjuries];
-    for (const injury of drawn) {
-      const index = remaining.findIndex((row) => row.id === injury.id);
+    for (const injuryId of drawn) {
+      const index = remaining.findIndex((row) => row.id === injuryId);
       if (index >= 0) remaining = remaining.filter((_, position) => position !== index);
     }
     patch.criticalInjuries = remaining;

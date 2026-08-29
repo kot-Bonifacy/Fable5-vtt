@@ -13,8 +13,8 @@ import {
 /**
  * Loads the CP RED data files (skills, roles, character creation).
  *
- * Two directories, same rule as the compendium: `data/public/cpred/` ships the
- * 41 Easy Mode skills so a fresh clone has a usable sheet, and
+ * Two directories, same rule as the compendium: `data/public/cpred/` ships a
+ * sample of the skill list so a fresh clone has a usable sheet, and
  * `data/private/cpred/` holds the full 66-skill list imported from the
  * rulebook (stage 13), which is gitignored. A private file *replaces* its
  * public counterpart rather than merging with it — the skill list has to be

@@ -7,6 +7,64 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 28.08 (trzecia) — pakiet A+B+D+E: ruch i mgła, screamsheet, brakujące drzwi w UI
+
+**Zlecenie MG:** znów pogrupowane zaległości bez lokalnego LLM i bez etapów nierozpoczętych.
+MG wybrał **wszystkie pięć pakietów**, ale **C (odsłuch 16 próbek) wypadł** — „teraz nie mam
+czasu na odsłuchy", więc zgodnie z zapowiedzią wyleciał z sesji zamiast być przenoszony
+w nieskończoność. Cztery rozstrzygnięcia MG: scenę z dynamiczną widocznością **zbudować
+i zostawić** jako czwartą stałą, **pomiar fps zostawić do 27g**, a dwie pozycje (zakładka „AI"
+z etapu 09 i ślad ścieżki przy przeciąganiu) **do kosza, nie do roboty**.
+
+**Dwa błędy w dokumentacji, oba znalezione przed pisaniem kodu.** (1) Pozycja o katalogu
+`ai-gateway/…/tts/` wisiała jako otwarta, choć poprzednia sesja go skasowała — `grep -c` liczył
+18 zaległości, otwartych było 17. (2) Pomysł **„Ręczne nadanie Onieśmielenia z adresem
+przeciwnika"** był **od 22.08 zrobiony**: sesja naprawcza dodała zdarzenie `token:feared`
+i listę „Boi się:" w menu żetonu (`FearedPicker`), tylko nikt nie odhaczył wiersza. Z pakietu E
+zostało więc pięć pozycji, nie sześć — i to jest argument za tym, żeby przed kodowaniem
+sprawdzać w kodzie, a nie ufać liście.
+
+**Pakiet E — pięć pozycji, wszystkie odklikane w przeglądarce.**
+**„Postaw na scenie" (⊕ przy wierszu postaci)**: `TokenPlacement` niesie teraz `characterId`
+i `ownerId`, więc żeton dorobiony ręcznie jest **związany z kartą** — menu postawionej figury
+pokazało „📄 Otwórz kartę postaci" i PW 40/40 z karty, a nie pusty krążek o tej samej nazwie.
+**Jedno kliknięcie, jeden tryb**: `tokenPlacement` przeniesiony z `tokenStore` do
+`mapToolStore`, do tego samego pola co wybór narzędzia. Uzbrojenie gniazd wytrąciło żeton z ręki
+(podpowiedź, kursor i obwódka przycisku znikły), a wzięcie żetonu odłożyło narzędzie — obie
+strony sprawdzone. **Konfrontacja u gracza**: `FacedownFromSheet` przy Reputacji na karcie;
+avatar9 wybrał cel z listy widocznych figur, kubek się załadował, a na czacie stanęła pełna
+karta („Konfrontacja → Tony · 3 + 4 · Charakter (CHA) +5 · Reputacja 1 +1 · Przegrana
+Konfrontacja −2 · **Przegrana**") z dwoma przyciskami przegranego. **Flaga poligonu**:
+`Campaign.sandbox` + migracja, chip „POLIGON" w pasku (u MG i u gracza) i `confirmDestructive` —
+obie gałęzie odczytane podmienionym `window.confirm`, bez kasowania czegokolwiek.
+
+**Mój błąd, który znalazła dopiero przeglądarka.** Zdanie „ta figura ma kartę, ale nie twoją"
+powiesiłem najpierw pod `slots.length === 0` — i **nie pokazywało się nigdy**, bo Akcje
+z katalogu (Ustabilizowanie, Bieg) nie potrzebują karty, więc pasek gracza nigdy nie jest pusty.
+Poprawione na warunek niezależny od liczby slotów; żaden test by tego nie złapał, bo test
+sprawdzał pole w kontekście, a nie to, kiedy się rysuje.
+
+**Pakiet A — 16e zamknięte w całości.** Scena **„Korytarz 16e"** (mur w kształcie L, widoczność
+Dynamiczna, pamięć eksploracji) stoi na stałe. (1) **Mgła w marszu**: cień rzucany przez ścianę
+miał w trzech kolejnych chwilach jednego marszu trzy różne kształty — przelicza się na bieżąco,
+nie jednym skokiem na końcu. (6) **NPC zza rogu**: MG przeciągnął figurę zza muru w pole
+widzenia gracza w trakcie marszu i na czacie stanęło **„Ktoś pojawił się w polu widzenia —
+marsz przerwany."**, a figura stanęła w połowie trasy. Przy okazji **odklikana regresja
+hit-testu z 18a** — gracz na scenie dynamicznej normalnie klika i prowadzi swój żeton.
+
+**Pakiet B — dwie ścieżki 24c bez modelu.** Screamsheet wypełniony ręcznie (generator zgłosił
+degradację: „Generator jest niedostępny — AI Gateway nie odpowiada"), wgrana grafika 256×256 —
+`.screamsheet-photo` ma `filter: grayscale(0.75) contrast(1.15)`, czyli odbitka gazetowa działa.
+Po zapisaniu i otwarciu przez ✎ formularz wrócił **jako screamsheet**, z „Brukowcem", „Datą
+w stopce", leadem i grafiką — rodzaj przyszedł z handoutu, nie z przycisku.
+
+**Zaległości: 17 → 13.** Zamknięte w całości: 16e, regresja 18a, dwie ścieżki 24c, martwy `tts/`;
+dwie zdjęte decyzją MG. Zostało **13 pozycji, z czego 9 czeka na żywy model** — po wymianie
+wersji zostaną praktycznie same dźwięki i pomiar fps (ten do 27g).
+
+**Testy:** 1400 w `shared`, **793** na serwerze (+2 na trasę `sandbox`), **62** u klienta
+(+6 w nowym `map-mode.test.ts`) — zielone. ESLint i Prettier czyste na całym repo.
+
 ### Sesja 28.08 (druga) — pakiet A+B: ekonomia i chrom, kreator, kosmetyka UI
 
 **Zlecenie MG:** pogrupowane zaległości bez lokalnego LLM i bez etapów nierozpoczętych; MG wybrał

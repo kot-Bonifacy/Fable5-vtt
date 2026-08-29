@@ -85,7 +85,6 @@ export function AttackLauncher({
       weaponRowId: option.rowId,
       weaponName: option.name,
       mode,
-      aimed: false,
       modifier: 0,
       // A thrown object leaves the hand, so reach stops applying to it.
       melee: thrown ? false : (option.resolved?.melee ?? false),

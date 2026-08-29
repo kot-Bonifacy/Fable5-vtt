@@ -10,6 +10,7 @@ import type {
   ChatMessageBroadcast,
   CharacterView,
   CpredCharacterData,
+  DamageLogEntry,
   InvitationSummary,
   RulerBroadcast,
   SceneView,
@@ -1338,5 +1339,121 @@ describe('ranged combat from the map', () => {
       points: [{ x: 0, y: 0 }],
     });
     expect(ack).toEqual({ ok: false, error: 'BAD_REQUEST' });
+  });
+
+  /**
+   * Celowanie (s. 170). The head has been half of this suite since stage 16;
+   * these are the other two aim points, whose whole effect happens *after* the
+   * damage lands — a leg breaks, a gun falls out of somebody's hands.
+   */
+  describe('an Aimed Shot at a leg and at a held item', () => {
+    let kneeCharacterId = '';
+    let kneeTokenId = '';
+
+    /** Fires the rifle at the aim point until something lands, and applies it. */
+    async function shootAndApply(aimedAt: string): Promise<DamageLogEntry> {
+      for (let attempt = 0; attempt < 40; attempt++) {
+        await emitAck(player, 'weapon:reload', { characterId, weaponRowId: 'w-rifle' });
+        const message = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+        const ack = await emitAck<{ messageId: number }>(player, 'attack:roll', {
+          characterId,
+          targetTokenId: kneeTokenId,
+          attackerTokenId: shooterTokenId,
+          // +20 buys the hit; the −8 of the aim is what this test is about.
+          request: { weaponRowId: 'w-rifle', mode: 'single', aimedAt, modifier: 20 },
+        });
+        const card = (await message).message.roll?.attack as AttackCard | undefined;
+        if (!card?.hit || !ack.ok || !ack.data) continue;
+
+        const damage = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+        await emitAck(player, 'character:roll', {
+          characterId,
+          request: { kind: 'damage', weaponRowId: 'w-rifle', attackMessageId: ack.data.messageId },
+          visibility: 'public',
+        });
+        const rolledId = (await damage).message.id;
+        const logged = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+        await emitAck(gm, 'damage:apply', { messageId: rolledId, tokenId: kneeTokenId });
+        const entry = (await logged).message.damage;
+        if (!entry) throw new Error('no damage entry on the card');
+        return entry;
+      }
+      throw new Error('nothing landed in 40 attempts');
+    }
+
+    it('sets the table: the eight of the body table, and somebody to shoot at', async () => {
+      const ack = await emitAck(gm, 'compendium:upsert', {
+        entry: {
+          category: 'criticalInjury',
+          name: 'Złamana noga',
+          table: 'body',
+          roll: 8,
+          description: '-4 do Ruchu (minimum 1)',
+          movePenalty: -4,
+          quickFix: 'Ratownictwo medyczne PT 13',
+        },
+      });
+      expect(ack.ok).toBe(true);
+
+      const knee = data(
+        await emitAck<CharacterView>(gm, 'character:create', { name: 'Kolano' }),
+        'character:create',
+      );
+      kneeCharacterId = knee.id;
+      // No armour at all: this suite is about what the aim costs, not about
+      // whether a vest stops it — that half is `resolveCpredDamage`'s own test.
+      await emitAck(gm, 'character:update', {
+        characterId: kneeCharacterId,
+        patch: { data: { stats: { ...(knee.data as CpredCharacterData).stats, dex: 2 } } },
+      });
+      kneeTokenId = data(
+        await emitAck<TokenView>(gm, 'token:create', {
+          sceneId,
+          name: 'Kolano',
+          x: 10 * PX_PER_M,
+          y: 0,
+          characterId: kneeCharacterId,
+        }),
+        'token:create',
+      ).id;
+      expect(kneeTokenId).toBeTruthy();
+    });
+
+    it('breaks the leg the shot was aimed at, by name rather than by 2k6', async () => {
+      const entry = await shootAndApply('leg');
+      expect(entry.aimedAt).toBe('Noga');
+      expect(entry.injuryAimed?.name).toBe('Złamana noga');
+      // „Jeśli przez pancerz na ciele celu przejdzie choć jeden punkt…” — the
+      // armour is what this is measured against, so the hit lands on the body.
+      expect(entry.location).toBe('body');
+
+      const sheet = await sheetOf(kneeCharacterId);
+      expect(sheet.criticalInjuries.some((row) => row.name === 'Złamana noga')).toBe(true);
+      // Nobody rolled for it, so the sheet must not claim a 2k6 happened.
+      const wound = sheet.criticalInjuries.find((row) => row.name === 'Złamana noga');
+      expect(wound?.rolled).toBeUndefined();
+      expect(wound?.movePenalty).toBe(-4);
+    });
+
+    it('stops at one leg: the second shot says so instead of breaking it again', async () => {
+      const entry = await shootAndApply('leg');
+      expect(entry.injuryAimed).toBeUndefined();
+      expect(entry.aimNote).toContain('Złamana noga');
+
+      const sheet = await sheetOf(kneeCharacterId);
+      const broken = sheet.criticalInjuries.filter((row) => row.name === 'Złamana noga');
+      expect(broken).toHaveLength(1);
+    });
+
+    it('knocks a held item loose with a sentence, and no wound', async () => {
+      const before = await sheetOf(kneeCharacterId);
+      const entry = await shootAndApply('heldItem');
+      expect(entry.aimedAt).toBe('Trzymany przedmiot');
+      expect(entry.aimNote).toContain('upuszcza');
+      expect(entry.injuryAimed).toBeUndefined();
+
+      const after = await sheetOf(kneeCharacterId);
+      expect(after.criticalInjuries).toHaveLength(before.criticalInjuries.length);
+    });
   });
 });

@@ -129,6 +129,29 @@ export interface DamageLogEntry {
   /** Why no injury was drawn, e.g. „brak tabeli dla głowy". */
   injuryNote?: string;
   /**
+   * What the Aimed Shot was pointed at (s. 170), when the hit came from one.
+   * The head needs nothing here — its ×2 is already in `doubled` — but a leg
+   * and a held item have consequences that only exist once the damage lands,
+   * and the card has to be able to say which aim earned them.
+   */
+  aimedAt?: string;
+  /**
+   * The consequence of the aim that is not a wound: „Cel upuszcza trzymany
+   * przedmiot" (s. 170). Prose rather than an inventory move — the VTT does not
+   * model what is in whose hands, so the sentence is the whole effect, exactly
+   * as `injuryNote` is for a statist.
+   */
+  aimNote?: string;
+  /**
+   * „Złamana noga" inflicted by an aimed leg shot — a wound the rules name
+   * outright instead of rolling for (s. 170).
+   *
+   * Its own field rather than `injury`, because the same hit may both roll two
+   * sixes *and* break the leg, and „Cofnij" has to be able to take all three
+   * wounds off. No `rolled`: nobody rolled for it.
+   */
+  injuryAimed?: { id: string; name: string; effect: string };
+  /**
    * The round that landed and what it changed (stage 16g) — „pancerz −2
    * (zamiast −1)", „cel zatrzymany na 1 PW". Named entries rather than a silent
    * correction, the treatment „Trzymanie −2" got in 14d.

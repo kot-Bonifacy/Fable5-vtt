@@ -977,8 +977,8 @@ function readAmmoSpread(
  * Nothing here is looked up: the skill id, the injury ids and the status ids are
  * carried as written, exactly as `ignites.statusId` has been since 16g. A round
  * naming a skill this campaign's registry has never heard of degrades to a roll
- * on the bare stat rather than being refused at import — the Easy Mode list has
- * 41 skills and „Cyberinżynieria" is not one of them.
+ * on the bare stat rather than being refused at import — the registry is data,
+ * and a GM may trim it or run the sample list a fresh clone ships with.
  */
 function readAmmoCheck(
   raw: unknown,

@@ -22,6 +22,7 @@ import {
 } from './attacks.js';
 import type { CpredAmmoProfile } from './ammo.js';
 import { buildCpredRegistry, createDefaultCharacterData, type CpredRegistry } from './character.js';
+import { hasCyberarm } from './cyberware.js';
 import { dvForRange, type ResolvedWeapon } from './compendium.js';
 
 const registry: CpredRegistry = buildCpredRegistry(
@@ -249,6 +250,32 @@ describe('attackDamageNotation', () => {
       '1k6',
     );
   });
+
+  it('passes the cyberarm rung through to the ladder', () => {
+    expect(attackDamageNotation({ damage: '2k6' }, { body: 4 }, 'weapon-type.brawling', true)).toBe(
+      '2k6',
+    );
+    // The chrome only matters bare-handed: a pistol does what the row says.
+    expect(
+      attackDamageNotation({ damage: '3k6' }, { body: 4 }, 'weapon-type.heavy-pistol', true),
+    ).toBe('3k6');
+  });
+});
+
+describe('hasCyberarm', () => {
+  it('needs a foundation piece placed in an arm box', () => {
+    expect(hasCyberarm([{ foundation: true, bodySlot: 'armLeft' }])).toBe(true);
+    expect(hasCyberarm([{ foundation: true, bodySlot: 'armRight' }])).toBe(true);
+  });
+
+  it('is not fooled by a leg, an option or an unplaced limb', () => {
+    expect(hasCyberarm([{ foundation: true, bodySlot: 'legRight' }])).toBe(false);
+    // A Big Knucks screwed into the arm shares the box and is not an arm.
+    expect(hasCyberarm([{ bodySlot: 'armRight' }])).toBe(false);
+    // „Które ramię?" is the player's answer; until it comes, nothing is granted.
+    expect(hasCyberarm([{ foundation: true, type: 'cyberlimb' }])).toBe(false);
+    expect(hasCyberarm([])).toBe(false);
+  });
 });
 
 describe('attackAmmoCost', () => {
@@ -303,12 +330,27 @@ describe('planCpredAttack — a single shot', () => {
   });
 
   it('applies the aimed-shot penalty and aims at the head', () => {
-    const result = plan({ aimed: true });
+    const result = plan({ aimedAt: 'head' });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.plan.attack.location).toBe('head');
+    expect(result.plan.attack.aimedAt).toBe('head');
     expect(formatRollNotation(result.plan.formula)).toBe('1d10+3'); // 11 − 8
     expect(result.plan.breakdown.some((row) => row.value === -8)).toBe(true);
+  });
+
+  it('resolves a leg and a held item against body armour (s. 170)', () => {
+    for (const aim of ['leg', 'heldItem'] as const) {
+      const result = plan({ aimedAt: aim });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      // „Jeśli przez pancerz **na ciele** celu przejdzie choć jeden punkt…”
+      expect(result.plan.attack.location).toBe('body');
+      expect(result.plan.attack.aimed).toBe(true);
+      expect(result.plan.attack.aimedAt).toBe(aim);
+      // The −8 is the price of every aim point, not just the head's.
+      expect(formatRollNotation(result.plan.formula)).toBe('1d10+3');
+    }
   });
 
   it('carries the wound penalty into the attack like any other check', () => {
@@ -354,16 +396,18 @@ describe('planCpredAttack — melee', () => {
     });
   });
 
-  it('spends no ammunition and cannot be aimed', () => {
+  it('spends no ammunition and may be aimed like any other attack', () => {
+    // „Wykonujesz pojedynczy … atak Dystansowy lub Wręcz, z modyfikatorem -8”
+    // (s. 170) — a blade aims at a head exactly as a pistol does.
     const result = plan(
-      { aimed: true },
+      { aimedAt: 'head' },
       { data, resolved: blade, row: weaponRow({ ammoMax: 0, ammoCurrent: 0 }), metres: 1 },
     );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.plan.attack.ammoCost).toBe(0);
-    expect(result.plan.attack.aimed).toBe(false);
-    expect(result.plan.attack.location).toBe('body');
+    expect(result.plan.attack.aimed).toBe(true);
+    expect(result.plan.attack.location).toBe('head');
   });
 
   it('reads bare-hand damage off BODY', () => {
@@ -444,7 +488,7 @@ describe('planCpredAttack — autofire', () => {
 
   it('cannot be aimed', () => {
     const result = plan(
-      { mode: 'autofire', aimed: true },
+      { mode: 'autofire', aimedAt: 'head' },
       { data, resolved: rifle, row, metres: 14 },
     );
     expect(result.ok && result.plan.attack.aimed).toBe(false);
@@ -577,7 +621,7 @@ describe('planCpredAttack — cover (stage 16c)', () => {
     const shot = planCpredAttack(
       data,
       registry,
-      { weaponRowId: weaponRow().id, mode: 'single', aimed: true },
+      { weaponRowId: weaponRow().id, mode: 'single', aimedAt: 'head' },
       { row: weaponRow(), resolved: pistol },
       { name: 'Samochód', coverId: 7, metres: 24, cover: true },
     );
@@ -719,7 +763,7 @@ describe('throwing a charge at a square (stage 16d)', () => {
   });
 
   it('has nothing to aim at: a square has no head', () => {
-    const result = throwPlan({ aimed: true });
+    const result = throwPlan({ aimedAt: 'head' });
     if (!result.ok) throw new Error(result.error);
     expect(result.plan.attack.aimed).toBe(false);
     expect(result.plan.attack.location).toBe('body');
@@ -882,7 +926,7 @@ describe('planCpredAttack with special ammunition', () => {
   });
 
   it('cannot be aimed — the shot spreads (s. 174)', () => {
-    const result = shotPlan({ aimed: true });
+    const result = shotPlan({ aimedAt: 'head' });
     expect(result.ok && result.plan.attack.aimed).toBe(false);
     expect(result.ok && result.plan.attack.location).toBe('body');
     // …and silently, so the bar's remembered „Celuj" is not an error to clear.

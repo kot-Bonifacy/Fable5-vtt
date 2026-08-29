@@ -584,9 +584,10 @@ async function humanShieldOf(
   deps: RealtimeDeps,
   sceneId: string,
   targetTokenId: string,
-  attack: { melee: boolean; aimed: boolean },
+  attack: { melee: boolean; aimedAtHead: boolean },
 ): Promise<{ tokenId: string; name: string } | null> {
-  if (!sheetHumanShieldCovers({ melee: attack.melee, aimedAtHead: attack.aimed })) return null;
+  if (!sheetHumanShieldCovers({ melee: attack.melee, aimedAtHead: attack.aimedAtHead }))
+    return null;
   const state = await grappleStateForToken(deps.ctx.prisma, sceneId, targetTokenId);
   const shield = state.shieldOf;
   if (!shield || !shield.token || !shield.tokenId) return null;
@@ -883,7 +884,10 @@ export async function performAttackRoll(
       if (target && payload?.request?.ignoreCover !== true) {
         const shield = await humanShieldOf(deps, scene.id, target.id, {
           melee: weapon.resolved?.melee ?? false,
-          aimed: payload?.request?.aimed === true,
+          // „nie można nimi zasłaniać się … przed atakami dystansowymi
+          // wycelowanymi w twoją **głowę**" (s. 181) — a shot aimed at the leg
+          // or at a held gun goes into the shield like any other.
+          aimedAtHead: payload?.request?.aimedAt === 'head',
         });
         if (shield) {
           return { blocked: { kind: 'shield', tokenId: shield.tokenId, name: shield.name } };

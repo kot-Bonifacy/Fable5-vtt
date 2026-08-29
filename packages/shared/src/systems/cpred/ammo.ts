@@ -92,10 +92,10 @@ export interface CpredAmmoCheck {
   /** Skill the target rolls, by registry id („resist-torture-drugs"). */
   skillId: string;
   /**
-   * What to call it when the registry has no such skill — the Easy Mode list
-   * carries 41 of them and „Cyberinżynieria" is not among them. The check then
-   * runs on the bare stat, which is the honest degradation: a character who
-   * never trained it rolls their attribute.
+   * What to call it when the registry has no such skill — a trimmed campaign
+   * list, or the sample one a fresh clone ships with. The check then runs on
+   * the bare stat, which is the honest degradation: a character who never
+   * trained it rolls their attribute.
    */
   skillLabel?: string;
   /**

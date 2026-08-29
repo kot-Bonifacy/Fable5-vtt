@@ -42,8 +42,14 @@ import {
   type RangeDvTable,
   type ResolvedWeapon,
 } from './compendium.js';
+import { hasCyberarm } from './cyberware.js';
 import { CPRED_AIMED_SHOT_PENALTY } from './damage.js';
-import { CPRED_HIT_LOCATION_LABELS, type CpredHitLocation } from './locations.js';
+import {
+  CPRED_AIM_POINT_LABELS,
+  hitLocationForAim,
+  type CpredAimPoint,
+  type CpredHitLocation,
+} from './locations.js';
 import {
   CPRED_SITUATIONAL_MODIFIER_LIMIT,
   CPRED_WOUND_LABELS,
@@ -171,8 +177,11 @@ export interface CpredAttackRequest {
   mode: CpredAttackMode;
   /** Skill to roll with, when the weapon row carries no compendium type. */
   skillId?: string;
-  /** Aimed shot at the head: −8 to hit, doubled damage through armor. */
-  aimed?: boolean;
+  /**
+   * Aimed Shot (s. 170): −8 to hit, one attack, the whole Action. Absent means
+   * an ordinary attack, which „zawsze trafia w ciało".
+   */
+  aimedAt?: CpredAimPoint;
   modifier?: number;
   luckSpent?: number;
   /**
@@ -257,9 +266,19 @@ export interface CpredAttackMeta {
   melee: boolean;
   /** Damage notation rolled on a hit; a burst always rolls 2k6. */
   damage: string;
-  /** Where the shot is aimed — decides the armor and the ×2 in stage 15. */
+  /** Which armor the hit has to get through, and whether the ×2 applies. */
   location: CpredHitLocation;
+  /**
+   * True when this was an Aimed Shot — the −8 was paid and the Action is spent.
+   * Kept beside `aimedAt` because the turn budget only asks the yes/no half.
+   */
   aimed: boolean;
+  /**
+   * What was aimed at, when it was an Aimed Shot. A leg and a held item both
+   * resolve against `location: 'body'`, and their consequences land when the
+   * damage is applied — so the card has to carry which one it was.
+   */
+  aimedAt?: CpredAimPoint;
   targetName: string;
   /**
    * Target token, so „Obrażenia" can pre-select it in stage 15's controls.
@@ -396,14 +415,18 @@ const UNARMED_TYPE_IDS = new Set(['weapon-type.brawling', 'weapon-type.martial-a
 
 /**
  * Damage notation for one hit: the row's own damage, except for bare hands,
- * whose damage the rules read off the attacker's BODY.
+ * whose damage the rules read off the attacker's BODY — and, for the weakest
+ * rung, off their chrome („BC 4 lub mniej z cyberręką — 2k6", s. 176).
  */
 export function attackDamageNotation(
   row: Pick<CpredWeaponRow, 'damage'>,
   stats: Pick<CpredCharacterData['stats'], 'body'>,
   weaponTypeId?: string | null,
+  cyberarm = false,
 ): string {
-  if (weaponTypeId && UNARMED_TYPE_IDS.has(weaponTypeId)) return unarmedDamage(stats.body);
+  if (weaponTypeId && UNARMED_TYPE_IDS.has(weaponTypeId)) {
+    return unarmedDamage(stats.body, cyberarm);
+  }
   return row.damage;
 }
 
@@ -550,20 +573,26 @@ export function planCpredAttack(
   const skill = skillId ? registry.skills.find((entry) => entry.id === skillId) : undefined;
   if (!skill) return { ok: false, error: 'UNKNOWN_SKILL' };
 
-  // An object has no head to aim at, so the −8 and the doubled damage of an
-  // aimed shot are simply off for cover — silently, because the bar keeps the
-  // shooter's last choice armed and refusing the shot over it would be noise.
+  // An object has neither a head nor hands, so the −8 and the effects of an
+  // aimed shot are simply off for cover and for a patch of ground — silently,
+  // because the bar keeps the shooter's last choice armed and refusing the shot
+  // over it would be noise.
   //
   // The same silence covers shot: „Bronią załadowaną amunicją śrutową nie można
   // Celować" (s. 174) is a fact about the load, not a mistake in the request.
-  const aimed =
-    request.aimed === true &&
+  //
+  // Melee is *not* excluded: „Wykonujesz pojedynczy … atak Dystansowy lub
+  // Wręcz, z modyfikatorem -8" (s. 170) — a machete may be aimed at a head.
+  const aimedAt: CpredAimPoint | undefined =
+    request.aimedAt !== undefined &&
     canAimInMode(mode) &&
-    !melee &&
     ammo?.noAim !== true &&
     target.cover !== true &&
-    target.point !== true;
-  const location: CpredHitLocation = aimed ? 'head' : 'body';
+    target.point !== true
+      ? request.aimedAt
+      : undefined;
+  const aimed = aimedAt !== undefined;
+  const location: CpredHitLocation = aimedAt ? hitLocationForAim(aimedAt) : 'body';
 
   // „każdy … otrzymuje 3k6 obrażeń" — a shell's damage is the shell's, not the
   // gun's, and it does not care what the sheet's row says the shotgun does.
@@ -572,7 +601,7 @@ export function planCpredAttack(
       ? CPRED_AUTOFIRE_DAMAGE
       : spread
         ? spread.damage
-        : attackDamageNotation(row, data.stats, weapon.typeId);
+        : attackDamageNotation(row, data.stats, weapon.typeId, hasCyberarm(data.cyberware));
   if (mode !== 'suppressive') {
     const parsed = parseRollNotation(damage);
     if (!parsed.ok || !parsed.formula.terms.some((term) => term.kind === 'dice')) {
@@ -608,9 +637,9 @@ export function planCpredAttack(
     breakdown.push({ label: CPRED_WOUND_LABELS[state], value: woundPenalty, kind: 'wound' });
   }
   for (const entry of context.modifiers ?? []) breakdown.push({ ...entry });
-  if (aimed) {
+  if (aimedAt) {
     breakdown.push({
-      label: `Strzał celowany (${CPRED_HIT_LOCATION_LABELS.head})`,
+      label: `Celowanie (${CPRED_AIM_POINT_LABELS[aimedAt].toLowerCase()})`,
       value: CPRED_AIMED_SHOT_PENALTY,
       kind: 'situational',
     });
@@ -656,6 +685,7 @@ export function planCpredAttack(
         damage,
         location,
         aimed,
+        ...(aimedAt ? { aimedAt } : {}),
         targetName: target.name,
         ...(target.tokenId ? { targetTokenId: target.tokenId } : {}),
         ...(target.coverId !== undefined ? { targetCoverId: target.coverId } : {}),
@@ -801,8 +831,8 @@ export interface CpredCheckBase {
  * The target's side of a check some *round* forces on them (stage 16h).
  *
  * The generalisation of `concentrationBase`, and it degrades where that one
- * could not afford to: a campaign running the 41-skill Easy Mode list has never
- * heard of „Cyberinżynieria", and an EMP round must still be rollable there. The
+ * could not afford to: a campaign whose registry never heard of
+ * „Cyberinżynieria" must still be able to roll against an EMP round. The
  * fallback is the attribute named on the catalogue row — a character who never
  * trained the skill rolls their TECH, which is exactly what RAW says an
  * untrained check is.

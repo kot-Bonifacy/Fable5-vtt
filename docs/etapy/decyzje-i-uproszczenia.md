@@ -11,6 +11,25 @@ przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — ni
 
 ## Sieć i walka — czytanie RAW
 
+- **Celowanie w trzymany przedmiot jest zdaniem, nie ruchem w ekwipunku (29.08).** RAW: „cel
+  upuszcza trzymany w rękach przedmiot (twój wybór). Przedmiot upada na podłoże przed
+  przeciwnikiem" (s. 170). VTT **nie modeluje tego, co kto trzyma w rękach** — kabury, wolne ręce
+  i dobywanie broni to osobna pozycja w `POMYSLY.md` — więc karta obrażeń pisze, co się stało,
+  i nic nie rusza wierszy broni. To cała reguła, jaką da się dziś uczciwie wyegzekwować; gdy
+  powstanie model rąk, ta decyzja wraca jako zadanie.
+
+- **Celowanie w nogę nadaje ranę samo (29.08, decyzja MG).** „cel otrzymuje także Ranę Krytyczną
+  Złamanie nogi (jeśli ma niezłamaną nogę)" (s. 170) jest kategoryczne, więc serwer dopisuje ranę
+  bez pytania — tak samo, jak sam losuje ranę przy dwóch szóstkach. Warunek RAW („jeśli przez
+  pancerz na ciele celu przejdzie choć jeden punkt obrażeń") jest sprawdzany, drugiej złamanej
+  nogi nie dokłada, a statysta bez karty dostaje zdanie zamiast rany — dokładnie jak przy ranie
+  z dwóch szóstek.
+
+- **Celowanie działa też bronią białą (29.08).** Do 29.08 planer wycinał `melee` z Celowania;
+  podręcznik mówi wprost „atak Dystansowy **lub Wręcz**, z modyfikatorem -8" (s. 170), więc
+  warunek zniknął. Ludzka tarcza nadal nie zasłania przed bronią białą — to osobne zdanie
+  z s. 181 i ono zostaje.
+
 - **Etap 26f — promień zauważenia strefy (4 m) to czytanie VTT, nie RAW.** Podręcznik daje samo
   „Percepcja PT 17, by zauważyć" i żadnej odległości — dokładnie jak przy promieniu Skanera z 26b.
   4 m to dwa pola: dość blisko, żeby „widziałem druty w dywanie" dało się powiedzieć przy stole,

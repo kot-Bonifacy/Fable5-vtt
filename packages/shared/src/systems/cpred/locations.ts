@@ -42,9 +42,10 @@ export const INJURY_MOVE_PENALTY_MIN = -10;
 export const INJURY_ACTION_PENALTY_MIN = -8;
 
 /**
- * Where an attack lands. RAW: every attack hits the body unless the attacker
- * spent an Aimed Shot on the head — there is no hit-location table in CP RED.
- * A shield is not a hit location: it is armor a defender may interpose.
+ * Where an attack lands — which armor stops it and whether the ×2 applies.
+ * RAW: every attack hits the body unless the attacker spent an Aimed Shot on
+ * the head; there is no hit-location table in CP RED. A shield is not a hit
+ * location: it is armor a defender may interpose.
  */
 export const CPRED_HIT_LOCATIONS = ['body', 'head'] as const;
 export type CpredHitLocation = (typeof CPRED_HIT_LOCATIONS)[number];
@@ -56,6 +57,47 @@ export const CPRED_HIT_LOCATION_LABELS: Record<CpredHitLocation, string> = {
 
 export function isCpredHitLocation(value: unknown): value is CpredHitLocation {
   return typeof value === 'string' && (CPRED_HIT_LOCATIONS as readonly string[]).includes(value);
+}
+
+/**
+ * What an Aimed Shot may be pointed at (s. 170).
+ *
+ * Three, not one. „Atak zabiera całą Akcję i jest wymierzony w jedną
+ * z poniższych lokacji trafień": the head doubles the damage that gets through,
+ * a held item is knocked out of the target's hands, and a leg breaks. All three
+ * cost the same −8 and the same whole Action.
+ *
+ * Deliberately *not* the same list as `CpredHitLocation`: only the head has
+ * armor of its own, so a leg shot and a knocked-out gun are both resolved
+ * against body armor. Keeping the two lists apart is what stops „aim at the
+ * leg" from quietly looking up a piece of armor nobody wears.
+ */
+export const CPRED_AIM_POINTS = ['head', 'heldItem', 'leg'] as const;
+export type CpredAimPoint = (typeof CPRED_AIM_POINTS)[number];
+
+export const CPRED_AIM_POINT_LABELS: Record<CpredAimPoint, string> = {
+  head: 'Głowa',
+  heldItem: 'Trzymany przedmiot',
+  leg: 'Noga',
+};
+
+/** Short forms for the banner over the map, where the line has to fit. */
+export const CPRED_AIM_POINT_SHORT: Record<CpredAimPoint, string> = {
+  head: 'głowa',
+  heldItem: 'przedmiot',
+  leg: 'noga',
+};
+
+export function isCpredAimPoint(value: unknown): value is CpredAimPoint {
+  return typeof value === 'string' && (CPRED_AIM_POINTS as readonly string[]).includes(value);
+}
+
+/**
+ * Armor the aimed shot has to get through: the head has its own piece, the
+ * other two aim points are „pancerz na ciele celu" (s. 170).
+ */
+export function hitLocationForAim(aim: CpredAimPoint): CpredHitLocation {
+  return aim === 'head' ? 'head' : 'body';
 }
 
 /** True when the armor piece protects the hit location. */

@@ -1,5 +1,6 @@
 import type {
   CoverView,
+  CpredAimPoint,
   CpredAttackMeta,
   CpredAttackMode,
   CpredAttackRequest,
@@ -66,7 +67,8 @@ export interface AttackIntent {
   attackerTokenId: string;
   weaponRowId: string;
   mode: CpredAttackMode;
-  aimed?: boolean;
+  /** Aimed Shot and what at (s. 170); absent means an ordinary attack. */
+  aimedAt?: CpredAimPoint;
   modifier?: number;
   /**
    * The table ruled that the target leaned out from behind the car (stage 16c).
@@ -170,7 +172,7 @@ export function planAttackPreview(
   const request: CpredAttackRequest = {
     weaponRowId: row.id,
     mode: intent.mode,
-    ...(intent.aimed ? { aimed: true } : {}),
+    ...(intent.aimedAt ? { aimedAt: intent.aimedAt } : {}),
     ...(intent.modifier ? { modifier: intent.modifier } : {}),
     ...(intent.ignoreCover ? { ignoreCover: true } : {}),
     ...(intent.thrown ? { thrown: true } : {}),
@@ -466,7 +468,7 @@ export function loadAttackAtToken(targetTokenId: string): void {
       attackerTokenId: attackerToken.id,
       weaponRowId: targeting.weaponRowId,
       mode: targeting.mode,
-      aimed: targeting.aimed,
+      ...(targeting.aimedAt ? { aimedAt: targeting.aimedAt } : {}),
       modifier: targeting.modifier,
       ...(targeting.thrown ? { thrown: true } : {}),
     },

@@ -1154,7 +1154,6 @@ function WeaponStrip({
       weaponRowId: row.id,
       weaponName: row.name,
       mode,
-      aimed: false,
       modifier: 0,
       melee: resolved?.melee ?? false,
     });

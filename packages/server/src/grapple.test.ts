@@ -592,7 +592,7 @@ describe('grappling', () => {
       characterId: thugCharacterId,
       attackerTokenId: thugTokenId,
       targetTokenId: vexTokenId,
-      request: { weaponRowId: 'w-pistol', mode: 'single', aimed: true },
+      request: { weaponRowId: 'w-pistol', mode: 'single', aimedAt: 'head' },
     });
     expect(ack.ok).toBe(true);
     expect(ack.ok && ack.data?.blocked).toBeUndefined();

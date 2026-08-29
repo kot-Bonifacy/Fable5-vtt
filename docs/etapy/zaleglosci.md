@@ -8,6 +8,16 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
 
 ## Pozycje
 
+- **Celowanie (s. 170) nie było oglądane w przeglądarce.** Ścieżka jest pokryta testami serwera
+  od strzału po złamaną nogę, ale **baner z trzema guzikami nikt nie kliknął**. Do sprawdzenia
+  przy najbliższych oględzinach, na „Strzelnicy": (1) guziki „Głowa / Trzymany przedmiot / Noga"
+  pojawiają się dopiero przy uzbrojonym celowniku i **tylko dla strzału pojedynczego** (przy
+  serii i zaporze mają zniknąć); (2) klikają się mimo `pointer-events: none` na banerze;
+  (3) wybrany guzik trzyma się do rozbrojenia celownika i widać go w rozbiciu rzutu jako
+  „Celowanie (noga) −8"; (4) karta obrażeń po trafieniu w nogę pokazuje ranę **bez** „2k6 = …",
+  a po trafieniu w przedmiot — samo zdanie. Celem musi być figura **z kartą postaci**; statysta
+  dostaje zdanie zamiast rany i to też warto zobaczyć.
+
 - **Etap 27i — pomiar fps nie objął sceny ze światłami i mgłą.** „Strzelnica" ma widoczność
   `open`, więc 160,1 → 161,2 fps mierzy **samą warstwę efektów**, a nie najgorszy przypadek
   z kryterium etapu. Warstwa rysuje na klatkę kilka ścieżek `Graphics` i najwyżej jeden sprite,

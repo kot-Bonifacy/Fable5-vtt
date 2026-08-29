@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { CpredAttackMode } from '@vtt/shared';
+import type { CpredAimPoint, CpredAttackMode } from '@vtt/shared';
 
 /**
  * Targeting mode (stage 16): the bridge between the character sheet and the
@@ -24,8 +24,13 @@ export interface AttackTargeting {
   weaponRowId: string;
   weaponName: string;
   mode: CpredAttackMode;
-  /** Aimed shot at the head (−8), single shots only. */
-  aimed: boolean;
+  /**
+   * Aimed Shot and what at (s. 170): −8 to hit, one attack, the whole Action.
+   * Absent means an ordinary attack. Chosen on the banner over the map *after*
+   * the crosshair is armed, because that is where the shooter is looking — and
+   * because it is a property of this shot, not of the weapon row.
+   */
+  aimedAt?: CpredAimPoint;
   /** Situational modifier carried over from the roll dialog. */
   modifier: number;
   /** True for melee weapons — the map only accepts targets within reach. */
@@ -58,6 +63,8 @@ interface AttackStoreState {
 
   arm: (targeting: AttackTargeting) => void;
   disarm: () => void;
+  /** Changes the aim point of the armed crosshair; null goes back to no aim. */
+  setAimPoint: (aimedAt: CpredAimPoint | null) => void;
   setOverlay: (overlay: RangeOverlay | null) => void;
   toggleOverlay: (overlay: RangeOverlay) => void;
 }
@@ -69,6 +76,14 @@ export const useAttackStore = create<AttackStoreState>((set, get) => ({
 
   arm: (targeting) => set({ targeting, lastMode: targeting.mode }),
   disarm: () => set({ targeting: null }),
+  setAimPoint: (aimedAt) => {
+    const targeting = get().targeting;
+    if (!targeting) return;
+    const next = { ...targeting };
+    if (aimedAt) next.aimedAt = aimedAt;
+    else delete next.aimedAt;
+    set({ targeting: next });
+  },
   setOverlay: (overlay) => set({ overlay }),
   toggleOverlay: (overlay) => {
     const current = get().overlay;

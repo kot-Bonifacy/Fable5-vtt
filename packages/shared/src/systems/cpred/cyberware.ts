@@ -352,6 +352,31 @@ export interface CyberwarePlacement {
   bodySlot?: CyberwareBodySlot;
 }
 
+/** The two boxes on the silhouette that are an arm. */
+const CYBERARM_BODY_SLOTS: readonly CyberwareBodySlot[] = ['armRight', 'armLeft'];
+
+/**
+ * Does this body carry a cyberarm? The Brawling table asks: „BC 4 lub mniej
+ * z cyberręką — 2k6" (s. 176), which is the one place the rules let hardware
+ * move a character up a damage rung.
+ *
+ * Two conditions, both needed. `foundation` separates the arm itself from the
+ * options screwed into it — a Big Knucks in a cyberarm shares its box and is
+ * not an arm. `bodySlot` separates an arm from a leg, because both are
+ * `cyberlimb` and only the placement on the silhouette (stage 27c) says which.
+ * A foundation limb nobody has placed therefore grants nothing: the sheet
+ * genuinely does not know whether it is an arm, and guessing would hand out
+ * a damage rung on a leg.
+ */
+export function hasCyberarm(rows: readonly (CyberwarePlacement & { foundation?: boolean })[]) {
+  return rows.some(
+    (row) =>
+      row.foundation === true &&
+      row.bodySlot !== undefined &&
+      CYBERARM_BODY_SLOTS.includes(row.bodySlot),
+  );
+}
+
 /**
  * The four columns beside the silhouette on page three, in the sheet's order.
  * Everything that is not fitted to a named place on the body prints here.

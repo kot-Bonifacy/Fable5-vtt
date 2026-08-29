@@ -16,6 +16,7 @@ import {
   DEATH_SAVES_MAX,
   ROLE_GM,
   hitLocationLabel,
+  isCpredAimPoint,
   mergeCharacterData,
   parseCharacterData,
   planCpredRoll,
@@ -284,6 +285,7 @@ async function resolveRollRequest(
     location?: unknown;
     weaponRowId?: unknown;
     ammo?: CpredAmmoProfile;
+    aimedAt?: unknown;
   };
   return {
     ...request,
@@ -292,6 +294,10 @@ async function resolveRollRequest(
     // may hold something else by now, and the shot was fired then (stage 16g).
     ...(system.ammo ? { ammo: system.ammo } : {}),
     ...(system.location === 'head' ? { location: 'head' as const } : { location: 'body' as const }),
+    // The Aimed Shot the −8 was paid for (s. 170), from the same stored card:
+    // the leg breaks because of the attack that happened, not because of what
+    // the client says now.
+    ...(isCpredAimPoint(system.aimedAt) ? { aimedAt: system.aimedAt } : {}),
     ...(attack.damageNotation ? { damageNotation: attack.damageNotation } : {}),
     ...(attack.damageMultiplier ? { damageMultiplier: attack.damageMultiplier } : {}),
     ...(attack.targetTokenId ? { targetTokenId: attack.targetTokenId } : {}),
@@ -536,10 +542,17 @@ export async function performCharacterRoll(
           : {}),
         ...(plan.damage.areaTargets ? { areaTargets: plan.damage.areaTargets } : {}),
         // Stage 16g: the round travels with the damage, so „Zastosuj" knows how
-        // much armour to wear off and whether the target catches fire. Opaque to
-        // the dice engine (`RollDamageMeta.system`) — CP RED puts it in, CP RED
-        // reads it out.
-        ...(plan.damage.ammo ? { system: { ammo: plan.damage.ammo } } : {}),
+        // much armour to wear off and whether the target catches fire; the aim
+        // point (s. 170) rides along for the same reason. Opaque to the dice
+        // engine (`RollDamageMeta.system`) — CP RED puts it in, CP RED reads it out.
+        ...(plan.damage.ammo || plan.damage.aimedAt
+          ? {
+              system: {
+                ...(plan.damage.ammo ? { ammo: plan.damage.ammo } : {}),
+                ...(plan.damage.aimedAt ? { aimedAt: plan.damage.aimedAt } : {}),
+              },
+            }
+          : {}),
       };
     }
 

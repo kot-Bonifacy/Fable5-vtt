@@ -46,7 +46,6 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 TEXT_DIR = REPO_ROOT / "data" / "private" / "rulebook" / "text"
 PDF_DIR = REPO_ROOT / "data" / "private" / "rulebook" / "pdf"
 OUT_DIR = REPO_ROOT / "data" / "private" / "cpred" / "compendium"
-MANUAL_DIR = REPO_ROOT / "data" / "private" / "rulebook" / "manual"
 
 # Gear DLCs whose named weapons we turn into compendium entries. Two-column
 # layout, so each page is cropped down the middle before extraction.
@@ -199,50 +198,48 @@ def parse_easy_mode_ranges() -> tuple[dict[str, list[int | None]], list[str]]:
     return table, warnings
 
 
-def load_manual_overrides() -> dict:
-    """Hand-checked values that no regex can reach (e.g. the rotated Easy Mode
-    character-sheet pages). Lives in data/private — never in the repository."""
-    path = MANUAL_DIR / "overrides.json"
-    if not path.exists():
-        return {}
-    return json.loads(path.read_text(encoding="utf-8"))
-
-
 def build_weapon_types(
     evidence: dict[str, Evidence],
     ranges: dict[str, list[int | None]],
-    overrides: dict,
 ) -> tuple[list[dict], list[str]]:
+    """What the DLC/Easy Mode statblocks alone say a base weapon type looks like.
+
+    Nothing here reaches the compendium any more — `parse-manual.py` prints the
+    real tables from the rulebook. This aggregate exists so `compare_with_rulebook`
+    can hold the two side by side, which only works if it stays *purely* what the
+    statblocks say: hand-read corrections used to be mixed in here and they made
+    the comparison agree with itself.
+    """
     notes: list[str] = []
-    manual_types = overrides.get("weaponTypes", {})
     result: list[dict] = []
 
-    for type_id in sorted(set(evidence) | set(manual_types)):
+    for type_id in sorted(evidence):
         if type_id not in WEAPON_TYPES:
             notes.append(f"pominięto nieznany typ broni: {type_id}")
             continue
         name_pl, skill_id, melee = WEAPON_TYPES[type_id]
-        seen = evidence.get(type_id, Evidence())
-        manual = manual_types.get(type_id, {})
+        seen = evidence[type_id]
 
-        damage = manual.get("damage") or seen.best_damage()
+        damage = seen.best_damage()
         if not damage:
             notes.append(f"pominięto {type_id}: brak obrażeń w materiałach")
             continue
-        rof = manual.get("rof") or seen.best_rof() or 1
+        rof = seen.best_rof() or 1
         slug = type_id.replace(" ", "-")
+        two_handed = {"shotgun", "assault rifle", "sniper rifle", "heavy rifle"}
         entry: dict = {
             "id": f"weapon-type.{slug}",
             "name": name_pl,
             "nameOriginal": type_id.title(),
             "skillId": skill_id,
             "damage": damage,
-            "magazine": manual.get("magazine"),
+            # A statblock prints what the gun does, never how many rounds it holds.
+            "magazine": None,
             "rof": rof,
-            "hands": manual.get("hands", 2 if type_id in {"shotgun", "assault rifle", "sniper rifle", "heavy rifle"} else 1),
-            "concealable": manual.get("concealable", False),
+            "hands": 2 if type_id in two_handed else 1,
+            "concealable": False,
             "melee": melee,
-            "source": manual.get("source") or ", ".join(sorted(seen.sources)) or "uzupełnienie ręczne",
+            "source": ", ".join(sorted(seen.sources)) or "uzupełnienie ręczne",
         }
         if type_id in VARIABLE_DAMAGE_TYPES:
             seen_values = ", ".join(sorted(seen.damage)) or damage
@@ -252,50 +249,44 @@ def build_weapon_types(
             entry["incomplete"] = True
 
         if not melee:
-            entry["attachmentSlots"] = manual.get("attachmentSlots", 3)
+            entry["attachmentSlots"] = 3
             # Easy Mode prints one row for "Pistolety"; SMGs have their own row
             # in the full rulebook, so we do not borrow the pistol DVs for them.
             range_key = "handguns" if "pistol" in type_id else type_id
-            dv = manual.get("rangeDv") or ranges.get(range_key)
+            dv = ranges.get(range_key)
             if dv:
                 entry["rangeDv"] = dv
             else:
-                entry["incomplete"] = True
                 notes.append(f"{type_id}: brak tabeli PT zasięgów w materiałach")
-        if entry["magazine"] is None and not melee:
             entry["incomplete"] = True
         result.append(entry)
     return result, notes
 
 
-def build_armor(evidence: dict[str, Evidence], overrides: dict) -> list[dict]:
-    manual_armor = overrides.get("armor", {})
+def build_armor(evidence: dict[str, Evidence]) -> list[dict]:
+    """Armor SP as the statblocks report it — cross-check fodder, like above."""
     result: list[dict] = []
-    for armor_id in sorted(set(evidence) | set(manual_armor)):
+    for armor_id in sorted(evidence):
         if armor_id not in ARMOR_NAMES:
             continue
-        seen = evidence.get(armor_id, Evidence())
-        manual = manual_armor.get(armor_id, {})
-        sp_raw = manual.get("sp") or (int(seen.best_damage()) if seen.best_damage() else None)
+        seen = evidence[armor_id]
+        sp_raw = int(seen.best_damage()) if seen.best_damage() else None
         if sp_raw is None:
             continue
-        entry: dict = {
-            "id": f"armor.{armor_id.replace(' ', '-')}",
-            "category": "armor",
-            "name": ARMOR_NAMES[armor_id],
-            "nameOriginal": armor_id.title(),
-            "sp": int(sp_raw),
-            "locations": manual.get("locations", ["head", "body"]),
-            "cost": manual.get("cost"),
-            "source": manual.get("source") or ", ".join(sorted(seen.sources)) or "uzupełnienie ręczne",
-        }
-        if manual.get("penalty"):
-            entry["penalty"] = manual["penalty"]
-        if manual.get("costCategory"):
-            entry["costCategory"] = manual["costCategory"]
-        if not manual.get("cost"):
-            entry["incomplete"] = True
-        result.append(entry)
+        result.append(
+            {
+                "id": f"armor.{armor_id.replace(' ', '-')}",
+                "category": "armor",
+                "name": ARMOR_NAMES[armor_id],
+                "nameOriginal": armor_id.title(),
+                "sp": sp_raw,
+                "locations": ["head", "body"],
+                # A statblock never prices the vest it lists.
+                "cost": None,
+                "source": ", ".join(sorted(seen.sources)) or "uzupełnienie ręczne",
+                "incomplete": True,
+            }
+        )
     return result
 
 
@@ -570,10 +561,9 @@ def main() -> int:
     weapon_evidence, armor_evidence, warnings = harvest_statblocks()
     ranges, range_warnings = parse_easy_mode_ranges()
     warnings.extend(range_warnings)
-    overrides = load_manual_overrides()
 
-    weapon_types, type_notes = build_weapon_types(weapon_evidence, ranges, overrides)
-    armor_entries = build_armor(armor_evidence, overrides)
+    weapon_types, type_notes = build_weapon_types(weapon_evidence, ranges)
+    armor_entries = build_armor(armor_evidence)
     named_weapons, named_notes = parse_named_weapons()
     warnings.extend(type_notes)
     warnings.extend(named_notes)

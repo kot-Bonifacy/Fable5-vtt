@@ -23,10 +23,14 @@ import {
 import type { CpredAmmoProfile } from './ammo.js';
 import { effectiveCpredStats } from './cyberware.js';
 import { deathSaveTarget, hpMax } from './derived.js';
-import { CPRED_HIT_LOCATION_LABELS, type CpredHitLocation } from './locations.js';
+import {
+  CPRED_HIT_LOCATION_LABELS,
+  type CpredAimPoint,
+  type CpredHitLocation,
+} from './locations.js';
 import { CPRED_STAT_LABELS, isCpredStatId, type CpredStatId, type CpredStats } from './stats.js';
 
-/** Wound state, driven purely by current HP (Easy Mode "Progi Rany"). */
+/** Wound state, driven purely by current HP („Progi Ran", s. 186). */
 export type CpredWoundState = 'healthy' | 'light' | 'serious' | 'mortal';
 
 export const CPRED_WOUND_LABELS: Record<CpredWoundState, string> = {
@@ -152,6 +156,14 @@ export interface CpredRollRequest {
    */
   ammo?: CpredAmmoProfile;
   /**
+   * Server-filled: the Aimed Shot this damage follows (s. 170), read off the
+   * stored attack for the same reason `ammo` is. `location` already carries the
+   * head; this says whether the aim was at a leg or at a held item, neither of
+   * which changes the armour but both of which cost the target something once
+   * the damage lands.
+   */
+  aimedAt?: CpredAimPoint;
+  /**
    * Required for `kind: 'stabilize'` — the token being stabilized, which RAW
    * allows to be your own. Unlike the damage fields above this one *is* the
    * client's choice; the server only checks it may be reached and seen.
@@ -192,6 +204,12 @@ export interface CpredDamagePlan {
   areaTargets?: RollAreaTarget[];
   /** The round that was fired (stage 16g) — „Zastosuj" reads its effects. */
   ammo?: CpredAmmoProfile;
+  /**
+   * The Aimed Shot this damage follows (s. 170). Only a leg and a held item
+   * ever land here — the head is already `location: 'head'` — and both are
+   * consequences „Zastosuj" applies, not arithmetic this plan does.
+   */
+  aimedAt?: CpredAimPoint;
 }
 
 /** What „Ustabilizowanie" needs to judge itself and explain the verdict. */
@@ -514,6 +532,7 @@ function planDamageRoll(
         ...(request.targetCoverId !== undefined ? { targetCoverId: request.targetCoverId } : {}),
         ...(request.areaTargets ? { areaTargets: request.areaTargets } : {}),
         ...(request.ammo ? { ammo: request.ammo } : {}),
+        ...(request.aimedAt ? { aimedAt: request.aimedAt } : {}),
       },
     },
   };

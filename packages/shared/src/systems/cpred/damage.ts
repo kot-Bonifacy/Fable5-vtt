@@ -316,6 +316,27 @@ function drawOneInjury(
   return { entry: null, rolls, exhausted: true };
 }
 
+/**
+ * Where „Złamana noga" sits in the printed table: body, 2k6 = 8 (s. 187).
+ *
+ * An aimed leg shot inflicts *that* injury by name rather than by a roll, so
+ * the engine has to be able to find it. It is looked up by table and roll, not
+ * by id or by name: the id is minted from the Polish name at import time and
+ * the GM may retype the row, but „ósemka w tabeli korpusu" is the rulebook's
+ * own address for it and survives both.
+ */
+export const CPRED_BROKEN_LEG_TABLE: CriticalInjuryTable = 'body';
+export const CPRED_BROKEN_LEG_ROLL = 8;
+
+/** The entry a table holds at one 2d6 value, or null when nobody typed it in. */
+export function criticalInjuryAt(
+  entries: readonly CriticalInjuryEntry[],
+  table: CriticalInjuryTable,
+  roll: number,
+): CriticalInjuryEntry | null {
+  return entries.find((entry) => entry.table === table && entry.roll === roll) ?? null;
+}
+
 /** Sheet row created from a drawn injury. */
 export function toCriticalInjuryRow(
   entry: CriticalInjuryEntry,

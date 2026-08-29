@@ -91,12 +91,20 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 ## Od czego zacząć
 
-**Ostatnia sesja (28.08, czwarta) zamknęła odsłuch dźwięków mapy** — sześć próbek wymienionych
-albo poprawionych, przeładowanie rozdzielone na pistoletowe i karabinowe, rykoszet po raz
-pierwszy podpięty pod pudło. Lista zaległości zeszła z 13 do **12**. Sesja przed nią zamknęła
-16e, dwie ścieżki 24c i pięć brakujących drzwi w UI, i zostawiła **czwartą stałą scenę
+**Ostatnia sesja (29.08) potwierdziła, że VTT stoi w całości na podręczniku głównym** — nie było
+czego wycinać po Easy Mode poza czterema mylącymi komentarzami i jednym martwym plikiem
+(`overrides.json`, skasowany). Przy okazji **Celowanie z s. 170 przestało być martwe**: miało cały
+silnik od etapu 16 i żadnej kontrolki, która by je włączyła. Ma teraz trzy cele (głowa, trzymany
+przedmiot, noga) wybierane na banerze nad mapą. **Do `POMYSLY.md` doszło 9 kandydatów z audytu**
+— MG wybierze z nich, co wciągnąć jako zaległości albo etapy; największy to Zdolności Specjalne
+dziewięciu Ról i rozwój postaci za PD. Sesja 28.08 (czwarta) zamknęła odsłuch dźwięków mapy
+i zbiła listę zaległości z 13 do **12**; ta przed nią zostawiła **czwartą stałą scenę
 „Korytarz 16e"** (widoczność Dynamiczna, mur L) — **nie kasuj jej**, bo za każdym razem
 odtwarzaliśmy ją od zera.
+
+**Celowanie nie było jeszcze oglądane w przeglądarce** — działa w testach serwera od strzału po
+złamaną nogę, ale baner z trzema guzikami nikt nie kliknął. To pierwsza rzecz do sprawdzenia
+przy najbliższych oględzinach (scena „Strzelnica", figura z kartą jako cel).
 
 **Od czego zacząć: do wyboru 27g** (wydajność) i **28** (wdrożenie na VPS) — nadal jedyne dwa
 nierozpoczęte etapy. **27g ma teraz gotowy poligon**: pomiar fps na scenie ze światłami i mgłą
@@ -124,7 +132,7 @@ pasku i krótkie pytanie przy kasowaniu postaci, sceny i bota. Przy kampanii **b
 pytanie niesie jej nazwę. Flaga niczego nie blokuje: mówi, gdzie się stoi. Przestawia się
 w Panelu MG i **nie rozchodzi się sama** po podpiętych ekranach (patrz pułapki).
 
-**Otwarte zaległości: 13 pozycji w `zaleglosci.md`.** Triaż z 28.08 zostaje w mocy — siedem
+**Otwarte zaległości: 13 pozycji w `zaleglosci.md`** (29.08 doszła jedna — oględziny Celowania). Triaż z 28.08 zostaje w mocy — siedem
 pozycji „nieosiągalnych z UI albo bez widocznej różnicy" siedzi w `decyzje-i-uproszczenia.md`
 (sekcja „Ścieżki, których nie da się odklikać") i **nie wciągaj ich z powrotem** jako nowych
 odkryć. Dwie kolejne poszły 28.08 **do kosza decyzją MG**: zakładka „AI" z etapu 09 (martwa) i
@@ -188,6 +196,8 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 - **Żeton postaci z UI** — przez `TokenPlacement.characterId` (+ `ownerId` z karty); bez tego powstaje pusty krążek o tej samej nazwie, nie figura postaci.
 - **Czynność, której nic nie cofa** — `confirmDestructive` (`confirm.ts`), nie gołe `window.confirm`: poza poligonem pytanie niesie nazwę kampanii. Nie kłóci się z „kasowanie nie pyta" z 23.08 — tamto dotyczy obiektów sceny, które wracają `Ctrl+Z`.
 - **Zdanie „czego brakuje" w pasku postaci** — `HudContext.sheetNotMine`, renderowane **niezależnie** od `slots.length`: Akcje z katalogu nie potrzebują karty, więc pasek gracza nigdy nie jest pusty.
+- **Nowy punkt Celowania** — `CPRED_AIM_POINTS` w `shared/.../locations.ts` (+ `hitLocationForAim`); skutek dokłada się w `applyDamageToSheet` **i** `applyDamageToTokenHp`, a rana nadana z celowania idzie w `injuryAimed`, nie w `injury`. `CpredHitLocation` zostaje przy dwóch wartościach.
+- **Rana nadana z nazwy** szuka się przez `criticalInjuryAt(pool, tabela, wynik)`, nigdy po id — id powstaje z polskiej nazwy przy imporcie i ginie, gdy MG przepisze wiersz.
 
 ## Pułapki dev — indeks
 
@@ -243,10 +253,73 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 - **Marsz automatem wymaga serii `pointermove`**, nie jednego — po linii, którą figura ma iść, z przerwami ~180 ms.
 - **`window.confirm` da się podmienić i przeczytać treść pytania** bez klikania i bez ryzyka; podmiana ginie przy przeładowaniu karty.
 - **`Campaign.sandbox` nie rozchodzi się sama** — jedzie w stanie logowania, więc chip „poligon" u innego klienta czeka na przeładowanie albo `campaign:activate`.
+- **Mechanika bywa gotowa i nieosiągalna z UI** — Celowanie miało cały silnik i żadnej kontrolki, która by je włączyła; prześledź regułę od kontrolki, nie od silnika.
+- **Baner nad mapą ma `pointer-events: none`** — guzik dołożony do niego musi sam włączyć `pointer-events: auto`, i tylko na sobie.
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 29.08 — audyt „czy stoimy na podręczniku głównym" i cztery decyzje MG
+
+**Zlecenie MG:** sprawdzić, czy VTT bazuje w pełni na podręczniku głównym, wyciąć to, co zostało
+po Easy Mode, i przedstawić listę mechanik z podręcznika możliwych do dołożenia — do wyboru przez
+MG, nie do wdrożenia z marszu.
+
+**Werdykt audytu: system stoi na podręczniku głównym i nie było czego wycinać.** Przejście
+odbyło się w etapie 13 i jest udokumentowane w `tools/import/README.md` („Podręcznik jest
+źródłem prawdy dla wartości bazowych"); `parse-compendium.py` nie pisze `weapon-types.json`
+ani `armor.json` od tamtej pory. Sprawdzone w danych produkcyjnych: **66 umiejętności**
+(nie 41), **20 typów broni** z pełną tabelą PT dla ośmiu pasm (nie 3 wiersze), **9 pancerzy**,
+**22 rany krytyczne** (obie tabele 2k6 — Easy Mode ma sam korpus), 96 cyborgizacji, 16 rodzajów
+amunicji, 10 Ról. Tabela PT zasięgów zgadza się z s. 173 co do cyfry. Sprawdzone też, że
+identyfikatory umiejętności w kodzie istnieją w liście 66-elementowej (lista publiczna jest jej
+ścisłym podzbiorem — zero rozjazdów).
+
+**Po Easy Mode zostały cztery ślady, wszystkie nieszkodliwe.** (1) `data/public/cpred/skills.json`
+— 42 pozycje jako próbka dla świeżego klona; plik prywatny go **zastępuje**, zostaje świadomie.
+(2) `overrides.json` z siedmioma wartościami odczytanymi z kart postaci Easy Mode — **skasowany
+decyzją MG**, razem z martwą ścieżką, która go czytała; zbiorcza tabela ze statbloków jest teraz
+czysto tym, co mówią statbloki, więc porównanie z podręcznikiem przestało się zgadzać samo ze
+sobą. (3) `parse-critical-injuries.py` — ścieżka awaryjna z bezpiecznikiem, zostaje.
+(4) **Cztery komentarze przypisywały Easy Mode'owi regułę, która jest identyczna w podręczniku**
+(„Progi Ran" s. 186, remis inicjatywy s. 168, slug `perception`) — poprawione.
+
+**Trzy znalezione błędy, wszystkie naprawione albo zapisane.**
+(a) **Cyberręka nie podnosiła obrażeń Bijatyki**: `unarmedDamage(body, cyberarm)` miało parametr,
+którego jedyny wywołujący nigdy nie przekazywał — postać z BC ≤ 4 i cyberręką biła za 1k6
+zamiast 2k6 (s. 176). Nowa `hasCyberarm` wymaga `foundation` **i** umieszczenia w boksie ręki na
+sylwetce; noga i wszczep wkręcony w rękę nie liczą się, nieumieszczona kończyna też nie.
+(b) **Cichy zjazd na dane próbkowe na produkcji** — `loadCpredRegistry` celowo milczy, gdy nie ma
+pliku prywatnego, więc VPS bez `data/private/` wystartowałby z 42 umiejętnościami i nikt by się
+nie dowiedział. **Dopisane do etapu 28** jako dwie pozycje zakresu (przeniesienie katalogu jako
+krok deployu + ostrzeżenie startowe) i kryterium ukończenia.
+(c) **Siedem ran krytycznych ma efekt tylko w prozie** (Pęknięta czaszka ×3, oba urazy oka,
+Naderwany mięsień, Strzaskane palce, Złamana szczęka, Zmiażdżona krtań) — do `POMYSLY.md`.
+
+**Celowanie (s. 170) — zrobione w całości, bo okazało się nieosiągalne z UI.** Silnik miał od
+etapu 16 komplet (−8, ×2 po pancerzu głowy, `AIM_NEEDS_FULL_ACTION`, wyjątek Ludzkiej tarczy),
+ale **obie drogi uzbrojenia celownika wpisywały `aimed: false` na sztywno** i nic tego nie
+zmieniało — reguła była martwa i żaden test tego nie łapał, bo testy wołały planer wprost.
+Zamiast flagi jest teraz `aimedAt` z trzema celami z podręcznika: **głowa**, **trzymany
+przedmiot**, **noga**. Wybiera się je na banerze uzbrojonego celownika nad mapą. Skutki:
+noga → serwer nadaje ranę „Złamana noga" znalezioną po **tabeli i wyniku** (korpus, 2k6 = 8),
+o ile choć punkt przeszedł przez pancerz ciała i cel nie ma już złamanej nogi; przedmiot →
+zdanie na karcie obrażeń (VTT nie modeluje tego, co kto trzyma w rękach). Przy okazji zdjęty
+warunek `!melee` — podręcznik mówi „atak Dystansowy **lub Wręcz**". Ludzka tarcza nie zasłania
+tylko przed celowaniem **w głowę**, nie przed każdym celowanym strzałem.
+
+**Reszta kandydatów z audytu poszła do `POMYSLY.md`** (9 wpisów, wszystkie z 29.08): rozwój za
+Punkty Doświadczenia (s. 410–411) i wieloklasowość, **Zdolności Specjalne dziewięciu Ról**
+(mechanicznie działa dziś wyłącznie Interfejs Netrunnera — największa nieodrobiona część
+podręcznika), walka pojazdów, dodatki do broni, tarcza jako przedmiot z PW, sztuki walki
+ignorujące połowę pancerza, ×3 Pękniętej czaszki i typowane kary ran. MG wybierze z tego, co
+warto wciągnąć jako zaległości albo etapy.
+
+**Testy:** 1408 w `shared` (+8), **797** na serwerze (+4 na Celowanie), 62 u klienta — zielone.
+ESLint i Prettier czyste. **Uwaga:** `netdevices.test.ts` i `zones.test.ts` migoczą przy
+`pnpm -r test` (rzuty kością), i **migotały tak samo na nietkniętym `main`** — sprawdzone
+schowkiem; uruchomione osobno przechodzą za każdym razem.
 
 ### Sesja 28.08 (czwarta) — odsłuch dźwięków mapy
 
@@ -295,61 +368,3 @@ człowieka przy głośnikach.
 **Testy:** 1400 w `shared` (+4 nowe na `cpredReloadSound`), 793 na serwerze, 62 u klienta
 — zielone. ESLint i Prettier czyste. Klient podany na `:5199` — komplet siedmiu nowych
 plików wraca z 200, a `reload.ogg` z podmianki SPA, czyli faktycznie zniknął.
-
-### Sesja 28.08 (trzecia) — pakiet A+B+D+E: ruch i mgła, screamsheet, brakujące drzwi w UI
-
-**Zlecenie MG:** znów pogrupowane zaległości bez lokalnego LLM i bez etapów nierozpoczętych.
-MG wybrał **wszystkie pięć pakietów**, ale **C (odsłuch 16 próbek) wypadł** — „teraz nie mam
-czasu na odsłuchy", więc zgodnie z zapowiedzią wyleciał z sesji zamiast być przenoszony
-w nieskończoność. Cztery rozstrzygnięcia MG: scenę z dynamiczną widocznością **zbudować
-i zostawić** jako czwartą stałą, **pomiar fps zostawić do 27g**, a dwie pozycje (zakładka „AI"
-z etapu 09 i ślad ścieżki przy przeciąganiu) **do kosza, nie do roboty**.
-
-**Dwa błędy w dokumentacji, oba znalezione przed pisaniem kodu.** (1) Pozycja o katalogu
-`ai-gateway/…/tts/` wisiała jako otwarta, choć poprzednia sesja go skasowała — `grep -c` liczył
-18 zaległości, otwartych było 17. (2) Pomysł **„Ręczne nadanie Onieśmielenia z adresem
-przeciwnika"** był **od 22.08 zrobiony**: sesja naprawcza dodała zdarzenie `token:feared`
-i listę „Boi się:" w menu żetonu (`FearedPicker`), tylko nikt nie odhaczył wiersza. Z pakietu E
-zostało więc pięć pozycji, nie sześć — i to jest argument za tym, żeby przed kodowaniem
-sprawdzać w kodzie, a nie ufać liście.
-
-**Pakiet E — pięć pozycji, wszystkie odklikane w przeglądarce.**
-**„Postaw na scenie" (⊕ przy wierszu postaci)**: `TokenPlacement` niesie teraz `characterId`
-i `ownerId`, więc żeton dorobiony ręcznie jest **związany z kartą** — menu postawionej figury
-pokazało „📄 Otwórz kartę postaci" i PW 40/40 z karty, a nie pusty krążek o tej samej nazwie.
-**Jedno kliknięcie, jeden tryb**: `tokenPlacement` przeniesiony z `tokenStore` do
-`mapToolStore`, do tego samego pola co wybór narzędzia. Uzbrojenie gniazd wytrąciło żeton z ręki
-(podpowiedź, kursor i obwódka przycisku znikły), a wzięcie żetonu odłożyło narzędzie — obie
-strony sprawdzone. **Konfrontacja u gracza**: `FacedownFromSheet` przy Reputacji na karcie;
-avatar9 wybrał cel z listy widocznych figur, kubek się załadował, a na czacie stanęła pełna
-karta („Konfrontacja → Tony · 3 + 4 · Charakter (CHA) +5 · Reputacja 1 +1 · Przegrana
-Konfrontacja −2 · **Przegrana**") z dwoma przyciskami przegranego. **Flaga poligonu**:
-`Campaign.sandbox` + migracja, chip „POLIGON" w pasku (u MG i u gracza) i `confirmDestructive` —
-obie gałęzie odczytane podmienionym `window.confirm`, bez kasowania czegokolwiek.
-
-**Mój błąd, który znalazła dopiero przeglądarka.** Zdanie „ta figura ma kartę, ale nie twoją"
-powiesiłem najpierw pod `slots.length === 0` — i **nie pokazywało się nigdy**, bo Akcje
-z katalogu (Ustabilizowanie, Bieg) nie potrzebują karty, więc pasek gracza nigdy nie jest pusty.
-Poprawione na warunek niezależny od liczby slotów; żaden test by tego nie złapał, bo test
-sprawdzał pole w kontekście, a nie to, kiedy się rysuje.
-
-**Pakiet A — 16e zamknięte w całości.** Scena **„Korytarz 16e"** (mur w kształcie L, widoczność
-Dynamiczna, pamięć eksploracji) stoi na stałe. (1) **Mgła w marszu**: cień rzucany przez ścianę
-miał w trzech kolejnych chwilach jednego marszu trzy różne kształty — przelicza się na bieżąco,
-nie jednym skokiem na końcu. (6) **NPC zza rogu**: MG przeciągnął figurę zza muru w pole
-widzenia gracza w trakcie marszu i na czacie stanęło **„Ktoś pojawił się w polu widzenia —
-marsz przerwany."**, a figura stanęła w połowie trasy. Przy okazji **odklikana regresja
-hit-testu z 18a** — gracz na scenie dynamicznej normalnie klika i prowadzi swój żeton.
-
-**Pakiet B — dwie ścieżki 24c bez modelu.** Screamsheet wypełniony ręcznie (generator zgłosił
-degradację: „Generator jest niedostępny — AI Gateway nie odpowiada"), wgrana grafika 256×256 —
-`.screamsheet-photo` ma `filter: grayscale(0.75) contrast(1.15)`, czyli odbitka gazetowa działa.
-Po zapisaniu i otwarciu przez ✎ formularz wrócił **jako screamsheet**, z „Brukowcem", „Datą
-w stopce", leadem i grafiką — rodzaj przyszedł z handoutu, nie z przycisku.
-
-**Zaległości: 17 → 13.** Zamknięte w całości: 16e, regresja 18a, dwie ścieżki 24c, martwy `tts/`;
-dwie zdjęte decyzją MG. Zostało **13 pozycji, z czego 9 czeka na żywy model** — po wymianie
-wersji zostaną praktycznie same dźwięki i pomiar fps (ten do 27g).
-
-**Testy:** 1400 w `shared`, **793** na serwerze (+2 na trasę `sandbox`), **62** u klienta
-(+6 w nowym `map-mode.test.ts`) — zielone. ESLint i Prettier czyste na całym repo.

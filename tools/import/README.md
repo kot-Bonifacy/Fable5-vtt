@@ -66,7 +66,7 @@ Zapisuje:
 | `data/private/cpred/compendium/import-report-manual.json` | liczby, ceny wg jakości, zdolności ról, ostrzeżenia   |
 
 Umiejętności ładuje serwer z `data/private/cpred/skills.json`, a gdy tego pliku
-nie ma — z `data/public/cpred/skills.json` (41 pozycji Easy Mode, w repo). Plik
+nie ma — z `data/public/cpred/skills.json` (42 pozycje próbki, w repo). Plik
 prywatny **zastępuje** publiczny, nie dokleja się do niego. Karta postaci trzyma
 `skillId → poziom` i pomija nieuczone umiejętności, więc podmiana listy dokłada
 wiersze na poziomie 0 i nie rusza żadnej postaci.
@@ -75,7 +75,7 @@ wiersze na poziomie 0 i nie rusza żadnej postaci.
 
 - `terms.py` — słownik nazw: typy broni, pancerze, kategorie umiejętności i
   mapowanie nazwa → id. To nadal słownik, nie treść: identyfikatory są
-  angielskie, tak jak wszędzie w repo, a 41 nazw umiejętności leży w
+  angielskie, tak jak wszędzie w repo, a nazwy umiejętności z próbki leżą w
   `data/public` od etapu 07.
 - `data/private/rulebook/manual/manual-overrides.json` (gitignore) — wartości,
   których regex nie wyciągnie, oraz **nazwy własne broni egzotycznej**. Te
@@ -191,6 +191,12 @@ imporcie podręcznika typy istnieją i **wchodzi komplet 70 broni markowych**.
 sekcję `rulebookDifferences` — miejsca, w których statbloki nie zgadzają się z
 podręcznikiem. Rozbieżność nie musi być błędem (NPC może nosić broń niskiej
 jakości), ale jest jedynym sygnałem, że któryś z parserów się pomylił.
+
+Zbiorcza tabela typów, którą ten skrypt buduje ze statbloków, **nigdzie nie jest
+zapisywana** — służy wyłącznie do tego porównania. Dlatego od 29.08 jest
+**czysto tym, co mówią statbloki**: ręcznie odczytane poprawki (magazynki i LA
+z kart postaci Easy Mode, plik `overrides.json`) zostały usunięte razem z nim,
+bo mieszane w to samo miejsce sprawiały, że porównanie zgadzało się samo ze sobą.
 
 ## Rany krytyczne bez podręcznika głównego (`parse-critical-injuries.py`)
 

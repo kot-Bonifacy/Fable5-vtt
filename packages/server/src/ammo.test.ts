@@ -551,8 +551,9 @@ describe('special ammunition', () => {
     });
 
     it('cannot be aimed at the head', async () => {
-      const { card } = await fire('w-shotgun', nearTokenId, { aimed: true });
+      const { card } = await fire('w-shotgun', nearTokenId, { aimedAt: 'head' });
       expect(card.system.aimed).toBe(false);
+      expect(card.system.aimedAt).toBeUndefined();
       expect(card.system.location).toBe('body');
     });
 

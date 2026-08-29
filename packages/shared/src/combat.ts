@@ -225,8 +225,8 @@ export function resolveInitiativeOrder(combatants: CombatantView[]): CombatantVi
 
 /**
  * Participants sharing both initiative and tie-breaker — a genuine tie that
- * RAW resolves with a re-roll (Easy Mode: „Remisy należy rozstrzygnąć
- * ponownym rzutem"). Groups of one are not returned.
+ * RAW resolves with a re-roll („Remisy należy rozstrzygnąć ponownym rzutem",
+ * s. 168). Groups of one are not returned.
  */
 export function findInitiativeTies(combatants: CombatantView[]): CombatantView[][] {
   const groups = new Map<string, CombatantView[]>();

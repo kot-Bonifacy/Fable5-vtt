@@ -335,3 +335,17 @@ dopiero na głośnikach. **Nową próbkę obejrzyj obwiednią, zanim ją wepnies
 nie ma ffmpeg, ale wystarczy moduł `wave` z biblioteki standardowej Pythona: co 5–10 ms
 maksimum wartości bezwzględnej, wypisane jako jedna linijka cyfr 0–9. Drugi szczyt po zaniku
 pierwszego widać w tym gołym okiem, tak samo jak sekundę ciszy doklejoną na końcu.
+
+**Mechanika bywa gotowa i nieosiągalna — sprawdź, kto ustawia flagę.** Celowanie (s. 170) miało
+od etapu 16 komplet: `−8` w rozbiciu rzutu, `location: 'head'` w obrażeniach, ×2 po pancerzu,
+`AIM_NEEDS_FULL_ACTION` w budżecie tury i wyjątek dla Ludzkiej tarczy. Mimo to **nie dało się go
+odpalić**: obie drogi uzbrojenia celownika (`AttackLauncher` i wiersz broni na karcie) wpisywały
+`aimed: false` na sztywno, a nic w UI tego nie zmieniało. Testy przechodziły, bo wołały planer
+wprost. Zanim uznasz regułę za zrobioną, prześledź ją **od kontrolki**, nie od silnika — grep po
+nazwie pola, na którym stoi (`grep -rn "aimed: true"` pokazał wtedy same przepisania, ani jednego
+źródła).
+
+**Podpowiedź nad mapą ma `pointer-events: none`** (`.map-placement-hint`), więc guzik dołożony do
+banera jest niewidoczny dla myszy, dopóki sam nie włączy sobie `pointer-events: auto`. Włączaj je
+na wąskim elemencie, nie na całym banerze — reszta paska ma dalej przepuszczać kliknięcia w mapę
+pod spodem, inaczej pasek nad środkiem sceny zjada rozkazy marszu.

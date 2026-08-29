@@ -1,6 +1,7 @@
 import type {
   ChatMessageView,
   CharacterInjuryPayload,
+  CpredAimPoint,
   CpredAmmoProfile,
   DamageApplyPayload,
   DamageLogEntry,
@@ -9,7 +10,13 @@ import type {
   RollResult,
   TokenHp,
 } from '@vtt/shared';
-import { ARMOR_SP_MAX, ROLE_GM, damageTotal, isCriticalInjuryEntry } from '@vtt/shared';
+import {
+  ARMOR_SP_MAX,
+  ROLE_GM,
+  damageTotal,
+  isCpredAimPoint,
+  isCriticalInjuryEntry,
+} from '@vtt/shared';
 import type { Character, Scene, Token } from '../generated/prisma/client.js';
 import {
   SHEET_STATIST_ARMOR_ROW_ID,
@@ -198,6 +205,10 @@ export const damageApplyEvent = defineEvent<DamageApplyPayload, { messageId: num
     // naming its own ammunition would be a client choosing its own armour
     // penetration.
     const ammo = readRollAmmo(roll);
+    // Same rule, same reason (s. 170): the aim point rides on the stored roll,
+    // so the leg breaks because of the shot that was aimed, not because of what
+    // the client puts in the payload now.
+    const aimedAt = readRollAimPoint(roll);
 
     const request: SheetDamageRequest = {
       // Autofire rolls 2d6 and multiplies the sum (stage 16); the factor is
@@ -208,6 +219,10 @@ export const damageApplyEvent = defineEvent<DamageApplyPayload, { messageId: num
       ...(payload?.armorSp !== undefined ? { armorSp: payload.armorSp } : {}),
       ...(payload?.ignoreArmor === true || roll.damage?.ignoreArmor ? { ignoreArmor: true } : {}),
       ...(ammo ? { ammo } : {}),
+      // Only while „Zastosuj" still points where the shot did: the GM may move
+      // the damage onto somebody else, and a leg aimed at one person must not
+      // break another's (the head keeps working because it is `location`).
+      ...(aimedAt && roll.damage?.targetTokenId === token.id ? { aimedAt } : {}),
     };
 
     const landed = await applyDamageToFigure(deps, campaignId, scene, token, request);
@@ -385,6 +400,14 @@ function readRollAmmo(roll: RollResult): CpredAmmoProfile | null {
   const candidate = ammo as Partial<CpredAmmoProfile>;
   if (typeof candidate.id !== 'string' || typeof candidate.name !== 'string') return null;
   return { ...(candidate as CpredAmmoProfile), patterns: candidate.patterns ?? [] };
+}
+
+/** The Aimed Shot this damage follows (s. 170), off the stored roll. */
+function readRollAimPoint(roll: RollResult): CpredAimPoint | null {
+  const system = roll.damage?.system;
+  if (!system || typeof system !== 'object') return null;
+  const aimedAt = (system as { aimedAt?: unknown }).aimedAt;
+  return isCpredAimPoint(aimedAt) ? aimedAt : null;
 }
 
 /** The fire this hit started, written into the log the card renders. */

@@ -452,7 +452,7 @@ describe('action economy', () => {
     const aimed = await attack(player, vexCharacterId, vexTokenId, {
       weaponRowId: 'w-pistol',
       mode: 'single',
-      aimed: true,
+      aimedAt: 'head',
     });
     expect(aimed.ok).toBe(true);
     expect(await attack(player, vexCharacterId, vexTokenId, { weaponRowId: 'w-pistol' })).toEqual({

@@ -253,6 +253,26 @@ export function DamageRow({
           {entry.injuryNote && (
             <span className="chat-roll-badge chat-roll-badge--note">{entry.injuryNote}</span>
           )}
+          {/*
+            The Aimed Shot's own consequence (s. 170). „Złamana noga" is named by
+            the aim rather than drawn, so it carries no 2k6 at all — the badge
+            says where the shot went instead of pretending a die was rolled.
+          */}
+          {entry.injuryAimed && (
+            <span
+              className="chat-roll-badge chat-roll-badge--injury"
+              title={entry.injuryAimed.effect}
+            >
+              Celowanie{entry.aimedAt ? ` (${entry.aimedAt.toLowerCase()})` : ''}:{' '}
+              {entry.injuryAimed.name}
+            </span>
+          )}
+          {entry.aimNote && (
+            <span className="chat-roll-badge chat-roll-badge--note">
+              {entry.aimedAt ? `Celowanie (${entry.aimedAt.toLowerCase()}) — ` : ''}
+              {entry.aimNote}
+            </span>
+          )}
           {/* „na minutę — do rundy 9" / „poza walką, zdejmuje MG" (stage 16h). */}
           {entry.timed && (
             <span className="chat-roll-badge chat-roll-badge--note">
@@ -292,6 +312,9 @@ export function DamageRow({
         {entry.injury && <p className="chat-damage-injury-effect">{entry.injury.effect}</p>}
         {entry.injuryExtra && (
           <p className="chat-damage-injury-effect">{entry.injuryExtra.effect}</p>
+        )}
+        {entry.injuryAimed && (
+          <p className="chat-damage-injury-effect">{entry.injuryAimed.effect}</p>
         )}
       </div>
     </div>

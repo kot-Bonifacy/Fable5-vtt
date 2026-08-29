@@ -1154,7 +1154,7 @@ export function sendAttackRoll(
       attackerTokenId,
       weaponRowId: request.weaponRowId,
       mode: request.mode,
-      ...(request.aimed ? { aimed: true } : {}),
+      ...(request.aimedAt ? { aimedAt: request.aimedAt } : {}),
       ...(request.modifier ? { modifier: request.modifier } : {}),
     };
     if (blocked.kind === 'cover') {

@@ -55,7 +55,7 @@ export function TargetTooltip({ hover }: { hover: AimHover | null }) {
         attackerTokenId: attackerToken.id,
         weaponRowId: targeting.weaponRowId,
         mode: targeting.mode,
-        aimed: targeting.aimed,
+        ...(targeting.aimedAt ? { aimedAt: targeting.aimedAt } : {}),
         modifier: targeting.modifier,
       };
     }

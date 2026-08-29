@@ -503,7 +503,7 @@ export async function checkPerceptionOf(
   });
 }
 
-/** Registry id of „Percepcja" — the Easy Mode list's own slug. */
+/** Registry id of „Percepcja" — the slug the rulebook's skill list imports under. */
 const CPRED_PERCEPTION_SKILL_ID = 'perception';
 
 /** Rolls the system's damage, or null when it deals none. */
