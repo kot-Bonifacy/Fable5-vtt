@@ -431,6 +431,11 @@ export function toCriticalInjuryRow(
     // only bites under a condition no VTT can check for itself.
     ...(entry.headDamageMultiplier ? { headDamageMultiplier: entry.headDamageMultiplier } : {}),
     ...(entry.conditionalPenalty ? { conditionalPenalty: { ...entry.conditionalPenalty } } : {}),
+    // Stage 30b: what it takes to get this wound off, in the table's own words.
+    // Copied like everything else here, so a treated wound answers „czym" from
+    // the row rather than from a compendium entry that may since have changed.
+    ...(entry.quickFix ? { quickFix: entry.quickFix } : {}),
+    ...(entry.treatment ? { treatment: entry.treatment } : {}),
   };
 }
 

@@ -101,6 +101,14 @@ export const CPRED_ACTION_SCANNER = 'net-scanner';
 export const CPRED_ACTION_COMBAT_AWARENESS = 'combat-awareness';
 
 /**
+ * „Prowizorka" (stage 30b) — „zamiast podejmować próbę długiej naprawy, możesz
+ * w ramach Akcji tymczasowo doprowadzić jakiś przedmiot do idealnego stanu"
+ * (s. 147). The Action is the whole point of the rule: a Technik who could do
+ * it for free would simply keep everyone's armour at full SP.
+ */
+export const CPRED_ACTION_FIELD_REPAIR = 'field-repair';
+
+/**
  * The catalogue itself (s. 168–169). Mechanics, not rulebook prose: the costs
  * and conditions are the game's arithmetic, which the engine needs to run at
  * all — the flavour text stays in the private data, like every other stage.
@@ -264,6 +272,13 @@ export const CPRED_ACTIONS: readonly CpredActionDefinition[] = [
     name: 'Zmysł Walki',
     cost: 'action',
     hint: 'Rozdzielasz punkty Zmysłu Walki na nowo. Poza walką za darmo; w trakcie walki kosztuje Akcję.',
+    handledElsewhere: true,
+  },
+  {
+    id: CPRED_ACTION_FIELD_REPAIR,
+    name: 'Prowizorka',
+    cost: 'action',
+    hint: 'Technik doprowadza przedmiot do pełnego OB na 10 minut na poziom Specjalizacji Naprawa.',
     handledElsewhere: true,
   },
   {

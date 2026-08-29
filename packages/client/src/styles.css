@@ -5774,6 +5774,36 @@ body.is-resizing {
   gap: 0.35rem;
 }
 
+/* Etap 30b: to, co Medycyna daje poza liczbami — dwie Umiejętności spoza
+   tabeli Umiejętności i dwie listy z podręcznika, zwinięte w `details`, żeby
+   panel nie urósł na wysokość strony. */
+.awareness-extras {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.awareness-derived {
+  margin: 0;
+  color: var(--text);
+}
+
+.awareness-extras summary {
+  cursor: pointer;
+}
+
+.awareness-extras ul {
+  margin: 0.2rem 0 0;
+  padding-left: 1rem;
+  line-height: 1.35;
+}
+
+.awareness-extras p {
+  margin: 0.2rem 0 0;
+}
+
 /* Whoever asked the system for less motion gets less motion: the flying number
    and the two pulses are the only things here that move on their own. */
 @media (prefers-reduced-motion: reduce) {

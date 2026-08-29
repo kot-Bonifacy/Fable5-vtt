@@ -1522,8 +1522,20 @@ describe('ranged combat from the map', () => {
     let kneeCharacterId = '';
     let kneeTokenId = '';
 
-    /** Fires the rifle at the aim point until something lands, and applies it. */
-    async function shootAndApply(aimedAt: string): Promise<DamageLogEntry> {
+    /**
+     * Fires the rifle at the aim point until something lands, and applies it.
+     *
+     * `healLegBetweenTries` jest dla testu, który chce **zdrowej** nogi: ten sam
+     * rzut obrażeń potrafi wylosować ranę z tabeli (dwie szóstki na 5k6 to około
+     * jedna piąta strzałów), a korpus tej atrapy ma wyłącznie ósemkę — więc raz
+     * na kilkadziesiąt przebiegów Celowanie trafiało w nogę już złamaną
+     * i słusznie nie dokładało nic. Test obok chce dokładnie tej sytuacji, więc
+     * ponawianie musi być na życzenie, nie domyślne.
+     */
+    async function shootAndApply(
+      aimedAt: string,
+      healLegBetweenTries = false,
+    ): Promise<DamageLogEntry> {
       for (let attempt = 0; attempt < 40; attempt++) {
         await emitAck(player, 'weapon:reload', { characterId, weaponRowId: 'w-rifle' });
         const message = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
@@ -1548,6 +1560,19 @@ describe('ranged combat from the map', () => {
         await emitAck(gm, 'damage:apply', { messageId: rolledId, tokenId: kneeTokenId });
         const entry = (await logged).message.damage;
         if (!entry) throw new Error('no damage entry on the card');
+        // Ten sam rzut obrażeń potrafi wylosować ranę z tabeli (dwie szóstki na
+        // 5k6 to około jedna piąta strzałów), a tabela tej atrapy ma w korpusie
+        // wyłącznie ósemkę — więc raz na kilkadziesiąt przebiegów Celowanie
+        // trafiało w nogę **już złamaną** i słusznie nie dokładało nic. To nie
+        // regres reguły: wystarczy oddać celowi zdrową nogę i strzelić jeszcze
+        // raz (migotanie znalezione 29.08, naprawione tutaj).
+        if (healLegBetweenTries && !entry.injuryAimed && entry.aimNote) {
+          await emitAck(gm, 'character:update', {
+            characterId: kneeCharacterId,
+            patch: { data: { criticalInjuries: [], hpCurrent: 35 } },
+          });
+          continue;
+        }
         return entry;
       }
       throw new Error('nothing landed in 40 attempts');
@@ -1592,7 +1617,7 @@ describe('ranged combat from the map', () => {
     });
 
     it('breaks the leg the shot was aimed at, by name rather than by 2k6', async () => {
-      const entry = await shootAndApply('leg');
+      const entry = await shootAndApply('leg', true);
       expect(entry.aimedAt).toBe('Noga');
       expect(entry.injuryAimed?.name).toBe('Złamana noga');
       // „Jeśli przez pancerz na ciele celu przejdzie choć jeden punkt…” — the
@@ -1637,18 +1662,75 @@ describe('ranged combat from the map', () => {
    * Dlatego tu musi stać prawdziwa kolejka inicjatywy.
    */
   describe('Wykrycie słabości — pierwszy udany Atak w Rundzie', () => {
-    /** Strzela z ręki MG (nigdy nie odmawia mu budżetu) aż do trafienia. */
+    /**
+     * Strzela z ręki MG (nigdy nie odmawia mu budżetu) aż do trafienia.
+     *
+     * Przeładowanie w pętli, a nie przed nią: pistolet ma skończony magazynek,
+     * a trzydzieści prób to więcej naboi, niż w nim jest. Bez tego test padał
+     * raz na kilkanaście przebiegów z `NOT_ENOUGH_AMMO` i wyglądał jak regres
+     * Wykrycia słabości — a mówił tylko o pechowej serii kości.
+     */
+    /**
+     * Czeka na kafel **ataku**, a nie na pierwszą wiadomość czatu.
+     *
+     * W trwającej walce jeden strzał wysyła dwie: wpis dziennika Akcji
+     * z trackera i dopiero potem kartę rzutu. `once('chat:message')` łapał tę
+     * pierwszą, `roll.attack` był `undefined` i pętla wystrzeliwała cały
+     * licznik, meldując „ani jednego trafienia" — a trafień było w bród.
+     */
+    function waitForAttackCard(ms = 3000): Promise<AttackCard | undefined> {
+      return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+          gm.off('chat:message', onMessage);
+          reject(new Error('chat:message timeout'));
+        }, ms);
+        const onMessage = (payload: ChatMessageBroadcast) => {
+          const card = payload.message.roll?.attack as AttackCard | undefined;
+          if (!card) return;
+          clearTimeout(timer);
+          gm.off('chat:message', onMessage);
+          resolve(card);
+        };
+        gm.on('chat:message', onMessage);
+      });
+    }
+
     async function hitOnce(): Promise<AttackCard> {
+      let refills = 0;
       for (let attempt = 0; attempt < 30; attempt += 1) {
-        const message = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+        const message = waitForAttackCard();
         const ack = await emitAck<{ messageId: number }>(gm, 'attack:roll', {
           characterId,
           targetTokenId,
           attackerTokenId: shooterTokenId,
           request: { weaponRowId: 'w-pistol', mode: 'single' },
         });
-        if (!ack.ok) throw new Error(`attack:roll failed: ${JSON.stringify(ack)}`);
-        const card = (await message).message.roll?.attack as AttackCard | undefined;
+        if (!ack.ok) {
+          // Strzał, którego nie było, nie wyśle kafla — porzuconą obietnicę
+          // trzeba wyciszyć, inaczej jej limit czasu wywróci cały przebieg.
+          message.catch(() => {});
+          if (ack.error !== 'NOT_ENOUGH_AMMO' || refills >= 6) {
+            throw new Error(`attack:roll failed: ${JSON.stringify(ack)}`);
+          }
+          // Magazynek uzupełniany łatą karty, nie Przeładowaniem: trwa walka,
+          // a `weapon:reload` kosztuje w niej Akcję i sam potrafi odmówić —
+          // wtedy pętla dostrzeliwałaby pustym pistoletem do końca licznika.
+          const sheet = await sheetOf(characterId);
+          await emitAck(gm, 'character:update', {
+            characterId,
+            patch: {
+              data: {
+                weapons: sheet.weapons.map((weapon) =>
+                  weapon.id === 'w-pistol' ? { ...weapon, ammoCurrent: weapon.ammoMax } : weapon,
+                ),
+              },
+            },
+          });
+          refills += 1;
+          attempt -= 1;
+          continue;
+        }
+        const card = await message;
         if (card?.hit === true) return card;
       }
       throw new Error('30 strzałów i ani jednego trafienia');

@@ -237,6 +237,9 @@ export function combatProfileSheet(
     // No Role means no Special Ability (stage 30a): `cpredRoleAbilityRank`
     // refuses a sheet with a null `roleId` before it ever reads this.
     combatAwareness: {},
+    // Stage 30b: a statist has no Role, so neither Specialty purse is ever read.
+    medicine: {},
+    fabrication: {},
     skills: { [CPRED_EVASION_SKILL_ID]: profile.evasion },
     // Statysta nie ma czego nazywać: jego jedyną umiejętnością jest Unik.
     skillSpecialties: {},

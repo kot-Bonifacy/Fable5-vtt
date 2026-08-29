@@ -996,6 +996,13 @@ function rollAckErrorText(code: string): string {
       return 'Ta figura nie ma profilu bojowego — uzupełnij go w menu żetonu.';
     case 'STATIST_CANNOT_ROLL_THIS':
       return 'Figura bez karty rzuca tylko na obrażenia z karty ataku.';
+    // Stage 30b — the three refusals „Leczenie" can come back with.
+    case 'INJURY_NOT_FOUND':
+      return 'Ta figura nie ma już tej rany.';
+    case 'NO_TREATMENT':
+      return 'Ta rana nie ma drogi leczenia, którą VTT umie rozstrzygnąć („Nd.").';
+    case 'NO_SURGERY':
+      return 'Chirurgia jest dostępna tylko Medykom z punktami w tej Specjalizacji.';
     default:
       return `Błąd rzutu: ${code}`;
   }
@@ -2391,6 +2398,53 @@ export const saveCombatAwareness = (
     allocation,
     ...(tokenId ? { tokenId } : {}),
   });
+
+/**
+ * „Prowizorka" Technika (etap 30b) — Akcja, gdy trwa walka.
+ *
+ * `tokenId` to figura, która płaci; poza walką serwer nie liczy nic. Odmowa
+ * wraca kodem silnika i tłumaczy ją `fieldRepairErrorText` niżej.
+ */
+export async function makeFieldRepair(
+  characterId: string,
+  armorRowId: string,
+  tokenId?: string,
+): Promise<void> {
+  const ack = await emitSceneAck<CharacterView>('character:field-repair', {
+    characterId,
+    armorRowId,
+    ...(tokenId ? { tokenId } : {}),
+  });
+  if (!ack.ok) useChatStore.getState().addNote(fieldRepairErrorText(ack.error));
+}
+
+/** Koniec prowizorki — starte OB wraca na wiersz. Nie kosztuje nic. */
+export async function endFieldRepair(characterId: string, armorRowId: string): Promise<void> {
+  const ack = await emitSceneAck<CharacterView>('character:field-repair', {
+    characterId,
+    armorRowId,
+    undo: true,
+  });
+  if (!ack.ok) useChatStore.getState().addNote(fieldRepairErrorText(ack.error));
+}
+
+/** Polskie zdania dla odmów, którymi kończy się `character:field-repair`. */
+export function fieldRepairErrorText(code: string): string {
+  switch (code) {
+    case 'UNKNOWN_ARMOR':
+      return 'Nie ma takiej sztuki pancerza na karcie.';
+    case 'NO_REPAIR_SPECIALTY':
+      return 'Prowizorkę robi Technik z co najmniej 1 punktem w Specjalizacji Naprawa.';
+    case 'ARMOR_INTACT':
+      return 'Ta sztuka ma pełne OB — nie ma czego prowizorycznie naprawiać.';
+    case 'ALREADY_PATCHED':
+      return 'Ta sztuka jest już na prowizorce — najpierw napraw ją zwyczajnie.';
+    case 'NOT_PATCHED':
+      return 'Ta sztuka nie jest na prowizorce.';
+    default:
+      return combatErrorText(code);
+  }
+}
 
 /** Polish sentences for the refusals `character:combat-awareness` can return. */
 export function combatAwarenessErrorText(code: string): string {

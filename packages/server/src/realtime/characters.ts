@@ -2,16 +2,21 @@ import type {
   CharacterCombatAwarenessPayload,
   CharacterCreatePayload,
   CharacterDeleteBroadcast,
+  CharacterFieldRepairPayload,
   CharacterIdPayload,
   CharacterUpdatePayload,
   CharacterView,
 } from '@vtt/shared';
 import {
   CPRED_ACTION_COMBAT_AWARENESS,
+  CPRED_ACTION_FIELD_REPAIR,
   CPRED_COMBAT_AWARENESS_ABILITY,
   ROLE_GM,
   cpredCombatAwarenessProblem,
+  cpredFieldRepairMinutes,
+  cpredSheetFabrication,
   cpredRoleAbilityRank,
+  cpredSpecialtiesProblem,
   createDefaultCharacterData,
   describeCombatAwareness,
   mergeCharacterData,
@@ -156,7 +161,14 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
       // Akcji)", s. 146), and a sheet patch has no Action to charge.
       if (sheet.combatAwareness !== undefined) throw new RealtimeError('FORBIDDEN');
       const current = parseCharacterData(character.data, deps.ctx.cpred);
-      data.data = JSON.stringify(mergeCharacterData(current, sheet));
+      const merged = mergeCharacterData(current, sheet);
+      // Stage 30b: the two Specialty purses stay on this path (a level-up has
+      // no Action to charge), but their size depends on a rank the patch
+      // validator cannot see. Judged here, against the sheet as it will be —
+      // so raising the rank and spending the new points in one patch works.
+      const specialties = cpredSpecialtiesProblem(merged, deps.ctx.cpred);
+      if (specialties !== null) throw new RealtimeError(specialties);
+      data.data = JSON.stringify(merged);
     }
 
     let updated = await deps.ctx.prisma.character.update({
@@ -310,6 +322,100 @@ export const characterCombatAwarenessEvent = defineEvent<
     await emitCharacterUpsert(deps, campaignId, view);
     // Błyskawiczna reakcja moves initiative and Precyzyjny atak moves every
     // attack, so the bar and the tracker both read a sheet that just changed.
+    await emitTokensOfCharacter(deps, campaignId, saved);
+    return view;
+  },
+});
+
+/**
+ * „Prowizorka" — a Technik's field repair (stage 30b, s. 147).
+ *
+ * „Zamiast podejmować próbę długiej naprawy, możesz w ramach Akcji tymczasowo
+ * doprowadzić jakiś przedmiot do idealnego stanu […] Tak naprawiony przedmiot
+ * ma pełne OB i PW". In this VTT the only thing that carries an SP that wears
+ * down is a piece of armour, so that is what a bodge puts back — and the row
+ * remembers what it was worth, because „potem przedmiot wraca do stanu, w
+ * którym był".
+ *
+ * It carries no countdown. Ten minutes a level is sixty rounds a level, longer
+ * than any fight this project has ever run, so a round timer would be a clock
+ * that never strikes; the piece stays patched until somebody presses the button
+ * — the same bargain stage 16h struck with effects that outlive a combat.
+ *
+ * „Nie można go ponownie tymczasowo naprawić, dopóki nie zostanie zupełnie
+ * naprawiony w zwykły sposób" is why a row already bodged refuses a second one.
+ */
+export const characterFieldRepairEvent = defineEvent<CharacterFieldRepairPayload, CharacterView>({
+  name: 'character:field-repair',
+  handler: async ({ deps, socket, user, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    const character = await requireCampaignCharacter(
+      deps.ctx.prisma,
+      campaignId,
+      payload?.characterId,
+    );
+    const isGm = user.role === ROLE_GM;
+    if (!isGm && character.ownerId !== user.id) throw new RealtimeError('CHARACTER_NOT_FOUND');
+
+    const data = parseCharacterData(character.data, deps.ctx.cpred);
+    const row = data.armor.find((entry) => entry.id === payload?.armorRowId);
+    if (!row) throw new RealtimeError('UNKNOWN_ARMOR');
+
+    let armor: typeof data.armor;
+    let note: string;
+    if (payload?.undo === true) {
+      if (!row.fieldRepair) throw new RealtimeError('NOT_PATCHED');
+      const restored = Math.min(row.fieldRepair.restoredFrom, row.sp);
+      armor = data.armor.map((entry) =>
+        entry.id === row.id ? { ...entry, spCurrent: restored, fieldRepair: undefined } : entry,
+      );
+      note = `${row.name}: prowizorka puszcza, OB wraca do ${restored}.`;
+    } else {
+      if (row.fieldRepair) throw new RealtimeError('ALREADY_PATCHED');
+      if (row.spCurrent >= row.sp) throw new RealtimeError('ARMOR_INTACT');
+      // The Technik doing the bodging is the sheet that owns the row: RAW lets
+      // a Technik patch anybody's gear, but the SP that changes is this sheet's,
+      // and „who turned the screwdriver" is the table's business, not a column.
+      const repair = cpredSheetFabrication(data, deps.ctx.cpred).repair;
+      if (repair < 1) throw new RealtimeError('NO_REPAIR_SPECIALTY');
+      const minutes = cpredFieldRepairMinutes(repair);
+      armor = data.armor.map((entry) =>
+        entry.id === row.id
+          ? {
+              ...entry,
+              spCurrent: entry.sp,
+              fieldRepair: { restoredFrom: entry.spCurrent, minutes },
+            }
+          : entry,
+      );
+      note = `${row.name}: prowizorka na ${minutes} min — OB ${row.spCurrent} → ${row.sp}.`;
+      if (payload?.tokenId !== undefined) {
+        const { token, scene } = await requireCampaignToken(
+          deps.ctx.prisma,
+          campaignId,
+          payload.tokenId,
+        );
+        if (token.characterId !== character.id) throw new RealtimeError('BAD_REQUEST');
+        await requireTurnSpend(
+          deps,
+          campaignId,
+          scene,
+          token.id,
+          { kind: 'action', actionId: CPRED_ACTION_FIELD_REPAIR },
+          user,
+          CPRED_ACTION_FIELD_REPAIR,
+          { silent: false, note },
+        );
+      }
+    }
+
+    const saved = await deps.ctx.prisma.character.update({
+      where: { id: character.id },
+      data: { data: JSON.stringify(mergeCharacterData(data, { armor })) },
+    });
+    const view = toCharacterView(saved, deps.ctx.cpred);
+    await emitCharacterUpsert(deps, campaignId, view);
+    // The armour bar on the figure's card reads the sheet, so it has to hear.
     await emitTokensOfCharacter(deps, campaignId, saved);
     return view;
   },

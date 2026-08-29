@@ -107,19 +107,29 @@ import {
   woundCheckPenalty,
   woundState,
   CPRED_COMBAT_AWARENESS_ABILITY,
+  cpredFieldRepairMinutes,
   cpredRoleAbilityRank,
+  cpredSheetFabrication,
+  cpredTreatmentOptions,
+  describeCareOptions,
+  CPRED_FABRICATION_ABILITY,
+  CPRED_MEDICINE_ABILITY,
 } from '@vtt/shared';
 import { apiUpload } from '../api.js';
 import { UPLOAD_ACCEPT_ATTRIBUTE, uploadRequirementText } from '@vtt/shared';
 import { fileRejectionText, uploadErrorText } from '../uploads.js';
 import { CombatAwarenessPanel } from './CombatAwarenessPanel.js';
+import { SpecialtyPanel } from './SpecialtyPanel.js';
+import { TreatInjury } from './TreatInjury.js';
 import { CyberwareBody } from './CyberwareBody.js';
 import { FacedownFromSheet } from './FacedownLauncher.js';
 import {
   assignCriticalInjury,
   economyErrorText,
+  endFieldRepair,
   fetchLedger,
   flushCharacterSave,
+  makeFieldRepair,
   queueCharacterSave,
   reloadWeapon,
   sendCyberwareAction,
@@ -407,7 +417,7 @@ function Arsenal({
     <section className="cp-arsenal">
       <h3 className="cp-section">Broń i pancerz</h3>
       <WeaponStrip character={character} data={data} saveData={saveData} startRoll={startRoll} />
-      <ArmorStrip data={data} saveData={saveData} />
+      <ArmorStrip character={character} data={data} saveData={saveData} />
     </section>
   );
 }
@@ -559,6 +569,19 @@ function IdentityColumn({
         {cpredRoleAbilityRank(data, registry, CPRED_COMBAT_AWARENESS_ABILITY) !== null && (
           <div className="cp-field cp-awareness">
             <CombatAwarenessPanel characterId={character.id} />
+          </div>
+        )}
+        {/* Etap 30b: dwie kolejne Zdolności, których punkty się rozdziela —
+            Medycyna Medyka i Twórca Technika. Stoją w tym samym miejscu, co
+            panel Solo, bo to ta sama część karty: rozwinięcie wiersza wyżej. */}
+        {cpredRoleAbilityRank(data, registry, CPRED_MEDICINE_ABILITY) !== null && (
+          <div className="cp-field cp-awareness">
+            <SpecialtyPanel characterId={character.id} ability="medicine" />
+          </div>
+        )}
+        {cpredRoleAbilityRank(data, registry, CPRED_FABRICATION_ABILITY) !== null && (
+          <div className="cp-field cp-awareness">
+            <SpecialtyPanel characterId={character.id} ability="fabrication" />
           </div>
         )}
         <div className="cp-field cp-notes">
@@ -1393,9 +1416,36 @@ const ARMOR_DEFAULT_SP = 11;
  * nimi taką kolumnę drukuje — dwie tabele jednego pasa czyta się lepiej, gdy
  * kończą się w tym samym miejscu.
  */
-function ArmorStrip({ data, saveData }: TabProps) {
+function ArmorStrip({ character, data, saveData }: TabProps & { character: CharacterSheetView }) {
+  const registry = useCharacterStore((s) => s.registry);
+  const tokens = useTokenStore((s) => s.tokens);
+  // Poziom Specjalizacji Naprawa decyduje, czy „Prowizorka" ma się w ogóle
+  // pokazać; figura na scenie — kto płaci za nią Akcję, gdy trwa walka.
+  const repair = cpredSheetFabrication(data, registry).repair;
+  const ownToken = Object.values(tokens).find((token) => token.characterId === character.id);
+
   function write(rows: CpredArmorRow[]) {
     saveData({ armor: rows }, 'armor');
+  }
+
+  /**
+   * „Zwiększasz OB przedmiotu o 1" (s. 148) — jedyny z jedenastu skutków
+   * Ulepszania, który VTT umie policzyć samo. Reszta stoi wypisana w panelu
+   * Twórcy i rozgrywa się przy stole (`decyzje-i-uproszczenia.md`).
+   */
+  function upgradeSp(row: CpredArmorRow) {
+    write(
+      data.armor.map((entry) =>
+        entry.id === row.id
+          ? {
+              ...entry,
+              sp: entry.sp + 1,
+              spCurrent: entry.spCurrent + 1,
+              upgrade: 'armorSp',
+            }
+          : entry,
+      ),
+    );
   }
 
   function update(rowId: string, patch: Partial<CpredArmorRow>) {
@@ -1477,6 +1527,41 @@ function ArmorStrip({ data, saveData }: TabProps) {
                     />
                   </td>
                   <td className="armor-actions">
+                    {/* Etap 30b — Prowizorka Technika (s. 147). Guzik pojawia
+                        się tylko przy starciu OB i tylko Technikowi z punktem
+                        w Naprawie; drugi klik oddaje sztuce jej starte OB. */}
+                    {row.fieldRepair ? (
+                      <button
+                        type="button"
+                        className="cp-mini-button"
+                        title={`Prowizorka na ${row.fieldRepair.minutes} min — kliknij, gdy puści (OB wraca do ${row.fieldRepair.restoredFrom})`}
+                        aria-label="Zakończ prowizorkę"
+                        onClick={() => void endFieldRepair(character.id, row.id)}
+                      >
+                        ⌫
+                      </button>
+                    ) : repair > 0 && row.spCurrent < row.sp ? (
+                      <button
+                        type="button"
+                        className="cp-mini-button"
+                        title={`Prowizorka: pełne OB na ${cpredFieldRepairMinutes(repair)} min. Kosztuje Akcję, gdy trwa walka.`}
+                        aria-label="Prowizorka — tymczasowa naprawa"
+                        onClick={() => void makeFieldRepair(character.id, row.id, ownToken?.id)}
+                      >
+                        ⚒
+                      </button>
+                    ) : null}
+                    {!row.upgrade && (
+                      <button
+                        type="button"
+                        className="cp-mini-button"
+                        title="Ulepszanie: +1 OB (s. 148). Jeden przedmiot można ulepszyć tylko raz."
+                        aria-label="Ulepsz: +1 OB"
+                        onClick={() => upgradeSp(row)}
+                      >
+                        ⊕
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="cp-mini-button"
@@ -1695,6 +1780,8 @@ function CriticalInjuries({ data, saveData, characterId }: TabProps & { characte
   const entriesById = useCompendiumStore((s) => s.entries);
   const order = useCompendiumStore((s) => s.order);
   const [picked, setPicked] = useState('');
+  /** Rana, przy której otwarto formularz leczenia; naraz tylko jedna. */
+  const [treating, setTreating] = useState<string | null>(null);
   /**
    * Tabela ran do wyboru — obie strony ciała, po numerze 2k6, tak jak drukuje
    * je podręcznik. Rana, którą postać już ma, wypada z listy: serwer i tak jej
@@ -1763,6 +1850,23 @@ function CriticalInjuries({ data, saveData, characterId }: TabProps & { characte
                     trafienia w głowę ×{injury.headDamageMultiplier}
                   </span>
                 ) : null}
+                {/*
+                  Etap 30b: droga leczenia z tabeli s. 187 — guzik pojawia się
+                  tylko wtedy, gdy zdanie przy ranie da się odczytać na rzut
+                  („Nd." nie da się). Kasowanie ✕ obok zostaje: MG nadal musi
+                  móc zdjąć ranę bez rzutu, gdy rozstrzygnął ją narracyjnie.
+                */}
+                {cpredTreatmentOptions(injury).length > 0 && (
+                  <button
+                    type="button"
+                    className="cp-mini-button"
+                    title={`Leczenie: ${describeCareOptions(cpredTreatmentOptions(injury))}`}
+                    aria-label={`Lecz ranę: ${injury.name}`}
+                    onClick={() => setTreating(treating === injury.id ? null : injury.id)}
+                  >
+                    Lecz
+                  </button>
+                )}
                 <button
                   type="button"
                   className="cp-mini-button cp-mini-button--danger"
@@ -1779,6 +1883,18 @@ function CriticalInjuries({ data, saveData, characterId }: TabProps & { characte
                 </button>
               </div>
               <p className="injury-effect">{injury.effect}</p>
+              {injury.quickFix ? (
+                <p className="injury-care" title="Znosi efekt rany do końca dnia — rozstrzyga MG">
+                  Łatanie: {injury.quickFix}
+                </p>
+              ) : null}
+              {treating === injury.id && (
+                <TreatInjury
+                  patientId={characterId}
+                  injury={injury}
+                  onClose={() => setTreating(null)}
+                />
+              )}
             </li>
           ))}
         </ul>

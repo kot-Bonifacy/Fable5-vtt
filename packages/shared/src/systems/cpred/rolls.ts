@@ -29,7 +29,14 @@ import {
   type CpredHitLocation,
 } from './locations.js';
 import { CPRED_STAT_LABELS, isCpredStatId, type CpredStatId, type CpredStats } from './stats.js';
-import { cpredSheetCombatAwareness } from './roleability.js';
+import {
+  cpredMedicineSkillLevel,
+  cpredSheetCombatAwareness,
+  cpredSheetFabrication,
+  isCpredMedicineSkillId,
+  CPRED_MEDICINE_SKILLS,
+  CPRED_REPAIR_SKILL_IDS,
+} from './roleability.js';
 
 /**
  * „Za każdy punkt dodaj +1 do Testów Percepcji" (Wyczucie zagrożenia, s. 146).
@@ -102,7 +109,7 @@ export const CPRED_SITUATIONAL_MODIFIER_LIMIT = 20;
  * damage or a Death Save (stage 15), or Stabilizing somebody (stage 14b).
  * Only Checks obey the exploding-10 rule — and Stabilizing is one.
  */
-export type CpredRollKind = 'skill' | 'stat' | 'damage' | 'deathSave' | 'stabilize';
+export type CpredRollKind = 'skill' | 'stat' | 'damage' | 'deathSave' | 'stabilize' | 'treatInjury';
 
 /** Skills the rules name for Stabilizing (s. 222). Either one may be rolled. */
 export const CPRED_FIRST_AID_SKILL_ID = 'first-aid';
@@ -196,6 +203,20 @@ export interface CpredRollRequest {
   stabilizeDv?: number;
   /** Server-filled: whose name the card names. */
   stabilizeTargetName?: string;
+  /**
+   * `kind: 'treatInjury'` (stage 30b) — who is being treated and for what. The
+   * two ids are the client's choice, like `stabilizeTokenId`; everything the
+   * roll is judged against is read off the *target's* wound by the server.
+   */
+  treatTokenId?: string;
+  treatInjuryId?: string;
+  /** Which branch of the printed sentence is being rolled („Chirurgia PT 13"). */
+  treatSkillId?: string;
+  /** Server-filled: DV of that branch, read off the wound the target carries. */
+  treatDv?: number;
+  /** Server-filled: what the card names — the wound, and whose it is. */
+  treatInjuryName?: string;
+  treatTargetName?: string;
 }
 
 /** Highest damage multiplier any weapon can reach — guards the stored value. */
@@ -208,7 +229,9 @@ export type CpredRollProblem =
   | 'BAD_MODIFIER'
   | 'NOT_ENOUGH_LUCK'
   | 'UNKNOWN_WEAPON'
-  | 'BAD_DAMAGE';
+  | 'BAD_DAMAGE'
+  /** Chirurgia asked for by somebody who has no points in the Specialty. */
+  | 'NO_SURGERY';
 
 /** Damage metadata the chat card needs to offer „Zastosuj na celu". */
 export interface CpredDamagePlan {
@@ -235,6 +258,20 @@ export interface CpredDamagePlan {
   aimedAt?: CpredAimPoint;
   /** Half the armour stops this one (s. 176) — a blade or a martial art. */
   halvesArmor?: boolean;
+}
+
+/** What „Leczenie" needs to judge itself and explain the verdict (stage 30b). */
+export interface CpredTreatInjuryPlan {
+  /** Beat this to take the wound off (RAW: strictly higher, as everywhere). */
+  dv: number;
+  targetName: string;
+  /** Token whose sheet loses the wound on a success. */
+  targetTokenId: string;
+  /** Compendium id of the wound being treated. */
+  injuryId: string;
+  injuryName: string;
+  /** Which branch of the printed sentence was rolled. */
+  skillName: string;
 }
 
 /** What „Ustabilizowanie" needs to judge itself and explain the verdict. */
@@ -283,6 +320,8 @@ export interface CpredRollPlan {
   deathSave?: CpredDeathSavePlan;
   /** Present for `kind: 'stabilize'`. */
   stabilize?: CpredStabilizePlan;
+  /** Present for `kind: 'treatInjury'`. */
+  treatInjury?: CpredTreatInjuryPlan;
 }
 
 /**
@@ -338,6 +377,9 @@ export function planCpredRoll(
   if (request.kind === 'stabilize') {
     return planStabilizeRoll(data, registry, request, modifier, luckSpent, state, context);
   }
+  if (request.kind === 'treatInjury') {
+    return planTreatInjuryRoll(data, registry, request, modifier, luckSpent, state, context);
+  }
 
   const breakdown: RollBreakdownEntry[] = [];
   let title: string;
@@ -351,6 +393,16 @@ export function planCpredRoll(
     // in, or nothing extra while nobody has named a field (stage 25a debt).
     title = `${cpredSkillLabel(skill, data)} (${CPRED_STAT_LABELS[statId].abbr})`;
     breakdown.push(...skillBreakdown(data, skill));
+    // „Dodaj poziom tej Specjalizacji do Testów Podstawowych napraw,
+    // Cyberinżynierii, Elektroniki i zabezpieczeń, Naprawy broni albo Naprawy
+    // pojazdów" (s. 147). Read straight off the sheet, like Precyzyjny atak in
+    // 30a, so the client's preview and the server's verdict cannot disagree.
+    if (CPRED_REPAIR_SKILL_IDS.includes(skill.id)) {
+      const repair = cpredSheetFabrication(data, registry).repair;
+      if (repair > 0) {
+        breakdown.push({ label: `Naprawa ${repair}`, value: repair, kind: 'situational' });
+      }
+    }
     if (skill.id === CPRED_PERCEPTION_SKILL_ID) {
       const threatSense = cpredSheetCombatAwareness(data, registry).perception;
       if (threatSense > 0) {
@@ -424,7 +476,7 @@ function finishCheck(
   state: CpredWoundState,
   modifier: number,
   luckSpent: number,
-  extra: Pick<CpredRollPlan, 'stabilize'> = {},
+  extra: Pick<CpredRollPlan, 'stabilize' | 'treatInjury'> = {},
   context: CpredRollContext = {},
 ): { ok: true; plan: CpredRollPlan } {
   const woundPenalty = woundCheckPenalty(state);
@@ -512,6 +564,73 @@ function planStabilizeRoll(
     modifier,
     luckSpent,
     { stabilize: { dv, targetName, targetTokenId, skillName: skill.name } },
+    context,
+  );
+}
+
+/**
+ * „Leczenie" of one Critical Injury (stage 30b): TECH + whichever skill the
+ * printed sentence names, against the DV printed beside it.
+ *
+ * The branch is the healer's choice and the DV is not — it is read off the
+ * wound the *target* carries, on the server, exactly as `stabilizeDv` is. What
+ * is checked here is the one thing the rules gate: Chirurgia is not a skill
+ * everybody has a level 0 in, it is a skill a non-Medyk does not have at all,
+ * so asking for it without the Specialty is refused rather than rolled at zero.
+ */
+function planTreatInjuryRoll(
+  data: CpredCharacterData,
+  registry: CpredRegistry,
+  request: CpredRollRequest,
+  modifier: number,
+  luckSpent: number,
+  state: CpredWoundState,
+  context: CpredRollContext = {},
+): { ok: true; plan: CpredRollPlan } | { ok: false; error: CpredRollProblem } {
+  const dv = request.treatDv;
+  const targetTokenId = request.treatTokenId;
+  const injuryId = request.treatInjuryId;
+  const skillId = request.treatSkillId;
+  if (
+    !isInteger(dv) ||
+    typeof targetTokenId !== 'string' ||
+    targetTokenId.length === 0 ||
+    typeof injuryId !== 'string' ||
+    injuryId.length === 0 ||
+    typeof skillId !== 'string'
+  ) {
+    return { ok: false, error: 'BAD_REQUEST' };
+  }
+
+  let breakdown: RollBreakdownEntry[];
+  let skillName: string;
+  if (isCpredMedicineSkillId(skillId)) {
+    const medicSkill = CPRED_MEDICINE_SKILLS.find((entry) => entry.id === skillId)!;
+    const level = cpredMedicineSkillLevel(data, registry, skillId);
+    // Not `UNKNOWN_SKILL` by accident: for this healer the skill really does
+    // not exist, and the sentence the client shows says why (`cpredCareRefusal`).
+    if (level < 1) return { ok: false, error: 'NO_SURGERY' };
+    skillName = medicSkill.name;
+    breakdown = [
+      statBreakdown(data, medicSkill.stat),
+      { label: `${medicSkill.name} (Medycyna)`, value: level, kind: 'skill' },
+    ];
+  } else {
+    const skill = registry.skills.find((entry) => entry.id === skillId);
+    if (!skill) return { ok: false, error: 'UNKNOWN_SKILL' };
+    skillName = skill.name;
+    breakdown = skillBreakdown(data, skill);
+  }
+
+  const injuryName = request.treatInjuryName ?? 'rana';
+  const targetName = request.treatTargetName ?? 'cel';
+  return finishCheck(
+    `Leczenie: ${injuryName} → ${targetName}`,
+    breakdown,
+    state,
+    modifier,
+    luckSpent,
+    { treatInjury: { dv, targetName, targetTokenId, injuryId, injuryName, skillName } },
     context,
   );
 }

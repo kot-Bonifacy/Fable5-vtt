@@ -81,6 +81,23 @@ export interface CharacterCombatAwarenessPayload {
   tokenId?: string;
 }
 
+/**
+ * Client → server payload of `character:field-repair` (stage 30b).
+ *
+ * „Prowizorka" costs an Action (s. 147), so it leaves the sheet-patch path for
+ * the same reason the Solo's allocation did — and it is the only way to end one
+ * as well: `undo` puts the ablated SP back, which costs nothing.
+ */
+export interface CharacterFieldRepairPayload {
+  characterId: string;
+  /** Row of `data.armor` being bodged back together. */
+  armorRowId: string;
+  /** The figure spending the Action, when this sheet is standing on a scene. */
+  tokenId?: string;
+  /** Ending a bodge rather than making one — free, and no Action is booked. */
+  undo?: boolean;
+}
+
 /** Client → server payload of `character:delete` (owner or GM). */
 export interface CharacterIdPayload {
   characterId: string;

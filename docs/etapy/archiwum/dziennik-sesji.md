@@ -7,6 +7,75 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 29.08 (druga) — pakiet A+B z triażu MG: cztery dziury z audytu i profil statysty
+
+**Zlecenie MG:** z listy zaległości i pomysłów wybrać kilkanaście pozycji pasujących do jednej
+sesji; MG wskazał **pakiet A+B** (punkty 1–6) i cztery rozstrzygnięcia: dane wyciągnąć
+z podręcznika (nie wpisywać ręcznie), typowane kary w **wariancie prostszym**, pomiar fps zostaje
+w 27g, a pozycje 22–24 z listy wciągnąć jako **etapy** i skasować z `POMYSLY.md`.
+
+**Połowa pancerza okazała się dużo szersza, niż mówił wpis w `POMYSLY.md`.** Notatka z audytu
+opisywała samą zasadę sztuk walki (s. 178); podręcznik daje ją **każdej broni białej**
+(„Obrażenia zadane każdym rodzajem broni białej ignorują połowę pancerza Broniącego się,
+zaokrąglając w górę", s. 176), odbiera **Bijatyce** („nie ignorują połowy pancerza", s. 177)
+i odbiera **broni rzuconej** („rozpatruje się pełną OB pancerza, a nie połowę", s. 177). Znaczyło
+to, że **każde cięcie w VTT rozbijało się o pełne OB** — najczęstszy atak wręcz w grze liczył się
+źle, nie jeden przypadek brzegowy. Flaga `halvesArmor` siedzi na **typie broni** (nie na wierszu
+karty i nie przy id umiejętności), `resolveCpredDamage` liczy `ceil(OB/2)`, a **ściera się pełny
+pancerz**: przykład z s. 176 traktuje kurtkę OB 11 jak OB 6 i w tym samym akapicie zbija ją
+do 10. Karta obrażeń mówi „− OB 6 (połowa pancerza)", bo bez tego zdania arytmetyka czyta się
+jak błąd.
+
+**Parser czyta te zdania z podręcznika, zamiast trzymać listę w kodzie.**
+`parse_half_armor_skills` łapie wszystkie trzy zdania (z przeczeniem włącznie) i mapuje je na id
+umiejętności, ostrzegając, gdy któregoś nie ma. Import dołożył `halvesArmor` czterem typom broni
+białej i sztukom walki, **pomijając Bijatykę** — dokładnie tak, jak drukuje podręcznik.
+
+**Pęknięta czaszka: `headDamageMultiplier` na wierszu rany.** `CPRED_HEAD_DAMAGE_MULTIPLIER`
+przestało być jedynym źródłem — mnożnik czyta się z ran, **które nosi cel**, przez
+`cpredHeadDamageMultiplier`, z sufitem i podłogą na wypadek literówki MG. Silnik nadal nie zna
+nazwy „Pęknięta czaszka"; regex w parserze łapie zdanie „Pomnóż obrażenia głowy… x 3".
+
+**Kary warunkowe — wariant prostszy, zgodnie z decyzją MG.** `conditionalPenalty` niesie liczbę
+**i warunek słowami podręcznika**, i **nigdy nie wchodzi do sumy rzutu**: VTT nie wie, w której
+ręce jest broń ani czy ten Test wymaga mówienia. Kara stoi jako chip przy ranie na karcie
+i jako guzik w oknie rzutu, który wpisuje liczbę do modyfikatora (drugi klik ją cofa). Import
+złapał **siedem ran**: Naderwany mięsień, Strzaskane palce, oba urazy oka, Złamana szczęka,
+Uraz ucha i Urwane ucho. „Zmiażdżona krtań" świadomie **zostaje prozą** — „Nie możesz mówić"
+to zakaz, nie modyfikator.
+
+**Statysta przestał być kartą uboższą o rany.** Etap 16b zostawił rany krytyczne poza
+`CpredCombatProfile` z uzasadnieniem „to opisuje osobę z historią" — i to przestało być prawdą,
+gdy 16h (gaz, hukbłysk) i 26f (broniona strefa) zaczęły rany **nadawać z zasady**: reguła
+kończyła się zdaniem na czacie i niczym więcej. Rany siedzą teraz w profilu jako pole opcjonalne
+(nietknięty profil serializuje się bajt w bajt jak w 16b), a `combatProfileSheet` podaje je
+syntetycznej karcie — więc `cpredInjuryDodgeBlock` i `cpredInjuryModifiers` działają **bez ani
+jednej gałęzi „czy to statysta"**. Ta sama droga obsłużyła dwie szóstki na kościach obrażeń
+i „Złamaną nogę" z Celowania. Żeton **bez** profilu dalej dostaje samo zdanie: nie ma gdzie
+zapisać.
+
+**Przeładowanie statysty.** `weapon:reload` zaczynało od `requireRollableCharacter`, więc pusty
+magazynek NPC-a uzupełniało się ręczną edycją tokenu w środku walki. Zdarzenie przyjmuje teraz
+`attackerTokenId` zamiast `characterId` (wzorzec `character:roll` z 16b), a pasek akcji przestał
+chować pudełko „Przeładuj" przed figurą bez karty. Akcja kosztuje tyle samo, dźwięk jest ten sam.
+
+**Cztery wpisy z `POMYSLY.md` okazały się nieaktualne** i zostały przekreślone: edycja rysunku
+i edytor osłony (oba zrobione w 27l), blokada ruchu przez osłonę na serwerze
+(`coverMovementSegments` liczy się w `refuseWalkThroughSolid`) i migotliwy test
+`netdemons.test.ts` (już pyta warunkowo). **Trzy pomysły z audytu awansowały na etapy 29–31**
+i wypadły z listy.
+
+**Znalezione przy okazji:** (a) `data/private/cpred/compendium/weapon-types.json` **był starszy
+niż parser** — regeneracja dołożyła Miotaczowi ognia `ammoPatterns: ['shell']`, bez którego
+`ammoFitsWeapon` odrzucał **każdy** nabój specjalny do tej broni. (b) Edytor kompendium nie
+wystawia `movePenalty`, `actionPenalty` ani czterech flag tury z 14e, więc rana wpisana ręką MG
+nie potrafi zabrać RUCH-u ani odmówić Uniku — **do `zaleglosci.md`**, bo to ~15 linijek,
+ale poza zakresem pakietu.
+
+**Testy:** 1437 w `shared` (+29), **809** na serwerze (+12), 62 u klienta — zielone.
+ESLint i Prettier czyste, `pnpm -r build` przechodzi. **Nic z tej sesji nie było oglądane
+w przeglądarce** — pięć punktów do odklikania stoi na górze `zaleglosci.md`.
+
 ### Sesja 29.08 — audyt „czy stoimy na podręczniku głównym" i cztery decyzje MG
 
 **Zlecenie MG:** sprawdzić, czy VTT bazuje w pełni na podręczniku głównym, wyciąć to, co zostało

@@ -1005,8 +1005,48 @@
   color: var(--cp-red);
 }
 
-.cp-injuries .injury-head .cp-mini-button {
+/* Od 30b w wierszu rany stoją dwa guziki („Lecz" i kosz), więc do prawej
+   krawędzi spycha wyłącznie pierwszy z nich — `auto` na obu rozsunęłoby je. */
+.cp-injuries .injury-head .cp-mini-button:first-of-type {
   margin-left: auto;
+}
+
+/* „Łatanie: Ratownictwo medyczne PT 13" — zdanie z tabeli s. 187 pod efektem
+   rany. Stoi na karcie, bo to jedyna droga, która nie ma guzika: łatanie znosi
+   efekt do końca dnia i rozstrzyga je MG (patrz `decyzje-i-uproszczenia.md`). */
+.cp-injuries .injury-care {
+  margin: 0.15rem 0 0;
+  font-size: 0.68rem;
+  color: var(--cp-ink-dim);
+}
+
+/* Formularz leczenia — rozwija się pod raną, której dotyczy. */
+.cp-injuries .injury-treat {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  align-items: center;
+  margin-top: 0.3rem;
+  padding-top: 0.3rem;
+  border-top: 1px dashed var(--cp-ink-dim);
+}
+
+.cp-injuries .injury-treat-who {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+  font-size: 0.68rem;
+  color: var(--cp-ink-dim);
+}
+
+.cp-injuries .injury-treat-who select {
+  max-width: 9rem;
+}
+
+.cp-injuries .injury-treat-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
 }
 
 .cp-injuries .injury-effect {

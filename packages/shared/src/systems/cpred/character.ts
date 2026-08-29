@@ -20,9 +20,17 @@ import { isHousingOption, isLifestyleLevel, type CpredLifestyle } from './econom
 // so only its values travel here — the same bargain `creation.ts` makes above.
 import {
   cpredCombatAwarenessProblem,
+  cpredFabricationProblem,
+  cpredItemUpgrade,
+  cpredMedicineProblem,
   readCpredCombatAwareness,
+  readCpredFabrication,
+  readCpredMedicine,
   CPRED_COMBAT_AWARENESS_PROBLEMS,
+  CPRED_SPECIALTY_PROBLEMS,
   type CpredCombatAwareness,
+  type CpredFabrication,
+  type CpredMedicine,
 } from './roleability.js';
 import {
   createDefaultLifepath,
@@ -342,6 +350,15 @@ export interface CpredItemRow {
    * the catalogue changes; the reference is what links it back to the card.
    */
   compendiumId?: string;
+  /**
+   * „Za pomocą tej specjalizacji dany przedmiot można ulepszyć tylko raz"
+   * (s. 148, stage 30b) — id of the one Ulepszanie effect this thing carries.
+   *
+   * On the base row rather than on each kind, because the rulebook's list
+   * reaches weapons, armour, gear and chrome alike, and „only once" is a
+   * property of the *object*, not of the column it happens to sit in.
+   */
+  upgrade?: string;
 }
 
 export interface CpredGearRow extends CpredItemRow {
@@ -409,6 +426,12 @@ export interface CpredArmorRow extends CpredItemRow {
   sp: number;
   /** SP left after ablation; repairs put it back up to `sp`. */
   spCurrent: number;
+  /**
+   * „Prowizorka" holding this piece together (s. 147, stage 30b): what its
+   * ablated SP was before the Technik patched it, so the button that ends the
+   * bodge knows where to put it back. Absent on every piece nobody bodged.
+   */
+  fieldRepair?: { restoredFrom: number; minutes: number };
   /** Where it is worn — decides which hit it stops (stage 15). */
   location: ArmorLocation;
   /** Carried but not worn armor protects nothing; absent means worn. */
@@ -469,6 +492,19 @@ export interface CpredCriticalInjuryRow {
    * whoever rolls: the dialog offers it as one click, nothing subtracts it.
    */
   conditionalPenalty?: CpredConditionalPenalty;
+  /**
+   * „Łatanie" and „Leczenie" as the table prints them (stage 30b) — the two
+   * sentences that say what it takes to get this wound off, e.g. „Ratownictwo
+   * medyczne PT 15 lub Chirurgia PT 13".
+   *
+   * Copied onto the row with every other effect, and for the same reason: the
+   * wound has to stay treatable after the GM retypes the compendium entry it
+   * came from. Kept as the printed sentence rather than a parsed pair of
+   * numbers, because a GM's own row is written in exactly this shape and
+   * `cpredParseCare` reads both the same way.
+   */
+  quickFix?: string;
+  treatment?: string;
   /**
    * This wound heals by itself (stage 16h) — tear gas and a flashbang leave
    * „Uraz oka" and „Uraz ucha" for a minute, not for a surgeon.
@@ -555,6 +591,19 @@ export interface CpredCharacterData {
    * left the patch path in 23b.
    */
   combatAwareness: CpredCombatAwareness;
+  /**
+   * How a Medyk has divided their Medycyna points between Chirurgia and the two
+   * Technologia Medyczna Specialties (s. 149, stage 30b), and how a Technik has
+   * divided Twórca between Naprawa, Ulepszanie, Wytwarzanie and Wynajdywanie
+   * (s. 147). `{}` on every sheet whose Role has a different Special Ability.
+   *
+   * Unlike `combatAwareness` these two stay on the ordinary patch path: they
+   * are chosen at level-up, and a level-up has no Action to charge. What the
+   * patch cannot judge is whether the allocation fits the rank — that is
+   * decided against the merged sheet, where the rank is known.
+   */
+  medicine: CpredMedicine;
+  fabrication: CpredFabrication;
   /** skillId → level 1–10; untrained skills are simply absent. */
   skills: Record<string, number>;
   /**
@@ -744,6 +793,8 @@ export function createDefaultCharacterData(): CpredCharacterData {
     roleId: null,
     roleAbilityRank: ROLE_RANK_MIN,
     combatAwareness: {},
+    medicine: {},
+    fabrication: {},
     skills: {},
     skillSpecialties: {},
     weapons: [],
@@ -954,6 +1005,11 @@ function validateRowBase(
     name,
     notes,
     ...(compendiumId ? { compendiumId } : {}),
+    // Stage 30b: an unknown id is dropped rather than refused — the row is
+    // stamped by the engine from a closed list, so a bad one is stale data.
+    ...(typeof input.upgrade === 'string' && cpredItemUpgrade(input.upgrade)
+      ? { upgrade: input.upgrade }
+      : {}),
   };
 }
 
@@ -1106,6 +1162,14 @@ function validateCriticalInjuries(
         ? { headDamageMultiplier: headMultiplier }
         : {}),
       ...(conditional ? { conditionalPenalty: conditional } : {}),
+      // Stage 30b: the two treatment sentences, dropped rather than rejected
+      // like the fields above — they are copied from the compendium, not typed.
+      ...(typeof row.quickFix === 'string' && row.quickFix.trim().length > 0
+        ? { quickFix: row.quickFix.slice(0, CRITICAL_INJURY_EFFECT_MAX_LENGTH) }
+        : {}),
+      ...(typeof row.treatment === 'string' && row.treatment.trim().length > 0
+        ? { treatment: row.treatment.slice(0, CRITICAL_INJURY_EFFECT_MAX_LENGTH) }
+        : {}),
       // Stage 16h: a wound that heals by itself keeps its timer through every
       // round trip, or it would become permanent the first time the sheet is
       // saved for any other reason.
@@ -1273,6 +1337,29 @@ function collectCharacterDataPatch(
       }
     }
   }
+  // Stage 30b: shape and per-Specialty ceilings only, for the same reason the
+  // block above stops short of the pool — the rank may not be in this patch.
+  // `cpredSpecialtiesProblem` finishes the job against the merged sheet.
+  if ('medicine' in input) {
+    const raw = input.medicine;
+    if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+      issues.push(issue('medicine', 'Przydział Medycyny musi być obiektem.'));
+    } else {
+      const problem = cpredMedicineProblem(readCpredMedicine(raw), ROLE_RANK_MAX);
+      if (problem !== null) issues.push(issue('medicine', CPRED_SPECIALTY_PROBLEMS[problem]));
+      else patch.medicine = readCpredMedicine(raw);
+    }
+  }
+  if ('fabrication' in input) {
+    const raw = input.fabrication;
+    if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+      issues.push(issue('fabrication', 'Przydział Twórcy musi być obiektem.'));
+    } else {
+      const problem = cpredFabricationProblem(readCpredFabrication(raw), ROLE_RANK_MAX);
+      if (problem !== null) issues.push(issue('fabrication', CPRED_SPECIALTY_PROBLEMS[problem]));
+      else patch.fabrication = readCpredFabrication(raw);
+    }
+  }
   if ('skills' in input) {
     const skills = validateSkills(input.skills, registry, issues);
     if (skills) patch.skills = skills;
@@ -1329,10 +1416,19 @@ function collectCharacterDataPatch(
           return undefined;
         }
       }
+      const bodge = row.fieldRepair as { restoredFrom?: unknown; minutes?: unknown } | undefined;
       return {
         ...base,
         sp,
         spCurrent: Math.min(spCurrent, sp),
+        ...(bodge &&
+        isInteger(bodge.restoredFrom) &&
+        bodge.restoredFrom >= 0 &&
+        bodge.restoredFrom <= ARMOR_SP_MAX &&
+        isInteger(bodge.minutes) &&
+        bodge.minutes > 0
+          ? { fieldRepair: { restoredFrom: bodge.restoredFrom, minutes: bodge.minutes } }
+          : {}),
         location,
         ...(row.equipped === false ? { equipped: false } : {}),
         ...(isInteger(penalty) && penalty < 0 ? { penalty } : {}),

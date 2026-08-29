@@ -32,3 +32,4 @@ export * from './turn.js';
 export * from './fx.js';
 export * from './hotbar.js';
 export * from './roleability.js';
+export * from './treatment.js';

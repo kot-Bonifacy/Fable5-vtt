@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type {
   CpredAttackRequest,
+  CpredCareOption,
   CpredCharacterData,
   CpredHitLocation,
   CpredRegistry,
@@ -10,6 +11,8 @@ import type {
 import {
   CPRED_FIRST_AID_SKILL_ID,
   CPRED_PARAMEDIC_SKILL_ID,
+  cpredMedicineSkillLevel,
+  isCpredMedicineSkillId,
   planCpredRoll,
   woundCheckPenalty,
   woundState,
@@ -338,6 +341,51 @@ export function loadStabilizeCup(
     // A stabilization is the table's business: somebody is bleeding out.
     visibility: 'public',
     title: `Ustabilizowanie → ${target.name}`,
+    modifierTotal,
+  });
+}
+
+/**
+ * Loads „Leczenie" of one Critical Injury into the cup (stage 30b).
+ *
+ * Hand-planned like `loadStabilizeCup` above and for the same reason: the PT is
+ * printed beside the *target's* wound and only the server may read it, so the
+ * cup shows what the healer brings and the chat card shows what it was measured
+ * against. The Medyk-only branch is the one place a skill level does not come
+ * from `data.skills` — Chirurgia is bought with Medycyna points, not skill ones.
+ */
+export function loadTreatInjuryCup(
+  healer: { characterId: string; characterName: string },
+  target: { tokenId: string; name: string },
+  injury: { id: string; name: string },
+  option: CpredCareOption,
+  data: CpredCharacterData,
+  registry: CpredRegistry,
+): void {
+  const store = useRollStore.getState();
+  const level = isCpredMedicineSkillId(option.skillId)
+    ? cpredMedicineSkillLevel(data, registry, option.skillId)
+    : (data.skills[option.skillId] ?? 0);
+  // Both Medyk-only Skills are TECH-based (s. 149), so the fallback is theirs.
+  const stat = registry.skills.find((skill) => skill.id === option.skillId)?.stat ?? 'tech';
+  const modifierTotal =
+    data.stats[stat] + level + woundCheckPenalty(woundState(data.hpCurrent, data.stats));
+
+  store.loadCup({
+    characterId: healer.characterId,
+    characterName: healer.characterName,
+    kind: 'treatInjury',
+    request: {
+      kind: 'treatInjury',
+      treatTokenId: target.tokenId,
+      treatInjuryId: injury.id,
+      treatSkillId: option.skillId,
+      modifier: 0,
+      luckSpent: 0,
+    },
+    // Somebody's arm is being sewn back on: the table watches.
+    visibility: 'public',
+    title: `Leczenie: ${injury.name} → ${target.name}`,
     modifierTotal,
   });
 }

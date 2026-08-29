@@ -8,6 +8,31 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
 
 ## Pozycje
 
+- **Etap 30b nie był oglądany w przeglądarce.** Mechanika jedzie w testach (30 nowych
+  w `shared`, 7 na serwerze), ale żadnego z tych ekranów nikt nie kliknął. Do sprawdzenia —
+  potrzebne postaci z Rolą **Medyk** i **Technik** (na scenach testowych nie ma żadnej):
+  (1) **panel Medycyny** pod wierszem Zdolności — trzy Specjalizacje, „Do rozdzielenia: N z N",
+  guzik „+" wyszarzony przy szóstym punkcie Chirurgii; (2) **wiersz Umiejętności z Medycyny**
+  („Chirurgia 6 · Technologia Medyczna 3") i dwa rozwijane bloki: farmaceutyki i drabina
+  kriosystemów; (3) **panel Twórcy** — cztery Specjalizacje, sakiewka podwójna, oraz dwa bloki:
+  dziesięć skutków Ulepszania i tabela PT/czasu; (4) **guzik „Lecz"** przy ranie krytycznej —
+  wybór, kto leczy, gałęzie z PT, wyszarzona Chirurgia u nie-Medyka z podpowiedzią, i kafel na
+  czacie zdejmujący ranę po udanym rzucie; (5) **⚒ Prowizorka** przy startym pancerzu (tylko
+  Technikowi z Naprawą ≥ 1) i **⌫** kończące ją; (6) **⊕ +1 OB** — raz na sztukę.
+
+- **Łatanie nie znosi jeszcze efektu rany.** Od 30b zdanie „Łatanie: …" stoi na karcie i, gdy
+  tabela mówi „Łatanie trwale usuwa Efekt tej Rany", jego Test **jest** drogą leczenia. Czego
+  brakuje: łatania jako **czasowego** zniesienia efektu („do końca dnia") — rana zostaje, a jej
+  kary milkną. To wymaga przepuszczenia ~dziesięciu miejsc czytających `criticalInjuries` przez
+  jeden filtr, więc należy do etapu 15, nie do 30b. Do zrobienia razem z pierwszą sesją, która
+  i tak dotknie tych odczytów.
+
+- **Farmaceutyki nie mają zapasu dawek.** Panel drukuje pięć środków słowami podręcznika i mówi,
+  ilu Medyk ma dostęp, ale który wybrał, wytworzenie dawki (Test PT 13, surowce za 200 ed)
+  i podanie jej (Akcja, ewentualnie strzykawką bezigłową jako atak) prowadzi MG. Brakuje modelu
+  przedmiotu zużywalnego — wiersz ekwipunku to wolny tekst bez licznika. Sensowne razem
+  z etapem, który tknie ekwipunek.
+
 - **Etap 30a nie był oglądany w przeglądarce.** Mechanika jedzie w testach (44 nowe w `shared`,
   10 na serwerze), ale żadnego z tych ekranów nikt nie kliknął. Do sprawdzenia — potrzebna
   postać z Rolą **Solo** (na „Strzelnicy" nie ma takiej, trzeba przestawić Rolę na karcie):

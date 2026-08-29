@@ -15,9 +15,15 @@ const registry: CpredRegistry = buildCpredRegistry(
     skills: [
       { id: 'perception', name: 'Percepcja', stat: 'int' },
       { id: 'handgun', name: 'Broń krótka', stat: 'ref' },
+      { id: 'basic-tech', name: 'Podstawowe naprawy', stat: 'tech' },
     ],
   },
-  { roles: [{ id: 'solo', name: 'Solo', ability: 'Zmysł Walki' }] },
+  {
+    roles: [
+      { id: 'solo', name: 'Solo', ability: 'Zmysł Walki' },
+      { id: 'tech', name: 'Technik', ability: 'Twórca' },
+    ],
+  },
 );
 
 /** Sheet with stats all 5 (35 HP, threshold 18) plus the given overrides. */
@@ -369,5 +375,57 @@ describe('Wykrycie słabości w rzucie na obrażenia', () => {
     expect(planned.ok).toBe(true);
     if (!planned.ok) return;
     expect(formatRollNotation(planned.plan.formula)).toBe('3d6');
+  });
+});
+
+/**
+ * „Dodaj poziom tej Specjalizacji do Testów Podstawowych napraw…" (s. 147,
+ * etap 30b). Liczone z samej karty, jak Precyzyjny atak w 30a — podgląd
+ * klienta i werdykt serwera dochodzą do tej samej liczby bez kontekstu.
+ */
+describe('Naprawa Twórcy w Testach technicznych', () => {
+  it('dokłada poziom Specjalizacji do wymienionej Umiejętności', () => {
+    const planned = planCpredRoll(
+      sheet({
+        roleId: 'tech',
+        roleAbilityRank: 3,
+        fabrication: { repair: 3, upgrade: 3 },
+        skills: { 'basic-tech': 4 },
+      }),
+      registry,
+      { kind: 'skill', skillId: 'basic-tech' },
+    );
+    expect(planned.ok).toBe(true);
+    if (!planned.ok) return;
+    expect(planned.plan.breakdown.map((entry) => entry.label)).toContain('Naprawa 3');
+    // TECH 5 + Umiejętność 4 + Naprawa 3.
+    expect(planned.plan.modifierTotal).toBe(12);
+  });
+
+  it('nie dokłada niczego Umiejętności spoza listy', () => {
+    const planned = planCpredRoll(
+      sheet({
+        roleId: 'tech',
+        roleAbilityRank: 3,
+        fabrication: { repair: 3, upgrade: 3 },
+        skills: { handgun: 4 },
+      }),
+      registry,
+      { kind: 'skill', skillId: 'handgun' },
+    );
+    expect(planned.ok).toBe(true);
+    if (!planned.ok) return;
+    expect(planned.plan.breakdown.some((entry) => entry.label.startsWith('Naprawa'))).toBe(false);
+  });
+
+  it('i nikomu, kto nie jest Technikiem — przydział bez Roli nic nie znaczy', () => {
+    const planned = planCpredRoll(
+      sheet({ roleId: 'solo', roleAbilityRank: 3, fabrication: { repair: 3 }, skills: {} }),
+      registry,
+      { kind: 'skill', skillId: 'basic-tech' },
+    );
+    expect(planned.ok).toBe(true);
+    if (!planned.ok) return;
+    expect(planned.plan.modifierTotal).toBe(5);
   });
 });

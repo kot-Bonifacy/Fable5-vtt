@@ -11,6 +11,49 @@ przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — ni
 
 ## Sieć i walka — czytanie RAW
 
+- **Chirurgia to Specjalizacja, nie Rola (29.08, czwarta).** „Umiejętność ta dostępna jest tylko Medykom
+  poprzez ich Zdolność Specjalną" (s. 149) czytamy jako: bramą jest **punkt w Specjalizacji
+  Chirurgia**, nie sama Rola Medyka. Medyk, który wydał wszystko na Farmaceutyki, dostaje odmowę
+  osobnym zdaniem („nie ma ani jednego punktu w Specjalizacji Chirurgia") — bo to zdanie mówi mu,
+  co ma zrobić, a „nie jesteś Medykiem" byłoby nieprawdą.
+
+- **Szósty punkt Chirurgii jest odrzucany (29.08, czwarta).** Piąty daje Umiejętność 10, a to sufit
+  z podręcznika; szósty kupowałby zero. VTT odmawia zamiast przyjąć i spalić punkt — ta sama
+  umowa, którą 30a zawarła z Precyzyjnym atakiem za 4 punkty. Farmaceutyki i kriosystemy mają
+  sufit 5 wprost z podręcznika (s. 150).
+
+- **„Po punkcie w dwóch różnych Specjalizacjach" sprawdzamy niezmiennikiem, nie historią
+  awansów (29.08, czwarta).** Przydział jest legalny wtedy i tylko wtedy, gdy suma punktów nie przekracza
+  `poziom × 2`, a żadna Specjalizacja nie ma więcej niż `poziom`. To dokładnie to samo, co
+  „da się rozdać awansami w legalnych parach" — więc VTT nie trzyma listy dawnych wyborów, bo
+  liczby na karcie i tak mówią, czy dało się je kupić.
+
+- **Zdania o leczeniu ran czytamy z tekstu tabeli, nie z nowego pola kompendium (29.08, czwarta).**
+  „Ratownictwo medyczne PT 15 lub Chirurgia PT 13" parsuje `cpredParseCare` w `shared`. Dwa
+  powody: wygenerowane kompendium w `data/private/` bywa **starsze niż parser** (pułapka
+  z 29.08), więc nowe pole byłoby puste dokładnie tam, gdzie się gra — i rana wpisana ręką MG
+  działa wtedy tak samo jak drukowana, bez dodatkowego pola w formularzu. Zdania, którego parser
+  nie rozumie, VTT **nie zamienia w rzut**: guzik się nie pojawia, a proza zostaje na karcie.
+
+- **Z dziesięciu skutków Ulepszania VTT liczy jeden (29.08, czwarta).** „+1 OB" ma guzik przy pancerzu
+  (podnosi `sp` i `spCurrent`, stempluje wiersz, drugi raz się nie da). Pozostałe dziewięć stoi
+  wypisane w panelu Twórcy jako zapis dla stołu, bo każdy opiera się na maszynerii, której
+  projekt nie ma: gniazda Dodatków to **etap 31**, jakości broni **nic w VTT nie czyta**
+  (`quality` siedzi w kompendium i nie wchodzi do żadnego rachunku), czasów naprawy nie ma,
+  pojazdów nie ma, a Utrata Człowieczeństwa liczy się przy wszczepieniu, którego VTT nie prowadzi
+  jako procedury. Menu z jednym skutkiem po cichu przepisałoby Rolę, więc lista jest pełna.
+
+- **Prowizorka nie ma odliczania (29.08, czwarta).** „Działa przez 10 minut na poziom" to sześćdziesiąt
+  rund na poziom — dłużej, niż trwała którakolwiek walka w tym projekcie. Zegar, który nigdy nie
+  bije, to zegar, którego nikt nie czyta; wiersz pancerza pamięta starte OB, a guzik oddaje je,
+  gdy MG uzna, że prowizorka puściła. Ta sama umowa, którą 16h zawarła z efektami poza walką.
+
+- **Farmaceutyki i kriosystemy zostają prozą (29.08, czwarta).** Obie Specjalizacje dają liczbę do
+  Umiejętności Technologia Medyczna i **listę rzeczy, których VTT nie modeluje**: dawek leków
+  (wiersz ekwipunku to wolny tekst, nie zapas z licznikiem) i kriozbiorników. Panel drukuje obie
+  listy słowami podręcznika, więc przy stole są pod ręką; wytwarzanie i podawanie dawki prowadzi
+  MG. Pozycja stoi w `zaleglosci.md` — gdyby powstał model przedmiotów zużywalnych, wraca.
+
 - **Celowanie w trzymany przedmiot jest zdaniem, nie ruchem w ekwipunku (29.08).** RAW: „cel
   upuszcza trzymany w rękach przedmiot (twój wybór). Przedmiot upada na podłoże przed
   przeciwnikiem" (s. 170). VTT **nie modeluje tego, co kto trzyma w rękach** — kabury, wolne ręce

@@ -59,6 +59,7 @@ import { tokenEffectEvent } from './turn-effects.js';
 import { effectExpireEvent } from './timed-effects.js';
 import {
   characterCombatAwarenessEvent,
+  characterFieldRepairEvent,
   characterCreateEvent,
   characterDeleteEvent,
   characterUpdateEvent,
@@ -255,6 +256,7 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   characterCreateEvent,
   characterUpdateEvent,
   characterCombatAwarenessEvent,
+  characterFieldRepairEvent,
   characterDeleteEvent,
   creationStartEvent,
   creationPatchEvent,

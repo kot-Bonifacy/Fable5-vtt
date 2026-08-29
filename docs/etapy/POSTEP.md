@@ -91,33 +91,37 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 | 29  | Rozwój postaci za Punkty Doświadczenia        | ⬜     |                   |
 | 30  | ~~Zdolności Specjalne dziewięciu Ról~~        | ⛔     | rozdzielony 29.08 |
 | 30a | Szkielet Zdolności Ról i Zmysł Walki Solo     | ✅     | 2026-08-29        |
-| 30b | Medycyna Medyka i Twórca Technika             | ⬜     |                   |
+| 30b | Medycyna Medyka i Twórca Technika             | ✅     | 2026-08-29        |
 | 30c | Wsparcie i Praca Zespołowa                    | ⬜     |                   |
 | 30d | Charyzma, Znajomości, Moto, Wiarygodność      | ⬜     |                   |
 | 31  | Dodatki do broni                              | ⬜     |                   |
 
 ## Od czego zacząć
 
-**Ostatnia sesja (29.08, trzecia) zamknęła etap 30a** — Zdolności Specjalne Ról przestały być
-etykietą. Do 29.08 działał mechanicznie **wyłącznie Interfejs Netrunnera**; teraz Solo ma pełny
-**Zmysł Walki**: sześć zdolności bojowych rozdzielanych z puli równej randze, wchodzących
-w inicjatywę, rzut ataku, obrażenia zadane, obrażenia otrzymane, kość Krytycznej porażki i Test
-Percepcji. Etap 30 został przy okazji **rozdzielony na 30a–30d** (patrz `etap-30-zdolnosci-rol.md`)
-i poprawiony: miał trzy Zdolności przypisane do złych Ról i gubił szóstą zdolność Zmysłu Walki.
+**Ostatnia sesja (29.08, czwarta) zamknęła etap 30b** — Medyk i Technik dostali swoje Zdolności.
+Obie stoją na jednej maszynerii Specjalizacji (`roleability.ts`), a przy okazji **domknęła się
+dziura z etapu 15: Rany Krytyczne dawało się dotąd tylko skasować, nigdy wyleczyć**. Teraz rana
+niesie zdania z tabeli („Ratownictwo medyczne PT 15 lub Chirurgia PT 13"), guzik „Lecz" przy niej
+otwiera rzut, a Chirurgia jest dostępna wyłącznie Medykowi z punktem w tej Specjalizacji. Opis
+etapu miał **trzy błędy** (sakiewka Medycyny, nazwy Specjalizacji, dziesięć zamiast jedenastu
+skutków Ulepszania) — wszystkie policzone w podręczniku i poprawione w `etap-30b-*.md`.
 
-**Od czego zacząć: 30b** (Medycyna + Twórca) jest najbliżej — obie Zdolności stoją na tym samym
-pomyśle „dwie Specjalizacje przy każdym awansie", a panel z 30a jest gotowym wzorcem UI. Poza tym
-nadal wolne: **27g** (wydajność, poligon „Korytarz 16e" gotowy), **28** (wdrożenie na VPS),
-**29** (rozwój za PD i wieloklasowość — to on odblokowuje kupowanie poziomów Zdolności),
-**30c**, **30d** i **31** (dodatki do broni).
+**Od czego zacząć: 30c** (Wsparcie Stróża Prawa + Praca Zespołowa Korpo) — obie stawiają NPC ze
+statblokiem na mapie, więc to inna maszyneria niż 30a/30b i warto ją zrobić w całości naraz.
+Poza tym nadal wolne: **27g** (wydajność, poligon „Korytarz 16e" gotowy), **28** (wdrożenie na
+VPS), **29** (rozwój za PD i wieloklasowość — to on odblokowuje **kupowanie** poziomów Zdolności,
+które dziś podbija się ręcznie polem na karcie), **30d** i **31** (dodatki do broni; to on
+odblokowuje siedem z dziesięciu skutków Ulepszania).
 
-**Dług oględzin urósł do 16 pozycji** (`zaleglosci.md`, +1 z 29.08). Bez modelu da się dziś
-obejrzeć **pięć**: Celowanie, pakiet A+B z drugiej sesji 29.08, **komplet 30a** (sześć punktów),
-lukę w edytorze kompendium i pomiar fps przypisany do 27g. Reszta — **dziewięć pozycji** — czeka
-na **żywy model**: 20a/20b, 19a–19c, dwie ścieżki 24c i maszynopis wypowiedzi.
+**Dług oględzin to 18 pozycji** (`zaleglosci.md`, +2 z czwartej sesji 29.08). Bez modelu da się
+dziś obejrzeć **sześć**: **komplet 30b** (sześć punktów, na górze listy), Celowanie, pakiet A+B
+z drugiej sesji, **komplet 30a**, lukę w edytorze kompendium i pomiar fps przypisany do 27g.
+Reszta — **dziewięć pozycji** — czeka na **żywy model**: 20a/20b, 19a–19c, dwie ścieżki 24c
+i maszynopis wypowiedzi.
 
-**Do oględzin 30a trzeba postaci z Rolą Solo.** Żadna z kart na scenach testowych jej nie ma
-(`avatar9` to netrunner), więc pierwszy krok to przestawienie Roli na karcie — albo nowa figura.
+**Do oględzin 30a/30b trzeba postaci z Rolą Solo, Medyk i Technik.** Żadna karta na scenach
+testowych ich nie ma (`avatar9` to netrunner), więc pierwszy krok to przestawienie Roli na karcie
+— albo nowa figura. Rola zmienia się jednym polem, a panel Specjalizacji pojawia się od razu.
 
 **Uwaga po 29.08: `data/private/cpred/compendium/` bywa starsze niż parser.** Regeneracja
 importem dołożyła Miotaczowi ognia `ammoPatterns: ['shell']`, którego plik na dysku nie miał —
@@ -214,6 +218,10 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 - **Efekt Zdolności liczony z samej karty** wchodzi wprost do planera (`planCpredAttack`, `skillBreakdown`), nie kontekstem: podgląd klienta i werdykt serwera dochodzą do tej samej liczby. Kontekst zostaje dla tego, co wie świat.
 - **„Pierwsze w tej Rundzie"** stempluje `CpredTurnLedger` (`Combatant.turnEffects`) przez `claimRoundOnce` — jedyną drogę, bo pyta i księguje naraz; `turnState` jest wydawany na nowo przy każdym starcie tury. „Cofnij" oddaje stempel przez `releaseRoundOnce`.
 - **Zdolność, której zapis coś kosztuje**, ma własne zdarzenie i wypada z `character:update` (`FORBIDDEN`) — jak `eddies` od 23b. Kody odmowy są kodami silnika, żeby klient tłumaczył je tą samą tabelą, którą wyszarza guziki.
+- **Nowa Zdolność Roli z punktami do rozdzielenia** — sekcja Specjalizacji w `roleability.ts`: lista `CpredSpecialtyDefinition` + dwie liczby `CpredSpecialtyRules` (`perRank`, `across`). Żadnej własnej walidacji; `SpecialtyPanel.tsx` obsłuży ją bez zmian.
+- **Przydział Specjalizacji** jedzie **zwykłą łatą karty** (awans nie ma czym zapłacić Akcji), ale rozmiar sakiewki sprawdza `cpredSpecialtiesProblem` **na scalonej karcie** w `character:update` — dzięki temu awans i wydanie punktów mieszczą się w jednej łacie.
+- **Zdanie z tabeli ran o leczeniu** (`quickFix`/`treatment`) jedzie **na wierszu rany** jak każdy inny jej skutek; czyta je `cpredParseCare`. Nowa droga leczenia = jeden wpis w `CARE_SKILLS`, nigdy nowe pole kompendium.
+- **Umiejętność dostępna tylko przez Zdolność Roli** (Chirurgia, Technologia Medyczna) **nie trafia do `skills.json`** — mieszka w `CPRED_MEDICINE_SKILLS`, poziom liczy `cpredMedicineSkillLevel`, a rzut nią rozstrzyga gałąź `isCpredMedicineSkillId` w planerze.
 
 ## Pułapki dev — indeks
 
@@ -275,10 +283,95 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 - **Nowe pole `CpredCharacterData` wywraca statystę i mapę ikon** — `combatProfileSheet` buduje pełną kartę, a `ICON_FX` to `Record<CpredSlotIcon, …>`; obie listy pilnuje kompilator, więc puść `tsc --noEmit` przed pisaniem UI.
 - **`tsc --noEmit` łapie błędy w testach, których vitest nie widzi** — `damage.test.ts` używał `DamageLogEntry` bez importu przez nieznaną liczbę sesji.
 - **`walls.test.ts` i `realtime.test.ts` też migoczą przy pełnym `vitest run`** (dołączają do `netdevices` i `zones`) — powtórz przebieg, zanim uznasz to za regres.
+- **W trwającej walce jeden strzał wysyła dwie wiadomości czatu** — najpierw wpis dziennika Akcji, potem kartę rzutu; `once('chat:message')` łapie tę pierwszą. Test czekający na kafel ataku musi filtrować po `message.roll?.attack`.
+- **`weapon:reload` w walce kosztuje Akcję i potrafi odmówić** — pętla testowa dostrzeliwująca magazynek zostaje z pustą bronią; uzupełniaj łatą karty (`ammoCurrent: ammoMax`).
+- **Ten sam rzut obrażeń potrafi wylosować ranę z tabeli** (dwie szóstki na 5k6 to ~20% strzałów), więc Celowanie w nogę bywa Celowaniem w nogę **już złamaną** — wygląda jak regres reguły, jest pechem kości.
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 29.08 (czwarta) — etap 30b: Medycyna Medyka i Twórca Technika
+
+**Zlecenie MG:** kontynuować budowę; z przedstawionych opcji wybór padł na **30b**, a Ulepszanie
+miało wejść w wariancie „**tylko to, co domykalne dziś**" (reszta zapisana z powodem).
+
+**Opis etapu 30b miał trzy błędy — wszystkie policzone na stronie.** (a) „Medycyna działa tak
+samo" jak Twórca **nie jest prawdą**: Technik przy awansie dostaje **po punkcie w dwóch różnych**
+Specjalizacjach (s. 147), Medyk **jeden punkt w jednej** (s. 149) — sakiewki różnią się
+dwukrotnie. (b) Specjalizacje Medycyny nazywają się Chirurgia, **Technologia Medyczna
+(Farmaceutyki)** i **Technologia Medyczna (Obsługa kriosystemów)**, nie „Kriosystemy,
+Farmaceutyka". (c) Ulepszanie ma **dziesięć** skutków, nie jedenaście. Poprawki są w pliku etapu.
+
+**Jedna maszyneria na obie Zdolności — i to jest cały powód, dla którego siedzą w jednym etapie.**
+`roleability.ts` dostał sekcję Specjalizacji: definicja (nazwa, słowa podręcznika, własny sufit,
+strona) plus dwie liczby reguł (`perRank`, `across`). Twórca to `{2, 2}`, Medycyna `{1, 1}` — i to
+jedyna różnica w kodzie. Panel `SpecialtyPanel.tsx` obsługuje obie, więc na pytanie „ile punktów
+mi zostało" jest jedna odpowiedź, a nie dwie mogące się rozjechać.
+
+**„Po punkcie w dwóch różnych Specjalizacjach" nie wymaga pamiętania historii awansów.** Przydział
+da się kupić awansami wtedy i tylko wtedy, gdy suma ≤ `poziom × perRank`, a żadna Specjalizacja nie
+przekracza `poziomu` — te dwa warunki są **równoważne** legalnej historii, więc VTT nie trzyma
+listy dawnych wyborów. Przydział niedokończony jest legalny celowo: to karta świeżo po awansie,
+czyli dokładnie ten moment, dla którego panel istnieje („Do rozdzielenia: 2 z 8").
+
+**Przydział jedzie zwykłą łatą karty — inaczej niż Zmysł Walki z 30a.** Tam zapis kosztuje Akcję,
+więc musiał mieć własne zdarzenie; tutaj awans nie ma czym płacić, więc zamykanie drogi byłoby
+dekoracją. Rozmiar sakiewki zależy jednak od rangi, której `applyCharacterPatch` nie widzi —
+`character:update` woła więc `cpredSpecialtiesProblem` **na scalonej karcie**, tuż przed zapisem.
+Dzięki temu podniesienie rangi i wydanie nowych punktów mieszczą się w jednej łacie.
+
+**Leczenie Ran Krytycznych to była dziura, nie brakująca ozdoba.** Do tej sesji ranę dawało się
+z karty **tylko skasować** — jeden ✕, bez rzutu i bez PT — więc zdanie, na którym stoi cała Rola
+Medyka („Chirurgia jest dostępna tylko dla Medyków"), nazywało drzwi bez pokoju za nimi. Doszedł
+rodzaj rzutu `treatInjury` zbudowany dokładnie jak „Ustabilizowanie" z 14b: PT czyta się na
+serwerze **z rany, którą nosi cel**, gałąź wybiera leczący, a udany rzut zdejmuje ranę — także
+**statyście**, bo od 29.08 statysta rany nosi.
+
+**Zdania z tabeli parsujemy, zamiast dokładać pole do kompendium.** „Ratownictwo medyczne PT 15
+lub Chirurgia PT 13" czyta `cpredParseCare`; gałąź bez własnego PT dziedziczy je po następnej
+(„Ratownictwo medyczne **lub** Chirurgia PT 13"), „Nd." to brak drogi, a „Łatanie trwale usuwa
+Efekt tej Rany" oddaje robotę kolumnie obok. Dwa powody, oba z wcześniejszych sesji: wygenerowane
+kompendium bywa **starsze niż parser**, więc nowe pole byłoby puste dokładnie tam, gdzie się gra —
+i rana wpisana ręką MG działa wtedy tak samo jak drukowana. Zdania, którego parser nie rozumie,
+VTT nie zamienia w rzut: guzik się nie pojawia, proza zostaje.
+
+**Chirurgia i Technologia Medyczna nie trafiły do `skills.json` i trafić nie mogą.** Podręcznik ich
+w tabeli Umiejętności nie drukuje, bo „dostępna jest tylko Medykom poprzez ich Zdolność Specjalną"
+— ich poziom jest **funkcją przydziału**, a nie liczbą, którą ktoś wpisuje. Siedzą więc w kodzie
+(`CPRED_MEDICINE_SKILLS`), poziom liczy `cpredMedicineSkillLevel`, a panel drukuje wiersz
+„Chirurgia 6 · Technologia Medyczna 3", bo inaczej gracz nie miałby gdzie go przeczytać.
+
+**Z dziesięciu skutków Ulepszania VTT liczy jeden — i lista i tak jest pełna.** „+1 OB" ma guzik
+przy pancerzu (podnosi `sp` i `spCurrent`, stempluje wiersz, drugi raz się nie da). Pozostałe
+dziewięć stoi wypisane w panelu Twórcy jako zapis dla stołu: gniazda Dodatków to etap 31, **jakości
+broni nic w VTT nie czyta** (`quality` siedzi w kompendium i nie wchodzi do żadnego rachunku),
+pojazdów nie ma. Menu z jednym skutkiem po cichu przepisałoby Rolę.
+
+**Prowizorka nie ma odliczania i to jest decyzja, nie skrót.** „10 minut na poziom" to sześćdziesiąt
+rund na poziom — dłużej, niż trwała którakolwiek walka w tym projekcie; zegar, który nigdy nie bije,
+to zegar, którego nikt nie czyta. Wiersz pancerza pamięta starte OB (`fieldRepair.restoredFrom`),
+a guzik oddaje je, gdy MG uzna, że prowizorka puściła — ta sama umowa, którą 16h zawarła z efektami
+poza walką. Sama Prowizorka kosztuje Akcję, więc ma własne zdarzenie (`character:field-repair`).
+
+**Naprawa dokłada się do siedmiu Testów Technicznych i tylko do nich.** „Chyba że dany Test wiąże
+się z inną Specjalizacją Twórcy" (s. 147) znaczy, że Wytwarzanie i Wynajdywanie **nie** wchodzą do
+Testów z tabeli Umiejętności — mają własne Testy, do których dokładają siebie. Bonus liczy się
+z samej karty (jak Precyzyjny atak w 30a), więc podgląd klienta i werdykt serwera dochodzą do tej
+samej liczby bez kontekstu.
+
+**Naprawione przy okazji: `attacks.test.ts` migotał z trzech niezależnych powodów.** (a) **W trwającej
+walce jeden strzał wysyła DWIE wiadomości czatu** — najpierw wpis dziennika Akcji, potem kartę
+rzutu; `once('chat:message')` łapał tę pierwszą i pętla meldowała „30 strzałów i ani jednego
+trafienia" mimo trafień w bród. (b) Magazynek pistoletu wysychał, a `weapon:reload` w walce kosztuje
+Akcję i sam potrafi odmówić — uzupełnia się go teraz łatą karty. (c) Ten sam rzut obrażeń potrafi
+wylosować ranę z tabeli, więc raz na kilkadziesiąt przebiegów Celowanie trafiało w nogę **już
+złamaną** i słusznie nie dokładało nic. Dziesięć przebiegów pod rząd czysto; wnioski w pułapkach.
+
+**Testy:** 1514 w `shared` (+33), **826** na serwerze (+7), 62 u klienta — zielone. ESLint
+i Prettier czyste, `pnpm -r build` przechodzi. **Nic z tej sesji nie było oglądane
+w przeglądarce** — sześć punktów do odklikania stoi na górze `zaleglosci.md`, a do oględzin trzeba
+postaci z Rolą **Medyk** i **Technik** (żadna karta na scenach testowych ich nie ma).
 
 ### Sesja 29.08 (trzecia) — etap 30a: Zdolności Specjalne Ról i Zmysł Walki Solo
 
@@ -348,72 +441,3 @@ testy. Naprawione; wniosek poszedł do pułapek.
 i Prettier czyste, `pnpm -r build` przechodzi. **Nic z tej sesji nie było oglądane w przeglądarce**
 — sześć punktów do odklikania stoi na górze `zaleglosci.md`, a do oględzin trzeba postaci
 z Rolą **Solo** (żadna karta na scenach testowych jej nie ma).
-
-### Sesja 29.08 (druga) — pakiet A+B z triażu MG: cztery dziury z audytu i profil statysty
-
-**Zlecenie MG:** z listy zaległości i pomysłów wybrać kilkanaście pozycji pasujących do jednej
-sesji; MG wskazał **pakiet A+B** (punkty 1–6) i cztery rozstrzygnięcia: dane wyciągnąć
-z podręcznika (nie wpisywać ręcznie), typowane kary w **wariancie prostszym**, pomiar fps zostaje
-w 27g, a pozycje 22–24 z listy wciągnąć jako **etapy** i skasować z `POMYSLY.md`.
-
-**Połowa pancerza okazała się dużo szersza, niż mówił wpis w `POMYSLY.md`.** Notatka z audytu
-opisywała samą zasadę sztuk walki (s. 178); podręcznik daje ją **każdej broni białej**
-(„Obrażenia zadane każdym rodzajem broni białej ignorują połowę pancerza Broniącego się,
-zaokrąglając w górę", s. 176), odbiera **Bijatyce** („nie ignorują połowy pancerza", s. 177)
-i odbiera **broni rzuconej** („rozpatruje się pełną OB pancerza, a nie połowę", s. 177). Znaczyło
-to, że **każde cięcie w VTT rozbijało się o pełne OB** — najczęstszy atak wręcz w grze liczył się
-źle, nie jeden przypadek brzegowy. Flaga `halvesArmor` siedzi na **typie broni** (nie na wierszu
-karty i nie przy id umiejętności), `resolveCpredDamage` liczy `ceil(OB/2)`, a **ściera się pełny
-pancerz**: przykład z s. 176 traktuje kurtkę OB 11 jak OB 6 i w tym samym akapicie zbija ją
-do 10. Karta obrażeń mówi „− OB 6 (połowa pancerza)", bo bez tego zdania arytmetyka czyta się
-jak błąd.
-
-**Parser czyta te zdania z podręcznika, zamiast trzymać listę w kodzie.**
-`parse_half_armor_skills` łapie wszystkie trzy zdania (z przeczeniem włącznie) i mapuje je na id
-umiejętności, ostrzegając, gdy któregoś nie ma. Import dołożył `halvesArmor` czterem typom broni
-białej i sztukom walki, **pomijając Bijatykę** — dokładnie tak, jak drukuje podręcznik.
-
-**Pęknięta czaszka: `headDamageMultiplier` na wierszu rany.** `CPRED_HEAD_DAMAGE_MULTIPLIER`
-przestało być jedynym źródłem — mnożnik czyta się z ran, **które nosi cel**, przez
-`cpredHeadDamageMultiplier`, z sufitem i podłogą na wypadek literówki MG. Silnik nadal nie zna
-nazwy „Pęknięta czaszka"; regex w parserze łapie zdanie „Pomnóż obrażenia głowy… x 3".
-
-**Kary warunkowe — wariant prostszy, zgodnie z decyzją MG.** `conditionalPenalty` niesie liczbę
-**i warunek słowami podręcznika**, i **nigdy nie wchodzi do sumy rzutu**: VTT nie wie, w której
-ręce jest broń ani czy ten Test wymaga mówienia. Kara stoi jako chip przy ranie na karcie
-i jako guzik w oknie rzutu, który wpisuje liczbę do modyfikatora (drugi klik ją cofa). Import
-złapał **siedem ran**: Naderwany mięsień, Strzaskane palce, oba urazy oka, Złamana szczęka,
-Uraz ucha i Urwane ucho. „Zmiażdżona krtań" świadomie **zostaje prozą** — „Nie możesz mówić"
-to zakaz, nie modyfikator.
-
-**Statysta przestał być kartą uboższą o rany.** Etap 16b zostawił rany krytyczne poza
-`CpredCombatProfile` z uzasadnieniem „to opisuje osobę z historią" — i to przestało być prawdą,
-gdy 16h (gaz, hukbłysk) i 26f (broniona strefa) zaczęły rany **nadawać z zasady**: reguła
-kończyła się zdaniem na czacie i niczym więcej. Rany siedzą teraz w profilu jako pole opcjonalne
-(nietknięty profil serializuje się bajt w bajt jak w 16b), a `combatProfileSheet` podaje je
-syntetycznej karcie — więc `cpredInjuryDodgeBlock` i `cpredInjuryModifiers` działają **bez ani
-jednej gałęzi „czy to statysta"**. Ta sama droga obsłużyła dwie szóstki na kościach obrażeń
-i „Złamaną nogę" z Celowania. Żeton **bez** profilu dalej dostaje samo zdanie: nie ma gdzie
-zapisać.
-
-**Przeładowanie statysty.** `weapon:reload` zaczynało od `requireRollableCharacter`, więc pusty
-magazynek NPC-a uzupełniało się ręczną edycją tokenu w środku walki. Zdarzenie przyjmuje teraz
-`attackerTokenId` zamiast `characterId` (wzorzec `character:roll` z 16b), a pasek akcji przestał
-chować pudełko „Przeładuj" przed figurą bez karty. Akcja kosztuje tyle samo, dźwięk jest ten sam.
-
-**Cztery wpisy z `POMYSLY.md` okazały się nieaktualne** i zostały przekreślone: edycja rysunku
-i edytor osłony (oba zrobione w 27l), blokada ruchu przez osłonę na serwerze
-(`coverMovementSegments` liczy się w `refuseWalkThroughSolid`) i migotliwy test
-`netdemons.test.ts` (już pyta warunkowo). **Trzy pomysły z audytu awansowały na etapy 29–31**
-i wypadły z listy.
-
-**Znalezione przy okazji:** (a) `data/private/cpred/compendium/weapon-types.json` **był starszy
-niż parser** — regeneracja dołożyła Miotaczowi ognia `ammoPatterns: ['shell']`, bez którego
-`ammoFitsWeapon` odrzucał **każdy** nabój specjalny do tej broni. (b) Edytor kompendium nie
-wystawia `movePenalty`, `actionPenalty` ani czterech flag tury z 14e, więc rana wpisana ręką MG
-nie potrafi zabrać RUCH-u ani odmówić Uniku — **do `zaleglosci.md`**, bo to ~15 linijek,
-ale poza zakresem pakietu.
-
-**Testy:** 1437 w `shared` (+29), **809** na serwerze (+12), 62 u klienta — zielone.
-ESLint i Prettier czyste, `pnpm -r build` przechodzi. **Nic z tej sesji nie było oglądane
-w przeglądarce** — pięć punktów do odklikania stoi na górze `zaleglosci.md`.

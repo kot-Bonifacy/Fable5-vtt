@@ -3,6 +3,7 @@ import type {
   CharacterRollPayload,
   CpredAmmoProfile,
   CpredCharacterData,
+  CpredCriticalInjuryRow,
   CpredRollContext,
   CpredRollRequest,
   CpredWoundState,
@@ -15,6 +16,7 @@ import {
   CPRED_STABILIZE_DV,
   DEATH_SAVES_MAX,
   ROLE_GM,
+  cpredTreatmentOptions,
   hitLocationLabel,
   isCpredAimPoint,
   mergeCharacterData,
@@ -22,6 +24,7 @@ import {
   planCpredRoll,
   resolveCpredDeathSave,
   rollFormula,
+  sanitizeCriticalInjuryRows,
   woundState,
   woundStateFromHp,
 } from '@vtt/shared';
@@ -261,8 +264,14 @@ async function resolveRollRequest(
   delete request.ammo;
   delete request.stabilizeDv;
   delete request.stabilizeTargetName;
+  delete request.treatDv;
+  delete request.treatInjuryName;
+  delete request.treatTargetName;
   if (request.kind === 'stabilize') {
     return resolveStabilizeRequest(deps, campaignId, user, request);
+  }
+  if (request.kind === 'treatInjury') {
+    return resolveTreatInjuryRequest(deps, campaignId, user, request);
   }
   if (request.kind !== 'damage' || request.attackMessageId === undefined) return request;
 
@@ -361,6 +370,112 @@ async function resolveStabilizeRequest(
     stabilizeDv: CPRED_STABILIZE_DV[state],
     stabilizeTargetName: token.name,
   };
+}
+
+/**
+ * Fills in what „Leczenie" needs from the *wound* (stage 30b).
+ *
+ * The DV is not the client's to name, for exactly the reason `stabilizeDv` is
+ * not: it is printed beside the injury the target is carrying, and reading it
+ * here is the only way a medic cannot declare a severed arm a PT 13 job. Which
+ * branch of the sentence is being rolled *is* the client's choice — the
+ * rulebook offers two on half the table — so `treatSkillId` is honoured, and
+ * refused when the wound does not offer it.
+ */
+async function resolveTreatInjuryRequest(
+  deps: RealtimeDeps,
+  campaignId: string,
+  user: SessionUser,
+  request: CpredRollRequest,
+): Promise<CpredRollRequest> {
+  const tokenId = request.treatTokenId;
+  const injuryId = request.treatInjuryId;
+  if (typeof tokenId !== 'string' || typeof injuryId !== 'string') {
+    throw new RealtimeError('BAD_REQUEST');
+  }
+  const { token } = await requireCampaignToken(deps.ctx.prisma, campaignId, tokenId);
+  if (user.role !== ROLE_GM && token.hidden) throw new RealtimeError('TOKEN_NOT_FOUND');
+
+  const injury = (await treatableInjuries(deps, token)).find((row) => row.id === injuryId);
+  if (!injury) throw new RealtimeError('INJURY_NOT_FOUND');
+  const options = cpredTreatmentOptions(injury);
+  const option = options.find((entry) => entry.skillId === request.treatSkillId);
+  // „Nd." — a severed arm has no quick fix and a wound whose sentence the VTT
+  // cannot read has no roll either. Both say the same thing to the table.
+  if (!option) throw new RealtimeError('NO_TREATMENT');
+  return {
+    ...request,
+    treatDv: option.dv,
+    treatInjuryName: injury.name,
+    treatTargetName: token.name,
+  };
+}
+
+/** Wounds this figure carries — a sheet's rows, or a statist's profile ones. */
+async function treatableInjuries(
+  deps: RealtimeDeps,
+  token: Token,
+): Promise<CpredCriticalInjuryRow[]> {
+  if (token.characterId) {
+    const target = await deps.ctx.prisma.character.findUnique({
+      where: { id: token.characterId },
+    });
+    if (!target) throw new RealtimeError('TOKEN_NOT_FOUND');
+    return parseCharacterData(target.data, deps.ctx.cpred).criticalInjuries;
+  }
+  return readSheetCombatProfile(token.combatProfile)?.criticalInjuries ?? [];
+}
+
+/**
+ * Takes a treated wound off, wherever this figure keeps its wounds.
+ *
+ * A statist has carried Critical Injuries since 29.08, so treating one has to
+ * reach the token's `combatProfile` as well as a sheet — otherwise the Medyk
+ * could heal the party and not the thug bleeding next to them, which is not a
+ * distinction any rule makes.
+ */
+async function applyTreatment(
+  deps: RealtimeDeps,
+  campaignId: string,
+  targetTokenId: string,
+  injuryId: string,
+): Promise<boolean> {
+  // The id came off a plan whose token `resolveTreatInjuryRequest` already
+  // proved belongs to this campaign — the same bargain `applyStabilization`
+  // makes with its own target.
+  const token = await deps.ctx.prisma.token.findUnique({ where: { id: targetTokenId } });
+  if (!token) return false;
+  if (token.characterId) {
+    const character = await deps.ctx.prisma.character.findUnique({
+      where: { id: token.characterId },
+    });
+    if (!character) return false;
+    const data = parseCharacterData(character.data, deps.ctx.cpred);
+    if (!data.criticalInjuries.some((row) => row.id === injuryId)) return false;
+    const merged = mergeCharacterData(data, {
+      criticalInjuries: data.criticalInjuries.filter((row) => row.id !== injuryId),
+    });
+    const saved = await deps.ctx.prisma.character.update({
+      where: { id: character.id },
+      data: { data: JSON.stringify(merged) },
+    });
+    await emitCharacterUpsert(deps, campaignId, toCharacterView(saved, deps.ctx.cpred));
+    await emitTokensOfCharacter(deps, campaignId, saved);
+    return true;
+  }
+  const profile = readSheetCombatProfile(token.combatProfile);
+  const carried = profile?.criticalInjuries ?? [];
+  if (!profile || !carried.some((row) => row.id === injuryId)) return false;
+  const next = {
+    ...profile,
+    criticalInjuries: sanitizeCriticalInjuryRows(carried.filter((row) => row.id !== injuryId)),
+  };
+  await deps.ctx.prisma.token.update({
+    where: { id: token.id },
+    data: { combatProfile: JSON.stringify(next) },
+  });
+  await emitTokensById(deps, campaignId, [token.id]);
+  return true;
 }
 
 /**
@@ -602,6 +717,27 @@ export async function performCharacterRoll(
         label: success ? 'Ustabilizowany' : 'Nie udało się',
         detail: `${plan.stabilize.skillName} ${result.total} vs PT ${plan.stabilize.dv}${
           applied.healed ? ' · cel wraca do 1 PW' : ''
+        }`,
+      };
+    }
+
+    // „Leczenie" (stage 30b) reads exactly like Stabilizing above, down to the
+    // strictly-greater comparison — the difference is what a success takes away.
+    if (plan.treatInjury) {
+      const success = result.total > plan.treatInjury.dv;
+      const removed = success
+        ? await applyTreatment(
+            deps,
+            campaignId,
+            plan.treatInjury.targetTokenId,
+            plan.treatInjury.injuryId,
+          )
+        : false;
+      result.outcome = {
+        success,
+        label: success ? 'Wyleczona' : 'Nie udało się',
+        detail: `${plan.treatInjury.skillName} ${result.total} vs PT ${plan.treatInjury.dv}${
+          removed ? ` · „${plan.treatInjury.injuryName}" schodzi z karty` : ''
         }`,
       };
     }

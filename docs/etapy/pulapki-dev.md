@@ -376,3 +376,21 @@ typu, którego używają testy, sprawdź go osobnym `tsc`, nie samym `pnpm -r te
 `netdevices` i `zones` z 29.08): raz „no such table: main.SceneExploration" po teardownie bazy,
 raz timing obecności w `presence:update`. Uruchomione osobno przechodzą; drugi pełny przebieg
 zwykle też. Zanim uznasz to za regres, powtórz przebieg.
+
+- **W trwającej walce jeden strzał wysyła DWIE wiadomości czatu** (29.08, czwarta, kosztowało pół
+  sesji polowania na migotanie): najpierw wpis dziennika Akcji z trackera, dopiero potem kartę
+  rzutu. `once('chat:message')` łapał tę pierwszą, `roll.attack` było `undefined`, a pętla
+  wystrzeliwała cały licznik prób i meldowała „30 strzałów i ani jednego trafienia" — mimo że
+  trafień było w bród. Test, który czeka na kafel ataku, musi **filtrować** (`socket.on` +
+  warunek `message.roll?.attack`), jak `waitForDamage` filtruje kartę obrażeń.
+
+- **`weapon:reload` w trwającej walce kosztuje Akcję i potrafi odmówić** — pętla testowa, która
+  dostrzeliwuje magazynek przeładowaniem, potrafi zostać z pustą bronią do końca licznika.
+  Magazynek w teście uzupełnia się łatą karty (`character:update` z `ammoCurrent: ammoMax`),
+  która nic nie kosztuje.
+
+- **Ten sam rzut obrażeń potrafi wylosować ranę z tabeli** (dwie szóstki na 5k6 to około jedna
+  piąta strzałów) — a atrapa danych ma w tabeli korpusu jeden wpis, więc raz na kilkadziesiąt
+  przebiegów Celowanie w nogę trafiało w nogę **już złamaną** i słusznie nie dokładało nic.
+  Wygląda jak regres reguły, jest pechem kości: test, który chce zdrowej nogi, musi umieć
+  ją oddać i strzelić jeszcze raz.
