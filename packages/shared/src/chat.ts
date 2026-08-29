@@ -106,9 +106,22 @@ export interface DamageLogEntry {
   damageRolled: number;
   /** SP subtracted (0 when unarmored or when the damage ignores armor). */
   armorSp: number;
+  /**
+   * Only half the worn SP counted, rounded up (s. 176) — a blade or a martial
+   * art. On the card because the number in `armorSp` is otherwise unexplainable:
+   * a player who knows the target wears OB 11 has to be told why 6 was
+   * subtracted, or the arithmetic reads as a bug.
+   */
+  armorHalved?: boolean;
   /** Damage that reached HP, after armor and the head multiplier. */
   damageThrough: number;
   doubled: boolean;
+  /**
+   * What a head hit multiplied by, when it was not the printed ×2 — „Pęknięta
+   * czaszka" makes it ×3 (s. 188). Absent on every ordinary head hit, so the
+   * card only says it when the number is surprising.
+   */
+  headMultiplier?: number;
   /** Critical injury bonus damage included in `hpLost`. */
   bonusDamage: number;
   hpLost: number;

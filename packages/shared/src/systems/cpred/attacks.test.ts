@@ -132,6 +132,21 @@ function plan(
   );
 }
 
+describe('planCpredAttack — połowa pancerza (s. 176–178)', () => {
+  const halving: ResolvedWeapon = { ...blade, halvesArmor: true };
+  const meleeSheet = sheet({ skills: { 'melee-weapon': 5 } });
+
+  it('niesie flagę na karcie ataku, gdy typ broni ją ma', () => {
+    const result = plan({}, { resolved: halving, data: meleeSheet, metres: 1 });
+    expect(result.ok && result.plan.attack.halvesArmor).toBe(true);
+  });
+
+  it('nie niesie jej dla Bijatyki — podręcznik wyklucza ją wprost (s. 177)', () => {
+    const result = plan({}, { resolved: blade, data: meleeSheet, metres: 1 });
+    expect(result.ok && result.plan.attack.halvesArmor).toBeUndefined();
+  });
+});
+
 describe('rangeBandFor — band boundaries', () => {
   it('places every boundary metre in the band that prints it', () => {
     expect(rangeBandFor(0)?.id).toBe('0-6');
@@ -817,6 +832,21 @@ describe('throwing an ordinary object (stage 16d)', () => {
     expect(result.plan.attack.damage).toBe('6k6');
     // …and it makes no crater.
     expect(result.plan.attack.blastSideM).toBeUndefined();
+  });
+
+  it('rzucona broń biała spotyka pełny pancerz, nie połowę (s. 177)', () => {
+    const result = throwPlan(
+      { thrown: true },
+      {
+        resolved: { ...blade, halvesArmor: true },
+        metres: 10,
+        target: { name: 'Ganger', tokenId: 'token-1' },
+        context: { throwProfile },
+      },
+    );
+    if (!result.ok) throw new Error(result.error);
+    expect(result.plan.attack.thrown).toBe(true);
+    expect(result.plan.attack.halvesArmor).toBeUndefined();
   });
 
   it('refuses when nobody handed over the range line', () => {

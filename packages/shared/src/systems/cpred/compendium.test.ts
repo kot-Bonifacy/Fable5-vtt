@@ -585,3 +585,104 @@ describe('program entries', () => {
     ).toBe(false);
   });
 });
+
+/**
+ * 29.08: dwa pola, które przenoszą efekt rany z prozy do danych — mnożnik
+ * trafień w głowę („Pęknięta czaszka", s. 188) i kara warunkowa, której VTT
+ * nie zastosuje samo („−4 do wszystkich Akcji wykonywanych tą ręką", s. 187).
+ */
+describe('validateCompendiumEntry — rana krytyczna, pola z 29.08', () => {
+  function injury(overrides: Record<string, unknown> = {}) {
+    return {
+      category: 'criticalInjury',
+      name: 'Pęknięta czaszka',
+      table: 'head',
+      roll: 9,
+      description: 'Pomnóż obrażenia głowy przez 3.',
+      cost: null,
+      ...overrides,
+    };
+  }
+
+  it('zapisuje mnożnik ×3', () => {
+    const result = validateCompendiumEntry(injury({ headDamageMultiplier: 3 }));
+    expect(result.ok && result.entry.category === 'criticalInjury' && result.entry).toMatchObject({
+      headDamageMultiplier: 3,
+    });
+  });
+
+  it('nie zapisuje ×2 — to i tak robi każde trafienie w głowę', () => {
+    const result = validateCompendiumEntry(injury({ headDamageMultiplier: 2 }));
+    expect(result.ok && 'headDamageMultiplier' in result.entry).toBe(false);
+  });
+
+  it('odrzuca mnożnik spoza zakresu zamiast wpuścić literówkę MG', () => {
+    expect(validateCompendiumEntry(injury({ headDamageMultiplier: 1 })).ok).toBe(false);
+    expect(validateCompendiumEntry(injury({ headDamageMultiplier: 99 })).ok).toBe(false);
+  });
+
+  it('zapisuje karę warunkową razem z warunkiem', () => {
+    const result = validateCompendiumEntry(
+      injury({
+        name: 'Strzaskane palce',
+        table: 'body',
+        roll: 11,
+        conditionalPenalty: { value: -4, condition: 'wszystkich Akcji wykonywanych tą ręką' },
+      }),
+    );
+    expect(result.ok && result.entry.category === 'criticalInjury' && result.entry).toMatchObject({
+      conditionalPenalty: { value: -4, condition: 'wszystkich Akcji wykonywanych tą ręką' },
+    });
+  });
+
+  it('odmawia kary bez warunku — sama liczba to `actionPenalty`', () => {
+    const result = validateCompendiumEntry(injury({ conditionalPenalty: { value: -4 } }));
+    expect(result.ok).toBe(false);
+  });
+
+  it('odmawia kary dodatniej — rana nikomu nie pomaga', () => {
+    const result = validateCompendiumEntry(
+      injury({ conditionalPenalty: { value: 2, condition: 'czegokolwiek' } }),
+    );
+    expect(result.ok).toBe(false);
+  });
+});
+
+describe('validateWeaponType — połowa pancerza', () => {
+  function type(overrides: Record<string, unknown> = {}) {
+    return {
+      id: 'weapon-type.custom',
+      name: 'Nóż motylkowy',
+      skillId: 'melee-weapon',
+      damage: '2k6',
+      melee: true,
+      ...overrides,
+    };
+  }
+
+  it('przyjmuje flagę na broni białej', () => {
+    const registry = buildCompendium([{ weaponTypes: [type({ halvesArmor: true })], entries: [] }]);
+    expect(registry.weaponTypeById.get('weapon-type.custom')?.halvesArmor).toBe(true);
+  });
+
+  it('odrzuca ją na broni dystansowej — to zasada walki wręcz', () => {
+    const registry = buildCompendium([
+      { weaponTypes: [type({ melee: false, halvesArmor: true })], entries: [] },
+    ]);
+    expect(registry.weaponTypeById.get('weapon-type.custom')?.halvesArmor).toBeUndefined();
+  });
+
+  it('przenosi ją na rozwiązaną broń, więc planner widzi ją bez pytania o typ', () => {
+    const registry = buildCompendium([{ weaponTypes: [type({ halvesArmor: true })], entries: [] }]);
+    const entry = validateCompendiumEntry({
+      category: 'weapon',
+      id: 'weapon.noz',
+      name: 'Nóż',
+      cost: 50,
+      weaponTypeId: 'weapon-type.custom',
+    });
+    if (!entry.ok) throw new Error('nie zbudowałem wpisu broni');
+    const resolved = resolveWeapon(entry.entry as WeaponEntry, registry);
+    expect(resolved.halvesArmor).toBe(true);
+  });
+});

@@ -1235,9 +1235,15 @@ export function clearSmoke(sceneId: string, smokeId?: number): void {
   });
 }
 
-/** Reloads a weapon row to a full magazine (an Action at the table). */
+/**
+ * Reloads a weapon row to a full magazine (an Action at the table).
+ *
+ * A statist reloads through the same event (29.08) — it simply has no sheet to
+ * name, so the token carries the address instead. Exactly one of the two is
+ * given, the same bargain `sendCharacterRoll` makes.
+ */
 export function reloadWeapon(
-  characterId: string,
+  characterId: string | undefined,
   weaponRowId: string,
   /**
    * Load this kind of round while reloading (stage 16g); `null` is ordinary
@@ -1246,9 +1252,11 @@ export function reloadWeapon(
    * comes out enforced rather than merely written down.
    */
   ammoId?: string | null,
+  /** Statist doing the reloading, when there is no sheet to name. */
+  attackerTokenId?: string,
 ): void {
   const payload: WeaponReloadPayload = {
-    characterId,
+    ...(characterId ? { characterId } : { attackerTokenId }),
     weaponRowId,
     ...(ammoId !== undefined ? { ammoId } : {}),
   };

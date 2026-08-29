@@ -1719,6 +1719,13 @@ export async function performWeaponReload(
 ): Promise<{ ammo: number }> {
   {
     const { campaignId, user, sceneId, payload } = options;
+    // A statist reloads too (29.08). Its magazine lives in the profile column
+    // rather than in a sheet row, which is the whole of the difference — the
+    // Action is booked the same way, the sound plays the same way, and „żeby
+    // zmienić nabój, trzeba przeładować" is enforced the same way.
+    if (!payload?.characterId) {
+      return performStatistReload(deps, { campaignId, user, sceneId, payload });
+    }
     const character = await requireRollableCharacter(deps, campaignId, user, payload?.characterId);
     const registry = deps.ctx.cpred;
     const data = parseCharacterData(character.data, registry);
@@ -1760,6 +1767,71 @@ export async function performWeaponReload(
     await emitReloadMapFx(deps, campaignId, sceneId, character, data, row.id);
     return { ammo: row.ammoMax };
   }
+}
+
+/**
+ * The same reload for a figure with no sheet (29.08).
+ *
+ * The statist's magazine is two numbers in `Token.combatProfile`, so the write
+ * is a token update rather than a sheet save; everything else is the character
+ * path's, including the Action. Changing the round is *not* offered here: a
+ * statist's weapon carries no `ammoId` (stage 16b keeps special rounds on the
+ * sheet), so there is nothing to change it to.
+ */
+async function performStatistReload(
+  deps: RealtimeDeps,
+  options: {
+    campaignId: string;
+    user: SessionUser;
+    sceneId: string | null;
+    payload: WeaponReloadPayload | undefined;
+  },
+): Promise<{ ammo: number }> {
+  const { campaignId, user, sceneId, payload } = options;
+  if (!sceneId) throw new RealtimeError('NO_SCENE');
+  const token = await resolveStatistToken(
+    deps,
+    campaignId,
+    user,
+    sceneId,
+    payload?.attackerTokenId,
+  );
+  const profile = readSheetCombatProfile(token.combatProfile);
+  if (!profile) throw new RealtimeError('TOKEN_HAS_NO_PROFILE');
+  if (payload?.weaponRowId !== SHEET_STATIST_WEAPON_ROW_ID) {
+    throw new RealtimeError('UNKNOWN_WEAPON');
+  }
+  if (profile.ammoMax <= 0) throw new RealtimeError('WEAPON_HAS_NO_MAGAZINE');
+  // A full magazine costs nothing: the click was a misfire, not an Action.
+  if (profile.ammoCurrent >= profile.ammoMax) return { ammo: profile.ammoCurrent };
+
+  const scene = await deps.ctx.prisma.scene.findUnique({ where: { id: sceneId } });
+  if (!scene || scene.campaignId !== campaignId) throw new RealtimeError('SCENE_NOT_FOUND');
+  await requireTurnSpend(
+    deps,
+    campaignId,
+    scene,
+    token.id,
+    { kind: 'action', actionId: CPRED_ACTION_RELOAD },
+    user,
+    CPRED_ACTION_RELOAD,
+  );
+
+  const next = { ...profile, ammoCurrent: profile.ammoMax };
+  await deps.ctx.prisma.token.update({
+    where: { id: token.id },
+    data: { combatProfile: JSON.stringify(next) },
+  });
+  await emitTokensById(deps, campaignId, [token.id]);
+
+  // The same two beats or four the sheet path plays — which one depends on the
+  // weapon, so the catalogue is opened for exactly that question.
+  const bare = sheetFromCombatProfile(profile, sheetTokenHp(token), null);
+  const { resolved } = await resolveWeaponRow(deps, campaignId, bare, SHEET_STATIST_WEAPON_ROW_ID);
+  await emitMapFx(deps, campaignId, scene, [
+    { kind: 'spark', at: fxCentre(token, scene), sound: cpredReloadSound(resolved) },
+  ]);
+  return { ammo: next.ammoCurrent };
 }
 
 /**

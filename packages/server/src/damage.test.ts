@@ -441,6 +441,63 @@ describe('damage, armor and Death Saves', () => {
     expect(sheet.criticalInjuries[0]?.effect).toMatch(/^Efekt rany numer/);
   });
 
+  /**
+   * 29.08: dwie szóstki na kościach obrażeń przeciwko figurze bez karty
+   * kończyły się zdaniem „ranę krytyczną rozegraj ręcznie". Figura z profilem
+   * bojowym ma teraz gdzie ją trzymać — i nosi ją tym samym wierszem, co karta,
+   * więc „Odcięta noga" naprawdę zabiera jej Unik.
+   */
+  describe('rana krytyczna u figury z profilem bojowym', () => {
+    it('losuje ranę i zapisuje ją w profilu', async () => {
+      await emitAck(gm, 'token:update', {
+        tokenId: npcTokenId,
+        patch: {
+          hp: { current: 25, max: 25 },
+          combatProfile: {
+            ref: 5,
+            dex: 5,
+            body: 5,
+            will: 5,
+            skillLevel: 4,
+            evasion: 2,
+            armorSp: 0,
+            weaponId: null,
+            weaponName: 'Pięści',
+            weaponDamage: '1k6',
+            ammoCurrent: 0,
+            ammoMax: 0,
+          },
+        },
+      });
+      const messageId = await rollUntilCritical();
+      const logged = waitForDamage(gm);
+      const ack = await emitAck(gm, 'damage:apply', { messageId, tokenId: npcTokenId });
+      expect(ack.ok).toBe(true);
+      const entry = (await logged).message.damage;
+      expect(entry?.injury?.name).toMatch(/^Rana testowa/);
+      expect(entry?.injuryNote).toBeUndefined();
+
+      const sync = await roundTrip(gm);
+      const token = sync.tokens.find((t) => t.id === npcTokenId);
+      const profile = token?.combatProfile as Record<string, unknown> | undefined;
+      const wounds = (profile?.criticalInjuries ?? []) as Record<string, unknown>[];
+      expect(wounds.map((row) => row.name)).toContain(entry?.injury?.name);
+    });
+
+    it('wraca do zdania „rozegraj ręcznie", gdy figura nie ma nawet profilu', async () => {
+      await emitAck(gm, 'token:update', {
+        tokenId: npcTokenId,
+        patch: { hp: { current: 25, max: 25 }, combatProfile: null },
+      });
+      const messageId = await rollUntilCritical();
+      const logged = waitForDamage(gm);
+      await emitAck(gm, 'damage:apply', { messageId, tokenId: npcTokenId });
+      const entry = (await logged).message.damage;
+      expect(entry?.injury).toBeUndefined();
+      expect(entry?.injuryNote).toContain('rozegraj ręcznie');
+    });
+  });
+
   it('marks the wound thresholds on the token as HP fall', async () => {
     await emitAck(gm, 'token:update', {
       tokenId: playerTokenId,
@@ -581,6 +638,71 @@ describe('damage, armor and Death Saves', () => {
     // A second undo of the same entry is refused rather than applied twice.
     const again = await emitAck(gm, 'damage:undo', { messageId: applied.messageId });
     expect(again).toMatchObject({ ok: false, error: 'ALREADY_UNDONE' });
+  });
+
+  /**
+   * 29.08: „Pęknięta czaszka — pomnóż obrażenia głowy, które przejdą przez OB
+   * pancerza, x 3 (a nie x 2)" (s. 188). Do tej sesji `CPRED_HEAD_DAMAGE_
+   * MULTIPLIER` było stałą 2, a cały efekt rany stał w prozie wpisu.
+   */
+  describe('pęknięta czaszka mnoży trafienia w głowę ×3', () => {
+    /** Rzuca w głowę i rozlicza, zwracając wpis z karty czatu. */
+    async function hitTheHead(): Promise<DamageLogEntry> {
+      const rolled = data(
+        await emitAck<{ messageId: number }>(gm, 'character:roll', {
+          characterId,
+          request: { kind: 'damage', weaponRowId: 'w1', location: 'head' },
+          visibility: 'public',
+        }),
+        'character:roll',
+      );
+      const logged = waitForDamage(gm);
+      await emitAck(gm, 'damage:apply', {
+        messageId: rolled.messageId,
+        tokenId: playerTokenId,
+        armorSp: 0,
+      });
+      const entry = (await logged).message.damage;
+      if (!entry) throw new Error('brak wpisu obrażeń');
+      return entry;
+    }
+
+    it('mnoży ×2, dopóki czaszka jest cała', async () => {
+      await emitAck(gm, 'character:update', {
+        characterId,
+        patch: { data: { hpCurrent: 35, criticalInjuries: [] } },
+      });
+      const entry = await hitTheHead();
+      expect(entry.doubled).toBe(true);
+      expect(entry.headMultiplier).toBeUndefined();
+      expect(entry.damageThrough).toBe(entry.damageRolled * 2);
+    });
+
+    it('mnoży ×3, gdy cel nosi już pękniętą czaszkę', async () => {
+      await emitAck(gm, 'character:update', {
+        characterId,
+        patch: {
+          data: {
+            hpCurrent: 35,
+            criticalInjuries: [
+              {
+                id: 'injury.head-pekknieta-czaszka',
+                name: 'Pęknięta czaszka',
+                effect: 'Pomnóż obrażenia głowy ×3.',
+                headDamageMultiplier: 3,
+              },
+            ],
+          },
+        },
+      });
+      const entry = await hitTheHead();
+      expect(entry.headMultiplier).toBe(3);
+      expect(entry.damageThrough).toBe(entry.damageRolled * 3);
+      await emitAck(gm, 'character:update', {
+        characterId,
+        patch: { data: { hpCurrent: 35, criticalInjuries: [] } },
+      });
+    });
   });
 
   /**

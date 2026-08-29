@@ -248,3 +248,51 @@ describe('Wartość bojowa za spustem (etap 26e)', () => {
     expect(machine.armorSp).toBe(11);
   });
 });
+
+/**
+ * 29.08: rany krytyczne wróciły do profilu statysty — nie dlatego, że MG ma je
+ * wpisywać ręcznie (to nadal robota karty), ale dlatego, że **zasady** je
+ * nadają: gaz łzawiący z 16h, broniona strefa z 26f, dwie szóstki na kościach
+ * obrażeń. Do 29.08 kończyły się zdaniem na czacie i niczym więcej.
+ */
+describe('profil statysty — rany krytyczne', () => {
+  const wound = {
+    id: 'injury.body-odcieta-noga',
+    name: 'Odcięta noga',
+    effect: 'Nie możesz Unikać ataków.',
+    noDodge: true as const,
+    movePenalty: -6,
+  };
+
+  it('przechodzi przez sanityzację i wraca w całości', () => {
+    const profile = sanitizeCombatProfile({
+      ...createDefaultCombatProfile(),
+      criticalInjuries: [wound],
+    });
+    expect(profile.criticalInjuries).toEqual([wound]);
+  });
+
+  it('nieruszony profil nie zyskuje pustego pola — JSON zostaje taki, jak był', () => {
+    const profile = sanitizeCombatProfile(createDefaultCombatProfile());
+    expect('criticalInjuries' in profile).toBe(false);
+  });
+
+  it('odrzuca wiersz bez nazwy zamiast zapisać ranę bez imienia', () => {
+    const profile = sanitizeCombatProfile({
+      ...createDefaultCombatProfile(),
+      criticalInjuries: [{ id: 'injury.body-cos', effect: 'Boli.' }, wound],
+    });
+    expect(profile.criticalInjuries).toEqual([wound]);
+  });
+
+  it('podaje ranę syntetycznej karcie, więc reguły działają bez gałęzi', () => {
+    const profile = { ...createDefaultCombatProfile(), criticalInjuries: [wound] };
+    const data = combatProfileSheet(profile, { current: 20, max: 30 });
+    expect(data.criticalInjuries).toEqual([wound]);
+  });
+
+  it('statysta bez ran ma pustą listę, nie undefined', () => {
+    const data = combatProfileSheet(createDefaultCombatProfile(), { current: 20, max: 30 });
+    expect(data.criticalInjuries).toEqual([]);
+  });
+});

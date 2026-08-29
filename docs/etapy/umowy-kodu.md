@@ -341,3 +341,37 @@ gdzie zapisać rany); rana nadana z celowania idzie w `injuryAimed`, a nie w `in
 znajduje „Złamaną nogę", bo „ósemka w tabeli korpusu" to adres z podręcznika, a `id` powstaje
 z polskiej nazwy przy imporcie i ginie, gdy MG przepisze wiersz w edytorze kompendium. Brak
 wiersza jest **zdaniem na karcie**, nie cichym pominięciem połowy reguły.
+
+**Cecha ataku, którą czyta dopiero rozliczenie obrażeń, jedzie kartą ataku — nigdy żądaniem
+klienta.** Od 29.08 dotyczy to trzech pól: `ammo` (16g), `aimedAt` (s. 170) i `halvesArmor`
+(s. 176). Droga jest jedna i cała: `planCpredAttack` wpisuje pole do `CpredAttackMeta`, meta ląduje
+w `RollAttackMeta.system`, `readAttackContext` (`character-rolls.ts`) czyta je z **zapisanej**
+wiadomości do `CpredRollRequest`, plan obrażeń przekłada je do `RollDamageMeta.system`,
+a `realtime/damage.ts` odczytuje z powrotem do `SheetDamageRequest`. Powód jest ten sam za każdym
+razem: „Zastosuj" klika się kwadrans po ciosie, kompendium mogło się w międzyczasie zmienić,
+a klient nazywający własną przebijalność pancerza wybierałby, ile warta jest kamizelka celu.
+
+**Skutek rany krytycznej, który dotyka _cudzego_ rachunku, jest liczbą na wierszu rany — nie
+stałą w silniku.** `movePenalty` (14c), `actionPenalty` (14e), a od 29.08 `headDamageMultiplier`
+(„Pęknięta czaszka" mnoży trafienia w głowę ×3, s. 188) i `conditionalPenalty` (liczba + warunek
+słowami podręcznika). Silnik pyta o wartość przez `cpredHeadDamageMultiplier`
+/ `cpredInjuryConditionalModifiers` w `statuses.ts` i **nie zna żadnej nazwy rany**, więc wiersz
+napisany ręką MG działa dokładnie tak, jak drukowany. Nowe pole dopisuje się w **czterech**
+miejscach naraz: `CriticalInjuryEntry`, `CpredCriticalInjuryRow`, `toCriticalInjuryRow`
+(kopiuje ranę z kompendium na kartę) i `parse-manual.py`. Pominięcie `toCriticalInjuryRow`
+oznacza pole, które istnieje w katalogu i nigdy nie dociera do rannego.
+
+**Kara, której VTT nie umie sprawdzić, nie jest odejmowana — jest podawana.** `actionPenalty`
+wchodzi do sumy rzutu (`cpredInjuryModifiers` → `sheetSituationModifiers`); `conditionalPenalty`
+**nigdy** tam nie trafia, bo silnik nie wie, w której ręce jest broń („Strzaskane palce −4 do
+Akcji wykonywanych tą ręką") ani czy ten Test wymaga mówienia („Złamana szczęka"). Kara stoi jako
+chip przy ranie na karcie i jako guzik w oknie rzutu, który wpisuje liczbę do modyfikatora
+sytuacyjnego. Błędne automatyczne −4 jest gorsze niż widoczne przypomnienie (decyzja MG z 29.08).
+
+**Statysta nosi rany krytyczne od 29.08 — profil bojowy to nie „karta uboga w pola".** Etap 16b
+świadomie zostawił rany poza `CpredCombatProfile` („to opisuje osobę z historią"); powód przestał
+być prawdziwy, gdy 16h i 26f zaczęły rany **nadawać z zasady**. Rany siedzą w
+`CpredCombatProfile.criticalInjuries` (pole opcjonalne — nietknięty profil ma się serializować
+bajt w bajt tak, jak w 16b), a `combatProfileSheet` podaje je syntetycznej karcie, więc
+`cpredInjuryDodgeBlock` i `cpredInjuryModifiers` działają bez jednej gałęzi „czy to statysta".
+Żeton **bez** profilu nadal dostaje samo zdanie na czacie: nie ma gdzie zapisać.

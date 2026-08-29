@@ -30,6 +30,18 @@ export const ARMOR_SP_MAX = 30;
 /** Worst REF/ZW/RUCH penalty one piece of armor may carry (s. 185). */
 export const ARMOR_PENALTY_MIN = -6;
 
+/** Damage that gets through armor on a head hit is doubled (RAW). */
+export const CPRED_HEAD_DAMAGE_MULTIPLIER = 2;
+
+/**
+ * Ceiling on the head multiplier a Critical Injury may raise (s. 188).
+ *
+ * „Pęknięta czaszka" prints ×3; the cap exists so a GM's own row cannot turn a
+ * graze into a four-figure number by typo. Two is the printed default and stays
+ * the floor — a wound never makes a head hit *safer*.
+ */
+export const CPRED_HEAD_DAMAGE_MULTIPLIER_MAX = 5;
+
 /** Worst RUCH penalty one Critical Injury may carry — a severed leg is −6. */
 export const INJURY_MOVE_PENALTY_MIN = -10;
 
@@ -40,6 +52,31 @@ export const INJURY_MOVE_PENALTY_MIN = -10;
  * character who can never roll again.
  */
 export const INJURY_ACTION_PENALTY_MIN = -8;
+
+/**
+ * Longest condition a Critical Injury's conditional penalty may name.
+ *
+ * The rulebook's own phrasings are short („Akcje wykonywane tą ręką", „ataki
+ * dystansowe i Testy Percepcji oparte na wzroku"); the limit is here rather
+ * than beside the name limit because both `compendium.ts` and `character.ts`
+ * check it, which is the whole reason this file exists.
+ */
+export const INJURY_CONDITION_MAX_LENGTH = 120;
+
+/**
+ * „−4, ale tylko wtedy, gdy…" — a modifier the rules name and the table applies.
+ *
+ * Deliberately never folded into a roll's total: the VTT does not know which
+ * hand is holding the gun or whether this Persuasion Check involves speaking,
+ * and a wrong automatic −4 is worse than a visible reminder. The roll dialog
+ * offers it as a button; the sheet prints it beside the wound.
+ */
+export interface CpredConditionalPenalty {
+  /** Negative modifier, e.g. −4. */
+  value: number;
+  /** When it bites, in the rulebook's own words („Akcje wykonywane tą ręką"). */
+  condition: string;
+}
 
 /**
  * Where an attack lands — which armor stops it and whether the ×2 applies.

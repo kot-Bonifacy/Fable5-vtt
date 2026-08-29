@@ -184,12 +184,26 @@ describe('hotbarSlotsFor — reloading', () => {
     expect(reload?.disabled).toMatch(/pełny/);
   });
 
-  it('offers no reload to a statist — `weapon:reload` writes to a sheet row', () => {
+  it('offers a statist the same reload as a sheet (29.08)', () => {
     const profile = { ...createDefaultCombatProfile(), ammoCurrent: 1, ammoMax: 6 };
     const slots = hotbarSlotsFor(input({ sheet: null, profile }));
-    expect(slots.some((slot) => slot.kind === 'reload')).toBe(false);
-    // …but the weapon itself is still there to fire.
+    const reload = slots.find((slot) => slot.kind === 'reload');
+    expect(reload).toBeDefined();
+    expect(reload?.disabled).toBeNull();
     expect(weaponSlots(slots)).toHaveLength(1);
+  });
+
+  it('greys out a statist whose magazine is already full', () => {
+    const profile = { ...createDefaultCombatProfile(), ammoCurrent: 6, ammoMax: 6 };
+    const slots = hotbarSlotsFor(input({ sheet: null, profile }));
+    const reload = slots.find((slot) => slot.kind === 'reload');
+    expect(reload?.disabled).toMatch(/pełny/);
+  });
+
+  it('gives an unarmed statist nothing to reload — no magazine, no box', () => {
+    const profile = { ...createDefaultCombatProfile(), ammoCurrent: 0, ammoMax: 0 };
+    const slots = hotbarSlotsFor(input({ sheet: null, profile }));
+    expect(slots.some((slot) => slot.kind === 'reload')).toBe(false);
   });
 });
 

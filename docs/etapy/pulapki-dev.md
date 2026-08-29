@@ -349,3 +349,13 @@ nazwie pola, na którym stoi (`grep -rn "aimed: true"` pokazał wtedy same przep
 banera jest niewidoczny dla myszy, dopóki sam nie włączy sobie `pointer-events: auto`. Włączaj je
 na wąskim elemencie, nie na całym banerze — reszta paska ma dalej przepuszczać kliknięcia w mapę
 pod spodem, inaczej pasek nad środkiem sceny zjada rozkazy marszu.
+
+**`data/private/cpred/compendium/` bywa starsze niż `parse-manual.py`.** Wygenerowane pliki są
+poza repozytorium (gitignore), więc nic ich nie odświeża przy zmianie parsera — a `git status`
+tego nie pokaże. 29.08 regeneracja dołożyła Miotaczowi ognia `ammoPatterns: ['shell']`, którego
+plik na dysku nie miał **od nieznanej liczby sesji**; bez tego pola `ammoFitsWeapon` odrzuca każdy
+nabój specjalny (broń bez `ammoPatterns` i bez `ammoIds` nie przyjmuje niczego), więc miotacza
+nie dało się załadować amunicją zapalającą mimo gotowej mechaniki z 16g. Objaw jest zawsze ten
+sam: **kod robi coś, czego dane nie znają**. Zanim zaczniesz szukać błędu w kompendium, puść
+`python tools/import/parse-manual.py` i porównaj wynik — import wypisuje ostrzeżenia i liczby,
+a diff dwóch wersji pliku mówi więcej niż godzina czytania parsera.

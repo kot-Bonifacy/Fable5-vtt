@@ -7,6 +7,54 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 28.08 (czwarta) — odsłuch dźwięków mapy
+
+**Zlecenie MG:** pierwszy odsłuch szesnastu próbek na głośnikach i poprawa sześciu, które
+nie przeszły. Wprost: „Dźwięki szukaj w necie".
+
+**Wyniki odsłuchu.** Dziesięć próbek przeszło bez uwag. Sześć do poprawki, w tym **jedna
+prawdziwa wada pliku, a nie kwestia gustu**: `shot-rifle.wav` grał **dwa strzały** — oryginał
+`sks.wav` ma drugą detonację w 0,315 s, więc strzał pojedynczy brzmiał jak dublet, a seria jak
+dublety na dublecie. Plik przycięty do 0,305 s z 90 ms wygaszenia; pozostałe trzy huki
+sprawdzone obwiednią (po jednym strzale każdy) i zostawione. Reszta to podmiany źródeł:
+**trafienie** (uderzenie w ciało, bo tę próbkę gra każde zadane obrażenie — też nóż i pięść),
+**rykoszet**, **gaz** (syk uchodzącej pary zamiast szumu) i **wyładowanie** (`continuousspark`
+zamiast `spark` z tej samej paczki — MG chciał kilku iskier zamiast jednej).
+
+**Przeładowanie rozdzielone na dwie próbki.** MG wybrał wariant z rozróżnieniem: `reload-pistol`
+(dwutakt) i `reload-rifle` (czterotakt), wybierane po ikonie broni przez nowe
+`cpredReloadSound` — tą samą klasyfikacją, którą tabela `ICON_FX` dobiera huk. Broń długa
+siedzi w zbiorze `LONG_ARMS`, wszystko inne dostaje pistolet: zły domyślny wariant ma być
+za krótki, nie za długi, bo czterotakt pod pistoletem słychać od razu.
+
+**Rykoszet po raz pierwszy w ogóle się odzywa.** Przy okazji wyszło, że `ricochet` był
+**martwym wpisem**: miał plik, wzmocnienie i przycisk odsłuchu, ale żadne miejsce na serwerze
+go nie emitowało — a komentarz przy `MapFxEffect.sound` w `shared/src/fx.ts` od 27i opisywał
+zachowanie, którego nie było („co robi pocisk na drugim końcu wybiera klient z `hit`"). Teraz
+wybiera: chybiony **pocisk** (nie strzała, nie ostrze) gra odbicie w chwili dolotu smugi,
+najwyżej dwa razy na serię i tylko wtedy, gdy daleki koniec przetrwał przycięcie dla widza.
+Decyzja MG — podmienić plik **i** podpiąć pod pudło.
+
+**Obróbka.** Bez ffmpeg na tej maszynie: skrypt-jednorazówka w czystym Pythonie (moduł `wave`)
+robił mono, przycięcie, normalizację do −0,7 dBFS i wygaszenia. Nowość wobec 27i: **skracanie
+ciszy dłuższej niż 0,30 s do 0,18 s z zachowaniem szmeru tła** (sklejka wypada tam, gdzie nic
+się nie dzieje) w obu przeładowaniach, oraz **trzykrotna pętla z 3 ms przenikaniem** przy
+`zap.wav`, żeby trzaski pokryły 620 ms animacji zamiast 220. Wszystkie źródła z OpenGameArt,
+licencje i opis obróbki w `packages/client/public/sfx/ATTRIBUTION.md`.
+
+**Uwaga licencyjna.** `ricochet.ogg` (Red Eclipse) to **jedyny plik na CC BY-SA** w katalogu
+i jedyny **nietknięty** — kopia bez zmian nie jest utworem zależnym, więc warunek „na tych
+samych zasadach" nie sięga dalej. Gdyby ktoś kiedyś tę próbkę przyciął, wynik trzeba oznaczyć
+jako CC BY-SA 3.0 albo znaleźć zamiennik: rykoszetu na CC0 na OpenGameArt praktycznie nie ma.
+
+**Zaległości: 13 → 12.** Pozycja „Etap 27i — zostały same dźwięki" **zamknięta** — to była
+jedyna rzecz z długu oględzin, która nie potrzebowała ani modelu, ani przeglądarki, tylko
+człowieka przy głośnikach.
+
+**Testy:** 1400 w `shared` (+4 nowe na `cpredReloadSound`), 793 na serwerze, 62 u klienta
+— zielone. ESLint i Prettier czyste. Klient podany na `:5199` — komplet siedmiu nowych
+plików wraca z 200, a `reload.ogg` z podmianki SPA, czyli faktycznie zniknął.
+
 ### Sesja 28.08 (trzecia) — pakiet A+B+D+E: ruch i mgła, screamsheet, brakujące drzwi w UI
 
 **Zlecenie MG:** znów pogrupowane zaległości bez lokalnego LLM i bez etapów nierozpoczętych.

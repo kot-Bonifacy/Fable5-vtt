@@ -286,6 +286,7 @@ async function resolveRollRequest(
     weaponRowId?: unknown;
     ammo?: CpredAmmoProfile;
     aimedAt?: unknown;
+    halvesArmor?: unknown;
   };
   return {
     ...request,
@@ -298,6 +299,10 @@ async function resolveRollRequest(
     // the leg breaks because of the attack that happened, not because of what
     // the client says now.
     ...(isCpredAimPoint(system.aimedAt) ? { aimedAt: system.aimedAt } : {}),
+    // „Obrażenia zadane każdym rodzajem broni białej ignorują połowę pancerza"
+    // (s. 176) — decided by the attack, carried by its card, applied when the
+    // damage lands. A client saying so itself would be halving armour at will.
+    ...(system.halvesArmor === true ? { halvesArmor: true as const } : {}),
     ...(attack.damageNotation ? { damageNotation: attack.damageNotation } : {}),
     ...(attack.damageMultiplier ? { damageMultiplier: attack.damageMultiplier } : {}),
     ...(attack.targetTokenId ? { targetTokenId: attack.targetTokenId } : {}),
@@ -545,11 +550,12 @@ export async function performCharacterRoll(
         // much armour to wear off and whether the target catches fire; the aim
         // point (s. 170) rides along for the same reason. Opaque to the dice
         // engine (`RollDamageMeta.system`) — CP RED puts it in, CP RED reads it out.
-        ...(plan.damage.ammo || plan.damage.aimedAt
+        ...(plan.damage.ammo || plan.damage.aimedAt || plan.damage.halvesArmor
           ? {
               system: {
                 ...(plan.damage.ammo ? { ammo: plan.damage.ammo } : {}),
                 ...(plan.damage.aimedAt ? { aimedAt: plan.damage.aimedAt } : {}),
+                ...(plan.damage.halvesArmor ? { halvesArmor: true } : {}),
               },
             }
           : {}),

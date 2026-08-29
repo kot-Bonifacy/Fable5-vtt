@@ -479,11 +479,10 @@ export function activateSlot(slot: CpredHotbarSlot, tokenId: string): void {
 
   if (slot.kind === 'reload') {
     const token = useTokenStore.getState().tokens[tokenId];
-    if (!token?.characterId) {
-      chat.addNote('Ten token nie ma karty postaci — magazynek uzupełnij w „Edytuj…”.');
-      return;
-    }
-    reloadWeapon(token.characterId, slot.weaponRowId);
+    // A sheet is addressed by its character, a statist by its token (29.08) —
+    // the server picks the arm from which of the two arrives.
+    if (token?.characterId) reloadWeapon(token.characterId, slot.weaponRowId);
+    else reloadWeapon(undefined, slot.weaponRowId, undefined, tokenId);
     return;
   }
 

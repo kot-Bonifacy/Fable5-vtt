@@ -18,7 +18,7 @@ import type { DefenseZone as ZoneRow, Scene, Token } from '../generated/prisma/c
 import {
   SHEET_SLOWED_STATUS_ID,
   applyForcedFailureToSheet,
-  applyPeriodicDamageToTokenHp,
+  applyForcedFailureToTokenHp,
   describeSheetTimer,
   readSheetCombatProfile,
   readSheetStatusData,
@@ -320,31 +320,39 @@ async function applyZoneEffect(
       }
     }
     if (!log) {
-      // A statist has nowhere to keep a Critical Injury, so the wound is
-      // reported on the card and the GM rules it — the bargain of 16h.
+      // Od 29.08 statysta z profilem bojowym nosi ranę tak samo jak postać —
+      // ta sama funkcja, ten sam wiersz, ten sam zegar z 16h. Żeton bez profilu
+      // dostaje samo zdanie: nie ma gdzie tego zapisać.
       const hp: TokenHp | null =
         token.hpMax === null ? null : { current: token.hpCurrent ?? 0, max: token.hpMax };
-      const applied = hp ? applyPeriodicDamageToTokenHp(hp, failure.damage) : null;
-      if (applied) {
+      const profile = readSheetCombatProfile(token.combatProfile);
+      const applied = applyForcedFailureToTokenHp(hp, profile, failure, compendium);
+      if (applied.hp || applied.profile) {
         await deps.ctx.prisma.token.update({
           where: { id: token.id },
           data: {
-            hpCurrent: applied.hp.current,
-            statuses: JSON.stringify(
-              sheetWoundStatuses(readTokenStatuses(token.statuses), applied.hp),
-            ),
+            ...(applied.hp
+              ? {
+                  hpCurrent: applied.hp.current,
+                  statuses: JSON.stringify(
+                    sheetWoundStatuses(readTokenStatuses(token.statuses), applied.hp),
+                  ),
+                }
+              : {}),
+            ...(applied.profile ? { combatProfile: JSON.stringify(applied.profile) } : {}),
           },
         });
       }
+      if (applied.carry) {
+        await oweCarryToToken(deps, token.sceneId, token.id, applied.carry);
+        await emitCombatOfScene(deps, campaignId, scene);
+      }
       log = {
-        ...(applied?.log ?? emptyDamageLog()),
+        ...applied.log,
         targetTokenId: token.id,
         targetName: token.name,
         characterId: null,
         targetOwnerId: ownerId,
-        ...(wantsInjuries
-          ? { injuryNote: 'Statysta nie ma karty — ranę krytyczną rozstrzyga MG.' }
-          : {}),
       };
     }
   } else if (rolled) {
@@ -598,22 +606,6 @@ function readTokenStatuses(raw: string): string[] {
 }
 
 /** A failure that cost no hit points still needs a card to carry the wound. */
-function emptyDamageLog(): Omit<
-  DamageLogEntry,
-  'targetTokenId' | 'targetName' | 'characterId' | 'targetOwnerId'
-> {
-  return {
-    location: 'body',
-    locationLabel: 'ciało',
-    damageRolled: 0,
-    armorSp: 0,
-    damageThrough: 0,
-    doubled: false,
-    bonusDamage: 0,
-    hpLost: 0,
-  };
-}
-
 /** Which of the three triggers this system answers to. */
 export function zoneTriggerOf(effects: CpredNetDefenseEffects | undefined): string {
   return netDefenseTrigger(effects);

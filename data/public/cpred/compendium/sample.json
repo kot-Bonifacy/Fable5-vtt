@@ -51,7 +51,8 @@
       "rof": 2,
       "hands": 1,
       "concealable": false,
-      "melee": true
+      "melee": true,
+      "halvesArmor": true
     },
     {
       "id": "weapon-type.sample-pistol",

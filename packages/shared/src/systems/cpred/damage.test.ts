@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { CPRED_HEAD_DAMAGE_MULTIPLIER, CPRED_HEAD_DAMAGE_MULTIPLIER_MAX } from './locations.js';
 import {
   CPRED_CRITICAL_INJURY_BONUS_DAMAGE,
   applyWoundStatuses,
@@ -50,6 +51,96 @@ function injury(overrides: Partial<CriticalInjuryEntry> = {}): CriticalInjuryEnt
     ...overrides,
   };
 }
+
+describe('resolveCpredDamage — połowa pancerza (s. 176, 178)', () => {
+  const base = { hpCurrent: 30, hpMax: 40, location: 'body' as const };
+
+  it('liczy przykład z podręcznika: OB 11 zatrzymuje 6, cel traci 1 PW', () => {
+    // s. 176: „Lekką kurtkę kuloodporną Rockera, choć nominalnie ma OB 11,
+    // teraz traktuje się, jakby miała OB 6" — 7 obrażeń, 1 punkt przechodzi.
+    const outcome = resolveCpredDamage({ ...base, damage: 7, armorSp: 11, halvesArmor: true });
+    expect(outcome.armorSp).toBe(6);
+    expect(outcome.armorHalved).toBe(true);
+    expect(outcome.damageThrough).toBe(1);
+    expect(outcome.hpAfter).toBe(29);
+  });
+
+  it('ściera cały pancerz, nie połowę — OB 11 spada do 10 w tym samym przykładzie', () => {
+    const outcome = resolveCpredDamage({ ...base, damage: 7, armorSp: 11, halvesArmor: true });
+    expect(outcome.spBefore).toBe(11);
+    expect(outcome.spAfter).toBe(10);
+    expect(outcome.ablated).toBe(true);
+  });
+
+  it('zaokrągla w górę połowę, która zostaje: OB 7 zatrzymuje 4', () => {
+    const outcome = resolveCpredDamage({ ...base, damage: 10, armorSp: 7, halvesArmor: true });
+    expect(outcome.armorSp).toBe(4);
+    expect(outcome.damageThrough).toBe(6);
+  });
+
+  it('nie dzieli niczego, gdy celu nic nie chroni', () => {
+    const outcome = resolveCpredDamage({ ...base, damage: 8, armorSp: 0, halvesArmor: true });
+    expect(outcome.armorHalved).toBe(false);
+    expect(outcome.damageThrough).toBe(8);
+  });
+
+  it('ustępuje obrażeniom ignorującym pancerz — tam nie ma czego połowić', () => {
+    const outcome = resolveCpredDamage({
+      ...base,
+      damage: 8,
+      armorSp: 11,
+      halvesArmor: true,
+      ignoreArmor: true,
+    });
+    expect(outcome.armorHalved).toBe(false);
+    expect(outcome.armorSp).toBe(0);
+    expect(outcome.damageThrough).toBe(8);
+  });
+});
+
+describe('resolveCpredDamage — mnożnik trafień w głowę (s. 188)', () => {
+  const head = { hpCurrent: 30, hpMax: 40, location: 'head' as const };
+
+  it('mnoży ×2 domyślnie', () => {
+    const outcome = resolveCpredDamage({ ...head, damage: 10, armorSp: 4 });
+    expect(outcome.headMultiplier).toBe(2);
+    expect(outcome.damageThrough).toBe(12);
+  });
+
+  it('mnoży ×3 pękniętą czaszką', () => {
+    const outcome = resolveCpredDamage({ ...head, damage: 10, armorSp: 4, headMultiplier: 3 });
+    expect(outcome.headMultiplier).toBe(3);
+    expect(outcome.damageThrough).toBe(18);
+  });
+
+  it('nie schodzi poniżej ×2 ani powyżej sufitu — wiersz rany pisze MG', () => {
+    expect(
+      resolveCpredDamage({ ...head, damage: 10, armorSp: 4, headMultiplier: 1 }).headMultiplier,
+    ).toBe(CPRED_HEAD_DAMAGE_MULTIPLIER);
+    expect(
+      resolveCpredDamage({ ...head, damage: 10, armorSp: 4, headMultiplier: 99 }).headMultiplier,
+    ).toBe(CPRED_HEAD_DAMAGE_MULTIPLIER_MAX);
+  });
+
+  it('nie mnoży niczego, gdy pancerz zatrzymał cios', () => {
+    const outcome = resolveCpredDamage({ ...head, damage: 3, armorSp: 11, headMultiplier: 3 });
+    expect(outcome.doubled).toBe(false);
+    expect(outcome.headMultiplier).toBe(1);
+    expect(outcome.damageThrough).toBe(0);
+  });
+
+  it('składa się z połową pancerza: maczeta w głowę pękniętej czaszki', () => {
+    // OB 11 → 6, 14 − 6 = 8, ×3 = 24.
+    const outcome = resolveCpredDamage({
+      ...head,
+      damage: 14,
+      armorSp: 11,
+      halvesArmor: true,
+      headMultiplier: 3,
+    });
+    expect(outcome.damageThrough).toBe(24);
+  });
+});
 
 describe('resolveCpredDamage', () => {
   const base = { hpCurrent: 30, hpMax: 40, location: 'body' as const };

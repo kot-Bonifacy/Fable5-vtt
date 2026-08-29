@@ -88,72 +88,78 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 | 27k | Edycja sceny: zaznacz, skasuj, cofnij         | ✅     | 2026-08-23        |
 | 27l | Karty obiektów sceny                          | ✅     | 2026-08-24        |
 | 28  | Wdrożenie na VPS                              | ⬜     |                   |
+| 29  | Rozwój postaci za Punkty Doświadczenia        | ⬜     |                   |
+| 30  | Zdolności Specjalne dziewięciu Ról            | ⬜     |                   |
+| 31  | Dodatki do broni                              | ⬜     |                   |
 
 ## Od czego zacząć
 
-**Ostatnia sesja (29.08) potwierdziła, że VTT stoi w całości na podręczniku głównym** — nie było
-czego wycinać po Easy Mode poza czterema mylącymi komentarzami i jednym martwym plikiem
-(`overrides.json`, skasowany). Przy okazji **Celowanie z s. 170 przestało być martwe**: miało cały
-silnik od etapu 16 i żadnej kontrolki, która by je włączyła. Ma teraz trzy cele (głowa, trzymany
-przedmiot, noga) wybierane na banerze nad mapą. **Do `POMYSLY.md` doszło 9 kandydatów z audytu**
-— MG wybierze z nich, co wciągnąć jako zaległości albo etapy; największy to Zdolności Specjalne
-dziewięciu Ról i rozwój postaci za PD. Sesja 28.08 (czwarta) zamknęła odsłuch dźwięków mapy
-i zbiła listę zaległości z 13 do **12**; ta przed nią zostawiła **czwartą stałą scenę
-„Korytarz 16e"** (widoczność Dynamiczna, mur L) — **nie kasuj jej**, bo za każdym razem
-odtwarzaliśmy ją od zera.
+**Ostatnia sesja (29.08, druga) zamknęła pakiet A+B z triażu MG** — cztery dziury z audytu
+i dwa braki profilu statysty. **Broń biała i sztuki walki tną teraz przez połowę pancerza**
+(s. 176–178) — to była największa z nich, bo dotyczyła każdego ataku wręcz w grze; **Pęknięta
+czaszka mnoży trafienia w głowę ×3**; **siedem ran krytycznych ma karę warunkową** jako liczbę
+z warunkiem zamiast prozy; a **statysta z profilem bojowym nosi rany i sam się przeładowuje**.
+Wszystkie trzy dane wyciągnął z podręcznika `parse-manual.py`, więc wpis MG w kompendium działa
+tak samo jak drukowany.
 
-**Celowanie nie było jeszcze oglądane w przeglądarce** — działa w testach serwera od strzału po
-złamaną nogę, ale baner z trzema guzikami nikt nie kliknął. To pierwsza rzecz do sprawdzenia
-przy najbliższych oględzinach (scena „Strzelnica", figura z kartą jako cel).
+**Od czego zacząć: nadal do wyboru 27g** (wydajność) i **28** (wdrożenie na VPS) — dwa
+nierozpoczęte etapy z pierwotnego planu. **Od 29.08 doszły trzy nowe: 29** (rozwój postaci
+za PD wraz z wieloklasowością), **30** (Zdolności Specjalne dziewięciu Ról — z góry podejrzany
+o podział na 30a/30b/…) i **31** (dodatki do broni). Wszystkie trzy wyszły z audytu 29.08 i były
+w `POMYSLY.md`, dopóki MG nie kazał ich wciągnąć jako etapy. **27g ma gotowy poligon**: pomiar
+fps na scenie ze światłami i mgłą robi się na „Korytarzu 16e".
 
-**Od czego zacząć: do wyboru 27g** (wydajność) i **28** (wdrożenie na VPS) — nadal jedyne dwa
-nierozpoczęte etapy. **27g ma teraz gotowy poligon**: pomiar fps na scenie ze światłami i mgłą
-(zaległość po 27i) MG świadomie przesunął właśnie tam, a „Korytarz 16e" jest sceną, na której się
-go robi. Z długu oględzin **bez modelu** został już tylko ten pomiar. Cała reszta — **9
-z 12 pozycji** — czeka na **żywy model**: 20a/20b, 19a–19c, dwie ścieżki 24c i maszynopis
-wypowiedzi idą do sesji po wymianie wersji. Etap 27 jest rozdzielony do końca, więc plik
-`etap-27-…` to rozdroże ze wskazaniami, a nie zakres do zrobienia.
+**Dług oględzin urósł do 15 pozycji** (`zaleglosci.md`, +2 z 29.08). Bez modelu da się dziś
+obejrzeć **cztery**: Celowanie z pierwszej sesji 29.08, komplet zmian z drugiej (cięcie ostrzem,
+chip i guzik kary warunkowej, przeładowanie statysty, rana statysty), lukę w edytorze kompendium
+i pomiar fps przypisany do 27g. Reszta — **dziewięć pozycji** — czeka na **żywy model**:
+20a/20b, 19a–19c, dwie ścieżki 24c i maszynopis wypowiedzi. Etap 27 jest rozdzielony do końca,
+więc plik `etap-27-…` to rozdroże ze wskazaniami, a nie zakres do zrobienia.
 
-**Sceny testowe — od 28.08 są cztery.** Aktywna jest **„Strzelnica"**: komplet pod Sieć (żeton
-„Kolec" przy odsłoniętym gnieździe, „Gniazdo za ścianą" za murem L, drzwi #59 podpięte do węzła)
-i **pięć uzbrojonych stref bronionych** (wieżyczka, podłoga elektryczna, ślizgawka, maź, winda
-z gazem) — figura, która na nie wejdzie, naprawdę oberwie. Od 28.08 stoi na niej też **druga
-figura „Rudy Kwiatkowski" z właścicielem avatar9, a kartą NPC** — zostawiona świadomie, bo to
-jedyne miejsce, gdzie widać zdanie „Ta figura ma kartę postaci, ale nie jest przypisana do
-ciebie". W podglądzie: **„Korytarz 16e"** (dynamiczna widoczność, mur L), **„Karty 24x"** (po
-jednym obiekcie z siedmiu rodzajów) i **„Efekty 23x"** (nietknięta od 26.08). Wszystkie
-współrzędne — w `poligon.md`.
+**Uwaga po 29.08: `data/private/cpred/compendium/` bywa starsze niż parser.** Regeneracja
+importem dołożyła Miotaczowi ognia `ammoPatterns: ['shell']`, którego plik na dysku nie miał —
+bez niego **żaden nabój specjalny do niego nie pasował** (`ammoFitsWeapon` odrzuca broń bez
+wzorców i bez `ammoIds`). Jeśli coś w kompendium zachowuje się dziwnie, najpierw
+`python tools/import/parse-manual.py`, potem szukaj błędu.
+
+**Sceny testowe — cztery, bez zmian od 28.08.** Aktywna jest **„Strzelnica"**: komplet pod Sieć
+(żeton „Kolec" przy odsłoniętym gnieździe, „Gniazdo za ścianą" za murem L, drzwi #59 podpięte
+do węzła) i **pięć uzbrojonych stref bronionych** (wieżyczka, podłoga elektryczna, ślizgawka,
+maź, winda z gazem). Stoi na niej też **druga figura „Rudy Kwiatkowski" z właścicielem avatar9,
+a kartą NPC** — zostawiona świadomie, bo to jedyne miejsce, gdzie widać zdanie „Ta figura ma
+kartę postaci, ale nie jest przypisana do ciebie". W podglądzie: **„Korytarz 16e"** (dynamiczna
+widoczność, mur L — **nie kasuj jej**, to poligon 27g), **„Karty 24x"** i **„Efekty 23x"**.
+Wszystkie współrzędne — w `poligon.md`.
 Do oględzin z konta gracza jest `Tester` (`/join/tester-dev`), ale **do Sieci trzeba avatar9** —
 to on ma kartę netrunnera. **avatar9 ma chrom** (dwie cyberręce, Człowieczeństwo 28/44) i zostaje
 taki celowo; kopia kart sprzed 28.08 jest w `data/private/backups/`.
 
-**Kampania „Poligon bojowy" jest od 28.08 oznaczona jako poligon** — chip „POLIGON" w górnym
-pasku i krótkie pytanie przy kasowaniu postaci, sceny i bota. Przy kampanii **bez** tej flagi
-pytanie niesie jej nazwę. Flaga niczego nie blokuje: mówi, gdzie się stoi. Przestawia się
-w Panelu MG i **nie rozchodzi się sama** po podpiętych ekranach (patrz pułapki).
+**Kampania „Poligon bojowy" jest oznaczona jako poligon** — chip „POLIGON" w górnym pasku
+i krótkie pytanie przy kasowaniu postaci, sceny i bota. Przy kampanii **bez** tej flagi pytanie
+niesie jej nazwę. Flaga niczego nie blokuje: mówi, gdzie się stoi. Przestawia się w Panelu MG
+i **nie rozchodzi się sama** po podpiętych ekranach (patrz pułapki).
 
-**Otwarte zaległości: 13 pozycji w `zaleglosci.md`** (29.08 doszła jedna — oględziny Celowania). Triaż z 28.08 zostaje w mocy — siedem
-pozycji „nieosiągalnych z UI albo bez widocznej różnicy" siedzi w `decyzje-i-uproszczenia.md`
-(sekcja „Ścieżki, których nie da się odklikać") i **nie wciągaj ich z powrotem** jako nowych
-odkryć. Dwie kolejne poszły 28.08 **do kosza decyzją MG**: zakładka „AI" z etapu 09 (martwa) i
-ślad ścieżki przy przeciąganiu żetonu (efekt czysto wizualny, nikt go nie zgłosił).
+**Triaż z 28.08 zostaje w mocy** — siedem pozycji „nieosiągalnych z UI albo bez widocznej
+różnicy" siedzi w `decyzje-i-uproszczenia.md` (sekcja „Ścieżki, których nie da się odklikać")
+i **nie wciągaj ich z powrotem** jako nowych odkryć. Dwie kolejne poszły 28.08 **do kosza
+decyzją MG**: zakładka „AI" z etapu 09 (martwa) i ślad ścieżki przy przeciąganiu żetonu.
 
-**Zanim ruszysz pozycję z `POMYSLY.md`, sprawdź ją w kodzie.** Dwa wpisy z tej listy okazały się
-28.08 nieaktualne — jeden opisywał katalog skasowany tego samego dnia rano, drugi funkcję
-zrobioną 22.08, której nikt nie odhaczył. Lista jest zapisem chwili, w której coś zauważono, a nie
-stanu repozytorium.
+**Zanim ruszysz pozycję z `POMYSLY.md`, sprawdź ją w kodzie.** 29.08 (druga sesja) **cztery**
+wpisy okazały się nieaktualne i zostały przekreślone: edycja rysunku i edytor osłony (zrobione
+w 27l), blokada ruchu przez osłonę na serwerze (`coverMovementSegments` liczy się od dawna)
+oraz migotliwy test `netdemons.test.ts` (już warunkowy). Lista jest zapisem chwili, w której coś
+zauważono, a nie stanu repozytorium.
 
 **Rozstrzygnięte 28.08 (MG): remis w teście na PT to sukces.** `cpredAmmoCheckOutcome` liczy
 `total >= dv`; ogień zaporowy zostaje przy „remis wygrywa obrońca", bo tam PT to wynik rzutu
 strzelca. Pełny zapis w `decyzje-i-uproszczenia.md`.
 
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
-a od 27i pierwszym, przy którym ktoś **usłyszy** dźwięki walki (dobrane bez odsłuchu, przyciski
-próbek są w „⚙ Ustawienia"; od 27j jest wśród nich „Krok" z własnym wyłącznikiem, a od 28.08 —
-„Cios pięścią", „Miotacz ognia" i „Wyrzutnia").
+a od 27i pierwszym, przy którym ktoś **usłyszy** dźwięki walki (przyciski próbek są
+w „⚙ Ustawienia").
 
-**Testy na koniec ostatniej sesji:** 1400 w `shared`, 793 na serwerze, 62 u klienta — zielone.
-ESLint i Prettier czyste na całym repo.
+**Testy na koniec ostatniej sesji:** 1437 w `shared`, 809 na serwerze, 62 u klienta — zielone.
+ESLint i Prettier czyste na całym repo, `pnpm -r build` przechodzi.
 
 ## Umowy kodu — indeks
 
@@ -198,6 +204,10 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 - **Zdanie „czego brakuje" w pasku postaci** — `HudContext.sheetNotMine`, renderowane **niezależnie** od `slots.length`: Akcje z katalogu nie potrzebują karty, więc pasek gracza nigdy nie jest pusty.
 - **Nowy punkt Celowania** — `CPRED_AIM_POINTS` w `shared/.../locations.ts` (+ `hitLocationForAim`); skutek dokłada się w `applyDamageToSheet` **i** `applyDamageToTokenHp`, a rana nadana z celowania idzie w `injuryAimed`, nie w `injury`. `CpredHitLocation` zostaje przy dwóch wartościach.
 - **Rana nadana z nazwy** szuka się przez `criticalInjuryAt(pool, tabela, wynik)`, nigdy po id — id powstaje z polskiej nazwy przy imporcie i ginie, gdy MG przepisze wiersz.
+- **Cecha ataku czytana dopiero przy obrażeniach** (`ammo`, `aimedAt`, `halvesArmor`) jedzie kartą ataku: `CpredAttackMeta` → `RollAttackMeta.system` → `readAttackContext` → `RollDamageMeta.system` → `SheetDamageRequest`. Nigdy żądaniem klienta.
+- **Skutek rany dotykający cudzego rachunku** to liczba na wierszu rany (`headDamageMultiplier`, `conditionalPenalty`), nie stała w silniku; dopisuje się w czterech miejscach: wpis kompendium, wiersz karty, `toCriticalInjuryRow` i `parse-manual.py`.
+- **Kara, której VTT nie umie sprawdzić**, nie jest odejmowana — `conditionalPenalty` stoi jako chip przy ranie i guzik w oknie rzutu; do sumy wchodzi tylko `actionPenalty`.
+- **Statysta nosi rany** w `CpredCombatProfile.criticalInjuries` (pole opcjonalne); `combatProfileSheet` podaje je syntetycznej karcie, więc reguły działają bez gałęzi „czy to statysta". Żeton bez profilu dostaje samo zdanie.
 
 ## Pułapki dev — indeks
 
@@ -255,10 +265,80 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 - **`Campaign.sandbox` nie rozchodzi się sama** — jedzie w stanie logowania, więc chip „poligon" u innego klienta czeka na przeładowanie albo `campaign:activate`.
 - **Mechanika bywa gotowa i nieosiągalna z UI** — Celowanie miało cały silnik i żadnej kontrolki, która by je włączyła; prześledź regułę od kontrolki, nie od silnika.
 - **Baner nad mapą ma `pointer-events: none`** — guzik dołożony do niego musi sam włączyć `pointer-events: auto`, i tylko na sobie.
+- **Wygenerowane kompendium bywa starsze niż parser** — pliki w `data/private/cpred/compendium/` są poza repo, więc zmiana `parse-manual.py` ich nie odświeża; przy dziwnym zachowaniu danych najpierw puść import.
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 29.08 (druga) — pakiet A+B z triażu MG: cztery dziury z audytu i profil statysty
+
+**Zlecenie MG:** z listy zaległości i pomysłów wybrać kilkanaście pozycji pasujących do jednej
+sesji; MG wskazał **pakiet A+B** (punkty 1–6) i cztery rozstrzygnięcia: dane wyciągnąć
+z podręcznika (nie wpisywać ręcznie), typowane kary w **wariancie prostszym**, pomiar fps zostaje
+w 27g, a pozycje 22–24 z listy wciągnąć jako **etapy** i skasować z `POMYSLY.md`.
+
+**Połowa pancerza okazała się dużo szersza, niż mówił wpis w `POMYSLY.md`.** Notatka z audytu
+opisywała samą zasadę sztuk walki (s. 178); podręcznik daje ją **każdej broni białej**
+(„Obrażenia zadane każdym rodzajem broni białej ignorują połowę pancerza Broniącego się,
+zaokrąglając w górę", s. 176), odbiera **Bijatyce** („nie ignorują połowy pancerza", s. 177)
+i odbiera **broni rzuconej** („rozpatruje się pełną OB pancerza, a nie połowę", s. 177). Znaczyło
+to, że **każde cięcie w VTT rozbijało się o pełne OB** — najczęstszy atak wręcz w grze liczył się
+źle, nie jeden przypadek brzegowy. Flaga `halvesArmor` siedzi na **typie broni** (nie na wierszu
+karty i nie przy id umiejętności), `resolveCpredDamage` liczy `ceil(OB/2)`, a **ściera się pełny
+pancerz**: przykład z s. 176 traktuje kurtkę OB 11 jak OB 6 i w tym samym akapicie zbija ją
+do 10. Karta obrażeń mówi „− OB 6 (połowa pancerza)", bo bez tego zdania arytmetyka czyta się
+jak błąd.
+
+**Parser czyta te zdania z podręcznika, zamiast trzymać listę w kodzie.**
+`parse_half_armor_skills` łapie wszystkie trzy zdania (z przeczeniem włącznie) i mapuje je na id
+umiejętności, ostrzegając, gdy któregoś nie ma. Import dołożył `halvesArmor` czterem typom broni
+białej i sztukom walki, **pomijając Bijatykę** — dokładnie tak, jak drukuje podręcznik.
+
+**Pęknięta czaszka: `headDamageMultiplier` na wierszu rany.** `CPRED_HEAD_DAMAGE_MULTIPLIER`
+przestało być jedynym źródłem — mnożnik czyta się z ran, **które nosi cel**, przez
+`cpredHeadDamageMultiplier`, z sufitem i podłogą na wypadek literówki MG. Silnik nadal nie zna
+nazwy „Pęknięta czaszka"; regex w parserze łapie zdanie „Pomnóż obrażenia głowy… x 3".
+
+**Kary warunkowe — wariant prostszy, zgodnie z decyzją MG.** `conditionalPenalty` niesie liczbę
+**i warunek słowami podręcznika**, i **nigdy nie wchodzi do sumy rzutu**: VTT nie wie, w której
+ręce jest broń ani czy ten Test wymaga mówienia. Kara stoi jako chip przy ranie na karcie
+i jako guzik w oknie rzutu, który wpisuje liczbę do modyfikatora (drugi klik ją cofa). Import
+złapał **siedem ran**: Naderwany mięsień, Strzaskane palce, oba urazy oka, Złamana szczęka,
+Uraz ucha i Urwane ucho. „Zmiażdżona krtań" świadomie **zostaje prozą** — „Nie możesz mówić"
+to zakaz, nie modyfikator.
+
+**Statysta przestał być kartą uboższą o rany.** Etap 16b zostawił rany krytyczne poza
+`CpredCombatProfile` z uzasadnieniem „to opisuje osobę z historią" — i to przestało być prawdą,
+gdy 16h (gaz, hukbłysk) i 26f (broniona strefa) zaczęły rany **nadawać z zasady**: reguła
+kończyła się zdaniem na czacie i niczym więcej. Rany siedzą teraz w profilu jako pole opcjonalne
+(nietknięty profil serializuje się bajt w bajt jak w 16b), a `combatProfileSheet` podaje je
+syntetycznej karcie — więc `cpredInjuryDodgeBlock` i `cpredInjuryModifiers` działają **bez ani
+jednej gałęzi „czy to statysta"**. Ta sama droga obsłużyła dwie szóstki na kościach obrażeń
+i „Złamaną nogę" z Celowania. Żeton **bez** profilu dalej dostaje samo zdanie: nie ma gdzie
+zapisać.
+
+**Przeładowanie statysty.** `weapon:reload` zaczynało od `requireRollableCharacter`, więc pusty
+magazynek NPC-a uzupełniało się ręczną edycją tokenu w środku walki. Zdarzenie przyjmuje teraz
+`attackerTokenId` zamiast `characterId` (wzorzec `character:roll` z 16b), a pasek akcji przestał
+chować pudełko „Przeładuj" przed figurą bez karty. Akcja kosztuje tyle samo, dźwięk jest ten sam.
+
+**Cztery wpisy z `POMYSLY.md` okazały się nieaktualne** i zostały przekreślone: edycja rysunku
+i edytor osłony (oba zrobione w 27l), blokada ruchu przez osłonę na serwerze
+(`coverMovementSegments` liczy się w `refuseWalkThroughSolid`) i migotliwy test
+`netdemons.test.ts` (już pyta warunkowo). **Trzy pomysły z audytu awansowały na etapy 29–31**
+i wypadły z listy.
+
+**Znalezione przy okazji:** (a) `data/private/cpred/compendium/weapon-types.json` **był starszy
+niż parser** — regeneracja dołożyła Miotaczowi ognia `ammoPatterns: ['shell']`, bez którego
+`ammoFitsWeapon` odrzucał **każdy** nabój specjalny do tej broni. (b) Edytor kompendium nie
+wystawia `movePenalty`, `actionPenalty` ani czterech flag tury z 14e, więc rana wpisana ręką MG
+nie potrafi zabrać RUCH-u ani odmówić Uniku — **do `zaleglosci.md`**, bo to ~15 linijek,
+ale poza zakresem pakietu.
+
+**Testy:** 1437 w `shared` (+29), **809** na serwerze (+12), 62 u klienta — zielone.
+ESLint i Prettier czyste, `pnpm -r build` przechodzi. **Nic z tej sesji nie było oglądane
+w przeglądarce** — pięć punktów do odklikania stoi na górze `zaleglosci.md`.
 
 ### Sesja 29.08 — audyt „czy stoimy na podręczniku głównym" i cztery decyzje MG
 
@@ -320,51 +400,3 @@ warto wciągnąć jako zaległości albo etapy.
 ESLint i Prettier czyste. **Uwaga:** `netdevices.test.ts` i `zones.test.ts` migoczą przy
 `pnpm -r test` (rzuty kością), i **migotały tak samo na nietkniętym `main`** — sprawdzone
 schowkiem; uruchomione osobno przechodzą za każdym razem.
-
-### Sesja 28.08 (czwarta) — odsłuch dźwięków mapy
-
-**Zlecenie MG:** pierwszy odsłuch szesnastu próbek na głośnikach i poprawa sześciu, które
-nie przeszły. Wprost: „Dźwięki szukaj w necie".
-
-**Wyniki odsłuchu.** Dziesięć próbek przeszło bez uwag. Sześć do poprawki, w tym **jedna
-prawdziwa wada pliku, a nie kwestia gustu**: `shot-rifle.wav` grał **dwa strzały** — oryginał
-`sks.wav` ma drugą detonację w 0,315 s, więc strzał pojedynczy brzmiał jak dublet, a seria jak
-dublety na dublecie. Plik przycięty do 0,305 s z 90 ms wygaszenia; pozostałe trzy huki
-sprawdzone obwiednią (po jednym strzale każdy) i zostawione. Reszta to podmiany źródeł:
-**trafienie** (uderzenie w ciało, bo tę próbkę gra każde zadane obrażenie — też nóż i pięść),
-**rykoszet**, **gaz** (syk uchodzącej pary zamiast szumu) i **wyładowanie** (`continuousspark`
-zamiast `spark` z tej samej paczki — MG chciał kilku iskier zamiast jednej).
-
-**Przeładowanie rozdzielone na dwie próbki.** MG wybrał wariant z rozróżnieniem: `reload-pistol`
-(dwutakt) i `reload-rifle` (czterotakt), wybierane po ikonie broni przez nowe
-`cpredReloadSound` — tą samą klasyfikacją, którą tabela `ICON_FX` dobiera huk. Broń długa
-siedzi w zbiorze `LONG_ARMS`, wszystko inne dostaje pistolet: zły domyślny wariant ma być
-za krótki, nie za długi, bo czterotakt pod pistoletem słychać od razu.
-
-**Rykoszet po raz pierwszy w ogóle się odzywa.** Przy okazji wyszło, że `ricochet` był
-**martwym wpisem**: miał plik, wzmocnienie i przycisk odsłuchu, ale żadne miejsce na serwerze
-go nie emitowało — a komentarz przy `MapFxEffect.sound` w `shared/src/fx.ts` od 27i opisywał
-zachowanie, którego nie było („co robi pocisk na drugim końcu wybiera klient z `hit`"). Teraz
-wybiera: chybiony **pocisk** (nie strzała, nie ostrze) gra odbicie w chwili dolotu smugi,
-najwyżej dwa razy na serię i tylko wtedy, gdy daleki koniec przetrwał przycięcie dla widza.
-Decyzja MG — podmienić plik **i** podpiąć pod pudło.
-
-**Obróbka.** Bez ffmpeg na tej maszynie: skrypt-jednorazówka w czystym Pythonie (moduł `wave`)
-robił mono, przycięcie, normalizację do −0,7 dBFS i wygaszenia. Nowość wobec 27i: **skracanie
-ciszy dłuższej niż 0,30 s do 0,18 s z zachowaniem szmeru tła** (sklejka wypada tam, gdzie nic
-się nie dzieje) w obu przeładowaniach, oraz **trzykrotna pętla z 3 ms przenikaniem** przy
-`zap.wav`, żeby trzaski pokryły 620 ms animacji zamiast 220. Wszystkie źródła z OpenGameArt,
-licencje i opis obróbki w `packages/client/public/sfx/ATTRIBUTION.md`.
-
-**Uwaga licencyjna.** `ricochet.ogg` (Red Eclipse) to **jedyny plik na CC BY-SA** w katalogu
-i jedyny **nietknięty** — kopia bez zmian nie jest utworem zależnym, więc warunek „na tych
-samych zasadach" nie sięga dalej. Gdyby ktoś kiedyś tę próbkę przyciął, wynik trzeba oznaczyć
-jako CC BY-SA 3.0 albo znaleźć zamiennik: rykoszetu na CC0 na OpenGameArt praktycznie nie ma.
-
-**Zaległości: 13 → 12.** Pozycja „Etap 27i — zostały same dźwięki" **zamknięta** — to była
-jedyna rzecz z długu oględzin, która nie potrzebowała ani modelu, ani przeglądarki, tylko
-człowieka przy głośnikach.
-
-**Testy:** 1400 w `shared` (+4 nowe na `cpredReloadSound`), 793 na serwerze, 62 u klienta
-— zielone. ESLint i Prettier czyste. Klient podany na `:5199` — komplet siedmiu nowych
-plików wraca z 200, a `reload.ogg` z podmianki SPA, czyli faktycznie zniknął.

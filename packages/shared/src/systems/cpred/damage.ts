@@ -3,8 +3,10 @@
  *
  * The rulebook's procedure, in the order it happens at the table:
  *  1. the attacker rolls damage,
- *  2. the SP of the armor protecting the hit location is subtracted,
- *  3. an Aimed Shot to the head doubles whatever got through the armor,
+ *  2. the SP of the armor protecting the hit location is subtracted — halved
+ *     and rounded up when a blade or a martial art landed the hit (s. 176),
+ *  3. an Aimed Shot to the head doubles whatever got through the armor (×3 if
+ *     the target already has a cracked skull, s. 188),
  *  4. the remainder comes off Hit Points,
  *  5. armor that let damage through is ablated by 1,
  *  6. two or more sixes on the damage dice inflict a Critical Injury: 5 bonus
@@ -23,6 +25,8 @@ import {
   type CriticalInjuryTable,
 } from './compendium.js';
 import {
+  CPRED_HEAD_DAMAGE_MULTIPLIER,
+  CPRED_HEAD_DAMAGE_MULTIPLIER_MAX,
   CPRED_HIT_LOCATION_LABELS,
   type ArmorLocation,
   type CpredHitLocation,
@@ -31,9 +35,6 @@ import { CPRED_WOUND_LABELS, woundStateFromHp, type CpredWoundState } from './ro
 
 /** Attack penalty of an Aimed Shot (RAW −8) — shown as a hint, applied in stage 16. */
 export const CPRED_AIMED_SHOT_PENALTY = -8;
-
-/** Damage that gets through armor on a head hit is doubled (RAW). */
-export const CPRED_HEAD_DAMAGE_MULTIPLIER = 2;
 
 /** Bonus damage of a Critical Injury: straight to HP, armor stops none of it. */
 export const CPRED_CRITICAL_INJURY_BONUS_DAMAGE = 5;
@@ -93,6 +94,30 @@ export interface CpredDamageInput {
   /** Damage armor cannot stop (thrown targets, injury effects, poison…). */
   ignoreArmor?: boolean;
   /**
+   * The hit only meets half the armour, rounding up (s. 176, 178).
+   *
+   * „Obrażenia zadane każdym rodzajem broni białej ignorują połowę pancerza
+   * Broniącego się, zaokrąglając w górę" — and the same sentence is printed
+   * again for Sztuki walki (s. 178). Bijatyka is explicitly excluded („Obrażenia
+   * zadane Bijatyką nie ignorują połowy pancerza", s. 177) and so is a melee
+   * weapon that was *thrown* („rozpatruje się pełną OB pancerza, a nie połowę",
+   * s. 177) — which is why this arrives as a flag on the hit rather than as
+   * „is this melee?" asked here.
+   *
+   * Only the *stopping* is halved. Ablation still eats the full SP, because the
+   * rulebook's own worked example wears an OB 11 jacket down to 10 while
+   * treating it as OB 6 for the hit (s. 176).
+   */
+  halvesArmor?: boolean;
+  /**
+   * What a head hit multiplies by, when something has changed it (s. 188).
+   *
+   * Defaults to the printed ×2. „Pęknięta czaszka" raises it to ×3, and the
+   * number is read off the wound the *target* carries — so this is an input,
+   * not a constant the engine applies from a table of injury names.
+   */
+  headMultiplier?: number;
+  /**
    * Stopping Power the armor loses when this hit gets through (stage 16g).
    * Defaults to RAW's single point; armour-piercing rounds take two, and rubber
    * ones take none at all („pancerz … nie ulega uszkodzeniu", s. 346).
@@ -109,12 +134,16 @@ export interface CpredDamageInput {
 export interface CpredDamageOutcome {
   location: CpredHitLocation;
   damageRolled: number;
-  /** SP that was subtracted (0 when the damage ignores armor). */
+  /** SP that was subtracted (0 when the damage ignores armor, halved by a blade). */
   armorSp: number;
+  /** True when only half the armour counted — the melee rule of s. 176. */
+  armorHalved: boolean;
   /** Damage left after armor and the head multiplier — what hits HP. */
   damageThrough: number;
   /** True when the head multiplier was applied. */
   doubled: boolean;
+  /** The multiplier a head hit used; 1 when none was (`doubled: false`). */
+  headMultiplier: number;
   /** Critical Injury bonus damage included in `hpLost` (0 when none). */
   bonusDamage: number;
   /** Total HP actually lost (never more than the HP that were there). */
@@ -150,11 +179,24 @@ export function resolveCpredDamage(input: CpredDamageInput): CpredDamageOutcome 
   const damageRolled = Math.max(0, Math.round(input.damage));
   const ignoreArmor = input.ignoreArmor === true;
   const spBefore = Math.max(0, Math.round(input.armorSp));
-  const armorSp = ignoreArmor ? 0 : spBefore;
+  // „ignorują połowę pancerza … zaokrąglając w górę" (s. 176): OB 11 stops 6,
+  // which is `ceil(11 / 2)` — the half that is *ignored* rounds down, so the
+  // half that still protects rounds up. The rulebook's example is exactly this.
+  const armorHalved = !ignoreArmor && input.halvesArmor === true && spBefore > 0;
+  const armorSp = ignoreArmor ? 0 : armorHalved ? Math.ceil(spBefore / 2) : spBefore;
 
   const afterArmor = Math.max(0, damageRolled - armorSp);
   const doubled = input.location === 'head' && afterArmor > 0;
-  const damageThrough = doubled ? afterArmor * CPRED_HEAD_DAMAGE_MULTIPLIER : afterArmor;
+  // ×2 unless the target's own skull says otherwise (s. 188). Clamped rather
+  // than trusted: the number arrives from a compendium row a GM may retype.
+  const headMultiplier = doubled
+    ? clampToRange(
+        Math.round(input.headMultiplier ?? CPRED_HEAD_DAMAGE_MULTIPLIER),
+        CPRED_HEAD_DAMAGE_MULTIPLIER,
+        CPRED_HEAD_DAMAGE_MULTIPLIER_MAX,
+      )
+    : 1;
+  const damageThrough = doubled ? afterArmor * headMultiplier : afterArmor;
 
   const criticalInjury = input.criticalInjury === true;
   const bonusDamage = criticalInjury ? CPRED_CRITICAL_INJURY_BONUS_DAMAGE : 0;
@@ -170,7 +212,10 @@ export function resolveCpredDamage(input: CpredDamageInput): CpredDamageOutcome 
   const heldAtOne = input.nonLethal === true && hpBefore > 1 && raw < 1;
   const hpAfter = heldAtOne ? 1 : raw;
 
-  // Only damage that actually made it through the armor damages the armor.
+  // Only damage that actually made it through the armor damages the armor —
+  // and it wears down the *whole* piece, not the half a blade had to beat
+  // („pancerz Rico ulega uszkodzeniu, czyli jego OB spada o 1", s. 176: the
+  // jacket goes 11 → 10 in the same paragraph that treats it as 6).
   const ablation = Math.max(0, Math.round(input.ablation ?? CPRED_ABLATION_PER_HIT));
   const ablated = !ignoreArmor && spBefore > 0 && afterArmor > 0 && ablation > 0;
   const spAfter = ablated ? Math.max(0, spBefore - ablation) : spBefore;
@@ -179,8 +224,10 @@ export function resolveCpredDamage(input: CpredDamageInput): CpredDamageOutcome 
     location: input.location,
     damageRolled,
     armorSp,
+    armorHalved,
     damageThrough,
     doubled,
+    headMultiplier,
     bonusDamage,
     hpLost: hpBefore - hpAfter,
     hpBefore,
@@ -357,6 +404,11 @@ export function toCriticalInjuryRow(
     ...(entry.dotAfterRun ? { dotAfterRun: true as const } : {}),
     ...(entry.noDodge ? { noDodge: true as const } : {}),
     ...(entry.actionPenalty ? { actionPenalty: entry.actionPenalty } : {}),
+    // Stage 29.08: the two effects a wound has on the *next* hit rather than on
+    // its owner's rolls — the skull that turns ×2 into ×3, and the penalty that
+    // only bites under a condition no VTT can check for itself.
+    ...(entry.headDamageMultiplier ? { headDamageMultiplier: entry.headDamageMultiplier } : {}),
+    ...(entry.conditionalPenalty ? { conditionalPenalty: { ...entry.conditionalPenalty } } : {}),
   };
 }
 

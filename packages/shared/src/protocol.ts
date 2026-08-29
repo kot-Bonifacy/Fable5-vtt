@@ -508,7 +508,17 @@ export interface AttackSmartPayload {
 
 /** Reloading a weapon row to a full magazine (an Action at the table). */
 export interface WeaponReloadPayload {
-  characterId: string;
+  /**
+   * Sheet whose row is being refilled. Omitted for a statist (29.08) — a figure
+   * with no sheet, whose magazine lives in the combat profile on its token.
+   * `attackerTokenId` is then required, exactly as it is for `character:roll`.
+   */
+  characterId?: string;
+  /**
+   * Token reloading instead of a sheet. Read only when `characterId` is absent.
+   * A statist has one weapon, so `weaponRowId` is always its profile row.
+   */
+  attackerTokenId?: string;
   weaponRowId: string;
   /**
    * Load this kind of round while reloading (stage 16g); `null` goes back to

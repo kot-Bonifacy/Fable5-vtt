@@ -1729,6 +1729,29 @@ function CriticalInjuries({ data, saveData, characterId }: TabProps & { characte
                     +{injury.deathSavePenalty} do Testu Przeżywalności
                   </span>
                 ) : null}
+                {/*
+                  Kara, której VTT nie umie zastosować samo: nie wie, w której
+                  ręce jest broń ani czy ten Test wymaga mówienia (s. 187–188).
+                  Stoi tu jako osobny chip, a nie w prozie efektu, bo to jedyny
+                  sposób, żeby ktokolwiek ją zauważył przed rzutem — samo okno
+                  rzutu podaje ją potem do kliknięcia.
+                */}
+                {injury.conditionalPenalty ? (
+                  <span
+                    className="injury-penalty"
+                    title={`Stosuje MG/gracz: ${injury.conditionalPenalty.condition}`}
+                  >
+                    {injury.conditionalPenalty.value} · {injury.conditionalPenalty.condition}
+                  </span>
+                ) : null}
+                {injury.headDamageMultiplier ? (
+                  <span
+                    className="injury-penalty"
+                    title="Obrażenia, które przejdą przez pancerz na głowie, mnożą się tym razem"
+                  >
+                    trafienia w głowę ×{injury.headDamageMultiplier}
+                  </span>
+                ) : null}
                 <button
                   type="button"
                   className="cp-mini-button cp-mini-button--danger"

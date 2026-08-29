@@ -1035,6 +1035,57 @@ describe('ranged combat from the map', () => {
     });
 
     /**
+     * 29.08: przeładowanie przestało być przywilejem karty postaci. Magazynek
+     * statysty siedzi w profilu, więc do tej sesji uzupełniało się go ręczną
+     * edycją tokenu w środku walki — przy pustym SMG przeciwnika MG musiał
+     * otwierać „Edytuj…" zamiast kliknąć jeden guzik.
+     */
+    it('przeładowuje statystę tym samym zdarzeniem, co kartę', async () => {
+      await emitAck(gm, 'token:update', {
+        tokenId: statistTokenId,
+        patch: { combatProfile: { ...PROFILE, ammoCurrent: 2 } },
+      });
+      const ack = await emitAck<{ ammo: number }>(gm, 'weapon:reload', {
+        attackerTokenId: statistTokenId,
+        weaponRowId: 'statist-weapon',
+      });
+      expect(ack.ok && ack.data?.ammo).toBe(10);
+      expect((await profileOf(statistTokenId)).ammoCurrent).toBe(10);
+    });
+
+    it('nie robi nic przy pełnym magazynku — klik był pomyłką, nie Akcją', async () => {
+      const ack = await emitAck<{ ammo: number }>(gm, 'weapon:reload', {
+        attackerTokenId: statistTokenId,
+        weaponRowId: 'statist-weapon',
+      });
+      expect(ack.ok && ack.data?.ammo).toBe(10);
+    });
+
+    it('odmawia przeładowania broni, której nabojów nikt nie liczy', async () => {
+      await emitAck(gm, 'token:update', {
+        tokenId: statistTokenId,
+        patch: { combatProfile: { ...PROFILE, ammoCurrent: 0, ammoMax: 0 } },
+      });
+      const ack = await emitAck(gm, 'weapon:reload', {
+        attackerTokenId: statistTokenId,
+        weaponRowId: 'statist-weapon',
+      });
+      expect(ack).toEqual({ ok: false, error: 'WEAPON_HAS_NO_MAGAZINE' });
+      await emitAck(gm, 'token:update', {
+        tokenId: statistTokenId,
+        patch: { combatProfile: PROFILE },
+      });
+    });
+
+    it('nie pozwala graczowi przeładować cudzego statysty', async () => {
+      const ack = await emitAck(player, 'weapon:reload', {
+        attackerTokenId: statistTokenId,
+        weaponRowId: 'statist-weapon',
+      });
+      expect(ack).toEqual({ ok: false, error: 'CHARACTER_NOT_FOUND' });
+    });
+
+    /**
      * The defence half of the profile (stage 16b decision): before it, every
      * extra defended a swing at the everyday DV of 13 whatever the GM intended.
      */
@@ -1346,6 +1397,126 @@ describe('ranged combat from the map', () => {
    * these are the other two aim points, whose whole effect happens *after* the
    * damage lands — a leg breaks, a gun falls out of somebody's hands.
    */
+  /**
+   * 29.08: „Obrażenia zadane każdym rodzajem broni białej ignorują połowę
+   * pancerza Broniącego się, zaokrąglając w górę" (s. 176). Do tej sesji flaga
+   * nie istniała, więc każde cięcie w VTT rozbijało się o pełne OB — a to
+   * najczęstszy atak wręcz w grze. Test jedzie całą drogą: karta ataku niesie
+   * flagę, karta obrażeń ją odczytuje, a ślad na czacie to mówi.
+   */
+  describe('broń biała tnie przez połowę pancerza', () => {
+    let vestCharacterId = '';
+    let vestTokenId = '';
+
+    it('stawia cel w kurtce OB 11 w zasięgu ostrza', async () => {
+      const target = data(
+        await emitAck<CharacterView>(gm, 'character:create', { name: 'Kamizelka' }),
+        'character:create',
+      );
+      vestCharacterId = target.id;
+      await emitAck(gm, 'character:update', {
+        characterId: vestCharacterId,
+        patch: {
+          data: {
+            // ZW 2, żeby Unik nie zjadał połowy przebiegów pętli niżej.
+            stats: { ...(target.data as CpredCharacterData).stats, dex: 2 },
+            armor: [
+              {
+                id: 'a-vest',
+                name: 'Kurtka kuloodporna',
+                notes: '',
+                sp: 11,
+                spCurrent: 11,
+                location: 'body',
+              },
+            ],
+          },
+        },
+      });
+      vestTokenId = data(
+        await emitAck<TokenView>(gm, 'token:create', {
+          sceneId,
+          name: 'Kamizelka',
+          x: 2 * PX_PER_M,
+          y: 0,
+          characterId: vestCharacterId,
+        }),
+        'token:create',
+      ).id;
+      expect(vestTokenId).toBeTruthy();
+    });
+
+    it('niesie flagę na karcie ataku i odejmuje połowę OB przy rozliczeniu', async () => {
+      for (let attempt = 0; attempt < 40; attempt++) {
+        const message = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+        const ack = await emitAck<{ messageId: number }>(player, 'attack:roll', {
+          characterId,
+          targetTokenId: vestTokenId,
+          attackerTokenId: shooterTokenId,
+          request: { weaponRowId: 'w-blade', mode: 'single', modifier: 20 },
+        });
+        const card = (await message).message.roll?.attack as AttackCard | undefined;
+        if (!card?.hit || !ack.ok || !ack.data) continue;
+        // Flaga jedzie kartą, a nie żądaniem klienta — inaczej klient sam
+        // decydowałby, ile warta jest kamizelka celu.
+        expect(card.system.halvesArmor).toBe(true);
+
+        const damage = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+        await emitAck(player, 'character:roll', {
+          characterId,
+          request: { kind: 'damage', weaponRowId: 'w-blade', attackMessageId: ack.data.messageId },
+          visibility: 'public',
+        });
+        const rolledId = (await damage).message.id;
+        const logged = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+        await emitAck(gm, 'damage:apply', { messageId: rolledId, tokenId: vestTokenId });
+        const entry = (await logged).message.damage;
+        if (!entry) throw new Error('brak wpisu obrażeń na karcie');
+
+        // OB 11 → 6 przy tym cięciu, ale ściera się cały pancerz (s. 176).
+        expect(entry.armorHalved).toBe(true);
+        expect(entry.armorSp).toBe(6);
+        if (entry.armor) {
+          expect(entry.armor.before).toBe(11);
+          expect(entry.armor.after).toBe(10);
+        }
+        return;
+      }
+      throw new Error('ostrze nie trafiło w 40 próbach');
+    });
+
+    it('nie dzieli pancerza przy strzale — to zasada walki wręcz', async () => {
+      for (let attempt = 0; attempt < 40; attempt++) {
+        await emitAck(player, 'weapon:reload', { characterId, weaponRowId: 'w-pistol' });
+        const message = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+        const ack = await emitAck<{ messageId: number }>(player, 'attack:roll', {
+          characterId,
+          targetTokenId: vestTokenId,
+          attackerTokenId: shooterTokenId,
+          request: { weaponRowId: 'w-pistol', mode: 'single', modifier: 20 },
+        });
+        const card = (await message).message.roll?.attack as AttackCard | undefined;
+        if (!card?.hit || !ack.ok || !ack.data) continue;
+        expect(card.system.halvesArmor).toBeUndefined();
+
+        const damage = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+        await emitAck(player, 'character:roll', {
+          characterId,
+          request: { kind: 'damage', weaponRowId: 'w-pistol', attackMessageId: ack.data.messageId },
+          visibility: 'public',
+        });
+        const rolledId = (await damage).message.id;
+        const logged = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+        await emitAck(gm, 'damage:apply', { messageId: rolledId, tokenId: vestTokenId });
+        const entry = (await logged).message.damage;
+        if (!entry) throw new Error('brak wpisu obrażeń na karcie');
+        expect(entry.armorHalved).toBeUndefined();
+        return;
+      }
+      throw new Error('pistolet nie trafił w 40 próbach');
+    });
+  });
+
   describe('an Aimed Shot at a leg and at a held item', () => {
     let kneeCharacterId = '';
     let kneeTokenId = '';

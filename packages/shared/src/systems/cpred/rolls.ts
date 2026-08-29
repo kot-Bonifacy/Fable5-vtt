@@ -164,6 +164,13 @@ export interface CpredRollRequest {
    */
   aimedAt?: CpredAimPoint;
   /**
+   * Server-filled: this damage came from a blade or a martial art, so only half
+   * the defender's armour counts (s. 176, 178). Read off the stored attack for
+   * exactly the reason `ammo` is — a client claiming its own armour penetration
+   * would be a client deciding how much its target's vest is worth.
+   */
+  halvesArmor?: boolean;
+  /**
    * Required for `kind: 'stabilize'` — the token being stabilized, which RAW
    * allows to be your own. Unlike the damage fields above this one *is* the
    * client's choice; the server only checks it may be reached and seen.
@@ -210,6 +217,8 @@ export interface CpredDamagePlan {
    * consequences „Zastosuj" applies, not arithmetic this plan does.
    */
   aimedAt?: CpredAimPoint;
+  /** Half the armour stops this one (s. 176) — a blade or a martial art. */
+  halvesArmor?: boolean;
 }
 
 /** What „Ustabilizowanie" needs to judge itself and explain the verdict. */
@@ -533,6 +542,7 @@ function planDamageRoll(
         ...(request.areaTargets ? { areaTargets: request.areaTargets } : {}),
         ...(request.ammo ? { ammo: request.ammo } : {}),
         ...(request.aimedAt ? { aimedAt: request.aimedAt } : {}),
+        ...(request.halvesArmor ? { halvesArmor: true as const } : {}),
       },
     },
   };

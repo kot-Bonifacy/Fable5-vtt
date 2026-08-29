@@ -18,17 +18,32 @@
  *  - **hit points** live on the token, where they already were. A statist's HP
  *    bar is a core VTT feature that predates CP RED by ten stages, and having
  *    two homes for one number is how they drift apart;
- *  - **Luck, Humanity, Critical Injuries, the Death Save counter** — the parts
- *    of the sheet that describe a person with a story. A statist that starts
- *    needing them has stopped being a statist and wants a real sheet, which is
- *    two clicks away in the token menu.
+ *  - **Luck, Humanity, the Death Save counter** — the parts of the sheet that
+ *    describe a person with a story. A statist that starts needing them has
+ *    stopped being a statist and wants a real sheet, which is two clicks away
+ *    in the token menu.
+ *
+ * Critical Injuries were on that list until 29.08 and came off it, because the
+ * reason they were there stopped being true. They were excluded as „something
+ * the GM types in", and a typed wound is indeed a sheet's business — but tear
+ * gas, a flashbang and a defended zone *inflict* them by rule (16h, 26f), and
+ * a statist with nowhere to keep one meant the rule stopped at a sentence on
+ * the card. The profile therefore carries the wounds the rules put there, and
+ * `combatProfileSheet` hands them to the very code that already enforces them:
+ * no branch anywhere learns that this dodge was refused to a statist.
  */
 
 import { humanityMax } from './derived.js';
 import { isValidCompendiumId } from './ids.js';
 import { ARMOR_SP_MAX } from './locations.js';
 import { CPRED_STAT_MAX, CPRED_STAT_MIN, type CpredStats } from './stats.js';
-import { SKILL_LEVEL_MAX, SKILL_LEVEL_MIN, type CpredCharacterData } from './character.js';
+import {
+  SKILL_LEVEL_MAX,
+  SKILL_LEVEL_MIN,
+  sanitizeCriticalInjuryRows,
+  type CpredCharacterData,
+  type CpredCriticalInjuryRow,
+} from './character.js';
 import { CPRED_SCHEMA_VERSION } from './character.js';
 import { CPRED_EVASION_SKILL_ID } from './attacks.js';
 import { WEAPON_AMMO_MAX } from './character.js';
@@ -80,6 +95,17 @@ export interface CpredCombatProfile {
   weaponDamage: string;
   ammoCurrent: number;
   ammoMax: number;
+  /**
+   * Critical Injuries the rules have inflicted on this statist (29.08).
+   *
+   * Absent on every profile that has never been hurt by a rule that names a
+   * wound — which is almost all of them — so an untouched ganger's JSON is
+   * byte-identical to what stage 16b wrote. The rows are the sheet's own shape
+   * (`CpredCriticalInjuryRow`), including the 16h timer, because the wound is
+   * literally the same wound: the same compendium row copied by the same
+   * function.
+   */
+  criticalInjuries?: CpredCriticalInjuryRow[];
 }
 
 export function createDefaultCombatProfile(): CpredCombatProfile {
@@ -98,6 +124,9 @@ export function createDefaultCombatProfile(): CpredCombatProfile {
     ammoMax: 0,
   };
 }
+
+/** Most wounds one statist's profile will keep — the two tables hold 22. */
+export const STATIST_INJURY_MAX = 12;
 
 function clampInt(value: unknown, min: number, max: number, fallback: number): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
@@ -121,6 +150,7 @@ export function sanitizeCombatProfile(raw: unknown): CpredCombatProfile {
   if (typeof raw !== 'object' || raw === null) return base;
   const input = raw as Record<string, unknown>;
   const ammoMax = clampInt(input.ammoMax, 0, WEAPON_AMMO_MAX, base.ammoMax);
+  const injuries = sanitizeCriticalInjuryRows(input.criticalInjuries).slice(0, STATIST_INJURY_MAX);
   return {
     ref: clampInt(input.ref, CPRED_STAT_MIN, CPRED_STAT_MAX, base.ref),
     dex: clampInt(input.dex, CPRED_STAT_MIN, CPRED_STAT_MAX, base.dex),
@@ -140,6 +170,9 @@ export function sanitizeCombatProfile(raw: unknown): CpredCombatProfile {
     // the call sites is what lets the GM shrink a magazine on a loaded weapon
     // without leaving 30 rounds in a 12-round clip.
     ammoCurrent: Math.min(ammoMax, clampInt(input.ammoCurrent, 0, WEAPON_AMMO_MAX, ammoMax)),
+    // Repaired like everything else here, and omitted entirely when empty: an
+    // unhurt statist's profile must round-trip to the same JSON it arrived as.
+    ...(injuries.length > 0 ? { criticalInjuries: injuries } : {}),
   };
 }
 
@@ -220,7 +253,11 @@ export function combatProfileSheet(
     armor: [],
     gear: [],
     cyberware: [],
-    criticalInjuries: [],
+    // The wounds the rules put there, handed to the code that enforces them:
+    // „Odcięta noga" refuses this statist a dodge through `cpredInjuryDodgeBlock`
+    // and „Wstrząśnienie mózgu" costs it −2 through `cpredInjuryModifiers`,
+    // both without either function learning what a statist is.
+    criticalInjuries: profile.criticalInjuries ?? [],
     deathSaves: 0,
     eddies: 0,
     // A statist has no wallet and pays no rent: the sheet is synthesised for

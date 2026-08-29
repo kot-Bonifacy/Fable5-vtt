@@ -484,6 +484,95 @@ describe('ammunition that deals no damage', () => {
       expect(log?.injuryNote).not.toContain('injury.');
       await load('ammo.sample-gas');
     });
+
+    /**
+     * 29.08: figura **z profilem bojowym** ma już gdzie tę ranę trzymać, więc
+     * ją nosi — tym samym wierszem, tym samym zegarem z 16h. Do tej sesji gaz
+     * łzawiący kończył się na zdaniu i nic nikomu nie odbierał.
+     */
+    it('zapisuje ranę statyście z profilem bojowym, razem z zegarem', async () => {
+      const injury = data(
+        await emitAck<CompendiumEntry>(gm, 'compendium:upsert', {
+          entry: {
+            category: 'criticalInjury',
+            name: 'Uraz oka (profil)',
+            table: 'head',
+            roll: 4,
+            description: 'Widzisz podwójnie.',
+            conditionalPenalty: { value: -2, condition: 'ataków dystansowych' },
+          },
+        }),
+        'compendium:upsert (injury)',
+      );
+      const round = data(
+        await emitAck<CompendiumEntry>(gm, 'compendium:upsert', {
+          entry: {
+            category: 'ammo',
+            name: 'Nabój łzawiący (profil)',
+            cost: 100,
+            costCategory: 'premium',
+            patterns: ['grenade'],
+            noDamage: true,
+            check: {
+              skillId: 'resist-torture-drugs',
+              skillLabel: 'Odporność na tortury/narkotyki',
+              statId: 'will',
+              dv: 40,
+              failure: { damage: '1k6', injuries: [injury.id], durationS: 60 },
+            },
+          },
+        }),
+        'compendium:upsert (ammo)',
+      );
+
+      await emitAck(gm, 'token:update', {
+        tokenId: mookTokenId,
+        patch: {
+          combatProfile: {
+            ref: 5,
+            dex: 5,
+            body: 5,
+            will: 5,
+            skillLevel: 4,
+            evasion: 2,
+            armorSp: 0,
+            weaponId: null,
+            weaponName: 'Pięści',
+            weaponDamage: '1k6',
+            ammoCurrent: 0,
+            ammoMax: 0,
+          },
+        },
+      });
+
+      await load(round.id);
+      const { posted } = await lob();
+      const knocked = posted.find(
+        (entry) =>
+          (entry.message.damage as DamageLogEntry | undefined)?.targetTokenId === mookTokenId,
+      );
+      const log = knocked?.message.damage as DamageLogEntry | undefined;
+      // Teraz to prawdziwa rana na karcie, a nie zdanie „rozstrzyga MG".
+      expect(log?.injury?.name).toBe('Uraz oka (profil)');
+      expect(log?.injuryNote).toBeUndefined();
+
+      const sync = waitFor<StateSyncPayload>(gm, 'state:sync');
+      await emitAck(gm, 'state:request');
+      const token = (await sync).tokens.find((entry) => entry.id === mookTokenId);
+      const profile = token?.combatProfile as Record<string, unknown> | undefined;
+      const wounds = (profile?.criticalInjuries ?? []) as Record<string, unknown>[];
+      expect(wounds.map((row) => row.name)).toContain('Uraz oka (profil)');
+      // Zegar z 16h jedzie razem z raną — inaczej byłaby dożywotnia.
+      expect(wounds[0]?.timed).toBeTruthy();
+      // I kara warunkowa, której VTT nie zastosuje samo (29.08).
+      expect(wounds[0]?.conditionalPenalty).toEqual({
+        value: -2,
+        condition: 'ataków dystansowych',
+      });
+
+      await emitAck(gm, 'token:update', { tokenId: mookTokenId, patch: { combatProfile: null } });
+      await load('ammo.sample-gas');
+    });
   });
 
   describe('effects that last a minute', () => {

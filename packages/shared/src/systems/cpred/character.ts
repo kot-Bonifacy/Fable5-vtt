@@ -26,9 +26,13 @@ import {
   ARMOR_LOCATIONS,
   ARMOR_PENALTY_MIN,
   ARMOR_SP_MAX,
+  CPRED_HEAD_DAMAGE_MULTIPLIER,
+  CPRED_HEAD_DAMAGE_MULTIPLIER_MAX,
   INJURY_ACTION_PENALTY_MIN,
+  INJURY_CONDITION_MAX_LENGTH,
   INJURY_MOVE_PENALTY_MIN,
   type ArmorLocation,
+  type CpredConditionalPenalty,
 } from './locations.js';
 import {
   NET_PROGRAM_CLASSES,
@@ -444,6 +448,19 @@ export interface CpredCriticalInjuryRow {
   noDodge?: boolean;
   /** Flat penalty to every Check made from the sheet („−2 do wszystkich Akcji"). */
   actionPenalty?: number;
+  /**
+   * What a head hit multiplies by while this wound lasts — „Pęknięta czaszka"
+   * makes it ×3 instead of ×2 (s. 188). Copied from the compendium with the
+   * rest of the row, so retyping the table never un-cracks an old skull.
+   */
+  headDamageMultiplier?: number;
+  /**
+   * „−4, ale tylko wtedy, gdy…" — a penalty whose condition no VTT can check
+   * (the hand that holds the gun, whether this Check involves speaking).
+   * Carried as a number plus the rulebook's own wording, and applied by
+   * whoever rolls: the dialog offers it as one click, nothing subtracts it.
+   */
+  conditionalPenalty?: CpredConditionalPenalty;
   /**
    * This wound heals by itself (stage 16h) — tear gas and a flashbang leave
    * „Uraz oka" and „Uraz ucha" for a minute, not for a surgeon.
@@ -974,6 +991,25 @@ function validateTimedInjury(raw: unknown): { timed: CpredTimedInjury } | undefi
   };
 }
 
+/**
+ * The same rows, repaired rather than rejected — for a statist's profile.
+ *
+ * A sheet's injuries come from a validated JSON column and a bad one is a bug
+ * worth surfacing; a statist's come from the same engine but live in a token's
+ * `combatProfile`, which the whole of `statist.ts` treats as „never throws,
+ * always returns something playable". Same validator, discarded issues.
+ */
+export function sanitizeCriticalInjuryRows(raw: unknown): CpredCriticalInjuryRow[] {
+  if (!Array.isArray(raw)) return [];
+  const discarded: CpredValidationIssue[] = [];
+  const rows: CpredCriticalInjuryRow[] = [];
+  for (const entry of raw) {
+    const parsed = validateCriticalInjuries([entry], discarded);
+    if (parsed && parsed[0]) rows.push(parsed[0]);
+  }
+  return rows;
+}
+
 function validateCriticalInjuries(
   raw: unknown,
   issues: CpredValidationIssue[],
@@ -1018,6 +1054,8 @@ function validateCriticalInjuries(
     const penalty = row.deathSavePenalty;
     const movePenalty = row.movePenalty;
     const actionPenalty = row.actionPenalty;
+    const headMultiplier = row.headDamageMultiplier;
+    const conditional = readConditionalPenalty(row.conditionalPenalty);
     rows.push({
       id: row.id,
       name,
@@ -1038,6 +1076,16 @@ function validateCriticalInjuries(
       actionPenalty >= INJURY_ACTION_PENALTY_MIN
         ? { actionPenalty }
         : {}),
+      // The skull and the conditional penalty travel exactly like the flags
+      // above: dropped rather than rejected when malformed, because a wound is
+      // written by the engine and a bad field is stale data, not a typo
+      // somebody is waiting to fix.
+      ...(isInteger(headMultiplier) &&
+      headMultiplier > CPRED_HEAD_DAMAGE_MULTIPLIER &&
+      headMultiplier <= CPRED_HEAD_DAMAGE_MULTIPLIER_MAX
+        ? { headDamageMultiplier: headMultiplier }
+        : {}),
+      ...(conditional ? { conditionalPenalty: conditional } : {}),
       // Stage 16h: a wound that heals by itself keeps its timer through every
       // round trip, or it would become permanent the first time the sheet is
       // saved for any other reason.
@@ -1045,6 +1093,21 @@ function validateCriticalInjuries(
     });
   }
   return rows;
+}
+
+/**
+ * A stored conditional penalty, or undefined when the row has none (or a
+ * broken one). Dropped rather than rejected, like the flags beside it: this
+ * field is written by the engine from the compendium, never typed on the sheet.
+ */
+function readConditionalPenalty(raw: unknown): CpredConditionalPenalty | undefined {
+  if (typeof raw !== 'object' || raw === null) return undefined;
+  const input = raw as Record<string, unknown>;
+  const value = input.value;
+  const condition = typeof input.condition === 'string' ? input.condition.trim() : '';
+  if (!isInteger(value) || value >= 0 || value < INJURY_ACTION_PENALTY_MIN) return undefined;
+  if (!condition || condition.length > INJURY_CONDITION_MAX_LENGTH) return undefined;
+  return { value, condition };
 }
 
 /**

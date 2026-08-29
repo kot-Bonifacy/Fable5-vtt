@@ -311,6 +311,15 @@ export interface CpredAttackMeta {
   /** Thrown by hand rather than fired (stage 16d). */
   thrown?: boolean;
   /**
+   * Only half the defender's armour stops this hit, rounded up (s. 176, 178).
+   *
+   * Decided here rather than where the damage lands, for the reason `ammo` is:
+   * the card is applied long after the swing, and „was this a blade?" has to be
+   * the answer for the attack that happened. A thrown blade is not one — „przy
+   * takim ataku rozpatruje się pełną OB pancerza" (s. 177).
+   */
+  halvesArmor?: boolean;
+  /**
    * The round in the magazine (stage 16g), carried whole rather than by id.
    *
    * The chat card is read long after the shot, „Zastosuj" runs on a different
@@ -478,6 +487,9 @@ export function planCpredAttack(
   const thrown = resolved?.thrown === true || request.thrown === true;
   const melee = thrown ? false : (resolved?.melee ?? false);
   const explosive = resolved?.explosive === true;
+  // „Rzucone bronie białe … rozpatruje się pełną OB pancerza, a nie połowę"
+  // (s. 177): letting go of a machete costs it the half it would have ignored.
+  const halvesArmor = !thrown && resolved?.halvesArmor === true;
   // The round in the magazine (stage 16g) and the one thing it can change about
   // the shape of the attack: a shell sprays a cone instead of hitting one person.
   const ammo = weapon.ammo ?? null;
@@ -697,6 +709,7 @@ export function planCpredAttack(
           ? { autofireMax: resolved.autofire.max }
           : {}),
         ...(thrown ? { thrown: true as const } : {}),
+        ...(halvesArmor ? { halvesArmor: true as const } : {}),
         ...(explosive ? { blastSideM: CPRED_BLAST_SIDE_M } : {}),
         ...(ammo ? { ammo } : {}),
         ...(spread ? { coneRangeM: spread.coneRangeM } : {}),

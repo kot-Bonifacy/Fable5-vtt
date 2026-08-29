@@ -54,6 +54,9 @@ Każdy etap to jedna sesja pracy z Claude. Etapy są pogrupowane w 8 faz. Szczeg
 | 27k | Edycja sceny: zaznacz, skasuj, cofnij               | I. Wykończenie       | dopisany 23.08 (zlecenie MG)    |
 | 27l | Karty obiektów sceny                                | I. Wykończenie       | wydzielone z 27k (23.08)        |
 | 28  | Wdrożenie na VPS                                    | I. Wykończenie       | 🏁 Produkcja                    |
+| 29  | Rozwój postaci za Punkty Doświadczenia              | H. Świat CP RED      | dopisany 29.08 (audyt)          |
+| 30  | Zdolności Specjalne dziewięciu Ról                  | H. Świat CP RED      | dopisany 29.08 (audyt)          |
+| 31  | Dodatki do broni                                    | H. Świat CP RED      | dopisany 29.08 (audyt)          |
 
 ## Kolejność i zależności
 
@@ -141,6 +144,18 @@ Fazy A→B→C odwzorowują priorytety MVP z ankiety (mapa+tokeny, kości, karty
    obronne strzela **na wejście w strefę**, a nie wyłącznie na klik — to jedyne miejsce, w którym
    rozdział 11 odchodzi od zasady „nic nie rusza się samo", bo kolumna „Standardowa aktywacja"
    mówi wprost, kiedy wieżyczka strzela.
+
+8. **Etapy 29/30/31 — dziury zostawione przez podręcznik** (dopisane 29.08.2026 po audycie
+   zgodności z podręcznikiem głównym). Audyt przeszedł całą mechanikę CP RED przeciwko
+   rozdziałom 9–10 i 17 i znalazł dziewięciu kandydatów; trzy najmniejsze zrobiła sesja 29.08
+   od ręki (połowa pancerza przy broni białej, mnożnik pękniętej czaszki, typowane kary ran),
+   dwa zostały w `POMYSLY.md` jako materiał na przyszłość (tarcza jako przedmiot z PW, walka
+   pojazdów), a **cztery okazały się za duże na sesję zaległości** i dostały numery: rozwój
+   postaci za PD wraz z wieloklasowością (**29**), Zdolności Specjalne dziewięciu Ról (**30**)
+   i dodatki do broni (**31**). Numery idą **za 28** świadomie: etapy 1–28 to plan z lipca,
+   a te trzy powstały po nim i nie blokują wdrożenia. **Etap 30 jest z góry podejrzany
+   o podział** — dziewięć Zdolności to dziewięć niezależnych mechanik, i tak samo wyglądały
+   26 i 27 przed rozbiciem.
 
 ## Ryzyka i ograniczenia
 

@@ -22,6 +22,7 @@
 
 import type { CpredCriticalInjuryRow } from './character.js';
 import { CPRED_CRITICAL_INJURY_BONUS_DAMAGE } from './damage.js';
+import { CPRED_HEAD_DAMAGE_MULTIPLIER } from './locations.js';
 
 /** When in a turn periodic damage lands. */
 export type CpredDotPhase = 'turn-start' | 'turn-end';
@@ -431,4 +432,41 @@ export function cpredInjuryModifiers(
   return injuries
     .filter((injury) => typeof injury.actionPenalty === 'number' && injury.actionPenalty !== 0)
     .map((injury) => ({ label: injury.name, value: injury.actionPenalty! }));
+}
+
+/**
+ * Penalties the wounds impose only under a condition — named, never subtracted.
+ *
+ * The counterpart of `cpredInjuryModifiers`: those apply to every Check and are
+ * folded into the total, these do not, because the VTT cannot tell which hand
+ * holds the gun („Strzaskane palce −4 · Akcje wykonywane tą ręką") or whether a
+ * Persuasion Check involves speaking („Złamana szczęka −4"). Whoever rolls
+ * decides, in one click — which is the whole of the 29.08 decision.
+ */
+export function cpredInjuryConditionalModifiers(
+  injuries: readonly CpredCriticalInjuryRow[],
+): { label: string; value: number; condition: string }[] {
+  return injuries
+    .filter((injury) => injury.conditionalPenalty !== undefined)
+    .map((injury) => ({
+      label: injury.name,
+      value: injury.conditionalPenalty!.value,
+      condition: injury.conditionalPenalty!.condition,
+    }));
+}
+
+/**
+ * What a head hit multiplies by against this target (s. 188).
+ *
+ * The printed ×2 unless a wound says otherwise — „Pęknięta czaszka" makes it
+ * ×3. The highest wins when a GM's table stacks two of them, because the rule
+ * replaces the multiplier rather than adding to it („x 3, a nie x 2").
+ */
+export function cpredHeadDamageMultiplier(injuries: readonly CpredCriticalInjuryRow[]): number {
+  let multiplier = CPRED_HEAD_DAMAGE_MULTIPLIER;
+  for (const injury of injuries) {
+    const value = injury.headDamageMultiplier;
+    if (typeof value === 'number' && value > multiplier) multiplier = value;
+  }
+  return multiplier;
 }

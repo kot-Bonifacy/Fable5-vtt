@@ -8,6 +8,26 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
 
 ## Pozycje
 
+- **Zmiany z 29.08 nie były oglądane w przeglądarce.** Cała mechanika jedzie w testach (28 nowych
+  w `shared`, 12 na serwerze), ale żadnego z tych ekranów nikt nie kliknął. Do sprawdzenia na
+  „Strzelnicy": (1) **cięcie ostrzem** w cel w kurtce OB 11 — karta obrażeń ma powiedzieć
+  „− OB 6 (połowa pancerza)", a wiersz pancerza spaść z 11 na 10, nie z 6 na 5; (2) **chip kary
+  warunkowej** przy ranie na karcie postaci („−4 · wszystkich Akcji wykonywanych tą ręką")
+  i **guzik** tej kary w oknie rzutu — klik ma wpisać −4 do modyfikatora, drugi klik cofnąć;
+  (3) **przeładowanie statysty** — pudełko „Przeładuj" ma się pojawić na pasku figury bez karty
+  i kosztować Akcję; (4) **rana krytyczna statysty** — dwie szóstki przeciw figurze z profilem
+  bojowym mają dać nazwaną ranę zamiast zdania „rozegraj ręcznie"; (5) **pola rany w edytorze
+  kompendium** („Trafienia w głowę ×" i para „Kara warunkowa / …kiedy") — widoczne tylko przy
+  wpisach własnych MG.
+
+- **Edytor kompendium nie umie zapisać połowy pól rany krytycznej.** Formularz wystawia
+  `deathSavePenalty`, `quickFix`, `treatment`, a od 29.08 `headDamageMultiplier`
+  i `conditionalPenalty` — ale **nie** `movePenalty`, `actionPenalty` ani czterech flag tury
+  z 14e (`noActionNextTurn`, `noMoveAfterRun`, `dotAfterRun`, `noDodge`). Znaczy to, że rana
+  wpisana ręką MG nie potrafi zabrać RUCH-u ani odmówić Uniku, choć drukowana potrafi. Nie jest
+  to regresja (edytowalne są wyłącznie wpisy własne, więc nic się nie gubi), tylko luka:
+  ~15 linijek w `CompendiumEditor.tsx` obok pól dodanych 29.08.
+
 - **Celowanie (s. 170) nie było oglądane w przeglądarce.** Ścieżka jest pokryta testami serwera
   od strzału po złamaną nogę, ale **baner z trzema guzikami nikt nie kliknął**. Do sprawdzenia
   przy najbliższych oględzinach, na „Strzelnicy": (1) guziki „Głowa / Trzymany przedmiot / Noga"

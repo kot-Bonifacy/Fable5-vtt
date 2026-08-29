@@ -74,6 +74,7 @@ DESCRIPTION_MAX = 1000  # COMPENDIUM_DESCRIPTION_MAX_LENGTH in compendium.ts
 RANGE_BANDS = 8  # CPRED_RANGE_BANDS in compendium.ts
 AUTOFIRE_BANDS = 5  # CPRED_AUTOFIRE_RANGE_BANDS in attacks.ts — the table stops at 100 m
 ROLL_MIN, ROLL_MAX = 2, 12
+CONDITION_MAX = 120  # INJURY_CONDITION_MAX_LENGTH in locations.ts
 
 PL_TRANSLITERATION = str.maketrans(
     {"ą": "a", "ć": "c", "ę": "e", "ł": "l", "ń": "n", "ó": "o", "ś": "s", "ź": "z", "ż": "z"}
@@ -470,6 +471,44 @@ def fire_modes(features: list[str]) -> tuple[int | None, bool]:
 
 
 UNARMED_TABLE = re.compile(r"Budowa Ciała[^O]*?Obrażenia\s*(?P<damage>(?:\dk6\s*){2,})")
+
+
+# „Obrażenia zadane każdym rodzajem broni białej ignorują połowę pancerza
+# Broniącego się, zaokrąglając w górę" (s. 176) — i to samo zdanie o sztukach
+# walki (s. 178). Bijatyka ma własne zdanie, z przeczeniem (s. 177). Czytamy
+# wszystkie trzy zamiast trzymać listę w kodzie: lista rozjechałaby się
+# z podręcznikiem po pierwszej erracie, a zdania są w nim dosłowne.
+HALF_ARMOR_SENTENCE = re.compile(
+    r"Obrażenia\s+zadane\s+(?P<what>[^.]{3,80}?)\s+(?P<neg>nie\s+)?ignorują\s+połow[yę]\s+pancerza",
+    re.IGNORECASE,
+)
+# Fragment zdania -> umiejętność, której dotyczy. Klucz jest tym, co podręcznik
+# napisał o *sprawcy* obrażeń, a nie nazwą własną — „atakiem wykonanym za pomocą
+# sztuk walki" i „każdym rodzajem broni białej" trafiają tu tym samym słowem.
+HALF_ARMOR_SKILLS = {
+    "broni białej": "melee-weapon",
+    "sztuk walki": "martial-arts",
+    "bijatyką": "brawling",
+}
+
+
+def parse_half_armor_skills(combat: str) -> set[str]:
+    """Umiejętności, których obrażenia ignorują połowę pancerza (s. 176–178)."""
+    flat = clean(combat)
+    halving: set[str] = set()
+    seen: set[str] = set()
+    for match in HALF_ARMOR_SENTENCE.finditer(flat):
+        what = match.group("what").lower()
+        skill = next((sid for phrase, sid in HALF_ARMOR_SKILLS.items() if phrase in what), None)
+        if not skill:
+            warn(f"połowa pancerza: nie rozpoznałem zdania „{match.group('what')}”")
+            continue
+        seen.add(skill)
+        if not match.group("neg"):
+            halving.add(skill)
+    for skill in sorted(set(HALF_ARMOR_SKILLS.values()) - seen):
+        warn(f"połowa pancerza: brak zdania o umiejętności „{skill}”")
+    return halving
 
 
 def parse_unarmed(combat: str) -> list[str]:
@@ -876,6 +915,33 @@ NO_DODGE = re.compile(r"[Nn]ie\s+możesz\s+Unikać\s+ataków")
 ACTION_PENALTY = re.compile(
     r"[-−–]\s*(\d)\s+do\s+wszystkich\s+Akcji(?=\s*[.,]|\s*$)", re.IGNORECASE
 )
+# „Pomnóż obrażenia głowy, które przejdą przez OB pancerza, x 3 (a nie x 2)"
+# (s. 188). Liczba na wierszu rany, nie stała w silniku — dokładnie z tego
+# powodu, z którego `movePenalty` jest liczbą: własny wiersz MG ma działać tak
+# samo jak drukowany.
+HEAD_MULTIPLIER = re.compile(r"Pomnóż\s+obrażenia\s+głowy[^.]*?x\s*(\d)", re.IGNORECASE)
+# Kara, której VTT nie zastosuje samo — liczba plus warunek słowami podręcznika.
+# Płaska „-2 do wszystkich Akcji" i „-N do Ruchu" mają własne pola i wypadają
+# niżej; zostaje siedem ran, których efekt do 29.08 istniał wyłącznie w prozie.
+CONDITIONAL_PENALTY = re.compile(
+    r"[-−–]\s*(?P<value>\d)\s+do\s+(?P<what>[^.]{3,110}?)\s*(?=[.,]|$)", re.IGNORECASE
+)
+
+
+def conditional_penalty(effect: str) -> dict | None:
+    """Pierwsza kara warunkowa w opisie efektu rany, albo None."""
+    for match in CONDITIONAL_PENALTY.finditer(effect):
+        what = " ".join(match.group("what").split())
+        low = what.lower()
+        # Te trzy mają własne pola: actionPenalty, movePenalty, deathSavePenalty.
+        # Porównanie jest dokładne, nie prefiksowe — „wszystkich Akcji
+        # wykonywanych tą ręką" **jest** karą warunkową i musi tu zostać.
+        if low == "wszystkich akcji" or low.startswith(("ruchu", "podstawowej trudności")):
+            continue
+        return {"value": -int(match.group("value")), "condition": what[:CONDITION_MAX]}
+    return None
+
+
 # The injury name is glued to its effect. The effect always starts with a
 # capital („rękaRęka zostaje"), a signed modifier („płuco-2 do Ruchu") or a
 # space before either of those.
@@ -947,6 +1013,15 @@ def parse_injury_table(chapter: str, start: str, end: str, table: str) -> list[d
         flat_penalty = ACTION_PENALTY.search(effect)
         if flat_penalty:
             entry["actionPenalty"] = -int(flat_penalty.group(1))
+        skull = HEAD_MULTIPLIER.search(effect)
+        if skull:
+            entry["headDamageMultiplier"] = int(skull.group(1))
+        # Kara warunkowa tylko wtedy, gdy nie ma już płaskiej: rana z „-2 do
+        # wszystkich Akcji" nie potrzebuje przypomnienia, bo silnik ją odejmuje.
+        if not flat_penalty:
+            conditional = conditional_penalty(effect)
+            if conditional:
+                entry["conditionalPenalty"] = conditional
         injuries.append(entry)
     return injuries
 
@@ -1032,6 +1107,7 @@ def main() -> int:
     range_dv = parse_range_dv(combat)
     autofire_dv = parse_autofire_dv(combat)
     unarmed = parse_unarmed(combat)
+    half_armor = parse_half_armor_skills(combat)
 
     for key, table in range_dv.items():
         if key in types:
@@ -1078,6 +1154,11 @@ def main() -> int:
     weapon_types = add_extra_types(weapon_types, overrides)
     for weapon_type in weapon_types:
         weapon_type.setdefault("hands", 2 if not weapon_type["melee"] else 1)
+        # Broń biała i sztuki walki tną przez połowę pancerza, Bijatyka nie
+        # (s. 176–178). Flaga siedzi na typie, więc własny „Nóż motylkowy" MG
+        # podpięty pod Broń białą dostaje ją tak samo jak drukowany wiersz.
+        if weapon_type["melee"] and weapon_type.get("skillId") in half_armor:
+            weapon_type["halvesArmor"] = True
         # `cost` and `costCategory` are not part of the weapon type schema;
         # they travel to the buyable entry instead. `ammunition` stays: the
         # sheet copies the cartridge onto the weapon row (stage 16).
@@ -1098,7 +1179,8 @@ def main() -> int:
     schema_fields = {
         "id", "name", "nameOriginal", "skillId", "damage", "magazine", "rof", "hands",
         "concealable", "attachmentSlots", "melee", "rangeDv", "autofire", "suppressive",
-        "explosive", "ammoPatterns", "ammunition", "description", "source", "incomplete",
+        "explosive", "halvesArmor", "ammoPatterns", "ammunition", "description", "source",
+        "incomplete",
     }
     write(
         COMPENDIUM_DIR / "weapon-types.json",

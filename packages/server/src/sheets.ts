@@ -52,12 +52,14 @@ import {
   ammoDamageNotes,
   applyWoundStatuses,
   combatProfileSheetForSkill,
+  CPRED_HEAD_DAMAGE_MULTIPLIER,
   cpredAction,
   cpredActionBlock,
   cpredDodgeBlock,
   cpredExpiringStatuses,
   cpredExpiryRound,
   cpredGrappleBase,
+  cpredHeadDamageMultiplier,
   cpredHumanShieldCovers,
   cpredInjuryCarryOnDraw,
   cpredInjuryDodgeBlock,
@@ -83,6 +85,7 @@ import {
   setCpredHardTerrain,
   withCpredMoveAllowance,
   criticalInjuryAt,
+  criticalInjuryNames,
   drawCriticalInjury,
   effectiveArmor,
   forceCpredTurn,
@@ -669,6 +672,93 @@ export function applyForcedFailureToSheet(
     hp: { current: merged.hpCurrent, max },
     log,
     carry: sheetCarryIsEmpty(carry) ? null : carry,
+  };
+}
+
+/**
+ * A damage log with nothing in it — the shape a card needs when a rule hurt
+ * nobody's HP and only named a wound. Lived in two copies (`ammo-effects.ts`
+ * and `zone-effects.ts`) until 29.08, when a third caller made one the answer.
+ */
+export function emptySheetDamageLog(): SheetDamageLog {
+  return {
+    location: 'body',
+    locationLabel: hitLocationLabel('body'),
+    damageRolled: 0,
+    armorSp: 0,
+    damageThrough: 0,
+    doubled: false,
+    bonusDamage: 0,
+    hpLost: 0,
+  };
+}
+
+/**
+ * The same forced failure against a statist token (29.08).
+ *
+ * Tear gas, a flashbang and a defended zone name the wound they inflict, and
+ * until 29.08 a token without a sheet could only be *told* about it: „statysta
+ * nie ma karty, ranę krytyczną rozstrzyga MG". A statted extra now keeps the
+ * row in its combat profile, so the wound is enforced by exactly the code that
+ * enforces a player's — including the 16h timer that takes it off again.
+ *
+ * A token with no profile still gets the sentence: there is nowhere to write.
+ */
+export function applyForcedFailureToTokenHp(
+  hp: TokenHp | null,
+  profile: SheetCombatProfile | null,
+  failure: SheetForcedFailure,
+  compendium: readonly CompendiumEntry[],
+): {
+  hp: TokenHp | null;
+  log: SheetDamageLog;
+  profile: SheetCombatProfile | null;
+  carry: SheetTurnCarry | null;
+} {
+  const damaged = hp ? applyPeriodicDamageToTokenHp(hp, failure.damage) : null;
+  const log: SheetDamageLog = damaged?.log ?? emptySheetDamageLog();
+  const wanted = failure.injuryIds ?? [];
+  if (wanted.length === 0) {
+    return { hp: damaged?.hp ?? hp, log, profile: null, carry: null };
+  }
+  if (!profile) {
+    // Naming it is all that is left, and it is worth doing: this line is the
+    // only way the table learns what happened (bug #6 of the 08.08 session).
+    log.injuryNote = `${criticalInjuryNames(compendium, wanted).join(', ')} — statysta nie ma karty, ranę krytyczną rozstrzyga MG.`;
+    return { hp: damaged?.hp ?? hp, log, profile: null, carry: null };
+  }
+
+  const carried = profile.criticalInjuries ?? [];
+  const rows: CpredCriticalInjuryRow[] = [];
+  const missing: string[] = [];
+  let carry: SheetTurnCarry | null = null;
+  for (const id of wanted) {
+    const entry = compendium.find((row) => row.id === id && isCriticalInjuryEntry(row));
+    if (!entry || !isCriticalInjuryEntry(entry)) {
+      missing.push(id);
+      continue;
+    }
+    // A wound already there is not doubled — a second flashbang in the same
+    // minute keeps somebody blind, it does not blind them twice.
+    if (carried.some((injury) => injury.id === id)) continue;
+    const row = toCriticalInjuryRow(entry, 0);
+    rows.push({ ...row, ...(failure.timed ? { timed: failure.timed } : {}) });
+    carry = mergeSheetCarry(carry, cpredInjuryCarryOnDraw(row) ?? {});
+  }
+  if (rows[0]) {
+    log.injury = { id: rows[0].id, name: rows[0].name, effect: rows[0].effect, rolled: 0 };
+  }
+  if (rows[1]) {
+    log.injuryExtra = { id: rows[1].id, name: rows[1].name, effect: rows[1].effect, rolled: 0 };
+  }
+  if (missing.length > 0) {
+    log.injuryNote = `Brak w kompendium rany: ${missing.join(', ')} — uzupełnij tabelę ran.`;
+  }
+  return {
+    hp: damaged?.hp ?? hp,
+    log,
+    profile: rows.length > 0 ? { ...profile, criticalInjuries: [...carried, ...rows] } : null,
+    carry: carry && !sheetCarryIsEmpty(carry) ? carry : null,
   };
 }
 
@@ -1286,6 +1376,14 @@ export interface SheetDamageRequest {
   armorSp?: number;
   ignoreArmor?: boolean;
   /**
+   * Only half the armour stops this hit, rounded up (s. 176, 178).
+   *
+   * Read off the stored attack like `ammo` and `aimedAt`, and for the same
+   * reason: „to była maczeta" is a fact about the swing that happened, and the
+   * card may be applied a quarter of an hour later.
+   */
+  halvesArmor?: boolean;
+  /**
    * The round that landed (stage 16g). Everything it changes about this hit —
    * how much armour wears down, whether a Critical Injury is drawn at all,
    * whether the target can be dropped below 1 HP — is read off these flags, so
@@ -1409,6 +1507,11 @@ export function applyDamageToSheet(
     criticalInjury,
     ignoreArmor: request.ignoreArmor,
     ablation: ammoAblation(ammo),
+    ...(request.halvesArmor ? { halvesArmor: true } : {}),
+    // „Pomnóż obrażenia głowy … x 3 (a nie x 2)" (s. 188) — read off the wound
+    // the *target* already carries, which is why it cannot be a constant and
+    // cannot travel with the attack either.
+    headMultiplier: cpredHeadDamageMultiplier(data.criticalInjuries),
     ...(ammo?.nonLethal ? { nonLethal: true } : {}),
   });
 
@@ -1427,8 +1530,12 @@ export function applyDamageToSheet(
     locationLabel: hitLocationLabel(location),
     damageRolled: outcome.damageRolled,
     armorSp: outcome.armorSp,
+    ...(outcome.armorHalved ? { armorHalved: true } : {}),
     damageThrough: outcome.damageThrough,
     doubled: outcome.doubled,
+    ...(outcome.doubled && outcome.headMultiplier !== CPRED_HEAD_DAMAGE_MULTIPLIER
+      ? { headMultiplier: outcome.headMultiplier }
+      : {}),
     bonusDamage: outcome.bonusDamage,
     hpLost: outcome.hpLost,
     hp: { before: outcome.hpBefore, after: outcome.hpAfter, max },
@@ -1564,16 +1671,23 @@ export const SHEET_STATIST_ARMOR_ROW_ID = 'statist-armor';
  * stopped having to remember the number and type it into every hit. An explicit
  * `armorSp` in the request still wins and leaves the profile alone, the same
  * bargain `applyDamageToSheet` makes with a hand-typed value.
+ *
+ * From 29.08 the profile also keeps Critical Injuries, so `injuries` is what
+ * turns „ranę krytyczną rozegraj ręcznie" into a wound that is actually drawn
+ * and actually enforced. It is optional because a token with no profile has
+ * nowhere to keep one — an unstatted circle on the map is still just HP.
  */
 export function applyDamageToTokenHp(
   hp: TokenHp,
   request: SheetDamageRequest,
   profile?: SheetCombatProfile | null,
+  injuryDraw?: { entries: readonly CompendiumEntry[]; rng: DiceRng },
 ): { hp: TokenHp; log: SheetDamageLog; profile?: SheetCombatProfile } {
   const location = normalizeLocation(request.location);
   const profileSp = profile?.armorSp ?? 0;
   const ammo = request.ammo ?? null;
   const criticalInjury = request.criticalInjury && ammo?.noCriticalInjury !== true;
+  const injuries = profile?.criticalInjuries ?? [];
   const outcome = resolveCpredDamage({
     damage: request.damage,
     location,
@@ -1583,6 +1697,10 @@ export function applyDamageToTokenHp(
     criticalInjury,
     ignoreArmor: request.ignoreArmor,
     ablation: ammoAblation(ammo),
+    ...(request.halvesArmor ? { halvesArmor: true } : {}),
+    // A statist keeps its wounds since 29.08, so a cracked skull raises its
+    // head multiplier exactly as a sheet's does — same helper, no branch.
+    headMultiplier: cpredHeadDamageMultiplier(injuries),
     ...(ammo?.nonLethal ? { nonLethal: true } : {}),
   });
   // Only the profile's own armour wears out, and only when it stopped
@@ -1594,8 +1712,12 @@ export function applyDamageToTokenHp(
     locationLabel: hitLocationLabel(location),
     damageRolled: outcome.damageRolled,
     armorSp: outcome.armorSp,
+    ...(outcome.armorHalved ? { armorHalved: true } : {}),
     damageThrough: outcome.damageThrough,
     doubled: outcome.doubled,
+    ...(outcome.doubled && outcome.headMultiplier !== CPRED_HEAD_DAMAGE_MULTIPLIER
+      ? { headMultiplier: outcome.headMultiplier }
+      : {}),
     bonusDamage: outcome.bonusDamage,
     hpLost: outcome.hpLost,
     hp: { before: outcome.hpBefore, after: outcome.hpAfter, max: hp.max },
@@ -1610,22 +1732,6 @@ export function applyDamageToTokenHp(
         }
       : {}),
     ...(woundTransitionLabel(outcome) ? { woundLabel: woundTransitionLabel(outcome)! } : {}),
-    // A statist has no sheet to carry an injury — the GM plays it out by hand.
-    ...(outcome.criticalInjury
-      ? { injuryNote: 'Cel bez karty postaci — ranę krytyczną rozegraj ręcznie.' }
-      : {}),
-    // The same for an Aimed Shot's own consequence: the sentence is all a
-    // sheetless token can be given, and it is the whole of the held-item rule
-    // anyway (s. 170).
-    ...(request.aimedAt && request.aimedAt !== 'head' && outcome.damageThrough > 0
-      ? {
-          aimedAt: CPRED_AIM_POINT_LABELS[request.aimedAt],
-          aimNote:
-            request.aimedAt === 'heldItem'
-              ? 'Cel upuszcza trzymany przedmiot (wybór atakującego) — pada na ziemię przed nim.'
-              : 'Cel bez karty postaci — „Złamaną nogę" rozegraj ręcznie.',
-        }
-      : {}),
     ...(ammo
       ? {
           ammo: ammoLogEntry(ammo, {
@@ -1636,10 +1742,95 @@ export function applyDamageToTokenHp(
         }
       : {}),
   };
+
+  // Wounds. A statist with no profile has nowhere to keep one and gets the
+  // sentence it always got; a statted one draws from the campaign's table and
+  // carries the result, so „Odcięta noga" really does stop it dodging.
+  const gained: CpredCriticalInjuryRow[] = [];
+  if (outcome.criticalInjury) {
+    if (!profile || !injuryDraw) {
+      log.injuryNote = 'Cel bez karty postaci — ranę krytyczną rozegraj ręcznie.';
+    } else {
+      const draw = drawCriticalInjury(
+        injuryDraw.entries.filter(isCriticalInjuryEntry),
+        location,
+        injuryDraw.rng,
+        injuries.map((injury) => injury.id),
+        ammo?.extraInjuryOn ? { extraOnIds: ammo.extraInjuryOn } : {},
+      );
+      const rolled = draw.rolls[draw.rolls.length - 1]?.total ?? 0;
+      if (draw.entry) {
+        const row = toCriticalInjuryRow(draw.entry, draw.extra ? draw.rolls[0]!.total : rolled);
+        gained.push(row);
+        log.injury = {
+          id: row.id,
+          name: row.name,
+          effect: row.effect,
+          rolled: row.rolled ?? rolled,
+        };
+        if (draw.extra) {
+          const second = toCriticalInjuryRow(draw.extra.entry, draw.extra.rolled);
+          gained.push(second);
+          log.injuryExtra = {
+            id: second.id,
+            name: second.name,
+            effect: second.effect,
+            rolled: draw.extra.rolled,
+          };
+        }
+      } else if (draw.exhausted) {
+        log.injuryNote = 'Cel ma już wszystkie rany z tej tabeli.';
+      } else {
+        log.injuryNote = `Brak wpisu na ${rolled} w tabeli ran (${hitLocationLabel(location)}) — uzupełnij kompendium.`;
+      }
+    }
+  }
+
+  // The Aimed Shot's own consequence (s. 170). The held item stays prose for
+  // everybody — the VTT models nobody's hands — but the leg is a named wound,
+  // and a statted extra can now be given it.
+  if (request.aimedAt && request.aimedAt !== 'head' && outcome.damageThrough > 0) {
+    log.aimedAt = CPRED_AIM_POINT_LABELS[request.aimedAt];
+    if (request.aimedAt === 'heldItem') {
+      log.aimNote =
+        'Cel upuszcza trzymany przedmiot (wybór atakującego) — pada na ziemię przed nim.';
+    } else if (!profile || !injuryDraw) {
+      log.aimNote = 'Cel bez karty postaci — „Złamaną nogę" rozegraj ręcznie.';
+    } else {
+      const carried = new Set([...injuries, ...gained].map((injury) => injury.id));
+      const entry = criticalInjuryAt(
+        injuryDraw.entries.filter(isCriticalInjuryEntry),
+        CPRED_BROKEN_LEG_TABLE,
+        CPRED_BROKEN_LEG_ROLL,
+      );
+      if (!entry) {
+        log.aimNote = 'Brak „Złamanej nogi" w tabeli ran korpusu — uzupełnij kompendium.';
+      } else if (carried.has(entry.id)) {
+        log.aimNote = `Cel ma już ranę „${entry.name}" — trafienie w nogę nic nie dokłada.`;
+      } else {
+        // Named, not rolled — so no 2k6 is printed for a die nobody threw.
+        const row: CpredCriticalInjuryRow = {
+          ...toCriticalInjuryRow(entry, CPRED_BROKEN_LEG_ROLL),
+        };
+        delete row.rolled;
+        gained.push(row);
+        log.injuryAimed = { id: row.id, name: row.name, effect: row.effect };
+      }
+    }
+  }
+
+  const nextProfile =
+    profile && (ablated || gained.length > 0)
+      ? {
+          ...profile,
+          ...(ablated ? { armorSp: outcome.spAfter } : {}),
+          ...(gained.length > 0 ? { criticalInjuries: [...injuries, ...gained] } : {}),
+        }
+      : null;
   return {
     hp: { current: outcome.hpAfter, max: hp.max },
     log,
-    ...(ablated ? { profile: { ...profile, armorSp: outcome.spAfter } } : {}),
+    ...(nextProfile ? { profile: nextProfile } : {}),
   };
 }
 

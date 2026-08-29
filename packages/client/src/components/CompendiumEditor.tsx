@@ -39,7 +39,11 @@ import {
   COMPENDIUM_CATEGORY_LABELS,
   COST_CATEGORIES,
   CRITICAL_INJURY_ROLL_MAX,
+  CPRED_HEAD_DAMAGE_MULTIPLIER,
+  CPRED_HEAD_DAMAGE_MULTIPLIER_MAX,
   CRITICAL_INJURY_ROLL_MIN,
+  INJURY_ACTION_PENALTY_MIN,
+  INJURY_CONDITION_MAX_LENGTH,
   CRITICAL_INJURY_TABLES,
   CRITICAL_INJURY_TABLE_LABELS,
   CYBERWARE_INSTALLS,
@@ -1354,8 +1358,44 @@ export function CompendiumEditor() {
                   />
                 </label>
               </div>
+              <div className="bot-row-inline">
+                <label className="bot-field bot-field--inline">
+                  Trafienia w głowę ×
+                  <input
+                    type="number"
+                    min={CPRED_HEAD_DAMAGE_MULTIPLIER}
+                    max={CPRED_HEAD_DAMAGE_MULTIPLIER_MAX}
+                    value={form.headDamageMultiplier}
+                    placeholder="×2"
+                    title="„Pęknięta czaszka” mnoży obrażenia głowy ×3 zamiast ×2 (s. 188). Puste = zwykłe ×2."
+                    onChange={(event) => patch({ headDamageMultiplier: event.target.value })}
+                  />
+                </label>
+                <label className="bot-field bot-field--inline">
+                  Kara warunkowa
+                  <input
+                    type="number"
+                    min={INJURY_ACTION_PENALTY_MIN}
+                    max={-1}
+                    value={form.conditionalPenalty}
+                    placeholder="−4"
+                    title="Kara, której VTT nie zastosuje samo — podaje ją rzucającemu do kliknięcia."
+                    onChange={(event) => patch({ conditionalPenalty: event.target.value })}
+                  />
+                </label>
+                <label className="bot-field bot-field--inline">
+                  …kiedy
+                  <input
+                    value={form.conditionalCondition}
+                    placeholder="Akcje wykonywane tą ręką"
+                    maxLength={INJURY_CONDITION_MAX_LENGTH}
+                    onChange={(event) => patch({ conditionalCondition: event.target.value })}
+                  />
+                </label>
+              </div>
               <p className="compendium-note">
-                Efekt rany wpisz w polu „Opis” — to on trafia na kartę postaci.
+                Efekt rany wpisz w polu „Opis” — to on trafia na kartę postaci. Kara warunkowa
+                wymaga obu pól naraz: liczby i warunku.
               </p>
             </>
           ) : null}
@@ -1585,6 +1625,9 @@ interface EditorForm {
   quickFix: string;
   treatment: string;
   deathSavePenalty: string;
+  headDamageMultiplier: string;
+  conditionalPenalty: string;
+  conditionalCondition: string;
 }
 
 function toForm(entry: CompendiumEntry | undefined): EditorForm {
@@ -1710,6 +1753,18 @@ function toForm(entry: CompendiumEntry | undefined): EditorForm {
     injuryRoll: entry?.category === 'criticalInjury' ? String(entry.roll) : '',
     quickFix: entry?.category === 'criticalInjury' ? (entry.quickFix ?? '') : '',
     treatment: entry?.category === 'criticalInjury' ? (entry.treatment ?? '') : '',
+    headDamageMultiplier:
+      entry?.category === 'criticalInjury' && entry.headDamageMultiplier
+        ? String(entry.headDamageMultiplier)
+        : '',
+    conditionalPenalty:
+      entry?.category === 'criticalInjury' && entry.conditionalPenalty
+        ? String(entry.conditionalPenalty.value)
+        : '',
+    conditionalCondition:
+      entry?.category === 'criticalInjury' && entry.conditionalPenalty
+        ? entry.conditionalPenalty.condition
+        : '',
     deathSavePenalty:
       entry?.category === 'criticalInjury' && entry.deathSavePenalty
         ? String(entry.deathSavePenalty)
@@ -1961,6 +2016,16 @@ function fromForm(form: EditorForm, existingId: string | undefined): Record<stri
       quickFix: form.quickFix || undefined,
       treatment: form.treatment || undefined,
       deathSavePenalty: numberOrUndefined(form.deathSavePenalty),
+      headDamageMultiplier: numberOrUndefined(form.headDamageMultiplier),
+      // Obie połowy albo żadna — sama liczba to `actionPenalty`, sam warunek
+      // nie mówi nic ponad to, co już stoi w opisie efektu.
+      conditionalPenalty:
+        numberOrUndefined(form.conditionalPenalty) !== undefined && form.conditionalCondition.trim()
+          ? {
+              value: numberOrUndefined(form.conditionalPenalty)!,
+              condition: form.conditionalCondition.trim(),
+            }
+          : undefined,
     };
   }
   return base;

@@ -19,9 +19,13 @@ import {
   ARMOR_LOCATIONS,
   ARMOR_PENALTY_MIN,
   ARMOR_SP_MAX,
+  CPRED_HEAD_DAMAGE_MULTIPLIER,
+  CPRED_HEAD_DAMAGE_MULTIPLIER_MAX,
   INJURY_ACTION_PENALTY_MIN,
+  INJURY_CONDITION_MAX_LENGTH,
   INJURY_MOVE_PENALTY_MIN,
   type ArmorLocation,
+  type CpredConditionalPenalty,
 } from './locations.js';
 import {
   NET_DEFENSE_KINDS,
@@ -251,6 +255,18 @@ export interface WeaponTypeDefinition {
    * home-made launcher the GM types in explodes too.
    */
   explosive?: boolean;
+  /**
+   * Damage from this weapon only meets half the defender's armour, rounded up
+   * (s. 176 for Broń biała, s. 178 for Sztuki walki).
+   *
+   * A flag on the *type* rather than a rule keyed to a skill id, for the reason
+   * `explosive` is one: a GM who types „Nóż motylkowy" into the compendium and
+   * hangs it off Broń biała gets the same halving as the printed row, and a GM
+   * who invents a weapon that does not halve can say so. Bijatyka is the
+   * rulebook's own exception („Obrażenia zadane Bijatyką nie ignorują połowy
+   * pancerza", s. 177) and simply leaves the flag off.
+   */
+  halvesArmor?: boolean;
   /** Hard ceiling on range in metres, beyond the DV table — 25 m for a throw. */
   maxRangeM?: number;
   /** Cartridge the magazine takes ("Karabinowa") — copied onto the sheet. */
@@ -445,6 +461,26 @@ export interface CriticalInjuryEntry extends CompendiumEntryBase {
   noDodge?: boolean;
   /** Flat penalty to every Check made from the sheet („−2 do wszystkich Akcji"). */
   actionPenalty?: number;
+  /**
+   * What a head hit multiplies by while this wound lasts (s. 188).
+   *
+   * „Pęknięta czaszka" prints „Pomnóż obrażenia głowy, które przejdą przez OB
+   * pancerza, x 3 (a nie x 2)" — a number on the row rather than a constant in
+   * the engine, exactly like `movePenalty`, so a GM's own table works too.
+   */
+  headDamageMultiplier?: number;
+  /**
+   * A penalty that only applies under a condition the VTT cannot check.
+   *
+   * Seven printed wounds carry one: „−4 do wszystkich Akcji wykonywanych tą
+   * ręką" (Strzaskane palce), „−2 do Ataków bronią białą" (Naderwany mięsień),
+   * „−4 do ataków dystansowych i Testów Percepcji opartych na wzroku" (Utrata
+   * oka). None of them can join `actionPenalty`, because that one is subtracted
+   * from *every* roll and these are not — but leaving them in prose meant the
+   * table forgot them (decision of 29.08: carry the number and the condition,
+   * and let whoever rolls apply it in one click).
+   */
+  conditionalPenalty?: CpredConditionalPenalty;
 }
 
 export type CompendiumEntry =
@@ -1492,12 +1528,70 @@ function validateCriticalInjury(
     }
     if (input.actionPenalty < 0) injury.actionPenalty = input.actionPenalty;
   }
+  if (input.headDamageMultiplier !== undefined && input.headDamageMultiplier !== null) {
+    if (
+      !isInteger(input.headDamageMultiplier) ||
+      input.headDamageMultiplier < CPRED_HEAD_DAMAGE_MULTIPLIER ||
+      input.headDamageMultiplier > CPRED_HEAD_DAMAGE_MULTIPLIER_MAX
+    ) {
+      issues.push({
+        field: 'headDamageMultiplier',
+        message: `Mnożnik trafień w głowę: liczba od ${CPRED_HEAD_DAMAGE_MULTIPLIER} do ${CPRED_HEAD_DAMAGE_MULTIPLIER_MAX}.`,
+      });
+      return undefined;
+    }
+    // ×2 is what a head hit does anyway — storing it would be noise on the row.
+    if (input.headDamageMultiplier > CPRED_HEAD_DAMAGE_MULTIPLIER) {
+      injury.headDamageMultiplier = input.headDamageMultiplier;
+    }
+  }
+  const conditional = validateConditionalPenalty(input.conditionalPenalty, issues);
+  if (conditional === undefined && input.conditionalPenalty) return undefined;
+  if (conditional) injury.conditionalPenalty = conditional;
   // The turn flags need no range check — anything but `true` means „no effect".
   if (input.noActionNextTurn === true) injury.noActionNextTurn = true;
   if (input.noMoveAfterRun === true) injury.noMoveAfterRun = true;
   if (input.dotAfterRun === true) injury.dotAfterRun = true;
   if (input.noDodge === true) injury.noDodge = true;
   return injury;
+}
+
+/**
+ * „−4 · Akcje wykonywane tą ręką", from whatever the GM or the importer wrote.
+ *
+ * Both halves are required: a number with no condition is `actionPenalty` and
+ * belongs there, and a condition with no number says nothing the effect text
+ * does not already say. Returns undefined for a malformed pair *and* for an
+ * absent one — the caller tells them apart by looking at the raw input, the
+ * same bargain `deathSavePenalty` makes two fields above.
+ */
+function validateConditionalPenalty(
+  raw: unknown,
+  issues: CompendiumIssue[],
+): CpredConditionalPenalty | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  if (typeof raw !== 'object') {
+    issues.push({ field: 'conditionalPenalty', message: 'Nieprawidłowa kara warunkowa.' });
+    return undefined;
+  }
+  const input = raw as Record<string, unknown>;
+  const value = input.value;
+  if (!isInteger(value) || value >= 0 || value < INJURY_ACTION_PENALTY_MIN) {
+    issues.push({
+      field: 'conditionalPenalty',
+      message: `Kara warunkowa: liczba od ${INJURY_ACTION_PENALTY_MIN} do −1.`,
+    });
+    return undefined;
+  }
+  const condition = typeof input.condition === 'string' ? input.condition.trim() : '';
+  if (!condition || condition.length > INJURY_CONDITION_MAX_LENGTH) {
+    issues.push({
+      field: 'conditionalPenalty',
+      message: `Warunek kary: od 1 do ${INJURY_CONDITION_MAX_LENGTH} znaków.`,
+    });
+    return undefined;
+  }
+  return { value, condition };
 }
 
 function validateCyberware(
@@ -1621,6 +1715,10 @@ function validateWeaponType(raw: unknown): WeaponTypeDefinition | undefined {
     ...(input.suppressive === true && !melee ? { suppressive: true as const } : {}),
     ...(input.thrown === true && !melee ? { thrown: true as const } : {}),
     ...(input.explosive === true && !melee ? { explosive: true as const } : {}),
+    // The one flag that is *only* ever true for a melee type: a blade halves
+    // armour, a rifle does not (s. 176). Guarded the same way `explosive` is
+    // guarded against melee, in the opposite direction.
+    ...(input.halvesArmor === true && melee ? { halvesArmor: true as const } : {}),
     ...(isInteger(input.maxRangeM) && input.maxRangeM > 0 && input.maxRangeM <= WEAPON_MAX_RANGE_M
       ? { maxRangeM: input.maxRangeM }
       : {}),
@@ -1680,6 +1778,8 @@ export interface ResolvedWeapon {
   thrown?: boolean;
   /** Damages a square rather than a person (stage 16d). */
   explosive?: boolean;
+  /** Only half the defender's armour counts, rounded up (s. 176 / s. 178). */
+  halvesArmor?: boolean;
   /** Hard range ceiling in metres, on top of the DV table (stage 16d). */
   maxRangeM?: number;
   /** Cartridge the type takes; empty when the weapon counts no rounds. */
@@ -1719,6 +1819,7 @@ export function resolveWeapon(
     ...(type?.suppressive ? { suppressive: true as const } : {}),
     ...(type?.thrown ? { thrown: true as const } : {}),
     ...(type?.explosive ? { explosive: true as const } : {}),
+    ...(type?.halvesArmor ? { halvesArmor: true as const } : {}),
     ...(type?.maxRangeM !== undefined ? { maxRangeM: type.maxRangeM } : {}),
     ...(type?.ammunition ? { ammoType: type.ammunition } : {}),
     ...(type?.ammoPatterns ? { ammoPatterns: type.ammoPatterns } : {}),

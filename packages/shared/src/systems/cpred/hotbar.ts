@@ -434,10 +434,10 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
     }
   }
 
-  // Only a sheet can be reloaded: `weapon:reload` writes a magazine back to a
-  // character row, and a statist has no row to write to. Their gun is refilled
-  // by the GM in „Edytuj…", which is the same place its magazine was set.
-  for (const option of input.sheet ? options : []) {
+  // Reloading is no longer a sheet's privilege (29.08): `weapon:reload` now
+  // writes a statist's magazine back into its combat profile, so the extra with
+  // the empty SMG gets the same box the player does — and pays the same Action.
+  for (const option of options) {
     if (!option.ammo) continue;
     slots.push({
       kind: 'reload',

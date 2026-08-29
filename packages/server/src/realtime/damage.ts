@@ -209,6 +209,9 @@ export const damageApplyEvent = defineEvent<DamageApplyPayload, { messageId: num
     // so the leg breaks because of the shot that was aimed, not because of what
     // the client puts in the payload now.
     const aimedAt = readRollAimPoint(roll);
+    // „to była maczeta" — a fact about the swing, read where the swing was
+    // stored (s. 176). Same reasoning as the two above.
+    const halvesArmor = readRollHalvesArmor(roll);
 
     const request: SheetDamageRequest = {
       // Autofire rolls 2d6 and multiplies the sum (stage 16); the factor is
@@ -223,6 +226,7 @@ export const damageApplyEvent = defineEvent<DamageApplyPayload, { messageId: num
       // the damage onto somebody else, and a leg aimed at one person must not
       // break another's (the head keeps working because it is `location`).
       ...(aimedAt && roll.damage?.targetTokenId === token.id ? { aimedAt } : {}),
+      ...(halvesArmor ? { halvesArmor: true } : {}),
     };
 
     const landed = await applyDamageToFigure(deps, campaignId, scene, token, request);
@@ -371,7 +375,16 @@ async function landDamageOnFigure(
   // Stage 16b: a statted extra brings its own Stopping Power, so the GM no
   // longer types the armour into every hit — and it wears down like anyone's.
   const profile = readSheetCombatProfile(token.combatProfile);
-  const applied = applyDamageToTokenHp(hp, request, profile);
+  // Since 29.08 a statted extra keeps the wounds the rules give it, so the
+  // injury table travels here too — the same campaign data the sheet branch
+  // above reads, and for the same draw.
+  const statistCompendium = profile ? await buildCompendiumSync(deps, campaignId) : null;
+  const applied = applyDamageToTokenHp(
+    hp,
+    request,
+    profile,
+    statistCompendium ? { entries: statistCompendium.entries, rng: createMixedRng() } : undefined,
+  );
   await deps.ctx.prisma.token.update({
     where: { id: token.id },
     data: {
@@ -400,6 +413,13 @@ function readRollAmmo(roll: RollResult): CpredAmmoProfile | null {
   const candidate = ammo as Partial<CpredAmmoProfile>;
   if (typeof candidate.id !== 'string' || typeof candidate.name !== 'string') return null;
   return { ...(candidate as CpredAmmoProfile), patterns: candidate.patterns ?? [] };
+}
+
+/** Whether the hit only meets half the armour (s. 176), off the stored roll. */
+function readRollHalvesArmor(roll: RollResult): boolean {
+  const system = roll.damage?.system;
+  if (!system || typeof system !== 'object') return false;
+  return (system as { halvesArmor?: unknown }).halvesArmor === true;
 }
 
 /** The Aimed Shot this damage follows (s. 170), off the stored roll. */

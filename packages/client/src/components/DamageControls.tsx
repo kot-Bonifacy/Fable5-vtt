@@ -197,11 +197,22 @@ export function DamageRow({
         <span className="chat-damage-headline">
           {stopped
             ? `Pancerz zatrzymał cios (${entry.damageRolled} obr., OB ${entry.armorSp})`
-            : `Przebicie: ${entry.damageThrough} obr.${entry.doubled ? ' (×2 w głowę)' : ''}`}
+            : `Przebicie: ${entry.damageThrough} obr.${
+                entry.doubled ? ` (×${entry.headMultiplier ?? 2} w głowę)` : ''
+              }`}
         </span>
         <span className="chat-damage-detail">
           rzut {entry.damageRolled}
-          {entry.armorSp > 0 ? ` − OB ${entry.armorSp}` : ' · bez pancerza'}
+          {/*
+            „OB 6 (połowa)" rather than a bare 6: a player who knows the target
+            wears OB 11 has to be told why six was subtracted, or the arithmetic
+            reads as a bug (s. 176 — broń biała i sztuki walki).
+          */}
+          {entry.armorSp > 0
+            ? ` − OB ${entry.armorSp}${entry.armorHalved ? ' (połowa pancerza)' : ''}`
+            : entry.armorHalved
+              ? ' · pancerz przepołowiony do zera'
+              : ' · bez pancerza'}
           {entry.bonusDamage > 0 ? ` + ${entry.bonusDamage} za ranę krytyczną` : ''}
           {entry.hp
             ? ` · PW ${entry.hp.before} → ${entry.hp.after}`

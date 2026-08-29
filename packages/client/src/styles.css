@@ -2427,6 +2427,21 @@ input[type='color'] {
   font-size: 0.85rem;
 }
 
+/* Kary warunkowe ran krytycznych (29.08) — liczba i warunek do kliknięcia,
+   bo silnik nie wie, w której ręce jest broń ani czy Test wymaga mówienia. */
+.roll-conditional {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.4rem 0 0.2rem;
+}
+
+.roll-conditional .auth-label {
+  flex-basis: 100%;
+  margin: 0;
+}
+
 .roll-dialog-hint {
   margin-top: 0.5rem;
   font-size: 0.75rem;

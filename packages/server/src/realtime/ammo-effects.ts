@@ -21,7 +21,7 @@ import {
 import type { Scene, Token } from '../generated/prisma/client.js';
 import {
   applyForcedFailureToSheet,
-  applyPeriodicDamageToTokenHp,
+  applyForcedFailureToTokenHp,
   describeSheetTimer,
   readSheetCombatProfile,
   sheetCombatProfile,
@@ -253,37 +253,43 @@ async function applyAmmoFailure(
       targetOwnerId: ownerId,
     };
   } else {
-    // A statist has nowhere to keep a Critical Injury, so the wound is reported
-    // on the card and the GM rules it: inventing a sheet for an extra would be
-    // a bigger change than the round is worth.
+    // Od 29.08 statysta z profilem bojowym **nosi** ranę: wchodzi tą samą
+    // funkcją co u postaci, a profil trzyma ją tak, jak karta trzyma swoją.
+    // Żeton bez profilu dalej dostaje samo zdanie — nie ma gdzie zapisać.
     const hp: TokenHp | null =
       token.hpMax === null ? null : { current: token.hpCurrent ?? 0, max: token.hpMax };
-    const applied = hp ? applyPeriodicDamageToTokenHp(hp, failure.damage) : null;
-    if (applied) {
+    const profile = readSheetCombatProfile(token.combatProfile);
+    const applied = applyForcedFailureToTokenHp(hp, profile, failure, compendium);
+    if (applied.hp || applied.profile) {
       await deps.ctx.prisma.token.update({
         where: { id: token.id },
         data: {
-          hpCurrent: applied.hp.current,
-          statuses: JSON.stringify(
-            sheetWoundStatuses(readTokenStatuses(token.statuses), applied.hp),
-          ),
+          ...(applied.hp
+            ? {
+                hpCurrent: applied.hp.current,
+                statuses: JSON.stringify(
+                  sheetWoundStatuses(readTokenStatuses(token.statuses), applied.hp),
+                ),
+              }
+            : {}),
+          ...(applied.profile ? { combatProfile: JSON.stringify(applied.profile) } : {}),
         },
       });
     }
-    // Rana krytyczna nie ma gdzie zamieszkać, ale **nazwać** ją trzeba: to
-    // jedyne miejsce, w którym stół dowiaduje się, co statyście się stało.
+    // Ta sama zasada 14e co u postaci: rana zabierająca Akcję z następnej Tury
+    // odkłada się na wierszu trackera, bo gaz ląduje zwykle w cudzej turze.
+    if (applied.carry) {
+      await oweCarryToToken(deps, token.sceneId, token.id, applied.carry);
+      await emitCombatOfScene(deps, campaignId, scene);
+    }
+    // Nazwy ran do zdania na czacie — dla figury bez profilu to jedyny ślad.
     statistInjuries = criticalInjuryNames(compendium, failure.injuryIds ?? []);
     log = {
-      ...(applied?.log ?? emptyDamageLog()),
+      ...applied.log,
       targetTokenId: token.id,
       targetName: token.name,
       characterId: null,
       targetOwnerId: ownerId,
-      ...(statistInjuries.length > 0
-        ? {
-            injuryNote: `${statistInjuries.join(', ')} — statysta nie ma karty, ranę krytyczną rozstrzyga MG.`,
-          }
-        : {}),
     };
   }
 
@@ -402,22 +408,6 @@ async function logAmmoFailure(
 }
 
 /** A failure that cost no hit points still needs a card to carry the wound. */
-function emptyDamageLog(): Omit<
-  DamageLogEntry,
-  'targetTokenId' | 'targetName' | 'characterId' | 'targetOwnerId'
-> {
-  return {
-    location: 'body',
-    locationLabel: 'ciało',
-    damageRolled: 0,
-    armorSp: 0,
-    damageThrough: 0,
-    doubled: false,
-    bonusDamage: 0,
-    hpLost: 0,
-  };
-}
-
 function readTokenStatuses(raw: string): string[] {
   try {
     const parsed: unknown = JSON.parse(raw);

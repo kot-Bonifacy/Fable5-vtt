@@ -5,6 +5,7 @@ import {
   CPRED_HIT_LOCATIONS,
   CPRED_HIT_LOCATION_LABELS,
   CPRED_SITUATIONAL_MODIFIER_LIMIT,
+  cpredInjuryConditionalModifiers,
   formatRollNotation,
   planCpredRoll,
 } from '@vtt/shared';
@@ -60,6 +61,7 @@ function RollDialogBody({ target }: { target: RollTarget }) {
   // Same pure function the server uses — the preview can never disagree.
   const planned = planCpredRoll(character.data, registry, request);
   const luckMax = character.data.luckCurrent;
+  const conditional = cpredInjuryConditionalModifiers(character.data.criticalInjuries);
 
   function confirm() {
     if (!planned.ok) return;
@@ -124,6 +126,31 @@ function RollDialogBody({ target }: { target: RollTarget }) {
                 : 'RAW: atak bez celowania zawsze trafia w korpus.'}
             </p>
           </fieldset>
+        )}
+
+        {/*
+          Kary warunkowe ran krytycznych (29.08). Nic ich nie odejmuje samo:
+          „−4 do wszystkich Akcji wykonywanych tą ręką" wymaga wiedzy, której
+          VTT nie ma, więc rana podaje liczbę i warunek, a decyzję podejmuje
+          rzucający — jednym kliknięciem, zamiast przepisywania z prozy.
+        */}
+        {!isDamage && conditional.length > 0 && (
+          <div className="roll-conditional">
+            <span className="auth-label">Kary warunkowe — kliknij, jeśli dotyczą</span>
+            {conditional.map((penalty) => (
+              <button
+                key={`${penalty.label}-${penalty.condition}`}
+                type="button"
+                className={`small-button${modifier === penalty.value ? ' small-button--on' : ''}`}
+                title={`${penalty.label}: ${penalty.condition}`}
+                onClick={() =>
+                  setModifier((current) => (current === penalty.value ? 0 : penalty.value))
+                }
+              >
+                {penalty.label} {penalty.value}
+              </button>
+            ))}
+          </div>
         )}
 
         <label className="auth-label" htmlFor="roll-modifier">
