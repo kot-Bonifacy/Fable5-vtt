@@ -165,6 +165,31 @@ export interface CombatantView {
   owes?: string[];
 }
 
+/**
+ * Figures the game system has promised the fight but not yet delivered
+ * (stage 30c).
+ *
+ * Not a participant: it has no initiative, no turn and no body on the map — it
+ * is a note on the tracker saying that in three rounds there will be four more
+ * people in this room. The system decides what fills it (CP RED: „Wsparcie");
+ * the tracker only paints the row and counts the rounds down.
+ */
+export interface ReinforcementView {
+  id: string;
+  /** What the tracker paints — the system's own words for who is coming. */
+  label: string;
+  /** How many figures will arrive. */
+  count: number;
+  /** Round they step onto the map at. */
+  round: number;
+  /**
+   * A question the system wants the GM to answer before they arrive, or absent
+   * when it has none. Rendered as a prompt on the row; answering it is a system
+   * event, and the tracker never reads the answer.
+   */
+  question?: string;
+}
+
 /** A combat as one viewer sees it (players never receive hidden participants). */
 export interface CombatView {
   id: string;
@@ -175,6 +200,8 @@ export interface CombatView {
   activeCombatantId: string | null;
   /** Already sorted by `compareCombatants`. */
   combatants: CombatantView[];
+  /** On their way but not here yet (stage 30c); absent when nothing is coming. */
+  reinforcements?: ReinforcementView[];
 }
 
 /** Where the turn pointer lands after a step. */
@@ -303,12 +330,18 @@ export function filterCombatForPlayer(combat: CombatView): CombatView {
       return rest;
     });
   const activeVisible = combatants.some((c) => c.id === combat.activeCombatantId);
+  // Reinforcements stay: somebody at this table called them on an open radio,
+  // and „help is four rounds away" is the whole reason the rule is worth having.
+  // The GM's own question does not — deciding which second group turns up is
+  // not a decision a player is being asked to make.
+  const reinforcements = combat.reinforcements?.map(({ question: _question, ...rest }) => rest);
   return {
     id: combat.id,
     sceneId: combat.sceneId,
     round: combat.round,
     activeCombatantId: activeVisible ? combat.activeCombatantId : null,
     combatants,
+    ...(reinforcements && reinforcements.length > 0 ? { reinforcements } : {}),
   };
 }
 

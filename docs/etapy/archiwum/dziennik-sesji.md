@@ -7,6 +7,75 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 29.08 (trzecia) — etap 30a: Zdolności Specjalne Ról i Zmysł Walki Solo
+
+**Zlecenie MG:** wybrać etap z listy nierozpoczętych; wybór padł na **30**, z podziałem
+zaproponowanym przed pierwszą linijką kodu, i z panelem przydziału **na karcie postaci plus
+skrótem w pasku akcji**.
+
+**Opis etapu 30 miał trzy błędy — wszystkie sprawdzone w podręczniku i w `roles.json`.**
+(a) Zmysł Walki ma **sześć** zdolności, nie pięć: brakowało **„Wyjścia z opresji"** (s. 146),
+jedynej, która dotyka silnika kości. (b) Trzy Zdolności były przypisane do złych Ról — jest
+Media → **Wiarygodność** (s. 151), Korpo → **Praca Zespołowa** (s. 153), Stróż Prawa →
+**Wsparcie** (s. 158), a w opisie stało odwrotnie. (c) „Lawman/Exec wg podręcznika" — polskie
+wydanie nazywa te Role Stróżem Prawa i Korpo od etapu 13. Poprawki są w `etap-30-zdolnosci-rol.md`.
+
+**Podział na 30a–30d poszedł po maszynerii, nie po Rolach.** Razem siedzą Zdolności, które piszą
+się tym samym kodem: **30a** Zmysł Walki (jedyna wchodząca w rachunek walki), **30b** Medycyna
+i Twórca (Specjalizacje kupowane po dwie przy awansie), **30c** Wsparcie i Praca Zespołowa (obie
+stawiają NPC ze statblokiem na mapie), **30d** Efekt Charyzmy, Znajomości, Moto i Wiarygodność
+(tabela poziomów + jeden rzut + proza).
+
+**Zmysł Walki dotknął pięciu wejść mechaniki naraz** — i to był powód, żeby zrobić go w całości
+w jednej sesji. **Precyzyjny atak** i **Wyczucie zagrożenia** liczą się z samej karty, więc weszły
+wprost do `planCpredAttack` i `skillBreakdown` (podgląd klienta i werdykt serwera zgadzają się bez
+kontekstu). **Błyskawiczna reakcja** siedzi w `readSheetInitiative` i podnosi **modyfikator, ale
+nie rozstrzygnięcie remisu** — RAW rozstrzyga remis po ZR, a trening to nie odruchy.
+**Wyjście z opresji** wymagało nowej opcji silnika kości (`RollOptions.ignoreFumble`): kość
+zostaje na jedynce, dorzutu **nie ma w ogóle** („wynik nadal liczy się jako 1"), a kafel na czacie
+mówi, co ją zdjęło — milczące pominięcie kary czytałoby się jak błąd w kościach.
+
+**Dwie zdolności mówią „pierwsze w tej Rundzie" i to okazało się osobną maszynerią.** Redukcja
+obrażeń i Wykrycie słabości nie są związane z niczyją turą — Solo wchłania pierwszy cios Rundy,
+kto by go nie zadał. Stempel poszedł do `CpredTurnLedger` (`Combatant.turnEffects`), tej samej
+kolumny, którą 14e stemplowała numerami rund **dokładnie dlatego**, że budżet tury jest wydawany
+na nowo przy każdym jej starcie — a „start" obejmuje cofanie kolejki przez MG. `claimRoundOnce`
+pyta i księguje w jednym wywołaniu, więc wołający nie może zapomnieć zapisać; „Cofnij" na karcie
+obrażeń oddaje stempel.
+
+**Redukcja obrażeń liczy się po pancerzu, Wykrycie słabości przed nim — i to jest w podręczniku.**
+s. 146 pisze „zmniejsz o 1 pierwsze **obrażenia otrzymane**", a trzy akapity dalej „+1 do obrażeń
+(**przed uwzględnieniem pancerza**)". Dwa różne sformułowania w jednej ramce warto drukować tylko
+wtedy, gdy znaczą przeciwne końce rachunku. Pancerz ściera się niezależnie: liczy go to, co przez
+niego przeszło, nie to, co wchłonęło ciało. **Bez trwającej walki żadna z tych dwóch nie działa** —
+VTT nie ma Rund poza kolejką, a „każdy cios jest pierwszy" zamieniłoby Redukcję w stały bonus do
+pancerza. Zapisane w `decyzje-i-uproszczenia.md`.
+
+**Przydział wyszedł ze zwykłej łaty karty.** „w trakcie walki (w ramach Akcji)" to cena, a łata
+karty nie ma czym jej zapłacić — więc `character:update` odmawia `combatAwareness` przez
+`FORBIDDEN` (jak `eddies` od 23b), a zapis jedzie `character:combat-awareness`, gdzie tracker widzi,
+komu policzyć Akcję. **Zapis tej samej wartości nie kosztuje nic**, bo „Jeśli Solo nie zmieni
+przydziału tych punktów, zakłada się przydział taki, jaki był do tej pory".
+
+**Progi są egzekwowane co do punktu.** 4 punkty w Precyzyjny atak kupują dokładnie to, co 3, więc
+VTT odmawia zamiast po cichu zaokrąglać w dół i palić punkt, który Solo mogło wydać gdzie indziej.
+Panel wyszarza guzik „+" dokładnie tam, gdzie `cpredCombatAwarenessProblem` odmówiłby zapisu — ta
+sama funkcja po obu stronach.
+
+**Panel to jeden komponent w dwóch domach** (karta postaci pod wierszem Zdolności, pasek akcji nad
+mapą) — kopia znaczyłaby dwie odpowiedzi na pytanie „ile kosztuje Precyzyjny atak 2". Pudełko
+w pasku **nie gaśnie po zużytej Akcji**: otwiera panel, a płaci dopiero zapis. Ikona
+(`combat-awareness.svg`, „Awareness" Lorca) pobrana z game-icons.net, atrybucja dopisana.
+
+**Znalezione przy okazji:** `damage.test.ts` używał `DamageLogEntry` **bez importu** i przechodził
+od nieznanej liczby sesji — vitest transpiluje bez sprawdzania typów, a `pnpm -r build` pomija
+testy. Naprawione; wniosek poszedł do pułapek.
+
+**Testy:** 1481 w `shared` (+44), **819** na serwerze (+10), 62 u klienta — zielone. ESLint
+i Prettier czyste, `pnpm -r build` przechodzi. **Nic z tej sesji nie było oglądane w przeglądarce**
+— sześć punktów do odklikania stoi na górze `zaleglosci.md`, a do oględzin trzeba postaci
+z Rolą **Solo** (żadna karta na scenach testowych jej nie ma).
+
 ### Sesja 29.08 (druga) — pakiet A+B z triażu MG: cztery dziury z audytu i profil statysty
 
 **Zlecenie MG:** z listy zaległości i pomysłów wybrać kilkanaście pozycji pasujących do jednej

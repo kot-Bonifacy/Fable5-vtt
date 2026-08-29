@@ -38,7 +38,7 @@ export interface HudActiveWeapon {
 }
 
 /** A slot whose action needs words or a target before it can be booked. */
-export type HudFormKind = 'hold' | 'grapple' | 'stabilize' | 'awareness';
+export type HudFormKind = 'hold' | 'grapple' | 'stabilize' | 'awareness' | 'backup';
 
 interface HudStoreState {
   activeWeapon: HudActiveWeapon | null;

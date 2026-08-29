@@ -112,14 +112,18 @@ import {
   cpredSheetFabrication,
   cpredTreatmentOptions,
   describeCareOptions,
+  CPRED_BACKUP_ABILITY,
   CPRED_FABRICATION_ABILITY,
   CPRED_MEDICINE_ABILITY,
+  CPRED_TEAMWORK_ABILITY,
 } from '@vtt/shared';
 import { apiUpload } from '../api.js';
 import { UPLOAD_ACCEPT_ATTRIBUTE, uploadRequirementText } from '@vtt/shared';
 import { fileRejectionText, uploadErrorText } from '../uploads.js';
 import { CombatAwarenessPanel } from './CombatAwarenessPanel.js';
 import { SpecialtyPanel } from './SpecialtyPanel.js';
+import { BackupPanel } from './BackupPanel.js';
+import { TeamPanel } from './TeamPanel.js';
 import { TreatInjury } from './TreatInjury.js';
 import { CyberwareBody } from './CyberwareBody.js';
 import { FacedownFromSheet } from './FacedownLauncher.js';
@@ -582,6 +586,19 @@ function IdentityColumn({
         {cpredRoleAbilityRank(data, registry, CPRED_FABRICATION_ABILITY) !== null && (
           <div className="cp-field cp-awareness">
             <SpecialtyPanel characterId={character.id} ability="fabrication" />
+          </div>
+        )}
+        {/* Etap 30c: dwie Zdolności, które stawiają na mapie cudzych ludzi —
+            Wsparcie Stróża Prawa i zespół Korpo. Stoją w tym samym miejscu, co
+            trzy panele wyżej, bo to nadal rozwinięcie wiersza Zdolności. */}
+        {cpredRoleAbilityRank(data, registry, CPRED_BACKUP_ABILITY) !== null && (
+          <div className="cp-field cp-awareness">
+            <BackupPanel characterId={character.id} />
+          </div>
+        )}
+        {cpredRoleAbilityRank(data, registry, CPRED_TEAMWORK_ABILITY) !== null && (
+          <div className="cp-field cp-awareness">
+            <TeamPanel characterId={character.id} />
           </div>
         )}
         <div className="cp-field cp-notes">

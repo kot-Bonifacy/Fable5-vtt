@@ -58,6 +58,7 @@ import {
 import { tokenEffectEvent } from './turn-effects.js';
 import { effectExpireEvent } from './timed-effects.js';
 import {
+  characterBackupCallEvent,
   characterCombatAwarenessEvent,
   characterFieldRepairEvent,
   characterCreateEvent,
@@ -108,6 +109,8 @@ import {
   zoneFireEvent,
   zoneUpdateEvent,
 } from './zones.js';
+import { backupResolveEvent } from './backup.js';
+import { characterTeamHireEvent, characterTeamLoyaltyEvent } from './team.js';
 import {
   lightClearEvent,
   lightCreateEvent,
@@ -255,6 +258,10 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   shopTierEvent,
   characterCreateEvent,
   characterUpdateEvent,
+  characterBackupCallEvent,
+  backupResolveEvent,
+  characterTeamHireEvent,
+  characterTeamLoyaltyEvent,
   characterCombatAwarenessEvent,
   characterFieldRepairEvent,
   characterDeleteEvent,

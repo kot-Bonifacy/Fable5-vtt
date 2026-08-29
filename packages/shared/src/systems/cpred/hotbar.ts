@@ -30,6 +30,7 @@ import {
   CPRED_ACTION_GRAPPLE,
   CPRED_ACTION_HOLD,
   CPRED_ACTION_RUN,
+  CPRED_ACTION_BACKUP,
   CPRED_ACTION_COMBAT_AWARENESS,
   CPRED_ACTION_SCANNER,
   CPRED_ACTION_STABILIZE,
@@ -143,7 +144,8 @@ export type CpredSlotIcon =
   | 'stand-up'
   | 'run'
   | 'scanner'
-  | 'combat-awareness';
+  | 'combat-awareness'
+  | 'backup';
 
 /** Weapon type id (last segment) → picture. */
 const WEAPON_TYPE_ICONS: Readonly<Record<string, CpredSlotIcon>> = {
@@ -214,6 +216,7 @@ const ACTION_ICONS: Readonly<Record<string, CpredSlotIcon>> = {
   [CPRED_ACTION_RUN]: 'run',
   [CPRED_ACTION_SCANNER]: 'scanner',
   [CPRED_ACTION_COMBAT_AWARENESS]: 'combat-awareness',
+  [CPRED_ACTION_BACKUP]: 'backup',
 };
 
 /** Catalogue actions worth a key, in the order they appear on the bar. */
@@ -244,6 +247,13 @@ export const CPRED_HOTBAR_NETRUNNER_ACTION_IDS: readonly string[] = [CPRED_ACTIO
  * when the new allocation is actually saved, and only while a fight is running.
  */
 export const CPRED_HOTBAR_SOLO_ACTION_IDS: readonly string[] = [CPRED_ACTION_COMBAT_AWARENESS];
+
+/**
+ * And for the Stróż Prawa (stage 30c). „Będąc w niebezpieczeństwie" is where
+ * the radio gets used, so the box has to be where the danger is — a panel two
+ * windows away is a panel nobody opens with a cybergang closing in.
+ */
+export const CPRED_HOTBAR_LAWMAN_ACTION_IDS: readonly string[] = [CPRED_ACTION_BACKUP];
 
 /** Slots that get a `1`–`9` key; the rest of the bar is mouse-only. */
 export const CPRED_HOTBAR_KEYED_SLOTS = 9;
@@ -373,6 +383,11 @@ export interface CpredHotbarInput {
    * unaffected.
    */
   combatAwareness?: boolean;
+  /**
+   * This sheet has Wsparcie (stage 30c) — a Stróż Prawa, and only one. Adds the
+   * box that opens the call panel; everything else on the bar is unaffected.
+   */
+  backup?: boolean;
 }
 
 /** Reason a weapon cannot fire right now, or null. */
@@ -473,6 +488,7 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
     ...CPRED_HOTBAR_ACTION_IDS,
     ...(input.netrunner ? CPRED_HOTBAR_NETRUNNER_ACTION_IDS : []),
     ...(input.combatAwareness ? CPRED_HOTBAR_SOLO_ACTION_IDS : []),
+    ...(input.backup ? CPRED_HOTBAR_LAWMAN_ACTION_IDS : []),
   ];
   for (const actionId of actionIds) {
     const definition = cpredAction(actionId);
@@ -529,6 +545,10 @@ function actionSlotRefusal(
   // allocation is saved. Greying it out on a spent Action would stop a Solo
   // reading what they allocated in a turn they had already used up.
   if (actionId === CPRED_ACTION_COMBAT_AWARENESS) return null;
+  // Same bargain for the radio: the box opens the tier list, and the Action is
+  // charged when the 1k10 is actually rolled. A Lawman who has already acted
+  // must still be able to read which group would answer.
+  if (actionId === CPRED_ACTION_BACKUP) return null;
   if (actionId === CPRED_ACTION_STAND_UP) return actionRefusal;
   if (actionId === CPRED_ACTION_RUN) {
     if (actionRefusal) return actionRefusal;

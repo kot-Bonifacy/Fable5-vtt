@@ -8,6 +8,41 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
 
 ## Pozycje
 
+- **Etap 30c nie był oglądany w przeglądarce.** Mechanika jedzie w testach (38 nowych
+  w `shared`, 19 na serwerze), ale żadnego z tych ekranów nikt nie kliknął. Do sprawdzenia —
+  potrzebne postaci z Rolą **Stróż Prawa** i **Korpo** (na scenach testowych nie ma żadnej):
+  (1) **panel Wsparcia** pod wierszem Zdolności i pudełko „Wezwanie Wsparcia" w pasku akcji —
+  lista kategorii rośnie z rangą, guzik „Wezwij" przy każdej, zdanie po nieudanym rzucie;
+  (2) **karta rzutu na czacie** — „Ktoś odpowiada / Cisza w eterze" z arytmetyką i informacją,
+  za ile Rund; (3) **wiersz „w drodze" pod Kolejką Inicjatywy** — chip „za N Rund", guziki MG
+  „Postaw" i „Odwołaj", a przy randze 10 i szóstce lista wyboru drugiej grupy; (4) **przybycie**
+  — figury stają przy wzywającym z paskiem PW i wchodzą do kolejki z rzuconą inicjatywą;
+  (5) **odmowa uniku** — strzał w funkcjonariusza i guzik „Unik" na karcie ataku, który ma
+  powiedzieć „Funkcjonariusze Wsparcia nie mogą Unikać pocisków"; (6) **panel zespołu Korpo** —
+  „Wolne etaty", wybór zawodu, imię, „Zatrudnij", wiersz z Lojalnością, guzik „Test", rozwijana
+  tabela zysków i strat, „Koniec sesji" i „Zwolnij"; (7) **karta pracownika** — Cechy z tabeli,
+  pakiet Umiejętności, Lekka kurtka OB 11, B.C. pistolet, cyborgizacje w notatkach; u Netrunnera
+  Rola „Netrunner" z rangą 2.
+
+- **Wsparcie poziomu 10 nie pamięta „tej samej sprawy".** RAW: „po tym pierwszym wezwaniu na
+  kolejne przybywają **ci sami** dwaj funkcjonariusze, dopóki wezwanie dotyczy tej samej
+  »sprawy«, aż do jej zamknięcia lub śmierci tych funkcjonariuszy" (s. 159). VTT stawia za
+  każdym razem nowe figury z pełnymi PW. Wymaga pojęcia „sprawy", którego projekt nie ma —
+  najbliżej jest wątek dziennika kampanii z 24b. Zapisane, bo to jedyna kategoria, w której
+  ciągłość jest zasadą, a nie kolorytem.
+
+- **Wsparcie poziomu 10 nie rzuca Wartością bojową w piętnastu Umiejętnościach.** „Mogą oni
+  wykorzystać swoją Wartość bojową w Testach poniższych Umiejętności: Aktorstwo, Atrakcyjność,
+  Dedukcja…" (s. 159). Lista siedzi w `CpredBackupTier.skills` i jest wypisana w panelu, ale
+  statysta nie ma skąd rzucić Umiejętnością spoza broni i Uniku (`combatProfileSkillLevel` zna
+  dwa poziomy). Do zrobienia razem z pierwszym etapem, który da statyście rzut dowolną
+  Umiejętnością.
+
+- **Prowizorka pancerza pracownika zespołu.** Karta pracownika jest zwykłą kartą, więc Technik
+  może na niej wszystko, co na każdej innej — ale nikt nie sprawdził, czy sufit „najcięższy
+  pancerz to Lekka kurtka kuloodporna" (s. 154) da się złamać ręką MG w edytorze ekwipunku. Da
+  się i tak ma być (MG poprawia karty), ale warto to raz zobaczyć i zapisać jako świadome.
+
 - **Etap 30b nie był oglądany w przeglądarce.** Mechanika jedzie w testach (30 nowych
   w `shared`, 7 na serwerze), ale żadnego z tych ekranów nikt nie kliknął. Do sprawdzenia —
   potrzebne postaci z Rolą **Medyk** i **Technik** (na scenach testowych nie ma żadnej):

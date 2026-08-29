@@ -98,6 +98,78 @@ export interface CharacterFieldRepairPayload {
   undo?: boolean;
 }
 
+/**
+ * Client → server payload of `character:backup-call` (stage 30c).
+ *
+ * „Aby wezwać Wsparcie, w ramach Akcji musisz wyrzucić na 1k10…" (s. 158) — an
+ * Action and two dice, so it leaves the sheet-patch path for the same reason
+ * the two before it did. The Action is charged whether or not anybody answers.
+ */
+export interface CharacterBackupCallPayload {
+  characterId: string;
+  /**
+   * Category being called, as a Backup **level** 1–10: „grupę Wsparcia
+   * o poziomie równym lub niższym wartości Zdolności Specjalnej". The choice is
+   * the Lawman's, so it travels rather than being derived from the rank.
+   */
+  level: number;
+  /** The figure calling — they arrive next to it, and it pays the Action. */
+  tokenId?: string;
+  /** Dice gesture, so the roll lands on chat like any other (stage 08). */
+  gesture?: RollGesture;
+}
+
+/**
+ * Client → server payload of `backup:resolve` (stage 30c, GM only).
+ *
+ * One event for the three things a GM does to a group in transit: name the
+ * second category a rank-10 six promised (`tierId`), bring them in early or
+ * out of combat (`place`), or call the whole thing off (`cancel`).
+ */
+export interface BackupResolvePayload {
+  /** Row of `Combat.systemState.backup`; absent when placing a fresh call. */
+  pendingId?: string;
+  /** Category the GM names for the second group. */
+  tierId?: string;
+  /** Scene they arrive on; defaults to the one the GM is viewing. */
+  sceneId?: string;
+  action: 'second' | 'place' | 'cancel';
+}
+
+/**
+ * Client → server payload of `character:team-hire` (stage 30c).
+ *
+ * „Korpo decyduje, jakiego rodzaju pracownika potrzebuje, a następnie losuje
+ * w odpowiedniej tabeli Cechy tej Postaci" (s. 155) — the profession is chosen,
+ * the numbers are not.
+ */
+export interface CharacterTeamHirePayload {
+  characterId: string;
+  professionId: string;
+  /** Employee's name; HR does not roll for that. */
+  name: string;
+  /** „początkowa Lojalność tego pracownika wynosi tylko 1" — a replacement. */
+  replacement?: boolean;
+}
+
+/** Client → server payload of `character:team-loyalty` (stage 30c). */
+export interface CharacterTeamLoyaltyPayload {
+  characterId: string;
+  /** The employee's own character id. */
+  memberId: string;
+  /**
+   * What just happened, as an id of `CPRED_LOYALTY_CHANGES`; absent when the
+   * GM is rolling a Loyalty Test instead of adjusting the number.
+   */
+  changeId?: string;
+  /** Roll the Test („MG musi rzucić 1k6") rather than change the number. */
+  test?: boolean;
+  /** „jeśli na koniec sesji wynosi powyżej 10" — the between-sessions trim. */
+  endSession?: boolean;
+  /** Let them go: the row leaves the roster, the sheet stays. */
+  dismiss?: boolean;
+}
+
 /** Client → server payload of `character:delete` (owner or GM). */
 export interface CharacterIdPayload {
   characterId: string;

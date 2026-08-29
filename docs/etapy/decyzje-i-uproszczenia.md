@@ -265,3 +265,38 @@ test; zdanie po polsku istnieje dla klienta, który by o tej blokadzie nie wiedz
   Zwężenie marginesu wymaga zmiany **po obu stronach naraz** — planera w `shared` i walidacji ruchu
   na serwerze — plus testu obrysu zamiast środków. Ruszać dopiero, gdy zacznie przeszkadzać
   przy stole.
+
+- **Etap 30c — Wsparcie wchodzi do inicjatywy na samą kość.** Tabela z s. 158–159 drukuje
+  Wartość bojową, OB, PW, RUCH i BC — **i żadnego REF**, a REF to Cecha, z której robi się
+  Inicjatywa. Doliczenie Wartości bojowej postawiłoby C-SWAT na szczycie każdej kolejki na
+  zawsze (16 + 1k10 bije wszystko przy stole); zostawienie wiersza nierzuconego schowałoby
+  posiłki na dnie listy, aż ktoś zauważy. Funkcjonariusz rzuca więc **czyste 1k10**, a MG może
+  wpisać wartość ręką jak każdemu innemu. Uczciwe odczytanie ramki, która tej liczby nie podaje.
+
+- **Etap 30c — „dwie różne grupy Wsparcia" wskazuje MG.** „Jeśli w tym rzucie wypadnie 6 […]
+  chyba że poziom twojej Zdolności wynosi 10 – w takim wypadku przybywają dwie różne grupy
+  Wsparcia" (s. 158) nie mówi, **które** dwie. VTT nie zgaduje: wezwana kategoria zostaje ta,
+  o którą prosił Stróż Prawa, a wiersz w kolejce niesie pytanie i listę kategorii do wyboru
+  (rozstrzygnięcie MG, 29.08). Dopóki pytanie wisi, **żadna z grup nie przyjeżdża** — inaczej
+  pierwsza stanęłaby na mapie, a druga została pytaniem bez kontekstu.
+
+- **Etap 30c — szóstka podnosi kategorię ponad rangę wzywającego.** „Zamiast zwykłego wsparcia,
+  na odsiecz przybywa oddział z wyższej kategorii" nie powtarza sufitu, który rządzi
+  **wzywaniem**, a nagrodą za szóstkę jest właśnie to, że przyjechał ktoś większy, niż wolno ci
+  było prosić. Stróż Prawa z rangą 9 dostaje po szóstce federalnych z poziomu 10.
+
+- **Etap 30c — pracownik zespołu ma Szczęście 1 i pustą sakiewkę.** Żadna z pięciu tabel zawodów
+  (s. 155–157) nie drukuje kolumny SZ, bo Szczęście jest tym, co wydaje Postać Gracza. Karta nie
+  przyjmuje jednak Cechy 0 (`CPRED_STAT_MIN` = 1, a `validateStats` odrzuca wtedy **cały** blok
+  Cech i karta wraca z samymi piątkami), więc pracownik dostaje minimum uprawnienia i
+  `luckCurrent: 0`. Przy stole znaczy to dokładnie to samo.
+
+- **Etap 30c — cyborgizacje zespołu zostają prozą.** „Nie musisz obniżać Empatii tej Postaci
+  z uwagi na Utratę Człowieczeństwa wynikającą z posiadanych cyborgizacji. Wzięto to już pod
+  uwagę" (s. 155). Wpisanie chromu jako prawdziwych wierszy policzyłoby Człowieczeństwo drugi
+  raz — pakiet jedzie więc do notatek, a Cechy zostają takie, jakie wylosowała tabela.
+
+- **Etap 30c — Prowizorka zespołu i przywileje Pracy Zespołowej nie mają mechaniki.** Konap na 2. poziomie, srebrny Trauma Team na 6., dom w Bobrowisku na 7. i McPosiadłość na 10. stoją
+  wypisane w panelu jako zapis dla stołu. Czynsz i standard życia liczy Poziom życia z 23b,
+  a „nie płacąc czynszu" to zdanie, które stosuje MG — rabat, którego rozliczenie miesięczne
+  nie ma jak zgadnąć (któremu Poziomowi życia odpowiada konap pracodawcy?).

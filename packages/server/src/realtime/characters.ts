@@ -1,4 +1,5 @@
 import type {
+  CharacterBackupCallPayload,
   CharacterCombatAwarenessPayload,
   CharacterCreatePayload,
   CharacterDeleteBroadcast,
@@ -8,10 +9,15 @@ import type {
   CharacterView,
 } from '@vtt/shared';
 import {
+  CPRED_ACTION_BACKUP,
   CPRED_ACTION_COMBAT_AWARENESS,
   CPRED_ACTION_FIELD_REPAIR,
+  CPRED_BACKUP_ABILITY,
   CPRED_COMBAT_AWARENESS_ABILITY,
   ROLE_GM,
+  cpredBackupCall,
+  cpredBackupTier,
+  cpredBackupTierAt,
   cpredCombatAwarenessProblem,
   cpredFieldRepairMinutes,
   cpredSheetFabrication,
@@ -23,11 +29,12 @@ import {
   parseCharacterData,
   readCpredCombatAwareness,
   sanitizeCharacterName,
+  rollFormula,
   sanitizeTokenImageUrl,
   validateCharacterDataPatch,
 } from '@vtt/shared';
 import type { PrismaClient } from '../db.js';
-import type { Character } from '../generated/prisma/client.js';
+import type { Character, Scene } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent } from './registry.js';
 import { applyBalance } from './economy.js';
 import { emitToCampaignUser } from './state.js';
@@ -35,6 +42,11 @@ import { emitCharacterDelete, emitCharacterUpsert, toCharacterView } from './cha
 import { emitRuns } from './netrun-io.js';
 import { emitTokensById, emitTokensOfCharacter, requireCampaignToken } from './tokens.js';
 import { requireTurnSpend } from './combat-actions.js';
+import { scheduleBackup } from './backup.js';
+import { dropFromTeams } from './team.js';
+import { INCLUDE_CHAT_NAMES, deliverRollMessage, toChatMessageView } from './chat-io.js';
+import { sanitizeGesture } from './chat.js';
+import { createMixedRng } from './dice-rng.js';
 
 /**
  * Character event handlers. Delivery and view mapping live in
@@ -160,6 +172,10 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
       // `eddies` did. Saving it can cost an Action („w trakcie walki (w ramach
       // Akcji)", s. 146), and a sheet patch has no Action to charge.
       if (sheet.combatAwareness !== undefined) throw new RealtimeError('FORBIDDEN');
+      // Stage 30c: and neither does the Korpo's roster. Hiring rolls dice,
+      // replacing costs 200 ed and a Loyalty Test is the GM's — three prices,
+      // and a sheet patch has no way to pay any of them.
+      if (sheet.team !== undefined) throw new RealtimeError('FORBIDDEN');
       const current = parseCharacterData(character.data, deps.ctx.cpred);
       const merged = mergeCharacterData(current, sheet);
       // Stage 30b: the two Specialty purses stay on this path (a level-up has
@@ -242,6 +258,9 @@ export const characterDeleteEvent = defineEvent<CharacterIdPayload>({
     });
     await deps.ctx.prisma.character.delete({ where: { id: character.id } });
     await emitCharacterDelete(deps, campaignId, character.id, character.ownerId);
+    // Stage 30c: a Korpo's roster points at sheets by id, and JSON has nothing
+    // for the database to cascade — so the row goes when the person does.
+    await dropFromTeams(deps, campaignId, character.id);
     await emitTokensById(
       deps,
       campaignId,
@@ -420,3 +439,150 @@ export const characterFieldRepairEvent = defineEvent<CharacterFieldRepairPayload
     return view;
   },
 });
+
+/**
+ * „Wezwanie Wsparcia" — the Lawman's radio (stage 30c, s. 158).
+ *
+ * Two dice and an Action, in that order and always in that order: the Action is
+ * charged **whether or not anybody answers**, which is the sentence that makes
+ * the rule a gamble rather than a button („Jeśli nikt nie odpowie na twoje
+ * wezwanie, w kolejnej Turze możesz znów spróbować").
+ *
+ * The 1k10 lands on chat like every other roll that matters (stage 08), with
+ * the verdict on the card: a player who has just spent their Action on a radio
+ * that nobody picked up should be able to point at the die.
+ */
+export const characterBackupCallEvent = defineEvent<
+  CharacterBackupCallPayload,
+  { answered: boolean; rounds: number | null; tierId: string | null; secondGroup: boolean }
+>({
+  name: 'character:backup-call',
+  handler: async ({ deps, socket, user, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    const character = await requireCampaignCharacter(
+      deps.ctx.prisma,
+      campaignId,
+      payload?.characterId,
+    );
+    const isGm = user.role === ROLE_GM;
+    if (!isGm && character.ownerId !== user.id) throw new RealtimeError('CHARACTER_NOT_FOUND');
+
+    const data = parseCharacterData(character.data, deps.ctx.cpred);
+    const rank = cpredRoleAbilityRank(data, deps.ctx.cpred, CPRED_BACKUP_ABILITY);
+    if (rank === null) throw new RealtimeError('NO_ABILITY');
+    const level = typeof payload?.level === 'number' ? Math.round(payload.level) : 0;
+    const tier = cpredBackupTierAt(level);
+    // „grupę Wsparcia o poziomie równym lub niższym wartości Zdolności
+    // Specjalnej" — the ceiling is on *calling*, and it is checked here rather
+    // than trusted from the client for the reason every ceiling in this project
+    // is: the panel greys the button out, the server decides.
+    if (!tier || level > rank) throw new RealtimeError('BACKUP_LEVEL_TOO_HIGH');
+
+    // The figure standing on the map: it pays the Action and the officers turn
+    // up beside it. A sheet on no scene calls for help in the fiction alone.
+    let scene: Scene | null = null;
+    let callerTokenId: string | null = null;
+    let callerAt: { x: number; y: number } | null = null;
+    if (payload?.tokenId !== undefined) {
+      const found = await requireCampaignToken(deps.ctx.prisma, campaignId, payload.tokenId);
+      if (found.token.characterId !== character.id) throw new RealtimeError('BAD_REQUEST');
+      scene = found.scene;
+      callerTokenId = found.token.id;
+      callerAt = { x: found.token.x, y: found.token.y };
+    }
+
+    const gesture = sanitizeGesture(payload?.gesture);
+    const rng = createMixedRng(gesture?.entropy);
+    // A flat 1k10 against the rank, and a flat 1k6 for the wait. Neither is a
+    // Skill Check, so neither explodes: „wyrzucić na 1k10 tyle, ile wynosi twój
+    // poziom […] lub mniej" is a number to be under, not a total to beat.
+    const call = rollFormula({ terms: [{ kind: 'dice', sign: 1, count: 1, sides: 10 }] }, rng, {
+      checkRule: false,
+    });
+    const wait = rollFormula({ terms: [{ kind: 'dice', sign: 1, count: 1, sides: 6 }] }, rng, {
+      checkRule: false,
+      plain: true,
+    });
+    const outcome = cpredBackupCall(rank, level, call.total, wait.total);
+    const arriving = outcome.tierId ? cpredBackupTier(outcome.tierId) : null;
+
+    call.title = `Wezwanie Wsparcia (poziom ${level})`;
+    call.actor = character.name;
+    call.outcome = {
+      success: outcome.answered,
+      label: outcome.answered ? 'Ktoś odpowiada' : 'Cisza w eterze',
+      detail: outcome.answered
+        ? `${call.total} ≤ ${rank} · ${arriving?.name ?? ''} za ${outcome.rounds} ` +
+          `${roundsWord(outcome.rounds ?? 0)}${outcome.escalated ? ' · szóstka!' : ''}`
+        : `${call.total} > ${rank} — spróbuj ponownie w kolejnej Turze`,
+    };
+    if (gesture && gesture.strength > 0) call.tossStrength = gesture.strength;
+    if (gesture?.toss) call.toss = gesture.toss;
+
+    // The Action first, so a refusal costs no dice — and only when the caller
+    // has a figure in a running fight. `requireTurnSpend` waves through a token
+    // that is not in one, which is exactly „poza walką".
+    if (scene && callerTokenId) {
+      await requireTurnSpend(
+        deps,
+        campaignId,
+        scene,
+        callerTokenId,
+        { kind: 'action', actionId: CPRED_ACTION_BACKUP },
+        user,
+        CPRED_ACTION_BACKUP,
+        { silent: false, note: `poziom ${level}: ${tier.name}` },
+      );
+    }
+
+    const stored = await deps.ctx.prisma.chatMessage.create({
+      data: {
+        campaignId,
+        authorId: user.id,
+        kind: 'roll',
+        text: 'Wezwanie Wsparcia',
+        payload: JSON.stringify(call),
+        ...(scene ? { sceneId: scene.id } : {}),
+      },
+      include: INCLUDE_CHAT_NAMES,
+    });
+    await deliverRollMessage(deps, campaignId, user.id, toChatMessageView(stored));
+
+    if (!outcome.answered || !arriving) {
+      return { answered: false, rounds: null, tierId: null, secondGroup: false };
+    }
+    // Nobody to arrive *to*: a sheet standing on no scene still gets its roll
+    // and its chat card, and the GM places whatever the fiction needs.
+    if (!scene) {
+      return {
+        answered: true,
+        rounds: outcome.rounds,
+        tierId: arriving.id,
+        secondGroup: outcome.secondGroup,
+      };
+    }
+    await scheduleBackup(deps, campaignId, scene, arriving, {
+      rounds: outcome.rounds ?? 1,
+      near: callerAt,
+      callerTokenId,
+      callerName: character.name,
+      user,
+      ...(outcome.secondGroup ? { awaitingSecond: true } : {}),
+    });
+    return {
+      answered: true,
+      rounds: outcome.rounds,
+      tierId: arriving.id,
+      secondGroup: outcome.secondGroup,
+    };
+  },
+});
+
+/** „za 1 Rundę" / „za 4 Rundy" / „za 5 Rund" — Polish counts three ways. */
+function roundsWord(count: number): string {
+  if (count === 1) return 'Rundę';
+  const tens = count % 100;
+  const ones = count % 10;
+  if (ones >= 2 && ones <= 4 && (tens < 12 || tens > 14)) return 'Rundy';
+  return 'Rund';
+}

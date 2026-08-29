@@ -109,6 +109,17 @@ export const CPRED_ACTION_COMBAT_AWARENESS = 'combat-awareness';
 export const CPRED_ACTION_FIELD_REPAIR = 'field-repair';
 
 /**
+ * „Wezwanie Wsparcia" (stage 30c) — „Aby wezwać Wsparcie, w ramach Akcji musisz
+ * wyrzucić na 1k10 tyle, ile wynosi twój poziom Zdolności Specjalnej Wsparcie,
+ * lub mniej" (s. 158).
+ *
+ * The Action is paid whether or not anybody answers, which is the sentence that
+ * makes the rule a gamble rather than a button: „Jeśli nikt nie odpowie na
+ * twoje wezwanie, w kolejnej Turze możesz znów spróbować".
+ */
+export const CPRED_ACTION_BACKUP = 'backup-call';
+
+/**
  * The catalogue itself (s. 168–169). Mechanics, not rulebook prose: the costs
  * and conditions are the game's arithmetic, which the engine needs to run at
  * all — the flavour text stays in the private data, like every other stage.
@@ -279,6 +290,13 @@ export const CPRED_ACTIONS: readonly CpredActionDefinition[] = [
     name: 'Prowizorka',
     cost: 'action',
     hint: 'Technik doprowadza przedmiot do pełnego OB na 10 minut na poziom Specjalizacji Naprawa.',
+    handledElsewhere: true,
+  },
+  {
+    id: CPRED_ACTION_BACKUP,
+    name: 'Wezwanie Wsparcia',
+    cost: 'action',
+    hint: 'Stróż Prawa wzywa funkcjonariuszy: 1k10 ≤ poziom Wsparcia, potem 1k6 Rund oczekiwania.',
     handledElsewhere: true,
   },
   {

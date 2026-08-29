@@ -1022,3 +1022,1024 @@ export const CPRED_FIELD_REPAIR_MINUTES_PER_LEVEL = 10;
 export function cpredFieldRepairMinutes(repairLevel: number): number {
   return Math.max(0, Math.round(repairLevel)) * CPRED_FIELD_REPAIR_MINUTES_PER_LEVEL;
 }
+
+// ────────────────── Wsparcie (Stróż Prawa, s. 158–159) ──────────────────
+
+/** „Zdolnością Specjalną Stróża Prawa jest Wsparcie" (s. 37, s. 158). */
+export const CPRED_BACKUP_ABILITY = 'Wsparcie';
+
+/**
+ * One category of Backup, exactly as the rulebook prints it.
+ *
+ * Six of them, not five: 1–2, 3–4, 5–7, 8, 9 and 10 each get their own block on
+ * s. 158–159, and the top three are single levels because the officers stop
+ * being interchangeable — a Marshal on a superbike is not two C-SWAT troopers.
+ *
+ * „Wartość bojowa: Umiejętność bazowa używana do ataku i obrony. Reprezentuje
+ * sumę Cechy i Umiejętności funkcjonariusza" — one figure that is Stat and Skill
+ * merged, which is the shape `combatProfileWithCombatValue` already gives a
+ * turret (26e). `move` and `body` stay real numbers, because RAW says what they
+ * are for: „istotne przy rozpatrywaniu dystansu i niektórych efektów odnoszących
+ * się do Ruchu lub BC celu (np. w Teście Przeżywalności)".
+ */
+export interface CpredBackupTier {
+  id: string;
+  /** Who answers the radio, in the rulebook's own words. */
+  name: string;
+  /**
+   * One of them, for the name on the figure. „Miejscowe krawężniki 1" reads
+   * like a typo on a token; „Krawężnik 1" reads like a person.
+   */
+  unit: string;
+  /** Lowest ability level that may call this group. */
+  minLevel: number;
+  /** Highest level this block covers; equal to `minLevel` for the top three. */
+  maxLevel: number;
+  /** How many officers arrive. */
+  count: number;
+  /** Wartość bojowa — attack *and* defence, plus 1d10. */
+  combatValue: number;
+  /** OB — „Odporność balistyczna pancerza na głowie i ciele". */
+  sp: number;
+  /** PW of each officer. */
+  hp: number;
+  /** RUCH. */
+  move: number;
+  /** BC. */
+  body: number;
+  /** Weapon each of them fires; looked up in the compendium by this name. */
+  weapon: string;
+  /** The rest of what they bring, as the block lists it. */
+  loadout: string;
+  /** Who they are and how they get there. */
+  description: string;
+  /**
+   * Skills the group may roll its Wartość bojowa in. Only the federal team has
+   * any: „mogą oni wykorzystać swoją Wartość bojową w Testach poniższych
+   * Umiejętności" (s. 159) — nobody below level 10 does anything but shoot.
+   */
+  skills?: readonly string[];
+  page: number;
+}
+
+/** The six categories, lowest first — the order the rulebook prints them in. */
+export const CPRED_BACKUP_TIERS: readonly CpredBackupTier[] = [
+  {
+    id: 'corp-security',
+    name: 'Korporacyjne służby bezpieczeństwa',
+    unit: 'Korpogliniarz',
+    minLevel: 1,
+    maxLevel: 2,
+    count: 4,
+    combatValue: 8,
+    sp: 7,
+    hp: 20,
+    move: 4,
+    body: 4,
+    weapon: 'Ciężki pistolet',
+    loadout: 'Ciężkie pistolety, Kevlar',
+    description: 'Czterech miejscowych korpogliniarzy, przybywających na piechotę.',
+    page: 158,
+  },
+  {
+    id: 'beat-cops',
+    name: 'Miejscowe krawężniki',
+    unit: 'Krawężnik',
+    minLevel: 3,
+    maxLevel: 4,
+    count: 4,
+    combatValue: 10,
+    sp: 7,
+    hp: 25,
+    move: 5,
+    body: 5,
+    weapon: 'Ciężki pistolet',
+    loadout: 'Ciężkie pistolety, Kevlar',
+    description: 'Patrol czterech funkcjonariuszy. Przybywają dwoma samochodami kompaktowymi.',
+    page: 158,
+  },
+  {
+    id: 'state-police',
+    name: 'Policja stanowa',
+    unit: 'Funkcjonariusz drogówki',
+    minLevel: 5,
+    maxLevel: 7,
+    count: 2,
+    combatValue: 14,
+    sp: 13,
+    hp: 35,
+    move: 4,
+    body: 4,
+    weapon: 'Karabin szturmowy',
+    loadout: 'Ciężkie pistolety, Karabiny szturmowe, Ciężkie kurtki kuloodporne',
+    description:
+      'Dwóch funkcjonariuszy miejscowej „drogówki" patrolujących podmiejskie bogate osiedla ' +
+      'i autostrady wokół Miasta. Przybywają Samochodem sportowym.',
+    page: 158,
+  },
+  {
+    id: 'marshal',
+    name: 'Marshal ze Strefy Odzyskanej',
+    unit: 'Marshal',
+    minLevel: 8,
+    maxLevel: 8,
+    count: 1,
+    combatValue: 16,
+    sp: 15,
+    hp: 50,
+    move: 6,
+    body: 6,
+    weapon: 'Karabin szturmowy',
+    loadout: 'Bardzo ciężki pistolet, Karabin szturmowy, Granatnik, Ubranie kuloodporne',
+    description:
+      'Jak stróże prawa na Dzikim Zachodzie, ci samotnicy patrolują Strefy odzyskane i nowe ' +
+      'miasta. Jeden z nich przybywa na Supermotocyklu.',
+    page: 159,
+  },
+  {
+    id: 'c-swat',
+    name: 'C-SWAT',
+    unit: 'C-SWAT',
+    minLevel: 9,
+    maxLevel: 9,
+    count: 2,
+    combatValue: 15,
+    sp: 18,
+    hp: 35,
+    move: 4,
+    body: 4,
+    weapon: 'Karabin szturmowy',
+    loadout: 'Karabiny szturmowe, Wyrzutnie rakiet, Metalgear',
+    description: 'Dwóch twardzieli z Psychobrygady. Przybywają z powietrza w AV-4.',
+    page: 159,
+  },
+  {
+    id: 'federal',
+    name: 'Organizacja policyjna / Interpol / FBI / Netwatch',
+    unit: 'Agent federalny',
+    minLevel: 10,
+    maxLevel: 10,
+    count: 2,
+    combatValue: 14,
+    sp: 11,
+    hp: 35,
+    move: 6,
+    body: 6,
+    weapon: 'Karabin szturmowy',
+    loadout: 'Bardzo ciężkie pistolety, Karabiny szturmowe, Lekkie kurtki przeciwpancerne',
+    description:
+      'Wsparcie dużego kalibru, działające pod egidą rządu państwowego lub międzynarodowych ' +
+      'organizacji policyjnych. Dwoje funkcjonariuszy przybywa w AV-4. W przeciwieństwie do ' +
+      'Wsparcia niższych kategorii zostają na miejscu po walce i pomagają w zabezpieczeniu ' +
+      'sceny zbrodni; na kolejne wezwania w tej samej „sprawie" przybywają ci sami dwaj.',
+    skills: [
+      'Aktorstwo',
+      'Atrakcyjność',
+      'Dedukcja',
+      'Fałszerstwo',
+      'Kryminologia',
+      'Kryptografia',
+      'Księgowość',
+      'Odporność na tortury/narkotyki',
+      'Percepcja',
+      'Przesłuchiwanie',
+      'Ratownictwo medyczne',
+      'Skradanie się',
+      'Tropienie',
+      'Ukrycie/znalezienie przedmiotu',
+      'Wykształcenie',
+    ],
+    page: 159,
+  },
+];
+
+/** The category that covers this Backup level; null outside 1–10. */
+export function cpredBackupTierAt(level: number): CpredBackupTier | null {
+  const value = Math.round(level);
+  return (
+    CPRED_BACKUP_TIERS.find((tier) => value >= tier.minLevel && value <= tier.maxLevel) ?? null
+  );
+}
+
+export function cpredBackupTier(id: string): CpredBackupTier | null {
+  return CPRED_BACKUP_TIERS.find((tier) => tier.id === id) ?? null;
+}
+
+/**
+ * „Stróż Prawa może wezwać na pomoc grupę Wsparcia o poziomie równym lub
+ * niższym wartości Zdolności Specjalnej" — so the choice is the Lawman's, and a
+ * rank 7 officer may deliberately whistle up four beat cops instead of the
+ * state police.
+ */
+export function cpredBackupTiersFor(rank: number): CpredBackupTier[] {
+  const value = Math.max(0, Math.round(rank));
+  return CPRED_BACKUP_TIERS.filter((tier) => tier.minLevel <= value);
+}
+
+/** „Oddział z wyższej kategorii" — the next block down the page. */
+export function cpredBackupTierAfter(tier: CpredBackupTier): CpredBackupTier | null {
+  const index = CPRED_BACKUP_TIERS.findIndex((entry) => entry.id === tier.id);
+  if (index < 0) return null;
+  return CPRED_BACKUP_TIERS[index + 1] ?? null;
+}
+
+/** „musisz wyrzucić na 1k10 tyle, ile wynosi twój poziom […] lub mniej". */
+export const CPRED_BACKUP_CALL_DIE = 10;
+/** „rzutem 1k6 określ liczbę Rund potrzebnych Wsparciu na przybycie". */
+export const CPRED_BACKUP_ARRIVAL_DIE = 6;
+/** The rank at which a six sends two groups instead of promoting one. */
+export const CPRED_BACKUP_DOUBLE_RANK = 10;
+
+export interface CpredBackupOutcome {
+  /** „Jeśli ktoś odpowie na twoje wezwanie…" */
+  answered: boolean;
+  /** Category that actually turns up; null when nobody answered. */
+  tierId: string | null;
+  /** Rounds until they get there; null when nobody answered. */
+  rounds: number | null;
+  /** A six came up on the arrival die. */
+  escalated: boolean;
+  /**
+   * „chyba że poziom twojej Zdolności wynosi 10 – w takim wypadku przybywają
+   * dwie różne grupy Wsparcia". Which second group is not printed, so the VTT
+   * does not invent one: it says two are coming and lets the GM name the other
+   * (session decision, 2026-08-29).
+   */
+  secondGroup: boolean;
+}
+
+/**
+ * The whole call, as one function of two dice.
+ *
+ * Both rolls are handed in rather than rolled here, for the reason every rule in
+ * this package takes its randomness from outside: the server rolls through the
+ * dice engine so the table sees the numbers, and the test suite rolls whatever
+ * it needs to.
+ *
+ * A six escalates past the Lawman's own rank on purpose. „Zamiast zwykłego
+ * wsparcia, na odsiecz przybywa oddział z wyższej kategorii" says nothing about
+ * the ceiling that governs *calling*, and the reward for the six is precisely
+ * that somebody bigger than you could ask for turned up.
+ */
+export function cpredBackupCall(
+  rank: number,
+  level: number,
+  callRoll: number,
+  arrivalRoll: number,
+): CpredBackupOutcome {
+  const ability = Math.max(0, Math.round(rank));
+  const called = cpredBackupTierAt(level);
+  const answered = called !== null && callRoll >= 1 && callRoll <= ability;
+  if (!answered || called === null) {
+    return { answered: false, tierId: null, rounds: null, escalated: false, secondGroup: false };
+  }
+  const rounds = Math.max(1, Math.round(arrivalRoll));
+  const escalated = rounds === CPRED_BACKUP_ARRIVAL_DIE;
+  if (!escalated) {
+    return { answered: true, tierId: called.id, rounds, escalated: false, secondGroup: false };
+  }
+  if (ability >= CPRED_BACKUP_DOUBLE_RANK) {
+    return { answered: true, tierId: called.id, rounds, escalated: true, secondGroup: true };
+  }
+  const promoted = cpredBackupTierAfter(called) ?? called;
+  return { answered: true, tierId: promoted.id, rounds, escalated: true, secondGroup: false };
+}
+
+/** „Wartość bojowa 14 · OB 13 · PW 35 · RUCH 4 · BC 4" — the block, on one line. */
+export function describeBackupTier(tier: CpredBackupTier): string {
+  return (
+    `Wartość bojowa ${tier.combatValue} · OB ${tier.sp} · PW ${tier.hp} · ` +
+    `RUCH ${tier.move} · BC ${tier.body}`
+  );
+}
+
+/**
+ * A Backup officer as a token's combat profile.
+ *
+ * The whole reason 30c is one stage rather than two: the rulebook hands the GM
+ * five numbers and this VTT already has a home for exactly those five. Nothing
+ * here is a new kind of figure — it is the statist of 16b with its Skill half
+ * filled in from Wartość bojowa, the same substitution `combatProfileWithCombatValue`
+ * makes for a turret.
+ *
+ * Three deliberate details:
+ *
+ *  - `evasion` is the combat value, not zero. „Umiejętność bazowa używana do
+ *    ataku **i obrony**" — an officer parries a machete with the same figure he
+ *    shoots with, and REF/DEX stay at zero so the breakdown reads honestly.
+ *  - `noBulletDodge` is what „Funkcjonariusze Wsparcia nie mogą Unikać pocisków"
+ *    actually costs. Without it the flag would be decoration: `attack:evade` in
+ *    this project ducks bullets as happily as blades.
+ *  - `weaponDamage` is left for the caller to fill from the compendium, by name.
+ *    An id in this file would be an id from a generated data file, and those are
+ *    the ones that go stale (the same reason `criticalInjuryAt` matches names).
+ */
+export function cpredBackupProfile(tier: CpredBackupTier): CpredBackupProfileSeed {
+  return {
+    ref: 0,
+    dex: 0,
+    body: tier.body,
+    will: 0,
+    move: tier.move,
+    skillLevel: tier.combatValue,
+    evasion: tier.combatValue,
+    armorSp: tier.sp,
+    weaponName: tier.weapon,
+    noBulletDodge: true,
+  };
+}
+
+/**
+ * What `cpredBackupProfile` knows without asking the compendium.
+ *
+ * Structurally a `CpredCombatProfile` minus the three weapon fields the catalogue
+ * owns — spelled out here rather than imported so this module keeps the
+ * type-only relationship with `statist.ts` that stops the two from forming an
+ * import cycle through `character.ts`.
+ */
+export interface CpredBackupProfileSeed {
+  ref: number;
+  dex: number;
+  body: number;
+  will: number;
+  move: number;
+  skillLevel: number;
+  evasion: number;
+  armorSp: number;
+  weaponName: string;
+  noBulletDodge: true;
+}
+
+// ─────────────── Praca Zespołowa (Korpo, s. 153–157) ───────────────
+
+/** „Zdolnością Specjalną Korpo jest Praca Zespołowa" (s. 36, s. 153). */
+export const CPRED_TEAMWORK_ABILITY = 'Praca Zespołowa';
+
+/**
+ * „Poczynając od 3. poziomu Pracy Zespołowej, Korpo otrzymuje do pomocy członka
+ * zespołu. Na poziomach 5. i 9. […] po dodatkowym pracowniku. Maksymalna liczba
+ * członków zespołu wynosi 3" (s. 154).
+ */
+export const CPRED_TEAM_SLOT_LEVELS: readonly number[] = [3, 5, 9];
+export const CPRED_TEAM_MAX = CPRED_TEAM_SLOT_LEVELS.length;
+
+/** How many employees this rank is entitled to — 0 below level 3. */
+export function cpredTeamSlots(rank: number): number {
+  const value = Math.max(0, Math.round(rank));
+  return CPRED_TEAM_SLOT_LEVELS.filter((level) => value >= level).length;
+}
+
+/**
+ * Everything else the ability pays for, level by level (s. 153).
+ *
+ * Prose rather than mechanics on purpose: a conapt, a Trauma Team subscription
+ * and a McPosiadłość are the GM's world, not the engine's arithmetic — the one
+ * thing here the VTT could compute (rent) is already the Lifestyle of 23b, and
+ * „nie płacąc czynszu" is a sentence the table applies, not a discount the
+ * settlement can guess at.
+ */
+export interface CpredTeamworkPerk {
+  level: number;
+  name: string;
+  text: string;
+}
+
+export const CPRED_TEAMWORK_PERKS: readonly CpredTeamworkPerk[] = [
+  {
+    level: 1,
+    name: 'Premia motywacyjna',
+    text:
+      'Ubranie biznesowe (kurtka, tułów, nogi, stopy), które pozwala zidentyfikować cię jako ' +
+      'pracownika tej firmy. Nie można go odsprzedać bez wzbudzania podejrzeń.',
+  },
+  {
+    level: 2,
+    name: 'Korporacyjny kwaterunek',
+    text:
+      'Klucze do konapu należącego do pracodawcy — bez czynszu i innych opłat. Poziom życia ' +
+      'nadal pokrywasz sam.',
+  },
+  { level: 3, name: 'Pierwszy członek zespołu', text: 'HR przydziela ci pierwszego pracownika.' },
+  { level: 5, name: 'Drugi członek zespołu', text: 'Do zespołu dochodzi druga osoba.' },
+  {
+    level: 6,
+    name: 'Korporacyjne Ubezpieczenie Zdrowotne',
+    text: 'Srebrny abonament Trauma Team, co miesiąc opłacany przez Korporację.',
+  },
+  {
+    level: 7,
+    name: 'Dom w Bobrowisku',
+    text: 'Przeprowadzka do domu w korporacyjnym Bobrowisku w Strefie Korporacyjnej.',
+  },
+  {
+    level: 8,
+    name: 'Platynowy Trauma Team',
+    text: 'Abonament Trauma Team podniesiony do platyny.',
+  },
+  { level: 9, name: 'Trzeci członek zespołu', text: 'Zespół osiąga maksymalny rozmiar.' },
+  {
+    level: 10,
+    name: 'Luksus',
+    text:
+      'McPosiadłość w Bobrowisku albo Luksusowy apartament na szczycie wieżowca w Strefie ' +
+      'Korporacyjnej.',
+  },
+];
+
+/** Perks this rank has already unlocked, lowest first. */
+export function cpredTeamworkPerks(rank: number): CpredTeamworkPerk[] {
+  const value = Math.max(0, Math.round(rank));
+  return CPRED_TEAMWORK_PERKS.filter((perk) => perk.level <= value);
+}
+
+export const CPRED_TEAM_PROFESSION_IDS = [
+  'bodyguard',
+  'agent',
+  'driver',
+  'netrunner',
+  'techie',
+] as const;
+export type CpredTeamProfessionId = (typeof CPRED_TEAM_PROFESSION_IDS)[number];
+
+/**
+ * One row of a profession's 1k6 table.
+ *
+ * Nine numbers, not ten: the tables print INT, REF, ZW, TECH, CHA, SW, RUCH, BC
+ * and EMP, and **no Szczęście**. That is not an omission to paper over — an
+ * employee is not a Player Character, and Luck is the stat that says otherwise.
+ * The generated sheet gets 0, which is what „Postać Gracza wydaje Szczęście,
+ * a BN nie" has meant in this project since the statist of 16b.
+ */
+export interface CpredTeamStatRow {
+  int: number;
+  ref: number;
+  dex: number;
+  tech: number;
+  cool: number;
+  will: number;
+  move: number;
+  body: number;
+  emp: number;
+}
+
+/**
+ * A profession HR can hire for (s. 155–157).
+ *
+ * The skill packages are stored as `skillId → level` because that is what a
+ * sheet stores; the rulebook's three bands („Umiejętności +2 / +4 / +6") are a
+ * printing convenience, and preserving them here would mean every reader of the
+ * data flattening them again.
+ *
+ * Two names in every package are not skills but *named* skills: „Język (Slang
+ * uliczny)" and „Wiedza lokalna (Twój dom)". The first goes where 25b put every
+ * language — `lifepath.language`, next to the Culture of Origin — and the
+ * second into `skillSpecialties`, which is exactly the map that exists for
+ * „musisz wybrać, którą specjalizację rozwijasz".
+ */
+export interface CpredTeamProfession {
+  id: CpredTeamProfessionId;
+  name: string;
+  /** „Przykrywka: Osoba towarzysząca, osobisty trener". */
+  cover: string;
+  /** „Prawdziwa praca: Chronić Korpo przed niebezpieczeństwem." */
+  duty: string;
+  /** Six rows; index 0 is a roll of 1. */
+  rows: readonly CpredTeamStatRow[];
+  /** The +2/+4/+6 packages, merged. */
+  skills: Readonly<Record<string, number>>;
+  /** Skills the rulebook names a field for. */
+  skillSpecialties: Readonly<Record<string, string>>;
+  /** The language of the „Język (…)" entry, or null when the package has none. */
+  language: string | null;
+  /**
+   * Special Ability the package hands out, by **name** — the Corporate
+   * Netrunner's package opens with „Interfejs (Zdolność Specjalna Netrunnera)",
+   * which is a Role, not a skill. Null for the other four.
+   */
+  ability: { name: string; rank: number } | null;
+  /** „Cyborgizacje:" — prose, and see `cpredTeamMemberPatch` for why. */
+  cyberware: string;
+  /** „Osprzęt:" minus the armour and the pistol, which become real rows. */
+  gear: string;
+  page: number;
+}
+
+/** Shared by all five packages: „Osprzęt: Lekka kurtka kuloodporna (OB 11)". */
+export const CPRED_TEAM_ARMOR = { name: 'Lekka kurtka kuloodporna', sp: 11 } as const;
+/** And „Bardzo ciężki pistolet, zwykła amunicja do B.C. pistoletu x50". */
+export const CPRED_TEAM_WEAPON = {
+  name: 'Bardzo ciężki pistolet',
+  damage: '4k6',
+  magazine: 8,
+} as const;
+/** „Najcięższym pancerzem, jaki mogą nosić członkowie zespołu […]" (s. 154). */
+export const CPRED_TEAM_ARMOR_SP_MAX = CPRED_TEAM_ARMOR.sp;
+
+export const CPRED_TEAM_PROFESSIONS: readonly CpredTeamProfession[] = [
+  {
+    id: 'bodyguard',
+    name: 'Firmowy ochroniarz',
+    cover: 'Osoba towarzysząca, osobisty trener',
+    duty: 'Chronić Korpo przed niebezpieczeństwem.',
+    rows: [
+      { int: 3, ref: 7, dex: 7, tech: 4, cool: 7, will: 6, move: 4, body: 8, emp: 4 },
+      { int: 5, ref: 8, dex: 6, tech: 2, cool: 7, will: 8, move: 4, body: 8, emp: 2 },
+      { int: 4, ref: 8, dex: 5, tech: 3, cool: 7, will: 8, move: 6, body: 6, emp: 3 },
+      { int: 4, ref: 7, dex: 8, tech: 4, cool: 7, will: 7, move: 4, body: 7, emp: 2 },
+      { int: 3, ref: 8, dex: 5, tech: 2, cool: 8, will: 7, move: 4, body: 6, emp: 7 },
+      { int: 5, ref: 7, dex: 7, tech: 2, cool: 7, will: 6, move: 5, body: 7, emp: 4 },
+    ],
+    skills: {
+      language: 2,
+      concentration: 2,
+      conversation: 2,
+      'human-perception': 2,
+      persuasion: 2,
+      'first-aid': 2,
+      stealth: 2,
+      'local-expert': 2,
+      education: 2,
+      athletics: 4,
+      'resist-torture-drugs': 4,
+      perception: 4,
+      interrogation: 4,
+      tactics: 4,
+      evasion: 4,
+      brawling: 6,
+      handgun: 6,
+    },
+    skillSpecialties: { 'local-expert': 'Twój dom' },
+    language: 'Slang uliczny',
+    ability: null,
+    cyberware:
+      'Ulepszone przeciwciała, Pancerz podskórny (OB 11), Zestaw cyberaudio, Agent wewnętrzny, ' +
+      'Odbiornik lokalizatora',
+    gear: 'Agent; zwykła amunicja do B.C. pistoletu ×50',
+    page: 155,
+  },
+  {
+    id: 'agent',
+    name: 'Korporacyjny tajny agent',
+    cover: 'Asystent, stylista',
+    duty: 'Sprawia, że ręce Korpo są zawsze czyste.',
+    rows: [
+      { int: 4, ref: 8, dex: 5, tech: 4, cool: 6, will: 8, move: 5, body: 7, emp: 3 },
+      { int: 3, ref: 8, dex: 6, tech: 2, cool: 8, will: 6, move: 6, body: 6, emp: 5 },
+      { int: 6, ref: 7, dex: 5, tech: 5, cool: 7, will: 6, move: 3, body: 7, emp: 4 },
+      { int: 5, ref: 6, dex: 5, tech: 3, cool: 6, will: 8, move: 7, body: 6, emp: 4 },
+      { int: 3, ref: 8, dex: 4, tech: 4, cool: 8, will: 7, move: 4, body: 8, emp: 4 },
+      { int: 5, ref: 8, dex: 3, tech: 7, cool: 7, will: 8, move: 3, body: 6, emp: 3 },
+    ],
+    skills: {
+      athletics: 2,
+      brawling: 2,
+      language: 2,
+      concentration: 2,
+      conversation: 2,
+      perception: 2,
+      persuasion: 2,
+      'first-aid': 2,
+      'local-expert': 2,
+      education: 2,
+      bureaucracy: 4,
+      trading: 4,
+      'wardrobe-style': 4,
+      'human-perception': 4,
+      'pick-lock': 4,
+      business: 4,
+      bribery: 4,
+      evasion: 4,
+      streetwise: 4,
+      handgun: 6,
+      stealth: 6,
+    },
+    skillSpecialties: { 'local-expert': 'Twój dom' },
+    language: 'Slang uliczny',
+    ability: null,
+    cyberware:
+      'Cyberoczy ze sparowanym widzeniem w ciemności/podczerwieni/UV i zmianą koloru; cyberręka ' +
+      'z dłonią-hakiem, wysuwaną bronią dystansową (b. ciężki pistolet) i pokryciem Realskinn',
+    gear: 'Agent; zwykła amunicja do B.C. pistoletu ×50',
+    page: 155,
+  },
+  {
+    id: 'driver',
+    name: 'Szofer korporacyjny',
+    cover: 'Lokaj, osobisty kierowca',
+    duty: 'Prowadzi i pilotuje, a także serwisuje pojazdy zespołu.',
+    rows: [
+      { int: 5, ref: 8, dex: 6, tech: 4, cool: 6, will: 5, move: 6, body: 5, emp: 5 },
+      { int: 5, ref: 7, dex: 7, tech: 5, cool: 5, will: 7, move: 4, body: 7, emp: 3 },
+      { int: 6, ref: 8, dex: 8, tech: 4, cool: 7, will: 4, move: 5, body: 6, emp: 2 },
+      { int: 8, ref: 7, dex: 4, tech: 5, cool: 4, will: 7, move: 5, body: 6, emp: 4 },
+      { int: 7, ref: 8, dex: 3, tech: 5, cool: 7, will: 6, move: 4, body: 6, emp: 4 },
+      { int: 6, ref: 8, dex: 6, tech: 6, cool: 8, will: 5, move: 3, body: 5, emp: 3 },
+    ],
+    skills: {
+      athletics: 2,
+      language: 2,
+      concentration: 2,
+      conversation: 2,
+      'human-perception': 2,
+      perception: 2,
+      persuasion: 2,
+      'first-aid': 2,
+      'local-expert': 2,
+      education: 2,
+      brawling: 4,
+      'land-vehicle-tech': 4,
+      'sea-vehicle-tech': 4,
+      'pilot-air-vehicle': 4,
+      stealth: 4,
+      tracking: 4,
+      evasion: 4,
+      endurance: 4,
+      'pilot-sea-vehicle': 4,
+      handgun: 6,
+      driving: 6,
+    },
+    skillSpecialties: { 'local-expert': 'Twój dom' },
+    language: 'Slang uliczny',
+    ability: null,
+    cyberware:
+      'Radar/Sonar, Zestaw cyberaudio, Agent wewnętrzny, odbiornik lokalizatora, wykrywacz radaru',
+    gear: 'Samochód kompaktowy z ulepszonymi fotelami; zwykła amunicja do B.C. pistoletu ×50',
+    page: 156,
+  },
+  {
+    id: 'netrunner',
+    name: 'Korporacyjny netrunner',
+    cover: 'Informatyk, analityk',
+    duty: 'Sieciowanie i zdobywanie informacji.',
+    rows: [
+      { int: 6, ref: 7, dex: 8, tech: 7, cool: 5, will: 4, move: 5, body: 5, emp: 3 },
+      { int: 7, ref: 8, dex: 4, tech: 6, cool: 8, will: 3, move: 4, body: 6, emp: 4 },
+      { int: 5, ref: 6, dex: 8, tech: 8, cool: 6, will: 6, move: 4, body: 4, emp: 3 },
+      { int: 7, ref: 8, dex: 5, tech: 6, cool: 4, will: 4, move: 6, body: 5, emp: 5 },
+      { int: 5, ref: 8, dex: 8, tech: 5, cool: 5, will: 3, move: 6, body: 4, emp: 6 },
+      { int: 8, ref: 7, dex: 6, tech: 6, cool: 4, will: 7, move: 4, body: 4, emp: 4 },
+    ],
+    skills: {
+      athletics: 2,
+      brawling: 2,
+      language: 2,
+      concentration: 2,
+      conversation: 2,
+      'human-perception': 2,
+      perception: 2,
+      persuasion: 2,
+      'first-aid': 2,
+      evasion: 2,
+      'local-expert': 2,
+      handgun: 4,
+      cybertech: 4,
+      'electronics-security': 4,
+      forgery: 4,
+      cryptography: 4,
+      'basic-tech': 4,
+      'library-search': 4,
+      stealth: 4,
+      education: 4,
+    },
+    skillSpecialties: { 'local-expert': 'Twój dom' },
+    language: 'Slang uliczny',
+    // „Umiejętności +2: Interfejs (Zdolność Specjalna Netrunnera)" — the one
+    // entry in all five packages that is a Role rather than a skill, and the
+    // reason a team member had to be a real sheet: a cyberdeck needs one.
+    ability: { name: 'Interfejs', rank: 2 },
+    cyberware:
+      'Sprzęg neuralny, Gniazdo czipów, Edytor bólu, Gniazda interfejsu, Cyberoczy z wirtualem',
+    gear:
+      'Agent; Cyberdek (7 gniazd: Miecz, Zabójca, Robak, Pancerz); zwykła amunicja do ' +
+      'B.C. pistoletu ×50',
+    page: 156,
+  },
+  {
+    id: 'techie',
+    name: 'Technik korporacji',
+    cover: 'Informatyk, stażysta',
+    duty: 'Naprawa osprzętu i broni zespołu.',
+    rows: [
+      { int: 8, ref: 8, dex: 5, tech: 7, cool: 3, will: 4, move: 4, body: 5, emp: 6 },
+      { int: 8, ref: 7, dex: 6, tech: 8, cool: 3, will: 5, move: 5, body: 4, emp: 4 },
+      { int: 8, ref: 6, dex: 5, tech: 8, cool: 4, will: 3, move: 3, body: 7, emp: 6 },
+      { int: 8, ref: 8, dex: 5, tech: 7, cool: 4, will: 4, move: 4, body: 5, emp: 5 },
+      { int: 7, ref: 7, dex: 3, tech: 7, cool: 5, will: 3, move: 6, body: 6, emp: 3 },
+      { int: 7, ref: 8, dex: 5, tech: 8, cool: 6, will: 3, move: 3, body: 5, emp: 5 },
+    ],
+    skills: {
+      athletics: 2,
+      brawling: 2,
+      language: 2,
+      concentration: 2,
+      conversation: 2,
+      'human-perception': 2,
+      perception: 2,
+      persuasion: 2,
+      'first-aid': 2,
+      stealth: 2,
+      evasion: 2,
+      'local-expert': 2,
+      handgun: 4,
+      weaponstech: 4,
+      education: 4,
+      cybertech: 6,
+      'electronics-security': 6,
+      'basic-tech': 6,
+    },
+    skillSpecialties: { 'local-expert': 'Twój dom' },
+    language: 'Slang uliczny',
+    ability: null,
+    cyberware:
+      'Dłoń z narzędziami, Zestaw cyberaudio, Agent wewnętrzny, wykrywacz podsłuchu, ' +
+      'rejestrator dźwięku',
+    gear: 'Zwykła amunicja do B.C. pistoletu ×50',
+    page: 157,
+  },
+];
+
+export function cpredTeamProfession(id: string): CpredTeamProfession | null {
+  return CPRED_TEAM_PROFESSIONS.find((entry) => entry.id === id) ?? null;
+}
+
+/** „W tabeli odpowiedniego zawodu rzuć 1k6, odczytaj i zapisz Cechy pracownika." */
+export function cpredTeamStats(
+  profession: CpredTeamProfession,
+  roll: number,
+): CpredTeamStatRow | null {
+  const index = Math.round(roll) - 1;
+  return profession.rows[index] ?? null;
+}
+
+// ─────────────────────────── Lojalność (s. 154) ───────────────────────────
+
+/** „Rzuć 1k6 i dodaj 1" — and the same die decides whether an order is obeyed. */
+export const CPRED_LOYALTY_DIE = 6;
+/** „jeśli na koniec sesji wynosi powyżej 10, jej wartość spada do 10". */
+export const CPRED_LOYALTY_SESSION_CAP = 10;
+/** „początkowa Lojalność tego pracownika wynosi tylko 1" — a replacement's. */
+export const CPRED_LOYALTY_REPLACEMENT = 1;
+/** „będzie to kosztować Korpo dodatkowe 200 ed »opłaty manipulacyjnej«". */
+export const CPRED_LOYALTY_REPLACEMENT_FEE = 200;
+
+/** Bounds the stored number is clamped to; the rule itself has none. */
+export const CPRED_LOYALTY_MIN = -30;
+export const CPRED_LOYALTY_MAX = 30;
+
+export function cpredStartingLoyalty(roll: number): number {
+  return Math.max(1, Math.round(roll)) + 1;
+}
+
+/**
+ * „MG musi rzucić 1k6. Jeśli wynik wynosi **mniej niż** obecna Lojalność tego
+ * pracownika, ten wykonuje polecenie."
+ *
+ * Strictly less, which is why this is a function rather than an inline `<=`
+ * somewhere: Loyalty 1 obeys nothing at all, and that asymmetry is the whole
+ * point of a fresh replacement starting there.
+ */
+export function cpredLoyaltyObeys(roll: number, loyalty: number): boolean {
+  return Math.round(roll) < Math.round(loyalty);
+}
+
+/** „Jeśli Lojalność pracownika wynosi 0 lub mniej, będzie on czynnie starał się zdradzić". */
+export function cpredLoyaltyTreacherous(loyalty: number): boolean {
+  return Math.round(loyalty) <= 0;
+}
+
+/** What the number becomes between sessions. */
+export function cpredLoyaltyAfterSession(loyalty: number): number {
+  const value = Math.round(loyalty);
+  return value > CPRED_LOYALTY_SESSION_CAP ? CPRED_LOYALTY_SESSION_CAP : value;
+}
+
+export interface CpredLoyaltyChange {
+  id: string;
+  value: number;
+  text: string;
+}
+
+/**
+ * The two tables of s. 154, in one list because they are one question: „what
+ * did the Korpo just do to this person". A single list also means the panel
+ * cannot show a gain where a loss belongs — the sign is the data.
+ */
+export const CPRED_LOYALTY_CHANGES: readonly CpredLoyaltyChange[] = [
+  {
+    id: 'compliment',
+    value: 1,
+    text:
+      'Skomplementowanie pracy członka zespołu. Nadużywanie tej metody w ciągu tygodnia ' +
+      'zablokuje możliwość podniesienia Lojalności tej osoby.',
+  },
+  { id: 'bonus', value: 4, text: 'Premia lub inny bonus o wartości co najmniej 200 ed.' },
+  { id: 'backing', value: 4, text: 'Wsparcie w konflikcie z Górą.' },
+  { id: 'cut', value: 6, text: 'Premia w postaci 20% twojego zarobku za ostatnie zlecenie.' },
+  {
+    id: 'leave',
+    value: 6,
+    text: 'Płatny urlop. Członek zespołu będzie nieobecny przez całą sesję.',
+  },
+  {
+    id: 'risk',
+    value: 8,
+    text: 'Narażenie się na fizyczne niebezpieczeństwo dla członka zespołu.',
+  },
+  {
+    id: 'neglect',
+    value: -1,
+    text: 'Brak wzrostu Lojalności u danego członka zespołu przez całą sesję.',
+  },
+  { id: 'criticism', value: -2, text: 'Krytyka lub opierniczanie członka zespołu lub jego pracy.' },
+  {
+    id: 'silence',
+    value: -4,
+    text: 'Przemilczenie wkładu członka zespołu w projekt. Zapomnienie o jego urodzinach.',
+  },
+  { id: 'no-bonus', value: -6, text: 'Nieprzyznanie obiecanej premii lub bonusu.' },
+  { id: 'thrown-up', value: -6, text: 'Rzucenie na pożarcie Górze.' },
+  { id: 'abandoned', value: -8, text: 'Zostawienie członka zespołu na polu walki.' },
+];
+
+export function cpredLoyaltyChange(id: string): CpredLoyaltyChange | null {
+  return CPRED_LOYALTY_CHANGES.find((entry) => entry.id === id) ?? null;
+}
+
+// ────────────────────── Zespół zapisany na karcie Korpo ──────────────────────
+
+/**
+ * One employee, as the **Korpo's** sheet remembers them.
+ *
+ * On the employer rather than on the employee, and that is the whole design
+ * decision of this half of the stage. Loyalty is not a property of a person —
+ * it is a property of a working relationship, and the sentence that governs it
+ * („Gdy Korpo wydaje polecenie członkowi zespołu…") names both sides. Keeping
+ * the roster here also makes the cap enforceable in one place: the number of
+ * rows is checked against the rank that pays for them.
+ *
+ * The employee themselves is an ordinary GM-owned `Character` row, which is why
+ * only an id lives here: they get hurt, they heal, they roll their skills, and
+ * every one of those paths already works on a sheet.
+ */
+export interface CpredTeamMember {
+  characterId: string;
+  professionId: string;
+  loyalty: number;
+}
+
+export type CpredTeamProblem = 'NO_ABILITY' | 'TEAM_FULL' | 'UNKNOWN_PROFESSION' | 'BAD_VALUE';
+
+export const CPRED_TEAM_PROBLEMS: Record<CpredTeamProblem, string> = {
+  NO_ABILITY: 'Ta postać nie ma Zdolności Specjalnej Praca Zespołowa.',
+  TEAM_FULL: 'Zespół jest pełny — kolejny pracownik dochodzi dopiero na wyższym poziomie.',
+  UNKNOWN_PROFESSION: 'Nie znam takiego zawodu.',
+  BAD_VALUE: 'Lojalność poza dopuszczalnym zakresem.',
+};
+
+/** Reads the roster off a stored sheet, dropping whatever does not parse. */
+export function readCpredTeam(raw: unknown): CpredTeamMember[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  const team: CpredTeamMember[] = [];
+  for (const entry of raw) {
+    if (typeof entry !== 'object' || entry === null) continue;
+    const row = entry as Record<string, unknown>;
+    if (typeof row.characterId !== 'string' || row.characterId.length === 0) continue;
+    if (typeof row.professionId !== 'string' || cpredTeamProfession(row.professionId) === null) {
+      continue;
+    }
+    // One person cannot be hired twice; a duplicate would give the panel two
+    // rows that write the same Loyalty and disagree about it.
+    if (seen.has(row.characterId)) continue;
+    seen.add(row.characterId);
+    const loyalty =
+      typeof row.loyalty === 'number' && Number.isFinite(row.loyalty) ? Math.round(row.loyalty) : 1;
+    team.push({
+      characterId: row.characterId,
+      professionId: row.professionId,
+      loyalty: Math.min(CPRED_LOYALTY_MAX, Math.max(CPRED_LOYALTY_MIN, loyalty)),
+    });
+  }
+  return team.slice(0, CPRED_TEAM_MAX);
+}
+
+/**
+ * Whether this roster is one the rank can afford — the twin of
+ * `cpredSpecialtiesProblem`, and checked in the same place for the same reason:
+ * the size of the entitlement depends on a rank an ordinary patch cannot see.
+ */
+export function cpredTeamProblem(
+  team: readonly CpredTeamMember[],
+  rank: number | null,
+): CpredTeamProblem | null {
+  if (team.length === 0) return null;
+  if (rank === null) return 'NO_ABILITY';
+  if (team.length > cpredTeamSlots(rank)) return 'TEAM_FULL';
+  for (const member of team) {
+    if (cpredTeamProfession(member.professionId) === null) return 'UNKNOWN_PROFESSION';
+    if (member.loyalty < CPRED_LOYALTY_MIN || member.loyalty > CPRED_LOYALTY_MAX)
+      return 'BAD_VALUE';
+  }
+  return null;
+}
+
+/** „Ochroniarz · Lojalność 5" — the roster line, for the chat and the log. */
+export function describeTeamMember(member: CpredTeamMember): string {
+  const profession = cpredTeamProfession(member.professionId);
+  return `${profession?.name ?? member.professionId} · Lojalność ${member.loyalty}`;
+}
+
+// ───────────────── Wsparcie w drodze: stan trwającej walki ─────────────────
+
+/**
+ * A group that has answered the radio and is still on its way.
+ *
+ * Lives in the combat's `systemState` rather than in a table of its own, and
+ * the lifetime is the argument: „rzutem 1k6 określ liczbę Rund" measures a
+ * distance in a unit that only exists while a fight is running, and a call
+ * whose fight has ended is a call nobody is counting any more. Ending the
+ * combat drops the column with it, which is exactly right — the officers did
+ * not vanish, they simply arrive in the fiction rather than on the tracker.
+ *
+ * Outside a fight nothing is stored at all: the group is placed the moment the
+ * GM says so, because there is no round for them to wait a number of.
+ */
+export interface CpredBackupPending {
+  id: string;
+  /** Category on its way (`CpredBackupTier.id`). */
+  tierId: string;
+  /** Round they step onto the map at. */
+  arriveAtRound: number;
+  /** Figure that called them — they arrive next to it. */
+  callerTokenId: string | null;
+  /** Who called, for the chat line and the tracker row. */
+  callerName: string;
+  /**
+   * „Przybywają dwie różne grupy Wsparcia" and the rulebook does not say which
+   * second one, so the VTT does not invent it: the row carries the question
+   * until the GM names a category (session decision, 2026-08-29).
+   */
+  awaitingSecond?: boolean;
+}
+
+/** Everything the game system keeps about a running fight. One field, so far. */
+export interface CpredCombatState {
+  backup: CpredBackupPending[];
+}
+
+export const CPRED_EMPTY_COMBAT_STATE: CpredCombatState = { backup: [] };
+
+/** Most groups one fight will track; a radio that never stops is not a rule. */
+export const CPRED_BACKUP_PENDING_MAX = 8;
+
+/** Reads the opaque column, repairing whatever it finds. Never throws. */
+export function readCpredCombatState(raw: unknown): CpredCombatState {
+  let parsed: unknown = raw;
+  if (typeof raw === 'string') {
+    if (raw.length === 0) return { backup: [] };
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return { backup: [] };
+    }
+  }
+  if (typeof parsed !== 'object' || parsed === null) return { backup: [] };
+  const list = (parsed as Record<string, unknown>).backup;
+  if (!Array.isArray(list)) return { backup: [] };
+  const backup: CpredBackupPending[] = [];
+  for (const entry of list) {
+    if (typeof entry !== 'object' || entry === null) continue;
+    const row = entry as Record<string, unknown>;
+    if (typeof row.id !== 'string' || row.id.length === 0) continue;
+    if (typeof row.tierId !== 'string' || cpredBackupTier(row.tierId) === null) continue;
+    if (typeof row.arriveAtRound !== 'number' || !Number.isFinite(row.arriveAtRound)) continue;
+    backup.push({
+      id: row.id,
+      tierId: row.tierId,
+      arriveAtRound: Math.max(1, Math.round(row.arriveAtRound)),
+      callerTokenId: typeof row.callerTokenId === 'string' ? row.callerTokenId : null,
+      callerName: typeof row.callerName === 'string' ? row.callerName : '',
+      ...(row.awaitingSecond === true ? { awaitingSecond: true as const } : {}),
+    });
+  }
+  return { backup: backup.slice(0, CPRED_BACKUP_PENDING_MAX) };
+}
+
+/**
+ * Groups whose round has come.
+ *
+ * `>=` rather than `===` on purpose: the GM steps back and forward through the
+ * queue, ends a fight and starts another, and a group whose exact round was
+ * skipped would wait forever. Anything owed arrives at the first round that is
+ * late enough — the same forgiving comparison `cpredTimedExpired` makes.
+ */
+export function cpredBackupDue(state: CpredCombatState, round: number): CpredBackupPending[] {
+  return state.backup.filter((entry) => !entry.awaitingSecond && round >= entry.arriveAtRound);
+}
+
+/** „Miejscowe krawężniki ×4 — przybywają w rundzie 7" — the tracker's row. */
+export function describeBackupPending(entry: CpredBackupPending): string {
+  const tier = cpredBackupTier(entry.tierId);
+  if (!tier) return 'Wsparcie w drodze';
+  return `${tier.name} ×${tier.count}`;
+}

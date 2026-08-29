@@ -328,7 +328,11 @@ describe('Zmysł Walki: przydział punktów i Redukcja obrażeń', () => {
       characterId: mookCharacterId,
       patch: {
         data: {
-          weapons: [{ id: 'w1', name: 'Pałka', notes: '', damage: '1k6', ammo: '', rof: '1' }],
+          // „1k6" migotało: `damageReduced` to `min(redukcja, obrażenia)`, więc
+          // jedynka na kości dawała redukcję 1 i test padał raz na sześć
+          // przebiegów. Minimum 4 obrażeń nie da się zredukować poniżej dwóch,
+          // a trzy takie ciosy (≤ 27) Solo z 50 PW przeżywa z zapasem.
+          weapons: [{ id: 'w1', name: 'Pałka', notes: '', damage: '1k6+3', ammo: '', rof: '1' }],
         },
       },
     });

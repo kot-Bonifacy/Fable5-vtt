@@ -4,6 +4,7 @@ import { formatMetres } from '@vtt/shared';
 import {
   COMBAT_INITIATIVE_MAX,
   COMBAT_INITIATIVE_MIN,
+  CPRED_BACKUP_TIERS,
   ROLE_GM,
   findInitiativeTies,
 } from '@vtt/shared';
@@ -17,6 +18,7 @@ import {
   reorderCombat,
   rerollCombatTie,
   resetCombatTurn,
+  resolveBackup,
   rollCombatInitiativeForAll,
   setCombatInitiative,
   startCombat,
@@ -443,6 +445,66 @@ export function CombatPanel() {
         })}
       </ol>
 
+      {/* Etap 30c: kto jest w drodze, ale jeszcze nie stoi na mapie. Wiersz nie
+          jest uczestnikiem — nie ma inicjatywy ani tury — więc siedzi pod
+          kolejką, a nie w niej. Gracze widzą, że pomoc jedzie; pytanie o drugą
+          grupę jest wycięte po ich stronie. */}
+      {(combat.reinforcements ?? []).length > 0 && (
+        <ul className="combat-reinforcements">
+          {(combat.reinforcements ?? []).map((row) => (
+            <li key={row.id} className="combat-reinforcement">
+              <span className="combat-reinforcement-name">
+                {row.label} ×{row.count}
+              </span>
+              <span className="combat-tag">
+                {row.round > combat.round
+                  ? `za ${row.round - combat.round} ${roundsWord(row.round - combat.round)}`
+                  : 'lada moment'}
+              </span>
+              {isGm && row.question && (
+                <span className="combat-reinforcement-ask">{row.question}</span>
+              )}
+              {isGm && (
+                <span className="combat-reinforcement-buttons">
+                  {row.question && (
+                    <select
+                      defaultValue=""
+                      aria-label="Druga grupa Wsparcia"
+                      onChange={(e) => {
+                        if (e.target.value) void resolveBackup(row.id, 'second', e.target.value);
+                      }}
+                    >
+                      <option value="">— wybierz drugą grupę —</option>
+                      {CPRED_BACKUP_TIERS.map((tier) => (
+                        <option key={tier.id} value={tier.id}>
+                          {tier.name} ×{tier.count}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  <button
+                    type="button"
+                    className="small-button"
+                    onClick={() => void resolveBackup(row.id, 'place')}
+                    title="Przybywają teraz, nie czekając na swoją rundę"
+                  >
+                    Postaw
+                  </button>
+                  <button
+                    type="button"
+                    className="small-button small-button--danger"
+                    onClick={() => void resolveBackup(row.id, 'cancel')}
+                    title="Nikt jednak nie przyjedzie"
+                  >
+                    Odwołaj
+                  </button>
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
       {/* Action buttons belong to whoever may actually act: the GM (always,
           for the acting participant) and a player on their own turn — or with
           an Action they held into somebody else's. */}
@@ -493,4 +555,13 @@ export function CombatPanel() {
       )}
     </div>
   );
+}
+
+/** „za 1 Rundę" / „za 3 Rundy" / „za 5 Rund" — polski liczy na trzy sposoby. */
+function roundsWord(count: number): string {
+  if (count === 1) return 'Rundę';
+  const tens = count % 100;
+  const ones = count % 10;
+  if (ones >= 2 && ones <= 4 && (tens < 12 || tens > 14)) return 'Rundy';
+  return 'Rund';
 }

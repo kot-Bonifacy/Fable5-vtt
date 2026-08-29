@@ -49,6 +49,7 @@ import {
 } from './tokens.js';
 import { sweepTimedEffects } from './timed-effects.js';
 import { runZonesAtTurnEnd } from './zones.js';
+import { sweepBackupArrivals } from './backup.js';
 import {
   INCLUDE_CHAT_NAMES,
   broadcastChatMessage,
@@ -121,6 +122,10 @@ export async function advanceTurn(
   // has no turn to hang a hook on, and „the civilian never recovers" would be a
   // bug nobody would think to look for.
   await sweepTimedEffects(deps, campaignId, scene, pointer.round);
+  // Stage 30c: and whoever the radio promised. Swept over the scene for the
+  // same reason the timers are — arrival is a fact about the fight, not about
+  // anybody's turn, and a group whose caller has since died still turns up.
+  await sweepBackupArrivals(deps, campaignId, scene, pointer.round, user);
 
   if (pointer.activeCombatantId === null) return;
   const started = await loadCombatById(deps.ctx.prisma, combat.id);

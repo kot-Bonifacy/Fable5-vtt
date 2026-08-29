@@ -92,36 +92,37 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 | 30  | ~~Zdolności Specjalne dziewięciu Ról~~        | ⛔     | rozdzielony 29.08 |
 | 30a | Szkielet Zdolności Ról i Zmysł Walki Solo     | ✅     | 2026-08-29        |
 | 30b | Medycyna Medyka i Twórca Technika             | ✅     | 2026-08-29        |
-| 30c | Wsparcie i Praca Zespołowa                    | ⬜     |                   |
+| 30c | Wsparcie i Praca Zespołowa                    | ✅     | 2026-08-29        |
 | 30d | Charyzma, Znajomości, Moto, Wiarygodność      | ⬜     |                   |
 | 31  | Dodatki do broni                              | ⬜     |                   |
 
 ## Od czego zacząć
 
-**Ostatnia sesja (29.08, czwarta) zamknęła etap 30b** — Medyk i Technik dostali swoje Zdolności.
-Obie stoją na jednej maszynerii Specjalizacji (`roleability.ts`), a przy okazji **domknęła się
-dziura z etapu 15: Rany Krytyczne dawało się dotąd tylko skasować, nigdy wyleczyć**. Teraz rana
-niesie zdania z tabeli („Ratownictwo medyczne PT 15 lub Chirurgia PT 13"), guzik „Lecz" przy niej
-otwiera rzut, a Chirurgia jest dostępna wyłącznie Medykowi z punktem w tej Specjalizacji. Opis
-etapu miał **trzy błędy** (sakiewka Medycyny, nazwy Specjalizacji, dziesięć zamiast jedenastu
-skutków Ulepszania) — wszystkie policzone w podręczniku i poprawione w `etap-30b-*.md`.
+**Ostatnia sesja (29.08, piąta) zamknęła etap 30c** — Stróż Prawa wzywa Wsparcie, a Korpo ma
+zespół. Obie połowy rozeszły się maszynerią, wbrew opisowi etapu: funkcjonariusze to statyści
+z profilem bojowym (tabela z s. 158 to dokładnie te pięć liczb), ale **członkowie zespołu
+dostają pełne karty postaci** — Korporacyjny Netrunner ma w pakiecie cyberdek i Interfejs 2,
+więc jako statysta nie mógłby zrobić jedynej rzeczy, do której istnieje. Opis etapu miał **trzy
+błędy** (pięć kategorii zamiast sześciu, `CpredCombatProfile` dla zespołu, „martwa" flaga uników)
+— wszystkie policzone w podręczniku i poprawione w `etap-30c-*.md`.
 
-**Od czego zacząć: 30c** (Wsparcie Stróża Prawa + Praca Zespołowa Korpo) — obie stawiają NPC ze
-statblokiem na mapie, więc to inna maszyneria niż 30a/30b i warto ją zrobić w całości naraz.
-Poza tym nadal wolne: **27g** (wydajność, poligon „Korytarz 16e" gotowy), **28** (wdrożenie na
-VPS), **29** (rozwój za PD i wieloklasowość — to on odblokowuje **kupowanie** poziomów Zdolności,
-które dziś podbija się ręcznie polem na karcie), **30d** i **31** (dodatki do broni; to on
-odblokowuje siedem z dziesięciu skutków Ulepszania).
+**Od czego zacząć: 30d** (Efekt Charyzmy, Znajomości, Moto, Wiarygodność) — cztery ostatnie
+Zdolności Ról, wszystkie o kształcie „tabela poziomów + jeden rzut + proza", więc domykają
+etap 30 jedną sesją. Poza tym nadal wolne: **27g** (wydajność, poligon „Korytarz 16e" gotowy),
+**28** (wdrożenie na VPS), **29** (rozwój za PD i wieloklasowość — to on odblokowuje
+**kupowanie** poziomów Zdolności, które dziś podbija się ręcznie polem na karcie) i **31**
+(dodatki do broni; to on odblokowuje siedem z dziesięciu skutków Ulepszania).
 
-**Dług oględzin to 18 pozycji** (`zaleglosci.md`, +2 z czwartej sesji 29.08). Bez modelu da się
-dziś obejrzeć **sześć**: **komplet 30b** (sześć punktów, na górze listy), Celowanie, pakiet A+B
-z drugiej sesji, **komplet 30a**, lukę w edytorze kompendium i pomiar fps przypisany do 27g.
-Reszta — **dziewięć pozycji** — czeka na **żywy model**: 20a/20b, 19a–19c, dwie ścieżki 24c
-i maszynopis wypowiedzi.
+**Dług oględzin to 23 pozycje** (`zaleglosci.md`, +4 z piątej sesji 29.08; poprzednia notatka
+mówiła o 18 — przeliczone, było 19). Bez modelu da się dziś obejrzeć **dziewięć**: **komplet
+30c** (siedem punktów, na górze listy), **komplet 30b**, Celowanie, pakiet A+B z drugiej sesji,
+**komplet 30a**, lukę w edytorze kompendium i pomiar fps przypisany do 27g. Reszta czeka na
+**żywy model**: 20a/20b, 19a–19c, dwie ścieżki 24c i maszynopis wypowiedzi.
 
-**Do oględzin 30a/30b trzeba postaci z Rolą Solo, Medyk i Technik.** Żadna karta na scenach
-testowych ich nie ma (`avatar9` to netrunner), więc pierwszy krok to przestawienie Roli na karcie
-— albo nowa figura. Rola zmienia się jednym polem, a panel Specjalizacji pojawia się od razu.
+**Do oględzin 30a–30c trzeba postaci z Rolą Solo, Medyk, Technik, Stróż Prawa i Korpo.** Żadna
+karta na scenach testowych ich nie ma (`avatar9` to netrunner), więc pierwszy krok to
+przestawienie Roli na karcie — albo nowa figura. Rola zmienia się jednym polem, a panel
+Zdolności pojawia się od razu.
 
 **Uwaga po 29.08: `data/private/cpred/compendium/` bywa starsze niż parser.** Regeneracja
 importem dołożyła Miotaczowi ognia `ammoPatterns: ['shell']`, którego plik na dysku nie miał —
@@ -159,12 +160,13 @@ zauważono, a nie stanu repozytorium.
 
 **Rozstrzygnięte 28.08 (MG): remis w teście na PT to sukces.** `cpredAmmoCheckOutcome` liczy
 `total >= dv`; ogień zaporowy zostaje przy „remis wygrywa obrońca", bo tam PT to wynik rzutu
-strzelca. Pełny zapis w `decyzje-i-uproszczenia.md`.
+strzelca. Pełny zapis w `decyzje-i-uproszczenia.md`. **Wyjątek od 30c: Test Lojalności zdaje się
+przy wyniku _mniejszym_ od Lojalności** — remis oznacza odmowę (s. 154).
 
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
 a od 30a pierwszym, przy którym **Solo w drużynie naprawdę gra inaczej niż reszta**.
 
-**Testy na koniec ostatniej sesji:** 1481 w `shared`, 819 na serwerze, 62 u klienta — zielone.
+**Testy na koniec ostatniej sesji:** 1552 w `shared`, 845 na serwerze, 62 u klienta — zielone.
 ESLint i Prettier czyste na całym repo, `pnpm -r build` przechodzi.
 
 ## Umowy kodu — indeks
@@ -222,6 +224,10 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 - **Przydział Specjalizacji** jedzie **zwykłą łatą karty** (awans nie ma czym zapłacić Akcji), ale rozmiar sakiewki sprawdza `cpredSpecialtiesProblem` **na scalonej karcie** w `character:update` — dzięki temu awans i wydanie punktów mieszczą się w jednej łacie.
 - **Zdanie z tabeli ran o leczeniu** (`quickFix`/`treatment`) jedzie **na wierszu rany** jak każdy inny jej skutek; czyta je `cpredParseCare`. Nowa droga leczenia = jeden wpis w `CARE_SKILLS`, nigdy nowe pole kompendium.
 - **Umiejętność dostępna tylko przez Zdolność Roli** (Chirurgia, Technologia Medyczna) **nie trafia do `skills.json`** — mieszka w `CPRED_MEDICINE_SKILLS`, poziom liczy `cpredMedicineSkillLevel`, a rzut nią rozstrzyga gałąź `isCpredMedicineSkillId` w planerze.
+- **Zdolność stawiająca cudze figury** (Wsparcie) idzie przez trzy warstwy: dane `CpredBackupTier`, czysty `cpredBackupCall`, serwerowy `backup.ts`. **Broń szuka się po nazwie w kompendium**, nigdy po id — jak rany przez `criticalInjuryAt`.
+- **Stan gry dotyczący całej walki** (nie uczestnika) mieszka w `Combat.systemState` — nieprzezroczystej kolumnie jak `turnState`; tłumaczy ją `reinforcementsOf` na `ReinforcementView`. Umiera razem z walką i to jest jej sens.
+- **Zespół Korpo to karty postaci** (`ownerId: null`), a **Lojalność siedzi na karcie pracodawcy** (`CpredCharacterData.team`): to cecha układu, nie osoby. Kasowanie karty sprząta wiersz przez `dropFromTeams` — JSON nie kaskaduje.
+- **Cyborgizacje pakietu BN-a z gotowymi Cechami zostają prozą** — prawdziwe wiersze chromu policzyłyby Człowieczeństwo drugi raz („Wzięto to już pod uwagę", s. 155).
 
 ## Pułapki dev — indeks
 
@@ -286,10 +292,78 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 - **W trwającej walce jeden strzał wysyła dwie wiadomości czatu** — najpierw wpis dziennika Akcji, potem kartę rzutu; `once('chat:message')` łapie tę pierwszą. Test czekający na kafel ataku musi filtrować po `message.roll?.attack`.
 - **`weapon:reload` w walce kosztuje Akcję i potrafi odmówić** — pętla testowa dostrzeliwująca magazynek zostaje z pustą bronią; uzupełniaj łatą karty (`ammoCurrent: ammoMax`).
 - **Ten sam rzut obrażeń potrafi wylosować ranę z tabeli** (dwie szóstki na 5k6 to ~20% strzałów), więc Celowanie w nogę bywa Celowaniem w nogę **już złamaną** — wygląda jak regres reguły, jest pechem kości.
+- **Publiczna próbka `skills.json` ma 42 z 66 Umiejętności**, a `validateSkills` wycina resztę po cichu — pakiet wpisany kodem traci na niej poziomy. To brak danych, nie regres.
+- **`damageReduced` to `min(redukcja, obrażenia)`** — test Redukcji obrażeń na broni `1k6` migocze raz na sześć przebiegów. Broni testowej podnosi się **minimum**, nie średnią.
+- **Cecha karty nie może wynosić 0** (`CPRED_STAT_MIN` = 1): `validateStats` odrzuca wtedy **cały** blok i karta wraca z samymi piątkami.
+- **`combat:next` przy jednym uczestniku to cała runda** — test czytający kolejkę krokiem tury potrafi sam sprowadzić posiłki. Stan czyta się `state:request`.
+- **Broń bez `compendiumId` nie strzela** — planer odmawia `UNKNOWN_WEAPON` („brak tabeli zasięgów"), tym samym kodem co przy nieistniejącym wierszu.
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 29.08 (piąta) — etap 30c: Wsparcie Stróża Prawa i zespół Korpo
+
+**Zlecenie MG:** kontynuować budowę; z przedstawionych opcji wybór padł na **30c**. Trzy decyzje
+zapadły przed pierwszą linijką kodu: członkowie zespołu dostają **pełne karty postaci**, przybycie
+Wsparcia **odlicza się w rundach i stawia figury samo**, a drugą grupę przy randze 10 **wskazuje
+MG**.
+
+**Opis etapu 30c miał trzy błędy — wszystkie policzone na stronie.** (a) Kategorii Wsparcia jest
+**sześć**, nie pięć: 1–2, 3–4, 5–7, 8, 9 i 10 mają własne ramki, bo od ósemki funkcjonariusze
+przestają być wymienni (Marshal na Supermotocyklu to nie dwóch twardzieli C-SWAT). (b) „Jedna
+maszyneria: tabela → `CpredCombatProfile`" **nie jest prawdą dla zespołu Korpo** — o tym niżej.
+(c) „Wsparcie nie może Unikać" wyglądało na zapis bez skutku, a nie jest: `attack:evade` w tym
+VTT unika pocisków tak samo chętnie jak ostrzy (blokuje to wyłącznie Ludzka tarcza), a Wartość
+bojowa każdej kategorii to 8 lub więcej — dokładnie próg, od którego RAW pozwala unikać pocisków.
+
+**Dwie Zdolności, dwie maszynerie — i to jest cały wynik rozpoznania.** Wsparcie mieści się
+w statyście z 16b co do liczby: tabela drukuje Wartość bojową, OB, PW, RUCH i BC, a profil bojowy
+ma dokładnie te pola (RUCH doszedł jako `move?`). Zespół Korpo **nie mieści się w nim wcale**:
+„Członkowie zespołu zbudowani są tak samo jak Postacie Graczy" (s. 154), a Korporacyjny Netrunner
+dostaje w pakiecie **cyberdek i Interfejs 2** — jako statysta nie mógłby zrobić jedynej rzeczy, do
+której istnieje (`combatProfileSheet` ustawia `cyberdeck: null`). To samo dotyczy Szofera
+i Technika: cztery z pięciu zawodów żyją głównie poza wymianą ognia. Pracownik jest więc zwykłą
+kartą bez właściciela, a Lojalność siedzi **na karcie pracodawcy** — bo to cecha układu, nie
+osoby: ten sam ochroniarz u innego Korpo zaczyna od nowa na 1k6+1.
+
+**Odliczanie rund dostało kolumnę, nie tabelę.** „Rzutem 1k6 określ liczbę Rund potrzebnych
+Wsparciu na przybycie" mierzy w jednostce, która **istnieje wyłącznie w trwającej walce** — więc
+grupa w drodze mieszka w `Combat.systemState`, nieprzezroczystej kolumnie bliźniaczej do
+`Combatant.turnState` z 14b, i umiera razem z walką. Poza walką nie zapisuje się nic: funkcjonariusze
+stają od razu, a ile jechali, mówi zdanie na czacie. Rdzeń trackera dostał `ReinforcementView` —
+wiersz **bez** inicjatywy i tury, malowany pod kolejką, żeby nie udawał uczestnika.
+
+**„Dwie różne grupy Wsparcia" to jedyne miejsce, gdzie VTT pyta MG w środku wezwania.** Podręcznik
+nie mówi, **które** dwie, a zgadywanie po cichu przepisałoby Rolę. Wiersz niesie więc pytanie
+i listę kategorii, a **dopóki pytanie wisi, żadna z grup nie przyjeżdża** — inaczej pierwsza
+stanęłaby na mapie, a druga została pytaniem bez kontekstu. Szóstka podnosi kategorię **ponad
+rangę wzywającego**: sufit rządzi wzywaniem, a nagrodą za szóstkę jest właśnie to, że przyjechał
+ktoś większy, niż wolno było prosić.
+
+**Wsparcie wchodzi do inicjatywy na czyste 1k10 — bo ramka nie drukuje REF.** Doliczenie Wartości
+bojowej postawiłoby C-SWAT na szczycie każdej kolejki na zawsze; wiersz nierzucony schowałby
+posiłki na dnie listy. Broni funkcjonariuszy szuka się **po nazwie w kompendium**, nigdy po id —
+ta sama umowa, którą `criticalInjuryAt` ma dla ran, i z tego samego powodu: id powstają przy
+imporcie z polskiej nazwy.
+
+**Cyborgizacje pakietu zostają prozą i to jest wierność, nie skrót.** „Nie musisz obniżać Empatii
+tej Postaci z uwagi na Utratę Człowieczeństwa […] Wzięto to już pod uwagę" (s. 155) — prawdziwe
+wiersze chromu policzyłyby Człowieczeństwo drugi raz. Przy okazji wyszło, że **Cecha karty nie
+może wynosić 0**: tabele zawodów nie drukują Szczęścia, a `luck: 0` kazałby walidacji odrzucić
+**cały** blok Cech i karta wróciłaby z samymi piątkami. Pracownik ma więc `luck: 1` i pustą
+sakiewkę.
+
+**Naprawione przy okazji: `combat-awareness.test.ts` migotał od etapu 30a.** `damageReduced` to
+`min(redukcja, obrażenia)`, a zbir bił pałką za `1k6` — jedynka na kości dawała redukcję 1 zamiast
+2 i test padał raz na sześć przebiegów. Broń podniesiona do `1k6+3` (minimum, nie średnia). Osiem
+przebiegów pod rząd czysto; wniosek w pułapkach.
+
+**Testy:** 1552 w `shared` (+38), **845** na serwerze (+19), 62 u klienta — zielone. ESLint
+i Prettier czyste, `pnpm -r build` przechodzi. Migracja: `stage30c_combat_system_state`. **Nic
+z tej sesji nie było oglądane w przeglądarce** — siedem punktów do odklikania stoi na górze
+`zaleglosci.md`, a do oględzin trzeba postaci z Rolą **Stróż Prawa** i **Korpo** (żadna karta na
+scenach testowych ich nie ma).
 
 ### Sesja 29.08 (czwarta) — etap 30b: Medycyna Medyka i Twórca Technika
 
@@ -372,72 +446,3 @@ złamaną** i słusznie nie dokładało nic. Dziesięć przebiegów pod rząd cz
 i Prettier czyste, `pnpm -r build` przechodzi. **Nic z tej sesji nie było oglądane
 w przeglądarce** — sześć punktów do odklikania stoi na górze `zaleglosci.md`, a do oględzin trzeba
 postaci z Rolą **Medyk** i **Technik** (żadna karta na scenach testowych ich nie ma).
-
-### Sesja 29.08 (trzecia) — etap 30a: Zdolności Specjalne Ról i Zmysł Walki Solo
-
-**Zlecenie MG:** wybrać etap z listy nierozpoczętych; wybór padł na **30**, z podziałem
-zaproponowanym przed pierwszą linijką kodu, i z panelem przydziału **na karcie postaci plus
-skrótem w pasku akcji**.
-
-**Opis etapu 30 miał trzy błędy — wszystkie sprawdzone w podręczniku i w `roles.json`.**
-(a) Zmysł Walki ma **sześć** zdolności, nie pięć: brakowało **„Wyjścia z opresji"** (s. 146),
-jedynej, która dotyka silnika kości. (b) Trzy Zdolności były przypisane do złych Ról — jest
-Media → **Wiarygodność** (s. 151), Korpo → **Praca Zespołowa** (s. 153), Stróż Prawa →
-**Wsparcie** (s. 158), a w opisie stało odwrotnie. (c) „Lawman/Exec wg podręcznika" — polskie
-wydanie nazywa te Role Stróżem Prawa i Korpo od etapu 13. Poprawki są w `etap-30-zdolnosci-rol.md`.
-
-**Podział na 30a–30d poszedł po maszynerii, nie po Rolach.** Razem siedzą Zdolności, które piszą
-się tym samym kodem: **30a** Zmysł Walki (jedyna wchodząca w rachunek walki), **30b** Medycyna
-i Twórca (Specjalizacje kupowane po dwie przy awansie), **30c** Wsparcie i Praca Zespołowa (obie
-stawiają NPC ze statblokiem na mapie), **30d** Efekt Charyzmy, Znajomości, Moto i Wiarygodność
-(tabela poziomów + jeden rzut + proza).
-
-**Zmysł Walki dotknął pięciu wejść mechaniki naraz** — i to był powód, żeby zrobić go w całości
-w jednej sesji. **Precyzyjny atak** i **Wyczucie zagrożenia** liczą się z samej karty, więc weszły
-wprost do `planCpredAttack` i `skillBreakdown` (podgląd klienta i werdykt serwera zgadzają się bez
-kontekstu). **Błyskawiczna reakcja** siedzi w `readSheetInitiative` i podnosi **modyfikator, ale
-nie rozstrzygnięcie remisu** — RAW rozstrzyga remis po ZR, a trening to nie odruchy.
-**Wyjście z opresji** wymagało nowej opcji silnika kości (`RollOptions.ignoreFumble`): kość
-zostaje na jedynce, dorzutu **nie ma w ogóle** („wynik nadal liczy się jako 1"), a kafel na czacie
-mówi, co ją zdjęło — milczące pominięcie kary czytałoby się jak błąd w kościach.
-
-**Dwie zdolności mówią „pierwsze w tej Rundzie" i to okazało się osobną maszynerią.** Redukcja
-obrażeń i Wykrycie słabości nie są związane z niczyją turą — Solo wchłania pierwszy cios Rundy,
-kto by go nie zadał. Stempel poszedł do `CpredTurnLedger` (`Combatant.turnEffects`), tej samej
-kolumny, którą 14e stemplowała numerami rund **dokładnie dlatego**, że budżet tury jest wydawany
-na nowo przy każdym jej starcie — a „start" obejmuje cofanie kolejki przez MG. `claimRoundOnce`
-pyta i księguje w jednym wywołaniu, więc wołający nie może zapomnieć zapisać; „Cofnij" na karcie
-obrażeń oddaje stempel.
-
-**Redukcja obrażeń liczy się po pancerzu, Wykrycie słabości przed nim — i to jest w podręczniku.**
-s. 146 pisze „zmniejsz o 1 pierwsze **obrażenia otrzymane**", a trzy akapity dalej „+1 do obrażeń
-(**przed uwzględnieniem pancerza**)". Dwa różne sformułowania w jednej ramce warto drukować tylko
-wtedy, gdy znaczą przeciwne końce rachunku. Pancerz ściera się niezależnie: liczy go to, co przez
-niego przeszło, nie to, co wchłonęło ciało. **Bez trwającej walki żadna z tych dwóch nie działa** —
-VTT nie ma Rund poza kolejką, a „każdy cios jest pierwszy" zamieniłoby Redukcję w stały bonus do
-pancerza. Zapisane w `decyzje-i-uproszczenia.md`.
-
-**Przydział wyszedł ze zwykłej łaty karty.** „w trakcie walki (w ramach Akcji)" to cena, a łata
-karty nie ma czym jej zapłacić — więc `character:update` odmawia `combatAwareness` przez
-`FORBIDDEN` (jak `eddies` od 23b), a zapis jedzie `character:combat-awareness`, gdzie tracker widzi,
-komu policzyć Akcję. **Zapis tej samej wartości nie kosztuje nic**, bo „Jeśli Solo nie zmieni
-przydziału tych punktów, zakłada się przydział taki, jaki był do tej pory".
-
-**Progi są egzekwowane co do punktu.** 4 punkty w Precyzyjny atak kupują dokładnie to, co 3, więc
-VTT odmawia zamiast po cichu zaokrąglać w dół i palić punkt, który Solo mogło wydać gdzie indziej.
-Panel wyszarza guzik „+" dokładnie tam, gdzie `cpredCombatAwarenessProblem` odmówiłby zapisu — ta
-sama funkcja po obu stronach.
-
-**Panel to jeden komponent w dwóch domach** (karta postaci pod wierszem Zdolności, pasek akcji nad
-mapą) — kopia znaczyłaby dwie odpowiedzi na pytanie „ile kosztuje Precyzyjny atak 2". Pudełko
-w pasku **nie gaśnie po zużytej Akcji**: otwiera panel, a płaci dopiero zapis. Ikona
-(`combat-awareness.svg`, „Awareness" Lorca) pobrana z game-icons.net, atrybucja dopisana.
-
-**Znalezione przy okazji:** `damage.test.ts` używał `DamageLogEntry` **bez importu** i przechodził
-od nieznanej liczby sesji — vitest transpiluje bez sprawdzania typów, a `pnpm -r build` pomija
-testy. Naprawione; wniosek poszedł do pułapek.
-
-**Testy:** 1481 w `shared` (+44), **819** na serwerze (+10), 62 u klienta — zielone. ESLint
-i Prettier czyste, `pnpm -r build` przechodzi. **Nic z tej sesji nie było oglądane w przeglądarce**
-— sześć punktów do odklikania stoi na górze `zaleglosci.md`, a do oględzin trzeba postaci
-z Rolą **Solo** (żadna karta na scenach testowych jej nie ma).

@@ -394,3 +394,32 @@ zwykle też. Zanim uznasz to za regres, powtórz przebieg.
   przebiegów Celowanie w nogę trafiało w nogę **już złamaną** i słusznie nie dokładało nic.
   Wygląda jak regres reguły, jest pechem kości: test, który chce zdrowej nogi, musi umieć
   ją oddać i strzelić jeszcze raz.
+
+**Publiczna próbka `skills.json` ma 42 z 66 Umiejętności** — a `validateSkills` wycina id spoza
+rejestru **po cichu**, przy każdym odczycie karty. Pakiet Umiejętności wpisany kodem (zespół
+Korpo z 30c) traci więc na próbce część poziomów: `cybertech`, `basic-tech`, `weaponstech`,
+`land-vehicle-tech`, `pilot-air-vehicle`, `language`, `endurance`, `trading` i kilkanaście
+innych po prostu znika. To **nie jest** błąd pakietu ani regres — to brak danych; w grze jedzie
+prywatny `skills.json` z kompletem. Test, który sprawdza taki pakiet, musi asertować na
+Umiejętnościach obecnych w próbce publicznej.
+
+**`damageReduced` to `min(redukcja, obrażenia)`, więc testy Redukcji obrażeń migoczą na małej
+kości.** `combat-awareness.test.ts` bił pałką za `1k6` i sprawdzał „zredukowano o 2" — jedynka na
+kości dawała 1 i test padał raz na sześć przebiegów przez cały etap 30a. Broń w takim teście musi
+mieć **minimum obrażeń większe od redukcji** (`1k6+3`), nie większą średnią.
+
+**Nowa Cecha karty nie może wynosić 0** — `CPRED_STAT_MIN` to 1, a `validateStats` odrzuca
+**cały** blok Cech, gdy choć jedna wypada poza zakres. Objaw jest mylący: karta wraca z samymi
+piątkami, jakby tabela w ogóle się nie wczytała. Tabele zawodów zespołu (30c) nie drukują
+Szczęścia — pracownik dostaje więc `luck: 1` i **pustą sakiewkę** (`luckCurrent: 0`), co przy
+stole znaczy to samo, a przez walidację przechodzi.
+
+**`combat:next` przy jednym uczestniku w kolejce to cała runda** — a odliczanie w rundach
+(przybycie Wsparcia, efekty 16h) rusza dokładnie wtedy. Test, który po wezwaniu robi krok tury,
+żeby przeczytać kolejkę, potrafi w ten sposób sam sprowadzić posiłki. Stan kolejki czyta się
+`state:request`, nie `combat:next`.
+
+**Bronią bez `compendiumId` nie da się strzelić** — planer odmawia `UNKNOWN_WEAPON` („Ta broń nie
+ma tabeli zasięgów"), mimo że wiersz siedzi na karcie. Ta sama odmowa co przy nieistniejącym
+wierszu, więc szukanie zaczyna się od złej strony; wpis z katalogu jest wymagany, bo zasięgi
+mieszkają na typie broni.

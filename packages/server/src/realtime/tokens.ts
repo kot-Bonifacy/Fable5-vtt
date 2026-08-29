@@ -402,6 +402,28 @@ export async function createCharacterToken(
  * instead of stacking into one disc.
  */
 async function freeSpot(prisma: PrismaClient, scene: Scene): Promise<{ x: number; y: number }> {
+  const spots = await freeSpotsNear(prisma, scene, null, 1);
+  return spots[0]!;
+}
+
+/**
+ * The same spiral, but around a point of the caller's choosing and for more
+ * than one figure (stage 30c).
+ *
+ * Backup arrives *next to whoever called it* — four officers materialising in
+ * the middle of the map while the Lawman bleeds in a doorway would be a rule
+ * implemented against its own sentence. Passing `null` keeps the old behaviour
+ * (the middle of the scene), which is what a figure-less spawn wants.
+ *
+ * Squares taken by the group being placed are reserved as they are handed out,
+ * so a patrol of four does not stack into one disc.
+ */
+export async function freeSpotsNear(
+  prisma: PrismaClient,
+  scene: Scene,
+  near: { x: number; y: number } | null,
+  count: number,
+): Promise<{ x: number; y: number }[]> {
   const taken = await prisma.token.findMany({
     where: { sceneId: scene.id },
     select: { x: true, y: true },
@@ -409,24 +431,65 @@ async function freeSpot(prisma: PrismaClient, scene: Scene): Promise<{ x: number
   const step = scene.gridSizePx > 0 ? scene.gridSizePx : 50;
   const snap = toSnapScene(scene);
   const occupied = new Set(taken.map((token) => `${Math.round(token.x)}:${Math.round(token.y)}`));
+  const originX = near?.x ?? scene.width / 2;
+  const originY = near?.y ?? scene.height / 2;
+  const found: { x: number; y: number }[] = [];
 
-  for (let ring = 0; ring < 12; ring += 1) {
-    for (let dy = -ring; dy <= ring; dy += 1) {
-      for (let dx = -ring; dx <= ring; dx += 1) {
+  for (let ring = 0; ring < 12 && found.length < count; ring += 1) {
+    for (let dy = -ring; dy <= ring && found.length < count; dy += 1) {
+      for (let dx = -ring; dx <= ring && found.length < count; dx += 1) {
         // Only the ring's own edge; the inside was searched a lap earlier.
         if (ring > 0 && Math.abs(dx) !== ring && Math.abs(dy) !== ring) continue;
-        const candidate = snapTokenPosition(
-          scene.width / 2 + dx * step,
-          scene.height / 2 + dy * step,
-          1,
-          snap,
-        );
-        if (!occupied.has(`${Math.round(candidate.x)}:${Math.round(candidate.y)}`))
-          return candidate;
+        const candidate = snapTokenPosition(originX + dx * step, originY + dy * step, 1, snap);
+        const key = `${Math.round(candidate.x)}:${Math.round(candidate.y)}`;
+        if (occupied.has(key)) continue;
+        occupied.add(key);
+        found.push(candidate);
       }
     }
   }
-  return snapTokenPosition(scene.width / 2, scene.height / 2, 1, snap);
+  // A scene packed solid still has to produce somewhere to stand: better a
+  // stack the GM drags apart than a call that silently loses its officers.
+  while (found.length < count) found.push(snapTokenPosition(originX, originY, 1, snap));
+  return found;
+}
+
+/**
+ * Puts a figure with no sheet on the map (stage 30c).
+ *
+ * The server's own `token:create`: Backup answers a player's radio, and
+ * `token:create` is GM-only for good reasons that have nothing to do with this.
+ * Deliberately thin — a name, a spot, hit points and the system's opaque blob —
+ * because everything that makes the figure dangerous already lives in that blob.
+ */
+export async function createStatistToken(
+  deps: RealtimeDeps,
+  campaignId: string,
+  scene: Scene,
+  spec: {
+    name: string;
+    at: { x: number; y: number };
+    hp: number;
+    profile: TokenCombatProfile;
+    imageUrl?: string | null;
+  },
+): Promise<Token> {
+  const token = await deps.ctx.prisma.token.create({
+    data: {
+      sceneId: scene.id,
+      name: spec.name,
+      imageUrl: spec.imageUrl ?? null,
+      x: spec.at.x,
+      y: spec.at.y,
+      size: 1,
+      ownerId: null,
+      hpCurrent: spec.hp,
+      hpMax: spec.hp,
+      combatProfile: JSON.stringify(spec.profile),
+    },
+  });
+  await emitTokenUpsert(deps, campaignId, scene, token, null);
+  return token;
 }
 
 /** Loads the sheet a single token is linked to (null when standalone). */

@@ -2,6 +2,7 @@ import { io, type Socket } from 'socket.io-client';
 import type {
   AiAskPayload,
   CpredCombatAwarenessProblem,
+  CpredTeamProblem,
   AiChunkBroadcast,
   AiDoneBroadcast,
   AiErrorBroadcast,
@@ -191,6 +192,7 @@ import {
   CHAT_COMMANDS_HELP,
   CPRED_ATTACK_PROBLEM_MESSAGES,
   CPRED_COMBAT_AWARENESS_PROBLEMS,
+  CPRED_TEAM_PROBLEMS,
   CPRED_FACEDOWN_PROBLEM_MESSAGES,
   CPRED_GRAPPLE_PROBLEM_MESSAGES,
   MAX_DICE_PER_TERM,
@@ -2266,6 +2268,17 @@ export function combatErrorText(code: string): string {
       return 'Stan tokenu nie pozwala na tę Akcję — szczegóły na karcie odmowy.';
     case 'DODGE_BLOCKED':
       return 'W tym stanie nie można Unikać.';
+    // Stage 30c: „Funkcjonariusze Wsparcia nie mogą Unikać pocisków" (s. 158).
+    case 'BACKUP_CANNOT_DODGE':
+      return 'Funkcjonariusze Wsparcia nie mogą Unikać pocisków.';
+    case 'NO_ABILITY':
+      return 'Ta postać nie ma tej Zdolności Specjalnej.';
+    case 'BACKUP_LEVEL_TOO_HIGH':
+      return 'Można wezwać wyłącznie grupę o poziomie nie wyższym niż Zdolność.';
+    case 'BACKUP_NOT_FOUND':
+      return 'Nie ma takiego wezwania w toku.';
+    case 'UNKNOWN_BACKUP_TIER':
+      return 'Nie znam takiej kategorii Wsparcia.';
     // Stage 14e: a Critical Injury took this turn's Action or Move Action away
     // before it began. The wound's own sentence rides on the refusal card.
     case 'ACTION_BLOCKED':
@@ -2441,6 +2454,103 @@ export function fieldRepairErrorText(code: string): string {
       return 'Ta sztuka jest już na prowizorce — najpierw napraw ją zwyczajnie.';
     case 'NOT_PATCHED':
       return 'Ta sztuka nie jest na prowizorce.';
+    default:
+      return combatErrorText(code);
+  }
+}
+
+/**
+ * Wezwanie Wsparcia (etap 30c, s. 158).
+ *
+ * `tokenId` to figura, która płaci Akcję i przy której staną funkcjonariusze;
+ * bez niej wezwanie jest samym rzutem na czacie. Gest kubka jedzie jak przy
+ * każdym innym rzucie, bo to rzut jak każdy inny — tyle że o cudzą pomoc.
+ */
+export async function callBackup(
+  characterId: string,
+  level: number,
+  tokenId?: string,
+  gesture?: RollGesture,
+): Promise<{ ok: boolean; answered?: boolean; rounds?: number | null; secondGroup?: boolean }> {
+  const ack = await emitSceneAck<{
+    answered: boolean;
+    rounds: number | null;
+    tierId: string | null;
+    secondGroup: boolean;
+  }>('character:backup-call', {
+    characterId,
+    level,
+    ...(tokenId ? { tokenId } : {}),
+    ...(gesture ? { gesture } : {}),
+  });
+  if (!ack.ok) {
+    useChatStore.getState().addNote(combatErrorText(ack.error));
+    return { ok: false };
+  }
+  return {
+    ok: true,
+    answered: ack.data?.answered ?? false,
+    rounds: ack.data?.rounds ?? null,
+    secondGroup: ack.data?.secondGroup ?? false,
+  };
+}
+
+/** MG rozstrzyga los grupy w drodze: nazywa drugą, stawia teraz albo odwołuje. */
+export async function resolveBackup(
+  pendingId: string,
+  action: 'second' | 'place' | 'cancel',
+  tierId?: string,
+): Promise<void> {
+  const ack = await emitSceneAck<{ placed: boolean }>('backup:resolve', {
+    pendingId,
+    action,
+    ...(tierId ? { tierId } : {}),
+  });
+  if (!ack.ok) useChatStore.getState().addNote(combatErrorText(ack.error));
+}
+
+/** HR przysyła nowego pracownika: losuje wiersz Cech i Lojalność (etap 30c). */
+export async function hireTeamMember(
+  characterId: string,
+  professionId: string,
+  name: string,
+  replacement?: boolean,
+): Promise<boolean> {
+  const ack = await emitSceneAck<CharacterView>('character:team-hire', {
+    characterId,
+    professionId,
+    name,
+    ...(replacement ? { replacement: true } : {}),
+  });
+  if (!ack.ok) {
+    useChatStore.getState().addNote(teamErrorText(ack.error));
+    return false;
+  }
+  return true;
+}
+
+/** Wszystko, co dzieje się z Lojalnością potem: Test, tabela, koniec sesji, zwolnienie. */
+export async function changeTeamLoyalty(
+  characterId: string,
+  memberId: string,
+  what: { changeId?: string; test?: boolean; endSession?: boolean; dismiss?: boolean },
+): Promise<void> {
+  const ack = await emitSceneAck<CharacterView>('character:team-loyalty', {
+    characterId,
+    memberId,
+    ...what,
+  });
+  if (!ack.ok) useChatStore.getState().addNote(teamErrorText(ack.error));
+}
+
+/** Polskie zdania dla odmów zespołu — te same, którymi silnik wyszarza guziki. */
+export function teamErrorText(code: string): string {
+  if (code in CPRED_TEAM_PROBLEMS) return CPRED_TEAM_PROBLEMS[code as CpredTeamProblem];
+  switch (code) {
+    case 'TEAM_MEMBER_NOT_FOUND':
+      return 'Tej osoby nie ma w zespole.';
+    case 'INVALID_NAME':
+      return 'Pracownik potrzebuje imienia.';
     default:
       return combatErrorText(code);
   }

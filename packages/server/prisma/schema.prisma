@@ -865,6 +865,16 @@ model Combat {
   round   Int    @default(0)
   /// Whose turn it is; null before the first round starts.
   activeCombatantId String?
+  /// What the game system needs to remember about the fight **as a whole**
+  /// (stage 30c), serialized the same opaque way `Combatant.turnState` is. The
+  /// tracker stores the string and never reads a field of it.
+  ///
+  /// So far exactly one thing: reinforcements on their way. „Rzutem 1k6 określ
+  /// liczbę Rund potrzebnych Wsparciu na przybycie" (s. 158) is a fact about
+  /// the fight rather than about any participant — nobody has a turn to hang it
+  /// on, and it dies with the combat, which is precisely the lifetime this
+  /// column has.
+  systemState String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

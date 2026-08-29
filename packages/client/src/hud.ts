@@ -17,6 +17,8 @@ import {
   ROLE_GM,
   cpredHotbarGroups,
   cpredRoleAbilityRank,
+  CPRED_ACTION_BACKUP,
+  CPRED_BACKUP_ABILITY,
   CPRED_COMBAT_AWARENESS_ABILITY,
   cpredInterfaceRank,
   cpredMoveBudgetFromSheet,
@@ -283,6 +285,8 @@ export function hudContextFor(tokenId: string | null): HudContext {
     // Stage 30a: the box is on a Solo's bar and on nobody else's, the same way
     // the Scanner is a netrunner's.
     combatAwareness: hasCombatAwareness(character?.data ?? null),
+    // Stage 30c: and the radio is on a Stróż Prawa's bar and on nobody else's.
+    backup: hasAbility(character?.data ?? null, CPRED_BACKUP_ABILITY),
   });
 
   const shown = refusal ? slots.map((slot) => ({ ...slot, disabled: refusal })) : slots;
@@ -327,9 +331,14 @@ function isNetrunnerSheet(data: CpredCharacterData | null): boolean {
  * condition.
  */
 function hasCombatAwareness(data: CpredCharacterData | null): boolean {
+  return hasAbility(data, CPRED_COMBAT_AWARENESS_ABILITY);
+}
+
+/** Does this sheet carry the named Special Ability at all? (stage 30c) */
+function hasAbility(data: CpredCharacterData | null, ability: string): boolean {
   if (!data) return false;
   const registry = useCharacterStore.getState().registry;
-  return cpredRoleAbilityRank(data, registry, CPRED_COMBAT_AWARENESS_ABILITY) !== null;
+  return cpredRoleAbilityRank(data, registry, ability) !== null;
 }
 
 /**
@@ -522,6 +531,12 @@ export function activateSlot(slot: CpredHotbarSlot, tokenId: string): void {
   // kazałoby zapłacić za samo zajrzenie do własnych punktów.
   if (slot.actionId === CPRED_ACTION_COMBAT_AWARENESS) {
     hud.setForm('awareness');
+    return;
+  }
+  // To samo z radiem (etap 30c): pudełko otwiera listę kategorii, a Akcję
+  // płaci serwer dopiero przy rzucie — i płaci ją nawet, gdy nikt nie odbierze.
+  if (slot.actionId === CPRED_ACTION_BACKUP) {
+    hud.setForm('backup');
     return;
   }
   // The Scanner rolls where the figure stands and has its own event: the server

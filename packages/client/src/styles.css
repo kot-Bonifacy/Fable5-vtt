@@ -5804,6 +5804,122 @@ body.is-resizing {
   margin: 0.2rem 0 0;
 }
 
+/* Etap 30c: Wsparcie i zespół Korpo. Oba panele stoją na tym samym arkuszu, co
+   Zmysł Walki — różnią się tym, że wiersz niesie zdanie o ludziach, a nie
+   liczbę punktów, więc siatka `.awareness-row` gubi jedną kolumnę. */
+.backup-row,
+.team-row {
+  grid-template-columns: 1fr auto auto;
+}
+
+.backup-stats {
+  color: var(--text-dim);
+  font-size: 0.72rem;
+}
+
+.team-row {
+  grid-template-columns: 1fr auto auto;
+}
+
+.team-loyalty {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin: 0.2rem 0 0.3rem;
+  padding: 0;
+  list-style: none;
+}
+
+.team-loyalty button {
+  width: 100%;
+  padding: 0.1rem 0.3rem;
+  text-align: left;
+  font-size: 0.72rem;
+  line-height: 1.25;
+}
+
+.team-loyalty-tail {
+  display: flex;
+  gap: 0.3rem;
+  margin-top: 0.2rem;
+}
+
+.team-loyalty-tail button {
+  width: auto;
+}
+
+.team-gain {
+  color: var(--ok);
+  font-variant-numeric: tabular-nums;
+}
+
+.team-loss {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.team-hire {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+.team-hire input {
+  flex: 1 1 8rem;
+  min-width: 6rem;
+}
+
+.team-perks {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-dim);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+/* Kto jest w drodze (etap 30c). Pod kolejką, nie w niej: wiersz nie ma
+   inicjatywy ani tury, więc nie może wyglądać jak uczestnik. */
+.combat-reinforcements {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0.35rem 0 0;
+  padding: 0.3rem 0 0;
+  border-top: 1px dashed var(--border);
+  list-style: none;
+}
+
+.combat-reinforcement {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+}
+
+.combat-reinforcement-name {
+  flex: 1 1 8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.combat-reinforcement-ask {
+  flex: 1 1 100%;
+  color: var(--text-dim);
+  font-size: 0.72rem;
+}
+
+.combat-reinforcement-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  align-items: center;
+}
+
 /* Whoever asked the system for less motion gets less motion: the flying number
    and the two pulses are the only things here that move on their own. */
 @media (prefers-reduced-motion: reduce) {

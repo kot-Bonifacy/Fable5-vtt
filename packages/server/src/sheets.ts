@@ -12,6 +12,9 @@ import type {
   CpredPeriodicDamage,
   CpredRegistry,
   CpredReputation,
+  CpredBackupPending,
+  CpredBackupTier,
+  CpredCombatState,
   CpredTurnCarryInput,
   CpredTurnProblem,
   CpredTurnSpend,
@@ -21,6 +24,7 @@ import type {
   CpredTimedInjury,
   DiceRng,
   RollBreakdownEntry,
+  ReinforcementView,
   TokenHp,
   TurnBudgetView,
 } from '@vtt/shared';
@@ -61,6 +65,10 @@ import {
   CPRED_HEAD_DAMAGE_MULTIPLIER,
   cpredAction,
   cpredActionBlock,
+  cpredBackupDue,
+  cpredBackupTier,
+  describeBackupPending,
+  readCpredCombatState,
   cpredDodgeBlock,
   cpredExpiringStatuses,
   cpredExpiryRound,
@@ -1350,6 +1358,46 @@ export function turnProblemMessage(problem: SheetTurnProblem): string {
 }
 
 /** The tracker's projection of a stored budget (`null` before the turn starts). */
+/**
+ * What the fight as a whole is still owed (stage 30c) — the twin of
+ * `turnBudgetOf`, one level up.
+ *
+ * The tracker asks; the system answers with rows it can paint. Everything CP
+ * RED needs to *place* the group (which category, whose radio, where they
+ * stand) stays inside the opaque column and never reaches the core.
+ */
+export function reinforcementsOf(stored: string | null): ReinforcementView[] {
+  const state = readCpredCombatState(stored);
+  return state.backup.map((entry) => {
+    const tier = cpredBackupTier(entry.tierId);
+    const view: ReinforcementView = {
+      id: entry.id,
+      label: describeBackupPending(entry),
+      count: tier?.count ?? 1,
+      round: entry.arriveAtRound,
+    };
+    if (entry.awaitingSecond) {
+      view.question = 'Przybywa druga grupa Wsparcia — MG wybiera jej kategorię.';
+    }
+    return view;
+  });
+}
+
+/** The system's whole memory of a running fight, parsed. */
+export function combatSystemState(stored: string | null): CpredCombatState {
+  return readCpredCombatState(stored);
+}
+
+/** Groups whose round has come and gone. */
+export function backupDue(state: CpredCombatState, round: number): CpredBackupPending[] {
+  return cpredBackupDue(state, round);
+}
+
+/** One category of Backup, by id. */
+export function backupTierById(id: string): CpredBackupTier | null {
+  return cpredBackupTier(id);
+}
+
 export function turnBudgetOf(
   stored: string | null,
   moveNote?: string | null,

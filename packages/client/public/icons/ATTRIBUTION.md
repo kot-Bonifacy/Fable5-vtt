@@ -26,6 +26,7 @@ plików również usunięto czarne tło. Nazwę ikony wybiera `shared`
 | `hud/ammo.svg`             | Machine gun magazine | Delapouite   | zapas amunicji (rezerwa etapu 27i)    |
 | `hud/armor.svg`            | Kevlar vest          | Skoll        | chip SP w panelu postaci              |
 | `hud/bow.svg`              | Bow arrow            | Delapouite   | slot broni: łuk                       |
+| `hud/backup.svg`           | Police officer head  | Delapouite   | akcja „Wezwanie Wsparcia” (30c)       |
 | `hud/broadsword.svg`       | Broadsword           | Lorc         | slot broni: duża broń biała           |
 | `hud/crossbow.svg`         | Crossbow             | Carl Olsen   | slot broni: kusza                     |
 | `hud/combat-awareness.svg` | Awareness            | Lorc         | akcja „Zmysł Walki” (30a)             |

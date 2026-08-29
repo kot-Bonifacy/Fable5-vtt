@@ -31,6 +31,7 @@ import { useRollStore } from '../stores/rollStore.js';
 import { useSelectionStore } from '../stores/selectionStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { CombatAwarenessPanel } from './CombatAwarenessPanel.js';
+import { BackupPanel } from './BackupPanel.js';
 import { GrapplePanel, HoldActionForm, StabilizePicker } from './CombatForms.js';
 import { HudIcon } from './HudIcon.js';
 import { TurnBudget } from './TurnBudget.js';
@@ -715,8 +716,19 @@ export function CombatHud() {
               />
             </div>
           )}
+          {/* Etap 30c: to samo dotyczy radia — „będąc w niebezpieczeństwie"
+              obejmuje też chwilę przed pierwszą inicjatywą. */}
+          {form === 'backup' && token.characterId && (
+            <div className="hud-form">
+              <BackupPanel
+                characterId={token.characterId}
+                tokenId={token.id}
+                onDone={() => setForm(null)}
+              />
+            </div>
+          )}
 
-          {form && form !== 'awareness' && combat && context.combatant && (
+          {form && form !== 'awareness' && form !== 'backup' && combat && context.combatant && (
             <div className="hud-form">
               {form === 'hold' && (
                 <HoldActionForm combatantId={context.combatant.id} onDone={() => setForm(null)} />
@@ -739,7 +751,7 @@ export function CombatHud() {
               )}
             </div>
           )}
-          {form && form !== 'awareness' && !context.combatant && (
+          {form && form !== 'awareness' && form !== 'backup' && !context.combatant && (
             <p className="hud-refusal">
               Ta akcja wymaga trwającej walki — dodaj token do kolejki inicjatywy.
             </p>

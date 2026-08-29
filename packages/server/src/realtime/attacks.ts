@@ -1420,6 +1420,13 @@ export const attackEvadeEvent = defineEvent<AttackEvadePayload, { total: number;
       }
       const profile = readSheetCombatProfile(target.combatProfile);
       if (!profile) throw new RealtimeError('TOKEN_HAS_NO_PROFILE');
+      // „Funkcjonariusze Wsparcia nie mogą Unikać pocisków" (s. 158, stage 30c).
+      // Ranged only, exactly as printed — an officer parries a machete with his
+      // Wartość bojowa like anybody else. Checked here rather than by zeroing
+      // Unik, because a zero would still buy them a 1k10 against the shot.
+      if (profile.noBulletDodge === true && !meta.melee) {
+        throw new RealtimeError('BACKUP_CANNOT_DODGE');
+      }
       defenderName = target.name;
       data = sheetFromCombatProfile(profile, sheetTokenHp(target), null);
     }

@@ -39,6 +39,7 @@ import {
   sheetSlowedMoveModifier,
   spendTurnState,
   spendUsesAction,
+  reinforcementsOf,
   turnBudgetOf,
   type SheetMoveBudget,
   type SheetRegistry,
@@ -201,12 +202,16 @@ export function toCombatantView(row: CombatantRow, combat: CombatRow): Combatant
 
 /** The GM's full view — sorted, with hidden participants included. */
 export function toCombatView(row: CombatRow): CombatView {
+  // Who is still on their way (stage 30c). The system reads its own column and
+  // hands back rows; the tracker paints them and counts the rounds down.
+  const reinforcements = reinforcementsOf(row.systemState);
   return {
     id: row.id,
     sceneId: row.sceneId,
     round: row.round,
     activeCombatantId: row.activeCombatantId,
     combatants: sortCombatants(row.combatants.map((combatant) => toCombatantView(combatant, row))),
+    ...(reinforcements.length > 0 ? { reinforcements } : {}),
   };
 }
 
@@ -375,6 +380,18 @@ function rollInitiative(
   }
   const formula: RollFormula = { terms };
   return { result: rollFormula(formula, createMixedRng(entropy), { checkRule: false }), formula };
+}
+
+/**
+ * A bare 1d10, for a figure the rules give no REF (stage 30c).
+ *
+ * Wsparcie is the case: its printed block carries a Wartość bojowa, an OB, PW,
+ * RUCH and BC and no reflexes at all. Adding the combat value would park a
+ * C-SWAT trooper at the top of every queue for ever; leaving the row unrolled
+ * would hide the reinforcements at the bottom until somebody noticed them.
+ */
+export function rollFlatInitiative(): number {
+  return rollInitiative(0, undefined).result.total;
 }
 
 /**

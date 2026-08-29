@@ -26,11 +26,13 @@ import {
   readCpredCombatAwareness,
   readCpredFabrication,
   readCpredMedicine,
+  readCpredTeam,
   CPRED_COMBAT_AWARENESS_PROBLEMS,
   CPRED_SPECIALTY_PROBLEMS,
   type CpredCombatAwareness,
   type CpredFabrication,
   type CpredMedicine,
+  type CpredTeamMember,
 } from './roleability.js';
 import {
   createDefaultLifepath,
@@ -604,6 +606,21 @@ export interface CpredCharacterData {
    */
   medicine: CpredMedicine;
   fabrication: CpredFabrication;
+  /**
+   * The Korpo's team (s. 154, stage 30c): who HR has assigned and how loyal
+   * they are. `[]` on every sheet whose Role has a different Special Ability.
+   *
+   * The employees themselves are ordinary `Character` rows — „Członkowie
+   * zespołu zbudowani są tak samo jak Postacie Graczy" — so only an id lives
+   * here. What does live here is Loyalty, because it is a property of the
+   * *relationship*, not of the person: the same employee working for somebody
+   * else would start again at 1k6+1.
+   *
+   * Written only through the `character:team-*` events, never by a sheet patch:
+   * hiring rolls dice, replacing costs 200 ed, and a Loyalty test is the GM's
+   * roll — three prices, and a patch has no way to pay any of them.
+   */
+  team: CpredTeamMember[];
   /** skillId → level 1–10; untrained skills are simply absent. */
   skills: Record<string, number>;
   /**
@@ -795,6 +812,7 @@ export function createDefaultCharacterData(): CpredCharacterData {
     combatAwareness: {},
     medicine: {},
     fabrication: {},
+    team: [],
     skills: {},
     skillSpecialties: {},
     weapons: [],
@@ -1358,6 +1376,17 @@ function collectCharacterDataPatch(
       const problem = cpredFabricationProblem(readCpredFabrication(raw), ROLE_RANK_MAX);
       if (problem !== null) issues.push(issue('fabrication', CPRED_SPECIALTY_PROBLEMS[problem]));
       else patch.fabrication = readCpredFabrication(raw);
+    }
+  }
+  // Stage 30c: the roster's shape only. Whether the rank pays for this many
+  // employees is decided against the merged sheet (`cpredTeamProblem`), for the
+  // same reason the two purses above stop short — and in practice this path is
+  // closed anyway: `character:update` refuses a patch that carries `team`.
+  if ('team' in input) {
+    if (!Array.isArray(input.team)) {
+      issues.push(issue('team', 'Zespół musi być listą.'));
+    } else {
+      patch.team = readCpredTeam(input.team);
     }
   }
   if ('skills' in input) {

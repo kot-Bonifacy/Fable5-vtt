@@ -85,6 +85,28 @@ export interface CpredCombatProfile {
   skillLevel: number;
   /** Level of „Unik" — the defence half of the profile (stage 16b decision). */
   evasion: number;
+  /**
+   * RUCH, when this figure has one worth naming (stage 30c). Absent on every
+   * profile stage 16b wrote, which keeps their JSON byte-identical — a statist
+   * without it walks at the ordinary human's 5.
+   *
+   * Here because Backup officers arrive with a printed one: „RUCH i BC: Cechy
+   * Ruch i BC Wsparcia, istotne przy rozpatrywaniu dystansu" (s. 158), and a
+   * C-SWAT trooper who covers the same ground as a passer-by would make the
+   * table's metres a lie.
+   */
+  move?: number;
+  /**
+   * „Funkcjonariusze Wsparcia nie mogą Unikać pocisków" (s. 158, stage 30c).
+   *
+   * A real flag rather than an `evasion` of zero, because in this project the
+   * two are not the same thing: `attack:evade` ducks bullets as happily as
+   * blades, so a zero would still buy a 1d10 against the shot. And it is
+   * ranged-only, exactly as printed — an officer parries a machete with his
+   * Wartość bojowa like anybody else. The twin of the Human Shield's own
+   * refusal in `attack:evade`, and blocked in the same place.
+   */
+  noBulletDodge?: boolean;
   /** Worn armour's Stopping Power; 0 = unarmoured. Ablates like a sheet's. */
   armorSp: number;
   /** Compendium weapon this statist fires; null = unarmed. */
@@ -158,6 +180,12 @@ export function sanitizeCombatProfile(raw: unknown): CpredCombatProfile {
     will: clampInt(input.will, CPRED_STAT_MIN, CPRED_STAT_MAX, base.will),
     skillLevel: clampInt(input.skillLevel, SKILL_LEVEL_MIN, SKILL_LEVEL_MAX, base.skillLevel),
     evasion: clampInt(input.evasion, SKILL_LEVEL_MIN, SKILL_LEVEL_MAX, base.evasion),
+    // Both omitted when they carry nothing, for the reason `criticalInjuries`
+    // is: an untouched ganger's JSON has to round-trip to what 16b wrote.
+    ...(typeof input.move === 'number' && Number.isFinite(input.move)
+      ? { move: clampInt(input.move, CPRED_STAT_MIN, CPRED_STAT_MAX, STATIST_DEFAULT_STAT) }
+      : {}),
+    ...(input.noBulletDodge === true ? { noBulletDodge: true as const } : {}),
     armorSp: clampInt(input.armorSp, 0, ARMOR_SP_MAX, base.armorSp),
     weaponId:
       typeof input.weaponId === 'string' && isValidCompendiumId(input.weaponId)
@@ -218,7 +246,7 @@ export function combatProfileSheet(
     // No Luck at all: a statist that could spend points would need somewhere to
     // spend them from, and „the GM's pool" is a rule this project does not have.
     luck: 0,
-    move: STATIST_DEFAULT_STAT,
+    move: profile.move ?? STATIST_DEFAULT_STAT,
     body: profile.body,
     emp: STATIST_DEFAULT_STAT,
   };
@@ -240,6 +268,9 @@ export function combatProfileSheet(
     // Stage 30b: a statist has no Role, so neither Specialty purse is ever read.
     medicine: {},
     fabrication: {},
+    // Nor does anybody work for him (stage 30c): a team is something a Korpo's
+    // sheet carries, and a statist is the figure that has no sheet.
+    team: [],
     skills: { [CPRED_EVASION_SKILL_ID]: profile.evasion },
     // Statysta nie ma czego nazywać: jego jedyną umiejętnością jest Unik.
     skillSpecialties: {},
