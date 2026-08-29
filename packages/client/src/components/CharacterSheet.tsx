@@ -106,10 +106,13 @@ import {
   validateCharacterDataPatch,
   woundCheckPenalty,
   woundState,
+  CPRED_COMBAT_AWARENESS_ABILITY,
+  cpredRoleAbilityRank,
 } from '@vtt/shared';
 import { apiUpload } from '../api.js';
 import { UPLOAD_ACCEPT_ATTRIBUTE, uploadRequirementText } from '@vtt/shared';
 import { fileRejectionText, uploadErrorText } from '../uploads.js';
+import { CombatAwarenessPanel } from './CombatAwarenessPanel.js';
 import { CyberwareBody } from './CyberwareBody.js';
 import { FacedownFromSheet } from './FacedownLauncher.js';
 import {
@@ -550,6 +553,14 @@ function IdentityColumn({
             </span>
           )}
         </div>
+        {/* Etap 30a: jedyna Zdolność Specjalna, której punkty się rozdziela —
+            reszta Ról ma samą rangę. Panel siedzi pod wierszem Zdolności, bo
+            to jej rozwinięcie, a nie osobna część karty. */}
+        {cpredRoleAbilityRank(data, registry, CPRED_COMBAT_AWARENESS_ABILITY) !== null && (
+          <div className="cp-field cp-awareness">
+            <CombatAwarenessPanel characterId={character.id} />
+          </div>
+        )}
         <div className="cp-field cp-notes">
           <span className="cp-label">Notatki</span>
           <textarea

@@ -25,6 +25,7 @@ import {
   applyDamageToSheet,
   applyDamageToTokenHp,
   isValidHitLocation,
+  readSheetCombatAwareness,
   readSheetCombatProfile,
   sheetWoundStatuses,
   undoDamageOnSheet,
@@ -36,6 +37,7 @@ import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { clearFacedownFear, restoreFacedownFear } from './facedown.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { emitCombatOfScene } from './combat.js';
+import { claimRoundOnce, releaseRoundOnce } from './round-once.js';
 import { emitCovers } from './covers.js';
 import {
   igniteToken,
@@ -345,10 +347,20 @@ async function landDamageOnFigure(
     // The injury table is campaign data: imported files plus whatever the GM
     // typed in (the head table has no free source — see tools/import).
     const compendium = await buildCompendiumSync(deps, campaignId);
+    // „Za 2 punkty zmniejsz o 1 pierwsze obrażenia otrzymane w tej Rundzie"
+    // (Redukcja obrażeń, s. 146). Claimed here rather than at the attack,
+    // because the rule counts damage *received* from anything at all — a
+    // grenade, a burning floor, a fall — and every one of those arrives down
+    // this one function. Only a figure in a running fight has a Round to be
+    // first in; see `round-once.ts`.
+    const reduction = readSheetCombatAwareness(character, deps.ctx.cpred).damageReduction;
+    const reduced =
+      reduction > 0 &&
+      (await claimRoundOnce(deps.ctx.prisma, token.sceneId, token.id, 'damageReduction'));
     const applied = applyDamageToSheet(
       character,
       deps.ctx.cpred,
-      request,
+      reduced ? { ...request, damageReduction: reduction } : request,
       compendium.entries,
       createMixedRng(),
     );
@@ -596,6 +608,12 @@ export const damageUndoEvent = defineEvent<DamageUndoPayload, void>({
     // unwon again and the −2 comes back to everybody it left (stage 23c).
     if (entry.targetTokenId && entry.fearCleared && entry.fearCleared.length > 0) {
       await restoreFacedownFear(deps, campaignId, entry.fearCleared, entry.targetTokenId);
+    }
+    // The hit unhappened, so the Round's first damage has not happened either
+    // (stage 30a) — otherwise a Solo would spend their Redukcja obrażeń on a
+    // card the GM took straight back.
+    if (entry.damageReduced && entry.targetTokenId) {
+      await releaseRoundOnce(deps.ctx.prisma, entry.targetTokenId, 'damageReduction');
     }
 
     if (entry.characterId) {

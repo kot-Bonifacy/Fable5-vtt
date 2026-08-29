@@ -10,6 +10,7 @@ import type {
   ChatMessageBroadcast,
   CharacterView,
   CpredCharacterData,
+  DamageLogEntry,
   InvitationSummary,
   SceneView,
   SocketAck,

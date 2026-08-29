@@ -16,6 +16,14 @@ import {
   type CyberwareInstallation,
 } from './cyberware.js';
 import { isHousingOption, isLifestyleLevel, type CpredLifestyle } from './economy.js';
+// Type-only the other way round: `roleability.ts` reads this file's sheet type,
+// so only its values travel here — the same bargain `creation.ts` makes above.
+import {
+  cpredCombatAwarenessProblem,
+  readCpredCombatAwareness,
+  CPRED_COMBAT_AWARENESS_PROBLEMS,
+  type CpredCombatAwareness,
+} from './roleability.js';
 import {
   createDefaultLifepath,
   validateLifepath,
@@ -536,6 +544,17 @@ export interface CpredCharacterData {
   /** One of the registry's role ids; null = no role picked yet. */
   roleId: string | null;
   roleAbilityRank: number;
+  /**
+   * How a Solo has divided their Zmysł Walki points between the six combat
+   * abilities of s. 146 (stage 30a). `{}` on every sheet whose Role has a
+   * different Special Ability — which is nine Roles out of ten.
+   *
+   * Written **only** through `character:combat-awareness`, never by an
+   * ordinary sheet patch: „w trakcie walki (w ramach Akcji)" is a price, and a
+   * price with a back door beside it is decoration — the same reason `eddies`
+   * left the patch path in 23b.
+   */
+  combatAwareness: CpredCombatAwareness;
   /** skillId → level 1–10; untrained skills are simply absent. */
   skills: Record<string, number>;
   /**
@@ -724,6 +743,7 @@ export function createDefaultCharacterData(): CpredCharacterData {
     humanityCurrent: humanityMaxWith(stats, []),
     roleId: null,
     roleAbilityRank: ROLE_RANK_MIN,
+    combatAwareness: {},
     skills: {},
     skillSpecialties: {},
     weapons: [],
@@ -1232,6 +1252,25 @@ function collectCharacterDataPatch(
       );
     } else {
       patch.roleAbilityRank = value;
+    }
+  }
+  if ('combatAwareness' in input) {
+    // Shape and ladders only. Whether the Solo can *afford* the allocation
+    // depends on a rank this function cannot see — the patch may not carry it —
+    // so the pool is judged where the change is made, against the stored sheet
+    // (`cpredCombatAwarenessProblem` with a real rank). Here a spend that is
+    // simply not a legal number is refused, and everything else is let through
+    // so an old sheet still opens after the GM lowers a rank underneath it.
+    const raw = input.combatAwareness;
+    if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+      issues.push(issue('combatAwareness', 'Przydział Zmysłu Walki musi być obiektem.'));
+    } else {
+      const problem = cpredCombatAwarenessProblem(readCpredCombatAwareness(raw), ROLE_RANK_MAX);
+      if (problem !== null) {
+        issues.push(issue('combatAwareness', CPRED_COMBAT_AWARENESS_PROBLEMS[problem]));
+      } else {
+        patch.combatAwareness = readCpredCombatAwareness(raw);
+      }
     }
   }
   if ('skills' in input) {

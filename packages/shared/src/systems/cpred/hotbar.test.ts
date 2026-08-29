@@ -14,7 +14,12 @@ import {
 import type { ResolvedWeapon } from './compendium.js';
 import type { CpredWeaponRow } from './character.js';
 import { createDefaultCombatProfile } from './statist.js';
-import { CPRED_ACTION_RUN, CPRED_ACTION_SCANNER, CPRED_ACTION_STAND_UP } from './turn.js';
+import {
+  CPRED_ACTION_COMBAT_AWARENESS,
+  CPRED_ACTION_RUN,
+  CPRED_ACTION_SCANNER,
+  CPRED_ACTION_STAND_UP,
+} from './turn.js';
 
 /**
  * Stage 16f: the action bar is generated from what the token can do, so the
@@ -461,5 +466,33 @@ describe('cpredHotbarGroups', () => {
     const weaponSlots = slots.filter((slot) => slot.kind === 'weapon');
     expect(weaponSlots).toHaveLength(3);
     expect(weaponSlots.every((slot) => slot.id.startsWith('weapon:'))).toBe(true);
+  });
+});
+
+describe('hotbarSlotsFor — Zmysł Walki (30a)', () => {
+  const awarenessOf = (slots: ReturnType<typeof hotbarSlotsFor>) =>
+    slots.find((slot) => slot.kind === 'action' && slot.actionId === CPRED_ACTION_COMBAT_AWARENESS);
+
+  it('daje pudełko Solo i nikomu innemu', () => {
+    expect(awarenessOf(hotbarSlotsFor(input({ combatAwareness: true })))?.label).toBe(
+      'Zmysł Walki',
+    );
+    expect(awarenessOf(hotbarSlotsFor(input()))).toBeUndefined();
+  });
+
+  it('nie gaśnie po zużytej Akcji — pudełko tylko otwiera panel', () => {
+    // Akcję płaci zapis nowego przydziału, nie zajrzenie do własnych punktów.
+    const slots = hotbarSlotsFor(
+      input({ combatAwareness: true, turn: { actionSpent: true, moveSpent: true } }),
+    );
+    expect(awarenessOf(slots)?.disabled).toBeNull();
+  });
+
+  it('stoi obok Skanera, gdy ktoś ma obie Zdolności', () => {
+    const slots = hotbarSlotsFor(input({ netrunner: true, combatAwareness: true }));
+    expect(awarenessOf(slots)).toBeDefined();
+    expect(
+      slots.find((slot) => slot.kind === 'action' && slot.actionId === CPRED_ACTION_SCANNER),
+    ).toBeDefined();
   });
 });

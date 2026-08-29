@@ -31,3 +31,4 @@ export * from './reputation.js';
 export * from './turn.js';
 export * from './fx.js';
 export * from './hotbar.js';
+export * from './roleability.js';

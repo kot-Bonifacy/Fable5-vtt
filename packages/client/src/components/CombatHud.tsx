@@ -30,6 +30,7 @@ import { activeWeaponOf, fireModeKey, useHudStore } from '../stores/hudStore.js'
 import { useRollStore } from '../stores/rollStore.js';
 import { useSelectionStore } from '../stores/selectionStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
+import { CombatAwarenessPanel } from './CombatAwarenessPanel.js';
 import { GrapplePanel, HoldActionForm, StabilizePicker } from './CombatForms.js';
 import { HudIcon } from './HudIcon.js';
 import { TurnBudget } from './TurnBudget.js';
@@ -702,7 +703,20 @@ export function CombatHud() {
             </p>
           )}
 
-          {form && combat && context.combatant && (
+          {/* Etap 30a: jedyny formularz paska, który działa też poza walką —
+              „poza walką, gdy rozpoczyna się walka albo w trakcie walki"
+              (s. 146). Dlatego stoi przed blokiem, który wymaga kolejki. */}
+          {form === 'awareness' && token.characterId && (
+            <div className="hud-form">
+              <CombatAwarenessPanel
+                characterId={token.characterId}
+                tokenId={token.id}
+                onDone={() => setForm(null)}
+              />
+            </div>
+          )}
+
+          {form && form !== 'awareness' && combat && context.combatant && (
             <div className="hud-form">
               {form === 'hold' && (
                 <HoldActionForm combatantId={context.combatant.id} onDone={() => setForm(null)} />
@@ -725,7 +739,7 @@ export function CombatHud() {
               )}
             </div>
           )}
-          {form && !context.combatant && (
+          {form && form !== 'awareness' && !context.combatant && (
             <p className="hud-refusal">
               Ta akcja wymaga trwającej walki — dodaj token do kolejki inicjatywy.
             </p>

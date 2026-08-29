@@ -62,6 +62,25 @@ export interface CharacterUpdatePayload {
   patch: CharacterPatch;
 }
 
+/**
+ * Client → server payload of `character:combat-awareness` (stage 30a).
+ *
+ * The Solo's allocation has its own event rather than riding a sheet patch,
+ * because saving it can cost an Action: „w trakcie walki (w ramach Akcji)"
+ * (s. 146). A price with an unpriced door beside it is not a price.
+ */
+export interface CharacterCombatAwarenessPayload {
+  characterId: string;
+  /** Ability id → points; anything missing is zero. */
+  allocation: Record<string, number>;
+  /**
+   * The figure spending the Action, when this sheet is standing on the scene.
+   * Absent means „nobody is in a fight over this" — the change is then free,
+   * which is also what happens outside combat.
+   */
+  tokenId?: string;
+}
+
 /** Client → server payload of `character:delete` (owner or GM). */
 export interface CharacterIdPayload {
   characterId: string;

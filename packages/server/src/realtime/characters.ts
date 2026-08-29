@@ -1,4 +1,5 @@
 import type {
+  CharacterCombatAwarenessPayload,
   CharacterCreatePayload,
   CharacterDeleteBroadcast,
   CharacterIdPayload,
@@ -6,10 +7,16 @@ import type {
   CharacterView,
 } from '@vtt/shared';
 import {
+  CPRED_ACTION_COMBAT_AWARENESS,
+  CPRED_COMBAT_AWARENESS_ABILITY,
   ROLE_GM,
+  cpredCombatAwarenessProblem,
+  cpredRoleAbilityRank,
   createDefaultCharacterData,
+  describeCombatAwareness,
   mergeCharacterData,
   parseCharacterData,
+  readCpredCombatAwareness,
   sanitizeCharacterName,
   sanitizeTokenImageUrl,
   validateCharacterDataPatch,
@@ -21,7 +28,8 @@ import { applyBalance } from './economy.js';
 import { emitToCampaignUser } from './state.js';
 import { emitCharacterDelete, emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { emitRuns } from './netrun-io.js';
-import { emitTokensById, emitTokensOfCharacter } from './tokens.js';
+import { emitTokensById, emitTokensOfCharacter, requireCampaignToken } from './tokens.js';
+import { requireTurnSpend } from './combat-actions.js';
 
 /**
  * Character event handlers. Delivery and view mapping live in
@@ -143,6 +151,10 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
       // przydziela ją MG" (s. 193). Unlike eddies it stays on this path — there
       // is no ledger to write, only a door to close.
       if (sheet.reputationSources !== undefined && !isGm) throw new RealtimeError('FORBIDDEN');
+      // Stage 30a: the Solo's allocation leaves this path entirely, the way
+      // `eddies` did. Saving it can cost an Action („w trakcie walki (w ramach
+      // Akcji)", s. 146), and a sheet patch has no Action to charge.
+      if (sheet.combatAwareness !== undefined) throw new RealtimeError('FORBIDDEN');
       const current = parseCharacterData(character.data, deps.ctx.cpred);
       data.data = JSON.stringify(mergeCharacterData(current, sheet));
     }
@@ -223,5 +235,82 @@ export const characterDeleteEvent = defineEvent<CharacterIdPayload>({
       campaignId,
       linkedTokens.map((token) => token.id),
     );
+  },
+});
+
+/**
+ * Rearranging a Solo's Zmysł Walki (stage 30a).
+ *
+ * „Poza walką, gdy rozpoczyna się walka albo w trakcie walki (w ramach Akcji)
+ * Solo może rozdzielić punkty Zmysłu Walki pomiędzy różne zdolności bojowe"
+ * (s. 146). Three moments, one of them priced — so the price is charged where
+ * the tracker can see it, against the figure that is actually in the fight.
+ *
+ * A sheet standing on no scene, or on a scene with no combat running, pays
+ * nothing: `requireTurnSpend` passes such a token straight through, which is
+ * exactly „poza walką".
+ */
+export const characterCombatAwarenessEvent = defineEvent<
+  CharacterCombatAwarenessPayload,
+  CharacterView
+>({
+  name: 'character:combat-awareness',
+  handler: async ({ deps, socket, user, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    const character = await requireCampaignCharacter(
+      deps.ctx.prisma,
+      campaignId,
+      payload?.characterId,
+    );
+    const isGm = user.role === ROLE_GM;
+    if (!isGm && character.ownerId !== user.id) throw new RealtimeError('CHARACTER_NOT_FOUND');
+
+    const data = parseCharacterData(character.data, deps.ctx.cpred);
+    const rank = cpredRoleAbilityRank(data, deps.ctx.cpred, CPRED_COMBAT_AWARENESS_ABILITY);
+    const allocation = readCpredCombatAwareness(payload?.allocation);
+    // The refusal codes *are* the engine's own (`NO_ABILITY`, `BAD_STEP`,
+    // `NOT_ENOUGH_POINTS`, `BAD_VALUE`), so the client translates them with the
+    // same table the panel greys its buttons out from — one list of sentences,
+    // not two that can disagree.
+    const problem = cpredCombatAwarenessProblem(allocation, rank);
+    if (problem !== null) throw new RealtimeError(problem);
+    // An unchanged allocation is not a reallocation, and must not cost an
+    // Action: „Jeśli Solo nie zmieni przydziału tych punktów, zakłada się
+    // przydział taki, jaki był do tej pory" (s. 146). Opening the panel and
+    // closing it is free.
+    const unchanged =
+      JSON.stringify(readCpredCombatAwareness(data.combatAwareness)) === JSON.stringify(allocation);
+
+    if (!unchanged && payload?.tokenId !== undefined) {
+      const { token, scene } = await requireCampaignToken(
+        deps.ctx.prisma,
+        campaignId,
+        payload.tokenId,
+      );
+      if (token.characterId !== character.id) throw new RealtimeError('BAD_REQUEST');
+      await requireTurnSpend(
+        deps,
+        campaignId,
+        scene,
+        token.id,
+        { kind: 'action', actionId: CPRED_ACTION_COMBAT_AWARENESS },
+        user,
+        CPRED_ACTION_COMBAT_AWARENESS,
+        // The action log already says „Zmysł Walki"; the sentence below adds
+        // what it was divided into, which is the part the table wants to read.
+        { silent: false, note: describeCombatAwareness(allocation) },
+      );
+    }
+
+    const saved = await deps.ctx.prisma.character.update({
+      where: { id: character.id },
+      data: { data: JSON.stringify(mergeCharacterData(data, { combatAwareness: allocation })) },
+    });
+    const view = toCharacterView(saved, deps.ctx.cpred);
+    await emitCharacterUpsert(deps, campaignId, view);
+    // Błyskawiczna reakcja moves initiative and Precyzyjny atak moves every
+    // attack, so the bar and the tracker both read a sheet that just changed.
+    await emitTokensOfCharacter(deps, campaignId, saved);
+    return view;
   },
 });

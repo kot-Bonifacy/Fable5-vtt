@@ -287,6 +287,7 @@ async function resolveRollRequest(
     ammo?: CpredAmmoProfile;
     aimedAt?: unknown;
     halvesArmor?: unknown;
+    weakSpot?: unknown;
   };
   return {
     ...request,
@@ -303,6 +304,12 @@ async function resolveRollRequest(
     // (s. 176) — decided by the attack, carried by its card, applied when the
     // damage lands. A client saying so itself would be halving armour at will.
     ...(system.halvesArmor === true ? { halvesArmor: true as const } : {}),
+    // „Wykrycie słabości" was earned when the Attack landed, not now: the
+    // server booked it against the Round back then and wrote the number onto
+    // the card. Here it is only read (stage 30a).
+    ...(Number.isInteger(system.weakSpot) && (system.weakSpot as number) > 0
+      ? { weakSpot: system.weakSpot as number }
+      : {}),
     ...(attack.damageNotation ? { damageNotation: attack.damageNotation } : {}),
     ...(attack.damageMultiplier ? { damageMultiplier: attack.damageMultiplier } : {}),
     ...(attack.targetTokenId ? { targetTokenId: attack.targetTokenId } : {}),

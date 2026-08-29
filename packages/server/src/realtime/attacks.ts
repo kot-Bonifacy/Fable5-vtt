@@ -91,6 +91,7 @@ import { emitMapFx, fxCentre } from './fx.js';
 import { pinToken } from './turn-effects.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { grappleStateForToken, readTokenStatuses } from './combat.js';
+import { claimRoundOnce } from './round-once.js';
 import { requireTurnSpend } from './combat-actions.js';
 import { requireRollableCharacter } from './character-rolls.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
@@ -978,6 +979,11 @@ export async function performAttackRoll(
       const gesture: RollGesture | undefined = sanitizeGesture(payload?.gesture);
       const result: RollResult = rollFormula(plan.formula, createMixedRng(gesture?.entropy), {
         checkRule: true,
+        // „Za 4 punkty ignorujesz Krytyczne porażki … wyrzucone w Testach ataku"
+        // (Wyjście z opresji, s. 146). Decided before the die falls, which is why
+        // it is the one Combat Awareness ability that rides the plan rather than
+        // being applied to the result.
+        ...(meta.ignoresFumble ? { ignoreFumble: true } : {}),
       });
       result.title = plan.title;
       result.actor = sourceName(source);
@@ -1113,6 +1119,15 @@ async function buildAttackMeta(
   }
 
   const outcome = resolveCpredAttack(result.total, meta.dv, meta.autofireMax);
+  // „+1 do obrażeń … zadanych pierwszym udanym Atakiem w Rundzie" (Wykrycie
+  // słabości, s. 146). The planner put the Solo's whole allocation on the card;
+  // here it is either earned — and booked, so the second hit of the Round does
+  // not earn it again — or taken back off. A miss claims nothing.
+  if (system.weakSpot !== undefined) {
+    const earned =
+      outcome.hit && (await claimRoundOnce(deps.ctx.prisma, scene.id, attacker.id, 'weakSpot'));
+    if (!earned) delete system.weakSpot;
+  }
   let detail = outcome.hit
     ? `${attackDetail(meta)}${
         outcome.multiplier

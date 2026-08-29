@@ -228,3 +228,35 @@ describe('plain rolls (stage 27d)', () => {
     expect(result.critical).toEqual({ type: 'crit', extraRoll: 4 });
   });
 });
+
+/**
+ * Wyjście z opresji (etap 30a, s. 146): „Za 4 punkty ignorujesz Krytyczne
+ * porażki (wyniki 1 na kości) wyrzucone w Testach ataku. Wynik nadal liczy się
+ * jako 1."
+ */
+describe('ignorowana Krytyczna porażka', () => {
+  it('zostawia jedynkę na kości i nie odejmuje dorzutu', () => {
+    // Jedna liczba w skrypcie: drugiej kości nie ma być w ogóle.
+    const result = rollFormula(parse('1k10+5'), scriptedRng([1]), {
+      checkRule: true,
+      ignoreFumble: true,
+    });
+    expect(result.total).toBe(6);
+    expect(result.critical).toEqual({ type: 'fumble', extraRoll: 0, ignored: true });
+  });
+
+  it('bez flagi dorzut nadal się odejmuje', () => {
+    const result = rollFormula(parse('1k10+5'), scriptedRng([1, 7]), { checkRule: true });
+    expect(result.total).toBe(-1);
+    expect(result.critical).toEqual({ type: 'fumble', extraRoll: 7 });
+  });
+
+  it('nie dotyka Krytycznego sukcesu — dziesiątka dalej wybucha', () => {
+    const result = rollFormula(parse('1k10+5'), scriptedRng([10, 4]), {
+      checkRule: true,
+      ignoreFumble: true,
+    });
+    expect(result.total).toBe(19);
+    expect(result.critical).toEqual({ type: 'crit', extraRoll: 4 });
+  });
+});

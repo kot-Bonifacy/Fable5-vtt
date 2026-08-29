@@ -113,7 +113,14 @@ export interface DamageLogEntry {
    * subtracted, or the arithmetic reads as a bug.
    */
   armorHalved?: boolean;
-  /** Damage that reached HP, after armor and the head multiplier. */
+  /**
+   * HP a Solo's „Redukcja obrażeń" kept off this hit (stage 30a, s. 146) —
+   * absent when none was. On the card for the same reason `armorHalved` is:
+   * without it the difference between what got through the armour and what
+   * came off the HP bar has no explanation.
+   */
+  damageReduced?: number;
+  /** Damage that reached HP, after armor, the head multiplier and Damage Reduction. */
   damageThrough: number;
   doubled: boolean;
   /**

@@ -421,6 +421,13 @@
   padding-right: 0;
 }
 
+/* Panel Zmysłu Walki pod wierszem Zdolności Specjalnej (etap 30a). Sam panel
+   maluje `styles.css` (`.awareness`) — tu tylko miejsce, które mu karta daje. */
+.cp-awareness {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+}
+
 .cp-ability-name {
   flex: 1;
   align-self: center;

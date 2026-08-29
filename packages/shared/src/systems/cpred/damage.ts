@@ -129,6 +129,20 @@ export interface CpredDamageInput {
    * zostaje na 1 PW" (rubber ammunition, s. 346).
    */
   nonLethal?: boolean;
+  /**
+   * HP the defender's own training takes off this hit (stage 30a): „Za 2 punkty
+   * zmniejsz o 1 pierwsze obrażenia otrzymane w tej Rundzie" (Redukcja obrażeń,
+   * s. 146).
+   *
+   * Applied to what got **through** the armour, not to the dice. The rulebook
+   * says „otrzymane obrażenia" here and says „przed uwzględnieniem pancerza"
+   * three paragraphs later for Wykrycie słabości — the two phrasings are only
+   * worth printing separately if they mean opposite ends of the sum.
+   *
+   * Whether this hit is the Round's *first* is decided by the caller: the round
+   * is state of the fight, not of the sheet (`CpredTurnLedger`).
+   */
+  damageReduction?: number;
 }
 
 export interface CpredDamageOutcome {
@@ -138,8 +152,10 @@ export interface CpredDamageOutcome {
   armorSp: number;
   /** True when only half the armour counted — the melee rule of s. 176. */
   armorHalved: boolean;
-  /** Damage left after armor and the head multiplier — what hits HP. */
+  /** Damage left after armor, the head multiplier and any Damage Reduction. */
   damageThrough: number;
+  /** HP that Redukcja obrażeń kept off the target (0 when none applied). */
+  damageReduced: number;
   /** True when the head multiplier was applied. */
   doubled: boolean;
   /** The multiplier a head hit used; 1 when none was (`doubled: false`). */
@@ -196,7 +212,12 @@ export function resolveCpredDamage(input: CpredDamageInput): CpredDamageOutcome 
         CPRED_HEAD_DAMAGE_MULTIPLIER_MAX,
       )
     : 1;
-  const damageThrough = doubled ? afterArmor * headMultiplier : afterArmor;
+  const multiplied = doubled ? afterArmor * headMultiplier : afterArmor;
+  // Applied last, and only to damage that actually arrived: a Solo who takes
+  // nothing has nothing to reduce, and the armour has already done its work.
+  const reduction = Math.max(0, Math.round(input.damageReduction ?? 0));
+  const damageReduced = Math.min(reduction, multiplied);
+  const damageThrough = multiplied - damageReduced;
 
   const criticalInjury = input.criticalInjury === true;
   const bonusDamage = criticalInjury ? CPRED_CRITICAL_INJURY_BONUS_DAMAGE : 0;
@@ -226,6 +247,7 @@ export function resolveCpredDamage(input: CpredDamageInput): CpredDamageOutcome 
     armorSp,
     armorHalved,
     damageThrough,
+    damageReduced,
     doubled,
     headMultiplier,
     bonusDamage,

@@ -16,6 +16,9 @@ import {
   forceCpredTurn,
   freshCpredTurn,
   markCpredTurnPhase,
+  markCpredRoundOnce,
+  clearCpredRoundOnce,
+  cpredRoundOnceUsed,
   readCpredTurn,
   readCpredTurnLedger,
   setCpredHardTerrain,
@@ -537,5 +540,48 @@ describe('the turn-hook ledger', () => {
       true,
     );
     expect(readCpredTurn(JSON.stringify(state))).toEqual(state);
+  });
+});
+
+/**
+ * „Pierwsze w tej Rundzie" (etap 30a) — Redukcja obrażeń i Wykrycie słabości.
+ *
+ * Stempel jest numerem Rundy, nie flagą: stary wpis z poprzedniej Rundy sam
+ * przestaje obowiązywać, więc nic nie trzeba czyścić przy przejściu dalej.
+ */
+describe('zdolności raz na Rundę', () => {
+  it('stempluje Rundę i widzi ją tylko w tej Rundzie', () => {
+    const ledger = markCpredRoundOnce({}, 'damageReduction', 3);
+    expect(cpredRoundOnceUsed(ledger, 'damageReduction', 3)).toBe(true);
+    expect(cpredRoundOnceUsed(ledger, 'damageReduction', 4)).toBe(false);
+    expect(cpredRoundOnceUsed(ledger, 'weakSpot', 3)).toBe(false);
+  });
+
+  it('nie miesza się ze stemplami początku i końca tury', () => {
+    const ledger = markCpredRoundOnce(markCpredTurnPhase({}, 'turn-end', 2), 'weakSpot', 2);
+    expect(cpredTurnPhaseRan(ledger, 'turn-end', 2)).toBe(true);
+    expect(cpredRoundOnceUsed(ledger, 'weakSpot', 2)).toBe(true);
+  });
+
+  it('przechodzi przez zapis i odczyt', () => {
+    const stored = JSON.stringify(markCpredRoundOnce({ startedRound: 5 }, 'weakSpot', 5));
+    const read = readCpredTurnLedger(stored);
+    expect(read.startedRound).toBe(5);
+    expect(cpredRoundOnceUsed(read, 'weakSpot', 5)).toBe(true);
+  });
+
+  it('„Cofnij" zdejmuje stempel i zostawia resztę', () => {
+    const ledger = markCpredRoundOnce(
+      markCpredTurnPhase({}, 'turn-start', 7),
+      'damageReduction',
+      7,
+    );
+    const cleared = clearCpredRoundOnce(ledger, 'damageReduction');
+    expect(cpredRoundOnceUsed(cleared, 'damageReduction', 7)).toBe(false);
+    expect(cpredTurnPhaseRan(cleared, 'turn-start', 7)).toBe(true);
+  });
+
+  it('odczyt wycina śmieci w stemplach', () => {
+    expect(readCpredTurnLedger('{"once":{"weakSpot":"trzy","nieznane":2}}').once).toBeUndefined();
   });
 });

@@ -44,6 +44,7 @@ import {
 } from './compendium.js';
 import { hasCyberarm } from './cyberware.js';
 import { CPRED_AIMED_SHOT_PENALTY } from './damage.js';
+import { cpredSheetCombatAwareness } from './roleability.js';
 import {
   CPRED_AIM_POINT_LABELS,
   hitLocationForAim,
@@ -319,6 +320,23 @@ export interface CpredAttackMeta {
    * takim ataku rozpatruje się pełną OB pancerza" (s. 177).
    */
   halvesArmor?: boolean;
+  /**
+   * A natural 1 on this Test costs nothing (stage 30a) — the Solo has 4 points
+   * in „Wyjście z opresji" (s. 146). Read straight off the sheet by the
+   * planner, and read again by whoever rolls: the flag has to be decided before
+   * the die falls, unlike everything else on this card.
+   */
+  ignoresFumble?: true;
+  /**
+   * Damage „Wykrycie słabości" adds before armour, when this hit earned it
+   * (stage 30a, s. 146).
+   *
+   * The planner puts the Solo's whole allocation here; the **server** clears it
+   * unless this is the first successful Attack of the Round, because „pierwszym
+   * udanym Atakiem w Rundzie" is state of the fight and the sheet cannot know
+   * it. A client's word for it is never taken — same rail as `halvesArmor`.
+   */
+  weakSpot?: number;
   /**
    * The round in the magazine (stage 16g), carried whole rather than by id.
    *
@@ -648,6 +666,17 @@ export function planCpredAttack(
   if (woundPenalty !== 0) {
     breakdown.push({ label: CPRED_WOUND_LABELS[state], value: woundPenalty, kind: 'wound' });
   }
+  // „Za 3 punkty dodajesz +1 do każdego wykonywanego Ataku" (s. 146). Read off
+  // the sheet rather than passed in, so the client's preview and the server's
+  // verdict reach the same number without a context object between them.
+  const awareness = cpredSheetCombatAwareness(data, registry);
+  if (awareness.attack > 0) {
+    breakdown.push({
+      label: `Precyzyjny atak ${awareness.attack}`,
+      value: awareness.attack,
+      kind: 'situational',
+    });
+  }
   for (const entry of context.modifiers ?? []) breakdown.push({ ...entry });
   if (aimedAt) {
     breakdown.push({
@@ -710,6 +739,8 @@ export function planCpredAttack(
           : {}),
         ...(thrown ? { thrown: true as const } : {}),
         ...(halvesArmor ? { halvesArmor: true as const } : {}),
+        ...(awareness.ignoresFumble ? { ignoresFumble: true as const } : {}),
+        ...(awareness.weakSpot > 0 ? { weakSpot: awareness.weakSpot } : {}),
         ...(explosive ? { blastSideM: CPRED_BLAST_SIDE_M } : {}),
         ...(ammo ? { ammo } : {}),
         ...(spread ? { coneRangeM: spread.coneRangeM } : {}),

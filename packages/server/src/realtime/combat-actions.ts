@@ -108,10 +108,19 @@ export async function requireTurnSpend(
   spend: SheetTurnSpend,
   user: SessionUser,
   actionId: string,
-  options: { silent?: boolean } = {},
+  options: { silent?: boolean; note?: string | null } = {},
 ): Promise<void> {
   const outcome = await spendTurnForToken(deps, scene, tokenId, spend, user);
-  await settleSpend(deps, campaignId, scene, user, outcome, actionId, null, options);
+  await settleSpend(
+    deps,
+    campaignId,
+    scene,
+    user,
+    outcome,
+    actionId,
+    options.note ?? null,
+    options,
+  );
 }
 
 /**

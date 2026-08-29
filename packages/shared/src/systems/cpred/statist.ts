@@ -234,6 +234,9 @@ export function combatProfileSheet(
     humanityCurrent: humanityMax(stats),
     roleId: null,
     roleAbilityRank: 1,
+    // No Role means no Special Ability (stage 30a): `cpredRoleAbilityRank`
+    // refuses a sheet with a null `roleId` before it ever reads this.
+    combatAwareness: {},
     skills: { [CPRED_EVASION_SKILL_ID]: profile.evasion },
     // Statysta nie ma czego nazywać: jego jedyną umiejętnością jest Unik.
     skillSpecialties: {},

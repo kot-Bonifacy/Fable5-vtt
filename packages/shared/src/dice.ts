@@ -107,8 +107,20 @@ export type RollTermResult = DiceTermResult | ModifierTermResult;
 /** The CP RED check-rule outcome: the extra d10 and how it was applied. */
 export interface CheckCritical {
   type: 'crit' | 'fumble';
-  /** Value of the extra d10; added for a crit, subtracted for a fumble. */
+  /** Value of the extra d10; added for a crit, subtracted for a fumble. 0 when
+   * the fumble was ignored — no second die is thrown for a die that costs
+   * nothing. */
   extraRoll: number;
+  /**
+   * The Critical Failure happened and was shrugged off (stage 30a): „Za 4
+   * punkty ignorujesz Krytyczne porażki (wyniki 1 na kości) wyrzucone w Testach
+   * ataku. Wynik nadal liczy się jako 1" (Wyjście z opresji, s. 146).
+   *
+   * Kept on the result rather than hidden, because the card has to be able to
+   * say why a natural 1 did not cost anything — a silently missing penalty
+   * reads as a bug in the dice.
+   */
+  ignored?: true;
 }
 
 /**
@@ -470,6 +482,17 @@ export interface RollOptions {
    * `RollResult.plain`. Purely presentational: the engine rolls the same dice.
    */
   plain?: boolean;
+  /**
+   * A natural 1 costs nothing (stage 30a). Set by the *attack* path alone,
+   * because that is the whole of the rule it serves: „ignorujesz Krytyczne
+   * porażki … wyrzucone w Testach ataku" (s. 146) — a Solo still fumbles a
+   * Perception Check like everybody else.
+   *
+   * The die is not thrown at all: „wynik nadal liczy się jako 1" says the
+   * natural stands, not that a second die is rolled and discarded, and an
+   * unrolled die keeps a seeded RNG's sequence honest in tests.
+   */
+  ignoreFumble?: boolean;
 }
 
 /**
@@ -513,9 +536,13 @@ export function rollFormula(
         critical = { type: 'crit', extraRoll };
         total += extraRoll;
       } else if (natural === 1) {
-        const extraRoll = rng(10);
-        critical = { type: 'fumble', extraRoll };
-        total -= extraRoll;
+        if (options.ignoreFumble === true) {
+          critical = { type: 'fumble', extraRoll: 0, ignored: true };
+        } else {
+          const extraRoll = rng(10);
+          critical = { type: 'fumble', extraRoll };
+          total -= extraRoll;
+        }
       }
     }
   }

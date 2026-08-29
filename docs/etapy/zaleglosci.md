@@ -8,6 +8,18 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
 
 ## Pozycje
 
+- **Etap 30a nie był oglądany w przeglądarce.** Mechanika jedzie w testach (44 nowe w `shared`,
+  10 na serwerze), ale żadnego z tych ekranów nikt nie kliknął. Do sprawdzenia — potrzebna
+  postać z Rolą **Solo** (na „Strzelnicy" nie ma takiej, trzeba przestawić Rolę na karcie):
+  (1) **panel na karcie** pod wierszem Zdolności Specjalnej — sześć wierszy, „Wolne punkty: N z 6",
+  guzik „+" wyszarzony dokładnie tam, gdzie progu nie da się kupić; (2) **pudełko „Zmysł Walki"
+  w pasku akcji** nad mapą — ma się pojawiać tylko Solo i **nie gasnąć** po zużytej Akcji;
+  (3) **koszt Akcji**: zmiana przydziału w trakcie własnej tury zjada Akcję i pisze w logu, co
+  na co poszło; zapis tej samej wartości nie kosztuje nic; (4) **karta obrażeń** po pierwszym
+  ciosie Rundy ma mówić „− 2 (Redukcja obrażeń)", po drugim już nie; (5) **kafel „Fumble
+  zignorowany (Wyjście z opresji)"** — trzeba wyrzucić jedynkę w Teście ataku, więc to kwestia
+  kilku strzałów; (6) rozbicie rzutu z wierszami „Precyzyjny atak N" i „Wyczucie zagrożenia N".
+
 - **Zmiany z 29.08 nie były oglądane w przeglądarce.** Cała mechanika jedzie w testach (28 nowych
   w `shared`, 12 na serwerze), ale żadnego z tych ekranów nikt nie kliknął. Do sprawdzenia na
   „Strzelnicy": (1) **cięcie ostrzem** w cel w kurtce OB 11 — karta obrażeń ma powiedzieć

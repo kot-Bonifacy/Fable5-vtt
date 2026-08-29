@@ -13,8 +13,11 @@ import {
   CPRED_ACTION_HOLD,
   CPRED_ACTION_SCANNER,
   CPRED_ACTION_STABILIZE,
+  CPRED_ACTION_COMBAT_AWARENESS,
   ROLE_GM,
   cpredHotbarGroups,
+  cpredRoleAbilityRank,
+  CPRED_COMBAT_AWARENESS_ABILITY,
   cpredInterfaceRank,
   cpredMoveBudgetFromSheet,
   cpredNextWeaponMode,
@@ -277,6 +280,9 @@ export function hudContextFor(tokenId: string | null): HudContext {
     isGm,
     grapple: combatant?.grapple?.role ?? null,
     netrunner: isNetrunnerSheet(character?.data ?? null),
+    // Stage 30a: the box is on a Solo's bar and on nobody else's, the same way
+    // the Scanner is a netrunner's.
+    combatAwareness: hasCombatAwareness(character?.data ?? null),
   });
 
   const shown = refusal ? slots.map((slot) => ({ ...slot, disabled: refusal })) : slots;
@@ -313,6 +319,17 @@ function isNetrunnerSheet(data: CpredCharacterData | null): boolean {
   if (!data || !data.cyberdeck) return false;
   const registry = useCharacterStore.getState().registry;
   return cpredInterfaceRank(data, registry) !== null;
+}
+
+/**
+ * „Zdolnością Specjalną Solo jest Zmysł Walki" (s. 146) — and no deck is
+ * needed, unlike the netrunner above: having the ability is the whole of the
+ * condition.
+ */
+function hasCombatAwareness(data: CpredCharacterData | null): boolean {
+  if (!data) return false;
+  const registry = useCharacterStore.getState().registry;
+  return cpredRoleAbilityRank(data, registry, CPRED_COMBAT_AWARENESS_ABILITY) !== null;
 }
 
 /**
@@ -498,6 +515,13 @@ export function activateSlot(slot: CpredHotbarSlot, tokenId: string): void {
   }
   if (slot.actionId === CPRED_ACTION_STABILIZE) {
     hud.setForm('stabilize');
+    return;
+  }
+  // Zmysł Walki (etap 30a) otwiera panel przydziału — Akcję płaci dopiero
+  // zapis, i tylko wtedy, gdy trwa walka. Wysłanie tu `spendCombatAction`
+  // kazałoby zapłacić za samo zajrzenie do własnych punktów.
+  if (slot.actionId === CPRED_ACTION_COMBAT_AWARENESS) {
+    hud.setForm('awareness');
     return;
   }
   // The Scanner rolls where the figure stands and has its own event: the server

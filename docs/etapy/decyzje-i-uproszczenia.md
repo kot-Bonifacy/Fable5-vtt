@@ -89,6 +89,31 @@ i remis ma wygrywać obrońca (`realtime/attacks.ts`, „Ties go to the defender
 z 28.08 mówiąca, że „ta sama nierówność stoi w ogniu zaporowym" i trzeba ją zmienić w obu
 miejscach, była **błędna** — poprawiona przy okazji naprawy.
 
+- **Redukcja obrażeń Solo liczy się po pancerzu i po mnożniku głowy (30a).** Podręcznik pisze
+  „zmniejsz o 1 pierwsze **obrażenia otrzymane** w tej Rundzie" (s. 146), a trzy akapity dalej,
+  przy Wykryciu słabości, dopisuje „**przed uwzględnieniem pancerza**". Dwa różne sformułowania
+  w jednej ramce warto drukować tylko wtedy, gdy znaczą przeciwne końce rachunku — więc Redukcja
+  schodzi z tego, co **doszło do PW**, a Wykrycie słabości dokłada się do rzutu kośćmi. Pancerz
+  ściera się niezależnie: liczy go to, co przez niego przeszło, a nie to, co wchłonęło ciało.
+
+- **Bez trwającej walki nie ma „pierwszego w tej Rundzie" (30a).** Redukcja obrażeń i Wykrycie
+  słabości mierzą się w Rundach, a VTT nie ma Rund poza kolejką inicjatywy. Figura spoza walki
+  **nie dostaje żadnej z tych dwóch** — alternatywa („każdy cios jest pierwszy") zamieniłaby
+  Redukcję obrażeń w stały bonus do pancerza. Pozostałe cztery zdolności Zmysłu Walki działają
+  zawsze, bo żadna nie mówi o Rundzie.
+
+- **Kara warunkowa Zmysłu Walki nie istnieje — przydział zmienia się tylko przez własne
+  zdarzenie (30a).** „w trakcie walki (w ramach Akcji)" (s. 146) to cena, więc przydział wyszedł
+  ze zwykłej łaty karty (`character:update` odmawia go tak samo, jak odmawia `eddies` od 23b)
+  i jedzie `character:combat-awareness`, gdzie tracker widzi, komu policzyć Akcję. Zapis tej
+  samej wartości nic nie kosztuje — „Jeśli Solo nie zmieni przydziału tych punktów, zakłada się
+  przydział taki, jaki był do tej pory".
+
+- **Progi Zmysłu Walki są egzekwowane co do punktu (30a).** 4 punkty w Precyzyjny atak kupują
+  dokładnie to, co 3, więc VTT odmawia takiego przydziału zamiast po cichu zaokrąglać w dół.
+  Trzy zdolności „za każdy punkt +1" przyjmują każdą liczbę; Redukcja obrażeń tylko parzyste
+  2–10, Precyzyjny atak 3/6/9, Wyjście z opresji wyłącznie 4.
+
 ## Dane z podręcznika — co parser zgubił świadomie
 
 - **Etap 26d — parser tabel obronnych stoi na dwóch heurystykach i to on pierwszy pęknie przy

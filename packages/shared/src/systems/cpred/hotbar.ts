@@ -30,6 +30,7 @@ import {
   CPRED_ACTION_GRAPPLE,
   CPRED_ACTION_HOLD,
   CPRED_ACTION_RUN,
+  CPRED_ACTION_COMBAT_AWARENESS,
   CPRED_ACTION_SCANNER,
   CPRED_ACTION_STABILIZE,
   CPRED_ACTION_STAND_UP,
@@ -141,7 +142,8 @@ export type CpredSlotIcon =
   | 'hourglass'
   | 'stand-up'
   | 'run'
-  | 'scanner';
+  | 'scanner'
+  | 'combat-awareness';
 
 /** Weapon type id (last segment) → picture. */
 const WEAPON_TYPE_ICONS: Readonly<Record<string, CpredSlotIcon>> = {
@@ -211,6 +213,7 @@ const ACTION_ICONS: Readonly<Record<string, CpredSlotIcon>> = {
   [CPRED_ACTION_STAND_UP]: 'stand-up',
   [CPRED_ACTION_RUN]: 'run',
   [CPRED_ACTION_SCANNER]: 'scanner',
+  [CPRED_ACTION_COMBAT_AWARENESS]: 'combat-awareness',
 };
 
 /** Catalogue actions worth a key, in the order they appear on the bar. */
@@ -233,6 +236,14 @@ export const CPRED_HOTBAR_ACTION_IDS: readonly string[] = [
  * until the Scanner finds it.
  */
 export const CPRED_HOTBAR_NETRUNNER_ACTION_IDS: readonly string[] = [CPRED_ACTION_SCANNER];
+
+/**
+ * The same idea for the Solo (stage 30a): „Zmysł Walki" is on the bar of
+ * whoever has the ability and of nobody else. It opens the allocation panel
+ * rather than spending anything by itself — the Action is charged by the server
+ * when the new allocation is actually saved, and only while a fight is running.
+ */
+export const CPRED_HOTBAR_SOLO_ACTION_IDS: readonly string[] = [CPRED_ACTION_COMBAT_AWARENESS];
 
 /** Slots that get a `1`–`9` key; the rest of the bar is mouse-only. */
 export const CPRED_HOTBAR_KEYED_SLOTS = 9;
@@ -356,6 +367,12 @@ export interface CpredHotbarInput {
    * Scanner slot; everything else on the bar is unaffected.
    */
   netrunner?: boolean;
+  /**
+   * This sheet has Zmysł Walki (stage 30a) — a Solo, and only a Solo. Adds the
+   * box that opens the allocation panel; everything else on the bar is
+   * unaffected.
+   */
+  combatAwareness?: boolean;
 }
 
 /** Reason a weapon cannot fire right now, or null. */
@@ -452,9 +469,11 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
     });
   }
 
-  const actionIds = input.netrunner
-    ? [...CPRED_HOTBAR_ACTION_IDS, ...CPRED_HOTBAR_NETRUNNER_ACTION_IDS]
-    : CPRED_HOTBAR_ACTION_IDS;
+  const actionIds = [
+    ...CPRED_HOTBAR_ACTION_IDS,
+    ...(input.netrunner ? CPRED_HOTBAR_NETRUNNER_ACTION_IDS : []),
+    ...(input.combatAwareness ? CPRED_HOTBAR_SOLO_ACTION_IDS : []),
+  ];
   for (const actionId of actionIds) {
     const definition = cpredAction(actionId);
     if (!definition) continue;
@@ -506,6 +525,10 @@ function actionSlotRefusal(
   actionRefusal: string | null,
   moveBlock: string | null,
 ): string | null {
+  // The box only *opens* the panel; „w ramach Akcji" is charged when the new
+  // allocation is saved. Greying it out on a spent Action would stop a Solo
+  // reading what they allocated in a turn they had already used up.
+  if (actionId === CPRED_ACTION_COMBAT_AWARENESS) return null;
   if (actionId === CPRED_ACTION_STAND_UP) return actionRefusal;
   if (actionId === CPRED_ACTION_RUN) {
     if (actionRefusal) return actionRefusal;

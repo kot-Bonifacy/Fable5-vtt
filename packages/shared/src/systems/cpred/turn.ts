@@ -88,6 +88,17 @@ export const CPRED_ACTION_NET = 'net';
  * (s. 199). It takes the whole Action, like any other thing done with hands.
  */
 export const CPRED_ACTION_SCANNER = 'net-scanner';
+/**
+ * Rearranging Zmysł Walki mid-fight (stage 30a) — „Poza walką, gdy rozpoczyna
+ * się walka albo w trakcie walki (w ramach Akcji) Solo może rozdzielić punkty"
+ * (s. 146).
+ *
+ * Only the third case costs anything, which is why this is a catalogue entry
+ * rather than a rule inside the panel: the first two are free, and the
+ * difference between them is „is a fight running", which is precisely what the
+ * turn budget already knows.
+ */
+export const CPRED_ACTION_COMBAT_AWARENESS = 'combat-awareness';
 
 /**
  * The catalogue itself (s. 168–169). Mechanics, not rulebook prose: the costs
@@ -249,6 +260,13 @@ export const CPRED_ACTIONS: readonly CpredActionDefinition[] = [
     handledElsewhere: true,
   },
   {
+    id: CPRED_ACTION_COMBAT_AWARENESS,
+    name: 'Zmysł Walki',
+    cost: 'action',
+    hint: 'Rozdzielasz punkty Zmysłu Walki na nowo. Poza walką za darmo; w trakcie walki kosztuje Akcję.',
+    handledElsewhere: true,
+  },
+  {
     id: 'draw-weapon',
     name: 'Dobycie broni',
     cost: 'free',
@@ -376,7 +394,25 @@ export interface CpredTurnLedger {
   startedRound?: number;
   /** Round whose end-of-turn effects already ran (fire, poison, the ribs). */
   endedRound?: number;
+  /**
+   * Rounds in which a „first in the Round" Combat Awareness ability has already
+   * fired (stage 30a) — Redukcja obrażeń on damage taken, Wykrycie słabości on
+   * damage dealt.
+   *
+   * Here rather than in `turnState` for exactly the reason the two stamps above
+   * are: a budget is handed out fresh whenever a turn begins, and „begins"
+   * includes the GM stepping back through the queue. A Solo whose reduction was
+   * refunded by the GM correcting the pointer would soak two hits in one Round.
+   *
+   * Keyed by round number rather than a boolean, so a stale stamp from an
+   * earlier Round is simply not this Round — nothing has to be cleared.
+   */
+  once?: Partial<Record<CpredRoundOnceId, number>>;
 }
+
+/** Abilities that happen at most once per Round, whoever's turn it is. */
+export const CPRED_ROUND_ONCE_IDS = ['damageReduction', 'weakSpot'] as const;
+export type CpredRoundOnceId = (typeof CPRED_ROUND_ONCE_IDS)[number];
 
 /** Reads a stored ledger; anything unreadable means „nothing has fired yet". */
 export function readCpredTurnLedger(raw: unknown): CpredTurnLedger {
@@ -388,11 +424,49 @@ export function readCpredTurnLedger(raw: unknown): CpredTurnLedger {
     }
   }
   if (!isReadable(raw)) return {};
-  const value = raw as { startedRound?: unknown; endedRound?: unknown };
+  const value = raw as { startedRound?: unknown; endedRound?: unknown; once?: unknown };
+  const once: Partial<Record<CpredRoundOnceId, number>> = {};
+  if (typeof value.once === 'object' && value.once !== null) {
+    const stored = value.once as Record<string, unknown>;
+    for (const id of CPRED_ROUND_ONCE_IDS) {
+      if (Number.isInteger(stored[id])) once[id] = stored[id] as number;
+    }
+  }
   return {
     ...(Number.isInteger(value.startedRound) ? { startedRound: value.startedRound as number } : {}),
     ...(Number.isInteger(value.endedRound) ? { endedRound: value.endedRound as number } : {}),
+    ...(Object.keys(once).length > 0 ? { once } : {}),
   };
+}
+
+/** True when this once-a-Round ability has already fired in this Round. */
+export function cpredRoundOnceUsed(
+  ledger: CpredTurnLedger,
+  id: CpredRoundOnceId,
+  round: number,
+): boolean {
+  return ledger.once?.[id] === round;
+}
+
+/** Takes the stamp back off, for a hit the table took back. */
+export function clearCpredRoundOnce(
+  ledger: CpredTurnLedger,
+  id: CpredRoundOnceId,
+): CpredTurnLedger {
+  if (ledger.once?.[id] === undefined) return ledger;
+  const { [id]: _dropped, ...rest } = ledger.once;
+  return Object.keys(rest).length > 0
+    ? { ...ledger, once: rest }
+    : { startedRound: ledger.startedRound, endedRound: ledger.endedRound };
+}
+
+/** Records that it has now fired, for the ledger column to keep. */
+export function markCpredRoundOnce(
+  ledger: CpredTurnLedger,
+  id: CpredRoundOnceId,
+  round: number,
+): CpredTurnLedger {
+  return { ...ledger, once: { ...ledger.once, [id]: round } };
 }
 
 /** True when this phase already ran for this participant in this round. */

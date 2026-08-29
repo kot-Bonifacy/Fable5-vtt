@@ -375,3 +375,32 @@ być prawdziwy, gdy 16h i 26f zaczęły rany **nadawać z zasady**. Rany siedzą
 bajt w bajt tak, jak w 16b), a `combatProfileSheet` podaje je syntetycznej karcie, więc
 `cpredInjuryDodgeBlock` i `cpredInjuryModifiers` działają bez jednej gałęzi „czy to statysta".
 Żeton **bez** profilu nadal dostaje samo zdanie na czacie: nie ma gdzie zapisać.
+
+**Zdolność Specjalna Roli poznaje się po _nazwie_, nie po id Roli.** `cpredRoleAbilityRank(data,
+registry, nazwa)` w `roleability.ts` — bliźniak `cpredInterfaceRank` z 26a, i z tego samego
+powodu: id Ról przychodzą z `roles.json`, pliku danych, który grupa może przemianować albo
+przetłumaczyć inaczej. Zwraca **null**, a nie zero, gdy postać tej Zdolności nie ma: zero
+czytałoby się jak „Solo, które jest w tym słabe", a każdy wołający musi odróżnić jedno od
+drugiego, żeby wiedzieć, czy w ogóle coś rysować. Nowa Zdolność (30b–30d) dokłada tu stałą
+z nazwą i własną sekcję — nie gałąź w istniejącej.
+
+**Efekt Zdolności liczony z samej karty wchodzi wprost do planera, nie kontekstem.** Precyzyjny
+atak (`planCpredAttack`) i Wyczucie zagrożenia (`skillBreakdown` w `rolls.ts`) czytają
+`cpredSheetCombatAwareness(data, registry)` — dzięki temu podgląd u klienta i werdykt serwera
+dochodzą do tej samej liczby bez obiektu kontekstu podróżującego między nimi. Kontekst
+(`CpredAttackContext.modifiers`) zostaje dla tego, co wie **świat**: Trzymanie, dym, Konfrontacja.
+
+**„Pierwsze w tej Rundzie" mieszka w `CpredTurnLedger`, nie w `turnState`.** Redukcja obrażeń
+i Wykrycie słabości (30a) stemplują `Combatant.turnEffects` numerem Rundy przez
+`claimRoundOnce` (`realtime/round-once.ts`) — jedyną drogą, bo pyta i księguje w jednym wywołaniu.
+Budżet tury jest wydawany na nowo przy każdym starcie tury (a „start" obejmuje cofanie kolejki
+przez MG), więc ledger w nim zostałby wytarty dokładnie przez to, co ma przetrwać. Stempel jest
+numerem Rundy, nie flagą: stary wpis sam przestaje obowiązywać. „Cofnij" na karcie obrażeń oddaje
+stempel przez `releaseRoundOnce`.
+
+**Zdolność, której zapis coś kosztuje, ma własne zdarzenie i wypada z łaty karty.** Przydział
+Zmysłu Walki jedzie `character:combat-awareness`, a `character:update` odmawia go przez
+`FORBIDDEN` — tak samo jak `eddies` od 23b. Cena z bramą obok nie jest ceną, a autozapis karty
+nie ma czym zapłacić Akcji. Kody odmowy **są** kodami silnika (`NO_ABILITY`, `BAD_STEP`,
+`NOT_ENOUGH_POINTS`, `BAD_VALUE`), żeby klient tłumaczył je tą samą tabelą
+(`CPRED_COMBAT_AWARENESS_PROBLEMS`), którą wyszarza guziki panelu.

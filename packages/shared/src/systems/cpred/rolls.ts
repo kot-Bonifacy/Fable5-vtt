@@ -29,6 +29,15 @@ import {
   type CpredHitLocation,
 } from './locations.js';
 import { CPRED_STAT_LABELS, isCpredStatId, type CpredStatId, type CpredStats } from './stats.js';
+import { cpredSheetCombatAwareness } from './roleability.js';
+
+/**
+ * „Za każdy punkt dodaj +1 do Testów Percepcji" (Wyczucie zagrożenia, s. 146).
+ * The one skill a Combat Awareness point reaches outside a fight — matched by
+ * id, which is the slug the importer writes and stage 13 verified against the
+ * rulebook's own list.
+ */
+export const CPRED_PERCEPTION_SKILL_ID = 'perception';
 
 /** Wound state, driven purely by current HP („Progi Ran", s. 186). */
 export type CpredWoundState = 'healthy' | 'light' | 'serious' | 'mortal';
@@ -170,6 +179,13 @@ export interface CpredRollRequest {
    * would be a client deciding how much its target's vest is worth.
    */
   halvesArmor?: boolean;
+  /**
+   * Server-filled: damage „Wykrycie słabości" adds before armour (stage 30a),
+   * read off the stored attack the same way `halvesArmor` is. The server has
+   * already decided this was the Round's first successful Attack; by the time
+   * the number gets here it is simply owed.
+   */
+  weakSpot?: number;
   /**
    * Required for `kind: 'stabilize'` — the token being stabilized, which RAW
    * allows to be your own. Unlike the damage fields above this one *is* the
@@ -335,6 +351,16 @@ export function planCpredRoll(
     // in, or nothing extra while nobody has named a field (stage 25a debt).
     title = `${cpredSkillLabel(skill, data)} (${CPRED_STAT_LABELS[statId].abbr})`;
     breakdown.push(...skillBreakdown(data, skill));
+    if (skill.id === CPRED_PERCEPTION_SKILL_ID) {
+      const threatSense = cpredSheetCombatAwareness(data, registry).perception;
+      if (threatSense > 0) {
+        breakdown.push({
+          label: `Wyczucie zagrożenia ${threatSense}`,
+          value: threatSense,
+          kind: 'situational',
+        });
+      }
+    }
   } else if (request.kind === 'stat') {
     if (!isCpredStatId(request.statId)) return { ok: false, error: 'UNKNOWN_STAT' };
     statId = request.statId;
@@ -517,6 +543,17 @@ function planDamageRoll(
   const location: CpredHitLocation = request.location === 'head' ? 'head' : 'body';
   const breakdown: RollBreakdownEntry[] = [];
   const terms = [...parsed.formula.terms];
+  // „+1 do obrażeń (przed uwzględnieniem pancerza)" (s. 146) — a term on the
+  // damage roll, so the armour it then has to beat is the full one.
+  const weakSpot = Math.max(0, Math.round(request.weakSpot ?? 0));
+  if (weakSpot > 0) {
+    breakdown.push({
+      label: `Wykrycie słabości ${weakSpot}`,
+      value: weakSpot,
+      kind: 'situational',
+    });
+    terms.push({ kind: 'modifier', sign: 1, value: weakSpot });
+  }
   if (modifier !== 0) {
     breakdown.push({ label: 'Modyfikator obrażeń', value: modifier, kind: 'situational' });
     terms.push({ kind: 'modifier', sign: modifier < 0 ? -1 : 1, value: Math.abs(modifier) });
@@ -529,7 +566,7 @@ function planDamageRoll(
       title: `${weapon.name} — obrażenia (${CPRED_HIT_LOCATION_LABELS[location]})${suffix}`,
       formula: { terms },
       breakdown,
-      modifierTotal: modifier,
+      modifierTotal: modifier + weakSpot,
       woundState: state,
       luckSpent: 0,
       checkRule: false,

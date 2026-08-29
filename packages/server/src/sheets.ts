@@ -1,4 +1,6 @@
 import type {
+  CpredCombatAwarenessEffects,
+  CpredRoundOnceId,
   CompendiumEntry,
   CpredChokeOutcome,
   CpredCharacterData,
@@ -23,6 +25,10 @@ import type {
   TurnBudgetView,
 } from '@vtt/shared';
 import {
+  cpredSheetCombatAwareness,
+  cpredRoundOnceUsed,
+  markCpredRoundOnce,
+  clearCpredRoundOnce,
   CPRED_ACTIONS,
   CPRED_AIM_POINT_LABELS,
   CPRED_BROKEN_LEG_ROLL,
@@ -153,10 +159,17 @@ export function readSheetInitiative(
 ): SheetInitiative {
   const data = parseCharacterData(character.data, registry);
   const ref = data.stats.ref;
+  // „Każdy przydzielony punkt to +1 do rzutów na Inicjatywę" (Błyskawiczna
+  // reakcja, s. 146). It moves the total, never the tie-break: RAW breaks ties
+  // by REF, and a Solo's training is not reflexes.
+  const fastReflexes = cpredSheetCombatAwareness(data, registry).initiative;
   return {
-    modifier: ref,
+    modifier: ref + fastReflexes,
     tieBreak: ref,
-    label: `${CPRED_STAT_LABELS.ref.name} (${CPRED_STAT_LABELS.ref.abbr})`,
+    label:
+      fastReflexes > 0
+        ? `${CPRED_STAT_LABELS.ref.name} (${CPRED_STAT_LABELS.ref.abbr}) + Błyskawiczna reakcja ${fastReflexes}`
+        : `${CPRED_STAT_LABELS.ref.name} (${CPRED_STAT_LABELS.ref.abbr})`,
   };
 }
 
@@ -1228,6 +1241,36 @@ export function markTurnPhase(stored: string | null, phase: SheetTurnPhase, roun
 }
 
 /**
+ * Combat Awareness abilities that fire at most once a Round (stage 30a) —
+ * „pierwsze obrażenia otrzymane w tej Rundzie" and „pierwszym udanym Atakiem
+ * w Rundzie". Both live in the same round-stamped ledger the turn hooks use.
+ */
+export type SheetRoundOnce = CpredRoundOnceId;
+
+/** True when this ability has already fired for this participant this Round. */
+export function roundOnceUsed(stored: string | null, id: SheetRoundOnce, round: number): boolean {
+  return cpredRoundOnceUsed(readCpredTurnLedger(stored ?? undefined), id, round);
+}
+
+/** Records that it has now fired, for the `turnEffects` column to keep. */
+export function markRoundOnce(stored: string | null, id: SheetRoundOnce, round: number): string {
+  return JSON.stringify(markCpredRoundOnce(readCpredTurnLedger(stored ?? undefined), id, round));
+}
+
+/** Takes the stamp back off — „Cofnij" on the card that spent it. */
+export function clearRoundOnce(stored: string | null, id: SheetRoundOnce): string {
+  return JSON.stringify(clearCpredRoundOnce(readCpredTurnLedger(stored ?? undefined), id));
+}
+
+/** What a Solo's Combat Awareness is worth on this sheet — zero for everyone else. */
+export function readSheetCombatAwareness(
+  character: Pick<Character, 'data'>,
+  registry: SheetRegistry,
+): CpredCombatAwarenessEffects {
+  return cpredSheetCombatAwareness(parseCharacterData(character.data, registry), registry);
+}
+
+/**
  * A budget with everything still unspent — the start of a participant's turn.
  * The distance allowance is baked in at that moment; a spend may hand in a
  * fresher one, which is how a leg broken mid-turn shortens the rest of it.
@@ -1384,6 +1427,14 @@ export interface SheetDamageRequest {
    */
   halvesArmor?: boolean;
   /**
+   * HP the defender's own „Redukcja obrażeń" takes off this hit (stage 30a).
+   *
+   * Filled in by the caller, which is the only side that knows whether this is
+   * the Round's *first* damage against this figure — the sheet knows what the
+   * Solo allocated, not what has already happened this Round.
+   */
+  damageReduction?: number;
+  /**
    * The round that landed (stage 16g). Everything it changes about this hit —
    * how much armour wears down, whether a Critical Injury is drawn at all,
    * whether the target can be dropped below 1 HP — is read off these flags, so
@@ -1513,6 +1564,7 @@ export function applyDamageToSheet(
     // cannot travel with the attack either.
     headMultiplier: cpredHeadDamageMultiplier(data.criticalInjuries),
     ...(ammo?.nonLethal ? { nonLethal: true } : {}),
+    ...(request.damageReduction ? { damageReduction: request.damageReduction } : {}),
   });
 
   const patch: Partial<CpredCharacterData> = { hpCurrent: outcome.hpAfter };
@@ -1531,6 +1583,7 @@ export function applyDamageToSheet(
     damageRolled: outcome.damageRolled,
     armorSp: outcome.armorSp,
     ...(outcome.armorHalved ? { armorHalved: true } : {}),
+    ...(outcome.damageReduced > 0 ? { damageReduced: outcome.damageReduced } : {}),
     damageThrough: outcome.damageThrough,
     doubled: outcome.doubled,
     ...(outcome.doubled && outcome.headMultiplier !== CPRED_HEAD_DAMAGE_MULTIPLIER

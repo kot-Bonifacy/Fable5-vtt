@@ -28,6 +28,7 @@ plików również usunięto czarne tło. Nazwę ikony wybiera `shared`
 | `hud/bow.svg`              | Bow arrow            | Delapouite   | slot broni: łuk                       |
 | `hud/broadsword.svg`       | Broadsword           | Lorc         | slot broni: duża broń biała           |
 | `hud/crossbow.svg`         | Crossbow             | Carl Olsen   | slot broni: kusza                     |
+| `hud/combat-awareness.svg` | Awareness            | Lorc         | akcja „Zmysł Walki” (30a)             |
 | `hud/emp.svg`              | Brain                | Lorc         | chip EMP w panelu postaci             |
 | `hud/first-aid.svg`        | First aid kit        | Delapouite   | akcja „Ustabilizowanie”               |
 | `hud/fist.svg`             | Fist                 | Skoll        | slot broni: bijatyka                  |

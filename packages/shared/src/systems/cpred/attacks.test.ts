@@ -989,3 +989,67 @@ describe('planCpredAttack with special ammunition', () => {
     expect(result.ok && result.plan.attack.coneRangeM).toBeUndefined();
   });
 });
+
+/**
+ * Zmysł Walki w rachunku ataku (etap 30a, s. 146). Trzy z sześciu zdolności
+ * dotykają tej ścieżki, a każda inaczej: Precyzyjny atak wchodzi do rozbicia
+ * rzutu, Wyjście z opresji jedzie flagą do silnika kości, a Wykrycie słabości
+ * czeka na kartę obrażeń — i o tym, czy je dostanie, rozstrzyga serwer.
+ */
+describe('Zmysł Walki w ataku', () => {
+  function solo(allocation: Record<string, number>) {
+    return sheet({
+      weapons: [weaponRow()],
+      skills: { handgun: 6 },
+      roleId: 'solo',
+      roleAbilityRank: 10,
+      combatAwareness: allocation,
+    });
+  }
+
+  it('Precyzyjny atak dokłada nazwany wiersz do rozbicia', () => {
+    const planned = plan({}, { data: solo({ preciseAttack: 6 }) });
+    expect(planned.ok).toBe(true);
+    if (!planned.ok) return;
+    expect(planned.plan.breakdown).toContainEqual({
+      label: 'Precyzyjny atak 2',
+      value: 2,
+      kind: 'situational',
+    });
+    // REF 5 + Broń krótka 6 + 2.
+    expect(planned.plan.modifierTotal).toBe(13);
+  });
+
+  it('Wyjście z opresji jedzie flagą na karcie ataku', () => {
+    const planned = plan({}, { data: solo({ luckyEscape: 4 }) });
+    expect(planned.ok).toBe(true);
+    if (!planned.ok) return;
+    expect(planned.plan.attack.ignoresFumble).toBe(true);
+  });
+
+  it('Wykrycie słabości jedzie liczbą — serwer dopiero rozstrzyga, czy się należy', () => {
+    const planned = plan({}, { data: solo({ weakSpot: 3 }) });
+    expect(planned.ok).toBe(true);
+    if (!planned.ok) return;
+    expect(planned.plan.attack.weakSpot).toBe(3);
+  });
+
+  it('postać bez Zmysłu Walki nie niesie ani wiersza, ani flag', () => {
+    const planned = plan({});
+    expect(planned.ok).toBe(true);
+    if (!planned.ok) return;
+    expect(planned.plan.breakdown.some((entry) => entry.label.startsWith('Precyzyjny'))).toBe(
+      false,
+    );
+    expect(planned.plan.attack.ignoresFumble).toBeUndefined();
+    expect(planned.plan.attack.weakSpot).toBeUndefined();
+  });
+
+  it('nierozdzielone punkty nic nie dają', () => {
+    const planned = plan({}, { data: solo({}) });
+    expect(planned.ok).toBe(true);
+    if (!planned.ok) return;
+    expect(planned.plan.modifierTotal).toBe(11);
+    expect(planned.plan.attack.ignoresFumble).toBeUndefined();
+  });
+});

@@ -359,3 +359,20 @@ nie dało się załadować amunicją zapalającą mimo gotowej mechaniki z 16g. 
 sam: **kod robi coś, czego dane nie znają**. Zanim zaczniesz szukać błędu w kompendium, puść
 `python tools/import/parse-manual.py` i porównaj wynik — import wypisuje ostrzeżenia i liczby,
 a diff dwóch wersji pliku mówi więcej niż godzina czytania parsera.
+
+**Nowe pole `CpredCharacterData` wywraca też statystę i mapę ikon.** Dopisanie
+`combatAwareness` w 30a wysypało `tsc` w dwóch miejscach, których nikt by nie szukał:
+`combatProfileSheet` (`statist.ts`) buduje **pełną** kartę syntetyczną, więc brak pola to błąd
+typu, a `ICON_FX` w `fx.ts` to `Record<CpredSlotIcon, …>` — nowa ikona akcji wymaga wiersza także
+tam, choć akcja niczym nie strzela. Nie szukaj tego w komentarzach: obie listy pilnuje kompilator,
+więc wystarczy puścić `pnpm -r exec tsc --noEmit` **przed** pisaniem UI.
+
+**`tsc --noEmit` łapie błędy w testach, których `vitest` nie widzi.** 29.08 (trzecia sesja)
+`damage.test.ts` używał `DamageLogEntry` bez importu i przechodził od nieznanej liczby sesji —
+vitest transpiluje bez sprawdzania typów, a `pnpm -r build` pomija pliki testowe. Jeśli dotykasz
+typu, którego używają testy, sprawdź go osobnym `tsc`, nie samym `pnpm -r test`.
+
+**`walls.test.ts` i `realtime.test.ts` też migoczą przy pełnym `vitest run`** (dołączają do
+`netdevices` i `zones` z 29.08): raz „no such table: main.SceneExploration" po teardownie bazy,
+raz timing obecności w `presence:update`. Uruchomione osobno przechodzą; drugi pełny przebieg
+zwykle też. Zanim uznasz to za regres, powtórz przebieg.

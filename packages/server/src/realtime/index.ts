@@ -57,7 +57,12 @@ import {
 } from './facedown.js';
 import { tokenEffectEvent } from './turn-effects.js';
 import { effectExpireEvent } from './timed-effects.js';
-import { characterCreateEvent, characterDeleteEvent, characterUpdateEvent } from './characters.js';
+import {
+  characterCombatAwarenessEvent,
+  characterCreateEvent,
+  characterDeleteEvent,
+  characterUpdateEvent,
+} from './characters.js';
 import {
   creationBuyEvent,
   creationDiscardEvent,
@@ -249,6 +254,7 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   shopTierEvent,
   characterCreateEvent,
   characterUpdateEvent,
+  characterCombatAwarenessEvent,
   characterDeleteEvent,
   creationStartEvent,
   creationPatchEvent,

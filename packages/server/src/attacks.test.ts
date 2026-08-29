@@ -9,6 +9,7 @@ import type {
   CampaignSummary,
   ChatMessageBroadcast,
   CharacterView,
+  CombatView,
   CpredCharacterData,
   DamageLogEntry,
   InvitationSummary,
@@ -1625,6 +1626,73 @@ describe('ranged combat from the map', () => {
 
       const after = await sheetOf(kneeCharacterId);
       expect(after.criticalInjuries).toHaveLength(before.criticalInjuries.length);
+    });
+  });
+  /**
+   * Wykrycie słabości (etap 30a, s. 146): „+1 do obrażeń (przed uwzględnieniem
+   * pancerza) zadanych pierwszym udanym Atakiem w Rundzie".
+   *
+   * Kartę ataku wypełnia planer całym przydziałem Solo; to serwer rozstrzyga,
+   * czy ten cios na niego zasłużył — bo Runda jest stanem walki, nie karty.
+   * Dlatego tu musi stać prawdziwa kolejka inicjatywy.
+   */
+  describe('Wykrycie słabości — pierwszy udany Atak w Rundzie', () => {
+    /** Strzela z ręki MG (nigdy nie odmawia mu budżetu) aż do trafienia. */
+    async function hitOnce(): Promise<AttackCard> {
+      for (let attempt = 0; attempt < 30; attempt += 1) {
+        const message = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+        const ack = await emitAck<{ messageId: number }>(gm, 'attack:roll', {
+          characterId,
+          targetTokenId,
+          attackerTokenId: shooterTokenId,
+          request: { weaponRowId: 'w-pistol', mode: 'single' },
+        });
+        if (!ack.ok) throw new Error(`attack:roll failed: ${JSON.stringify(ack)}`);
+        const card = (await message).message.roll?.attack as AttackCard | undefined;
+        if (card?.hit === true) return card;
+      }
+      throw new Error('30 strzałów i ani jednego trafienia');
+    }
+
+    it('daje bonus pierwszemu trafieniu Rundy i odbiera go drugiemu', async () => {
+      await placeTargetAt(6);
+      // Vex staje się Solo na czas tego testu — bez Roli nie ma czego rozdzielać.
+      await emitAck(gm, 'character:update', {
+        characterId,
+        patch: { data: { roleId: 'solo', roleAbilityRank: 6 } },
+      });
+      const allocated = await emitAck(gm, 'character:combat-awareness', {
+        characterId,
+        allocation: { weakSpot: 3 },
+      });
+      expect(allocated.ok).toBe(true);
+
+      const combat = data(
+        await emitAck<CombatView>(gm, 'combat:start', {
+          sceneId,
+          tokenIds: [shooterTokenId, targetTokenId],
+        }),
+        'combat:start',
+      );
+      const shooterRow = combat.combatants.find((row) => row.tokenId === shooterTokenId);
+      if (!shooterRow) throw new Error('shooter missing from tracker');
+      await emitAck(gm, 'combat:set-initiative', { combatantId: shooterRow.id, initiative: 20 });
+      const round1 = data(await emitAck<CombatView>(gm, 'combat:next', {}), 'combat:next');
+      expect(round1.round).toBe(1);
+
+      expect((await hitOnce()).system.weakSpot).toBe(3);
+      expect((await hitOnce()).system.weakSpot).toBeUndefined();
+
+      // Nowa Runda — i znowu należy się pierwszemu trafieniu.
+      await emitAck<CombatView>(gm, 'combat:next', {});
+      const round2 = data(await emitAck<CombatView>(gm, 'combat:next', {}), 'combat:next');
+      expect(round2.round).toBe(2);
+      expect((await hitOnce()).system.weakSpot).toBe(3);
+
+      // Sprzątanie: reszta pliku strzela poza walką i nie chce tu kolejki.
+      await emitAck(gm, 'combat:end', {});
+      await emitAck(gm, 'character:combat-awareness', { characterId, allocation: {} });
+      await emitAck(gm, 'character:update', { characterId, patch: { data: { roleId: null } } });
     });
   });
 });

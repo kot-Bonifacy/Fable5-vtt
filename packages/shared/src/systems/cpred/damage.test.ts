@@ -430,3 +430,84 @@ describe('sheet normalization (stage 15 fields)', () => {
     expect(stabilized.deathSaves).toBe(0);
   });
 });
+
+/**
+ * Redukcja obrażeń Solo (etap 30a, s. 146): „Za 2 punkty zmniejsz o 1 pierwsze
+ * obrażenia otrzymane w tej Rundzie".
+ *
+ * Silnik dostaje samą liczbę — czy ten cios jest pierwszy w Rundzie,
+ * rozstrzyga wołający, bo Runda to stan walki, nie karty.
+ */
+describe('Redukcja obrażeń', () => {
+  it('zdejmuje PW z tego, co przeszło przez pancerz', () => {
+    const outcome = resolveCpredDamage({
+      damage: 12,
+      location: 'body',
+      armorSp: 4,
+      hpCurrent: 40,
+      hpMax: 40,
+      damageReduction: 3,
+    });
+    // 12 − OB 4 = 8, minus 3 z treningu = 5.
+    expect(outcome.armorSp).toBe(4);
+    expect(outcome.damageReduced).toBe(3);
+    expect(outcome.damageThrough).toBe(5);
+    expect(outcome.hpAfter).toBe(35);
+  });
+
+  it('działa po mnożniku głowy, nie przed nim', () => {
+    const outcome = resolveCpredDamage({
+      damage: 10,
+      location: 'head',
+      armorSp: 7,
+      hpCurrent: 40,
+      hpMax: 40,
+      damageReduction: 2,
+    });
+    // 10 − OB 7 = 3, ×2 = 6, minus 2 = 4. Gdyby redukcja szła przed mnożnikiem,
+    // wyszłoby 2 — a podręcznik mówi o „otrzymanych obrażeniach".
+    expect(outcome.damageThrough).toBe(4);
+    expect(outcome.damageReduced).toBe(2);
+  });
+
+  it('nie schodzi poniżej zera i nie ratuje przed ciosem, który pancerz zjadł', () => {
+    const outcome = resolveCpredDamage({
+      damage: 5,
+      location: 'body',
+      armorSp: 11,
+      hpCurrent: 40,
+      hpMax: 40,
+      damageReduction: 5,
+    });
+    expect(outcome.damageThrough).toBe(0);
+    expect(outcome.damageReduced).toBe(0);
+    expect(outcome.hpAfter).toBe(40);
+  });
+
+  it('nie chroni pancerza — ścieranie liczy się od tego, co przez niego przeszło', () => {
+    const outcome = resolveCpredDamage({
+      damage: 8,
+      location: 'body',
+      armorSp: 7,
+      hpCurrent: 40,
+      hpMax: 40,
+      damageReduction: 5,
+    });
+    // 8 − 7 = 1 przeszło, więc kurtka traci punkt, choć ciało nie straciło nic.
+    expect(outcome.damageThrough).toBe(0);
+    expect(outcome.ablated).toBe(true);
+    expect(outcome.spAfter).toBe(6);
+  });
+
+  it('bez przydziału nic się nie zmienia', () => {
+    const outcome = resolveCpredDamage({
+      damage: 12,
+      location: 'body',
+      armorSp: 4,
+      hpCurrent: 40,
+      hpMax: 40,
+    });
+    expect(outcome.damageReduced).toBe(0);
+    expect(outcome.damageThrough).toBe(8);
+  });
+});

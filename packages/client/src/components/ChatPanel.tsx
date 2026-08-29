@@ -148,9 +148,25 @@ function RollRow({ message, isGm }: { message: ChatMessageView; isGm: boolean })
                 Krytyk! dorzut +{roll.critical.extraRoll}
               </span>
             )}
+            {/* Wyjście z opresji (etap 30a, s. 146): jedynka padła i nic nie
+                kosztowała. Milczące pominięcie kary czytałoby się jak błąd
+                w kościach, więc kafel mówi, co ją zdjęło. */}
             {roll.critical?.type === 'fumble' && (
-              <span className="chat-roll-badge chat-roll-badge--fumble">
-                Fumble! dorzut −{roll.critical.extraRoll}
+              <span
+                className={
+                  roll.critical.ignored
+                    ? 'chat-roll-badge chat-roll-badge--fumble chat-roll-badge--shrugged'
+                    : 'chat-roll-badge chat-roll-badge--fumble'
+                }
+                title={
+                  roll.critical.ignored
+                    ? 'Wyjście z opresji: ignorujesz Krytyczne porażki w Testach ataku. Wynik nadal liczy się jako 1.'
+                    : undefined
+                }
+              >
+                {roll.critical.ignored
+                  ? 'Fumble zignorowany (Wyjście z opresji)'
+                  : `Fumble! dorzut −${roll.critical.extraRoll}`}
               </span>
             )}
             {roll.criticalDamage && (

@@ -285,3 +285,89 @@ describe('planCpredRoll — Death Save (stage 15)', () => {
     });
   });
 });
+
+/**
+ * Wyczucie zagrożenia (etap 30a, s. 146): „Za każdy punkt dodaj +1 do Testów
+ * Percepcji". Liczy się z samej karty, więc podgląd u klienta i werdykt
+ * serwera dochodzą do tej samej liczby bez żadnego kontekstu.
+ */
+describe('Wyczucie zagrożenia w Teście Percepcji', () => {
+  function solo(points: number) {
+    return sheet({
+      roleId: 'solo',
+      roleAbilityRank: 6,
+      combatAwareness: { threatSense: points },
+      skills: { perception: 4 },
+    });
+  }
+
+  it('dokłada nazwany wiersz do rozbicia Percepcji', () => {
+    const planned = planCpredRoll(solo(3), registry, { kind: 'skill', skillId: 'perception' });
+    expect(planned.ok).toBe(true);
+    if (!planned.ok) return;
+    const row = planned.plan.breakdown.find((entry) => entry.label.startsWith('Wyczucie'));
+    expect(row).toEqual({ label: 'Wyczucie zagrożenia 3', value: 3, kind: 'situational' });
+    // INT 5 + Percepcja 4 + 3.
+    expect(planned.plan.modifierTotal).toBe(12);
+  });
+
+  it('nie dotyka innych Umiejętności', () => {
+    const planned = planCpredRoll(solo(3), registry, { kind: 'skill', skillId: 'handgun' });
+    expect(planned.ok).toBe(true);
+    if (!planned.ok) return;
+    expect(planned.plan.breakdown.some((entry) => entry.label.startsWith('Wyczucie'))).toBe(false);
+  });
+
+  it('bez przydziału nie dokłada wiersza', () => {
+    const planned = planCpredRoll(solo(0), registry, { kind: 'skill', skillId: 'perception' });
+    expect(planned.ok).toBe(true);
+    if (!planned.ok) return;
+    expect(planned.plan.breakdown.some((entry) => entry.label.startsWith('Wyczucie'))).toBe(false);
+  });
+});
+
+/**
+ * Wykrycie słabości (etap 30a, s. 146): „+1 do obrażeń (przed uwzględnieniem
+ * pancerza)". Wpada do rzutu na obrażenia jako term, a nie do rachunku
+ * pancerza — więc pancerz, który potem trzeba pokonać, jest pełny.
+ */
+describe('Wykrycie słabości w rzucie na obrażenia', () => {
+  const armed = sheet({
+    weapons: [
+      {
+        id: 'w1',
+        name: 'Ciężki pistolet',
+        damage: '3k6',
+        notes: '',
+        ammoCurrent: 8,
+        ammoMax: 8,
+        ammoType: '',
+        rof: '1',
+      },
+    ],
+  });
+
+  it('dokłada term i nazwany wiersz', () => {
+    const planned = planCpredRoll(armed, registry, {
+      kind: 'damage',
+      weaponRowId: 'w1',
+      weakSpot: 2,
+    });
+    expect(planned.ok).toBe(true);
+    if (!planned.ok) return;
+    expect(formatRollNotation(planned.plan.formula)).toBe('3d6+2');
+    expect(planned.plan.breakdown).toContainEqual({
+      label: 'Wykrycie słabości 2',
+      value: 2,
+      kind: 'situational',
+    });
+    expect(planned.plan.modifierTotal).toBe(2);
+  });
+
+  it('bez liczby zostawia notację broni nietkniętą', () => {
+    const planned = planCpredRoll(armed, registry, { kind: 'damage', weaponRowId: 'w1' });
+    expect(planned.ok).toBe(true);
+    if (!planned.ok) return;
+    expect(formatRollNotation(planned.plan.formula)).toBe('3d6');
+  });
+});

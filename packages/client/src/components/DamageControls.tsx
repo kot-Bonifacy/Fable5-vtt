@@ -213,6 +213,11 @@ export function DamageRow({
             : entry.armorHalved
               ? ' · pancerz przepołowiony do zera'
               : ' · bez pancerza'}
+          {/* Redukcja obrażeń Solo (etap 30a, s. 146). Nazwana z tego samego
+              powodu, co połowa pancerza wyżej: bez tego zdania różnica między
+              tym, co przeszło przez OB, a tym, co zeszło z PW, nie ma
+              wytłumaczenia. */}
+          {entry.damageReduced ? ` − ${entry.damageReduced} (Redukcja obrażeń)` : ''}
           {entry.bonusDamage > 0 ? ` + ${entry.bonusDamage} za ranę krytyczną` : ''}
           {entry.hp
             ? ` · PW ${entry.hp.before} → ${entry.hp.after}`

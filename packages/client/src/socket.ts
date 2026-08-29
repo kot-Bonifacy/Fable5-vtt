@@ -1,6 +1,7 @@
 import { io, type Socket } from 'socket.io-client';
 import type {
   AiAskPayload,
+  CpredCombatAwarenessProblem,
   AiChunkBroadcast,
   AiDoneBroadcast,
   AiErrorBroadcast,
@@ -189,6 +190,7 @@ import type {
 import {
   CHAT_COMMANDS_HELP,
   CPRED_ATTACK_PROBLEM_MESSAGES,
+  CPRED_COMBAT_AWARENESS_PROBLEMS,
   CPRED_FACEDOWN_PROBLEM_MESSAGES,
   CPRED_GRAPPLE_PROBLEM_MESSAGES,
   MAX_DICE_PER_TERM,
@@ -2368,6 +2370,35 @@ export const deleteCharacter = (characterId: string) =>
 /** Immediate (non-debounced) character update — owner assignment, portraits. */
 export const updateCharacter = (characterId: string, patch: CharacterPatch) =>
   emitSceneAck<CharacterView>('character:update', { characterId, patch });
+
+/**
+ * Saving a Solo's Zmysł Walki allocation (stage 30a).
+ *
+ * Its own event rather than a sheet patch, and never debounced: „w trakcie
+ * walki (w ramach Akcji)" (s. 146) means the save may cost an Action, and an
+ * Action must not be charged by an autosave timer firing behind the player.
+ *
+ * `tokenId` is the figure that pays, when one is standing on the scene; the
+ * server charges nothing when no fight is running.
+ */
+export const saveCombatAwareness = (
+  characterId: string,
+  allocation: Record<string, number>,
+  tokenId?: string,
+) =>
+  emitSceneAck<CharacterView>('character:combat-awareness', {
+    characterId,
+    allocation,
+    ...(tokenId ? { tokenId } : {}),
+  });
+
+/** Polish sentences for the refusals `character:combat-awareness` can return. */
+export function combatAwarenessErrorText(code: string): string {
+  if (code in CPRED_COMBAT_AWARENESS_PROBLEMS) {
+    return CPRED_COMBAT_AWARENESS_PROBLEMS[code as CpredCombatAwarenessProblem];
+  }
+  return combatErrorText(code);
+}
 
 interface CharacterSaveBuffer {
   patch: CharacterPatch;

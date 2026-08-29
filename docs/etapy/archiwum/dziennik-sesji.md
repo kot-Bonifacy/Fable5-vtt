@@ -7,6 +7,67 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 29.08 — audyt „czy stoimy na podręczniku głównym" i cztery decyzje MG
+
+**Zlecenie MG:** sprawdzić, czy VTT bazuje w pełni na podręczniku głównym, wyciąć to, co zostało
+po Easy Mode, i przedstawić listę mechanik z podręcznika możliwych do dołożenia — do wyboru przez
+MG, nie do wdrożenia z marszu.
+
+**Werdykt audytu: system stoi na podręczniku głównym i nie było czego wycinać.** Przejście
+odbyło się w etapie 13 i jest udokumentowane w `tools/import/README.md` („Podręcznik jest
+źródłem prawdy dla wartości bazowych"); `parse-compendium.py` nie pisze `weapon-types.json`
+ani `armor.json` od tamtej pory. Sprawdzone w danych produkcyjnych: **66 umiejętności**
+(nie 41), **20 typów broni** z pełną tabelą PT dla ośmiu pasm (nie 3 wiersze), **9 pancerzy**,
+**22 rany krytyczne** (obie tabele 2k6 — Easy Mode ma sam korpus), 96 cyborgizacji, 16 rodzajów
+amunicji, 10 Ról. Tabela PT zasięgów zgadza się z s. 173 co do cyfry. Sprawdzone też, że
+identyfikatory umiejętności w kodzie istnieją w liście 66-elementowej (lista publiczna jest jej
+ścisłym podzbiorem — zero rozjazdów).
+
+**Po Easy Mode zostały cztery ślady, wszystkie nieszkodliwe.** (1) `data/public/cpred/skills.json`
+— 42 pozycje jako próbka dla świeżego klona; plik prywatny go **zastępuje**, zostaje świadomie.
+(2) `overrides.json` z siedmioma wartościami odczytanymi z kart postaci Easy Mode — **skasowany
+decyzją MG**, razem z martwą ścieżką, która go czytała; zbiorcza tabela ze statbloków jest teraz
+czysto tym, co mówią statbloki, więc porównanie z podręcznikiem przestało się zgadzać samo ze
+sobą. (3) `parse-critical-injuries.py` — ścieżka awaryjna z bezpiecznikiem, zostaje.
+(4) **Cztery komentarze przypisywały Easy Mode'owi regułę, która jest identyczna w podręczniku**
+(„Progi Ran" s. 186, remis inicjatywy s. 168, slug `perception`) — poprawione.
+
+**Trzy znalezione błędy, wszystkie naprawione albo zapisane.**
+(a) **Cyberręka nie podnosiła obrażeń Bijatyki**: `unarmedDamage(body, cyberarm)` miało parametr,
+którego jedyny wywołujący nigdy nie przekazywał — postać z BC ≤ 4 i cyberręką biła za 1k6
+zamiast 2k6 (s. 176). Nowa `hasCyberarm` wymaga `foundation` **i** umieszczenia w boksie ręki na
+sylwetce; noga i wszczep wkręcony w rękę nie liczą się, nieumieszczona kończyna też nie.
+(b) **Cichy zjazd na dane próbkowe na produkcji** — `loadCpredRegistry` celowo milczy, gdy nie ma
+pliku prywatnego, więc VPS bez `data/private/` wystartowałby z 42 umiejętnościami i nikt by się
+nie dowiedział. **Dopisane do etapu 28** jako dwie pozycje zakresu (przeniesienie katalogu jako
+krok deployu + ostrzeżenie startowe) i kryterium ukończenia.
+(c) **Siedem ran krytycznych ma efekt tylko w prozie** (Pęknięta czaszka ×3, oba urazy oka,
+Naderwany mięsień, Strzaskane palce, Złamana szczęka, Zmiażdżona krtań) — do `POMYSLY.md`.
+
+**Celowanie (s. 170) — zrobione w całości, bo okazało się nieosiągalne z UI.** Silnik miał od
+etapu 16 komplet (−8, ×2 po pancerzu głowy, `AIM_NEEDS_FULL_ACTION`, wyjątek Ludzkiej tarczy),
+ale **obie drogi uzbrojenia celownika wpisywały `aimed: false` na sztywno** i nic tego nie
+zmieniało — reguła była martwa i żaden test tego nie łapał, bo testy wołały planer wprost.
+Zamiast flagi jest teraz `aimedAt` z trzema celami z podręcznika: **głowa**, **trzymany
+przedmiot**, **noga**. Wybiera się je na banerze uzbrojonego celownika nad mapą. Skutki:
+noga → serwer nadaje ranę „Złamana noga" znalezioną po **tabeli i wyniku** (korpus, 2k6 = 8),
+o ile choć punkt przeszedł przez pancerz ciała i cel nie ma już złamanej nogi; przedmiot →
+zdanie na karcie obrażeń (VTT nie modeluje tego, co kto trzyma w rękach). Przy okazji zdjęty
+warunek `!melee` — podręcznik mówi „atak Dystansowy **lub Wręcz**". Ludzka tarcza nie zasłania
+tylko przed celowaniem **w głowę**, nie przed każdym celowanym strzałem.
+
+**Reszta kandydatów z audytu poszła do `POMYSLY.md`** (9 wpisów, wszystkie z 29.08): rozwój za
+Punkty Doświadczenia (s. 410–411) i wieloklasowość, **Zdolności Specjalne dziewięciu Ról**
+(mechanicznie działa dziś wyłącznie Interfejs Netrunnera — największa nieodrobiona część
+podręcznika), walka pojazdów, dodatki do broni, tarcza jako przedmiot z PW, sztuki walki
+ignorujące połowę pancerza, ×3 Pękniętej czaszki i typowane kary ran. MG wybierze z tego, co
+warto wciągnąć jako zaległości albo etapy.
+
+**Testy:** 1408 w `shared` (+8), **797** na serwerze (+4 na Celowanie), 62 u klienta — zielone.
+ESLint i Prettier czyste. **Uwaga:** `netdevices.test.ts` i `zones.test.ts` migoczą przy
+`pnpm -r test` (rzuty kością), i **migotały tak samo na nietkniętym `main`** — sprawdzone
+schowkiem; uruchomione osobno przechodzą za każdym razem.
+
 ### Sesja 28.08 (czwarta) — odsłuch dźwięków mapy
 
 **Zlecenie MG:** pierwszy odsłuch szesnastu próbek na głośnikach i poprawa sześciu, które

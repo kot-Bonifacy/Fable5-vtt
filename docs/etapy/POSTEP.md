@@ -89,32 +89,35 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 | 27l | Karty obiektów sceny                          | ✅     | 2026-08-24        |
 | 28  | Wdrożenie na VPS                              | ⬜     |                   |
 | 29  | Rozwój postaci za Punkty Doświadczenia        | ⬜     |                   |
-| 30  | Zdolności Specjalne dziewięciu Ról            | ⬜     |                   |
+| 30  | ~~Zdolności Specjalne dziewięciu Ról~~        | ⛔     | rozdzielony 29.08 |
+| 30a | Szkielet Zdolności Ról i Zmysł Walki Solo     | ✅     | 2026-08-29        |
+| 30b | Medycyna Medyka i Twórca Technika             | ⬜     |                   |
+| 30c | Wsparcie i Praca Zespołowa                    | ⬜     |                   |
+| 30d | Charyzma, Znajomości, Moto, Wiarygodność      | ⬜     |                   |
 | 31  | Dodatki do broni                              | ⬜     |                   |
 
 ## Od czego zacząć
 
-**Ostatnia sesja (29.08, druga) zamknęła pakiet A+B z triażu MG** — cztery dziury z audytu
-i dwa braki profilu statysty. **Broń biała i sztuki walki tną teraz przez połowę pancerza**
-(s. 176–178) — to była największa z nich, bo dotyczyła każdego ataku wręcz w grze; **Pęknięta
-czaszka mnoży trafienia w głowę ×3**; **siedem ran krytycznych ma karę warunkową** jako liczbę
-z warunkiem zamiast prozy; a **statysta z profilem bojowym nosi rany i sam się przeładowuje**.
-Wszystkie trzy dane wyciągnął z podręcznika `parse-manual.py`, więc wpis MG w kompendium działa
-tak samo jak drukowany.
+**Ostatnia sesja (29.08, trzecia) zamknęła etap 30a** — Zdolności Specjalne Ról przestały być
+etykietą. Do 29.08 działał mechanicznie **wyłącznie Interfejs Netrunnera**; teraz Solo ma pełny
+**Zmysł Walki**: sześć zdolności bojowych rozdzielanych z puli równej randze, wchodzących
+w inicjatywę, rzut ataku, obrażenia zadane, obrażenia otrzymane, kość Krytycznej porażki i Test
+Percepcji. Etap 30 został przy okazji **rozdzielony na 30a–30d** (patrz `etap-30-zdolnosci-rol.md`)
+i poprawiony: miał trzy Zdolności przypisane do złych Ról i gubił szóstą zdolność Zmysłu Walki.
 
-**Od czego zacząć: nadal do wyboru 27g** (wydajność) i **28** (wdrożenie na VPS) — dwa
-nierozpoczęte etapy z pierwotnego planu. **Od 29.08 doszły trzy nowe: 29** (rozwój postaci
-za PD wraz z wieloklasowością), **30** (Zdolności Specjalne dziewięciu Ról — z góry podejrzany
-o podział na 30a/30b/…) i **31** (dodatki do broni). Wszystkie trzy wyszły z audytu 29.08 i były
-w `POMYSLY.md`, dopóki MG nie kazał ich wciągnąć jako etapy. **27g ma gotowy poligon**: pomiar
-fps na scenie ze światłami i mgłą robi się na „Korytarzu 16e".
+**Od czego zacząć: 30b** (Medycyna + Twórca) jest najbliżej — obie Zdolności stoją na tym samym
+pomyśle „dwie Specjalizacje przy każdym awansie", a panel z 30a jest gotowym wzorcem UI. Poza tym
+nadal wolne: **27g** (wydajność, poligon „Korytarz 16e" gotowy), **28** (wdrożenie na VPS),
+**29** (rozwój za PD i wieloklasowość — to on odblokowuje kupowanie poziomów Zdolności),
+**30c**, **30d** i **31** (dodatki do broni).
 
-**Dług oględzin urósł do 15 pozycji** (`zaleglosci.md`, +2 z 29.08). Bez modelu da się dziś
-obejrzeć **cztery**: Celowanie z pierwszej sesji 29.08, komplet zmian z drugiej (cięcie ostrzem,
-chip i guzik kary warunkowej, przeładowanie statysty, rana statysty), lukę w edytorze kompendium
-i pomiar fps przypisany do 27g. Reszta — **dziewięć pozycji** — czeka na **żywy model**:
-20a/20b, 19a–19c, dwie ścieżki 24c i maszynopis wypowiedzi. Etap 27 jest rozdzielony do końca,
-więc plik `etap-27-…` to rozdroże ze wskazaniami, a nie zakres do zrobienia.
+**Dług oględzin urósł do 16 pozycji** (`zaleglosci.md`, +1 z 29.08). Bez modelu da się dziś
+obejrzeć **pięć**: Celowanie, pakiet A+B z drugiej sesji 29.08, **komplet 30a** (sześć punktów),
+lukę w edytorze kompendium i pomiar fps przypisany do 27g. Reszta — **dziewięć pozycji** — czeka
+na **żywy model**: 20a/20b, 19a–19c, dwie ścieżki 24c i maszynopis wypowiedzi.
+
+**Do oględzin 30a trzeba postaci z Rolą Solo.** Żadna z kart na scenach testowych jej nie ma
+(`avatar9` to netrunner), więc pierwszy krok to przestawienie Roli na karcie — albo nowa figura.
 
 **Uwaga po 29.08: `data/private/cpred/compendium/` bywa starsze niż parser.** Regeneracja
 importem dołożyła Miotaczowi ognia `ammoPatterns: ['shell']`, którego plik na dysku nie miał —
@@ -155,10 +158,9 @@ zauważono, a nie stanu repozytorium.
 strzelca. Pełny zapis w `decyzje-i-uproszczenia.md`.
 
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
-a od 27i pierwszym, przy którym ktoś **usłyszy** dźwięki walki (przyciski próbek są
-w „⚙ Ustawienia").
+a od 30a pierwszym, przy którym **Solo w drużynie naprawdę gra inaczej niż reszta**.
 
-**Testy na koniec ostatniej sesji:** 1437 w `shared`, 809 na serwerze, 62 u klienta — zielone.
+**Testy na koniec ostatniej sesji:** 1481 w `shared`, 819 na serwerze, 62 u klienta — zielone.
 ESLint i Prettier czyste na całym repo, `pnpm -r build` przechodzi.
 
 ## Umowy kodu — indeks
@@ -208,6 +210,10 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 - **Skutek rany dotykający cudzego rachunku** to liczba na wierszu rany (`headDamageMultiplier`, `conditionalPenalty`), nie stała w silniku; dopisuje się w czterech miejscach: wpis kompendium, wiersz karty, `toCriticalInjuryRow` i `parse-manual.py`.
 - **Kara, której VTT nie umie sprawdzić**, nie jest odejmowana — `conditionalPenalty` stoi jako chip przy ranie i guzik w oknie rzutu; do sumy wchodzi tylko `actionPenalty`.
 - **Statysta nosi rany** w `CpredCombatProfile.criticalInjuries` (pole opcjonalne); `combatProfileSheet` podaje je syntetycznej karcie, więc reguły działają bez gałęzi „czy to statysta". Żeton bez profilu dostaje samo zdanie.
+- **Zdolność Specjalna Roli** poznaje się po **nazwie** (`cpredRoleAbilityRank`), nie po id Roli — id przychodzą z `roles.json`; brak Zdolności to `null`, nie zero. Nowa Zdolność = nowa sekcja w `roleability.ts`, nie gałąź w istniejącej.
+- **Efekt Zdolności liczony z samej karty** wchodzi wprost do planera (`planCpredAttack`, `skillBreakdown`), nie kontekstem: podgląd klienta i werdykt serwera dochodzą do tej samej liczby. Kontekst zostaje dla tego, co wie świat.
+- **„Pierwsze w tej Rundzie"** stempluje `CpredTurnLedger` (`Combatant.turnEffects`) przez `claimRoundOnce` — jedyną drogę, bo pyta i księguje naraz; `turnState` jest wydawany na nowo przy każdym starcie tury. „Cofnij" oddaje stempel przez `releaseRoundOnce`.
+- **Zdolność, której zapis coś kosztuje**, ma własne zdarzenie i wypada z `character:update` (`FORBIDDEN`) — jak `eddies` od 23b. Kody odmowy są kodami silnika, żeby klient tłumaczył je tą samą tabelą, którą wyszarza guziki.
 
 ## Pułapki dev — indeks
 
@@ -266,10 +272,82 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 - **Mechanika bywa gotowa i nieosiągalna z UI** — Celowanie miało cały silnik i żadnej kontrolki, która by je włączyła; prześledź regułę od kontrolki, nie od silnika.
 - **Baner nad mapą ma `pointer-events: none`** — guzik dołożony do niego musi sam włączyć `pointer-events: auto`, i tylko na sobie.
 - **Wygenerowane kompendium bywa starsze niż parser** — pliki w `data/private/cpred/compendium/` są poza repo, więc zmiana `parse-manual.py` ich nie odświeża; przy dziwnym zachowaniu danych najpierw puść import.
+- **Nowe pole `CpredCharacterData` wywraca statystę i mapę ikon** — `combatProfileSheet` buduje pełną kartę, a `ICON_FX` to `Record<CpredSlotIcon, …>`; obie listy pilnuje kompilator, więc puść `tsc --noEmit` przed pisaniem UI.
+- **`tsc --noEmit` łapie błędy w testach, których vitest nie widzi** — `damage.test.ts` używał `DamageLogEntry` bez importu przez nieznaną liczbę sesji.
+- **`walls.test.ts` i `realtime.test.ts` też migoczą przy pełnym `vitest run`** (dołączają do `netdevices` i `zones`) — powtórz przebieg, zanim uznasz to za regres.
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 29.08 (trzecia) — etap 30a: Zdolności Specjalne Ról i Zmysł Walki Solo
+
+**Zlecenie MG:** wybrać etap z listy nierozpoczętych; wybór padł na **30**, z podziałem
+zaproponowanym przed pierwszą linijką kodu, i z panelem przydziału **na karcie postaci plus
+skrótem w pasku akcji**.
+
+**Opis etapu 30 miał trzy błędy — wszystkie sprawdzone w podręczniku i w `roles.json`.**
+(a) Zmysł Walki ma **sześć** zdolności, nie pięć: brakowało **„Wyjścia z opresji"** (s. 146),
+jedynej, która dotyka silnika kości. (b) Trzy Zdolności były przypisane do złych Ról — jest
+Media → **Wiarygodność** (s. 151), Korpo → **Praca Zespołowa** (s. 153), Stróż Prawa →
+**Wsparcie** (s. 158), a w opisie stało odwrotnie. (c) „Lawman/Exec wg podręcznika" — polskie
+wydanie nazywa te Role Stróżem Prawa i Korpo od etapu 13. Poprawki są w `etap-30-zdolnosci-rol.md`.
+
+**Podział na 30a–30d poszedł po maszynerii, nie po Rolach.** Razem siedzą Zdolności, które piszą
+się tym samym kodem: **30a** Zmysł Walki (jedyna wchodząca w rachunek walki), **30b** Medycyna
+i Twórca (Specjalizacje kupowane po dwie przy awansie), **30c** Wsparcie i Praca Zespołowa (obie
+stawiają NPC ze statblokiem na mapie), **30d** Efekt Charyzmy, Znajomości, Moto i Wiarygodność
+(tabela poziomów + jeden rzut + proza).
+
+**Zmysł Walki dotknął pięciu wejść mechaniki naraz** — i to był powód, żeby zrobić go w całości
+w jednej sesji. **Precyzyjny atak** i **Wyczucie zagrożenia** liczą się z samej karty, więc weszły
+wprost do `planCpredAttack` i `skillBreakdown` (podgląd klienta i werdykt serwera zgadzają się bez
+kontekstu). **Błyskawiczna reakcja** siedzi w `readSheetInitiative` i podnosi **modyfikator, ale
+nie rozstrzygnięcie remisu** — RAW rozstrzyga remis po ZR, a trening to nie odruchy.
+**Wyjście z opresji** wymagało nowej opcji silnika kości (`RollOptions.ignoreFumble`): kość
+zostaje na jedynce, dorzutu **nie ma w ogóle** („wynik nadal liczy się jako 1"), a kafel na czacie
+mówi, co ją zdjęło — milczące pominięcie kary czytałoby się jak błąd w kościach.
+
+**Dwie zdolności mówią „pierwsze w tej Rundzie" i to okazało się osobną maszynerią.** Redukcja
+obrażeń i Wykrycie słabości nie są związane z niczyją turą — Solo wchłania pierwszy cios Rundy,
+kto by go nie zadał. Stempel poszedł do `CpredTurnLedger` (`Combatant.turnEffects`), tej samej
+kolumny, którą 14e stemplowała numerami rund **dokładnie dlatego**, że budżet tury jest wydawany
+na nowo przy każdym jej starcie — a „start" obejmuje cofanie kolejki przez MG. `claimRoundOnce`
+pyta i księguje w jednym wywołaniu, więc wołający nie może zapomnieć zapisać; „Cofnij" na karcie
+obrażeń oddaje stempel.
+
+**Redukcja obrażeń liczy się po pancerzu, Wykrycie słabości przed nim — i to jest w podręczniku.**
+s. 146 pisze „zmniejsz o 1 pierwsze **obrażenia otrzymane**", a trzy akapity dalej „+1 do obrażeń
+(**przed uwzględnieniem pancerza**)". Dwa różne sformułowania w jednej ramce warto drukować tylko
+wtedy, gdy znaczą przeciwne końce rachunku. Pancerz ściera się niezależnie: liczy go to, co przez
+niego przeszło, nie to, co wchłonęło ciało. **Bez trwającej walki żadna z tych dwóch nie działa** —
+VTT nie ma Rund poza kolejką, a „każdy cios jest pierwszy" zamieniłoby Redukcję w stały bonus do
+pancerza. Zapisane w `decyzje-i-uproszczenia.md`.
+
+**Przydział wyszedł ze zwykłej łaty karty.** „w trakcie walki (w ramach Akcji)" to cena, a łata
+karty nie ma czym jej zapłacić — więc `character:update` odmawia `combatAwareness` przez
+`FORBIDDEN` (jak `eddies` od 23b), a zapis jedzie `character:combat-awareness`, gdzie tracker widzi,
+komu policzyć Akcję. **Zapis tej samej wartości nie kosztuje nic**, bo „Jeśli Solo nie zmieni
+przydziału tych punktów, zakłada się przydział taki, jaki był do tej pory".
+
+**Progi są egzekwowane co do punktu.** 4 punkty w Precyzyjny atak kupują dokładnie to, co 3, więc
+VTT odmawia zamiast po cichu zaokrąglać w dół i palić punkt, który Solo mogło wydać gdzie indziej.
+Panel wyszarza guzik „+" dokładnie tam, gdzie `cpredCombatAwarenessProblem` odmówiłby zapisu — ta
+sama funkcja po obu stronach.
+
+**Panel to jeden komponent w dwóch domach** (karta postaci pod wierszem Zdolności, pasek akcji nad
+mapą) — kopia znaczyłaby dwie odpowiedzi na pytanie „ile kosztuje Precyzyjny atak 2". Pudełko
+w pasku **nie gaśnie po zużytej Akcji**: otwiera panel, a płaci dopiero zapis. Ikona
+(`combat-awareness.svg`, „Awareness" Lorca) pobrana z game-icons.net, atrybucja dopisana.
+
+**Znalezione przy okazji:** `damage.test.ts` używał `DamageLogEntry` **bez importu** i przechodził
+od nieznanej liczby sesji — vitest transpiluje bez sprawdzania typów, a `pnpm -r build` pomija
+testy. Naprawione; wniosek poszedł do pułapek.
+
+**Testy:** 1481 w `shared` (+44), **819** na serwerze (+10), 62 u klienta — zielone. ESLint
+i Prettier czyste, `pnpm -r build` przechodzi. **Nic z tej sesji nie było oglądane w przeglądarce**
+— sześć punktów do odklikania stoi na górze `zaleglosci.md`, a do oględzin trzeba postaci
+z Rolą **Solo** (żadna karta na scenach testowych jej nie ma).
 
 ### Sesja 29.08 (druga) — pakiet A+B z triażu MG: cztery dziury z audytu i profil statysty
 
@@ -339,64 +417,3 @@ ale poza zakresem pakietu.
 **Testy:** 1437 w `shared` (+29), **809** na serwerze (+12), 62 u klienta — zielone.
 ESLint i Prettier czyste, `pnpm -r build` przechodzi. **Nic z tej sesji nie było oglądane
 w przeglądarce** — pięć punktów do odklikania stoi na górze `zaleglosci.md`.
-
-### Sesja 29.08 — audyt „czy stoimy na podręczniku głównym" i cztery decyzje MG
-
-**Zlecenie MG:** sprawdzić, czy VTT bazuje w pełni na podręczniku głównym, wyciąć to, co zostało
-po Easy Mode, i przedstawić listę mechanik z podręcznika możliwych do dołożenia — do wyboru przez
-MG, nie do wdrożenia z marszu.
-
-**Werdykt audytu: system stoi na podręczniku głównym i nie było czego wycinać.** Przejście
-odbyło się w etapie 13 i jest udokumentowane w `tools/import/README.md` („Podręcznik jest
-źródłem prawdy dla wartości bazowych"); `parse-compendium.py` nie pisze `weapon-types.json`
-ani `armor.json` od tamtej pory. Sprawdzone w danych produkcyjnych: **66 umiejętności**
-(nie 41), **20 typów broni** z pełną tabelą PT dla ośmiu pasm (nie 3 wiersze), **9 pancerzy**,
-**22 rany krytyczne** (obie tabele 2k6 — Easy Mode ma sam korpus), 96 cyborgizacji, 16 rodzajów
-amunicji, 10 Ról. Tabela PT zasięgów zgadza się z s. 173 co do cyfry. Sprawdzone też, że
-identyfikatory umiejętności w kodzie istnieją w liście 66-elementowej (lista publiczna jest jej
-ścisłym podzbiorem — zero rozjazdów).
-
-**Po Easy Mode zostały cztery ślady, wszystkie nieszkodliwe.** (1) `data/public/cpred/skills.json`
-— 42 pozycje jako próbka dla świeżego klona; plik prywatny go **zastępuje**, zostaje świadomie.
-(2) `overrides.json` z siedmioma wartościami odczytanymi z kart postaci Easy Mode — **skasowany
-decyzją MG**, razem z martwą ścieżką, która go czytała; zbiorcza tabela ze statbloków jest teraz
-czysto tym, co mówią statbloki, więc porównanie z podręcznikiem przestało się zgadzać samo ze
-sobą. (3) `parse-critical-injuries.py` — ścieżka awaryjna z bezpiecznikiem, zostaje.
-(4) **Cztery komentarze przypisywały Easy Mode'owi regułę, która jest identyczna w podręczniku**
-(„Progi Ran" s. 186, remis inicjatywy s. 168, slug `perception`) — poprawione.
-
-**Trzy znalezione błędy, wszystkie naprawione albo zapisane.**
-(a) **Cyberręka nie podnosiła obrażeń Bijatyki**: `unarmedDamage(body, cyberarm)` miało parametr,
-którego jedyny wywołujący nigdy nie przekazywał — postać z BC ≤ 4 i cyberręką biła za 1k6
-zamiast 2k6 (s. 176). Nowa `hasCyberarm` wymaga `foundation` **i** umieszczenia w boksie ręki na
-sylwetce; noga i wszczep wkręcony w rękę nie liczą się, nieumieszczona kończyna też nie.
-(b) **Cichy zjazd na dane próbkowe na produkcji** — `loadCpredRegistry` celowo milczy, gdy nie ma
-pliku prywatnego, więc VPS bez `data/private/` wystartowałby z 42 umiejętnościami i nikt by się
-nie dowiedział. **Dopisane do etapu 28** jako dwie pozycje zakresu (przeniesienie katalogu jako
-krok deployu + ostrzeżenie startowe) i kryterium ukończenia.
-(c) **Siedem ran krytycznych ma efekt tylko w prozie** (Pęknięta czaszka ×3, oba urazy oka,
-Naderwany mięsień, Strzaskane palce, Złamana szczęka, Zmiażdżona krtań) — do `POMYSLY.md`.
-
-**Celowanie (s. 170) — zrobione w całości, bo okazało się nieosiągalne z UI.** Silnik miał od
-etapu 16 komplet (−8, ×2 po pancerzu głowy, `AIM_NEEDS_FULL_ACTION`, wyjątek Ludzkiej tarczy),
-ale **obie drogi uzbrojenia celownika wpisywały `aimed: false` na sztywno** i nic tego nie
-zmieniało — reguła była martwa i żaden test tego nie łapał, bo testy wołały planer wprost.
-Zamiast flagi jest teraz `aimedAt` z trzema celami z podręcznika: **głowa**, **trzymany
-przedmiot**, **noga**. Wybiera się je na banerze uzbrojonego celownika nad mapą. Skutki:
-noga → serwer nadaje ranę „Złamana noga" znalezioną po **tabeli i wyniku** (korpus, 2k6 = 8),
-o ile choć punkt przeszedł przez pancerz ciała i cel nie ma już złamanej nogi; przedmiot →
-zdanie na karcie obrażeń (VTT nie modeluje tego, co kto trzyma w rękach). Przy okazji zdjęty
-warunek `!melee` — podręcznik mówi „atak Dystansowy **lub Wręcz**". Ludzka tarcza nie zasłania
-tylko przed celowaniem **w głowę**, nie przed każdym celowanym strzałem.
-
-**Reszta kandydatów z audytu poszła do `POMYSLY.md`** (9 wpisów, wszystkie z 29.08): rozwój za
-Punkty Doświadczenia (s. 410–411) i wieloklasowość, **Zdolności Specjalne dziewięciu Ról**
-(mechanicznie działa dziś wyłącznie Interfejs Netrunnera — największa nieodrobiona część
-podręcznika), walka pojazdów, dodatki do broni, tarcza jako przedmiot z PW, sztuki walki
-ignorujące połowę pancerza, ×3 Pękniętej czaszki i typowane kary ran. MG wybierze z tego, co
-warto wciągnąć jako zaległości albo etapy.
-
-**Testy:** 1408 w `shared` (+8), **797** na serwerze (+4 na Celowanie), 62 u klienta — zielone.
-ESLint i Prettier czyste. **Uwaga:** `netdevices.test.ts` i `zones.test.ts` migoczą przy
-`pnpm -r test` (rzuty kością), i **migotały tak samo na nietkniętym `main`** — sprawdzone
-schowkiem; uruchomione osobno przechodzą za każdym razem.
