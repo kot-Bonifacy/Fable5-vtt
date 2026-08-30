@@ -5,7 +5,9 @@ import {
   cpredDodgeBlock,
   cpredExpiringStatuses,
   cpredInjuryCarryOnDraw,
+  cpredInjuryConditionalModifiers,
   cpredInjuryDodgeBlock,
+  cpredHeadDamageMultiplier,
   cpredInjuryModifiers,
   cpredInjuryTurnEnd,
   cpredMovementBlock,
@@ -13,6 +15,12 @@ import {
   cpredStatusSeverity,
   cpredTurnReminders,
 } from './statuses.js';
+import {
+  cpredActiveInjuries,
+  injuryDeathSavePenalty,
+  sanitizeCriticalInjuryRows,
+} from './character.js';
+import { injuryMovePenalty } from './movement.js';
 
 describe('statuses that stop a token from moving', () => {
   it('refuses the Prone token and names the Action that fixes it', () => {
@@ -217,5 +225,59 @@ describe('how loudly a status is drawn (stage 27h)', () => {
       else if (effect.noMove || effect.noDodge || effect.dot) expect(severity).toBe('warn');
       else expect(severity).toBe('info');
     }
+  });
+});
+
+describe('rana załatana milczy do końca dnia (etap 15, s. 223)', () => {
+  /** Jedna rana ze wszystkim, co silnik z niej czyta — raz z łatą, raz bez. */
+  const wound = {
+    id: 'injury.zlamana-noga',
+    name: 'Złamana noga',
+    effect: '−4 do Ruchu (minimum 1)',
+    movePenalty: -4,
+    actionPenalty: -2,
+    deathSavePenalty: 1,
+    headDamageMultiplier: 3,
+    noDodge: true,
+    noMoveAfterRun: true,
+    dotAfterRun: true,
+    conditionalPenalty: { value: -4, condition: 'Akcje wykonywane tą ręką' },
+  };
+  const patched = { ...wound, patched: { skill: 'Ratownictwo medyczne', by: 'Kai' } };
+
+  it('bez łaty każdy skutek działa', () => {
+    expect(cpredInjuryModifiers([wound])).toHaveLength(1);
+    expect(cpredInjuryConditionalModifiers([wound])).toHaveLength(1);
+    expect(cpredInjuryDodgeBlock([wound])).not.toBeNull();
+    expect(cpredHeadDamageMultiplier([wound])).toBe(3);
+    expect(injuryDeathSavePenalty([wound])).toBe(1);
+    expect(injuryMovePenalty([wound])).toBe(-4);
+    const end = cpredInjuryTurnEnd([wound], 6);
+    expect(end.carry.noMove).toBeTruthy();
+    expect(end.damage).toHaveLength(1);
+  });
+
+  it('z łatą milczy każdy — a rana zostaje na liście', () => {
+    expect(cpredInjuryModifiers([patched])).toHaveLength(0);
+    expect(cpredInjuryConditionalModifiers([patched])).toHaveLength(0);
+    expect(cpredInjuryDodgeBlock([patched])).toBeNull();
+    expect(cpredHeadDamageMultiplier([patched])).toBe(2);
+    expect(injuryDeathSavePenalty([patched])).toBe(0);
+    expect(injuryMovePenalty([patched])).toBe(0);
+    const end = cpredInjuryTurnEnd([patched], 6);
+    expect(end.carry.noMove).toBeUndefined();
+    expect(end.damage).toHaveLength(0);
+    // Filtr nie kasuje wiersza — karta ma dalej mówić, że noga jest złamana.
+    expect(cpredActiveInjuries([patched])).toHaveLength(0);
+    expect([patched]).toHaveLength(1);
+  });
+
+  it('łata przeżywa zapis karty', () => {
+    const rows = sanitizeCriticalInjuryRows([patched]);
+    expect(rows[0]!.patched).toEqual({ skill: 'Ratownictwo medyczne', by: 'Kai' });
+    // Połowa łaty to żadna łata — wiersz wraca bez niej, nie z połową.
+    expect(sanitizeCriticalInjuryRows([{ ...wound, patched: { skill: 'X' } }])[0]!.patched).toBe(
+      undefined,
+    );
   });
 });

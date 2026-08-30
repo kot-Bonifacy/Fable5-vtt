@@ -20,7 +20,7 @@
  * is the one who has to understand why.
  */
 
-import type { CpredCriticalInjuryRow } from './character.js';
+import { cpredActiveInjuries, type CpredCriticalInjuryRow } from './character.js';
 import { CPRED_CRITICAL_INJURY_BONUS_DAMAGE } from './damage.js';
 import { CPRED_HEAD_DAMAGE_MULTIPLIER } from './locations.js';
 
@@ -400,7 +400,7 @@ export function cpredInjuryTurnEnd(
   const damage: CpredPeriodicDamage[] = [];
   if (!cpredRanFarEnough(metresWalked)) return { carry, damage };
 
-  for (const injury of injuries) {
+  for (const injury of cpredActiveInjuries(injuries)) {
     if (injury.noMoveAfterRun === true && carry.noMove === undefined) {
       carry.noMove = `${injury.name}: po marszu ponad ${CPRED_INJURY_RUN_THRESHOLD_M} m w tej turze nie wykonujesz Akcji Ruchu.`;
     }
@@ -417,7 +417,7 @@ export function cpredInjuryTurnEnd(
 
 /** The first injury refusing this character a dodge („Odcięta noga"), or null. */
 export function cpredInjuryDodgeBlock(injuries: readonly CpredCriticalInjuryRow[]): string | null {
-  const found = injuries.find((injury) => injury.noDodge === true);
+  const found = cpredActiveInjuries(injuries).find((injury) => injury.noDodge === true);
   return found ? `${found.name}: nie możesz unikać ataków.` : null;
 }
 
@@ -429,7 +429,7 @@ export function cpredInjuryDodgeBlock(injuries: readonly CpredCriticalInjuryRow[
 export function cpredInjuryModifiers(
   injuries: readonly CpredCriticalInjuryRow[],
 ): { label: string; value: number }[] {
-  return injuries
+  return cpredActiveInjuries(injuries)
     .filter((injury) => typeof injury.actionPenalty === 'number' && injury.actionPenalty !== 0)
     .map((injury) => ({ label: injury.name, value: injury.actionPenalty! }));
 }
@@ -446,7 +446,7 @@ export function cpredInjuryModifiers(
 export function cpredInjuryConditionalModifiers(
   injuries: readonly CpredCriticalInjuryRow[],
 ): { label: string; value: number; condition: string }[] {
-  return injuries
+  return cpredActiveInjuries(injuries)
     .filter((injury) => injury.conditionalPenalty !== undefined)
     .map((injury) => ({
       label: injury.name,
@@ -464,7 +464,7 @@ export function cpredInjuryConditionalModifiers(
  */
 export function cpredHeadDamageMultiplier(injuries: readonly CpredCriticalInjuryRow[]): number {
   let multiplier = CPRED_HEAD_DAMAGE_MULTIPLIER;
-  for (const injury of injuries) {
+  for (const injury of cpredActiveInjuries(injuries)) {
     const value = injury.headDamageMultiplier;
     if (typeof value === 'number' && value > multiplier) multiplier = value;
   }

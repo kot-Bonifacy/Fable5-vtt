@@ -3451,6 +3451,14 @@ input[type='color'] {
   flex-wrap: wrap;
 }
 
+/* Haki tury na wierszu rany (14e) — jedna kolumna, bo etykiety są zdaniami. */
+.compendium-editor .injury-flags {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0.15rem 0;
+}
+
 .compendium-editor .bot-field--inline {
   flex: 1 1 7rem;
   min-width: 0;

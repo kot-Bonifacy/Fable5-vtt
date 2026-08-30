@@ -26,6 +26,23 @@ z „Kart 24x": kto na nią wejdzie, dostaje 6k6 przez pancerz i jeszcze raz na 
 Tury; gracz jej nie zobaczy, dopóki nie zda Percepcji PT 17 z 4 m. Karta strefy otwiera się
 narzędziem ⚠ w trybie 📌; „Rozbrój" ją usypia, kosz usuwa.
 
+**Stan po sesji 30.08 (czwarta) — rany krytyczne.** Poligon został przygotowany pod oględziny
+łatania i zostaje w tym stanie:
+
+- **Karta „avatar9"** ma dopisane **Ratownictwo medyczne 6** i **Broń krótką 10** (żeby mogła
+  sama się łatać i trafiać z Celowaniem), a na niej **trzy rany**: „Złamana noga", „Strzaskane
+  palce" i **„Test łaty 15"** — rana **wpisana ręką MG w kompendium** (−3 do RUCH-u, −1 do
+  rzutów, brak Uniku, DoT po biegu), zostawiona jako gotowy materiał do sprawdzania flag 14e.
+  Łaty zdjęte, PW i pancerz przywrócone.
+- **Karta „Rudy Kwiatkowski"** ma **Broń białą 10** i **„Bardzo dużą broń białą" (4k6)** z katalogu
+  oraz ranę **„Złamana noga"** z Celowania — para gotowa do sprawdzania połowy pancerza. Żeton
+  wrócił na (2000, 1500).
+- **Żeton „Automatyczna wieżyczka"** ma w profilu bojowym ranę **„Odcięta dłoń"** (2k6 = 3),
+  zostawioną świadomie: to jedyna figura z raną **bez karty postaci**, a takiej rany nie da się
+  dziś zdjąć z UI (pozycja w `zaleglosci.md`). PW przywrócone do 25/25.
+- **Kompendium ma o jeden wpis własny więcej** — „Test łaty 15" w Ranach krytycznych (23 zamiast
+  22). Kasować nie trzeba: to jedyny wpis, na którym widać komplet pól rany z edytora.
+
 **Od 27.08 w kampanii stoi „Rudy Kwiatkowski" — jedyna postać zrobiona kreatorem od zera.**
 Fixer (Znajomości 4, PW 40, Człowieczeństwo 60), bez portretu i bez żetonu, właściciel „NPC (MG)".
 Powstał przy odklikiwaniu 27c i **zostaje decyzją MG (27.08)**: to jedyny w bazie dowód, że pełny przebieg

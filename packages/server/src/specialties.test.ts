@@ -323,6 +323,98 @@ describe('Specjalizacje Medycyny i Twórcy na karcie', () => {
     expect(left).toEqual([brokenRibs.id]);
   });
 
+  it('Łatanie ucisza ranę na karcie, ale jej nie zdejmuje (s. 223)', async () => {
+    const patched = await emitAck<{ messageId: number }>(gm, 'character:roll', {
+      characterId: medicId,
+      request: {
+        kind: 'treatInjury',
+        treatTokenId: patientTokenId,
+        treatInjuryId: brokenRibs.id,
+        treatMode: 'quickFix',
+        // Zdanie Łatania oferuje Ratownictwo PT 13, nie Chirurgię — gałąź
+        // czyta się z kolumny „Łatanie", a nie z tej, którą leczy się na stałe.
+        treatSkillId: 'paramedic',
+      },
+      visibility: 'public',
+    });
+    expect(patched.ok).toBe(true);
+    const row = (await sheetOf(patientId)).criticalInjuries.find((r) => r.id === brokenRibs.id);
+    expect(row).toBeDefined();
+    expect(row!.patched?.skill).toBe('Ratownictwo medyczne');
+    expect(row!.patched?.by).toBe('Doktor');
+
+    // Drugiej łaty ta sama rana nie przyjmie — nie ma czego uciszać.
+    const again = await emitAck(gm, 'character:roll', {
+      characterId: medicId,
+      request: {
+        kind: 'treatInjury',
+        treatTokenId: patientTokenId,
+        treatInjuryId: brokenRibs.id,
+        treatMode: 'quickFix',
+        treatSkillId: 'paramedic',
+      },
+      visibility: 'public',
+    });
+    expect(again.ok === false && again.error).toBe('INJURY_ALREADY_PATCHED');
+
+    // Leczenie tej samej rany dalej działa i zdejmuje ją z karty na dobre.
+    const healed = await emitAck(gm, 'character:roll', {
+      characterId: medicId,
+      request: {
+        kind: 'treatInjury',
+        treatTokenId: patientTokenId,
+        treatInjuryId: brokenRibs.id,
+        treatSkillId: 'medicine.surgery',
+      },
+      visibility: 'public',
+    });
+    expect(healed.ok).toBe(true);
+    expect((await sheetOf(patientId)).criticalInjuries.map((r) => r.id)).toEqual([]);
+  });
+
+  it('samego siebie wolno załatać, ale nie wyleczyć (s. 223)', async () => {
+    await emitAck(gm, 'character:update', {
+      characterId: medicId,
+      patch: { data: { criticalInjuries: [brokenRibs] } },
+    });
+    const medicToken = data(
+      await emitAck<TokenView>(gm, 'token:create', {
+        sceneId,
+        name: 'Doktor',
+        x: 2,
+        y: 2,
+        characterId: medicId,
+      }),
+      'token:create',
+    ).id;
+
+    const selfTreat = await emitAck(gm, 'character:roll', {
+      characterId: medicId,
+      request: {
+        kind: 'treatInjury',
+        treatTokenId: medicToken,
+        treatInjuryId: brokenRibs.id,
+        treatSkillId: 'medicine.surgery',
+      },
+      visibility: 'public',
+    });
+    expect(selfTreat.ok === false && selfTreat.error).toBe('SELF_TREATMENT');
+
+    const selfPatch = await emitAck(gm, 'character:roll', {
+      characterId: medicId,
+      request: {
+        kind: 'treatInjury',
+        treatTokenId: medicToken,
+        treatInjuryId: brokenRibs.id,
+        treatMode: 'quickFix',
+        treatSkillId: 'paramedic',
+      },
+      visibility: 'public',
+    });
+    expect(selfPatch.ok).toBe(true);
+    expect((await sheetOf(medicId)).criticalInjuries[0]!.patched?.by).toBe('Doktor');
+  });
+
   it('rana, której już nie ma, nie daje się leczyć drugi raz', async () => {
     const ack = await emitAck(gm, 'character:roll', {
       characterId: medicId,

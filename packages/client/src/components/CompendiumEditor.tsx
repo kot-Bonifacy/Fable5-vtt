@@ -43,6 +43,7 @@ import {
   CPRED_HEAD_DAMAGE_MULTIPLIER_MAX,
   CRITICAL_INJURY_ROLL_MIN,
   INJURY_ACTION_PENALTY_MIN,
+  INJURY_MOVE_PENALTY_MIN,
   INJURY_CONDITION_MAX_LENGTH,
   CRITICAL_INJURY_TABLES,
   CRITICAL_INJURY_TABLE_LABELS,
@@ -1360,6 +1361,71 @@ export function CompendiumEditor() {
               </div>
               <div className="bot-row-inline">
                 <label className="bot-field bot-field--inline">
+                  Kara do RUCH-u
+                  <input
+                    type="number"
+                    min={INJURY_MOVE_PENALTY_MIN}
+                    max={0}
+                    value={form.movePenalty}
+                    placeholder="−4"
+                    title="Ile metrów RUCH-u zabiera ta rana („Złamana noga” −4). Tracker odejmuje ją sam."
+                    onChange={(event) => patch({ movePenalty: event.target.value })}
+                  />
+                </label>
+                <label className="bot-field bot-field--inline">
+                  Kara do rzutów
+                  <input
+                    type="number"
+                    min={INJURY_ACTION_PENALTY_MIN}
+                    max={0}
+                    value={form.actionPenalty}
+                    placeholder="−2"
+                    title="Kara do każdego rzutu z karty („−2 do wszystkich Akcji”). Warunkową wpisz niżej."
+                    onChange={(event) => patch({ actionPenalty: event.target.value })}
+                  />
+                </label>
+              </div>
+              {/*
+                Cztery haki tury jedną kolumną, nie dwiema parami: etykiety są
+                zdaniami i przy szerokości tego okna para zawija się nierówno —
+                pierwszy wiersz z jednym pudełkiem, drugi z dwoma.
+              */}
+              <div className="injury-flags">
+                <label className="bot-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={form.noActionNextTurn}
+                    onChange={(event) => patch({ noActionNextTurn: event.target.checked })}
+                  />
+                  Brak Akcji w następnej Turze
+                </label>
+                <label className="bot-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={form.noDodge}
+                    onChange={(event) => patch({ noDodge: event.target.checked })}
+                  />
+                  Nie może Unikać
+                </label>
+                <label className="bot-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={form.noMoveAfterRun}
+                    onChange={(event) => patch({ noMoveAfterRun: event.target.checked })}
+                  />
+                  Bieg zabiera RUCH w następnej Turze
+                </label>
+                <label className="bot-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={form.dotAfterRun}
+                    onChange={(event) => patch({ dotAfterRun: event.target.checked })}
+                  />
+                  Bieg otwiera ranę na końcu Tury
+                </label>
+              </div>
+              <div className="bot-row-inline">
+                <label className="bot-field bot-field--inline">
                   Trafienia w głowę ×
                   <input
                     type="number"
@@ -1625,9 +1691,15 @@ interface EditorForm {
   quickFix: string;
   treatment: string;
   deathSavePenalty: string;
+  movePenalty: string;
+  actionPenalty: string;
   headDamageMultiplier: string;
   conditionalPenalty: string;
   conditionalCondition: string;
+  noActionNextTurn: boolean;
+  noMoveAfterRun: boolean;
+  dotAfterRun: boolean;
+  noDodge: boolean;
 }
 
 function toForm(entry: CompendiumEntry | undefined): EditorForm {
@@ -1769,6 +1841,17 @@ function toForm(entry: CompendiumEntry | undefined): EditorForm {
       entry?.category === 'criticalInjury' && entry.deathSavePenalty
         ? String(entry.deathSavePenalty)
         : '',
+    movePenalty:
+      entry?.category === 'criticalInjury' && entry.movePenalty ? String(entry.movePenalty) : '',
+    actionPenalty:
+      entry?.category === 'criticalInjury' && entry.actionPenalty
+        ? String(entry.actionPenalty)
+        : '',
+    noActionNextTurn:
+      entry?.category === 'criticalInjury' ? Boolean(entry.noActionNextTurn) : false,
+    noMoveAfterRun: entry?.category === 'criticalInjury' ? Boolean(entry.noMoveAfterRun) : false,
+    dotAfterRun: entry?.category === 'criticalInjury' ? Boolean(entry.dotAfterRun) : false,
+    noDodge: entry?.category === 'criticalInjury' ? Boolean(entry.noDodge) : false,
   };
 }
 
@@ -2016,6 +2099,14 @@ function fromForm(form: EditorForm, existingId: string | undefined): Record<stri
       quickFix: form.quickFix || undefined,
       treatment: form.treatment || undefined,
       deathSavePenalty: numberOrUndefined(form.deathSavePenalty),
+      movePenalty: numberOrUndefined(form.movePenalty),
+      actionPenalty: numberOrUndefined(form.actionPenalty),
+      // Cztery haki tury z 14e; `undefined` zamiast `false`, żeby wpis bez nich
+      // wyglądał w bazie jak drukowany, a nie jak czterokrotnie zaprzeczony.
+      noActionNextTurn: form.noActionNextTurn || undefined,
+      noMoveAfterRun: form.noMoveAfterRun || undefined,
+      dotAfterRun: form.dotAfterRun || undefined,
+      noDodge: form.noDodge || undefined,
       headDamageMultiplier: numberOrUndefined(form.headDamageMultiplier),
       // Obie połowy albo żadna — sama liczba to `actionPenalty`, sam warunek
       // nie mówi nic ponad to, co już stoi w opisie efektu.

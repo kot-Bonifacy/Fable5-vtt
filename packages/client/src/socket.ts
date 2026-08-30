@@ -1017,6 +1017,11 @@ function rollAckErrorText(code: string): string {
       return 'Ta rana nie ma drogi leczenia, którą VTT umie rozstrzygnąć („Nd.").';
     case 'NO_SURGERY':
       return 'Chirurgia jest dostępna tylko Medykom z punktami w tej Specjalizacji.';
+    // Stage 15 — the two the quick fix adds.
+    case 'SELF_TREATMENT':
+      return 'Nie można leczyć samego siebie — załatać można (s. 223).';
+    case 'INJURY_ALREADY_PATCHED':
+      return 'Ta rana jest już załatana — jej efekt milczy do końca dnia.';
     default:
       return `Błąd rzutu: ${code}`;
   }

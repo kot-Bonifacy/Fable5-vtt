@@ -7,6 +7,61 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 30.08 (druga) — etap 29a: Punkty Doświadczenia
+
+**Zlecenie MG:** kontynuować budowę; z przedstawionych opcji wybór padł na **29**, a dług
+oględzin miał poczekać. Cztery decyzje zapadły przed pierwszą linijką kodu: **etap 29 dzieli się
+na 29a i 29b**, ślad awansu dostaje **własny rejestr** (nie dziennik z 24b), **gracz wydaje PD
+sam**, a poziomy Umiejętności i ranga Zdolności stają się **polami MG**.
+
+**Opis etapu 29 miał dwa błędy — oba policzone na stronie.** (a) **Drabinka kosztów była jedna
+zamiast trzech.** Opis mówił „60/120/180/…/600 PD za kolejny poziom, ×2 dla umiejętności
+podwójnych"; podręcznik (s. 411) drukuje **trzy** tabele obok siebie: Umiejętność zwykła
+20/40/…/200, Umiejętność ×2 40/80/…/400 i **Zdolność Specjalna** 60/120/…/600. Ciąg z opisu
+należy do Zdolności, a `multiplier` z 25a mnoży wyłącznie Umiejętności. (b) **Bramka
+wieloklasowości była opisana niepełnie**: przy trzeciej Roli podręcznik pyta o Zdolność Roli
+**bieżącej** („dopóki nie podniesiesz poziomu Zdolności Specjalnej swojej **nowej** Roli do 4",
+s. 143), a nie o najwyższą posiadaną. To jest zakres 29b.
+
+**Podział 29 na 29a i 29b zapadł, bo to dwie różne rzeczy pod jedną walutą.** Drabinki,
+przyznawanie i wydawanie zmieniają **kto pisze po karcie**; wieloklasowość zmienia **kształt
+karty** — `roleId` przestaje być jednym polem, a `cpredRoleAbilityRank` (jeden punkt, przez który
+przechodzi wszystkie dziesięć Zdolności z etapu 30) przestaje pytać o jedną Rolę. Kolejność
+wymusza podręcznik: druga Rola **płaci PD**, więc bez 29a nie ma czym jej kupić.
+
+**Cena musiała mieć jedno miejsce, bo liczą ją dwie strony.** `planCpredAdvance` w `shared`
+wycenia i osądza zakup, a wołają ją **i** panel karty (żeby wyszarzyć guzik), **i** serwer (żeby
+odmówić) — inaczej zapalony guzik i odmowa rozjechałyby się co do punktu. Poziom docelowy jedzie
+**w żądaniu**, nie liczy się go jako „obecny + 1": dwa kliknięcia w wyścigu kupiłyby wtedy dwa
+poziomy za cenę pokazaną raz. Drugie kliknięcie trafia dziś w ten sam `LEVEL_SKIP`, co próba
+przeskoku — i to jest ten sam zakaz, nie zbieg okoliczności.
+
+**Zamknięcie drzwi kosztowało więcej niż sama drabinka.** Z `character:update` wypadła
+u gracza **czwórka**: `improvementPoints`, `skills`, `roleAbilityRank` i `roleId`. Ostatni
+z nich nie jest przezornością — Rola przełączona pod zachowaną rangą oddaje **inną Zdolność
+Specjalną na tym samym poziomie za darmo**. MG zachowuje wszystkie cztery pola (sędzia musi móc
+naprawić kartę), a jego ręczna zmiana licznika ląduje jako wiersz `adjust` scalany w oknie
+minuty — dokładnie jak korekta salda z 23b.
+
+**Rejestr dostał własną tabelę, nie nowy `kind` w `LedgerEntry`.** Pieniądze i doświadczenie to
+audyty dwóch różnych rzeczy; wspólna lista rodzajów uczyniłaby „Zakup" legalnym powodem punktu
+Percepcji. `applyImprovementPoints` jest bliźniakiem `applyBalance` z jedną różnicą: przyjmuje
+`sheet` z tym, co **ten sam zapis** zmienia na karcie, więc podniesiony poziom i zapłacona cena
+nie mogą się rozejść w połowie.
+
+**Pula po sesji jest jednym zdarzeniem dla całego stołu.** „Po każdej sesji gry MG przyznaje
+**wszystkim** graczom" (s. 410) — pętla u klienta zostawiłaby połowę stołu bez PD, gdyby łącze
+padło w środku, więc `character:xp-award` z `everyone: true` obsługuje wszystkie karty
+z właścicielem naraz. BN-y (`ownerId: null`) pomija: postać bez właściciela nie jest niczyim
+graczem.
+
+**Testy:** 1611 w `shared` (+21), **868** na serwerze (+10), 62 u klienta — zielone. ESLint
+i Prettier czyste, `pnpm -r build` przechodzi, `pnpm dev` wstaje. Migracja:
+`stage29a_advancement_ledger`. **Nic z tej sesji nie było oglądane w przeglądarce** — osiem
+punktów stoi na górze `zaleglosci.md`. Trzy stare testy padły na zamkniętych drzwiach i to jest
+nowa pułapka: przygotowanie stołu łatą gracza wygląda w teście jak tło, więc odmowa pada
+w asercji o czymś zupełnie innym.
+
 ### Sesja 30.08 — etap 30d: Charyzma, Znajomości, Moto i Wiarygodność (i koniec etapu 30)
 
 **Zlecenie MG:** kontynuować budowę; z przedstawionych opcji wybór padł na **30d**. Dwie decyzje

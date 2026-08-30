@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import type { CpredCriticalInjuryRow } from '@vtt/shared';
-import { ROLE_GM, cpredCareRefusal, cpredTreatmentOptions } from '@vtt/shared';
+import type { CpredCareMode, CpredCriticalInjuryRow } from '@vtt/shared';
+import { CPRED_CARE_MODE_LABELS, ROLE_GM, cpredCareOptions, cpredCareRefusal } from '@vtt/shared';
 import { loadTreatInjuryCup } from '../stores/rollStore.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
@@ -19,14 +19,22 @@ import { useTokenStore } from '../stores/tokenStore.js';
  * zajęcie po walce: siada się nad kartą rannego, a nie nad mapą. Kto leczy,
  * wybiera się z listy postaci, którymi ten klient może rzucać — MG widzi
  * wszystkie, gracz swoje.
+ *
+ * Od etapu 15 (Łatanie) ten sam formularz obsługuje **oba** zdania z tabeli:
+ * `mode` mówi, które jest czytane, a różnice między nimi rozstrzyga silnik
+ * (`cpredCareOptions`, `cpredCarePermanent`) — tu zmienia się wyłącznie słowo
+ * na guziku i to, kogo wolno wybrać jako leczącego: łatać można samego siebie,
+ * leczyć nie (s. 223).
  */
 export function TreatInjury({
   patientId,
   injury,
+  mode,
   onClose,
 }: {
   patientId: string;
   injury: CpredCriticalInjuryRow;
+  mode: CpredCareMode;
   onClose: () => void;
 }) {
   const user = useAuthStore((s) => s.user);
@@ -35,7 +43,7 @@ export function TreatInjury({
   const registry = useCharacterStore((s) => s.registry);
   const tokens = useTokenStore((s) => s.tokens);
 
-  const options = useMemo(() => cpredTreatmentOptions(injury), [injury]);
+  const options = useMemo(() => cpredCareOptions(injury, mode), [injury, mode]);
   /** Figura pacjenta na scenie — to jej adres niesie rzut. */
   const patientToken = useMemo(
     () => Object.values(tokens).find((token) => token.characterId === patientId) ?? null,
@@ -47,9 +55,14 @@ export function TreatInjury({
         .map((id) => characters[id])
         .filter(
           (entry): entry is NonNullable<typeof entry> =>
-            entry !== undefined && (user?.role === ROLE_GM || entry.ownerId === user?.id),
+            entry !== undefined &&
+            (user?.role === ROLE_GM || entry.ownerId === user?.id) &&
+            // „Nie można leczyć samego siebie" (s. 223) — a łatać można, więc
+            // pacjent wypada z listy tylko w jednym z dwóch trybów. Serwer i tak
+            // odmówi (`SELF_TREATMENT`); tu chodzi o to, żeby nie kusiło.
+            (mode === 'quickFix' || entry.id !== patientId),
         ),
-    [order, characters, user],
+    [order, characters, user, mode, patientId],
   );
   const [healerId, setHealerId] = useState(() => healers[0]?.id ?? '');
   const healer = healers.find((entry) => entry.id === healerId) ?? null;
@@ -59,11 +72,11 @@ export function TreatInjury({
   return (
     <div className="injury-treat">
       <label className="injury-treat-who">
-        <span>Leczy</span>
+        <span>{mode === 'quickFix' ? 'Łata' : 'Leczy'}</span>
         <select
           value={healerId}
           onChange={(event) => setHealerId(event.target.value)}
-          aria-label="Kto leczy tę ranę"
+          aria-label={`Kto ${mode === 'quickFix' ? 'łata' : 'leczy'} tę ranę`}
         >
           {healers.map((entry) => (
             <option key={entry.id} value={entry.id}>
@@ -76,7 +89,11 @@ export function TreatInjury({
         {options.map((option) => {
           // Ta sama funkcja, którą serwer odrzuca rzut — guzik gaśnie dokładnie
           // tam, gdzie odmowa i tak by przyszła, a jej zdanie stoi w podpowiedzi.
-          const refusal = healer ? cpredCareRefusal(option, healer.data, registry) : 'Nie ma kim.';
+          const refusal = healer
+            ? cpredCareRefusal(option, healer.data, registry)
+            : mode === 'quickFix'
+              ? 'Nie ma kim.'
+              : 'Nie ma kim — samego siebie leczyć nie można.';
           const blocked = refusal ?? (patientToken ? null : 'Ta postać nie stoi na scenie.');
           return (
             <button
@@ -84,7 +101,9 @@ export function TreatInjury({
               type="button"
               className="cp-mini-button"
               disabled={blocked !== null}
-              title={blocked ?? `Rzuć: ${option.name} przeciw PT ${option.dv}`}
+              title={
+                blocked ?? `${CPRED_CARE_MODE_LABELS[mode]}: ${option.name} przeciw PT ${option.dv}`
+              }
               onClick={() => {
                 if (!healer || !patientToken) return;
                 loadTreatInjuryCup(
@@ -94,6 +113,7 @@ export function TreatInjury({
                   option,
                   healer.data,
                   registry,
+                  mode,
                 );
                 onClose();
               }}

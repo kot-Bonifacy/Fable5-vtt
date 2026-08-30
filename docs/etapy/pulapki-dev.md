@@ -458,3 +458,25 @@ padły w jednym przebiegu `roles30d.test.ts` („Pogłoski […] szeptem": `roll
 i dwa testy z `specialties.test.ts`, a w trzech innych przebiegach tego samego kodu — nic.
 Oba pliki przechodzą w izolacji. Zanim uznasz taki wynik za regres: **powtórz przebieg
 i puść same te pliki**. Jeden czerwony przebieg z 54 plików nie jest dowodem.
+
+**Kubkiem kości nie potrząśniesz z JavaScriptu.** `cup.click()` nic nie robi, a ręcznie złożona
+seria `pointerdown` → `pointermove` → `pointerup` na `.dice-cup` też nie — kubek zostaje na
+ekranie, rzut nie leci. Klikać trzeba narzędziem `computer`, **we współrzędnych zrzutu**: przy
+oknie 1766 px CSS i zrzucie 1373 px skala to ≈0,777, więc `getBoundingClientRect()` trzeba przez
+nią przemnożyć (`x * 1373 / window.innerWidth`). Guziki na kartach czatu i w formularzach reagują
+na `click()` normalnie — to sam kubek jest wyjątkiem.
+
+**Dwie drogi uzbrojenia broni, jedna zna Celowanie.** Slot broni w pasku postaci ustawia
+`hudStore.activeWeapon` („W ręku: …"), a baner nad mapą z guzikami Celowania wisi na
+`attackStore.targeting`, który stawia **tylko** „Atak" z karty postaci i menu żetonu. Szukając
+kontrolki, która czegoś nie pokazuje, sprawdź najpierw, **którym** stanem została uzbrojona broń.
+
+**Broń dodana do karty przez wpisanie nazwy nie strzela.** Pole nazwy w wierszu broni to wolny
+tekst — nie dostaje `compendiumId`, więc planer odmawia („Ta broń nie ma tabeli zasięgów").
+Do oględzin bierz broń z katalogu: kompendium → wpis → wybór postaci → „Dodaj za darmo". Id typu
+(`weapon-type.heavy-melee`) **nie jest** id wpisu broni (`weapon.heavy-melee`) — wpisanie tego
+pierwszego do bazy daje dokładnie tę samą odmowę.
+
+**Broń biała odmawia z odległości większej niż 2 m** („Do ataku wręcz cel musi być nie dalej niż
+2 m") — a pole na „Strzelnicy" to 100 px i **2 m**, więc figury muszą stać w sąsiednich polach.
+Przy ustawianiu żetonów w bazie licz w metrach, nie w pikselach.

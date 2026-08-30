@@ -25,7 +25,12 @@
  * Rany" hands the job to the quick-fix sentence instead.
  */
 
-import type { CpredCharacterData, CpredRegistry } from './character.js';
+import {
+  CPRED_CARE_MODE_LABELS,
+  type CpredCareMode,
+  type CpredCharacterData,
+  type CpredRegistry,
+} from './character.js';
 import { CPRED_FIRST_AID_SKILL_ID, CPRED_PARAMEDIC_SKILL_ID } from './rolls.js';
 import {
   cpredMedicineSkillLevel,
@@ -33,6 +38,10 @@ import {
   CPRED_MEDICINE_ABILITY,
   type CpredRoleSheet,
 } from './roleability.js';
+
+// Both live beside the injury row they describe; re-exported here because this
+// is where every reader of the two sentences already looks.
+export { CPRED_CARE_MODE_LABELS, type CpredCareMode };
 
 /** The Medyk-only skill id, which is not in the registry at all (s. 149). */
 export const CPRED_SURGERY_SKILL_ID = 'medicine.surgery';
@@ -46,14 +55,6 @@ export interface CpredCareOption {
   /** True for Chirurgia: only a Medyk who bought the Specialty may roll it. */
   medicOnly: boolean;
 }
-
-/** Which of the two sentences on an injury row is being read. */
-export type CpredCareMode = 'quickFix' | 'treatment';
-
-export const CPRED_CARE_MODE_LABELS: Record<CpredCareMode, string> = {
-  quickFix: 'Łatanie',
-  treatment: 'Leczenie',
-};
 
 interface CareSkill {
   skillId: string;
@@ -147,6 +148,33 @@ export function cpredTreatmentOptions(row: CpredCareTexts): CpredCareOption[] {
     return cpredParseCare(row.quickFix);
   }
   return cpredParseCare(treatment);
+}
+
+/**
+ * What may be rolled in this mode — the quick fix reads its own sentence.
+ *
+ * „Łatanie niweluje efekt rany do końca dnia … Każda próba zajmuje minutę"
+ * (s. 223): a different sentence, a different DV, and on half the table a
+ * skill a non-Medyk actually has. A wound whose quick fix is „Nd." (a severed
+ * arm) offers nothing here, and that is the rule rather than a gap.
+ */
+export function cpredCareOptions(row: CpredCareTexts, mode: CpredCareMode): CpredCareOption[] {
+  return mode === 'quickFix' ? cpredParseCare(row.quickFix) : cpredTreatmentOptions(row);
+}
+
+/**
+ * Does a success in this mode take the wound off for good?
+ *
+ * Always, for „Leczenie". For „Łatanie" only on the three rows that say so
+ * outright — „Łatanie trwale usuwa Efekt tej Rany" is printed instead of a
+ * treatment, and on those rows the field patch *is* the cure. Everywhere else
+ * the quick fix only silences the effect until the end of the day, which is
+ * `patched` on the row rather than a row removed.
+ */
+export function cpredCarePermanent(row: CpredCareTexts, mode: CpredCareMode): boolean {
+  if (mode === 'treatment') return true;
+  const treatment = row.treatment ? normalize(row.treatment) : '';
+  return treatment.toLowerCase().includes(PATCH_IS_PERMANENT);
 }
 
 /**

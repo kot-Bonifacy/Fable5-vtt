@@ -1028,15 +1028,32 @@
   color: var(--cp-red);
 }
 
-/* Od 30b w wierszu rany stoją dwa guziki („Lecz" i kosz), więc do prawej
-   krawędzi spycha wyłącznie pierwszy z nich — `auto` na obu rozsunęłoby je. */
-.cp-injuries .injury-head .cp-mini-button:first-of-type {
+/* Od 30b w wierszu rany stoją guziki („Załataj", „Lecz", kosz), więc do prawej
+   krawędzi spycha wyłącznie pierwszy z nich — `auto` na każdym rozsunąłby je.
+   Guzik ⌫ w chipie „załatana" jest zagnieżdżony, więc reguła go nie dotyczy. */
+.cp-injuries .injury-head > .cp-mini-button:first-of-type {
   margin-left: auto;
 }
 
+/* Rana załatana (etap 15): zostaje na karcie, ale jej skutki milczą do końca
+   dnia — więc chipy kar gasną, a sam wiersz nie. Czytelność ma tu jedno
+   zadanie: „ta rana jest, i dziś nic nie robi". */
+.cp-injuries .injury-row--patched .injury-penalty,
+.cp-injuries .injury-row--patched .injury-effect {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+
+.cp-injuries .injury-patched {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.2rem;
+  font-size: 0.68rem;
+  color: var(--cp-ink-dim);
+}
+
 /* „Łatanie: Ratownictwo medyczne PT 13" — zdanie z tabeli s. 187 pod efektem
-   rany. Stoi na karcie, bo to jedyna droga, która nie ma guzika: łatanie znosi
-   efekt do końca dnia i rozstrzyga je MG (patrz `decyzje-i-uproszczenia.md`). */
+   rany, teraz z guzikiem „Załataj" obok nazwy. */
 .cp-injuries .injury-care {
   margin: 0.15rem 0 0;
   font-size: 0.68rem;

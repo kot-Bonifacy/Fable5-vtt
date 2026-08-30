@@ -9,6 +9,64 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Przeniesione 2026-08-30 (czwarta sesja — rany krytyczne)
+
+Pięć pozycji: trzy naprawy kodu i dwa pakiety oględzin. Wszystko w jednym obszarze — wiersz rany
+krytycznej, jej pola i to, kto ją zdejmuje.
+
+- **Ustabilizowanie i Leczenie porównywały `>`, reszta `>=`. ZAMKNIĘTE — na `>` przeszło wszystko.**
+  Rozjazd był trójstronny i okazał się rozstrzygalny w podręczniku: polskie wydanie drukuje zasadę
+  ogólną dwa razy i oba razy ostro („wynik będzie **większy** od PT", s. 130; „Jeśli wynik Testu jest
+  **wyższy** od PT, udało ci się!", s. 131). Decyzja z 28.08, która wprowadziła `>=`, powoływała się na
+  zdanie „równy lub wyższy = sukces" i na s. 132 — takiego zdania w tym wydaniu nie ma, a s. 132 to
+  lista Umiejętności. Naprawione w trzech miejscach: `cpredAmmoCheckOutcome` (przez nie idą pociski
+  bez obrażeń, efekty stref i wypatrywanie strefy), Efekt Charyzmy z 30d (`character-rolls.ts`,
+  razem z `≥`/`<` w zdaniu karty) i `cpredRumourHeard`. Ustabilizowanie i Leczenie zostały bez
+  zmian — były jedynym miejscem zgodnym z podręcznikiem. Pełny zapis w `decyzje-i-uproszczenia.md`;
+  **widać to na żywym rzucie**: łatanie „13 vs PT 13" wróciło z czatu jako „Nie udało się".
+
+- **Edytor kompendium nie umiał zapisać połowy pól rany krytycznej. ZAMKNIĘTE.** Dołożone sześć
+  brakujących pól: `movePenalty` („Kara do RUCH-u"), `actionPenalty` („Kara do rzutów") i cztery
+  flagi tury z 14e jako pudełka („Brak Akcji w następnej Turze", „Nie może Unikać", „Bieg zabiera
+  RUCH w następnej Turze", „Bieg otwiera ranę na końcu Tury") — w `EditorForm`, `toForm`, `fromForm`
+  i w formularzu. Odklikane od końca do końca: rana własna MG („Test łaty 15", −3 RUCH-u, −1 do
+  rzutów, brak Uniku, DoT po biegu) zapisała się, **wróciła kompletna przy ponownej edycji**,
+  a nadana z karty weszła na nią ze wszystkimi skutkami i jej −1 stanęło w rozbiciu rzutu na czacie.
+  Przy okazji poprawiony układ: cztery pudełka zawijały się nierówno w dwóch wierszach, teraz stoją
+  jedną kolumną (`.injury-flags`).
+
+- **Łatanie nie znosiło efektu rany. ZAMKNIĘTE.** „Łatanie niweluje efekt rany do końca dnia"
+  (s. 223) działa: wiersz rany dostał pole `patched` (kto i czym), a **jeden filtr**
+  `cpredActiveInjuries` przepuszcza wszystkie odczyty skutków — kary płaskie i warunkowe, blokadę
+  Uniku, haki końca tury, Test Przeżywalności, mnożnik trafień w głowę i karę do RUCH-u. Rana
+  zostaje na karcie z chipem „załatana" i przekreślonym efektem; ⌫ przy chipie kończy łatę
+  („minął dzień"). Rzut jedzie tą samą drogą co Leczenie (`treatMode`), czyta **własne zdanie**
+  z tabeli, a `cpredCarePermanent` rozstrzyga trzy rany, przy których łatanie leczy na stałe.
+  Doszła przy tym reguła, której 30b nie miało: „można łatać samego siebie, nie można leczyć
+  samego siebie" (s. 223) — pacjent wypada z listy leczących, a serwer odmawia `SELF_TREATMENT`.
+  Odklikane: łata na „Złamanej nodze" i „Strzaskanych palcach", zniknięcie i powrót kary warunkowej
+  w oknie rzutu, chip, ⌫ i odmowa drugiej łaty (`INJURY_ALREADY_PATCHED`).
+
+- **Celowanie (s. 170) nieoglądane w przeglądarce. ZAMKNIĘTE.** Wszystkie cztery punkty
+  odklikane na „Strzelnicy": guziki „Głowa / Trzymany przedmiot / Noga" stoją na banerze przy
+  strzale pojedynczym i **znikają przy serii**; klikają się mimo `pointer-events: none` na banerze;
+  wybór trzyma się do strzału i wchodzi do rozbicia jako „Celowanie (noga) −8"; karta obrażeń po
+  trafieniu w nogę mówi „Celowanie (noga): Złamana noga" **bez „2k6 = …"**. Nie sprawdzony został
+  jeden przypadek poboczny — Celowanie w **statystę** (ma dać zdanie zamiast rany); trzy strzały
+  poszły w wieżyczkę i wszystkie były pudłem. Przy okazji wyszło, że baner z guzikami pojawia się
+  **tylko** przy uzbrojeniu z karty postaci albo z menu żetonu — nowa pozycja w zaległościach.
+
+- **Zmiany z 29.08 nieoglądane w przeglądarce. ZAMKNIĘTE (4 z 5 punktów).** (1) **Cięcie ostrzem**:
+  karta obrażeń powiedziała „rzut 11 **− OB 7 (połowa pancerza)**", a wiersz pancerza spadł
+  **13 → 12**, czyli o pełną ablację, nie o połowę. (2) **Chip kary warunkowej** stoi przy ranie
+  („−4 · wszystkich Akcji wykonywanych tą ręką"), a **guzik** w oknie rzutu wpisuje −4 do
+  modyfikatora i drugim kliknięciem cofa. (3) **Przeładowanie statysty**: pudełko „Przeładuj:
+  Karabin szturmowy 25/25" stoi na pasku figury bez karty i gaśnie przy pełnym magazynku — koszt
+  Akcji w trwającej walce **nie był** sprawdzony. (4) **Rana krytyczna statysty**: dwie szóstki na
+  4k6 przeciw wieżyczce dały „Rana krytyczna (2k6 = 3): **Odcięta dłoń**" z pełnym opisem i
+  „+ 5 za ranę krytyczną" w rachunku obrażeń; rana siedzi w `combatProfile.criticalInjuries`.
+  (5) **Pola rany w edytorze kompendium** — patrz pozycja wyżej.
+
 ## Przeniesione 2026-08-28 (odsłuch dźwięków mapy)
 
 Czwarta sesja tego dnia, jedna pozycja.

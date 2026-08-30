@@ -328,7 +328,7 @@ export interface CpredAmmoCheckOutcome {
   die: number;
   modifier: number;
   total: number;
-  /** True when the target met or beat the DV — a tie is a success (s. 132). */
+  /** True when the target's total is strictly higher than the DV (s. 131). */
   resisted: boolean;
 }
 
@@ -336,11 +336,15 @@ export interface CpredAmmoCheckOutcome {
  * Judges one forced check. `die` comes from the caller's RNG, `modifier` is the
  * target's stat plus skill — the same shape suppressive fire has used since 16.
  *
- * A tie is a **success**: this is a check against a static DV, where RAW says
- * „equal or higher succeeds". The other rule — „a tie goes to the defender"
- * (s. 169) — belongs to *opposed* rolls, and lives where those are resolved:
- * `resolveCpredAttack` and suppressive fire, whose DV is another character's
- * total. Do not unify the two comparisons (GM's ruling, 28.08.2026).
+ * A tie is a **failure**: the manual prints the general rule twice and both
+ * times strictly — „licząc na to, że wynik będzie **większy** od Poziomu
+ * Trudności (PT)" (s. 130) and „Jeśli wynik Testu jest **wyższy** od PT, udało
+ * ci się!" (s. 131). The ruling of 28.08.2026 that made this `>=` quoted an
+ * „equal or higher" wording that the Polish edition does not carry; corrected
+ * 30.08.2026, so every static DV in the project reads the same way.
+ *
+ * Opposed rolls (`resolveCpredAttack`, suppressive fire) reach the same `>` by
+ * a different road — „w przypadku remisu Broniący zawsze wygrywa" (s. 130).
  */
 export function cpredAmmoCheckOutcome(
   die: number,
@@ -348,7 +352,7 @@ export function cpredAmmoCheckOutcome(
   dv: number,
 ): CpredAmmoCheckOutcome {
   const total = die + modifier;
-  return { die, modifier, total, resisted: total >= dv };
+  return { die, modifier, total, resisted: total > dv };
 }
 
 /**

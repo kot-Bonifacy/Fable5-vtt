@@ -17,7 +17,11 @@
  * a GM who types „Zmiażdżona stopa −3" into the compendium gets it enforced.
  */
 
-import type { CpredArmorRow, CpredCriticalInjuryRow } from './character.js';
+import {
+  cpredActiveInjuries,
+  type CpredArmorRow,
+  type CpredCriticalInjuryRow,
+} from './character.js';
 import { woundMovePenalty, woundStateFromHp, type CpredWoundState } from './rolls.js';
 
 /** Metres one point of RUCH is worth per Move Action (RAW: RUCH × 2). */
@@ -92,7 +96,7 @@ export function armorMovePenalty(armor: readonly CpredArmorRow[] | undefined): n
 /** Combined RUCH penalty of the Critical Injuries a character carries. */
 export function injuryMovePenalty(injuries: readonly CpredCriticalInjuryRow[] | undefined): number {
   if (!injuries || injuries.length === 0) return 0;
-  return injuries.reduce((sum, injury) => sum + (injury.movePenalty ?? 0), 0);
+  return cpredActiveInjuries(injuries).reduce((sum, injury) => sum + (injury.movePenalty ?? 0), 0);
 }
 
 /**
@@ -106,7 +110,7 @@ export function cpredMoveBudget(input: CpredMoveInput): CpredMoveBudget {
   if (armor !== 0) modifiers.push({ label: 'Pancerz', value: armor });
   const wound = input.wound ? woundMovePenalty(input.wound) : 0;
   if (wound !== 0) modifiers.push({ label: 'Śmiertelnie ranny', value: wound });
-  for (const injury of input.injuries ?? []) {
+  for (const injury of cpredActiveInjuries(input.injuries ?? [])) {
     if (injury.movePenalty) modifiers.push({ label: injury.name, value: injury.movePenalty });
   }
   for (const modifier of input.extra ?? []) {

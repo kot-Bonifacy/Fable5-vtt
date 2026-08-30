@@ -17,6 +17,8 @@ import {
 import {
   cpredSkillLabel,
   injuryDeathSavePenalty,
+  CPRED_CARE_MODE_LABELS,
+  type CpredCareMode,
   type CpredCharacterData,
   type CpredRegistry,
 } from './character.js';
@@ -236,10 +238,23 @@ export interface CpredRollRequest {
    */
   treatTokenId?: string;
   treatInjuryId?: string;
+  /**
+   * Which of the two sentences is being rolled (stage 15, quick fix). Absent
+   * means „Leczenie", which is what the whole path meant before Łatanie had a
+   * button — an older client keeps working and keeps removing wounds.
+   */
+  treatMode?: CpredCareMode;
   /** Which branch of the printed sentence is being rolled („Chirurgia PT 13"). */
   treatSkillId?: string;
   /** Server-filled: DV of that branch, read off the wound the target carries. */
   treatDv?: number;
+  /**
+   * Server-filled: does a success here take the wound off for good? Always for
+   * „Leczenie"; for „Łatanie" only on the rows that print „Łatanie trwale usuwa
+   * Efekt tej Rany" (`cpredCarePermanent`). Read off the wound like the DV, so
+   * a client cannot promise itself a permanent cure from a one-minute patch.
+   */
+  treatPermanent?: boolean;
   /** Server-filled: what the card names — the wound, and whose it is. */
   treatInjuryName?: string;
   treatTargetName?: string;
@@ -308,6 +323,13 @@ export interface CpredDamagePlan {
 export interface CpredTreatInjuryPlan {
   /** Beat this to take the wound off (RAW: strictly higher, as everywhere). */
   dv: number;
+  /**
+   * „Łatanie niweluje efekt rany do końca dnia … Leczenie trwale usuwa efekt
+   * rany" (s. 223) — one roll, two things a success does.
+   */
+  mode: CpredCareMode;
+  /** Whether a success removes the wound (`true`) or only silences it. */
+  permanent: boolean;
   targetName: string;
   /** Token whose sheet loses the wound on a success. */
   targetTokenId: string;
@@ -728,13 +750,29 @@ function planTreatInjuryRoll(
 
   const injuryName = request.treatInjuryName ?? 'rana';
   const targetName = request.treatTargetName ?? 'cel';
+  // „Leczenie" is the default so a client that predates the quick-fix button
+  // keeps meaning what it used to mean.
+  const mode: CpredCareMode = request.treatMode === 'quickFix' ? 'quickFix' : 'treatment';
+  // „Leczenie" always cures; a patch only does on the three rows that say so.
+  const permanent = mode === 'treatment' || request.treatPermanent === true;
   return finishCheck(
-    `Leczenie: ${injuryName} → ${targetName}`,
+    `${CPRED_CARE_MODE_LABELS[mode]}: ${injuryName} → ${targetName}`,
     breakdown,
     state,
     modifier,
     luckSpent,
-    { treatInjury: { dv, targetName, targetTokenId, injuryId, injuryName, skillName } },
+    {
+      treatInjury: {
+        dv,
+        mode,
+        permanent,
+        targetName,
+        targetTokenId,
+        injuryId,
+        injuryName,
+        skillName,
+      },
+    },
     context,
   );
 }

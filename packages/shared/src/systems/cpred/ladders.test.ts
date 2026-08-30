@@ -287,8 +287,10 @@ describe('Wiarygodność (s. 151–153)', () => {
       [11, 17],
       [13, 21],
     ]);
-    expect(cpredRumourHeard(6)).toBeNull();
-    expect(cpredRumourHeard(7)?.id).toBe('vague');
+    // Próg pobity, nie dorównany — „wyższy od PT" (s. 131).
+    expect(cpredRumourHeard(7)).toBeNull();
+    expect(cpredRumourHeard(8)?.id).toBe('vague');
+    expect(cpredRumourHeard(9)?.id).toBe('vague');
     expect(cpredRumourHeard(10)?.id).toBe('typical');
     expect(cpredRumourHeard(40)?.id).toBe('detailed');
   });

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type {
   CpredAttackRequest,
+  CpredCareMode,
   CpredCareOption,
   CpredCharacterData,
   CpredHitLocation,
@@ -12,6 +13,7 @@ import type {
   ScenePoint,
 } from '@vtt/shared';
 import {
+  CPRED_CARE_MODE_LABELS,
   CPRED_FIRST_AID_SKILL_ID,
   CPRED_PARAMEDIC_SKILL_ID,
   cpredMedicineSkillLevel,
@@ -364,6 +366,7 @@ export function loadTreatInjuryCup(
   option: CpredCareOption,
   data: CpredCharacterData,
   registry: CpredRegistry,
+  mode: CpredCareMode = 'treatment',
 ): void {
   const store = useRollStore.getState();
   const level = isCpredMedicineSkillId(option.skillId)
@@ -382,13 +385,14 @@ export function loadTreatInjuryCup(
       kind: 'treatInjury',
       treatTokenId: target.tokenId,
       treatInjuryId: injury.id,
+      treatMode: mode,
       treatSkillId: option.skillId,
       modifier: 0,
       luckSpent: 0,
     },
     // Somebody's arm is being sewn back on: the table watches.
     visibility: 'public',
-    title: `Leczenie: ${injury.name} → ${target.name}`,
+    title: `${CPRED_CARE_MODE_LABELS[mode]}: ${injury.name} → ${target.name}`,
     modifierTotal,
   });
 }

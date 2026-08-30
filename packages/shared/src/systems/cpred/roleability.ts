@@ -2960,13 +2960,14 @@ export const CPRED_RUMOUR_ROLLS_PER_WEEK = 2;
 /**
  * Pogłoska, którą przynosi ten wynik — „ta z najwyższym przerzuconym PT".
  *
- * Remis zdaje, bo taka jest umowa całego projektu dla PT statycznych (decyzja
- * MG z 28.08); podręcznik pisze tu „wyższy od", ale ogólna zasada Testu ze
- * s. 130 mówi „równy lub wyższy" i to ona rządzi wszystkimi progami w VTT.
+ * Remis nie zdaje — podręcznik pisze tu „wyższy od" i tak samo brzmi ogólna
+ * zasada Testu („wynik będzie większy od PT", s. 130; „wyższy od PT, udało ci
+ * się", s. 131). Do 30.08 stało tu `>=` na podstawie decyzji MG z 28.08, która
+ * cytowała nieistniejące w polskim wydaniu „równy lub wyższy"; poprawione.
  */
 export function cpredRumourHeard(total: number): CpredRumourTier | null {
   let best: CpredRumourTier | null = null;
-  for (const tier of CPRED_RUMOUR_TIERS) if (total >= tier.passive) best = tier;
+  for (const tier of CPRED_RUMOUR_TIERS) if (total > tier.passive) best = tier;
   return best;
 }
 

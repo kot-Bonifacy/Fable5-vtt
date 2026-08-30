@@ -5,7 +5,9 @@ import type {
   CpredArmorRow,
   CpredSkillDefinition,
   CpredAttackMode,
+  CpredCareMode,
   CpredCharacterData,
+  CpredCriticalInjuryRow,
   CpredCyberdeck,
   CpredCyberwareRow,
   CpredNetInstallRow,
@@ -110,6 +112,7 @@ import {
   cpredFieldRepairMinutes,
   cpredRoleAbilityRank,
   cpredSheetFabrication,
+  cpredCareOptions,
   cpredTreatmentOptions,
   describeCareOptions,
   CPRED_BACKUP_ABILITY,
@@ -1886,6 +1889,12 @@ function ArmorPenalty({
   );
 }
 
+/** Ten sam wiersz rany bez łaty — „minął dzień", efekty wracają. */
+function stripPatch(row: CpredCriticalInjuryRow): CpredCriticalInjuryRow {
+  const { patched: _patched, ...rest } = row;
+  return rest;
+}
+
 /**
  * Critical Injuries the character is suffering. They are drawn by the damage
  * flow; here they can be read (the effect is the rules text) and removed —
@@ -1899,8 +1908,12 @@ function CriticalInjuries({ data, saveData, characterId }: TabProps & { characte
   const entriesById = useCompendiumStore((s) => s.entries);
   const order = useCompendiumStore((s) => s.order);
   const [picked, setPicked] = useState('');
-  /** Rana, przy której otwarto formularz leczenia; naraz tylko jedna. */
-  const [treating, setTreating] = useState<string | null>(null);
+  /**
+   * Rana i tryb, w którym otwarto przy niej formularz; naraz tylko jeden.
+   * Klucz jest parą, bo Łatanie i Leczenie tej samej rany to dwa różne zdania
+   * z tabeli i dwa różne rzuty.
+   */
+  const [treating, setTreating] = useState<{ id: string; mode: CpredCareMode } | null>(null);
   /**
    * Tabela ran do wyboru — obie strony ciała, po numerze 2k6, tak jak drukuje
    * je podręcznik. Rana, którą postać już ma, wypada z listy: serwer i tak jej
@@ -1926,9 +1939,43 @@ function CriticalInjuries({ data, saveData, characterId }: TabProps & { characte
       ) : (
         <ul className="injury-list">
           {data.criticalInjuries.map((injury, index) => (
-            <li key={`${injury.id}-${index}`} className="cp-field injury-row">
+            <li
+              key={`${injury.id}-${index}`}
+              className={`cp-field injury-row${injury.patched ? ' injury-row--patched' : ''}`}
+            >
               <div className="injury-head">
                 <span className="injury-name">{injury.name}</span>
+                {/*
+                  Etap 15: rana załatana zostaje na karcie — milkną tylko jej
+                  skutki, i tylko do końca dnia. Chip mówi kto i czym, a ⌫ obok
+                  kończy łatę: dzień mija na stole, nie w zegarze VTT.
+                */}
+                {injury.patched ? (
+                  <span
+                    className="injury-patched"
+                    title={`Załatane: ${injury.patched.skill} — ${injury.patched.by}. Efekt rany milczy do końca dnia.`}
+                  >
+                    załatana
+                    <button
+                      type="button"
+                      className="cp-mini-button"
+                      title="Minął dzień — łata puszcza, efekt rany wraca"
+                      aria-label={`Zdejmij łatę z rany: ${injury.name}`}
+                      onClick={() =>
+                        saveData(
+                          {
+                            criticalInjuries: data.criticalInjuries.map((row, i) =>
+                              i === index ? stripPatch(row) : row,
+                            ),
+                          },
+                          'criticalInjuries',
+                        )
+                      }
+                    >
+                      ⌫
+                    </button>
+                  </span>
+                ) : null}
                 {injury.rolled ? <span className="injury-roll">2k6 = {injury.rolled}</span> : null}
                 {/*
               A wound that heals by itself (stage 16h). Worth a badge of its own
@@ -1975,13 +2022,47 @@ function CriticalInjuries({ data, saveData, characterId }: TabProps & { characte
                   („Nd." nie da się). Kasowanie ✕ obok zostaje: MG nadal musi
                   móc zdjąć ranę bez rzutu, gdy rozstrzygnął ją narracyjnie.
                 */}
+                {/*
+                  Etap 15: „Łatanie niweluje efekt rany do końca dnia" (s. 223).
+                  Osobny guzik, nie drugi tryb tego samego — bo to inne zdanie
+                  z tabeli, inne PT i zwykle inna Umiejętność. Gaśnie, gdy rana
+                  jest już załatana: drugi raz nie ma czego uciszać.
+                */}
+                {cpredCareOptions(injury, 'quickFix').length > 0 && (
+                  <button
+                    type="button"
+                    className="cp-mini-button"
+                    disabled={injury.patched !== undefined}
+                    title={
+                      injury.patched
+                        ? 'Ta rana jest już załatana — jej efekt milczy do końca dnia.'
+                        : `Łatanie: ${describeCareOptions(cpredCareOptions(injury, 'quickFix'))}`
+                    }
+                    aria-label={`Załataj ranę: ${injury.name}`}
+                    onClick={() =>
+                      setTreating(
+                        treating?.id === injury.id && treating.mode === 'quickFix'
+                          ? null
+                          : { id: injury.id, mode: 'quickFix' },
+                      )
+                    }
+                  >
+                    Załataj
+                  </button>
+                )}
                 {cpredTreatmentOptions(injury).length > 0 && (
                   <button
                     type="button"
                     className="cp-mini-button"
                     title={`Leczenie: ${describeCareOptions(cpredTreatmentOptions(injury))}`}
                     aria-label={`Lecz ranę: ${injury.name}`}
-                    onClick={() => setTreating(treating === injury.id ? null : injury.id)}
+                    onClick={() =>
+                      setTreating(
+                        treating?.id === injury.id && treating.mode === 'treatment'
+                          ? null
+                          : { id: injury.id, mode: 'treatment' },
+                      )
+                    }
                   >
                     Lecz
                   </button>
@@ -2007,10 +2088,11 @@ function CriticalInjuries({ data, saveData, characterId }: TabProps & { characte
                   Łatanie: {injury.quickFix}
                 </p>
               ) : null}
-              {treating === injury.id && (
+              {treating?.id === injury.id && (
                 <TreatInjury
                   patientId={characterId}
                   injury={injury}
+                  mode={treating.mode}
                   onClose={() => setTreating(null)}
                 />
               )}

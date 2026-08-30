@@ -3,7 +3,9 @@ import type {
   CharacterRollPayload,
   CpredAmmoProfile,
   CpredCharacterData,
+  CpredCareMode,
   CpredCriticalInjuryRow,
+  CpredPatchedInjury,
   CpredRollContext,
   CpredRollRequest,
   CpredWoundState,
@@ -21,7 +23,8 @@ import {
   ROLE_GM,
   cpredAudienceBelieves,
   cpredRumourHeard,
-  cpredTreatmentOptions,
+  cpredCareOptions,
+  cpredCarePermanent,
   hitLocationLabel,
   isCpredAimPoint,
   mergeCharacterData,
@@ -257,9 +260,9 @@ async function resolveRollRequest(
   deps: RealtimeDeps,
   campaignId: string,
   user: SessionUser,
-  raw: CpredRollRequest | undefined,
+  payload: CharacterRollPayload<CpredRollRequest> | undefined,
 ): Promise<CpredRollRequest> {
-  const request: CpredRollRequest = { ...(raw ?? ({} as CpredRollRequest)) };
+  const request: CpredRollRequest = { ...(payload?.request ?? ({} as CpredRollRequest)) };
   // Never trust these off the wire — they are server-filled by design.
   delete request.damageNotation;
   delete request.damageMultiplier;
@@ -270,13 +273,14 @@ async function resolveRollRequest(
   delete request.stabilizeDv;
   delete request.stabilizeTargetName;
   delete request.treatDv;
+  delete request.treatPermanent;
   delete request.treatInjuryName;
   delete request.treatTargetName;
   if (request.kind === 'stabilize') {
     return resolveStabilizeRequest(deps, campaignId, user, request);
   }
   if (request.kind === 'treatInjury') {
-    return resolveTreatInjuryRequest(deps, campaignId, user, request);
+    return resolveTreatInjuryRequest(deps, campaignId, user, request, payload?.characterId);
   }
   if (request.kind !== 'damage' || request.attackMessageId === undefined) return request;
 
@@ -392,6 +396,7 @@ async function resolveTreatInjuryRequest(
   campaignId: string,
   user: SessionUser,
   request: CpredRollRequest,
+  healerCharacterId: string | undefined,
 ): Promise<CpredRollRequest> {
   const tokenId = request.treatTokenId;
   const injuryId = request.treatInjuryId;
@@ -401,16 +406,31 @@ async function resolveTreatInjuryRequest(
   const { token } = await requireCampaignToken(deps.ctx.prisma, campaignId, tokenId);
   if (user.role !== ROLE_GM && token.hidden) throw new RealtimeError('TOKEN_NOT_FOUND');
 
+  const mode: CpredCareMode = request.treatMode === 'quickFix' ? 'quickFix' : 'treatment';
+  // „Można łatać samego siebie … Nie można leczyć samego siebie" (s. 223) —
+  // the one place the two modes differ before the dice are rolled.
+  if (
+    mode === 'treatment' &&
+    healerCharacterId !== undefined &&
+    token.characterId === healerCharacterId
+  ) {
+    throw new RealtimeError('SELF_TREATMENT');
+  }
   const injury = (await treatableInjuries(deps, token)).find((row) => row.id === injuryId);
   if (!injury) throw new RealtimeError('INJURY_NOT_FOUND');
-  const options = cpredTreatmentOptions(injury);
+  // A wound whose effects are already talked down has nothing left for the
+  // quick fix to do; the treatment that takes it off for good still does.
+  if (mode === 'quickFix' && injury.patched) throw new RealtimeError('INJURY_ALREADY_PATCHED');
+  const options = cpredCareOptions(injury, mode);
   const option = options.find((entry) => entry.skillId === request.treatSkillId);
   // „Nd." — a severed arm has no quick fix and a wound whose sentence the VTT
   // cannot read has no roll either. Both say the same thing to the table.
   if (!option) throw new RealtimeError('NO_TREATMENT');
   return {
     ...request,
+    treatMode: mode,
     treatDv: option.dv,
+    treatPermanent: cpredCarePermanent(injury, mode),
     treatInjuryName: injury.name,
     treatTargetName: token.name,
   };
@@ -432,19 +452,29 @@ async function treatableInjuries(
 }
 
 /**
- * Takes a treated wound off, wherever this figure keeps its wounds.
+ * Applies a successful care roll, wherever this figure keeps its wounds.
  *
  * A statist has carried Critical Injuries since 29.08, so treating one has to
  * reach the token's `combatProfile` as well as a sheet — otherwise the Medyk
  * could heal the party and not the thug bleeding next to them, which is not a
  * distinction any rule makes.
+ *
+ * What a success does depends on the mode: „Leczenie" takes the row away,
+ * „Łatanie" leaves it and silences it (`patched`). The row itself is rewritten
+ * rather than filtered out in the second case, so the sheet keeps saying the
+ * arm is broken — which it is.
  */
 async function applyTreatment(
   deps: RealtimeDeps,
   campaignId: string,
   targetTokenId: string,
   injuryId: string,
+  patch: CpredPatchedInjury | null,
 ): Promise<boolean> {
+  const rewrite = (rows: readonly CpredCriticalInjuryRow[]): CpredCriticalInjuryRow[] =>
+    patch === null
+      ? rows.filter((row) => row.id !== injuryId)
+      : rows.map((row) => (row.id === injuryId ? { ...row, patched: patch } : row));
   // The id came off a plan whose token `resolveTreatInjuryRequest` already
   // proved belongs to this campaign — the same bargain `applyStabilization`
   // makes with its own target.
@@ -458,7 +488,7 @@ async function applyTreatment(
     const data = parseCharacterData(character.data, deps.ctx.cpred);
     if (!data.criticalInjuries.some((row) => row.id === injuryId)) return false;
     const merged = mergeCharacterData(data, {
-      criticalInjuries: data.criticalInjuries.filter((row) => row.id !== injuryId),
+      criticalInjuries: rewrite(data.criticalInjuries),
     });
     const saved = await deps.ctx.prisma.character.update({
       where: { id: character.id },
@@ -473,7 +503,7 @@ async function applyTreatment(
   if (!profile || !carried.some((row) => row.id === injuryId)) return false;
   const next = {
     ...profile,
-    criticalInjuries: sanitizeCriticalInjuryRows(carried.filter((row) => row.id !== injuryId)),
+    criticalInjuries: sanitizeCriticalInjuryRows(rewrite(carried)),
   };
   await deps.ctx.prisma.token.update({
     where: { id: token.id },
@@ -610,7 +640,7 @@ export async function performCharacterRoll(
     const { user, payload, sceneId, campaignId } = options;
 
     const registry = deps.ctx.cpred;
-    const request = await resolveRollRequest(deps, campaignId, user, payload?.request);
+    const request = await resolveRollRequest(deps, campaignId, user, payload);
     const source = await resolveRollSource(deps, campaignId, user, payload, request);
     const data = source.data;
     // „Obaj walczący ... otrzymują modyfikator −2 do wszystkich Akcji" (s. 176):
@@ -728,22 +758,34 @@ export async function performCharacterRoll(
 
     // „Leczenie" (stage 30b) reads exactly like Stabilizing above, down to the
     // strictly-greater comparison — the difference is what a success takes away.
+    // „Łatanie" (stage 15) is the same roll against the other sentence, and its
+    // success leaves the wound where it is with its effects talked down.
     if (plan.treatInjury) {
       const success = result.total > plan.treatInjury.dv;
-      const removed = success
+      const patch: CpredPatchedInjury | null = plan.treatInjury.permanent
+        ? null
+        : { skill: plan.treatInjury.skillName, by: rollSourceName(source) };
+      const applied = success
         ? await applyTreatment(
             deps,
             campaignId,
             plan.treatInjury.targetTokenId,
             plan.treatInjury.injuryId,
+            patch,
           )
         : false;
+      const quickFix = plan.treatInjury.mode === 'quickFix';
       result.outcome = {
         success,
-        label: success ? 'Wyleczona' : 'Nie udało się',
-        detail: `${plan.treatInjury.skillName} ${result.total} vs PT ${plan.treatInjury.dv}${
-          removed ? ` · „${plan.treatInjury.injuryName}" schodzi z karty` : ''
-        }`,
+        label: success ? (patch === null ? 'Wyleczona' : 'Załatana') : 'Nie udało się',
+        detail:
+          `${plan.treatInjury.skillName} ${result.total} vs PT ${plan.treatInjury.dv}` +
+          (applied
+            ? patch === null
+              ? ` · „${plan.treatInjury.injuryName}" schodzi z karty`
+              : ` · efekt rany „${plan.treatInjury.injuryName}" milczy do końca dnia`
+            : '') +
+          (quickFix && !success ? ' · można próbować dalej, każda próba to minuta' : ''),
       };
     }
 
@@ -751,9 +793,10 @@ export async function performCharacterRoll(
     // a Test against a printed PT, a die under a chance out of ten, and one
     // roll measured against four thresholds at once.
     if (plan.charisma) {
-      // „równy lub wyższy = sukces" — the standing decision of 28.08 for every
-      // static PT in this project, and this is one.
-      const success = result.total >= plan.charisma.dv;
+      // „Jeśli wynik Testu jest wyższy od PT, udało ci się" (s. 131) — the same
+      // strict comparison Stabilizing and Treating use above. Written `>=` in
+      // 30d on the ruling of 28.08, corrected 30.08 with the rest of them.
+      const success = result.total > plan.charisma.dv;
       const audience = CPRED_CHARISMA_AUDIENCE_LABELS[plan.charisma.audience];
       result.outcome = {
         success,
@@ -765,10 +808,10 @@ export async function performCharacterRoll(
             ? 'Nie zrobili na nich wrażenia'
             : 'Odmowa',
         detail: success
-          ? `${result.total} ≥ PT ${plan.charisma.dv} · ${audience}${
+          ? `${result.total} > PT ${plan.charisma.dv} · ${audience}${
               plan.charisma.effect ? ` — ${plan.charisma.effect}` : ''
             }`
-          : `${result.total} < PT ${plan.charisma.dv} · ${audience}${
+          : `${result.total} ≤ PT ${plan.charisma.dv} · ${audience}${
               plan.charisma.purpose === 'favour'
                 ? ` — o tę samą przysługę nie poprosisz ich przez ${CPRED_CHARISMA_REFUSAL_DAYS} dni`
                 : ''

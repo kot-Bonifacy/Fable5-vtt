@@ -8,6 +8,35 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
 
 ## Pozycje
 
+- **Celowanie jest nieosiągalne z paska akcji (30.08).** Baner z guzikami „Głowa / Trzymany
+  przedmiot / Noga" wisi na `attackStore.targeting`, a pasek postaci uzbraja broń **własnym**
+  stanem (`hudStore.activeWeapon`) — więc figura wybrana na mapie i uzbrojona slotem strzela bez
+  możliwości Celowania, a te same guziki pojawiają się, gdy broń uzbroi się z karty postaci
+  („Atak" w wierszu broni) albo z menu żetonu. To dokładnie ten kształt błędu, co pułapka
+  „mechanika bywa gotowa i nieosiągalna z UI": dwie drogi uzbrojenia, jedna zna Celowanie.
+  Naprawa to albo wspólny stan, albo `AimPointPicker` również przy `hud-armed`.
+
+- **Statysta nie ma skąd być załatany ani wyleczony (30.08).** Serwer to umie — `treatableInjuries`
+  czyta `combatProfile`, `applyTreatment` zapisuje z powrotem do żetonu — ale formularz stoi
+  wyłącznie przy wierszu rany **na karcie postaci**, a figura bez karty żadnej listy ran nie
+  pokazuje. Wieżyczka z „Odciętą dłonią" (30.08) nosi ranę, której nikt nie zdejmie inaczej niż
+  ręką w bazie. Do zrobienia razem z pierwszym etapem, który tknie pasek figury bez karty.
+
+- **Broń wpisana ręcznie na karcie nie strzela (30.08).** Wiersz broni z samą nazwą nie dostaje
+  `compendiumId`, a planer odmawia takiej broni zdaniem „Ta broń nie ma tabeli zasięgów —
+  uzupełnij typ broni w kompendium". Jedyna droga to katalog („Dodaj za darmo" albo zakup), co
+  nie jest oczywiste: pole nazwy wygląda jak pole z podpowiedziami, a nim nie jest. Albo
+  dopasowanie po nazwie przy zapisie, albo wybór z listy zamiast wolnego tekstu.
+
+- **Rana nadana ręką MG gubi wiersz tabeli (30.08).** „Nadaj ranę" zapisuje `rolled: 0` zamiast
+  `roll` z wpisu kompendium, więc karta nie pokazuje przy niej „2k6 = N" — nic się nie psuje
+  (0 jest falsy), ale prowieniencja ginie. Jedno pole przy `assignCriticalInjury`.
+
+- **Przeładowanie statysty w trwającej walce (30.08).** Pudełko „Przeładuj" stoi na pasku figury
+  bez karty i gaśnie przy pełnym magazynku — ale że **kosztuje Akcję**, sprawdzone jest tylko
+  testem serwera. Do odklikania przy pierwszej walce turowej na poligonie, razem z Celowaniem
+  w statystę (trzy strzały 30.08 były pudłem, więc „zdanie zamiast rany" nadal nieoglądane).
+
 - **Etap 29a — obejrzana połowa.** 30.08 (trzecia sesja) przy okazji 29b sprawdzone i zamknięte:
   **panel „Awans"** (nagłówek „N PD w zapasie", wiersz Zdolności nad listą Umiejętności,
   przewijana lista z nagłówkami kategorii), **cena ×2** („Broń ciężka ×2 · 40 PD"), **rejestr
@@ -47,14 +76,6 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
   (6) **rzut Prowadzeniem** — „Moto N" w rozbiciu karty rzutu; (7) **panel Wiarygodności** —
   wybór dowodów zmieniający szansę w nagłówku, guzik „Publikuj" i guzik „Pogłoski" **widoczny
   tylko dla MG**; (8) **karta Pogłosek** — szeptem, z nazwą pobitego progu.
-
-- **Ustabilizowanie i Leczenie porównują `>`, a nie `>=`.** Decyzja MG z 28.08 („remis w teście
-  na PT to sukces") objęła trzy wywołania — pociski bez obrażeń, efekty stref i wypatrywanie
-  strefy — ale `character-rolls.ts` liczy `result.total > plan.stabilize.dv` i tak samo dla
-  `treatInjury`, cytując s. 165 („wynik Testu jest **wyższy** od PT"). Dwa miejsca w jednym
-  pliku czytają ten sam próg inaczej. Etap 30d dołożył Efekt Charyzmy z `>=`, więc rozjazd jest
-  teraz trójstronny. Do rozstrzygnięcia jednym ruchem, razem z pierwszym etapem dotykającym
-  14b/30b — nie zmieniane w 30d, bo to zmiana zachowania cudzego etapu.
 
 - **Etap 30c nie był oglądany w przeglądarce.** Mechanika jedzie w testach (38 nowych
   w `shared`, 19 na serwerze), ale żadnego z tych ekranów nikt nie kliknął. Do sprawdzenia —
@@ -98,17 +119,11 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
   guzik „+" wyszarzony przy szóstym punkcie Chirurgii; (2) **wiersz Umiejętności z Medycyny**
   („Chirurgia 6 · Technologia Medyczna 3") i dwa rozwijane bloki: farmaceutyki i drabina
   kriosystemów; (3) **panel Twórcy** — cztery Specjalizacje, sakiewka podwójna, oraz dwa bloki:
-  dziesięć skutków Ulepszania i tabela PT/czasu; (4) **guzik „Lecz"** przy ranie krytycznej —
-  wybór, kto leczy, gałęzie z PT, wyszarzona Chirurgia u nie-Medyka z podpowiedzią, i kafel na
-  czacie zdejmujący ranę po udanym rzucie; (5) **⚒ Prowizorka** przy startym pancerzu (tylko
+  dziesięć skutków Ulepszania i tabela PT/czasu; ~~(4) guzik „Lecz" przy ranie krytycznej~~ —
+  **odklikany 30.08 (czwarta sesja)**: wybór, kto leczy (pacjent wypada z listy, bo samego siebie
+  leczyć nie można), gałąź „Chirurgia PT 15" wyszarzona u nie-Medyka ze zdaniem „Chirurgia jest
+  dostępna tylko Medykom w ramach Zdolności Specjalnej Medycyna"; (5) **⚒ Prowizorka** przy startym pancerzu (tylko
   Technikowi z Naprawą ≥ 1) i **⌫** kończące ją; (6) **⊕ +1 OB** — raz na sztukę.
-
-- **Łatanie nie znosi jeszcze efektu rany.** Od 30b zdanie „Łatanie: …" stoi na karcie i, gdy
-  tabela mówi „Łatanie trwale usuwa Efekt tej Rany", jego Test **jest** drogą leczenia. Czego
-  brakuje: łatania jako **czasowego** zniesienia efektu („do końca dnia") — rana zostaje, a jej
-  kary milkną. To wymaga przepuszczenia ~dziesięciu miejsc czytających `criticalInjuries` przez
-  jeden filtr, więc należy do etapu 15, nie do 30b. Do zrobienia razem z pierwszą sesją, która
-  i tak dotknie tych odczytów.
 
 - **Farmaceutyki nie mają zapasu dawek.** Panel drukuje pięć środków słowami podręcznika i mówi,
   ilu Medyk ma dostęp, ale który wybrał, wytworzenie dawki (Test PT 13, surowce za 200 ed)
@@ -127,36 +142,6 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
   ciosie Rundy ma mówić „− 2 (Redukcja obrażeń)", po drugim już nie; (5) **kafel „Fumble
   zignorowany (Wyjście z opresji)"** — trzeba wyrzucić jedynkę w Teście ataku, więc to kwestia
   kilku strzałów; (6) rozbicie rzutu z wierszami „Precyzyjny atak N" i „Wyczucie zagrożenia N".
-
-- **Zmiany z 29.08 nie były oglądane w przeglądarce.** Cała mechanika jedzie w testach (28 nowych
-  w `shared`, 12 na serwerze), ale żadnego z tych ekranów nikt nie kliknął. Do sprawdzenia na
-  „Strzelnicy": (1) **cięcie ostrzem** w cel w kurtce OB 11 — karta obrażeń ma powiedzieć
-  „− OB 6 (połowa pancerza)", a wiersz pancerza spaść z 11 na 10, nie z 6 na 5; (2) **chip kary
-  warunkowej** przy ranie na karcie postaci („−4 · wszystkich Akcji wykonywanych tą ręką")
-  i **guzik** tej kary w oknie rzutu — klik ma wpisać −4 do modyfikatora, drugi klik cofnąć;
-  (3) **przeładowanie statysty** — pudełko „Przeładuj" ma się pojawić na pasku figury bez karty
-  i kosztować Akcję; (4) **rana krytyczna statysty** — dwie szóstki przeciw figurze z profilem
-  bojowym mają dać nazwaną ranę zamiast zdania „rozegraj ręcznie"; (5) **pola rany w edytorze
-  kompendium** („Trafienia w głowę ×" i para „Kara warunkowa / …kiedy") — widoczne tylko przy
-  wpisach własnych MG.
-
-- **Edytor kompendium nie umie zapisać połowy pól rany krytycznej.** Formularz wystawia
-  `deathSavePenalty`, `quickFix`, `treatment`, a od 29.08 `headDamageMultiplier`
-  i `conditionalPenalty` — ale **nie** `movePenalty`, `actionPenalty` ani czterech flag tury
-  z 14e (`noActionNextTurn`, `noMoveAfterRun`, `dotAfterRun`, `noDodge`). Znaczy to, że rana
-  wpisana ręką MG nie potrafi zabrać RUCH-u ani odmówić Uniku, choć drukowana potrafi. Nie jest
-  to regresja (edytowalne są wyłącznie wpisy własne, więc nic się nie gubi), tylko luka:
-  ~15 linijek w `CompendiumEditor.tsx` obok pól dodanych 29.08.
-
-- **Celowanie (s. 170) nie było oglądane w przeglądarce.** Ścieżka jest pokryta testami serwera
-  od strzału po złamaną nogę, ale **baner z trzema guzikami nikt nie kliknął**. Do sprawdzenia
-  przy najbliższych oględzinach, na „Strzelnicy": (1) guziki „Głowa / Trzymany przedmiot / Noga"
-  pojawiają się dopiero przy uzbrojonym celowniku i **tylko dla strzału pojedynczego** (przy
-  serii i zaporze mają zniknąć); (2) klikają się mimo `pointer-events: none` na banerze;
-  (3) wybrany guzik trzyma się do rozbrojenia celownika i widać go w rozbiciu rzutu jako
-  „Celowanie (noga) −8"; (4) karta obrażeń po trafieniu w nogę pokazuje ranę **bez** „2k6 = …",
-  a po trafieniu w przedmiot — samo zdanie. Celem musi być figura **z kartą postaci**; statysta
-  dostaje zdanie zamiast rany i to też warto zobaczyć.
 
 - **Etap 27i — pomiar fps nie objął sceny ze światłami i mgłą.** „Strzelnica" ma widoczność
   `open`, więc 160,1 → 161,2 fps mierzy **samą warstwę efektów**, a nie najgorszy przypadek

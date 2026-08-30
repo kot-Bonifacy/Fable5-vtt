@@ -100,25 +100,26 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 ## Od czego zacząć
 
-**Ostatnia sesja (30.08, trzecia) zamknęła etap 29b — wieloklasowość, i całą fazę rozwoju
-postaci.** Karta niesie **listę** Ról: `roleId` + `roleAbilityRank` to Rola bieżąca, a wszystko
-zdobyte wcześniej siedzi w `formerRoles`; jedna funkcja (`cpredRoleAbilityRank`) pyta o każdą,
-więc dziesięć paneli etapu 30 i `cpredInterfaceRank` z 26a zaczęły działać obok siebie **bez
-jednej zmiany w nich samych**. Zmianę Roli robi `character:role-change` (bramka: Zdolność
-**bieżącej** Roli ≥ 4; nowa Rola 60 PD od poziomu 1, powrót do już posiadanej darmowy, ale
-bramki nie omija). **To był pierwszy etap od 29.08 obejrzany w przeglądarce** — przy okazji
-zamknęła się połowa długu 29a i wyszedł błąd CSS z 29a (guzik „Podnieś" przycięty do 1,6 rem).
+**Ostatnia sesja (30.08, czwarta) zeszła z etapów na dług oględzin i zamknęła pakiet „rany
+krytyczne": pięć pozycji naraz.** Trzy naprawy kodu (próg PT wszędzie na `>`, sześć brakujących
+pól rany w edytorze kompendium, Łatanie jako czasowe zniesienie efektu) i dwa pakiety oględzin
+(całe Celowanie, cały pakiet A+B z 29.08). **Dług oględzin pierwszy raz spadł** — z 27 pozycji
+na 26, mimo czterech nowych wpisów, które wyszły przy klikaniu.
+
+**Ważne dla każdego, kto dotknie progu PT: `>=` przy PT jest teraz błędem, nie wariantem.**
+Decyzja z 28.08 („remis zdaje") została cofnięta — stała na cytacie, którego w polskim wydaniu
+nie ma. Pełny zapis w `decyzje-i-uproszczenia.md`; przed zmianą czegokolwiek w tym miejscu
+przeczytaj ten akapit, bo to druga zmiana zdania w tej sprawie.
 
 **Od czego zacząć: wolne są trzy etapy.** **31** (dodatki do broni; odblokowuje siedem
 z dziesięciu skutków Ulepszania z 30b), **27g** (wydajność, poligon „Korytarz 16e" gotowy)
-i **28** (wdrożenie na VPS). Poza etapami został **dług oględzin**, który po tej sesji przestał
-rosnąć pierwszy raz od czterech sesji — i to jest realny kandydat na następną sesję.
+i **28** (wdrożenie na VPS). Poza etapami został **dług oględzin — 26 pozycji** (`zaleglosci.md`).
 
-**Dług oględzin to 27 pozycji** (`zaleglosci.md`). Bez modelu da się dziś obejrzeć
-**dwanaście**: **reszta 29a** (pięć punktów), **reszta 29b** (trzy), **komplet 30d**,
-**komplet 30c**, **komplet 30b**, Celowanie, pakiet A+B z drugiej sesji 29.08, **komplet 30a**,
-lukę w edytorze kompendium i pomiar fps przypisany do 27g. Reszta czeka na **żywy model**:
-20a/20b, 19a–19c, dwie ścieżki 24c i maszynopis wypowiedzi.
+**Bez modelu da się dziś obejrzeć jedenaście:** reszta **29a** (pięć punktów), reszta **29b**
+(trzy), **komplet 30d**, **komplet 30c**, **reszta 30b** (guzik „Lecz" odklikany 30.08), **komplet
+30a**, cztery drobiazgi znalezione 30.08 (Celowanie z paska, leczenie statysty, broń wpisana
+ręcznie, `rolled: 0`) i pomiar fps przypisany do 27g. Reszta czeka na **żywy model**: 20a/20b,
+19a–19c, dwie ścieżki 24c i maszynopis wypowiedzi.
 
 **Do oględzin 30a–30d trzeba postaci ze wszystkimi Rolami poza Netrunnerem** — żadna karta na
 scenach testowych ich nie ma. **Od 29a wybór Roli ma wyłącznie MG**, więc oględziny Ról robi się
@@ -141,7 +142,8 @@ maź, winda z gazem). Stoi na niej też **druga figura „Rudy Kwiatkowski" z w�
 a kartą NPC** — zostawiona świadomie, bo to jedyne miejsce, gdzie widać zdanie „Ta figura ma
 kartę postaci, ale nie jest przypisana do ciebie". W podglądzie: **„Korytarz 16e"** (dynamiczna
 widoczność, mur L — **nie kasuj jej**, to poligon 27g), **„Karty 24x"** i **„Efekty 23x"**.
-Wszystkie współrzędne — w `poligon.md`.
+Wszystkie współrzędne — w `poligon.md`, razem ze **stanem po sesji 30.08** (rany i broń dopisane
+kartom avatar9, Rudy'ego i wieżyczki).
 Do oględzin z konta gracza jest `Tester` (`/join/tester-dev`), ale **do Sieci trzeba avatar9** —
 to konto ma kartę netrunnera, i jest nią **„Test 27x"** (Interfejs 7, cyberdek), nie karta
 o nazwie `avatar9`, która ma dziś Rolę `solo` z rangą 1. **avatar9 ma chrom** (dwie cyberręce, Człowieczeństwo 28/44) i zostaje
@@ -171,7 +173,7 @@ przy wyniku _mniejszym_ od Lojalności** — remis oznacza odmowę (s. 154).
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
 a od 30d pierwszym, przy którym **każda Rola w drużynie gra inaczej niż reszta**.
 
-**Testy na koniec ostatniej sesji:** 1590 w `shared`, 858 na serwerze, 62 u klienta — zielone.
+**Testy na koniec ostatniej sesji:** 1639 w `shared`, 879 na serwerze, 62 u klienta — zielone.
 ESLint i Prettier czyste na całym repo, `pnpm -r build` przechodzi.
 
 ## Umowy kodu — indeks
@@ -243,6 +245,9 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 - **Drugi audyt przy karcie** (rejestr awansów) to osobna tabela, nie nowy `kind` w `LedgerEntry`; `applyImprovementPoints` przesuwa licznik i zmienia kartę **jednym zapisem** (pole `sheet`).
 - **Zdolność Roli czyta się przez `CpredRoleSheet`** (`roleId` + `roleAbilityRank` + `formerRoles`), nigdy przez `roleId` wprost: `cpredRoleAbilityRank` pyta o **każdą** Rolę z listy, a bieżąca — pierwsza w `cpredRoleRanks` — jest tą, przez którą widzi cię Ulica.
 - **Zmiana Roli** to `character:role-change` + `planCpredRoleChange`: bramka na Zdolności **bieżącej** Roli ≥ 4, nowa Rola 60 PD od poziomu 1, powrót darmowy, ale **bramki nie omija**. Rejestr ma własny rodzaj `role`; `formerRoles` wypada z `character:update` u gracza, a `cpredRolesProblem` sądzi **scaloną** kartę.
+- **Skutek rany** czyta się przez `cpredActiveInjuries` (filtr siedzi **w** funkcjach liczących skutek, nie u wołających); lista na karcie zostaje niefiltrowana, bo załatana rana wciąż jest raną.
+- **Droga leczenia to tryb, nie ścieżka** — `CpredCareMode` w żądaniu (`treatMode`) i planie; kolumnę tabeli wybiera `cpredCareOptions`, trwałość `cpredCarePermanent`, a `treatPermanent` wypełnia serwer. Łatać można siebie, leczyć nie (`SELF_TREATMENT`).
+- **Podgląd rzutu** bierze z karty to, co z niej widać (kary z ran przez `cpredInjuryModifiers`); serwerowi zostaje to, co wie tylko świat (Zwarcie).
 - **Nazwa Roli z `roles.json` wchodzi do zdania tylko w mianowniku** — po dwukropku albo na końcu. Odmiany nazwy z pliku danych nie da się zgadnąć („zostań Nomada").
 
 ## Pułapki dev — indeks
@@ -316,66 +321,63 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 - **Łata karty z częściowym blokiem Cech jest odrzucana w całości** — `validateStats` chce wszystkich dziesięciu; `stats: { cool: 8 }` daje `INVALID_DATA` i zabiera ze sobą resztę łaty.
 - **Test stawiający postać łatą gracza od 29a dostaje `FORBIDDEN`** — i pada w asercji o czymś zupełnie innym, bo przygotowanie stołu wygląda w teście jak tło. Kartę stawia gniazdo MG.
 - **`.advance-buy` przegrywa kaskadę z `.awareness-steps button`** (0,1,0 vs 0,1,1) — guzik „Podnieś" zostaje przy 1,6 rem i wychodzi poza wiersz. Szerokość czyta się `getComputedStyle`, nie okiem.
+- **Kubkiem kości nie potrząśniesz z JavaScriptu** — ani `click()`, ani ręczna seria zdarzeń wskaźnika; klikaj `computer` we współrzędnych zrzutu (skala = 1373 / `window.innerWidth`).
+- **Dwie drogi uzbrojenia broni, jedna zna Celowanie** — slot paska to `hudStore.activeWeapon`, baner z guzikami to `attackStore.targeting` („Atak" z karty albo menu żetonu).
+- **Broń dopisana do karty samą nazwą nie strzela** — bez `compendiumId` planer odmawia; bierz ją z katalogu („Dodaj za darmo"). Id typu (`weapon-type.*`) ≠ id wpisu (`weapon.*`).
+- **Broń biała odmawia powyżej 2 m**, a pole „Strzelnicy" to 2 m — przy ustawianiu żetonów w bazie licz w metrach.
 - **Kartę do oględzin da się przygotować w bazie bez logowania na MG** — `node --input-type=module` + `node:sqlite` na `packages/server/dev.db`; `better-sqlite3` nie jest w `node_modules` repozytorium.
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
-### Sesja 30.08 (druga) — etap 29a: Punkty Doświadczenia
+### Sesja 30.08 (czwarta) — zaległości: rany krytyczne
 
-**Zlecenie MG:** kontynuować budowę; z przedstawionych opcji wybór padł na **29**, a dług
-oględzin miał poczekać. Cztery decyzje zapadły przed pierwszą linijką kodu: **etap 29 dzieli się
-na 29a i 29b**, ślad awansu dostaje **własny rejestr** (nie dziennik z 24b), **gracz wydaje PD
-sam**, a poziomy Umiejętności i ranga Zdolności stają się **polami MG**.
+**Zlecenie MG:** wybór z listy zaległości; padło na **pakiet „rany krytyczne"** — trzy naprawy
+kodu i dwa pakiety oględzin w jednym obszarze. Trzy ustalenia przed pierwszą linijką: **błędy
+znalezione w oględzinach naprawiam od razu**, **karty testowe zostają na poligonie**, a próg PT
+ma **przestać być odstępstwem od podręcznika**.
 
-**Opis etapu 29 miał dwa błędy — oba policzone na stronie.** (a) **Drabinka kosztów była jedna
-zamiast trzech.** Opis mówił „60/120/180/…/600 PD za kolejny poziom, ×2 dla umiejętności
-podwójnych"; podręcznik (s. 411) drukuje **trzy** tabele obok siebie: Umiejętność zwykła
-20/40/…/200, Umiejętność ×2 40/80/…/400 i **Zdolność Specjalna** 60/120/…/600. Ciąg z opisu
-należy do Zdolności, a `multiplier` z 25a mnoży wyłącznie Umiejętności. (b) **Bramka
-wieloklasowości była opisana niepełnie**: przy trzeciej Roli podręcznik pyta o Zdolność Roli
-**bieżącej** („dopóki nie podniesiesz poziomu Zdolności Specjalnej swojej **nowej** Roli do 4",
-s. 143), a nie o najwyższą posiadaną. To jest zakres 29b.
+**Decyzja z 28.08 o remisie została cofnięta, bo stała na cytacie, którego nie ma.** Zapisano
+wtedy, że „RAW dla testu na PT mówi »równy lub wyższy = sukces«" i przestawiono
+`cpredAmmoCheckOutcome` na `>=`. Polskie wydanie drukuje zasadę ogólną **dwa razy i oba razy
+ostro** („wynik będzie większy od PT", s. 130; „Jeśli wynik Testu jest wyższy od PT, udało ci
+się!", s. 131), a komentarz w kodzie odsyłał do s. 132, gdzie stoi lista Umiejętności. Na `>`
+wróciły trzy miejsca z tamtej decyzji plus dwa, które ją później powtórzyły: Efekt Charyzmy z 30d
+i Pogłoski. Ustabilizowanie i Leczenie były jedynym miejscem zgodnym z podręcznikiem i zostały
+nietknięte — **teraz `>=` przy progu PT jest w kodzie błędem, nie wariantem**. Widać to na żywym
+rzucie: łatanie „13 vs PT 13" wróciło z czatu jako „Nie udało się".
 
-**Podział 29 na 29a i 29b zapadł, bo to dwie różne rzeczy pod jedną walutą.** Drabinki,
-przyznawanie i wydawanie zmieniają **kto pisze po karcie**; wieloklasowość zmienia **kształt
-karty** — `roleId` przestaje być jednym polem, a `cpredRoleAbilityRank` (jeden punkt, przez który
-przechodzi wszystkie dziesięć Zdolności z etapu 30) przestaje pytać o jedną Rolę. Kolejność
-wymusza podręcznik: druga Rola **płaci PD**, więc bez 29a nie ma czym jej kupić.
+**Łatanie dostało jeden filtr, nie dziesięć gałęzi.** Wiersz rany niesie `patched` (kto i czym),
+a `cpredActiveInjuries` stoi **wewnątrz** siedmiu funkcji czytających skutek — kary płaskie
+i warunkowe, blokada Uniku, haki końca tury, Test Przeżywalności, mnożnik trafień w głowę, kara do
+RUCH-u. Dzięki temu dziesięć miejsc, które je wołają, nie zmieniło się wcale. Lista ran na karcie
+jest celowo **niefiltrowana**: załatana noga wciąż jest złamana i karta ma to mówić — chip
+„załatana" plus przekreślony efekt. Łatanie i Leczenie to **jeden rzut z trybem** (`treatMode`),
+a `cpredCarePermanent` rozstrzyga trzy rany, przy których łatanie leczy na stałe. Doszła reguła,
+której 30b nie miało: „można łatać samego siebie, **nie można leczyć samego siebie**" (s. 223).
 
-**Cena musiała mieć jedno miejsce, bo liczą ją dwie strony.** `planCpredAdvance` w `shared`
-wycenia i osądza zakup, a wołają ją **i** panel karty (żeby wyszarzyć guzik), **i** serwer (żeby
-odmówić) — inaczej zapalony guzik i odmowa rozjechałyby się co do punktu. Poziom docelowy jedzie
-**w żądaniu**, nie liczy się go jako „obecny + 1": dwa kliknięcia w wyścigu kupiłyby wtedy dwa
-poziomy za cenę pokazaną raz. Drugie kliknięcie trafia dziś w ten sam `LEVEL_SKIP`, co próba
-przeskoku — i to jest ten sam zakaz, nie zbieg okoliczności.
+**Edytor kompendium zna już wszystkie skutki rany.** Dołożone `movePenalty`, `actionPenalty`
+i cztery flagi tury z 14e. Sprawdzone od końca do końca: rana wpisana ręką MG zapisała się,
+**wróciła kompletna przy ponownej edycji**, a nadana z karty weszła ze wszystkimi skutkami i jej
+−1 stanęło w rozbiciu rzutu na czacie.
 
-**Zamknięcie drzwi kosztowało więcej niż sama drabinka.** Z `character:update` wypadła
-u gracza **czwórka**: `improvementPoints`, `skills`, `roleAbilityRank` i `roleId`. Ostatni
-z nich nie jest przezornością — Rola przełączona pod zachowaną rangą oddaje **inną Zdolność
-Specjalną na tym samym poziomie za darmo**. MG zachowuje wszystkie cztery pola (sędzia musi móc
-naprawić kartę), a jego ręczna zmiana licznika ląduje jako wiersz `adjust` scalany w oknie
-minuty — dokładnie jak korekta salda z 23b.
+**Oględziny (pierwsze od 29.08 na koncie MG) zamknęły dwa pakiety i znalazły cztery usterki.**
+Odklikane: **całe Celowanie** (guziki tylko przy strzale pojedynczym, znikają przy serii, klikają
+się mimo `pointer-events: none`, „Celowanie (noga) −8" w rozbiciu, rana bez „2k6 = …"), **cały
+pakiet A+B z 29.08** (połowa pancerza „− OB 7", wiersz 13 → 12; chip kary warunkowej i jej guzik
+w oknie rzutu; pudełko „Przeładuj" u statysty; **rana krytyczna statysty** — „Odcięta dłoń"
+z dwóch szóstek) oraz guzik „Lecz" z 30b. Naprawione w locie: **rozjazd podglądu rzutu**
+(okno pokazywało sumę bez kar z ran, serwer je odejmował) i **układ czterech pudełek** w edytorze.
+Do zaległości poszły dwie rzeczy, których nie da się naprawić przy okazji: **Celowanie jest
+nieosiągalne z paska akcji** (dwa różne stany uzbrojenia) i **statysta nie ma skąd być załatany**
+(serwer umie, UI nie ma).
 
-**Rejestr dostał własną tabelę, nie nowy `kind` w `LedgerEntry`.** Pieniądze i doświadczenie to
-audyty dwóch różnych rzeczy; wspólna lista rodzajów uczyniłaby „Zakup" legalnym powodem punktu
-Percepcji. `applyImprovementPoints` jest bliźniakiem `applyBalance` z jedną różnicą: przyjmuje
-`sheet` z tym, co **ten sam zapis** zmienia na karcie, więc podniesiony poziom i zapłacona cena
-nie mogą się rozejść w połowie.
-
-**Pula po sesji jest jednym zdarzeniem dla całego stołu.** „Po każdej sesji gry MG przyznaje
-**wszystkim** graczom" (s. 410) — pętla u klienta zostawiłaby połowę stołu bez PD, gdyby łącze
-padło w środku, więc `character:xp-award` z `everyone: true` obsługuje wszystkie karty
-z właścicielem naraz. BN-y (`ownerId: null`) pomija: postać bez właściciela nie jest niczyim
-graczem.
-
-**Testy:** 1611 w `shared` (+21), **868** na serwerze (+10), 62 u klienta — zielone. ESLint
-i Prettier czyste, `pnpm -r build` przechodzi, `pnpm dev` wstaje. Migracja:
-`stage29a_advancement_ledger`. **Nic z tej sesji nie było oglądane w przeglądarce** — osiem
-punktów stoi na górze `zaleglosci.md`. Trzy stare testy padły na zamkniętych drzwiach i to jest
-nowa pułapka: przygotowanie stołu łatą gracza wygląda w teście jak tło, więc odmowa pada
-w asercji o czymś zupełnie innym.
+**Testy:** **1639** w `shared` (+7), **879** na serwerze (+2), 62 u klienta — zielone. ESLint
+i Prettier czyste, `pnpm -r build` przechodzi. Migracji nie było — `patched` mieszka w JSON-ie
+karty. **Poligon zmieniony i opisany** w `poligon.md`: avatar9 ma Ratownictwo 6, Broń krótką 10
+i trzy rany (w tym własną MG „Test łaty 15"), Rudy — Broń białą 10, „Bardzo dużą broń białą"
+i „Złamaną nogę", wieżyczka — „Odciętą dłoń" w profilu bojowym.
 
 ### Sesja 30.08 (trzecia) — etap 29b: wieloklasowość
 

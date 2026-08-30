@@ -535,3 +535,28 @@ karta może nieść daną Rolę (`cpredRolesProblem`: `ROLE_TWICE`, `UNKNOWN_ROL
 plik danych niesie „Nomada", a odmiany nazwy, którą grupa może sobie przetłumaczyć inaczej, nie
 da się zgadnąć — „zostań Nomada" i „widzi cię jako Nomada" to nie są zdania po polsku. Tak samo
 z nazwami Zdolności. (Znalezione przy oględzinach 29b.)
+
+**Skutek rany czyta się przez `cpredActiveInjuries`, nigdy z listy wprost.** Od etapu 15 (Łatanie)
+wiersz rany może być **załatany** (`patched`: kto i czym) — rana zostaje na karcie, a jej skutki
+milczą do końca dnia (s. 223). Jeden filtr przepuszcza wszystkie odczyty **skutku**: kary płaskie
+i warunkowe (`cpredInjuryModifiers`, `cpredInjuryConditionalModifiers`), blokadę Uniku, haki końca
+tury (`cpredInjuryTurnEnd`), Test Przeżywalności (`injuryDeathSavePenalty`), mnożnik trafień
+w głowę i karę do RUCH-u (`injuryMovePenalty`, `cpredMoveBudget`). Filtr siedzi **wewnątrz** tych
+funkcji, więc dziesięć miejsc, które je wołają, nie musiało się zmienić — i nowe wywołanie też nie
+będzie musiało. Lista na karcie jest celowo **niefiltrowana**: załatana ręka wciąż jest złamana
+i karta ma to mówić.
+
+**Droga leczenia rany to tryb, nie osobna ścieżka.** `CpredCareMode` (`quickFix` | `treatment`)
+jedzie w żądaniu jako `treatMode` i w planie jako `mode`; która kolumna tabeli jest czytana,
+rozstrzyga `cpredCareOptions`, a to, czy sukces zdejmuje ranę czy tylko ją ucisza —
+`cpredCarePermanent` (trzy rany drukują „Łatanie trwale usuwa Efekt tej Rany" i wtedy łatanie
+**jest** leczeniem). Serwer wypełnia `treatPermanent` sam, jak `treatDv`: klient nie obiecuje sobie
+trwałego wyleczenia z minutowej łaty. Brak `treatMode` znaczy „Leczenie" — starszy klient robi to,
+co robił. Reguła „można łatać samego siebie, nie można leczyć samego siebie" (s. 223) stoi w obu
+warstwach: pacjent wypada z listy leczących u klienta, a serwer odmawia `SELF_TREATMENT`.
+
+**Podgląd rzutu bierze tę część kontekstu, którą widać na karcie.** `RollDialog` woła
+`planCpredRoll` z `modifiers: cpredInjuryModifiers(...)`, bo płaskie kary z ran są policzalne
+z samej karty — bez tego okno obiecywało sumę, którą serwer po cichu obniżał (znalezione
+w przeglądarce 30.08 przy ranie za −1). Serwerowi zostaje to, czego karta nie wie: Zwarcie jest
+faktem o scenie, nie o postaci.

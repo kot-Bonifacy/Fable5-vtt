@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  cpredCareOptions,
+  cpredCarePermanent,
   cpredCareRefusal,
   cpredParseCare,
   cpredTreatmentOptions,
@@ -105,5 +107,37 @@ describe('Chirurgia jest bramą Medyka', () => {
   it('Medyk z Chirurgią operuje', () => {
     const medic = healer({ roleId: 'medtech', roleAbilityRank: 4, medicine: { surgery: 2 } });
     expect(cpredCareRefusal(surgery, medic, registry)).toBeNull();
+  });
+});
+
+describe('Łatanie czyta własne zdanie (s. 223)', () => {
+  const brokenLeg = {
+    quickFix: 'Ratownictwo medyczne PT 13',
+    treatment: 'Ratownictwo medyczne PT 15 lub Chirurgia PT 13',
+  };
+
+  it('tryb decyduje, którą kolumnę czyta rzut', () => {
+    expect(cpredCareOptions(brokenLeg, 'quickFix').map((entry) => entry.dv)).toEqual([13]);
+    expect(cpredCareOptions(brokenLeg, 'treatment').map((entry) => entry.dv)).toEqual([15, 13]);
+  });
+
+  it('„Łatanie niweluje efekt do końca dnia" — rana zostaje', () => {
+    expect(cpredCarePermanent(brokenLeg, 'quickFix')).toBe(false);
+    expect(cpredCarePermanent(brokenLeg, 'treatment')).toBe(true);
+  });
+
+  it('trzy rany, przy których łatanie JEST leczeniem', () => {
+    const concussion = {
+      quickFix: 'Pierwsza pomoc lub Ratownictwo medyczne PT 13',
+      treatment: 'Łatanie trwale usuwa Efekt tej Rany.',
+    };
+    expect(cpredCarePermanent(concussion, 'quickFix')).toBe(true);
+    expect(cpredCareOptions(concussion, 'quickFix')).toHaveLength(2);
+  });
+
+  it('odcięta ręka nie ma czym być załatana („Nd.")', () => {
+    const severed = { quickFix: 'Nd.', treatment: 'Chirurgia PT 17' };
+    expect(cpredCareOptions(severed, 'quickFix')).toHaveLength(0);
+    expect(cpredCareOptions(severed, 'treatment')).toHaveLength(1);
   });
 });

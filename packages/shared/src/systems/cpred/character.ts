@@ -523,6 +523,57 @@ export interface CpredCriticalInjuryRow {
    * round counter, or the GM's card when no fight is running.
    */
   timed?: CpredTimedInjury;
+  /**
+   * „Łatanie niweluje efekt rany do końca dnia" (s. 223) — the wound is still
+   * there, its effects are not.
+   *
+   * A flag rather than a second list, because everything the row carries stays
+   * true of it: the sentence on the card, the treatment that would take it off
+   * for good, the provenance. What changes is only whether the engine reads its
+   * effects, and that is one question asked in one place —
+   * `cpredActiveInjuries`. Comes off when the day does, and since the VTT has
+   * no clock past the round counter (16h), that means the GM's own click.
+   */
+  patched?: CpredPatchedInjury;
+}
+
+/**
+ * Which of the two sentences on an injury row is being rolled (stage 30b).
+ *
+ * Lives here rather than in `treatment.ts` because `rolls.ts` needs it to title
+ * the card, and `treatment.ts` already imports `rolls.ts` for the two skill ids
+ * — the pair would close a cycle whose `CARE_SKILLS` is read at module
+ * evaluation time. `treatment.ts` re-exports both for its own readers.
+ */
+export type CpredCareMode = 'quickFix' | 'treatment';
+
+export const CPRED_CARE_MODE_LABELS: Record<CpredCareMode, string> = {
+  quickFix: 'Łatanie',
+  treatment: 'Leczenie',
+};
+
+/** Who patched the wound up, and when — provenance for the chip on the card. */
+export interface CpredPatchedInjury {
+  /** Skill it was patched with („Ratownictwo medyczne"), for the chip's title. */
+  skill: string;
+  /** Name of whoever rolled it — „Kai" or „MG". */
+  by: string;
+}
+
+/**
+ * The wounds whose effects are in force right now — the one filter every
+ * reader of an injury's *effect* goes through (stage 15, quick fix).
+ *
+ * The list on the sheet is deliberately **not** filtered: a patched arm is
+ * still severed and the card has to say so. This is only for the engine —
+ * penalties, the turn hooks, the Death Save, the head multiplier — and it is a
+ * function rather than a `filter` spelled out ten times, so a wound patched up
+ * in the field cannot go on refusing a dodge in one forgotten branch.
+ */
+export function cpredActiveInjuries<T extends { patched?: CpredPatchedInjury }>(
+  injuries: readonly T[],
+): T[] {
+  return injuries.filter((injury) => injury.patched === undefined);
 }
 
 /** When a self-healing wound comes off, and what put it there (stage 16h). */
@@ -569,7 +620,10 @@ export interface CpredReputationSource {
  * it without the two modules importing each other.
  */
 export function injuryDeathSavePenalty(injuries: readonly CpredCriticalInjuryRow[]): number {
-  return injuries.reduce((sum, injury) => sum + (injury.deathSavePenalty ?? 0), 0);
+  return cpredActiveInjuries(injuries).reduce(
+    (sum, injury) => sum + (injury.deathSavePenalty ?? 0),
+    0,
+  );
 }
 
 export interface CpredCharacterData {
@@ -1239,9 +1293,28 @@ function validateCriticalInjuries(
       // round trip, or it would become permanent the first time the sheet is
       // saved for any other reason.
       ...(validateTimedInjury(row.timed) ?? {}),
+      // Stage 15 (quick fix): the patch survives a round trip for the same
+      // reason the timer does — a sheet saved for any other reason would
+      // otherwise wake every effect the medic just talked down.
+      ...(readPatchedInjury(row.patched) ?? {}),
     });
   }
   return rows;
+}
+
+/** A stored patch, or undefined when the row carries none (or a broken one). */
+function readPatchedInjury(raw: unknown): { patched: CpredPatchedInjury } | undefined {
+  if (typeof raw !== 'object' || raw === null) return undefined;
+  const input = raw as Record<string, unknown>;
+  const skill = typeof input.skill === 'string' ? input.skill.trim() : '';
+  const by = typeof input.by === 'string' ? input.by.trim() : '';
+  if (!skill || !by) return undefined;
+  return {
+    patched: {
+      skill: skill.slice(0, ITEM_NAME_MAX_LENGTH),
+      by: by.slice(0, ITEM_NAME_MAX_LENGTH),
+    },
+  };
 }
 
 /**

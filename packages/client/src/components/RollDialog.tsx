@@ -6,6 +6,7 @@ import {
   CPRED_HIT_LOCATION_LABELS,
   CPRED_SITUATIONAL_MODIFIER_LIMIT,
   cpredInjuryConditionalModifiers,
+  cpredInjuryModifiers,
   formatRollNotation,
   planCpredRoll,
 } from '@vtt/shared';
@@ -58,8 +59,19 @@ function RollDialogBody({ target }: { target: RollTarget }) {
     modifier,
     luckSpent,
   };
-  // Same pure function the server uses — the preview can never disagree.
-  const planned = planCpredRoll(character.data, registry, request);
+  // Same pure function the server uses, and the half of its context that is
+  // readable from the sheet: the flat penalties of the wounds this character
+  // carries („Wstrząśnienie mózgu −2"). Without them the dialog promised a
+  // total the server then quietly lowered — found in the browser 30.08 with a
+  // GM-typed wound worth −1. What stays server-only is what the sheet cannot
+  // know: being Held is a fact about the scene, not about the character.
+  const planned = planCpredRoll(character.data, registry, request, {
+    modifiers: cpredInjuryModifiers(character.data.criticalInjuries).map((entry) => ({
+      label: entry.label,
+      value: entry.value,
+      kind: 'situational' as const,
+    })),
+  });
   const luckMax = character.data.luckCurrent;
   const conditional = cpredInjuryConditionalModifiers(character.data.criticalInjuries);
 

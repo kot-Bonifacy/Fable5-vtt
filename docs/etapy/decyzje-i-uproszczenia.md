@@ -121,16 +121,26 @@ przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — ni
   nie dzieje~~ — **domknięte w 26c 15.08**: wejście na takie piętro stawia LOD-a w szybie,
   a `metIce` służy dziś do tego, do czego było pisane — do rachunku za awaryjne odłączenie.
 
-**Remis w teście na PT to sukces; remis w rzucie przeciwstawnym wygrywa obrońca (decyzja MG,
-28.08.2026).** Do 28.08 `cpredAmmoCheckOutcome` liczyło `resisted: total > dv`, więc Atletyka 15
-przeciw PT 15 (Ślizgawka z 26f) była porażką — reguła „remis wygrywa obrona" (s. 169) została tam
-zastosowana do rzutu, który **nie jest** przeciwstawny. RAW dla testu na PT mówi „równy lub wyższy
-= sukces", więc nierówność zmieniona na `>=`; dotyczy trzech wywołań: pocisków bez obrażeń
-(`ammo-effects.ts`), efektów stref (`zone-effects.ts`) i wypatrywania strefy (`zones.ts`).
-**Ogień zaporowy zostaje bez zmian** — tam PT to wynik rzutu strzelca, czyli rzut przeciwstawny,
-i remis ma wygrywać obrońca (`realtime/attacks.ts`, „Ties go to the defender here too"). Notatka
-z 28.08 mówiąca, że „ta sama nierówność stoi w ogniu zaporowym" i trzeba ją zmienić w obu
-miejscach, była **błędna** — poprawiona przy okazji naprawy.
+**Remis nigdy nie zdaje — ani w teście na PT, ani w rzucie przeciwstawnym (decyzja MG,
+30.08.2026; zastępuje decyzję z 28.08).** Polskie wydanie drukuje zasadę ogólną dwa razy i oba
+razy ostro: „licząc na to, że wynik będzie **większy** od Poziomu Trudności (PT)" (s. 130) oraz
+„Jeśli wynik Testu jest **wyższy** od PT, udało ci się!" (s. 131). Rzut przeciwstawny dochodzi do
+tej samej nierówności drugą drogą — „w przypadku remisu Broniący zawsze wygrywa" (s. 130).
+
+**Decyzja z 28.08 była oparta na cytacie, którego w tym wydaniu nie ma.** Zapisano wtedy, że
+„RAW dla testu na PT mówi »równy lub wyższy = sukces«", i na tej podstawie `cpredAmmoCheckOutcome`
+przeszło na `>=`; komentarz w kodzie odsyłał do s. 132, gdzie stoi lista Umiejętności i nic
+o remisach. 30.08 sprawdzono obie strony w podręczniku i wróciło `>` — w trzech miejscach z tamtej
+decyzji (pociski bez obrażeń, efekty stref, wypatrywanie strefy, wszystkie przez
+`cpredAmmoCheckOutcome`) oraz w dwóch, które ją później powtórzyły: Efekt Charyzmy z 30d
+(`character-rolls.ts`) i Pogłoski (`cpredRumourHeard`).
+
+**Skutek przy stole jest znany i przyjęty:** Atletyka 15 przeciw PT 15 na Ślizgawce znów jest
+porażką — to dokładnie ten przypadek, który wywołał zmianę 28.08. Ustabilizowanie i Leczenie
+(`character-rolls.ts`) stały przy `>` od początku i były jedynym miejscem zgodnym z podręcznikiem;
+teraz zgadza się z nimi całe repozytorium, a `>=` przy progu PT jest w kodzie **błędem**, nie
+wariantem. Angielskiego oryginału nie ma w repo, więc gdyby kiedyś wypłynął z innym brzmieniem,
+to jest ten akapit do przeczytania na nowo.
 
 - **Redukcja obrażeń Solo liczy się po pancerzu i po mnożniku głowy (30a).** Podręcznik pisze
   „zmniejsz o 1 pierwsze **obrażenia otrzymane** w tej Rundzie" (s. 146), a trzy akapity dalej,
@@ -156,6 +166,18 @@ miejscach, była **błędna** — poprawiona przy okazji naprawy.
   dokładnie to, co 3, więc VTT odmawia takiego przydziału zamiast po cichu zaokrąglać w dół.
   Trzy zdolności „za każdy punkt +1" przyjmują każdą liczbę; Redukcja obrażeń tylko parzyste
   2–10, Precyzyjny atak 3/6/9, Wyjście z opresji wyłącznie 4.
+
+- **Łatanie i Leczenie nie kosztują czasu (30.08).** Podręcznik wycenia je zegarem: „każda próba
+  zajmuje minutę" i „każda próba zajmuje cztery godziny" (s. 223). VTT nie ma zegara poza licznikiem
+  Rund w walce (16h), więc czas jedzie **prozą na karcie rzutu** — po nieudanym łataniu kafel mówi
+  „można próbować dalej, każda próba to minuta", a resztę rozstrzyga stół. To samo dotyczy końca
+  dnia, po którym łata puszcza: zdejmuje ją ⌫ przy chipie „załatana", nie zegar.
+
+- **Rana załatana zostaje na karcie (30.08).** „Łatanie niweluje efekt rany do końca dnia"
+  (s. 223) — więc milkną **skutki**, nie wiersz: karta dalej mówi „Złamana noga", tylko jej efekt
+  jest przekreślony, a `cpredActiveInjuries` wycina ją ze wszystkiego, co czyta skutki. Trzy rany,
+  przy których tabela drukuje „Łatanie trwale usuwa Efekt tej Rany", schodzą z karty naprawdę —
+  o tym rozstrzyga `cpredCarePermanent`, nie tryb guzika.
 
 ## Dane z podręcznika — co parser zgubił świadomie
 
