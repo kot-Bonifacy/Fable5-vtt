@@ -459,3 +459,33 @@ sprząta wiersz przez `dropFromTeams` — lista jest JSON-em, więc baza nie ma 
 na Utratę Człowieczeństwa […] Wzięto to już pod uwagę" — prawdziwe wiersze chromu policzyłyby
 Człowieczeństwo drugi raz. Ta sama zasada obowiązuje każdy przyszły pakiet BN-a z gotowymi
 Cechami: chrom opisuje się w notatkach, a liczby zostają takie, jakie wylosowała tabela.
+
+**Drabina rang Zdolności Roli** (etap 30d) to `CpredAbilityTier`: `id`, `min`, `max`, `page`.
+Podręcznik paruje poziomy („POZIOMY 7 I 8") aż do dziewiątki, więc szczeblem jest **przedział**,
+nie liczba — wiersz na każdy poziom byłby czterema kopiami tego samego zdania. Cztery tabele
+30d dziedziczą po tym interfejsie, a `cpredAbilityTierAt` i `cpredAbilityTiersUpTo` są ich
+jedyną drogą odczytu; nowa Zdolność z drabiną dokłada tabelę, nie własną funkcję szukającą.
+
+**Zdolność Roli, która zmienia cenę**, zapisuje skutek na karcie **wyłącznie z własnego
+zdarzenia** i wypada z `character:update` (`FORBIDDEN`) — tak jak `eddies` od 23b, przydział
+Zmysłu Walki od 30a i zespół od 30c. Dobity targ Fixera (`CpredCharacterData.haggle`) pisze
+tylko `character:haggle` po wygranym rzucie przeciwstawnym, a zdejmuje go zakup
+(`economy:buy`) albo ręka Fixera. Zniżka z drzwiami bez rzutu obok nie jest zniżką.
+
+**Rzut przeciwstawny z fikcją po drugiej stronie** bierze **jedną liczbę od MG**, a kość rzuca
+sam: `character:haggle` dostaje `opponentBonus` (CHA + Handel + Znajomości drugiej strony)
+i losuje jej 1k10 obok kości Fixera. Sprzedawca nie ma karty, więc pytanie o trzy składniki
+osobno byłoby pytaniem trzy razy o jedno. Remis wygrywa druga strona — jak w każdym rzucie
+przeciwstawnym w tym projekcie.
+
+**Lista wpisów kupowanych awansem** (Tabor Rodziny z 30d, Specjalizacje z 30b) jedzie **zwykłą
+łatą karty**, a rozmiar puli sprawdza się na **scalonej** karcie w `character:update`
+(`cpredFleetSheetProblem` obok `cpredSpecialtiesProblem`) — bo `applyCharacterPatch` nie widzi
+rangi, którą ta sama łata może właśnie podnosić. Niezmiennik zamiast historii awansów: wpisów
+najwyżej tyle, ile poziomów, i żaden nie z kategorii wyższej niż poziom.
+
+**Rzut, który nie jest Testem**, planuje się z pominięciem `finishCheck`: bez Cechy, bez
+Umiejętności, bez kary za rany, bez eksplodującej dziesiątki i z `checkRule: false`. Tak jedzie
+Rzut na Śmierć i tak jedzie Test Rzetelności z 30d (`plan.reliability` niesie szansę, pod którą
+ma się zmieścić goła kość). Wszystko, co **jest** Testem, przechodzi przez `finishCheck` — także
+Efekt Charyzmy, który ma w rozbiciu **samą rangę** zamiast pary Cecha + Umiejętność.

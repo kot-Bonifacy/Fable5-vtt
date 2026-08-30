@@ -30,12 +30,26 @@ import {
 } from './locations.js';
 import { CPRED_STAT_LABELS, isCpredStatId, type CpredStatId, type CpredStats } from './stats.js';
 import {
+  cpredCharismaEffect,
+  cpredCharismaProblem,
   cpredMedicineSkillLevel,
+  cpredReliabilityChance,
+  cpredRoleAbilityRank,
   cpredSheetCombatAwareness,
   cpredSheetFabrication,
+  cpredSheetMoto,
   isCpredMedicineSkillId,
+  CPRED_CHARISMA_ABILITY,
+  CPRED_CHARISMA_AUDIENCE_LABELS,
+  CPRED_CHARISMA_DV,
+  CPRED_CREDIBILITY_ABILITY,
   CPRED_MEDICINE_SKILLS,
+  CPRED_MOTO_SKILL_IDS,
+  CPRED_PROOF_LEVELS,
   CPRED_REPAIR_SKILL_IDS,
+  type CpredCharismaAudience,
+  type CpredCharismaPurpose,
+  type CpredProofLevel,
 } from './roleability.js';
 
 /**
@@ -109,7 +123,19 @@ export const CPRED_SITUATIONAL_MODIFIER_LIMIT = 20;
  * damage or a Death Save (stage 15), or Stabilizing somebody (stage 14b).
  * Only Checks obey the exploding-10 rule — and Stabilizing is one.
  */
-export type CpredRollKind = 'skill' | 'stat' | 'damage' | 'deathSave' | 'stabilize' | 'treatInjury';
+export type CpredRollKind =
+  | 'skill'
+  | 'stat'
+  | 'damage'
+  | 'deathSave'
+  | 'stabilize'
+  | 'treatInjury'
+  /** Test Efektu Charyzmy — ranga + 1k10 przeciw PT 8/10/12 (stage 30d). */
+  | 'charisma'
+  /** Test Rzetelności — sama 1k10 pod szansę „N na 10" (stage 30d). */
+  | 'reliability'
+  /** Potajemny Test Pogłosek MG — Wiarygodność + 1k10 (stage 30d). */
+  | 'rumour';
 
 /** Skills the rules name for Stabilizing (s. 222). Either one may be rolled. */
 export const CPRED_FIRST_AID_SKILL_ID = 'first-aid';
@@ -217,6 +243,20 @@ export interface CpredRollRequest {
   /** Server-filled: what the card names — the wound, and whose it is. */
   treatInjuryName?: string;
   treatTargetName?: string;
+  /**
+   * `kind: 'charisma'` (stage 30d) — how big the audience is and what the
+   * Rocker wants from it. Both are the player's choice; what the table decides
+   * is whether the rank allows the request at all, and that is read off the
+   * sheet on both sides (`cpredCharismaProblem`).
+   */
+  charismaAudience?: CpredCharismaAudience;
+  charismaPurpose?: CpredCharismaPurpose;
+  /**
+   * `kind: 'reliability'` (stage 30d) — how well the published material is
+   * evidenced. „Ostateczne PT ustala MG", and so does this: nothing on the
+   * sheet can tell whether a story carries four irrefutable proofs.
+   */
+  reliabilityProof?: CpredProofLevel;
 }
 
 /** Highest damage multiplier any weapon can reach — guards the stored value. */
@@ -231,7 +271,11 @@ export type CpredRollProblem =
   | 'UNKNOWN_WEAPON'
   | 'BAD_DAMAGE'
   /** Chirurgia asked for by somebody who has no points in the Specialty. */
-  | 'NO_SURGERY';
+  | 'NO_SURGERY'
+  /** A Role's own roll asked for by a sheet whose Role is a different one. */
+  | 'NO_ABILITY'
+  /** „To żart, prawda? Jeszcze nie masz dużych grup fanów" (s. 144). */
+  | 'NO_CROWD';
 
 /** Damage metadata the chat card needs to offer „Zastosuj na celu". */
 export interface CpredDamagePlan {
@@ -272,6 +316,37 @@ export interface CpredTreatInjuryPlan {
   injuryName: string;
   /** Which branch of the printed sentence was rolled. */
   skillName: string;
+}
+
+/** What a Test Efektu Charyzmy is judged against (stage 30d). */
+export interface CpredCharismaPlan {
+  /** PT 8 / 10 / 12, by the size of the audience — never by the rank. */
+  dv: number;
+  audience: CpredCharismaAudience;
+  purpose: CpredCharismaPurpose;
+  /**
+   * What the tier lets the Rocker ask of an audience this size, for the card's
+   * detail line. Empty when the purpose is making new fans — the table has no
+   * say there.
+   */
+  effect: string;
+}
+
+/**
+ * A Test Rzetelności (stage 30d): one d10 against a chance out of ten, so the
+ * number to beat travels rather than being derived from the die.
+ */
+export interface CpredReliabilityPlan {
+  /** „Szansa N na 10, że odbiorcy uwierzą" — rank plus the proofs bonus. */
+  chance: number;
+  proof: CpredProofLevel;
+  /** The tier's own chance, before the proofs — the card shows the arithmetic. */
+  base: number;
+}
+
+/** The GM's secret Pogłoski roll (stage 30d) — a rank against four thresholds. */
+export interface CpredRumourPlan {
+  rank: number;
 }
 
 /** What „Ustabilizowanie" needs to judge itself and explain the verdict. */
@@ -322,6 +397,12 @@ export interface CpredRollPlan {
   stabilize?: CpredStabilizePlan;
   /** Present for `kind: 'treatInjury'`. */
   treatInjury?: CpredTreatInjuryPlan;
+  /** Present for `kind: 'charisma'` (stage 30d). */
+  charisma?: CpredCharismaPlan;
+  /** Present for `kind: 'reliability'` (stage 30d). */
+  reliability?: CpredReliabilityPlan;
+  /** Present for `kind: 'rumour'` (stage 30d). */
+  rumour?: CpredRumourPlan;
 }
 
 /**
@@ -380,6 +461,20 @@ export function planCpredRoll(
   if (request.kind === 'treatInjury') {
     return planTreatInjuryRoll(data, registry, request, modifier, luckSpent, state, context);
   }
+  // Stage 30d. Three rolls a Role owns outright: two of them are Checks (rank
+  // instead of a stat+skill pair, everything else the same), and the third is
+  // not a Check at all — the audience either believes or does not.
+  if (request.kind === 'charisma') {
+    return planCharismaRoll(data, registry, request, modifier, luckSpent, state, context);
+  }
+  if (request.kind === 'rumour') {
+    return planRumourRoll(data, registry, modifier, luckSpent, state, context);
+  }
+  if (request.kind === 'reliability') {
+    // „W Testach Rzetelności nie można wykorzystywać Szczęścia" (s. 152).
+    if (luckSpent > 0) return { ok: false, error: 'BAD_REQUEST' };
+    return planReliabilityRoll(data, registry, request);
+  }
 
   const breakdown: RollBreakdownEntry[] = [];
   let title: string;
@@ -401,6 +496,15 @@ export function planCpredRoll(
       const repair = cpredSheetFabrication(data, registry).repair;
       if (repair > 0) {
         breakdown.push({ label: `Naprawa ${repair}`, value: repair, kind: 'situational' });
+      }
+    }
+    // „Nomada dodaje poziom Moto do każdego wykonywanego Testu Prowadzenia
+    // pojazdów lądowych, Żeglowania, Pilotowania […] i Naprawy" (s. 161) —
+    // read off the sheet like Naprawa above, six skills and no context.
+    if (CPRED_MOTO_SKILL_IDS.includes(skill.id)) {
+      const moto = cpredSheetMoto(data, registry);
+      if (moto > 0) {
+        breakdown.push({ label: `Moto ${moto}`, value: moto, kind: 'situational' });
       }
     }
     if (skill.id === CPRED_PERCEPTION_SKILL_ID) {
@@ -476,7 +580,7 @@ function finishCheck(
   state: CpredWoundState,
   modifier: number,
   luckSpent: number,
-  extra: Pick<CpredRollPlan, 'stabilize' | 'treatInjury'> = {},
+  extra: Pick<CpredRollPlan, 'stabilize' | 'treatInjury' | 'charisma' | 'rumour'> = {},
   context: CpredRollContext = {},
 ): { ok: true; plan: CpredRollPlan } {
   const woundPenalty = woundCheckPenalty(state);
@@ -633,6 +737,117 @@ function planTreatInjuryRoll(
     { treatInjury: { dv, targetName, targetTokenId, injuryId, injuryName, skillName } },
     context,
   );
+}
+
+/**
+ * Test Efektu Charyzmy (stage 30d): „wartość Efektu Charyzmy + 1k10" (s. 144).
+ *
+ * The only Check in the game with **no stat and no skill** in it — the rank
+ * stands where CHA + Perswazja would. That is not an omission: the Rocker is
+ * rolling their standing with a crowd, not their tongue, and a sheet with
+ * CHA 8 does not get to borrow it.
+ *
+ * The wound penalty, the GM's modifier and Luck all still apply: it is a Test,
+ * and every Test in this VTT goes through `finishCheck` for exactly that
+ * reason.
+ */
+function planCharismaRoll(
+  data: CpredCharacterData,
+  registry: CpredRegistry,
+  request: CpredRollRequest,
+  modifier: number,
+  luckSpent: number,
+  state: CpredWoundState,
+  context: CpredRollContext,
+): { ok: true; plan: CpredRollPlan } | { ok: false; error: CpredRollProblem } {
+  const rank = cpredRoleAbilityRank(data, registry, CPRED_CHARISMA_ABILITY);
+  const audience = request.charismaAudience;
+  const purpose = request.charismaPurpose ?? 'favour';
+  const problem = cpredCharismaProblem(rank, audience, purpose);
+  if (problem === 'NO_ABILITY') return { ok: false, error: 'NO_ABILITY' };
+  // Not a refusal by accident: „Jeśli tak nie jest, próba automatycznie się nie
+  // udaje" (s. 144) — a request the tier does not carry never reaches the dice.
+  if (problem === 'NO_CROWD') return { ok: false, error: 'NO_CROWD' };
+  if (problem !== null || audience === undefined) return { ok: false, error: 'BAD_REQUEST' };
+
+  const dv = CPRED_CHARISMA_DV[audience];
+  const effect = purpose === 'favour' ? (cpredCharismaEffect(rank!, audience) ?? '') : '';
+  const title =
+    purpose === 'fans'
+      ? `Efekt Charyzmy: nowi fani — ${CPRED_CHARISMA_AUDIENCE_LABELS[audience]}`
+      : `Efekt Charyzmy: przysługa — ${CPRED_CHARISMA_AUDIENCE_LABELS[audience]}`;
+  return finishCheck(
+    title,
+    [{ label: `${CPRED_CHARISMA_ABILITY} ${rank}`, value: rank!, kind: 'skill' }],
+    state,
+    modifier,
+    luckSpent,
+    { charisma: { dv, audience, purpose, effect } },
+    context,
+  );
+}
+
+/**
+ * Pogłoski (stage 30d): „MG wykonuje potajemny Test twojej Wiarygodności +
+ * 1k10" (s. 151). Shaped exactly like the Charisma check above — the rank
+ * stands alone — and judged against four thresholds at once rather than one.
+ */
+function planRumourRoll(
+  data: CpredCharacterData,
+  registry: CpredRegistry,
+  modifier: number,
+  luckSpent: number,
+  state: CpredWoundState,
+  context: CpredRollContext,
+): { ok: true; plan: CpredRollPlan } | { ok: false; error: CpredRollProblem } {
+  const rank = cpredRoleAbilityRank(data, registry, CPRED_CREDIBILITY_ABILITY);
+  if (rank === null) return { ok: false, error: 'NO_ABILITY' };
+  return finishCheck(
+    'Pogłoski',
+    [{ label: `${CPRED_CREDIBILITY_ABILITY} ${rank}`, value: rank, kind: 'skill' }],
+    state,
+    modifier,
+    luckSpent,
+    { rumour: { rank } },
+    context,
+  );
+}
+
+/**
+ * Test Rzetelności (stage 30d): „rzuć 1k10 […] Szansa N na 10, że odbiorcy
+ * uwierzą" (s. 151–152).
+ *
+ * Not a Check and deliberately not built like one: no stat, no skill, no wound
+ * penalty, no exploding ten and — RAW, in as many words — no Luck. What the
+ * rank buys is the *chance*, not the roll, so the die stands bare and the plan
+ * carries the number it is read against. The same shape a Death Save has, for
+ * the same reason.
+ */
+function planReliabilityRoll(
+  data: CpredCharacterData,
+  registry: CpredRegistry,
+  request: CpredRollRequest,
+): { ok: true; plan: CpredRollPlan } | { ok: false; error: CpredRollProblem } {
+  const rank = cpredRoleAbilityRank(data, registry, CPRED_CREDIBILITY_ABILITY);
+  if (rank === null) return { ok: false, error: 'NO_ABILITY' };
+  const proof = request.reliabilityProof ?? 'none';
+  if (!(CPRED_PROOF_LEVELS as readonly string[]).includes(proof)) {
+    return { ok: false, error: 'BAD_REQUEST' };
+  }
+  const base = cpredReliabilityChance(rank, 'none');
+  return {
+    ok: true,
+    plan: {
+      title: 'Test Rzetelności',
+      formula: { terms: [{ kind: 'dice', sign: 1, count: 1, sides: 10 }] },
+      breakdown: [],
+      modifierTotal: 0,
+      woundState: woundState(data.hpCurrent, data.stats),
+      luckSpent: 0,
+      checkRule: false,
+      reliability: { chance: cpredReliabilityChance(rank, proof), proof, base },
+    },
+  };
 }
 
 /**

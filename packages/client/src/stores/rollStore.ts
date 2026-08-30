@@ -6,6 +6,9 @@ import type {
   CpredHitLocation,
   CpredRegistry,
   CpredRollRequest,
+  CpredCharismaAudience,
+  CpredCharismaPurpose,
+  CpredProofLevel,
   ScenePoint,
 } from '@vtt/shared';
 import {
@@ -387,5 +390,90 @@ export function loadTreatInjuryCup(
     visibility: 'public',
     title: `Leczenie: ${injury.name} → ${target.name}`,
     modifierTotal,
+  });
+}
+
+/**
+ * Ładuje Test Efektu Charyzmy do kubka (etap 30d, s. 144).
+ *
+ * Planowane przez `planCpredRoll`, bo cały rachunek stoi na karcie: ranga plus
+ * kara za rany. PT nie jedzie w prośbie — zna je serwer z liczebności
+ * publiczności, a kubek pokazuje tylko to, co Rocker do niego wkłada.
+ */
+export function loadCharismaCup(
+  rocker: { characterId: string; characterName: string },
+  audience: CpredCharismaAudience,
+  purpose: CpredCharismaPurpose,
+  data: CpredCharacterData,
+  registry: CpredRegistry,
+): void {
+  const store = useRollStore.getState();
+  const request: CpredRollRequest = {
+    kind: 'charisma',
+    charismaAudience: audience,
+    charismaPurpose: purpose,
+    modifier: store.lastModifier,
+    luckSpent: 0,
+  };
+  const planned = planCpredRoll(data, registry, request);
+  if (!planned.ok) return;
+  store.loadCup({
+    characterId: rocker.characterId,
+    characterName: rocker.characterName,
+    kind: 'charisma',
+    request,
+    visibility: store.lastVisibility,
+    title: planned.plan.title,
+    modifierTotal: planned.plan.modifierTotal,
+  });
+}
+
+/**
+ * Ładuje Test Rzetelności do kubka (etap 30d, s. 151).
+ *
+ * Kubek pokazuje `0`, bo tu naprawdę nie ma czego dodać: ranga kupuje
+ * **szansę**, a nie modyfikator, i kość leci goła. Rzut jest publiczny —
+ * publikacja jest sprawą stołu.
+ */
+export function loadReliabilityCup(
+  media: { characterId: string; characterName: string },
+  proof: CpredProofLevel,
+  data: CpredCharacterData,
+  registry: CpredRegistry,
+): void {
+  const store = useRollStore.getState();
+  const request: CpredRollRequest = { kind: 'reliability', reliabilityProof: proof };
+  const planned = planCpredRoll(data, registry, request);
+  if (!planned.ok) return;
+  store.loadCup({
+    characterId: media.characterId,
+    characterName: media.characterName,
+    kind: 'reliability',
+    request,
+    visibility: 'public',
+    title: planned.plan.title,
+    modifierTotal: 0,
+  });
+}
+
+/** Ładuje potajemny Test Pogłosek MG (etap 30d, s. 151) — zawsze szeptem. */
+export function loadRumourCup(
+  media: { characterId: string; characterName: string },
+  data: CpredCharacterData,
+  registry: CpredRegistry,
+): void {
+  const store = useRollStore.getState();
+  const request: CpredRollRequest = { kind: 'rumour', modifier: 0, luckSpent: 0 };
+  const planned = planCpredRoll(data, registry, request);
+  if (!planned.ok) return;
+  store.loadCup({
+    characterId: media.characterId,
+    characterName: media.characterName,
+    kind: 'rumour',
+    request,
+    // „potajemny Test" — karta idzie do MG i do autora, nigdy na stół.
+    visibility: 'gm',
+    title: planned.plan.title,
+    modifierTotal: planned.plan.modifierTotal,
   });
 }

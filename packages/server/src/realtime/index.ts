@@ -111,6 +111,7 @@ import {
 } from './zones.js';
 import { backupResolveEvent } from './backup.js';
 import { characterTeamHireEvent, characterTeamLoyaltyEvent } from './team.js';
+import { characterHaggleEvent } from './haggle.js';
 import {
   lightClearEvent,
   lightCreateEvent,
@@ -262,6 +263,7 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   backupResolveEvent,
   characterTeamHireEvent,
   characterTeamLoyaltyEvent,
+  characterHaggleEvent,
   characterCombatAwarenessEvent,
   characterFieldRepairEvent,
   characterDeleteEvent,

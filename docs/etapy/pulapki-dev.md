@@ -423,3 +423,9 @@ stole znaczy to samo, a przez walidację przechodzi.
 ma tabeli zasięgów"), mimo że wiersz siedzi na karcie. Ta sama odmowa co przy nieistniejącym
 wierszu, więc szukanie zaczyna się od złej strony; wpis z katalogu jest wymagany, bo zasięgi
 mieszkają na typie broni.
+
+**Łata karty z częściowym blokiem Cech jest odrzucana w całości** (30.08). `validateStats`
+przechodzi po wszystkich dziesięciu Cechach i przy pierwszej brakującej zwraca `undefined`, więc
+`patch: { data: { stats: { cool: 8 } } }` kończy się `INVALID_DATA` — a wygląda dokładnie jak
+„serwer nie przyjmuje mojej zmiany Roli", bo `roleId` z tej samej łaty też nie dochodzi. Kosztowało
+trzynaście czerwonych testów naraz w `roles30d.test.ts`. Cechy podaje się kompletem albo wcale.

@@ -13,9 +13,14 @@ import type {
 } from '@vtt/shared';
 import {
   CPRED_ACTION_STABILIZE,
+  CPRED_CHARISMA_AUDIENCE_LABELS,
+  CPRED_CHARISMA_REFUSAL_DAYS,
+  CPRED_RUMOUR_TIERS,
   CPRED_STABILIZE_DV,
   DEATH_SAVES_MAX,
   ROLE_GM,
+  cpredAudienceBelieves,
+  cpredRumourHeard,
   cpredTreatmentOptions,
   hitLocationLabel,
   isCpredAimPoint,
@@ -739,6 +744,56 @@ export async function performCharacterRoll(
         detail: `${plan.treatInjury.skillName} ${result.total} vs PT ${plan.treatInjury.dv}${
           removed ? ` · „${plan.treatInjury.injuryName}" schodzi z karty` : ''
         }`,
+      };
+    }
+
+    // Stage 30d. Three verdicts a Role owns, and each is read a different way:
+    // a Test against a printed PT, a die under a chance out of ten, and one
+    // roll measured against four thresholds at once.
+    if (plan.charisma) {
+      // „równy lub wyższy = sukces" — the standing decision of 28.08 for every
+      // static PT in this project, and this is one.
+      const success = result.total >= plan.charisma.dv;
+      const audience = CPRED_CHARISMA_AUDIENCE_LABELS[plan.charisma.audience];
+      result.outcome = {
+        success,
+        label: success
+          ? plan.charisma.purpose === 'fans'
+            ? 'Masz nowych fanów'
+            : 'Fani to zrobią'
+          : plan.charisma.purpose === 'fans'
+            ? 'Nie zrobili na nich wrażenia'
+            : 'Odmowa',
+        detail: success
+          ? `${result.total} ≥ PT ${plan.charisma.dv} · ${audience}${
+              plan.charisma.effect ? ` — ${plan.charisma.effect}` : ''
+            }`
+          : `${result.total} < PT ${plan.charisma.dv} · ${audience}${
+              plan.charisma.purpose === 'favour'
+                ? ` — o tę samą przysługę nie poprosisz ich przez ${CPRED_CHARISMA_REFUSAL_DAYS} dni`
+                : ''
+            }`,
+      };
+    }
+    if (plan.reliability) {
+      const believed = cpredAudienceBelieves(result.total, plan.reliability.chance);
+      const bonus = plan.reliability.chance - plan.reliability.base;
+      result.outcome = {
+        success: believed,
+        label: believed ? 'Uwierzyli' : 'Nie kupili tego',
+        detail:
+          `${result.total} na 1k10 · szansa ${plan.reliability.chance} na 10` +
+          (bonus > 0 ? ` (${plan.reliability.base} + ${bonus} za dowody)` : ''),
+      };
+    }
+    if (plan.rumour) {
+      const heard = cpredRumourHeard(result.total);
+      result.outcome = {
+        success: heard !== null,
+        label: heard ? heard.name : 'Cisza na Ulicy',
+        detail: heard
+          ? `${result.total} ≥ ${heard.passive} · ${heard.description}`
+          : `${result.total} — poniżej ${CPRED_RUMOUR_TIERS[0]!.passive}, nic nie doszło`,
       };
     }
 

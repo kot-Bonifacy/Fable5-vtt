@@ -271,6 +271,9 @@ export function combatProfileSheet(
     // Nor does anybody work for him (stage 30c): a team is something a Korpo's
     // sheet carries, and a statist is the figure that has no sheet.
     team: [],
+    // Stage 30d: no Family to lend him a car, and nobody haggles on his behalf.
+    fleet: [],
+    haggle: null,
     skills: { [CPRED_EVASION_SKILL_ID]: profile.evasion },
     // Statysta nie ma czego nazywać: jego jedyną umiejętnością jest Unik.
     skillSpecialties: {},

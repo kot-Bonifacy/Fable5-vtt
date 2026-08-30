@@ -93,36 +93,35 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 | 30a | Szkielet Zdolności Ról i Zmysł Walki Solo     | ✅     | 2026-08-29        |
 | 30b | Medycyna Medyka i Twórca Technika             | ✅     | 2026-08-29        |
 | 30c | Wsparcie i Praca Zespołowa                    | ✅     | 2026-08-29        |
-| 30d | Charyzma, Znajomości, Moto, Wiarygodność      | ⬜     |                   |
+| 30d | Charyzma, Znajomości, Moto, Wiarygodność      | ✅     | 2026-08-30        |
 | 31  | Dodatki do broni                              | ⬜     |                   |
 
 ## Od czego zacząć
 
-**Ostatnia sesja (29.08, piąta) zamknęła etap 30c** — Stróż Prawa wzywa Wsparcie, a Korpo ma
-zespół. Obie połowy rozeszły się maszynerią, wbrew opisowi etapu: funkcjonariusze to statyści
-z profilem bojowym (tabela z s. 158 to dokładnie te pięć liczb), ale **członkowie zespołu
-dostają pełne karty postaci** — Korporacyjny Netrunner ma w pakiecie cyberdek i Interfejs 2,
-więc jako statysta nie mógłby zrobić jedynej rzeczy, do której istnieje. Opis etapu miał **trzy
-błędy** (pięć kategorii zamiast sześciu, `CpredCombatProfile` dla zespołu, „martwa" flaga uników)
-— wszystkie policzone w podręczniku i poprawione w `etap-30c-*.md`.
+**Ostatnia sesja (30.08) zamknęła etap 30d — a razem z nim cały etap 30.** Każda z dziesięciu
+Ról ma teraz skutek w grze: Rocker rzuca Efektem Charyzmy przeciw PT 8/10/12, Fixer targuje się
+rzutem przeciwstawnym i odkłada targ zdejmujący 10% albo 20% z najbliższego zakupu, Nomada
+dokłada Moto do sześciu Testów i prowadzi Tabor Rodziny, a Media rzuca Rzetelnością i (MG)
+Pogłoskami. Opis etapu miał **trzy błędy** (pięć progów Charyzmy zamiast sześciu, „Zasięg wchodzi
+w sklep z 23b", „Wiarygodność styka się z Reputacją z 23c") — wszystkie policzone na stronie
+i poprawione w `etap-30d-*.md`.
 
-**Od czego zacząć: 30d** (Efekt Charyzmy, Znajomości, Moto, Wiarygodność) — cztery ostatnie
-Zdolności Ról, wszystkie o kształcie „tabela poziomów + jeden rzut + proza", więc domykają
-etap 30 jedną sesją. Poza tym nadal wolne: **27g** (wydajność, poligon „Korytarz 16e" gotowy),
-**28** (wdrożenie na VPS), **29** (rozwój za PD i wieloklasowość — to on odblokowuje
-**kupowanie** poziomów Zdolności, które dziś podbija się ręcznie polem na karcie) i **31**
-(dodatki do broni; to on odblokowuje siedem z dziesięciu skutków Ulepszania).
+**Od czego zacząć: wolne są cztery etapy.** **29** (rozwój za PD i wieloklasowość) jest teraz
+najbardziej na miejscu: po 30a–30d **wszystkie dziesięć** Zdolności ma co robić z poziomem, który
+dziś podbija się ręcznie polem na karcie — 29 jest tym, co pozwoli go **kupić**. Poza tym: **27g**
+(wydajność, poligon „Korytarz 16e" gotowy), **28** (wdrożenie na VPS) i **31** (dodatki do broni;
+to on odblokowuje siedem z dziesięciu skutków Ulepszania z 30b).
 
-**Dług oględzin to 23 pozycje** (`zaleglosci.md`, +4 z piątej sesji 29.08; poprzednia notatka
-mówiła o 18 — przeliczone, było 19). Bez modelu da się dziś obejrzeć **dziewięć**: **komplet
-30c** (siedem punktów, na górze listy), **komplet 30b**, Celowanie, pakiet A+B z drugiej sesji,
-**komplet 30a**, lukę w edytorze kompendium i pomiar fps przypisany do 27g. Reszta czeka na
-**żywy model**: 20a/20b, 19a–19c, dwie ścieżki 24c i maszynopis wypowiedzi.
+**Dług oględzin to 25 pozycji** (`zaleglosci.md`, +2 z 30.08). Bez modelu da się dziś obejrzeć
+**dziesięć**: **komplet 30d** (osiem punktów, na górze listy), **komplet 30c**, **komplet 30b**,
+Celowanie, pakiet A+B z drugiej sesji 29.08, **komplet 30a**, lukę w edytorze kompendium i pomiar
+fps przypisany do 27g. Reszta czeka na **żywy model**: 20a/20b, 19a–19c, dwie ścieżki 24c
+i maszynopis wypowiedzi.
 
-**Do oględzin 30a–30c trzeba postaci z Rolą Solo, Medyk, Technik, Stróż Prawa i Korpo.** Żadna
-karta na scenach testowych ich nie ma (`avatar9` to netrunner), więc pierwszy krok to
-przestawienie Roli na karcie — albo nowa figura. Rola zmienia się jednym polem, a panel
-Zdolności pojawia się od razu.
+**Do oględzin 30a–30d trzeba postaci ze wszystkimi Rolami poza Netrunnerem.** Żadna karta na
+scenach testowych ich nie ma (`avatar9` to netrunner), więc pierwszy krok to przestawienie Roli
+na karcie — albo nowa figura. Rola zmienia się jednym polem, a panel Zdolności pojawia się od
+razu; najtaniej jedną kartą, na której przełącza się Rolę po kolei.
 
 **Uwaga po 29.08: `data/private/cpred/compendium/` bywa starsze niż parser.** Regeneracja
 importem dołożyła Miotaczowi ognia `ammoPatterns: ['shell']`, którego plik na dysku nie miał —
@@ -164,9 +163,9 @@ strzelca. Pełny zapis w `decyzje-i-uproszczenia.md`. **Wyjątek od 30c: Test Lo
 przy wyniku _mniejszym_ od Lojalności** — remis oznacza odmowę (s. 154).
 
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
-a od 30a pierwszym, przy którym **Solo w drużynie naprawdę gra inaczej niż reszta**.
+a od 30d pierwszym, przy którym **każda Rola w drużynie gra inaczej niż reszta**.
 
-**Testy na koniec ostatniej sesji:** 1552 w `shared`, 845 na serwerze, 62 u klienta — zielone.
+**Testy na koniec ostatniej sesji:** 1590 w `shared`, 858 na serwerze, 62 u klienta — zielone.
 ESLint i Prettier czyste na całym repo, `pnpm -r build` przechodzi.
 
 ## Umowy kodu — indeks
@@ -228,6 +227,11 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 - **Stan gry dotyczący całej walki** (nie uczestnika) mieszka w `Combat.systemState` — nieprzezroczystej kolumnie jak `turnState`; tłumaczy ją `reinforcementsOf` na `ReinforcementView`. Umiera razem z walką i to jest jej sens.
 - **Zespół Korpo to karty postaci** (`ownerId: null`), a **Lojalność siedzi na karcie pracodawcy** (`CpredCharacterData.team`): to cecha układu, nie osoby. Kasowanie karty sprząta wiersz przez `dropFromTeams` — JSON nie kaskaduje.
 - **Cyborgizacje pakietu BN-a z gotowymi Cechami zostają prozą** — prawdziwe wiersze chromu policzyłyby Człowieczeństwo drugi raz („Wzięto to już pod uwagę", s. 155).
+- **Drabina rang Zdolności** — `CpredAbilityTier` (`id`, `min`, `max`, `page`) plus `cpredAbilityTierAt`/`cpredAbilityTiersUpTo`; podręcznik paruje poziomy do dziewiątki, więc szczeblem jest przedział, nie liczba. Nowa Zdolność z drabiną dokłada tabelę, nie własną funkcję szukającą.
+- **Zdolność Roli, która zmienia cenę**, pisze na kartę wyłącznie z własnego zdarzenia i wypada z `character:update` (`FORBIDDEN`) — jak `eddies` z 23b. Dobity targ (`haggle`) zapisuje `character:haggle`, zdejmuje `economy:buy` albo ręka Fixera.
+- **Rzut przeciwstawny z fikcją po drugiej stronie** bierze od MG **jedną liczbę** (`opponentBonus`) i sam losuje jej 1k10 obok kości gracza; remis wygrywa druga strona.
+- **Lista wpisów kupowanych awansem** (Tabor 30d, Specjalizacje 30b) jedzie zwykłą łatą, a pulę sprawdza `cpredFleetSheetProblem`/`cpredSpecialtiesProblem` na **scalonej** karcie — `applyCharacterPatch` nie widzi rangi, którą ta sama łata podnosi.
+- **Rzut, który nie jest Testem** (Rzut na Śmierć, Test Rzetelności), omija `finishCheck`: bez Cechy, Umiejętności, kary za rany i eksplozji, `checkRule: false`. Wszystko, co Testem **jest**, przez `finishCheck` przechodzi — także Efekt Charyzmy z samą rangą w rozbiciu.
 
 ## Pułapki dev — indeks
 
@@ -297,10 +301,80 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 - **Cecha karty nie może wynosić 0** (`CPRED_STAT_MIN` = 1): `validateStats` odrzuca wtedy **cały** blok i karta wraca z samymi piątkami.
 - **`combat:next` przy jednym uczestniku to cała runda** — test czytający kolejkę krokiem tury potrafi sam sprowadzić posiłki. Stan czyta się `state:request`.
 - **Broń bez `compendiumId` nie strzela** — planer odmawia `UNKNOWN_WEAPON` („brak tabeli zasięgów"), tym samym kodem co przy nieistniejącym wierszu.
+- **Łata karty z częściowym blokiem Cech jest odrzucana w całości** — `validateStats` chce wszystkich dziesięciu; `stats: { cool: 8 }` daje `INVALID_DATA` i zabiera ze sobą resztę łaty.
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 30.08 — etap 30d: Charyzma, Znajomości, Moto i Wiarygodność (i koniec etapu 30)
+
+**Zlecenie MG:** kontynuować budowę; z przedstawionych opcji wybór padł na **30d**. Dwie decyzje
+zapadły przed pierwszą linijką kodu: **Zasięg Fixera nie przebija poziomu sklepu** z 23b, ale
+**udany targ naprawdę zmienia cenę zakupu**; z Wiarygodności wchodzą **oba** rzuty — Rzetelność
+i Pogłoski.
+
+**Opis etapu 30d miał trzy błędy — wszystkie policzone na stronie.** (a) Progów Efektu Charyzmy
+jest **sześć**, nie pięć: 1–2, 3–4, 5–6, 7–8, 9 i 10, dokładnie jak u Fixera i u Media. (b)
+„Zasięg wchodzi w sklep z 23b" rozstrzygnął MG w drugą stronę — do sklepu weszło Targowanie się.
+(c) „Wiarygodność styka się z Reputacją z 23c" **nie jest prawdą**: Rzetelność mówi, czy odbiorcy
+uwierzą publikacji, Reputacja modyfikuje Konfrontację i rozpoznanie. Dwie liczby o dwóch różnych
+rzeczach; sklejenie ich byłoby zasadą domową.
+
+**Cztery Zdolności, jeden kształt — i to jest cały wynik rozpoznania.** Podręcznik drukuje je
+ramkami „POZIOMY 1 I 2", „POZIOMY 3 I 4"… aż do dziewiątki, gdzie przestaje parować. Szczeblem
+jest więc **przedział**, nie liczba, i stąd wspólny `CpredAbilityTier` z `min`/`max`. Trzy tabele
+mają po sześć szczebli, Tabor Nomady cztery (1–4, 5–6, 7–8, 9–10) — i to jedyna różnica
+w konstrukcji między nimi.
+
+**Efekt Charyzmy to jedyny Test w tej grze bez Cechy i bez Umiejętności.** „Wartość Efektu
+Charyzmy + 1k10" (s. 144) — ranga stoi tam, gdzie zwykle stoi para CHA + Perswazja, i sheet
+z CHA 8 nie ma jej czym podeprzeć. PT ustawia **liczebność publiczności** (8/10/12), a nie ranga;
+ranga rozstrzyga co innego — czy o daną rzecz w ogóle wolno poprosić. Prośba, której tabela nie
+niesie (duża grupa przy randze ≤2: „To żart, prawda? Jeszcze nie masz dużych grup fanów"), **nie
+dochodzi do kości**: `planCpredRoll` odmawia kodem `NO_CROWD`, bo „próba automatycznie się nie
+udaje" to brak próby, a nie przegrany rzut. Drugie zastosowanie — robienie nowych fanów — tabeli
+nie pyta i działa na każdym poziomie; stąd przełącznik nad wierszami zamiast dwóch paneli.
+
+**Targ Fixera musiał przeżyć rzut, więc dostał własne zdarzenie i pole na karcie.** „Jeśli rzut
+ci się udał, **możesz** dobić jednego targu" — nagroda jest odroczona, a „w czasie jednej
+transakcji można dobić tylko jednego targu" mówi, ile ich naraz: jeden. `character:haggle` rzuca
+obiema kośćmi (druga strona to fikcja, nie karta, więc MG podaje **jedną** liczbę: CHA + Handel +
+Znajomości) i po wygranej odkłada `CpredCharacterData.haggle`; `economy:buy` zdejmuje procent
+z ceny i targ z karty w tym samym zapisie. Pole wypadło z `character:update` (`FORBIDDEN`) jak
+`eddies` z 23b — zniżka z drzwiami bez rzutu obok nie jest zniżką.
+
+**Zasięg na szczeblu 5–6 dziedziczy pasmo z niższego — i to nie jest obejście.** Ramka
+„ZNAJOMOŚCI – POZIOMY 5 I 6" jako jedyna nie drukuje kategorii cenowej: w jej miejscu stoi Nocny.
+`cpredOperatorReach` szuka więc **w dół**, bo odczyt „szczebel bez pasma to brak Zasięgu" kazałby
+awansowi **odebrać** zdolność — czego w całym podręczniku nie robi żaden inny awans.
+
+**Test Rzetelności nie jest Testem i dlatego omija `finishCheck`.** Ranga kupuje **szansę**
+(„Szansa 2 na 10", rosnącą do 7), a nie modyfikator: kość leci goła, nie eksploduje, nie zbiera
+kary za rany, a Szczęścia użyć nie wolno wprost z podręcznika (s. 152). Kształt Rzutu na Śmierć,
+nie Testu na PT. Premie za dowody kumulują się, więc trzeci stopień listy niesie sumę obu (+3),
+a nie sam +2 — materiał z pięcioma niepodważalnymi dowodami ma tym samym ten jeden rzetelny.
+
+**Pogłoski przynosi rzut, treść pisze MG.** Guzik stoi **tylko u MG** („potajemny Test") i sypie
+kartę szeptem (`visibility: 'gm'`, kanał `gmroll` z etapu 03), a mówi jedno: który próg został
+pobity (7/9/11/13). Czym pogłoska jest, VTT nie wymyśla — to materiał kampanii z 24b i 19b.
+
+**Moto było najtańszą z czterech i wyszło z tego najwięcej.** Bonus do sześciu Testów to sześć
+linijek w planerze (bliźniak Naprawy z 30b, czytany **wprost z karty**, więc podgląd klienta
+i werdykt serwera nie mogą się rozjechać). Tabor Rodziny jest **listą**, nie prozą, bo podręcznik
+go liczy — „Zawsze, gdy Nomada podnosi poziom […] może zrobić jedną z dwóch rzeczy" — a liczby
+nie da się sprawdzić w akapicie. Niezmiennik jest ten sam, co przy Specjalizacjach z 30b: wpisów
+najwyżej tyle, ile poziomów, i żaden nie z kategorii wyższej niż poziom; puli pilnuje
+`cpredFleetSheetProblem` na **scalonej** karcie, więc awans i nowy wpis mieszczą się w jednej
+łacie.
+
+**Testy:** 1590 w `shared` (+38), **858** na serwerze (+13), 62 u klienta — zielone. ESLint
+i Prettier czyste, `pnpm -r build` przechodzi. **Migracji nie było** — `haggle` i `fleet` mieszkają
+w JSON-ie karty. **Nic z tej sesji nie było oglądane w przeglądarce** — osiem punktów stoi na
+górze `zaleglosci.md`, a do oględzin trzeba postaci z Rolą **Rocker**, **Fixer**, **Nomada**
+i **Media**. Przy okazji zapisana zaległość spoza etapu: **Ustabilizowanie i Leczenie porównują
+`>`**, choć decyzja MG z 28.08 mówi, że remis na PT statycznym zdaje — rozjazd do rozstrzygnięcia
+jednym ruchem przy etapie dotykającym 14b/30b.
 
 ### Sesja 29.08 (piąta) — etap 30c: Wsparcie Stróża Prawa i zespół Korpo
 
@@ -364,85 +438,3 @@ i Prettier czyste, `pnpm -r build` przechodzi. Migracja: `stage30c_combat_system
 z tej sesji nie było oglądane w przeglądarce** — siedem punktów do odklikania stoi na górze
 `zaleglosci.md`, a do oględzin trzeba postaci z Rolą **Stróż Prawa** i **Korpo** (żadna karta na
 scenach testowych ich nie ma).
-
-### Sesja 29.08 (czwarta) — etap 30b: Medycyna Medyka i Twórca Technika
-
-**Zlecenie MG:** kontynuować budowę; z przedstawionych opcji wybór padł na **30b**, a Ulepszanie
-miało wejść w wariancie „**tylko to, co domykalne dziś**" (reszta zapisana z powodem).
-
-**Opis etapu 30b miał trzy błędy — wszystkie policzone na stronie.** (a) „Medycyna działa tak
-samo" jak Twórca **nie jest prawdą**: Technik przy awansie dostaje **po punkcie w dwóch różnych**
-Specjalizacjach (s. 147), Medyk **jeden punkt w jednej** (s. 149) — sakiewki różnią się
-dwukrotnie. (b) Specjalizacje Medycyny nazywają się Chirurgia, **Technologia Medyczna
-(Farmaceutyki)** i **Technologia Medyczna (Obsługa kriosystemów)**, nie „Kriosystemy,
-Farmaceutyka". (c) Ulepszanie ma **dziesięć** skutków, nie jedenaście. Poprawki są w pliku etapu.
-
-**Jedna maszyneria na obie Zdolności — i to jest cały powód, dla którego siedzą w jednym etapie.**
-`roleability.ts` dostał sekcję Specjalizacji: definicja (nazwa, słowa podręcznika, własny sufit,
-strona) plus dwie liczby reguł (`perRank`, `across`). Twórca to `{2, 2}`, Medycyna `{1, 1}` — i to
-jedyna różnica w kodzie. Panel `SpecialtyPanel.tsx` obsługuje obie, więc na pytanie „ile punktów
-mi zostało" jest jedna odpowiedź, a nie dwie mogące się rozjechać.
-
-**„Po punkcie w dwóch różnych Specjalizacjach" nie wymaga pamiętania historii awansów.** Przydział
-da się kupić awansami wtedy i tylko wtedy, gdy suma ≤ `poziom × perRank`, a żadna Specjalizacja nie
-przekracza `poziomu` — te dwa warunki są **równoważne** legalnej historii, więc VTT nie trzyma
-listy dawnych wyborów. Przydział niedokończony jest legalny celowo: to karta świeżo po awansie,
-czyli dokładnie ten moment, dla którego panel istnieje („Do rozdzielenia: 2 z 8").
-
-**Przydział jedzie zwykłą łatą karty — inaczej niż Zmysł Walki z 30a.** Tam zapis kosztuje Akcję,
-więc musiał mieć własne zdarzenie; tutaj awans nie ma czym płacić, więc zamykanie drogi byłoby
-dekoracją. Rozmiar sakiewki zależy jednak od rangi, której `applyCharacterPatch` nie widzi —
-`character:update` woła więc `cpredSpecialtiesProblem` **na scalonej karcie**, tuż przed zapisem.
-Dzięki temu podniesienie rangi i wydanie nowych punktów mieszczą się w jednej łacie.
-
-**Leczenie Ran Krytycznych to była dziura, nie brakująca ozdoba.** Do tej sesji ranę dawało się
-z karty **tylko skasować** — jeden ✕, bez rzutu i bez PT — więc zdanie, na którym stoi cała Rola
-Medyka („Chirurgia jest dostępna tylko dla Medyków"), nazywało drzwi bez pokoju za nimi. Doszedł
-rodzaj rzutu `treatInjury` zbudowany dokładnie jak „Ustabilizowanie" z 14b: PT czyta się na
-serwerze **z rany, którą nosi cel**, gałąź wybiera leczący, a udany rzut zdejmuje ranę — także
-**statyście**, bo od 29.08 statysta rany nosi.
-
-**Zdania z tabeli parsujemy, zamiast dokładać pole do kompendium.** „Ratownictwo medyczne PT 15
-lub Chirurgia PT 13" czyta `cpredParseCare`; gałąź bez własnego PT dziedziczy je po następnej
-(„Ratownictwo medyczne **lub** Chirurgia PT 13"), „Nd." to brak drogi, a „Łatanie trwale usuwa
-Efekt tej Rany" oddaje robotę kolumnie obok. Dwa powody, oba z wcześniejszych sesji: wygenerowane
-kompendium bywa **starsze niż parser**, więc nowe pole byłoby puste dokładnie tam, gdzie się gra —
-i rana wpisana ręką MG działa wtedy tak samo jak drukowana. Zdania, którego parser nie rozumie,
-VTT nie zamienia w rzut: guzik się nie pojawia, proza zostaje.
-
-**Chirurgia i Technologia Medyczna nie trafiły do `skills.json` i trafić nie mogą.** Podręcznik ich
-w tabeli Umiejętności nie drukuje, bo „dostępna jest tylko Medykom poprzez ich Zdolność Specjalną"
-— ich poziom jest **funkcją przydziału**, a nie liczbą, którą ktoś wpisuje. Siedzą więc w kodzie
-(`CPRED_MEDICINE_SKILLS`), poziom liczy `cpredMedicineSkillLevel`, a panel drukuje wiersz
-„Chirurgia 6 · Technologia Medyczna 3", bo inaczej gracz nie miałby gdzie go przeczytać.
-
-**Z dziesięciu skutków Ulepszania VTT liczy jeden — i lista i tak jest pełna.** „+1 OB" ma guzik
-przy pancerzu (podnosi `sp` i `spCurrent`, stempluje wiersz, drugi raz się nie da). Pozostałe
-dziewięć stoi wypisane w panelu Twórcy jako zapis dla stołu: gniazda Dodatków to etap 31, **jakości
-broni nic w VTT nie czyta** (`quality` siedzi w kompendium i nie wchodzi do żadnego rachunku),
-pojazdów nie ma. Menu z jednym skutkiem po cichu przepisałoby Rolę.
-
-**Prowizorka nie ma odliczania i to jest decyzja, nie skrót.** „10 minut na poziom" to sześćdziesiąt
-rund na poziom — dłużej, niż trwała którakolwiek walka w tym projekcie; zegar, który nigdy nie bije,
-to zegar, którego nikt nie czyta. Wiersz pancerza pamięta starte OB (`fieldRepair.restoredFrom`),
-a guzik oddaje je, gdy MG uzna, że prowizorka puściła — ta sama umowa, którą 16h zawarła z efektami
-poza walką. Sama Prowizorka kosztuje Akcję, więc ma własne zdarzenie (`character:field-repair`).
-
-**Naprawa dokłada się do siedmiu Testów Technicznych i tylko do nich.** „Chyba że dany Test wiąże
-się z inną Specjalizacją Twórcy" (s. 147) znaczy, że Wytwarzanie i Wynajdywanie **nie** wchodzą do
-Testów z tabeli Umiejętności — mają własne Testy, do których dokładają siebie. Bonus liczy się
-z samej karty (jak Precyzyjny atak w 30a), więc podgląd klienta i werdykt serwera dochodzą do tej
-samej liczby bez kontekstu.
-
-**Naprawione przy okazji: `attacks.test.ts` migotał z trzech niezależnych powodów.** (a) **W trwającej
-walce jeden strzał wysyła DWIE wiadomości czatu** — najpierw wpis dziennika Akcji, potem kartę
-rzutu; `once('chat:message')` łapał tę pierwszą i pętla meldowała „30 strzałów i ani jednego
-trafienia" mimo trafień w bród. (b) Magazynek pistoletu wysychał, a `weapon:reload` w walce kosztuje
-Akcję i sam potrafi odmówić — uzupełnia się go teraz łatą karty. (c) Ten sam rzut obrażeń potrafi
-wylosować ranę z tabeli, więc raz na kilkadziesiąt przebiegów Celowanie trafiało w nogę **już
-złamaną** i słusznie nie dokładało nic. Dziesięć przebiegów pod rząd czysto; wnioski w pułapkach.
-
-**Testy:** 1514 w `shared` (+33), **826** na serwerze (+7), 62 u klienta — zielone. ESLint
-i Prettier czyste, `pnpm -r build` przechodzi. **Nic z tej sesji nie było oglądane
-w przeglądarce** — sześć punktów do odklikania stoi na górze `zaleglosci.md`, a do oględzin trzeba
-postaci z Rolą **Medyk** i **Technik** (żadna karta na scenach testowych ich nie ma).

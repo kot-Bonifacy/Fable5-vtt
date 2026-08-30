@@ -2043,3 +2043,836 @@ export function describeBackupPending(entry: CpredBackupPending): string {
   if (!tier) return 'Wsparcie w drodze';
   return `${tier.name} ×${tier.count}`;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════ *
+ *  Etap 30d — cztery Zdolności, które nie dotykają wymiany ognia
+ *
+ *  Rocker, Fixer, Nomada i Media zamykają etap 30, a łączy je kształt, którego
+ *  poprzednie trzy sesje nie miały: **drabina rang**. Podręcznik drukuje je
+ *  ramkami „POZIOMY 1 I 2", „POZIOMY 3 I 4"… aż do dziewiątki, gdzie przestaje
+ *  parować — więc szczeblem jest przedział, nie liczba, i stąd `min`/`max`
+ *  zamiast wiersza na każdy poziom.
+ *
+ *  Wszystko, co poniżej, jest czytane **z samej karty**: ranga plus tabela.
+ *  Świat (kto jest fanem, kto sprzedaje, kto uwierzy) zostaje przy MG i nigdzie
+ *  tu nie wchodzi — dokładnie tak, jak planer ataku zostawia zasięgi mapie.
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+/** Wspólny szczebel drabiny: przedział rang plus strona, na której stoi. */
+export interface CpredAbilityTier {
+  id: string;
+  /** Najniższa i najwyższa ranga tego szczebla — „POZIOMY 7 I 8" to 7 i 8. */
+  min: number;
+  max: number;
+  page: number;
+}
+
+/** Szczebel, na którym stoi ta ranga; null poniżej pierwszego (ranga 0). */
+export function cpredAbilityTierAt<T extends CpredAbilityTier>(
+  tiers: readonly T[],
+  rank: number,
+): T | null {
+  return tiers.find((tier) => rank >= tier.min && rank <= tier.max) ?? null;
+}
+
+/** Szczeble aż do tej rangi włącznie — cała droga, którą postać przeszła. */
+export function cpredAbilityTiersUpTo<T extends CpredAbilityTier>(
+  tiers: readonly T[],
+  rank: number,
+): T[] {
+  return tiers.filter((tier) => tier.min <= rank);
+}
+
+// ──────────────────── Efekt Charyzmy (Rocker, s. 144–145) ────────────────────
+
+export const CPRED_CHARISMA_ABILITY = 'Efekt Charyzmy';
+
+/**
+ * Liczebność publiczności, bo to ona — a nie ranga — ustawia PT.
+ * „PT 8 dla jednej osoby, PT 10 dla małej grupy (do 6 osób) lub PT 12 dla dużej
+ * grupy" (s. 144). Te same trzy progi obsługują oba zastosowania Zdolności.
+ */
+export const CPRED_CHARISMA_AUDIENCES = ['single', 'small', 'large'] as const;
+export type CpredCharismaAudience = (typeof CPRED_CHARISMA_AUDIENCES)[number];
+
+export const CPRED_CHARISMA_DV: Record<CpredCharismaAudience, number> = {
+  single: 8,
+  small: 10,
+  large: 12,
+};
+
+export const CPRED_CHARISMA_AUDIENCE_LABELS: Record<CpredCharismaAudience, string> = {
+  single: 'Pojedynczy fan',
+  small: 'Mała grupa (do 6)',
+  large: 'Duża grupa',
+};
+
+/**
+ * Po co Rocker rzuca. Dwa zastosowania jednej Zdolności, oba tym samym Testem
+ * i przeciw tym samym PT, ale o różnych stawkach:
+ *
+ *  - `fans` — „możesz zmienić osoby, które nie są twoimi fanami, w fanów (chyba
+ *    że czynnie cię nie lubią)"; **tylko poza walką**, i tabela rang tu nie
+ *    rządzi: nowych fanów robi się na każdym poziomie.
+ *  - `favour` — prośba do tych, którzy fanami już są. Tu tabela rozstrzyga, czy
+ *    żądanie w ogóle wolno postawić: „Jeśli tak nie jest, próba automatycznie
+ *    się nie udaje".
+ */
+export const CPRED_CHARISMA_PURPOSES = ['fans', 'favour'] as const;
+export type CpredCharismaPurpose = (typeof CPRED_CHARISMA_PURPOSES)[number];
+
+export const CPRED_CHARISMA_PURPOSE_LABELS: Record<CpredCharismaPurpose, string> = {
+  fans: 'Zrób z nich fanów',
+  favour: 'Poproś fanów o przysługę',
+};
+
+export interface CpredCharismaTier extends CpredAbilityTier {
+  /** „Miejsca występów: Najlepsze miejsce, w którym Rocker może wystąpić". */
+  venues: string;
+  /**
+   * Co wolno wyprosić u publiczności tej wielkości. `null` znaczy „takiej
+   * publiczności jeszcze nie masz" — jedyny taki wpis w tabeli to duża grupa
+   * przy randze 1–2 („To żart, prawda?"), i to nie jest żart redakcyjny, tylko
+   * zasada: żądanie nieadekwatne do poziomu **nie dochodzi do kości**.
+   */
+  effects: Record<CpredCharismaAudience, string | null>;
+}
+
+export const CPRED_CHARISMA_TIERS: readonly CpredCharismaTier[] = [
+  {
+    id: 'charisma-1-2',
+    min: 1,
+    max: 2,
+    page: 144,
+    venues: 'Małe miejscowe kluby',
+    effects: {
+      single: 'Fan wyświadcza niewielką przysługę: kupi drinka albo jedzenie, gdzieś podwiezie.',
+      small: 'Do 6 fanów prosi o autografy i pamiątki, zatrzymuje Rockera na ulicy, chce pogadać.',
+      large: null,
+    },
+  },
+  {
+    id: 'charisma-3-4',
+    min: 3,
+    max: 4,
+    page: 144,
+    venues: 'Popularne kluby',
+    effects: {
+      single:
+        'Fan, jeśli da się go przekonać, wyświadcza dużą przysługę: pójdzie do łóżka, zarekomenduje.',
+      small: 'Do 6 fanów regularnie spędza czas z Rockerem — alkohol, prochy, imprezowe atrakcje.',
+      large: 'Oddana grupa fanów kupuje dzieła i artykuły promocyjne Rockera.',
+    },
+  },
+  {
+    id: 'charisma-5-6',
+    min: 5,
+    max: 6,
+    page: 145,
+    venues: 'Duże, ważne kluby',
+    effects: {
+      single: 'Fan popełnia pomniejsze przestępstwo (kradzież ze sklepu) albo pomaga w walce.',
+      small:
+        'Do 6 fanów działa jako osobista „ekipa": są w pobliżu, spełniają zachcianki, dostarczają rzeczy.',
+      large:
+        'Fani w całym mieście i okolicznych miastach — bardzo lojalni, wyświadczają duże przysługi.',
+    },
+  },
+  {
+    id: 'charisma-7-8',
+    min: 7,
+    max: 8,
+    page: 145,
+    venues: 'Małe hale koncertowe, miejscowy kanał wideo',
+    effects: {
+      single: 'Bez zbędnych pytań fan zaryzykuje dla Rockera życie.',
+      small: 'Do 6 fanów popełnia pomniejsze przestępstwo albo pomaga w walce.',
+      large:
+        'Wściekle lojalni: biją się z fanami rywali, trzymają sieci informacyjne, zbierają się na wezwanie.',
+    },
+  },
+  {
+    id: 'charisma-9',
+    min: 9,
+    max: 9,
+    page: 145,
+    venues: 'Duże hale koncertowe, krajowe kanały wideo',
+    effects: {
+      single: 'Fan popełnia poważne przestępstwo — ukradnie coś drogiego, kogoś pobije.',
+      small: 'Do 6 fanów popełnia poważne przestępstwo: kradzież czegoś kosztownego, pobicie.',
+      large:
+        'Fani zachowują się jak po praniu mózgu: rozpoczną zamieszki, zniszczą własność, zabiją.',
+    },
+  },
+  {
+    id: 'charisma-10',
+    min: 10,
+    max: 10,
+    page: 145,
+    venues: 'Ogromne stadiony lub międzynarodowy kanał wideo',
+    effects: {
+      single: 'Bez zbędnych pytań fan poświęci dla Rockera życie.',
+      small: 'Do 6 fanów zaryzykuje życiem — stają się jego ochroną.',
+      large:
+        'Międzynarodowa, podobna sekcie sieć: prywatna armia, która zrobi praktycznie wszystko.',
+    },
+  },
+];
+
+/** Zdanie z tabeli — jedyne miejsce, w którym „duża grupa" bywa niedostępna. */
+export const CPRED_CHARISMA_NO_CROWD = 'To żart, prawda? Jeszcze nie masz dużych grup fanów.';
+
+export function cpredCharismaTierAt(rank: number): CpredCharismaTier | null {
+  return cpredAbilityTierAt(CPRED_CHARISMA_TIERS, rank);
+}
+
+/**
+ * Czego wolno żądać od publiczności tej wielkości przy tej randze — albo null,
+ * gdy takiej publiczności Rocker jeszcze nie ma.
+ */
+export function cpredCharismaEffect(rank: number, audience: CpredCharismaAudience): string | null {
+  return cpredCharismaTierAt(rank)?.effects[audience] ?? null;
+}
+
+export type CpredCharismaProblem = 'NO_ABILITY' | 'NO_CROWD' | 'BAD_VALUE';
+
+export const CPRED_CHARISMA_PROBLEMS: Record<CpredCharismaProblem, string> = {
+  NO_ABILITY: 'Ta postać nie ma Zdolności Specjalnej Efekt Charyzmy.',
+  NO_CROWD: CPRED_CHARISMA_NO_CROWD,
+  BAD_VALUE: 'Nie ma takiej publiczności ani takiego zastosowania.',
+};
+
+/**
+ * Czy ten Test w ogóle wolno rzucić. Robienie nowych fanów nie pyta tabeli —
+ * pyta o nią tylko prośba, bo tylko ona jest „żądaniem", które musi być
+ * „adekwatne do aktualnego poziomu Efektu Charyzmy".
+ */
+export function cpredCharismaProblem(
+  rank: number | null,
+  audience: unknown,
+  purpose: unknown,
+): CpredCharismaProblem | null {
+  if (rank === null) return 'NO_ABILITY';
+  if (!(CPRED_CHARISMA_AUDIENCES as readonly unknown[]).includes(audience)) return 'BAD_VALUE';
+  if (!(CPRED_CHARISMA_PURPOSES as readonly unknown[]).includes(purpose)) return 'BAD_VALUE';
+  if (
+    purpose === 'favour' &&
+    cpredCharismaEffect(rank, audience as CpredCharismaAudience) === null
+  ) {
+    return 'NO_CROWD';
+  }
+  return null;
+}
+
+/** „Rocker nie może prosić tych fanów o tę samą przysługę przez tydzień". */
+export const CPRED_CHARISMA_REFUSAL_DAYS = 7;
+
+// ────────────────────── Znajomości (Fixer, s. 159–161) ──────────────────────
+
+export const CPRED_OPERATOR_ABILITY = 'Znajomości';
+
+/** „rzucasz CHA + Handel + Poziom […] Znajomości + 1k10" (s. 159). */
+export const CPRED_HAGGLE_SKILL_ID = 'trading';
+
+/**
+ * Jeden targ z drabiny. Sześć wierszy, po jednym na szczebel — „możesz dobić
+ * jednego targu o poziomie Znajomości **lub niższym**", więc to menu, a nie
+ * automat: Fixer rangi 9 wybiera spośród pięciu.
+ *
+ * `discount` niesie tylko te dwa, które VTT umie policzyć do końca (−10% i −20%
+ * przy zakupie). Pozostałe cztery opisują pieniądze, których w tym projekcie
+ * nie ma: szóstą sztukę hurtu, ratę za miesiąc, wynagrodzenie Ekipy i zapłatę
+ * za Zlecenie. Stoją w menu, bo Fixer wybiera z sześciu — menu z dwoma po cichu
+ * przepisałoby Rolę (ta sama decyzja, co przy Ulepszaniu z 30b).
+ */
+export interface CpredHaggleDeal {
+  id: string;
+  /** Najniższa ranga Znajomości, która pozwala dobić tego targu. */
+  level: number;
+  name: string;
+  text: string;
+  /** Procent zniżki przy zakupie; brak = targ, którego VTT nie liczy. */
+  discount?: number;
+}
+
+export const CPRED_HAGGLE_DEALS: readonly CpredHaggleDeal[] = [
+  {
+    id: 'percent10',
+    level: 1,
+    name: 'Dziesięć procent',
+    text: 'Sprzedajesz przedmiot o 10% drożej albo kupujesz go o 10% taniej.',
+    discount: 10,
+  },
+  {
+    id: 'sixthFree',
+    level: 3,
+    name: 'Szósta sztuka gratis',
+    text: 'Kupując 5 lub więcej sztuk tego samego produktu, szóstą dostajesz za darmo.',
+  },
+  {
+    id: 'crewRaise',
+    level: 5,
+    name: 'Podwyżka dla Ekipy',
+    text: 'Zleceniodawca podnosi wynagrodzenie każdego członka Ekipy o 20%.',
+  },
+  {
+    id: 'halfLater',
+    level: 7,
+    name: 'Pół teraz, pół za miesiąc',
+    text:
+      'Kupując Luksusowe lub Superluksusowe płacisz połowę od razu, resztę po miesiącu. ' +
+      'Niespłacona rata zamyka ten targ u wszystkich na zawsze.',
+  },
+  {
+    id: 'percent20',
+    level: 9,
+    name: 'Dwadzieścia procent',
+    text: 'Sprzedajesz przedmiot o 20% drożej albo kupujesz go o 20% taniej.',
+    discount: 20,
+  },
+  {
+    id: 'doublePay',
+    level: 10,
+    name: 'Podwójna zapłata',
+    text: 'Zleceniodawca Niebezpiecznego Zlecenia płaci każdemu uczestnikowi podwójnie.',
+  },
+];
+
+export function cpredHaggleDeal(id: string): CpredHaggleDeal | null {
+  return CPRED_HAGGLE_DEALS.find((deal) => deal.id === id) ?? null;
+}
+
+/** Targi w zasięgu tej rangi — „o poziomie Znajomości lub niższym". */
+export function cpredHaggleDeals(rank: number): CpredHaggleDeal[] {
+  return CPRED_HAGGLE_DEALS.filter((deal) => deal.level <= rank);
+}
+
+export interface CpredOperatorTier extends CpredAbilityTier {
+  /** „Układy i klienci: Miejscowy przywódca, szef gangu…" */
+  contacts: string;
+  /**
+   * Najwyższe pasmo cenowe zawsze osiągalne. `null` na szczeblu 5–6, bo ten
+   * jeden **nie drukuje pasma**: w jego miejscu stoi Nocny. Pasmo z niższego
+   * szczebla wtedy zostaje — patrz `cpredOperatorReach`.
+   */
+  reach: CostCategory | null;
+  /** Zdanie o Zasięgu tak, jak stoi w ramce (Nocny, Nocny Północny). */
+  reachText: string;
+  /** Targ, który ten szczebel otwiera — id z `CPRED_HAGGLE_DEALS`. */
+  dealId: string;
+  /** „Wazeliniarz" — w ile kultur Fixer umie się wtopić. */
+  chameleon: string;
+}
+
+export const CPRED_OPERATOR_TIERS: readonly CpredOperatorTier[] = [
+  {
+    id: 'operator-1-2',
+    min: 1,
+    max: 2,
+    page: 160,
+    contacts: 'Miejscowy przywódca, szef gangu, przedstawiciele miejscowych władz',
+    reach: 'everyday',
+    reachText: 'Zawsze znajdziesz kogoś z Tanimi i Codziennymi przedmiotami — choćby po kawałku.',
+    dealId: 'percent10',
+    chameleon: 'Znasz od podszewki kultury i grupy (w tym gangi) z najbliższej okolicy.',
+  },
+  {
+    id: 'operator-3-4',
+    min: 3,
+    max: 4,
+    page: 160,
+    contacts: 'Szef gangu z całego miasta, pomniejszy polityk, manager średniego szczebla',
+    reach: 'expensive',
+    reachText: 'Zawsze znajdziesz kogoś z przedmiotami Kosztownymi lub niższymi.',
+    dealId: 'sixthFree',
+    chameleon:
+      'Dopasujesz się do co najmniej jednej dodatkowej kultury; jej język zapisz jako Umiejętność na poziomie 4.',
+  },
+  {
+    id: 'operator-5-6',
+    min: 5,
+    max: 6,
+    page: 160,
+    contacts: 'Ważny w Mieście gracz, miejski polityk, lokalny celebryta',
+    reach: null,
+    reachText:
+      'Raz na miesiąc, razem z Fixerami o tym samym poziomie, organizujesz Nocny — na nim ' +
+      'znajdziesz przedmioty z każdej kategorii cenowej (s. 338).',
+    dealId: 'crewRaise',
+    chameleon:
+      'Dopasujesz się do co najmniej dwóch dodatkowych kultur (w sumie trzech); ich języki zapisz na poziomie 4.',
+  },
+  {
+    id: 'operator-7-8',
+    min: 7,
+    max: 8,
+    page: 161,
+    contacts: 'Dyrektor miejscowej Korporacji, burmistrz lub zarządca Miasta, słynny celebryta',
+    reach: 'veryExpensive',
+    reachText: 'Zawsze znajdziesz kogoś z przedmiotami Bardzo kosztownymi lub niższymi.',
+    dealId: 'halfLater',
+    chameleon:
+      'Dopasujesz się do co najmniej trzech dodatkowych kultur (w sumie czterech); ich języki zapisz na poziomie 4.',
+  },
+  {
+    id: 'operator-9',
+    min: 9,
+    max: 9,
+    page: 161,
+    contacts: 'Regionalny szef Korporacji, polityk stanowy, słynny celebryta',
+    reach: 'luxury',
+    reachText:
+      'Zawsze znajdziesz kogoś z przedmiotami Luksusowymi lub niższymi. Przy Nocnym umiesz ' +
+      'zaaranżować Nocny Północny — spotkanie przywódców przestępczego półświatka.',
+    dealId: 'percent20',
+    chameleon: 'Wtapiasz się nie tylko w kultury okolicy, ale i w Korporacje oraz agencje rządowe.',
+  },
+  {
+    id: 'operator-10',
+    min: 10,
+    max: 10,
+    page: 161,
+    contacts: 'Ważny światowy przywódca, szef dużej Korporacji, światowej sławy celebryta',
+    reach: 'superLuxury',
+    reachText: 'Zawsze znajdziesz kogoś z przedmiotami Superluksusowymi lub niższymi.',
+    dealId: 'doublePay',
+    chameleon:
+      'Wtapiasz się w prawie każdą grupę — także w tajne stowarzyszenia, sekty i grupy „tylko dla członków".',
+  },
+];
+
+export function cpredOperatorTierAt(rank: number): CpredOperatorTier | null {
+  return cpredAbilityTierAt(CPRED_OPERATOR_TIERS, rank);
+}
+
+/**
+ * Pasmo, do którego Fixer zawsze sięgnie.
+ *
+ * Szuka **w dół**, bo szczebel 5–6 nie drukuje pasma — w jego miejscu stoi
+ * Nocny. Fixer rangi 6 nie sięga więc gorzej niż rangi 4: zatrzymuje pasmo
+ * poprzedniego szczebla i dostaje Nocny na dokładkę. Odczyt w drugą stronę
+ * („szczebel bez pasma to brak Zasięgu") kazałby awansowi odebrać zdolność, co
+ * byłoby jedynym takim miejscem w całym podręczniku.
+ */
+export function cpredOperatorReach(rank: number): CostCategory | null {
+  for (let index = CPRED_OPERATOR_TIERS.length - 1; index >= 0; index -= 1) {
+    const tier = CPRED_OPERATOR_TIERS[index]!;
+    if (tier.min <= rank && tier.reach !== null) return tier.reach;
+  }
+  return null;
+}
+
+/**
+ * Targ dobity i czekający na wykorzystanie — jedna sztuka na karcie, bo
+ * „w czasie jednej transakcji można dobić tylko jednego targu" (s. 159).
+ *
+ * Zapisuje go wyłącznie serwer po udanym Targowaniu się (`character:haggle`),
+ * a zdejmuje albo zakup, albo ręka Fixera. Ten sam układ, co przy `eddies`
+ * z 23b: rzecz, która zmienia cenę, nie może mieć obok siebie drzwi bez rzutu.
+ */
+export interface CpredHaggleStruck {
+  dealId: string;
+  /** Procent zniżki przy najbliższym zakupie; 0 dla targów, których VTT nie liczy. */
+  discount: number;
+  /** Arytmetyka rzutu, dla dymka przy chipie: „19 vs 14". */
+  note: string;
+}
+
+export function readCpredHaggle(raw: unknown): CpredHaggleStruck | null {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return null;
+  const input = raw as Record<string, unknown>;
+  const deal = typeof input.dealId === 'string' ? cpredHaggleDeal(input.dealId) : null;
+  if (!deal) return null;
+  const discount =
+    typeof input.discount === 'number' && Number.isFinite(input.discount)
+      ? Math.max(0, Math.min(100, Math.round(input.discount)))
+      : (deal.discount ?? 0);
+  return {
+    dealId: deal.id,
+    discount,
+    note: typeof input.note === 'string' ? input.note.slice(0, 120) : '',
+  };
+}
+
+/** Cena po zniżce z dobitego targu — zaokrąglona w górę, na korzyść sprzedawcy. */
+export function cpredHaggledPrice(price: number, discount: number): number {
+  if (discount <= 0) return price;
+  return Math.max(0, Math.ceil((price * (100 - discount)) / 100));
+}
+
+export type CpredHaggleProblem = 'NO_ABILITY' | 'UNKNOWN_DEAL' | 'DEAL_ABOVE_RANK' | 'BAD_VALUE';
+
+export const CPRED_HAGGLE_PROBLEMS: Record<CpredHaggleProblem, string> = {
+  NO_ABILITY: 'Ta postać nie ma Zdolności Specjalnej Znajomości.',
+  UNKNOWN_DEAL: 'Nie ma takiego targu.',
+  DEAL_ABOVE_RANK: 'Ten targ jest powyżej poziomu twoich Znajomości.',
+  BAD_VALUE: 'Modyfikator drugiej strony jest poza zakresem.',
+};
+
+/** Ile wolno wpisać jako „CHA + Handel + Znajomości" drugiej strony. */
+export const CPRED_HAGGLE_OPPONENT_MAX = 30;
+
+export function cpredHaggleProblem(
+  rank: number | null,
+  dealId: unknown,
+  opponentBonus: number,
+): CpredHaggleProblem | null {
+  if (rank === null) return 'NO_ABILITY';
+  if (
+    !Number.isInteger(opponentBonus) ||
+    opponentBonus < 0 ||
+    opponentBonus > CPRED_HAGGLE_OPPONENT_MAX
+  ) {
+    return 'BAD_VALUE';
+  }
+  if (typeof dealId !== 'string') return 'UNKNOWN_DEAL';
+  const deal = cpredHaggleDeal(dealId);
+  if (!deal) return 'UNKNOWN_DEAL';
+  if (deal.level > rank) return 'DEAL_ABOVE_RANK';
+  return null;
+}
+
+// ───────────────────────── Moto (Nomada, s. 161–163) ─────────────────────────
+
+export const CPRED_MOTO_ABILITY = 'Moto';
+
+/**
+ * „Nomada dodaje poziom Moto do każdego wykonywanego Testu Prowadzenia pojazdów
+ * lądowych, Żeglowania, Pilotowania Statków Powietrznych, Naprawy pojazdów
+ * lądowych, Naprawy statków powietrznych i Naprawy pojazdów wodnych" (s. 161).
+ *
+ * Sześć Umiejętności i ani jednej więcej — trzy o prowadzeniu, trzy o naprawie.
+ * Bliźniak `CPRED_REPAIR_SKILL_IDS` z 30b i liczony tak samo: **wprost z karty**
+ * w planerze rzutu, żeby podgląd klienta i werdykt serwera nie mogły się
+ * rozjechać.
+ */
+export const CPRED_MOTO_SKILL_IDS: readonly string[] = [
+  'driving',
+  'pilot-sea-vehicle',
+  'pilot-air-vehicle',
+  'land-vehicle-tech',
+  'air-vehicle-tech',
+  'sea-vehicle-tech',
+];
+
+/** Poziom Moto tej karty, albo 0 — dodatek do sześciu Testów wyżej. */
+export function cpredSheetMoto(
+  data: Pick<CpredCharacterData, 'roleId' | 'roleAbilityRank'>,
+  registry: CpredRegistry,
+): number {
+  return cpredRoleAbilityRank(data, registry, CPRED_MOTO_ABILITY) ?? 0;
+}
+
+/** Który pojazd Taboru stoi w zasięgu którego poziomu (tabela s. 162). */
+export interface CpredFleetTier extends CpredAbilityTier {
+  vehicles: string;
+}
+
+export const CPRED_MOTO_FLEET: readonly CpredFleetTier[] = [
+  {
+    id: 'fleet-1-4',
+    min: 1,
+    max: 4,
+    page: 162,
+    vehicles: 'Samochód kompaktowy, żyrokopter, skuter wodny, standardowy motocykl',
+  },
+  {
+    id: 'fleet-5-6',
+    min: 5,
+    max: 6,
+    page: 162,
+    vehicles: 'Helikopter, samochód sportowy, motorówka',
+  },
+  { id: 'fleet-7-8', min: 7, max: 8, page: 162, vehicles: 'AV-4, łódź kabinowa, supermotocykl' },
+  { id: 'fleet-9-10', min: 9, max: 10, page: 162, vehicles: 'Aerozep, AV-9, supersamochód, jacht' },
+];
+
+export function cpredFleetTierAt(rank: number): CpredFleetTier | null {
+  return cpredAbilityTierAt(CPRED_MOTO_FLEET, rank);
+}
+
+/**
+ * „Zawsze, gdy Nomada podnosi poziom Zdolności Specjalnej Moto, może zrobić
+ * jedną z dwóch rzeczy: albo dodać do Taboru Rodziny standardowy pojazd […],
+ * albo zainstalować w jednym pojeździe Taboru […] ulepszenie" (s. 161) — więc
+ * wiersz jest jednego z dwóch rodzajów, a wierszy jest tyle, ile awansów.
+ */
+export const CPRED_FLEET_KINDS = ['vehicle', 'upgrade'] as const;
+export type CpredFleetKind = (typeof CPRED_FLEET_KINDS)[number];
+
+export const CPRED_FLEET_KIND_LABELS: Record<CpredFleetKind, string> = {
+  vehicle: 'Pojazd',
+  upgrade: 'Ulepszenie',
+};
+
+export interface CpredFleetRow {
+  id: string;
+  kind: CpredFleetKind;
+  name: string;
+  /** Kategoria wpisu — „równa wartości Moto lub niższa" (1…10). */
+  level: number;
+  notes: string;
+}
+
+export const CPRED_FLEET_NAME_MAX = 80;
+export const CPRED_FLEET_NOTES_MAX = 240;
+
+export type CpredFleetProblem = 'NO_ABILITY' | 'TOO_MANY' | 'LEVEL_ABOVE_RANK';
+
+export const CPRED_FLEET_PROBLEMS: Record<CpredFleetProblem, string> = {
+  NO_ABILITY: 'Ta postać nie ma Zdolności Specjalnej Moto.',
+  TOO_MANY: 'Tabor ma tyle wpisów, ile masz poziomów Moto — każdy awans to jeden.',
+  LEVEL_ABOVE_RANK: 'Ten wpis jest z kategorii wyższej niż twój poziom Moto.',
+};
+
+export function readCpredFleet(raw: unknown): CpredFleetRow[] {
+  if (!Array.isArray(raw)) return [];
+  const rows: CpredFleetRow[] = [];
+  for (const entry of raw.slice(0, CPRED_ROLE_ABILITY_RANK_MAX)) {
+    if (typeof entry !== 'object' || entry === null) continue;
+    const row = entry as Record<string, unknown>;
+    const id = typeof row.id === 'string' && row.id.length > 0 ? row.id : null;
+    const name = typeof row.name === 'string' ? row.name.trim().slice(0, CPRED_FLEET_NAME_MAX) : '';
+    if (!id || name.length === 0) continue;
+    const kind = (CPRED_FLEET_KINDS as readonly unknown[]).includes(row.kind)
+      ? (row.kind as CpredFleetKind)
+      : 'vehicle';
+    const level =
+      typeof row.level === 'number' && Number.isFinite(row.level)
+        ? Math.max(1, Math.min(CPRED_ROLE_ABILITY_RANK_MAX, Math.round(row.level)))
+        : 1;
+    rows.push({
+      id,
+      kind,
+      name,
+      level,
+      notes: typeof row.notes === 'string' ? row.notes.slice(0, CPRED_FLEET_NOTES_MAX) : '',
+    });
+  }
+  return rows;
+}
+
+/**
+ * Czy taki Tabor da się kupić awansami. Dwa warunki, oba wprost z jednego
+ * zdania podręcznika: wpisów najwyżej tyle, ile poziomów, i żaden wpis nie
+ * z kategorii wyższej niż poziom. Ta sama umowa, co przy Specjalizacjach z 30b —
+ * niezmiennik zamiast historii awansów.
+ */
+export function cpredFleetProblem(
+  rows: readonly CpredFleetRow[],
+  rank: number | null,
+): CpredFleetProblem | null {
+  if (rank === null) return rows.length === 0 ? null : 'NO_ABILITY';
+  if (rows.length > rank) return 'TOO_MANY';
+  if (rows.some((row) => row.level > rank)) return 'LEVEL_ABOVE_RANK';
+  return null;
+}
+
+/** „Oczekuje się też, że Nomada zapłaci 500 ed za tę usługę" (s. 162). */
+export const CPRED_MOTO_REPAIR_FEE = 500;
+
+/** Na poziomie 10: „ulepszać je, płacąc 1000 ed za każde ulepszenie" (s. 162). */
+export const CPRED_MOTO_UPGRADE_FEE = 1000;
+
+/** Poziom, na którym Nomada wchodzi do władz Rodziny i bierze cały Tabor. */
+export const CPRED_MOTO_ELDER_LEVEL = 10;
+
+// ───────────────────── Wiarygodność (Media, s. 151–153) ─────────────────────
+
+export const CPRED_CREDIBILITY_ABILITY = 'Wiarygodność';
+
+export interface CpredCredibilityTier extends CpredAbilityTier {
+  /** „Dostęp/Źródło" — z kim Media umie się skontaktować. */
+  access: string;
+  /** „Zasięgi" — do ilu odbiorców dociera materiał. */
+  audience: string;
+  /** „Rzetelność: Szansa N na 10, że odbiorcy uwierzą w twoje odkrycia". */
+  reliability: number;
+  /** „Efekt" — skala zmian, jakie publikacja powoduje. */
+  effect: string;
+}
+
+export const CPRED_CREDIBILITY_TIERS: readonly CpredCredibilityTier[] = [
+  {
+    id: 'credibility-1-2',
+    min: 1,
+    max: 2,
+    page: 152,
+    access: 'Miejscowy przywódca, szef gangu, przedstawiciele miejscowych władz',
+    audience: 'Tylko najbliższa okolica.',
+    reliability: 2,
+    effect:
+      'Zmiany niewielkie: mało znaczący złoczyńcy przestraszyli się i może nieco się zmienią.',
+  },
+  {
+    id: 'credibility-3-4',
+    min: 3,
+    max: 4,
+    page: 152,
+    access:
+      'Szef gangu z całego miasta, pomniejszy polityk, manager średniego szczebla, ktoś znany w sąsiedztwie',
+    audience: 'Jesteś dobrze znanym autorem lokalnego Kanału Aktualności albo Banku Danych.',
+    reliability: 3,
+    effect: 'Bezpośrednie zmiany: miejscowe płotki półświatka trafiają za kraty lub tracą władzę.',
+  },
+  {
+    id: 'credibility-5-6',
+    min: 5,
+    max: 6,
+    page: 152,
+    access: 'Ważny w Mieście gracz, miejski polityk, lokalny celebryta',
+    audience: 'Materiały docierają do wszystkich mieszkańców Miasta — Kanały Aktualności i TV.',
+    reliability: 4,
+    effect: 'Zmiany odmieniają Miasto: wysoko postawieni idą siedzieć, uchwala się nowe prawo.',
+  },
+  {
+    id: 'credibility-7-8',
+    min: 7,
+    max: 8,
+    page: 152,
+    access: 'Dyrektor miejscowej Korporacji, burmistrz lub zarządca Miasta, słynny celebryta',
+    audience: 'Materiały docierają do mieszkańców całego stanu. Jesteś pomniejszym celebrytą.',
+    reliability: 5,
+    effect: 'Zmiany w kilku miastach; średnie Korporacje i organizacje rządowe tracą władzę.',
+  },
+  {
+    id: 'credibility-9',
+    min: 9,
+    max: 9,
+    page: 152,
+    access: 'Regionalny szef Korporacji, polityk stanowy, słynny celebryta',
+    audience: 'Kojarzy cię wielu mieszkańców kraju — z ogólnokrajowego kanału informacyjnego.',
+    reliability: 6,
+    effect: 'Zmiany na obszarze całego kraju: padają duże Korporacje albo władze państwa.',
+  },
+  {
+    id: 'credibility-10',
+    min: 10,
+    max: 10,
+    page: 153,
+    access: 'Ważny światowy przywódca, szef dużej Korporacji, światowej sławy celebryta',
+    audience: 'Zna cię cały świat; ważne osoby przychodzą, gdy coś ma wyciec dyskretnie.',
+    reliability: 7,
+    effect:
+      'Zmiany odmieniają świat: padają rządy i Megakorporacje, powstają regulacje międzynarodowe.',
+  },
+];
+
+export function cpredCredibilityTierAt(rank: number): CpredCredibilityTier | null {
+  return cpredAbilityTierAt(CPRED_CREDIBILITY_TIERS, rank);
+}
+
+/** Test Rzetelności to jedna kość i nic więcej — „rzuć 1k10" (s. 151). */
+export const CPRED_RELIABILITY_DIE = 10;
+
+/**
+ * Dowody w materiale. Podręcznik drukuje dwie premie i zdanie „Te premie
+ * kumulują się": +1 za choćby jeden rzetelny i łatwy do zrozumienia dowód, +2
+ * za więcej niż cztery niepodważalne. Ponieważ materiał z pięcioma
+ * niepodważalnymi dowodami ma tym samym ten jeden rzetelny, trzeci stopień
+ * niesie sumę obu — i dlatego to jedna lista, a nie dwa niezależne pola.
+ */
+export const CPRED_PROOF_LEVELS = ['none', 'solid', 'irrefutable'] as const;
+export type CpredProofLevel = (typeof CPRED_PROOF_LEVELS)[number];
+
+export const CPRED_PROOF_BONUS: Record<CpredProofLevel, number> = {
+  none: 0,
+  solid: 1,
+  irrefutable: 3,
+};
+
+export const CPRED_PROOF_LABELS: Record<CpredProofLevel, string> = {
+  none: 'Bez twardych dowodów',
+  solid: 'Rzetelny, zrozumiały dowód (+1)',
+  irrefutable: 'Ponad 4 niepodważalne dowody (+1 i +2)',
+};
+
+/** Szansa „N na 10", że odbiorcy uwierzą — z rangi i z dowodów w materiale. */
+export function cpredReliabilityChance(rank: number, proof: CpredProofLevel): number {
+  const tier = cpredCredibilityTierAt(rank);
+  if (!tier) return 0;
+  return Math.max(0, Math.min(CPRED_RELIABILITY_DIE, tier.reliability + CPRED_PROOF_BONUS[proof]));
+}
+
+/** „Szansa 2 na 10" znaczy: 1 albo 2 na kości. Przy szansie 10 wierzą zawsze. */
+export function cpredAudienceBelieves(roll: number, chance: number): boolean {
+  return roll >= 1 && roll <= chance;
+}
+
+/**
+ * Pogłoski (s. 151). „Przynajmniej dwa razy na tydzień MG wykonuje potajemny
+ * Test twojej Wiarygodności + 1k10" — kolumna „Zasłyszane" to progi tego rzutu,
+ * kolumna „Aktywne" to PT zwykłego Testu Umiejętności, gdy Media szuka sam
+ * (Przeszukiwanie baz danych, Konwersacja, Przesłuchiwanie).
+ */
+export interface CpredRumourTier {
+  id: string;
+  name: string;
+  description: string;
+  /** PT potajemnego rzutu MG. */
+  passive: number;
+  /** PT Testu Umiejętności, gdy Media szuka aktywnie. */
+  active: number;
+}
+
+export const CPRED_RUMOUR_TIERS: readonly CpredRumourTier[] = [
+  {
+    id: 'vague',
+    name: 'Mglista pogłoska',
+    description: 'Absolutne minimum informacji — tyle, by ruszyć z poszukiwaniem prawdy.',
+    passive: 7,
+    active: 13,
+  },
+  {
+    id: 'typical',
+    name: 'Typowa pogłoska',
+    description: 'Na tyle wartościowa, że pozwala zrobić kolejny krok w śledztwie.',
+    passive: 9,
+    active: 15,
+  },
+  {
+    id: 'confirmed',
+    name: 'Sprawdzona pogłoska',
+    description: 'Jak typowa, ale z konkretami: nazwiska, miejsca, daty.',
+    passive: 11,
+    active: 17,
+  },
+  {
+    id: 'detailed',
+    name: 'Szczegółowa pogłoska',
+    description: 'Zawiera to, co po sprawdzeniu bywa materiałem dowodowym reportażu.',
+    passive: 13,
+    active: 21,
+  },
+];
+
+/** Ile razy w tygodniu MG rzuca ten Test — „przynajmniej dwa razy". */
+export const CPRED_RUMOUR_ROLLS_PER_WEEK = 2;
+
+/**
+ * Pogłoska, którą przynosi ten wynik — „ta z najwyższym przerzuconym PT".
+ *
+ * Remis zdaje, bo taka jest umowa całego projektu dla PT statycznych (decyzja
+ * MG z 28.08); podręcznik pisze tu „wyższy od", ale ogólna zasada Testu ze
+ * s. 130 mówi „równy lub wyższy" i to ona rządzi wszystkimi progami w VTT.
+ */
+export function cpredRumourHeard(total: number): CpredRumourTier | null {
+  let best: CpredRumourTier | null = null;
+  for (const tier of CPRED_RUMOUR_TIERS) if (total >= tier.passive) best = tier;
+  return best;
+}
+
+/**
+ * Czy Tabor Rodziny mieści się w poziomie Moto na tej karcie (etap 30d).
+ *
+ * Bliźniak `cpredSpecialtiesProblem` i z tego samego powodu: liczba wpisów
+ * zależy od rangi, a `applyCharacterPatch` rangi nie widzi — łata może ją
+ * podnieść, obniżyć albo nie wspomnieć o niej wcale. Liczy się więc na
+ * scalonej karcie, gdzie odpowiedź jest znana.
+ */
+export function cpredFleetSheetProblem(
+  data: Pick<CpredCharacterData, 'roleId' | 'roleAbilityRank' | 'fleet'>,
+  registry: CpredRegistry,
+): CpredFleetProblem | null {
+  return cpredFleetProblem(data.fleet, cpredRoleAbilityRank(data, registry, CPRED_MOTO_ABILITY));
+}

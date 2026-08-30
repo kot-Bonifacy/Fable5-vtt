@@ -25,12 +25,16 @@ import {
   cpredMedicineProblem,
   readCpredCombatAwareness,
   readCpredFabrication,
+  readCpredHaggle,
+  readCpredFleet,
   readCpredMedicine,
   readCpredTeam,
   CPRED_COMBAT_AWARENESS_PROBLEMS,
   CPRED_SPECIALTY_PROBLEMS,
   type CpredCombatAwareness,
   type CpredFabrication,
+  type CpredFleetRow,
+  type CpredHaggleStruck,
   type CpredMedicine,
   type CpredTeamMember,
 } from './roleability.js';
@@ -621,6 +625,30 @@ export interface CpredCharacterData {
    * roll — three prices, and a patch has no way to pay any of them.
    */
   team: CpredTeamMember[];
+  /**
+   * The Nomada's Tabor Rodziny (s. 161, stage 30d): one row per level of Moto,
+   * each either a vehicle the Family lends or an upgrade fitted to one of them.
+   * `[]` on every sheet whose Role has a different Special Ability.
+   *
+   * Rows, not prose, because the rulebook counts them — „Zawsze, gdy Nomada
+   * podnosi poziom […] może zrobić jedną z dwóch rzeczy" — and a count is
+   * exactly what a paragraph cannot be checked against. What they are *not* is
+   * a vehicle simulation: this project has no vehicles, so a row is a name, a
+   * band and a line of notes.
+   *
+   * Ordinary patch path, like the Specialties of 30b: a level-up has no Action
+   * to charge, so a separate event would be decoration.
+   */
+  fleet: CpredFleetRow[];
+  /**
+   * The Fixer's struck bargain waiting to be spent (s. 159, stage 30d), or null
+   * — „w czasie jednej transakcji można dobić tylko jednego targu", so one.
+   *
+   * Written **only** by `character:haggle` after a won opposed roll and cleared
+   * by the purchase that spends it: a discount with an unrolled door beside it
+   * is not a discount. Same bargain `eddies` made in 23b.
+   */
+  haggle: CpredHaggleStruck | null;
   /** skillId → level 1–10; untrained skills are simply absent. */
   skills: Record<string, number>;
   /**
@@ -813,6 +841,8 @@ export function createDefaultCharacterData(): CpredCharacterData {
     medicine: {},
     fabrication: {},
     team: [],
+    fleet: [],
+    haggle: null,
     skills: {},
     skillSpecialties: {},
     weapons: [],
@@ -1389,6 +1419,19 @@ function collectCharacterDataPatch(
       patch.team = readCpredTeam(input.team);
     }
   }
+  // Stage 30d: the Tabor's shape only. Whether the rank pays for this many
+  // rows is decided against the merged sheet (`cpredFleetProblem`), for the
+  // same reason the three purses above stop short — the rank may not be here.
+  if ('fleet' in input) {
+    if (!Array.isArray(input.fleet)) {
+      issues.push(issue('fleet', 'Tabor Rodziny musi być listą.'));
+    } else {
+      patch.fleet = readCpredFleet(input.fleet);
+    }
+  }
+  // A struck bargain never arrives by patch — `character:update` refuses one
+  // that carries it — but an old sheet read back from the database does.
+  if ('haggle' in input) patch.haggle = readCpredHaggle(input.haggle);
   if ('skills' in input) {
     const skills = validateSkills(input.skills, registry, issues);
     if (skills) patch.skills = skills;

@@ -22,6 +22,7 @@ import {
   cpredFieldRepairMinutes,
   cpredSheetFabrication,
   cpredRoleAbilityRank,
+  cpredFleetSheetProblem,
   cpredSpecialtiesProblem,
   createDefaultCharacterData,
   describeCombatAwareness,
@@ -176,6 +177,10 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
       // replacing costs 200 ed and a Loyalty Test is the GM's — three prices,
       // and a sheet patch has no way to pay any of them.
       if (sheet.team !== undefined) throw new RealtimeError('FORBIDDEN');
+      // Stage 30d: nor does a struck bargain. It changes what a purchase costs,
+      // and a discount reachable without the opposed roll that buys it is a
+      // discount nobody rolled for — the same door `eddies` closed in 23b.
+      if (sheet.haggle !== undefined) throw new RealtimeError('FORBIDDEN');
       const current = parseCharacterData(character.data, deps.ctx.cpred);
       const merged = mergeCharacterData(current, sheet);
       // Stage 30b: the two Specialty purses stay on this path (a level-up has
@@ -184,6 +189,11 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
       // so raising the rank and spending the new points in one patch works.
       const specialties = cpredSpecialtiesProblem(merged, deps.ctx.cpred);
       if (specialties !== null) throw new RealtimeError(specialties);
+      // Stage 30d: the Nomada's Tabor is counted the same way and for the same
+      // reason — „jedna z dwóch rzeczy" per level is a count, and a count needs
+      // the rank the patch may have just changed.
+      const fleet = cpredFleetSheetProblem(merged, deps.ctx.cpred);
+      if (fleet !== null) throw new RealtimeError(fleet);
       data.data = JSON.stringify(merged);
     }
 

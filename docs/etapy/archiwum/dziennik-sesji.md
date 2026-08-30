@@ -7,6 +7,88 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 29.08 (czwarta) — etap 30b: Medycyna Medyka i Twórca Technika
+
+**Zlecenie MG:** kontynuować budowę; z przedstawionych opcji wybór padł na **30b**, a Ulepszanie
+miało wejść w wariancie „**tylko to, co domykalne dziś**" (reszta zapisana z powodem).
+
+**Opis etapu 30b miał trzy błędy — wszystkie policzone na stronie.** (a) „Medycyna działa tak
+samo" jak Twórca **nie jest prawdą**: Technik przy awansie dostaje **po punkcie w dwóch różnych**
+Specjalizacjach (s. 147), Medyk **jeden punkt w jednej** (s. 149) — sakiewki różnią się
+dwukrotnie. (b) Specjalizacje Medycyny nazywają się Chirurgia, **Technologia Medyczna
+(Farmaceutyki)** i **Technologia Medyczna (Obsługa kriosystemów)**, nie „Kriosystemy,
+Farmaceutyka". (c) Ulepszanie ma **dziesięć** skutków, nie jedenaście. Poprawki są w pliku etapu.
+
+**Jedna maszyneria na obie Zdolności — i to jest cały powód, dla którego siedzą w jednym etapie.**
+`roleability.ts` dostał sekcję Specjalizacji: definicja (nazwa, słowa podręcznika, własny sufit,
+strona) plus dwie liczby reguł (`perRank`, `across`). Twórca to `{2, 2}`, Medycyna `{1, 1}` — i to
+jedyna różnica w kodzie. Panel `SpecialtyPanel.tsx` obsługuje obie, więc na pytanie „ile punktów
+mi zostało" jest jedna odpowiedź, a nie dwie mogące się rozjechać.
+
+**„Po punkcie w dwóch różnych Specjalizacjach" nie wymaga pamiętania historii awansów.** Przydział
+da się kupić awansami wtedy i tylko wtedy, gdy suma ≤ `poziom × perRank`, a żadna Specjalizacja nie
+przekracza `poziomu` — te dwa warunki są **równoważne** legalnej historii, więc VTT nie trzyma
+listy dawnych wyborów. Przydział niedokończony jest legalny celowo: to karta świeżo po awansie,
+czyli dokładnie ten moment, dla którego panel istnieje („Do rozdzielenia: 2 z 8").
+
+**Przydział jedzie zwykłą łatą karty — inaczej niż Zmysł Walki z 30a.** Tam zapis kosztuje Akcję,
+więc musiał mieć własne zdarzenie; tutaj awans nie ma czym płacić, więc zamykanie drogi byłoby
+dekoracją. Rozmiar sakiewki zależy jednak od rangi, której `applyCharacterPatch` nie widzi —
+`character:update` woła więc `cpredSpecialtiesProblem` **na scalonej karcie**, tuż przed zapisem.
+Dzięki temu podniesienie rangi i wydanie nowych punktów mieszczą się w jednej łacie.
+
+**Leczenie Ran Krytycznych to była dziura, nie brakująca ozdoba.** Do tej sesji ranę dawało się
+z karty **tylko skasować** — jeden ✕, bez rzutu i bez PT — więc zdanie, na którym stoi cała Rola
+Medyka („Chirurgia jest dostępna tylko dla Medyków"), nazywało drzwi bez pokoju za nimi. Doszedł
+rodzaj rzutu `treatInjury` zbudowany dokładnie jak „Ustabilizowanie" z 14b: PT czyta się na
+serwerze **z rany, którą nosi cel**, gałąź wybiera leczący, a udany rzut zdejmuje ranę — także
+**statyście**, bo od 29.08 statysta rany nosi.
+
+**Zdania z tabeli parsujemy, zamiast dokładać pole do kompendium.** „Ratownictwo medyczne PT 15
+lub Chirurgia PT 13" czyta `cpredParseCare`; gałąź bez własnego PT dziedziczy je po następnej
+(„Ratownictwo medyczne **lub** Chirurgia PT 13"), „Nd." to brak drogi, a „Łatanie trwale usuwa
+Efekt tej Rany" oddaje robotę kolumnie obok. Dwa powody, oba z wcześniejszych sesji: wygenerowane
+kompendium bywa **starsze niż parser**, więc nowe pole byłoby puste dokładnie tam, gdzie się gra —
+i rana wpisana ręką MG działa wtedy tak samo jak drukowana. Zdania, którego parser nie rozumie,
+VTT nie zamienia w rzut: guzik się nie pojawia, proza zostaje.
+
+**Chirurgia i Technologia Medyczna nie trafiły do `skills.json` i trafić nie mogą.** Podręcznik ich
+w tabeli Umiejętności nie drukuje, bo „dostępna jest tylko Medykom poprzez ich Zdolność Specjalną"
+— ich poziom jest **funkcją przydziału**, a nie liczbą, którą ktoś wpisuje. Siedzą więc w kodzie
+(`CPRED_MEDICINE_SKILLS`), poziom liczy `cpredMedicineSkillLevel`, a panel drukuje wiersz
+„Chirurgia 6 · Technologia Medyczna 3", bo inaczej gracz nie miałby gdzie go przeczytać.
+
+**Z dziesięciu skutków Ulepszania VTT liczy jeden — i lista i tak jest pełna.** „+1 OB" ma guzik
+przy pancerzu (podnosi `sp` i `spCurrent`, stempluje wiersz, drugi raz się nie da). Pozostałe
+dziewięć stoi wypisane w panelu Twórcy jako zapis dla stołu: gniazda Dodatków to etap 31, **jakości
+broni nic w VTT nie czyta** (`quality` siedzi w kompendium i nie wchodzi do żadnego rachunku),
+pojazdów nie ma. Menu z jednym skutkiem po cichu przepisałoby Rolę.
+
+**Prowizorka nie ma odliczania i to jest decyzja, nie skrót.** „10 minut na poziom" to sześćdziesiąt
+rund na poziom — dłużej, niż trwała którakolwiek walka w tym projekcie; zegar, który nigdy nie bije,
+to zegar, którego nikt nie czyta. Wiersz pancerza pamięta starte OB (`fieldRepair.restoredFrom`),
+a guzik oddaje je, gdy MG uzna, że prowizorka puściła — ta sama umowa, którą 16h zawarła z efektami
+poza walką. Sama Prowizorka kosztuje Akcję, więc ma własne zdarzenie (`character:field-repair`).
+
+**Naprawa dokłada się do siedmiu Testów Technicznych i tylko do nich.** „Chyba że dany Test wiąże
+się z inną Specjalizacją Twórcy" (s. 147) znaczy, że Wytwarzanie i Wynajdywanie **nie** wchodzą do
+Testów z tabeli Umiejętności — mają własne Testy, do których dokładają siebie. Bonus liczy się
+z samej karty (jak Precyzyjny atak w 30a), więc podgląd klienta i werdykt serwera dochodzą do tej
+samej liczby bez kontekstu.
+
+**Naprawione przy okazji: `attacks.test.ts` migotał z trzech niezależnych powodów.** (a) **W trwającej
+walce jeden strzał wysyła DWIE wiadomości czatu** — najpierw wpis dziennika Akcji, potem kartę
+rzutu; `once('chat:message')` łapał tę pierwszą i pętla meldowała „30 strzałów i ani jednego
+trafienia" mimo trafień w bród. (b) Magazynek pistoletu wysychał, a `weapon:reload` w walce kosztuje
+Akcję i sam potrafi odmówić — uzupełnia się go teraz łatą karty. (c) Ten sam rzut obrażeń potrafi
+wylosować ranę z tabeli, więc raz na kilkadziesiąt przebiegów Celowanie trafiało w nogę **już
+złamaną** i słusznie nie dokładało nic. Dziesięć przebiegów pod rząd czysto; wnioski w pułapkach.
+
+**Testy:** 1514 w `shared` (+33), **826** na serwerze (+7), 62 u klienta — zielone. ESLint
+i Prettier czyste, `pnpm -r build` przechodzi. **Nic z tej sesji nie było oglądane
+w przeglądarce** — sześć punktów do odklikania stoi na górze `zaleglosci.md`, a do oględzin trzeba
+postaci z Rolą **Medyk** i **Technik** (żadna karta na scenach testowych ich nie ma).
+
 ### Sesja 29.08 (trzecia) — etap 30a: Zdolności Specjalne Ról i Zmysł Walki Solo
 
 **Zlecenie MG:** wybrać etap z listy nierozpoczętych; wybór padł na **30**, z podziałem

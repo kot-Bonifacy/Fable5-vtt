@@ -113,8 +113,12 @@ import {
   cpredTreatmentOptions,
   describeCareOptions,
   CPRED_BACKUP_ABILITY,
+  CPRED_CHARISMA_ABILITY,
+  CPRED_CREDIBILITY_ABILITY,
   CPRED_FABRICATION_ABILITY,
   CPRED_MEDICINE_ABILITY,
+  CPRED_MOTO_ABILITY,
+  CPRED_OPERATOR_ABILITY,
   CPRED_TEAMWORK_ABILITY,
 } from '@vtt/shared';
 import { apiUpload } from '../api.js';
@@ -124,6 +128,10 @@ import { CombatAwarenessPanel } from './CombatAwarenessPanel.js';
 import { SpecialtyPanel } from './SpecialtyPanel.js';
 import { BackupPanel } from './BackupPanel.js';
 import { TeamPanel } from './TeamPanel.js';
+import { CharismaPanel } from './CharismaPanel.js';
+import { OperatorPanel } from './OperatorPanel.js';
+import { MotoPanel } from './MotoPanel.js';
+import { CredibilityPanel } from './CredibilityPanel.js';
 import { TreatInjury } from './TreatInjury.js';
 import { CyberwareBody } from './CyberwareBody.js';
 import { FacedownFromSheet } from './FacedownLauncher.js';
@@ -599,6 +607,30 @@ function IdentityColumn({
         {cpredRoleAbilityRank(data, registry, CPRED_TEAMWORK_ABILITY) !== null && (
           <div className="cp-field cp-awareness">
             <TeamPanel characterId={character.id} />
+          </div>
+        )}
+        {/* Etap 30d: cztery ostatnie Zdolności — Rockera, Fixera, Nomady
+            i Media. Żadna nie dotyka walki, więc żadna nie ma domu w pasku
+            akcji: stoją tylko tutaj, pod wierszem Zdolności, jak sześć
+            wcześniejszych. */}
+        {cpredRoleAbilityRank(data, registry, CPRED_CHARISMA_ABILITY) !== null && (
+          <div className="cp-field cp-awareness">
+            <CharismaPanel characterId={character.id} />
+          </div>
+        )}
+        {cpredRoleAbilityRank(data, registry, CPRED_OPERATOR_ABILITY) !== null && (
+          <div className="cp-field cp-awareness">
+            <OperatorPanel characterId={character.id} />
+          </div>
+        )}
+        {cpredRoleAbilityRank(data, registry, CPRED_MOTO_ABILITY) !== null && (
+          <div className="cp-field cp-awareness">
+            <MotoPanel characterId={character.id} />
+          </div>
+        )}
+        {cpredRoleAbilityRank(data, registry, CPRED_CREDIBILITY_ABILITY) !== null && (
+          <div className="cp-field cp-awareness">
+            <CredibilityPanel characterId={character.id} />
           </div>
         )}
         <div className="cp-field cp-notes">

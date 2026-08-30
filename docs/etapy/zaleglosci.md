@@ -8,6 +8,29 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
 
 ## Pozycje
 
+- **Etap 30d nie był oglądany w przeglądarce.** Mechanika jedzie w testach (38 nowych
+  w `shared`, 13 na serwerze), ale żadnego z tych czterech paneli nikt nie kliknął. Do
+  sprawdzenia — potrzebne postaci z Rolą **Rocker**, **Fixer**, **Nomada** i **Media** (na
+  scenach testowych nie ma żadnej): (1) **panel Efektu Charyzmy** — przełącznik „Zrób z nich
+  fanów / Poproś fanów o przysługę", trzy wiersze z PT 8/10/12, wiersz „Duża grupa" wyszarzony
+  przy randze ≤2 zdaniem „To żart, prawda?"; (2) **karta rzutu Rockera** — „Fani to zrobią /
+  Odmowa" z PT i zdaniem z tabeli, a przy porażce z informacją o tygodniu; (3) **panel
+  Znajomości** — chip dobitego targu z ✕, pole „Druga strona", sześć wierszy targów rosnących
+  z rangą; (4) **zakup z targiem** — cena o 10% niższa, wiersz „Targ: … −10% · cena z katalogu"
+  na karcie ekonomii i chip znikający po zakupie; (5) **panel Moto** — wiersz „+N do Testów:
+  Prowadzenie…", lista Taboru z guzikiem „Dołóż wpis" gasnącym po wyczerpaniu awansów;
+  (6) **rzut Prowadzeniem** — „Moto N" w rozbiciu karty rzutu; (7) **panel Wiarygodności** —
+  wybór dowodów zmieniający szansę w nagłówku, guzik „Publikuj" i guzik „Pogłoski" **widoczny
+  tylko dla MG**; (8) **karta Pogłosek** — szeptem, z nazwą pobitego progu.
+
+- **Ustabilizowanie i Leczenie porównują `>`, a nie `>=`.** Decyzja MG z 28.08 („remis w teście
+  na PT to sukces") objęła trzy wywołania — pociski bez obrażeń, efekty stref i wypatrywanie
+  strefy — ale `character-rolls.ts` liczy `result.total > plan.stabilize.dv` i tak samo dla
+  `treatInjury`, cytując s. 165 („wynik Testu jest **wyższy** od PT"). Dwa miejsca w jednym
+  pliku czytają ten sam próg inaczej. Etap 30d dołożył Efekt Charyzmy z `>=`, więc rozjazd jest
+  teraz trójstronny. Do rozstrzygnięcia jednym ruchem, razem z pierwszym etapem dotykającym
+  14b/30b — nie zmieniane w 30d, bo to zmiana zachowania cudzego etapu.
+
 - **Etap 30c nie był oglądany w przeglądarce.** Mechanika jedzie w testach (38 nowych
   w `shared`, 19 na serwerze), ale żadnego z tych ekranów nikt nie kliknął. Do sprawdzenia —
   potrzebne postaci z Rolą **Stróż Prawa** i **Korpo** (na scenach testowych nie ma żadnej):

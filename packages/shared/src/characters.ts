@@ -170,6 +170,36 @@ export interface CharacterTeamLoyaltyPayload {
   dismiss?: boolean;
 }
 
+/**
+ * Client → server payload of `character:haggle` (stage 30d).
+ *
+ * „Targowanie się to zdolność dobicia targu. Gdy z kimś się targujesz, rzucasz
+ * CHA + Handel + Poziom […] Znajomości + 1k10 przeciw rzutowi przeciwnika"
+ * (s. 159) — two rolls, and a struck bargain that changes what the next
+ * purchase costs. Both are prices a sheet patch has no way to pay, so this
+ * leaves the patch path exactly as `eddies` and the Korpo's roster did.
+ */
+export interface CharacterHagglePayload {
+  characterId: string;
+  /**
+   * Which bargain is being struck, as an id of `CPRED_HAGGLE_DEALS`. The choice
+   * is the Fixer's („o poziomie Znajomości **lub niższym**"), so it travels
+   * rather than being derived from the rank. Absent when the Fixer is dropping
+   * a struck bargain instead of making one.
+   */
+  dealId?: string;
+  /**
+   * The other side's own CHA + Handel + Znajomości, as one number the GM names.
+   * Their d10 is rolled here — a merchant is fiction, not a sheet, and asking
+   * the GM for three separate numbers would be asking three times for one.
+   */
+  opponentBonus?: number;
+  /** Dice gesture, so the roll lands on chat like any other (stage 08). */
+  gesture?: RollGesture;
+  /** Drop the bargain waiting on the sheet; no roll, no card. */
+  clear?: boolean;
+}
+
 /** Client → server payload of `character:delete` (owner or GM). */
 export interface CharacterIdPayload {
   characterId: string;

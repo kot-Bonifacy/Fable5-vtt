@@ -2,6 +2,7 @@ import { io, type Socket } from 'socket.io-client';
 import type {
   AiAskPayload,
   CpredCombatAwarenessProblem,
+  CpredHaggleProblem,
   CpredTeamProblem,
   AiChunkBroadcast,
   AiDoneBroadcast,
@@ -192,6 +193,8 @@ import {
   CHAT_COMMANDS_HELP,
   CPRED_ATTACK_PROBLEM_MESSAGES,
   CPRED_COMBAT_AWARENESS_PROBLEMS,
+  CPRED_FLEET_PROBLEMS,
+  CPRED_HAGGLE_PROBLEMS,
   CPRED_TEAM_PROBLEMS,
   CPRED_FACEDOWN_PROBLEM_MESSAGES,
   CPRED_GRAPPLE_PROBLEM_MESSAGES,
@@ -2554,6 +2557,48 @@ export function teamErrorText(code: string): string {
     default:
       return combatErrorText(code);
   }
+}
+
+/**
+ * Targowanie się (etap 30d, s. 159).
+ *
+ * `opponentBonus` to jedna liczba, którą podaje MG: CHA + Handel + Znajomości
+ * drugiej strony. Jej kość spada na serwerze obok kości Fixera, bo sprzedawca
+ * jest fikcją, a nie kartą — pytanie o trzy liczby osobno byłoby pytaniem
+ * trzy razy o jedno.
+ */
+export async function strikeHaggle(
+  characterId: string,
+  dealId: string,
+  opponentBonus: number,
+  gesture?: RollGesture,
+): Promise<{ ok: boolean; won?: boolean }> {
+  const ack = await emitSceneAck<{ won: boolean; dealId: string | null }>('character:haggle', {
+    characterId,
+    dealId,
+    opponentBonus,
+    ...(gesture ? { gesture } : {}),
+  });
+  if (!ack.ok) {
+    useChatStore.getState().addNote(haggleErrorText(ack.error));
+    return { ok: false };
+  }
+  return { ok: true, won: ack.data?.won ?? false };
+}
+
+/** Fixer zdejmuje dobity targ z karty — bez rzutu i bez karty na czacie. */
+export async function dropHaggle(characterId: string): Promise<void> {
+  const ack = await emitSceneAck<unknown>('character:haggle', { characterId, clear: true });
+  if (!ack.ok) useChatStore.getState().addNote(haggleErrorText(ack.error));
+}
+
+/** Polskie zdania dla odmów Targowania się i Taboru — te same, co w silniku. */
+export function haggleErrorText(code: string): string {
+  if (code in CPRED_HAGGLE_PROBLEMS) return CPRED_HAGGLE_PROBLEMS[code as CpredHaggleProblem];
+  if (code in CPRED_FLEET_PROBLEMS) {
+    return CPRED_FLEET_PROBLEMS[code as keyof typeof CPRED_FLEET_PROBLEMS];
+  }
+  return combatErrorText(code);
 }
 
 /** Polish sentences for the refusals `character:combat-awareness` can return. */

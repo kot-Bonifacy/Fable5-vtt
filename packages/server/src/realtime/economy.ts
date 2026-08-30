@@ -17,6 +17,8 @@ import {
   ITEM_ROWS_MAX,
   LEDGER_KIND_LABELS,
   ROLE_GM,
+  cpredHaggleDeal,
+  cpredHaggledPrice,
   entryPrice,
   formatEddies,
   formatLedgerAmount,
@@ -233,8 +235,18 @@ export const economyBuyEvent = defineEvent<EconomyBuyPayload, { balance: number 
       requireUnlockedTier(shopTierOf(entry), await campaignShopTier(deps.ctx.prisma, campaign.id));
     }
 
-    const price = resolvePrice(entry, payload?.price, user);
+    const listed = resolvePrice(entry, payload?.price, user);
     const data = parseCharacterData(character.data, deps.ctx.cpred);
+
+    // Stage 30d: a bargain the Fixer already struck („kupujesz go o 10%
+    // taniej", s. 160). It is spent by this purchase whether or not it was the
+    // purchase the haggle was about — „w czasie jednej transakcji można dobić
+    // tylko jednego targu", so one transaction is exactly what it is worth.
+    // Only the two deals with a percentage reach this far; the other four
+    // describe money this project does not have and sit on the sheet until the
+    // Fixer drops them by hand.
+    const struck = data.haggle && data.haggle.discount > 0 ? data.haggle : null;
+    const price = struck ? cpredHaggledPrice(listed, struck.discount) : listed;
 
     const resolved =
       entry.category === 'weapon'
@@ -251,12 +263,16 @@ export const economyBuyEvent = defineEvent<EconomyBuyPayload, { balance: number 
 
     // Goods first, in the same write as the money: `applyBalance` saves the
     // sheet it is handed, so the row and the payment cannot come apart.
-    const patch: Partial<CpredCharacterData> =
-      purchased.list === 'weapons'
+    const patch: Partial<CpredCharacterData> = {
+      ...(purchased.list === 'weapons'
         ? { weapons: [...data.weapons, purchased.row] }
         : purchased.list === 'armor'
           ? { armor: [...data.armor, purchased.row] }
-          : { gear: [...data.gear, purchased.row] };
+          : { gear: [...data.gear, purchased.row] }),
+      // The bargain leaves the sheet in the same write that spends it, so a
+      // second purchase cannot ride the same roll.
+      ...(struck ? { haggle: null } : {}),
+    };
     const withItem = mergeCharacterData(data, patch);
     const updated = await applyBalance(
       deps,
@@ -273,7 +289,18 @@ export const economyBuyEvent = defineEvent<EconomyBuyPayload, { balance: number 
       user,
       {
         title: `${LEDGER_KIND_LABELS.purchase} — ${entry.name}`,
-        lines: [ledgerLine(character.name, entry.name, -price, updated.eddies)],
+        lines: [
+          ledgerLine(character.name, entry.name, -price, updated.eddies),
+          // The discount gets its own line rather than a quieter price: a Fixer
+          // has to be able to see that the targ they rolled for was spent here.
+          ...(struck
+            ? [
+                `Targ: ${cpredHaggleDeal(struck.dealId)?.name ?? 'Znajomości'} −${
+                  struck.discount
+                }% · cena z katalogu ${formatEddies(listed)} ed`,
+              ]
+            : []),
+        ],
       },
       [character.ownerId],
     );

@@ -300,3 +300,51 @@ test; zdanie po polsku istnieje dla klienta, który by o tej blokadzie nie wiedz
   wypisane w panelu jako zapis dla stołu. Czynsz i standard życia liczy Poziom życia z 23b,
   a „nie płacąc czynszu" to zdanie, które stosuje MG — rabat, którego rozliczenie miesięczne
   nie ma jak zgadnąć (któremu Poziomowi życia odpowiada konap pracodawcy?).
+
+- **Etap 30d — Zasięg Fixera nie przebija poziomu sklepu (decyzja MG, 30.08).** RAW mówi „Zawsze
+  potrafisz znaleźć kogoś z przedmiotami z kategorii X lub niższej […] nawet jeśli nie da się ich
+  inaczej dostać" (s. 160), a poziom sklepu z 23b jest **mechanizmem kampanii, nie zasadą
+  podręcznika** — to MG odblokowuje pasma z czasem. Postawione naprzeciw siebie wygrywa MG:
+  Zasięg stoi w panelu jako drabina do czytania przy stole, a katalog rządzi się poziomem
+  kampanii. Do sklepu wchodzi za to **Targowanie się**.
+
+- **Etap 30d — z sześciu targów VTT liczy dwa.** −10% (poziom 1–2) i −20% (poziom 9) to jedyne,
+  które da się odjąć od ceny; udany rzut odkłada targ na kartę (`CpredCharacterData.haggle`),
+  a najbliższy zakup go zdejmuje z ceny i z karty. Pozostałe cztery — szósta sztuka gratis, pół
+  teraz i pół za miesiąc, +20% dla Ekipy, podwójna zapłata za Zlecenie — opisują pieniądze,
+  których projekt nie prowadzi (hurt, raty, wynagrodzenie za Zlecenie). Stoją w menu, bo Fixer
+  wybiera z sześciu, a menu z dwoma po cichu przepisałoby Rolę (ta sama decyzja, co przy
+  Ulepszaniu z 30b).
+
+- **Etap 30d — Zasięg na szczeblu 5–6 dziedziczy pasmo z niższego.** Ramka „ZNAJOMOŚCI –
+  POZIOMY 5 I 6" jako jedyna **nie drukuje kategorii cenowej**: w jej miejscu stoi Nocny.
+  `cpredOperatorReach` szuka więc w dół, bo odczyt „szczebel bez pasma to brak Zasięgu" kazałby
+  awansowi **odebrać** zdolność — czego w całym podręczniku nie robi żaden inny awans.
+
+- **Etap 30d — nieudana prośba Rockera nie ma odliczania.** „Rocker nie może prosić tych fanów
+  o tę samą przysługę przez tydzień" (s. 144) mierzy się w tygodniach, a VTT nie ma kalendarza
+  ani pojęcia „ci fani". Zdanie stoi na karcie rzutu i w podpowiedzi panelu; pilnuje go MG. Ta
+  sama decyzja, którą 30b podjęła wobec Prowizorki („10 minut na poziom").
+
+- **Etap 30d — Test Rzetelności nie jest Testem.** Nie ma w nim Cechy, Umiejętności, kary za rany
+  ani eksplodującej dziesiątki, a Szczęścia użyć nie wolno wprost z podręcznika (s. 152). Ranga
+  kupuje **szansę** („2 na 10"), nie modyfikator, więc kość leci goła i porównuje się `1k10 ≤
+szansa` — kształt Rzutu na Śmierć, nie Testu na PT.
+
+- **Etap 30d — Wiarygodność nie dotyka Reputacji z 23c.** Opis etapu zapowiadał styk, ale
+  podręcznik go nie ma: Rzetelność jest szansą na to, że **odbiorcy uwierzą publikacji**,
+  a Reputacja modyfikuje Konfrontację i to, czy ktoś cię rozpozna. Dwie różne liczby o dwóch
+  różnych rzeczach; sklejenie ich byłoby zasadą domową, nie odczytem.
+
+- **Etap 30d — pogłoski przynosi rzut, treść pisze MG.** Guzik „Pogłoski" rzuca Wiarygodność +
+  1k10 i mówi, **który** próg został pobity (7/9/11/13 → mglista, typowa, sprawdzona,
+  szczegółowa). Czym pogłoska jest, VTT nie wymyśla — to materiał kampanii, który mieszka
+  w dzienniku z 24b i w bazie wiedzy z 19b. Remis na progu zdaje, jak przy każdym innym PT
+  statycznym (decyzja z 28.08), choć ramka pisze tu „wyższy od".
+
+- **Etap 30d — Tabor Rodziny to lista, a nie pojazdy.** Projekt nie ma pojazdów, więc wiersz
+  Taboru jest nazwą, kategorią i notatką. Liczone są dokładnie te dwie rzeczy, które liczy
+  podręcznik: wpisów jest najwyżej tyle, ile poziomów Moto, i żaden nie jest z kategorii wyższej
+  niż poziom. Ulepszenia pojazdów z s. 163–165 (kilkadziesiąt pozycji) zostają w podręczniku:
+  bez pojazdów nie miałyby czego ulepszać, a wiersz Taboru „Opancerzenie kadłuba" mówi przy stole
+  dokładnie to samo.

@@ -5880,6 +5880,50 @@ body.is-resizing {
   line-height: 1.35;
 }
 
+/* Etap 30d: cztery Zdolności bez walki. Trzy z nich potrzebują tylko rzeczy,
+   które arkusz Zmysłu Walki już ma; własne są dwa przełączniki, jedno pole na
+   liczbę od MG i wiersz Taboru, który jest formularzem, a nie odczytem. */
+.awareness-toggle {
+  padding: 0.1rem 0.45rem;
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.awareness-toggle.is-on {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.haggle-opponent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.haggle-opponent input {
+  width: 4rem;
+  text-align: right;
+}
+
+.haggle-struck {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+}
+
+/* Wiersz Taboru to cztery pola, nie odczyt: rodzaj, nazwa, kategoria, kosz. */
+.fleet-row {
+  grid-template-columns: auto 1fr 3.2rem auto;
+}
+
+.fleet-row input[type='number'] {
+  width: 100%;
+  text-align: right;
+}
+
 /* Kto jest w drodze (etap 30c). Pod kolejką, nie w niej: wiersz nie ma
    inicjatywy ani tury, więc nie może wyglądać jak uczestnik. */
 .combat-reinforcements {
