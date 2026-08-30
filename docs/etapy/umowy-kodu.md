@@ -489,3 +489,24 @@ Umiejętności, bez kary za rany, bez eksplodującej dziesiątki i z `checkRule:
 Rzut na Śmierć i tak jedzie Test Rzetelności z 30d (`plan.reliability` niesie szansę, pod którą
 ma się zmieścić goła kość). Wszystko, co **jest** Testem, przechodzi przez `finishCheck` — także
 Efekt Charyzmy, który ma w rozbiciu **samą rangę** zamiast pary Cecha + Umiejętność.
+
+**Cena poziomu** mieszka wyłącznie w `advancement.ts` (`shared/systems/cpred`) — trzy drabinki
+z s. 411 stoją tam jako tablice, a jedyną drogą do zakupu jest `planCpredAdvance`, przez którą
+przechodzi **i** panel karty (żeby wyszarzyć guzik), **i** serwer (żeby odmówić). Nowa rzecz
+kupowana za PD dokłada drabinkę i gałąź w tej jednej funkcji, nigdy własnego liczenia u klienta:
+zapalony guzik i odmowa serwera muszą wychodzić z tego samego rachunku. Poziom docelowy
+(`to`) jedzie w żądaniu, bo dwa kliknięcia w wyścigu inaczej kupiłyby dwa poziomy za cenę
+pokazaną raz.
+
+**Pole karty, którego zmiana ma cenę**, wypada z `character:update` u **gracza**, a u MG zostaje
+polem (bo sędzia musi móc naprawić kartę). Od 29a tak jedzie czwórka: `improvementPoints`,
+`skills`, `roleAbilityRank` i `roleId` — ten ostatni razem z rangą, bo Rola przełączona pod
+zachowaną rangą oddaje inną Zdolność Specjalną na tym samym poziomie za darmo. Ręczna zmiana
+licznika przez MG **nie jest wyjątkiem od audytu**: ląduje jako wiersz `adjust`, scalany w oknie
+minuty, dokładnie jak korekta salda z 23b.
+
+**Drugi audyt przy karcie** (rejestr awansów z 29a) to **osobna tabela**, nie nowy `kind`
+w `LedgerEntry`: pieniądze i doświadczenie są audytami dwóch różnych rzeczy, a wspólna lista
+rodzajów uczyniłaby „Zakup" legalnym powodem punktu Percepcji. Wzorzec jest ten sam co w 23b —
+`applyImprovementPoints` przesuwa licznik i zapisuje powód **jednym zapisem**, a to, co ten
+sam zapis zmienia na karcie (nowy poziom, nowa ranga), jedzie w jego `sheet`.

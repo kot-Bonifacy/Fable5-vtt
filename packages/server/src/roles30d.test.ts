@@ -353,10 +353,12 @@ describe('etap 30d: Znajomości, Moto, Efekt Charyzmy i Wiarygodność', () => {
       }),
     ).toEqual({ ok: false, error: 'TOO_MANY' });
 
-    // Awans i trzeci wpis w jednej łacie muszą przejść razem.
+    // Awans i trzeci wpis w jednej łacie muszą przejść razem. Od etapu 29a
+    // rangę podnosi u gracza wyłącznie `character:advance` (płatny szczebel),
+    // więc jednoczesną łatę składa MG — i to jej dotyczy niezmiennik z 30d.
     expect(
       (
-        await emitAck(player, 'character:update', {
+        await emitAck(gm, 'character:update', {
           characterId: nomadId,
           patch: { data: { roleAbilityRank: 3, fleet: rows(3) } },
         })
@@ -438,8 +440,9 @@ describe('etap 30d: Znajomości, Moto, Efekt Charyzmy i Wiarygodność', () => {
 
   it('Moto dokłada się do Prowadzenia pojazdów', async () => {
     expect(
+      // Poziom Umiejętności pisze od 29a MG albo płatny awans — nie łata gracza.
       (
-        await emitAck(player, 'character:update', {
+        await emitAck(gm, 'character:update', {
           characterId: nomadId,
           patch: { data: { skills: { driving: 4 } } },
         })

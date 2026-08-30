@@ -297,6 +297,7 @@ model Character {
   bots     BotProfile[]
   relations BotRelation[]
   ledger    LedgerEntry[]
+  advancement AdvancementEntry[]
 
   @@index([campaignId])
 }
@@ -1156,6 +1157,40 @@ model LedgerEntry {
   /// The other side of a transfer; not a foreign key — a deleted character
   /// must not take the payer's audit trail with it.
   counterpartyId String?
+  /// Account that ordered the operation; null after the account is gone.
+  actorId   String?
+  createdAt DateTime @default(now())
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@index([characterId, id])
+  @@index([campaignId])
+}
+
+/// One line of the advancement audit (stage 29a).
+///
+/// A twin of `LedgerEntry` and deliberately a separate table: money and
+/// experience are two audits of two different things, and one shared row would
+/// make „Zakup" a legal reason for a point of Percepcja. The reason it exists
+/// at all is the reason 23b built the first one — until stage 29a the sheet had
+/// a number box for PD and whoever owned the sheet typed into it, which made
+/// „skąd wziął się ten poziom" unanswerable a session later.
+///
+/// The campaign journal (24b) was the other candidate and lost: it is prose
+/// indexed into the RAG, and twenty „Percepcja 4 → 5" rows per session would
+/// bury the session summaries of 19c in noise.
+model AdvancementEntry {
+  id          Int    @id @default(autoincrement())
+  campaignId  String
+  characterId String
+  /// award | spend | adjust
+  kind String
+  /// Signed: negative is points leaving this character.
+  amount Int
+  /// Points left *after* the operation.
+  balance Int
+  /// Polish one-liner: „Percepcja 4 → 5", „po sesji".
+  label String
   /// Account that ordered the operation; null after the account is gone.
   actorId   String?
   createdAt DateTime @default(now())

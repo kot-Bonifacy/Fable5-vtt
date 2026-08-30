@@ -8,6 +8,21 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
 
 ## Pozycje
 
+- **Etap 29a nie był oglądany w przeglądarce.** Mechanika jedzie w testach (21 nowych
+  w `shared`, 9 na serwerze), ale ekranu awansu nikt nie kliknął. Do sprawdzenia: (1) **panel
+  „Awans"** na stronie drugiej karty — nagłówek „N PD w zapasie", wiersz Zdolności Specjalnej
+  nad listą Umiejętności, przewijana lista z nagłówkami kategorii; (2) **cena ×2** — Ogień
+  ciągły, Materiały wybuchowe i pięć pozostałych mają dopisek „×2" i dwukrotny koszt; (3)
+  **guzik „Podnieś"** — po kliknięciu poziom rośnie na stronie pierwszej, licznik PD spada,
+  a wiersz w rejestrze pojawia się bez przeładowania; (4) **filtr „tylko na które mnie stać"** —
+  lista skraca się do rzeczy w zasięgu sakiewki; (5) **brak PD** — guzik wyszarzony z
+  podpowiedzią „Brakuje N PD"; (6) **rejestr awansów** (`details`) — daty, etykiety, kwoty ze
+  znakiem i stan po operacji; (7) **pola tylko do odczytu u gracza** — poziom Umiejętności,
+  ranga Zdolności, wybór Roli i licznik PD nie przyjmują znaków, a podpowiedź mówi, gdzie się
+  je zmienia; **u MG te same pola dalej działają**; (8) **„✦ Przyznaj wszystkim"** w zakładce
+  „Postacie" (tylko MG) — pole liczby, pole powodu, komunikat „Przyznano N PD — M postaci",
+  a licznik rośnie każdej karcie gracza i **żadnemu BN-owi**.
+
 - **Etap 30d nie był oglądany w przeglądarce.** Mechanika jedzie w testach (38 nowych
   w `shared`, 13 na serwerze), ale żadnego z tych czterech paneli nikt nie kliknął. Do
   sprawdzenia — potrzebne postaci z Rolą **Rocker**, **Fixer**, **Nomada** i **Media** (na

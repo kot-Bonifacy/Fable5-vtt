@@ -57,6 +57,11 @@ import type {
   CombatFacedownPayload,
   CombatFacedownResistPayload,
   CombatGrapplePayload,
+  CharacterAdvancePayload,
+  CharacterXpAwardPayload,
+  CharacterXpAwardResult,
+  CharacterXpHistoryResult,
+  CpredAdvanceProblem,
   CombatGrappleResistPayload,
   ReputationRecognisePayload,
   CombatView,
@@ -191,6 +196,7 @@ import type {
 } from '@vtt/shared';
 import {
   CHAT_COMMANDS_HELP,
+  CPRED_ADVANCE_PROBLEMS,
   CPRED_ATTACK_PROBLEM_MESSAGES,
   CPRED_COMBAT_AWARENESS_PROBLEMS,
   CPRED_FLEET_PROBLEMS,
@@ -2883,6 +2889,43 @@ export function settleMonth(
 /** The audit of one wallet — newest first — plus who it can pay. */
 export function fetchLedger(characterId: string): Promise<SocketAck<EconomyHistoryResult>> {
   return emitEconomy('economy:history', { characterId });
+}
+
+/**
+ * Etap 29a: kupuje jeden poziom Umiejętności albo Zdolności Specjalnej.
+ *
+ * `flushCharacterSave` z tego samego powodu, co przy zakupie: łata czekająca
+ * na debounce wylądowałaby po zapisie serwera i przywróciła licznik sprzed
+ * wydatku.
+ */
+export function advanceCharacter(
+  payload: CharacterAdvancePayload,
+): Promise<SocketAck<CharacterView>> {
+  flushCharacterSave(payload.characterId);
+  return emitEconomy('character:advance', payload);
+}
+
+/** MG: rozdaje pulę PD po sesji — jednej postaci albo całemu stołowi. */
+export function awardImprovementPoints(
+  payload: CharacterXpAwardPayload,
+): Promise<SocketAck<CharacterXpAwardResult>> {
+  if (payload.characterId) flushCharacterSave(payload.characterId);
+  return emitEconomy('character:xp-award', payload);
+}
+
+/** Rejestr awansów jednej karty — od najnowszego. */
+export function fetchAdvancementHistory(
+  characterId: string,
+): Promise<SocketAck<CharacterXpHistoryResult>> {
+  return emitEconomy('character:xp-history', { characterId });
+}
+
+/** Polskie zdania dla odmów, które potrafi zwrócić `character:advance`. */
+export function advanceErrorText(code: string): string {
+  if (code in CPRED_ADVANCE_PROBLEMS) {
+    return CPRED_ADVANCE_PROBLEMS[code as CpredAdvanceProblem];
+  }
+  return combatErrorText(code);
 }
 
 /** GM: creates or updates one of the campaign's own compendium entries. */

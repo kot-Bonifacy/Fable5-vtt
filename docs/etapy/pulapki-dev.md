@@ -429,3 +429,11 @@ przechodzi po wszystkich dziesięciu Cechach i przy pierwszej brakującej zwraca
 `patch: { data: { stats: { cool: 8 } } }` kończy się `INVALID_DATA` — a wygląda dokładnie jak
 „serwer nie przyjmuje mojej zmiany Roli", bo `roleId` z tej samej łaty też nie dochodzi. Kosztowało
 trzynaście czerwonych testów naraz w `roles30d.test.ts`. Cechy podaje się kompletem albo wcale.
+
+**Test, który stawia postać łatą gracza, od 29a dostaje `FORBIDDEN`** (30.08). Poziomy
+Umiejętności, ranga Zdolności, `roleId` i licznik PD wypadły z `character:update` u gracza, więc
+każdy stary test przygotowujący kartę przez gniazdo gracza (`emitAck(player, 'character:update',
+{ data: { skills: … } })`) pada — i pada **w miejscu asercji o czymś zupełnie innym**, bo
+przygotowanie stołu wygląda w teście jak tło. Padły tak trzy testy w `characters.test.ts`
+i `roles30d.test.ts`. Kartę stawia się gniazdem MG; gracz kupuje poziom przez
+`character:advance`.

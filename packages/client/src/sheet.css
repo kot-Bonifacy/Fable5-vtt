@@ -428,6 +428,14 @@
   border: 1px solid var(--border);
 }
 
+/* Panel awansu na stronie drugiej (etap 29a). Stoi pod licznikiem PD, bo to
+   jego rozwinięcie: liczba i to, co można za nią kupić, czyta się razem. Sam
+   panel maluje `styles.css` (`.advance`), jak przy `.cp-awareness`. */
+.cp-advance {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+}
+
 .cp-ability-name {
   flex: 1;
   align-self: center;

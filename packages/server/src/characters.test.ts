@@ -349,7 +349,6 @@ describe('characters', () => {
       patch: {
         data: {
           aliases: 'Kolec',
-          improvementPoints: 45,
           lifepath: { culture: 'Europa Środkowa', language: 'Czeski', enemies: [{ name: 'Vex' }] },
           cyberware: [
             { id: 'eye1', name: 'Cyberoko', notes: '', type: 'cyberoptics', bodySlot: 'eyeLeft' },
@@ -360,13 +359,32 @@ describe('characters', () => {
     expect(ack.ok).toBe(true);
     if (!ack.ok || !ack.data) throw new Error('update failed');
     const data = ack.data.data as CpredCharacterData;
-    // „Gracze mogą wydawać Punkty Doświadczenia" (s. 411) — unlike Reputation
-    // and eddies, this box is not the GM's alone.
     expect(data.aliases).toBe('Kolec');
-    expect(data.improvementPoints).toBe(45);
     expect(data.lifepath.culture).toBe('Europa Środkowa');
     expect(data.lifepath.enemies[0]?.name).toBe('Vex');
     expect(data.cyberware[0]?.bodySlot).toBe('eyeLeft');
+  });
+
+  /**
+   * Etap 29a: licznik PD i to, co się z niego kupuje, wychodzą spod ręki
+   * gracza. „Gracze mogą wydawać Punkty Doświadczenia" (s. 411) zostaje w mocy —
+   * tyle że przez `character:advance`, który liczy cenę, a nie przez wpisanie
+   * liczby. Te same drzwi, które `eddies` zamknęły w 23b.
+   */
+  it('the player may no longer type PD, a skill level or the ability rank', async () => {
+    for (const data of [
+      { improvementPoints: 45 },
+      { skills: { perception: 7 } },
+      { roleAbilityRank: 6 },
+      { roleId: 'solo' },
+    ]) {
+      const ack = await emitAck<CharacterView>(rogue, 'character:update', {
+        characterId: vexCharacterId,
+        patch: { data },
+      });
+      expect(ack.ok).toBe(false);
+      if (!ack.ok) expect(ack.error).toBe('FORBIDDEN');
+    }
   });
 });
 

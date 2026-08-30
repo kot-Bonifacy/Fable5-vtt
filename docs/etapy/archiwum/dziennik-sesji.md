@@ -7,6 +7,69 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 29.08 (piąta) — etap 30c: Wsparcie Stróża Prawa i zespół Korpo
+
+**Zlecenie MG:** kontynuować budowę; z przedstawionych opcji wybór padł na **30c**. Trzy decyzje
+zapadły przed pierwszą linijką kodu: członkowie zespołu dostają **pełne karty postaci**, przybycie
+Wsparcia **odlicza się w rundach i stawia figury samo**, a drugą grupę przy randze 10 **wskazuje
+MG**.
+
+**Opis etapu 30c miał trzy błędy — wszystkie policzone na stronie.** (a) Kategorii Wsparcia jest
+**sześć**, nie pięć: 1–2, 3–4, 5–7, 8, 9 i 10 mają własne ramki, bo od ósemki funkcjonariusze
+przestają być wymienni (Marshal na Supermotocyklu to nie dwóch twardzieli C-SWAT). (b) „Jedna
+maszyneria: tabela → `CpredCombatProfile`" **nie jest prawdą dla zespołu Korpo** — o tym niżej.
+(c) „Wsparcie nie może Unikać" wyglądało na zapis bez skutku, a nie jest: `attack:evade` w tym
+VTT unika pocisków tak samo chętnie jak ostrzy (blokuje to wyłącznie Ludzka tarcza), a Wartość
+bojowa każdej kategorii to 8 lub więcej — dokładnie próg, od którego RAW pozwala unikać pocisków.
+
+**Dwie Zdolności, dwie maszynerie — i to jest cały wynik rozpoznania.** Wsparcie mieści się
+w statyście z 16b co do liczby: tabela drukuje Wartość bojową, OB, PW, RUCH i BC, a profil bojowy
+ma dokładnie te pola (RUCH doszedł jako `move?`). Zespół Korpo **nie mieści się w nim wcale**:
+„Członkowie zespołu zbudowani są tak samo jak Postacie Graczy" (s. 154), a Korporacyjny Netrunner
+dostaje w pakiecie **cyberdek i Interfejs 2** — jako statysta nie mógłby zrobić jedynej rzeczy, do
+której istnieje (`combatProfileSheet` ustawia `cyberdeck: null`). To samo dotyczy Szofera
+i Technika: cztery z pięciu zawodów żyją głównie poza wymianą ognia. Pracownik jest więc zwykłą
+kartą bez właściciela, a Lojalność siedzi **na karcie pracodawcy** — bo to cecha układu, nie
+osoby: ten sam ochroniarz u innego Korpo zaczyna od nowa na 1k6+1.
+
+**Odliczanie rund dostało kolumnę, nie tabelę.** „Rzutem 1k6 określ liczbę Rund potrzebnych
+Wsparciu na przybycie" mierzy w jednostce, która **istnieje wyłącznie w trwającej walce** — więc
+grupa w drodze mieszka w `Combat.systemState`, nieprzezroczystej kolumnie bliźniaczej do
+`Combatant.turnState` z 14b, i umiera razem z walką. Poza walką nie zapisuje się nic: funkcjonariusze
+stają od razu, a ile jechali, mówi zdanie na czacie. Rdzeń trackera dostał `ReinforcementView` —
+wiersz **bez** inicjatywy i tury, malowany pod kolejką, żeby nie udawał uczestnika.
+
+**„Dwie różne grupy Wsparcia" to jedyne miejsce, gdzie VTT pyta MG w środku wezwania.** Podręcznik
+nie mówi, **które** dwie, a zgadywanie po cichu przepisałoby Rolę. Wiersz niesie więc pytanie
+i listę kategorii, a **dopóki pytanie wisi, żadna z grup nie przyjeżdża** — inaczej pierwsza
+stanęłaby na mapie, a druga została pytaniem bez kontekstu. Szóstka podnosi kategorię **ponad
+rangę wzywającego**: sufit rządzi wzywaniem, a nagrodą za szóstkę jest właśnie to, że przyjechał
+ktoś większy, niż wolno było prosić.
+
+**Wsparcie wchodzi do inicjatywy na czyste 1k10 — bo ramka nie drukuje REF.** Doliczenie Wartości
+bojowej postawiłoby C-SWAT na szczycie każdej kolejki na zawsze; wiersz nierzucony schowałby
+posiłki na dnie listy. Broni funkcjonariuszy szuka się **po nazwie w kompendium**, nigdy po id —
+ta sama umowa, którą `criticalInjuryAt` ma dla ran, i z tego samego powodu: id powstają przy
+imporcie z polskiej nazwy.
+
+**Cyborgizacje pakietu zostają prozą i to jest wierność, nie skrót.** „Nie musisz obniżać Empatii
+tej Postaci z uwagi na Utratę Człowieczeństwa […] Wzięto to już pod uwagę" (s. 155) — prawdziwe
+wiersze chromu policzyłyby Człowieczeństwo drugi raz. Przy okazji wyszło, że **Cecha karty nie
+może wynosić 0**: tabele zawodów nie drukują Szczęścia, a `luck: 0` kazałby walidacji odrzucić
+**cały** blok Cech i karta wróciłaby z samymi piątkami. Pracownik ma więc `luck: 1` i pustą
+sakiewkę.
+
+**Naprawione przy okazji: `combat-awareness.test.ts` migotał od etapu 30a.** `damageReduced` to
+`min(redukcja, obrażenia)`, a zbir bił pałką za `1k6` — jedynka na kości dawała redukcję 1 zamiast
+2 i test padał raz na sześć przebiegów. Broń podniesiona do `1k6+3` (minimum, nie średnia). Osiem
+przebiegów pod rząd czysto; wniosek w pułapkach.
+
+**Testy:** 1552 w `shared` (+38), **845** na serwerze (+19), 62 u klienta — zielone. ESLint
+i Prettier czyste, `pnpm -r build` przechodzi. Migracja: `stage30c_combat_system_state`. **Nic
+z tej sesji nie było oglądane w przeglądarce** — siedem punktów do odklikania stoi na górze
+`zaleglosci.md`, a do oględzin trzeba postaci z Rolą **Stróż Prawa** i **Korpo** (żadna karta na
+scenach testowych ich nie ma).
+
 ### Sesja 29.08 (czwarta) — etap 30b: Medycyna Medyka i Twórca Technika
 
 **Zlecenie MG:** kontynuować budowę; z przedstawionych opcji wybór padł na **30b**, a Ulepszanie

@@ -1,9 +1,17 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import type { CampaignDetail, CpredCharacterData } from '@vtt/shared';
-import { ROLE_GM, cyberpsychosisFor, formatEddies } from '@vtt/shared';
+import {
+  ADVANCEMENT_AWARD_MAX,
+  ADVANCEMENT_LABEL_MAX,
+  ROLE_GM,
+  cyberpsychosisFor,
+  formatEddies,
+} from '@vtt/shared';
 import { apiGet } from '../api.js';
 import { confirmDestructive } from '../confirm.js';
 import {
+  advanceErrorText,
+  awardImprovementPoints,
   createCharacter,
   deleteCharacter,
   economyErrorText,
@@ -54,6 +62,8 @@ export function CharacterPanel() {
   const [newOwnerId, setNewOwnerId] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [settlement, setSettlement] = useState<string | null>(null);
+  const [xpAmount, setXpAmount] = useState('');
+  const [xpLabel, setXpLabel] = useState('');
 
   useEffect(() => {
     ensureCpredDataLoaded();
@@ -133,6 +143,34 @@ export function CharacterPanel() {
     );
   }
 
+  /**
+   * Etap 29a: pula po sesji dla całego stołu. Jedno zdarzenie, nie pętla po
+   * kartach — „MG przyznaje wszystkim graczom" jest jedną czynnością, a pętla
+   * u klienta zostawiłaby połowę stołu bez PD, gdyby łącze padło w środku.
+   */
+  async function awardPoints() {
+    const amount = Number.parseInt(xpAmount, 10);
+    if (!Number.isInteger(amount) || amount === 0) {
+      setSettlement('Podaj liczbę PD — tabela na s. 410 idzie od 10 do 80 na sesję.');
+      return;
+    }
+    const ack = await awardImprovementPoints({
+      everyone: true,
+      amount,
+      label: xpLabel.trim(),
+    });
+    if (!ack.ok || !ack.data) {
+      setSettlement(advanceErrorText(ack.ok ? 'BAD_REQUEST' : ack.error));
+      return;
+    }
+    const who = plural(ack.data.awarded, 'postać', 'postaci', 'postaci');
+    setSettlement(
+      `${amount > 0 ? 'Przyznano' : 'Zabrano'} ${Math.abs(amount)} PD — ${ack.data.awarded} ${who}.`,
+    );
+    setXpAmount('');
+    setXpLabel('');
+  }
+
   async function removeCharacter(characterId: string, name: string) {
     if (!confirmDestructive(`Usunąć postać „${name}”?`)) return;
     const ack = await deleteCharacter(characterId);
@@ -176,6 +214,47 @@ export function CharacterPanel() {
             💸 Rozlicz miesiąc
           </button>
         </div>
+      )}
+      {/* Etap 29a, s. 410: „Po każdej sesji gry MG przyznaje wszystkim graczom
+          Punkty Doświadczenia". Rytuał całego stołu, więc stoi obok odnowienia
+          Szczęścia i rozliczenia miesiąca, a nie w jednej karcie. */}
+      {isGm && order.length > 0 && (
+        <form
+          className="character-panel-actions character-xp"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void awardPoints();
+          }}
+        >
+          <label className="character-xp-field">
+            PD po sesji
+            <input
+              type="number"
+              min={-ADVANCEMENT_AWARD_MAX}
+              max={ADVANCEMENT_AWARD_MAX}
+              value={xpAmount}
+              onChange={(e) => setXpAmount(e.target.value)}
+              aria-label="Punkty Doświadczenia do przyznania"
+              title="Tabela na s. 410–411 idzie od 10 do 80 na sesję; liczba ujemna zabiera."
+            />
+          </label>
+          <input
+            type="text"
+            className="character-xp-label"
+            maxLength={ADVANCEMENT_LABEL_MAX}
+            value={xpLabel}
+            placeholder="za co (trafia do rejestru)"
+            onChange={(e) => setXpLabel(e.target.value)}
+            aria-label="Powód przyznania PD"
+          />
+          <button
+            type="submit"
+            className="small-button"
+            title="Dopisuje tę pulę każdej postaci należącej do gracza"
+          >
+            ✦ Przyznaj wszystkim
+          </button>
+        </form>
       )}
       {settlement ? <p className="character-panel-note">{settlement}</p> : null}
       {order.length === 0 ? (

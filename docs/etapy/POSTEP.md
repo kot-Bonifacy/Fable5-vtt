@@ -88,7 +88,9 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 | 27k | Edycja sceny: zaznacz, skasuj, cofnij         | ✅     | 2026-08-23        |
 | 27l | Karty obiektów sceny                          | ✅     | 2026-08-24        |
 | 28  | Wdrożenie na VPS                              | ⬜     |                   |
-| 29  | Rozwój postaci za Punkty Doświadczenia        | ⬜     |                   |
+| 29  | ~~Rozwój postaci za Punkty Doświadczenia~~    | ⛔     | rozdzielony 30.08 |
+| 29a | PD: drabinki, przyznawanie, wydawanie         | ✅     | 2026-08-30        |
+| 29b | Wieloklasowość                                | ⬜     |                   |
 | 30  | ~~Zdolności Specjalne dziewięciu Ról~~        | ⛔     | rozdzielony 29.08 |
 | 30a | Szkielet Zdolności Ról i Zmysł Walki Solo     | ✅     | 2026-08-29        |
 | 30b | Medycyna Medyka i Twórca Technika             | ✅     | 2026-08-29        |
@@ -98,30 +100,33 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 ## Od czego zacząć
 
-**Ostatnia sesja (30.08) zamknęła etap 30d — a razem z nim cały etap 30.** Każda z dziesięciu
-Ról ma teraz skutek w grze: Rocker rzuca Efektem Charyzmy przeciw PT 8/10/12, Fixer targuje się
-rzutem przeciwstawnym i odkłada targ zdejmujący 10% albo 20% z najbliższego zakupu, Nomada
-dokłada Moto do sześciu Testów i prowadzi Tabor Rodziny, a Media rzuca Rzetelnością i (MG)
-Pogłoskami. Opis etapu miał **trzy błędy** (pięć progów Charyzmy zamiast sześciu, „Zasięg wchodzi
-w sklep z 23b", „Wiarygodność styka się z Reputacją z 23c") — wszystkie policzone na stronie
-i poprawione w `etap-30d-*.md`.
+**Ostatnia sesja (30.08, druga) zamknęła etap 29a — awans za PD.** Kampania ma trzy drabinki
+kosztów z s. 411 (Umiejętność 20/40/…/200, ×2 40/80/…/400, Zdolność Specjalna 60/120/…/600),
+ekran „Awans" na stronie drugiej karty, rejestr awansów przy karcie i pulę po sesji rozdawaną
+całemu stołowi jednym zdarzeniem. Przy okazji zamknęły się tylne drzwi: `improvementPoints`,
+`skills`, `roleAbilityRank` i `roleId` wypadły z `character:update` **u gracza** — MG edytuje
+dalej. Etap 29 został **rozdzielony na 29a i 29b**, a jego opis miał dwa błędy (drabinka
+Zdolności podana jako drabinka Umiejętności, niepełna bramka wieloklasowości) — oba policzone
+na stronie i poprawione.
 
-**Od czego zacząć: wolne są cztery etapy.** **29** (rozwój za PD i wieloklasowość) jest teraz
-najbardziej na miejscu: po 30a–30d **wszystkie dziesięć** Zdolności ma co robić z poziomem, który
-dziś podbija się ręcznie polem na karcie — 29 jest tym, co pozwoli go **kupić**. Poza tym: **27g**
-(wydajność, poligon „Korytarz 16e" gotowy), **28** (wdrożenie na VPS) i **31** (dodatki do broni;
-to on odblokowuje siedem z dziesięciu skutków Ulepszania z 30b).
+**Od czego zacząć: wolne są cztery etapy.** **29b** (wieloklasowość) jest najbliżej: ma teraz
+czym zapłacić za pierwszy poziom drugiej Roli, a cała reszta maszynerii — dziesięć Zdolności
+z etapu 30 — czeka za jednym punktem, `cpredRoleAbilityRank`. Poza tym: **31** (dodatki do
+broni; odblokowuje siedem z dziesięciu skutków Ulepszania z 30b), **27g** (wydajność, poligon
+„Korytarz 16e" gotowy) i **28** (wdrożenie na VPS).
 
-**Dług oględzin to 25 pozycji** (`zaleglosci.md`, +2 z 30.08). Bez modelu da się dziś obejrzeć
-**dziesięć**: **komplet 30d** (osiem punktów, na górze listy), **komplet 30c**, **komplet 30b**,
-Celowanie, pakiet A+B z drugiej sesji 29.08, **komplet 30a**, lukę w edytorze kompendium i pomiar
-fps przypisany do 27g. Reszta czeka na **żywy model**: 20a/20b, 19a–19c, dwie ścieżki 24c
-i maszynopis wypowiedzi.
+**Dług oględzin to 26 pozycji** (`zaleglosci.md`, +1 z 30.08 wieczorem). Bez modelu da się dziś
+obejrzeć **jedenaście**: **komplet 29a** (osiem punktów, na górze listy), **komplet 30d**,
+**komplet 30c**, **komplet 30b**, Celowanie, pakiet A+B z drugiej sesji 29.08, **komplet 30a**,
+lukę w edytorze kompendium i pomiar fps przypisany do 27g. Reszta czeka na **żywy model**:
+20a/20b, 19a–19c, dwie ścieżki 24c i maszynopis wypowiedzi.
 
 **Do oględzin 30a–30d trzeba postaci ze wszystkimi Rolami poza Netrunnerem.** Żadna karta na
 scenach testowych ich nie ma (`avatar9` to netrunner), więc pierwszy krok to przestawienie Roli
 na karcie — albo nowa figura. Rola zmienia się jednym polem, a panel Zdolności pojawia się od
-razu; najtaniej jedną kartą, na której przełącza się Rolę po kolei.
+razu; najtaniej jedną kartą, na której przełącza się Rolę po kolei. **Od 29a to pole ma
+wyłącznie MG** — z konta `Tester` wybór Roli jest wyszarzony, więc oględziny Ról robi się
+z sesji MG albo przestawia Rolę u MG i patrzy graczem.
 
 **Uwaga po 29.08: `data/private/cpred/compendium/` bywa starsze niż parser.** Regeneracja
 importem dołożyła Miotaczowi ognia `ammoPatterns: ['shell']`, którego plik na dysku nie miał —
@@ -232,6 +237,9 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 - **Rzut przeciwstawny z fikcją po drugiej stronie** bierze od MG **jedną liczbę** (`opponentBonus`) i sam losuje jej 1k10 obok kości gracza; remis wygrywa druga strona.
 - **Lista wpisów kupowanych awansem** (Tabor 30d, Specjalizacje 30b) jedzie zwykłą łatą, a pulę sprawdza `cpredFleetSheetProblem`/`cpredSpecialtiesProblem` na **scalonej** karcie — `applyCharacterPatch` nie widzi rangi, którą ta sama łata podnosi.
 - **Rzut, który nie jest Testem** (Rzut na Śmierć, Test Rzetelności), omija `finishCheck`: bez Cechy, Umiejętności, kary za rany i eksplozji, `checkRule: false`. Wszystko, co Testem **jest**, przez `finishCheck` przechodzi — także Efekt Charyzmy z samą rangą w rozbiciu.
+- **Cena poziomu** — trzy drabinki z s. 411 i `planCpredAdvance` w `advancement.ts`; przez tę jedną funkcję idzie panel (wyszarza guzik) i serwer (odmawia). Poziom docelowy jedzie w żądaniu, bo dwa kliknięcia w wyścigu kupiłyby dwa poziomy za jedną cenę.
+- **Pole karty, którego zmiana ma cenę**, wypada z `character:update` **u gracza**, a u MG zostaje polem: od 29a `improvementPoints`, `skills`, `roleAbilityRank` i `roleId` (ten razem z rangą — Rola pod zachowaną rangą to darmowa Zdolność). Ręczna zmiana MG ląduje jako wiersz `adjust`.
+- **Drugi audyt przy karcie** (rejestr awansów) to osobna tabela, nie nowy `kind` w `LedgerEntry`; `applyImprovementPoints` przesuwa licznik i zmienia kartę **jednym zapisem** (pole `sheet`).
 
 ## Pułapki dev — indeks
 
@@ -302,10 +310,66 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 - **`combat:next` przy jednym uczestniku to cała runda** — test czytający kolejkę krokiem tury potrafi sam sprowadzić posiłki. Stan czyta się `state:request`.
 - **Broń bez `compendiumId` nie strzela** — planer odmawia `UNKNOWN_WEAPON` („brak tabeli zasięgów"), tym samym kodem co przy nieistniejącym wierszu.
 - **Łata karty z częściowym blokiem Cech jest odrzucana w całości** — `validateStats` chce wszystkich dziesięciu; `stats: { cool: 8 }` daje `INVALID_DATA` i zabiera ze sobą resztę łaty.
+- **Test stawiający postać łatą gracza od 29a dostaje `FORBIDDEN`** — i pada w asercji o czymś zupełnie innym, bo przygotowanie stołu wygląda w teście jak tło. Kartę stawia gniazdo MG.
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 30.08 (druga) — etap 29a: Punkty Doświadczenia
+
+**Zlecenie MG:** kontynuować budowę; z przedstawionych opcji wybór padł na **29**, a dług
+oględzin miał poczekać. Cztery decyzje zapadły przed pierwszą linijką kodu: **etap 29 dzieli się
+na 29a i 29b**, ślad awansu dostaje **własny rejestr** (nie dziennik z 24b), **gracz wydaje PD
+sam**, a poziomy Umiejętności i ranga Zdolności stają się **polami MG**.
+
+**Opis etapu 29 miał dwa błędy — oba policzone na stronie.** (a) **Drabinka kosztów była jedna
+zamiast trzech.** Opis mówił „60/120/180/…/600 PD za kolejny poziom, ×2 dla umiejętności
+podwójnych"; podręcznik (s. 411) drukuje **trzy** tabele obok siebie: Umiejętność zwykła
+20/40/…/200, Umiejętność ×2 40/80/…/400 i **Zdolność Specjalna** 60/120/…/600. Ciąg z opisu
+należy do Zdolności, a `multiplier` z 25a mnoży wyłącznie Umiejętności. (b) **Bramka
+wieloklasowości była opisana niepełnie**: przy trzeciej Roli podręcznik pyta o Zdolność Roli
+**bieżącej** („dopóki nie podniesiesz poziomu Zdolności Specjalnej swojej **nowej** Roli do 4",
+s. 143), a nie o najwyższą posiadaną. To jest zakres 29b.
+
+**Podział 29 na 29a i 29b zapadł, bo to dwie różne rzeczy pod jedną walutą.** Drabinki,
+przyznawanie i wydawanie zmieniają **kto pisze po karcie**; wieloklasowość zmienia **kształt
+karty** — `roleId` przestaje być jednym polem, a `cpredRoleAbilityRank` (jeden punkt, przez który
+przechodzi wszystkie dziesięć Zdolności z etapu 30) przestaje pytać o jedną Rolę. Kolejność
+wymusza podręcznik: druga Rola **płaci PD**, więc bez 29a nie ma czym jej kupić.
+
+**Cena musiała mieć jedno miejsce, bo liczą ją dwie strony.** `planCpredAdvance` w `shared`
+wycenia i osądza zakup, a wołają ją **i** panel karty (żeby wyszarzyć guzik), **i** serwer (żeby
+odmówić) — inaczej zapalony guzik i odmowa rozjechałyby się co do punktu. Poziom docelowy jedzie
+**w żądaniu**, nie liczy się go jako „obecny + 1": dwa kliknięcia w wyścigu kupiłyby wtedy dwa
+poziomy za cenę pokazaną raz. Drugie kliknięcie trafia dziś w ten sam `LEVEL_SKIP`, co próba
+przeskoku — i to jest ten sam zakaz, nie zbieg okoliczności.
+
+**Zamknięcie drzwi kosztowało więcej niż sama drabinka.** Z `character:update` wypadła
+u gracza **czwórka**: `improvementPoints`, `skills`, `roleAbilityRank` i `roleId`. Ostatni
+z nich nie jest przezornością — Rola przełączona pod zachowaną rangą oddaje **inną Zdolność
+Specjalną na tym samym poziomie za darmo**. MG zachowuje wszystkie cztery pola (sędzia musi móc
+naprawić kartę), a jego ręczna zmiana licznika ląduje jako wiersz `adjust` scalany w oknie
+minuty — dokładnie jak korekta salda z 23b.
+
+**Rejestr dostał własną tabelę, nie nowy `kind` w `LedgerEntry`.** Pieniądze i doświadczenie to
+audyty dwóch różnych rzeczy; wspólna lista rodzajów uczyniłaby „Zakup" legalnym powodem punktu
+Percepcji. `applyImprovementPoints` jest bliźniakiem `applyBalance` z jedną różnicą: przyjmuje
+`sheet` z tym, co **ten sam zapis** zmienia na karcie, więc podniesiony poziom i zapłacona cena
+nie mogą się rozejść w połowie.
+
+**Pula po sesji jest jednym zdarzeniem dla całego stołu.** „Po każdej sesji gry MG przyznaje
+**wszystkim** graczom" (s. 410) — pętla u klienta zostawiłaby połowę stołu bez PD, gdyby łącze
+padło w środku, więc `character:xp-award` z `everyone: true` obsługuje wszystkie karty
+z właścicielem naraz. BN-y (`ownerId: null`) pomija: postać bez właściciela nie jest niczyim
+graczem.
+
+**Testy:** 1611 w `shared` (+21), **868** na serwerze (+10), 62 u klienta — zielone. ESLint
+i Prettier czyste, `pnpm -r build` przechodzi, `pnpm dev` wstaje. Migracja:
+`stage29a_advancement_ledger`. **Nic z tej sesji nie było oglądane w przeglądarce** — osiem
+punktów stoi na górze `zaleglosci.md`. Trzy stare testy padły na zamkniętych drzwiach i to jest
+nowa pułapka: przygotowanie stołu łatą gracza wygląda w teście jak tło, więc odmowa pada
+w asercji o czymś zupełnie innym.
 
 ### Sesja 30.08 — etap 30d: Charyzma, Znajomości, Moto i Wiarygodność (i koniec etapu 30)
 
@@ -375,66 +439,3 @@ górze `zaleglosci.md`, a do oględzin trzeba postaci z Rolą **Rocker**, **Fixe
 i **Media**. Przy okazji zapisana zaległość spoza etapu: **Ustabilizowanie i Leczenie porównują
 `>`**, choć decyzja MG z 28.08 mówi, że remis na PT statycznym zdaje — rozjazd do rozstrzygnięcia
 jednym ruchem przy etapie dotykającym 14b/30b.
-
-### Sesja 29.08 (piąta) — etap 30c: Wsparcie Stróża Prawa i zespół Korpo
-
-**Zlecenie MG:** kontynuować budowę; z przedstawionych opcji wybór padł na **30c**. Trzy decyzje
-zapadły przed pierwszą linijką kodu: członkowie zespołu dostają **pełne karty postaci**, przybycie
-Wsparcia **odlicza się w rundach i stawia figury samo**, a drugą grupę przy randze 10 **wskazuje
-MG**.
-
-**Opis etapu 30c miał trzy błędy — wszystkie policzone na stronie.** (a) Kategorii Wsparcia jest
-**sześć**, nie pięć: 1–2, 3–4, 5–7, 8, 9 i 10 mają własne ramki, bo od ósemki funkcjonariusze
-przestają być wymienni (Marshal na Supermotocyklu to nie dwóch twardzieli C-SWAT). (b) „Jedna
-maszyneria: tabela → `CpredCombatProfile`" **nie jest prawdą dla zespołu Korpo** — o tym niżej.
-(c) „Wsparcie nie może Unikać" wyglądało na zapis bez skutku, a nie jest: `attack:evade` w tym
-VTT unika pocisków tak samo chętnie jak ostrzy (blokuje to wyłącznie Ludzka tarcza), a Wartość
-bojowa każdej kategorii to 8 lub więcej — dokładnie próg, od którego RAW pozwala unikać pocisków.
-
-**Dwie Zdolności, dwie maszynerie — i to jest cały wynik rozpoznania.** Wsparcie mieści się
-w statyście z 16b co do liczby: tabela drukuje Wartość bojową, OB, PW, RUCH i BC, a profil bojowy
-ma dokładnie te pola (RUCH doszedł jako `move?`). Zespół Korpo **nie mieści się w nim wcale**:
-„Członkowie zespołu zbudowani są tak samo jak Postacie Graczy" (s. 154), a Korporacyjny Netrunner
-dostaje w pakiecie **cyberdek i Interfejs 2** — jako statysta nie mógłby zrobić jedynej rzeczy, do
-której istnieje (`combatProfileSheet` ustawia `cyberdeck: null`). To samo dotyczy Szofera
-i Technika: cztery z pięciu zawodów żyją głównie poza wymianą ognia. Pracownik jest więc zwykłą
-kartą bez właściciela, a Lojalność siedzi **na karcie pracodawcy** — bo to cecha układu, nie
-osoby: ten sam ochroniarz u innego Korpo zaczyna od nowa na 1k6+1.
-
-**Odliczanie rund dostało kolumnę, nie tabelę.** „Rzutem 1k6 określ liczbę Rund potrzebnych
-Wsparciu na przybycie" mierzy w jednostce, która **istnieje wyłącznie w trwającej walce** — więc
-grupa w drodze mieszka w `Combat.systemState`, nieprzezroczystej kolumnie bliźniaczej do
-`Combatant.turnState` z 14b, i umiera razem z walką. Poza walką nie zapisuje się nic: funkcjonariusze
-stają od razu, a ile jechali, mówi zdanie na czacie. Rdzeń trackera dostał `ReinforcementView` —
-wiersz **bez** inicjatywy i tury, malowany pod kolejką, żeby nie udawał uczestnika.
-
-**„Dwie różne grupy Wsparcia" to jedyne miejsce, gdzie VTT pyta MG w środku wezwania.** Podręcznik
-nie mówi, **które** dwie, a zgadywanie po cichu przepisałoby Rolę. Wiersz niesie więc pytanie
-i listę kategorii, a **dopóki pytanie wisi, żadna z grup nie przyjeżdża** — inaczej pierwsza
-stanęłaby na mapie, a druga została pytaniem bez kontekstu. Szóstka podnosi kategorię **ponad
-rangę wzywającego**: sufit rządzi wzywaniem, a nagrodą za szóstkę jest właśnie to, że przyjechał
-ktoś większy, niż wolno było prosić.
-
-**Wsparcie wchodzi do inicjatywy na czyste 1k10 — bo ramka nie drukuje REF.** Doliczenie Wartości
-bojowej postawiłoby C-SWAT na szczycie każdej kolejki na zawsze; wiersz nierzucony schowałby
-posiłki na dnie listy. Broni funkcjonariuszy szuka się **po nazwie w kompendium**, nigdy po id —
-ta sama umowa, którą `criticalInjuryAt` ma dla ran, i z tego samego powodu: id powstają przy
-imporcie z polskiej nazwy.
-
-**Cyborgizacje pakietu zostają prozą i to jest wierność, nie skrót.** „Nie musisz obniżać Empatii
-tej Postaci z uwagi na Utratę Człowieczeństwa […] Wzięto to już pod uwagę" (s. 155) — prawdziwe
-wiersze chromu policzyłyby Człowieczeństwo drugi raz. Przy okazji wyszło, że **Cecha karty nie
-może wynosić 0**: tabele zawodów nie drukują Szczęścia, a `luck: 0` kazałby walidacji odrzucić
-**cały** blok Cech i karta wróciłaby z samymi piątkami. Pracownik ma więc `luck: 1` i pustą
-sakiewkę.
-
-**Naprawione przy okazji: `combat-awareness.test.ts` migotał od etapu 30a.** `damageReduced` to
-`min(redukcja, obrażenia)`, a zbir bił pałką za `1k6` — jedynka na kości dawała redukcję 1 zamiast
-2 i test padał raz na sześć przebiegów. Broń podniesiona do `1k6+3` (minimum, nie średnia). Osiem
-przebiegów pod rząd czysto; wniosek w pułapkach.
-
-**Testy:** 1552 w `shared` (+38), **845** na serwerze (+19), 62 u klienta — zielone. ESLint
-i Prettier czyste, `pnpm -r build` przechodzi. Migracja: `stage30c_combat_system_state`. **Nic
-z tej sesji nie było oglądane w przeglądarce** — siedem punktów do odklikania stoi na górze
-`zaleglosci.md`, a do oględzin trzeba postaci z Rolą **Stróż Prawa** i **Korpo** (żadna karta na
-scenach testowych ich nie ma).

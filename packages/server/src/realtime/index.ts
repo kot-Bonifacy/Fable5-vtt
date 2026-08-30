@@ -113,6 +113,11 @@ import { backupResolveEvent } from './backup.js';
 import { characterTeamHireEvent, characterTeamLoyaltyEvent } from './team.js';
 import { characterHaggleEvent } from './haggle.js';
 import {
+  characterAdvanceEvent,
+  characterXpAwardEvent,
+  characterXpHistoryEvent,
+} from './advancement.js';
+import {
   lightClearEvent,
   lightCreateEvent,
   lightDeleteEvent,
@@ -282,6 +287,9 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   economyAdjustEvent,
   economySettleEvent,
   economyHistoryEvent,
+  characterAdvanceEvent,
+  characterXpAwardEvent,
+  characterXpHistoryEvent,
   damageApplyEvent,
   damageUndoEvent,
   characterInjuryEvent,

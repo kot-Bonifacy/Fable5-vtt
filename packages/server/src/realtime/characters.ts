@@ -38,6 +38,7 @@ import type { PrismaClient } from '../db.js';
 import type { Character, Scene } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent } from './registry.js';
 import { applyBalance } from './economy.js';
+import { applyImprovementPoints } from './advancement.js';
 import { emitToCampaignUser } from './state.js';
 import { emitCharacterDelete, emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { emitRuns } from './netrun-io.js';
@@ -157,14 +158,33 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
     // still a number field, but it lands as a correction with a ledger row —
     // an audit with an unlogged back door next to it is decoration.
     let adjustBalance: number | undefined;
+    let adjustPoints: number | undefined;
     if ('data' in patch) {
       const result = validateCharacterDataPatch(patch.data, deps.ctx.cpred);
       if (!result.ok) throw new RealtimeError('INVALID_DATA');
-      const { eddies, ...sheet } = result.patch;
+      const { eddies, improvementPoints, ...sheet } = result.patch;
       if (eddies !== undefined) {
         if (!isGm) throw new RealtimeError('FORBIDDEN');
         adjustBalance = eddies;
       }
+      // Stage 29a: the PD box goes the same way and for the same reason. The
+      // GM's number field stays a number field, but it lands as a correction
+      // with a row of its own — an audit with an unlogged back door beside it
+      // is decoration.
+      if (improvementPoints !== undefined) {
+        if (!isGm) throw new RealtimeError('FORBIDDEN');
+        adjustPoints = improvementPoints;
+      }
+      // Stage 29a: and so do the two things PD buys. A player who can type
+      // „Percepcja 7" pays nothing for the level, which would make all three
+      // ladders of s. 411 decoration; the GM keeps both fields, because a
+      // referee has to be able to fix a card. `roleId` travels with the rank
+      // for the same reason: a Role swapped under a kept rank would hand out a
+      // different Special Ability at the same level, for free.
+      if (!isGm && (sheet.skills !== undefined || sheet.roleAbilityRank !== undefined)) {
+        throw new RealtimeError('FORBIDDEN');
+      }
+      if (!isGm && sheet.roleId !== undefined) throw new RealtimeError('FORBIDDEN');
       // Stage 23c: „Reputacja zawsze zależy od czynów i działań Postaci, i
       // przydziela ją MG" (s. 193). Unlike eddies it stays on this path — there
       // is no ledger to write, only a door to close.
@@ -215,6 +235,24 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
           // „Korekta MG: ręczna zmiana salda" — the kind already says who, so
           // the label says what, rather than repeating the word twice.
           { kind: 'adjust', amount: delta, label: 'ręczna zmiana salda' },
+          user.id,
+          { merge: true, emit: false },
+        );
+        updated = await deps.ctx.prisma.character.findUniqueOrThrow({
+          where: { id: character.id },
+        });
+      }
+    }
+    if (adjustPoints !== undefined) {
+      const current = parseCharacterData(updated.data, deps.ctx.cpred);
+      const delta = adjustPoints - current.improvementPoints;
+      if (delta !== 0) {
+        await applyImprovementPoints(
+          deps,
+          campaignId,
+          updated,
+          current,
+          { kind: 'adjust', amount: delta, label: 'ręczna zmiana licznika' },
           user.id,
           { merge: true, emit: false },
         );

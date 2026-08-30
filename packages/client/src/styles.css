@@ -5774,6 +5774,114 @@ body.is-resizing {
   gap: 0.35rem;
 }
 
+/* Awans za PD (etap 29a). Dzieli szkielet z `.awareness` — to ta sama tabelka
+   „nazwa · wartość · koszt · guzik" — a dokłada wyłącznie to, czego tamta nie
+   miała: nagłówki sekcji, przewijaną listę Umiejętności i rejestr. */
+.advance-section {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.advance-filter {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.72rem;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.advance-group {
+  margin: 0.3rem 0 0.1rem;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+/* Sześćdziesiąt sześć Umiejętności nie zmieści się w karcie, a złożenie ich
+   w `details` kazałoby szukać wiersza w zamkniętych szufladach — więc jedna
+   lista, która się przewija. */
+.advance-scroll {
+  max-height: 16rem;
+  overflow-y: auto;
+  padding-right: 0.2rem;
+}
+
+.advance-x2 {
+  color: var(--text-dim);
+}
+
+.advance-cost--short {
+  opacity: 0.55;
+}
+
+.advance-buy {
+  padding: 0.05rem 0.4rem;
+  line-height: 1.3;
+  font-size: 0.74rem;
+}
+
+.advance-log {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin: 0.2rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.advance-log li {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  gap: 0.4rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.advance-log-what {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+.advance-log-amount,
+.advance-log-left {
+  text-align: right;
+}
+
+.advance-log-left {
+  min-width: 3.5rem;
+}
+
+/* Pula po sesji w zakładce „Postacie" (etap 29a) — jeden wiersz obok rytuałów
+   startu i końca miesiąca, bo to ta sama pora dnia. */
+.character-xp {
+  align-items: center;
+}
+
+.character-xp-field {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.character-xp-field input {
+  width: 4.5rem;
+}
+
+.character-xp-label {
+  flex: 1;
+  min-width: 6rem;
+}
+
 /* Etap 30b: to, co Medycyna daje poza liczbami — dwie Umiejętności spoza
    tabeli Umiejętności i dwie listy z podręcznika, zwinięte w `details`, żeby
    panel nie urósł na wysokość strony. */

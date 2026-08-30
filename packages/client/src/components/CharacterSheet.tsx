@@ -148,6 +148,7 @@ import {
   transferEddies,
 } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
+import { AdvancementPanel } from './AdvancementPanel.js';
 import { PortraitPicker } from './PortraitPicker.js';
 import { useAttackStore } from '../stores/attackStore.js';
 import { useCompendiumStore } from '../stores/compendiumStore.js';
@@ -535,8 +536,13 @@ function IdentityColumn({
         </div>
         <div className="cp-field cp-row">
           <span className="cp-label">Rola</span>
+          {/* Etap 29a: Rolę i rangę pisze MG albo płatny awans. Gracz, który
+              przełącza Rolę pod zachowaną rangą, dostaje inną Zdolność
+              Specjalną na tym samym poziomie za darmo. */}
           <select
             value={data.roleId ?? ''}
+            disabled={!isGm}
+            title={isGm ? undefined : 'Rolę zmienia MG.'}
             onChange={(e) =>
               saveData({ roleId: e.target.value === '' ? null : e.target.value }, 'roleId')
             }
@@ -566,6 +572,12 @@ function IdentityColumn({
                 min={ROLE_RANK_MIN}
                 max={ROLE_RANK_MAX}
                 value={data.roleAbilityRank}
+                readOnly={!isGm}
+                title={
+                  isGm
+                    ? undefined
+                    : 'Poziom Zdolności kupuje się PD — patrz „Awans” na stronie drugiej.'
+                }
                 onChange={(e) => {
                   const value = parseNumberInput(e);
                   if (value !== undefined) saveData({ roleAbilityRank: value }, 'roleAbilityRank');
@@ -859,6 +871,7 @@ function SkillColumns({
   startRoll: (target: Omit<RollTarget, 'characterId' | 'characterName'>, shift: boolean) => void;
 }) {
   const registry = useCharacterStore((s) => s.registry);
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const groups = useMemo(() => groupedSkills(registry), [registry]);
   // BAZA has to show what the roll will actually use: EMP follows Humanity
   // once there is chrome in the body (stage 23a), and a sheet that printed the
@@ -941,11 +954,21 @@ ${rollTitle}`
                       )}
                     </div>
                     <div className="cp-field cp-skill-cell">
+                      {/* Etap 29a: poziom kupuje się PD (panel „Awans” na
+                          stronie drugiej). Wpisywalny zostaje u MG — sędzia
+                          musi móc naprawić kartę — a cena bez zamkniętych
+                          drzwi obok nie jest ceną. */}
                       <input
                         type="number"
                         min={SKILL_LEVEL_MIN}
                         max={SKILL_LEVEL_MAX}
                         value={level}
+                        readOnly={!isGm}
+                        title={
+                          isGm
+                            ? undefined
+                            : 'Poziom podnosi się za PD — panel „Awans” na stronie drugiej.'
+                        }
                         onChange={(e) => setLevel(skill.id, e)}
                         aria-label={`Poziom: ${skill.name}`}
                       />
@@ -2810,6 +2833,7 @@ function CyberwareSection({
  */
 function LifepathPage({ character, data, saveData }: TabProps & { character: CharacterSheetView }) {
   const lifepath = data.lifepath;
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
 
   function writeLifepath(patch: Partial<CpredLifepath>) {
     saveData({ lifepath: { ...lifepath, ...patch } }, 'lifepath');
@@ -2831,20 +2855,30 @@ function LifepathPage({ character, data, saveData }: TabProps & { character: Cha
         </div>
         <div
           className="cp-field cp-row"
-          title="PD przyznaje MG po sesji (s. 408). Karta trzyma sam licznik — na co je wydać, ustala się przy stole."
+          title={
+            isGm
+              ? 'PD przyznaje MG po sesji (s. 408). Ręczna zmiana tej liczby zostaje w rejestrze awansów.'
+              : 'PD przyznaje MG po sesji (s. 408). Wydaje się je niżej, w panelu „Awans”.'
+          }
         >
           <span className="cp-label">Punkty Doświadczenia</span>
+          {/* Etap 29a: licznik pisze serwer. MG zostaje pole (korekta ląduje
+              w rejestrze), gracz widzi liczbę — wydaje ją panel niżej. */}
           <input
             type="number"
             min={0}
             max={IMPROVEMENT_POINTS_MAX}
             value={data.improvementPoints}
+            readOnly={!isGm}
             onChange={(e) => {
               const value = parseNumberInput(e);
               if (value !== undefined) saveData({ improvementPoints: value }, 'improvementPoints');
             }}
             aria-label="Punkty Doświadczenia"
           />
+        </div>
+        <div className="cp-field cp-span2 cp-advance">
+          <AdvancementPanel characterId={character.id} />
         </div>
       </div>
 

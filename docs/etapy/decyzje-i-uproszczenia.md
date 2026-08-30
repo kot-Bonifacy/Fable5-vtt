@@ -348,3 +348,24 @@ szansa` — kształt Rzutu na Śmierć, nie Testu na PT.
   niż poziom. Ulepszenia pojazdów z s. 163–165 (kilkadziesiąt pozycji) zostają w podręczniku:
   bez pojazdów nie miałyby czego ulepszać, a wiersz Taboru „Opancerzenie kadłuba" mówi przy stole
   dokładnie to samo.
+
+- **Etap 29a — „nieco czasu na obecnym poziomie" zostaje przy stole.** Podręcznik po tabelach
+  kosztów dopisuje: „Należy spędzić nieco czasu na obecnym poziomie, zanim wykupi się kolejny"
+  (s. 411). To zdanie o czasie **fabularnym**, którego VTT nie ma czym zmierzyć — kalendarza
+  kampanii nie ma, a licznik sesji mierzyłby coś innego niż podręcznik. Egzekwowany jest zakaz
+  przeskoku poziomu, który jest liczbą; „nieco czasu" pilnuje MG, tak jak pilnuje, czy postać
+  miała okazję ćwiczyć.
+
+- **Etap 29a — mnożnik inny niż 2 czytamy jak 1.** Podręcznik ma dokładnie dwie kolumny kosztów
+  Umiejętności (zwykłą i ×2), więc `multiplier: 3` w pliku danych wyceniałby Umiejętność, której
+  książka nie opisuje. `cpredSkillAdvanceCost` bierze więc ×2 albo ×1 i nic pomiędzy — dane
+  spoza podręcznika nie tworzą po cichu trzeciej drabinki.
+
+- **Etap 29a — Cech za PD się nie podnosi.** RAW nie ma tabeli kosztu Cechy, a wyjątki, o których
+  wspomina rozdział 18, nie są stabelaryzowane. Cechy zostają więc polem MG na karcie: awans ich
+  nie dotyka, a zmiana Cechy jest decyzją przy stole, nie zakupem.
+
+- **Etap 29a — rejestr awansów nie idzie do dziennika kampanii.** Ślad „co i kiedy podniesiono"
+  ma własną tabelę przy karcie (bliźniak `LedgerEntry` z 23b), a nie wpisy w dzienniku z 24b.
+  Dziennik jest prozą **indeksowaną do RAG-u**: dwadzieścia wierszy „Percepcja 4 → 5" na sesję
+  zasypałoby streszczenia z 19c i kontekst botów szumem o zerowej wartości fabularnej.
