@@ -30,6 +30,61 @@ import type { CostCategory } from './compendium.js';
  */
 export const CPRED_COMBAT_AWARENESS_ABILITY = 'Zmysł Walki';
 
+// ─────────────────────── Role i ich rangi (etap 29b) ───────────────────────
+
+/**
+ * One Role this character carries, and how far its Special Ability has come.
+ *
+ * Stage 29b — „W Czasie Czerwieni możesz zmienić Rolę zawsze, gdy poziom
+ * Zdolności Specjalnej poprzedniej Roli wynosi co najmniej 4" (s. 143). What
+ * the rulebook does *not* say is that the old Role stops working: „cały czas
+ * możesz podnosić poziom Zdolności Specjalnej poprzedniej Roli i korzystać
+ * z oferowanych przez nią korzyści". So a Role, once had, is had for good, and
+ * the sheet needs somewhere to keep the ones that are no longer current.
+ */
+export interface CpredRoleRank {
+  roleId: string;
+  rank: number;
+}
+
+/**
+ * What any Special Ability lookup needs off a sheet.
+ *
+ * `roleId`/`roleAbilityRank` stay the **current** Role — the one the Street
+ * sees (Reputacja, the token's card, the title of the sheet) — and everything
+ * earned before it lives in `formerRoles`. Written as one alias because a
+ * dozen call sites take this shape, and a dozen `Pick<…>` literals is how one
+ * of them gets forgotten when the shape grows again.
+ */
+export type CpredRoleSheet = Pick<CpredCharacterData, 'roleId' | 'roleAbilityRank' | 'formerRoles'>;
+
+/** Lowest rank of the current Role's Ability that lets a character change Role. */
+export const CPRED_MULTICLASS_MIN_RANK = 4;
+
+/**
+ * Every Role on this sheet, current one first.
+ *
+ * Current-first matters: it is the order the sheet lists the ability panels in,
+ * and „bieżąca" is the answer to „którą Rolą jesteś" even on a sheet carrying
+ * three.
+ */
+export function cpredRoleRanks(data: CpredRoleSheet): CpredRoleRank[] {
+  const rows: CpredRoleRank[] = [];
+  if (data.roleId)
+    rows.push({ roleId: data.roleId, rank: Math.max(0, Math.round(data.roleAbilityRank)) });
+  const former: readonly CpredRoleRank[] = data.formerRoles ?? [];
+  for (const entry of former) {
+    if (rows.some((row) => row.roleId === entry.roleId)) continue;
+    rows.push({ roleId: entry.roleId, rank: Math.max(0, Math.round(entry.rank)) });
+  }
+  return rows;
+}
+
+/** Does this sheet carry the named Role at all — current or former? */
+export function cpredHasRole(data: CpredRoleSheet, roleId: string): boolean {
+  return cpredRoleRanks(data).some((row) => row.roleId === roleId);
+}
+
 /**
  * The rank of a named Special Ability on this sheet, or null when this
  * character does not have it at all.
@@ -37,25 +92,81 @@ export const CPRED_COMBAT_AWARENESS_ABILITY = 'Zmysł Walki';
  * Null rather than zero, for the same reason `cpredInterfaceRank` returns null:
  * zero would read as „a Solo who is bad at it", and every caller here has to
  * tell „no ability" from „rank 0" to decide whether to render anything.
+ *
+ * Stage 29b: this asks **every** Role, not just the current one, and that is
+ * the whole of what multiclassing had to change in ten stage-30 abilities —
+ * they all come through here. Two Roles printing the same ability name is not
+ * a thing `roles.json` can do with the rulebook's own data; if a group renames
+ * one into a collision, the higher rank wins rather than whichever came first.
  */
 export function cpredRoleAbilityRank(
-  data: Pick<CpredCharacterData, 'roleId' | 'roleAbilityRank'>,
+  data: CpredRoleSheet,
   registry: CpredRegistry,
   ability: string,
 ): number | null {
-  if (!data.roleId) return null;
-  const role = registry.roles.find((entry) => entry.id === data.roleId);
-  if (!role || role.ability.trim().toLowerCase() !== ability.trim().toLowerCase()) return null;
-  return Math.max(0, Math.round(data.roleAbilityRank));
+  const wanted = ability.trim().toLowerCase();
+  let best: number | null = null;
+  for (const row of cpredRoleRanks(data)) {
+    const role = registry.roles.find((entry) => entry.id === row.roleId);
+    if (!role || role.ability.trim().toLowerCase() !== wanted) continue;
+    best = best === null ? row.rank : Math.max(best, row.rank);
+  }
+  return best;
 }
 
-/** The name of whatever Special Ability this sheet has; null when no Role. */
+/** The name of the **current** Role's Special Ability; null when no Role. */
 export function cpredRoleAbilityName(
   data: Pick<CpredCharacterData, 'roleId'>,
   registry: CpredRegistry,
 ): string | null {
   if (!data.roleId) return null;
   return registry.roles.find((entry) => entry.id === data.roleId)?.ability ?? null;
+}
+
+/**
+ * Reads the stored list of former Roles. Unknown ids survive parsing on
+ * purpose — a compendium regenerated with a renamed Role must not silently
+ * eat a rank somebody paid 600 PD for — and are refused at the door instead,
+ * by `cpredRolesProblem`.
+ */
+export function readCpredFormerRoles(raw: unknown): CpredRoleRank[] {
+  if (!Array.isArray(raw)) return [];
+  const rows: CpredRoleRank[] = [];
+  for (const entry of raw) {
+    if (typeof entry !== 'object' || entry === null) continue;
+    const row = entry as Record<string, unknown>;
+    if (typeof row.roleId !== 'string' || row.roleId.length === 0) continue;
+    if (rows.some((kept) => kept.roleId === row.roleId)) continue;
+    const rank =
+      typeof row.rank === 'number' && Number.isFinite(row.rank)
+        ? Math.max(1, Math.min(CPRED_ROLE_ABILITY_RANK_MAX, Math.round(row.rank)))
+        : 1;
+    rows.push({ roleId: row.roleId, rank });
+  }
+  return rows;
+}
+
+/** What is wrong with the Roles on a merged sheet, or null when nothing is. */
+export type CpredRolesProblem = 'UNKNOWN_ROLE' | 'ROLE_TWICE';
+
+/**
+ * Judged against the **merged** sheet for the reason Specialties and the
+ * Nomada's Tabor are (stages 30b, 30d): the patch may set `roleId` and
+ * `formerRoles` in one write, and „is this Role already here" cannot be
+ * answered by looking at either half alone.
+ */
+export function cpredRolesProblem(
+  data: CpredRoleSheet,
+  registry: CpredRegistry,
+): CpredRolesProblem | null {
+  const seen = new Set<string>();
+  const former: readonly CpredRoleRank[] = data.formerRoles ?? [];
+  for (const row of [...(data.roleId ? [{ roleId: data.roleId }] : []), ...former]) {
+    if (!registry.roles.some((entry) => entry.id === row.roleId)) return 'UNKNOWN_ROLE';
+    if (seen.has(row.roleId)) return 'ROLE_TWICE';
+    seen.add(row.roleId);
+  }
+  return null;
 }
 
 // ──────────────────────────── Zmysł Walki (s. 146) ────────────────────────────
@@ -271,7 +382,7 @@ export function cpredCombatAwarenessEffects(
  * bargain `combatProfileSheet` made for statists in 29.08.
  */
 export function cpredSheetCombatAwareness(
-  data: Pick<CpredCharacterData, 'roleId' | 'roleAbilityRank' | 'combatAwareness'>,
+  data: CpredRoleSheet & Pick<CpredCharacterData, 'combatAwareness'>,
   registry: CpredRegistry,
 ): CpredCombatAwarenessEffects {
   const rank = cpredRoleAbilityRank(data, registry, CPRED_COMBAT_AWARENESS_ABILITY);
@@ -648,7 +759,7 @@ export function cpredFabricationEffects(
  * everybody else, so no caller has to branch on „is this a Technik".
  */
 export function cpredSheetFabrication(
-  data: Pick<CpredCharacterData, 'roleId' | 'roleAbilityRank' | 'fabrication'>,
+  data: CpredRoleSheet & Pick<CpredCharacterData, 'fabrication'>,
   registry: CpredRegistry,
 ): CpredFabricationEffects {
   const rank = cpredRoleAbilityRank(data, registry, CPRED_FABRICATION_ABILITY);
@@ -792,7 +903,7 @@ export function cpredMedicineEffects(
 }
 
 export function cpredSheetMedicine(
-  data: Pick<CpredCharacterData, 'roleId' | 'roleAbilityRank' | 'medicine'>,
+  data: CpredRoleSheet & Pick<CpredCharacterData, 'medicine'>,
   registry: CpredRegistry,
 ): CpredMedicineEffects {
   const rank = cpredRoleAbilityRank(data, registry, CPRED_MEDICINE_ABILITY);
@@ -816,7 +927,7 @@ export function readCpredMedicine(raw: unknown): CpredMedicine {
  * Medyk, which is what „nie ma tej Umiejętności" means for a Check.
  */
 export function cpredMedicineSkillLevel(
-  data: Pick<CpredCharacterData, 'roleId' | 'roleAbilityRank' | 'medicine'>,
+  data: CpredRoleSheet & Pick<CpredCharacterData, 'medicine'>,
   registry: CpredRegistry,
   skillId: CpredMedicineSkillId,
 ): number {
@@ -877,7 +988,7 @@ export const CPRED_CRYO_LEVELS: readonly string[] = [
  * means both fit.
  */
 export function cpredSpecialtiesProblem(
-  data: Pick<CpredCharacterData, 'roleId' | 'roleAbilityRank' | 'medicine' | 'fabrication'>,
+  data: CpredRoleSheet & Pick<CpredCharacterData, 'medicine' | 'fabrication'>,
   registry: CpredRegistry,
 ): CpredSpecialtyProblem | null {
   return (
@@ -2556,10 +2667,7 @@ export const CPRED_MOTO_SKILL_IDS: readonly string[] = [
 ];
 
 /** Poziom Moto tej karty, albo 0 — dodatek do sześciu Testów wyżej. */
-export function cpredSheetMoto(
-  data: Pick<CpredCharacterData, 'roleId' | 'roleAbilityRank'>,
-  registry: CpredRegistry,
-): number {
+export function cpredSheetMoto(data: CpredRoleSheet, registry: CpredRegistry): number {
   return cpredRoleAbilityRank(data, registry, CPRED_MOTO_ABILITY) ?? 0;
 }
 
@@ -2871,7 +2979,7 @@ export function cpredRumourHeard(total: number): CpredRumourTier | null {
  * scalonej karcie, gdzie odpowiedź jest znana.
  */
 export function cpredFleetSheetProblem(
-  data: Pick<CpredCharacterData, 'roleId' | 'roleAbilityRank' | 'fleet'>,
+  data: CpredRoleSheet & Pick<CpredCharacterData, 'fleet'>,
   registry: CpredRegistry,
 ): CpredFleetProblem | null {
   return cpredFleetProblem(data.fleet, cpredRoleAbilityRank(data, registry, CPRED_MOTO_ABILITY));

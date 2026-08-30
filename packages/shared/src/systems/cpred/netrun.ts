@@ -28,7 +28,8 @@
  * that target instead of firing straight away.
  */
 
-import type { CpredCharacterData, CpredRegistry } from './character.js';
+import type { CpredRegistry } from './character.js';
+import { cpredRoleAbilityRank, type CpredRoleSheet } from './roleability.js';
 import type {
   CpredNetArchitecture,
   CpredNetBranch,
@@ -60,16 +61,11 @@ export const NET_INTERFACE_ABILITY = 'Interfejs';
  * all. Null is the answer that refuses a run — not zero, which would look like
  * a netrunner who is merely bad at it.
  */
-export function cpredInterfaceRank(
-  data: Pick<CpredCharacterData, 'roleId' | 'roleAbilityRank'>,
-  registry: CpredRegistry,
-): number | null {
-  if (!data.roleId) return null;
-  const role = registry.roles.find((entry) => entry.id === data.roleId);
-  if (!role || role.ability.trim().toLowerCase() !== NET_INTERFACE_ABILITY.toLowerCase()) {
-    return null;
-  }
-  return Math.max(0, data.roleAbilityRank);
+export function cpredInterfaceRank(data: CpredRoleSheet, registry: CpredRegistry): number | null {
+  // Stage 29b: through `cpredRoleAbilityRank`, so a Netrunner who took up
+  // another Role keeps the deck they paid for — „cały czas możesz […]
+  // korzystać z oferowanych przez nią korzyści" (s. 143).
+  return cpredRoleAbilityRank(data, registry, NET_INTERFACE_ABILITY);
 }
 
 // ──────────────────────────── Zdolności Interfejsu ────────────────────────────

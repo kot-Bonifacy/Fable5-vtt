@@ -23,6 +23,7 @@ import {
   cpredSheetFabrication,
   cpredRoleAbilityRank,
   cpredFleetSheetProblem,
+  cpredRolesProblem,
   cpredSpecialtiesProblem,
   createDefaultCharacterData,
   describeCombatAwareness,
@@ -185,6 +186,11 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
         throw new RealtimeError('FORBIDDEN');
       }
       if (!isGm && sheet.roleId !== undefined) throw new RealtimeError('FORBIDDEN');
+      // Stage 29b: and the list of previous Roles goes with it. Taking up a new
+      // Role costs 60 PD and is gated on a rank (s. 143); a player who can type
+      // the list makes both free. The GM keeps it — a referee has to be able to
+      // undo a change of Role the table decided against.
+      if (!isGm && sheet.formerRoles !== undefined) throw new RealtimeError('FORBIDDEN');
       // Stage 23c: „Reputacja zawsze zależy od czynów i działań Postaci, i
       // przydziela ją MG" (s. 193). Unlike eddies it stays on this path — there
       // is no ledger to write, only a door to close.
@@ -214,6 +220,12 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
       // the rank the patch may have just changed.
       const fleet = cpredFleetSheetProblem(merged, deps.ctx.cpred);
       if (fleet !== null) throw new RealtimeError(fleet);
+      // Stage 29b: „is this Role already on the sheet" cannot be answered by
+      // either half of a patch that moves `roleId` and `formerRoles` at once —
+      // and the same Role standing twice under two ranks would make
+      // `cpredRoleAbilityRank` pick one of them for reasons nobody can see.
+      const roles = cpredRolesProblem(merged, deps.ctx.cpred);
+      if (roles !== null) throw new RealtimeError(roles);
       data.data = JSON.stringify(merged);
     }
 

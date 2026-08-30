@@ -286,12 +286,18 @@ describe('Interfejs jako warunek wejścia', () => {
   );
 
   it('reads the rank off a Netrunner sheet', () => {
-    expect(cpredInterfaceRank({ roleId: 'netrunner', roleAbilityRank: 6 }, registry)).toBe(6);
+    expect(
+      cpredInterfaceRank({ roleId: 'netrunner', roleAbilityRank: 6, formerRoles: [] }, registry),
+    ).toBe(6);
   });
 
   it('answers null for a role whose ability is something else', () => {
-    expect(cpredInterfaceRank({ roleId: 'solo', roleAbilityRank: 8 }, registry)).toBeNull();
-    expect(cpredInterfaceRank({ roleId: null, roleAbilityRank: 8 }, registry)).toBeNull();
+    expect(
+      cpredInterfaceRank({ roleId: 'solo', roleAbilityRank: 8, formerRoles: [] }, registry),
+    ).toBeNull();
+    expect(
+      cpredInterfaceRank({ roleId: null, roleAbilityRank: 8, formerRoles: [] }, registry),
+    ).toBeNull();
   });
 });
 

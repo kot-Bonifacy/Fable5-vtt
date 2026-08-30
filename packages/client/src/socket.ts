@@ -58,10 +58,12 @@ import type {
   CombatFacedownResistPayload,
   CombatGrapplePayload,
   CharacterAdvancePayload,
+  CharacterRoleChangePayload,
   CharacterXpAwardPayload,
   CharacterXpAwardResult,
   CharacterXpHistoryResult,
   CpredAdvanceProblem,
+  CpredRoleChangeProblem,
   CombatGrappleResistPayload,
   ReputationRecognisePayload,
   CombatView,
@@ -197,6 +199,7 @@ import type {
 import {
   CHAT_COMMANDS_HELP,
   CPRED_ADVANCE_PROBLEMS,
+  CPRED_ROLE_CHANGE_PROBLEMS,
   CPRED_ATTACK_PROBLEM_MESSAGES,
   CPRED_COMBAT_AWARENESS_PROBLEMS,
   CPRED_FLEET_PROBLEMS,
@@ -2924,6 +2927,27 @@ export function fetchAdvancementHistory(
 export function advanceErrorText(code: string): string {
   if (code in CPRED_ADVANCE_PROBLEMS) {
     return CPRED_ADVANCE_PROBLEMS[code as CpredAdvanceProblem];
+  }
+  return combatErrorText(code);
+}
+
+/**
+ * Etap 29b: postać bierze na siebie inną Rolę (s. 143).
+ *
+ * `flushCharacterSave` z tego samego powodu, co przy awansie: łata czekająca
+ * na debounce wylądowałaby po zapisie serwera i przywróciła starą Rolę.
+ */
+export function changeCharacterRole(
+  payload: CharacterRoleChangePayload,
+): Promise<SocketAck<CharacterView>> {
+  flushCharacterSave(payload.characterId);
+  return emitEconomy('character:role-change', payload);
+}
+
+/** Polskie zdania dla odmów, które potrafi zwrócić `character:role-change`. */
+export function roleChangeErrorText(code: string): string {
+  if (code in CPRED_ROLE_CHANGE_PROBLEMS) {
+    return CPRED_ROLE_CHANGE_PROBLEMS[code as CpredRoleChangeProblem];
   }
   return combatErrorText(code);
 }

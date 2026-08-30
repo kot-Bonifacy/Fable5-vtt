@@ -510,3 +510,28 @@ w `LedgerEntry`: pieniądze i doświadczenie są audytami dwóch różnych rzecz
 rodzajów uczyniłaby „Zakup" legalnym powodem punktu Percepcji. Wzorzec jest ten sam co w 23b —
 `applyImprovementPoints` przesuwa licznik i zapisuje powód **jednym zapisem**, a to, co ten
 sam zapis zmienia na karcie (nowy poziom, nowa ranga), jedzie w jego `sheet`.
+
+**Zdolność Roli czyta się przez `CpredRoleSheet`, nigdy przez `roleId` wprost.** Od 29b karta
+niesie **listę** Ról: `roleId` + `roleAbilityRank` to Rola **bieżąca** (ta, przez którą widzi cię
+Ulica — Reputacja, tytuł karty, wiersz w „Postaciach", `hud.ts`), a wszystko zdobyte wcześniej
+siedzi w `formerRoles`. Trzy pola razem tworzą alias `CpredRoleSheet` i to on jest parametrem
+każdego wyszukania Zdolności; `cpredRoleAbilityRank` pyta o **każdą** Rolę z listy, więc dziesięć
+paneli etapu 30 i `cpredInterfaceRank` z 26a zaczęły działać obok siebie **bez jednej zmiany
+w nich samych**. Nowe wyszukanie Zdolności bierze `CpredRoleSheet`, nie własny `Pick<…>` —
+dwanaście takich literałów to dwanaście miejsc, o których zapomni się przy następnym polu.
+Kolejność listy jest znacząca: `cpredRoleRanks` zwraca bieżącą pierwszą.
+
+**Zmiana Roli** idzie wyłącznie przez `character:role-change` i `planCpredRoleChange`, jak każdy
+zakup z 29a: bramka to Zdolność Specjalna **bieżącej** Roli ≥ `CPRED_MULTICLASS_MIN_RANK` (4,
+s. 143) — i to ona sprawia, że trzecia Rola pyta o drugą, a nie o pierwszą. Nowa Rola kosztuje
+pierwszy szczebel drabinki Zdolności (60 PD) i startuje od 1; powrót do Roli już posiadanej jest
+darmowy, ale bramki **nie omija** (decyzja MG, 30.08.2026). Zapis na karcie liczy czysty
+`cpredRoleChangeSheet`, a rejestr dostaje własny rodzaj `role` — „Awans: 0 PD" przy darmowym
+powrocie czytałoby się jak błąd. `formerRoles` wypada z `character:update` u gracza, a to, czy
+karta może nieść daną Rolę (`cpredRolesProblem`: `ROLE_TWICE`, `UNKNOWN_ROLE`), rozstrzyga się na
+**scalonej** karcie — jak Specjalizacje z 30b i Tabor z 30d.
+
+**Nazwa Roli z `roles.json` stoi w zdaniu wyłącznie w mianowniku**, po dwukropku albo na końcu:
+plik danych niesie „Nomada", a odmiany nazwy, którą grupa może sobie przetłumaczyć inaczej, nie
+da się zgadnąć — „zostań Nomada" i „widzi cię jako Nomada" to nie są zdania po polsku. Tak samo
+z nazwami Zdolności. (Znalezione przy oględzinach 29b.)

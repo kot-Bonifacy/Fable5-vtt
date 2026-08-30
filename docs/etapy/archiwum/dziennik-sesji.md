@@ -7,6 +7,75 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 30.08 — etap 30d: Charyzma, Znajomości, Moto i Wiarygodność (i koniec etapu 30)
+
+**Zlecenie MG:** kontynuować budowę; z przedstawionych opcji wybór padł na **30d**. Dwie decyzje
+zapadły przed pierwszą linijką kodu: **Zasięg Fixera nie przebija poziomu sklepu** z 23b, ale
+**udany targ naprawdę zmienia cenę zakupu**; z Wiarygodności wchodzą **oba** rzuty — Rzetelność
+i Pogłoski.
+
+**Opis etapu 30d miał trzy błędy — wszystkie policzone na stronie.** (a) Progów Efektu Charyzmy
+jest **sześć**, nie pięć: 1–2, 3–4, 5–6, 7–8, 9 i 10, dokładnie jak u Fixera i u Media. (b)
+„Zasięg wchodzi w sklep z 23b" rozstrzygnął MG w drugą stronę — do sklepu weszło Targowanie się.
+(c) „Wiarygodność styka się z Reputacją z 23c" **nie jest prawdą**: Rzetelność mówi, czy odbiorcy
+uwierzą publikacji, Reputacja modyfikuje Konfrontację i rozpoznanie. Dwie liczby o dwóch różnych
+rzeczach; sklejenie ich byłoby zasadą domową.
+
+**Cztery Zdolności, jeden kształt — i to jest cały wynik rozpoznania.** Podręcznik drukuje je
+ramkami „POZIOMY 1 I 2", „POZIOMY 3 I 4"… aż do dziewiątki, gdzie przestaje parować. Szczeblem
+jest więc **przedział**, nie liczba, i stąd wspólny `CpredAbilityTier` z `min`/`max`. Trzy tabele
+mają po sześć szczebli, Tabor Nomady cztery (1–4, 5–6, 7–8, 9–10) — i to jedyna różnica
+w konstrukcji między nimi.
+
+**Efekt Charyzmy to jedyny Test w tej grze bez Cechy i bez Umiejętności.** „Wartość Efektu
+Charyzmy + 1k10" (s. 144) — ranga stoi tam, gdzie zwykle stoi para CHA + Perswazja, i sheet
+z CHA 8 nie ma jej czym podeprzeć. PT ustawia **liczebność publiczności** (8/10/12), a nie ranga;
+ranga rozstrzyga co innego — czy o daną rzecz w ogóle wolno poprosić. Prośba, której tabela nie
+niesie (duża grupa przy randze ≤2: „To żart, prawda? Jeszcze nie masz dużych grup fanów"), **nie
+dochodzi do kości**: `planCpredRoll` odmawia kodem `NO_CROWD`, bo „próba automatycznie się nie
+udaje" to brak próby, a nie przegrany rzut. Drugie zastosowanie — robienie nowych fanów — tabeli
+nie pyta i działa na każdym poziomie; stąd przełącznik nad wierszami zamiast dwóch paneli.
+
+**Targ Fixera musiał przeżyć rzut, więc dostał własne zdarzenie i pole na karcie.** „Jeśli rzut
+ci się udał, **możesz** dobić jednego targu" — nagroda jest odroczona, a „w czasie jednej
+transakcji można dobić tylko jednego targu" mówi, ile ich naraz: jeden. `character:haggle` rzuca
+obiema kośćmi (druga strona to fikcja, nie karta, więc MG podaje **jedną** liczbę: CHA + Handel +
+Znajomości) i po wygranej odkłada `CpredCharacterData.haggle`; `economy:buy` zdejmuje procent
+z ceny i targ z karty w tym samym zapisie. Pole wypadło z `character:update` (`FORBIDDEN`) jak
+`eddies` z 23b — zniżka z drzwiami bez rzutu obok nie jest zniżką.
+
+**Zasięg na szczeblu 5–6 dziedziczy pasmo z niższego — i to nie jest obejście.** Ramka
+„ZNAJOMOŚCI – POZIOMY 5 I 6" jako jedyna nie drukuje kategorii cenowej: w jej miejscu stoi Nocny.
+`cpredOperatorReach` szuka więc **w dół**, bo odczyt „szczebel bez pasma to brak Zasięgu" kazałby
+awansowi **odebrać** zdolność — czego w całym podręczniku nie robi żaden inny awans.
+
+**Test Rzetelności nie jest Testem i dlatego omija `finishCheck`.** Ranga kupuje **szansę**
+(„Szansa 2 na 10", rosnącą do 7), a nie modyfikator: kość leci goła, nie eksploduje, nie zbiera
+kary za rany, a Szczęścia użyć nie wolno wprost z podręcznika (s. 152). Kształt Rzutu na Śmierć,
+nie Testu na PT. Premie za dowody kumulują się, więc trzeci stopień listy niesie sumę obu (+3),
+a nie sam +2 — materiał z pięcioma niepodważalnymi dowodami ma tym samym ten jeden rzetelny.
+
+**Pogłoski przynosi rzut, treść pisze MG.** Guzik stoi **tylko u MG** („potajemny Test") i sypie
+kartę szeptem (`visibility: 'gm'`, kanał `gmroll` z etapu 03), a mówi jedno: który próg został
+pobity (7/9/11/13). Czym pogłoska jest, VTT nie wymyśla — to materiał kampanii z 24b i 19b.
+
+**Moto było najtańszą z czterech i wyszło z tego najwięcej.** Bonus do sześciu Testów to sześć
+linijek w planerze (bliźniak Naprawy z 30b, czytany **wprost z karty**, więc podgląd klienta
+i werdykt serwera nie mogą się rozjechać). Tabor Rodziny jest **listą**, nie prozą, bo podręcznik
+go liczy — „Zawsze, gdy Nomada podnosi poziom […] może zrobić jedną z dwóch rzeczy" — a liczby
+nie da się sprawdzić w akapicie. Niezmiennik jest ten sam, co przy Specjalizacjach z 30b: wpisów
+najwyżej tyle, ile poziomów, i żaden nie z kategorii wyższej niż poziom; puli pilnuje
+`cpredFleetSheetProblem` na **scalonej** karcie, więc awans i nowy wpis mieszczą się w jednej
+łacie.
+
+**Testy:** 1590 w `shared` (+38), **858** na serwerze (+13), 62 u klienta — zielone. ESLint
+i Prettier czyste, `pnpm -r build` przechodzi. **Migracji nie było** — `haggle` i `fleet` mieszkają
+w JSON-ie karty. **Nic z tej sesji nie było oglądane w przeglądarce** — osiem punktów stoi na
+górze `zaleglosci.md`, a do oględzin trzeba postaci z Rolą **Rocker**, **Fixer**, **Nomada**
+i **Media**. Przy okazji zapisana zaległość spoza etapu: **Ustabilizowanie i Leczenie porównują
+`>`**, choć decyzja MG z 28.08 mówi, że remis na PT statycznym zdaje — rozjazd do rozstrzygnięcia
+jednym ruchem przy etapie dotykającym 14b/30b.
+
 ### Sesja 29.08 (piąta) — etap 30c: Wsparcie Stróża Prawa i zespół Korpo
 
 **Zlecenie MG:** kontynuować budowę; z przedstawionych opcji wybór padł na **30c**. Trzy decyzje

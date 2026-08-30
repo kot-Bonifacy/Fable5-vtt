@@ -5827,6 +5827,29 @@ body.is-resizing {
   font-size: 0.74rem;
 }
 
+/* Selektor musi być dwuczłonowy, bo bije się z `.awareness-steps button`
+   (0,1,1) — samo `.advance-buy` (0,1,0) przegrywa kaskadę i guzik zostaje przy
+   1,6 rem, szerokości guzików ±1 panelu Zmysłu Walki. Napis wychodził wtedy
+   poza wiersz: w przewijanej liście Umiejętności widać było „Podn"
+   (znalezione przy oględzinach 29b, błąd jest z 29a). */
+.awareness-steps .advance-buy {
+  width: auto;
+}
+
+/* Zmiana Roli (etap 29b) — wybór i guzik w jednym wierszu, bo to jedna
+   decyzja: lista Ról jest długa, więc `select` bierze całą wolną szerokość. */
+.advance-role {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.25rem;
+}
+
+.advance-role select {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .advance-log {
   display: flex;
   flex-direction: column;

@@ -1,5 +1,7 @@
 import type {
+  AdvancementKind,
   CharacterAdvancePayload,
+  CharacterRoleChangePayload,
   CharacterView,
   CharacterXpAwardPayload,
   CharacterXpAwardResult,
@@ -16,9 +18,12 @@ import {
   ROLE_GM,
   describeCpredAdvance,
   isAdvancementKind,
+  cpredRoleChangeSheet,
+  describeCpredRoleChange,
   mergeCharacterData,
   parseCharacterData,
   planCpredAdvance,
+  planCpredRoleChange,
 } from '@vtt/shared';
 import type { Character } from '../generated/prisma/client.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
@@ -59,7 +64,7 @@ const ADJUST_MERGE_MS = 60_000;
 
 /** What one write to the PD box has to say for itself. */
 export interface AdvancementChange {
-  kind: 'award' | 'spend' | 'adjust';
+  kind: AdvancementKind;
   /** Signed: negative is points leaving the character. */
   amount: number;
   /** Polish one-liner for the audit: „Percepcja 4 → 5", „po sesji". */
@@ -175,7 +180,19 @@ function sheetPatchFor(
   step: CpredAdvanceStep,
   data: CpredCharacterData,
 ): Partial<CpredCharacterData> {
-  if (step.kind === 'ability') return { roleAbilityRank: step.to };
+  if (step.kind === 'ability') {
+    // Stage 29b: a sheet may carry several Roles, and the rank of a former one
+    // lives on its own row. Which of the two boxes moves is decided here rather
+    // than by the request — the planner has already said which Role this is.
+    if (step.roleId !== null && step.roleId !== data.roleId) {
+      return {
+        formerRoles: data.formerRoles.map((entry) =>
+          entry.roleId === step.roleId ? { ...entry, rank: step.to } : entry,
+        ),
+      };
+    }
+    return { roleAbilityRank: step.to };
+  }
   return { skills: { ...data.skills, [step.skillId as string]: step.to } };
 }
 
@@ -192,6 +209,7 @@ export const characterAdvanceEvent = defineEvent<CharacterAdvancePayload, Charac
     const result = planCpredAdvance(data, deps.ctx.cpred, {
       kind: payload?.kind,
       skillId: payload?.skillId,
+      roleId: payload?.roleId,
       to: payload?.to as number,
     });
     if (!result.ok) throw new RealtimeError(result.problem);
@@ -220,6 +238,57 @@ export const characterAdvanceEvent = defineEvent<CharacterAdvancePayload, Charac
     // netrunner sees a budget one save out of date.
     if (
       plan.kind === 'ability' &&
+      updated.cyberdeck !== null &&
+      (await deps.ctx.prisma.netRun.count({ where: { characterId: character.id } })) > 0
+    ) {
+      await emitRuns(deps, campaign.id);
+    }
+    return view;
+  },
+});
+
+/**
+ * `character:role-change` (stage 29b, s. 143) — the sheet takes up another Role.
+ *
+ * Its own event for the reason `character:advance` is one: the change is gated
+ * on a rank and, when the Role is new, costs 60 PD. Both are prices, and a
+ * price reachable through `character:update` is not a price. The sheet fields
+ * and the ledger row go down in one write, exactly as a bought level does.
+ */
+export const characterRoleChangeEvent = defineEvent<CharacterRoleChangePayload, CharacterView>({
+  name: 'character:role-change',
+  handler: async ({ deps, socket, user, payload }) => {
+    const campaign = socket.data.campaign;
+    if (!campaign) throw new RealtimeError('NO_CAMPAIGN');
+    const character = await requireSheet(deps, campaign.id, user, payload?.characterId);
+    const data = parseCharacterData(character.data, deps.ctx.cpred);
+
+    // The same function the panel greys its button with.
+    const result = planCpredRoleChange(data, deps.ctx.cpred, payload?.roleId);
+    if (!result.ok) throw new RealtimeError(result.problem);
+    const { plan } = result;
+
+    const updated = await applyImprovementPoints(
+      deps,
+      campaign.id,
+      character,
+      data,
+      { kind: 'role', amount: -plan.cost, label: describeCpredRoleChange(plan) },
+      user.id,
+      { sheet: cpredRoleChangeSheet(data, plan), emit: false },
+    );
+
+    const saved = await deps.ctx.prisma.character.findUniqueOrThrow({
+      where: { id: character.id },
+    });
+    const view = toCharacterView(saved, deps.ctx.cpred);
+    await emitCharacterUpsert(deps, campaign.id, view);
+    await emitTokensOfCharacter(deps, campaign.id, saved);
+    // Interfejs is the one Special Ability with machinery older than stage 30,
+    // and a change of Role moves it in both directions: a Netrunner taking up
+    // another Role keeps the deck, and somebody becoming a Netrunner mid-run
+    // is not a case, but a rank read one save late is.
+    if (
       updated.cyberdeck !== null &&
       (await deps.ctx.prisma.netRun.count({ where: { characterId: character.id } })) > 0
     ) {

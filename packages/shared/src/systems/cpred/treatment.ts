@@ -31,6 +31,7 @@ import {
   cpredMedicineSkillLevel,
   cpredRoleAbilityRank,
   CPRED_MEDICINE_ABILITY,
+  type CpredRoleSheet,
 } from './roleability.js';
 
 /** The Medyk-only skill id, which is not in the registry at all (s. 149). */
@@ -159,7 +160,7 @@ export function cpredTreatmentOptions(row: CpredCareTexts): CpredCareOption[] {
  */
 export function cpredCareRefusal(
   option: CpredCareOption,
-  data: Pick<CpredCharacterData, 'roleId' | 'roleAbilityRank' | 'medicine'>,
+  data: CpredRoleSheet & Pick<CpredCharacterData, 'medicine'>,
   registry: CpredRegistry,
 ): string | null {
   if (!option.medicOnly) return null;

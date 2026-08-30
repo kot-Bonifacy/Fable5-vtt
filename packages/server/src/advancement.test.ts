@@ -344,3 +344,179 @@ describe('etap 29a: Punkty Doświadczenia', () => {
     ).toEqual({ ok: false, error: 'FORBIDDEN' });
   });
 });
+
+/**
+ * Wieloklasowość na żywych gniazdach (etap 29b, s. 143).
+ *
+ * `advancement.test.ts` w `shared` sprawdza bramkę i cenę; tutaj szew: że
+ * zmiana Roli naprawdę schodzi z licznika **jednym zapisem**, że poprzednia
+ * Rola zostaje na karcie i dalej rośnie, i że gracz nie obejdzie ani bramki,
+ * ani ceny łatą karty.
+ */
+describe('etap 29b: wieloklasowość', () => {
+  let gm: ClientSocket;
+  let player: ClientSocket;
+  let heroId: string;
+
+  async function sheetOf(socket: ClientSocket, characterId: string): Promise<CpredCharacterData> {
+    const sync = new Promise<StateSyncPayload>((resolveSync, reject) => {
+      const timer = setTimeout(() => reject(new Error('state:sync timeout')), 4000);
+      socket.once('state:sync', (payload: StateSyncPayload) => {
+        clearTimeout(timer);
+        resolveSync(payload);
+      });
+    });
+    socket.emit('state:request');
+    const found = (await sync).characters.find((entry) => entry.id === characterId);
+    if (!found) throw new Error('character missing from sync');
+    return found.data as CpredCharacterData;
+  }
+
+  it('stawia stół: Solo ze Zmysłem Walki 3', async () => {
+    const gmConn = createSocket(gmCookie);
+    const playerConn = createSocket(playerCookie);
+    gm = gmConn.socket;
+    player = playerConn.socket;
+    await Promise.all([gmConn.firstSync, playerConn.firstSync]);
+    // Kartę stawia gniazdo MG: od 29a łata gracza dotykająca Roli i rangi
+    // dostaje FORBIDDEN, a przygotowanie stołu wygląda w teście jak tło.
+    heroId = data(
+      await emitAck<CharacterView>(gm, 'character:create', { name: 'Wilk', ownerId: playerId }),
+      'character:create',
+    ).id;
+    expect(
+      (
+        await emitAck(gm, 'character:update', {
+          characterId: heroId,
+          patch: { data: { roleId: 'solo', roleAbilityRank: 3 } },
+        })
+      ).ok,
+    ).toBe(true);
+  });
+
+  it('poniżej czwartego poziomu Zdolności Roli się nie zmienia', async () => {
+    expect((await emitAck(gm, 'character:xp-award', { characterId: heroId, amount: 600 })).ok).toBe(
+      true,
+    );
+    expect(
+      await emitAck(player, 'character:role-change', { characterId: heroId, roleId: 'nomad' }),
+    ).toEqual({ ok: false, error: 'RANK_TOO_LOW' });
+  });
+
+  it('kupiony czwarty poziom otwiera drzwi, a nowa Rola kosztuje 60 PD i startuje od 1', async () => {
+    // Ranga 3 → 4 kosztuje 240; zostaje 360.
+    expect(
+      (await emitAck(player, 'character:advance', { characterId: heroId, kind: 'ability', to: 4 }))
+        .ok,
+    ).toBe(true);
+    const view = data(
+      await emitAck<CharacterView>(player, 'character:role-change', {
+        characterId: heroId,
+        roleId: 'nomad',
+      }),
+      'character:role-change',
+    );
+    const sheet = view.data as CpredCharacterData;
+    expect(sheet.roleId).toBe('nomad');
+    expect(sheet.roleAbilityRank).toBe(1);
+    expect(sheet.formerRoles).toEqual([{ roleId: 'solo', rank: 4 }]);
+    expect(sheet.improvementPoints).toBe(300);
+  });
+
+  it('poprzednia Rola rośnie dalej i płaci własnym szczeblem', async () => {
+    // Zmysł Walki 4 → 5 kosztuje 300; Moto zostaje na jedynce.
+    const view = data(
+      await emitAck<CharacterView>(player, 'character:advance', {
+        characterId: heroId,
+        kind: 'ability',
+        roleId: 'solo',
+        to: 5,
+      }),
+      'character:advance',
+    );
+    const sheet = view.data as CpredCharacterData;
+    expect(sheet.formerRoles).toEqual([{ roleId: 'solo', rank: 5 }]);
+    expect(sheet.roleAbilityRank).toBe(1);
+    expect(sheet.improvementPoints).toBe(0);
+  });
+
+  it('rejestr nazywa obie rzeczy po imieniu', async () => {
+    const history = data(
+      await emitAck<CharacterXpHistoryResult>(player, 'character:xp-history', {
+        characterId: heroId,
+      }),
+      'character:xp-history',
+    );
+    expect(history.entries[0]).toMatchObject({
+      kind: 'spend',
+      label: 'Zmysł Walki 4 → 5',
+      amount: -300,
+    });
+    expect(history.entries[1]).toMatchObject({
+      kind: 'role',
+      label: 'Nomada — nowa Rola (Moto 1)',
+      amount: -60,
+      balance: 300,
+    });
+  });
+
+  it('powrót jest darmowy, ale bramka pyta bieżącą Rolę i tak', async () => {
+    // Moto stoi na jedynce, więc drzwi są zamknięte — mimo że Zmysł Walki na
+    // liście poprzednich Ról ma pięć. „Poprzedniej Roli" z s. 143 znaczy „tej,
+    // którą jesteś teraz", i to jest cała bramka trzeciej Roli.
+    expect(
+      await emitAck(player, 'character:role-change', { characterId: heroId, roleId: 'solo' }),
+    ).toEqual({ ok: false, error: 'RANK_TOO_LOW' });
+  });
+
+  it('Moto doprowadzone do czwórki otwiera powrót — i nie kosztuje ani punktu', async () => {
+    // 1 → 4 to 120 + 180 + 240 = 540 PD.
+    expect((await emitAck(gm, 'character:xp-award', { characterId: heroId, amount: 540 })).ok).toBe(
+      true,
+    );
+    for (const to of [2, 3, 4]) {
+      expect(
+        (await emitAck(player, 'character:advance', { characterId: heroId, kind: 'ability', to }))
+          .ok,
+      ).toBe(true);
+    }
+    const view = data(
+      await emitAck<CharacterView>(player, 'character:role-change', {
+        characterId: heroId,
+        roleId: 'solo',
+      }),
+      'character:role-change',
+    );
+    const sheet = view.data as CpredCharacterData;
+    expect(sheet.roleId).toBe('solo');
+    expect(sheet.roleAbilityRank).toBe(5);
+    expect(sheet.formerRoles).toEqual([{ roleId: 'nomad', rank: 4 }]);
+    // Zero PD w sakiewce, a zmiana i tak przeszła.
+    expect(sheet.improvementPoints).toBe(0);
+  });
+
+  it('gracz nie dopisze sobie Roli łatą karty', async () => {
+    expect(
+      await emitAck(player, 'character:update', {
+        characterId: heroId,
+        patch: { data: { formerRoles: [{ roleId: 'medtech', rank: 9 }] } },
+      }),
+    ).toEqual({ ok: false, error: 'FORBIDDEN' });
+    expect((await sheetOf(player, heroId)).formerRoles).toEqual([{ roleId: 'nomad', rank: 4 }]);
+  });
+
+  it('nawet MG nie postawi tej samej Roli dwa razy', async () => {
+    expect(
+      await emitAck(gm, 'character:update', {
+        characterId: heroId,
+        patch: { data: { formerRoles: [{ roleId: 'solo', rank: 9 }] } },
+      }),
+    ).toEqual({ ok: false, error: 'ROLE_TWICE' });
+    expect(
+      await emitAck(gm, 'character:update', {
+        characterId: heroId,
+        patch: { data: { formerRoles: [{ roleId: 'zjadacz-ognia', rank: 2 }] } },
+      }),
+    ).toEqual({ ok: false, error: 'UNKNOWN_ROLE' });
+  });
+});

@@ -8,6 +8,7 @@ import {
 } from './treatment.js';
 import { buildCpredRegistry } from './character.js';
 import type { CpredCharacterData, CpredRegistry } from './character.js';
+import type { CpredRoleSheet } from './roleability.js';
 
 const registry: CpredRegistry = buildCpredRegistry(
   { skills: [] },
@@ -20,9 +21,9 @@ const registry: CpredRegistry = buildCpredRegistry(
 );
 
 function healer(
-  patch: Partial<Pick<CpredCharacterData, 'roleId' | 'roleAbilityRank' | 'medicine'>>,
-): Pick<CpredCharacterData, 'roleId' | 'roleAbilityRank' | 'medicine'> {
-  return { roleId: null, roleAbilityRank: 1, medicine: {}, ...patch };
+  patch: Partial<CpredRoleSheet & Pick<CpredCharacterData, 'medicine'>>,
+): CpredRoleSheet & Pick<CpredCharacterData, 'medicine'> {
+  return { roleId: null, roleAbilityRank: 1, formerRoles: [], medicine: {}, ...patch };
 }
 
 describe('zdania o leczeniu z tabeli ran (s. 187–188)', () => {

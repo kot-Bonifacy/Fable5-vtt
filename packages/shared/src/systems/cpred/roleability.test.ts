@@ -7,8 +7,12 @@ import {
   cpredCombatAwarenessProblem,
   cpredCombatAwarenessSpent,
   cpredCombatAwarenessValue,
+  cpredHasRole,
   cpredRoleAbilityName,
   cpredRoleAbilityRank,
+  cpredRoleRanks,
+  cpredRolesProblem,
+  readCpredFormerRoles,
   cpredSheetCombatAwareness,
   describeCombatAwareness,
   readCpredCombatAwareness,
@@ -47,7 +51,7 @@ describe('poziom Zdolności Specjalnej', () => {
   it('czyta rangę tylko wtedy, gdy Rola ma tę właśnie Zdolność', () => {
     expect(
       cpredRoleAbilityRank(
-        { roleId: 'solo', roleAbilityRank: 6 },
+        { roleId: 'solo', roleAbilityRank: 6, formerRoles: [] },
         registry,
         CPRED_COMBAT_AWARENESS_ABILITY,
       ),
@@ -56,14 +60,14 @@ describe('poziom Zdolności Specjalnej', () => {
     // się jak „Solo, które jest w tym słabe".
     expect(
       cpredRoleAbilityRank(
-        { roleId: 'netrunner', roleAbilityRank: 8 },
+        { roleId: 'netrunner', roleAbilityRank: 8, formerRoles: [] },
         registry,
         CPRED_COMBAT_AWARENESS_ABILITY,
       ),
     ).toBeNull();
     expect(
       cpredRoleAbilityRank(
-        { roleId: null, roleAbilityRank: 8 },
+        { roleId: null, roleAbilityRank: 8, formerRoles: [] },
         registry,
         CPRED_COMBAT_AWARENESS_ABILITY,
       ),
@@ -206,3 +210,92 @@ describe('zdanie o przydziale', () => {
     expect(cpredCombatAwarenessSpent({})).toBe(0);
   });
 });
+
+/**
+ * Wieloklasowość (etap 29b, s. 143) — Rola przestaje być jednym polem.
+ *
+ * Testy pilnują jednej rzeczy: że `cpredRoleAbilityRank`, punkt, przez który
+ * przechodzi wszystkie dziesięć Zdolności etapu 30, pyta o **każdą** Rolę na
+ * karcie, a nie o bieżącą. Bez tego Solo, które zostało Nomadą, straciłoby
+ * Zmysł Walki — czego podręcznik nigdzie nie mówi.
+ */
+describe('kilka Ról na jednej karcie', () => {
+  const multi = {
+    ...createDefaultCharacterData(),
+    roleId: 'netrunner',
+    roleAbilityRank: 2,
+    formerRoles: [{ roleId: 'solo', rank: 6 }],
+  };
+
+  it('bieżąca Rola stoi pierwsza, poprzednie za nią', () => {
+    expect(cpredRoleRanks(multi)).toEqual([
+      { roleId: 'netrunner', rank: 2 },
+      { roleId: 'solo', rank: 6 },
+    ]);
+    expect(cpredHasRole(multi, 'solo')).toBe(true);
+    expect(cpredHasRole(multi, 'nomad')).toBe(false);
+  });
+
+  it('Zdolność poprzedniej Roli czyta się dalej — i to jest cała wieloklasowość', () => {
+    expect(cpredRoleAbilityRank(multi, registry, CPRED_COMBAT_AWARENESS_ABILITY)).toBe(6);
+    expect(cpredRoleAbilityRank(multi, registry, 'Interfejs')).toBe(2);
+    expect(cpredRoleAbilityRank(multi, registry, 'Moto')).toBeNull();
+  });
+
+  it('Ulicę obchodzi wyłącznie Rola bieżąca', () => {
+    expect(cpredRoleAbilityName(multi, registry)).toBe('Interfejs');
+  });
+
+  it('rozdzielony Zmysł Walki działa pod nową Rolą', () => {
+    const sheet = { ...multi, combatAwareness: readCpredCombatAwareness({ fastReflexes: 3 }) };
+    expect(cpredSheetCombatAwareness(sheet, registry)).toMatchObject({ rank: 6, initiative: 3 });
+  });
+
+  it('karta bez poprzednich Ról zachowuje się jak przed etapem', () => {
+    expect(cpredRoleRanks(soloSheet(4))).toEqual([{ roleId: 'solo', rank: 4 }]);
+    expect(cpredRoleRanks({ ...createDefaultCharacterData(), roleId: null })).toEqual([]);
+  });
+});
+
+describe('Role, których karta nieść nie może', () => {
+  it('przepuszcza kartę, na której każda Rola stoi raz', () => {
+    expect(cpredRolesProblem(multiSheet('netrunner', 2, [['solo', 6]]), registry)).toBeNull();
+    expect(
+      cpredRolesProblem({ ...createDefaultCharacterData(), roleId: null }, registry),
+    ).toBeNull();
+  });
+
+  it('ta sama Rola dwa razy to dwie rangi jednej Zdolności', () => {
+    expect(cpredRolesProblem(multiSheet('solo', 2, [['solo', 6]]), registry)).toBe('ROLE_TWICE');
+  });
+
+  it('Rola, której rejestr nie zna, jest odmawiana u drzwi', () => {
+    expect(cpredRolesProblem(multiSheet('solo', 4, [['zjadacz-ognia', 3]]), registry)).toBe(
+      'UNKNOWN_ROLE',
+    );
+  });
+
+  it('odczyt listy nie gubi rangi, za którą ktoś zapłacił', () => {
+    // Nieznane id **przeżywa** odczyt (kompendium bywa przegenerowane pod
+    // inną nazwą Roli) i ginie dopiero przy zapisie, z nazwanym powodem.
+    expect(readCpredFormerRoles([{ roleId: 'zjadacz-ognia', rank: 9 }])).toEqual([
+      { roleId: 'zjadacz-ognia', rank: 9 },
+    ]);
+    expect(
+      readCpredFormerRoles([
+        { roleId: 'solo', rank: 6 },
+        { roleId: 'solo', rank: 2 },
+      ]),
+    ).toEqual([{ roleId: 'solo', rank: 6 }]);
+    expect(readCpredFormerRoles('nie lista')).toEqual([]);
+  });
+});
+
+function multiSheet(roleId: string | null, rank: number, former: [string, number][]) {
+  return {
+    ...createDefaultCharacterData(),
+    roleId,
+    roleAbilityRank: rank,
+    formerRoles: former.map(([id, value]) => ({ roleId: id, rank: value })),
+  };
+}

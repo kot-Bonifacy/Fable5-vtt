@@ -114,6 +114,7 @@ import { characterTeamHireEvent, characterTeamLoyaltyEvent } from './team.js';
 import { characterHaggleEvent } from './haggle.js';
 import {
   characterAdvanceEvent,
+  characterRoleChangeEvent,
   characterXpAwardEvent,
   characterXpHistoryEvent,
 } from './advancement.js';
@@ -288,6 +289,7 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   economySettleEvent,
   economyHistoryEvent,
   characterAdvanceEvent,
+  characterRoleChangeEvent,
   characterXpAwardEvent,
   characterXpHistoryEvent,
   damageApplyEvent,

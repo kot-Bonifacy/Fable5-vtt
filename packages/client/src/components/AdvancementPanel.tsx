@@ -1,15 +1,140 @@
 import { useState } from 'react';
 import {
   ADVANCEMENT_KIND_LABELS,
-  cpredAbilityAdvanceStep,
+  CPRED_MULTICLASS_MIN_RANK,
+  cpredAbilityAdvanceSteps,
+  cpredRoleRanks,
   cpredSkillAdvanceStep,
   formatAdvancementAmount,
   groupedSkills,
+  planCpredRoleChange,
   type AdvancementEntryView,
   type CpredAdvanceStep,
 } from '@vtt/shared';
-import { advanceCharacter, advanceErrorText, fetchAdvancementHistory } from '../socket.js';
+import {
+  advanceCharacter,
+  advanceErrorText,
+  changeCharacterRole,
+  fetchAdvancementHistory,
+  roleChangeErrorText,
+} from '../socket.js';
 import { useCharacterStore } from '../stores/characterStore.js';
+
+/**
+ * Zmiana Roli (etap 29b, s. 143).
+ *
+ * Stoi w „Awansie", a nie przy wierszu „Rola" na stronie pierwszej, bo to jest
+ * zakup: nowa Rola kosztuje pierwszy szczebel drabinki Zdolności (60 PD)
+ * i otwiera się dopiero przy Zdolności bieżącej Roli na poziomie 4. Wybór Roli
+ * na stronie pierwszej został ręką MG — tam poprawia się kartę, tutaj się gra.
+ *
+ * Powrót do Roli, którą postać już miała, jest za darmo (decyzja MG,
+ * 30.08.2026): ranga siedzi na karcie i działa, zmienia się wyłącznie to, którą
+ * Rolą widzi cię Ulica.
+ */
+function RoleChangeSection({ characterId }: { characterId: string }) {
+  const character = useCharacterStore((s) => s.characters[characterId] ?? null);
+  const registry = useCharacterStore((s) => s.registry);
+  const [picked, setPicked] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  if (!character) return null;
+  const data = character.data;
+  const held = cpredRoleRanks(data);
+  const current = held[0] ?? null;
+  if (!current) return null;
+
+  const roleName = (id: string) => registry.roles.find((r) => r.id === id)?.name ?? id;
+  const candidates = registry.roles.filter((role) => role.id !== current.roleId);
+  const plan = picked ? planCpredRoleChange(data, registry, picked) : null;
+  const gated = current.rank < CPRED_MULTICLASS_MIN_RANK;
+
+  async function change(): Promise<void> {
+    setBusy(true);
+    setError(null);
+    const ack = await changeCharacterRole({ characterId, roleId: picked });
+    setBusy(false);
+    if (!ack.ok) {
+      setError(roleChangeErrorText(ack.error));
+      return;
+    }
+    setPicked('');
+  }
+
+  return (
+    <>
+      <p className="advance-section">Rola</p>
+      <ul className="awareness-list">
+        {held.map((row, index) => (
+          <li key={row.roleId} className="awareness-row">
+            <span className="awareness-name">{roleName(row.roleId)}</span>
+            <span className="awareness-value">{index === 0 ? 'bieżąca' : 'poprzednia'}</span>
+            <span className="awareness-cost">{row.rank}</span>
+            <span className="awareness-steps" />
+          </li>
+        ))}
+      </ul>
+      <div className="advance-role">
+        <select
+          value={picked}
+          onChange={(e) => {
+            setPicked(e.target.value);
+            setError(null);
+          }}
+          disabled={gated || busy}
+          aria-label="Nowa Rola"
+          title={
+            gated
+              ? `Rolę zmienia się przy Zdolności bieżącej Roli na poziomie ${CPRED_MULTICLASS_MIN_RANK}.`
+              : undefined
+          }
+        >
+          <option value="">— zmień Rolę na —</option>
+          {candidates.map((role) => {
+            const priced = planCpredRoleChange(data, registry, role.id);
+            const suffix = !priced.ok
+              ? ''
+              : priced.plan.returning
+                ? ` — powrót (${priced.plan.ability} ${priced.plan.rank})`
+                : ` — ${priced.plan.cost} PD`;
+            return (
+              <option key={role.id} value={role.id}>
+                {role.name}
+                {suffix}
+              </option>
+            );
+          })}
+        </select>
+        <button
+          type="button"
+          className="advance-buy"
+          onClick={() => void change()}
+          disabled={busy || plan === null || !plan.ok}
+          /* Nazwa Roli stoi w mianowniku po dwukropku, nigdy w środku zdania:
+             `roles.json` niesie „Nomada", a „zostań Nomada" to nie jest zdanie
+             po polsku — odmiany nazwy z pliku danych nie da się zgadnąć. */
+          title={
+            plan?.ok
+              ? plan.plan.returning
+                ? `Powrót do Roli: ${plan.plan.roleName} — za darmo, ${plan.plan.ability} wraca na poziom ${plan.plan.rank}.`
+                : `Nowa Rola: ${plan.plan.roleName} — ${plan.plan.cost} PD, ${plan.plan.ability} od poziomu 1 (zostanie ${plan.plan.left} PD). Poprzednia Rola (${roleName(plan.plan.from.roleId)}) zostaje na karcie i działa dalej.`
+              : undefined
+          }
+        >
+          Zmień
+        </button>
+      </div>
+      {plan && !plan.ok && <p className="awareness-error">{roleChangeErrorText(plan.problem)}</p>}
+      {error && <p className="awareness-error">{error}</p>}
+      <p className="awareness-hint">
+        {gated
+          ? `Rolę zmienia się dopiero przy Zdolności Specjalnej bieżącej Roli na poziomie ${CPRED_MULTICLASS_MIN_RANK} — dziś ${roleName(current.roleId)} ma ${current.rank} (s. 143).`
+          : 'Nowa Rola startuje od poziomu 1 i kosztuje 60 PD; poprzednia zostaje na karcie, działa i dalej rośnie (s. 143).'}
+      </p>
+    </>
+  );
+}
 
 /**
  * Wydawanie Punktów Doświadczenia (etap 29a, s. 411).
@@ -36,7 +161,11 @@ export function AdvancementPanel({ characterId }: { characterId: string }) {
   if (!character) return null;
   const data = character.data;
   const points = data.improvementPoints;
-  const ability = cpredAbilityAdvanceStep(data, registry);
+  // Etap 29b: karta może nieść kilka Ról, a każda ma swoją drabinkę — Solo,
+  // które zostało Nomadą, kupuje Zmysł Walki i Moto niezależnie.
+  const abilities = cpredAbilityAdvanceSteps(data, registry);
+  const held = cpredRoleRanks(data);
+  const current = held[0] ?? null;
 
   async function buy(step: CpredAdvanceStep): Promise<void> {
     setBusy(true);
@@ -45,6 +174,7 @@ export function AdvancementPanel({ characterId }: { characterId: string }) {
       characterId,
       kind: step.kind,
       ...(step.skillId ? { skillId: step.skillId } : {}),
+      ...(step.roleId ? { roleId: step.roleId } : {}),
       to: step.to,
     });
     setBusy(false);
@@ -65,7 +195,7 @@ export function AdvancementPanel({ characterId }: { characterId: string }) {
   function row(step: CpredAdvanceStep) {
     const short = points < step.cost;
     return (
-      <li key={step.skillId ?? 'ability'} className="awareness-row">
+      <li key={step.skillId ?? step.roleId ?? 'ability'} className="awareness-row">
         <span className="awareness-name" title={step.name}>
           {step.name}
           {step.doubled && (
@@ -120,16 +250,31 @@ export function AdvancementPanel({ characterId }: { characterId: string }) {
         </p>
       </header>
 
-      {ability ? (
+      {abilities.length > 0 ? (
         <>
-          <p className="advance-section">Zdolność Specjalna</p>
-          <ul className="awareness-list">{row(ability)}</ul>
+          <p className="advance-section">
+            {abilities.length > 1 ? 'Zdolności Specjalne' : 'Zdolność Specjalna'}
+          </p>
+          <ul className="awareness-list">{abilities.map(row)}</ul>
         </>
       ) : (
         <p className="awareness-hint">
           {data.roleId
             ? 'Zdolność Specjalna stoi na dziesiątce — wyżej podręcznik nie idzie.'
             : 'Bez Roli nie ma Zdolności Specjalnej do podnoszenia.'}
+        </p>
+      )}
+
+      <RoleChangeSection characterId={characterId} />
+
+      {/* Etap 29b: „cały czas możesz podnosić poziom Zdolności Specjalnej
+          poprzedniej Roli i korzystać z oferowanych przez nią korzyści"
+          (s. 143) — dlatego wyżej stoi lista, a nie jeden wiersz. */}
+      {held.length > 1 && current && (
+        <p className="awareness-hint">
+          Rolą, przez którą widzi cię Ulica, jest ta na górze listy:{' '}
+          {registry.roles.find((r) => r.id === current.roleId)?.name ?? '—'}. Poprzednie działają
+          dalej i dalej rosną.
         </p>
       )}
 

@@ -29,6 +29,13 @@ import {
   type CpredCharacterData,
   type CpredRegistry,
 } from './character.js';
+import {
+  CPRED_MULTICLASS_MIN_RANK,
+  cpredHasRole,
+  cpredRoleRanks,
+  type CpredRoleRank,
+  type CpredRoleSheet,
+} from './roleability.js';
 
 /**
  * „KOSZT AWANSU UMIEJĘTNOŚCI ZWYKŁYCH" (s. 411), indexed by target level − 1.
@@ -79,6 +86,16 @@ export interface CpredAdvanceRequest {
   kind: CpredAdvanceKind;
   /** Registry skill id; unread for `ability`. */
   skillId?: string;
+  /**
+   * Which Role's Special Ability is being raised; unread for `skill`, and
+   * absent means the current one.
+   *
+   * Stage 29b: a sheet may carry several, and „cały czas możesz podnosić
+   * poziom Zdolności Specjalnej poprzedniej Roli" (s. 143) means a former Role
+   * is bought up the same ladder as the current one — so the request has to
+   * say which, for the same reason `to` does.
+   */
+  roleId?: string;
   /** Level being entered — must be exactly one above the current one. */
   to: number;
 }
@@ -98,7 +115,13 @@ export const CPRED_ADVANCE_PROBLEMS: Record<CpredAdvanceProblem, string> = {
 /** What the sheet has to show for an advance to be priced and judged. */
 export type CpredAdvanceSheet = Pick<
   CpredCharacterData,
-  'skills' | 'skillSpecialties' | 'lifepath' | 'roleId' | 'roleAbilityRank' | 'improvementPoints'
+  | 'skills'
+  | 'skillSpecialties'
+  | 'lifepath'
+  | 'roleId'
+  | 'roleAbilityRank'
+  | 'formerRoles'
+  | 'improvementPoints'
 >;
 
 /** One priced step up, whether it can be paid for or not. */
@@ -106,6 +129,8 @@ export interface CpredAdvanceStep {
   kind: CpredAdvanceKind;
   /** Registry skill id, or null for the Special Ability. */
   skillId: string | null;
+  /** Registry role id whose Ability rises, or null for a Skill (stage 29b). */
+  roleId: string | null;
   /** As the audit will name it: „Percepcja", „Nauka (Fizyka)", „Zmysł Walki". */
   name: string;
   from: number;
@@ -142,6 +167,7 @@ export function cpredSkillAdvanceStep(
   return {
     kind: 'skill',
     skillId: skill.id,
+    roleId: null,
     name: cpredSkillLabel(skill, data),
     from,
     to,
@@ -159,18 +185,47 @@ export function cpredSkillAdvanceStep(
  * audit line saying what they bought.
  */
 export function cpredAbilityAdvanceStep(
-  data: Pick<CpredAdvanceSheet, 'roleId' | 'roleAbilityRank'>,
+  data: CpredRoleSheet,
   registry: CpredRegistry,
+  roleId?: string,
 ): CpredAdvanceStep | null {
-  if (!data.roleId) return null;
-  const role = registry.roles.find((entry) => entry.id === data.roleId);
+  const wanted = roleId ?? data.roleId;
+  if (!wanted) return null;
+  const row = cpredRoleRanks(data).find((entry) => entry.roleId === wanted);
+  if (!row) return null;
+  const role = registry.roles.find((entry) => entry.id === wanted);
   if (!role) return null;
-  const from = Math.max(0, Math.round(data.roleAbilityRank));
+  const from = row.rank;
   const to = from + 1;
   if (to > ROLE_RANK_MAX) return null;
   const cost = cpredAbilityAdvanceCost(to);
   if (cost === null) return null;
-  return { kind: 'ability', skillId: null, name: role.ability, from, to, cost, doubled: false };
+  return {
+    kind: 'ability',
+    skillId: null,
+    roleId: wanted,
+    name: role.ability,
+    from,
+    to,
+    cost,
+    doubled: false,
+  };
+}
+
+/**
+ * Every Special Ability this sheet may still raise, current Role first.
+ *
+ * The panel's list rather than one row, because from stage 29b a sheet may
+ * carry three — and „nie możesz przeskakiwać Poziomów" is per ability, so a
+ * Solo whose Zmysł Walki stands at ten still has a Moto to buy.
+ */
+export function cpredAbilityAdvanceSteps(
+  data: CpredRoleSheet,
+  registry: CpredRegistry,
+): CpredAdvanceStep[] {
+  return cpredRoleRanks(data)
+    .map((row) => cpredAbilityAdvanceStep(data, registry, row.roleId))
+    .filter((step): step is CpredAdvanceStep => step !== null);
 }
 
 /**
@@ -187,10 +242,13 @@ export function planCpredAdvance(
 
   let step: CpredAdvanceStep | null;
   if (request.kind === 'ability') {
-    if (!data.roleId || !registry.roles.some((entry) => entry.id === data.roleId)) {
+    // Stage 29b: an absent `roleId` still means the current Role, so every
+    // client written before multiclassing keeps buying the same level.
+    const wanted = request.roleId ?? data.roleId;
+    if (!wanted || !cpredHasRole(data, wanted) || !registry.roles.some((e) => e.id === wanted)) {
       return { ok: false, problem: 'NO_ROLE' };
     }
-    step = cpredAbilityAdvanceStep(data, registry);
+    step = cpredAbilityAdvanceStep(data, registry, wanted);
     // The Role is known, so the only way back is null is a rank out of ladder.
     if (step === null) return { ok: false, problem: 'LEVEL_MAX' };
   } else if (request.kind === 'skill') {
@@ -211,6 +269,122 @@ export function planCpredAdvance(
   return { ok: true, plan: { ...step, left } };
 }
 
+// ─────────────────────────── Zmiana Roli (s. 143) ───────────────────────────
+
+export type CpredRoleChangeProblem =
+  'BAD_REQUEST' | 'UNKNOWN_ROLE' | 'NO_ROLE' | 'SAME_ROLE' | 'RANK_TOO_LOW' | 'NO_POINTS';
+
+export const CPRED_ROLE_CHANGE_PROBLEMS: Record<CpredRoleChangeProblem, string> = {
+  BAD_REQUEST: 'Nie wiadomo, jaką Rolą miałaby być ta postać.',
+  UNKNOWN_ROLE: 'Nie ma takiej Roli.',
+  NO_ROLE: 'Ta postać nie ma jeszcze Roli — pierwszą nadaje kreator albo MG.',
+  SAME_ROLE: 'To już jest bieżąca Rola tej postaci.',
+  RANK_TOO_LOW: `Rolę zmienia się dopiero przy Zdolności Specjalnej bieżącej Roli na poziomie ${CPRED_MULTICLASS_MIN_RANK} (s. 143).`,
+  NO_POINTS: 'Za mało Punktów Doświadczenia.',
+};
+
+/** One change of Role, priced and judged. */
+export interface CpredRoleChangePlan {
+  /** Role being taken up — the one the Street will see. */
+  roleId: string;
+  /** Its printed name, for the button and the audit row. */
+  roleName: string;
+  /** Its Special Ability's printed name. */
+  ability: string;
+  /** Rank it stands at afterwards: 1 for a new Role, the kept one on a return. */
+  rank: number;
+  /** True when the sheet already carried this Role — then the change is free. */
+  returning: boolean;
+  cost: number;
+  /** Points left after paying. */
+  left: number;
+  /** The Role stepping aside, and how far its Ability had come. */
+  from: CpredRoleRank;
+}
+
+export type CpredRoleChangeResult =
+  { ok: true; plan: CpredRoleChangePlan } | { ok: false; problem: CpredRoleChangeProblem };
+
+/** What judging a change of Role needs off a sheet. */
+export type CpredRoleChangeSheet = CpredRoleSheet & Pick<CpredCharacterData, 'improvementPoints'>;
+
+/**
+ * Judges and prices one change of Role — the twin of `planCpredAdvance`, and
+ * the single function both the panel and the server go through.
+ *
+ * „W Czasie Czerwieni możesz zmienić Rolę zawsze, gdy poziom Zdolności
+ * Specjalnej poprzedniej Roli wynosi co najmniej 4" (s. 143). The gate always
+ * asks the **current** Role, which is what makes the third Role ask the second
+ * rather than the first: „dopóki nie podniesiesz poziomu Zdolności Specjalnej
+ * swojej nowej Roli do 4".
+ *
+ * Two shapes come out of one rule. Taking up a Role never held before buys its
+ * Ability's first rung (60 PD, s. 411) and starts at 1; going back to one the
+ * sheet already carries costs nothing, because the rank is still there and the
+ * only thing changing is which Role the Street sees (decision of the GM,
+ * 30.08.2026).
+ */
+export function planCpredRoleChange(
+  data: CpredRoleChangeSheet,
+  registry: CpredRegistry,
+  roleId: unknown,
+): CpredRoleChangeResult {
+  if (typeof roleId !== 'string' || roleId.length === 0) {
+    return { ok: false, problem: 'BAD_REQUEST' };
+  }
+  const role = registry.roles.find((entry) => entry.id === roleId);
+  if (!role) return { ok: false, problem: 'UNKNOWN_ROLE' };
+
+  const current = cpredRoleRanks(data)[0];
+  if (!current || !registry.roles.some((entry) => entry.id === current.roleId)) {
+    return { ok: false, problem: 'NO_ROLE' };
+  }
+  if (current.roleId === roleId) return { ok: false, problem: 'SAME_ROLE' };
+  if (current.rank < CPRED_MULTICLASS_MIN_RANK) return { ok: false, problem: 'RANK_TOO_LOW' };
+
+  const former: readonly CpredRoleRank[] = data.formerRoles ?? [];
+  const held = former.find((entry) => entry.roleId === roleId) ?? null;
+  const returning = held !== null;
+  const cost = returning ? 0 : (cpredAbilityAdvanceCost(1) ?? 0);
+  const left = Math.round(data.improvementPoints) - cost;
+  if (left < 0) return { ok: false, problem: 'NO_POINTS' };
+
+  return {
+    ok: true,
+    plan: {
+      roleId,
+      roleName: role.name,
+      ability: role.ability,
+      rank: held ? Math.max(1, Math.round(held.rank)) : 1,
+      returning,
+      cost,
+      left,
+      from: current,
+    },
+  };
+}
+
+/**
+ * The sheet fields one change of Role writes — the current Role and the list of
+ * former ones, always together. Pure, so the server merges the result of the
+ * same computation the panel previewed.
+ */
+export function cpredRoleChangeSheet(
+  data: CpredRoleSheet,
+  plan: CpredRoleChangePlan,
+): Pick<CpredCharacterData, 'roleId' | 'roleAbilityRank' | 'formerRoles'> {
+  const former: readonly CpredRoleRank[] = data.formerRoles ?? [];
+  const formerRoles = former.filter((entry) => entry.roleId !== plan.roleId);
+  formerRoles.unshift({ roleId: plan.from.roleId, rank: Math.max(1, plan.from.rank) });
+  return { roleId: plan.roleId, roleAbilityRank: plan.rank, formerRoles };
+}
+
+/** „Nomada — nowa Rola (Moto 1)" — what the audit row says about the change. */
+export function describeCpredRoleChange(plan: CpredRoleChangePlan): string {
+  const what = plan.returning ? 'powrót do Roli' : 'nowa Rola';
+  return `${plan.roleName} — ${what} (${plan.ability} ${plan.rank})`;
+}
+
 // ─────────────────────────── Rejestr awansów ───────────────────────────
 
 /**
@@ -220,13 +394,17 @@ export function planCpredAdvance(
  * and experience are audits of two different things, and one shared enum would
  * make „Zakup" a legal reason for a point of Percepcja.
  */
-export const ADVANCEMENT_KINDS = ['award', 'spend', 'adjust'] as const;
+export const ADVANCEMENT_KINDS = ['award', 'spend', 'adjust', 'role'] as const;
 export type AdvancementKind = (typeof ADVANCEMENT_KINDS)[number];
 
 export const ADVANCEMENT_KIND_LABELS: Record<AdvancementKind, string> = {
   award: 'Przyznane po sesji',
   spend: 'Awans',
   adjust: 'Korekta MG',
+  // Stage 29b. Its own kind rather than a `spend` of nought, because a return
+  // to a Role already held moves no points at all — and „Awans: 0 PD" is a row
+  // that reads like a bug.
+  role: 'Zmiana Roli',
 };
 
 export function isAdvancementKind(value: unknown): value is AdvancementKind {
@@ -308,6 +486,20 @@ export interface CharacterXpAwardPayload {
 export interface CharacterXpAwardResult {
   /** How many sheets the points reached. */
   awarded: number;
+}
+
+/**
+ * `character:role-change` — the sheet takes up another Role (stage 29b).
+ *
+ * Its own event rather than a field of `character:update` for the reason
+ * `eddies` left that path in 23b: a new Role costs 60 PD and is gated on a
+ * rank, and a door that reaches the same result without paying either makes
+ * both decoration. The owner of the sheet sends it, or the GM.
+ */
+export interface CharacterRoleChangePayload {
+  characterId: string;
+  /** Registry role id the character becomes. */
+  roleId: string;
 }
 
 /** Client → server payload of `character:xp-history` — the audit of one sheet. */

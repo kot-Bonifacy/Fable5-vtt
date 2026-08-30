@@ -8,20 +8,30 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
 
 ## Pozycje
 
-- **Etap 29a nie był oglądany w przeglądarce.** Mechanika jedzie w testach (21 nowych
-  w `shared`, 9 na serwerze), ale ekranu awansu nikt nie kliknął. Do sprawdzenia: (1) **panel
-  „Awans"** na stronie drugiej karty — nagłówek „N PD w zapasie", wiersz Zdolności Specjalnej
-  nad listą Umiejętności, przewijana lista z nagłówkami kategorii; (2) **cena ×2** — Ogień
-  ciągły, Materiały wybuchowe i pięć pozostałych mają dopisek „×2" i dwukrotny koszt; (3)
-  **guzik „Podnieś"** — po kliknięciu poziom rośnie na stronie pierwszej, licznik PD spada,
-  a wiersz w rejestrze pojawia się bez przeładowania; (4) **filtr „tylko na które mnie stać"** —
-  lista skraca się do rzeczy w zasięgu sakiewki; (5) **brak PD** — guzik wyszarzony z
-  podpowiedzią „Brakuje N PD"; (6) **rejestr awansów** (`details`) — daty, etykiety, kwoty ze
-  znakiem i stan po operacji; (7) **pola tylko do odczytu u gracza** — poziom Umiejętności,
-  ranga Zdolności, wybór Roli i licznik PD nie przyjmują znaków, a podpowiedź mówi, gdzie się
-  je zmienia; **u MG te same pola dalej działają**; (8) **„✦ Przyznaj wszystkim"** w zakładce
-  „Postacie" (tylko MG) — pole liczby, pole powodu, komunikat „Przyznano N PD — M postaci",
-  a licznik rośnie każdej karcie gracza i **żadnemu BN-owi**.
+- **Etap 29a — obejrzana połowa.** 30.08 (trzecia sesja) przy okazji 29b sprawdzone i zamknięte:
+  **panel „Awans"** (nagłówek „N PD w zapasie", wiersz Zdolności nad listą Umiejętności,
+  przewijana lista z nagłówkami kategorii), **cena ×2** („Broń ciężka ×2 · 40 PD"), **rejestr
+  awansów** (data, etykieta, kwota ze znakiem, stan po operacji) i **wyszarzony wybór Roli
+  u gracza**. Zostaje do sprawdzenia: (1) **guzik „Podnieś"** — poziom rośnie na stronie
+  pierwszej, licznik PD spada, a wiersz w rejestrze pojawia się bez przeładowania; (2) **filtr
+  „tylko na które mnie stać"**; (3) **brak PD** — guzik wyszarzony z podpowiedzią „Brakuje
+  N PD"; (4) **pozostałe pola tylko do odczytu u gracza** — poziom Umiejętności, ranga
+  Zdolności i licznik PD nie przyjmują znaków, a **u MG te same pola dalej działają**;
+  (5) **„✦ Przyznaj wszystkim"** w zakładce „Postacie" (tylko MG) — pole liczby, pole powodu,
+  komunikat „Przyznano N PD — M postaci", a licznik rośnie każdej karcie gracza i **żadnemu
+  BN-owi**.
+
+- **Etap 29b — obejrzany od strony gracza, nie od strony MG.** 30.08 sprawdzone na karcie
+  „Test 27x": sekcja „Rola" w panelu Awansu, zakup drugiej Roli za 60 PD, dwa wiersze Zdolności
+  („Zdolności Specjalne" w liczbie mnogiej), oba panele Zdolności obok siebie na stronie
+  pierwszej, chromowa plakietka rangi poprzedniej Roli, tytuł karty i wiersz w zakładce
+  „Postacie" z **nową** Rolą, wiersz rejestru „Nomada — nowa Rola (Moto 1) · −60 PD" i bramka
+  zamykająca się po zmianie (Moto 1 < 4). Zostaje: (1) **darmowy powrót do Roli już posiadanej**
+  — wymaga doprowadzenia bieżącej Zdolności do 4, więc kosztuje 540 PD samego przygotowania;
+  (2) **rzut korzystający ze Zdolności poprzedniej Roli** — np. „Moto N" w rozbiciu karty rzutu
+  Prowadzeniem u postaci, która Nomadą **już nie jest**; (3) **ręka MG** — pole rangi przy
+  poprzedniej Roli (u gracza tylko do odczytu) i odmowy `ROLE_TWICE` / `UNKNOWN_ROLE` przy
+  ręcznym wpisie.
 
 - **Etap 30d nie był oglądany w przeglądarce.** Mechanika jedzie w testach (38 nowych
   w `shared`, 13 na serwerze), ale żadnego z tych czterech paneli nikt nie kliknął. Do

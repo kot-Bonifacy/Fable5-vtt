@@ -587,6 +587,53 @@ function IdentityColumn({
             </span>
           )}
         </div>
+        {/* Etap 29b: Role, którymi postać była wcześniej. „Cały czas możesz
+            podnosić poziom Zdolności Specjalnej poprzedniej Roli i korzystać
+            z oferowanych przez nią korzyści" (s. 143) — więc stoją w tym samym
+            miejscu, co bieżąca, a nie w archiwum na końcu karty. Rangę pisze
+            MG albo płatny awans; zmienia się Rolę w „Awansie" na stronie
+            drugiej, bo to zakup. */}
+        {data.formerRoles.map((entry) => {
+          const former = registry.roles.find((r) => r.id === entry.roleId) ?? null;
+          if (!former) return null;
+          return (
+            <div key={entry.roleId} className="cp-field cp-row cp-ability cp-ability--former">
+              <span className="cp-label" title="Rola, którą ta postać była wcześniej">
+                {former.name}
+              </span>
+              <span className="cp-ability-name" title={former.ability}>
+                {former.ability}
+              </span>
+              <span className="cp-rank" title="Ranga zdolności poprzedniej roli">
+                <input
+                  type="number"
+                  min={ROLE_RANK_MIN}
+                  max={ROLE_RANK_MAX}
+                  value={entry.rank}
+                  readOnly={!isGm}
+                  title={
+                    isGm
+                      ? undefined
+                      : 'Poziom Zdolności kupuje się PD — patrz „Awans” na stronie drugiej.'
+                  }
+                  onChange={(e) => {
+                    const value = parseNumberInput(e);
+                    if (value === undefined) return;
+                    saveData(
+                      {
+                        formerRoles: data.formerRoles.map((row) =>
+                          row.roleId === entry.roleId ? { ...row, rank: value } : row,
+                        ),
+                      },
+                      'formerRoles',
+                    );
+                  }}
+                  aria-label={`Ranga: ${former.ability}`}
+                />
+              </span>
+            </div>
+          );
+        })}
         {/* Etap 30a: jedyna Zdolność Specjalna, której punkty się rozdziela —
             reszta Ról ma samą rangę. Panel siedzi pod wierszem Zdolności, bo
             to jej rozwinięcie, a nie osobna część karty. */}

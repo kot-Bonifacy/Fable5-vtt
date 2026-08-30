@@ -39,6 +39,19 @@ by niczego droższego niż 50 ed. Przełącznik 1–4 jest w zakładce **„Komp
 kategorii; MG kupuje przez wszystkie poziomy niezależnie od niego. **Sprawdzone 22.08:** Kompendium pokazuje „Sklep: **Zawodowe** · Do 500 ed", a wpisy wyższych
 poziomów są wyszarzone z powodem — wartość z bazy dociera do UI poprawnie.
 
+## Stan kart po oględzinach 29b (30.08, trzecia sesja)
+
+**Karta „Test 27x" była w trakcie oględzin przestawiona na Solo 4 z 400 PD, a potem na Nomadę
+z Solo jako poprzednią Rolą — i została przywrócona.** Po sesji stoi z powrotem jako
+**Netrunner, Interfejs 7, 0 PD, `formerRoles: []`**, z cyberdekiem na miejscu; wiersz rejestru
+awansów, który powstał przy zakupie Roli, został skasowany. Poligon Sieci (żeton „Kolec"
+podpięty do tej karty) jest nienaruszony. **Do następnych oględzin wieloklasowości trzeba tę
+sytuację odtworzyć od nowa** albo zrobić kartę osobną — „Test 27x" jest nośna dla etapów 26x.
+
+**Zastane, nie z tej sesji: karta `avatar9` ma Rolę `solo` z rangą 1**, choć `POSTEP.md` opisuje
+avatar9 jako netrunnera. Netrunnerem jest **„Test 27x"** (to ona ma cyberdek) — obie należą do
+konta `avatar9` i stąd pomyłka w notatce.
+
 ## Stan kart po sesji 28.08 (pakiet A+B — ekonomia i chrom)
 
 **avatar9 jest od 28.08 jedyną postacią w bazie z chromem** i zostaje taki celowo: to jedyny

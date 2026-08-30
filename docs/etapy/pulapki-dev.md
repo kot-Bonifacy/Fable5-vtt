@@ -437,3 +437,24 @@ każdy stary test przygotowujący kartę przez gniazdo gracza (`emitAck(player, 
 przygotowanie stołu wygląda w teście jak tło. Padły tak trzy testy w `characters.test.ts`
 i `roles30d.test.ts`. Kartę stawia się gniazdem MG; gracz kupuje poziom przez
 `character:advance`.
+
+**`.advance-buy` przegrywał kaskadę z `.awareness-steps button`.** Panel awansu z 29a dzieli
+szkielet wiersza z panelem Zmysłu Walki (30a), a tamten ma guziki ±1 przycięte do 1,6 rem
+selektorem `.awareness-steps button` (0,1,1). Guzik „Podnieś" z klasą `.advance-buy` (0,1,0)
+dziedziczył tę szerokość i wychodził poza wiersz: w przewijanej liście Umiejętności widać było
+„Podn", a `.advance-scroll` dostawał poziomy pasek przewijania. Objaw wygląda jak zbyt wąska
+kolumna, jest zbyt słabym selektorem — `width: auto` trzeba dopisać jako `.awareness-steps
+.advance-buy`. Sprawdza się to jedną linijką w konsoli: `getComputedStyle(btn).width`, nie okiem.
+(Znalezione przy oględzinach 29b; błąd jest z 29a.)
+
+**Kartę do oględzin da się przygotować w bazie, bez logowania na MG.** `node --input-type=module`
+z `node:sqlite` (`DatabaseSync('packages/server/dev.db')`) czyta i zapisuje kolumnę `Character.data`
+jako JSON; działający `pnpm dev` nie przeszkadza, wystarczy przeładować kartę przeglądarki, żeby
+`state:sync` przyniósł nowy stan. `better-sqlite3` **nie jest** w `node_modules` na poziomie
+repozytorium — jedzie jako zależność adaptera Prismy i `require` go nie znajdzie.
+
+**Migotanie pełnego `vitest run` na serwerze nie ogranicza się do `walls`/`realtime`.** 30.08
+padły w jednym przebiegu `roles30d.test.ts` („Pogłoski […] szeptem": `roll` zamiast `gmroll`)
+i dwa testy z `specialties.test.ts`, a w trzech innych przebiegach tego samego kodu — nic.
+Oba pliki przechodzą w izolacji. Zanim uznasz taki wynik za regres: **powtórz przebieg
+i puść same te pliki**. Jeden czerwony przebieg z 54 plików nie jest dowodem.

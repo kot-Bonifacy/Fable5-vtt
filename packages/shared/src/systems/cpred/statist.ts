@@ -263,7 +263,10 @@ export function combatProfileSheet(
     roleId: null,
     roleAbilityRank: 1,
     // No Role means no Special Ability (stage 30a): `cpredRoleAbilityRank`
-    // refuses a sheet with a null `roleId` before it ever reads this.
+    // refuses a sheet with a null `roleId` before it ever reads this, and
+    // stage 29b's list of previous ones is empty for the same reason — a
+    // statist has no career behind him, only a gun.
+    formerRoles: [],
     combatAwareness: {},
     // Stage 30b: a statist has no Role, so neither Specialty purse is ever read.
     medicine: {},

@@ -27,6 +27,7 @@ import {
   readCpredFabrication,
   readCpredHaggle,
   readCpredFleet,
+  readCpredFormerRoles,
   readCpredMedicine,
   readCpredTeam,
   CPRED_COMBAT_AWARENESS_PROBLEMS,
@@ -36,6 +37,7 @@ import {
   type CpredFleetRow,
   type CpredHaggleStruck,
   type CpredMedicine,
+  type CpredRoleRank,
   type CpredTeamMember,
 } from './roleability.js';
 import {
@@ -583,9 +585,23 @@ export interface CpredCharacterData {
    * the rules name (s. 232), not an impossible number.
    */
   humanityCurrent: number;
-  /** One of the registry's role ids; null = no role picked yet. */
+  /**
+   * The **current** Role — the one the Street sees. One of the registry's role
+   * ids; null = no role picked yet.
+   */
   roleId: string | null;
   roleAbilityRank: number;
+  /**
+   * Roles this character used to be, with the ranks their Special Abilities
+   * reached (stage 29b, s. 143). `[]` on almost every sheet: multiclassing
+   * starts at rank 4 of the first Role, which is a campaign or two of play.
+   *
+   * A former Role is not a memory — „cały czas możesz podnosić poziom
+   * Zdolności Specjalnej poprzedniej Roli i korzystać z oferowanych przez nią
+   * korzyści" — so `cpredRoleAbilityRank` reads this list beside `roleId`, and
+   * every one of the ten stage-30 abilities goes through that one function.
+   */
+  formerRoles: CpredRoleRank[];
   /**
    * How a Solo has divided their Zmysł Walki points between the six combat
    * abilities of s. 146 (stage 30a). `{}` on every sheet whose Role has a
@@ -837,6 +853,7 @@ export function createDefaultCharacterData(): CpredCharacterData {
     humanityCurrent: humanityMaxWith(stats, []),
     roleId: null,
     roleAbilityRank: ROLE_RANK_MIN,
+    formerRoles: [],
     combatAwareness: {},
     medicine: {},
     fabrication: {},
@@ -1364,6 +1381,17 @@ function collectCharacterDataPatch(
       );
     } else {
       patch.roleAbilityRank = value;
+    }
+  }
+  // Stage 29b: shape only. Whether a Role appears twice, or is one the registry
+  // does not know, is judged against the **merged** sheet (`cpredRolesProblem`)
+  // — a patch may move `roleId` and this list in one write, and neither half
+  // answers the question alone.
+  if ('formerRoles' in input) {
+    if (!Array.isArray(input.formerRoles)) {
+      issues.push(issue('formerRoles', 'Poprzednie Role muszą być listą.'));
+    } else {
+      patch.formerRoles = readCpredFormerRoles(input.formerRoles);
     }
   }
   if ('combatAwareness' in input) {

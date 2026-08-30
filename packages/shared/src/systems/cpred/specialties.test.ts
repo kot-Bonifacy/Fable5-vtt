@@ -23,6 +23,7 @@ import {
   CPRED_MEDICINE_RULES,
   CPRED_NO_FABRICATION,
   CPRED_NO_MEDICINE,
+  type CpredRoleSheet,
 } from './roleability.js';
 import { buildCpredRegistry } from './character.js';
 import type { CpredCharacterData, CpredRegistry } from './character.js';
@@ -40,13 +41,12 @@ const registry: CpredRegistry = buildCpredRegistry(
 
 /** Minimal slice of a sheet — the four fields these rules ever read. */
 function sheet(
-  patch: Partial<
-    Pick<CpredCharacterData, 'roleId' | 'roleAbilityRank' | 'medicine' | 'fabrication'>
-  >,
-): Pick<CpredCharacterData, 'roleId' | 'roleAbilityRank' | 'medicine' | 'fabrication'> {
+  patch: Partial<CpredRoleSheet & Pick<CpredCharacterData, 'medicine' | 'fabrication'>>,
+): CpredRoleSheet & Pick<CpredCharacterData, 'medicine' | 'fabrication'> {
   return {
     roleId: null,
     roleAbilityRank: 1,
+    formerRoles: [],
     medicine: {},
     fabrication: {},
     ...patch,

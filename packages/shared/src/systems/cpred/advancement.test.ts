@@ -4,11 +4,15 @@ import {
   CPRED_SKILL_ADVANCE_COSTS,
   cpredAbilityAdvanceCost,
   cpredAbilityAdvanceStep,
+  cpredAbilityAdvanceSteps,
+  cpredRoleChangeSheet,
   cpredSkillAdvanceCost,
   cpredSkillAdvanceStep,
   describeCpredAdvance,
+  describeCpredRoleChange,
   formatAdvancementAmount,
   planCpredAdvance,
+  planCpredRoleChange,
   type CpredAdvanceSheet,
 } from './advancement.js';
 import { buildCpredRegistry } from './character.js';
@@ -28,6 +32,7 @@ const registry: CpredRegistry = buildCpredRegistry(
     roles: [
       { id: 'solo', name: 'Solo', ability: 'Zmysł Walki' },
       { id: 'netrunner', name: 'Netrunner', ability: 'Interfejs' },
+      { id: 'medtech', name: 'Medyk', ability: 'Medycyna' },
     ],
   },
 );
@@ -40,6 +45,7 @@ function sheet(patch: Partial<CpredAdvanceSheet> = {}): CpredAdvanceSheet {
     lifepath: createDefaultLifepath(),
     roleId: null,
     roleAbilityRank: 1,
+    formerRoles: [],
     improvementPoints: 0,
     ...patch,
   };
@@ -241,5 +247,164 @@ describe('rejestr awansów', () => {
   it('kwota niesie znak i jednostkę', () => {
     expect(formatAdvancementAmount(50)).toBe('+50 PD');
     expect(formatAdvancementAmount(-200)).toBe('−200 PD');
+  });
+});
+
+/**
+ * Wieloklasowość (etap 29b, s. 143).
+ *
+ * „W Czasie Czerwieni możesz zmienić Rolę zawsze, gdy poziom Zdolności
+ * Specjalnej poprzedniej Roli wynosi co najmniej 4" — bramka pyta zawsze
+ * o Rolę **bieżącą**, i to jest cały mechanizm, przez który trzecia Rola pyta
+ * o drugą, a nie o pierwszą.
+ */
+describe('zmiana Roli', () => {
+  const solo = sheet({ roleId: 'solo', roleAbilityRank: 4, improvementPoints: 100 });
+
+  it('nie otwiera się poniżej czwartego poziomu Zdolności', () => {
+    const green = sheet({ roleId: 'solo', roleAbilityRank: 3, improvementPoints: 600 });
+    expect(planCpredRoleChange(green, registry, 'netrunner')).toEqual({
+      ok: false,
+      problem: 'RANK_TOO_LOW',
+    });
+  });
+
+  it('nowa Rola startuje od poziomu 1 i kosztuje pierwszy szczebel drabinki Zdolności', () => {
+    const result = planCpredRoleChange(solo, registry, 'netrunner');
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.plan).toMatchObject({
+      roleId: 'netrunner',
+      ability: 'Interfejs',
+      rank: 1,
+      returning: false,
+      cost: CPRED_ABILITY_ADVANCE_COSTS[0],
+      left: 40,
+      from: { roleId: 'solo', rank: 4 },
+    });
+    expect(describeCpredRoleChange(result.plan)).toBe('Netrunner — nowa Rola (Interfejs 1)');
+  });
+
+  it('stara Rola schodzi na listę z zachowaną rangą, a nowa staje na jej miejscu', () => {
+    const result = planCpredRoleChange(solo, registry, 'netrunner');
+    if (!result.ok) throw new Error('plan odrzucony');
+    expect(cpredRoleChangeSheet(solo, result.plan)).toEqual({
+      roleId: 'netrunner',
+      roleAbilityRank: 1,
+      formerRoles: [{ roleId: 'solo', rank: 4 }],
+    });
+  });
+
+  it('bez PD nowej Roli się nie kupi', () => {
+    const broke = sheet({ roleId: 'solo', roleAbilityRank: 6, improvementPoints: 59 });
+    expect(planCpredRoleChange(broke, registry, 'netrunner')).toEqual({
+      ok: false,
+      problem: 'NO_POINTS',
+    });
+  });
+
+  it('powrót do Roli, którą postać już miała, jest za darmo i z zachowaną rangą', () => {
+    const runner = sheet({
+      roleId: 'netrunner',
+      roleAbilityRank: 4,
+      formerRoles: [{ roleId: 'solo', rank: 6 }],
+      improvementPoints: 0,
+    });
+    const result = planCpredRoleChange(runner, registry, 'solo');
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.plan).toMatchObject({ returning: true, cost: 0, rank: 6, left: 0 });
+    expect(describeCpredRoleChange(result.plan)).toBe('Solo — powrót do Roli (Zmysł Walki 6)');
+    // Netrunner schodzi na listę, Solo z niej znika — żadna Rola nie stoi dwa razy.
+    expect(cpredRoleChangeSheet(runner, result.plan)).toEqual({
+      roleId: 'solo',
+      roleAbilityRank: 6,
+      formerRoles: [{ roleId: 'netrunner', rank: 4 }],
+    });
+  });
+
+  it('trzecia Rola pyta o Zdolność bieżącej, nie o najwyższą posiadaną', () => {
+    // Solo 9 w przeszłości nie otwiera drzwi Netrunnerowi na poziomie 2.
+    const runner = sheet({
+      roleId: 'netrunner',
+      roleAbilityRank: 2,
+      formerRoles: [{ roleId: 'solo', rank: 9 }],
+      improvementPoints: 600,
+    });
+    expect(planCpredRoleChange(runner, registry, 'medtech')).toEqual({
+      ok: false,
+      problem: 'RANK_TOO_LOW',
+    });
+  });
+
+  it('odmawia Roli, którą postać już jest, i Roli, której nie ma w rejestrze', () => {
+    expect(planCpredRoleChange(solo, registry, 'solo')).toEqual({
+      ok: false,
+      problem: 'SAME_ROLE',
+    });
+    expect(planCpredRoleChange(solo, registry, 'zjadacz-ognia')).toEqual({
+      ok: false,
+      problem: 'UNKNOWN_ROLE',
+    });
+    expect(planCpredRoleChange(solo, registry, '')).toEqual({ ok: false, problem: 'BAD_REQUEST' });
+    const roleless = sheet({ roleId: null, improvementPoints: 600 });
+    expect(planCpredRoleChange(roleless, registry, 'solo')).toEqual({
+      ok: false,
+      problem: 'NO_ROLE',
+    });
+  });
+});
+
+describe('awans Zdolności przy kilku Rolach', () => {
+  const multi = sheet({
+    roleId: 'netrunner',
+    roleAbilityRank: 1,
+    formerRoles: [{ roleId: 'solo', rank: 4 }],
+    improvementPoints: 600,
+  });
+
+  it('wystawia drabinkę każdej Roli osobno, bieżącą pierwszą', () => {
+    expect(
+      cpredAbilityAdvanceSteps(multi, registry).map((step) => [step.name, step.from, step.cost]),
+    ).toEqual([
+      ['Interfejs', 1, 120],
+      ['Zmysł Walki', 4, 300],
+    ]);
+  });
+
+  it('poprzednia Rola rośnie dalej — i płaci własnym szczeblem', () => {
+    const result = planCpredAdvance(multi, registry, { kind: 'ability', roleId: 'solo', to: 5 });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.plan).toMatchObject({
+      name: 'Zmysł Walki',
+      roleId: 'solo',
+      cost: 300,
+      left: 300,
+    });
+  });
+
+  it('bez `roleId` awansuje bieżąca Rola — tak jak przed etapem', () => {
+    const result = planCpredAdvance(multi, registry, { kind: 'ability', to: 2 });
+    if (!result.ok) throw new Error('plan odrzucony');
+    expect(result.plan).toMatchObject({ name: 'Interfejs', roleId: 'netrunner', cost: 120 });
+  });
+
+  it('Roli spoza karty nie da się podnieść cudzym kosztem', () => {
+    expect(
+      planCpredAdvance(multi, registry, { kind: 'ability', roleId: 'medtech', to: 1 }),
+    ).toEqual({ ok: false, problem: 'NO_ROLE' });
+  });
+
+  it('Zdolność poprzedniej Roli na dziesiątce nie blokuje bieżącej', () => {
+    const capped = sheet({
+      roleId: 'netrunner',
+      roleAbilityRank: 3,
+      formerRoles: [{ roleId: 'solo', rank: 10 }],
+      improvementPoints: 600,
+    });
+    expect(cpredAbilityAdvanceSteps(capped, registry).map((step) => step.name)).toEqual([
+      'Interfejs',
+    ]);
   });
 });

@@ -421,6 +421,21 @@
   padding-right: 0;
 }
 
+/* Poprzednie Role (etap 29b) — ten sam wiersz, co bieżąca, ale plakietka rangi
+   schodzi z czerwieni na chrom: Zdolność działa dalej, a Rolą, którą widzi
+   Ulica, jest ta wyżej. */
+.cp-ability--former .cp-rank {
+  background: var(--cp-ink-dim);
+}
+
+.cp-ability--former .cp-rank input {
+  color: var(--cp-paper);
+}
+
+.cp-ability--former .cp-label {
+  align-self: center;
+}
+
 /* Panel Zmysłu Walki pod wierszem Zdolności Specjalnej (etap 30a). Sam panel
    maluje `styles.css` (`.awareness`) — tu tylko miejsce, które mu karta daje. */
 .cp-awareness {
