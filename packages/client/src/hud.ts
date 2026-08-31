@@ -2,6 +2,7 @@ import type {
   CombatView,
   CombatantView,
   CpredCharacterData,
+  CpredCriticalInjuryRow,
   CpredHotbarGroup,
   CpredHotbarSlot,
   CpredHotbarWeaponGroup,
@@ -15,6 +16,8 @@ import {
   CPRED_ACTION_STABILIZE,
   CPRED_ACTION_COMBAT_AWARENESS,
   ROLE_GM,
+  combatProfileRollableSkills,
+  combatProfileSkillLevel,
   cpredHotbarGroups,
   cpredRoleAbilityRank,
   CPRED_ACTION_BACKUP,
@@ -33,6 +36,7 @@ import {
   isWeaponEntry,
   resolveWeapon,
   sanitizeCombatProfile,
+  sanitizeCriticalInjuryRows,
   toAmmoProfile,
 } from '@vtt/shared';
 import { loadAttackFor } from './attack-targeting.js';
@@ -139,6 +143,22 @@ export interface HudContext {
    * istnieje.
    */
   sheetNotMine: boolean;
+  /**
+   * Rany, które ta figura nosi — **tylko przy figurze bez karty** (31.08).
+   * Postać ma je na karcie, i tam się je opatruje; statysta nie miał ich
+   * dotąd gdzie pokazać, więc rana nadana mu regułą (gaz, strefa, Celowanie)
+   * była nie do zdjęcia inaczej niż ręką w bazie.
+   *
+   * Czytane z publicznej części żetonu, nie z profilu bojowego: profil jedzie
+   * wyłącznie do MG i właściciela, a Medyk gracza ma mieć co załatać.
+   */
+  injuries: CpredCriticalInjuryRow[];
+  /**
+   * Umiejętności, którymi ta figura bez karty może rzucić (31.08) — pusta
+   * lista przy postaci i przy każdym statyście, któremu nikt niczego nie
+   * wpisał. Wsparcie 10. poziomu przynosi tu swoje piętnaście z s. 159.
+   */
+  figureSkills: { id: string; name: string; level: number }[];
 }
 
 /**
@@ -246,6 +266,8 @@ export function hudContextFor(tokenId: string | null): HudContext {
       refusal: null,
       steering: false,
       sheetNotMine: false,
+      injuries: [],
+      figureSkills: [],
     };
   }
 
@@ -307,7 +329,33 @@ export function hudContextFor(tokenId: string | null): HudContext {
     steering,
     sheetNotMine:
       !isGm && token.characterId !== null && token.characterId !== undefined && !character,
+    injuries: token.characterId ? [] : sanitizeCriticalInjuryRows(token.injuries),
+    figureSkills: character ? [] : figureSkillsOf(token),
   };
+}
+
+/**
+ * Umiejętności figury bez karty, z nazwami z rejestru.
+ *
+ * Czytane z profilu, a nie z publicznej części żetonu, i to jest różnica
+ * względem ran tuż wyżej: „co ta figura umie" jest wiedzą o przeciwniku —
+ * tym samym, czym jest jego broń i pancerz. Rzucać nią i tak może wyłącznie
+ * ten, kto figurę prowadzi, więc lista jedzie tam, gdzie już jedzie profil.
+ */
+function figureSkillsOf(token: TokenView): { id: string; name: string; level: number }[] {
+  if (!token.combatProfile) return [];
+  const profile = sanitizeCombatProfile(token.combatProfile);
+  const registry = useCharacterStore.getState().registry;
+  const byId = new Map(registry.skills.map((skill) => [skill.id, skill]));
+  return combatProfileRollableSkills(profile)
+    .map((id) => {
+      const definition = byId.get(id);
+      return definition
+        ? { id, name: definition.name, level: combatProfileSkillLevel(profile, id) }
+        : null;
+    })
+    .filter((row): row is { id: string; name: string; level: number } => row !== null)
+    .sort((a, b) => a.name.localeCompare(b.name, 'pl'));
 }
 
 /**
@@ -411,6 +459,11 @@ export function hudSignature(context: HudContext): string {
     // chip naboju, a sygnatura tego nie widziała — panel zostawał przy starym
     // widoku aż do przeładowania strony. Strzelba odświeżała się tylko dlatego,
     // że przy okazji przeładowania zmieniał się licznik magazynka.
+    // Rany figury bez karty (31.08) — panel pokazuje ich nazwy i guziki
+    // leczenia, więc załatana rana ma zmienić widok bez przeładowania strony.
+    // Ta sama lekcja co z nabojem niżej: co widać, to musi być w sygnaturze.
+    context.injuries.map((injury) => [injury.id, injury.patched?.skill ?? null]),
+    context.figureSkills.map((skill) => [skill.id, skill.level]),
     context.slots.map((slot) => [
       slot.id,
       slot.label,

@@ -489,3 +489,30 @@ Przy ustawianiu żetonów w bazie licz w metrach, nie w pikselach.
   w tej samej klatce, w której powstało. Objaw jest mylący: **żadnego błędu, żadnego okna**, jakby
   warunek otwarcia był fałszywy. Obejście to jedna linia — `setTimeout(() => addEventListener(…), 0)`
   i `clearTimeout` w sprzątaniu. `stopPropagation` w Pixi nie pomaga: to inny system zdarzeń niż DOM.
+
+**Sufit `SKILL_LEVEL_MAX` w profilu statysty ścinał Wartość bojową (31.08).** Objaw byłby taki:
+C-SWAT z Wartością 15 bije i broni się jak krawężnik, a nikt nie widzi dlaczego — zapis do bazy
+szedł poprawny, ścinał **odczyt** (`sanitizeCombatProfile`). Dotyczyło czterech z sześciu
+kategorii Wsparcia (14, 16, 15, 14) i wszystkich pięciu Demonów (14). Nie wyszło przez dwa etapy,
+bo testy sprawdzały `cpredBackupProfile` — czystą funkcję **przed** sanityzacją. Morał szerszy niż
+ta jedna stała: funkcję, której wynik idzie do kolumny JSON, testuj po przejściu tam i z powrotem,
+a nie w miejscu, w którym powstaje.
+
+**Nazwa z tabeli w kodzie a nazwa w pliku danych różnią się wielkością litery (31.08).**
+`roleability.ts` pisał „Ukrycie/znalezienie przedmiotu", `skills.json` ma „Ukrycie/Znalezienie
+przedmiotu" — i jedna z piętnastu Umiejętności agenta federalnego znikała bez śladu, bo
+dopasowanie po nazwie jest w tym projekcie regułą (broń Wsparcia, `criticalInjuryAt`). Każde
+takie dopasowanie porównuj po `trim().toLowerCase()`.
+
+**`specialties.test.ts` migotał na fumble'u, nie na czasie (31.08).** Naturalna 1 odejmuje 1k10,
+więc rzut leczenia z modyfikatorem 18 schodzi do 9–18 i przegrywa z PT 17 mniej więcej raz na
+dziesięć przebiegów — zabierając ze sobą dwa następne testy, bo rana zostawała na karcie. Objaw
+mylił: asercja mówiła o liście ran, a przyczyna siedziała w kości. Rzut, który w teście **ma się
+udać**, powtarzaj w pętli do skutku zamiast szukać modyfikatora nie do pobicia (sufity Cechy
+i Umiejętności to 10 i 10, fumble przebija każdy).
+
+**Gracz nie mógł kliknąć figury, której nie prowadzi (do 31.08).** `MapRenderer` wychodził po
+cichu na `movableTokens.get(id) === false`, więc pasek nigdy nie pokazywał cudzej figury — i każda
+funkcja dołożona do paska „dla gracza przy cudzej figurze" była z góry nieosiągalna, choć dane
+jechały poprawnie. Zanim dołożysz coś do paska z myślą o graczu, sprawdź, czy ten gracz ma jak
+postawić tam tę figurę.

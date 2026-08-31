@@ -35,7 +35,15 @@ export interface CharacterView<TData = unknown> {
  * czyta z kompendium tą samą drogą, którą czyta ją rzut na obrażenia.
  */
 export interface CharacterInjuryPayload {
-  characterId: string;
+  characterId?: string;
+  /**
+   * Figura bez karty, której MG nadaje ranę (31.08) — zamiast `characterId`,
+   * nigdy obok. Statysta nosi Rany Krytyczne od 29.08, ale wchodziły mu
+   * wyłącznie regułą (gaz, granat, strefa, Celowanie); ręka MG kończyła się
+   * na zdaniu „ranę rozstrzyga MG", a rana rozstrzygnięta narracyjnie nie
+   * odbierała figurze Akcji ani nie dawała się potem załatać.
+   */
+  tokenId?: string;
   injuryId: string;
 }
 

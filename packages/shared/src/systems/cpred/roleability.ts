@@ -1416,6 +1416,40 @@ export function cpredBackupCall(
   return { answered: true, tierId: promoted.id, rounds, escalated: true, secondGroup: false };
 }
 
+/**
+ * Umiejętności kategorii jako profil bojowy: id → Wartość bojowa (31.08).
+ *
+ * „Mogą oni wykorzystać swoją Wartość bojową w Testach poniższych
+ * Umiejętności" (s. 159) — jedna liczba w piętnastu miejscach, bo Wartość
+ * bojowa to już suma Cechy i Umiejętności. Stąd `combatValue` przy każdym
+ * wpisie, a nie poziom do dodania do czegokolwiek.
+ *
+ * Szukanie **po nazwie**, jak broni w `spawnBackup` i jak rany w
+ * `criticalInjuryAt`: id w `skills.json` powstają przy imporcie i nie są
+ * niczym, na czym można oprzeć tabelę wpisaną w kod. Porównanie ignoruje
+ * wielkość liter, bo już raz nie trafiło: podręcznik drukuje „Ukrycie/
+ * znalezienie przedmiotu", a plik danych ma „Ukrycie/Znalezienie przedmiotu",
+ * i ta jedna litera po cichu zabierała agentom federalnym Umiejętność.
+ *
+ * Nazwa, która nie ma odpowiednika w rejestrze, wypada — tak samo jak broń,
+ * której nie ma w katalogu, degraduje się do pięści. Figura z czternastoma
+ * Testami jest do rozegrania; figura, która nie powstała, bo w pliku brakuje
+ * wiersza, nie jest.
+ */
+export function cpredBackupSkillLevels(
+  tier: CpredBackupTier,
+  registry: CpredRegistry,
+): Record<string, number> {
+  if (!tier.skills || tier.skills.length === 0) return {};
+  const byName = new Map(registry.skills.map((skill) => [skill.name.trim().toLowerCase(), skill]));
+  const levels: Record<string, number> = {};
+  for (const name of tier.skills) {
+    const skill = byName.get(name.trim().toLowerCase());
+    if (skill) levels[skill.id] = tier.combatValue;
+  }
+  return levels;
+}
+
 /** „Wartość bojowa 14 · OB 13 · PW 35 · RUCH 4 · BC 4" — the block, on one line. */
 export function describeBackupTier(tier: CpredBackupTier): string {
   return (

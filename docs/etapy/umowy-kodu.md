@@ -587,3 +587,27 @@ tabeli, zamiast go losować — więc rana nie niesie `rolled` (karta nie drukuj
 nie było) i niesie `assigned`, z którego karta robi chip „nadana". Jedna funkcja w `shared`, nie
 trzy kopie `delete row.rolled`: dokładnie dlatego, że kopia przy Celowaniu tę zasadę znała,
 a dwie ścieżki wymuszonej porażki nie.
+
+**Figura bez karty ma rany w profilu, a Umiejętności — na osobnej liście (31.08).**
+`CpredCombatProfile.skills` (id → poziom) jest odwrotnością jednej liczby `skillLevel`: tamta
+należy do broni i milczy o wszystkim innym, ta mówi „ta figura umie **to**, i tyle". Wpisana
+liczba jest **całym** modyfikatorem — `combatProfileSheetForSkill` zeruje wtedy Cechy, bo Wartość
+bojowa „reprezentuje sumę Cechy i Umiejętności" (s. 158) i doliczona INT policzyłaby ją drugi raz.
+Wolno rzucać wyłącznie Umiejętnością z tej listy (`combatProfileRollableSkills`; reszta wraca
+`STATIST_CANNOT_ROLL_THIS`), a rzut idzie przez `character:roll` z `attackerTokenId` — tym samym
+adresem, którym statysta rzuca na obrażenia. Sufitem poziomu jest `STATIST_SKILL_LEVEL_MAX`,
+nie `SKILL_LEVEL_MAX`: dziesiątka ogranicza Umiejętność postaci, a nie Wartość bojową.
+
+**Rany figury bez karty jadą do klienta publicznie, reszta profilu nie (31.08).** `TokenView.injuries`
+stoi obok `statuses`, a nie w prywatnej połówce z `combatProfile`: przy stole widać, że ktoś ma
+odciętą dłoń, a Medyk gracza ma mieć co załatać — natomiast broń, pancerz i Wartość bojowa to
+rzeczy, których gracz uczy się, dostając w twarz. Rdzeń VTT niesie blob (`TokenInjuryRow`),
+wyjmuje go z profilu warstwa systemu (`readSheetTokenInjuries` w `sheets.ts`, obok
+`readSheetFearedTokens`), a klient czyta rany figury bez karty **wyłącznie** z tego pola —
+`combatProfile.criticalInjuries` zostaje dla mechaniki serwera.
+
+**Klik w figurę, której ten widz nie prowadzi, opisuje ją w pasku i nic więcej (31.08).**
+`MapRenderer.onTokenPreview` → `selectionStore.focus(tokenId)` rusza wyłącznie `focusTokenId`;
+`tokenId` (sterowanie), ring i podgląd marszu zostają przy figurze prowadzonej. Pasek rozróżniał
+opis od sterowania od 27h (`HudContext.steering`) — brakowało tylko drogi, którą cudza figura
+mogła do niego trafić, i przez to publiczne rany były dla gracza nieosiągalne.

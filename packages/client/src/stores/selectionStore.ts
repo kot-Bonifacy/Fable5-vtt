@@ -98,6 +98,16 @@ interface SelectionStoreState {
 
   /** A figure was picked (click, `Tab`); null merely drops the steering. */
   select: (tokenId: string | null) => void;
+  /**
+   * Pokaż tę figurę w pasku, ale jej nie bierz (31.08).
+   *
+   * Klik w cudzą figurę nie robił dotąd nic: sterować nią nie wolno, więc
+   * `MapRenderer` cicho wychodził. Pasek jednak od 27h **opisuje** figurę,
+   * zanim ktokolwiek nią pokieruje (`HudContext.steering`), a od 31.08 opisuje
+   * też jej rany — a Medyk gracza ma mieć co załatać na figurze, która nie jest
+   * jego. Stąd trzecia droga: ognisko paska bez sterowania.
+   */
+  focus: (tokenId: string) => void;
   /** „Never mind": nothing is steered and the rail goes quiet until a pick. */
   dismiss: () => void;
   /** New scene: forget both pointers and re-read what was remembered here. */
@@ -119,6 +129,13 @@ export const useSelectionStore = create<SelectionStoreState>((set) => ({
     }
     rememberFocus(tokenId);
     set({ tokenId, focusTokenId: tokenId, dismissed: false });
+  },
+
+  focus: (tokenId) => {
+    rememberFocus(tokenId);
+    // `tokenId` zostaje nietknięte: figura, którą ktoś prowadzi, ma nią zostać,
+    // choćby pasek pokazywał teraz kogoś innego.
+    set({ focusTokenId: tokenId, dismissed: false });
   },
 
   dismiss: () => set({ tokenId: null, focusTokenId: null, dismissed: true }),

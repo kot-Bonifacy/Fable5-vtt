@@ -96,7 +96,30 @@ export interface TokenView {
    * it, because the penalty is applied server-side on the roll.
    */
   feared?: string[];
+  /**
+   * Rany, które ta figura nosi — publicznie, w odróżnieniu od reszty profilu
+   * (31.08). Nieobecne przy figurze z kartą postaci (jej rany stoją na karcie)
+   * i przy figurze, której nikt nie zranił, czyli przy prawie każdej.
+   *
+   * Publiczne, bo rana krytyczna jest tym, co przy stole widać: „ma odciętą
+   * dłoń" nie jest sekretem MG, tylko obrazem. Praktyczny powód jest ten sam
+   * co u wszystkiego, co jedzie do klienta — Medyk gracza ma móc **załatać
+   * rannego statystę**, a formularz łatania czyta zdanie z tabeli zapisane
+   * przy ranie. Bez tego pola gracz miał wybór między nieleczeniem figur bez
+   * karty a dostaniem całego profilu z bronią i pancerzem, którego widzieć
+   * nie ma prawa.
+   *
+   * Nieprzezroczyste tak samo jak `combatProfile`: rdzeń VTT niesie blob, a co
+   * jest raną, wie wyłącznie warstwa systemu (CP RED: `CpredCriticalInjuryRow`).
+   */
+  injuries?: TokenInjuryRow[];
 }
+
+/**
+ * Jedna rana figury bez karty, jak jedzie po drucie. Rdzeń deklaruje kształt
+ * „coś, co system nazywa raną"; treść zna wyłącznie `systems/cpred`.
+ */
+export type TokenInjuryRow = Record<string, unknown>;
 
 /**
  * A game system's fighting numbers for one token, as they travel. The core

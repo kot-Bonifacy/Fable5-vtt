@@ -11,6 +11,7 @@ import {
   CPRED_ACTION_BACKUP,
   ROLE_GM,
   cpredBackupProfile,
+  cpredBackupSkillLevels,
   describeBackupTier,
   isWeaponEntry,
   readCpredCombatState,
@@ -98,7 +99,15 @@ async function weaponFor(
   };
 }
 
-/** One officer's full combat profile — the printed block plus their gun. */
+/**
+ * One officer's full combat profile — the printed block plus their gun.
+ *
+ * Od 31.08 także piętnaście Testów federalnych (s. 159). Wpisane w profil przy
+ * stawianiu figury, a nie odczytywane później z kategorii, bo po przybyciu po
+ * kategorii nie zostaje ślad: `tierId` żyje w `Combat.systemState` wyłącznie
+ * na czas drogi, a nazwa żetonu jest tym, co MG może zmienić jednym kliknięciem.
+ * Figura ma nieść to, co umie, tak samo jak niesie to, czym strzela.
+ */
 async function profileFor(
   deps: RealtimeDeps,
   campaignId: string,
@@ -106,6 +115,7 @@ async function profileFor(
 ): Promise<CpredCombatProfile> {
   const seed = cpredBackupProfile(tier);
   const weapon = await weaponFor(deps, campaignId, tier.weapon);
+  const skills = cpredBackupSkillLevels(tier, deps.ctx.cpred);
   return {
     ...seed,
     weaponId: weapon.weaponId,
@@ -113,6 +123,7 @@ async function profileFor(
     weaponDamage: weapon.weaponDamage,
     ammoMax: weapon.ammoMax,
     ammoCurrent: weapon.ammoMax,
+    ...(Object.keys(skills).length > 0 ? { skills } : {}),
   };
 }
 

@@ -8,16 +8,10 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
 
 ## Pozycje
 
-- **Statysta nie ma skąd być załatany ani wyleczony (30.08).** Serwer to umie — `treatableInjuries`
-  czyta `combatProfile`, `applyTreatment` zapisuje z powrotem do żetonu — ale formularz stoi
-  wyłącznie przy wierszu rany **na karcie postaci**, a figura bez karty żadnej listy ran nie
-  pokazuje. Wieżyczka z „Odciętą dłonią" (30.08) nosi ranę, której nikt nie zdejmie inaczej niż
-  ręką w bazie. Do zrobienia razem z pierwszym etapem, który tknie pasek figury bez karty.
-
-- **Przeładowanie statysty w trwającej walce (30.08).** Pudełko „Przeładuj" stoi na pasku figury
-  bez karty i gaśnie przy pełnym magazynku — ale że **kosztuje Akcję**, sprawdzone jest tylko
-  testem serwera. Do odklikania przy pierwszej walce turowej na poligonie, razem z Celowaniem
-  w statystę (trzy strzały 30.08 były pudłem, więc „zdanie zamiast rany" nadal nieoglądane).
+- **Celowanie w statystę — „zdanie zamiast rany" nadal nieoglądane (30.08).** Trzy strzały
+  z 30.08 były pudłem, a 31.08 przeładowanie odklikano bez strzelania. Zostaje jedno: strzał
+  z Celowaniem w figurę bez karty ma **nazwać ranę**, a nie ją wylosować. Reszta tej pozycji —
+  przeładowanie w trwającej walce — zamknięta 31.08 (patrz archiwum).
 
 - **Etap 29a — obejrzana połowa.** 30.08 (trzecia sesja) przy okazji 29b sprawdzone i zamknięte:
   **panel „Awans"** (nagłówek „N PD w zapasie", wiersz Zdolności nad listą Umiejętności,
@@ -81,13 +75,6 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
   każdym razem nowe figury z pełnymi PW. Wymaga pojęcia „sprawy", którego projekt nie ma —
   najbliżej jest wątek dziennika kampanii z 24b. Zapisane, bo to jedyna kategoria, w której
   ciągłość jest zasadą, a nie kolorytem.
-
-- **Wsparcie poziomu 10 nie rzuca Wartością bojową w piętnastu Umiejętnościach.** „Mogą oni
-  wykorzystać swoją Wartość bojową w Testach poniższych Umiejętności: Aktorstwo, Atrakcyjność,
-  Dedukcja…" (s. 159). Lista siedzi w `CpredBackupTier.skills` i jest wypisana w panelu, ale
-  statysta nie ma skąd rzucić Umiejętnością spoza broni i Uniku (`combatProfileSkillLevel` zna
-  dwa poziomy). Do zrobienia razem z pierwszym etapem, który da statyście rzut dowolną
-  Umiejętnością.
 
 - **Etap 30b nie był oglądany w przeglądarce.** Mechanika jedzie w testach (30 nowych
   w `shared`, 7 na serwerze), ale żadnego z tych ekranów nikt nie kliknął. Do sprawdzenia —

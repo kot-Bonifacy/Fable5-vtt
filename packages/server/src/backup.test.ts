@@ -490,6 +490,126 @@ describe('Wsparcie: wezwanie, oczekiwanie, przybycie', () => {
     }
   });
 
+  /**
+   * Piętnaście Testów agenta federalnego (s. 159, dopisane 31.08).
+   *
+   * Test idzie przez gniazdo, a nie przez czystą funkcję, bo cała pointa jest
+   * w drodze: lista nazw z tabeli musi znaleźć id w rejestrze, przeżyć zapis do
+   * kolumny JSON, wrócić przez sanityzację i dać się rzucić — a ścinał ją po
+   * drodze sufit poziomu Umiejętności, który należy do karty postaci, nie do
+   * Wartości bojowej.
+   */
+  it('agent federalny przynosi swoje Testy i rzuca w nich Wartością bojową', async () => {
+    await emitAck(gm, 'combat:end', undefined);
+    const called = data(
+      await emitAck<{ answered: boolean }>(gm, 'character:backup-call', {
+        characterId: lawmanId,
+        level: 10,
+        tokenId: lawmanTokenId,
+      }),
+      'character:backup-call',
+    );
+    expect(called.answered).toBe(true);
+    const agent = (await tokensOfScene()).find((token) =>
+      token.name.startsWith('Agent federalny'),
+    )!;
+    expect(agent).toBeTruthy();
+
+    const profile = agent.combatProfile as unknown as CpredCombatProfile;
+    // Wartość bojowa 14 — a nie 10, do którego ścinał ją limit karty postaci.
+    expect(profile.skillLevel).toBe(14);
+    expect(profile.evasion).toBe(14);
+    // Publiczna próbka `skills.json` ma 42 z 66 Umiejętności i nie ma
+    // „Atrakcyjności", więc czternaście z piętnastu — brakująca ma **wypaść**,
+    // a nie wywrócić figurę.
+    expect(Object.keys(profile.skills ?? {})).toHaveLength(14);
+    expect(profile.skills?.deduction).toBe(14);
+    expect(profile.skills?.['conceal-reveal-object']).toBe(14);
+
+    const message = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+    const rolled = await emitAck<{ messageId: number }>(gm, 'character:roll', {
+      attackerTokenId: agent.id,
+      request: { kind: 'skill', skillId: 'deduction', modifier: 0, luckSpent: 0 },
+      visibility: 'public',
+    });
+    expect(rolled.ok).toBe(true);
+    const card = (await message).message.roll;
+    expect(card?.actor).toBe(agent.name);
+    // Wartość bojowa to Cecha i Umiejętność w jednym, więc Cechy są zerowe
+    // i cały modyfikator to te czternaście.
+    expect(card?.breakdown?.reduce((sum, entry) => sum + entry.value, 0)).toBe(14);
+
+    // A Umiejętność, której ta figura nie ma wpisanej, dalej nie istnieje —
+    // inaczej jedna liczba `skillLevel` uczyniłaby ją biegłą we wszystkim.
+    const refused = await emitAck(gm, 'character:roll', {
+      attackerTokenId: agent.id,
+      request: { kind: 'skill', skillId: 'handgun', modifier: 0, luckSpent: 0 },
+      visibility: 'public',
+    });
+    expect(refused).toEqual({ ok: false, error: 'STATIST_CANNOT_ROLL_THIS' });
+
+    for (const token of (await tokensOfScene()).filter((t) =>
+      t.name.startsWith('Agent federalny'),
+    )) {
+      await emitAck(gm, 'token:delete', { tokenId: token.id });
+    }
+  });
+
+  /**
+   * Rany figury bez karty jadą publicznie, reszta profilu nie (31.08).
+   *
+   * To jest cała decyzja projektowa w jednym teście: Medyk gracza ma widzieć,
+   * co ma załatać, i **nie** ma widzieć, czym ta figura strzela ani ile ma
+   * pancerza. Sprawdzane na figurze Wsparcia, bo to jedyna, którą stawia sama
+   * reguła — i którą gracz na pewno widzi na mapie.
+   */
+  it('gracz widzi rany figury bez karty, ale nie jej broni ani pancerza', async () => {
+    await emitAck(gm, 'combat:end', undefined);
+    // Bez tego gracz widzi wyłącznie własną figurę i test mierzyłby mgłę,
+    // a nie filtr prywatności żetonu.
+    await emitAck(gm, 'scene:visibility', { sceneId, visibility: 'open' });
+    const called = data(
+      await emitAck<{ answered: boolean }>(gm, 'character:backup-call', {
+        characterId: lawmanId,
+        level: 1,
+        tokenId: lawmanTokenId,
+      }),
+      'character:backup-call',
+    );
+    expect(called.answered).toBe(true);
+    const officer = (await tokensOfScene()).find((t) => t.name.startsWith('Korpogliniarz'))!;
+
+    const upserted = await emitAck<{ id: string }>(gm, 'compendium:upsert', {
+      entry: {
+        category: 'criticalInjury',
+        name: 'Złamana ręka (test)',
+        table: 'body',
+        roll: 6,
+        description: 'Ręka jest złamana.',
+        quickFix: 'Ratownictwo medyczne PT 13',
+        treatment: 'Ratownictwo medyczne PT 15',
+      },
+    });
+    const wound = data(upserted, 'compendium:upsert').id;
+    expect(
+      (await emitAck(gm, 'character:injury', { tokenId: officer.id, injuryId: wound })).ok,
+    ).toBe(true);
+
+    const sync = waitFor<StateSyncPayload>(player, 'state:sync');
+    player.emit('state:request');
+    const seen = (await sync).tokens.find((t) => t.id === officer.id)!;
+    expect(seen).toBeDefined();
+    expect((seen.injuries ?? []).map((row) => (row as { id: string }).id)).toEqual([wound]);
+    // …a profil zostaje po stronie serwera: broń, pancerz i Wartość bojowa to
+    // rzeczy, których gracz uczy się, dostając w twarz.
+    expect(seen.combatProfile).toBeUndefined();
+    expect(seen.hp).toBeUndefined();
+
+    for (const token of (await tokensOfScene()).filter((t) => t.name.startsWith('Korpogliniarz'))) {
+      await emitAck(gm, 'token:delete', { tokenId: token.id });
+    }
+  });
+
   it('koniec walki zabiera ze sobą wszystko, co było w drodze', async () => {
     await emitAck(gm, 'character:backup-call', {
       characterId: lawmanId,

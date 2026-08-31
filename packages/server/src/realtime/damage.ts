@@ -22,6 +22,7 @@ import {
   SHEET_STATIST_ARMOR_ROW_ID,
   applyDamageToCover,
   applyForcedFailureToSheet,
+  applyForcedFailureToTokenHp,
   applyDamageToSheet,
   applyDamageToTokenHp,
   isValidHitLocation,
@@ -485,6 +486,69 @@ function parseTokenStatuses(token: Token): string[] {
  * czacie jest zwykłą kartą obrażeń, dzięki czemu „Cofnij" zdejmuje ranę bez
  * jednej nowej linii kodu.
  */
+/**
+ * To samo dla figury bez karty (31.08).
+ *
+ * Rana wchodzi tą samą funkcją, którą nadaje ją gaz i broniona strefa
+ * (`applyForcedFailureToTokenHp`) — więc niesie to samo, co niosłaby
+ * wylosowana: karę zapisaną na wierszu, dopłatę do Testu Przeżywalności
+ * i zabraną Akcję z 14e. „Cofnij" na karcie czatu działa bez jednej nowej
+ * linijki, bo to zwykła karta obrażeń.
+ *
+ * Żeton bez profilu bojowego jest odmawiany, a nie obsługiwany zdaniem:
+ * krążek, który nie ma gdzie zapisać rany, dostałby na czacie kartę mówiącą
+ * o ranie, której nikt potem nie znajdzie ani nie załata.
+ */
+async function assignInjuryToStatist(
+  deps: RealtimeDeps,
+  campaignId: string,
+  user: { id: string },
+  tokenId: unknown,
+  injuryId: string,
+): Promise<void> {
+  if (typeof tokenId !== 'string' || tokenId.length === 0) {
+    throw new RealtimeError('BAD_REQUEST');
+  }
+  const { token, scene } = await requireCampaignToken(deps.ctx.prisma, campaignId, tokenId);
+  if (token.characterId) throw new RealtimeError('BAD_REQUEST');
+  const profile = readSheetCombatProfile(token.combatProfile);
+  if (!profile) throw new RealtimeError('TOKEN_HAS_NO_PROFILE');
+
+  const compendium = await buildCompendiumSync(deps, campaignId);
+  const entry = compendium.entries.find((row) => row.id === injuryId && isCriticalInjuryEntry(row));
+  if (!entry) throw new RealtimeError('UNKNOWN_INJURY');
+  if ((profile.criticalInjuries ?? []).some((row) => row.id === injuryId)) {
+    throw new RealtimeError('INJURY_ALREADY_THERE');
+  }
+
+  const hp: TokenHp | null =
+    token.hpMax === null ? null : { current: token.hpCurrent ?? 0, max: token.hpMax };
+  const applied = applyForcedFailureToTokenHp(
+    hp,
+    profile,
+    { damage: 0, injuryIds: [injuryId] },
+    compendium.entries,
+  );
+  if (!applied.profile) throw new RealtimeError('INJURY_ALREADY_THERE');
+  await deps.ctx.prisma.token.update({
+    where: { id: token.id },
+    data: { combatProfile: JSON.stringify(applied.profile) },
+  });
+  await emitTokensById(deps, campaignId, [token.id]);
+  if (applied.carry) {
+    await oweCarryToToken(deps, token.sceneId, token.id, applied.carry);
+    await emitCombatOfScene(deps, campaignId, scene);
+  }
+  await logDamage(deps, campaignId, user.id, {
+    ...applied.log,
+    targetTokenId: token.id,
+    targetName: token.name,
+    characterId: null,
+    targetOwnerId: token.ownerId,
+    injuryNote: 'Ranę nadał MG — bez rzutu na obrażenia.',
+  });
+}
+
 export const characterInjuryEvent = defineEvent<CharacterInjuryPayload>({
   name: 'character:injury',
   role: ROLE_GM,
@@ -492,8 +556,12 @@ export const characterInjuryEvent = defineEvent<CharacterInjuryPayload>({
     const campaignId = requireCampaignId(socket.data);
     const characterId = payload?.characterId;
     const injuryId = payload?.injuryId;
-    if (typeof characterId !== 'string' || typeof injuryId !== 'string') {
-      throw new RealtimeError('BAD_REQUEST');
+    if (typeof injuryId !== 'string') throw new RealtimeError('BAD_REQUEST');
+    // Figura bez karty idzie własną gałęzią, ale **tym samym zdarzeniem**
+    // (31.08): to jedna czynność MG — „ta figura łamie rękę" — i różni się
+    // wyłącznie tym, gdzie rana się zapisuje.
+    if (typeof characterId !== 'string') {
+      return assignInjuryToStatist(deps, campaignId, user, payload?.tokenId, injuryId);
     }
     const character = await deps.ctx.prisma.character.findUnique({ where: { id: characterId } });
     if (!character || character.campaignId !== campaignId) {

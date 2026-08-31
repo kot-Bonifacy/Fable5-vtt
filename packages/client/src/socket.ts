@@ -1009,7 +1009,7 @@ function rollAckErrorText(code: string): string {
     case 'TOKEN_HAS_NO_PROFILE':
       return 'Ta figura nie ma profilu bojowego — uzupełnij go w menu żetonu.';
     case 'STATIST_CANNOT_ROLL_THIS':
-      return 'Figura bez karty rzuca tylko na obrażenia z karty ataku.';
+      return 'Figura bez karty rzuca na obrażenia i Umiejętnościami wpisanymi w jej profil.';
     // Stage 30b — the three refusals „Leczenie" can come back with.
     case 'INJURY_NOT_FOUND':
       return 'Ta figura nie ma już tej rany.';
@@ -1063,6 +1063,9 @@ function damageAckErrorText(code: string): string {
       return 'Nie ma takiego tokenu na scenie.';
     case 'TOKEN_HAS_NO_HP':
       return 'Ten token nie ma PW — powiąż go z kartą albo ustaw PW w menu tokenu.';
+    // Rana nadana figurze bez karty potrzebuje profilu, bo w nim mieszka (31.08).
+    case 'TOKEN_HAS_NO_PROFILE':
+      return 'Ta figura nie ma profilu bojowego — nie ma gdzie zapisać rany. Uzupełnij profil w „Edytuj…”.';
     case 'ALREADY_UNDONE':
       return 'To rozliczenie zostało już cofnięte.';
     case 'FORBIDDEN':
@@ -1101,7 +1104,7 @@ export function assignCriticalInjury(payload: CharacterInjuryPayload): void {
       .getState()
       .addNote(
         ack.error === 'INJURY_ALREADY_THERE'
-          ? 'Ta postać już ma tę ranę.'
+          ? 'Ta figura już ma tę ranę.'
           : ack.error === 'UNKNOWN_INJURY'
             ? 'Nie znalazłem tej rany w kompendium.'
             : damageAckErrorText(ack.error),

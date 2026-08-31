@@ -9,6 +9,65 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Przeniesione 2026-08-31 (pasek figury bez karty: rany, Testy, przeładowanie)
+
+Trzy pozycje długu oględzin, wszystkie z jednego obszaru — paska figury bez karty postaci —
+plus dwa błędy znalezione przy okazji i naprawione tą samą sesją.
+
+- **Statysta nie miał skąd być załatany ani wyleczony. ZAMKNIĘTE — panel „Rany" w pasku.**
+  Diagnoza z 30.08 była trafna w całości: serwer umiał leczyć figurę bez karty od 29.08
+  (`treatableInjuries` czyta `combatProfile`, `applyTreatment` pisze do niego z powrotem),
+  a `loadTreatInjuryCup` od początku brał **adres żetonu**, nie karty. Brakowało wyłącznie
+  ekranu. Doszła sekcja `FigureInjuries` w pasku (nowy komponent, klasa `cp-injuries`, więc
+  wiersz rany wygląda identycznie jak na karcie) i refaktor `TreatInjury`: pacjentem jest
+  **figura** (`{ tokenId, name, characterId? }`), a nie id karty, którego statysta nie ma.
+  Odklikane 31.08 na wieżyczce z poligonu: „Złamane żebra" nadane ręką MG, załatane
+  Ratownictwem 23 vs PT 13 („efekt milczy do końca dnia"), potem wyleczone 19 vs PT 15
+  („schodzi z karty") — z zapisem w `combatProfile` żetonu i kartami na czacie.
+
+- **Ręka MG nad ranami figury bez karty — dołożona przy okazji.** Do 31.08 rana wchodziła
+  staty­ście **wyłącznie regułą** (gaz, granat hukowy, broniona strefa, Celowanie w nogę);
+  MG nie miał jak jej nadać ani zdjąć bez edycji bazy. `character:injury` przyjmuje teraz
+  `tokenId` zamiast `characterId` i idzie tą samą funkcją, co gaz
+  (`applyForcedFailureToTokenHp`) — więc rana niesie karę do RUCH-u, dopłatę do Testu
+  Przeżywalności i zabraną Akcję z 14e, a karta na czacie jest zwykłą kartą obrażeń
+  i „Cofnij" działa bez jednej nowej linijki.
+
+- **Wsparcie poziomu 10 nie rzucało Wartością bojową w piętnastu Umiejętnościach.
+  ZAMKNIĘTE — lista Umiejętności w profilu.** Zrobione ogólniej niż sama zaległość:
+  `CpredCombatProfile.skills` (id → poziom) niesie **dowolna** figura bez karty, agent
+  federalny dostaje swoje piętnaście automatem przy postawieniu
+  (`cpredBackupSkillLevels`), a MG dopisuje ręcznie w edytorze profilu. Rzut idzie przez
+  `character:roll` z `attackerTokenId` i jest przyjmowany **tylko** dla Umiejętności z tej
+  listy (`STATIST_CANNOT_ROLL_THIS` dla reszty) — jedna liczba `skillLevel` nie czyni
+  gangera biegłym w Kryptografii. Odklikane 31.08: „Percepcja (INT) · 1k10+12 = 17"
+  z rozbiciem „Inteligencja (INT) +0 · Percepcja +12".
+
+- **Przeładowanie statysty w trwającej walce. ZAMKNIĘTE — odklikane 31.08.** Pudełko
+  „Przeładuj: Karabin szturmowy 9/25" napełniło magazynek do 25/25, zgasło z podpowiedzią
+  „Magazynek jest pełny", a `turnState` wieżyczki zapisał `action: { id: 'reload' }` —
+  czyli Akcja została policzona.
+
+- **Błąd znaleziony przy okazji: cztery z sześciu kategorii Wsparcia biły jak krawężnicy.**
+  `sanitizeCombatProfile` klampowało `skillLevel` i `evasion` do `SKILL_LEVEL_MAX` (10),
+  a to jest limit **Umiejętności postaci**. Profil statysty trzyma w tym polu Wartość
+  bojową, czyli sumę Cechy i Umiejętności (s. 158) — 14, 16, 15 i 14 u czterech kategorii
+  i 14 u wszystkich pięciu Demonów. Zapis do bazy szedł poprawny, ale **każdy odczyt**
+  ścinał go do 10. Sufitem jest teraz `STATIST_SKILL_LEVEL_MAX` (= CPRED_STAT_MAX +
+  SKILL_LEVEL_MAX). Nie wyszło wcześniej, bo 30c nie było oglądane, a testy sprawdzały
+  `cpredBackupProfile` — czystą funkcję **przed** sanityzacją.
+
+- **Błąd znaleziony przy okazji: jedna z piętnastu Umiejętności nigdy się nie dopasowywała.**
+  Tabela w `roleability.ts` pisze „Ukrycie/znalezienie przedmiotu", a `skills.json` ma
+  „Ukrycie/Znalezienie przedmiotu". Dopasowanie po nazwie ignoruje teraz wielkość liter.
+
+- **Migotanie `specialties.test.ts` — naprawione.** Plik padał mniej więcej co dziesiąty
+  przebieg i zabierał ze sobą dwa sąsiednie testy. Nie był to błąd kodu, tylko reguła:
+  naturalna 1 odejmuje 1k10 (s. 165), więc TECH 8 + Chirurgia 10 schodzi do 9–18 i przegrywa
+  z PT 17. Modyfikatora, który przebije fumble, na karcie zbudować się nie da (sufity to 10
+  i 10), więc cztery rzuty leczenia powtarzają się w pętli do skutku — tak, jak zrobiłby to
+  Medyk przy stole.
+
 ## Przeniesione 2026-08-31 (Celowanie, broń z katalogu, prowieniencja rany)
 
 Cztery pozycje: trzy naprawy kodu w jednym obszarze („mechanika gotowa, nieosiągalna z UI")

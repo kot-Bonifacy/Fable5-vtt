@@ -775,6 +775,12 @@ export class MapRenderer {
   onMapClick: ((x: number, y: number) => boolean) | null = null;
   /** The steered token changed (stage 16e); null means nothing is selected. */
   onSelectionChange: ((tokenId: string | null, reason: SelectionChange) => void) | null = null;
+  /**
+   * Klik w figurę, której ten widz nie prowadzi (31.08) — pasek ma ją opisać,
+   * nikt nie bierze jej do ręki. Osobny callback, nie `onSelectionChange`
+   * z nowym powodem, bo tamten mówi o **sterowaniu**, a to jest jego brak.
+   */
+  onTokenPreview: ((tokenId: string) => void) | null = null;
   /** Something worth a line on the chat happened to a march („marsz przerwany…"). */
   onWalkNote: ((text: string) => void) | null = null;
   /** A march began (token id) or ended (null) — the caller watches for interruptions. */
@@ -5562,7 +5568,15 @@ export class MapRenderer {
         this.finishMarch('Marsz przerwany.');
         return;
       }
-      if (this.movableTokens.get(node.tokenId) === false) return;
+      // Cudza figura: sterować nią nie wolno, ale **pokazać** ją w pasku owszem
+      // (31.08). Do tej pory klik kończył się tu po cichu, przez co gracz nie
+      // miał jak zajrzeć w stan figury, której nie prowadzi — a od 31.08 pasek
+      // niesie jej rany i formularz łatania. Ognisko paska, nie sterowanie:
+      // ring i podgląd marszu zostają przy figurze, którą ten gracz prowadzi.
+      if (this.movableTokens.get(node.tokenId) === false) {
+        this.onTokenPreview?.(node.tokenId);
+        return;
+      }
       if (this.drag || !this.viewport) return;
       const world = this.viewport.toWorld(event.global.x, event.global.y);
       this.drag = {

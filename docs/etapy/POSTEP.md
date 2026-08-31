@@ -100,9 +100,10 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 ## Od czego zacząć
 
-**Ostatnia sesja (31.08) znowu zeszła z etapów na dług oględzin i zamknęła cztery pozycje:
+**Dwie ostatnie sesje (obie 31.08) zeszły z etapów na dług oględzin.** Pierwsza zamknęła
 Celowanie z paska akcji, broń wpisaną ręcznie, prowieniencję rany nadanej i sufit pancerza
-pracownika Korpo.** Dług spadł z 26 na 22 i **żadna nowa pozycja nie doszła**.
+pracownika Korpo; druga — cały **pasek figury bez karty**: leczenie i łatanie statysty, Testy
+Umiejętnościami z profilu i przeładowanie w walce. Dług: 26 → 22 → **21 pozycji**.
 
 **Celowanie wybiera się teraz przy kursorze, nie na banerze.** Po kliknięciu w cel wyskakuje okno
 z czterema sylwetkami (korpus, głowa, trzymany przedmiot, noga); otwiera je `loadAttackFor`, czyli
@@ -119,15 +120,16 @@ przeczytaj ten akapit, bo to druga zmiana zdania w tej sprawie.
 
 **Od czego zacząć: wolne są trzy etapy.** **31** (dodatki do broni; odblokowuje siedem
 z dziesięciu skutków Ulepszania z 30b), **27g** (wydajność, poligon „Korytarz 16e" gotowy)
-i **28** (wdrożenie na VPS). Poza etapami został **dług oględzin — 22 pozycje** (`zaleglosci.md`).
+i **28** (wdrożenie na VPS). Poza etapami został **dług oględzin — 21 pozycji** (`zaleglosci.md`).
 
-**Bez modelu da się dziś obejrzeć siedem:** reszta **29a** (pięć punktów), reszta **29b** (trzy),
-**komplet 30d**, **komplet 30c**, **reszta 30b**, **komplet 30a**, dwa drobiazgi z 30.08 (leczenie
-statysty, przeładowanie statysty w walce) i pomiar fps przypisany do 27g. Reszta czeka na **żywy
-model**: 20a/20b, 19a–19c, dwie ścieżki 24c i maszynopis wypowiedzi.
+**Bez modelu da się dziś obejrzeć sześć:** reszta **29a** (pięć punktów), reszta **29b** (trzy),
+**komplet 30d**, **komplet 30c**, **reszta 30b**, **komplet 30a**, Celowanie w statystę i pomiar
+fps przypisany do 27g. Reszta czeka na **żywy model**: 20a/20b, 19a–19c, dwie ścieżki 24c
+i maszynopis wypowiedzi.
 
-**Dwie zaległości opłaca się zrobić razem z pierwszym etapem, który tknie pasek figury bez karty:**
-leczenie statysty i rzut Wartością bojową w piętnastu Umiejętnościach (Wsparcie poziomu 10).
+**Figura bez karty ma od 31.08 własny panel w pasku:** rany (z Łataniem i Leczeniem tym samym
+formularzem, co karta), Testy Umiejętnościami wpisanymi w profil i ręka MG nad ranami. Rany takiej
+figury widzi **każdy**, kto ją widzi na mapie; reszta profilu zostaje prywatna.
 
 **Do oględzin 30a–30d trzeba postaci ze wszystkimi Rolami poza Netrunnerem** — żadna karta na
 scenach testowych ich nie ma. **Od 29a wybór Roli ma wyłącznie MG**, więc oględziny Ról robi się
@@ -257,6 +259,9 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 - **Droga leczenia to tryb, nie ścieżka** — `CpredCareMode` w żądaniu (`treatMode`) i planie; kolumnę tabeli wybiera `cpredCareOptions`, trwałość `cpredCarePermanent`, a `treatPermanent` wypełnia serwer. Łatać można siebie, leczyć nie (`SELF_TREATMENT`).
 - **Podgląd rzutu** bierze z karty to, co z niej widać (kary z ran przez `cpredInjuryModifiers`); serwerowi zostaje to, co wie tylko świat (Zwarcie).
 - **Nowa droga ataku** kończy się w `loadAttackFor` — i tylko stamtąd wychodzi wybór Celowania przy kursorze (`AimMenu`, warunek `mayAimShot`). Wybór nie jest lepki: przeładowuje kubek tym samym `AttackIntent` z dopisanym `aimedAt`.
+- **Umiejętność figury bez karty** — `CpredCombatProfile.skills` (id → poziom), wpisana liczba to **cały** modyfikator (Cechy idą do zera), rzucać wolno tylko tym, co na liście (`combatProfileRollableSkills`). Sufit to `STATIST_SKILL_LEVEL_MAX`, nie limit karty.
+- **Rany figury bez karty** jadą publicznie (`TokenView.injuries`, most `readSheetTokenInjuries`), reszta profilu zostaje prywatna; klient czyta je **tylko** z tego pola.
+- **Klik w cudzą figurę** — `onTokenPreview` → `selectionStore.focus`: pasek ją opisuje, nikt nią nie steruje.
 - **Broń na karcie** powstaje z wpisu katalogu przez `purchasedSheetRow` — nigdy z wolnego tekstu i **nigdy z dopasowania po nazwie**. Wiersz bez `compendiumId` nie strzela i mówi to chipem, nie dopiero odmową planera.
 - **Rana nazwana, nie wyrzucona** (gaz, granat hukowy, strefa, Celowanie w nogę, ręka MG) idzie przez `namedCriticalInjuryRow`: bez `rolled`, z `assigned` → chip „nadana".
 - **Nazwa Roli z `roles.json` wchodzi do zdania tylko w mianowniku** — po dwukropku albo na końcu. Odmiany nazwy z pliku danych nie da się zgadnąć („zostań Nomada").
@@ -337,11 +342,72 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 - **Broń dopisana do karty samą nazwą nie strzela** — bez `compendiumId` planer odmawia; bierz ją z katalogu („Dodaj za darmo"). Id typu (`weapon-type.*`) ≠ id wpisu (`weapon.*`).
 - **Broń biała odmawia powyżej 2 m**, a pole „Strzelnicy" to 2 m — przy ustawianiu żetonów w bazie licz w metrach.
 - **Nasłuch „klik poza oknem" dopięty w efekcie łapie ten sam klik, który okno otworzył** — okno znika bez śladu i bez błędu; uzbrajaj listener przez `setTimeout(…, 0)`.
+- **Sufit `SKILL_LEVEL_MAX` ścinał Wartość bojową w profilu statysty** — zapis szedł dobry, ścinał odczyt; funkcję piszącą do kolumny JSON testuj po podróży tam i z powrotem.
+- **Nazwa w kodzie ≠ nazwa w pliku danych** (wielkość liter) — dopasowania po nazwie rób na `trim().toLowerCase()`.
+- **Test rzutu, który „ma się udać", migocze na fumble'u** — naturalna 1 odejmuje 1k10 i przebija każdy modyfikator; powtarzaj rzut w pętli.
+- **Gracz nie mógł kliknąć cudzej figury** (do 31.08) — nowa funkcja paska „dla gracza przy cudzej figurze" bywa nieosiągalna, choć dane jadą.
 - **Kartę do oględzin da się przygotować w bazie bez logowania na MG** — `node --input-type=module` + `node:sqlite` na `packages/server/dev.db`; `better-sqlite3` nie jest w `node_modules` repozytorium.
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 31.08 (druga) — zaległości: pasek figury bez karty
+
+**Zlecenie MG:** wybór z listy zaległości; padło na **pakiet A** — trzy pozycje z jednego obszaru,
+paska figury bez karty postaci. Cztery decyzje przed pierwszą linijką: panel ran stoi **w pasku**
+(nie w menu żetonu), rany figury bez karty jadą **publicznie** do graczy, Umiejętności statysty to
+**lista w profilu** (nie sam poziom Wsparcia), a ręka MG nad ranami ma być **pełna, jak na karcie**.
+Formularz leczenia miał być spójny z 30b — i jest nim dosłownie: to ten sam komponent.
+
+**Serwer umiał leczyć figurę bez karty od 29.08 — brakowało wyłącznie ekranu.** `treatableInjuries`
+czytało profil, `applyTreatment` pisało do niego z powrotem, a `loadTreatInjuryCup` od początku
+brało **adres żetonu**. Cała naprawa to nowa sekcja `FigureInjuries` w pasku (z klasą `cp-injuries`,
+więc wiersz rany wygląda tak samo jak na karcie) i jedna zmiana w `TreatInjury`: pacjentem jest
+**figura**, nie id karty, którego statysta nie ma. Przy okazji domknięta luka, o której zaległość
+nie mówiła: MG nie miał jak **nadać** rany figurze bez karty — `character:injury` przyjmuje teraz
+`tokenId` i idzie tą samą funkcją, co gaz łzawiący, więc rana niesie kary, dopłatę do Testu
+Przeżywalności i zabraną Akcję z 14e, a karta na czacie daje się cofnąć.
+
+**Statysta rzuca Umiejętnościami, ale tylko wpisanymi — i nie dodaje do nich Cechy.** Nowe pole
+`CpredCombatProfile.skills` jest odwrotnością jednej liczby `skillLevel`: tamta należy do broni,
+ta mówi „ta figura umie to, i tyle". Agent federalny dostaje swoje piętnaście z s. 159 automatem
+przy postawieniu, MG dopisuje ręcznie w edytorze profilu, a Umiejętność spoza listy wraca
+`STATIST_CANNOT_ROLL_THIS`. Wpisana liczba jest **całym** modyfikatorem, bo Wartość bojowa to już
+suma Cechy i Umiejętności — bez tego agent rzucałby Dedukcją na 14 + INT 5.
+
+**Dwa błędy znalezione po drodze, oba starsze od tej sesji.** (1) `sanitizeCombatProfile` ścinało
+`skillLevel` i `evasion` do dziesiątki — limitu **Umiejętności postaci** — więc cztery z sześciu
+kategorii Wsparcia (14, 16, 15, 14) i wszystkie pięć Demonów (14) biły jak krawężnicy przy każdym
+odczycie żetonu. Zapis szedł poprawny; ścinał odczyt, dlatego test czystej funkcji tego nie widział.
+(2) Tabela w kodzie pisze „Ukrycie/znalezienie przedmiotu", a `skills.json` ma
+„Ukrycie/**Z**nalezienie przedmiotu" — jedna z piętnastu Umiejętności znikała bez śladu.
+
+**Trzeci błąd wyszedł dopiero w przeglądarce i był mój.** Rany pojechały do graczy publicznie,
+zgodnie z decyzją MG — ale klik w figurę, której gracz nie prowadzi, nie robił **nic**
+(`MapRenderer` wychodził po cichu na `movableTokens`), więc panel był dla gracza nieosiągalny.
+Doszła trzecia droga obok sterowania i „never mind": `onTokenPreview` → `selectionStore.focus`,
+czyli ognisko paska bez brania figury do ręki. Pasek rozróżniał opis od sterowania od 27h —
+brakowało tylko drogi, którą cudza figura mogła do niego trafić.
+
+**Odklikane 31.08 na wieżyczce z poligonu (MG i gracz obok siebie):** rana nadana ręką MG z karty
+na czacie, załatana Ratownictwem 23 vs PT 13 („efekt milczy do końca dnia"), wyleczona 19 vs PT 15
+(„schodzi z karty"), Test Percepcji figury bez karty („Inteligencja (INT) +0 · Percepcja +12"),
+przeładowanie w trwającej walce (9/25 → 25/25, `turnState.action = reload`), a z konta gracza:
+sekcja ran z guzikiem „Lecz" **bez** ręki MG, **bez** sekcji Testów i z „PW ukryte".
+
+**Migotanie `specialties.test.ts` naprawione przy okazji** — padał co dziesiąty przebieg i zabierał
+dwa sąsiednie testy. To nie był błąd kodu, tylko fumble: naturalna 1 odejmuje 1k10 i przebija każdy
+modyfikator, jaki da się zbudować na karcie. Rzuty, które w teście mają się udać, powtarzają się
+teraz w pętli.
+
+**Stan poligonu:** wieżyczce na „Strzelnicy" została **Percepcja 12** w profilu (celowo — to jedyne
+miejsce, gdzie widać sekcję „Testy") i „Odcięta dłoń"; „Złamane żebra" nadane i wyleczone w trakcie
+oględzin. Tryb turowy wyłączony, magazynek pełny.
+
+**Testy na koniec:** 1663 w `shared`, 884 na serwerze, 67 u klienta — zielone. ESLint i Prettier
+czyste, `pnpm -r build` przechodzi. Dług oględzin: **23 → 21 pozycji** licząc razem
+z notką o poligonie (zamknięte trzy, jedna wydzielona nowa: Celowanie w statystę).
 
 ### Sesja 31.08 — zaległości: Celowanie z paska, broń z katalogu, prowieniencja rany
 
@@ -393,51 +459,3 @@ braku trafień), związanie wiersza „Rura z parkingu" z „Dużą bronią bia�
 **Stan poligonu po sesji:** wszystko przywrócone (kartę „Frank" wyczyszczono ze śladów testów,
 pracownik „Ochrona Test" skasowany). Ślady: żeton **„testowy 2x2" ma 25/30 naboi** zamiast 27/30
 (dwa strzały testowe, oba pudła) i kilka kart w logu czatu. Szczegóły w `poligon.md`.
-
-### Sesja 30.08 (czwarta) — zaległości: rany krytyczne
-
-**Zlecenie MG:** wybór z listy zaległości; padło na **pakiet „rany krytyczne"** — trzy naprawy
-kodu i dwa pakiety oględzin w jednym obszarze. Trzy ustalenia przed pierwszą linijką: **błędy
-znalezione w oględzinach naprawiam od razu**, **karty testowe zostają na poligonie**, a próg PT
-ma **przestać być odstępstwem od podręcznika**.
-
-**Decyzja z 28.08 o remisie została cofnięta, bo stała na cytacie, którego nie ma.** Zapisano
-wtedy, że „RAW dla testu na PT mówi »równy lub wyższy = sukces«" i przestawiono
-`cpredAmmoCheckOutcome` na `>=`. Polskie wydanie drukuje zasadę ogólną **dwa razy i oba razy
-ostro** („wynik będzie większy od PT", s. 130; „Jeśli wynik Testu jest wyższy od PT, udało ci
-się!", s. 131), a komentarz w kodzie odsyłał do s. 132, gdzie stoi lista Umiejętności. Na `>`
-wróciły trzy miejsca z tamtej decyzji plus dwa, które ją później powtórzyły: Efekt Charyzmy z 30d
-i Pogłoski. Ustabilizowanie i Leczenie były jedynym miejscem zgodnym z podręcznikiem i zostały
-nietknięte — **teraz `>=` przy progu PT jest w kodzie błędem, nie wariantem**. Widać to na żywym
-rzucie: łatanie „13 vs PT 13" wróciło z czatu jako „Nie udało się".
-
-**Łatanie dostało jeden filtr, nie dziesięć gałęzi.** Wiersz rany niesie `patched` (kto i czym),
-a `cpredActiveInjuries` stoi **wewnątrz** siedmiu funkcji czytających skutek — kary płaskie
-i warunkowe, blokada Uniku, haki końca tury, Test Przeżywalności, mnożnik trafień w głowę, kara do
-RUCH-u. Dzięki temu dziesięć miejsc, które je wołają, nie zmieniło się wcale. Lista ran na karcie
-jest celowo **niefiltrowana**: załatana noga wciąż jest złamana i karta ma to mówić — chip
-„załatana" plus przekreślony efekt. Łatanie i Leczenie to **jeden rzut z trybem** (`treatMode`),
-a `cpredCarePermanent` rozstrzyga trzy rany, przy których łatanie leczy na stałe. Doszła reguła,
-której 30b nie miało: „można łatać samego siebie, **nie można leczyć samego siebie**" (s. 223).
-
-**Edytor kompendium zna już wszystkie skutki rany.** Dołożone `movePenalty`, `actionPenalty`
-i cztery flagi tury z 14e. Sprawdzone od końca do końca: rana wpisana ręką MG zapisała się,
-**wróciła kompletna przy ponownej edycji**, a nadana z karty weszła ze wszystkimi skutkami i jej
-−1 stanęło w rozbiciu rzutu na czacie.
-
-**Oględziny (pierwsze od 29.08 na koncie MG) zamknęły dwa pakiety i znalazły cztery usterki.**
-Odklikane: **całe Celowanie** (guziki tylko przy strzale pojedynczym, znikają przy serii, klikają
-się mimo `pointer-events: none`, „Celowanie (noga) −8" w rozbiciu, rana bez „2k6 = …"), **cały
-pakiet A+B z 29.08** (połowa pancerza „− OB 7", wiersz 13 → 12; chip kary warunkowej i jej guzik
-w oknie rzutu; pudełko „Przeładuj" u statysty; **rana krytyczna statysty** — „Odcięta dłoń"
-z dwóch szóstek) oraz guzik „Lecz" z 30b. Naprawione w locie: **rozjazd podglądu rzutu**
-(okno pokazywało sumę bez kar z ran, serwer je odejmował) i **układ czterech pudełek** w edytorze.
-Do zaległości poszły dwie rzeczy, których nie da się naprawić przy okazji: **Celowanie jest
-nieosiągalne z paska akcji** (dwa różne stany uzbrojenia) i **statysta nie ma skąd być załatany**
-(serwer umie, UI nie ma).
-
-**Testy:** **1639** w `shared` (+7), **879** na serwerze (+2), 62 u klienta — zielone. ESLint
-i Prettier czyste, `pnpm -r build` przechodzi. Migracji nie było — `patched` mieszka w JSON-ie
-karty. **Poligon zmieniony i opisany** w `poligon.md`: avatar9 ma Ratownictwo 6, Broń krótką 10
-i trzy rany (w tym własną MG „Test łaty 15"), Rudy — Broń białą 10, „Bardzo dużą broń białą"
-i „Złamaną nogę", wieżyczka — „Odciętą dłoń" w profilu bojowym.

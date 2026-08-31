@@ -48,9 +48,12 @@ scena bez zmian.
 - **Karta „Rudy Kwiatkowski"** ma **Broń białą 10** i **„Bardzo dużą broń białą" (4k6)** z katalogu
   oraz ranę **„Złamana noga"** z Celowania — para gotowa do sprawdzania połowy pancerza. Żeton
   wrócił na (2000, 1500).
-- **Żeton „Automatyczna wieżyczka"** ma w profilu bojowym ranę **„Odcięta dłoń"** (2k6 = 3),
-  zostawioną świadomie: to jedyna figura z raną **bez karty postaci**, a takiej rany nie da się
-  dziś zdjąć z UI (pozycja w `zaleglosci.md`). PW przywrócone do 25/25.
+- **Żeton „Automatyczna wieżyczka"** ma w profilu bojowym ranę **„Odcięta dłoń"** (2k6 = 3)
+  i **Percepcję 12** na liście Umiejętności. Oba wpisy zostają świadomie: to jedyna figura
+  **bez karty postaci**, na której widać sekcję „Rany" i sekcję „Testy" w pasku (31.08 —
+  zdejmowanie rany z UI działa już od tej sesji, wcześniej było pozycją długu). PW 25/25,
+  magazynek pełny. „Złamane żebra" nadano i wyleczono w trakcie oględzin 31.08 — na figurze
+  ich już nie ma.
 - **Kompendium ma o jeden wpis własny więcej** — „Test łaty 15" w Ranach krytycznych (23 zamiast
   22). Kasować nie trzeba: to jedyny wpis, na którym widać komplet pól rany z edytora.
 

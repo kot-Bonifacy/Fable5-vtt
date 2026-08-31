@@ -4,6 +4,7 @@ import {
   cpredBackupCall,
   cpredBackupDue,
   cpredBackupProfile,
+  cpredBackupSkillLevels,
   cpredBackupTier,
   cpredBackupTierAfter,
   cpredBackupTierAt,
@@ -12,6 +13,7 @@ import {
   describeBackupTier,
   readCpredCombatState,
 } from './roleability.js';
+import { buildCpredRegistry } from './character.js';
 
 /**
  * Wsparcie Stróża Prawa (etap 30c, s. 158–159).
@@ -193,5 +195,54 @@ describe('stan walki: kto jest w drodze', () => {
   it('zna kategorię po id', () => {
     expect(cpredBackupTier('marshal')?.count).toBe(1);
     expect(cpredBackupTier('nie-ma')).toBeNull();
+  });
+});
+
+/**
+ * Piętnaście Testów federalnych (s. 159, dopisane 31.08).
+ *
+ * „Mogą oni wykorzystać swoją Wartość bojową w Testach poniższych
+ * Umiejętności" — jedyna kategoria Wsparcia, która robi cokolwiek poza
+ * strzelaniem. Nazwy w tabeli są tekstem z podręcznika, a id powstają przy
+ * imporcie, więc test pilnuje przede wszystkim **dopasowania**: raz już się nie
+ * udało, bo tabela pisze „Ukrycie/znalezienie przedmiotu", a plik danych ma
+ * „Ukrycie/Znalezienie przedmiotu".
+ */
+describe('Umiejętności Wsparcia', () => {
+  const registry = buildCpredRegistry(
+    {
+      skills: [
+        { id: 'deduction', name: 'Dedukcja', stat: 'int' },
+        { id: 'perception', name: 'Percepcja', stat: 'int' },
+        // Wielka litera w środku — dokładnie tak, jak w `skills.json`.
+        { id: 'conceal-reveal-object', name: 'Ukrycie/Znalezienie przedmiotu', stat: 'int' },
+      ],
+    },
+    { roles: [] },
+  );
+
+  it('daje agentowi federalnemu jego Wartość bojową w każdym Teście', () => {
+    const tier = cpredBackupTier('federal')!;
+    const skills = cpredBackupSkillLevels(tier, registry);
+    expect(skills.deduction).toBe(tier.combatValue);
+    expect(skills.perception).toBe(tier.combatValue);
+  });
+
+  it('dopasowuje nazwę mimo różnicy w wielkości liter', () => {
+    const tier = cpredBackupTier('federal')!;
+    expect(cpredBackupSkillLevels(tier, registry)['conceal-reveal-object']).toBe(tier.combatValue);
+  });
+
+  it('nazwa bez odpowiednika w rejestrze wypada, a reszta zostaje', () => {
+    const tier = cpredBackupTier('federal')!;
+    const skills = cpredBackupSkillLevels(tier, registry);
+    // Rejestr zna trzy z piętnastu — figura ma powstać z trzema, a nie wcale.
+    expect(Object.keys(skills)).toHaveLength(3);
+  });
+
+  it('kategorie poniżej dziesiątki nie umieją nic poza strzelaniem', () => {
+    for (const tier of CPRED_BACKUP_TIERS.filter((row) => row.id !== 'federal')) {
+      expect(cpredBackupSkillLevels(tier, registry)).toEqual({});
+    }
   });
 });

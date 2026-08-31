@@ -5656,6 +5656,47 @@ body.is-resizing {
   color: var(--warn);
 }
 
+/* --- rany i Testy figury bez karty (31.08) --- */
+
+/* Wiersz rany przychodzi z karty postaci razem z klasą `cp-injuries`, więc
+   wygląda tam i tu tak samo — zostaje mu tylko dopasować szerokość do paska:
+   kolumna tożsamości karty jest szersza, a pasek nie ma dokąd się rozpychać. */
+.hud-injuries .injury-row,
+.hud-injuries .cp-injuries-empty {
+  font-size: 0.72rem;
+}
+
+/* Guziki leczenia same schodzą do drugiego wiersza, gdy nazwa rany jest długa;
+   bez tego „Odcięta dłoń" z trzema guzikami rozpychała pasek na całą szerokość. */
+.hud-injuries .injury-head {
+  row-gap: 0.2rem;
+}
+
+.hud-injuries .injury-treat-who select {
+  max-width: 7rem;
+}
+
+/* Testy Wsparcia: piętnaście guzików, więc rządek, nie kolumna — inaczej pasek
+   robi się dłuższy niż okno i broń schodzi poniżej krawędzi. */
+.hud-skill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+}
+
+.hud-figure-skills .cp-mini-button {
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0.12rem 0.3rem;
+  color: var(--text-dim);
+  font-size: 0.66rem;
+}
+
+.hud-figure-skills .cp-mini-button:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
 .hud-armed {
   display: flex;
   align-items: flex-start;

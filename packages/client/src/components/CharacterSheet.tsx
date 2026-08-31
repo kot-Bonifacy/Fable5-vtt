@@ -2057,6 +2057,16 @@ function CriticalInjuries({ data, saveData, characterId }: TabProps & { characte
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const entriesById = useCompendiumStore((s) => s.entries);
   const order = useCompendiumStore((s) => s.order);
+  const tokens = useTokenStore((s) => s.tokens);
+  /**
+   * Figura pacjenta na scenie — adres, którego potrzebuje rzut na leczenie.
+   * Szukanie stoi tutaj, a nie w `TreatInjury`, odkąd formularz obsługuje też
+   * figury bez karty: pacjentem jest żeton, a karta wie tylko, który to jej.
+   */
+  const patientToken = useMemo(
+    () => Object.values(tokens).find((token) => token.characterId === characterId) ?? null,
+    [tokens, characterId],
+  );
   const [picked, setPicked] = useState('');
   /**
    * Rana i tryb, w którym otwarto przy niej formularz; naraz tylko jeden.
@@ -2253,14 +2263,23 @@ function CriticalInjuries({ data, saveData, characterId }: TabProps & { characte
                   Łatanie: {injury.quickFix}
                 </p>
               ) : null}
-              {treating?.id === injury.id && (
-                <TreatInjury
-                  patientId={characterId}
-                  injury={injury}
-                  mode={treating.mode}
-                  onClose={() => setTreating(null)}
-                />
-              )}
+              {treating?.id === injury.id &&
+                (patientToken ? (
+                  <TreatInjury
+                    patient={{
+                      tokenId: patientToken.id,
+                      name: patientToken.name,
+                      characterId,
+                    }}
+                    injury={injury}
+                    mode={treating.mode}
+                    onClose={() => setTreating(null)}
+                  />
+                ) : (
+                  <p className="injury-care">
+                    Ta postać nie stoi na scenie — nie ma kogo opatrzyć.
+                  </p>
+                ))}
             </li>
           ))}
         </ul>

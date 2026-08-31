@@ -21,6 +21,7 @@ import {
   CPRED_STABILIZE_DV,
   DEATH_SAVES_MAX,
   ROLE_GM,
+  combatProfileRollableSkills,
   cpredAudienceBelieves,
   cpredRumourHeard,
   cpredCareOptions,
@@ -111,10 +112,17 @@ function rollSourceName(source: RollSource): string {
  * already speaks, so the client's error table did not have to grow a second
  * vocabulary for the same two answers.
  *
- * Only a damage roll may arrive this way. Everything else a statist rolls has
- * an event of its own (`attack:roll` fires its gun, `attack:evade` ducks), and
- * the two things this path would otherwise have to support — spending Luck and
- * booking a Death Save — need a sheet to write to.
+ * Dwa rodzaje rzutu przychodzą tędy. **Obrażenia** — od 16b, bo strzał figury
+ * bez karty musi mieć czym zranić. I **Test Umiejętności**, od 31.08, ale
+ * wyłącznie takiej, którą ta figura ma wpisaną w profilu
+ * (`combatProfileRollableSkills`): agent federalny rzuca Wartością bojową
+ * w piętnastu Umiejętnościach z s. 159, a ganger, któremu nikt niczego nie
+ * wpisał, dalej nie rzuca niczym poza bronią i Unikiem. Bez tego warunku jedna
+ * liczba `skillLevel` uczyniłaby każdego statystę biegłym w Kryptografii.
+ *
+ * Reszta ma własne zdarzenia (`attack:roll` strzela, `attack:evade` uskakuje),
+ * a dwie rzeczy, których ta droga nie uniesie — wydanie Szczęścia i zapis Rzutu
+ * na Śmierć — potrzebują karty, na której da się je zapisać.
  */
 async function resolveRollSource(
   deps: RealtimeDeps,
@@ -129,7 +137,10 @@ async function resolveRollSource(
     return { kind: 'character', character, data: parseCharacterData(character.data, registry) };
   }
 
-  if (request.kind !== 'damage') throw new RealtimeError('STATIST_CANNOT_ROLL_THIS');
+  const skillRoll = request.kind === 'skill';
+  if (request.kind !== 'damage' && !skillRoll) {
+    throw new RealtimeError('STATIST_CANNOT_ROLL_THIS');
+  }
   if (typeof payload?.attackerTokenId !== 'string' || payload.attackerTokenId.length === 0) {
     throw new RealtimeError('BAD_REQUEST');
   }
@@ -144,13 +155,21 @@ async function resolveRollSource(
   }
   const profile = readSheetCombatProfile(token.combatProfile);
   if (!profile) throw new RealtimeError('TOKEN_HAS_NO_PROFILE');
+  // Ta sama odmowa co przy rzucie, którego statysta nie umie zrobić w ogóle:
+  // Umiejętność spoza profilu nie istnieje dla tej figury, a nie „istnieje na
+  // poziomie broni". Kod odmowy jest ten sam, bo z miejsca gracza to jedno
+  // zdanie — „ta figura tak nie rzuca".
+  const skillId = typeof request.skillId === 'string' ? request.skillId : '';
+  if (skillRoll && !combatProfileRollableSkills(profile).includes(skillId)) {
+    throw new RealtimeError('STATIST_CANNOT_ROLL_THIS');
+  }
   // The same synthesis the shot itself was rolled from, so the weapon that
   // fired and the weapon that wounds cannot disagree: its one row is the row
   // the attack card points back at.
   return {
     kind: 'statist',
     token,
-    data: sheetFromCombatProfile(profile, sheetTokenHp(token), null),
+    data: sheetFromCombatProfile(profile, sheetTokenHp(token), skillRoll ? skillId : null),
   };
 }
 
@@ -581,6 +600,33 @@ async function situationForCharacter(
   return { modifiers: sheetSituationModifiers({ grappled, injuries }) };
 }
 
+/**
+ * To samo dla figury bez karty (31.08).
+ *
+ * Osobna funkcja, nie gałąź w tamtej, bo źródła są dwa różne — rany statysty
+ * siedzą w profilu na żetonie, a nie na karcie — ale **wynik ma być ten sam**.
+ * Odkąd statysta nosi Rany Krytyczne (29.08), „Wstrząśnienie mózgu" ma go
+ * kosztować −2 w Teście Percepcji dokładnie tak, jak kosztuje postać: profil
+ * z ranami, którego rany nikt nie liczy, jest gorszy niż profil bez ran, bo
+ * wygląda na policzony.
+ *
+ * Zwarcie czyta się wprost z żetonu — tu jest nawet prościej niż przy karcie,
+ * która musi najpierw swojej figury poszukać.
+ */
+async function situationForStatist(
+  deps: RealtimeDeps,
+  token: Token,
+  profile: { criticalInjuries?: CpredCriticalInjuryRow[] },
+): Promise<CpredRollContext> {
+  const grapple = await grappleStateForToken(deps.ctx.prisma, token.sceneId, token.id);
+  return {
+    modifiers: sheetSituationModifiers({
+      grappled: grapple.grappled,
+      injuries: profile.criticalInjuries ?? [],
+    }),
+  };
+}
+
 /** Is this character's token on the viewed scene in a Hold right now? */
 async function isCharacterGrappled(
   deps: RealtimeDeps,
@@ -648,12 +694,18 @@ export async function performCharacterRoll(
     // where it came from. A Death Save is not an Action and is exempt — the
     // planner ignores the context for that kind anyway (stage 14d decision).
     //
-    // A statist arrives here for damage and nothing else, and damage is not a
-    // Check: no wound penalty, no Hold, nothing situational to name.
+    // Statysta przychodzi tędy po obrażenia i po Test Umiejętności ze swojego
+    // profilu (31.08). Obrażenia kontekstu nie czytają — nie są Testem i omijają
+    // `finishCheck` — więc jedno wywołanie obsługuje oba: rany i Zwarcie liczą
+    // się tam, gdzie mają znaczenie, i milczą tam, gdzie go nie mają.
     const context =
       source.kind === 'character'
         ? await situationForCharacter(deps, campaignId, sceneId, source.character, data)
-        : { modifiers: [] };
+        : await situationForStatist(deps, source.token, {
+            ...(data.criticalInjuries.length > 0
+              ? { criticalInjuries: data.criticalInjuries }
+              : {}),
+          });
     const planned = planCpredRoll(data, registry, request, context);
     if (!planned.ok) throw new RealtimeError(planned.error);
     const { plan } = planned;

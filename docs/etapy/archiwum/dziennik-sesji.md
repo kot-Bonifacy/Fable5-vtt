@@ -7,6 +7,54 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 30.08 (czwarta) — zaległości: rany krytyczne
+
+**Zlecenie MG:** wybór z listy zaległości; padło na **pakiet „rany krytyczne"** — trzy naprawy
+kodu i dwa pakiety oględzin w jednym obszarze. Trzy ustalenia przed pierwszą linijką: **błędy
+znalezione w oględzinach naprawiam od razu**, **karty testowe zostają na poligonie**, a próg PT
+ma **przestać być odstępstwem od podręcznika**.
+
+**Decyzja z 28.08 o remisie została cofnięta, bo stała na cytacie, którego nie ma.** Zapisano
+wtedy, że „RAW dla testu na PT mówi »równy lub wyższy = sukces«" i przestawiono
+`cpredAmmoCheckOutcome` na `>=`. Polskie wydanie drukuje zasadę ogólną **dwa razy i oba razy
+ostro** („wynik będzie większy od PT", s. 130; „Jeśli wynik Testu jest wyższy od PT, udało ci
+się!", s. 131), a komentarz w kodzie odsyłał do s. 132, gdzie stoi lista Umiejętności. Na `>`
+wróciły trzy miejsca z tamtej decyzji plus dwa, które ją później powtórzyły: Efekt Charyzmy z 30d
+i Pogłoski. Ustabilizowanie i Leczenie były jedynym miejscem zgodnym z podręcznikiem i zostały
+nietknięte — **teraz `>=` przy progu PT jest w kodzie błędem, nie wariantem**. Widać to na żywym
+rzucie: łatanie „13 vs PT 13" wróciło z czatu jako „Nie udało się".
+
+**Łatanie dostało jeden filtr, nie dziesięć gałęzi.** Wiersz rany niesie `patched` (kto i czym),
+a `cpredActiveInjuries` stoi **wewnątrz** siedmiu funkcji czytających skutek — kary płaskie
+i warunkowe, blokada Uniku, haki końca tury, Test Przeżywalności, mnożnik trafień w głowę, kara do
+RUCH-u. Dzięki temu dziesięć miejsc, które je wołają, nie zmieniło się wcale. Lista ran na karcie
+jest celowo **niefiltrowana**: załatana noga wciąż jest złamana i karta ma to mówić — chip
+„załatana" plus przekreślony efekt. Łatanie i Leczenie to **jeden rzut z trybem** (`treatMode`),
+a `cpredCarePermanent` rozstrzyga trzy rany, przy których łatanie leczy na stałe. Doszła reguła,
+której 30b nie miało: „można łatać samego siebie, **nie można leczyć samego siebie**" (s. 223).
+
+**Edytor kompendium zna już wszystkie skutki rany.** Dołożone `movePenalty`, `actionPenalty`
+i cztery flagi tury z 14e. Sprawdzone od końca do końca: rana wpisana ręką MG zapisała się,
+**wróciła kompletna przy ponownej edycji**, a nadana z karty weszła ze wszystkimi skutkami i jej
+−1 stanęło w rozbiciu rzutu na czacie.
+
+**Oględziny (pierwsze od 29.08 na koncie MG) zamknęły dwa pakiety i znalazły cztery usterki.**
+Odklikane: **całe Celowanie** (guziki tylko przy strzale pojedynczym, znikają przy serii, klikają
+się mimo `pointer-events: none`, „Celowanie (noga) −8" w rozbiciu, rana bez „2k6 = …"), **cały
+pakiet A+B z 29.08** (połowa pancerza „− OB 7", wiersz 13 → 12; chip kary warunkowej i jej guzik
+w oknie rzutu; pudełko „Przeładuj" u statysty; **rana krytyczna statysty** — „Odcięta dłoń"
+z dwóch szóstek) oraz guzik „Lecz" z 30b. Naprawione w locie: **rozjazd podglądu rzutu**
+(okno pokazywało sumę bez kar z ran, serwer je odejmował) i **układ czterech pudełek** w edytorze.
+Do zaległości poszły dwie rzeczy, których nie da się naprawić przy okazji: **Celowanie jest
+nieosiągalne z paska akcji** (dwa różne stany uzbrojenia) i **statysta nie ma skąd być załatany**
+(serwer umie, UI nie ma).
+
+**Testy:** **1639** w `shared` (+7), **879** na serwerze (+2), 62 u klienta — zielone. ESLint
+i Prettier czyste, `pnpm -r build` przechodzi. Migracji nie było — `patched` mieszka w JSON-ie
+karty. **Poligon zmieniony i opisany** w `poligon.md`: avatar9 ma Ratownictwo 6, Broń krótką 10
+i trzy rany (w tym własną MG „Test łaty 15"), Rudy — Broń białą 10, „Bardzo dużą broń białą"
+i „Złamaną nogę", wieżyczka — „Odciętą dłoń" w profilu bojowym.
+
 ### Sesja 30.08 (trzecia) — etap 29b: wieloklasowość
 
 **Zlecenie MG:** kontynuować budowę; z przedstawionych opcji wybór padł na **29b**. Przed

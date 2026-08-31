@@ -43,6 +43,7 @@ import type { PrismaClient } from '../db.js';
 import type { Character, Scene, Token } from '../generated/prisma/client.js';
 import {
   readSheetFearedTokens,
+  readSheetTokenInjuries,
   sheetCombatProfile,
   sheetWoundStatuses,
   toLinkedSheet,
@@ -131,6 +132,14 @@ export function toTokenView(
     // information the table is meant to be able to use.
     facing: token.facing,
   };
+  // Rany figury bez karty jadą **publicznie** (31.08), w odróżnieniu od reszty
+  // profilu tuż niżej: przy stole widać, że ktoś ma odciętą dłoń, a Medyk
+  // gracza ma mieć co załatać. Figura z kartą nie dostaje tu nic — jej rany
+  // stoją na karcie, i to karta rozstrzyga, kto je widzi.
+  if (!token.characterId) {
+    const injuries = readSheetTokenInjuries(token.combatProfile);
+    if (injuries.length > 0) view.injuries = injuries;
+  }
   if (includePrivate) {
     view.characterId = token.characterId;
     view.visionRange = token.visionRange;

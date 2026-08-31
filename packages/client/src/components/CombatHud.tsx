@@ -32,6 +32,8 @@ import { useSelectionStore } from '../stores/selectionStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { CombatAwarenessPanel } from './CombatAwarenessPanel.js';
 import { BackupPanel } from './BackupPanel.js';
+import { FigureInjuries } from './FigureInjuries.js';
+import { FigureSkills } from './FigureSkills.js';
 import { GrapplePanel, HoldActionForm, StabilizePicker } from './CombatForms.js';
 import { HudIcon } from './HudIcon.js';
 import { TurnBudget } from './TurnBudget.js';
@@ -613,6 +615,23 @@ export function CombatHud() {
               Ta figura ma kartę postaci, ale nie jest przypisana do ciebie — dlatego pasek nie zna
               jej broni. Poproś MG, żeby ustawił cię właścicielem karty.
             </p>
+          )}
+
+          {/* Etap 31.08: rany i Testy figury bez karty. Stoją **nad** bronią,
+              bo obie odpowiadają na pytanie „w jakim ona jest stanie", a nie
+              „co może zrobić" — i bo rana zabierająca Akcję tłumaczy wyszarzone
+              pudełka niżej. Przy figurze z kartą nie ma ich wcale: tam jedno
+              i drugie mieszka na karcie. */}
+          {context.injuries.length > 0 || (context.isGm && !token.characterId) ? (
+            <FigureInjuries tokenId={token.id} injuries={context.injuries} />
+          ) : null}
+          {context.figureSkills.length > 0 && (
+            <FigureSkills
+              tokenId={token.id}
+              name={token.name}
+              skills={context.figureSkills}
+              disabled={context.refusal}
+            />
           )}
 
           {context.slots.length === 0 && (

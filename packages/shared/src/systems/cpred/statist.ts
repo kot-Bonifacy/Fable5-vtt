@@ -128,6 +128,23 @@ export interface CpredCombatProfile {
    * function.
    */
   criticalInjuries?: CpredCriticalInjuryRow[];
+  /**
+   * Umiejętności, którymi ta figura wolno jej rzucić — id → poziom (30.08).
+   *
+   * Do tej pory statysta rzucał wyłącznie bronią i Unikiem, bo `skillLevel`
+   * jest **jedną** liczbą: gdyby wystarczyła za każdą Umiejętność, ganger
+   * z Umiejętnością 4 byłby równie dobrym księgowym co strzelcem. To pole jest
+   * odwrotną stroną tej samej decyzji — nie „statysta umie wszystko na jednym
+   * poziomie", tylko „statysta umie **to**, i tyle".
+   *
+   * Wstawia je reguła (Wsparcie 10. poziomu przynosi swoich piętnaście —
+   * „mogą oni wykorzystać swoją Wartość bojową w Testach poniższych
+   * Umiejętności", s. 159) albo ręka MG w edytorze profilu. Nieobecne na
+   * każdym profilu, którego nikt nie tknął, dokładnie z tego powodu, dla
+   * którego nieobecne bywa `criticalInjuries`: JSON nietkniętego gangera ma
+   * wracać bajt w bajt tym, co zapisał etap 16b.
+   */
+  skills?: Record<string, number>;
 }
 
 export function createDefaultCombatProfile(): CpredCombatProfile {
@@ -147,8 +164,54 @@ export function createDefaultCombatProfile(): CpredCombatProfile {
   };
 }
 
+/**
+ * Najwyższy poziom Umiejętności w profilu figury bez karty — **nie** dziesiątka
+ * z karty postaci (błąd znaleziony 31.08).
+ *
+ * Do 31.08 profil klampował się do `SKILL_LEVEL_MAX`, czyli do limitu, który
+ * RAW nakłada na **Umiejętność postaci**. Statysta jednak trzyma tu coś innego:
+ * Wartość bojową — „Umiejętność bazowa używana do ataku i obrony. Reprezentuje
+ * sumę Cechy i Umiejętności funkcjonariusza" (s. 158). Cztery z sześciu
+ * kategorii Wsparcia mają ją powyżej dziesięciu (14, 16, 15, 14) i wszystkie
+ * cztery były po cichu ścinane do 10 przy **każdym odczycie** żetonu: C-SWAT
+ * strzelał i bronił się jak krawężnik. To samo groziło Demonom (14).
+ *
+ * Sufitem jest więc suma obu limitów, bo dokładnie tym Wartość bojowa jest.
+ */
+export const STATIST_SKILL_LEVEL_MAX = CPRED_STAT_MAX + SKILL_LEVEL_MAX;
+
 /** Most wounds one statist's profile will keep — the two tables hold 22. */
 export const STATIST_INJURY_MAX = 12;
+
+/**
+ * Ile Umiejętności zmieści się w profilu. Piętnaście przynosi Wsparcie
+ * 10. poziomu (s. 159) i to jest najdłuższa lista, jaką drukuje podręcznik;
+ * dwadzieścia zostawia MG zapas, a jednocześnie mówi, że to nadal jest figura
+ * bez karty. Statysta, któremu brakuje miejsca, chce prawdziwej karty.
+ */
+export const STATIST_SKILL_MAX = 20;
+
+/**
+ * Czyta listę Umiejętności profilu, naprawiając co się da.
+ *
+ * Nieznane id **wypada po cichu**, tak jak w `validateSkills` na karcie:
+ * pliki danych potrafią się skurczyć, a figura, która przestaje istnieć, bo
+ * z `skills.json` zniknął wiersz, jest gorsza niż figura bez tego rzutu.
+ * Poziom 0 też wypada — to jest lista „co ta figura umie", a umieć coś na
+ * zero znaczy nie umieć.
+ */
+function sanitizeProfileSkills(raw: unknown): Record<string, number> {
+  if (typeof raw !== 'object' || raw === null) return {};
+  const skills: Record<string, number> = {};
+  for (const [id, level] of Object.entries(raw as Record<string, unknown>)) {
+    if (Object.keys(skills).length >= STATIST_SKILL_MAX) break;
+    if (typeof id !== 'string' || !isValidCompendiumId(id)) continue;
+    if (typeof level !== 'number' || !Number.isFinite(level)) continue;
+    const value = clampInt(level, SKILL_LEVEL_MIN, STATIST_SKILL_LEVEL_MAX, 0);
+    if (value > 0) skills[id] = value;
+  }
+  return skills;
+}
 
 function clampInt(value: unknown, min: number, max: number, fallback: number): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
@@ -173,13 +236,22 @@ export function sanitizeCombatProfile(raw: unknown): CpredCombatProfile {
   const input = raw as Record<string, unknown>;
   const ammoMax = clampInt(input.ammoMax, 0, WEAPON_AMMO_MAX, base.ammoMax);
   const injuries = sanitizeCriticalInjuryRows(input.criticalInjuries).slice(0, STATIST_INJURY_MAX);
+  const skills = sanitizeProfileSkills(input.skills);
   return {
     ref: clampInt(input.ref, CPRED_STAT_MIN, CPRED_STAT_MAX, base.ref),
     dex: clampInt(input.dex, CPRED_STAT_MIN, CPRED_STAT_MAX, base.dex),
     body: clampInt(input.body, CPRED_STAT_MIN, CPRED_STAT_MAX, base.body),
     will: clampInt(input.will, CPRED_STAT_MIN, CPRED_STAT_MAX, base.will),
-    skillLevel: clampInt(input.skillLevel, SKILL_LEVEL_MIN, SKILL_LEVEL_MAX, base.skillLevel),
-    evasion: clampInt(input.evasion, SKILL_LEVEL_MIN, SKILL_LEVEL_MAX, base.evasion),
+    // Oba sufity to `STATIST_SKILL_LEVEL_MAX`, nie limit karty: Wsparcie
+    // atakuje **i broni się** tą samą Wartością bojową (s. 158), więc ścięty
+    // Unik byłby dokładnie tym samym błędem co ścięty atak.
+    skillLevel: clampInt(
+      input.skillLevel,
+      SKILL_LEVEL_MIN,
+      STATIST_SKILL_LEVEL_MAX,
+      base.skillLevel,
+    ),
+    evasion: clampInt(input.evasion, SKILL_LEVEL_MIN, STATIST_SKILL_LEVEL_MAX, base.evasion),
     // Both omitted when they carry nothing, for the reason `criticalInjuries`
     // is: an untouched ganger's JSON has to round-trip to what 16b wrote.
     ...(typeof input.move === 'number' && Number.isFinite(input.move)
@@ -201,6 +273,9 @@ export function sanitizeCombatProfile(raw: unknown): CpredCombatProfile {
     // Repaired like everything else here, and omitted entirely when empty: an
     // unhurt statist's profile must round-trip to the same JSON it arrived as.
     ...(injuries.length > 0 ? { criticalInjuries: injuries } : {}),
+    // Ta sama umowa, ten sam powód (30.08): figura, której nikt nie nadał
+    // żadnej Umiejętności, ma zapisywać się tak, jak zapisywał ją etap 16b.
+    ...(Object.keys(skills).length > 0 ? { skills } : {}),
   };
 }
 
@@ -277,7 +352,9 @@ export function combatProfileSheet(
     // Stage 30d: no Family to lend him a car, and nobody haggles on his behalf.
     fleet: [],
     haggle: null,
-    skills: { [CPRED_EVASION_SKILL_ID]: profile.evasion },
+    // Unik zawsze z własnego pola, choćby MG wpisał go też na listę: to on
+    // stoi w edytorze profilu i to jego czyta obrona statysty.
+    skills: { ...(profile.skills ?? {}), [CPRED_EVASION_SKILL_ID]: profile.evasion },
     // Statysta nie ma czego nazywać: jego jedyną umiejętnością jest Unik.
     skillSpecialties: {},
     weapons: [
@@ -338,7 +415,24 @@ export function combatProfileSheet(
  * the rules ask a defender for, so it is the only one worth separating.
  */
 export function combatProfileSkillLevel(profile: CpredCombatProfile, skillId: string): number {
-  return skillId === CPRED_EVASION_SKILL_ID ? profile.evasion : profile.skillLevel;
+  if (skillId === CPRED_EVASION_SKILL_ID) return profile.evasion;
+  // Umiejętność wpisana wprost wygrywa z liczbą od broni (30.08). Kolejność
+  // jest tu jedyną możliwą: `skillLevel` nie wie, którą Umiejętnością strzela
+  // ta broń, więc gdyby wygrywał on, wpisany poziom nie znaczyłby nic.
+  return profile.skills?.[skillId] ?? profile.skillLevel;
+}
+
+/**
+ * Umiejętności, którymi ta figura **wolno** rzucić poza walką (30.08).
+ *
+ * Nie to samo, co `combatProfileSkillLevel`: tamta odpowiada „na ilu",
+ * a ta „czy w ogóle". Rozdział jest celowy — atak pyta o poziom Umiejętności,
+ * którą strzela broń, i ma dostać `skillLevel` także wtedy, gdy nikt tej
+ * Umiejętności nie wpisał; Test Percepcji ma nie istnieć, dopóki ktoś nie
+ * powie, że ta figura umie patrzeć.
+ */
+export function combatProfileRollableSkills(profile: CpredCombatProfile): string[] {
+  return Object.keys(profile.skills ?? {});
 }
 
 /**
@@ -411,8 +505,21 @@ export function combatProfileSheetForSkill(
 ): CpredCharacterData {
   const sheet = combatProfileSheet(profile, hp);
   if (!skillId) return sheet;
+  const listed = profile.skills?.[skillId] !== undefined;
   return {
     ...sheet,
+    // Umiejętność **wpisana na listę** niesie pełny modyfikator, więc Cechy idą
+    // do zera — dokładnie ta sama decyzja, którą `combatProfileWithCombatValue`
+    // podejmuje dla wieżyczki, i z tego samego powodu. „Wartość bojowa […]
+    // reprezentuje sumę Cechy i Umiejętności funkcjonariusza" (s. 158): agent
+    // federalny rzucający Dedukcją na 14 + INT 5 liczyłby swoją Cechę dwa razy.
+    //
+    // Rzut bronią zostaje po staremu (REF + poziom), bo `skillLevel` jest
+    // poziomem Umiejętności, a nie sumą — chyba że MG sam wpisał tę broń na
+    // listę, i wtedy to jest jego deklaracja pełnego modyfikatora.
+    ...(listed
+      ? { stats: { ...sheet.stats, int: 0, ref: 0, dex: 0, tech: 0, cool: 0, will: 0, emp: 0 } }
+      : {}),
     skills: { ...sheet.skills, [skillId]: combatProfileSkillLevel(profile, skillId) },
   };
 }

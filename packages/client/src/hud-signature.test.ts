@@ -49,6 +49,8 @@ function context(slots: CpredHotbarWeaponSlot[]): HudContext {
     isActiveTurn: true,
     refusal: null,
     sheetNotMine: false,
+    injuries: [],
+    figureSkills: [],
     steering: false,
   };
 }

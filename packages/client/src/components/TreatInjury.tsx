@@ -4,7 +4,6 @@ import { CPRED_CARE_MODE_LABELS, ROLE_GM, cpredCareOptions, cpredCareRefusal } f
 import { loadTreatInjuryCup } from '../stores/rollStore.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
-import { useTokenStore } from '../stores/tokenStore.js';
 
 /**
  * Leczenie Rany Krytycznej (etap 30b).
@@ -25,14 +24,20 @@ import { useTokenStore } from '../stores/tokenStore.js';
  * (`cpredCareOptions`, `cpredCarePermanent`) — tu zmienia się wyłącznie słowo
  * na guziku i to, kogo wolno wybrać jako leczącego: łatać można samego siebie,
  * leczyć nie (s. 223).
+ *
+ * Pacjentem jest **figura, nie karta** (31.08). Do tej pory formularz dostawał
+ * id postaci i sam szukał jej żetonu, przez co statysta — który karty nie ma —
+ * nie miał jak zostać opatrzony, choć serwer umiał go leczyć od 29.08.
+ * Adresem rzutu i tak zawsze był żeton; teraz przychodzi wprost, a karta
+ * pacjenta jedzie obok, wyłącznie po to, żeby wykluczyć samoleczenie.
  */
 export function TreatInjury({
-  patientId,
+  patient,
   injury,
   mode,
   onClose,
 }: {
-  patientId: string;
+  patient: { tokenId: string; name: string; characterId?: string };
   injury: CpredCriticalInjuryRow;
   mode: CpredCareMode;
   onClose: () => void;
@@ -41,14 +46,9 @@ export function TreatInjury({
   const characters = useCharacterStore((s) => s.characters);
   const order = useCharacterStore((s) => s.order);
   const registry = useCharacterStore((s) => s.registry);
-  const tokens = useTokenStore((s) => s.tokens);
 
   const options = useMemo(() => cpredCareOptions(injury, mode), [injury, mode]);
-  /** Figura pacjenta na scenie — to jej adres niesie rzut. */
-  const patientToken = useMemo(
-    () => Object.values(tokens).find((token) => token.characterId === patientId) ?? null,
-    [tokens, patientId],
-  );
+  const patientCharacterId = patient.characterId;
   const healers = useMemo(
     () =>
       order
@@ -60,9 +60,10 @@ export function TreatInjury({
             // „Nie można leczyć samego siebie" (s. 223) — a łatać można, więc
             // pacjent wypada z listy tylko w jednym z dwóch trybów. Serwer i tak
             // odmówi (`SELF_TREATMENT`); tu chodzi o to, żeby nie kusiło.
-            (mode === 'quickFix' || entry.id !== patientId),
+            // Statysta nie jest niczyją kartą, więc nie wyklucza nikogo.
+            (mode === 'quickFix' || entry.id !== patientCharacterId),
         ),
-    [order, characters, user, mode, patientId],
+    [order, characters, user, mode, patientCharacterId],
   );
   const [healerId, setHealerId] = useState(() => healers[0]?.id ?? '');
   const healer = healers.find((entry) => entry.id === healerId) ?? null;
@@ -89,12 +90,17 @@ export function TreatInjury({
         {options.map((option) => {
           // Ta sama funkcja, którą serwer odrzuca rzut — guzik gaśnie dokładnie
           // tam, gdzie odmowa i tak by przyszła, a jej zdanie stoi w podpowiedzi.
+          // Pusta lista ma dwa różne powody i do 31.08 mówiła zawsze o tym
+          // drugim: gracz bez żadnej karty słyszał przy rannym statyście, że
+          // „samego siebie leczyć nie można", co nie było ani prawdą, ani
+          // podpowiedzią. Zdanie o samoleczeniu należy się wyłącznie wtedy, gdy
+          // pacjentem jest postać, która jako jedyna mogła tu leczyć.
           const refusal = healer
             ? cpredCareRefusal(option, healer.data, registry)
-            : mode === 'quickFix'
-              ? 'Nie ma kim.'
-              : 'Nie ma kim — samego siebie leczyć nie można.';
-          const blocked = refusal ?? (patientToken ? null : 'Ta postać nie stoi na scenie.');
+            : mode === 'treatment' && patientCharacterId !== undefined
+              ? 'Nie ma kim — samego siebie leczyć nie można.'
+              : 'Nie ma kim — żadna twoja postać nie może tego zrobić.';
+          const blocked = refusal;
           return (
             <button
               key={option.skillId}
@@ -105,10 +111,10 @@ export function TreatInjury({
                 blocked ?? `${CPRED_CARE_MODE_LABELS[mode]}: ${option.name} przeciw PT ${option.dv}`
               }
               onClick={() => {
-                if (!healer || !patientToken) return;
+                if (!healer) return;
                 loadTreatInjuryCup(
                   { characterId: healer.id, characterName: healer.name },
-                  { tokenId: patientToken.id, name: patientToken.name },
+                  { tokenId: patient.tokenId, name: patient.name },
                   { id: injury.id, name: injury.name },
                   option,
                   healer.data,

@@ -26,6 +26,7 @@ import type {
   RollBreakdownEntry,
   ReinforcementView,
   TokenHp,
+  TokenInjuryRow,
   TurnBudgetView,
 } from '@vtt/shared';
 import {
@@ -433,6 +434,22 @@ export function readSheetCombatProfile(raw: string | null): SheetCombatProfile |
 /** Repairs whatever a client sent before it is stored. Never rejects. */
 export function sheetCombatProfile(raw: unknown): SheetCombatProfile {
   return sanitizeCombatProfile(raw);
+}
+
+/**
+ * Rany figury bez karty, wyjęte z profilu do publicznej części żetonu (31.08).
+ *
+ * Most, nie skrót: `realtime/tokens.ts` niesie kolumnę profilu i **nie wie**,
+ * co w niej jest — to jest cała umowa etapu 16b. Wyjęcie z niej jednej listy
+ * jest robotą warstwy systemu, więc stoi tu, obok `readSheetFearedTokens`,
+ * z którego tamten moduł korzysta dokładnie tak samo.
+ *
+ * Pusta lista zamiast pustej tablicy w widoku: figura, której nikt nie zranił,
+ * nie ma dokładać pola do każdego `token:upsert` na scenie.
+ */
+export function readSheetTokenInjuries(raw: string | null): TokenInjuryRow[] {
+  const injuries = parseCombatProfile(raw)?.criticalInjuries ?? [];
+  return injuries as unknown as TokenInjuryRow[];
 }
 
 /**

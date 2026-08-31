@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   STATIST_DEFAULT_STAT,
+  STATIST_SKILL_LEVEL_MAX,
   STATIST_WEAPON_ROW_ID,
+  combatProfileRollableSkills,
   combatProfileSheet,
   combatProfileSheetForSkill,
   combatProfileSkillLevel,
@@ -294,5 +296,120 @@ describe('profil statysty — rany krytyczne', () => {
   it('statysta bez ran ma pustą listę, nie undefined', () => {
     const data = combatProfileSheet(createDefaultCombatProfile(), { current: 20, max: 30 });
     expect(data.criticalInjuries).toEqual([]);
+  });
+});
+
+/**
+ * Umiejętności figury bez karty (31.08).
+ *
+ * Sedno jest w tym, czego tu **nie** ma: statysta nadal nie rzuca wszystkim,
+ * co przyjdzie komuś do głowy. `skillLevel` zostaje liczbą broni, a lista jest
+ * osobnym pytaniem — „czy w ogóle", nie „na ilu".
+ */
+describe('Umiejętności statysty', () => {
+  it('nieruszony profil nie zyskuje pustej listy — JSON zostaje taki, jak był', () => {
+    const profile = sanitizeCombatProfile(createDefaultCombatProfile());
+    expect('skills' in profile).toBe(false);
+    expect(combatProfileRollableSkills(profile)).toEqual([]);
+  });
+
+  it('wraca w całości i daje poziom wpisany, nie poziom broni', () => {
+    const profile = sanitizeCombatProfile({
+      ...createDefaultCombatProfile(),
+      skillLevel: 4,
+      skills: { perception: 14 },
+    });
+    expect(profile.skills).toEqual({ perception: 14 });
+    expect(combatProfileSkillLevel(profile, 'perception')).toBe(14);
+  });
+
+  it('Umiejętność spoza listy dalej strzela poziomem broni', () => {
+    const profile = sanitizeCombatProfile({
+      ...createDefaultCombatProfile(),
+      skillLevel: 4,
+      skills: { perception: 14 },
+    });
+    expect(combatProfileSkillLevel(profile, 'handgun')).toBe(4);
+    // …ale rzucić nią z paska nie wolno: to jest cała różnica między
+    // „na ilu" a „czy w ogóle".
+    expect(combatProfileRollableSkills(profile)).toEqual(['perception']);
+  });
+
+  it('Unik zostaje przy swoim polu, choćby ktoś wpisał go też na listę', () => {
+    const profile = sanitizeCombatProfile({
+      ...createDefaultCombatProfile(),
+      evasion: 2,
+      skills: { evasion: 14 },
+    });
+    expect(combatProfileSkillLevel(profile, 'evasion')).toBe(2);
+    expect(combatProfileSheet(profile, { current: 10, max: 10 }).skills.evasion).toBe(2);
+  });
+
+  it('poziom 0 nie jest Umiejętnością, a śmieci wypadają po cichu', () => {
+    const profile = sanitizeCombatProfile({
+      ...createDefaultCombatProfile(),
+      skills: { perception: 0, 'NIE id': 5, tracking: 'dużo', deduction: 7 },
+    });
+    expect(profile.skills).toEqual({ deduction: 7 });
+  });
+
+  it('karta syntetyzowana na rzut niesie wpisany poziom', () => {
+    const profile = { ...createDefaultCombatProfile(), skillLevel: 4, skills: { deduction: 14 } };
+    const data = combatProfileSheetForSkill(profile, { current: 30, max: 35 }, 'deduction');
+    expect(data.skills.deduction).toBe(14);
+  });
+});
+
+/**
+ * Sufit poziomu w profilu (błąd znaleziony 31.08).
+ *
+ * Wsparcie i Demony trzymają w tym polu **Wartość bojową**, czyli sumę Cechy
+ * i Umiejętności — a ta bywa wyższa niż dziesiątka, do której RAW ogranicza
+ * Umiejętność postaci. Test pilnuje dokładnie tego rozróżnienia, bo przez cały
+ * etap 30c C-SWAT z Wartością 15 wracał z bazy jako figura z Wartością 10.
+ */
+describe('sufit Wartości bojowej w profilu', () => {
+  it('nie ścina piętnastki C-SWAT-u do dziesiątki', () => {
+    const profile = sanitizeCombatProfile({
+      ...createDefaultCombatProfile(),
+      skillLevel: 15,
+      evasion: 15,
+    });
+    expect(profile.skillLevel).toBe(15);
+    // Wsparcie broni się tą samą liczbą, którą atakuje (s. 158).
+    expect(profile.evasion).toBe(15);
+  });
+
+  it('ale sufit nadal istnieje — profil nie przyjmie liczby z sufitu', () => {
+    const profile = sanitizeCombatProfile({
+      ...createDefaultCombatProfile(),
+      skillLevel: 999,
+      skills: { deduction: 999 },
+    });
+    expect(profile.skillLevel).toBe(STATIST_SKILL_LEVEL_MAX);
+    expect(profile.skills?.deduction).toBe(STATIST_SKILL_LEVEL_MAX);
+  });
+});
+
+/**
+ * Wartość bojowa liczy się raz (31.08).
+ *
+ * Umiejętność wpisana w profil **jest** sumą Cechy i Umiejętności, więc karta
+ * syntetyzowana na taki rzut nie może dołożyć jeszcze Cechy — inaczej agent
+ * federalny rzuca Dedukcją na 14 + INT 5 i wychodzi 19 z nikąd.
+ */
+describe('Cecha przy Umiejętności z listy', () => {
+  it('idzie do zera, żeby nie policzyć się dwa razy', () => {
+    const profile = { ...createDefaultCombatProfile(), skills: { deduction: 14 } };
+    const data = combatProfileSheetForSkill(profile, { current: 35, max: 35 }, 'deduction');
+    expect(data.stats.int).toBe(0);
+    expect(data.skills.deduction).toBe(14);
+  });
+
+  it('a rzut bronią zostaje po staremu — REF plus poziom', () => {
+    const profile = { ...createDefaultCombatProfile(), ref: 7, skillLevel: 4 };
+    const data = combatProfileSheetForSkill(profile, { current: 20, max: 20 }, 'handgun');
+    expect(data.stats.ref).toBe(7);
+    expect(data.skills.handgun).toBe(4);
   });
 });

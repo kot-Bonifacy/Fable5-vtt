@@ -14,6 +14,8 @@ import {
   LIGHT_COLORS,
   LIGHT_DEFAULT_COLOR,
   LIGHT_RADIUS_MAX_METRES,
+  SKILL_LEVEL_MAX,
+  STATIST_SKILL_MAX,
   TOKEN_HP_LIMIT,
   TOKEN_LIGHT_DEFAULT_BRIGHT_M,
   TOKEN_LIGHT_DEFAULT_DIM_M,
@@ -192,10 +194,118 @@ function StatistProfileFields({
         </label>
         <span className="auth-hint">z {profile.ammoMax}</span>
       </div>
+      <StatistSkillFields profile={profile} onChange={onChange} />
       <p className="auth-hint">
         Reszta cech statysty to 5 (przeciętny człowiek). PW bierze się z paska powyżej, nie z
         profilu.
       </p>
+    </>
+  );
+}
+
+/**
+ * Umiejętności figury bez karty (31.08) — lista „co ta figura umie".
+ *
+ * Do tej pory profil miał **jeden** poziom Umiejętności i należał on do broni.
+ * To był świadomy wybór etapu 16b (ganger, który strzela na 4, nie ma być
+ * księgowym na 4) i zostaje nim: ta lista jest tym, co dopisuje się osobno,
+ * wpis po wpisie. Wsparcie 10. poziomu wpisuje sobie swoje piętnaście samo,
+ * przy stawianiu figury (s. 159); tutaj MG dokłada Percepcję ochroniarzowi
+ * albo Kryptografię hakerowi zza ściany.
+ *
+ * Bez rzutu z tej listy Umiejętność nie istnieje — pasek pokazuje wyłącznie to,
+ * co tu stoi. Poziom 0 kasuje wpis, bo umieć coś na zero to nie umieć.
+ */
+function StatistSkillFields({
+  profile,
+  onChange,
+}: {
+  profile: CpredCombatProfile;
+  onChange: (next: CpredCombatProfile) => void;
+}) {
+  const registry = useCharacterStore((s) => s.registry);
+  const [picked, setPicked] = useState('');
+  const skills = profile.skills ?? {};
+  const byId = new Map(registry.skills.map((skill) => [skill.id, skill]));
+  const rows = Object.entries(skills)
+    .map(([id, level]) => ({ id, level, name: byId.get(id)?.name ?? id }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'pl'));
+  const free = registry.skills
+    .filter((skill) => skills[skill.id] === undefined)
+    .sort((a, b) => a.name.localeCompare(b.name, 'pl'));
+
+  function write(next: Record<string, number>): void {
+    onChange({ ...profile, skills: next });
+  }
+
+  return (
+    <>
+      <p className="auth-label">Testy poza bronią i Unikiem</p>
+      <p className="auth-hint">
+        Wpisana liczba to <strong>cały</strong> modyfikator rzutu — Cecha i Umiejętność razem, tak
+        jak Wartość bojowa Wsparcia (s. 158). Figura nie doda już do niej żadnej Cechy.
+      </p>
+      {rows.map((row) => (
+        <div key={row.id} className="scene-editor-row">
+          <span className="auth-hint">{row.name}</span>
+          <input
+            type="number"
+            className="scene-number-input"
+            min={0}
+            max={SKILL_LEVEL_MAX}
+            value={row.level}
+            aria-label={`Poziom: ${row.name}`}
+            onChange={(e) => {
+              const level = Number(e.target.value);
+              const next = { ...skills };
+              if (level > 0) next[row.id] = level;
+              else delete next[row.id];
+              write(next);
+            }}
+          />
+          <button
+            type="button"
+            className="small-button"
+            title={`Usuń Umiejętność: ${row.name}`}
+            aria-label={`Usuń Umiejętność: ${row.name}`}
+            onClick={() => {
+              const next = { ...skills };
+              delete next[row.id];
+              write(next);
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      ))}
+      {rows.length < STATIST_SKILL_MAX && free.length > 0 && (
+        <div className="scene-editor-row">
+          <select
+            value={picked}
+            onChange={(e) => setPicked(e.target.value)}
+            aria-label="Umiejętność do dodania"
+          >
+            <option value="">— dodaj Umiejętność —</option>
+            {free.map((skill) => (
+              <option key={skill.id} value={skill.id}>
+                {skill.name}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className="small-button"
+            disabled={picked === ''}
+            onClick={() => {
+              if (picked === '') return;
+              write({ ...skills, [picked]: profile.skillLevel });
+              setPicked('');
+            }}
+          >
+            Dodaj
+          </button>
+        </div>
+      )}
     </>
   );
 }

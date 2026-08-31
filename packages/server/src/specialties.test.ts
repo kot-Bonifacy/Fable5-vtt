@@ -295,6 +295,33 @@ describe('Specjalizacje Medycyny i Twórcy na karcie', () => {
     expect(wrongBranch.ok === false && wrongBranch.error).toBe('NO_TREATMENT');
   });
 
+  /**
+   * Rzut, który ma się **udać** — powtarzany, dopóki rana nie zejdzie.
+   *
+   * Bez tego plik migotał mniej więcej co dziesiąty przebieg i zabierał ze sobą
+   * dwa następne testy (znalezione 31.08). Powód nie jest błędem kodu, tylko
+   * regułą: naturalna 1 odejmuje 1k10 (s. 165), więc nawet TECH 8 + Chirurgia 10
+   * schodzi wtedy do 9–18 i przegrywa z PT 17. Żadnego modyfikatora, który
+   * przebiłby fumble, na karcie postaci nie da się zbudować — sufit Chirurgii
+   * to 10, a Cechy 10 — więc jedyną uczciwą odpowiedzią jest rzucić drugi raz,
+   * tak jak zrobiłby to Medyk przy stole.
+   */
+  async function treatUntilHealed(request: Record<string, unknown>): Promise<void> {
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      const ack = await emitAck(gm, 'character:roll', {
+        characterId: medicId,
+        request,
+        visibility: 'public',
+      });
+      expect(ack.ok).toBe(true);
+      const still = (await sheetOf(patientId)).criticalInjuries.some(
+        (row) => row.id === request.treatInjuryId,
+      );
+      if (!still) return;
+    }
+    throw new Error('osiem rzutów Chirurgią z rzędu nie zdjęło rany — to już nie jest pech');
+  }
+
   it('Medyk z Chirurgią rzuca, a udany rzut zdejmuje ranę z karty', async () => {
     await emitAck(gm, 'character:update', {
       characterId: medicId,
@@ -308,37 +335,37 @@ describe('Specjalizacje Medycyny i Twórcy na karcie', () => {
         },
       },
     });
-    const rolled = await emitAck<{ messageId: number }>(gm, 'character:roll', {
-      characterId: medicId,
-      request: {
-        kind: 'treatInjury',
-        treatTokenId: patientTokenId,
-        treatInjuryId: severedArm.id,
-        treatSkillId: 'medicine.surgery',
-      },
-      visibility: 'public',
+    await treatUntilHealed({
+      kind: 'treatInjury',
+      treatTokenId: patientTokenId,
+      treatInjuryId: severedArm.id,
+      treatSkillId: 'medicine.surgery',
     });
-    expect(rolled.ok).toBe(true);
     const left = (await sheetOf(patientId)).criticalInjuries.map((row) => row.id);
     expect(left).toEqual([brokenRibs.id]);
   });
 
   it('Łatanie ucisza ranę na karcie, ale jej nie zdejmuje (s. 223)', async () => {
-    const patched = await emitAck<{ messageId: number }>(gm, 'character:roll', {
-      characterId: medicId,
-      request: {
-        kind: 'treatInjury',
-        treatTokenId: patientTokenId,
-        treatInjuryId: brokenRibs.id,
-        treatMode: 'quickFix',
-        // Zdanie Łatania oferuje Ratownictwo PT 13, nie Chirurgię — gałąź
-        // czyta się z kolumny „Łatanie", a nie z tej, którą leczy się na stałe.
-        treatSkillId: 'paramedic',
-      },
-      visibility: 'public',
-    });
-    expect(patched.ok).toBe(true);
-    const row = (await sheetOf(patientId)).criticalInjuries.find((r) => r.id === brokenRibs.id);
+    // Powtarzane jak Chirurgia wyżej i z tego samego powodu — fumble.
+    let row: CpredCharacterData['criticalInjuries'][number] | undefined;
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      const patched = await emitAck(gm, 'character:roll', {
+        characterId: medicId,
+        request: {
+          kind: 'treatInjury',
+          treatTokenId: patientTokenId,
+          treatInjuryId: brokenRibs.id,
+          treatMode: 'quickFix',
+          // Zdanie Łatania oferuje Ratownictwo PT 13, nie Chirurgię — gałąź
+          // czyta się z kolumny „Łatanie", a nie z tej, którą leczy się na stałe.
+          treatSkillId: 'paramedic',
+        },
+        visibility: 'public',
+      });
+      expect(patched.ok).toBe(true);
+      row = (await sheetOf(patientId)).criticalInjuries.find((r) => r.id === brokenRibs.id);
+      if (row?.patched) break;
+    }
     expect(row).toBeDefined();
     expect(row!.patched?.skill).toBe('Ratownictwo medyczne');
     expect(row!.patched?.by).toBe('Doktor');
@@ -358,17 +385,12 @@ describe('Specjalizacje Medycyny i Twórcy na karcie', () => {
     expect(again.ok === false && again.error).toBe('INJURY_ALREADY_PATCHED');
 
     // Leczenie tej samej rany dalej działa i zdejmuje ją z karty na dobre.
-    const healed = await emitAck(gm, 'character:roll', {
-      characterId: medicId,
-      request: {
-        kind: 'treatInjury',
-        treatTokenId: patientTokenId,
-        treatInjuryId: brokenRibs.id,
-        treatSkillId: 'medicine.surgery',
-      },
-      visibility: 'public',
+    await treatUntilHealed({
+      kind: 'treatInjury',
+      treatTokenId: patientTokenId,
+      treatInjuryId: brokenRibs.id,
+      treatSkillId: 'medicine.surgery',
     });
-    expect(healed.ok).toBe(true);
     expect((await sheetOf(patientId)).criticalInjuries.map((r) => r.id)).toEqual([]);
   });
 
@@ -400,19 +422,25 @@ describe('Specjalizacje Medycyny i Twórcy na karcie', () => {
     });
     expect(selfTreat.ok === false && selfTreat.error).toBe('SELF_TREATMENT');
 
-    const selfPatch = await emitAck(gm, 'character:roll', {
-      characterId: medicId,
-      request: {
-        kind: 'treatInjury',
-        treatTokenId: medicToken,
-        treatInjuryId: brokenRibs.id,
-        treatMode: 'quickFix',
-        treatSkillId: 'paramedic',
-      },
-      visibility: 'public',
-    });
-    expect(selfPatch.ok).toBe(true);
-    expect((await sheetOf(medicId)).criticalInjuries[0]!.patched?.by).toBe('Doktor');
+    // Powtarzane jak dwa Łatania wyżej: kość potrafi zabrać 1k10 na fumble'u,
+    // a wtedy łata nie wchodzi i asercja mówi o czymś zupełnie innym.
+    let by: string | undefined;
+    for (let attempt = 0; attempt < 8 && by === undefined; attempt += 1) {
+      const selfPatch = await emitAck(gm, 'character:roll', {
+        characterId: medicId,
+        request: {
+          kind: 'treatInjury',
+          treatTokenId: medicToken,
+          treatInjuryId: brokenRibs.id,
+          treatMode: 'quickFix',
+          treatSkillId: 'paramedic',
+        },
+        visibility: 'public',
+      });
+      expect(selfPatch.ok).toBe(true);
+      by = (await sheetOf(medicId)).criticalInjuries[0]!.patched?.by;
+    }
+    expect(by).toBe('Doktor');
   });
 
   it('rana, której już nie ma, nie daje się leczyć drugi raz', async () => {
@@ -477,5 +505,94 @@ describe('Specjalizacje Medycyny i Twórcy na karcie', () => {
     const restored = (await sheetOf(patientId)).armor[0]!;
     expect(restored.spCurrent).toBe(6);
     expect(restored.fieldRepair).toBeUndefined();
+  });
+
+  /**
+   * Figura bez karty jako pacjent (31.08).
+   *
+   * Serwer umiał ją leczyć od 29.08 — `treatableInjuries` czyta profil,
+   * `applyTreatment` pisze do niego z powrotem — ale rana wchodziła jej
+   * wyłącznie regułą, a żaden ekran jej nie pokazywał. Trzy rzeczy warte
+   * sprawdzenia: że MG umie ranę **nadać**, że Medyk umie ją **zdjąć**
+   * i że pomiędzy jednym a drugim rana faktycznie siedzi w profilu żetonu.
+   */
+  it('MG nadaje ranę figurze bez karty, a Medyk ją leczy', async () => {
+    const turret = data(
+      await emitAck<TokenView>(gm, 'token:create', {
+        sceneId,
+        name: 'Wieżyczka',
+        x: 4,
+        y: 4,
+        hp: { current: 25, max: 25 },
+      }),
+      'token:create',
+    );
+    await emitAck(gm, 'token:update', {
+      tokenId: turret.id,
+      patch: { combatProfile: { ref: 6, dex: 4, body: 6, will: 4, skillLevel: 6, evasion: 2 } },
+    });
+
+    // Publiczna próbka kompendium nie ma tabel ran (są w podręczniku, więc
+    // poza repozytorium) — rana do nadania powstaje tak samo, jak w testach
+    // etapu 15: wpisem przez edytor kompendium.
+    const upserted = await emitAck<{ id: string }>(gm, 'compendium:upsert', {
+      entry: {
+        category: 'criticalInjury',
+        name: 'Złamane żebra (test)',
+        table: 'body',
+        roll: 4,
+        description: 'Otrzymujesz status Poważnie Ranny.',
+        quickFix: 'Ratownictwo medyczne PT 13',
+        treatment: 'Ratownictwo medyczne PT 15 lub Chirurgia PT 13',
+      },
+    });
+    expect(upserted.ok).toBe(true);
+    const wound = data(upserted, 'compendium:upsert').id;
+
+    const assigned = await emitAck(gm, 'character:injury', {
+      tokenId: turret.id,
+      injuryId: wound,
+    });
+    expect(assigned.ok).toBe(true);
+
+    const carrying = (await sync()).tokens.find((t) => t.id === turret.id)!;
+    // Publicznie jedzie sama lista ran — po to, żeby Medyk gracza miał co łatać.
+    expect((carrying.injuries ?? []).map((row) => (row as { id: string }).id)).toEqual([wound]);
+    // Drugi raz ta sama rana się nie zdubluje.
+    const twice = await emitAck(gm, 'character:injury', { tokenId: turret.id, injuryId: wound });
+    expect(twice.ok === false && twice.error).toBe('INJURY_ALREADY_THERE');
+
+    // Ten sam rzut, którym leczy się postać — zmienia się wyłącznie adres celu.
+    // Powtarzany z tego samego powodu, co przy pacjencie z kartą: fumble
+    // potrafi zabrać 1k10 i wtedy nawet Chirurgia 10 nie przebija progu.
+    let healed = false;
+    for (let attempt = 0; attempt < 8 && !healed; attempt += 1) {
+      const ack = await emitAck(gm, 'character:roll', {
+        characterId: medicId,
+        request: {
+          kind: 'treatInjury',
+          treatTokenId: turret.id,
+          treatInjuryId: wound,
+          treatSkillId: 'medicine.surgery',
+        },
+        visibility: 'public',
+      });
+      expect(ack.ok).toBe(true);
+      const now = (await sync()).tokens.find((t) => t.id === turret.id)!;
+      healed = (now.injuries ?? []).length === 0;
+    }
+    expect(healed).toBe(true);
+  });
+
+  it('figura bez profilu nie przyjmie rany — nie ma gdzie jej zapisać', async () => {
+    const disc = data(
+      await emitAck<TokenView>(gm, 'token:create', { sceneId, name: 'Krążek', x: 6, y: 6 }),
+      'token:create',
+    );
+    const refused = await emitAck(gm, 'character:injury', {
+      tokenId: disc.id,
+      injuryId: 'injury.cokolwiek',
+    });
+    expect(refused.ok === false && refused.error).toBe('TOKEN_HAS_NO_PROFILE');
   });
 });

@@ -294,6 +294,41 @@ export function quickLoadCup(
   });
 }
 
+/**
+ * Ładuje Test Umiejętności **figury bez karty** (31.08).
+ *
+ * Osobna funkcja, bo `quickLoadCup` planuje z karty, a statysta jej nie ma:
+ * kartę syntetyzuje serwer z profilu (`sheetFromCombatProfile`) i to on liczy
+ * wszystko, co się liczy — Cechę, poziom, karę za rany i za Zwarcie. Kubek
+ * pokazuje więc **podgląd**, nie werdykt, i mówi to jedną liczbą: poziomem
+ * Umiejętności wpisanym w profilu.
+ *
+ * Agent federalny rzuca tak swoją Wartością bojową w piętnastu Testach z s. 159,
+ * bo dla niego Cecha i Umiejętność to już jedna liczba (`combatProfileWithCombatValue`
+ * zeruje Cechy) — i dlatego podgląd nie próbuje dodawać do niej niczego z Cech.
+ */
+export function loadFigureSkillCup(
+  figure: { tokenId: string; name: string },
+  skill: { id: string; name: string; level: number },
+): void {
+  const store = useRollStore.getState();
+  store.loadCup({
+    characterName: figure.name,
+    attackerTokenId: figure.tokenId,
+    kind: 'skill',
+    skillId: skill.id,
+    request: {
+      kind: 'skill',
+      skillId: skill.id,
+      modifier: store.lastModifier,
+      luckSpent: 0,
+    },
+    visibility: store.lastVisibility,
+    title: `${skill.name} — ${figure.name}`,
+    modifierTotal: skill.level + store.lastModifier,
+  });
+}
+
 /** Loads a Death Save into the cup — no dialog, the rules leave no choices. */
 export function loadDeathSaveCup(
   characterId: string,

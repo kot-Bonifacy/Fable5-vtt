@@ -542,6 +542,8 @@ export function MapArea() {
     // sends the rail back to what it remembered on the new map, and everything
     // else leaves the rail where it was — that is the whole of „remember the
     // last figure I clicked".
+    // Figura, której ten gracz nie prowadzi: pasek ją opisuje, nikt jej nie bierze.
+    renderer.onTokenPreview = (tokenId) => useSelectionStore.getState().focus(tokenId);
     renderer.onSelectionChange = (tokenId, reason) => {
       const selection = useSelectionStore.getState();
       if (reason === 'dismiss') selection.dismiss();
