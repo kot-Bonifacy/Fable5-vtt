@@ -560,3 +560,30 @@ warstwach: pacjent wypada z listy leczących u klienta, a serwer odmawia `SELF_T
 z samej karty — bez tego okno obiecywało sumę, którą serwer po cichu obniżał (znalezione
 w przeglądarce 30.08 przy ranie za −1). Serwerowi zostaje to, czego karta nie wie: Zwarcie jest
 faktem o scenie, nie o postaci.
+
+**Nowa droga ataku kończy się w `loadAttackFor` — i stamtąd wychodzi Celowanie (31.08).**
+Uzbroić broń da się z kafla paska (`hudStore.activeWeapon`), z wiersza karty i z menu żetonu
+(`attackStore.targeting`), a strzał w osłonę wraca jeszcze kartą odmowy — ale **każda** z tych
+dróg kończy się jednym wywołaniem `loadAttackFor` w `attack-targeting.ts`. Dlatego to ono, a nie
+żaden baner, otwiera przy kursorze wybór lokacji trafienia (`AimMenu`, warunek `mayAimShot`:
+pojedynczy strzał w figurę). Nowa droga ataku dostaje Celowanie za darmo; droga, która by go nie
+miała, musiałaby ominąć ładowanie kubka. Wybór **nie jest lepki** — nie mieszka przy uzbrojonej
+broni, tylko przeładowuje kubek tym samym `AttackIntent` z dopisanym `aimedAt`. Adres, pod którym
+staje okno, zostawia ten, kto zna ekran (`onTokenTarget` → `aimMenuStore.placeAt`); bez adresu
+okno się nie pokazuje, bo strzał wywołany z czatu nie ma kursora.
+
+**Broń na karcie powstaje z wpisu katalogu, nigdy z wolnego tekstu (31.08).** Wiersz musi nieść
+`compendiumId` wpisu (`weapon.*`), bo dopiero on prowadzi do typu broni (`weapon-type.*`), a typ
+niesie tabelę zasięgów — bez niej planer odmawia `UNKNOWN_WEAPON`. „+ Broń z katalogu" buduje
+wiersz przez `purchasedSheetRow` w `shared/shopping.ts`, czyli tą samą funkcją, co zakup
+i „Dodaj za darmo": łup, zakup i ręka MG mają być tym samym wierszem. **Dopasowania po nazwie nie
+ma i mieć nie ma** — „Pistolet" pasuje do kilkunastu modeli i cicho przypina zły PT na każdym
+dystansie. Wiersz bez wiązania mówi to sam (chip „⚠ Wskaż broń z katalogu" i wyszarzony „Atak"),
+a wiązanie zostawia nazwę i uwagi użytkownika, biorąc z katalogu tylko liczby.
+
+**Rana, której nikt nie wyrzucił, powstaje przez `namedCriticalInjuryRow` (31.08).** Gaz łzawiący,
+granat hukowy, broniona strefa, Celowanie w nogę i „Nadaj ranę" w ręku MG **nazywają** wiersz
+tabeli, zamiast go losować — więc rana nie niesie `rolled` (karta nie drukuje „2k6 = N", którego
+nie było) i niesie `assigned`, z którego karta robi chip „nadana". Jedna funkcja w `shared`, nie
+trzy kopie `delete row.rolled`: dokładnie dlatego, że kopia przy Celowaniu tę zasadę znała,
+a dwie ścieżki wymuszonej porażki nie.

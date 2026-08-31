@@ -101,7 +101,9 @@ import {
   isValidDamageNotation,
   isWeaponEntry,
   monthlyCostOf,
+  purchasedSheetRow,
   resolveWeapon,
+  searchCompendium,
   seriousWoundThreshold,
   skillBase,
   toAmmoProfile,
@@ -1273,6 +1275,11 @@ function WeaponStrip({
   const entries = useCompendiumStore((s) => s.entries);
   const weaponTypeById = useCompendiumStore((s) => s.weaponTypeById);
   const tokens = useTokenStore((s) => s.tokens);
+  /**
+   * Otwarty wybór broni z katalogu (naprawa 31.08): `null` — zamknięty,
+   * `{ rowId: null }` — dopisuje nowy wiersz, `{ rowId }` — wiąże istniejący.
+   */
+  const [picking, setPicking] = useState<{ rowId: string | null } | null>(null);
 
   /** Catalogue stats of a row, or null for a hand-typed weapon. */
   function resolvedOf(row: CpredWeaponRow): ResolvedWeapon | null {
@@ -1286,6 +1293,42 @@ function WeaponStrip({
       { weapons: data.weapons.map((row) => (row.id === rowId ? { ...row, ...patch } : row)) },
       'weapons',
     );
+  }
+
+  /**
+   * Bierze broń z katalogu — nowym wierszem albo wiążąc wiersz już wpisany.
+   *
+   * Do 31.08 „+ Broń" dokładała pusty wiersz z samą nazwą, a taka broń nie
+   * strzelała: bez `compendiumId` planer nie ma jak dojść do typu broni, a więc
+   * do tabeli zasięgów, i odmawiał zdaniem „Ta broń nie ma tabeli zasięgów".
+   * Pole nazwy wyglądało przy tym jak pole z podpowiedziami, a nim nie było.
+   *
+   * Wiersz budujemy tym samym `purchasedSheetRow`, którym buduje go zakup
+   * i „Dodaj za darmo" — łup, zakup i ręka MG mają być tym samym wierszem.
+   * Wiązanie istniejącego **zostawia nazwę i uwagi** (przezwisko broni jest
+   * własnością gracza), a liczby bierze z katalogu, bo to one mają się zgadzać
+   * z wybranym modelem. Magazynek nie rośnie przy wiązaniu w środku walki.
+   */
+  function takeFromCatalogue(entry: CompendiumEntry, picked: ResolvedWeapon | null) {
+    const target = picking?.rowId ?? null;
+    setPicking(null);
+    const built = purchasedSheetRow(entry, picked, newRowId());
+    if (!built || built.list !== 'weapons') return;
+    if (target === null) {
+      saveData({ weapons: [...data.weapons, built.row] }, 'weapons');
+      return;
+    }
+    const row = data.weapons.find((candidate) => candidate.id === target);
+    if (!row) return;
+    const magazine = built.row.ammoMax;
+    updateRow(target, {
+      compendiumId: entry.id,
+      damage: built.row.damage,
+      ammoMax: magazine,
+      ammoCurrent: row.ammoMax > 0 ? Math.min(row.ammoCurrent, magazine) : magazine,
+      ammoType: built.row.ammoType,
+      rof: built.row.rof,
+    });
   }
 
   /** Draws (or hides) this weapon's DV bands around the character's token. */
@@ -1345,6 +1388,19 @@ function WeaponStrip({
                     value={row.name}
                     onChange={(e) => updateRow(row.id, { name: e.target.value })}
                   />
+                  {/* Wiersz bez wpisu z katalogu nie ma tabeli zasięgów, więc
+                      nie strzela. Do 31.08 mówił to dopiero planer, w chwili
+                      gdy strzał już się nie udał — teraz mówi to karta. */}
+                  {!resolved && (
+                    <button
+                      type="button"
+                      className="small-button weapon-unbound"
+                      title="Ta broń nie ma wpisu z katalogu, więc nie zna tabeli zasięgów i nie wystrzeli. Wskaż model — obrażenia, magazynek i szybkostrzelność uzupełnią się z kompendium, nazwa i uwagi zostaną Twoje."
+                      onClick={() => setPicking({ rowId: row.id })}
+                    >
+                      ⚠ Wskaż broń z katalogu
+                    </button>
+                  )}
                 </td>
                 <td>
                   <input
@@ -1410,13 +1466,15 @@ function WeaponStrip({
                   <button
                     type="button"
                     className="small-button"
-                    disabled={empty}
+                    disabled={empty || !resolved}
                     title={
-                      empty
-                        ? 'Pusty magazynek — przeładuj'
-                        : resolved?.melee
-                          ? 'Atak wręcz — wskaż cel na mapie (do 2 m)'
-                          : 'Atak — wskaż cel na mapie'
+                      !resolved
+                        ? 'Ta broń nie ma wpisu z katalogu — wskaż model, żeby poznała tabelę zasięgów'
+                        : empty
+                          ? 'Pusty magazynek — przeładuj'
+                          : resolved.melee
+                            ? 'Atak wręcz — wskaż cel na mapie (do 2 m)'
+                            : 'Atak — wskaż cel na mapie'
                     }
                     onClick={() => aim(row, 'single', resolved)}
                   >
@@ -1492,29 +1550,121 @@ function WeaponStrip({
       <button
         type="button"
         className="cp-add"
-        onClick={() =>
-          saveData(
-            {
-              weapons: [
-                ...data.weapons,
-                {
-                  id: newRowId(),
-                  name: '',
-                  damage: '',
-                  ammoCurrent: 0,
-                  ammoMax: 0,
-                  ammoType: '',
-                  rof: '',
-                  notes: '',
-                },
-              ],
-            },
-            'weapons',
-          )
-        }
+        title="Broń bierze się z katalogu — stamtąd przychodzi tabela zasięgów, bez której nic nie wystrzeli. Nazwę można potem zmienić na własną."
+        onClick={() => setPicking({ rowId: null })}
       >
-        + Broń
+        + Broń z katalogu
       </button>
+      {picking && (
+        <WeaponCatalogPicker
+          binding={picking.rowId !== null}
+          onPick={takeFromCatalogue}
+          onClose={() => setPicking(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+/** Ile modeli pokazuje wybór naraz; reszta czeka na doprecyzowanie szukania. */
+const WEAPON_PICKER_LIMIT = 40;
+
+/**
+ * Wybór modelu broni z kompendium (naprawa 31.08).
+ *
+ * Broń na karcie musi wskazywać **konkretny wpis katalogu**, bo dopiero on
+ * prowadzi do typu broni, a typ niesie tabelę zasięgów: bez tego planer odmawia
+ * strzału („Ta broń nie ma tabeli zasięgów"). Dlatego wiersz nie powstaje już
+ * z wolnego tekstu — powstaje z wyboru, a nazwę wolno zmienić po fakcie.
+ *
+ * Świadomie **nie** dopasowuje po nazwie: „Pistolet" pasowałby do kilkunastu
+ * modeli i po cichu przypiąłby złą tabelę zasięgów, czyli zły PT na każdym
+ * dystansie. Lepiej, żeby MG wskazał raz, niż żeby VTT zgadywał co strzał.
+ */
+function WeaponCatalogPicker({
+  binding,
+  onPick,
+  onClose,
+}: {
+  binding: boolean;
+  onPick: (entry: CompendiumEntry, resolved: ResolvedWeapon | null) => void;
+  onClose: () => void;
+}) {
+  const entries = useCompendiumStore((s) => s.entries);
+  const order = useCompendiumStore((s) => s.order);
+  const weaponTypeById = useCompendiumStore((s) => s.weaponTypeById);
+  const [query, setQuery] = useState('');
+
+  const found = useMemo(() => {
+    const catalogue = order
+      .map((id) => entries[id])
+      .filter((entry): entry is CompendiumEntry => !!entry);
+    return searchCompendium(catalogue, query, 'weapon').slice(0, WEAPON_PICKER_LIMIT);
+  }, [entries, order, query]);
+
+  const types = useMemo(() => new Map(Object.entries(weaponTypeById)), [weaponTypeById]);
+
+  return (
+    <div className="weapon-picker">
+      <div className="weapon-picker-head">
+        <input
+          type="search"
+          className="weapon-picker-search"
+          placeholder="Szukaj w katalogu broni…"
+          aria-label="Szukaj w katalogu broni"
+          value={query}
+          autoFocus
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              e.stopPropagation();
+              onClose();
+            }
+          }}
+        />
+        <button type="button" className="small-button" onClick={onClose}>
+          Anuluj
+        </button>
+      </div>
+      {found.length === 0 ? (
+        <p className="weapon-picker-empty">
+          {order.length === 0
+            ? 'Katalog jest pusty — wczytaj kompendium w zakładce „Kompendium”.'
+            : 'Nic takiego nie ma w katalogu. Brakujący model dopisuje MG własnym wpisem.'}
+        </p>
+      ) : (
+        <ul className="weapon-picker-list">
+          {found.map((entry) => {
+            const resolved = isWeaponEntry(entry)
+              ? resolveWeapon(entry, { weaponTypeById: types })
+              : null;
+            return (
+              <li key={entry.id}>
+                <button
+                  type="button"
+                  className="weapon-picker-row"
+                  onClick={() => onPick(entry, resolved)}
+                >
+                  <span className="weapon-picker-name">{entry.name}</span>
+                  {/* Trzy liczby, po których poznaje się model: obrażenia,
+                      magazynek i szybkostrzelność. Brak typu broni widać
+                      od razu, bo to jedyny wiersz bez nich. */}
+                  <span className="weapon-picker-stats">
+                    {resolved
+                      ? `${resolved.damage || '—'} · mag. ${resolved.magazine ?? '—'} · LA ${resolved.rof}`
+                      : 'bez typu broni — nie zna tabeli zasięgów'}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      <p className="weapon-picker-hint">
+        {binding
+          ? 'Nazwa i uwagi wiersza zostaną Twoje — z katalogu przyjdą obrażenia, magazynek, szybkostrzelność i tabela zasięgów.'
+          : 'Nazwę dopisanego wiersza możesz potem zmienić na własną — wiązanie z katalogiem zostaje.'}
+      </p>
     </div>
   );
 }
@@ -1976,7 +2126,22 @@ function CriticalInjuries({ data, saveData, characterId }: TabProps & { characte
                     </button>
                   </span>
                 ) : null}
-                {injury.rolled ? <span className="injury-roll">2k6 = {injury.rolled}</span> : null}
+                {/* Skąd ta rana (naprawa 31.08). Wyrzucona pokazuje wynik,
+                    nazwana — chip „nadana": ręka MG, gaz, granat hukowy albo
+                    Celowanie w nogę. Zero na miejscu wyniku znaczyło do 31.08
+                    dokładnie tyle, co brak wiersza, więc prowieniencja ginęła. */}
+                {injury.rolled ? (
+                  <span className="injury-roll" title="Wynik 2k6 z tabeli ran krytycznych">
+                    2k6 = {injury.rolled}
+                  </span>
+                ) : injury.assigned ? (
+                  <span
+                    className="injury-roll"
+                    title="Ranę nazwał efekt albo MG — nikt nie rzucał na tabelę"
+                  >
+                    nadana
+                  </span>
+                ) : null}
                 {/*
               A wound that heals by itself (stage 16h). Worth a badge of its own
               rather than a line in the effect text: „czy to zejdzie samo" is the

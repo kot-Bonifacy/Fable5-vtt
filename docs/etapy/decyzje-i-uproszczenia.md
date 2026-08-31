@@ -11,6 +11,23 @@ przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — ni
 
 ## Sieć i walka — czytanie RAW
 
+- **Sufit pancerza pracownika Korpo nie jest egzekwowany (31.08, sprawdzone w przeglądarce).**
+  „Najcięższym pancerzem […] jest Lekka kurtka kuloodporna. Taka polityka Korporacji" (s. 154)
+  jedzie jako **zdanie na wierszu pancerza**, nie jako walidacja: karta pracownika jest zwykłą
+  kartą postaci (`ownerId: null`), więc MG podnosi jej OB tak samo jak każdej innej. Sprawdzone na
+  zatrudnionym „Firmowym ochroniarzu": OB 11 → 18 przyjęte bez odmowy. Tak ma być — MG poprawia
+  karty, a polityka Korporacji jest faktem świata, nie regułą silnika. Pęknie to dopiero wtedy,
+  gdy zespół zacznie być kupowany za punkty, a nie zatrudniany fabułą.
+
+- **Rana nazwana nie drukuje rzutu, którego nie było (31.08).** Rana z ręki MG („Nadaj ranę"),
+  z gazu łzawiącego, z granatu hukowego, z bronionej strefy i z Celowania w nogę **nie** dostaje
+  wyniku 2k6 z wpisu kompendium, choć technicznie dałoby się go przepisać. Powód: „2k6 = 4" na
+  karcie czyta się jako „ktoś to wyrzucił", a nikt nie rzucał — i dokładnie tę zasadę egzekwowała
+  od 08.08 gałąź Celowania w nogę (`delete row.rolled`). Prowieniencja nie ginie: wiersz niesie
+  `assigned`, a karta pokazuje chip **„nadana"**. Zaległość z 30.08 prosiła o odwrotne
+  rozstrzygnięcie („wpisz `roll` z kompendium") — **została odrzucona świadomie**, żeby nie
+  wracała po raz trzeci.
+
 - **Chirurgia to Specjalizacja, nie Rola (29.08, czwarta).** „Umiejętność ta dostępna jest tylko Medykom
   poprzez ich Zdolność Specjalną" (s. 149) czytamy jako: bramą jest **punkt w Specjalizacji
   Chirurgia**, nie sama Rola Medyka. Medyk, który wydał wszystko na Farmaceutyki, dostaje odmowę

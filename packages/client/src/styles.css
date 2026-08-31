@@ -4376,37 +4376,47 @@ body.is-resizing {
   z-index: 400;
 }
 
-/* Celowanie (s. 170) na banerze uzbrojonego celownika. Baner ma
-   `pointer-events: none`, więc guziki włączają je z powrotem wyłącznie dla
-   siebie — reszta paska nadal przepuszcza kliknięcia w mapę pod spodem. */
-.map-aim-points {
+/* Celowanie (s. 170) przy kursorze — wyskakuje samo, gdy kubek dostanie
+   pojedynczy strzał w figurę. Pozycjonowane współrzędnymi klienta jak menu
+   kontekstowe żetonu, więc `fixed`, a nie `absolute` względem mapy. */
+.aim-menu {
+  position: fixed;
+  z-index: 500;
+  display: inline-flex;
+  gap: 0.2rem;
+  padding: 0.2rem;
+  background: var(--map-panel);
+  border: 1px solid var(--err);
+  border-radius: 6px;
+  color: var(--map-ink);
+}
+
+/* Sam rysunek, bez podpisu: to pasek przy kursorze w środku walki. Nazwę
+   i skutek niesie `title` oraz nazwa dostępna. Sylwetka jest maską, więc
+   `is-on` barwi ją razem z obramowaniem. */
+.aim-menu-point {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
-  margin-left: 0.6rem;
-  pointer-events: auto;
-}
-
-.map-aim-points-label {
-  opacity: 0.75;
-}
-
-.map-aim-point {
-  padding: 0.1rem 0.4rem;
-  border: 1px solid var(--border);
+  justify-content: center;
+  padding: 0.2rem 0.3rem;
+  border: 1px solid transparent;
   border-radius: 4px;
   background: transparent;
   color: inherit;
   font: inherit;
-  font-size: 0.8rem;
   cursor: pointer;
 }
 
-.map-aim-point:hover {
+.aim-menu-icon {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+.aim-menu-point:hover {
   border-color: var(--accent);
 }
 
-.map-aim-point.is-on {
+.aim-menu-point.is-on {
   border-color: var(--err);
   color: var(--err);
 }

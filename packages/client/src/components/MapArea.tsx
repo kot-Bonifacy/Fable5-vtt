@@ -1,8 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  CPRED_AIMED_SHOT_PENALTY,
-  CPRED_AIM_POINTS,
-  CPRED_AIM_POINT_LABELS,
   CPRED_ATTACK_MODE_SHORT,
   CPRED_BLAST_SIDE_M,
   CPRED_RANGE_BANDS,
@@ -29,7 +26,6 @@ import {
   type ScenePoint,
   type TokenView,
 } from '@vtt/shared';
-import type { CpredAimPoint } from '@vtt/shared';
 import {
   MapRenderer,
   type LightMarker,
@@ -95,7 +91,7 @@ import {
   shootCoverAt,
   throwAtPoint,
 } from '../hud.js';
-import { useAttackStore, type AttackTargeting } from '../stores/attackStore.js';
+import { useAttackStore } from '../stores/attackStore.js';
 import { activeWeaponOf, useHudStore } from '../stores/hudStore.js';
 import { useRulerStore } from '../stores/rulerStore.js';
 import { useExplorationStore } from '../stores/explorationStore.js';
@@ -104,6 +100,8 @@ import { useNoteStore } from '../stores/noteStore.js';
 import { sortedDrawings, useDrawingStore } from '../stores/drawingStore.js';
 import { clickableOpenings, useWallStore } from '../stores/wallStore.js';
 import { useSelectionStore } from '../stores/selectionStore.js';
+import { useAimMenuStore } from '../stores/aimMenuStore.js';
+import { AimMenu } from './AimMenu.js';
 import { sameSceneObject, useSceneSelectionStore } from '../stores/sceneSelectionStore.js';
 import { useSceneCardStore } from '../stores/sceneCardStore.js';
 import {
@@ -580,7 +578,10 @@ export function MapArea() {
     // Two doors into one attack (stage 16f). A crosshair armed from a sheet or
     // from the „Walka" tab already named its weapon, so it wins; otherwise the
     // shot is fired with whatever the action bar has in hand.
-    renderer.onTokenTarget = (tokenId) => {
+    renderer.onTokenTarget = (tokenId, clientX, clientY) => {
+      // Adres dla okna Celowania (31.08): ładowanie kubka nie wie nic o ekranie,
+      // więc pozycję kliknięcia zostawia ten, kto ją zna.
+      useAimMenuStore.getState().placeAt(clientX, clientY);
       if (useAttackStore.getState().targeting) {
         loadAttackAtToken(tokenId);
         return;
@@ -1672,7 +1673,6 @@ export function MapArea() {
             ? ` — ${CPRED_ATTACK_MODE_SHORT[targeting.mode]}`
             : ''}
           {' — kliknij cel na mapie (Esc anuluje)'}
-          <AimPointPicker targeting={targeting} />
         </div>
       )}
       {/* Visibility comes from tokens alone, so „no token" means „no map". The
@@ -1684,63 +1684,10 @@ export function MapArea() {
       )}
       <MapTools />
       <TargetTooltip hover={aimHover} />
+      <AimMenu />
       <DrawingTextEditor />
       <SceneObjectCard onDelete={(ref) => void removeSceneObject(ref)} />
       {menu && <TokenContextMenu menu={menu} onClose={() => setMenu(null)} />}
     </section>
   );
 }
-
-/**
- * Which of the three Aimed Shot targets the armed crosshair is pointed at
- * (s. 170): the head doubles what gets through, a held item is knocked out of
- * the target's hands, a leg breaks. All three cost −8 and the whole Action.
- *
- * It sits on the banner rather than on the weapon row because it is a property
- * of *this shot* — the same pistol aims at a head in one turn and at a knee in
- * the next — and because this is where the shooter is already looking. The
- * banner is `pointer-events: none`, so the buttons switch it back on for
- * themselves alone.
- *
- * Only single shots may aim („Strzelając ogniem ciągłym, nie można Celować",
- * s. 173), so the row is simply absent for a burst; the planner refuses the
- * rest — a shotgun shell, a cover, a patch of ground — quietly on its own.
- */
-function AimPointPicker({ targeting }: { targeting: AttackTargeting }) {
-  const setAimPoint = useAttackStore((s) => s.setAimPoint);
-  if (targeting.mode !== 'single') return null;
-  return (
-    <span className="map-aim-points">
-      <span className="map-aim-points-label">Celowanie ({CPRED_AIMED_SHOT_PENALTY}):</span>
-      <button
-        type="button"
-        className={`map-aim-point${targeting.aimedAt === undefined ? ' is-on' : ''}`}
-        aria-pressed={targeting.aimedAt === undefined}
-        title="Bez celowania — atak trafia w korpus i nie zabiera całej Akcji"
-        aria-label="Bez celowania"
-        onClick={() => setAimPoint(null)}
-      >
-        —
-      </button>
-      {CPRED_AIM_POINTS.map((id) => (
-        <button
-          key={id}
-          type="button"
-          className={`map-aim-point${targeting.aimedAt === id ? ' is-on' : ''}`}
-          aria-pressed={targeting.aimedAt === id}
-          title={AIM_POINT_HINTS[id]}
-          onClick={() => setAimPoint(id)}
-        >
-          {CPRED_AIM_POINT_LABELS[id]}
-        </button>
-      ))}
-    </span>
-  );
-}
-
-/** What each aim point buys, in the rulebook's own terms. */
-const AIM_POINT_HINTS: Record<CpredAimPoint, string> = {
-  head: 'Obrażenia, które przejdą przez pancerz głowy, liczą się podwójnie',
-  heldItem: 'Jeśli choć 1 punkt przejdzie przez pancerz ciała, cel upuszcza trzymany przedmiot',
-  leg: 'Jeśli choć 1 punkt przejdzie przez pancerz ciała, cel dostaje ranę „Złamana noga”',
-};

@@ -480,3 +480,12 @@ pierwszego do bazy daje dokładnie tę samą odmowę.
 **Broń biała odmawia z odległości większej niż 2 m** („Do ataku wręcz cel musi być nie dalej niż
 2 m") — a pole na „Strzelnicy" to 100 px i **2 m**, więc figury muszą stać w sąsiednich polach.
 Przy ustawianiu żetonów w bazie licz w metrach, nie w pikselach.
+
+- **Nasłuch „kliknięcie poza oknem" dopięty w efekcie łapie ten sam klik, który okno otworzył**
+  (31.08, kosztowało jeden nieudany przebieg oględzin). Okno Celowania otwiera się w obsłudze
+  `pointerdown` na żetonie; React zdąża je wyrenderować **w trakcie** tego samego zdarzenia (klik
+  jest zdarzeniem dyskretnym, więc aktualizacja idzie synchronicznie), a listener dopięty wtedy do
+  `window` jest jeszcze przed nim w drodze w górę drzewa — więc dostaje ten klik i zamyka okno
+  w tej samej klatce, w której powstało. Objaw jest mylący: **żadnego błędu, żadnego okna**, jakby
+  warunek otwarcia był fałszywy. Obejście to jedna linia — `setTimeout(() => addEventListener(…), 0)`
+  i `clearTimeout` w sprzątaniu. `stopPropagation` w Pixi nie pomaga: to inny system zdarzeń niż DOM.

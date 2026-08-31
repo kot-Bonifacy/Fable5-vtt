@@ -26,6 +26,17 @@ z „Kart 24x": kto na nią wejdzie, dostaje 6k6 przez pancerz i jeszcze raz na 
 Tury; gracz jej nie zobaczy, dopóki nie zda Percepcji PT 17 z 4 m. Karta strefy otwiera się
 narzędziem ⚠ w trybie 📌; „Rozbrój" ją usypia, kosz usuwa.
 
+**Stan po sesji 31.08 (Celowanie, broń z katalogu).** Poligon wraca do stanu sprzed sesji —
+karta „Frank" była nośnikiem oględzin (broń z katalogu, rana nadana, zespół Korpo) i **została
+wyczyszczona**: bez broni, bez ran, bez Roli i bez zespołu, tak jak stała. Zatrudniony na chwilę
+pracownik **„Ochrona Test" jest skasowany** (to była jedyna karta pracownika w bazie).
+
+Ślady zostawione świadomie: żeton **„testowy 2x2" ma 25/30 naboi** zamiast 27/30 (dwa strzały
+testowe do avatar9, **oba pudła** — na kartach nikt nic nie stracił) oraz **kilka kart w logu
+czatu**: dwa ataki z „Celowanie (głowa) −8" i „Celowanie (noga) −8", rana nadana i zdjęta
+u „Franka" oraz rzut HR na pracownika. Kolejka walki nietknięta (tryb turowy nadal wyłączony),
+scena bez zmian.
+
 **Stan po sesji 30.08 (czwarta) — rany krytyczne.** Poligon został przygotowany pod oględziny
 łatania i zostaje w tym stanie:
 

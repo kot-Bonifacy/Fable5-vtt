@@ -75,6 +75,10 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
     items: [
       { keys: '1…9', what: 'Użyj broni z tego slotu paska akcji' },
       { keys: 'Shift + 1…9', what: 'Zmień tryb ognia broni z tego slotu' },
+      {
+        keys: 'klik w cel',
+        what: 'Ładuje kubek, a przy kursorze staje wybór Celowania: korpus (zwykły strzał), głowa, trzymany przedmiot, noga. Każda z trzech lokacji to −8 i cała Akcja (s. 170); przy ogniu ciągłym wyboru nie ma',
+      },
       { keys: 'Tab', what: 'Następna figura, którą możesz sterować' },
       { keys: 'E', what: 'Zakończ Turę (swoją; MG — czyjąkolwiek)' },
     ],
@@ -117,6 +121,7 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
     note: 'Jedno wciśnięcie cofa jedną rzecz, od najświeższej. Nigdy nie zrzuca wszystkiego naraz.',
     numbered: true,
     items: [
+      { keys: 'Esc', what: 'Zamyka wybór Celowania przy kursorze' },
       { keys: 'Esc', what: 'Przerywa trwający marsz figury' },
       { keys: 'Esc', what: 'Rozbraja celowanie bronią' },
       { keys: 'Esc', what: 'Zamyka otwartą kartę HUD-u walki' },

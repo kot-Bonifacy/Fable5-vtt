@@ -439,6 +439,24 @@ export function toCriticalInjuryRow(
   };
 }
 
+/**
+ * Wiersz rany, której **nikt nie wyrzucił** — nazwał ją efekt (naprawa 31.08).
+ *
+ * Tak powstaje rana z ręki MG („Nadaj ranę"), z gazu łzawiącego, z granatu
+ * hukowego, z bronionej strefy i z Celowania w nogę. Wiersz jest zwykłą raną
+ * ze wszystkimi skutkami — różni się jedną rzeczą: nie niesie `rolled`, bo
+ * żadna kość nie padła, a karta nie ma drukować „2k6 = N", którego nie było.
+ * Zamiast tego niesie `assigned`, żeby prowieniencja nie ginęła.
+ *
+ * Jedna funkcja, nie trzy kopie `delete row.rolled` — dokładnie dlatego, że
+ * kopia nr 1 (Celowanie) tę zasadę znała, a nr 2 i 3 (gaz, ręka MG) nie.
+ */
+export function namedCriticalInjuryRow(entry: CriticalInjuryEntry): CpredCriticalInjuryRow {
+  const row = toCriticalInjuryRow(entry, entry.roll);
+  delete row.rolled;
+  return { ...row, assigned: true };
+}
+
 /** „Poważnie ranny → Śmiertelnie ranny" for the chat card. */
 export function woundTransitionLabel(outcome: CpredDamageOutcome): string | null {
   if (outcome.woundBefore === outcome.woundAfter) return null;

@@ -886,6 +886,86 @@
   cursor: default;
 }
 
+/* --- wybór broni z katalogu (naprawa 31.08) --- */
+
+/* Ostrzeżenie przy wierszu, który nie wskazuje modelu: taka broń nie zna
+   tabeli zasięgów i nie wystrzeli, więc mówi to karta, a nie dopiero planer
+   w chwili nieudanego strzału. */
+.cp-table .weapon-unbound {
+  display: block;
+  margin-top: 0.15rem;
+  background: transparent;
+  color: var(--cp-red);
+  border: 1px solid var(--cp-red);
+}
+
+.cp-table .weapon-unbound:hover:not(:disabled) {
+  background: var(--cp-red);
+  color: var(--cp-on-red);
+}
+
+.weapon-picker {
+  margin-top: 0.4rem;
+  border: 1px solid var(--cp-bar);
+  background: var(--cp-paper);
+  padding: 0.4rem;
+}
+
+.weapon-picker-head {
+  display: flex;
+  gap: var(--cp-gutter);
+  align-items: center;
+}
+
+.weapon-picker-search {
+  flex: 1;
+  min-width: 0;
+}
+
+.weapon-picker-list {
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  /* Katalog bywa długi, a karta nie ma się przez niego rozjechać. */
+  max-height: 14rem;
+  overflow-y: auto;
+}
+
+.weapon-picker-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.2rem 0.3rem;
+  background: transparent;
+  border: none;
+  color: var(--cp-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.weapon-picker-row:hover {
+  background: var(--cp-hover);
+}
+
+.weapon-picker-name {
+  font-weight: 600;
+}
+
+.weapon-picker-stats {
+  color: var(--cp-ink-dim);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.weapon-picker-empty,
+.weapon-picker-hint {
+  margin: 0.4rem 0 0;
+  color: var(--cp-ink-dim);
+  font-size: 0.72rem;
+}
+
 .cp-table .weapon-ammo-cell {
   white-space: nowrap;
 }

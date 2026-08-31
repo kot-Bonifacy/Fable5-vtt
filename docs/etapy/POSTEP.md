@@ -100,11 +100,17 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 ## Od czego zacząć
 
-**Ostatnia sesja (30.08, czwarta) zeszła z etapów na dług oględzin i zamknęła pakiet „rany
-krytyczne": pięć pozycji naraz.** Trzy naprawy kodu (próg PT wszędzie na `>`, sześć brakujących
-pól rany w edytorze kompendium, Łatanie jako czasowe zniesienie efektu) i dwa pakiety oględzin
-(całe Celowanie, cały pakiet A+B z 29.08). **Dług oględzin pierwszy raz spadł** — z 27 pozycji
-na 26, mimo czterech nowych wpisów, które wyszły przy klikaniu.
+**Ostatnia sesja (31.08) znowu zeszła z etapów na dług oględzin i zamknęła cztery pozycje:
+Celowanie z paska akcji, broń wpisaną ręcznie, prowieniencję rany nadanej i sufit pancerza
+pracownika Korpo.** Dług spadł z 26 na 22 i **żadna nowa pozycja nie doszła**.
+
+**Celowanie wybiera się teraz przy kursorze, nie na banerze.** Po kliknięciu w cel wyskakuje okno
+z czterema sylwetkami (korpus, głowa, trzymany przedmiot, noga); otwiera je `loadAttackFor`, czyli
+jedyne miejsce, przez które przechodzą wszystkie drogi ataku. **Nowa droga ataku dostaje Celowanie
+za darmo — i nie da się już dopisać takiej, która go nie ma.** Wybór nie jest lepki.
+
+**Broń na karcie bierze się wyłącznie z katalogu** („+ Broń z katalogu"); wiersz bez wiązania nie
+strzela i mówi to chipem. **Dopasowania po nazwie nie ma świadomie** — przypięłoby zły PT.
 
 **Ważne dla każdego, kto dotknie progu PT: `>=` przy PT jest teraz błędem, nie wariantem.**
 Decyzja z 28.08 („remis zdaje") została cofnięta — stała na cytacie, którego w polskim wydaniu
@@ -113,13 +119,15 @@ przeczytaj ten akapit, bo to druga zmiana zdania w tej sprawie.
 
 **Od czego zacząć: wolne są trzy etapy.** **31** (dodatki do broni; odblokowuje siedem
 z dziesięciu skutków Ulepszania z 30b), **27g** (wydajność, poligon „Korytarz 16e" gotowy)
-i **28** (wdrożenie na VPS). Poza etapami został **dług oględzin — 26 pozycji** (`zaleglosci.md`).
+i **28** (wdrożenie na VPS). Poza etapami został **dług oględzin — 22 pozycje** (`zaleglosci.md`).
 
-**Bez modelu da się dziś obejrzeć jedenaście:** reszta **29a** (pięć punktów), reszta **29b**
-(trzy), **komplet 30d**, **komplet 30c**, **reszta 30b** (guzik „Lecz" odklikany 30.08), **komplet
-30a**, cztery drobiazgi znalezione 30.08 (Celowanie z paska, leczenie statysty, broń wpisana
-ręcznie, `rolled: 0`) i pomiar fps przypisany do 27g. Reszta czeka na **żywy model**: 20a/20b,
-19a–19c, dwie ścieżki 24c i maszynopis wypowiedzi.
+**Bez modelu da się dziś obejrzeć siedem:** reszta **29a** (pięć punktów), reszta **29b** (trzy),
+**komplet 30d**, **komplet 30c**, **reszta 30b**, **komplet 30a**, dwa drobiazgi z 30.08 (leczenie
+statysty, przeładowanie statysty w walce) i pomiar fps przypisany do 27g. Reszta czeka na **żywy
+model**: 20a/20b, 19a–19c, dwie ścieżki 24c i maszynopis wypowiedzi.
+
+**Dwie zaległości opłaca się zrobić razem z pierwszym etapem, który tknie pasek figury bez karty:**
+leczenie statysty i rzut Wartością bojową w piętnastu Umiejętnościach (Wsparcie poziomu 10).
 
 **Do oględzin 30a–30d trzeba postaci ze wszystkimi Rolami poza Netrunnerem** — żadna karta na
 scenach testowych ich nie ma. **Od 29a wybór Roli ma wyłącznie MG**, więc oględziny Ról robi się
@@ -248,6 +256,9 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 - **Skutek rany** czyta się przez `cpredActiveInjuries` (filtr siedzi **w** funkcjach liczących skutek, nie u wołających); lista na karcie zostaje niefiltrowana, bo załatana rana wciąż jest raną.
 - **Droga leczenia to tryb, nie ścieżka** — `CpredCareMode` w żądaniu (`treatMode`) i planie; kolumnę tabeli wybiera `cpredCareOptions`, trwałość `cpredCarePermanent`, a `treatPermanent` wypełnia serwer. Łatać można siebie, leczyć nie (`SELF_TREATMENT`).
 - **Podgląd rzutu** bierze z karty to, co z niej widać (kary z ran przez `cpredInjuryModifiers`); serwerowi zostaje to, co wie tylko świat (Zwarcie).
+- **Nowa droga ataku** kończy się w `loadAttackFor` — i tylko stamtąd wychodzi wybór Celowania przy kursorze (`AimMenu`, warunek `mayAimShot`). Wybór nie jest lepki: przeładowuje kubek tym samym `AttackIntent` z dopisanym `aimedAt`.
+- **Broń na karcie** powstaje z wpisu katalogu przez `purchasedSheetRow` — nigdy z wolnego tekstu i **nigdy z dopasowania po nazwie**. Wiersz bez `compendiumId` nie strzela i mówi to chipem, nie dopiero odmową planera.
+- **Rana nazwana, nie wyrzucona** (gaz, granat hukowy, strefa, Celowanie w nogę, ręka MG) idzie przez `namedCriticalInjuryRow`: bez `rolled`, z `assigned` → chip „nadana".
 - **Nazwa Roli z `roles.json` wchodzi do zdania tylko w mianowniku** — po dwukropku albo na końcu. Odmiany nazwy z pliku danych nie da się zgadnąć („zostań Nomada").
 
 ## Pułapki dev — indeks
@@ -325,11 +336,63 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 - **Dwie drogi uzbrojenia broni, jedna zna Celowanie** — slot paska to `hudStore.activeWeapon`, baner z guzikami to `attackStore.targeting` („Atak" z karty albo menu żetonu).
 - **Broń dopisana do karty samą nazwą nie strzela** — bez `compendiumId` planer odmawia; bierz ją z katalogu („Dodaj za darmo"). Id typu (`weapon-type.*`) ≠ id wpisu (`weapon.*`).
 - **Broń biała odmawia powyżej 2 m**, a pole „Strzelnicy" to 2 m — przy ustawianiu żetonów w bazie licz w metrach.
+- **Nasłuch „klik poza oknem" dopięty w efekcie łapie ten sam klik, który okno otworzył** — okno znika bez śladu i bez błędu; uzbrajaj listener przez `setTimeout(…, 0)`.
 - **Kartę do oględzin da się przygotować w bazie bez logowania na MG** — `node --input-type=module` + `node:sqlite` na `packages/server/dev.db`; `better-sqlite3` nie jest w `node_modules` repozytorium.
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 31.08 — zaległości: Celowanie z paska, broń z katalogu, prowieniencja rany
+
+**Zlecenie MG:** wybór z listy zaległości; padło na **pakiet B + C** — dwie naprawy UI o tym samym
+kształcie („mechanika gotowa, nieosiągalna z UI") plus dwa drobiazgi przy ranach krytycznych.
+Ustalenia przed pierwszą linijką: **błędy z oględzin naprawiam od razu**, **karty do oględzin
+przygotowuję skryptem w bazie**, a zasięgi broni **muszą się zgadzać z konkretnym modelem**.
+
+**Celowanie przeniosło się z banera do kursora — i to jest zmiana kształtu, nie miejsca.**
+Pierwsza wersja szła po linii najmniejszego oporu: jedna belka nad mapą dla obu dróg uzbrojenia,
+z guzikami Celowania. MG przerwał w trakcie oględzin z dwoma zdaniami: wybór ma wyskakiwać
+**sam, tuż przy kursorze, zaraz po kliknięciu w cel**, i ma być **samymi ikonami** — informacja
+należy do okna skrótów, nie do mapy. Przerobione: belka wróciła do stanu sprzed sesji, a wybór
+(`AimMenu`) otwiera **`loadAttackFor`** — jedyne miejsce, przez które przechodzą wszystkie drogi
+ataku (kafel paska, „Atak" z karty, menu żetonu, karta odmowy z osłoną). To jest właściwa naprawa
+pierwotnego błędu: trzeciej drogi bez Celowania nie da się już dopisać, nie omijając ładowania
+kubka. Wybór **nie jest lepki** — przeładowuje kubek tym samym zamiarem z dopisanym `aimedAt`,
+więc nic nie jest jeszcze rzucone ani zapłacone, a okno zostaje otwarte, żeby „jednak w nogę" nie
+kosztowało ponownego wskazywania celu.
+
+**Cztery sylwetki z game-icons.net** (CC BY 3.0, jak reszta ikon w repo): sylwetka w celowniku
+(korpus, czyli zwykły strzał), głowa z celownikiem, dłoń, noga. Rysowane maską CSS przez `HudIcon`,
+nazwy wybiera `shared` (`CPRED_AIM_POINT_ICONS`), atrybucja dopisana. Wybrane po obejrzeniu
+trzynastu kandydatów w przeglądarce, także w docelowym rozmiarze 22 px.
+
+**Zaległość o `rolled: 0` okazała się prośbą o błąd — i została odrzucona.** Kazała wpisywać przy
+ranie nadanej ręką MG wynik 2k6 z wpisu kompendium; tymczasem ten sam plik trzy funkcje dalej
+robi odwrotnie i tłumaczy dlaczego („nikt tego nie wyrzucił — karta nie ma drukować 2k6, którego
+nie było"). Po przedstawieniu tego MG wybrał trzecią drogę: własny znacznik `assigned` i chip
+**„nadana"** na wierszu rany. Przy okazji wszystkie cztery miejsca (dwie ścieżki wymuszonej
+porażki, dwie gałęzie Celowania w nogę) poszły przez jedną funkcję `namedCriticalInjuryRow` —
+bo to właśnie jedna z kopii znała zasadę, a dwie nie.
+
+**Broń na karcie bierze się teraz z katalogu.** „+ Broń" dokładało pusty wiersz, który nigdy nie
+wystrzelił (bez `compendiumId` planer nie dochodzi do tabeli zasięgów). Teraz „+ Broń z katalogu"
+otwiera wyszukiwarkę, a wiersz buduje ten sam `purchasedSheetRow`, co zakup. **Dopasowania po
+nazwie nie ma świadomie** — „Pistolet" przypiąłby zły PT na każdym dystansie. Wiersze wpisane
+wcześniej ręką dostają chip „⚠ Wskaż broń z katalogu" i wyszarzony „Atak".
+
+**Odklikane w przeglądarce (wszystko na „Strzelnicy" i na kartach kampanii):** okno Celowania
+obiema drogami uzbrojenia (kafel paska u statysty „testowy 2x2" i „Atak" z wiersza karty avatar9),
+karta rzutu z „Celowanie (głowa) −8", wyszukiwarka broni (dopisanie „Zgrzyt 9", stan pusty przy
+braku trafień), związanie wiersza „Rura z parkingu" z „Dużą bronią białą" wraz z odblokowaniem
+„Ataku", chip „nadana" po „Nadaj ranę", oraz **sufit pancerza pracownika Korpo** (zatrudniony
+„Firmowy ochroniarz", OB 11 → 18 przyjęte bez odmowy — zapisane jako świadome).
+
+**Dług oględzin: 26 → 22 pozycje.** Zamknięte cztery, żadna nowa nie doszła.
+
+**Stan poligonu po sesji:** wszystko przywrócone (kartę „Frank" wyczyszczono ze śladów testów,
+pracownik „Ochrona Test" skasowany). Ślady: żeton **„testowy 2x2" ma 25/30 naboi** zamiast 27/30
+(dwa strzały testowe, oba pudła) i kilka kart w logu czatu. Szczegóły w `poligon.md`.
 
 ### Sesja 30.08 (czwarta) — zaległości: rany krytyczne
 
@@ -378,52 +441,3 @@ i Prettier czyste, `pnpm -r build` przechodzi. Migracji nie było — `patched` 
 karty. **Poligon zmieniony i opisany** w `poligon.md`: avatar9 ma Ratownictwo 6, Broń krótką 10
 i trzy rany (w tym własną MG „Test łaty 15"), Rudy — Broń białą 10, „Bardzo dużą broń białą"
 i „Złamaną nogę", wieżyczka — „Odciętą dłoń" w profilu bojowym.
-
-### Sesja 30.08 (trzecia) — etap 29b: wieloklasowość
-
-**Zlecenie MG:** kontynuować budowę; z przedstawionych opcji wybór padł na **29b**. Przed
-pierwszą linijką kodu zapadła jedna decyzja, której podręcznik nie rozstrzyga: **powrót do Roli,
-którą postać już miała, jest darmowy** — rangi i tak siedzą na karcie i działają, zmienia się
-tylko to, przez którą Rolę widzi cię Ulica. Bramka ≥ 4 obowiązuje przy powrocie tak samo jak
-przy nowej Roli, więc jedno zdarzenie obsługuje oba przypadki.
-
-**Kształt karty był wymuszony, i to jest cały wynik rozpoznania.** `roleId` **zostaje** Rolą
-bieżącą, bo tak czyta go wszystko, co pokazuje Rolę Ulicy: Reputacja z 23c, tytuł karty, wiersz
-w zakładce „Postacie", `hud.ts`. Poprzednie Role dostały osobne pole `formerRoles`, a trzy pola
-razem — alias `CpredRoleSheet`. Wskazówka etapu mówiła o „dwunastu miejscach"; kompilator
-wskazał dokładnie tyle, co do jednego, i podmiana była mechaniczna.
-
-**Dziesięć paneli Zdolności z etapu 30 zaczęło działać obok siebie bez jednej zmiany w nich
-samych.** Wszystkie są bramkowane przez `cpredRoleAbilityRank(...) !== null`, a od 30a żaden
-z nich nie czyta `roleId` wprost — sprawdzone gerpem, nie założone. Wystarczyło, że **ta jedna
-funkcja** zaczęła pytać o każdą Rolę z listy. `cpredInterfaceRank` z 26a miał ten sam kształt
-i przeszedł na nią w całości, więc Netrunner, który wziął drugą Rolę, nie traci cyberdeka —
-czego podręcznik nigdzie nie nakazuje, a stary kod robiłby milcząco.
-
-**Bramka pyta zawsze o Rolę bieżącą — i to nie jest uproszczenie, tylko cały mechanizm.** „Dopóki
-nie podniesiesz poziomu Zdolności Specjalnej swojej **nowej** Roli do 4" (s. 143) znaczy, że
-trzecia Rola pyta o drugą, a nie o najwyższą posiadaną. Wyszło to w teście serwera, który padł
-na powrocie do Solo: Zmysł Walki miał 5, ale bieżące Moto stało na jedynce, więc drzwi były
-zamknięte. Test był zły, reguła dobra — i teraz mówi to wprost.
-
-**Rejestr dostał czwarty rodzaj `role`.** Darmowy powrót nie rusza licznika, a „Awans: 0 PD"
-czytałoby się jak błąd. `isAdvancementKind` degraduje nieznany rodzaj do `adjust`, więc starszy
-klient nie zgubi wiersza.
-
-**Etap był pierwszym od 29.08 obejrzanym w przeglądarce** — kartę do oględzin przygotowałem
-wprost w bazie (`node:sqlite` na `dev.db`), bo hasła MG nie wpisuję w formularz, a od 29a wybór
-Roli jest u gracza wyszarzony. Obejrzane i działające: sekcja „Rola" w Awansie, zakup Nomady za
-60 PD, nagłówek w liczbie mnogiej („Zdolności Specjalne"), **Zmysł Walki i Moto obok siebie na
-stronie pierwszej**, chromowa plakietka rangi poprzedniej Roli, tytuł karty z **nową** Rolą,
-wiersz rejestru i bramka zamykająca się po zmianie. Wyszły przy tym trzy usterki, wszystkie
-naprawione: **dwa zdania z nazwą Roli w złym przypadku** („zostań Nomada", „widzi cię jako
-Nomada") — nazwa z `roles.json` może stać tylko w mianowniku — oraz **błąd CSS z 29a**: guzik
-„Podnieś" przegrywał kaskadę z `.awareness-steps button` (0,1,0 vs 0,1,1), zostawał przy 1,6 rem
-i wychodził poza wiersz.
-
-**Testy:** **1632** w `shared` (+21), **877** na serwerze (+9), 62 u klienta — zielone. ESLint
-i Prettier czyste, `pnpm -r build` przechodzi, `pnpm dev` wstaje. **Migracji nie było** —
-`formerRoles` mieszka w JSON-ie karty. Przy okazji poprawione dwa nieaktualne zdania w tym
-pliku: netrunnerem poligonu jest karta **„Test 27x"**, nie karta `avatar9` (ta ma dziś Rolę
-`solo` z rangą 1). „Test 27x" była w trakcie oględzin przestawiona i **przywrócona** do stanu
-sprzed sesji — zapis w `poligon.md`.

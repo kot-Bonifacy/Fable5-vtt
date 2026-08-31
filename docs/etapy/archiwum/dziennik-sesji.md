@@ -7,6 +7,55 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 30.08 (trzecia) — etap 29b: wieloklasowość
+
+**Zlecenie MG:** kontynuować budowę; z przedstawionych opcji wybór padł na **29b**. Przed
+pierwszą linijką kodu zapadła jedna decyzja, której podręcznik nie rozstrzyga: **powrót do Roli,
+którą postać już miała, jest darmowy** — rangi i tak siedzą na karcie i działają, zmienia się
+tylko to, przez którą Rolę widzi cię Ulica. Bramka ≥ 4 obowiązuje przy powrocie tak samo jak
+przy nowej Roli, więc jedno zdarzenie obsługuje oba przypadki.
+
+**Kształt karty był wymuszony, i to jest cały wynik rozpoznania.** `roleId` **zostaje** Rolą
+bieżącą, bo tak czyta go wszystko, co pokazuje Rolę Ulicy: Reputacja z 23c, tytuł karty, wiersz
+w zakładce „Postacie", `hud.ts`. Poprzednie Role dostały osobne pole `formerRoles`, a trzy pola
+razem — alias `CpredRoleSheet`. Wskazówka etapu mówiła o „dwunastu miejscach"; kompilator
+wskazał dokładnie tyle, co do jednego, i podmiana była mechaniczna.
+
+**Dziesięć paneli Zdolności z etapu 30 zaczęło działać obok siebie bez jednej zmiany w nich
+samych.** Wszystkie są bramkowane przez `cpredRoleAbilityRank(...) !== null`, a od 30a żaden
+z nich nie czyta `roleId` wprost — sprawdzone gerpem, nie założone. Wystarczyło, że **ta jedna
+funkcja** zaczęła pytać o każdą Rolę z listy. `cpredInterfaceRank` z 26a miał ten sam kształt
+i przeszedł na nią w całości, więc Netrunner, który wziął drugą Rolę, nie traci cyberdeka —
+czego podręcznik nigdzie nie nakazuje, a stary kod robiłby milcząco.
+
+**Bramka pyta zawsze o Rolę bieżącą — i to nie jest uproszczenie, tylko cały mechanizm.** „Dopóki
+nie podniesiesz poziomu Zdolności Specjalnej swojej **nowej** Roli do 4" (s. 143) znaczy, że
+trzecia Rola pyta o drugą, a nie o najwyższą posiadaną. Wyszło to w teście serwera, który padł
+na powrocie do Solo: Zmysł Walki miał 5, ale bieżące Moto stało na jedynce, więc drzwi były
+zamknięte. Test był zły, reguła dobra — i teraz mówi to wprost.
+
+**Rejestr dostał czwarty rodzaj `role`.** Darmowy powrót nie rusza licznika, a „Awans: 0 PD"
+czytałoby się jak błąd. `isAdvancementKind` degraduje nieznany rodzaj do `adjust`, więc starszy
+klient nie zgubi wiersza.
+
+**Etap był pierwszym od 29.08 obejrzanym w przeglądarce** — kartę do oględzin przygotowałem
+wprost w bazie (`node:sqlite` na `dev.db`), bo hasła MG nie wpisuję w formularz, a od 29a wybór
+Roli jest u gracza wyszarzony. Obejrzane i działające: sekcja „Rola" w Awansie, zakup Nomady za
+60 PD, nagłówek w liczbie mnogiej („Zdolności Specjalne"), **Zmysł Walki i Moto obok siebie na
+stronie pierwszej**, chromowa plakietka rangi poprzedniej Roli, tytuł karty z **nową** Rolą,
+wiersz rejestru i bramka zamykająca się po zmianie. Wyszły przy tym trzy usterki, wszystkie
+naprawione: **dwa zdania z nazwą Roli w złym przypadku** („zostań Nomada", „widzi cię jako
+Nomada") — nazwa z `roles.json` może stać tylko w mianowniku — oraz **błąd CSS z 29a**: guzik
+„Podnieś" przegrywał kaskadę z `.awareness-steps button` (0,1,0 vs 0,1,1), zostawał przy 1,6 rem
+i wychodził poza wiersz.
+
+**Testy:** **1632** w `shared` (+21), **877** na serwerze (+9), 62 u klienta — zielone. ESLint
+i Prettier czyste, `pnpm -r build` przechodzi, `pnpm dev` wstaje. **Migracji nie było** —
+`formerRoles` mieszka w JSON-ie karty. Przy okazji poprawione dwa nieaktualne zdania w tym
+pliku: netrunnerem poligonu jest karta **„Test 27x"**, nie karta `avatar9` (ta ma dziś Rolę
+`solo` z rangą 1). „Test 27x" była w trakcie oględzin przestawiona i **przywrócona** do stanu
+sprzed sesji — zapis w `poligon.md`.
+
 ### Sesja 30.08 (druga) — etap 29a: Punkty Doświadczenia
 
 **Zlecenie MG:** kontynuować budowę; z przedstawionych opcji wybór padł na **29**, a dług

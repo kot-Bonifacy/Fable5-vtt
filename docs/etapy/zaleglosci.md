@@ -8,29 +8,11 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
 
 ## Pozycje
 
-- **Celowanie jest nieosiągalne z paska akcji (30.08).** Baner z guzikami „Głowa / Trzymany
-  przedmiot / Noga" wisi na `attackStore.targeting`, a pasek postaci uzbraja broń **własnym**
-  stanem (`hudStore.activeWeapon`) — więc figura wybrana na mapie i uzbrojona slotem strzela bez
-  możliwości Celowania, a te same guziki pojawiają się, gdy broń uzbroi się z karty postaci
-  („Atak" w wierszu broni) albo z menu żetonu. To dokładnie ten kształt błędu, co pułapka
-  „mechanika bywa gotowa i nieosiągalna z UI": dwie drogi uzbrojenia, jedna zna Celowanie.
-  Naprawa to albo wspólny stan, albo `AimPointPicker` również przy `hud-armed`.
-
 - **Statysta nie ma skąd być załatany ani wyleczony (30.08).** Serwer to umie — `treatableInjuries`
   czyta `combatProfile`, `applyTreatment` zapisuje z powrotem do żetonu — ale formularz stoi
   wyłącznie przy wierszu rany **na karcie postaci**, a figura bez karty żadnej listy ran nie
   pokazuje. Wieżyczka z „Odciętą dłonią" (30.08) nosi ranę, której nikt nie zdejmie inaczej niż
   ręką w bazie. Do zrobienia razem z pierwszym etapem, który tknie pasek figury bez karty.
-
-- **Broń wpisana ręcznie na karcie nie strzela (30.08).** Wiersz broni z samą nazwą nie dostaje
-  `compendiumId`, a planer odmawia takiej broni zdaniem „Ta broń nie ma tabeli zasięgów —
-  uzupełnij typ broni w kompendium". Jedyna droga to katalog („Dodaj za darmo" albo zakup), co
-  nie jest oczywiste: pole nazwy wygląda jak pole z podpowiedziami, a nim nie jest. Albo
-  dopasowanie po nazwie przy zapisie, albo wybór z listy zamiast wolnego tekstu.
-
-- **Rana nadana ręką MG gubi wiersz tabeli (30.08).** „Nadaj ranę" zapisuje `rolled: 0` zamiast
-  `roll` z wpisu kompendium, więc karta nie pokazuje przy niej „2k6 = N" — nic się nie psuje
-  (0 jest falsy), ale prowieniencja ginie. Jedno pole przy `assignCriticalInjury`.
 
 - **Przeładowanie statysty w trwającej walce (30.08).** Pudełko „Przeładuj" stoi na pasku figury
   bez karty i gaśnie przy pełnym magazynku — ale że **kosztuje Akcję**, sprawdzone jest tylko
@@ -106,11 +88,6 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
   statysta nie ma skąd rzucić Umiejętnością spoza broni i Uniku (`combatProfileSkillLevel` zna
   dwa poziomy). Do zrobienia razem z pierwszym etapem, który da statyście rzut dowolną
   Umiejętnością.
-
-- **Prowizorka pancerza pracownika zespołu.** Karta pracownika jest zwykłą kartą, więc Technik
-  może na niej wszystko, co na każdej innej — ale nikt nie sprawdził, czy sufit „najcięższy
-  pancerz to Lekka kurtka kuloodporna" (s. 154) da się złamać ręką MG w edytorze ekwipunku. Da
-  się i tak ma być (MG poprawia karty), ale warto to raz zobaczyć i zapisać jako świadome.
 
 - **Etap 30b nie był oglądany w przeglądarce.** Mechanika jedzie w testach (30 nowych
   w `shared`, 7 na serwerze), ale żadnego z tych ekranów nikt nie kliknął. Do sprawdzenia —

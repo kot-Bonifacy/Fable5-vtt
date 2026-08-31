@@ -464,6 +464,17 @@ export interface CpredCriticalInjuryRow {
   effect: string;
   /** The 2d6 value that drew it — shown on the sheet as provenance. */
   rolled?: number;
+  /**
+   * Ranę **nazwał** efekt, nikt jej nie wyrzucił (naprawa 31.08): ręka MG
+   * („Nadaj ranę"), gaz łzawiący, granat hukowy, broniona strefa, Celowanie
+   * w nogę. Karta pokazuje wtedy chip „nadana" zamiast „2k6 = N".
+   *
+   * Osobna flaga, a nie `rolled: 0` ani wynik z wpisu kompendium, bo obie te
+   * drogi kłamią: pierwsza gubi prowieniencję, druga drukuje rzut, którego nie
+   * było — a to jest dokładnie ta zasada, którą gałąź Celowania w nogę
+   * egzekwowała od 08.08 kasując `rolled`.
+   */
+  assigned?: boolean;
   /** Some injuries make every later Death Save harder. */
   deathSavePenalty?: number;
   /**
@@ -1260,6 +1271,9 @@ function validateCriticalInjuries(
       ...(isInteger(movePenalty) && movePenalty < 0 && movePenalty >= INJURY_MOVE_PENALTY_MIN
         ? { movePenalty }
         : {}),
+      // Prowieniencja rany nazwanej (31.08) — kopiowana jak każda inna flaga,
+      // bo bez niej pierwszy zapis karty zamieniłby ranę nadaną w bezimienną.
+      ...(row.assigned === true ? { assigned: true as const } : {}),
       // The machine effects of stage 14e. Booleans are copied only when true,
       // so a row that never had them stays byte-identical after a round trip.
       ...(row.noActionNextTurn === true ? { noActionNextTurn: true as const } : {}),

@@ -125,6 +125,23 @@ export const CPRED_AIM_POINT_SHORT: Record<CpredAimPoint, string> = {
   leg: 'noga',
 };
 
+/**
+ * Sylwetka na guziku Celowania (plik w `public/icons/hud/`).
+ *
+ * Nazwę ikony wybiera `shared`, nie komponent — ta sama umowa, co przy slotach
+ * panelu postaci (`CpredSlotIcon`): podmiana rysunku nigdy nie jest zmianą
+ * w regułach, a nowy punkt Celowania nie ma jak powstać bez własnej sylwetki,
+ * bo kompilator dopisze go do tego rekordu.
+ */
+export const CPRED_AIM_POINT_ICONS: Record<CpredAimPoint, string> = {
+  head: 'aim-head',
+  heldItem: 'aim-hand',
+  leg: 'aim-leg',
+};
+
+/** Zwykły strzał — sylwetka w celowniku, bez wskazanej lokacji. */
+export const CPRED_AIM_BODY_ICON = 'aim-body';
+
 export function isCpredAimPoint(value: unknown): value is CpredAimPoint {
   return typeof value === 'string' && (CPRED_AIM_POINTS as readonly string[]).includes(value);
 }

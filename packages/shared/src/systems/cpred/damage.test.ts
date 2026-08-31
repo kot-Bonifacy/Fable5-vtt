@@ -7,6 +7,7 @@ import {
   effectiveArmor,
   effectiveArmorSp,
   resolveCpredDamage,
+  namedCriticalInjuryRow,
   toCriticalInjuryRow,
   woundStatusIds,
   woundTransitionLabel,
@@ -410,6 +411,23 @@ describe('drawCriticalInjury', () => {
       deathSavePenalty: 1,
     });
     expect(injuryDeathSavePenalty([row, { ...row, id: 'injury.x', deathSavePenalty: 1 }])).toBe(2);
+  });
+
+  /**
+   * Rana nazwana, nie wyrzucona (naprawa 31.08).
+   *
+   * Gaz łzawiący, granat hukowy, broniona strefa, Celowanie w nogę i „Nadaj
+   * ranę" w ręku MG nie rzucają na tabelę — nazywają wiersz. Do 31.08 gałąź
+   * Celowania kasowała wtedy `rolled` ręcznie, a dwie pozostałe zapisywały
+   * `rolled: 0`, czyli gubiły prowieniencję po cichu. Teraz jest jedna droga.
+   */
+  it('rana nazwana nie niesie wyniku 2k6, tylko znacznik „nadana"', () => {
+    const row = namedCriticalInjuryRow(injury({ deathSavePenalty: 1 }));
+    expect(row.rolled).toBeUndefined();
+    expect(row.assigned).toBe(true);
+    // Poza prowieniencją to zwykła rana: skutki wchodzą w komplecie.
+    expect(row.name).toBe('Złamane żebra');
+    expect(row.deathSavePenalty).toBe(1);
   });
 });
 

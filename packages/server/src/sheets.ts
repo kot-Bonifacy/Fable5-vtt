@@ -121,6 +121,7 @@ import {
   resolveCpredThrow,
   sanitizeCombatProfile,
   spendCpredTurn,
+  namedCriticalInjuryRow,
   toCriticalInjuryRow,
   woundTransitionLabel,
 } from '@vtt/shared';
@@ -672,12 +673,16 @@ export function applyForcedFailureToSheet(
     // the timer of the row already on the sheet is left alone, because the
     // longer of two overlapping minutes is the one that matters.
     if (data.criticalInjuries.some((injury) => injury.id === id)) continue;
-    const row = toCriticalInjuryRow(entry, 0);
+    // Rany nikt nie wyrzucił — nazwał ją efekt (gaz, granat hukowy, broniona
+    // strefa) albo ręka MG, więc wiersz idzie bez `rolled` i z chipem „nadana".
+    const row = namedCriticalInjuryRow(entry);
     rows.push({ ...row, ...(failure.timed ? { timed: failure.timed } : {}) });
     carry = mergeSheetCarry(carry, cpredInjuryCarryOnDraw(row) ?? {});
   }
   if (rows.length > 0) patch.criticalInjuries = [...data.criticalInjuries, ...rows];
   if (rows[0]) {
+    // Zero na karcie obrażeń znaczy „bez rzutu" i tak je czyta `DamageControls`
+    // (`rolled > 0`) — wiersz na karcie postaci niesie już własną prowieniencję.
     log.injury = { id: rows[0].id, name: rows[0].name, effect: rows[0].effect, rolled: 0 };
   }
   if (rows[1]) {
@@ -762,11 +767,15 @@ export function applyForcedFailureToTokenHp(
     // A wound already there is not doubled — a second flashbang in the same
     // minute keeps somebody blind, it does not blind them twice.
     if (carried.some((injury) => injury.id === id)) continue;
-    const row = toCriticalInjuryRow(entry, 0);
+    // Rany nikt nie wyrzucił — nazwał ją efekt (gaz, granat hukowy, broniona
+    // strefa) albo ręka MG, więc wiersz idzie bez `rolled` i z chipem „nadana".
+    const row = namedCriticalInjuryRow(entry);
     rows.push({ ...row, ...(failure.timed ? { timed: failure.timed } : {}) });
     carry = mergeSheetCarry(carry, cpredInjuryCarryOnDraw(row) ?? {});
   }
   if (rows[0]) {
+    // Zero na karcie obrażeń znaczy „bez rzutu" i tak je czyta `DamageControls`
+    // (`rolled > 0`) — wiersz na karcie postaci niesie już własną prowieniencję.
     log.injury = { id: rows[0].id, name: rows[0].name, effect: rows[0].effect, rolled: 0 };
   }
   if (rows[1]) {
@@ -1725,11 +1734,9 @@ export function applyDamageToSheet(
         log.aimNote = `Cel ma już ranę „${entry.name}" — trafienie w nogę nic nie dokłada.`;
       } else {
         // Nobody rolled for this one — the aim named it — so the sheet must not
-        // print a 2k6 that never happened.
-        const row: CpredCriticalInjuryRow = {
-          ...toCriticalInjuryRow(entry, CPRED_BROKEN_LEG_ROLL),
-        };
-        delete row.rolled;
+        // print a 2k6 that never happened. Od 31.08 mówi to jedna funkcja
+        // w `shared`, wspólna z gazem i z ręką MG (`namedCriticalInjuryRow`).
+        const row: CpredCriticalInjuryRow = namedCriticalInjuryRow(entry);
         log.injuryAimed = { id: row.id, name: row.name, effect: row.effect };
         carry = mergeSheetCarry(carry, cpredInjuryCarryOnDraw(row) ?? {});
         patch.criticalInjuries = [...(patch.criticalInjuries ?? data.criticalInjuries), row];
@@ -1910,10 +1917,7 @@ export function applyDamageToTokenHp(
         log.aimNote = `Cel ma już ranę „${entry.name}" — trafienie w nogę nic nie dokłada.`;
       } else {
         // Named, not rolled — so no 2k6 is printed for a die nobody threw.
-        const row: CpredCriticalInjuryRow = {
-          ...toCriticalInjuryRow(entry, CPRED_BROKEN_LEG_ROLL),
-        };
-        delete row.rolled;
+        const row: CpredCriticalInjuryRow = namedCriticalInjuryRow(entry);
         gained.push(row);
         log.injuryAimed = { id: row.id, name: row.name, effect: row.effect };
       }

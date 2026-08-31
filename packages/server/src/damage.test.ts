@@ -747,6 +747,10 @@ describe('damage, armor and Death Saves', () => {
       expect(hurt.hpCurrent).toBe(35);
       expect(hurt.criticalInjuries).toHaveLength(1);
       expect(hurt.criticalInjuries[0]?.deathSavePenalty).toBe(1);
+      // Prowieniencja (naprawa 31.08): nikt nie rzucał, więc wiersz nie niesie
+      // wyniku 2k6 — niesie znacznik, z którego karta robi chip „nadana".
+      expect(hurt.criticalInjuries[0]?.rolled).toBeUndefined();
+      expect(hurt.criticalInjuries[0]?.assigned).toBe(true);
 
       // „Cofnij" działa na tej karcie tak samo jak na karcie z rzutu.
       const messageId = (await logged).message.id;

@@ -783,8 +783,14 @@ export class MapRenderer {
   onTokenFacing: ((tokenId: string, facing: number) => void) | null = null;
   /** Double-click on a token — opens its character sheet (stage 08). */
   onTokenActivate: ((tokenId: string) => void) | null = null;
-  /** Click on a token while the crosshair is armed (stage 16). */
-  onTokenTarget: ((tokenId: string) => void) | null = null;
+  /**
+   * Click on a token while the crosshair is armed (stage 16).
+   *
+   * Niesie też pozycję kliknięcia — od 31.08 zaraz po wskazaniu celu wyskakuje
+   * przy kursorze wybór Celowania, a renderer jest jedynym, kto wie, gdzie ten
+   * kursor był (ta sama umowa, co przy `onTokenMenu` i `onAimHover`).
+   */
+  onTokenTarget: ((tokenId: string, clientX: number, clientY: number) => void) | null = null;
   /**
    * The pointer moved onto (or off) a token the selected figure can aim at
    * (stage 16f). The screen position travels with it so the caller can float a
@@ -5521,7 +5527,8 @@ export class MapRenderer {
       // action bar (16f). The caller decides which of the two is firing.
       if (this.aimTargetFor(node, event.altKey === true)) {
         event.stopPropagation();
-        this.onTokenTarget?.(node.tokenId);
+        const rect = this.app.canvas.getBoundingClientRect();
+        this.onTokenTarget?.(node.tokenId, rect.left + event.global.x, rect.top + event.global.y);
         return;
       }
       // A map tool owns the left button while it is armed. Without this a

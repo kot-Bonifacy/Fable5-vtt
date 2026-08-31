@@ -9,6 +9,56 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Przeniesione 2026-08-31 (Celowanie, broń z katalogu, prowieniencja rany)
+
+Cztery pozycje: trzy naprawy kodu w jednym obszarze („mechanika gotowa, nieosiągalna z UI")
+i jedno sprawdzenie zakończone wpisem do `decyzje-i-uproszczenia.md`.
+
+- **Celowanie było nieosiągalne z paska akcji. ZAMKNIĘTE — wybór przeniesiony do kursora.**
+  Diagnoza się potwierdziła: baner z guzikami „Głowa / Trzymany przedmiot / Noga" wisiał na
+  `attackStore.targeting`, a pasek uzbraja broń **własnym** stanem (`hudStore.activeWeapon`), więc
+  figura wybrana na mapie strzelała bez możliwości Celowania. Naprawa nie dokłada drugiej
+  kontrolki, tylko przenosi wybór **do jedynego miejsca, przez które przechodzą wszystkie drogi
+  ataku**: `loadAttackFor` po załadowaniu kubka otwiera przy kursorze okno `AimMenu` (cztery
+  sylwetki: korpus, głowa, trzymany przedmiot, noga). Dzięki temu trzeciej drogi, która by
+  o Celowaniu nie wiedziała, nie da się dopisać bez ominięcia ładowania kubka. Wybór nie jest
+  lepki — przeładowuje kubek tym samym zamiarem z dopisanym `aimedAt`, więc nic nie jest jeszcze
+  rzucone ani zapłacone. **Odklikane 31.08 obiema drogami**: kafel paska u statysty („testowy
+  2x2") i „Atak" z wiersza karty (avatar9); na karcie rzutu stanęło „Celowanie (głowa) −8".
+
+- **Broń wpisana ręcznie na karcie nie strzelała. ZAMKNIĘTE — wiersz powstaje z katalogu.**
+  „+ Broń" dokładało pusty wiersz z samą nazwą, a taki nie ma `compendiumId`, więc planer nie
+  dochodzi do typu broni ani do tabeli zasięgów i odmawia („Ta broń nie ma tabeli zasięgów").
+  Pole nazwy wyglądało przy tym jak pole z podpowiedziami, a nim nie było. Teraz „+ Broń
+  z katalogu" otwiera wyszukiwarkę kompendium, a wiersz buduje ten sam `purchasedSheetRow`,
+  którym buduje go zakup i „Dodaj za darmo". **Dopasowania po nazwie świadomie nie ma** (decyzja
+  MG 31.08): „Pistolet" pasowałby do kilkunastu modeli i po cichu przypiąłby złą tabelę zasięgów,
+  czyli zły PT na każdym dystansie. Wiersze **już wpisane ręką** dostają czerwony chip
+  „⚠ Wskaż broń z katalogu" i **wyszarzony guzik „Atak"** — karta mówi to, co dotąd mówił dopiero
+  planer w chwili nieudanego strzału; wiązanie zostawia nazwę i uwagi, a bierze obrażenia,
+  magazynek i szybkostrzelność. **Odklikane 31.08** na karcie „Frank": dopisanie „Zgrzyt 9”
+  z wyszukiwarki i związanie wiersza „Rura z parkingu” z „Dużą bronią białą” (3k6, LA 2).
+
+- **Rana nadana ręką MG gubiła prowieniencję. ZAMKNIĘTE — ale nie tak, jak mówiła zaległość.**
+  Zapisane w zaległości „wpisz `roll` z wpisu kompendium zamiast `rolled: 0`" **byłoby błędem**:
+  ten sam plik trzy funkcje dalej (gałąź Celowania w nogę) robi odwrotnie i tłumaczy dlaczego —
+  „the aim named it, so the sheet must not print a 2k6 that never happened" — i **kasuje** pole.
+  Rana z ręki MG, z gazu, z granatu hukowego i z bronionej strefy to ten sam przypadek. Decyzja MG
+  z 31.08: zamiast zmyślonego rzutu wiersz niesie własny znacznik `assigned`, a karta pokazuje
+  przy takiej ranie chip **„nadana"** zamiast „2k6 = N". Wszystkie cztery miejsca (dwie ścieżki
+  wymuszonej porażki i dwie gałęzie Celowania w nogę) idą teraz przez jedną funkcję
+  `namedCriticalInjuryRow` w `shared` — bo to właśnie kopia nr 1 znała zasadę, a nr 2 i 3 nie.
+  **Odklikane 31.08**: „Nadaj ranę → Korpus 3: Odcięta dłoń" na karcie „Frank" pokazało chip.
+  Uwaga: rany nadane **przed** tą sesją znacznika nie mają i nie pokażą nic (np. „Test łaty 15”
+  na karcie avatar9) — to nie regres, tylko brak danych w starych wierszach.
+
+- **Prowizorka pancerza pracownika zespołu. ZAMKNIĘTE — sprawdzone i zapisane jako świadome.**
+  Sufit „Najcięższym pancerzem […] jest Lekka kurtka kuloodporna. Taka polityka Korporacji"
+  (s. 154) **nie jest egzekwowany** i tak ma być: karta pracownika jest zwykłą kartą, więc MG
+  podnosi jej OB jak każdej innej. Sprawdzone 31.08 na zatrudnionym „Firmowym ochroniarzu":
+  OB 11 → 18 przyjęte bez odmowy, zdanie z podręcznika zostaje na wierszu jako uwaga. Pełny zapis
+  w `decyzje-i-uproszczenia.md`.
+
 ## Przeniesione 2026-08-30 (czwarta sesja — rany krytyczne)
 
 Pięć pozycji: trzy naprawy kodu i dwa pakiety oględzin. Wszystko w jednym obszarze — wiersz rany

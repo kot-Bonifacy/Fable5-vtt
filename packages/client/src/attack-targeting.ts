@@ -32,6 +32,7 @@ import {
   snapToSquareCentre,
   tokenCentre,
 } from '@vtt/shared';
+import { useAimMenuStore } from './stores/aimMenuStore.js';
 import { useAttackStore } from './stores/attackStore.js';
 import { useCoverStore } from './stores/coverStore.js';
 import { useCharacterStore } from './stores/characterStore.js';
@@ -336,6 +337,9 @@ export function loadAttackFor(intent: AttackIntent, target: string | AttackTarge
   const ref: AttackTargetRef =
     typeof target === 'string' ? { kind: 'token', tokenId: target } : target;
   const chat = useChatStore.getState();
+  // Poprzedni wybór Celowania schodzi razem z poprzednim ładunkiem kubka —
+  // także wtedy, gdy ten strzał odbije się od odmowy („cel za osłoną").
+  useAimMenuStore.getState().close();
   const preview = planAttackPreview(intent, ref);
   if (!preview.ok) {
     // „Cel za osłoną" is not a dead end — it is a question (stage 16c). The two
@@ -372,6 +376,32 @@ export function loadAttackFor(intent: AttackIntent, target: string | AttackTarge
     ),
     modifierTotal: preview.modifierTotal,
   });
+  // Celowanie przy kursorze (naprawa 31.08). Ta jedna linia obsługuje **każdą**
+  // drogę ataku, bo każda kończy się tutaj: kafel paska, „Atak" z karty, menu
+  // żetonu i karta odmowy z osłoną. Do 31.08 guziki Celowania wisiały wyłącznie
+  // na banerze uzbrojonego krzyżyka, więc dwie z tych dróg reguły nie znały.
+  if (mayAimShot(intent, ref)) {
+    useAimMenuStore.getState().open({
+      intent,
+      targetTokenId: ref.tokenId,
+      ...(intent.aimedAt ? { aimedAt: intent.aimedAt } : {}),
+    });
+  }
+}
+
+/**
+ * Czy w ten strzał wolno Celować (s. 170)?
+ *
+ * Pojedynczy strzał w figurę, i tyle: ogniem ciągłym Celować nie można
+ * („Strzelając ogniem ciągłym, nie można Celować", s. 173), a ładunek rzucony
+ * na kratkę i ostrzelana osłona nie mają głowy ani nogi. Reszta odmów należy
+ * do planera — okno tylko nie proponuje tego, czego reguła nie zna.
+ */
+export function mayAimShot(
+  intent: AttackIntent,
+  ref: AttackTargetRef,
+): ref is { kind: 'token'; tokenId: string } {
+  return ref.kind === 'token' && intent.mode === 'single';
 }
 
 /**
