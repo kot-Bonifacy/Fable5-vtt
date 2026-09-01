@@ -106,6 +106,12 @@ w komplecie** — z paska akcji strzela się także bagnetem i bronią podwiesza
 będzie.** Wolny został **jeden etap: 28** (wdrożenie na VPS). Dług oględzin: **21 pozycji**
 (`zaleglosci.md`) — dwie nowe z drugiej sesji 01.09, trzy zamknięte.
 
+**Czat ma filtry i tryb zwarty (01.09, trzecia sesja).** Cztery grupy (Rozmowy, Rzuty, Walka,
+Stół) plus „Zwarty"; nastawienie jest lokalne, w `localStorage`. **Nowy rodzaj wiersza czatu
+trzeba dopisać w dwóch czystych funkcjach w `shared/src/chat.ts`** — inaczej wpadnie do grupy
+„Stół" i nie da się go ścisnąć. Karta ataku **przestała pisać stan magazynka**; w starych
+wierszach zostaje, bo `detail` jest zapisany w bazie.
+
 **Dodatek do broni jest wierszem kompendium, nie gałęzią w kodzie.** `fit` niesie zdanie
 „Pasuje do:" z podręcznika, flagi niosą skutek, a `secondary` — **id typu broni**, z którego
 `resolveAttachmentWeapon` składa drugą broń. Planer podmienia broń **raz**; od tego miejsca każda
@@ -175,7 +181,7 @@ nieaktualne. Lista jest zapisem chwili, w której coś zauważono, a nie stanu r
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
 a od 30d pierwszym, przy którym **każda Rola w drużynie gra inaczej niż reszta**.
 
-**Testy na koniec ostatniej sesji:** 1703 w `shared`, 893 na serwerze, 67 u klienta — zielone.
+**Testy na koniec ostatniej sesji:** 1718 w `shared`, 893 na serwerze, 67 u klienta — zielone.
 ESLint i Prettier czyste na całym repo.
 
 ## Umowy kodu — indeks
@@ -197,6 +203,7 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 - **Kierunek patrzenia** — `Token.facing` to stan serwera i publiczna część żetonu (`token:facing`); czytelność, nie mechanika — żadna reguła CP RED tego nie czyta.
 - **Efekt mapy** — przycinany na serwerze per gniazdo (`trimMapFxForViewer` w `shared/src/fx.ts`), nie w `MapFxLayer`.
 - **Limity wgrywanego obrazu** — `shared/src/uploads.ts` (serwer re-eksportuje); odmowa zawsze z pełnym wymaganiem, `accept` i sprawdzenie przed wysyłką z tego samego miejsca.
+- **Nowy rodzaj wiersza czatu** — `chatCategoryOf` i `chatCompactLine` w `shared/src/chat.ts` (grupa filtra + jedna linia trybu zwartego); wiersz czekający na decyzję jest wyjęty spod filtra przez `isPending` w `ChatPanel`.
 - **Stan figury na żetonie** — ✕ tylko dla `dead`, reszta mówi ikoną; `fallbackConditionStatusId` dokłada naklejkę, gdy stan wynika z samych PW.
 - **Drugi pas zasięgu tury** — `TurnDistanceView.extra` (`{ label, max }`) wystawia system (`cpredRunMetres`), mapa maluje bursztyn i nie zna słowa „Bieg".
 - **Nowe pole typu broni** — dopisz je **razem** do `CpredWeaponTypeInput` i do białej listy `schema_fields` w `tools/import/parse-manual.py`; pominięta lista wycina pole po cichu (tak zginęły `explosive` i `ammoPatterns`).
@@ -359,6 +366,47 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 01.09 (trzecia) — filtry czatu, tryb zwarty i magazynek z karty ataku
+
+**Zlecenie MG:** nie etap — dwie zmiany na czacie. (1) Dało się chować rodzaje wierszy albo całe
+wiersze („same rozmowy"), a wiadomość ma nie zajmować sześciu linii. (2) Zdjąć z karty ataku
+stan magazynka, bo licznik naboi stoi już w panelu postaci i druga kopia tej samej liczby jest
+szumem.
+
+**Cztery decyzje MG przed kodem.** Filtry są **czterema grupami** (Rozmowy, Rzuty, Walka, Stół),
+nie przełącznikiem na każdy `ChatKind`. Tryb zwarty ściska **wyłącznie karty mechaniczne** do
+jednej linii — wypowiedzi zostają w całości, bo streszczenie rozmowy jest jej utratą. Wiersz
+odfiltrowany **nie znika**, tylko zwija się w klikalny separator „⋯ 4 ukryte wiersze ⋯". Ukryte
+zostaje ukryte tylko dla oka: nic nie zmienia się w tym, co przysyła serwer.
+
+**Gdzie to mieszka.** Podział na grupy i streszczenie jednej linii to **czyste funkcje w
+`shared/src/chat.ts`** (`chatCategoryOf`, `chatCompactLine`) z 20 testami — nie ma ich w
+komponencie, bo streszczenie wiersza jest dokładnie tak samo „logiką czatu", jak parser komend
+obok. Klient trzyma tylko nastawienie: `stores/chatFilterStore.ts`, `localStorage`, prywatne
+dla przeglądarki (wzorem głośności z 27d). `ChatPanel` składa z tego feed: widoczne wiersze
+pojedynczo, ukryte zbite w grupy.
+
+**Jedna zasada, która nie jest kosmetyką: filtr nie chowa pytań.** Propozycja bota bez
+odpowiedzi i notatka z przyciskami (16c: „cel za osłoną") są **wyjęte spod filtra** — to nie
+log, tylko decyzja czekająca na kliknięcie, a schowana pod separatorem zawiśnie w środku cudzej
+tury. Tak samo w trybie zwartym: nierozstrzygnięta propozycja renderuje się pełną kartą, bo
+zwarty wiersz nie ma przycisków.
+
+**Magazynek zdjęty z `attackDetail` (`realtime/attacks.ts`), nie z metadanych.** `ammoAfter`
+i `ammoMax` zostają na karcie — czyta je serwer (odmowa strzału pustą bronią) i planer tury
+bota; zniknęło samo dopisywanie „· magazynek 7/8" do linii pod „Trafienie"/„Pudło".
+**Wiersze sprzed zmiany zostają z tym tekstem** — `detail` jest zapisany w bazie razem
+z wiadomością i nie przelicza się przy odczycie.
+
+**Obejrzane w przeglądarce (MG, scena „Strzelnica"):** pasek filtrów, tryb zwarty na pełnym
+logu, wyłączenie grupy „Rzuty" (separatory z poprawną polską odmianą: 1 wiersz / 3 wiersze /
+8 wierszy), rozwinięcie grupy w miejscu, rozwinięcie pojedynczej karty klikiem i zwinięcie
+strzałką „▴", „Pokaż wszystko". Konsola czysta. Kontrast kolorów werdyktu w motywie dziennym
+zmierzony: 8,45 / 7,71 / 5,99 — z zapasem ponad WCAG AA.
+
+**Testy na koniec:** 1718 w `shared` (+15), 893 na serwerze, 67 u klienta — zielone. ESLint
+i Prettier czyste.
+
 ### Sesja 01.09 (druga) — pasek dodatków i domknięcie oględzin etapu 31
 
 **Zlecenie MG:** paczka **A + B** z listy zaległości — jedna naprawa kodu (broń podwieszana
@@ -412,69 +460,3 @@ się nie sprząta. **Uwaga do przyszłych oględzin ran krytycznych:** statysta 
 
 **Testy na koniec:** 1703 w `shared` (+8), 893 na serwerze, 67 u klienta — zielone. ESLint
 i Prettier czyste. Dług oględzin: **22 → 21 pozycji** (zamknięte trzy, dwie nowe).
-
-### Sesja 01.09 — etap 31: dodatki do broni
-
-**Zlecenie MG:** etap 31, wybrany z trzech wolnych. Trzy decyzje przed pierwszą linijką:
-podwieszana broń to **drugi tryb tego samego wiersza karty** (nie osobny wiersz broni), +1
-smartguna **sprawdza chrom na karcie** (nie jest ostrzeżeniem prozą), a dodatek bierze się
-**wprost z katalogu**, jak amunicja — bez księgowości w plecaku.
-
-**`attachmentSlots: 3` siedziało w danych od etapu 13 i nie miało czym się zapełnić.** Teraz
-dodatek jest **wierszem kompendium** (`AttachmentEntry`): `fit` niesie zdanie „Pasuje do:"
-z podręcznika, a flagi niosą skutek. Ta sama decyzja, co przy amunicji w 16g i ranach w 14e —
-MG wpisujący własny bagnet dostaje go egzekwowanego jak drukowany, a kod walki nigdy nie uczy się
-słowa „bagnet".
-
-**Trzy z ośmiu dodatków robią z jednej broni dwie — i to okazało się najtańszą częścią etapu.**
-`secondary` niesie **id typu broni**, nie kopię jego liczb, a `resolveAttachmentWeapon` składa
-z niego pełną broń. Planer podmienia broń **jedną linijką**, i od tego miejsca w dół działa każda
-reguła: bagnet nie sięga dalej niż 2 m, bo jest bronią białą; tnie przez połowę pancerza, bo
-Lekka broń biała ma tę flagę; granatnik podwieszany rzuca 6k6 na obszar 10×10 m, bo Granatnik ma
-`explosive`. Żadnej z tych reguł nikt nie pisał drugi raz.
-
-**Trzy rzeczy, których plan nie przewidział.** (1) **Kolumny magazynków siedzą na typie broni**,
-nie na dodatku — tabela z s. 344 czyta się bronią, więc „bębnowy" znaczy 50 dla PM-a i 16 dla
-strzelby. (2) **Broń podwieszana potrzebuje własnego magazynka na karcie** (`attachmentAmmo`),
-inaczej jeden granat kosztowałby dwadzieścia pięć naboi karabinowych. (3) **`attachmentIds` jedzie
-zwykłą łatą karty**, więc reguły montażu musiały stanąć po stronie **odczytu** — gracz może tam
-wpisać trzy bębny, a `fittedAttachmentsFor` po prostu nie da mu nic ponad to, co dałoby się
-zamontować. Sprawdzanie przy zapisie trzeba by powtórzyć w każdej ścieżce piszącej kartę.
-
-**Kryterium ukończenia etapu było błędne i zostało poprawione.** „Złącze smartguna zmienia
-zachowanie naboju inteligentnego z 16h" stało na pomyłce: podręcznik wiąże amunicję inteligentną
-z **Celownikiem optycznym** (s. 347), a złącze ze **Złączami interfejsu / uchwytem podskórnym**
-(s. 344) — dwa niezależne tory. Po przedstawieniu tego MG wybrał domknięcie prawdziwej luki obok:
-`hasRequiredCyberware` obsługuje **oba** tory, a nabój inteligentny od tej sesji **nie wystrzeli**
-bez Celownika optycznego (`AMMO_NEEDS_CYBERWARE`). Do 16h była to proza, bo modelu chromu jeszcze
-nie było — przyszedł w 23a. Zapłaciła za to jedna asercja w `ammo-effects.test.ts` (pułapka
-zapisana).
-
-**Parser dostał sekcję dodatków i tabelę magazynków — obie kosztowały po jednym błędzie.**
-Nazwa dodatku pada w sekcji **trzy razy** (tabelka cen, nagłówek WERSALIKAMI, proza sąsiada);
-branie pierwszego wystąpienia gubiło opisy, branie ostatniego **gubiło cenę złącza smartguna**.
-Wersaliki są jedyną formą, która znaczy „tu zaczyna się opis". W tabeli magazynków trzy liczby są
-zlepione w jedną („Ciężki pistolet 81428"), ale wiersz jest **zakotwiczony** magazynkiem z tabeli
-broni — reszta ma dokładnie jeden podział zgodny z porządkiem kolumn. Wszystkie dziesięć wierszy
-zgadza się z podręcznikiem; import kończy się dwoma ostrzeżeniami, oba sprzed tej sesji.
-
-**Odklikane w przeglądarce (Strzelnica, sesja MG):** gniazda przy wierszu broni (□□□ → ■■■),
-montaż bębna z magazynkiem rosnącym **30 → 50 na karcie**, znikanie drugiego magazynka z listy,
-bagnet i granatnik podwieszany jako wiersze `↳` z własnym magazynkiem 1/1, strzał z podwieszanego
-granatnika (**6k6 · obszar 10×10 m · PT 15 z tabeli Granatnika · Broń ciężka zamiast Broni długiej
-· magazynek karabinu nietknięty 25/25**) oraz +1 smartguna, którego **nie było** przed
-wszczepieniem Uchwytu podskórnego i **jest** po nim.
-
-**Znaleziona luka, której zakres etapu nie obejmował:** `cpredHotbarSlots` buduje sloty
-z `sheet.weapons`, więc z bagnetu i broni podwieszanej strzela się **wyłącznie z karty** —
-pasek nad mapą ich nie zna. To ta sama brakująca druga droga, którą 31.08 dostało Celowanie.
-Zapisane jako zaległość, nie naprawiane w tej sesji.
-
-**Stan poligonu:** karta **avatar9** zmieniona świadomie i opisana w `poligon.md` — SMG z bębnem
-i złączem smartguna (magazynek 50), **nowy wiersz „Militech Dragon"** z bagnetem i granatnikiem
-podwieszanym, wszczepiony **Uchwyt podskórny** (Człowieczeństwo 28 → 26, maks. 42 → 40). To jest
-komplet potrzebny do trzech nieoglądanych pozycji etapu — nie kasuj go.
-
-**Testy na koniec:** 1695 w `shared` (+32), 893 na serwerze (+9), 67 u klienta — zielone.
-ESLint i Prettier czyste, `pnpm -r build` przechodzi. Dług oględzin: **21 → 23 pozycje**
-(dwie nowe, żadna nie zamknięta).

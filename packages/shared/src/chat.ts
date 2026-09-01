@@ -409,3 +409,200 @@ export function parseChatInput(raw: string, knownNames: string[] = []): ParsedCh
 
   return { kind: 'unknown-command', command };
 }
+
+/**
+ * Cztery grupy, na jakie dzieli się feed czatu przy filtrowaniu (01.09.2026).
+ *
+ * Podział jest po **tym, po co się na wiersz patrzy**, a nie po `kind`: stół
+ * czyta rozmowę, sprawdza rzut, rozlicza walkę albo zagląda w papiery. Dlatego
+ * szept siedzi w jednej grupie z mową (to nadal rozmowa), a odmowa akcji
+ * z obrażeniami (to nadal walka), choć w każdej z tych par `kind` są dwa.
+ */
+export type ChatCategory = 'talk' | 'dice' | 'combat' | 'table';
+
+/** Grupa, do której należy wiersz danego rodzaju. */
+export function chatCategoryOf(kind: ChatKind): ChatCategory {
+  switch (kind) {
+    case 'say':
+    case 'whisper':
+      return 'talk';
+    case 'roll':
+    case 'gmroll':
+      return 'dice';
+    case 'damage':
+    case 'action':
+    case 'gmaction':
+      return 'combat';
+    case 'proposal':
+    case 'economy':
+    case 'handout':
+    case 'journal':
+      return 'table';
+  }
+}
+
+/**
+ * Wiersz czatu ściśnięty do jednej linii (tryb zwarty, 01.09.2026).
+ *
+ * `null` znaczy „ten wiersz zostaje w całości" — wypowiedzi się nie streszcza,
+ * bo streszczenie rozmowy jest jej utratą. Ściska się wyłącznie mechanikę,
+ * której karta ma sześć linii, a pamięta się z niej jedną liczbę.
+ */
+export interface ChatCompactLine {
+  /** Kto — postać, cel ciosu albo tytuł karty. */
+  actor: string;
+  /** Jedno zdanie: co padło i z jakim skutkiem. */
+  summary: string;
+  /** Zabarwienie, gdy karta niesie werdykt — zwarty wiersz ma go nie gubić. */
+  tone?: 'success' | 'failure' | 'warn';
+}
+
+/** „Trafienie", „Pudło" albo „Ogień zaporowy" — werdykt ataku jednym słowem. */
+function attackVerdict(hit: boolean | undefined): { text: string; tone: 'success' | 'failure' } {
+  if (hit === undefined) return { text: 'Ogień zaporowy', tone: 'success' };
+  return hit ? { text: 'Trafienie', tone: 'success' } : { text: 'Pudło', tone: 'failure' };
+}
+
+function compactRoll(message: ChatMessageView): ChatCompactLine | null {
+  const roll = message.roll;
+  if (!roll) return null;
+  const head = roll.title ?? roll.notation;
+  const parts: string[] = [
+    roll.title || !message.text
+      ? `${head} · ${roll.total}`
+      : `${head} · ${roll.total} — ${message.text}`,
+  ];
+  let tone: ChatCompactLine['tone'];
+  if (roll.attack) {
+    const verdict = attackVerdict(roll.attack.hit);
+    parts.push(verdict.text, roll.attack.detail);
+    tone = verdict.tone;
+  } else if (roll.opposed) {
+    // Remis jest własnym wynikiem tylko tam, gdzie zasady go znają (Konfrontacja,
+    // etap 23c); wszędzie indziej `won` niesie całą odpowiedź.
+    const opposed = roll.opposed;
+    const verdict =
+      opposed.outcome === 'tie'
+        ? 'remis'
+        : (opposed.outcome ? opposed.outcome === 'win' : opposed.won)
+          ? 'wygrana'
+          : 'przegrana';
+    parts.push(verdict, opposed.detail);
+    tone = verdict === 'remis' ? 'warn' : verdict === 'wygrana' ? 'success' : 'failure';
+  }
+  if (roll.outcome) {
+    parts.push(
+      roll.outcome.detail ? `${roll.outcome.label} · ${roll.outcome.detail}` : roll.outcome.label,
+    );
+    tone ??= roll.outcome.success ? 'success' : 'failure';
+  }
+  if (roll.critical?.type === 'crit') parts.push('Krytyk!');
+  if (roll.critical?.type === 'fumble' && !roll.critical.ignored) parts.push('Fumble!');
+  if (roll.criticalDamage) parts.push('Rana krytyczna!');
+  return {
+    actor: roll.actor ?? message.authorName,
+    summary: parts.filter((part) => part.length > 0).join(' · '),
+    ...(tone ? { tone } : {}),
+  };
+}
+
+function compactDamage(entry: DamageLogEntry): ChatCompactLine {
+  const stopped = entry.damageThrough === 0 && entry.bonusDamage === 0;
+  const parts: string[] = [entry.locationLabel];
+  if (stopped) {
+    parts.push(`pancerz zatrzymał cios (${entry.damageRolled} obr.)`);
+  } else {
+    // PW bezwzględne dostaje tylko ten, komu serwer je przysłał — zwarty wiersz
+    // niczego nie odsłania, bo czyta dokładnie to samo pole co pełna karta.
+    parts.push(
+      entry.hp ? `−${entry.hpLost} PW (${entry.hp.after}/${entry.hp.max})` : `−${entry.hpLost} PW`,
+    );
+  }
+  if (entry.woundLabel) parts.push(entry.woundLabel);
+  const injury = entry.injury ?? entry.injuryAimed ?? entry.injuryExtra;
+  if (injury) parts.push(injury.name);
+  if (entry.undone) parts.push('cofnięte');
+  return {
+    actor: entry.targetName,
+    summary: parts.join(' · '),
+    tone: entry.undone ? 'warn' : stopped ? 'success' : 'failure',
+  };
+}
+
+function compactAction(entry: CombatActionLogEntry): ChatCompactLine {
+  const parts: string[] = [entry.actionName];
+  if (entry.note) parts.push(entry.note);
+  if (entry.overspent) parts.push('poza budżetem tury');
+  if (entry.refusal) parts.push(`odmowa: ${entry.refusal.message}`);
+  if (entry.passed) parts.push('przepuszczone przez MG');
+  return {
+    actor: entry.actorName,
+    summary: parts.join(' · '),
+    ...(entry.refusal && !entry.passed ? { tone: 'failure' as const } : {}),
+  };
+}
+
+function compactProposal(proposal: BotActionProposal): ChatCompactLine {
+  const parts: string[] = [
+    proposal.combat ? proposal.combat.summary : `Chce rzucić: ${proposal.optionLabel}`,
+  ];
+  if (proposal.resolution === 'approved') parts.push('zatwierdzone');
+  if (proposal.resolution === 'rejected') parts.push('odrzucone');
+  return {
+    actor: proposal.botName,
+    summary: parts.join(' · '),
+    ...(proposal.resolution === 'rejected' ? { tone: 'failure' as const } : {}),
+  };
+}
+
+function compactEconomy(entry: EconomyLogEntry): ChatCompactLine {
+  const first = entry.summary ?? entry.lines[0] ?? '';
+  const rest = entry.summary ? entry.lines.length : Math.max(entry.lines.length - 1, 0);
+  return {
+    actor: entry.title,
+    summary: rest > 0 ? `${first} · +${rest} poz.` : first,
+  };
+}
+
+/**
+ * Ściska wiersz do jednej linii albo mówi „zostaw go w spokoju" (`null`).
+ *
+ * Funkcja **niczego nie ukrywa i niczego nie dopowiada**: czyta wyłącznie pola,
+ * które i tak są w wiadomości, więc na cudzym ekranie ściska dokładnie to, co
+ * serwer temu ekranowi przysłał (redakcja jest po stronie serwera, etap 15).
+ */
+export function chatCompactLine(message: ChatMessageView): ChatCompactLine | null {
+  switch (message.kind) {
+    case 'say':
+    case 'whisper':
+      return null;
+    case 'roll':
+    case 'gmroll':
+      return compactRoll(message);
+    case 'damage':
+      return message.damage ? compactDamage(message.damage) : null;
+    case 'action':
+    case 'gmaction':
+      return message.action ? compactAction(message.action) : null;
+    case 'proposal':
+      return message.proposal ? compactProposal(message.proposal) : null;
+    case 'economy':
+      return message.economy ? compactEconomy(message.economy) : null;
+    case 'handout':
+      return message.handout
+        ? {
+            actor: message.handout.kind === 'screamsheet' ? 'Screamsheet' : 'Handout',
+            summary: message.recipientName
+              ? `${message.handout.title} — do ${message.recipientName}`
+              : message.handout.title,
+          }
+        : null;
+    case 'journal':
+      return message.journal
+        ? {
+            actor: 'Wpis w dzienniku',
+            summary: `${message.journal.title} · sesja z ${message.journal.sessionDate}`,
+          }
+        : null;
+  }
+}

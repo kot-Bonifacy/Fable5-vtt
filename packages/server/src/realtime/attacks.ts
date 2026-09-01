@@ -446,7 +446,7 @@ async function spendAttackCosts(
   await emitTokensOfCharacter(deps, campaignId, saved);
 }
 
-/** „24 m (13–25 m) · PT 15 · magazynek 7/8" — the card's explanation line. */
+/** „24 m (13–25 m) · PT 15" — the card's explanation line. */
 function attackDetail(meta: CpredAttackMeta): string {
   const parts: string[] = [];
   if (!meta.melee) {
@@ -473,13 +473,11 @@ function attackDetail(meta: CpredAttackMeta): string {
   // because „Nie ma cech specjalnych" is not worth a line on every card.
   if (meta.ammo) parts.push(`nabój: ${meta.ammo.name}`);
   if (meta.mode !== 'single') parts.push(meta.modeLabel);
-  if (meta.ammoCost > 0) {
-    // Capacity, not „what was in there a moment ago" — the two agree only while
-    // the weapon started the shot full, which is why a single shot looked right
-    // and a ten-round burst printed „29/39" on a forty-round magazine.
-    const capacity = meta.ammoMax ?? meta.ammoCost + meta.ammoAfter;
-    parts.push(`magazynek ${meta.ammoAfter}/${capacity}`);
-  }
+  // Stan magazynka celowo NIE trafia na kartę (decyzja MG z 01.09.2026): licznik
+  // naboi stoi w panelu postaci przy broni i odświeża się tym samym strzałem, a
+  // druga kopia tej samej liczby na końcu każdej linii ataku była szumem.
+  // `meta.ammoAfter` i `meta.ammoMax` zostają w metadanych — czyta je serwer
+  // (odmowa strzału pustą bronią) i bot planujący turę.
   return parts.join(' · ');
 }
 

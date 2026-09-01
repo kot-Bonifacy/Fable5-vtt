@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { parseChatInput } from './chat.js';
+import { chatCategoryOf, chatCompactLine, parseChatInput } from './chat.js';
+import type { ChatMessageView } from './chat.js';
+import type { RollResult } from './dice.js';
 
 const ROSTER = ['MG', 'Rogue', 'Jan Kowalski', 'Jan'];
 
@@ -201,5 +203,219 @@ describe('parseChatInput — unknown commands', () => {
 
   it('flags a lone slash as unknown', () => {
     expect(parseChatInput('/', ROSTER)).toEqual({ kind: 'unknown-command', command: '' });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Filtry i tryb zwarty (01.09.2026)
+// ---------------------------------------------------------------------------
+
+function baseMessage(patch: Partial<ChatMessageView>): ChatMessageView {
+  return {
+    id: 1,
+    kind: 'say',
+    authorId: 'u1',
+    authorName: 'Rico',
+    text: '',
+    createdAt: '2026-09-01T20:00:00.000Z',
+    ...patch,
+  };
+}
+
+function roll(patch: Partial<RollResult>): RollResult {
+  return {
+    notation: '1d10+7',
+    terms: [{ kind: 'dice', sign: 1, sides: 10, count: 1, rolls: [7], subtotal: 7 }],
+    criticalDamage: false,
+    total: 14,
+    ...patch,
+  };
+}
+
+describe('chatCategoryOf', () => {
+  it('trzyma mowę i szept w jednej grupie', () => {
+    expect(chatCategoryOf('say')).toBe('talk');
+    expect(chatCategoryOf('whisper')).toBe('talk');
+  });
+
+  it('trzyma rzut MG razem z rzutem jawnym', () => {
+    expect(chatCategoryOf('roll')).toBe('dice');
+    expect(chatCategoryOf('gmroll')).toBe('dice');
+  });
+
+  it('trzyma odmowę akcji razem z obrażeniami', () => {
+    expect(chatCategoryOf('damage')).toBe('combat');
+    expect(chatCategoryOf('action')).toBe('combat');
+    expect(chatCategoryOf('gmaction')).toBe('combat');
+  });
+
+  it('zbiera papiery stołu w jednej grupie', () => {
+    expect(chatCategoryOf('proposal')).toBe('table');
+    expect(chatCategoryOf('economy')).toBe('table');
+    expect(chatCategoryOf('handout')).toBe('table');
+    expect(chatCategoryOf('journal')).toBe('table');
+  });
+});
+
+describe('chatCompactLine', () => {
+  it('zostawia wypowiedzi w spokoju', () => {
+    expect(chatCompactLine(baseMessage({ kind: 'say', text: 'Nie ruszaj się.' }))).toBeNull();
+    expect(chatCompactLine(baseMessage({ kind: 'whisper', text: 'wchodzę' }))).toBeNull();
+  });
+
+  it('mówi imieniem postaci, nie konta, gdy rzut wyszedł z karty', () => {
+    const line = chatCompactLine(
+      baseMessage({ kind: 'roll', roll: roll({ title: 'Percepcja (INT)', actor: 'Vex' }) }),
+    );
+    expect(line?.actor).toBe('Vex');
+    expect(line?.summary).toBe('Percepcja (INT) · 14');
+  });
+
+  it('bierze etykietę komendy, gdy rzut nie ma tytułu', () => {
+    const line = chatCompactLine(
+      baseMessage({ kind: 'roll', text: 'atak z bliska', roll: roll({}) }),
+    );
+    expect(line?.summary).toBe('1d10+7 · 14 — atak z bliska');
+  });
+
+  it('niesie werdykt ataku i linię wyjaśnienia', () => {
+    const line = chatCompactLine(
+      baseMessage({
+        kind: 'roll',
+        roll: roll({
+          title: 'Atak: Ciężki pistolet',
+          attack: {
+            system: {},
+            label: 'Rico → Ganger',
+            detail: '24 m (13–25 m) · PT 15',
+            hit: true,
+          },
+        }),
+      }),
+    );
+    expect(line?.summary).toBe('Atak: Ciężki pistolet · 14 · Trafienie · 24 m (13–25 m) · PT 15');
+    expect(line?.tone).toBe('success');
+  });
+
+  it('nazywa pudło pudłem', () => {
+    const line = chatCompactLine(
+      baseMessage({
+        kind: 'roll',
+        roll: roll({ attack: { system: {}, label: 'x', detail: 'PT 20', hit: false } }),
+      }),
+    );
+    expect(line?.summary).toContain('Pudło');
+    expect(line?.tone).toBe('failure');
+  });
+
+  it('nie gubi krytyka ani fumbla', () => {
+    const crit = chatCompactLine(
+      baseMessage({ kind: 'roll', roll: roll({ critical: { type: 'crit', extraRoll: 6 } }) }),
+    );
+    expect(crit?.summary).toContain('Krytyk!');
+    const shrugged = chatCompactLine(
+      baseMessage({
+        kind: 'roll',
+        roll: roll({ critical: { type: 'fumble', extraRoll: 3, ignored: true } }),
+      }),
+    );
+    expect(shrugged?.summary).not.toContain('Fumble!');
+  });
+
+  it('streszcza obrażenia celem, miejscem i utratą PW', () => {
+    const line = chatCompactLine(
+      baseMessage({
+        kind: 'damage',
+        damage: {
+          targetName: 'Ganger',
+          location: 'head',
+          locationLabel: 'głowa',
+          damageRolled: 12,
+          armorSp: 4,
+          damageThrough: 16,
+          doubled: true,
+          bonusDamage: 0,
+          hpLost: 16,
+          hp: { before: 40, after: 24, max: 40 },
+          woundLabel: 'Poważnie ranny',
+        },
+      }),
+    );
+    expect(line).toEqual({
+      actor: 'Ganger',
+      summary: 'głowa · −16 PW (24/40) · Poważnie ranny',
+      tone: 'failure',
+    });
+  });
+
+  it('nie zmyśla PW, gdy serwer ich nie przysłał', () => {
+    const line = chatCompactLine(
+      baseMessage({
+        kind: 'damage',
+        damage: {
+          targetName: 'Ganger',
+          location: 'body',
+          locationLabel: 'korpus',
+          damageRolled: 9,
+          armorSp: 0,
+          damageThrough: 9,
+          doubled: false,
+          bonusDamage: 0,
+          hpLost: 9,
+        },
+      }),
+    );
+    expect(line?.summary).toBe('korpus · −9 PW');
+  });
+
+  it('mówi wprost, że pancerz zatrzymał cios', () => {
+    const line = chatCompactLine(
+      baseMessage({
+        kind: 'damage',
+        damage: {
+          targetName: 'Ganger',
+          location: 'body',
+          locationLabel: 'korpus',
+          damageRolled: 5,
+          armorSp: 11,
+          damageThrough: 0,
+          doubled: false,
+          bonusDamage: 0,
+          hpLost: 0,
+        },
+      }),
+    );
+    expect(line?.summary).toContain('pancerz zatrzymał cios (5 obr.)');
+    expect(line?.tone).toBe('success');
+  });
+
+  it('niesie odmowę akcji razem z jej powodem', () => {
+    const line = chatCompactLine(
+      baseMessage({
+        kind: 'gmaction',
+        action: {
+          combatantId: 'c1',
+          actorName: 'Rico',
+          actionId: 'reload',
+          actionName: 'Przeładowanie',
+          refusal: { code: 'NO_ACTION', message: 'Akcja już zużyta' },
+        },
+      }),
+    );
+    expect(line).toEqual({
+      actor: 'Rico',
+      summary: 'Przeładowanie · odmowa: Akcja już zużyta',
+      tone: 'failure',
+    });
+  });
+
+  it('liczy pozostałe wiersze rozliczenia zamiast je sklejać', () => {
+    const line = chatCompactLine(
+      baseMessage({
+        kind: 'economy',
+        economy: { title: 'Zakup', lines: ['a', 'b', 'c'] },
+      }),
+    );
+    expect(line).toEqual({ actor: 'Zakup', summary: 'a · +2 poz.' });
   });
 });

@@ -814,6 +814,199 @@ body {
   min-width: 0;
 }
 
+/* --- Filtry czatu i tryb zwarty (01.09.2026) --- */
+
+.chat-panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem 0.6rem;
+}
+
+.chat-panel-head .panel-section-title {
+  margin-right: auto;
+}
+
+.chat-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+/* Wyłączona grupa zostaje czytelna, tylko wygaszona: pasek ma mówić, czego na
+   ekranie NIE ma — schowany przełącznik byłby filtrem, o którym się zapomina. */
+.chat-filter {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 0.72rem;
+  line-height: 1.65;
+  padding: 0 0.5rem;
+  cursor: pointer;
+  opacity: 0.55;
+}
+
+.chat-filter:hover {
+  border-color: var(--border-strong);
+  opacity: 0.85;
+}
+
+.chat-filter--on {
+  border-color: rgb(var(--accent-rgb) / 55%);
+  background: rgb(var(--accent-rgb) / 12%);
+  color: var(--text);
+  opacity: 1;
+}
+
+.chat-filter--reset {
+  color: var(--info);
+  opacity: 1;
+}
+
+/* Ukryte wiersze zwijają się w kreskę z licznikiem — klik rozwija je w miejscu,
+   bez ruszania samego filtra. */
+.chat-hidden-run {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.chat-hidden-toggle {
+  border: 0;
+  border-top: 1px dashed var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 0.72rem;
+  padding: 0.15rem 0;
+  text-align: center;
+  cursor: pointer;
+}
+
+.chat-hidden-toggle:hover {
+  color: var(--text);
+  border-top-color: var(--border-strong);
+}
+
+.chat-feed--compact {
+  gap: 0.15rem;
+}
+
+.chat-compact-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  width: 100%;
+  border: 0;
+  border-left: 2px solid transparent;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.85rem;
+  line-height: 1.35;
+  text-align: left;
+  padding: 0.05rem 0.2rem;
+  cursor: pointer;
+  /* Wiersz jest przyciskiem, ale nadal ma się dać zaznaczyć i skopiować. */
+  user-select: text;
+}
+
+.chat-compact-row:hover {
+  background: var(--veil-faint);
+}
+
+.chat-compact-row .chat-message-time {
+  margin-left: 0;
+  flex: none;
+}
+
+.chat-compact-row .chat-message-author {
+  flex: none;
+  white-space: nowrap;
+}
+
+.chat-compact-row .chat-portrait {
+  width: 1rem;
+  height: 1rem;
+  align-self: baseline;
+}
+
+.chat-compact-text,
+.chat-compact-summary {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.chat-compact-text {
+  white-space: pre-wrap;
+}
+
+/* Kolor przy lewej krawędzi zastępuje kartę: po nim widać rodzaj wiersza,
+   zanim się go przeczyta. */
+.chat-compact-row--dice {
+  border-left-color: rgb(var(--accent-rgb) / 45%);
+}
+
+.chat-compact-row--combat {
+  border-left-color: rgb(var(--hurt-rgb) / 55%);
+}
+
+.chat-compact-row--table {
+  border-left-color: rgb(var(--neutral-rgb) / 45%);
+}
+
+.chat-compact-row--talk.chat-message--whisper {
+  border-left-color: var(--whisper);
+}
+
+.chat-compact-row--talk.chat-message--whisper .chat-compact-text {
+  color: var(--whisper);
+  font-style: italic;
+}
+
+.chat-compact-summary--success {
+  color: var(--ok-ink);
+}
+
+.chat-compact-summary--failure {
+  color: var(--err-ink);
+}
+
+.chat-compact-summary--warn {
+  color: var(--warn);
+}
+
+/* Karta rozwinięta mimo trybu zwartego. Miejsce po prawej jest zarezerwowane,
+   żeby strzałka „zwiń" nie usiadła na godzinie ani na przycisku „Cofnij". */
+.chat-expanded {
+  position: relative;
+  padding-right: 1.4rem;
+}
+
+.chat-collapse {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-panel);
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 0.7rem;
+  line-height: 1;
+  padding: 0.15rem 0.3rem;
+  cursor: pointer;
+}
+
+.chat-collapse:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
 /* Stan pusty listy (etap 27f): zdanie i — gdy jest sensowny — pierwszy krok.
    Wyśrodkowanie jest celowe: pustka pośrodku panelu czyta się jak komunikat,
    pustka dosunięta do lewej jak zapomniany wiersz listy. */

@@ -7,6 +7,72 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 01.09 — etap 31: dodatki do broni
+
+**Zlecenie MG:** etap 31, wybrany z trzech wolnych. Trzy decyzje przed pierwszą linijką:
+podwieszana broń to **drugi tryb tego samego wiersza karty** (nie osobny wiersz broni), +1
+smartguna **sprawdza chrom na karcie** (nie jest ostrzeżeniem prozą), a dodatek bierze się
+**wprost z katalogu**, jak amunicja — bez księgowości w plecaku.
+
+**`attachmentSlots: 3` siedziało w danych od etapu 13 i nie miało czym się zapełnić.** Teraz
+dodatek jest **wierszem kompendium** (`AttachmentEntry`): `fit` niesie zdanie „Pasuje do:"
+z podręcznika, a flagi niosą skutek. Ta sama decyzja, co przy amunicji w 16g i ranach w 14e —
+MG wpisujący własny bagnet dostaje go egzekwowanego jak drukowany, a kod walki nigdy nie uczy się
+słowa „bagnet".
+
+**Trzy z ośmiu dodatków robią z jednej broni dwie — i to okazało się najtańszą częścią etapu.**
+`secondary` niesie **id typu broni**, nie kopię jego liczb, a `resolveAttachmentWeapon` składa
+z niego pełną broń. Planer podmienia broń **jedną linijką**, i od tego miejsca w dół działa każda
+reguła: bagnet nie sięga dalej niż 2 m, bo jest bronią białą; tnie przez połowę pancerza, bo
+Lekka broń biała ma tę flagę; granatnik podwieszany rzuca 6k6 na obszar 10×10 m, bo Granatnik ma
+`explosive`. Żadnej z tych reguł nikt nie pisał drugi raz.
+
+**Trzy rzeczy, których plan nie przewidział.** (1) **Kolumny magazynków siedzą na typie broni**,
+nie na dodatku — tabela z s. 344 czyta się bronią, więc „bębnowy" znaczy 50 dla PM-a i 16 dla
+strzelby. (2) **Broń podwieszana potrzebuje własnego magazynka na karcie** (`attachmentAmmo`),
+inaczej jeden granat kosztowałby dwadzieścia pięć naboi karabinowych. (3) **`attachmentIds` jedzie
+zwykłą łatą karty**, więc reguły montażu musiały stanąć po stronie **odczytu** — gracz może tam
+wpisać trzy bębny, a `fittedAttachmentsFor` po prostu nie da mu nic ponad to, co dałoby się
+zamontować. Sprawdzanie przy zapisie trzeba by powtórzyć w każdej ścieżce piszącej kartę.
+
+**Kryterium ukończenia etapu było błędne i zostało poprawione.** „Złącze smartguna zmienia
+zachowanie naboju inteligentnego z 16h" stało na pomyłce: podręcznik wiąże amunicję inteligentną
+z **Celownikiem optycznym** (s. 347), a złącze ze **Złączami interfejsu / uchwytem podskórnym**
+(s. 344) — dwa niezależne tory. Po przedstawieniu tego MG wybrał domknięcie prawdziwej luki obok:
+`hasRequiredCyberware` obsługuje **oba** tory, a nabój inteligentny od tej sesji **nie wystrzeli**
+bez Celownika optycznego (`AMMO_NEEDS_CYBERWARE`). Do 16h była to proza, bo modelu chromu jeszcze
+nie było — przyszedł w 23a. Zapłaciła za to jedna asercja w `ammo-effects.test.ts` (pułapka
+zapisana).
+
+**Parser dostał sekcję dodatków i tabelę magazynków — obie kosztowały po jednym błędzie.**
+Nazwa dodatku pada w sekcji **trzy razy** (tabelka cen, nagłówek WERSALIKAMI, proza sąsiada);
+branie pierwszego wystąpienia gubiło opisy, branie ostatniego **gubiło cenę złącza smartguna**.
+Wersaliki są jedyną formą, która znaczy „tu zaczyna się opis". W tabeli magazynków trzy liczby są
+zlepione w jedną („Ciężki pistolet 81428"), ale wiersz jest **zakotwiczony** magazynkiem z tabeli
+broni — reszta ma dokładnie jeden podział zgodny z porządkiem kolumn. Wszystkie dziesięć wierszy
+zgadza się z podręcznikiem; import kończy się dwoma ostrzeżeniami, oba sprzed tej sesji.
+
+**Odklikane w przeglądarce (Strzelnica, sesja MG):** gniazda przy wierszu broni (□□□ → ■■■),
+montaż bębna z magazynkiem rosnącym **30 → 50 na karcie**, znikanie drugiego magazynka z listy,
+bagnet i granatnik podwieszany jako wiersze `↳` z własnym magazynkiem 1/1, strzał z podwieszanego
+granatnika (**6k6 · obszar 10×10 m · PT 15 z tabeli Granatnika · Broń ciężka zamiast Broni długiej
+· magazynek karabinu nietknięty 25/25**) oraz +1 smartguna, którego **nie było** przed
+wszczepieniem Uchwytu podskórnego i **jest** po nim.
+
+**Znaleziona luka, której zakres etapu nie obejmował:** `cpredHotbarSlots` buduje sloty
+z `sheet.weapons`, więc z bagnetu i broni podwieszanej strzela się **wyłącznie z karty** —
+pasek nad mapą ich nie zna. To ta sama brakująca druga droga, którą 31.08 dostało Celowanie.
+Zapisane jako zaległość, nie naprawiane w tej sesji.
+
+**Stan poligonu:** karta **avatar9** zmieniona świadomie i opisana w `poligon.md` — SMG z bębnem
+i złączem smartguna (magazynek 50), **nowy wiersz „Militech Dragon"** z bagnetem i granatnikiem
+podwieszanym, wszczepiony **Uchwyt podskórny** (Człowieczeństwo 28 → 26, maks. 42 → 40). To jest
+komplet potrzebny do trzech nieoglądanych pozycji etapu — nie kasuj go.
+
+**Testy na koniec:** 1695 w `shared` (+32), 893 na serwerze (+9), 67 u klienta — zielone.
+ESLint i Prettier czyste, `pnpm -r build` przechodzi. Dług oględzin: **21 → 23 pozycje**
+(dwie nowe, żadna nie zamknięta).
+
 ### Sesja 31.08 (druga) — zaległości: pasek figury bez karty
 
 **Zlecenie MG:** wybór z listy zaległości; padło na **pakiet A** — trzy pozycje z jednego obszaru,
