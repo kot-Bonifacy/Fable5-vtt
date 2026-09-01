@@ -479,6 +479,7 @@ export function CombatHud() {
       tokenId: token.id,
       slotId: slot.id,
       weaponRowId: slot.weaponRowId,
+      attachmentId: slot.attachmentId,
       mode: slot.mode,
       name: slot.modeLabel ? `${slot.label} — ${slot.modeLabel}` : slot.label,
       melee: slot.melee,
@@ -652,7 +653,7 @@ export function CombatHud() {
                   if (group.kind !== 'weapon') return null;
                   const slot = cpredWeaponModeSlot(
                     group,
-                    fireModes[fireModeKey(token.id, group.weaponRowId)],
+                    fireModes[fireModeKey(token.id, group.id)],
                   );
                   return (
                     <div key={group.id} className="hud-slot-stack">

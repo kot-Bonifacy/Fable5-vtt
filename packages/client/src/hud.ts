@@ -18,6 +18,7 @@ import {
   ROLE_GM,
   combatProfileRollableSkills,
   combatProfileSkillLevel,
+  attachmentProfilesOf,
   cpredHotbarGroups,
   cpredRoleAbilityRank,
   CPRED_ACTION_BACKUP,
@@ -290,6 +291,13 @@ export function hudContextFor(tokenId: string | null): HudContext {
       const entry = compendium.entries[ammoId];
       return entry && isAmmoEntry(entry) ? toAmmoProfile(entry) : null;
     },
+    // Etap 31 (uzupełnienie 01.09): pasek widzi też broń przykręconą do wiersza
+    // — bagnet i granatnik podwieszany były do tej pory osiągalne wyłącznie
+    // z karty postaci, więc gracz prowadzący figurę paskiem nie miał czym dźgnąć.
+    attachments: {
+      catalogue: attachmentProfilesOf(Object.values(compendium.entries)),
+      weaponTypeById,
+    },
     statuses: token.statuses,
     turn: turn
       ? {
@@ -536,6 +544,7 @@ export function activateSlot(slot: CpredHotbarSlot, tokenId: string): void {
       tokenId,
       slotId: slot.id,
       weaponRowId: slot.weaponRowId,
+      attachmentId: slot.attachmentId,
       mode: slot.mode,
       // The mode is part of what is „in hand": a burst and a single shot from
       // the same gun are two different things to be holding.
@@ -560,8 +569,12 @@ export function activateSlot(slot: CpredHotbarSlot, tokenId: string): void {
     const token = useTokenStore.getState().tokens[tokenId];
     // A sheet is addressed by its character, a statist by its token (29.08) —
     // the server picks the arm from which of the two arrives.
-    if (token?.characterId) reloadWeapon(token.characterId, slot.weaponRowId);
-    else reloadWeapon(undefined, slot.weaponRowId, undefined, tokenId);
+    // Magazynek broni podwieszanej jest jej własny (etap 31) — ten sam guzik,
+    // to samo zdarzenie, tylko z `attachmentId`.
+    const attachmentId = slot.attachmentId ?? undefined;
+    if (token?.characterId)
+      reloadWeapon(token.characterId, slot.weaponRowId, undefined, undefined, attachmentId);
+    else reloadWeapon(undefined, slot.weaponRowId, undefined, tokenId, attachmentId);
     return;
   }
 
@@ -618,7 +631,7 @@ export function activateSlot(slot: CpredHotbarSlot, tokenId: string): void {
  * and a mode passed around by hand is a mode that ends up stale in one of them.
  */
 export function hudWeaponSlot(group: CpredHotbarWeaponGroup, tokenId: string) {
-  const remembered = useHudStore.getState().fireModes[fireModeKey(tokenId, group.weaponRowId)];
+  const remembered = useHudStore.getState().fireModes[fireModeKey(tokenId, group.id)];
   return cpredWeaponModeSlot(group, remembered);
 }
 
@@ -640,9 +653,13 @@ export function cycleGroupMode(group: CpredHotbarGroup, tokenId: string): void {
   if (group.kind !== 'weapon' || group.modes.length < 2) return;
   const current = hudWeaponSlot(group, tokenId);
   const next = cpredNextWeaponMode(group, current.mode);
-  useHudStore.getState().setFireMode(tokenId, group.weaponRowId, next);
+  useHudStore.getState().setFireMode(tokenId, group.id, next);
   const armed = useHudStore.getState().activeWeapon;
-  if (armed?.tokenId === tokenId && armed.weaponRowId === group.weaponRowId) {
+  if (
+    armed?.tokenId === tokenId &&
+    armed.weaponRowId === group.weaponRowId &&
+    armed.attachmentId === group.attachmentId
+  ) {
     activateSlot(cpredWeaponModeSlot(group, next), tokenId);
   }
 }
@@ -668,6 +685,7 @@ export function attackWithActiveWeapon(targetTokenId: string): boolean {
       ...(token.characterId ? { characterId: token.characterId } : {}),
       attackerTokenId: weapon.tokenId,
       weaponRowId: weapon.weaponRowId,
+      ...(weapon.attachmentId ? { attachmentId: weapon.attachmentId } : {}),
       mode: weapon.mode,
     },
     targetTokenId,
@@ -698,6 +716,7 @@ export function throwAtPoint(worldX: number, worldY: number): boolean {
       ...(token.characterId ? { characterId: token.characterId } : {}),
       attackerTokenId: weapon.tokenId,
       weaponRowId: weapon.weaponRowId,
+      ...(weapon.attachmentId ? { attachmentId: weapon.attachmentId } : {}),
       mode: weapon.mode,
     },
     { kind: 'point', point: { x: worldX, y: worldY } },
@@ -726,6 +745,7 @@ export function shootCoverAt(worldX: number, worldY: number): boolean {
       ...(token.characterId ? { characterId: token.characterId } : {}),
       attackerTokenId: weapon.tokenId,
       weaponRowId: weapon.weaponRowId,
+      ...(weapon.attachmentId ? { attachmentId: weapon.attachmentId } : {}),
       mode: weapon.mode,
     },
     { kind: 'cover', coverId: cover.id },

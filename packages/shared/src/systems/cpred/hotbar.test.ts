@@ -11,7 +11,8 @@ import {
   type CpredHotbarInput,
   type CpredHotbarWeaponSlot,
 } from './hotbar.js';
-import type { ResolvedWeapon } from './compendium.js';
+import type { ResolvedWeapon, WeaponTypeDefinition } from './compendium.js';
+import type { CpredAttachmentProfile } from './attachments.js';
 import type { CpredWeaponRow } from './character.js';
 import { createDefaultCombatProfile } from './statist.js';
 import {
@@ -494,5 +495,192 @@ describe('hotbarSlotsFor — Zmysł Walki (30a)', () => {
     expect(
       slots.find((slot) => slot.kind === 'action' && slot.actionId === CPRED_ACTION_SCANNER),
     ).toBeDefined();
+  });
+});
+
+/**
+ * Etap 31, uzupełnienie z 01.09: bagnet i granatnik podwieszany są bronią,
+ * a broń mieszka na pasku akcji. Do tej pory `cpredHotbarSlots` czytało wyłącznie
+ * `sheet.weapons`, więc jedyną drogą do nich była karta postaci — a gracz
+ * prowadzący figurę paskiem musiał otwierać kartę, żeby dźgnąć.
+ */
+describe('hotbarSlotsFor — broń przykręcona do wiersza (31)', () => {
+  const rifle: ResolvedWeapon = {
+    ...pistol,
+    magazine: 25,
+    attachmentSlots: 4,
+    skillId: 'shoulder-arms',
+    typeId: 'weapon-type.assault-rifle',
+  };
+
+  const BAYONET: CpredAttachmentProfile = {
+    id: 'attachment.bayonet',
+    name: 'Bagnet',
+    fit: { skillIds: ['shoulder-arms'] },
+    secondary: { weaponTypeId: 'weapon-type.light-melee' },
+  };
+
+  const LAUNCHER: CpredAttachmentProfile = {
+    id: 'attachment.underbarrel-grenade-launcher',
+    name: 'Granatnik podwieszany',
+    fit: { skillIds: ['shoulder-arms'] },
+    slots: 2,
+    secondary: { weaponTypeId: 'weapon-type.grenade-launcher', magazine: 1 },
+  };
+
+  const SCOPE: CpredAttachmentProfile = {
+    id: 'attachment.sniping-scope',
+    name: 'Luneta snajperska',
+    fit: { notSkillIds: ['archery'] },
+  };
+
+  const types: WeaponTypeDefinition[] = [
+    {
+      id: 'weapon-type.light-melee',
+      name: 'Lekka broń biała',
+      damage: '1k6',
+      magazine: null,
+      rof: 2,
+      hands: 1,
+      concealable: true,
+      attachmentSlots: 0,
+      skillId: 'melee-weapon',
+      melee: true,
+    },
+    {
+      id: 'weapon-type.grenade-launcher',
+      name: 'Granatnik',
+      damage: '6k6',
+      magazine: 2,
+      rof: 1,
+      hands: 2,
+      concealable: false,
+      attachmentSlots: 0,
+      skillId: 'heavy-weapons',
+      explosive: true,
+    } as WeaponTypeDefinition,
+  ];
+
+  const lookup = {
+    catalogue: [BAYONET, LAUNCHER, SCOPE],
+    weaponTypeById: new Map(types.map((type) => [type.id, type])),
+  };
+
+  const armed = (row: Partial<CpredWeaponRow>, attachmentIds: string[]) =>
+    input({
+      sheet: {
+        weapons: [
+          weaponRow({
+            ammoCurrent: 25,
+            ammoMax: 25,
+            compendiumId: 'weapon.rifle',
+            attachmentIds,
+            ...row,
+          } as Partial<CpredWeaponRow>),
+        ],
+      },
+      resolve: () => rifle,
+      attachments: lookup,
+    });
+
+  it('daje bagnetowi własny slot pod karabinem', () => {
+    const slots = weaponSlots(hotbarSlotsFor(armed({}, ['attachment.bayonet'])));
+    expect(slots).toHaveLength(2);
+    expect(slots[0]!.attachmentId).toBeNull();
+    const bayonet = slots[1]!;
+    expect(bayonet.label).toBe('Bagnet');
+    expect(bayonet.attachmentId).toBe('attachment.bayonet');
+    expect(bayonet.weaponRowId).toBe('row-1');
+    // Broń biała, więc planer odmówi jej powyżej dwóch metrów — i pasek to wie.
+    expect(bayonet.melee).toBe(true);
+    expect(bayonet.icon).toBe('knife');
+    expect(bayonet.id).toBe('weapon:row-1@attachment.bayonet:single');
+  });
+
+  it('granatnik podwieszany celuje w POLE i ma własny magazynek na jeden granat', () => {
+    const slots = weaponSlots(
+      hotbarSlotsFor(armed({}, ['attachment.underbarrel-grenade-launcher'])),
+    );
+    const launcher = slots[1]!;
+    expect(launcher.pointTarget).toBe(true);
+    expect(launcher.ammo).toEqual({ current: 1, max: 1 });
+    // Magazynek karabinu nietknięty — to dwie różne rury.
+    expect(slots[0]!.ammo).toEqual({ current: 25, max: 25 });
+  });
+
+  it('zużyty granat siedzi w attachmentAmmo, nie w magazynku karabinu', () => {
+    const slots = weaponSlots(
+      hotbarSlotsFor(
+        armed({ attachmentAmmo: { 'attachment.underbarrel-grenade-launcher': 0 } }, [
+          'attachment.underbarrel-grenade-launcher',
+        ]),
+      ),
+    );
+    expect(slots[1]!.ammo).toEqual({ current: 0, max: 1 });
+    expect(slots[1]!.disabled).toBe('Pusty magazynek — przeładuj.');
+    expect(slots[0]!.disabled).toBeNull();
+  });
+
+  it('przeładowanie broni podwieszanej to osobne pudełko z jej id', () => {
+    const slots = hotbarSlotsFor(
+      armed({ attachmentAmmo: { 'attachment.underbarrel-grenade-launcher': 0 } }, [
+        'attachment.underbarrel-grenade-launcher',
+      ]),
+    );
+    const reloads = slots.filter((slot) => slot.kind === 'reload');
+    expect(reloads.map((slot) => slot.id)).toEqual([
+      'reload:row-1',
+      'reload:row-1@attachment.underbarrel-grenade-launcher',
+    ]);
+    const secondary = reloads[1]!;
+    if (secondary.kind !== 'reload') throw new Error('to nie jest przeładowanie');
+    expect(secondary.attachmentId).toBe('attachment.underbarrel-grenade-launcher');
+    expect(secondary.label).toBe('Przeładuj: Granatnik podwieszany');
+    expect(secondary.disabled).toBeNull();
+  });
+
+  it('dodatek bez własnej broni nie dokłada slotu', () => {
+    // Luneta zmienia rozbicie strzału, a nie liczbę sposobów strzelania.
+    const slots = weaponSlots(hotbarSlotsFor(armed({}, ['attachment.sniping-scope'])));
+    expect(slots).toHaveLength(1);
+  });
+
+  it('to, czego nie dałoby się zamontować, nie daje broni', () => {
+    // Ta sama zasada co na karcie: lista jest sądzona przy odczycie, więc
+    // bagnet wpisany do łuku nie staje się bagnetem.
+    const slots = weaponSlots(
+      hotbarSlotsFor(
+        input({
+          sheet: {
+            weapons: [
+              weaponRow({ attachmentIds: ['attachment.bayonet'] } as Partial<CpredWeaponRow>),
+            ],
+          },
+          resolve: () => ({ ...pistol, skillId: 'archery' }),
+          attachments: lookup,
+        }),
+      ),
+    );
+    expect(slots).toHaveLength(1);
+  });
+
+  it('bez katalogu dodatków pasek wygląda dokładnie tak, jak wyglądał', () => {
+    // Tura bota nie podaje katalogu — i ma dostać ten sam pasek co dotąd.
+    const slots = weaponSlots(
+      hotbarSlotsFor({ ...armed({}, ['attachment.bayonet']), attachments: undefined }),
+    );
+    expect(slots).toHaveLength(1);
+  });
+
+  it('bagnet i karabin to dwie grupy, mimo wspólnego wiersza', () => {
+    const groups = cpredHotbarGroups(hotbarSlotsFor(armed({}, ['attachment.bayonet'])));
+    const weapons = groups.filter((group) => group.kind === 'weapon');
+    expect(weapons).toHaveLength(2);
+    expect(weapons.map((group) => group.id)).toEqual([
+      'weapon:row-1',
+      'weapon:row-1@attachment.bayonet',
+    ]);
+    // Osobne klawisze — o to w tej zaległości chodziło.
+    expect(weapons.map((group) => group.key)).toEqual(['1', '2']);
   });
 });

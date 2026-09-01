@@ -23,6 +23,7 @@ function slot(patch: Partial<CpredHotbarWeaponSlot> = {}): CpredHotbarWeaponSlot
     modeLabel: '',
     hint: '',
     weaponRowId: 'w-grenade',
+    attachmentId: null,
     mode: 'single',
     melee: false,
     pointTarget: true,
