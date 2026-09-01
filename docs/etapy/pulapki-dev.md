@@ -547,3 +547,24 @@ pudle), bo pierwszy strzał w ogóle nie dochodzi do skutku.
 `null`, gdy `resolved` jest pusty albo `attachmentSlots` to zero (broń biała, egzotyk, wiersz bez
 wpisu z katalogu). Pusty pasek byłby jeszcze jedną rzeczą do wytłumaczenia, ale objaw „nie widzę
 gniazd" ma zwykle tę przyczynę, a nie zepsuty komponent.
+
+- **Klik w żeton, którym MG może sterować, ZAZNACZA go zamiast celować — celuje dopiero
+  Alt+klik** (01.09, kosztowało kilka „ataków", które okazały się zmianą zaznaczenia).
+  `aimTargetFor` w `MapRenderer` zwraca `null`, gdy cel jest sterowalny (`movableTokens`)
+  i nie trzymasz Alt — a **MG steruje wszystkim**, więc przy koncie MG dotyczy to każdego żetonu
+  na scenie. Podpowiedź pod paskiem mówi to wprost („Alt+klik celuje we własny token"), tylko
+  łatwo ją przeoczyć. **Rozpoznanie:** po kliknięciu lewy pasek pokazuje **cel**, a nie
+  strzelca, i nie ma banera „Potrząśnij i strzel".
+  **Drugie dno:** `modifiers: "alt"` w narzędziu `computer` **bywa niedostarczane** — kilka
+  ataków z rzędu przeszło, a potem te same kroki zaczęły tylko zaznaczać cel.
+  **Obejście, które działa zawsze:** uzbrój atak **z karty postaci** (guzik „ATAK" w wierszu
+  broni). Wtedy `this.targeting` jest prawdą, a `aimTargetFor` zwraca cel **przed** sprawdzeniem
+  Alt — zwykły klik wystarczy. Kartę można po uzbrojeniu zamknąć, celowanie to przeżywa.
+
+- **Dymu nie da się postawić narzędziem — stawia go wyłącznie wystrzelony nabój** (01.09).
+  W panelu osłon jest tylko „Rozwiej cały dym"; komentarz w `MapTools.tsx` mówi to wprost
+  („nobody _places_ a cloud — a round does"). Żeby mieć chmurę do oględzin, trzeba broni
+  strzelającej wzorcem `grenade` (Granatnik, Granat) i wpisu **„Amunicja dymna"** wybranego
+  listą naboju przy wierszu broni. **Broń podwieszana tej listy nie ma** (patrz `zaleglosci.md`),
+  więc granatnik pod karabinem do dymu nie posłuży — dopisz osobny wiersz „Granatnik"
+  z katalogu.

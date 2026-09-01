@@ -322,3 +322,30 @@ Karta **avatar9** została świadomie zmieniona, żeby dało się obejrzeć doda
 To jest komplet potrzebny do trzech nieoglądanych pozycji z `zaleglosci.md` (noktowizor w dymie,
 luneta od 51 m, demontaż przycinający naboje) — nie kasuj go, dopóki nie zostaną odhaczone.
 Ślad w logu czatu: trzy karty ataku avatar9 z 01.09.
+
+## Stan po sesji 01.09.2026 (druga) — pasek dodatków i domknięcie oględzin 31
+
+Poligon **przywrócony do stanu z pierwszej sesji 01.09**, opisanego w akapicie wyżej — z jednym
+wyjątkiem i kilkoma śladami w logu czatu.
+
+**Przywrócone po oględzinach:** dym rozwiany („Rozwiej cały dym" w panelu osłon), rana
+**„Złamana noga"** zdjęta z **Automatycznej wieżyczki**, a jej PW cofnięte do **25/25** guzikiem
+„Cofnij" na karcie obrażeń; dopisany na czas oględzin wiersz broni **„Granatnik"** (z „Amunicją
+dymną") skasowany z karty avatar9; **„Celownik noktowizyjny"** zdjęty z Arasaki, a **„Magazynek
+bębnowy"** wrócił na swoje miejsce — Arasaka stoi z powrotem na **23/50** ze złączem smartguna
+i bębnem; żeton avatar9 wrócił na swoje pole z **PW 35/35**. Militech Dragon **25/25**,
+granatnik podwieszany **0/1**, „testowy 2x2" **PW 35/35**, Rudy Kwiatkowski **40/40**.
+
+**Ślady zostawione świadomie:** karty w logu czatu z tej sesji — siedem strzałów z Celowaniem
+(noga) z Arasaki, atak bagnetem i strzał z granatnika podwieszanego, granat dymny z odchyleniem
+oraz karta rany „Celowanie (noga): Złamana noga" u wieżyczki wraz z wierszem „Cofnięte — MG".
+Historii czatu się nie sprząta.
+
+**Do zapamiętania przy oględzinach ran krytycznych u figur bez karty:** statysta
+**„testowy 2x2" ma OB 13**, więc 2k6 nigdy go nie przebije i rana krytyczna nie ma jak powstać.
+Figurą, na której to widać, jest **„Automatyczna wieżyczka"** — OB 0.
+
+**Do zapamiętania przy oględzinach dymu:** chmury nie da się postawić narzędziem. Trzeba wiersza
+broni ze wzorcem `grenade` (Granatnik, Granat) i naboju **„Amunicja dymna"** wybranego listą przy
+wierszu — **broń podwieszana tej listy nie ma**, więc granatnik pod karabinem do tego nie
+posłuży.

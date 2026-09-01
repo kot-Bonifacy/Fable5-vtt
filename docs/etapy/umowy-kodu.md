@@ -678,3 +678,13 @@ podgląd u klienta i werdykt serwera rozwiązują dodatek **z tego samego katalo
 (`resolveAttachmentWeapon`), więc bąbelek pod kursorem i karta na czacie nie mają jak się
 rozjechać. Karta niesie `attachmentId` + `attachmentName`, bo jest czytana długo po strzale
 i „czym to było" musi odpowiadać także po edycji kompendium.
+
+**Tożsamość broni na pasku to wiersz PLUS dodatek (01.09, druga sesja).**
+`weaponOptionKey(rowId, attachmentId)` w `hotbar.ts` — bagnet i karabin, w który jest wkręcony,
+dzielą **ten sam** `rowId`, więc od chwili, w której pasek pokazuje broń podwieszaną, sam
+`rowId` przestał być tożsamością. Klucza używają **cztery** miejsca i pominięcie któregokolwiek
+zlepia dwie bronie w jedno pudełko: id slotu (`weapon:<klucz>:<tryb>`), id przeładowania
+(`reload:<klucz>`), grupowanie panelu w `cpredHotbarGroups` i pamięć trybu ognia u klienta
+(`fireModeKey` bierze **id grupy**, nie `weaponRowId`). Katalog dodatków wchodzi do
+`hotbarSlotsFor` polem `attachments` i jest **opcjonalny**: kto go nie poda — jak tura bota —
+dostaje pasek sprzed tej zmiany, czyli same bronie z karty.

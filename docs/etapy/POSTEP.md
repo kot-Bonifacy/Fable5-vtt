@@ -100,11 +100,11 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 ## Od czego zacząć
 
-**Etap 31 (dodatki do broni) zamknięty 01.09.** Osiem pozycji z s. 342–344 wjechało importem,
-a broń z gniazdami daje się uzbroić z karty. **Etap 27g (wydajność) został wycofany 01.09
-decyzją MG — wydajność przetestowana samodzielnie, sesji nie będzie.** Wolny został **jeden
-etap: 28** (wdrożenie na VPS). Dług oględzin: **22 pozycje** (`zaleglosci.md`) — dwie nowe
-z tej sesji, jedna zamknięta razem z 27g.
+**Etap 31 (dodatki do broni) zamknięty 01.09 i od drugiej sesji tego dnia obejrzany
+w komplecie** — z paska akcji strzela się także bagnetem i bronią podwieszaną. **Etap 27g
+(wydajność) został wycofany 01.09 decyzją MG — wydajność przetestowana samodzielnie, sesji nie
+będzie.** Wolny został **jeden etap: 28** (wdrożenie na VPS). Dług oględzin: **21 pozycji**
+(`zaleglosci.md`) — dwie nowe z drugiej sesji 01.09, trzy zamknięte.
 
 **Dodatek do broni jest wierszem kompendium, nie gałęzią w kodzie.** `fit` niesie zdanie
 „Pasuje do:" z podręcznika, flagi niosą skutek, a `secondary` — **id typu broni**, z którego
@@ -136,11 +136,10 @@ Pełny zapis w `decyzje-i-uproszczenia.md`; przed zmianą czegokolwiek w tym mie
 akapit, bo to druga zmiana zdania w tej sprawie. **Wyjątek od 30c: Test Lojalności** zdaje się
 przy wyniku _mniejszym_ od Lojalności (s. 154).
 
-**Dług oględzin — 22 pozycje.** Bez modelu da się obejrzeć osiem: reszta **29a** (pięć punktów),
-reszta **29b** (trzy), **komplet 30d**, **komplet 30c**, **reszta 30b**, **komplet 30a**,
-Celowanie w statystę, **reszta 31** (noktowizor w dymie, luneta od 51 m, demontaż przycinający
-naboje). Reszta czeka na **żywy model**: 20a/20b, 19a–19c, dwie ścieżki 24c i maszynopis
-wypowiedzi.
+**Dług oględzin — 21 pozycji.** Bez modelu da się obejrzeć sześć: reszta **29a** (pięć punktów),
+reszta **29b** (trzy), **komplet 30d**, **komplet 30c**, **reszta 30b**, **komplet 30a**.
+Etap 31 i Celowanie w statystę **wypadły z listy 01.09** (druga sesja). Reszta czeka na **żywy
+model**: 20a/20b, 19a–19c, dwie ścieżki 24c i maszynopis wypowiedzi.
 
 **Do oględzin 30a–30d trzeba postaci ze wszystkimi Rolami poza Netrunnerem** — żadna karta na
 scenach testowych ich nie ma. **Od 29a wybór Roli ma wyłącznie MG**, więc oględziny Ról robi się
@@ -176,8 +175,8 @@ nieaktualne. Lista jest zapisem chwili, w której coś zauważono, a nie stanu r
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
 a od 30d pierwszym, przy którym **każda Rola w drużynie gra inaczej niż reszta**.
 
-**Testy na koniec ostatniej sesji:** 1695 w `shared`, 893 na serwerze, 67 u klienta — zielone.
-ESLint i Prettier czyste na całym repo, `pnpm -r build` przechodzi.
+**Testy na koniec ostatniej sesji:** 1703 w `shared`, 893 na serwerze, 67 u klienta — zielone.
+ESLint i Prettier czyste na całym repo.
 
 ## Umowy kodu — indeks
 
@@ -187,6 +186,7 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 - **Ruch przez przeszkodę** — `refuseWalkThroughSolid` w `realtime/movement.ts`; nowe nieprzenikalne coś dokłada segmenty w `movementSegments`/`coverMovementSegments`, nie nową gałąź walidacji. Sprawdzana jest **cała figura**, nie jej środek.
 - **Powód odmowy Akcji** — jedzie na `TurnResourceView.blocked`, nie w prozie obok; kolejność: status → rana zapisana na turze → budżet.
 - **Akcja tylko dla części figur** — `CPRED_HOTBAR_NETRUNNER_ACTION_IDS` (nie lista dla każdego); slot z własnym zdarzeniem obsługuje się w `activateSlot` **bez** `spendCombatAction`.
+- **Tożsamość broni na pasku to wiersz + dodatek** — `weaponOptionKey(rowId, attachmentId)` w `hotbar.ts`; kluczują na niej id slotu, id przeładowania, grupowanie panelu i `fireModeKey` u klienta. Katalog dodatków wchodzi opcjonalnie — bez niego pasek jest ten sprzed 01.09 (tura bota).
 - **Nowe narzędzie mapy** — dwa gettery `MapRenderer`: `toolSpentThisClick` i `mapToolArmed`. Pominięcie = klik płacony dwa razy (błąd #8 z 08.08); pilnuje `map-click.test.ts`.
 - **Skrót klawiszowy** — `MAP_TOOL_KEYS` w `packages/client/src/shortcuts.ts` czyta i `MapArea`, i okno pomocy; pilnuje `shortcuts.test.ts`. Numery kroków liczy `shortcutGroupsFor`, nie treść wiersza.
 - **Nowe pływające okno** — hook `useWindowPlacement` (`window-placement.ts`) + `<WindowResizeGrip />`; uchwyt 13 px od krawędzi, bo róg jest wycięty.
@@ -275,6 +275,8 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 - **Efektu mapy nie złapiesz zrzutem ekranu** (trwa 300–800 ms) i `performance.now` nie spowalnia Pixi — trzeba wirtualnego znacznika `rAF`.
 - **Klik w puste pole przy zaznaczonej figurze to rozkaz marszu** — automatyzuj zdarzeniami wskaźnika z policzonymi współrzędnymi CSS, nie pikselami ze zrzutu.
 - **Sesję MG i gracza da się mieć naraz w jednym Chrome**: MG na `localhost:5173`, gracz na `[::1]:5173` (ciasteczko jest kluczowane hostem; `127.0.0.1` nie zadziała).
+- **Klik w żeton, którym MG steruje (czyli w każdy), tylko go zaznacza** — celuje dopiero **Alt+klik**, a `modifiers` w `computer` bywa niedostarczane; pewna droga to guzik „ATAK" z karty postaci (`targeting` omija warunek Alt).
+- **Dymu nie da się postawić narzędziem** — stawia go wyłącznie wystrzelony nabój („Amunicja dymna" w broni ze wzorcem `grenade`); broń podwieszana nie ma listy naboju.
 - **Zrzut ekranu bywa wycinkiem okna** — wtedy klikanie po współrzędnych ze zrzutu chybia; klikaj referencjami z `find`/`read_page`.
 - **Przeciągnięcie tokenu da się wysłać automatem** — `pointerdown` na `canvas`, seria `pointermove` z przerwami ~70 ms, `pointerup`.
 - **Menu kontekstowe tokenu też** — `PointerEvent` z `button: 2` (Pixi słucha wskaźnika, nie myszy); wystawiane **tylko MG**.
@@ -357,6 +359,60 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 01.09 (druga) — pasek dodatków i domknięcie oględzin etapu 31
+
+**Zlecenie MG:** paczka **A + B** z listy zaległości — jedna naprawa kodu (broń podwieszana
+i bagnet nieosiągalne z paska akcji) plus domknięcie czterech nieoglądanych ścieżek etapu 31
+i Celowania w statystę. Obie części na tej samej scenie i tej samej karcie, więc jedna sesja.
+
+**Naprawa okazała się kwestią tożsamości, nie listy.** Dołożenie broni podwieszanej do paska
+to trzy linijki w `cpredWeaponOptions`; kosztowne było to, co z tego wynikło: bagnet i karabin,
+w który jest wkręcony, **dzielą `rowId`**. Cztery miejsca kluczowały dotąd na samym wierszu —
+id slotu, id przeładowania, grupowanie panelu i pamięć trybu ognia u klienta — i każde z nich
+zlepiłoby dwie bronie w jedno pudełko. Stąd `weaponOptionKey(rowId, attachmentId)` i jedna
+umowa kodu (dopisana). Katalog dodatków wchodzi **opcjonalnie**, więc tura bota dostaje pasek
+sprzed zmiany — rozszerzanie menu, które czyta model, to osobna decyzja, nie skutek uboczny.
+
+**Odklikane (Strzelnica, konto MG):** pasek avatar9 z „Bagnet" (3) i „Granatnik podwieszany"
+(4) jako **osobnymi klawiszami**, przeładowanie granatnika z paska (0/1 → 1/1) **nie ruszające**
+magazynka karabinu, strzał z granatnika ładujący kubek na **pole** (obszar 10×10 m, odchylenie),
+odmowa „Do ataku wręcz cel musi być nie dalej niż 2 m" i wreszcie trafienie bagnetem: karta mówi
+**„Militech Dragon · Bagnet"** i liczy je **Bronią białą**, nie Bronią ciężką karabinu. Przy
+okazji potwierdzone, że **nowa droga ataku dostaje Celowanie za darmo** — okno czterech sylwetek
+wyskakuje także ze slotu dodatku.
+
+**Cztery zaległości oględzinowe zamknięte.** (1) **Demontaż przycina naboje**: Arasaka
+przeładowana do 50/50, po zdjęciu bębna **30/30**. (2) **Luneta** — w VTT „Luneta dalekiego
+zasięgu" — dopisała **+1** przy Celowaniu z 19 m, czyli z tytułu Celowania, nie odległości.
+(3) **Noktowizor w dymie**: ten sam strzał, ta sama chmura, raz z „Celownikiem noktowizyjnym"
+i raz bez — wiersz **„Dym −4" znika z rozbicia** (+11 → +15), a nie jest kompensowany plusem.
+(4) **Celowanie w statystę**: trafienie w Automatyczną wieżyczkę dało chip **„Celowanie (noga):
+Złamana noga"** — rana **nazwana**, nie losowana.
+
+**Dwie rzeczy, które opóźniły oględziny, obie zapisane jako pułapki.** Klik w żeton, którym MG
+może sterować (czyli w **każdy**), tylko go zaznacza — celuje dopiero **Alt+klik**, a `modifiers`
+w narzędziu `computer` bywa niedostarczane; pewną drogą jest guzik „ATAK" z karty postaci, bo
+`targeting` omija warunek Alt. I druga: **dymu nie da się postawić narzędziem** — stawia go
+wyłącznie wystrzelony nabój, więc do oględzin trzeba było dopisać osobny wiersz „Granatnik"
+z „Amunicją dymną".
+
+**Dwie nowe zaległości.** **Broń podwieszana nie ma wyboru amunicji** (wiersz `↳` ma samo ⟳,
+`weapon:reload` z `attachmentId` nie przyjmuje `ammoId`) — dlatego dym musiał pójść z osobnego
+wiersza. I kosmetyka: **podgląd nad żetonem pokazuje nazwę wiersza**, nie dodatku, więc
+z bagnetem w ręku mówi „Militech Dragon".
+
+**Poligon przywrócony:** dym rozwiany, rana „Złamana noga" zdjęta z wieżyczki i PW cofnięte
+do 25/25 guzikiem „Cofnij" na karcie obrażeń, dodany wiersz „Granatnik" skasowany, noktowizor
+zdjęty i **magazynek bębnowy wrócił** na Arasakę (23/50 jak przed sesją), avatar9 z powrotem
+na swoim polu z PW 35/35. Ślad zostawiony świadomie: **karty w logu czatu** (siedem strzałów
+z Celowaniem, dwa z bagnetu i granatnika podwieszanego, granat dymny) — historii czatu i tak
+się nie sprząta. **Uwaga do przyszłych oględzin ran krytycznych:** statysta „testowy 2x2" ma
+**OB 13**, więc 2k6 nigdy go nie przebije; do rany krytycznej u figury bez karty służy
+**Automatyczna wieżyczka** (OB 0).
+
+**Testy na koniec:** 1703 w `shared` (+8), 893 na serwerze, 67 u klienta — zielone. ESLint
+i Prettier czyste. Dług oględzin: **22 → 21 pozycji** (zamknięte trzy, dwie nowe).
+
 ### Sesja 01.09 — etap 31: dodatki do broni
 
 **Zlecenie MG:** etap 31, wybrany z trzech wolnych. Trzy decyzje przed pierwszą linijką:
@@ -422,60 +478,3 @@ komplet potrzebny do trzech nieoglądanych pozycji etapu — nie kasuj go.
 **Testy na koniec:** 1695 w `shared` (+32), 893 na serwerze (+9), 67 u klienta — zielone.
 ESLint i Prettier czyste, `pnpm -r build` przechodzi. Dług oględzin: **21 → 23 pozycje**
 (dwie nowe, żadna nie zamknięta).
-
-### Sesja 31.08 (druga) — zaległości: pasek figury bez karty
-
-**Zlecenie MG:** wybór z listy zaległości; padło na **pakiet A** — trzy pozycje z jednego obszaru,
-paska figury bez karty postaci. Cztery decyzje przed pierwszą linijką: panel ran stoi **w pasku**
-(nie w menu żetonu), rany figury bez karty jadą **publicznie** do graczy, Umiejętności statysty to
-**lista w profilu** (nie sam poziom Wsparcia), a ręka MG nad ranami ma być **pełna, jak na karcie**.
-Formularz leczenia miał być spójny z 30b — i jest nim dosłownie: to ten sam komponent.
-
-**Serwer umiał leczyć figurę bez karty od 29.08 — brakowało wyłącznie ekranu.** `treatableInjuries`
-czytało profil, `applyTreatment` pisało do niego z powrotem, a `loadTreatInjuryCup` od początku
-brało **adres żetonu**. Cała naprawa to nowa sekcja `FigureInjuries` w pasku (z klasą `cp-injuries`,
-więc wiersz rany wygląda tak samo jak na karcie) i jedna zmiana w `TreatInjury`: pacjentem jest
-**figura**, nie id karty, którego statysta nie ma. Przy okazji domknięta luka, o której zaległość
-nie mówiła: MG nie miał jak **nadać** rany figurze bez karty — `character:injury` przyjmuje teraz
-`tokenId` i idzie tą samą funkcją, co gaz łzawiący, więc rana niesie kary, dopłatę do Testu
-Przeżywalności i zabraną Akcję z 14e, a karta na czacie daje się cofnąć.
-
-**Statysta rzuca Umiejętnościami, ale tylko wpisanymi — i nie dodaje do nich Cechy.** Nowe pole
-`CpredCombatProfile.skills` jest odwrotnością jednej liczby `skillLevel`: tamta należy do broni,
-ta mówi „ta figura umie to, i tyle". Agent federalny dostaje swoje piętnaście z s. 159 automatem
-przy postawieniu, MG dopisuje ręcznie w edytorze profilu, a Umiejętność spoza listy wraca
-`STATIST_CANNOT_ROLL_THIS`. Wpisana liczba jest **całym** modyfikatorem, bo Wartość bojowa to już
-suma Cechy i Umiejętności — bez tego agent rzucałby Dedukcją na 14 + INT 5.
-
-**Dwa błędy znalezione po drodze, oba starsze od tej sesji.** (1) `sanitizeCombatProfile` ścinało
-`skillLevel` i `evasion` do dziesiątki — limitu **Umiejętności postaci** — więc cztery z sześciu
-kategorii Wsparcia (14, 16, 15, 14) i wszystkie pięć Demonów (14) biły jak krawężnicy przy każdym
-odczycie żetonu. Zapis szedł poprawny; ścinał odczyt, dlatego test czystej funkcji tego nie widział.
-(2) Tabela w kodzie pisze „Ukrycie/znalezienie przedmiotu", a `skills.json` ma
-„Ukrycie/**Z**nalezienie przedmiotu" — jedna z piętnastu Umiejętności znikała bez śladu.
-
-**Trzeci błąd wyszedł dopiero w przeglądarce i był mój.** Rany pojechały do graczy publicznie,
-zgodnie z decyzją MG — ale klik w figurę, której gracz nie prowadzi, nie robił **nic**
-(`MapRenderer` wychodził po cichu na `movableTokens`), więc panel był dla gracza nieosiągalny.
-Doszła trzecia droga obok sterowania i „never mind": `onTokenPreview` → `selectionStore.focus`,
-czyli ognisko paska bez brania figury do ręki. Pasek rozróżniał opis od sterowania od 27h —
-brakowało tylko drogi, którą cudza figura mogła do niego trafić.
-
-**Odklikane 31.08 na wieżyczce z poligonu (MG i gracz obok siebie):** rana nadana ręką MG z karty
-na czacie, załatana Ratownictwem 23 vs PT 13 („efekt milczy do końca dnia"), wyleczona 19 vs PT 15
-(„schodzi z karty"), Test Percepcji figury bez karty („Inteligencja (INT) +0 · Percepcja +12"),
-przeładowanie w trwającej walce (9/25 → 25/25, `turnState.action = reload`), a z konta gracza:
-sekcja ran z guzikiem „Lecz" **bez** ręki MG, **bez** sekcji Testów i z „PW ukryte".
-
-**Migotanie `specialties.test.ts` naprawione przy okazji** — padał co dziesiąty przebieg i zabierał
-dwa sąsiednie testy. To nie był błąd kodu, tylko fumble: naturalna 1 odejmuje 1k10 i przebija każdy
-modyfikator, jaki da się zbudować na karcie. Rzuty, które w teście mają się udać, powtarzają się
-teraz w pętli.
-
-**Stan poligonu:** wieżyczce na „Strzelnicy" została **Percepcja 12** w profilu (celowo — to jedyne
-miejsce, gdzie widać sekcję „Testy") i „Odcięta dłoń"; „Złamane żebra" nadane i wyleczone w trakcie
-oględzin. Tryb turowy wyłączony, magazynek pełny.
-
-**Testy na koniec:** 1663 w `shared`, 884 na serwerze, 67 u klienta — zielone. ESLint i Prettier
-czyste, `pnpm -r build` przechodzi. Dług oględzin: **23 → 21 pozycji** licząc razem
-z notką o poligonie (zamknięte trzy, jedna wydzielona nowa: Celowanie w statystę).

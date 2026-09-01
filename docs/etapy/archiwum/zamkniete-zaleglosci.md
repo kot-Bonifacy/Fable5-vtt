@@ -9,6 +9,43 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Przeniesione 2026-09-01 (druga sesja — pasek dodatków i domknięcie etapu 31)
+
+- **Broń podwieszana i bagnet są nieosiągalne z paska akcji (01.09). ZAMKNIĘTE — naprawione.**
+  `cpredHotbarSlots` budowało sloty wyłącznie z `sheet.weapons`, więc z granatnika
+  podwieszanego i z bagnetu strzelało się tylko z karty postaci. Naprawa: `cpredWeaponOptions`
+  bierze katalog dodatków i typy broni, a `weaponOptionKey` (wiersz + dodatek) niesie tożsamość
+  do czterech miejsc, które dotąd kluczowały na samym `rowId` — id slotu, id przeładowania,
+  grupowanie panelu i pamięć trybu ognia u klienta. Osiem nowych testów w `hotbar.test.ts`.
+  Odklikane: pasek avatar9 pokazał „Bagnet" (3) i „Granatnik podwieszany" (4) osobnymi
+  klawiszami, przeładowanie granatnika z paska zmieniło 0/1 na 1/1 **nie ruszając** magazynka
+  karabinu (25/25), strzał z granatnika załadował kubek na pole z obszarem 10×10 m, a karta
+  ataku bagnetem powiedziała „Militech Dragon · Bagnet" i policzyła go **Bronią białą**
+  (nie Bronią ciężką karabinu) z odmową „Do ataku wręcz cel musi być nie dalej niż 2 m"
+  powyżej dwóch metrów.
+
+- **Etap 31 — oglądnięte sześć rzeczy z ośmiu (01.09). ZAMKNIĘTE — komplet odklikany.**
+  Trzy brakujące:
+  (1) **noktowizor kasujący karę za dym** — ten sam strzał avatar9 → Automatyczna wieżyczka
+  (4 m, PT 15, ta sama chmura): **bez** „Celownika noktowizyjnego" rozbicie miało
+  `Refleks +5 · Broń krótka +10 · Test łaty 15 −1 · Dym −4 · Złącze smartguna +1` (= +11),
+  **z nim** `… bez wiersza „Dym"` (= +15). Kara **znika z rozbicia**, a nie jest równoważona
+  dodatnim wierszem — dokładnie tak, jak zapowiada komentarz w `attacks.ts`.
+  (2) **luneta snajperska** — w VTT nazywa się **„Luneta dalekiego zasięgu"**; strzał
+  z Celowaniem (noga) z 19 m dopisał wiersz **„Luneta dalekiego zasięgu +1"**, choć do 51 m
+  brakowało — czyli bonus wszedł z tytułu Celowania, nie odległości.
+  (3) **demontaż przycinający naboje** — Arasaka Minami 10 przeładowana do **50/50**, po zdjęciu
+  chipa „Magazynek bębnowy" pokazała **30/30**, nie 50/30.
+
+- **Celowanie w statystę — „zdanie zamiast rany". ZAMKNIĘTE — odklikane 01.09.**
+  Strzał z Celowaniem (noga) w **Automatyczną wieżyczkę** (figura bez karty, OB 0): trafienie
+  17 vs PT 15, obrażenia 2k6 = 8, a karta zastosowania powiedziała „Przebicie: 8 obr. · rzut 8 ·
+  bez pancerza · PW 25 → 17" z chipami **„Bez ran → Lekko ranny"** i **„Celowanie (noga):
+  Złamana noga"** oraz zdaniem „−4 do Ruchu (minimum 1)". Rana jest **nazwana**, nie losowana
+  z tabeli 2k6.
+  **Uwaga na przyszłość:** drugiego statysty, „testowy 2x2", tą drogą nie sprawdzisz — ma
+  **OB 13**, a 2k6 nigdy tyle nie przebije, więc rana krytyczna nie ma jak powstać.
+
 ## Przeniesione 2026-09-01 (wraz z wycofaniem etapu 27g)
 
 - **Etap 27i — pomiar fps nie objął sceny ze światłami i mgłą. ZAMKNIĘTE — bez pomiaru.**

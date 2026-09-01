@@ -7,6 +7,63 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 31.08 (druga) — zaległości: pasek figury bez karty
+
+**Zlecenie MG:** wybór z listy zaległości; padło na **pakiet A** — trzy pozycje z jednego obszaru,
+paska figury bez karty postaci. Cztery decyzje przed pierwszą linijką: panel ran stoi **w pasku**
+(nie w menu żetonu), rany figury bez karty jadą **publicznie** do graczy, Umiejętności statysty to
+**lista w profilu** (nie sam poziom Wsparcia), a ręka MG nad ranami ma być **pełna, jak na karcie**.
+Formularz leczenia miał być spójny z 30b — i jest nim dosłownie: to ten sam komponent.
+
+**Serwer umiał leczyć figurę bez karty od 29.08 — brakowało wyłącznie ekranu.** `treatableInjuries`
+czytało profil, `applyTreatment` pisało do niego z powrotem, a `loadTreatInjuryCup` od początku
+brało **adres żetonu**. Cała naprawa to nowa sekcja `FigureInjuries` w pasku (z klasą `cp-injuries`,
+więc wiersz rany wygląda tak samo jak na karcie) i jedna zmiana w `TreatInjury`: pacjentem jest
+**figura**, nie id karty, którego statysta nie ma. Przy okazji domknięta luka, o której zaległość
+nie mówiła: MG nie miał jak **nadać** rany figurze bez karty — `character:injury` przyjmuje teraz
+`tokenId` i idzie tą samą funkcją, co gaz łzawiący, więc rana niesie kary, dopłatę do Testu
+Przeżywalności i zabraną Akcję z 14e, a karta na czacie daje się cofnąć.
+
+**Statysta rzuca Umiejętnościami, ale tylko wpisanymi — i nie dodaje do nich Cechy.** Nowe pole
+`CpredCombatProfile.skills` jest odwrotnością jednej liczby `skillLevel`: tamta należy do broni,
+ta mówi „ta figura umie to, i tyle". Agent federalny dostaje swoje piętnaście z s. 159 automatem
+przy postawieniu, MG dopisuje ręcznie w edytorze profilu, a Umiejętność spoza listy wraca
+`STATIST_CANNOT_ROLL_THIS`. Wpisana liczba jest **całym** modyfikatorem, bo Wartość bojowa to już
+suma Cechy i Umiejętności — bez tego agent rzucałby Dedukcją na 14 + INT 5.
+
+**Dwa błędy znalezione po drodze, oba starsze od tej sesji.** (1) `sanitizeCombatProfile` ścinało
+`skillLevel` i `evasion` do dziesiątki — limitu **Umiejętności postaci** — więc cztery z sześciu
+kategorii Wsparcia (14, 16, 15, 14) i wszystkie pięć Demonów (14) biły jak krawężnicy przy każdym
+odczycie żetonu. Zapis szedł poprawny; ścinał odczyt, dlatego test czystej funkcji tego nie widział.
+(2) Tabela w kodzie pisze „Ukrycie/znalezienie przedmiotu", a `skills.json` ma
+„Ukrycie/**Z**nalezienie przedmiotu" — jedna z piętnastu Umiejętności znikała bez śladu.
+
+**Trzeci błąd wyszedł dopiero w przeglądarce i był mój.** Rany pojechały do graczy publicznie,
+zgodnie z decyzją MG — ale klik w figurę, której gracz nie prowadzi, nie robił **nic**
+(`MapRenderer` wychodził po cichu na `movableTokens`), więc panel był dla gracza nieosiągalny.
+Doszła trzecia droga obok sterowania i „never mind": `onTokenPreview` → `selectionStore.focus`,
+czyli ognisko paska bez brania figury do ręki. Pasek rozróżniał opis od sterowania od 27h —
+brakowało tylko drogi, którą cudza figura mogła do niego trafić.
+
+**Odklikane 31.08 na wieżyczce z poligonu (MG i gracz obok siebie):** rana nadana ręką MG z karty
+na czacie, załatana Ratownictwem 23 vs PT 13 („efekt milczy do końca dnia"), wyleczona 19 vs PT 15
+(„schodzi z karty"), Test Percepcji figury bez karty („Inteligencja (INT) +0 · Percepcja +12"),
+przeładowanie w trwającej walce (9/25 → 25/25, `turnState.action = reload`), a z konta gracza:
+sekcja ran z guzikiem „Lecz" **bez** ręki MG, **bez** sekcji Testów i z „PW ukryte".
+
+**Migotanie `specialties.test.ts` naprawione przy okazji** — padał co dziesiąty przebieg i zabierał
+dwa sąsiednie testy. To nie był błąd kodu, tylko fumble: naturalna 1 odejmuje 1k10 i przebija każdy
+modyfikator, jaki da się zbudować na karcie. Rzuty, które w teście mają się udać, powtarzają się
+teraz w pętli.
+
+**Stan poligonu:** wieżyczce na „Strzelnicy" została **Percepcja 12** w profilu (celowo — to jedyne
+miejsce, gdzie widać sekcję „Testy") i „Odcięta dłoń"; „Złamane żebra" nadane i wyleczone w trakcie
+oględzin. Tryb turowy wyłączony, magazynek pełny.
+
+**Testy na koniec:** 1663 w `shared`, 884 na serwerze, 67 u klienta — zielone. ESLint i Prettier
+czyste, `pnpm -r build` przechodzi. Dług oględzin: **23 → 21 pozycji** licząc razem
+z notką o poligonie (zamknięte trzy, jedna wydzielona nowa: Celowanie w statystę).
+
 ### Sesja 31.08 — zaległości: Celowanie z paska, broń z katalogu, prowieniencja rany
 
 **Zlecenie MG:** wybór z listy zaległości; padło na **pakiet B + C** — dwie naprawy UI o tym samym

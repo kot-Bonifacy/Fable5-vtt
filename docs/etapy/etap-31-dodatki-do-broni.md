@@ -72,3 +72,26 @@ Trzy rzeczy, których plan nie przewidział:
   **odczytu** (`fittedAttachmentsFor` sądzi listę przy każdym czytaniu). Sprawdzanie ich przy
   zapisie trzeba by powtórzyć w każdej ścieżce piszącej kartę; tak jest jedno miejsce do
   zapomnienia, a karta, pod którą MG zmienił kompendium, leczy się sama.
+
+## Domknięcie oględzin (01.09.2026, druga sesja)
+
+Etap zamknięto po pierwszej sesji z długiem: sześć rzeczy z ośmiu obejrzanych i jedna dziura
+w kodzie. Druga sesja tego dnia domknęła jedno i drugie.
+
+**Dziura:** `cpredHotbarSlots` budowało sloty wyłącznie z `sheet.weapons`, więc bagnet i broń
+podwieszana były osiągalne **tylko z karty postaci** — pasek nad mapą ich nie znał. Naprawione:
+katalog dodatków wchodzi do `hotbarSlotsFor`, a `weaponOptionKey(rowId, attachmentId)` niesie
+tożsamość „wiersz + dodatek" do czterech miejsc, które dotąd kluczowały na samym wierszu.
+
+**Trzy ostatnie ścieżki, odklikane:**
+
+- **Celownik noktowizyjny** — ten sam strzał przez tę samą chmurę: bez niego rozbicie ma wiersz
+  **„Dym −4"**, z nim tego wiersza **nie ma** (+11 → +15). Kara znika, a nie jest kompensowana.
+- **Luneta dalekiego zasięgu** — strzał z Celowaniem z **19 m** dopisał **+1**, choć do 51 m
+  brakowało: bonus wchodzi z tytułu Celowania, nie odległości.
+- **Demontaż przycinający naboje** — Arasaka przeładowana do **50/50**, po zdjęciu bębna
+  **30/30**.
+
+**Zostało jako zaległość:** broń podwieszana nie ma wyboru amunicji — wiersz `↳` ma samo ⟳,
+a `weapon:reload` z `attachmentId` nie przyjmuje `ammoId`. W praktyce znaczy to, że
+z podwieszanego granatnika nie wystrzelisz dymu ani gazu.
