@@ -966,6 +966,77 @@
   font-size: 0.72rem;
 }
 
+/* Dodatki do broni (etap 31, s. 342): trzy kwadraciki gniazd pod nazwą broni,
+   a obok chipy tego, co już w nich siedzi. Kwadracik jest jedyną rzeczą, którą
+   widać, zanim ktokolwiek coś dokręci — dlatego pusty ma obrys, a zajęty
+   wypełnienie: „ile mam wolnego" czyta się bez liczenia. */
+.weapon-slots {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.2rem;
+}
+
+.weapon-slots-boxes {
+  display: inline-flex;
+  gap: 0.15rem;
+}
+
+.weapon-slot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border: 1px solid var(--cp-ink-dim);
+}
+
+.weapon-slot--used {
+  background: var(--cp-ink-dim);
+}
+
+.cp-table .weapon-slot-chip {
+  padding: 0.02rem 0.25rem;
+  background: transparent;
+  border: 1px solid var(--cp-bar);
+  color: var(--cp-ink-dim);
+  font: inherit;
+  font-size: 0.68rem;
+  cursor: pointer;
+}
+
+.cp-table .weapon-slot-chip:hover {
+  border-color: var(--cp-red);
+  color: var(--cp-red);
+}
+
+.weapon-slot-picker {
+  list-style: none;
+  margin: 0.2rem 0 0;
+  padding: 0.2rem;
+  width: 100%;
+  max-height: 10rem;
+  overflow-y: auto;
+  border: 1px solid var(--cp-bar);
+  background: var(--cp-paper);
+}
+
+/* Wiersz broni podwieszanej — ta sama sztuka żelastwa, drugi sposób użycia.
+   Wcięcie i przygaszone pismo mówią „to należy do wiersza nad", zanim ktoś
+   przeczyta strzałkę. */
+.cp-table tr.weapon-secondary > td {
+  padding-top: 0.05rem;
+  padding-bottom: 0.05rem;
+  color: var(--cp-ink-dim);
+  font-size: 0.72rem;
+}
+
+.weapon-secondary-name {
+  padding-left: 0.6rem;
+}
+
+.weapon-secondary-note {
+  font-style: italic;
+}
+
 .cp-table .weapon-ammo-cell {
   white-space: nowrap;
 }

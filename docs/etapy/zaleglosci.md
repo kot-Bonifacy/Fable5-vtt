@@ -8,6 +8,24 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
 
 ## Pozycje
 
+- **Broń podwieszana i bagnet są nieosiągalne z paska akcji (01.09).** `cpredHotbarSlots` buduje
+  sloty z `sheet.weapons`, więc pasek nad mapą pokazuje karabin i nic więcej — z podwieszanego
+  granatnika i z bagnetu strzela się **tylko z karty postaci** („Atak" w wierszu `↳`). Przy stole
+  znaczy to, że gracz prowadzący figurę paskiem musi otworzyć kartę, żeby dźgnąć bagnetem. Zakres
+  etapu 31 mówił o gniazdach na karcie i tam wszystko działa; to jest brakująca **druga** droga,
+  ta sama, którą 31.08 dostało Celowanie. Naprawa: slot na `secondary` w `hotbar.ts`
+  (`CPRED_HOTBAR_*` + ikona z typu broni) i `attachmentId` w `activateSlot`.
+
+- **Etap 31 — oglądnięte sześć rzeczy z ośmiu (01.09).** W przeglądarce odklikane: gniazda przy
+  wierszu broni, montaż bębna (magazynek 30 → 50 na karcie), odmowa drugiego magazynka (znika
+  z listy), bagnet i granatnik podwieszany jako wiersze `↳` z własnym magazynkiem, strzał
+  z podwieszanego granatnika (6k6, obszar 10×10 m, PT z tabeli Granatnika, magazynek karabinu
+  nietknięty) oraz +1 złącza smartguna wchodzące dopiero po wszczepieniu Uchwytu podskórnego.
+  **Nie oglądane:** (1) **noktowizor kasujący karę za dym** — wymaga postawienia chmury i strzału
+  z niej oraz bez niej; (2) **luneta snajperska** — wymaga celu dalej niż 51 m albo Celowania,
+  a potem porównania rozbicia; (3) **demontaż przycinający naboje** — bęben zdjęty z pełnego
+  magazynka ma zostawić 25, nie 45 (testy serwera to mają, oko nie).
+
 - **Celowanie w statystę — „zdanie zamiast rany" nadal nieoglądane (30.08).** Trzy strzały
   z 30.08 były pudłem, a 31.08 przeładowanie odklikano bez strzelania. Zostaje jedno: strzał
   z Celowaniem w figurę bez karty ma **nazwać ranę**, a nie ją wylosować. Reszta tej pozycji —

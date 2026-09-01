@@ -301,6 +301,17 @@ describe('ammunition that deals no damage', () => {
         data: {
           stats: { ...(character.data as CpredCharacterData).stats, ref: 6, dex: 5, will: 6 },
           skills: { athletics: 4, handgun: 4, 'resist-torture-drugs': 2 },
+          // Etap 31: „Jeśli próbuje jej użyć osoba bez tej cyborgizacji …
+          // amunicja inteligentna nie wystrzeli" (s. 347). Od tej sesji to
+          // odmowa, nie proza — więc strzelec musi mieć czym celować.
+          cyberware: [
+            {
+              id: 'cw-scope',
+              name: 'Celownik przykładowy',
+              notes: '',
+              type: 'cyberoptics',
+            },
+          ],
           weapons: [
             {
               id: 'w-grenade',
@@ -866,6 +877,55 @@ describe('ammunition that deals no damage', () => {
   });
 
   describe('smart ammunition', () => {
+    it('refuses to fire for somebody without the cyberware it needs', async () => {
+      // „z powodów bezpieczeństwa amunicja inteligentna nie wystrzeli po
+      // pociągnięciu za spust" (s. 347). Prozą do etapu 31, bo do 23a karta nie
+      // miała chromu, o który dałoby się zapytać.
+      const bare = data(
+        await emitAck<CharacterView>(gm, 'character:create', { name: 'Bez celownika' }),
+        'character:create',
+      );
+      await emitAck(gm, 'character:update', {
+        characterId: bare.id,
+        patch: {
+          data: {
+            skills: { handgun: 4 },
+            weapons: [
+              {
+                id: 'w-pistol',
+                name: 'Zgrzyt 9',
+                notes: '',
+                compendiumId: 'weapon.zgrzyt-9',
+                damage: '2k6',
+                ammoCurrent: 40,
+                ammoMax: 40,
+                ammoType: '',
+                rof: '2',
+                ammoId: 'ammo.sample-guided',
+              },
+            ],
+          },
+        },
+      });
+      const token = data(
+        await emitAck<TokenView>(gm, 'token:create', {
+          sceneId,
+          name: 'Bez celownika',
+          x: AIM.x - 50 - 12 * PX_PER_M,
+          y: AIM.y - 250,
+          characterId: bare.id,
+        }),
+        'token:create',
+      );
+      const ack = await emitAck(gm, 'attack:roll', {
+        characterId: bare.id,
+        attackerTokenId: token.id,
+        targetTokenId: neighbourTokenId,
+        request: { weaponRowId: 'w-pistol', mode: 'single' },
+      });
+      expect(ack).toEqual({ ok: false, error: 'AMMO_NEEDS_CYBERWARE' });
+    });
+
     it('offers a second roll after a near miss and takes it against the same DV', async () => {
       await emitAck(gm, 'token:move', {
         tokenId: throwerTokenId,

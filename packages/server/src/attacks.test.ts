@@ -1777,4 +1777,170 @@ describe('ranged combat from the map', () => {
       await emitAck(gm, 'character:update', { characterId, patch: { data: { roleId: null } } });
     });
   });
+  /**
+   * Dodatki do broni (etap 31, s. 342–344) — na prawdziwych gniazdach.
+   *
+   * Czysta logika ma własny plik w `shared`; tu sprawdzamy trzy rzeczy, których
+   * tam nie widać: że montaż przepisuje magazynek z tabeli **na karcie**, że
+   * strzał z broni podwieszanej opróżnia jej własny magazynek, a nie karabinu,
+   * i że +1 smartguna zależy od chromu, którego serwer nie bierze z żądania.
+   */
+  describe('dodatki do broni', () => {
+    const DRUM = 'attachment.sample-drum';
+    const EXTENDED = 'attachment.sample-extended';
+    const BAYONET = 'attachment.sample-bayonet';
+    const UNDERBARREL = 'attachment.sample-underbarrel';
+    const LINK = 'attachment.sample-link';
+
+    interface MountResult {
+      attachmentIds: string[];
+      slotsFree: number;
+      ammoMax: number;
+      ammoCurrent: number;
+    }
+
+    async function mount(attachmentId: string, action: 'mount' | 'unmount' = 'mount') {
+      return emitAck<MountResult>(player, 'weapon:attachment', {
+        characterId,
+        weaponRowId: 'w-rifle',
+        attachmentId,
+        action,
+      });
+    }
+
+    async function rifleRow() {
+      return (await sheetOf(characterId)).weapons.find((w) => w.id === 'w-rifle');
+    }
+
+    it('bęben przepisuje magazynek z tabeli i zajmuje jedno gniazdo', async () => {
+      const result = data(await mount(DRUM), 'weapon:attachment');
+      expect(result.attachmentIds).toEqual([DRUM]);
+      // Karabin przykładowy: 25 → 45 w kolumnie „Bębnowy".
+      expect(result.ammoMax).toBe(45);
+      expect(result.slotsFree).toBe(2);
+      const row = await rifleRow();
+      expect(row?.ammoMax).toBe(45);
+      expect(row?.attachmentIds).toEqual([DRUM]);
+    });
+
+    it('drugiego magazynka nie przyjmie', async () => {
+      // „Do danej broni można doczepić tylko jeden magazynek naraz" (s. 343).
+      expect(await mount(EXTENDED)).toEqual({ ok: false, error: 'ATTACHMENT_GROUP_TAKEN' });
+    });
+
+    it('tego samego dodatku nie przyjmie dwa razy', async () => {
+      expect(await mount(DRUM)).toEqual({ ok: false, error: 'ATTACHMENT_ALREADY_FITTED' });
+    });
+
+    it('zdjęcie bębna oddaje magazynek i przycina to, co w nim zostało', async () => {
+      await emitAck(player, 'weapon:reload', { characterId, weaponRowId: 'w-rifle' });
+      expect((await rifleRow())?.ammoCurrent).toBe(45);
+      const result = data(await mount(DRUM, 'unmount'), 'weapon:attachment');
+      expect(result.ammoMax).toBe(25);
+      // Dwadzieścia naboi poszło razem z bębnem — nie zostają w karabinie.
+      expect(result.ammoCurrent).toBe(25);
+      expect((await rifleRow())?.attachmentIds).toBeUndefined();
+    });
+
+    it('nie da się dokręcić dodatku do broni, której podręcznik nim nie obsługuje', async () => {
+      // Kolec podlufowy pasuje do Broni długiej; „Zgrzyt 9" to pistolet.
+      const ack = await emitAck(player, 'weapon:attachment', {
+        characterId,
+        weaponRowId: 'w-pistol',
+        attachmentId: BAYONET,
+        action: 'mount',
+      });
+      expect(ack).toEqual({ ok: false, error: 'ATTACHMENT_DOES_NOT_FIT' });
+    });
+
+    it('bagnetem bije się jak bronią białą, a magazynek karabinu stoi', async () => {
+      data(await mount(BAYONET), 'weapon:attachment');
+      const before = (await rifleRow())?.ammoCurrent;
+      await placeTargetAt(1);
+      const card = await attack({ weaponRowId: 'w-rifle', mode: 'single', attachmentId: BAYONET });
+      expect(card.system.melee).toBe(true);
+      // Ostrze przykładowe tnie przez połowę pancerza (s. 176).
+      expect(card.system.halvesArmor).toBe(true);
+      expect(card.system.attachmentName).toBe('Kolec podlufowy');
+      expect(card.system.ammoCost).toBe(0);
+      expect((await rifleRow())?.ammoCurrent).toBe(before);
+      data(await mount(BAYONET, 'unmount'), 'weapon:attachment');
+    });
+
+    it('strzelba podwieszana strzela ze swojego magazynka, nie z karabinowego', async () => {
+      const mounted = data(await mount(UNDERBARREL), 'weapon:attachment');
+      // Dwa gniazda z trzech — „Zajmuje 2 gniazda na dodatki".
+      expect(mounted.slotsFree).toBe(1);
+      // Broń podwieszana przychodzi załadowana: nikt nie kupuje pustej.
+      expect((await rifleRow())?.attachmentAmmo?.[UNDERBARREL]).toBe(2);
+
+      const rifleAmmo = (await rifleRow())?.ammoCurrent;
+      await placeTargetAt(6);
+      const card = await attack({
+        weaponRowId: 'w-rifle',
+        mode: 'single',
+        attachmentId: UNDERBARREL,
+      });
+      expect(card.system.ammoCost).toBe(1);
+      expect(card.system.damage).toBe('5k6');
+      const row = await rifleRow();
+      expect(row?.attachmentAmmo?.[UNDERBARREL]).toBe(1);
+      // Karabin nie stracił ani jednego naboju.
+      expect(row?.ammoCurrent).toBe(rifleAmmo);
+    });
+
+    it('przeładowanie podwieszanej broni napełnia jej własny magazynek', async () => {
+      const ack = data(
+        await emitAck<{ ammo: number }>(player, 'weapon:reload', {
+          characterId,
+          weaponRowId: 'w-rifle',
+          attachmentId: UNDERBARREL,
+        }),
+        'weapon:reload',
+      );
+      expect(ack.ammo).toBe(2);
+      expect((await rifleRow())?.attachmentAmmo?.[UNDERBARREL]).toBe(2);
+      data(await mount(UNDERBARREL, 'unmount'), 'weapon:attachment');
+      // Magazynek dodatku schodzi z karty razem z dodatkiem.
+      expect((await rifleRow())?.attachmentAmmo?.[UNDERBARREL]).toBeUndefined();
+    });
+
+    it('smartgun daje +1 dopiero temu, kto ma się czym podpiąć', async () => {
+      data(await mount(LINK), 'weapon:attachment');
+      await placeTargetAt(10);
+
+      /** Rozbicie rzutu z karty na czacie — jedyne miejsce, gdzie widać +1. */
+      async function breakdownOfShot() {
+        const message = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+        await emitAck(player, 'attack:roll', {
+          characterId,
+          targetTokenId,
+          attackerTokenId: shooterTokenId,
+          request: { weaponRowId: 'w-rifle', mode: 'single' },
+        });
+        return (await message).message.roll?.breakdown ?? [];
+      }
+
+      const bare = await breakdownOfShot();
+      expect(bare.some((entry) => entry.label === 'Sprzęgło celownicze')).toBe(false);
+
+      await emitAck(gm, 'character:update', {
+        characterId,
+        patch: {
+          data: {
+            cyberware: [{ id: 'cw-link', name: 'Sprzęg neuralny przykładowy', notes: '' }],
+          },
+        },
+      });
+      expect(await breakdownOfShot()).toContainEqual({
+        label: 'Sprzęgło celownicze',
+        value: 1,
+        kind: 'situational',
+      });
+
+      // Sprzątanie: reszta pliku strzela bez chromu i bez dodatków.
+      await emitAck(gm, 'character:update', { characterId, patch: { data: { cyberware: [] } } });
+      data(await mount(LINK, 'unmount'), 'weapon:attachment');
+    });
+  });
 });

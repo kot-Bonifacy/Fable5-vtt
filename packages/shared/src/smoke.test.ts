@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { isInSmoke, smokeAt, smokeSidePx, type SmokeScene, type SmokeView } from './smoke.js';
-import { cpredSmokeModifiers } from './systems/cpred/environment.js';
+import { CPRED_OBSCUREMENT_KIND, cpredSmokeModifiers } from './systems/cpred/environment.js';
 
 /**
  * Smoke on the map (stage 16h) — a square that penalises rather than hides.
@@ -62,7 +62,8 @@ describe('what standing in smoke costs', () => {
   it('gives each cloud its own named row', () => {
     const rows = cpredSmokeModifiers([cloud(), cloud({ id: 2, name: 'Dym' })]);
     expect(rows).toHaveLength(2);
-    expect(rows[0]).toEqual({ label: 'Dym', value: -4, kind: 'situational' });
+    // Stage 31: the kind is `obscurement` so a night sight can find the row.
+    expect(rows[0]).toEqual({ label: 'Dym', value: -4, kind: CPRED_OBSCUREMENT_KIND });
   });
 
   it('drops a cloud that costs nothing rather than printing a zero', () => {

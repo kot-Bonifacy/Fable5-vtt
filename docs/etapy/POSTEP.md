@@ -96,40 +96,50 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 | 30b | Medycyna Medyka i Twórca Technika             | ✅     | 2026-08-29        |
 | 30c | Wsparcie i Praca Zespołowa                    | ✅     | 2026-08-29        |
 | 30d | Charyzma, Znajomości, Moto, Wiarygodność      | ✅     | 2026-08-30        |
-| 31  | Dodatki do broni                              | ⬜     |                   |
+| 31  | Dodatki do broni                              | ✅     | 2026-09-01        |
 
 ## Od czego zacząć
 
-**Dwie ostatnie sesje (obie 31.08) zeszły z etapów na dług oględzin.** Pierwsza zamknęła
-Celowanie z paska akcji, broń wpisaną ręcznie, prowieniencję rany nadanej i sufit pancerza
-pracownika Korpo; druga — cały **pasek figury bez karty**: leczenie i łatanie statysty, Testy
-Umiejętnościami z profilu i przeładowanie w walce. Dług: 26 → 22 → **21 pozycji**.
+**Etap 31 (dodatki do broni) zamknięty 01.09.** Osiem pozycji z s. 342–344 wjechało importem,
+a broń z gniazdami daje się uzbroić z karty. **Wolne zostały dwa etapy: 27g** (wydajność, poligon
+„Korytarz 16e" gotowy) i **28** (wdrożenie na VPS). Dług oględzin urósł do **23 pozycji**
+(`zaleglosci.md`) — dwie nowe z tej sesji.
 
-**Celowanie wybiera się teraz przy kursorze, nie na banerze.** Po kliknięciu w cel wyskakuje okno
-z czterema sylwetkami (korpus, głowa, trzymany przedmiot, noga); otwiera je `loadAttackFor`, czyli
-jedyne miejsce, przez które przechodzą wszystkie drogi ataku. **Nowa droga ataku dostaje Celowanie
-za darmo — i nie da się już dopisać takiej, która go nie ma.** Wybór nie jest lepki.
+**Dodatek do broni jest wierszem kompendium, nie gałęzią w kodzie.** `fit` niesie zdanie
+„Pasuje do:" z podręcznika, flagi niosą skutek, a `secondary` — **id typu broni**, z którego
+`resolveAttachmentWeapon` składa drugą broń. Planer podmienia broń **raz**; od tego miejsca każda
+reguła (zasięg, zwarcie, tryby ognia, połowa pancerza) działa, bo dotyczy broni.
+
+**Trzy rzeczy o dodatkach, które łatwo zepsuć.** Kolumny magazynków siedzą na **typie broni**
+(jeden bęben, dziesięć odpowiedzi). Broń podwieszana ma **własny magazynek** na wierszu karty.
+A reguły montażu stoją po stronie **odczytu** — `attachmentIds` jedzie zwykłą łatą karty, więc
+`fittedAttachmentsFor` sądzi listę przy każdym czytaniu i to, czego nie dałoby się zamontować,
+po prostu nie daje nic.
+
+**Poprawione 01.09: nabój inteligentny odmawia strzału bez Celownika optycznego.** Kryterium
+etapu 31 („złącze smartguna zmienia zachowanie naboju inteligentnego") stało na pomyłce — to dwa
+niezależne tory podręcznika. Wspólny jest mechanizm: `hasRequiredCyberware` pyta kartę o chrom
+**po nazwie**, i tą jedną funkcją idą oba. **Każdy test strzelający amunicją inteligentną musi
+teraz wszczepić strzelcowi chrom**, inaczej pada w asercji o czymś innym.
+
+**Celowanie wybiera się przy kursorze, nie na banerze.** Po kliknięciu w cel wyskakuje okno
+z czterema sylwetkami; otwiera je `loadAttackFor`, czyli jedyne miejsce, przez które przechodzą
+wszystkie drogi ataku. **Nowa droga ataku dostaje Celowanie za darmo.** Wybór nie jest lepki.
 
 **Broń na karcie bierze się wyłącznie z katalogu** („+ Broń z katalogu"); wiersz bez wiązania nie
 strzela i mówi to chipem. **Dopasowania po nazwie nie ma świadomie** — przypięłoby zły PT.
 
-**Ważne dla każdego, kto dotknie progu PT: `>=` przy PT jest teraz błędem, nie wariantem.**
-Decyzja z 28.08 („remis zdaje") została cofnięta — stała na cytacie, którego w polskim wydaniu
-nie ma. Pełny zapis w `decyzje-i-uproszczenia.md`; przed zmianą czegokolwiek w tym miejscu
-przeczytaj ten akapit, bo to druga zmiana zdania w tej sprawie.
+**Ważne dla każdego, kto dotknie progu PT: `>=` przy PT jest błędem, nie wariantem.** Decyzja
+z 28.08 („remis zdaje") została cofnięta — stała na cytacie, którego w polskim wydaniu nie ma.
+Pełny zapis w `decyzje-i-uproszczenia.md`; przed zmianą czegokolwiek w tym miejscu przeczytaj ten
+akapit, bo to druga zmiana zdania w tej sprawie. **Wyjątek od 30c: Test Lojalności** zdaje się
+przy wyniku _mniejszym_ od Lojalności (s. 154).
 
-**Od czego zacząć: wolne są trzy etapy.** **31** (dodatki do broni; odblokowuje siedem
-z dziesięciu skutków Ulepszania z 30b), **27g** (wydajność, poligon „Korytarz 16e" gotowy)
-i **28** (wdrożenie na VPS). Poza etapami został **dług oględzin — 21 pozycji** (`zaleglosci.md`).
-
-**Bez modelu da się dziś obejrzeć sześć:** reszta **29a** (pięć punktów), reszta **29b** (trzy),
-**komplet 30d**, **komplet 30c**, **reszta 30b**, **komplet 30a**, Celowanie w statystę i pomiar
-fps przypisany do 27g. Reszta czeka na **żywy model**: 20a/20b, 19a–19c, dwie ścieżki 24c
-i maszynopis wypowiedzi.
-
-**Figura bez karty ma od 31.08 własny panel w pasku:** rany (z Łataniem i Leczeniem tym samym
-formularzem, co karta), Testy Umiejętnościami wpisanymi w profil i ręka MG nad ranami. Rany takiej
-figury widzi **każdy**, kto ją widzi na mapie; reszta profilu zostaje prywatna.
+**Dług oględzin — 23 pozycje.** Bez modelu da się obejrzeć osiem: reszta **29a** (pięć punktów),
+reszta **29b** (trzy), **komplet 30d**, **komplet 30c**, **reszta 30b**, **komplet 30a**,
+Celowanie w statystę, **reszta 31** (noktowizor w dymie, luneta od 51 m, demontaż przycinający
+naboje). Reszta czeka na **żywy model**: 20a/20b, 19a–19c, dwie ścieżki 24c i maszynopis
+wypowiedzi.
 
 **Do oględzin 30a–30d trzeba postaci ze wszystkimi Rolami poza Netrunnerem** — żadna karta na
 scenach testowych ich nie ma. **Od 29a wybór Roli ma wyłącznie MG**, więc oględziny Ról robi się
@@ -139,51 +149,33 @@ z sesji MG albo przestawia Rolę u MG i patrzy graczem. **Trzecia droga, tańsza
 **Kartę nośną dla innego etapu trzeba potem przywrócić**: „Test 27x" jest netrunnerem poligonu
 Sieci i po 29b wróciła do Interfejsu 7 (`poligon.md`).
 
-**Uwaga po 29.08: `data/private/cpred/compendium/` bywa starsze niż parser.** Regeneracja
-importem dołożyła Miotaczowi ognia `ammoPatterns: ['shell']`, którego plik na dysku nie miał —
-bez niego **żaden nabój specjalny do niego nie pasował** (`ammoFitsWeapon` odrzuca broń bez
-wzorców i bez `ammoIds`). Jeśli coś w kompendium zachowuje się dziwnie, najpierw
-`python tools/import/parse-manual.py`, potem szukaj błędu.
+**Uwaga: `data/private/cpred/compendium/` bywa starsze niż parser.** Pliki są poza repo, więc
+zmiana `parse-manual.py` ich nie odświeża. Jeśli coś w kompendium zachowuje się dziwnie, najpierw
+`python tools/import/parse-manual.py`, potem szukaj błędu. Import z 01.09 dołożył plik
+`attachments.json` (osiem wpisów) i dwie kolumny magazynków dziesięciu typom broni.
 
-**Sceny testowe — cztery, bez zmian od 28.08.** Aktywna jest **„Strzelnica"**: komplet pod Sieć
-(żeton „Kolec" przy odsłoniętym gnieździe, „Gniazdo za ścianą" za murem L, drzwi #59 podpięte
-do węzła) i **pięć uzbrojonych stref bronionych** (wieżyczka, podłoga elektryczna, ślizgawka,
-maź, winda z gazem). Stoi na niej też **druga figura „Rudy Kwiatkowski" z właścicielem avatar9,
-a kartą NPC** — zostawiona świadomie, bo to jedyne miejsce, gdzie widać zdanie „Ta figura ma
-kartę postaci, ale nie jest przypisana do ciebie". W podglądzie: **„Korytarz 16e"** (dynamiczna
-widoczność, mur L — **nie kasuj jej**, to poligon 27g), **„Karty 24x"** i **„Efekty 23x"**.
-Wszystkie współrzędne — w `poligon.md`, razem ze **stanem po sesji 30.08** (rany i broń dopisane
-kartom avatar9, Rudy'ego i wieżyczki).
-Do oględzin z konta gracza jest `Tester` (`/join/tester-dev`), ale **do Sieci trzeba avatar9** —
-to konto ma kartę netrunnera, i jest nią **„Test 27x"** (Interfejs 7, cyberdek), nie karta
-o nazwie `avatar9`, która ma dziś Rolę `solo` z rangą 1. **avatar9 ma chrom** (dwie cyberręce, Człowieczeństwo 28/44) i zostaje
-taki celowo; kopia kart sprzed 28.08 jest w `data/private/backups/`.
+**Sceny testowe — cztery, bez zmian.** Aktywna jest **„Strzelnica"** (komplet pod Sieć, pięć
+uzbrojonych stref bronionych, druga figura „Rudy Kwiatkowski" z właścicielem avatar9, a kartą
+NPC — zostawiona świadomie). W podglądzie: **„Korytarz 16e"** (**nie kasuj jej**, to poligon
+27g), **„Karty 24x"** i **„Efekty 23x"**. Wszystkie współrzędne i **stan po sesji 01.09** —
+w `poligon.md`. Do oględzin z konta gracza jest `Tester` (`/join/tester-dev`), ale **do Sieci
+trzeba avatar9**.
 
 **Kampania „Poligon bojowy" jest oznaczona jako poligon** — chip „POLIGON" w górnym pasku
-i krótkie pytanie przy kasowaniu postaci, sceny i bota. Przy kampanii **bez** tej flagi pytanie
-niesie jej nazwę. Flaga niczego nie blokuje: mówi, gdzie się stoi. Przestawia się w Panelu MG
-i **nie rozchodzi się sama** po podpiętych ekranach (patrz pułapki).
+i krótkie pytanie przy kasowaniu. Flaga niczego nie blokuje i **nie rozchodzi się sama** po
+podpiętych ekranach (patrz pułapki).
 
 **Triaż z 28.08 zostaje w mocy** — siedem pozycji „nieosiągalnych z UI albo bez widocznej
-różnicy" siedzi w `decyzje-i-uproszczenia.md` (sekcja „Ścieżki, których nie da się odklikać")
-i **nie wciągaj ich z powrotem** jako nowych odkryć. Dwie kolejne poszły 28.08 **do kosza
-decyzją MG**: zakładka „AI" z etapu 09 (martwa) i ślad ścieżki przy przeciąganiu żetonu.
+różnicy" siedzi w `decyzje-i-uproszczenia.md` i **nie wciągaj ich z powrotem** jako nowych
+odkryć.
 
-**Zanim ruszysz pozycję z `POMYSLY.md`, sprawdź ją w kodzie.** 29.08 (druga sesja) **cztery**
-wpisy okazały się nieaktualne i zostały przekreślone: edycja rysunku i edytor osłony (zrobione
-w 27l), blokada ruchu przez osłonę na serwerze (`coverMovementSegments` liczy się od dawna)
-oraz migotliwy test `netdemons.test.ts` (już warunkowy). Lista jest zapisem chwili, w której coś
-zauważono, a nie stanu repozytorium.
-
-**Rozstrzygnięte 28.08 (MG): remis w teście na PT to sukces.** `cpredAmmoCheckOutcome` liczy
-`total >= dv`; ogień zaporowy zostaje przy „remis wygrywa obrońca", bo tam PT to wynik rzutu
-strzelca. Pełny zapis w `decyzje-i-uproszczenia.md`. **Wyjątek od 30c: Test Lojalności zdaje się
-przy wyniku _mniejszym_ od Lojalności** — remis oznacza odmowę (s. 154).
+**Zanim ruszysz pozycję z `POMYSLY.md`, sprawdź ją w kodzie** — 29.08 cztery wpisy okazały się
+nieaktualne. Lista jest zapisem chwili, w której coś zauważono, a nie stanu repozytorium.
 
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
 a od 30d pierwszym, przy którym **każda Rola w drużynie gra inaczej niż reszta**.
 
-**Testy na koniec ostatniej sesji:** 1639 w `shared`, 879 na serwerze, 62 u klienta — zielone.
+**Testy na koniec ostatniej sesji:** 1695 w `shared`, 893 na serwerze, 67 u klienta — zielone.
 ESLint i Prettier czyste na całym repo, `pnpm -r build` przechodzi.
 
 ## Umowy kodu — indeks
@@ -264,6 +256,14 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 - **Klik w cudzą figurę** — `onTokenPreview` → `selectionStore.focus`: pasek ją opisuje, nikt nią nie steruje.
 - **Broń na karcie** powstaje z wpisu katalogu przez `purchasedSheetRow` — nigdy z wolnego tekstu i **nigdy z dopasowania po nazwie**. Wiersz bez `compendiumId` nie strzela i mówi to chipem, nie dopiero odmową planera.
 - **Rana nazwana, nie wyrzucona** (gaz, granat hukowy, strefa, Celowanie w nogę, ręka MG) idzie przez `namedCriticalInjuryRow`: bez `rolled`, z `assigned` → chip „nadana".
+- **Nowy dodatek do broni** — wiersz kompendium (`AttachmentEntry`: `fit` + flagi skutku), nie gałąź w kodzie; każdą flagę przepisuje się **ręcznie** w `toAttachmentProfile`, pominięta ginie po cichu.
+- **Kolumny tabeli magazynków** (`magazineExtended`/`magazineDrum`) siedzą na **typie broni**, nie na dodatku — jeden bęben, dziesięć odpowiedzi; obie idą też na białą listę `schema_fields`.
+- **Druga broń doczepiona do wiersza** to **id typu broni** (`CpredAttachmentWeapon`), nigdy kopia jego liczb; planer podmienia broń raz i dalej działa każda reguła o broni.
+- **Magazynek broni podwieszanej** jest jej własny (`CpredWeaponRow.attachmentAmmo`); `weapon:reload` z `attachmentId` napełnia ten licznik, demontaż go zabiera.
+- **Reguły montażu dodatku** stoją po stronie **odczytu** (`fittedAttachmentsFor` sądzi listę przy każdym czytaniu), bo `attachmentIds` jedzie zwykłą łatą karty; zdarzenie `weapon:attachment` zostaje dla `ammoMax`, przycięcia naboi i odmowy zdaniem.
+- **Bonus warunkowany chromem** pyta kartę przez `hasRequiredCyberware` — po **nazwach**, nie id; tą jedną funkcją idą +1 smartguna i odmowa `AMMO_NEEDS_CYBERWARE` naboju inteligentnego.
+- **Kara „nie widzę celu"** nosi `CPRED_OBSCUREMENT_KIND`, nie `situational` — noktowizor kasuje ujemne wiersze tego rodzaju, nie kompensuje ich plusem.
+- **Atak drugą bronią** jedzie `attachmentId` przez żądanie → intencję → celownik; obie strony rozwiązują go `resolveAttachmentWeapon` z tego samego katalogu.
 - **Nazwa Roli z `roles.json` wchodzi do zdania tylko w mianowniku** — po dwukropku albo na końcu. Odmiany nazwy z pliku danych nie da się zgadnąć („zostań Nomada").
 
 ## Pułapki dev — indeks
@@ -346,11 +346,81 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 - **Nazwa w kodzie ≠ nazwa w pliku danych** (wielkość liter) — dopasowania po nazwie rób na `trim().toLowerCase()`.
 - **Test rzutu, który „ma się udać", migocze na fumble'u** — naturalna 1 odejmuje 1k10 i przebija każdy modyfikator; powtarzaj rzut w pętli.
 - **Gracz nie mógł kliknąć cudzej figury** (do 31.08) — nowa funkcja paska „dla gracza przy cudzej figurze" bywa nieosiągalna, choć dane jadą.
+- **Nazwa z tabeli zbiorczej wygląda jak nagłówek opisu, a nim nie jest** — w sekcji dodatków każda pada trzy razy; opis otwiera wyłącznie wersja WERSALIKAMI.
+- **Trzy liczby tabeli magazynków są zlepione**, ale pierwsza jest znana (magazynek z tabeli broni) — reszta ma jeden podział zgodny z porządkiem kolumn; nagłówek klei się z pierwszym wierszem.
+- **Nabój inteligentny od 01.09 odmawia strzału bez Celownika optycznego** — test strzelający nim musi wszczepić chrom, inaczej pada w asercji o czymś innym.
+- **Gniazd na dodatki nie widać przy broni wpisanej ręką** ani przy egzotyku i broni białej — `attachmentSlots` to wtedy zero, a pasek gniazd świadomie znika.
 - **Kartę do oględzin da się przygotować w bazie bez logowania na MG** — `node --input-type=module` + `node:sqlite` na `packages/server/dev.db`; `better-sqlite3` nie jest w `node_modules` repozytorium.
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 01.09 — etap 31: dodatki do broni
+
+**Zlecenie MG:** etap 31, wybrany z trzech wolnych. Trzy decyzje przed pierwszą linijką:
+podwieszana broń to **drugi tryb tego samego wiersza karty** (nie osobny wiersz broni), +1
+smartguna **sprawdza chrom na karcie** (nie jest ostrzeżeniem prozą), a dodatek bierze się
+**wprost z katalogu**, jak amunicja — bez księgowości w plecaku.
+
+**`attachmentSlots: 3` siedziało w danych od etapu 13 i nie miało czym się zapełnić.** Teraz
+dodatek jest **wierszem kompendium** (`AttachmentEntry`): `fit` niesie zdanie „Pasuje do:"
+z podręcznika, a flagi niosą skutek. Ta sama decyzja, co przy amunicji w 16g i ranach w 14e —
+MG wpisujący własny bagnet dostaje go egzekwowanego jak drukowany, a kod walki nigdy nie uczy się
+słowa „bagnet".
+
+**Trzy z ośmiu dodatków robią z jednej broni dwie — i to okazało się najtańszą częścią etapu.**
+`secondary` niesie **id typu broni**, nie kopię jego liczb, a `resolveAttachmentWeapon` składa
+z niego pełną broń. Planer podmienia broń **jedną linijką**, i od tego miejsca w dół działa każda
+reguła: bagnet nie sięga dalej niż 2 m, bo jest bronią białą; tnie przez połowę pancerza, bo
+Lekka broń biała ma tę flagę; granatnik podwieszany rzuca 6k6 na obszar 10×10 m, bo Granatnik ma
+`explosive`. Żadnej z tych reguł nikt nie pisał drugi raz.
+
+**Trzy rzeczy, których plan nie przewidział.** (1) **Kolumny magazynków siedzą na typie broni**,
+nie na dodatku — tabela z s. 344 czyta się bronią, więc „bębnowy" znaczy 50 dla PM-a i 16 dla
+strzelby. (2) **Broń podwieszana potrzebuje własnego magazynka na karcie** (`attachmentAmmo`),
+inaczej jeden granat kosztowałby dwadzieścia pięć naboi karabinowych. (3) **`attachmentIds` jedzie
+zwykłą łatą karty**, więc reguły montażu musiały stanąć po stronie **odczytu** — gracz może tam
+wpisać trzy bębny, a `fittedAttachmentsFor` po prostu nie da mu nic ponad to, co dałoby się
+zamontować. Sprawdzanie przy zapisie trzeba by powtórzyć w każdej ścieżce piszącej kartę.
+
+**Kryterium ukończenia etapu było błędne i zostało poprawione.** „Złącze smartguna zmienia
+zachowanie naboju inteligentnego z 16h" stało na pomyłce: podręcznik wiąże amunicję inteligentną
+z **Celownikiem optycznym** (s. 347), a złącze ze **Złączami interfejsu / uchwytem podskórnym**
+(s. 344) — dwa niezależne tory. Po przedstawieniu tego MG wybrał domknięcie prawdziwej luki obok:
+`hasRequiredCyberware` obsługuje **oba** tory, a nabój inteligentny od tej sesji **nie wystrzeli**
+bez Celownika optycznego (`AMMO_NEEDS_CYBERWARE`). Do 16h była to proza, bo modelu chromu jeszcze
+nie było — przyszedł w 23a. Zapłaciła za to jedna asercja w `ammo-effects.test.ts` (pułapka
+zapisana).
+
+**Parser dostał sekcję dodatków i tabelę magazynków — obie kosztowały po jednym błędzie.**
+Nazwa dodatku pada w sekcji **trzy razy** (tabelka cen, nagłówek WERSALIKAMI, proza sąsiada);
+branie pierwszego wystąpienia gubiło opisy, branie ostatniego **gubiło cenę złącza smartguna**.
+Wersaliki są jedyną formą, która znaczy „tu zaczyna się opis". W tabeli magazynków trzy liczby są
+zlepione w jedną („Ciężki pistolet 81428"), ale wiersz jest **zakotwiczony** magazynkiem z tabeli
+broni — reszta ma dokładnie jeden podział zgodny z porządkiem kolumn. Wszystkie dziesięć wierszy
+zgadza się z podręcznikiem; import kończy się dwoma ostrzeżeniami, oba sprzed tej sesji.
+
+**Odklikane w przeglądarce (Strzelnica, sesja MG):** gniazda przy wierszu broni (□□□ → ■■■),
+montaż bębna z magazynkiem rosnącym **30 → 50 na karcie**, znikanie drugiego magazynka z listy,
+bagnet i granatnik podwieszany jako wiersze `↳` z własnym magazynkiem 1/1, strzał z podwieszanego
+granatnika (**6k6 · obszar 10×10 m · PT 15 z tabeli Granatnika · Broń ciężka zamiast Broni długiej
+· magazynek karabinu nietknięty 25/25**) oraz +1 smartguna, którego **nie było** przed
+wszczepieniem Uchwytu podskórnego i **jest** po nim.
+
+**Znaleziona luka, której zakres etapu nie obejmował:** `cpredHotbarSlots` buduje sloty
+z `sheet.weapons`, więc z bagnetu i broni podwieszanej strzela się **wyłącznie z karty** —
+pasek nad mapą ich nie zna. To ta sama brakująca druga droga, którą 31.08 dostało Celowanie.
+Zapisane jako zaległość, nie naprawiane w tej sesji.
+
+**Stan poligonu:** karta **avatar9** zmieniona świadomie i opisana w `poligon.md` — SMG z bębnem
+i złączem smartguna (magazynek 50), **nowy wiersz „Militech Dragon"** z bagnetem i granatnikiem
+podwieszanym, wszczepiony **Uchwyt podskórny** (Człowieczeństwo 28 → 26, maks. 42 → 40). To jest
+komplet potrzebny do trzech nieoglądanych pozycji etapu — nie kasuj go.
+
+**Testy na koniec:** 1695 w `shared` (+32), 893 na serwerze (+9), 67 u klienta — zielone.
+ESLint i Prettier czyste, `pnpm -r build` przechodzi. Dług oględzin: **21 → 23 pozycje**
+(dwie nowe, żadna nie zamknięta).
 
 ### Sesja 31.08 (druga) — zaległości: pasek figury bez karty
 
@@ -408,54 +478,3 @@ oględzin. Tryb turowy wyłączony, magazynek pełny.
 **Testy na koniec:** 1663 w `shared`, 884 na serwerze, 67 u klienta — zielone. ESLint i Prettier
 czyste, `pnpm -r build` przechodzi. Dług oględzin: **23 → 21 pozycji** licząc razem
 z notką o poligonie (zamknięte trzy, jedna wydzielona nowa: Celowanie w statystę).
-
-### Sesja 31.08 — zaległości: Celowanie z paska, broń z katalogu, prowieniencja rany
-
-**Zlecenie MG:** wybór z listy zaległości; padło na **pakiet B + C** — dwie naprawy UI o tym samym
-kształcie („mechanika gotowa, nieosiągalna z UI") plus dwa drobiazgi przy ranach krytycznych.
-Ustalenia przed pierwszą linijką: **błędy z oględzin naprawiam od razu**, **karty do oględzin
-przygotowuję skryptem w bazie**, a zasięgi broni **muszą się zgadzać z konkretnym modelem**.
-
-**Celowanie przeniosło się z banera do kursora — i to jest zmiana kształtu, nie miejsca.**
-Pierwsza wersja szła po linii najmniejszego oporu: jedna belka nad mapą dla obu dróg uzbrojenia,
-z guzikami Celowania. MG przerwał w trakcie oględzin z dwoma zdaniami: wybór ma wyskakiwać
-**sam, tuż przy kursorze, zaraz po kliknięciu w cel**, i ma być **samymi ikonami** — informacja
-należy do okna skrótów, nie do mapy. Przerobione: belka wróciła do stanu sprzed sesji, a wybór
-(`AimMenu`) otwiera **`loadAttackFor`** — jedyne miejsce, przez które przechodzą wszystkie drogi
-ataku (kafel paska, „Atak" z karty, menu żetonu, karta odmowy z osłoną). To jest właściwa naprawa
-pierwotnego błędu: trzeciej drogi bez Celowania nie da się już dopisać, nie omijając ładowania
-kubka. Wybór **nie jest lepki** — przeładowuje kubek tym samym zamiarem z dopisanym `aimedAt`,
-więc nic nie jest jeszcze rzucone ani zapłacone, a okno zostaje otwarte, żeby „jednak w nogę" nie
-kosztowało ponownego wskazywania celu.
-
-**Cztery sylwetki z game-icons.net** (CC BY 3.0, jak reszta ikon w repo): sylwetka w celowniku
-(korpus, czyli zwykły strzał), głowa z celownikiem, dłoń, noga. Rysowane maską CSS przez `HudIcon`,
-nazwy wybiera `shared` (`CPRED_AIM_POINT_ICONS`), atrybucja dopisana. Wybrane po obejrzeniu
-trzynastu kandydatów w przeglądarce, także w docelowym rozmiarze 22 px.
-
-**Zaległość o `rolled: 0` okazała się prośbą o błąd — i została odrzucona.** Kazała wpisywać przy
-ranie nadanej ręką MG wynik 2k6 z wpisu kompendium; tymczasem ten sam plik trzy funkcje dalej
-robi odwrotnie i tłumaczy dlaczego („nikt tego nie wyrzucił — karta nie ma drukować 2k6, którego
-nie było"). Po przedstawieniu tego MG wybrał trzecią drogę: własny znacznik `assigned` i chip
-**„nadana"** na wierszu rany. Przy okazji wszystkie cztery miejsca (dwie ścieżki wymuszonej
-porażki, dwie gałęzie Celowania w nogę) poszły przez jedną funkcję `namedCriticalInjuryRow` —
-bo to właśnie jedna z kopii znała zasadę, a dwie nie.
-
-**Broń na karcie bierze się teraz z katalogu.** „+ Broń" dokładało pusty wiersz, który nigdy nie
-wystrzelił (bez `compendiumId` planer nie dochodzi do tabeli zasięgów). Teraz „+ Broń z katalogu"
-otwiera wyszukiwarkę, a wiersz buduje ten sam `purchasedSheetRow`, co zakup. **Dopasowania po
-nazwie nie ma świadomie** — „Pistolet" przypiąłby zły PT na każdym dystansie. Wiersze wpisane
-wcześniej ręką dostają chip „⚠ Wskaż broń z katalogu" i wyszarzony „Atak".
-
-**Odklikane w przeglądarce (wszystko na „Strzelnicy" i na kartach kampanii):** okno Celowania
-obiema drogami uzbrojenia (kafel paska u statysty „testowy 2x2" i „Atak" z wiersza karty avatar9),
-karta rzutu z „Celowanie (głowa) −8", wyszukiwarka broni (dopisanie „Zgrzyt 9", stan pusty przy
-braku trafień), związanie wiersza „Rura z parkingu" z „Dużą bronią białą" wraz z odblokowaniem
-„Ataku", chip „nadana" po „Nadaj ranę", oraz **sufit pancerza pracownika Korpo** (zatrudniony
-„Firmowy ochroniarz", OB 11 → 18 przyjęte bez odmowy — zapisane jako świadome).
-
-**Dług oględzin: 26 → 22 pozycje.** Zamknięte cztery, żadna nowa nie doszła.
-
-**Stan poligonu po sesji:** wszystko przywrócone (kartę „Frank" wyczyszczono ze śladów testów,
-pracownik „Ochrona Test" skasowany). Ślady: żeton **„testowy 2x2" ma 25/30 naboi** zamiast 27/30
-(dwa strzały testowe, oba pudła) i kilka kart w logu czatu. Szczegóły w `poligon.md`.

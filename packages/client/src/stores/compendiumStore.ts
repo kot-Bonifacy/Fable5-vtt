@@ -137,6 +137,7 @@ export function countByCategory(
   const counts: Record<CompendiumCategory, number> = {
     weapon: 0,
     ammo: 0,
+    attachment: 0,
     armor: 0,
     gear: 0,
     cyberware: 0,

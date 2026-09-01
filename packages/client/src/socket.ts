@@ -194,12 +194,15 @@ import type {
   WallUpdatePayload,
   WallSyncBroadcast,
   WallView,
+  WeaponAttachmentPayload,
+  WeaponAttachmentResult,
   WeaponReloadPayload,
 } from '@vtt/shared';
 import {
   CHAT_COMMANDS_HELP,
   CPRED_ADVANCE_PROBLEMS,
   CPRED_ROLE_CHANGE_PROBLEMS,
+  CPRED_ATTACHMENT_PROBLEM_MESSAGES,
   CPRED_ATTACK_PROBLEM_MESSAGES,
   CPRED_COMBAT_AWARENESS_PROBLEMS,
   CPRED_FLEET_PROBLEMS,
@@ -1135,6 +1138,19 @@ function attackAckErrorText(code: string): string {
       return 'Ten wpis nie jest atakiem.';
     case 'WEAPON_HAS_NO_MAGAZINE':
       return 'Ta broń nie ma magazynka do przeładowania.';
+    // Stage 31 — the four ways an attachment can be refused. The engine's own
+    // messages are reused so the greyed-out button and the refusal say the same
+    // sentence, which is the umowa the ammunition codes already follow.
+    case 'UNKNOWN_ATTACHMENT':
+      return CPRED_ATTACHMENT_PROBLEM_MESSAGES.UNKNOWN_ATTACHMENT;
+    case 'ATTACHMENT_DOES_NOT_FIT':
+      return CPRED_ATTACHMENT_PROBLEM_MESSAGES.ATTACHMENT_DOES_NOT_FIT;
+    case 'ATTACHMENT_NO_SLOTS':
+      return CPRED_ATTACHMENT_PROBLEM_MESSAGES.ATTACHMENT_NO_SLOTS;
+    case 'ATTACHMENT_ALREADY_FITTED':
+      return CPRED_ATTACHMENT_PROBLEM_MESSAGES.ATTACHMENT_ALREADY_FITTED;
+    case 'ATTACHMENT_GROUP_TAKEN':
+      return CPRED_ATTACHMENT_PROBLEM_MESSAGES.ATTACHMENT_GROUP_TAKEN;
     case 'UNKNOWN_AMMO':
       return 'Nie ma takiego naboju w kompendium.';
     case 'TOKEN_HAS_NO_PROFILE':
@@ -1285,13 +1301,36 @@ export function reloadWeapon(
   ammoId?: string | null,
   /** Statist doing the reloading, when there is no sheet to name. */
   attackerTokenId?: string,
+  /** Refill the weapon bolted onto this row instead of the row (stage 31). */
+  attachmentId?: string,
 ): void {
   const payload: WeaponReloadPayload = {
     ...(characterId ? { characterId } : { attackerTokenId }),
     weaponRowId,
     ...(ammoId !== undefined ? { ammoId } : {}),
+    ...(attachmentId ? { attachmentId } : {}),
   };
   socket?.emit('weapon:reload', payload, (ack: SocketAck<{ ammo: number }>) => {
+    if (!ack.ok) useChatStore.getState().addNote(attackAckErrorText(ack.error));
+  });
+}
+
+/**
+ * Bolts an attachment onto a weapon, or takes it off (stage 31, s. 342).
+ *
+ * Its own event rather than a sheet patch, because what a mount does to the row
+ * is not what the client wrote: the magazine follows a table in the catalogue,
+ * a second copy is refused, and the rounds in a shrinking magazine have to be
+ * clamped. All three are the server's answers — see `weapon:attachment`.
+ */
+export function setWeaponAttachment(
+  characterId: string,
+  weaponRowId: string,
+  attachmentId: string,
+  action: 'mount' | 'unmount',
+): void {
+  const payload: WeaponAttachmentPayload = { characterId, weaponRowId, attachmentId, action };
+  socket?.emit('weapon:attachment', payload, (ack: SocketAck<WeaponAttachmentResult>) => {
     if (!ack.ok) useChatStore.getState().addNote(attackAckErrorText(ack.error));
   });
 }

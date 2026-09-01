@@ -611,3 +611,70 @@ wyjmuje go z profilu warstwa systemu (`readSheetTokenInjuries` w `sheets.ts`, ob
 `tokenId` (sterowanie), ring i podgląd marszu zostają przy figurze prowadzonej. Pasek rozróżniał
 opis od sterowania od 27h (`HudContext.steering`) — brakowało tylko drogi, którą cudza figura
 mogła do niego trafić, i przez to publiczne rany były dla gracza nieosiągalne.
+
+**Nowy dodatek do broni to wiersz kompendium, nie gałąź w kodzie (01.09).** `AttachmentEntry`
+niesie `fit` („Pasuje do:" z podręcznika — lista Umiejętności, lista zakazanych, „musi liczyć
+naboje") i flagi skutku (`slots`, `magazine`, `attackBonus`, `rangedBonus`, `ignoresObscurement`,
+`blocksConcealment`, `secondary`, `exclusiveGroup`). Ta sama decyzja, co przy amunicji w 16g
+i ranach krytycznych w 14e: MG wpisujący własny dodatek dostaje go egzekwowanego dokładnie tak,
+jak drukowany, a kod walki nigdy nie uczy się słowa „bagnet". Każdą flagę trzeba **przepisać
+ręcznie** w `toAttachmentProfile` — pominięta tam jest regułą, której mechanika nigdy nie zobaczy
+(ta sama lekcja, którą zapisał `toAmmoProfile`).
+
+**Kolumny tabeli magazynków siedzą na typie broni, nie na dodatku (01.09).**
+`magazineExtended`/`magazineDrum` w `WeaponTypeDefinition`, bo tabela z s. 344 czyta się bronią:
+jeden magazynek bębnowy, dziesięć różnych odpowiedzi. Dodatek mówi tylko, **którą kolumnę**
+wybrać (`magazine: 'extended' | 'drum'`), a liczbę podaje `weaponMagazineWith`. Typ, którego
+w tabeli nie ma, zostaje przy zwykłym magazynku — to uczciwa odpowiedź, nie zgadywanie.
+Obie kolumny musiały trafić na białą listę `schema_fields` w `parse-manual.py` (umowa o nowym
+polu typu broni).
+
+**Druga broń doczepiona do wiersza to id typu broni, nigdy kopia jego liczb (01.09).**
+`CpredAttachmentWeapon.weaponTypeId` (+ opcjonalny `magazine`), a pełny profil składa
+`resolveAttachmentWeapon`. „Trzymaną oburącz broń można wykorzystać jako Granatnik z tylko jednym
+granatem w magazynku" (s. 343) to cały profil granatnika z jednym zmienionym polem; skopiowanie
+reszty zostawiłoby bagnet, którego obrażenia przestają się zgadzać z Lekką bronią białą, gdy MG
+poprawi tabelę. Planer podmienia broń **raz**, w `planCpredAttack`, i od tego miejsca w dół każda
+reguła (zasięg, zwarcie, tryby ognia, połowa pancerza) działa, bo dotyczy broni — nie dlatego,
+że ktoś dopisał gałąź o podwieszanych.
+
+**Magazynek broni podwieszanej jest jej własny (01.09).** `CpredWeaponRow.attachmentAmmo`
+(id dodatku → naboje). Bez tego jeden granat kosztowałby dwadzieścia pięć naboi karabinowych:
+`spendAttackCosts` czyta `meta.attachmentId` i pisze do właściwego licznika, `weapon:reload`
+z polem `attachmentId` napełnia ten licznik za tę samą Akcję, a demontaż zabiera go z karty razem
+z dodatkiem. Broń doczepiona przychodzi **załadowana** — nikt nie kupuje pustego granatnika,
+a alternatywą jest wyrzutnia wymagająca Akcji, zanim w ogóle wystrzeli.
+
+**Reguły montażu stoją po stronie odczytu, nie zapisu (01.09).** `attachmentIds` jest zwykłym
+polem karty i jedzie `character:update` jak nazwa broni, więc gracz może tam wpisać trzy bębny
+albo złącze smartguna na łuku. `fittedAttachmentsFor` sądzi listę **przy każdym odczycie**
+(`attachmentMountProblem` wobec tego, co już zachowano): to, czego nie dałoby się zamontować,
+po prostu nie daje nic. Sprawdzanie przy zapisie trzeba by powtórzyć w każdej ścieżce piszącej
+kartę — tak jest jedno miejsce do zapomnienia, a karta, pod którą MG zmienił kompendium, leczy
+się sama. Zdarzenie `weapon:attachment` zostaje mimo to, bo robi trzy rzeczy, których łata nie
+policzy: przepisuje `ammoMax` z tabeli, przycina naboje przy demontażu i **odmawia** drugiej
+kopii zdaniem, zamiast milczeć.
+
+**Bonus dodatku warunkowany chromem pyta kartę przez `hasRequiredCyberware` (01.09).**
+`requiresCyberware` niesie **nazwy** cyborgizacji, nie id — id powstają z polskich nazw przy
+imporcie i giną, gdy MG przepisze wiersz (ta sama umowa, co przy ranach przez `criticalInjuryAt`
+i broni Wsparcia w 30c). Dopasowanie na `trim().toLowerCase()`. Przez tę jedną funkcję idą oba
+tory z podręcznika: +1 złącza smartguna („musisz być z nim połączony za pomocą złączy interfejsu
+lub uchwytu podskórnego", s. 344) i odmowa strzału amunicją inteligentną („z powodów
+bezpieczeństwa … nie wystrzeli", s. 347, kod `AMMO_NEEDS_CYBERWARE`). Do 23a modelu chromu nie
+było, więc drugie z tych zdań stało jako proza na karcie.
+
+**Kara „nie widzę celu" ma własny `kind`, żeby dało się ją zdjąć (01.09).**
+`CPRED_OBSCUREMENT_KIND` w `environment.ts` zamiast `situational`: „Celownik noktowizyjny …
+zmniejsza do zera modyfikatory ujemne za strzelanie do celu ukrytego w ciemności, dymie, mgle"
+(s. 343), a noktowizor musi odróżnić chmurę od Trzymania — po polskiej etykiecie się nie
+rozgałęzia. Kasowane są **wyłącznie ujemne** wiersze tego rodzaju i **kasowane**, nie
+kompensowane plusem: podręcznik mówi, że kara przestaje istnieć, a „Dym −4 · Noktowizor +4"
+na karcie byłoby teatrem arytmetycznym.
+
+**Nowa droga ataku z drugiej broni kończy się `attachmentId` w żądaniu (01.09).**
+`CpredAttackRequest.attachmentId` → `AttackIntent.attachmentId` → `AttackTargeting.attachmentId`;
+podgląd u klienta i werdykt serwera rozwiązują dodatek **z tego samego katalogu**
+(`resolveAttachmentWeapon`), więc bąbelek pod kursorem i karta na czacie nie mają jak się
+rozjechać. Karta niesie `attachmentId` + `attachmentName`, bo jest czytana długo po strzale
+i „czym to było" musi odpowiadać także po edycji kompendium.

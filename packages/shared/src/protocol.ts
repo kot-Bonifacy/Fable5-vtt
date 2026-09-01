@@ -530,6 +530,36 @@ export interface WeaponReloadPayload {
    * in one the Action is booked exactly as a refill's would be.
    */
   ammoId?: string | null;
+  /**
+   * Refill the weapon bolted onto this row instead of the row itself
+   * (stage 31) — the one grenade in the underbarrel launcher.
+   *
+   * The same event rather than one of its own, because at the table it is the
+   * same motion and costs the same Action: „Przeładowanie — Załadowujesz
+   * magazynek do pełna" says nothing about which magazine.
+   */
+  attachmentId?: string;
+}
+
+/** Client → server payload of `weapon:attachment` (stage 31). */
+export interface WeaponAttachmentPayload {
+  /** Sheet carrying the weapon. A statist's figure has no attachments. */
+  characterId: string;
+  weaponRowId: string;
+  /** Catalogue id of the attachment being bolted on or taken off. */
+  attachmentId: string;
+  /** `mount` bolts it on, `unmount` takes it off and frees the slots. */
+  action: 'mount' | 'unmount';
+}
+
+/** Ack data of `weapon:attachment` — what the weapon looks like afterwards. */
+export interface WeaponAttachmentResult {
+  attachmentIds: string[];
+  /** Slots still open, so the sheet can grey the „+ Dodatek" button. */
+  slotsFree: number;
+  /** Magazine after the change; a drum grows it, taking one off shrinks it. */
+  ammoMax: number;
+  ammoCurrent: number;
 }
 
 /** Client → server payload of `chat:history`. */

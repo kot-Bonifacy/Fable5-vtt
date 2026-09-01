@@ -7,6 +7,57 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 31.08 — zaległości: Celowanie z paska, broń z katalogu, prowieniencja rany
+
+**Zlecenie MG:** wybór z listy zaległości; padło na **pakiet B + C** — dwie naprawy UI o tym samym
+kształcie („mechanika gotowa, nieosiągalna z UI") plus dwa drobiazgi przy ranach krytycznych.
+Ustalenia przed pierwszą linijką: **błędy z oględzin naprawiam od razu**, **karty do oględzin
+przygotowuję skryptem w bazie**, a zasięgi broni **muszą się zgadzać z konkretnym modelem**.
+
+**Celowanie przeniosło się z banera do kursora — i to jest zmiana kształtu, nie miejsca.**
+Pierwsza wersja szła po linii najmniejszego oporu: jedna belka nad mapą dla obu dróg uzbrojenia,
+z guzikami Celowania. MG przerwał w trakcie oględzin z dwoma zdaniami: wybór ma wyskakiwać
+**sam, tuż przy kursorze, zaraz po kliknięciu w cel**, i ma być **samymi ikonami** — informacja
+należy do okna skrótów, nie do mapy. Przerobione: belka wróciła do stanu sprzed sesji, a wybór
+(`AimMenu`) otwiera **`loadAttackFor`** — jedyne miejsce, przez które przechodzą wszystkie drogi
+ataku (kafel paska, „Atak" z karty, menu żetonu, karta odmowy z osłoną). To jest właściwa naprawa
+pierwotnego błędu: trzeciej drogi bez Celowania nie da się już dopisać, nie omijając ładowania
+kubka. Wybór **nie jest lepki** — przeładowuje kubek tym samym zamiarem z dopisanym `aimedAt`,
+więc nic nie jest jeszcze rzucone ani zapłacone, a okno zostaje otwarte, żeby „jednak w nogę" nie
+kosztowało ponownego wskazywania celu.
+
+**Cztery sylwetki z game-icons.net** (CC BY 3.0, jak reszta ikon w repo): sylwetka w celowniku
+(korpus, czyli zwykły strzał), głowa z celownikiem, dłoń, noga. Rysowane maską CSS przez `HudIcon`,
+nazwy wybiera `shared` (`CPRED_AIM_POINT_ICONS`), atrybucja dopisana. Wybrane po obejrzeniu
+trzynastu kandydatów w przeglądarce, także w docelowym rozmiarze 22 px.
+
+**Zaległość o `rolled: 0` okazała się prośbą o błąd — i została odrzucona.** Kazała wpisywać przy
+ranie nadanej ręką MG wynik 2k6 z wpisu kompendium; tymczasem ten sam plik trzy funkcje dalej
+robi odwrotnie i tłumaczy dlaczego („nikt tego nie wyrzucił — karta nie ma drukować 2k6, którego
+nie było"). Po przedstawieniu tego MG wybrał trzecią drogę: własny znacznik `assigned` i chip
+**„nadana"** na wierszu rany. Przy okazji wszystkie cztery miejsca (dwie ścieżki wymuszonej
+porażki, dwie gałęzie Celowania w nogę) poszły przez jedną funkcję `namedCriticalInjuryRow` —
+bo to właśnie jedna z kopii znała zasadę, a dwie nie.
+
+**Broń na karcie bierze się teraz z katalogu.** „+ Broń" dokładało pusty wiersz, który nigdy nie
+wystrzelił (bez `compendiumId` planer nie dochodzi do tabeli zasięgów). Teraz „+ Broń z katalogu"
+otwiera wyszukiwarkę, a wiersz buduje ten sam `purchasedSheetRow`, co zakup. **Dopasowania po
+nazwie nie ma świadomie** — „Pistolet" przypiąłby zły PT na każdym dystansie. Wiersze wpisane
+wcześniej ręką dostają chip „⚠ Wskaż broń z katalogu" i wyszarzony „Atak".
+
+**Odklikane w przeglądarce (wszystko na „Strzelnicy" i na kartach kampanii):** okno Celowania
+obiema drogami uzbrojenia (kafel paska u statysty „testowy 2x2" i „Atak" z wiersza karty avatar9),
+karta rzutu z „Celowanie (głowa) −8", wyszukiwarka broni (dopisanie „Zgrzyt 9", stan pusty przy
+braku trafień), związanie wiersza „Rura z parkingu" z „Dużą bronią białą" wraz z odblokowaniem
+„Ataku", chip „nadana" po „Nadaj ranę", oraz **sufit pancerza pracownika Korpo** (zatrudniony
+„Firmowy ochroniarz", OB 11 → 18 przyjęte bez odmowy — zapisane jako świadome).
+
+**Dług oględzin: 26 → 22 pozycje.** Zamknięte cztery, żadna nowa nie doszła.
+
+**Stan poligonu po sesji:** wszystko przywrócone (kartę „Frank" wyczyszczono ze śladów testów,
+pracownik „Ochrona Test" skasowany). Ślady: żeton **„testowy 2x2" ma 25/30 naboi** zamiast 27/30
+(dwa strzały testowe, oba pudła) i kilka kart w logu czatu. Szczegóły w `poligon.md`.
+
 ### Sesja 30.08 (czwarta) — zaległości: rany krytyczne
 
 **Zlecenie MG:** wybór z listy zaległości; padło na **pakiet „rany krytyczne"** — trzy naprawy

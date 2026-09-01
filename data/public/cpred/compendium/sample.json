@@ -9,6 +9,8 @@
       "skillId": "shoulder-arms",
       "damage": "5k6",
       "magazine": 25,
+      "magazineExtended": 35,
+      "magazineDrum": 45,
       "rof": 1,
       "hands": 2,
       "concealable": false,
@@ -60,6 +62,8 @@
       "skillId": "handgun",
       "damage": "2k6",
       "magazine": 10,
+      "magazineExtended": 16,
+      "magazineDrum": 30,
       "rof": 2,
       "hands": 1,
       "concealable": true,
@@ -85,6 +89,8 @@
       "skillId": "shoulder-arms",
       "damage": "5k6",
       "magazine": 4,
+      "magazineExtended": 8,
+      "magazineDrum": 16,
       "rof": 1,
       "hands": 2,
       "concealable": false,
@@ -732,6 +738,115 @@
       "trigger": "Cel bez przepustki wchodzi na strzeżony obszar.",
       "cost": 5000,
       "costCategory": "luxury"
+    },
+    {
+      "id": "attachment.sample-bayonet",
+      "category": "attachment",
+      "name": "Kolec podlufowy",
+      "description": "Pasuje do broni obsługiwanej Bronią długą. Przykręcony kolec zmienia karabin w niezgrabną, ale prawdziwą broń białą. Broni z kolcem nie schowasz pod kurtką.",
+      "cost": 100,
+      "costCategory": "premium",
+      "fit": {
+        "skillIds": [
+          "shoulder-arms"
+        ]
+      },
+      "blocksConcealment": true,
+      "secondary": {
+        "weaponTypeId": "weapon-type.sample-blade"
+      }
+    },
+    {
+      "id": "attachment.sample-drum",
+      "category": "attachment",
+      "name": "Bęben nadwymiarowy",
+      "description": "Pasuje do wszystkiego, co liczy naboje, poza łukami. Magazynek rośnie do kolumny bębnowej z tabeli magazynków. Naraz mieści się tylko jeden magazynek.",
+      "cost": 500,
+      "costCategory": "expensive",
+      "fit": {
+        "notSkillIds": [
+          "archery"
+        ],
+        "needsMagazine": true
+      },
+      "magazine": "drum",
+      "exclusiveGroup": "magazine",
+      "blocksConcealment": true
+    },
+    {
+      "id": "attachment.sample-extended",
+      "category": "attachment",
+      "name": "Magazynek na przedłużce",
+      "description": "Pasuje do wszystkiego, co liczy naboje, poza łukami. Magazynek rośnie do kolumny wydłużonej. Naraz mieści się tylko jeden magazynek.",
+      "cost": 100,
+      "costCategory": "premium",
+      "fit": {
+        "notSkillIds": [
+          "archery"
+        ],
+        "needsMagazine": true
+      },
+      "magazine": "extended",
+      "exclusiveGroup": "magazine",
+      "blocksConcealment": true
+    },
+    {
+      "id": "attachment.sample-underbarrel",
+      "category": "attachment",
+      "name": "Strzelba podwieszana (próbka)",
+      "description": "Pasuje do broni obsługiwanej Bronią długą. Pod lufą wisi krótka strzelba z dwoma pociskami. Zajmuje 2 gniazda, a broni nie da się ukryć.",
+      "cost": 500,
+      "costCategory": "expensive",
+      "fit": {
+        "skillIds": [
+          "shoulder-arms"
+        ]
+      },
+      "slots": 2,
+      "blocksConcealment": true,
+      "secondary": {
+        "weaponTypeId": "weapon-type.sample-shotgun",
+        "magazine": 2
+      }
+    },
+    {
+      "id": "attachment.sample-link",
+      "category": "attachment",
+      "name": "Sprzęgło celownicze",
+      "description": "Pasuje do każdej broni dystansowej z gniazdami. Daje +1 do Testu ataku dystansowego, ale tylko komuś, kto ma czym się do niego podpiąć.",
+      "cost": 500,
+      "costCategory": "expensive",
+      "fit": {},
+      "slots": 2,
+      "attackBonus": 1,
+      "requiresCyberware": [
+        "Sprzęg neuralny przykładowy"
+      ]
+    },
+    {
+      "id": "attachment.sample-scope",
+      "category": "attachment",
+      "name": "Luneta dalekiego zasięgu",
+      "description": "Pasuje do każdej broni dystansowej z gniazdami. Przy pojedynczym strzale od 51 m albo przy Celowaniu dodaje +1 do Testu.",
+      "cost": 100,
+      "costCategory": "premium",
+      "fit": {},
+      "rangedBonus": {
+        "bonus": 1,
+        "minMetres": 51,
+        "singleOnly": true,
+        "whenAimed": true
+      }
+    },
+    {
+      "id": "attachment.sample-night-sight",
+      "category": "attachment",
+      "name": "Noktowizor warsztatowy",
+      "description": "Pasuje do każdej broni dystansowej z gniazdami. Kary za strzelanie do celu w ciemności, dymie czy mgle spadają do zera.",
+      "cost": 500,
+      "costCategory": "expensive",
+      "fit": {},
+      "ignoresObscurement": true
     }
   ]
 }

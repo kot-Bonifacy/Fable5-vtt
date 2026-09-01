@@ -424,10 +424,33 @@ export interface CpredWeaponRow extends CpredItemRow {
   ammoId?: string;
   /** Rate of fire ("LA" on the Polish sheet). */
   rof: string;
+  /**
+   * Attachments bolted to this weapon, by compendium id (stage 31, s. 342).
+   *
+   * A list on the row rather than an inventory of its own, and the reason is
+   * the one `ammoId` gives: an attachment is not carried, it is *fitted*. What
+   * it does to the gun is read out of the catalogue at the moment the shot is
+   * planned, so a GM editing the table changes every rifle in the campaign at
+   * once — and an id the catalogue forgot simply frees its slot again.
+   */
+  attachmentIds?: string[];
+  /**
+   * Rounds left in each bolted-on weapon, by attachment id (stage 31).
+   *
+   * The underbarrels carry their own magazine — „jako Granatnik z tylko jednym
+   * granatem w magazynku" — and it is not the host's: firing the launcher must
+   * not empty the rifle. A map rather than one number because the row does not
+   * get to assume there is only ever one such attachment, even though the slot
+   * arithmetic currently makes it so.
+   */
+  attachmentAmmo?: Record<string, number>;
 }
 
 /** Rounds a magazine may hold on the sheet — the compendium's own cap. */
 export const WEAPON_AMMO_MAX = 500;
+
+/** Attachments one weapon row may carry — the rulebook's three slots. */
+export const WEAPON_ATTACHMENTS_MAX = 3;
 
 export interface CpredArmorRow extends CpredItemRow {
   /** Stopping Power the piece has when undamaged ("OB" on the Polish sheet). */
@@ -1063,6 +1086,62 @@ function validateText(
   return raw;
 }
 
+/**
+ * The attachment ids on one weapon row (stage 31).
+ *
+ * Returns `undefined` for a malformed list — the caller then drops the whole
+ * row, exactly as it does for a bad magazine. Duplicates are squeezed out here
+ * rather than refused: „Efekty dwóch jednakowych dodatków nie kumulują się"
+ * (s. 342) is enforced when mounting, and a sheet read back from the database
+ * should not be rejected over a repeat somebody's old client wrote.
+ */
+function readAttachmentIds(raw: unknown, issues: CpredValidationIssue[]): string[] | undefined {
+  if (raw === undefined || raw === null) return [];
+  if (!Array.isArray(raw) || raw.length > WEAPON_ATTACHMENTS_MAX) {
+    issues.push(issue('weapons', `Dodatki do broni: lista do ${WEAPON_ATTACHMENTS_MAX} pozycji.`));
+    return undefined;
+  }
+  const ids: string[] = [];
+  for (const value of raw) {
+    if (typeof value !== 'string' || !isValidCompendiumId(value)) {
+      issues.push(issue('weapons', 'Nieprawidłowy identyfikator dodatku do broni.'));
+      return undefined;
+    }
+    if (!ids.includes(value)) ids.push(value);
+  }
+  return ids;
+}
+
+/** Rounds left in each bolted-on weapon, by attachment id (stage 31). */
+function readAttachmentAmmo(
+  raw: unknown,
+  issues: CpredValidationIssue[],
+): Record<string, number> | undefined {
+  if (raw === undefined || raw === null) return {};
+  if (typeof raw !== 'object' || Array.isArray(raw)) {
+    issues.push(issue('weapons', 'Magazynki dodatków muszą być obiektem.'));
+    return undefined;
+  }
+  const entries = Object.entries(raw as Record<string, unknown>);
+  if (entries.length > WEAPON_ATTACHMENTS_MAX) {
+    issues.push(issue('weapons', `Magazynki dodatków: do ${WEAPON_ATTACHMENTS_MAX} pozycji.`));
+    return undefined;
+  }
+  const ammo: Record<string, number> = {};
+  for (const [id, value] of entries) {
+    if (!isValidCompendiumId(id)) {
+      issues.push(issue('weapons', 'Nieprawidłowy identyfikator dodatku do broni.'));
+      return undefined;
+    }
+    if (!isInteger(value) || value < 0 || value > WEAPON_AMMO_MAX) {
+      issues.push(issue('weapons', `Magazynek dodatku: liczba od 0 do ${WEAPON_AMMO_MAX}.`));
+      return undefined;
+    }
+    ammo[id] = value;
+  }
+  return ammo;
+}
+
 /** The ammunition fields of a weapon row, or undefined when the input is bad. */
 type WeaponAmmo = Pick<CpredWeaponRow, 'ammoCurrent' | 'ammoMax' | 'ammoType'>;
 
@@ -1573,7 +1652,23 @@ function collectCharacterDataPatch(
       // karabinu" is both at once.
       const ammoId =
         typeof row.ammoId === 'string' && isValidCompendiumId(row.ammoId) ? row.ammoId : undefined;
-      return { ...base, damage, ...ammo, rof, ...(ammoId ? { ammoId } : {}) };
+      // Stage 31: what is bolted to the gun, and what the bolted-on weapon has
+      // left in it. Both are dropped whole when malformed rather than repaired
+      // — a half-read attachment list would silently free a slot somebody paid
+      // 500 ed for.
+      const attachmentIds = readAttachmentIds(row.attachmentIds, issues);
+      if (attachmentIds === undefined) return undefined;
+      const attachmentAmmo = readAttachmentAmmo(row.attachmentAmmo, issues);
+      if (attachmentAmmo === undefined) return undefined;
+      return {
+        ...base,
+        damage,
+        ...ammo,
+        rof,
+        ...(ammoId ? { ammoId } : {}),
+        ...(attachmentIds.length > 0 ? { attachmentIds } : {}),
+        ...(Object.keys(attachmentAmmo).length > 0 ? { attachmentAmmo } : {}),
+      };
     });
     if (weapons) patch.weapons = weapons;
   }

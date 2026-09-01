@@ -21,6 +21,8 @@ import {
   type CpredAttackRequest,
 } from './attacks.js';
 import type { CpredAmmoProfile } from './ammo.js';
+import type { CpredAttachmentProfile } from './attachments.js';
+import { CPRED_OBSCUREMENT_KIND } from './environment.js';
 import { buildCpredRegistry, createDefaultCharacterData, type CpredRegistry } from './character.js';
 import { hasCyberarm } from './cyberware.js';
 import { dvForRange, type ResolvedWeapon } from './compendium.js';
@@ -1051,5 +1053,200 @@ describe('Zmysł Walki w ataku', () => {
     if (!planned.ok) return;
     expect(planned.plan.modifierTotal).toBe(11);
     expect(planned.plan.attack.ignoresFumble).toBeUndefined();
+  });
+});
+
+/**
+ * Dodatki do broni (etap 31, s. 342–344).
+ *
+ * Tu sprawdzamy wyłącznie to, czego nie widać w `attachments.test.ts`: czy
+ * rachunek strzału naprawdę je czyta. Same reguły montażu — gniazda, magazynki,
+ * „tylko jeden magazynek naraz" — mają własny plik.
+ */
+describe('dodatki do broni', () => {
+  const SMARTGUN: CpredAttachmentProfile = {
+    id: 'attachment.smartgun-link',
+    name: 'Złącze smartguna',
+    fit: {},
+    slots: 2,
+    attackBonus: 1,
+    requiresCyberware: ['Złącza interfejsu'],
+  };
+  const SCOPE: CpredAttachmentProfile = {
+    id: 'attachment.sniper-scope',
+    name: 'Snajperska luneta celownicza',
+    fit: {},
+    rangedBonus: { bonus: 1, minMetres: 51, singleOnly: true, whenAimed: true },
+  };
+  const NIGHT_SIGHT: CpredAttachmentProfile = {
+    id: 'attachment.night-sight',
+    name: 'Celownik noktowizyjny',
+    fit: {},
+    ignoresObscurement: true,
+  };
+  const BAYONET: CpredAttachmentProfile = {
+    id: 'attachment.bayonet',
+    name: 'Bagnet',
+    fit: {},
+    secondary: { weaponTypeId: 'weapon-type.light-melee' },
+  };
+
+  /** Lekka broń biała, jak ją zwraca `resolveAttachmentWeapon` dla bagnetu. */
+  const bayonetBlade: ResolvedWeapon = { ...blade, damage: '1k6', halvesArmor: true };
+
+  const gunner = () => sheet({ weapons: [weaponRow()], skills: { handgun: 6 } });
+
+  function shoot(
+    attachments: CpredAttachmentProfile[],
+    {
+      data = gunner(),
+      metres = 10,
+      request = {},
+      context,
+      secondary,
+      row = weaponRow(),
+    }: {
+      data?: ReturnType<typeof sheet>;
+      metres?: number;
+      request?: Partial<CpredAttackRequest>;
+      context?: CpredAttackContext;
+      secondary?: ResolvedWeapon;
+      row?: ReturnType<typeof weaponRow>;
+    } = {},
+  ) {
+    return planCpredAttack(
+      data,
+      registry,
+      { weaponRowId: 'w1', mode: 'single', ...request },
+      {
+        row,
+        resolved: pistol,
+        typeId: 'weapon-type.medium-pistol',
+        attachments,
+        ...(secondary ? { secondary } : {}),
+      },
+      { name: 'Cel', metres },
+      context ?? {},
+    );
+  }
+
+  function breakdownOf(result: ReturnType<typeof shoot>) {
+    if (!result.ok) throw new Error(result.error);
+    return result.plan.breakdown;
+  }
+
+  it('nie dolicza smartguna komuś, kto nie ma się czym do niego podpiąć', () => {
+    expect(breakdownOf(shoot([SMARTGUN])).some((e) => e.label === SMARTGUN.name)).toBe(false);
+  });
+
+  it('dolicza +1, gdy strzelec ma Złącza interfejsu', () => {
+    const wired = sheet({
+      weapons: [weaponRow()],
+      skills: { handgun: 6 },
+      cyberware: [{ id: 'cw', name: 'Złącza interfejsu', notes: '' }],
+    });
+    expect(breakdownOf(shoot([SMARTGUN], { data: wired }))).toContainEqual({
+      label: SMARTGUN.name,
+      value: 1,
+      kind: 'situational',
+    });
+  });
+
+  it('luneta płaci dopiero od 51 m, a przy Celowaniu z każdej odległości', () => {
+    expect(breakdownOf(shoot([SCOPE], { metres: 50 })).some((e) => e.label === SCOPE.name)).toBe(
+      false,
+    );
+    expect(breakdownOf(shoot([SCOPE], { metres: 51 }))).toContainEqual({
+      label: SCOPE.name,
+      value: 1,
+      kind: 'situational',
+    });
+    expect(
+      breakdownOf(shoot([SCOPE], { metres: 5, request: { aimedAt: 'head' } })).some(
+        (e) => e.label === SCOPE.name,
+      ),
+    ).toBe(true);
+  });
+
+  it('noktowizor zdejmuje karę za dym, ale nie rusza Trzymania', () => {
+    const context: CpredAttackContext = {
+      modifiers: [
+        { label: 'Dym', value: -4, kind: CPRED_OBSCUREMENT_KIND },
+        { label: 'Trzymanie', value: -2, kind: 'situational' },
+      ],
+    };
+    expect(breakdownOf(shoot([], { context })).some((e) => e.label === 'Dym')).toBe(true);
+    const sighted = breakdownOf(shoot([NIGHT_SIGHT], { context }));
+    expect(sighted.some((e) => e.label === 'Dym')).toBe(false);
+    // „modyfikatory ujemne za strzelanie do celu ukrytego" — nie każda kara.
+    expect(sighted.some((e) => e.label === 'Trzymanie')).toBe(true);
+  });
+
+  it('strzela bronią doczepioną: jej obrażenia, jej zasięg, jej pancerz', () => {
+    const result = shoot([BAYONET], {
+      metres: 1,
+      request: { attachmentId: BAYONET.id },
+      secondary: bayonetBlade,
+      row: weaponRow({ attachmentIds: [BAYONET.id] }),
+    });
+    if (!result.ok) throw new Error(result.error);
+    expect(result.plan.attack.damage).toBe('1k6');
+    expect(result.plan.attack.melee).toBe(true);
+    // Bagnet jest bronią białą, więc przechodzi przez połowę pancerza (s. 176).
+    expect(result.plan.attack.halvesArmor).toBe(true);
+    expect(result.plan.attack.attachmentName).toBe('Bagnet');
+    // Magazynek pistoletu nie drgnął — dźgnięcie nie kosztuje naboju.
+    expect(result.plan.attack.ammoCost).toBe(0);
+    // Karta niesie obie nazwy: sztukę, którą się trzyma, i to, czym się bije.
+    expect(result.plan.title).toContain('Bagnet');
+    expect(result.plan.title).toContain('Zgrzyt-9');
+  });
+
+  it('bagnetem nie dosięgniesz dalej niż bronią białą', () => {
+    expect(
+      shoot([BAYONET], {
+        metres: 8,
+        request: { attachmentId: BAYONET.id },
+        secondary: bayonetBlade,
+      }),
+    ).toEqual({ ok: false, error: 'MELEE_OUT_OF_REACH' });
+  });
+
+  it('odmawia strzału dodatkiem, którego na broni nie ma', () => {
+    expect(shoot([], { request: { attachmentId: BAYONET.id } })).toEqual({
+      ok: false,
+      error: 'UNKNOWN_ATTACHMENT',
+    });
+  });
+
+  it('nabój inteligentny nie wystrzeli bez wymaganej cyborgizacji', () => {
+    // „z powodów bezpieczeństwa amunicja inteligentna nie wystrzeli po
+    // pociągnięciu za spust" (s. 347) — od etapu 31 odmowa, nie proza.
+    const smart: CpredAmmoProfile = {
+      id: 'ammo.smart',
+      name: 'Amunicja inteligentna',
+      patterns: ['bullet'],
+      smart: { maxMiss: 4, bonus: 10, requires: 'Celownik optyczny' },
+    };
+    const withAmmo = (data: ReturnType<typeof sheet>) =>
+      planCpredAttack(
+        data,
+        registry,
+        { weaponRowId: 'w1', mode: 'single' },
+        {
+          row: weaponRow(),
+          resolved: { ...pistol, ammoPatterns: ['bullet'] },
+          typeId: 'weapon-type.medium-pistol',
+          ammo: smart,
+        },
+        { name: 'Cel', metres: 10 },
+      );
+    expect(withAmmo(gunner())).toEqual({ ok: false, error: 'AMMO_NEEDS_CYBERWARE' });
+    const seeing = sheet({
+      weapons: [weaponRow()],
+      skills: { handgun: 6 },
+      cyberware: [{ id: 'cw', name: 'Celownik optyczny', notes: '' }],
+    });
+    expect(withAmmo(seeing).ok).toBe(true);
   });
 });

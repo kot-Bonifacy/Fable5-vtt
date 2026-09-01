@@ -4,6 +4,7 @@ import type {
   CompendiumEntry,
   CpredArmorRow,
   CpredSkillDefinition,
+  CpredAttachmentProfile,
   CpredAttackMode,
   CpredCareMode,
   CpredCharacterData,
@@ -95,6 +96,13 @@ import {
   hpMax,
   humanityMaxWith,
   isAmmoEntry,
+  attachmentOptionsFor,
+  attachmentProfilesOf,
+  attachmentSlotsFree,
+  attachmentSlotsUsed,
+  describeAttachment,
+  fittedAttachmentsFor,
+  resolveAttachmentWeapon,
   isCyberwareBodySlot,
   isHousingOption,
   isLifestyleLevel,
@@ -150,6 +158,7 @@ import {
   queueCharacterSave,
   reloadWeapon,
   sendCyberwareAction,
+  setWeaponAttachment,
   transferEddies,
 } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
@@ -1253,6 +1262,116 @@ function AmmoPicker({
 }
 
 /**
+ * Gniazda na dodatki przy wierszu broni (etap 31, s. 342).
+ *
+ * „Każda zwykła (nie egzotyczna) broń dystansowa ma trzy gniazda na dodatki" —
+ * i to jest cała ta kontrolka: tyle kwadracików, ile gniazd, wypełnione tym, co
+ * już wisi na broni. Montaż idzie **zdarzeniem**, nie łatą karty, bo magazynek
+ * po dołożeniu bębna liczy się z tabeli w kompendium, a drugiej kopii tego
+ * samego dodatku nie wolno przyjąć — obie odpowiedzi należą do serwera.
+ *
+ * Wiersz bez gniazd (broń biała, egzotyk, wiersz bez wpisu z katalogu) nie
+ * dostaje nic: pusty pasek byłby jeszcze jedną rzeczą do wytłumaczenia.
+ */
+function WeaponAttachments({
+  characterId,
+  row,
+  resolved,
+}: {
+  characterId: string;
+  row: CpredWeaponRow;
+  resolved: ResolvedWeapon | null;
+}) {
+  const entries = useCompendiumStore((s) => s.entries);
+  const order = useCompendiumStore((s) => s.order);
+  const [picking, setPicking] = useState(false);
+
+  const catalogue = useMemo(
+    () =>
+      attachmentProfilesOf(
+        order.map((id) => entries[id]).filter((entry): entry is CompendiumEntry => !!entry),
+      ),
+    [entries, order],
+  );
+  const fitted = useMemo(
+    () => fittedAttachmentsFor(row.attachmentIds, catalogue, resolved),
+    [row.attachmentIds, catalogue, resolved],
+  );
+  const options = useMemo(
+    () => attachmentOptionsFor(catalogue, resolved, fitted),
+    [catalogue, resolved, fitted],
+  );
+
+  const slots = resolved?.attachmentSlots ?? 0;
+  if (slots <= 0) return null;
+  const used = attachmentSlotsUsed(fitted);
+  const free = attachmentSlotsFree(resolved, fitted);
+
+  return (
+    <div className="weapon-slots">
+      <span
+        className="weapon-slots-boxes"
+        aria-label={`Gniazda na dodatki: ${used} z ${slots} zajęte`}
+        title={`Gniazda na dodatki: ${used} z ${slots} zajęte`}
+      >
+        {Array.from({ length: slots }, (_, index) => (
+          <span
+            key={index}
+            className={`weapon-slot${index < used ? ' weapon-slot--used' : ''}`}
+            aria-hidden
+          />
+        ))}
+      </span>
+      {fitted.map((attachment) => (
+        <button
+          key={attachment.id}
+          type="button"
+          className="weapon-slot-chip"
+          title={`${describeAttachment(attachment)} — kliknij, żeby zdjąć`}
+          onClick={() => setWeaponAttachment(characterId, row.id, attachment.id, 'unmount')}
+        >
+          {attachment.name} <span aria-hidden>✕</span>
+        </button>
+      ))}
+      {free > 0 && options.length > 0 && (
+        <button
+          type="button"
+          className="small-button"
+          title="Dołóż dodatek z katalogu — pasują tylko te, które podręcznik dopuszcza do tej broni"
+          onClick={() => setPicking(true)}
+        >
+          + Dodatek
+        </button>
+      )}
+      {picking && (
+        <ul className="weapon-slot-picker">
+          {options.map((attachment) => (
+            <li key={attachment.id}>
+              <button
+                type="button"
+                className="weapon-picker-row"
+                onClick={() => {
+                  setPicking(false);
+                  setWeaponAttachment(characterId, row.id, attachment.id, 'mount');
+                }}
+              >
+                <span className="weapon-picker-name">{attachment.name}</span>
+                <span className="weapon-picker-stats">{describeAttachment(attachment)}</span>
+              </button>
+            </li>
+          ))}
+          <li>
+            <button type="button" className="small-button" onClick={() => setPicking(false)}>
+              Anuluj
+            </button>
+          </li>
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/**
  * Pas broni ze strony pierwszej: `BROŃ · OBR. · AMUNICJA · LA · UWAGI`
  * (stage 16, przeprowadzka i skóra w 27b).
  *
@@ -1293,6 +1412,27 @@ function WeaponStrip({
       { weapons: data.weapons.map((row) => (row.id === rowId ? { ...row, ...patch } : row)) },
       'weapons',
     );
+  }
+
+  /**
+   * Broń, którą ktoś doczepił do tego wiersza (etap 31) — bagnet, podwieszany
+   * granatnik, podwieszana strzelba.
+   *
+   * Rozwiązywana z katalogu za każdym razem, a nie kopiowana na kartę: tabela
+   * zasięgów granatnika należy do granatnika, więc MG poprawiający ją w jednym
+   * miejscu poprawia ją wszystkim.
+   */
+  function secondaryRowsOf(
+    row: CpredWeaponRow,
+  ): { attachment: CpredAttachmentProfile; weapon: ResolvedWeapon }[] {
+    const catalogue = attachmentProfilesOf(Object.values(entries));
+    const types = new Map(Object.entries(weaponTypeById));
+    const rows: { attachment: CpredAttachmentProfile; weapon: ResolvedWeapon }[] = [];
+    for (const attachment of fittedAttachmentsFor(row.attachmentIds, catalogue, resolvedOf(row))) {
+      const weapon = resolveAttachmentWeapon(attachment, { weaponTypeById: types });
+      if (weapon) rows.push({ attachment, weapon });
+    }
+    return rows;
   }
 
   /**
@@ -1343,18 +1483,33 @@ function WeaponStrip({
     });
   }
 
-  /** Arms the map: the next click on a token fires this weapon. */
-  function aim(row: CpredWeaponRow, mode: CpredAttackMode, resolved: ResolvedWeapon | null) {
+  /**
+   * Arms the map: the next click on a token fires this weapon.
+   *
+   * Since stage 31 „this weapon" may be the thing bolted under the barrel —
+   * `firedWith` is then the bayonet or the underbarrel, and everything the
+   * crosshair says about the shot (its name, whether it is melee) comes off
+   * that weapon rather than off the rifle carrying it.
+   */
+  function aim(
+    row: CpredWeaponRow,
+    mode: CpredAttackMode,
+    resolved: ResolvedWeapon | null,
+    firedWith?: { attachment: CpredAttachmentProfile; resolved: ResolvedWeapon },
+  ) {
     const own = Object.values(tokens).find((token) => token.characterId === character.id);
     useAttackStore.getState().arm({
       characterId: character.id,
       characterName: character.name,
       ...(own ? { attackerTokenId: own.id } : {}),
       weaponRowId: row.id,
-      weaponName: row.name,
+      weaponName: firedWith ? `${row.name} · ${firedWith.attachment.name}` : row.name,
       mode,
       modifier: 0,
-      melee: resolved?.melee ?? false,
+      melee: (firedWith ? firedWith.resolved : resolved)?.melee ?? false,
+      ...(firedWith
+        ? { attachmentId: firedWith.attachment.id, attachmentName: firedWith.attachment.name }
+        : {}),
     });
   }
 
@@ -1375,11 +1530,11 @@ function WeaponStrip({
           </tr>
         </thead>
         <tbody>
-          {data.weapons.map((row) => {
+          {data.weapons.flatMap((row) => {
             const resolved = resolvedOf(row);
             const tracksAmmo = row.ammoMax > 0;
             const empty = tracksAmmo && row.ammoCurrent <= 0;
-            return (
+            return [
               <tr key={row.id}>
                 <td>
                   <input
@@ -1401,6 +1556,8 @@ function WeaponStrip({
                       ⚠ Wskaż broń z katalogu
                     </button>
                   )}
+                  {/* Etap 31: trzy gniazda i to, co w nich siedzi. */}
+                  <WeaponAttachments characterId={character.id} row={row} resolved={resolved} />
                 </td>
                 <td>
                   <input
@@ -1542,8 +1699,70 @@ function WeaponStrip({
                     ✕
                   </button>
                 </td>
-              </tr>
-            );
+              </tr>,
+              // Etap 31: bagnet i broń podwieszana to ta sama sztuka żelastwa,
+              // ale drugi sposób zrobienia komuś krzywdy — więc drugi wiersz
+              // pod tym samym wierszem, a nie druga pozycja na liście broni.
+              ...secondaryRowsOf(row).map(({ attachment, weapon }) => (
+                <tr key={`${row.id}:${attachment.id}`} className="weapon-secondary">
+                  <td>
+                    <span className="weapon-secondary-name">↳ {attachment.name}</span>
+                  </td>
+                  <td>{weapon.damage}</td>
+                  <td className="weapon-ammo-cell">
+                    {(weapon.magazine ?? 0) > 0 ? (
+                      <>
+                        <span className="weapon-ammo-max">
+                          {row.attachmentAmmo?.[attachment.id] ?? weapon.magazine}/{weapon.magazine}
+                        </span>
+                        <button
+                          type="button"
+                          className="small-button"
+                          disabled={
+                            (row.attachmentAmmo?.[attachment.id] ?? weapon.magazine ?? 0) >=
+                            (weapon.magazine ?? 0)
+                          }
+                          title="Przeładuj podwieszaną broń — własny magazynek, ta sama Akcja"
+                          aria-label={`Przeładuj: ${attachment.name}`}
+                          onClick={() =>
+                            reloadWeapon(character.id, row.id, undefined, undefined, attachment.id)
+                          }
+                        >
+                          ⟳
+                        </button>
+                      </>
+                    ) : (
+                      <span className="weapon-ammo-none" title="Ta broń nie liczy amunicji">
+                        —
+                      </span>
+                    )}
+                  </td>
+                  <td>{weapon.rof}</td>
+                  <td className="weapon-secondary-note">
+                    {weapon.melee ? 'broń biała — do 2 m' : (weapon.typeName ?? '')}
+                  </td>
+                  <td className="weapon-actions">
+                    <button
+                      type="button"
+                      className="small-button"
+                      disabled={
+                        (weapon.magazine ?? 0) > 0 &&
+                        (row.attachmentAmmo?.[attachment.id] ?? 0) <= 0
+                      }
+                      title={
+                        weapon.melee
+                          ? 'Atak wręcz — wskaż cel na mapie (do 2 m)'
+                          : 'Atak podwieszaną bronią — wskaż cel na mapie'
+                      }
+                      onClick={() => aim(row, 'single', resolved, { attachment, resolved: weapon })}
+                    >
+                      Atak
+                    </button>
+                  </td>
+                  <td />
+                </tr>
+              )),
+            ];
           })}
         </tbody>
       </table>

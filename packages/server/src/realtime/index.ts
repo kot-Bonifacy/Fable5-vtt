@@ -89,6 +89,7 @@ import {
   attackEvadeEvent,
   attackRollEvent,
   attackSmartEvent,
+  weaponAttachmentEvent,
   weaponReloadEvent,
 } from './attacks.js';
 import { rulerClearEvent, rulerUpdateEvent } from './ruler.js';
@@ -298,6 +299,7 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   attackRollEvent,
   attackEvadeEvent,
   attackSmartEvent,
+  weaponAttachmentEvent,
   weaponReloadEvent,
   rulerUpdateEvent,
   rulerClearEvent,

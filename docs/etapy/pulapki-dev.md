@@ -516,3 +516,34 @@ cichu na `movableTokens.get(id) === false`, więc pasek nigdy nie pokazywał cud
 funkcja dołożona do paska „dla gracza przy cudzej figurze" była z góry nieosiągalna, choć dane
 jechały poprawnie. Zanim dołożysz coś do paska z myślą o graczu, sprawdź, czy ten gracz ma jak
 postawić tam tę figurę.
+
+**Nazwa z tabeli zbiorczej wygląda jak nagłówek opisu — i nim nie jest (01.09).** Sekcja „DODATKI
+DO BRONI" wymienia każdą nazwę **trzy razy**: w tabelce cen na początku („Bagnet 100 ed
+(Premium)"), jako nagłówek własnego akapitu WERSALIKAMI („BAGNET Cena: …") i w środku prozy
+sąsiada („Aby złącze smartguna działało…"). Pierwsza próba brała wystąpienie pierwsze i dostawała
+akapity bez zdania „Pasuje do:"; druga brała ostatnie i **gubiła cenę złącza smartguna**, bo
+ostatnie wystąpienie tej nazwy siedzi w prozie. Wersaliki są jedyną formą, która znaczy „tu
+zaczyna się opis" — `attachment_chunks` dopasowuje `label.upper()` i bierze pierwsze trafienie.
+Polskie `.upper()` radzi sobie z diakrytykami („ł" → „Ł"), więc tabela reguł zostaje w normalnej
+pisowni.
+
+**Trzy liczby tabeli magazynków są zlepione w jedną, ale wiersz jest zakotwiczony (01.09).**
+Zrzut daje „Ciężki pistolet 81428" — 8, 14, 28. Rozdzielić da się to tylko dlatego, że **pierwsza
+liczba jest znana**: to magazynek z tabeli broni, wczytany stronę wcześniej. Reszta ma dokładnie
+jeden podział zgodny z porządkiem tabeli (zwykły ≤ wydłużony ≤ bębnowy); wiersz z dwoma albo
+zerem takich podziałów idzie do ostrzeżeń, bo po cichu wybrany bęben kłamałby do końca kampanii.
+Do tego **nagłówek tabeli klei się z pierwszym wierszem** („TypZwykłyPrzedłużonyBębnowyŚredni
+pistolet 121836"), więc ogólne wyrażenie na etykietę zjada nagłówek i gubi Średni pistolet —
+rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie jest.
+
+**Nabój inteligentny od 01.09 odmawia strzału i wywraca stary test (01.09).** „Z powodów
+bezpieczeństwa amunicja inteligentna nie wystrzeli po pociągnięciu za spust" (s. 347) było prozą
+do etapu 31, bo w 16h karta nie miała chromu, o który dałoby się zapytać. Teraz `planCpredAttack`
+zwraca `AMMO_NEEDS_CYBERWARE`, więc **każdy test strzelający tą amunicją musi wszczepić strzelcowi
+wymaganą cyborgizację** — inaczej pada w asercji o czymś zupełnie innym (drugi rzut po bliskim
+pudle), bo pierwszy strzał w ogóle nie dochodzi do skutku.
+
+**Gniazd na dodatki nie zobaczysz przy broni wpisanej ręką** (01.09) — `WeaponAttachments` wraca
+`null`, gdy `resolved` jest pusty albo `attachmentSlots` to zero (broń biała, egzotyk, wiersz bez
+wpisu z katalogu). Pusty pasek byłby jeszcze jedną rzeczą do wytłumaczenia, ale objaw „nie widzę
+gniazd" ma zwykle tę przyczynę, a nie zepsuty komponent.

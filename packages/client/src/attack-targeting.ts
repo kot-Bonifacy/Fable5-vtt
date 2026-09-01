@@ -20,6 +20,9 @@ import {
   distanceToCover,
   formatMetres,
   ammoProfilesOf,
+  attachmentProfilesOf,
+  fittedAttachmentsFor,
+  resolveAttachmentWeapon,
   isWeaponEntry,
   loadedAmmoFor,
   metresBetween,
@@ -82,6 +85,13 @@ export interface AttackIntent {
    * Never set for a grenade, whose weapon type is thrown by definition.
    */
   thrown?: boolean;
+  /**
+   * Fire the weapon bolted onto this row rather than the row itself
+   * (stage 31) — the bayonet, the underbarrel launcher, the underbarrel
+   * shotgun. Carried on the intent, so it survives the re-plan an Aimed Shot
+   * or a cover refusal triggers.
+   */
+  attachmentId?: string;
 }
 
 /**
@@ -177,6 +187,7 @@ export function planAttackPreview(
     ...(intent.modifier ? { modifier: intent.modifier } : {}),
     ...(intent.ignoreCover ? { ignoreCover: true } : {}),
     ...(intent.thrown ? { thrown: true } : {}),
+    ...(intent.attachmentId ? { attachmentId: intent.attachmentId } : {}),
   };
 
   // The one obstacle the client genuinely knows about (stage 16c). Walls stay
@@ -201,6 +212,21 @@ export function planAttackPreview(
     (id) => ammoProfilesOf(Object.values(compendium.entries)).find((p) => p.id === id) ?? null,
   );
 
+  // Stage 31: what is bolted to this gun, and — when the shot is being fired
+  // *with* one of them — the weapon that attachment is. Read from the same
+  // catalogue the server reads, for the reason the round in the magazine is:
+  // a preview that does not know about the underbarrel would price the rifle's
+  // shot and be contradicted by the verdict a moment later.
+  const weaponTypeById = new Map(Object.entries(compendium.weaponTypeById));
+  const attachments = fittedAttachmentsFor(
+    row.attachmentIds,
+    attachmentProfilesOf(Object.values(compendium.entries)),
+    resolved,
+  );
+  const firedWith = intent.attachmentId
+    ? attachments.find((candidate) => candidate.id === intent.attachmentId)
+    : undefined;
+
   const planned = planCpredAttack(
     data,
     useCharacterStore.getState().registry,
@@ -210,6 +236,8 @@ export function planAttackPreview(
       resolved,
       typeId: entry && isWeaponEntry(entry) ? entry.weaponTypeId : null,
       ammo,
+      attachments,
+      secondary: firedWith ? resolveAttachmentWeapon(firedWith, { weaponTypeById }) : null,
     },
     aim.target,
     {
@@ -501,6 +529,7 @@ export function loadAttackAtToken(targetTokenId: string): void {
       ...(targeting.aimedAt ? { aimedAt: targeting.aimedAt } : {}),
       modifier: targeting.modifier,
       ...(targeting.thrown ? { thrown: true } : {}),
+      ...(targeting.attachmentId ? { attachmentId: targeting.attachmentId } : {}),
     },
     targetTokenId,
   );

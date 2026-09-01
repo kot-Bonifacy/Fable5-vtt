@@ -21,6 +21,17 @@ import type { SmokeView } from '../../smoke.js';
 export const CPRED_SMOKE_PENALTY = -4;
 
 /**
+ * Breakdown kind carried by „you cannot see the target properly" penalties.
+ *
+ * A kind of its own rather than `situational`, because from stage 31 something
+ * reads it: „Celownik noktowizyjny … zmniejsza do zera modyfikatory ujemne za
+ * strzelanie do celu ukrytego w ciemności, dymie, mgle itp." (s. 343). A night
+ * sight has to be able to tell a cloud apart from being Held, and a label in
+ * Polish is not something to branch on.
+ */
+export const CPRED_OBSCUREMENT_KIND = 'obscurement';
+
+/**
  * Named modifiers the clouds a figure stands in add to every Check they make.
  *
  * Clouds **stack**, deliberately: RAW gives no ceiling, and two grenades on one
@@ -35,6 +46,6 @@ export function cpredSmokeModifiers(
     .map((cloud) => ({
       label: cloud.name,
       value: Math.round(cloud.penalty),
-      kind: 'situational' as const,
+      kind: CPRED_OBSCUREMENT_KIND,
     }));
 }

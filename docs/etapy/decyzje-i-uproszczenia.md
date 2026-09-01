@@ -11,6 +11,21 @@ przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — ni
 
 ## Sieć i walka — czytanie RAW
 
+- **Broń podwieszana strzela amunicją zwykłą, nie wybieraną (01.09).** Wiersz `↳` ma własny
+  magazynek (`attachmentAmmo`), ale **nie ma własnego `ammoId`**: podwieszany granatnik rzuca
+  granatem, którego obrażenia (6k6) i Eksplozję niesie sam typ broni, a podwieszana strzelba
+  strzela zwykłym pociskiem. Wybór naboju specjalnego **do broni doczepionej** wymagałby trzeciego
+  pola na wierszu karty, a przy stole rozstrzyga się to tak, jak resztę fikcji — MG mówi, co jest
+  w komorze. Nabój w magazynku broni-gospodarza celowo **nie** przechodzi na doczepioną:
+  amunicja przeciwpancerna w karabinie nie jest w granatniku pod nim.
+
+- **Bonus lunety i smartguna nie kumuluje się z niczym poza sobą (01.09).** Podręcznik pisze przy
+  lunecie „Nie kumuluje się z cyborgizacją Teleskop" (s. 344); VTT niesie tę informację jako
+  `rangedBonus.conflictsWith` i **nie egzekwuje jej**, bo Teleskop nie daje dziś żadnego
+  policzalnego bonusu, z którym byłoby się co kłócić. Gdy kiedyś zacznie, warunek jest już
+  w danych i wystarczy go przeczytać. „Efekty dwóch jednakowych dodatków nie kumulują się"
+  (s. 342) jest natomiast egzekwowane — jako odmowa przy montażu, nie jako milczenie później.
+
 - **Sufit pancerza pracownika Korpo nie jest egzekwowany (31.08, sprawdzone w przeglądarce).**
   „Najcięższym pancerzem […] jest Lekka kurtka kuloodporna. Taka polityka Korporacji" (s. 154)
   jedzie jako **zdanie na wierszu pancerza**, nie jako walidacja: karta pracownika jest zwykłą

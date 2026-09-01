@@ -14,6 +14,17 @@ import {
   type CyberwareInstall,
   type CyberwareType,
 } from './cyberware.js';
+import {
+  CPRED_ATTACHMENT_SLOTS_MAX,
+  CPRED_MAGAZINE_KINDS,
+  attachmentMountProblem,
+  type CpredAttachmentEffect,
+  type CpredAttachmentFit,
+  type CpredAttachmentProfile,
+  type CpredAttachmentRangedBonus,
+  type CpredAttachmentWeapon,
+  type CpredMagazineKind,
+} from './attachments.js';
 import { isValidCompendiumId, slugify } from './ids.js';
 import {
   ARMOR_LOCATIONS,
@@ -67,6 +78,7 @@ export const COMPENDIUM_SCHEMA_VERSION = 1;
 export const COMPENDIUM_CATEGORIES = [
   'weapon',
   'ammo',
+  'attachment',
   'armor',
   'gear',
   'cyberware',
@@ -79,6 +91,7 @@ export type CompendiumCategory = (typeof COMPENDIUM_CATEGORIES)[number];
 export const COMPENDIUM_CATEGORY_LABELS: Record<CompendiumCategory, string> = {
   weapon: 'Broń',
   ammo: 'Amunicja',
+  attachment: 'Dodatki do broni',
   armor: 'Pancerz',
   gear: 'Sprzęt',
   cyberware: 'Cyborgizacje',
@@ -89,16 +102,18 @@ export const COMPENDIUM_CATEGORY_LABELS: Record<CompendiumCategory, string> = {
 
 /**
  * Categories that can be added to a character sheet as a row of their own.
- * Four are excluded, each for its own reason: nobody buys a Critical Injury
+ * Five are excluded, each for its own reason: nobody buys a Critical Injury
  * (the damage engine draws them, stage 15); ammunition is not carried as a row
- * but *loaded* into a weapon (stage 16g); a Program goes into a cyberdeck slot
- * rather than the backpack (stage 26a); and Net defenders belong to an
- * architecture, never to a person.
+ * but *loaded* into a weapon (stage 16g); an attachment is likewise not carried
+ * but *bolted on* (stage 31); a Program goes into a cyberdeck slot rather than
+ * the backpack (stage 26a); and Net defenders belong to an architecture, never
+ * to a person.
  */
 export const COMPENDIUM_ITEM_CATEGORIES = COMPENDIUM_CATEGORIES.filter(
   (category) =>
     category !== 'criticalInjury' &&
     category !== 'ammo' &&
+    category !== 'attachment' &&
     category !== 'program' &&
     category !== 'netDefense',
 );
@@ -229,6 +244,19 @@ export interface WeaponTypeDefinition {
   damage: string;
   /** Standard magazine size; null for melee and single-load weapons. */
   magazine: number | null;
+  /**
+   * The other two columns of the magazine table (s. 344, stage 31) — what this
+   * type holds with an extended magazine and with a drum.
+   *
+   * On the *type* rather than on the attachment, because the table is read by
+   * weapon: „Broń może wystrzelić tyle pocisków, ile wyszczególniono
+   * w poniższej tabeli magazynków przy pozycji Bębnowy". One attachment, ten
+   * different answers. Absent means the table does not list this type, and the
+   * magazine then stays what it was — the honest answer for a weapon the
+   * rulebook never gave a drum.
+   */
+  magazineExtended?: number;
+  magazineDrum?: number;
   /** Rate of fire — "LA" on the Polish sheet. */
   rof: number;
   hands: 1 | 2;
@@ -347,6 +375,20 @@ export interface AmmoEntry extends CompendiumEntryBase, CpredAmmoEffect {
   category: 'ammo';
   /** Shapes this round is made in; a round that fits nothing is refused. */
   patterns: CpredAmmoPattern[];
+}
+
+/**
+ * One row of the weapon-attachment table (stage 31, s. 342–344).
+ *
+ * A compendium *entry* for the same three reasons ammunition is one: it is
+ * bought, it has a price band and a paragraph worth reading at the table, and a
+ * GM may want to invent a ninth. The machine effects ride on the same row
+ * (`CpredAttachmentEffect`), so „what does this thing do to my gun" is one
+ * lookup, and `fit` carries the „Pasuje do:" line the table opens with.
+ */
+export interface AttachmentEntry extends CompendiumEntryBase, CpredAttachmentEffect {
+  category: 'attachment';
+  fit: CpredAttachmentFit;
 }
 
 export interface ArmorEntry extends CompendiumEntryBase {
@@ -486,6 +528,7 @@ export interface CriticalInjuryEntry extends CompendiumEntryBase {
 export type CompendiumEntry =
   | WeaponEntry
   | AmmoEntry
+  | AttachmentEntry
   | ArmorEntry
   | GearEntry
   | CyberwareEntry
@@ -739,6 +782,7 @@ export function validateCompendiumEntry(
   let entry: CompendiumEntry | undefined;
   if (category === 'weapon') entry = validateWeapon(input, base, issues);
   else if (category === 'ammo') entry = validateAmmo(input, base, issues);
+  else if (category === 'attachment') entry = validateAttachment(input, base, issues);
   else if (category === 'armor') entry = validateArmor(input, base, issues);
   else if (category === 'cyberware') entry = validateCyberware(input, base, issues);
   else if (category === 'program') entry = validateProgram(input, base, issues);
@@ -1166,6 +1210,189 @@ function readAmmoSmart(
     bonus,
     ...(requires ? { requires: requires.slice(0, COMPENDIUM_NAME_MAX_LENGTH) } : {}),
   };
+}
+
+/** Rails on the attachment flags; they guard imported data, not balance. */
+export const ATTACHMENT_ATTACK_BONUS_MAX = 5;
+export const ATTACHMENT_MIN_METRES_MAX = 1000;
+export const ATTACHMENT_FIT_SKILLS_MAX = 12;
+
+/** „Pasuje do:" — three optional rules, and no rule means „no restriction". */
+function readAttachmentFit(raw: unknown, issues: CompendiumIssue[]): CpredAttachmentFit {
+  const fit: CpredAttachmentFit = {};
+  if (raw === undefined || raw === null) return fit;
+  if (typeof raw !== 'object') {
+    issues.push({ field: 'fit', message: 'Pole „Pasuje do" musi być obiektem.' });
+    return fit;
+  }
+  const input = raw as Record<string, unknown>;
+  for (const field of ['skillIds', 'notSkillIds'] as const) {
+    const value = input[field];
+    if (value === undefined || value === null) continue;
+    if (
+      !Array.isArray(value) ||
+      value.length > ATTACHMENT_FIT_SKILLS_MAX ||
+      !value.every((item) => typeof item === 'string' && item.length > 0)
+    ) {
+      issues.push({ field, message: 'Lista Umiejętności musi zawierać identyfikatory.' });
+      continue;
+    }
+    if (value.length > 0) fit[field] = [...(value as string[])];
+  }
+  if (input.needsMagazine === true) fit.needsMagazine = true;
+  return fit;
+}
+
+/** The second weapon an attachment bolts on — a type id, never its numbers. */
+function readAttachmentSecondary(
+  raw: unknown,
+  issues: CompendiumIssue[],
+): CpredAttachmentWeapon | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  if (typeof raw !== 'object') {
+    issues.push({ field: 'secondary', message: 'Druga broń musi być obiektem.' });
+    return undefined;
+  }
+  const input = raw as Record<string, unknown>;
+  if (typeof input.weaponTypeId !== 'string' || !isValidCompendiumId(input.weaponTypeId)) {
+    issues.push({ field: 'secondary', message: 'Druga broń wymaga identyfikatora typu broni.' });
+    return undefined;
+  }
+  const secondary: CpredAttachmentWeapon = { weaponTypeId: input.weaponTypeId };
+  if (input.magazine !== undefined && input.magazine !== null) {
+    if (!isInteger(input.magazine) || input.magazine < 0 || input.magazine > WEAPON_MAGAZINE_MAX) {
+      issues.push({
+        field: 'secondary',
+        message: `Magazynek drugiej broni: liczba od 0 do ${WEAPON_MAGAZINE_MAX}.`,
+      });
+      return undefined;
+    }
+    secondary.magazine = input.magazine;
+  }
+  return secondary;
+}
+
+/** The scope's „co najmniej 51 metrów … lub wykonując Celowanie". */
+function readAttachmentRangedBonus(
+  raw: unknown,
+  issues: CompendiumIssue[],
+): CpredAttachmentRangedBonus | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  if (typeof raw !== 'object') {
+    issues.push({ field: 'rangedBonus', message: 'Warunkowy bonus musi być obiektem.' });
+    return undefined;
+  }
+  const input = raw as Record<string, unknown>;
+  if (
+    !isInteger(input.bonus) ||
+    Math.abs(input.bonus) > ATTACHMENT_ATTACK_BONUS_MAX ||
+    input.bonus === 0
+  ) {
+    issues.push({
+      field: 'rangedBonus',
+      message: `Warunkowy bonus: liczba od -${ATTACHMENT_ATTACK_BONUS_MAX} do ${ATTACHMENT_ATTACK_BONUS_MAX}, różna od zera.`,
+    });
+    return undefined;
+  }
+  const bonus: CpredAttachmentRangedBonus = { bonus: input.bonus };
+  if (input.minMetres !== undefined && input.minMetres !== null) {
+    if (
+      !isInteger(input.minMetres) ||
+      input.minMetres < 0 ||
+      input.minMetres > ATTACHMENT_MIN_METRES_MAX
+    ) {
+      issues.push({
+        field: 'rangedBonus',
+        message: `Dystans: liczba od 0 do ${ATTACHMENT_MIN_METRES_MAX} m.`,
+      });
+      return undefined;
+    }
+    bonus.minMetres = input.minMetres;
+  }
+  if (input.whenAimed === true) bonus.whenAimed = true;
+  if (input.singleOnly === true) bonus.singleOnly = true;
+  if (Array.isArray(input.conflictsWith)) {
+    const names = input.conflictsWith.filter(
+      (value): value is string => typeof value === 'string' && value.trim().length > 0,
+    );
+    if (names.length > 0) {
+      bonus.conflictsWith = names.map((name) => name.trim().slice(0, COMPENDIUM_NAME_MAX_LENGTH));
+    }
+  }
+  return bonus;
+}
+
+function validateAttachment(
+  input: Record<string, unknown>,
+  base: CompendiumEntryBase,
+  issues: CompendiumIssue[],
+): AttachmentEntry | undefined {
+  const attachment: AttachmentEntry = {
+    ...base,
+    category: 'attachment',
+    fit: readAttachmentFit(input.fit, issues),
+  };
+
+  if (input.slots !== undefined && input.slots !== null) {
+    if (!isInteger(input.slots) || input.slots < 1 || input.slots > CPRED_ATTACHMENT_SLOTS_MAX) {
+      issues.push({
+        field: 'slots',
+        message: `Zajmowane gniazda: liczba od 1 do ${CPRED_ATTACHMENT_SLOTS_MAX}.`,
+      });
+      return undefined;
+    }
+    attachment.slots = input.slots;
+  }
+
+  if (input.blocksConcealment === true) attachment.blocksConcealment = true;
+  if (input.ignoresObscurement === true) attachment.ignoresObscurement = true;
+
+  if (typeof input.magazine === 'string') {
+    if (!(CPRED_MAGAZINE_KINDS as readonly string[]).includes(input.magazine)) {
+      issues.push({ field: 'magazine', message: 'Nieznana kolumna tabeli magazynków.' });
+      return undefined;
+    }
+    attachment.magazine = input.magazine as CpredMagazineKind;
+  }
+
+  if (input.attackBonus !== undefined && input.attackBonus !== null) {
+    if (
+      !isInteger(input.attackBonus) ||
+      Math.abs(input.attackBonus) > ATTACHMENT_ATTACK_BONUS_MAX
+    ) {
+      issues.push({
+        field: 'attackBonus',
+        message: `Bonus do Testu: liczba od -${ATTACHMENT_ATTACK_BONUS_MAX} do ${ATTACHMENT_ATTACK_BONUS_MAX}.`,
+      });
+      return undefined;
+    }
+    if (input.attackBonus !== 0) attachment.attackBonus = input.attackBonus;
+  }
+
+  if (Array.isArray(input.requiresCyberware)) {
+    const names = input.requiresCyberware.filter(
+      (value): value is string => typeof value === 'string' && value.trim().length > 0,
+    );
+    if (names.length > 0) {
+      attachment.requiresCyberware = names.map((name) =>
+        name.trim().slice(0, COMPENDIUM_NAME_MAX_LENGTH),
+      );
+    }
+  }
+
+  const rangedBonus = readAttachmentRangedBonus(input.rangedBonus, issues);
+  if (issues.length > 0) return undefined;
+  if (rangedBonus) attachment.rangedBonus = rangedBonus;
+
+  const secondary = readAttachmentSecondary(input.secondary, issues);
+  if (issues.length > 0) return undefined;
+  if (secondary) attachment.secondary = secondary;
+
+  if (typeof input.exclusiveGroup === 'string' && input.exclusiveGroup.trim().length > 0) {
+    attachment.exclusiveGroup = input.exclusiveGroup.trim().slice(0, COMPENDIUM_NAME_MAX_LENGTH);
+  }
+
+  return attachment;
 }
 
 function validateArmor(
@@ -1693,6 +1920,15 @@ function validateWeaponType(raw: unknown): WeaponTypeDefinition | undefined {
   const rangeDv = readRangeDvTable(input.rangeDv);
   const autofire = readAutofireProfile(input.autofire);
   const ammoPatterns = readAmmoPatterns(input.ammoPatterns);
+  // A column of the magazine table is only usable if it is at least as big as
+  // the standard one: a „drum" that holds less than the magazine it replaces is
+  // a typo, and enforcing it here keeps the sheet from ever shrinking on mount.
+  const readMagazineColumn = (value: unknown): number | undefined =>
+    isInteger(value) && value > 0 && value <= WEAPON_MAGAZINE_MAX && value >= (magazine ?? 0)
+      ? value
+      : undefined;
+  const magazineExtended = melee ? undefined : readMagazineColumn(input.magazineExtended);
+  const magazineDrum = melee ? undefined : readMagazineColumn(input.magazineDrum);
   const ammoIds = Array.isArray(input.ammoIds)
     ? input.ammoIds.filter(
         (value): value is string => typeof value === 'string' && isValidCompendiumId(value),
@@ -1709,6 +1945,8 @@ function validateWeaponType(raw: unknown): WeaponTypeDefinition | undefined {
     hands: input.hands === 2 ? 2 : 1,
     concealable: input.concealable === true,
     ...(isInteger(input.attachmentSlots) ? { attachmentSlots: input.attachmentSlots } : {}),
+    ...(magazineExtended !== undefined ? { magazineExtended } : {}),
+    ...(magazineDrum !== undefined ? { magazineDrum } : {}),
     melee,
     ...(rangeDv && !melee ? { rangeDv } : {}),
     ...(autofire && !melee ? { autofire } : {}),
@@ -1766,6 +2004,9 @@ export function buildCompendium(files: readonly unknown[]): CompendiumRegistry {
 export interface ResolvedWeapon {
   damage: string;
   magazine: number | null;
+  /** The other two columns of the magazine table (stage 31), when listed. */
+  magazineExtended?: number;
+  magazineDrum?: number;
   rof: number;
   hands: 1 | 2;
   concealable: boolean;
@@ -1809,6 +2050,10 @@ export function resolveWeapon(
   return {
     damage: weapon.damage ?? type?.damage ?? '1k6',
     magazine: weapon.magazine !== undefined ? weapon.magazine : (type?.magazine ?? null),
+    // The two attachment columns come off the type and are never overridden on
+    // the entry: a drum is a property of „Karabin szturmowy", not of the Ronin.
+    ...(type?.magazineExtended !== undefined ? { magazineExtended: type.magazineExtended } : {}),
+    ...(type?.magazineDrum !== undefined ? { magazineDrum: type.magazineDrum } : {}),
     rof: weapon.rof ?? type?.rof ?? 1,
     hands: weapon.hands ?? type?.hands ?? 1,
     concealable: weapon.concealable ?? type?.concealable ?? false,
@@ -1936,6 +2181,135 @@ export function toAmmoProfile(entry: AmmoEntry): CpredAmmoProfile {
     ...(entry.check ? { check: { ...entry.check, failure: { ...entry.check.failure } } } : {}),
     ...(entry.smoke ? { smoke: { ...entry.smoke } } : {}),
     ...(entry.smart ? { smart: { ...entry.smart } } : {}),
+  };
+}
+
+/** Guard used before touching attachment-only fields (stage 31). */
+export function isAttachmentEntry(entry: CompendiumEntry): entry is AttachmentEntry {
+  return entry.category === 'attachment';
+}
+
+/**
+ * One catalogue row, read as an attachment: id, name, what it fits and what it
+ * does. Strips the shopping half, exactly as `toAmmoProfile` does — and for the
+ * same reason, since this profile travels onto the sheet's weapon row.
+ *
+ * Every flag has to be copied by hand here. Anything missed at this line is a
+ * rule the combat code never sees, however carefully the catalogue row was
+ * typed (the lesson `toAmmoProfile` writes down in stage 16h).
+ */
+export function toAttachmentProfile(entry: AttachmentEntry): CpredAttachmentProfile {
+  return {
+    id: entry.id,
+    name: entry.name,
+    fit: {
+      ...(entry.fit?.skillIds ? { skillIds: [...entry.fit.skillIds] } : {}),
+      ...(entry.fit?.notSkillIds ? { notSkillIds: [...entry.fit.notSkillIds] } : {}),
+      ...(entry.fit?.needsMagazine ? { needsMagazine: true as const } : {}),
+    },
+    ...(entry.slots !== undefined ? { slots: entry.slots } : {}),
+    ...(entry.blocksConcealment ? { blocksConcealment: true as const } : {}),
+    ...(entry.magazine ? { magazine: entry.magazine } : {}),
+    ...(entry.attackBonus ? { attackBonus: entry.attackBonus } : {}),
+    ...(entry.requiresCyberware ? { requiresCyberware: [...entry.requiresCyberware] } : {}),
+    ...(entry.rangedBonus
+      ? {
+          rangedBonus: {
+            ...entry.rangedBonus,
+            ...(entry.rangedBonus.conflictsWith
+              ? { conflictsWith: [...entry.rangedBonus.conflictsWith] }
+              : {}),
+          },
+        }
+      : {}),
+    ...(entry.ignoresObscurement ? { ignoresObscurement: true as const } : {}),
+    ...(entry.secondary ? { secondary: { ...entry.secondary } } : {}),
+    ...(entry.exclusiveGroup ? { exclusiveGroup: entry.exclusiveGroup } : {}),
+  };
+}
+
+/** The attachment rows of a catalogue, as the rules want them (stage 31). */
+export function attachmentProfilesOf(
+  entries: readonly CompendiumEntry[],
+): CpredAttachmentProfile[] {
+  return entries.filter(isAttachmentEntry).map(toAttachmentProfile);
+}
+
+/**
+ * The attachments a weapon row actually carries, in the order it lists them.
+ *
+ * Two kinds of row are dropped, and both matter.
+ *
+ * An id the catalogue no longer knows is dropped rather than kept as a stub:
+ * a deleted row can neither be judged nor explained, and a silent gap is the
+ * honest answer to „the GM removed the drum from the table". The slot it used
+ * comes back, which is the behaviour anybody at the table would expect.
+ *
+ * An id that **could not have been mounted** is dropped too, which is why
+ * `resolved` is a parameter and not a convenience. `attachmentIds` is an
+ * ordinary sheet field, so it travels on `character:update` like the weapon's
+ * name — and a player who types three drums into it, or bolts a smartgun link
+ * onto a bow, must not thereby own one. Judging the list on the way *in* would
+ * have to be repeated in every path that writes a sheet; judging it here, on
+ * the way out, means there is exactly one place to forget it, and a sheet whose
+ * catalogue changed under it heals itself the moment it is read.
+ */
+export function fittedAttachmentsFor(
+  ids: readonly string[] | undefined,
+  catalogue: readonly CpredAttachmentProfile[],
+  resolved:
+    Pick<ResolvedWeapon, 'attachmentSlots' | 'melee' | 'skillId' | 'magazine'> | null | undefined,
+): CpredAttachmentProfile[] {
+  if (!ids || ids.length === 0) return [];
+  const byId = new Map(catalogue.map((entry) => [entry.id, entry]));
+  const fitted: CpredAttachmentProfile[] = [];
+  for (const id of ids) {
+    const entry = byId.get(id);
+    if (!entry) continue;
+    // Judged against what has already been kept, so „only one magazine at a
+    // time" and the slot arithmetic come out the same as they would have at the
+    // moment of mounting — the first entries win, which is the order the sheet
+    // itself shows.
+    if (attachmentMountProblem(entry, resolved, fitted) !== null) continue;
+    fitted.push(entry);
+  }
+  return fitted;
+}
+
+/**
+ * The weapon an attachment bolts on, resolved against the catalogue's types.
+ *
+ * „można wykorzystać jako Granatnik z tylko jednym granatem w magazynku": the
+ * launcher's whole profile, with the magazine the attachment cuts it down to.
+ * Its own attachment slots are dropped — nobody bolts a scope onto a bayonet,
+ * and leaving them would let the sheet nest attachments forever.
+ */
+export function resolveAttachmentWeapon(
+  attachment: Pick<CpredAttachmentProfile, 'secondary'>,
+  registry: Pick<CompendiumRegistry, 'weaponTypeById'>,
+): ResolvedWeapon | null {
+  const secondary = attachment.secondary;
+  if (!secondary) return null;
+  const type = registry.weaponTypeById.get(secondary.weaponTypeId);
+  if (!type) return null;
+  const resolved = resolveWeapon(
+    {
+      id: secondary.weaponTypeId,
+      name: type.name,
+      category: 'weapon',
+      cost: null,
+      weaponTypeId: secondary.weaponTypeId,
+      quality: 'standard',
+    },
+    registry,
+  );
+  // The two magazine columns come off with the slots: an underbarrel launcher
+  // holding one grenade does not grow a drum because the launcher line has one.
+  const { magazineExtended: _extended, magazineDrum: _drum, ...bare } = resolved;
+  return {
+    ...bare,
+    ...(secondary.magazine !== undefined ? { magazine: secondary.magazine } : {}),
+    attachmentSlots: 0,
   };
 }
 

@@ -42,6 +42,13 @@ import {
   type RangeDvTable,
   type ResolvedWeapon,
 } from './compendium.js';
+import { CPRED_OBSCUREMENT_KIND } from './environment.js';
+import {
+  attachmentAttackModifiers,
+  attachmentIgnoresObscurement,
+  hasRequiredCyberware,
+  type CpredAttachmentProfile,
+} from './attachments.js';
 import { hasCyberarm } from './cyberware.js';
 import { CPRED_AIMED_SHOT_PENALTY } from './damage.js';
 import { cpredSheetCombatAwareness } from './roleability.js';
@@ -196,6 +203,17 @@ export interface CpredAttackRequest {
    */
   ignoreCover?: boolean;
   /**
+   * Fire the weapon bolted onto this row instead of the row itself (stage 31).
+   *
+   * A bayonet, an underbarrel launcher and an underbarrel shotgun are one
+   * object with two ways to hurt somebody — „Trzymaną oburącz broń można
+   * wykorzystać jako Granatnik z tylko jednym granatem w magazynku" (s. 343) —
+   * so the choice is a field on the attack rather than a second weapon row. The
+   * caller resolves which weapon that is; the planner is handed it, exactly as
+   * it is handed the Grenade Launcher line for a throw.
+   */
+  attachmentId?: string;
+  /**
    * Throw this row rather than use it normally (stage 16d) — „Rzut przedmiotem".
    *
    * Redundant for a grenade, whose weapon *type* is thrown by definition; it
@@ -256,7 +274,9 @@ export type CpredAttackProblem =
   | 'TARGET_BEHIND_COVER'
   | 'COVER_NOT_SUPPRESSIBLE'
   | 'AMMO_MISMATCH'
-  | 'AMMO_SINGLE_ONLY';
+  | 'AMMO_SINGLE_ONLY'
+  | 'AMMO_NEEDS_CYBERWARE'
+  | 'UNKNOWN_ATTACHMENT';
 
 /** Everything the chat card needs to explain a hit — and to offer the damage roll. */
 export interface CpredAttackMeta {
@@ -363,6 +383,16 @@ export interface CpredAttackMeta {
    * ever grows a bigger charge.
    */
   blastSideM?: number;
+  /**
+   * The attachment this shot was fired *with* (stage 31) — the bayonet, the
+   * underbarrel launcher, the underbarrel shotgun.
+   *
+   * Carried whole rather than by id for the reason `ammo` is: the card is read
+   * long after the swing, and „which weapon was this" has to keep answering
+   * after somebody edits the catalogue.
+   */
+  attachmentId?: string;
+  attachmentName?: string;
   /** Rounds this attack spends. */
   ammoCost: number;
   ammoBefore: number;
@@ -458,6 +488,38 @@ export function attackDamageNotation(
 }
 
 /**
+ * The sheet row a bolted-on weapon fires from (stage 31).
+ *
+ * Synthetic rather than stored, because there is nothing on paper to store: the
+ * bayonet is not a second line of the equipment list, it is the rifle with a
+ * knife on the end. What it borrows from the host is the row id — every address
+ * downstream (the turn budget, the damage card, the reload) points at the row
+ * somebody actually owns — and what it replaces is everything the rules read:
+ * the name that goes on the card, the damage, and the magazine that must not be
+ * the rifle's, or firing one grenade would cost twenty-five rifle rounds.
+ */
+function secondaryWeaponRow(
+  host: CpredWeaponRow,
+  attachment: CpredAttachmentProfile,
+  resolved: ResolvedWeapon,
+): CpredWeaponRow {
+  const magazine = resolved.magazine ?? 0;
+  const loaded = host.attachmentAmmo?.[attachment.id];
+  return {
+    ...host,
+    name: attachment.name,
+    damage: resolved.damage,
+    // A weapon that counts no rounds (the bayonet) keeps a zero magazine, which
+    // `attackAmmoCost` already reads as „this one does not track ammunition".
+    ammoMax: magazine,
+    ammoCurrent: magazine > 0 ? Math.min(loaded ?? magazine, magazine) : 0,
+    ammoType: resolved.ammoType ?? '',
+    // The round in the host's magazine belongs to the host (see the planner).
+    ammoId: undefined,
+  };
+}
+
+/**
  * Validates an attack against the attacker's sheet, the weapon's catalogue
  * entry and the measured distance, then builds the roll and its breakdown.
  * Runs unchanged on the client (preview) and the server (authoritative).
@@ -477,6 +539,18 @@ export function planCpredAttack(
      * reason it is handed the Grenade Launcher line rather than finding it.
      */
     ammo?: CpredAmmoProfile | null;
+    /**
+     * Attachments bolted to this row, resolved from the catalogue (stage 31).
+     * The planner reads what they change; it never goes looking for them.
+     */
+    attachments?: readonly CpredAttachmentProfile[];
+    /**
+     * The weapon `request.attachmentId` names, resolved by the caller — the
+     * launcher's own range table, the bayonet's own damage. Required whenever
+     * the request names an attachment, and refused when it is missing: a shot
+     * with a weapon nobody resolved is a shot with no rules.
+     */
+    secondary?: ResolvedWeapon | null;
   },
   target: CpredAttackTarget & { tokenId?: string; coverId?: number },
   /**
@@ -499,7 +573,29 @@ export function planCpredAttack(
   if (luckSpent > data.luckCurrent) return { ok: false, error: 'NOT_ENOUGH_LUCK' };
   if (!isInteger(target.metres) || target.metres < 0) return { ok: false, error: 'BAD_REQUEST' };
 
-  const { row, resolved } = weapon;
+  // Stage 31: the gun, or what somebody bolted onto it. Three of the eight
+  // printed attachments turn one object into two — „Trzymaną oburącz broń można
+  // wykorzystać jako Granatnik" (s. 343) — and from this line down the planner
+  // simply works on whichever weapon is being fired. Every rule below (range
+  // table, reach, fire modes, half armour, magazine) then applies to the
+  // underbarrel because it applies to weapons, not because anybody wrote a
+  // branch for underbarrels.
+  const hostRow = weapon.row;
+  const attachments = weapon.attachments ?? [];
+  const firedWith =
+    typeof request.attachmentId === 'string'
+      ? attachments.find(
+          (entry) => entry.id === request.attachmentId && entry.secondary !== undefined,
+        )
+      : undefined;
+  if (request.attachmentId !== undefined && (!firedWith || !weapon.secondary)) {
+    return { ok: false, error: 'UNKNOWN_ATTACHMENT' };
+  }
+  const secondary = firedWith ? (weapon.secondary as ResolvedWeapon) : null;
+  const resolved = secondary ?? weapon.resolved;
+  const row = firedWith && secondary ? secondaryWeaponRow(hostRow, firedWith, secondary) : hostRow;
+  const weaponTypeId = firedWith ? firedWith.secondary!.weaponTypeId : weapon.typeId;
+
   // Letting go of something turns it into a ranged attack whatever it is
   // (s. 177), so a thrown knife stops being a melee weapon for this one roll.
   const thrown = resolved?.thrown === true || request.thrown === true;
@@ -510,7 +606,11 @@ export function planCpredAttack(
   const halvesArmor = !thrown && resolved?.halvesArmor === true;
   // The round in the magazine (stage 16g) and the one thing it can change about
   // the shape of the attack: a shell sprays a cone instead of hitting one person.
-  const ammo = weapon.ammo ?? null;
+  //
+  // A bolted-on weapon fires its own ordinary ammunition: the armour-piercing
+  // round in the rifle is not in the launcher under it, and pretending it were
+  // would hand the grenade the rifle's flags.
+  const ammo = firedWith ? null : (weapon.ammo ?? null);
   const spread = ammo?.spread;
   // What the range table is read from, and how far the arm reaches at all. A
   // spread of shot has neither table nor arm — it simply stops at the cone's
@@ -532,6 +632,18 @@ export function planCpredAttack(
   // dopasować do rodzaju używanej broni" (s. 344), and a round that does not fit
   // never leaves the barrel, wall or no wall.
   if (ammo && !ammoFitsWeapon(ammo, resolved)) return { ok: false, error: 'AMMO_MISMATCH' };
+
+  // „Jeśli próbuje jej użyć osoba bez tej cyborgizacji, z powodów bezpieczeństwa
+  // amunicja inteligentna nie wystrzeli po pociągnięciu za spust" (s. 347).
+  //
+  // A refusal from stage 31 and prose before it — not because the rule changed,
+  // but because until 23a the sheet had no chrome to check and refusing would
+  // have been guessing. `smart.requires` is the round's own sentence about what
+  // it needs, so a GM's own round with the same field is enforced the same way.
+  const installedCyberware = data.cyberware.map((piece) => piece.name);
+  if (ammo?.smart?.requires && !hasRequiredCyberware([ammo.smart.requires], installedCyberware)) {
+    return { ok: false, error: 'AMMO_NEEDS_CYBERWARE' };
+  }
 
   // What stands in the way outranks how far away it is (stage 16b): a target
   // behind a wall is not „out of range", and telling the player it is would send
@@ -631,7 +743,7 @@ export function planCpredAttack(
       ? CPRED_AUTOFIRE_DAMAGE
       : spread
         ? spread.damage
-        : attackDamageNotation(row, data.stats, weapon.typeId, hasCyberarm(data.cyberware));
+        : attackDamageNotation(row, data.stats, weaponTypeId, hasCyberarm(data.cyberware));
   if (mode !== 'suppressive') {
     const parsed = parseRollNotation(damage);
     if (!parsed.ok || !parsed.formula.terms.some((term) => term.kind === 'dice')) {
@@ -677,7 +789,32 @@ export function planCpredAttack(
       kind: 'situational',
     });
   }
-  for (const entry of context.modifiers ?? []) breakdown.push({ ...entry });
+  // Stage 31: „Celownik noktowizyjny … zmniejsza do zera modyfikatory ujemne za
+  // strzelanie do celu ukrytego w ciemności, dymie, mgle itp." (s. 343).
+  //
+  // Dropped rather than cancelled with a matching plus: the rulebook says the
+  // penalty stops existing, and „Dym −4 · Noktowizor +4" on a card would be
+  // arithmetic theatre. Only the *negative* ones go — a cloud somebody made
+  // helpful stays helpful.
+  const seesThroughObscurement = attachmentIgnoresObscurement(attachments);
+  for (const entry of context.modifiers ?? []) {
+    const obscures = entry.kind === CPRED_OBSCUREMENT_KIND && entry.value < 0;
+    if (seesThroughObscurement && obscures) continue;
+    breakdown.push({ ...entry });
+  }
+  // What is bolted to the gun, when this shot earns it: the smartgun's flat +1
+  // (chrome permitting) and the scope's conditional one. Both are decided here
+  // rather than baked into the resolved weapon, because both conditions are
+  // facts about *this shot* — see `attachmentAttackModifiers`.
+  for (const entry of attachmentAttackModifiers(attachments, {
+    metres: target.metres,
+    single: mode === 'single',
+    aimed,
+    melee,
+    cyberware: installedCyberware,
+  })) {
+    breakdown.push(entry);
+  }
   if (aimedAt) {
     breakdown.push({
       label: `Celowanie (${CPRED_AIM_POINT_LABELS[aimedAt].toLowerCase()})`,
@@ -703,10 +840,14 @@ export function planCpredAttack(
   }
 
   const band = melee || mode === 'suppressive' ? null : rangeBandFor(target.metres);
+  // „Militech »Ronin« · granatnik podwieszany → Bandyta": the host still names
+  // the object being held, because that is the row on the sheet and the thing
+  // somebody has to reload.
+  const weaponLabel = firedWith ? `${hostRow.name} · ${firedWith.name}` : row.name;
   const title =
     mode === 'single'
-      ? `${row.name} → ${target.name}`
-      : `${row.name} → ${CPRED_ATTACK_MODE_LABELS[mode].toLowerCase()}`;
+      ? `${weaponLabel} → ${target.name}`
+      : `${weaponLabel} → ${CPRED_ATTACK_MODE_LABELS[mode].toLowerCase()}`;
 
   return {
     ok: true,
@@ -745,6 +886,7 @@ export function planCpredAttack(
         ...(ammo ? { ammo } : {}),
         ...(spread ? { coneRangeM: spread.coneRangeM } : {}),
         statId,
+        ...(firedWith ? { attachmentId: firedWith.id, attachmentName: firedWith.name } : {}),
         ammoCost,
         ammoBefore: row.ammoCurrent,
         ammoAfter: row.ammoCurrent - ammoCost,
@@ -917,4 +1059,6 @@ export const CPRED_ATTACK_PROBLEM_MESSAGES: Record<CpredAttackProblem, string> =
   COVER_NOT_SUPPRESSIBLE: 'Ogniem zaporowym nie zmusisz przedmiotu, żeby się schował.',
   AMMO_MISMATCH: 'Ten nabój nie pasuje do tej broni — zmień amunicję.',
   AMMO_SINGLE_ONLY: 'Tą amunicją strzelasz tylko pojedynczo.',
+  AMMO_NEEDS_CYBERWARE: 'Ta amunicja nie wystrzeli bez wymaganej cyborgizacji.',
+  UNKNOWN_ATTACHMENT: 'Nie ma takiego dodatku na tej broni.',
 };

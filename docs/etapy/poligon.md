@@ -304,3 +304,20 @@ to jedyna kampania, na której wolno wszystko zepsuć.
 
 **Handout „Kto zostawił krążek na Poligonie?"** (screamsheet z wgraną grafiką) został jako
 dowód odbitki gazetowej z 24c — jedyny screamsheet w kampanii ze zdjęciem.
+
+## Stan po sesji 01.09.2026 (etap 31 — dodatki do broni)
+
+Karta **avatar9** została świadomie zmieniona, żeby dało się obejrzeć dodatki bez przygotowań:
+
+- **„Arasaka Minami 10"** ma **magazynek bębnowy** i **złącze smartguna** (trzy gniazda zajęte),
+  więc magazynek to **50**, nie 30. Stan naboi po oględzinach: 23/50.
+- **„Militech Dragon"** — **nowy wiersz** dopisany z katalogu; nosi **bagnet** i **granatnik
+  podwieszany** (trzy gniazda zajęte), a pod nim dwa wiersze `↳`. Magazynek karabinu 25/25,
+  granatnika **0/1** (jeden granat wystrzelony w oględzinach, pudło z odchyleniem).
+- **Wszczepiony „Uchwyt podskórny"** (prawa cyberręka) — **bez niego złącze smartguna nie daje
+  +1**, więc to on jest warunkiem obejrzenia tej reguły. Człowieczeństwo zapłacone: **28 → 26**,
+  maksimum spadło z 42 na 40 (dalej „Na granicy”).
+
+To jest komplet potrzebny do trzech nieoglądanych pozycji z `zaleglosci.md` (noktowizor w dymie,
+luneta od 51 m, demontaż przycinający naboje) — nie kasuj go, dopóki nie zostaną odhaczone.
+Ślad w logu czatu: trzy karty ataku avatar9 z 01.09.
