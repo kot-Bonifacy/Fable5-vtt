@@ -9,6 +9,20 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Przeniesione 2026-09-01 (wraz z wycofaniem etapu 27g)
+
+- **Etap 27i — pomiar fps nie objął sceny ze światłami i mgłą. ZAMKNIĘTE — bez pomiaru.**
+  Pozycja czekała na etap 27g (decyzja MG z 28.08). **01.09 MG wycofał etap 27g**, bo
+  wydajność sprawdził samodzielnie poza sesją — a razem z adresem znika powód, dla którego
+  pozycja stała otwarta. Treść oryginalnego wpisu, bez zmian:
+
+  - **Etap 27i — pomiar fps nie objął sceny ze światłami i mgłą.** „Strzelnica" ma widoczność
+    `open`, więc 160,1 → 161,2 fps mierzy **samą warstwę efektów**, a nie najgorszy przypadek
+    z kryterium etapu. Warstwa rysuje na klatkę kilka ścieżek `Graphics` i najwyżej jeden sprite,
+    więc rezerwa jest duża — ale liczby dla sceny z dynamiczną widocznością nadal nie ma.
+    **Decyzja MG z 28.08: pomiar idzie do etapu 27g**, a nie do najbliższej sesji zaległości —
+    scena, na której się go robi, już stoi („Korytarz 16e", widoczność Dynamiczna).
+
 ## Przeniesione 2026-08-31 (pasek figury bez karty: rany, Testy, przeładowanie)
 
 Trzy pozycje długu oględzin, wszystkie z jednego obszaru — paska figury bez karty postaci —

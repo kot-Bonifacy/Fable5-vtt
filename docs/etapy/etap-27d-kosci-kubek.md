@@ -6,6 +6,7 @@
 > osobne kawałki roboty: kości, motyw całej aplikacji, szlif UX i wydajność. Zostały rozbite na
 > **27d** (ten plik), **27e** (motyw), **27f** (szlif UX), **27g** (wydajność). W etapie 27
 > nie zostaje nic — po zamknięciu czwórki idzie do archiwum jako rozdzielony.
+> **27g został wycofany 01.09** (MG zmierzył wydajność sam) — zrealizowane są 27d–27f.
 
 ## Cel sesji
 

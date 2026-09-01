@@ -279,7 +279,8 @@ Zbudowana od nowa i **zostawiona na stałe** decyzją MG z 28.08. Do tej pory po
 przy każdej sesji, która potrzebowała dynamicznej widoczności (ostatnio 22.08), i za każdym
 razem płaciliśmy za nią drugi raz. Poligon nie miał ani jednej stałej sceny z widocznością
 `dynamic` — a to jest jedyny tryb, w którym da się oglądać cień ścian, przerwania marszu
-i (w etapie 27g) najgorszy przypadek wydajności.
+i „ktoś wychodzi zza rogu". (Trzecim powodem był najgorszy przypadek wydajności dla etapu 27g;
+**27g wycofano 01.09**, scena zostaje z dwóch pierwszych.)
 
 **Ustawienia:** widoczność **Dynamiczna**, pamięć eksploracji **włączona**, ciemna scena
 wyłączona, siatka 100 px, mapa pusta.

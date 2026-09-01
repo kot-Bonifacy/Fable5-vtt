@@ -125,13 +125,6 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
   zignorowany (Wyjście z opresji)"** — trzeba wyrzucić jedynkę w Teście ataku, więc to kwestia
   kilku strzałów; (6) rozbicie rzutu z wierszami „Precyzyjny atak N" i „Wyczucie zagrożenia N".
 
-- **Etap 27i — pomiar fps nie objął sceny ze światłami i mgłą.** „Strzelnica" ma widoczność
-  `open`, więc 160,1 → 161,2 fps mierzy **samą warstwę efektów**, a nie najgorszy przypadek
-  z kryterium etapu. Warstwa rysuje na klatkę kilka ścieżek `Graphics` i najwyżej jeden sprite,
-  więc rezerwa jest duża — ale liczby dla sceny z dynamiczną widocznością nadal nie ma.
-  **Decyzja MG z 28.08: pomiar idzie do etapu 27g**, a nie do najbliższej sesji zaległości —
-  scena, na której się go robi, już stoi („Korytarz 16e", widoczność Dynamiczna).
-
 - **Etap 24c — zostały dwie ścieżki, obie wymagają modelu.** ~~(1) Zdjęcie prasowe~~
   i ~~(3) edycja zapisanego screamsheetu przez ✎~~ — **odklikane 28.08**, patrz
   `archiwum/zamkniete-zaleglosci.md`. Zostają: (2) **„Przerwij" w trakcie generacji** — przycisk

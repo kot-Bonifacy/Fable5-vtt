@@ -81,7 +81,7 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 | 27d | Kości 3D: skórki, dorzut, ustawienia          | ✅     | 2026-08-19        |
 | 27e | Motyw dzień/noc dla całej aplikacji           | ✅     | 2026-08-20        |
 | 27f | Szlif UX: pomoc, tooltipy, stany, okna        | ✅     | 2026-08-21        |
-| 27g | Wydajność                                     | ⬜     |                   |
+| 27g | ~~Wydajność~~                                 | ⛔     | wycofany 01.09    |
 | 27h | Panel postaci: HUD, który wygląda jak gra     | ✅     | 2026-08-20        |
 | 27i | Mapa: efekty walki                            | ✅     | 2026-08-20        |
 | 27j | Żetony i czytelny ruch                        | ✅     | 2026-08-21        |
@@ -101,9 +101,10 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 ## Od czego zacząć
 
 **Etap 31 (dodatki do broni) zamknięty 01.09.** Osiem pozycji z s. 342–344 wjechało importem,
-a broń z gniazdami daje się uzbroić z karty. **Wolne zostały dwa etapy: 27g** (wydajność, poligon
-„Korytarz 16e" gotowy) i **28** (wdrożenie na VPS). Dług oględzin urósł do **23 pozycji**
-(`zaleglosci.md`) — dwie nowe z tej sesji.
+a broń z gniazdami daje się uzbroić z karty. **Etap 27g (wydajność) został wycofany 01.09
+decyzją MG — wydajność przetestowana samodzielnie, sesji nie będzie.** Wolny został **jeden
+etap: 28** (wdrożenie na VPS). Dług oględzin: **22 pozycje** (`zaleglosci.md`) — dwie nowe
+z tej sesji, jedna zamknięta razem z 27g.
 
 **Dodatek do broni jest wierszem kompendium, nie gałęzią w kodzie.** `fit` niesie zdanie
 „Pasuje do:" z podręcznika, flagi niosą skutek, a `secondary` — **id typu broni**, z którego
@@ -135,7 +136,7 @@ Pełny zapis w `decyzje-i-uproszczenia.md`; przed zmianą czegokolwiek w tym mie
 akapit, bo to druga zmiana zdania w tej sprawie. **Wyjątek od 30c: Test Lojalności** zdaje się
 przy wyniku _mniejszym_ od Lojalności (s. 154).
 
-**Dług oględzin — 23 pozycje.** Bez modelu da się obejrzeć osiem: reszta **29a** (pięć punktów),
+**Dług oględzin — 22 pozycje.** Bez modelu da się obejrzeć osiem: reszta **29a** (pięć punktów),
 reszta **29b** (trzy), **komplet 30d**, **komplet 30c**, **reszta 30b**, **komplet 30a**,
 Celowanie w statystę, **reszta 31** (noktowizor w dymie, luneta od 51 m, demontaż przycinający
 naboje). Reszta czeka na **żywy model**: 20a/20b, 19a–19c, dwie ścieżki 24c i maszynopis
@@ -156,8 +157,8 @@ zmiana `parse-manual.py` ich nie odświeża. Jeśli coś w kompendium zachowuje 
 
 **Sceny testowe — cztery, bez zmian.** Aktywna jest **„Strzelnica"** (komplet pod Sieć, pięć
 uzbrojonych stref bronionych, druga figura „Rudy Kwiatkowski" z właścicielem avatar9, a kartą
-NPC — zostawiona świadomie). W podglądzie: **„Korytarz 16e"** (**nie kasuj jej**, to poligon
-27g), **„Karty 24x"** i **„Efekty 23x"**. Wszystkie współrzędne i **stan po sesji 01.09** —
+NPC — zostawiona świadomie). W podglądzie: **„Korytarz 16e"** (**nie kasuj jej** — jedyna
+stała scena z widocznością Dynamiczną), **„Karty 24x"** i **„Efekty 23x"**. Wszystkie współrzędne i **stan po sesji 01.09** —
 w `poligon.md`. Do oględzin z konta gracza jest `Tester` (`/join/tester-dev`), ale **do Sieci
 trzeba avatar9**.
 
