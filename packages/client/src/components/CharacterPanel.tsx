@@ -23,7 +23,7 @@ import { ensureCpredDataLoaded, useCharacterStore } from '../stores/characterSto
 import { useCreationStore } from '../stores/creationStore.js';
 import { useMapToolStore } from '../stores/mapToolStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
-import { plural } from '../plural.js';
+import { plural, pluralWord } from '../plural.js';
 
 interface PlayerOption {
   id: string;
@@ -163,7 +163,9 @@ export function CharacterPanel() {
       setSettlement(advanceErrorText(ack.ok ? 'BAD_REQUEST' : ack.error));
       return;
     }
-    const who = plural(ack.data.awarded, 'postać', 'postaci', 'postaci');
+    // `pluralWord`, nie `plural`: liczba stoi w zdaniu obok, a `plural` dokleja
+    // własną — tak powstało „Przyznano 20 PD — 5 5 postaci" (oględziny 02.09).
+    const who = pluralWord(ack.data.awarded, 'postać', 'postaci', 'postaci');
     setSettlement(
       `${amount > 0 ? 'Przyznano' : 'Zabrano'} ${Math.abs(amount)} PD — ${ack.data.awarded} ${who}.`,
     );

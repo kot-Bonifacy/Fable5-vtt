@@ -9,6 +9,47 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Przeniesione 2026-09-02 (oględziny rozwoju postaci — 29a i 29b)
+
+- **Etap 29a — reszta pięciu ścieżek. ZAMKNIĘTE — odklikane 02.09.** Nośnikiem był **„Frank"**
+  (pusta karta poligonu, na czas sesji własność konta `Tester`, Nomada z Moto 4 i 100 PD);
+  po sesji przywrócony do stanu sprzed. (1) **„Podnieś"** — Atletyka 2 → 3 za 60 PD: licznik
+  spadł 100 → 40, wiersz w panelu przeskoczył na „3 → 4 · 80 PD", strona pierwsza pokazała
+  Atletykę 3, a rejestr — świeży wiersz „Atletyka 2 → 3 · −60 PD · 40 PD" **bez przeładowania**.
+  (2) **Filtr „tylko na które mnie stać"** — przy 40 PD z 66 szczebli zostały 62, wyłącznie po
+  20 i 40 PD; wiersze po 60, 80, 120 i 300 PD zniknęły. (3) **Brak PD** — guziki wyszarzone
+  z podpowiedziami „Brakuje 200 PD" (Moto 4 → 5) i „Brakuje 20 PD" (Ogień ciągły 2 → 3).
+  (4) **Tylko do odczytu u gracza** — „Poziom: Atletyka", „Ranga: Moto" i „Punkty Doświadczenia"
+  mają `readOnly`; **wpisane z klawiatury „9" i „8" nie weszły** przy ognisku w polu, a wybór
+  Roli jest `disabled`. U MG te same trzy pola przyjęły wpis (ranga Zmysłu Walki 1 → 4 ręką MG
+  weszła i **odświeżyła panel gracza na żywo**). (5) **„✦ Przyznaj wszystkim"** — 20 PD z powodem
+  „sesja oględzin 02.09" dostało **pięć postaci graczy z kampanii** (Tony, avatar9, Test 27x,
+  Marcin, Frank), a **żaden BN** (Rudy Kwiatkowski 0) i **żadna postać z innej kampanii**;
+  każda dostała wiersz rejestru z powodem. Zabranie −20 PD wróciło wszystkim do zera i
+  **nie zeszło poniżej** (Frank stał na 0 i na 0 został).
+
+- **Etap 29a — komunikat „Przyznano N PD" liczył postaci dwa razy. ZAMKNIĘTE — naprawione
+  02.09.** Po przyznaniu stanęło **„Przyznano 20 PD — 5 5 postaci."**: `awardPoints`
+  w `CharacterPanel.tsx` składało zdanie z `plural(awarded, …)`, które samo dokleja liczbę,
+  i doklejało `awarded` jeszcze raz przed nim. Naprawa: `pluralWord` (dodany w 27f właśnie dla
+  miejsc formatujących liczbę osobno) — sprawdzone w przeglądarce: „Zabrano 20 PD — 5 postaci."
+  Drugie użycie `plural` w tym samym pliku (odnowienie Szczęścia) jest poprawne i zostaje.
+
+- **Etap 29b — trzy ścieżki od strony MG. ZAMKNIĘTE — odklikane 02.09.** (1) **Darmowy powrót
+  do posiadanej Roli** — Frank (Nomada 4) kupił za 60 PD **Solo**, MG podniósł mu Zmysł Walki
+  do 4, a wtedy lista w panelu pokazała **„Nomada — powrót (Moto 4)"** i guzik obiecał „za darmo,
+  Moto wraca na poziom 4". Powrót przy **0 PD w zapasie** przeszedł, kosztował **0** i zostawił
+  w rejestrze wiersz „Nomada — powrót do Roli (Moto 4) · +0 PD"; powrót w drugą stronę (do Solo)
+  też. (2) **Rzut ze Zdolności poprzedniej Roli** — u Franka **będącego Solo** (Nomada
+  poprzednia, Moto 4) okno rzutu Prowadzeniem pojazdów pokazało „Refleks (REF) +5 ·
+  Prowadzenie pojazdów +4 · **Moto 4 +4** · 1k10 + 13", a karta na czacie ten sam chip „Moto 4 +4"
+  przy wyniku 20. (3) **Ręka MG** — obie rangi (`Ranga: Zmysł Walki`, `Ranga: Moto`) są u MG
+  edytowalne i u gracza tylko do odczytu; odmowy sprawdzone na żywym gnieździe:
+  **`ROLE_TWICE`** przy wpisaniu bieżącej Roli w `formerRoles` i przy wybraniu poprzedniej Roli
+  w polu „Rola", **`UNKNOWN_ROLE`** przy nieznanej Roli w `formerRoles`. **Ustalenie:** nieznane
+  `roleId` **bieżącej** Roli nie dochodzi do `cpredRolesProblem` — parser karty odrzuca je
+  wcześniej jako `INVALID_DATA`, więc `UNKNOWN_ROLE` wychodzi wyłącznie z `formerRoles`.
+
 ## Przeniesione 2026-09-01 (druga sesja — pasek dodatków i domknięcie etapu 31)
 
 - **Broń podwieszana i bagnet są nieosiągalne z paska akcji (01.09). ZAMKNIĘTE — naprawione.**

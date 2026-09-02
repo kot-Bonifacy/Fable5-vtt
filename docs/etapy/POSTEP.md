@@ -103,8 +103,9 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 **Etap 31 (dodatki do broni) zamknięty 01.09 i od drugiej sesji tego dnia obejrzany
 w komplecie** — z paska akcji strzela się także bagnetem i bronią podwieszaną. **Etap 27g
 (wydajność) został wycofany 01.09 decyzją MG — wydajność przetestowana samodzielnie, sesji nie
-będzie.** Wolny został **jeden etap: 28** (wdrożenie na VPS). Dług oględzin: **21 pozycji**
-(`zaleglosci.md`) — dwie nowe z drugiej sesji 01.09, trzy zamknięte.
+będzie.** Wolny został **jeden etap: 28** (wdrożenie na VPS), a przed nim MG planuje
+**refaktoryzację całości** (ustalenie z 02.09). Dług oględzin: **20 pozycji**
+(`zaleglosci.md`) — 29a i 29b zamknięte 02.09, jedna nowa.
 
 **Czat ma filtry i tryb zwarty (01.09, trzecia sesja).** Cztery grupy (Rozmowy, Rzuty, Walka,
 Stół) plus „Zwarty"; nastawienie jest lokalne, w `localStorage`. **Nowy rodzaj wiersza czatu
@@ -142,16 +143,19 @@ Pełny zapis w `decyzje-i-uproszczenia.md`; przed zmianą czegokolwiek w tym mie
 akapit, bo to druga zmiana zdania w tej sprawie. **Wyjątek od 30c: Test Lojalności** zdaje się
 przy wyniku _mniejszym_ od Lojalności (s. 154).
 
-**Dług oględzin — 21 pozycji.** Bez modelu da się obejrzeć sześć: reszta **29a** (pięć punktów),
-reszta **29b** (trzy), **komplet 30d**, **komplet 30c**, **reszta 30b**, **komplet 30a**.
-Etap 31 i Celowanie w statystę **wypadły z listy 01.09** (druga sesja). Reszta czeka na **żywy
+**Dług oględzin — 20 pozycji.** Bez modelu da się obejrzeć cztery, wszystkie z etapu 30:
+**komplet 30a**, **reszta 30b**, **komplet 30c**, **komplet 30d**. **29a i 29b wypadły z listy
+02.09** (odklikane w komplecie), etap 31 i Celowanie w statystę — 01.09. Reszta czeka na **żywy
 model**: 20a/20b, 19a–19c, dwie ścieżki 24c i maszynopis wypowiedzi.
 
 **Do oględzin 30a–30d trzeba postaci ze wszystkimi Rolami poza Netrunnerem** — żadna karta na
 scenach testowych ich nie ma. **Od 29a wybór Roli ma wyłącznie MG**, więc oględziny Ról robi się
 z sesji MG albo przestawia Rolę u MG i patrzy graczem. **Trzecia droga, tańsza i sprawdzona
-30.08:** kartę przygotowuje się wprost w bazie (`node --input-type=module` + `node:sqlite` na
-`packages/server/dev.db`, przeładowanie karty przeglądarki przynosi nowy stan) — patrz pułapki.
+30.08 oraz 02.09:** kartę przygotowuje się wprost w bazie (`node --input-type=module` +
+`node:sqlite` na `packages/server/dev.db`, przeładowanie karty przeglądarki przynosi nowy stan)
+— patrz pułapki. **Nośnikiem bez skutków ubocznych jest „Frank"** (pusta karta poligonu, bez
+Roli i bez ekwipunku); 02.09 dostał na czas sesji właściciela `Tester` i wrócił do `NPC (MG)`.
+Kopia wszystkich kart sprzed tamtej sesji: `data/private/backups/characters-2026-09-02.json`.
 **Kartę nośną dla innego etapu trzeba potem przywrócić**: „Test 27x" jest netrunnerem poligonu
 Sieci i po 29b wróciła do Interfejsu 7 (`poligon.md`).
 
@@ -366,6 +370,52 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 02.09 — oględziny rozwoju postaci (29a i 29b)
+
+**Zlecenie MG:** sesja oględzinowa, zestaw **B** z listy zaległości — reszta **29a** (pięć
+ścieżek) i reszta **29b** (trzy). Postaci nie zakładać kreatorem, tylko użyć gotowych.
+
+**Nośnikiem był „Frank"** — jedyna pusta karta poligonu (wyczyszczona po sesji 31.08).
+Na czas oględzin dostał wprost w bazie właściciela `Tester`, Rolę **Nomada** z Moto 4, 100 PD
+i cztery umiejętności; po sesji wrócił do stanu sprzed (właściciel `NPC (MG)`, bez Roli).
+Ta droga jest tańsza niż kreator i nie rusza kart nośnych innych etapów — „Test 27x" (poligon
+Sieci) w ogóle nie była w tej sesji dotykana.
+
+**Osiem ścieżek odklikanych, wszystkie zgodne z opisem.** Z 29a: „Podnieś" (Atletyka 2 → 3 za
+60 PD — poziom na stronie pierwszej, licznik i wiersz rejestru **bez przeładowania**), filtr
+„tylko na które mnie stać" (przy 40 PD zostają wyłącznie szczeble po 20 i 40 PD), „Brakuje
+200 PD" na wyszarzonym guziku, pola tylko do odczytu u gracza (wpisane z klawiatury „9" i „8"
+**nie weszły**) i te same pola działające u MG, wreszcie „✦ Przyznaj wszystkim" — 20 PD dostało
+**pięć postaci graczy**, żaden BN i żadna postać z innej kampanii. Z 29b: darmowy powrót do
+posiadanej Roli (przy **0 PD**, wiersz rejestru „+0 PD"), „Moto 4 +4" w rozbiciu rzutu
+Prowadzeniem **u postaci, która Nomadą już nie jest**, oraz ręka MG z odmowami `ROLE_TWICE`
+i `UNKNOWN_ROLE`.
+
+**Jeden błąd znaleziony i naprawiony.** Komunikat po przyznaniu PD mówił **„Przyznano 20 PD —
+5 5 postaci"**: `awardPoints` składało zdanie z `plural`, które samo dokleja liczbę, i podawało
+liczbę jeszcze raz obok. Naprawa to `pluralWord` — funkcja dodana w 27f **dokładnie** dla miejsc,
+które formatują liczbę osobno. Sprawdzone w przeglądarce: „Zabrano 20 PD — 5 postaci."
+
+**Jedna nowa zaległość, szersza niż Role.** Gdy serwer odmówi łaty karty (tu: `ROLE_TWICE` przy
+Roli, którą postać ma już jako poprzednią), karta u MG **dalej pokazuje wartość, której w bazie
+nie ma** — z tytułem „FRANK NOMADA" włącznie — a jedynym śladem jest czerwone „Błąd zapisu!"
+bez powodu. `endSave` przy odmowie nie dostaje widoku serwera (`ack.data` puste), więc nie ma
+czego przyjąć. Dotyczy **każdej** odmowy `character:update`.
+
+**Dwa ustalenia na przyszłość.** (1) Panel **„Awans" stoi na stronie drugiej karty** (zakładka
+„ŚCIEŻKA ŻYCIA"), obok pola „Punkty Doświadczenia" — na stronie pierwszej zmienia się tylko
+skutek zakupu. (2) Nieznane `roleId` **bieżącej** Roli nie dochodzi do `cpredRolesProblem`:
+parser karty odrzuca je wcześniej jako `INVALID_DATA`, więc `UNKNOWN_ROLE` wychodzi wyłącznie
+z `formerRoles`.
+
+**Poligon przywrócony w całości:** wszystkie karty z kopii `characters-2026-09-02.json`,
+rejestr awansów wyczyszczony do zera (przed sesją był pusty), PD wszędzie 0. Ślad zostawiony
+świadomie: **jedna karta rzutu w logu czatu** („Frank — Prowadzenie pojazdów, 20") — historii
+czatu i tak się nie sprząta.
+
+**Testy na koniec:** 1718 w `shared`, 893 na serwerze, 67 u klienta — zielone. ESLint i Prettier
+czyste. Dług oględzin: **21 → 20 pozycji** (zamknięte dwie, jedna nowa).
+
 ### Sesja 01.09 (trzecia) — filtry czatu, tryb zwarty i magazynek z karty ataku
 
 **Zlecenie MG:** nie etap — dwie zmiany na czacie. (1) Dało się chować rodzaje wierszy albo całe
@@ -406,57 +456,3 @@ zmierzony: 8,45 / 7,71 / 5,99 — z zapasem ponad WCAG AA.
 
 **Testy na koniec:** 1718 w `shared` (+15), 893 na serwerze, 67 u klienta — zielone. ESLint
 i Prettier czyste.
-
-### Sesja 01.09 (druga) — pasek dodatków i domknięcie oględzin etapu 31
-
-**Zlecenie MG:** paczka **A + B** z listy zaległości — jedna naprawa kodu (broń podwieszana
-i bagnet nieosiągalne z paska akcji) plus domknięcie czterech nieoglądanych ścieżek etapu 31
-i Celowania w statystę. Obie części na tej samej scenie i tej samej karcie, więc jedna sesja.
-
-**Naprawa okazała się kwestią tożsamości, nie listy.** Dołożenie broni podwieszanej do paska
-to trzy linijki w `cpredWeaponOptions`; kosztowne było to, co z tego wynikło: bagnet i karabin,
-w który jest wkręcony, **dzielą `rowId`**. Cztery miejsca kluczowały dotąd na samym wierszu —
-id slotu, id przeładowania, grupowanie panelu i pamięć trybu ognia u klienta — i każde z nich
-zlepiłoby dwie bronie w jedno pudełko. Stąd `weaponOptionKey(rowId, attachmentId)` i jedna
-umowa kodu (dopisana). Katalog dodatków wchodzi **opcjonalnie**, więc tura bota dostaje pasek
-sprzed zmiany — rozszerzanie menu, które czyta model, to osobna decyzja, nie skutek uboczny.
-
-**Odklikane (Strzelnica, konto MG):** pasek avatar9 z „Bagnet" (3) i „Granatnik podwieszany"
-(4) jako **osobnymi klawiszami**, przeładowanie granatnika z paska (0/1 → 1/1) **nie ruszające**
-magazynka karabinu, strzał z granatnika ładujący kubek na **pole** (obszar 10×10 m, odchylenie),
-odmowa „Do ataku wręcz cel musi być nie dalej niż 2 m" i wreszcie trafienie bagnetem: karta mówi
-**„Militech Dragon · Bagnet"** i liczy je **Bronią białą**, nie Bronią ciężką karabinu. Przy
-okazji potwierdzone, że **nowa droga ataku dostaje Celowanie za darmo** — okno czterech sylwetek
-wyskakuje także ze slotu dodatku.
-
-**Cztery zaległości oględzinowe zamknięte.** (1) **Demontaż przycina naboje**: Arasaka
-przeładowana do 50/50, po zdjęciu bębna **30/30**. (2) **Luneta** — w VTT „Luneta dalekiego
-zasięgu" — dopisała **+1** przy Celowaniu z 19 m, czyli z tytułu Celowania, nie odległości.
-(3) **Noktowizor w dymie**: ten sam strzał, ta sama chmura, raz z „Celownikiem noktowizyjnym"
-i raz bez — wiersz **„Dym −4" znika z rozbicia** (+11 → +15), a nie jest kompensowany plusem.
-(4) **Celowanie w statystę**: trafienie w Automatyczną wieżyczkę dało chip **„Celowanie (noga):
-Złamana noga"** — rana **nazwana**, nie losowana.
-
-**Dwie rzeczy, które opóźniły oględziny, obie zapisane jako pułapki.** Klik w żeton, którym MG
-może sterować (czyli w **każdy**), tylko go zaznacza — celuje dopiero **Alt+klik**, a `modifiers`
-w narzędziu `computer` bywa niedostarczane; pewną drogą jest guzik „ATAK" z karty postaci, bo
-`targeting` omija warunek Alt. I druga: **dymu nie da się postawić narzędziem** — stawia go
-wyłącznie wystrzelony nabój, więc do oględzin trzeba było dopisać osobny wiersz „Granatnik"
-z „Amunicją dymną".
-
-**Dwie nowe zaległości.** **Broń podwieszana nie ma wyboru amunicji** (wiersz `↳` ma samo ⟳,
-`weapon:reload` z `attachmentId` nie przyjmuje `ammoId`) — dlatego dym musiał pójść z osobnego
-wiersza. I kosmetyka: **podgląd nad żetonem pokazuje nazwę wiersza**, nie dodatku, więc
-z bagnetem w ręku mówi „Militech Dragon".
-
-**Poligon przywrócony:** dym rozwiany, rana „Złamana noga" zdjęta z wieżyczki i PW cofnięte
-do 25/25 guzikiem „Cofnij" na karcie obrażeń, dodany wiersz „Granatnik" skasowany, noktowizor
-zdjęty i **magazynek bębnowy wrócił** na Arasakę (23/50 jak przed sesją), avatar9 z powrotem
-na swoim polu z PW 35/35. Ślad zostawiony świadomie: **karty w logu czatu** (siedem strzałów
-z Celowaniem, dwa z bagnetu i granatnika podwieszanego, granat dymny) — historii czatu i tak
-się nie sprząta. **Uwaga do przyszłych oględzin ran krytycznych:** statysta „testowy 2x2" ma
-**OB 13**, więc 2k6 nigdy go nie przebije; do rany krytycznej u figury bez karty służy
-**Automatyczna wieżyczka** (OB 0).
-
-**Testy na koniec:** 1703 w `shared` (+8), 893 na serwerze, 67 u klienta — zielone. ESLint
-i Prettier czyste. Dług oględzin: **22 → 21 pozycji** (zamknięte trzy, dwie nowe).

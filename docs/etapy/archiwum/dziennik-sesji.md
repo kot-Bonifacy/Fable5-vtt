@@ -7,6 +7,60 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 01.09 (druga) — pasek dodatków i domknięcie oględzin etapu 31
+
+**Zlecenie MG:** paczka **A + B** z listy zaległości — jedna naprawa kodu (broń podwieszana
+i bagnet nieosiągalne z paska akcji) plus domknięcie czterech nieoglądanych ścieżek etapu 31
+i Celowania w statystę. Obie części na tej samej scenie i tej samej karcie, więc jedna sesja.
+
+**Naprawa okazała się kwestią tożsamości, nie listy.** Dołożenie broni podwieszanej do paska
+to trzy linijki w `cpredWeaponOptions`; kosztowne było to, co z tego wynikło: bagnet i karabin,
+w który jest wkręcony, **dzielą `rowId`**. Cztery miejsca kluczowały dotąd na samym wierszu —
+id slotu, id przeładowania, grupowanie panelu i pamięć trybu ognia u klienta — i każde z nich
+zlepiłoby dwie bronie w jedno pudełko. Stąd `weaponOptionKey(rowId, attachmentId)` i jedna
+umowa kodu (dopisana). Katalog dodatków wchodzi **opcjonalnie**, więc tura bota dostaje pasek
+sprzed zmiany — rozszerzanie menu, które czyta model, to osobna decyzja, nie skutek uboczny.
+
+**Odklikane (Strzelnica, konto MG):** pasek avatar9 z „Bagnet" (3) i „Granatnik podwieszany"
+(4) jako **osobnymi klawiszami**, przeładowanie granatnika z paska (0/1 → 1/1) **nie ruszające**
+magazynka karabinu, strzał z granatnika ładujący kubek na **pole** (obszar 10×10 m, odchylenie),
+odmowa „Do ataku wręcz cel musi być nie dalej niż 2 m" i wreszcie trafienie bagnetem: karta mówi
+**„Militech Dragon · Bagnet"** i liczy je **Bronią białą**, nie Bronią ciężką karabinu. Przy
+okazji potwierdzone, że **nowa droga ataku dostaje Celowanie za darmo** — okno czterech sylwetek
+wyskakuje także ze slotu dodatku.
+
+**Cztery zaległości oględzinowe zamknięte.** (1) **Demontaż przycina naboje**: Arasaka
+przeładowana do 50/50, po zdjęciu bębna **30/30**. (2) **Luneta** — w VTT „Luneta dalekiego
+zasięgu" — dopisała **+1** przy Celowaniu z 19 m, czyli z tytułu Celowania, nie odległości.
+(3) **Noktowizor w dymie**: ten sam strzał, ta sama chmura, raz z „Celownikiem noktowizyjnym"
+i raz bez — wiersz **„Dym −4" znika z rozbicia** (+11 → +15), a nie jest kompensowany plusem.
+(4) **Celowanie w statystę**: trafienie w Automatyczną wieżyczkę dało chip **„Celowanie (noga):
+Złamana noga"** — rana **nazwana**, nie losowana.
+
+**Dwie rzeczy, które opóźniły oględziny, obie zapisane jako pułapki.** Klik w żeton, którym MG
+może sterować (czyli w **każdy**), tylko go zaznacza — celuje dopiero **Alt+klik**, a `modifiers`
+w narzędziu `computer` bywa niedostarczane; pewną drogą jest guzik „ATAK" z karty postaci, bo
+`targeting` omija warunek Alt. I druga: **dymu nie da się postawić narzędziem** — stawia go
+wyłącznie wystrzelony nabój, więc do oględzin trzeba było dopisać osobny wiersz „Granatnik"
+z „Amunicją dymną".
+
+**Dwie nowe zaległości.** **Broń podwieszana nie ma wyboru amunicji** (wiersz `↳` ma samo ⟳,
+`weapon:reload` z `attachmentId` nie przyjmuje `ammoId`) — dlatego dym musiał pójść z osobnego
+wiersza. I kosmetyka: **podgląd nad żetonem pokazuje nazwę wiersza**, nie dodatku, więc
+z bagnetem w ręku mówi „Militech Dragon".
+
+**Poligon przywrócony:** dym rozwiany, rana „Złamana noga" zdjęta z wieżyczki i PW cofnięte
+do 25/25 guzikiem „Cofnij" na karcie obrażeń, dodany wiersz „Granatnik" skasowany, noktowizor
+zdjęty i **magazynek bębnowy wrócił** na Arasakę (23/50 jak przed sesją), avatar9 z powrotem
+na swoim polu z PW 35/35. Ślad zostawiony świadomie: **karty w logu czatu** (siedem strzałów
+z Celowaniem, dwa z bagnetu i granatnika podwieszanego, granat dymny) — historii czatu i tak
+się nie sprząta. **Uwaga do przyszłych oględzin ran krytycznych:** statysta „testowy 2x2" ma
+**OB 13**, więc 2k6 nigdy go nie przebije; do rany krytycznej u figury bez karty służy
+**Automatyczna wieżyczka** (OB 0).
+
+**Testy na koniec:** 1703 w `shared` (+8), 893 na serwerze, 67 u klienta — zielone. ESLint
+i Prettier czyste. Dług oględzin: **22 → 21 pozycji** (zamknięte trzy, dwie nowe).
+
 ### Sesja 01.09 — etap 31: dodatki do broni
 
 **Zlecenie MG:** etap 31, wybrany z trzech wolnych. Trzy decyzje przed pierwszą linijką:

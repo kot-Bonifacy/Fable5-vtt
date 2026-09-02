@@ -26,6 +26,22 @@ z „Kart 24x": kto na nią wejdzie, dostaje 6k6 przez pancerz i jeszcze raz na 
 Tury; gracz jej nie zobaczy, dopóki nie zda Percepcji PT 17 z 4 m. Karta strefy otwiera się
 narzędziem ⚠ w trybie 📌; „Rozbrój" ją usypia, kosz usuwa.
 
+**Stan po sesji 02.09 (oględziny 29a i 29b) — Poligon nietknięty.** Nośnikiem była karta
+**„Frank"** i wróciła do stanu sprzed sesji: właściciel **`NPC (MG)`**, bez Roli, bez
+umiejętności, 0 PD, `formerRoles` puste. **Rejestr awansów (`AdvancementEntry`) jest znów pusty**
+— w trakcie sesji stanęło w nim czternaście wierszy (zakup umiejętności, dwa zakupy Roli, dwa
+powroty, przyznanie i zabranie 20 PD pięciu postaciom) i wszystkie zostały skasowane. PD
+wszystkich dziewięciu kart: **0**, tak jak przed sesją. Kopia kart sprzed sesji:
+`data/private/backups/characters-2026-09-02.json` (gitignore).
+
+Ślad zostawiony świadomie: **jedna karta rzutu w logu czatu** — „Frank (Tester) — Prowadzenie
+pojazdów (REF) · 1k10+13 = 20" z chipem „Moto 4 +4". Żaden żeton, żadna scena i żaden obiekt
+sceny nie były w tej sesji dotykane.
+
+**Do następnych oględzin wieloklasowości bierz „Franka", nie „Test 27x".** Pusta karta bez
+Roli, bez ekwipunku i bez żetonu jest jedyną w bazie, której zepsucie nic nie kosztuje;
+„Test 27x" jest nośna dla etapów 26x (cyberdek, żeton „Kolec" pod punktem dostępu).
+
 **Stan po sesji 31.08 (Celowanie, broń z katalogu).** Poligon wraca do stanu sprzed sesji —
 karta „Frank" była nośnikiem oględzin (broń z katalogu, rana nadana, zespół Korpo) i **została
 wyczyszczona**: bez broni, bez ran, bez Roli i bez zespołu, tak jak stała. Zatrudniony na chwilę
