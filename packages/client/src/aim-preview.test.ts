@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   createDefaultCharacterData,
   type CompendiumEntry,
@@ -10,7 +10,8 @@ import {
   type TokenView,
   type WeaponTypeDefinition,
 } from '@vtt/shared';
-import { planAttackPreview } from './attack-targeting.js';
+import { intentFromTargeting, planAttackPreview } from './attack-targeting.js';
+import type { AttackTargeting } from './stores/attackStore.js';
 import { useCharacterStore } from './stores/characterStore.js';
 import { useCompendiumStore } from './stores/compendiumStore.js';
 import { useCoverStore } from './stores/coverStore.js';
@@ -97,6 +98,45 @@ function loadShooter(ammoId: string | undefined): void {
         ownerId: null,
         portraitUrl: null,
         data: shooterSheet(ammoId),
+        updatedAt: new Date().toISOString(),
+      },
+    },
+  });
+}
+
+/**
+ * Karta z karabinem i strzelbą podwieszaną pod lufą (etap 31): jeden wiersz
+ * ekwipunku, dwa sposoby zrobienia komuś krzywdy — i dwa osobne magazynki.
+ */
+function loadRifleWithUnderbarrel(): void {
+  const base = createDefaultCharacterData();
+  useCharacterStore.setState({
+    characters: {
+      'char-1': {
+        id: 'char-1',
+        name: 'Rico',
+        ownerId: null,
+        portraitUrl: null,
+        data: {
+          ...base,
+          stats: { ...base.stats, ref: 8, dex: 6 },
+          skills: { ...base.skills, 'shoulder-arms': 6 },
+          weapons: [
+            {
+              id: 'w-rifle',
+              name: 'Grzechotnik',
+              notes: '',
+              compendiumId: 'weapon.grzechotnik',
+              damage: '5k6',
+              ammoCurrent: 25,
+              ammoMax: 25,
+              ammoType: '',
+              rof: '1',
+              attachmentIds: ['attachment.sample-underbarrel'],
+              attachmentAmmo: { 'attachment.sample-underbarrel': 2 },
+            },
+          ],
+        },
         updatedAt: new Date().toISOString(),
       },
     },
@@ -192,6 +232,70 @@ describe('katalog naboi jest czytany ze sklepu kompendium', () => {
     expect(preview.ok).toBe(true);
     if (!preview.ok) return;
     expect(preview.attack.dvSource).toBe('range');
+  });
+});
+
+/**
+ * Dymek celowania a broń podwieszana (zaległość z oględzin etapu 31, 01.09).
+ *
+ * Z uzbrojonym bagnetem chmurka nad celem mówiła nazwę **wiersza karty**
+ * („Militech Dragon"), choć baner nad mapą i karta ataku mówiły „Bagnet".
+ * Przyczyna nie była w planerze — ten obsługuje `attachmentId` od 31 — tylko
+ * w tym, że `TargetTooltip` budował intencję **własną kopią** kodu z
+ * `loadAttackAtToken` i przy okazji gubił to pole. Test pilnuje więc jednego
+ * budowniczego intencji, nie dwóch.
+ */
+describe('dymek celowania nazywa broń podwieszaną, nie wiersz karty', () => {
+  const targeting: AttackTargeting = {
+    characterId: 'char-1',
+    characterName: 'Rico',
+    attackerTokenId: 'shooter',
+    weaponRowId: 'w-rifle',
+    weaponName: 'Grzechotnik · Strzelba podwieszana (próbka)',
+    mode: 'single',
+    modifier: 0,
+    melee: false,
+    attachmentId: 'attachment.sample-underbarrel',
+    attachmentName: 'Strzelba podwieszana (próbka)',
+  };
+
+  beforeEach(() => {
+    loadRifleWithUnderbarrel();
+    useTokenStore.setState({
+      tokens: { shooter: token('shooter', 1000), target: token('target', 1000 + 10 * 50) },
+    });
+  });
+
+  it('przenosi `attachmentId` z uzbrojonego celownika do intencji', () => {
+    const built = intentFromTargeting(targeting, useTokenStore.getState().tokens);
+    expect(built?.attachmentId).toBe('attachment.sample-underbarrel');
+  });
+
+  it('wycenia strzał z podwieszanej i podpisuje go jej nazwą', () => {
+    const built = intentFromTargeting(targeting, useTokenStore.getState().tokens);
+    expect(built).not.toBeNull();
+    if (!built) return;
+    const preview = planAttackPreview(built, 'target');
+    expect(preview.ok).toBe(true);
+    if (!preview.ok) return;
+    expect(preview.attack.weaponName).toBe('Strzelba podwieszana (próbka)');
+    // Magazynek też jest jej własny — dwa naboje, nie dwadzieścia pięć karabinu.
+    expect(preview.attack.ammoBefore).toBe(2);
+  });
+
+  it('bez `attachmentId` ta sama karta wycenia strzał z karabinu', () => {
+    const { attachmentId: _drop, ...bare } = targeting;
+    const built = intentFromTargeting(bare, useTokenStore.getState().tokens);
+    expect(built).not.toBeNull();
+    if (!built) return;
+    const preview = planAttackPreview(built, 'target');
+    expect(preview.ok).toBe(true);
+    if (!preview.ok) return;
+    expect(preview.attack.weaponName).toBe('Grzechotnik');
+  });
+
+  it('nie zwraca intencji, gdy strzelec nie ma tokenu na scenie', () => {
+    expect(intentFromTargeting(targeting, {})).toBeNull();
   });
 });
 

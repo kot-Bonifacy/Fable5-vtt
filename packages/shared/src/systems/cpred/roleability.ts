@@ -150,6 +150,19 @@ export function readCpredFormerRoles(raw: unknown): CpredRoleRank[] {
 export type CpredRolesProblem = 'UNKNOWN_ROLE' | 'ROLE_TWICE';
 
 /**
+ * Why the sheet was refused, in words the GM can act on.
+ *
+ * Here rather than on the client for the reason every other problem table is
+ * (`CPRED_FLEET_PROBLEMS`, `CPRED_SPECIALTY_PROBLEMS`): the code is the engine's
+ * and so is the sentence, so the panel that greys a button out and the header
+ * that reports a refusal read the same one.
+ */
+export const CPRED_ROLES_PROBLEMS: Record<CpredRolesProblem, string> = {
+  UNKNOWN_ROLE: 'Nie znam takiej Roli — odśwież stronę albo popraw dane kampanii.',
+  ROLE_TWICE: 'Ta Rola już jest na karcie — jedna Rola stoi na niej tylko raz.',
+};
+
+/**
  * Judged against the **merged** sheet for the reason Specialties and the
  * Nomada's Tabor are (stages 30b, 30d): the patch may set `roleId` and
  * `formerRoles` in one write, and „is this Role already here" cannot be

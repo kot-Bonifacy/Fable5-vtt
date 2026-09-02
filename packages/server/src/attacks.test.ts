@@ -1900,9 +1900,66 @@ describe('ranged combat from the map', () => {
       );
       expect(ack.ammo).toBe(2);
       expect((await rifleRow())?.attachmentAmmo?.[UNDERBARREL]).toBe(2);
+    });
+
+    /**
+     * Nabój broni podwieszanej (zaległość z 01.09, naprawiona 02.09).
+     *
+     * Do naprawy `weapon:reload` z `attachmentId` przyjmowało **samo**
+     * `attachmentId`, a planer zerował profil naboju dla każdego strzału
+     * dodatkiem — więc z granatnika podwieszanego nie dało się wystrzelić dymu
+     * ani gazu. Trzy rzeczy są tu pilnowane: że nabój ma własne pole, że pasuje
+     * się go do **broni podwieszanej**, nie do karabinu, i że strzał go czyta.
+     */
+    it('ładuje broń podwieszaną nabojem, który pasuje do niej, nie do karabinu', async () => {
+      // „Nabój wachlarzowy" (shell) pasuje do strzelby podwieszanej i **nie**
+      // pasuje do karabinu, który bierze wyłącznie kule — czyli sprawdzenie
+      // musi iść po broni podwieszanej.
+      const ack = data(
+        await emitAck<{ ammo: number }>(player, 'weapon:reload', {
+          characterId,
+          weaponRowId: 'w-rifle',
+          attachmentId: UNDERBARREL,
+          ammoId: 'ammo.sample-shot',
+        }),
+        'weapon:reload',
+      );
+      expect(ack.ammo).toBe(2);
+      const row = await rifleRow();
+      expect(row?.attachmentAmmoId?.[UNDERBARREL]).toBe('ammo.sample-shot');
+      // Komora karabinu nietknięta — to dwa magazynki i dwa naboje.
+      expect(row?.ammoId).toBeUndefined();
+    });
+
+    it('strzał z podwieszanej niesie jej własny nabój na kartę', async () => {
+      await placeTargetAt(4);
+      const card = await attack({
+        weaponRowId: 'w-rifle',
+        mode: 'single',
+        attachmentId: UNDERBARREL,
+      });
+      expect(card.system.ammo?.id).toBe('ammo.sample-shot');
+      // Przeładowanie wróciło do dwóch, strzał zabrał jeden.
+      expect((await rifleRow())?.attachmentAmmo?.[UNDERBARREL]).toBe(1);
+    });
+
+    it('odmawia naboju, który do broni podwieszanej nie pasuje', async () => {
+      // Dymny jest granatem; strzelba podwieszana bierze kule i śrut.
+      expect(
+        await emitAck(player, 'weapon:reload', {
+          characterId,
+          weaponRowId: 'w-rifle',
+          attachmentId: UNDERBARREL,
+          ammoId: 'ammo.sample-smoke',
+        }),
+      ).toEqual({ ok: false, error: 'AMMO_MISMATCH' });
+    });
+
+    it('demontaż zabiera dodatkowi i magazynek, i załadowany nabój', async () => {
       data(await mount(UNDERBARREL, 'unmount'), 'weapon:attachment');
-      // Magazynek dodatku schodzi z karty razem z dodatkiem.
-      expect((await rifleRow())?.attachmentAmmo?.[UNDERBARREL]).toBeUndefined();
+      const row = await rifleRow();
+      expect(row?.attachmentAmmo?.[UNDERBARREL]).toBeUndefined();
+      expect(row?.attachmentAmmoId?.[UNDERBARREL]).toBeUndefined();
     });
 
     it('smartgun daje +1 dopiero temu, kto ma się czym podpiąć', async () => {

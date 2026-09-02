@@ -1104,6 +1104,7 @@ describe('dodatki do broni', () => {
       request = {},
       context,
       secondary,
+      secondaryAmmo,
       row = weaponRow(),
     }: {
       data?: ReturnType<typeof sheet>;
@@ -1111,6 +1112,7 @@ describe('dodatki do broni', () => {
       request?: Partial<CpredAttackRequest>;
       context?: CpredAttackContext;
       secondary?: ResolvedWeapon;
+      secondaryAmmo?: CpredAmmoProfile;
       row?: ReturnType<typeof weaponRow>;
     } = {},
   ) {
@@ -1124,6 +1126,7 @@ describe('dodatki do broni', () => {
         typeId: 'weapon-type.medium-pistol',
         attachments,
         ...(secondary ? { secondary } : {}),
+        ...(secondaryAmmo ? { secondaryAmmo } : {}),
       },
       { name: 'Cel', metres },
       context ?? {},
@@ -1210,6 +1213,90 @@ describe('dodatki do broni', () => {
         secondary: bayonetBlade,
       }),
     ).toEqual({ ok: false, error: 'MELEE_OUT_OF_REACH' });
+  });
+
+  /**
+   * Granatnik podwieszany i jego własny nabój (zaległość z 01.09).
+   *
+   * Do 02.09 `secondaryWeaponRow` ustawiał broni podwieszanej `ammoId: undefined`,
+   * a planer i tak zerował profil naboju („`firedWith ? null : …`"). Skutek przy
+   * stole: **z granatnika podwieszanego nie dało się wystrzelić dymu ani gazu** —
+   * jedynej drogi, jaką podręcznik daje tym nabojom.
+   */
+  const UNDERBARREL: CpredAttachmentProfile = {
+    id: 'attachment.underbarrel-grenade-launcher',
+    name: 'Granatnik podwieszany',
+    fit: {},
+    slots: 2,
+    secondary: { weaponTypeId: 'weapon-type.grenade-launcher', magazine: 1 },
+  };
+
+  /** Granatnik, jak go zwraca `resolveAttachmentWeapon` — jeden granat w komorze. */
+  const launcher: ResolvedWeapon = {
+    ...pistol,
+    damage: '6k6',
+    magazine: 1,
+    // Rejestr tego pliku zna pięć umiejętności; granatnik strzela tą, którą
+    // strzelec ma — plik pilnuje naboju, nie tabeli umiejętności.
+    skillId: 'handgun',
+    ammoPatterns: ['grenade'],
+    melee: false,
+  };
+
+  const SMOKE: CpredAmmoProfile = {
+    id: 'ammo.smoke',
+    name: 'Amunicja dymna',
+    patterns: ['grenade'],
+  };
+
+  const PIERCING: CpredAmmoProfile = {
+    id: 'ammo.piercing',
+    name: 'Amunicja przebijająca',
+    patterns: ['bullet'],
+  };
+
+  const launcherRow = () =>
+    weaponRow({
+      attachmentIds: [UNDERBARREL.id],
+      attachmentAmmo: { [UNDERBARREL.id]: 1 },
+      attachmentAmmoId: { [UNDERBARREL.id]: SMOKE.id },
+    });
+
+  it('strzela z granatnika nabojem z jego własnego magazynka', () => {
+    const result = shoot([UNDERBARREL], {
+      request: { attachmentId: UNDERBARREL.id },
+      secondary: launcher,
+      secondaryAmmo: SMOKE,
+      row: launcherRow(),
+    });
+    if (!result.ok) throw new Error(result.error);
+    expect(result.plan.attack.ammo?.id).toBe(SMOKE.id);
+    // Magazynek granatnika, nie pistoletu: jeden granat wchodzi, zero zostaje.
+    expect(result.plan.attack.ammoBefore).toBe(1);
+    expect(result.plan.attack.ammoAfter).toBe(0);
+  });
+
+  it('nabój z broni głównej nie wchodzi do granatnika', () => {
+    const result = shoot([UNDERBARREL], {
+      request: { attachmentId: UNDERBARREL.id },
+      secondary: launcher,
+      row: launcherRow(),
+    });
+    if (!result.ok) throw new Error(result.error);
+    // Bez własnego naboju granatnik strzela zwykłym — a nie tym, co siedzi
+    // w pistolecie, którego cechy nie mają z granatem nic wspólnego.
+    expect(result.plan.attack.ammo).toBeUndefined();
+  });
+
+  it('odmawia naboju, który do broni podwieszanej nie pasuje', () => {
+    expect(
+      shoot([UNDERBARREL], {
+        request: { attachmentId: UNDERBARREL.id },
+        secondary: launcher,
+        secondaryAmmo: PIERCING,
+        row: launcherRow(),
+      }),
+    ).toEqual({ ok: false, error: 'AMMO_MISMATCH' });
   });
 
   it('odmawia strzału dodatkiem, którego na broni nie ma', () => {

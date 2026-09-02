@@ -101,13 +101,20 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 ## Od czego zacząć
 
+**Trzy błędy z oględzin etapów 31 i 32 zamknięte 02.09 (trzecia sesja) — naprawione
+i obejrzane.** Z granatnika podwieszanego da się wreszcie wystrzelić dym i gaz (`attachmentAmmoId`
+
+- `secondaryAmmo`), chmurka nad celem nazywa dodatek, a odmowa `character:update` **cofa**
+  optymistyczną łatę i pisze zdanie na dole karty zamiast samego „Błąd zapisu!". Szczegóły
+  w notatce sesji niżej; umowy — w trzech nowych wierszach indeksu.
+
 **Etap 32 (wezwanie MG do Testu) zamknięty 02.09 — dopisany tego dnia na zlecenie MG, poza
 pierwotnym planem.** MG wskazuje postać w panelu „Postacie", wybiera Umiejętność albo Cechę i PT
 (drabinka s. 130 albo własna liczba, albo rzut przeciwstawny), a gracz rzuca **kubkiem** —
 wezwanie woła z kubka i stoi na czacie. **Skutków karta nie rozlicza świadomie** (decyzja MG):
 dowozi werdykt „Zdane"/„Niezdane", a przedmiot, PW i ranę nadaje MG ręką. Wolny został
 **jeden etap: 28** (wdrożenie na VPS), a przed nim MG planuje **refaktoryzację całości**.
-Dług oględzin: **20 pozycji** — etap 32 obejrzany w komplecie tego samego dnia.
+Dług oględzin: **17 pozycji** — etap 32 obejrzany w komplecie tego samego dnia.
 
 **Etap 31 (dodatki do broni) zamknięty 01.09 i od drugiej sesji tego dnia obejrzany
 w komplecie** — z paska akcji strzela się także bagnetem i bronią podwieszaną. **Etap 27g
@@ -150,7 +157,7 @@ Pełny zapis w `decyzje-i-uproszczenia.md`; przed zmianą czegokolwiek w tym mie
 akapit, bo to druga zmiana zdania w tej sprawie. **Wyjątek od 30c: Test Lojalności** zdaje się
 przy wyniku _mniejszym_ od Lojalności (s. 154).
 
-**Dług oględzin — 20 pozycji.** Bez modelu da się obejrzeć cztery, wszystkie z etapu 30:
+**Dług oględzin — 17 pozycji.** Bez modelu da się obejrzeć cztery, wszystkie z etapu 30:
 **komplet 30a**, **reszta 30b**, **komplet 30c**, **komplet 30d**. **29a i 29b wypadły z listy
 02.09** (odklikane w komplecie), etap 31 i Celowanie w statystę — 01.09. Reszta czeka na **żywy
 model**: 20a/20b, 19a–19c, dwie ścieżki 24c i maszynopis wypowiedzi.
@@ -192,7 +199,7 @@ nieaktualne. Lista jest zapisem chwili, w której coś zauważono, a nie stanu r
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
 a od 30d pierwszym, przy którym **każda Rola w drużynie gra inaczej niż reszta**.
 
-**Testy na koniec ostatniej sesji:** 1718 w `shared`, 893 na serwerze, 67 u klienta — zielone.
+**Testy na koniec ostatniej sesji:** 1741 w `shared`, 908 na serwerze, 75 u klienta — zielone.
 ESLint i Prettier czyste na całym repo.
 
 ## Umowy kodu — indeks
@@ -286,6 +293,9 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 - **Nazwa Roli z `roles.json` wchodzi do zdania tylko w mianowniku** — po dwukropku albo na końcu. Odmiany nazwy z pliku danych nie da się zgadnąć („zostań Nomada").
 - **Rzut na wezwanie MG** — `payloadFromCall` podmienia **cały** payload na zapisaną kartę wezwania (postać, Umiejętność, modyfikator MG, widoczność); z żądania klienta zostaje Szczęście i gest. Wezwanie zamyka `resolveAnsweredCall` + `emitCheckCallUpdate`, werdykt liczy `cpredCheckOutcome` (remis nie zdaje).
 - **Kubek wołający wezwaniem** — `openCheckCallFor` czyta feed czatu (nie drugi magazyn stanu), a widzi je **tylko właściciel karty**; chwyt kubka otwiera okno rzutu, nie potrząsanie.
+- **Nabój broni podwieszanej** — `attachmentAmmoId` na wierszu **plus** wejście planera `secondaryAmmo` (bez obu naraz nie działa nic: planer zerował profil dla każdego strzału dodatkiem); `weapon:reload` pasuje nabój do **broni podwieszanej**, nie do tej, która ją niesie.
+- **Intencja uzbrojonego celownika** — jedna funkcja `intentFromTargeting` na obie drogi (klik ładujący kubek i dymek wyceniający strzał); nowe pole `AttackTargeting` dopisuje się tam, nie u wołających.
+- **Odmowa zapisu karty** — `characterStore.serverViews` (cień widoku serwera) przywraca kartę, gdy nic nie jest w locie, a `saveErrors` + `characterSaveErrorText` piszą powód w pasku „issues"; zdania kodów silnika mieszkają w `shared` obok typu problemu.
 
 ## Pułapki dev — indeks
 
@@ -379,6 +389,53 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 02.09 (trzecia) — trzy błędy z oględzin etapów 31 i 32
+
+**Zlecenie MG:** nie etap, tylko **pakiet A** z listy zaległości — trzy błędy znalezione przy
+oględzinach 31 i 32. Wszystkie trzy naprawione, pokryte testami i **obejrzane w przeglądarce**
+w tej samej sesji, więc dług oględzin nie urósł.
+
+**(1) Broń podwieszana nie miała wyboru amunicji — i była to dziura głębsza niż zapis
+zaległości.** Brakowało trzech rzeczy naraz: pola, w którym nabój miałby siedzieć, gałęzi
+planera, która by go czytała, i listy w wierszu `↳`. Kluczowa była druga:
+`planCpredAttack` **zerował** profil naboju dla każdego strzału dodatkiem
+(`const ammo = firedWith ? null : weapon.ammo`), więc nawet wpisanie naboju ręką w bazie nic by
+nie dało. Naprawa: `CpredWeaponRow.attachmentAmmoId`, wejście planera `secondaryAmmo`,
+`weapon:reload` z `attachmentId` **i** `ammoId` (pasowanie po **broni podwieszanej**, nie po
+karabinie), `AmmoPicker` w wierszu `↳`, a demontaż zabiera oba pola. **Skutek przy stole:
+z granatnika podwieszanego da się wreszcie wystrzelić dym i gaz.**
+
+**(2) Chmurka nad celem mówiła nazwę wiersza, nie dodatku** — bo `TargetTooltip` budował
+intencję **własną kopią** kodu z `loadAttackAtToken` i zgubił w niej `attachmentId`. Naprawa
+usuwa kopię: jeden `intentFromTargeting` obsługuje obie drogi. To jest morał tej pozycji —
+dwie kopie tego samego przepisywania rozjadą się na pierwszym nowym polu.
+
+**(3) Odmowa `character:update` zostawiała na karcie wartość, której nie ma w bazie.** Odmowa
+nie niesie widoku (`{ ok: false, error }`) i broadcast nie idzie, bo nic się nie zmieniło —
+więc nie było **do czego** wracać. Naprawa dokłada w `characterStore` cień `serverViews`
+(pisany też wtedy, gdy optymistyczny stan wygrywa) i przywraca z niego kartę, gdy nic nie jest
+w locie. Druga połowa to powód: `saveErrors` + `characterSaveErrorText` piszą zdanie w pasku
+„issues" na dole karty; nowa tabela `CPRED_ROLES_PROBLEMS` w `shared` dopisuje zdania dla
+`ROLE_TWICE` i `UNKNOWN_ROLE`. **Dotyczy każdej odmowy tej ścieżki, nie tylko Ról.**
+
+**Oględziny (wszystko na „Strzelnicy", z konta MG).** Lista naboju przy granatniku pokazała
+**wyłącznie granaty**, a przy samym karabinie wyłącznie kule — czyli sprawdzenie idzie po broni
+podwieszanej. Wybór „Amunicji dymnej" napełnił magazynek **0/1 → 1/1**, nie ruszając **25/25**
+karabinu; chmurka nad Rudym Kwiatkowskim powiedziała **„Granatnik podwieszany"** i wyceniła
+strzał z jego linii („0–6 m · PT 16 · 1 → 0"); strzał postawił na mapie **„Dym −4"** z kartą
+„nabój: Amunicja dymna · obszar 10×10 m · odchylenie…". Zwykłe ⟳ dolewa magazynek i **zachowuje**
+wybrany nabój. Odmowa: „Frank" z podstawionym `formerRoles: [solo]` — wybór Roli „Solo" wrócił
+do „— brak —", tytuł został **„FRANK"**, a na dole karty stanęło „Ta Rola już jest na karcie —
+jedna Rola stoi na niej tylko raz.".
+
+**Uwaga o testach serwera:** przy pierwszym pełnym przebiegu **`roles30d.test.ts` („Pogłoski")
+padł raz** na `expect(message.kind).toBe('gmroll')`, a w izolacji i przy powtórce całego zestawu
+przechodzi. To wyścig o broadcast pod obciążeniem równoległym, nie regresja tej sesji — ale
+jeśli wróci, tam jest jego adres.
+
+**Testy na koniec:** 1741 w `shared` (+3), 908 na serwerze (+4), 75 u klienta (+8) — zielone.
+ESLint i Prettier czyste na całym repo.
+
 ### Sesja 02.09 (druga) — wezwanie MG do Testu (etap 32)
 
 **Zlecenie MG:** nie etap z planu, tylko nowa mechanika — „testy za nietypowe wydarzenia, które
@@ -429,49 +486,3 @@ z oględzin — historii czatu i tak się nie sprząta.
 
 **Testy na koniec:** 1738 w `shared` (+20), 904 na serwerze (+11), 67 u klienta — zielone.
 ESLint i Prettier czyste.
-
-### Sesja 02.09 — oględziny rozwoju postaci (29a i 29b)
-
-**Zlecenie MG:** sesja oględzinowa, zestaw **B** z listy zaległości — reszta **29a** (pięć
-ścieżek) i reszta **29b** (trzy). Postaci nie zakładać kreatorem, tylko użyć gotowych.
-
-**Nośnikiem był „Frank"** — jedyna pusta karta poligonu (wyczyszczona po sesji 31.08).
-Na czas oględzin dostał wprost w bazie właściciela `Tester`, Rolę **Nomada** z Moto 4, 100 PD
-i cztery umiejętności; po sesji wrócił do stanu sprzed (właściciel `NPC (MG)`, bez Roli).
-Ta droga jest tańsza niż kreator i nie rusza kart nośnych innych etapów — „Test 27x" (poligon
-Sieci) w ogóle nie była w tej sesji dotykana.
-
-**Osiem ścieżek odklikanych, wszystkie zgodne z opisem.** Z 29a: „Podnieś" (Atletyka 2 → 3 za
-60 PD — poziom na stronie pierwszej, licznik i wiersz rejestru **bez przeładowania**), filtr
-„tylko na które mnie stać" (przy 40 PD zostają wyłącznie szczeble po 20 i 40 PD), „Brakuje
-200 PD" na wyszarzonym guziku, pola tylko do odczytu u gracza (wpisane z klawiatury „9" i „8"
-**nie weszły**) i te same pola działające u MG, wreszcie „✦ Przyznaj wszystkim" — 20 PD dostało
-**pięć postaci graczy**, żaden BN i żadna postać z innej kampanii. Z 29b: darmowy powrót do
-posiadanej Roli (przy **0 PD**, wiersz rejestru „+0 PD"), „Moto 4 +4" w rozbiciu rzutu
-Prowadzeniem **u postaci, która Nomadą już nie jest**, oraz ręka MG z odmowami `ROLE_TWICE`
-i `UNKNOWN_ROLE`.
-
-**Jeden błąd znaleziony i naprawiony.** Komunikat po przyznaniu PD mówił **„Przyznano 20 PD —
-5 5 postaci"**: `awardPoints` składało zdanie z `plural`, które samo dokleja liczbę, i podawało
-liczbę jeszcze raz obok. Naprawa to `pluralWord` — funkcja dodana w 27f **dokładnie** dla miejsc,
-które formatują liczbę osobno. Sprawdzone w przeglądarce: „Zabrano 20 PD — 5 postaci."
-
-**Jedna nowa zaległość, szersza niż Role.** Gdy serwer odmówi łaty karty (tu: `ROLE_TWICE` przy
-Roli, którą postać ma już jako poprzednią), karta u MG **dalej pokazuje wartość, której w bazie
-nie ma** — z tytułem „FRANK NOMADA" włącznie — a jedynym śladem jest czerwone „Błąd zapisu!"
-bez powodu. `endSave` przy odmowie nie dostaje widoku serwera (`ack.data` puste), więc nie ma
-czego przyjąć. Dotyczy **każdej** odmowy `character:update`.
-
-**Dwa ustalenia na przyszłość.** (1) Panel **„Awans" stoi na stronie drugiej karty** (zakładka
-„ŚCIEŻKA ŻYCIA"), obok pola „Punkty Doświadczenia" — na stronie pierwszej zmienia się tylko
-skutek zakupu. (2) Nieznane `roleId` **bieżącej** Roli nie dochodzi do `cpredRolesProblem`:
-parser karty odrzuca je wcześniej jako `INVALID_DATA`, więc `UNKNOWN_ROLE` wychodzi wyłącznie
-z `formerRoles`.
-
-**Poligon przywrócony w całości:** wszystkie karty z kopii `characters-2026-09-02.json`,
-rejestr awansów wyczyszczony do zera (przed sesją był pusty), PD wszędzie 0. Ślad zostawiony
-świadomie: **jedna karta rzutu w logu czatu** („Frank — Prowadzenie pojazdów, 20") — historii
-czatu i tak się nie sprząta.
-
-**Testy na koniec:** 1718 w `shared`, 893 na serwerze, 67 u klienta — zielone. ESLint i Prettier
-czyste. Dług oględzin: **21 → 20 pozycji** (zamknięte dwie, jedna nowa).

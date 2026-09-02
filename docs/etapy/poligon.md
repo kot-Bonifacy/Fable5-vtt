@@ -363,5 +363,20 @@ Figurą, na której to widać, jest **„Automatyczna wieżyczka"** — OB 0.
 
 **Do zapamiętania przy oględzinach dymu:** chmury nie da się postawić narzędziem. Trzeba wiersza
 broni ze wzorcem `grenade` (Granatnik, Granat) i naboju **„Amunicja dymna"** wybranego listą przy
-wierszu — **broń podwieszana tej listy nie ma**, więc granatnik pod karabinem do tego nie
-posłuży.
+wierszu. **Od 02.09 listę ma też broń podwieszana** — granatnik pod karabinem strzela dymem
+i gazem jak każdy inny, więc dopisywanie osobnego wiersza „Granatnik" z katalogu nie jest już
+potrzebne.
+
+## Stan po sesji 02.09 (druga tego dnia — trzy błędy z 31 i 32)
+
+Zmienione i **zostawione**: **„Militech Dragon" avatar9** ma w granatniku podwieszanym wybraną
+**„Amunicję dymną"**, magazynek **1/1** (karabin bez zmian, **25/25**). To stan przygotowany pod
+następne oględziny dymu — jeden klik „Atak" i chmura stoi.
+
+Posprzątane: dym z tej sesji **rozwiany** guzikiem „Rozwiej cały dym" (panel narzędzia osłon —
+przy okazji sprawdzony i działa); **„Frank"** miał na czas testu odmowy podstawione
+`formerRoles: [solo]` prosto w bazie i **wrócił do stanu sprzed** (`roleId: null`,
+`formerRoles: []`) — kopia w scratchpadzie sesji.
+
+**Ślady zostawione świadomie:** karta strzału z granatnika podwieszanego „nabój: Amunicja dymna
+· obszar 10×10 m · odchylenie…" w logu czatu.

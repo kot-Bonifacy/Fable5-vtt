@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { CPRED_ATTACK_MODE_LABELS, formatMetres } from '@vtt/shared';
-import { planAttackPreview, type AttackIntent } from '../attack-targeting.js';
+import { intentFromTargeting, planAttackPreview, type AttackIntent } from '../attack-targeting.js';
 import { useAttackStore } from '../stores/attackStore.js';
 import { activeWeaponOf, useHudStore } from '../stores/hudStore.js';
 import { useSelectionStore } from '../stores/selectionStore.js';
@@ -43,22 +43,7 @@ export function TargetTooltip({ hover }: { hover: AimHover | null }) {
    * bar has in hand.
    */
   const intent = useMemo<AttackIntent | null>(() => {
-    if (targeting) {
-      const attackerToken = targeting.attackerTokenId
-        ? tokens[targeting.attackerTokenId]
-        : targeting.characterId
-          ? Object.values(tokens).find((token) => token.characterId === targeting.characterId)
-          : undefined;
-      if (!attackerToken) return null;
-      return {
-        ...(targeting.characterId ? { characterId: targeting.characterId } : {}),
-        attackerTokenId: attackerToken.id,
-        weaponRowId: targeting.weaponRowId,
-        mode: targeting.mode,
-        ...(targeting.aimedAt ? { aimedAt: targeting.aimedAt } : {}),
-        modifier: targeting.modifier,
-      };
-    }
+    if (targeting) return intentFromTargeting(targeting, tokens);
     const weapon = activeWeaponOf(activeWeapon, selectedId);
     if (!weapon) return null;
     const attacker = tokens[weapon.tokenId];
@@ -68,6 +53,9 @@ export function TargetTooltip({ hover }: { hover: AimHover | null }) {
       attackerTokenId: weapon.tokenId,
       weaponRowId: weapon.weaponRowId,
       mode: weapon.mode,
+      // Stage 31: the bar arms the bayonet and the underbarrel from their own
+      // slots, so what the bubble prices has to be the weapon that slot holds.
+      ...(weapon.attachmentId ? { attachmentId: weapon.attachmentId } : {}),
     };
   }, [targeting, activeWeapon, selectedId, tokens]);
 

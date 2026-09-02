@@ -514,8 +514,11 @@ function secondaryWeaponRow(
     ammoMax: magazine,
     ammoCurrent: magazine > 0 ? Math.min(loaded ?? magazine, magazine) : 0,
     ammoType: resolved.ammoType ?? '',
-    // The round in the host's magazine belongs to the host (see the planner).
-    ammoId: undefined,
+    // The round in the host's magazine belongs to the host; this weapon has one
+    // of its own (02.09), and until it did, a launcher under the barrel could
+    // only ever fire ordinary rounds — no smoke, no gas, no matter what the
+    // catalogue offered.
+    ammoId: host.attachmentAmmoId?.[attachment.id],
   };
 }
 
@@ -551,6 +554,13 @@ export function planCpredAttack(
      * with a weapon nobody resolved is a shot with no rules.
      */
     secondary?: ResolvedWeapon | null;
+    /**
+     * The round loaded in that bolted-on weapon (02.09), looked up by the caller
+     * for the same reason `ammo` is. Absent means the launcher is holding
+     * ordinary ammunition — which is what *every* underbarrel held until this
+     * field existed, and the reason smoke and gas could not be fired from one.
+     */
+    secondaryAmmo?: CpredAmmoProfile | null;
   },
   target: CpredAttackTarget & { tokenId?: string; coverId?: number },
   /**
@@ -607,10 +617,12 @@ export function planCpredAttack(
   // The round in the magazine (stage 16g) and the one thing it can change about
   // the shape of the attack: a shell sprays a cone instead of hitting one person.
   //
-  // A bolted-on weapon fires its own ordinary ammunition: the armour-piercing
-  // round in the rifle is not in the launcher under it, and pretending it were
-  // would hand the grenade the rifle's flags.
-  const ammo = firedWith ? null : (weapon.ammo ?? null);
+  // A bolted-on weapon fires its own round: the armour-piercing one in the rifle
+  // is not in the launcher under it, and pretending it were would hand the
+  // grenade the rifle's flags. Its own magazine therefore has its own load
+  // (02.09) — without which a launcher could only ever fire ordinary rounds, and
+  // „Amunicja dymna" had nothing to come out of.
+  const ammo = firedWith ? (weapon.secondaryAmmo ?? null) : (weapon.ammo ?? null);
   const spread = ammo?.spread;
   // What the range table is read from, and how far the arm reaches at all. A
   // spread of shot has neither table nor arm — it simply stops at the cone's

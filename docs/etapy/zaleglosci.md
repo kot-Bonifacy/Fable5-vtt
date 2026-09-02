@@ -6,29 +6,12 @@ odhaczania zaległości albo dotykasz etapu, który tu występuje — nie rutyno
 
 Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/zamkniete-zaleglosci.md`.
 
+**Zamknięte 02.09 (druga sesja tego dnia):** trzy błędy z oględzin etapów 31 i 32 — wybór
+amunicji dla broni podwieszanej, nazwa dodatku w chmurce nad celem i odmowa `character:update`
+zostawiająca na karcie wartość, której nie ma w bazie. Wszystkie naprawione **i obejrzane
+w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
+
 ## Pozycje
-
-- **Broń podwieszana nie ma wyboru amunicji (01.09).** Wiersz `↳` na karcie i pudełko
-  przeładowania na pasku mają tylko ⟳ — nie ma listy naboju, którą wiersz główny ma obok
-  magazynka, a `weapon:reload` z `attachmentId` przyjmuje samo `attachmentId`. Skutek przy stole:
-  **z granatnika podwieszanego nie da się wystrzelić dymu ani gazu** — do oględzin noktowizora
-  01.09 trzeba było dopisać avatar9 osobny wiersz „Granatnik" z katalogu i tam wybrać „Amunicję
-  dymną". Naprawa jest po stronie odczytu i zdarzenia: `ammoId` na `attachmentAmmo` (albo drugie
-  pole obok niego) plus lista w wierszu `↳`.
-
-- **Podgląd broni nad żetonem pokazuje wiersz, nie dodatek (01.09).** Z uzbrojonym bagnetem
-  chmurka nad celem mówi „Militech Dragon", choć baner i karta ataku mówią „Bagnet". Kosmetyka,
-  ale myląca dokładnie w chwili, w której gracz sprawdza, czym zaraz uderzy.
-
-- **Odmowa serwera przy ręcznej łacie karty zostawia pole z wartością, której nie ma w bazie
-  (02.09).** Ustalone przy odklikiwaniu 29b: MG wybiera w polu „Rola" Rolę, którą postać ma już
-  jako poprzednią, serwer odmawia `ROLE_TWICE` (baza nietknięta), a karta dalej pokazuje nową
-  Rolę — z tytułem „FRANK NOMADA" włącznie — do pierwszego przeładowania. Jedyny ślad to
-  czerwone **„Błąd zapisu!"** w nagłówku karty, bez powodu odmowy. Przyczyna: `flushCharacterSave`
-  woła `endSave(id, null, false)`, a `endSave` przy `ok === false` tylko zapala `saveStates`,
-  bo widoku serwera przy odmowie nie dostaje (`ack.data` jest puste). Dwie drogi naprawy:
-  dociągnąć aktualną kartę po odmowie albo wozić kod odmowy do nagłówka i pisać zdanie („Ta Rola
-  już jest na karcie"). Dotyczy **każdej** odmowy `character:update`, nie tylko Ról.
 
 - **Etap 30d nie był oglądany w przeglądarce.** Mechanika jedzie w testach (38 nowych
   w `shared`, 13 na serwerze), ale żadnego z tych czterech paneli nikt nie kliknął. Do

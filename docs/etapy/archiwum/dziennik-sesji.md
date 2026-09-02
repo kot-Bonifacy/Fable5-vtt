@@ -7,6 +7,52 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 02.09 — oględziny rozwoju postaci (29a i 29b)
+
+**Zlecenie MG:** sesja oględzinowa, zestaw **B** z listy zaległości — reszta **29a** (pięć
+ścieżek) i reszta **29b** (trzy). Postaci nie zakładać kreatorem, tylko użyć gotowych.
+
+**Nośnikiem był „Frank"** — jedyna pusta karta poligonu (wyczyszczona po sesji 31.08).
+Na czas oględzin dostał wprost w bazie właściciela `Tester`, Rolę **Nomada** z Moto 4, 100 PD
+i cztery umiejętności; po sesji wrócił do stanu sprzed (właściciel `NPC (MG)`, bez Roli).
+Ta droga jest tańsza niż kreator i nie rusza kart nośnych innych etapów — „Test 27x" (poligon
+Sieci) w ogóle nie była w tej sesji dotykana.
+
+**Osiem ścieżek odklikanych, wszystkie zgodne z opisem.** Z 29a: „Podnieś" (Atletyka 2 → 3 za
+60 PD — poziom na stronie pierwszej, licznik i wiersz rejestru **bez przeładowania**), filtr
+„tylko na które mnie stać" (przy 40 PD zostają wyłącznie szczeble po 20 i 40 PD), „Brakuje
+200 PD" na wyszarzonym guziku, pola tylko do odczytu u gracza (wpisane z klawiatury „9" i „8"
+**nie weszły**) i te same pola działające u MG, wreszcie „✦ Przyznaj wszystkim" — 20 PD dostało
+**pięć postaci graczy**, żaden BN i żadna postać z innej kampanii. Z 29b: darmowy powrót do
+posiadanej Roli (przy **0 PD**, wiersz rejestru „+0 PD"), „Moto 4 +4" w rozbiciu rzutu
+Prowadzeniem **u postaci, która Nomadą już nie jest**, oraz ręka MG z odmowami `ROLE_TWICE`
+i `UNKNOWN_ROLE`.
+
+**Jeden błąd znaleziony i naprawiony.** Komunikat po przyznaniu PD mówił **„Przyznano 20 PD —
+5 5 postaci"**: `awardPoints` składało zdanie z `plural`, które samo dokleja liczbę, i podawało
+liczbę jeszcze raz obok. Naprawa to `pluralWord` — funkcja dodana w 27f **dokładnie** dla miejsc,
+które formatują liczbę osobno. Sprawdzone w przeglądarce: „Zabrano 20 PD — 5 postaci."
+
+**Jedna nowa zaległość, szersza niż Role.** Gdy serwer odmówi łaty karty (tu: `ROLE_TWICE` przy
+Roli, którą postać ma już jako poprzednią), karta u MG **dalej pokazuje wartość, której w bazie
+nie ma** — z tytułem „FRANK NOMADA" włącznie — a jedynym śladem jest czerwone „Błąd zapisu!"
+bez powodu. `endSave` przy odmowie nie dostaje widoku serwera (`ack.data` puste), więc nie ma
+czego przyjąć. Dotyczy **każdej** odmowy `character:update`.
+
+**Dwa ustalenia na przyszłość.** (1) Panel **„Awans" stoi na stronie drugiej karty** (zakładka
+„ŚCIEŻKA ŻYCIA"), obok pola „Punkty Doświadczenia" — na stronie pierwszej zmienia się tylko
+skutek zakupu. (2) Nieznane `roleId` **bieżącej** Roli nie dochodzi do `cpredRolesProblem`:
+parser karty odrzuca je wcześniej jako `INVALID_DATA`, więc `UNKNOWN_ROLE` wychodzi wyłącznie
+z `formerRoles`.
+
+**Poligon przywrócony w całości:** wszystkie karty z kopii `characters-2026-09-02.json`,
+rejestr awansów wyczyszczony do zera (przed sesją był pusty), PD wszędzie 0. Ślad zostawiony
+świadomie: **jedna karta rzutu w logu czatu** („Frank — Prowadzenie pojazdów, 20") — historii
+czatu i tak się nie sprząta.
+
+**Testy na koniec:** 1718 w `shared`, 893 na serwerze, 67 u klienta — zielone. ESLint i Prettier
+czyste. Dług oględzin: **21 → 20 pozycji** (zamknięte dwie, jedna nowa).
+
 ### Sesja 01.09 (trzecia) — filtry czatu, tryb zwarty i magazynek z karty ataku
 
 **Zlecenie MG:** nie etap — dwie zmiany na czacie. (1) Dało się chować rodzaje wierszy albo całe

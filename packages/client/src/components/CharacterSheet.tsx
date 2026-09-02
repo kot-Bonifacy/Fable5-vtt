@@ -150,6 +150,7 @@ import { CyberwareBody } from './CyberwareBody.js';
 import { FacedownFromSheet } from './FacedownLauncher.js';
 import {
   assignCriticalInjury,
+  characterSaveErrorText,
   economyErrorText,
   endFieldRepair,
   fetchLedger,
@@ -233,6 +234,7 @@ function CharacterSheetWindow({
   const character = useCharacterStore((s) => s.characters[characterId]);
   const registry = useCharacterStore((s) => s.registry);
   const saveState = useCharacterStore((s) => s.saveStates[characterId]);
+  const saveError = useCharacterStore((s) => s.saveErrors[characterId]);
   const closeSheet = useCharacterStore((s) => s.closeSheet);
   const focusSheet = useCharacterStore((s) => s.focusSheet);
 
@@ -284,7 +286,13 @@ function CharacterSheetWindow({
     queueCharacterSave(characterId, { name: value });
   }
 
-  const issueList = Object.values(issues);
+  /**
+   * The refusal joins the sheet's own complaints (02.09). It belongs in the
+   * same strip because it says the same kind of thing — „this card cannot look
+   * like that" — and because the header has room for a state, not a sentence.
+   */
+  const saveIssue = saveState === 'error' && saveError ? characterSaveErrorText(saveError) : null;
+  const issueList = [...Object.values(issues), ...(saveIssue ? [saveIssue] : [])];
   const saveLabel =
     saveState === 'saving' ? 'Zapisywanie…' : saveState === 'error' ? 'Błąd zapisu!' : '';
   const roleName = registry.roles.find((r) => r.id === data.roleId)?.name ?? '';
@@ -307,7 +315,12 @@ function CharacterSheetWindow({
           <span className="sheet-title-name">{character.name}</span>
           {roleName && <span className="sheet-title-role">{roleName}</span>}
         </span>
-        <span className={`sheet-save sheet-save--${saveState ?? 'idle'}`}>{saveLabel}</span>
+        <span
+          className={`sheet-save sheet-save--${saveState ?? 'idle'}`}
+          {...(saveIssue ? { title: saveIssue } : {})}
+        >
+          {saveLabel}
+        </span>
         <button
           type="button"
           className="sheet-close"
@@ -1215,10 +1228,17 @@ function AmmoPicker({
   characterId,
   row,
   resolved,
+  attachment,
 }: {
   characterId: string;
   row: CpredWeaponRow;
   resolved: ResolvedWeapon | null;
+  /**
+   * The bolted-on weapon this picker loads, when it is not the row's own gun
+   * (02.09). Its magazine, its choice of round, and its own reload — the row id
+   * still addresses the sheet, because that is where both magazines live.
+   */
+  attachment?: { id: string; name: string };
 }) {
   const entries = useCompendiumStore((s) => s.entries);
   const order = useCompendiumStore((s) => s.order);
@@ -1235,7 +1255,8 @@ function AmmoPicker({
   // weapon — has no rounds to choose between, and an empty dropdown next to it
   // would be one more thing to explain.
   if (options.length === 0) return null;
-  const loaded = row.ammoId && options.some((ammo) => ammo.id === row.ammoId) ? row.ammoId : '';
+  const current = attachment ? row.attachmentAmmoId?.[attachment.id] : row.ammoId;
+  const loaded = current && options.some((ammo) => ammo.id === current) ? current : '';
   const forced = resolved?.ammoIds?.length === 1;
 
   return (
@@ -1243,13 +1264,15 @@ function AmmoPicker({
       className="weapon-ammo-type"
       value={loaded}
       disabled={forced}
-      aria-label={`Rodzaj naboju: ${row.name}`}
+      aria-label={`Rodzaj naboju: ${attachment?.name ?? row.name}`}
       title={
         forced
           ? 'Ta broń strzela tylko jednym rodzajem amunicji.'
           : 'Rodzaj naboju w magazynku. Zmiana w trakcie walki kosztuje Akcję (Przeładowanie) i ładuje magazynek do pełna.'
       }
-      onChange={(e) => reloadWeapon(characterId, row.id, e.target.value || null)}
+      onChange={(e) =>
+        reloadWeapon(characterId, row.id, e.target.value || null, undefined, attachment?.id)
+      }
     >
       <option value="">Zwykła</option>
       {options.map((ammo) => (
@@ -1736,6 +1759,15 @@ function WeaponStrip({
                         —
                       </span>
                     )}
+                    {/* Ten sam wybór naboju, co w wierszu głównym (02.09) —
+                        bez niego z granatnika podwieszanego nie dało się
+                        wystrzelić dymu ani gazu, choć katalog je oferuje. */}
+                    <AmmoPicker
+                      characterId={character.id}
+                      row={row}
+                      resolved={weapon}
+                      attachment={{ id: attachment.id, name: attachment.name }}
+                    />
                   </td>
                   <td>{weapon.rof}</td>
                   <td className="weapon-secondary-note">

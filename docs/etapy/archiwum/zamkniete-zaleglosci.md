@@ -9,6 +9,51 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Przeniesione 2026-09-02 (trzy błędy z oględzin etapów 31 i 32)
+
+- **Broń podwieszana nie miała wyboru amunicji (01.09). ZAMKNIĘTE — naprawione i obejrzane
+  02.09.** Diagnoza była głębsza niż zapis zaległości: brakowało nie tylko listy w wierszu `↳`,
+  ale i **pola, w którym nabój miałby siedzieć**, i **gałęzi w planerze, która by go czytała**.
+  `secondaryWeaponRow` ustawiała broni podwieszanej `ammoId: undefined` z komentarzem „nabój
+  w magazynku hosta należy do hosta", a `planCpredAttack` i tak zerował profil
+  (`const ammo = firedWith ? null : weapon.ammo`) — czyli **żaden** nabój specjalny nie miał jak
+  wyjść z granatnika, choćby wpisać go ręką w bazie. Naprawa w czterech miejscach: nowe pole
+  karty `attachmentAmmoId` (mapa `id dodatku → id naboju`, obok `attachmentAmmo`), nowe wejście
+  planera `secondaryAmmo` (rozwiązywane przez wołającego, jak `ammo`), `weapon:reload`
+  z `attachmentId` przyjmujące `ammoId` i pasujące nabój **do broni podwieszanej**, nie do
+  karabinu (`requireLoadableAmmo` z parametrem `against`), oraz `AmmoPicker` w wierszu `↳`.
+  Demontaż dodatku zabiera teraz i magazynek, i załadowany nabój. **Obejrzane w przeglądarce
+  02.09** na „Militech Dragonie" avatar9: lista przy granatniku pokazała **wyłącznie granaty**
+  (dymna, EMP, hukbłyskowa, gaz łzawiący, usypiająca…), a lista przy samym karabinie — wyłącznie
+  kule, czyli sprawdzenie naprawdę idzie po broni podwieszanej. Wybór „Amunicji dymnej" napełnił
+  magazynek 0/1 → 1/1 **nie ruszając 25/25 karabinu**, dymek nad celem wycenił strzał z linii
+  granatnika („0–6 m · PT 16 · 1 → 0"), a strzał postawił na mapie **prostokąt „Dym −4"** —
+  z kartą „nabój: Amunicja dymna · obszar 10×10 m · odchylenie…". Zwykłe ⟳ dolewa magazynek
+  i **zachowuje** wybrany nabój. Testy: 3 w `shared`, 4 na serwerze.
+
+- **Podgląd broni nad żetonem pokazywał wiersz, nie dodatek (01.09). ZAMKNIĘTE — naprawione
+  i obejrzane 02.09.** Przyczyna nie leżała w planerze (ten obsługuje `attachmentId` od etapu 31)
+  ani w banerze, tylko w tym, że `TargetTooltip` budował intencję **własną kopią** kodu
+  z `loadAttackAtToken` i przy przepisywaniu zgubił `attachmentId` (a przy okazji `thrown`).
+  Naprawa usuwa kopię: jeden `intentFromTargeting` w `attack-targeting.ts` obsługuje obie drogi,
+  a gałąź paska akcji dostała `attachmentId` ze slotu. **Obejrzane 02.09**: chmurka nad Rudym
+  Kwiatkowskim powiedziała „Granatnik podwieszany" i policzyła jego magazynek. Testy: 4 u klienta.
+
+- **Odmowa serwera przy ręcznej łacie karty zostawiała pole z wartością, której nie ma w bazie
+  (02.09). ZAMKNIĘTE — naprawione i obejrzane tego samego dnia.** Potwierdzona diagnoza z zapisu:
+  `endSave` adoptował widok serwera **tylko** przy `ok === true`, a przy odmowie zapalał sam stan
+  `error` — optymistyczna łata zostawała na ekranie do przeładowania strony. Przy odmowie ack
+  nie niesie widoku (`{ ok: false, error }`) i broadcast nie idzie (bo nic się nie zmieniło), więc
+  nie było **do czego** wracać; naprawa dokłada w `characterStore` cień `serverViews`
+  (aktualizowany przez `applySync`, `applyUpsert` — także wtedy, gdy optymistyczny stan wygrywa —
+  i udany zapis), z którego odmowa przywraca kartę, gdy nic już nie jest w locie. Druga połowa to
+  powód: `saveErrors` niesie kod odmowy, a `characterSaveErrorText` tłumaczy go na zdanie do paska
+  „issues" na dole karty (i na `title` nagłówka). Nowa tabela `CPRED_ROLES_PROBLEMS` w `shared`
+  dopisuje zdania dla `ROLE_TWICE` i `UNKNOWN_ROLE`. **Obejrzane 02.09** na „Franku"
+  z podstawionym `formerRoles: [solo]`: wybór Roli „Solo" wrócił do „— brak —", tytuł został
+  „FRANK" (bez „FRANK SOLO"), a na dole karty stanęło „Ta Rola już jest na karcie — jedna Rola
+  stoi na niej tylko raz.". Dotyczy **każdej** odmowy `character:update`. Testy: 4 u klienta.
+
 ## Przeniesione 2026-09-02 (oględziny rozwoju postaci — 29a i 29b)
 
 - **Etap 29a — reszta pięciu ścieżek. ZAMKNIĘTE — odklikane 02.09.** Nośnikiem był **„Frank"**

@@ -208,6 +208,8 @@ import {
   CPRED_ATTACK_PROBLEM_MESSAGES,
   CPRED_COMBAT_AWARENESS_PROBLEMS,
   CPRED_FLEET_PROBLEMS,
+  CPRED_ROLES_PROBLEMS,
+  CPRED_SPECIALTY_PROBLEMS,
   CPRED_HAGGLE_PROBLEMS,
   CPRED_TEAM_PROBLEMS,
   CPRED_FACEDOWN_PROBLEM_MESSAGES,
@@ -2710,6 +2712,43 @@ export function combatAwarenessErrorText(code: string): string {
   return combatErrorText(code);
 }
 
+/**
+ * Why a sheet patch was refused, in one sentence for the card's issue strip.
+ *
+ * Every code here means the same thing on the wire — the server wrote nothing —
+ * but „Błąd zapisu!" alone left the GM guessing which of a dozen rules had
+ * spoken (02.09). The engine's own tables answer first, because the sentence
+ * that greys a button out and the sentence that explains a refusal should not
+ * be two different sentences.
+ */
+export function characterSaveErrorText(code: string): string {
+  if (code in CPRED_ROLES_PROBLEMS) {
+    return CPRED_ROLES_PROBLEMS[code as keyof typeof CPRED_ROLES_PROBLEMS];
+  }
+  if (code in CPRED_SPECIALTY_PROBLEMS) {
+    return CPRED_SPECIALTY_PROBLEMS[code as keyof typeof CPRED_SPECIALTY_PROBLEMS];
+  }
+  if (code in CPRED_FLEET_PROBLEMS) {
+    return CPRED_FLEET_PROBLEMS[code as keyof typeof CPRED_FLEET_PROBLEMS];
+  }
+  switch (code) {
+    case 'OFFLINE':
+      return 'Brak połączenia z serwerem — zmiana nie została zapisana.';
+    case 'FORBIDDEN':
+      return 'Tego pola nie zmienia się z karty — zmienia je własna Akcja albo MG.';
+    case 'INVALID_NAME':
+      return 'Imię musi mieć od 1 do 64 znaków.';
+    case 'INVALID_DATA':
+      return 'Serwer nie przyjął tych danych karty — popraw ostatnią zmianę.';
+    case 'CHARACTER_NOT_FOUND':
+      return 'Nie ma takiej postaci w tej kampanii — odśwież stronę.';
+    case 'BAD_REQUEST':
+      return 'Serwer nie zrozumiał tej zmiany — odśwież stronę.';
+    default:
+      return `Serwer odmówił zapisu (${code}).`;
+  }
+}
+
 interface CharacterSaveBuffer {
   patch: CharacterPatch;
   timer: number;
@@ -2760,14 +2799,21 @@ export function flushCharacterSave(characterId: string): void {
   // `beginSave` już poszło przy kolejkowaniu — jeden bufor to jeden zapis.
   const store = useCharacterStore.getState();
   if (!socket) {
-    store.endSave(characterId, null, false);
+    store.endSave(characterId, null, false, 'OFFLINE');
     return;
   }
   socket.emit(
     'character:update',
     { characterId, patch: buffer.patch },
     (ack: SocketAck<CharacterView>) => {
-      useCharacterStore.getState().endSave(characterId, ack.ok ? (ack.data ?? null) : null, ack.ok);
+      useCharacterStore
+        .getState()
+        .endSave(
+          characterId,
+          ack.ok ? (ack.data ?? null) : null,
+          ack.ok,
+          ack.ok ? undefined : ack.error,
+        );
     },
   );
 }

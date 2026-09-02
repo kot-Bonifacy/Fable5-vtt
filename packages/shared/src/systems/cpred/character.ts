@@ -444,6 +444,18 @@ export interface CpredWeaponRow extends CpredItemRow {
    * arithmetic currently makes it so.
    */
   attachmentAmmo?: Record<string, number>;
+  /**
+   * Kind of round loaded in each bolted-on weapon, by attachment id (02.09).
+   *
+   * The host's `ammoId` cannot answer this: the rifle is holding rifle rounds
+   * and the launcher under it is holding a grenade, and until this field
+   * existed the underbarrel was hard-wired to ordinary ammunition — which meant
+   * **no smoke and no gas could ever be fired from it**, the one delivery the
+   * rules give those rounds („Amunicja dymna", s. 345). A map for the reason
+   * `attachmentAmmo` is one: the row does not get to assume there is only ever
+   * one such attachment.
+   */
+  attachmentAmmoId?: Record<string, string>;
 }
 
 /** Rounds a magazine may hold on the sheet — the compendium's own cap. */
@@ -1142,6 +1154,36 @@ function readAttachmentAmmo(
   return ammo;
 }
 
+/** Round loaded in each bolted-on weapon, by attachment id (02.09). */
+function readAttachmentAmmoId(
+  raw: unknown,
+  issues: CpredValidationIssue[],
+): Record<string, string> | undefined {
+  if (raw === undefined || raw === null) return {};
+  if (typeof raw !== 'object' || Array.isArray(raw)) {
+    issues.push(issue('weapons', 'Naboje dodatków muszą być obiektem.'));
+    return undefined;
+  }
+  const entries = Object.entries(raw as Record<string, unknown>);
+  if (entries.length > WEAPON_ATTACHMENTS_MAX) {
+    issues.push(issue('weapons', `Naboje dodatków: do ${WEAPON_ATTACHMENTS_MAX} pozycji.`));
+    return undefined;
+  }
+  const ammo: Record<string, string> = {};
+  for (const [id, value] of entries) {
+    if (!isValidCompendiumId(id)) {
+      issues.push(issue('weapons', 'Nieprawidłowy identyfikator dodatku do broni.'));
+      return undefined;
+    }
+    if (typeof value !== 'string' || !isValidCompendiumId(value)) {
+      issues.push(issue('weapons', 'Nieprawidłowy identyfikator naboju dodatku.'));
+      return undefined;
+    }
+    ammo[id] = value;
+  }
+  return ammo;
+}
+
 /** The ammunition fields of a weapon row, or undefined when the input is bad. */
 type WeaponAmmo = Pick<CpredWeaponRow, 'ammoCurrent' | 'ammoMax' | 'ammoType'>;
 
@@ -1660,6 +1702,8 @@ function collectCharacterDataPatch(
       if (attachmentIds === undefined) return undefined;
       const attachmentAmmo = readAttachmentAmmo(row.attachmentAmmo, issues);
       if (attachmentAmmo === undefined) return undefined;
+      const attachmentAmmoId = readAttachmentAmmoId(row.attachmentAmmoId, issues);
+      if (attachmentAmmoId === undefined) return undefined;
       return {
         ...base,
         damage,
@@ -1668,6 +1712,7 @@ function collectCharacterDataPatch(
         ...(ammoId ? { ammoId } : {}),
         ...(attachmentIds.length > 0 ? { attachmentIds } : {}),
         ...(Object.keys(attachmentAmmo).length > 0 ? { attachmentAmmo } : {}),
+        ...(Object.keys(attachmentAmmoId).length > 0 ? { attachmentAmmoId } : {}),
       };
     });
     if (weapons) patch.weapons = weapons;

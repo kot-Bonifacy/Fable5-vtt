@@ -746,3 +746,35 @@ magazynu stanu, bo dwa źródła prawdy o tym, czy MG jeszcze czeka, rozjechały
 się zadeklarować Szczęście, a dopiero „Weź kubek" ładuje Test i drugi chwyt jest tym prawdziwym.
 Świadomie widzi je **wyłącznie właściciel karty** — MG z pięcioma wystawionymi wezwaniami miałby
 kubek migający bez przerwy, a jego „Rzuć za nią" stoi na karcie czatu.
+
+**Nabój broni podwieszanej ma własne pole i własne wejście planera (02.09).** Magazynek dodatku
+jest jego własny od etapu 31 (`attachmentAmmo`), a od 02.09 własny jest też **nabój**:
+`CpredWeaponRow.attachmentAmmoId` (`id dodatku → id naboju`) i wejście planera
+`secondaryAmmo`, rozwiązywane przez wołającego dokładnie tak, jak `ammo` — serwer w
+`resolveWeaponRow`, klient w `planAttackPreview`. Bez obu naraz nie działa nic: samo pole karty
+nie wystarczy, bo `planCpredAttack` **zerował** profil dla każdego strzału dodatkiem
+(`firedWith ? null : weapon.ammo`), a samo wejście planera nie ma skąd wziąć naboju. Ładuje go
+`weapon:reload` z `attachmentId` **i** `ammoId`; pasowanie idzie po **broni podwieszanej**
+(`requireLoadableAmmo` z parametrem `against`), nigdy po broni, która ją niesie — karabin bierze
+kule, a wiszący pod nim granatnik granaty. Demontaż zabiera dodatkowi **oba** pola.
+Skutek, dla którego to powstało: bez tego z granatnika podwieszanego nie dało się wystrzelić dymu
+ani gazu, czyli jedynej drogi, jaką podręcznik daje tym nabojom.
+
+**Intencję uzbrojonego celownika buduje jedna funkcja.** `intentFromTargeting`
+(`attack-targeting.ts`) obsługuje **obie** drogi: klik, który ładuje kubek (`loadAttackAtToken`),
+i dymek, który wycenia strzał chwilę wcześniej (`TargetTooltip`). Wcześniej każda miała własną
+kopię tego samego przepisywania i dymek zgubił w niej `attachmentId` — chmurka nad celem mówiła
+„Militech Dragon", gdy baner i karta ataku mówiły „Bagnet". Pole dołożone do `AttackTargeting`
+dopisuje się **tu**, nie u wołających; gałąź paska akcji czyta swoje pola z `HudActiveWeapon`.
+
+**Odmowa zapisu karty wraca do widoku serwera i mówi, dlaczego.** `characterStore` trzyma cień
+`serverViews` — to, co serwer ostatnio powiedział o każdej karcie — aktualizowany przez
+`applySync`, `applyUpsert` (**także wtedy, gdy optymistyczny stan wygrywa**) i udany zapis.
+Przy odmowie `endSave` przywraca z niego kartę, gdy nic już nie jest w locie; warunek jest
+lustrem tego, który adoptuje widok przy sukcesie, bo zapis czekający w buforze sam rozstrzygnie
+prawdę. Cień jest potrzebny, bo odmowa **nie niesie widoku** (`{ ok: false, error }`), a
+broadcast nie idzie — nic się przecież nie zmieniło. Powód odmowy jedzie osobno: `saveErrors`
+niesie kod, a `characterSaveErrorText` tłumaczy go na zdanie do paska „issues" na dole karty.
+Zdania kodów silnika mieszkają w `shared` obok typu problemu (`CPRED_ROLES_PROBLEMS`,
+`CPRED_SPECIALTY_PROBLEMS`, `CPRED_FLEET_PROBLEMS`) — ta sama tabela wyszarza guzik i tłumaczy
+odmowę.
