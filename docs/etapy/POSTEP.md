@@ -98,8 +98,22 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 | 30d | Charyzma, Znajomości, Moto, Wiarygodność      | ✅     | 2026-08-30        |
 | 31  | Dodatki do broni                              | ✅     | 2026-09-01        |
 | 32  | Wezwanie MG do Testu                          | ✅     | 2026-09-02        |
+| 33  | Kopie zapasowe, eksport i import              | ⬜     |                   |
+| 34  | Tabele losowe                                 | ⬜     |                   |
+| 35  | Ping, zaznaczanie wielu figur, klonowanie     | ⬜     |                   |
+| 36  | Makra i pasek własnych akcji                  | ⬜     |                   |
+| 37  | Kalendarz kampanii i upływ czasu              | ⬜     |                   |
+| 38  | Przedmioty między kartami                     | ⬜     |                   |
+| 39  | Efekty czasowe modyfikujące Cechy             | ⬜     |                   |
 
 ## Od czego zacząć
+
+**Plan urósł o siedem etapów (02.09, czwarta sesja): 33–39**, z przeglądu „czego brakuje
+względem innych VTT". Wolne są teraz: **28** (wdrożenie na VPS, a przed nim MG planuje
+refaktoryzację całości) oraz **33–39**. Kolejność wiążąca w trzech miejscach: **33 przed 28**
+(kopie zapasowe, zanim stan zacznie istnieć w dwóch egzemplarzach), **37 przed 39** (efekt
+„na godzinę" potrzebuje zegara świata), **34 przed 36** (makro „losuj z tabeli"). Opisy —
+w plikach etapów; skrót decyzji — w notatce sesji niżej.
 
 **Trzy błędy z oględzin etapów 31 i 32 zamknięte 02.09 (trzecia sesja) — naprawione
 i obejrzane.** Z granatnika podwieszanego da się wreszcie wystrzelić dym i gaz (`attachmentAmmoId`
@@ -389,6 +403,52 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 02.09 (czwarta) — przegląd „czego brakuje względem innych VTT" i etapy 33–39
+
+**Sesja bez kodu.** MG poprosił o zestawienie tego VTT z tym, co jest powszechne w innych
+(Foundry, Roll20, Fantasy Grounds, Owlbear Rodeo), i o listę rzeczy wyraźnie brakujących.
+Przegląd szedł **po kodzie, nie po dokumentacji** — stąd kilka ustaleń, których `POSTEP.md`
+nie znał.
+
+**Siedem braków dostało pliki etapów (33–39)**, dopisane do mapy w `00-przeglad.md` i do tabeli
+wyżej: kopie zapasowe wraz z eksportem i importem (33), tabele losowe (34), ping i zaznaczanie
+wielu figur wraz z klonowaniem (35), makra i własny pasek (36), kalendarz i upływ czasu (37),
+przedmioty przenoszone między kartami (38), efekty czasowe modyfikujące Cechy (39). Trzy
+zależności: **33 przed 28**, **37 przed 39**, **34 przed 36**.
+
+**Najważniejsze ustalenie techniczne (zastrzeżenie MG, potwierdzone w kodzie): kubek ma jeden
+slot naraz.** `rollStore.ts` trzyma siedem pól rzutów (`pending`, `initiative`, `attack`,
+`evasion`, `grapple`, `facedown`, `creation`), a każdy `load…Cup` rozsypuje przed sobą
+`EMPTY_CUP`, czyli **czyści wszystkie pozostałe**. Cokolwiek nowego zechce „rzucać kośćmi",
+musi najpierw odpowiedzieć, czy ma prawo zdmuchnąć rzut wzięty do ręki i wezwanie czekające
+u gracza z etapu 32. Tabela losowa (34) odpowiada „nie" i idzie drogą, którą `/r` wysłane
+Enterem ma od etapu 03: `chat:send` bez gestu, RNG serwera, żaden slot niezajęty. Formuła
+w polu czatu jest w `DiceCup` wyłącznie **trybem** (`CupMode` `'roll'`) na samym dole drabinki
+priorytetów — przegrywa z każdym załadowanym rzutem i z wezwaniem.
+
+**Trzy rzeczy, o których warto wiedzieć, zanim ktoś zacznie ich szukać:**
+
+- **Backupu nie ma żadnego.** `CLAUDE.md` obiecuje „kopię pliku wg harmonogramu", ale
+  w `scripts/` są tylko dwa generatory testowe, a jedyna kopia w repo powstała ręcznie 02.09.
+  Cała kampania to `packages/server/dev.db` (1 MB) plus 14 MB w `uploads/`. Stąd etap 33
+  **przed** wdrożeniem na VPS.
+- **`gm:ping` w `realtime/index.ts` to martwy placeholder z etapu 03** (`handler: () =>
+undefined`) — nazwa jest, funkcji nie ma. Etap 35 albo go zaimplementuje, albo usunie.
+- **Czasu poza walką nie ma.** `CpredTimedEffect` liczy rundy, `treatment.ts` zna wyłącznie
+  leczenie ran krytycznych, dziennej regeneracji PW nie ma nigdzie, a `economy:settle` czeka,
+  aż MG sobie przypomni o miesiącu. To jeden brak, nie trzy — i dlatego 37 poprzedza 39.
+
+**Dwie decyzje MG z tej sesji.** Muzyka i tła dźwiękowe przypisane do sceny **mieszczą się
+w projekcie**: wycofanie głosu z 09.08 dotyczyło TTS, STT i WebRTC, nie odtwarzacza plików —
+pomysł czeka w `POMYSLY.md` bez numeru etapu. Responsywność i tablety **schodzą na dół listy**,
+bo gra się zdalnie, każdy przy własnym komputerze.
+
+**Do `POMYSLY.md` doszło sześć wpisów**, w tym dwa warte zapamiętania: nazwa figury jedzie do
+graczy zawsze (`toTokenView` wkłada `name` do widoku publicznego — „Snajper Arasaki" stoi na
+mapie, zanim ktokolwiek go rozpozna) i bot losujący z tabeli po etapie 34.
+
+**Kodu nie ruszano, testów nie uruchamiano** — sesja zmieniła wyłącznie dokumentację.
+
 ### Sesja 02.09 (trzecia) — trzy błędy z oględzin etapów 31 i 32
 
 **Zlecenie MG:** nie etap, tylko **pakiet A** z listy zaległości — trzy błędy znalezione przy
@@ -435,54 +495,3 @@ jeśli wróci, tam jest jego adres.
 
 **Testy na koniec:** 1741 w `shared` (+3), 908 na serwerze (+4), 75 u klienta (+8) — zielone.
 ESLint i Prettier czyste na całym repo.
-
-### Sesja 02.09 (druga) — wezwanie MG do Testu (etap 32)
-
-**Zlecenie MG:** nie etap z planu, tylko nowa mechanika — „testy za nietypowe wydarzenia, które
-MG chce, żeby gracz zdał", jako **nowy tryb rzutu poza publicznym i prywatnym**. Etap dopisany
-tego dnia jako **32** i zamknięty w tej samej sesji.
-
-**Cztery decyzje MG przed kodem.** (1) **Skutków karta nie rozlicza** — ma dowieźć wyraźny
-werdykt, a przedmiot, PW i ranę nadaje MG ręką narzędziami, które ma od etapów 15, 23b i 30b.
-(2) Zakres to **każda Umiejętność i każda Cecha**, z drabinką PT z s. 130 i rzutem
-przeciwstawnym. (3) **Rzuca gracz, kubkiem** — „to bardziej immersyjny sposób rzucania"; MG ma
-„Rzuć za nią" tylko na nieobecnego gracza i NPC-a. (4) **Trybu ślepego nie ma** — decyzja
-cofnięta w trakcie ustaleń: gracz zawsze widzi wynik swoich kości. Zostały dwie widoczności,
-te same, co przy każdym innym rzucie.
-
-**Rzut na wezwanie jedzie istniejącym `character:roll`.** To była najważniejsza decyzja
-techniczna: `payloadFromCall` podmienia payload w jednym miejscu na początku
-`performCharacterRoll`, a od tej linii w dół działa wszystko, co ta funkcja umie od etapu 08 —
-kary z ran, Zwarcie, wydanie Szczęścia, skórka kości, wstrzymanie karty do końca animacji 3D.
-Osobne zdarzenie musiałoby to powtórzyć i rozjechać się przy pierwszej zmianie w rzutach.
-
-**Wezwanie widać w dwóch miejscach — i to była dopowiedziana prośba MG w trakcie sesji.**
-Na czacie stoi karta rodzaju `check` (nowy `ChatKind`, wyjęty spod filtra przez `isPending`,
-w trybie zwartym renderowany pełną kartą, dopóki czeka), a **kubek gracza woła bursztynem**
-z etykietą „Wezwanie: Percepcja (INT) · PT 15". Chwyt takiego kubka **nie potrząsa** — otwiera
-okno rzutu, żeby dało się zadeklarować Szczęście; dopiero „Weź kubek" ładuje Test.
-
-**Czego klient nie może sobie nazwać.** Test dymny wysyła żądanie podrobione co do joty (inna
-karta, inna Umiejętność, modyfikator +20, własna widoczność) i sprawdza, że **nic z tego nie
-weszło**: rzut idzie Percepcją z wezwania, bez +20 w rozbiciu, a karta ląduje tam, gdzie kazał
-MG. To ta sama umowa, którą od 16 mają obrażenia po ataku.
-
-**Drabinka PT sprawdzona w podręczniku, nie z pamięci** (s. 130): Łatwy 9, Codzienny 13, Trudny
-15, Profesjonalny 17, Heroiczny 21, Niewiarygodny 24, Legendarny 29. „Codzienny 13" zgadza się
-z `CPRED_EVERYDAY_DV`, które stoi w `attacks.ts` od etapu 16. Remis nie zdaje — ani przy PT,
-ani w rzucie przeciwstawnym (druga strona wygrywa), zgodnie z decyzją z 30.08.
-
-**Jedna pułapka trafiona w trakcie pisania testów:** „PT 1 zdaje się zawsze" migotało na
-Cesze INT 7, bo naturalna 1 odejmuje 1k10 i schodzi do −2. Test przeszedł na Percepcję
-(7 + 4 = 11, więc dno to 2) — dokładnie ta pułapka, którą `pulapki-dev.md` opisuje od 30.08.
-
-**Obejrzane w przeglądarce (dwie sesje naraz, MG + `Tester`, scena „Strzelnica").** Nośnikiem
-był **Frank** — na czas oględzin przepisany na `Tester` i po wszystkim zwrócony do `NPC (MG)`.
-Odklikane: wezwanie z panelu, karta u gracza **i** bursztynowy kubek z etykietą, chwyt kubka
-otwierający okno rzutu (Szczęście zostaje, modyfikator i widoczność znikają), rzut z naturalną
-dziesiątką (24 → „Zdane · 24 > PT 15 (Trudny)"), zamknięta karta wezwania i „Odwołaj", po którym
-kubek gracza gaśnie w tej samej chwili. Konsola czysta. W logu poligonu zostały trzy wiersze
-z oględzin — historii czatu i tak się nie sprząta.
-
-**Testy na koniec:** 1738 w `shared` (+20), 904 na serwerze (+11), 67 u klienta — zielone.
-ESLint i Prettier czyste.

@@ -7,6 +7,57 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 02.09 (druga) — wezwanie MG do Testu (etap 32)
+
+**Zlecenie MG:** nie etap z planu, tylko nowa mechanika — „testy za nietypowe wydarzenia, które
+MG chce, żeby gracz zdał", jako **nowy tryb rzutu poza publicznym i prywatnym**. Etap dopisany
+tego dnia jako **32** i zamknięty w tej samej sesji.
+
+**Cztery decyzje MG przed kodem.** (1) **Skutków karta nie rozlicza** — ma dowieźć wyraźny
+werdykt, a przedmiot, PW i ranę nadaje MG ręką narzędziami, które ma od etapów 15, 23b i 30b.
+(2) Zakres to **każda Umiejętność i każda Cecha**, z drabinką PT z s. 130 i rzutem
+przeciwstawnym. (3) **Rzuca gracz, kubkiem** — „to bardziej immersyjny sposób rzucania"; MG ma
+„Rzuć za nią" tylko na nieobecnego gracza i NPC-a. (4) **Trybu ślepego nie ma** — decyzja
+cofnięta w trakcie ustaleń: gracz zawsze widzi wynik swoich kości. Zostały dwie widoczności,
+te same, co przy każdym innym rzucie.
+
+**Rzut na wezwanie jedzie istniejącym `character:roll`.** To była najważniejsza decyzja
+techniczna: `payloadFromCall` podmienia payload w jednym miejscu na początku
+`performCharacterRoll`, a od tej linii w dół działa wszystko, co ta funkcja umie od etapu 08 —
+kary z ran, Zwarcie, wydanie Szczęścia, skórka kości, wstrzymanie karty do końca animacji 3D.
+Osobne zdarzenie musiałoby to powtórzyć i rozjechać się przy pierwszej zmianie w rzutach.
+
+**Wezwanie widać w dwóch miejscach — i to była dopowiedziana prośba MG w trakcie sesji.**
+Na czacie stoi karta rodzaju `check` (nowy `ChatKind`, wyjęty spod filtra przez `isPending`,
+w trybie zwartym renderowany pełną kartą, dopóki czeka), a **kubek gracza woła bursztynem**
+z etykietą „Wezwanie: Percepcja (INT) · PT 15". Chwyt takiego kubka **nie potrząsa** — otwiera
+okno rzutu, żeby dało się zadeklarować Szczęście; dopiero „Weź kubek" ładuje Test.
+
+**Czego klient nie może sobie nazwać.** Test dymny wysyła żądanie podrobione co do joty (inna
+karta, inna Umiejętność, modyfikator +20, własna widoczność) i sprawdza, że **nic z tego nie
+weszło**: rzut idzie Percepcją z wezwania, bez +20 w rozbiciu, a karta ląduje tam, gdzie kazał
+MG. To ta sama umowa, którą od 16 mają obrażenia po ataku.
+
+**Drabinka PT sprawdzona w podręczniku, nie z pamięci** (s. 130): Łatwy 9, Codzienny 13, Trudny
+15, Profesjonalny 17, Heroiczny 21, Niewiarygodny 24, Legendarny 29. „Codzienny 13" zgadza się
+z `CPRED_EVERYDAY_DV`, które stoi w `attacks.ts` od etapu 16. Remis nie zdaje — ani przy PT,
+ani w rzucie przeciwstawnym (druga strona wygrywa), zgodnie z decyzją z 30.08.
+
+**Jedna pułapka trafiona w trakcie pisania testów:** „PT 1 zdaje się zawsze" migotało na
+Cesze INT 7, bo naturalna 1 odejmuje 1k10 i schodzi do −2. Test przeszedł na Percepcję
+(7 + 4 = 11, więc dno to 2) — dokładnie ta pułapka, którą `pulapki-dev.md` opisuje od 30.08.
+
+**Obejrzane w przeglądarce (dwie sesje naraz, MG + `Tester`, scena „Strzelnica").** Nośnikiem
+był **Frank** — na czas oględzin przepisany na `Tester` i po wszystkim zwrócony do `NPC (MG)`.
+Odklikane: wezwanie z panelu, karta u gracza **i** bursztynowy kubek z etykietą, chwyt kubka
+otwierający okno rzutu (Szczęście zostaje, modyfikator i widoczność znikają), rzut z naturalną
+dziesiątką (24 → „Zdane · 24 > PT 15 (Trudny)"), zamknięta karta wezwania i „Odwołaj", po którym
+kubek gracza gaśnie w tej samej chwili. Konsola czysta. W logu poligonu zostały trzy wiersze
+z oględzin — historii czatu i tak się nie sprząta.
+
+**Testy na koniec:** 1738 w `shared` (+20), 904 na serwerze (+11), 67 u klienta — zielone.
+ESLint i Prettier czyste.
+
 ### Sesja 02.09 — oględziny rozwoju postaci (29a i 29b)
 
 **Zlecenie MG:** sesja oględzinowa, zestaw **B** z listy zaległości — reszta **29a** (pięć
