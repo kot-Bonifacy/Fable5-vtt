@@ -1,13 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { buildCpredRegistry, createDefaultCharacterData, type CpredRegistry } from './character.js';
 import {
+  CPRED_DIFFICULTY_LADDER,
   CPRED_SITUATIONAL_MODIFIER_LIMIT,
+  cpredCheckOutcome,
+  cpredDifficultyRungAt,
   effectiveMove,
   planCpredRoll,
   resolveCpredDeathSave,
   woundCheckPenalty,
   woundState,
 } from './rolls.js';
+import { CPRED_EVERYDAY_DV } from './attacks.js';
 import { formatRollNotation, rollFormula, type DiceRng } from '../../dice.js';
 
 const registry: CpredRegistry = buildCpredRegistry(
@@ -427,5 +431,48 @@ describe('Naprawa Twórcy w Testach technicznych', () => {
     expect(planned.ok).toBe(true);
     if (!planned.ok) return;
     expect(planned.plan.modifierTotal).toBe(5);
+  });
+});
+
+describe('drabinka Poziomów Trudności (s. 130)', () => {
+  it('ma siedem szczebli w rosnącej kolejności', () => {
+    expect(CPRED_DIFFICULTY_LADDER.map((rung) => rung.dv)).toEqual([9, 13, 15, 17, 21, 24, 29]);
+  });
+
+  it('„Codzienny" to 13 — ten sam szczebel, którym bije się statystę bez karty', () => {
+    expect(cpredDifficultyRungAt(13)?.label).toBe('Codzienny');
+    expect(cpredDifficultyRungAt(13)?.dv).toBe(CPRED_EVERYDAY_DV);
+  });
+
+  it('liczba spoza tabeli nie ma szczebla', () => {
+    expect(cpredDifficultyRungAt(14)).toBeNull();
+  });
+});
+
+describe('werdykt Testu na wezwanie MG', () => {
+  it('zdaje wynik WYŻSZY od PT', () => {
+    expect(cpredCheckOutcome(16, { dv: 15 }).success).toBe(true);
+  });
+
+  it('remis nie zdaje — `>=` przy PT jest błędem, nie wariantem', () => {
+    const outcome = cpredCheckOutcome(15, { dv: 15 });
+    expect(outcome.success).toBe(false);
+    expect(outcome.label).toBe('Niezdane');
+    expect(outcome.detail).toBe('15 ≤ PT 15 (Trudny)');
+  });
+
+  it('nazywa szczebel w opisie, gdy PT stoi na drabince', () => {
+    expect(cpredCheckOutcome(20, { dv: 17 }).detail).toBe('20 > PT 17 (Profesjonalny)');
+  });
+
+  it('przy rzucie przeciwstawnym remis wygrywa druga strona', () => {
+    expect(cpredCheckOutcome(18, { opponentTotal: 18, opponentBonus: 12 }).success).toBe(false);
+    expect(cpredCheckOutcome(19, { opponentTotal: 18, opponentBonus: 12 }).success).toBe(true);
+  });
+
+  it('opis rzutu przeciwstawnego pokazuje obie liczby', () => {
+    expect(cpredCheckOutcome(19, { opponentTotal: 18, opponentBonus: 12 }).detail).toBe(
+      '19 vs 18 (druga strona: 12 + 1k10)',
+    );
   });
 });

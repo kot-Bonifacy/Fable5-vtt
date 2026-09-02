@@ -7,6 +7,7 @@ import {
   type RollResult,
 } from './dice.js';
 import type { BotActionProposal } from './bots/types.js';
+import { checkCallTargetText, type CheckCallEntry } from './checks.js';
 import type { HandoutLogEntry } from './handouts.js';
 import type { JournalLogEntry } from './journal.js';
 
@@ -19,6 +20,11 @@ import type { JournalLogEntry } from './journal.js';
  * never public: what reaches the table is the roll that follows approval, and it
  * looks exactly like anybody else's — a bot's mechanics stay as indistinguishable
  * as its speech has been since stage 11.
+ *
+ * `check` (stage 32) is the GM asking one character for a roll. It travels the
+ * whisper pattern for the same reason `proposal` does — it is a request put to
+ * one person, not a line for the table — and the roll that answers it is an
+ * ordinary card, public or GM-only exactly as the call decided.
  */
 export type ChatKind =
   | 'say'
@@ -31,7 +37,9 @@ export type ChatKind =
   | 'proposal'
   | 'economy'
   | 'handout'
-  | 'journal';
+  | 'journal'
+  /** Wezwanie MG do Testu, czekające na kubek wezwanego (etap 32). */
+  | 'check';
 
 /**
  * A movement of eddies, as the chat records it (stage 23b).
@@ -269,6 +277,8 @@ export interface ChatMessageView {
   handout?: HandoutLogEntry;
   /** Journal entry opened to the table — kind `journal` only (stage 24b). */
   journal?: JournalLogEntry;
+  /** GM's call for a roll — kind `check` only (stage 32). */
+  check?: CheckCallEntry;
   /** ISO timestamp — always assigned by the server. */
   createdAt: string;
 }
@@ -426,8 +436,11 @@ export function chatCategoryOf(kind: ChatKind): ChatCategory {
     case 'say':
     case 'whisper':
       return 'talk';
+    // `check` (etap 32) jest zapowiedzią rzutu i chowa się razem z rzutami:
+    // grupa „Rzuty" gasi wtedy całą parę, a nie połowę z niej.
     case 'roll':
     case 'gmroll':
+    case 'check':
       return 'dice';
     case 'damage':
     case 'action':
@@ -565,6 +578,27 @@ function compactEconomy(entry: EconomyLogEntry): ChatCompactLine {
 }
 
 /**
+ * Wezwanie do Testu (etap 32). Otwarte wezwanie **nie daje się ścisnąć** — ma
+ * przycisk „Rzuć", a zwarty wiersz przycisków nie ma; to ta sama zasada, którą
+ * 01.09 dostała nierozstrzygnięta propozycja bota. Ściska się dopiero rozliczone
+ * albo odwołane, czyli takie, z którego został sam zapis w dzienniku.
+ */
+function compactCheckCall(entry: CheckCallEntry): ChatCompactLine | null {
+  if (entry.cancelled) {
+    return { actor: entry.characterName, summary: `${entry.rollLabel} — wezwanie odwołane` };
+  }
+  if (!entry.resolved) return null;
+  const target = checkCallTargetText(entry);
+  return {
+    actor: entry.characterName,
+    summary: `${entry.rollLabel} · ${target} — ${
+      entry.resolved.success ? 'Zdane' : 'Niezdane'
+    } (${entry.resolved.total})`,
+    tone: entry.resolved.success ? 'success' : 'failure',
+  };
+}
+
+/**
  * Ściska wiersz do jednej linii albo mówi „zostaw go w spokoju" (`null`).
  *
  * Funkcja **niczego nie ukrywa i niczego nie dopowiada**: czyta wyłącznie pola,
@@ -604,5 +638,7 @@ export function chatCompactLine(message: ChatMessageView): ChatCompactLine | nul
             summary: `${message.journal.title} · sesja z ${message.journal.sessionDate}`,
           }
         : null;
+    case 'check':
+      return message.check ? compactCheckCall(message.check) : null;
   }
 }

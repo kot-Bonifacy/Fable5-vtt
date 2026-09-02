@@ -710,3 +710,39 @@ Trzy rzeczy, które łatwo zepsuć przy dokładaniu:
   jedzie zdarzeniem Socket.IO — to samo rozstrzygnięcie, co przy głośnościach z 27d. Rozwinięcie
   pojedynczego wiersza żyje tylko w stanie panelu: tryb jest nastawieniem na sesję, rozwinięcie
   — jednym zajrzeniem.
+
+**Wezwanie do Testu jest jedynym źródłem prawdy o tym, co zaraz padnie (etap 32).** Rzut
+odpowiadający na wezwanie jedzie zwykłym `character:roll` z jednym dodatkowym polem
+(`callMessageId`), a `payloadFromCall` w `character-rolls.ts` **podmienia cały payload** na to,
+co stoi w zapisanej karcie wezwania: kartę postaci, Umiejętność albo Cechę, modyfikator MG
+i widoczność wyniku. Z żądania klienta zostają dokładnie dwie rzeczy — **zadeklarowane Szczęście
+i gest kubka**. To ta sama umowa, którą od etapu 16 mają obrażenia po ataku („notacja i mnożnik
+z zapisanej wiadomości, nigdy z żądania"), i z tego samego powodu: klient nazywający własne PT
+ustalałby trudność wydarzenia, które wymyślił MG.
+
+Podmiana stoi **na początku** `performCharacterRoll` świadomie: od tej linii w dół działa
+wszystko, co ta funkcja umie od etapu 08 (kary z ran, Zwarcie, wydanie Szczęścia, skórka kości,
+wstrzymanie karty do końca animacji 3D). Osobne zdarzenie musiałoby to powtórzyć i rozjechałoby
+się z oryginałem przy pierwszej zmianie w rzutach.
+
+Trzy szczegóły, które łatwo przeoczyć:
+
+- **Wezwanie zamyka się dokładnie raz.** `resolveAnsweredCall` sprawdza `isCheckCallOpen`
+  i uprawnienie (`mayAnswerCheckCall`: właściciel karty albo MG), a po rzucie `emitCheckCallUpdate`
+  dopisuje `resolved` i rozsyła kartę przez `chat:update` — nie drugą wiadomość.
+- **Samo wezwanie jedzie wzorem szeptu** (MG + wezwany), niezależnie od wybranej widoczności:
+  to prośba do jednej osoby. Widoczność dotyczy **karty rzutu**. Wezwanie z widocznością
+  „MG + wezwany", na które rzucił MG w zastępstwie, dostaje `recipientId = ownerId` — bez tego
+  wypadłoby graczowi z historii po przeładowaniu (`visibleTo` przepuszcza po adresacie).
+- **Werdykt liczy CP RED, nie rdzeń.** `cpredCheckOutcome` obsługuje obie drogi z s. 130: przeciw
+  PT (`>`, remis nie zdaje) i przeciw drugiej stronie (jej 1k10 też eksploduje, remis wygrywa
+  Broniący). `CheckCallEntry` w `shared/src/checks.ts` niesie same etykiety i stan, a żądanie
+  systemu trzyma jako nieprzezroczyste `system` — jak `RollOpposedMeta.system` od 14d.
+
+**Kubek woła wezwaniem, czytając feed czatu (etap 32).** `openCheckCallFor` w `chatStore.ts`
+szuka **ostatniego otwartego** wezwania, którego właścicielem jest ten użytkownik — bez drugiego
+magazynu stanu, bo dwa źródła prawdy o tym, czy MG jeszcze czeka, rozjechałyby się przy pierwszym
+„Odwołaj". Kubek w tym trybie **nie potrząsa się od razu**: chwyt otwiera okno rzutu, żeby dało
+się zadeklarować Szczęście, a dopiero „Weź kubek" ładuje Test i drugi chwyt jest tym prawdziwym.
+Świadomie widzi je **wyłącznie właściciel karty** — MG z pięcioma wystawionymi wezwaniami miałby
+kubek migający bez przerwy, a jego „Rzuć za nią" stoi na karcie czatu.

@@ -2,6 +2,7 @@ import type { AiStatus } from './ai.js';
 import type { CampaignSummary, Role } from './auth.js';
 import type { BotView } from './bots/types.js';
 import type { ChatMessageView } from './chat.js';
+import type { CheckCallVisibility } from './checks.js';
 import type { CombatView } from './combat.js';
 import type { CharacterView } from './characters.js';
 import type { CoverView } from './covers.js';
@@ -260,8 +261,45 @@ export interface CharacterRollPayload<TRequest = unknown> {
   request: TRequest;
   /** `gm` = result visible to the author and the GM only (whisper pattern). */
   visibility: 'public' | 'gm';
+  /**
+   * Chat message id of the GM's call this roll answers (stage 32). Naming one
+   * hands the whole request over to the server: what is rolled, the situational
+   * modifier, the DV and who sees the result all come off the stored call, and
+   * the only thing left of the payload is the Luck the player declares and the
+   * gesture. A client naming its own DV would be a client setting the
+   * difficulty of the event the GM invented.
+   */
+  callMessageId?: number;
   /** Present when the roll was thrown with the dice cup. */
   gesture?: RollGesture;
+}
+
+/* ------------------------------------------------------------------ *
+ * Wezwanie do Testu (etap 32)
+ * ------------------------------------------------------------------ */
+
+/**
+ * GM → server payload of `check:call`. The system request (`CpredRollRequest`
+ * for CP RED) says what to roll; everything else here is the frame the GM puts
+ * around it.
+ */
+export interface CheckCallPayload<TRequest = unknown> {
+  characterId: string;
+  request: TRequest;
+  /** Poziom Trudności. Mutually exclusive with `opponentBonus`. */
+  dv?: number;
+  /** Opposed call: the other side's flat number, to which the server adds 1d10. */
+  opponentBonus?: number;
+  /** GM's situational modifier folded into the roll („ciemno, −2"). */
+  modifier?: number;
+  /** One or two sentences describing the event being tested. */
+  prompt?: string;
+  visibility: CheckCallVisibility;
+}
+
+/** GM → server payload of `check:cancel` — the call is withdrawn unanswered. */
+export interface CheckCancelPayload {
+  messageId: number;
 }
 
 /**

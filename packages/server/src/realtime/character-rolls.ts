@@ -1,4 +1,5 @@
 import type {
+  CheckCallEntry,
   ChatMessageView,
   CharacterRollPayload,
   CpredAmmoProfile,
@@ -26,6 +27,7 @@ import {
   cpredRumourHeard,
   cpredCareOptions,
   cpredCarePermanent,
+  cpredCheckOutcome,
   hitLocationLabel,
   isCpredAimPoint,
   mergeCharacterData,
@@ -51,7 +53,13 @@ import { grappleStateForToken } from './combat.js';
 import { requireTurnSpend } from './combat-actions.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { emitTokensById, emitTokensOfCharacter, requireCampaignToken } from './tokens.js';
-import { INCLUDE_CHAT_NAMES, deliverRollMessage, toChatMessageView } from './chat-io.js';
+import {
+  INCLUDE_CHAT_NAMES,
+  deliverChatMessageTo,
+  deliverRollMessage,
+  toChatMessageView,
+} from './chat-io.js';
+import { emitCheckCallUpdate, resolveAnsweredCall } from './checks.js';
 import { sanitizeGesture } from './chat.js';
 
 /**
@@ -663,6 +671,31 @@ export const characterRollEvent = defineEvent<
 });
 
 /**
+ * Żądanie rzutu odpowiadającego na wezwanie MG (etap 32).
+ *
+ * Z tego, co przysłał klient, zostają dwie rzeczy: zadeklarowane Szczęście
+ * i gest kubka. Reszta — karta, Umiejętność, modyfikator MG i widoczność —
+ * przychodzi z zapisanego wezwania, dokładnie tak, jak notacja obrażeń
+ * przychodzi z zapisanego ataku (umowa z etapu 16).
+ */
+function payloadFromCall(
+  payload: CharacterRollPayload<CpredRollRequest> | undefined,
+  entry: CheckCallEntry,
+): CharacterRollPayload<CpredRollRequest> {
+  const stored = entry.system as unknown as CpredRollRequest;
+  const luckSpent = payload?.request?.luckSpent;
+  return {
+    characterId: entry.characterId,
+    request: {
+      ...stored,
+      ...(typeof luckSpent === 'number' ? { luckSpent } : {}),
+    },
+    visibility: entry.visibility,
+    ...(payload?.gesture ? { gesture: payload.gesture } : {}),
+  };
+}
+
+/**
  * The body of `character:roll`, split out of the handler so it can be called
  * without a socket (stage 20a: a bot rolling for its own sheet).
  *
@@ -683,9 +716,17 @@ export async function performCharacterRoll(
   },
 ): Promise<{ messageId: number }> {
   {
-    const { user, payload, sceneId, campaignId } = options;
+    const { user, sceneId, campaignId } = options;
 
     const registry = deps.ctx.cpred;
+    // Wezwanie MG (etap 32) przejmuje żądanie w całości: nazwanie go jest
+    // jedyną rzeczą, jaką klient tu wnosi poza Szczęściem i gestem.
+    const call =
+      options.payload?.callMessageId === undefined
+        ? null
+        : await resolveAnsweredCall(deps, campaignId, user, options.payload.callMessageId);
+    const payload = call ? payloadFromCall(options.payload, call.entry) : options.payload;
+
     const request = await resolveRollRequest(deps, campaignId, user, payload);
     const source = await resolveRollSource(deps, campaignId, user, payload, request);
     const data = source.data;
@@ -732,7 +773,8 @@ export async function performCharacterRoll(
       await emitTokensOfCharacter(deps, campaignId, saved);
     }
 
-    const result: RollResult = rollFormula(plan.formula, createMixedRng(gesture?.entropy), {
+    const rng = createMixedRng(gesture?.entropy);
+    const result: RollResult = rollFormula(plan.formula, rng, {
       checkRule: plan.checkRule,
     });
     result.title = plan.title;
@@ -892,19 +934,73 @@ export async function performCharacterRoll(
       };
     }
 
+    // Werdykt wezwania (etap 32). Dwie drogi z s. 130 i jedna funkcja: przeciw
+    // PT albo przeciw rzutowi drugiej strony, którą MG streścił jedną liczbą.
+    if (call) {
+      const opponentTotal =
+        call.entry.opponentBonus === undefined
+          ? undefined
+          : rollFormula(
+              {
+                terms: [
+                  { kind: 'dice', sign: 1, count: 1, sides: 10 },
+                  ...(call.entry.opponentBonus !== 0
+                    ? [
+                        {
+                          kind: 'modifier' as const,
+                          sign: 1 as const,
+                          value: call.entry.opponentBonus,
+                        },
+                      ]
+                    : []),
+                ],
+              },
+              rng,
+              { checkRule: true },
+            ).total;
+      const outcome = cpredCheckOutcome(result.total, {
+        ...(call.entry.dv !== undefined ? { dv: call.entry.dv } : {}),
+        ...(opponentTotal !== undefined ? { opponentTotal } : {}),
+        ...(call.entry.opponentBonus !== undefined
+          ? { opponentBonus: call.entry.opponentBonus }
+          : {}),
+      });
+      result.outcome = outcome;
+      result.title = `Wezwanie: ${plan.title}`;
+    }
+
     const kind = visibility === 'gm' ? 'gmroll' : 'roll';
     const stored = await deps.ctx.prisma.chatMessage.create({
       data: {
         campaignId,
         authorId: user.id,
         kind,
-        text: plan.title,
+        text: result.title ?? plan.title,
         payload: JSON.stringify(result),
+        // Karta rzutu na wezwanie ma dojść do właściciela postaci także wtedy,
+        // gdy kubkiem potrząsnął MG w jego zastępstwie — a bez adresata
+        // wypadłaby z jego historii po przeładowaniu (`visibleTo`).
+        ...(call && kind === 'gmroll' ? { recipientId: call.entry.ownerId } : {}),
       },
       include: INCLUDE_CHAT_NAMES,
     });
     const view: ChatMessageView = toChatMessageView(stored);
-    await deliverRollMessage(deps, campaignId, user.id, view);
+    if (call && kind === 'gmroll') {
+      await deliverChatMessageTo(deps, campaignId, view, [user.id, call.entry.ownerId], true);
+    } else {
+      await deliverRollMessage(deps, campaignId, user.id, view);
+    }
+    // Wezwanie zamyka się razem z kartą rzutu: przycisk znika, a na karcie
+    // zostaje werdykt, więc dziennik czyta się bez skakania po wiadomościach.
+    if (call && result.outcome) {
+      call.entry.resolved = {
+        messageId: view.id,
+        byName: user.name,
+        success: result.outcome.success,
+        total: result.total,
+      };
+      await emitCheckCallUpdate(deps, campaignId, call.messageId, call.entry);
+    }
     // Somebody coming off the floor is the one green number the map draws
     // (stage 27i). It waits for the card exactly as an attack's does — the
     // Test is still rolling in 3D on everyone's screen.

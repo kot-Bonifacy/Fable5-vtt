@@ -155,6 +155,103 @@ export const CPRED_STABILIZE_DV: Record<CpredWoundState, number> = {
   mortal: 15,
 };
 
+/**
+ * „POZIOMY TRUDNOŚCI (PT)" (s. 130) — siedem szczebli, którymi podręcznik każe
+ * MG wyceniać czynność, gdy trudność wynika z sytuacji, a nie z przeciwnika.
+ *
+ * Tabela, nie obliczenie: MG wybiera szczebel albo wpisuje własną liczbę,
+ * a drabinka istnieje po to, żeby „to jest trudne" i „to jest bohaterskie"
+ * znaczyły przy tym stole to samo w piątek i w sobotę. `CPRED_EVERYDAY_DV`
+ * w `attacks.ts` to ten sam szczebel „Codzienny" — cios w statystę bez karty
+ * jest czynnością codzienną i bierze 13 z tego samego wiersza.
+ */
+export interface CpredDifficultyRung {
+  id: string;
+  /** „Profesjonalny" — nazwa szczebla, tak jak stoi w tabeli. */
+  label: string;
+  dv: number;
+  /** Zdanie z podręcznika, skrócone do podpowiedzi przy wyborze. */
+  note: string;
+}
+
+export const CPRED_DIFFICULTY_LADDER: readonly CpredDifficultyRung[] = [
+  { id: 'easy', label: 'Łatwy', dv: 9, note: 'Wykona to każdy dorosły; trudne dla dziecka.' },
+  {
+    id: 'everyday',
+    label: 'Codzienny',
+    dv: 13,
+    note: 'Wykona to większość ludzi bez specjalnego przeszkolenia.',
+  },
+  {
+    id: 'difficult',
+    label: 'Trudny',
+    dv: 15,
+    note: 'Trudne bez wyszkolenia albo naturalnych predyspozycji.',
+  },
+  {
+    id: 'professional',
+    label: 'Profesjonalny',
+    dv: 17,
+    note: 'Wymaga wyszkolenia — poziom zawodowca w danej dziedzinie.',
+  },
+  {
+    id: 'heroic',
+    label: 'Heroiczny',
+    dv: 21,
+    note: 'Niezwykle trudny wyczyn, pułap najlepszych z najlepszych.',
+  },
+  {
+    id: 'incredible',
+    label: 'Niewiarygodny',
+    dv: 24,
+    note: 'Nadzwyczajne osiągnięcie — materiał olimpijski.',
+  },
+  {
+    id: 'legendary',
+    label: 'Legendarny',
+    dv: 29,
+    note: 'Czyn, o którym będzie się mówić latami.',
+  },
+] as const;
+
+/** Szczebel drabinki o tym PT — `null`, gdy MG wpisał liczbę spoza tabeli. */
+export function cpredDifficultyRungAt(dv: number): CpredDifficultyRung | null {
+  return CPRED_DIFFICULTY_LADDER.find((rung) => rung.dv === dv) ?? null;
+}
+
+/**
+ * Werdykt Testu na wezwanie MG (etap 32).
+ *
+ * Jedna funkcja na obie drogi z s. 130, bo obie kończą się tą samą
+ * nierównością: „wynik […] musi być **wyższy** od PT", a w rzucie
+ * przeciwstawnym „w przypadku remisu Broniący zawsze wygrywa". Remis nie zdaje
+ * — `>=` w tym miejscu jest błędem, nie wariantem (decyzja MG z 30.08,
+ * `decyzje-i-uproszczenia.md`).
+ */
+export function cpredCheckOutcome(
+  total: number,
+  against: { dv?: number; opponentTotal?: number; opponentBonus?: number },
+): { success: boolean; label: string; detail: string } {
+  if (against.opponentTotal !== undefined) {
+    const success = total > against.opponentTotal;
+    return {
+      success,
+      label: success ? 'Zdane' : 'Niezdane',
+      detail: `${total} vs ${against.opponentTotal} (druga strona: ${
+        against.opponentBonus ?? 0
+      } + 1k10)`,
+    };
+  }
+  const dv = against.dv ?? 0;
+  const success = total > dv;
+  const rung = cpredDifficultyRungAt(dv);
+  return {
+    success,
+    label: success ? 'Zdane' : 'Niezdane',
+    detail: `${total} ${success ? '>' : '≤'} PT ${dv}${rung ? ` (${rung.label})` : ''}`,
+  };
+}
+
 /** What the client asks the server to roll from a sheet. */
 export interface CpredRollRequest {
   kind: CpredRollKind;

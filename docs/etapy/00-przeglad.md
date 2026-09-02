@@ -57,6 +57,7 @@ Każdy etap to jedna sesja pracy z Claude. Etapy są pogrupowane w 8 faz. Szczeg
 | 29  | Rozwój postaci za Punkty Doświadczenia              | H. Świat CP RED      | dopisany 29.08 (audyt)          |
 | 30  | Zdolności Specjalne dziewięciu Ról                  | H. Świat CP RED      | dopisany 29.08 (audyt)          |
 | 31  | Dodatki do broni                                    | H. Świat CP RED      | dopisany 29.08 (audyt)          |
+| 32  | Wezwanie MG do Testu                                | H. Świat CP RED      | dopisany 02.09 (zlecenie MG)    |
 
 ## Kolejność i zależności
 
@@ -156,6 +157,13 @@ Fazy A→B→C odwzorowują priorytety MVP z ankiety (mapa+tokeny, kości, karty
    a te trzy powstały po nim i nie blokują wdrożenia. **Etap 30 jest z góry podejrzany
    o podział** — dziewięć Zdolności to dziewięć niezależnych mechanik, i tak samo wyglądały
    26 i 27 przed rozbiciem.
+
+9. **Etap 32 — wezwanie MG do Testu** (dopisany 02.09.2026 na zlecenie MG). Do 31 etapu **każdy
+   rzut zaczynał gracz**: mechanika CP RED była kompletna, ale MG nie miał czym powiedzieć
+   kośćmi „sprawdź, czy to zauważasz". Etap dokłada trzecią drogę do kubka — wezwanie wystawiane
+   przez MG, z Poziomem Trudności z drabinki s. 130 albo z rzutem przeciwstawnym. **Skutki
+   zostają w rękach MG** (decyzja MG): karta dowozi werdykt, a przedmiot, PW czy ranę rozlicza
+   się narzędziami, które MG ma od etapów 15, 23b i 30b.
 
 ## Ryzyka i ograniczenia
 

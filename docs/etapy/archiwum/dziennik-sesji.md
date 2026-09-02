@@ -7,6 +7,47 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 01.09 (trzecia) — filtry czatu, tryb zwarty i magazynek z karty ataku
+
+**Zlecenie MG:** nie etap — dwie zmiany na czacie. (1) Dało się chować rodzaje wierszy albo całe
+wiersze („same rozmowy"), a wiadomość ma nie zajmować sześciu linii. (2) Zdjąć z karty ataku
+stan magazynka, bo licznik naboi stoi już w panelu postaci i druga kopia tej samej liczby jest
+szumem.
+
+**Cztery decyzje MG przed kodem.** Filtry są **czterema grupami** (Rozmowy, Rzuty, Walka, Stół),
+nie przełącznikiem na każdy `ChatKind`. Tryb zwarty ściska **wyłącznie karty mechaniczne** do
+jednej linii — wypowiedzi zostają w całości, bo streszczenie rozmowy jest jej utratą. Wiersz
+odfiltrowany **nie znika**, tylko zwija się w klikalny separator „⋯ 4 ukryte wiersze ⋯". Ukryte
+zostaje ukryte tylko dla oka: nic nie zmienia się w tym, co przysyła serwer.
+
+**Gdzie to mieszka.** Podział na grupy i streszczenie jednej linii to **czyste funkcje w
+`shared/src/chat.ts`** (`chatCategoryOf`, `chatCompactLine`) z 20 testami — nie ma ich w
+komponencie, bo streszczenie wiersza jest dokładnie tak samo „logiką czatu", jak parser komend
+obok. Klient trzyma tylko nastawienie: `stores/chatFilterStore.ts`, `localStorage`, prywatne
+dla przeglądarki (wzorem głośności z 27d). `ChatPanel` składa z tego feed: widoczne wiersze
+pojedynczo, ukryte zbite w grupy.
+
+**Jedna zasada, która nie jest kosmetyką: filtr nie chowa pytań.** Propozycja bota bez
+odpowiedzi i notatka z przyciskami (16c: „cel za osłoną") są **wyjęte spod filtra** — to nie
+log, tylko decyzja czekająca na kliknięcie, a schowana pod separatorem zawiśnie w środku cudzej
+tury. Tak samo w trybie zwartym: nierozstrzygnięta propozycja renderuje się pełną kartą, bo
+zwarty wiersz nie ma przycisków.
+
+**Magazynek zdjęty z `attackDetail` (`realtime/attacks.ts`), nie z metadanych.** `ammoAfter`
+i `ammoMax` zostają na karcie — czyta je serwer (odmowa strzału pustą bronią) i planer tury
+bota; zniknęło samo dopisywanie „· magazynek 7/8" do linii pod „Trafienie"/„Pudło".
+**Wiersze sprzed zmiany zostają z tym tekstem** — `detail` jest zapisany w bazie razem
+z wiadomością i nie przelicza się przy odczycie.
+
+**Obejrzane w przeglądarce (MG, scena „Strzelnica"):** pasek filtrów, tryb zwarty na pełnym
+logu, wyłączenie grupy „Rzuty" (separatory z poprawną polską odmianą: 1 wiersz / 3 wiersze /
+8 wierszy), rozwinięcie grupy w miejscu, rozwinięcie pojedynczej karty klikiem i zwinięcie
+strzałką „▴", „Pokaż wszystko". Konsola czysta. Kontrast kolorów werdyktu w motywie dziennym
+zmierzony: 8,45 / 7,71 / 5,99 — z zapasem ponad WCAG AA.
+
+**Testy na koniec:** 1718 w `shared` (+15), 893 na serwerze, 67 u klienta — zielone. ESLint
+i Prettier czyste.
+
 ### Sesja 01.09 (druga) — pasek dodatków i domknięcie oględzin etapu 31
 
 **Zlecenie MG:** paczka **A + B** z listy zaległości — jedna naprawa kodu (broń podwieszana

@@ -50,6 +50,8 @@ import type {
   CharacterDeleteBroadcast,
   CharacterPatch,
   CharacterRollPayload,
+  CheckCallPayload,
+  CheckCancelPayload,
   CharacterUpsertBroadcast,
   CharacterView,
   CombatUpdateBroadcast,
@@ -1025,6 +1027,13 @@ function rollAckErrorText(code: string): string {
       return 'Nie można leczyć samego siebie — załatać można (s. 223).';
     case 'INJURY_ALREADY_PATCHED':
       return 'Ta rana jest już załatana — jej efekt milczy do końca dnia.';
+    // Etap 32 — wezwanie do Testu, które w międzyczasie przestało czekać.
+    case 'CALL_NOT_FOUND':
+      return 'Nie znalazłem tego wezwania na czacie.';
+    case 'CALL_CLOSED':
+      return 'To wezwanie jest już rozliczone albo odwołane.';
+    case 'CALL_NOT_YOURS':
+      return 'To wezwanie należy do kogoś innego.';
     default:
       return `Błąd rzutu: ${code}`;
   }
@@ -1043,16 +1052,52 @@ export function sendCharacterRoll(
   gesture?: RollGesture,
   /** Figure rolling when there is no sheet — read only without a character. */
   attackerTokenId?: string,
+  /** Wezwanie MG, na które ten rzut odpowiada (etap 32). */
+  callMessageId?: number,
 ): void {
   const payload: CharacterRollPayload<CpredRollRequest> = {
     ...(characterId ? { characterId } : { attackerTokenId }),
     request,
     visibility,
+    ...(callMessageId !== undefined ? { callMessageId } : {}),
     ...(gesture ? { gesture } : {}),
   };
   socket?.emit('character:roll', payload, (ack: SocketAck<{ messageId: number }>) => {
     if (!ack.ok) useChatStore.getState().addNote(rollAckErrorText(ack.error));
   });
+}
+
+/**
+ * „Wezwij do Testu" (etap 32) — MG prosi jedną postać o rzut na nietypowe
+ * wydarzenie. Zwraca id karty wezwania, która staje na czacie z przyciskiem.
+ */
+export const callCheck = (payload: CheckCallPayload<CpredRollRequest>) =>
+  emitSceneAck<{ messageId: number }>('check:call', payload);
+
+/** „Odwołaj" na karcie wezwania — działa, dopóki nikt nie potrząsnął kubkiem. */
+export const cancelCheck = (messageId: number) =>
+  emitSceneAck('check:cancel', { messageId } satisfies CheckCancelPayload);
+
+/** Polskie komunikaty odmowy przy wystawianiu wezwania do Testu (etap 32). */
+export function checkCallErrorText(code: string): string {
+  switch (code) {
+    case 'CHARACTER_NOT_FOUND':
+      return 'Nie ma takiej postaci w tej kampanii.';
+    case 'UNKNOWN_SKILL':
+      return 'Nieznana umiejętność — odśwież stronę.';
+    case 'UNKNOWN_STAT':
+      return 'Nieznana cecha — odśwież stronę.';
+    case 'CALL_NOT_FOUND':
+      return 'Nie znalazłem tego wezwania na czacie.';
+    case 'CALL_CLOSED':
+      return 'To wezwanie jest już rozliczone albo odwołane.';
+    case 'FORBIDDEN':
+      return 'Wezwania do Testu wystawia MG.';
+    case 'BAD_REQUEST':
+      return 'Niepełne wezwanie — sprawdź próg i wybraną Umiejętność.';
+    default:
+      return `Błąd wezwania: ${code}`;
+  }
 }
 
 /** Polish hints for the damage rejections (GM-only actions, stage 15). */

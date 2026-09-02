@@ -97,15 +97,22 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 | 30c | Wsparcie i Praca Zespołowa                    | ✅     | 2026-08-29        |
 | 30d | Charyzma, Znajomości, Moto, Wiarygodność      | ✅     | 2026-08-30        |
 | 31  | Dodatki do broni                              | ✅     | 2026-09-01        |
+| 32  | Wezwanie MG do Testu                          | ✅     | 2026-09-02        |
 
 ## Od czego zacząć
+
+**Etap 32 (wezwanie MG do Testu) zamknięty 02.09 — dopisany tego dnia na zlecenie MG, poza
+pierwotnym planem.** MG wskazuje postać w panelu „Postacie", wybiera Umiejętność albo Cechę i PT
+(drabinka s. 130 albo własna liczba, albo rzut przeciwstawny), a gracz rzuca **kubkiem** —
+wezwanie woła z kubka i stoi na czacie. **Skutków karta nie rozlicza świadomie** (decyzja MG):
+dowozi werdykt „Zdane"/„Niezdane", a przedmiot, PW i ranę nadaje MG ręką. Wolny został
+**jeden etap: 28** (wdrożenie na VPS), a przed nim MG planuje **refaktoryzację całości**.
+Dług oględzin: **20 pozycji** — etap 32 obejrzany w komplecie tego samego dnia.
 
 **Etap 31 (dodatki do broni) zamknięty 01.09 i od drugiej sesji tego dnia obejrzany
 w komplecie** — z paska akcji strzela się także bagnetem i bronią podwieszaną. **Etap 27g
 (wydajność) został wycofany 01.09 decyzją MG — wydajność przetestowana samodzielnie, sesji nie
-będzie.** Wolny został **jeden etap: 28** (wdrożenie na VPS), a przed nim MG planuje
-**refaktoryzację całości** (ustalenie z 02.09). Dług oględzin: **20 pozycji**
-(`zaleglosci.md`) — 29a i 29b zamknięte 02.09, jedna nowa.
+będzie.** Dług oględzin liczy `zaleglosci.md` — 29a i 29b zamknięte 02.09.
 
 **Czat ma filtry i tryb zwarty (01.09, trzecia sesja).** Cztery grupy (Rozmowy, Rzuty, Walka,
 Stół) plus „Zwarty"; nastawienie jest lokalne, w `localStorage`. **Nowy rodzaj wiersza czatu
@@ -277,6 +284,8 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 - **Kara „nie widzę celu"** nosi `CPRED_OBSCUREMENT_KIND`, nie `situational` — noktowizor kasuje ujemne wiersze tego rodzaju, nie kompensuje ich plusem.
 - **Atak drugą bronią** jedzie `attachmentId` przez żądanie → intencję → celownik; obie strony rozwiązują go `resolveAttachmentWeapon` z tego samego katalogu.
 - **Nazwa Roli z `roles.json` wchodzi do zdania tylko w mianowniku** — po dwukropku albo na końcu. Odmiany nazwy z pliku danych nie da się zgadnąć („zostań Nomada").
+- **Rzut na wezwanie MG** — `payloadFromCall` podmienia **cały** payload na zapisaną kartę wezwania (postać, Umiejętność, modyfikator MG, widoczność); z żądania klienta zostaje Szczęście i gest. Wezwanie zamyka `resolveAnsweredCall` + `emitCheckCallUpdate`, werdykt liczy `cpredCheckOutcome` (remis nie zdaje).
+- **Kubek wołający wezwaniem** — `openCheckCallFor` czyta feed czatu (nie drugi magazyn stanu), a widzi je **tylko właściciel karty**; chwyt kubka otwiera okno rzutu, nie potrząsanie.
 
 ## Pułapki dev — indeks
 
@@ -370,6 +379,57 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 02.09 (druga) — wezwanie MG do Testu (etap 32)
+
+**Zlecenie MG:** nie etap z planu, tylko nowa mechanika — „testy za nietypowe wydarzenia, które
+MG chce, żeby gracz zdał", jako **nowy tryb rzutu poza publicznym i prywatnym**. Etap dopisany
+tego dnia jako **32** i zamknięty w tej samej sesji.
+
+**Cztery decyzje MG przed kodem.** (1) **Skutków karta nie rozlicza** — ma dowieźć wyraźny
+werdykt, a przedmiot, PW i ranę nadaje MG ręką narzędziami, które ma od etapów 15, 23b i 30b.
+(2) Zakres to **każda Umiejętność i każda Cecha**, z drabinką PT z s. 130 i rzutem
+przeciwstawnym. (3) **Rzuca gracz, kubkiem** — „to bardziej immersyjny sposób rzucania"; MG ma
+„Rzuć za nią" tylko na nieobecnego gracza i NPC-a. (4) **Trybu ślepego nie ma** — decyzja
+cofnięta w trakcie ustaleń: gracz zawsze widzi wynik swoich kości. Zostały dwie widoczności,
+te same, co przy każdym innym rzucie.
+
+**Rzut na wezwanie jedzie istniejącym `character:roll`.** To była najważniejsza decyzja
+techniczna: `payloadFromCall` podmienia payload w jednym miejscu na początku
+`performCharacterRoll`, a od tej linii w dół działa wszystko, co ta funkcja umie od etapu 08 —
+kary z ran, Zwarcie, wydanie Szczęścia, skórka kości, wstrzymanie karty do końca animacji 3D.
+Osobne zdarzenie musiałoby to powtórzyć i rozjechać się przy pierwszej zmianie w rzutach.
+
+**Wezwanie widać w dwóch miejscach — i to była dopowiedziana prośba MG w trakcie sesji.**
+Na czacie stoi karta rodzaju `check` (nowy `ChatKind`, wyjęty spod filtra przez `isPending`,
+w trybie zwartym renderowany pełną kartą, dopóki czeka), a **kubek gracza woła bursztynem**
+z etykietą „Wezwanie: Percepcja (INT) · PT 15". Chwyt takiego kubka **nie potrząsa** — otwiera
+okno rzutu, żeby dało się zadeklarować Szczęście; dopiero „Weź kubek" ładuje Test.
+
+**Czego klient nie może sobie nazwać.** Test dymny wysyła żądanie podrobione co do joty (inna
+karta, inna Umiejętność, modyfikator +20, własna widoczność) i sprawdza, że **nic z tego nie
+weszło**: rzut idzie Percepcją z wezwania, bez +20 w rozbiciu, a karta ląduje tam, gdzie kazał
+MG. To ta sama umowa, którą od 16 mają obrażenia po ataku.
+
+**Drabinka PT sprawdzona w podręczniku, nie z pamięci** (s. 130): Łatwy 9, Codzienny 13, Trudny
+15, Profesjonalny 17, Heroiczny 21, Niewiarygodny 24, Legendarny 29. „Codzienny 13" zgadza się
+z `CPRED_EVERYDAY_DV`, które stoi w `attacks.ts` od etapu 16. Remis nie zdaje — ani przy PT,
+ani w rzucie przeciwstawnym (druga strona wygrywa), zgodnie z decyzją z 30.08.
+
+**Jedna pułapka trafiona w trakcie pisania testów:** „PT 1 zdaje się zawsze" migotało na
+Cesze INT 7, bo naturalna 1 odejmuje 1k10 i schodzi do −2. Test przeszedł na Percepcję
+(7 + 4 = 11, więc dno to 2) — dokładnie ta pułapka, którą `pulapki-dev.md` opisuje od 30.08.
+
+**Obejrzane w przeglądarce (dwie sesje naraz, MG + `Tester`, scena „Strzelnica").** Nośnikiem
+był **Frank** — na czas oględzin przepisany na `Tester` i po wszystkim zwrócony do `NPC (MG)`.
+Odklikane: wezwanie z panelu, karta u gracza **i** bursztynowy kubek z etykietą, chwyt kubka
+otwierający okno rzutu (Szczęście zostaje, modyfikator i widoczność znikają), rzut z naturalną
+dziesiątką (24 → „Zdane · 24 > PT 15 (Trudny)"), zamknięta karta wezwania i „Odwołaj", po którym
+kubek gracza gaśnie w tej samej chwili. Konsola czysta. W logu poligonu zostały trzy wiersze
+z oględzin — historii czatu i tak się nie sprząta.
+
+**Testy na koniec:** 1738 w `shared` (+20), 904 na serwerze (+11), 67 u klienta — zielone.
+ESLint i Prettier czyste.
+
 ### Sesja 02.09 — oględziny rozwoju postaci (29a i 29b)
 
 **Zlecenie MG:** sesja oględzinowa, zestaw **B** z listy zaległości — reszta **29a** (pięć
@@ -415,44 +475,3 @@ czatu i tak się nie sprząta.
 
 **Testy na koniec:** 1718 w `shared`, 893 na serwerze, 67 u klienta — zielone. ESLint i Prettier
 czyste. Dług oględzin: **21 → 20 pozycji** (zamknięte dwie, jedna nowa).
-
-### Sesja 01.09 (trzecia) — filtry czatu, tryb zwarty i magazynek z karty ataku
-
-**Zlecenie MG:** nie etap — dwie zmiany na czacie. (1) Dało się chować rodzaje wierszy albo całe
-wiersze („same rozmowy"), a wiadomość ma nie zajmować sześciu linii. (2) Zdjąć z karty ataku
-stan magazynka, bo licznik naboi stoi już w panelu postaci i druga kopia tej samej liczby jest
-szumem.
-
-**Cztery decyzje MG przed kodem.** Filtry są **czterema grupami** (Rozmowy, Rzuty, Walka, Stół),
-nie przełącznikiem na każdy `ChatKind`. Tryb zwarty ściska **wyłącznie karty mechaniczne** do
-jednej linii — wypowiedzi zostają w całości, bo streszczenie rozmowy jest jej utratą. Wiersz
-odfiltrowany **nie znika**, tylko zwija się w klikalny separator „⋯ 4 ukryte wiersze ⋯". Ukryte
-zostaje ukryte tylko dla oka: nic nie zmienia się w tym, co przysyła serwer.
-
-**Gdzie to mieszka.** Podział na grupy i streszczenie jednej linii to **czyste funkcje w
-`shared/src/chat.ts`** (`chatCategoryOf`, `chatCompactLine`) z 20 testami — nie ma ich w
-komponencie, bo streszczenie wiersza jest dokładnie tak samo „logiką czatu", jak parser komend
-obok. Klient trzyma tylko nastawienie: `stores/chatFilterStore.ts`, `localStorage`, prywatne
-dla przeglądarki (wzorem głośności z 27d). `ChatPanel` składa z tego feed: widoczne wiersze
-pojedynczo, ukryte zbite w grupy.
-
-**Jedna zasada, która nie jest kosmetyką: filtr nie chowa pytań.** Propozycja bota bez
-odpowiedzi i notatka z przyciskami (16c: „cel za osłoną") są **wyjęte spod filtra** — to nie
-log, tylko decyzja czekająca na kliknięcie, a schowana pod separatorem zawiśnie w środku cudzej
-tury. Tak samo w trybie zwartym: nierozstrzygnięta propozycja renderuje się pełną kartą, bo
-zwarty wiersz nie ma przycisków.
-
-**Magazynek zdjęty z `attackDetail` (`realtime/attacks.ts`), nie z metadanych.** `ammoAfter`
-i `ammoMax` zostają na karcie — czyta je serwer (odmowa strzału pustą bronią) i planer tury
-bota; zniknęło samo dopisywanie „· magazynek 7/8" do linii pod „Trafienie"/„Pudło".
-**Wiersze sprzed zmiany zostają z tym tekstem** — `detail` jest zapisany w bazie razem
-z wiadomością i nie przelicza się przy odczycie.
-
-**Obejrzane w przeglądarce (MG, scena „Strzelnica"):** pasek filtrów, tryb zwarty na pełnym
-logu, wyłączenie grupy „Rzuty" (separatory z poprawną polską odmianą: 1 wiersz / 3 wiersze /
-8 wierszy), rozwinięcie grupy w miejscu, rozwinięcie pojedynczej karty klikiem i zwinięcie
-strzałką „▴", „Pokaż wszystko". Konsola czysta. Kontrast kolorów werdyktu w motywie dziennym
-zmierzony: 8,45 / 7,71 / 5,99 — z zapasem ponad WCAG AA.
-
-**Testy na koniec:** 1718 w `shared` (+15), 893 na serwerze, 67 u klienta — zielone. ESLint
-i Prettier czyste.

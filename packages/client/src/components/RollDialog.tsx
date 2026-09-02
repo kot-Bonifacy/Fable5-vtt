@@ -11,7 +11,12 @@ import {
   planCpredRoll,
 } from '@vtt/shared';
 import { useCharacterStore } from '../stores/characterStore.js';
-import { useRollStore, type PendingRoll, type RollTarget } from '../stores/rollStore.js';
+import {
+  useRollStore,
+  type PendingRoll,
+  type RollCall,
+  type RollTarget,
+} from '../stores/rollStore.js';
 
 /**
  * The pre-roll dialog: situational modifier, Luck to spend and who sees the
@@ -32,11 +37,17 @@ function RollDialogBody({ target }: { target: RollTarget }) {
   const lastVisibility = useRollStore((s) => s.lastVisibility);
   const lastLocation = useRollStore((s) => s.lastLocation);
   const isDamage = target.kind === 'damage';
+  // Wezwanie MG (etap 32): modyfikator i widoczność są **jego** decyzją, więc
+  // okno przestaje o nie pytać i pokazuje je jako fakt. Gracz zachowuje jedyny
+  // wybór, który przy wezwaniu naprawdę należy do niego — Szczęście.
+  const call = target.call;
 
-  const [modifier, setModifier] = useState(isDamage ? 0 : lastModifier);
+  const [modifier, setModifier] = useState(
+    call ? (call.modifier ?? 0) : isDamage ? 0 : lastModifier,
+  );
   const [luckSpent, setLuckSpent] = useState(0);
   const [visibility, setVisibility] = useState<'public' | 'gm'>(
-    isDamage ? 'public' : lastVisibility,
+    call ? call.visibility : isDamage ? 'public' : lastVisibility,
   );
   const [location, setLocation] = useState<CpredHitLocation>(lastLocation);
 
@@ -77,7 +88,11 @@ function RollDialogBody({ target }: { target: RollTarget }) {
 
   function confirm() {
     if (!planned.ok) return;
-    if (isDamage) useRollStore.getState().rememberLocation(location);
+    // Wezwania nie zapamiętujemy: modyfikator MG i jego widoczność nie mają
+    // być domyślnymi ustawieniami następnego, własnego rzutu gracza.
+    if (call) {
+      /* nic do zapamiętania */
+    } else if (isDamage) useRollStore.getState().rememberLocation(location);
     else useRollStore.getState().remember(modifier, visibility);
     const pending: PendingRoll = {
       ...target,
@@ -93,8 +108,21 @@ function RollDialogBody({ target }: { target: RollTarget }) {
     <div className="dialog-backdrop" onClick={closeDialog}>
       <div className="dialog roll-dialog" onClick={(e) => e.stopPropagation()}>
         <h3 className="panel-section-title">
+          {call ? 'Wezwanie do Testu — ' : ''}
           {target.characterName}: {planned.ok ? planned.plan.title : 'Rzut'}
         </h3>
+
+        {call && (
+          <div className="roll-call-frame">
+            {call.prompt && <p className="roll-call-prompt">„{call.prompt}"</p>}
+            <p className="roll-dialog-hint">
+              Wezwał {call.calledByName} · {callTargetText(call)}
+              {call.modifier
+                ? ` · modyfikator MG ${call.modifier > 0 ? '+' : '−'}${Math.abs(call.modifier)}`
+                : ''}
+            </p>
+          </div>
+        )}
 
         {planned.ok && (
           <ul className="roll-preview">
@@ -165,27 +193,31 @@ function RollDialogBody({ target }: { target: RollTarget }) {
           </div>
         )}
 
-        <label className="auth-label" htmlFor="roll-modifier">
-          {isDamage ? 'Modyfikator obrażeń' : 'Modyfikator sytuacyjny'}
-        </label>
-        <input
-          id="roll-modifier"
-          type="number"
-          min={-CPRED_SITUATIONAL_MODIFIER_LIMIT}
-          max={CPRED_SITUATIONAL_MODIFIER_LIMIT}
-          value={modifier}
-          onChange={(e) => {
-            const value = Number(e.target.value);
-            if (Number.isFinite(value)) {
-              setModifier(
-                Math.max(
-                  -CPRED_SITUATIONAL_MODIFIER_LIMIT,
-                  Math.min(CPRED_SITUATIONAL_MODIFIER_LIMIT, Math.round(value)),
-                ),
-              );
-            }
-          }}
-        />
+        {!call && (
+          <>
+            <label className="auth-label" htmlFor="roll-modifier">
+              {isDamage ? 'Modyfikator obrażeń' : 'Modyfikator sytuacyjny'}
+            </label>
+            <input
+              id="roll-modifier"
+              type="number"
+              min={-CPRED_SITUATIONAL_MODIFIER_LIMIT}
+              max={CPRED_SITUATIONAL_MODIFIER_LIMIT}
+              value={modifier}
+              onChange={(e) => {
+                const value = Number(e.target.value);
+                if (Number.isFinite(value)) {
+                  setModifier(
+                    Math.max(
+                      -CPRED_SITUATIONAL_MODIFIER_LIMIT,
+                      Math.min(CPRED_SITUATIONAL_MODIFIER_LIMIT, Math.round(value)),
+                    ),
+                  );
+                }
+              }}
+            />
+          </>
+        )}
 
         {/* Luck buys successes on Checks, never damage (RAW). */}
         {!isDamage && (
@@ -209,27 +241,34 @@ function RollDialogBody({ target }: { target: RollTarget }) {
               title="Deklarowane przed rzutem — każdy punkt to +1 do wyniku"
             />
 
-            <fieldset className="roll-visibility">
-              <legend className="auth-label">Widoczność</legend>
-              <label>
-                <input
-                  type="radio"
-                  name="roll-visibility"
-                  checked={visibility === 'public'}
-                  onChange={() => setVisibility('public')}
-                />{' '}
-                Publiczny
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  name="roll-visibility"
-                  checked={visibility === 'gm'}
-                  onChange={() => setVisibility('gm')}
-                />{' '}
-                Tylko dla MG
-              </label>
-            </fieldset>
+            {call ? (
+              <p className="roll-dialog-hint">
+                Widoczność wyniku wybrał MG:{' '}
+                {visibility === 'public' ? 'jawna dla stołu' : 'MG i ty'}.
+              </p>
+            ) : (
+              <fieldset className="roll-visibility">
+                <legend className="auth-label">Widoczność</legend>
+                <label>
+                  <input
+                    type="radio"
+                    name="roll-visibility"
+                    checked={visibility === 'public'}
+                    onChange={() => setVisibility('public')}
+                  />{' '}
+                  Publiczny
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="roll-visibility"
+                    checked={visibility === 'gm'}
+                    onChange={() => setVisibility('gm')}
+                  />{' '}
+                  Tylko dla MG
+                </label>
+              </fieldset>
+            )}
           </>
         )}
 
@@ -250,4 +289,13 @@ function RollDialogBody({ target }: { target: RollTarget }) {
       </div>
     </div>
   );
+}
+
+/** „PT 15 (Trudny)" albo „przeciwstawny — druga strona: 14 + 1k10". */
+function callTargetText(call: RollCall): string {
+  if (call.opponentBonus !== undefined) {
+    return `rzut przeciwstawny — druga strona: ${call.opponentBonus} + 1k10`;
+  }
+  if (call.dv === undefined) return 'bez progu';
+  return call.dvLabel ? `PT ${call.dv} (${call.dvLabel})` : `PT ${call.dv}`;
 }

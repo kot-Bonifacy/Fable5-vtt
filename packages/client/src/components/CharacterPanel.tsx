@@ -8,6 +8,7 @@ import {
   formatEddies,
 } from '@vtt/shared';
 import { apiGet } from '../api.js';
+import { CheckCallDialog } from './CheckCallDialog.js';
 import { confirmDestructive } from '../confirm.js';
 import {
   advanceErrorText,
@@ -51,6 +52,8 @@ function ackErrorText(code: string): string {
 export function CharacterPanel() {
   const user = useAuthStore((s) => s.user);
   const isGm = user?.role === ROLE_GM;
+  /** Postać, dla której MG układa właśnie wezwanie do Testu (etap 32). */
+  const [callFor, setCallFor] = useState<{ id: string; name: string } | null>(null);
   const characters = useCharacterStore((s) => s.characters);
   const order = useCharacterStore((s) => s.order);
   const registry = useCharacterStore((s) => s.registry);
@@ -296,6 +299,18 @@ export function CharacterPanel() {
                 </button>
                 {isGm && (
                   <span className="character-row-actions">
+                    {/* Etap 32: wezwanie do Testu stoi przy postaci, nie przy
+                        żetonie — nietypowe wydarzenie trafia też kogoś, kto
+                        akurat nie stoi na aktywnej scenie. */}
+                    <button
+                      type="button"
+                      className="small-button"
+                      onClick={() => setCallFor({ id, name: character.name })}
+                      title="Wezwij do Testu"
+                      aria-label="Wezwij do Testu"
+                    >
+                      ⚄
+                    </button>
                     <PlaceOnSceneButton
                       characterId={id}
                       name={character.name}
@@ -371,6 +386,14 @@ export function CharacterPanel() {
       </form>
 
       {error && <p className="auth-error">{error}</p>}
+
+      {callFor && (
+        <CheckCallDialog
+          characterId={callFor.id}
+          characterName={callFor.name}
+          onClose={() => setCallFor(null)}
+        />
+      )}
     </div>
   );
 }

@@ -20,7 +20,7 @@ import type {
   JournalLogEntry,
   RollResult,
 } from '@vtt/shared';
-import { ROLE_GM, chatCategoryOf, chatCompactLine } from '@vtt/shared';
+import { ROLE_GM, chatCategoryOf, chatCompactLine, isCheckCallOpen } from '@vtt/shared';
 import {
   allowCombatAction,
   fetchHandouts,
@@ -33,6 +33,7 @@ import { AttackRow } from './AttackControls.js';
 import { IconNewspaper } from './UiIcons.js';
 import { OpposedRow } from './GrappleControls.js';
 import { DamageApplyControls, DamageRow } from './DamageControls.js';
+import { CheckCallRow } from './CheckCall.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useChatFilterStore } from '../stores/chatFilterStore.js';
 import { useChatStore, type ChatItem } from '../stores/chatStore.js';
@@ -727,6 +728,9 @@ function FullMessageRow({
   if (message.kind === 'journal' && message.journal) {
     return <JournalRow message={message} entry={message.journal} />;
   }
+  if (message.kind === 'check' && message.check) {
+    return <CheckCallRow message={message} entry={message.check} />;
+  }
   if ((message.kind === 'action' || message.kind === 'gmaction') && message.action) {
     return <CombatActionRow message={message} entry={message.action} isGm={isGm} />;
   }
@@ -826,7 +830,11 @@ function hiddenLabel(count: number): string {
  */
 function isPending(item: ChatItem, myUserId: string, isGm: boolean): boolean {
   if (item.type === 'note') return (item.actions?.length ?? 0) > 0;
-  const { proposal, kind } = item.message;
+  const { proposal, check, kind } = item.message;
+  // Wezwanie do Testu (etap 32) jest tym samym, czym propozycja bota: decyzją
+  // czekającą na kliknięcie, a nie wpisem w dzienniku. Schowane pod
+  // separatorem albo ściśnięte do jednej linii zawisłoby w środku cudzej tury.
+  if (kind === 'check') return check !== undefined && isCheckCallOpen(check);
   if (kind !== 'proposal' || !proposal || proposal.resolution !== undefined) return false;
   return isGm || proposal.controllerUserId === myUserId;
 }

@@ -76,6 +76,7 @@ import {
   creationStartEvent,
 } from './creation.js';
 import { characterRollEvent } from './character-rolls.js';
+import { checkCallEvent, checkCancelEvent } from './checks.js';
 import { characterCyberwareEvent } from './cyberware.js';
 import {
   economyAdjustEvent,
@@ -283,6 +284,8 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   creationFinishEvent,
   creationDiscardEvent,
   characterRollEvent,
+  checkCallEvent,
+  checkCancelEvent,
   characterCyberwareEvent,
   economyBuyEvent,
   economyTransferEvent,

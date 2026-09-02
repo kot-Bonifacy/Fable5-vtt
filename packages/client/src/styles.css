@@ -9070,3 +9070,58 @@ body.is-resizing {
 .creator-skill-specialty--missing {
   border-color: var(--accent);
 }
+
+/* --- etap 32: wezwanie MG do Testu --- */
+
+/* Kubek, który czeka na wezwanie. Bursztyn zamiast zieleni rzutu z karty:
+   ten rzut nie jest pomysłem gracza, tylko czyjąś prośbą, i musi się różnić
+   jednym spojrzeniem. Oddech mocniejszy (ta sama klatka, co przy kreatorze),
+   bo kubek stoi w rogu, a wydarzenie dzieje się na środku stołu. */
+.dice-cup--call {
+  --cup-glow: var(--warn-rgb);
+  color: var(--warn);
+  border-color: var(--warn);
+  animation: dice-cup-call 1.2s ease-in-out infinite;
+}
+
+.chat-check {
+  border-left: 3px solid var(--warn);
+  padding-left: 0.5rem;
+}
+
+.chat-check--cancelled {
+  border-left-color: var(--border);
+  opacity: 0.65;
+}
+
+.chat-check-modifier {
+  margin: 0.1rem 0 0.3rem;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+/* Ramka wezwania w oknie rzutu — powtarza to, co stoi na karcie czatu, bo
+   gracz decyduje o Szczęściu tutaj, a nie tam. */
+.roll-call-frame {
+  border-left: 3px solid var(--warn);
+  padding-left: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.roll-call-prompt {
+  margin: 0 0 0.15rem;
+  font-size: 0.82rem;
+  font-style: italic;
+}
+
+/* Drabinka PT: siedem szczebli, więc zawija się zamiast rozpychać okno. */
+.check-ladder {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-bottom: 0.35rem;
+}
+
+.check-call-dialog {
+  max-width: 26rem;
+}
