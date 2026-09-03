@@ -4,6 +4,18 @@ Wyprowadzone z „Od czego zacząć" w `POSTEP.md` 22.08.2026. Indeks jednolinij
 tu leżą pełne wersje. Czytaj wpis, **zanim** dołożysz coś w obszarze, którego dotyczy — każdy
 z nich powstał po tym, jak ktoś dołożył to w złym miejscu.
 
+**Co gracz może nazwać figurę, rozstrzyga serwer — od 03.09 przez `Token.publicName`.**
+Trzy stany w jednej kolumnie nullable, więc żadna scena nie wymagała konwersji: `null` = gracz
+widzi `name` (tak było zawsze), tekst = widzi ten tekst, `''` = nie widzi żadnej etykiety.
+Podmiana siedzi **w dwóch miejscach i tylko tam**: `toTokenView` (`realtime/tokens.ts`) wpisuje
+`includePrivate ? name : (publicName ?? name)` i sam alias wkłada **do gałęzi prywatnej** —
+gracz nie ma się nawet dowiedzieć, że druga nazwa istnieje; `filterCombatForPlayer`
+(`shared/combat.ts`) wymienia `name` w wierszu trackera, zdejmuje pole `publicName` i przy
+okazji poprawia `grapple.otherName`, żeby Pochwycenie nie nazwało nikogo po prawdziwemu. Nowa
+ścieżka, którą figura dociera do gracza, **filtruje nazwę u siebie** — nie w kliencie, i nie
+przez trzecie miejsce, które trzeba pamiętać. Czat jest świadomie poza tą umową: nazwa jest
+tam wpisana w **treść** zapisanej wiadomości, opis w `zaleglosci.md`.
+
 **Ruch gracza jest od 21.08 sprawdzany geometrią na serwerze.** `refuseWalkThroughSolid`
 w `realtime/movement.ts` odrzuca trasę przez ścianę, zamknięte okno i stojącą osłonę — **także
 poza walką**, i **odmowa nie nazywa przeszkody** (gracz nie może mapować budynku, wchodząc w nią).

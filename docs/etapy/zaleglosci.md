@@ -6,6 +6,10 @@ odhaczania zaległości albo dotykasz etapu, który tu występuje — nie rutyno
 
 Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/zamkniete-zaleglosci.md`.
 
+**Zamknięte 03.09 (druga sesja tego dnia):** oba długi higieny — **czerwony `tsc --noEmit`**
+na serwerze i **losowo padający zestaw testów**. Migotanie miało **cztery** przyczyny, nie jedną;
+diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
+
 **Zamknięte 02.09 (druga sesja tego dnia):** trzy błędy z oględzin etapów 31 i 32 — wybór
 amunicji dla broni podwieszanej, nazwa dodatku w chmurce nad celem i odmowa `character:update`
 zostawiająca na karcie wartość, której nie ma w bazie. Wszystkie naprawione **i obejrzane
@@ -13,24 +17,16 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
 
 ## Pozycje
 
-- **`tsc --noEmit` na serwerze ma jeden błąd, którego `vitest` i ESLint nie widzą.**
-  `packages/server/src/attacks.test.ts:1941` — `expect(card.system.ammo?.id)` przy
-  `Property 'id' does not exist on type '{}'`: `card.system` wraca z testowego pomocnika bez
-  typu, więc `ammo` jest pustym obiektem. Wszedł z etapem 31 (commit `cb4420a`, 02.09),
-  testy przechodzą, bo vitest nie sprawdza typów. Naprawa: otypować zwrot pomocnika `attack`
-  w tym pliku, zamiast rzutować w miejscu asercji.
-
-- **Zestaw testów serwera bywa czerwony pod równoległością — losowo, w różnych plikach.**
-  Objaw: pełny `pnpm --filter @vtt/server test` pada mniej więcej co drugi przebieg, za każdym
-  razem gdzie indziej, a ten sam plik uruchomiony osobno przechodzi 6/6. Złapane trzy adresy:
-  `roles30d.test.ts` („Pogłoski są rzutem MG i idą szeptem" — `expect(message.kind).toBe('gmroll')`
-  dostaje publiczny broadcast **poprzedniego** testu, bo `waitFor(gm, 'chat:message')` bierze
-  pierwszą wiadomość, jaka przyjdzie), `zones.test.ts` („reads the whole recorded path" —
-  `expected 0 to be less than 0`, czyli figura weszła w test już z zerem PW) i `netdemons.test.ts`
-  (trzy testy Demonów naraz). **To nie jest regresja żadnej sesji:** 03.09 sprawdzone przez
-  `git stash` — na czystym HEAD pada tak samo, tylko w innym pliku. Naprawa idzie w dwóch
-  krokach: `waitFor` z predykatem na treść albo id zamiast „pierwsza, która przyjdzie", i twarde
-  ustawianie PW na starcie testów, które sprawdzają, że PW spadło.
+- **Nazwa figury nadal jedzie do graczy w kartach czatu.** Alias `Token.publicName` (03.09)
+  zasłania prawdziwą nazwę **na mapie i w Kolejce Inicjatywy** — obie ścieżki filtruje serwer
+  (`toTokenView`, `filterCombatForPlayer`), obie obejrzane w przeglądarce. **Czat zostaje
+  nieszczelny:** ponad trzydzieści miejsc w `realtime/` wpisuje `token.name` w **treść**
+  wiadomości („Snajper Arasaki → Rudy Kwiatkowski"), a wiadomość jest zapisana w bazie
+  i rozsyłana wszystkim tak samo — filtr per-odbiorca wymagałby albo przebudowy kart na dane
+  plus szablon, albo drugiej kopii wiadomości. Praktycznie boli mniej, niż wygląda: kartę
+  pisze figura, która **właśnie coś zrobiła**, więc stół i tak już wie, kto to. Okno edycji
+  tokenu mówi to graczowi wprost („Karty na czacie nadal piszą prawdziwą nazwę"). Do zrobienia
+  razem z **etapem 35**, do którego alias pierwotnie należał.
 
 - **Etap 30d nie był oglądany w przeglądarce.** Mechanika jedzie w testach (38 nowych
   w `shared`, 13 na serwerze), ale żadnego z tych czterech paneli nikt nie kliknął. Do

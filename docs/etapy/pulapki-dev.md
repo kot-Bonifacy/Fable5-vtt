@@ -4,6 +4,60 @@ Wyprowadzone z `POSTEP.md` 22.08.2026. Indeks jednolinijkowy jest w `POSTEP.md`;
 opisy z rozpoznaniem i obejściem. Czytaj wpis, zanim zaczniesz szukać błędu w obszarze, którego
 dotyczy.
 
+- **Nowy plik testów dymnych musi dostać `}, 60_000);` przy `beforeAll` — inaczej pęka pod
+  równoległością, i to całym plikiem.** Hak startowy uruchamia `npx prisma migrate deploy`
+  (osobny proces CLI Prismy) i podnosi Fastify z Socket.IO; pod pełnym `vitest run` (55 plików,
+  każdy z własnym serwerem) nie mieści się w **domyślnych 10 s** vitesta. **Rozpoznanie:** objaw
+  jest inny niż przy zwykłym migotaniu — w raporcie stoi `FAIL src/plik.test.ts
+[ src/plik.test.ts ]`, bez nazwy testu i bez asercji, bo pada **hak**, nie test. 03.09 miało
+  to pięć plików (`compendium`, `netcombat`, `netrun`, `netrunning`, `screamsheets`); reszta
+  limit miała od początku. To jest przyczyna, którą wcześniejszy wpis o „pękaniu na limicie
+  czasu" opisywał po objawach.
+
+- **`waitFor(socket, 'chat:message')` bierze PIERWSZĄ wiadomość, jaka przyjdzie — i to jest
+  wyścig, nie ostrożność.** Publiczny rzut dociera także do gniazda MG, a jego kopia potrafi
+  wylądować już **po** tym, jak test, który go wywołał, wrócił na kopii gracza. Wtedy oczekiwanie
+  **następnego** testu rozwiązuje się na karcie **poprzedniego**, a asercja pada w miejscu, które
+  z przyczyną nie ma nic wspólnego (03.09 kosztowało to diagnozy w trzech plikach naraz).
+  **Rozpoznanie:** pada raz na kilka przebiegów, za każdym razem gdzie indziej, a sam plik
+  uruchomiony osobno przechodzi. **Obejście:** dopasowanie po treści, nie „pierwsza, jaka
+  przyjdzie" — wzorzec `waitForMatch` / `waitForRoll(socket, tytuł)` jest w `roles30d.test.ts`,
+  `netdemons.test.ts` i `character-rolls.test.ts`. Nowy test czekający na kartę na czacie
+  **od razu** pisze, na którą.
+
+- **Test, który mierzy „PW spadły", musi sam ustawić PW na starcie.** Przy zerze serwer
+  **odmawia graczowi ruchu w ogóle** (`realtime/movement.ts`), więc walk się nie odbywa, spadek
+  wychodzi 0 → 0, a test pada na `expected 0 to be less than 0` — obwiniając asercję zamiast
+  stanu, który go zepsuł. Kilka trafień po 6k6 wystarczy, żeby figura z 50 PW dojechała do zera
+  w połowie pliku. **Obejście:** pomocnik w rodzaju `healUp()` z `zones.test.ts`, który stawia
+  kartę na pełni **i zwraca tę liczbę** — a asercja porównuje się z nią, nie ze stałą wpisaną
+  z palca.
+
+- **`window.confirm` zawiesza kartę pod CDP, jeśli nie przechwycisz go PRZED kliknięciem.**
+  `confirmDestructive` (`client/src/confirm.ts`) to natywny `window.confirm`, a natywny modal
+  blokuje `Input.dispatchMouseEvent`, `Input.dispatchKeyEvent` **i** wstrzykiwanie skryptów —
+  czyli wszystkie drogi, którymi dałoby się go zamknąć. Karta zostaje martwa; jedynym wyjściem
+  jest ją **zamknąć i otworzyć na nowo**. **Obejście, zawsze przed klikaniem czegokolwiek
+  niszczącego:** `javascript_tool` z `window.confirm = () => true`. Uwaga: przeładowanie strony
+  zdejmuje tę łatę, więc po każdym reloadzie trzeba ją założyć od nowa. Sprostowanie do
+  wcześniejszego wpisu, który mówił, że confirm „nie zawiesza sterowania" — nie zawiesza tylko
+  wtedy, gdy jest przechwycony.
+
+- **Zrzut ekranu ma inną skalę niż `clientX`/`clientY`.** Współrzędne z narzędzia zrzutu trzeba
+  przemnożyć przez `window.innerWidth / szerokość zrzutu` (03.09: 1964/1394 ≈ 1,41), zanim
+  wsadzi się je w syntetyczne zdarzenie wskaźnika. Bez tego klik ląduje w zupełnie innym
+  miejscu mapy i wygląda jak „Pixi nie odbiera zdarzeń".
+
+- **Menu kontekstowe tokenu otwiera `pointerdown` z `button === 2`**, a `right_click` z CDP go
+  nie dowozi (`wireInteraction` w `MapRenderer.ts`). Obejście, sprawdzone 03.09: dispatch
+  `new PointerEvent('pointerdown', {button: 2, buttons: 2, …})` na `<canvas>` po przeliczeniu
+  współrzędnych (wpis wyżej). Potem `find` znajduje pozycje menu normalnie.
+
+- **`form_input` na checkboksie Reacta zmienia DOM, ale nie stan komponentu.** Pole zaznacza
+  się wizualnie, a warunkowa część formularza się nie pojawia — i kolejny prawdziwy klik
+  **odznacza** je z powrotem, bo React nadal uważa, że jest wyłączone. Do kontrolowanych pól
+  React używaj `left_click`, nie `form_input`.
+
 - **Nowa kolumna z adresem pliku musi trafić na listę w `uploads-gc.ts`** — sprzątacz kasuje
   plik, którego nie wymienia **żadna** kolumna (i który jest starszy niż godzina), więc kolumna
   pominięta na tej liście znaczy skasowany plik. Odnośniki zbierane są z kolumn z adresem
@@ -80,7 +134,10 @@ dotyczy.
 - **Haseł w formularze nie wpisuję** — sesję MG zakłada użytkownik, sesję gracza zakłada się kluczem z panelu MG (bez hasła).
 - **Edycja kodu w trakcie oględzin przeładowuje kartę, a wtedy pisanie staje się skrótami klawiszowymi.** Kosztowało to 08.08 przypadkowe przeskoczenie tury w żywej kampanii: po edycie `realtime/rules.ts` `tsx watch` zrestartował serwer, Vite przeładował stronę, ognisko wyszło z pola tekstowego — i wpisywane zdanie poleciało do globalnych skrótów mapy (**każde „e" to „koniec tury"**, litery uzbrajają narzędzia). **Zasada:** albo kończysz edycje przed wejściem do przeglądarki, albo przed każdym pisaniem robisz zrzut i sprawdzasz, że kursor stoi w polu. Po wpadce `Esc` rozbraja uzbrojone narzędzie.
 - **`reasoning_budget` w llama-server nie działa dla wartości dodatnich** — przyjmuje 640 bez błędu, ale egzekwuje wyłącznie 0 i −1. Każda ścieżka z `reasoning: true` musi umieć obsłużyć **pustą odpowiedź** po zużyciu całego `max_tokens` na blok think. Szczegóły w `ai-gateway/README.md`.
-- **Testy dymne serwera potrafią raz na kilka przebiegów pęknąć na limicie czasu** — każdy plik podnosi własny Fastify z Socket.IO, więc przy pełnym `pnpm --filter @vtt/server test` bywa ciasno. Zaobserwowane 08.08: dwa różne przypadki (`ammo.test.ts`, `ammo-effects.test.ts`) pękły po jednym razie na trzy przebiegi i **oba przeszły uruchomione osobno**. Zanim zaczniesz szukać regresji, powtórz sam plik.
+- ~~**Testy dymne serwera potrafią raz na kilka przebiegów pęknąć na limicie czasu**~~ —
+  **przyczyna znaleziona 03.09: `beforeAll` bez `}, 60_000);`** (wpis na górze pliku). Oryginalny
+  opis, zostawiony dla objawów: **Testy dymne serwera potrafią raz na kilka przebiegów pęknąć
+  na limicie czasu** — każdy plik podnosi własny Fastify z Socket.IO, więc przy pełnym `pnpm --filter @vtt/server test` bywa ciasno. Zaobserwowane 08.08: dwa różne przypadki (`ammo.test.ts`, `ammo-effects.test.ts`) pękły po jednym razie na trzy przebiegi i **oba przeszły uruchomione osobno**. Zanim zaczniesz szukać regresji, powtórz sam plik.
   **Korekta z 14.08:** w przypadku `ammo.test.ts` limit czasu **nie był przyczyną** — test „an
   armour-piercing round takes two points of SP" pękał **także uruchomiony sam**, raz na kilka
   przebiegów, i to z powodu dwóch źródeł losowości w samym teście (zdarty pancerz celu + rzut

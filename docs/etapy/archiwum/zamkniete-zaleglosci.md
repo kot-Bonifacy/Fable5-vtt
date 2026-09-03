@@ -9,6 +9,73 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Przeniesione 2026-09-03 (dwa długi higieny, obie z drugiej sesji tego dnia)
+
+- **`tsc --noEmit` na serwerze miał jeden błąd, którego vitest ani ESLint nie widziały.
+  ZAMKNIĘTE — naprawione 03.09.** `attacks.test.ts:1941` — `expect(card.system.ammo?.id)` przy
+  `Property 'id' does not exist on type '{}'`. Diagnoza dokładna: lokalny interfejs `AttackCard`
+  opisywał `system` jako `Record<string, unknown>`, a przy `noUncheckedIndexedAccess`
+  `card.system.ammo` to `unknown` — optional chaining zawęża je do `{}`, na którym nie ma
+  żadnego pola. Naprawa **nie** przez rzut w miejscu asercji: `system` dostał prawdziwy kształt
+  `CpredAttackMeta & { margin: number; multiplier?: number }` (planer plus dwie liczby, które
+  dokłada serwer w `realtime/attacks.ts`), a trzynaście rozsianych po pliku rzutów
+  `as AttackCard` zastąpiły dwa pomocniki: `attackCard()` i `requireAttackCard()`. **Jedyny
+  rzut w pliku siedzi teraz w `attackCard()`** — i jest tam konieczny, bo `RollAttackMeta.system`
+  w `dice.ts` jest `Record<string, unknown>` **świadomie**: silnik kości nie wolno mu wiedzieć,
+  czym jest CP RED (separacja rdzeń/system). Testu w `shared` nie zmieniano. Sprawdzone:
+  `tsc --noEmit` czysty w **całym monorepo** (`shared`, `server`, `client`).
+
+- **Zestaw testów serwera padał losowo pod równoległością. ZAMKNIĘTE — naprawione 03.09.**
+  Dwie przyczyny, obie potwierdzone w kodzie, nie zgadnięte:
+  1. **`waitFor` bierze pierwszą wiadomość, jaka przyjdzie.** Publiczny rzut dociera także do
+     gniazda MG, a jego kopia potrafi wylądować już **po** tym, jak test, który go wywołał,
+     wrócił na kopii gracza — wtedy `waitFor` następnego testu rozwiązuje się na karcie
+     poprzedniego. Naprawa: dopasowanie po treści. `roles30d.test.ts` dostał `waitForMatch`
+     i `waitForRoll(socket, title)`; sześć oczekiwań na `chat:message` czeka teraz na swoją
+     kartę po tytule („Pogłoski", „Targowanie się", „Efekt Charyzmy", „Test Rzetelności",
+     „Prowadzenie pojazdów") albo po obecności rozliczenia ekonomii. `netdemons.test.ts` dostał
+     własne `waitForRoll` — tam kolidowały karta wykrycia Demona i trzy karty Tury Demona;
+     dopasowanie idzie po tytule wymiany („Miecz → Mur", bo `plan.label` to
+     `${program.name} → ${demon.name}`) i po „Kontrola".
+  2. **Rzut, od którego zależy pięć testów niżej — i który przegrywa raz na sto.** To była
+     **główna** przyczyna, a zapis zaległości jej nie znał: kaskada wyglądała na wyścig, bo
+     padało zawsze kilka testów naraz. Netrunner przejmuje węzeł kontrolny Testem Interfejsu
+     10 przeciw **PT 1 wypisanemu na piętrze**. Naturalna jedynka każe dorzucić kość i ją
+     **odjąć** (dorzut sam już nie wybucha), więc najniższy możliwy wynik to **równo 1** —
+     a Test wymaga „więcej niż PT". Zmierzone na milionie rzutów: **0,998 %**. Gdy trafi,
+     w `netdevices.test.ts` pięć następnych testów wraca z `NET_NODE_NOT_HELD`, a
+     w `netdemons.test.ts` Demon nie ma czego odebrać, więc „odebrany" nie pada i PT węzła
+     nigdy nie rośnie do 31. **Wzorzec naprawy istniał w repo od dawna** — `netrun.test.ts`
+     ma na to pętlę dziesięciu podejść; brakowało jej w dwóch pozostałych plikach. Dołożona:
+     w `netdevices.test.ts` do sześciu podejść (walka zaczyna się dopiero niżej, a poza walką
+     `spendTurnForToken` zwraca „not-in-combat", więc budżetu Akcji Sieciowych nie ma),
+     w `netdemons.test.ts` **jedna** powtórka — walka trwa, ranga 10 daje pięć Akcji na Rundę,
+     trzy poszły na ataki wyżej, więc drugie podejście to piąta Akcja i na trzecie budżetu już
+     nie ma. Dwa podejścia znoszą 1 % do 0,01 %.
+  3. **`zones.test.ts` mierzył spadek PW od stanu, który mógł już być zerem.** Kolec ma 50 PW
+     (BC 8, SW 8), podłoga elektryczna bije 6k6 za wejście, a **przy zerze serwer odmawia
+     graczowi ruchu w ogóle** (`realtime/movement.ts`) — więc walk się nie odbywa, spadek jest
+     0 → 0 i test pada na `expected 0 to be less than 0`, obwiniając asercję zamiast stanu.
+     Naprawa: pomocnik `healUp()` stawia kartę na pełni i **zwraca** tę liczbę; cztery testy
+     mierzące PW zaczynają od niego, a piąty (rozliczenie na koniec Tury) dostał go zamiast
+     ręcznej łaty `hpCurrent: 50` wpisanej tam wcześniej — jej komentarz „Kolec leży na zerze"
+     był zresztą pierwszym śladem tej diagnozy.
+
+  4. **Pięć plików miało `beforeAll` bez podniesionego limitu czasu.** Wyszło dopiero
+     w pomiarze po trzech poprawkach wyżej: jeden przebieg na dwanaście padł
+     w `screamsheets.test.ts`, i to **na poziomie pliku** (`FAIL src/screamsheets.test.ts
+[ src/screamsheets.test.ts ]`), a nie na asercji — czyli w haku, nie w teście. Hak robi
+     `npx prisma migrate deploy` (osobny proces CLI Prismy) i podnosi Fastify z Socket.IO,
+     a pod pełną równoległością nie mieści się w domyślnych **10 s** vitesta. Wszystkie
+     pozostałe pliki dymne mają `}, 60_000);` — te pięć (`compendium`, `netcombat`, `netrun`,
+     `netrunning`, `screamsheets`) go nie miało. Dopisane. To jest wreszcie **ta** przyczyna,
+     którą stary wpis w `pulapki-dev.md` opisywał jako „testy dymne pękają na limicie czasu";
+     nowy plik dymny musi dostać ten limit razem z hakiem.
+
+  Sprawdzone po wszystkich czterech naprawach: **piętnaście pełnych przebiegów `vitest run`
+  pod rząd, 918/918 za każdym razem** — zero porażek. Dla porównania: przed czwartą naprawą
+  dwanaście przebiegów dało jedną (`screamsheets.test.ts` na limicie haka).
+
 ## Przeniesione 2026-09-02 (trzy błędy z oględzin etapów 31 i 32)
 
 - **Broń podwieszana nie miała wyboru amunicji (01.09). ZAMKNIĘTE — naprawione i obejrzane

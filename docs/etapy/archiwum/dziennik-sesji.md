@@ -7,6 +7,52 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 02.09 (czwarta) — przegląd „czego brakuje względem innych VTT" i etapy 33–39
+
+**Sesja bez kodu.** MG poprosił o zestawienie tego VTT z tym, co jest powszechne w innych
+(Foundry, Roll20, Fantasy Grounds, Owlbear Rodeo), i o listę rzeczy wyraźnie brakujących.
+Przegląd szedł **po kodzie, nie po dokumentacji** — stąd kilka ustaleń, których `POSTEP.md`
+nie znał.
+
+**Siedem braków dostało pliki etapów (33–39)**, dopisane do mapy w `00-przeglad.md` i do tabeli
+wyżej: kopie zapasowe wraz z eksportem i importem (33), tabele losowe (34), ping i zaznaczanie
+wielu figur wraz z klonowaniem (35), makra i własny pasek (36), kalendarz i upływ czasu (37),
+przedmioty przenoszone między kartami (38), efekty czasowe modyfikujące Cechy (39). Trzy
+zależności: **33 przed 28**, **37 przed 39**, **34 przed 36**.
+
+**Najważniejsze ustalenie techniczne (zastrzeżenie MG, potwierdzone w kodzie): kubek ma jeden
+slot naraz.** `rollStore.ts` trzyma siedem pól rzutów (`pending`, `initiative`, `attack`,
+`evasion`, `grapple`, `facedown`, `creation`), a każdy `load…Cup` rozsypuje przed sobą
+`EMPTY_CUP`, czyli **czyści wszystkie pozostałe**. Cokolwiek nowego zechce „rzucać kośćmi",
+musi najpierw odpowiedzieć, czy ma prawo zdmuchnąć rzut wzięty do ręki i wezwanie czekające
+u gracza z etapu 32. Tabela losowa (34) odpowiada „nie" i idzie drogą, którą `/r` wysłane
+Enterem ma od etapu 03: `chat:send` bez gestu, RNG serwera, żaden slot niezajęty. Formuła
+w polu czatu jest w `DiceCup` wyłącznie **trybem** (`CupMode` `'roll'`) na samym dole drabinki
+priorytetów — przegrywa z każdym załadowanym rzutem i z wezwaniem.
+
+**Trzy rzeczy, o których warto wiedzieć, zanim ktoś zacznie ich szukać:**
+
+- **Backupu nie ma żadnego.** `CLAUDE.md` obiecuje „kopię pliku wg harmonogramu", ale
+  w `scripts/` są tylko dwa generatory testowe, a jedyna kopia w repo powstała ręcznie 02.09.
+  Cała kampania to `packages/server/dev.db` (1 MB) plus 14 MB w `uploads/`. Stąd etap 33
+  **przed** wdrożeniem na VPS.
+- **`gm:ping` w `realtime/index.ts` to martwy placeholder z etapu 03** (`handler: () =>
+undefined`) — nazwa jest, funkcji nie ma. Etap 35 albo go zaimplementuje, albo usunie.
+- **Czasu poza walką nie ma.** `CpredTimedEffect` liczy rundy, `treatment.ts` zna wyłącznie
+  leczenie ran krytycznych, dziennej regeneracji PW nie ma nigdzie, a `economy:settle` czeka,
+  aż MG sobie przypomni o miesiącu. To jeden brak, nie trzy — i dlatego 37 poprzedza 39.
+
+**Dwie decyzje MG z tej sesji.** Muzyka i tła dźwiękowe przypisane do sceny **mieszczą się
+w projekcie**: wycofanie głosu z 09.08 dotyczyło TTS, STT i WebRTC, nie odtwarzacza plików —
+pomysł czeka w `POMYSLY.md` bez numeru etapu. Responsywność i tablety **schodzą na dół listy**,
+bo gra się zdalnie, każdy przy własnym komputerze.
+
+**Do `POMYSLY.md` doszło sześć wpisów**, w tym dwa warte zapamiętania: nazwa figury jedzie do
+graczy zawsze (`toTokenView` wkłada `name` do widoku publicznego — „Snajper Arasaki" stoi na
+mapie, zanim ktokolwiek go rozpozna) i bot losujący z tabeli po etapie 34.
+
+**Kodu nie ruszano, testów nie uruchamiano** — sesja zmieniła wyłącznie dokumentację.
+
 ### Sesja 02.09 (trzecia) — trzy błędy z oględzin etapów 31 i 32
 
 **Zlecenie MG:** nie etap, tylko **pakiet A** z listy zaległości — trzy błędy znalezione przy

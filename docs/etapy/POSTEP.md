@@ -108,6 +108,20 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 ## Od czego zacząć
 
+**Zestaw testów jest znowu wiarygodny (03.09, druga sesja): `tsc --noEmit` czysty w całym
+monorepo.** Migotanie miało **cztery** przyczyny, nie jedną, i **żadna nie była równoległością
+samą w sobie**: dwa wyścigi na `chat:message`, pomiar PW od stanu, który mógł już być zerem,
+Test Kontroli węzła przegrywający **raz na sto** (przewracał osiem testów naraz w dwóch plikach
+Sieci) i pięć plików z `beforeAll` **bez podniesionego limitu czasu**. Obie pozycje długu
+higieny zamknięte — **piętnaście pełnych przebiegów pod rząd, 918/918, zero porażek**; diagnozy
+w `archiwum/zamkniete-zaleglosci.md`, pięć nowych pułapek w `pulapki-dev.md`.
+
+**Nazwa figury nie przecieka już do graczy na mapie ani w Kolejce Inicjatywy** — `Token.publicName`
+w trzech stanach (brak aliasu / alias / bez etykiety), filtrowana wyłącznie na serwerze, obejrzana
+w przeglądarce na dwóch sesjach naraz. **Czat został nieszczelny świadomie** i czeka na etap 35:
+nazwa jest tam wpisana w treść zapisanej wiadomości. Umowa — w nowym pierwszym wierszu indeksu
+niżej; reszta w `zaleglosci.md`.
+
 **Trzy błędy mechaniki CP RED naprawione 03.09 — z testami i oględzinami.** Ciężki pancerz zabiera wreszcie **REF i ZW w Testach**, nie tylko RUCH (s. 185); broń **niskiej jakości zacina się** po Krytycznej Porażce, a **doskonała** daje +1 (s. 244); **Ustabilizowanie kładzie cel bez przytomności na minutę** (s. 223). Umowy — w dwóch nowych wierszach indeksu niżej. **Decyzja MG z tej sesji: pojazdy i walka pojazdów zostają narracji** — etapu dla nich nie będzie; priorytet przesuwa się na dopalacze i uzależnienia, techniki walki wręcz i leczenie. Reszta listy braków — dopalacze z uzależnieniem, techniki sztuk walki, naturalna regeneracja PW oraz upadek i porażenie prądem — leży w `POMYSLY.md` pod datą 03.09.
 
 **Plan urósł o siedem etapów (02.09, czwarta sesja): 33–39**, z przeglądu „czego brakuje
@@ -223,6 +237,7 @@ ESLint i Prettier czyste na całym repo.
 Jeden wiersz = jedna umowa; pełna wersja z uzasadnieniem w `umowy-kodu.md`. Umowa złamana
 znaczy zwykle błąd, który już raz kosztował sesję.
 
+- **Nazwa figury dla graczy** — `Token.publicName` (null = prawdziwa, tekst = alias, `''` = bez etykiety); podmiana **tylko** w `toTokenView` i `filterCombatForPlayer`. Nowa ścieżka do gracza filtruje nazwę u siebie. Czat świadomie poza umową.
 - **Ruch przez przeszkodę** — `refuseWalkThroughSolid` w `realtime/movement.ts`; nowe nieprzenikalne coś dokłada segmenty w `movementSegments`/`coverMovementSegments`, nie nową gałąź walidacji. Sprawdzana jest **cała figura**, nie jej środek.
 - **Powód odmowy Akcji** — jedzie na `TurnResourceView.blocked`, nie w prozie obok; kolejność: status → rana zapisana na turze → budżet.
 - **Akcja tylko dla części figur** — `CPRED_HOTBAR_NETRUNNER_ACTION_IDS` (nie lista dla każdego); slot z własnym zdarzeniem obsługuje się w `activateSlot` **bez** `spendCombatAction`.
@@ -319,6 +334,12 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 
 Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapki-dev.md`.
 
+- **Nowy plik testów dymnych musi dostać `}, 60_000);` przy `beforeAll`** — hak robi `prisma migrate deploy` i podnosi Fastify, a pod pełną równoległością nie mieści się w domyślnych 10 s; objaw to `FAIL` całego **pliku**, nie testu.
+- **`waitFor(socket, 'chat:message')` bierze pierwszą wiadomość, jaka przyjdzie** — publiczny rzut dociera też do MG, więc następny test łapie kartę poprzedniego. Czekaj po treści (`waitForRoll`), nie „na pierwszą".
+- **Test mierzący spadek PW musi sam ustawić PW na starcie** — przy zerze serwer odmawia graczowi ruchu, więc spadek wychodzi 0 → 0 i pada asercja, nie stan (`healUp()` w `zones.test.ts`).
+- **`window.confirm` zawiesza kartę pod CDP na amen** — przechwyć go (`window.confirm = () => true`) **przed** kliknięciem czegokolwiek niszczącego; po przeładowaniu strony łatę zakłada się od nowa.
+- **Zrzut ekranu ma inną skalę niż `clientX`** — mnóż przez `innerWidth / szerokość zrzutu`, zanim wsadzisz współrzędne w syntetyczne zdarzenie wskaźnika.
+- **`form_input` na checkboksie Reacta nie zmienia stanu komponentu** — pole zaznacza się wizualnie, warunkowa część formularza się nie pojawia, a następny klik odznacza. Używaj `left_click`.
 - **Nowa kolumna z adresem pliku** musi trafić na listę w `uploads-gc.ts` — inaczej sprzątacz kasuje żywy plik.
 - **Efektu mapy nie złapiesz zrzutem ekranu** (trwa 300–800 ms) i `performance.now` nie spowalnia Pixi — trzeba wirtualnego znacznika `rAF`.
 - **Klik w puste pole przy zaznaczonej figurze to rozkaz marszu** — automatyzuj zdarzeniami wskaźnika z policzonymi współrzędnymi CSS, nie pikselami ze zrzutu.
@@ -408,6 +429,63 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 03.09 (druga) — higiena testów i alias nazwy figury
+
+**Zlecenie MG:** wybrać zadania samodzielnie z listy zaległości. Wybór padł na **oba długi
+higieny** (czerwony `tsc`, migotliwe testy) i **przeciek nazwy figury** — z uzasadnieniem, że
+skoro refaktoryzacja jest dopiero po wszystkich etapach, przed nami jest osiem etapów i cała
+reszta zaległości, a każda z tych sesji płaci podatek za czerwony typecheck i losowo czerwony
+zestaw. Wiązka „ekwipunek jako rzeczy" odpuszczona świadomie: MG powiedział, że **etap 38
+ruszy niedługo**, a ona w połowie zachodzi na jego zakres.
+
+**`tsc --noEmit` jest czysty w całym monorepo.** Jedyny błąd (`attacks.test.ts:1941`) brał się
+z `system: Record<string, unknown>` w lokalnym interfejsie `AttackCard`: przy
+`noUncheckedIndexedAccess` `card.system.ammo` to `unknown`, a optional chaining zawęża je do
+`{}`. Zamiast rzutu w asercji `system` dostał prawdziwy kształt, a trzynaście rozsianych po
+pliku `as AttackCard` zastąpiły dwa pomocniki. **Jeden rzut został i jest konieczny** —
+`RollAttackMeta.system` w `dice.ts` jest nieprzezroczyste **świadomie**, bo silnik kości nie
+może wiedzieć, czym jest CP RED.
+
+**Migotanie testów miało trzy przyczyny, nie jedną — i najważniejsza nie była wyścigiem.**
+Zapis zaległości obwiniał równoległość; sprawdzenie pokazało co innego. (1) `waitFor` biorący
+**pierwszą** wiadomość z czatu łapał kartę poprzedniego testu — naprawione dopasowaniem po
+treści w `roles30d.test.ts` i `netdemons.test.ts`. (2) `zones.test.ts` mierzył spadek PW od
+stanu, który mógł już być zerem, a **przy zerze serwer odmawia graczowi ruchu w ogóle** — stąd
+`expected 0 to be less than 0`. (3) **Główna:** Test Kontroli węzła (Interfejs 10 przeciw PT 1)
+przegrywa **dokładnie raz na sto** — naturalna jedynka z dorzutem 10 daje równo 1, a Test
+wymaga „więcej niż PT". Zmierzone na milionie rzutów: 0,998 %. Jeden taki rzut przewracał **pięć**
+testów w `netdevices.test.ts` i **trzy** w `netdemons.test.ts`, więc wyglądało to na wyścig.
+Wzorzec naprawy leżał w repo od dawna — `netrun.test.ts` ma na to pętlę podejść; brakowało jej
+w dwóch pozostałych plikach. (4) Pomiar po tych trzech naprawach wyciągnął **czwartą**: jeden
+przebieg na dwanaście padł **na poziomie pliku** w `screamsheets.test.ts`, czyli w haku, nie
+w teście — pięć plików dymnych miało `beforeAll` bez `}, 60_000);`, a `prisma migrate deploy`
+plus start Fastify nie mieści się pod obciążeniem w domyślnych 10 s vitesta. Po wszystkich
+czterech: **piętnaście przebiegów pod rząd, 918/918.**
+
+**Nazwa figury przestała przeciekać na mapie i w Kolejce Inicjatywy.** Nowa kolumna
+`Token.publicName` (migracja `20260903175753_stage_token_public_name`) w trzech stanach: brak
+aliasu / alias / pusty alias. Podmiana wyłącznie na serwerze — `toTokenView` i
+`filterCombatForPlayer`; **sam alias jedzie tylko do MG**, bo gracz nie ma się dowiedzieć nawet
+tego, że druga nazwa istnieje. W oknie edycji tokenu doszedł przełącznik „Gracze widzą inną
+nazwę" z podpowiedzią, która mówi wprost, co gracz zobaczy — i uczciwie ostrzega, że **karty na
+czacie nadal piszą prawdziwą nazwę**. Ta reszta jest w `zaleglosci.md`: nazwa jest tam wpisana
+w **treść** zapisanej wiadomości, w ponad trzydziestu miejscach `realtime/`, więc filtr
+per-odbiorca to przebudowa kart, nie łatka — idzie z etapem 35, do którego pomysł należał.
+
+**Obejrzane w przeglądarce, dwie sesje naraz (MG na `localhost`, Tester na `[::1]`).** Przeciek
+odtworzony na żywo: gracz czytał „Snajper Arasaki". Po nadaniu aliasu jego mapa zmieniła się
+**bez przeładowania** na „Ochroniarz", a inicjał w kółku z **S** na **O** — czyli prawdziwa
+nazwa nie dotarła nawet do rysowania. Pusty alias daje figurę bez podpisu z „?" w kółku i wiersz
+_„Nieznana figura"_ w trackerze; MG w tym samym wierszu czyta „Snajper Arasaki". Poligon
+przywrócony: figura testowa skasowana, walka zakończona, lista uczestników wróciła do tej samej
+piątki, w bazie zero tokenów z aliasem.
+
+**Cztery nowe pułapki dev z tej sesji** (pełne opisy w `pulapki-dev.md`): `window.confirm`
+**zawiesza kartę pod CDP na amen**, jeśli nie przechwyci się go **przed** kliknięciem — kosztowało
+to zamknięcie i odtworzenie karty MG; zrzut ekranu ma inną skalę niż `clientX` (mnożnik
+`innerWidth / szerokość zrzutu`); `form_input` na checkboksie Reacta zmienia DOM, ale nie stan
+komponentu; menu kontekstowe tokenu otwiera `pointerdown` z `button === 2`.
+
 ### Sesja 03.09 — przegląd mechanik CP RED i trzy błędy naprawione od ręki
 
 **Zlecenie MG:** sprawdzić, czy wszystkie ważne i wykonalne mechaniki z podręcznika są już
@@ -473,49 +551,3 @@ Sprawdzone `git stash`-em: **na czystym HEAD pada tak samo**, tylko w innym plik
 i dwa kroki naprawy — w `zaleglosci.md`. Praktyczny wniosek na przyszłe sesje: **czerwony
 pojedynczy plik w pełnym przebiegu to najpierw podejrzenie wyścigu, a dopiero potem regresji**
 — powtórz go osobno, zanim zaczniesz szukać błędu w swojej zmianie.
-
-### Sesja 02.09 (czwarta) — przegląd „czego brakuje względem innych VTT" i etapy 33–39
-
-**Sesja bez kodu.** MG poprosił o zestawienie tego VTT z tym, co jest powszechne w innych
-(Foundry, Roll20, Fantasy Grounds, Owlbear Rodeo), i o listę rzeczy wyraźnie brakujących.
-Przegląd szedł **po kodzie, nie po dokumentacji** — stąd kilka ustaleń, których `POSTEP.md`
-nie znał.
-
-**Siedem braków dostało pliki etapów (33–39)**, dopisane do mapy w `00-przeglad.md` i do tabeli
-wyżej: kopie zapasowe wraz z eksportem i importem (33), tabele losowe (34), ping i zaznaczanie
-wielu figur wraz z klonowaniem (35), makra i własny pasek (36), kalendarz i upływ czasu (37),
-przedmioty przenoszone między kartami (38), efekty czasowe modyfikujące Cechy (39). Trzy
-zależności: **33 przed 28**, **37 przed 39**, **34 przed 36**.
-
-**Najważniejsze ustalenie techniczne (zastrzeżenie MG, potwierdzone w kodzie): kubek ma jeden
-slot naraz.** `rollStore.ts` trzyma siedem pól rzutów (`pending`, `initiative`, `attack`,
-`evasion`, `grapple`, `facedown`, `creation`), a każdy `load…Cup` rozsypuje przed sobą
-`EMPTY_CUP`, czyli **czyści wszystkie pozostałe**. Cokolwiek nowego zechce „rzucać kośćmi",
-musi najpierw odpowiedzieć, czy ma prawo zdmuchnąć rzut wzięty do ręki i wezwanie czekające
-u gracza z etapu 32. Tabela losowa (34) odpowiada „nie" i idzie drogą, którą `/r` wysłane
-Enterem ma od etapu 03: `chat:send` bez gestu, RNG serwera, żaden slot niezajęty. Formuła
-w polu czatu jest w `DiceCup` wyłącznie **trybem** (`CupMode` `'roll'`) na samym dole drabinki
-priorytetów — przegrywa z każdym załadowanym rzutem i z wezwaniem.
-
-**Trzy rzeczy, o których warto wiedzieć, zanim ktoś zacznie ich szukać:**
-
-- **Backupu nie ma żadnego.** `CLAUDE.md` obiecuje „kopię pliku wg harmonogramu", ale
-  w `scripts/` są tylko dwa generatory testowe, a jedyna kopia w repo powstała ręcznie 02.09.
-  Cała kampania to `packages/server/dev.db` (1 MB) plus 14 MB w `uploads/`. Stąd etap 33
-  **przed** wdrożeniem na VPS.
-- **`gm:ping` w `realtime/index.ts` to martwy placeholder z etapu 03** (`handler: () =>
-undefined`) — nazwa jest, funkcji nie ma. Etap 35 albo go zaimplementuje, albo usunie.
-- **Czasu poza walką nie ma.** `CpredTimedEffect` liczy rundy, `treatment.ts` zna wyłącznie
-  leczenie ran krytycznych, dziennej regeneracji PW nie ma nigdzie, a `economy:settle` czeka,
-  aż MG sobie przypomni o miesiącu. To jeden brak, nie trzy — i dlatego 37 poprzedza 39.
-
-**Dwie decyzje MG z tej sesji.** Muzyka i tła dźwiękowe przypisane do sceny **mieszczą się
-w projekcie**: wycofanie głosu z 09.08 dotyczyło TTS, STT i WebRTC, nie odtwarzacza plików —
-pomysł czeka w `POMYSLY.md` bez numeru etapu. Responsywność i tablety **schodzą na dół listy**,
-bo gra się zdalnie, każdy przy własnym komputerze.
-
-**Do `POMYSLY.md` doszło sześć wpisów**, w tym dwa warte zapamiętania: nazwa figury jedzie do
-graczy zawsze (`toTokenView` wkłada `name` do widoku publicznego — „Snajper Arasaki" stoi na
-mapie, zanim ktokolwiek go rozpozna) i bot losujący z tabeli po etapie 34.
-
-**Kodu nie ruszano, testów nie uruchamiano** — sesja zmieniła wyłącznie dokumentację.
