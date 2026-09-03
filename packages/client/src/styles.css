@@ -4921,6 +4921,30 @@ body.is-resizing {
   color: var(--text-dim);
 }
 
+/* Dzień odpoczynku i podana dawka — zielona krawędź jak przy karcie ekonomii,
+   bo to też jest rozliczenie przerwy między scenami, a nie zdarzenie walki. */
+.chat-recovery {
+  border-left: 3px solid var(--ok);
+  padding-left: 0.5rem;
+}
+
+.chat-recovery--warn {
+  border-left-color: var(--warn);
+}
+
+.chat-recovery-title {
+  margin: 0 0 0.15rem;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.chat-recovery-hp {
+  color: var(--ok);
+}
+
 .chat-action-body {
   display: flex;
   align-items: center;
@@ -6190,6 +6214,18 @@ body.is-resizing {
 
 .awareness-extras p {
   margin: 0.2rem 0 0;
+}
+
+/* Farmaceutyki: środki jeszcze nieodblokowane zostają na liście wyszarzone —
+   Medyk ma widzieć, co kupi za następny punkt Specjalizacji. */
+.pharma-list button {
+  margin-left: 0.35rem;
+  font-size: 0.68rem;
+  padding: 0.05rem 0.35rem;
+}
+
+.pharma-locked {
+  opacity: 0.5;
 }
 
 /* Etap 30c: Wsparcie i zespół Korpo. Oba panele stoją na tym samym arkuszu, co

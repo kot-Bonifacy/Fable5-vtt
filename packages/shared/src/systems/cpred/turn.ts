@@ -122,6 +122,15 @@ export const CPRED_ACTION_FIELD_REPAIR = 'field-repair';
 export const CPRED_ACTION_BACKUP = 'backup-call';
 
 /**
+ * Podanie dawki farmaceutyku (s. 150) — „Wstrzyknięcie jednej dawki środka
+ * farmakologicznego zajmuje Akcję".
+ *
+ * Akcja jest tu ceną **podania**, nie wytworzenia: partię dawek Medyk robi
+ * przez godzinę w pracowni, a to nie jest jednostka, którą tracker liczy.
+ */
+export const CPRED_ACTION_DOSE = 'dose';
+
+/**
  * The catalogue itself (s. 168–169). Mechanics, not rulebook prose: the costs
  * and conditions are the game's arithmetic, which the engine needs to run at
  * all — the flavour text stays in the private data, like every other stage.
@@ -306,6 +315,13 @@ export const CPRED_ACTIONS: readonly CpredActionDefinition[] = [
     name: 'Wezwanie Wsparcia',
     cost: 'action',
     hint: 'Stróż Prawa wzywa funkcjonariuszy: 1k10 ≤ poziom Wsparcia, potem 1k6 Rund oczekiwania.',
+    handledElsewhere: true,
+  },
+  {
+    id: CPRED_ACTION_DOSE,
+    name: 'Podanie farmaceutyku',
+    cost: 'action',
+    hint: 'Medyk wstrzykuje jedną dawkę ze swojego ekwipunku sobie albo komuś w zasięgu ramienia.',
     handledElsewhere: true,
   },
   {

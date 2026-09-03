@@ -4,6 +4,30 @@ Wyprowadzone z „Od czego zacząć" w `POSTEP.md` 22.08.2026. Indeks jednolinij
 tu leżą pełne wersje. Czytaj wpis, **zanim** dołożysz coś w obszarze, którego dotyczy — każdy
 z nich powstał po tym, jak ktoś dołożył to w złym miejscu.
 
+**Przedmiot, który da się zużyć, jest wierszem ekwipunku — nie tabelą obok niego (03.09).**
+`CpredGearRow.consumable` niesie id z `systems/cpred/pharma.ts`, a `qty` liczy sztuki tak samo,
+jak liczyło je zawsze. Dawka **jest** przedmiotem: waży, kupuje się ją, oddaje i gubi razem
+z plecakiem, więc osobna lista rozjechałaby się z ekwipunkiem przy pierwszym „daję Rico dwie
+fiolki". Nowy rodzaj środka dopisuje się **wyłącznie** do `CPRED_PHARMACEUTICALS` (nazwa, zdanie
+z podręcznika, `applies`, ewentualne „raz dziennie") i do jednej gałęzi `applyDose`
+w `realtime/recovery.ts`. `pharma.ts` **nie importuje niczego** — to warunek, nie przypadek:
+walidacja karty (`character.ts`) sprawdza przeciw tym id, a `roleability.ts` bierze z karty typy.
+
+**Powrót do zdrowia liczy serwer, a karta deklaruje tylko „minął dzień" (03.09).** `cpredRestDay`
+w `shared/systems/cpred/recovery.ts` jest jedynym miejscem, które wie, ile PW wraca; klient wysyła
+`character:rest` z samym `strained` i dostaje kartę czatu z **rozbiciem** (`rate.sources`), bo
+liczba bez powodu nie da się sprawdzić przy stole. Nowe źródło tempa (chrom, środek, warunki)
+dokłada wiersz w `cpredHealRate`, nie mnożnik w wywołaniu. Warunek „po udanej stabilizacji"
+mieszka w `CpredCharacterData.recovery.stabilized` i **pisze go wyłącznie udane Ustabilizowanie**
+(`applyStabilization`) — na każdym progu ran, nie tylko przy zerze.
+
+**Nowy rodzaj wiersza czatu dopisuje się w `shared/src/chat.ts` w dwóch czystych funkcjach**
+(`chatCategoryOf`, `chatCompactLine`), w `toChatMessageView` po stronie serwera i w jednej gałęzi
+`FullMessageRow` u klienta. Umowa jest z 01.09; 03.09 przeszedł nią rodzaj `recovery` (dzień
+odpoczynku i podana dawka — jedna karta na dwie czynności, bo z miejsca stołu to jedno zdarzenie:
+„komuś zrobiło się lepiej i wiadomo dlaczego"). Kto pominie te dwie funkcje, dostanie wiersz
+wpadający do grupy „Stół", którego nie da się ścisnąć.
+
 **Co gracz może nazwać figurę, rozstrzyga serwer — od 03.09 przez `Token.publicName`.**
 Trzy stany w jednej kolumnie nullable, więc żadna scena nie wymagała konwersji: `null` = gracz
 widzi `name` (tak było zawsze), tekst = widzi ten tekst, `''` = nie widzi żadnej etykiety.

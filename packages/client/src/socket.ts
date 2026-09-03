@@ -1037,6 +1037,12 @@ function rollAckErrorText(code: string): string {
       return 'To wezwanie jest już rozliczone albo odwołane.';
     case 'CALL_NOT_YOURS':
       return 'To wezwanie należy do kogoś innego.';
+    // Ustabilizowanie od 03.09 wymaga długości ramienia — to czynność przy
+    // pacjencie, a nie na odległość.
+    case 'STABILIZE_OUT_OF_REACH':
+      return 'Za daleko — Ustabilizowanie wymaga zasięgu ramienia (2 m).';
+    case 'STABILIZE_NOT_ON_SCENE':
+      return 'Ta postać nie ma figury na scenie pacjenta — nie ma jak go dosięgnąć.';
     default:
       return `Błąd rzutu: ${code}`;
   }
@@ -2575,6 +2581,78 @@ export function fieldRepairErrorText(code: string): string {
       return 'Ta sztuka jest już na prowizorce — najpierw napraw ją zwyczajnie.';
     case 'NOT_PATCHED':
       return 'Ta sztuka nie jest na prowizorce.';
+    default:
+      return combatErrorText(code);
+  }
+}
+
+/**
+ * Jeden pełny dzień odpoczynku (s. 222–223).
+ *
+ * Liczby nie ma tu wcale — klient deklaruje wyłącznie „minął dzień" i czy
+ * postać się nadwyrężyła. PW wylicza serwer z Budowy Ciała, chromu
+ * i antybiotyku, a karta na czacie pokazuje rozbicie.
+ */
+export async function restForADay(characterId: string, strained = false): Promise<void> {
+  const ack = await emitSceneAck<{ healed: number; hpCurrent: number; refusal: string | null }>(
+    'character:rest',
+    { characterId, ...(strained ? { strained: true } : {}) },
+  );
+  if (!ack.ok) useChatStore.getState().addNote(recoveryErrorText(ack.error));
+}
+
+/** Partia dawek farmaceutyku: Test PT 13 i 200 ed surowców (s. 150). */
+export async function craftPharmaceutical(
+  characterId: string,
+  pharmaId: string,
+  gesture?: RollGesture,
+): Promise<void> {
+  const ack = await emitSceneAck<{ doses: number; balance: number }>('character:craft-pharma', {
+    characterId,
+    pharmaId,
+    ...(gesture ? { gesture } : {}),
+  });
+  if (!ack.ok) useChatStore.getState().addNote(recoveryErrorText(ack.error));
+}
+
+/**
+ * Podanie jednej dawki (s. 150) — Akcja, gdy trwa walka.
+ *
+ * `targetTokenId` pominięty znaczy „sobie". Dawka schodzi z ekwipunku
+ * podającego, a skutek ląduje na karcie celu — obie rzeczy robi jedno zdarzenie.
+ */
+export async function useDose(
+  characterId: string,
+  gearRowId: string,
+  targetTokenId?: string,
+): Promise<void> {
+  const ack = await emitSceneAck<{ qtyLeft: number; healed: number }>('character:use-dose', {
+    characterId,
+    gearRowId,
+    ...(targetTokenId ? { targetTokenId } : {}),
+  });
+  if (!ack.ok) useChatStore.getState().addNote(recoveryErrorText(ack.error));
+}
+
+/** Polskie zdania dla odmów z trzech zdarzeń powrotu do zdrowia. */
+export function recoveryErrorText(code: string): string {
+  switch (code) {
+    case 'UNKNOWN_PHARMA':
+      return 'Nie znam takiego farmaceutyku.';
+    case 'PHARMA_NOT_UNLOCKED':
+      return 'Ten Medyk nie ma jeszcze dostępu do tego środka — brakuje punktów w Farmaceutykach.';
+    case 'NO_MEDTECH_SKILL':
+      return 'Wytwarzanie wymaga Umiejętności Technologia Medyczna na poziomie co najmniej 1.';
+    case 'NOT_ENOUGH_EDDIES':
+      return 'Za mało eurodolców na surowce (200 ed za partię).';
+    case 'NOT_A_CONSUMABLE':
+      return 'Ten wiersz ekwipunku nie jest dawką, którą da się podać.';
+    case 'NO_DOSES_LEFT':
+      return 'Nie ma już ani jednej dawki.';
+    case 'NOT_A_MEDIC':
+      return 'Postać niebędąca Medykiem nie potrafi poprawnie podawać farmaceutyków (s. 150).';
+    case 'DOSE_OUT_OF_REACH':
+      return 'Za daleko — zastrzyk wymaga zasięgu ramienia (2 m).';
     default:
       return combatErrorText(code);
   }

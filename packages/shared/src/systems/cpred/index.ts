@@ -32,6 +32,8 @@ export * from './reputation.js';
 export * from './turn.js';
 export * from './fx.js';
 export * from './hotbar.js';
+export * from './pharma.js';
 export * from './roleability.js';
 export * from './treatment.js';
+export * from './recovery.js';
 export * from './advancement.js';

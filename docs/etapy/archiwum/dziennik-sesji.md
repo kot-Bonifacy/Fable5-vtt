@@ -7,6 +7,72 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 03.09 — przegląd mechanik CP RED i trzy błędy naprawione od ręki
+
+**Zlecenie MG:** sprawdzić, czy wszystkie ważne i wykonalne mechaniki z podręcznika są już
+w VTT, a brakujące zebrać w listę z krótkimi opisami do decyzji. Przegląd szedł po kodzie
+`shared/systems/cpred` i po podręczniku; przy okazji wypadły **trzy błędy**, które MG kazał
+naprawić od razu — z testami, oględzinami i commitem, **przed** refaktoryzacją poprzedzającą
+etap 28.
+
+**Decyzja MG: pojazdy i walka pojazdów zostają narracji** — etapu dla nich nie będzie,
+a priorytet przesuwa się na dopalacze z uzależnieniem, techniki walki wręcz i leczenie.
+**Cała reszta braków poszła do `POMYSLY.md`** (cztery wpisy z 03.09) — decyzją MG z tej samej
+sesji. **Dwie pozycje z pierwszej wersji listy okazały się już zrobione** i wypadły po
+sprawdzeniu w kodzie: tarcze balistyczne (`ARMOR_LOCATIONS` zna `shield`) i terapia
+Człowieczeństwa (`cyberware` z `action: 'therapy'`). Morał na przyszłe przeglądy: **pozycję
+listy braków sprawdza się grepem, zanim się ją komuś poda.**
+
+**(1) Kara z ciężkiego pancerza działała wyłącznie na RUCH.** Podręcznik (s. 185) zabiera ją
+**także REF i ZW w Testach**, a VTT liczył ją tylko w budżecie metrów. Naprawa dokłada
+`cpredArmorStatPenalty` w `character.ts` (nie w `rolls.ts` — `movement.ts` już importuje
+`rolls.ts`, więc odwrotna zależność zamknęłaby cykl) i wpina ją w cztery miejsca: Testy Cechy
+i Umiejętności, atak, bierny PT Uniku i Inicjatywę. Kara **nigdy nie schodzi poniżej zera**
+(`Math.min(-penalty, max(0, statValue))`, ze świadomym uniknięciem `-0`), liczy się z **jednej
+najgorszej sztuki**, nie z sumy, a zdjęty pancerz nie waży nic.
+
+**(2) Broń niskiej jakości nigdy się nie zacinała, doskonała nie dawała +1** (s. 244). `quality`
+było w kompendium, ale nie wychodziło z `resolveWeapon`. Teraz wychodzi, `excellent` dokłada
+nazwany wiersz **„Broń doskonałej jakości +1"**, a Krytyczna Porażka bronią `poor` stawia na
+wierszu karty flagę `jammed`. Zacięta broń **odmawia strzału zdaniem**, a nie ciszą, i dostaje
+**własną Akcję** `clear-jam` (`weapon:clear-jam`) — osobny kafelek na pasku i czerwony guzik
+„⚠ Zacięta — usuń usterkę" na karcie. Trzy granice świadome: zacina się **broń niosąca**, nigdy
+dodatek podwieszany (dodatek nie ma jakości), nigdy statysta (nie ma wpisu katalogu), a Krytyczna
+Porażka **pominięta** przez „Wyjście z opresji" Solo nie zacina niczego.
+
+**(3) Ustabilizowanie nie kładło celu bez przytomności.** RAW (s. 223) mówi, że ustabilizowany
+jest nieprzytomny przez minutę; VTT dawał 1 PW i zostawiał postać na nogach. `applyStabilization`
+nadaje teraz status `unconscious` z zegarem minuty (6 rund) — **w obu gałęziach**, statysty
+i karty. Poza walką zegar nie tyka i status zdejmuje MG, zgodnie z umową o efektach okresowych.
+
+**Oględziny (Strzelnica, konto MG).** Karta ataku pokazała nazwany wiersz **„Pancerz −2"**, a
+kolejka inicjatywy — **avatar9 · REF 3** przy REF 5 na karcie. Zacięcie wypadło na
+`Chadran Arms City Reaper` (jakość `poor`) po naturalnej 1: karta dopisała **„broń niskiej
+jakości zacięła się — usuń usterkę (Akcja)"**, tryby ognia zszarzały, na pasku wyrósł kafelek
+„Usuń usterkę", a guzik na karcie usterkę zdjął i broń wróciła do ATAK/SERIA/ZAPORA.
+Ustabilizowanie Rudego Kwiatkowskiego przy 0 PW dało **1 PW + naklejkę Nieprzytomny** z zegarem
+`Ustabilizowanie / 60 s` w `statusData`. Scena wysprzątana: obie testowe bronie skasowane,
+Rudy z powrotem 40/40 bez statusów, walka zakończona.
+
+**Uwaga o RNG przy oględzinach:** żeby zobaczyć zacięcie, trzeba naturalnej 1 — poszło na to
+**29 strzałów** (dwie bronie, cztery przeładowania). Broń z magazynkiem 40 oszczędza klikania.
+
+**Sample publiczny się rozjechał i to psuło testy serwera.** `weapon.zgrzyt-9` miał
+`quality: "poor"`, a jest fixture'em w 17 plikach testów — po dołożeniu zacięć 16 z nich padało
+losowo. Jakość `poor` przeniosłem na **nowy** wpis `weapon.zardzewiak`; `zgrzyt-9` jest
+`standard`. **Broni z `data/public` używanej jako fixture nie wolno dawać właściwości losowych.**
+
+**Testy na koniec:** 1759 w `shared` (+18), 914 na serwerze (+6), 75 u klienta — zielone.
+ESLint i Prettier czyste.
+
+**Ważne odkrycie o samych testach: zestaw serwera jest niestabilny pod równoległością i nie
+z mojej winy.** Pełny przebieg pada mniej więcej co drugi raz, **za każdym razem gdzie indziej**
+(`roles30d.test.ts`, `zones.test.ts`, `netdemons.test.ts`), a pojedynczy plik przechodzi 6/6.
+Sprawdzone `git stash`-em: **na czystym HEAD pada tak samo**, tylko w innym pliku. Diagnoza
+i dwa kroki naprawy — w `zaleglosci.md`. Praktyczny wniosek na przyszłe sesje: **czerwony
+pojedynczy plik w pełnym przebiegu to najpierw podejrzenie wyścigu, a dopiero potem regresji**
+— powtórz go osobno, zanim zaczniesz szukać błędu w swojej zmianie.
+
 ### Sesja 02.09 (czwarta) — przegląd „czego brakuje względem innych VTT" i etapy 33–39
 
 **Sesja bez kodu.** MG poprosił o zestawienie tego VTT z tym, co jest powszechne w innych

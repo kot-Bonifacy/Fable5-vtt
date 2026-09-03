@@ -949,39 +949,13 @@ export function cpredMedicineSkillLevel(
 }
 
 /**
- * The five drugs one point of Farmaceutyki each unlocks (s. 150).
+ * Farmaceutyki (s. 150) mieszkają od tej sesji w `pharma.ts`, a nie tu.
  *
- * Printed here and shown by the panel, but nothing in the engine reads them:
- * producing and administering a dose needs a consumable the sheet does not
- * model (gear rows are free text), so the doses stay the GM's to hand out.
- * Recorded in `decyzje-i-uproszczenia.md` rather than left as a silent gap.
+ * Odkąd dawka jest przedmiotem, katalog czyta **walidacja karty**
+ * (`CpredGearRow.consumable`), a `character.ts` bierze z tego pliku wartości —
+ * odwrotny kierunek niż dziś. `pharma.ts` nie importuje niczego, więc leży
+ * pod obydwoma i żadna strona nie musi się zastanawiać nad kolejnością.
  */
-export const CPRED_PHARMACEUTICALS: readonly { name: string; effect: string }[] = [
-  {
-    name: 'Antybiotyk',
-    effect:
-      'Osoba, która rozpoczęła naturalny powrót do zdrowia, przez tydzień odzyskuje codziennie ' +
-      'dodatkowe 2 PW. Efekty kilku antybiotyków nie kumulują się.',
-  },
-  {
-    name: 'Dynadetoks',
-    effect: 'Organizm błyskawicznie oczyszcza się z narkotyków, trucizn i alkoholu.',
-  },
-  {
-    name: 'Turbo uzdrawiacz',
-    effect:
-      'O ile cel nie jest Śmiertelnie Ranny, natychmiast leczy PW równe sumie BUDOWY CIAŁA ' +
-      'i SIŁY WOLI. Skuteczny raz dziennie.',
-  },
-  {
-    name: 'Stym',
-    effect: 'Przez godzinę cel ignoruje kary za bycie Poważnie Rannym. Skuteczny raz dziennie.',
-  },
-  {
-    name: 'Zryw',
-    effect: 'Cel przez 24 godziny funkcjonuje w pełni sprawnie bez snu. Skuteczny raz na tydzień.',
-  },
-];
 
 /** What each point of Obsługa kriosystemów brings (s. 150) — the panel's table. */
 export const CPRED_CRYO_LEVELS: readonly string[] = [

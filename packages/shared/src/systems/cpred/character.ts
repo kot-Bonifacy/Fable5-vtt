@@ -16,6 +16,7 @@ import {
   type CyberwareInstallation,
 } from './cyberware.js';
 import { isHousingOption, isLifestyleLevel, type CpredLifestyle } from './economy.js';
+import { isPharmaceuticalId } from './pharma.js';
 // Type-only the other way round: `roleability.ts` reads this file's sheet type,
 // so only its values travel here — the same bargain `creation.ts` makes above.
 import {
@@ -372,6 +373,17 @@ export interface CpredItemRow {
 
 export interface CpredGearRow extends CpredItemRow {
   qty: number;
+  /**
+   * Co robi zużycie jednej sztuki — id środka z `CPRED_PHARMACEUTICALS`
+   * (`pharma.antybiotyk` …). Nieobecne na zwykłym wierszu: łom nie zużywa się
+   * przez to, że jest łomem.
+   *
+   * Na wierszu ekwipunku, a nie w osobnej tabeli karty, świadomie: dawka *jest*
+   * przedmiotem — waży, kupuje się ją, ginie razem z plecakiem — i `qty` liczy
+   * ją tak samo jak naboje. Osobna lista rozjechałaby się z ekwipunkiem przy
+   * pierwszym „oddaję Rico dwie fiolki".
+   */
+  consumable?: string;
 }
 
 /**
@@ -498,6 +510,34 @@ export interface CpredArmorRow extends CpredItemRow {
    */
   penalty?: number;
 }
+
+/**
+ * Gdzie postać jest w procesie naturalnego leczenia (s. 222–223).
+ *
+ * Dwa pola, a nie dwa luźne wiersze karty, bo obu dotyczy ta sama reguła
+ * kasowania: rana, która otwiera się na nowo, zabiera i ustabilizowanie,
+ * i tydzień antybiotyku — proces zaczyna się od zera.
+ */
+export interface CpredRecovery {
+  /**
+   * „Aby rozpocząć proces naturalnego leczenia, musisz zostać ustabilizowany"
+   * (s. 222). Ustawia je udane Ustabilizowanie — na **każdym** progu ran,
+   * nie tylko przy Śmiertelnie Rannym, bo PT ustabilizowania podręcznik podaje
+   * dla wszystkich trzech progów.
+   */
+  stabilized: boolean;
+  /**
+   * Ile dni działania Antybiotyku zostało (0–7, s. 150). Liczone w **dniach
+   * odpoczynku**, nie w kalendarzu — projekt nie ma jeszcze zegara świata
+   * (etap 37), a jedyny czytelnik tej liczby i tak odlicza je po jednym.
+   * „Efekty kilku antybiotyków nie kumulują się": druga dawka ustawia licznik
+   * z powrotem na siedem, a nie na czternaście.
+   */
+  antibioticDays: number;
+}
+
+/** Ile dni działa jedna dawka Antybiotyku (s. 150). */
+export const CPRED_ANTIBIOTIC_DAYS = 7;
 
 /**
  * A Critical Injury the character currently suffers (stage 15). The row keeps
@@ -865,6 +905,8 @@ export interface CpredCharacterData {
    * modifiers accumulate „dopóki nie zostaniesz ustabilizowany").
    */
   deathSaves: number;
+  /** Gdzie postać jest w procesie naturalnego leczenia (s. 222–223). */
+  recovery: CpredRecovery;
   /**
    * Eurodollars. From stage 23b this number is written **only by the server**:
    * a purchase, a transfer, the monthly settlement or a GM correction, each of
@@ -1034,6 +1076,7 @@ export function createDefaultCharacterData(): CpredCharacterData {
     cyberware: [],
     criticalInjuries: [],
     deathSaves: 0,
+    recovery: { stabilized: false, antibioticDays: 0 },
     eddies: 0,
     lifestyle: null,
     reputationSources: [],
@@ -1851,9 +1894,32 @@ function collectCharacterDataPatch(
         issues.push(issue('gear', `Ilość musi być liczbą od 0 do ${ITEM_QTY_MAX}.`));
         return undefined;
       }
-      return { ...base, qty };
+      // Nieznane id środka jest **upuszczane**, a nie odrzucane: wiersz zostaje
+      // zwykłym ekwipunkiem i karta nadal się zapisuje. Ten sam kompromis co
+      // przy polach cyborgizacji niżej — kartę psuje się raz, a czyta stale.
+      const consumable =
+        typeof row.consumable === 'string' && isPharmaceuticalId(row.consumable)
+          ? row.consumable
+          : undefined;
+      return { ...base, qty, ...(consumable ? { consumable } : {}) };
     });
     if (gear) patch.gear = gear;
+  }
+  if ('recovery' in input) {
+    const raw = input.recovery;
+    if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+      issues.push(issue('recovery', 'Stan leczenia musi być obiektem.'));
+    } else {
+      const row = raw as Partial<CpredRecovery>;
+      const days = row.antibioticDays ?? 0;
+      if (!isInteger(days) || days < 0 || days > CPRED_ANTIBIOTIC_DAYS) {
+        issues.push(
+          issue('recovery', `Dni antybiotyku muszą być liczbą od 0 do ${CPRED_ANTIBIOTIC_DAYS}.`),
+        );
+      } else {
+        patch.recovery = { stabilized: row.stabilized === true, antibioticDays: days };
+      }
+    }
   }
   if ('cyberware' in input) {
     const cyberware = validateRows<CpredCyberwareRow>(

@@ -4,6 +4,26 @@ Wyprowadzone z `POSTEP.md` 22.08.2026. Indeks jednolinijkowy jest w `POSTEP.md`;
 opisy z rozpoznaniem i obejściem. Czytaj wpis, zanim zaczniesz szukać błędu w obszarze, którego
 dotyczy.
 
+- **Jeden zły wiersz listy na karcie kasuje CAŁĄ listę przy odczycie — po cichu.** `validateRows`
+  (`shared/systems/cpred/character.ts`) zwraca `undefined`, gdy **którykolwiek** wiersz nie
+  przeszedł, a `parseCharacterData` podstawia wtedy domyślne `[]`. Karta zapisuje się bez błędu,
+  a przy następnym odczycie ekwipunek jest pusty. 03.09 wywróciło się na tym generowanie id:
+  `gear-pharma.turbo-uzdrawiacz-<czas>` ma 37 znaków, a `validateRowBase` tnie id **na 32** —
+  „Antybiotyk" (31 znaków) przechodził, „Turbo uzdrawiacz" nie, i razem z nim znikał antybiotyk.
+  **Rozpoznanie:** zdarzenie zwraca sukces, w bazie jest komplet, a `state:sync` przynosi pustą
+  listę. **Obejście:** id wierszy generuj tak jak klient — `Math.random().toString(36).slice(2, 10)`
+  (`newRowId` w `CharacterSheet.tsx`), nigdy z doklejonym id kompendium ani znacznikiem czasu.
+
+- **Dwa zapisy tej samej karty w jednym handlerze: drugi cofa pierwszy.** Wiersz `Character`
+  pobrany na początku obsługi zdarzenia jest **migawką**; `mergeCharacterData(stary, łatka)`
+  zapisuje całą kartę, więc scalenie na starej migawce wymazuje wszystko, co zapisano w
+  międzyczasie. 03.09 kosztowało to błędu „dawka podana sobie nie schodzi z ekwipunku":
+  `character:use-dose` najpierw zdejmował sztukę, a potem `applyDose` nakładał skutek środka na
+  wiersz sprzed zdjęcia. **Rozpoznanie:** pierwsza zmiana widoczna w odpowiedzi zdarzenia, a
+  w bazie jej nie ma. **Obejście:** albo jeden zapis z obiema łatkami, albo podstawienie
+  świeżego wiersza pod drugi krok — jak `effectTarget` w `realtime/recovery.ts`. Dotyczy każdego
+  handlera, w którym „kto robi" i „na kim" może być **tą samą kartą**.
+
 - **Nowy plik testów dymnych musi dostać `}, 60_000);` przy `beforeAll` — inaczej pęka pod
   równoległością, i to całym plikiem.** Hak startowy uruchamia `npx prisma migrate deploy`
   (osobny proces CLI Prismy) i podnosi Fastify z Socket.IO; pod pełnym `vitest run` (55 plików,

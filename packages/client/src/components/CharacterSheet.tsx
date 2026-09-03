@@ -26,6 +26,7 @@ import type {
 } from '@vtt/shared';
 import {
   CPRED_LANGUAGE_SKILL_ID,
+  cpredHealRate,
   CRITICAL_INJURY_TABLE_LABELS,
   CYBERDECK_SLOTS_MAX,
   SKILL_SPECIALTY_MAX_LENGTH,
@@ -157,6 +158,8 @@ import {
   flushCharacterSave,
   makeFieldRepair,
   queueCharacterSave,
+  restForADay,
+  useDose,
   clearWeaponJam,
   reloadWeapon,
   sendCyberwareAction,
@@ -809,6 +812,8 @@ function IdentityColumn({
           <span>{psychosis.note}</span>
         </p>
       )}
+
+      <RecoveryPanel data={data} characterId={character.id} />
 
       <CriticalInjuries data={data} saveData={saveData} characterId={character.id} />
 
@@ -2306,6 +2311,76 @@ function ArmorPenalty({
   );
 }
 
+/**
+ * Rekonwalescencja (s. 222–223) — jedyne miejsce, z którego PW wracają same.
+ *
+ * Panel jest **pod progami ran i nad Ranami Krytycznymi**, bo tam czyta się go
+ * przy stole: najpierw „jak bardzo mnie boli", potem „ile odzyskam do jutra",
+ * a dopiero potem lista złamań.
+ *
+ * Znika u postaci z kompletem PW i bez rozpoczętego procesu — zdrowemu
+ * człowiekowi guzik „Dzień odpoczynku" nie ma co powiedzieć.
+ */
+function RecoveryPanel({ data, characterId }: { data: CpredCharacterData; characterId: string }) {
+  const [busy, setBusy] = useState(false);
+  const max = hpMax(data.stats);
+  const rate = cpredHealRate(data);
+  if (data.hpCurrent >= max && !data.recovery.stabilized) return null;
+
+  async function rest(strained: boolean) {
+    setBusy(true);
+    try {
+      await restForADay(characterId, strained);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="cp-panel cp-recovery">
+      <div className="cp-field cp-field--notch cp-recovery-field">
+        <span className="cp-label">Rekonwalescencja</span>
+        {data.recovery.stabilized ? (
+          <p className="cp-recovery-rate">
+            <strong>+{rate.perDay} PW</strong> za pełny dzień odpoczynku
+            <span className="cp-recovery-sources">
+              {rate.sources.map((row) => row.label).join(' · ')}
+            </span>
+          </p>
+        ) : (
+          <p className="cp-recovery-rate cp-recovery-rate--idle">
+            Naturalne leczenie nie ruszyło. Ktoś musi wykonać Akcję „Ustabilizowanie" — dopiero
+            wtedy dzień odpoczynku cokolwiek daje (s. 222).
+          </p>
+        )}
+      </div>
+      <div className="cp-recovery-buttons">
+        <button
+          type="button"
+          className="primary-button"
+          disabled={busy || !data.recovery.stabilized}
+          title={
+            data.recovery.stabilized
+              ? `Minął pełny dzień odpoczynku: +${rate.perDay} PW`
+              : 'Najpierw Ustabilizowanie'
+          }
+          onClick={() => void rest(false)}
+        >
+          Dzień odpoczynku
+        </button>
+        <button
+          type="button"
+          disabled={busy || !data.recovery.stabilized}
+          title="Postać się nadwyrężyła: za ten dzień nie odzyskuje PW, rany otwierają się i trzeba ją ustabilizować od nowa (s. 223)."
+          onClick={() => void rest(true)}
+        >
+          Nadwyrężyła się
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /** Ten sam wiersz rany bez łaty — „minął dzień", efekty wracają. */
 function stripPatch(row: CpredCriticalInjuryRow): CpredCriticalInjuryRow {
   const { patched: _patched, ...rest } = row;
@@ -2822,6 +2897,8 @@ function GearTab({ character, data, saveData }: TabProps & { character: Characte
         onChange={(rows) => saveData({ gear: rows }, 'gear')}
       />
 
+      <DosesSection character={character} data={data} />
+
       <div className="cp-panel cp-plaques">
         <div
           className="cp-field cp-plaque"
@@ -2843,6 +2920,76 @@ function GearTab({ character, data, saveData }: TabProps & { character: Characte
       <LifestyleFields data={data} saveData={saveData} />
 
       <CyberdeckSection data={data} saveData={saveData} />
+    </div>
+  );
+}
+
+/**
+ * Dawki farmaceutyków, które ta postać nosi (s. 150).
+ *
+ * Osobna sekcja pod tabelą wyposażenia, a nie kolumna w niej: wiersz z dawką
+ * **jest** zwykłym wyposażeniem (ma nazwę, ilość i uwagi, i tak się go edytuje),
+ * a różni się jedną rzeczą — da się go zużyć. Guzik przy tabeli ogólnej
+ * kazałby jej wiedzieć o farmaceutykach; tutaj wie o nich tylko ta lista.
+ *
+ * Znika, kiedy nie ma czego podawać — a to jest stan każdej karty poza Medykiem.
+ */
+function DosesSection({
+  character,
+  data,
+}: {
+  character: CharacterSheetView;
+  data: CpredCharacterData;
+}) {
+  const tokens = useTokenStore((s) => s.tokens);
+  const [targetId, setTargetId] = useState('');
+  const [busy, setBusy] = useState(false);
+  const doses = data.gear.filter((row) => row.consumable);
+  if (doses.length === 0) return null;
+
+  const figures = Object.values(tokens).filter((token) => token.name.length > 0);
+
+  return (
+    <div className="cp-panel cp-doses">
+      <div className="cp-field cp-field--notch cp-doses-target-field">
+        <span className="cp-label">Farmaceutyki</span>
+        <label className="cp-doses-target">
+          Komu:
+          <select value={targetId} onChange={(e) => setTargetId(e.target.value)}>
+            <option value="">sobie</option>
+            {figures.map((token) => (
+              <option key={token.id} value={token.id}>
+                {token.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <ul className="cp-doses-list">
+        {doses.map((row) => (
+          <li key={row.id}>
+            <span className="cp-doses-name">{row.name}</span>
+            <span className="cp-doses-qty">× {row.qty}</span>
+            <button
+              type="button"
+              disabled={busy || row.qty < 1}
+              title={
+                row.qty < 1
+                  ? 'Nie ma już ani jednej dawki.'
+                  : `Wstrzyknięcie jednej dawki zajmuje Akcję. ${row.notes}`
+              }
+              onClick={() => {
+                setBusy(true);
+                void useDose(character.id, row.id, targetId || undefined).finally(() =>
+                  setBusy(false),
+                );
+              }}
+            >
+              Podaj
+            </button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

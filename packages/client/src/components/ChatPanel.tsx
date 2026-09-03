@@ -16,6 +16,7 @@ import type {
   ChatMessageView,
   CombatActionLogEntry,
   EconomyLogEntry,
+  RecoveryLogEntry,
   HandoutLogEntry,
   JournalLogEntry,
   RollResult,
@@ -290,6 +291,38 @@ function BotProposalRow({
  * the payer and the payee — so it needs no „who may see this" branch here: the
  * server decided that before it left.
  */
+/**
+ * Dzień odpoczynku albo podana dawka (s. 150, 222–223).
+ *
+ * Karta publiczna i bez bezwzględnych PW: `hp` niesie **różnicę**, więc nie ma
+ * tu czego redagować per odbiorca — inaczej niż przy karcie obrażeń, gdzie
+ * absolutne PW celu są tajemnicą jego właściciela.
+ */
+function RecoveryRow({ message, entry }: { message: ChatMessageView; entry: RecoveryLogEntry }) {
+  return (
+    <div
+      className={`chat-message chat-recovery${entry.tone === 'warn' ? ' chat-recovery--warn' : ''}`}
+    >
+      <div className="chat-message-meta">
+        <span className="chat-message-author">{entry.actor}</span>
+        <span className="chat-message-time">{formatTime(message.createdAt)}</span>
+      </div>
+      <p className="chat-recovery-title">
+        {entry.title}
+        {entry.hp > 0 ? <strong className="chat-recovery-hp">+{entry.hp} PW</strong> : null}
+      </p>
+      {entry.lines.length > 0 ? (
+        <ul className="chat-economy-lines">
+          {entry.lines.map((line, index) => (
+            <li key={index}>{line}</li>
+          ))}
+        </ul>
+      ) : null}
+      {entry.note ? <p className="chat-economy-summary">{entry.note}</p> : null}
+    </div>
+  );
+}
+
 function EconomyRow({ message, entry }: { message: ChatMessageView; entry: EconomyLogEntry }) {
   return (
     <div className="chat-message chat-economy">
@@ -730,6 +763,9 @@ function FullMessageRow({
   }
   if (message.kind === 'check' && message.check) {
     return <CheckCallRow message={message} entry={message.check} />;
+  }
+  if (message.kind === 'recovery' && message.recovery) {
+    return <RecoveryRow message={message} entry={message.recovery} />;
   }
   if ((message.kind === 'action' || message.kind === 'gmaction') && message.action) {
     return <CombatActionRow message={message} entry={message.action} isGm={isGm} />;

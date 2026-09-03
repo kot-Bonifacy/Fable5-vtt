@@ -39,7 +39,36 @@ export type ChatKind =
   | 'handout'
   | 'journal'
   /** Wezwanie MG do Testu, czekające na kubek wezwanego (etap 32). */
-  | 'check';
+  | 'check'
+  /** Dzień odpoczynku albo podana dawka — ciało zmienia stan poza walką. */
+  | 'recovery';
+
+/**
+ * Powrót do zdrowia, jak zapisuje go czat (s. 222–223, s. 150).
+ *
+ * Jedna karta na dwie czynności — dzień odpoczynku i podaną dawkę — bo z miejsca
+ * stołu to jedno zdarzenie: „komuś zrobiło się lepiej i wiadomo dlaczego".
+ * Rozdzielenie ich dałoby dwa niemal identyczne kształty i dwa miejsca do
+ * poprawienia, kiedy dojdzie trzeci sposób odzyskiwania PW.
+ *
+ * Karta jest **publiczna**, w odróżnieniu od karty obrażeń: liczby PW nie ma
+ * na niej wcale (`hp` niesie **różnicę**, nie stan), a to, że ktoś przespał
+ * dzień albo dostał zastrzyk, dzieje się przy całym stole.
+ */
+export interface RecoveryLogEntry {
+  /** Czyje ciało — nazwa postaci. */
+  actor: string;
+  /** „Dzień odpoczynku" albo nazwa środka. */
+  title: string;
+  /** Odzyskane PW; 0, gdy dzień albo dawka nic nie dały. */
+  hp: number;
+  /** Rozbicie tempa albo zdanie z tabeli farmaceutyków — po wierszu na powód. */
+  lines: string[];
+  /** Zdanie zamykające: odmowa („nie jest ustabilizowany") albo skutek uboczny. */
+  note?: string;
+  /** Zabarwienie karty — odmowa czyta się inaczej niż siedem odzyskanych PW. */
+  tone?: 'success' | 'warn';
+}
 
 /**
  * A movement of eddies, as the chat records it (stage 23b).
@@ -279,6 +308,8 @@ export interface ChatMessageView {
   journal?: JournalLogEntry;
   /** GM's call for a roll — kind `check` only (stage 32). */
   check?: CheckCallEntry;
+  /** Dzień odpoczynku albo podana dawka — kind `recovery` only. */
+  recovery?: RecoveryLogEntry;
   /** ISO timestamp — always assigned by the server. */
   createdAt: string;
 }
@@ -450,6 +481,10 @@ export function chatCategoryOf(kind: ChatKind): ChatCategory {
     case 'economy':
     case 'handout':
     case 'journal':
+      return 'table';
+    // Odpoczynek i zastrzyk to nie walka, choć zmieniają PW: patrzy się na nie
+    // przy rozliczaniu przerwy między scenami, razem z papierami i pieniędzmi.
+    case 'recovery':
       return 'table';
   }
 }
@@ -640,5 +675,19 @@ export function chatCompactLine(message: ChatMessageView): ChatCompactLine | nul
         : null;
     case 'check':
       return message.check ? compactCheckCall(message.check) : null;
+    case 'recovery':
+      return message.recovery ? compactRecovery(message.recovery) : null;
   }
+}
+
+/** „Vex · Dzień odpoczynku — +7 PW" albo „Vex · Antybiotyk — tydzień". */
+function compactRecovery(entry: RecoveryLogEntry): ChatCompactLine {
+  return {
+    actor: entry.actor,
+    summary:
+      entry.hp > 0
+        ? `${entry.title} — +${entry.hp} PW`
+        : `${entry.title} — ${entry.note ?? 'bez zmian'}`,
+    ...(entry.tone ? { tone: entry.tone } : {}),
+  };
 }

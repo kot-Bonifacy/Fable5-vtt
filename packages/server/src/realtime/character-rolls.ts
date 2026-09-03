@@ -20,6 +20,7 @@ import {
   CPRED_CHARISMA_REFUSAL_DAYS,
   CPRED_MINUTE_S,
   CPRED_RUMOUR_TIERS,
+  CPRED_MELEE_REACH_M,
   CPRED_STABILIZE_DV,
   DEATH_SAVES_MAX,
   ROLE_GM,
@@ -30,8 +31,11 @@ import {
   cpredCarePermanent,
   cpredCheckOutcome,
   hitLocationLabel,
+  hpMax,
   isCpredAimPoint,
   mergeCharacterData,
+  metresBetweenTokens,
+  metresForRules,
   parseCharacterData,
   planCpredRoll,
   resolveCpredDeathSave,
@@ -57,7 +61,13 @@ import { addTokenStatus } from './grapple-state.js';
 import { activeRoundOfScene } from './timed-effects.js';
 import { requireTurnSpend } from './combat-actions.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
-import { emitTokensById, emitTokensOfCharacter, requireCampaignToken } from './tokens.js';
+import {
+  emitTokensById,
+  emitTokensOfCharacter,
+  requireCampaignToken,
+  toTokenView,
+} from './tokens.js';
+import { toSceneView } from './scenes.js';
 import {
   INCLUDE_CHAT_NAMES,
   deliverChatMessageTo,
@@ -414,6 +424,49 @@ async function resolveStabilizeRequest(
 }
 
 /**
+ * „Ustabilizowanie jest Akcją" — a więc czynnością wykonywaną **przy** pacjencie.
+ *
+ * Podręcznik nie podaje dla niej zasięgu, i przez to VTT nie sprawdzał żadnego:
+ * serwer żądał wyłącznie, żeby cel był widocznym żetonem kampanii, więc
+ * „ratuję go z drugiego końca ulicy" przechodziło bez słowa. Zasięgiem jest
+ * długość ramienia — ta sama, którą mierzy Pochwycenie i atak wręcz — bo
+ * czynnością jest dotknięcie rannego, a nie wycelowanie w niego.
+ *
+ * Mierzone **wszystkim, MG włącznie**, dokładnie jak w Pochwyceniu. To wyjątek
+ * od zwyczaju „MG omija blokady" i jest świadomy: MG stabilizuje figurą, która
+ * stoi na mapie, więc odległość jest dla niego równie prawdziwa jak dla gracza,
+ * a jedyną drogą naokoło i tak zostaje wpisanie PW ręką w karcie.
+ *
+ * Medyk bez żetonu na scenie pacjenta dostaje odmowę, a nie zwolnienie:
+ * karta postaci, która nigdzie nie stoi, nie stoi też przy rannym.
+ */
+async function requireStabilizeReach(
+  deps: RealtimeDeps,
+  campaignId: string,
+  character: Character,
+  targetTokenId: string,
+): Promise<void> {
+  const { token: target, scene } = await requireCampaignToken(
+    deps.ctx.prisma,
+    campaignId,
+    targetTokenId,
+  );
+  // Ustabilizowanie samego siebie („w tym siebie", s. 222) — odległość zero,
+  // i nie ma sensu szukać drugiego żetonu tej samej postaci.
+  if (target.characterId === character.id) return;
+
+  const healer = await deps.ctx.prisma.token.findFirst({
+    where: { characterId: character.id, sceneId: target.sceneId },
+  });
+  if (!healer) throw new RealtimeError('STABILIZE_NOT_ON_SCENE');
+
+  const metres = metresForRules(
+    metresBetweenTokens(toTokenView(healer, true), toTokenView(target, true), toSceneView(scene)),
+  );
+  if (metres > CPRED_MELEE_REACH_M) throw new RealtimeError('STABILIZE_OUT_OF_REACH');
+}
+
+/**
  * Fills in what „Leczenie" needs from the *wound* (stage 30b).
  *
  * The DV is not the client's to name, for exactly the reason `stabilizeDv` is
@@ -558,11 +611,13 @@ async function applyStabilization(
   deps: RealtimeDeps,
   campaignId: string,
   targetTokenId: string,
-): Promise<{ healed: boolean; token: Token | null; gained: number }> {
+): Promise<{ healed: boolean; opened: boolean; token: Token | null; gained: number }> {
   const token = await deps.ctx.prisma.token.findUnique({ where: { id: targetTokenId } });
-  if (!token) return { healed: false, token: null, gained: 0 };
+  if (!token) return { healed: false, opened: false, token: null, gained: 0 };
   if (!token.characterId) {
     // A statist token keeps its own HP pair; lift it off the floor the same way.
+    // Procesu leczenia statysta nie zaczyna: dzień odpoczynku pyta o kartę,
+    // a figura bez karty nie ma jej gdzie zapisać (patrz `statist.ts`).
     if (token.hpCurrent !== null && token.hpCurrent < 1) {
       const gained = 1 - token.hpCurrent;
       await deps.ctx.prisma.token.update({
@@ -571,26 +626,54 @@ async function applyStabilization(
       });
       await emitTokensById(deps, campaignId, [token.id]);
       await knockOutStabilized(deps, campaignId, token);
-      return { healed: true, token, gained };
+      return { healed: true, opened: false, token, gained };
     }
-    return { healed: false, token, gained: 0 };
+    return { healed: false, opened: false, token, gained: 0 };
   }
   const character = await deps.ctx.prisma.character.findUnique({
     where: { id: token.characterId },
   });
-  if (!character) return { healed: false, token, gained: 0 };
+  if (!character) return { healed: false, opened: false, token, gained: 0 };
   const data = parseCharacterData(character.data, deps.ctx.cpred);
-  if (data.hpCurrent >= 1) return { healed: false, token, gained: 0 };
+  const max = hpMax(data.stats);
+
+  // „Aby rozpocząć proces naturalnego leczenia, musisz zostać ustabilizowany"
+  // (s. 222) — i to jest **cały** skutek udanego rzutu na kimś, kto jeszcze
+  // stoi. Do 03.09 taki rzut nie robił nic: kod pytał tylko, czy cel leży
+  // poniżej zera, więc PT 10 i PT 13 z tabeli progów były PT donikąd.
+  const opens = data.hpCurrent >= 1 && data.hpCurrent < max && !data.recovery.stabilized;
+  if (data.hpCurrent >= 1) {
+    if (!opens) return { healed: false, opened: false, token, gained: 0 };
+    const saved = await deps.ctx.prisma.character.update({
+      where: { id: character.id },
+      data: {
+        data: JSON.stringify(
+          mergeCharacterData(data, { recovery: { ...data.recovery, stabilized: true } }),
+        ),
+      },
+    });
+    await emitCharacterUpsert(deps, campaignId, toCharacterView(saved, deps.ctx.cpred));
+    return { healed: false, opened: true, token, gained: 0 };
+  }
 
   const gained = 1 - data.hpCurrent;
   const saved = await deps.ctx.prisma.character.update({
     where: { id: character.id },
-    data: { data: JSON.stringify(mergeCharacterData(data, { hpCurrent: 1 })) },
+    data: {
+      data: JSON.stringify(
+        mergeCharacterData(data, {
+          hpCurrent: 1,
+          // Ten sam rzut, który podnosi z zera, otwiera powrót do zdrowia —
+          // podręcznik opisuje obie rzeczy jednym zdaniem o Ustabilizowaniu.
+          recovery: { ...data.recovery, stabilized: true },
+        }),
+      ),
+    },
   });
   await emitCharacterUpsert(deps, campaignId, toCharacterView(saved, deps.ctx.cpred));
   await emitTokensOfCharacter(deps, campaignId, saved);
   await knockOutStabilized(deps, campaignId, token);
-  return { healed: true, token, gained };
+  return { healed: true, opened: true, token, gained };
 }
 
 /**
@@ -787,8 +870,11 @@ export async function performCharacterRoll(
     const { plan } = planned;
 
     // Stabilizing is an Action (s. 169) — booked before the dice, so a medic
-    // with nothing left in the turn does not roll and then get told no.
+    // with nothing left in the turn does not roll and then get told no. Zasięg
+    // sprawdza się **przed** księgowaniem Akcji z tego samego powodu: odmowa
+    // „za daleko" nie ma prawa kosztować tury.
     if (plan.stabilize && source.kind === 'character') {
+      await requireStabilizeReach(deps, campaignId, source.character, plan.stabilize.targetTokenId);
       await spendStabilizeAction(deps, campaignId, sceneId, source.character, user);
     }
 
@@ -872,16 +958,20 @@ export async function performCharacterRoll(
       const success = result.total > plan.stabilize.dv;
       const applied = success
         ? await applyStabilization(deps, campaignId, plan.stabilize.targetTokenId)
-        : { healed: false, token: null, gained: 0 };
+        : { healed: false, opened: false, token: null, gained: 0 };
       if (applied.healed && applied.token) {
         stabilized = { token: applied.token, gained: applied.gained };
       }
       result.outcome = {
         success,
         label: success ? 'Ustabilizowany' : 'Nie udało się',
-        detail: `${plan.stabilize.skillName} ${result.total} vs PT ${plan.stabilize.dv}${
-          applied.healed ? ' · cel wraca do 1 PW' : ''
-        }`,
+        detail:
+          `${plan.stabilize.skillName} ${result.total} vs PT ${plan.stabilize.dv}` +
+          (applied.healed ? ' · cel wraca do 1 PW' : '') +
+          // Zdanie mówi o skutku, którego nie widać na żadnym pasku: od tej
+          // chwili dzień odpoczynku coś daje. Bez niego udany rzut na kimś,
+          // kto stoi, wyglądałby dokładnie jak rzut w próżnię.
+          (applied.opened ? ' · rusza naturalne leczenie' : ''),
       };
     }
 

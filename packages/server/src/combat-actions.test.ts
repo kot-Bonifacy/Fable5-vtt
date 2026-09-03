@@ -281,6 +281,20 @@ describe('action economy', () => {
     throw new Error('turn never reached that participant');
   }
 
+  /**
+   * Przystawia kuriera do Vex — Ustabilizowanie wymaga długości ramienia (2 m,
+   * 03.09), a scena stawia go osiem metrów dalej, żeby dało się do niego
+   * strzelać. Rusza nim MG, więc budżet ruchu nikogo tu nie obchodzi.
+   */
+  async function reachTheCourier(): Promise<void> {
+    await emitAck(gm, 'token:move', {
+      tokenId: targetTokenId,
+      x: 1 * PX_PER_M,
+      y: 0,
+      final: true,
+    });
+  }
+
   it('sets the table: a player, a GM thug and a target to shoot at', async () => {
     const gmConn = createSocket(gmCookie);
     const playerConn = createSocket(playerCookie);
@@ -605,6 +619,23 @@ describe('action economy', () => {
     });
   });
 
+  it('odmawia Ustabilizowania z drugiego końca ulicy (03.09)', async () => {
+    await giveTurnTo(vexTokenId);
+    await emitAck(gm, 'token:update', {
+      tokenId: targetTokenId,
+      patch: { hp: { current: 0, max: 30 } },
+    });
+    // Kurier stoi 8 m od Vex — poza długością ramienia.
+    const ack = await emitAck(player, 'character:roll', {
+      characterId: vexCharacterId,
+      visibility: 'public',
+      request: { kind: 'stabilize', stabilizeTokenId: targetTokenId },
+    });
+    expect(ack).toMatchObject({ ok: false, error: 'STABILIZE_OUT_OF_REACH' });
+    // Odmowa zasięgu nie ma prawa kosztować Akcji.
+    expect(spent(rowOf(await tracker(), vexTokenId), 'action')).toEqual({ used: 0, max: 1 });
+  });
+
   it('stabilizes a mortally wounded target back to 1 HP, for an Action', async () => {
     await giveTurnTo(vexTokenId);
     // Put the courier below zero: a Mortally Wounded target, PT 15.
@@ -612,6 +643,7 @@ describe('action economy', () => {
       tokenId: targetTokenId,
       patch: { hp: { current: 0, max: 30 } },
     });
+    await reachTheCourier();
 
     const card = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
     const ack = await emitAck<{ messageId: number }>(player, 'character:roll', {
@@ -645,6 +677,7 @@ describe('action economy', () => {
       tokenId: targetTokenId,
       patch: { hp: { current: 0, max: 30 } },
     });
+    await reachTheCourier();
 
     let label: string | undefined;
     for (let attempt = 0; attempt < 8 && label !== 'Ustabilizowany'; attempt += 1) {

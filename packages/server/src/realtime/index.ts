@@ -76,6 +76,11 @@ import {
   creationStartEvent,
 } from './creation.js';
 import { characterRollEvent } from './character-rolls.js';
+import {
+  characterCraftPharmaEvent,
+  characterRestEvent,
+  characterUseDoseEvent,
+} from './recovery.js';
 import { checkCallEvent, checkCancelEvent } from './checks.js';
 import { characterCyberwareEvent } from './cyberware.js';
 import {
@@ -285,6 +290,9 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   creationFinishEvent,
   creationDiscardEvent,
   characterRollEvent,
+  characterRestEvent,
+  characterCraftPharmaEvent,
+  characterUseDoseEvent,
   checkCallEvent,
   checkCancelEvent,
   characterCyberwareEvent,

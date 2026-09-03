@@ -9,6 +9,46 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Przeniesione 2026-09-03 (zestaw A — leczenie, regeneracja i środki zużywalne, trzecia sesja)
+
+- **Farmaceutyki nie miały zapasu dawek. ZAMKNIĘTE — zrobione 03.09.** Pierwotny wpis: „Panel
+  drukuje pięć środków słowami podręcznika i mówi, ilu Medyk ma dostęp, ale który wybrał,
+  wytworzenie dawki (Test PT 13, surowce za 200 ed) i podanie jej (Akcja) prowadzi MG. Brakuje
+  modelu przedmiotu zużywalnego — wiersz ekwipunku to wolny tekst bez licznika."
+  **Diagnoza była o jedno zdanie za surowa:** `CpredGearRow` miał `qty` od dawna, brakowało
+  wyłącznie tego, co **zużycie sztuki oznacza**. Naprawa dodaje więc jedno pole, nie tabelę:
+  `CpredGearRow.consumable` niesie id środka z nowego, bezzależnościowego modułu `pharma.ts`,
+  a dwa zdarzenia robią resztę — `character:craft-pharma` (rzut TECH + Technologia Medyczna vs
+  PT 13; **surowce za 200 ed schodzą z konta także po porażce**, bo tak mówi zdanie „W przypadku
+  porażki surowce przepadają", a udany Test daje tyle dawek, ile wynosi Umiejętność) oraz
+  `character:use-dose` (Akcja, zasięg ramienia, bramka „Postać niebędąca Medykiem nie potrafi
+  poprawnie podawać farmaceutyków"). Cztery z pięciu środków rozlicza silnik; Stym został otwarty
+  i ma własny wpis w `zaleglosci.md` z gotowym przepisem. Obejrzane w przeglądarce: wytworzenie
+  (3 dawki, −200 ed), wiersz „Antybiotyk × 3" z guzikiem „Podaj", podanie sobie i komuś innemu.
+
+- **Ustabilizowanie nie sprawdzało, czy medyk sięga do pacjenta. ZAMKNIĘTE — zrobione 03.09.**
+  Pierwotny wpis (z `POMYSLY.md`, 30.07): „RAW nie podaje zasięgu tej Akcji, więc serwer wymaga
+  tylko, żeby cel był widocznym tokenem kampanii; przy stole »ratuję go z drugiego końca ulicy«
+  jest oczywistym nadużyciem." Naprawa: `requireStabilizeReach` w `realtime/character-rolls.ts`
+  mierzy `metresBetweenTokens` przeciw `CPRED_MELEE_REACH_M` — **ten sam** zasięg, który mierzy
+  Pochwycenie, bo czynnością jest dotknięcie rannego. Trzy rozstrzygnięcia warto zapisać:
+  zasięg obowiązuje **wszystkich, MG włącznie** (wyjątek od zwyczaju „MG omija blokady", bo MG
+  stabilizuje figurą stojącą na mapie); medyk bez żetonu na scenie pacjenta dostaje odmowę
+  `STABILIZE_NOT_ON_SCENE`, a nie zwolnienie; a sprawdzenie idzie **przed** `spendStabilizeAction`,
+  żeby odmowa „za daleko" nie kosztowała tury. Obejrzane w przeglądarce na obu gałęziach.
+
+- **PW nie wracały nigdy. ZAMKNIĘTE — zrobione 03.09** (wpis z `POMYSLY.md`, 03.09). `treatment.ts`
+  umiał zdjąć Ranę Krytyczną, `damage.ts` odjąć PW, a drogi w drugą stronę nie było wcale poza
+  wpisaniem liczby ręką. Nowy moduł `shared/systems/cpred/recovery.ts` liczy **dzień odpoczynku**
+  (s. 222–223): BC punktów, podwójne przy chromie „Ulepszone przeciwciała" (s. 362), plus 2 za
+  Antybiotyk (s. 150), do maksimum; „Splot skórny" i „Pancerz podskórny" odzyskują przy tym 1 OB
+  (s. 363). Warunek „po udanej stabilizacji" siedzi w nowym `CpredCharacterData.recovery`, a
+  **udane Ustabilizowanie ustawia go na każdym progu ran** — do tej sesji rzut na stojącego
+  pacjenta nie robił **nic**, więc PT 10 i PT 13 z tabeli progów były PT donikąd. Nadwyrężenie
+  („Jeśli pacjent przesadzi…") zabiera dzień, ustabilizowanie i tydzień antybiotyku naraz.
+  **Uwaga na jedno odstępstwo od wpisu:** „opieki jako mnożnika tempa" w podręczniku nie ma —
+  szpital zmienia cenę (s. 225), nie szybkość.
+
 ## Przeniesione 2026-09-03 (dwa długi higieny, obie z drugiej sesji tego dnia)
 
 - **`tsc --noEmit` na serwerze miał jeden błąd, którego vitest ani ESLint nie widziały.

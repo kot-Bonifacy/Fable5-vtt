@@ -1,6 +1,7 @@
 import type {
   BotActionProposal,
   CheckCallEntry,
+  RecoveryLogEntry,
   ChatHistoryPage,
   ChatMessageBroadcast,
   ChatMessageView,
@@ -116,6 +117,8 @@ export function toChatMessageView(message: StoredMessage): ChatMessageView {
     view.journal = JSON.parse(message.payload) as JournalLogEntry;
   } else if (message.kind === 'check' && message.payload) {
     view.check = JSON.parse(message.payload) as CheckCallEntry;
+  } else if (message.kind === 'recovery' && message.payload) {
+    view.recovery = JSON.parse(message.payload) as RecoveryLogEntry;
   }
   return view;
 }

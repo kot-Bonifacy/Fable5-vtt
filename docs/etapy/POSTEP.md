@@ -108,6 +108,16 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 ## Od czego zacząć
 
+**Naturalne leczenie PW istnieje od 03.09 (trzecia sesja) — do tej pory PW nie wracały nigdy.**
+Dzień odpoczynku liczy `cpredRestDay` (`shared/systems/cpred/recovery.ts`), a warunek „po udanej
+stabilizacji" siedzi w nowym `CpredCharacterData.recovery`. **Ustabilizowanie ma odtąd zasięg
+ramienia (2 m), mierzony wszystkim — MG włącznie**, i otwiera proces leczenia **na każdym progu
+ran**, nie tylko przy zerze. Dawki farmaceutyków są wierszami ekwipunku z licznikiem
+(`CpredGearRow.consumable`, katalog w `pharma.ts`); Medyk je wytwarza i podaje. **Stym został
+otwarty świadomie** — potrzebuje maszynerii z etapu 39, przepis w `zaleglosci.md`. Trzy umowy
+kodu i dwie pułapki dev w indeksach niżej; **„opieki jako mnożnika tempa" w podręczniku nie ma**
+(patrz `decyzje-i-uproszczenia.md`).
+
 **Zestaw testów jest znowu wiarygodny (03.09, druga sesja): `tsc --noEmit` czysty w całym
 monorepo.** Migotanie miało **cztery** przyczyny, nie jedną, i **żadna nie była równoległością
 samą w sobie**: dwa wyścigi na `chat:message`, pomiar PW od stanu, który mógł już być zerem,
@@ -237,6 +247,9 @@ ESLint i Prettier czyste na całym repo.
 Jeden wiersz = jedna umowa; pełna wersja z uzasadnieniem w `umowy-kodu.md`. Umowa złamana
 znaczy zwykle błąd, który już raz kosztował sesję.
 
+- **Przedmiot zużywalny** — `CpredGearRow.consumable` + `qty` na wierszu ekwipunku, katalog w `systems/cpred/pharma.ts` (moduł **bez importów**). Nowy środek = wpis w `CPRED_PHARMACEUTICALS` + gałąź w `applyDose`.
+- **Powrót do zdrowia liczy serwer** — `cpredRestDay` w `systems/cpred/recovery.ts` jest jedynym źródłem tempa; klient wysyła samo „minął dzień". Nowe źródło = wiersz w `cpredHealRate`. `recovery.stabilized` pisze **wyłącznie** udane Ustabilizowanie.
+- **Nowy rodzaj wiersza czatu** — dwie czyste funkcje w `shared/src/chat.ts` (`chatCategoryOf`, `chatCompactLine`) + `toChatMessageView` + gałąź `FullMessageRow`. Pominięcie = wiersz w grupie „Stół", którego nie da się ścisnąć.
 - **Nazwa figury dla graczy** — `Token.publicName` (null = prawdziwa, tekst = alias, `''` = bez etykiety); podmiana **tylko** w `toTokenView` i `filterCombatForPlayer`. Nowa ścieżka do gracza filtruje nazwę u siebie. Czat świadomie poza umową.
 - **Ruch przez przeszkodę** — `refuseWalkThroughSolid` w `realtime/movement.ts`; nowe nieprzenikalne coś dokłada segmenty w `movementSegments`/`coverMovementSegments`, nie nową gałąź walidacji. Sprawdzana jest **cała figura**, nie jej środek.
 - **Powód odmowy Akcji** — jedzie na `TurnResourceView.blocked`, nie w prozie obok; kolejność: status → rana zapisana na turze → budżet.
@@ -334,6 +347,8 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 
 Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapki-dev.md`.
 
+- **Jeden zły wiersz listy kasuje CAŁĄ listę przy odczycie** — `validateRows` zwraca `undefined`, a `parseCharacterData` podstawia `[]`; id wiersza dłuższe niż **32 znaki** wystarczy. Generuj je jak klient (`newRowId`), nie z id kompendium.
+- **Dwa zapisy tej samej karty w jednym handlerze: drugi cofa pierwszy** — wiersz `Character` z początku obsługi to migawka. Jeden zapis z obiema łatkami albo świeży wiersz pod drugi krok (`effectTarget` w `realtime/recovery.ts`).
 - **Nowy plik testów dymnych musi dostać `}, 60_000);` przy `beforeAll`** — hak robi `prisma migrate deploy` i podnosi Fastify, a pod pełną równoległością nie mieści się w domyślnych 10 s; objaw to `FAIL` całego **pliku**, nie testu.
 - **`waitFor(socket, 'chat:message')` bierze pierwszą wiadomość, jaka przyjdzie** — publiczny rzut dociera też do MG, więc następny test łapie kartę poprzedniego. Czekaj po treści (`waitForRoll`), nie „na pierwszą".
 - **Test mierzący spadek PW musi sam ustawić PW na starcie** — przy zerze serwer odmawia graczowi ruchu, więc spadek wychodzi 0 → 0 i pada asercja, nie stan (`healUp()` w `zones.test.ts`).
@@ -429,6 +444,73 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 03.09 (trzecia) — zestaw A: leczenie, regeneracja i środki zużywalne
+
+**Zlecenie MG:** wybrać z zaległości kilkanaście pozycji pasujących do siebie na jedną sesję,
+bez niczego wokół lokalnego LLM-a (planowana wymiana modelu), i wykonać wskazany zestaw. MG
+wskazał **zestaw A** — naturalna regeneracja PW, farmaceutyki z zapasem dawek i zasięg
+Ustabilizowania — oraz kazał przekreślić sześć wpisów `POMYSLY.md`, które okazały się już
+zrobione.
+
+**PW wracają. Do tej sesji nie wracały nigdy** poza wpisaniem liczby ręką. Nowy moduł
+`shared/systems/cpred/recovery.ts` liczy dzień odpoczynku (s. 222–223): BC punktów, ×2 przy
+chromie „Ulepszone przeciwciała", +2 za Antybiotyk, do maksimum; „Splot skórny" i „Pancerz
+podskórny" odzyskują przy tym 1 OB. Warunek „po udanej stabilizacji" jest nowym polem karty
+(`CpredCharacterData.recovery`), a **udane Ustabilizowanie ustawia je na każdym progu ran** —
+do tej sesji rzut na stojącego pacjenta nie robił nic, więc PT 10 i PT 13 z tabeli progów były
+PT donikąd. Panel „Rekonwalescencja" na stronie pierwszej karty pokazuje rozbicie tempa i dwa
+guziki: „Dzień odpoczynku" i „Nadwyrężyła się".
+
+**Uwaga dla każdego, kto wróci do tego miejsca: „opieki jako mnożnika tempa" w podręczniku nie
+ma.** Zaległość tak mówiła, ale to była parafraza — szpital zmienia **cenę** ustabilizowania
+(s. 225), nie szybkość. Tempo podnoszą wyłącznie chrom i Antybiotyk. Zapisane
+w `decyzje-i-uproszczenia.md`, żeby nikt nie dorabiał mnożnika drugi raz.
+
+**Dawka jest wierszem ekwipunku, nie tabelą obok niego.** `CpredGearRow.consumable` plus `qty`,
+katalog w nowym, bezzależnościowym `pharma.ts`. Medyk wytwarza partię (`character:craft-pharma`:
+Test TECH + Technologia Medyczna vs PT 13, **surowce za 200 ed przepadają także po porażce**,
+udany Test daje tyle dawek, ile wynosi Umiejętność) i podaje ją (`character:use-dose`: Akcja,
+zasięg ramienia, bramka „Postać niebędąca Medykiem nie potrafi poprawnie podawać farmaceutyków").
+Cztery z pięciu środków rozlicza silnik; **Stym został otwarty świadomie** — zawieszenie kary
+Poważnie Rannego to ta sama maszyneria, której potrzebuje etap 39, i przepis na nią leży
+w `zaleglosci.md`.
+
+**Ustabilizowanie wymaga zasięgu ramienia (2 m) — i mierzy go wszystkim, MG włącznie.** Wyjątek
+od zwyczaju „MG omija blokady", bo MG stabilizuje figurą stojącą na mapie. Sprawdzenie idzie
+**przed** księgowaniem Akcji, żeby odmowa „za daleko" nie kosztowała tury.
+
+**Doszedł rodzaj wiersza czatu `recovery`** — jedna karta na dwie czynności (dzień odpoczynku
+i podana dawka), bo z miejsca stołu to jedno zdarzenie. Przeszedł umową z 01.09: dwie czyste
+funkcje w `shared/src/chat.ts`, `toChatMessageView`, jedna gałąź u klienta.
+
+**Oględziny (Strzelnica, konto MG) znalazły dwa błędy, oba naprawione z testem.** (1) **Dawka
+podana sobie nie schodziła z ekwipunku** — `applyDose` scalał skutek środka na wierszu karty
+sprzed zdjęcia dawki i cofał je. To pułapka ogólna („dwa zapisy tej samej karty w jednym
+handlerze"), dopisana do `pulapki-dev.md`. (2) **Udany zastrzyk malował się na pomarańczowo**,
+bo zabarwienie karty wnioskowało z „jest przypis i zero PW"; teraz mówi je `applyDose` wprost.
+Przy okazji: „Wytwórz (3 dawek)" → „(3 dawki)", a karta zastrzyku podanego sobie nie dopisuje
+już „— od: Frank". **Trzeci błąd wypadł przy pierwszym wytworzeniu i był groźniejszy, niż
+wygląda:** generowane id wiersza ekwipunku miało 37 znaków przy limicie 32, więc walidacja
+odrzucała **cały** ekwipunek i karta wracała z odczytu pusta — po cichu, bez błędu zapisu.
+
+**Obejrzane w przeglądarce, po kolei:** panel znika przy pełnych PW; „Naturalne leczenie nie
+ruszyło" z wyszarzonymi guzikami; odmowa „Za daleko — Ustabilizowanie wymaga zasięgu ramienia
+(2 m)"; udany rzut z dopiskiem „rusza naturalne leczenie"; dzień odpoczynku +5 PW z rozbiciem
+na karcie; lista farmaceutyków z guzikami „Wytwórz" i wyszarzonymi środkami bez dostępu;
+wytworzenie (3 dawki, −200 ed); wiersz „Antybiotyk × 3" z „Podaj"; podanie sobie i komuś innemu;
+tempo 5 → 7 PW po antybiotyku z licznikiem dni; nadwyrężenie („rany otwierają się"). **Poligon
+wysprzątany:** walka zakończona, żeton Franka skasowany, karty Franka i Rudego przywrócone
+z kopii, Rudy z powrotem 40/40.
+
+**Sprzątanie `POMYSLY.md`:** sześć wpisów przekreślonych jako nieaktualne (obrażenia Bijatyki
+z BC, trzy braki statysty, ręczna rana krytyczna MG, zbieracz osieroconych uploadów). Trzy z nich
+miały „ZROBIONE" już w kolumnie „Decyzja" i brakowało im samego przekreślenia. **Morał ten sam co
+29.08: pozycję z tej listy sprawdza się w kodzie, zanim się ją weźmie** — sześć na kilkanaście
+sprawdzonych kandydatów było już zrobionych.
+
+**Testy na koniec:** 1782 w `shared` (+23), 934 na serwerze (+16), 75 u klienta — zielone.
+`tsc --noEmit` czysty w całym monorepo, ESLint i Prettier czyste.
+
 ### Sesja 03.09 (druga) — higiena testów i alias nazwy figury
 
 **Zlecenie MG:** wybrać zadania samodzielnie z listy zaległości. Wybór padł na **oba długi
@@ -485,69 +567,3 @@ piątki, w bazie zero tokenów z aliasem.
 to zamknięcie i odtworzenie karty MG; zrzut ekranu ma inną skalę niż `clientX` (mnożnik
 `innerWidth / szerokość zrzutu`); `form_input` na checkboksie Reacta zmienia DOM, ale nie stan
 komponentu; menu kontekstowe tokenu otwiera `pointerdown` z `button === 2`.
-
-### Sesja 03.09 — przegląd mechanik CP RED i trzy błędy naprawione od ręki
-
-**Zlecenie MG:** sprawdzić, czy wszystkie ważne i wykonalne mechaniki z podręcznika są już
-w VTT, a brakujące zebrać w listę z krótkimi opisami do decyzji. Przegląd szedł po kodzie
-`shared/systems/cpred` i po podręczniku; przy okazji wypadły **trzy błędy**, które MG kazał
-naprawić od razu — z testami, oględzinami i commitem, **przed** refaktoryzacją poprzedzającą
-etap 28.
-
-**Decyzja MG: pojazdy i walka pojazdów zostają narracji** — etapu dla nich nie będzie,
-a priorytet przesuwa się na dopalacze z uzależnieniem, techniki walki wręcz i leczenie.
-**Cała reszta braków poszła do `POMYSLY.md`** (cztery wpisy z 03.09) — decyzją MG z tej samej
-sesji. **Dwie pozycje z pierwszej wersji listy okazały się już zrobione** i wypadły po
-sprawdzeniu w kodzie: tarcze balistyczne (`ARMOR_LOCATIONS` zna `shield`) i terapia
-Człowieczeństwa (`cyberware` z `action: 'therapy'`). Morał na przyszłe przeglądy: **pozycję
-listy braków sprawdza się grepem, zanim się ją komuś poda.**
-
-**(1) Kara z ciężkiego pancerza działała wyłącznie na RUCH.** Podręcznik (s. 185) zabiera ją
-**także REF i ZW w Testach**, a VTT liczył ją tylko w budżecie metrów. Naprawa dokłada
-`cpredArmorStatPenalty` w `character.ts` (nie w `rolls.ts` — `movement.ts` już importuje
-`rolls.ts`, więc odwrotna zależność zamknęłaby cykl) i wpina ją w cztery miejsca: Testy Cechy
-i Umiejętności, atak, bierny PT Uniku i Inicjatywę. Kara **nigdy nie schodzi poniżej zera**
-(`Math.min(-penalty, max(0, statValue))`, ze świadomym uniknięciem `-0`), liczy się z **jednej
-najgorszej sztuki**, nie z sumy, a zdjęty pancerz nie waży nic.
-
-**(2) Broń niskiej jakości nigdy się nie zacinała, doskonała nie dawała +1** (s. 244). `quality`
-było w kompendium, ale nie wychodziło z `resolveWeapon`. Teraz wychodzi, `excellent` dokłada
-nazwany wiersz **„Broń doskonałej jakości +1"**, a Krytyczna Porażka bronią `poor` stawia na
-wierszu karty flagę `jammed`. Zacięta broń **odmawia strzału zdaniem**, a nie ciszą, i dostaje
-**własną Akcję** `clear-jam` (`weapon:clear-jam`) — osobny kafelek na pasku i czerwony guzik
-„⚠ Zacięta — usuń usterkę" na karcie. Trzy granice świadome: zacina się **broń niosąca**, nigdy
-dodatek podwieszany (dodatek nie ma jakości), nigdy statysta (nie ma wpisu katalogu), a Krytyczna
-Porażka **pominięta** przez „Wyjście z opresji" Solo nie zacina niczego.
-
-**(3) Ustabilizowanie nie kładło celu bez przytomności.** RAW (s. 223) mówi, że ustabilizowany
-jest nieprzytomny przez minutę; VTT dawał 1 PW i zostawiał postać na nogach. `applyStabilization`
-nadaje teraz status `unconscious` z zegarem minuty (6 rund) — **w obu gałęziach**, statysty
-i karty. Poza walką zegar nie tyka i status zdejmuje MG, zgodnie z umową o efektach okresowych.
-
-**Oględziny (Strzelnica, konto MG).** Karta ataku pokazała nazwany wiersz **„Pancerz −2"**, a
-kolejka inicjatywy — **avatar9 · REF 3** przy REF 5 na karcie. Zacięcie wypadło na
-`Chadran Arms City Reaper` (jakość `poor`) po naturalnej 1: karta dopisała **„broń niskiej
-jakości zacięła się — usuń usterkę (Akcja)"**, tryby ognia zszarzały, na pasku wyrósł kafelek
-„Usuń usterkę", a guzik na karcie usterkę zdjął i broń wróciła do ATAK/SERIA/ZAPORA.
-Ustabilizowanie Rudego Kwiatkowskiego przy 0 PW dało **1 PW + naklejkę Nieprzytomny** z zegarem
-`Ustabilizowanie / 60 s` w `statusData`. Scena wysprzątana: obie testowe bronie skasowane,
-Rudy z powrotem 40/40 bez statusów, walka zakończona.
-
-**Uwaga o RNG przy oględzinach:** żeby zobaczyć zacięcie, trzeba naturalnej 1 — poszło na to
-**29 strzałów** (dwie bronie, cztery przeładowania). Broń z magazynkiem 40 oszczędza klikania.
-
-**Sample publiczny się rozjechał i to psuło testy serwera.** `weapon.zgrzyt-9` miał
-`quality: "poor"`, a jest fixture'em w 17 plikach testów — po dołożeniu zacięć 16 z nich padało
-losowo. Jakość `poor` przeniosłem na **nowy** wpis `weapon.zardzewiak`; `zgrzyt-9` jest
-`standard`. **Broni z `data/public` używanej jako fixture nie wolno dawać właściwości losowych.**
-
-**Testy na koniec:** 1759 w `shared` (+18), 914 na serwerze (+6), 75 u klienta — zielone.
-ESLint i Prettier czyste.
-
-**Ważne odkrycie o samych testach: zestaw serwera jest niestabilny pod równoległością i nie
-z mojej winy.** Pełny przebieg pada mniej więcej co drugi raz, **za każdym razem gdzie indziej**
-(`roles30d.test.ts`, `zones.test.ts`, `netdemons.test.ts`), a pojedynczy plik przechodzi 6/6.
-Sprawdzone `git stash`-em: **na czystym HEAD pada tak samo**, tylko w innym pliku. Diagnoza
-i dwa kroki naprawy — w `zaleglosci.md`. Praktyczny wniosek na przyszłe sesje: **czerwony
-pojedynczy plik w pełnym przebiegu to najpierw podejrzenie wyścigu, a dopiero potem regresji**
-— powtórz go osobno, zanim zaczniesz szukać błędu w swojej zmianie.

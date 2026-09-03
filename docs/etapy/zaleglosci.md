@@ -6,6 +6,11 @@ odhaczania zaległości albo dotykasz etapu, który tu występuje — nie rutyno
 
 Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/zamkniete-zaleglosci.md`.
 
+**Zamknięte 03.09 (trzecia sesja tego dnia):** **farmaceutyki bez zapasu dawek**
+i **Ustabilizowanie bez zasięgu**. Przy okazji doszło naturalne leczenie PW, którego projekt nie
+miał wcale (wpis z `POMYSLY.md`). Diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`;
+jedna pozycja została otwarta — **Stym**, niżej.
+
 **Zamknięte 03.09 (druga sesja tego dnia):** oba długi higieny — **czerwony `tsc --noEmit`**
 na serwerze i **losowo padający zestaw testów**. Migotanie miało **cztery** przyczyny, nie jedną;
 diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
@@ -79,11 +84,25 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
   dostępna tylko Medykom w ramach Zdolności Specjalnej Medycyna"; (5) **⚒ Prowizorka** przy startym pancerzu (tylko
   Technikowi z Naprawą ≥ 1) i **⌫** kończące ją; (6) **⊕ +1 OB** — raz na sztukę.
 
-- **Farmaceutyki nie mają zapasu dawek.** Panel drukuje pięć środków słowami podręcznika i mówi,
-  ilu Medyk ma dostęp, ale który wybrał, wytworzenie dawki (Test PT 13, surowce za 200 ed)
-  i podanie jej (Akcja, ewentualnie strzykawką bezigłową jako atak) prowadzi MG. Brakuje modelu
-  przedmiotu zużywalnego — wiersz ekwipunku to wolny tekst bez licznika. Sensowne razem
-  z etapem, który tknie ekwipunek.
+- **Stym nie zawiesza kar Poważnie Rannego — robi to MG.** Cztery z pięciu farmaceutyków (03.09)
+  rozlicza silnik: Antybiotyk dopisuje tydzień do naturalnego leczenia, Turbo uzdrawiacz leczy
+  BC + SW od ręki, Dynadetoks zdejmuje „Zatruty", Zryw jest zdaniem na karcie. Piąty nie:
+  „przez godzinę cel ignoruje kary wynikające z bycia Poważnie Rannym" (s. 150) znaczy zawieszenie
+  −2 **w każdym Teście**, a tę karę liczy `planCpredRoll` z `woundState`, czyli siedem ścieżek
+  naraz (rzut, atak, Zwarcie, Konfrontacja, Sieć, ruch, obrona). Karta czatu mówi to wprost
+  („kary zawiesza MG na godzinę"), a przepis na naprawę jest jeden i **ten sam, którego potrzebuje
+  etap 39**: `sheetSituationModifiers` (`server/src/sheets.ts`) dostaje listę statusów figury
+  i sam wystawia nazwany wiersz „Stym +2" obok „Poważnie ranny −2" — siedmiu wywołań tej funkcji
+  nie trzeba wtedy uczyć niczego nowego, tylko podać im żeton. Świadomie odłożone do 39, żeby nie
+  budować tej maszynerii dwa razy.
+
+- **Strzykawka bezigłowa jako atak nie istnieje.** „Jeśli cel sprzeciwia się zabiegowi, Medyk może
+  w ramach Akcji wykonać pojedynczy Atak Bronią Białą (strzykawką bezigłową). W przypadku
+  trafienia, Atak zamiast obrażeń wstrzykuje celowi dawkę farmaceutyku" (s. 150). `character:use-dose`
+  podaje dawkę **bez rzutu**, bo przy stole niemal zawsze podaje się ją komuś przytomnemu
+  i chętnemu. Wrogi cel wymagałby broni „strzykawka" w kompendium i gałęzi w `planCpredAttack`,
+  która zamiast obrażeń woła podanie dawki — czyli tej samej roboty co amunicja bez obrażeń
+  z 16h, tylko od drugiej strony.
 
 - **Etap 30a nie był oglądany w przeglądarce.** Mechanika jedzie w testach (44 nowe w `shared`,
   10 na serwerze), ale żadnego z tych ekranów nikt nie kliknął. Do sprawdzenia — potrzebna
