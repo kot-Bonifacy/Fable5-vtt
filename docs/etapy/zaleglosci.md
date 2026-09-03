@@ -13,6 +13,13 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
 
 ## Pozycje
 
+- **`tsc --noEmit` na serwerze ma jeden błąd, którego `vitest` i ESLint nie widzą.**
+  `packages/server/src/attacks.test.ts:1941` — `expect(card.system.ammo?.id)` przy
+  `Property 'id' does not exist on type '{}'`: `card.system` wraca z testowego pomocnika bez
+  typu, więc `ammo` jest pustym obiektem. Wszedł z etapem 31 (commit `cb4420a`, 02.09),
+  testy przechodzą, bo vitest nie sprawdza typów. Naprawa: otypować zwrot pomocnika `attack`
+  w tym pliku, zamiast rzutować w miejscu asercji.
+
 - **Zestaw testów serwera bywa czerwony pod równoległością — losowo, w różnych plikach.**
   Objaw: pełny `pnpm --filter @vtt/server test` pada mniej więcej co drugi przebieg, za każdym
   razem gdzie indziej, a ten sam plik uruchomiony osobno przechodzi 6/6. Złapane trzy adresy:
