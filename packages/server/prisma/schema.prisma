@@ -408,6 +408,19 @@ model Token {
   id      String  @id @default(cuid())
   sceneId String
   name    String
+  /**
+   * Name the table gets instead of `name`, when the figure is not to be known
+   * by it yet (stage 03.09) — „Ochroniarz" over „Snajper Arasaki".
+   *
+   * Three states in one nullable column, so no scene needs converting:
+   *  - `null`  — the players see `name`, which is what every token did before;
+   *  - a text  — the players see that text and never learn `name`;
+   *  - `""`    — the players see no label at all.
+   *
+   * Filtered server-side in `toTokenView`, like every other secret: a name the
+   * client is not entitled to must not be on the wire to be hidden in CSS.
+   */
+  publicName String?
   /** Local asset path (/uploads/... or /public/...); null renders a placeholder disc. */
   imageUrl String?
   /** Top-left corner in scene (world) pixels. */

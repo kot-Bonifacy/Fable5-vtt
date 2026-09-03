@@ -269,6 +269,40 @@ describe('combat tracker', () => {
     expect(JSON.stringify(playerCombatTraffic)).not.toContain('Snajper');
   });
 
+  /**
+   * The alias reaches the tracker too (03.09) — a name hidden on the map and
+   * printed in the initiative queue would be no name hidden at all.
+   */
+  it('names an aliased figure in the tracker the way the table knows it', async () => {
+    expect(
+      (
+        await emitAck(gm, 'token:update', {
+          tokenId: npcTokenId,
+          patch: { name: 'Bosman Maelstromu', publicName: 'Zbir' },
+        })
+      ).ok,
+    ).toBe(true);
+
+    try {
+      const playerSync = await roundTrip(player);
+      expect(playerSync.combat?.combatants.map((c) => c.name).sort()).toEqual(['Zbir', 'Ziti']);
+      expect(JSON.stringify(playerSync.combat)).not.toContain('Bosman Maelstromu');
+      expect(JSON.stringify(playerCombatTraffic)).not.toContain('Bosman Maelstromu');
+
+      // MG czyta obie: alias jest tym, co mówi stołowi, nie tym, co sam widzi.
+      const gmRow = (await roundTrip(gm)).combat?.combatants.find((c) => c.tokenId === npcTokenId);
+      expect(gmRow?.name).toBe('Bosman Maelstromu');
+      expect(gmRow?.publicName).toBe('Zbir');
+    } finally {
+      // Reszta pliku zna tę figurę jako „Bandzior" i szuka jej po nazwie —
+      // nazwa wraca także wtedy, gdy asercja wyżej padnie.
+      await emitAck(gm, 'token:update', {
+        tokenId: npcTokenId,
+        patch: { name: 'Bandzior', publicName: null },
+      });
+    }
+  });
+
   it('rolls initiative for everyone at once, silently', async () => {
     const chatSeen: ChatMessageBroadcast[] = [];
     gm.on('chat:message', (payload: ChatMessageBroadcast) => chatSeen.push(payload));

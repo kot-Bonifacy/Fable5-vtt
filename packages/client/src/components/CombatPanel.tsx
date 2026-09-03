@@ -197,7 +197,9 @@ function CombatRow({
       )}
       <span className="combat-row-main">
         <span className="combat-row-name">
-          {combatant.name}
+          {/* Figura, której MG nie dał graczom żadnej nazwy: na mapie stoi bez
+              podpisu, ale wiersz listy musi się dać wskazać palcem. */}
+          {combatant.name.trim() === '' ? <em>Nieznana figura</em> : combatant.name}
           {combatant.hidden && <span className="combat-tag">ukryty</span>}
           {combatant.tokenId === null && <span className="combat-tag">w Sieci</span>}
         </span>

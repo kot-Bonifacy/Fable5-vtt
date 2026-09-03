@@ -481,6 +481,62 @@ describe('tokens', () => {
     expect('hp' in upsert.token).toBe(false);
   });
 
+  /**
+   * The alias (03.09). „Snajper Arasaki" is the GM's name for a figure the
+   * table has not identified yet — so the *real* one must not be on the wire,
+   * the way a hidden token and unrevealed fog are not. Three states, one
+   * column: a text, the empty string (no label at all) and null (no alias).
+   */
+  it('sends players the alias and keeps the real name off their wire', async () => {
+    const upsert = waitFor<TokenUpsertBroadcast>(player, 'token:upsert');
+    expect(
+      (
+        await emitAck(gm, 'token:update', {
+          tokenId: npcTokenId,
+          patch: { name: 'Snajper Arasaki', publicName: 'Ochroniarz' },
+        })
+      ).ok,
+    ).toBe(true);
+    expect((await upsert).token.name).toBe('Ochroniarz');
+
+    const payload = await roundTrip(player);
+    expect(payload.tokens.find((t) => t.id === npcTokenId)!.name).toBe('Ochroniarz');
+    expect(JSON.stringify(payload)).not.toContain('Snajper Arasaki');
+    // Even the existence of a second name is the GM's business.
+    expect('publicName' in payload.tokens.find((t) => t.id === npcTokenId)!).toBe(false);
+
+    // The GM keeps both — the editor has to show what the table is told.
+    const gmView = (await roundTrip(gm)).tokens.find((t) => t.id === npcTokenId)!;
+    expect(gmView.name).toBe('Snajper Arasaki');
+    expect(gmView.publicName).toBe('Ochroniarz');
+  });
+
+  it('leaves the figure unlabelled for an empty alias, and gives the name back for none', async () => {
+    expect(
+      (await emitAck(gm, 'token:update', { tokenId: npcTokenId, patch: { publicName: '' } })).ok,
+    ).toBe(true);
+    const blank = await roundTrip(player);
+    expect(blank.tokens.find((t) => t.id === npcTokenId)!.name).toBe('');
+    expect(JSON.stringify(blank)).not.toContain('Snajper Arasaki');
+
+    expect(
+      (await emitAck(gm, 'token:update', { tokenId: npcTokenId, patch: { publicName: null } })).ok,
+    ).toBe(true);
+    const plain = await roundTrip(player);
+    // Alias zdjęty: figura wraca do własnej nazwy, jak każdy token od etapu 05.
+    expect(plain.tokens.find((t) => t.id === npcTokenId)!.name).toBe('Snajper Arasaki');
+    // Sprzątanie po tym teście — reszta pliku zna tę figurę jako „Bouncer".
+    await emitAck(gm, 'token:update', { tokenId: npcTokenId, patch: { name: 'Bouncer' } });
+  });
+
+  it('refuses a player writing an alias of their own', async () => {
+    const ack = await emitAck(player, 'token:update', {
+      tokenId: ownTokenId,
+      patch: { publicName: 'Nikt' },
+    });
+    expect(ack.ok).toBe(false);
+  });
+
   it('validates statuses against the data registry', async () => {
     const updated = await emitAck<TokenView>(gm, 'token:update', {
       tokenId: npcTokenId,

@@ -112,4 +112,16 @@ describe('sanitizeTokenPatch', () => {
     expect(sanitizeTokenPatch({ imageUrl: 'http://x/y.png' })).toBeNull();
     expect(sanitizeTokenPatch('nope')).toBeNull();
   });
+
+  it('takes all three states of the alias, and only those', () => {
+    // Nazwa dla stołu, „bez etykiety" i „zdejmij alias" — trzy stany, jedna
+    // kolumna. Pusty tekst jest tu legalny, w odróżnieniu od `name`.
+    expect(sanitizeTokenPatch({ publicName: '  Ochroniarz ' })).toEqual({
+      publicName: 'Ochroniarz',
+    });
+    expect(sanitizeTokenPatch({ publicName: '   ' })).toEqual({ publicName: '' });
+    expect(sanitizeTokenPatch({ publicName: null })).toEqual({ publicName: null });
+    expect(sanitizeTokenPatch({ publicName: 7 })).toBeNull();
+    expect(sanitizeTokenPatch({ publicName: 'x'.repeat(65) })).toBeNull();
+  });
 });

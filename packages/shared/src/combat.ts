@@ -135,6 +135,15 @@ export interface CombatantView {
    * renders while the token layer is catching up (scene switch, resync).
    */
   name: string;
+  /**
+   * The GM's alias for the figure, when it has one — what the table is told
+   * instead of `name`, exactly as on the map (`TokenView.publicName`).
+   *
+   * Private: `filterCombatForPlayer` swaps it into `name` and drops the field,
+   * so a player's tracker never carries the real one. Absent for almost every
+   * row, since almost every figure is known by its own name.
+   */
+  publicName?: string;
   imageUrl: string | null;
   /** Rolled initiative; null = not rolled yet (sorts last). */
   initiative: number | null;
@@ -318,16 +327,30 @@ export function filterCombatForPlayer(combat: CombatView): CombatView {
   const visibleIds = new Set(
     combat.combatants.filter((c) => c.hidden !== true).map((combatant) => combatant.id),
   );
+  // What each row may be called at the table, so a Hold names the other end
+  // the same way the tracker and the map do.
+  const shownNames = new Map(combat.combatants.map((c) => [c.id, c.publicName ?? c.name] as const));
   const combatants = combat.combatants
     .filter((combatant) => combatant.hidden !== true)
-    .map(({ hidden: _hidden, ...rest }) => {
+    .map(({ hidden: _hidden, publicName, ...rest }) => {
+      // The alias replaces the name outright — it does not travel beside it.
+      const shown = { ...rest, name: publicName ?? rest.name };
       // A Hold naming somebody the player cannot see would announce them by
       // name. The row keeps its budget and loses only the relation.
-      if (rest.grapple && !visibleIds.has(rest.grapple.otherId)) {
-        const { grapple: _grapple, ...withoutGrapple } = rest;
+      if (shown.grapple && !visibleIds.has(shown.grapple.otherId)) {
+        const { grapple: _grapple, ...withoutGrapple } = shown;
         return withoutGrapple;
       }
-      return rest;
+      if (shown.grapple) {
+        return {
+          ...shown,
+          grapple: {
+            ...shown.grapple,
+            otherName: shownNames.get(shown.grapple.otherId) ?? shown.grapple.otherName,
+          },
+        };
+      }
+      return shown;
     });
   const activeVisible = combatants.some((c) => c.id === combat.activeCombatantId);
   // Reinforcements stay: somebody at this table called them on an open radio,
