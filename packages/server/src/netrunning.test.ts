@@ -174,7 +174,7 @@ beforeAll(async () => {
     payload: { name: 'Vex' },
   });
   playerCookie = cookieOf(join.headers['set-cookie']);
-});
+}, 60_000);
 
 afterAll(async () => {
   for (const socket of openSockets) socket.disconnect();

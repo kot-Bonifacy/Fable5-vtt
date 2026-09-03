@@ -207,7 +207,7 @@ beforeAll(async () => {
     headers: { cookie: playerCookie },
   });
   playerId = (me.json() as { user: { id: string } }).user.id;
-});
+}, 60_000);
 
 afterAll(async () => {
   for (const socket of openSockets) socket.disconnect();

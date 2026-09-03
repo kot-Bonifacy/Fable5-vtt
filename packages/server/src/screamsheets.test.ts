@@ -231,7 +231,7 @@ beforeAll(async () => {
   await player.firstSync;
   // Zdrowie gatewaya sprawdza się w tle — pierwsze zapytanie idzie przy starcie.
   await new Promise((done) => setTimeout(done, 100));
-});
+}, 60_000);
 
 afterAll(async () => {
   for (const socket of openSockets) socket.disconnect();

@@ -100,6 +100,49 @@ function waitFor<T>(socket: ClientSocket, event: string, ms = 4000): Promise<T> 
   });
 }
 
+/**
+ * Waits for the first event that **matches**, ignoring whatever else is on the
+ * wire.
+ *
+ * `waitFor` takes the first payload that arrives, and on `chat:message` that is
+ * a race: a public roll reaches the GM socket too, and its copy may land after
+ * the test that made it already returned on the player's copy. The next test's
+ * wait then resolves on the previous test's card. Matching on content makes
+ * each wait pick its own message, so the file stops depending on the order
+ * events happen to settle in.
+ */
+function waitForMatch<T>(
+  socket: ClientSocket,
+  event: string,
+  matches: (payload: T) => boolean,
+  what: string,
+  ms = 4000,
+): Promise<T> {
+  return new Promise((resolveEvent, reject) => {
+    const timer = setTimeout(() => {
+      socket.off(event, listener);
+      reject(new Error(`${event} „${what}" timeout`));
+    }, ms);
+    const listener = (payload: T) => {
+      if (!matches(payload)) return;
+      clearTimeout(timer);
+      socket.off(event, listener);
+      resolveEvent(payload);
+    };
+    socket.on(event, listener);
+  });
+}
+
+/** The roll card whose title starts with `title`. */
+function waitForRoll(socket: ClientSocket, title: string): Promise<ChatMessageBroadcast> {
+  return waitForMatch<ChatMessageBroadcast>(
+    socket,
+    'chat:message',
+    (payload) => payload.message.roll?.title?.startsWith(title) === true,
+    title,
+  );
+}
+
 function emitAck<T = undefined>(
   socket: ClientSocket,
   event: string,
@@ -234,7 +277,7 @@ describe('etap 30d: Znajomości, Moto, Efekt Charyzmy i Wiarygodność', () => {
   it('Targowanie się odkłada dobity targ na kartę', async () => {
     let struck: CpredCharacterData['haggle'] = null;
     for (let attempt = 0; attempt < 8 && struck === null; attempt += 1) {
-      const card = waitFor<ChatMessageBroadcast>(player, 'chat:message');
+      const card = waitForRoll(player, 'Targowanie się');
       const result = data(
         await emitAck<{ won: boolean; dealId: string | null }>(player, 'character:haggle', {
           characterId: fixerId,
@@ -272,7 +315,12 @@ describe('etap 30d: Znajomości, Moto, Efekt Charyzmy i Wiarygodność', () => {
     const before = await sheetOf(player, fixerId);
     expect(before.haggle?.discount).toBe(10);
 
-    const card = waitFor<ChatMessageBroadcast>(player, 'chat:message');
+    const card = waitForMatch<ChatMessageBroadcast>(
+      player,
+      'chat:message',
+      (payload) => payload.message.economy !== undefined,
+      'zakup',
+    );
     const ack = data(
       await emitAck<{ balance: number }>(player, 'economy:buy', {
         characterId: fixerId,
@@ -388,7 +436,7 @@ describe('etap 30d: Znajomości, Moto, Efekt Charyzmy i Wiarygodność', () => {
   });
 
   it('Test Efektu Charyzmy ląduje na czacie z PT i werdyktem', async () => {
-    const card = waitFor<ChatMessageBroadcast>(player, 'chat:message');
+    const card = waitForRoll(player, 'Efekt Charyzmy');
     expect(
       (
         await emitAck(player, 'character:roll', {
@@ -405,7 +453,7 @@ describe('etap 30d: Znajomości, Moto, Efekt Charyzmy i Wiarygodność', () => {
   });
 
   it('Test Rzetelności to goła kość przeciw szansie z rangi', async () => {
-    const card = waitFor<ChatMessageBroadcast>(player, 'chat:message');
+    const card = waitForRoll(player, 'Test Rzetelności');
     expect(
       (
         await emitAck(player, 'character:roll', {
@@ -422,7 +470,7 @@ describe('etap 30d: Znajomości, Moto, Efekt Charyzmy i Wiarygodność', () => {
   });
 
   it('Pogłoski są rzutem MG i idą szeptem', async () => {
-    const card = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+    const card = waitForRoll(gm, 'Pogłoski');
     expect(
       (
         await emitAck(gm, 'character:roll', {
@@ -448,7 +496,7 @@ describe('etap 30d: Znajomości, Moto, Efekt Charyzmy i Wiarygodność', () => {
         })
       ).ok,
     ).toBe(true);
-    const card = waitFor<ChatMessageBroadcast>(player, 'chat:message');
+    const card = waitForRoll(player, 'Prowadzenie pojazdów');
     expect(
       (
         await emitAck(player, 'character:roll', {

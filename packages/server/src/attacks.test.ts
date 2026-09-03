@@ -10,6 +10,7 @@ import type {
   ChatMessageBroadcast,
   CharacterView,
   CombatView,
+  CpredAttackMeta,
   CpredCharacterData,
   DamageLogEntry,
   InvitationSummary,
@@ -195,7 +196,34 @@ describe('ranged combat from the map', () => {
     damageNotation?: string;
     damageMultiplier?: number;
     forcedChecks?: { name: string; detail: string; success: boolean }[];
-    system: Record<string, unknown>;
+    /**
+     * The planner's meta plus the two numbers the *server* adds when it judges
+     * the roll (`realtime/attacks.ts`). Named rather than `Record<string,
+     * unknown>`: an index signature makes every field `unknown`, and `unknown`
+     * silently swallows a misspelled assertion instead of failing to compile.
+     */
+    system: CpredAttackMeta & { margin: number; multiplier?: number };
+  }
+
+  /**
+   * Reads the attack card off a roll message — the **only** place this file
+   * casts.
+   *
+   * `RollAttackMeta.system` is `Record<string, unknown>` on purpose: the dice
+   * engine carries what the system module computed without knowing CP RED
+   * (`dice.ts`). The test does know it, so the shape is named once here and
+   * every assertion below reads a real field instead of an `unknown` that
+   * would swallow a typo.
+   */
+  function attackCard(broadcast: ChatMessageBroadcast): AttackCard | undefined {
+    return broadcast.message.roll?.attack as unknown as AttackCard | undefined;
+  }
+
+  /** Same, where a missing card is the test failing rather than a branch. */
+  function requireAttackCard(broadcast: ChatMessageBroadcast): AttackCard {
+    const card = attackCard(broadcast);
+    if (!card) throw new Error('roll message carried no attack card');
+    return card;
   }
 
   async function sheetOf(id: string): Promise<CpredCharacterData> {
@@ -226,10 +254,7 @@ describe('ranged combat from the map', () => {
       request,
     });
     if (!ack.ok) throw new Error(`attack:roll failed: ${JSON.stringify(ack)}`);
-    const broadcast = await message;
-    const card = broadcast.message.roll?.attack as AttackCard | undefined;
-    if (!card) throw new Error('roll message carried no attack card');
-    return card;
+    return requireAttackCard(await message);
   }
 
   it('sets the table: a shooter with a pistol and a rifle, and two targets', async () => {
@@ -569,7 +594,7 @@ describe('ranged combat from the map', () => {
         request: { weaponRowId: 'w-rifle', mode: 'autofire' },
       });
       const broadcast = await message;
-      const card = broadcast.message.roll?.attack as AttackCard | undefined;
+      const card = attackCard(broadcast);
       if (card?.hit && ack.ok && ack.data) {
         hitMessageId = ack.data.messageId;
         expectedMultiplier = (card.damageMultiplier ?? 1) as number;
@@ -646,7 +671,7 @@ describe('ranged combat from the map', () => {
       }),
       'attack:roll',
     );
-    const card = (await message).message.roll?.attack as AttackCard;
+    const card = requireAttackCard(await message);
     expect(card.system.dvSource).toBe('evasion');
     expect(card.system.dv).toBe(15);
 
@@ -658,7 +683,7 @@ describe('ranged combat from the map', () => {
       }),
       'attack:evade',
     );
-    const rewritten = (await update).message.roll?.attack as AttackCard;
+    const rewritten = requireAttackCard(await update);
     expect(rewritten.detail).toContain('Unik Ganger');
     expect(rewritten.hit).toBe(evaded.hit);
 
@@ -989,7 +1014,7 @@ describe('ranged combat from the map', () => {
         request: { weaponRowId: 'statist-weapon', mode: 'single' },
       });
       expect(ack.ok).toBe(true);
-      const card = (await message).message.roll?.attack as AttackCard | undefined;
+      const card = attackCard(await message);
       if (!card) throw new Error('roll message carried no attack card');
       // REF 7 + the profile's skill level 4, and a DV from the map like anyone's.
       expect(card.system.dv).toBe(19);
@@ -1105,7 +1130,7 @@ describe('ranged combat from the map', () => {
         request: { weaponRowId: 'w-blade', mode: 'single' },
       });
       expect(ack.ok).toBe(true);
-      const card = (await message).message.roll?.attack as AttackCard | undefined;
+      const card = attackCard(await message);
       if (!card) throw new Error('roll message carried no attack card');
       // ZW 5 + Unik 3 + half a die (5) = 13 by coincidence of the numbers, so
       // the source is what this asserts, not the total.
@@ -1146,7 +1171,7 @@ describe('ranged combat from the map', () => {
         }),
         'attack:evade',
       );
-      const rewritten = (await update).message.roll?.attack as AttackCard;
+      const rewritten = requireAttackCard(await update);
       // Karta nazywa figurę, a nie kartę, której nie ma.
       expect(rewritten.detail).toContain('Unik Ochroniarz');
       expect(rewritten.hit).toBe(evaded.hit);
@@ -1255,7 +1280,7 @@ describe('ranged combat from the map', () => {
             attackerTokenId: statistTokenId,
             request: { weaponRowId: 'statist-weapon', mode: 'single' },
           });
-          const card = (await message).message.roll?.attack as AttackCard | undefined;
+          const card = attackCard(await message);
           if (card?.hit && ack.ok && ack.data) return ack.data.messageId;
         }
         throw new Error('the statist never landed a shot in forty attempts');
@@ -1268,7 +1293,7 @@ describe('ranged combat from the map', () => {
           attackerTokenId: statistTokenId,
           request: { weaponRowId: 'statist-weapon', mode: 'single' },
         });
-        const card = (await message).message.roll?.attack as AttackCard | undefined;
+        const card = attackCard(await message);
         if (!card) throw new Error('roll message carried no attack card');
         expect(card.system.attackerTokenId).toBe(statistTokenId);
       });
@@ -1456,7 +1481,7 @@ describe('ranged combat from the map', () => {
           attackerTokenId: shooterTokenId,
           request: { weaponRowId: 'w-blade', mode: 'single', modifier: 20 },
         });
-        const card = (await message).message.roll?.attack as AttackCard | undefined;
+        const card = attackCard(await message);
         if (!card?.hit || !ack.ok || !ack.data) continue;
         // Flaga jedzie kartą, a nie żądaniem klienta — inaczej klient sam
         // decydowałby, ile warta jest kamizelka celu.
@@ -1496,7 +1521,7 @@ describe('ranged combat from the map', () => {
           attackerTokenId: shooterTokenId,
           request: { weaponRowId: 'w-pistol', mode: 'single', modifier: 20 },
         });
-        const card = (await message).message.roll?.attack as AttackCard | undefined;
+        const card = attackCard(await message);
         if (!card?.hit || !ack.ok || !ack.data) continue;
         expect(card.system.halvesArmor).toBeUndefined();
 
@@ -1546,7 +1571,7 @@ describe('ranged combat from the map', () => {
           // +20 buys the hit; the −8 of the aim is what this test is about.
           request: { weaponRowId: 'w-rifle', mode: 'single', aimedAt, modifier: 20 },
         });
-        const card = (await message).message.roll?.attack as AttackCard | undefined;
+        const card = attackCard(await message);
         if (!card?.hit || !ack.ok || !ack.data) continue;
 
         const damage = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
@@ -1685,7 +1710,7 @@ describe('ranged combat from the map', () => {
           reject(new Error('chat:message timeout'));
         }, ms);
         const onMessage = (payload: ChatMessageBroadcast) => {
-          const card = payload.message.roll?.attack as AttackCard | undefined;
+          const card = attackCard(payload);
           if (!card) return;
           clearTimeout(timer);
           gm.off('chat:message', onMessage);
