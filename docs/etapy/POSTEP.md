@@ -108,7 +108,7 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 ## Od czego zacząć
 
-**Trzy błędy mechaniki CP RED naprawione 03.09 — z testami i oględzinami.** Ciężki pancerz zabiera wreszcie **REF i ZW w Testach**, nie tylko RUCH (s. 185); broń **niskiej jakości zacina się** po Krytycznej Porażce, a **doskonała** daje +1 (s. 244); **Ustabilizowanie kładzie cel bez przytomności na minutę** (s. 223). Umowy — w dwóch nowych wierszach indeksu niżej. **Decyzja MG z tej sesji: pojazdy i walka pojazdów zostają narracji** — etapu dla nich nie będzie; priorytet przesuwa się na dopalacze i uzależnienia, techniki walki wręcz i leczenie. Reszta listy braków z przeglądu mechanik czeka na decyzję MG.
+**Trzy błędy mechaniki CP RED naprawione 03.09 — z testami i oględzinami.** Ciężki pancerz zabiera wreszcie **REF i ZW w Testach**, nie tylko RUCH (s. 185); broń **niskiej jakości zacina się** po Krytycznej Porażce, a **doskonała** daje +1 (s. 244); **Ustabilizowanie kładzie cel bez przytomności na minutę** (s. 223). Umowy — w dwóch nowych wierszach indeksu niżej. **Decyzja MG z tej sesji: pojazdy i walka pojazdów zostają narracji** — etapu dla nich nie będzie; priorytet przesuwa się na dopalacze i uzależnienia, techniki walki wręcz i leczenie. Reszta listy braków — dopalacze z uzależnieniem, techniki sztuk walki, naturalna regeneracja PW oraz upadek i porażenie prądem — leży w `POMYSLY.md` pod datą 03.09.
 
 **Plan urósł o siedem etapów (02.09, czwarta sesja): 33–39**, z przeglądu „czego brakuje
 względem innych VTT". Wolne są teraz: **28** (wdrożenie na VPS, a przed nim MG planuje
@@ -416,9 +416,13 @@ w VTT, a brakujące zebrać w listę z krótkimi opisami do decyzji. Przegląd s
 naprawić od razu — z testami, oględzinami i commitem, **przed** refaktoryzacją poprzedzającą
 etap 28.
 
-**Decyzja MG: pojazdy i walka pojazdów zostają narracji** — etapu dla nich nie będzie.
-Priorytet na przyszłość przesuwa się na dopalacze i uzależnienia, techniki walki wręcz oraz
-leczenie. Reszta listy braków czeka na decyzję (nie trafiła jeszcze do `POMYSLY.md`).
+**Decyzja MG: pojazdy i walka pojazdów zostają narracji** — etapu dla nich nie będzie,
+a priorytet przesuwa się na dopalacze z uzależnieniem, techniki walki wręcz i leczenie.
+**Cała reszta braków poszła do `POMYSLY.md`** (cztery wpisy z 03.09) — decyzją MG z tej samej
+sesji. **Dwie pozycje z pierwszej wersji listy okazały się już zrobione** i wypadły po
+sprawdzeniu w kodzie: tarcze balistyczne (`ARMOR_LOCATIONS` zna `shield`) i terapia
+Człowieczeństwa (`cyberware` z `action: 'therapy'`). Morał na przyszłe przeglądy: **pozycję
+listy braków sprawdza się grepem, zanim się ją komuś poda.**
 
 **(1) Kara z ciężkiego pancerza działała wyłącznie na RUCH.** Podręcznik (s. 185) zabiera ją
 **także REF i ZW w Testach**, a VTT liczył ją tylko w budżecie metrów. Naprawa dokłada
