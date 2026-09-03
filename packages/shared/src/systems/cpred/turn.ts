@@ -62,6 +62,8 @@ export interface CpredActionDefinition {
 export const CPRED_ACTION_MOVE = 'move';
 export const CPRED_ACTION_ATTACK = 'attack';
 export const CPRED_ACTION_RELOAD = 'reload';
+/** „Usunięcie usterki" — the Action a jammed poor-quality weapon costs (s. 244). */
+export const CPRED_ACTION_CLEAR_JAM = 'clear-jam';
 export const CPRED_ACTION_RUN = 'run';
 export const CPRED_ACTION_STAND_UP = 'stand-up';
 export const CPRED_ACTION_HOLD = 'hold';
@@ -147,6 +149,13 @@ export const CPRED_ACTIONS: readonly CpredActionDefinition[] = [
     name: 'Przeładowanie',
     cost: 'action',
     hint: 'Ładujesz magazynek do pełna i wymieniasz go w broni.',
+    handledElsewhere: true,
+  },
+  {
+    id: CPRED_ACTION_CLEAR_JAM,
+    name: 'Usunięcie usterki',
+    cost: 'action',
+    hint: 'Broń niskiej jakości zacięła się po Krytycznej Porażce. Usunięcie nie wymaga Testu.',
     handledElsewhere: true,
   },
   {

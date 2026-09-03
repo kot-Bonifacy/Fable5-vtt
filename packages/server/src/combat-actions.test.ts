@@ -627,4 +627,51 @@ describe('action economy', () => {
     // Whatever the dice said, the Action is gone.
     expect(spent(rowOf(await tracker(), vexTokenId), 'action')).toEqual({ used: 1, max: 1 });
   });
+
+  it('kładzie ustabilizowanego bez przytomności na minutę (s. 223)', async () => {
+    // „Ratownictwo medyczne" na maksimum: przy TECH 5 najniższy możliwy wynik
+    // bez Krytycznej Porażki to 16, czyli ponad PT 15 — a fumble zdarza się
+    // raz na dziesięć, więc pętla poniżej powtarza próbę, zamiast liczyć na
+    // szczęście. Test ma sprawdzać skutek udanej stabilizacji, nie kości.
+    expect(
+      (
+        await emitAck(gm, 'character:update', {
+          characterId: vexCharacterId,
+          patch: { skills: { paramedic: 10 } },
+        })
+      ).ok,
+    ).toBe(true);
+    await emitAck(gm, 'token:update', {
+      tokenId: targetTokenId,
+      patch: { hp: { current: 0, max: 30 } },
+    });
+
+    let label: string | undefined;
+    for (let attempt = 0; attempt < 8 && label !== 'Ustabilizowany'; attempt += 1) {
+      await giveTurnTo(vexTokenId);
+      const card = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+      await emitAck(player, 'character:roll', {
+        characterId: vexCharacterId,
+        visibility: 'public',
+        request: { kind: 'stabilize', stabilizeTokenId: targetTokenId, skillId: 'paramedic' },
+      });
+      label = (await card).message.roll?.outcome?.label;
+      if (label !== 'Ustabilizowany') {
+        // Nieudana próba zjadła Akcję; oddaj turę i spróbuj jeszcze raz.
+        const row = rowOf(await tracker(), vexTokenId);
+        await emitAck(gm, 'combat:reset-turn', { combatantId: row.id });
+        await emitAck(gm, 'token:update', {
+          tokenId: targetTokenId,
+          patch: { hp: { current: 0, max: 30 } },
+        });
+      }
+    }
+    expect(label).toBe('Ustabilizowany');
+
+    const sync = waitFor<StateSyncPayload>(gm, 'state:sync');
+    await emitAck(gm, 'state:request');
+    const token = (await sync).tokens.find((entry) => entry.id === targetTokenId);
+    expect(token?.hp?.current).toBe(1);
+    expect(token?.statuses).toContain('unconscious');
+  });
 });

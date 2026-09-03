@@ -30,12 +30,14 @@ import type {
   TurnBudgetView,
 } from '@vtt/shared';
 import {
+  cpredArmorStatPenalty,
   cpredSheetCombatAwareness,
   cpredRoundOnceUsed,
   markCpredRoundOnce,
   clearCpredRoundOnce,
   CPRED_ACTIONS,
   CPRED_AIM_POINT_LABELS,
+  CPRED_ARMOR_PENALTY_LABEL,
   CPRED_BROKEN_LEG_ROLL,
   CPRED_BROKEN_LEG_TABLE,
   CPRED_EMP_STATUS_ID,
@@ -168,18 +170,24 @@ export function readSheetInitiative(
   registry: SheetRegistry,
 ): SheetInitiative {
   const data = parseCharacterData(character.data, registry);
-  const ref = data.stats.ref;
+  // „Modyfikator pancerza: −2 REF, ZW i RUCH" (s. 185). Initiative is REF, so
+  // heavy armour slows the queue too — and it moves the tie-break with it,
+  // because the tie-break *is* REF and there is only one REF to be had.
+  const armor = cpredArmorStatPenalty(data.armor, 'ref', data.stats.ref);
+  const ref = data.stats.ref + armor;
   // „Każdy przydzielony punkt to +1 do rzutów na Inicjatywę" (Błyskawiczna
   // reakcja, s. 146). It moves the total, never the tie-break: RAW breaks ties
   // by REF, and a Solo's training is not reflexes.
   const fastReflexes = cpredSheetCombatAwareness(data, registry).initiative;
+  const refLabel = `${CPRED_STAT_LABELS.ref.name} (${CPRED_STAT_LABELS.ref.abbr})`;
+  const armorLabel = armor === 0 ? '' : ` ${CPRED_ARMOR_PENALTY_LABEL} ${armor}`;
   return {
     modifier: ref + fastReflexes,
     tieBreak: ref,
     label:
       fastReflexes > 0
-        ? `${CPRED_STAT_LABELS.ref.name} (${CPRED_STAT_LABELS.ref.abbr}) + Błyskawiczna reakcja ${fastReflexes}`
-        : `${CPRED_STAT_LABELS.ref.name} (${CPRED_STAT_LABELS.ref.abbr})`,
+        ? `${refLabel}${armorLabel} + Błyskawiczna reakcja ${fastReflexes}`
+        : `${refLabel}${armorLabel}`,
   };
 }
 

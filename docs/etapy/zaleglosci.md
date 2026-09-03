@@ -13,6 +13,18 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
 
 ## Pozycje
 
+- **Zestaw testów serwera bywa czerwony pod równoległością — losowo, w różnych plikach.**
+  Objaw: pełny `pnpm --filter @vtt/server test` pada mniej więcej co drugi przebieg, za każdym
+  razem gdzie indziej, a ten sam plik uruchomiony osobno przechodzi 6/6. Złapane trzy adresy:
+  `roles30d.test.ts` („Pogłoski są rzutem MG i idą szeptem" — `expect(message.kind).toBe('gmroll')`
+  dostaje publiczny broadcast **poprzedniego** testu, bo `waitFor(gm, 'chat:message')` bierze
+  pierwszą wiadomość, jaka przyjdzie), `zones.test.ts` („reads the whole recorded path" —
+  `expected 0 to be less than 0`, czyli figura weszła w test już z zerem PW) i `netdemons.test.ts`
+  (trzy testy Demonów naraz). **To nie jest regresja żadnej sesji:** 03.09 sprawdzone przez
+  `git stash` — na czystym HEAD pada tak samo, tylko w innym pliku. Naprawa idzie w dwóch
+  krokach: `waitFor` z predykatem na treść albo id zamiast „pierwsza, która przyjdzie", i twarde
+  ustawianie PW na starcie testów, które sprawdzają, że PW spadło.
+
 - **Etap 30d nie był oglądany w przeglądarce.** Mechanika jedzie w testach (38 nowych
   w `shared`, 13 na serwerze), ale żadnego z tych czterech paneli nikt nie kliknął. Do
   sprawdzenia — potrzebne postaci z Rolą **Rocker**, **Fixer**, **Nomada** i **Media** (na

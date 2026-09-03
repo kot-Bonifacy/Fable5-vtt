@@ -157,6 +157,7 @@ import {
   flushCharacterSave,
   makeFieldRepair,
   queueCharacterSave,
+  clearWeaponJam,
   reloadWeapon,
   sendCyberwareAction,
   setWeaponAttachment,
@@ -1577,6 +1578,21 @@ function WeaponStrip({
                       onClick={() => setPicking({ rowId: row.id })}
                     >
                       ⚠ Wskaż broń z katalogu
+                    </button>
+                  )}
+                  {/* „Broń niskiej jakości … nie nadaje się do użytku"
+                      (s. 244). Guzik, a nie sam chip: usterkę usuwa się Akcją
+                      i bez Testu, więc karta ma umieć to, co pasek akcji —
+                      inaczej gracz, który patrzy na kartę, widzi wyłącznie
+                      zdanie o tym, że broń nie działa. */}
+                  {row.jammed === true && (
+                    <button
+                      type="button"
+                      className="small-button weapon-jammed"
+                      title="Broń niskiej jakości zacięła się po Krytycznej Porażce. Usunięcie usterki kosztuje Akcję i nie wymaga Testu."
+                      onClick={() => clearWeaponJam(character.id, row.id)}
+                    >
+                      ⚠ Zacięta — usuń usterkę
                     </button>
                   )}
                   {/* Etap 31: trzy gniazda i to, co w nich siedzi. */}

@@ -7,6 +7,53 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 02.09 (trzecia) — trzy błędy z oględzin etapów 31 i 32
+
+**Zlecenie MG:** nie etap, tylko **pakiet A** z listy zaległości — trzy błędy znalezione przy
+oględzinach 31 i 32. Wszystkie trzy naprawione, pokryte testami i **obejrzane w przeglądarce**
+w tej samej sesji, więc dług oględzin nie urósł.
+
+**(1) Broń podwieszana nie miała wyboru amunicji — i była to dziura głębsza niż zapis
+zaległości.** Brakowało trzech rzeczy naraz: pola, w którym nabój miałby siedzieć, gałęzi
+planera, która by go czytała, i listy w wierszu `↳`. Kluczowa była druga:
+`planCpredAttack` **zerował** profil naboju dla każdego strzału dodatkiem
+(`const ammo = firedWith ? null : weapon.ammo`), więc nawet wpisanie naboju ręką w bazie nic by
+nie dało. Naprawa: `CpredWeaponRow.attachmentAmmoId`, wejście planera `secondaryAmmo`,
+`weapon:reload` z `attachmentId` **i** `ammoId` (pasowanie po **broni podwieszanej**, nie po
+karabinie), `AmmoPicker` w wierszu `↳`, a demontaż zabiera oba pola. **Skutek przy stole:
+z granatnika podwieszanego da się wreszcie wystrzelić dym i gaz.**
+
+**(2) Chmurka nad celem mówiła nazwę wiersza, nie dodatku** — bo `TargetTooltip` budował
+intencję **własną kopią** kodu z `loadAttackAtToken` i zgubił w niej `attachmentId`. Naprawa
+usuwa kopię: jeden `intentFromTargeting` obsługuje obie drogi. To jest morał tej pozycji —
+dwie kopie tego samego przepisywania rozjadą się na pierwszym nowym polu.
+
+**(3) Odmowa `character:update` zostawiała na karcie wartość, której nie ma w bazie.** Odmowa
+nie niesie widoku (`{ ok: false, error }`) i broadcast nie idzie, bo nic się nie zmieniło —
+więc nie było **do czego** wracać. Naprawa dokłada w `characterStore` cień `serverViews`
+(pisany też wtedy, gdy optymistyczny stan wygrywa) i przywraca z niego kartę, gdy nic nie jest
+w locie. Druga połowa to powód: `saveErrors` + `characterSaveErrorText` piszą zdanie w pasku
+„issues" na dole karty; nowa tabela `CPRED_ROLES_PROBLEMS` w `shared` dopisuje zdania dla
+`ROLE_TWICE` i `UNKNOWN_ROLE`. **Dotyczy każdej odmowy tej ścieżki, nie tylko Ról.**
+
+**Oględziny (wszystko na „Strzelnicy", z konta MG).** Lista naboju przy granatniku pokazała
+**wyłącznie granaty**, a przy samym karabinie wyłącznie kule — czyli sprawdzenie idzie po broni
+podwieszanej. Wybór „Amunicji dymnej" napełnił magazynek **0/1 → 1/1**, nie ruszając **25/25**
+karabinu; chmurka nad Rudym Kwiatkowskim powiedziała **„Granatnik podwieszany"** i wyceniła
+strzał z jego linii („0–6 m · PT 16 · 1 → 0"); strzał postawił na mapie **„Dym −4"** z kartą
+„nabój: Amunicja dymna · obszar 10×10 m · odchylenie…". Zwykłe ⟳ dolewa magazynek i **zachowuje**
+wybrany nabój. Odmowa: „Frank" z podstawionym `formerRoles: [solo]` — wybór Roli „Solo" wrócił
+do „— brak —", tytuł został **„FRANK"**, a na dole karty stanęło „Ta Rola już jest na karcie —
+jedna Rola stoi na niej tylko raz.".
+
+**Uwaga o testach serwera:** przy pierwszym pełnym przebiegu **`roles30d.test.ts` („Pogłoski")
+padł raz** na `expect(message.kind).toBe('gmroll')`, a w izolacji i przy powtórce całego zestawu
+przechodzi. To wyścig o broadcast pod obciążeniem równoległym, nie regresja tej sesji — ale
+jeśli wróci, tam jest jego adres.
+
+**Testy na koniec:** 1741 w `shared` (+3), 908 na serwerze (+4), 75 u klienta (+8) — zielone.
+ESLint i Prettier czyste na całym repo.
+
 ### Sesja 02.09 (druga) — wezwanie MG do Testu (etap 32)
 
 **Zlecenie MG:** nie etap z planu, tylko nowa mechanika — „testy za nietypowe wydarzenia, które

@@ -108,6 +108,8 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 ## Od czego zacząć
 
+**Trzy błędy mechaniki CP RED naprawione 03.09 — z testami i oględzinami.** Ciężki pancerz zabiera wreszcie **REF i ZW w Testach**, nie tylko RUCH (s. 185); broń **niskiej jakości zacina się** po Krytycznej Porażce, a **doskonała** daje +1 (s. 244); **Ustabilizowanie kładzie cel bez przytomności na minutę** (s. 223). Umowy — w dwóch nowych wierszach indeksu niżej. **Decyzja MG z tej sesji: pojazdy i walka pojazdów zostają narracji** — etapu dla nich nie będzie; priorytet przesuwa się na dopalacze i uzależnienia, techniki walki wręcz i leczenie. Reszta listy braków z przeglądu mechanik czeka na decyzję MG.
+
 **Plan urósł o siedem etapów (02.09, czwarta sesja): 33–39**, z przeglądu „czego brakuje
 względem innych VTT". Wolne są teraz: **28** (wdrożenie na VPS, a przed nim MG planuje
 refaktoryzację całości) oraz **33–39**. Kolejność wiążąca w trzech miejscach: **33 przed 28**
@@ -310,6 +312,8 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 - **Nabój broni podwieszanej** — `attachmentAmmoId` na wierszu **plus** wejście planera `secondaryAmmo` (bez obu naraz nie działa nic: planer zerował profil dla każdego strzału dodatkiem); `weapon:reload` pasuje nabój do **broni podwieszanej**, nie do tej, która ją niesie.
 - **Intencja uzbrojonego celownika** — jedna funkcja `intentFromTargeting` na obie drogi (klik ładujący kubek i dymek wyceniający strzał); nowe pole `AttackTargeting` dopisuje się tam, nie u wołających.
 - **Odmowa zapisu karty** — `characterStore.serverViews` (cień widoku serwera) przywraca kartę, gdy nic nie jest w locie, a `saveErrors` + `characterSaveErrorText` piszą powód w pasku „issues"; zdania kodów silnika mieszkają w `shared` obok typu problemu.
+- **Kara z pancerza** — `cpredArmorPenalty` (RUCH) i `cpredArmorStatPenalty` (REF/ZW) w `character.ts`, bo czytają je i `rolls.ts`, i `attacks.ts`; bierze **jedną najgorszą sztukę**, nie schodzi poniżej zera i wchodzi **nazwanym wierszem** wszędzie, gdzie jest rozbicie (w Inicjatywie i biernym PT Uniku — w sumie i w etykiecie).
+- **Jakość broni** — `quality` jedzie z **wpisu** kompendium, nie z typu; `poor` po Krytycznej Porażce zapala `CpredWeaponRow.jammed`, a usterkę zdejmuje **własna Akcja** (`weapon:clear-jam`), nie `weapon:reload`. Nie zacina się dodatek podwieszany, statysta ani porażka pominięta przez „Wyjście z opresji".
 
 ## Pułapki dev — indeks
 
@@ -328,6 +332,7 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 - **Vite potrafi zapamiętać PUSTY moduł**, jeśli plik był przepisywany w trakcie — przeładowanie nie pomaga, trzeba przepisać plik jeszcze raz.
 - **HMR przy działającym Pixi wywala stronę** (`Ticker.remove`) — po edycji klienta przeładuj kartę.
 - **`window.confirm` zawiesza sterowanie przeglądarką przez CDP** — omijaj przyciski „usuń" albo poproś użytkownika o klik.
+- **Czerwony pojedynczy plik w pełnym przebiegu serwera to najpierw podejrzenie wyścigu.** Zestaw pada mniej więcej co drugi raz i za każdym razem gdzie indziej — także na czystym HEAD; powtórz plik osobno (`npx vitest run src/<plik>`), zanim zaczniesz szukać błędu w swojej zmianie.
 - **Edycja kodu w trakcie oględzin przeładowuje kartę** — ognisko wychodzi z pola tekstowego i pisanie leci w globalne skróty mapy (każde „e" to koniec tury).
 - **Zdarzenie bez potwierdzenia** (`socket.emit('x', payload)`) dochodziło z pustym payloadem — nowe zdarzenie bez acku sprawdź testem serwera.
 - **Nowe wejście do mechaniki sprawdź na świeżo przeładowanej karcie**, bez otwierania zakładek — tylko wtedy widać leniwe ładowanie danych CP RED.
@@ -403,6 +408,68 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 03.09 — przegląd mechanik CP RED i trzy błędy naprawione od ręki
+
+**Zlecenie MG:** sprawdzić, czy wszystkie ważne i wykonalne mechaniki z podręcznika są już
+w VTT, a brakujące zebrać w listę z krótkimi opisami do decyzji. Przegląd szedł po kodzie
+`shared/systems/cpred` i po podręczniku; przy okazji wypadły **trzy błędy**, które MG kazał
+naprawić od razu — z testami, oględzinami i commitem, **przed** refaktoryzacją poprzedzającą
+etap 28.
+
+**Decyzja MG: pojazdy i walka pojazdów zostają narracji** — etapu dla nich nie będzie.
+Priorytet na przyszłość przesuwa się na dopalacze i uzależnienia, techniki walki wręcz oraz
+leczenie. Reszta listy braków czeka na decyzję (nie trafiła jeszcze do `POMYSLY.md`).
+
+**(1) Kara z ciężkiego pancerza działała wyłącznie na RUCH.** Podręcznik (s. 185) zabiera ją
+**także REF i ZW w Testach**, a VTT liczył ją tylko w budżecie metrów. Naprawa dokłada
+`cpredArmorStatPenalty` w `character.ts` (nie w `rolls.ts` — `movement.ts` już importuje
+`rolls.ts`, więc odwrotna zależność zamknęłaby cykl) i wpina ją w cztery miejsca: Testy Cechy
+i Umiejętności, atak, bierny PT Uniku i Inicjatywę. Kara **nigdy nie schodzi poniżej zera**
+(`Math.min(-penalty, max(0, statValue))`, ze świadomym uniknięciem `-0`), liczy się z **jednej
+najgorszej sztuki**, nie z sumy, a zdjęty pancerz nie waży nic.
+
+**(2) Broń niskiej jakości nigdy się nie zacinała, doskonała nie dawała +1** (s. 244). `quality`
+było w kompendium, ale nie wychodziło z `resolveWeapon`. Teraz wychodzi, `excellent` dokłada
+nazwany wiersz **„Broń doskonałej jakości +1"**, a Krytyczna Porażka bronią `poor` stawia na
+wierszu karty flagę `jammed`. Zacięta broń **odmawia strzału zdaniem**, a nie ciszą, i dostaje
+**własną Akcję** `clear-jam` (`weapon:clear-jam`) — osobny kafelek na pasku i czerwony guzik
+„⚠ Zacięta — usuń usterkę" na karcie. Trzy granice świadome: zacina się **broń niosąca**, nigdy
+dodatek podwieszany (dodatek nie ma jakości), nigdy statysta (nie ma wpisu katalogu), a Krytyczna
+Porażka **pominięta** przez „Wyjście z opresji" Solo nie zacina niczego.
+
+**(3) Ustabilizowanie nie kładło celu bez przytomności.** RAW (s. 223) mówi, że ustabilizowany
+jest nieprzytomny przez minutę; VTT dawał 1 PW i zostawiał postać na nogach. `applyStabilization`
+nadaje teraz status `unconscious` z zegarem minuty (6 rund) — **w obu gałęziach**, statysty
+i karty. Poza walką zegar nie tyka i status zdejmuje MG, zgodnie z umową o efektach okresowych.
+
+**Oględziny (Strzelnica, konto MG).** Karta ataku pokazała nazwany wiersz **„Pancerz −2"**, a
+kolejka inicjatywy — **avatar9 · REF 3** przy REF 5 na karcie. Zacięcie wypadło na
+`Chadran Arms City Reaper` (jakość `poor`) po naturalnej 1: karta dopisała **„broń niskiej
+jakości zacięła się — usuń usterkę (Akcja)"**, tryby ognia zszarzały, na pasku wyrósł kafelek
+„Usuń usterkę", a guzik na karcie usterkę zdjął i broń wróciła do ATAK/SERIA/ZAPORA.
+Ustabilizowanie Rudego Kwiatkowskiego przy 0 PW dało **1 PW + naklejkę Nieprzytomny** z zegarem
+`Ustabilizowanie / 60 s` w `statusData`. Scena wysprzątana: obie testowe bronie skasowane,
+Rudy z powrotem 40/40 bez statusów, walka zakończona.
+
+**Uwaga o RNG przy oględzinach:** żeby zobaczyć zacięcie, trzeba naturalnej 1 — poszło na to
+**29 strzałów** (dwie bronie, cztery przeładowania). Broń z magazynkiem 40 oszczędza klikania.
+
+**Sample publiczny się rozjechał i to psuło testy serwera.** `weapon.zgrzyt-9` miał
+`quality: "poor"`, a jest fixture'em w 17 plikach testów — po dołożeniu zacięć 16 z nich padało
+losowo. Jakość `poor` przeniosłem na **nowy** wpis `weapon.zardzewiak`; `zgrzyt-9` jest
+`standard`. **Broni z `data/public` używanej jako fixture nie wolno dawać właściwości losowych.**
+
+**Testy na koniec:** 1759 w `shared` (+18), 914 na serwerze (+6), 75 u klienta — zielone.
+ESLint i Prettier czyste.
+
+**Ważne odkrycie o samych testach: zestaw serwera jest niestabilny pod równoległością i nie
+z mojej winy.** Pełny przebieg pada mniej więcej co drugi raz, **za każdym razem gdzie indziej**
+(`roles30d.test.ts`, `zones.test.ts`, `netdemons.test.ts`), a pojedynczy plik przechodzi 6/6.
+Sprawdzone `git stash`-em: **na czystym HEAD pada tak samo**, tylko w innym pliku. Diagnoza
+i dwa kroki naprawy — w `zaleglosci.md`. Praktyczny wniosek na przyszłe sesje: **czerwony
+pojedynczy plik w pełnym przebiegu to najpierw podejrzenie wyścigu, a dopiero potem regresji**
+— powtórz go osobno, zanim zaczniesz szukać błędu w swojej zmianie.
+
 ### Sesja 02.09 (czwarta) — przegląd „czego brakuje względem innych VTT" i etapy 33–39
 
 **Sesja bez kodu.** MG poprosił o zestawienie tego VTT z tym, co jest powszechne w innych
@@ -448,50 +515,3 @@ graczy zawsze (`toTokenView` wkłada `name` do widoku publicznego — „Snajper
 mapie, zanim ktokolwiek go rozpozna) i bot losujący z tabeli po etapie 34.
 
 **Kodu nie ruszano, testów nie uruchamiano** — sesja zmieniła wyłącznie dokumentację.
-
-### Sesja 02.09 (trzecia) — trzy błędy z oględzin etapów 31 i 32
-
-**Zlecenie MG:** nie etap, tylko **pakiet A** z listy zaległości — trzy błędy znalezione przy
-oględzinach 31 i 32. Wszystkie trzy naprawione, pokryte testami i **obejrzane w przeglądarce**
-w tej samej sesji, więc dług oględzin nie urósł.
-
-**(1) Broń podwieszana nie miała wyboru amunicji — i była to dziura głębsza niż zapis
-zaległości.** Brakowało trzech rzeczy naraz: pola, w którym nabój miałby siedzieć, gałęzi
-planera, która by go czytała, i listy w wierszu `↳`. Kluczowa była druga:
-`planCpredAttack` **zerował** profil naboju dla każdego strzału dodatkiem
-(`const ammo = firedWith ? null : weapon.ammo`), więc nawet wpisanie naboju ręką w bazie nic by
-nie dało. Naprawa: `CpredWeaponRow.attachmentAmmoId`, wejście planera `secondaryAmmo`,
-`weapon:reload` z `attachmentId` **i** `ammoId` (pasowanie po **broni podwieszanej**, nie po
-karabinie), `AmmoPicker` w wierszu `↳`, a demontaż zabiera oba pola. **Skutek przy stole:
-z granatnika podwieszanego da się wreszcie wystrzelić dym i gaz.**
-
-**(2) Chmurka nad celem mówiła nazwę wiersza, nie dodatku** — bo `TargetTooltip` budował
-intencję **własną kopią** kodu z `loadAttackAtToken` i zgubił w niej `attachmentId`. Naprawa
-usuwa kopię: jeden `intentFromTargeting` obsługuje obie drogi. To jest morał tej pozycji —
-dwie kopie tego samego przepisywania rozjadą się na pierwszym nowym polu.
-
-**(3) Odmowa `character:update` zostawiała na karcie wartość, której nie ma w bazie.** Odmowa
-nie niesie widoku (`{ ok: false, error }`) i broadcast nie idzie, bo nic się nie zmieniło —
-więc nie było **do czego** wracać. Naprawa dokłada w `characterStore` cień `serverViews`
-(pisany też wtedy, gdy optymistyczny stan wygrywa) i przywraca z niego kartę, gdy nic nie jest
-w locie. Druga połowa to powód: `saveErrors` + `characterSaveErrorText` piszą zdanie w pasku
-„issues" na dole karty; nowa tabela `CPRED_ROLES_PROBLEMS` w `shared` dopisuje zdania dla
-`ROLE_TWICE` i `UNKNOWN_ROLE`. **Dotyczy każdej odmowy tej ścieżki, nie tylko Ról.**
-
-**Oględziny (wszystko na „Strzelnicy", z konta MG).** Lista naboju przy granatniku pokazała
-**wyłącznie granaty**, a przy samym karabinie wyłącznie kule — czyli sprawdzenie idzie po broni
-podwieszanej. Wybór „Amunicji dymnej" napełnił magazynek **0/1 → 1/1**, nie ruszając **25/25**
-karabinu; chmurka nad Rudym Kwiatkowskim powiedziała **„Granatnik podwieszany"** i wyceniła
-strzał z jego linii („0–6 m · PT 16 · 1 → 0"); strzał postawił na mapie **„Dym −4"** z kartą
-„nabój: Amunicja dymna · obszar 10×10 m · odchylenie…". Zwykłe ⟳ dolewa magazynek i **zachowuje**
-wybrany nabój. Odmowa: „Frank" z podstawionym `formerRoles: [solo]` — wybór Roli „Solo" wrócił
-do „— brak —", tytuł został **„FRANK"**, a na dole karty stanęło „Ta Rola już jest na karcie —
-jedna Rola stoi na niej tylko raz.".
-
-**Uwaga o testach serwera:** przy pierwszym pełnym przebiegu **`roles30d.test.ts` („Pogłoski")
-padł raz** na `expect(message.kind).toBe('gmroll')`, a w izolacji i przy powtórce całego zestawu
-przechodzi. To wyścig o broadcast pod obciążeniem równoległym, nie regresja tej sesji — ale
-jeśli wróci, tam jest jego adres.
-
-**Testy na koniec:** 1741 w `shared` (+3), 908 na serwerze (+4), 75 u klienta (+8) — zielone.
-ESLint i Prettier czyste na całym repo.

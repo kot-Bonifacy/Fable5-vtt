@@ -5577,14 +5577,19 @@ body.is-resizing {
   color: var(--text);
 }
 
-/* The left edge carries the kind: a gun, a magazine, a manoeuvre. Three
-   colours the eye sorts without a legend. */
+/* The left edge carries the kind: a gun, a magazine, a jam, a manoeuvre. Four
+   colours the eye sorts without a legend — and the jam is the warning one,
+   because it is the box that has to be pressed before the gun works again. */
 .hud-slot-row.hud-slot--weapon {
   border-left-color: var(--accent);
 }
 
 .hud-slot-row.hud-slot--reload {
   border-left-color: var(--info);
+}
+
+.hud-slot-row.hud-slot--clear-jam {
+  border-left-color: var(--warn);
 }
 
 .hud-slot-row.hud-slot--action {

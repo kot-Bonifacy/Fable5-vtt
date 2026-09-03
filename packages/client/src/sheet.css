@@ -891,7 +891,11 @@
 /* Ostrzeżenie przy wierszu, który nie wskazuje modelu: taka broń nie zna
    tabeli zasięgów i nie wystrzeli, więc mówi to karta, a nie dopiero planer
    w chwili nieudanego strzału. */
-.cp-table .weapon-unbound {
+/* Zacięcie broni niskiej jakości (s. 244) nosi tę samą barwę i ten sam
+   kształt: oba zdania mówią „ta broń teraz nie wystrzeli", a różnią się tylko
+   tym, co trzeba zrobić — wskazać model albo usunąć usterkę. */
+.cp-table .weapon-unbound,
+.cp-table .weapon-jammed {
   display: block;
   margin-top: 0.15rem;
   background: transparent;
@@ -899,7 +903,8 @@
   border: 1px solid var(--cp-red);
 }
 
-.cp-table .weapon-unbound:hover:not(:disabled) {
+.cp-table .weapon-unbound:hover:not(:disabled),
+.cp-table .weapon-jammed:hover:not(:disabled) {
   background: var(--cp-red);
   color: var(--cp-on-red);
 }

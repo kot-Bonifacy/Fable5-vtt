@@ -198,6 +198,7 @@ import type {
   WallView,
   WeaponAttachmentPayload,
   WeaponAttachmentResult,
+  WeaponClearJamPayload,
   WeaponReloadPayload,
 } from '@vtt/shared';
 import {
@@ -1358,6 +1359,20 @@ export function reloadWeapon(
     ...(attachmentId ? { attachmentId } : {}),
   };
   socket?.emit('weapon:reload', payload, (ack: SocketAck<{ ammo: number }>) => {
+    if (!ack.ok) useChatStore.getState().addNote(attackAckErrorText(ack.error));
+  });
+}
+
+/**
+ * Clears a jammed poor-quality weapon (s. 244) — an Action, and no Test.
+ *
+ * Its own event rather than a second job for `weapon:reload`, because the two
+ * are different Actions: working the slide on a jam does not put a magazine in,
+ * and letting one click do both would hand the table two Actions for one.
+ */
+export function clearWeaponJam(characterId: string, weaponRowId: string): void {
+  const payload: WeaponClearJamPayload = { characterId, weaponRowId };
+  socket?.emit('weapon:clear-jam', payload, (ack: SocketAck<{ jammed: boolean }>) => {
     if (!ack.ok) useChatStore.getState().addNote(attackAckErrorText(ack.error));
   });
 }

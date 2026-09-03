@@ -42,7 +42,13 @@ import {
 } from '@vtt/shared';
 import { loadAttackFor } from './attack-targeting.js';
 import { coverAt } from './stores/coverStore.js';
-import { combatErrorText, reloadWeapon, runNetScan, spendCombatAction } from './socket.js';
+import {
+  clearWeaponJam,
+  combatErrorText,
+  reloadWeapon,
+  runNetScan,
+  spendCombatAction,
+} from './socket.js';
 import { netErrorText } from './netErrors.js';
 import { useAttackStore } from './stores/attackStore.js';
 import { useAuthStore } from './stores/authStore.js';
@@ -478,7 +484,7 @@ export function hudSignature(context: HudContext): string {
       slot.disabled,
       slot.key,
       slot.kind === 'weapon' ? slot.ammoLabel : null,
-      slot.kind === 'action' ? null : (slot.ammo ?? null),
+      slot.kind === 'weapon' || slot.kind === 'reload' ? (slot.ammo ?? null) : null,
       slot.kind === 'weapon' ? slot.coneRangeM : null,
     ]),
   ]);
@@ -562,6 +568,14 @@ export function activateSlot(slot: CpredHotbarSlot, tokenId: string): void {
     // The crosshair armed from a sheet and the bar's own weapon would both
     // want the next click; the bar wins, because it is the one just pressed.
     useAttackStore.getState().disarm();
+    return;
+  }
+
+  // „Usunięcie problemu nie wymaga Testu" (s. 244) — one click, one Action,
+  // and only from a sheet: a statist's gun has no quality and never jams.
+  if (slot.kind === 'clear-jam') {
+    const token = useTokenStore.getState().tokens[tokenId];
+    if (token?.characterId) clearWeaponJam(token.characterId, slot.weaponRowId);
     return;
   }
 

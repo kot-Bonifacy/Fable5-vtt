@@ -11,6 +11,7 @@ import {
   type CpredHotbarInput,
   type CpredHotbarWeaponSlot,
 } from './hotbar.js';
+import { CPRED_JAM_REFUSAL } from './attacks.js';
 import type { ResolvedWeapon, WeaponTypeDefinition } from './compendium.js';
 import type { CpredAttachmentProfile } from './attachments.js';
 import type { CpredWeaponRow } from './character.js';
@@ -682,5 +683,48 @@ describe('hotbarSlotsFor — broń przykręcona do wiersza (31)', () => {
     ]);
     // Osobne klawisze — o to w tej zaległości chodziło.
     expect(weapons.map((group) => group.key)).toEqual(['1', '2']);
+  });
+});
+
+describe('zacięta broń na pasku akcji (s. 244)', () => {
+  const jammed = weaponRow({ jammed: true });
+
+  it('gasi wszystkie tryby ognia i mówi, co trzeba zrobić', () => {
+    const slots = hotbarSlotsFor(input({ sheet: { weapons: [jammed] }, resolve: () => smg }));
+    const weapons = weaponSlots(slots);
+    expect(weapons.length).toBeGreaterThan(1);
+    for (const slot of weapons) expect(slot.disabled).toBe(CPRED_JAM_REFUSAL);
+  });
+
+  it('dokłada pudełko „Usuń usterkę" przed przeładowaniem', () => {
+    const slots = hotbarSlotsFor(input({ sheet: { weapons: [jammed] } }));
+    const ids = slots.map((slot) => slot.kind);
+    expect(ids.indexOf('clear-jam')).toBeGreaterThan(-1);
+    expect(ids.indexOf('clear-jam')).toBeLessThan(ids.indexOf('reload'));
+    const box = slots.find((slot) => slot.kind === 'clear-jam');
+    expect(box?.label).toBe('Usuń usterkę: Ciężki pistolet');
+  });
+
+  it('daje to pudełko także broni, która nie liczy naboi', () => {
+    const machete = weaponRow({ id: 'row-2', name: 'Maczeta', ammoMax: 0, jammed: true });
+    const slots = hotbarSlotsFor(input({ sheet: { weapons: [machete] }, resolve: () => knife }));
+    expect(slots.some((slot) => slot.kind === 'reload')).toBe(false);
+    expect(slots.some((slot) => slot.kind === 'clear-jam')).toBe(true);
+  });
+
+  it('nie pokazuje go broni sprawnej', () => {
+    const slots = hotbarSlotsFor(input());
+    expect(slots.some((slot) => slot.kind === 'clear-jam')).toBe(false);
+  });
+
+  it('gaśnie razem z resztą, gdy Akcja w tej turze jest już wydana', () => {
+    const slots = hotbarSlotsFor(
+      input({
+        sheet: { weapons: [jammed] },
+        turn: { actionSpent: true, blockedAction: null, blockedMove: null },
+      } as Partial<CpredHotbarInput>),
+    );
+    const box = slots.find((slot) => slot.kind === 'clear-jam');
+    expect(box?.disabled).toBe('Akcja w tej turze już wykorzystana.');
   });
 });

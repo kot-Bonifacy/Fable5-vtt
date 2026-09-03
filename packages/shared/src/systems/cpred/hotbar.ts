@@ -29,6 +29,7 @@ import {
   CPRED_ATTACK_MODE_LABELS,
   CPRED_ATTACK_MODE_SHORT,
   CPRED_BURST_AMMO_COST,
+  CPRED_JAM_REFUSAL,
   type CpredAttackMode,
 } from './attacks.js';
 import { cpredActionBlock, cpredMovementBlock } from './statuses.js';
@@ -61,6 +62,13 @@ export interface CpredWeaponOption {
   ammo: { current: number; max: number } | null;
   /** The round loaded, when it is anything but ordinary (stage 16g). */
   ammoProfile?: CpredAmmoProfile | null;
+  /**
+   * „Broń niskiej jakości … nie nadaje się do użytku" until the fault is
+   * cleared (s. 244). Only ever true of a sheet row's own weapon: a statist has
+   * no catalogue entry to be poor quality, and an attachment's weapon is built
+   * from a type, which carries no quality either.
+   */
+  jammed?: boolean;
 }
 
 /** Compendium lookup the caller supplies — the registry lives in its store. */
@@ -108,6 +116,7 @@ export function cpredWeaponOptions(
         resolved,
         ammo: row.ammoMax > 0 ? { current: row.ammoCurrent, max: row.ammoMax } : null,
         ammoProfile: loadedAmmoFor(row, resolved, lookup),
+        ...(row.jammed === true ? { jammed: true } : {}),
       };
       return [primary, ...secondaryOptionsOf(row, resolved, lookup, attachments)];
     });
@@ -389,6 +398,26 @@ export interface CpredHotbarWeaponSlot {
   key: string | null;
 }
 
+/**
+ * Clearing a jam (s. 244) — its own event, and it books its own Action.
+ *
+ * A box of its own rather than a second face on the reload slot, because the
+ * two are different Actions doing different things: „Usunięcie problemu nie
+ * wymaga Testu" and it does not put a magazine in. It also has to exist for a
+ * weapon that counts no rounds at all — a poor-quality machete binds, and a
+ * melee row has no reload box to borrow.
+ */
+export interface CpredHotbarClearJamSlot {
+  kind: 'clear-jam';
+  icon: CpredSlotIcon;
+  id: string;
+  label: string;
+  hint: string;
+  weaponRowId: string;
+  disabled: string | null;
+  key: string | null;
+}
+
 /** Refilling a magazine — its own event, and it books its own Action. */
 export interface CpredHotbarReloadSlot {
   kind: 'reload';
@@ -418,7 +447,8 @@ export interface CpredHotbarActionSlot {
   key: string | null;
 }
 
-export type CpredHotbarSlot = CpredHotbarWeaponSlot | CpredHotbarReloadSlot | CpredHotbarActionSlot;
+export type CpredHotbarSlot =
+  CpredHotbarWeaponSlot | CpredHotbarReloadSlot | CpredHotbarClearJamSlot | CpredHotbarActionSlot;
 
 /** Everything the bar reads. All of it is state somebody else already owns. */
 export interface CpredHotbarInput {
@@ -486,6 +516,10 @@ function weaponRefusal(
   actionBlock: string | null,
 ): string | null {
   if (actionBlock) return actionBlock;
+  // A jam outranks an empty magazine: „broń nie nadaje się do użytku" until it
+  // is cleared, and telling the player to reload would send them spending an
+  // Action on the wrong thing.
+  if (option.jammed === true) return CPRED_JAM_REFUSAL;
   const ammo = option.ammo;
   if (!ammo) return null;
   const cost = mode === 'single' ? 1 : CPRED_BURST_AMMO_COST;
@@ -578,6 +612,23 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
         key: null,
       });
     }
+  }
+
+  // „Dopóki w ramach Akcji nie usuniesz usterki, broń nie nadaje się do
+  // użytku" (s. 244). Before the reloads, because it is what has to happen
+  // first — and for a weapon that counts no rounds it is the only box there is.
+  for (const option of options) {
+    if (option.jammed !== true) continue;
+    slots.push({
+      kind: 'clear-jam',
+      icon: 'reload',
+      id: `clear-jam:${weaponOptionKey(option.rowId, option.attachmentId)}`,
+      label: `Usuń usterkę: ${option.name}`,
+      hint: 'Broń niskiej jakości zacięła się. Usunięcie usterki kosztuje Akcję i nie wymaga Testu.',
+      weaponRowId: option.rowId,
+      disabled: actionRefusal,
+      key: null,
+    });
   }
 
   // Reloading is no longer a sheet's privilege (29.08): `weapon:reload` now
@@ -701,9 +752,9 @@ export interface CpredHotbarWeaponGroup {
   key: string | null;
 }
 
-/** A reload or a catalogue action — one thing, one box, nothing to fold. */
+/** A reload, a jam or a catalogue action — one thing, one box, nothing to fold. */
 export interface CpredHotbarSingleGroup {
-  kind: 'reload' | 'action';
+  kind: 'reload' | 'clear-jam' | 'action';
   id: string;
   label: string;
   icon: CpredSlotIcon;

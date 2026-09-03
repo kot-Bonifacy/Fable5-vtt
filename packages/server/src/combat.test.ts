@@ -309,6 +309,62 @@ describe('combat tracker', () => {
     expect(message.message.roll?.breakdown?.[0]?.value).toBe(8);
   });
 
+  it('ciężki pancerz obniża Inicjatywę i rozstrzyganie remisów (s. 185)', async () => {
+    /** Tabliczka remisu tej postaci, prosto z odświeżonej kolejki. */
+    const tieBreakOfZiti = async (): Promise<number | null> => {
+      const sync = await roundTrip(gm);
+      const row = sync.combat?.combatants.find((entry) => entry.name === 'Ziti');
+      if (!row) throw new Error('combatant missing from tracker');
+      return row.tieBreak;
+    };
+
+    // „Metalgear … −4 REF, ZW i RUCH": REF 8 idzie na 4, a razem z nim tabliczka
+    // remisu — bo remis rozstrzyga się właśnie REF-em i drugiego REF-u nie ma.
+    expect(
+      (
+        await emitAck(gm, 'character:update', {
+          characterId,
+          patch: {
+            data: {
+              armor: [
+                {
+                  id: 'a1',
+                  name: 'Metalgear',
+                  notes: '',
+                  sp: 18,
+                  spCurrent: 18,
+                  location: 'body',
+                  penalty: -4,
+                },
+              ],
+            },
+          },
+        })
+      ).ok,
+    ).toBe(true);
+
+    const card = waitFor<ChatMessageBroadcast>(player, 'chat:message');
+    const rolled = data(
+      await emitAck<{ initiative: number }>(player, 'combat:roll', {
+        combatantId: combat.combatants.find((c) => c.name === 'Ziti')!.id,
+      }),
+      'combat:roll',
+    );
+    expect(rolled.initiative).toBeGreaterThanOrEqual(5);
+    expect(rolled.initiative).toBeLessThanOrEqual(14);
+    const breakdown = (await card).message.roll?.breakdown?.[0];
+    expect(breakdown?.value).toBe(4);
+    expect(breakdown?.label).toContain('Pancerz');
+    expect(await tieBreakOfZiti()).toBe(4);
+
+    // Zdjęty pancerz oddaje oba: to modyfikator, nie trwała strata Cechy.
+    await emitAck(gm, 'character:update', { characterId, patch: { data: { armor: [] } } });
+    await emitAck(player, 'combat:roll', {
+      combatantId: combat.combatants.find((c) => c.name === 'Ziti')!.id,
+    });
+    expect(await tieBreakOfZiti()).toBe(8);
+  });
+
   it('refuses a player rolling for somebody else', async () => {
     const npc = combat.combatants.find((c) => c.name === 'Bandzior')!;
     const ack = await emitAck(player, 'combat:roll', { combatantId: npc.id });

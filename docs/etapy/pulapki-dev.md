@@ -568,3 +568,14 @@ gniazd" ma zwykle tę przyczynę, a nie zepsuty komponent.
   listą naboju przy wierszu broni. **Broń podwieszana tej listy nie ma** (patrz `zaleglosci.md`),
   więc granatnik pod karabinem do dymu nie posłuży — dopisz osobny wiersz „Granatnik"
   z katalogu.
+
+**Czerwony pojedynczy plik w pełnym przebiegu serwera to najpierw podejrzenie wyścigu, nie
+regresji (03.09).** `pnpm --filter @vtt/server test` pada mniej więcej co drugi przebieg, za
+każdym razem w innym pliku — złapane `roles30d.test.ts`, `zones.test.ts` i `netdemons.test.ts`.
+Ten sam plik uruchomiony osobno (`npx vitest run src/<plik>`) przechodzi 6/6. Sprawdzone
+`git stash`-em: **na czystym HEAD pada tak samo**, więc nie jest to regresja sesji, która akurat
+to zobaczyła. Objawy są dwojakie i oba wskazują na współdzielony czas, nie na logikę:
+`waitFor(gm, 'chat:message')` bierze **pierwszą** wiadomość, jaka przyjdzie (czyli czasem
+broadcast poprzedniego testu), a testy sprawdzające spadek PW zaczynają czasem od zera, bo
+poprzedni krok zdążył dobić figurę. Obejście na czas sesji: powtórz plik osobno i idź dalej.
+Naprawa docelowa — w `zaleglosci.md`.

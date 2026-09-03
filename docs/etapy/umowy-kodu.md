@@ -778,3 +778,30 @@ niesie kod, a `characterSaveErrorText` tłumaczy go na zdanie do paska „issues
 Zdania kodów silnika mieszkają w `shared` obok typu problemu (`CPRED_ROLES_PROBLEMS`,
 `CPRED_SPECIALTY_PROBLEMS`, `CPRED_FLEET_PROBLEMS`) — ta sama tabela wyszarza guzik i tłumaczy
 odmowę.
+
+**Kara z pancerza mieszka w `character.ts` i ma jednego liczącego (03.09).** Ciężki pancerz
+zabiera podręcznikowo (s. 185) trzy rzeczy naraz: RUCH, REF i ZW. RUCH liczy `cpredArmorPenalty`,
+Testy — `cpredArmorStatPenalty(armor, statId, statValue)`; **obie siedzą w
+`shared/systems/cpred/character.ts`**, bo czytają je `rolls.ts` i `attacks.ts`, a `movement.ts`
+importuje `rolls.ts` — postawienie ich w `rolls.ts` albo `movement.ts` domknęłoby cykl. Trzy
+reguły funkcji, każda kosztowała test: bierze **jedną najgorszą sztukę**, nie sumę; pomija
+zdjęty pancerz (`equipped === false`); i **nie schodzi poniżej zera** — Cecha 2 pod pancerzem −4
+traci 2, nie 4, a wynik zerowy zwraca `0`, nigdy `-0`. Wchodzi jako **nazwany wiersz rozbicia**
+(`CPRED_ARMOR_PENALTY_LABEL`, `kind: 'situational'`) wszędzie, gdzie rozbicie istnieje: Test
+Cechy, Test Umiejętności, atak. Tam, gdzie rozbicia nie ma — **bierny PT Uniku i Inicjatywa** —
+liczba wchodzi w sumę, a Inicjatywa dokleja ją do etykiety („Refleks (REF) 5 Pancerz −2"). To
+świadomy kontrast z Człowieczeństwem, które obniża EMP **wewnątrz** własnej etykiety Cechy.
+
+**Zacięcie broni to flaga wiersza karty i osobna Akcja (03.09).** Jakość broni (s. 244) jedzie
+z **wpisu** kompendium, nigdy z typu broni: `ResolvedWeapon.quality` wychodzi z `resolveWeapon`
+tylko wtedy, gdy nie jest `standard`. `excellent` dokłada wiersz rozbicia
+`CPRED_EXCELLENT_ATTACK_BONUS` (+1); `poor` po Krytycznej Porażce zapala
+`CpredWeaponRow.jammed` (`jamPoorWeapon` w `realtime/attacks.ts`). Zacięta broń **odmawia
+zdaniem** (`CPRED_JAM_REFUSAL`, problem `WEAPON_JAMMED`) — z tego samego napisu korzysta pasek
+akcji, wyszarzając wszystkie tryby ognia. Usterkę zdejmuje **własna Akcja**
+(`CPRED_ACTION_CLEAR_JAM` + zdarzenie `weapon:clear-jam`), nie przeciążone `weapon:reload`:
+RAW to dwie różne Akcje, a broń bez magazynka nie ma kafelka przeładowania, który dałoby się
+pożyczyć. Trzy granice są celowe i pilnują ich testy: zacina się **broń niosąca**, nigdy
+podwieszany dodatek (składa się go z **typu** broni, więc jakości nie ma), nigdy statysta (profil
+bojowy nie ma wpisu katalogu), i nigdy Krytyczna Porażka **pominięta** (`critical.ignored`)
+przez „Wyjście z opresji" Solo.

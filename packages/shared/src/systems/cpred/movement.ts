@@ -19,6 +19,8 @@
 
 import {
   cpredActiveInjuries,
+  cpredArmorPenalty,
+  CPRED_ARMOR_PENALTY_LABEL,
   type CpredArmorRow,
   type CpredCriticalInjuryRow,
 } from './character.js';
@@ -75,24 +77,6 @@ export interface CpredMoveBudget {
   floored: boolean;
 }
 
-/**
- * The armor penalty of a set of worn pieces.
- *
- * „Kary nie sumują się — liczy się najwyższa" (s. 185): a character in a heavy
- * jacket *and* a helmet is slowed by the worse of the two, not by both. Carried
- * but unworn armor weighs nothing here — it protects nothing either (stage 15).
- */
-export function armorMovePenalty(armor: readonly CpredArmorRow[] | undefined): number {
-  if (!armor || armor.length === 0) return 0;
-  let worst = 0;
-  for (const row of armor) {
-    if (row.equipped === false) continue;
-    const penalty = row.penalty ?? 0;
-    if (penalty < worst) worst = penalty;
-  }
-  return worst;
-}
-
 /** Combined RUCH penalty of the Critical Injuries a character carries. */
 export function injuryMovePenalty(injuries: readonly CpredCriticalInjuryRow[] | undefined): number {
   if (!injuries || injuries.length === 0) return 0;
@@ -106,8 +90,8 @@ export function injuryMovePenalty(injuries: readonly CpredCriticalInjuryRow[] | 
  */
 export function cpredMoveBudget(input: CpredMoveInput): CpredMoveBudget {
   const modifiers: CpredMoveModifier[] = [];
-  const armor = armorMovePenalty(input.armor);
-  if (armor !== 0) modifiers.push({ label: 'Pancerz', value: armor });
+  const armor = cpredArmorPenalty(input.armor);
+  if (armor !== 0) modifiers.push({ label: CPRED_ARMOR_PENALTY_LABEL, value: armor });
   const wound = input.wound ? woundMovePenalty(input.wound) : 0;
   if (wound !== 0) modifiers.push({ label: 'Śmiertelnie ranny', value: wound });
   for (const injury of cpredActiveInjuries(input.injuries ?? [])) {

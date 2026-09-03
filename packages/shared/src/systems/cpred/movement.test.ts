@@ -2,13 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   CPRED_METRES_PER_MOVE_POINT,
   CPRED_MIN_MOVE,
-  armorMovePenalty,
   cpredMoveBudget,
   cpredMoveBudgetFromSheet,
   cpredTerrainFactor,
   injuryMovePenalty,
 } from './movement.js';
-import type { CpredArmorRow, CpredCriticalInjuryRow } from './character.js';
+import { cpredArmorPenalty, type CpredArmorRow, type CpredCriticalInjuryRow } from './character.js';
 
 function armor(penalty: number, extra: Partial<CpredArmorRow> = {}): CpredArmorRow {
   return {
@@ -42,7 +41,7 @@ describe('effective MOVE', () => {
   });
 
   it('takes the worst armor penalty rather than summing them (s. 185)', () => {
-    expect(armorMovePenalty([armor(-2), armor(-1, { location: 'head' })])).toBe(-2);
+    expect(cpredArmorPenalty([armor(-2), armor(-1, { location: 'head' })])).toBe(-2);
     const budget = cpredMoveBudget({
       move: 6,
       armor: [armor(-2), armor(-1, { location: 'head' })],
@@ -51,7 +50,7 @@ describe('effective MOVE', () => {
   });
 
   it('ignores armor that is carried but not worn', () => {
-    expect(armorMovePenalty([armor(-4, { equipped: false })])).toBe(0);
+    expect(cpredArmorPenalty([armor(-4, { equipped: false })])).toBe(0);
   });
 
   it('sums the penalties of the injuries a character carries', () => {

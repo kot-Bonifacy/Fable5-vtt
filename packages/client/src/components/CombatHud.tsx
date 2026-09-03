@@ -204,7 +204,7 @@ function HotbarSlot({
   onActivate: () => void;
   onToggleDrawer?: () => void;
 }) {
-  const ammo = slot.kind === 'action' ? null : slot.ammo;
+  const ammo = slot.kind === 'weapon' || slot.kind === 'reload' ? slot.ammo : null;
   const hasDrawer = modeCount > 1 && onToggleDrawer !== undefined;
   return (
     <div

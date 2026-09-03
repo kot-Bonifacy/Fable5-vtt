@@ -2040,6 +2040,18 @@ export interface ResolvedWeapon {
    */
   typeId?: string;
   melee: boolean;
+  /**
+   * „Broń doskonałej i niskiej jakości" (s. 244) — carried here so the planner
+   * can read it off the weapon it is firing rather than going back to the
+   * catalogue for the entry a second time.
+   *
+   * Comes off the *entry* and never off the type: a Militech „Avenger" is an
+   * excellent Medium Pistol and a Dai Lung Streetmaster is a poor one, and both
+   * are the same type. Absent means „zwykła", which is what an attachment's
+   * weapon always is — a bolted-on launcher is not a purchased gun and has no
+   * quality of its own to inherit.
+   */
+  quality?: WeaponQuality;
 }
 
 export function resolveWeapon(
@@ -2072,6 +2084,7 @@ export function resolveWeapon(
     ...(type ? { typeName: type.name } : {}),
     ...(weapon.weaponTypeId ? { typeId: weapon.weaponTypeId } : {}),
     melee: type?.melee ?? false,
+    ...(weapon.quality !== 'standard' ? { quality: weapon.quality } : {}),
   };
 }
 

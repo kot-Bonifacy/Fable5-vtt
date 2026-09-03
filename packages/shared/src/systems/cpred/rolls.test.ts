@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { buildCpredRegistry, createDefaultCharacterData, type CpredRegistry } from './character.js';
+import {
+  buildCpredRegistry,
+  cpredArmorStatPenalty,
+  createDefaultCharacterData,
+  type CpredRegistry,
+} from './character.js';
 import {
   CPRED_DIFFICULTY_LADDER,
   CPRED_SITUATIONAL_MODIFIER_LIMIT,
@@ -474,5 +479,87 @@ describe('werdykt Testu na wezwanie MG', () => {
     expect(cpredCheckOutcome(19, { opponentTotal: 18, opponentBonus: 12 }).detail).toBe(
       '19 vs 18 (druga strona: 12 + 1k10)',
     );
+  });
+});
+
+describe('modyfikator pancerza w Testach (s. 185)', () => {
+  /** One worn piece with the given penalty — the only field this suite reads. */
+  function jacket(penalty: number) {
+    return [
+      {
+        id: 'a1',
+        name: 'Metalgear',
+        notes: '',
+        sp: 18,
+        spCurrent: 18,
+        location: 'body' as const,
+        penalty,
+      },
+    ];
+  }
+
+  it('reaches only REF and ZW — never the other six Stats', () => {
+    const armor = jacket(-4);
+    expect(cpredArmorStatPenalty(armor, 'ref', 8)).toBe(-4);
+    expect(cpredArmorStatPenalty(armor, 'dex', 8)).toBe(-4);
+    expect(cpredArmorStatPenalty(armor, 'int', 8)).toBe(0);
+    expect(cpredArmorStatPenalty(armor, 'body', 8)).toBe(0);
+    expect(cpredArmorStatPenalty(armor, 'move', 8)).toBe(0);
+  });
+
+  it('stops at „Minimum 0" rather than pushing a Stat below zero', () => {
+    expect(cpredArmorStatPenalty(jacket(-4), 'ref', 2)).toBe(-2);
+    expect(cpredArmorStatPenalty(jacket(-4), 'ref', 0)).toBe(0);
+  });
+
+  it('ignores armour that is carried but not worn', () => {
+    const carried = jacket(-4).map((row) => ({ ...row, equipped: false }));
+    expect(cpredArmorStatPenalty(carried, 'ref', 8)).toBe(0);
+  });
+
+  it('puts a named row on a Check made with REF, and none on one made with INT', () => {
+    const armed = sheet({ armor: jacket(-2), skills: { handgun: 4, perception: 4 } });
+    const shooting = planCpredRoll(armed, registry, { kind: 'skill', skillId: 'handgun' });
+    expect(shooting.ok).toBe(true);
+    if (!shooting.ok) return;
+    expect(shooting.plan.breakdown).toEqual([
+      { label: 'Refleks (REF)', value: 5, kind: 'stat' },
+      { label: 'Pancerz', value: -2, kind: 'situational' },
+      { label: 'Broń krótka', value: 4, kind: 'skill' },
+    ]);
+    // 5 REF − 2 pancerza + 4 Umiejętności.
+    expect(shooting.plan.modifierTotal).toBe(7);
+
+    const looking = planCpredRoll(armed, registry, { kind: 'skill', skillId: 'perception' });
+    expect(looking.ok).toBe(true);
+    if (!looking.ok) return;
+    expect(looking.plan.breakdown.map((entry) => entry.label)).toEqual([
+      'Inteligencja (INT)',
+      'Percepcja',
+    ]);
+  });
+
+  it('takes the worst worn piece and not their sum, on a Test as on RUCH', () => {
+    const two = [...jacket(-2), { ...jacket(-1)[0]!, id: 'a2', location: 'head' as const }];
+    const armed = sheet({ armor: two, skills: { handgun: 0 } });
+    const result = planCpredRoll(armed, registry, { kind: 'skill', skillId: 'handgun' });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.plan.breakdown[1]).toEqual({
+      label: 'Pancerz',
+      value: -2,
+      kind: 'situational',
+    });
+  });
+
+  it('says nothing at all when the worn armour has no modifier', () => {
+    const armed = sheet({ armor: jacket(0), skills: { handgun: 4 } });
+    const result = planCpredRoll(armed, registry, { kind: 'skill', skillId: 'handgun' });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.plan.breakdown.map((entry) => entry.label)).toEqual([
+      'Refleks (REF)',
+      'Broń krótka',
+    ]);
   });
 });

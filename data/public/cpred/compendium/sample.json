@@ -175,11 +175,21 @@
       "id": "weapon.zgrzyt-9",
       "category": "weapon",
       "name": "Zgrzyt 9",
-      "description": "Tania spluwa z warsztatu w Kotłowni. Zacina się, gdy najbardziej nie trzeba.",
+      "description": "Warsztatowa spluwa z Kotłowni — tania, ale robi swoje.",
       "weaponTypeId": "weapon-type.sample-pistol",
-      "quality": "poor",
+      "quality": "standard",
       "cost": 50,
       "costCategory": "costly"
+    },
+    {
+      "id": "weapon.zardzewiak",
+      "category": "weapon",
+      "name": "Zardzewiak",
+      "description": "Złożony z tego, co zostało. Zacina się, gdy najbardziej nie trzeba.",
+      "weaponTypeId": "weapon-type.sample-pistol",
+      "quality": "poor",
+      "cost": 20,
+      "costCategory": "everyday"
     },
     {
       "id": "weapon.iglica-tw",

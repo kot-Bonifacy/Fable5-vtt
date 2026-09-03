@@ -24,10 +24,12 @@ import type {
   SessionUser,
   WeaponAttachmentPayload,
   WeaponAttachmentResult,
+  WeaponClearJamPayload,
   WeaponReloadPayload,
 } from '@vtt/shared';
 import {
   CPRED_ACTION_ATTACK,
+  CPRED_ACTION_CLEAR_JAM,
   CPRED_ACTION_RELOAD,
   CPRED_AUTOFIRE_SKILL_ID,
   CPRED_EVASION_SKILL_ID,
@@ -471,6 +473,48 @@ async function spendAttackCosts(
   });
   await emitCharacterUpsert(deps, campaignId, toCharacterView(saved, deps.ctx.cpred));
   await emitTokensOfCharacter(deps, campaignId, saved);
+}
+
+/** What the attack card adds when the shot broke the gun that made it. */
+const CPRED_JAM_DETAIL = 'broń niskiej jakości zacięła się — usuń usterkę (Akcja)';
+
+/**
+ * „Broń niskiej jakości zaczyna źle działać zawsze, gdy dojdzie do Krytycznej
+ * Porażki (wyrzucisz 1 w Teście ataku). Dopóki w ramach Akcji nie usuniesz
+ * usterki, broń nie nadaje się do użytku" (s. 244).
+ *
+ * Three conditions, and each of them earns its place:
+ *
+ *  - the die was a **natural 1 that counted**. A Solo who bought Wyjście
+ *    z opresji „ignoruje Krytyczne porażki … wyrzucone w Testach ataku"
+ *    (s. 146) — an ignored fumble is not a fumble, so their Dai Lung holds;
+ *  - the shot came from the **host weapon**, not from something bolted under
+ *    it: an attachment's weapon is built from a weapon *type* and has no
+ *    quality to be poor;
+ *  - the figure has a **sheet**. A statist's gun lives in `combatProfile`,
+ *    which carries no catalogue entry and therefore no quality — one more
+ *    place where a figure nobody statted is simply not asked the question.
+ *
+ * Returns whether the gun jammed, so the card can say so.
+ */
+async function jamPoorWeapon(
+  deps: RealtimeDeps,
+  campaignId: string,
+  source: AttackSource,
+  meta: CpredAttackMeta,
+  resolved: ResolvedWeapon | null | undefined,
+  result: RollResult,
+): Promise<boolean> {
+  if (source.kind !== 'character') return false;
+  if (meta.attachmentId) return false;
+  if (resolved?.quality !== 'poor') return false;
+  const critical = result.critical;
+  if (!critical || critical.type !== 'fumble' || critical.ignored === true) return false;
+  const { character, data } = source;
+  const row = data.weapons.find((weapon) => weapon.id === meta.weaponRowId);
+  if (!row || row.jammed === true) return false;
+  await saveWeaponRow(deps, campaignId, character, data, row.id, { jammed: true });
+  return true;
 }
 
 /** „24 m (13–25 m) · PT 15" — the card's explanation line. */
@@ -1101,6 +1145,13 @@ export async function performAttackRoll(
       // log is where rulings live.
       if (payload?.request?.ignoreCover === true) {
         result.attack.detail = `${result.attack.detail} · strzał mimo osłony`;
+      }
+      // „Broń niskiej jakości zaczyna źle działać zawsze, gdy dojdzie do
+      // Krytycznej Porażki" (s. 244). After the card is built and before it is
+      // stored, so the line the table reads and the flag on the sheet come from
+      // the same die.
+      if (await jamPoorWeapon(deps, campaignId, source, meta, weapon.resolved, result)) {
+        result.attack.detail = `${result.attack.detail} · ${CPRED_JAM_DETAIL}`;
       }
 
       const stored = await deps.ctx.prisma.chatMessage.create({
@@ -1762,6 +1813,7 @@ async function spendCharacterAction(
   sceneId: string | null,
   character: Character,
   user: SessionUser,
+  actionId: string = CPRED_ACTION_RELOAD,
 ): Promise<void> {
   if (!sceneId) return;
   const scene = await deps.ctx.prisma.scene.findUnique({ where: { id: sceneId } });
@@ -1775,9 +1827,9 @@ async function spendCharacterAction(
     campaignId,
     scene,
     token.id,
-    { kind: 'action', actionId: CPRED_ACTION_RELOAD },
+    { kind: 'action', actionId },
     user,
-    CPRED_ACTION_RELOAD,
+    actionId,
   );
 }
 
@@ -1799,6 +1851,40 @@ export const weaponReloadEvent = defineEvent<WeaponReloadPayload, { ammo: number
       sceneId: socket.data.viewedSceneId,
       payload,
     }),
+});
+
+/**
+ * „Dopóki w ramach Akcji nie usuniesz usterki, broń nie nadaje się do użytku.
+ * Usunięcie problemu nie wymaga Testu" (s. 244).
+ *
+ * An Action and a flag, and deliberately nothing else: no roll to plan, no card
+ * to deliver, no sound on the map. The one thing worth saying about the order
+ * is that the Action is booked *before* the flag is cleared — a character with
+ * nothing left in the turn must not end up with a working gun and an unpaid
+ * Action, which is the bargain `weapon:reload` strikes one function below.
+ */
+export const weaponClearJamEvent = defineEvent<WeaponClearJamPayload, { jammed: boolean }>({
+  name: 'weapon:clear-jam',
+  handler: async ({ deps, socket, user, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    const character = await requireRollableCharacter(deps, campaignId, user, payload?.characterId);
+    const data = parseCharacterData(character.data, deps.ctx.cpred);
+    const row = data.weapons.find((weapon) => weapon.id === payload?.weaponRowId);
+    if (!row) throw new RealtimeError('UNKNOWN_WEAPON');
+    // A gun nobody jammed costs nothing: the click was a misfire, not an
+    // Action — the same answer a full magazine gets from a reload.
+    if (row.jammed !== true) return { jammed: false };
+    await spendCharacterAction(
+      deps,
+      campaignId,
+      socket.data.viewedSceneId,
+      character,
+      user,
+      CPRED_ACTION_CLEAR_JAM,
+    );
+    await saveWeaponRow(deps, campaignId, character, data, row.id, { jammed: undefined });
+    return { jammed: false };
+  },
 });
 
 /** One reload, socket-free — see `performAttackRoll` for why it is split out. */

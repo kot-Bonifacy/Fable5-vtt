@@ -544,6 +544,17 @@ export interface AttackSmartPayload {
   gesture?: RollGesture;
 }
 
+/**
+ * Clearing a jammed poor-quality weapon (s. 244) — an Action, and no Test.
+ *
+ * A sheet only: a statist's gun lives in a combat profile with no catalogue
+ * entry behind it, so it has no quality to be poor and can never jam.
+ */
+export interface WeaponClearJamPayload {
+  characterId: string;
+  weaponRowId: string;
+}
+
 /** Reloading a weapon row to a full magazine (an Action at the table). */
 export interface WeaponReloadPayload {
   /**

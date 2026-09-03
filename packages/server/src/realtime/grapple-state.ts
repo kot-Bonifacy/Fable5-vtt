@@ -1,5 +1,6 @@
+import type { CpredTimedEffect } from '@vtt/shared';
 import type { RealtimeDeps } from './registry.js';
-import { SHEET_GRAPPLED_STATUS_ID } from '../sheets.js';
+import { SHEET_GRAPPLED_STATUS_ID, writeSheetStatusTimer } from '../sheets.js';
 import { readTokenStatuses, type CombatRow, type CombatantRow } from './combat.js';
 import { emitTokensById } from './tokens.js';
 
@@ -18,20 +19,33 @@ import { emitTokensById } from './tokens.js';
  * the other way round.
  */
 
-/** Adds a status id to a token, if it is not already there. */
+/**
+ * Adds a status id to a token, if it is not already there.
+ *
+ * The optional timer is what makes „Nieprzytomny na minutę" (s. 223) different
+ * from the choke's „Nieprzytomny" — same status to every rule that reads it,
+ * only one of them counts rounds. Written even onto a status the token already
+ * carries: a fresh minute on an old sticker is the honest answer when somebody
+ * gets knocked out twice.
+ */
 export async function addTokenStatus(
   deps: RealtimeDeps,
   campaignId: string,
   tokenId: string,
   statusId: string,
+  timer?: CpredTimedEffect,
 ): Promise<void> {
   const token = await deps.ctx.prisma.token.findUnique({ where: { id: tokenId } });
   if (!token) return;
   const statuses = readTokenStatuses(token.statuses);
-  if (statuses.includes(statusId)) return;
+  const known = statuses.includes(statusId);
+  if (known && !timer) return;
   await deps.ctx.prisma.token.update({
     where: { id: tokenId },
-    data: { statuses: JSON.stringify([...statuses, statusId]) },
+    data: {
+      statuses: JSON.stringify(known ? statuses : [...statuses, statusId]),
+      ...(timer ? { statusData: writeSheetStatusTimer(token.statusData, statusId, timer) } : {}),
+    },
   });
   await emitTokensById(deps, campaignId, [tokenId]);
 }

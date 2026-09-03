@@ -74,6 +74,7 @@ import {
   CPRED_STAT_LABELS,
   CPRED_STAT_MAX,
   CPRED_STAT_MIN,
+  type CpredStatId,
   type CpredStats,
 } from './stats.js';
 
@@ -456,6 +457,17 @@ export interface CpredWeaponRow extends CpredItemRow {
    * one such attachment.
    */
   attachmentAmmoId?: Record<string, string>;
+  /**
+   * „Broń niskiej jakości zaczyna źle działać zawsze, gdy dojdzie do Krytycznej
+   * Porażki … Dopóki w ramach Akcji nie usuniesz usterki, broń nie nadaje się
+   * do użytku" (s. 244).
+   *
+   * On the row rather than derived, because a jam is a fact about *this* gun at
+   * *this* moment — the catalogue says the Dai Lung is poor quality, the row
+   * says today's one is currently a paperweight. Absent means working, which is
+   * what every weapon that is not of poor quality always is.
+   */
+  jammed?: boolean;
 }
 
 /** Rounds a magazine may hold on the sheet — the compendium's own cap. */
@@ -620,6 +632,60 @@ export function cpredActiveInjuries<T extends { patched?: CpredPatchedInjury }>(
   injuries: readonly T[],
 ): T[] {
   return injuries.filter((injury) => injury.patched === undefined);
+}
+
+/**
+ * „Modyfikator pancerza" — what the worn pieces cost REF, ZW **and** RUCH.
+ *
+ * One function rather than three, because the rulebook prints one number: the
+ * armour table's column reads „−2 REF, ZW i RUCH" (s. 185) and every reader of
+ * it has to reach the same value. Until 02.09 only the RUCH half existed
+ * (`cpredMoveBudget`), so a punk in Metalgear shot, dodged and rolled
+ * Initiative as if they were in a T-shirt — the column said −4 and three of the
+ * four things it named never heard about it.
+ *
+ * „Kary nie sumują się — liczy się najwyższa" (s. 185): a heavy jacket *and* a
+ * helmet slow you by the worse of the two, not by both. Carried but unworn
+ * armour weighs nothing here — it protects nothing either (stage 15).
+ *
+ * Returns a negative number, or 0 when nothing worn costs anything.
+ */
+export function cpredArmorPenalty(armor: readonly CpredArmorRow[] | undefined): number {
+  if (!armor || armor.length === 0) return 0;
+  let worst = 0;
+  for (const row of armor) {
+    if (row.equipped === false) continue;
+    const penalty = row.penalty ?? 0;
+    if (penalty < worst) worst = penalty;
+  }
+  return worst;
+}
+
+/** Label the armour penalty carries wherever it is shown — one spelling. */
+export const CPRED_ARMOR_PENALTY_LABEL = 'Pancerz';
+
+/** The Stats the armour modifier reaches. RUCH is spent, not rolled, so it is not here. */
+const ARMOR_PENALTY_STATS: readonly CpredStatId[] = ['ref', 'dex'];
+
+/**
+ * What the armour takes off a Check made on this Stat, floored the way the
+ * table is („Minimum 0", s. 185): a REF 2 punk in Metalgear rolls at −2, not
+ * at −4, because the modifier may not push the Stat below zero.
+ *
+ * Zero for every Stat the column does not name — INT is INT in Metalgear.
+ */
+export function cpredArmorStatPenalty(
+  armor: readonly CpredArmorRow[] | undefined,
+  statId: CpredStatId,
+  statValue: number,
+): number {
+  if (!ARMOR_PENALTY_STATS.includes(statId)) return 0;
+  const penalty = cpredArmorPenalty(armor);
+  if (penalty === 0) return 0;
+  // `-0` is a number every caller would add without noticing and every test
+  // would compare wrong, so the floor returns the other zero.
+  const taken = Math.min(-penalty, Math.max(0, statValue));
+  return taken === 0 ? 0 : -taken;
 }
 
 /** When a self-healing wound comes off, and what put it there (stage 16h). */
@@ -1713,6 +1779,7 @@ function collectCharacterDataPatch(
         ...(attachmentIds.length > 0 ? { attachmentIds } : {}),
         ...(Object.keys(attachmentAmmo).length > 0 ? { attachmentAmmo } : {}),
         ...(Object.keys(attachmentAmmoId).length > 0 ? { attachmentAmmoId } : {}),
+        ...(row.jammed === true ? { jammed: true } : {}),
       };
     });
     if (weapons) patch.weapons = weapons;

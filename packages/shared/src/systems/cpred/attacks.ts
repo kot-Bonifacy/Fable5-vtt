@@ -33,7 +33,13 @@ import {
 } from '../../dice.js';
 import { ammoFitsWeapon, type CpredAmmoCheck, type CpredAmmoProfile } from './ammo.js';
 import { CPRED_BLAST_SIDE_M, CPRED_THROW_RANGE_M } from './areas.js';
-import type { CpredCharacterData, CpredRegistry, CpredWeaponRow } from './character.js';
+import {
+  cpredArmorStatPenalty,
+  CPRED_ARMOR_PENALTY_LABEL,
+  type CpredCharacterData,
+  type CpredRegistry,
+  type CpredWeaponRow,
+} from './character.js';
 import {
   CPRED_RANGE_BANDS,
   dvForRange,
@@ -90,6 +96,22 @@ export const CPRED_ATTACK_MODE_SHORT: Record<CpredAttackMode, string | null> = {
 
 /** Reach of a melee attack — „Atakowany cel musi znajdować się do 2 m od ciebie". */
 export const CPRED_MELEE_REACH_M = 2;
+
+/**
+ * „Gdy atakujesz za pomocą broni doskonałej jakości, dodajesz +1 do Testów
+ * ataku" (s. 244) — the whole of what quality is worth on the way in.
+ */
+export const CPRED_EXCELLENT_ATTACK_BONUS = 1;
+
+/** How the card names the bonus, and the jam that is its opposite number. */
+export const CPRED_EXCELLENT_LABEL = 'Broń doskonałej jakości';
+
+/**
+ * One sentence for „this gun is jammed", spoken by three mouths: the planner's
+ * refusal, the greyed-out slot on the action bar and the chip on the sheet's
+ * weapon row. Spelled once so the table hears the same thing wherever it looks.
+ */
+export const CPRED_JAM_REFUSAL = 'Broń się zacięła — usuń usterkę (Akcja).';
 
 /** A burst and a suppressive volley each cost an Action and ten rounds. */
 export const CPRED_BURST_AMMO_COST = 10;
@@ -171,11 +193,23 @@ export function passiveEvasionDv(data: CpredCharacterData, registry: CpredRegist
   return evasionBase(data, registry) + CPRED_PASSIVE_DIE;
 }
 
-/** DEX + Evasion — the defender's side of the opposed roll, without the die. */
+/**
+ * DEX + Evasion — the defender's side of the opposed roll, without the die.
+ *
+ * Minus what the armour costs (s. 185): the modifier reaches ZW, and dodging is
+ * the Check ZW is most often asked for. Folded into the number rather than
+ * shown as a row, because this side of the roll has no breakdown to show it in
+ * — the attacker's card prints a DV, not the defender's arithmetic.
+ */
 export function evasionBase(data: CpredCharacterData, registry: CpredRegistry): number {
   const skill = registry.skills.find((entry) => entry.id === CPRED_EVASION_SKILL_ID);
-  const stat = skill ? data.stats[skill.stat] : data.stats.dex;
-  return stat + (data.skills[CPRED_EVASION_SKILL_ID] ?? 0);
+  const statId = skill ? skill.stat : 'dex';
+  const stat = data.stats[statId];
+  return (
+    stat +
+    cpredArmorStatPenalty(data.armor, statId, stat) +
+    (data.skills[CPRED_EVASION_SKILL_ID] ?? 0)
+  );
 }
 
 /** What the client asks the server to resolve. Distance is never sent — it is measured. */
@@ -276,7 +310,8 @@ export type CpredAttackProblem =
   | 'AMMO_MISMATCH'
   | 'AMMO_SINGLE_ONLY'
   | 'AMMO_NEEDS_CYBERWARE'
-  | 'UNKNOWN_ATTACHMENT';
+  | 'UNKNOWN_ATTACHMENT'
+  | 'WEAPON_JAMMED';
 
 /** Everything the chat card needs to explain a hit — and to offer the damage roll. */
 export interface CpredAttackMeta {
@@ -634,6 +669,14 @@ export function planCpredAttack(
       ? (resolved?.maxRangeM ?? CPRED_THROW_RANGE_M)
       : resolved?.maxRangeM;
 
+  // „Dopóki w ramach Akcji nie usuniesz usterki, broń nie nadaje się do użytku"
+  // (s. 244). Checked on the host row and only for a shot with the host weapon:
+  // a jammed rifle is a jammed rifle, but the grenade launcher bolted under it
+  // has its own mechanism and no quality of its own to fail — nothing in the
+  // rules ties the two, and refusing the launcher would take away the one thing
+  // still worth doing with the gun.
+  if (hostRow.jammed === true && !firedWith) return { ok: false, error: 'WEAPON_JAMMED' };
+
   // A hand is busy holding somebody: two-handed weapons are out for both sides
   // of a Hold, whatever the sheet says about extra arms (s. 176).
   if (context.grappled === true && resolved?.hands === 2) {
@@ -786,6 +829,28 @@ export function planCpredAttack(
       kind: 'skill',
     },
   ];
+  // „Gdy atakujesz za pomocą broni doskonałej jakości, dodajesz +1 do Testów
+  // ataku" (s. 244). Read off the weapon actually being fired, so a shot from
+  // the launcher under an excellent rifle does not borrow the rifle's +1: the
+  // quality belongs to the gun somebody bought, not to what is bolted under it.
+  if (resolved?.quality === 'excellent') {
+    breakdown.push({
+      label: CPRED_EXCELLENT_LABEL,
+      value: CPRED_EXCELLENT_ATTACK_BONUS,
+      kind: 'situational',
+    });
+  }
+  // „Modyfikator pancerza: −2 REF, ZW i RUCH" (s. 185). An attack is a Check on
+  // one of exactly the two Stats the column names, so the jacket is felt here
+  // before anything else the shot picks up.
+  const armorPenalty = cpredArmorStatPenalty(data.armor, statId, data.stats[statId]);
+  if (armorPenalty !== 0) {
+    breakdown.push({
+      label: CPRED_ARMOR_PENALTY_LABEL,
+      value: armorPenalty,
+      kind: 'situational',
+    });
+  }
   const woundPenalty = woundCheckPenalty(state);
   if (woundPenalty !== 0) {
     breakdown.push({ label: CPRED_WOUND_LABELS[state], value: woundPenalty, kind: 'wound' });
@@ -1073,4 +1138,5 @@ export const CPRED_ATTACK_PROBLEM_MESSAGES: Record<CpredAttackProblem, string> =
   AMMO_SINGLE_ONLY: 'Tą amunicją strzelasz tylko pojedynczo.',
   AMMO_NEEDS_CYBERWARE: 'Ta amunicja nie wystrzeli bez wymaganej cyborgizacji.',
   UNKNOWN_ATTACHMENT: 'Nie ma takiego dodatku na tej broni.',
+  WEAPON_JAMMED: CPRED_JAM_REFUSAL,
 };

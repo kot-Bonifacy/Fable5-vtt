@@ -18,6 +18,7 @@ import {
   CPRED_ACTION_STABILIZE,
   CPRED_CHARISMA_AUDIENCE_LABELS,
   CPRED_CHARISMA_REFUSAL_DAYS,
+  CPRED_MINUTE_S,
   CPRED_RUMOUR_TIERS,
   CPRED_STABILIZE_DV,
   DEATH_SAVES_MAX,
@@ -43,13 +44,17 @@ import type { Character, Token } from '../generated/prisma/client.js';
 import { emitMapFx, fxCentre } from './fx.js';
 import {
   readSheetCombatProfile,
+  sheetExpiryRound,
   sheetFromCombatProfile,
   sheetSituationModifiers,
   sheetTokenHp,
+  SHEET_UNCONSCIOUS_STATUS_ID,
 } from '../sheets.js';
 import { createMixedRng } from './dice-rng.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { grappleStateForToken } from './combat.js';
+import { addTokenStatus } from './grapple-state.js';
+import { activeRoundOfScene } from './timed-effects.js';
 import { requireTurnSpend } from './combat-actions.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { emitTokensById, emitTokensOfCharacter, requireCampaignToken } from './tokens.js';
@@ -565,6 +570,7 @@ async function applyStabilization(
         data: { hpCurrent: 1 },
       });
       await emitTokensById(deps, campaignId, [token.id]);
+      await knockOutStabilized(deps, campaignId, token);
       return { healed: true, token, gained };
     }
     return { healed: false, token, gained: 0 };
@@ -583,7 +589,36 @@ async function applyStabilization(
   });
   await emitCharacterUpsert(deps, campaignId, toCharacterView(saved, deps.ctx.cpred));
   await emitTokensOfCharacter(deps, campaignId, saved);
+  await knockOutStabilized(deps, campaignId, token);
   return { healed: true, token, gained };
+}
+
+/**
+ * „Jest także Nieprzytomna – w organizmie zabrakło adrenaliny … Ten stan zawsze
+ * trwa minutę" (s. 223).
+ *
+ * The other half of a successful stabilization, and until 02.09 it was simply
+ * missing: the target stood up at 1 HP and took its turn. Reached from both
+ * branches above rather than from the caller, because it is the *rule* that
+ * follows being lifted off the floor — a figure that was not Mortally Wounded
+ * never gets here, and neither branch heals one that was not.
+ *
+ * A minute is six rounds (`timed.ts`), and outside a fight nothing counts them:
+ * the sticker stays and the GM's card ends it, the same bargain every other
+ * timed effect strikes.
+ */
+async function knockOutStabilized(
+  deps: RealtimeDeps,
+  campaignId: string,
+  token: Token,
+): Promise<void> {
+  const round = await activeRoundOfScene(deps, token.sceneId);
+  const expires = sheetExpiryRound(round, CPRED_MINUTE_S);
+  await addTokenStatus(deps, campaignId, token.id, SHEET_UNCONSCIOUS_STATUS_ID, {
+    source: 'Ustabilizowanie',
+    durationS: CPRED_MINUTE_S,
+    ...(expires === null ? {} : { expiresAtRound: expires }),
+  });
 }
 
 /**

@@ -2000,4 +2000,122 @@ describe('ranged combat from the map', () => {
       data(await mount(LINK, 'unmount'), 'weapon:attachment');
     });
   });
+
+  describe('jakość broni (s. 244)', () => {
+    /** The sheet's pistol row as it stands right now. */
+    async function pistolRow() {
+      return (await sheetOf(characterId)).weapons.find((row) => row.id === 'w-pistol');
+    }
+
+    /** Marks the row jammed the way a Critical Failure would have. */
+    async function jamPistol(): Promise<void> {
+      const weapons = (await sheetOf(characterId)).weapons.map((row) =>
+        row.id === 'w-pistol' ? { ...row, jammed: true } : row,
+      );
+      await emitAck(gm, 'character:update', { characterId, patch: { data: { weapons } } });
+    }
+
+    it('nie wypuszcza strzału z zaciętej broni', async () => {
+      await placeTargetAt(4);
+      await jamPistol();
+      expect(
+        await emitAck(player, 'attack:roll', {
+          characterId,
+          targetTokenId,
+          attackerTokenId: shooterTokenId,
+          request: { weaponRowId: 'w-pistol', mode: 'single' },
+        }),
+      ).toEqual({ ok: false, error: 'WEAPON_JAMMED' });
+      // Zacięcie siedzi na tej broni, nie na postaci — karabin strzela dalej.
+      expect((await attack({ weaponRowId: 'w-rifle', mode: 'single' })).hit).toBeDefined();
+    });
+
+    it('usuwa usterkę bez Testu i oddaje broń do użytku', async () => {
+      expect((await pistolRow())?.jammed).toBe(true);
+      expect(
+        await emitAck(player, 'weapon:clear-jam', { characterId, weaponRowId: 'w-pistol' }),
+      ).toEqual({ ok: true, data: { jammed: false } });
+      expect((await pistolRow())?.jammed).toBeUndefined();
+      expect((await attack({ weaponRowId: 'w-pistol', mode: 'single' })).hit).toBeDefined();
+    });
+
+    it('zacina broń niskiej jakości na Krytycznej Porażce, a doskonałej dodaje +1', async () => {
+      // Dwie broni z tego samego typu, różniące się wyłącznie jakością.
+      const base = (await sheetOf(characterId)).weapons;
+      await emitAck(gm, 'character:update', {
+        characterId,
+        patch: {
+          data: {
+            weapons: [
+              ...base,
+              {
+                id: 'w-rust',
+                name: 'Zardzewiak',
+                notes: '',
+                compendiumId: 'weapon.zardzewiak',
+                damage: '2k6',
+                ammoCurrent: 10,
+                ammoMax: 10,
+                ammoType: '',
+                rof: '2',
+              },
+              {
+                id: 'w-fine',
+                name: 'Iglica TW',
+                notes: '',
+                compendiumId: 'weapon.iglica-tw',
+                damage: '2k6',
+                ammoCurrent: 10,
+                ammoMax: 10,
+                ammoType: '',
+                rof: '2',
+              },
+            ],
+          },
+        },
+      });
+      await placeTargetAt(4);
+
+      // „+1 do Testów ataku" widać na rozbiciu karty, bez czekania na kości.
+      const card = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+      await emitAck(player, 'attack:roll', {
+        characterId,
+        targetTokenId,
+        attackerTokenId: shooterTokenId,
+        request: { weaponRowId: 'w-fine', mode: 'single' },
+      });
+      expect((await card).message.roll?.breakdown).toContainEqual({
+        label: 'Broń doskonałej jakości',
+        value: 1,
+        kind: 'situational',
+      });
+
+      // Zacięcie wymaga naturalnej jedynki — strzelamy, aż padnie. Kości są
+      // prawdziwe (crypto RNG), więc pętla jest jedyną drogą; przy 10% na
+      // strzał sto prób pudłuje raz na ~40 tysięcy przebiegów.
+      let jammed = false;
+      for (let shot = 0; shot < 100 && !jammed; shot += 1) {
+        const weapons = (await sheetOf(characterId)).weapons.map((row) =>
+          row.id === 'w-rust' ? { ...row, ammoCurrent: row.ammoMax } : row,
+        );
+        await emitAck(gm, 'character:update', { characterId, patch: { data: { weapons } } });
+        await attack({ weaponRowId: 'w-rust', mode: 'single' });
+        jammed =
+          (await sheetOf(characterId)).weapons.find((row) => row.id === 'w-rust')?.jammed === true;
+      }
+      expect(jammed).toBe(true);
+
+      // Sprzątanie: reszta pliku nie wie o tych dwóch wierszach.
+      await emitAck(gm, 'character:update', { characterId, patch: { data: { weapons: base } } });
+    });
+
+    it('nie robi nic, gdy broń jest sprawna, i nie zna cudzych kart', async () => {
+      expect(
+        await emitAck(player, 'weapon:clear-jam', { characterId, weaponRowId: 'w-pistol' }),
+      ).toEqual({ ok: true, data: { jammed: false } });
+      expect(
+        await emitAck(player, 'weapon:clear-jam', { characterId, weaponRowId: 'nie-ma-takiej' }),
+      ).toEqual({ ok: false, error: 'UNKNOWN_WEAPON' });
+    });
+  });
 });
