@@ -1415,13 +1415,28 @@ def main() -> int:
     # to `explosive` — overrides ustawiały je Granatnikowi i Wyrzutni rakiet
     # (podręcznik, s. 92, „Eksplozja”), a ten filtr wycinał je przy zapisie, więc
     # w kampanii nic nie wybuchało mimo gotowej mechaniki obszaru z etapu 16d.
-    # Dokładając pole do `CpredWeaponTypeInput`, dołóż je również tutaj.
+    # Potem zginęły tak samo `thrown`, `maxRangeM` i `ammoIds` (04.09) — granat
+    # przestał być rzucany i leciał bez zasięgu maksymalnego, a miotacz ognia
+    # przyjmował cudzy śrut. Dokładając pole do `CpredWeaponTypeInput`, dołóż je
+    # również tutaj — a `dropped` niżej powie na głos, jeśli o tym zapomnisz.
     schema_fields = {
         "id", "name", "nameOriginal", "skillId", "damage", "magazine", "rof", "hands",
         "concealable", "attachmentSlots", "magazineExtended", "magazineDrum", "melee",
         "rangeDv", "autofire", "suppressive", "explosive", "halvesArmor", "ammoPatterns",
-        "ammunition", "description", "source", "incomplete",
+        "ammoIds", "ammunition", "thrown", "maxRangeM", "description", "source",
+        "incomplete",
     }
+    # Pola, które filtr zjada, a nikt ich tu nie wpisał. `cost`/`costCategory`
+    # jadą do wpisu kupowalnego i mają tu ginąć — reszta to zwykle przeoczenie.
+    travels_to_entry = {"cost", "costCategory", "features"}
+    dropped = {
+        key
+        for entry in weapon_types
+        for key in entry
+        if key not in schema_fields and key not in travels_to_entry
+    }
+    for key in sorted(dropped):
+        warn(f"weapon-types: pole „{key}” nie jest na białej liście — wycinam je z zapisu")
     write(
         COMPENDIUM_DIR / "weapon-types.json",
         {

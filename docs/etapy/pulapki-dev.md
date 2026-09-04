@@ -4,6 +4,39 @@ Wyprowadzone z `POSTEP.md` 22.08.2026. Indeks jednolinijkowy jest w `POSTEP.md`;
 opisy z rozpoznaniem i obejściem. Czytaj wpis, zanim zaczniesz szukać błędu w obszarze, którego
 dotyczy.
 
+- **Efektu mapy nie zobaczysz zrzutem ekranu — ale da się go zatrzymać.** Wybuch trwa 1,1 s,
+  chmura 1,6 s, a runda `screenshot` przez CDP bywa dłuższa: 04.09 poszły trzy granaty i za
+  każdym razem zrzut łapał albo puste pole, albo pojedynczą jasną plamkę, z której nic nie
+  wynikało. **Rozpoznanie:** efekt jest w `MapFxLayer.items`, a na obrazku go nie ma.
+  **Obejście, które zadziałało:** na czas oględzin podnieś `EXPLOSION_MS`/`CLOUD_MS` do kilku
+  sekund, wystaw warstwę na `window` (`__fx = this` w `play`), a potem wywołaj efekt **wprost** —
+  `fx.play([{ kind: 'blast', at: { x, y }, sideM: 10 }])` — i **zamroź** go, podstawiając
+  wybranej pozycji `life = 400000` i `age = life * klatka / liczbaKlatek`. Wtedy zrzut łapie
+  dowolną klatkę, także tę z ognistą kulą (u wybuchu dopiero ~40 z 64; pierwsze dwadzieścia to
+  białe iskry, po których łatwo uznać arkusz za zepsuty). `fx.play` niczego nie wysyła na
+  serwer, więc stan stołu zostaje nietknięty. **Sam ślad klatek** (`sprite.texture.frame`)
+  wystarcza za dowód, że arkusz jest pocięty dobrze — prostokąty idą wiersz po wierszu i nigdy
+  nie wychodzą poza arkusz.
+
+- **`window.confirm` nie zawsze jest tam, gdzie go szukasz.** 04.09 kosz „usuń wszystkie osłony"
+  nie zapytał o nic — i to **nie jest** błąd: `confirmDestructive` pyta tylko poza poligonem,
+  a hurtowe kasowanie warstwy wraca `Ctrl+Z` (wszystkie sześć zdarzeń `*:clear` woła
+  `rememberDeletion`). Zanim uznasz brak pytania za usterkę, sprawdź **obie** rzeczy: flagę
+  `Campaign.sandbox` i to, czy zdarzenie odkłada wpis w buforze cofania.
+
+- **Slot paska akcji trzeba klikać po współrzędnych z DOM-u, nie z pamięci.** Lista przesuwa się
+  o cały wiersz, gdy figura zyska albo straci chip stanu (04.09: dołożenie statusu
+  „Nieprzytomny" zsunęło broń o ~30 px i klik „Granatnik podwieszany" trafił w
+  „Bagnet", a po przeładowaniu magazynka — w „Arasaka Minami 10"). Objaw jest cichy:
+  uzbraja się **inna** broń i dopiero karta na czacie mówi, czym się strzelało. Przed klikiem
+  czytaj `document.querySelectorAll('button.hud-slot')` i przeliczaj `getBoundingClientRect`
+  na skalę zrzutu; po kliku sprawdzaj zdanie „W ręku: …" pod paskiem.
+
+- **`.click()` na slocie paska nie uzbraja celownika, a klik w mapę staje się wtedy rozkazem
+  marszu.** 04.09 wysłało to avatar9 przez pół sceny zamiast wystrzelić granat. Uzbrajaj slot
+  prawdziwym kliknięciem (CDP), a **przed** kliknięciem w mapę potwierdź zdanie „W ręku: …" —
+  bez uzbrojenia klik w puste pole zawsze znaczy „idź tam".
+
 - **Jeden zły wiersz listy na karcie kasuje CAŁĄ listę przy odczycie — po cichu.** `validateRows`
   (`shared/systems/cpred/character.ts`) zwraca `undefined`, gdy **którykolwiek** wiersz nie
   przeszedł, a `parseCharacterData` podstawia wtedy domyślne `[]`. Karta zapisuje się bez błędu,

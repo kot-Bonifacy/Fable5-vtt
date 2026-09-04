@@ -240,21 +240,30 @@ export function AttackRow({
       )}
 
       <div className="chat-attack-actions">
-        {(attack.hit || attack.area) && shooter && (
+        {/*
+          `damageNotation` — nie `hit`, nie `area` — jest tu jedynym warunkiem,
+          bo o tym, czy jest co rzucać, rozstrzyga serwer (`ammoDealsDamage`
+          w `realtime/attacks.ts`: „no button, no notation, nothing to apply").
+          Amunicja bez obrażeń z 16h — dym, gaz łzawiący, hukbłyskowa, EMP,
+          usypiająca — trafia i zasnuwa obszar, a rzutu na obrażenia nie ma;
+          przy warunku „trafił albo obszar" karta dymnego granatu wystawiała
+          guzik „Obrażenia" z pustą kością (oględziny 04.09).
+        */}
+        {attack.damageNotation !== undefined && shooter && (
           <button
             type="button"
             className="small-button"
             title={
               attack.damageMultiplier && attack.damageMultiplier > 1
                 ? `Rzut na obrażenia ${attack.damageNotation} ×${attack.damageMultiplier} — ładuje kubek`
-                : `Rzut na obrażenia ${attack.damageNotation ?? ''} — ładuje kubek`
+                : `Rzut na obrażenia ${attack.damageNotation} — ładuje kubek`
             }
             onClick={rollDamage}
           >
             Obrażenia{' '}
             {attack.damageMultiplier && attack.damageMultiplier > 1
               ? `${attack.damageNotation} ×${attack.damageMultiplier}`
-              : (attack.damageNotation ?? '')}
+              : attack.damageNotation}
           </button>
         )}
         {!attack.evaded && attack.hit !== undefined && (defender ?? statistDefender) && (

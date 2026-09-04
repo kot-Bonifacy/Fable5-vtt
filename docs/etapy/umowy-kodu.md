@@ -4,6 +4,33 @@ Wyprowadzone z „Od czego zacząć" w `POSTEP.md` 22.08.2026. Indeks jednolinij
 tu leżą pełne wersje. Czytaj wpis, **zanim** dołożysz coś w obszarze, którego dotyczy — każdy
 z nich powstał po tym, jak ktoś dołożył to w złym miejscu.
 
+**O tym, czy karta ataku ma guzik „Obrażenia", rozstrzyga serwer — klient tylko go rysuje (04.09).**
+Serwer liczy `damages = (trafienie || obszar) && ammoDealsDamage(ammo)` i **nie wysyła
+`damageNotation`**, gdy odpowiedź brzmi „nie" — komentarz przy tej linii mówi wprost
+„no button, no notation, nothing to apply". Klient ma więc jeden warunek:
+`attack.damageNotation !== undefined`. Warunek „trafił albo obszar" powtórzony po jego
+stronie kosztował guzik z pustą kością na każdej karcie amunicji bez obrażeń z 16h (dym, gaz
+łzawiący, hukbłyskowa, EMP, usypiająca). Nowa cecha ataku, która ma coś **odebrać** karcie,
+odbiera to samo w tym jednym miejscu na serwerze, nie drugą gałęzią w `AttackControls.tsx`.
+
+**Nowe pole typu broni dopisuje się w TRZECH miejscach, nie w dwóch (04.09).** Do
+`CpredWeaponTypeInput`, do wpisu w `manual-overrides.json` — **i do białej listy `schema_fields`
+w `tools/import/parse-manual.py`**. Ta lista tnie przy zapisie wszystko, czego na niej nie ma,
+i robi to po cichu: tak zginęły najpierw `explosive` i `ammoPatterns`, a potem `thrown`,
+`maxRangeM` oraz `ammoIds` — granat przestał być „rzucany" i latał bez zasięgu
+maksymalnego, a miotacz ognia przyjmował cudzy śrut. Od 04.09 parser **mówi o tym na głos**:
+każde pole spoza listy (poza `cost`, `costCategory` i `features`, które jadą do wpisu
+kupowalnego) wychodzi jako ostrzeżenie importu. Ostrzeżenia czyta się przy każdym
+`python tools/import/parse-manual.py`.
+
+**Stan figury czyta się z pozycji stołu, a nie z legendy (27j + 04.09).** Podstawka niesie kolor
+stanu, naklejka — jego ikonę, ✕ zostaje trupowi, a od 04.09 **portret kładzie się na bok**
+(`CONDITION_TILT_DEG` w `TokenNode.ts`) dla `down` **i** `dead`. Obraca się wyłącznie portret —
+`image` i `initial`; pierścień, łuk PW, podstawka, imię i naklejki zostają pionowe, bo
+przekrzywiony podpis to błąd, a przekrzywione koło to nic. Kąt jest w tabeli obok pozostałych
+tabel stanu i **dobiera się go w przeglądarce, przy zoomie stołu**, nie na oko w edytorze:
+dwadzieścia stopni wyglądało dobrze w kodzie i było niewidoczne na mapie.
+
 **Przedmiot, który da się zużyć, jest wierszem ekwipunku — nie tabelą obok niego (03.09).**
 `CpredGearRow.consumable` niesie id z `systems/cpred/pharma.ts`, a `qty` liczy sztuki tak samo,
 jak liczyło je zawsze. Dawka **jest** przedmiotem: waży, kupuje się ją, oddaje i gubi razem

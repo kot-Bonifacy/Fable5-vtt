@@ -369,8 +369,15 @@ describe('decision pass', () => {
 
     const roll = await until(() => playerSeen.messages.find((m) => m.kind === 'roll'));
     expect(roll.roll?.actor).toBe('Kolec');
-    // Stage 11's rule, extended to mechanics: nothing on the card says „bot".
-    expect(JSON.stringify(roll)).not.toContain('bot');
+    // Stage 11's rule, extended to mechanics: nothing on the card says „bot" —
+    // sprawdzane na tym, co gracz *czyta*, bo identyfikatory to nieprzezroczyste
+    // cuid-y i bywają dowolnym ciągiem liter. Ten test padał losowo, dopóki
+    // porównanie obejmowało `authorId`: 04.09 wylosowało się
+    // `cmtnc61fq0000b8ueg985botv`, w którym „bot" siedzi w środku przypadkiem.
+    const readable = Object.fromEntries(
+      Object.entries(roll).filter(([key]) => key !== 'id' && !key.endsWith('Id')),
+    );
+    expect(JSON.stringify(readable)).not.toContain('bot');
     expect(playerSeen.messages.some((m) => m.kind === 'proposal')).toBe(false);
     expect(playerSeen.traces).toEqual([]);
     expect((await until(() => gmSeen.traces.at(-1))).outcome).toBe('executed');

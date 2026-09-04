@@ -9,6 +9,58 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Przeniesione 2026-09-04 (druga sesja — paczka „oczy i uszy")
+
+Pięć pozycji z `POMYSLY.md` i z ostatniego akapitu `zaleglosci.md`, wybranych przez MG jako
+jedna sesja klikania bez modelu: **wybuch i chmura gazu na mapie**, **rzut obrażeń obszaru
+(16d)**, **„usuń wszystkie osłony" (16c)**, **dźwięki walki dobrane bez odsłuchu** i
+**przechylenie figury dla stanu „nieprzytomny"**. Cztery zamknięte, jedna została częściowo
+(dźwięki — zmierzone, ale ocena brzmienia należy do ucha MG).
+
+**Wybuch i chmura gazu — obejrzane, arkusze pocięte dobrze.** Oba arkusze wczytują się
+(`/fx/explosion.png` 1024², `/fx/smoke.png` 1280×768) i klatki idą po nich w kolejności
+wiersz po wierszu: dla wybuchu 8×8 = 64 klatki po 128 px, dla chmury 5×3 = 15 klatek po 256 px.
+Ognista kula wyszła na mapie w pełnym rozmiarze (11,5 m ≈ 575 px sceny, tryb `add`), a chmura
+gazu — zielonkawą mgłą nad polem. **Zrzutem ekranu tego się nie łapie** (efekt trwa 1,1 s,
+a runda zrzutu bywa dłuższa); sposób, który zadziałał, jest w pułapkach dev.
+
+**Rzut obrażeń obszaru (16d) — odklikany.** Granatnik podwieszany avatar9 w pole między dwie
+figury: karta ataku wypisała obie z odległością od środka, jeden guzik „Obrażenia 6k6" dał
+**jeden** rzut (6k6 = 20), a „Zastosuj wszystkim (2)" wystawiło **dwie osobne karty obrażeń**
+— „testowy 2x2: przebicie 7 (rzut 20 − OB 13), PW 35 → 28, Ciężka kurtka kuloodporna OB 13 → 12"
+i „Automatyczna wieżyczka: przebicie 20, bez pancerza, PW 25 → 5". Ten sam rzut, różny wynik
+przez pancerz — dokładnie „Każdy cel otrzymuje tyle samo obrażeń" (s. 174). Obie karty
+cofnięte „Cofnij"; PW i ablacja pancerza wróciły.
+
+**„Usuń wszystkie osłony" (16c) — odklikane, z Ctrl+Z.** Dwie osłony postawione, kosz je zdjął
+(licznik „osłon: 2" → „brak osłon", guzik wyszarzony), a **Ctrl+Z przywrócił obie naraz**
+(„Przywrócono 2 osłony"). Przy okazji drobiazg naprawiony w tej samej sesji: **kosze hurtowe
+osłon, ścian, rysunków i stref nie mówiły o Ctrl+Z**, choć bliźniacze kosze świateł i punktów
+dostępu mówiły — a wszystkie sześć zdarzeń `*:clear` woła `rememberDeletion`. Teraz mówią
+wszystkie.
+
+**Przechylenie figury dla „nieprzytomny" — zrobione (35°, nie 20°).** `down` czytał się gorzej
+niż `dead`: trup ma wielkie ✕, szary portret i czarną podstawkę, nieprzytomny — ciemnoczerwoną
+podstawkę i naklejkę wielkości paznokcia. Odtąd portret kładzie się na bok (`CONDITION_TILT_DEG`
+w `TokenNode.ts`), i **dotyczy to obu stanów**: figura martwa też leży, a „nieprzytomny leży,
+martwy stoi" byłoby gorsze niż brak przechylenia. **Kąt z pomysłu (20°) sprawdzono
+w przeglądarce przeciwko pionowej kopii tej samej twarzy i podniesiono do 35°** — różnica przy
+20° była, ale przy zoomie stołu nikt by jej nie zauważył. Obraca się wyłącznie portret
+(`image` i `initial`); pierścień, łuk PW, podstawka, imię i naklejki zostają pionowe.
+
+**Dźwięki walki — zmierzone, nie ocenione.** Ucho MG rozstrzyga, czy próbka pasuje; kod może
+powiedzieć tylko, co w pliku jest. Dwanaście plików WAV przeliczono na obwiednie (szczyt, RMS,
+liczba ataków, cisza na starcie i końcu) — nic nie okazało się dwoma zdarzeniami, jak
+`shot-rifle` sprzed pół roku. **`bowstring.wav` jest w 65% ciszą** (dźwięk kończy się w 160 ms
+przy pliku 460 ms) i ma najniższy RMS z całego zestawu (−24,5 dBFS) — co zgadza się z notatką
+MG, że to najsłabsze dopasowanie. Pełna tabela — w notatce sesji. **Pozycja zostaje otwarta**
+w `POMYSLY.md` do odsłuchu przy stole; do wymiany wystarczy plik w `public/sfx/` i wiersz
+w `SFX_FILES` (plus cztery inne miejsca — patrz umowa „nowa próbka dźwiękowa mapy").
+
+**Dwa błędy znalezione po drodze i naprawione** — opisane w notatce sesji: amunicja bez obrażeń
+wystawiała guzik „Obrażenia" z pustą kością, a importer podręcznika po cichu wycinał
+`thrown`, `maxRangeM` i `ammoIds` z typów broni.
+
 ## Przeniesione 2026-09-04 (oględziny Zdolności Ról 30a–30d)
 
 Wszystkie cztery pozycje brzmiały tak samo — „Etap 30x nie był oglądany w przeglądarce.

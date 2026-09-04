@@ -7,6 +7,73 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 03.09 (trzecia) — zestaw A: leczenie, regeneracja i środki zużywalne
+
+**Zlecenie MG:** wybrać z zaległości kilkanaście pozycji pasujących do siebie na jedną sesję,
+bez niczego wokół lokalnego LLM-a (planowana wymiana modelu), i wykonać wskazany zestaw. MG
+wskazał **zestaw A** — naturalna regeneracja PW, farmaceutyki z zapasem dawek i zasięg
+Ustabilizowania — oraz kazał przekreślić sześć wpisów `POMYSLY.md`, które okazały się już
+zrobione.
+
+**PW wracają. Do tej sesji nie wracały nigdy** poza wpisaniem liczby ręką. Nowy moduł
+`shared/systems/cpred/recovery.ts` liczy dzień odpoczynku (s. 222–223): BC punktów, ×2 przy
+chromie „Ulepszone przeciwciała", +2 za Antybiotyk, do maksimum; „Splot skórny" i „Pancerz
+podskórny" odzyskują przy tym 1 OB. Warunek „po udanej stabilizacji" jest nowym polem karty
+(`CpredCharacterData.recovery`), a **udane Ustabilizowanie ustawia je na każdym progu ran** —
+do tej sesji rzut na stojącego pacjenta nie robił nic, więc PT 10 i PT 13 z tabeli progów były
+PT donikąd. Panel „Rekonwalescencja" na stronie pierwszej karty pokazuje rozbicie tempa i dwa
+guziki: „Dzień odpoczynku" i „Nadwyrężyła się".
+
+**Uwaga dla każdego, kto wróci do tego miejsca: „opieki jako mnożnika tempa" w podręczniku nie
+ma.** Zaległość tak mówiła, ale to była parafraza — szpital zmienia **cenę** ustabilizowania
+(s. 225), nie szybkość. Tempo podnoszą wyłącznie chrom i Antybiotyk. Zapisane
+w `decyzje-i-uproszczenia.md`, żeby nikt nie dorabiał mnożnika drugi raz.
+
+**Dawka jest wierszem ekwipunku, nie tabelą obok niego.** `CpredGearRow.consumable` plus `qty`,
+katalog w nowym, bezzależnościowym `pharma.ts`. Medyk wytwarza partię (`character:craft-pharma`:
+Test TECH + Technologia Medyczna vs PT 13, **surowce za 200 ed przepadają także po porażce**,
+udany Test daje tyle dawek, ile wynosi Umiejętność) i podaje ją (`character:use-dose`: Akcja,
+zasięg ramienia, bramka „Postać niebędąca Medykiem nie potrafi poprawnie podawać farmaceutyków").
+Cztery z pięciu środków rozlicza silnik; **Stym został otwarty świadomie** — zawieszenie kary
+Poważnie Rannego to ta sama maszyneria, której potrzebuje etap 39, i przepis na nią leży
+w `zaleglosci.md`.
+
+**Ustabilizowanie wymaga zasięgu ramienia (2 m) — i mierzy go wszystkim, MG włącznie.** Wyjątek
+od zwyczaju „MG omija blokady", bo MG stabilizuje figurą stojącą na mapie. Sprawdzenie idzie
+**przed** księgowaniem Akcji, żeby odmowa „za daleko" nie kosztowała tury.
+
+**Doszedł rodzaj wiersza czatu `recovery`** — jedna karta na dwie czynności (dzień odpoczynku
+i podana dawka), bo z miejsca stołu to jedno zdarzenie. Przeszedł umową z 01.09: dwie czyste
+funkcje w `shared/src/chat.ts`, `toChatMessageView`, jedna gałąź u klienta.
+
+**Oględziny (Strzelnica, konto MG) znalazły dwa błędy, oba naprawione z testem.** (1) **Dawka
+podana sobie nie schodziła z ekwipunku** — `applyDose` scalał skutek środka na wierszu karty
+sprzed zdjęcia dawki i cofał je. To pułapka ogólna („dwa zapisy tej samej karty w jednym
+handlerze"), dopisana do `pulapki-dev.md`. (2) **Udany zastrzyk malował się na pomarańczowo**,
+bo zabarwienie karty wnioskowało z „jest przypis i zero PW"; teraz mówi je `applyDose` wprost.
+Przy okazji: „Wytwórz (3 dawek)" → „(3 dawki)", a karta zastrzyku podanego sobie nie dopisuje
+już „— od: Frank". **Trzeci błąd wypadł przy pierwszym wytworzeniu i był groźniejszy, niż
+wygląda:** generowane id wiersza ekwipunku miało 37 znaków przy limicie 32, więc walidacja
+odrzucała **cały** ekwipunek i karta wracała z odczytu pusta — po cichu, bez błędu zapisu.
+
+**Obejrzane w przeglądarce, po kolei:** panel znika przy pełnych PW; „Naturalne leczenie nie
+ruszyło" z wyszarzonymi guzikami; odmowa „Za daleko — Ustabilizowanie wymaga zasięgu ramienia
+(2 m)"; udany rzut z dopiskiem „rusza naturalne leczenie"; dzień odpoczynku +5 PW z rozbiciem
+na karcie; lista farmaceutyków z guzikami „Wytwórz" i wyszarzonymi środkami bez dostępu;
+wytworzenie (3 dawki, −200 ed); wiersz „Antybiotyk × 3" z „Podaj"; podanie sobie i komuś innemu;
+tempo 5 → 7 PW po antybiotyku z licznikiem dni; nadwyrężenie („rany otwierają się"). **Poligon
+wysprzątany:** walka zakończona, żeton Franka skasowany, karty Franka i Rudego przywrócone
+z kopii, Rudy z powrotem 40/40.
+
+**Sprzątanie `POMYSLY.md`:** sześć wpisów przekreślonych jako nieaktualne (obrażenia Bijatyki
+z BC, trzy braki statysty, ręczna rana krytyczna MG, zbieracz osieroconych uploadów). Trzy z nich
+miały „ZROBIONE" już w kolumnie „Decyzja" i brakowało im samego przekreślenia. **Morał ten sam co
+29.08: pozycję z tej listy sprawdza się w kodzie, zanim się ją weźmie** — sześć na kilkanaście
+sprawdzonych kandydatów było już zrobionych.
+
+**Testy na koniec:** 1782 w `shared` (+23), 934 na serwerze (+16), 75 u klienta — zielone.
+`tsc --noEmit` czysty w całym monorepo, ESLint i Prettier czyste.
+
 ### Sesja 03.09 (druga) — higiena testów i alias nazwy figury
 
 **Zlecenie MG:** wybrać zadania samodzielnie z listy zaległości. Wybór padł na **oba długi
