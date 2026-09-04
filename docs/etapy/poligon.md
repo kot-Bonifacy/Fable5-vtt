@@ -26,6 +26,30 @@ z „Kart 24x": kto na nią wejdzie, dostaje 6k6 przez pancerz i jeszcze raz na 
 Tury; gracz jej nie zobaczy, dopóki nie zda Percepcji PT 17 z 4 m. Karta strefy otwiera się
 narzędziem ⚠ w trybie 📌; „Rozbrój" ją usypia, kosz usuwa.
 
+**Stan po sesji 04.09 (oględziny Zdolności Ról 30a–30d) — Poligon wraca do stanu sprzed sesji.**
+Nośnikiem był **„Frank"**, przestawiany kolejno na dziewięć Ról (Solo → Medyk → Technik → Stróż
+Prawa → Korpo → Rocker → Fixer → Nomada → Media) i **przywrócony z kopii zdjętej na starcie**:
+znowu bez Roli, bez Umiejętności, bez broni i pancerza, 0 ed, 0 PD, PW 35/35. **„Rudy
+Kwiatkowski" też wrócił** — na czas oględzin dostał Ciężki pistolet i Broń krótką 10, teraz ma
+z powrotem samą „Bardzo dużą broń białą" i Broń krótką 3 (rana „Złamana noga" jest sprzed tej
+sesji i została).
+
+Skasowane po sesji: **żeton „Frank"**, **cztery żetony „Korpogliniarz 1–4"** postawione
+Wezwaniem Wsparcia i **karta pracownika „Zwrotnica"** (Korporacyjny netrunner z zespołu Korpo).
+W bazie jest znowu **dziewięć kart** i **siedem żetonów na „Strzelnicy"**.
+
+Kolejka walki wróciła do **„PRZED WALKĄ" z tą samą piątką** (Tony, avatar9, testowy 2x2, Kolec,
+Rudy Kwiatkowski) — sprawdzone przez włączenie i wyłączenie trybu turowego; **tryb turowy jest
+wyłączony**, tak jak był. Walka rozegrana w trakcie sesji została zakończona wraz z jej
+`systemState` (wpisy Wsparcia w drodze).
+
+Ślad zostawiony świadomie: **log czatu z całej sesji** — rzuty Percepcji i Prowadzenia, karty
+ataku (w tym jedna z kaflem „Fumble zignorowany" z wymuszonej kostki), dwie karty obrażeń
+u Franka, Wezwanie Wsparcia i przybycie, Test Lojalności, Efekt Charyzmy, Targowanie się, zakup
+z targiem, Test Rzetelności i szeptana karta Pogłosek. **Magazynek żetonu „Rudy Kwiatkowski"
+(bliższego) pokazuje 7/8** — jeden strzał testowy; karta Rudego ma znów tylko broń białą, więc
+ten licznik zniknie przy pierwszym odświeżeniu wiersza.
+
 **Stan po sesji 02.09 (oględziny 29a i 29b) — Poligon nietknięty.** Nośnikiem była karta
 **„Frank"** i wróciła do stanu sprzed sesji: właściciel **`NPC (MG)`**, bez Roli, bez
 umiejętności, 0 PD, `formerRoles` puste. **Rejestr awansów (`AdvancementEntry`) jest znów pusty**

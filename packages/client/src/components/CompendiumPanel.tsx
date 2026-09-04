@@ -14,6 +14,7 @@ import {
   CPRED_RANGE_BANDS,
   CPRED_AMMO_PATTERN_LABELS,
   CYBERWARE_INSTALL_COST,
+  cpredHaggledPrice,
   CYBERWARE_INSTALL_DV,
   CYBERWARE_INSTALL_LABELS,
   CYBERWARE_TYPE_LABELS,
@@ -305,6 +306,14 @@ function EntryCard({
   // same), so an entry priced only by its band is still buyable.
   const price = entryPrice(entry);
   const priceLabel = formatPurchasePrice(entry) ?? '—';
+  // Etap 30d: dobity targ schodzi z pierwszego zakupu, więc guzik ma wyceniać
+  // **ten** zakup. Bez tego pisał cenę z katalogu, a z konta schodziło o 10%
+  // mniej — karta ekonomii mówiła prawdę dopiero po fakcie (znalezione przy
+  // oględzinach 30d). Warunek `discount > 0` jest ten sam, co na serwerze:
+  // cztery z sześciu targów opisują pieniądze, których projekt nie liczy.
+  const struck = characters[target]?.data.haggle ?? null;
+  const discount = struck && struck.discount > 0 ? struck.discount : 0;
+  const payable = price === null ? null : cpredHaggledPrice(price, discount);
   const shopTier = useCompendiumStore((s) => s.shopTier);
   const tier = shopTierOf(entry);
   const locked = tier > shopTier;
@@ -809,14 +818,16 @@ function EntryCard({
                   ? 'Ten wpis nie ma ceny — uzupełnij ją w kompendium.'
                   : locked
                     ? shopTierRefusalText(tier, shopTier)
-                    : `Cena schodzi z konta postaci: ${priceLabel}`
+                    : discount > 0
+                      ? `Cena schodzi z konta postaci: ${priceLabel} − ${discount}% z dobitego targu`
+                      : `Cena schodzi z konta postaci: ${priceLabel}`
               }
               // The GM buys through every tier — the dial paces the *table*,
               // and the server exempts the GM for the same reason.
               disabled={price === null || (locked && !isGm)}
               onClick={() => void buy()}
             >
-              Kup{price === null ? '' : ` — ${price} ed`}
+              Kup{payable === null ? '' : ` — ${payable} ed`}
             </button>
           )}
           {isGm ? (

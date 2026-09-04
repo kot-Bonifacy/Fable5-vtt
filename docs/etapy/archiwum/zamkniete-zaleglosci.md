@@ -9,6 +9,83 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Przeniesione 2026-09-04 (oględziny Zdolności Ról 30a–30d)
+
+Wszystkie cztery pozycje brzmiały tak samo — „Etap 30x nie był oglądany w przeglądarce.
+Mechanika jedzie w testach (…), ale żadnego z tych ekranów nikt nie kliknął" — i wszystkie
+cztery zamknięto jedną sesją, jedną kartą („Frank") przestawianą kolejno na dziewięć Ról.
+Zamiast czterech osobnych wpisów: **co odklikano** i **sześć błędów, które przy tym wyszły**.
+
+**Odklikane w komplecie.** 30a: panel sześciu zdolności z progami i wyszarzeniami, pudełko
+„Zmysł Walki" w pasku akcji (tylko u Solo), koszt Akcji przy zmianie przydziału w trakcie tury
+(z wierszem logu „Redukcja obrażeń 1 (2 pkt), Precyzyjny atak 1 (3 pkt)") i darmowy zapis tej
+samej wartości, „− 1 (Redukcja obrażeń)" na karcie obrażeń **tylko przy pierwszym ciosie
+Rundy** (drugi cios: 7 przez pancerz, bez redukcji), kafel „Fumble zignorowany (Wyjście
+z opresji)" i wiersze „Precyzyjny atak 1" / „Wyczucie zagrożenia 1" w rozbiciu rzutu.
+30b: panel Medycyny z sufitem 5 na Specjalizację, wiersz „Chirurgia 10 · Technologia Medyczna 3",
+bloki farmaceutyków (guzik „Wytwórz" tylko przy środkach w zasięgu) i drabina kriosystemów;
+panel Twórcy z sakiewką 2 pkt/poziom, dziesięcioma skutkami Ulepszania i tabelą PT/czasu;
+⚒ Prowizorka (OB 7 → 11 na 30 min) z kończącym ją ⌫ oraz ⊕ +1 OB znikający po użyciu.
+30c: sześć kategorii Wsparcia z tabelą, karta „Ktoś odpowiada · 7 ≤ 10 · … za 3 Rundy", wiersz
+„w drodze" z guzikami MG, przybycie czterech Korpogliniarzy przy wzywającym z rzuconą
+inicjatywą, odmowa Uniku; panel Korpo od „Poproś HR o pracownika" po Test Lojalności
+(„1 < Lojalność 7 → Wykonuje polecenie"), z kartą pracownika zgodną z tabelą (Lekka kurtka
+OB 11, B.C. pistolet 4k6, Rola Netrunner rangi 2, cyborgizacje w notatkach).
+30d: panel Efektu Charyzmy z „To żart, prawda?" przy randze 2, karta „Odmowa · 6 ≤ PT 10 …
+nie poprosisz ich przez 7 dni", Znajomości z dobitym targiem i zakupem o 10% taniej, Moto
+z „+3 do Testów: …" i wyczerpanym Taborem, Wiarygodność ze zmianą szansy po dowodach (4 → 7 na 10) i szeptaną kartą Pogłosek z nazwą pobitego progu.
+
+- **Nazwa Zdolności ścinała się do 15 px w ośmiu panelach naraz. ZAMKNIĘTE — naprawione 04.09.**
+  Sześć zdolności Zmysłu Walki czytało się jako „R..", „W.", „B..", „P..", „W.", „W.". Dane były
+  całe (pełne nazwy, pełne podpowiedzi) — układ nie. `.awareness-row` to siatka
+  `1fr auto auto auto`, a `.awareness-name` ma `overflow: hidden`, więc jej minimum wynosi zero;
+  w kolumnie tożsamości karty, która ma **sztywne 15 rem** (`.sheet-page`), wartość (4,5 rem),
+  koszt (3,5 rem) i dwa guziki zjadały 201 z 216 px. Rozciąganie okna karty nic nie dawało, bo
+  ta kolumna nie rośnie. Naprawa: w `.cp-awareness` i `.hud-form` wiersz przestaje być siatką,
+  nazwa bierze całą pierwszą linię, reszta schodzi do drugiej. **Drugi dom tego samego panelu**
+  — pudełko „Zmysł Walki" w pasku akcji — miał to samo (52 px na 102 potrzebne) i wymagał
+  drugiego selektora; rejestr awansów w `.cp-advance` zostaje jednolinijkowy, bo ma miejsce.
+
+- **MG nie mógł zmienić Roli Medykowi z wydanymi punktami Specjalizacji. ZAMKNIĘTE —
+  naprawione 04.09.** Objaw: wybór Roli na karcie wracał na starą wartość, a na dole stało
+  „Błąd zapisu!" i „Ta postać nie ma tej Zdolności Specjalnej" — zdanie o Specjalizacji, choć
+  zmieniano Rolę. Diagnoza: `character:update` waliduje **scaloną** kartę
+  (`cpredSpecialtiesProblem`), bo rozmiar sakiewki zależy od rangi; ta sama łata potrafi jednak
+  **zabrać Zdolność**, bo `roleId` jest od 29a u MG zwykłym polem, a zmiana Roli bez odłożenia
+  starej do `formerRoles` zostawia `medicine` bez właściciela. `cpredSpecialtyProblem` przy
+  `rank === null` i niepustym przydziale zwraca `NO_ABILITY` — czyli odrzucał **tę łatę i każdą
+  następną**. Ten sam potrzask miał Tabor Nomady (`cpredFleetProblem`). Naprawa:
+  `cpredDropOrphanedRolePurses` zdejmuje sakiewkę bez Zdolności **przed** trzema walidacjami;
+  przy wieloklasowości nie schodzi nic, bo `cpredRoleAbilityRank` pyta też o `formerRoles`.
+  Pokryte testem czystej funkcji (trzy przypadki) i testem serwera na gnieździe.
+
+- **Guzik z napisem w rządku ± był ścinany do 1,6 rem. ZAMKNIĘTE — naprawione 04.09.**
+  „Wezwij" Wsparcia czytało się jako „Wezw", bo `.awareness-steps button { width: 1.6rem }` —
+  reguła pisana dla kwadratowych „+"/„−" — trafia też w guziki z napisem. **To drugie spotkanie
+  z tym samym błędem:** 29b naprawiło go wąsko dla `.advance-buy` („Podn" zamiast „Podnieś"),
+  zostawiając regułę, która go powodował. Tym razem `width` ustąpił `min-width` dla wszystkich,
+  a obejście z 29b zeszło jako martwe.
+
+- **Licznik figur Wsparcia padał dwa razy. ZAMKNIĘTE — naprawione 04.09.** Kolejka Inicjatywy
+  pisała „Korporacyjne służby bezpieczeństwa ×4 ×4": `describeBackupPending` doklejało `×count`
+  do etykiety, a `CombatPanel` maluje `{row.label} ×{row.count}` z własnego pola widoku.
+  Etykieta nazywa odtąd wyłącznie „kto" — zgodnie z komentarzem przy `ReinforcementView.label`
+  („the system's own words for who is coming").
+
+- **Odmowa Uniku wracała jako surowy kod. ZAMKNIĘTE — naprawione 04.09.** Na czacie stawało
+  „Błąd ataku: BACKUP_CANNOT_DODGE" zamiast „Funkcjonariusze Wsparcia nie mogą Unikać pocisków".
+  Mylące, bo zdanie **istniało** — w ogólnym `ackErrorText`, a `attack:evade` idzie przez
+  `attackAckErrorText`, gdzie brakowało wszystkich trzech kodów tej ścieżki
+  (`BACKUP_CANNOT_DODGE`, `SHIELD_CANNOT_DODGE`, `DODGE_BLOCKED`). Zdanie Ludzkiej tarczy wzięto
+  z `CPRED_GRAPPLE_PROBLEM_MESSAGES`, zgodnie z umową „zdania kodów silnika mieszkają w shared".
+
+- **Guzik „Kup" pisał cenę sprzed dobitego targu. ZAMKNIĘTE — naprawione 04.09.** Przy targu
+  Fixera („−10% od najbliższego zakupu") guzik mówił „Kup — 20 ed", a z konta schodziło 18;
+  prawdę mówiła dopiero karta ekonomii po zakupie („Targ: Dziesięć procent −10% · cena
+  z katalogu 20 ed"). Klient liczy teraz cenę tą samą funkcją, co serwer
+  (`cpredHaggledPrice`), z tym samym warunkiem `discount > 0`, a podpowiedź guzika nazywa
+  cenę katalogową.
+
 ## Przeniesione 2026-09-03 (zestaw A — leczenie, regeneracja i środki zużywalne, trzecia sesja)
 
 - **Farmaceutyki nie miały zapasu dawek. ZAMKNIĘTE — zrobione 03.09.** Pierwotny wpis: „Panel

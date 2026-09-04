@@ -108,6 +108,15 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 ## Od czego zacząć
 
+**Zdolności dziewięciu Ról były w testach i nigdy nie były klikane — od 04.09 są (30a–30d).**
+Wyszło **sześć błędów**, wszystkie naprawione: trzy układu (nazwa Zdolności ścięta do 15 px
+w ośmiu panelach, guzik „Wezwij" ścięty do „Wezw", licznik Wsparcia „×4 ×4"), jeden blokujący
+(**MG nie mógł zmienić Roli Medykowi z wydanymi punktami Specjalizacji** — sakiewka bez
+Zdolności odrzucała każdą łatę karty) i dwa mówiące nieprawdę (odmowa Uniku jako surowy kod,
+guzik „Kup" z ceną sprzed targu). **Panele Ról stoją w kolumnie o sztywnych 15 rem** — nowy
+element w tym wierszu trzeba obejrzeć tam, a nie w szerokim oknie. Umowa i dwie pułapki
+w indeksach niżej.
+
 **Naturalne leczenie PW istnieje od 03.09 (trzecia sesja) — do tej pory PW nie wracały nigdy.**
 Dzień odpoczynku liczy `cpredRestDay` (`shared/systems/cpred/recovery.ts`), a warunek „po udanej
 stabilizacji" siedzi w nowym `CpredCharacterData.recovery`. **Ustabilizowanie ma odtąd zasięg
@@ -197,15 +206,18 @@ Pełny zapis w `decyzje-i-uproszczenia.md`; przed zmianą czegokolwiek w tym mie
 akapit, bo to druga zmiana zdania w tej sprawie. **Wyjątek od 30c: Test Lojalności** zdaje się
 przy wyniku _mniejszym_ od Lojalności (s. 154).
 
-**Dług oględzin — 17 pozycji.** Bez modelu da się obejrzeć cztery, wszystkie z etapu 30:
-**komplet 30a**, **reszta 30b**, **komplet 30c**, **komplet 30d**. **29a i 29b wypadły z listy
-02.09** (odklikane w komplecie), etap 31 i Celowanie w statystę — 01.09. Reszta czeka na **żywy
-model**: 20a/20b, 19a–19c, dwie ścieżki 24c i maszynopis wypowiedzi.
+**Dług oględzin — 14 pozycji, i wszystkie czekają na żywy model.** Cztery pozycje etapu 30
+(**30a, 30b, 30c, 30d**) zamknięte 04.09 — była to ostatnia paczka, którą dało się obejrzeć bez
+GPU. Zostaje 20a/20b, 19a–19c, dwie ścieżki 24c, maszynopis wypowiedzi i jedna nowa pozycja
+z 04.09 (cyberdek pracownika Korpo). **29a i 29b wypadły z listy 02.09**, etap 31 i Celowanie
+w statystę — 01.09.
 
-**Do oględzin 30a–30d trzeba postaci ze wszystkimi Rolami poza Netrunnerem** — żadna karta na
-scenach testowych ich nie ma. **Od 29a wybór Roli ma wyłącznie MG**, więc oględziny Ról robi się
+**Oględziny Roli robi się jedną kartą przestawianą kolejno na dziewięć Ról** — tak poszły
+30a–30d 04.09 (decyzja MG), na „Franku", w kolejności Solo → Medyk → Technik → Stróż Prawa →
+Korpo → Rocker → Fixer → Nomada → Media. Żadna karta na scenach testowych nie ma tych Ról
+z siebie. **Od 29a wybór Roli ma wyłącznie MG**, więc oględziny Ról robi się
 z sesji MG albo przestawia Rolę u MG i patrzy graczem. **Trzecia droga, tańsza i sprawdzona
-30.08 oraz 02.09:** kartę przygotowuje się wprost w bazie (`node --input-type=module` +
+30.08, 02.09 oraz 04.09:** kartę przygotowuje się wprost w bazie (`node --input-type=module` +
 `node:sqlite` na `packages/server/dev.db`, przeładowanie karty przeglądarki przynosi nowy stan)
 — patrz pułapki. **Nośnikiem bez skutków ubocznych jest „Frank"** (pusta karta poligonu, bez
 Roli i bez ekwipunku); 02.09 dostał na czas sesji właściciela `Tester` i wrócił do `NPC (MG)`.
@@ -247,6 +259,8 @@ ESLint i Prettier czyste na całym repo.
 Jeden wiersz = jedna umowa; pełna wersja z uzasadnieniem w `umowy-kodu.md`. Umowa złamana
 znaczy zwykle błąd, który już raz kosztował sesję.
 
+- **Sakiewka Zdolności bez Zdolności** — `cpredDropOrphanedRolePurses` zdejmuje `medicine`/`fabrication`/`fleet`, gdy scalona karta straciła Zdolność; woła się **przed** walidacjami w `character:update`. Nowa sakiewka zależna od rangi dopisuje się tam, nie w walidatorze.
+- **Panel Zdolności Roli mieszka w kolumnie 15 rem** (`.cp-identity`) i w pasku akcji (`.hud-form`) — obie wąskie i obu nie da się rozciągnąć. Nazwa idzie własną linią (`.awareness-name { flex: 1 0 100% }`), a guzik z napisem ma `min-width`, nie `width`.
 - **Przedmiot zużywalny** — `CpredGearRow.consumable` + `qty` na wierszu ekwipunku, katalog w `systems/cpred/pharma.ts` (moduł **bez importów**). Nowy środek = wpis w `CPRED_PHARMACEUTICALS` + gałąź w `applyDose`.
 - **Powrót do zdrowia liczy serwer** — `cpredRestDay` w `systems/cpred/recovery.ts` jest jedynym źródłem tempa; klient wysyła samo „minął dzień". Nowe źródło = wiersz w `cpredHealRate`. `recovery.stabilized` pisze **wyłącznie** udane Ustabilizowanie.
 - **Nowy rodzaj wiersza czatu** — dwie czyste funkcje w `shared/src/chat.ts` (`chatCategoryOf`, `chatCompactLine`) + `toChatMessageView` + gałąź `FullMessageRow`. Pominięcie = wiersz w grupie „Stół", którego nie da się ścisnąć.
@@ -347,6 +361,9 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 
 Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapki-dev.md`.
 
+- **Testy nie widzą ściętego napisu** — trzy z sześciu błędów 30a–30d to szerokość elementu i treść etykiety; przy panelu w wąskiej kolumnie mierz `getBoundingClientRect().width` przeciw `scrollWidth`, zanim uznasz układ za dobry.
+- **`refuseWalkThroughSolid` zwalnia MG** (`realtime/movement.ts:254`) — żeton MG przechodzi przez ścianę i to nie jest regres; kolizje ruchu ogląda się z konta gracza, jak odmowy statusowe.
+- **To samo zdanie odmowy bywa w dwóch tabelach** — `attack:evade` idzie przez `attackAckErrorText`, nie przez ogólne `ackErrorText`; kod bez wpisu w tej właściwej wraca do czatu jako `Błąd ataku: KOD`.
 - **Jeden zły wiersz listy kasuje CAŁĄ listę przy odczycie** — `validateRows` zwraca `undefined`, a `parseCharacterData` podstawia `[]`; id wiersza dłuższe niż **32 znaki** wystarczy. Generuj je jak klient (`newRowId`), nie z id kompendium.
 - **Dwa zapisy tej samej karty w jednym handlerze: drugi cofa pierwszy** — wiersz `Character` z początku obsługi to migawka. Jeden zapis z obiema łatkami albo świeży wiersz pod drugi krok (`effectTarget` w `realtime/recovery.ts`).
 - **Nowy plik testów dymnych musi dostać `}, 60_000);` przy `beforeAll`** — hak robi `prisma migrate deploy` i podnosi Fastify, a pod pełną równoległością nie mieści się w domyślnych 10 s; objaw to `FAIL` całego **pliku**, nie testu.
@@ -444,6 +461,74 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 04.09 — Zdolności Ról 30a–30d obejrzane, sześć błędów naprawionych
+
+**Zlecenie MG:** wybrać z zaległości kilkanaście pozycji pasujących do siebie na jedną sesję,
+bez niczego wokół lokalnego LLM-a (planowana wymiana modelu). MG wskazał **paczkę A** — cztery
+otwarte pozycje „etap 30x nie był oglądany w przeglądarce" — i rozstrzygnął dwie rzeczy:
+nośnikiem zostaje **„Frank"** (jedna karta przestawiana kolejno na dziewięć Ról, nie dziewięć
+osobnych kart), a **znalezione błędy naprawiam od ręki**, nie spisuję.
+
+**Cztery pozycje długu oględzin zamknięte — cała mechanika dziewięciu Ról była w testach i nigdy
+nie była klikana.** Przeszła przez przeglądarkę w komplecie: 30a (Solo), 30b (Medyk, Technik),
+30c (Stróż Prawa, Korpo), 30d (Rocker, Fixer, Nomada, Media). Wyszło **sześć błędów, wszystkie
+naprawione i obejrzane po naprawie**; trzy pierwsze były niewidoczne dla testów, bo żaden test
+nie mierzy szerokości elementu ani nie czyta etykiety guzika.
+
+1. **Nazwa Zdolności ścinała się do 15 px w ośmiu panelach naraz.** Sześć zdolności Zmysłu Walki
+   czytało się jako „R..", „W.", „B..", „P..", „W.", „W." — dwie pary nie do rozróżnienia.
+   Panele Ról stoją w kolumnie tożsamości karty, a ta ma **sztywne 15 rem** (`.sheet-page`),
+   więc rozciąganie okna nic nie dawało: cztery kolumny wiersza (wartość 4,5 rem + koszt
+   3,5 rem + dwa guziki) zjadały całą szerokość. Nazwa dostała własną linię nad liczbami.
+   **Drugi dom tego samego panelu — pudełko „Zmysł Walki" w pasku akcji (`.hud-form`) — miał to
+   samo** i wymagał drugiego selektora.
+2. **MG nie mógł zmienić Roli Medykowi ani Technikowi, który wydał punkty Specjalizacji.**
+   `roleId` jedzie u MG zwykłą łatą (29a), więc zmiana zabierała Zdolność, zostawiając jej
+   sakiewkę — a `cpredSpecialtiesProblem` odrzucał wtedy **tę samą łatę i każdą następną**
+   zdaniem „Ta postać nie ma tej Zdolności Specjalnej", czyli o Specjalizacji, której nikt nie
+   dotykał. Ten sam potrzask miał Tabor Nomady (`fleet`). Nowy `cpredDropOrphanedRolePurses`
+   zdejmuje sakiewkę bez Zdolności **przed** trzema walidacjami w `character:update`; przy
+   wieloklasowości nie schodzi nic, bo tam Rola siedzi w `formerRoles` i Zdolność się znajduje.
+3. **Guzik z napisem w rządku ± był ścinany do 1,6 rem** — „Wezwij" Wsparcia czytało się jako
+   „Wezw". **To ten sam błąd, który 29b naprawiło wąsko dla `.advance-buy`** (komentarz w CSS
+   opisywał „Podn" zamiast „Podnieś"); tym razem `width` ustąpił `min-width` dla wszystkich,
+   a obejście z 29b zeszło jako martwe.
+4. **Licznik figur Wsparcia padał dwa razy** — „Korporacyjne służby bezpieczeństwa ×4 ×4".
+   Etykieta `ReinforcementView.label` niosła ×N, a Kolejka Inicjatywy dokleja je z własnego
+   pola `count`. Etykieta nazywa odtąd wyłącznie „kto".
+5. **Odmowa Uniku wracała jako surowy kod** — „Błąd ataku: BACKUP_CANNOT_DODGE" zamiast
+   „Funkcjonariusze Wsparcia nie mogą Unikać pocisków". Zdanie **istniało**, ale w ogólnym
+   `ackErrorText`, a `attack:evade` idzie przez `attackAckErrorText`. Trzy kody tej ścieżki
+   (`BACKUP_CANNOT_DODGE`, `SHIELD_CANNOT_DODGE`, `DODGE_BLOCKED`) dostały tam swoje zdania.
+6. **Guzik „Kup" pisał cenę z katalogu, a z konta schodziło o 10% mniej** przy dobitym targu
+   Fixera. Karta ekonomii mówiła prawdę dopiero po zakupie. Guzik wycenia teraz **ten** zakup.
+
+**Czego nie da się odhaczyć bez drugiej sesji:** guzik „Pogłoski" jest w kodzie pod `isGm`,
+a karta idzie jako `gmroll`, ale **nie oglądano go z konta gracza**. Kafel „Fumble zignorowany
+(Wyjście z opresji)" obejrzano **na wymuszonej kostce** — jedynka na 1k10 to kwestia kilkunastu
+strzałów, więc `dice-rng.ts` dostał na jedną minutę `if (sides === 10) return 1;` i wrócił do
+stanu sprzed zmiany (plik jest czysty, `git diff` pusty).
+
+**Jedna nowa zaległość:** Korporacyjny netrunner z zespołu Korpo dostaje Rolę „Netrunner" rangi 2
+i cyberdek **wypisany w notatkach**, ale `cyberdeck` na karcie zostaje `null` — a komentarz przy
+jego pakiecie mówi wprost, że „a cyberdeck needs one" było **powodem**, dla którego pracownik ma
+pełną kartę zamiast profilu bojowego. Opis w `zaleglosci.md`.
+
+**Dwa wpisy `POMYSLY.md` sprawdzone w kodzie i nieaktualne** (przekreślone): leczenie ran
+krytycznych (jest od 30b, cały `treatment.ts`) i kolizje ruchu ze ścianą (jest
+`refuseWalkThroughSolid`, ze ścianami **i** osłonami, po lanie na komórkę dla figur 2×2).
+Przy tej drugiej wyszła rzecz, której nigdzie nie zapisano: **funkcja zwalnia MG**
+(`movement.ts:254`), więc żeton MG przez ścianę przechodzi — pułapka w indeksie niżej.
+
+**Poligon wrócił do stanu sprzed sesji** — pięć postawionych żetonów skasowanych, karta
+pracownika usunięta, „Frank" i „Rudy Kwiatkowski" przywrócone z kopii, kolejka znowu
+„PRZED WALKĄ" z tą samą piątką, tryb turowy wyłączony. Ślad zostawiony świadomie: **log czatu**
+z całej sesji (rzuty, karty ataku, Wezwanie Wsparcia, Test Lojalności, Pogłoski).
+
+**Testy na koniec:** 1785 w `shared` (+3), 935 na serwerze (+1), 75 u klienta — zielone, trzy
+pełne przebiegi serwera pod rząd. `tsc --noEmit` czysty w całym monorepo, ESLint i Prettier
+czyste.
+
 ### Sesja 03.09 (trzecia) — zestaw A: leczenie, regeneracja i środki zużywalne
 
 **Zlecenie MG:** wybrać z zaległości kilkanaście pozycji pasujących do siebie na jedną sesję,
@@ -510,60 +595,3 @@ sprawdzonych kandydatów było już zrobionych.
 
 **Testy na koniec:** 1782 w `shared` (+23), 934 na serwerze (+16), 75 u klienta — zielone.
 `tsc --noEmit` czysty w całym monorepo, ESLint i Prettier czyste.
-
-### Sesja 03.09 (druga) — higiena testów i alias nazwy figury
-
-**Zlecenie MG:** wybrać zadania samodzielnie z listy zaległości. Wybór padł na **oba długi
-higieny** (czerwony `tsc`, migotliwe testy) i **przeciek nazwy figury** — z uzasadnieniem, że
-skoro refaktoryzacja jest dopiero po wszystkich etapach, przed nami jest osiem etapów i cała
-reszta zaległości, a każda z tych sesji płaci podatek za czerwony typecheck i losowo czerwony
-zestaw. Wiązka „ekwipunek jako rzeczy" odpuszczona świadomie: MG powiedział, że **etap 38
-ruszy niedługo**, a ona w połowie zachodzi na jego zakres.
-
-**`tsc --noEmit` jest czysty w całym monorepo.** Jedyny błąd (`attacks.test.ts:1941`) brał się
-z `system: Record<string, unknown>` w lokalnym interfejsie `AttackCard`: przy
-`noUncheckedIndexedAccess` `card.system.ammo` to `unknown`, a optional chaining zawęża je do
-`{}`. Zamiast rzutu w asercji `system` dostał prawdziwy kształt, a trzynaście rozsianych po
-pliku `as AttackCard` zastąpiły dwa pomocniki. **Jeden rzut został i jest konieczny** —
-`RollAttackMeta.system` w `dice.ts` jest nieprzezroczyste **świadomie**, bo silnik kości nie
-może wiedzieć, czym jest CP RED.
-
-**Migotanie testów miało trzy przyczyny, nie jedną — i najważniejsza nie była wyścigiem.**
-Zapis zaległości obwiniał równoległość; sprawdzenie pokazało co innego. (1) `waitFor` biorący
-**pierwszą** wiadomość z czatu łapał kartę poprzedniego testu — naprawione dopasowaniem po
-treści w `roles30d.test.ts` i `netdemons.test.ts`. (2) `zones.test.ts` mierzył spadek PW od
-stanu, który mógł już być zerem, a **przy zerze serwer odmawia graczowi ruchu w ogóle** — stąd
-`expected 0 to be less than 0`. (3) **Główna:** Test Kontroli węzła (Interfejs 10 przeciw PT 1)
-przegrywa **dokładnie raz na sto** — naturalna jedynka z dorzutem 10 daje równo 1, a Test
-wymaga „więcej niż PT". Zmierzone na milionie rzutów: 0,998 %. Jeden taki rzut przewracał **pięć**
-testów w `netdevices.test.ts` i **trzy** w `netdemons.test.ts`, więc wyglądało to na wyścig.
-Wzorzec naprawy leżał w repo od dawna — `netrun.test.ts` ma na to pętlę podejść; brakowało jej
-w dwóch pozostałych plikach. (4) Pomiar po tych trzech naprawach wyciągnął **czwartą**: jeden
-przebieg na dwanaście padł **na poziomie pliku** w `screamsheets.test.ts`, czyli w haku, nie
-w teście — pięć plików dymnych miało `beforeAll` bez `}, 60_000);`, a `prisma migrate deploy`
-plus start Fastify nie mieści się pod obciążeniem w domyślnych 10 s vitesta. Po wszystkich
-czterech: **piętnaście przebiegów pod rząd, 918/918.**
-
-**Nazwa figury przestała przeciekać na mapie i w Kolejce Inicjatywy.** Nowa kolumna
-`Token.publicName` (migracja `20260903175753_stage_token_public_name`) w trzech stanach: brak
-aliasu / alias / pusty alias. Podmiana wyłącznie na serwerze — `toTokenView` i
-`filterCombatForPlayer`; **sam alias jedzie tylko do MG**, bo gracz nie ma się dowiedzieć nawet
-tego, że druga nazwa istnieje. W oknie edycji tokenu doszedł przełącznik „Gracze widzą inną
-nazwę" z podpowiedzią, która mówi wprost, co gracz zobaczy — i uczciwie ostrzega, że **karty na
-czacie nadal piszą prawdziwą nazwę**. Ta reszta jest w `zaleglosci.md`: nazwa jest tam wpisana
-w **treść** zapisanej wiadomości, w ponad trzydziestu miejscach `realtime/`, więc filtr
-per-odbiorca to przebudowa kart, nie łatka — idzie z etapem 35, do którego pomysł należał.
-
-**Obejrzane w przeglądarce, dwie sesje naraz (MG na `localhost`, Tester na `[::1]`).** Przeciek
-odtworzony na żywo: gracz czytał „Snajper Arasaki". Po nadaniu aliasu jego mapa zmieniła się
-**bez przeładowania** na „Ochroniarz", a inicjał w kółku z **S** na **O** — czyli prawdziwa
-nazwa nie dotarła nawet do rysowania. Pusty alias daje figurę bez podpisu z „?" w kółku i wiersz
-_„Nieznana figura"_ w trackerze; MG w tym samym wierszu czyta „Snajper Arasaki". Poligon
-przywrócony: figura testowa skasowana, walka zakończona, lista uczestników wróciła do tej samej
-piątki, w bazie zero tokenów z aliasem.
-
-**Cztery nowe pułapki dev z tej sesji** (pełne opisy w `pulapki-dev.md`): `window.confirm`
-**zawiesza kartę pod CDP na amen**, jeśli nie przechwyci się go **przed** kliknięciem — kosztowało
-to zamknięcie i odtworzenie karty MG; zrzut ekranu ma inną skalę niż `clientX` (mnożnik
-`innerWidth / szerokość zrzutu`); `form_input` na checkboksie Reacta zmienia DOM, ale nie stan
-komponentu; menu kontekstowe tokenu otwiera `pointerdown` z `button === 2`.

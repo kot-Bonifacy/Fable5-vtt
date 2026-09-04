@@ -7,6 +7,63 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 03.09 (druga) — higiena testów i alias nazwy figury
+
+**Zlecenie MG:** wybrać zadania samodzielnie z listy zaległości. Wybór padł na **oba długi
+higieny** (czerwony `tsc`, migotliwe testy) i **przeciek nazwy figury** — z uzasadnieniem, że
+skoro refaktoryzacja jest dopiero po wszystkich etapach, przed nami jest osiem etapów i cała
+reszta zaległości, a każda z tych sesji płaci podatek za czerwony typecheck i losowo czerwony
+zestaw. Wiązka „ekwipunek jako rzeczy" odpuszczona świadomie: MG powiedział, że **etap 38
+ruszy niedługo**, a ona w połowie zachodzi na jego zakres.
+
+**`tsc --noEmit` jest czysty w całym monorepo.** Jedyny błąd (`attacks.test.ts:1941`) brał się
+z `system: Record<string, unknown>` w lokalnym interfejsie `AttackCard`: przy
+`noUncheckedIndexedAccess` `card.system.ammo` to `unknown`, a optional chaining zawęża je do
+`{}`. Zamiast rzutu w asercji `system` dostał prawdziwy kształt, a trzynaście rozsianych po
+pliku `as AttackCard` zastąpiły dwa pomocniki. **Jeden rzut został i jest konieczny** —
+`RollAttackMeta.system` w `dice.ts` jest nieprzezroczyste **świadomie**, bo silnik kości nie
+może wiedzieć, czym jest CP RED.
+
+**Migotanie testów miało trzy przyczyny, nie jedną — i najważniejsza nie była wyścigiem.**
+Zapis zaległości obwiniał równoległość; sprawdzenie pokazało co innego. (1) `waitFor` biorący
+**pierwszą** wiadomość z czatu łapał kartę poprzedniego testu — naprawione dopasowaniem po
+treści w `roles30d.test.ts` i `netdemons.test.ts`. (2) `zones.test.ts` mierzył spadek PW od
+stanu, który mógł już być zerem, a **przy zerze serwer odmawia graczowi ruchu w ogóle** — stąd
+`expected 0 to be less than 0`. (3) **Główna:** Test Kontroli węzła (Interfejs 10 przeciw PT 1)
+przegrywa **dokładnie raz na sto** — naturalna jedynka z dorzutem 10 daje równo 1, a Test
+wymaga „więcej niż PT". Zmierzone na milionie rzutów: 0,998 %. Jeden taki rzut przewracał **pięć**
+testów w `netdevices.test.ts` i **trzy** w `netdemons.test.ts`, więc wyglądało to na wyścig.
+Wzorzec naprawy leżał w repo od dawna — `netrun.test.ts` ma na to pętlę podejść; brakowało jej
+w dwóch pozostałych plikach. (4) Pomiar po tych trzech naprawach wyciągnął **czwartą**: jeden
+przebieg na dwanaście padł **na poziomie pliku** w `screamsheets.test.ts`, czyli w haku, nie
+w teście — pięć plików dymnych miało `beforeAll` bez `}, 60_000);`, a `prisma migrate deploy`
+plus start Fastify nie mieści się pod obciążeniem w domyślnych 10 s vitesta. Po wszystkich
+czterech: **piętnaście przebiegów pod rząd, 918/918.**
+
+**Nazwa figury przestała przeciekać na mapie i w Kolejce Inicjatywy.** Nowa kolumna
+`Token.publicName` (migracja `20260903175753_stage_token_public_name`) w trzech stanach: brak
+aliasu / alias / pusty alias. Podmiana wyłącznie na serwerze — `toTokenView` i
+`filterCombatForPlayer`; **sam alias jedzie tylko do MG**, bo gracz nie ma się dowiedzieć nawet
+tego, że druga nazwa istnieje. W oknie edycji tokenu doszedł przełącznik „Gracze widzą inną
+nazwę" z podpowiedzią, która mówi wprost, co gracz zobaczy — i uczciwie ostrzega, że **karty na
+czacie nadal piszą prawdziwą nazwę**. Ta reszta jest w `zaleglosci.md`: nazwa jest tam wpisana
+w **treść** zapisanej wiadomości, w ponad trzydziestu miejscach `realtime/`, więc filtr
+per-odbiorca to przebudowa kart, nie łatka — idzie z etapem 35, do którego pomysł należał.
+
+**Obejrzane w przeglądarce, dwie sesje naraz (MG na `localhost`, Tester na `[::1]`).** Przeciek
+odtworzony na żywo: gracz czytał „Snajper Arasaki". Po nadaniu aliasu jego mapa zmieniła się
+**bez przeładowania** na „Ochroniarz", a inicjał w kółku z **S** na **O** — czyli prawdziwa
+nazwa nie dotarła nawet do rysowania. Pusty alias daje figurę bez podpisu z „?" w kółku i wiersz
+_„Nieznana figura"_ w trackerze; MG w tym samym wierszu czyta „Snajper Arasaki". Poligon
+przywrócony: figura testowa skasowana, walka zakończona, lista uczestników wróciła do tej samej
+piątki, w bazie zero tokenów z aliasem.
+
+**Cztery nowe pułapki dev z tej sesji** (pełne opisy w `pulapki-dev.md`): `window.confirm`
+**zawiesza kartę pod CDP na amen**, jeśli nie przechwyci się go **przed** kliknięciem — kosztowało
+to zamknięcie i odtworzenie karty MG; zrzut ekranu ma inną skalę niż `clientX` (mnożnik
+`innerWidth / szerokość zrzutu`); `form_input` na checkboksie Reacta zmienia DOM, ale nie stan
+komponentu; menu kontekstowe tokenu otwiera `pointerdown` z `button === 2`.
+
 ### Sesja 03.09 — przegląd mechanik CP RED i trzy błędy naprawione od ręki
 
 **Zlecenie MG:** sprawdzić, czy wszystkie ważne i wykonalne mechaniki z podręcznika są już

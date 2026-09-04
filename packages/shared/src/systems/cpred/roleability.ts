@@ -2173,7 +2173,11 @@ export function cpredBackupDue(state: CpredCombatState, round: number): CpredBac
 export function describeBackupPending(entry: CpredBackupPending): string {
   const tier = cpredBackupTier(entry.tierId);
   if (!tier) return 'Wsparcie w drodze';
-  return `${tier.name} ×${tier.count}`;
+  // Samo „kto" — ilu ich jest, niesie `ReinforcementView.count` i maluje to
+  // pasek inicjatywy sam (`{row.label} ×{row.count}`). Doklejone tutaj ×N
+  // wychodziło w Kolejce jako „Korporacyjne służby bezpieczeństwa ×4 ×4"
+  // (znalezione przy oględzinach 30c).
+  return tier.name;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════ *
@@ -3005,4 +3009,35 @@ export function cpredFleetSheetProblem(
   registry: CpredRegistry,
 ): CpredFleetProblem | null {
   return cpredFleetProblem(data.fleet, cpredRoleAbilityRank(data, registry, CPRED_MOTO_ABILITY));
+}
+
+/**
+ * Zdejmuje z karty sakiewkę Zdolności, której karta już nie ma (etap 30b/30d).
+ *
+ * MG zmienia `roleId` zwykłą łatą — od 29a to dla niego pole jak każde inne,
+ * inaczej niż u gracza, gdzie `character:role-change` odkłada starą Rolę do
+ * `formerRoles` i Zdolność zostaje znaleziona. Bez tego odłożenia przydział
+ * przeżywa Zdolność, a `cpredSpecialtiesProblem` i `cpredFleetSheetProblem`
+ * odrzucają wtedy **każdą** kolejną łatę karty zdaniem „Ta postać nie ma tej
+ * Zdolności Specjalnej" — łącznie z tą, która Rolę zmienia. Tak to wyszło przy
+ * oględzinach: Medyka z wydanymi punktami Specjalizacji nie dało się zrobić
+ * niczym innym, a zdanie odmowy mówiło o Specjalizacji, nie o Roli.
+ *
+ * Punkty bez Zdolności, która je kupiła, nie są punktami, więc schodzą. Przy
+ * wieloklasowości nie schodzi nic: tam Zdolność wciąż się znajduje i żaden
+ * z trzech warunków niżej nie jest spełniony.
+ */
+export function cpredDropOrphanedRolePurses<
+  T extends CpredRoleSheet & Pick<CpredCharacterData, 'medicine' | 'fabrication' | 'fleet'>,
+>(data: T, registry: CpredRegistry): T {
+  const orphaned = (ability: string): boolean =>
+    cpredRoleAbilityRank(data, registry, ability) === null;
+  const patch: Partial<T> = {};
+  if (cpredSpecialtySpent(data.medicine) > 0 && orphaned(CPRED_MEDICINE_ABILITY))
+    (patch as { medicine: CpredMedicine }).medicine = {};
+  if (cpredSpecialtySpent(data.fabrication) > 0 && orphaned(CPRED_FABRICATION_ABILITY))
+    (patch as { fabrication: CpredFabrication }).fabrication = {};
+  if (data.fleet.length > 0 && orphaned(CPRED_MOTO_ABILITY))
+    (patch as { fleet: CpredFleetRow[] }).fleet = [];
+  return Object.keys(patch).length === 0 ? data : { ...data, ...patch };
 }

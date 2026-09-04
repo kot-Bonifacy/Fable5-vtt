@@ -1209,6 +1209,16 @@ function attackAckErrorText(code: string): string {
       return 'Nie ma takiego naboju w kompendium.';
     case 'TOKEN_HAS_NO_PROFILE':
       return 'Ten token nie ma profilu bojowego — uzupełnij go w „Edytuj…” w menu tokenu.';
+    // Trzy powody, dla których Unik nie dochodzi do skutku. Wszystkie jadą
+    // `attack:evade`, czyli tędy — a nie przez ogólne `ackErrorText`, gdzie
+    // dwa z tych zdań już stały. Bez nich kubek wracał z „Błąd ataku:
+    // BACKUP_CANNOT_DODGE" (znalezione przy oględzinach 30c).
+    case 'BACKUP_CANNOT_DODGE':
+      return 'Funkcjonariusze Wsparcia nie mogą Unikać pocisków.';
+    case 'SHIELD_CANNOT_DODGE':
+      return CPRED_GRAPPLE_PROBLEM_MESSAGES.SHIELD_CANNOT_DODGE;
+    case 'DODGE_BLOCKED':
+      return 'W tym stanie nie można Unikać.';
     default:
       return `Błąd ataku: ${code}`;
   }

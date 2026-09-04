@@ -841,3 +841,30 @@ pożyczyć. Trzy granice są celowe i pilnują ich testy: zacina się **broń ni
 podwieszany dodatek (składa się go z **typu** broni, więc jakości nie ma), nigdy statysta (profil
 bojowy nie ma wpisu katalogu), i nigdy Krytyczna Porażka **pominięta** (`critical.ignored`)
 przez „Wyjście z opresji" Solo.
+
+**Sakiewka Zdolności bez Zdolności schodzi z karty, zanim ktokolwiek ją osądzi (04.09).**
+`character:update` waliduje **scaloną** kartę trzema funkcjami (`cpredSpecialtiesProblem`,
+`cpredFleetSheetProblem`, `cpredRolesProblem`), bo rozmiar sakiewki zależy od rangi, której
+łata może dopiero nadawać. Problem w tym, że ta sama łata potrafi **zabrać Zdolność**: `roleId`
+jest od 29a u MG zwykłym polem, a zmiana Roli bez odłożenia starej do `formerRoles` zostawia
+`medicine`, `fabrication` albo `fleet` bez właściciela. Walidator odrzucał wtedy nie tylko tę
+łatę, ale **każdą następną** — Medyka z wydanymi punktami Specjalizacji nie dało się zrobić
+niczym innym, a zdanie odmowy mówiło o Specjalizacji, której nikt nie dotykał. Dlatego
+`cpredDropOrphanedRolePurses` (`systems/cpred/roleability.ts`) czyści osierocone sakiewki
+**przed** walidacją: pyta o Zdolność przez `cpredRoleAbilityRank`, więc przy wieloklasowości
+(stara Rola w `formerRoles`) nie zdejmuje nic, a pustej sakiewki nie rusza w ogóle i zwraca ten
+sam obiekt. Nowa sakiewka zależna od rangi dopisuje się **w tej funkcji**, nie w walidatorze —
+inaczej odziedziczy dokładnie ten sam potrzask.
+
+**Panel Zdolności Roli mieszka w dwóch wąskich kolumnach i obie są sztywne (04.09).**
+Osiem paneli 30a–30d renderuje się w `.cp-field.cp-awareness` wewnątrz `.cp-identity`, czyli
+w pierwszej kolumnie `.sheet-page` — a ta ma **`15rem` na stałe**, więc rozciąganie okna karty
+nic jej nie daje. `CombatAwarenessPanel` ma drugi dom: pudełko „Zmysł Walki" w pasku akcji
+(`.hud-form` w `.hud-rail`, ~254 px). W obu wiersz `.awareness-row` przestaje być siatką
+i układa się **flexem z zawijaniem**: nazwa bierze całą pierwszą linię (`flex: 1 0 100%`,
+`white-space: normal`), a wartość, koszt i guziki schodzą do drugiej, z `.awareness-steps`
+dosuniętym do prawej (`flex: none` **obok** `margin-left: auto` — bez tego automatyczny
+margines zjada wolną przestrzeń i ściska guzik do minimum). Poza tymi dwoma miejscami wiersz
+zostaje jednolinijkową siatką: rejestr awansów (`.cp-advance`) stoi w polu `cp-span2` i ma dość
+miejsca. **Guzik w `.awareness-steps` ma `min-width: 1.6rem`, nie `width`** — ± mają być
+kwadratowe i równe, ale w tym samym rządku siedzą „Wezwij", „Targuj" i „Podnieś".

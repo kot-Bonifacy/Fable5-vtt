@@ -656,3 +656,39 @@ to zobaczyła. Objawy są dwojakie i oba wskazują na współdzielony czas, nie 
 broadcast poprzedniego testu), a testy sprawdzające spadek PW zaczynają czasem od zera, bo
 poprzedni krok zdążył dobić figurę. Obejście na czas sesji: powtórz plik osobno i idź dalej.
 Naprawa docelowa — w `zaleglosci.md`.
+
+**Testy nie widzą ściętego napisu — a trzy z sześciu błędów 30a–30d były właśnie tym (04.09).**
+Mechanika dziewięciu Ról jedzie w 150 testach i wszystkie były zielone, kiedy sześć zdolności
+Zmysłu Walki czytało się na karcie jako „R..", „W.", „B..", „P..", „W.", „W." — dwie pary nie do
+rozróżnienia. Żaden test nie mierzy szerokości elementu ani nie czyta etykiety guzika, a panel
+stał w kolumnie o **sztywnych 15 rem**, więc nie pomagało nawet rozciągnięcie okna. Diagnoza,
+która to rozstrzyga w jednym kroku: porównaj `getBoundingClientRect().width` z `scrollWidth`
+tego samego elementu (15 px przy potrzebnych 119 to nie jest „ciasno", to jest zerwany układ)
+i przeczytaj `getComputedStyle` rodzica, żeby zobaczyć, która kolumna zjada resztę. Ten sam
+odruch łapie drugi wariant: guzik z napisem, który dziedziczy sztywną szerokość po sąsiadach ±
+(„Wezwij" jako „Wezw"). **To już drugie spotkanie z tym samym błędem** — 29b naprawiło go wąsko
+dla `.advance-buy` („Podn" zamiast „Podnieś"), nie ruszając reguły, która go powodowała.
+
+**`refuseWalkThroughSolid` zwalnia MG — żeton MG przechodzi przez ścianę (04.09).**
+`realtime/movement.ts:254` zaczyna się od `if (user.role === ROLE_GM) return;`, więc kolizje
+ruchu (ściany **i** osłony, po lanie na komórkę dla figur 2×2) obowiązują wyłącznie graczy. To
+ta sama zasada, co przy odmowach statusowych z 08.08, tylko o geometrii, i nigdzie nie była
+zapisana: przy oględzinach z konta MG wygląda jak brak kolizji, którego nie ma. Sprawdzaj
+z konta gracza (`Tester`, `/join/tester-dev`). Przy okazji: wpis `POMYSLY.md` o kolizjach ruchu
+jest **nieaktualny** — kolizje są od 27j.
+
+**To samo zdanie odmowy bywa w dwóch tabelach, a ścieżka wybiera jedną (04.09).**
+Klient ma dwa mappery kodów na zdania: ogólny `ackErrorText` i `attackAckErrorText` dla
+wszystkiego, co idzie przez atak — w tym `attack:evade`. `BACKUP_CANNOT_DODGE` miało swoje
+zdanie **w tym pierwszym**, a Unik szedł przez drugi, więc na czacie lądowało
+„Błąd ataku: BACKUP_CANNOT_DODGE". Objaw jest mylący, bo `grep` po kodzie znajduje polskie
+zdanie i wygląda na podpięte. Dokładając kod odmowy do ścieżki ataku, sprawdź **którą** tabelę
+czyta jej `ack` — trzy kody `attack:evade` (`BACKUP_CANNOT_DODGE`, `SHIELD_CANNOT_DODGE`,
+`DODGE_BLOCKED`) siedziały poza nią wszystkie trzy.
+
+**Kafla „Fumble zignorowany" nie doczekasz się rzutami — wymuś kostkę (04.09).**
+Naturalna 1 na 1k10 to średnio dziesięć strzałów, a każdy z nich to uzbrojenie slotu, Alt+klik
+w cel i potrząśnięcie kubkiem. Taniej: dopisz na minutę `if (sides === 10) return 1;` na
+początku zwracanej funkcji w `realtime/dice-rng.ts` (obrażenia lecą k6, więc zostają losowe),
+obejrzyj kafel i **przywróć plik z kopii**, sprawdzając `git diff`. Ta sama sztuczka pokaże
+Krytyka, Fumble i każdy próg, którego nie da się doczekać.

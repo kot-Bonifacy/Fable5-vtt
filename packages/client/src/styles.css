@@ -6033,9 +6033,15 @@ body.is-resizing {
   gap: 0.2rem;
 }
 
+/* `min-width`, nie `width`: guziki ± mają być kwadratowe i równe, ale w tym
+   samym miejscu siedzą guziki z napisem („Wezwij" Wsparcia, „Targuj"
+   Znajomości, „Podnieś" rejestru awansów), a sztywne 1,6 rem obcinało je do
+   „Wezw" i „Podn". Znalezione dwa razy: przy oględzinach 29b (naprawione wtedy
+   samym `.advance-buy`) i przy 30c — więc tym razem szerokość ustępuje
+   treści wszędzie. */
 .awareness-steps button {
-  width: 1.6rem;
-  padding: 0.05rem 0;
+  min-width: 1.6rem;
+  padding: 0.05rem 0.3rem;
   line-height: 1.3;
 }
 
@@ -6106,15 +6112,6 @@ body.is-resizing {
   padding: 0.05rem 0.4rem;
   line-height: 1.3;
   font-size: 0.74rem;
-}
-
-/* Selektor musi być dwuczłonowy, bo bije się z `.awareness-steps button`
-   (0,1,1) — samo `.advance-buy` (0,1,0) przegrywa kaskadę i guzik zostaje przy
-   1,6 rem, szerokości guzików ±1 panelu Zmysłu Walki. Napis wychodził wtedy
-   poza wiersz: w przewijanej liście Umiejętności widać było „Podn"
-   (znalezione przy oględzinach 29b, błąd jest z 29a). */
-.awareness-steps .advance-buy {
-  width: auto;
 }
 
 /* Zmiana Roli (etap 29b) — wybór i guzik w jednym wierszu, bo to jedna
@@ -6226,6 +6223,54 @@ body.is-resizing {
 
 .pharma-locked {
   opacity: 0.5;
+}
+
+/* Osiem paneli Zdolności Ról (30a–30d) mieszka w kolumnie tożsamości karty,
+   a ta ma sztywne 15 rem (`.sheet-page`) — okno karty można rozciągać do woli
+   i nic z tego nie dostanie. Cztery kolumny wiersza zjadały tam całą
+   szerokość (wartość 4,5 rem + koszt 3,5 rem + dwa guziki), więc na nazwę
+   zostawało 15 px i sześć zdolności Zmysłu Walki czytało się jako „R..",
+   „W.", „B..", „P..", „W.", „W." — dwie pary nie do rozróżnienia. Nazwa
+   dostaje więc własną linię nad liczbami, a guziki idą na prawą krawędź.
+   Flex, nie siatka: osiem paneli ma w wierszu od trzech do czterech dzieci
+   i żadna jedna deklaracja `grid-template-areas` nie opisuje ich wszystkich.
+   `.hud-form` to drugi dom tego samego panelu — pudełko „Zmysł Walki"
+   w pasku akcji ma 254 px i ścinało nazwy tak samo („Reduk…", „Wyczu…").
+   Poza tymi dwoma (rejestr awansów w `.cp-advance`) wiersz zostaje
+   jednolinijkowy — tam miejsca jest dość. */
+.cp-awareness .awareness-row,
+.hud-form .awareness-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.1rem 0.4rem;
+}
+
+.cp-awareness .awareness-name,
+.hud-form .awareness-name {
+  flex: 1 0 100%;
+  white-space: normal;
+}
+
+.cp-awareness .awareness-value,
+.cp-awareness .awareness-cost,
+.hud-form .awareness-value,
+.hud-form .awareness-cost {
+  min-width: 0;
+  text-align: left;
+}
+
+/* `flex: none` obok `margin-left: auto`: bez niego automatyczny margines
+   zjada całą wolną przestrzeń wiersza, a guzik zostaje ścieśniony do własnego
+   minimum i wychodzi poza panel — „Wezwij" Wsparcia czytało się jako „Wezw". */
+.cp-awareness .awareness-steps,
+.hud-form .awareness-steps {
+  flex: none;
+  margin-left: auto;
+}
+
+/* `grid-column` nie znaczy nic w rodzicu, który przestał być siatką. */
+.cp-awareness .team-loyalty {
+  flex: 1 0 100%;
 }
 
 /* Etap 30c: Wsparcie i zespół Korpo. Oba panele stoją na tym samym arkuszu, co

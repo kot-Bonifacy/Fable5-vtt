@@ -6,6 +6,12 @@ odhaczania zaległości albo dotykasz etapu, który tu występuje — nie rutyno
 
 Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/zamkniete-zaleglosci.md`.
 
+**Zamknięte 04.09:** **wszystkie cztery pozycje „etap 30x nie był oglądany w przeglądarce"**
+— 30a, 30b, 30c i 30d przeszły przez przeglądarkę w komplecie, jedną kartą („Frank")
+przestawianą kolejno na dziewięć Ról. Sześć znalezionych błędów naprawiono w tej samej sesji;
+diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`. Jedna pozycja została otwarta —
+**cyberdek pracownika Korpo**, niżej.
+
 **Zamknięte 03.09 (trzecia sesja tego dnia):** **farmaceutyki bez zapasu dawek**
 i **Ustabilizowanie bez zasięgu**. Przy okazji doszło naturalne leczenie PW, którego projekt nie
 miał wcale (wpis z `POMYSLY.md`). Diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`;
@@ -22,6 +28,19 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
 
 ## Pozycje
 
+- **Korporacyjny netrunner nie ma cyberdeku na karcie, tylko w prozie.** Pracownik zespołu
+  Korpo (30c) dostaje pełną kartę postaci **właśnie dlatego**, że statysta nie mógłby zrobić
+  jedynej rzeczy, do której netrunner istnieje — komentarz przy jego pakiecie w `roleability.ts`
+  mówi to wprost („the reason a team member had to be a real sheet: a cyberdeck needs one").
+  Karta wychodzi z HR z Rolą **Netrunner rangi 2** (`ability: { name: 'Interfejs', rank: 2 }`),
+  ale `cyberdeck` zostaje `null`, a deck jest zdaniem w `gear`: „Cyberdek (7 gniazd: Miecz,
+  Zabójca, Robak, Pancerz)". Netrunner z zespołu nie podłączy się więc do Sieci, dopóki MG nie
+  złoży mu decku ręką na karcie. Przepis: `hireTeamMember` (`realtime/team.ts`) ma registry,
+  więc może zbudować `CpredCyberdeck` z `slots: 7` i czterema `CpredNetInstallRow` z profilami
+  Programów skopiowanymi z kompendium — tak samo, jak `purchasedSheetRow` kopiuje liczby broni.
+  Otwarte świadomie 04.09: to dołożenie brakującego zakresu, nie naprawa usterki, i dotyka
+  modelu z 26a.
+
 - **Nazwa figury nadal jedzie do graczy w kartach czatu.** Alias `Token.publicName` (03.09)
   zasłania prawdziwą nazwę **na mapie i w Kolejce Inicjatywy** — obie ścieżki filtruje serwer
   (`toTokenView`, `filterCombatForPlayer`), obie obejrzane w przeglądarce. **Czat zostaje
@@ -33,56 +52,12 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
   tokenu mówi to graczowi wprost („Karty na czacie nadal piszą prawdziwą nazwę"). Do zrobienia
   razem z **etapem 35**, do którego alias pierwotnie należał.
 
-- **Etap 30d nie był oglądany w przeglądarce.** Mechanika jedzie w testach (38 nowych
-  w `shared`, 13 na serwerze), ale żadnego z tych czterech paneli nikt nie kliknął. Do
-  sprawdzenia — potrzebne postaci z Rolą **Rocker**, **Fixer**, **Nomada** i **Media** (na
-  scenach testowych nie ma żadnej): (1) **panel Efektu Charyzmy** — przełącznik „Zrób z nich
-  fanów / Poproś fanów o przysługę", trzy wiersze z PT 8/10/12, wiersz „Duża grupa" wyszarzony
-  przy randze ≤2 zdaniem „To żart, prawda?"; (2) **karta rzutu Rockera** — „Fani to zrobią /
-  Odmowa" z PT i zdaniem z tabeli, a przy porażce z informacją o tygodniu; (3) **panel
-  Znajomości** — chip dobitego targu z ✕, pole „Druga strona", sześć wierszy targów rosnących
-  z rangą; (4) **zakup z targiem** — cena o 10% niższa, wiersz „Targ: … −10% · cena z katalogu"
-  na karcie ekonomii i chip znikający po zakupie; (5) **panel Moto** — wiersz „+N do Testów:
-  Prowadzenie…", lista Taboru z guzikiem „Dołóż wpis" gasnącym po wyczerpaniu awansów;
-  (6) **rzut Prowadzeniem** — „Moto N" w rozbiciu karty rzutu; (7) **panel Wiarygodności** —
-  wybór dowodów zmieniający szansę w nagłówku, guzik „Publikuj" i guzik „Pogłoski" **widoczny
-  tylko dla MG**; (8) **karta Pogłosek** — szeptem, z nazwą pobitego progu.
-
-- **Etap 30c nie był oglądany w przeglądarce.** Mechanika jedzie w testach (38 nowych
-  w `shared`, 19 na serwerze), ale żadnego z tych ekranów nikt nie kliknął. Do sprawdzenia —
-  potrzebne postaci z Rolą **Stróż Prawa** i **Korpo** (na scenach testowych nie ma żadnej):
-  (1) **panel Wsparcia** pod wierszem Zdolności i pudełko „Wezwanie Wsparcia" w pasku akcji —
-  lista kategorii rośnie z rangą, guzik „Wezwij" przy każdej, zdanie po nieudanym rzucie;
-  (2) **karta rzutu na czacie** — „Ktoś odpowiada / Cisza w eterze" z arytmetyką i informacją,
-  za ile Rund; (3) **wiersz „w drodze" pod Kolejką Inicjatywy** — chip „za N Rund", guziki MG
-  „Postaw" i „Odwołaj", a przy randze 10 i szóstce lista wyboru drugiej grupy; (4) **przybycie**
-  — figury stają przy wzywającym z paskiem PW i wchodzą do kolejki z rzuconą inicjatywą;
-  (5) **odmowa uniku** — strzał w funkcjonariusza i guzik „Unik" na karcie ataku, który ma
-  powiedzieć „Funkcjonariusze Wsparcia nie mogą Unikać pocisków"; (6) **panel zespołu Korpo** —
-  „Wolne etaty", wybór zawodu, imię, „Zatrudnij", wiersz z Lojalnością, guzik „Test", rozwijana
-  tabela zysków i strat, „Koniec sesji" i „Zwolnij"; (7) **karta pracownika** — Cechy z tabeli,
-  pakiet Umiejętności, Lekka kurtka OB 11, B.C. pistolet, cyborgizacje w notatkach; u Netrunnera
-  Rola „Netrunner" z rangą 2.
-
 - **Wsparcie poziomu 10 nie pamięta „tej samej sprawy".** RAW: „po tym pierwszym wezwaniu na
   kolejne przybywają **ci sami** dwaj funkcjonariusze, dopóki wezwanie dotyczy tej samej
   »sprawy«, aż do jej zamknięcia lub śmierci tych funkcjonariuszy" (s. 159). VTT stawia za
   każdym razem nowe figury z pełnymi PW. Wymaga pojęcia „sprawy", którego projekt nie ma —
   najbliżej jest wątek dziennika kampanii z 24b. Zapisane, bo to jedyna kategoria, w której
   ciągłość jest zasadą, a nie kolorytem.
-
-- **Etap 30b nie był oglądany w przeglądarce.** Mechanika jedzie w testach (30 nowych
-  w `shared`, 7 na serwerze), ale żadnego z tych ekranów nikt nie kliknął. Do sprawdzenia —
-  potrzebne postaci z Rolą **Medyk** i **Technik** (na scenach testowych nie ma żadnej):
-  (1) **panel Medycyny** pod wierszem Zdolności — trzy Specjalizacje, „Do rozdzielenia: N z N",
-  guzik „+" wyszarzony przy szóstym punkcie Chirurgii; (2) **wiersz Umiejętności z Medycyny**
-  („Chirurgia 6 · Technologia Medyczna 3") i dwa rozwijane bloki: farmaceutyki i drabina
-  kriosystemów; (3) **panel Twórcy** — cztery Specjalizacje, sakiewka podwójna, oraz dwa bloki:
-  dziesięć skutków Ulepszania i tabela PT/czasu; ~~(4) guzik „Lecz" przy ranie krytycznej~~ —
-  **odklikany 30.08 (czwarta sesja)**: wybór, kto leczy (pacjent wypada z listy, bo samego siebie
-  leczyć nie można), gałąź „Chirurgia PT 15" wyszarzona u nie-Medyka ze zdaniem „Chirurgia jest
-  dostępna tylko Medykom w ramach Zdolności Specjalnej Medycyna"; (5) **⚒ Prowizorka** przy startym pancerzu (tylko
-  Technikowi z Naprawą ≥ 1) i **⌫** kończące ją; (6) **⊕ +1 OB** — raz na sztukę.
 
 - **Stym nie zawiesza kar Poważnie Rannego — robi to MG.** Cztery z pięciu farmaceutyków (03.09)
   rozlicza silnik: Antybiotyk dopisuje tydzień do naturalnego leczenia, Turbo uzdrawiacz leczy
@@ -103,18 +78,6 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
   i chętnemu. Wrogi cel wymagałby broni „strzykawka" w kompendium i gałęzi w `planCpredAttack`,
   która zamiast obrażeń woła podanie dawki — czyli tej samej roboty co amunicja bez obrażeń
   z 16h, tylko od drugiej strony.
-
-- **Etap 30a nie był oglądany w przeglądarce.** Mechanika jedzie w testach (44 nowe w `shared`,
-  10 na serwerze), ale żadnego z tych ekranów nikt nie kliknął. Do sprawdzenia — potrzebna
-  postać z Rolą **Solo** (na „Strzelnicy" nie ma takiej, trzeba przestawić Rolę na karcie):
-  (1) **panel na karcie** pod wierszem Zdolności Specjalnej — sześć wierszy, „Wolne punkty: N z 6",
-  guzik „+" wyszarzony dokładnie tam, gdzie progu nie da się kupić; (2) **pudełko „Zmysł Walki"
-  w pasku akcji** nad mapą — ma się pojawiać tylko Solo i **nie gasnąć** po zużytej Akcji;
-  (3) **koszt Akcji**: zmiana przydziału w trakcie własnej tury zjada Akcję i pisze w logu, co
-  na co poszło; zapis tej samej wartości nie kosztuje nic; (4) **karta obrażeń** po pierwszym
-  ciosie Rundy ma mówić „− 2 (Redukcja obrażeń)", po drugim już nie; (5) **kafel „Fumble
-  zignorowany (Wyjście z opresji)"** — trzeba wyrzucić jedynkę w Teście ataku, więc to kwestia
-  kilku strzałów; (6) rozbicie rzutu z wierszami „Precyzyjny atak N" i „Wyczucie zagrożenia N".
 
 - **Etap 24c — zostały dwie ścieżki, obie wymagają modelu.** ~~(1) Zdjęcie prasowe~~
   i ~~(3) edycja zapisanego screamsheetu przez ✎~~ — **odklikane 28.08**, patrz
