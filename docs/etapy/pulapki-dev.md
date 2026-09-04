@@ -4,6 +4,29 @@ Wyprowadzone z `POSTEP.md` 22.08.2026. Indeks jednolinijkowy jest w `POSTEP.md`;
 opisy z rozpoznaniem i obejściem. Czytaj wpis, zanim zaczniesz szukać błędu w obszarze, którego
 dotyczy.
 
+- **Bronią obszarową celuje się w PUSTE pole, a klik w żeton tylko go zaznacza.** 04.09 poszły
+  cztery próby strzału z granatnika, zanim coś poleciało: klik w figurę przestawiał zaznaczenie
+  na **nią** (u MG wolno zaznaczyć każdego), przez co uzbrojona broń schodziła z ręki, a kolejny
+  klik w mapę stawał się **rozkazem marszu tej figury** — tak przy okazji przespacerował się
+  żeton testowy. Kolejność, która działa: zaznacz **swoją** figurę → uzbrój broń ze slotu
+  (zdanie „W ręku …" w panelu) → kliknij **pole** obok celu (pojawia się kwadrat obszaru
+  i pasek „→ wybrane pole · N m · PT X") → dopiero wtedy **„Potrząśnij i strzel"**, bo strzał
+  puszcza kubek, a nie drugi klik w mapę. Granat i tak odchyla się o co najmniej 2 m, więc
+  aby złapać kogoś testem, celuj w pole **pod nim**, nie o dwa dalej.
+
+- **Żetonu nie skasujesz ani `Delete`, ani przeciągnięciem na kosz.** Oba wyglądają, jakby miały
+  działać (kosz stoi w lewym dolnym rogu mapy), a nie robią nic albo — jak przeciąganie —
+  **przesuwają żeton** na drugi koniec sceny. Skasowanie idzie menu kontekstowym, którego
+  `right_click` z CDP nie dowozi (patrz wpis o menu), więc przy sprzątaniu po oględzinach
+  najszybsza droga jest przez bazę: zatrzymaj `pnpm dev` i usuń wiersze SQL-em, pamiętając
+  o `LedgerEntry` postaci, którą kasujesz.
+
+- **Karta wpisu kompendium gubi wybór przy zmianie zakładki.** Postać docelowa, chirurg
+  i poziom ripperdoca żyją w stanie komponentu, więc każde wyjście na „Czat" i powrót ustawia
+  je z powrotem na wartości domyślne (pierwsza postać z listy, „Bez Testu montażu", 12). Przy
+  oględzinach 04.09 zabrało to jeden rzut, który miał być porażką i wyszedł sukcesem, bo
+  poziom chirurga wrócił do dwunastu. Sprawdzaj wybór **tuż przed** kliknięciem guzika.
+
 - **Efektu mapy nie zobaczysz zrzutem ekranu — ale da się go zatrzymać.** Wybuch trwa 1,1 s,
   chmura 1,6 s, a runda `screenshot` przez CDP bywa dłuższa: 04.09 poszły trzy granaty i za
   każdym razem zrzut łapał albo puste pole, albo pojedynczą jasną plamkę, z której nic nie

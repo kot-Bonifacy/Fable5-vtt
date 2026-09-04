@@ -26,6 +26,20 @@ z „Kart 24x": kto na nią wejdzie, dostaje 6k6 przez pancerz i jeszcze raz na 
 Tury; gracz jej nie zobaczy, dopóki nie zda Percepcji PT 17 z 4 m. Karta strefy otwiera się
 narzędziem ⚠ w trybie 📌; „Rozbrój" ją usypia, kosz usuwa.
 
+**Stan po sesji 04.09 (trzecia — montaż cyborgizacji i EMP) — Poligon wraca do stanu sprzed
+sesji.** Nośnikiem była **nowa karta „Pacjent 23a"** (utworzona i skasowana w tej samej sesji,
+razem z czterema wpisami `LedgerEntry` po zakupach wszczepów) oraz **dwa postawione żetony** —
+„Pacjent 23a" i drugi „avatar9" — obydwa usunięte. Na „Strzelnicy" jest znowu **siedem żetonów**,
+w bazie **dziewięć kart**. Granatnik podwieszany avatar9 wrócił do **naboju dymnego z magazynkiem
+1/1** (na czas oględzin miał EMP), a z żetonu **Rudego Kwiatkowskiego** zdjęty został ślad po
+cofniętym Impulsie — `statusData` znowu `{}`. Ślad zostawiony świadomie: **log czatu** — dwie
+karty montażu (nieudany Fumble i udany), dwie karty Utraty Człowieczeństwa, dwie karty ataku
+granatnikiem i dwie karty obrażeń przekreślone „Cofnięte — MG".
+
+**Uwaga dla następnego, kto będzie tu strzelał bronią obszarową:** klik w żeton **zaznacza go**
+zamiast celować (u MG wolno zaznaczyć każdą figurę), przez co uzbrojona broń schodzi z ręki,
+a następny klik w mapę jest **rozkazem marszu**. Kolejność jest w `pulapki-dev.md`.
+
 **Stan po sesji 04.09 (oględziny Zdolności Ról 30a–30d) — Poligon wraca do stanu sprzed sesji.**
 Nośnikiem był **„Frank"**, przestawiany kolejno na dziewięć Ról (Solo → Medyk → Technik → Stróż
 Prawa → Korpo → Rocker → Fixer → Nomada → Media) i **przywrócony z kopii zdjętej na starcie**:

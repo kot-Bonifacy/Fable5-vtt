@@ -7,6 +7,74 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 04.09 — Zdolności Ról 30a–30d obejrzane, sześć błędów naprawionych
+
+**Zlecenie MG:** wybrać z zaległości kilkanaście pozycji pasujących do siebie na jedną sesję,
+bez niczego wokół lokalnego LLM-a (planowana wymiana modelu). MG wskazał **paczkę A** — cztery
+otwarte pozycje „etap 30x nie był oglądany w przeglądarce" — i rozstrzygnął dwie rzeczy:
+nośnikiem zostaje **„Frank"** (jedna karta przestawiana kolejno na dziewięć Ról, nie dziewięć
+osobnych kart), a **znalezione błędy naprawiam od ręki**, nie spisuję.
+
+**Cztery pozycje długu oględzin zamknięte — cała mechanika dziewięciu Ról była w testach i nigdy
+nie była klikana.** Przeszła przez przeglądarkę w komplecie: 30a (Solo), 30b (Medyk, Technik),
+30c (Stróż Prawa, Korpo), 30d (Rocker, Fixer, Nomada, Media). Wyszło **sześć błędów, wszystkie
+naprawione i obejrzane po naprawie**; trzy pierwsze były niewidoczne dla testów, bo żaden test
+nie mierzy szerokości elementu ani nie czyta etykiety guzika.
+
+1. **Nazwa Zdolności ścinała się do 15 px w ośmiu panelach naraz.** Sześć zdolności Zmysłu Walki
+   czytało się jako „R..", „W.", „B..", „P..", „W.", „W." — dwie pary nie do rozróżnienia.
+   Panele Ról stoją w kolumnie tożsamości karty, a ta ma **sztywne 15 rem** (`.sheet-page`),
+   więc rozciąganie okna nic nie dawało: cztery kolumny wiersza (wartość 4,5 rem + koszt
+   3,5 rem + dwa guziki) zjadały całą szerokość. Nazwa dostała własną linię nad liczbami.
+   **Drugi dom tego samego panelu — pudełko „Zmysł Walki" w pasku akcji (`.hud-form`) — miał to
+   samo** i wymagał drugiego selektora.
+2. **MG nie mógł zmienić Roli Medykowi ani Technikowi, który wydał punkty Specjalizacji.**
+   `roleId` jedzie u MG zwykłą łatą (29a), więc zmiana zabierała Zdolność, zostawiając jej
+   sakiewkę — a `cpredSpecialtiesProblem` odrzucał wtedy **tę samą łatę i każdą następną**
+   zdaniem „Ta postać nie ma tej Zdolności Specjalnej", czyli o Specjalizacji, której nikt nie
+   dotykał. Ten sam potrzask miał Tabor Nomady (`fleet`). Nowy `cpredDropOrphanedRolePurses`
+   zdejmuje sakiewkę bez Zdolności **przed** trzema walidacjami w `character:update`; przy
+   wieloklasowości nie schodzi nic, bo tam Rola siedzi w `formerRoles` i Zdolność się znajduje.
+3. **Guzik z napisem w rządku ± był ścinany do 1,6 rem** — „Wezwij" Wsparcia czytało się jako
+   „Wezw". **To ten sam błąd, który 29b naprawiło wąsko dla `.advance-buy`** (komentarz w CSS
+   opisywał „Podn" zamiast „Podnieś"); tym razem `width` ustąpił `min-width` dla wszystkich,
+   a obejście z 29b zeszło jako martwe.
+4. **Licznik figur Wsparcia padał dwa razy** — „Korporacyjne służby bezpieczeństwa ×4 ×4".
+   Etykieta `ReinforcementView.label` niosła ×N, a Kolejka Inicjatywy dokleja je z własnego
+   pola `count`. Etykieta nazywa odtąd wyłącznie „kto".
+5. **Odmowa Uniku wracała jako surowy kod** — „Błąd ataku: BACKUP_CANNOT_DODGE" zamiast
+   „Funkcjonariusze Wsparcia nie mogą Unikać pocisków". Zdanie **istniało**, ale w ogólnym
+   `ackErrorText`, a `attack:evade` idzie przez `attackAckErrorText`. Trzy kody tej ścieżki
+   (`BACKUP_CANNOT_DODGE`, `SHIELD_CANNOT_DODGE`, `DODGE_BLOCKED`) dostały tam swoje zdania.
+6. **Guzik „Kup" pisał cenę z katalogu, a z konta schodziło o 10% mniej** przy dobitym targu
+   Fixera. Karta ekonomii mówiła prawdę dopiero po zakupie. Guzik wycenia teraz **ten** zakup.
+
+**Czego nie da się odhaczyć bez drugiej sesji:** guzik „Pogłoski" jest w kodzie pod `isGm`,
+a karta idzie jako `gmroll`, ale **nie oglądano go z konta gracza**. Kafel „Fumble zignorowany
+(Wyjście z opresji)" obejrzano **na wymuszonej kostce** — jedynka na 1k10 to kwestia kilkunastu
+strzałów, więc `dice-rng.ts` dostał na jedną minutę `if (sides === 10) return 1;` i wrócił do
+stanu sprzed zmiany (plik jest czysty, `git diff` pusty).
+
+**Jedna nowa zaległość:** Korporacyjny netrunner z zespołu Korpo dostaje Rolę „Netrunner" rangi 2
+i cyberdek **wypisany w notatkach**, ale `cyberdeck` na karcie zostaje `null` — a komentarz przy
+jego pakiecie mówi wprost, że „a cyberdeck needs one" było **powodem**, dla którego pracownik ma
+pełną kartę zamiast profilu bojowego. Opis w `zaleglosci.md`.
+
+**Dwa wpisy `POMYSLY.md` sprawdzone w kodzie i nieaktualne** (przekreślone): leczenie ran
+krytycznych (jest od 30b, cały `treatment.ts`) i kolizje ruchu ze ścianą (jest
+`refuseWalkThroughSolid`, ze ścianami **i** osłonami, po lanie na komórkę dla figur 2×2).
+Przy tej drugiej wyszła rzecz, której nigdzie nie zapisano: **funkcja zwalnia MG**
+(`movement.ts:254`), więc żeton MG przez ścianę przechodzi — pułapka w indeksie niżej.
+
+**Poligon wrócił do stanu sprzed sesji** — pięć postawionych żetonów skasowanych, karta
+pracownika usunięta, „Frank" i „Rudy Kwiatkowski" przywrócone z kopii, kolejka znowu
+„PRZED WALKĄ" z tą samą piątką, tryb turowy wyłączony. Ślad zostawiony świadomie: **log czatu**
+z całej sesji (rzuty, karty ataku, Wezwanie Wsparcia, Test Lojalności, Pogłoski).
+
+**Testy na koniec:** 1785 w `shared` (+3), 935 na serwerze (+1), 75 u klienta — zielone, trzy
+pełne przebiegi serwera pod rząd. `tsc --noEmit` czysty w całym monorepo, ESLint i Prettier
+czyste.
+
 ### Sesja 03.09 (trzecia) — zestaw A: leczenie, regeneracja i środki zużywalne
 
 **Zlecenie MG:** wybrać z zaległości kilkanaście pozycji pasujących do siebie na jedną sesję,

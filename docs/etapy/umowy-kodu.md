@@ -4,6 +4,40 @@ Wyprowadzone z „Od czego zacząć" w `POSTEP.md` 22.08.2026. Indeks jednolinij
 tu leżą pełne wersje. Czytaj wpis, **zanim** dołożysz coś w obszarze, którego dotyczy — każdy
 z nich powstał po tym, jak ktoś dołożył to w złym miejscu.
 
+**Kto operuje przy montażu, jest jednym polem protokołu — nie kartą NPC (04.09).**
+`CharacterCyberwarePayload.surgeon` ma trzy warianty i tyle ich będzie: `none` (montaż bez Testu,
+czyli zachowanie sprzed tej sesji — „cena montażu cyborgizacji wliczona jest w ich cenę"), `gm`
+(**ripperdoc bez karty**: MG podaje jedną liczbę „TECHNIKA + Chirurgia", serwer dorzuca 1k10)
+i `character` (Medyk z kampanii — jego Chirurgię czyta `cpredMedicineSkillLevel` z karty, nigdy
+klient). Wariant `gm` jest decyzją MG z tej sesji i ma konkretny powód: ripperdoc przy stole jest
+zdaniem w opisie, a nie figurą, więc wymaganie dla niego karty postaci zamieniłoby jeden rzut
+w pół godziny pracy. Nowy sposób montażu dopisuje się **do tej unii**, a nie jako drugi tor
+w `installCyberware`: PT bierze się zawsze z `CYBERWARE_INSTALL_DV[entry.install]`, a porażka
+zawsze niszczy wszczep (s. 226) — pieniądze schodzą, wiersz nie powstaje, Człowieczeństwo zostaje
+nietknięte, bo nic nie zostało wszczepione.
+
+**Czy jest gdzie wszczepić, rozstrzyga jedna czysta funkcja (04.09).** `cyberwareInstallRefusal`
+w `systems/cpred/cyberware.ts` zwraca `MISSING_FOUNDATION`, `NO_SLOTS`, `POOL_FULL` albo `null`
+i jest **jedynym** źródłem tych trzech odmów — ten sam kod wraca do klienta jako klucz w
+`CYBERWARE_INSTALL_REFUSAL_MESSAGES`, więc zdanie po polsku jest w jednym miejscu. Liczy się
+**na rodzinie, nie na pudełku sylwetki**: pudełko („które oko?") wybiera się dopiero po montażu,
+więc pytanie o wolne gniazdo w prawej ręce nie ma jeszcze odpowiedzi. Trzy rzeczy, które łatwo
+tu zepsuć: wpis **bez rodziny** nie jest odmawiany (wiersze sprzed 23a jej nie mają, a odmowa
+blokowałaby import); **podstawa wchodzi zawsze** (to ona dopiero robi gniazda); a rodzin
+wymagających podstawy jest **cztery** — `CYBERWARE_FOUNDATION_TYPES` — i Borgizacje do nich nie
+należą, bo ramownica jest podstawą sama dla siebie. **MG przechodzi przez odmowę** (jak przez
+blokady ruchu i progi sklepu), ale karta czatu wtedy ją zapisuje.
+
+**Wszystko, co wisi przy naklejce żetonu, mieszka w `Token.statusData` i schodzi razem z nią (04.09).**
+Kolumna trzyma `{ damage?, timer?, feared?, disabled? }` na status; `disabled` to nazwy
+cyborgizacji zdjętych Impulsem EMP — **nazwy, nie id wierszy**, bo czyta je stół, a wiersz karty
+może zniknąć, zanim minie minuta. Zapis idzie przez `writeSheetStatusDisabled`, odczyt przez
+`readSheetStatusDisabled`, a **kasowanie jest wspólne**: `writeSheetStatusTimer(raw, id, null)`
+zdejmuje cały wpis (zostawiając samo `damage`, czyli nastawienie MG). Ta jedna zasada jest
+powodem, dla którego „Cofnij" w `realtime/damage.ts` musi po zdjęciu naklejki przelecieć
+`statusesAdded` i wyczyścić dane — inaczej po cofniętym trafieniu zostaje zegar i następna walka
+ogłasza „Minęła minuta" dla statusu, którego na żetonie już nie ma (błąd znaleziony 04.09).
+
 **O tym, czy karta ataku ma guzik „Obrażenia", rozstrzyga serwer — klient tylko go rysuje (04.09).**
 Serwer liczy `damages = (trafienie || obszar) && ammoDealsDamage(ammo)` i **nie wysyła
 `damageNotation`**, gdy odpowiedź brzmi „nie" — komentarz przy tej linii mówi wprost

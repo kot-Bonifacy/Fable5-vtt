@@ -6,6 +6,13 @@ odhaczania zaległości albo dotykasz etapu, który tu występuje — nie rutyno
 
 Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/zamkniete-zaleglosci.md`.
 
+**04.09 (trzecia sesja):** zamknięte **trzy pozycje z `POMYSLY.md`** o cyborgizacjach — PT
+montażu z Testem Chirurgii, odmowy „nie ma w co tego wszczepić" i EMP nazywający dwie wyłączone
+cyborgizacje. Otwarte **dwie** pozycje, obie niżej: odmowy nieoglądane na koncie gracza oraz
+„Dodaj za darmo", które omija cały montaż. Naprawione przy okazji **dwa błędy**: Borgizacje
+liczone jak rodzina wymagająca podstawy (karta pisała nad Ramownicą „brak cyborgizacji
+podstawowej") i **„Cofnij" zostawiające zegar statusu w `statusData`** po zdjętej naklejce.
+
 **Zamknięte 04.09 (druga sesja):** paczka **„oczy i uszy"** — **wybuch i chmura gazu na mapie**,
 **rzut obrażeń obszaru z 16d**, **„usuń wszystkie osłony" z 16c** i **przechylenie figury dla
 stanu „nieprzytomny"**. Piąta pozycja — **dźwięki walki** — jest zmierzona, ale czeka na ucho MG
@@ -35,6 +42,25 @@ zostawiająca na karcie wartość, której nie ma w bazie. Wszystkie naprawione 
 w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
 
 ## Pozycje
+
+- **Odmowy montażu nieoglądane na koncie gracza; monit „Minęła minuta" z nazwami — też.**
+  Trzy odmowy z s. 111 (`MISSING_FOUNDATION`, `NO_SLOTS`, `POOL_FULL`) i dwie z s. 226
+  (`SELF_INSTALL`, `NO_SURGERY_SKILL`) mają testy dymne na żywych gniazdach, ale **MG jest z nich
+  zwolniony** — a ripperdoc, którym MG operuje, jest jedyną drogą przez UI, więc przy oględzinach
+  04.09 nie było jak zobaczyć czerwonego zdania w czacie. To ta sama sytuacja co przy odmowach
+  ruchu: trzeba konta gracza. Druga rzecz w tej samej kategorii: **„Minęła minuta … wraca:
+  Kerenzikov, Cyberoko"** — zdanie dopisuje `sweepTimedEffects`, czyli zamiatanie, które chodzi
+  wyłącznie w trybie turowym; żeby je zobaczyć, trzeba przepuścić sześć rund walki. Sama
+  zawartość zapisu jest pokryta testem (`sheets.test.ts`), niepokryte jest **zdanie**.
+
+- **„Dodaj za darmo" omija cały montaż.** Guzik MG przy wpisie kompendium woła
+  `addCompendiumItemToCharacter`, czyli zwykłą łatę karty — nie `character:cyberware`. Wszczep
+  wchodzi więc **bez rzutu na Utratę Człowieczeństwa, bez Testu montażu i bez odmów z s. 111**.
+  Zachowanie jest sprzed 04.09 i po części celowe (to furtka MG na łup i nagrodę za zlecenie), ale
+  od tej sesji różnica między dwiema drogami jest większa niż „płacisz albo nie": jedna liczy
+  zasady, druga nie. Do rozstrzygnięcia przy stole — albo guzik dostaje ścieżkę przez zdarzenie
+  z `payment: 'none'` (i wtedy znika „darmowy" wyjątek od Człowieczeństwa), albo zostaje jak jest
+  i mówi to wprost w tooltipie.
 
 - **Korporacyjny netrunner nie ma cyberdeku na karcie, tylko w prozie.** Pracownik zespołu
   Korpo (30c) dostaje pełną kartę postaci **właśnie dlatego**, że statysta nie mógłby zrobić

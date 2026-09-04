@@ -444,3 +444,218 @@ describe('cyborgizacje i człowieczeństwo', () => {
     expect(data.humanityCurrent).toBe(-4);
   });
 });
+
+/**
+ * Odmowy montażu i Test operacji (04.09.2026, s. 111 i s. 226).
+ *
+ * Osobne `describe`, bo te testy potrzebują **czystej karty** — zestaw wyżej
+ * kończy pracę z okiem, wkładką i ramownicą w ciele, a cała treść tych
+ * asercji to pytanie „czy jest gdzie to wszczepić".
+ */
+describe('montaż: gniazda i Test operacji', () => {
+  let gm: ClientSocket;
+  let vex: ClientSocket;
+  let patientId: string;
+  let medicId: string;
+
+  it('zakłada pacjenta z pieniędzmi i Medyka z Chirurgią', async () => {
+    const gmConn = createSocket(gmCookie);
+    const vexConn = createSocket(vexCookie);
+    gm = gmConn.socket;
+    vex = vexConn.socket;
+    await Promise.all([gmConn.firstSync, vexConn.firstSync]);
+
+    const patient = await emitAck<CharacterView>(gm, 'character:create', {
+      name: 'Pacjent',
+      ownerId: vexId,
+    });
+    if (!patient.ok || !patient.data) throw new Error('character:create failed');
+    patientId = patient.data.id;
+    await emitAck(gm, 'character:update', {
+      characterId: patientId,
+      patch: { data: { eddies: 50_000, humanityCurrent: 60 } },
+    });
+
+    // Medyk rangi 3 z trzema punktami w Chirurgii: Umiejętność Chirurgia 6.
+    const medic = await emitAck<CharacterView>(gm, 'character:create', {
+      name: 'Doktor',
+      ownerId: vexId,
+    });
+    if (!medic.ok || !medic.data) throw new Error('character:create failed');
+    medicId = medic.data.id;
+    const patched = await emitAck<CharacterView>(gm, 'character:update', {
+      characterId: medicId,
+      patch: {
+        data: { roleId: 'medtech', roleAbilityRank: 3, medicine: { surgery: 3 }, eddies: 50_000 },
+      },
+    });
+    expect(patched.ok).toBe(true);
+  });
+
+  it('nie wszczepia wkładki, gdy nie ma cyberoka (s. 111)', async () => {
+    const ack = await emitAck(vex, 'character:cyberware', {
+      characterId: patientId,
+      action: 'install',
+      entryId: 'cyberware.wkladka-teleoptyczna',
+    });
+    expect(ack).toEqual({ ok: false, error: 'MISSING_FOUNDATION' });
+    // Odmowa przed rzutem i przed pieniędzmi — karta nietknięta.
+    const sheet = await sheetOf(gm, patientId);
+    expect(sheet.cyberware).toHaveLength(0);
+    expect(sheet.eddies).toBe(50_000);
+  });
+
+  it('MG przechodzi przez odmowę, ale karta czatu ją zapisuje', async () => {
+    const card = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+    const ack = await emitAck<{ messageId: number }>(gm, 'character:cyberware', {
+      characterId: patientId,
+      action: 'install',
+      entryId: 'cyberware.wkladka-teleoptyczna',
+      payment: 'none',
+    });
+    expect(ack.ok).toBe(true);
+    const roll = (await card).message.roll;
+    expect(roll?.outcome?.detail).toContain('cyborgizacji podstawowej');
+    expect(roll?.outcome?.detail).toContain('montaż MG');
+    const sheet = await sheetOf(gm, patientId);
+    expect(sheet.cyberware).toHaveLength(1);
+    // Sprzątamy po wyjątku MG — reszta zestawu liczy gniazda od zera.
+    await emitAck(gm, 'character:cyberware', {
+      characterId: patientId,
+      action: 'remove',
+      rowId: sheet.cyberware[0]?.id,
+    });
+  });
+
+  it('liczy wolne gniazda: dwie wkładki po 2 nie mieszczą się w oku o 3', async () => {
+    const eye = await emitAck<{ messageId: number }>(vex, 'character:cyberware', {
+      characterId: patientId,
+      action: 'install',
+      entryId: 'cyberware.oko-przykladowe',
+    });
+    expect(eye.ok).toBe(true);
+    const first = await emitAck<{ messageId: number }>(vex, 'character:cyberware', {
+      characterId: patientId,
+      action: 'install',
+      entryId: 'cyberware.wkladka-teleoptyczna',
+    });
+    expect(first.ok).toBe(true);
+    // Zostało jedno gniazdo z trzech, a wkładka bierze dwa.
+    const second = await emitAck(vex, 'character:cyberware', {
+      characterId: patientId,
+      action: 'install',
+      entryId: 'cyberware.wkladka-teleoptyczna',
+    });
+    expect(second).toEqual({ ok: false, error: 'NO_SLOTS' });
+  });
+
+  it('borgizacja wchodzi bez podstawy — ramownica jest podstawą sama dla siebie', async () => {
+    const ack = await emitAck<{ messageId: number }>(vex, 'character:cyberware', {
+      characterId: patientId,
+      action: 'install',
+      entryId: 'cyberware.ramownica-przykladowa',
+    });
+    expect(ack.ok).toBe(true);
+  });
+
+  it('Test montażu: wynik decyduje, czy wszczep wchodzi, czy przepada (s. 226)', async () => {
+    const before = await sheetOf(gm, patientId);
+    const card = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+    const ack = await emitAck<{ messageId: number }>(gm, 'character:cyberware', {
+      characterId: patientId,
+      action: 'install',
+      entryId: 'cyberware.sprzeg-neuralny-przykladowy',
+      // Ripperdoc bez umiejętności, klinika PT 15 — porażka jest niemal pewna,
+      // ale „niemal" nie wystarczy na asercję: 1k10 wybucha na dziesiątce.
+      surgeon: { kind: 'gm', skill: 0 },
+    });
+    expect(ack.ok).toBe(true);
+    const roll = (await card).message.roll;
+    expect(roll?.title).toBe('Montaż — Sprzęg neuralny przykładowy');
+    expect(roll?.actor).toBe('Ripperdoc');
+    expect(roll?.outcome?.detail).toContain('vs PT 15');
+
+    const after = await sheetOf(gm, patientId);
+    if (roll?.outcome?.success) {
+      expect(after.cyberware.length).toBe(before.cyberware.length + 1);
+    } else {
+      // „Cyborgizacja ulega zniszczeniu" — wiersz nie powstaje, pieniądze schodzą,
+      // a Człowieczeństwa nikt nie traci, bo nic nie zostało wszczepione.
+      expect(roll?.outcome?.label).toBe('Wszczep zniszczony');
+      expect(after.cyberware.length).toBe(before.cyberware.length);
+      expect(after.humanityCurrent).toBe(before.humanityCurrent);
+      expect(after.eddies).toBe(before.eddies - 1000);
+    }
+  });
+
+  it('Medyk z karty rzuca własną Chirurgią', async () => {
+    const before = await sheetOf(gm, patientId);
+    const surgeryCard = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+    const ack = await emitAck<{ messageId: number }>(vex, 'character:cyberware', {
+      characterId: patientId,
+      action: 'install',
+      entryId: 'cyberware.tatuaz-przykladowy',
+      surgeon: { kind: 'character', characterId: medicId },
+    });
+    expect(ack.ok).toBe(true);
+    const roll = (await surgeryCard).message.roll;
+    expect(roll?.title).toBe('Montaż — Tatuaż świecący przykładowy');
+    expect(roll?.actor).toBe('Doktor');
+    // TECHNIKA + Chirurgia 6 vs PT 13 (galeria) — porażka wymagałaby jedynki.
+    expect(roll?.breakdown?.some((row) => row.label === 'Chirurgia')).toBe(true);
+    if (roll?.outcome?.success) {
+      const after = await sheetOf(gm, patientId);
+      expect(after.cyberware.length).toBe(before.cyberware.length + 1);
+    }
+  });
+
+  it('sam sobie nie wszczepi tego, czego nie ma w galerii (s. 226)', async () => {
+    const ack = await emitAck(vex, 'character:cyberware', {
+      characterId: medicId,
+      action: 'install',
+      entryId: 'cyberware.oko-przykladowe',
+      surgeon: { kind: 'character', characterId: medicId },
+    });
+    expect(ack).toEqual({ ok: false, error: 'SELF_INSTALL' });
+  });
+
+  it('sam sobie wszczepia to, co galeria wydaje przez ladę', async () => {
+    const ack = await emitAck<{ messageId: number }>(vex, 'character:cyberware', {
+      characterId: medicId,
+      action: 'install',
+      entryId: 'cyberware.tatuaz-przykladowy',
+      surgeon: { kind: 'character', characterId: medicId },
+    });
+    expect(ack.ok).toBe(true);
+  });
+
+  it('postać bez Chirurgii nie operuje — od tego jest ripperdoc MG', async () => {
+    const ack = await emitAck(vex, 'character:cyberware', {
+      characterId: patientId,
+      action: 'install',
+      entryId: 'cyberware.tatuaz-przykladowy',
+      surgeon: { kind: 'character', characterId: patientId },
+    });
+    expect(ack).toEqual({ ok: false, error: 'NO_SURGERY_SKILL' });
+  });
+
+  it('gracz nie rzuca ripperdokiem MG', async () => {
+    const ack = await emitAck(vex, 'character:cyberware', {
+      characterId: patientId,
+      action: 'install',
+      entryId: 'cyberware.tatuaz-przykladowy',
+      surgeon: { kind: 'gm', skill: 12 },
+    });
+    expect(ack).toEqual({ ok: false, error: 'FORBIDDEN' });
+  });
+
+  it('odrzuca poziom chirurga spoza skali', async () => {
+    const ack = await emitAck(gm, 'character:cyberware', {
+      characterId: patientId,
+      action: 'install',
+      entryId: 'cyberware.tatuaz-przykladowy',
+      surgeon: { kind: 'gm', skill: 99 },
+    });
+    expect(ack).toEqual({ ok: false, error: 'BAD_SURGEON' });
+  });
+});

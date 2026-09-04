@@ -310,6 +310,20 @@ export interface CheckCancelPayload {
  * chrome took out of somebody. Removal and therapy ride the same event for the
  * same reason — one of them moves the Humanity ceiling, the other rolls dice.
  */
+/**
+ * Kto trzyma skalpel przy montażu (04.09.2026, s. 226).
+ *
+ * Trzy tryby, bo tyle jest przy stole sytuacji, a nie dlatego, że tyle było
+ * miejsca w UI. `none` to dzisiejsze zachowanie — klinika bierze pieniądze
+ * i wszczep wchodzi, bo „cena montażu cyborgizacji wliczona jest w ich cenę".
+ * `gm` jest po to, **żeby ripperdoc nie musiał mieć karty postaci**: MG podaje
+ * jedną liczbę („TECH + Chirurgia" tego, kto operuje) i serwer rzuca za niego.
+ * `character` to Medyk gracza — jego Chirurgię czyta się z karty, więc nikt
+ * jej nie wpisuje ręką.
+ */
+export type CyberwareSurgeon =
+  { kind: 'none' } | { kind: 'gm'; skill: number } | { kind: 'character'; characterId: string };
+
 export interface CharacterCyberwarePayload {
   characterId: string;
   action: 'install' | 'remove' | 'therapy';
@@ -325,6 +339,8 @@ export interface CharacterCyberwarePayload {
    * and nothing else; `none` is the GM's gift and is refused for players.
    */
   payment?: 'full' | 'installOnly' | 'none';
+  /** `install`: kto operuje. Brak znaczy `none` — montaż bez Testu. */
+  surgeon?: CyberwareSurgeon;
   /** Present when the roll was thrown with the dice cup. */
   gesture?: RollGesture;
 }

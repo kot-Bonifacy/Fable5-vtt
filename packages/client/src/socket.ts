@@ -215,6 +215,7 @@ import {
   CPRED_TEAM_PROBLEMS,
   CPRED_FACEDOWN_PROBLEM_MESSAGES,
   CPRED_GRAPPLE_PROBLEM_MESSAGES,
+  CYBERWARE_INSTALL_REFUSAL_MESSAGES,
   MAX_DICE_PER_TERM,
   MAX_DIE_SIDES,
   MAX_ROLL_TERMS,
@@ -3007,6 +3008,20 @@ function cyberwareErrorText(code: string | undefined): string {
       return 'Ten wpis nie ma ceny — uzupełnij ją w kompendium albo wybierz „Znaleziony”.';
     case 'CHARACTER_NOT_FOUND':
       return 'Nie możesz zmieniać tej karty.';
+    // 04.09.2026: trzy odmowy z s. 111 i dwie z s. 226 — do tej pory
+    // arytmetyka gniazd była wyłącznie chipem na karcie.
+    case 'MISSING_FOUNDATION':
+    case 'NO_SLOTS':
+    case 'POOL_FULL':
+      return CYBERWARE_INSTALL_REFUSAL_MESSAGES[code];
+    case 'SELF_INSTALL':
+      return 'Sam sobie tego nie wszczepisz — poza galerią potrzebny jest ktoś drugi (s. 226).';
+    case 'NO_SURGERY_SKILL':
+      return 'Ta postać nie ma Chirurgii — montaż wykonuje Medyk albo ripperdoc MG (s. 226).';
+    case 'BAD_SURGEON':
+      return 'Poziom chirurga musi być liczbą z zakresu 0–20.';
+    case 'FORBIDDEN':
+      return 'Tę operację może zlecić tylko MG.';
     case 'OFFLINE':
       return 'Brak połączenia z serwerem.';
     default:

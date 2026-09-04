@@ -499,6 +499,30 @@
       "description": "Kształt wpisu stawiającego na mapie kwadrat dymu. Wartości wymyślone."
     },
     {
+      "id": "ammo.sample-emp",
+      "category": "ammo",
+      "name": "Impuls przykładowy",
+      "cost": 500,
+      "costCategory": "expensive",
+      "patterns": [
+        "grenade"
+      ],
+      "noDamage": true,
+      "check": {
+        "skillId": "cybertech",
+        "skillLabel": "Cyberinżynieria",
+        "statId": "tech",
+        "dv": 13,
+        "failure": {
+          "statuses": [
+            "emp"
+          ],
+          "durationS": 60
+        }
+      },
+      "description": "Kształt wpisu, który zamiast obrażeń wyłącza na minutę dwie cyborgizacje celu. Wartości wymyślone."
+    },
+    {
       "id": "ammo.sample-guided",
       "category": "ammo",
       "name": "Nabój naprowadzany (przykład)",

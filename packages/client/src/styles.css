@@ -3628,6 +3628,14 @@ input[type='color'] {
   min-width: 8rem;
 }
 
+/* Poziom ripperdoca (04.09.2026) — jedna liczba obok listy chirurgów, więc
+   nie ma prawa rozpychać wiersza jak dwa selecty obok. */
+.compendium-surgeon-skill {
+  flex: 0 0 3.5rem;
+  width: 3.5rem;
+  text-align: center;
+}
+
 .compendium-note {
   font-size: 0.75rem;
   color: var(--text-dim);

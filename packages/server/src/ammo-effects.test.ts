@@ -586,6 +586,108 @@ describe('ammunition that deals no damage', () => {
     });
   });
 
+  /**
+   * Impuls EMP mówi, co padło (04.09.2026, s. 345–347).
+   *
+   * Do tej sesji karta kończyła się na „oblał Test": dwie cyborgizacje wybierał
+   * MG w pamięci, a po minucie nikt nie wiedział, co właściwie wraca.
+   */
+  describe('EMP wskazuje wyłączone cyborgizacje', () => {
+    let chromeTokenId: string;
+    let chromeCharacterId: string;
+
+    it('stawia w kwadracie figurę z trzema wszczepami', async () => {
+      const chrome = data(
+        await emitAck<CharacterView>(gm, 'character:create', { name: 'Chromowany' }),
+        'character:create',
+      );
+      chromeCharacterId = chrome.id;
+      await emitAck(gm, 'character:update', {
+        characterId: chromeCharacterId,
+        patch: {
+          data: {
+            // TECHNIKA 2 bez Cyberinżynierii: PT 13 jest praktycznie nie do zdania,
+            // a pętla niżej i tak nie polega na tym, że zawsze się nie uda.
+            stats: { ...(chrome.data as CpredCharacterData).stats, tech: 2 },
+            cyberware: [
+              { id: 'cw-1', name: 'Kerenzikov', notes: '', type: 'neuralware' },
+              { id: 'cw-2', name: 'Cyberoko', notes: '', type: 'cyberoptics' },
+              { id: 'cw-3', name: 'Sprzęg neuralny', notes: '', type: 'neuralware' },
+            ],
+          },
+        },
+      });
+      chromeTokenId = data(
+        await emitAck<TokenView>(gm, 'token:create', {
+          sceneId,
+          name: 'Chromowany',
+          x: AIM.x - 50 + 4 * PX_PER_M,
+          y: AIM.y - 50,
+          hp: { current: 30, max: 30 },
+          characterId: chromeCharacterId,
+        }),
+        'token:create',
+      ).id;
+      expect(chromeTokenId).toBeTruthy();
+    });
+
+    it('nazywa dwie cyborgizacje na karcie i zapisuje je przy statusie', async () => {
+      await load('ammo.sample-emp');
+      let effect: string | undefined;
+      for (let attempt = 0; attempt < 25 && !effect; attempt += 1) {
+        await emitAck(gm, 'token:effect', {
+          tokenId: chromeTokenId,
+          statusId: 'emp',
+          active: false,
+        });
+        const { card } = await lob();
+        const row = (card.forcedChecks ?? []).find((check) => check.name === 'Chromowany');
+        if (row && !row.success) effect = row.effect;
+      }
+      if (!effect) throw new Error('nikt nigdy nie oblał Testu — RNG albo pocisk są zepsute');
+
+      // Dwie nazwy z karty postaci, nie identyfikatory wierszy.
+      expect(effect).toContain('wyłączone:');
+      const named = ['Kerenzikov', 'Cyberoko', 'Sprzęg neuralny'].filter((name) =>
+        effect?.includes(name),
+      );
+      expect(named).toHaveLength(2);
+
+      const token = await tokenOf(chromeTokenId);
+      expect(token.statuses).toContain('emp');
+    }, 30_000);
+
+    // Do 04.09.2026 „Cofnij" zdejmowało naklejkę, ale zostawiało to, co przy
+    // niej wisiało — zegar i listę wyłączonych. Następna walka zgłaszała wtedy
+    // „Minęła minuta" dla statusu, którego na żetonie już nie było.
+    it('„Cofnij" zabiera razem z naklejką zegar i listę wyłączonych', async () => {
+      await load('ammo.sample-emp');
+      let messageId: number | undefined;
+      for (let attempt = 0; attempt < 25 && messageId === undefined; attempt += 1) {
+        await emitAck(gm, 'token:effect', {
+          tokenId: chromeTokenId,
+          statusId: 'emp',
+          active: false,
+        });
+        const { posted } = await lob();
+        const hit = posted.find(
+          (entry) =>
+            (entry.message.damage as DamageLogEntry | undefined)?.targetTokenId === chromeTokenId &&
+            ((entry.message.damage as DamageLogEntry).statusesAdded ?? []).includes('emp'),
+        );
+        if (hit) messageId = hit.message.id;
+      }
+      if (messageId === undefined) throw new Error('nikt nigdy nie oblał Testu');
+
+      const ack = await emitAck(gm, 'damage:undo', { messageId });
+      expect(ack.ok).toBe(true);
+      const token = await tokenOf(chromeTokenId);
+      expect(token.statuses).not.toContain('emp');
+      // Druga połowa — zegar i lista wyłączonych — nie jedzie do klienta wcale,
+      // więc pilnuje jej test czystych funkcji w `sheets.test.ts`.
+    }, 30_000);
+  });
+
   describe('effects that last a minute', () => {
     /** Takes the sleep off both NPCs, so the next round can put it on again. */
     async function wakeEverybody(): Promise<void> {

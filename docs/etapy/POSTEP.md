@@ -108,6 +108,17 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 ## Od czego zacząć
 
+**Montaż cyborgizacji ma od 04.09 (trzecia sesja) swój Test, a odmowy z s. 111 wreszcie
+odmawiają.** Chirurgiem jest **Medyk z kampanii albo ripperdoc MG podany jedną liczbą** — decyzja
+MG: montaż nie może wymagać zakładania karty NPC-a. Nieudany Test **niszczy wszczep** (s. 226).
+Trzy odmowy („brak podstawy", „brak gniazda", „limit 7") liczy jedna czysta funkcja; **MG przez
+nie przechodzi, ale karta czatu je zapisuje**. **Impuls EMP nazywa dwie wyłączone cyborgizacje**
+i zapisuje je przy statusie. Wyszły **dwa błędy**: Borgizacje liczone jak rodzina wymagająca
+podstawy oraz **„Cofnij" zostawiające zegar statusu w `statusData`**. **A1 z tej paczki (efekty
+mechaniczne chromu) został świadomie nietknięty** — wchodzi w `sheetSituationModifiers`, czyli
+tam, gdzie etap 39 i Stym. Trzy umowy kodu i trzy pułapki w indeksach niżej; do decyzji MG
+został guzik **„Dodaj za darmo"**, który omija cały montaż (`zaleglosci.md`).
+
 **Paczka „oczy i uszy" zamknięta 04.09 (druga sesja) — cztery rzeczy, których nikt nie widział,
 zostały obejrzane.** Wybuch i chmura gazu grają z dobrze pociętych arkuszy, rzut obrażeń obszaru
 robi **jeden rzut i N cofalnych kart**, „usuń wszystkie osłony" działa i wraca `Ctrl+Z`,
@@ -270,6 +281,9 @@ ESLint i Prettier czyste na całym repo.
 Jeden wiersz = jedna umowa; pełna wersja z uzasadnieniem w `umowy-kodu.md`. Umowa złamana
 znaczy zwykle błąd, który już raz kosztował sesję.
 
+- **Kto operuje przy montażu** — `CharacterCyberwarePayload.surgeon` w trzech wariantach: `none` (bez Testu), `gm` (ripperdoc bez karty, jedna liczba od MG), `character` (Medyk z kampanii, Chirurgia czytana z karty). PT zawsze z `CYBERWARE_INSTALL_DV`, porażka **niszczy wszczep** (s. 226).
+- **Odmowa montażu** — jedna czysta funkcja `cyberwareInstallRefusal` (brak podstawy / brak gniazda / limit 7) i jedna tabela zdań `CYBERWARE_INSTALL_REFUSAL_MESSAGES`; liczy **na rodzinie, nie na pudełku sylwetki**, wpisu bez rodziny nie odmawia, a Borgizacji nie liczy do rodzin z podstawą. MG przechodzi, karta czatu zapisuje.
+- **Dane przy naklejce żetonu** — `Token.statusData` trzyma `{ damage?, timer?, feared?, disabled? }`; `disabled` to **nazwy** cyborgizacji zdjętych Impulsem. Kasowanie jest wspólne (`writeSheetStatusTimer(…, null)`), więc każda ścieżka zdejmująca status musi je zawołać — „Cofnij" tego nie robiło.
 - **Guzik „Obrażenia" na karcie ataku** rysuje się z `attack.damageNotation !== undefined`, nigdy z „trafił albo obszar" — o tym, czy jest co rzucać, rozstrzyga serwer (`ammoDealsDamage`). Amunicja bez obrażeń z 16h dostawała guzik z pustą kością.
 - **Nowe pole typu broni idzie w TRZY miejsca**: `CpredWeaponTypeInput`, `manual-overrides.json` **i** biała lista `schema_fields` w `parse-manual.py`. Pominięta lista wycina pole po cichu (tak zginęły `explosive`, `ammoPatterns`, a potem `thrown`, `maxRangeM`, `ammoIds`); od 04.09 parser ostrzega o każdym wyciętym polu.
 - **Leżąca figura** — `CONDITION_TILT_DEG` w `TokenNode.ts`, 35° dla `down` i `dead`; obraca się **wyłącznie** portret (`image`, `initial`), a kąt dobiera się w przeglądarce przy zoomie stołu, nie w edytorze.
@@ -375,6 +389,9 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 
 Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapki-dev.md`.
 
+- **Bronią obszarową celuj w puste pole** — klik w żeton tylko go zaznacza (u MG każdego), broń schodzi z ręki, a następny klik w mapę jest **rozkazem marszu**; strzał puszcza „Potrząśnij i strzel", nie drugi klik.
+- **Żetonu nie skasujesz `Delete` ani koszem** — przeciągnięcie na kosz go **przesuwa**; przy sprzątaniu po oględzinach najszybciej zatrzymać `pnpm dev` i usunąć wiersze SQL-em (razem z `LedgerEntry` kasowanej karty).
+- **Karta wpisu kompendium gubi wybór przy zmianie zakładki** — postać, chirurg i poziom ripperdoca wracają do wartości domyślnych; sprawdzaj je tuż przed kliknięciem guzika.
 - **Efektu mapy nie złapiesz zrzutem** (1,1–1,6 s) — wywołaj go wprost przez `fx.play([...])` i **zamroź** klatkę (`life = 400000`, `age = life * klatka / liczbaKlatek`); pierwsze 20 z 64 klatek wybuchu to białe iskry, nie usterka.
 - **Slot paska akcji klikaj po współrzędnych z DOM-u** — chip stanu figury przesuwa listę o cały wiersz i klik trafia w sąsiednią broń; po kliku sprawdzaj zdanie „W ręku: …".
 - **`.click()` na slocie paska nie uzbraja celownika** — klik w mapę staje się wtedy rozkazem marszu i wysyła figurę przez pół sceny.
@@ -479,6 +496,75 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 04.09 (trzecia) — chrom, który wreszcie coś kosztuje: PT montażu, odmowy i EMP z nazwami
+
+**Zlecenie MG:** znowu kilkanaście zaległości pasujących do jednej sesji, bez niczego wokół
+lokalnego LLM-a. Otwartych pozycji bez modelu jest w `zaleglosci.md` tylko **sześć**, więc lista
+poszła w pięciu paczkach głównie z `POMYSLY.md`; MG wybrał **paczkę A — cyborgizacje**, ale bez
+pozycji A1 (efekty mechaniczne chromu w rzutach): ta wchodzi w `sheetSituationModifiers`, czyli
+w tę samą maszynerię, na którą czeka Stym i etap 39, a decyzja brzmi „nie budujemy jej dwa razy".
+Zostały **A2 (PT montażu), A3 (odmowy z s. 111) i A4 (EMP)**.
+
+**Rozstrzygnięcie MG, które ukształtowało A2:** montaż **nie może wymagać tworzenia NPC-a** —
+ripperdoc przy stole jest zdaniem w opisie MG, nie figurą. Stąd `CharacterCyberwarePayload.surgeon`
+w trzech wariantach: `none` (jak dotąd — klinika bierze pieniądze i wszczep wchodzi), `gm`
+(MG podaje **jedną liczbę** „TECHNIKA + Chirurgia", domyślnie 12, serwer dorzuca 1k10) oraz
+`character` (Medyk z kampanii; jego Chirurgię czyta serwer z karty). PT bierze się z tabeli
+s. 226 (Galeria 13 / Klinika 15 / Szpital 17), a **porażka niszczy wszczep**: pieniądze schodzą,
+wiersz nie powstaje, Człowieczeństwo zostaje nietknięte. Wybór chirurga stoi w oknie montażu
+obok listy postaci; lista chirurgów to lista Medyków z punktem w Chirurgii, więc na Poligonie
+jest pusta — i dobrze, bo nikt jej tam nie ma.
+
+**A3 — trzy odmowy zamiast czerwonego chipa.** `cyberwareInstallRefusal` (czysta funkcja
+w `shared`) odmawia montażu opcji **bez cyborgizacji podstawowej**, **bez wolnego gniazda**
+i **ponad limit 7 sztuk** w rodzinach, które podstawy nie mają. Do tej sesji arytmetyka istniała
+wyłącznie jako ostrzeżenie na karcie — instalacja i tak wchodziła. MG idzie przez odmowę dalej
+(tak samo jak przez blokady ruchu i progi sklepu), ale **karta czatu wtedy ją zapisuje**:
+„… wymaga najpierw cyborgizacji podstawowej (s. 111). (montaż MG)".
+
+**A4 — Impuls EMP mówi, co padło.** Serwer losuje **dwie** cyborgizacje z karty celu (tym samym
+RNG co rzut), nazywa je na karcie („wyłączone: Mikrooptyka, Cyberoko") i zapisuje przy statusie
+`emp`, więc monit „Minęła minuta" ma czym powiedzieć, co wraca. Figura bez chromu dostaje samo
+„EMP · na minutę" — tak jak dotąd, bo nie ma czego nazwać.
+
+**Dwa błędy znalezione przy okazji, oba naprawione:**
+
+1. **Borgizacje liczyły się jak rodzina wymagająca podstawy.** `cyberwareCapacity` pisało nad
+   Ramownicą „brak cyborgizacji podstawowej", której podręcznik nie przewiduje — s. 111 daje
+   podstawy **czterem** rodzinom, a tabela Borgizacji nie ma ani nagłówka z gniazdami, ani żadnej
+   podstawy do kupienia. Bez tej poprawki A3 zamieniłoby usterkę wyświetlania w twardą blokadę:
+   żadna borgizacja nie dałaby się wszczepić.
+2. **„Cofnij" zostawiało zegar w `statusData`.** Zdejmowało naklejkę, ale wpis przy niej
+   (`timer`, a od tej sesji także `disabled`) zostawał — po cofniętym trafieniu następna walka
+   ogłosiłaby „Minęła minuta" dla statusu, którego na żetonie już nie ma. Znalezione **przy
+   sprzątaniu po oględzinach**, nie przez test.
+
+**Oględziny (Poligon, konto MG).** Obejrzane w komplecie: okno montażu z listą chirurgów, montaż
+bez Testu z odmową zapisaną na karcie MG, **nieudany Test ripperdoca** (Fumble: 1k10+0 → −2 vs
+PT 15, „Wszczep zniszczony", 600 ed z konta, karta bez wiersza) i **udany** (1k10+12 = 18, po nim
+druga karta „Utrata Człowieczeństwa — Cyberoko 2k6"), a na końcu **granat EMP** rzucony
+granatnikiem podwieszanym avatar9: „Pacjent 23a — 5 m · Cyberinżynieria 6+5 = 11 vs PT 15 · EMP ·
+na minutę · **wyłączone: Mikrooptyka, Cyberoko**", obok „Rudy Kwiatkowski — EMP · na minutę" bez
+nazw. **Nieobejrzane zostały odmowy** — MG jest z nich zwolniony, a przez UI operuje właśnie MG,
+więc czerwone zdanie w czacie zobaczy dopiero konto gracza (zapisane w `zaleglosci.md` razem
+z monitem „Minęła minuta").
+
+**Poligon wrócił do stanu sprzed sesji:** karta „Pacjent 23a" i dwa postawione żetony skasowane
+(razem z czterema wpisami `LedgerEntry`), nabój granatnika z powrotem dymny i magazynek 1/1,
+ślad po cofniętym Impulsie zdjęty z żetonu Rudego. Na Strzelnicy jest znowu **siedem żetonów**,
+w bazie **dziewięć kart**. Ślad zostawiony świadomie: **log czatu** — dwie karty montażu, dwie
+karty Człowieczeństwa, dwie karty ataku granatnikiem i dwie karty obrażeń przekreślone
+„Cofnięte — MG".
+
+**Do decyzji MG:** guzik **„Dodaj za darmo"** przy wpisie kompendium omija całe zdarzenie
+cyborgizacji — wszczep wchodzi bez rzutu na Człowieczeństwo, bez Testu montażu i bez odmów.
+Zachowanie jest sprzed tej sesji, ale od dziś różnica między dwiema drogami jest większa niż
+„płacisz albo nie". Szczegóły w `zaleglosci.md`.
+
+**Testy na koniec:** 1798 w `shared` (+13), 955 na serwerze (+20), zielone; `tsc --noEmit` czysty
+w całym monorepo, ESLint i Prettier czyste. Doszedł nowy plik `packages/server/src/sheets.test.ts`
+— czyste funkcje kolumny `Token.statusData`, których żaden widok nie wysyła do klienta.
+
 ### Sesja 04.09 (druga) — paczka „oczy i uszy": wybuch, obszar, osłony i leżąca figura
 
 **Zlecenie MG:** znowu kilkanaście zaległości pasujących do jednej sesji, bez niczego wokół
@@ -554,71 +640,3 @@ obrażeń obszarowych i dwie karty obrażeń przekreślone „Cofnięte — MG".
 
 **Testy na koniec:** 1785 w `shared`, 935 na serwerze, **79 u klienta (+4)** — zielone,
 trzy pełne przebiegi serwera pod rząd. `tsc --noEmit` czysty, ESLint i Prettier czyste.
-
-### Sesja 04.09 — Zdolności Ról 30a–30d obejrzane, sześć błędów naprawionych
-
-**Zlecenie MG:** wybrać z zaległości kilkanaście pozycji pasujących do siebie na jedną sesję,
-bez niczego wokół lokalnego LLM-a (planowana wymiana modelu). MG wskazał **paczkę A** — cztery
-otwarte pozycje „etap 30x nie był oglądany w przeglądarce" — i rozstrzygnął dwie rzeczy:
-nośnikiem zostaje **„Frank"** (jedna karta przestawiana kolejno na dziewięć Ról, nie dziewięć
-osobnych kart), a **znalezione błędy naprawiam od ręki**, nie spisuję.
-
-**Cztery pozycje długu oględzin zamknięte — cała mechanika dziewięciu Ról była w testach i nigdy
-nie była klikana.** Przeszła przez przeglądarkę w komplecie: 30a (Solo), 30b (Medyk, Technik),
-30c (Stróż Prawa, Korpo), 30d (Rocker, Fixer, Nomada, Media). Wyszło **sześć błędów, wszystkie
-naprawione i obejrzane po naprawie**; trzy pierwsze były niewidoczne dla testów, bo żaden test
-nie mierzy szerokości elementu ani nie czyta etykiety guzika.
-
-1. **Nazwa Zdolności ścinała się do 15 px w ośmiu panelach naraz.** Sześć zdolności Zmysłu Walki
-   czytało się jako „R..", „W.", „B..", „P..", „W.", „W." — dwie pary nie do rozróżnienia.
-   Panele Ról stoją w kolumnie tożsamości karty, a ta ma **sztywne 15 rem** (`.sheet-page`),
-   więc rozciąganie okna nic nie dawało: cztery kolumny wiersza (wartość 4,5 rem + koszt
-   3,5 rem + dwa guziki) zjadały całą szerokość. Nazwa dostała własną linię nad liczbami.
-   **Drugi dom tego samego panelu — pudełko „Zmysł Walki" w pasku akcji (`.hud-form`) — miał to
-   samo** i wymagał drugiego selektora.
-2. **MG nie mógł zmienić Roli Medykowi ani Technikowi, który wydał punkty Specjalizacji.**
-   `roleId` jedzie u MG zwykłą łatą (29a), więc zmiana zabierała Zdolność, zostawiając jej
-   sakiewkę — a `cpredSpecialtiesProblem` odrzucał wtedy **tę samą łatę i każdą następną**
-   zdaniem „Ta postać nie ma tej Zdolności Specjalnej", czyli o Specjalizacji, której nikt nie
-   dotykał. Ten sam potrzask miał Tabor Nomady (`fleet`). Nowy `cpredDropOrphanedRolePurses`
-   zdejmuje sakiewkę bez Zdolności **przed** trzema walidacjami w `character:update`; przy
-   wieloklasowości nie schodzi nic, bo tam Rola siedzi w `formerRoles` i Zdolność się znajduje.
-3. **Guzik z napisem w rządku ± był ścinany do 1,6 rem** — „Wezwij" Wsparcia czytało się jako
-   „Wezw". **To ten sam błąd, który 29b naprawiło wąsko dla `.advance-buy`** (komentarz w CSS
-   opisywał „Podn" zamiast „Podnieś"); tym razem `width` ustąpił `min-width` dla wszystkich,
-   a obejście z 29b zeszło jako martwe.
-4. **Licznik figur Wsparcia padał dwa razy** — „Korporacyjne służby bezpieczeństwa ×4 ×4".
-   Etykieta `ReinforcementView.label` niosła ×N, a Kolejka Inicjatywy dokleja je z własnego
-   pola `count`. Etykieta nazywa odtąd wyłącznie „kto".
-5. **Odmowa Uniku wracała jako surowy kod** — „Błąd ataku: BACKUP_CANNOT_DODGE" zamiast
-   „Funkcjonariusze Wsparcia nie mogą Unikać pocisków". Zdanie **istniało**, ale w ogólnym
-   `ackErrorText`, a `attack:evade` idzie przez `attackAckErrorText`. Trzy kody tej ścieżki
-   (`BACKUP_CANNOT_DODGE`, `SHIELD_CANNOT_DODGE`, `DODGE_BLOCKED`) dostały tam swoje zdania.
-6. **Guzik „Kup" pisał cenę z katalogu, a z konta schodziło o 10% mniej** przy dobitym targu
-   Fixera. Karta ekonomii mówiła prawdę dopiero po zakupie. Guzik wycenia teraz **ten** zakup.
-
-**Czego nie da się odhaczyć bez drugiej sesji:** guzik „Pogłoski" jest w kodzie pod `isGm`,
-a karta idzie jako `gmroll`, ale **nie oglądano go z konta gracza**. Kafel „Fumble zignorowany
-(Wyjście z opresji)" obejrzano **na wymuszonej kostce** — jedynka na 1k10 to kwestia kilkunastu
-strzałów, więc `dice-rng.ts` dostał na jedną minutę `if (sides === 10) return 1;` i wrócił do
-stanu sprzed zmiany (plik jest czysty, `git diff` pusty).
-
-**Jedna nowa zaległość:** Korporacyjny netrunner z zespołu Korpo dostaje Rolę „Netrunner" rangi 2
-i cyberdek **wypisany w notatkach**, ale `cyberdeck` na karcie zostaje `null` — a komentarz przy
-jego pakiecie mówi wprost, że „a cyberdeck needs one" było **powodem**, dla którego pracownik ma
-pełną kartę zamiast profilu bojowego. Opis w `zaleglosci.md`.
-
-**Dwa wpisy `POMYSLY.md` sprawdzone w kodzie i nieaktualne** (przekreślone): leczenie ran
-krytycznych (jest od 30b, cały `treatment.ts`) i kolizje ruchu ze ścianą (jest
-`refuseWalkThroughSolid`, ze ścianami **i** osłonami, po lanie na komórkę dla figur 2×2).
-Przy tej drugiej wyszła rzecz, której nigdzie nie zapisano: **funkcja zwalnia MG**
-(`movement.ts:254`), więc żeton MG przez ścianę przechodzi — pułapka w indeksie niżej.
-
-**Poligon wrócił do stanu sprzed sesji** — pięć postawionych żetonów skasowanych, karta
-pracownika usunięta, „Frank" i „Rudy Kwiatkowski" przywrócone z kopii, kolejka znowu
-„PRZED WALKĄ" z tą samą piątką, tryb turowy wyłączony. Ślad zostawiony świadomie: **log czatu**
-z całej sesji (rzuty, karty ataku, Wezwanie Wsparcia, Test Lojalności, Pogłoski).
-
-**Testy na koniec:** 1785 w `shared` (+3), 935 na serwerze (+1), 75 u klienta — zielone, trzy
-pełne przebiegi serwera pod rząd. `tsc --noEmit` czysty w całym monorepo, ESLint i Prettier
-czyste.

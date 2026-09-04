@@ -9,6 +9,7 @@ import type { Scene } from '../generated/prisma/client.js';
 import {
   describeSheetTimer,
   expireSheetInjuries,
+  readSheetStatusDisabled,
   readSheetStatusTimers,
   removeSheetTimedInjury,
   sheetTimedExpired,
@@ -66,6 +67,12 @@ interface ExpiredEffect {
   /** „Nieprzytomny" or „Uraz oka" — what came off. */
   label: string;
   source: string;
+  /**
+   * Co wraca razem ze statusem — dziś wyłącznie dwie cyborgizacje zdjęte
+   * Impulsem EMP (04.09.2026). Bez tego monit mówił „minęła minuta", a stół
+   * i tak musiał pamiętać, co właściwie padło.
+   */
+  restored?: string[];
 }
 
 /**
@@ -92,12 +99,16 @@ export async function sweepTimedEffects(
       const statuses = readTokenStatuses(token.statuses);
       let statusData = token.statusData;
       for (const [statusId, timer] of due) {
+        // Czytane **przed** wyczyszczeniem wpisu: zdjęcie timera kasuje przy
+        // okazji listę wyłączonych, bo obie rzeczy kończą się razem.
+        const restored = readSheetStatusDisabled(statusData, statusId);
         statusData = writeSheetStatusTimer(statusData, statusId, null);
         expired.push({
           tokenId: token.id,
           tokenName: token.name,
           label: statusName(deps.ctx.statuses, statusId),
           source: timer.source,
+          ...(restored.length > 0 ? { restored } : {}),
         });
       }
       await deps.ctx.prisma.token.update({
@@ -157,11 +168,12 @@ async function logExpired(
     actionId: 'effect-expired',
     actionName: 'Minęła minuta',
     note: expired
-      .map((effect) =>
-        effect.source
+      .map((effect) => {
+        const head = effect.source
           ? `${effect.tokenName} — ${effect.label} (${effect.source})`
-          : `${effect.tokenName} — ${effect.label}`,
-      )
+          : `${effect.tokenName} — ${effect.label}`;
+        return effect.restored ? `${head}, wraca: ${effect.restored.join(', ')}` : head;
+      })
       .join(' · '),
   };
   const stored = await deps.ctx.prisma.chatMessage.create({

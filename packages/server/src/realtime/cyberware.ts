@@ -5,6 +5,8 @@ import type {
   CpredCharacterData,
   CpredCyberwareRow,
   CyberwareEntry,
+  CyberwareSurgeon,
+  RollBreakdownEntry,
   RollFormula,
   RollGesture,
   RollResult,
@@ -12,12 +14,18 @@ import type {
 } from '@vtt/shared';
 import {
   CYBERWARE_INSTALL_COST,
+  CYBERWARE_INSTALL_DV,
   CYBERWARE_INSTALL_LABELS,
+  CYBERWARE_INSTALL_REFUSAL_MESSAGES,
+  CYBERWARE_SURGEON_SKILL_MAX,
   CYBERWARE_TYPE_LABELS,
   HUMANITY_THERAPY_DEFINITIONS,
   ITEM_ROWS_MAX,
   ROLE_GM,
+  cpredMedicineSkillLevel,
   cyberpsychosisFor,
+  cyberwareAllowsSelfInstall,
+  cyberwareInstallRefusal,
   cyberwareInstallationFrom,
   entryPrice,
   formatEddies,
@@ -196,6 +204,139 @@ function installBill(
   };
 }
 
+/**
+ * Kto operuje, po sprawdzeniu (04.09.2026) — albo nikt.
+ *
+ * Ripperdoc MG **nie ma karty postaci** i mieć nie musi: przy stole to zdanie
+ * w opisie MG, a nie figura, więc jego stronę Testu opisuje jedna liczba.
+ * Medyk gracza jest odwrotnie — jego Chirurgia stoi na karcie i tylko stamtąd
+ * wolno ją czytać, bo inaczej gracz nazwałby swój własny bonus.
+ */
+interface CyberwareSurgeonRoll {
+  label: string;
+  bonus: number;
+  breakdown: RollBreakdownEntry[];
+}
+
+async function resolveSurgeon(
+  deps: RealtimeDeps,
+  campaignId: string,
+  user: SessionUser,
+  patient: Character,
+  entry: CyberwareEntry,
+  surgeon: CyberwareSurgeon | undefined,
+): Promise<CyberwareSurgeonRoll | null> {
+  if (!surgeon || surgeon.kind === 'none') return null;
+  // „Bez operacji" nie ma PT, bo nie ma czego oblać — chip wchodzi w gniazdo.
+  if (!entry.install || CYBERWARE_INSTALL_DV[entry.install] === null) return null;
+
+  if (surgeon.kind === 'gm') {
+    if (user.role !== ROLE_GM) throw new RealtimeError('FORBIDDEN');
+    const skill = Math.round(surgeon.skill);
+    if (!Number.isFinite(skill) || skill < 0 || skill > CYBERWARE_SURGEON_SKILL_MAX) {
+      throw new RealtimeError('BAD_SURGEON');
+    }
+    return {
+      label: 'Ripperdoc',
+      bonus: skill,
+      breakdown: [{ label: 'Chirurg (MG)', value: skill, kind: 'skill' }],
+    };
+  }
+
+  const doctor = await requireRollableCharacter(deps, campaignId, user, surgeon.characterId);
+  if (doctor.campaignId !== campaignId) throw new RealtimeError('CHARACTER_NOT_FOUND');
+  // „Nie możesz sam sobie wszczepić cyborgizacji, chyba że jest to cyborgizacja
+  // dostępna w galerii" (s. 226) — jedyne miejsce, w którym miejsce montażu
+  // decyduje o czymś innym niż PT i cena.
+  if (doctor.id === patient.id && !cyberwareAllowsSelfInstall(entry.install)) {
+    throw new RealtimeError('SELF_INSTALL');
+  }
+  const doctorData = parseCharacterData(doctor.data, deps.ctx.cpred);
+  const surgery = cpredMedicineSkillLevel(doctorData, deps.ctx.cpred, 'medicine.surgery');
+  // „PT montażu (Tylko Medycy)" (s. 226). Karta bez Chirurgii nie jest odmową
+  // uznaniową — to ta sama Umiejętność, której podręcznik nie daje nikomu poza
+  // Medykiem, a MG ma na tę operację ripperdoca.
+  if (surgery < 1) throw new RealtimeError('NO_SURGERY_SKILL');
+  return {
+    label: doctor.name,
+    bonus: doctorData.stats.tech + surgery,
+    breakdown: [
+      { label: 'TECHNIKA', value: doctorData.stats.tech, kind: 'stat' },
+      { label: 'Chirurgia', value: surgery, kind: 'skill' },
+    ],
+  };
+}
+
+/**
+ * Test montażu (s. 226) — jedyny rzut w tym module, którego stawką jest sprzęt,
+ * a nie Człowieczeństwo.
+ *
+ * Zwraca id karty **porażki**, gdy operacja się nie udała, i `null`, gdy można
+ * kroić dalej. Porażka jest droga i taka ma być: „jeśli Test się nie powiedzie,
+ * cyborgizacja ulega zniszczeniu" — pieniądze schodzą z konta, wiersz nie
+ * powstaje, a Człowieczeństwa nikt nie traci, bo nic nie zostało wszczepione.
+ */
+async function rollSurgery(
+  deps: RealtimeDeps,
+  campaignId: string,
+  user: SessionUser,
+  character: Character,
+  data: CpredCharacterData,
+  input: {
+    entry: CyberwareEntry;
+    surgeon: CyberwareSurgeonRoll;
+    bill: { cost: number; label: string };
+    gesture: RollGesture | undefined;
+  },
+): Promise<number | null> {
+  const { entry, surgeon, bill, gesture } = input;
+  const dv = entry.install ? (CYBERWARE_INSTALL_DV[entry.install] ?? 0) : 0;
+  const place = entry.install ? CYBERWARE_INSTALL_LABELS[entry.install] : '';
+  const roll = rollFormula(
+    {
+      terms: [
+        { kind: 'dice', sign: 1, count: 1, sides: 10 },
+        { kind: 'modifier', sign: 1, value: surgeon.bonus },
+      ],
+    },
+    createMixedRng(gesture?.entropy),
+    { checkRule: true },
+  );
+  const success = roll.total > dv;
+  roll.title = `Montaż — ${entry.name}`;
+  roll.actor = surgeon.label;
+  roll.breakdown = surgeon.breakdown;
+  roll.outcome = {
+    success,
+    label: success ? 'Operacja udana' : 'Wszczep zniszczony',
+    detail:
+      `${roll.total} vs PT ${dv}${place ? ` (${place})` : ''} · ` +
+      (success
+        ? `pacjent: ${character.name}`
+        : `pacjent: ${character.name} · cyborgizacja przepadła (s. 226)`),
+  };
+  if (gesture && gesture.strength > 0) roll.tossStrength = gesture.strength;
+  if (gesture?.toss) roll.toss = gesture.toss;
+
+  const messageId = await postCard(deps, campaignId, user, character, roll);
+  if (success) return null;
+
+  // Rachunek płaci się i po nieudanej operacji — zapłacono za sprzęt, który
+  // został na stole. Karta ekonomii mówi to wprost, żeby saldo dało się jutro
+  // przeczytać bez pamiętania, co się stało.
+  if (bill.cost > 0) {
+    await applyBalance(
+      deps,
+      campaignId,
+      character,
+      data,
+      { kind: 'cyberware', amount: -bill.cost, label: `${bill.label} — nieudany montaż` },
+      user.id,
+    );
+  }
+  return messageId;
+}
+
 async function installCyberware(
   deps: RealtimeDeps,
   campaignId: string,
@@ -208,10 +349,30 @@ async function installCyberware(
   const entry = requireCyberwareEntry(deps, payload.entryId);
   if (data.cyberware.length >= ITEM_ROWS_MAX) throw new RealtimeError('TOO_MANY_ROWS');
 
+  // Czy w tym ciele jest jeszcze gdzie to wszczepić (s. 111). Do 04.09.2026 był
+  // to wyłącznie czerwony chip na karcie: `cyberwareCapacity` liczyło brakującą
+  // podstawę i zajęte gniazda, a montaż wchodził mimo to. MG idzie dalej — tak
+  // samo jak przy blokadach ruchu i progach sklepu — ale karta to zapisuje,
+  // żeby „skąd on ma trzecie cyberoko?" miało jutro odpowiedź.
+  const refusal = cyberwareInstallRefusal(data.cyberware, entry);
+  if (refusal && user.role !== ROLE_GM) throw new RealtimeError(refusal);
+
+  const surgeon = await resolveSurgeon(deps, campaignId, user, character, entry, payload.surgeon);
+
   // Money is checked before the dice: a refusal after the roll would mean the
   // table watched somebody lose Humanity to an operation that never happened.
   const bill = installBill(entry, payload.payment, user);
   if (data.eddies < bill.cost) throw new RealtimeError('NOT_ENOUGH_EDDIES');
+
+  if (surgeon) {
+    const failed = await rollSurgery(deps, campaignId, user, character, data, {
+      entry,
+      surgeon,
+      bill,
+      gesture,
+    });
+    if (failed !== null) return { messageId: failed };
+  }
 
   const { loss, result, notation } = rollHumanityLoss(entry, gesture?.entropy);
   const row: CpredCyberwareRow = {
@@ -257,6 +418,9 @@ async function installCyberware(
       (entry.type ? `${CYBERWARE_TYPE_LABELS[entry.type]} · ` : '') +
       (entry.humanityLossHalved === true ? `${notation} / 2 w górę · ` : '') +
       (bill.cost > 0 ? `${formatEddies(bill.cost)} ed · ` : '') +
+      // Odmowa, przez którą MG przeszedł, zostaje na karcie — inaczej jedynym
+      // śladem po trzecim cyberoku byłaby pamięć stołu.
+      (refusal ? `${CYBERWARE_INSTALL_REFUSAL_MESSAGES[refusal]} (montaż MG) · ` : '') +
       humanityLine(updated),
   };
   const messageId = await postCard(deps, campaignId, user, character, result);
