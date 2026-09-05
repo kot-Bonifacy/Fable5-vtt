@@ -68,7 +68,7 @@ import {
   CPRED_SITUATIONAL_MODIFIER_LIMIT,
   CPRED_WOUND_LABELS,
   woundCheckPenalty,
-  woundState,
+  cpredSheetWoundState,
   type CpredWoundState,
 } from './rolls.js';
 import { CPRED_STAT_LABELS, type CpredStatId } from './stats.js';
@@ -826,7 +826,7 @@ export function planCpredAttack(
   if (dvResult === 'OUT_OF_RANGE') return { ok: false, error: 'OUT_OF_RANGE' };
 
   // Modifier breakdown, in the order the rules apply it.
-  const state = woundState(data.hpCurrent, data.stats);
+  const state = cpredSheetWoundState(data);
   const statId = skill.stat;
   const breakdown: RollBreakdownEntry[] = [
     {

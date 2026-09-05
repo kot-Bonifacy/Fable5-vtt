@@ -23,7 +23,6 @@ import {
   tokenCentre,
 } from '@vtt/shared';
 import type { Scene, Token } from '../generated/prisma/client.js';
-import { readSheetCombatProfile } from '../sheets.js';
 import { RealtimeError, type RealtimeDeps } from './registry.js';
 import { toSceneView } from './scenes.js';
 import { toTokenView } from './tokens.js';
@@ -314,8 +313,8 @@ async function canJumpClear(
     const data = parseCharacterData(character.data, registry);
     return cpredEffectiveStats(data).ref >= CPRED_EVADE_AREA_MIN_REF;
   }
-  const profile = readSheetCombatProfile(token.combatProfile);
-  return profile ? profile.ref >= CPRED_EVADE_AREA_MIN_REF : false;
+  // Figura bez karty nie ma REF-u, którym mogłaby to zrobić (etap 38a).
+  return false;
 }
 
 /** The block the chat card renders and the client redraws the template from. */

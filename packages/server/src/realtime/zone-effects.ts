@@ -8,6 +8,7 @@ import type {
 } from '@vtt/shared';
 import {
   cpredAmmoCheckOutcome,
+  createDefaultCharacterData,
   cpredCheckBase,
   netDefenseTrigger,
   parseCharacterData,
@@ -20,11 +21,8 @@ import {
   applyForcedFailureToSheet,
   applyForcedFailureToTokenHp,
   describeSheetTimer,
-  readSheetCombatProfile,
   readSheetStatusData,
-  sheetCombatProfile,
   sheetExpiryRound,
-  sheetFromCombatProfile,
   sheetWoundStatuses,
   writeSheetStatusData,
   writeSheetStatusTimer,
@@ -320,32 +318,22 @@ async function applyZoneEffect(
       }
     }
     if (!log) {
-      // Od 29.08 statysta z profilem bojowym nosi ranę tak samo jak postać —
-      // ta sama funkcja, ten sam wiersz, ten sam zegar z 16h. Żeton bez profilu
-      // dostaje samo zdanie: nie ma gdzie tego zapisać.
+      // Kółko na mapie bez karty: obrażenia spadają, rana zostaje nazwana.
+      // Figura ostatystykowana ma od 38a kartę i jedzie gałęzią wyżej — tą samą,
+      // co postać gracza, z tym samym wierszem rany i zegarem z 16h.
       const hp: TokenHp | null =
         token.hpMax === null ? null : { current: token.hpCurrent ?? 0, max: token.hpMax };
-      const profile = readSheetCombatProfile(token.combatProfile);
-      const applied = applyForcedFailureToTokenHp(hp, profile, failure, compendium);
-      if (applied.hp || applied.profile) {
+      const applied = applyForcedFailureToTokenHp(hp, failure, compendium);
+      if (applied.hp) {
         await deps.ctx.prisma.token.update({
           where: { id: token.id },
           data: {
-            ...(applied.hp
-              ? {
-                  hpCurrent: applied.hp.current,
-                  statuses: JSON.stringify(
-                    sheetWoundStatuses(readTokenStatuses(token.statuses), applied.hp),
-                  ),
-                }
-              : {}),
-            ...(applied.profile ? { combatProfile: JSON.stringify(applied.profile) } : {}),
+            hpCurrent: applied.hp.current,
+            statuses: JSON.stringify(
+              sheetWoundStatuses(readTokenStatuses(token.statuses), applied.hp),
+            ),
           },
         });
-      }
-      if (applied.carry) {
-        await oweCarryToToken(deps, token.sceneId, token.id, applied.carry);
-        await emitCombatOfScene(deps, campaignId, scene);
       }
       log = {
         ...applied.log,
@@ -485,10 +473,10 @@ async function checkBaseOf(
       return { total: base.total, label: base.label };
     }
   }
-  const profile = readSheetCombatProfile(token.combatProfile) ?? sheetCombatProfile({});
-  const hp: TokenHp = { current: token.hpCurrent ?? 0, max: token.hpMax ?? 0 };
+  // Figura bez karty rzuca kartą zastępczą zwykłego człowieka (do 38a robił to
+  // pusty profil bojowy): wszystkie Cechy po pięć, żadnych Umiejętności.
   const base = cpredCheckBase(
-    sheetFromCombatProfile(profile, hp, null),
+    createDefaultCharacterData(),
     registry,
     check as Parameters<typeof cpredCheckBase>[2],
   );

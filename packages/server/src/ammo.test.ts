@@ -20,6 +20,7 @@ import type {
   TokenView,
   WallView,
 } from '@vtt/shared';
+import { statistQuick, type CpredStatistQuick } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 
@@ -276,6 +277,17 @@ describe('special ammunition', () => {
     return token;
   }
 
+  /** Sześć pól figury, odczytane z jej karty (etap 38a). */
+  async function quickOf(tokenId: string): Promise<CpredStatistQuick> {
+    const sync = waitFor<StateSyncPayload>(gm, 'state:sync');
+    await emitAck(gm, 'state:request');
+    const state = await sync;
+    const token = state.tokens.find((entry) => entry.id === tokenId);
+    const card = state.characters.find((entry) => entry.id === token?.characterId);
+    if (!card) throw new Error('figure carries no character sheet');
+    return statistQuick(card.data as CpredCharacterData);
+  }
+
   /** The weapon row as it is stored right now. */
   async function weaponRow(rowId: string): Promise<CpredCharacterData['weapons'][number]> {
     const sync = waitFor<StateSyncPayload>(gm, 'state:sync');
@@ -386,23 +398,21 @@ describe('special ammunition', () => {
       'token:create',
     ).id;
     // Stage 16b's combat profile is what gives a bare token armour to wear out.
-    await emitAck(gm, 'token:update', {
+    await emitAck(gm, 'token:stat', {
       tokenId: armouredTokenId,
-      patch: {
-        combatProfile: {
-          ref: 5,
-          dex: 5,
-          body: 6,
-          will: 5,
-          skillLevel: 3,
-          evasion: 2,
-          armorSp: 4,
-          weaponId: 'weapon.zgrzyt-9',
-          weaponName: 'Zgrzyt 9',
-          weaponDamage: '2k6',
-          ammoCurrent: 10,
-          ammoMax: 10,
-        },
+      quick: {
+        ref: 5,
+        dex: 5,
+        body: 6,
+        will: 5,
+        skillLevel: 3,
+        evasion: 2,
+        armorSp: 4,
+        weaponId: 'weapon.zgrzyt-9',
+        weaponName: 'Zgrzyt 9',
+        weaponDamage: '2k6',
+        ammoCurrent: 10,
+        ammoMax: 10,
       },
     });
     // Five metres out, one metre north, with a wall in between.
@@ -594,12 +604,11 @@ describe('special ammunition', () => {
       // kept showing up. Second, armour only wears out when damage gets
       // *through* it — and 2k6 against SP 4 falls short once in twelve. Reset
       // the SP and give the damage a modifier the pistol could not roll below.
-      const worn = (await tokenOf(armouredTokenId)).combatProfile as Record<string, unknown>;
-      await emitAck(gm, 'token:update', {
+      await emitAck(gm, 'token:stat', {
         tokenId: armouredTokenId,
-        patch: { combatProfile: { ...worn, armorSp: 4 } },
+        quick: { ...(await quickOf(armouredTokenId)), armorSp: 4 },
       });
-      const before = (await tokenOf(armouredTokenId)).combatProfile as { armorSp: number } | null;
+      const before = await quickOf(armouredTokenId);
       const { entry } = await shootAndApply('ammo.sample-piercing', armouredTokenId, {
         modifier: 6,
       });
@@ -607,7 +616,7 @@ describe('special ammunition', () => {
       expect(entry.armor!.before - entry.armor!.after).toBe(2);
       expect(entry.ammo?.name).toBe('Nabój przebijający');
       expect(entry.ammo?.notes?.join(' ')).toContain('pancerz −2');
-      expect(before?.armorSp).toBeGreaterThan(0);
+      expect(before.armorSp).toBeGreaterThan(0);
     });
 
     it('a rubber round wears no armour and leaves the target standing', async () => {

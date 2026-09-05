@@ -485,3 +485,28 @@ szansa` — kształt Rzutu na Śmierć, nie Testu na PT.
   bo cytuje je dziennik sesji i umowy kodu. Konsekwencja dla paska walki: `hotbarSlotsFor`
   (16f) jest i zostaje **generowany** z tego, co figura potrafi; ręcznie układanych slotów
   nie będzie. Nie proponuj wracania do makr.
+
+## Etap 38a — statysta jako karta postaci (05.09.2026)
+
+**Umiejętność wpisana figurze ręcznie znaczy od 38a co innego niż do 38a.** Do 38a poziom wpisany
+na liście Umiejętności profilu bojowego był **całym** modyfikatorem rzutu (Cechy szły do zera),
+bo lista służyła głównie funkcjonariuszom Wsparcia i ich Wartości bojowej. Od 38a to zwykły wiersz
+Umiejętności karty: Cecha dolicza się na wierzchu, tak jak u gracza. Semantykę „jedna liczba
+zamiast Cechy i Umiejętności" przejęło osobne, wprost nazwane pole — **Wartość bojowa** — które
+MG włącza przełącznikiem w menu figury. Zmiana jest świadoma: „figura, której MG wpisał Percepcję
+4" czyta się teraz tak samo jak na każdej innej karcie, a wyjątek nazywa się po imieniu.
+
+**Kopia figury MG dostaje własną kartę, kopia figury gracza nie.** Klonowanie żetonu (etap 35)
+kopiowało profil bojowy, więc kopia była od razu osobną figurą. Gdyby po 38a przejmowała
+podpięcie, dwa żetony dzieliłyby jedne PW i strzał w jednego gangera kładłby drugiego. Karta
+gracza się nie kopiuje — dwie figury Vex to nadal jedna Vex.
+
+**Rany figury prowadzonej przez MG jadą publicznie także wtedy, gdy to nazwany NPC.** Do 38a pole
+`TokenView.injuries` wypełniało się wyłącznie przy figurze bez karty; teraz przy każdej karcie
+**bez właściciela**. To rozszerzenie, nie przypadek: „ma odciętą dłoń" jest tym, co przy stole
+widać, a Medyk gracza ma mieć co załatać — i dotyczy to Rudego tak samo jak gangera.
+
+**Figura bez karty przestała nosić rany krytyczne.** Kółko z paskiem PW i bez karty dostaje
+obrażenia i **zdanie** („ranę krytyczną rozstrzyga MG"), tak jak przed etapem 29.08. Rany, które
+tamten etap dał statystom, przeniosły się razem z nimi na karty — a figura, której nikt nie
+ostatystykował, nie ma ich gdzie zapisać i nigdy nie miała.

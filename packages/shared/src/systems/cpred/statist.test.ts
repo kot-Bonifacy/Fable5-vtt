@@ -1,26 +1,36 @@
 import { describe, expect, it } from 'vitest';
 import {
+  STATIST_ARMOR_ROW_IDS,
   STATIST_DEFAULT_STAT,
   STATIST_SKILL_LEVEL_MAX,
   STATIST_WEAPON_ROW_ID,
-  combatProfileRollableSkills,
-  combatProfileSheet,
-  combatProfileSheetForSkill,
-  combatProfileSkillLevel,
-  combatProfileWithCombatValue,
-  createDefaultCombatProfile,
-  parseCombatProfile,
-  sanitizeCombatProfile,
+  applyStatistQuick,
+  cpredSheetOperatedBy,
+  cpredSheetRollSheet,
+  cpredSheetWithCombatValue,
+  createDefaultStatistQuick,
+  createStatistSheet,
+  sanitizeStatistQuick,
+  statistQuick,
 } from './statist.js';
-import { buildCpredRegistry, type CpredRegistry } from './character.js';
+import { cpredSheetHpMax } from './statblock.js';
+import {
+  buildCpredRegistry,
+  mergeCharacterData,
+  parseCharacterData,
+  type CpredRegistry,
+} from './character.js';
 import { evasionBase, passiveEvasionDv, planCpredAttack } from './attacks.js';
+import { cpredSheetWoundState } from './rolls.js';
 import type { ResolvedWeapon } from './compendium.js';
 
 /**
- * Stage 16b: a token with no character sheet still has to be able to shoot, and
- * to be shot at, without the rules growing a second code path. The tests below
- * are mostly about that identity — a statist wearing a synthesised sheet has to
- * be indistinguishable to `planCpredAttack` from a real one.
+ * Etap 38a: figura, którą ktoś ostatystykował, ma prawdziwą kartę, a menu
+ * żetonu jest tylko sześcioma polami patrzącymi na tę kartę. Testy niżej
+ * pilnują tej tożsamości z dwóch stron: że karta zbudowana z sześciu liczb jest
+ * dla `planCpredAttack` nie do odróżnienia od prawdziwej, i że trzy rzeczy,
+ * których karta sama by nie utrzymała (Wartość bojowa, zakaz uniku przed
+ * pociskami, wydrukowane PW), przeżywają zapis.
  */
 
 const registry: CpredRegistry = buildCpredRegistry(
@@ -29,6 +39,8 @@ const registry: CpredRegistry = buildCpredRegistry(
       { id: 'handgun', name: 'Broń krótka', stat: 'ref' },
       { id: 'evasion', name: 'Unik', stat: 'dex' },
       { id: 'autofire', name: 'Ogień ciągły', stat: 'ref' },
+      { id: 'brawling', name: 'Bijatyka', stat: 'dex' },
+      { id: 'deduction', name: 'Dedukcja', stat: 'int' },
     ],
   },
   { roles: [] },
@@ -46,116 +58,242 @@ const pistol: ResolvedWeapon = {
   melee: false,
 };
 
-const HP = { current: 25, max: 40 };
+/** Ganger z pistoletem — figura, którą MG stawia najczęściej. */
+function ganger() {
+  return createStatistSheet({
+    ...createDefaultStatistQuick(),
+    weaponId: 'weapon.pistolet',
+    weaponName: 'Pistolet',
+    weaponDamage: '2k6',
+    ammoCurrent: 8,
+    ammoMax: 8,
+    hpCurrent: 25,
+    hpMax: 25,
+  });
+}
 
-describe('sanitizeCombatProfile — repairs rather than rejects', () => {
-  it('fills a completely absent profile with the ordinary human', () => {
-    const profile = sanitizeCombatProfile(undefined);
-    expect(profile.ref).toBe(STATIST_DEFAULT_STAT);
-    expect(profile.weaponId).toBeNull();
-    expect(profile.ammoMax).toBe(0);
+describe('sanitizeStatistQuick — naprawia, zamiast odmawiać', () => {
+  it('wypełnia całkiem pusty obiekt zwykłym człowiekiem', () => {
+    const quick = sanitizeStatistQuick(undefined);
+    expect(quick.ref).toBe(STATIST_DEFAULT_STAT);
+    expect(quick.weaponId).toBeNull();
+    expect(quick.ammoMax).toBe(0);
+    expect(quick.combatValue).toBeNull();
   });
 
-  it('clamps stats into the rulebook range instead of throwing', () => {
-    const profile = sanitizeCombatProfile({ ref: 99, dex: -4, body: 7.6, will: 'osiem' });
-    expect(profile.ref).toBe(10);
-    expect(profile.dex).toBe(1);
-    expect(profile.body).toBe(8);
-    expect(profile.will).toBe(STATIST_DEFAULT_STAT);
+  it('ścina Cechy do zakresu z podręcznika, zamiast rzucać', () => {
+    const quick = sanitizeStatistQuick({ ref: 99, dex: -4, body: 7.6, will: 'osiem' });
+    expect(quick.ref).toBe(10);
+    expect(quick.dex).toBe(0);
+    expect(quick.body).toBe(8);
+    expect(quick.will).toBe(STATIST_DEFAULT_STAT);
   });
 
-  it('never leaves more rounds in the magazine than it holds', () => {
-    expect(sanitizeCombatProfile({ ammoMax: 12, ammoCurrent: 30 }).ammoCurrent).toBe(12);
-    expect(sanitizeCombatProfile({ ammoMax: 12, ammoCurrent: 3 }).ammoCurrent).toBe(3);
+  it('nigdy nie zostawia w magazynku więcej, niż ten mieści', () => {
+    const quick = sanitizeStatistQuick({ ammoMax: 12, ammoCurrent: 30 });
+    expect(quick.ammoCurrent).toBe(12);
   });
 
-  it('drops a weapon id that is not a compendium id', () => {
-    expect(sanitizeCombatProfile({ weaponId: 'DROP TABLE' }).weaponId).toBeNull();
-    expect(sanitizeCombatProfile({ weaponId: 'weapon.zgrzyt-9' }).weaponId).toBe('weapon.zgrzyt-9');
+  it('odrzuca id broni, które nie jest id kompendium', () => {
+    expect(sanitizeStatistQuick({ weaponId: 'nie id' }).weaponId).toBeNull();
   });
 
-  it('falls back to a readable weapon name for an empty one', () => {
-    expect(sanitizeCombatProfile({ weaponName: '   ' }).weaponName).toBe('Pięści');
-  });
-});
-
-describe('parseCombatProfile — the token’s JSON column', () => {
-  it('returns null for a token that has no profile', () => {
-    expect(parseCombatProfile(null)).toBeNull();
-    expect(parseCombatProfile('')).toBeNull();
-  });
-
-  it('returns null for a column somebody broke by hand', () => {
-    expect(parseCombatProfile('{not json')).toBeNull();
-    expect(parseCombatProfile('42')).toBeNull();
-  });
-
-  it('round-trips a stored profile', () => {
-    const profile = { ...createDefaultCombatProfile(), ref: 7, armorSp: 11 };
-    expect(parseCombatProfile(JSON.stringify(profile))).toEqual(profile);
+  it('nie pozwala figurze mieć więcej PW, niż wynosi jej maksimum', () => {
+    const quick = sanitizeStatistQuick({ hpMax: 30, hpCurrent: 200 });
+    expect(quick.hpCurrent).toBe(30);
   });
 });
 
-describe('combatProfileSheet — the profile seen as a sheet', () => {
-  const profile = { ...createDefaultCombatProfile(), ref: 7, body: 8, evasion: 4, dex: 6 };
-
-  it('takes HP from the token, not from BODY and WILL', () => {
-    // A real sheet computes hpMax from the stats; a statist's bar is whatever
-    // the GM typed on the token, and two sources for one number would drift.
-    const sheet = combatProfileSheet(profile, HP);
-    expect(sheet.hpCurrent).toBe(25);
-  });
-
-  it('clamps HP the token reports out of range', () => {
-    expect(combatProfileSheet(profile, { current: 99, max: 40 }).hpCurrent).toBe(40);
-    expect(combatProfileSheet(profile, { current: -5, max: 40 }).hpCurrent).toBe(0);
-  });
-
-  it('gives the statist no Luck to spend', () => {
-    const sheet = combatProfileSheet(profile, HP);
+describe('createStatistSheet — karta z sześciu liczb', () => {
+  it('nie daje figurze Szczęścia, którego nie ma z czego wydawać', () => {
+    const sheet = ganger();
     expect(sheet.stats.luck).toBe(0);
     expect(sheet.luckCurrent).toBe(0);
   });
 
-  it('carries exactly one weapon row, under a stable id', () => {
-    const sheet = combatProfileSheet(
-      {
-        ...profile,
-        weaponId: 'weapon.zgrzyt-9',
-        weaponName: 'Zgrzyt-9',
-        ammoMax: 8,
-        ammoCurrent: 8,
-      },
-      HP,
-    );
+  it('niesie jedną broń pod stałym id', () => {
+    const sheet = ganger();
     expect(sheet.weapons).toHaveLength(1);
-    expect(sheet.weapons[0]!.id).toBe(STATIST_WEAPON_ROW_ID);
-    expect(sheet.weapons[0]!.compendiumId).toBe('weapon.zgrzyt-9');
+    expect(sheet.weapons[0]?.id).toBe(STATIST_WEAPON_ROW_ID);
+    expect(sheet.weapons[0]?.compendiumId).toBe('weapon.pistolet');
+    expect(sheet.weapons[0]?.ammoCurrent).toBe(8);
   });
 
-  it('defends with its own Evasion instead of the everyday DV', () => {
-    const sheet = combatProfileSheet(profile, HP);
-    expect(evasionBase(sheet, registry)).toBe(10); // ZW 6 + Unik 4
-    expect(passiveEvasionDv(sheet, registry)).toBe(15);
+  it('poziom broni siedzi w bloku statystyk, nie pod id Umiejętności', () => {
+    const sheet = ganger();
+    expect(sheet.statBlock?.weaponSkill).toBe(4);
+    expect(sheet.skills.handgun).toBeUndefined();
+  });
+
+  it('a do rzutu wchodzi pod tą Umiejętnością, którą akurat strzela', () => {
+    expect(cpredSheetRollSheet(ganger(), 'handgun').skills.handgun).toBe(4);
+    // Ta sama figura z maczetą w ręku strzela tą samą liczbą — bo to jest
+    // „poziom, na którym ta figura walczy", a nie poziom jednej Umiejętności.
+    expect(cpredSheetRollSheet(ganger(), 'melee').skills.melee).toBe(4);
+  });
+
+  it('ale Umiejętność wpisana na pełnej karcie wygrywa z liczbą z edytora', () => {
+    const sheet = { ...ganger(), skills: { ...ganger().skills, handgun: 6 } };
+    expect(cpredSheetRollSheet(sheet, 'handgun').skills.handgun).toBe(6);
+  });
+
+  it('broni się własnym Unikiem zamiast codziennym PT', () => {
+    const sheet = ganger();
+    expect(evasionBase(sheet, registry)).toBe(sheet.stats.dex + 2);
+    expect(passiveEvasionDv(sheet, registry)).toBeGreaterThan(0);
+  });
+
+  it('zakłada pancerz na głowie i na ciele, bo podręcznik drukuje jedno OB', () => {
+    const sheet = createStatistSheet({ ...createDefaultStatistQuick(), armorSp: 11 });
+    expect(sheet.armor.map((row) => row.location).sort()).toEqual(['body', 'head']);
+    expect(sheet.armor.every((row) => row.sp === 11)).toBe(true);
+  });
+
+  it('OB zero nie zostawia rzędu pancerza', () => {
+    expect(createStatistSheet(createDefaultStatistQuick()).armor).toEqual([]);
   });
 });
 
-describe('combatProfileSkillLevel — one number, one exception', () => {
-  const profile = { ...createDefaultCombatProfile(), skillLevel: 6, evasion: 2 };
-
-  it('fires everything at the profile’s combat level', () => {
-    expect(combatProfileSkillLevel(profile, 'handgun')).toBe(6);
-    expect(combatProfileSkillLevel(profile, 'autofire')).toBe(6);
+describe('wydrukowane PW — trzecia rzecz, której karta sama by nie utrzymała', () => {
+  const swat = createStatistSheet({
+    ...createDefaultStatistQuick(),
+    body: 4,
+    will: 0,
+    hpCurrent: 35,
+    hpMax: 35,
+    combatValue: 14,
   });
 
-  it('dodges at its own — a statist that dodges as well as it shoots never falls', () => {
-    expect(combatProfileSkillLevel(profile, 'evasion')).toBe(2);
+  it('C-SWAT ma trzydzieści pięć PW, choć z BC i SW wychodzi dwadzieścia', () => {
+    expect(cpredSheetHpMax(swat)).toBe(35);
+    expect(swat.hpCurrent).toBe(35);
+  });
+
+  it('zapis karty ich nie ścina — normalizacja czyta blok, nie same Cechy', () => {
+    const saved = mergeCharacterData(swat, { hpCurrent: 35 });
+    expect(saved.hpCurrent).toBe(35);
+  });
+
+  it('a stan ran liczy się z wydrukowanego maksimum, nie z Cech', () => {
+    // Z samych Cech próg byłby przy 10 PW i funkcjonariusz z trzydziestoma
+    // punktami byłby ciężko ranny.
+    expect(cpredSheetWoundState(swat)).toBe('healthy');
+    expect(cpredSheetWoundState({ ...swat, hpCurrent: 17 })).toBe('serious');
+  });
+
+  it('blok przeżywa podróż przez JSON karty', () => {
+    const back = parseCharacterData(JSON.stringify(swat), registry);
+    expect(back.statBlock?.hpMax).toBe(35);
+    expect(back.statBlock?.combatValue).toBe(14);
   });
 });
 
-describe('planCpredAttack accepts a synthesised statist sheet', () => {
-  const profile = {
-    ...createDefaultCombatProfile(),
+describe('Wartość bojowa — sufit i podstawienie', () => {
+  it('nie ścina piętnastki C-SWAT-u do dziesiątki (błąd z 31.08)', () => {
+    const quick = sanitizeStatistQuick({ skillLevel: 15, evasion: 15, combatValue: 15 });
+    expect(quick.skillLevel).toBe(15);
+    expect(quick.evasion).toBe(15);
+    expect(quick.combatValue).toBe(15);
+  });
+
+  it('ale sufit nadal istnieje', () => {
+    const quick = sanitizeStatistQuick({ skillLevel: 999, combatValue: 999 });
+    expect(quick.skillLevel).toBe(STATIST_SKILL_LEVEL_MAX);
+    expect(quick.combatValue).toBe(STATIST_SKILL_LEVEL_MAX);
+  });
+
+  it('wkłada całą Wartość bojową w Umiejętność i zeruje Cechy', () => {
+    const officer = createStatistSheet({
+      ...createDefaultStatistQuick(),
+      body: 4,
+      move: 4,
+      combatValue: 14,
+      hpMax: 35,
+      hpCurrent: 35,
+    });
+    const rolling = cpredSheetRollSheet(officer, 'handgun');
+    expect(rolling.skills.handgun).toBe(14);
+    expect(rolling.stats.ref).toBe(0);
+    expect(rolling.stats.int).toBe(0);
+    // BC i RUCH zostają: podręcznik drukuje je obok Wartości bojowej jako
+    // osobne liczby („istotne przy rozpatrywaniu dystansu", s. 158).
+    expect(rolling.stats.body).toBe(4);
+    expect(rolling.stats.move).toBe(4);
+  });
+
+  it('broni się tą samą liczbą, którą atakuje (s. 158)', () => {
+    const officer = createStatistSheet({ ...createDefaultStatistQuick(), combatValue: 14 });
+    expect(cpredSheetRollSheet(officer, null).skills.evasion).toBe(14);
+  });
+
+  it('karta bez bloku statystyk wraca nietknięta', () => {
+    const sheet = { ...ganger(), statBlock: null };
+    expect(cpredSheetRollSheet(sheet, 'handgun')).toBe(sheet);
+  });
+});
+
+describe('cpredSheetWithCombatValue — maszyna za spustem (etap 26e)', () => {
+  const turret = createStatistSheet({
+    ...createDefaultStatistQuick(),
+    ref: 3,
+    dex: 3,
+    armorSp: 7,
+    ammoCurrent: 20,
+    ammoMax: 30,
+  });
+
+  it('rzuca jedną liczbą, a Cechy schodzą do zera', () => {
+    const rolling = cpredSheetRollSheet(cpredSheetWithCombatValue(turret, 14), 'handgun');
+    expect(rolling.skills.handgun).toBe(14);
+    expect(rolling.stats.ref).toBe(0);
+  });
+
+  it('nie unika ataków (s. 214) — inaczej niż funkcjonariusz Wsparcia', () => {
+    const machine = cpredSheetWithCombatValue(turret, 14);
+    expect(machine.skills.evasion).toBe(0);
+    expect(machine.statBlock?.noBulletDodge).toBe(true);
+  });
+
+  it('nie rusza niczego, co należy do samej broni', () => {
+    const machine = cpredSheetWithCombatValue(turret, 14);
+    expect(machine.weapons[0]?.ammoCurrent).toBe(20);
+    expect(machine.armor[0]?.sp).toBe(7);
+  });
+});
+
+describe('cpredSheetOperatedBy — cudze ręce na spuście (etap 26d)', () => {
+  const turret = cpredSheetWithCombatValue(
+    createStatistSheet({ ...createDefaultStatistQuick(), armorSp: 7 }),
+    14,
+  );
+  const netrunner = {
+    stats: { ...createStatistSheet(createDefaultStatistQuick()).stats, ref: 8, dex: 7 },
+    skills: { handgun: 6, evasion: 5 },
+    humanityCurrent: 40,
+    statEffects: [],
+  };
+
+  it('strzela Cechami i Umiejętnością operatora', () => {
+    const operated = cpredSheetOperatedBy(turret, netrunner, 'handgun');
+    const rolling = cpredSheetRollSheet(operated, 'handgun');
+    expect(rolling.stats.ref).toBe(8);
+    expect(rolling.skills.handgun).toBe(6);
+  });
+
+  it('gasi Wartość bojową wieżyczki — inaczej rzut wyzerowałby Cechy z powrotem', () => {
+    const operated = cpredSheetOperatedBy(turret, netrunner, 'handgun');
+    expect(operated.statBlock?.combatValue).toBeNull();
+  });
+
+  it('a pancerz i magazynek zostają wieżyczki', () => {
+    const operated = cpredSheetOperatedBy(turret, netrunner, 'handgun');
+    expect(operated.armor[0]?.sp).toBe(7);
+  });
+});
+
+describe('planCpredAttack przyjmuje kartę figury bez różnicy', () => {
+  const quick = {
+    ...createDefaultStatistQuick(),
     ref: 7,
     skillLevel: 4,
     weaponId: 'weapon.zgrzyt-9',
@@ -165,8 +303,8 @@ describe('planCpredAttack accepts a synthesised statist sheet', () => {
     ammoCurrent: 8,
   };
 
-  it('plans the shot with REF and the profile’s skill level in the breakdown', () => {
-    const sheet = combatProfileSheetForSkill(profile, HP, 'handgun');
+  it('planuje strzał z REF i poziomem broni w rozbiciu', () => {
+    const sheet = cpredSheetRollSheet(createStatistSheet(quick), 'handgun');
     const result = planCpredAttack(
       sheet,
       registry,
@@ -181,12 +319,8 @@ describe('planCpredAttack accepts a synthesised statist sheet', () => {
     expect(result.plan.attack.ammoAfter).toBe(7);
   });
 
-  it('spends ten rounds on a burst just like a sheet does', () => {
-    const sheet = combatProfileSheetForSkill(
-      { ...profile, ammoMax: 25, ammoCurrent: 25 },
-      HP,
-      'autofire',
-    );
+  it('zużywa dziesięć naboi na serię tak samo jak karta', () => {
+    const sheet = createStatistSheet({ ...quick, ammoMax: 25, ammoCurrent: 25 });
     const result = planCpredAttack(
       sheet,
       registry,
@@ -205,8 +339,8 @@ describe('planCpredAttack accepts a synthesised statist sheet', () => {
     expect(result.plan.attack.ammoAfter).toBe(15);
   });
 
-  it('refuses to spend Luck it does not have', () => {
-    const sheet = combatProfileSheetForSkill(profile, HP, 'handgun');
+  it('odmawia wydania Szczęścia, którego figura nie ma', () => {
+    const sheet = createStatistSheet(quick);
     const result = planCpredAttack(
       sheet,
       registry,
@@ -218,198 +352,80 @@ describe('planCpredAttack accepts a synthesised statist sheet', () => {
   });
 });
 
-describe('Wartość bojowa za spustem (etap 26e)', () => {
-  const profile = {
-    ...createDefaultCombatProfile(),
-    ref: 7,
-    dex: 6,
-    skillLevel: 7,
-    evasion: 4,
-    armorSp: 11,
-    weaponName: 'Karabin szturmowy',
-    weaponDamage: '5k6',
-    ammoCurrent: 24,
-    ammoMax: 25,
-  };
-
-  it('wkłada całą Wartość bojową w Umiejętność i zeruje Cechy', () => {
-    const machine = combatProfileWithCombatValue(profile, 14);
-    // „Test Wartości bojowej + 1k10" (s. 214) — jedna liczba, nie dwie.
-    expect(machine.skillLevel).toBe(14);
-    expect(machine.ref).toBe(0);
-    expect(machine.dex).toBe(0);
-    // „Nie mogą unikać ataków" (s. 214).
-    expect(machine.evasion).toBe(0);
+describe('statistQuick — droga powrotna', () => {
+  it('czyta z karty dokładnie to, co szybki edytor w nią wpisał', () => {
+    const quick = {
+      ...createDefaultStatistQuick(),
+      ref: 7,
+      dex: 6,
+      body: 8,
+      will: 3,
+      move: 6,
+      skillLevel: 9,
+      evasion: 5,
+      armorSp: 11,
+      weaponId: 'weapon.pistolet',
+      weaponName: 'Pistolet',
+      weaponDamage: '2k6',
+      ammoCurrent: 5,
+      ammoMax: 8,
+      hpCurrent: 22,
+      hpMax: 30,
+    };
+    expect(statistQuick(createStatistSheet(quick))).toEqual(quick);
   });
 
-  it('nie rusza niczego, co należy do samej broni', () => {
-    const machine = combatProfileWithCombatValue(profile, 14);
-    expect(machine.weaponName).toBe('Karabin szturmowy');
-    expect(machine.weaponDamage).toBe('5k6');
-    expect(machine.ammoCurrent).toBe(24);
-    expect(machine.armorSp).toBe(11);
+  it('figura bez wydrukowanych PW wraca z maksimum policzonym z Cech', () => {
+    const sheet = ganger();
+    const stripped = { ...sheet, statBlock: null };
+    expect(statistQuick(stripped).hpMax).toBe(cpredSheetHpMax(stripped));
   });
 });
 
-/**
- * 29.08: rany krytyczne wróciły do profilu statysty — nie dlatego, że MG ma je
- * wpisywać ręcznie (to nadal robota karty), ale dlatego, że **zasady** je
- * nadają: gaz łzawiący z 16h, broniona strefa z 26f, dwie szóstki na kościach
- * obrażeń. Do 29.08 kończyły się zdaniem na czacie i niczym więcej.
- */
-describe('profil statysty — rany krytyczne', () => {
-  const wound = {
-    id: 'injury.body-odcieta-noga',
-    name: 'Odcięta noga',
-    effect: 'Nie możesz Unikać ataków.',
-    noDodge: true as const,
-    movePenalty: -6,
-  };
-
-  it('przechodzi przez sanityzację i wraca w całości', () => {
-    const profile = sanitizeCombatProfile({
-      ...createDefaultCombatProfile(),
-      criticalInjuries: [wound],
-    });
-    expect(profile.criticalInjuries).toEqual([wound]);
+describe('applyStatistQuick — szybkie pole nie zjada reszty karty', () => {
+  it('zostawia ekwipunek, rany i notatki, których edytor nie pokazuje', () => {
+    const sheet: ReturnType<typeof ganger> = {
+      ...ganger(),
+      gear: [{ id: 'g1', name: 'Apteczka', notes: '', qty: 1 }],
+      notes: 'Widziany pod klubem Afterlife.',
+      criticalInjuries: [{ id: 'i1', name: 'Złamane żebra', effect: 'Ból przy każdym ruchu.' }],
+    };
+    const after = applyStatistQuick(sheet, { ...statistQuick(sheet), ref: 9 });
+    expect(after.stats.ref).toBe(9);
+    expect(after.gear).toHaveLength(1);
+    expect(after.notes).toBe('Widziany pod klubem Afterlife.');
+    expect(after.criticalInjuries).toHaveLength(1);
   });
 
-  it('nieruszony profil nie zyskuje pustego pola — JSON zostaje taki, jak był', () => {
-    const profile = sanitizeCombatProfile(createDefaultCombatProfile());
-    expect('criticalInjuries' in profile).toBe(false);
+  it('zostawia drugą broń, którą MG dopisał z pełnej karty', () => {
+    const sheet = ganger();
+    const withKnife = {
+      ...sheet,
+      weapons: [
+        ...sheet.weapons,
+        {
+          id: 'w2',
+          name: 'Nóż',
+          notes: '',
+          damage: '1k6',
+          ammoCurrent: 0,
+          ammoMax: 0,
+          ammoType: '',
+          rof: '1',
+        },
+      ],
+    };
+    const after = applyStatistQuick(withKnife, statistQuick(withKnife));
+    expect(after.weapons.map((row) => row.name)).toEqual(['Pistolet', 'Nóż']);
   });
 
-  it('odrzuca wiersz bez nazwy zamiast zapisać ranę bez imienia', () => {
-    const profile = sanitizeCombatProfile({
-      ...createDefaultCombatProfile(),
-      criticalInjuries: [{ id: 'injury.body-cos', effect: 'Boli.' }, wound],
-    });
-    expect(profile.criticalInjuries).toEqual([wound]);
-  });
-
-  it('podaje ranę syntetycznej karcie, więc reguły działają bez gałęzi', () => {
-    const profile = { ...createDefaultCombatProfile(), criticalInjuries: [wound] };
-    const data = combatProfileSheet(profile, { current: 20, max: 30 });
-    expect(data.criticalInjuries).toEqual([wound]);
-  });
-
-  it('statysta bez ran ma pustą listę, nie undefined', () => {
-    const data = combatProfileSheet(createDefaultCombatProfile(), { current: 20, max: 30 });
-    expect(data.criticalInjuries).toEqual([]);
-  });
-});
-
-/**
- * Umiejętności figury bez karty (31.08).
- *
- * Sedno jest w tym, czego tu **nie** ma: statysta nadal nie rzuca wszystkim,
- * co przyjdzie komuś do głowy. `skillLevel` zostaje liczbą broni, a lista jest
- * osobnym pytaniem — „czy w ogóle", nie „na ilu".
- */
-describe('Umiejętności statysty', () => {
-  it('nieruszony profil nie zyskuje pustej listy — JSON zostaje taki, jak był', () => {
-    const profile = sanitizeCombatProfile(createDefaultCombatProfile());
-    expect('skills' in profile).toBe(false);
-    expect(combatProfileRollableSkills(profile)).toEqual([]);
-  });
-
-  it('wraca w całości i daje poziom wpisany, nie poziom broni', () => {
-    const profile = sanitizeCombatProfile({
-      ...createDefaultCombatProfile(),
-      skillLevel: 4,
-      skills: { perception: 14 },
-    });
-    expect(profile.skills).toEqual({ perception: 14 });
-    expect(combatProfileSkillLevel(profile, 'perception')).toBe(14);
-  });
-
-  it('Umiejętność spoza listy dalej strzela poziomem broni', () => {
-    const profile = sanitizeCombatProfile({
-      ...createDefaultCombatProfile(),
-      skillLevel: 4,
-      skills: { perception: 14 },
-    });
-    expect(combatProfileSkillLevel(profile, 'handgun')).toBe(4);
-    // …ale rzucić nią z paska nie wolno: to jest cała różnica między
-    // „na ilu" a „czy w ogóle".
-    expect(combatProfileRollableSkills(profile)).toEqual(['perception']);
-  });
-
-  it('Unik zostaje przy swoim polu, choćby ktoś wpisał go też na listę', () => {
-    const profile = sanitizeCombatProfile({
-      ...createDefaultCombatProfile(),
-      evasion: 2,
-      skills: { evasion: 14 },
-    });
-    expect(combatProfileSkillLevel(profile, 'evasion')).toBe(2);
-    expect(combatProfileSheet(profile, { current: 10, max: 10 }).skills.evasion).toBe(2);
-  });
-
-  it('poziom 0 nie jest Umiejętnością, a śmieci wypadają po cichu', () => {
-    const profile = sanitizeCombatProfile({
-      ...createDefaultCombatProfile(),
-      skills: { perception: 0, 'NIE id': 5, tracking: 'dużo', deduction: 7 },
-    });
-    expect(profile.skills).toEqual({ deduction: 7 });
-  });
-
-  it('karta syntetyzowana na rzut niesie wpisany poziom', () => {
-    const profile = { ...createDefaultCombatProfile(), skillLevel: 4, skills: { deduction: 14 } };
-    const data = combatProfileSheetForSkill(profile, { current: 30, max: 35 }, 'deduction');
-    expect(data.skills.deduction).toBe(14);
-  });
-});
-
-/**
- * Sufit poziomu w profilu (błąd znaleziony 31.08).
- *
- * Wsparcie i Demony trzymają w tym polu **Wartość bojową**, czyli sumę Cechy
- * i Umiejętności — a ta bywa wyższa niż dziesiątka, do której RAW ogranicza
- * Umiejętność postaci. Test pilnuje dokładnie tego rozróżnienia, bo przez cały
- * etap 30c C-SWAT z Wartością 15 wracał z bazy jako figura z Wartością 10.
- */
-describe('sufit Wartości bojowej w profilu', () => {
-  it('nie ścina piętnastki C-SWAT-u do dziesiątki', () => {
-    const profile = sanitizeCombatProfile({
-      ...createDefaultCombatProfile(),
-      skillLevel: 15,
-      evasion: 15,
-    });
-    expect(profile.skillLevel).toBe(15);
-    // Wsparcie broni się tą samą liczbą, którą atakuje (s. 158).
-    expect(profile.evasion).toBe(15);
-  });
-
-  it('ale sufit nadal istnieje — profil nie przyjmie liczby z sufitu', () => {
-    const profile = sanitizeCombatProfile({
-      ...createDefaultCombatProfile(),
-      skillLevel: 999,
-      skills: { deduction: 999 },
-    });
-    expect(profile.skillLevel).toBe(STATIST_SKILL_LEVEL_MAX);
-    expect(profile.skills?.deduction).toBe(STATIST_SKILL_LEVEL_MAX);
-  });
-});
-
-/**
- * Wartość bojowa liczy się raz (31.08).
- *
- * Umiejętność wpisana w profil **jest** sumą Cechy i Umiejętności, więc karta
- * syntetyzowana na taki rzut nie może dołożyć jeszcze Cechy — inaczej agent
- * federalny rzuca Dedukcją na 14 + INT 5 i wychodzi 19 z nikąd.
- */
-describe('Cecha przy Umiejętności z listy', () => {
-  it('idzie do zera, żeby nie policzyć się dwa razy', () => {
-    const profile = { ...createDefaultCombatProfile(), skills: { deduction: 14 } };
-    const data = combatProfileSheetForSkill(profile, { current: 35, max: 35 }, 'deduction');
-    expect(data.stats.int).toBe(0);
-    expect(data.skills.deduction).toBe(14);
-  });
-
-  it('a rzut bronią zostaje po staremu — REF plus poziom', () => {
-    const profile = { ...createDefaultCombatProfile(), ref: 7, skillLevel: 4 };
-    const data = combatProfileSheetForSkill(profile, { current: 20, max: 20 }, 'handgun');
-    expect(data.stats.ref).toBe(7);
-    expect(data.skills.handgun).toBe(4);
+  it('podniesienie katalogowego OB nie cofa zużycia pancerza', () => {
+    const sheet = createStatistSheet({ ...createDefaultStatistQuick(), armorSp: 11 });
+    const worn = {
+      ...sheet,
+      armor: sheet.armor.map((row) => ({ ...row, spCurrent: 6 })),
+    };
+    const after = applyStatistQuick(worn, { ...statistQuick(worn), armorSp: 11 });
+    expect(after.armor.find((row) => row.id === STATIST_ARMOR_ROW_IDS.body)?.spCurrent).toBe(6);
   });
 });

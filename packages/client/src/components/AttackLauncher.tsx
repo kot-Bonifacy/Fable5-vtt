@@ -6,7 +6,6 @@ import {
   cpredWeaponOptions,
   isWeaponEntry,
   resolveWeapon,
-  sanitizeCombatProfile,
 } from '@vtt/shared';
 import { useAttackStore } from '../stores/attackStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
@@ -27,10 +26,9 @@ import { useCompendiumStore } from '../stores/compendiumStore.js';
  */
 
 /**
- * The weapons a token can fire, as the shared builder sees them. The branch
- * itself — sheet rows or the single weapon of a combat profile — lives in
- * `cpredWeaponOptions`, because the action bar of stage 16f asks the same
- * question and two answers to it would drift apart.
+ * The weapons a token can fire, as the shared builder sees them. Odpowiedź
+ * mieszka w `cpredWeaponOptions`, bo pasek akcji z 16f pyta o to samo, a dwie
+ * odpowiedzi na jedno pytanie rozjeżdżają się.
  */
 function useWeaponOptions(token: TokenView | undefined): CpredWeaponOption[] {
   const characters = useCharacterStore((s) => s.characters);
@@ -41,16 +39,10 @@ function useWeaponOptions(token: TokenView | undefined): CpredWeaponOption[] {
     if (!token) return [];
     const types = new Map(Object.entries(weaponTypeById));
     const character = token.characterId ? characters[token.characterId] : undefined;
-    return cpredWeaponOptions(
-      character ? character.data : null,
-      character || !token.combatProfile ? null : sanitizeCombatProfile(token.combatProfile),
-      (compendiumId) => {
-        const entry = compendiumId ? entries[compendiumId] : undefined;
-        return entry && isWeaponEntry(entry)
-          ? resolveWeapon(entry, { weaponTypeById: types })
-          : null;
-      },
-    );
+    return cpredWeaponOptions(character ? character.data : null, (compendiumId) => {
+      const entry = compendiumId ? entries[compendiumId] : undefined;
+      return entry && isWeaponEntry(entry) ? resolveWeapon(entry, { weaponTypeById: types }) : null;
+    });
   }, [token, characters, entries, weaponTypeById]);
 }
 

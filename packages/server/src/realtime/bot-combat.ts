@@ -28,7 +28,7 @@ import {
   clipWalkToBudget,
   describeBotCombatDecision,
   hotbarSlotsFor,
-  hpMax,
+  cpredSheetHpMax,
   isAmmoEntry,
   isSegmentClear,
   isWeaponEntry,
@@ -319,7 +319,6 @@ async function buildTacticalStep(
   // którym bot działa, jest z tej blokady zwolnione.
   const slots = hotbarSlotsFor({
     sheet: ctx.sheet,
-    profile: null,
     resolve: ctx.resolveWeaponEntry,
     resolveAmmo: ctx.resolveAmmoEntry,
     statuses: tokenStatuses(actor),
@@ -347,7 +346,7 @@ async function buildTacticalStep(
     });
   }
 
-  const maxHp = hpMax(ctx.sheet.stats);
+  const maxHp = cpredSheetHpMax(ctx.sheet);
   const wound = CPRED_WOUND_LABELS[woundStateFromHp(ctx.sheet.hpCurrent, maxHp)];
   return {
     combatant,

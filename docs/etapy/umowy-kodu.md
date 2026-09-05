@@ -1198,3 +1198,61 @@ więc godzina pokazana graczowi obiecuje dokładność, której nie da się dotr
 grubsza niż dryf czyta się jak działający zegar. Kartę czatu — cezurę („minęła noc") — traktuje
 się tak samo i **dla wszystkich**, bo zostaje w dzienniku sesji na zawsze. Pora dnia zostaje,
 bo nie jest ozdobą: nocą ulica należy do kogo innego, a ciemność jest mechaniką od 18b.
+
+**Figura ostatystykowana MA KARTĘ POSTACI — `Token.combatProfile` nie istnieje (05.09, etap 38a).**
+Umowa etapu 16b („statysta nie jest osobą, jego liczby siedzą w kolumnie JSON żetonu") została
+**cofnięta** decyzją MG. Od 38a każdy ganger, funkcjonariusz Wsparcia, Demon i wieżyczka mają
+prawdziwy rekord `Character` — stoją w rosterze obok Vex, otwierają się jak każda karta i mają
+zwykły ekwipunek. W silniku zasad **nie ma już ani jednej gałęzi „to statysta"**: `AttackSource`
+ma jedno ramię, `cpredWeaponOptions` czyta wiersze karty, obrażenia jadą przez
+`applyDamageToSheet`, a rana zapisuje się przez `applyForcedFailureToSheet`. Kółko z paskiem PW
+i **bez** karty nadal istnieje (rdzeń VTT sprzed CP RED) i ma własny, chudy tor: same PW, żaden
+pancerz, żadne rany — bo nie ma ich gdzie zapisać.
+
+**Trzy liczby, których karta sama by nie utrzymała, mieszkają w `statBlock` (05.09, etap 38a).**
+`CpredCharacterData.statBlock` (`shared/src/systems/cpred/statblock.ts`) trzyma **Wartość bojową**
+(„suma Cechy i Umiejętności", s. 158 — sięga 16, a Umiejętność karty ma sufit 10), **zakaz uniku
+przed pociskami** (s. 158) i **wydrukowane PW** (C-SWAT ma 35 przy BC 4, z Cech wyszłoby 20) oraz
+**poziom broni** (`weaponSkill`). `null` na karcie postaci. **To nie jest kategoria karty** — MG
+odrzucił 05.09 znacznik odróżniający statystę w rosterze; to trzy liczby z podręcznika, które
+nazwanemu NPC-owi wolno mieć tak samo.
+
+**Maksimum PW karty to `cpredSheetHpMax(data)`, nigdy `hpMax(data.stats)` (05.09, etap 38a).**
+Ta sama umowa co `cpredEffectiveStats` z etapu 39, w drugim obszarze: `hpMax` liczy z BC i SW
+i zostaje **wyłącznie** dla kreatora, który karty jeszcze nie ma. Wszystko, co dostaje kartę,
+czyta `cpredSheetHpMax` — inaczej `normalizeCharacterData` ścina funkcjonariuszowi piętnaście
+punktów przy pierwszym zapisie, a próg poważnej rany wypada w złym miejscu. Stan ran karty liczy
+`cpredSheetWoundState(sheet)`, nie `woundState(hp, stats)`.
+
+**Wartość bojowa wchodzi do liczb w JEDNYM miejscu: `sheetForRoll` (05.09, etap 38a).**
+`cpredSheetRollSheet(data, skillId)` zeruje Cechy i podstawia Wartość bojową (albo poziom broni
+z `statBlock.weaponSkill` pod Umiejętność, której karta sama nie wymienia). Woła się je tam, gdzie
+do 38a wołało się `sheetFromCombatProfile` — przy ataku, przy biernym PT Uniku i przy Teście
+figury — i **nigdzie indziej**: karta *zapisana* trzyma to, co wydrukowano, a nie to, co z tego
+wychodzi w rzucie. Umiejętność **wpisana** na karcie wygrywa z poziomem broni, bo to deklaracja MG.
+
+**Sześć pól menu żetonu pisze `token:stat`, nie `token:update` (05.09, etap 38a).**
+Jedno zdarzenie zakłada kartę **i** podpina ją do figury (albo poprawia tę, którą figura ma) —
+trzy kroki z trzema okazjami do zerwania zostawiłyby figurę bez karty albo kartę bez figury.
+Szybkość z 16b zostaje: MG nadal wpisuje sześć liczb, a nie wypełnia karty. Projekcję w obie
+strony robią `statistQuick` i `applyStatistQuick` (`statist.ts`) — i **`applyStatistQuick` nie
+rusza niczego poza tymi polami**, bo ta sama figura bywa edytowana raz szybkim polem, a raz pełną
+kartą.
+
+**Karta ginie z figurą tylko na pytanie, i tylko gdy nie ma po niej kto płakać (05.09, etap 38a).**
+Bez znacznika w bazie serwer nie ma po czym poznać, którą kartę skasować — więc pyta klient
+(`figure-cards.ts`), a serwer sprawdza jeszcze raz dwa warunki: karta **bez właściciela** i **bez
+innej figury** pod sobą. Karta gracza nie ginie nigdy, choćby klient poprosił. Ta sama reguła
+rządzi klonowaniem: kopia figury MG dostaje **własną** kartę (inaczej dwa żetony dzieliłyby jedne
+PW), a kopia figury gracza zostaje bez podpięcia, jak od etapu 35.
+
+**Karta jedzie też do właściciela FIGURY, nie tylko do właściciela karty (05.09, etap 38a).**
+Trzecia droga w `character-io.ts`, dopisana dlatego, że zniknął profil bojowy: gracz, któremu MG
+oddał gangera, dostawał jego liczby w prywatnej części żetonu, a teraz mieszkają one na karcie.
+Bez tego sterowałby figurą, której statystyk nie widzi, a podgląd rzutu liczyłby się z niczego.
+
+**Cecha zero jest legalna na karcie, ale nie w kreatorze (05.09, etap 38a).**
+`CPRED_SHEET_STAT_MIN` to 0, `CPRED_STAT_MIN` zostaje jedynką. Powód jest jeden: figura
+z Wartością bojową ma **wyzerowane** REF, ZW i SW, żeby rozbicie rzutu nie doliczyło Cechy drugi
+raz („Broń długa 14", bez Cechy). Walidator karty odrzucał wtedy całą mapę Cech i figura wracała
+jako przeciętny człowiek po pięć — błąd znaleziony przy pierwszym uruchomieniu testów 38a.

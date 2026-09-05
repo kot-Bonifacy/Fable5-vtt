@@ -11,6 +11,7 @@ import type {
 import {
   CPRED_EMP_STATUS_ID,
   cpredAmmoCheckOutcome,
+  createDefaultCharacterData,
   cpredCheckBase,
   cpredEmpDisabled,
   criticalInjuryNames,
@@ -25,10 +26,7 @@ import {
   applyForcedFailureToSheet,
   applyForcedFailureToTokenHp,
   describeSheetTimer,
-  readSheetCombatProfile,
-  sheetCombatProfile,
   sheetExpiryRound,
-  sheetFromCombatProfile,
   sheetWoundStatuses,
   writeSheetStatusDisabled,
   writeSheetStatusTimer,
@@ -173,9 +171,9 @@ async function checkBaseOf(
       return { total: base.total, label: base.label };
     }
   }
-  const profile = readSheetCombatProfile(token.combatProfile) ?? sheetCombatProfile({});
-  const hp: TokenHp = { current: token.hpCurrent ?? 0, max: token.hpMax ?? 0 };
-  const base = cpredCheckBase(sheetFromCombatProfile(profile, hp, null), registry, check);
+  // Figura bez karty rzuca kartą zastępczą zwykłego człowieka: wszystkie Cechy
+  // po pięć, żadnych Umiejętności. Do 38a rolę tę pełnił pusty profil bojowy.
+  const base = cpredCheckBase(createDefaultCharacterData(), registry, check);
   return { total: base.total, label: base.label };
 }
 
@@ -271,36 +269,24 @@ async function applyAmmoFailure(
       targetOwnerId: ownerId,
     };
   } else {
-    // Od 29.08 statysta z profilem bojowym **nosi** ranę: wchodzi tą samą
-    // funkcją co u postaci, a profil trzyma ją tak, jak karta trzyma swoją.
-    // Żeton bez profilu dalej dostaje samo zdanie — nie ma gdzie zapisać.
+    // Kółko na mapie bez karty: obrażenia spadają, a rana zostaje **nazwana**,
+    // bo nie ma jej gdzie zapisać. Figura ostatystykowana ma od 38a kartę
+    // i jedzie gałęzią wyżej — tą samą, co postać gracza.
     const hp: TokenHp | null =
       token.hpMax === null ? null : { current: token.hpCurrent ?? 0, max: token.hpMax };
-    const profile = readSheetCombatProfile(token.combatProfile);
-    const applied = applyForcedFailureToTokenHp(hp, profile, failure, compendium);
-    if (applied.hp || applied.profile) {
+    const applied = applyForcedFailureToTokenHp(hp, failure, compendium);
+    if (applied.hp) {
       await deps.ctx.prisma.token.update({
         where: { id: token.id },
         data: {
-          ...(applied.hp
-            ? {
-                hpCurrent: applied.hp.current,
-                statuses: JSON.stringify(
-                  sheetWoundStatuses(readTokenStatuses(token.statuses), applied.hp),
-                ),
-              }
-            : {}),
-          ...(applied.profile ? { combatProfile: JSON.stringify(applied.profile) } : {}),
+          hpCurrent: applied.hp.current,
+          statuses: JSON.stringify(
+            sheetWoundStatuses(readTokenStatuses(token.statuses), applied.hp),
+          ),
         },
       });
     }
-    // Ta sama zasada 14e co u postaci: rana zabierająca Akcję z następnej Tury
-    // odkłada się na wierszu trackera, bo gaz ląduje zwykle w cudzej turze.
-    if (applied.carry) {
-      await oweCarryToToken(deps, token.sceneId, token.id, applied.carry);
-      await emitCombatOfScene(deps, campaignId, scene);
-    }
-    // Nazwy ran do zdania na czacie — dla figury bez profilu to jedyny ślad.
+    // Nazwy ran do zdania na czacie — dla figury bez karty to jedyny ślad.
     statistInjuries = criticalInjuryNames(compendium, failure.injuryIds ?? []);
     log = {
       ...applied.log,

@@ -89,19 +89,6 @@ export interface TokenView {
    */
   light?: TokenLight | null;
   /**
-   * Fighting numbers of a token with no character sheet (stage 16b); null or
-   * absent for the tokens nobody has statted, which is most of them.
-   *
-   * Deliberately **opaque here**. The core VTT must not know what a weapon or a
-   * Stopping Power is (`systems/cpred` is a different world), so the map layer
-   * carries the blob and the system layer reads it — the same bargain
-   * `Combatant.turnState` struck in stage 14b.
-   *
-   * Private like the HP: it names the NPC's gun and how much armour it wears,
-   * and a player learns those by being shot at.
-   */
-  combatProfile?: TokenCombatProfile | null;
-  /**
    * Whom this figure backed down from and has not got even with (stage 23c) —
    * the second half of the −2 the „Onieśmielony" sticker only *suggests*.
    *
@@ -112,20 +99,23 @@ export interface TokenView {
    */
   feared?: string[];
   /**
-   * Rany, które ta figura nosi — publicznie, w odróżnieniu od reszty profilu
-   * (31.08). Nieobecne przy figurze z kartą postaci (jej rany stoją na karcie)
-   * i przy figurze, której nikt nie zranił, czyli przy prawie każdej.
+   * Rany, które ta figura nosi — **publicznie** (31.08). Nieobecne przy figurze,
+   * której nikt nie zranił, czyli przy prawie każdej.
    *
    * Publiczne, bo rana krytyczna jest tym, co przy stole widać: „ma odciętą
    * dłoń" nie jest sekretem MG, tylko obrazem. Praktyczny powód jest ten sam
    * co u wszystkiego, co jedzie do klienta — Medyk gracza ma móc **załatać
-   * rannego statystę**, a formularz łatania czyta zdanie z tabeli zapisane
-   * przy ranie. Bez tego pola gracz miał wybór między nieleczeniem figur bez
-   * karty a dostaniem całego profilu z bronią i pancerzem, którego widzieć
-   * nie ma prawa.
+   * rannego przeciwnika**, a formularz łatania czyta zdanie z tabeli zapisane
+   * przy ranie.
    *
-   * Nieprzezroczyste tak samo jak `combatProfile`: rdzeń VTT niesie blob, a co
-   * jest raną, wie wyłącznie warstwa systemu (CP RED: `CpredCriticalInjuryRow`).
+   * Do etapu 38a wypełniało się wyłącznie przy figurze bez karty, bo tylko taka
+   * trzymała rany po stronie żetonu. Od 38a każda ostatystykowana figura ma
+   * kartę, więc pole niesie rany **karty bez właściciela** — czyli figury,
+   * którą prowadzi MG. Karta gracza nie jedzie tędy: swoje rany gracz widzi na
+   * własnej karcie, a cudzych oglądać nie ma po co.
+   *
+   * Nieprzezroczyste dla rdzenia VTT: co jest raną, wie wyłącznie warstwa
+   * systemu (CP RED: `CpredCriticalInjuryRow`).
    */
   injuries?: TokenInjuryRow[];
 }
@@ -142,6 +132,20 @@ export type TokenInjuryRow = Record<string, unknown>;
  * `CpredCombatProfile`).
  */
 export type TokenCombatProfile = Record<string, unknown>;
+
+/**
+ * Client → server payload of `token:stat` (GM only, etap 38a).
+ *
+ * Sześć pól szybkiego edytora w menu żetonu. Nieprzezroczyste tu tak samo, jak
+ * nieprzezroczysty był profil bojowy: rdzeń VTT niesie blob, a co znaczy „OB",
+ * wie wyłącznie warstwa systemu. Różnica wobec 16b jest po drugiej stronie —
+ * serwer nie wpisuje tego w kolumnę żetonu, tylko **zakłada figurze kartę
+ * postaci** (albo poprawia tę, którą już ma).
+ */
+export interface TokenStatPayload {
+  tokenId: string;
+  quick: TokenCombatProfile;
+}
 
 /** One entry of the status registry (`data/public/cpred/statuses.json`). */
 export interface StatusDefinition {
@@ -219,8 +223,6 @@ export interface TokenPatch {
   visionRange?: number | null;
   /** Carried light; null takes the lamp away entirely (stage 18b). */
   light?: TokenLight | null;
-  /** Statist's fighting numbers; null takes the profile away (stage 16b). */
-  combatProfile?: TokenCombatProfile | null;
   /** Which way the figure looks; null puts it back to „turned nowhere". */
   facing?: number | null;
 }
@@ -234,6 +236,17 @@ export interface TokenUpdatePayload {
 /** Client → server payload of `token:delete` (GM only). */
 export interface TokenIdPayload {
   tokenId: string;
+  /**
+   * Skasować przy okazji kartę, pod którą ta figura jest podpięta (etap 38a).
+   *
+   * Pytanie, nie automat, i **nie znacznik**: MG odrzucił 05.09 kolumnę
+   * odróżniającą kartę statysty od zwykłej, więc serwer nie ma po czym poznać,
+   * która karta ginie razem z figurą. Klient pyta, gdy karta nie ma właściciela
+   * i nie stoi na żadnej innej scenie; serwer sprawdza jedno i drugie jeszcze
+   * raz i odmawia skasowania karty gracza — żeby jedno przypadkowe „tak" nie
+   * zabrało Vex.
+   */
+  deleteCharacter?: boolean;
 }
 
 /**
@@ -488,15 +501,6 @@ export function sanitizeTokenPatch(
     const light = sanitizeTokenLight(input.light);
     if (light === undefined) return null;
     patch.light = light;
-  }
-  if ('combatProfile' in input) {
-    // Shape only. What the fields mean, and which values are legal, is the game
-    // system's to decide — the core would have to know what a Stopping Power is
-    // to say more, and that is exactly the knowledge this layer must not have.
-    if (input.combatProfile === null) patch.combatProfile = null;
-    else if (typeof input.combatProfile === 'object' && !Array.isArray(input.combatProfile)) {
-      patch.combatProfile = input.combatProfile as TokenCombatProfile;
-    } else return null;
   }
   if ('statuses' in input) {
     if (!Array.isArray(input.statuses)) return null;

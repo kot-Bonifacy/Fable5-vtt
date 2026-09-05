@@ -19,15 +19,12 @@ import {
 } from '@vtt/shared';
 import type { Character, Scene, Token } from '../generated/prisma/client.js';
 import {
-  SHEET_STATIST_ARMOR_ROW_ID,
   applyDamageToCover,
   applyForcedFailureToSheet,
-  applyForcedFailureToTokenHp,
   applyDamageToSheet,
   applyDamageToTokenHp,
   isValidHitLocation,
   readSheetCombatAwareness,
-  readSheetCombatProfile,
   sheetWoundStatuses,
   undoDamageOnSheet,
   writeSheetStatusTimer,
@@ -386,25 +383,15 @@ async function landDamageOnFigure(
 
   const hp = tokenOwnHp(token);
   if (!hp) throw new RealtimeError('TOKEN_HAS_NO_HP');
-  // Stage 16b: a statted extra brings its own Stopping Power, so the GM no
-  // longer types the armour into every hit — and it wears down like anyone's.
-  const profile = readSheetCombatProfile(token.combatProfile);
-  // Since 29.08 a statted extra keeps the wounds the rules give it, so the
-  // injury table travels here too — the same campaign data the sheet branch
-  // above reads, and for the same draw.
-  const statistCompendium = profile ? await buildCompendiumSync(deps, campaignId) : null;
-  const applied = applyDamageToTokenHp(
-    hp,
-    request,
-    profile,
-    statistCompendium ? { entries: statistCompendium.entries, rng: createMixedRng() } : undefined,
-  );
+  // Kółko na mapie bez karty: same PW, żadnego pancerza i żadnych ran — nie ma
+  // ich gdzie zapisać. Figura ostatystykowana jedzie od 38a gałęzią karty wyżej,
+  // więc jej OB ściera się i jej rany zapisują dokładnie tak, jak graczowi.
+  const applied = applyDamageToTokenHp(hp, request);
   await deps.ctx.prisma.token.update({
     where: { id: token.id },
     data: {
       hpCurrent: applied.hp.current,
       statuses: JSON.stringify(sheetWoundStatuses(parseTokenStatuses(token), applied.hp)),
-      ...(applied.profile ? { combatProfile: JSON.stringify(applied.profile) } : {}),
     },
   });
   await emitTokensById(deps, campaignId, [token.id]);
@@ -488,66 +475,28 @@ function parseTokenStatuses(token: Token): string[] {
  * jednej nowej linii kodu.
  */
 /**
- * To samo dla figury bez karty (31.08).
+ * Ranę nadaną figurze wskazanej **żetonem** przekłada na jej kartę (31.08, 38a).
  *
- * Rana wchodzi tą samą funkcją, którą nadaje ją gaz i broniona strefa
- * (`applyForcedFailureToTokenHp`) — więc niesie to samo, co niosłaby
- * wylosowana: karę zapisaną na wierszu, dopłatę do Testu Przeżywalności
- * i zabraną Akcję z 14e. „Cofnij" na karcie czatu działa bez jednej nowej
- * linijki, bo to zwykła karta obrażeń.
+ * Do 38a była to osobna gałąź zapisu: figura bez karty trzymała rany w profilu
+ * bojowym żetonu. Od 38a każda ostatystykowana figura ma kartę, więc zostaje
+ * z tego samo tłumaczenie „ten żeton → ta karta" i zdarzenie kończy bieg
+ * w tej samej gałęzi, co rana gracza.
  *
- * Żeton bez profilu bojowego jest odmawiany, a nie obsługiwany zdaniem:
- * krążek, który nie ma gdzie zapisać rany, dostałby na czacie kartę mówiącą
- * o ranie, której nikt potem nie znajdzie ani nie załata.
+ * Żeton bez karty jest odmawiany, a nie obsługiwany zdaniem na czacie: krążek,
+ * który nie ma gdzie zapisać rany, dostałby kartę mówiącą o ranie, której nikt
+ * potem nie znajdzie ani nie załata.
  */
-async function assignInjuryToStatist(
+async function characterIdOfFigure(
   deps: RealtimeDeps,
   campaignId: string,
-  user: { id: string },
   tokenId: unknown,
-  injuryId: string,
-): Promise<void> {
+): Promise<string> {
   if (typeof tokenId !== 'string' || tokenId.length === 0) {
     throw new RealtimeError('BAD_REQUEST');
   }
-  const { token, scene } = await requireCampaignToken(deps.ctx.prisma, campaignId, tokenId);
-  if (token.characterId) throw new RealtimeError('BAD_REQUEST');
-  const profile = readSheetCombatProfile(token.combatProfile);
-  if (!profile) throw new RealtimeError('TOKEN_HAS_NO_PROFILE');
-
-  const compendium = await buildCompendiumSync(deps, campaignId);
-  const entry = compendium.entries.find((row) => row.id === injuryId && isCriticalInjuryEntry(row));
-  if (!entry) throw new RealtimeError('UNKNOWN_INJURY');
-  if ((profile.criticalInjuries ?? []).some((row) => row.id === injuryId)) {
-    throw new RealtimeError('INJURY_ALREADY_THERE');
-  }
-
-  const hp: TokenHp | null =
-    token.hpMax === null ? null : { current: token.hpCurrent ?? 0, max: token.hpMax };
-  const applied = applyForcedFailureToTokenHp(
-    hp,
-    profile,
-    { damage: 0, injuryIds: [injuryId] },
-    compendium.entries,
-  );
-  if (!applied.profile) throw new RealtimeError('INJURY_ALREADY_THERE');
-  await deps.ctx.prisma.token.update({
-    where: { id: token.id },
-    data: { combatProfile: JSON.stringify(applied.profile) },
-  });
-  await emitTokensById(deps, campaignId, [token.id]);
-  if (applied.carry) {
-    await oweCarryToToken(deps, token.sceneId, token.id, applied.carry);
-    await emitCombatOfScene(deps, campaignId, scene);
-  }
-  await logDamage(deps, campaignId, user.id, {
-    ...applied.log,
-    targetTokenId: token.id,
-    targetName: token.name,
-    characterId: null,
-    targetOwnerId: token.ownerId,
-    injuryNote: 'Ranę nadał MG — bez rzutu na obrażenia.',
-  });
+  const { token } = await requireCampaignToken(deps.ctx.prisma, campaignId, tokenId);
+  if (!token.characterId) throw new RealtimeError('TOKEN_HAS_NO_PROFILE');
+  return token.characterId;
 }
 
 export const characterInjuryEvent = defineEvent<CharacterInjuryPayload>({
@@ -558,13 +507,13 @@ export const characterInjuryEvent = defineEvent<CharacterInjuryPayload>({
     const characterId = payload?.characterId;
     const injuryId = payload?.injuryId;
     if (typeof injuryId !== 'string') throw new RealtimeError('BAD_REQUEST');
-    // Figura bez karty idzie własną gałęzią, ale **tym samym zdarzeniem**
-    // (31.08): to jedna czynność MG — „ta figura łamie rękę" — i różni się
-    // wyłącznie tym, gdzie rana się zapisuje.
-    if (typeof characterId !== 'string') {
-      return assignInjuryToStatist(deps, campaignId, user, payload?.tokenId, injuryId);
-    }
-    const character = await deps.ctx.prisma.character.findUnique({ where: { id: characterId } });
+    // Figurę można wskazać żetonem zamiast kartą (31.08) — to jedna czynność
+    // MG, „ta figura łamie rękę", a od 38a także jedna gałąź zapisu.
+    const targetId =
+      typeof characterId === 'string'
+        ? characterId
+        : await characterIdOfFigure(deps, campaignId, payload?.tokenId);
+    const character = await deps.ctx.prisma.character.findUnique({ where: { id: targetId } });
     if (!character || character.campaignId !== campaignId) {
       throw new RealtimeError('CHARACTER_NOT_FOUND');
     }
@@ -713,19 +662,14 @@ export const damageUndoEvent = defineEvent<DamageUndoPayload, void>({
       const token = await deps.ctx.prisma.token.findUnique({ where: { id: tokenId } });
       if (token) {
         const hp: TokenHp = { current: entry.hp.before, max: entry.hp.max };
-        // The statist's armour goes back up with the HP (stage 16b). Leaving it
-        // ablated would be the same half-undo the statuses were fixed for in 14d.
-        const profile = readSheetCombatProfile(token.combatProfile);
-        const restoredArmor =
-          profile && entry.armor?.rowId === SHEET_STATIST_ARMOR_ROW_ID
-            ? { ...profile, armorSp: entry.armor.before }
-            : null;
+        // Pancerz cofa się razem z PW na gałęzi karty wyżej (etap 38a): figura,
+        // która ma OB, ma też kartę, a ta idzie przez `restoreSheetDamage`.
+        // Tu zostaje kółko bez karty, które pancerza nie nosi.
         await deps.ctx.prisma.token.update({
           where: { id: token.id },
           data: {
             hpCurrent: hp.current,
             statuses: JSON.stringify(sheetWoundStatuses(parseTokenStatuses(token), hp)),
-            ...(restoredArmor ? { combatProfile: JSON.stringify(restoredArmor) } : {}),
           },
         });
         await emitTokensById(deps, campaignId, [token.id]);

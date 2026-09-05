@@ -26,6 +26,7 @@ import {
   tokenFacingEvent,
   tokenFearedEvent,
   tokenMoveEvent,
+  tokenStatEvent,
   tokenUpdateEvent,
 } from './tokens.js';
 import {
@@ -241,6 +242,7 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   sceneActivateEvent,
   sceneViewEvent,
   tokenCreateEvent,
+  tokenStatEvent,
   tokenUpdateEvent,
   tokenDeleteEvent,
   tokenDuplicateEvent,

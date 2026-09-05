@@ -1,3 +1,16 @@
+> **ROZDZIELONY 05.09.2026 na 38a i 38b.** Odpowiedź MG na pytanie „gdzie mieszka łup statysty"
+> brzmiała **„statysta dostaje pełną kartę postaci"** — czyli odwrotnie, niż proponuje ten opis
+> i niż rozstrzygnął etap 16b. To jest refaktor na całą sesję, więc powstał
+> `etap-38a-statysta-jako-karta.md` (**zrobiony 05.09**), a ten plik opisuje odtąd **38b**:
+> przekazanie, łup i przeszukanie na jednym, już wspólnym modelu ekwipunku.
+>
+> **Trzy rozstrzygnięcia MG z 05.09 obowiązują 38b:**
+> 1. **Przyjęcie wymaga potwierdzenia odbiorcy** — przekazanie trafia do odbiorcy jako oczekująca
+>    propozycja (wzorem wezwania do Testu z etapu 32) i wchodzi na kartę dopiero po „Przyjmij".
+> 2. **Cel musi być widoczny** — ten sam warunek, którym rozwiązano `Ustabilizowanie` w 14e.
+> 3. **Łup statysty to jego ekwipunek**, bo statysta ma od 38a kartę. Punkt „lista łupu na
+>    `combatProfile`" z zakresu niżej jest **nieaktualny** — kolumna nie istnieje.
+
 # Etap 38 — Przedmioty między kartami: przekazanie, łup, przeszukanie
 
 **Faza:** H — Świat CP RED · **Wymaga etapów:** 13 (kompendium), 23b (ekonomia),

@@ -17,8 +17,6 @@ import {
   CPRED_ACTION_STABILIZE,
   CPRED_ACTION_COMBAT_AWARENESS,
   ROLE_GM,
-  combatProfileRollableSkills,
-  combatProfileSkillLevel,
   attachmentProfilesOf,
   cpredHotbarGroups,
   cpredRoleAbilityRank,
@@ -32,12 +30,11 @@ import {
   effectiveArmorSp,
   empFromHumanity,
   hotbarSlotsFor,
-  hpMax,
+  cpredSheetHpMax,
   humanityMaxWith,
   isAmmoEntry,
   isWeaponEntry,
   resolveWeapon,
-  sanitizeCombatProfile,
   sanitizeCriticalInjuryRows,
   toAmmoProfile,
 } from '@vtt/shared';
@@ -210,10 +207,10 @@ export function hudTurnRefusal(
  * A token with neither is not described here at all: the panel then shows the
  * name and the hit points, which is everything anybody knows about it.
  */
-function hudVitalsFor(sheet: CpredCharacterData | null, token: TokenView): HudVitals | null {
+function hudVitalsFor(sheet: CpredCharacterData | null): HudVitals | null {
   if (sheet) {
     const roles = useCharacterStore.getState().registry.roles;
-    const max = hpMax(sheet.stats);
+    const max = cpredSheetHpMax(sheet);
     const budget = cpredMoveBudgetFromSheet({
       move: sheet.stats.move,
       hpCurrent: sheet.hpCurrent,
@@ -248,14 +245,9 @@ function hudVitalsFor(sheet: CpredCharacterData | null, token: TokenView): HudVi
     };
   }
 
-  const profile = token.combatProfile ? sanitizeCombatProfile(token.combatProfile) : null;
-  if (!profile) return null;
-  return {
-    roleName: null,
-    armor: { body: profile.armorSp, head: profile.armorSp },
-    move: null,
-    emp: null,
-  };
+  // Figura bez karty nie ma czym wypełnić paska (etap 38a) — do 38a jej OB
+  // czytało się z profilu bojowego żetonu, a profil zniknął razem z gałęzią.
+  return null;
 }
 
 /** Builds the whole HUD state for one token by reading the stores. */
@@ -298,7 +290,6 @@ export function hudContextFor(tokenId: string | null): HudContext {
 
   const slots = hotbarSlotsFor({
     sheet: character ? character.data : null,
-    profile: character || !token.combatProfile ? null : sanitizeCombatProfile(token.combatProfile),
     resolve: (compendiumId) => {
       const entry = compendiumId ? compendium.entries[compendiumId] : undefined;
       return entry && isWeaponEntry(entry) ? resolveWeapon(entry, { weaponTypeById }) : null;
@@ -343,7 +334,7 @@ export function hudContextFor(tokenId: string | null): HudContext {
     token,
     combatant,
     turn,
-    vitals: hudVitalsFor(character?.data ?? null, token),
+    vitals: hudVitalsFor(character?.data ?? null),
     acting: combatant !== null && combat?.activeCombatantId === combatant.id,
     // „Not your turn" outranks everything the slot itself had to say: the
     // reason on the button has to be the one that will actually refuse it.
@@ -362,24 +353,25 @@ export function hudContextFor(tokenId: string | null): HudContext {
 }
 
 /**
- * Umiejętności figury bez karty, z nazwami z rejestru.
+ * Umiejętności figury prowadzonej przez MG, z nazwami z rejestru.
  *
- * Czytane z profilu, a nie z publicznej części żetonu, i to jest różnica
- * względem ran tuż wyżej: „co ta figura umie" jest wiedzą o przeciwniku —
- * tym samym, czym jest jego broń i pancerz. Rzucać nią i tak może wyłącznie
- * ten, kto figurę prowadzi, więc lista jedzie tam, gdzie już jedzie profil.
+ * Lista mówi „czym tej figurze **wolno** rzucić" — do 38a mieszkała w profilu
+ * bojowym żetonu, teraz jest zwykłą listą Umiejętności karty. Karta gracza tędy
+ * nie jedzie: swoje Umiejętności gracz rzuca z karty, a paska od tego nie ma.
+ *
+ * Poziom jest tym wydrukowanym na karcie; funkcjonariusz Wsparcia rzuca
+ * Wartością bojową, którą serwer podstawia przy rzucie (`sheetForRoll`).
  */
 function figureSkillsOf(token: TokenView): { id: string; name: string; level: number }[] {
-  if (!token.combatProfile) return [];
-  const profile = sanitizeCombatProfile(token.combatProfile);
+  if (!token.characterId) return [];
+  const character = useCharacterStore.getState().characters[token.characterId];
+  if (!character || character.ownerId !== null) return [];
   const registry = useCharacterStore.getState().registry;
   const byId = new Map(registry.skills.map((skill) => [skill.id, skill]));
-  return combatProfileRollableSkills(profile)
-    .map((id) => {
+  return Object.entries(character.data.skills)
+    .map(([id, level]) => {
       const definition = byId.get(id);
-      return definition
-        ? { id, name: definition.name, level: combatProfileSkillLevel(profile, id) }
-        : null;
+      return definition ? { id, name: definition.name, level } : null;
     })
     .filter((row): row is { id: string; name: string; level: number } => row !== null)
     .sort((a, b) => a.name.localeCompare(b.name, 'pl'));

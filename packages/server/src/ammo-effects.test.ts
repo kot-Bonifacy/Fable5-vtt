@@ -491,7 +491,7 @@ describe('ammunition that deals no damage', () => {
       // Statysta nadal nie dostaje rany na żadną kartę — ale stół wie, o którą
       // ranę chodzi, i to jest cała różnica.
       expect(log?.injuryNote).toContain('Uraz oka (test)');
-      expect(log?.injuryNote).toContain('statysta nie ma karty');
+      expect(log?.injuryNote).toContain('figura nie ma karty');
       expect(log?.injuryNote).not.toContain('injury.');
       await load('ammo.sample-gas');
     });
@@ -536,23 +536,21 @@ describe('ammunition that deals no damage', () => {
         'compendium:upsert (ammo)',
       );
 
-      await emitAck(gm, 'token:update', {
+      await emitAck(gm, 'token:stat', {
         tokenId: mookTokenId,
-        patch: {
-          combatProfile: {
-            ref: 5,
-            dex: 5,
-            body: 5,
-            will: 5,
-            skillLevel: 4,
-            evasion: 2,
-            armorSp: 0,
-            weaponId: null,
-            weaponName: 'Pięści',
-            weaponDamage: '1k6',
-            ammoCurrent: 0,
-            ammoMax: 0,
-          },
+        quick: {
+          ref: 5,
+          dex: 5,
+          body: 5,
+          will: 5,
+          skillLevel: 4,
+          evasion: 2,
+          armorSp: 0,
+          weaponId: null,
+          weaponName: 'Pięści',
+          weaponDamage: '1k6',
+          ammoCurrent: 0,
+          ammoMax: 0,
         },
       });
 
@@ -569,9 +567,11 @@ describe('ammunition that deals no damage', () => {
 
       const sync = waitFor<StateSyncPayload>(gm, 'state:sync');
       await emitAck(gm, 'state:request');
-      const token = (await sync).tokens.find((entry) => entry.id === mookTokenId);
-      const profile = token?.combatProfile as Record<string, unknown> | undefined;
-      const wounds = (profile?.criticalInjuries ?? []) as Record<string, unknown>[];
+      const state = await sync;
+      const token = state.tokens.find((entry) => entry.id === mookTokenId);
+      const card = state.characters.find((entry) => entry.id === token?.characterId)?.data as
+        CpredCharacterData | undefined;
+      const wounds = (card?.criticalInjuries ?? []) as unknown as Record<string, unknown>[];
       expect(wounds.map((row) => row.name)).toContain('Uraz oka (profil)');
       // Zegar z 16h jedzie razem z raną — inaczej byłaby dożywotnia.
       expect(wounds[0]?.timed).toBeTruthy();
@@ -581,7 +581,9 @@ describe('ammunition that deals no damage', () => {
         condition: 'ataków dystansowych',
       });
 
-      await emitAck(gm, 'token:update', { tokenId: mookTokenId, patch: { combatProfile: null } });
+      // Odpięcie karty zabiera figurze wszystko, czym była — dokładnie to, co
+      // do 38a robiło `combatProfile: null`.
+      await emitAck(gm, 'token:update', { tokenId: mookTokenId, patch: { characterId: null } });
       await load('ammo.sample-gas');
     });
   });

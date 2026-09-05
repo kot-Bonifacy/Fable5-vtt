@@ -11,13 +11,14 @@ import type {
   CharacterView,
   CombatView,
   CpredCharacterData,
-  CpredCombatProfile,
+  CpredStatistQuick,
   InvitationSummary,
   SceneView,
   SocketAck,
   StateSyncPayload,
   TokenView,
 } from '@vtt/shared';
+import { statistQuick } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 
@@ -188,6 +189,15 @@ describe('Wsparcie: wezwanie, oczekiwanie, przybycie', () => {
     return (await sync).tokens;
   }
 
+  /** Sześć pól figury, odczytane z jej karty (etap 38a). */
+  async function quickOf(token: TokenView): Promise<CpredStatistQuick> {
+    const sync = waitFor<StateSyncPayload>(gm, 'state:sync');
+    gm.emit('state:request');
+    const card = (await sync).characters.find((entry) => entry.id === token.characterId);
+    if (!card) throw new Error('figure carries no character sheet');
+    return statistQuick(card.data as CpredCharacterData);
+  }
+
   /** Kolejka taka, jaka jest — bez przesuwania tury, bo tura tyka rundy. */
   async function combatNow(): Promise<CombatView> {
     const sync = waitFor<StateSyncPayload>(gm, 'state:sync');
@@ -281,8 +291,10 @@ describe('Wsparcie: wezwanie, oczekiwanie, przybycie', () => {
     const tokens = await tokensOfScene();
     const officers = tokens.filter((token) => token.name.startsWith('Korpogliniarz'));
     expect(officers).toHaveLength(4);
-    const profile = officers[0]!.combatProfile as unknown as CpredCombatProfile;
+    const profile = await quickOf(officers[0]!);
     expect(profile).toMatchObject({ skillLevel: 8, evasion: 8, armorSp: 7, noBulletDodge: true });
+    // Wartość bojowa siedzi w bloku statystyk karty — to ona wchodzi do rzutu.
+    expect(profile.combatValue).toBe(8);
     expect(officers[0]!.hp).toEqual({ current: 20, max: 20 });
     // Broń znaleziona po nazwie w kompendium — obrażenia z typu, nie pięści.
     expect(profile.weaponName).toBe('Ciężki pistolet');
@@ -517,7 +529,7 @@ describe('Wsparcie: wezwanie, oczekiwanie, przybycie', () => {
     )!;
     expect(agent).toBeTruthy();
 
-    const profile = agent.combatProfile as unknown as CpredCombatProfile;
+    const profile = await quickOf(agent);
     // Wartość bojowa 14 — a nie 10, do którego ścinał ją limit karty postaci.
     expect(profile.skillLevel).toBe(14);
     expect(profile.evasion).toBe(14);
@@ -525,8 +537,10 @@ describe('Wsparcie: wezwanie, oczekiwanie, przybycie', () => {
     // „Atrakcyjności", więc czternaście z piętnastu — brakująca ma **wypaść**,
     // a nie wywrócić figurę.
     expect(Object.keys(profile.skills ?? {})).toHaveLength(14);
-    expect(profile.skills?.deduction).toBe(14);
-    expect(profile.skills?.['conceal-reveal-object']).toBe(14);
+    // Na karcie stoją przy suficie karty (etap 38a) — prawdziwą czternastkę
+    // podstawia Wartość bojowa przy rzucie, co sprawdza asercja niżej.
+    expect(profile.skills?.deduction).toBe(10);
+    expect(profile.skills?.['conceal-reveal-object']).toBe(10);
 
     const message = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
     const rolled = await emitAck<{ messageId: number }>(gm, 'character:roll', {
@@ -602,9 +616,9 @@ describe('Wsparcie: wezwanie, oczekiwanie, przybycie', () => {
     const seen = (await sync).tokens.find((t) => t.id === officer.id)!;
     expect(seen).toBeDefined();
     expect((seen.injuries ?? []).map((row) => (row as { id: string }).id)).toEqual([wound]);
-    // …a profil zostaje po stronie serwera: broń, pancerz i Wartość bojowa to
+    // …a karta zostaje po stronie serwera: broń, pancerz i Wartość bojowa to
     // rzeczy, których gracz uczy się, dostając w twarz.
-    expect(seen.combatProfile).toBeUndefined();
+    expect((await sync).characters.some((entry) => entry.id === seen.characterId)).toBe(false);
     expect(seen.hp).toBeUndefined();
 
     for (const token of (await tokensOfScene()).filter((t) => t.name.startsWith('Korpogliniarz'))) {

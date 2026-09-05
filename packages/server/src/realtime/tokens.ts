@@ -13,6 +13,7 @@ import type {
   TokenDeleteBroadcast,
   TokenDuplicatePayload,
   TokenIdPayload,
+  TokenStatPayload,
   TokenMoveBroadcast,
   TokenMovePayload,
   TokenPatch,
@@ -45,8 +46,9 @@ import type { PrismaClient } from '../db.js';
 import type { Character, Scene, Token } from '../generated/prisma/client.js';
 import {
   readSheetFearedTokens,
-  readSheetTokenInjuries,
-  sheetCombatProfile,
+  sheetFromQuickStats,
+  sheetQuickStats,
+  writeSheetQuickStats,
   sheetWoundStatuses,
   toLinkedSheet,
   writeSheetFearedTokens,
@@ -69,7 +71,7 @@ import {
   type ViewerLighting,
 } from './vision.js';
 import { requireCampaignScene } from './scenes.js';
-import { emitCharacterUpsert, toCharacterView } from './character-io.js';
+import { emitCharacterDelete, emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { emitCombatOfScene, findGrapple, loadCombat } from './combat.js';
 import { validateTokenMove } from './movement.js';
 import { enforceNetRunRange } from './netice.js';
@@ -82,26 +84,6 @@ function parseStatuses(raw: string): string[] {
     return Array.isArray(parsed) ? parsed.filter((s): s is string => typeof s === 'string') : [];
   } catch {
     return [];
-  }
-}
-
-/**
- * The statist's combat profile as it travels (stage 16b) — an object or null.
- *
- * Reads the column without interpreting it: which fields it should hold is the
- * game system's business (`sanitizeCombatProfile` in `systems/cpred`), and this
- * module deliberately does not know. Anything unreadable becomes null, which is
- * exactly what „this token has not been statted" already means.
- */
-function parseCombatProfileColumn(raw: string | null): TokenCombatProfile | null {
-  if (raw === null || raw.length === 0) return null;
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
-      ? (parsed as TokenCombatProfile)
-      : null;
-  } catch {
-    return null;
   }
 }
 
@@ -139,13 +121,13 @@ export function toTokenView(
     // information the table is meant to be able to use.
     facing: token.facing,
   };
-  // Rany figury bez karty jadą **publicznie** (31.08), w odróżnieniu od reszty
-  // profilu tuż niżej: przy stole widać, że ktoś ma odciętą dłoń, a Medyk
-  // gracza ma mieć co załatać. Figura z kartą nie dostaje tu nic — jej rany
-  // stoją na karcie, i to karta rozstrzyga, kto je widzi.
-  if (!token.characterId) {
-    const injuries = readSheetTokenInjuries(token.combatProfile);
-    if (injuries.length > 0) view.injuries = injuries;
+  // Rany figury prowadzonej przez MG jadą **publicznie** (31.08): przy stole
+  // widać, że ktoś ma odciętą dłoń, a Medyk gracza ma mieć co załatać. Do 38a
+  // czytało się je z profilu bojowego żetonu; teraz z karty, bo profilu nie ma.
+  // Karta z właścicielem tędy nie jedzie — swoje rany gracz widzi na własnej
+  // karcie, a cudzych oglądać nie ma po co.
+  if (linked && linked.ownerId === null && linked.injuries.length > 0) {
+    view.injuries = linked.injuries;
   }
   if (includePrivate) {
     // The alias itself is private: the editor needs it to show what the table
@@ -154,10 +136,6 @@ export function toTokenView(
     if (token.publicName !== null) view.publicName = token.publicName;
     view.characterId = token.characterId;
     view.visionRange = token.visionRange;
-    // The statist's gun and armour (stage 16b). Opaque to this module by
-    // design — it reads the column and forwards it, and never asks what a
-    // Stopping Power is.
-    view.combatProfile = parseCombatProfileColumn(token.combatProfile);
     // Kogo ta figura się boi (23c) — bez tej listy naklejka „Onieśmielony"
     // w menu żetonu nie miała jak pokazać, czy w ogóle nakłada karę.
     view.feared = readSheetFearedTokens(token.statusData);
@@ -475,12 +453,15 @@ export async function freeSpotsNear(
 }
 
 /**
- * Puts a figure with no sheet on the map (stage 30c).
+ * Stawia na scenie figurę ostatystykowaną z góry — dziś woła to Wsparcie (30c).
  *
  * The server's own `token:create`: Backup answers a player's radio, and
  * `token:create` is GM-only for good reasons that have nothing to do with this.
- * Deliberately thin — a name, a spot, hit points and the system's opaque blob —
- * because everything that makes the figure dangerous already lives in that blob.
+ *
+ * Od etapu 38a zakłada **kartę**, nie kolumnę JSON na żetonie: funkcjonariusz
+ * Wsparcia jest taką samą figurą co ganger wpisany ręcznie w menu, a to, co go
+ * czyni groźnym, siedzi teraz w `Character.data` razem z Wartością bojową
+ * i wydrukowanymi PW (`statBlock`).
  */
 export async function createStatistToken(
   deps: RealtimeDeps,
@@ -490,10 +471,21 @@ export async function createStatistToken(
     name: string;
     at: { x: number; y: number };
     hp: number;
-    profile: TokenCombatProfile;
+    quick: TokenCombatProfile;
     imageUrl?: string | null;
   },
 ): Promise<Token> {
+  const quick = sheetQuickStats({ ...spec.quick, hpCurrent: spec.hp, hpMax: spec.hp });
+  const character = await deps.ctx.prisma.character.create({
+    data: {
+      campaignId,
+      name: spec.name,
+      // Figura, którą prowadzi MG — jak każdy inny NPC (patrz `team.ts`).
+      ownerId: null,
+      data: sheetFromQuickStats(quick),
+    },
+  });
+  await emitCharacterUpsert(deps, campaignId, toCharacterView(character, deps.ctx.cpred));
   const token = await deps.ctx.prisma.token.create({
     data: {
       sceneId: scene.id,
@@ -503,12 +495,10 @@ export async function createStatistToken(
       y: spec.at.y,
       size: 1,
       ownerId: null,
-      hpCurrent: spec.hp,
-      hpMax: spec.hp,
-      combatProfile: JSON.stringify(spec.profile),
+      characterId: character.id,
     },
   });
-  await emitTokenUpsert(deps, campaignId, scene, token, null);
+  await emitTokenUpsert(deps, campaignId, scene, token, toLinkedSheet(character, deps.ctx.cpred));
   return token;
 }
 
@@ -841,10 +831,34 @@ export const tokenDuplicateEvent = defineEvent<TokenDuplicatePayload, TokenView>
     const linkedOrigin = token.characterId
       ? await deps.ctx.prisma.character.findUnique({ where: { id: token.characterId } })
       : null;
-    const hpMax =
-      linkedOrigin && linkedOrigin.campaignId === campaignId
-        ? toLinkedSheet(linkedOrigin, deps.ctx.cpred).hp.max
-        : token.hpMax;
+    const origin = linkedOrigin?.campaignId === campaignId ? linkedOrigin : null;
+    const hpMax = origin ? toLinkedSheet(origin, deps.ctx.cpred).hp.max : token.hpMax;
+
+    /**
+     * Kopia figury MG dostaje **własną kartę** (etap 38a).
+     *
+     * Do 38a kopiował się profil bojowy z kolumny żetonu i kopia była od razu
+     * osobną figurą; gdyby zamiast tego przejęła podpięcie, dwa żetony dzieliłyby
+     * jedne PW i strzał w jednego gangera kładłby drugiego. Karta **gracza** się
+     * nie kopiuje — dwie figury Vex to nadal jedna Vex, i tak działa to od 35.
+     */
+    const copiedCharacter =
+      origin && origin.ownerId === null
+        ? await deps.ctx.prisma.character.create({
+            data: {
+              campaignId,
+              name,
+              ownerId: null,
+              // Świeża figura (decyzja MG przy etapie 35): pełne PW. Reszta
+              // karty jedzie jak stała — łącznie z ranami, bo tak samo
+              // kopiował się profil bojowy do 38a.
+              data: writeSheetHp(origin, hpMax ?? 0, deps.ctx.cpred).data,
+            },
+          })
+        : null;
+    if (copiedCharacter) {
+      await emitCharacterUpsert(deps, campaignId, toCharacterView(copiedCharacter, deps.ctx.cpred));
+    }
 
     const copy = await deps.ctx.prisma.token.create({
       data: {
@@ -857,9 +871,9 @@ export const tokenDuplicateEvent = defineEvent<TokenDuplicatePayload, TokenView>
         size: token.size,
         ownerId: token.ownerId,
         hidden: token.hidden,
-        hpCurrent: hpMax,
-        hpMax,
-        combatProfile: token.combatProfile,
+        ...(copiedCharacter
+          ? { characterId: copiedCharacter.id, hpCurrent: null, hpMax: null }
+          : { hpCurrent: hpMax, hpMax }),
         facing: token.facing,
         visionRange: token.visionRange,
         lightBrightM: token.lightBrightM,
@@ -869,8 +883,9 @@ export const tokenDuplicateEvent = defineEvent<TokenDuplicatePayload, TokenView>
         lightOn: token.lightOn,
       },
     });
-    await emitTokenUpsert(deps, campaignId, scene, copy, null);
-    return toTokenView(copy, true, null);
+    const copyLinked = copiedCharacter ? toLinkedSheet(copiedCharacter, deps.ctx.cpred) : null;
+    await emitTokenUpsert(deps, campaignId, scene, copy, copyLinked);
+    return toTokenView(copy, true, copyLinked);
   },
 });
 
@@ -914,15 +929,6 @@ export const tokenUpdateEvent = defineEvent<TokenUpdatePayload, TokenView>({
       }
     }
     if (patch.characterId !== undefined) data.characterId = patch.characterId;
-    // The statist's fighting numbers (stage 16b). Stored as the system handed
-    // them over, sanitised on the way in by `sheetCombatProfile` — the core
-    // must not decide that BODY 99 is wrong, only that this is an object.
-    if (patch.combatProfile !== undefined) {
-      data.combatProfile =
-        patch.combatProfile === null
-          ? null
-          : JSON.stringify(sheetCombatProfile(patch.combatProfile));
-    }
     // A linked token has no HP of its own: the value is written through to
     // the sheet (single source of truth) and echoed back to sheet viewers.
     let linked: LinkedSheet | null = character ? toLinkedSheet(character, deps.ctx.cpred) : null;
@@ -992,6 +998,72 @@ export const tokenUpdateEvent = defineEvent<TokenUpdatePayload, TokenView>({
   },
 });
 
+/**
+ * Szybkie statystyki figury z menu żetonu (etap 38a) — sześć pól, jedno
+ * zdarzenie.
+ *
+ * Zastępuje `token:update { combatProfile }` z etapu 16b, i różnica jest cała:
+ * tamto pisało kilkanaście liczb w kolumnę JSON żetonu, to zakłada figurze
+ * **kartę postaci** (albo poprawia tę, którą już ma). Jedno zdarzenie zamiast
+ * „utwórz kartę, potem podepnij, potem zapisz", bo trzy kroki z trzema
+ * okazjami do zerwania to jest dokładnie ten rodzaj rzeczy, który zostawia
+ * figurę bez karty i kartę bez figury.
+ *
+ * Szybkość z 16b zostaje: MG nadal wpisuje sześć liczb, a nie wypełnia karty.
+ */
+export const tokenStatEvent = defineEvent<TokenStatPayload, TokenView>({
+  name: 'token:stat',
+  role: ROLE_GM,
+  handler: async ({ deps, socket, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    const { token, scene } = await requireCampaignToken(
+      deps.ctx.prisma,
+      campaignId,
+      payload?.tokenId,
+    );
+    if (typeof payload?.quick !== 'object' || payload.quick === null) {
+      throw new RealtimeError('BAD_REQUEST');
+    }
+    const quick = sheetQuickStats(payload.quick);
+
+    let character = token.characterId
+      ? await deps.ctx.prisma.character.findUnique({ where: { id: token.characterId } })
+      : null;
+    if (character && character.campaignId !== campaignId) throw new RealtimeError('NOT_FOUND');
+
+    let updated = token;
+    if (character) {
+      character = await deps.ctx.prisma.character.update({
+        where: { id: character.id },
+        data: { data: writeSheetQuickStats(character, quick, deps.ctx.cpred) },
+      });
+    } else {
+      character = await deps.ctx.prisma.character.create({
+        data: {
+          campaignId,
+          // Karta nosi imię figury: „Ganger 2" na mapie i „Ganger 2" w rosterze.
+          name: token.name,
+          ownerId: null,
+          data: sheetFromQuickStats(quick),
+        },
+      });
+      // Własne PW żetonu schodzą razem z podpięciem — dwa domy dla jednej
+      // liczby to jest to, jak się rozjeżdżają (umowa z 05).
+      updated = await deps.ctx.prisma.token.update({
+        where: { id: token.id },
+        data: { characterId: character.id, hpCurrent: null, hpMax: null },
+      });
+    }
+    await emitCharacterUpsert(deps, campaignId, toCharacterView(character, deps.ctx.cpred));
+    const linked = toLinkedSheet(character, deps.ctx.cpred);
+    // Przekroczenie progu ran ma przestawić naklejki — tak samo jak przy
+    // każdej innej zmianie PW (etap 15).
+    updated = await syncWoundStatuses(deps, updated, linked.hp);
+    await emitTokenUpsert(deps, campaignId, scene, updated, linked);
+    return toTokenView(updated, true, linked);
+  },
+});
+
 export const tokenDeleteEvent = defineEvent<TokenIdPayload>({
   name: 'token:delete',
   role: ROLE_GM,
@@ -1002,8 +1074,32 @@ export const tokenDeleteEvent = defineEvent<TokenIdPayload>({
       campaignId,
       payload?.tokenId,
     );
+    // Karta ginie razem z figurą — ale wyłącznie na wyraźne „tak" i wyłącznie
+    // wtedy, gdy naprawdę nie ma po niej kto płakać (etap 38a). Serwer sprawdza
+    // oba warunki jeszcze raz, bo klient pyta z tego, co widzi na ekranie:
+    // karta z właścicielem jest kartą gracza, a karta stojąca na drugiej scenie
+    // przeżyje skasowanie tej figury.
+    const doomedCharacterId = payload?.deleteCharacter === true ? token.characterId : null;
+    let orphanCharacterId: string | null = null;
+    if (doomedCharacterId) {
+      const character = await deps.ctx.prisma.character.findUnique({
+        where: { id: doomedCharacterId },
+        select: { id: true, ownerId: true, campaignId: true },
+      });
+      const elsewhere = await deps.ctx.prisma.token.count({
+        where: { characterId: doomedCharacterId, id: { not: token.id } },
+      });
+      if (character && character.campaignId === campaignId && !character.ownerId && !elsewhere) {
+        orphanCharacterId = character.id;
+      }
+    }
+
     await deps.ctx.prisma.token.delete({ where: { id: token.id } });
     emitTokenDelete(deps, campaignId, scene, token.id, !token.hidden);
+    if (orphanCharacterId) {
+      await deps.ctx.prisma.character.delete({ where: { id: orphanCharacterId } });
+      await emitCharacterDelete(deps, campaignId, orphanCharacterId, null);
+    }
     // Removing a token can take a player's eyes off the map with it, and with
     // them everything those eyes were keeping visible.
     if (usesDynamicVision(scene)) {

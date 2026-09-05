@@ -527,9 +527,9 @@ describe('Specjalizacje Medycyny i Twórcy na karcie', () => {
       }),
       'token:create',
     );
-    await emitAck(gm, 'token:update', {
+    await emitAck(gm, 'token:stat', {
       tokenId: turret.id,
-      patch: { combatProfile: { ref: 6, dex: 4, body: 6, will: 4, skillLevel: 6, evasion: 2 } },
+      quick: { ref: 6, dex: 4, body: 6, will: 4, skillLevel: 6, evasion: 2 },
     });
 
     // Publiczna próbka kompendium nie ma tabel ran (są w podręczniku, więc

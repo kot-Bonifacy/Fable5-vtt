@@ -37,7 +37,7 @@ import {
   cpredPharmaceutical,
   cpredRestDay,
   cpredSheetMedicine,
-  hpMax,
+  cpredSheetHpMax,
   mergeCharacterData,
   metresBetweenTokens,
   metresForRules,
@@ -553,7 +553,7 @@ async function applyDose(
     };
   }
   const gain = data.stats.body + data.stats.will;
-  const hpAfter = Math.min(hpMax(data.stats), data.hpCurrent + gain);
+  const hpAfter = Math.min(cpredSheetHpMax(data), data.hpCurrent + gain);
   const saved = await deps.ctx.prisma.character.update({
     where: { id: target.character.id },
     data: { data: JSON.stringify(mergeCharacterData(data, { hpCurrent: hpAfter })) },

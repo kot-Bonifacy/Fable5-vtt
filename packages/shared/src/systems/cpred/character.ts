@@ -70,11 +70,14 @@ import {
   type NetProgramClass,
   type NetProgramTarget,
 } from './netrunning.js';
+import { sanitizeStatBlock, statBlockHpMax, type CpredStatBlock } from './statblock.js';
 import {
   CPRED_STAT_IDS,
   CPRED_STAT_LABELS,
+  CPRED_SHEET_STAT_MIN,
   CPRED_STAT_MAX,
-  CPRED_STAT_MIN,
+  SKILL_LEVEL_MAX,
+  SKILL_LEVEL_MIN,
   type CpredStatId,
   type CpredStats,
 } from './stats.js';
@@ -97,8 +100,7 @@ import {
 
 export const CPRED_SCHEMA_VERSION = 2;
 
-export const SKILL_LEVEL_MIN = 0;
-export const SKILL_LEVEL_MAX = 10;
+export { SKILL_LEVEL_MIN, SKILL_LEVEL_MAX } from './stats.js';
 export const ROLE_RANK_MIN = 1;
 export const ROLE_RANK_MAX = 10;
 export const EDDIES_MAX = 10_000_000;
@@ -1013,6 +1015,20 @@ export interface CpredCharacterData {
    * so one deck, not a list of them. A second deck in the backpack is an
    * ordinary `gear` row until it is the one being used.
    */
+  /**
+   * Wydrukowany blok statystyk (etap 38a) — Wartość bojowa, zakaz uniku przed
+   * pociskami i wydrukowane PW. `null` na karcie postaci, czyli prawie zawsze.
+   *
+   * Nosi go figura, której podręcznik podaje gotowe liczby zamiast Cech
+   * i Umiejętności: funkcjonariusz Wsparcia (s. 158), Demon (s. 212),
+   * wieżyczka (s. 214), ganger ostatystykowany szybkim edytorem w menu żetonu.
+   * **Nie jest kategorią karty** — MG odrzucił 05.09 znacznik statysty
+   * w rosterze, a nazwanemu NPC-owi wolno mieć Wartość bojową tak samo.
+   *
+   * Trzy pola zamiast trzech osobnych kolumn na karcie, bo to jeden fakt:
+   * „tej figury nie liczy się, tylko czyta". Szczegóły w `statblock.ts`.
+   */
+  statBlock: CpredStatBlock | null;
   cyberdeck: CpredCyberdeck | null;
 }
 
@@ -1104,6 +1120,7 @@ export function createDefaultCharacterData(): CpredCharacterData {
     lifepath: createDefaultLifepath(),
     aliases: '',
     improvementPoints: 0,
+    statBlock: null,
     cyberdeck: null,
   };
 }
@@ -1132,11 +1149,11 @@ function validateStats(raw: unknown, issues: CpredValidationIssue[]): CpredStats
   const stats = {} as CpredStats;
   for (const id of CPRED_STAT_IDS) {
     const value = input[id];
-    if (!isInteger(value) || value < CPRED_STAT_MIN || value > CPRED_STAT_MAX) {
+    if (!isInteger(value) || value < CPRED_SHEET_STAT_MIN || value > CPRED_STAT_MAX) {
       issues.push(
         issue(
           `stats.${id}`,
-          `Cecha ${CPRED_STAT_LABELS[id].name} musi być liczbą całkowitą od ${CPRED_STAT_MIN} do ${CPRED_STAT_MAX}.`,
+          `Cecha ${CPRED_STAT_LABELS[id].name} musi być liczbą całkowitą od ${CPRED_SHEET_STAT_MIN} do ${CPRED_STAT_MAX}.`,
         ),
       );
       return undefined;
@@ -2073,6 +2090,10 @@ function collectCharacterDataPatch(
       patch.improvementPoints = value;
     }
   }
+  // Etap 38a — wydrukowany blok statystyk.
+  if ('statBlock' in input) {
+    patch.statBlock = sanitizeStatBlock(input.statBlock);
+  }
   // Stage 26a — the deck and its slots.
   if ('cyberdeck' in input) {
     const deck = validateCyberdeck(input.cyberdeck, issues);
@@ -2216,7 +2237,10 @@ export function validateCharacterDataPatch(
  * leave current HP, luck or humanity above their recomputed maximums.
  */
 export function normalizeCharacterData(data: CpredCharacterData): CpredCharacterData {
-  const hpCurrent = Math.min(data.hpCurrent, hpMax(data.stats));
+  // Etap 38a: sufitem jest maksimum **tej karty**, a nie liczba z BC i SW.
+  // Funkcjonariusz Wsparcia z wydrukowanymi PW 35 przy BC 4 tracił tu
+  // piętnaście punktów przy pierwszym zapisie.
+  const hpCurrent = Math.min(data.hpCurrent, statBlockHpMax(data.stats, data.statBlock));
   return {
     ...data,
     hpCurrent,

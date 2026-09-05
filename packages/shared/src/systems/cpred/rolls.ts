@@ -28,6 +28,7 @@ import type { CpredAmmoProfile } from './ammo.js';
 import { effectiveCpredStats } from './cyberware.js';
 import { cpredEffectiveStats, cpredStatEffectRows } from './stateffects.js';
 import { deathSaveTarget, hpMax } from './derived.js';
+import { cpredSheetHpMax, type CpredStatBlockCarrier } from './statblock.js';
 import {
   CPRED_HIT_LOCATION_LABELS,
   type CpredAimPoint,
@@ -96,6 +97,18 @@ export function woundState(
   stats: Pick<CpredStats, 'body' | 'will'>,
 ): CpredWoundState {
   return woundStateFromHp(hpCurrent, hpMax(stats));
+}
+
+/**
+ * Stan ran **tej karty** (etap 38a): próg liczy się z jej maksimum PW, a to
+ * może być wydrukowane. `woundState` wyżej bierze same Cechy i zostaje dla
+ * kreatora — funkcjonariusz Wsparcia z PW 35 przy BC 4 policzyłby tam próg 10
+ * i byłby ciężko ranny, mając na liczniku trzydzieści punktów.
+ */
+export function cpredSheetWoundState(
+  sheet: CpredStatBlockCarrier & { hpCurrent: number },
+): CpredWoundState {
+  return woundStateFromHp(sheet.hpCurrent, cpredSheetHpMax(sheet));
 }
 
 /** Penalty applied to every check: −2 seriously wounded, −4 mortally wounded. */

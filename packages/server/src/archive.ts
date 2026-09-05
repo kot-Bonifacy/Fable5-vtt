@@ -301,7 +301,6 @@ export async function exportScene(
           hpMax: true,
           statuses: true,
           statusData: true,
-          combatProfile: true,
           facing: true,
           visionRange: true,
           lightBrightM: true,
@@ -385,7 +384,6 @@ export async function exportScene(
       ...row,
       statuses: parseJsonColumn(row.statuses),
       statusData: parseJsonColumn(row.statusData),
-      combatProfile: parseJsonColumn(row.combatProfile),
     })),
     walls,
     covers,
@@ -539,10 +537,6 @@ export async function importScene(
           hpMax: maybeNum(row.hpMax),
           statuses: stringifyJsonColumn(row.statuses, '[]'),
           statusData: stringifyJsonColumn(row.statusData, '{}'),
-          combatProfile:
-            row.combatProfile === null || row.combatProfile === undefined
-              ? null
-              : stringifyJsonColumn(row.combatProfile, '{}'),
           facing: maybeNum(row.facing),
           visionRange: maybeNum(row.visionRange),
           lightBrightM: num(row.lightBrightM),

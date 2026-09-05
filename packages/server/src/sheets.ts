@@ -6,7 +6,6 @@ import type {
   CompendiumEntry,
   CpredChokeOutcome,
   CpredCharacterData,
-  CpredCombatProfile,
   CpredAimPoint,
   CpredCriticalInjuryRow,
   CpredHitLocation,
@@ -69,7 +68,12 @@ import {
   ammoAblation,
   ammoDamageNotes,
   applyWoundStatuses,
-  combatProfileSheetForSkill,
+  applyStatistQuick,
+  createStatistSheet,
+  cpredSheetRollSheet,
+  sanitizeStatistQuick,
+  statistQuick,
+  type CpredStatistQuick,
   CPRED_HEAD_DAMAGE_MULTIPLIER,
   cpredAction,
   cpredActionBlock,
@@ -113,21 +117,18 @@ import {
   forceCpredTurn,
   freshCpredTurn,
   hitLocationLabel,
-  hpMax,
+  cpredSheetHpMax,
   isCriticalInjuryEntry,
   markCpredTurnPhase,
   mergeCharacterData,
   nextCpredChokeStreak,
   parseCharacterData,
-  parseCombatProfile,
-  passiveEvasionDv,
   readCpredTurn,
   readCpredTurnLedger,
   resolveCpredChoke,
   resolveCpredDamage,
   resolveCpredGrappleTest,
   resolveCpredThrow,
-  sanitizeCombatProfile,
   spendCpredTurn,
   namedCriticalInjuryRow,
   toCriticalInjuryRow,
@@ -154,6 +155,14 @@ export type SheetRegistry = CpredRegistry;
 export interface LinkedSheet {
   hp: TokenHp;
   ownerId: string | null;
+  /**
+   * Rany krytyczne tej karty, w kształcie, w jakim jadą na żetonie (etap 38a).
+   *
+   * Tu, a nie osobnym zapytaniem, bo `toTokenView` i tak trzyma tę kartę
+   * w ręku — a rany figury bez właściciela są **publiczne** (31.08), więc
+   * musiały skądś przyjechać po tym, jak zniknął profil bojowy.
+   */
+  injuries: TokenInjuryRow[];
 }
 
 /**
@@ -294,7 +303,7 @@ export function readSheetMoveBudget(
     // (`statEffects`), żeby pasek pisał „Skorpion −4", a nie milczał.
     move: data.stats.move,
     hpCurrent: data.hpCurrent,
-    hpMax: hpMax(data.stats),
+    hpMax: cpredSheetHpMax(data),
     armor: data.armor,
     injuries: data.criticalInjuries,
     statEffects: data.statEffects,
@@ -432,82 +441,87 @@ export function readSheetGrappleDv(
   return cpredPassiveGrappleDv(parseCharacterData(character.data, registry), registry, modifier);
 }
 
-/** DV of a target with no sheet — the statist default. */
-export const SHEET_STATIST_GRAPPLE_DV = CPRED_STATIST_GRAPPLE_DV;
-
 /* ------------------------------------------------------------------ *
- * The statist's combat profile (stage 16b). Everything on the other
- * side of this seam works on `CpredCharacterData`; a statist has a
- * dozen numbers instead. Rather than teaching the attack and damage
- * paths what a statist is, the profile is dressed as a sheet here —
- * see `systems/cpred/statist.ts` for why that is the cheap direction.
+ * Figura bez własnej karty (etap 38a).
+ *
+ * Do 38a mieszkał tu cały szew „profil bojowy przebrany za kartę": żeton
+ * niósł kilkanaście liczb w kolumnie JSON, a `sheetFromCombatProfile`
+ * ubierał je w `CpredCharacterData` przy każdym rzucie. Etap 38a dał każdej
+ * ostatystykowanej figurze prawdziwy rekord `Character`, więc został tu tylko
+ * jeden most — podstawienie Wartości bojowej — i garść liczb zastępczych dla
+ * figury, której **naprawdę** nikt nie ostatystykował.
  * ------------------------------------------------------------------ */
 
-/** The system's profile shape, as it sits in `Token.combatProfile`. */
-export type SheetCombatProfile = CpredCombatProfile;
+/** Stand-in DV of a defender who has no card at all. */
+export const SHEET_STATIST_GRAPPLE_DV = CPRED_STATIST_GRAPPLE_DV;
 
-/** Reads the token's column; null for a token nobody has statted. */
-export function readSheetCombatProfile(raw: string | null): SheetCombatProfile | null {
-  return parseCombatProfile(raw);
-}
-
-/** Repairs whatever a client sent before it is stored. Never rejects. */
-export function sheetCombatProfile(raw: unknown): SheetCombatProfile {
-  return sanitizeCombatProfile(raw);
+/**
+ * Karta przygotowana do jednego rzutu.
+ *
+ * Jedyne miejsce, w którym Wartość bojowa i poziom broni z bloku statystyk
+ * wchodzą do liczb (`statblock.ts`). Woła się je wszędzie tam, gdzie do 38a
+ * wołało się `sheetFromCombatProfile` — i nigdzie indziej: karta **zapisana**
+ * ma trzymać to, co wydrukowano, a nie to, co z tego wychodzi w rzucie.
+ */
+export function sheetForRoll(data: CpredCharacterData, skillId: string | null): CpredCharacterData {
+  return cpredSheetRollSheet(data, skillId);
 }
 
 /**
- * Rany figury bez karty, wyjęte z profilu do publicznej części żetonu (31.08).
+ * Sześć pól szybkiego edytora w menu żetonu, jako typ serwera (etap 38a).
  *
- * Most, nie skrót: `realtime/tokens.ts` niesie kolumnę profilu i **nie wie**,
- * co w niej jest — to jest cała umowa etapu 16b. Wyjęcie z niej jednej listy
- * jest robotą warstwy systemu, więc stoi tu, obok `readSheetFearedTokens`,
- * z którego tamten moduł korzysta dokładnie tak samo.
- *
- * Pusta lista zamiast pustej tablicy w widoku: figura, której nikt nie zranił,
- * nie ma dokładać pola do każdego `token:upsert` na scenie.
+ * Rdzeń VTT niesie je jako nieprzezroczysty obiekt (`TokenCombatProfile`),
+ * dokładnie tak, jak niósł profil bojowy; tu, po systemowej stronie szwu,
+ * dostają kształt.
  */
-export function readSheetTokenInjuries(raw: string | null): TokenInjuryRow[] {
-  const injuries = parseCombatProfile(raw)?.criticalInjuries ?? [];
-  return injuries as unknown as TokenInjuryRow[];
+export type SheetQuickStats = CpredStatistQuick;
+
+/** Naprawia to, co przyszło z menu żetonu. Nigdy nie odmawia (patrz 16b). */
+export function sheetQuickStats(raw: unknown): SheetQuickStats {
+  return sanitizeStatistQuick(raw);
+}
+
+/** Karta świeżo ostatystykowanej figury, gotowa do zapisu w kolumnie. */
+export function sheetFromQuickStats(quick: SheetQuickStats): string {
+  return JSON.stringify(createStatistSheet(quick));
+}
+
+/** Sześć pól, jak widać je na istniejącej karcie. */
+export function readSheetQuickStats(
+  character: Pick<Character, 'data'>,
+  registry: SheetRegistry,
+): SheetQuickStats {
+  return statistQuick(parseCharacterData(character.data, registry));
 }
 
 /**
- * The profile seen as a character sheet, with one skill filled in at the
- * profile's level — the skill this particular roll is made with.
+ * Wpisuje sześć pól w istniejącą kartę i zwraca kolumnę do zapisu.
+ *
+ * Przez `mergeCharacterData`, żeby pule przycięły się tak samo jak przy każdym
+ * innym zapisie karty — a nie „bo szybki edytor to co innego".
  */
-export function sheetFromCombatProfile(
-  profile: SheetCombatProfile,
-  hp: TokenHp,
-  skillId: string | null,
-): CpredCharacterData {
-  return combatProfileSheetForSkill(profile, hp, skillId);
+export function writeSheetQuickStats(
+  character: Pick<Character, 'data'>,
+  quick: SheetQuickStats,
+  registry: SheetRegistry,
+): string {
+  const current = parseCharacterData(character.data, registry);
+  return JSON.stringify(mergeCharacterData(current, applyStatistQuick(current, quick)));
 }
+
+/** The single weapon row id a figure statted from the token menu carries. */
+export const SHEET_STATIST_WEAPON_ROW_ID = STATIST_WEAPON_ROW_ID;
 
 /**
  * The token's own HP pair, with a sane stand-in for a token that has no bar.
  *
- * Here rather than beside each caller because it is a rule, not an accessor:
- * a synthesised sheet reads its wound state off these two numbers, and „a
- * figure nobody gave hit points to is unhurt" has to mean the same thing in
- * every path that dresses a token as a sheet.
+ * Zostaje po 38a dla figur **bez** karty: kółko na mapie z paskiem PW jest
+ * funkcją rdzenia VTT starszą od Cyberpunka o dziesięć etapów.
  */
 export function sheetTokenHp(token: Pick<Token, 'hpCurrent' | 'hpMax'>): TokenHp {
   if (token.hpMax === null) return { current: 1, max: 1 };
   return { current: token.hpCurrent ?? 0, max: token.hpMax };
 }
-
-/** Stand-in DV a statist defends with: its own DEX + Unik + half a die. */
-export function sheetCombatProfileEvasionDv(
-  profile: SheetCombatProfile,
-  registry: SheetRegistry,
-  hp: TokenHp,
-): number {
-  return passiveEvasionDv(sheetFromCombatProfile(profile, hp, null), registry);
-}
-
-/** The single weapon row id a synthesised statist sheet carries. */
-export const SHEET_STATIST_WEAPON_ROW_ID = STATIST_WEAPON_ROW_ID;
 
 /** BODY of a sheet: the damage Duszenie and Rzut deal, flat and undiced. */
 export function readSheetBody(character: Pick<Character, 'data'>, registry: SheetRegistry): number {
@@ -590,7 +604,7 @@ export function applyGrappleDamageToSheet(
   request: { body: number; kind: 'choke' | 'throw'; roundsInARow?: number },
 ): SheetGrappleDamage {
   const data = parseCharacterData(character.data, registry);
-  const max = hpMax(data.stats);
+  const max = cpredSheetHpMax(data);
   const input = { body: request.body, hpCurrent: data.hpCurrent, hpMax: max };
   const outcome =
     request.kind === 'choke'
@@ -620,7 +634,7 @@ export function applyPeriodicDamageToSheet(
   damage: number,
 ): { data: string; hp: TokenHp; log: SheetDamageLog } {
   const data = parseCharacterData(character.data, registry);
-  const max = hpMax(data.stats);
+  const max = cpredSheetHpMax(data);
   const outcome = resolveCpredDamage({
     damage,
     location: 'body',
@@ -683,7 +697,7 @@ export function applyForcedFailureToSheet(
   compendium: readonly CompendiumEntry[],
 ): { data: string; hp: TokenHp; log: SheetDamageLog; carry: SheetTurnCarry | null } {
   const data = parseCharacterData(character.data, registry);
-  const max = hpMax(data.stats);
+  const max = cpredSheetHpMax(data);
   const outcome = resolveCpredDamage({
     damage: Math.max(0, Math.round(failure.damage)),
     location: 'body',
@@ -757,76 +771,29 @@ export function emptySheetDamageLog(): SheetDamageLog {
 }
 
 /**
- * The same forced failure against a statist token (29.08).
+ * Ten sam wymuszony brak zdania przeciwko figurze **bez karty** (29.08, 38a).
  *
- * Tear gas, a flashbang and a defended zone name the wound they inflict, and
- * until 29.08 a token without a sheet could only be *told* about it: „statysta
- * nie ma karty, ranę krytyczną rozstrzyga MG". A statted extra now keeps the
- * row in its combat profile, so the wound is enforced by exactly the code that
- * enforces a player's — including the 16h timer that takes it off again.
+ * Gaz łzawiący, granat hukowy i broniona strefa nazywają ranę, którą zadają.
+ * Figura, którą ktoś ostatystykował, ma od etapu 38a prawdziwą kartę i jedzie
+ * przez `applyForcedFailureToSheet` — czyli przez ten sam kod, co gracz.
+ * Zostaje tu wyłącznie kółko z paskiem PW, którego nikt nie ostatystykował:
+ * obrażenia spadają, a rana zostaje **nazwana**, bo nie ma jej gdzie zapisać.
  *
- * A token with no profile still gets the sentence: there is nowhere to write.
+ * To zdanie jest warte zachodu: jest jedynym sposobem, w jaki stół dowiaduje
+ * się, co się stało (błąd #6 z sesji 08.08).
  */
 export function applyForcedFailureToTokenHp(
   hp: TokenHp | null,
-  profile: SheetCombatProfile | null,
   failure: SheetForcedFailure,
   compendium: readonly CompendiumEntry[],
-): {
-  hp: TokenHp | null;
-  log: SheetDamageLog;
-  profile: SheetCombatProfile | null;
-  carry: SheetTurnCarry | null;
-} {
+): { hp: TokenHp | null; log: SheetDamageLog } {
   const damaged = hp ? applyPeriodicDamageToTokenHp(hp, failure.damage) : null;
   const log: SheetDamageLog = damaged?.log ?? emptySheetDamageLog();
   const wanted = failure.injuryIds ?? [];
-  if (wanted.length === 0) {
-    return { hp: damaged?.hp ?? hp, log, profile: null, carry: null };
+  if (wanted.length > 0) {
+    log.injuryNote = `${criticalInjuryNames(compendium, wanted).join(', ')} — figura nie ma karty, ranę krytyczną rozstrzyga MG.`;
   }
-  if (!profile) {
-    // Naming it is all that is left, and it is worth doing: this line is the
-    // only way the table learns what happened (bug #6 of the 08.08 session).
-    log.injuryNote = `${criticalInjuryNames(compendium, wanted).join(', ')} — statysta nie ma karty, ranę krytyczną rozstrzyga MG.`;
-    return { hp: damaged?.hp ?? hp, log, profile: null, carry: null };
-  }
-
-  const carried = profile.criticalInjuries ?? [];
-  const rows: CpredCriticalInjuryRow[] = [];
-  const missing: string[] = [];
-  let carry: SheetTurnCarry | null = null;
-  for (const id of wanted) {
-    const entry = compendium.find((row) => row.id === id && isCriticalInjuryEntry(row));
-    if (!entry || !isCriticalInjuryEntry(entry)) {
-      missing.push(id);
-      continue;
-    }
-    // A wound already there is not doubled — a second flashbang in the same
-    // minute keeps somebody blind, it does not blind them twice.
-    if (carried.some((injury) => injury.id === id)) continue;
-    // Rany nikt nie wyrzucił — nazwał ją efekt (gaz, granat hukowy, broniona
-    // strefa) albo ręka MG, więc wiersz idzie bez `rolled` i z chipem „nadana".
-    const row = namedCriticalInjuryRow(entry);
-    rows.push({ ...row, ...(failure.timed ? { timed: failure.timed } : {}) });
-    carry = mergeSheetCarry(carry, cpredInjuryCarryOnDraw(row) ?? {});
-  }
-  if (rows[0]) {
-    // Zero na karcie obrażeń znaczy „bez rzutu" i tak je czyta `DamageControls`
-    // (`rolled > 0`) — wiersz na karcie postaci niesie już własną prowieniencję.
-    log.injury = { id: rows[0].id, name: rows[0].name, effect: rows[0].effect, rolled: 0 };
-  }
-  if (rows[1]) {
-    log.injuryExtra = { id: rows[1].id, name: rows[1].name, effect: rows[1].effect, rolled: 0 };
-  }
-  if (missing.length > 0) {
-    log.injuryNote = `Brak w kompendium rany: ${missing.join(', ')} — uzupełnij tabelę ran.`;
-  }
-  return {
-    hp: damaged?.hp ?? hp,
-    log,
-    profile: rows.length > 0 ? { ...profile, criticalInjuries: [...carried, ...rows] } : null,
-    carry: carry && !sheetCarryIsEmpty(carry) ? carry : null,
-  };
+  return { hp: damaged?.hp ?? hp, log };
 }
 
 /**
@@ -1578,11 +1545,15 @@ export function turnActionAvailable(stored: string | null): boolean {
 /** Reads the sheet's HP pair: current from the data, max derived from stats. */
 export function readSheetHp(character: Character, registry: SheetRegistry): TokenHp {
   const data = parseCharacterData(character.data, registry);
-  return { current: data.hpCurrent, max: hpMax(data.stats) };
+  return { current: data.hpCurrent, max: cpredSheetHpMax(data) };
 }
 
 export function toLinkedSheet(character: Character, registry: SheetRegistry): LinkedSheet {
-  return { hp: readSheetHp(character, registry), ownerId: character.ownerId };
+  return {
+    hp: readSheetHp(character, registry),
+    ownerId: character.ownerId,
+    injuries: readSheetInjuries(character, registry) as unknown as TokenInjuryRow[],
+  };
 }
 
 /**
@@ -1596,7 +1567,7 @@ export function writeSheetHp(
   registry: SheetRegistry,
 ): { data: string; hp: TokenHp } {
   const current = parseCharacterData(character.data, registry);
-  const max = hpMax(current.stats);
+  const max = cpredSheetHpMax(current);
   const clamped = Math.min(Math.max(Math.round(hpCurrent), 0), max);
   const merged = mergeCharacterData(current, { hpCurrent: clamped });
   return { data: JSON.stringify(merged), hp: { current: merged.hpCurrent, max } };
@@ -1749,7 +1720,7 @@ export function applyDamageToSheet(
 ): { data: string; hp: TokenHp; log: SheetDamageLog; carry: SheetTurnCarry | null } {
   const data = parseCharacterData(character.data, registry);
   const location = normalizeLocation(request.location);
-  const max = hpMax(data.stats);
+  const max = cpredSheetHpMax(data);
   const armorRow = effectiveArmor(data.armor, location);
   const armorSp = request.armorSp ?? armorRow?.spCurrent ?? 0;
   const ammo = request.ammo ?? null;
@@ -1915,58 +1886,32 @@ export function applyDamageToSheet(
 }
 
 /**
- * Row id the ablated armour of a statist is logged under (stage 16b).
+ * Trafienie w figurę, która ma **tylko** pasek PW (etap 38a).
  *
- * A sheet ablates a named armour *row*; a profile has one number and no rows,
- * but „Cofnij" reads the log rather than the target, so the entry still needs an
- * id to point at. A constant is enough — a statist wears one thing.
- */
-export const SHEET_STATIST_ARMOR_ROW_ID = 'statist-armor';
-
-/**
- * The same hit against a statist token that only has its own HP pair.
- *
- * Since stage 16b the token may also carry a combat profile, and then its
- * Stopping Power is applied and ablated exactly as a sheet's would be — the GM
- * stopped having to remember the number and type it into every hit. An explicit
- * `armorSp` in the request still wins and leaves the profile alone, the same
- * bargain `applyDamageToSheet` makes with a hand-typed value.
- *
- * From 29.08 the profile also keeps Critical Injuries, so `injuries` is what
- * turns „ranę krytyczną rozegraj ręcznie" into a wound that is actually drawn
- * and actually enforced. It is optional because a token with no profile has
- * nowhere to keep one — an unstatted circle on the map is still just HP.
+ * Kółko na mapie bez karty: żadnego pancerza, żadnych ran krytycznych — bo nie
+ * ma ich gdzie zapisać. Figura, którą ktoś ostatystykował, jedzie od 38a przez
+ * `applyDamageToSheet`, więc jej OB ściera się i jej rany zapisują się dokładnie
+ * tak, jak graczowi; do 16b–38a robił to osobny tor po „profilu bojowym"
+ * i to on właśnie zniknął.
  */
 export function applyDamageToTokenHp(
   hp: TokenHp,
   request: SheetDamageRequest,
-  profile?: SheetCombatProfile | null,
-  injuryDraw?: { entries: readonly CompendiumEntry[]; rng: DiceRng },
-): { hp: TokenHp; log: SheetDamageLog; profile?: SheetCombatProfile } {
+): { hp: TokenHp; log: SheetDamageLog } {
   const location = normalizeLocation(request.location);
-  const profileSp = profile?.armorSp ?? 0;
   const ammo = request.ammo ?? null;
-  const criticalInjury = request.criticalInjury && ammo?.noCriticalInjury !== true;
-  const injuries = profile?.criticalInjuries ?? [];
   const outcome = resolveCpredDamage({
     damage: request.damage,
     location,
-    armorSp: request.armorSp ?? profileSp,
+    armorSp: request.armorSp ?? 0,
     hpCurrent: hp.current,
     hpMax: hp.max,
-    criticalInjury,
+    criticalInjury: request.criticalInjury && ammo?.noCriticalInjury !== true,
     ignoreArmor: request.ignoreArmor,
     ablation: ammoAblation(ammo),
     ...(request.halvesArmor ? { halvesArmor: true } : {}),
-    // A statist keeps its wounds since 29.08, so a cracked skull raises its
-    // head multiplier exactly as a sheet's does — same helper, no branch.
-    headMultiplier: cpredHeadDamageMultiplier(injuries),
     ...(ammo?.nonLethal ? { nonLethal: true } : {}),
   });
-  // Only the profile's own armour wears out, and only when it stopped
-  // something: a value the GM typed in by hand is a one-off ruling, not a
-  // claim about what this extra is wearing.
-  const ablated = profile && request.armorSp === undefined && outcome.ablated && profileSp > 0;
   const log: SheetDamageLog = {
     location,
     locationLabel: hitLocationLabel(location),
@@ -1975,120 +1920,33 @@ export function applyDamageToTokenHp(
     ...(outcome.armorHalved ? { armorHalved: true } : {}),
     damageThrough: outcome.damageThrough,
     doubled: outcome.doubled,
-    ...(outcome.doubled && outcome.headMultiplier !== CPRED_HEAD_DAMAGE_MULTIPLIER
-      ? { headMultiplier: outcome.headMultiplier }
-      : {}),
     bonusDamage: outcome.bonusDamage,
     hpLost: outcome.hpLost,
     hp: { before: outcome.hpBefore, after: outcome.hpAfter, max: hp.max },
-    ...(ablated
-      ? {
-          armor: {
-            rowId: SHEET_STATIST_ARMOR_ROW_ID,
-            name: 'Pancerz',
-            before: outcome.spBefore,
-            after: outcome.spAfter,
-          },
-        }
-      : {}),
     ...(woundTransitionLabel(outcome) ? { woundLabel: woundTransitionLabel(outcome)! } : {}),
     ...(ammo
       ? {
           ammo: ammoLogEntry(ammo, {
-            ablated: ablated ? outcome.spBefore - outcome.spAfter : 0,
+            ablated: 0,
             heldAtOne: outcome.heldAtOne,
             injurySuppressed: request.criticalInjury && ammo.noCriticalInjury === true,
           }),
         }
       : {}),
   };
-
-  // Wounds. A statist with no profile has nowhere to keep one and gets the
-  // sentence it always got; a statted one draws from the campaign's table and
-  // carries the result, so „Odcięta noga" really does stop it dodging.
-  const gained: CpredCriticalInjuryRow[] = [];
+  // Rany krytycznej nie ma gdzie zapisać, więc zostaje zdanie — jedyna droga,
+  // którą stół dowiaduje się, że dwie szóstki padły (błąd #6 z 08.08).
   if (outcome.criticalInjury) {
-    if (!profile || !injuryDraw) {
-      log.injuryNote = 'Cel bez karty postaci — ranę krytyczną rozegraj ręcznie.';
-    } else {
-      const draw = drawCriticalInjury(
-        injuryDraw.entries.filter(isCriticalInjuryEntry),
-        location,
-        injuryDraw.rng,
-        injuries.map((injury) => injury.id),
-        ammo?.extraInjuryOn ? { extraOnIds: ammo.extraInjuryOn } : {},
-      );
-      const rolled = draw.rolls[draw.rolls.length - 1]?.total ?? 0;
-      if (draw.entry) {
-        const row = toCriticalInjuryRow(draw.entry, draw.extra ? draw.rolls[0]!.total : rolled);
-        gained.push(row);
-        log.injury = {
-          id: row.id,
-          name: row.name,
-          effect: row.effect,
-          rolled: row.rolled ?? rolled,
-        };
-        if (draw.extra) {
-          const second = toCriticalInjuryRow(draw.extra.entry, draw.extra.rolled);
-          gained.push(second);
-          log.injuryExtra = {
-            id: second.id,
-            name: second.name,
-            effect: second.effect,
-            rolled: draw.extra.rolled,
-          };
-        }
-      } else if (draw.exhausted) {
-        log.injuryNote = 'Cel ma już wszystkie rany z tej tabeli.';
-      } else {
-        log.injuryNote = `Brak wpisu na ${rolled} w tabeli ran (${hitLocationLabel(location)}) — uzupełnij kompendium.`;
-      }
-    }
+    log.injuryNote = 'Figura bez karty — ranę krytyczną rozstrzyga MG.';
   }
-
-  // The Aimed Shot's own consequence (s. 170). The held item stays prose for
-  // everybody — the VTT models nobody's hands — but the leg is a named wound,
-  // and a statted extra can now be given it.
   if (request.aimedAt && request.aimedAt !== 'head' && outcome.damageThrough > 0) {
     log.aimedAt = CPRED_AIM_POINT_LABELS[request.aimedAt];
-    if (request.aimedAt === 'heldItem') {
-      log.aimNote =
-        'Cel upuszcza trzymany przedmiot (wybór atakującego) — pada na ziemię przed nim.';
-    } else if (!profile || !injuryDraw) {
-      log.aimNote = 'Cel bez karty postaci — „Złamaną nogę" rozegraj ręcznie.';
-    } else {
-      const carried = new Set([...injuries, ...gained].map((injury) => injury.id));
-      const entry = criticalInjuryAt(
-        injuryDraw.entries.filter(isCriticalInjuryEntry),
-        CPRED_BROKEN_LEG_TABLE,
-        CPRED_BROKEN_LEG_ROLL,
-      );
-      if (!entry) {
-        log.aimNote = 'Brak „Złamanej nogi" w tabeli ran korpusu — uzupełnij kompendium.';
-      } else if (carried.has(entry.id)) {
-        log.aimNote = `Cel ma już ranę „${entry.name}" — trafienie w nogę nic nie dokłada.`;
-      } else {
-        // Named, not rolled — so no 2k6 is printed for a die nobody threw.
-        const row: CpredCriticalInjuryRow = namedCriticalInjuryRow(entry);
-        gained.push(row);
-        log.injuryAimed = { id: row.id, name: row.name, effect: row.effect };
-      }
-    }
+    log.aimNote =
+      request.aimedAt === 'heldItem'
+        ? 'Cel upuszcza trzymany przedmiot (wybór atakującego) — pada na ziemię przed nim.'
+        : 'Cel bez karty postaci — „Złamaną nogę" rozegraj ręcznie.';
   }
-
-  const nextProfile =
-    profile && (ablated || gained.length > 0)
-      ? {
-          ...profile,
-          ...(ablated ? { armorSp: outcome.spAfter } : {}),
-          ...(gained.length > 0 ? { criticalInjuries: [...injuries, ...gained] } : {}),
-        }
-      : null;
-  return {
-    hp: { current: outcome.hpAfter, max: hp.max },
-    log,
-    ...(nextProfile ? { profile: nextProfile } : {}),
-  };
+  return { hp: { current: outcome.hpAfter, max: hp.max }, log };
 }
 
 /**
@@ -2102,7 +1960,7 @@ export function undoDamageOnSheet(
   entry: DamageLogEntry,
 ): { data: string; hp: TokenHp } {
   const data = parseCharacterData(character.data, registry);
-  const max = hpMax(data.stats);
+  const max = cpredSheetHpMax(data);
   const patch: Partial<CpredCharacterData> = {};
   if (entry.hp) patch.hpCurrent = entry.hp.before;
   if (entry.armor) {

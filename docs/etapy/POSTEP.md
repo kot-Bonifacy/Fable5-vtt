@@ -103,10 +103,27 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 | 35  | Ping, zaznaczanie wielu figur, klonowanie     | ✅     | 2026-09-05        |
 | ~~36~~ | ~~Makra i pasek własnych akcji~~           | ⛔     | wycofany 05.09.2026 |
 | 37  | Kalendarz kampanii i upływ czasu              | ✅     | 2026-09-05        |
-| 38  | Przedmioty między kartami                     | ⬜     |                   |
+| 38  | ~~Przedmioty między kartami~~                 | ⛔     | rozdzielony 05.09 |
+| 38a | Statysta jako karta postaci                   | ✅     | 2026-09-05        |
+| 38b | Przedmioty: przekazanie, łup, przeszukanie    | ⬜     |                   |
 | 39  | Efekty czasowe modyfikujące Cechy              | ✅     | 2026-09-05        |
 
 ## Od czego zacząć
+
+**Figura ostatystykowana ma od 05.09 KARTĘ POSTACI — kolumna `Token.combatProfile` nie
+istnieje.** Umowa etapu 16b („statysta nie jest osobą") została **cofnięta decyzją MG**: ganger,
+funkcjonariusz Wsparcia, Demon i wieżyczka mają prawdziwy rekord `Character`, stoją w rosterze
+obok Vex i mają zwykły ekwipunek — **i to jest jedyny powód**, dla którego etap 38b (przekazywanie
+przedmiotów) da się w ogóle napisać. W silniku zasad **nie ma już gałęzi „to statysta"**. Trzy
+liczby, których karta sama by nie utrzymała — **Wartość bojowa** (s. 158, sięga 16, a Umiejętność
+karty ma sufit 10), **zakaz uniku przed pociskami** i **wydrukowane PW** — plus poziom broni
+siedzą w `CpredCharacterData.statBlock`; wchodzą do liczb **wyłącznie** przez `sheetForRoll`.
+**`hpMax(data.stats)` na pełnej karcie jest odtąd błędem** — jest `cpredSheetHpMax(data)`, ta sama
+umowa co `cpredEffectiveStats` z 39, w drugim obszarze. Sześć pól menu figury pisze **`token:stat`**
+(zakłada kartę i podpina ją jednym zdarzeniem), a **karta ginie z figurą tylko na pytanie** i tylko
+gdy nie ma właściciela ani innej figury pod sobą. Migracja przepisała trzy figury poligonu w SQL-u
+z zachowaniem PW, amunicji, ran i pancerza. Dziewięć umów kodu i cztery pułapki w indeksach niżej.
+**Menu figury nie było oglądane w przeglądarce** — pozycja w `zaleglosci.md`.
 
 **Cechy dają się od 05.09 obniżyć na godzinę — do etapu 39 nie było na to żadnej drogi.**
 Efekt jest **wierszem karty** (`CpredCharacterData.statEffects`), nie gałęzią w kodzie: Cecha,
@@ -169,13 +186,17 @@ i `archive`. Wyszedł przy tym **jeden błąd**: polski znak w nazwie pliku wywr
 błędem 500. Osiem umów kodu i cztery pułapki w indeksach niżej.
 
 **Wolne są teraz: 28** (wdrożenie na VPS — a MG planuje przed nim refaktoryzację całości)
-**oraz 34 i 38.** **Etap 36 (makra i własny pasek) MG wycofał 05.09** — nie planuj go
+**oraz 34 i 38b.** **Etap 38 rozdzielono 05.09 na 38a** (statysta jako karta postaci — zrobiony)
+**i 38b** (przekazanie, łup, przeszukanie), bo pierwsza z trzech odpowiedzi MG na pytania
+rozstrzygające okazała się refaktorem etapu 16b. **Etap 36 (makra i własny pasek) MG wycofał 05.09** — nie planuj go
 i nie proponuj makr; pasek akcji z 16f zostaje generowany. **Żadna wiążąca kolejność nie została
 już otwarta**: „37 przed 39" i „33 przed 28" są spełnione. **Refaktoryzacja całości przed
 etapem 28 czeka na osobną sesję** — MG odłożył ją 05.09, wybierając etap z listy, i od tamtej
 pory doszły dwa etapy.
 
-**Dług oględzin — 14 pozycji, i wszystkie czekają na żywy model.** Etap 39 **nie dołożył ani jednej** — obejrzany w tej samej sesji, w której powstał. Cztery pozycje etapu 30
+**Dług oględzin — 15 pozycji.** Etap 38a dołożył **jedną** (menu figury: przełącznik statystyk,
+Wartość bojowa, pytanie o kartę przy koszu — prawym klikiem z automatyki nie da się otworzyć menu
+kanwy Pixi; trzy ścieżki mają testy dymne). Pozostałe czternaście czeka na żywy model. Etap 39 **nie dołożył ani jednej** — obejrzany w tej samej sesji, w której powstał. Cztery pozycje etapu 30
 (**30a, 30b, 30c, 30d**) zamknięte 04.09 — była to ostatnia paczka, którą dało się obejrzeć bez
 GPU. Zostaje 20a/20b, 19a–19c, dwie ścieżki 24c, maszynopis wypowiedzi i jedna nowa pozycja
 z 04.09 (cyberdek pracownika Korpo). **29a i 29b wypadły z listy 02.09**, etap 31 i Celowanie
@@ -376,6 +397,15 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 - **Rozgłoszenie, które rysuje `seq`, musi go u klienta skonsumować** — `if (chat().applySeq(broadcast.seq)) { socket?.emit('state:request'); return; }`. Pominięcie robi lukę i zbędny pełny resync całemu stołowi.
 - **Zegar świata: gracz widzi dobę i porę dnia, MG godzinę** (`formatGameDayTime` / `formatGameClock`). To **nie filtr** — minuta jedzie do wszystkich; to szczerość etykiety, bo zegar rusza się tylko na kliknięcie MG. Karta czatu jest bez minut **dla wszystkich**.
 
+- **Figura ostatystykowana MA KARTĘ** — `Token.combatProfile` nie istnieje od 38a, a w silniku zasad nie ma gałęzi „to statysta". Kółko z paskiem PW i bez karty ma własny, chudy tor: same PW, żadnego pancerza, żadnych ran.
+- **Wartość bojowa, zakaz uniku, wydrukowane PW i poziom broni to `statBlock`** — cztery liczby, których karta sama by nie utrzymała. **Nie jest to kategoria karty**: nazwanemu NPC-owi wolno je mieć tak samo.
+- **Maksimum PW karty to `cpredSheetHpMax(data)`**, stan ran to `cpredSheetWoundState(sheet)`; `hpMax(data.stats)` zostaje **wyłącznie** kreatorowi, który karty jeszcze nie ma.
+- **Wartość bojowa wchodzi do liczb w jednym miejscu: `sheetForRoll`** — tam, gdzie do 38a wołało się `sheetFromCombatProfile`, i nigdzie indziej. Umiejętność wpisana na karcie wygrywa z poziomem broni.
+- **Sześć pól menu figury pisze `token:stat`**, nie `token:update`: karta i podpięcie powstają jednym zdarzeniem. `applyStatistQuick` nie rusza niczego poza tymi polami.
+- **Karta ginie z figurą tylko na pytanie** i tylko gdy nie ma właściciela ani innej figury pod sobą; kopia figury MG dostaje **własną** kartę, kopia figury gracza zostaje bez podpięcia.
+- **Karta jedzie też do właściciela FIGURY**, nie tylko karty — inaczej gracz sterowałby gangerem, którego statystyk nie widzi.
+- **Cecha zero jest legalna na karcie (`CPRED_SHEET_STAT_MIN`), ale nie w kreatorze** — figura z Wartością bojową ma wyzerowane REF, ZW i SW, żeby rozbicie rzutu nie doliczyło Cechy dwa razy.
+
 ## Pułapki dev — indeks
 
 Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapki-dev.md`.
@@ -507,9 +537,78 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 - **Karta, która „nie doszła", potrafi mieć dwie przyczyny naraz** (brak w `visibleTo` **i** nieskonsumowany `seq` obok) — naprawa jednej nie daje widocznego efektu i wygląda na nietrafioną.
 - **Feed czatu czytaj z DOM-u, nie ze zrzutu** — `[...document.querySelectorAll('.chat-time')].map(n => n.innerText)`; panel bywa przewinięty i „nie ma karty" znaczy zwykle „nie doskrolowano".
 
+- **Zmiana `schema.prisma` bez `prisma generate` wywraca CAŁY zestaw testów serwera** — 57 plików na timeoutach `state:sync`, jakby zerwał się protokół. Generuj klienta, zanim zaczniesz szukać błędu gdzie indziej.
+- **`validateSkills` i `validateStats` odrzucają CAŁĄ mapę przez jeden wiersz spoza zakresu** — nie ścinają go i nie wyrzucają. Objaw jest cichy: figura jest po prostu słabsza, niż ją wpisano.
+- **Karta zapisana ≠ karta rzucana** — figura z Wartością bojową ma na karcie dziesiątkę, a rzuca czternastką. Test czytający liczbę z kolumny sprawdza złe miejsce; sprawdzaj sumę rozbicia rzutu.
+- **Skasowanie kolumny to cztery miejsca, nie jedno** — kod czytający, eksport/import (`archive.ts` wypisuje kolumny z nazwy), kopie zapasowe i migracja SQL. Kompendium mieszka w plikach, nie w bazie, więc SQL nie rozwiąże „broń → Umiejętność".
+
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 05.09 (piąta) — ganger, który stoi w rosterze obok Vex
+
+**Zlecenie MG:** kontynuacja projektu; z listy wolnych etapów (28, 34, 38) MG wybrał **38
+(przedmioty między kartami)** i przy trzech pytaniach rozstrzygających padła odpowiedź, która
+zmieniła całą sesję: na „gdzie mieszka łup statysty" MG wybrał **statysta dostaje pełną kartę
+postaci** — czyli odwrotnie, niż proponował opis etapu i niż rozstrzygnął etap 16b. Po
+przedstawieniu ceny (33 pliki, ~200 odwołań, migracja bazy) MG **potwierdził wybór w pełnej
+wersji**: „każdy statysta z profilem bojowym to od razu Character". Etap 38 został więc
+**rozdzielony na 38a** (ten refaktor) **i 38b** (przekazywanie, łup, przeszukanie), a plik
+`etap-38a-statysta-jako-karta.md` powstał przed pierwszą linijką kodu.
+
+**Rozpoznanie przed kodem znalazło rzecz, która przesądziła o modelu: profil bojowy NIE jest
+chudszą kartą.** Niesie trzy liczby, których `CpredCharacterData` nie umiał wyrazić —
+**Wartość bojową** („suma Cechy i Umiejętności", s. 158; C-SWAT ma 16, a Umiejętność karty ma
+sufit 10), **zakaz uniku przed pociskami** i **wydrukowane PW** (35 przy BC 4, z Cech wychodzi
+20). Dlatego karta dostała **jedno** nowe pole: `statBlock` (`shared/src/systems/cpred/statblock.ts`)
+— „wydrukowany blok statystyk", a nie kategoria karty, bo MG odrzucił znacznik odróżniający
+statystę w rosterze. Czwartą liczbą w bloku jest **poziom broni** (`weaponSkill`) i to jest
+ustępstwo z powodu, który widać dopiero w migracji: id Umiejętności trzeba by rozwiązywać przez
+kompendium przy każdym zapisie, a kompendium mieszka w plikach `data/private/`, **nie w bazie**,
+więc SQL migracji nie ma go jak przeczytać.
+
+**Co zniknęło:** kolumna `Token.combatProfile`, gałąź `kind: 'statist'` w `AttackSource`,
+drugie ramię `cpredWeaponOptions`, osobny tor obrażeń i osobny tor ran dla statystów, osobne
+przeładowanie. **Co zostało:** szybkość z 16b — menu figury nadal ma sześć pól, tyle że pisze je
+**`token:stat`**, które zakłada kartę i podpina ją jednym zdarzeniem. Doszło pole **„Wartość
+bojowa zamiast Cech"**, bo do tej pory MG stawiający C-SWAT ręką nie miał czym: wpisana
+Umiejętność 14 dawała REF **plus** czternaście.
+
+**Migracja przepisała trzy figury poligonu w SQL-u** (`json_object` + `json_group_object`), bo
+`parseCharacterData` jest tolerancyjny i wystarczy zapisać to, co profil naprawdę niósł. PW,
+amunicja, rany i pancerz przeżyły; „Cel 23x" ma po migracji **33/35 PW** i dwa rzędy pancerza
+(głowa i korpus — jedna liczba profilu to dwa rzędy karty, bo trafienie dobiera rząd po miejscu).
+Poziomy Umiejętności ścinają się w migracji do dziesiątki — inaczej **jeden** wiersz spoza
+zakresu każe `validateSkills` odrzucić **całą** mapę.
+
+**Trzy błędy wyszły przy pierwszym uruchomieniu testów, wszystkie z tej samej rodziny „walidator
+karty odrzuca to, co nowy model zapisuje".** (1) `luck: 0` i wyzerowane REF/ZW/SW figury
+z Wartością bojową wywracały `validateStats`, a karta wracała jako przeciętny człowiek po pięć —
+stąd `CPRED_SHEET_STAT_MIN = 0` obok `CPRED_STAT_MIN = 1`, który zostaje kreatorowi. (2) Unik 14
+funkcjonariusza wywracał `validateSkills` tą samą drogą — teraz ścina się do dziesiątki, a rzut
+i tak bierze Wartość bojową. (3) `normalizeCharacterData` ścinał wydrukowane PW do liczby z Cech,
+stąd `cpredSheetHpMax(data)` i **`hpMax(data.stats)` na pełnej karcie jest odtąd błędem** — ta
+sama umowa co `cpredEffectiveStats` z etapu 39, w drugim obszarze.
+
+**Czwarty błąd był systemowy i mylący:** po skasowaniu kolumny **57 z 61 plików** testów serwera
+padło na timeoutach `state:sync`, jakby zerwał się protokół. Przyczyną był niewygenerowany klient
+Prismy. `npx prisma generate` po każdej zmianie schematu — zanim zaczniesz szukać gdzie indziej.
+
+**Dwie rzeczy dołożone, żeby refaktor niczego po cichu nie zabrał:** kopia figury MG dostaje
+**własną** kartę (inaczej dwa żetony dzieliłyby jedne PW), a karta jedzie odtąd także do
+**właściciela figury**, nie tylko do właściciela karty — bo gracz, któremu MG oddał gangera,
+dostawał jego liczby w prywatnej części żetonu, a teraz mieszkają one na karcie.
+
+**Oględziny częściowe.** Przez przeglądarkę przeszły: trzy zmigrowane figury w panelu postaci,
+karta „Cel 23x" z PW 33/35 i pasek figury budowany z karty. **Menu figury nie było oglądane** —
+prawym klikiem z automatyki nie da się otworzyć menu kontekstowego kanwy Pixi; trzy ścieżki
+(przełącznik statystyk, Wartość bojowa, pytanie o kartę przy koszu) mają testy dymne na żywych
+gniazdach i czekają na ręczne obejrzenie. Pozycja w `zaleglosci.md`.
+
+**Testy:** 1906 w `shared` (+1), 1024 na serwerze (+6), 97 u klienta (bez zmian) — zielone.
+ESLint, Prettier i `tsc --noEmit` czyste w trzech pakietach. Dziewięć umów kodu i cztery pułapki
+w indeksach niżej, cztery świadome odstępstwa w `decyzje-i-uproszczenia.md`.
 
 ### Sesja 05.09 (czwarta) — liczba na karcie, którą da się obniżyć na godzinę
 
@@ -603,105 +702,3 @@ zestaw Nerwosolu w `server/src/netcombat.test.ts`. Klient buduje się produkcyjn
 **zamknięty znany wyścig** z sesji etapu 37: `gametime.test.ts` łapał w `once('chat:message')`
 kartę poprzedniego testu i raz na kilkanaście przebiegów widział „Minęło dziesięć minut" zamiast
 „Minęła doba" — trzy przebiegi z rzędu zielone po naprawie.
-
-### Sesja 05.09 (trzecia) — kampania, która wie, którego jest w Night City
-
-**Zlecenie MG:** kontynuacja projektu; z listy wolnych etapów MG wybrał **37 (kalendarz kampanii
-i upływ czasu)** i kazał scalić gałąź etapu 35 do `main` przed startem. Cztery rozstrzygnięcia
-padły przed kodem i wszystkie są w pliku etapu: **zegar podpowiada, nie rządzi** (nic nie dzieje
-się samo), **start 1 stycznia 2045, 08:00**, **cztery skoki** zamiast sześciu i **data świata
-jako nowa kolumna dziennika** obok realnej.
-
-**Piąte rozstrzygnięcie wyszło z kolizji między wyborem MG a kryteriami etapu.** MG wybrał same
-skoki naprzód, ale kryterium ukończenia #5 mówi wprost o cofnięciu zegara — a przy czterech
-guzikach „naprzód" nie ma czym ani cofnąć, ani ustawić początku kampanii innego niż domyślny.
-Po dopytaniu **pole daty i godziny weszło do zakresu** i jest dziś jedynym wejściem niosącym
-liczbę minut; wszystkie pozostałe niosą **identyfikator skoku**, bo „+1 h" jest intencją, a nie
-arytmetyką (ta sama zasada, co przy rzutach kośćmi).
-
-**Dwa zdania z opisu etapu okazały się nieaktualne, oba na korzyść.** „Odzyskiwanie PW przez
-odpoczynek nie istnieje w kodzie" przestało być prawdą w 30b — `cpredRestDay` i `character:rest`
-stoją od tamtej sesji, więc etap ich **nie napisał drugi raz**, tylko podpiął pod skok o dobę.
-A `timeZone` opisowy nie powstał wcale: kalendarz jest gregoriański i bez stref, a pole „Night
-City" nie miałoby w kodzie ani jednego odbiorcy.
-
-**Decyzja, która przenika cały etap, to typ kolumny: `Int` z minutami UTC, nie `DateTime`.**
-Strefa czasowa maszyny nie ma nic wspólnego z porą dnia w Night City, a każde przejście przez
-czas lokalny przesunęłoby granicę doby (i klucz miesiąca, i „minęła doba") między dev-em na
-Windows a VPS-em z etapu 28. Pułapką, która by to zrobiła po cichu, jest
-`new Date('2045-03-15T08:00')` — przeglądarka czyta ten zapis jako czas **lokalny**, więc
-`gameTimeFromInput` składa datę ręcznie z `Date.UTC`. Testy pilnują tego wprost.
-
-**Monit rozliczenia liczy się z różnicy dwóch kluczy miesiąca, a nie z dni**, żeby pierwszy
-dzień miesiąca przekroczony jednym skokiem o kwartał i dwoma po dziesięć minut dał **dokładnie
-jeden** monit. Wypadła z tego kolumna `Campaign.settledMonth` i mały wniosek: `null` znaczy
-„nie pytaj" (świeży stół nie zaczyna od zaległego czynszu), więc tworzenie kampanii stempluje
-miesiąc startowy, a cztery kampanie sprzed etapu dostały go **osobną migracją danych** — bo
-dopisania `UPDATE` do już zastosowanej migracji Prisma nie wybacza (suma kontrolna).
-
-**Jeden błąd znaleziony przy oględzinach: „minęły 30 doby".** Polska liczba mnoga ma trzy formy,
-a kod miał dwie — i **cały etap przeszedł oględziny z jedną dobą**, zanim trzy skoki pod rząd to
-pokazały. Naprawione dwiema czystymi funkcjami w rdzeniu (`gameDaysLabel`, `gameDaysPassed`)
-z testem na pułapkę 12–14: „13 dób", nie „13 doby".
-
-**Oględziny (Poligon, konto MG) — cały etap odklikany.** Zegar w pasku u wszystkich
-(„08:00 · 1 stycznia 2045"), okno z czterema skokami, **„do rana" z 22:30 dające 06:00 następnego
-dnia** (a nie stałą liczbę godzin), karty czatu „Minęła doba" / „Minęła noc" / „Zegar ustawiony ·
-29 dób" ze zdaniem „skądś dokądś", **sumowanie dób z trzech skoków** (3), lista rannych
-z „Tony 20/35 PW" i guzikiem „Odpoczynek", **monit miesiąca** (bursztynowa kropka przy zegarze
-plus sekcja „Minął pierwszy dzień miesiąca") oraz **„Podgląd" niczego nie ruszający**
-(„0 ed od 0 postaci", monit nadal zapalony). Wpis dziennika dodany ręcznie dostał **dwie daty**
-(„2026-09-05 · 4 lutego 2045"), a stary wpis „Wycieczka do Afterlife" — samą realną, dokładnie
-jak zaprojektowano. Kliknięcie „Odpoczynek" dało odmowę z podręcznika („najpierw ktoś musi
-wykonać Ustabilizowanie", s. 222) — poprawną, bo karta z ręcznie obniżonym PW nie ma
-`recovery.stabilized`.
-
-**Poligon wrócił do stanu sprzed sesji — sprawdzone różnicowo względem migawki z 13:23:**
-żetony, karty, sceny, księga i kampania **identyczne**, czat wrócił do 718 wierszy z maksimum
-887. Skasowany wpis dziennika z oględzin, przywrócone PW Tony'ego (35/35) i zegar (1 stycznia
-2045, `settledMonth` `2045-01`).
-
-**Po pierwszym commicie MG zakwestionował godzinę w pasku gracza — i miał rację.** Zegar rusza
-się wyłącznie na kliknięcie MG, a rundy walki nie dotykają go wcale: czterdzieści rund to dwie
-minuty świata, których nikt nigdy nie wklepie. Godzina pokazana graczowi jest więc **obietnicą
-dokładności, której nie da się dotrzymać** — po trzech godzinach przy stole „08:37" czyta się
-jak zepsuty zegar, a „15 marca, rano" jak działający. Gracz dostaje odtąd `formatGameDayTime`
-(doba plus pora dnia), MG godzinę co do minuty, a **karta czatu traci minuty dla wszystkich**,
-bo jest cezurą, nie stemplem czasu, i zostaje w dzienniku sesji na zawsze. Pora dnia została
-świadomie: nocą ulica należy do kogo innego, a ciemność jest mechaniką od 18b. Odrzucone drugie
-rozwiązanie tego samego problemu — przesuwanie zegara rundami walki — łamie „nic nie rusza się
-samo" i zyskuje dwie minuty na strzelaninę, czyli nic. **To nie jest filtr:** minuta jedzie
-w `state:sync` do wszystkich, bo nie ma czego chronić, a trzymanie jej w ładunku znaczy, że
-zmiana zdania kosztuje jedną funkcję zamiast pola kampanii, migracji i przycinania per widz.
-
-**Oględziny tej zmiany — z dwóch sesji naraz — odsłoniły trzy błędy, w tym jeden sprzed dwóch
-etapów.** Do 05.09 wszystko było oglądane z konta MG i dlatego przechodziło.
-
-1. **`visibleTo` w `chat-io.ts` jest BIAŁĄ LISTĄ rodzajów, a `time` na niej nie było.** Karta
-   docierała do gracza rozgłoszeniem na żywo i znikała przy przeładowaniu, bo historia jej nie
-   zwracała. MG jej nie tracił **wyłącznie dlatego, że jest jej autorem** (`{ authorId }`) —
-   i to maskowało błąd przez pierwsze oględziny.
-2. **Ten sam błąd miał `recovery` z etapu 30b**, choć dokumentacja `RecoveryLogEntry` mówi
-   wprost „karta jest **publiczna**… dzieje się przy całym stole". Dzień odpoczynku rozliczony
-   przez gracza był dla MG niewidoczny po przeładowaniu i odwrotnie. Naprawione przy okazji;
-   `recovery.test.ts` dostał **konto gracza** i test, który bez poprawki pada (sprawdzone przez
-   chwilowe cofnięcie wpisu).
-3. **Cztery rozgłoszenia rysowały `seq`, a klient go nie konsumował** — `compendium:upsert`,
-   `compendium:delete` (13), `shop:tier` (25c) i świeżo dopisany `time:set` (37), który wzorzec
-   po prostu odziedziczył po sąsiadach. Każde takie zdarzenie robiło lukę w numeracji pokoju,
-   przez którą **następna wiadomość czatu była odrzucana**, a cały stół szedł w zbędny
-   `state:request`. To była druga, niezależna przyczyna zniknięcia karty zegara u gracza —
-   i dlatego naprawa samego `visibleTo` przez chwilę wyglądała na nietrafioną.
-
-**Wniosek na przyszłość jest w umowach kodu: nowy rodzaj wiersza czatu ma pięć miejsc, nie
-cztery**, a „publiczny" wiersz sprawdza się **z drugiego konta**, bo autor widzi swoje zawsze.
-
-**Poligon wrócił do stanu sprzed sesji po raz drugi** (skok „do rana" z oględzin i jego karta
-czatu): czat znowu 718 wierszy z maksimum 887, zegar na 1 stycznia 2045.
-
-**Testy na koniec:** 1866 w `shared` (+33), 1006 na serwerze (+14), 97 u klienta (+5) — zielone.
-ESLint i Prettier czyste na kodzie; `tsc --noEmit` czysty w trzech pakietach. Doszły trzy
-pliki: `shared/src/gametime.test.ts`, `server/src/gametime.test.ts`
-i `client/src/gametime-store.test.ts`, plus konto gracza i test widoczności
-w `server/src/recovery.test.ts`. Jeden pełny przebieg serwera pokazał czerwony plik
-i przeszedł przy powtórce — znany wyścig, patrz pułapki.

@@ -187,6 +187,7 @@ import type {
   SocketAck,
   StateSyncPayload,
   TokenAssetDeleteResult,
+  TokenCombatProfile,
   TokenCreatePayload,
   TokenDeleteBroadcast,
   TokenMoveBroadcast,
@@ -2252,7 +2253,22 @@ export const createToken = (payload: TokenCreatePayload) =>
 export const updateToken = (tokenId: string, patch: TokenPatch) =>
   emitSceneAck<TokenView>('token:update', { tokenId, patch });
 
-export const deleteToken = (tokenId: string) => emitSceneAck('token:delete', { tokenId });
+/**
+ * Sześć pól szybkiego edytora (etap 38a) — zakłada figurze kartę albo poprawia
+ * tę, którą już ma. Osobne zdarzenie, nie łata żetonu: karta i podpięcie muszą
+ * powstać razem, inaczej pierwszy zerwany krok zostawia figurę bez statystyk.
+ */
+export const statToken = (tokenId: string, quick: TokenCombatProfile) =>
+  emitSceneAck<TokenView>('token:stat', { tokenId, quick });
+
+/**
+ * Kasowanie figury; `deleteCharacter` zabiera przy okazji jej kartę.
+ *
+ * Pyta o to menu figury, a nie serwer — i wyłącznie wtedy, gdy karta nie ma
+ * właściciela i nie stoi na żadnej innej scenie (etap 38a).
+ */
+export const deleteToken = (tokenId: string, deleteCharacter = false) =>
+  emitSceneAck('token:delete', { tokenId, deleteCharacter });
 
 /**
  * Kopia figury obok oryginału (etap 35). Numer, profil bojowy statysty i pełne

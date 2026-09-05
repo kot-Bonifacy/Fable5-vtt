@@ -468,18 +468,6 @@ model Token {
    */
   statusData String @default("{}")
   /**
-   * Fighting numbers of a token with no character sheet (stage 16b), as the
-   * game system serialized them — the same opaque JSON bargain `turnState`
-   * makes in 14b. Null = an extra nobody has statted, which is most tokens.
-   *
-   * On the token rather than in a stub Character row, because a statist is not
-   * a person: it has no owner, no portrait, nothing to open in a sheet window,
-   * and it dies when the token is deleted. Hit points stay in `hpCurrent` /
-   * `hpMax` where they already were — two homes for one number is how they
-   * drift apart.
-   */
-  combatProfile String?
-  /**
    * Which way the figure is turned, in degrees clockwise from up (stage 27j).
    * Null = never turned; the map then draws no wedge at all rather than
    * pretending everybody starts facing north.

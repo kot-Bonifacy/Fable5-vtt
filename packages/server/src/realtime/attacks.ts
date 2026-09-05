@@ -49,8 +49,8 @@ import {
   resolveAttachmentWeapon,
   weaponMagazineWith,
   type CpredAttachmentProfile,
-  combatProfileOperatedBy,
-  combatProfileWithCombatValue,
+  cpredSheetOperatedBy,
+  cpredSheetWithCombatValue,
   concentrationBase,
   cpredSmokeModifiers,
   cpredReloadSound,
@@ -78,15 +78,11 @@ import type { Character, Scene, Token } from '../generated/prisma/client.js';
 import {
   SHEET_STATIST_WEAPON_ROW_ID,
   SHEET_SUPPRESSED_STATUS_ID,
-  readSheetCombatProfile,
-  sheetCombatProfileEvasionDv,
   sheetDodgeBlock,
-  sheetFromCombatProfile,
+  sheetForRoll,
   sheetFacedownPenalty,
   sheetHumanShieldCovers,
   sheetSituationModifiers,
-  sheetTokenHp,
-  type SheetCombatProfile,
 } from '../sheets.js';
 import {
   areaTargets,
@@ -335,25 +331,23 @@ async function requireAttackerScene(
 /**
  * Stand-in evasion DV of the defender.
  *
- * Two sources since stage 16b, and the fallback order is the point: a sheet
- * first, then the token's own combat profile, and only a token with neither
- * drops through to the everyday DV. Before 16b every extra defended itself at
- * 13 whatever the GM had in mind for it.
+ * Jedno źródło od etapu 38a: karta figury. Figura bez karty wraca `undefined`
+ * i spada na codzienne PT — przed 16b robił tak **każdy** statysta, cokolwiek
+ * MG dla niego wymyślił. Wartość bojowa wchodzi tu przez `sheetForRoll`, więc
+ * funkcjonariusz Wsparcia broni się czternastką, a nie Unikiem 0.
  */
 async function targetEvasionDv(
   deps: RealtimeDeps,
   registry: CpredRegistry,
   token: Token,
 ): Promise<number | undefined> {
-  if (token.characterId) {
-    const character = await deps.ctx.prisma.character.findUnique({
-      where: { id: token.characterId },
-    });
-    if (character) return passiveEvasionDv(parseCharacterData(character.data, registry), registry);
-  }
-  const profile = readSheetCombatProfile(token.combatProfile);
-  if (!profile) return undefined;
-  return sheetCombatProfileEvasionDv(profile, registry, sheetTokenHp(token));
+  if (!token.characterId) return undefined;
+  const character = await deps.ctx.prisma.character.findUnique({
+    where: { id: token.characterId },
+  });
+  if (!character) return undefined;
+  const data = sheetForRoll(parseCharacterData(character.data, registry), null);
+  return passiveEvasionDv(data, registry);
 }
 
 /**
@@ -373,21 +367,30 @@ function facedownPenaltyRows(
 }
 
 /**
- * Who is making this attack (stage 16b): a character sheet, or a token's own
- * combat profile.
+ * Who is making this attack.
  *
- * Both arms end up carrying a `CpredCharacterData`, which is the whole design —
- * everything downstream (the planner, the breakdown, the turn budget, the chat
- * card) works on a sheet and never learns that statists exist. What differs is
- * only where the numbers came from and where the spent rounds are written back.
+ * **Jedno ramię od etapu 38a.** Do 38a były dwa — karta postaci i „profil
+ * bojowy" żetonu — i to drugie zniknęło razem z profilem: każda figura, którą
+ * ktoś ostatystykował, ma odtąd prawdziwą kartę. Cała reszta ścieżki ataku
+ * (planer, rozbicie rzutu, budżet tury, karta czatu) pracowała na
+ * `CpredCharacterData` już wcześniej i nigdy nie dowiedziała się o statystach;
+ * teraz nie ma się czego nie dowiadywać.
  */
-type AttackSource =
-  | { kind: 'character'; character: Character; token: Token; data: CpredCharacterData }
-  | { kind: 'statist'; token: Token; profile: SheetCombatProfile; data: CpredCharacterData };
+interface AttackSource {
+  character: Character;
+  token: Token;
+  data: CpredCharacterData;
+}
 
-/** Name shown as the actor of the roll — the sheet's, or the token's. */
+/**
+ * Name shown as the actor of the roll.
+ *
+ * Figura prowadzona przez MG mówi nazwą **żetonu**, nie karty: to ona stoi na
+ * mapie i to ją zmienia klonowanie („Ganger" → „Ganger 2"). Karta gracza mówi
+ * swoją — tam nazwa karty jest imieniem postaci, a żeton bywa byle jaki.
+ */
 function sourceName(source: AttackSource): string {
-  return source.kind === 'character' ? source.character.name : source.token.name;
+  return source.character.ownerId === null ? source.token.name : source.character.name;
 }
 
 /**
@@ -425,10 +428,9 @@ async function resolveStatistToken(
 /**
  * Spends Luck and ammunition in one write, and re-emits whatever holds them.
  *
- * The two arms differ only in the destination: a sheet writes the whole
- * `CpredCharacterData` back, a statist writes the magazine into its own profile
- * column. A statist never spends Luck — its synthesised sheet has none, and the
- * planner refuses the request long before this.
+ * Jedno miejsce zapisu od etapu 38a: cała `CpredCharacterData` wraca na kartę.
+ * Figura ostatystykowana szybkim edytorem nie wydaje Szczęścia — jej karta go
+ * nie ma, a planer odmawia takiej prośbie na długo przed tym miejscem.
  */
 async function spendAttackCosts(
   deps: RealtimeDeps,
@@ -438,18 +440,6 @@ async function spendAttackCosts(
   luckSpent: number,
 ): Promise<void> {
   if (luckSpent === 0 && meta.ammoCost === 0) return;
-
-  if (source.kind === 'statist') {
-    const saved = await deps.ctx.prisma.token.update({
-      where: { id: source.token.id },
-      data: {
-        combatProfile: JSON.stringify({ ...source.profile, ammoCurrent: meta.ammoAfter }),
-      },
-    });
-    source.token = saved;
-    await emitTokensById(deps, campaignId, [saved.id]);
-    return;
-  }
 
   const { character, data } = source;
   // Stage 31: a shot from a bolted-on weapon spends the *attachment's* rounds.
@@ -492,9 +482,9 @@ const CPRED_JAM_DETAIL = 'broń niskiej jakości zacięła się — usuń usterk
  *  - the shot came from the **host weapon**, not from something bolted under
  *    it: an attachment's weapon is built from a weapon *type* and has no
  *    quality to be poor;
- *  - the figure has a **sheet**. A statist's gun lives in `combatProfile`,
- *    which carries no catalogue entry and therefore no quality — one more
- *    place where a figure nobody statted is simply not asked the question.
+ * Jakość broni czyta się z wpisu kompendium, więc figura, której broń nie ma
+ * wpisu (gołe pięści, broń wklepana ręcznie), po prostu nie dostaje tego
+ * pytania — i tak było, gdy ta broń mieszkała w profilu bojowym.
  *
  * Returns whether the gun jammed, so the card can say so.
  */
@@ -506,7 +496,6 @@ async function jamPoorWeapon(
   resolved: ResolvedWeapon | null | undefined,
   result: RollResult,
 ): Promise<boolean> {
-  if (source.kind !== 'character') return false;
   if (meta.attachmentId) return false;
   if (resolved?.quality !== 'poor') return false;
   const critical = result.critical;
@@ -769,16 +758,41 @@ async function controllerOfToken(deps: RealtimeDeps, token: Token): Promise<stri
 }
 
 /**
- * Dresses a statist token as an attacker (stage 16b).
+ * Karta figury, którą prowadzi się przez żeton (etap 38a).
+ *
+ * Wspólna droga dla ataku, przeładowania i uniku figury, która nie jest niczyją
+ * postacią: ganger, wieżyczka, funkcjonariusz Wsparcia. Odmowa zostaje ta sama,
+ * którą klient zna od 16b — `TOKEN_HAS_NO_PROFILE` znaczy dziś „ta figura nie
+ * ma karty", i to jest dokładnie ten sam stan co „nikt jej nie ostatystykował".
+ */
+async function requireFigureSheet(
+  deps: RealtimeDeps,
+  campaignId: string,
+  registry: CpredRegistry,
+  token: Token,
+): Promise<{ character: Character; data: CpredCharacterData }> {
+  if (!token.characterId) throw new RealtimeError('TOKEN_HAS_NO_PROFILE');
+  const character = await deps.ctx.prisma.character.findUnique({
+    where: { id: token.characterId },
+  });
+  if (!character || character.campaignId !== campaignId) {
+    throw new RealtimeError('TOKEN_HAS_NO_PROFILE');
+  }
+  return { character, data: parseCharacterData(character.data, registry) };
+}
+
+/**
+ * Dresses a token-run figure as an attacker.
  *
  * Two passes, and the second one is not laziness: which skill fires the weapon
  * is a property of the *weapon type* in the compendium, so the sheet has to
  * exist before the catalogue can be asked, and the answer then decides which
- * skill on that sheet carries the profile's level. Building it in one pass would
- * mean either hard-coding the skill or giving the statist every skill at once —
- * and „trained in everything" is exactly what a statist must not be.
+ * skill carries the figure's combat level (`statBlock.weaponSkill`). Building
+ * it in one pass would mean either hard-coding the skill or handing the figure
+ * every skill at once — and „trained in everything" is exactly what a figure
+ * statted from the token menu must not be.
  */
-async function buildStatistSource(
+async function buildFigureSource(
   deps: RealtimeDeps,
   campaignId: string,
   registry: CpredRegistry,
@@ -790,36 +804,28 @@ async function buildStatistSource(
    * Stage 26d: a netrunner's Skills — „rzucając na Umiejętności tego
    * Netrunnera" (s. 213). Stage 26e: a Demon's single „Wartość bojowa", the one
    * number a machine rolls with (s. 212, s. 214). The magazine and the plating
-   * stay the turret's in both cases, which is why the *stored* profile below is
+   * stay the turret's in both cases, which is why the *stored* card below is
    * never the substituted one.
    */
   hands?: { operator?: CpredCharacterData; combatValue?: number },
 ): Promise<AttackSource> {
-  const profile = readSheetCombatProfile(token.combatProfile);
-  if (!profile) throw new RealtimeError('TOKEN_HAS_NO_PROFILE');
-  const hp = sheetTokenHp(token);
+  const { character, data } = await requireFigureSheet(deps, campaignId, registry, token);
 
   // Pass one: a sheet good enough to look the weapon up with.
-  const bare = sheetFromCombatProfile(profile, hp, null);
-  const weapon = await resolveWeaponRow(deps, campaignId, bare, SHEET_STATIST_WEAPON_ROW_ID);
+  const weapon = await resolveWeaponRow(deps, campaignId, data, SHEET_STATIST_WEAPON_ROW_ID);
   const skillId =
     request?.mode === 'autofire' || request?.mode === 'suppressive'
       ? CPRED_AUTOFIRE_SKILL_ID
       : (weapon.resolved?.skillId ?? request?.skillId ?? null);
 
-  // Pass two: the same sheet with that one skill at the profile's level — or at
-  // the operator's, when somebody else is aiming it.
+  // Pass two: the same sheet with that one skill filled in — from the figure's
+  // own combat level, or from whoever is aiming it instead.
   const firing = hands?.operator
-    ? combatProfileOperatedBy(profile, hands.operator, skillId)
+    ? cpredSheetOperatedBy(data, hands.operator, skillId)
     : hands?.combatValue !== undefined
-      ? combatProfileWithCombatValue(profile, hands.combatValue)
-      : profile;
-  return {
-    kind: 'statist',
-    token,
-    profile,
-    data: sheetFromCombatProfile(firing, hp, skillId),
-  };
+      ? cpredSheetWithCombatValue(data, hands.combatValue)
+      : data;
+  return { character, token, data: sheetForRoll(firing, skillId) };
 }
 
 export const attackRollEvent = defineEvent<AttackRollPayload<CpredAttackRequest>, AttackRollResult>(
@@ -928,12 +934,11 @@ export async function performAttackRoll(
 
       const source = character
         ? ({
-            kind: 'character',
             character,
             token: attacker,
             data: parseCharacterData(character.data, registry),
           } satisfies AttackSource)
-        : await buildStatistSource(deps, campaignId, registry, attacker, payload?.request, device);
+        : await buildFigureSource(deps, campaignId, registry, attacker, payload?.request, device);
       const data = source.data;
 
       const sceneView = toSceneView(scene);
@@ -1531,29 +1536,32 @@ export const attackEvadeEvent = defineEvent<AttackEvadePayload, { total: number;
     const registry = deps.ctx.cpred;
     let defenderName: string;
     let data: CpredCharacterData;
-    if (target.characterId) {
+    // Kartą czy żetonem — o tym rozstrzyga **prośba**, a nie to, czy figura ma
+    // kartę (etap 38a: ma ją każda ostatystykowana). Gracz uchylający się swoją
+    // postacią podaje jej id; MG kliknięciem na figurze nie podaje żadnego,
+    // i wtedy uprawnienie płynie z żetonu, tak jak od 22.08.
+    if (typeof payload.characterId === 'string') {
       const character = await requireRollableCharacter(deps, campaignId, user, payload.characterId);
       if (target.characterId !== character.id) throw new RealtimeError('NOT_THE_TARGET');
       defenderName = character.name;
       data = parseCharacterData(character.data, registry);
     } else {
-      // A figure without a sheet dodges with the profile it defends with: the
-      // same synthesis `attack:roll` already rolls a statist's shots from, so
-      // the passive DV the shooter beat and the active roll cannot disagree.
+      // Figura prowadzona przez żeton uchyla się swoją kartą — tą samą, z której
+      // `attack:roll` liczy jej strzały, więc bierne PT, które pobił strzelec,
+      // i czynny rzut nie mają jak się rozjechać.
       if (user.role !== ROLE_GM && target.ownerId !== user.id) {
         throw new RealtimeError('NOT_THE_TARGET');
       }
-      const profile = readSheetCombatProfile(target.combatProfile);
-      if (!profile) throw new RealtimeError('TOKEN_HAS_NO_PROFILE');
+      const figure = await requireFigureSheet(deps, campaignId, registry, target);
       // „Funkcjonariusze Wsparcia nie mogą Unikać pocisków" (s. 158, stage 30c).
       // Ranged only, exactly as printed — an officer parries a machete with his
       // Wartość bojowa like anybody else. Checked here rather than by zeroing
       // Unik, because a zero would still buy them a 1k10 against the shot.
-      if (profile.noBulletDodge === true && !meta.melee) {
+      if (figure.data.statBlock?.noBulletDodge === true && !meta.melee) {
         throw new RealtimeError('BACKUP_CANNOT_DODGE');
       }
       defenderName = target.name;
-      data = sheetFromCombatProfile(profile, sheetTokenHp(target), null);
+      data = sheetForRoll(figure.data, null);
     }
 
     // „Dopóki ją trzymasz, twoja Ludzka tarcza nie może unikać Ataków
@@ -1906,7 +1914,7 @@ export async function performWeaponReload(
     // Action is booked the same way, the sound plays the same way, and „żeby
     // zmienić nabój, trzeba przeładować" is enforced the same way.
     if (!payload?.characterId) {
-      return performStatistReload(deps, { campaignId, user, sceneId, payload });
+      return performFigureReload(deps, { campaignId, user, sceneId, payload });
     }
     const character = await requireRollableCharacter(deps, campaignId, user, payload?.characterId);
     const registry = deps.ctx.cpred;
@@ -2127,15 +2135,17 @@ export const weaponAttachmentEvent = defineEvent<WeaponAttachmentPayload, Weapon
 });
 
 /**
- * The same reload for a figure with no sheet (29.08).
+ * Przeładowanie figury prowadzonej przez żeton (29.08, przepisane w 38a).
  *
- * The statist's magazine is two numbers in `Token.combatProfile`, so the write
- * is a token update rather than a sheet save; everything else is the character
- * path's, including the Action. Changing the round is *not* offered here: a
- * statist's weapon carries no `ammoId` (stage 16b keeps special rounds on the
- * sheet), so there is nothing to change it to.
+ * Do 38a magazynek statysty był dwiema liczbami w kolumnie JSON żetonu, więc
+ * zapis szedł przez `token.update`; od 38a to zwykły wiersz broni na karcie
+ * i zapis jest ten sam, co u gracza. Zostaje jedna różnica, i jest nią
+ * uprawnienie: tę figurę prowadzi się żetonem, nie kartą.
+ *
+ * Zmiany rodzaju amunicji nadal się tu nie oferuje: broń wpisana szybkim
+ * edytorem nie niesie `ammoId`, więc nie ma na co zmieniać.
  */
-async function performStatistReload(
+async function performFigureReload(
   deps: RealtimeDeps,
   options: {
     campaignId: string;
@@ -2153,14 +2163,15 @@ async function performStatistReload(
     sceneId,
     payload?.attackerTokenId,
   );
-  const profile = readSheetCombatProfile(token.combatProfile);
-  if (!profile) throw new RealtimeError('TOKEN_HAS_NO_PROFILE');
+  const { character, data } = await requireFigureSheet(deps, campaignId, deps.ctx.cpred, token);
   if (payload?.weaponRowId !== SHEET_STATIST_WEAPON_ROW_ID) {
     throw new RealtimeError('UNKNOWN_WEAPON');
   }
-  if (profile.ammoMax <= 0) throw new RealtimeError('WEAPON_HAS_NO_MAGAZINE');
+  const row = data.weapons.find((weapon) => weapon.id === SHEET_STATIST_WEAPON_ROW_ID);
+  if (!row) throw new RealtimeError('UNKNOWN_WEAPON');
+  if (row.ammoMax <= 0) throw new RealtimeError('WEAPON_HAS_NO_MAGAZINE');
   // A full magazine costs nothing: the click was a misfire, not an Action.
-  if (profile.ammoCurrent >= profile.ammoMax) return { ammo: profile.ammoCurrent };
+  if (row.ammoCurrent >= row.ammoMax) return { ammo: row.ammoCurrent };
 
   const scene = await deps.ctx.prisma.scene.findUnique({ where: { id: sceneId } });
   if (!scene || scene.campaignId !== campaignId) throw new RealtimeError('SCENE_NOT_FOUND');
@@ -2174,21 +2185,16 @@ async function performStatistReload(
     CPRED_ACTION_RELOAD,
   );
 
-  const next = { ...profile, ammoCurrent: profile.ammoMax };
-  await deps.ctx.prisma.token.update({
-    where: { id: token.id },
-    data: { combatProfile: JSON.stringify(next) },
-  });
+  await saveWeaponRow(deps, campaignId, character, data, row.id, { ammoCurrent: row.ammoMax });
   await emitTokensById(deps, campaignId, [token.id]);
 
   // The same two beats or four the sheet path plays — which one depends on the
   // weapon, so the catalogue is opened for exactly that question.
-  const bare = sheetFromCombatProfile(profile, sheetTokenHp(token), null);
-  const { resolved } = await resolveWeaponRow(deps, campaignId, bare, SHEET_STATIST_WEAPON_ROW_ID);
+  const { resolved } = await resolveWeaponRow(deps, campaignId, data, SHEET_STATIST_WEAPON_ROW_ID);
   await emitMapFx(deps, campaignId, scene, [
     { kind: 'spark', at: fxCentre(token, scene), sound: cpredReloadSound(resolved) },
   ]);
-  return { ammo: next.ammoCurrent };
+  return { ammo: row.ammoMax };
 }
 
 /**

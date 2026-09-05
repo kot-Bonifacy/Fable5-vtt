@@ -865,3 +865,30 @@ nietrafioną — sprawdzaj obie.
 na `[::1]:5173`. Zrzut ekranu wystarczy do paska, ale feed czatu czytaj z DOM-u
 (`[...document.querySelectorAll('.chat-time')].map(n => n.innerText)`): panel bywa przewinięty
 w górę i „nie ma karty" na zrzucie znaczy najczęściej „nie doskrolowano".
+
+**Zmiana `schema.prisma` bez `prisma generate` wywraca CAŁY zestaw testów serwera, nie jeden**
+(05.09, etap 38a). Objaw jest mylący: 57 z 61 plików pada na timeoutach `state:sync`, jakby
+zerwał się protokół. Przyczyną jest wygenerowany klient, który wciąż zna skasowaną kolumnę —
+każde zapytanie o żeton wywraca się w środku, a to widać dopiero jako brak odpowiedzi po drugiej
+stronie gniazda. `npx prisma generate` w `packages/server` po **każdej** zmianie schematu, zanim
+zaczniesz szukać błędu gdzie indziej.
+
+**`validateSkills` odrzuca CAŁĄ mapę Umiejętności przez jeden wiersz spoza zakresu** (05.09).
+Nie „ścina ten jeden do dziesiątki" i nie „wyrzuca ten jeden wiersz" — `patch.skills` w ogóle nie
+powstaje, a `parseCharacterData` bierze wtedy domyślne (puste). Tak samo działa `validateStats`:
+jedna Cecha poza zakresem i karta wraca jako przeciętny człowiek po pięć. Objaw jest cichy —
+figura po prostu jest słabsza, niż ją wpisano. Wszystko, co zapisuje liczby na kartę **z innego
+modelu** (etap 38a: sześć pól menu żetonu, Wartość bojowa Wsparcia), musi ścinać je do sufitu
+karty **przed** zapisem.
+
+**Karta zapisana ≠ karta rzucana** (05.09, etap 38a). Figura z Wartością bojową ma na karcie
+Umiejętności przy suficie dziesięć, a rzuca czternastką — bo podstawia ją `sheetForRoll` w chwili
+rzutu. Test, który czyta wartość **z karty** i oczekuje czternastki, jest testem złego miejsca:
+sprawdzaj sumę rozbicia rzutu, nie liczbę w kolumnie.
+
+**Skasowanie kolumny, w której coś mieszkało, to trzy miejsca, nie jedno** (05.09, etap 38a).
+Poza kodem czytającym są jeszcze: **eksport i import** (`archive.ts` wypisuje kolumny z nazwy,
+więc martwa nazwa wywraca zrzut kampanii) i **kopie zapasowe**. Migracja SQL jest czwartym:
+`json_group_object` z `json_each` daje się użyć do przepisania mapy z JSON-a, ale kompendium
+mieszka w plikach `data/private/`, **nie w bazie** — więc SQL nie ma jak rozwiązać „broń →
+Umiejętność" i model musi być tak dobrany, żeby nie musiał (stąd `statBlock.weaponSkill`).

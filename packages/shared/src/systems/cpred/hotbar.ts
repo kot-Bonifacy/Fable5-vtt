@@ -23,8 +23,6 @@ import {
   type ResolvedWeapon,
 } from './compendium.js';
 import type { CpredAttachmentProfile } from './attachments.js';
-import type { CpredCombatProfile } from './statist.js';
-import { STATIST_WEAPON_ROW_ID } from './statist.js';
 import {
   CPRED_ATTACK_MODE_LABELS,
   CPRED_ATTACK_MODE_SHORT,
@@ -94,13 +92,15 @@ export interface CpredAttachmentLookup {
 }
 
 /**
- * The weapons a token can fire: its sheet's rows, or the single weapon of its
- * combat profile (stage 16b). Empty when it has neither, which is what „this
- * token has not been statted" looks like from here.
+ * The weapons a token can fire: the rows of its sheet.
+ *
+ * Jedno ramię od etapu 38a. Do 38a było drugie — jedna broń „profilu
+ * bojowego" figury bez karty — i to ono zniknęło razem z profilem: figura,
+ * którą ktoś ostatystykował, ma odtąd prawdziwą kartę z prawdziwym wierszem
+ * broni (`STATIST_WEAPON_ROW_ID`). Pusto = tej figury nikt nie ostatystykował.
  */
 export function cpredWeaponOptions(
   sheet: Pick<CpredCharacterData, 'weapons'> | null,
-  profile: CpredCombatProfile | null,
   resolve: CpredWeaponResolver,
   resolveAmmo?: CpredAmmoResolver,
   attachments?: CpredAttachmentLookup,
@@ -121,21 +121,7 @@ export function cpredWeaponOptions(
       return [primary, ...secondaryOptionsOf(row, resolved, lookup, attachments)];
     });
   }
-  if (!profile) return [];
-  const resolved = resolve(profile.weaponId);
-  return [
-    {
-      rowId: STATIST_WEAPON_ROW_ID,
-      attachmentId: null,
-      name: profile.weaponName,
-      resolved,
-      ammo: profile.ammoMax > 0 ? { current: profile.ammoCurrent, max: profile.ammoMax } : null,
-      // A statist's gun is loaded with whatever its weapon type fires and
-      // nothing else: nobody edits an extra's magazine, so only the „this
-      // weapon takes one kind of round" case can apply.
-      ammoProfile: loadedAmmoFor({}, resolved, lookup),
-    },
-  ];
+  return [];
 }
 
 /**
@@ -452,9 +438,8 @@ export type CpredHotbarSlot =
 
 /** Everything the bar reads. All of it is state somebody else already owns. */
 export interface CpredHotbarInput {
-  /** Sheet of the selected token; null falls back to the combat profile. */
+  /** Karta zaznaczonej figury; null = figura, której nikt nie ostatystykował. */
   sheet: Pick<CpredCharacterData, 'weapons'> | null;
-  profile: CpredCombatProfile | null;
   resolve: CpredWeaponResolver;
   /** Ammunition lookup (stage 16g); without it every gun reads as ordinary. */
   resolveAmmo?: CpredAmmoResolver;
@@ -560,7 +545,6 @@ function weaponSlotBase(option: CpredWeaponOption): string {
 export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
   const options = cpredWeaponOptions(
     input.sheet,
-    input.profile,
     input.resolve,
     input.resolveAmmo,
     input.attachments,
@@ -631,9 +615,10 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
     });
   }
 
-  // Reloading is no longer a sheet's privilege (29.08): `weapon:reload` now
-  // writes a statist's magazine back into its combat profile, so the extra with
-  // the empty SMG gets the same box the player does — and pays the same Action.
+  // Reloading is no longer a sheet's privilege (29.08), a od 38a nie ma nawet
+  // czego rozróżniać: magazynek gangera jest wierszem karty jak każdy inny,
+  // więc statysta z pustym pistoletem maszynowym dostaje to samo pole co gracz
+  // — i płaci tę samą Akcję.
   for (const option of options) {
     if (!option.ammo) continue;
     slots.push({

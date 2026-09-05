@@ -101,7 +101,7 @@ import {
   formatEddies,
   formatLedgerAmount,
   groupedSkills,
-  hpMax,
+  cpredSheetHpMax,
   humanityMaxWith,
   isAmmoEntry,
   attachmentOptionsFor,
@@ -491,7 +491,7 @@ function IdentityColumn({
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const [uploading, setUploading] = useState(false);
   const role = registry.roles.find((r) => r.id === data.roleId) ?? null;
-  const maxHp = hpMax(data.stats);
+  const maxHp = cpredSheetHpMax(data);
   const wound = woundState(data.hpCurrent, data.stats);
   const woundPenalty = woundCheckPenalty(wound);
   const humanityCeiling = humanityMaxWith(data.stats, data.cyberware);
@@ -2345,7 +2345,7 @@ function ArmorPenalty({
  */
 function RecoveryPanel({ data, characterId }: { data: CpredCharacterData; characterId: string }) {
   const [busy, setBusy] = useState(false);
-  const max = hpMax(data.stats);
+  const max = cpredSheetHpMax(data);
   const rate = cpredHealRate(data);
   if (data.hpCurrent >= max && !data.recovery.stabilized) return null;
 

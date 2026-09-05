@@ -7,6 +7,107 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 05.09 (trzecia) — kampania, która wie, którego jest w Night City
+
+**Zlecenie MG:** kontynuacja projektu; z listy wolnych etapów MG wybrał **37 (kalendarz kampanii
+i upływ czasu)** i kazał scalić gałąź etapu 35 do `main` przed startem. Cztery rozstrzygnięcia
+padły przed kodem i wszystkie są w pliku etapu: **zegar podpowiada, nie rządzi** (nic nie dzieje
+się samo), **start 1 stycznia 2045, 08:00**, **cztery skoki** zamiast sześciu i **data świata
+jako nowa kolumna dziennika** obok realnej.
+
+**Piąte rozstrzygnięcie wyszło z kolizji między wyborem MG a kryteriami etapu.** MG wybrał same
+skoki naprzód, ale kryterium ukończenia #5 mówi wprost o cofnięciu zegara — a przy czterech
+guzikach „naprzód" nie ma czym ani cofnąć, ani ustawić początku kampanii innego niż domyślny.
+Po dopytaniu **pole daty i godziny weszło do zakresu** i jest dziś jedynym wejściem niosącym
+liczbę minut; wszystkie pozostałe niosą **identyfikator skoku**, bo „+1 h" jest intencją, a nie
+arytmetyką (ta sama zasada, co przy rzutach kośćmi).
+
+**Dwa zdania z opisu etapu okazały się nieaktualne, oba na korzyść.** „Odzyskiwanie PW przez
+odpoczynek nie istnieje w kodzie" przestało być prawdą w 30b — `cpredRestDay` i `character:rest`
+stoją od tamtej sesji, więc etap ich **nie napisał drugi raz**, tylko podpiął pod skok o dobę.
+A `timeZone` opisowy nie powstał wcale: kalendarz jest gregoriański i bez stref, a pole „Night
+City" nie miałoby w kodzie ani jednego odbiorcy.
+
+**Decyzja, która przenika cały etap, to typ kolumny: `Int` z minutami UTC, nie `DateTime`.**
+Strefa czasowa maszyny nie ma nic wspólnego z porą dnia w Night City, a każde przejście przez
+czas lokalny przesunęłoby granicę doby (i klucz miesiąca, i „minęła doba") między dev-em na
+Windows a VPS-em z etapu 28. Pułapką, która by to zrobiła po cichu, jest
+`new Date('2045-03-15T08:00')` — przeglądarka czyta ten zapis jako czas **lokalny**, więc
+`gameTimeFromInput` składa datę ręcznie z `Date.UTC`. Testy pilnują tego wprost.
+
+**Monit rozliczenia liczy się z różnicy dwóch kluczy miesiąca, a nie z dni**, żeby pierwszy
+dzień miesiąca przekroczony jednym skokiem o kwartał i dwoma po dziesięć minut dał **dokładnie
+jeden** monit. Wypadła z tego kolumna `Campaign.settledMonth` i mały wniosek: `null` znaczy
+„nie pytaj" (świeży stół nie zaczyna od zaległego czynszu), więc tworzenie kampanii stempluje
+miesiąc startowy, a cztery kampanie sprzed etapu dostały go **osobną migracją danych** — bo
+dopisania `UPDATE` do już zastosowanej migracji Prisma nie wybacza (suma kontrolna).
+
+**Jeden błąd znaleziony przy oględzinach: „minęły 30 doby".** Polska liczba mnoga ma trzy formy,
+a kod miał dwie — i **cały etap przeszedł oględziny z jedną dobą**, zanim trzy skoki pod rząd to
+pokazały. Naprawione dwiema czystymi funkcjami w rdzeniu (`gameDaysLabel`, `gameDaysPassed`)
+z testem na pułapkę 12–14: „13 dób", nie „13 doby".
+
+**Oględziny (Poligon, konto MG) — cały etap odklikany.** Zegar w pasku u wszystkich
+(„08:00 · 1 stycznia 2045"), okno z czterema skokami, **„do rana" z 22:30 dające 06:00 następnego
+dnia** (a nie stałą liczbę godzin), karty czatu „Minęła doba" / „Minęła noc" / „Zegar ustawiony ·
+29 dób" ze zdaniem „skądś dokądś", **sumowanie dób z trzech skoków** (3), lista rannych
+z „Tony 20/35 PW" i guzikiem „Odpoczynek", **monit miesiąca** (bursztynowa kropka przy zegarze
+plus sekcja „Minął pierwszy dzień miesiąca") oraz **„Podgląd" niczego nie ruszający**
+(„0 ed od 0 postaci", monit nadal zapalony). Wpis dziennika dodany ręcznie dostał **dwie daty**
+(„2026-09-05 · 4 lutego 2045"), a stary wpis „Wycieczka do Afterlife" — samą realną, dokładnie
+jak zaprojektowano. Kliknięcie „Odpoczynek" dało odmowę z podręcznika („najpierw ktoś musi
+wykonać Ustabilizowanie", s. 222) — poprawną, bo karta z ręcznie obniżonym PW nie ma
+`recovery.stabilized`.
+
+**Poligon wrócił do stanu sprzed sesji — sprawdzone różnicowo względem migawki z 13:23:**
+żetony, karty, sceny, księga i kampania **identyczne**, czat wrócił do 718 wierszy z maksimum
+887. Skasowany wpis dziennika z oględzin, przywrócone PW Tony'ego (35/35) i zegar (1 stycznia
+2045, `settledMonth` `2045-01`).
+
+**Po pierwszym commicie MG zakwestionował godzinę w pasku gracza — i miał rację.** Zegar rusza
+się wyłącznie na kliknięcie MG, a rundy walki nie dotykają go wcale: czterdzieści rund to dwie
+minuty świata, których nikt nigdy nie wklepie. Godzina pokazana graczowi jest więc **obietnicą
+dokładności, której nie da się dotrzymać** — po trzech godzinach przy stole „08:37" czyta się
+jak zepsuty zegar, a „15 marca, rano" jak działający. Gracz dostaje odtąd `formatGameDayTime`
+(doba plus pora dnia), MG godzinę co do minuty, a **karta czatu traci minuty dla wszystkich**,
+bo jest cezurą, nie stemplem czasu, i zostaje w dzienniku sesji na zawsze. Pora dnia została
+świadomie: nocą ulica należy do kogo innego, a ciemność jest mechaniką od 18b. Odrzucone drugie
+rozwiązanie tego samego problemu — przesuwanie zegara rundami walki — łamie „nic nie rusza się
+samo" i zyskuje dwie minuty na strzelaninę, czyli nic. **To nie jest filtr:** minuta jedzie
+w `state:sync` do wszystkich, bo nie ma czego chronić, a trzymanie jej w ładunku znaczy, że
+zmiana zdania kosztuje jedną funkcję zamiast pola kampanii, migracji i przycinania per widz.
+
+**Oględziny tej zmiany — z dwóch sesji naraz — odsłoniły trzy błędy, w tym jeden sprzed dwóch
+etapów.** Do 05.09 wszystko było oglądane z konta MG i dlatego przechodziło.
+
+1. **`visibleTo` w `chat-io.ts` jest BIAŁĄ LISTĄ rodzajów, a `time` na niej nie było.** Karta
+   docierała do gracza rozgłoszeniem na żywo i znikała przy przeładowaniu, bo historia jej nie
+   zwracała. MG jej nie tracił **wyłącznie dlatego, że jest jej autorem** (`{ authorId }`) —
+   i to maskowało błąd przez pierwsze oględziny.
+2. **Ten sam błąd miał `recovery` z etapu 30b**, choć dokumentacja `RecoveryLogEntry` mówi
+   wprost „karta jest **publiczna**… dzieje się przy całym stole". Dzień odpoczynku rozliczony
+   przez gracza był dla MG niewidoczny po przeładowaniu i odwrotnie. Naprawione przy okazji;
+   `recovery.test.ts` dostał **konto gracza** i test, który bez poprawki pada (sprawdzone przez
+   chwilowe cofnięcie wpisu).
+3. **Cztery rozgłoszenia rysowały `seq`, a klient go nie konsumował** — `compendium:upsert`,
+   `compendium:delete` (13), `shop:tier` (25c) i świeżo dopisany `time:set` (37), który wzorzec
+   po prostu odziedziczył po sąsiadach. Każde takie zdarzenie robiło lukę w numeracji pokoju,
+   przez którą **następna wiadomość czatu była odrzucana**, a cały stół szedł w zbędny
+   `state:request`. To była druga, niezależna przyczyna zniknięcia karty zegara u gracza —
+   i dlatego naprawa samego `visibleTo` przez chwilę wyglądała na nietrafioną.
+
+**Wniosek na przyszłość jest w umowach kodu: nowy rodzaj wiersza czatu ma pięć miejsc, nie
+cztery**, a „publiczny" wiersz sprawdza się **z drugiego konta**, bo autor widzi swoje zawsze.
+
+**Poligon wrócił do stanu sprzed sesji po raz drugi** (skok „do rana" z oględzin i jego karta
+czatu): czat znowu 718 wierszy z maksimum 887, zegar na 1 stycznia 2045.
+
+**Testy na koniec:** 1866 w `shared` (+33), 1006 na serwerze (+14), 97 u klienta (+5) — zielone.
+ESLint i Prettier czyste na kodzie; `tsc --noEmit` czysty w trzech pakietach. Doszły trzy
+pliki: `shared/src/gametime.test.ts`, `server/src/gametime.test.ts`
+i `client/src/gametime-store.test.ts`, plus konto gracza i test widoczności
+w `server/src/recovery.test.ts`. Jeden pełny przebieg serwera pokazał czerwony plik
+i przeszedł przy powtórce — znany wyścig, patrz pułapki.
 ### Sesja 05.09 (druga) — mapa, na której da się wskazać palcem i wziąć sześciu naraz
 
 **Zlecenie MG:** kontynuacja projektu; z listy wolnych etapów MG wybrał **35 (ping, zaznaczanie

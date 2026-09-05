@@ -6,6 +6,21 @@ odhaczania zaległości albo dotykasz etapu, który tu występuje — nie rutyno
 
 Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/zamkniete-zaleglosci.md`.
 
+**05.09 (etap 38a — statysta jako karta postaci): UI szybkiego edytora nieoglądany
+w przeglądarce.** Przez przeglądarkę przeszła **część** etapu, i to ta, na której najbardziej
+zależało: trzy zmigrowane figury poligonu („Automatyczna wieżyczka", „Strzelec 23x", „Cel 23x")
+stoją w panelu postaci obok Vex i Rudego, otwierają się jak każda karta, a „Cel 23x" pokazuje
+**PW 33/35** — czyli wydrukowane maksimum przeżyło migrację i zapis (`statBlock.hpMax`). Pasek
+figury po zaznaczeniu żetonu buduje się z karty (broń, akcje, przeładowania, PW 35/35).
+
+**Nieoglądane zostały trzy rzeczy w menu figury**, bo prawym klikiem z automatyki nie udało się
+otworzyć menu kontekstowego mapy (synteza `contextmenu` nie dochodzi do kanwy Pixi):
+przełącznik „Statystyki bojowe (figura dostaje własną kartę)" i to, że zapis **zakłada kartę**;
+nowe pole „Wartość bojowa zamiast Cech" wraz z „Nie unika pocisków"; oraz **pytanie o kartę przy
+koszu figury** (pojedynczym i grupowym z 35). Wszystkie trzy ścieżki mają testy dymne na żywych
+gniazdach (`tokens.test.ts` → „statysta jako karta postaci (etap 38a)"), więc chodzi wyłącznie
+o obejrzenie układu i słów na ekranie. **Do zrobienia ręką MG w pierwszej sesji przy stole.**
+
 **05.09 (etap 39 — efekty czasowe na Cechach):** etap **zamknięty w komplecie z oględzinami**
 w tej samej sesji — pozycja „nie był oglądany" żyła kilkanaście minut. Przez przeglądarkę przeszły
 wszystkie trzy kawałki UI (panel na karcie, małe pole „z" pod Cechą, chipy w pasku figury), obie

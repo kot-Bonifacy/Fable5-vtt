@@ -9,7 +9,7 @@ import {
   gameDaysPassed,
   gameTimeFromInput,
   gameTimeToInput,
-  hpMax,
+  cpredSheetHpMax,
   settleDue,
   settleMonthsDue,
   type GameTimeStepId,
@@ -72,7 +72,7 @@ export function ClockWindow() {
           id: character.id,
           name: character.name,
           hp: character.data.hpCurrent,
-          max: hpMax(character.data.stats),
+          max: cpredSheetHpMax(character.data),
         }))
         .filter((row) => row.hp < row.max),
     [order, charactersById],
