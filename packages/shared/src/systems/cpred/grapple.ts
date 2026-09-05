@@ -27,6 +27,7 @@ import type { CpredCharacterData, CpredRegistry } from './character.js';
 import { CPRED_PASSIVE_DIE } from './attacks.js';
 import { resolveCpredDamage, type CpredDamageOutcome } from './damage.js';
 import { woundStateFromHp, type CpredWoundState } from './rolls.js';
+import { cpredEffectiveStats } from './stateffects.js';
 
 /** „Obaj walczący ... otrzymują modyfikator −2 do wszystkich Akcji" (s. 176). */
 export const CPRED_GRAPPLE_PENALTY = -2;
@@ -53,7 +54,10 @@ export type CpredGrappleIntent = 'hold' | 'item';
  */
 export function cpredGrappleBase(data: CpredCharacterData, registry: CpredRegistry): number {
   const skill = registry.skills.find((entry) => entry.id === CPRED_BRAWLING_SKILL_ID);
-  const stat = skill ? data.stats[skill.stat] : data.stats.dex;
+  // Etap 39: Cecha **jak teraz** — Zwarcie jest rzutem przeciwstawnym, a obie
+  // strony mają prawo być pod czymś, co obniżyło im Zwinność.
+  const stats = cpredEffectiveStats(data);
+  const stat = skill ? stats[skill.stat] : stats.dex;
   return stat + (data.skills[CPRED_BRAWLING_SKILL_ID] ?? 0);
 }
 

@@ -6,6 +6,7 @@ import { join, resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { io as ioClient, type Socket as ClientSocket } from 'socket.io-client';
 import type {
+  CpredStatEffect,
   CampaignSummary,
   CharacterView,
   CombatView,
@@ -20,6 +21,7 @@ import type {
   StateSyncPayload,
   TokenView,
 } from '@vtt/shared';
+import { CPRED_HOUR_S } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 
@@ -665,5 +667,70 @@ describe('walka w Sieci na żywych gniazdach', () => {
     expect(guest?.initiative).toBe(13);
     // Rzut inicjatywy dla bytu bez ciała nie ma sensu i serwer go odmawia.
     expect(errorOf(await emitAck(gm, 'combat:roll', { combatantId: guest!.id }))).toBeTruthy();
+  });
+
+  /**
+   * Etap 39: `statDrain` przestał być zdaniem „stosuje MG".
+   *
+   * Do 05.09.2026 Nerwosol i Lisz kończyły się linijką na karcie, bo projekt nie
+   * miał czasowych modyfikatorów Cech. Teraz serwer rzuca 1k6 **raz**, zapisuje
+   * liczbę i zakłada trzy efekty — INT, REF i ZW — na godzinę, z terminem
+   * rundowym i światowym naraz.
+   */
+  it('nakłada Nerwosol sam: jeden rzut 1k6 na trzy Cechy, na godzinę', async () => {
+    await emitAck(player, 'netrun:leave', { runId });
+    data(
+      await emitAck<CompendiumEntry>(gm, 'compendium:upsert', {
+        entry: {
+          category: 'program',
+          name: 'Nerwosol testowy',
+          programClass: 'attacker',
+          target: 'antiPersonnel',
+          blackIce: true,
+          atk: 30,
+          def: 0,
+          rez: 24,
+          per: 0,
+          speed: 30,
+          effects: { hooks: ['statDrain'] },
+        },
+      }),
+      'compendium:upsert (Nerwosol)',
+    );
+    const architectureId = data(
+      await emitAck<NetArchitectureView>(gm, 'net:save', {
+        architecture: {
+          ...architectureWithIce('program.nerwosol-testowy'),
+          name: 'Sieć laboratorium III',
+        },
+      }),
+      'net:save',
+    ).id;
+    await emitAck(gm, 'netpoint:update', { id: pointId, architectureId });
+    runId = data(
+      await emitAck<NetRunPayload>(player, 'netrun:start', { tokenId, accessPointId: pointId }),
+      'netrun:start',
+    ).runId;
+    await goToIceFloor();
+
+    const iceId = (await runOf(gm))!.run.combat.ice[0]!.id;
+    await emitAck(gm, 'netrun:ice:detect', { runId, iceId });
+
+    const sheet = (await roundTrip(gmSocket)).characters.find((row) => row.id === characterId);
+    const effects = (sheet!.data as { statEffects: CpredStatEffect[] }).statEffects;
+    expect(effects.map((row) => row.stat).sort()).toEqual(['dex', 'int', 'ref']);
+    // Jedna kość na trzy Cechy: „obniża o 1k6 INT, REF oraz ZW" wymienia jedną
+    // kość, więc trzy różne liczby byłyby czymś, czego tabela nie obiecuje.
+    expect(new Set(effects.map((row) => row.value)).size).toBe(1);
+    expect(effects[0]!.value).toBeLessThanOrEqual(-1);
+    expect(effects[0]!.value).toBeGreaterThanOrEqual(-6);
+    expect(effects[0]!.source).toBe('Nerwosol testowy');
+    expect(effects[0]!.rolled).toBe('1k6');
+    expect(effects[0]!.durationS).toBe(CPRED_HOUR_S);
+    // Kolejka na tej scenie stoi w rundzie 0 („zebrani, nikt nie działał"), więc
+    // nic nie liczy rund i terminu rundowego nie ma. Termin świata jest **zawsze**
+    // — bez niego efekt przeżyłby koniec walki i nie zszedłby nigdy.
+    expect(effects[0]!.expiresAtRound).toBeUndefined();
+    expect(effects[0]!.expiresAtMinute).toBeGreaterThan(0);
   });
 });

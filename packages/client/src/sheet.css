@@ -624,6 +624,83 @@
   padding: 0 0.2rem;
 }
 
+/* Etap 39: Cecha przesunięta efektem czasowym mówi to kolorem małego pola „z",
+   a nie nowym elementem — czerwień, gdy w dół, zieleń, gdy w górę. Empatia
+   obniżona Człowieczeństwem trafia w tę samą, dolną gałąź i wygląda tak jak
+   wyglądała od 23a. */
+.cp-stat-sub--down .cp-stat-sub-value {
+  color: var(--cp-red);
+}
+
+.cp-stat-sub--up .cp-stat-sub-value {
+  color: var(--ok-ink);
+}
+
+/* --- efekty czasowe na Cechach (etap 39) --- */
+
+.cp-stat-effects .stat-effect-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--cp-gutter);
+}
+
+.cp-stat-effects .stat-effect-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  padding: 0.15rem 0.35rem 0.2rem;
+}
+
+.cp-stat-effects .stat-effect-value {
+  font-weight: 700;
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.cp-stat-effects .stat-effect-value--down {
+  color: var(--cp-red);
+}
+
+.cp-stat-effects .stat-effect-value--up {
+  color: var(--ok-ink);
+}
+
+.cp-stat-effects .stat-effect-source {
+  font-size: 0.78rem;
+  color: var(--cp-ink);
+}
+
+/* Odliczanie idzie do prawej krawędzi i tam zostaje — przy sześciu efektach
+   kolumna czasów czyta się jednym spojrzeniem, a nie po kolei. */
+.cp-stat-effects .stat-effect-timer {
+  margin-left: auto;
+  font-size: 0.68rem;
+  color: var(--cp-ink-dim);
+}
+
+.cp-stat-effects .stat-effect-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.35rem 0.3rem;
+}
+
+/* Kolumna tożsamości ma 15 rem i rozciągnąć się nie da (umowa z 30a), więc pola
+   formularza kurczą się zamiast wypychać panel. */
+.cp-stat-effects .stat-effect-amount {
+  width: 4.5rem;
+}
+
+.cp-stat-effects .stat-effect-source-input {
+  flex: 1 1 6rem;
+  min-width: 0;
+}
+
 .cp-mini-button {
   background: transparent;
   border: none;

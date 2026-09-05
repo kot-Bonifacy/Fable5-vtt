@@ -11,6 +11,23 @@ przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — ni
 
 ## Sieć i walka — czytanie RAW
 
+- **Efekty czasowe na Cechach nie ruszają PUL (05.09, decyzja MG).** Efekt z etapu 39 przesuwa
+  wszystko, co rozstrzyga się „teraz" — Testy, Unik, Inicjatywę, PT obrony, RUCH, Rzut na Śmierć,
+  obrażenia wręcz — ale **maksymalne PW, pula Szczęścia i sufit Człowieczeństwa liczą się z Cechy
+  bazowej**. Opis etapu mówił „BC rusza PW" i to jest świadome odstępstwo od tamtego zdania.
+  Powód jest w kodzie, nie w podręczniku: `normalizeCharacterData` przycina `hpCurrent`
+  i `luckCurrent` do maksimum przy **każdym** zapisie karty, więc maksimum obniżone na godzinę
+  zabrałoby postaci punkty **na stałe** — wygaśnięcie efektu podniosłoby sufit, ale nie oddałoby
+  tego, co przycięcie już zjadło. Próg Poważnie Rannego idzie za maksimum z tego samego powodu.
+  Gdyby to kiedyś przestać się bronić, pierwszym miejscem jest `normalizeCharacterData`, a nie
+  `cpredEffectiveStats`.
+
+- **Podłoga Cechy pod efektami to 1, ale Empatia zerowa zostaje zerowa (05.09).**
+  `CPRED_STAT_MIN` przycina każdą Cechę zbitą efektami, **z jednym wyjątkiem**: podłoga nigdy nie
+  stoi wyżej niż wartość bazowa, bo Empatia obniżona Człowieczeństwem schodzi do zera i schodzić
+  ma (s. 229). Zaciskanie do jedynki **podnosiłoby** ją cyberpsychopacie — a to byłby cichy
+  prezent, nie zabezpieczenie.
+
 - **Broń podwieszana strzela amunicją zwykłą, nie wybieraną (01.09).** Wiersz `↳` ma własny
   magazynek (`attachmentAmmo`), ale **nie ma własnego `ammoId`**: podwieszany granatnik rzuca
   granatem, którego obrażenia (6k6) i Eksplozję niesie sam typ broni, a podwieszana strzelba

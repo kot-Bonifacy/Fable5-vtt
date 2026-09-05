@@ -28,6 +28,7 @@ import type {
   WeaponReloadPayload,
 } from '@vtt/shared';
 import {
+  cpredEffectiveStats,
   CPRED_ACTION_ATTACK,
   CPRED_ACTION_CLEAR_JAM,
   CPRED_ACTION_RELOAD,
@@ -1128,7 +1129,7 @@ export async function performAttackRoll(
               kind: 'blast' as const,
               aim: aimPoint,
               sideM: meta.blastSideM,
-              stat: data.stats[meta.statId],
+              stat: cpredEffectiveStats(data)[meta.statId],
               statLabel: CPRED_STAT_LABELS[meta.statId].abbr,
             }
           : meta.coneRangeM !== undefined

@@ -37,6 +37,7 @@ import { humanityMax } from './derived.js';
 import { isValidCompendiumId } from './ids.js';
 import { ARMOR_SP_MAX } from './locations.js';
 import { CPRED_STAT_MAX, CPRED_STAT_MIN, type CpredStats } from './stats.js';
+import { cpredEffectiveStats } from './stateffects.js';
 import {
   SKILL_LEVEL_MAX,
   SKILL_LEVEL_MIN,
@@ -342,6 +343,10 @@ export function combatProfileSheet(
     // stage 29b's list of previous ones is empty for the same reason — a
     // statist has no career behind him, only a gun.
     formerRoles: [],
+    // Etap 39 zostawił efekty czasowe na kartach: „efekty na figurach bez karty"
+    // są poza zakresem tego etapu, a statysta trzyma liczby w `combatProfile`,
+    // nie w wierszach. Pusta lista, żeby `cpredEffectiveStats` miał co czytać.
+    statEffects: [],
     combatAwareness: {},
     // Stage 30b: a statist has no Role, so neither Specialty purse is ever read.
     medicine: {},
@@ -456,16 +461,19 @@ export function combatProfileRollableSkills(profile: CpredCombatProfile): string
  */
 export function combatProfileOperatedBy(
   profile: CpredCombatProfile,
-  operator: Pick<CpredCharacterData, 'stats' | 'skills'>,
+  operator: Pick<CpredCharacterData, 'stats' | 'skills' | 'humanityCurrent' | 'statEffects'>,
   skillId: string | null,
 ): CpredCombatProfile {
   const skillLevel = skillId ? (operator.skills[skillId] ?? 0) : profile.skillLevel;
+  // Etap 39: Cechy operatora **jak teraz** — wieżyczka strzela jego refleksem,
+  // więc godzina pod Nerwosolem obniża też celność zdalnego działka.
+  const stats = cpredEffectiveStats(operator);
   return {
     ...profile,
-    ref: operator.stats.ref,
-    dex: operator.stats.dex,
-    body: operator.stats.body,
-    will: operator.stats.will,
+    ref: stats.ref,
+    dex: stats.dex,
+    body: stats.body,
+    will: stats.will,
     skillLevel,
     evasion: operator.skills[CPRED_EVASION_SKILL_ID] ?? 0,
   };

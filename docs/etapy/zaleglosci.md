@@ -50,6 +50,17 @@ w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
 
 ## Pozycje
 
+- **Etap 39 (efekty czasowe na Cechach) nie był oglądany w przeglądarce.** Cała mechanika ma
+  testy — 38 w `shared`, 11 na żywych gniazdach plus jeden w `netcombat.test.ts` — ale **żaden
+  z trzech nowych kawałków UI nie przeszedł przed oczami**: panel „Efekty czasowe" w kolumnie
+  tożsamości karty (chipy plus formularz MG), małe pole „z" pokazujące Cechę przesuniętą efektem
+  przy każdej z dziesięciu Cech, i chipy w pasku figury pod naklejkami. Do obejrzenia trzeba
+  **dwóch kont** (`Tester` przez `/join/tester-dev`): gracz ma widzieć chipy i odliczanie, ale
+  **nie** formularz. Do sprawdzenia przy okazji: czy formularz mieści się w kolumnie 15 rem
+  (`.cp-identity`, umowa z 30a) i czy odliczanie „zostaje 47 min" nie kłóci się z paskiem, który
+  graczowi pokazuje samą dobę i porę dnia. Ścieżka Czarnego LOD-u (Nerwosol nakładający się sam)
+  **wymaga poligonu Sieci i konta avatar9** — patrz `poligon.md`.
+
 - **Odmowy montażu nieoglądane na koncie gracza; monit „Minęła minuta" z nazwami — też.**
   Trzy odmowy z s. 111 (`MISSING_FOUNDATION`, `NO_SLOTS`, `POOL_FULL`) i dwie z s. 226
   (`SELF_INSTALL`, `NO_SURGERY_SKILL`) mają testy dymne na żywych gniazdach, ale **MG jest z nich

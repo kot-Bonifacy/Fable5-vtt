@@ -208,6 +208,13 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
       // and a discount reachable without the opposed roll that buys it is a
       // discount nobody rolled for — the same door `eddies` closed in 23b.
       if (sheet.haggle !== undefined) throw new RealtimeError('FORBIDDEN');
+      // Etap 39: efekty czasowe na Cechach też. Nałożenie ma cenę — wylosować
+      // 1k6, zapisać wynik i policzyć oba terminy z rundy i zegara świata —
+      // a łata karty nie ma czym żadnej z nich zapłacić. Odmowa jest **dla
+      // wszystkich, także dla MG**, inaczej niż przy Reputacji: MG ma na to
+      // `character:stat-effect`, a lista wpisana ręką byłaby listą efektów bez
+      // terminu, czyli takich, które nie zejdą nigdy.
+      if (sheet.statEffects !== undefined) throw new RealtimeError('FORBIDDEN');
       const current = parseCharacterData(character.data, deps.ctx.cpred);
       // A patch that changes `roleId` — the GM's plain field since 29a — can
       // take an Ability off the sheet and leave its purse behind. Emptied here,

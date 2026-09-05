@@ -22,6 +22,7 @@ import type {
   SessionUser,
 } from '@vtt/shared';
 import {
+  cpredEffectiveStats,
   CPRED_ACTION_DOSE,
   CPRED_MELEE_REACH_M,
   CPRED_PHARMA_BATCH_COST,
@@ -218,7 +219,9 @@ export const characterCraftPharmaEvent = defineEvent<
     // Test Umiejętności jak każdy inny: TECHNIKA + Technologia Medyczna + 1k10,
     // z wybuchającą dziesiątką. Kar za rany tu nie ma świadomie — partię robi
     // się przez godzinę w pracowni, a nie w ramach Akcji w cudzej turze.
-    const bonus = data.stats.tech + medicine.medtechSkill;
+    // Etap 39: TECHNIKA **jak teraz**, jak w każdym innym Teście.
+    const tech = cpredEffectiveStats(data).tech;
+    const bonus = tech + medicine.medtechSkill;
     const roll = rollFormula(
       {
         terms: [
@@ -232,7 +235,7 @@ export const characterCraftPharmaEvent = defineEvent<
     roll.title = `Technologia Medyczna — ${drug.name}`;
     roll.actor = character.name;
     roll.breakdown = [
-      { label: 'TECHNIKA', value: data.stats.tech, kind: 'stat' },
+      { label: 'TECHNIKA', value: tech, kind: 'stat' },
       { label: 'Technologia Medyczna', value: medicine.medtechSkill, kind: 'skill' },
     ];
     const success = roll.total > CPRED_PHARMA_CRAFT_DV;

@@ -72,6 +72,7 @@ import {
   type CpredWoundState,
 } from './rolls.js';
 import { CPRED_STAT_LABELS, type CpredStatId } from './stats.js';
+import { cpredEffectiveStats, cpredStatEffectRows } from './stateffects.js';
 
 /** How the attack is being made. Melee follows from the weapon, not from here. */
 export const CPRED_ATTACK_MODES = ['single', 'autofire', 'suppressive'] as const;
@@ -204,7 +205,10 @@ export function passiveEvasionDv(data: CpredCharacterData, registry: CpredRegist
 export function evasionBase(data: CpredCharacterData, registry: CpredRegistry): number {
   const skill = registry.skills.find((entry) => entry.id === CPRED_EVASION_SKILL_ID);
   const statId = skill ? skill.stat : 'dex';
-  const stat = data.stats[statId];
+  // Etap 39: ZW **jak teraz**. Ta strona rzutu nie ma rozbicia, w którym dałoby
+  // się pokazać Lisz osobnym wierszem — atakujący widzi PT, nie arytmetykę
+  // obrońcy — więc efekt wchodzi w liczbę, tak samo jak kara z pancerza wyżej.
+  const stat = cpredEffectiveStats(data)[statId];
   return (
     stat +
     cpredArmorStatPenalty(data.armor, statId, stat) +
@@ -798,7 +802,14 @@ export function planCpredAttack(
       ? CPRED_AUTOFIRE_DAMAGE
       : spread
         ? spread.damage
-        : attackDamageNotation(row, data.stats, weaponTypeId, hasCyberarm(data.cyberware));
+        : attackDamageNotation(
+            row,
+            // Etap 39: BC **jak teraz** — obrażenia wręcz idą z tabeli BC
+            // (s. 176), więc obniżona Budowa Ciała bije słabiej.
+            cpredEffectiveStats(data),
+            weaponTypeId,
+            hasCyberarm(data.cyberware),
+          );
   if (mode !== 'suppressive') {
     const parsed = parseRollNotation(damage);
     if (!parsed.ok || !parsed.formula.terms.some((term) => term.kind === 'dice')) {
@@ -823,6 +834,13 @@ export function planCpredAttack(
       value: data.stats[statId],
       kind: 'stat',
     },
+    // Etap 39: efekty czasowe własnymi wierszami, jak w planerze Testów —
+    // „REF 8 · Lisz −3" zamiast cichej ósemki, która strzela za piątkę.
+    ...cpredStatEffectRows(data, statId).map((row) => ({
+      label: row.label,
+      value: row.value,
+      kind: 'situational' as const,
+    })),
     {
       label: (data.skills[skill.id] ?? 0) > 0 ? skill.name : `${skill.name} (nietrenowana)`,
       value: data.skills[skill.id] ?? 0,
@@ -843,7 +861,7 @@ export function planCpredAttack(
   // „Modyfikator pancerza: −2 REF, ZW i RUCH" (s. 185). An attack is a Check on
   // one of exactly the two Stats the column names, so the jacket is felt here
   // before anything else the shot picks up.
-  const armorPenalty = cpredArmorStatPenalty(data.armor, statId, data.stats[statId]);
+  const armorPenalty = cpredArmorStatPenalty(data.armor, statId, cpredEffectiveStats(data)[statId]);
   if (armorPenalty !== 0) {
     breakdown.push({
       label: CPRED_ARMOR_PENALTY_LABEL,
@@ -1076,7 +1094,8 @@ export interface CpredSuppressionResult {
 /** WILL + „Koncentracja" of a sheet — the target's side of suppressive fire. */
 export function concentrationBase(data: CpredCharacterData, registry: CpredRegistry): number {
   const skill = registry.skills.find((entry) => entry.id === CPRED_CONCENTRATION_SKILL_ID);
-  const stat = skill ? data.stats[skill.stat] : data.stats.will;
+  const stats = cpredEffectiveStats(data);
+  const stat = skill ? stats[skill.stat] : stats.will;
   return stat + (data.skills[CPRED_CONCENTRATION_SKILL_ID] ?? 0);
 }
 
@@ -1109,7 +1128,7 @@ export function cpredCheckBase(
   const statId = skill?.stat ?? check.statId ?? 'will';
   const skillLevel = skill ? (data.skills[check.skillId] ?? 0) : 0;
   return {
-    total: data.stats[statId] + skillLevel,
+    total: cpredEffectiveStats(data)[statId] + skillLevel,
     statId,
     label: skill?.name ?? check.skillLabel ?? check.skillId,
     skillLevel,

@@ -4,6 +4,40 @@ Wyprowadzone z `POSTEP.md` 22.08.2026. Indeks jednolinijkowy jest w `POSTEP.md`;
 opisy z rozpoznaniem i obejściem. Czytaj wpis, zanim zaczniesz szukać błędu w obszarze, którego
 dotyczy.
 
+- **`socket.data.viewedSceneId` to scena WIDZA, nie scena celu — i przy MG prawie zawsze kłamie
+  o rundzie.** Nakładając efekt czasowy z okna karty (etap 39), pierwsza wersja czytała rundę
+  z oglądanej sceny. Okno karty **nie zmienia** oglądanej sceny, więc pole bywa puste albo wskazuje
+  zupełnie inną scenę niż ta, na której figura się bije — efekt „na minutę" nałożony w trakcie
+  walki nie dostawał terminu rundowego i nie schodził na granicy tury. Objaw w teście:
+  `expiresAtRound` równe `undefined` przy trwającej walce. Pytanie „czy coś liczy rundy" dotyczy
+  **celu**, więc runda czyta się ze sceny, na której stoi jego żeton
+  (`effectClockForCharacter` w `realtime/stat-effects.ts`). Każde nowe zdarzenie, które pyta
+  o rundę „dla kogoś", ma ten sam problem.
+- **Trzy zapisy karty pod rząd z tego samego obiektu `Character` zostawiają tylko ostatni.**
+  Nerwosol nakłada trzy efekty (INT, REF, ZW) jednym trafieniem. Napisane jako trzy wywołania
+  `applyStatEffect(deps, …, character, …)` na **tym samym** wierszu odczytanym raz, zostawiały
+  jeden efekt: każde z nich scala z tym, co **przeczytało**, a przeczytały wszystkie to samo.
+  Wiersz trzeba odczytać z bazy **przed każdym** zapisem (`drainStats` w `netice.ts` robi
+  `findUnique` w pętli). Ta sama pułapka czeka wszędzie, gdzie jedno zdarzenie dopisuje kilka
+  wierszy do jednej kolumny JSON.
+- **`timed-effects.ts` i `stat-effects.ts` prawie zamknęły cykl importów.** Pierwszy woła drugi
+  (przemiatanie rundowe zdejmuje też efekty Cech), więc drugi **nie może** importować
+  `activeRoundOfScene` z pierwszego — w ESM cykl daje pusty obiekt w środku ładowania i wywala
+  się dopiero przy pierwszym wywołaniu, w losowym miejscu. Zapytanie o `Combat` jest
+  jednowierszowe i siedzi teraz w obu plikach osobno; to jest tańsze niż cykl.
+- **`vitest` nie sprawdza typów — zielony test nie znaczy zielony `tsc`.** Fixture wiersza broni
+  z `rof: 2` (a `CpredWeaponRow.rof` jest **napisem**) przeszedł 38 testów i wywrócił się dopiero
+  na `tsc --noEmit`. Zestaw testów jest transpilowany bez sprawdzania typów, więc `tsc --noEmit`
+  na wszystkich trzech pakietach jest osobnym krokiem przed commitem, a nie formalnością po nim.
+- **`socket.once('chat:message')` łapie kartę POPRZEDNIEGO testu, jeśli tamten jej nie odebrał.**
+  W `gametime.test.ts` test „+10 min" czekał tylko na rozgłoszenie `time:set`, a karta czatu
+  zostawała w locie i trafiała w `once` następnego testu — który dostawał „Minęło dziesięć minut"
+  zamiast „Minęła doba". Wychodziło raz na kilkanaście przebiegów i wyglądało jak błąd zegara.
+  **Test, który wywołuje zdarzenie odkładające kartę na czacie, ma tę kartę odebrać**, choćby jej
+  nie sprawdzał. Naprawione 05.09.
+- **Prosty cudzysłów w atrybucie JSX zamyka atrybut.** `title="notacja („−1k6") jest…"` to dwa
+  błędy składni TS w miejscu, które wygląda na poprawny polski. W atrybutach JSX zamykający
+  cudzysłów pisze się jako `”` (U+201D) — reszta repozytorium tak właśnie robi.
 - **`file:./dev.db` rozwiązuje się względem katalogu roboczego, nie katalogu schematu.**
   W repo leżą **dwa** pliki `dev.db`: żywy w `packages/server/` (1,1 MB) i pusty artefakt
   migracji w `packages/server/prisma/` (0 B). Sterownik better-sqlite3 pod Prismą liczy ścieżkę

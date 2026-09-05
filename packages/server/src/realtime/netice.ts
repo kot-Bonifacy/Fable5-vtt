@@ -1,5 +1,6 @@
 import type {
   ChatMessageView,
+  CpredStatId,
   CpredNetCombatState,
   CpredNetDemonState,
   CpredNetIce,
@@ -8,6 +9,7 @@ import type {
   SessionUser,
 } from '@vtt/shared';
 import {
+  CPRED_HOUR_S,
   CPRED_ON_FIRE_STATUS_ID,
   NET_ACCESS_RANGE_M,
   NET_PROGRAM_HOOK_LABELS,
@@ -22,9 +24,12 @@ import {
   netRandomRezzed,
   parseCharacterData,
   rollFormula,
+  describeCpredStatEffectValue,
 } from '@vtt/shared';
 import type { Scene, Token } from '../generated/prisma/client.js';
 import { applyForcedFailureToSheet } from '../sheets.js';
+import { applyStatEffect } from './stat-effects.js';
+import { campaignGameTime } from './gametime.js';
 import type { RealtimeDeps } from './registry.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { emitCombatOfScene } from './combat.js';
@@ -165,10 +170,23 @@ export async function applyIceEffect(
   }
 
   for (const hook of ice.profile.effects?.hooks ?? []) {
+    // Etap 39. Do 05.09.2026 oba te haki kończyły się zdaniem „stosuje MG" —
+    // decyzja z 15.08 uzasadniała je wprost brakiem modelu czasowych
+    // modyfikatorów Cech. Model jest, więc serwer rzuca 1k6, zapisuje wynik
+    // i sam nakłada efekt na godzinę. Nazwy Cech biorą się z haka, nie z opisu
+    // Programu: opis jest prozą, a hak jest daną.
+    if (hook === 'statDrain' || hook === 'moveDrain') {
+      const stats = hook === 'statDrain' ? NET_STAT_DRAIN_STATS : NET_MOVE_DRAIN_STATS;
+      const applied = await drainStats(deps, input, stats);
+      lines.push(
+        applied.length > 0
+          ? `${ice.name}: ${applied.join(', ')} — na godzinę.`
+          : `${NET_PROGRAM_HOOK_LABELS[hook]} — karta nie przyjęła efektu, stosuje MG.`,
+      );
+      if (applied.length > 0) tokenIds.push(input.token.id);
+      continue;
+    }
     if (netHookIsManual(hook)) {
-      // „Na godzinę obniża o 1k6 INT, REF oraz ZW" — a clock that runs outside
-      // the fight, on Stats the sheet cannot lower for an hour and put back.
-      // Named on the card; the GM writes it down (decision of 15.08).
       lines.push(`${NET_PROGRAM_HOOK_LABELS[hook]} — stosuje MG.`);
       continue;
     }
@@ -239,6 +257,59 @@ export async function applyIceEffect(
   }
 
   return { state, lines, tokenIds, ejected, endsRun };
+}
+
+/** „Na godzinę obniża o 1k6 INT, REF oraz ZW" — Nerwosol i Lisz (s. 205). */
+const NET_STAT_DRAIN_STATS = ['int', 'ref', 'dex'] as const;
+
+/** „Na następną godzinę RUCH spada o 1k6" — Skorpion (s. 207). */
+const NET_MOVE_DRAIN_STATS = ['move'] as const;
+
+/**
+ * Obniża wymienione Cechy o **jeden** rzut 1k6 na godzinę.
+ *
+ * Jeden rzut na wszystkie trzy Cechy, nie trzy osobne: „obniża o 1k6 INT, REF
+ * oraz ZW" wymienia jedną kość i trzy Cechy, a trzy rzuty dałyby netrunnerowi
+ * trzy różne liczby, których tabela nie obiecuje. Kość jedzie z `input.rng`,
+ * czyli z tego samego strumienia co obrażenia tego trafienia — bez tego test
+ * z ustalonym RNG-iem widziałby raz taki wynik, raz inny.
+ */
+async function drainStats(
+  deps: RealtimeDeps,
+  input: IceEffectInput,
+  stats: readonly CpredStatId[],
+): Promise<string[]> {
+  const character = await deps.ctx.prisma.character.findUnique({
+    where: { id: input.characterId },
+  });
+  if (!character || character.campaignId !== input.campaignId) return [];
+  const drain = rollDice(1, 6, input.rng);
+  if (drain <= 0) return [];
+  const time = await campaignGameTime(deps.ctx.prisma, input.campaignId);
+  const clock = { round: input.round, minutes: time.minutes };
+  const applied: string[] = [];
+  for (const stat of stats) {
+    // Karta czytana **od nowa** przy każdej Cesze: `applyStatEffect` zapisuje
+    // wiersz i zwraca zapisaną kartę do bazy, więc trzy wywołania na tym samym
+    // obiekcie zostawiłyby tylko ostatni efekt (każde scala z tym, co przeczytało).
+    const fresh = await deps.ctx.prisma.character.findUnique({ where: { id: character.id } });
+    if (!fresh) break;
+    const effect = await applyStatEffect(
+      deps,
+      input.campaignId,
+      fresh,
+      {
+        stat,
+        value: -drain,
+        source: input.ice.name,
+        durationS: CPRED_HOUR_S,
+        rolled: '1k6',
+      },
+      clock,
+    );
+    if (effect) applied.push(describeCpredStatEffectValue(effect));
+  }
+  return applied;
 }
 
 /**

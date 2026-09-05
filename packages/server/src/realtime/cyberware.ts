@@ -13,6 +13,7 @@ import type {
   SessionUser,
 } from '@vtt/shared';
 import {
+  cpredEffectiveStats,
   CYBERWARE_INSTALL_COST,
   CYBERWARE_INSTALL_DV,
   CYBERWARE_INSTALL_LABELS,
@@ -257,11 +258,13 @@ async function resolveSurgeon(
   // uznaniową — to ta sama Umiejętność, której podręcznik nie daje nikomu poza
   // Medykiem, a MG ma na tę operację ripperdoca.
   if (surgery < 1) throw new RealtimeError('NO_SURGERY_SKILL');
+  // Etap 39: TECHNIKA **jak teraz** — operuje ta ręka, która operuje dzisiaj.
+  const tech = cpredEffectiveStats(doctorData).tech;
   return {
     label: doctor.name,
-    bonus: doctorData.stats.tech + surgery,
+    bonus: tech + surgery,
     breakdown: [
-      { label: 'TECHNIKA', value: doctorData.stats.tech, kind: 'stat' },
+      { label: 'TECHNIKA', value: tech, kind: 'stat' },
       { label: 'Chirurgia', value: surgery, kind: 'skill' },
     ],
   };

@@ -1,4 +1,6 @@
 import type {
+  CpredEffectClock,
+  CpredStatEffect,
   CpredCombatAwarenessEffects,
   CpredRoundOnceId,
   CompendiumEntry,
@@ -30,6 +32,9 @@ import type {
   TurnBudgetView,
 } from '@vtt/shared';
 import {
+  CPRED_STAT_EFFECTS_MAX,
+  cpredExpireStatEffects,
+  cpredEffectiveStats,
   cpredArmorStatPenalty,
   cpredSheetCombatAwareness,
   cpredRoundOnceUsed,
@@ -170,11 +175,15 @@ export function readSheetInitiative(
   registry: SheetRegistry,
 ): SheetInitiative {
   const data = parseCharacterData(character.data, registry);
+  // Etap 39: REF **jak teraz**. Inicjatywa jest wprost REF-em, więc Lisz musi
+  // przestawić figurę w kolejce — i przestawia też remis, bo remis **jest**
+  // REF-em i drugiego REF-u nie ma.
+  const stats = cpredEffectiveStats(data);
   // „Modyfikator pancerza: −2 REF, ZW i RUCH" (s. 185). Initiative is REF, so
   // heavy armour slows the queue too — and it moves the tie-break with it,
   // because the tie-break *is* REF and there is only one REF to be had.
-  const armor = cpredArmorStatPenalty(data.armor, 'ref', data.stats.ref);
-  const ref = data.stats.ref + armor;
+  const armor = cpredArmorStatPenalty(data.armor, 'ref', stats.ref);
+  const ref = stats.ref + armor;
   // „Każdy przydzielony punkt to +1 do rzutów na Inicjatywę" (Błyskawiczna
   // reakcja, s. 146). It moves the total, never the tie-break: RAW breaks ties
   // by REF, and a Solo's training is not reflexes.
@@ -281,11 +290,14 @@ export function readSheetMoveBudget(
 ): SheetMoveBudget {
   const data = parseCharacterData(character.data, registry);
   const budget = cpredMoveBudgetFromSheet({
+    // RUCH bazowy — efekty czasowe wchodzą niżej **nazwanymi** modyfikatorami
+    // (`statEffects`), żeby pasek pisał „Skorpion −4", a nie milczał.
     move: data.stats.move,
     hpCurrent: data.hpCurrent,
     hpMax: hpMax(data.stats),
     armor: data.armor,
     injuries: data.criticalInjuries,
+    statEffects: data.statEffects,
     extra,
   });
   const note = budget.modifiers
@@ -499,7 +511,7 @@ export const SHEET_STATIST_WEAPON_ROW_ID = STATIST_WEAPON_ROW_ID;
 
 /** BODY of a sheet: the damage Duszenie and Rzut deal, flat and undiced. */
 export function readSheetBody(character: Pick<Character, 'data'>, registry: SheetRegistry): number {
-  return parseCharacterData(character.data, registry).stats.body;
+  return cpredEffectiveStats(parseCharacterData(character.data, registry)).body;
 }
 
 /** Who wins an opposed grapple test — ties go to the defender. */
@@ -839,6 +851,73 @@ export function expireSheetInjuries(
   return { data: JSON.stringify(merged), expired };
 }
 
+/* ------------------------------------------------------------------ *
+ * Efekty czasowe na Cechach (etap 39)
+ * ------------------------------------------------------------------ */
+
+/**
+ * Dokłada karcie jeden efekt na Cesze — z wyliczonymi już terminami.
+ *
+ * Liczbę rzuca **wołający** i podaje ją gotową: „1k6" w opisie Programu jest
+ * instrukcją dla chwili nałożenia, a nie formułą efektu (patrz nagłówek
+ * `stateffects.ts`). Ten moduł tylko dopisuje wiersz, więc jedno miejsce
+ * odpowiada za zapis niezależnie od tego, czy efekt przyszedł z Czarnego LOD-u,
+ * czy z ręki MG.
+ */
+export function applyStatEffectToSheet(
+  character: Pick<Character, 'data'>,
+  registry: SheetRegistry,
+  effect: CpredStatEffect,
+): { data: string; effect: CpredStatEffect } | null {
+  const data = parseCharacterData(character.data, registry);
+  if (data.statEffects.length >= CPRED_STAT_EFFECTS_MAX) return null;
+  const merged = mergeCharacterData(data, { statEffects: [...data.statEffects, effect] });
+  return { data: JSON.stringify(merged), effect };
+}
+
+/** Zdejmuje jeden efekt po id — guzik „zdejmij" u MG. */
+export function removeStatEffectFromSheet(
+  character: Pick<Character, 'data'>,
+  registry: SheetRegistry,
+  effectId: string,
+): { data: string; removed: CpredStatEffect } | null {
+  const data = parseCharacterData(character.data, registry);
+  const removed = data.statEffects.find((row) => row.id === effectId);
+  if (!removed) return null;
+  const merged = mergeCharacterData(data, {
+    statEffects: data.statEffects.filter((row) => row.id !== effectId),
+  });
+  return { data: JSON.stringify(merged), removed };
+}
+
+/**
+ * Zdejmuje z karty wszystko, czego czas minął — obiema wskazówkami naraz.
+ *
+ * `null`, gdy nie ma czego zdejmować: wołający zapisuje kartę **tylko** wtedy,
+ * gdy coś się zmieniło, bo przemiatanie jedzie po każdej figurze na scenie i po
+ * każdym skoku zegara.
+ */
+export function expireSheetStatEffects(
+  character: Pick<Character, 'data'>,
+  registry: SheetRegistry,
+  clock: CpredEffectClock,
+): { data: string; expired: CpredStatEffect[] } | null {
+  const data = parseCharacterData(character.data, registry);
+  if (data.statEffects.length === 0) return null;
+  const { kept, expired } = cpredExpireStatEffects(data.statEffects, clock);
+  if (expired.length === 0) return null;
+  const merged = mergeCharacterData(data, { statEffects: kept });
+  return { data: JSON.stringify(merged), expired };
+}
+
+/** Efekty, które karta niesie teraz — lista dla okna zegara i paska figury. */
+export function readSheetStatEffects(
+  character: Pick<Character, 'data'>,
+  registry: SheetRegistry,
+): CpredStatEffect[] {
+  return parseCharacterData(character.data, registry).statEffects;
+}
+
 /** Wounds a sheet carries that will heal by themselves — the GM's prompt list. */
 export function readSheetTimedInjuries(
   character: Pick<Character, 'data'>,
@@ -1138,7 +1217,7 @@ export function readSheetFacedownBase(
   registry: SheetRegistry,
 ): number {
   const data = parseCharacterData(character.data, registry);
-  return cpredFacedownBase(data.stats.cool, cpredSheetReputation(data));
+  return cpredFacedownBase(cpredEffectiveStats(data).cool, cpredSheetReputation(data));
 }
 
 /** Stand-in total of a side that has not rolled: CHA + Reputacja* + half a die. */
@@ -1147,7 +1226,7 @@ export function readSheetPassiveFacedown(
   registry: SheetRegistry,
 ): number {
   const data = parseCharacterData(character.data, registry);
-  return cpredPassiveFacedownTotal(data.stats.cool, cpredSheetReputation(data));
+  return cpredPassiveFacedownTotal(cpredEffectiveStats(data).cool, cpredSheetReputation(data));
 }
 
 /** The same, for a token nobody ever statted — bare CHA 5, no Reputation. */

@@ -104,9 +104,24 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 | ~~36~~ | ~~Makra i pasek własnych akcji~~           | ⛔     | wycofany 05.09.2026 |
 | 37  | Kalendarz kampanii i upływ czasu              | ✅     | 2026-09-05        |
 | 38  | Przedmioty między kartami                     | ⬜     |                   |
-| 39  | Efekty czasowe modyfikujące Cechy             | ⬜     |                   |
+| 39  | Efekty czasowe modyfikujące Cechy              | ✅     | 2026-09-05        |
 
 ## Od czego zacząć
+
+**Cechy dają się od 05.09 obniżyć na godzinę — do etapu 39 nie było na to żadnej drogi.**
+Efekt jest **wierszem karty** (`CpredCharacterData.statEffects`), nie gałęzią w kodzie: Cecha,
+liczba **wylosowana raz i zapisana**, źródło, długość i **dwa terminy naraz** — runda walki (16h)
+i minuta zegara świata (37). Wygasa **alternatywa**: schodzi ten, który dogonił pierwszy.
+**Jedyna droga do liczby, na którą pada kość, to `cpredEffectiveStats(sheet)`** — od tej sesji
+`data.stats[...]` znaczy „liczba wydrukowana na karcie". **Pule są wyjątkiem i liczą się z bazowej**
+(maks. PW, pula SZ, sufit Człowieczeństwa) — inaczej godzina pod Nerwosolem zabrałaby punkty na
+stałe przez `normalizeCharacterData`; to świadome odstępstwo od zdania „BC rusza PW" w opisie
+etapu, zapisane w `decyzje-i-uproszczenia.md`. **Podłoga Cechy to 1, ale nigdy wyżej niż wartość
+bazowa** — Empatia zerowa z cyberpsychozy ma zostać zerowa. **Czarny LOD nakłada Nerwosol, Lisz
+i Skorpion sam** (`NET_PROGRAM_HOOKS_MANUAL` jest odtąd **pustą listą**), a `gametime.ts` dostał
+**pierwszy i jedyny wyjątek** od „zegar podpowiada, nie rządzi": po skoku zdejmuje to, czego czas
+minął. Osiem umów kodu i pięć pułapek w indeksach niżej. **UI etapu nie był oglądany
+w przeglądarce** — pozycja w `zaleglosci.md`.
 
 **Kampania ma od 05.09 własny zegar — do tej sesji czas istniał wyłącznie w rundach walki.**
 `Campaign.gameTime` to **minuty od epoki, liczone w UTC** (nie `DateTime`: strefa maszyny nie ma
@@ -154,14 +169,13 @@ i `archive`. Wyszedł przy tym **jeden błąd**: polski znak w nazwie pliku wywr
 błędem 500. Osiem umów kodu i cztery pułapki w indeksach niżej.
 
 **Wolne są teraz: 28** (wdrożenie na VPS — a MG planuje przed nim refaktoryzację całości)
-**oraz 34, 38, 39.** **Etap 36 (makra i własny pasek) MG wycofał 05.09** — nie planuj go
-i nie proponuj makr; pasek akcji z 16f zostaje generowany. **Jedyna wiążąca kolejność, „37 przed
-39", jest od 05.09 spełniona** — `CpredTimedEffect` może dostać drugą podstawę (czas świata),
-a zegar da się czytać z serwera przez `campaignGameTime`. Warunek „33 przed 28" też.
-**Refaktoryzacja całości przed etapem 28 czeka na osobną sesję** — MG odłożył ją 05.09,
-wybierając etap z listy.
+**oraz 34 i 38.** **Etap 36 (makra i własny pasek) MG wycofał 05.09** — nie planuj go
+i nie proponuj makr; pasek akcji z 16f zostaje generowany. **Żadna wiążąca kolejność nie została
+już otwarta**: „37 przed 39" i „33 przed 28" są spełnione. **Refaktoryzacja całości przed
+etapem 28 czeka na osobną sesję** — MG odłożył ją 05.09, wybierając etap z listy, i od tamtej
+pory doszły dwa etapy.
 
-**Dług oględzin — 14 pozycji, i wszystkie czekają na żywy model.** Cztery pozycje etapu 30
+**Dług oględzin — 15 pozycji.** Czternaście czeka na żywy model, piętnasta nie: **UI etapu 39** da się obejrzeć bez GPU i jest pierwszą rzeczą do zrobienia w następnej sesji. Cztery pozycje etapu 30
 (**30a, 30b, 30c, 30d**) zamknięte 04.09 — była to ostatnia paczka, którą dało się obejrzeć bez
 GPU. Zostaje 20a/20b, 19a–19c, dwie ścieżki 24c, maszynopis wypowiedzi i jedna nowa pozycja
 z 04.09 (cyberdek pracownika Korpo). **29a i 29b wypadły z listy 02.09**, etap 31 i Celowanie
@@ -212,8 +226,8 @@ nieaktualne. Lista jest zapisem chwili, w której coś zauważono, a nie stanu r
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
 a od 30d pierwszym, przy którym **każda Rola w drużynie gra inaczej niż reszta**.
 
-**Testy na koniec ostatniej sesji:** 1866 w `shared` (+33), 1006 na serwerze (+14), 97 u klienta
-(+5) — zielone. ESLint i Prettier czyste na kodzie; `tsc --noEmit` czysty w trzech pakietach
+**Testy na koniec ostatniej sesji:** 1904 w `shared` (+38), 1018 na serwerze (+12), 97 u klienta
+(bez zmian) — zielone. ESLint i Prettier czyste na kodzie; `tsc --noEmit` czysty w trzech pakietach
 (od 05.09 obejmuje też `packages/server/scripts/`). **Trzy pliki dokumentacji —
 `POSTEP.md`, `POMYSLY.md` i `00-przeglad.md` — prettier by przeformatował i jest tak od dawna**
 (sprawdzone 05.09 na czystym HEAD); nie puszczaj na nich `pnpm format`, bo przelałoby to
@@ -224,6 +238,14 @@ kilkaset wierszy szumu do commita etapu.
 Jeden wiersz = jedna umowa; pełna wersja z uzasadnieniem w `umowy-kodu.md`. Umowa złamana
 znaczy zwykle błąd, który już raz kosztował sesję.
 
+- **Cecha „jak teraz" to `cpredEffectiveStats(sheet)`** (`stateffects.ts`), nigdy `data.stats[...]` — tamto jest liczbą **wydrukowaną**. Wyjątkiem są **pule** (maks. PW, SZ, sufit Człowieczeństwa) i tempo leczenia: te czytają bazową.
+- **Efekt na Cesze w rozbiciu rzutu to własny wiersz** (`cpredStatEffectRows`), jak kara z pancerza — a gdy podłoga przycina sumę, wiersze zwijają się w jeden zbiorczy. Nie składaj ich u wołającego.
+- **`statEffects` pisze wyłącznie `character:stat-effect`** — wypada z `character:update` (`FORBIDDEN`) **u wszystkich, także u MG**: nałożenie ma cenę (rzut 1k6 + dwa terminy), a łata nie ma czym zapłacić.
+- **Efekt niesie DWA terminy, a światowy stawia się ZAWSZE** (`cpredStatEffectDeadlines`); wygasa **alternatywa**, nie koniunkcja. Bez terminu świata efekt przeżyłby koniec walki i wisiał do tej samej rundy następnej.
+- **Liczba efektu pada RAZ, przy nałożeniu** — `value` + `rolled` (sam napis). `value` i `formula` naraz to `BAD_VALUE`, nie cichy wybór jednego.
+- **Wygaszanie ma DWA przemiatania**: rundowe po **żetonach sceny** (`timed-effects.ts`, `minutes: null`), światowe po **kartach kampanii** (`stat-effects.ts` z `gametime.ts`).
+- **Zegar świata zdejmuje efekty — jedyny wyjątek od „zegar podpowiada, nie rządzi"**, bo nie ma tu czego wybierać. Nowa rzecz wołana z `gametime.ts` musi przejść to samo pytanie.
+- **Hak Programu, którego silnik nie rozlicza, idzie do `NET_PROGRAM_HOOKS_MANUAL`** — lista jest od 39 **pusta**, ale ani jej, ani gałęzi `netHookIsManual` nie kasuj.
 - **„Backup" znaczy Wsparcie (30c), nie kopię zapasową** — kopie to `snapshot` (`snapshots.ts`, `archive:list`/`archive:snapshot`), pliki wymiany to `archive` (`shared/src/archive.ts`, `ArchivePanel.tsx`). Słowa „backup" nie używa się na nic poza Zdolnością Roli.
 - **Kopia bazy to `VACUUM INTO`, nigdy `copyFile`** — WAL trzyma świeży stan obok `.db`. `vacuumInto` otwiera bazę drugim, tylko-do-odczytu połączeniem; ten sam kod chodzi przy działającym serwerze i przy zatrzymanym.
 - **`uploads/` w kopii to twarde dowiązania** (`linkTree`, z ucieczką do `copyFile`) — bezpieczne **wyłącznie** dlatego, że plik uploadu jest niezmienny. Zapis w miejscu = zamiana dowiązań na kopie.
@@ -358,6 +380,13 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 
 Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapki-dev.md`.
 
+- **`socket.data.viewedSceneId` to scena WIDZA, nie celu** — okno karty jej nie zmienia, więc runda dla efektu czyta się ze sceny **żetonu celu** (`effectClockForCharacter`). Inaczej efekt nałożony w walce nie ma terminu rundowego.
+- **Trzy zapisy karty z jednego odczytanego wiersza zostawiają tylko ostatni** — każdy scala z tym, co przeczytał. Nerwosol (3 Cechy) musi czytać kartę **przed każdym** zapisem.
+- **`timed-effects.ts` ↔ `stat-effects.ts` to cykl importów** — pierwszy woła drugi, więc drugi pyta o `Combat` sam, zamiast importować `activeRoundOfScene`.
+- **`vitest` nie sprawdza typów** — `rof: 2` (a to napis) przeszedł 38 testów i padł dopiero na `tsc --noEmit`. Ten krok jest osobny, nie formalnością po testach.
+- **`socket.once('chat:message')` łapie kartę POPRZEDNIEGO testu**, gdy tamten jej nie odebrał — tak migotał `gametime.test.ts` („Minęło dziesięć minut" zamiast „Minęła doba"). Test odkładający kartę ma ją odebrać, choćby jej nie sprawdzał.
+- **Prosty cudzysłów w atrybucie JSX zamyka atrybut** — `title="… („−1k6") …"` to błąd składni; zamykający pisze się `”` (U+201D).
+
 - **`file:./dev.db` liczy się od katalogu roboczego** — w repo są DWA `dev.db`: żywy w `packages/server/` i pusty artefakt migracji w `packages/server/prisma/`. Skrypt sięgający po drugi zrobi kopię pustej bazy i nikt tego nie zauważy.
 - **Polski znak w nagłówku HTTP to 500, nie brzydka nazwa pliku** — objawem jest „eksport nie działa dla niektórych postaci"; nagłówek jest latin-1.
 - **`<input type="file">` DA SIĘ obsłużyć automatem** (`DataTransfer` → `input.files` → `change`) — inaczej niż checkbox Reacta z pułapki niżej.
@@ -482,6 +511,79 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 05.09 (czwarta) — liczba na karcie, którą da się obniżyć na godzinę
+
+**Zlecenie MG:** kontynuacja projektu; z listy wolnych etapów (28, 34, 38, 39) MG wybrał
+**39 (efekty czasowe modyfikujące Cechy)** — odblokowany trzy godziny wcześniej przez zegar
+świata z etapu 37. Trzy rozstrzygnięcia padły **przed kodem**, wszystkie na moje pytanie i wszystkie
+na rekomendację:
+
+1. **Efekty nie ruszają PUL.** Maksymalne PW, pula Szczęścia i sufit Człowieczeństwa liczą się
+   z Cechy **bazowej** — to **świadome odstępstwo od zdania „BC rusza PW"** w opisie etapu,
+   i nie chodzi o podręcznik, tylko o `normalizeCharacterData`: przycina `hpCurrent` do maksimum
+   przy **każdym** zapisie karty, więc maksimum obniżone na godzinę zabrałoby punkty **na stałe**.
+   Zapisane w `decyzje-i-uproszczenia.md`.
+2. **Podłoga Cechy to 1** (`CPRED_STAT_MIN`) — z jednym wyjątkiem, który wyszedł przy pisaniu:
+   podłoga nigdy nie stoi **wyżej niż wartość bazowa**, bo Empatia zerowa z cyberpsychozy (s. 229)
+   ma zostać zerowa, a zaciskanie do jedynki by ją **podniosło**.
+3. **Czarny LOD nakłada efekty sam.** `statDrain` i `moveDrain` przestały być „stosuje MG" —
+   `NET_PROGRAM_HOOKS_MANUAL` jest odtąd **pustą listą**, a decyzja z 15.08, która je tam wpisała,
+   uzasadniała się wprost brakiem modelu, który ten etap właśnie zbudował. Gałąź `netHookIsManual`
+   **zostaje** dla następnego Programu, którego skutku silnik nie policzy.
+
+**Rdzeń to jedna funkcja i jedna umowa.** `cpredEffectiveStats(sheet)` w nowym module
+`shared/src/systems/cpred/stateffects.ts` jest **jedyną** drogą do liczby, na którą pada kość:
+bazowa Cecha, poprawka Człowieczeństwa z 23a, suma efektów, przycięcie. Od tej sesji
+`data.stats[...]` znaczy „liczba wydrukowana na karcie", a nie „liczba, którą się gra" — i tak
+zostało przepięte szesnaście miejsc: Testy, atak, Unik, Inicjatywa, RUCH, Rzut na Śmierć, Zwarcie,
+Koncentracja, Konfrontacja, obrażenia wręcz, wieżyczka z operatorem, dwa Testy chirurga i medyka,
+Unik obszaru, rozproszenie granatu i podgląd kubka u klienta. **Pule zostały przy bazowej** —
+i to jest jedyny podział, jaki ten kod zna.
+
+**Efekt jest wierszem karty, nie gałęzią w kodzie:** `{ stat, value, source, durationS,
+expiresAtRound?, expiresAtMinute? }`. Liczba **pada raz** przy nałożeniu i jest zapisana — efekt
+trzymający formułę zmieniałby kartę, ilekroć ktoś na nią spojrzy. W rozbiciu rzutu efekt stoi
+**własnym wierszem** („REF 8 · Lisz −3"), jak kara z pancerza, a gdy podłoga przycina sumę,
+`cpredStatEffectRows` zwija wiersze w jeden zbiorczy — inaczej karta pokazywałaby REF −2.
+
+**Dwa zegary, alternatywa.** Efekt niesie termin rundowy **i** światowy; schodzi ten, który
+dogonił pierwszy. Termin świata stawia się **zawsze**, i to jest poprawka na pułapkę, która
+w `CpredTimedEffect` z 16h siedzi do dziś: efekt z samym terminem rundowym, nałożony w rundzie 8
+walki, która się skończyła, wisiałby do ósmej rundy **następnej** walki. Przemiatań też jest dwa
+i chodzą po różnych listach — rundowe po żetonach sceny (bo naklejka należy do żetonu), światowe
+po kartach kampanii (bo efekt jest wierszem karty, a postać mogła przespać noc poza sceną).
+
+**`gametime.ts` dostał pierwszy i jedyny wyjątek od „zegar podpowiada, nie rządzi".** Po skoku
+woła `sweepStatEffects`. Broni się tym, że **nie ma tu czego wybierać**: „na godzinę" jest
+terminem zapisanym przy nałożeniu, tak jak „do rundy 9", które granica tury zdejmuje sama od 16h.
+Czynsz i odpoczynek MG **wybiera** i zostają za guzikiem. Umowa dopisana z tym testem: nowa rzecz
+wołana z zegara musi przejść to samo pytanie.
+
+**Trzy pułapki kosztowały czas.** (1) `socket.data.viewedSceneId` to scena **widza**, a okno karty
+jej nie zmienia — runda musi się czytać ze sceny **celu** (`effectClockForCharacter`), inaczej efekt
+nałożony w walce nie dostaje terminu rundowego. (2) Trzy zapisy karty z **jednego** odczytanego
+wiersza zostawiają tylko ostatni — Nerwosol nakładał jeden efekt zamiast trzech, dopóki `drainStats`
+nie zaczął czytać karty przed każdym zapisem. (3) `timed-effects.ts` i `stat-effects.ts` prawie
+zamknęły cykl importów; zapytanie o `Combat` siedzi teraz w obu osobno. Czwarta, tania:
+**`vitest` nie sprawdza typów** — fixture z `rof: 2` (a to napis) przeszedł 38 testów i padł
+dopiero na `tsc --noEmit`.
+
+**UI:** panel „Efekty czasowe" w kolumnie tożsamości karty (chipy z odliczaniem, „zdejmij" u MG,
+formularz MG przyjmujący „−2" albo „−1k6" jednym polem), małe pole „z" pod Cechą — to samo, którym
+Empatia mówi od 23a, teraz dla każdej przesuniętej Cechy — i chipy w pasku figury pod naklejkami.
+Gracz widzi chipy i odliczanie, formularza nie. **Nic z tego nie było oglądane w przeglądarce** —
+pozycja otwarta w `zaleglosci.md`.
+
+**Osiem umów kodu i sześć pułapek** w indeksach niżej; pełne wersje w plikach.
+
+**Testy na koniec:** 1904 w `shared` (+38), 1018 na serwerze (+12), 97 u klienta (bez zmian) —
+zielone. ESLint i Prettier czyste na kodzie; `tsc --noEmit` czysty w trzech pakietach. Doszły dwa
+pliki: `shared/src/systems/cpred/stateffects.test.ts` i `server/src/stat-effects.test.ts`, plus
+zestaw Nerwosolu w `server/src/netcombat.test.ts`. Klient buduje się produkcyjnie. Przy okazji
+**zamknięty znany wyścig** z sesji etapu 37: `gametime.test.ts` łapał w `once('chat:message')`
+kartę poprzedniego testu i raz na kilkanaście przebiegów widział „Minęło dziesięć minut" zamiast
+„Minęła doba" — trzy przebiegi z rzędu zielone po naprawie.
+
 ### Sesja 05.09 (trzecia) — kampania, która wie, którego jest w Night City
 
 **Zlecenie MG:** kontynuacja projektu; z listy wolnych etapów MG wybrał **37 (kalendarz kampanii
@@ -583,61 +685,3 @@ pliki: `shared/src/gametime.test.ts`, `server/src/gametime.test.ts`
 i `client/src/gametime-store.test.ts`, plus konto gracza i test widoczności
 w `server/src/recovery.test.ts`. Jeden pełny przebieg serwera pokazał czerwony plik
 i przeszedł przy powtórce — znany wyścig, patrz pułapki.
-
-### Sesja 05.09 (druga) — mapa, na której da się wskazać palcem i wziąć sześciu naraz
-
-**Zlecenie MG:** kontynuacja projektu; z listy wolnych etapów MG wybrał **35 (ping, zaznaczanie
-wielu figur, klonowanie)**, a refaktoryzację całości odłożył na osobną sesję. Cztery
-rozstrzygnięcia padły przed kodem i wszystkie są w pliku etapu: **`Delete` figur nadal nie
-dotyka** (grupowy kosz idzie guzikiem z pytaniem niosącym liczbę), **ruch grupowy poza walką
-tak, w walce nie**, **ramka na `Shift`+przeciągnięciu** zamiast foundry'owego przeniesienia
-panoramy na prawy przycisk, i **kopia jako świeża figura** (pełne PW, bez naklejek i ran).
-
-**Kolizja gestów była jedyną rzeczą, którą trzeba było rozstrzygnąć przed pisaniem.** `Alt`+klik
-w figurę **już coś znaczy** od 16f („to jest cel, nie moja następna figura"), ale wyłącznie przy
-uzbrojonej broni — więc `Alt`+klik w **puste pole** i `Alt`+przeciągnięcie **figury bez broni
-w ręku** były wolne i wzięły ping oraz kopię. `Shift` po pustym tle też był wolny, bo `Shift`
-+klik dokłada załamanie trasy, a `viewport` nie emituje `clicked` po geście, który przekroczył
-próg przesunięcia. Trzy nowe gesty, zero odebranych.
-
-**Atrapa `gm:ping` z etapu 03 zniknęła po trzydziestu dwóch etapach.** Miała nazwę i
-`handler: () => undefined`, a jej dwa testy pilnowały wzorca bramki roli — przeniosłem to
-pokrycie na `token:duplicate` zamiast je skasować: gracz odbija się o `FORBIDDEN`, MG dochodzi
-do środka i dostaje `TOKEN_NOT_FOUND`, a różnica kodów jest dowodem, że bramka przepuściła
-jednego, a drugiego nie. Nowy ping **nie jest jej następcą** także w drugim sensie: pinguje
-każdy, bo „patrzcie na te drzwi" jest zdaniem gracza równie często, co prowadzącego.
-
-**Dwa błędy znalezione przy oględzinach, oba naprawione w trakcie:**
-
-1. **Po ramce mapa nie miała pierścienia sterowania.** Lewy panel opisywał kotwicę (bo czyta
-   store), a klik w podłogę nikogo nie wysyłał w drogę (bo renderer nic o niej nie wiedział).
-   Przy pojedynczym wyborze źródłem jest renderer, przy grupie — store, więc potrzebna była
-   droga wyrównania, która **nie odsyła zmiany z powrotem** (`syncSteering`): zwykły
-   `setSelection` zawołałby `onSelectionChange` → `select(anchor)` → a ten świadomie zeruje
-   grupę, czyli ramka kasowałaby sama siebie.
-2. **Przy trzymanym `Alt` mapa dalej malowała ślady butów**, choć klik miał zrobić ping.
-   Podgląd trasy stoi teraz pod `Alt` (`pingArmed`) — obiecywał marsz, którego ten gest nie
-   wykona.
-
-**Oględziny (Poligon, konto MG **i** gracza) — cały etap odklikany.** Ramka biorąca 5 i 3 figury
-z paskiem operacji, obwódki grupy czytelne obok białego pierścienia kotwicy z gałką obrotu,
-**ruch grupowy** (trójka przesunięta z zachowanym szykiem, utrwalony po przeładowaniu) i jego
-**bramka w walce** (po włączeniu trybu turowego przeciągnięcie ruszyło **tylko** chwyconą
-figurę — sprawdzone w bazie), `Ctrl+A` biorące 9 figur, szczebel `Esc`, **wykluczanie ze
-scenerią** (klik w strefę zdjął zaznaczenie trzech figur), operacje grupowe (Ukryj → Pokaż,
-naklejka nadana i zdjęta obu, kosz z pytaniem „Usunąć ze sceny 2 figury?"), **Alt+przeciągnięcie
-dające „Rudy Kwiatkowski 2"** i guzik „⧉ Duplikuj" w menu dający trzeciego. Z konta gracza
-(**Tony**, `[::1]:5173`): **ramka na całą mapę wzięła jedną figurę z siedmiu widocznych**, ping
-gracza dotarł do MG z podpisem „Tony", a **ping MG z `Alt+Shift` przesunął graczowi widok**.
-
-**Poligon wrócił do stanu sprzed sesji — sprawdzone różnicowo względem snapshotu z 11:23**
-(pierwsza kopia, którą serwer zrobił dziś przy starcie): **zero różnic** na 13 żetonach, 9 kart,
-6 scen, 23 wpisy księgi. Dwie kopie „Rudego Kwiatkowskiego" skasowane, tryb turowy wyłączony,
-a pozycje trzech przesuniętych żetonów przywrócone wprost w bazie. **Ślad zerowy także w
-czacie** — i to jest samo w sobie potwierdzenie kryterium: ping nie zostawia po sobie ani
-wiersza czatu, ani niczego w bazie.
-
-**Testy na koniec:** 1833 w `shared` (+10), 992 na serwerze (+7), 92 u klienta (+13) — zielone.
-ESLint i Prettier czyste na całym repo; `tsc --noEmit` czysty w trzech pakietach. Doszły trzy
-pliki: `shared/src/ping.test.ts`, `client/src/group-selection.test.ts` i zestaw „ping i kopia
-figury (etap 35)" w `server/src/tokens.test.ts`.

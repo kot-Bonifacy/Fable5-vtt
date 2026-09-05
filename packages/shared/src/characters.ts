@@ -209,6 +209,44 @@ export interface CharacterHagglePayload {
 }
 
 /**
+ * Klient → serwer: `character:stat-effect` (etap 39) — MG nakłada albo zdejmuje
+ * efekt czasowy modyfikujący Cechę.
+ *
+ * Zdarzenie, a nie łata karty, z tego samego powodu co `eddies` w 23b: efekt
+ * ma **cenę**, którą trzeba zapłacić przy nałożeniu — wylosować 1k6 i zapisać
+ * wynik, a potem policzyć oba terminy z bieżącej rundy i zegara świata. Gracz,
+ * który mógłby wpisać sobie listę, zdejmowałby z siebie narkotyk bez pytania;
+ * MG, który mógłby ją wpisać, omijałby losowanie i zapis terminu, a efekt bez
+ * terminu nigdy by nie zszedł.
+ *
+ * `stat` jedzie **napisem**, nie typem CP RED: ten plik jest rdzeniem VTT
+ * i o Cechach Cyberpunka nie wie nic — sprawdza je serwer przez `isCpredStatId`,
+ * tak samo jak `injuryId` wyżej sprawdza kompendium.
+ */
+export interface CharacterStatEffectPayload {
+  characterId: string;
+  /** Zdejmowanie: id wiersza z karty. Bez tego pola żądanie jest nałożeniem. */
+  effectId?: string;
+  /** Nakładanie: id Cechy („ref", „move"). */
+  stat?: string;
+  /**
+   * Zmiana ze znakiem, gdy MG zna liczbę. Wyklucza się z `formula` — dwa
+   * wejścia naraz znaczyłyby, że jedno z nich jest po cichu ignorowane.
+   */
+  value?: number;
+  /** Notacja, którą **rzuca serwer** („1k6"); znak bierze się z `negative`. */
+  formula?: string;
+  /** Rzut z `formula` ma obniżyć Cechę (Nerwosol), a nie ją podnieść. */
+  negative?: boolean;
+  /** „Nerwosol" — co pisze chip i karta czatu. */
+  source?: string;
+  /** Długość w sekundach fikcji; domyślnie godzina. */
+  durationS?: number;
+  /** Wpis kompendium, z którego efekt przyszedł. */
+  compendiumId?: string;
+}
+
+/**
  * Klient → serwer: `character:rest` — jeden pełny dzień odpoczynku (s. 222–223).
  *
  * Zdarzenie, a nie łatka karty, z tego samego powodu co Prowizorka i wezwanie

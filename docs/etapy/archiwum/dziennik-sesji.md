@@ -7,6 +7,64 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 05.09 (druga) — mapa, na której da się wskazać palcem i wziąć sześciu naraz
+
+**Zlecenie MG:** kontynuacja projektu; z listy wolnych etapów MG wybrał **35 (ping, zaznaczanie
+wielu figur, klonowanie)**, a refaktoryzację całości odłożył na osobną sesję. Cztery
+rozstrzygnięcia padły przed kodem i wszystkie są w pliku etapu: **`Delete` figur nadal nie
+dotyka** (grupowy kosz idzie guzikiem z pytaniem niosącym liczbę), **ruch grupowy poza walką
+tak, w walce nie**, **ramka na `Shift`+przeciągnięciu** zamiast foundry'owego przeniesienia
+panoramy na prawy przycisk, i **kopia jako świeża figura** (pełne PW, bez naklejek i ran).
+
+**Kolizja gestów była jedyną rzeczą, którą trzeba było rozstrzygnąć przed pisaniem.** `Alt`+klik
+w figurę **już coś znaczy** od 16f („to jest cel, nie moja następna figura"), ale wyłącznie przy
+uzbrojonej broni — więc `Alt`+klik w **puste pole** i `Alt`+przeciągnięcie **figury bez broni
+w ręku** były wolne i wzięły ping oraz kopię. `Shift` po pustym tle też był wolny, bo `Shift`
++klik dokłada załamanie trasy, a `viewport` nie emituje `clicked` po geście, który przekroczył
+próg przesunięcia. Trzy nowe gesty, zero odebranych.
+
+**Atrapa `gm:ping` z etapu 03 zniknęła po trzydziestu dwóch etapach.** Miała nazwę i
+`handler: () => undefined`, a jej dwa testy pilnowały wzorca bramki roli — przeniosłem to
+pokrycie na `token:duplicate` zamiast je skasować: gracz odbija się o `FORBIDDEN`, MG dochodzi
+do środka i dostaje `TOKEN_NOT_FOUND`, a różnica kodów jest dowodem, że bramka przepuściła
+jednego, a drugiego nie. Nowy ping **nie jest jej następcą** także w drugim sensie: pinguje
+każdy, bo „patrzcie na te drzwi" jest zdaniem gracza równie często, co prowadzącego.
+
+**Dwa błędy znalezione przy oględzinach, oba naprawione w trakcie:**
+
+1. **Po ramce mapa nie miała pierścienia sterowania.** Lewy panel opisywał kotwicę (bo czyta
+   store), a klik w podłogę nikogo nie wysyłał w drogę (bo renderer nic o niej nie wiedział).
+   Przy pojedynczym wyborze źródłem jest renderer, przy grupie — store, więc potrzebna była
+   droga wyrównania, która **nie odsyła zmiany z powrotem** (`syncSteering`): zwykły
+   `setSelection` zawołałby `onSelectionChange` → `select(anchor)` → a ten świadomie zeruje
+   grupę, czyli ramka kasowałaby sama siebie.
+2. **Przy trzymanym `Alt` mapa dalej malowała ślady butów**, choć klik miał zrobić ping.
+   Podgląd trasy stoi teraz pod `Alt` (`pingArmed`) — obiecywał marsz, którego ten gest nie
+   wykona.
+
+**Oględziny (Poligon, konto MG **i** gracza) — cały etap odklikany.** Ramka biorąca 5 i 3 figury
+z paskiem operacji, obwódki grupy czytelne obok białego pierścienia kotwicy z gałką obrotu,
+**ruch grupowy** (trójka przesunięta z zachowanym szykiem, utrwalony po przeładowaniu) i jego
+**bramka w walce** (po włączeniu trybu turowego przeciągnięcie ruszyło **tylko** chwyconą
+figurę — sprawdzone w bazie), `Ctrl+A` biorące 9 figur, szczebel `Esc`, **wykluczanie ze
+scenerią** (klik w strefę zdjął zaznaczenie trzech figur), operacje grupowe (Ukryj → Pokaż,
+naklejka nadana i zdjęta obu, kosz z pytaniem „Usunąć ze sceny 2 figury?"), **Alt+przeciągnięcie
+dające „Rudy Kwiatkowski 2"** i guzik „⧉ Duplikuj" w menu dający trzeciego. Z konta gracza
+(**Tony**, `[::1]:5173`): **ramka na całą mapę wzięła jedną figurę z siedmiu widocznych**, ping
+gracza dotarł do MG z podpisem „Tony", a **ping MG z `Alt+Shift` przesunął graczowi widok**.
+
+**Poligon wrócił do stanu sprzed sesji — sprawdzone różnicowo względem snapshotu z 11:23**
+(pierwsza kopia, którą serwer zrobił dziś przy starcie): **zero różnic** na 13 żetonach, 9 kart,
+6 scen, 23 wpisy księgi. Dwie kopie „Rudego Kwiatkowskiego" skasowane, tryb turowy wyłączony,
+a pozycje trzech przesuniętych żetonów przywrócone wprost w bazie. **Ślad zerowy także w
+czacie** — i to jest samo w sobie potwierdzenie kryterium: ping nie zostawia po sobie ani
+wiersza czatu, ani niczego w bazie.
+
+**Testy na koniec:** 1833 w `shared` (+10), 992 na serwerze (+7), 92 u klienta (+13) — zielone.
+ESLint i Prettier czyste na całym repo; `tsc --noEmit` czysty w trzech pakietach. Doszły trzy
+pliki: `shared/src/ping.test.ts`, `client/src/group-selection.test.ts` i zestaw „ping i kopia
+figury (etap 35)" w `server/src/tokens.test.ts`.
+
 ### Sesja 05.09 — kopie zapasowe: kopia, która robi się sama, i plik, który da się przeczytać
 
 **Zlecenie MG:** kontynuacja projektu; z listy wolnych etapów MG wybrał **33 (kopie zapasowe)**,

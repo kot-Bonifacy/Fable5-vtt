@@ -10,6 +10,7 @@ import type {
   SessionUser,
 } from '@vtt/shared';
 import {
+  cpredEffectiveStats,
   BOT_ACTION_ERROR_LABELS,
   BOT_ACTION_MAX_TOKENS,
   BOT_ACTION_OPTIONS_MAX,
@@ -17,7 +18,6 @@ import {
   ROLE_GM,
   buildBotActionSchema,
   buildBotDecisionPrompt,
-  effectiveCpredStats,
   mentionsName,
   parseBotAction,
   parseBotData,
@@ -110,7 +110,7 @@ export function botSkillOptions(
     const level = data.skills[skill.id] ?? 0;
     // EMP bieżące, nie z karty (etap 23a) — menu ma pokazywać to, czym bot
     // naprawdę rzuci, a nie wartość sprzed cyborgizacji.
-    const stat = effectiveCpredStats(data.stats, data.humanityCurrent)[skill.stat] ?? 0;
+    const stat = cpredEffectiveStats(data)[skill.stat] ?? 0;
     options.push({
       id: skill.id,
       label: skill.name,

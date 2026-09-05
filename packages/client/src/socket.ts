@@ -1,5 +1,6 @@
 import { io, type Socket } from 'socket.io-client';
 import type {
+  CharacterStatEffectPayload,
   ArchiveCharacterImportPayload,
   ArchiveImportResult,
   ArchiveSceneImportPayload,
@@ -211,6 +212,7 @@ import type {
   WeaponReloadPayload,
 } from '@vtt/shared';
 import {
+  CPRED_STAT_EFFECT_VALUE_MAX,
   CHAT_COMMANDS_HELP,
   CPRED_ADVANCE_PROBLEMS,
   CPRED_ROLE_CHANGE_PROBLEMS,
@@ -1211,6 +1213,43 @@ export function assignCriticalInjury(payload: CharacterInjuryPayload): void {
             : damageAckErrorText(ack.error),
       );
   });
+}
+
+/**
+ * MG nakłada albo zdejmuje efekt czasowy na Cesze (etap 39).
+ *
+ * Jedna funkcja na obie czynności, bo jedno jest zdarzenie: żądanie z `effectId`
+ * zdejmuje, żądanie z `stat` nakłada. Odmowa idzie notatką na czat, jak przy
+ * nadaniu rany wyżej — MG rzadko patrzy wtedy na kartę, a zawsze na feed.
+ */
+export function setStatEffect(payload: CharacterStatEffectPayload): void {
+  socket?.emit('character:stat-effect', payload, (ack: SocketAck) => {
+    if (ack.ok) return;
+    useChatStore.getState().addNote(statEffectAckErrorText(ack.error));
+  });
+}
+
+function statEffectAckErrorText(code: string | undefined): string {
+  switch (code) {
+    case 'EFFECT_NOT_FOUND':
+      return 'Tego efektu nie ma już na karcie.';
+    case 'UNKNOWN_STAT':
+      return 'Nie znam takiej Cechy.';
+    case 'BAD_VALUE':
+      return `Zmiana Cechy musi być liczbą różną od zera, najwyżej o ${CPRED_STAT_EFFECT_VALUE_MAX}.`;
+    case 'BAD_DURATION':
+      return 'Czas trwania musi być dodatni i krótszy niż doba.';
+    case 'TOO_MANY_EFFECTS':
+      return 'Ta karta niesie już komplet efektów czasowych.';
+    case 'CHARACTER_NOT_FOUND':
+      return 'Nie znalazłem tej karty w kampanii.';
+    case 'FORBIDDEN':
+      return 'Efekty czasowe nakłada wyłącznie MG.';
+    case 'OFFLINE':
+      return 'Brak połączenia z serwerem.';
+    default:
+      return 'Nie udało się zmienić efektów czasowych.';
+  }
 }
 
 /** Polish hints for attack rejections (stage 16). */

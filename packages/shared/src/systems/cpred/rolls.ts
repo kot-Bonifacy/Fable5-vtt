@@ -26,6 +26,7 @@ import {
 } from './character.js';
 import type { CpredAmmoProfile } from './ammo.js';
 import { effectiveCpredStats } from './cyberware.js';
+import { cpredEffectiveStats, cpredStatEffectRows } from './stateffects.js';
 import { deathSaveTarget, hpMax } from './derived.js';
 import {
   CPRED_HIT_LOCATION_LABELS,
@@ -683,10 +684,23 @@ function statBreakdown(data: CpredCharacterData, statId: CpredStatId): RollBreak
  */
 function statRows(data: CpredCharacterData, statId: CpredStatId): RollBreakdownEntry[] {
   const stat = statBreakdown(data, statId);
-  const armor = cpredArmorStatPenalty(data.armor, statId, stat.value);
+  // Etap 39: efekty czasowe stoją **między** Cechą a pancerzem, bo tak działają
+  // — zmieniają Cechę, a dopiero potem kurtka zabiera swoje. Własnymi wierszami
+  // z tego samego powodu, dla którego własny wiersz ma kara z pancerza: obie są
+  // czasowe i zdejmowalne, a gracz, który czyta „REF 8 · Lisz −3", wie, że za
+  // godzinę będzie rzucał inaczej.
+  const effects: RollBreakdownEntry[] = cpredStatEffectRows(data, statId).map((row) => ({
+    label: row.label,
+    value: row.value,
+    kind: 'situational' as const,
+  }));
+  // Pancerz liczy się od Cechy **po** efektach: kara nie ma prawa zepchnąć
+  // sumy poniżej zera, a granica jest tam, gdzie stoi Cecha teraz.
+  const statNow = cpredEffectiveStats(data)[statId];
+  const armor = cpredArmorStatPenalty(data.armor, statId, statNow);
   return armor === 0
-    ? [stat]
-    : [stat, { label: CPRED_ARMOR_PENALTY_LABEL, value: armor, kind: 'situational' }];
+    ? [stat, ...effects]
+    : [stat, ...effects, { label: CPRED_ARMOR_PENALTY_LABEL, value: armor, kind: 'situational' }];
 }
 
 /** The stat + skill pair every Check opens with, named the way the card shows it. */
@@ -1078,7 +1092,11 @@ function planDeathSaveRoll(
   data: CpredCharacterData,
   state: CpredWoundState,
 ): { ok: true; plan: CpredRollPlan } {
-  const target = deathSaveTarget(data.stats);
+  // Etap 39: BC **jak teraz** — Rzut na Śmierć jest rzutem „pod Cechę", więc
+  // narkotyk, który obniżył Budowę Ciała, obniża też szansę na przeżycie. Pule
+  // (maks. PW, próg Poważnie Rannego) zostają przy Cesze bazowej — patrz
+  // nagłówek `stateffects.ts`.
+  const target = deathSaveTarget(cpredEffectiveStats(data));
   const savesTaken = Math.max(0, Math.round(data.deathSaves));
   const injuryPenalty = injuryDeathSavePenalty(data.criticalInjuries);
   return {

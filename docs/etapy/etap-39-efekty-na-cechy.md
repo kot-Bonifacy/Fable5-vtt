@@ -20,17 +20,21 @@ w ogóle miał sens.
 
 ## Zakres
 
-- [ ] Model efektu na karcie: która Cecha, o ile (liczba **zapisana przy nałożeniu**, także gdy
+- [x] Model efektu na karcie: która Cecha, o ile (liczba **zapisana przy nałożeniu**, także gdy
       pochodzi z rzutu 1k6), źródło (nazwa i wpis kompendium), koniec (runda albo czas świata)
-- [ ] Rozwiązanie modyfikatorów w jednym miejscu: Cecha efektywna = bazowa + suma efektów,
+- [x] Rozwiązanie modyfikatorów w jednym miejscu: Cecha efektywna = bazowa + suma efektów,
       z podłogą i sufitem wg podręcznika
-- [ ] Przejście przez wartości pochodne (`systems/cpred/derived.ts`): REF rusza Unik, Inicjatywę
-      i PT obrony, ZW rusza Atletykę, BC rusza PW — nic z tego nie może zostać z bazową Cechą
-- [ ] Rzut z karty pokazuje efekt w rozbiciu („REF 8 − 3 (Lisz)"), tak jak dziś pokazuje rany
-- [ ] Nałożenie efektu z wiersza kompendium (narkotyk, chrom bojowy) i ręcznie przez MG
-- [ ] Chip na karcie i znacznik na figurze z odliczaniem; „zdejmij" u MG
-- [ ] Wygaszanie: w walce przez istniejące hooki tury, poza walką przy skoku zegara z etapu 37
-- [ ] Testy: modyfikator wchodzi do rzutu i do wartości pochodnych, wygasa co do rundy i co do
+- [x] Przejście przez wartości pochodne (`systems/cpred/derived.ts`): REF rusza Unik, Inicjatywę
+      i PT obrony, ZW rusza Atletykę — **z wyjątkiem PUL: maks. PW, pula SZ i sufit
+      Człowieczeństwa zostają przy Cesze bazowej** (decyzja MG z 05.09; „BC rusza PW" z tego
+      zdania **nie** zostało zrobione, bo `normalizeCharacterData` przycinałoby PW na stałe —
+      pełne uzasadnienie w `decyzje-i-uproszczenia.md`). BC rusza natomiast Rzut na Śmierć
+      i obrażenia wręcz.
+- [x] Rzut z karty pokazuje efekt w rozbiciu („REF 8 − 3 (Lisz)"), tak jak dziś pokazuje rany
+- [x] Nałożenie efektu z wiersza kompendium (narkotyk, chrom bojowy) i ręcznie przez MG
+- [x] Chip na karcie i znacznik na figurze z odliczaniem; „zdejmij" u MG
+- [x] Wygaszanie: w walce przez istniejące hooki tury, poza walką przy skoku zegara z etapu 37
+- [x] Testy: modyfikator wchodzi do rzutu i do wartości pochodnych, wygasa co do rundy i co do
       godziny, dwa efekty na tę samą Cechę sumują się, Cecha nie schodzi poniżej minimum
 
 ## Poza zakresem
@@ -45,12 +49,15 @@ w ogóle miał sens.
 
 ## Kryteria ukończenia
 
-- [ ] Nerwosol z kompendium nakłada na kartę efekt „−1k6 REF, ZW i INT na godzinę" z liczbą
-      wylosowaną raz i zapisaną
-- [ ] Rzut Uniku po nałożeniu efektu liczy się z obniżonym REF i pokazuje to w rozbiciu
-- [ ] Efekt wygasa sam: w walce po właściwej rundzie, poza walką po przesunięciu zegara o godzinę
-- [ ] Dwa efekty na tę samą Cechę sumują się, a zdjęcie jednego zostawia drugi
-- [ ] Cecha nie schodzi poniżej minimum z podręcznika, choćby efekty sumowały się głębiej
+- [x] Nerwosol z kompendium nakłada na kartę efekt „−1k6 REF, ZW i INT na godzinę" z liczbą
+      wylosowaną raz i zapisaną — **automatycznie**, po trafieniu Czarnym LOD-em
+      (`NET_PROGRAM_HOOKS_MANUAL` jest odtąd pustą listą); test w `netcombat.test.ts`
+- [x] Rzut Uniku po nałożeniu efektu liczy się z obniżonym REF i pokazuje to w rozbiciu
+- [x] Efekt wygasa sam: w walce po właściwej rundzie, poza walką po przesunięciu zegara o godzinę
+- [x] Dwa efekty na tę samą Cechę sumują się, a zdjęcie jednego zostawia drugi
+- [x] Cecha nie schodzi poniżej minimum z podręcznika, choćby efekty sumowały się głębiej —
+      **z jednym wyjątkiem: podłoga nigdy nie stoi wyżej niż wartość bazowa**, żeby Empatia
+      zerowa z cyberpsychozy (s. 229) nie została przez nią podniesiona
 
 ## Wskazówki techniczne
 
@@ -62,3 +69,19 @@ w ogóle miał sens.
 - **Jedno miejsce rozwiązywania Cech.** Jeśli modyfikator dodaje się w rzucie, ale nie w wartości
   pochodnej (albo odwrotnie), karta i kości zaczną mówić dwie różne rzeczy — to jest ten rodzaj
   błędu, który przy stole wychodzi po trzech sesjach.
+
+## Co z tego wyszło (05.09.2026)
+
+Etap ukończony w jednej sesji. Rdzeń: `shared/src/systems/cpred/stateffects.ts` (model, jedna
+funkcja rozwiązująca Cechy, dwa zegary, etykiety, czytnik), zdarzenie `character:stat-effect`
+w `server/src/realtime/stat-effects.ts`, dwa przemiatania (rundowe w `timed-effects.ts`, światowe
+wołane z `gametime.ts`), panel na karcie i chipy w pasku figury.
+
+**Trzy rozstrzygnięcia MG przed kodem** — pule z bazowej Cechy, podłoga 1, Czarny LOD nakłada sam;
+pierwsze dwa są zapisane w `decyzje-i-uproszczenia.md`, trzecie unieważniło decyzję z 15.08
+(„stosuje MG"), która uzasadniała się wprost brakiem modelu zbudowanego w tym etapie.
+
+**Poza zakresem zostało to, co było poza zakresem:** efekty na Umiejętnościach, pełne trucizny
+i narkotyki z RAW, efekty na figurach bez karty (statyści) i aury obszarowe.
+
+**Nie oglądane w przeglądarce** — pozycja otwarta w `zaleglosci.md`.

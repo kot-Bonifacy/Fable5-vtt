@@ -226,10 +226,16 @@ describe('zegar świata (etap 37)', () => {
 
   it('nowa data dociera do gracza rozgłoszeniem, nie po przeładowaniu', async () => {
     const incoming = waitFor<GameTimeBroadcast>(player, 'time:set');
+    // Karta czatu tego skoku jest odbierana **tutaj**, choć sprawdza ją dopiero
+    // test niżej. Bez tego zostawała w locie i trafiała w `once('chat:message')`
+    // następnego testu, który dostawał „Minęło dziesięć minut" zamiast „Minęła
+    // doba" — wyścig widziany raz na kilkanaście przebiegów (05.09).
+    const card = waitFor<ChatMessageBroadcast>(player, 'chat:message');
     const ack = await setTime(gm, { step: 'min10' });
     const broadcast = await incoming;
     expect(broadcast.time.minutes).toBe(ack.time.minutes);
     expect(broadcast.seq).toBeGreaterThan(0);
+    expect((await card).message.time?.title).toBe('Minęło dziesięć minut');
   });
 
   it('skok o dobę zostawia kartę na czacie i mówi, ile dób minęło', async () => {

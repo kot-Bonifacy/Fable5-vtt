@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useMemo, useState, type ChangeEvent, type MouseEvent } from 'react';
 import type {
+  CpredStatId,
   ArmorLocation,
   CompendiumEntry,
   CpredArmorRow,
@@ -25,6 +26,12 @@ import type {
   ResolvedWeapon,
 } from '@vtt/shared';
 import {
+  CPRED_HOUR_S,
+  CPRED_STAT_EFFECT_VALUE_MAX,
+  cpredEffectiveStats,
+  describeCpredStatEffect,
+  describeCpredStatEffectTimer,
+  describeCpredStatEffectValue,
   CPRED_LANGUAGE_SKILL_ID,
   cpredHealRate,
   CRITICAL_INJURY_TABLE_LABELS,
@@ -163,10 +170,12 @@ import {
   clearWeaponJam,
   reloadWeapon,
   sendCyberwareAction,
+  setStatEffect,
   setWeaponAttachment,
   transferEddies,
 } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
+import { useGameTimeStore } from '../stores/gameTimeStore.js';
 import { AdvancementPanel } from './AdvancementPanel.js';
 import { PortraitPicker } from './PortraitPicker.js';
 import { useAttackStore } from '../stores/attackStore.js';
@@ -784,7 +793,7 @@ function IdentityColumn({
           title="Test Przeżywalności: rzuć poniżej tej wartości na 1k10"
         >
           <span className="cp-label">Przeżywalność</span>
-          <span className="cp-pool-value">{deathSaveTarget(data.stats)}</span>
+          <span className="cp-pool-value">{deathSaveTarget(cpredEffectiveStats(data))}</span>
         </div>
         <p className="cp-note">−2 do wszystkich akcji kiedy Poważnie Ranny</p>
       </div>
@@ -796,7 +805,7 @@ function IdentityColumn({
           {wound === 'mortal' && (
             <button
               type="button"
-              title={`Rzuć 1k10 pod BC ${deathSaveTarget(data.stats)}. Każdy kolejny test jest o 1 trudniejszy.`}
+              title={`Rzuć 1k10 pod BC ${deathSaveTarget(cpredEffectiveStats(data))}. Każdy kolejny test jest o 1 trudniejszy.`}
               onClick={() => loadDeathSaveCup(character.id, character.name, data, registry)}
             >
               Test Przeżywalności
@@ -814,6 +823,8 @@ function IdentityColumn({
       )}
 
       <RecoveryPanel data={data} characterId={character.id} />
+
+      <StatEffects data={data} characterId={character.id} />
 
       <CriticalInjuries data={data} saveData={saveData} characterId={character.id} />
 
@@ -852,6 +863,11 @@ function StatColumn({
   startRoll: (target: Omit<RollTarget, 'characterId' | 'characterName'>, shift: boolean) => void;
 }) {
   const psychosis = cyberpsychosisFor(data.humanityCurrent);
+  // Etap 39: to samo małe pole „z", którym Empatia mówi od 23a, ile jej realnie
+  // działa — teraz dla każdej Cechy, którą przesunął efekt czasowy. Nowego
+  // miejsca na karcie nie ma i mieć nie powinna: gracz szuka tej liczby tam,
+  // gdzie stoi Cecha, a nie w drugim panelu obok.
+  const effective = cpredEffectiveStats(data);
 
   function setStat(statId: (typeof CPRED_STAT_IDS)[number], event: ChangeEvent<HTMLInputElement>) {
     const value = parseNumberInput(event);
@@ -906,13 +922,19 @@ function StatColumn({
               </button>
             </span>
           )}
-          {id === 'emp' && psychosis.emp !== data.stats.emp && (
+          {id !== 'luck' && effective[id] !== data.stats[id] && (
             <span
-              className="cp-stat-sub"
-              title="Empatia użyta w rzutach — wynika z Człowieczeństwa (s. 229)"
+              className={`cp-stat-sub${
+                effective[id] < data.stats[id] ? ' cp-stat-sub--down' : ' cp-stat-sub--up'
+              }`}
+              title={
+                id === 'emp' && effective.emp === psychosis.emp
+                  ? 'Empatia użyta w rzutach — wynika z Człowieczeństwa (s. 229)'
+                  : `${CPRED_STAT_LABELS[id].name} użyta w rzutach — przesunięta efektami czasowymi`
+              }
             >
               <span className="cp-of">z</span>
-              <span className="cp-stat-sub-value">{psychosis.emp}</span>
+              <span className="cp-stat-sub-value">{effective[id]}</span>
             </span>
           )}
         </div>
@@ -2395,6 +2417,172 @@ function stripPatch(row: CpredCriticalInjuryRow): CpredCriticalInjuryRow {
  * Od etapu 27b stoją w kolumnie tożsamości strony pierwszej, bo tam drukuje je
  * karta — obok Uzależnień i pod Przeżywalnością.
  */
+/**
+ * Efekty czasowe na Cechach (etap 39) — chipy i formularz MG.
+ *
+ * Stoi **nad** Krytycznymi Urazami i pod stanem zdrowia, bo odpowiada na to
+ * samo pytanie co one („w jakim ona jest stanie"), a nie na „co potrafi".
+ * Panelu nie ma wcale, gdy lista jest pusta i patrzy gracz: pusty prostokąt
+ * z napisem „bez efektów" na każdej karcie stołu byłby szumem.
+ *
+ * Odliczanie liczy się z zegara świata trzymanego w `gameTimeStore` — ta sama
+ * liczba, którą pokazuje górny pasek. Gracz widzi w pasku dobę i porę dnia
+ * (rozstrzygnięcie z 05.09), ale minuta jedzie do klienta i tutaj mówi rzecz
+ * uczciwą: ile jeszcze **tego** efektu zostało.
+ */
+function StatEffects({ data, characterId }: { data: CpredCharacterData; characterId: string }) {
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
+  const minutes = useGameTimeStore((s) => s.minutes);
+  const [stat, setStat] = useState<CpredStatId>('ref');
+  const [amount, setAmount] = useState('');
+  const [source, setSource] = useState('');
+  const [durationS, setDurationS] = useState(String(CPRED_HOUR_S));
+
+  if (data.statEffects.length === 0 && !isGm) return null;
+
+  function apply() {
+    const parsed = parseStatEffectAmount(amount);
+    if (!parsed || source.trim().length === 0) return;
+    setStatEffect({
+      characterId,
+      stat,
+      source: source.trim(),
+      durationS: Number(durationS),
+      ...parsed,
+    });
+    setAmount('');
+    setSource('');
+  }
+
+  return (
+    <div className="cp-panel cp-stat-effects">
+      <div className="cp-bar">Efekty czasowe</div>
+      {data.statEffects.length === 0 ? (
+        <div className="cp-field cp-injuries-empty">bez efektów na Cechach</div>
+      ) : (
+        <ul className="stat-effect-list">
+          {data.statEffects.map((effect) => (
+            <li key={effect.id} className="cp-field stat-effect-row">
+              <span
+                className={`stat-effect-value${
+                  effect.value < 0 ? ' stat-effect-value--down' : ' stat-effect-value--up'
+                }`}
+              >
+                {describeCpredStatEffectValue(effect)}
+              </span>
+              <span className="stat-effect-source">{effect.source}</span>
+              <span
+                className="stat-effect-timer"
+                title={
+                  effect.rolled
+                    ? `Wylosowane raz przy nałożeniu (${effect.rolled}) i zapisane na karcie.`
+                    : 'Wpisane przez MG przy nałożeniu.'
+                }
+              >
+                {describeCpredStatEffectTimer(effect, { round: null, minutes })}
+              </span>
+              {isGm && (
+                <button
+                  type="button"
+                  className="cp-mini-button"
+                  title="Zdejmij ten efekt"
+                  aria-label={`Zdejmij efekt: ${describeCpredStatEffect(effect)}`}
+                  onClick={() => setStatEffect({ characterId, effectId: effect.id })}
+                >
+                  ⌫
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {isGm && (
+        <div className="cp-field stat-effect-form">
+          <select
+            value={stat}
+            onChange={(e) => setStat(e.target.value as CpredStatId)}
+            aria-label="Cecha efektu"
+          >
+            {CPRED_STAT_IDS.map((id) => (
+              <option key={id} value={id}>
+                {CPRED_STAT_LABELS[id].abbr}
+              </option>
+            ))}
+          </select>
+          <input
+            className="stat-effect-amount"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder="−2 albo −1k6"
+            title="Liczba przesuwa Cechę wprost; notacja („−1k6”) jest rzucana raz, na serwerze, i zapisywana jako liczba."
+            aria-label="O ile"
+          />
+          <input
+            className="stat-effect-source-input"
+            value={source}
+            onChange={(e) => setSource(e.target.value)}
+            placeholder="źródło, np. Nerwosol"
+            maxLength={64}
+            aria-label="Źródło efektu"
+          />
+          <select
+            value={durationS}
+            onChange={(e) => setDurationS(e.target.value)}
+            aria-label="Czas trwania"
+          >
+            {STAT_EFFECT_DURATIONS.map((option) => (
+              <option key={option.seconds} value={option.seconds}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={apply}
+            disabled={parseStatEffectAmount(amount) === null || source.trim().length === 0}
+            title="Nałóż efekt — serwer policzy oba terminy (runda walki i zegar świata)"
+          >
+            Nałóż
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Długości, które MG wybiera jednym kliknięciem; godzina jest domyślna (RAW). */
+const STAT_EFFECT_DURATIONS: readonly { seconds: number; label: string }[] = [
+  { seconds: 60, label: 'na minutę' },
+  { seconds: 10 * 60, label: 'na 10 min' },
+  { seconds: CPRED_HOUR_S, label: 'na godzinę' },
+  { seconds: 6 * CPRED_HOUR_S, label: 'na 6 h' },
+  { seconds: 24 * CPRED_HOUR_S, label: 'na dobę' },
+];
+
+/**
+ * „−2" albo „−1k6" — jedno pole na obie drogi.
+ *
+ * Dwa pola („ile" i „czym rzucić") kłóciłyby się przy każdym wpisaniu obu,
+ * a MG i tak pisze jedno albo drugie. Znak czyta się z przodu napisu i dotyczy
+ * obu: „−1k6" ma **obniżyć** Cechę, a rzut jest o wielkości, nie o kierunku.
+ */
+function parseStatEffectAmount(
+  raw: string,
+): { value: number } | { formula: string; negative: boolean } | null {
+  const text = raw.trim().replace('−', '-');
+  if (text.length === 0) return null;
+  const negative = text.startsWith('-');
+  const body = text.replace(/^[+-]/, '').trim();
+  if (body.length === 0) return null;
+  if (/^\d+$/.test(body)) {
+    const value = Number(body);
+    if (value === 0 || value > CPRED_STAT_EFFECT_VALUE_MAX) return null;
+    return { value: negative ? -value : value };
+  }
+  if (!/^\d*[kd]\d+$/i.test(body)) return null;
+  return { formula: body, negative };
+}
+
 function CriticalInjuries({ data, saveData, characterId }: TabProps & { characterId: string }) {
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const entriesById = useCompendiumStore((s) => s.entries);

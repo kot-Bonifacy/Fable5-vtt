@@ -4,6 +4,73 @@ Wyprowadzone z „Od czego zacząć" w `POSTEP.md` 22.08.2026. Indeks jednolinij
 tu leżą pełne wersje. Czytaj wpis, **zanim** dołożysz coś w obszarze, którego dotyczy — każdy
 z nich powstał po tym, jak ktoś dołożył to w złym miejscu.
 
+**Cecha „jak teraz" czyta się jedną funkcją: `cpredEffectiveStats(sheet)` (05.09, etap 39).**
+Od tego etapu `data.stats[...]` **nie jest** liczbą, którą cokolwiek rozstrzyga — jest liczbą
+**wydrukowaną na karcie**. To, czym pada kość, liczy `cpredEffectiveStats` w
+`shared/src/systems/cpred/stateffects.ts`: bazowa Cecha, poprawka Człowieczeństwa z 23a, suma
+efektów czasowych i przycięcie do podłogi i sufitu. Przez tę jedną funkcję idą Testy, atak, Unik,
+Inicjatywa, RUCH, Rzut na Śmierć, Zwarcie, Koncentracja, Konfrontacja, obrażenia wręcz i podgląd
+kubka u klienta. **Wyjątkiem, i jedynym, są PULE**: maksymalne PW, pula Szczęścia i sufit
+Człowieczeństwa czytają Cechę bazową (powód w `decyzje-i-uproszczenia.md`) — jak i tempo
+naturalnego leczenia, bo dobowy rachunek nie ma nic wspólnego z godzinnym efektem. Nowe miejsce,
+które czyta Cechę, wybiera jedną z tych dwóch stron **świadomie**; jeśli modyfikator wejdzie do
+rzutu, ale nie do wartości pochodnej (albo odwrotnie), karta i kości zaczną mówić dwie różne
+rzeczy, a przy stole wyjdzie to po trzech sesjach.
+
+**Efekt na Cesze w rozbiciu rzutu to WŁASNY WIERSZ, nie mniejsza liczba przy Cesze (05.09).**
+`cpredStatEffectRows(sheet, statId)` zwraca po jednym wierszu na efekt („Lisz −3"), a wiersz
+Cechy zostaje przy wartości z karty — dokładnie tak, jak od 15 działa kara z pancerza i z tego
+samego powodu: modyfikator jest **czasowy i zdejmowalny**, a gracz, który czyta „REF 8 · Lisz −3",
+wie, że za godzinę będzie rzucał inaczej. **Gdy podłoga Cechy przycina sumę, funkcja zwija
+wiersze w jeden zbiorczy** z nazwami wszystkich źródeł i przyciętą liczbą — inaczej rozbicie
+sumowałoby się do REF −2, czyli do czegoś, czym nikt nie rzuca. Nowe miejsce rysujące rozbicie
+woła tę funkcję, nigdy nie składa wierszy samo.
+
+**`CpredCharacterData.statEffects` pisze wyłącznie `character:stat-effect` (05.09).** Pole wypada
+z `character:update` z kodem `FORBIDDEN` **u wszystkich, także u MG** — inaczej niż Reputacja,
+która MG zostaje. Powód: nałożenie ma **cenę**, której łata karty nie ma czym zapłacić —
+wylosować 1k6, zapisać wynik i policzyć oba terminy z bieżącej rundy i zegara świata. Lista
+wpisana ręką byłaby listą efektów **bez terminu**, czyli takich, które nie zejdą nigdy. Ta sama
+furtka, którą `eddies` zamknęło w 23b.
+
+**Efekt czasowy niesie DWA terminy naraz, a zegar świata stawia się ZAWSZE (05.09).**
+`cpredStatEffectDeadlines(clock, durationS)` daje `expiresAtRound` (tylko gdy trwa walka)
+**i** `expiresAtMinute` (zawsze, bo od 37 każda kampania ma zegar). Wygasanie jest **alternatywą,
+nie koniunkcją**: schodzi ten, który dogonił pierwszy. Termin świata jest obowiązkowy, bo tylko on
+przeżywa koniec walki — efekt z samym terminem rundowym, nałożony w rundzie 8 walki, która się
+skończyła, wisiałby do ósmej rundy **następnej** walki (ta pułapka siedzi w `CpredTimedEffect`
+z 16h do dziś).
+
+**Liczba efektu pada RAZ, przy nałożeniu (05.09).** „1k6" z opisu Nerwosolu jest instrukcją dla
+chwili nałożenia, a nie formułą efektu: serwer rzuca, zapisuje wynik na wierszu (`value`) i notację
+obok (`rolled`, sam napis, do podpowiedzi). Efekt trzymający formułę przeliczałby się przy każdym
+odczycie i karta zmieniałaby się sama, ilekroć ktoś na nią spojrzy — ta sama umowa, którą wiersz
+broni ma wobec kompendium. Żądanie z `value` **i** `formula` naraz jest odmową (`BAD_VALUE`), a nie
+cichym wyborem jednego z nich.
+
+**Wygaszanie efektów ma DWA przemiatania i chodzą po dwóch różnych listach (05.09).** Rundowe
+(`sweepTimedEffects` w `realtime/timed-effects.ts`) chodzi po **żetonach sceny**, bo naklejka jest
+własnością żetonu, i woła `expireStatEffectsOfCharacter` z `{ round, minutes: null }` — minuta
+świata nie rusza się na granicy tury i podanie jej tam zdjęłoby „na godzinę" po sześciu
+sekundach. Światowe (`sweepStatEffects` w `realtime/stat-effects.ts`, wołane z `gametime.ts`)
+chodzi po **kartach kampanii**, bo efekt jest wierszem karty i postać, która przespała noc poza
+sceną, ma prawo obudzić się bez Nerwosolu. Nowy efekt czasowy dopisuje się do obu, albo świadomie
+do jednego.
+
+**Zegar świata zdejmuje efekty czasowe — i to jedyny wyjątek od „zegar podpowiada, nie rządzi"
+(05.09).** `realtime/gametime.ts` nadal nie woła ekonomii ani leczenia i nadal nie wie, czym są
+PW; woła jedną funkcję z `stat-effects.ts`. Wyjątek broni się tym, że **nie ma tu czego
+wybierać**: „na godzinę" jest terminem zapisanym przy nałożeniu, tak samo jak „do rundy 9"
+z 16h, które granica tury zdejmuje sama od dawna. Czynsz i odpoczynek MG **wybiera** (ile, komu,
+czy w ogóle) — i te zostają za guzikiem. Nowa rzecz wołana z `gametime.ts` musi przejść ten sam
+test: czy MG ma tu jakikolwiek wybór.
+
+**Hak Programu, którego silnik nie umie rozliczyć, idzie do `NET_PROGRAM_HOOKS_MANUAL` (05.09).**
+Lista jest od etapu 39 **pusta** — `statDrain` i `moveDrain` przeszły na automat — i pusta ma
+zostać, dopóki nie dojdzie Program, którego skutku VTT nie umie policzyć. Nie kasuj jej i nie
+kasuj gałęzi `netHookIsManual` w `netice.ts`: to jest to jedno miejsce, dzięki któremu dołożenie
+takiego Programu jest zmianą jednej linijki, a nie nową gałęzią w pętli efektów.
+
 **„Backup" w tym repozytorium znaczy Wsparcie, nie kopię zapasową (05.09).**
 `realtime/backup.ts`, `characterBackupCallEvent` i `BackupPanel.tsx` to Zdolność Roli **Wsparcie**
 z etapu 30c — wezwanie posiłków na mapę. Kopie zapasowe nazywają się `snapshot` (praca na dysku:

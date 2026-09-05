@@ -6,6 +6,7 @@ import type {
   ScenePoint,
 } from '@vtt/shared';
 import {
+  cpredEffectiveStats,
   CPRED_EVADE_AREA_MIN_REF,
   blastAreaAt,
   coneAreaTowards,
@@ -310,7 +311,8 @@ async function canJumpClear(
       where: { id: token.characterId },
     });
     if (!character) return false;
-    return parseCharacterData(character.data, registry).stats.ref >= CPRED_EVADE_AREA_MIN_REF;
+    const data = parseCharacterData(character.data, registry);
+    return cpredEffectiveStats(data).ref >= CPRED_EVADE_AREA_MIN_REF;
   }
   const profile = readSheetCombatProfile(token.combatProfile);
   return profile ? profile.ref >= CPRED_EVADE_AREA_MIN_REF : false;

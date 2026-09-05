@@ -78,6 +78,11 @@ import {
   type CpredStatId,
   type CpredStats,
 } from './stats.js';
+import {
+  CPRED_STAT_EFFECTS_MAX,
+  readCpredStatEffects,
+  type CpredStatEffect,
+} from './stateffects.js';
 
 /**
  * CP RED sheet data stored in the character's JSON column. `schemaVersion`
@@ -900,6 +905,17 @@ export interface CpredCharacterData {
   /** Critical Injuries suffered right now (stage 15). */
   criticalInjuries: CpredCriticalInjuryRow[];
   /**
+   * Efekty czasowe siedzące na Cechach (etap 39) — Nerwosol, Lisz, Skorpion,
+   * ręka MG. `[]` na każdej karcie, której nikt niczym nie potraktował.
+   *
+   * Pisane **wyłącznie przez silnik**: `character:stat-effect` u MG i Czarny
+   * LOD po trafieniu. Wypadają z `character:update` u wszystkich — gracz, który
+   * może wpisać sobie listę, zdejmuje z siebie narkotyk bez rzutu, a MG, który
+   * może ją wpisać, omija losowanie 1k6 i zapis terminu. Ta sama furtka, którą
+   * `eddies` zamknęło w 23b.
+   */
+  statEffects: CpredStatEffect[];
+  /**
    * Death Saves already taken since going Mortally Wounded. Each one makes the
    * next harder (+1); regaining a single HP resets the counter (RAW:
    * modifiers accumulate „dopóki nie zostaniesz ustabilizowany").
@@ -1075,6 +1091,7 @@ export function createDefaultCharacterData(): CpredCharacterData {
     gear: [],
     cyberware: [],
     criticalInjuries: [],
+    statEffects: [],
     deathSaves: 0,
     recovery: { stabilized: false, antibioticDays: 0 },
     eddies: 0,
@@ -1876,6 +1893,21 @@ function collectCharacterDataPatch(
   if ('criticalInjuries' in input) {
     const injuries = validateCriticalInjuries(input.criticalInjuries, issues);
     if (injuries) patch.criticalInjuries = injuries;
+  }
+  // Etap 39. Lista przechodzi przez czytnik z `stateffects.ts`, ten sam, którym
+  // czyta się ją z bazy: wiersze pisze silnik, więc zepsuty odpada po cichu.
+  // Odmowa **kto** ma prawo je pisać nie stoi tutaj, tylko w `character:update`
+  // — walidator nie zna roli, a `applyCharacterPatch` służy też serwerowi.
+  if ('statEffects' in input) {
+    if (!Array.isArray(input.statEffects)) {
+      issues.push(issue('statEffects', 'Nieprawidłowy format listy efektów.'));
+    } else if (input.statEffects.length > CPRED_STAT_EFFECTS_MAX) {
+      issues.push(
+        issue('statEffects', `Za dużo efektów czasowych (limit ${CPRED_STAT_EFFECTS_MAX}).`),
+      );
+    } else {
+      patch.statEffects = readCpredStatEffects(input.statEffects);
+    }
   }
   if ('deathSaves' in input) {
     const value = input.deathSaves;

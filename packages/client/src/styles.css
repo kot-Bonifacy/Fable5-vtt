@@ -5546,6 +5546,43 @@ body.is-resizing {
   display: block;
 }
 
+/* Efekty czasowe na Cechach (etap 39) — ten sam kształt co naklejki wyżej,
+   bo pasek ma je czytać jednym spojrzeniem jako jedną listę „co z tą figurą".
+   Różni je wyłącznie kolor liczby: czerwień w dół, zieleń w górę. */
+.hud-stat-effects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hud-stat-effect {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  padding: 0.1rem 0.32rem;
+  font-size: 0.66rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--veil-soft);
+  color: var(--text-dim);
+}
+
+.hud-stat-effect-value {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-stat-effect--down .hud-stat-effect-value {
+  color: var(--err-ink);
+}
+
+.hud-stat-effect--up .hud-stat-effect-value {
+  color: var(--ok-ink);
+}
+
 .hud-status--warn {
   color: var(--warn);
   border-color: rgb(var(--warn-rgb) / 45%);

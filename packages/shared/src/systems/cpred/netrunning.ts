@@ -111,14 +111,21 @@ export const NET_PROGRAM_HOOK_LABELS: Record<NetProgramHook, string> = {
 };
 
 /**
- * Hooks the engine names and the **GM** applies (decision of 15.08).
+ * Hooks the engine names and the **GM** applies.
  *
- * Both are „na godzinę": a clock that runs outside the fight, on a Stat the
- * sheet has no way to lower for an hour and put back. Automating them would
- * mean a temporary-modifier model the project does not have — so the card says
- * what happened, in Polish, and the GM writes it down.
+ * Empty since stage 39, and the empty list is the point. Until then it held
+ * `statDrain` and `moveDrain` — both „na godzinę", a clock that ran outside the
+ * fight on a Stat the sheet had no way to lower for an hour and put back. The
+ * decision of 15.08 said so in as many words: „automating them would mean a
+ * temporary-modifier model the project does not have". Stage 39 built that
+ * model (`stateffects.ts`), so the server rolls the 1k6 and applies the effect
+ * itself, and nothing is left for the GM to write down.
+ *
+ * The list stays rather than being deleted: the next Program whose effect the
+ * engine cannot resolve belongs in it, and `netHookIsManual` is the one branch
+ * that has to keep existing for that to be a one-line change.
  */
-export const NET_PROGRAM_HOOKS_MANUAL: readonly NetProgramHook[] = ['statDrain', 'moveDrain'];
+export const NET_PROGRAM_HOOKS_MANUAL: readonly NetProgramHook[] = [];
 
 /** What a Defender does while it is rezzed (s. 203). */
 export const NET_GUARD_KINDS = ['armour', 'shell', 'shield'] as const;

@@ -11,6 +11,16 @@
  * widoczna jako brak: nie ma żadnego wywołania `economy:settle`, żadnego
  * leczenia i żadnego tykania w tle. Serwer, który sam sobie przesuwa zegar,
  * obudziłby się po nocy z rozliczonym miesiącem, którego nikt nie rozegrał.
+ *
+ * **Jeden wyjątek od tego braku dołożył etap 39** i wart jest zdania, bo wygląda
+ * na złamanie zasady, a nie jest. Po przesunięciu zegara moduł woła
+ * `sweepStatEffects` — zdejmuje z kart efekty czasowe, których godzina minęła.
+ * To nie jest decyzja, którą zegar podejmuje za MG: „na godzinę" jest terminem
+ * **zapisanym przy nałożeniu**, dokładnie jak „do rundy 9" z etapu 16h, które
+ * granica tury zdejmuje sama od dawna. Różnica wobec czynszu i leczenia jest
+ * ostra: tamte MG **wybiera** (ile, komu, czy w ogóle), a tutaj nie ma czego
+ * wybierać — minęło albo nie minęło. Alternatywą byłoby dwadzieścia chipów do
+ * odklikania po każdym skoku o dobę.
  */
 
 import type { GameTimeAck, GameTimeBroadcast, GameTimeSetPayload, TimeLogEntry } from '@vtt/shared';
@@ -30,6 +40,7 @@ import type { PrismaClient } from '../db.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { campaignRoom } from './state.js';
 import { INCLUDE_CHAT_NAMES, broadcastChatMessage, toChatMessageView } from './chat-io.js';
+import { sweepStatEffects } from './stat-effects.js';
 
 /**
  * Stan zegara jednej kampanii; brak kampanii daje domyślny start.
@@ -148,6 +159,14 @@ export const timeSetEvent = defineEvent<GameTimeSetPayload, GameTimeAck>({
       include: INCLUDE_CHAT_NAMES,
     });
     broadcastChatMessage(deps, campaign.id, toChatMessageView(stored));
+
+    // Etap 39 — **po** karcie zegara, bo tak to czyta się w dzienniku sesji:
+    // najpierw „minęła noc", potem „efekty wygasły". Runda jest tu `null`
+    // świadomie: przesunięcie zegara nie jest przesunięciem walki, a efekt
+    // z terminem rundowym ma zejść na granicy tury, nie tutaj. Zegar cofnięty
+    // nie zdejmuje niczego (`>=` przy minucie) i nie przywraca niczego — to ta
+    // sama umowa, którą karta czatu ogłasza słowem „Zegar cofnięty".
+    await sweepStatEffects(deps, campaign.id, { round: null, minutes });
 
     return { time: after, days: entry.days };
   },

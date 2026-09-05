@@ -13,6 +13,7 @@ import type {
   ScenePoint,
 } from '@vtt/shared';
 import {
+  cpredEffectiveStats,
   CPRED_CARE_MODE_LABELS,
   CPRED_FIRST_AID_SKILL_ID,
   CPRED_PARAMEDIC_SKILL_ID,
@@ -386,8 +387,10 @@ export function loadStabilizeCup(
   const skill = candidates.reduce((best, entry) =>
     (data.skills[entry.id] ?? 0) > (data.skills[best.id] ?? 0) ? entry : best,
   );
+  // Etap 39: Cecha **jak teraz**, tak jak liczy ją serwer — podgląd kubka
+  // i werdykt muszą dojść do tej samej liczby.
   const modifierTotal =
-    data.stats[skill.stat] +
+    cpredEffectiveStats(data)[skill.stat] +
     (data.skills[skill.id] ?? 0) +
     woundCheckPenalty(woundState(data.hpCurrent, data.stats));
 
@@ -435,7 +438,9 @@ export function loadTreatInjuryCup(
   // Both Medyk-only Skills are TECH-based (s. 149), so the fallback is theirs.
   const stat = registry.skills.find((skill) => skill.id === option.skillId)?.stat ?? 'tech';
   const modifierTotal =
-    data.stats[stat] + level + woundCheckPenalty(woundState(data.hpCurrent, data.stats));
+    cpredEffectiveStats(data)[stat] +
+    level +
+    woundCheckPenalty(woundState(data.hpCurrent, data.stats));
 
   store.loadCup({
     characterId: healer.characterId,

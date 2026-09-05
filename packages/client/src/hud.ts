@@ -1,4 +1,5 @@
 import type {
+  CpredStatEffect,
   CombatView,
   CombatantView,
   CpredCharacterData,
@@ -166,6 +167,15 @@ export interface HudContext {
    * wpisał. Wsparcie 10. poziomu przynosi tu swoje piętnaście z s. 159.
    */
   figureSkills: { id: string; name: string; level: number }[];
+  /**
+   * Efekty czasowe na Cechach (etap 39) — chipy nad bronią.
+   *
+   * Czytane z **karty**, więc widzi je tylko ten, kto tę kartę widzi: własną
+   * postać gracz widzi zawsze, cudzą NPC-ową wyłącznie MG. Figura bez karty ma
+   * pustą listę i będzie ją miała, dopóki efekty statystów są poza zakresem
+   * (etap 39, „Poza zakresem").
+   */
+  statEffects: CpredStatEffect[];
 }
 
 /**
@@ -210,6 +220,7 @@ function hudVitalsFor(sheet: CpredCharacterData | null, token: TokenView): HudVi
       hpMax: max,
       armor: sheet.armor,
       injuries: sheet.criticalInjuries,
+      statEffects: sheet.statEffects,
     });
     const ceiling = humanityMaxWith(sheet.stats, sheet.cyberware);
     return {
@@ -275,6 +286,7 @@ export function hudContextFor(tokenId: string | null): HudContext {
       sheetNotMine: false,
       injuries: [],
       figureSkills: [],
+      statEffects: [],
     };
   }
 
@@ -345,6 +357,7 @@ export function hudContextFor(tokenId: string | null): HudContext {
       !isGm && token.characterId !== null && token.characterId !== undefined && !character,
     injuries: token.characterId ? [] : sanitizeCriticalInjuryRows(token.injuries),
     figureSkills: character ? [] : figureSkillsOf(token),
+    statEffects: character?.data.statEffects ?? [],
   };
 }
 
@@ -478,6 +491,11 @@ export function hudSignature(context: HudContext): string {
     // Ta sama lekcja co z nabojem niżej: co widać, to musi być w sygnaturze.
     context.injuries.map((injury) => [injury.id, injury.patched?.skill ?? null]),
     context.figureSkills.map((skill) => [skill.id, skill.level]),
+    // Etap 39: chip efektu ma zniknąć w chwili, w której efekt zszedł z karty —
+    // ta sama lekcja co z nabojem niżej i z raną wyżej, „co widać, to musi być
+    // w sygnaturze". Bez `value` nie odświeżałby się drugi efekt na tej samej
+    // Cesze z tego samego źródła.
+    context.statEffects.map((effect) => [effect.id, effect.value]),
     context.slots.map((slot) => [
       slot.id,
       slot.label,
