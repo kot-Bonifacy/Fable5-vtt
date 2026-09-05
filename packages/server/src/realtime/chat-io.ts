@@ -230,6 +230,13 @@ export function visibleTo(user: SessionUser) {
               // `proposal`: wezwanie do Testu wystawia MG, więc każde jest jego
               // sprawą — także wystawione z drugiego konta MG.
               'check',
+              // `time` (etap 37) i `recovery` (30b) są **publiczne** i są tu
+              // z tego samego powodu, co niżej u gracza. Bez tych dwóch wierszy
+              // MG widział wyłącznie **własne** karty (przez `authorId`):
+              // dzień odpoczynku rozliczony przez gracza znikał mu przy
+              // pierwszym przeładowaniu, choć to on prowadzi tę przerwę.
+              'time',
+              'recovery',
             ],
           },
         },
@@ -242,9 +249,16 @@ export function visibleTo(user: SessionUser) {
   }
   // `gmaction` (a refused action) is deliberately absent: a player sees only
   // their own, through the `authorId` clause below.
+  //
+  // `time` (etap 37) i `recovery` (30b) są na tej liście, bo obie karty **są**
+  // sprawą całego stołu — „minęła noc" to cezura sceny, a to, że ktoś przespał
+  // dobę albo dostał zastrzyk, dzieje się przy wszystkich (tak mówi wprost
+  // dokumentacja `RecoveryLogEntry` od 30b). Bez tych wpisów obie docierały do
+  // stołu wyłącznie rozgłoszeniem na żywo i znikały przy pierwszym
+  // przeładowaniu; widział je tylko ich autor.
   return {
     OR: [
-      { kind: { in: ['say', 'roll', 'damage', 'action', 'journal'] } },
+      { kind: { in: ['say', 'roll', 'damage', 'action', 'journal', 'time', 'recovery'] } },
       { authorId: user.id },
       { recipientId: user.id },
     ],

@@ -10,6 +10,7 @@ import {
   chatCompactLine,
   formatGameClock,
   formatGameDate,
+  formatGameDayTime,
   formatGameTime,
   formatGameWeekday,
   gameDayKey,
@@ -48,6 +49,21 @@ describe('zegar świata — odczyt', () => {
     expect(formatGameClock(at(2045, 3, 15, 8, 5))).toBe('08:05');
     expect(formatGameClock(at(2045, 3, 15, 0, 0))).toBe('00:00');
     expect(formatGameClock(at(2045, 3, 15, 23, 59))).toBe('23:59');
+  });
+
+  it('zegar bez tarczy: data i pora dnia, bez godziny', () => {
+    // To, co widzi gracz (05.09) — i co niesie karta czatu dla całego stołu.
+    expect(formatGameDayTime(at(2045, 3, 15, 8, 37))).toBe('15 marca 2045 · rano');
+    expect(formatGameDayTime(at(2045, 3, 15, 23, 0))).toBe('15 marca 2045 · noc');
+    // Zegar, który przesunął się o dwadzieścia minut, daje graczowi ten sam
+    // napis — i o to chodzi: etykieta jest grubsza niż dryf.
+    expect(formatGameDayTime(at(2045, 3, 15, 8, 37))).toBe(
+      formatGameDayTime(at(2045, 3, 15, 8, 57)),
+    );
+    // …a przekroczona pora dnia zmienia go natychmiast.
+    expect(formatGameDayTime(at(2045, 3, 15, 10, 59))).not.toBe(
+      formatGameDayTime(at(2045, 3, 15, 11, 0)),
+    );
   });
 
   it('zna dzień tygodnia', () => {

@@ -163,6 +163,29 @@ export function formatGameTime(minutes: number): string {
   }`;
 }
 
+/**
+ * „15 marca 2045 · rano" — zegar bez tarczy (rozstrzygnięcie MG z 05.09.2026).
+ *
+ * Zegar rusza się **wyłącznie na kliknięcie MG**, a rundy walki nie dotykają go
+ * wcale: strzelanina na czterdzieści rund to dwie minuty świata, których nikt
+ * nigdy nie wklepie. Minuta pokazana graczowi jest więc obietnicą dokładności,
+ * której nie da się dotrzymać — po trzech godzinach przy stole „08:37" czyta
+ * się jak zepsuty zegar. Etykieta grubsza niż dryf czyta się jak zegar, który
+ * działa, a nic w tym VTT nie schodzi poniżej doby: monit liczy miesiące,
+ * odpoczynek — północe, dziennik zapisuje dobę.
+ *
+ * Pora dnia zostaje, bo nie jest ozdobą: nocą ulica należy do kogo innego,
+ * a ciemność jest mechaniką od etapu 18b.
+ *
+ * To **wybór prezentacji, nie tajemnica** — minuta jedzie do klienta jak dotąd
+ * i nie jest filtrowana na serwerze. Nie ma czego chronić: z godziny nikt nic
+ * nie ugra, a trzymanie jej w ładunku znaczy, że zmiana zdania w tej sprawie
+ * jest zmianą jednej funkcji, nie protokołu.
+ */
+export function formatGameDayTime(minutes: number): string {
+  return `${formatGameDate(minutes)} · ${GAME_DAY_PART_LABELS[gameDayPart(minutes)]}`;
+}
+
 /** Klucz miesiąca („2045-03") — po nim rozstrzyga się monit rozliczenia. */
 export function gameMonthKey(minutes: number): string {
   const date = dateOf(minutes);

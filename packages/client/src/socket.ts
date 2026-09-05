@@ -688,20 +688,41 @@ export function connectSocket(userId: string): Socket {
   );
 
   // The compendium is shared data: room broadcasts with a seq, like chat.
+  //
+  // Rozgłoszenie, które **rysuje** `seq` na serwerze, musi go u klienta
+  // **skonsumować** — inaczej następna wiadomość czatu wygląda jak luka i cały
+  // stół idzie w zbędny `state:request` (znalezione 05.09 przy etapie 37,
+  // dotyczyło czterech zdarzeń naraz: obu kompendium, sklepu i zegara).
   socket.on('compendium:upsert', (broadcast: CompendiumUpsertBroadcast) => {
+    if (chat().applySeq(broadcast.seq)) {
+      socket?.emit('state:request');
+      return;
+    }
     useCompendiumStore.getState().applyUpsert(broadcast.entry);
   });
   socket.on('compendium:delete', (broadcast: CompendiumDeleteBroadcast) => {
+    if (chat().applySeq(broadcast.seq)) {
+      socket?.emit('state:request');
+      return;
+    }
     useCompendiumStore.getState().applyDelete(broadcast.id);
   });
   // The GM's shop dial (stage 25c): a room broadcast, because a catalogue that
   // opened up only after a reload is a catalogue the table argues about.
   socket.on('shop:tier', (broadcast: ShopTierBroadcast) => {
+    if (chat().applySeq(broadcast.seq)) {
+      socket?.emit('state:request');
+      return;
+    }
     useCompendiumStore.getState().applyShopTier(broadcast.tier);
   });
   // Zegar świata (etap 37): rozgłoszenie, nie resynchronizacja — data w pasku
   // ma zmienić się u wszystkich w chwili, w której MG kliknął „+1 dzień".
   socket.on('time:set', (broadcast: GameTimeBroadcast) => {
+    if (chat().applySeq(broadcast.seq)) {
+      socket?.emit('state:request');
+      return;
+    }
     useGameTimeStore.getState().applyTime(broadcast.time);
   });
 

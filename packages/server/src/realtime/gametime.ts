@@ -18,7 +18,7 @@ import {
   GAME_TIME_DEFAULT,
   ROLE_GM,
   applyGameTimeStep,
-  formatGameTime,
+  formatGameDayTime,
   gameDaysBetween,
   gameMonthKey,
   isGameTime,
@@ -127,8 +127,12 @@ export const timeSetEvent = defineEvent<GameTimeSetPayload, GameTimeAck>({
     const backwards = minutes < before.minutes;
     const entry: TimeLogEntry = {
       title: timeLogTitle(step ?? null, backwards),
-      from: formatGameTime(before.minutes),
-      to: formatGameTime(minutes),
+      // Bez minut — dla wszystkich, także dla MG. Karta jest **cezurą**
+      // („minęła noc"), a nie stemplem czasu: dokładna godzina mieszka w oknie
+      // zegara, gdzie da się ją zmienić, a nie w dzienniku sesji, gdzie zostaje
+      // na zawsze. Zostawienie jej tutaj odsłoniłoby też to, co pasek chowa.
+      from: formatGameDayTime(before.minutes),
+      to: formatGameDayTime(minutes),
       days: gameDaysBetween(before.minutes, minutes),
       ...(backwards ? { backwards: true } : {}),
     };

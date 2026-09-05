@@ -3,6 +3,7 @@ import {
   GAME_TIME_STEPS,
   formatGameClock,
   formatGameDate,
+  formatGameDayTime,
   formatGameTime,
   formatGameWeekday,
   gameDaysPassed,
@@ -261,7 +262,21 @@ export function ClockWindow() {
   );
 }
 
-/** Zegar w górnym pasku: napis dla stołu, przycisk dla MG. */
+/**
+ * Zegar w górnym pasku: napis dla stołu, przycisk dla MG.
+ *
+ * **Gracz nie widzi tarczy zegara** (rozstrzygnięcie MG z 05.09.2026) — dostaje
+ * datę i porę dnia, MG godzinę co do minuty. Nie jest to tajemnica ani filtr:
+ * minuta jedzie w `state:sync` do wszystkich i nikt z niej nic nie ugra. Jest
+ * to szczerość etykiety. Zegar rusza się wyłącznie na kliknięcie MG, a rundy
+ * walki nie dotykają go wcale, więc godzina pokazana graczowi obiecuje
+ * dokładność, której nie da się dotrzymać: po trzech godzinach strzelaniny
+ * „08:37" czyta się jak zepsuty zegar, a „15 marca, rano" — jak działający.
+ *
+ * MG godzinę widzieć musi: to on ją przesuwa, jemu etap 39 policzy efekt „na
+ * godzinę", i tylko z jego strony różnica między 05:59 a 06:00 cokolwiek znaczy
+ * (skok „do rana").
+ */
 export function ClockChip({ isGm }: { isGm: boolean }) {
   const minutes = useGameTimeStore((s) => s.minutes);
   const open = useGameTimeStore((s) => s.open);
@@ -269,16 +284,17 @@ export function ClockChip({ isGm }: { isGm: boolean }) {
   const settledMonth = useGameTimeStore((s) => s.settledMonth);
   const due = settleDue({ minutes, settledMonth });
 
-  const label = `${formatGameClock(minutes)} · ${formatGameDate(minutes)}`;
-  const title = formatGameTime(minutes);
-
   if (!isGm) {
+    const shown = formatGameDayTime(minutes);
     return (
-      <span className="top-bar-clock" title={title}>
-        {label}
+      <span className="top-bar-clock" title={`W świecie gry: ${shown}`}>
+        {shown}
       </span>
     );
   }
+
+  const label = `${formatGameClock(minutes)} · ${formatGameDate(minutes)}`;
+  const title = formatGameTime(minutes);
   return (
     <button
       type="button"

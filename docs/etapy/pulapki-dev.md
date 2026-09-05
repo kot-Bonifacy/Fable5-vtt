@@ -813,3 +813,21 @@ o nich nic.
 zegara** — `cpredRestDay` wymaga udanego Ustabilizowania (s. 222), a postać z ręcznie obniżonym
 PW w bazie go nie ma (`recovery` jest wtedy `undefined`). Żeby zobaczyć realne leczenie przy
 oględzinach, trzeba najpierw ustawić `recovery.stabilized`.
+
+**Wiersz czatu opisany w kodzie jako „publiczny" sprawdź z DRUGIEGO konta, nie z konta autora.**
+`visibleTo` jest białą listą rodzajów, a każde konto widzi **swoje** wiadomości przez
+`{ authorId: user.id }` — więc karta, której na liście brakuje, wygląda z konta wystawiającego
+na całkowicie sprawną. Tak przetrwały dwa etapy: `recovery` (30b) i `time` (37). Objaw u drugiej
+osoby: karta **jest** zaraz po zdarzeniu i **znika po przeładowaniu strony**. Najtaniej sprawdzić
+testem dymnym, który podnosi świeże gniazdo gracza i czyta `state:sync`.
+
+**Karta, która „nie doszła do gracza", potrafi mieć dwie niezależne przyczyny naraz** — tak było
+05.09. Pierwsza: brak rodzaju w `visibleTo` (historia jej nie zwraca). Druga: nieskonsumowany
+`seq` w sąsiednim rozgłoszeniu (`time:set`), przez który wiadomość na żywo trafiła w wykrytą lukę
+i została odrzucona. Naprawa jednej z nich nie daje widocznego efektu, więc łatwo uznać ją za
+nietrafioną — sprawdzaj obie.
+
+**Dwie sesje obok siebie to jedyny sposób na tę klasę błędów** — MG na `localhost:5173`, gracz
+na `[::1]:5173`. Zrzut ekranu wystarczy do paska, ale feed czatu czytaj z DOM-u
+(`[...document.querySelectorAll('.chat-time')].map(n => n.innerText)`): panel bywa przewinięty
+w górę i „nie ma karty" na zrzucie znaczy najczęściej „nie doskrolowano".

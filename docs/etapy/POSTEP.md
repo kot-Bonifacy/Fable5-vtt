@@ -118,7 +118,19 @@ czatu (rodzaj `time`). **Zegar podpowiada, nie rządzi:** przekroczenie pierwsze
 zapala kropkę przy zegarze i sekcję z gotowym „Rozlicz", skok o dobę podsuwa listę rannych
 z guzikiem „Odpoczynek" — **żadne z tego nie dzieje się samo**. Wpis dziennika niesie odtąd datę
 świata obok realnej (`JournalEntry.worldDate`, stemplowana przez serwer przy powstaniu wpisu).
-Sześć umów kodu i pięć pułapek w indeksach niżej.
+**Gracz nie widzi tarczy zegara** — dostaje „15 marca 2045 · rano", bo godzina obiecywałaby
+dokładność, której skok-na-kliknięcie nie dotrzyma; karta czatu traci minuty dla wszystkich.
+Osiem umów kodu i osiem pułapek w indeksach niżej.
+
+**Przy tym etapie wyszła klasa błędów, która przeżyła dwa etapy: `visibleTo` w `chat-io.ts` jest
+BIAŁĄ LISTĄ rodzajów czatu.** Wiersza, którego na niej nie ma, historia nie zwraca — dociera
+rozgłoszeniem na żywo i **znika przy pierwszym przeładowaniu**, a widzi go wyłącznie **autor**
+(przez `{ authorId: user.id }`), więc z jednego konta wygląda na sprawny. Tak siedziały dwa
+błędy naraz: `time` (37) i **`recovery` (30b)** — obie karty opisane w kodzie jako publiczne.
+Naprawione, z dwoma testami patrzącymi **oczami gracza**. Przy okazji: **cztery rozgłoszenia
+rysowały `seq`, a klient go nie konsumował** (`compendium:upsert`, `compendium:delete`,
+`shop:tier`, `time:set`) — każde takie zdarzenie robiło lukę i zbędny `state:request` całemu
+stołowi. Też naprawione. **Nowy rodzaj wiersza czatu ma odtąd PIĘĆ miejsc, nie cztery.**
 
 **Mapa umie od 05.09 trzy rzeczy, których nie umiała przez trzydzieści cztery etapy:** wskazać
 palcem (**`Alt`+klik = ping**, `Alt+Shift` u MG przyciąga wszystkim widok), wziąć **wiele figur
@@ -200,7 +212,7 @@ nieaktualne. Lista jest zapisem chwili, w której coś zauważono, a nie stanu r
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
 a od 30d pierwszym, przy którym **każda Rola w drużynie gra inaczej niż reszta**.
 
-**Testy na koniec ostatniej sesji:** 1865 w `shared` (+32), 1004 na serwerze (+12), 97 u klienta
+**Testy na koniec ostatniej sesji:** 1866 w `shared` (+33), 1006 na serwerze (+14), 97 u klienta
 (+5) — zielone. ESLint i Prettier czyste na kodzie; `tsc --noEmit` czysty w trzech pakietach
 (od 05.09 obejmuje też `packages/server/scripts/`). **Trzy pliki dokumentacji —
 `POSTEP.md`, `POMYSLY.md` i `00-przeglad.md` — prettier by przeformatował i jest tak od dawna**
@@ -338,6 +350,9 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 - **Zegar podpowiada, nie rządzi** — `realtime/gametime.ts` nie ma ani jednego wywołania ekonomii ani leczenia i nie wie, czym są PW. Listę rannych składa okno zegara u klienta, leczy `character:rest`.
 - **`JournalEntry.worldDate` stempluje serwer przy powstaniu wpisu** i edycja jej nie rusza; stoi **obok** `sessionDate`, nie zamiast. Data świata w łacie klienta pozwoliłaby przedatować kronikę.
 - **Polska liczba mnoga ma trzy formy** — `gameDaysLabel`/`gameDaysPassed` w rdzeniu (1 → „doba", końcówka 2–4 **poza 12–14** → „doby", reszta → „dób"). Ternary w komponencie daje „13 doby".
+- **Nowy rodzaj wiersza czatu ma PIĘĆ miejsc, nie cztery** — do dwóch czystych funkcji, `toChatMessageView` i `FullMessageRow` dochodzi **`visibleTo` w `chat-io.ts`**: to biała lista rodzajów, a wiersz spoza niej znika z historii i widzi go tylko autor. Rodzaj publiczny dopisuje się do **obu** gałęzi (gracza i MG).
+- **Rozgłoszenie, które rysuje `seq`, musi go u klienta skonsumować** — `if (chat().applySeq(broadcast.seq)) { socket?.emit('state:request'); return; }`. Pominięcie robi lukę i zbędny pełny resync całemu stołowi.
+- **Zegar świata: gracz widzi dobę i porę dnia, MG godzinę** (`formatGameDayTime` / `formatGameClock`). To **nie filtr** — minuta jedzie do wszystkich; to szczerość etykiety, bo zegar rusza się tylko na kliknięcie MG. Karta czatu jest bez minut **dla wszystkich**.
 
 ## Pułapki dev — indeks
 
@@ -459,6 +474,9 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 - **`pnpm dev` z `&` w tle naprawdę startuje serwery**, choć zadanie kończy się od razu; następne uruchomienie pada na `EADDRINUSE`. Najpierw `curl` na :5173, potem szukanie trupa.
 - **Tekst z liczbą sprawdzaj na liczbie większej niż jeden** — cały etap 37 przeszedł oględziny z „jedną dobą", a błąd („minęły 30 doby") pokazały dopiero trzy skoki pod rząd.
 - **„Naturalne leczenie jeszcze się nie zaczęło" to nie usterka zegara** — `cpredRestDay` chce udanego Ustabilizowania (s. 222), a karta z ręcznie obniżonym PW w bazie go nie ma.
+- **Wiersz czatu „publiczny" sprawdzaj z DRUGIEGO konta** — autor widzi swoje zawsze (`authorId`), więc brak rodzaju w `visibleTo` wygląda z konta wystawiającego na w pełni sprawny. Objaw u drugiej osoby: karta jest, po przeładowaniu znika.
+- **Karta, która „nie doszła", potrafi mieć dwie przyczyny naraz** (brak w `visibleTo` **i** nieskonsumowany `seq` obok) — naprawa jednej nie daje widocznego efektu i wygląda na nietrafioną.
+- **Feed czatu czytaj z DOM-u, nie ze zrzutu** — `[...document.querySelectorAll('.chat-time')].map(n => n.innerText)`; panel bywa przewinięty i „nie ma karty" znaczy zwykle „nie doskrolowano".
 
 ## Notatki z dwóch ostatnich sesji
 
@@ -521,10 +539,49 @@ wykonać Ustabilizowanie", s. 222) — poprawną, bo karta z ręcznie obniżonym
 887. Skasowany wpis dziennika z oględzin, przywrócone PW Tony'ego (35/35) i zegar (1 stycznia
 2045, `settledMonth` `2045-01`).
 
-**Testy na koniec:** 1865 w `shared` (+32), 1004 na serwerze (+12), 97 u klienta (+5) — zielone.
+**Po pierwszym commicie MG zakwestionował godzinę w pasku gracza — i miał rację.** Zegar rusza
+się wyłącznie na kliknięcie MG, a rundy walki nie dotykają go wcale: czterdzieści rund to dwie
+minuty świata, których nikt nigdy nie wklepie. Godzina pokazana graczowi jest więc **obietnicą
+dokładności, której nie da się dotrzymać** — po trzech godzinach przy stole „08:37" czyta się
+jak zepsuty zegar, a „15 marca, rano" jak działający. Gracz dostaje odtąd `formatGameDayTime`
+(doba plus pora dnia), MG godzinę co do minuty, a **karta czatu traci minuty dla wszystkich**,
+bo jest cezurą, nie stemplem czasu, i zostaje w dzienniku sesji na zawsze. Pora dnia została
+świadomie: nocą ulica należy do kogo innego, a ciemność jest mechaniką od 18b. Odrzucone drugie
+rozwiązanie tego samego problemu — przesuwanie zegara rundami walki — łamie „nic nie rusza się
+samo" i zyskuje dwie minuty na strzelaninę, czyli nic. **To nie jest filtr:** minuta jedzie
+w `state:sync` do wszystkich, bo nie ma czego chronić, a trzymanie jej w ładunku znaczy, że
+zmiana zdania kosztuje jedną funkcję zamiast pola kampanii, migracji i przycinania per widz.
+
+**Oględziny tej zmiany — z dwóch sesji naraz — odsłoniły trzy błędy, w tym jeden sprzed dwóch
+etapów.** Do 05.09 wszystko było oglądane z konta MG i dlatego przechodziło.
+
+1. **`visibleTo` w `chat-io.ts` jest BIAŁĄ LISTĄ rodzajów, a `time` na niej nie było.** Karta
+   docierała do gracza rozgłoszeniem na żywo i znikała przy przeładowaniu, bo historia jej nie
+   zwracała. MG jej nie tracił **wyłącznie dlatego, że jest jej autorem** (`{ authorId }`) —
+   i to maskowało błąd przez pierwsze oględziny.
+2. **Ten sam błąd miał `recovery` z etapu 30b**, choć dokumentacja `RecoveryLogEntry` mówi
+   wprost „karta jest **publiczna**… dzieje się przy całym stole". Dzień odpoczynku rozliczony
+   przez gracza był dla MG niewidoczny po przeładowaniu i odwrotnie. Naprawione przy okazji;
+   `recovery.test.ts` dostał **konto gracza** i test, który bez poprawki pada (sprawdzone przez
+   chwilowe cofnięcie wpisu).
+3. **Cztery rozgłoszenia rysowały `seq`, a klient go nie konsumował** — `compendium:upsert`,
+   `compendium:delete` (13), `shop:tier` (25c) i świeżo dopisany `time:set` (37), który wzorzec
+   po prostu odziedziczył po sąsiadach. Każde takie zdarzenie robiło lukę w numeracji pokoju,
+   przez którą **następna wiadomość czatu była odrzucana**, a cały stół szedł w zbędny
+   `state:request`. To była druga, niezależna przyczyna zniknięcia karty zegara u gracza —
+   i dlatego naprawa samego `visibleTo` przez chwilę wyglądała na nietrafioną.
+
+**Wniosek na przyszłość jest w umowach kodu: nowy rodzaj wiersza czatu ma pięć miejsc, nie
+cztery**, a „publiczny" wiersz sprawdza się **z drugiego konta**, bo autor widzi swoje zawsze.
+
+**Poligon wrócił do stanu sprzed sesji po raz drugi** (skok „do rana" z oględzin i jego karta
+czatu): czat znowu 718 wierszy z maksimum 887, zegar na 1 stycznia 2045.
+
+**Testy na koniec:** 1866 w `shared` (+33), 1006 na serwerze (+14), 97 u klienta (+5) — zielone.
 ESLint i Prettier czyste na kodzie; `tsc --noEmit` czysty w trzech pakietach. Doszły trzy
 pliki: `shared/src/gametime.test.ts`, `server/src/gametime.test.ts`
-i `client/src/gametime-store.test.ts`. Jeden pełny przebieg serwera pokazał czerwony plik
+i `client/src/gametime-store.test.ts`, plus konto gracza i test widoczności
+w `server/src/recovery.test.ts`. Jeden pełny przebieg serwera pokazał czerwony plik
 i przeszedł przy powtórce — znany wyścig, patrz pułapki.
 
 ### Sesja 05.09 (druga) — mapa, na której da się wskazać palcem i wziąć sześciu naraz

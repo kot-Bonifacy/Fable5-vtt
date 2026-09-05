@@ -138,12 +138,19 @@ dokłada wiersz w `cpredHealRate`, nie mnożnik w wywołaniu. Warunek „po udan
 mieszka w `CpredCharacterData.recovery.stabilized` i **pisze go wyłącznie udane Ustabilizowanie**
 (`applyStabilization`) — na każdym progu ran, nie tylko przy zerze.
 
-**Nowy rodzaj wiersza czatu dopisuje się w `shared/src/chat.ts` w dwóch czystych funkcjach**
-(`chatCategoryOf`, `chatCompactLine`), w `toChatMessageView` po stronie serwera i w jednej gałęzi
-`FullMessageRow` u klienta. Umowa jest z 01.09; 03.09 przeszedł nią rodzaj `recovery` (dzień
-odpoczynku i podana dawka — jedna karta na dwie czynności, bo z miejsca stołu to jedno zdarzenie:
-„komuś zrobiło się lepiej i wiadomo dlaczego"). Kto pominie te dwie funkcje, dostanie wiersz
-wpadający do grupy „Stół", którego nie da się ścisnąć.
+**Nowy rodzaj wiersza czatu dopisuje się w PIĘCIU miejscach, nie w czterech (poprawka z 05.09).**
+Trzy pierwsze były w umowie od 01.09: dwie czyste funkcje w `shared/src/chat.ts`
+(`chatCategoryOf`, `chatCompactLine`), `toChatMessageView` po stronie serwera i jedna gałąź
+`FullMessageRow` u klienta. **Piątym jest `visibleTo` w `realtime/chat-io.ts` — i to ono jest
+jedynym, którego pominięcie widać dopiero z drugiego konta.** `visibleTo` to **biała lista
+rodzajów**: wiersz, którego na niej nie ma, dociera do stołu rozgłoszeniem na żywo i znika przy
+pierwszym przeładowaniu, bo zapytanie o historię go nie zwraca. Widzi go wtedy wyłącznie **autor**
+(klauzula `{ authorId: user.id }`), czyli przy oględzinach z jednego konta wszystko wygląda
+dobrze. Tak przeżyły dwa etapy dwa błędy naraz: `recovery` (30b) i `time` (37) — obie karty
+opisane w kodzie jako **publiczne**, obie niewidoczne dla nikogo poza tym, kto je wystawił.
+Pilnują tego odtąd dwa testy patrzące **oczami gracza** (`recovery.test.ts`, `gametime.test.ts`).
+Kto pominie dwie czyste funkcje, dostanie wiersz wpadający do grupy „Stół", którego nie da się
+ścisnąć — to nadal prawda, tyle że jest łagodniejszą z dwóch kar.
 
 **Co gracz może nazwać figurę, rozstrzyga serwer — od 03.09 przez `Token.publicName`.**
 Trzy stany w jednej kolumnie nullable, więc żadna scena nie wymagała konwersji: `null` = gracz
@@ -850,7 +857,11 @@ mimo trybu zwartego. Streszczenie **czyta wyłącznie pola, które i tak są w w
 widoczności robi się na serwerze (etap 15), więc zwarty wiersz ściska dokładnie to, co ten ekran
 dostał, i nie ma jak odsłonić cudzych PW.
 
-Trzy rzeczy, które łatwo zepsuć przy dokładaniu:
+Cztery rzeczy, które łatwo zepsuć przy dokładaniu:
+
+- **Biała lista widoczności (`visibleTo`) jest osobnym krokiem i najgroźniejszym** — patrz umowa
+  wyżej. Rodzaj publiczny dopisuje się do **obu** gałęzi (gracza i MG); gałąź MG nie jest
+  zbędna, bo bez niej MG traci karty wystawione z drugiego konta MG.
 
 - **Filtr nie chowa pytań.** `isPending` w `ChatPanel.tsx` wyjmuje spod filtra nierozstrzygniętą
   propozycję bota i notatkę z przyciskami (16c). Nowy wiersz, który czeka na czyjeś kliknięcie,
@@ -1100,3 +1111,23 @@ i `gameDaysPassed` w `shared/src/gametime.ts`: 1 → „doba", końcówka 2–4 
 reszta → „dób". Warunek na nastolatki jest całą treścią tej funkcji — bez niego wychodzi
 „13 doby". Każdy następny rzeczownik liczony w UI (godziny, tygodnie, naboje) dostaje własną
 funkcję tam samo, nie ternary w komponencie.
+
+**Rozgłoszenie, które rysuje `seq`, musi go u klienta skonsumować (05.09, poprawka).**
+`deps.seqs.next(room)` na serwerze podnosi numer pokoju dla **wszystkich**, więc handler
+u klienta, który go zignoruje, zostawia dziurę: następna wiadomość czatu wygląda jak luka
+i cały stół idzie w zbędny `state:request`. Wzorzec jest jeden i widać go w `scene:update`:
+`if (chat().applySeq(broadcast.seq)) { socket?.emit('state:request'); return; }`. Do 05.09
+łamały go **cztery** zdarzenia naraz — `compendium:upsert`, `compendium:delete` (etap 13),
+`shop:tier` (25c) i świeżo dopisany `time:set` (37), który wzorzec po prostu odziedziczył po
+sąsiadach. Nowe rozgłoszenie z `seq` w typie zaczyna się od tych trzech linii, nie od `apply…`.
+
+**Zegar świata pokazuje graczowi dobę i porę dnia, MG godzinę (05.09, etap 37).**
+`formatGameDayTime` kontra `formatGameClock` — rozstrzygnięcie MG, i **nie jest to filtr
+ani tajemnica**: minuta jedzie w `state:sync` do wszystkich, bo z godziny nikt nic nie ugra,
+a trzymanie jej w ładunku znaczy, że zmiana zdania kosztuje jedną funkcję zamiast zmiany
+protokołu i migracji. Powód jest inny: zegar rusza się **wyłącznie na kliknięcie MG**, a rundy
+walki nie dotykają go wcale (czterdzieści rund to dwie minuty świata, których nikt nie wklepie),
+więc godzina pokazana graczowi obiecuje dokładność, której nie da się dotrzymać. Etykieta
+grubsza niż dryf czyta się jak działający zegar. Kartę czatu — cezurę („minęła noc") — traktuje
+się tak samo i **dla wszystkich**, bo zostaje w dzienniku sesji na zawsze. Pora dnia zostaje,
+bo nie jest ozdobą: nocą ulica należy do kogo innego, a ciemność jest mechaniką od 18b.

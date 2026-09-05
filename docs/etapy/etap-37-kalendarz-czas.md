@@ -37,6 +37,16 @@ Etap dokłada **zegar świata** jako pole kampanii i narzędzia MG do przesuwani
 4. **Data świata w dzienniku to nowa kolumna obok daty realnej** (`JournalEntry.worldDate`),
    nie podmiana znaczenia `sessionDate`: jedna mówi, kiedy drużyna grała, druga — kiedy to się
    działo w Night City.
+5. **Gracz nie widzi tarczy zegara** — dostaje „15 marca 2045 · rano", MG godzinę co do minuty
+   (rozstrzygnięcie po pierwszych oględzinach). Powód nie jest tajemnicą, tylko szczerością
+   etykiety: zegar rusza się wyłącznie na kliknięcie MG, a rundy walki nie dotykają go wcale —
+   czterdzieści rund to dwie minuty świata, których nikt nigdy nie wklepie. Godzina pokazana
+   graczowi obiecuje więc dokładność, której nie da się dotrzymać, i po trzech godzinach przy
+   stole „08:37" czyta się jak zepsuty zegar. Pora dnia zostaje, bo nie jest ozdobą (noc ≠ dzień,
+   a ciemność jest mechaniką od 18b). **Karta czatu traci minuty dla wszystkich**, także dla MG:
+   jest cezurą, a nie stemplem czasu, i zostaje w dzienniku sesji na zawsze. Odrzucone
+   rozwiązanie tego samego problemu: przesuwanie zegara rundami walki — „realistyczniejsze",
+   łamie „nic nie rusza się samo" i zyskuje dwie minuty na strzelaninę, czyli nic.
 
 ## Odstępstwa od opisu etapu
 
@@ -94,12 +104,29 @@ Etap dokłada **zegar świata** jako pole kampanii i narzędzia MG do przesuwani
 - [x] Cofnięcie zegara nie odwraca niczego, co już zostało rozliczone — `settledMonth` zostaje,
       karta czatu nosi tytuł „Zegar cofnięty" i zdanie „Cofnięcie zegara niczego nie odwraca"
 
-## Błąd znaleziony przy oględzinach
+## Błędy znalezione przy oględzinach
 
-**„minęły 30 doby" zamiast „minęło 30 dób".** Polska liczba mnoga ma trzy formy, a kod miał
+**1. „minęły 30 doby" zamiast „minęło 30 dób".** Polska liczba mnoga ma trzy formy, a kod miał
 dwie (`days === 1 ? 'jedna doba' : `${days} doby``). Widać to było natychmiast w nagłówku sekcji
 odpoczynku i na karcie czatu. Naprawione dwiema czystymi funkcjami w rdzeniu
 (`gameDaysLabel`, `gameDaysPassed`) z testem na pułapkę 12–14 („13 dób", nie „13 doby").
+
+**2. Karta zegara nie docierała do gracza — i nie tylko ona.** Wyszło dopiero przy oględzinach
+z **dwóch sesji naraz** (MG na `localhost`, gracz na `[::1]`). Dwie niezależne przyczyny:
+
+- **`visibleTo` w `chat-io.ts` jest białą listą rodzajów, a `time` na niej nie było.** Karta
+  docierała rozgłoszeniem na żywo i znikała przy przeładowaniu, bo zapytanie o historię jej nie
+  zwracało. MG jej nie tracił wyłącznie dlatego, że jest jej autorem (`{ authorId: user.id }`) —
+  i to maskowało błąd przez pierwsze oględziny, robione z jednego konta.
+- **`time:set` rysował `seq`, a klient go nie konsumował**, więc następna wiadomość czatu
+  wpadała w wykrytą lukę i była odrzucana. Ten sam błąd miały **`compendium:upsert`,
+  `compendium:delete` (etap 13) i `shop:tier` (25c)** — wzorzec, który etap 37 po prostu
+  odziedziczył po sąsiadach. Naprawione we wszystkich czterech.
+
+**3. Ten sam błąd `visibleTo` miał rodzaj `recovery` z etapu 30b** — mimo że dokumentacja
+`RecoveryLogEntry` mówi wprost „karta jest **publiczna**… dzieje się przy całym stole".
+Dzień odpoczynku rozliczony przez gracza był niewidoczny dla MG po przeładowaniu i odwrotnie.
+Naprawione przy okazji; `recovery.test.ts` dostał konto gracza i test, który bez poprawki pada.
 
 ## Wskazówki techniczne
 

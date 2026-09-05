@@ -242,8 +242,27 @@ describe('zegar świata (etap 37)', () => {
     // Karta jest publiczna: „minęła doba" dotyczy całego stołu.
     expect(message.time?.title).toBe('Minęła doba');
     expect(message.time?.days).toBe(1);
-    expect(message.time?.to).toContain('2 stycznia 2045');
+    // Karta jest cezurą, nie stemplem czasu: godziny nie ma na niej wcale —
+    // ani dla gracza, ani dla MG (rozstrzygnięcie MG z 05.09).
+    expect(message.time?.to).toBe('2 stycznia 2045 · rano');
+    expect(message.time?.from).toBe('1 stycznia 2045 · rano');
+    expect(message.time?.to).not.toMatch(/\d{2}:\d{2}/);
     expect(message.time?.backwards).toBeUndefined();
+  });
+
+  it('karta zegara jest publiczna i PRZEŻYWA przeładowanie u gracza', async () => {
+    // Błąd znaleziony 05.09 przy oględzinach dwóch sesji obok siebie: `visibleTo`
+    // jest **białą listą rodzajów**, a `time` na niej nie było — więc karta
+    // docierała do gracza wyłącznie rozgłoszeniem na żywo i znikała przy
+    // pierwszym przeładowaniu. MG jej nie tracił, bo jest jej autorem, co
+    // maskowało błąd przy oględzinach z jednego konta.
+    const fresh = createSocket(playerCookie);
+    const sync = await fresh.firstSync;
+    const times = sync.messages.filter((m) => m.kind === 'time');
+    expect(times.length).toBeGreaterThan(0);
+    // …i niesie ten sam kształt, co u MG — nie okrojony.
+    expect(times.at(-1)?.time?.to).toBe('2 stycznia 2045 · rano');
+    expect(times.at(-1)?.time?.title).toBe('Minęła doba');
   });
 
   it('„do rana" skacze do najbliższej szóstej, nie o stałą liczbę godzin', async () => {
