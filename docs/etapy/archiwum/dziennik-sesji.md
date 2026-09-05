@@ -7,6 +7,198 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 04.09 (druga) — paczka „oczy i uszy": wybuch, obszar, osłony i leżąca figura
+
+**Zlecenie MG:** znowu kilkanaście zaległości pasujących do jednej sesji, bez niczego wokół
+lokalnego LLM-a. Po wykluczeniu modelu z „długu oględzin" zostają **trzy pozycje na
+czternaście**, więc lista poszła głównie z `POMYSLY.md`. MG wybrał **paczkę D** — pięć rzeczy,
+których nikt nie widział ani nie słyszał — i rozstrzygnął trzy rzeczy: **Stym i dopalacze
+czekają na 37/39** (nie budujemy zegara dwa razy), **nazwa figury w czacie zostaje etapem 35**,
+a przygotowanie poligonu robię tak, jak zaproponowałem.
+
+**Nośnikiem okazał się avatar9, nie Frank.** Karta avatar9 ma od 31 **granatnik podwieszany
+z nabojem dymnym** — czyli dokładnie broń obszarową gotową do strzału — więc Frank i stawianie
+mu żetonu były niepotrzebne. Cała sesja poszła trzema strzałami w pole między
+„Automatyczną wieżyczkę" a „testowy 2x2".
+
+**Cztery pozycje zamknięte, piąta zmierzona:**
+
+1. **Wybuch i chmura gazu — obejrzane, arkusze pocięte dobrze.** Klatki idą po arkuszach wiersz
+   po wierszu (wybuch 8×8 po 128 px, chmura 5×3 po 256 px) i nigdy nie wychodzą poza arkusz.
+   Ognista kula wyszła w pełnym rozmiarze (11,5 m ≈ 575 px sceny, tryb `add`), gaz — zielonkawą
+   mgłą. **Trzy pierwsze podejścia złapały puste pole**: efekt trwa 1,1 s, a runda zrzutu bywa
+   dłuższa. Sposób, który zadziałał (wywołanie efektu wprost + zamrożenie klatki), jest
+   w pułapkach — razem z ostrzeżeniem, że pierwszych dwadzieścia klatek wybuchu to białe iskry,
+   po których łatwo uznać arkusz za zepsuty.
+2. **Rzut obrażeń obszaru (16d) — odklikany.** Jeden guzik „Obrażenia 6k6" → **jeden** rzut
+   (6k6 = 20) → „Zastosuj wszystkim (2)" → **dwie osobne, cofalne karty**: testowy 2x2
+   dostał 7 (20 − OB 13, pancerz starł się 13 → 12), wieżyczka 20 (bez pancerza, PW 25 → 5).
+   Ten sam rzut, różny wynik przez pancerz — tak, jak mówi s. 174. Obie karty cofnięte.
+3. **„Usuń wszystkie osłony" (16c) — odklikane, z Ctrl+Z.** Kosz zdjął dwie osłony, Ctrl+Z
+   przywrócił obie naraz. **Kosze nie pytały o potwierdzenie i tak ma być** — poligon plus
+   działające cofanie; ale **cztery z siedmiu koszów hurtowych nie mówiły o Ctrl+Z**, choć
+   wszystkie sześć zdarzeń `*:clear` woła `rememberDeletion`. Teraz mówią wszystkie.
+4. **Przechylenie figury — zrobione, 35° zamiast 20°.** Portret kładzie się na bok przy `down`
+   **i** `dead` (bo „nieprzytomny leży, martwy stoi" byłoby gorsze niż nic). Dwadzieścia
+   stopni z pomysłu sprawdziłem w przeglądarce przeciwko pionowej kopii tej samej twarzy:
+   różnica **jest**, ale przy zoomie stołu nikt by jej nie zauważył. Obraca się wyłącznie
+   portret; imię, naklejki, pierścień i łuk PW zostają pionowe. Strażnik — `token-tilt.test.ts`.
+5. **Dźwięki — zmierzone, nieocenione.** Dwanaście WAV-ów przeliczonych na obwiednie: **żadna
+   próbka nie jest dwoma zdarzeniami**, jak `shot-rifle` sprzed pół roku. `bowstring.wav` jest
+   **w 65% ciszą** (dźwięk kończy się w 160 ms z 460 ms) i ma najniższy RMS zestawu
+   (−24,5 dBFS) — co potwierdza notatkę MG, że to najsłabsze dopasowanie. Czy **brzmi** jak
+   cięciwa, rozstrzyga ucho; rządek „🔊" w „⚙ Ustawienia" gra wszystkie siedemnaście.
+
+**Trzy błędy znalezione po drodze, wszystkie naprawione:**
+
+- **Amunicja bez obrażeń wystawiała guzik „Obrażenia" z pustą kością.** Serwer liczy to
+  poprawnie (`ammoDealsDamage` i komentarz „no button, no notation, nothing to apply") i nie
+  wysyła `damageNotation` — ale `AttackControls.tsx` rysował guzik z własnego warunku
+  „trafił albo obszar". Dotyczyło **pięciu** rodzajów naboju z 16h. Umowa w indeksie niżej.
+- **Importer podręcznika po cichu wycinał trzy pola typu broni.** `thrown`, `maxRangeM` i `ammoIds`
+  były w `CpredWeaponTypeInput` **i** w `manual-overrides.json`, ale nie na białej liście
+  `schema_fields` — czyli dokładnie ten sam mechanizm, który wcześniej zjadł `explosive`
+  i `ammoPatterns`. Skutki: **granat nie był rzucany** (dostawał guzik „Rzuć" jak cegła)
+  i **latał bez zasięgu maksymalnego 25 m**, a miotacz ognia przyjmował cudzy śrut. Poza
+  dopisaniem pól parser **mówi teraz o każdym wyciętym polu ostrzeżeniem importu**, żeby czwarte
+  nie zginęło tak samo.
+- **Losowo padający test botów.** `bot-actions.test.ts` sprawdzał, że karta rzutu nie zawiera
+  słowa „bot", porównując **cały JSON razem z `authorId`** — a cuid bywa dowolnym ciągiem
+  liter i tym razem wylosował się `cmtnc61fq0000b8ueg985botv`. Porównanie idzie odtąd po tym,
+  co gracz **czyta** (identyfikatory wypadają). Trzy pełne przebiegi serwera pod rząd, 935/935.
+
+**Czego NIE zrobiłem, choć wyszło przy okazji:** w kompendium **nie ma wpisu kupowalnego
+„Granat"** — typ broni istnieje (6k6, Atletyka, zasięg 25 m), ale żaden wpis się pod niego
+nie podpina, więc „granat jako wiersz broni" z 16d jest dostępny wyłącznie przez granatnik
+albo przez wpis wpisany ręką MG w kompendium. Ceny pojedynczego granatu podręcznik **nie podaje**
+(tabela amunicji go nie wymienia, a „Amunicja zwykła" jest „wszystkie prócz granatów i rakiet"),
+więc wymyślanie jej byłoby wymyślaniem danych z podręcznika. Do decyzji MG.
+
+**Poligon wrócił do stanu sprzed sesji** — osłony skasowane, dym rozwiany, karty obrażeń
+cofnięte (PW i ablacja pancerza z powrotem), żeton avatar9 na (2100, 1700), status
+„Nieprzytomny" zdjęty, nabój granatnika z powrotem dymny i magazynek 1/1. Ślad zostawiony
+świadomie: **log czatu** — trzy karty ataku (dwa pudła z odchyleniem, jedno z dymem), karta
+obrażeń obszarowych i dwie karty obrażeń przekreślone „Cofnięte — MG".
+
+**Testy na koniec:** 1785 w `shared`, 935 na serwerze, **79 u klienta (+4)** — zielone,
+trzy pełne przebiegi serwera pod rząd. `tsc --noEmit` czysty, ESLint i Prettier czyste.
+
+## Akapity wyjęte z „Od czego zacząć" 05.09.2026
+
+`POSTEP.md` urósł do 642 linijek, a sekcja „Od czego zacząć" do stu siedemdziesięciu — wbrew
+regule 5 z `CLAUDE.md`, która każe temu plikowi zostać krótkim, bo czyta się go w całości na
+starcie każdej sesji. Poniżej **w całości i bez zmian** akapity, które były streszczeniami
+zamkniętych sesji albo umowami kodu spisanymi już w `umowy-kodu.md`. W `POSTEP.md` zostało to,
+co nowa sesja musi wiedzieć, zanim czegokolwiek dotknie: stan poligonu, dług oględzin, decyzje
+wciąż obowiązujące i liczby testów.
+
+**Montaż cyborgizacji ma od 04.09 (trzecia sesja) swój Test, a odmowy z s. 111 wreszcie
+odmawiają.** Chirurgiem jest **Medyk z kampanii albo ripperdoc MG podany jedną liczbą** — decyzja
+MG: montaż nie może wymagać zakładania karty NPC-a. Nieudany Test **niszczy wszczep** (s. 226).
+Trzy odmowy („brak podstawy", „brak gniazda", „limit 7") liczy jedna czysta funkcja; **MG przez
+nie przechodzi, ale karta czatu je zapisuje**. **Impuls EMP nazywa dwie wyłączone cyborgizacje**
+i zapisuje je przy statusie. Wyszły **dwa błędy**: Borgizacje liczone jak rodzina wymagająca
+podstawy oraz **„Cofnij" zostawiające zegar statusu w `statusData`**. **A1 z tej paczki (efekty
+mechaniczne chromu) został świadomie nietknięty** — wchodzi w `sheetSituationModifiers`, czyli
+tam, gdzie etap 39 i Stym. Trzy umowy kodu i trzy pułapki w indeksach niżej; do decyzji MG
+został guzik **„Dodaj za darmo"**, który omija cały montaż (`zaleglosci.md`).
+
+**Paczka „oczy i uszy" zamknięta 04.09 (druga sesja) — cztery rzeczy, których nikt nie widział,
+zostały obejrzane.** Wybuch i chmura gazu grają z dobrze pociętych arkuszy, rzut obrażeń obszaru
+robi **jeden rzut i N cofalnych kart**, „usuń wszystkie osłony" działa i wraca `Ctrl+Z`,
+a **figura `down` i `dead` kładzie portret na bok** (35°, nie 20° — dwadzieścia stopni jest
+niewidoczne przy zoomie stołu). **Efektu mapy nie da się złapać zrzutem ekranu** — sposób, który
+działa, jest w pułapkach. Wyszły przy tym **trzy błędy, wszystkie naprawione**: guzik
+„Obrażenia" przy amunicji, która obrażeń nie zadaje; importer podręcznika wycinający po cichu
+`thrown`, `maxRangeM` i `ammoIds` (granat nie był rzucany i latał bez zasięgu 25 m); oraz test
+botów porównujący losowy cuid ze słowem „bot". **Do decyzji MG:** kompendium nie ma wpisu
+kupowalnego „Granat", a podręcznik nie podaje jego ceny — szczegół w notatce sesji.
+
+**Zdolności dziewięciu Ról były w testach i nigdy nie były klikane — od 04.09 są (30a–30d).**
+Wyszło **sześć błędów**, wszystkie naprawione: trzy układu (nazwa Zdolności ścięta do 15 px
+w ośmiu panelach, guzik „Wezwij" ścięty do „Wezw", licznik Wsparcia „×4 ×4"), jeden blokujący
+(**MG nie mógł zmienić Roli Medykowi z wydanymi punktami Specjalizacji** — sakiewka bez
+Zdolności odrzucała każdą łatę karty) i dwa mówiące nieprawdę (odmowa Uniku jako surowy kod,
+guzik „Kup" z ceną sprzed targu). **Panele Ról stoją w kolumnie o sztywnych 15 rem** — nowy
+element w tym wierszu trzeba obejrzeć tam, a nie w szerokim oknie. Umowa i dwie pułapki
+w indeksach niżej.
+
+**Naturalne leczenie PW istnieje od 03.09 (trzecia sesja) — do tej pory PW nie wracały nigdy.**
+Dzień odpoczynku liczy `cpredRestDay` (`shared/systems/cpred/recovery.ts`), a warunek „po udanej
+stabilizacji" siedzi w nowym `CpredCharacterData.recovery`. **Ustabilizowanie ma odtąd zasięg
+ramienia (2 m), mierzony wszystkim — MG włącznie**, i otwiera proces leczenia **na każdym progu
+ran**, nie tylko przy zerze. Dawki farmaceutyków są wierszami ekwipunku z licznikiem
+(`CpredGearRow.consumable`, katalog w `pharma.ts`); Medyk je wytwarza i podaje. **Stym został
+otwarty świadomie** — potrzebuje maszynerii z etapu 39, przepis w `zaleglosci.md`. Trzy umowy
+kodu i dwie pułapki dev w indeksach niżej; **„opieki jako mnożnika tempa" w podręczniku nie ma**
+(patrz `decyzje-i-uproszczenia.md`).
+
+**Zestaw testów jest znowu wiarygodny (03.09, druga sesja): `tsc --noEmit` czysty w całym
+monorepo.** Migotanie miało **cztery** przyczyny, nie jedną, i **żadna nie była równoległością
+samą w sobie**: dwa wyścigi na `chat:message`, pomiar PW od stanu, który mógł już być zerem,
+Test Kontroli węzła przegrywający **raz na sto** (przewracał osiem testów naraz w dwóch plikach
+Sieci) i pięć plików z `beforeAll` **bez podniesionego limitu czasu**. Obie pozycje długu
+higieny zamknięte — **piętnaście pełnych przebiegów pod rząd, 918/918, zero porażek**; diagnozy
+w `archiwum/zamkniete-zaleglosci.md`, pięć nowych pułapek w `pulapki-dev.md`.
+
+**Nazwa figury nie przecieka już do graczy na mapie ani w Kolejce Inicjatywy** — `Token.publicName`
+w trzech stanach (brak aliasu / alias / bez etykiety), filtrowana wyłącznie na serwerze, obejrzana
+w przeglądarce na dwóch sesjach naraz. **Czat został nieszczelny świadomie** i czeka na etap 35:
+nazwa jest tam wpisana w treść zapisanej wiadomości. Umowa — w nowym pierwszym wierszu indeksu
+niżej; reszta w `zaleglosci.md`.
+
+**Trzy błędy mechaniki CP RED naprawione 03.09 — z testami i oględzinami.** Ciężki pancerz zabiera wreszcie **REF i ZW w Testach**, nie tylko RUCH (s. 185); broń **niskiej jakości zacina się** po Krytycznej Porażce, a **doskonała** daje +1 (s. 244); **Ustabilizowanie kładzie cel bez przytomności na minutę** (s. 223). Umowy — w dwóch nowych wierszach indeksu niżej. **Decyzja MG z tej sesji: pojazdy i walka pojazdów zostają narracji** — etapu dla nich nie będzie; priorytet przesuwa się na dopalacze i uzależnienia, techniki walki wręcz i leczenie. Reszta listy braków — dopalacze z uzależnieniem, techniki sztuk walki, naturalna regeneracja PW oraz upadek i porażenie prądem — leży w `POMYSLY.md` pod datą 03.09.
+
+**Trzy błędy z oględzin etapów 31 i 32 zamknięte 02.09 (trzecia sesja) — naprawione
+i obejrzane.** Z granatnika podwieszanego da się wreszcie wystrzelić dym i gaz (`attachmentAmmoId`
+
+- `secondaryAmmo`), chmurka nad celem nazywa dodatek, a odmowa `character:update` **cofa**
+  optymistyczną łatę i pisze zdanie na dole karty zamiast samego „Błąd zapisu!". Szczegóły
+  w notatce sesji niżej; umowy — w trzech nowych wierszach indeksu.
+
+**Etap 32 (wezwanie MG do Testu) zamknięty 02.09 — dopisany tego dnia na zlecenie MG, poza
+pierwotnym planem.** MG wskazuje postać w panelu „Postacie", wybiera Umiejętność albo Cechę i PT
+(drabinka s. 130 albo własna liczba, albo rzut przeciwstawny), a gracz rzuca **kubkiem** —
+wezwanie woła z kubka i stoi na czacie. **Skutków karta nie rozlicza świadomie** (decyzja MG):
+dowozi werdykt „Zdane"/„Niezdane", a przedmiot, PW i ranę nadaje MG ręką. Wolny został
+**jeden etap: 28** (wdrożenie na VPS), a przed nim MG planuje **refaktoryzację całości**.
+Dług oględzin: **17 pozycji** — etap 32 obejrzany w komplecie tego samego dnia.
+
+**Etap 31 (dodatki do broni) zamknięty 01.09 i od drugiej sesji tego dnia obejrzany
+w komplecie** — z paska akcji strzela się także bagnetem i bronią podwieszaną. **Etap 27g
+(wydajność) został wycofany 01.09 decyzją MG — wydajność przetestowana samodzielnie, sesji nie
+będzie.** Dług oględzin liczy `zaleglosci.md` — 29a i 29b zamknięte 02.09.
+
+**Czat ma filtry i tryb zwarty (01.09, trzecia sesja).** Cztery grupy (Rozmowy, Rzuty, Walka,
+Stół) plus „Zwarty"; nastawienie jest lokalne, w `localStorage`. **Nowy rodzaj wiersza czatu
+trzeba dopisać w dwóch czystych funkcjach w `shared/src/chat.ts`** — inaczej wpadnie do grupy
+„Stół" i nie da się go ścisnąć. Karta ataku **przestała pisać stan magazynka**; w starych
+wierszach zostaje, bo `detail` jest zapisany w bazie.
+
+**Dodatek do broni jest wierszem kompendium, nie gałęzią w kodzie.** `fit` niesie zdanie
+„Pasuje do:" z podręcznika, flagi niosą skutek, a `secondary` — **id typu broni**, z którego
+`resolveAttachmentWeapon` składa drugą broń. Planer podmienia broń **raz**; od tego miejsca każda
+reguła (zasięg, zwarcie, tryby ognia, połowa pancerza) działa, bo dotyczy broni.
+
+**Trzy rzeczy o dodatkach, które łatwo zepsuć.** Kolumny magazynków siedzą na **typie broni**
+(jeden bęben, dziesięć odpowiedzi). Broń podwieszana ma **własny magazynek** na wierszu karty.
+A reguły montażu stoją po stronie **odczytu** — `attachmentIds` jedzie zwykłą łatą karty, więc
+`fittedAttachmentsFor` sądzi listę przy każdym czytaniu i to, czego nie dałoby się zamontować,
+po prostu nie daje nic.
+
+**Poprawione 01.09: nabój inteligentny odmawia strzału bez Celownika optycznego.** Kryterium
+etapu 31 („złącze smartguna zmienia zachowanie naboju inteligentnego") stało na pomyłce — to dwa
+niezależne tory podręcznika. Wspólny jest mechanizm: `hasRequiredCyberware` pyta kartę o chrom
+**po nazwie**, i tą jedną funkcją idą oba. **Każdy test strzelający amunicją inteligentną musi
+teraz wszczepić strzelcowi chrom**, inaczej pada w asercji o czymś innym.
+
+**Celowanie wybiera się przy kursorze, nie na banerze.** Po kliknięciu w cel wyskakuje okno
+z czterema sylwetkami; otwiera je `loadAttackFor`, czyli jedyne miejsce, przez które przechodzą
+wszystkie drogi ataku. **Nowa droga ataku dostaje Celowanie za darmo.** Wybór nie jest lepki.
+
+**Broń na karcie bierze się wyłącznie z katalogu** („+ Broń z katalogu"); wiersz bez wiązania nie
+strzela i mówi to chipem. **Dopasowania po nazwie nie ma świadomie** — przypięłoby zły PT.
+
 ### Sesja 04.09 — Zdolności Ról 30a–30d obejrzane, sześć błędów naprawionych
 
 **Zlecenie MG:** wybrać z zaległości kilkanaście pozycji pasujących do siebie na jedną sesję,

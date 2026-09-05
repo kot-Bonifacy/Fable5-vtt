@@ -203,6 +203,12 @@ import {
 } from './handouts.js';
 import { screamsheetGenerateEvent } from './screamsheets.js';
 import { relationDeleteEvent, relationListEvent, relationSetEvent } from './relations.js';
+import {
+  archiveCharacterImportEvent,
+  archiveListEvent,
+  archiveSceneImportEvent,
+  archiveSnapshotEvent,
+} from './archive.js';
 import { sendStateSync, stateRequestEvent } from './sync.js';
 
 declare module 'socket.io' {
@@ -225,6 +231,10 @@ const gmPingEvent = defineEvent({
 
 const EVENTS: RealtimeEvent<never, unknown>[] = [
   gmPingEvent,
+  archiveListEvent,
+  archiveSnapshotEvent,
+  archiveCharacterImportEvent,
+  archiveSceneImportEvent,
   campaignActivateEvent,
   stateRequestEvent,
   chatSendEvent,

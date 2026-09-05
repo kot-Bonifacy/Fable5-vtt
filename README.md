@@ -39,6 +39,17 @@ pnpm build      # build produkcyjny wszystkich pakietów
 pnpm format     # Prettier
 ```
 
+Kopie zapasowe (etap 33) — kopia powstaje sama przy starcie serwera i co godzinę, ale da się ją też zamówić ręką:
+
+```bash
+pnpm --filter @vtt/server snapshot           # kopia teraz + rotacja
+pnpm --filter @vtt/server snapshot -- --list # co leży w katalogu kopii
+pnpm --filter @vtt/server restore            # lista kopii do przywrócenia
+pnpm --filter @vtt/server restore -- <nazwa> # przywrócenie — przy ZATRZYMANYM serwerze
+```
+
+Przywrócenie odmawia, gdy bazę trzyma inny proces, i zawsze odkłada najpierw kopię stanu sprzed przywrócenia. Eksport i import pojedynczej karty albo sceny robi się w zakładce MG „Kopie".
+
 Boty (osobno, na PC z GPU):
 
 ```powershell

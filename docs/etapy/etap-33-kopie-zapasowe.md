@@ -20,31 +20,39 @@ rzeczy** (postać, scena, tabela, kompendium) oraz **zrzut całej kampanii do je
 Przed etapem 28, bo VPS mnoży egzemplarze stanu przez dwa i pytanie „która kopia jest prawdziwa"
 robi się wtedy realne.
 
-## Do rozstrzygnięcia z MG przed kodem
+## Rozstrzygnięte z MG (05.09.2026)
 
-1. **Czy czat wchodzi do zrzutu kampanii?** Log rośnie najszybciej ze wszystkiego i jest
-   najmniej potrzebny do odtworzenia stanu — ale to on niesie historię sesji.
-2. **Ile snapshotów trzymać i jak często?** Propozycja: co godzinę przy uruchomionym serwerze,
-   ostatnie 24 plus jeden dzienny z ostatnich 14 dni.
-3. **Czy `uploads/` (14 MB) idzie do kopii?** Propozycja: nie do snapshotu (kopiuje się rzadko
-   i osobno), tak do zrzutu kampanii jako lista plików w manifeście.
-4. **Gdzie ląduje kopia po etapie 28** — na VPS obok bazy, czy ściągana na PC.
+1. **Czat wchodzi do zrzutu, ale przełącznikiem** — domyślnie tak, MG może go odkliknąć,
+   a manifest wtedy o tym mówi. Zmierzone przed decyzją: czat to **411 KB z 502 KB** całego
+   tekstu w bazie (82 %), a gotowy zrzut waży **659 KB z czatem i 60 KB bez**.
+2. **Kopia przy starcie serwera i co godzinę; zostaje 24 ostatnich i 14 dób wstecz.** Kopia
+   startowa jest tą, po którą sięga się najczęściej — łapie stan sprzed sesji, czyli to samo,
+   co przez dwa miesiące robiła ręka (`dev.db.bak-*`).
+3. **`uploads/` idą do KAŻDEJ kopii** (decyzja MG: „każda kopia samowystarczalna"). Zrobione
+   **twardym dowiązaniem**, nie kopiowaniem: katalog kopii ma komplet plików, a 14 MB grafik
+   nie mnoży się przez trzydzieści osiem. Bezpieczne wyłącznie dlatego, że plik w `uploads/`
+   jest niezmienny — trasy `/api/uploads/*` zapisują go raz pod losową nazwą.
+4. **Gdzie kopia ląduje po etapie 28 — odłożone do etapu 28.** Dziś katalog lokalny
+   (`BACKUP_DIR`), więc przeniesienie na VPS jest zmianą jednej zmiennej środowiskowej.
 
 ## Zakres
 
-- [ ] `scripts/backup.mjs` — snapshot bazy przez `VACUUM INTO` (spójny bez zatrzymywania
-      serwera), nazwa z datą, rotacja wg ustawień, katalog poza repo (`data/private/backups/`)
-- [ ] Wywołanie snapshotu z serwera na timerze + `backup:now` (GM only) i wiersz w panelu MG
-      z listą kopii (nazwa, rozmiar, data) — bez przywracania z UI (patrz „Poza zakresem")
-- [ ] `campaign:export` — zrzut kampanii do jednego JSON-a z manifestem (wersja schematu, data,
-      liczby wierszy, lista plików `uploads/`)
-- [ ] `character:export` / `scene:export` — pojedyncza rzecz do pliku, wzorem Foundry
-- [ ] `character:import` / `scene:import` — wczytanie pliku: **nowe id**, świadome przypisanie
+- [x] `packages/server/scripts/snapshot.ts` — snapshot bazy przez `VACUUM INTO` (spójny bez
+      zatrzymywania serwera), nazwa z datą, rotacja wg ustawień, katalog poza repo
+      (`data/private/backups/`). **Nie `scripts/backup.mjs`** — patrz „Odstępstwa" niżej
+- [x] Wywołanie snapshotu z serwera na timerze (start + co godzinę) + `archive:snapshot`
+      (GM only) i zakładka MG „Kopie" z listą kopii (nazwa, chwila, rozmiar, liczba plików)
+      — bez przywracania z UI
+- [x] `GET /api/archive/campaign?chat=0|1` — zrzut kampanii do jednego JSON-a z manifestem
+      (wersja schematu, data, liczby wierszy, lista plików `uploads/`, zdania „czego tu nie ma")
+- [x] `GET /api/archive/character/:id` i `GET /api/archive/scene/:id` — pojedyncza rzecz do pliku
+- [x] `archive:character` / `archive:scene` — wczytanie pliku: **nowe id**, świadome przypisanie
       właściciela i kampanii, odmowa przy niezgodnej wersji schematu
-- [ ] `scripts/restore.mjs` — przywrócenie snapshotu przy **zatrzymanym** serwerze, z kopią
-      bezpieczeństwa stanu sprzed przywrócenia
-- [ ] Testy dymne: round-trip postaci (eksport → import → ta sama karta, inne id), rotacja kasuje
-      najstarszy plik, import pliku z przyszłą wersją schematu odmawia z czytelnym zdaniem
+- [x] `packages/server/scripts/restore.ts` — przywrócenie snapshotu przy **zatrzymanym** serwerze
+      (odmowa przez próbę wyłącznej blokady SQLite), z kopią bezpieczeństwa stanu sprzed
+      przywrócenia pod nazwą, której rotacja nie rozpoznaje
+- [x] Testy: 25 w `shared` (odmowy, nazwa kopii, plan rotacji), 14 dymnych na dysku
+      (`snapshots.test.ts`), 16 na szwie (`archive.test.ts`)
 
 ## Poza zakresem
 
@@ -56,14 +64,36 @@ robi się wtedy realne.
 
 ## Kryteria ukończenia
 
-- [ ] Serwer uruchomiony przez dobę zostawia komplet snapshotów zgodny z ustawioną rotacją
-- [ ] Zatrzymanie serwera, `restore.mjs` i ponowny start przywracają stan sprzed snapshotu
-- [ ] Postać wyeksportowana do pliku wraca importem do tej samej kampanii jako druga karta
-      (nowe id, ekwipunek, PD i cyborgizacje bez zmian)
-- [ ] Zrzut kampanii otwiera się w edytorze tekstu i niesie manifest, po którym widać, czego
-      w nim nie ma (np. czatu, jeśli MG go wyłączył)
-- [ ] Nic z `data/private/` ani `uploads/` nie trafia do repo — sprawdzone `git status` przed
-      commitem (zasada z `CLAUDE.md`)
+- [x] Serwer zostawia komplet snapshotów zgodny z ustawioną rotacją — sprawdzone testem
+      (`rotateSnapshots` kasuje najstarszą, kopia przemianowana ręką przeżywa każdą rotację)
+      i na żywo: trzy starty serwera = trzy kopie w `data/private/backups/`
+- [x] Zatrzymanie serwera, `restore` i ponowny start przywracają stan sprzed snapshotu —
+      odklikane na Poligonie w obie strony (9 kart → 10 → 9)
+- [x] Postać wyeksportowana do pliku wraca importem do tej samej kampanii jako druga karta
+      (nowe id, ekwipunek, PD i cyborgizacje bez zmian). **Round-trip nie jest bajt w bajt
+      i to jest zamierzone** — patrz „Odstępstwa"
+- [x] Zrzut kampanii otwiera się w edytorze tekstu (wcięcie dwóch spacji, kolumny JSON-owe jako
+      prawdziwy JSON) i niesie manifest z listą zdań „czego tu nie ma"
+- [x] Nic z `data/private/` ani `uploads/` nie trafia do repo — `git status` przed commitem
+      pokazuje wyłącznie pliki kodu i dokumentacji
+
+## Odstępstwa od planu (05.09.2026)
+
+- **Nazwa: `archive`, nie `backup`.** `realtime/backup.ts` na serwerze i `BackupPanel.tsx`
+  u klienta to od etapu 30c Zdolność Roli **Wsparcie** (ang. _Backup_). Stąd `snapshot:*`
+  w kodzie snapshotów i `archive:*` w plikach wymiany.
+- **Skrypty w `packages/server/scripts/` jako TypeScript, nie `scripts/*.mjs` w korzeniu.**
+  Muszą czytać `loadConfig` i `@vtt/shared` — oba w TS, oba uruchamiane przez `tsx`, który stoi
+  w zależnościach serwera.
+- **Eksport jest trasą REST, nie zdarzeniem gniazda.** Umowa projektu brzmi „REST wydaje pliki,
+  gniazdo zmienia stan stołu"; dochodzi twardy powód: zrzut z czatem to dziś 659 KB, a Socket.IO
+  ma domyślny limit wiadomości 1 MB. Import został zdarzeniem — bo zmienia stan.
+- **Eksport wypisuje wiersze z wypisanymi kolumnami, nie widoki.** Opis etapu proponował widoki;
+  widok jest jednak tym, co wolno pokazać komuś przy stole (`toTokenView` podmienia nazwę figury
+  na `publicName`), a kopia gubiąca prawdziwą nazwę żetonu nie jest kopią.
+- **Round-trip karty nie jest bajt w bajt.** Eksport daje surową kolumnę `data` (prawda o bazie),
+  import przepuszcza ją przez `parseCharacterData` (karta ma się dać otworzyć), więc karta
+  zapisana przed etapem 30b wraca z dopisanymi domyślnymi polami. Nic nie ginie.
 
 ## Wskazówki techniczne
 

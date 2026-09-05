@@ -98,7 +98,7 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 | 30d | Charyzma, Znajomości, Moto, Wiarygodność      | ✅     | 2026-08-30        |
 | 31  | Dodatki do broni                              | ✅     | 2026-09-01        |
 | 32  | Wezwanie MG do Testu                          | ✅     | 2026-09-02        |
-| 33  | Kopie zapasowe, eksport i import              | ⬜     |                   |
+| 33  | Kopie zapasowe, eksport i import              | ✅     | 2026-09-05        |
 | 34  | Tabele losowe                                 | ⬜     |                   |
 | 35  | Ping, zaznaczanie wielu figur, klonowanie     | ⬜     |                   |
 | 36  | Makra i pasek własnych akcji                  | ⬜     |                   |
@@ -108,119 +108,27 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 
 ## Od czego zacząć
 
-**Montaż cyborgizacji ma od 04.09 (trzecia sesja) swój Test, a odmowy z s. 111 wreszcie
-odmawiają.** Chirurgiem jest **Medyk z kampanii albo ripperdoc MG podany jedną liczbą** — decyzja
-MG: montaż nie może wymagać zakładania karty NPC-a. Nieudany Test **niszczy wszczep** (s. 226).
-Trzy odmowy („brak podstawy", „brak gniazda", „limit 7") liczy jedna czysta funkcja; **MG przez
-nie przechodzi, ale karta czatu je zapisuje**. **Impuls EMP nazywa dwie wyłączone cyborgizacje**
-i zapisuje je przy statusie. Wyszły **dwa błędy**: Borgizacje liczone jak rodzina wymagająca
-podstawy oraz **„Cofnij" zostawiające zegar statusu w `statusData`**. **A1 z tej paczki (efekty
-mechaniczne chromu) został świadomie nietknięty** — wchodzi w `sheetSituationModifiers`, czyli
-tam, gdzie etap 39 i Stym. Trzy umowy kodu i trzy pułapki w indeksach niżej; do decyzji MG
-został guzik **„Dodaj za darmo"**, który omija cały montaż (`zaleglosci.md`).
+**Kopie zapasowe istnieją od 05.09 — do tej sesji cała kampania stała na jednym pliku
+`packages/server/dev.db`.** Snapshot powstaje przy **starcie serwera i co godzinę** (`VACUUM INTO`,
+bez zatrzymywania stołu), zostaje **24 ostatnich i 14 dób wstecz**, a `uploads/` idą do każdej
+kopii **twardym dowiązaniem** — więc trzydzieści osiem samowystarczalnych kopii kosztuje 14 MB
+grafik raz. Przywracanie **nie ma guzika i mieć nie będzie**: `pnpm --filter @vtt/server restore`
+przy zatrzymanym serwerze, z kopią stanu sprzed przywrócenia. Doszła zakładka MG **„Kopie"**
+(lista kopii, zrzut kampanii z przełącznikiem czatu, eksport i import karty oraz sceny).
+**Uwaga na nazwę: „backup" w tym repo znaczy Zdolność Wsparcie z 30c** — kopie to `snapshot`
+i `archive`. Wyszedł przy tym **jeden błąd**: polski znak w nazwie pliku wywracał pobieranie
+błędem 500. Osiem umów kodu i cztery pułapki w indeksach niżej.
 
-**Paczka „oczy i uszy" zamknięta 04.09 (druga sesja) — cztery rzeczy, których nikt nie widział,
-zostały obejrzane.** Wybuch i chmura gazu grają z dobrze pociętych arkuszy, rzut obrażeń obszaru
-robi **jeden rzut i N cofalnych kart**, „usuń wszystkie osłony" działa i wraca `Ctrl+Z`,
-a **figura `down` i `dead` kładzie portret na bok** (35°, nie 20° — dwadzieścia stopni jest
-niewidoczne przy zoomie stołu). **Efektu mapy nie da się złapać zrzutem ekranu** — sposób, który
-działa, jest w pułapkach. Wyszły przy tym **trzy błędy, wszystkie naprawione**: guzik
-„Obrażenia" przy amunicji, która obrażeń nie zadaje; importer podręcznika wycinający po cichu
-`thrown`, `maxRangeM` i `ammoIds` (granat nie był rzucany i latał bez zasięgu 25 m); oraz test
-botów porównujący losowy cuid ze słowem „bot". **Do decyzji MG:** kompendium nie ma wpisu
-kupowalnego „Granat", a podręcznik nie podaje jego ceny — szczegół w notatce sesji.
+**Wolne są teraz: 28** (wdrożenie na VPS — a MG planuje przed nim refaktoryzację całości)
+**oraz 34–39.** Kolejność wiążąca w dwóch miejscach: **37 przed 39** (efekt „na godzinę"
+potrzebuje zegara świata) i **34 przed 36** (makro „losuj z tabeli"). Warunek „33 przed 28"
+jest od 05.09 spełniony.
 
-**Zdolności dziewięciu Ról były w testach i nigdy nie były klikane — od 04.09 są (30a–30d).**
-Wyszło **sześć błędów**, wszystkie naprawione: trzy układu (nazwa Zdolności ścięta do 15 px
-w ośmiu panelach, guzik „Wezwij" ścięty do „Wezw", licznik Wsparcia „×4 ×4"), jeden blokujący
-(**MG nie mógł zmienić Roli Medykowi z wydanymi punktami Specjalizacji** — sakiewka bez
-Zdolności odrzucała każdą łatę karty) i dwa mówiące nieprawdę (odmowa Uniku jako surowy kod,
-guzik „Kup" z ceną sprzed targu). **Panele Ról stoją w kolumnie o sztywnych 15 rem** — nowy
-element w tym wierszu trzeba obejrzeć tam, a nie w szerokim oknie. Umowa i dwie pułapki
-w indeksach niżej.
-
-**Naturalne leczenie PW istnieje od 03.09 (trzecia sesja) — do tej pory PW nie wracały nigdy.**
-Dzień odpoczynku liczy `cpredRestDay` (`shared/systems/cpred/recovery.ts`), a warunek „po udanej
-stabilizacji" siedzi w nowym `CpredCharacterData.recovery`. **Ustabilizowanie ma odtąd zasięg
-ramienia (2 m), mierzony wszystkim — MG włącznie**, i otwiera proces leczenia **na każdym progu
-ran**, nie tylko przy zerze. Dawki farmaceutyków są wierszami ekwipunku z licznikiem
-(`CpredGearRow.consumable`, katalog w `pharma.ts`); Medyk je wytwarza i podaje. **Stym został
-otwarty świadomie** — potrzebuje maszynerii z etapu 39, przepis w `zaleglosci.md`. Trzy umowy
-kodu i dwie pułapki dev w indeksach niżej; **„opieki jako mnożnika tempa" w podręczniku nie ma**
-(patrz `decyzje-i-uproszczenia.md`).
-
-**Zestaw testów jest znowu wiarygodny (03.09, druga sesja): `tsc --noEmit` czysty w całym
-monorepo.** Migotanie miało **cztery** przyczyny, nie jedną, i **żadna nie była równoległością
-samą w sobie**: dwa wyścigi na `chat:message`, pomiar PW od stanu, który mógł już być zerem,
-Test Kontroli węzła przegrywający **raz na sto** (przewracał osiem testów naraz w dwóch plikach
-Sieci) i pięć plików z `beforeAll` **bez podniesionego limitu czasu**. Obie pozycje długu
-higieny zamknięte — **piętnaście pełnych przebiegów pod rząd, 918/918, zero porażek**; diagnozy
-w `archiwum/zamkniete-zaleglosci.md`, pięć nowych pułapek w `pulapki-dev.md`.
-
-**Nazwa figury nie przecieka już do graczy na mapie ani w Kolejce Inicjatywy** — `Token.publicName`
-w trzech stanach (brak aliasu / alias / bez etykiety), filtrowana wyłącznie na serwerze, obejrzana
-w przeglądarce na dwóch sesjach naraz. **Czat został nieszczelny świadomie** i czeka na etap 35:
-nazwa jest tam wpisana w treść zapisanej wiadomości. Umowa — w nowym pierwszym wierszu indeksu
-niżej; reszta w `zaleglosci.md`.
-
-**Trzy błędy mechaniki CP RED naprawione 03.09 — z testami i oględzinami.** Ciężki pancerz zabiera wreszcie **REF i ZW w Testach**, nie tylko RUCH (s. 185); broń **niskiej jakości zacina się** po Krytycznej Porażce, a **doskonała** daje +1 (s. 244); **Ustabilizowanie kładzie cel bez przytomności na minutę** (s. 223). Umowy — w dwóch nowych wierszach indeksu niżej. **Decyzja MG z tej sesji: pojazdy i walka pojazdów zostają narracji** — etapu dla nich nie będzie; priorytet przesuwa się na dopalacze i uzależnienia, techniki walki wręcz i leczenie. Reszta listy braków — dopalacze z uzależnieniem, techniki sztuk walki, naturalna regeneracja PW oraz upadek i porażenie prądem — leży w `POMYSLY.md` pod datą 03.09.
-
-**Plan urósł o siedem etapów (02.09, czwarta sesja): 33–39**, z przeglądu „czego brakuje
-względem innych VTT". Wolne są teraz: **28** (wdrożenie na VPS, a przed nim MG planuje
-refaktoryzację całości) oraz **33–39**. Kolejność wiążąca w trzech miejscach: **33 przed 28**
-(kopie zapasowe, zanim stan zacznie istnieć w dwóch egzemplarzach), **37 przed 39** (efekt
-„na godzinę" potrzebuje zegara świata), **34 przed 36** (makro „losuj z tabeli"). Opisy —
-w plikach etapów; skrót decyzji — w notatce sesji niżej.
-
-**Trzy błędy z oględzin etapów 31 i 32 zamknięte 02.09 (trzecia sesja) — naprawione
-i obejrzane.** Z granatnika podwieszanego da się wreszcie wystrzelić dym i gaz (`attachmentAmmoId`
-
-- `secondaryAmmo`), chmurka nad celem nazywa dodatek, a odmowa `character:update` **cofa**
-  optymistyczną łatę i pisze zdanie na dole karty zamiast samego „Błąd zapisu!". Szczegóły
-  w notatce sesji niżej; umowy — w trzech nowych wierszach indeksu.
-
-**Etap 32 (wezwanie MG do Testu) zamknięty 02.09 — dopisany tego dnia na zlecenie MG, poza
-pierwotnym planem.** MG wskazuje postać w panelu „Postacie", wybiera Umiejętność albo Cechę i PT
-(drabinka s. 130 albo własna liczba, albo rzut przeciwstawny), a gracz rzuca **kubkiem** —
-wezwanie woła z kubka i stoi na czacie. **Skutków karta nie rozlicza świadomie** (decyzja MG):
-dowozi werdykt „Zdane"/„Niezdane", a przedmiot, PW i ranę nadaje MG ręką. Wolny został
-**jeden etap: 28** (wdrożenie na VPS), a przed nim MG planuje **refaktoryzację całości**.
-Dług oględzin: **17 pozycji** — etap 32 obejrzany w komplecie tego samego dnia.
-
-**Etap 31 (dodatki do broni) zamknięty 01.09 i od drugiej sesji tego dnia obejrzany
-w komplecie** — z paska akcji strzela się także bagnetem i bronią podwieszaną. **Etap 27g
-(wydajność) został wycofany 01.09 decyzją MG — wydajność przetestowana samodzielnie, sesji nie
-będzie.** Dług oględzin liczy `zaleglosci.md` — 29a i 29b zamknięte 02.09.
-
-**Czat ma filtry i tryb zwarty (01.09, trzecia sesja).** Cztery grupy (Rozmowy, Rzuty, Walka,
-Stół) plus „Zwarty"; nastawienie jest lokalne, w `localStorage`. **Nowy rodzaj wiersza czatu
-trzeba dopisać w dwóch czystych funkcjach w `shared/src/chat.ts`** — inaczej wpadnie do grupy
-„Stół" i nie da się go ścisnąć. Karta ataku **przestała pisać stan magazynka**; w starych
-wierszach zostaje, bo `detail` jest zapisany w bazie.
-
-**Dodatek do broni jest wierszem kompendium, nie gałęzią w kodzie.** `fit` niesie zdanie
-„Pasuje do:" z podręcznika, flagi niosą skutek, a `secondary` — **id typu broni**, z którego
-`resolveAttachmentWeapon` składa drugą broń. Planer podmienia broń **raz**; od tego miejsca każda
-reguła (zasięg, zwarcie, tryby ognia, połowa pancerza) działa, bo dotyczy broni.
-
-**Trzy rzeczy o dodatkach, które łatwo zepsuć.** Kolumny magazynków siedzą na **typie broni**
-(jeden bęben, dziesięć odpowiedzi). Broń podwieszana ma **własny magazynek** na wierszu karty.
-A reguły montażu stoją po stronie **odczytu** — `attachmentIds` jedzie zwykłą łatą karty, więc
-`fittedAttachmentsFor` sądzi listę przy każdym czytaniu i to, czego nie dałoby się zamontować,
-po prostu nie daje nic.
-
-**Poprawione 01.09: nabój inteligentny odmawia strzału bez Celownika optycznego.** Kryterium
-etapu 31 („złącze smartguna zmienia zachowanie naboju inteligentnego") stało na pomyłce — to dwa
-niezależne tory podręcznika. Wspólny jest mechanizm: `hasRequiredCyberware` pyta kartę o chrom
-**po nazwie**, i tą jedną funkcją idą oba. **Każdy test strzelający amunicją inteligentną musi
-teraz wszczepić strzelcowi chrom**, inaczej pada w asercji o czymś innym.
-
-**Celowanie wybiera się przy kursorze, nie na banerze.** Po kliknięciu w cel wyskakuje okno
-z czterema sylwetkami; otwiera je `loadAttackFor`, czyli jedyne miejsce, przez które przechodzą
-wszystkie drogi ataku. **Nowa droga ataku dostaje Celowanie za darmo.** Wybór nie jest lepki.
-
-**Broń na karcie bierze się wyłącznie z katalogu** („+ Broń z katalogu"); wiersz bez wiązania nie
-strzela i mówi to chipem. **Dopasowania po nazwie nie ma świadomie** — przypięłoby zły PT.
+**Dług oględzin — 14 pozycji, i wszystkie czekają na żywy model.** Cztery pozycje etapu 30
+(**30a, 30b, 30c, 30d**) zamknięte 04.09 — była to ostatnia paczka, którą dało się obejrzeć bez
+GPU. Zostaje 20a/20b, 19a–19c, dwie ścieżki 24c, maszynopis wypowiedzi i jedna nowa pozycja
+z 04.09 (cyberdek pracownika Korpo). **29a i 29b wypadły z listy 02.09**, etap 31 i Celowanie
+w statystę — 01.09.
 
 **Ważne dla każdego, kto dotknie progu PT: `>=` przy PT jest błędem, nie wariantem.** Decyzja
 z 28.08 („remis zdaje") została cofnięta — stała na cytacie, którego w polskim wydaniu nie ma.
@@ -228,11 +136,16 @@ Pełny zapis w `decyzje-i-uproszczenia.md`; przed zmianą czegokolwiek w tym mie
 akapit, bo to druga zmiana zdania w tej sprawie. **Wyjątek od 30c: Test Lojalności** zdaje się
 przy wyniku _mniejszym_ od Lojalności (s. 154).
 
-**Dług oględzin — 14 pozycji, i wszystkie czekają na żywy model.** Cztery pozycje etapu 30
-(**30a, 30b, 30c, 30d**) zamknięte 04.09 — była to ostatnia paczka, którą dało się obejrzeć bez
-GPU. Zostaje 20a/20b, 19a–19c, dwie ścieżki 24c, maszynopis wypowiedzi i jedna nowa pozycja
-z 04.09 (cyberdek pracownika Korpo). **29a i 29b wypadły z listy 02.09**, etap 31 i Celowanie
-w statystę — 01.09.
+**Sceny testowe — cztery, bez zmian.** Aktywna jest **„Strzelnica"** (komplet pod Sieć, pięć
+uzbrojonych stref bronionych, druga figura „Rudy Kwiatkowski" z właścicielem avatar9, a kartą
+NPC — zostawiona świadomie). W podglądzie: **„Korytarz 16e"** (**nie kasuj jej** — jedyna
+stała scena z widocznością Dynamiczną), **„Karty 24x"** i **„Efekty 23x"**. Wszystkie współrzędne i **stan po sesji 01.09** —
+w `poligon.md`. Do oględzin z konta gracza jest `Tester` (`/join/tester-dev`), ale **do Sieci
+trzeba avatar9**.
+
+**Kampania „Poligon bojowy" jest oznaczona jako poligon** — chip „POLIGON" w górnym pasku
+i krótkie pytanie przy kasowaniu. Flaga niczego nie blokuje i **nie rozchodzi się sama** po
+podpiętych ekranach (patrz pułapki).
 
 **Oględziny Roli robi się jedną kartą przestawianą kolejno na dziewięć Ról** — tak poszły
 30a–30d 04.09 (decyzja MG), na „Franku", w kolejności Solo → Medyk → Technik → Stróż Prawa →
@@ -252,17 +165,6 @@ zmiana `parse-manual.py` ich nie odświeża. Jeśli coś w kompendium zachowuje 
 `python tools/import/parse-manual.py`, potem szukaj błędu. Import z 01.09 dołożył plik
 `attachments.json` (osiem wpisów) i dwie kolumny magazynków dziesięciu typom broni.
 
-**Sceny testowe — cztery, bez zmian.** Aktywna jest **„Strzelnica"** (komplet pod Sieć, pięć
-uzbrojonych stref bronionych, druga figura „Rudy Kwiatkowski" z właścicielem avatar9, a kartą
-NPC — zostawiona świadomie). W podglądzie: **„Korytarz 16e"** (**nie kasuj jej** — jedyna
-stała scena z widocznością Dynamiczną), **„Karty 24x"** i **„Efekty 23x"**. Wszystkie współrzędne i **stan po sesji 01.09** —
-w `poligon.md`. Do oględzin z konta gracza jest `Tester` (`/join/tester-dev`), ale **do Sieci
-trzeba avatar9**.
-
-**Kampania „Poligon bojowy" jest oznaczona jako poligon** — chip „POLIGON" w górnym pasku
-i krótkie pytanie przy kasowaniu. Flaga niczego nie blokuje i **nie rozchodzi się sama** po
-podpiętych ekranach (patrz pułapki).
-
 **Triaż z 28.08 zostaje w mocy** — siedem pozycji „nieosiągalnych z UI albo bez widocznej
 różnicy" siedzi w `decyzje-i-uproszczenia.md` i **nie wciągaj ich z powrotem** jako nowych
 odkryć.
@@ -273,14 +175,23 @@ nieaktualne. Lista jest zapisem chwili, w której coś zauważono, a nie stanu r
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
 a od 30d pierwszym, przy którym **każda Rola w drużynie gra inaczej niż reszta**.
 
-**Testy na koniec ostatniej sesji:** 1785 w `shared`, 935 na serwerze, 79 u klienta — zielone.
-ESLint i Prettier czyste na całym repo.
+**Testy na koniec ostatniej sesji:** 1823 w `shared` (+25), 985 na serwerze (+30), 79 u klienta — zielone.
+ESLint i Prettier czyste na całym repo; `tsc --noEmit` czysty (od 05.09 obejmuje też
+`packages/server/scripts/`).
 
 ## Umowy kodu — indeks
 
 Jeden wiersz = jedna umowa; pełna wersja z uzasadnieniem w `umowy-kodu.md`. Umowa złamana
 znaczy zwykle błąd, który już raz kosztował sesję.
 
+- **„Backup" znaczy Wsparcie (30c), nie kopię zapasową** — kopie to `snapshot` (`snapshots.ts`, `archive:list`/`archive:snapshot`), pliki wymiany to `archive` (`shared/src/archive.ts`, `ArchivePanel.tsx`). Słowa „backup" nie używa się na nic poza Zdolnością Roli.
+- **Kopia bazy to `VACUUM INTO`, nigdy `copyFile`** — WAL trzyma świeży stan obok `.db`. `vacuumInto` otwiera bazę drugim, tylko-do-odczytu połączeniem; ten sam kod chodzi przy działającym serwerze i przy zatrzymanym.
+- **`uploads/` w kopii to twarde dowiązania** (`linkTree`, z ucieczką do `copyFile`) — bezpieczne **wyłącznie** dlatego, że plik uploadu jest niezmienny. Zapis w miejscu = zamiana dowiązań na kopie.
+- **Rotacja liczy się z NAZW katalogów**, nie z czasu pliku (`planSnapshotRotation`); **nazwa spoza schematu nie ginie nigdy** — to furtka na kopię „na zawsze" i dla `przed-przywroceniem-*`.
+- **Eksport = wiersze z wypisanymi kolumnami, nie widoki** (widok gubi prawdziwą nazwę żetonu); kolumny JSON-owe jadą jako prawdziwy JSON. **Import normalizuje przez `parseCharacterData`, więc round-trip NIE jest bajt w bajt** — nic nie ginie, dochodzą domyślne pola.
+- **Import nigdy nie odtwarza cudzych id**, ale swoje utrzymuje: `ownerId`/`characterId` przeżywają po sprawdzeniu w bazie (`survivingIds`), reszta → `null` plus zdanie w `note`. `MapDrawing.authorId` przejmuje ten, kto stawia scenę.
+- **Nazwa pliku w `Content-Disposition` musi być ASCII** — `archiveContentDisposition` składa ogonki i dokłada `filename*=UTF-8''…`. Polski znak wprost w `filename` to 500, nie brzydka nazwa.
+- **`ServerConfig.backups` jest opcjonalne i to jest wyłącznik kopii** — brak sekcji znaczy „ten proces kopii nie robi"; tak stoją wszystkie 54 zestawy testów dymnych, bez zmian w ich konfiguracjach.
 - **Kto operuje przy montażu** — `CharacterCyberwarePayload.surgeon` w trzech wariantach: `none` (bez Testu), `gm` (ripperdoc bez karty, jedna liczba od MG), `character` (Medyk z kampanii, Chirurgia czytana z karty). PT zawsze z `CYBERWARE_INSTALL_DV`, porażka **niszczy wszczep** (s. 226).
 - **Odmowa montażu** — jedna czysta funkcja `cyberwareInstallRefusal` (brak podstawy / brak gniazda / limit 7) i jedna tabela zdań `CYBERWARE_INSTALL_REFUSAL_MESSAGES`; liczy **na rodzinie, nie na pudełku sylwetki**, wpisu bez rodziny nie odmawia, a Borgizacji nie liczy do rodzin z podstawą. MG przechodzi, karta czatu zapisuje.
 - **Dane przy naklejce żetonu** — `Token.statusData` trzyma `{ damage?, timer?, feared?, disabled? }`; `disabled` to **nazwy** cyborgizacji zdjętych Impulsem. Kasowanie jest wspólne (`writeSheetStatusTimer(…, null)`), więc każda ścieżka zdejmująca status musi je zawołać — „Cofnij" tego nie robiło.
@@ -389,6 +300,10 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 
 Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapki-dev.md`.
 
+- **`file:./dev.db` liczy się od katalogu roboczego** — w repo są DWA `dev.db`: żywy w `packages/server/` i pusty artefakt migracji w `packages/server/prisma/`. Skrypt sięgający po drugi zrobi kopię pustej bazy i nikt tego nie zauważy.
+- **Polski znak w nagłówku HTTP to 500, nie brzydka nazwa pliku** — objawem jest „eksport nie działa dla niektórych postaci"; nagłówek jest latin-1.
+- **`<input type="file">` DA SIĘ obsłużyć automatem** (`DataTransfer` → `input.files` → `change`) — inaczej niż checkbox Reacta z pułapki niżej.
+- **Rozszerzenie przeglądarki zaciemnia część wyników `javascript_tool`** (`[BLOCKED: Sensitive key]`, `[BLOCKED: Base64 encoded data]`) — to nie jest błąd aplikacji; sprawdzaj takie rzeczy testem serwera.
 - **Bronią obszarową celuj w puste pole** — klik w żeton tylko go zaznacza (u MG każdego), broń schodzi z ręki, a następny klik w mapę jest **rozkazem marszu**; strzał puszcza „Potrząśnij i strzel", nie drugi klik.
 - **Żetonu nie skasujesz `Delete` ani koszem** — przeciągnięcie na kosz go **przesuwa**; przy sprzątaniu po oględzinach najszybciej zatrzymać `pnpm dev` i usunąć wiersze SQL-em (razem z `LedgerEntry` kasowanej karty).
 - **Karta wpisu kompendium gubi wybór przy zmianie zakładki** — postać, chirurg i poziom ripperdoca wracają do wartości domyślnych; sprawdzaj je tuż przed kliknięciem guzika.
@@ -496,6 +411,78 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 05.09 — kopie zapasowe: kopia, która robi się sama, i plik, który da się przeczytać
+
+**Zlecenie MG:** kontynuacja projektu; z listy wolnych etapów MG wybrał **33 (kopie zapasowe)**,
+a przy okazji **przycięcie `POSTEP.md`** i **scalenie gałęzi do `main`**. Przed kodem padły cztery
+rozstrzygnięcia z opisu etapu — trzy z liczbami zmierzonymi na żywej bazie, żeby decyzja nie
+stała na przeczuciu: **czat to 411 KB z 502 KB tekstu w bazie (82 %)**, `uploads/` 14 MB,
+`data/private/` 82 MB. MG wybrał: czat w zrzucie **przełącznikiem, domyślnie tak**; kopia **przy
+starcie serwera i co godzinę**, zostaje **24 + 14 dób**; `uploads/` **w każdej kopii**
+(„samowystarczalna"); miejsce kopii po etapie 28 — **odłożone do etapu 28**.
+
+**Pierwsza rzecz, którą trzeba było rozstrzygnąć, to nazwa.** `realtime/backup.ts`,
+`backup.test.ts` i `BackupPanel.tsx` **już istniały** i nie mają nic wspólnego z kopiami — to
+Zdolność Roli **Wsparcie** z 30c (ang. _Backup_). Stąd dwie nowe rodziny: `snapshot` na pracę
+z dyskiem i `archive` na pliki wymiany.
+
+**Decyzja MG o „samowystarczalnej kopii" kosztowałaby 336 MB na dobę — kosztuje 14 MB raz.**
+`linkTree` dowiązuje pliki twardo zamiast je kopiować, więc katalog kopii ma pełny komplet
+grafik pod własnymi nazwami, a na dysku to te same bloki (sprawdzone: `stat` pokazuje ten sam
+i-węzeł i licznik 2). Trzydzieści osiem kopii kosztuje **38 × 1,1 MB bazy + 14 MB grafik raz**.
+Jest to bezpieczne **wyłącznie dlatego, że plik uploadu jest niezmienny** — i dokładnie tak stoi
+w umowie kodu, razem z warunkiem, przy którym trzeba będzie wrócić do kopiowania.
+
+**Rotacja liczy się z nazw katalogów, nie z czasu pliku**, bo czas pliku zmienia zwykłe
+skopiowanie katalogu. Wypadła z tego furtka, która okazała się przydatna od razu: **nazwa spoza
+schematu nie jest kasowana nigdy**, więc kopię „na zawsze" robi się przemianowaniem — i tą samą
+drogą idą kopie bezpieczeństwa spod `restore` (`przed-przywroceniem-<ISO>`).
+
+**Cztery świadome odstępstwa od opisu etapu**, wszystkie zapisane w pliku etapu: skrypty jako TS
+w `packages/server/scripts/` (muszą czytać `loadConfig` i `@vtt/shared`), eksport jako **trasa
+REST** zamiast zdarzenia gniazda (zrzut z czatem to 659 KB, a Socket.IO ma limit 1 MB; import
+został gniazdem, bo zmienia stan), eksport z **wierszy z wypisanymi kolumnami zamiast widoków**
+(`toTokenView` podmienia nazwę figury na `publicName` — kopia gubiąca prawdziwą nazwę żetonu nie
+jest kopią) i **kopie jako pole opcjonalne konfiguracji** (`ServerConfig.backups`), dzięki czemu
+54 istniejące zestawy testów dymnych nie wymagały ani jednej linijki zmiany.
+
+**Jeden błąd znaleziony i naprawiony: polski znak w nazwie pobieranego pliku.**
+`Content-Disposition` jedzie po HTTP jako latin-1, więc karta „Bezpański" albo „Zażółć gęślą
+jaźń" wywracała **całą trasę** (`ERR_INVALID_CHAR`, 500 zamiast pobrania). Objawem byłoby
+„eksport nie działa dla niektórych postaci". Nazwa jest odtąd składana do ASCII, a prawdziwa
+jedzie parametrem `filename*=UTF-8''…`. Złapał to test dymny, nie oględziny.
+
+**Jedno znalezisko, które okazało się poprawnym zachowaniem — i dostało test.** Round-trip karty
+**nie jest bajt w bajt**: eksport wypisuje surową kolumnę `data` (kopia ma być prawdą o bazie),
+a import przepuszcza ją przez `parseCharacterData`, więc karta „Tony" z Poligonu wróciła
+z ośmioma dopisanymi polami (`recovery`, `team`, `medicine`…), których jej wiersz nigdy nie
+miał. Nic nie ginie — dochodzą wartości domyślne, bo inaczej plik otwierałby panel pytający
+o pole, którego w karcie nie ma. Asymetria jest teraz opisana w kodzie i pilnowana testem
+„wypełnia braki starej karty domyślnymi wartościami, niczego nie gubiąc".
+
+**Oględziny (Poligon, konto MG) — cały etap odklikany.** Zakładka „Kopie" z trzema kopiami na
+liście, ręczna kopia guzikiem (czwarty wiersz pojawił się od razu), zrzut kampanii **659 KB
+z czatem i 60 KB bez** z manifestem wymieniającym 10 plików `uploads/` i pięć zdań „czego tu nie
+ma", eksport karty (4 KB, `data` jako prawdziwy obiekt, 8 wierszy księgi), **import karty**
+(druga „Tony", inne id, księga przepisana), **odmowa pliku z przyszłej wersji** („Plik zapisała
+nowsza wersja VTT…"), **import sceny** („Strzelnica" w podglądzie, ściany i ustawienia identyczne,
+**6 powiązań z kartami i 5 właścicieli utrzymanych**) oraz **przywracanie w obie strony**
+(9 kart → 10 → 9) z ponownym startem serwera. Poprawione po drodze jedno drobiazgowe: polecenie
+`restore` łamało się w środku słowa („na zwa-kopii") — `break-all` zamieniony na
+`overflow-wrap: anywhere`.
+
+**Poligon wrócił do stanu sprzed sesji:** wczytana karta „Tony" i wczytana scena „Strzelnica"
+skasowane razem z 8 wierszami `LedgerEntry`, 7 żetonami, 4 ścianami i wpisem eksploracji —
+w bazie znowu **9 kart, 6 scen, 13 żetonów, 23 wpisy księgi**. Ślad zostawiony świadomie:
+**cztery snapshoty** w `data/private/backups/` (to teraz pierwsze prawdziwe kopie tej kampanii)
+oraz **dwa katalogi `przed-przywroceniem-*`** z testu przywracania — kosz na nie został
+odrzucony, więc czekają na rękę MG.
+
+**Przy okazji, na zlecenie MG:** `POSTEP.md` przycięty: sekcja „Od czego zacząć" ze **170 do 73 linijek**, cały plik z **642 do 553** — siedemnaście
+akapitów z „Od czego zacząć" (streszczenia zamkniętych sesji i umowy spisane już w
+`umowy-kodu.md`) przeniesione **w całości i bez zmian** do `archiwum/dziennik-sesji.md`. Gałąź
+`feat/cpred-weapon-attachments` scalona do `main`.
+
 ### Sesja 04.09 (trzecia) — chrom, który wreszcie coś kosztuje: PT montażu, odmowy i EMP z nazwami
 
 **Zlecenie MG:** znowu kilkanaście zaległości pasujących do jednej sesji, bez niczego wokół
@@ -564,79 +551,3 @@ Zachowanie jest sprzed tej sesji, ale od dziś różnica między dwiema drogami 
 **Testy na koniec:** 1798 w `shared` (+13), 955 na serwerze (+20), zielone; `tsc --noEmit` czysty
 w całym monorepo, ESLint i Prettier czyste. Doszedł nowy plik `packages/server/src/sheets.test.ts`
 — czyste funkcje kolumny `Token.statusData`, których żaden widok nie wysyła do klienta.
-
-### Sesja 04.09 (druga) — paczka „oczy i uszy": wybuch, obszar, osłony i leżąca figura
-
-**Zlecenie MG:** znowu kilkanaście zaległości pasujących do jednej sesji, bez niczego wokół
-lokalnego LLM-a. Po wykluczeniu modelu z „długu oględzin" zostają **trzy pozycje na
-czternaście**, więc lista poszła głównie z `POMYSLY.md`. MG wybrał **paczkę D** — pięć rzeczy,
-których nikt nie widział ani nie słyszał — i rozstrzygnął trzy rzeczy: **Stym i dopalacze
-czekają na 37/39** (nie budujemy zegara dwa razy), **nazwa figury w czacie zostaje etapem 35**,
-a przygotowanie poligonu robię tak, jak zaproponowałem.
-
-**Nośnikiem okazał się avatar9, nie Frank.** Karta avatar9 ma od 31 **granatnik podwieszany
-z nabojem dymnym** — czyli dokładnie broń obszarową gotową do strzału — więc Frank i stawianie
-mu żetonu były niepotrzebne. Cała sesja poszła trzema strzałami w pole między
-„Automatyczną wieżyczkę" a „testowy 2x2".
-
-**Cztery pozycje zamknięte, piąta zmierzona:**
-
-1. **Wybuch i chmura gazu — obejrzane, arkusze pocięte dobrze.** Klatki idą po arkuszach wiersz
-   po wierszu (wybuch 8×8 po 128 px, chmura 5×3 po 256 px) i nigdy nie wychodzą poza arkusz.
-   Ognista kula wyszła w pełnym rozmiarze (11,5 m ≈ 575 px sceny, tryb `add`), gaz — zielonkawą
-   mgłą. **Trzy pierwsze podejścia złapały puste pole**: efekt trwa 1,1 s, a runda zrzutu bywa
-   dłuższa. Sposób, który zadziałał (wywołanie efektu wprost + zamrożenie klatki), jest
-   w pułapkach — razem z ostrzeżeniem, że pierwszych dwadzieścia klatek wybuchu to białe iskry,
-   po których łatwo uznać arkusz za zepsuty.
-2. **Rzut obrażeń obszaru (16d) — odklikany.** Jeden guzik „Obrażenia 6k6" → **jeden** rzut
-   (6k6 = 20) → „Zastosuj wszystkim (2)" → **dwie osobne, cofalne karty**: testowy 2x2
-   dostał 7 (20 − OB 13, pancerz starł się 13 → 12), wieżyczka 20 (bez pancerza, PW 25 → 5).
-   Ten sam rzut, różny wynik przez pancerz — tak, jak mówi s. 174. Obie karty cofnięte.
-3. **„Usuń wszystkie osłony" (16c) — odklikane, z Ctrl+Z.** Kosz zdjął dwie osłony, Ctrl+Z
-   przywrócił obie naraz. **Kosze nie pytały o potwierdzenie i tak ma być** — poligon plus
-   działające cofanie; ale **cztery z siedmiu koszów hurtowych nie mówiły o Ctrl+Z**, choć
-   wszystkie sześć zdarzeń `*:clear` woła `rememberDeletion`. Teraz mówią wszystkie.
-4. **Przechylenie figury — zrobione, 35° zamiast 20°.** Portret kładzie się na bok przy `down`
-   **i** `dead` (bo „nieprzytomny leży, martwy stoi" byłoby gorsze niż nic). Dwadzieścia
-   stopni z pomysłu sprawdziłem w przeglądarce przeciwko pionowej kopii tej samej twarzy:
-   różnica **jest**, ale przy zoomie stołu nikt by jej nie zauważył. Obraca się wyłącznie
-   portret; imię, naklejki, pierścień i łuk PW zostają pionowe. Strażnik — `token-tilt.test.ts`.
-5. **Dźwięki — zmierzone, nieocenione.** Dwanaście WAV-ów przeliczonych na obwiednie: **żadna
-   próbka nie jest dwoma zdarzeniami**, jak `shot-rifle` sprzed pół roku. `bowstring.wav` jest
-   **w 65% ciszą** (dźwięk kończy się w 160 ms z 460 ms) i ma najniższy RMS zestawu
-   (−24,5 dBFS) — co potwierdza notatkę MG, że to najsłabsze dopasowanie. Czy **brzmi** jak
-   cięciwa, rozstrzyga ucho; rządek „🔊" w „⚙ Ustawienia" gra wszystkie siedemnaście.
-
-**Trzy błędy znalezione po drodze, wszystkie naprawione:**
-
-- **Amunicja bez obrażeń wystawiała guzik „Obrażenia" z pustą kością.** Serwer liczy to
-  poprawnie (`ammoDealsDamage` i komentarz „no button, no notation, nothing to apply") i nie
-  wysyła `damageNotation` — ale `AttackControls.tsx` rysował guzik z własnego warunku
-  „trafił albo obszar". Dotyczyło **pięciu** rodzajów naboju z 16h. Umowa w indeksie niżej.
-- **Importer podręcznika po cichu wycinał trzy pola typu broni.** `thrown`, `maxRangeM` i `ammoIds`
-  były w `CpredWeaponTypeInput` **i** w `manual-overrides.json`, ale nie na białej liście
-  `schema_fields` — czyli dokładnie ten sam mechanizm, który wcześniej zjadł `explosive`
-  i `ammoPatterns`. Skutki: **granat nie był rzucany** (dostawał guzik „Rzuć" jak cegła)
-  i **latał bez zasięgu maksymalnego 25 m**, a miotacz ognia przyjmował cudzy śrut. Poza
-  dopisaniem pól parser **mówi teraz o każdym wyciętym polu ostrzeżeniem importu**, żeby czwarte
-  nie zginęło tak samo.
-- **Losowo padający test botów.** `bot-actions.test.ts` sprawdzał, że karta rzutu nie zawiera
-  słowa „bot", porównując **cały JSON razem z `authorId`** — a cuid bywa dowolnym ciągiem
-  liter i tym razem wylosował się `cmtnc61fq0000b8ueg985botv`. Porównanie idzie odtąd po tym,
-  co gracz **czyta** (identyfikatory wypadają). Trzy pełne przebiegi serwera pod rząd, 935/935.
-
-**Czego NIE zrobiłem, choć wyszło przy okazji:** w kompendium **nie ma wpisu kupowalnego
-„Granat"** — typ broni istnieje (6k6, Atletyka, zasięg 25 m), ale żaden wpis się pod niego
-nie podpina, więc „granat jako wiersz broni" z 16d jest dostępny wyłącznie przez granatnik
-albo przez wpis wpisany ręką MG w kompendium. Ceny pojedynczego granatu podręcznik **nie podaje**
-(tabela amunicji go nie wymienia, a „Amunicja zwykła" jest „wszystkie prócz granatów i rakiet"),
-więc wymyślanie jej byłoby wymyślaniem danych z podręcznika. Do decyzji MG.
-
-**Poligon wrócił do stanu sprzed sesji** — osłony skasowane, dym rozwiany, karty obrażeń
-cofnięte (PW i ablacja pancerza z powrotem), żeton avatar9 na (2100, 1700), status
-„Nieprzytomny" zdjęty, nabój granatnika z powrotem dymny i magazynek 1/1. Ślad zostawiony
-świadomie: **log czatu** — trzy karty ataku (dwa pudła z odchyleniem, jedno z dymem), karta
-obrażeń obszarowych i dwie karty obrażeń przekreślone „Cofnięte — MG".
-
-**Testy na koniec:** 1785 w `shared`, 935 na serwerze, **79 u klienta (+4)** — zielone,
-trzy pełne przebiegi serwera pod rząd. `tsc --noEmit` czysty, ESLint i Prettier czyste.

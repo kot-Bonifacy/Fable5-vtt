@@ -14,6 +14,7 @@ import { KnowledgePanel } from './KnowledgePanel.js';
 import { NetPanel } from './NetPanel.js';
 import { JournalPanel } from './JournalPanel.js';
 import { HandoutPanel } from './HandoutPanel.js';
+import { ArchivePanel } from './ArchivePanel.js';
 import { SidePanelResizer, useSidePanelWidth } from './SidePanelResizer.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useJournalStore } from '../stores/journalStore.js';
@@ -31,7 +32,8 @@ type Tab =
   | 'net'
   | 'journal'
   | 'handouts'
-  | 'ai';
+  | 'ai'
+  | 'archive';
 
 /**
  * Side panel tabs in two rows: what everyone at the table uses, and the GM's
@@ -60,6 +62,7 @@ const GM_TABS: { id: Tab; label: string }[] = [
   { id: 'knowledge', label: 'Wiedza' },
   { id: 'net', label: 'Sieć' },
   { id: 'ai', label: 'AI' },
+  { id: 'archive', label: 'Kopie' },
 ];
 
 export function SidePanel() {
@@ -124,6 +127,8 @@ export function SidePanel() {
         <HandoutPanel />
       ) : activeTab === 'ai' ? (
         <AiPanel />
+      ) : activeTab === 'archive' ? (
+        <ArchivePanel />
       ) : (
         <CharacterPanel />
       )}

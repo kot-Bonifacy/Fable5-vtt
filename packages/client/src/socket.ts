@@ -1,5 +1,9 @@
 import { io, type Socket } from 'socket.io-client';
 import type {
+  ArchiveCharacterImportPayload,
+  ArchiveImportResult,
+  ArchiveSceneImportPayload,
+  SnapshotListView,
   AiAskPayload,
   CpredCombatAwarenessProblem,
   CpredHaggleProblem,
@@ -1705,6 +1709,44 @@ export const saveNetArchitecture = (payload: NetArchitectureSavePayload) =>
   emitSceneAck<NetArchitectureView>('net:save', payload);
 
 export const deleteNetArchitecture = (id: string) => emitSceneAck('net:delete', { id });
+
+/* ------------------------------------------------------------------ */
+/* Kopie zapasowe i pliki wymiany (etap 33)                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Stan katalogu kopii. Wołane przy wejściu w zakładkę „Kopie", nie w
+ * `state:sync` — u gracza ta lista nie istnieje w ogóle, a MG patrzy na nią
+ * raz na sesję.
+ */
+export const fetchSnapshots = () => emitSceneAck<SnapshotListView>('archive:list', undefined);
+
+/** „Zrób kopię teraz" — odsyła listę już po kopii i po rotacji. */
+export const takeSnapshotNow = () => emitSceneAck<SnapshotListView>('archive:snapshot', undefined);
+
+export const importCharacterFile = (payload: ArchiveCharacterImportPayload) =>
+  emitSceneAck<ArchiveImportResult>('archive:character', payload);
+
+export const importSceneFile = (payload: ArchiveSceneImportPayload) =>
+  emitSceneAck<ArchiveImportResult>('archive:scene', payload);
+
+/**
+ * Pobranie pliku wymiany.
+ *
+ * Zwykły `<a href>`, a nie `fetch` + `Blob`: przeglądarka sama przeczyta
+ * `Content-Disposition` i zaproponuje nazwę z ogonkami, a zrzut kampanii
+ * z czatem nie musi przechodzić przez pamięć karty. Adres jest względny —
+ * klient i serwer są tego samego pochodzenia (proxy Vite w dev, Caddy w prod),
+ * dokładnie jak `/uploads/...`.
+ */
+export function downloadArchive(path: string): void {
+  const link = document.createElement('a');
+  link.href = path;
+  link.rel = 'noopener';
+  document.body.append(link);
+  link.click();
+  link.remove();
+}
 
 export const rollNetArchitecture = (payload: NetArchitectureRollPayload) =>
   emitSceneAck<NetArchitectureRollResult>('net:roll', payload);

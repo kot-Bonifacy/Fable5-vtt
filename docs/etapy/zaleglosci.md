@@ -6,6 +6,13 @@ odhaczania zaległości albo dotykasz etapu, który tu występuje — nie rutyno
 
 Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/zamkniete-zaleglosci.md`.
 
+**05.09 (etap 33 — kopie zapasowe):** **żadna nowa pozycja nie została otwarta**, a etap
+zamknięto w komplecie z oględzinami. Naprawiony po drodze **jeden błąd** (polski znak w nazwie
+pobieranego pliku wywracał trasę eksportu błędem 500) i **jedna usterka układu** (polecenie
+`restore` w podpowiedzi łamało się w środku słowa). Do sprzątnięcia ręką MG: dwa katalogi
+`przed-przywroceniem-*` w `data/private/backups/`, zostawione po teście przywracania — kosz na
+nie został w trakcie sesji odrzucony.
+
 **04.09 (trzecia sesja):** zamknięte **trzy pozycje z `POMYSLY.md`** o cyborgizacjach — PT
 montażu z Testem Chirurgii, odmowy „nie ma w co tego wszczepić" i EMP nazywający dwie wyłączone
 cyborgizacje. Otwarte **dwie** pozycje, obie niżej: odmowy nieoglądane na koncie gracza oraz

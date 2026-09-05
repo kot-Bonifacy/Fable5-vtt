@@ -4,6 +4,62 @@ Wyprowadzone z „Od czego zacząć" w `POSTEP.md` 22.08.2026. Indeks jednolinij
 tu leżą pełne wersje. Czytaj wpis, **zanim** dołożysz coś w obszarze, którego dotyczy — każdy
 z nich powstał po tym, jak ktoś dołożył to w złym miejscu.
 
+**„Backup" w tym repozytorium znaczy Wsparcie, nie kopię zapasową (05.09).**
+`realtime/backup.ts`, `characterBackupCallEvent` i `BackupPanel.tsx` to Zdolność Roli **Wsparcie**
+z etapu 30c — wezwanie posiłków na mapę. Kopie zapasowe nazywają się `snapshot` (praca na dysku:
+`snapshots.ts`, zdarzenia `archive:list` / `archive:snapshot`), a pliki wymiany — `archive`
+(`shared/src/archive.ts`, `server/src/archive.ts`, `ArchivePanel.tsx`). Nowa rzecz w tym obszarze
+dopisuje się do jednej z tych dwóch rodzin; słowa „backup" nie używa się na nic poza Wsparciem.
+
+**Kopia zapasowa nie kopiuje pliku bazy — robi `VACUUM INTO` (05.09).** SQLite w trybie WAL
+trzyma część świeżego stanu w pliku `-wal` obok bazy, więc `copyFile` na `.db` w trakcie zapisu
+daje kopię niespójną albo starszą, niż wygląda. `vacuumInto` w `snapshots.ts` otwiera bazę
+**drugim połączeniem, tylko do odczytu**, i to jest cała sztuczka: ten sam kod chodzi w timerze
+przy działającym serwerze i w skrypcie przy zatrzymanym. Nowa droga do kopii woła `vacuumInto`,
+nigdy `copyFile`.
+
+**Pliki `uploads/` w kopii to twarde dowiązania, nie kopie — i to zależy od ich niezmienności
+(05.09).** `linkTree` dowiązuje każdy plik (z ucieczką do `copyFile`, gdy się nie da), dzięki
+czemu trzydzieści osiem samowystarczalnych kopii kosztuje 14 MB grafik **raz**, a nie
+trzydzieści osiem razy. Jest to bezpieczne wyłącznie dlatego, że trasy `/api/uploads/*` zapisują
+plik raz, pod losową nazwą, i nigdy go nie nadpisują. **Jeśli kiedykolwiek zaczną pisać
+w miejscu — dowiązania trzeba zamienić na kopie**, bo inaczej podmiana grafiki zmieni ją we
+wszystkich kopiach naraz.
+
+**Rotacja liczy się z NAZW katalogów, nigdy z czasu pliku (05.09).** `planSnapshotRotation`
+w `shared/src/archive.ts` sortuje leksykalnie (`snapshot-2026-09-05-1430` — format tak dobrany,
+że porządek nazw jest porządkiem czasu) i dobę bierze wprost z nazwy, więc strefa czasowa nie ma
+tu nic do rzeczy. **Nazwa spoza schematu nie jest kasowana nigdy** i to jest funkcja, a nie
+niedopatrzenie: kopię, która ma przeżyć wszystko, przemianowuje się (`przed-refaktorem`).
+Tą samą furtką idą kopie bezpieczeństwa spod `restore` (`przed-przywroceniem-<ISO>`).
+
+**Eksport wypisuje wiersze z wypisanymi kolumnami, import normalizuje (05.09).** Kopia zapasowa
+ma być prawdą o bazie, więc `exportCharacter`/`exportScene` **nie** idą przez widoki —
+`toTokenView` podmienia nazwę figury na `publicName`, a kopia gubiąca prawdziwą nazwę żetonu nie
+jest kopią. Kolumny wypisuje się ręką (nigdy `select` hurtem): nowa kolumna ma tu wymusić
+decyzję, czy jedzie. Kolumny JSON-owe (`data`, `statuses`, `combatProfile`…) jadą jako **prawdziwy
+JSON**, żeby plik dało się przeczytać w edytorze. W drugą stronę `importCharacter` przepuszcza
+kartę przez `parseCharacterData` — ten sam parser, którym czyta ją reszta serwera — więc karta
+sprzed etapu 30b wraca z dopisanymi domyślnymi polami. **Round-trip nie jest więc bajt w bajt
+i nie ma być**; nic nie ginie, dochodzą wartości domyślne.
+
+**Import nigdy nie odtwarza cudzych id, ale swoje utrzymuje (05.09).** Każdy wiersz z pliku
+dostaje nowe `cuid`. Odnośniki do kogoś (`Token.ownerId`, `Token.characterId`) przeżywają
+**tylko po sprawdzeniu, że taki wiersz naprawdę stoi w tej kampanii** (`survivingIds`); reszta
+schodzi do `null`, a `ArchiveImportResult.note` mówi ile. `MapDrawing.authorId` jest kluczem
+obcym z kaskadą i nie może być pusty, więc rysunki przejmuje ten, kto stawia scenę.
+
+**Nazwa pliku w `Content-Disposition` musi być ASCII (05.09).** Nagłówek HTTP jedzie jako
+latin-1: „Bezpański" wprost w `filename` wywraca całą odpowiedź (`ERR_INVALID_CHAR`, 500 zamiast
+pobrania). `archiveContentDisposition` składa polskie znaki do gołych liter i dokłada prawdziwą
+nazwę parametrem `filename*=UTF-8''…` (RFC 5987). Każdy nowy nagłówek z nazwą od użytkownika
+idzie tą samą drogą.
+
+**Kopie są sekcją opcjonalną w konfiguracji i to jest ich wyłącznik (05.09).**
+`ServerConfig.backups` może nie istnieć — wtedy proces kopii nie robi. Tak stoją wszystkie
+54 zestawy testów dymnych, bez ani jednej linijki zmiany w ich konfiguracjach, i tak samo
+działa `snapshotPathsFor`. Osobna flaga „wyłącz kopie" byłaby drugim sposobem na to samo.
+
 **Kto operuje przy montażu, jest jednym polem protokołu — nie kartą NPC (04.09).**
 `CharacterCyberwarePayload.surgeon` ma trzy warianty i tyle ich będzie: `none` (montaż bez Testu,
 czyli zachowanie sprzed tej sesji — „cena montażu cyborgizacji wliczona jest w ich cenę"), `gm`

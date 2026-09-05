@@ -4,6 +4,25 @@ Wyprowadzone z `POSTEP.md` 22.08.2026. Indeks jednolinijkowy jest w `POSTEP.md`;
 opisy z rozpoznaniem i obejściem. Czytaj wpis, zanim zaczniesz szukać błędu w obszarze, którego
 dotyczy.
 
+- **`file:./dev.db` rozwiązuje się względem katalogu roboczego, nie katalogu schematu.**
+  W repo leżą **dwa** pliki `dev.db`: żywy w `packages/server/` (1,1 MB) i pusty artefakt
+  migracji w `packages/server/prisma/` (0 B). Sterownik better-sqlite3 pod Prismą liczy ścieżkę
+  od `process.cwd()`, a dev serwer chodzi z `cwd = packages/server` — stąd ten pierwszy.
+  Skrypt, który sięgnie po drugi, zrobi kopię pustej bazy i nikt tego nie zauważy.
+  Jedno miejsce, które to liczy: `databaseFileFromUrl` w `snapshots.ts`.
+- **Polski znak w nagłówku HTTP to 500, nie brzydka nazwa pliku.** Karta „Bezpański" wysyłana
+  z `Content-Disposition: attachment; filename="character-bezpanski-…"` wywracała całą trasę
+  (`TypeError: Invalid character in header content`) — a objawem było „eksport nie działa dla
+  niektórych postaci". Nagłówek jest latin-1; nazwy z ogonkami idą przez `filename*=UTF-8''…`.
+- **`<input type="file">` DA SIĘ obsłużyć automatem** — inaczej niż checkbox Reacta z pułapki
+  niżej. `new DataTransfer()`, `dt.items.add(new File([tekst], 'plik.json'))`, `input.files =
+dt.files`, `input.dispatchEvent(new Event('change', { bubbles: true }))` — React czyta
+  `event.target.files` i widzi prawdziwy plik. Tak poszły oględziny importu 05.09.
+- **Rozszerzenie przeglądarki zaciemnia niektóre wyniki `javascript_tool`** — pola o nazwach
+  wyglądających na wrażliwe wracają jako `[BLOCKED: Sensitive key]`, a długie ciągi base64 jako
+  `[BLOCKED: Base64 encoded data]`. To nie jest błąd aplikacji: `tokens` w liczniku manifestu
+  i `content-disposition` wracały tak przy poprawnej odpowiedzi. Sprawdzaj takie rzeczy testem
+  po stronie serwera, nie przez konsolę karty.
 - **Bronią obszarową celuje się w PUSTE pole, a klik w żeton tylko go zaznacza.** 04.09 poszły
   cztery próby strzału z granatnika, zanim coś poleciało: klik w figurę przestawiał zaznaczenie
   na **nią** (u MG wolno zaznaczyć każdego), przez co uzbrojona broń schodziła z ręki, a kolejny
