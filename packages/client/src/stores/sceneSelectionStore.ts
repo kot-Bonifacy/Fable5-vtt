@@ -36,7 +36,16 @@ export const useSceneSelectionStore = create<SceneSelectionState>((set) => ({
   select: (ref) => {
     // Bramka między dwoma zaznaczeniami. `select(null)` nie rusza figury —
     // „przestałem trzymać ścianę" nie znaczy „przestałem sterować figurą".
-    if (ref) useSelectionStore.getState().select(null);
+    if (ref) {
+      // Od etapu 35 po drugiej stronie bramki stoją **dwa** zaznaczenia figur:
+      // sterowana jedna i grupa. `select(null)` zdejmuje pierwsze, ale grupy
+      // świadomie nie rusza (marsz kończy się tym samym wywołaniem), więc drugie
+      // trzeba zdjąć wprost — inaczej `Delete` miałby pod ręką i ścianę,
+      // i sześć figur, a to jest dokładnie ta niejednoznaczność, której umowa
+      // z 27k zabrania.
+      useSelectionStore.getState().select(null);
+      useSelectionStore.getState().clearGroup();
+    }
     set({ selected: ref });
   },
 
@@ -63,8 +72,15 @@ export function sameSceneObject(a: SceneObjectRef | null, b: SceneObjectRef | nu
  * każdym zakończonym marszu i przy każdym zaznaczeniu obiektu (patrz `select`
  * wyżej) — gdyby zerowało tutaj, zaznaczenie ściany kasowałoby się w tej samej
  * porcji zdarzeń, w której powstało.
+ *
+ * Od etapu 35 ta sama subskrypcja pilnuje **grupy**: ramka rzucona na figury
+ * zdejmuje zaznaczoną scenerię tak samo, jak zrobiłby to klik w jedną figurę.
+ * Warunek jest ten sam („pojawiło się coś nowego"), bo `clearGroup` leci przy
+ * każdym pojedynczym wyborze.
  */
 useSelectionStore.subscribe((state, previous) => {
-  if (state.tokenId === null || state.tokenId === previous.tokenId) return;
+  const tookToken = state.tokenId !== null && state.tokenId !== previous.tokenId;
+  const tookGroup = state.groupIds.length > 0 && state.groupIds !== previous.groupIds;
+  if (!tookToken && !tookGroup) return;
   useSceneSelectionStore.setState({ selected: null });
 });

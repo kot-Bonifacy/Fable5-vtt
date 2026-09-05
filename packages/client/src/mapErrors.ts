@@ -103,3 +103,23 @@ export function openingErrorText(code: string | undefined, kind: WallKind | unde
         : `Nie udało się poruszyć drzwiami: ${code ?? 'nieznany błąd'}.`;
   }
 }
+
+/**
+ * Odmowy operacji na figurach (etap 35): kopia, ukrycie, naklejka, kosz.
+ *
+ * Jedna funkcja na wszystkie, bo idą jednym zdarzeniem na figurę i wszystkie
+ * potrafią odmówić z tego samego powodu — a operacja grupowa mówi jednym
+ * zdaniem o całej paczce, nie sześcioma o każdej z osobna.
+ */
+export function tokenErrorText(code: string | undefined): string {
+  switch (code) {
+    case 'TOKEN_NOT_FOUND':
+      return 'Tej figury już nie ma na scenie.';
+    case 'FORBIDDEN':
+      return 'Tej operacji na figurach może dokonać wyłącznie MG.';
+    case 'NOT_CONNECTED':
+      return 'Brak połączenia z serwerem — nic nie zostało zmienione.';
+    default:
+      return `Nie udało się zmienić figury: ${code ?? 'nieznany błąd'}.`;
+  }
+}

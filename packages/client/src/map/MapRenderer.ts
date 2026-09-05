@@ -49,6 +49,7 @@ import {
   FOG_STROKE_MAX_POINTS,
   LIGHT_BRIGHT,
   LIGHT_DIM,
+  MAP_PING_TTL_MS,
   WALK_RADIUS_CELLS,
   clampTokenPosition,
   coverStanding,
@@ -408,6 +409,17 @@ const DRAG_CLICK_GRACE_MS = 250;
 const MARCH_MAX_FRAME_MS = 100;
 /** Dashes in the selection ring — coarse enough to read as dashed at table zoom. */
 const SELECT_RING_DASHES = 12;
+/**
+ * Barwa zaznaczenia grupowego i ramki, którą się je bierze (etap 35).
+ *
+ * Niebieska, bo cztery kolory na figurze są już zajęte: biel to „prowadzę tę
+ * figurę", bursztyn to tura i uchwyt, zieleń i czerwień to metry ruchu. Ta sama
+ * barwa dla obwódki i dla ramki jest celowa — ramka mówi „to zaraz będzie
+ * zaznaczone", więc mówi to kolorem zaznaczenia.
+ */
+const GROUP_RING_COLOR = 0x60a5fa;
+/** Barwa pingu — cyjan, którego nie nosi na mapie nic innego. */
+const PING_COLOR = 0x22d3ee;
 /**
  * How fast a token walks a planned route, in metres of ground per second
  * (stage 16e, chosen by the GM). A full CP RED turn of a MOVE 6 character is
@@ -781,6 +793,24 @@ export class MapRenderer {
    * z nowym powodem, bo tamten mówi o **sterowaniu**, a to jest jego brak.
    */
   onTokenPreview: ((tokenId: string) => void) | null = null;
+  /**
+   * Ramka zamknięta na pustym tle (etap 35) — lista figur, które w niej stanęły.
+   *
+   * Renderer podaje **wyłącznie te, którymi ten widz może sterować**: ma pod
+   * ręką `movableTokens`, a wołający nie. Stąd „gracz z ramką na całą mapę
+   * dostaje pod kontrolę wyłącznie swoje figury" jest zdaniem o tej jednej
+   * linijce filtra, a nie o sześciu sprawdzeniach rozsypanych po operacjach.
+   */
+  onGroupSelect: ((tokenIds: string[]) => void) | null = null;
+  /** `Shift`+klik w figurę: dołóż ją do zaznaczenia albo odejmij (etap 35). */
+  onGroupToggle: ((tokenId: string) => void) | null = null;
+  /**
+   * Ping w to miejsce (etap 35). `pull` znaczy „i przyciągnij tam widok" —
+   * renderer o uprawnieniach nie wie nic, przekazuje sam gest.
+   */
+  onPing: ((x: number, y: number, pull: boolean) => void) | null = null;
+  /** Alt+przeciągnięcie figury: postaw jej kopię tam, gdzie ją upuszczono. */
+  onTokenDuplicate: ((tokenId: string, x: number, y: number) => void) | null = null;
   /** Something worth a line on the chat happened to a march („marsz przerwany…"). */
   onWalkNote: ((text: string) => void) | null = null;
   /** A march began (token id) or ended (null) — the caller watches for interruptions. */
@@ -1171,6 +1201,13 @@ export class MapRenderer {
       this.toolSpentThisClick
     );
   }
+  /**
+   * Czy kursor niesie teraz `Alt`, czyli czy klik w podłogę byłby pingiem.
+   *
+   * Wyłącznie po to, żeby mapa nie rysowała trasy marszu, której ten klik nie
+   * wykona — ping sam z siebie nie potrzebuje żadnego stanu.
+   */
+  private pingArmed = false;
   /** Ticker phase for flickering lamps — renderer-side, never a network event. */
   private flickerPhase = 0;
   private hasFlicker = false;
@@ -1234,6 +1271,61 @@ export class MapRenderer {
    * the route already get, for the same reason.
    */
   private readonly selectGraphics = new Graphics();
+  /**
+   * Zaznaczenie wielu figur i ramka, którą się je bierze (etap 35).
+   *
+   * Osobne `Graphics` obok pierścienia sterowanej figury, bo to są dwie różne
+   * rzeczy naraz: jedna figura jest **prowadzona** (biały pierścień z gałką
+   * obrotu), a sześć jest **zaznaczonych** (niebieskie obwódki). Sterowana
+   * figura należy do grupy, więc na niej świecą obie — i tak ma być, bo
+   * kliknięcie w podłogę wyśle w drogę właśnie ją.
+   */
+  private readonly groupGraphics = new Graphics();
+  /** Figury zaznaczone grupowo — lustro `selectionStore.groupIds`. */
+  private groupTokenIds: string[] = [];
+  /** Ciągnięta ramka w pikselach sceny; null, gdy nikt nie ciągnie. */
+  private marquee: { start: ScenePoint; end: ScenePoint } | null = null;
+  /**
+   * Czy ruch grupowy jest w tej chwili dozwolony (etap 35, rozstrzygnięcie MG).
+   *
+   * Poza walką tak, **w walce nie**: budżet metrów z 14c jest per figura, więc
+   * grupowe przeciągnięcie byłoby jedyną drogą omijającą ekonomię ruchu. Pyta
+   * o to `MapArea`, bo to ona wie, czy walka trwa — renderer zna tylko odpowiedź.
+   */
+  private groupDragAllowed = true;
+  /**
+   * Reszta grupy jadąca za przeciąganą figurą: węzeł i jego przesunięcie
+   * względem niej w chwili chwytu. Null, gdy jedzie sama.
+   */
+  private groupDrag: { node: TokenNode; dx: number; dy: number }[] | null = null;
+  /**
+   * Alt+przeciągnięcie: gest, który zamiast przesunąć figurę, postawi jej kopię.
+   *
+   * Własny stan, a nie flaga w `drag`, i to jest istota rzeczy: przy klonowaniu
+   * **oryginał się nie rusza**. Gdyby gest szedł zwykłą drogą przeciągania, do
+   * serwera poleciałaby seria `token:move` figury, która ma stać w miejscu —
+   * a kopia i tak powstałaby dopiero na puszczeniu przycisku.
+   */
+  private cloneDrag: {
+    node: TokenNode;
+    grabDx: number;
+    grabDy: number;
+    startGlobalX: number;
+    startGlobalY: number;
+    moved: boolean;
+    at: ScenePoint;
+  } | null = null;
+  /**
+   * Pingi na mapie (etap 35) — kółka gasnące same z siebie.
+   *
+   * Trzymane w rendererze, a nie w store: ping niczego nie renderuje poza sobą
+   * i nie przeżywa dwóch sekund, więc każdy subskrybent zustanda przeliczałby
+   * drzewo komponentów za rzecz, która już się stała (ta sama umowa, co przy
+   * efektach walki z 27i).
+   */
+  private readonly pingLayer = new Container();
+  private readonly pings: { node: Container; ring: Graphics; x: number; y: number; at: number }[] =
+    [];
   /**
    * Does the selected figure have a weapon in hand (stage 16f)?
    *
@@ -1402,8 +1494,16 @@ export class MapRenderer {
     // nie świeci naraz (zaznaczenia wykluczają się wzajemnie), ale kolejność
     // ma znaczenie w chwili przełączenia.
     this.overlayLayer.addChild(this.sceneSelectGraphics);
+    // Obwódki grupy pod pierścieniem sterowanej figury: na tej jednej, która
+    // jest i prowadzona, i zaznaczona, biały pierścień ma być na wierzchu.
+    this.overlayLayer.addChild(this.groupGraphics);
     this.overlayLayer.addChild(this.selectGraphics);
     this.overlayLayer.addChild(this.aimGraphics);
+    // Ping ma być widoczny nad wszystkim, po to się go wysyła. Czysto malarski,
+    // więc `eventMode = 'none'` — pułapka z 27i: pełnoekranowa warstwa bez tego
+    // staje między kursorem a figurami i psuje trafianie w żetony.
+    this.pingLayer.eventMode = 'none';
+    this.overlayLayer.addChild(this.pingLayer);
     // The shaded floor goes under the route and the trail: it is the ground,
     // and the two green lines are things drawn on it.
     this.overlayLayer.addChild(this.reachGraphics);
@@ -1459,6 +1559,7 @@ export class MapRenderer {
     this.app.ticker.add(this.tickTrail);
     this.app.ticker.add(this.tickTurn);
     this.app.ticker.add(this.tickFx);
+    this.app.ticker.add(this.tickPing);
 
     /**
      * What one left click on the map means — the whole order of precedence in
@@ -1494,6 +1595,19 @@ export class MapRenderer {
       // The release of a drag is not an order to walk (see `dragEndedAt`).
       if (performance.now() - this.dragEndedAt < DRAG_CLICK_GRACE_MS) return;
       const pointer = event.event as FederatedPointerEvent;
+      // Ping (etap 35) przed wszystkim, co klik w podłogę znaczył do tej pory.
+      // `Alt` był na pustym polu wolny: znaczy coś **na figurze** („to jest cel,
+      // nie moja następna figura", 16f), a tam ten klik i tak nie dochodzi.
+      // `Alt+Shift` u MG dokłada przyciągnięcie widoku; u gracza serwer zetnie
+      // je do zwykłego pingu, więc gest nie wywala się, tylko robi mniej.
+      if (pointer.altKey === true) {
+        this.onPing?.(
+          Math.round(event.world.x),
+          Math.round(event.world.y),
+          pointer.shiftKey === true,
+        );
+        return;
+      }
       if (pointer.shiftKey === true) {
         this.addWalkWaypoint(event.world.x, event.world.y);
         return;
@@ -1616,7 +1730,13 @@ export class MapRenderer {
       if (!seen.has(id)) {
         if (this.drag?.node === node) this.endDrag(false);
         if (this.march?.node === node) this.finishMarch(null, false);
+        if (this.cloneDrag?.node === node) this.onCloneEnd();
         if (this.selectedTokenId === id) this.setSelection(null, 'gone');
+        // Figura, której już nie ma, wypada też z zaznaczenia grupowego —
+        // inaczej operacja grupowa próbowałaby ruszyć nieistniejący żeton.
+        if (this.groupTokenIds.includes(id)) {
+          this.groupTokenIds = this.groupTokenIds.filter((entry) => entry !== id);
+        }
         if (this.aimTokenId === id) this.clearAim();
         this.tokenNodes.delete(id);
         this.movableTokens.delete(id);
@@ -1626,6 +1746,7 @@ export class MapRenderer {
     // The ring and the reticle live on the overlay, so they do not travel with
     // the figure — every push that can move one has to redraw them.
     this.drawSelectionRing();
+    this.drawGroupRings();
     // Obrys zaznaczonej scenerii ma stałą grubość na ekranie, jak pierścień
     // figury nad nim (27k).
     this.drawSceneSelectOutline();
@@ -1909,6 +2030,17 @@ export class MapRenderer {
       // „narysuj obok". Rozstrzygnięcie MG z 24.08.
       if (this.grabSceneHandle(point)) return;
 
+      // Ramka zaznaczenia (etap 35). Przed wszystkimi narzędziami rysowania,
+      // ale **po** uchwytach: `Shift` na pustym tle jest wolny (panorama zostaje
+      // na gołym lewym przycisku — rozstrzygnięcie MG z 05.09), a `Shift`+klik
+      // bez przeciągnięcia dalej dokłada załamanie trasy marszu, bo `clicked`
+      // nie pada po geście, który przekroczył próg przesunięcia.
+      if (!this.mapToolArmed && event.shiftKey && !isTokenTarget(event.target)) {
+        this.marquee = { start: point, end: { ...point } };
+        viewport.plugins.pause('drag');
+        this.drawGroupRings();
+        return;
+      }
       if (this.fogBrush.armed) {
         if (this.fogBrush.shape === 'brush') {
           this.fogStroke = [point];
@@ -2066,6 +2198,12 @@ export class MapRenderer {
       // The route follows the cursor before any tool gets a say: it is not a
       // gesture, it is what the map looks like while a figure is selected, and
       // the method itself stands down when a tool is armed.
+      //
+      // …a od 35 stoi też pod `Alt`, bo ten klawisz zabrał temu kliknięciu
+      // znaczenie: z `Alt` klik w podłogę pinguje, a nie wysyła figurę w drogę.
+      // Ślady butów obiecywałyby marsz, którego ten gest nie zrobi (znalezione
+      // przy oględzinach 05.09).
+      this.pingArmed = event.altKey === true;
       this.trackWalkHover(point);
       // …and the explosion template follows it in the same breath, for the same
       // reason: with a grenade in hand it *is* what the map looks like.
@@ -2143,6 +2281,12 @@ export class MapRenderer {
         return;
       }
 
+      if (this.marquee) {
+        this.marquee.end = point;
+        this.drawGroupRings();
+        return;
+      }
+
       const points = this.rulerPoints;
       if (!points) return;
       points[points.length - 1] = point;
@@ -2150,6 +2294,25 @@ export class MapRenderer {
     });
 
     const end = () => {
+      if (this.marquee) {
+        const marquee = this.marquee;
+        const dragged =
+          Math.abs(marquee.end.x - marquee.start.x) >= DRAG_THRESHOLD_PX ||
+          Math.abs(marquee.end.y - marquee.start.y) >= DRAG_THRESHOLD_PX;
+        const picked = dragged ? this.tokensInMarquee() : null;
+        this.marquee = null;
+        this.viewport?.plugins.resume('drag');
+        this.drawGroupRings();
+        // Gest, który nie ruszył się z miejsca, **nie jest ramką** — to zwykły
+        // `Shift`+klik, czyli załamanie trasy marszu z 16e, i `clicked` zaraz
+        // je dołoży. Bez tego progu każde takie kliknięcie zdejmowałoby przy
+        // okazji zaznaczenie grupowe.
+        if (picked === null) return;
+        // Pusta ramka też coś znaczy: „nie ci" — zdejmuje zaznaczenie, zamiast
+        // zostawiać pod spodem poprzednie sześć figur.
+        this.onGroupSelect?.(picked);
+        return;
+      }
       // Uchwyt puszczony (27l) — przed wszystkimi gestami rysowania, bo żaden
       // z nich nie mógł się zacząć: chwyt uchwytu kończy `pointerdown`.
       if (this.sceneDrag) {
@@ -2408,6 +2571,30 @@ export class MapRenderer {
       if (reason === 'dismiss' || reason === 'scene') this.onSelectionChange?.(tokenId, reason);
       return;
     }
+    this.applySelection(tokenId);
+    this.onSelectionChange?.(tokenId, reason);
+  }
+
+  /**
+   * Wyrównuje pierścień do figury, którą store **już** uznał za prowadzoną
+   * (etap 35) — bez zgłaszania zmiany z powrotem.
+   *
+   * Potrzebne dokładnie w jednym miejscu i z jednego powodu: zaznaczenie
+   * grupowe wybiera kotwicę **w store**, bo tylko on wie, co ostatecznie
+   * wyszło z `Shift`+kliknięcia. Gdyby wyrównanie szło przez `setSelection`,
+   * odesłałoby `onSelectionChange` → `select(anchor)` → a ten świadomie zeruje
+   * grupę (patrz `selectionStore`), czyli ramka kasowałaby sama siebie.
+   *
+   * Znalezione przy oględzinach 05.09: po ramce lewy panel opisywał kotwicę,
+   * a mapa nie miała pierścienia i klik w podłogę nikogo nie wysyłał w drogę.
+   */
+  syncSteering(tokenId: string | null): void {
+    if (this.destroyed || this.selectedTokenId === tokenId) return;
+    this.applySelection(tokenId);
+  }
+
+  /** Wspólny środek obu dróg: co się dzieje z mapą, gdy zmienia się prowadzona figura. */
+  private applySelection(tokenId: string | null): void {
     this.selectedTokenId = tokenId;
     this.walkWaypoints = [];
     this.walkHover = null;
@@ -2418,8 +2605,178 @@ export class MapRenderer {
     this.drawWalkPreview();
     this.updateReach();
     this.applyMapCursor();
-    this.onSelectionChange?.(tokenId, reason);
   }
+
+  /**
+   * Które figury są zaznaczone grupowo (etap 35) — lustro `selectionStore`.
+   *
+   * Renderer tego stanu **nie tworzy**: ramka i `Shift`+klik zgłaszają się
+   * callbackiem, store rozstrzyga, a tutaj wraca gotowa lista. Ten sam układ,
+   * co przy pojedynczym zaznaczeniu — dzięki niemu `Ctrl+A` z klawiatury i
+   * ramka z myszy dochodzą do tego samego miejsca jedną drogą.
+   */
+  setGroupSelection(tokenIds: readonly string[]): void {
+    if (this.destroyed) return;
+    this.groupTokenIds = [...tokenIds];
+    this.drawGroupRings();
+  }
+
+  /**
+   * `Ctrl+A`: bierze wszystkie figury, którymi ten widz może sterować.
+   *
+   * Ten sam filtr, którym sieje ramka (`movableTokens`), i to jest cały powód,
+   * dla którego mieszka tutaj, a nie w `MapArea`: dwie listy „co wolno wziąć"
+   * rozjechałyby się przy pierwszej zmianie reguł własności.
+   */
+  selectAllSteerable(): void {
+    if (this.destroyed) return;
+    const picked: string[] = [];
+    for (const [id, node] of this.tokenNodes) {
+      if (node.destroyed) continue;
+      if (this.movableTokens.get(id) === false) continue;
+      picked.push(id);
+    }
+    this.onGroupSelect?.(picked);
+  }
+
+  /** Czy wolno teraz ciągnąć całą grupę naraz (poza walką tak, w walce nie). */
+  setGroupDragAllowed(allowed: boolean): void {
+    this.groupDragAllowed = allowed;
+  }
+
+  /**
+   * Obwódki zaznaczonych figur i ramka, którą się je bierze.
+   *
+   * Ciągła i niebieska, w odróżnieniu od białej przerywanej wokół figury
+   * **prowadzonej**: na tej jednej, która jest jednym i drugim, obie muszą dać
+   * się odczytać naraz — dokładnie tak, jak pierścień właściciela i bursztynowa
+   * poświata tury czytają się obok siebie od 27h.
+   */
+  private drawGroupRings(): void {
+    this.groupGraphics.clear();
+    const scene = this.scene;
+    if (!scene) return;
+    const k = this.overlayScale();
+    for (const id of this.groupTokenIds) {
+      const node = this.tokenNodes.get(id);
+      if (!node || node.destroyed) continue;
+      const half = (node.token.size * scene.grid.sizePx) / 2;
+      this.groupGraphics
+        .circle(node.x + half, node.y + half, half + 8 * k)
+        .stroke({ color: GROUP_RING_COLOR, width: 3 * k, alpha: 0.9 });
+    }
+    const marquee = this.marquee;
+    if (!marquee) return;
+    const x = Math.min(marquee.start.x, marquee.end.x);
+    const y = Math.min(marquee.start.y, marquee.end.y);
+    const width = Math.abs(marquee.end.x - marquee.start.x);
+    const height = Math.abs(marquee.end.y - marquee.start.y);
+    this.groupGraphics
+      .rect(x, y, width, height)
+      .fill({ color: GROUP_RING_COLOR, alpha: 0.12 })
+      .rect(x, y, width, height)
+      .stroke({ color: GROUP_RING_COLOR, width: 2 * k, alpha: 0.9 });
+  }
+
+  /** Figury, które stanęły w ramce — tylko te, którymi ten widz może sterować. */
+  private tokensInMarquee(): string[] {
+    const scene = this.scene;
+    const marquee = this.marquee;
+    if (!scene || !marquee) return [];
+    const left = Math.min(marquee.start.x, marquee.end.x);
+    const right = Math.max(marquee.start.x, marquee.end.x);
+    const top = Math.min(marquee.start.y, marquee.end.y);
+    const bottom = Math.max(marquee.start.y, marquee.end.y);
+    const picked: string[] = [];
+    for (const [id, node] of this.tokenNodes) {
+      if (node.destroyed) continue;
+      // Filtr, na którym stoi całe „gracz dostaje pod kontrolę wyłącznie swoje
+      // figury": ramka nie bierze niczego, czego ten widz i tak nie ruszy.
+      if (this.movableTokens.get(id) === false) continue;
+      const extent = node.token.size * scene.grid.sizePx;
+      // Przecięcie, nie zawieranie: ganger dwa razy większy od ramki ma się
+      // złapać, a przy zoomie stołu trafienie w całą figurę bywa trudne.
+      if (node.x > right || node.x + extent < left) continue;
+      if (node.y > bottom || node.y + extent < top) continue;
+      picked.push(id);
+    }
+    return picked;
+  }
+
+  /* ── Ping (etap 35) ──────────────────────────────────────────────────── */
+
+  /**
+   * Kółko z imieniem w tym miejscu, gasnące samo po `MAP_PING_TTL_MS`.
+   *
+   * Rysowane w pikselach ekranu (`overlayScale`), jak każda inna nakładka: przy
+   * zoomie stołu ping o światowym promieniu byłby kropką, a na przybliżonej
+   * mapie zasłoniłby pół pokoju.
+   */
+  addPing(x: number, y: number, userName: string): void {
+    if (this.destroyed || !this.scene) return;
+    const node = new Container();
+    const ring = new Graphics();
+    node.addChild(ring);
+    const label = new Text({
+      text: userName,
+      style: {
+        fontFamily: 'system-ui, sans-serif',
+        fontSize: 16,
+        fill: PING_COLOR,
+        stroke: { color: 0x0b1220, width: 4 },
+      },
+    });
+    label.anchor.set(0.5, 1);
+    node.addChild(label);
+    node.position.set(x, y);
+    this.pingLayer.addChild(node);
+    this.pings.push({ node, ring, x, y, at: performance.now() });
+  }
+
+  /**
+   * Przesuwa widok na ten punkt — ping MG w wariancie „przyciągnij widok".
+   *
+   * Bez animacji i bez zmiany zoomu: to jest gest „popatrz tutaj", a nie
+   * podróż. Kto oglądał inny róg mapy, ma zobaczyć wskazane miejsce w tej samej
+   * skali, w której pracował.
+   */
+  pullViewTo(x: number, y: number): void {
+    if (this.destroyed) return;
+    this.viewport?.moveCenter(x, y);
+    this.refreshOverlays();
+  }
+
+  private readonly tickPing = (): void => {
+    if (this.pings.length === 0) return;
+    const now = performance.now();
+    const k = this.overlayScale();
+    for (let index = this.pings.length - 1; index >= 0; index--) {
+      const ping = this.pings[index]!;
+      const progress = (now - ping.at) / MAP_PING_TTL_MS;
+      if (progress >= 1) {
+        ping.node.destroy({ children: true });
+        this.pings.splice(index, 1);
+        continue;
+      }
+      // Trzy fale zamiast jednej: jedno kółko na dwusekundowym zaniku ginie
+      // w tle mapy, trzy rozchodzące się czyta się jak puknięcie w stół.
+      ping.ring.clear();
+      for (let wave = 0; wave < 3; wave++) {
+        const phase = (progress * 3 - wave) % 3;
+        if (phase < 0 || phase > 1) continue;
+        ping.ring
+          .circle(0, 0, (10 + phase * 34) * k)
+          .stroke({ color: PING_COLOR, width: 3 * k, alpha: (1 - phase) * (1 - progress) });
+      }
+      ping.node.scale.set(1);
+      const label = ping.node.children[1] as Text | undefined;
+      if (label) {
+        label.scale.set(k);
+        label.position.set(0, -18 * k);
+        label.alpha = 1 - progress;
+      }
+    }
+  };
 
   /**
    * Draws the selection ring around the steered figure, in screen-constant
@@ -3499,6 +3856,8 @@ export class MapRenderer {
       // route to wherever the hand happened to be.
       this.rotating !== null ||
       this.rulerMode ||
+      // `Alt` w dłoni: ten klik jest pingiem, nie marszem (etap 35).
+      this.pingArmed ||
       // A charge in hand owns the click: the next one says where it lands, not
       // where the figure walks (stage 16d). A cone is *not* such a case — it is
       // an ordinary shot at a figure that happens to spray (16g) — so only the
@@ -5449,6 +5808,7 @@ export class MapRenderer {
     this.setRulers(this.lastRulers);
     this.drawMoveOverlay();
     this.drawSelectionRing();
+    this.drawGroupRings();
     this.drawAimReticle();
     this.drawWalkPreview();
     this.drawReach();
@@ -5496,11 +5856,25 @@ export class MapRenderer {
 
   private clearTokens(): void {
     if (this.drag) this.endDrag(false);
+    if (this.cloneDrag) this.onCloneEnd();
     this.clearWalkState();
     for (const node of this.tokenNodes.values()) node.destroy({ children: true });
     this.tokenNodes.clear();
     this.movableTokens.clear();
     this.tokenLayer.removeChildren();
+    // Zaznaczenie grupowe i pingi należą do sceny, którą właśnie zdjęto: obwódki
+    // wskazywałyby figury, których nie ma, a ping — miejsce na innej mapie.
+    this.groupTokenIds = [];
+    this.groupDrag = null;
+    this.marquee = null;
+    this.drawGroupRings();
+    this.clearPings();
+  }
+
+  /** Zdejmuje wszystkie kółka pingów — zmiana sceny, zamknięcie mapy. */
+  private clearPings(): void {
+    for (const ping of this.pings) ping.node.destroy({ children: true });
+    this.pings.length = 0;
   }
 
   private snapScene(): TokenSnapScene | null {
@@ -5542,6 +5916,39 @@ export class MapRenderer {
       // token underneath and drag it — the two gestures ran at once, because
       // Pixi bubbles the token's event up to the viewport as well.
       if (this.mapToolArmed) return;
+      // `Shift`+klik w figurę: dokłada ją do zaznaczenia albo odejmuje (etap 35).
+      // Przed chwytem, bo `Shift` z przeciągnięciem po pustym tle jest ramką —
+      // ta sama litera klawisza znaczy w obu miejscach „to samo, i jeszcze to".
+      // `stopPropagation`, żeby ten sam gest nie zaczął jednocześnie ramki na
+      // widoku pod spodem.
+      if (event.shiftKey === true && this.movableTokens.get(node.tokenId) !== false) {
+        event.stopPropagation();
+        this.onGroupToggle?.(node.tokenId);
+        return;
+      }
+      // Alt+przeciągnięcie: kopia figury tam, gdzie ją upuszczono (etap 35).
+      // Dochodzi tu wyłącznie wtedy, gdy `aimTargetFor` wyżej nie uznał figury
+      // za cel — a uznaje ją tylko przy uzbrojonej broni. Bez broni w ręku `Alt`
+      // na figurze był wolny.
+      if (event.altKey === true && this.viewerIsGm && this.viewport) {
+        const world = this.viewport.toWorld(event.global.x, event.global.y);
+        event.stopPropagation();
+        this.cloneDrag = {
+          node,
+          grabDx: world.x - node.x,
+          grabDy: world.y - node.y,
+          startGlobalX: event.global.x,
+          startGlobalY: event.global.y,
+          moved: false,
+          at: { x: node.x, y: node.y },
+        };
+        this.viewport.plugins.pause('drag');
+        this.app.stage.eventMode = 'static';
+        this.app.stage.on('pointermove', this.onCloneMove);
+        this.app.stage.on('pointerup', this.onCloneEnd);
+        this.app.stage.on('pointerupoutside', this.onCloneEnd);
+        return;
+      }
       // The rotation knob (stage 27j) sits outside its figure's ring, which
       // means it regularly lands *on top of another figure* — two people
       // standing in adjacent squares is the normal case, not the odd one. Pixi
@@ -5593,6 +6000,23 @@ export class MapRenderer {
         // enough that a wobbling hand is not billed for the wobble.
         sampleGap: Math.max(4, (this.scene?.grid.sizePx ?? 100) / 4),
       };
+      // Ruch grupowy (etap 35): reszta zaznaczonych jedzie za chwyconą figurą,
+      // każda ze swoim przesunięciem. Zapamiętane **w chwili chwytu**, bo tylko
+      // wtedy szyk grupy jest tym, co widz miał na ekranie.
+      //
+      // Warunek `groupDragAllowed` to rozstrzygnięcie MG z 05.09: w walce grupowo
+      // się nie chodzi, bo budżet metrów z 14c jest per figura i grupowy chwyt
+      // byłby jedyną drogą, która go nie widzi.
+      this.groupDrag =
+        this.groupDragAllowed &&
+        this.groupTokenIds.length > 1 &&
+        this.groupTokenIds.includes(node.tokenId)
+          ? this.groupTokenIds
+              .filter((id) => id !== node.tokenId)
+              .map((id) => this.tokenNodes.get(id))
+              .filter((other): other is TokenNode => other !== undefined && !other.destroyed)
+              .map((other) => ({ node: other, dx: other.x - node.x, dy: other.y - node.y }))
+          : null;
       // The viewport must not pan while a token is being dragged.
       this.viewport.plugins.pause('drag');
       this.app.stage.eventMode = 'static';
@@ -5601,6 +6025,63 @@ export class MapRenderer {
       this.app.stage.on('pointerupoutside', this.onDragEnd);
     });
   }
+
+  /**
+   * Alt+przeciągnięcie w toku: duch pokazuje, gdzie stanie kopia (etap 35).
+   *
+   * **Oryginał się nie rusza** — i to jest cała różnica względem zwykłego
+   * chwytu. Za kursorem idzie sam obrys (ten sam `dragGhost`, który przy
+   * przeciąganiu pokazuje pole docelowe), więc gest widać, a do serwera nie
+   * leci ani jedna klatka ruchu figury, która ma stać w miejscu.
+   */
+  private readonly onCloneMove = (event: FederatedPointerEvent): void => {
+    const clone = this.cloneDrag;
+    const viewport = this.viewport;
+    const snapScene = this.snapScene();
+    if (!clone || !viewport || !snapScene) return;
+    if (!clone.moved) {
+      const dx = event.global.x - clone.startGlobalX;
+      const dy = event.global.y - clone.startGlobalY;
+      if (Math.hypot(dx, dy) < DRAG_THRESHOLD_PX) return;
+      clone.moved = true;
+    }
+    const world = viewport.toWorld(event.global.x, event.global.y);
+    const token = clone.node.token;
+    const pos = clampTokenPosition(
+      world.x - clone.grabDx,
+      world.y - clone.grabDy,
+      token.size,
+      snapScene,
+    );
+    clone.at = pos;
+    const landing =
+      snapScene.gridMode === 'grid' ? snapTokenPosition(pos.x, pos.y, token.size, snapScene) : pos;
+    const extent = token.size * snapScene.grid.sizePx;
+    this.dragGhost
+      .clear()
+      .rect(landing.x, landing.y, extent, extent)
+      .stroke({ color: GROUP_RING_COLOR, width: 2, alpha: 0.95 })
+      .fill({ color: GROUP_RING_COLOR, alpha: 0.15 });
+  };
+
+  private readonly onCloneEnd = (): void => {
+    const clone = this.cloneDrag;
+    this.cloneDrag = null;
+    this.app.stage.off('pointermove', this.onCloneMove);
+    this.app.stage.off('pointerup', this.onCloneEnd);
+    this.app.stage.off('pointerupoutside', this.onCloneEnd);
+    this.viewport?.plugins.resume('drag');
+    this.dragGhost.clear();
+    if (!clone) return;
+    // Gest bez ruchu **nie klonuje**. Alt+klik w figurę bez uzbrojonej broni nie
+    // znaczył dotąd nic i ma nie zacząć znaczyć „postaw drugiego gangera" —
+    // przypadkowa kopia jest tańsza do zrobienia niż do zauważenia.
+    if (!clone.moved || clone.node.destroyed) return;
+    this.onTokenDuplicate?.(clone.node.tokenId, Math.round(clone.at.x), Math.round(clone.at.y));
+    // Ślad po geście schodzi razem z nim: `dragEndedAt` pilnuje, żeby puszczenie
+    // przycisku nie zostało odczytane jako rozkaz marszu (patrz `clicked`).
+    this.dragEndedAt = performance.now();
+  };
 
   private readonly onDragMove = (event: FederatedPointerEvent): void => {
     const drag = this.drag;
@@ -5650,7 +6131,38 @@ export class MapRenderer {
     }
 
     this.onTokenMove?.(token.id, pos.x, pos.y, false);
+    this.moveGroupWith(drag.node, snapScene, false);
   };
+
+  /**
+   * Przesuwa resztę zaznaczonych figur o tyle, o ile przesunęła się chwycona.
+   *
+   * Każda jest przycinana do sceny **osobno** (`clampTokenPosition`), więc grupa
+   * przy krawędzi mapy zbija się, zamiast wyjeżdżać poza planszę. O to, czy
+   * figurze wolno tam stanąć, pyta serwer — po jednym `token:move` na figurę,
+   * dokładnie tak, jakby przesunięto je pojedynczo.
+   */
+  private moveGroupWith(anchor: TokenNode, snapScene: TokenSnapScene, final: boolean): void {
+    const group = this.groupDrag;
+    if (!group) return;
+    for (const member of group) {
+      if (member.node.destroyed) continue;
+      const free = clampTokenPosition(
+        anchor.x + member.dx,
+        anchor.y + member.dy,
+        member.node.token.size,
+        snapScene,
+      );
+      // Na upuszczeniu przyciągamy do kratki od razu, żeby figura nie skakała
+      // dopiero na echo z serwera — tak samo jak robi to chwycona figura.
+      const pos = final
+        ? snapTokenPosition(free.x, free.y, member.node.token.size, snapScene)
+        : free;
+      member.node.position.set(pos.x, pos.y);
+      this.onTokenMove?.(member.node.tokenId, pos.x, pos.y, final);
+    }
+    this.drawGroupRings();
+  }
 
   /**
    * Keeps the drag's route without keeping every pointer event.
@@ -5683,8 +6195,10 @@ export class MapRenderer {
   /** Tears down drag state; `commit` sends the snapped final position. */
   private endDrag(commit: boolean): void {
     const drag = this.drag;
+    const group = this.groupDrag;
     if (!drag) return;
     this.drag = null;
+    this.groupDrag = null;
     this.app.stage.off('pointermove', this.onDragMove);
     this.app.stage.off('pointerup', this.onDragEnd);
     this.app.stage.off('pointerupoutside', this.onDragEnd);
@@ -5712,6 +6226,14 @@ export class MapRenderer {
     // The route travels with the drop: the first point is where the token
     // stood, and the server replaces both ends with its own numbers anyway.
     if (commit) this.onTokenMove?.(token.id, pos.x, pos.y, true, drag.path.slice(1));
+    // Reszta grupy ląduje **po** chwyconej figurze i bez trasy: idą obok siebie,
+    // a nie każda swoją drogą, więc trasa chwyconej jest jedyną, która cokolwiek
+    // znaczy. Serwer i tak przycina każdą osobno.
+    if (commit && group && snapScene) {
+      this.groupDrag = group;
+      this.moveGroupWith(drag.node, snapScene, true);
+      this.groupDrag = null;
+    }
   }
 
   /**

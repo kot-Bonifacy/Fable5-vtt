@@ -985,3 +985,73 @@ margines zjada wolną przestrzeń i ściska guzik do minimum). Poza tymi dwoma m
 zostaje jednolinijkową siatką: rejestr awansów (`.cp-advance`) stoi w polu `cp-span2` i ma dość
 miejsca. **Guzik w `.awareness-steps` ma `min-width: 1.6rem`, nie `width`** — ± mają być
 kwadratowe i równe, ale w tym samym rządku siedzą „Wezwij", „Targuj" i „Podnieś".
+
+**Zaznaczenie figur ma dwa wskaźniki, a bramka z 27k zamyka oba (05.09).**
+`selectionStore` trzymał do etapu 35 dwie rzeczy: `tokenId` („kto chodzi, gdy klikam podłogę")
+i `focusTokenId` („kogo opisuje lewa szyna"). Doszedł trzeci — `groupIds`, czyli zaznaczenie
+grupowe. Jest **prywatny jak tamte**: ramka to wskaźnik jednej przeglądarki, nie stan stołu,
+i nigdy nie jedzie po sieci. Trzy zdania, które trzeba znać, zanim się go dotknie:
+
+- **Trzyma wyłącznie figury, którymi ten widz może sterować.** Filtruje `MapRenderer`
+  (`tokensInMarquee`, `selectAllSteerable`), bo tylko on ma `movableTokens`; u MG przechodzi
+  wszystko. Na tej jednej linijce stoi całe „gracz z ramką na całą mapę dostaje pod kontrolę
+  wyłącznie swoje figury" — nie ma drugiego sprawdzenia w operacjach grupowych i nie ma go tam
+  potrzeby, bo każda z nich i tak idzie zwykłym zdarzeniem figury.
+- **Pojedynczy wybór zeruje grupę, ale `select(null)` jej nie rusza.** `select(null)` leci przy
+  **każdym** zakończonym marszu; gdyby zerował, marsz jednej figury z zaznaczonej szóstki
+  gubiłby pozostałe pięć. Zerowanie siedzi więc w gałęzi „wybrano figurę", nie na wejściu.
+- **Bramka wykluczająca ze scenerią (27k) ma teraz dwa wejścia.** `sceneSelectionStore.select`
+  woła `select(null)` **i** `clearGroup()`, a subskrypcja w drugą stronę reaguje i na nowe
+  `tokenId`, i na nowe `groupIds`. Bez obu połówek `Delete` miałby pod ręką ścianę i sześć
+  figur naraz — dokładnie tę niejednoznaczność, której umowa z 27k zabrania.
+
+**Kotwicę grupy wybiera store, a renderer wyrównuje się do niej `syncSteering` (05.09).**
+Przy pojedynczym wyborze źródłem jest **renderer**: `setSelection` ustawia pierścień i odsyła
+`onSelectionChange`, a store jest lustrem. Przy grupie jest odwrotnie — co ostatecznie wyszło
+z `Shift`+kliknięcia, wie tylko store, więc to on wyznacza kotwicę (pierwsza figura listy).
+Wyrównanie mapy nie może iść przez `setSelection`, bo tamto odesłałoby `onSelectionChange` →
+`select(anchor)` → a ten świadomie zeruje grupę: ramka kasowałaby sama siebie. Stąd
+`syncSteering(tokenId)` — ta sama robota bez zgłaszania zmiany z powrotem. Nowa droga, która
+ustala prowadzoną figurę **poza** rendererem, ma używać jej, a nie `setSelection`.
+
+**Ping jest gestem, nie stanem — i dlatego nie ma store'a (05.09).**
+`map:ping` (`realtime/ping.ts`) jest zbudowany na `ruler.ts` co do joty: bez zapisu w bazie, bez
+`seq`, bez powtórki przy resynchronizacji, do pokoju sceny i **z pominięciem nadawcy**
+(`socket.to`), bo pingujący rysuje kółko u siebie od razu. U klienta idzie przez moduł
+`map-ping.ts` — nie przez zustanda — z tego samego powodu, dla którego modułem jest `map-fx.ts`:
+nic tutaj nie przeżywa klatki, a subskrybent store'a przeliczałby drzewo komponentów za rzecz,
+która już się stała. `pull` („przyciągnij widok") przyznaje **wyłącznie serwer i wyłącznie MG**;
+prośba gracza nie jest odmową — ścina się do zwykłego pingu, żeby gest zrobił mniej, a nie padł.
+
+**Kopia figury to zdarzenie serwera, nie pętla `token:create` u klienta (05.09).**
+`token:duplicate` istnieje z trzech powodów naraz, i każdy z nich sam by wystarczył:
+numeracja liczy się **z całej sceny** (klient trzyma tylko figury, które wolno mu widzieć, więc
+kopia zrobiona z jego listy nazwałaby się tak samo jak ukryta figura MG); `combatProfile` jest
+kolumną, której klient nie dostaje w całości; a `characterId` **nie jedzie** — dwie figury na
+jednej karcie to dwa paski PW nad jednym zestawem punktów. Z karty bierze się jedno: **rozmiar**
+puli PW, żeby kopia figury związanej z NPC-em miała pasek tej samej wysokości. Kopia jest
+**świeżą figurą**: pełne PW, bez naklejek, ran i listy „boi się". Miejsce upuszczenia jedzie
+opcjonalnie (`x`, `y`) i jest życzeniem, nie rozkazem — `snapTokenPosition` przyciąga je do
+kratki i zawraca w granice sceny.
+
+**Nazwa kopii powstaje z rdzenia, nie z pełnej nazwy** — `nextTokenCopyName` w
+`shared/src/tokens.ts`. Ucinana jest wyłącznie **końcowa liczba oddzielona spacją** („Ganger 2"
+→ rdzeń „Ganger"), więc „MOX-7" i „Ganger 2.0" zostają w całości. Bierze **najniższą wolną**
+liczbę, nie „ostatnia + 1", żeby po skasowaniu „Gangera 2" numery nie rosły w nieskończoność.
+Przy limicie `TOKEN_NAME_MAX_LENGTH` przycinany jest **rdzeń**, nigdy numer: kopia bez numeru
+przestałaby być rozróżnialna, a o to w tym całym chodzi.
+
+**Operacja grupowa to pętla po zwykłych zdarzeniach figury (05.09).**
+`TokenGroupBar` nie ma ani jednego własnego zdarzenia poza `combat:add` (to bierze listę od
+etapu 14, bo kolejka inicjatywy jest jednym stanem i przepisanie jej sześć razy pod rząd byłoby
+sześcioma przetasowaniami). Reszta — ukrycie, naklejka, kosz, kopia — jedzie po jednym
+`token:update` / `token:delete` / `token:duplicate` na figurę, i **to jest cała ochrona
+uprawnień**: pętla dziedziczy odpowiedzi serwera zamiast powtarzać je u siebie. Przy jednej
+aktywnej sesji koszt sześciu zdarzeń zamiast jednego nie ma znaczenia (umowa o skali z
+`CLAUDE.md`). Odmowy mówią **jednym zdaniem o całej paczce** („nie udało się przy 2 z 6"),
+nie sześcioma o każdej figurze — inaczej jedna zerwana operacja zalewałaby czat.
+
+**Kosz grupowy pyta zawsze, także na poligonie.** `confirmDestructive` z 23.08 dotyczy
+obiektów sceny, które wracają `Ctrl+Z`; figury nie wracają — ich id noszą inicjatywa i runy
+Sieci. Dlatego `Delete` figur nadal nie dotyka (odstępstwo od Foundry zostaje w mocy), a jedyna
+droga do usunięcia paczki prowadzi przez guzik z pytaniem niosącym liczbę.

@@ -31,12 +31,15 @@ import { apiGet } from '../api.js';
 import {
   addToCombat,
   deleteToken,
+  duplicateToken,
   removeFromCombat,
   toggleTokenLight,
   setTokenFeared,
   updateToken,
 } from '../socket.js';
 import { useTokenStore } from '../stores/tokenStore.js';
+import { useChatStore } from '../stores/chatStore.js';
+import { tokenErrorText } from '../mapErrors.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useCombatStore } from '../stores/combatStore.js';
 import { useCompendiumStore } from '../stores/compendiumStore.js';
@@ -762,6 +765,13 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
     onClose();
   }
 
+  async function duplicate() {
+    if (!token) return;
+    const ack = await duplicateToken(token.id);
+    if (!ack.ok) useChatStore.getState().addNote(tokenErrorText(ack.error));
+    onClose();
+  }
+
   async function remove() {
     if (!token) return;
     if (!window.confirm(`Usunąć token „${token.name}”?`)) return;
@@ -863,6 +873,17 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
           ))}
         <button type="button" className="context-menu-item" onClick={() => setEditing(true)}>
           ✏️ Edytuj…
+        </button>
+        {/* Kopia figury (etap 35). Gestem robi to Alt+przeciągnięcie, ale gest
+            trzeba znać — a menu jest miejscem, w którym MG szuka wszystkiego,
+            co da się zrobić z tą jedną figurą. */}
+        <button
+          type="button"
+          className="context-menu-item"
+          title="Postaw obok kopię tej figury (Alt+przeciągnięcie robi to gestem)"
+          onClick={() => void duplicate()}
+        >
+          ⧉ Duplikuj
         </button>
         <button
           type="button"

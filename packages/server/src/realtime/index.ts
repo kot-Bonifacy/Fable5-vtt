@@ -4,7 +4,7 @@ import type { CampaignSummary, SessionUser } from '@vtt/shared';
 import { ROLE_GM, createServerHello } from '@vtt/shared';
 import type { AppContext } from '../context.js';
 import { SESSION_COOKIE, resolveSessionUser } from '../auth/sessions.js';
-import { defineEvent, registerEvents, type RealtimeDeps, type RealtimeEvent } from './registry.js';
+import { registerEvents, type RealtimeDeps, type RealtimeEvent } from './registry.js';
 import { RoomSequences, campaignRoom, gmRoom } from './state.js';
 import { broadcastPresence } from './presence.js';
 import { campaignActivateEvent, resolveSocketCampaign } from './campaigns.js';
@@ -22,6 +22,7 @@ import {
   tokenAssetDeleteEvent,
   tokenCreateEvent,
   tokenDeleteEvent,
+  tokenDuplicateEvent,
   tokenFacingEvent,
   tokenFearedEvent,
   tokenMoveEvent,
@@ -100,6 +101,7 @@ import {
   weaponReloadEvent,
 } from './attacks.js';
 import { rulerClearEvent, rulerUpdateEvent } from './ruler.js';
+import { mapPingEvent } from './ping.js';
 import { fogPaintEvent, fogResetEvent, fogUndoEvent, sceneVisibilityEvent } from './fog.js';
 import {
   openingToggleEvent,
@@ -221,16 +223,7 @@ declare module 'socket.io' {
   }
 }
 
-// Placeholder GM-only event: establishes the role-guard pattern (and is
-// covered by tests) until real GM actions arrive in stages 04+.
-const gmPingEvent = defineEvent({
-  name: 'gm:ping',
-  role: ROLE_GM,
-  handler: () => undefined,
-});
-
 const EVENTS: RealtimeEvent<never, unknown>[] = [
-  gmPingEvent,
   archiveListEvent,
   archiveSnapshotEvent,
   archiveCharacterImportEvent,
@@ -248,6 +241,7 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   tokenCreateEvent,
   tokenUpdateEvent,
   tokenDeleteEvent,
+  tokenDuplicateEvent,
   tokenAssetDeleteEvent,
   tokenMoveEvent,
   tokenFacingEvent,
@@ -325,6 +319,7 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   weaponClearJamEvent,
   weaponReloadEvent,
   rulerUpdateEvent,
+  mapPingEvent,
   rulerClearEvent,
   fogPaintEvent,
   fogResetEvent,

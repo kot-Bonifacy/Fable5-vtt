@@ -11,6 +11,7 @@ import type {
   TokenCombatProfile,
   TokenCreatePayload,
   TokenDeleteBroadcast,
+  TokenDuplicatePayload,
   TokenIdPayload,
   TokenMoveBroadcast,
   TokenMovePayload,
@@ -28,6 +29,7 @@ import {
   facingFromDelta,
   facingFromPath,
   isTokenInFog,
+  nextTokenCopyName,
   sanitizeFacing,
   tokenCentre,
   sanitizeTokenHp,
@@ -771,6 +773,104 @@ export const tokenCreateEvent = defineEvent<TokenCreatePayload, TokenView>({
     const linked = character ? toLinkedSheet(character, deps.ctx.cpred) : null;
     await emitTokenUpsert(deps, campaignId, scene, token, linked);
     return toTokenView(token, true, linked);
+  },
+});
+
+/**
+ * Kopia figury obok oryginału (etap 35, `token:duplicate`).
+ *
+ * Powstała z jednego rachunku przy stole: postawienie sześciu tych samych
+ * gangerów to dziś sześć razy „nowy żeton", sześć razy wybór grafiki i sześć
+ * razy wpisana nazwa — a potem i tak wszyscy nazywają się tak samo.
+ *
+ * Trzy rozstrzygnięcia, które robią z tego zdarzenie serwera, a nie pętlę
+ * `token:create` u klienta:
+ *
+ * 1. **Numeracja liczy się z całej sceny** (`nextTokenCopyName`), a klient
+ *    trzyma wyłącznie figury, które wolno mu widzieć — kopia zrobiona z listy
+ *    gracza nazwałaby się tak samo jak ukryta figura MG.
+ * 2. **Profil bojowy statysty jedzie z oryginału**, a jest to kolumna, której
+ *    klient nie dostaje w całości (`toTokenView` filtruje ją jak każdą inną
+ *    tajemnicę). Bez tego kopia gangera nie umiałaby strzelać.
+ * 3. **`characterId` NIE jedzie.** Dwie figury na jednej karcie postaci to dwa
+ *    paski PW nad jednym zestawem punktów — i dwie rany zapisane w tym samym
+ *    miejscu. Kopia bierze z karty jedno: **rozmiar** puli PW, żeby figura
+ *    dorobiona z NPC-a miała nad sobą pasek tej samej wysokości.
+ *
+ * Kopia jest **świeżą figurą** (decyzja MG z 05.09): pełne PW, bez naklejek,
+ * bez ran i bez listy „boi się". Klonuje się po to, żeby postawić kolejnego
+ * przeciwnika, a nie kolejnego trupa — a kopia poturbowanego gangera z naklejką
+ * „Krwawiący" byłaby dokładnie tym drugim.
+ */
+export const tokenDuplicateEvent = defineEvent<TokenDuplicatePayload, TokenView>({
+  name: 'token:duplicate',
+  role: ROLE_GM,
+  handler: async ({ deps, socket, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    const { token, scene } = await requireCampaignToken(
+      deps.ctx.prisma,
+      campaignId,
+      payload?.tokenId,
+    );
+
+    const siblings = await deps.ctx.prisma.token.findMany({
+      where: { sceneId: scene.id },
+      select: { name: true },
+    });
+    const name = nextTokenCopyName(
+      token.name,
+      siblings.map((row) => row.name),
+    );
+
+    // Miejsce upuszczenia, gdy gest je podał (Alt+przeciągnięcie), a w
+    // przeciwnym razie **obok** oryginału: kopia postawiona pod nim wygląda jak
+    // brak reakcji. Tak czy tak przechodzi przez `snapTokenPosition`, więc
+    // przyciąga do kratki i zawraca w granice sceny — klient prosi, serwer
+    // rozstrzyga, jak przy każdym innym ruchu figury.
+    const snapScene = toSnapScene(scene);
+    const wantedX =
+      typeof payload?.x === 'number' && Number.isFinite(payload.x)
+        ? payload.x
+        : token.x + token.size * snapScene.grid.sizePx;
+    const wantedY =
+      typeof payload?.y === 'number' && Number.isFinite(payload.y) ? payload.y : token.y;
+    const { x, y } = snapTokenPosition(wantedX, wantedY, token.size, snapScene);
+
+    // PW kopii: własne oryginału, a przy figurze związanej z kartą — rozmiar
+    // puli z tej karty. `hpCurrent` zawsze pełne (patrz „świeża figura").
+    const linkedOrigin = token.characterId
+      ? await deps.ctx.prisma.character.findUnique({ where: { id: token.characterId } })
+      : null;
+    const hpMax =
+      linkedOrigin && linkedOrigin.campaignId === campaignId
+        ? toLinkedSheet(linkedOrigin, deps.ctx.cpred).hp.max
+        : token.hpMax;
+
+    const copy = await deps.ctx.prisma.token.create({
+      data: {
+        sceneId: scene.id,
+        name,
+        publicName: token.publicName,
+        imageUrl: token.imageUrl,
+        x,
+        y,
+        size: token.size,
+        ownerId: token.ownerId,
+        hidden: token.hidden,
+        hpCurrent: hpMax,
+        hpMax,
+        combatProfile: token.combatProfile,
+        facing: token.facing,
+        visionRange: token.visionRange,
+        lightBrightM: token.lightBrightM,
+        lightDimM: token.lightDimM,
+        lightColor: token.lightColor,
+        lightFlicker: token.lightFlicker,
+        lightOn: token.lightOn,
+      },
+    });
+    await emitTokenUpsert(deps, campaignId, scene, copy, null);
+    return toTokenView(copy, true, null);
   },
 });
 

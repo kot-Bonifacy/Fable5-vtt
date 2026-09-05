@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { io as ioClient, type Socket as ClientSocket } from 'socket.io-client';
 import type {
   CampaignSummary,
+  MapPingBroadcast,
   InvitationSummary,
   SceneView,
   SocketAck,
@@ -705,5 +706,148 @@ describe('token library bin', () => {
   it('leaves the file unreferenced for the sweeper', async () => {
     const state = await roundTrip(gm);
     expect(JSON.stringify(state)).not.toContain(assetUrl);
+  });
+});
+
+/**
+ * Ping i kopia figury (etap 35).
+ *
+ * Własna scena i własne gniazda, żeby detektor przecieków z `describe('tokens')`
+ * nie liczył ruchu, o który ten zestaw sam prosi.
+ */
+describe('ping i kopia figury (etap 35)', () => {
+  let gm: ClientSocket;
+  let player: ClientSocket;
+  let sceneId: string;
+  let gangerId: string;
+
+  it('stawia scenę z gangerem i profilem bojowym statysty', async () => {
+    const gmConn = createSocket(gmCookie);
+    const playerConn = createSocket(playerCookie);
+    gm = gmConn.socket;
+    player = playerConn.socket;
+    await Promise.all([gmConn.firstSync, playerConn.firstSync]);
+
+    const created = await emitAck<SceneView>(gm, 'scene:create', { name: 'Zaułek 35' });
+    if (!created.ok || !created.data) throw new Error('scene:create failed');
+    sceneId = created.data.id;
+    await emitAck(gm, 'scene:visibility', { sceneId, visibility: 'open' });
+    const activated = waitFor(player, 'scene:activate');
+    expect((await emitAck(gm, 'scene:activate', { sceneId })).ok).toBe(true);
+    await activated;
+    // Aktywacja przenosi na nową scenę wyłącznie tych, którzy nie patrzą nigdzie
+    // indziej: to gniazdo MG wstało przy scenie poprzedniego zestawu, więc
+    // `viewedSceneId` trzeba przestawić wprost — inaczej ping odbija się
+    // o `SCENE_NOT_VIEWED`, a `state:sync` odsyła żetony tamtej mapy.
+    expect((await emitAck(gm, 'scene:view', { sceneId })).ok).toBe(true);
+
+    const ganger = await emitAck<TokenView>(gm, 'token:create', {
+      sceneId,
+      name: 'Ganger',
+      x: 300,
+      y: 300,
+      hp: { current: 8, max: 25 },
+    });
+    if (!ganger.ok || !ganger.data) throw new Error('token:create failed');
+    gangerId = ganger.data.id;
+    // Statysta z profilem i naklejką: kopia ma wziąć pierwsze, a nie drugie.
+    expect(
+      await emitAck(gm, 'token:update', {
+        tokenId: gangerId,
+        patch: {
+          statuses: ['bleeding'],
+          combatProfile: {
+            ref: 6,
+            dex: 6,
+            body: 7,
+            will: 5,
+            skillLevel: 4,
+            evasion: 4,
+            armorSp: 11,
+            weaponId: null,
+            weaponName: '',
+            weaponDamage: '',
+            ammoCurrent: 0,
+            ammoMax: 0,
+          },
+        },
+      }),
+    ).toMatchObject({ ok: true });
+  });
+
+  it('rozsyła ping do widzów sceny i nie zapisuje po nim niczego', async () => {
+    const seen = waitFor<MapPingBroadcast>(player, 'map:ping');
+    expect(
+      await emitAck(gm, 'map:ping', { sceneId, x: 512.4, y: 640.6, pull: true }),
+    ).toMatchObject({ ok: true });
+    const ping = await seen;
+    expect(ping).toMatchObject({ sceneId, x: 512, y: 641, pull: true });
+    expect(ping.userName).toBe('MG');
+
+    // Ping jest gestem, nie stanem: po synchronizacji nie ma po nim śladu ani
+    // w scenie, ani w historii czatu — to jest cała treść „bez `seq`, bez zapisu".
+    const state = await roundTrip(player);
+    expect(JSON.stringify(state)).not.toContain('512');
+    expect(state.messages.some((message) => message.text?.includes('ping'))).toBe(false);
+  });
+
+  it('ścina graczowi przyciągnięcie widoku, ale samego pingu nie odmawia', async () => {
+    const seen = waitFor<MapPingBroadcast>(gm, 'map:ping');
+    expect(
+      await emitAck(player, 'map:ping', { sceneId, x: 100, y: 100, pull: true }),
+    ).toMatchObject({ ok: true });
+    expect(await seen).toMatchObject({ pull: false, userName: 'Rogue' });
+  });
+
+  it('odmawia pingu na scenie, której ten socket nie ogląda', async () => {
+    const other = await emitAck<SceneView>(gm, 'scene:create', { name: 'Inna mapa' });
+    if (!other.ok || !other.data) throw new Error('scene:create failed');
+    expect(
+      await emitAck(player, 'map:ping', { sceneId: other.data.id, x: 10, y: 10 }),
+    ).toMatchObject({ ok: false, error: 'SCENE_NOT_VIEWED' });
+    expect(await emitAck(gm, 'map:ping', { sceneId, x: NaN, y: 0 })).toMatchObject({
+      ok: false,
+      error: 'BAD_REQUEST',
+    });
+  });
+
+  it('kopiuje figurę: numer z całej sceny, profil bojowy, świeże PW', async () => {
+    const copy = await emitAck<TokenView>(gm, 'token:duplicate', { tokenId: gangerId });
+    if (!copy.ok || !copy.data) throw new Error('token:duplicate failed');
+    expect(copy.data.name).toBe('Ganger 2');
+    // Świeża figura (decyzja MG): pełne PW i żadnej naklejki po oryginale.
+    expect(copy.data.hp).toEqual({ current: 25, max: 25 });
+    expect(copy.data.statuses).toEqual([]);
+    // Obok, nie pod spodem — i przyciągnięte do kratki jak każda inna pozycja.
+    expect(copy.data.x).toBe(400);
+    expect(copy.data.y).toBe(300);
+    expect(copy.data.characterId ?? null).toBeNull();
+
+    // Profil bojowy jedzie z oryginałem: bez niego kopia gangera nie strzela.
+    const state = await roundTrip(gm);
+    const stored = state.tokens.find((token) => token.id === copy.data?.id);
+    expect(stored?.combatProfile).toMatchObject({ evasion: 4, armorSp: 11 });
+
+    const third = await emitAck<TokenView>(gm, 'token:duplicate', { tokenId: copy.data.id });
+    if (!third.ok || !third.data) throw new Error('second token:duplicate failed');
+    // Rdzeń nazwy, nie pełna nazwa: „Ganger 2 2" byłoby błędem numeracji.
+    expect(third.data.name).toBe('Ganger 3');
+  });
+
+  it('stawia kopię tam, gdzie ją upuszczono, i przycina do sceny', async () => {
+    const copy = await emitAck<TokenView>(gm, 'token:duplicate', {
+      tokenId: gangerId,
+      x: 749,
+      y: 51,
+    });
+    if (!copy.ok || !copy.data) throw new Error('token:duplicate failed');
+    expect(copy.data).toMatchObject({ x: 700, y: 100 });
+  });
+
+  it('nie pozwala graczowi kopiować figur', async () => {
+    expect(await emitAck(player, 'token:duplicate', { tokenId: gangerId })).toMatchObject({
+      ok: false,
+      error: 'FORBIDDEN',
+    });
   });
 });

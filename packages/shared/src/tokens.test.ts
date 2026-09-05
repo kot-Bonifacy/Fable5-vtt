@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  TOKEN_NAME_MAX_LENGTH,
   clampTokenPosition,
+  nextTokenCopyName,
   sanitizeTokenHp,
   sanitizeTokenImageUrl,
   sanitizeTokenPatch,
@@ -123,5 +125,45 @@ describe('sanitizeTokenPatch', () => {
     expect(sanitizeTokenPatch({ publicName: null })).toEqual({ publicName: null });
     expect(sanitizeTokenPatch({ publicName: 7 })).toBeNull();
     expect(sanitizeTokenPatch({ publicName: 'x'.repeat(65) })).toBeNull();
+  });
+});
+
+describe('nextTokenCopyName (etap 35)', () => {
+  it('numeruje kopie od dwójki — oryginał zostaje przy swojej nazwie', () => {
+    expect(nextTokenCopyName('Ganger', ['Ganger'])).toBe('Ganger 2');
+    expect(nextTokenCopyName('Ganger', ['Ganger', 'Ganger 2'])).toBe('Ganger 3');
+  });
+
+  it('kopia numerowanej figury liczy się od jej rdzenia, nie od pełnej nazwy', () => {
+    // „Ganger 2 2" byłoby tym, co daje naiwne doklejanie sufiksu.
+    expect(nextTokenCopyName('Ganger 2', ['Ganger', 'Ganger 2'])).toBe('Ganger 3');
+  });
+
+  it('zapełnia dziurę w ciągu, zamiast liczyć od ostatniego', () => {
+    expect(nextTokenCopyName('Ganger', ['Ganger', 'Ganger 3', 'Ganger 4'])).toBe('Ganger 2');
+  });
+
+  it('nie rozbiera nazwy, której końcówka nie jest numeracją', () => {
+    expect(nextTokenCopyName('MOX-7', ['MOX-7'])).toBe('MOX-7 2');
+    expect(nextTokenCopyName('Ganger 2.0', ['Ganger 2.0'])).toBe('Ganger 2.0 2');
+  });
+
+  it('porównuje nazwy bez oglądania się na wielkość liter', () => {
+    expect(nextTokenCopyName('Ganger', ['ganger', 'GANGER 2'])).toBe('Ganger 3');
+  });
+
+  it('przycina rdzeń, a nie numer — kopia bez numeru byłaby nie do odróżnienia', () => {
+    const long = 'G'.repeat(TOKEN_NAME_MAX_LENGTH);
+    const copy = nextTokenCopyName(long, [long]);
+    expect(copy.length).toBeLessThanOrEqual(TOKEN_NAME_MAX_LENGTH);
+    expect(copy.endsWith(' 2')).toBe(true);
+  });
+
+  it('kończy się nawet wtedy, gdy przycięte nazwy zaczynają się zderzać', () => {
+    const long = 'G'.repeat(TOKEN_NAME_MAX_LENGTH);
+    // Rdzeń przycięty pod sufiks „ 2" jest zajęty, więc funkcja musi znaleźć
+    // następny — a nie kręcić się w kółko po tym samym kandydacie.
+    const taken = [long, nextTokenCopyName(long, [long])];
+    expect(nextTokenCopyName(long, taken).endsWith(' 3')).toBe(true);
   });
 });

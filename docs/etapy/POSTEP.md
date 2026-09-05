@@ -100,13 +100,23 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 | 32  | Wezwanie MG do Testu                          | ✅     | 2026-09-02        |
 | 33  | Kopie zapasowe, eksport i import              | ✅     | 2026-09-05        |
 | 34  | Tabele losowe                                 | ⬜     |                   |
-| 35  | Ping, zaznaczanie wielu figur, klonowanie     | ⬜     |                   |
+| 35  | Ping, zaznaczanie wielu figur, klonowanie     | ✅     | 2026-09-05        |
 | 36  | Makra i pasek własnych akcji                  | ⬜     |                   |
 | 37  | Kalendarz kampanii i upływ czasu              | ⬜     |                   |
 | 38  | Przedmioty między kartami                     | ⬜     |                   |
 | 39  | Efekty czasowe modyfikujące Cechy             | ⬜     |                   |
 
 ## Od czego zacząć
+
+**Mapa umie od 05.09 trzy rzeczy, których nie umiała przez trzydzieści cztery etapy:** wskazać
+palcem (**`Alt`+klik = ping**, `Alt+Shift` u MG przyciąga wszystkim widok), wziąć **wiele figur
+naraz** (**`Shift`+przeciągnięcie** = ramka, `Shift`+klik dokłada, **`Ctrl+A`** bierze wszystkie
+sterowalne) i **skopiować figurę** (**`Alt`+przeciągnięcie**, „Ganger" → „Ganger 2"). Ramka
+i `Ctrl+A` biorą **wyłącznie figury, którymi ten widz może sterować** — u gracza własne, u MG
+wszystkie. Pasek operacji staje u dołu mapy **od dwóch figur**: ukryj/pokaż, naklejki, duplikuj,
+do walki, kosz z pytaniem. **`Delete` figur nadal nie dotyka** i to zostaje. **Ruch grupowy
+działa poza walką, w walce nie** (budżet metrów z 14c jest per figura). Atrapa `gm:ping`
+z etapu 03 wreszcie zniknęła. Osiem umów kodu i cztery pułapki w indeksach niżej.
 
 **Kopie zapasowe istnieją od 05.09 — do tej sesji cała kampania stała na jednym pliku
 `packages/server/dev.db`.** Snapshot powstaje przy **starcie serwera i co godzinę** (`VACUUM INTO`,
@@ -120,9 +130,10 @@ i `archive`. Wyszedł przy tym **jeden błąd**: polski znak w nazwie pliku wywr
 błędem 500. Osiem umów kodu i cztery pułapki w indeksach niżej.
 
 **Wolne są teraz: 28** (wdrożenie na VPS — a MG planuje przed nim refaktoryzację całości)
-**oraz 34–39.** Kolejność wiążąca w dwóch miejscach: **37 przed 39** (efekt „na godzinę"
-potrzebuje zegara świata) i **34 przed 36** (makro „losuj z tabeli"). Warunek „33 przed 28"
-jest od 05.09 spełniony.
+**oraz 34, 36, 37, 38, 39.** Kolejność wiążąca w dwóch miejscach: **37 przed 39** (efekt „na
+godzinę" potrzebuje zegara świata) i **34 przed 36** (makro „losuj z tabeli"). Warunek „33 przed
+28" jest od 05.09 spełniony. **Refaktoryzacja całości przed etapem 28 czeka na osobną sesję** —
+MG odłożył ją 05.09, wybierając etap z listy.
 
 **Dług oględzin — 14 pozycji, i wszystkie czekają na żywy model.** Cztery pozycje etapu 30
 (**30a, 30b, 30c, 30d**) zamknięte 04.09 — była to ostatnia paczka, którą dało się obejrzeć bez
@@ -175,9 +186,9 @@ nieaktualne. Lista jest zapisem chwili, w której coś zauważono, a nie stanu r
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
 a od 30d pierwszym, przy którym **każda Rola w drużynie gra inaczej niż reszta**.
 
-**Testy na koniec ostatniej sesji:** 1823 w `shared` (+25), 985 na serwerze (+30), 79 u klienta — zielone.
-ESLint i Prettier czyste na całym repo; `tsc --noEmit` czysty (od 05.09 obejmuje też
-`packages/server/scripts/`).
+**Testy na koniec ostatniej sesji:** 1833 w `shared` (+10), 992 na serwerze (+7), 92 u klienta
+(+13) — zielone. ESLint i Prettier czyste na całym repo; `tsc --noEmit` czysty w trzech
+pakietach (od 05.09 obejmuje też `packages/server/scripts/`).
 
 ## Umowy kodu — indeks
 
@@ -294,6 +305,14 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 - **Intencja uzbrojonego celownika** — jedna funkcja `intentFromTargeting` na obie drogi (klik ładujący kubek i dymek wyceniający strzał); nowe pole `AttackTargeting` dopisuje się tam, nie u wołających.
 - **Odmowa zapisu karty** — `characterStore.serverViews` (cień widoku serwera) przywraca kartę, gdy nic nie jest w locie, a `saveErrors` + `characterSaveErrorText` piszą powód w pasku „issues"; zdania kodów silnika mieszkają w `shared` obok typu problemu.
 - **Kara z pancerza** — `cpredArmorPenalty` (RUCH) i `cpredArmorStatPenalty` (REF/ZW) w `character.ts`, bo czytają je i `rolls.ts`, i `attacks.ts`; bierze **jedną najgorszą sztukę**, nie schodzi poniżej zera i wchodzi **nazwanym wierszem** wszędzie, gdzie jest rozbicie (w Inicjatywie i biernym PT Uniku — w sumie i w etykiecie).
+- **Zaznaczenie figur ma dwa wskaźniki** — `selectionStore.groupIds` obok `tokenId`; prywatne jak reszta, **nigdy po sieci**, i trzyma wyłącznie figury sterowalne przez tego widza (filtruje renderer, bo ma `movableTokens`). `select(null)` grupy **nie rusza** — leci przy każdym zakończonym marszu.
+- **Bramka „figury albo sceneria" (27k) ma teraz dwa wejścia** — `sceneSelectionStore.select` woła `select(null)` **i** `clearGroup()`, a subskrypcja w drugą stronę reaguje i na `tokenId`, i na `groupIds`. Bez obu połówek `Delete` miałby pod ręką ścianę i sześć figur naraz.
+- **Kotwicę grupy wybiera store, mapa wyrównuje się `syncSteering`** — nie `setSelection`, bo tamto odsyła `onSelectionChange` → `select(anchor)` → a ten zeruje grupę, czyli ramka kasowałaby sama siebie.
+- **Ping to gest, nie stan** — `map:ping` zbudowany na `ruler.ts` (bez `seq`, bez zapisu, bez powtórki, `socket.to` pomija nadawcę), u klienta moduł `map-ping.ts`, nie store. `pull` przyznaje **wyłącznie serwer i wyłącznie MG**; prośba gracza ścina się do zwykłego pingu, nie do odmowy.
+- **Kopia figury to zdarzenie serwera** (`token:duplicate`) — numeracja liczy się z **całej** sceny, `combatProfile` jedzie z oryginałem, `characterId` **nie**. Z karty bierze się sam **rozmiar** puli PW. Kopia jest świeża: pełne PW, bez naklejek, ran i listy „boi się"; `x`/`y` to życzenie, które i tak przechodzi przez `snapTokenPosition`.
+- **Nazwa kopii powstaje z rdzenia, nie z pełnej nazwy** — `nextTokenCopyName`; ucina wyłącznie **końcową liczbę po spacji**, bierze **najniższą wolną**, a przy limicie długości przycina **rdzeń**, nigdy numer.
+- **Operacja grupowa to pętla po zwykłych zdarzeniach figury** (wyjątek: `combat:add` bierze listę od 14) — pętla dziedziczy uprawnienia serwera zamiast powtarzać je u siebie; odmowa mówi **jednym zdaniem o całej paczce**.
+- **Kosz figur pyta zawsze, także na poligonie** — `Ctrl+Z` cofa scenerię, nie figury; dlatego `Delete` figur nie dotyka i jedyna droga to guzik z pytaniem niosącym liczbę.
 - **Jakość broni** — `quality` jedzie z **wpisu** kompendium, nie z typu; `poor` po Krytycznej Porażce zapala `CpredWeaponRow.jammed`, a usterkę zdejmuje **własna Akcja** (`weapon:clear-jam`), nie `weapon:reload`. Nie zacina się dodatek podwieszany, statysta ani porażka pominięta przez „Wyjście z opresji".
 
 ## Pułapki dev — indeks
@@ -405,11 +424,73 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 - **Trzy liczby tabeli magazynków są zlepione**, ale pierwsza jest znana (magazynek z tabeli broni) — reszta ma jeden podział zgodny z porządkiem kolumn; nagłówek klei się z pierwszym wierszem.
 - **Nabój inteligentny od 01.09 odmawia strzału bez Celownika optycznego** — test strzelający nim musi wszczepić chrom, inaczej pada w asercji o czymś innym.
 - **Gniazd na dodatki nie widać przy broni wpisanej ręką** ani przy egzotyku i broni białej — `attachmentSlots` to wtedy zero, a pasek gniazd świadomie znika.
+- **Ramka, ping i kopia działają z syntetycznych zdarzeń wskaźnika, `Ctrl+A` nie** — skrót klawiszowy trzeba wysłać przez CDP (`computer`, `key: "ctrl+a"`), po kliknięciu w mapę.
+- **Ping gaśnie po 2,2 s, czyli szybciej, niż wraca zrzut ekranu** — oglądaj go `setInterval`-em pingującym co 500 ms, nie pojedynczym gestem.
+- **Po przeładowaniu karty mapa wraca do `fitScene`** — współrzędne z poprzedniego zrzutu kłamią, a ramka po nich łapie zero figur i wygląda jak zepsuty gest.
+- **Nazwy kopii nie odczytasz z etykiety pod żetonem** (przy zoomie stołu nieczytelna) — otwórz menu kontekstowe (`button: 2`) i przeczytaj `.context-menu-title`.
 - **Kartę do oględzin da się przygotować w bazie bez logowania na MG** — `node --input-type=module` + `node:sqlite` na `packages/server/dev.db`; `better-sqlite3` nie jest w `node_modules` repozytorium.
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 05.09 (druga) — mapa, na której da się wskazać palcem i wziąć sześciu naraz
+
+**Zlecenie MG:** kontynuacja projektu; z listy wolnych etapów MG wybrał **35 (ping, zaznaczanie
+wielu figur, klonowanie)**, a refaktoryzację całości odłożył na osobną sesję. Cztery
+rozstrzygnięcia padły przed kodem i wszystkie są w pliku etapu: **`Delete` figur nadal nie
+dotyka** (grupowy kosz idzie guzikiem z pytaniem niosącym liczbę), **ruch grupowy poza walką
+tak, w walce nie**, **ramka na `Shift`+przeciągnięciu** zamiast foundry'owego przeniesienia
+panoramy na prawy przycisk, i **kopia jako świeża figura** (pełne PW, bez naklejek i ran).
+
+**Kolizja gestów była jedyną rzeczą, którą trzeba było rozstrzygnąć przed pisaniem.** `Alt`+klik
+w figurę **już coś znaczy** od 16f („to jest cel, nie moja następna figura"), ale wyłącznie przy
+uzbrojonej broni — więc `Alt`+klik w **puste pole** i `Alt`+przeciągnięcie **figury bez broni
+w ręku** były wolne i wzięły ping oraz kopię. `Shift` po pustym tle też był wolny, bo `Shift`
++klik dokłada załamanie trasy, a `viewport` nie emituje `clicked` po geście, który przekroczył
+próg przesunięcia. Trzy nowe gesty, zero odebranych.
+
+**Atrapa `gm:ping` z etapu 03 zniknęła po trzydziestu dwóch etapach.** Miała nazwę i
+`handler: () => undefined`, a jej dwa testy pilnowały wzorca bramki roli — przeniosłem to
+pokrycie na `token:duplicate` zamiast je skasować: gracz odbija się o `FORBIDDEN`, MG dochodzi
+do środka i dostaje `TOKEN_NOT_FOUND`, a różnica kodów jest dowodem, że bramka przepuściła
+jednego, a drugiego nie. Nowy ping **nie jest jej następcą** także w drugim sensie: pinguje
+każdy, bo „patrzcie na te drzwi" jest zdaniem gracza równie często, co prowadzącego.
+
+**Dwa błędy znalezione przy oględzinach, oba naprawione w trakcie:**
+
+1. **Po ramce mapa nie miała pierścienia sterowania.** Lewy panel opisywał kotwicę (bo czyta
+   store), a klik w podłogę nikogo nie wysyłał w drogę (bo renderer nic o niej nie wiedział).
+   Przy pojedynczym wyborze źródłem jest renderer, przy grupie — store, więc potrzebna była
+   droga wyrównania, która **nie odsyła zmiany z powrotem** (`syncSteering`): zwykły
+   `setSelection` zawołałby `onSelectionChange` → `select(anchor)` → a ten świadomie zeruje
+   grupę, czyli ramka kasowałaby sama siebie.
+2. **Przy trzymanym `Alt` mapa dalej malowała ślady butów**, choć klik miał zrobić ping.
+   Podgląd trasy stoi teraz pod `Alt` (`pingArmed`) — obiecywał marsz, którego ten gest nie
+   wykona.
+
+**Oględziny (Poligon, konto MG **i** gracza) — cały etap odklikany.** Ramka biorąca 5 i 3 figury
+z paskiem operacji, obwódki grupy czytelne obok białego pierścienia kotwicy z gałką obrotu,
+**ruch grupowy** (trójka przesunięta z zachowanym szykiem, utrwalony po przeładowaniu) i jego
+**bramka w walce** (po włączeniu trybu turowego przeciągnięcie ruszyło **tylko** chwyconą
+figurę — sprawdzone w bazie), `Ctrl+A` biorące 9 figur, szczebel `Esc`, **wykluczanie ze
+scenerią** (klik w strefę zdjął zaznaczenie trzech figur), operacje grupowe (Ukryj → Pokaż,
+naklejka nadana i zdjęta obu, kosz z pytaniem „Usunąć ze sceny 2 figury?"), **Alt+przeciągnięcie
+dające „Rudy Kwiatkowski 2"** i guzik „⧉ Duplikuj" w menu dający trzeciego. Z konta gracza
+(**Tony**, `[::1]:5173`): **ramka na całą mapę wzięła jedną figurę z siedmiu widocznych**, ping
+gracza dotarł do MG z podpisem „Tony", a **ping MG z `Alt+Shift` przesunął graczowi widok**.
+
+**Poligon wrócił do stanu sprzed sesji — sprawdzone różnicowo względem snapshotu z 11:23**
+(pierwsza kopia, którą serwer zrobił dziś przy starcie): **zero różnic** na 13 żetonach, 9 kart,
+6 scen, 23 wpisy księgi. Dwie kopie „Rudego Kwiatkowskiego" skasowane, tryb turowy wyłączony,
+a pozycje trzech przesuniętych żetonów przywrócone wprost w bazie. **Ślad zerowy także w
+czacie** — i to jest samo w sobie potwierdzenie kryterium: ping nie zostawia po sobie ani
+wiersza czatu, ani niczego w bazie.
+
+**Testy na koniec:** 1833 w `shared` (+10), 992 na serwerze (+7), 92 u klienta (+13) — zielone.
+ESLint i Prettier czyste na całym repo; `tsc --noEmit` czysty w trzech pakietach. Doszły trzy
+pliki: `shared/src/ping.test.ts`, `client/src/group-selection.test.ts` i zestaw „ping i kopia
+figury (etap 35)" w `server/src/tokens.test.ts`.
 
 ### Sesja 05.09 — kopie zapasowe: kopia, która robi się sama, i plik, który da się przeczytać
 
@@ -482,72 +563,3 @@ odrzucony, więc czekają na rękę MG.
 akapitów z „Od czego zacząć" (streszczenia zamkniętych sesji i umowy spisane już w
 `umowy-kodu.md`) przeniesione **w całości i bez zmian** do `archiwum/dziennik-sesji.md`. Gałąź
 `feat/cpred-weapon-attachments` scalona do `main`.
-
-### Sesja 04.09 (trzecia) — chrom, który wreszcie coś kosztuje: PT montażu, odmowy i EMP z nazwami
-
-**Zlecenie MG:** znowu kilkanaście zaległości pasujących do jednej sesji, bez niczego wokół
-lokalnego LLM-a. Otwartych pozycji bez modelu jest w `zaleglosci.md` tylko **sześć**, więc lista
-poszła w pięciu paczkach głównie z `POMYSLY.md`; MG wybrał **paczkę A — cyborgizacje**, ale bez
-pozycji A1 (efekty mechaniczne chromu w rzutach): ta wchodzi w `sheetSituationModifiers`, czyli
-w tę samą maszynerię, na którą czeka Stym i etap 39, a decyzja brzmi „nie budujemy jej dwa razy".
-Zostały **A2 (PT montażu), A3 (odmowy z s. 111) i A4 (EMP)**.
-
-**Rozstrzygnięcie MG, które ukształtowało A2:** montaż **nie może wymagać tworzenia NPC-a** —
-ripperdoc przy stole jest zdaniem w opisie MG, nie figurą. Stąd `CharacterCyberwarePayload.surgeon`
-w trzech wariantach: `none` (jak dotąd — klinika bierze pieniądze i wszczep wchodzi), `gm`
-(MG podaje **jedną liczbę** „TECHNIKA + Chirurgia", domyślnie 12, serwer dorzuca 1k10) oraz
-`character` (Medyk z kampanii; jego Chirurgię czyta serwer z karty). PT bierze się z tabeli
-s. 226 (Galeria 13 / Klinika 15 / Szpital 17), a **porażka niszczy wszczep**: pieniądze schodzą,
-wiersz nie powstaje, Człowieczeństwo zostaje nietknięte. Wybór chirurga stoi w oknie montażu
-obok listy postaci; lista chirurgów to lista Medyków z punktem w Chirurgii, więc na Poligonie
-jest pusta — i dobrze, bo nikt jej tam nie ma.
-
-**A3 — trzy odmowy zamiast czerwonego chipa.** `cyberwareInstallRefusal` (czysta funkcja
-w `shared`) odmawia montażu opcji **bez cyborgizacji podstawowej**, **bez wolnego gniazda**
-i **ponad limit 7 sztuk** w rodzinach, które podstawy nie mają. Do tej sesji arytmetyka istniała
-wyłącznie jako ostrzeżenie na karcie — instalacja i tak wchodziła. MG idzie przez odmowę dalej
-(tak samo jak przez blokady ruchu i progi sklepu), ale **karta czatu wtedy ją zapisuje**:
-„… wymaga najpierw cyborgizacji podstawowej (s. 111). (montaż MG)".
-
-**A4 — Impuls EMP mówi, co padło.** Serwer losuje **dwie** cyborgizacje z karty celu (tym samym
-RNG co rzut), nazywa je na karcie („wyłączone: Mikrooptyka, Cyberoko") i zapisuje przy statusie
-`emp`, więc monit „Minęła minuta" ma czym powiedzieć, co wraca. Figura bez chromu dostaje samo
-„EMP · na minutę" — tak jak dotąd, bo nie ma czego nazwać.
-
-**Dwa błędy znalezione przy okazji, oba naprawione:**
-
-1. **Borgizacje liczyły się jak rodzina wymagająca podstawy.** `cyberwareCapacity` pisało nad
-   Ramownicą „brak cyborgizacji podstawowej", której podręcznik nie przewiduje — s. 111 daje
-   podstawy **czterem** rodzinom, a tabela Borgizacji nie ma ani nagłówka z gniazdami, ani żadnej
-   podstawy do kupienia. Bez tej poprawki A3 zamieniłoby usterkę wyświetlania w twardą blokadę:
-   żadna borgizacja nie dałaby się wszczepić.
-2. **„Cofnij" zostawiało zegar w `statusData`.** Zdejmowało naklejkę, ale wpis przy niej
-   (`timer`, a od tej sesji także `disabled`) zostawał — po cofniętym trafieniu następna walka
-   ogłosiłaby „Minęła minuta" dla statusu, którego na żetonie już nie ma. Znalezione **przy
-   sprzątaniu po oględzinach**, nie przez test.
-
-**Oględziny (Poligon, konto MG).** Obejrzane w komplecie: okno montażu z listą chirurgów, montaż
-bez Testu z odmową zapisaną na karcie MG, **nieudany Test ripperdoca** (Fumble: 1k10+0 → −2 vs
-PT 15, „Wszczep zniszczony", 600 ed z konta, karta bez wiersza) i **udany** (1k10+12 = 18, po nim
-druga karta „Utrata Człowieczeństwa — Cyberoko 2k6"), a na końcu **granat EMP** rzucony
-granatnikiem podwieszanym avatar9: „Pacjent 23a — 5 m · Cyberinżynieria 6+5 = 11 vs PT 15 · EMP ·
-na minutę · **wyłączone: Mikrooptyka, Cyberoko**", obok „Rudy Kwiatkowski — EMP · na minutę" bez
-nazw. **Nieobejrzane zostały odmowy** — MG jest z nich zwolniony, a przez UI operuje właśnie MG,
-więc czerwone zdanie w czacie zobaczy dopiero konto gracza (zapisane w `zaleglosci.md` razem
-z monitem „Minęła minuta").
-
-**Poligon wrócił do stanu sprzed sesji:** karta „Pacjent 23a" i dwa postawione żetony skasowane
-(razem z czterema wpisami `LedgerEntry`), nabój granatnika z powrotem dymny i magazynek 1/1,
-ślad po cofniętym Impulsie zdjęty z żetonu Rudego. Na Strzelnicy jest znowu **siedem żetonów**,
-w bazie **dziewięć kart**. Ślad zostawiony świadomie: **log czatu** — dwie karty montażu, dwie
-karty Człowieczeństwa, dwie karty ataku granatnikiem i dwie karty obrażeń przekreślone
-„Cofnięte — MG".
-
-**Do decyzji MG:** guzik **„Dodaj za darmo"** przy wpisie kompendium omija całe zdarzenie
-cyborgizacji — wszczep wchodzi bez rzutu na Człowieczeństwo, bez Testu montażu i bez odmów.
-Zachowanie jest sprzed tej sesji, ale od dziś różnica między dwiema drogami jest większa niż
-„płacisz albo nie". Szczegóły w `zaleglosci.md`.
-
-**Testy na koniec:** 1798 w `shared` (+13), 955 na serwerze (+20), zielone; `tsc --noEmit` czysty
-w całym monorepo, ESLint i Prettier czyste. Doszedł nowy plik `packages/server/src/sheets.test.ts`
-— czyste funkcje kolumny `Token.statusData`, których żaden widok nie wysyła do klienta.

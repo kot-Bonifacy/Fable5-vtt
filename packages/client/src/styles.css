@@ -9347,3 +9347,55 @@ body.is-resizing {
   font-size: 0.78rem;
   color: var(--ok-ink);
 }
+
+/* ===== Pasek operacji na zaznaczonych figurach (etap 35) ===== */
+
+/*
+ * U dołu na środku, a nie u góry: górna krawędź mapy jest zajęta na całej
+ * szerokości — pasek narzędzi ma 38 rem od lewej i sięga **poza** środek
+ * (pułapka z 23.08), a podpowiedzi „kliknij na mapie…" stoją dokładnie na
+ * osi. Dół jest wolny: kubek kości siedzi w lewym dolnym rogu okna, nie mapy.
+ */
+.token-group-bar {
+  position: absolute;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 22;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  max-width: min(44rem, calc(100% - 1.5rem));
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  background: var(--map-panel);
+  border: 1px solid var(--accent);
+  /* `--map-ink`, nie `--text`: `--map-panel` jest ciemny w obu motywach. */
+  color: var(--map-ink);
+  user-select: none;
+}
+
+.token-group-count {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-right: 0.25rem;
+}
+
+/* Naklejki idą własnym wierszem pod guzikami: przy szesnastu statusach
+   dołożenie ich do tego samego rządka rozpychało pasek na całą mapę. */
+.token-group-statuses {
+  flex: 1 0 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--border-soft);
+}
+
+.token-group-statuses .small-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}

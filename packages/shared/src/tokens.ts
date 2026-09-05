@@ -572,3 +572,51 @@ export function clampTokenPosition(
     y: clamp(y, 0, Math.max(0, scene.height - extent)),
   };
 }
+
+/* ── Kopia figury: nazwa i payload (etap 35) ─────────────────────────────── */
+
+/** Client → server payload of `token:duplicate` (GM only). */
+export interface TokenDuplicatePayload {
+  tokenId: string;
+  /**
+   * Gdzie postawić kopię (piksele sceny, lewy górny róg). Bez tego kopia staje
+   * o jedno pole w prawo od oryginału — tyle wystarczy guzikowi w menu, a
+   * Alt+przeciągnięcie ma własne miejsce upuszczenia. Serwer i tak przyciąga do
+   * kratki i zawraca w granice sceny, więc to jest życzenie, nie rozkaz.
+   */
+  x?: number;
+  y?: number;
+}
+
+/**
+ * Nazwa kopii figury: „Ganger" → „Ganger 2" → „Ganger 3" (etap 35).
+ *
+ * Trzy rzeczy, których nie widać po sygnaturze, a każda z nich jest powodem,
+ * dla którego to jest czysta funkcja z testami, a nie trzy linijki w handlerze:
+ *
+ * - **Rdzeń nazwy to nazwa bez końcowej liczby.** Kopia „Gangera 2" ma być
+ *   „Gangerem 3", a nie „Gangerem 2 2". Ucinana jest wyłącznie liczba oddzielona
+ *   spacją — „MOX-7" i „Ganger 2.0" zostają w całości, bo to są nazwy, a nie
+ *   numeracja.
+ * - **Bierze się najniższą wolną liczbę**, nie „ostatnia + 1": po skasowaniu
+ *   „Gangera 2" następna kopia ma zapełnić dziurę, inaczej numery rosną w
+ *   nieskończoność przy sześciu figurach na mapie.
+ * - **Numer nie może wypchnąć nazwy poza limit kolumny** (`TOKEN_NAME_MAX_LENGTH`),
+ *   więc to rdzeń jest przycinany, a nie liczba obcinana — figura bez numeru
+ *   przestałaby być rozróżnialna, a o to w tym całym chodzi.
+ *
+ * Zaczyna od dwójki, bo oryginał zostaje przy swojej nazwie (decyzja MG
+ * z 05.09): na mapie stoi „Ganger", nie „Ganger 1".
+ */
+export function nextTokenCopyName(name: string, taken: readonly string[]): string {
+  const base = name.replace(/\s+\d+$/, '').trim() || name.trim();
+  const used = new Set(taken.map((entry) => entry.trim().toLowerCase()));
+  for (let index = 2; ; index++) {
+    const suffix = ` ${index}`;
+    // Przycinamy rdzeń, nie numer: „…ki 12" niesie informację, „…ki 1" kłamie.
+    const room = TOKEN_NAME_MAX_LENGTH - suffix.length;
+    const stem = base.length > room ? base.slice(0, Math.max(1, room)).trimEnd() : base;
+    const candidate = `${stem}${suffix}`;
+    if (!used.has(candidate.toLowerCase())) return candidate;
+  }
+}
