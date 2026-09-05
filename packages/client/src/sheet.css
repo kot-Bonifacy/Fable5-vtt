@@ -691,9 +691,12 @@
 }
 
 /* Kolumna tożsamości ma 15 rem i rozciągnąć się nie da (umowa z 30a), więc pola
-   formularza kurczą się zamiast wypychać panel. */
+   formularza kurczą się zamiast wypychać panel. Szerokość dobrana **do
+   podpowiedzi**, nie do wpisywanej wartości: przy 4,5 rem `placeholder`
+   („−2 albo −1k6") ucinał się na „−1k", czyli gubił dokładnie tę połowę, która
+   tłumaczy, że wolno wpisać notację (oględziny 05.09). */
 .cp-stat-effects .stat-effect-amount {
-  width: 4.5rem;
+  width: 6rem;
 }
 
 .cp-stat-effects .stat-effect-source-input {

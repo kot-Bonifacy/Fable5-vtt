@@ -175,7 +175,7 @@ już otwarta**: „37 przed 39" i „33 przed 28" są spełnione. **Refaktoryzac
 etapem 28 czeka na osobną sesję** — MG odłożył ją 05.09, wybierając etap z listy, i od tamtej
 pory doszły dwa etapy.
 
-**Dług oględzin — 15 pozycji.** Czternaście czeka na żywy model, piętnasta nie: **UI etapu 39** da się obejrzeć bez GPU i jest pierwszą rzeczą do zrobienia w następnej sesji. Cztery pozycje etapu 30
+**Dług oględzin — 14 pozycji, i wszystkie czekają na żywy model.** Etap 39 **nie dołożył ani jednej** — obejrzany w tej samej sesji, w której powstał. Cztery pozycje etapu 30
 (**30a, 30b, 30c, 30d**) zamknięte 04.09 — była to ostatnia paczka, którą dało się obejrzeć bez
 GPU. Zostaje 20a/20b, 19a–19c, dwie ścieżki 24c, maszynopis wypowiedzi i jedna nowa pozycja
 z 04.09 (cyberdek pracownika Korpo). **29a i 29b wypadły z listy 02.09**, etap 31 i Celowanie
@@ -571,10 +571,30 @@ dopiero na `tsc --noEmit`.
 **UI:** panel „Efekty czasowe" w kolumnie tożsamości karty (chipy z odliczaniem, „zdejmij" u MG,
 formularz MG przyjmujący „−2" albo „−1k6" jednym polem), małe pole „z" pod Cechą — to samo, którym
 Empatia mówi od 23a, teraz dla każdej przesuniętej Cechy — i chipy w pasku figury pod naklejkami.
-Gracz widzi chipy i odliczanie, formularza nie. **Nic z tego nie było oglądane w przeglądarce** —
-pozycja otwarta w `zaleglosci.md`.
+Gracz widzi chipy i odliczanie, formularza nie.
+
+**Oględziny zrobione w tej samej sesji** — na „Franku", z dwóch kont naraz (MG i `Tester` przez
+`[::1]:5173`). Sprawdzone: obie drogi liczby (wpisana i `−1k6`), sumowanie trzech efektów
+z podłogą (rozbicie zwija się wtedy w jeden wiersz „Lisz, Nerwosol, Skorpion −4" i suma się
+zgadza), rozbicie na karcie czatu, chipy w pasku, ⌫ u MG, brak formularza u gracza, wygasanie
+skokiem +1 h z kartą „Efekty wygasły", **przeliczanie odliczania przy ruchu zegara** („zostaje
+6 h" → „zostaje 5 h") i efekt dodatni na zielono. Znaleziona i naprawiona **jedna usterka
+układu** (ucięta podpowiedź pola „ile"). **Żadna nowa pozycja nie została otwarta.** Nieoglądana
+została **jedna ścieżka**: Nerwosol nakładany przez Czarny LOD — stoi na teście na żywych
+gniazdach, a zbudowanie pod nią architektury Sieci na poligonie było nieopłacalne.
+
+**Poligon wraca do stanu sprzed sesji:** żeton „Frank" skasowany (siedem żetonów na „Strzelnicy"),
+„Frank" znów `NPC (MG)` i bez efektów, zegar świata z powrotem na **1 stycznia 2045, 08:00**.
+Ślad zostawiony świadomie: **log czatu** — rzut Refleksu z chipem „Lisz −3", dwie karty „Minęła
+godzina" i karta „Efekty wygasły".
 
 **Osiem umów kodu i sześć pułapek** w indeksach niżej; pełne wersje w plikach.
+
+**Jedno miejsce w UI, którego oględziny nie znalazły, bo go nie ma: kasowania POJEDYNCZEJ figury.**
+Pasek operacji z etapu 35 wstaje **od dwóch** figur, `Delete` figur nie dotyka (umowa z 35), a ani
+prawy klik, ani dwuklik, ani narzędzie 📌 nie dają kosza — dwuklik otwiera kartę, 📌 to notatka MG.
+Żeton testowy trzeba było skasować z bazy. Nie jest to zaległość tego etapu — poszło jako wpis
+do `POMYSLY.md` (05.09), z propozycją: pokazywać ten sam pasek **od jednej** figury.
 
 **Testy na koniec:** 1904 w `shared` (+38), 1018 na serwerze (+12), 97 u klienta (bez zmian) —
 zielone. ESLint i Prettier czyste na kodzie; `tsc --noEmit` czysty w trzech pakietach. Doszły dwa

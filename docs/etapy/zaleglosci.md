@@ -6,6 +6,18 @@ odhaczania zaległości albo dotykasz etapu, który tu występuje — nie rutyno
 
 Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/zamkniete-zaleglosci.md`.
 
+**05.09 (etap 39 — efekty czasowe na Cechach):** etap **zamknięty w komplecie z oględzinami**
+w tej samej sesji — pozycja „nie był oglądany" żyła kilkanaście minut. Przez przeglądarkę przeszły
+wszystkie trzy kawałki UI (panel na karcie, małe pole „z" pod Cechą, chipy w pasku figury), obie
+role (MG i `Tester` przez `[::1]:5173`), obie drogi liczby (wpisana i notacja `−1k6`), podłoga
+Cechy, zdejmowanie ⌫, wygasanie skokiem zegara i **przeliczanie odliczania przy ruchu zegara**.
+Znaleziona i naprawiona **jedna usterka układu**: pole „ile" miało 4,5 rem, przez co podpowiedź
+„−2 albo −1k6" ucinała się na „−1k" — czyli gubiła dokładnie tę połowę, która mówi, że wolno
+wpisać notację. **Żadna nowa pozycja nie została otwarta.** Ścieżka Czarnego LOD-u (Nerwosol
+nakładający się sam) **nie była klikana w przeglądarce** — stoi na teście na żywych gniazdach
+w `netcombat.test.ts`, a obejrzenie jej wymagałoby zbudowania na poligonie Sieci architektury
+z Programem `statDrain`; uznane za nieopłacalne wobec pokrycia testem.
+
 **05.09 (etap 33 — kopie zapasowe):** **żadna nowa pozycja nie została otwarta**, a etap
 zamknięto w komplecie z oględzinami. Naprawiony po drodze **jeden błąd** (polski znak w nazwie
 pobieranego pliku wywracał trasę eksportu błędem 500) i **jedna usterka układu** (polecenie
@@ -49,17 +61,6 @@ zostawiająca na karcie wartość, której nie ma w bazie. Wszystkie naprawione 
 w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
 
 ## Pozycje
-
-- **Etap 39 (efekty czasowe na Cechach) nie był oglądany w przeglądarce.** Cała mechanika ma
-  testy — 38 w `shared`, 11 na żywych gniazdach plus jeden w `netcombat.test.ts` — ale **żaden
-  z trzech nowych kawałków UI nie przeszedł przed oczami**: panel „Efekty czasowe" w kolumnie
-  tożsamości karty (chipy plus formularz MG), małe pole „z" pokazujące Cechę przesuniętą efektem
-  przy każdej z dziesięciu Cech, i chipy w pasku figury pod naklejkami. Do obejrzenia trzeba
-  **dwóch kont** (`Tester` przez `/join/tester-dev`): gracz ma widzieć chipy i odliczanie, ale
-  **nie** formularz. Do sprawdzenia przy okazji: czy formularz mieści się w kolumnie 15 rem
-  (`.cp-identity`, umowa z 30a) i czy odliczanie „zostaje 47 min" nie kłóci się z paskiem, który
-  graczowi pokazuje samą dobę i porę dnia. Ścieżka Czarnego LOD-u (Nerwosol nakładający się sam)
-  **wymaga poligonu Sieci i konta avatar9** — patrz `poligon.md`.
 
 - **Odmowy montażu nieoglądane na koncie gracza; monit „Minęła minuta" z nazwami — też.**
   Trzy odmowy z s. 111 (`MISSING_FOUNDATION`, `NO_SLOTS`, `POOL_FULL`) i dwie z s. 226
