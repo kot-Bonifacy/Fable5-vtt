@@ -19,6 +19,11 @@ export interface HudActiveWeapon {
   /** Slot id, so the bar can highlight the button this came from. */
   slotId: string;
   weaponRowId: string;
+  /**
+   * Weapon bolted onto that row (stage 31), when the bar armed the bayonet or
+   * the underbarrel launcher instead of the rifle. Null for the row's own gun.
+   */
+  attachmentId: string | null;
   mode: CpredAttackMode;
   name: string;
   /** True for a melee weapon — the planner refuses it past two metres. */
@@ -54,21 +59,23 @@ interface HudStoreState {
    * for, and a burst remembered from last week is a magazine emptied by
    * surprise. An absent entry means the weapon's first mode.
    *
-   * Keyed by token as well as by row, because two figures can carry the same
+   * Keyed by token as well as by weapon, because two figures can carry the same
    * sheet row (a statist duplicated on the map) and one of them switching to
-   * suppressive must not re-aim the other.
+   * suppressive must not re-aim the other. The weapon half is the *group's* id
+   * (stage 31), not the row's: a bayonet and its rifle share a row and must not
+   * share a remembered fire mode.
    */
   fireModes: Record<string, CpredAttackMode>;
 
   setActiveWeapon: (weapon: HudActiveWeapon | null) => void;
   setForm: (form: HudFormKind | null) => void;
   setCollapsed: (collapsed: boolean) => void;
-  setFireMode: (tokenId: string, weaponRowId: string, mode: CpredAttackMode) => void;
+  setFireMode: (tokenId: string, weaponKey: string, mode: CpredAttackMode) => void;
 }
 
 /** The one place that spells the composite key, so nobody spells it twice. */
-export function fireModeKey(tokenId: string, weaponRowId: string): string {
-  return `${tokenId}:${weaponRowId}`;
+export function fireModeKey(tokenId: string, weaponKey: string): string {
+  return `${tokenId}:${weaponKey}`;
 }
 
 const COLLAPSED_KEY = 'vtt.hudCollapsed';
@@ -89,9 +96,9 @@ export const useHudStore = create<HudStoreState>((set) => ({
   fireModes: {},
 
   setActiveWeapon: (activeWeapon) => set({ activeWeapon }),
-  setFireMode: (tokenId, weaponRowId, mode) =>
+  setFireMode: (tokenId, weaponKey, mode) =>
     set((state) => ({
-      fireModes: { ...state.fireModes, [fireModeKey(tokenId, weaponRowId)]: mode },
+      fireModes: { ...state.fireModes, [fireModeKey(tokenId, weaponKey)]: mode },
     })),
   setForm: (form) => set({ form }),
   setCollapsed: (collapsed) => {

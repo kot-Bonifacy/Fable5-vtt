@@ -401,18 +401,29 @@ describe('węzły kontrolne na żywych gniazdach', () => {
     expect(nodeOf((await runOf(gm))!)?.devices).toHaveLength(3);
   });
 
+  /** Jeden Test Kontroli węzła przez gracza. */
+  async function takeNode(): Promise<NetRunAbilityResult> {
+    return data(
+      await emitAck<NetRunAbilityResult>(player, 'netrun:ability', { runId, ability: 'control' }),
+      'netrun:ability',
+    );
+  }
+
   it('odmawia obsługi urządzenia przy nieprzejętym węźle', async () => {
     expect(errorOf(await operate('dev-cam', 'turn'))).toBe('NET_NODE_NOT_HELD');
   });
 
   it('przejmuje węzeł Kontrolą i dopiero wtedy pokazuje, co do niego podłączono', async () => {
-    const result = data(
-      await emitAck<NetRunAbilityResult>(player, 'netrun:ability', {
-        runId,
-        ability: 'control',
-      }),
-      'netrun:ability',
-    );
+    // Interfejs 10 przeciw PT 1 przegrywa **dokładnie raz na sto**: naturalna
+    // jedynka każe dorzucić kość i ją odjąć (dorzut sam już nie wybucha), więc
+    // najniższy możliwy wynik to równo 1 — a Test wymaga „więcej niż PT".
+    // Ten jeden rzut trzymał w garści pięć testów niżej: bez węzła każdy
+    // `operate` wraca z `NET_NODE_NOT_HELD`. Test jest o tym, **skąd bierze się
+    // PT**, nie o tym, czy kości były łaskawe, więc powtarza. Tu jest to darmowe
+    // — walka zaczyna się dopiero niżej, a poza walką nie ma budżetu Akcji
+    // Sieciowych (`spendTurnForToken` zwraca „not-in-combat").
+    let result = await takeNode();
+    for (let attempt = 1; attempt < 6 && !result.success; attempt += 1) result = await takeNode();
     expect(result.success).toBe(true);
     expect(result.summary).toContain(`${result.total}`);
 
@@ -446,10 +457,9 @@ describe('węzły kontrolne na żywych gniazdach', () => {
   });
 
   it('odmawia obsługi, której to urządzenie nie zna, i strzału bez figury', async () => {
-    data(
-      await emitAck<NetRunAbilityResult>(player, 'netrun:ability', { runId, ability: 'control' }),
-      'netrun:ability',
-    );
+    // Węzeł jest już przejęty testem wyżej; ten rzut niczego nie zmienia,
+    // a jego wynik nie ma tu znaczenia — porażka nie oddaje węzła.
+    await takeNode();
     expect(errorOf(await operate('dev-cam', 'fire'))).toBe('NET_DEVICE_WRONG_OPERATION');
     expect(errorOf(await operate('dev-cam', 'open'))).toBe('NET_DEVICE_WRONG_OPERATION');
     expect(errorOf(await operate('nie-ma-takiego', 'turn'))).toBe('NET_DEVICE_UNKNOWN');

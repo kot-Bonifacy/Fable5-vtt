@@ -111,6 +111,26 @@ export const CYBERWARE_POOL_TYPES: readonly CyberwareType[] = [
 ];
 
 /**
+ * Rodziny, w których opcja bez cyborgizacji podstawowej nie ma się czego trzymać
+ * (s. 111): „Większość typów cyborgizacji wymaga zainstalowania podstawowej
+ * modyfikacji … Ta podstawowa cyborgizacja oferuje pewną liczbę gniazd".
+ *
+ * **Większość, nie wszystkie** — i to jest cała treść tej stałej. Trzy rodziny
+ * podręcznik zwalnia wprost („Cybermoda oraz cyborgizacje wewnętrzne
+ * i zewnętrzne nie wymagają modyfikacji podstawowych") i one są wyżej;
+ * czwartą, **Borgizacje**, zwalnia milczeniem: tabela borgizacji nie ma ani
+ * nagłówka z gniazdami, ani żadnej podstawy, bo ramownica **jest** podstawą
+ * samą w sobie. Do 04.09.2026 liczyło się je jak cyberoko i karta pisała nad
+ * Ramownicą „brak cyborgizacji podstawowej", której nie da się kupić.
+ */
+export const CYBERWARE_FOUNDATION_TYPES: readonly CyberwareType[] = [
+  'neuralware',
+  'cyberoptics',
+  'cyberaudio',
+  'cyberlimb',
+];
+
+/**
  * The cyberware half of a sheet row, as the rules see it.
  *
  * Structural rather than the concrete row type, so this module never imports
@@ -532,7 +552,10 @@ export function cyberwareCapacity(rows: readonly CyberwareInstallation[]): Cyber
         capacity: foundations.reduce((sum, row) => sum + (row.slots ?? 0), 0),
         used: options.reduce((sum, row) => sum + (row.slotCost ?? 1), 0),
         pool: false,
-        missingFoundation: options.length > 0 && foundations.length === 0,
+        missingFoundation:
+          CYBERWARE_FOUNDATION_TYPES.includes(type) &&
+          options.length > 0 &&
+          foundations.length === 0,
         ...(perBox
           ? {
               places: boxes.map((slot) => {
@@ -587,3 +610,90 @@ export const HUMANITY_THERAPY_DEFINITIONS: Record<HumanityTherapy, HumanityThera
 export function isHumanityTherapy(value: unknown): value is HumanityTherapy {
   return typeof value === 'string' && (HUMANITY_THERAPIES as readonly string[]).includes(value);
 }
+
+/* ------------------------------------------------------------------ *
+ * Czy jest gdzie to wszczepić, i kto trzyma skalpel (s. 111, s. 226)
+ * ------------------------------------------------------------------ */
+
+/**
+ * Powody, dla których operacja się nie odbędzie — wszystkie ze strony 111.
+ *
+ * Do 04.09.2026 były wyłącznie ostrzeżeniem: `cyberwareCapacity` liczyło
+ * `missingFoundation` i zajęte gniazda, karta rysowała czerwony chip, a montaż
+ * i tak wchodził. Trzy kody, bo podręcznik stawia trzy różne warunki: opcja
+ * potrzebuje podstawy, podstawa ma skończoną liczbę gniazd, a rodziny bez
+ * podstawy mają limit sztuk („tylko 7 cyborgizacji").
+ */
+export const CYBERWARE_INSTALL_REFUSALS = ['MISSING_FOUNDATION', 'NO_SLOTS', 'POOL_FULL'] as const;
+export type CyberwareInstallRefusal = (typeof CYBERWARE_INSTALL_REFUSALS)[number];
+
+export const CYBERWARE_INSTALL_REFUSAL_MESSAGES: Record<CyberwareInstallRefusal, string> = {
+  MISSING_FOUNDATION:
+    'Nie ma w co tego wszczepić — ta rodzina wymaga najpierw cyborgizacji podstawowej (s. 111).',
+  NO_SLOTS: 'Brak wolnych gniazd modyfikacji w tej rodzinie (s. 111).',
+  POOL_FULL: `Ciało mieści tylko ${CYBERWARE_POOL_LIMIT} cyborgizacji tej rodziny (s. 111).`,
+};
+
+/**
+ * Czy to ciało przyjmie jeszcze tę cyborgizację?
+ *
+ * Ta sama arytmetyka, którą `cyberwareCapacity` rysuje na karcie — celowo
+ * liczona **na rodzinie, nie na pudełku sylwetki**: pudełko („które oko?")
+ * wybiera się dopiero na karcie, po montażu, więc pytanie o wolne gniazdo
+ * w prawej ręce w chwili instalacji nie ma jeszcze odpowiedzi.
+ *
+ * Wpis bez rodziny nie jest odmawiany. Wiersze sprzed etapu 23a rodziny nie
+ * mają, a odmowa oparta na brakującym polu blokowałaby import podręcznika
+ * zamiast pilnować zasady.
+ */
+export function cyberwareInstallRefusal(
+  rows: readonly CyberwareInstallation[],
+  entry: Pick<CyberwareInstallation, 'type' | 'foundation' | 'slots' | 'slotCost'>,
+): CyberwareInstallRefusal | null {
+  const type = entry.type;
+  if (!type) return null;
+  const family = rows.filter((row) => row.type === type);
+  if (CYBERWARE_POOL_TYPES.includes(type)) {
+    return family.length >= CYBERWARE_POOL_LIMIT ? 'POOL_FULL' : null;
+  }
+  // Borgizacja jest podstawą sama dla siebie: nie ma czego zajmować ani czym
+  // się podeprzeć, więc jedyne, co ją ogranicza, to Człowieczeństwo i cena.
+  if (!CYBERWARE_FOUNDATION_TYPES.includes(type)) return null;
+  // Podstawa wchodzi zawsze: to ona dopiero tworzy gniazda, więc nie ma ich
+  // sobie czym zająć. Druga cyberręka jest legalna i musi być — sylwetka ma
+  // dwa pudełka.
+  if (entry.foundation) return null;
+  const foundations = family.filter((row) => row.foundation === true);
+  if (foundations.length === 0) return 'MISSING_FOUNDATION';
+  const capacity = foundations.reduce((sum, row) => sum + (row.slots ?? 0), 0);
+  const used = family
+    .filter((row) => row.foundation !== true)
+    .reduce((sum, row) => sum + (row.slotCost ?? 1), 0);
+  return used + (entry.slotCost ?? 1) > capacity ? 'NO_SLOTS' : null;
+}
+
+/**
+ * „Nie możesz sam sobie wszczepić cyborgizacji, chyba że jest to cyborgizacja
+ * dostępna w galerii" (s. 226) — jedyne miejsce, w którym miejsce montażu
+ * decyduje o czymś innym niż PT i cena.
+ */
+export const CYBERWARE_SELF_INSTALL: CyberwareInstall = 'gallery';
+
+export function cyberwareAllowsSelfInstall(install: CyberwareInstall | undefined): boolean {
+  return install === undefined || install === 'none' || install === CYBERWARE_SELF_INSTALL;
+}
+
+/**
+ * Sufit liczby, którą MG wpisuje za ripperdoca. Najlepszy chirurg podręcznika
+ * ma TECHNIKĘ 8 i Chirurgię 10, więc osiemnaście jest granicą tego, co da się
+ * uzasadnić kartą; dwadzieścia zostawia MG margines na modyfikatory sceny.
+ */
+export const CYBERWARE_SURGEON_SKILL_MAX = 20;
+
+/**
+ * Ripperdoc z ulicy, jakiego okno montażu proponuje z góry: TECHNIKA 6 +
+ * Chirurgia 6. Klinikę (PT 15) trafia w siedmiu przypadkach na dziesięć —
+ * dość pewnie, żeby MG nie musiał tej liczby ruszać przy każdym wszczepie,
+ * i nie tak pewnie, żeby Test był formalnością.
+ */
+export const CYBERWARE_SURGEON_SKILL_DEFAULT = 12;

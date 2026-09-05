@@ -176,6 +176,11 @@ export function toCombatantView(row: CombatantRow, combat: CombatRow): Combatant
     id: row.id,
     tokenId: row.tokenId,
     name: combatantName(row),
+    // Carried, not applied: `filterCombatForPlayer` decides who gets which
+    // name. A participant with no figure (a Black ICE) has no alias to carry.
+    ...(row.token?.publicName !== null && row.token?.publicName !== undefined
+      ? { publicName: row.token.publicName }
+      : {}),
     imageUrl: row.token?.imageUrl ?? null,
     initiative: row.initiative,
     tieBreak: row.tieBreak,

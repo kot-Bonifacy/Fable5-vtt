@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  cpredDropOrphanedRolePurses,
   cpredFabricationEffects,
   cpredFabricationProblem,
   cpredFieldRepairMinutes,
@@ -179,5 +180,46 @@ describe('Ulepszanie i Prowizorka', () => {
     expect(CPRED_FABRICATION_TASK.cheap.dv).toBe(9);
     expect(CPRED_FABRICATION_TASK.luxury.dv).toBe(29);
     expect(Object.keys(CPRED_FABRICATION_TASK)).toHaveLength(8);
+  });
+});
+
+describe('sakiewka po zmianie Roli', () => {
+  /**
+   * Znalezione przy oględzinach 30b: MG nie mógł zmienić Roli Medykowi, który
+   * wydał punkty Specjalizacji. `roleId` jedzie u MG zwykłą łatą (29a), więc
+   * Zdolność znikała, przydział zostawał, a `cpredSpecialtiesProblem` odrzucał
+   * tę łatę — i każdą następną — zdaniem o Specjalizacji, której nikt nie
+   * dotykał.
+   */
+  const purses = (
+    patch: Partial<CpredRoleSheet & Pick<CpredCharacterData, 'medicine' | 'fabrication' | 'fleet'>>,
+  ): CpredRoleSheet & Pick<CpredCharacterData, 'medicine' | 'fabrication' | 'fleet'> => ({
+    ...sheet(patch),
+    fleet: [],
+    ...patch,
+  });
+
+  it('zdejmuje przydział Medycyny, gdy karta przestała być Medykiem', () => {
+    const after = cpredDropOrphanedRolePurses(
+      purses({ roleId: 'tech', roleAbilityRank: 6, medicine: { surgery: 5 } }),
+      registry,
+    );
+    expect(after.medicine).toEqual({});
+    expect(cpredSpecialtiesProblem(after, registry)).toBeNull();
+  });
+
+  it('zostawia przydział, gdy Rola została w poprzednich (wieloklasowość)', () => {
+    const kept = purses({
+      roleId: 'tech',
+      roleAbilityRank: 6,
+      formerRoles: [{ roleId: 'medtech', rank: 8 }],
+      medicine: { surgery: 5 },
+    });
+    expect(cpredDropOrphanedRolePurses(kept, registry)).toBe(kept);
+  });
+
+  it('pustej sakiewki nie rusza — karta wraca tym samym obiektem', () => {
+    const clean = purses({ roleId: 'solo', roleAbilityRank: 3 });
+    expect(cpredDropOrphanedRolePurses(clean, registry)).toBe(clean);
   });
 });

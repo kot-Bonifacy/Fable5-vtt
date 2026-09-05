@@ -281,6 +281,20 @@ describe('action economy', () => {
     throw new Error('turn never reached that participant');
   }
 
+  /**
+   * Przystawia kuriera do Vex — Ustabilizowanie wymaga długości ramienia (2 m,
+   * 03.09), a scena stawia go osiem metrów dalej, żeby dało się do niego
+   * strzelać. Rusza nim MG, więc budżet ruchu nikogo tu nie obchodzi.
+   */
+  async function reachTheCourier(): Promise<void> {
+    await emitAck(gm, 'token:move', {
+      tokenId: targetTokenId,
+      x: 1 * PX_PER_M,
+      y: 0,
+      final: true,
+    });
+  }
+
   it('sets the table: a player, a GM thug and a target to shoot at', async () => {
     const gmConn = createSocket(gmCookie);
     const playerConn = createSocket(playerCookie);
@@ -605,6 +619,23 @@ describe('action economy', () => {
     });
   });
 
+  it('odmawia Ustabilizowania z drugiego końca ulicy (03.09)', async () => {
+    await giveTurnTo(vexTokenId);
+    await emitAck(gm, 'token:update', {
+      tokenId: targetTokenId,
+      patch: { hp: { current: 0, max: 30 } },
+    });
+    // Kurier stoi 8 m od Vex — poza długością ramienia.
+    const ack = await emitAck(player, 'character:roll', {
+      characterId: vexCharacterId,
+      visibility: 'public',
+      request: { kind: 'stabilize', stabilizeTokenId: targetTokenId },
+    });
+    expect(ack).toMatchObject({ ok: false, error: 'STABILIZE_OUT_OF_REACH' });
+    // Odmowa zasięgu nie ma prawa kosztować Akcji.
+    expect(spent(rowOf(await tracker(), vexTokenId), 'action')).toEqual({ used: 0, max: 1 });
+  });
+
   it('stabilizes a mortally wounded target back to 1 HP, for an Action', async () => {
     await giveTurnTo(vexTokenId);
     // Put the courier below zero: a Mortally Wounded target, PT 15.
@@ -612,6 +643,7 @@ describe('action economy', () => {
       tokenId: targetTokenId,
       patch: { hp: { current: 0, max: 30 } },
     });
+    await reachTheCourier();
 
     const card = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
     const ack = await emitAck<{ messageId: number }>(player, 'character:roll', {
@@ -626,5 +658,53 @@ describe('action economy', () => {
 
     // Whatever the dice said, the Action is gone.
     expect(spent(rowOf(await tracker(), vexTokenId), 'action')).toEqual({ used: 1, max: 1 });
+  });
+
+  it('kładzie ustabilizowanego bez przytomności na minutę (s. 223)', async () => {
+    // „Ratownictwo medyczne" na maksimum: przy TECH 5 najniższy możliwy wynik
+    // bez Krytycznej Porażki to 16, czyli ponad PT 15 — a fumble zdarza się
+    // raz na dziesięć, więc pętla poniżej powtarza próbę, zamiast liczyć na
+    // szczęście. Test ma sprawdzać skutek udanej stabilizacji, nie kości.
+    expect(
+      (
+        await emitAck(gm, 'character:update', {
+          characterId: vexCharacterId,
+          patch: { skills: { paramedic: 10 } },
+        })
+      ).ok,
+    ).toBe(true);
+    await emitAck(gm, 'token:update', {
+      tokenId: targetTokenId,
+      patch: { hp: { current: 0, max: 30 } },
+    });
+    await reachTheCourier();
+
+    let label: string | undefined;
+    for (let attempt = 0; attempt < 8 && label !== 'Ustabilizowany'; attempt += 1) {
+      await giveTurnTo(vexTokenId);
+      const card = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+      await emitAck(player, 'character:roll', {
+        characterId: vexCharacterId,
+        visibility: 'public',
+        request: { kind: 'stabilize', stabilizeTokenId: targetTokenId, skillId: 'paramedic' },
+      });
+      label = (await card).message.roll?.outcome?.label;
+      if (label !== 'Ustabilizowany') {
+        // Nieudana próba zjadła Akcję; oddaj turę i spróbuj jeszcze raz.
+        const row = rowOf(await tracker(), vexTokenId);
+        await emitAck(gm, 'combat:reset-turn', { combatantId: row.id });
+        await emitAck(gm, 'token:update', {
+          tokenId: targetTokenId,
+          patch: { hp: { current: 0, max: 30 } },
+        });
+      }
+    }
+    expect(label).toBe('Ustabilizowany');
+
+    const sync = waitFor<StateSyncPayload>(gm, 'state:sync');
+    await emitAck(gm, 'state:request');
+    const token = (await sync).tokens.find((entry) => entry.id === targetTokenId);
+    expect(token?.hp?.current).toBe(1);
+    expect(token?.statuses).toContain('unconscious');
   });
 });

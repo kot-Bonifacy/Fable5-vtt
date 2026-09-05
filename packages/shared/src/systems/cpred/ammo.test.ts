@@ -8,6 +8,7 @@ import {
   ammoOffersSecondRoll,
   ammoOptionsFor,
   cpredAmmoCheckOutcome,
+  cpredEmpDisabled,
   describeAmmoFailure,
   loadedAmmoFor,
   type CpredAmmoProfile,
@@ -321,5 +322,37 @@ describe('smart ammunition (stage 16h)', () => {
   it('offers nothing for an ordinary round', () => {
     expect(ammoOffersSecondRoll(ammo(), 1)).toBe(false);
     expect(ammoOffersSecondRoll(null, 1)).toBe(false);
+  });
+});
+
+describe('EMP wskazuje, co padło (s. 345–347)', () => {
+  const rows = [
+    { name: 'Kerenzikov' },
+    { name: 'Cyberoko Kiroshi' },
+    { name: 'Sprzęg neuralny' },
+    { name: 'Chip językowy' },
+  ];
+
+  it('wybiera dwie różne cyborgizacje', () => {
+    // RNG zwracające zawsze pierwszą pozycję puli — dwa różne wiersze mimo to,
+    // bo wylosowany schodzi z puli.
+    const picked = cpredEmpDisabled(rows, () => 1);
+    expect(picked).toEqual(['Kerenzikov', 'Cyberoko Kiroshi']);
+  });
+
+  it('bierze tyle, ile ciało ma chromu, gdy jest go mniej niż dwie sztuki', () => {
+    expect(cpredEmpDisabled([{ name: 'Kerenzikov' }], () => 1)).toEqual(['Kerenzikov']);
+    expect(cpredEmpDisabled([], () => 1)).toEqual([]);
+  });
+
+  it('pomija wiersze bez nazwy — na karcie czatu nie ma czego napisać', () => {
+    expect(cpredEmpDisabled([{ name: '  ' }, { name: 'Pancerz podskórny' }], () => 1)).toEqual([
+      'Pancerz podskórny',
+    ]);
+  });
+
+  it('sięga po ostatni wiersz, gdy kość tak każe', () => {
+    const picked = cpredEmpDisabled(rows, (sides) => sides);
+    expect(picked).toEqual(['Chip językowy', 'Sprzęg neuralny']);
   });
 });

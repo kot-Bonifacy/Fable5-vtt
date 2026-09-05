@@ -379,6 +379,11 @@ export function combatProfileSheet(
     // both without either function learning what a statist is.
     criticalInjuries: profile.criticalInjuries ?? [],
     deathSaves: 0,
+    // Naturalne leczenie statysty nie dotyczy: karta powstaje na jedną walkę
+    // i po niej znika, a dzień odpoczynku pyta o kartę, która przeżyje noc.
+    // Statyście, który zaczyna wracać do zdrowia, MG daje prawdziwą kartę —
+    // to samo rozstrzygnięcie co przy Szczęściu i Człowieczeństwie wyżej.
+    recovery: { stabilized: false, antibioticDays: 0 },
     eddies: 0,
     // A statist has no wallet and pays no rent: the sheet is synthesised for
     // one fight and thrown away, and the monthly settlement skips a null.

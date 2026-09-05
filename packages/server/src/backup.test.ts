@@ -315,7 +315,9 @@ describe('Wsparcie: wezwanie, oczekiwanie, przybycie', () => {
     const view = await combatNow();
     const pending = view.reinforcements ?? [];
     expect(pending).toHaveLength(1);
-    expect(pending[0]).toMatchObject({ label: 'Korporacyjne służby bezpieczeństwa ×4' });
+    // Etykieta nazywa wyłącznie „kto"; ilu ich jest, niesie `count` i dokleja
+    // to Kolejka Inicjatywy (inaczej wychodziło „…bezpieczeństwa ×4 ×4").
+    expect(pending[0]).toMatchObject({ label: 'Korporacyjne służby bezpieczeństwa', count: 4 });
     expect(pending[0]!.round).toBe(view.round + (result.rounds ?? 0));
     // Nikt jeszcze nie stoi na mapie.
     expect((await tokensOfScene()).filter((t) => t.name.startsWith('Korpogliniarz'))).toHaveLength(

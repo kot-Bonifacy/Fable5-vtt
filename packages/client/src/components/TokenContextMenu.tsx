@@ -312,6 +312,10 @@ function StatistSkillFields({
 
 function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => void }) {
   const [name, setName] = useState(token.name);
+  // Trzy stany aliasu z jednej kolumny: brak (gracz widzi prawdziwą nazwę),
+  // tekst (widzi tekst) i pusty tekst (nie widzi żadnej etykiety).
+  const [hasAlias, setHasAlias] = useState(token.publicName !== undefined);
+  const [publicName, setPublicName] = useState(token.publicName ?? '');
   const [size, setSize] = useState(token.size);
   const [ownerId, setOwnerId] = useState<string | ''>(token.ownerId ?? '');
   const [characterId, setCharacterId] = useState<string | ''>(token.characterId ?? '');
@@ -363,6 +367,8 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
     }
     const patch: TokenPatch = {
       name: trimmed,
+      // `null` zdejmuje alias, pusty tekst zostawia figurę bez etykiety.
+      publicName: hasAlias ? publicName.trim() : null,
       size,
       ownerId: ownerId === '' ? null : ownerId,
       characterId: characterId === '' ? null : characterId,
@@ -406,6 +412,37 @@ function TokenEditDialog({ token, onClose }: { token: TokenView; onClose: () => 
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
+
+        <label className="auth-label">
+          <input
+            type="checkbox"
+            checked={hasAlias}
+            onChange={(e) => setHasAlias(e.target.checked)}
+          />{' '}
+          Gracze widzą inną nazwę
+        </label>
+        {hasAlias && (
+          <>
+            <input
+              id="token-public-name"
+              type="text"
+              maxLength={64}
+              placeholder="np. Ochroniarz — puste = bez etykiety"
+              value={publicName}
+              onChange={(e) => setPublicName(e.target.value)}
+              aria-label="Nazwa widoczna dla graczy"
+            />
+            <p className="auth-hint">
+              {publicName.trim() === ''
+                ? `Gracze nie zobaczą żadnej nazwy tej figury — ani na mapie, ani w Kolejce Inicjatywy. „${name.trim() || 'Token'}” zostaje u MG.`
+                : `Gracze zobaczą „${publicName.trim()}” zamiast „${name.trim() || 'Token'}” — na mapie i w Kolejce Inicjatywy. Prawdziwa nazwa nie opuszcza serwera.`}
+            </p>
+            <p className="auth-hint">
+              Karty na czacie nadal piszą prawdziwą nazwę — figura, która strzeliła, przedstawia się
+              sama.
+            </p>
+          </>
+        )}
 
         <label className="auth-label" htmlFor="token-size">
           Rozmiar (kratki)

@@ -2,6 +2,7 @@ import type { AiStatus } from './ai.js';
 import type { CampaignSummary, Role } from './auth.js';
 import type { BotView } from './bots/types.js';
 import type { ChatMessageView } from './chat.js';
+import type { CheckCallVisibility } from './checks.js';
 import type { CombatView } from './combat.js';
 import type { CharacterView } from './characters.js';
 import type { CoverView } from './covers.js';
@@ -260,8 +261,45 @@ export interface CharacterRollPayload<TRequest = unknown> {
   request: TRequest;
   /** `gm` = result visible to the author and the GM only (whisper pattern). */
   visibility: 'public' | 'gm';
+  /**
+   * Chat message id of the GM's call this roll answers (stage 32). Naming one
+   * hands the whole request over to the server: what is rolled, the situational
+   * modifier, the DV and who sees the result all come off the stored call, and
+   * the only thing left of the payload is the Luck the player declares and the
+   * gesture. A client naming its own DV would be a client setting the
+   * difficulty of the event the GM invented.
+   */
+  callMessageId?: number;
   /** Present when the roll was thrown with the dice cup. */
   gesture?: RollGesture;
+}
+
+/* ------------------------------------------------------------------ *
+ * Wezwanie do Testu (etap 32)
+ * ------------------------------------------------------------------ */
+
+/**
+ * GM → server payload of `check:call`. The system request (`CpredRollRequest`
+ * for CP RED) says what to roll; everything else here is the frame the GM puts
+ * around it.
+ */
+export interface CheckCallPayload<TRequest = unknown> {
+  characterId: string;
+  request: TRequest;
+  /** Poziom Trudności. Mutually exclusive with `opponentBonus`. */
+  dv?: number;
+  /** Opposed call: the other side's flat number, to which the server adds 1d10. */
+  opponentBonus?: number;
+  /** GM's situational modifier folded into the roll („ciemno, −2"). */
+  modifier?: number;
+  /** One or two sentences describing the event being tested. */
+  prompt?: string;
+  visibility: CheckCallVisibility;
+}
+
+/** GM → server payload of `check:cancel` — the call is withdrawn unanswered. */
+export interface CheckCancelPayload {
+  messageId: number;
 }
 
 /**
@@ -272,6 +310,20 @@ export interface CharacterRollPayload<TRequest = unknown> {
  * chrome took out of somebody. Removal and therapy ride the same event for the
  * same reason — one of them moves the Humanity ceiling, the other rolls dice.
  */
+/**
+ * Kto trzyma skalpel przy montażu (04.09.2026, s. 226).
+ *
+ * Trzy tryby, bo tyle jest przy stole sytuacji, a nie dlatego, że tyle było
+ * miejsca w UI. `none` to dzisiejsze zachowanie — klinika bierze pieniądze
+ * i wszczep wchodzi, bo „cena montażu cyborgizacji wliczona jest w ich cenę".
+ * `gm` jest po to, **żeby ripperdoc nie musiał mieć karty postaci**: MG podaje
+ * jedną liczbę („TECH + Chirurgia" tego, kto operuje) i serwer rzuca za niego.
+ * `character` to Medyk gracza — jego Chirurgię czyta się z karty, więc nikt
+ * jej nie wpisuje ręką.
+ */
+export type CyberwareSurgeon =
+  { kind: 'none' } | { kind: 'gm'; skill: number } | { kind: 'character'; characterId: string };
+
 export interface CharacterCyberwarePayload {
   characterId: string;
   action: 'install' | 'remove' | 'therapy';
@@ -287,6 +339,8 @@ export interface CharacterCyberwarePayload {
    * and nothing else; `none` is the GM's gift and is refused for players.
    */
   payment?: 'full' | 'installOnly' | 'none';
+  /** `install`: kto operuje. Brak znaczy `none` — montaż bez Testu. */
+  surgeon?: CyberwareSurgeon;
   /** Present when the roll was thrown with the dice cup. */
   gesture?: RollGesture;
 }
@@ -506,6 +560,17 @@ export interface AttackSmartPayload {
   gesture?: RollGesture;
 }
 
+/**
+ * Clearing a jammed poor-quality weapon (s. 244) — an Action, and no Test.
+ *
+ * A sheet only: a statist's gun lives in a combat profile with no catalogue
+ * entry behind it, so it has no quality to be poor and can never jam.
+ */
+export interface WeaponClearJamPayload {
+  characterId: string;
+  weaponRowId: string;
+}
+
 /** Reloading a weapon row to a full magazine (an Action at the table). */
 export interface WeaponReloadPayload {
   /**
@@ -530,6 +595,36 @@ export interface WeaponReloadPayload {
    * in one the Action is booked exactly as a refill's would be.
    */
   ammoId?: string | null;
+  /**
+   * Refill the weapon bolted onto this row instead of the row itself
+   * (stage 31) — the one grenade in the underbarrel launcher.
+   *
+   * The same event rather than one of its own, because at the table it is the
+   * same motion and costs the same Action: „Przeładowanie — Załadowujesz
+   * magazynek do pełna" says nothing about which magazine.
+   */
+  attachmentId?: string;
+}
+
+/** Client → server payload of `weapon:attachment` (stage 31). */
+export interface WeaponAttachmentPayload {
+  /** Sheet carrying the weapon. A statist's figure has no attachments. */
+  characterId: string;
+  weaponRowId: string;
+  /** Catalogue id of the attachment being bolted on or taken off. */
+  attachmentId: string;
+  /** `mount` bolts it on, `unmount` takes it off and frees the slots. */
+  action: 'mount' | 'unmount';
+}
+
+/** Ack data of `weapon:attachment` — what the weapon looks like afterwards. */
+export interface WeaponAttachmentResult {
+  attachmentIds: string[];
+  /** Slots still open, so the sheet can grey the „+ Dodatek" button. */
+  slotsFree: number;
+  /** Magazine after the change; a drum grows it, taking one off shrinks it. */
+  ammoMax: number;
+  ammoCurrent: number;
 }
 
 /** Client → server payload of `chat:history`. */

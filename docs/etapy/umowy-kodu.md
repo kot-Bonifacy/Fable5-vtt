@@ -4,6 +4,159 @@ Wyprowadzone z „Od czego zacząć" w `POSTEP.md` 22.08.2026. Indeks jednolinij
 tu leżą pełne wersje. Czytaj wpis, **zanim** dołożysz coś w obszarze, którego dotyczy — każdy
 z nich powstał po tym, jak ktoś dołożył to w złym miejscu.
 
+**„Backup" w tym repozytorium znaczy Wsparcie, nie kopię zapasową (05.09).**
+`realtime/backup.ts`, `characterBackupCallEvent` i `BackupPanel.tsx` to Zdolność Roli **Wsparcie**
+z etapu 30c — wezwanie posiłków na mapę. Kopie zapasowe nazywają się `snapshot` (praca na dysku:
+`snapshots.ts`, zdarzenia `archive:list` / `archive:snapshot`), a pliki wymiany — `archive`
+(`shared/src/archive.ts`, `server/src/archive.ts`, `ArchivePanel.tsx`). Nowa rzecz w tym obszarze
+dopisuje się do jednej z tych dwóch rodzin; słowa „backup" nie używa się na nic poza Wsparciem.
+
+**Kopia zapasowa nie kopiuje pliku bazy — robi `VACUUM INTO` (05.09).** SQLite w trybie WAL
+trzyma część świeżego stanu w pliku `-wal` obok bazy, więc `copyFile` na `.db` w trakcie zapisu
+daje kopię niespójną albo starszą, niż wygląda. `vacuumInto` w `snapshots.ts` otwiera bazę
+**drugim połączeniem, tylko do odczytu**, i to jest cała sztuczka: ten sam kod chodzi w timerze
+przy działającym serwerze i w skrypcie przy zatrzymanym. Nowa droga do kopii woła `vacuumInto`,
+nigdy `copyFile`.
+
+**Pliki `uploads/` w kopii to twarde dowiązania, nie kopie — i to zależy od ich niezmienności
+(05.09).** `linkTree` dowiązuje każdy plik (z ucieczką do `copyFile`, gdy się nie da), dzięki
+czemu trzydzieści osiem samowystarczalnych kopii kosztuje 14 MB grafik **raz**, a nie
+trzydzieści osiem razy. Jest to bezpieczne wyłącznie dlatego, że trasy `/api/uploads/*` zapisują
+plik raz, pod losową nazwą, i nigdy go nie nadpisują. **Jeśli kiedykolwiek zaczną pisać
+w miejscu — dowiązania trzeba zamienić na kopie**, bo inaczej podmiana grafiki zmieni ją we
+wszystkich kopiach naraz.
+
+**Rotacja liczy się z NAZW katalogów, nigdy z czasu pliku (05.09).** `planSnapshotRotation`
+w `shared/src/archive.ts` sortuje leksykalnie (`snapshot-2026-09-05-1430` — format tak dobrany,
+że porządek nazw jest porządkiem czasu) i dobę bierze wprost z nazwy, więc strefa czasowa nie ma
+tu nic do rzeczy. **Nazwa spoza schematu nie jest kasowana nigdy** i to jest funkcja, a nie
+niedopatrzenie: kopię, która ma przeżyć wszystko, przemianowuje się (`przed-refaktorem`).
+Tą samą furtką idą kopie bezpieczeństwa spod `restore` (`przed-przywroceniem-<ISO>`).
+
+**Eksport wypisuje wiersze z wypisanymi kolumnami, import normalizuje (05.09).** Kopia zapasowa
+ma być prawdą o bazie, więc `exportCharacter`/`exportScene` **nie** idą przez widoki —
+`toTokenView` podmienia nazwę figury na `publicName`, a kopia gubiąca prawdziwą nazwę żetonu nie
+jest kopią. Kolumny wypisuje się ręką (nigdy `select` hurtem): nowa kolumna ma tu wymusić
+decyzję, czy jedzie. Kolumny JSON-owe (`data`, `statuses`, `combatProfile`…) jadą jako **prawdziwy
+JSON**, żeby plik dało się przeczytać w edytorze. W drugą stronę `importCharacter` przepuszcza
+kartę przez `parseCharacterData` — ten sam parser, którym czyta ją reszta serwera — więc karta
+sprzed etapu 30b wraca z dopisanymi domyślnymi polami. **Round-trip nie jest więc bajt w bajt
+i nie ma być**; nic nie ginie, dochodzą wartości domyślne.
+
+**Import nigdy nie odtwarza cudzych id, ale swoje utrzymuje (05.09).** Każdy wiersz z pliku
+dostaje nowe `cuid`. Odnośniki do kogoś (`Token.ownerId`, `Token.characterId`) przeżywają
+**tylko po sprawdzeniu, że taki wiersz naprawdę stoi w tej kampanii** (`survivingIds`); reszta
+schodzi do `null`, a `ArchiveImportResult.note` mówi ile. `MapDrawing.authorId` jest kluczem
+obcym z kaskadą i nie może być pusty, więc rysunki przejmuje ten, kto stawia scenę.
+
+**Nazwa pliku w `Content-Disposition` musi być ASCII (05.09).** Nagłówek HTTP jedzie jako
+latin-1: „Bezpański" wprost w `filename` wywraca całą odpowiedź (`ERR_INVALID_CHAR`, 500 zamiast
+pobrania). `archiveContentDisposition` składa polskie znaki do gołych liter i dokłada prawdziwą
+nazwę parametrem `filename*=UTF-8''…` (RFC 5987). Każdy nowy nagłówek z nazwą od użytkownika
+idzie tą samą drogą.
+
+**Kopie są sekcją opcjonalną w konfiguracji i to jest ich wyłącznik (05.09).**
+`ServerConfig.backups` może nie istnieć — wtedy proces kopii nie robi. Tak stoją wszystkie
+54 zestawy testów dymnych, bez ani jednej linijki zmiany w ich konfiguracjach, i tak samo
+działa `snapshotPathsFor`. Osobna flaga „wyłącz kopie" byłaby drugim sposobem na to samo.
+
+**Kto operuje przy montażu, jest jednym polem protokołu — nie kartą NPC (04.09).**
+`CharacterCyberwarePayload.surgeon` ma trzy warianty i tyle ich będzie: `none` (montaż bez Testu,
+czyli zachowanie sprzed tej sesji — „cena montażu cyborgizacji wliczona jest w ich cenę"), `gm`
+(**ripperdoc bez karty**: MG podaje jedną liczbę „TECHNIKA + Chirurgia", serwer dorzuca 1k10)
+i `character` (Medyk z kampanii — jego Chirurgię czyta `cpredMedicineSkillLevel` z karty, nigdy
+klient). Wariant `gm` jest decyzją MG z tej sesji i ma konkretny powód: ripperdoc przy stole jest
+zdaniem w opisie, a nie figurą, więc wymaganie dla niego karty postaci zamieniłoby jeden rzut
+w pół godziny pracy. Nowy sposób montażu dopisuje się **do tej unii**, a nie jako drugi tor
+w `installCyberware`: PT bierze się zawsze z `CYBERWARE_INSTALL_DV[entry.install]`, a porażka
+zawsze niszczy wszczep (s. 226) — pieniądze schodzą, wiersz nie powstaje, Człowieczeństwo zostaje
+nietknięte, bo nic nie zostało wszczepione.
+
+**Czy jest gdzie wszczepić, rozstrzyga jedna czysta funkcja (04.09).** `cyberwareInstallRefusal`
+w `systems/cpred/cyberware.ts` zwraca `MISSING_FOUNDATION`, `NO_SLOTS`, `POOL_FULL` albo `null`
+i jest **jedynym** źródłem tych trzech odmów — ten sam kod wraca do klienta jako klucz w
+`CYBERWARE_INSTALL_REFUSAL_MESSAGES`, więc zdanie po polsku jest w jednym miejscu. Liczy się
+**na rodzinie, nie na pudełku sylwetki**: pudełko („które oko?") wybiera się dopiero po montażu,
+więc pytanie o wolne gniazdo w prawej ręce nie ma jeszcze odpowiedzi. Trzy rzeczy, które łatwo
+tu zepsuć: wpis **bez rodziny** nie jest odmawiany (wiersze sprzed 23a jej nie mają, a odmowa
+blokowałaby import); **podstawa wchodzi zawsze** (to ona dopiero robi gniazda); a rodzin
+wymagających podstawy jest **cztery** — `CYBERWARE_FOUNDATION_TYPES` — i Borgizacje do nich nie
+należą, bo ramownica jest podstawą sama dla siebie. **MG przechodzi przez odmowę** (jak przez
+blokady ruchu i progi sklepu), ale karta czatu wtedy ją zapisuje.
+
+**Wszystko, co wisi przy naklejce żetonu, mieszka w `Token.statusData` i schodzi razem z nią (04.09).**
+Kolumna trzyma `{ damage?, timer?, feared?, disabled? }` na status; `disabled` to nazwy
+cyborgizacji zdjętych Impulsem EMP — **nazwy, nie id wierszy**, bo czyta je stół, a wiersz karty
+może zniknąć, zanim minie minuta. Zapis idzie przez `writeSheetStatusDisabled`, odczyt przez
+`readSheetStatusDisabled`, a **kasowanie jest wspólne**: `writeSheetStatusTimer(raw, id, null)`
+zdejmuje cały wpis (zostawiając samo `damage`, czyli nastawienie MG). Ta jedna zasada jest
+powodem, dla którego „Cofnij" w `realtime/damage.ts` musi po zdjęciu naklejki przelecieć
+`statusesAdded` i wyczyścić dane — inaczej po cofniętym trafieniu zostaje zegar i następna walka
+ogłasza „Minęła minuta" dla statusu, którego na żetonie już nie ma (błąd znaleziony 04.09).
+
+**O tym, czy karta ataku ma guzik „Obrażenia", rozstrzyga serwer — klient tylko go rysuje (04.09).**
+Serwer liczy `damages = (trafienie || obszar) && ammoDealsDamage(ammo)` i **nie wysyła
+`damageNotation`**, gdy odpowiedź brzmi „nie" — komentarz przy tej linii mówi wprost
+„no button, no notation, nothing to apply". Klient ma więc jeden warunek:
+`attack.damageNotation !== undefined`. Warunek „trafił albo obszar" powtórzony po jego
+stronie kosztował guzik z pustą kością na każdej karcie amunicji bez obrażeń z 16h (dym, gaz
+łzawiący, hukbłyskowa, EMP, usypiająca). Nowa cecha ataku, która ma coś **odebrać** karcie,
+odbiera to samo w tym jednym miejscu na serwerze, nie drugą gałęzią w `AttackControls.tsx`.
+
+**Nowe pole typu broni dopisuje się w TRZECH miejscach, nie w dwóch (04.09).** Do
+`CpredWeaponTypeInput`, do wpisu w `manual-overrides.json` — **i do białej listy `schema_fields`
+w `tools/import/parse-manual.py`**. Ta lista tnie przy zapisie wszystko, czego na niej nie ma,
+i robi to po cichu: tak zginęły najpierw `explosive` i `ammoPatterns`, a potem `thrown`,
+`maxRangeM` oraz `ammoIds` — granat przestał być „rzucany" i latał bez zasięgu
+maksymalnego, a miotacz ognia przyjmował cudzy śrut. Od 04.09 parser **mówi o tym na głos**:
+każde pole spoza listy (poza `cost`, `costCategory` i `features`, które jadą do wpisu
+kupowalnego) wychodzi jako ostrzeżenie importu. Ostrzeżenia czyta się przy każdym
+`python tools/import/parse-manual.py`.
+
+**Stan figury czyta się z pozycji stołu, a nie z legendy (27j + 04.09).** Podstawka niesie kolor
+stanu, naklejka — jego ikonę, ✕ zostaje trupowi, a od 04.09 **portret kładzie się na bok**
+(`CONDITION_TILT_DEG` w `TokenNode.ts`) dla `down` **i** `dead`. Obraca się wyłącznie portret —
+`image` i `initial`; pierścień, łuk PW, podstawka, imię i naklejki zostają pionowe, bo
+przekrzywiony podpis to błąd, a przekrzywione koło to nic. Kąt jest w tabeli obok pozostałych
+tabel stanu i **dobiera się go w przeglądarce, przy zoomie stołu**, nie na oko w edytorze:
+dwadzieścia stopni wyglądało dobrze w kodzie i było niewidoczne na mapie.
+
+**Przedmiot, który da się zużyć, jest wierszem ekwipunku — nie tabelą obok niego (03.09).**
+`CpredGearRow.consumable` niesie id z `systems/cpred/pharma.ts`, a `qty` liczy sztuki tak samo,
+jak liczyło je zawsze. Dawka **jest** przedmiotem: waży, kupuje się ją, oddaje i gubi razem
+z plecakiem, więc osobna lista rozjechałaby się z ekwipunkiem przy pierwszym „daję Rico dwie
+fiolki". Nowy rodzaj środka dopisuje się **wyłącznie** do `CPRED_PHARMACEUTICALS` (nazwa, zdanie
+z podręcznika, `applies`, ewentualne „raz dziennie") i do jednej gałęzi `applyDose`
+w `realtime/recovery.ts`. `pharma.ts` **nie importuje niczego** — to warunek, nie przypadek:
+walidacja karty (`character.ts`) sprawdza przeciw tym id, a `roleability.ts` bierze z karty typy.
+
+**Powrót do zdrowia liczy serwer, a karta deklaruje tylko „minął dzień" (03.09).** `cpredRestDay`
+w `shared/systems/cpred/recovery.ts` jest jedynym miejscem, które wie, ile PW wraca; klient wysyła
+`character:rest` z samym `strained` i dostaje kartę czatu z **rozbiciem** (`rate.sources`), bo
+liczba bez powodu nie da się sprawdzić przy stole. Nowe źródło tempa (chrom, środek, warunki)
+dokłada wiersz w `cpredHealRate`, nie mnożnik w wywołaniu. Warunek „po udanej stabilizacji"
+mieszka w `CpredCharacterData.recovery.stabilized` i **pisze go wyłącznie udane Ustabilizowanie**
+(`applyStabilization`) — na każdym progu ran, nie tylko przy zerze.
+
+**Nowy rodzaj wiersza czatu dopisuje się w `shared/src/chat.ts` w dwóch czystych funkcjach**
+(`chatCategoryOf`, `chatCompactLine`), w `toChatMessageView` po stronie serwera i w jednej gałęzi
+`FullMessageRow` u klienta. Umowa jest z 01.09; 03.09 przeszedł nią rodzaj `recovery` (dzień
+odpoczynku i podana dawka — jedna karta na dwie czynności, bo z miejsca stołu to jedno zdarzenie:
+„komuś zrobiło się lepiej i wiadomo dlaczego"). Kto pominie te dwie funkcje, dostanie wiersz
+wpadający do grupy „Stół", którego nie da się ścisnąć.
+
+**Co gracz może nazwać figurę, rozstrzyga serwer — od 03.09 przez `Token.publicName`.**
+Trzy stany w jednej kolumnie nullable, więc żadna scena nie wymagała konwersji: `null` = gracz
+widzi `name` (tak było zawsze), tekst = widzi ten tekst, `''` = nie widzi żadnej etykiety.
+Podmiana siedzi **w dwóch miejscach i tylko tam**: `toTokenView` (`realtime/tokens.ts`) wpisuje
+`includePrivate ? name : (publicName ?? name)` i sam alias wkłada **do gałęzi prywatnej** —
+gracz nie ma się nawet dowiedzieć, że druga nazwa istnieje; `filterCombatForPlayer`
+(`shared/combat.ts`) wymienia `name` w wierszu trackera, zdejmuje pole `publicName` i przy
+okazji poprawia `grapple.otherName`, żeby Pochwycenie nie nazwało nikogo po prawdziwemu. Nowa
+ścieżka, którą figura dociera do gracza, **filtruje nazwę u siebie** — nie w kliencie, i nie
+przez trzecie miejsce, które trzeba pamiętać. Czat jest świadomie poza tą umową: nazwa jest
+tam wpisana w **treść** zapisanej wiadomości, opis w `zaleglosci.md`.
+
 **Ruch gracza jest od 21.08 sprawdzany geometrią na serwerze.** `refuseWalkThroughSolid`
 w `realtime/movement.ts` odrzuca trasę przez ścianę, zamknięte okno i stojącą osłonę — **także
 poza walką**, i **odmowa nie nazywa przeszkody** (gracz nie może mapować budynku, wchodząc w nią).
@@ -611,3 +764,224 @@ wyjmuje go z profilu warstwa systemu (`readSheetTokenInjuries` w `sheets.ts`, ob
 `tokenId` (sterowanie), ring i podgląd marszu zostają przy figurze prowadzonej. Pasek rozróżniał
 opis od sterowania od 27h (`HudContext.steering`) — brakowało tylko drogi, którą cudza figura
 mogła do niego trafić, i przez to publiczne rany były dla gracza nieosiągalne.
+
+**Nowy dodatek do broni to wiersz kompendium, nie gałąź w kodzie (01.09).** `AttachmentEntry`
+niesie `fit` („Pasuje do:" z podręcznika — lista Umiejętności, lista zakazanych, „musi liczyć
+naboje") i flagi skutku (`slots`, `magazine`, `attackBonus`, `rangedBonus`, `ignoresObscurement`,
+`blocksConcealment`, `secondary`, `exclusiveGroup`). Ta sama decyzja, co przy amunicji w 16g
+i ranach krytycznych w 14e: MG wpisujący własny dodatek dostaje go egzekwowanego dokładnie tak,
+jak drukowany, a kod walki nigdy nie uczy się słowa „bagnet". Każdą flagę trzeba **przepisać
+ręcznie** w `toAttachmentProfile` — pominięta tam jest regułą, której mechanika nigdy nie zobaczy
+(ta sama lekcja, którą zapisał `toAmmoProfile`).
+
+**Kolumny tabeli magazynków siedzą na typie broni, nie na dodatku (01.09).**
+`magazineExtended`/`magazineDrum` w `WeaponTypeDefinition`, bo tabela z s. 344 czyta się bronią:
+jeden magazynek bębnowy, dziesięć różnych odpowiedzi. Dodatek mówi tylko, **którą kolumnę**
+wybrać (`magazine: 'extended' | 'drum'`), a liczbę podaje `weaponMagazineWith`. Typ, którego
+w tabeli nie ma, zostaje przy zwykłym magazynku — to uczciwa odpowiedź, nie zgadywanie.
+Obie kolumny musiały trafić na białą listę `schema_fields` w `parse-manual.py` (umowa o nowym
+polu typu broni).
+
+**Druga broń doczepiona do wiersza to id typu broni, nigdy kopia jego liczb (01.09).**
+`CpredAttachmentWeapon.weaponTypeId` (+ opcjonalny `magazine`), a pełny profil składa
+`resolveAttachmentWeapon`. „Trzymaną oburącz broń można wykorzystać jako Granatnik z tylko jednym
+granatem w magazynku" (s. 343) to cały profil granatnika z jednym zmienionym polem; skopiowanie
+reszty zostawiłoby bagnet, którego obrażenia przestają się zgadzać z Lekką bronią białą, gdy MG
+poprawi tabelę. Planer podmienia broń **raz**, w `planCpredAttack`, i od tego miejsca w dół każda
+reguła (zasięg, zwarcie, tryby ognia, połowa pancerza) działa, bo dotyczy broni — nie dlatego,
+że ktoś dopisał gałąź o podwieszanych.
+
+**Magazynek broni podwieszanej jest jej własny (01.09).** `CpredWeaponRow.attachmentAmmo`
+(id dodatku → naboje). Bez tego jeden granat kosztowałby dwadzieścia pięć naboi karabinowych:
+`spendAttackCosts` czyta `meta.attachmentId` i pisze do właściwego licznika, `weapon:reload`
+z polem `attachmentId` napełnia ten licznik za tę samą Akcję, a demontaż zabiera go z karty razem
+z dodatkiem. Broń doczepiona przychodzi **załadowana** — nikt nie kupuje pustego granatnika,
+a alternatywą jest wyrzutnia wymagająca Akcji, zanim w ogóle wystrzeli.
+
+**Reguły montażu stoją po stronie odczytu, nie zapisu (01.09).** `attachmentIds` jest zwykłym
+polem karty i jedzie `character:update` jak nazwa broni, więc gracz może tam wpisać trzy bębny
+albo złącze smartguna na łuku. `fittedAttachmentsFor` sądzi listę **przy każdym odczycie**
+(`attachmentMountProblem` wobec tego, co już zachowano): to, czego nie dałoby się zamontować,
+po prostu nie daje nic. Sprawdzanie przy zapisie trzeba by powtórzyć w każdej ścieżce piszącej
+kartę — tak jest jedno miejsce do zapomnienia, a karta, pod którą MG zmienił kompendium, leczy
+się sama. Zdarzenie `weapon:attachment` zostaje mimo to, bo robi trzy rzeczy, których łata nie
+policzy: przepisuje `ammoMax` z tabeli, przycina naboje przy demontażu i **odmawia** drugiej
+kopii zdaniem, zamiast milczeć.
+
+**Bonus dodatku warunkowany chromem pyta kartę przez `hasRequiredCyberware` (01.09).**
+`requiresCyberware` niesie **nazwy** cyborgizacji, nie id — id powstają z polskich nazw przy
+imporcie i giną, gdy MG przepisze wiersz (ta sama umowa, co przy ranach przez `criticalInjuryAt`
+i broni Wsparcia w 30c). Dopasowanie na `trim().toLowerCase()`. Przez tę jedną funkcję idą oba
+tory z podręcznika: +1 złącza smartguna („musisz być z nim połączony za pomocą złączy interfejsu
+lub uchwytu podskórnego", s. 344) i odmowa strzału amunicją inteligentną („z powodów
+bezpieczeństwa … nie wystrzeli", s. 347, kod `AMMO_NEEDS_CYBERWARE`). Do 23a modelu chromu nie
+było, więc drugie z tych zdań stało jako proza na karcie.
+
+**Kara „nie widzę celu" ma własny `kind`, żeby dało się ją zdjąć (01.09).**
+`CPRED_OBSCUREMENT_KIND` w `environment.ts` zamiast `situational`: „Celownik noktowizyjny …
+zmniejsza do zera modyfikatory ujemne za strzelanie do celu ukrytego w ciemności, dymie, mgle"
+(s. 343), a noktowizor musi odróżnić chmurę od Trzymania — po polskiej etykiecie się nie
+rozgałęzia. Kasowane są **wyłącznie ujemne** wiersze tego rodzaju i **kasowane**, nie
+kompensowane plusem: podręcznik mówi, że kara przestaje istnieć, a „Dym −4 · Noktowizor +4"
+na karcie byłoby teatrem arytmetycznym.
+
+**Nowa droga ataku z drugiej broni kończy się `attachmentId` w żądaniu (01.09).**
+`CpredAttackRequest.attachmentId` → `AttackIntent.attachmentId` → `AttackTargeting.attachmentId`;
+podgląd u klienta i werdykt serwera rozwiązują dodatek **z tego samego katalogu**
+(`resolveAttachmentWeapon`), więc bąbelek pod kursorem i karta na czacie nie mają jak się
+rozjechać. Karta niesie `attachmentId` + `attachmentName`, bo jest czytana długo po strzale
+i „czym to było" musi odpowiadać także po edycji kompendium.
+
+**Tożsamość broni na pasku to wiersz PLUS dodatek (01.09, druga sesja).**
+`weaponOptionKey(rowId, attachmentId)` w `hotbar.ts` — bagnet i karabin, w który jest wkręcony,
+dzielą **ten sam** `rowId`, więc od chwili, w której pasek pokazuje broń podwieszaną, sam
+`rowId` przestał być tożsamością. Klucza używają **cztery** miejsca i pominięcie któregokolwiek
+zlepia dwie bronie w jedno pudełko: id slotu (`weapon:<klucz>:<tryb>`), id przeładowania
+(`reload:<klucz>`), grupowanie panelu w `cpredHotbarGroups` i pamięć trybu ognia u klienta
+(`fireModeKey` bierze **id grupy**, nie `weaponRowId`). Katalog dodatków wchodzi do
+`hotbarSlotsFor` polem `attachments` i jest **opcjonalny**: kto go nie poda — jak tura bota —
+dostaje pasek sprzed tej zmiany, czyli same bronie z karty.
+
+**Nowy rodzaj wiersza czatu dopisuje się w dwóch czystych funkcjach (01.09, trzecia sesja).**
+Filtry czatu i tryb zwarty stoją na `chatCategoryOf` i `chatCompactLine` w `shared/src/chat.ts`
+— obie mają wyczerpujący `switch` po `ChatKind`, więc nowy rodzaj **nie skompiluje się** bez
+przydziału do grupy, ale `chatCompactLine` można przeoczyć i wtedy wiersz zostanie pełną kartą
+mimo trybu zwartego. Streszczenie **czyta wyłącznie pola, które i tak są w wiadomości**: redakcja
+widoczności robi się na serwerze (etap 15), więc zwarty wiersz ściska dokładnie to, co ten ekran
+dostał, i nie ma jak odsłonić cudzych PW.
+
+Trzy rzeczy, które łatwo zepsuć przy dokładaniu:
+
+- **Filtr nie chowa pytań.** `isPending` w `ChatPanel.tsx` wyjmuje spod filtra nierozstrzygniętą
+  propozycję bota i notatkę z przyciskami (16c). Nowy wiersz, który czeka na czyjeś kliknięcie,
+  dopisuje się tam — inaczej schowa się pod separatorem w środku cudzej tury. Taki wiersz jest
+  też zwolniony z trybu zwartego, bo zwarta linia nie ma przycisków.
+- **Ukryte nie znaczy skasowane.** Odfiltrowane wiersze zwijają się w klikalny separator
+  („⋯ 4 ukryte wiersze ⋯"), a nie znikają: czat jest logiem sesji. Odmianę liczebnika robi
+  `hiddenLabel`.
+- **Nastawienie jest lokalne.** `chatFilterStore` trzyma wybór w `localStorage` i **nigdy** nie
+  jedzie zdarzeniem Socket.IO — to samo rozstrzygnięcie, co przy głośnościach z 27d. Rozwinięcie
+  pojedynczego wiersza żyje tylko w stanie panelu: tryb jest nastawieniem na sesję, rozwinięcie
+  — jednym zajrzeniem.
+
+**Wezwanie do Testu jest jedynym źródłem prawdy o tym, co zaraz padnie (etap 32).** Rzut
+odpowiadający na wezwanie jedzie zwykłym `character:roll` z jednym dodatkowym polem
+(`callMessageId`), a `payloadFromCall` w `character-rolls.ts` **podmienia cały payload** na to,
+co stoi w zapisanej karcie wezwania: kartę postaci, Umiejętność albo Cechę, modyfikator MG
+i widoczność wyniku. Z żądania klienta zostają dokładnie dwie rzeczy — **zadeklarowane Szczęście
+i gest kubka**. To ta sama umowa, którą od etapu 16 mają obrażenia po ataku („notacja i mnożnik
+z zapisanej wiadomości, nigdy z żądania"), i z tego samego powodu: klient nazywający własne PT
+ustalałby trudność wydarzenia, które wymyślił MG.
+
+Podmiana stoi **na początku** `performCharacterRoll` świadomie: od tej linii w dół działa
+wszystko, co ta funkcja umie od etapu 08 (kary z ran, Zwarcie, wydanie Szczęścia, skórka kości,
+wstrzymanie karty do końca animacji 3D). Osobne zdarzenie musiałoby to powtórzyć i rozjechałoby
+się z oryginałem przy pierwszej zmianie w rzutach.
+
+Trzy szczegóły, które łatwo przeoczyć:
+
+- **Wezwanie zamyka się dokładnie raz.** `resolveAnsweredCall` sprawdza `isCheckCallOpen`
+  i uprawnienie (`mayAnswerCheckCall`: właściciel karty albo MG), a po rzucie `emitCheckCallUpdate`
+  dopisuje `resolved` i rozsyła kartę przez `chat:update` — nie drugą wiadomość.
+- **Samo wezwanie jedzie wzorem szeptu** (MG + wezwany), niezależnie od wybranej widoczności:
+  to prośba do jednej osoby. Widoczność dotyczy **karty rzutu**. Wezwanie z widocznością
+  „MG + wezwany", na które rzucił MG w zastępstwie, dostaje `recipientId = ownerId` — bez tego
+  wypadłoby graczowi z historii po przeładowaniu (`visibleTo` przepuszcza po adresacie).
+- **Werdykt liczy CP RED, nie rdzeń.** `cpredCheckOutcome` obsługuje obie drogi z s. 130: przeciw
+  PT (`>`, remis nie zdaje) i przeciw drugiej stronie (jej 1k10 też eksploduje, remis wygrywa
+  Broniący). `CheckCallEntry` w `shared/src/checks.ts` niesie same etykiety i stan, a żądanie
+  systemu trzyma jako nieprzezroczyste `system` — jak `RollOpposedMeta.system` od 14d.
+
+**Kubek woła wezwaniem, czytając feed czatu (etap 32).** `openCheckCallFor` w `chatStore.ts`
+szuka **ostatniego otwartego** wezwania, którego właścicielem jest ten użytkownik — bez drugiego
+magazynu stanu, bo dwa źródła prawdy o tym, czy MG jeszcze czeka, rozjechałyby się przy pierwszym
+„Odwołaj". Kubek w tym trybie **nie potrząsa się od razu**: chwyt otwiera okno rzutu, żeby dało
+się zadeklarować Szczęście, a dopiero „Weź kubek" ładuje Test i drugi chwyt jest tym prawdziwym.
+Świadomie widzi je **wyłącznie właściciel karty** — MG z pięcioma wystawionymi wezwaniami miałby
+kubek migający bez przerwy, a jego „Rzuć za nią" stoi na karcie czatu.
+
+**Nabój broni podwieszanej ma własne pole i własne wejście planera (02.09).** Magazynek dodatku
+jest jego własny od etapu 31 (`attachmentAmmo`), a od 02.09 własny jest też **nabój**:
+`CpredWeaponRow.attachmentAmmoId` (`id dodatku → id naboju`) i wejście planera
+`secondaryAmmo`, rozwiązywane przez wołającego dokładnie tak, jak `ammo` — serwer w
+`resolveWeaponRow`, klient w `planAttackPreview`. Bez obu naraz nie działa nic: samo pole karty
+nie wystarczy, bo `planCpredAttack` **zerował** profil dla każdego strzału dodatkiem
+(`firedWith ? null : weapon.ammo`), a samo wejście planera nie ma skąd wziąć naboju. Ładuje go
+`weapon:reload` z `attachmentId` **i** `ammoId`; pasowanie idzie po **broni podwieszanej**
+(`requireLoadableAmmo` z parametrem `against`), nigdy po broni, która ją niesie — karabin bierze
+kule, a wiszący pod nim granatnik granaty. Demontaż zabiera dodatkowi **oba** pola.
+Skutek, dla którego to powstało: bez tego z granatnika podwieszanego nie dało się wystrzelić dymu
+ani gazu, czyli jedynej drogi, jaką podręcznik daje tym nabojom.
+
+**Intencję uzbrojonego celownika buduje jedna funkcja.** `intentFromTargeting`
+(`attack-targeting.ts`) obsługuje **obie** drogi: klik, który ładuje kubek (`loadAttackAtToken`),
+i dymek, który wycenia strzał chwilę wcześniej (`TargetTooltip`). Wcześniej każda miała własną
+kopię tego samego przepisywania i dymek zgubił w niej `attachmentId` — chmurka nad celem mówiła
+„Militech Dragon", gdy baner i karta ataku mówiły „Bagnet". Pole dołożone do `AttackTargeting`
+dopisuje się **tu**, nie u wołających; gałąź paska akcji czyta swoje pola z `HudActiveWeapon`.
+
+**Odmowa zapisu karty wraca do widoku serwera i mówi, dlaczego.** `characterStore` trzyma cień
+`serverViews` — to, co serwer ostatnio powiedział o każdej karcie — aktualizowany przez
+`applySync`, `applyUpsert` (**także wtedy, gdy optymistyczny stan wygrywa**) i udany zapis.
+Przy odmowie `endSave` przywraca z niego kartę, gdy nic już nie jest w locie; warunek jest
+lustrem tego, który adoptuje widok przy sukcesie, bo zapis czekający w buforze sam rozstrzygnie
+prawdę. Cień jest potrzebny, bo odmowa **nie niesie widoku** (`{ ok: false, error }`), a
+broadcast nie idzie — nic się przecież nie zmieniło. Powód odmowy jedzie osobno: `saveErrors`
+niesie kod, a `characterSaveErrorText` tłumaczy go na zdanie do paska „issues" na dole karty.
+Zdania kodów silnika mieszkają w `shared` obok typu problemu (`CPRED_ROLES_PROBLEMS`,
+`CPRED_SPECIALTY_PROBLEMS`, `CPRED_FLEET_PROBLEMS`) — ta sama tabela wyszarza guzik i tłumaczy
+odmowę.
+
+**Kara z pancerza mieszka w `character.ts` i ma jednego liczącego (03.09).** Ciężki pancerz
+zabiera podręcznikowo (s. 185) trzy rzeczy naraz: RUCH, REF i ZW. RUCH liczy `cpredArmorPenalty`,
+Testy — `cpredArmorStatPenalty(armor, statId, statValue)`; **obie siedzą w
+`shared/systems/cpred/character.ts`**, bo czytają je `rolls.ts` i `attacks.ts`, a `movement.ts`
+importuje `rolls.ts` — postawienie ich w `rolls.ts` albo `movement.ts` domknęłoby cykl. Trzy
+reguły funkcji, każda kosztowała test: bierze **jedną najgorszą sztukę**, nie sumę; pomija
+zdjęty pancerz (`equipped === false`); i **nie schodzi poniżej zera** — Cecha 2 pod pancerzem −4
+traci 2, nie 4, a wynik zerowy zwraca `0`, nigdy `-0`. Wchodzi jako **nazwany wiersz rozbicia**
+(`CPRED_ARMOR_PENALTY_LABEL`, `kind: 'situational'`) wszędzie, gdzie rozbicie istnieje: Test
+Cechy, Test Umiejętności, atak. Tam, gdzie rozbicia nie ma — **bierny PT Uniku i Inicjatywa** —
+liczba wchodzi w sumę, a Inicjatywa dokleja ją do etykiety („Refleks (REF) 5 Pancerz −2"). To
+świadomy kontrast z Człowieczeństwem, które obniża EMP **wewnątrz** własnej etykiety Cechy.
+
+**Zacięcie broni to flaga wiersza karty i osobna Akcja (03.09).** Jakość broni (s. 244) jedzie
+z **wpisu** kompendium, nigdy z typu broni: `ResolvedWeapon.quality` wychodzi z `resolveWeapon`
+tylko wtedy, gdy nie jest `standard`. `excellent` dokłada wiersz rozbicia
+`CPRED_EXCELLENT_ATTACK_BONUS` (+1); `poor` po Krytycznej Porażce zapala
+`CpredWeaponRow.jammed` (`jamPoorWeapon` w `realtime/attacks.ts`). Zacięta broń **odmawia
+zdaniem** (`CPRED_JAM_REFUSAL`, problem `WEAPON_JAMMED`) — z tego samego napisu korzysta pasek
+akcji, wyszarzając wszystkie tryby ognia. Usterkę zdejmuje **własna Akcja**
+(`CPRED_ACTION_CLEAR_JAM` + zdarzenie `weapon:clear-jam`), nie przeciążone `weapon:reload`:
+RAW to dwie różne Akcje, a broń bez magazynka nie ma kafelka przeładowania, który dałoby się
+pożyczyć. Trzy granice są celowe i pilnują ich testy: zacina się **broń niosąca**, nigdy
+podwieszany dodatek (składa się go z **typu** broni, więc jakości nie ma), nigdy statysta (profil
+bojowy nie ma wpisu katalogu), i nigdy Krytyczna Porażka **pominięta** (`critical.ignored`)
+przez „Wyjście z opresji" Solo.
+
+**Sakiewka Zdolności bez Zdolności schodzi z karty, zanim ktokolwiek ją osądzi (04.09).**
+`character:update` waliduje **scaloną** kartę trzema funkcjami (`cpredSpecialtiesProblem`,
+`cpredFleetSheetProblem`, `cpredRolesProblem`), bo rozmiar sakiewki zależy od rangi, której
+łata może dopiero nadawać. Problem w tym, że ta sama łata potrafi **zabrać Zdolność**: `roleId`
+jest od 29a u MG zwykłym polem, a zmiana Roli bez odłożenia starej do `formerRoles` zostawia
+`medicine`, `fabrication` albo `fleet` bez właściciela. Walidator odrzucał wtedy nie tylko tę
+łatę, ale **każdą następną** — Medyka z wydanymi punktami Specjalizacji nie dało się zrobić
+niczym innym, a zdanie odmowy mówiło o Specjalizacji, której nikt nie dotykał. Dlatego
+`cpredDropOrphanedRolePurses` (`systems/cpred/roleability.ts`) czyści osierocone sakiewki
+**przed** walidacją: pyta o Zdolność przez `cpredRoleAbilityRank`, więc przy wieloklasowości
+(stara Rola w `formerRoles`) nie zdejmuje nic, a pustej sakiewki nie rusza w ogóle i zwraca ten
+sam obiekt. Nowa sakiewka zależna od rangi dopisuje się **w tej funkcji**, nie w walidatorze —
+inaczej odziedziczy dokładnie ten sam potrzask.
+
+**Panel Zdolności Roli mieszka w dwóch wąskich kolumnach i obie są sztywne (04.09).**
+Osiem paneli 30a–30d renderuje się w `.cp-field.cp-awareness` wewnątrz `.cp-identity`, czyli
+w pierwszej kolumnie `.sheet-page` — a ta ma **`15rem` na stałe**, więc rozciąganie okna karty
+nic jej nie daje. `CombatAwarenessPanel` ma drugi dom: pudełko „Zmysł Walki" w pasku akcji
+(`.hud-form` w `.hud-rail`, ~254 px). W obu wiersz `.awareness-row` przestaje być siatką
+i układa się **flexem z zawijaniem**: nazwa bierze całą pierwszą linię (`flex: 1 0 100%`,
+`white-space: normal`), a wartość, koszt i guziki schodzą do drugiej, z `.awareness-steps`
+dosuniętym do prawej (`flex: none` **obok** `margin-left: auto` — bez tego automatyczny
+margines zjada wolną przestrzeń i ściska guzik do minimum). Poza tymi dwoma miejscami wiersz
+zostaje jednolinijkową siatką: rejestr awansów (`.cp-advance`) stoi w polu `cp-span2` i ma dość
+miejsca. **Guzik w `.awareness-steps` ma `min-width: 1.6rem`, nie `width`** — ± mają być
+kwadratowe i równe, ale w tym samym rządku siedzą „Wezwij", „Targuj" i „Podnieś".

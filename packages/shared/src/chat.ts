@@ -7,6 +7,7 @@ import {
   type RollResult,
 } from './dice.js';
 import type { BotActionProposal } from './bots/types.js';
+import { checkCallTargetText, type CheckCallEntry } from './checks.js';
 import type { HandoutLogEntry } from './handouts.js';
 import type { JournalLogEntry } from './journal.js';
 
@@ -19,6 +20,11 @@ import type { JournalLogEntry } from './journal.js';
  * never public: what reaches the table is the roll that follows approval, and it
  * looks exactly like anybody else's — a bot's mechanics stay as indistinguishable
  * as its speech has been since stage 11.
+ *
+ * `check` (stage 32) is the GM asking one character for a roll. It travels the
+ * whisper pattern for the same reason `proposal` does — it is a request put to
+ * one person, not a line for the table — and the roll that answers it is an
+ * ordinary card, public or GM-only exactly as the call decided.
  */
 export type ChatKind =
   | 'say'
@@ -31,7 +37,38 @@ export type ChatKind =
   | 'proposal'
   | 'economy'
   | 'handout'
-  | 'journal';
+  | 'journal'
+  /** Wezwanie MG do Testu, czekające na kubek wezwanego (etap 32). */
+  | 'check'
+  /** Dzień odpoczynku albo podana dawka — ciało zmienia stan poza walką. */
+  | 'recovery';
+
+/**
+ * Powrót do zdrowia, jak zapisuje go czat (s. 222–223, s. 150).
+ *
+ * Jedna karta na dwie czynności — dzień odpoczynku i podaną dawkę — bo z miejsca
+ * stołu to jedno zdarzenie: „komuś zrobiło się lepiej i wiadomo dlaczego".
+ * Rozdzielenie ich dałoby dwa niemal identyczne kształty i dwa miejsca do
+ * poprawienia, kiedy dojdzie trzeci sposób odzyskiwania PW.
+ *
+ * Karta jest **publiczna**, w odróżnieniu od karty obrażeń: liczby PW nie ma
+ * na niej wcale (`hp` niesie **różnicę**, nie stan), a to, że ktoś przespał
+ * dzień albo dostał zastrzyk, dzieje się przy całym stole.
+ */
+export interface RecoveryLogEntry {
+  /** Czyje ciało — nazwa postaci. */
+  actor: string;
+  /** „Dzień odpoczynku" albo nazwa środka. */
+  title: string;
+  /** Odzyskane PW; 0, gdy dzień albo dawka nic nie dały. */
+  hp: number;
+  /** Rozbicie tempa albo zdanie z tabeli farmaceutyków — po wierszu na powód. */
+  lines: string[];
+  /** Zdanie zamykające: odmowa („nie jest ustabilizowany") albo skutek uboczny. */
+  note?: string;
+  /** Zabarwienie karty — odmowa czyta się inaczej niż siedem odzyskanych PW. */
+  tone?: 'success' | 'warn';
+}
 
 /**
  * A movement of eddies, as the chat records it (stage 23b).
@@ -269,6 +306,10 @@ export interface ChatMessageView {
   handout?: HandoutLogEntry;
   /** Journal entry opened to the table — kind `journal` only (stage 24b). */
   journal?: JournalLogEntry;
+  /** GM's call for a roll — kind `check` only (stage 32). */
+  check?: CheckCallEntry;
+  /** Dzień odpoczynku albo podana dawka — kind `recovery` only. */
+  recovery?: RecoveryLogEntry;
   /** ISO timestamp — always assigned by the server. */
   createdAt: string;
 }
@@ -408,4 +449,245 @@ export function parseChatInput(raw: string, knownNames: string[] = []): ParsedCh
   }
 
   return { kind: 'unknown-command', command };
+}
+
+/**
+ * Cztery grupy, na jakie dzieli się feed czatu przy filtrowaniu (01.09.2026).
+ *
+ * Podział jest po **tym, po co się na wiersz patrzy**, a nie po `kind`: stół
+ * czyta rozmowę, sprawdza rzut, rozlicza walkę albo zagląda w papiery. Dlatego
+ * szept siedzi w jednej grupie z mową (to nadal rozmowa), a odmowa akcji
+ * z obrażeniami (to nadal walka), choć w każdej z tych par `kind` są dwa.
+ */
+export type ChatCategory = 'talk' | 'dice' | 'combat' | 'table';
+
+/** Grupa, do której należy wiersz danego rodzaju. */
+export function chatCategoryOf(kind: ChatKind): ChatCategory {
+  switch (kind) {
+    case 'say':
+    case 'whisper':
+      return 'talk';
+    // `check` (etap 32) jest zapowiedzią rzutu i chowa się razem z rzutami:
+    // grupa „Rzuty" gasi wtedy całą parę, a nie połowę z niej.
+    case 'roll':
+    case 'gmroll':
+    case 'check':
+      return 'dice';
+    case 'damage':
+    case 'action':
+    case 'gmaction':
+      return 'combat';
+    case 'proposal':
+    case 'economy':
+    case 'handout':
+    case 'journal':
+      return 'table';
+    // Odpoczynek i zastrzyk to nie walka, choć zmieniają PW: patrzy się na nie
+    // przy rozliczaniu przerwy między scenami, razem z papierami i pieniędzmi.
+    case 'recovery':
+      return 'table';
+  }
+}
+
+/**
+ * Wiersz czatu ściśnięty do jednej linii (tryb zwarty, 01.09.2026).
+ *
+ * `null` znaczy „ten wiersz zostaje w całości" — wypowiedzi się nie streszcza,
+ * bo streszczenie rozmowy jest jej utratą. Ściska się wyłącznie mechanikę,
+ * której karta ma sześć linii, a pamięta się z niej jedną liczbę.
+ */
+export interface ChatCompactLine {
+  /** Kto — postać, cel ciosu albo tytuł karty. */
+  actor: string;
+  /** Jedno zdanie: co padło i z jakim skutkiem. */
+  summary: string;
+  /** Zabarwienie, gdy karta niesie werdykt — zwarty wiersz ma go nie gubić. */
+  tone?: 'success' | 'failure' | 'warn';
+}
+
+/** „Trafienie", „Pudło" albo „Ogień zaporowy" — werdykt ataku jednym słowem. */
+function attackVerdict(hit: boolean | undefined): { text: string; tone: 'success' | 'failure' } {
+  if (hit === undefined) return { text: 'Ogień zaporowy', tone: 'success' };
+  return hit ? { text: 'Trafienie', tone: 'success' } : { text: 'Pudło', tone: 'failure' };
+}
+
+function compactRoll(message: ChatMessageView): ChatCompactLine | null {
+  const roll = message.roll;
+  if (!roll) return null;
+  const head = roll.title ?? roll.notation;
+  const parts: string[] = [
+    roll.title || !message.text
+      ? `${head} · ${roll.total}`
+      : `${head} · ${roll.total} — ${message.text}`,
+  ];
+  let tone: ChatCompactLine['tone'];
+  if (roll.attack) {
+    const verdict = attackVerdict(roll.attack.hit);
+    parts.push(verdict.text, roll.attack.detail);
+    tone = verdict.tone;
+  } else if (roll.opposed) {
+    // Remis jest własnym wynikiem tylko tam, gdzie zasady go znają (Konfrontacja,
+    // etap 23c); wszędzie indziej `won` niesie całą odpowiedź.
+    const opposed = roll.opposed;
+    const verdict =
+      opposed.outcome === 'tie'
+        ? 'remis'
+        : (opposed.outcome ? opposed.outcome === 'win' : opposed.won)
+          ? 'wygrana'
+          : 'przegrana';
+    parts.push(verdict, opposed.detail);
+    tone = verdict === 'remis' ? 'warn' : verdict === 'wygrana' ? 'success' : 'failure';
+  }
+  if (roll.outcome) {
+    parts.push(
+      roll.outcome.detail ? `${roll.outcome.label} · ${roll.outcome.detail}` : roll.outcome.label,
+    );
+    tone ??= roll.outcome.success ? 'success' : 'failure';
+  }
+  if (roll.critical?.type === 'crit') parts.push('Krytyk!');
+  if (roll.critical?.type === 'fumble' && !roll.critical.ignored) parts.push('Fumble!');
+  if (roll.criticalDamage) parts.push('Rana krytyczna!');
+  return {
+    actor: roll.actor ?? message.authorName,
+    summary: parts.filter((part) => part.length > 0).join(' · '),
+    ...(tone ? { tone } : {}),
+  };
+}
+
+function compactDamage(entry: DamageLogEntry): ChatCompactLine {
+  const stopped = entry.damageThrough === 0 && entry.bonusDamage === 0;
+  const parts: string[] = [entry.locationLabel];
+  if (stopped) {
+    parts.push(`pancerz zatrzymał cios (${entry.damageRolled} obr.)`);
+  } else {
+    // PW bezwzględne dostaje tylko ten, komu serwer je przysłał — zwarty wiersz
+    // niczego nie odsłania, bo czyta dokładnie to samo pole co pełna karta.
+    parts.push(
+      entry.hp ? `−${entry.hpLost} PW (${entry.hp.after}/${entry.hp.max})` : `−${entry.hpLost} PW`,
+    );
+  }
+  if (entry.woundLabel) parts.push(entry.woundLabel);
+  const injury = entry.injury ?? entry.injuryAimed ?? entry.injuryExtra;
+  if (injury) parts.push(injury.name);
+  if (entry.undone) parts.push('cofnięte');
+  return {
+    actor: entry.targetName,
+    summary: parts.join(' · '),
+    tone: entry.undone ? 'warn' : stopped ? 'success' : 'failure',
+  };
+}
+
+function compactAction(entry: CombatActionLogEntry): ChatCompactLine {
+  const parts: string[] = [entry.actionName];
+  if (entry.note) parts.push(entry.note);
+  if (entry.overspent) parts.push('poza budżetem tury');
+  if (entry.refusal) parts.push(`odmowa: ${entry.refusal.message}`);
+  if (entry.passed) parts.push('przepuszczone przez MG');
+  return {
+    actor: entry.actorName,
+    summary: parts.join(' · '),
+    ...(entry.refusal && !entry.passed ? { tone: 'failure' as const } : {}),
+  };
+}
+
+function compactProposal(proposal: BotActionProposal): ChatCompactLine {
+  const parts: string[] = [
+    proposal.combat ? proposal.combat.summary : `Chce rzucić: ${proposal.optionLabel}`,
+  ];
+  if (proposal.resolution === 'approved') parts.push('zatwierdzone');
+  if (proposal.resolution === 'rejected') parts.push('odrzucone');
+  return {
+    actor: proposal.botName,
+    summary: parts.join(' · '),
+    ...(proposal.resolution === 'rejected' ? { tone: 'failure' as const } : {}),
+  };
+}
+
+function compactEconomy(entry: EconomyLogEntry): ChatCompactLine {
+  const first = entry.summary ?? entry.lines[0] ?? '';
+  const rest = entry.summary ? entry.lines.length : Math.max(entry.lines.length - 1, 0);
+  return {
+    actor: entry.title,
+    summary: rest > 0 ? `${first} · +${rest} poz.` : first,
+  };
+}
+
+/**
+ * Wezwanie do Testu (etap 32). Otwarte wezwanie **nie daje się ścisnąć** — ma
+ * przycisk „Rzuć", a zwarty wiersz przycisków nie ma; to ta sama zasada, którą
+ * 01.09 dostała nierozstrzygnięta propozycja bota. Ściska się dopiero rozliczone
+ * albo odwołane, czyli takie, z którego został sam zapis w dzienniku.
+ */
+function compactCheckCall(entry: CheckCallEntry): ChatCompactLine | null {
+  if (entry.cancelled) {
+    return { actor: entry.characterName, summary: `${entry.rollLabel} — wezwanie odwołane` };
+  }
+  if (!entry.resolved) return null;
+  const target = checkCallTargetText(entry);
+  return {
+    actor: entry.characterName,
+    summary: `${entry.rollLabel} · ${target} — ${
+      entry.resolved.success ? 'Zdane' : 'Niezdane'
+    } (${entry.resolved.total})`,
+    tone: entry.resolved.success ? 'success' : 'failure',
+  };
+}
+
+/**
+ * Ściska wiersz do jednej linii albo mówi „zostaw go w spokoju" (`null`).
+ *
+ * Funkcja **niczego nie ukrywa i niczego nie dopowiada**: czyta wyłącznie pola,
+ * które i tak są w wiadomości, więc na cudzym ekranie ściska dokładnie to, co
+ * serwer temu ekranowi przysłał (redakcja jest po stronie serwera, etap 15).
+ */
+export function chatCompactLine(message: ChatMessageView): ChatCompactLine | null {
+  switch (message.kind) {
+    case 'say':
+    case 'whisper':
+      return null;
+    case 'roll':
+    case 'gmroll':
+      return compactRoll(message);
+    case 'damage':
+      return message.damage ? compactDamage(message.damage) : null;
+    case 'action':
+    case 'gmaction':
+      return message.action ? compactAction(message.action) : null;
+    case 'proposal':
+      return message.proposal ? compactProposal(message.proposal) : null;
+    case 'economy':
+      return message.economy ? compactEconomy(message.economy) : null;
+    case 'handout':
+      return message.handout
+        ? {
+            actor: message.handout.kind === 'screamsheet' ? 'Screamsheet' : 'Handout',
+            summary: message.recipientName
+              ? `${message.handout.title} — do ${message.recipientName}`
+              : message.handout.title,
+          }
+        : null;
+    case 'journal':
+      return message.journal
+        ? {
+            actor: 'Wpis w dzienniku',
+            summary: `${message.journal.title} · sesja z ${message.journal.sessionDate}`,
+          }
+        : null;
+    case 'check':
+      return message.check ? compactCheckCall(message.check) : null;
+    case 'recovery':
+      return message.recovery ? compactRecovery(message.recovery) : null;
+  }
+}
+
+/** „Vex · Dzień odpoczynku — +7 PW" albo „Vex · Antybiotyk — tydzień". */
+function compactRecovery(entry: RecoveryLogEntry): ChatCompactLine {
+  return {
+    actor: entry.actor,
+    summary:
+      entry.hp > 0
+        ? `${entry.title} — +${entry.hp} PW`
+        : `${entry.title} — ${entry.note ?? 'bez zmian'}`,
+    ...(entry.tone ? { tone: entry.tone } : {}),
+  };
 }

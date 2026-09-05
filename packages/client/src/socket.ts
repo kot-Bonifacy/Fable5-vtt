@@ -1,5 +1,9 @@
 import { io, type Socket } from 'socket.io-client';
 import type {
+  ArchiveCharacterImportPayload,
+  ArchiveImportResult,
+  ArchiveSceneImportPayload,
+  SnapshotListView,
   AiAskPayload,
   CpredCombatAwarenessProblem,
   CpredHaggleProblem,
@@ -50,6 +54,8 @@ import type {
   CharacterDeleteBroadcast,
   CharacterPatch,
   CharacterRollPayload,
+  CheckCallPayload,
+  CheckCancelPayload,
   CharacterUpsertBroadcast,
   CharacterView,
   CombatUpdateBroadcast,
@@ -194,19 +200,26 @@ import type {
   WallUpdatePayload,
   WallSyncBroadcast,
   WallView,
+  WeaponAttachmentPayload,
+  WeaponAttachmentResult,
+  WeaponClearJamPayload,
   WeaponReloadPayload,
 } from '@vtt/shared';
 import {
   CHAT_COMMANDS_HELP,
   CPRED_ADVANCE_PROBLEMS,
   CPRED_ROLE_CHANGE_PROBLEMS,
+  CPRED_ATTACHMENT_PROBLEM_MESSAGES,
   CPRED_ATTACK_PROBLEM_MESSAGES,
   CPRED_COMBAT_AWARENESS_PROBLEMS,
   CPRED_FLEET_PROBLEMS,
+  CPRED_ROLES_PROBLEMS,
+  CPRED_SPECIALTY_PROBLEMS,
   CPRED_HAGGLE_PROBLEMS,
   CPRED_TEAM_PROBLEMS,
   CPRED_FACEDOWN_PROBLEM_MESSAGES,
   CPRED_GRAPPLE_PROBLEM_MESSAGES,
+  CYBERWARE_INSTALL_REFUSAL_MESSAGES,
   MAX_DICE_PER_TERM,
   MAX_DIE_SIDES,
   MAX_ROLL_TERMS,
@@ -1022,6 +1035,19 @@ function rollAckErrorText(code: string): string {
       return 'Nie można leczyć samego siebie — załatać można (s. 223).';
     case 'INJURY_ALREADY_PATCHED':
       return 'Ta rana jest już załatana — jej efekt milczy do końca dnia.';
+    // Etap 32 — wezwanie do Testu, które w międzyczasie przestało czekać.
+    case 'CALL_NOT_FOUND':
+      return 'Nie znalazłem tego wezwania na czacie.';
+    case 'CALL_CLOSED':
+      return 'To wezwanie jest już rozliczone albo odwołane.';
+    case 'CALL_NOT_YOURS':
+      return 'To wezwanie należy do kogoś innego.';
+    // Ustabilizowanie od 03.09 wymaga długości ramienia — to czynność przy
+    // pacjencie, a nie na odległość.
+    case 'STABILIZE_OUT_OF_REACH':
+      return 'Za daleko — Ustabilizowanie wymaga zasięgu ramienia (2 m).';
+    case 'STABILIZE_NOT_ON_SCENE':
+      return 'Ta postać nie ma figury na scenie pacjenta — nie ma jak go dosięgnąć.';
     default:
       return `Błąd rzutu: ${code}`;
   }
@@ -1040,16 +1066,52 @@ export function sendCharacterRoll(
   gesture?: RollGesture,
   /** Figure rolling when there is no sheet — read only without a character. */
   attackerTokenId?: string,
+  /** Wezwanie MG, na które ten rzut odpowiada (etap 32). */
+  callMessageId?: number,
 ): void {
   const payload: CharacterRollPayload<CpredRollRequest> = {
     ...(characterId ? { characterId } : { attackerTokenId }),
     request,
     visibility,
+    ...(callMessageId !== undefined ? { callMessageId } : {}),
     ...(gesture ? { gesture } : {}),
   };
   socket?.emit('character:roll', payload, (ack: SocketAck<{ messageId: number }>) => {
     if (!ack.ok) useChatStore.getState().addNote(rollAckErrorText(ack.error));
   });
+}
+
+/**
+ * „Wezwij do Testu" (etap 32) — MG prosi jedną postać o rzut na nietypowe
+ * wydarzenie. Zwraca id karty wezwania, która staje na czacie z przyciskiem.
+ */
+export const callCheck = (payload: CheckCallPayload<CpredRollRequest>) =>
+  emitSceneAck<{ messageId: number }>('check:call', payload);
+
+/** „Odwołaj" na karcie wezwania — działa, dopóki nikt nie potrząsnął kubkiem. */
+export const cancelCheck = (messageId: number) =>
+  emitSceneAck('check:cancel', { messageId } satisfies CheckCancelPayload);
+
+/** Polskie komunikaty odmowy przy wystawianiu wezwania do Testu (etap 32). */
+export function checkCallErrorText(code: string): string {
+  switch (code) {
+    case 'CHARACTER_NOT_FOUND':
+      return 'Nie ma takiej postaci w tej kampanii.';
+    case 'UNKNOWN_SKILL':
+      return 'Nieznana umiejętność — odśwież stronę.';
+    case 'UNKNOWN_STAT':
+      return 'Nieznana cecha — odśwież stronę.';
+    case 'CALL_NOT_FOUND':
+      return 'Nie znalazłem tego wezwania na czacie.';
+    case 'CALL_CLOSED':
+      return 'To wezwanie jest już rozliczone albo odwołane.';
+    case 'FORBIDDEN':
+      return 'Wezwania do Testu wystawia MG.';
+    case 'BAD_REQUEST':
+      return 'Niepełne wezwanie — sprawdź próg i wybraną Umiejętność.';
+    default:
+      return `Błąd wezwania: ${code}`;
+  }
 }
 
 /** Polish hints for the damage rejections (GM-only actions, stage 15). */
@@ -1135,10 +1197,33 @@ function attackAckErrorText(code: string): string {
       return 'Ten wpis nie jest atakiem.';
     case 'WEAPON_HAS_NO_MAGAZINE':
       return 'Ta broń nie ma magazynka do przeładowania.';
+    // Stage 31 — the four ways an attachment can be refused. The engine's own
+    // messages are reused so the greyed-out button and the refusal say the same
+    // sentence, which is the umowa the ammunition codes already follow.
+    case 'UNKNOWN_ATTACHMENT':
+      return CPRED_ATTACHMENT_PROBLEM_MESSAGES.UNKNOWN_ATTACHMENT;
+    case 'ATTACHMENT_DOES_NOT_FIT':
+      return CPRED_ATTACHMENT_PROBLEM_MESSAGES.ATTACHMENT_DOES_NOT_FIT;
+    case 'ATTACHMENT_NO_SLOTS':
+      return CPRED_ATTACHMENT_PROBLEM_MESSAGES.ATTACHMENT_NO_SLOTS;
+    case 'ATTACHMENT_ALREADY_FITTED':
+      return CPRED_ATTACHMENT_PROBLEM_MESSAGES.ATTACHMENT_ALREADY_FITTED;
+    case 'ATTACHMENT_GROUP_TAKEN':
+      return CPRED_ATTACHMENT_PROBLEM_MESSAGES.ATTACHMENT_GROUP_TAKEN;
     case 'UNKNOWN_AMMO':
       return 'Nie ma takiego naboju w kompendium.';
     case 'TOKEN_HAS_NO_PROFILE':
       return 'Ten token nie ma profilu bojowego — uzupełnij go w „Edytuj…” w menu tokenu.';
+    // Trzy powody, dla których Unik nie dochodzi do skutku. Wszystkie jadą
+    // `attack:evade`, czyli tędy — a nie przez ogólne `ackErrorText`, gdzie
+    // dwa z tych zdań już stały. Bez nich kubek wracał z „Błąd ataku:
+    // BACKUP_CANNOT_DODGE" (znalezione przy oględzinach 30c).
+    case 'BACKUP_CANNOT_DODGE':
+      return 'Funkcjonariusze Wsparcia nie mogą Unikać pocisków.';
+    case 'SHIELD_CANNOT_DODGE':
+      return CPRED_GRAPPLE_PROBLEM_MESSAGES.SHIELD_CANNOT_DODGE;
+    case 'DODGE_BLOCKED':
+      return 'W tym stanie nie można Unikać.';
     default:
       return `Błąd ataku: ${code}`;
   }
@@ -1285,13 +1370,50 @@ export function reloadWeapon(
   ammoId?: string | null,
   /** Statist doing the reloading, when there is no sheet to name. */
   attackerTokenId?: string,
+  /** Refill the weapon bolted onto this row instead of the row (stage 31). */
+  attachmentId?: string,
 ): void {
   const payload: WeaponReloadPayload = {
     ...(characterId ? { characterId } : { attackerTokenId }),
     weaponRowId,
     ...(ammoId !== undefined ? { ammoId } : {}),
+    ...(attachmentId ? { attachmentId } : {}),
   };
   socket?.emit('weapon:reload', payload, (ack: SocketAck<{ ammo: number }>) => {
+    if (!ack.ok) useChatStore.getState().addNote(attackAckErrorText(ack.error));
+  });
+}
+
+/**
+ * Clears a jammed poor-quality weapon (s. 244) — an Action, and no Test.
+ *
+ * Its own event rather than a second job for `weapon:reload`, because the two
+ * are different Actions: working the slide on a jam does not put a magazine in,
+ * and letting one click do both would hand the table two Actions for one.
+ */
+export function clearWeaponJam(characterId: string, weaponRowId: string): void {
+  const payload: WeaponClearJamPayload = { characterId, weaponRowId };
+  socket?.emit('weapon:clear-jam', payload, (ack: SocketAck<{ jammed: boolean }>) => {
+    if (!ack.ok) useChatStore.getState().addNote(attackAckErrorText(ack.error));
+  });
+}
+
+/**
+ * Bolts an attachment onto a weapon, or takes it off (stage 31, s. 342).
+ *
+ * Its own event rather than a sheet patch, because what a mount does to the row
+ * is not what the client wrote: the magazine follows a table in the catalogue,
+ * a second copy is refused, and the rounds in a shrinking magazine have to be
+ * clamped. All three are the server's answers — see `weapon:attachment`.
+ */
+export function setWeaponAttachment(
+  characterId: string,
+  weaponRowId: string,
+  attachmentId: string,
+  action: 'mount' | 'unmount',
+): void {
+  const payload: WeaponAttachmentPayload = { characterId, weaponRowId, attachmentId, action };
+  socket?.emit('weapon:attachment', payload, (ack: SocketAck<WeaponAttachmentResult>) => {
     if (!ack.ok) useChatStore.getState().addNote(attackAckErrorText(ack.error));
   });
 }
@@ -1587,6 +1709,44 @@ export const saveNetArchitecture = (payload: NetArchitectureSavePayload) =>
   emitSceneAck<NetArchitectureView>('net:save', payload);
 
 export const deleteNetArchitecture = (id: string) => emitSceneAck('net:delete', { id });
+
+/* ------------------------------------------------------------------ */
+/* Kopie zapasowe i pliki wymiany (etap 33)                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Stan katalogu kopii. Wołane przy wejściu w zakładkę „Kopie", nie w
+ * `state:sync` — u gracza ta lista nie istnieje w ogóle, a MG patrzy na nią
+ * raz na sesję.
+ */
+export const fetchSnapshots = () => emitSceneAck<SnapshotListView>('archive:list', undefined);
+
+/** „Zrób kopię teraz" — odsyła listę już po kopii i po rotacji. */
+export const takeSnapshotNow = () => emitSceneAck<SnapshotListView>('archive:snapshot', undefined);
+
+export const importCharacterFile = (payload: ArchiveCharacterImportPayload) =>
+  emitSceneAck<ArchiveImportResult>('archive:character', payload);
+
+export const importSceneFile = (payload: ArchiveSceneImportPayload) =>
+  emitSceneAck<ArchiveImportResult>('archive:scene', payload);
+
+/**
+ * Pobranie pliku wymiany.
+ *
+ * Zwykły `<a href>`, a nie `fetch` + `Blob`: przeglądarka sama przeczyta
+ * `Content-Disposition` i zaproponuje nazwę z ogonkami, a zrzut kampanii
+ * z czatem nie musi przechodzić przez pamięć karty. Adres jest względny —
+ * klient i serwer są tego samego pochodzenia (proxy Vite w dev, Caddy w prod),
+ * dokładnie jak `/uploads/...`.
+ */
+export function downloadArchive(path: string): void {
+  const link = document.createElement('a');
+  link.href = path;
+  link.rel = 'noopener';
+  document.body.append(link);
+  link.click();
+  link.remove();
+}
 
 export const rollNetArchitecture = (payload: NetArchitectureRollPayload) =>
   emitSceneAck<NetArchitectureRollResult>('net:roll', payload);
@@ -2480,6 +2640,78 @@ export function fieldRepairErrorText(code: string): string {
 }
 
 /**
+ * Jeden pełny dzień odpoczynku (s. 222–223).
+ *
+ * Liczby nie ma tu wcale — klient deklaruje wyłącznie „minął dzień" i czy
+ * postać się nadwyrężyła. PW wylicza serwer z Budowy Ciała, chromu
+ * i antybiotyku, a karta na czacie pokazuje rozbicie.
+ */
+export async function restForADay(characterId: string, strained = false): Promise<void> {
+  const ack = await emitSceneAck<{ healed: number; hpCurrent: number; refusal: string | null }>(
+    'character:rest',
+    { characterId, ...(strained ? { strained: true } : {}) },
+  );
+  if (!ack.ok) useChatStore.getState().addNote(recoveryErrorText(ack.error));
+}
+
+/** Partia dawek farmaceutyku: Test PT 13 i 200 ed surowców (s. 150). */
+export async function craftPharmaceutical(
+  characterId: string,
+  pharmaId: string,
+  gesture?: RollGesture,
+): Promise<void> {
+  const ack = await emitSceneAck<{ doses: number; balance: number }>('character:craft-pharma', {
+    characterId,
+    pharmaId,
+    ...(gesture ? { gesture } : {}),
+  });
+  if (!ack.ok) useChatStore.getState().addNote(recoveryErrorText(ack.error));
+}
+
+/**
+ * Podanie jednej dawki (s. 150) — Akcja, gdy trwa walka.
+ *
+ * `targetTokenId` pominięty znaczy „sobie". Dawka schodzi z ekwipunku
+ * podającego, a skutek ląduje na karcie celu — obie rzeczy robi jedno zdarzenie.
+ */
+export async function useDose(
+  characterId: string,
+  gearRowId: string,
+  targetTokenId?: string,
+): Promise<void> {
+  const ack = await emitSceneAck<{ qtyLeft: number; healed: number }>('character:use-dose', {
+    characterId,
+    gearRowId,
+    ...(targetTokenId ? { targetTokenId } : {}),
+  });
+  if (!ack.ok) useChatStore.getState().addNote(recoveryErrorText(ack.error));
+}
+
+/** Polskie zdania dla odmów z trzech zdarzeń powrotu do zdrowia. */
+export function recoveryErrorText(code: string): string {
+  switch (code) {
+    case 'UNKNOWN_PHARMA':
+      return 'Nie znam takiego farmaceutyku.';
+    case 'PHARMA_NOT_UNLOCKED':
+      return 'Ten Medyk nie ma jeszcze dostępu do tego środka — brakuje punktów w Farmaceutykach.';
+    case 'NO_MEDTECH_SKILL':
+      return 'Wytwarzanie wymaga Umiejętności Technologia Medyczna na poziomie co najmniej 1.';
+    case 'NOT_ENOUGH_EDDIES':
+      return 'Za mało eurodolców na surowce (200 ed za partię).';
+    case 'NOT_A_CONSUMABLE':
+      return 'Ten wiersz ekwipunku nie jest dawką, którą da się podać.';
+    case 'NO_DOSES_LEFT':
+      return 'Nie ma już ani jednej dawki.';
+    case 'NOT_A_MEDIC':
+      return 'Postać niebędąca Medykiem nie potrafi poprawnie podawać farmaceutyków (s. 150).';
+    case 'DOSE_OUT_OF_REACH':
+      return 'Za daleko — zastrzyk wymaga zasięgu ramienia (2 m).';
+    default:
+      return combatErrorText(code);
+  }
+}
+
+/**
  * Wezwanie Wsparcia (etap 30c, s. 158).
  *
  * `tokenId` to figura, która płaci Akcję i przy której staną funkcjonariusze;
@@ -2626,6 +2858,43 @@ export function combatAwarenessErrorText(code: string): string {
   return combatErrorText(code);
 }
 
+/**
+ * Why a sheet patch was refused, in one sentence for the card's issue strip.
+ *
+ * Every code here means the same thing on the wire — the server wrote nothing —
+ * but „Błąd zapisu!" alone left the GM guessing which of a dozen rules had
+ * spoken (02.09). The engine's own tables answer first, because the sentence
+ * that greys a button out and the sentence that explains a refusal should not
+ * be two different sentences.
+ */
+export function characterSaveErrorText(code: string): string {
+  if (code in CPRED_ROLES_PROBLEMS) {
+    return CPRED_ROLES_PROBLEMS[code as keyof typeof CPRED_ROLES_PROBLEMS];
+  }
+  if (code in CPRED_SPECIALTY_PROBLEMS) {
+    return CPRED_SPECIALTY_PROBLEMS[code as keyof typeof CPRED_SPECIALTY_PROBLEMS];
+  }
+  if (code in CPRED_FLEET_PROBLEMS) {
+    return CPRED_FLEET_PROBLEMS[code as keyof typeof CPRED_FLEET_PROBLEMS];
+  }
+  switch (code) {
+    case 'OFFLINE':
+      return 'Brak połączenia z serwerem — zmiana nie została zapisana.';
+    case 'FORBIDDEN':
+      return 'Tego pola nie zmienia się z karty — zmienia je własna Akcja albo MG.';
+    case 'INVALID_NAME':
+      return 'Imię musi mieć od 1 do 64 znaków.';
+    case 'INVALID_DATA':
+      return 'Serwer nie przyjął tych danych karty — popraw ostatnią zmianę.';
+    case 'CHARACTER_NOT_FOUND':
+      return 'Nie ma takiej postaci w tej kampanii — odśwież stronę.';
+    case 'BAD_REQUEST':
+      return 'Serwer nie zrozumiał tej zmiany — odśwież stronę.';
+    default:
+      return `Serwer odmówił zapisu (${code}).`;
+  }
+}
+
 interface CharacterSaveBuffer {
   patch: CharacterPatch;
   timer: number;
@@ -2676,14 +2945,21 @@ export function flushCharacterSave(characterId: string): void {
   // `beginSave` już poszło przy kolejkowaniu — jeden bufor to jeden zapis.
   const store = useCharacterStore.getState();
   if (!socket) {
-    store.endSave(characterId, null, false);
+    store.endSave(characterId, null, false, 'OFFLINE');
     return;
   }
   socket.emit(
     'character:update',
     { characterId, patch: buffer.patch },
     (ack: SocketAck<CharacterView>) => {
-      useCharacterStore.getState().endSave(characterId, ack.ok ? (ack.data ?? null) : null, ack.ok);
+      useCharacterStore
+        .getState()
+        .endSave(
+          characterId,
+          ack.ok ? (ack.data ?? null) : null,
+          ack.ok,
+          ack.ok ? undefined : ack.error,
+        );
     },
   );
 }
@@ -2774,6 +3050,20 @@ function cyberwareErrorText(code: string | undefined): string {
       return 'Ten wpis nie ma ceny — uzupełnij ją w kompendium albo wybierz „Znaleziony”.';
     case 'CHARACTER_NOT_FOUND':
       return 'Nie możesz zmieniać tej karty.';
+    // 04.09.2026: trzy odmowy z s. 111 i dwie z s. 226 — do tej pory
+    // arytmetyka gniazd była wyłącznie chipem na karcie.
+    case 'MISSING_FOUNDATION':
+    case 'NO_SLOTS':
+    case 'POOL_FULL':
+      return CYBERWARE_INSTALL_REFUSAL_MESSAGES[code];
+    case 'SELF_INSTALL':
+      return 'Sam sobie tego nie wszczepisz — poza galerią potrzebny jest ktoś drugi (s. 226).';
+    case 'NO_SURGERY_SKILL':
+      return 'Ta postać nie ma Chirurgii — montaż wykonuje Medyk albo ripperdoc MG (s. 226).';
+    case 'BAD_SURGEON':
+      return 'Poziom chirurga musi być liczbą z zakresu 0–20.';
+    case 'FORBIDDEN':
+      return 'Tę operację może zlecić tylko MG.';
     case 'OFFLINE':
       return 'Brak połączenia z serwerem.';
     default:

@@ -4,6 +4,7 @@ import type {
   CompendiumEntry,
   CpredArmorRow,
   CpredSkillDefinition,
+  CpredAttachmentProfile,
   CpredAttackMode,
   CpredCareMode,
   CpredCharacterData,
@@ -25,6 +26,7 @@ import type {
 } from '@vtt/shared';
 import {
   CPRED_LANGUAGE_SKILL_ID,
+  cpredHealRate,
   CRITICAL_INJURY_TABLE_LABELS,
   CYBERDECK_SLOTS_MAX,
   SKILL_SPECIALTY_MAX_LENGTH,
@@ -95,6 +97,13 @@ import {
   hpMax,
   humanityMaxWith,
   isAmmoEntry,
+  attachmentOptionsFor,
+  attachmentProfilesOf,
+  attachmentSlotsFree,
+  attachmentSlotsUsed,
+  describeAttachment,
+  fittedAttachmentsFor,
+  resolveAttachmentWeapon,
   isCyberwareBodySlot,
   isHousingOption,
   isLifestyleLevel,
@@ -142,14 +151,19 @@ import { CyberwareBody } from './CyberwareBody.js';
 import { FacedownFromSheet } from './FacedownLauncher.js';
 import {
   assignCriticalInjury,
+  characterSaveErrorText,
   economyErrorText,
   endFieldRepair,
   fetchLedger,
   flushCharacterSave,
   makeFieldRepair,
   queueCharacterSave,
+  restForADay,
+  useDose,
+  clearWeaponJam,
   reloadWeapon,
   sendCyberwareAction,
+  setWeaponAttachment,
   transferEddies,
 } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
@@ -224,6 +238,7 @@ function CharacterSheetWindow({
   const character = useCharacterStore((s) => s.characters[characterId]);
   const registry = useCharacterStore((s) => s.registry);
   const saveState = useCharacterStore((s) => s.saveStates[characterId]);
+  const saveError = useCharacterStore((s) => s.saveErrors[characterId]);
   const closeSheet = useCharacterStore((s) => s.closeSheet);
   const focusSheet = useCharacterStore((s) => s.focusSheet);
 
@@ -275,7 +290,13 @@ function CharacterSheetWindow({
     queueCharacterSave(characterId, { name: value });
   }
 
-  const issueList = Object.values(issues);
+  /**
+   * The refusal joins the sheet's own complaints (02.09). It belongs in the
+   * same strip because it says the same kind of thing — „this card cannot look
+   * like that" — and because the header has room for a state, not a sentence.
+   */
+  const saveIssue = saveState === 'error' && saveError ? characterSaveErrorText(saveError) : null;
+  const issueList = [...Object.values(issues), ...(saveIssue ? [saveIssue] : [])];
   const saveLabel =
     saveState === 'saving' ? 'Zapisywanie…' : saveState === 'error' ? 'Błąd zapisu!' : '';
   const roleName = registry.roles.find((r) => r.id === data.roleId)?.name ?? '';
@@ -298,7 +319,12 @@ function CharacterSheetWindow({
           <span className="sheet-title-name">{character.name}</span>
           {roleName && <span className="sheet-title-role">{roleName}</span>}
         </span>
-        <span className={`sheet-save sheet-save--${saveState ?? 'idle'}`}>{saveLabel}</span>
+        <span
+          className={`sheet-save sheet-save--${saveState ?? 'idle'}`}
+          {...(saveIssue ? { title: saveIssue } : {})}
+        >
+          {saveLabel}
+        </span>
         <button
           type="button"
           className="sheet-close"
@@ -787,6 +813,8 @@ function IdentityColumn({
         </p>
       )}
 
+      <RecoveryPanel data={data} characterId={character.id} />
+
       <CriticalInjuries data={data} saveData={saveData} characterId={character.id} />
 
       <div className="cp-panel">
@@ -1206,10 +1234,17 @@ function AmmoPicker({
   characterId,
   row,
   resolved,
+  attachment,
 }: {
   characterId: string;
   row: CpredWeaponRow;
   resolved: ResolvedWeapon | null;
+  /**
+   * The bolted-on weapon this picker loads, when it is not the row's own gun
+   * (02.09). Its magazine, its choice of round, and its own reload — the row id
+   * still addresses the sheet, because that is where both magazines live.
+   */
+  attachment?: { id: string; name: string };
 }) {
   const entries = useCompendiumStore((s) => s.entries);
   const order = useCompendiumStore((s) => s.order);
@@ -1226,7 +1261,8 @@ function AmmoPicker({
   // weapon — has no rounds to choose between, and an empty dropdown next to it
   // would be one more thing to explain.
   if (options.length === 0) return null;
-  const loaded = row.ammoId && options.some((ammo) => ammo.id === row.ammoId) ? row.ammoId : '';
+  const current = attachment ? row.attachmentAmmoId?.[attachment.id] : row.ammoId;
+  const loaded = current && options.some((ammo) => ammo.id === current) ? current : '';
   const forced = resolved?.ammoIds?.length === 1;
 
   return (
@@ -1234,13 +1270,15 @@ function AmmoPicker({
       className="weapon-ammo-type"
       value={loaded}
       disabled={forced}
-      aria-label={`Rodzaj naboju: ${row.name}`}
+      aria-label={`Rodzaj naboju: ${attachment?.name ?? row.name}`}
       title={
         forced
           ? 'Ta broń strzela tylko jednym rodzajem amunicji.'
           : 'Rodzaj naboju w magazynku. Zmiana w trakcie walki kosztuje Akcję (Przeładowanie) i ładuje magazynek do pełna.'
       }
-      onChange={(e) => reloadWeapon(characterId, row.id, e.target.value || null)}
+      onChange={(e) =>
+        reloadWeapon(characterId, row.id, e.target.value || null, undefined, attachment?.id)
+      }
     >
       <option value="">Zwykła</option>
       {options.map((ammo) => (
@@ -1249,6 +1287,116 @@ function AmmoPicker({
         </option>
       ))}
     </select>
+  );
+}
+
+/**
+ * Gniazda na dodatki przy wierszu broni (etap 31, s. 342).
+ *
+ * „Każda zwykła (nie egzotyczna) broń dystansowa ma trzy gniazda na dodatki" —
+ * i to jest cała ta kontrolka: tyle kwadracików, ile gniazd, wypełnione tym, co
+ * już wisi na broni. Montaż idzie **zdarzeniem**, nie łatą karty, bo magazynek
+ * po dołożeniu bębna liczy się z tabeli w kompendium, a drugiej kopii tego
+ * samego dodatku nie wolno przyjąć — obie odpowiedzi należą do serwera.
+ *
+ * Wiersz bez gniazd (broń biała, egzotyk, wiersz bez wpisu z katalogu) nie
+ * dostaje nic: pusty pasek byłby jeszcze jedną rzeczą do wytłumaczenia.
+ */
+function WeaponAttachments({
+  characterId,
+  row,
+  resolved,
+}: {
+  characterId: string;
+  row: CpredWeaponRow;
+  resolved: ResolvedWeapon | null;
+}) {
+  const entries = useCompendiumStore((s) => s.entries);
+  const order = useCompendiumStore((s) => s.order);
+  const [picking, setPicking] = useState(false);
+
+  const catalogue = useMemo(
+    () =>
+      attachmentProfilesOf(
+        order.map((id) => entries[id]).filter((entry): entry is CompendiumEntry => !!entry),
+      ),
+    [entries, order],
+  );
+  const fitted = useMemo(
+    () => fittedAttachmentsFor(row.attachmentIds, catalogue, resolved),
+    [row.attachmentIds, catalogue, resolved],
+  );
+  const options = useMemo(
+    () => attachmentOptionsFor(catalogue, resolved, fitted),
+    [catalogue, resolved, fitted],
+  );
+
+  const slots = resolved?.attachmentSlots ?? 0;
+  if (slots <= 0) return null;
+  const used = attachmentSlotsUsed(fitted);
+  const free = attachmentSlotsFree(resolved, fitted);
+
+  return (
+    <div className="weapon-slots">
+      <span
+        className="weapon-slots-boxes"
+        aria-label={`Gniazda na dodatki: ${used} z ${slots} zajęte`}
+        title={`Gniazda na dodatki: ${used} z ${slots} zajęte`}
+      >
+        {Array.from({ length: slots }, (_, index) => (
+          <span
+            key={index}
+            className={`weapon-slot${index < used ? ' weapon-slot--used' : ''}`}
+            aria-hidden
+          />
+        ))}
+      </span>
+      {fitted.map((attachment) => (
+        <button
+          key={attachment.id}
+          type="button"
+          className="weapon-slot-chip"
+          title={`${describeAttachment(attachment)} — kliknij, żeby zdjąć`}
+          onClick={() => setWeaponAttachment(characterId, row.id, attachment.id, 'unmount')}
+        >
+          {attachment.name} <span aria-hidden>✕</span>
+        </button>
+      ))}
+      {free > 0 && options.length > 0 && (
+        <button
+          type="button"
+          className="small-button"
+          title="Dołóż dodatek z katalogu — pasują tylko te, które podręcznik dopuszcza do tej broni"
+          onClick={() => setPicking(true)}
+        >
+          + Dodatek
+        </button>
+      )}
+      {picking && (
+        <ul className="weapon-slot-picker">
+          {options.map((attachment) => (
+            <li key={attachment.id}>
+              <button
+                type="button"
+                className="weapon-picker-row"
+                onClick={() => {
+                  setPicking(false);
+                  setWeaponAttachment(characterId, row.id, attachment.id, 'mount');
+                }}
+              >
+                <span className="weapon-picker-name">{attachment.name}</span>
+                <span className="weapon-picker-stats">{describeAttachment(attachment)}</span>
+              </button>
+            </li>
+          ))}
+          <li>
+            <button type="button" className="small-button" onClick={() => setPicking(false)}>
+              Anuluj
+            </button>
+          </li>
+        </ul>
+      )}
+    </div>
   );
 }
 
@@ -1293,6 +1441,27 @@ function WeaponStrip({
       { weapons: data.weapons.map((row) => (row.id === rowId ? { ...row, ...patch } : row)) },
       'weapons',
     );
+  }
+
+  /**
+   * Broń, którą ktoś doczepił do tego wiersza (etap 31) — bagnet, podwieszany
+   * granatnik, podwieszana strzelba.
+   *
+   * Rozwiązywana z katalogu za każdym razem, a nie kopiowana na kartę: tabela
+   * zasięgów granatnika należy do granatnika, więc MG poprawiający ją w jednym
+   * miejscu poprawia ją wszystkim.
+   */
+  function secondaryRowsOf(
+    row: CpredWeaponRow,
+  ): { attachment: CpredAttachmentProfile; weapon: ResolvedWeapon }[] {
+    const catalogue = attachmentProfilesOf(Object.values(entries));
+    const types = new Map(Object.entries(weaponTypeById));
+    const rows: { attachment: CpredAttachmentProfile; weapon: ResolvedWeapon }[] = [];
+    for (const attachment of fittedAttachmentsFor(row.attachmentIds, catalogue, resolvedOf(row))) {
+      const weapon = resolveAttachmentWeapon(attachment, { weaponTypeById: types });
+      if (weapon) rows.push({ attachment, weapon });
+    }
+    return rows;
   }
 
   /**
@@ -1343,18 +1512,33 @@ function WeaponStrip({
     });
   }
 
-  /** Arms the map: the next click on a token fires this weapon. */
-  function aim(row: CpredWeaponRow, mode: CpredAttackMode, resolved: ResolvedWeapon | null) {
+  /**
+   * Arms the map: the next click on a token fires this weapon.
+   *
+   * Since stage 31 „this weapon" may be the thing bolted under the barrel —
+   * `firedWith` is then the bayonet or the underbarrel, and everything the
+   * crosshair says about the shot (its name, whether it is melee) comes off
+   * that weapon rather than off the rifle carrying it.
+   */
+  function aim(
+    row: CpredWeaponRow,
+    mode: CpredAttackMode,
+    resolved: ResolvedWeapon | null,
+    firedWith?: { attachment: CpredAttachmentProfile; resolved: ResolvedWeapon },
+  ) {
     const own = Object.values(tokens).find((token) => token.characterId === character.id);
     useAttackStore.getState().arm({
       characterId: character.id,
       characterName: character.name,
       ...(own ? { attackerTokenId: own.id } : {}),
       weaponRowId: row.id,
-      weaponName: row.name,
+      weaponName: firedWith ? `${row.name} · ${firedWith.attachment.name}` : row.name,
       mode,
       modifier: 0,
-      melee: resolved?.melee ?? false,
+      melee: (firedWith ? firedWith.resolved : resolved)?.melee ?? false,
+      ...(firedWith
+        ? { attachmentId: firedWith.attachment.id, attachmentName: firedWith.attachment.name }
+        : {}),
     });
   }
 
@@ -1375,11 +1559,11 @@ function WeaponStrip({
           </tr>
         </thead>
         <tbody>
-          {data.weapons.map((row) => {
+          {data.weapons.flatMap((row) => {
             const resolved = resolvedOf(row);
             const tracksAmmo = row.ammoMax > 0;
             const empty = tracksAmmo && row.ammoCurrent <= 0;
-            return (
+            return [
               <tr key={row.id}>
                 <td>
                   <input
@@ -1401,6 +1585,23 @@ function WeaponStrip({
                       ⚠ Wskaż broń z katalogu
                     </button>
                   )}
+                  {/* „Broń niskiej jakości … nie nadaje się do użytku"
+                      (s. 244). Guzik, a nie sam chip: usterkę usuwa się Akcją
+                      i bez Testu, więc karta ma umieć to, co pasek akcji —
+                      inaczej gracz, który patrzy na kartę, widzi wyłącznie
+                      zdanie o tym, że broń nie działa. */}
+                  {row.jammed === true && (
+                    <button
+                      type="button"
+                      className="small-button weapon-jammed"
+                      title="Broń niskiej jakości zacięła się po Krytycznej Porażce. Usunięcie usterki kosztuje Akcję i nie wymaga Testu."
+                      onClick={() => clearWeaponJam(character.id, row.id)}
+                    >
+                      ⚠ Zacięta — usuń usterkę
+                    </button>
+                  )}
+                  {/* Etap 31: trzy gniazda i to, co w nich siedzi. */}
+                  <WeaponAttachments characterId={character.id} row={row} resolved={resolved} />
                 </td>
                 <td>
                   <input
@@ -1542,8 +1743,79 @@ function WeaponStrip({
                     ✕
                   </button>
                 </td>
-              </tr>
-            );
+              </tr>,
+              // Etap 31: bagnet i broń podwieszana to ta sama sztuka żelastwa,
+              // ale drugi sposób zrobienia komuś krzywdy — więc drugi wiersz
+              // pod tym samym wierszem, a nie druga pozycja na liście broni.
+              ...secondaryRowsOf(row).map(({ attachment, weapon }) => (
+                <tr key={`${row.id}:${attachment.id}`} className="weapon-secondary">
+                  <td>
+                    <span className="weapon-secondary-name">↳ {attachment.name}</span>
+                  </td>
+                  <td>{weapon.damage}</td>
+                  <td className="weapon-ammo-cell">
+                    {(weapon.magazine ?? 0) > 0 ? (
+                      <>
+                        <span className="weapon-ammo-max">
+                          {row.attachmentAmmo?.[attachment.id] ?? weapon.magazine}/{weapon.magazine}
+                        </span>
+                        <button
+                          type="button"
+                          className="small-button"
+                          disabled={
+                            (row.attachmentAmmo?.[attachment.id] ?? weapon.magazine ?? 0) >=
+                            (weapon.magazine ?? 0)
+                          }
+                          title="Przeładuj podwieszaną broń — własny magazynek, ta sama Akcja"
+                          aria-label={`Przeładuj: ${attachment.name}`}
+                          onClick={() =>
+                            reloadWeapon(character.id, row.id, undefined, undefined, attachment.id)
+                          }
+                        >
+                          ⟳
+                        </button>
+                      </>
+                    ) : (
+                      <span className="weapon-ammo-none" title="Ta broń nie liczy amunicji">
+                        —
+                      </span>
+                    )}
+                    {/* Ten sam wybór naboju, co w wierszu głównym (02.09) —
+                        bez niego z granatnika podwieszanego nie dało się
+                        wystrzelić dymu ani gazu, choć katalog je oferuje. */}
+                    <AmmoPicker
+                      characterId={character.id}
+                      row={row}
+                      resolved={weapon}
+                      attachment={{ id: attachment.id, name: attachment.name }}
+                    />
+                  </td>
+                  <td>{weapon.rof}</td>
+                  <td className="weapon-secondary-note">
+                    {weapon.melee ? 'broń biała — do 2 m' : (weapon.typeName ?? '')}
+                  </td>
+                  <td className="weapon-actions">
+                    <button
+                      type="button"
+                      className="small-button"
+                      disabled={
+                        (weapon.magazine ?? 0) > 0 &&
+                        (row.attachmentAmmo?.[attachment.id] ?? 0) <= 0
+                      }
+                      title={
+                        weapon.melee
+                          ? 'Atak wręcz — wskaż cel na mapie (do 2 m)'
+                          : 'Atak podwieszaną bronią — wskaż cel na mapie'
+                      }
+                      onClick={() => aim(row, 'single', resolved, { attachment, resolved: weapon })}
+                    >
+                      Atak
+                    </button>
+                  </td>
+                  <td />
+                </tr>
+              )),
+            ];
           })}
         </tbody>
       </table>
@@ -2036,6 +2308,76 @@ function ArmorPenalty({
       aria-label="Kara pancerza do REF/ZW/RUCH"
       title="Kara do REF, ZW i RUCH-u. Liczy się najgorsza z noszonych sztuk, kary się nie sumują."
     />
+  );
+}
+
+/**
+ * Rekonwalescencja (s. 222–223) — jedyne miejsce, z którego PW wracają same.
+ *
+ * Panel jest **pod progami ran i nad Ranami Krytycznymi**, bo tam czyta się go
+ * przy stole: najpierw „jak bardzo mnie boli", potem „ile odzyskam do jutra",
+ * a dopiero potem lista złamań.
+ *
+ * Znika u postaci z kompletem PW i bez rozpoczętego procesu — zdrowemu
+ * człowiekowi guzik „Dzień odpoczynku" nie ma co powiedzieć.
+ */
+function RecoveryPanel({ data, characterId }: { data: CpredCharacterData; characterId: string }) {
+  const [busy, setBusy] = useState(false);
+  const max = hpMax(data.stats);
+  const rate = cpredHealRate(data);
+  if (data.hpCurrent >= max && !data.recovery.stabilized) return null;
+
+  async function rest(strained: boolean) {
+    setBusy(true);
+    try {
+      await restForADay(characterId, strained);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="cp-panel cp-recovery">
+      <div className="cp-field cp-field--notch cp-recovery-field">
+        <span className="cp-label">Rekonwalescencja</span>
+        {data.recovery.stabilized ? (
+          <p className="cp-recovery-rate">
+            <strong>+{rate.perDay} PW</strong> za pełny dzień odpoczynku
+            <span className="cp-recovery-sources">
+              {rate.sources.map((row) => row.label).join(' · ')}
+            </span>
+          </p>
+        ) : (
+          <p className="cp-recovery-rate cp-recovery-rate--idle">
+            Naturalne leczenie nie ruszyło. Ktoś musi wykonać Akcję „Ustabilizowanie" — dopiero
+            wtedy dzień odpoczynku cokolwiek daje (s. 222).
+          </p>
+        )}
+      </div>
+      <div className="cp-recovery-buttons">
+        <button
+          type="button"
+          className="primary-button"
+          disabled={busy || !data.recovery.stabilized}
+          title={
+            data.recovery.stabilized
+              ? `Minął pełny dzień odpoczynku: +${rate.perDay} PW`
+              : 'Najpierw Ustabilizowanie'
+          }
+          onClick={() => void rest(false)}
+        >
+          Dzień odpoczynku
+        </button>
+        <button
+          type="button"
+          disabled={busy || !data.recovery.stabilized}
+          title="Postać się nadwyrężyła: za ten dzień nie odzyskuje PW, rany otwierają się i trzeba ją ustabilizować od nowa (s. 223)."
+          onClick={() => void rest(true)}
+        >
+          Nadwyrężyła się
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -2555,6 +2897,8 @@ function GearTab({ character, data, saveData }: TabProps & { character: Characte
         onChange={(rows) => saveData({ gear: rows }, 'gear')}
       />
 
+      <DosesSection character={character} data={data} />
+
       <div className="cp-panel cp-plaques">
         <div
           className="cp-field cp-plaque"
@@ -2576,6 +2920,76 @@ function GearTab({ character, data, saveData }: TabProps & { character: Characte
       <LifestyleFields data={data} saveData={saveData} />
 
       <CyberdeckSection data={data} saveData={saveData} />
+    </div>
+  );
+}
+
+/**
+ * Dawki farmaceutyków, które ta postać nosi (s. 150).
+ *
+ * Osobna sekcja pod tabelą wyposażenia, a nie kolumna w niej: wiersz z dawką
+ * **jest** zwykłym wyposażeniem (ma nazwę, ilość i uwagi, i tak się go edytuje),
+ * a różni się jedną rzeczą — da się go zużyć. Guzik przy tabeli ogólnej
+ * kazałby jej wiedzieć o farmaceutykach; tutaj wie o nich tylko ta lista.
+ *
+ * Znika, kiedy nie ma czego podawać — a to jest stan każdej karty poza Medykiem.
+ */
+function DosesSection({
+  character,
+  data,
+}: {
+  character: CharacterSheetView;
+  data: CpredCharacterData;
+}) {
+  const tokens = useTokenStore((s) => s.tokens);
+  const [targetId, setTargetId] = useState('');
+  const [busy, setBusy] = useState(false);
+  const doses = data.gear.filter((row) => row.consumable);
+  if (doses.length === 0) return null;
+
+  const figures = Object.values(tokens).filter((token) => token.name.length > 0);
+
+  return (
+    <div className="cp-panel cp-doses">
+      <div className="cp-field cp-field--notch cp-doses-target-field">
+        <span className="cp-label">Farmaceutyki</span>
+        <label className="cp-doses-target">
+          Komu:
+          <select value={targetId} onChange={(e) => setTargetId(e.target.value)}>
+            <option value="">sobie</option>
+            {figures.map((token) => (
+              <option key={token.id} value={token.id}>
+                {token.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <ul className="cp-doses-list">
+        {doses.map((row) => (
+          <li key={row.id}>
+            <span className="cp-doses-name">{row.name}</span>
+            <span className="cp-doses-qty">× {row.qty}</span>
+            <button
+              type="button"
+              disabled={busy || row.qty < 1}
+              title={
+                row.qty < 1
+                  ? 'Nie ma już ani jednej dawki.'
+                  : `Wstrzyknięcie jednej dawki zajmuje Akcję. ${row.notes}`
+              }
+              onClick={() => {
+                setBusy(true);
+                void useDose(character.id, row.id, targetId || undefined).finally(() =>
+                  setBusy(false),
+                );
+              }}
+            >
+              Podaj
+            </button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

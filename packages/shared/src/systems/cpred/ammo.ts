@@ -397,3 +397,40 @@ export function ammoOffersSecondRoll(
 
 /** Default duration of everything the table calls „na minutę". */
 export const CPRED_AMMO_MINUTE_S = CPRED_MINUTE_S;
+
+/* ------------------------------------------------------------------ *
+ * Impuls EMP wskazuje, co padło (04.09.2026)
+ * ------------------------------------------------------------------ */
+
+/**
+ * „Trafione cele wykonują Test Cyberinżynierii o PT 15; przy porażce MG wyłącza
+ * **dwie** cyborgizacje albo urządzenia celu na minutę" (s. 345–347).
+ */
+export const CPRED_EMP_DISABLED_COUNT = 2;
+
+/**
+ * Które dwie padły.
+ *
+ * Do 04.09.2026 karta mówiła tylko, że cel oblał Test — dwie cyborgizacje
+ * wybierał MG w pamięci, a po minucie nikt nie wiedział, co właściwie wraca.
+ * Losowanie po stronie serwera, z tego samego RNG co rzut, bo to ta sama
+ * decyzja: gracz, który mógłby wskazać, co mu padło, wskazywałby chip do
+ * odtwarzania muzyki, a nie Kerenzikova.
+ *
+ * Zwraca **nazwy**, nie identyfikatory wierszy: nazwa jest tym, co czyta stół,
+ * a wiersz karty i tak może zniknąć, zanim minuta minie. Ciało bez chromu
+ * zwraca pustą listę — statysta bez karty również, i wtedy dwie „cyborgizacje
+ * albo urządzenia" zostają MG, tak jak przed tą zmianą.
+ */
+export function cpredEmpDisabled(
+  rows: readonly { name?: string }[],
+  rng: (sides: number) => number,
+  count = CPRED_EMP_DISABLED_COUNT,
+): string[] {
+  const pool = rows.map((row) => (row.name ?? '').trim()).filter((name) => name.length > 0);
+  const picked: string[] = [];
+  while (picked.length < count && pool.length > 0) {
+    picked.push(pool.splice(rng(pool.length) - 1, 1)[0]!);
+  }
+  return picked;
+}

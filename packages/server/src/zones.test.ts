@@ -224,6 +224,25 @@ describe('defended zones on a scene', () => {
     return (sheet.data as CpredCharacterData).hpCurrent;
   }
 
+  /**
+   * Puts Kolec back on full Hit Points, and returns the number.
+   *
+   * Every test measuring „PW spadły" starts here rather than inheriting
+   * whatever the tests before it left: the floor bills 6k6 a time against a
+   * sheet holding 50 (BC 8, SW 8), so a few jolts take him to zero — and at
+   * zero the server refuses a *player* any movement at all. The walk then never
+   * happens, the drop is 0 → 0, and the test fails on the assertion instead of
+   * on the state that broke it.
+   */
+  async function healUp(): Promise<number> {
+    const full = 10 + 5 * Math.ceil((8 + 8) / 2); // hpMax(BC 8, SW 8) = 50
+    await emitAck(gm, 'character:update', {
+      characterId,
+      patch: { data: { hpCurrent: full } },
+    });
+    return full;
+  }
+
   it('sets the table: a corridor, two figures and two catalogue rows', async () => {
     const gmConn = createSocket(gmCookie);
     const playerConn = createSocket(playerCookie);
@@ -380,7 +399,7 @@ describe('defended zones on a scene', () => {
   });
 
   it('goes off when a figure walks onto it, and the card can be taken back', async () => {
-    const before = await hp();
+    const before = await healUp();
     const card = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
     await walk(player, runnerTokenId, 12 * PX_PER_M, 0);
     // Pierwsza wiadomość to karta obrażeń albo linia „Wejście na broniony
@@ -391,7 +410,7 @@ describe('defended zones on a scene', () => {
   });
 
   it('does not go off a second time for a figure already standing on it', async () => {
-    const before = await hp();
+    const before = await healUp();
     // Ruch wewnątrz obszaru: „cel WCHODZI na broniony obszar" już się zdarzyło.
     await walk(player, runnerTokenId, 14 * PX_PER_M, 0);
     const after = await hp();
@@ -415,7 +434,7 @@ describe('defended zones on a scene', () => {
     await emitAck(gm, 'zone:update', { zoneId: floorZoneId, patch: { armed: false } });
     // Kolec schodzi i wraca — przy uzbrojonym systemie to byłoby drugie 6k6.
     await walk(player, runnerTokenId, 0, 0);
-    const before = await hp();
+    const before = await healUp();
     await walk(player, runnerTokenId, 12 * PX_PER_M, 0);
     expect(await hp()).toBe(before);
     await emitAck(gm, 'zone:update', { zoneId: floorZoneId, patch: { armed: true } });
@@ -423,7 +442,7 @@ describe('defended zones on a scene', () => {
 
   it('reads the whole recorded path, not just where the walk ended', async () => {
     await walk(player, runnerTokenId, 0, 0);
-    const before = await hp();
+    const before = await healUp();
     // Cel po drugiej stronie podłogi: prosta „skąd–dokąd" też ją przecina, ale
     // ścieżka z 16e jest tym, co silnik ma czytać.
     await walk(player, runnerTokenId, 30 * PX_PER_M, 0, [
@@ -657,15 +676,15 @@ describe('defended zones on a scene', () => {
   it('the electric floor bills again at the end of every Turn spent standing on it', async () => {
     // „Cel otrzymuje ponownie 6k6 obrażeń na koniec swojej kolejnej Tury oraz
     // na koniec każdej kolejnej Tury, chyba że zejdzie z podłogi" (s. 216).
-    // Kolec przeszedł przez podłogę już kilka razy i leży na zerze; ten test
-    // jest o powtórce, nie o dobijaniu, więc karta wraca do pełni.
-    await emitAck(gm, 'character:update', { characterId, patch: { data: { hpCurrent: 50 } } });
+    // Kolec przeszedł przez podłogę już kilka razy; ten test jest o powtórce,
+    // nie o dobijaniu, więc karta wraca do pełni.
+    const full = await healUp();
     await emitAck(gm, 'zone:update', { zoneId: floorZoneId, patch: { armed: true } });
     // Wejście na podłogę **przed** walką: w turze ruch gracza zależy od tego,
     // czyja jest tura, a ten test jest o tym, co dzieje się bez klikania.
     await walk(player, runnerTokenId, 12 * PX_PER_M, 0);
     const afterEntry = await hp();
-    expect(afterEntry).toBeLessThan(50);
+    expect(afterEntry).toBeLessThan(full);
 
     data(
       await emitAck<CombatView>(gm, 'combat:start', {

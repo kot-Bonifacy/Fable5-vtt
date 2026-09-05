@@ -16,13 +16,20 @@
 
 import { loadedAmmoFor, type CpredAmmoProfile } from './ammo.js';
 import type { CpredCharacterData, CpredWeaponRow } from './character.js';
-import type { ResolvedWeapon } from './compendium.js';
+import {
+  fittedAttachmentsFor,
+  resolveAttachmentWeapon,
+  type CompendiumRegistry,
+  type ResolvedWeapon,
+} from './compendium.js';
+import type { CpredAttachmentProfile } from './attachments.js';
 import type { CpredCombatProfile } from './statist.js';
 import { STATIST_WEAPON_ROW_ID } from './statist.js';
 import {
   CPRED_ATTACK_MODE_LABELS,
   CPRED_ATTACK_MODE_SHORT,
   CPRED_BURST_AMMO_COST,
+  CPRED_JAM_REFUSAL,
   type CpredAttackMode,
 } from './attacks.js';
 import { cpredActionBlock, cpredMovementBlock } from './statuses.js';
@@ -42,12 +49,26 @@ import {
 export interface CpredWeaponOption {
   /** Weapon row on the sheet, or the statist's single synthesised row. */
   rowId: string;
+  /**
+   * The attachment this option fires *instead of* the row (stage 31), or null
+   * for the weapon itself. A bayonet and the rifle it is bolted to share one
+   * row, so the row id alone stops being an identity here — everything that
+   * used to key on `rowId` has to carry this too.
+   */
+  attachmentId: string | null;
   name: string;
   resolved: ResolvedWeapon | null;
   /** Rounds left / magazine size; null for a weapon that counts none. */
   ammo: { current: number; max: number } | null;
   /** The round loaded, when it is anything but ordinary (stage 16g). */
   ammoProfile?: CpredAmmoProfile | null;
+  /**
+   * „Broń niskiej jakości … nie nadaje się do użytku" until the fault is
+   * cleared (s. 244). Only ever true of a sheet row's own weapon: a statist has
+   * no catalogue entry to be poor quality, and an attachment's weapon is built
+   * from a type, which carries no quality either.
+   */
+  jammed?: boolean;
 }
 
 /** Compendium lookup the caller supplies — the registry lives in its store. */
@@ -59,6 +80,20 @@ export type CpredWeaponResolver = (
 export type CpredAmmoResolver = (ammoId: string) => CpredAmmoProfile | null;
 
 /**
+ * What the bar needs in order to see a bolted-on weapon (stage 31, 01.09).
+ *
+ * Two pieces, because that is what the rules question takes: the catalogue says
+ * which attachments a row *could* be carrying, and the weapon types are what
+ * `resolveAttachmentWeapon` builds the second gun out of. Optional on purpose —
+ * a caller that does not supply it (the bot's turn) gets exactly the bar it got
+ * before, weapons only.
+ */
+export interface CpredAttachmentLookup {
+  catalogue: readonly CpredAttachmentProfile[];
+  weaponTypeById: CompendiumRegistry['weaponTypeById'];
+}
+
+/**
  * The weapons a token can fire: its sheet's rows, or the single weapon of its
  * combat profile (stage 16b). Empty when it has neither, which is what „this
  * token has not been statted" looks like from here.
@@ -68,18 +103,22 @@ export function cpredWeaponOptions(
   profile: CpredCombatProfile | null,
   resolve: CpredWeaponResolver,
   resolveAmmo?: CpredAmmoResolver,
+  attachments?: CpredAttachmentLookup,
 ): CpredWeaponOption[] {
   const lookup: CpredAmmoResolver = resolveAmmo ?? (() => null);
   if (sheet) {
-    return sheet.weapons.map((row: CpredWeaponRow) => {
+    return sheet.weapons.flatMap((row: CpredWeaponRow) => {
       const resolved = resolve(row.compendiumId);
-      return {
+      const primary: CpredWeaponOption = {
         rowId: row.id,
+        attachmentId: null,
         name: row.name,
         resolved,
         ammo: row.ammoMax > 0 ? { current: row.ammoCurrent, max: row.ammoMax } : null,
         ammoProfile: loadedAmmoFor(row, resolved, lookup),
+        ...(row.jammed === true ? { jammed: true } : {}),
       };
+      return [primary, ...secondaryOptionsOf(row, resolved, lookup, attachments)];
     });
   }
   if (!profile) return [];
@@ -87,6 +126,7 @@ export function cpredWeaponOptions(
   return [
     {
       rowId: STATIST_WEAPON_ROW_ID,
+      attachmentId: null,
       name: profile.weaponName,
       resolved,
       ammo: profile.ammoMax > 0 ? { current: profile.ammoCurrent, max: profile.ammoMax } : null,
@@ -96,6 +136,50 @@ export function cpredWeaponOptions(
       ammoProfile: loadedAmmoFor({}, resolved, lookup),
     },
   ];
+}
+
+/**
+ * The weapons bolted onto one row, as options of their own (stage 31).
+ *
+ * Mounting is judged on the way *out*, by `fittedAttachmentsFor`, exactly as it
+ * is on the sheet — so a smartgun link typed into `attachmentIds` of a bow
+ * yields nothing here either, and there is one place to be right rather than
+ * two. The magazine is the attachment's own (`attachmentAmmo`), because „można
+ * wykorzystać jako Granatnik z tylko jednym granatem" is a second magazine and
+ * not a share of the rifle's.
+ */
+function secondaryOptionsOf(
+  row: CpredWeaponRow,
+  resolved: ResolvedWeapon | null,
+  lookup: CpredAmmoResolver,
+  attachments: CpredAttachmentLookup | undefined,
+): CpredWeaponOption[] {
+  if (!attachments) return [];
+  const options: CpredWeaponOption[] = [];
+  for (const attachment of fittedAttachmentsFor(
+    row.attachmentIds,
+    attachments.catalogue,
+    resolved,
+  )) {
+    const weapon = resolveAttachmentWeapon(attachment, attachments);
+    if (!weapon) continue;
+    const magazine = weapon.magazine ?? 0;
+    options.push({
+      rowId: row.id,
+      attachmentId: attachment.id,
+      name: attachment.name,
+      resolved: weapon,
+      ammo:
+        magazine > 0
+          ? { current: row.attachmentAmmo?.[attachment.id] ?? magazine, max: magazine }
+          : null,
+      // The round is the second weapon's own: a launcher slung under a rifle
+      // loaded with smart rounds still fires grenades. Only the „this weapon
+      // takes one kind of round" case can apply, as with a statist's gun.
+      ammoProfile: loadedAmmoFor({}, weapon, lookup),
+    });
+  }
+  return options;
 }
 
 /**
@@ -268,6 +352,12 @@ export interface CpredHotbarWeaponSlot {
   id: string;
   hint: string;
   weaponRowId: string;
+  /**
+   * Attachment fired instead of the row (stage 31), or null for the row's own
+   * weapon. It travels all the way to `attack:plan`, so a slot that loses it
+   * silently fires the rifle instead of the bayonet.
+   */
+  attachmentId: string | null;
   mode: CpredAttackMode;
   /**
    * „seria", „zapora" — null for a plain shot.
@@ -308,6 +398,26 @@ export interface CpredHotbarWeaponSlot {
   key: string | null;
 }
 
+/**
+ * Clearing a jam (s. 244) — its own event, and it books its own Action.
+ *
+ * A box of its own rather than a second face on the reload slot, because the
+ * two are different Actions doing different things: „Usunięcie problemu nie
+ * wymaga Testu" and it does not put a magazine in. It also has to exist for a
+ * weapon that counts no rounds at all — a poor-quality machete binds, and a
+ * melee row has no reload box to borrow.
+ */
+export interface CpredHotbarClearJamSlot {
+  kind: 'clear-jam';
+  icon: CpredSlotIcon;
+  id: string;
+  label: string;
+  hint: string;
+  weaponRowId: string;
+  disabled: string | null;
+  key: string | null;
+}
+
 /** Refilling a magazine — its own event, and it books its own Action. */
 export interface CpredHotbarReloadSlot {
   kind: 'reload';
@@ -316,6 +426,8 @@ export interface CpredHotbarReloadSlot {
   label: string;
   hint: string;
   weaponRowId: string;
+  /** Magazine of the bolted-on weapon, when that is what this refills. */
+  attachmentId: string | null;
   ammo: { current: number; max: number };
   disabled: string | null;
   key: string | null;
@@ -335,7 +447,8 @@ export interface CpredHotbarActionSlot {
   key: string | null;
 }
 
-export type CpredHotbarSlot = CpredHotbarWeaponSlot | CpredHotbarReloadSlot | CpredHotbarActionSlot;
+export type CpredHotbarSlot =
+  CpredHotbarWeaponSlot | CpredHotbarReloadSlot | CpredHotbarClearJamSlot | CpredHotbarActionSlot;
 
 /** Everything the bar reads. All of it is state somebody else already owns. */
 export interface CpredHotbarInput {
@@ -345,6 +458,12 @@ export interface CpredHotbarInput {
   resolve: CpredWeaponResolver;
   /** Ammunition lookup (stage 16g); without it every gun reads as ordinary. */
   resolveAmmo?: CpredAmmoResolver;
+  /**
+   * Attachment catalogue and weapon types (stage 31). Without it the bar shows
+   * weapons only — which is what the underbarrel launcher and the bayonet were
+   * reachable-from-the-sheet-only for, until 01.09.
+   */
+  attachments?: CpredAttachmentLookup;
   /** Status ids on the token — Powalony, Trzymany, Nieprzytomny… */
   statuses: readonly string[];
   /**
@@ -397,6 +516,10 @@ function weaponRefusal(
   actionBlock: string | null,
 ): string | null {
   if (actionBlock) return actionBlock;
+  // A jam outranks an empty magazine: „broń nie nadaje się do użytku" until it
+  // is cleared, and telling the player to reload would send them spending an
+  // Action on the wrong thing.
+  if (option.jammed === true) return CPRED_JAM_REFUSAL;
   const ammo = option.ammo;
   if (!ammo) return null;
   const cost = mode === 'single' ? 1 : CPRED_BURST_AMMO_COST;
@@ -409,6 +532,24 @@ function weaponRefusal(
 }
 
 /**
+ * Identity of one thing to shoot with — a row, or a row *plus* what is bolted
+ * onto it (stage 31).
+ *
+ * Spelled once, because four places key on it: the slot id, the reload id, the
+ * panel's grouping and the client's remembered fire mode. A bayonet and its
+ * rifle share `rowId`, so any of the four still keying on the row alone would
+ * quietly fold the two weapons into one box.
+ */
+export function weaponOptionKey(rowId: string, attachmentId: string | null | undefined): string {
+  return attachmentId ? `${rowId}@${attachmentId}` : rowId;
+}
+
+/** The `weapon:` prefix of a slot id, shared by all of its fire modes. */
+function weaponSlotBase(option: CpredWeaponOption): string {
+  return `weapon:${weaponOptionKey(option.rowId, option.attachmentId)}`;
+}
+
+/**
  * Builds the bar for one token.
  *
  * The order is the order of a turn as it is actually played: what I shoot with,
@@ -417,7 +558,13 @@ function weaponRefusal(
  * thing pressed every round.
  */
 export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
-  const options = cpredWeaponOptions(input.sheet, input.profile, input.resolve, input.resolveAmmo);
+  const options = cpredWeaponOptions(
+    input.sheet,
+    input.profile,
+    input.resolve,
+    input.resolveAmmo,
+    input.attachments,
+  );
   const statusActionBlock = cpredActionBlock(input.statuses);
   const statusMoveBlock = cpredMovementBlock(input.statuses);
   // Outside a fight there is no budget to run out of, and the GM is never
@@ -442,7 +589,7 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
       slots.push({
         kind: 'weapon',
         icon: cpredWeaponIcon(option.resolved),
-        id: `weapon:${option.rowId}:${mode}`,
+        id: `${weaponSlotBase(option)}:${mode}`,
         label: option.name,
         modeLabel: CPRED_ATTACK_MODE_SHORT[mode],
         hint: pointTarget
@@ -453,6 +600,7 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
               ? `${option.name} — kliknij cel na mapie, żeby załadować kubek`
               : `${option.name}: ${CPRED_ATTACK_MODE_LABELS[mode]} — kliknij cel na mapie`,
         weaponRowId: option.rowId,
+        attachmentId: option.attachmentId,
         mode,
         melee: option.resolved?.melee ?? false,
         pointTarget,
@@ -466,6 +614,23 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
     }
   }
 
+  // „Dopóki w ramach Akcji nie usuniesz usterki, broń nie nadaje się do
+  // użytku" (s. 244). Before the reloads, because it is what has to happen
+  // first — and for a weapon that counts no rounds it is the only box there is.
+  for (const option of options) {
+    if (option.jammed !== true) continue;
+    slots.push({
+      kind: 'clear-jam',
+      icon: 'reload',
+      id: `clear-jam:${weaponOptionKey(option.rowId, option.attachmentId)}`,
+      label: `Usuń usterkę: ${option.name}`,
+      hint: 'Broń niskiej jakości zacięła się. Usunięcie usterki kosztuje Akcję i nie wymaga Testu.',
+      weaponRowId: option.rowId,
+      disabled: actionRefusal,
+      key: null,
+    });
+  }
+
   // Reloading is no longer a sheet's privilege (29.08): `weapon:reload` now
   // writes a statist's magazine back into its combat profile, so the extra with
   // the empty SMG gets the same box the player does — and pays the same Action.
@@ -474,10 +639,11 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
     slots.push({
       kind: 'reload',
       icon: 'reload',
-      id: `reload:${option.rowId}`,
+      id: `reload:${weaponOptionKey(option.rowId, option.attachmentId)}`,
       label: `Przeładuj: ${option.name}`,
       hint: `Ładuje magazynek do pełna (${option.ammo.current}/${option.ammo.max}). Kosztuje Akcję.`,
       weaponRowId: option.rowId,
+      attachmentId: option.attachmentId,
       ammo: option.ammo,
       disabled: option.ammo.current >= option.ammo.max ? 'Magazynek jest pełny.' : actionRefusal,
       key: null,
@@ -579,14 +745,16 @@ export interface CpredHotbarWeaponGroup {
   label: string;
   icon: CpredSlotIcon;
   weaponRowId: string;
+  /** Attachment this row fires (stage 31), or null for the weapon itself. */
+  attachmentId: string | null;
   /** The weapon's modes, in the order `cpredFireModes` gives them. Never empty. */
   modes: CpredHotbarWeaponSlot[];
   key: string | null;
 }
 
-/** A reload or a catalogue action — one thing, one box, nothing to fold. */
+/** A reload, a jam or a catalogue action — one thing, one box, nothing to fold. */
 export interface CpredHotbarSingleGroup {
-  kind: 'reload' | 'action';
+  kind: 'reload' | 'clear-jam' | 'action';
   id: string;
   label: string;
   icon: CpredSlotIcon;
@@ -613,21 +781,23 @@ export function cpredHotbarGroups(slots: readonly CpredHotbarSlot[]): CpredHotba
 
   for (const slot of slots) {
     if (slot.kind === 'weapon') {
-      const existing = weaponIndex.get(slot.weaponRowId);
+      const key = weaponOptionKey(slot.weaponRowId, slot.attachmentId);
+      const existing = weaponIndex.get(key);
       if (existing) {
         existing.modes.push(slot);
         continue;
       }
       const group: CpredHotbarWeaponGroup = {
         kind: 'weapon',
-        id: `weapon:${slot.weaponRowId}`,
+        id: `weapon:${key}`,
         label: slot.label,
         icon: slot.icon,
         weaponRowId: slot.weaponRowId,
+        attachmentId: slot.attachmentId,
         modes: [slot],
         key: null,
       };
-      weaponIndex.set(slot.weaponRowId, group);
+      weaponIndex.set(key, group);
       groups.push(group);
       continue;
     }

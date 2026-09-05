@@ -30,7 +30,22 @@ export interface TokenHp {
 export interface TokenView {
   id: string;
   sceneId: string;
+  /**
+   * What this viewer may call the figure.
+   *
+   * The GM and the token's controllers get the real name; everybody else gets
+   * `publicName` when one is set — so „Snajper Arasaki" reads „Ochroniarz" at
+   * the table until the GM says otherwise, and an empty string means no label
+   * at all. The swap happens on the server (`toTokenView`), so a client never
+   * holds a name it may not print.
+   */
   name: string;
+  /**
+   * The alias itself, and only in the private view — the GM's editor shows what
+   * the table is being told. Absent when the figure has no alias, which is the
+   * usual case; the empty string is the „no label" state, not „no alias".
+   */
+  publicName?: string;
   /** `/uploads/...` image; null renders as a colored placeholder disc. */
   imageUrl: string | null;
   /** Top-left corner in scene (world) pixels. */
@@ -187,6 +202,11 @@ export interface TokenCreatePayload {
 /** Mutable token fields; a patch carries any subset. */
 export interface TokenPatch {
   name?: string;
+  /**
+   * Name the table gets instead of `name`; null takes the alias away, `''`
+   * leaves the figure unlabelled. GM only, like the rest of this patch.
+   */
+  publicName?: string | null;
   imageUrl?: string | null;
   size?: number;
   ownerId?: string | null;
@@ -346,6 +366,21 @@ export function sanitizeTokenName(name: unknown): string | null {
   return trimmed;
 }
 
+/**
+ * Validates the alias shown to the table: a name, `''` (no label), `null` (no
+ * alias — the table sees the real name), or `undefined` for anything else.
+ *
+ * Unlike `sanitizeTokenName` the empty string is *legal* here, because it is a
+ * state of its own rather than a missing value.
+ */
+export function sanitizeTokenPublicName(name: unknown): string | null | undefined {
+  if (name === null) return null;
+  if (typeof name !== 'string') return undefined;
+  const trimmed = name.trim();
+  if (trimmed.length > TOKEN_NAME_MAX_LENGTH) return undefined;
+  return trimmed;
+}
+
 // Only same-origin asset paths — no external URLs, no path traversal.
 const TOKEN_IMAGE_URL_RE = /^\/(uploads|public)\/[A-Za-z0-9_\-./]+$/;
 
@@ -406,6 +441,11 @@ export function sanitizeTokenPatch(
     const name = sanitizeTokenName(input.name);
     if (name === null) return null;
     patch.name = name;
+  }
+  if ('publicName' in input) {
+    const alias = sanitizeTokenPublicName(input.publicName);
+    if (alias === undefined) return null;
+    patch.publicName = alias;
   }
   if ('imageUrl' in input) {
     const imageUrl = sanitizeTokenImageUrl(input.imageUrl);

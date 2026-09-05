@@ -137,6 +137,30 @@ function waitFor<T>(socket: ClientSocket, event: string, ms = 4000): Promise<T> 
   });
 }
 
+/**
+ * Waits for the roll card whose title contains `title`.
+ *
+ * `waitFor` takes the **first** `chat:message` that arrives, and a Demon's
+ * exchange is never the only card in flight: detecting one posts a line, and a
+ * Demon's Turn posts several. Matching on the title („Miecz → Mur") makes each
+ * wait pick its own card instead of the previous step's leftover.
+ */
+function waitForRoll(socket: ClientSocket, title: string): Promise<ChatMessageBroadcast> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      socket.off('chat:message', listener);
+      reject(new Error(`chat:message „${title}" timeout`));
+    }, 4000);
+    const listener = (payload: ChatMessageBroadcast) => {
+      if (!payload.message.roll?.title?.includes(title)) return;
+      clearTimeout(timer);
+      socket.off('chat:message', listener);
+      resolve(payload);
+    };
+    socket.on('chat:message', listener);
+  });
+}
+
 async function roundTrip(socket: ClientSocket): Promise<StateSyncPayload> {
   const sync = waitFor<StateSyncPayload>(socket, 'state:sync');
   await emitAck(socket, 'state:request');
@@ -459,7 +483,7 @@ describe('Demony na żywych gniazdach', () => {
       'netrun:demon:detect (Mur)',
     );
 
-    const weakCard = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+    const weakCard = waitForRoll(gm, '→ Słaby Demon');
     data(
       await emitAck<NetRunAbilityResult>(player, 'netrun:attack', {
         runId,
@@ -471,7 +495,7 @@ describe('Demony na żywych gniazdach', () => {
     // Interfejs 0 nie dokłada nic do rzutu obronnego — goła kość.
     expect((await weakCard).message.roll?.opposed?.detail).toContain('obrona 1d10 =');
 
-    const strongCard = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+    const strongCard = waitForRoll(gm, '→ Mur');
     data(
       await emitAck<NetRunAbilityResult>(player, 'netrun:attack', {
         runId,
@@ -515,10 +539,27 @@ describe('Demony na żywych gniazdach', () => {
   });
 
   it('daje przejąć węzeł po PT wypisanym na piętrze, dopóki Demon o niego nie rzucił', async () => {
-    const taken = data(
+    // Interfejs 10 przeciw PT 1 przegrywa **dokładnie raz na sto**: naturalna
+    // jedynka każe dorzucić kość i ją odjąć (dorzut sam już nie wybucha), więc
+    // najniższy możliwy wynik to równo 1 — a Test wymaga „więcej niż PT". Ten
+    // jeden rzut decydował też o dwóch testach niżej: bez węzła w rękach
+    // netrunnera Demon nie ma czego odebrać, więc „odebrany" nie pada, a PT
+    // węzła nigdy nie rośnie do 31.
+    //
+    // Powtórka, nie założenie — ale **tylko jedna**: walka trwa, ranga 10 daje
+    // pięć Akcji Sieciowych na Rundę, a trzy poszły na ataki wyżej. Drugie
+    // podejście to piąta Akcja; trzeciego budżet by już nie przyjął. Dwa
+    // podejścia znoszą to z 1 % na 0,01 %.
+    let taken = data(
       await emitAck<NetRunAbilityResult>(player, 'netrun:ability', { runId, ability: 'control' }),
       'netrun:ability (control)',
     );
+    if (!taken.success) {
+      taken = data(
+        await emitAck<NetRunAbilityResult>(player, 'netrun:ability', { runId, ability: 'control' }),
+        'netrun:ability (control, powtórka)',
+      );
+    }
     expect(taken.success).toBe(true);
     expect(nodeOf((await runOf(player))!)?.controlledDv).toBe(taken.total);
   });
@@ -552,7 +593,7 @@ describe('Demony na żywych gniazdach', () => {
   });
 
   it('liczy PT odebrania węzła Demonowi jego własnym Testem Kontroli', async () => {
-    const card = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+    const card = waitForRoll(gm, 'Kontrola');
     await emitAck<NetRunAbilityResult>(player, 'netrun:ability', { runId, ability: 'control' });
     const title = (await card).message.roll?.title ?? '';
     const dv = Number.parseInt(title.split('PT ')[1] ?? '0', 10);

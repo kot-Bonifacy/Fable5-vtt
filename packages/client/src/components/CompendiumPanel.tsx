@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import type { CompendiumEntry, WeaponTypeDefinition } from '@vtt/shared';
+import type { CompendiumEntry, CyberwareSurgeon, WeaponTypeDefinition } from '@vtt/shared';
 import {
   NET_DEFENSE_KIND_LABELS,
   describeNetDefenseEffects,
@@ -14,9 +14,13 @@ import {
   CPRED_RANGE_BANDS,
   CPRED_AMMO_PATTERN_LABELS,
   CYBERWARE_INSTALL_COST,
+  cpredHaggledPrice,
   CYBERWARE_INSTALL_DV,
   CYBERWARE_INSTALL_LABELS,
+  CYBERWARE_SURGEON_SKILL_DEFAULT,
+  CYBERWARE_SURGEON_SKILL_MAX,
   CYBERWARE_TYPE_LABELS,
+  cpredMedicineSkillLevel,
   criticalInjuryNames,
   describeAmmoFailure,
   CRITICAL_INJURY_TABLE_LABELS,
@@ -289,6 +293,10 @@ function EntryCard({
   const [note, setNote] = useState<string | null>(null);
   const [targetId, setTargetId] = useState('');
   const [confirming, setConfirming] = useState(false);
+  // Kto operuje (s. 226). „—" zostaje domyślne: cena montażu jest wliczona
+  // w cenę wszczepu, więc klinika bez Testu to nadal najczęstsza droga.
+  const [surgeonId, setSurgeonId] = useState('');
+  const [ripperdocSkill, setRipperdocSkill] = useState(CYBERWARE_SURGEON_SKILL_DEFAULT);
 
   const resolved = useMemo(
     () =>
@@ -305,11 +313,33 @@ function EntryCard({
   // same), so an entry priced only by its band is still buyable.
   const price = entryPrice(entry);
   const priceLabel = formatPurchasePrice(entry) ?? '—';
+  // Etap 30d: dobity targ schodzi z pierwszego zakupu, więc guzik ma wyceniać
+  // **ten** zakup. Bez tego pisał cenę z katalogu, a z konta schodziło o 10%
+  // mniej — karta ekonomii mówiła prawdę dopiero po fakcie (znalezione przy
+  // oględzinach 30d). Warunek `discount > 0` jest ten sam, co na serwerze:
+  // cztery z sześciu targów opisują pieniądze, których projekt nie liczy.
+  const struck = characters[target]?.data.haggle ?? null;
+  const discount = struck && struck.discount > 0 ? struck.discount : 0;
+  const payable = price === null ? null : cpredHaggledPrice(price, discount);
   const shopTier = useCompendiumStore((s) => s.shopTier);
   const tier = shopTierOf(entry);
   const locked = tier > shopTier;
   const fitting =
     entry.category === 'cyberware' && entry.install ? CYBERWARE_INSTALL_COST[entry.install] : 0;
+  // PT montażu jest **tylko** tam, gdzie podręcznik przewiduje operację: chip
+  // w gnieździe („Bez operacji") nie ma czego oblać, więc nie ma też wyboru
+  // chirurga.
+  const installDv =
+    entry.category === 'cyberware' && entry.install ? CYBERWARE_INSTALL_DV[entry.install] : null;
+  const registry = useCharacterStore((s) => s.registry);
+  // Chirurgia jest Umiejętnością wyłącznie Medyka i wyłącznie ze Specjalizacji,
+  // więc lista chirurgów to lista Medyków, którzy wydali na nią punkt.
+  const surgeons = targets
+    .map((character) => ({
+      character,
+      surgery: cpredMedicineSkillLevel(character.data, registry, 'medicine.surgery'),
+    }))
+    .filter((row) => row.surgery > 0);
 
   async function addToSheet() {
     if (!target) return;
@@ -322,14 +352,32 @@ function EntryCard({
     setNote(await buyCompendiumItemForCharacter(target, entry));
   }
 
+  /** Kto operuje, w kształcie, którego oczekuje serwer — albo nikt. */
+  function surgeonPayload(): CyberwareSurgeon {
+    if (installDv === null || surgeonId === '') return { kind: 'none' };
+    if (surgeonId === 'gm') return { kind: 'gm', skill: ripperdocSkill };
+    return { kind: 'character', characterId: surgeonId };
+  }
+
   /** Cyberware never goes through `economy:buy` — the Humanity is rolled. */
   async function install(payment: 'full' | 'installOnly') {
     if (!target) return;
-    sendCyberwareAction({ characterId: target, action: 'install', entryId: entry.id, payment });
-    setNote(
+    const surgeon = surgeonPayload();
+    sendCyberwareAction({
+      characterId: target,
+      action: 'install',
+      entryId: entry.id,
+      payment,
+      surgeon,
+    });
+    const money =
       payment === 'installOnly'
-        ? `Montaż „${entry.name}” — ${fitting} ed. Rzut na Utratę Człowieczeństwa idzie na czat.`
-        : `Instaluję „${entry.name}” — ${(price ?? 0) + fitting} ed. Rzut na Utratę Człowieczeństwa idzie na czat.`,
+        ? `Montaż „${entry.name}” — ${fitting} ed.`
+        : `Instaluję „${entry.name}” — ${(price ?? 0) + fitting} ed.`;
+    setNote(
+      surgeon.kind === 'none'
+        ? `${money} Rzut na Utratę Człowieczeństwa idzie na czat.`
+        : `${money} Najpierw Test montażu (PT ${installDv}), potem Utrata Człowieczeństwa — obie karty idą na czat.`,
     );
   }
 
@@ -776,6 +824,44 @@ function EntryCard({
           </select>
           {entry.category === 'cyberware' ? (
             <>
+              {/* Test montażu (s. 226). Ripperdoc MG jest osobną pozycją, a nie
+                  kartą postaci: przy stole to zdanie w opisie MG, więc jedyne,
+                  czego potrzebuje, to liczba, którą doda do kości. */}
+              {installDv === null ? null : (
+                <>
+                  <select
+                    value={surgeonId}
+                    title={`Kto operuje. Bez wyboru montaż wchodzi bez Testu — PT ${installDv} (s. 226).`}
+                    onChange={(event) => setSurgeonId(event.target.value)}
+                  >
+                    <option value="">Bez Testu montażu</option>
+                    {isGm ? <option value="gm">Ripperdoc MG — PT {installDv}</option> : null}
+                    {surgeons.map((row) => (
+                      <option key={row.character.id} value={row.character.id}>
+                        {row.character.name} — Chirurgia {row.surgery}
+                      </option>
+                    ))}
+                  </select>
+                  {surgeonId === 'gm' ? (
+                    <input
+                      type="number"
+                      className="compendium-surgeon-skill"
+                      min={0}
+                      max={CYBERWARE_SURGEON_SKILL_MAX}
+                      value={ripperdocSkill}
+                      title="TECHNIKA + Chirurgia ripperdoca — serwer dorzuci do tego 1k10."
+                      onChange={(event) =>
+                        setRipperdocSkill(
+                          Math.max(
+                            0,
+                            Math.min(CYBERWARE_SURGEON_SKILL_MAX, Number(event.target.value) || 0),
+                          ),
+                        )
+                      }
+                    />
+                  ) : null}
+                </>
+              )}
               <button
                 type="button"
                 className="small-button"
@@ -809,14 +895,16 @@ function EntryCard({
                   ? 'Ten wpis nie ma ceny — uzupełnij ją w kompendium.'
                   : locked
                     ? shopTierRefusalText(tier, shopTier)
-                    : `Cena schodzi z konta postaci: ${priceLabel}`
+                    : discount > 0
+                      ? `Cena schodzi z konta postaci: ${priceLabel} − ${discount}% z dobitego targu`
+                      : `Cena schodzi z konta postaci: ${priceLabel}`
               }
               // The GM buys through every tier — the dial paces the *table*,
               // and the server exempts the GM for the same reason.
               disabled={price === null || (locked && !isGm)}
               onClick={() => void buy()}
             >
-              Kup{price === null ? '' : ` — ${price} ed`}
+              Kup{payable === null ? '' : ` — ${payable} ed`}
             </button>
           )}
           {isGm ? (

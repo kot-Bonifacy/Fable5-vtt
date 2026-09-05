@@ -20,6 +20,9 @@ import {
   distanceToCover,
   formatMetres,
   ammoProfilesOf,
+  attachmentProfilesOf,
+  fittedAttachmentsFor,
+  resolveAttachmentWeapon,
   isWeaponEntry,
   loadedAmmoFor,
   metresBetween,
@@ -33,7 +36,7 @@ import {
   tokenCentre,
 } from '@vtt/shared';
 import { useAimMenuStore } from './stores/aimMenuStore.js';
-import { useAttackStore } from './stores/attackStore.js';
+import { useAttackStore, type AttackTargeting } from './stores/attackStore.js';
 import { useCoverStore } from './stores/coverStore.js';
 import { useCharacterStore } from './stores/characterStore.js';
 import { useChatStore } from './stores/chatStore.js';
@@ -82,6 +85,13 @@ export interface AttackIntent {
    * Never set for a grenade, whose weapon type is thrown by definition.
    */
   thrown?: boolean;
+  /**
+   * Fire the weapon bolted onto this row rather than the row itself
+   * (stage 31) — the bayonet, the underbarrel launcher, the underbarrel
+   * shotgun. Carried on the intent, so it survives the re-plan an Aimed Shot
+   * or a cover refusal triggers.
+   */
+  attachmentId?: string;
 }
 
 /**
@@ -177,6 +187,7 @@ export function planAttackPreview(
     ...(intent.modifier ? { modifier: intent.modifier } : {}),
     ...(intent.ignoreCover ? { ignoreCover: true } : {}),
     ...(intent.thrown ? { thrown: true } : {}),
+    ...(intent.attachmentId ? { attachmentId: intent.attachmentId } : {}),
   };
 
   // The one obstacle the client genuinely knows about (stage 16c). Walls stay
@@ -195,11 +206,25 @@ export function planAttackPreview(
   // session of 22.08 this was the one fact the client did not pass, so the
   // crosshair quoted „Przedział 7–12 m · PT 15" for a round that cannot reach
   // past six — and the refusal arrived only after the dice were picked up.
-  const ammo = loadedAmmoFor(
-    row,
+  const ammoLookup = (id: string) =>
+    ammoProfilesOf(Object.values(compendium.entries)).find((p) => p.id === id) ?? null;
+  const ammo = loadedAmmoFor(row, resolved, ammoLookup);
+
+  // Stage 31: what is bolted to this gun, and — when the shot is being fired
+  // *with* one of them — the weapon that attachment is. Read from the same
+  // catalogue the server reads, for the reason the round in the magazine is:
+  // a preview that does not know about the underbarrel would price the rifle's
+  // shot and be contradicted by the verdict a moment later.
+  const weaponTypeById = new Map(Object.entries(compendium.weaponTypeById));
+  const attachments = fittedAttachmentsFor(
+    row.attachmentIds,
+    attachmentProfilesOf(Object.values(compendium.entries)),
     resolved,
-    (id) => ammoProfilesOf(Object.values(compendium.entries)).find((p) => p.id === id) ?? null,
   );
+  const firedWith = intent.attachmentId
+    ? attachments.find((candidate) => candidate.id === intent.attachmentId)
+    : undefined;
+  const secondaryWeapon = firedWith ? resolveAttachmentWeapon(firedWith, { weaponTypeById }) : null;
 
   const planned = planCpredAttack(
     data,
@@ -210,6 +235,19 @@ export function planAttackPreview(
       resolved,
       typeId: entry && isWeaponEntry(entry) ? entry.weaponTypeId : null,
       ammo,
+      attachments,
+      secondary: secondaryWeapon,
+      // The underbarrel's own magazine has its own load (02.09) — the bubble
+      // reads it from the same catalogue the server does, so a grenade of smoke
+      // is priced as smoke before the dice are picked up.
+      secondaryAmmo:
+        firedWith && secondaryWeapon && row.attachmentAmmoId?.[firedWith.id]
+          ? loadedAmmoFor(
+              { ammoId: row.attachmentAmmoId[firedWith.id] as string },
+              secondaryWeapon,
+              ammoLookup,
+            )
+          : null,
     },
     aim.target,
     {
@@ -482,28 +520,46 @@ export function offerShieldChoice(
 export function loadAttackAtToken(targetTokenId: string): void {
   const targeting = useAttackStore.getState().targeting;
   if (!targeting) return;
-  const tokens = useTokenStore.getState().tokens;
+  const intent = intentFromTargeting(targeting, useTokenStore.getState().tokens);
+  if (!intent) {
+    useChatStore.getState().addNote(`„${targeting.characterName}” nie ma tokenu na tej scenie.`);
+    return;
+  }
+  loadAttackFor(intent, targetTokenId);
+}
+
+/**
+ * The intent behind an armed crosshair, or null when whoever armed it has no
+ * token on this scene.
+ *
+ * One function rather than one per caller, because there are two — the click
+ * that loads the cup and the bubble that prices the shot a moment earlier — and
+ * a field one of them forgets is a bubble that promises a different shot than
+ * the one that fires. That is exactly what happened until 02.09: the bubble
+ * built its own copy of this and left out `attachmentId`, so aiming the bayonet
+ * quoted the rifle („Militech Dragon") while the banner over the map and the
+ * attack card both said „Bagnet".
+ */
+export function intentFromTargeting(
+  targeting: AttackTargeting,
+  tokens: Record<string, TokenView>,
+): AttackIntent | null {
   const attackerToken = targeting.attackerTokenId
     ? tokens[targeting.attackerTokenId]
     : targeting.characterId
       ? Object.values(tokens).find((token) => token.characterId === targeting.characterId)
       : undefined;
-  if (!attackerToken) {
-    useChatStore.getState().addNote(`„${targeting.characterName}” nie ma tokenu na tej scenie.`);
-    return;
-  }
-  loadAttackFor(
-    {
-      ...(targeting.characterId ? { characterId: targeting.characterId } : {}),
-      attackerTokenId: attackerToken.id,
-      weaponRowId: targeting.weaponRowId,
-      mode: targeting.mode,
-      ...(targeting.aimedAt ? { aimedAt: targeting.aimedAt } : {}),
-      modifier: targeting.modifier,
-      ...(targeting.thrown ? { thrown: true } : {}),
-    },
-    targetTokenId,
-  );
+  if (!attackerToken) return null;
+  return {
+    ...(targeting.characterId ? { characterId: targeting.characterId } : {}),
+    attackerTokenId: attackerToken.id,
+    weaponRowId: targeting.weaponRowId,
+    mode: targeting.mode,
+    ...(targeting.aimedAt ? { aimedAt: targeting.aimedAt } : {}),
+    modifier: targeting.modifier,
+    ...(targeting.thrown ? { thrown: true } : {}),
+    ...(targeting.attachmentId ? { attachmentId: targeting.attachmentId } : {}),
+  };
 }
 
 /** Whoever is firing, as a sheet the planner understands, or a refusal to show. */

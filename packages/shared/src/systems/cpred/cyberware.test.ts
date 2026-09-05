@@ -10,6 +10,8 @@ import {
   defaultBodySlot,
   cyberwareHumanityMaxPenalty,
   cyberwareInstallationFrom,
+  cyberwareInstallRefusal,
+  cyberwareAllowsSelfInstall,
   effectiveCpredStats,
   empFromHumanity,
   humanityMaxWith,
@@ -417,5 +419,72 @@ describe('sylwetka ze strony trzeciej', () => {
     expect(junk.ok).toBe(true);
     if (!junk.ok) return;
     expect((junk.patch.cyberware?.[0] as CpredCyberwareRow).bodySlot).toBeUndefined();
+  });
+});
+
+describe('odmowa montażu (s. 111, s. 226)', () => {
+  it('nie wpuszcza opcji do rodziny bez cyborgizacji podstawowej', () => {
+    expect(cyberwareInstallRefusal([], { type: 'cyberoptics', slotCost: 1 })).toBe(
+      'MISSING_FOUNDATION',
+    );
+  });
+
+  it('wpuszcza samą podstawę — to ona dopiero robi gniazda', () => {
+    expect(cyberwareInstallRefusal([], { type: 'cyberoptics', foundation: true, slots: 3 })).toBe(
+      null,
+    );
+  });
+
+  it('liczy wolne gniazda razem z kosztem wszczepianej opcji', () => {
+    const rows: CyberwareInstallation[] = [
+      { type: 'cyberaudio', foundation: true, slots: 3 },
+      { type: 'cyberaudio', slotCost: 2 },
+    ];
+    expect(cyberwareInstallRefusal(rows, { type: 'cyberaudio', slotCost: 1 })).toBe(null);
+    // Dwa gniazda w trzygniazdowym uchu — dwugniazdowa opcja już się nie mieści.
+    expect(cyberwareInstallRefusal(rows, { type: 'cyberaudio', slotCost: 2 })).toBe('NO_SLOTS');
+  });
+
+  it('opcja bez slotCost zajmuje jedno gniazdo, tak jak w tabeli', () => {
+    const rows: CyberwareInstallation[] = [
+      { type: 'cyberoptics', foundation: true, slots: 1 },
+      { type: 'cyberoptics' },
+    ];
+    expect(cyberwareInstallRefusal(rows, { type: 'cyberoptics' })).toBe('NO_SLOTS');
+  });
+
+  it('rodziny bez podstawy pilnuje limitem siedmiu sztuk', () => {
+    const rows = Array.from({ length: CYBERWARE_POOL_LIMIT }, () => ({
+      type: 'fashionware' as const,
+    }));
+    expect(cyberwareInstallRefusal(rows.slice(1), { type: 'fashionware' })).toBe(null);
+    expect(cyberwareInstallRefusal(rows, { type: 'fashionware' })).toBe('POOL_FULL');
+  });
+
+  it('nie odmawia wpisowi bez rodziny — wiersze sprzed 23a jej nie mają', () => {
+    expect(cyberwareInstallRefusal([{ type: 'cyberoptics' }], {})).toBe(null);
+  });
+
+  it('nie żąda podstawy pod borgizację — ramownica jest podstawą sama dla siebie', () => {
+    expect(cyberwareInstallRefusal([], { type: 'borgware' })).toBe(null);
+    // Ta sama pomyłka po stronie karty: do 04.09.2026 wiersz Borgizacji pisał
+    // „brak cyborgizacji podstawowej", której podręcznik nie przewiduje.
+    const [borg] = cyberwareCapacity([{ type: 'borgware' }]);
+    expect(borg?.missingFoundation).toBe(false);
+  });
+
+  it('liczy tylko własną rodzinę', () => {
+    const rows: CyberwareInstallation[] = [{ type: 'cyberlimb', foundation: true, slots: 4 }];
+    expect(cyberwareInstallRefusal(rows, { type: 'cyberoptics', slotCost: 1 })).toBe(
+      'MISSING_FOUNDATION',
+    );
+  });
+
+  it('sam sobie wszczepia tylko to, co jest w galerii (s. 226)', () => {
+    expect(cyberwareAllowsSelfInstall('gallery')).toBe(true);
+    expect(cyberwareAllowsSelfInstall('none')).toBe(true);
+    expect(cyberwareAllowsSelfInstall(undefined)).toBe(true);
+    expect(cyberwareAllowsSelfInstall('clinic')).toBe(false);
+    expect(cyberwareAllowsSelfInstall('hospital')).toBe(false);
   });
 });

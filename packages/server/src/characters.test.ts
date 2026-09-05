@@ -386,6 +386,33 @@ describe('characters', () => {
       if (!ack.ok) expect(ack.error).toBe('FORBIDDEN');
     }
   });
+
+  /**
+   * Znalezione przy oględzinach 30b. `roleId` jedzie u MG zwykłą łatą (29a),
+   * więc zmiana Roli zabierała Zdolność, zostawiając jej sakiewkę — a wtedy
+   * `cpredSpecialtiesProblem` odrzucał tę samą łatę zdaniem „Ta postać nie ma
+   * tej Zdolności Specjalnej". Medyka z wydanymi punktami nie dało się zrobić
+   * niczym innym, dopóki ktoś ręcznie nie wyzerował Specjalizacji.
+   */
+  it('lets the GM change the Role of a Medyk who has spent Specialty points', async () => {
+    const spent = await emitAck<CharacterView>(gm, 'character:update', {
+      characterId: vexCharacterId,
+      patch: { data: { roleId: 'medtech', roleAbilityRank: 4, medicine: { surgery: 3 } } },
+    });
+    expect(spent.ok).toBe(true);
+
+    const changed = await emitAck<CharacterView>(gm, 'character:update', {
+      characterId: vexCharacterId,
+      patch: { data: { roleId: 'tech' } },
+    });
+    expect(changed.ok).toBe(true);
+    if (!changed.ok || !changed.data) throw new Error('role change failed');
+    const data = changed.data.data as CpredCharacterData;
+    expect(data.roleId).toBe('tech');
+    // Punkty bez Zdolności, która je kupiła, schodzą z karty — inaczej wracają
+    // przy każdej następnej łacie jako odmowa.
+    expect(data.medicine).toEqual({});
+  });
 });
 
 describe('portrait uploads', () => {

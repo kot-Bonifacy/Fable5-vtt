@@ -208,6 +208,60 @@ export interface CharacterHagglePayload {
   clear?: boolean;
 }
 
+/**
+ * Klient → serwer: `character:rest` — jeden pełny dzień odpoczynku (s. 222–223).
+ *
+ * Zdarzenie, a nie łatka karty, z tego samego powodu co Prowizorka i wezwanie
+ * Wsparcia wyżej: dzień odpoczynku **liczy** PW z Budowy Ciała, chromu
+ * i antybiotyku, a liczenie po stronie klienta byłoby zaproszeniem do wpisania
+ * sobie dowolnej liczby. Karta czatu jest przy okazji jedynym śladem, jaki
+ * upływ czasu w ogóle zostawia — zegara świata projekt nie ma do etapu 37.
+ */
+export interface CharacterRestPayload {
+  characterId: string;
+  /**
+   * „Jeśli pacjent przesadzi, za ten dzień nie odzyskuje PW, a jego rany
+   * otwierają się" (s. 223). Deklaracja MG albo gracza, bo VTT nie ma jak
+   * sprawdzić, czy ktoś się nadwyrężył — tak samo jak ruch utrudniony z 14c.
+   */
+  strained?: boolean;
+}
+
+/**
+ * Klient → serwer: `character:craft-pharma` — partia dawek farmaceutyku (s. 150).
+ *
+ * „Z surowców wartych 200 ed w ciągu godziny Medyk potrafi wytworzyć liczbę
+ * dawek równą wartości swojej Umiejętności Technologia Medyczna", a wcześniej
+ * musi zdać Test o PT 13 — „W przypadku porażki surowce przepadają". Rzut robi
+ * serwer i to on zdejmuje eurodolce, bo obie te rzeczy mają swoje księgi.
+ */
+export interface CharacterCraftPharmaPayload {
+  characterId: string;
+  /** Id środka z `CPRED_PHARMACEUTICALS`. */
+  pharmaId: string;
+  gesture?: RollGesture;
+}
+
+/**
+ * Klient → serwer: `character:use-dose` — podanie jednej dawki (s. 150).
+ *
+ * „Wstrzyknięcie jednej dawki środka farmakologicznego zajmuje Akcję", a
+ * „Postać niebędąca Medykiem nie potrafi poprawnie podawać farmaceutyków".
+ * Dawka schodzi z wiersza ekwipunku podającego, skutek ląduje na celu — to dwie
+ * różne karty postaci i dlatego payload niesie oba końce.
+ */
+export interface CharacterUseDosePayload {
+  /** Kto podaje — właściciel wiersza ekwipunku z dawkami. */
+  characterId: string;
+  /** Wiersz `data.gear` z `consumable`. */
+  gearRowId: string;
+  /**
+   * Komu — żeton na scenie. Pominięty znaczy „sobie", co jest najczęstszym
+   * przypadkiem przy stole i jedynym, który nie potrzebuje mapy.
+   */
+  targetTokenId?: string;
+}
+
 /** Client → server payload of `character:delete` (owner or GM). */
 export interface CharacterIdPayload {
   characterId: string;

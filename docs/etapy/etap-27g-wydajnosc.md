@@ -2,6 +2,12 @@
 
 **Faza:** I — Wykończenie · **Wymaga etapów:** 27e, 27f (żeby mierzyć wersję docelową)
 
+> **⛔ Etap wycofany 2026-09-01 — nie realizuj go z tego pliku.** MG przetestował wydajność
+> samodzielnie i uznał osobną sesję za zbędną. Plik zostaje jako zapis tego, co było planowane;
+> zaległość „pomiar fps na scenie z dynamiczną widocznością" zamknięta razem z etapem
+> (`archiwum/zamkniete-zaleglosci.md`). Jeśli wydajność kiedyś zacznie doskwierać, ta lista
+> jest gotowym punktem wyjścia — ale wtedy jako nowy etap, nie ten.
+
 > **Podział z 2026-08-19** — patrz `etap-27d-kosci-kubek.md`.
 
 ## Cel sesji

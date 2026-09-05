@@ -81,6 +81,33 @@ const CONDITION_ALPHA: Readonly<Record<TokenCondition, number>> = {
   dead: 0.75,
 };
 
+/**
+ * How far the portrait leans when the figure is off its feet (POMYSLY 21.08).
+ *
+ * `down` was the state that read worst on a crowded map: a dark red base and an
+ * icon, against the huge ✕ that death gets. „Leży" is the one thing both states
+ * have in common and the one thing a top-down map can say without words, so the
+ * face tips over — the whole reason `drawNose` refuses to rotate a portrait for
+ * *facing* („rotating one makes a person lie on their side") is exactly why
+ * rotating one here is right.
+ *
+ * Only the portrait turns. The ring, the hit point arc, the base, the name and
+ * the status stickers stay upright, because a tilted caption is a bug and a
+ * tilted circle is nothing at all.
+ *
+ * Thirty-five degrees, not the twenty the idea was written with: at the zoom a
+ * table actually plays at, a token is a few dozen screen pixels and twenty
+ * degrees was checked in the browser against an upright copy of the same face —
+ * the difference was there and nobody would notice it. Thirty-five reads as
+ * „on his side" at a glance and still not as a broken sprite.
+ */
+const CONDITION_TILT_DEG: Readonly<Record<TokenCondition, number>> = {
+  ok: 0,
+  wounded: 0,
+  down: 35,
+  dead: 35,
+};
+
 /** Deterministic placeholder color from the token name (no image uploaded). */
 function placeholderColor(name: string): number {
   let hash = 0;
@@ -281,6 +308,7 @@ export class TokenNode extends Container {
     this.initial.position.set(center, center);
     this.image.tint = CONDITION_TINT[condition];
     this.placeholder.tint = CONDITION_TINT[condition];
+    this.tiltPortrait(condition);
 
     this.updateImage(token.imageUrl, extent);
     this.drawHpArc(token, extent, condition);
@@ -466,6 +494,21 @@ export class TokenNode extends Container {
       .fill({ color, alpha: 0.95 })
       .poly([ax, ay, bx, by, cx, cy])
       .stroke({ color: 0x0b1220, width: Math.max(2, extent * 0.025), alpha: 0.85 });
+  }
+
+  /**
+   * Lays the portrait on its side when the figure is down or dead.
+   *
+   * Both parts already sit at the centre with a 0.5 anchor, so the angle is the
+   * whole of it — and it survives `updateImage`, whose texture arrives frames
+   * later and would otherwise stand a corpse back up. A figure with no portrait
+   * has only its initial to tip, which is less than a face but still not
+   * nothing; the base, the sticker and the arc carry the rest.
+   */
+  private tiltPortrait(condition: TokenCondition): void {
+    const radians = (CONDITION_TILT_DEG[condition] * Math.PI) / 180;
+    this.image.rotation = radians;
+    this.initial.rotation = radians;
   }
 
   /** The cross over a figure that is out of the fight — dead only. */

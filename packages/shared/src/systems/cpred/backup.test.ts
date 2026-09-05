@@ -189,7 +189,8 @@ describe('stan walki: kto jest w drodze', () => {
   });
 
   it('opisuje wiersz nazwą kategorii i liczbą figur', () => {
-    expect(describeBackupPending(state.backup[0]!)).toBe('Miejscowe krawężniki ×4');
+    // Bez „×4": liczbę figur niesie `ReinforcementView.count`, a pasek dokleja ją sam.
+    expect(describeBackupPending(state.backup[0]!)).toBe('Miejscowe krawężniki');
   });
 
   it('zna kategorię po id', () => {

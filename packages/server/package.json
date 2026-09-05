@@ -7,7 +7,9 @@
     "dev": "tsx watch --env-file-if-exists=.env src/main.ts",
     "build": "tsup",
     "start": "node --env-file-if-exists=.env dist/main.js",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "snapshot": "tsx --env-file-if-exists=.env scripts/snapshot.ts",
+    "restore": "tsx --env-file-if-exists=.env scripts/restore.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.1",

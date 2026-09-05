@@ -14,7 +14,7 @@ Warstwa satysfakcji: animowane kości 3D nad stołem oraz przegląd i ujednolice
 > | `etap-27d-kosci-kubek.md`           | skórki kości, dorzut krytyka, okno ustawień                    |
 > | `etap-27e-motyw-calej-aplikacji.md` | tokeny motywu, dzień/noc dla wszystkich widoków, audyt ekranów |
 > | `etap-27f-szlif-ux.md`              | okno pomocy `?`, tooltipy, stany puste, pozycje okien          |
-> | `etap-27g-wydajnosc.md`             | re-rendery, bundle, lazy-loading, fps mapy                     |
+> | ~~`etap-27g-wydajnosc.md`~~         | ⛔ wycofany 01.09 — wydajność sprawdzona przez MG poza sesją   |
 >
 > **Sprzeczność rozstrzygnięta 2026-08-19:** sekcja „Poza zakresem" niżej mówi „tryb jasny
 > (ciemny wystarczy)", a sekcja „Zakres" — „tryb dzień/noc dla całej aplikacji". Zdanie

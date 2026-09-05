@@ -10,6 +10,7 @@ import type {
   ChatMessageBroadcast,
   CharacterView,
   CombatView,
+  CpredAttackMeta,
   CpredCharacterData,
   DamageLogEntry,
   InvitationSummary,
@@ -195,7 +196,34 @@ describe('ranged combat from the map', () => {
     damageNotation?: string;
     damageMultiplier?: number;
     forcedChecks?: { name: string; detail: string; success: boolean }[];
-    system: Record<string, unknown>;
+    /**
+     * The planner's meta plus the two numbers the *server* adds when it judges
+     * the roll (`realtime/attacks.ts`). Named rather than `Record<string,
+     * unknown>`: an index signature makes every field `unknown`, and `unknown`
+     * silently swallows a misspelled assertion instead of failing to compile.
+     */
+    system: CpredAttackMeta & { margin: number; multiplier?: number };
+  }
+
+  /**
+   * Reads the attack card off a roll message — the **only** place this file
+   * casts.
+   *
+   * `RollAttackMeta.system` is `Record<string, unknown>` on purpose: the dice
+   * engine carries what the system module computed without knowing CP RED
+   * (`dice.ts`). The test does know it, so the shape is named once here and
+   * every assertion below reads a real field instead of an `unknown` that
+   * would swallow a typo.
+   */
+  function attackCard(broadcast: ChatMessageBroadcast): AttackCard | undefined {
+    return broadcast.message.roll?.attack as unknown as AttackCard | undefined;
+  }
+
+  /** Same, where a missing card is the test failing rather than a branch. */
+  function requireAttackCard(broadcast: ChatMessageBroadcast): AttackCard {
+    const card = attackCard(broadcast);
+    if (!card) throw new Error('roll message carried no attack card');
+    return card;
   }
 
   async function sheetOf(id: string): Promise<CpredCharacterData> {
@@ -226,10 +254,7 @@ describe('ranged combat from the map', () => {
       request,
     });
     if (!ack.ok) throw new Error(`attack:roll failed: ${JSON.stringify(ack)}`);
-    const broadcast = await message;
-    const card = broadcast.message.roll?.attack as AttackCard | undefined;
-    if (!card) throw new Error('roll message carried no attack card');
-    return card;
+    return requireAttackCard(await message);
   }
 
   it('sets the table: a shooter with a pistol and a rifle, and two targets', async () => {
@@ -569,7 +594,7 @@ describe('ranged combat from the map', () => {
         request: { weaponRowId: 'w-rifle', mode: 'autofire' },
       });
       const broadcast = await message;
-      const card = broadcast.message.roll?.attack as AttackCard | undefined;
+      const card = attackCard(broadcast);
       if (card?.hit && ack.ok && ack.data) {
         hitMessageId = ack.data.messageId;
         expectedMultiplier = (card.damageMultiplier ?? 1) as number;
@@ -646,7 +671,7 @@ describe('ranged combat from the map', () => {
       }),
       'attack:roll',
     );
-    const card = (await message).message.roll?.attack as AttackCard;
+    const card = requireAttackCard(await message);
     expect(card.system.dvSource).toBe('evasion');
     expect(card.system.dv).toBe(15);
 
@@ -658,7 +683,7 @@ describe('ranged combat from the map', () => {
       }),
       'attack:evade',
     );
-    const rewritten = (await update).message.roll?.attack as AttackCard;
+    const rewritten = requireAttackCard(await update);
     expect(rewritten.detail).toContain('Unik Ganger');
     expect(rewritten.hit).toBe(evaded.hit);
 
@@ -989,7 +1014,7 @@ describe('ranged combat from the map', () => {
         request: { weaponRowId: 'statist-weapon', mode: 'single' },
       });
       expect(ack.ok).toBe(true);
-      const card = (await message).message.roll?.attack as AttackCard | undefined;
+      const card = attackCard(await message);
       if (!card) throw new Error('roll message carried no attack card');
       // REF 7 + the profile's skill level 4, and a DV from the map like anyone's.
       expect(card.system.dv).toBe(19);
@@ -1105,7 +1130,7 @@ describe('ranged combat from the map', () => {
         request: { weaponRowId: 'w-blade', mode: 'single' },
       });
       expect(ack.ok).toBe(true);
-      const card = (await message).message.roll?.attack as AttackCard | undefined;
+      const card = attackCard(await message);
       if (!card) throw new Error('roll message carried no attack card');
       // ZW 5 + Unik 3 + half a die (5) = 13 by coincidence of the numbers, so
       // the source is what this asserts, not the total.
@@ -1146,7 +1171,7 @@ describe('ranged combat from the map', () => {
         }),
         'attack:evade',
       );
-      const rewritten = (await update).message.roll?.attack as AttackCard;
+      const rewritten = requireAttackCard(await update);
       // Karta nazywa figurę, a nie kartę, której nie ma.
       expect(rewritten.detail).toContain('Unik Ochroniarz');
       expect(rewritten.hit).toBe(evaded.hit);
@@ -1255,7 +1280,7 @@ describe('ranged combat from the map', () => {
             attackerTokenId: statistTokenId,
             request: { weaponRowId: 'statist-weapon', mode: 'single' },
           });
-          const card = (await message).message.roll?.attack as AttackCard | undefined;
+          const card = attackCard(await message);
           if (card?.hit && ack.ok && ack.data) return ack.data.messageId;
         }
         throw new Error('the statist never landed a shot in forty attempts');
@@ -1268,7 +1293,7 @@ describe('ranged combat from the map', () => {
           attackerTokenId: statistTokenId,
           request: { weaponRowId: 'statist-weapon', mode: 'single' },
         });
-        const card = (await message).message.roll?.attack as AttackCard | undefined;
+        const card = attackCard(await message);
         if (!card) throw new Error('roll message carried no attack card');
         expect(card.system.attackerTokenId).toBe(statistTokenId);
       });
@@ -1456,7 +1481,7 @@ describe('ranged combat from the map', () => {
           attackerTokenId: shooterTokenId,
           request: { weaponRowId: 'w-blade', mode: 'single', modifier: 20 },
         });
-        const card = (await message).message.roll?.attack as AttackCard | undefined;
+        const card = attackCard(await message);
         if (!card?.hit || !ack.ok || !ack.data) continue;
         // Flaga jedzie kartą, a nie żądaniem klienta — inaczej klient sam
         // decydowałby, ile warta jest kamizelka celu.
@@ -1496,7 +1521,7 @@ describe('ranged combat from the map', () => {
           attackerTokenId: shooterTokenId,
           request: { weaponRowId: 'w-pistol', mode: 'single', modifier: 20 },
         });
-        const card = (await message).message.roll?.attack as AttackCard | undefined;
+        const card = attackCard(await message);
         if (!card?.hit || !ack.ok || !ack.data) continue;
         expect(card.system.halvesArmor).toBeUndefined();
 
@@ -1546,7 +1571,7 @@ describe('ranged combat from the map', () => {
           // +20 buys the hit; the −8 of the aim is what this test is about.
           request: { weaponRowId: 'w-rifle', mode: 'single', aimedAt, modifier: 20 },
         });
-        const card = (await message).message.roll?.attack as AttackCard | undefined;
+        const card = attackCard(await message);
         if (!card?.hit || !ack.ok || !ack.data) continue;
 
         const damage = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
@@ -1685,7 +1710,7 @@ describe('ranged combat from the map', () => {
           reject(new Error('chat:message timeout'));
         }, ms);
         const onMessage = (payload: ChatMessageBroadcast) => {
-          const card = payload.message.roll?.attack as AttackCard | undefined;
+          const card = attackCard(payload);
           if (!card) return;
           clearTimeout(timer);
           gm.off('chat:message', onMessage);
@@ -1775,6 +1800,347 @@ describe('ranged combat from the map', () => {
       await emitAck(gm, 'combat:end', {});
       await emitAck(gm, 'character:combat-awareness', { characterId, allocation: {} });
       await emitAck(gm, 'character:update', { characterId, patch: { data: { roleId: null } } });
+    });
+  });
+  /**
+   * Dodatki do broni (etap 31, s. 342–344) — na prawdziwych gniazdach.
+   *
+   * Czysta logika ma własny plik w `shared`; tu sprawdzamy trzy rzeczy, których
+   * tam nie widać: że montaż przepisuje magazynek z tabeli **na karcie**, że
+   * strzał z broni podwieszanej opróżnia jej własny magazynek, a nie karabinu,
+   * i że +1 smartguna zależy od chromu, którego serwer nie bierze z żądania.
+   */
+  describe('dodatki do broni', () => {
+    const DRUM = 'attachment.sample-drum';
+    const EXTENDED = 'attachment.sample-extended';
+    const BAYONET = 'attachment.sample-bayonet';
+    const UNDERBARREL = 'attachment.sample-underbarrel';
+    const LINK = 'attachment.sample-link';
+
+    interface MountResult {
+      attachmentIds: string[];
+      slotsFree: number;
+      ammoMax: number;
+      ammoCurrent: number;
+    }
+
+    async function mount(attachmentId: string, action: 'mount' | 'unmount' = 'mount') {
+      return emitAck<MountResult>(player, 'weapon:attachment', {
+        characterId,
+        weaponRowId: 'w-rifle',
+        attachmentId,
+        action,
+      });
+    }
+
+    async function rifleRow() {
+      return (await sheetOf(characterId)).weapons.find((w) => w.id === 'w-rifle');
+    }
+
+    it('bęben przepisuje magazynek z tabeli i zajmuje jedno gniazdo', async () => {
+      const result = data(await mount(DRUM), 'weapon:attachment');
+      expect(result.attachmentIds).toEqual([DRUM]);
+      // Karabin przykładowy: 25 → 45 w kolumnie „Bębnowy".
+      expect(result.ammoMax).toBe(45);
+      expect(result.slotsFree).toBe(2);
+      const row = await rifleRow();
+      expect(row?.ammoMax).toBe(45);
+      expect(row?.attachmentIds).toEqual([DRUM]);
+    });
+
+    it('drugiego magazynka nie przyjmie', async () => {
+      // „Do danej broni można doczepić tylko jeden magazynek naraz" (s. 343).
+      expect(await mount(EXTENDED)).toEqual({ ok: false, error: 'ATTACHMENT_GROUP_TAKEN' });
+    });
+
+    it('tego samego dodatku nie przyjmie dwa razy', async () => {
+      expect(await mount(DRUM)).toEqual({ ok: false, error: 'ATTACHMENT_ALREADY_FITTED' });
+    });
+
+    it('zdjęcie bębna oddaje magazynek i przycina to, co w nim zostało', async () => {
+      await emitAck(player, 'weapon:reload', { characterId, weaponRowId: 'w-rifle' });
+      expect((await rifleRow())?.ammoCurrent).toBe(45);
+      const result = data(await mount(DRUM, 'unmount'), 'weapon:attachment');
+      expect(result.ammoMax).toBe(25);
+      // Dwadzieścia naboi poszło razem z bębnem — nie zostają w karabinie.
+      expect(result.ammoCurrent).toBe(25);
+      expect((await rifleRow())?.attachmentIds).toBeUndefined();
+    });
+
+    it('nie da się dokręcić dodatku do broni, której podręcznik nim nie obsługuje', async () => {
+      // Kolec podlufowy pasuje do Broni długiej; „Zgrzyt 9" to pistolet.
+      const ack = await emitAck(player, 'weapon:attachment', {
+        characterId,
+        weaponRowId: 'w-pistol',
+        attachmentId: BAYONET,
+        action: 'mount',
+      });
+      expect(ack).toEqual({ ok: false, error: 'ATTACHMENT_DOES_NOT_FIT' });
+    });
+
+    it('bagnetem bije się jak bronią białą, a magazynek karabinu stoi', async () => {
+      data(await mount(BAYONET), 'weapon:attachment');
+      const before = (await rifleRow())?.ammoCurrent;
+      await placeTargetAt(1);
+      const card = await attack({ weaponRowId: 'w-rifle', mode: 'single', attachmentId: BAYONET });
+      expect(card.system.melee).toBe(true);
+      // Ostrze przykładowe tnie przez połowę pancerza (s. 176).
+      expect(card.system.halvesArmor).toBe(true);
+      expect(card.system.attachmentName).toBe('Kolec podlufowy');
+      expect(card.system.ammoCost).toBe(0);
+      expect((await rifleRow())?.ammoCurrent).toBe(before);
+      data(await mount(BAYONET, 'unmount'), 'weapon:attachment');
+    });
+
+    it('strzelba podwieszana strzela ze swojego magazynka, nie z karabinowego', async () => {
+      const mounted = data(await mount(UNDERBARREL), 'weapon:attachment');
+      // Dwa gniazda z trzech — „Zajmuje 2 gniazda na dodatki".
+      expect(mounted.slotsFree).toBe(1);
+      // Broń podwieszana przychodzi załadowana: nikt nie kupuje pustej.
+      expect((await rifleRow())?.attachmentAmmo?.[UNDERBARREL]).toBe(2);
+
+      const rifleAmmo = (await rifleRow())?.ammoCurrent;
+      await placeTargetAt(6);
+      const card = await attack({
+        weaponRowId: 'w-rifle',
+        mode: 'single',
+        attachmentId: UNDERBARREL,
+      });
+      expect(card.system.ammoCost).toBe(1);
+      expect(card.system.damage).toBe('5k6');
+      const row = await rifleRow();
+      expect(row?.attachmentAmmo?.[UNDERBARREL]).toBe(1);
+      // Karabin nie stracił ani jednego naboju.
+      expect(row?.ammoCurrent).toBe(rifleAmmo);
+    });
+
+    it('przeładowanie podwieszanej broni napełnia jej własny magazynek', async () => {
+      const ack = data(
+        await emitAck<{ ammo: number }>(player, 'weapon:reload', {
+          characterId,
+          weaponRowId: 'w-rifle',
+          attachmentId: UNDERBARREL,
+        }),
+        'weapon:reload',
+      );
+      expect(ack.ammo).toBe(2);
+      expect((await rifleRow())?.attachmentAmmo?.[UNDERBARREL]).toBe(2);
+    });
+
+    /**
+     * Nabój broni podwieszanej (zaległość z 01.09, naprawiona 02.09).
+     *
+     * Do naprawy `weapon:reload` z `attachmentId` przyjmowało **samo**
+     * `attachmentId`, a planer zerował profil naboju dla każdego strzału
+     * dodatkiem — więc z granatnika podwieszanego nie dało się wystrzelić dymu
+     * ani gazu. Trzy rzeczy są tu pilnowane: że nabój ma własne pole, że pasuje
+     * się go do **broni podwieszanej**, nie do karabinu, i że strzał go czyta.
+     */
+    it('ładuje broń podwieszaną nabojem, który pasuje do niej, nie do karabinu', async () => {
+      // „Nabój wachlarzowy" (shell) pasuje do strzelby podwieszanej i **nie**
+      // pasuje do karabinu, który bierze wyłącznie kule — czyli sprawdzenie
+      // musi iść po broni podwieszanej.
+      const ack = data(
+        await emitAck<{ ammo: number }>(player, 'weapon:reload', {
+          characterId,
+          weaponRowId: 'w-rifle',
+          attachmentId: UNDERBARREL,
+          ammoId: 'ammo.sample-shot',
+        }),
+        'weapon:reload',
+      );
+      expect(ack.ammo).toBe(2);
+      const row = await rifleRow();
+      expect(row?.attachmentAmmoId?.[UNDERBARREL]).toBe('ammo.sample-shot');
+      // Komora karabinu nietknięta — to dwa magazynki i dwa naboje.
+      expect(row?.ammoId).toBeUndefined();
+    });
+
+    it('strzał z podwieszanej niesie jej własny nabój na kartę', async () => {
+      await placeTargetAt(4);
+      const card = await attack({
+        weaponRowId: 'w-rifle',
+        mode: 'single',
+        attachmentId: UNDERBARREL,
+      });
+      expect(card.system.ammo?.id).toBe('ammo.sample-shot');
+      // Przeładowanie wróciło do dwóch, strzał zabrał jeden.
+      expect((await rifleRow())?.attachmentAmmo?.[UNDERBARREL]).toBe(1);
+    });
+
+    it('odmawia naboju, który do broni podwieszanej nie pasuje', async () => {
+      // Dymny jest granatem; strzelba podwieszana bierze kule i śrut.
+      expect(
+        await emitAck(player, 'weapon:reload', {
+          characterId,
+          weaponRowId: 'w-rifle',
+          attachmentId: UNDERBARREL,
+          ammoId: 'ammo.sample-smoke',
+        }),
+      ).toEqual({ ok: false, error: 'AMMO_MISMATCH' });
+    });
+
+    it('demontaż zabiera dodatkowi i magazynek, i załadowany nabój', async () => {
+      data(await mount(UNDERBARREL, 'unmount'), 'weapon:attachment');
+      const row = await rifleRow();
+      expect(row?.attachmentAmmo?.[UNDERBARREL]).toBeUndefined();
+      expect(row?.attachmentAmmoId?.[UNDERBARREL]).toBeUndefined();
+    });
+
+    it('smartgun daje +1 dopiero temu, kto ma się czym podpiąć', async () => {
+      data(await mount(LINK), 'weapon:attachment');
+      await placeTargetAt(10);
+
+      /** Rozbicie rzutu z karty na czacie — jedyne miejsce, gdzie widać +1. */
+      async function breakdownOfShot() {
+        const message = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+        await emitAck(player, 'attack:roll', {
+          characterId,
+          targetTokenId,
+          attackerTokenId: shooterTokenId,
+          request: { weaponRowId: 'w-rifle', mode: 'single' },
+        });
+        return (await message).message.roll?.breakdown ?? [];
+      }
+
+      const bare = await breakdownOfShot();
+      expect(bare.some((entry) => entry.label === 'Sprzęgło celownicze')).toBe(false);
+
+      await emitAck(gm, 'character:update', {
+        characterId,
+        patch: {
+          data: {
+            cyberware: [{ id: 'cw-link', name: 'Sprzęg neuralny przykładowy', notes: '' }],
+          },
+        },
+      });
+      expect(await breakdownOfShot()).toContainEqual({
+        label: 'Sprzęgło celownicze',
+        value: 1,
+        kind: 'situational',
+      });
+
+      // Sprzątanie: reszta pliku strzela bez chromu i bez dodatków.
+      await emitAck(gm, 'character:update', { characterId, patch: { data: { cyberware: [] } } });
+      data(await mount(LINK, 'unmount'), 'weapon:attachment');
+    });
+  });
+
+  describe('jakość broni (s. 244)', () => {
+    /** The sheet's pistol row as it stands right now. */
+    async function pistolRow() {
+      return (await sheetOf(characterId)).weapons.find((row) => row.id === 'w-pistol');
+    }
+
+    /** Marks the row jammed the way a Critical Failure would have. */
+    async function jamPistol(): Promise<void> {
+      const weapons = (await sheetOf(characterId)).weapons.map((row) =>
+        row.id === 'w-pistol' ? { ...row, jammed: true } : row,
+      );
+      await emitAck(gm, 'character:update', { characterId, patch: { data: { weapons } } });
+    }
+
+    it('nie wypuszcza strzału z zaciętej broni', async () => {
+      await placeTargetAt(4);
+      await jamPistol();
+      expect(
+        await emitAck(player, 'attack:roll', {
+          characterId,
+          targetTokenId,
+          attackerTokenId: shooterTokenId,
+          request: { weaponRowId: 'w-pistol', mode: 'single' },
+        }),
+      ).toEqual({ ok: false, error: 'WEAPON_JAMMED' });
+      // Zacięcie siedzi na tej broni, nie na postaci — karabin strzela dalej.
+      expect((await attack({ weaponRowId: 'w-rifle', mode: 'single' })).hit).toBeDefined();
+    });
+
+    it('usuwa usterkę bez Testu i oddaje broń do użytku', async () => {
+      expect((await pistolRow())?.jammed).toBe(true);
+      expect(
+        await emitAck(player, 'weapon:clear-jam', { characterId, weaponRowId: 'w-pistol' }),
+      ).toEqual({ ok: true, data: { jammed: false } });
+      expect((await pistolRow())?.jammed).toBeUndefined();
+      expect((await attack({ weaponRowId: 'w-pistol', mode: 'single' })).hit).toBeDefined();
+    });
+
+    it('zacina broń niskiej jakości na Krytycznej Porażce, a doskonałej dodaje +1', async () => {
+      // Dwie broni z tego samego typu, różniące się wyłącznie jakością.
+      const base = (await sheetOf(characterId)).weapons;
+      await emitAck(gm, 'character:update', {
+        characterId,
+        patch: {
+          data: {
+            weapons: [
+              ...base,
+              {
+                id: 'w-rust',
+                name: 'Zardzewiak',
+                notes: '',
+                compendiumId: 'weapon.zardzewiak',
+                damage: '2k6',
+                ammoCurrent: 10,
+                ammoMax: 10,
+                ammoType: '',
+                rof: '2',
+              },
+              {
+                id: 'w-fine',
+                name: 'Iglica TW',
+                notes: '',
+                compendiumId: 'weapon.iglica-tw',
+                damage: '2k6',
+                ammoCurrent: 10,
+                ammoMax: 10,
+                ammoType: '',
+                rof: '2',
+              },
+            ],
+          },
+        },
+      });
+      await placeTargetAt(4);
+
+      // „+1 do Testów ataku" widać na rozbiciu karty, bez czekania na kości.
+      const card = waitFor<ChatMessageBroadcast>(gm, 'chat:message');
+      await emitAck(player, 'attack:roll', {
+        characterId,
+        targetTokenId,
+        attackerTokenId: shooterTokenId,
+        request: { weaponRowId: 'w-fine', mode: 'single' },
+      });
+      expect((await card).message.roll?.breakdown).toContainEqual({
+        label: 'Broń doskonałej jakości',
+        value: 1,
+        kind: 'situational',
+      });
+
+      // Zacięcie wymaga naturalnej jedynki — strzelamy, aż padnie. Kości są
+      // prawdziwe (crypto RNG), więc pętla jest jedyną drogą; przy 10% na
+      // strzał sto prób pudłuje raz na ~40 tysięcy przebiegów.
+      let jammed = false;
+      for (let shot = 0; shot < 100 && !jammed; shot += 1) {
+        const weapons = (await sheetOf(characterId)).weapons.map((row) =>
+          row.id === 'w-rust' ? { ...row, ammoCurrent: row.ammoMax } : row,
+        );
+        await emitAck(gm, 'character:update', { characterId, patch: { data: { weapons } } });
+        await attack({ weaponRowId: 'w-rust', mode: 'single' });
+        jammed =
+          (await sheetOf(characterId)).weapons.find((row) => row.id === 'w-rust')?.jammed === true;
+      }
+      expect(jammed).toBe(true);
+
+      // Sprzątanie: reszta pliku nie wie o tych dwóch wierszach.
+      await emitAck(gm, 'character:update', { characterId, patch: { data: { weapons: base } } });
+    });
+
+    it('nie robi nic, gdy broń jest sprawna, i nie zna cudzych kart', async () => {
+      expect(
+        await emitAck(player, 'weapon:clear-jam', { characterId, weaponRowId: 'w-pistol' }),
+      ).toEqual({ ok: true, data: { jammed: false } });
+      expect(
+        await emitAck(player, 'weapon:clear-jam', { characterId, weaponRowId: 'nie-ma-takiej' }),
+      ).toEqual({ ok: false, error: 'UNKNOWN_WEAPON' });
     });
   });
 });

@@ -4,6 +4,155 @@ Wyprowadzone z `POSTEP.md` 22.08.2026. Indeks jednolinijkowy jest w `POSTEP.md`;
 opisy z rozpoznaniem i obejściem. Czytaj wpis, zanim zaczniesz szukać błędu w obszarze, którego
 dotyczy.
 
+- **`file:./dev.db` rozwiązuje się względem katalogu roboczego, nie katalogu schematu.**
+  W repo leżą **dwa** pliki `dev.db`: żywy w `packages/server/` (1,1 MB) i pusty artefakt
+  migracji w `packages/server/prisma/` (0 B). Sterownik better-sqlite3 pod Prismą liczy ścieżkę
+  od `process.cwd()`, a dev serwer chodzi z `cwd = packages/server` — stąd ten pierwszy.
+  Skrypt, który sięgnie po drugi, zrobi kopię pustej bazy i nikt tego nie zauważy.
+  Jedno miejsce, które to liczy: `databaseFileFromUrl` w `snapshots.ts`.
+- **Polski znak w nagłówku HTTP to 500, nie brzydka nazwa pliku.** Karta „Bezpański" wysyłana
+  z `Content-Disposition: attachment; filename="character-bezpanski-…"` wywracała całą trasę
+  (`TypeError: Invalid character in header content`) — a objawem było „eksport nie działa dla
+  niektórych postaci". Nagłówek jest latin-1; nazwy z ogonkami idą przez `filename*=UTF-8''…`.
+- **`<input type="file">` DA SIĘ obsłużyć automatem** — inaczej niż checkbox Reacta z pułapki
+  niżej. `new DataTransfer()`, `dt.items.add(new File([tekst], 'plik.json'))`, `input.files =
+dt.files`, `input.dispatchEvent(new Event('change', { bubbles: true }))` — React czyta
+  `event.target.files` i widzi prawdziwy plik. Tak poszły oględziny importu 05.09.
+- **Rozszerzenie przeglądarki zaciemnia niektóre wyniki `javascript_tool`** — pola o nazwach
+  wyglądających na wrażliwe wracają jako `[BLOCKED: Sensitive key]`, a długie ciągi base64 jako
+  `[BLOCKED: Base64 encoded data]`. To nie jest błąd aplikacji: `tokens` w liczniku manifestu
+  i `content-disposition` wracały tak przy poprawnej odpowiedzi. Sprawdzaj takie rzeczy testem
+  po stronie serwera, nie przez konsolę karty.
+- **Bronią obszarową celuje się w PUSTE pole, a klik w żeton tylko go zaznacza.** 04.09 poszły
+  cztery próby strzału z granatnika, zanim coś poleciało: klik w figurę przestawiał zaznaczenie
+  na **nią** (u MG wolno zaznaczyć każdego), przez co uzbrojona broń schodziła z ręki, a kolejny
+  klik w mapę stawał się **rozkazem marszu tej figury** — tak przy okazji przespacerował się
+  żeton testowy. Kolejność, która działa: zaznacz **swoją** figurę → uzbrój broń ze slotu
+  (zdanie „W ręku …" w panelu) → kliknij **pole** obok celu (pojawia się kwadrat obszaru
+  i pasek „→ wybrane pole · N m · PT X") → dopiero wtedy **„Potrząśnij i strzel"**, bo strzał
+  puszcza kubek, a nie drugi klik w mapę. Granat i tak odchyla się o co najmniej 2 m, więc
+  aby złapać kogoś testem, celuj w pole **pod nim**, nie o dwa dalej.
+
+- **Żetonu nie skasujesz ani `Delete`, ani przeciągnięciem na kosz.** Oba wyglądają, jakby miały
+  działać (kosz stoi w lewym dolnym rogu mapy), a nie robią nic albo — jak przeciąganie —
+  **przesuwają żeton** na drugi koniec sceny. Skasowanie idzie menu kontekstowym, którego
+  `right_click` z CDP nie dowozi (patrz wpis o menu), więc przy sprzątaniu po oględzinach
+  najszybsza droga jest przez bazę: zatrzymaj `pnpm dev` i usuń wiersze SQL-em, pamiętając
+  o `LedgerEntry` postaci, którą kasujesz.
+
+- **Karta wpisu kompendium gubi wybór przy zmianie zakładki.** Postać docelowa, chirurg
+  i poziom ripperdoca żyją w stanie komponentu, więc każde wyjście na „Czat" i powrót ustawia
+  je z powrotem na wartości domyślne (pierwsza postać z listy, „Bez Testu montażu", 12). Przy
+  oględzinach 04.09 zabrało to jeden rzut, który miał być porażką i wyszedł sukcesem, bo
+  poziom chirurga wrócił do dwunastu. Sprawdzaj wybór **tuż przed** kliknięciem guzika.
+
+- **Efektu mapy nie zobaczysz zrzutem ekranu — ale da się go zatrzymać.** Wybuch trwa 1,1 s,
+  chmura 1,6 s, a runda `screenshot` przez CDP bywa dłuższa: 04.09 poszły trzy granaty i za
+  każdym razem zrzut łapał albo puste pole, albo pojedynczą jasną plamkę, z której nic nie
+  wynikało. **Rozpoznanie:** efekt jest w `MapFxLayer.items`, a na obrazku go nie ma.
+  **Obejście, które zadziałało:** na czas oględzin podnieś `EXPLOSION_MS`/`CLOUD_MS` do kilku
+  sekund, wystaw warstwę na `window` (`__fx = this` w `play`), a potem wywołaj efekt **wprost** —
+  `fx.play([{ kind: 'blast', at: { x, y }, sideM: 10 }])` — i **zamroź** go, podstawiając
+  wybranej pozycji `life = 400000` i `age = life * klatka / liczbaKlatek`. Wtedy zrzut łapie
+  dowolną klatkę, także tę z ognistą kulą (u wybuchu dopiero ~40 z 64; pierwsze dwadzieścia to
+  białe iskry, po których łatwo uznać arkusz za zepsuty). `fx.play` niczego nie wysyła na
+  serwer, więc stan stołu zostaje nietknięty. **Sam ślad klatek** (`sprite.texture.frame`)
+  wystarcza za dowód, że arkusz jest pocięty dobrze — prostokąty idą wiersz po wierszu i nigdy
+  nie wychodzą poza arkusz.
+
+- **`window.confirm` nie zawsze jest tam, gdzie go szukasz.** 04.09 kosz „usuń wszystkie osłony"
+  nie zapytał o nic — i to **nie jest** błąd: `confirmDestructive` pyta tylko poza poligonem,
+  a hurtowe kasowanie warstwy wraca `Ctrl+Z` (wszystkie sześć zdarzeń `*:clear` woła
+  `rememberDeletion`). Zanim uznasz brak pytania za usterkę, sprawdź **obie** rzeczy: flagę
+  `Campaign.sandbox` i to, czy zdarzenie odkłada wpis w buforze cofania.
+
+- **Slot paska akcji trzeba klikać po współrzędnych z DOM-u, nie z pamięci.** Lista przesuwa się
+  o cały wiersz, gdy figura zyska albo straci chip stanu (04.09: dołożenie statusu
+  „Nieprzytomny" zsunęło broń o ~30 px i klik „Granatnik podwieszany" trafił w
+  „Bagnet", a po przeładowaniu magazynka — w „Arasaka Minami 10"). Objaw jest cichy:
+  uzbraja się **inna** broń i dopiero karta na czacie mówi, czym się strzelało. Przed klikiem
+  czytaj `document.querySelectorAll('button.hud-slot')` i przeliczaj `getBoundingClientRect`
+  na skalę zrzutu; po kliku sprawdzaj zdanie „W ręku: …" pod paskiem.
+
+- **`.click()` na slocie paska nie uzbraja celownika, a klik w mapę staje się wtedy rozkazem
+  marszu.** 04.09 wysłało to avatar9 przez pół sceny zamiast wystrzelić granat. Uzbrajaj slot
+  prawdziwym kliknięciem (CDP), a **przed** kliknięciem w mapę potwierdź zdanie „W ręku: …" —
+  bez uzbrojenia klik w puste pole zawsze znaczy „idź tam".
+
+- **Jeden zły wiersz listy na karcie kasuje CAŁĄ listę przy odczycie — po cichu.** `validateRows`
+  (`shared/systems/cpred/character.ts`) zwraca `undefined`, gdy **którykolwiek** wiersz nie
+  przeszedł, a `parseCharacterData` podstawia wtedy domyślne `[]`. Karta zapisuje się bez błędu,
+  a przy następnym odczycie ekwipunek jest pusty. 03.09 wywróciło się na tym generowanie id:
+  `gear-pharma.turbo-uzdrawiacz-<czas>` ma 37 znaków, a `validateRowBase` tnie id **na 32** —
+  „Antybiotyk" (31 znaków) przechodził, „Turbo uzdrawiacz" nie, i razem z nim znikał antybiotyk.
+  **Rozpoznanie:** zdarzenie zwraca sukces, w bazie jest komplet, a `state:sync` przynosi pustą
+  listę. **Obejście:** id wierszy generuj tak jak klient — `Math.random().toString(36).slice(2, 10)`
+  (`newRowId` w `CharacterSheet.tsx`), nigdy z doklejonym id kompendium ani znacznikiem czasu.
+
+- **Dwa zapisy tej samej karty w jednym handlerze: drugi cofa pierwszy.** Wiersz `Character`
+  pobrany na początku obsługi zdarzenia jest **migawką**; `mergeCharacterData(stary, łatka)`
+  zapisuje całą kartę, więc scalenie na starej migawce wymazuje wszystko, co zapisano w
+  międzyczasie. 03.09 kosztowało to błędu „dawka podana sobie nie schodzi z ekwipunku":
+  `character:use-dose` najpierw zdejmował sztukę, a potem `applyDose` nakładał skutek środka na
+  wiersz sprzed zdjęcia. **Rozpoznanie:** pierwsza zmiana widoczna w odpowiedzi zdarzenia, a
+  w bazie jej nie ma. **Obejście:** albo jeden zapis z obiema łatkami, albo podstawienie
+  świeżego wiersza pod drugi krok — jak `effectTarget` w `realtime/recovery.ts`. Dotyczy każdego
+  handlera, w którym „kto robi" i „na kim" może być **tą samą kartą**.
+
+- **Nowy plik testów dymnych musi dostać `}, 60_000);` przy `beforeAll` — inaczej pęka pod
+  równoległością, i to całym plikiem.** Hak startowy uruchamia `npx prisma migrate deploy`
+  (osobny proces CLI Prismy) i podnosi Fastify z Socket.IO; pod pełnym `vitest run` (55 plików,
+  każdy z własnym serwerem) nie mieści się w **domyślnych 10 s** vitesta. **Rozpoznanie:** objaw
+  jest inny niż przy zwykłym migotaniu — w raporcie stoi `FAIL src/plik.test.ts
+[ src/plik.test.ts ]`, bez nazwy testu i bez asercji, bo pada **hak**, nie test. 03.09 miało
+  to pięć plików (`compendium`, `netcombat`, `netrun`, `netrunning`, `screamsheets`); reszta
+  limit miała od początku. To jest przyczyna, którą wcześniejszy wpis o „pękaniu na limicie
+  czasu" opisywał po objawach.
+
+- **`waitFor(socket, 'chat:message')` bierze PIERWSZĄ wiadomość, jaka przyjdzie — i to jest
+  wyścig, nie ostrożność.** Publiczny rzut dociera także do gniazda MG, a jego kopia potrafi
+  wylądować już **po** tym, jak test, który go wywołał, wrócił na kopii gracza. Wtedy oczekiwanie
+  **następnego** testu rozwiązuje się na karcie **poprzedniego**, a asercja pada w miejscu, które
+  z przyczyną nie ma nic wspólnego (03.09 kosztowało to diagnozy w trzech plikach naraz).
+  **Rozpoznanie:** pada raz na kilka przebiegów, za każdym razem gdzie indziej, a sam plik
+  uruchomiony osobno przechodzi. **Obejście:** dopasowanie po treści, nie „pierwsza, jaka
+  przyjdzie" — wzorzec `waitForMatch` / `waitForRoll(socket, tytuł)` jest w `roles30d.test.ts`,
+  `netdemons.test.ts` i `character-rolls.test.ts`. Nowy test czekający na kartę na czacie
+  **od razu** pisze, na którą.
+
+- **Test, który mierzy „PW spadły", musi sam ustawić PW na starcie.** Przy zerze serwer
+  **odmawia graczowi ruchu w ogóle** (`realtime/movement.ts`), więc walk się nie odbywa, spadek
+  wychodzi 0 → 0, a test pada na `expected 0 to be less than 0` — obwiniając asercję zamiast
+  stanu, który go zepsuł. Kilka trafień po 6k6 wystarczy, żeby figura z 50 PW dojechała do zera
+  w połowie pliku. **Obejście:** pomocnik w rodzaju `healUp()` z `zones.test.ts`, który stawia
+  kartę na pełni **i zwraca tę liczbę** — a asercja porównuje się z nią, nie ze stałą wpisaną
+  z palca.
+
+- **`window.confirm` zawiesza kartę pod CDP, jeśli nie przechwycisz go PRZED kliknięciem.**
+  `confirmDestructive` (`client/src/confirm.ts`) to natywny `window.confirm`, a natywny modal
+  blokuje `Input.dispatchMouseEvent`, `Input.dispatchKeyEvent` **i** wstrzykiwanie skryptów —
+  czyli wszystkie drogi, którymi dałoby się go zamknąć. Karta zostaje martwa; jedynym wyjściem
+  jest ją **zamknąć i otworzyć na nowo**. **Obejście, zawsze przed klikaniem czegokolwiek
+  niszczącego:** `javascript_tool` z `window.confirm = () => true`. Uwaga: przeładowanie strony
+  zdejmuje tę łatę, więc po każdym reloadzie trzeba ją założyć od nowa. Sprostowanie do
+  wcześniejszego wpisu, który mówił, że confirm „nie zawiesza sterowania" — nie zawiesza tylko
+  wtedy, gdy jest przechwycony.
+
+- **Zrzut ekranu ma inną skalę niż `clientX`/`clientY`.** Współrzędne z narzędzia zrzutu trzeba
+  przemnożyć przez `window.innerWidth / szerokość zrzutu` (03.09: 1964/1394 ≈ 1,41), zanim
+  wsadzi się je w syntetyczne zdarzenie wskaźnika. Bez tego klik ląduje w zupełnie innym
+  miejscu mapy i wygląda jak „Pixi nie odbiera zdarzeń".
+
+- **Menu kontekstowe tokenu otwiera `pointerdown` z `button === 2`**, a `right_click` z CDP go
+  nie dowozi (`wireInteraction` w `MapRenderer.ts`). Obejście, sprawdzone 03.09: dispatch
+  `new PointerEvent('pointerdown', {button: 2, buttons: 2, …})` na `<canvas>` po przeliczeniu
+  współrzędnych (wpis wyżej). Potem `find` znajduje pozycje menu normalnie.
+
+- **`form_input` na checkboksie Reacta zmienia DOM, ale nie stan komponentu.** Pole zaznacza
+  się wizualnie, a warunkowa część formularza się nie pojawia — i kolejny prawdziwy klik
+  **odznacza** je z powrotem, bo React nadal uważa, że jest wyłączone. Do kontrolowanych pól
+  React używaj `left_click`, nie `form_input`.
+
 - **Nowa kolumna z adresem pliku musi trafić na listę w `uploads-gc.ts`** — sprzątacz kasuje
   plik, którego nie wymienia **żadna** kolumna (i który jest starszy niż godzina), więc kolumna
   pominięta na tej liście znaczy skasowany plik. Odnośniki zbierane są z kolumn z adresem
@@ -80,7 +229,10 @@ dotyczy.
 - **Haseł w formularze nie wpisuję** — sesję MG zakłada użytkownik, sesję gracza zakłada się kluczem z panelu MG (bez hasła).
 - **Edycja kodu w trakcie oględzin przeładowuje kartę, a wtedy pisanie staje się skrótami klawiszowymi.** Kosztowało to 08.08 przypadkowe przeskoczenie tury w żywej kampanii: po edycie `realtime/rules.ts` `tsx watch` zrestartował serwer, Vite przeładował stronę, ognisko wyszło z pola tekstowego — i wpisywane zdanie poleciało do globalnych skrótów mapy (**każde „e" to „koniec tury"**, litery uzbrajają narzędzia). **Zasada:** albo kończysz edycje przed wejściem do przeglądarki, albo przed każdym pisaniem robisz zrzut i sprawdzasz, że kursor stoi w polu. Po wpadce `Esc` rozbraja uzbrojone narzędzie.
 - **`reasoning_budget` w llama-server nie działa dla wartości dodatnich** — przyjmuje 640 bez błędu, ale egzekwuje wyłącznie 0 i −1. Każda ścieżka z `reasoning: true` musi umieć obsłużyć **pustą odpowiedź** po zużyciu całego `max_tokens` na blok think. Szczegóły w `ai-gateway/README.md`.
-- **Testy dymne serwera potrafią raz na kilka przebiegów pęknąć na limicie czasu** — każdy plik podnosi własny Fastify z Socket.IO, więc przy pełnym `pnpm --filter @vtt/server test` bywa ciasno. Zaobserwowane 08.08: dwa różne przypadki (`ammo.test.ts`, `ammo-effects.test.ts`) pękły po jednym razie na trzy przebiegi i **oba przeszły uruchomione osobno**. Zanim zaczniesz szukać regresji, powtórz sam plik.
+- ~~**Testy dymne serwera potrafią raz na kilka przebiegów pęknąć na limicie czasu**~~ —
+  **przyczyna znaleziona 03.09: `beforeAll` bez `}, 60_000);`** (wpis na górze pliku). Oryginalny
+  opis, zostawiony dla objawów: **Testy dymne serwera potrafią raz na kilka przebiegów pęknąć
+  na limicie czasu** — każdy plik podnosi własny Fastify z Socket.IO, więc przy pełnym `pnpm --filter @vtt/server test` bywa ciasno. Zaobserwowane 08.08: dwa różne przypadki (`ammo.test.ts`, `ammo-effects.test.ts`) pękły po jednym razie na trzy przebiegi i **oba przeszły uruchomione osobno**. Zanim zaczniesz szukać regresji, powtórz sam plik.
   **Korekta z 14.08:** w przypadku `ammo.test.ts` limit czasu **nie był przyczyną** — test „an
   armour-piercing round takes two points of SP" pękał **także uruchomiony sam**, raz na kilka
   przebiegów, i to z powodu dwóch źródeł losowości w samym teście (zdarty pancerz celu + rzut
@@ -516,3 +668,102 @@ cichu na `movableTokens.get(id) === false`, więc pasek nigdy nie pokazywał cud
 funkcja dołożona do paska „dla gracza przy cudzej figurze" była z góry nieosiągalna, choć dane
 jechały poprawnie. Zanim dołożysz coś do paska z myślą o graczu, sprawdź, czy ten gracz ma jak
 postawić tam tę figurę.
+
+**Nazwa z tabeli zbiorczej wygląda jak nagłówek opisu — i nim nie jest (01.09).** Sekcja „DODATKI
+DO BRONI" wymienia każdą nazwę **trzy razy**: w tabelce cen na początku („Bagnet 100 ed
+(Premium)"), jako nagłówek własnego akapitu WERSALIKAMI („BAGNET Cena: …") i w środku prozy
+sąsiada („Aby złącze smartguna działało…"). Pierwsza próba brała wystąpienie pierwsze i dostawała
+akapity bez zdania „Pasuje do:"; druga brała ostatnie i **gubiła cenę złącza smartguna**, bo
+ostatnie wystąpienie tej nazwy siedzi w prozie. Wersaliki są jedyną formą, która znaczy „tu
+zaczyna się opis" — `attachment_chunks` dopasowuje `label.upper()` i bierze pierwsze trafienie.
+Polskie `.upper()` radzi sobie z diakrytykami („ł" → „Ł"), więc tabela reguł zostaje w normalnej
+pisowni.
+
+**Trzy liczby tabeli magazynków są zlepione w jedną, ale wiersz jest zakotwiczony (01.09).**
+Zrzut daje „Ciężki pistolet 81428" — 8, 14, 28. Rozdzielić da się to tylko dlatego, że **pierwsza
+liczba jest znana**: to magazynek z tabeli broni, wczytany stronę wcześniej. Reszta ma dokładnie
+jeden podział zgodny z porządkiem tabeli (zwykły ≤ wydłużony ≤ bębnowy); wiersz z dwoma albo
+zerem takich podziałów idzie do ostrzeżeń, bo po cichu wybrany bęben kłamałby do końca kampanii.
+Do tego **nagłówek tabeli klei się z pierwszym wierszem** („TypZwykłyPrzedłużonyBębnowyŚredni
+pistolet 121836"), więc ogólne wyrażenie na etykietę zjada nagłówek i gubi Średni pistolet —
+rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie jest.
+
+**Nabój inteligentny od 01.09 odmawia strzału i wywraca stary test (01.09).** „Z powodów
+bezpieczeństwa amunicja inteligentna nie wystrzeli po pociągnięciu za spust" (s. 347) było prozą
+do etapu 31, bo w 16h karta nie miała chromu, o który dałoby się zapytać. Teraz `planCpredAttack`
+zwraca `AMMO_NEEDS_CYBERWARE`, więc **każdy test strzelający tą amunicją musi wszczepić strzelcowi
+wymaganą cyborgizację** — inaczej pada w asercji o czymś zupełnie innym (drugi rzut po bliskim
+pudle), bo pierwszy strzał w ogóle nie dochodzi do skutku.
+
+**Gniazd na dodatki nie zobaczysz przy broni wpisanej ręką** (01.09) — `WeaponAttachments` wraca
+`null`, gdy `resolved` jest pusty albo `attachmentSlots` to zero (broń biała, egzotyk, wiersz bez
+wpisu z katalogu). Pusty pasek byłby jeszcze jedną rzeczą do wytłumaczenia, ale objaw „nie widzę
+gniazd" ma zwykle tę przyczynę, a nie zepsuty komponent.
+
+- **Klik w żeton, którym MG może sterować, ZAZNACZA go zamiast celować — celuje dopiero
+  Alt+klik** (01.09, kosztowało kilka „ataków", które okazały się zmianą zaznaczenia).
+  `aimTargetFor` w `MapRenderer` zwraca `null`, gdy cel jest sterowalny (`movableTokens`)
+  i nie trzymasz Alt — a **MG steruje wszystkim**, więc przy koncie MG dotyczy to każdego żetonu
+  na scenie. Podpowiedź pod paskiem mówi to wprost („Alt+klik celuje we własny token"), tylko
+  łatwo ją przeoczyć. **Rozpoznanie:** po kliknięciu lewy pasek pokazuje **cel**, a nie
+  strzelca, i nie ma banera „Potrząśnij i strzel".
+  **Drugie dno:** `modifiers: "alt"` w narzędziu `computer` **bywa niedostarczane** — kilka
+  ataków z rzędu przeszło, a potem te same kroki zaczęły tylko zaznaczać cel.
+  **Obejście, które działa zawsze:** uzbrój atak **z karty postaci** (guzik „ATAK" w wierszu
+  broni). Wtedy `this.targeting` jest prawdą, a `aimTargetFor` zwraca cel **przed** sprawdzeniem
+  Alt — zwykły klik wystarczy. Kartę można po uzbrojeniu zamknąć, celowanie to przeżywa.
+
+- **Dymu nie da się postawić narzędziem — stawia go wyłącznie wystrzelony nabój** (01.09).
+  W panelu osłon jest tylko „Rozwiej cały dym"; komentarz w `MapTools.tsx` mówi to wprost
+  („nobody _places_ a cloud — a round does"). Żeby mieć chmurę do oględzin, trzeba broni
+  strzelającej wzorcem `grenade` (Granatnik, Granat) i wpisu **„Amunicja dymna"** wybranego
+  listą naboju przy wierszu broni. **Broń podwieszana tej listy nie ma** (patrz `zaleglosci.md`),
+  więc granatnik pod karabinem do dymu nie posłuży — dopisz osobny wiersz „Granatnik"
+  z katalogu.
+
+**Czerwony pojedynczy plik w pełnym przebiegu serwera to najpierw podejrzenie wyścigu, nie
+regresji (03.09).** `pnpm --filter @vtt/server test` pada mniej więcej co drugi przebieg, za
+każdym razem w innym pliku — złapane `roles30d.test.ts`, `zones.test.ts` i `netdemons.test.ts`.
+Ten sam plik uruchomiony osobno (`npx vitest run src/<plik>`) przechodzi 6/6. Sprawdzone
+`git stash`-em: **na czystym HEAD pada tak samo**, więc nie jest to regresja sesji, która akurat
+to zobaczyła. Objawy są dwojakie i oba wskazują na współdzielony czas, nie na logikę:
+`waitFor(gm, 'chat:message')` bierze **pierwszą** wiadomość, jaka przyjdzie (czyli czasem
+broadcast poprzedniego testu), a testy sprawdzające spadek PW zaczynają czasem od zera, bo
+poprzedni krok zdążył dobić figurę. Obejście na czas sesji: powtórz plik osobno i idź dalej.
+Naprawa docelowa — w `zaleglosci.md`.
+
+**Testy nie widzą ściętego napisu — a trzy z sześciu błędów 30a–30d były właśnie tym (04.09).**
+Mechanika dziewięciu Ról jedzie w 150 testach i wszystkie były zielone, kiedy sześć zdolności
+Zmysłu Walki czytało się na karcie jako „R..", „W.", „B..", „P..", „W.", „W." — dwie pary nie do
+rozróżnienia. Żaden test nie mierzy szerokości elementu ani nie czyta etykiety guzika, a panel
+stał w kolumnie o **sztywnych 15 rem**, więc nie pomagało nawet rozciągnięcie okna. Diagnoza,
+która to rozstrzyga w jednym kroku: porównaj `getBoundingClientRect().width` z `scrollWidth`
+tego samego elementu (15 px przy potrzebnych 119 to nie jest „ciasno", to jest zerwany układ)
+i przeczytaj `getComputedStyle` rodzica, żeby zobaczyć, która kolumna zjada resztę. Ten sam
+odruch łapie drugi wariant: guzik z napisem, który dziedziczy sztywną szerokość po sąsiadach ±
+(„Wezwij" jako „Wezw"). **To już drugie spotkanie z tym samym błędem** — 29b naprawiło go wąsko
+dla `.advance-buy` („Podn" zamiast „Podnieś"), nie ruszając reguły, która go powodowała.
+
+**`refuseWalkThroughSolid` zwalnia MG — żeton MG przechodzi przez ścianę (04.09).**
+`realtime/movement.ts:254` zaczyna się od `if (user.role === ROLE_GM) return;`, więc kolizje
+ruchu (ściany **i** osłony, po lanie na komórkę dla figur 2×2) obowiązują wyłącznie graczy. To
+ta sama zasada, co przy odmowach statusowych z 08.08, tylko o geometrii, i nigdzie nie była
+zapisana: przy oględzinach z konta MG wygląda jak brak kolizji, którego nie ma. Sprawdzaj
+z konta gracza (`Tester`, `/join/tester-dev`). Przy okazji: wpis `POMYSLY.md` o kolizjach ruchu
+jest **nieaktualny** — kolizje są od 27j.
+
+**To samo zdanie odmowy bywa w dwóch tabelach, a ścieżka wybiera jedną (04.09).**
+Klient ma dwa mappery kodów na zdania: ogólny `ackErrorText` i `attackAckErrorText` dla
+wszystkiego, co idzie przez atak — w tym `attack:evade`. `BACKUP_CANNOT_DODGE` miało swoje
+zdanie **w tym pierwszym**, a Unik szedł przez drugi, więc na czacie lądowało
+„Błąd ataku: BACKUP_CANNOT_DODGE". Objaw jest mylący, bo `grep` po kodzie znajduje polskie
+zdanie i wygląda na podpięte. Dokładając kod odmowy do ścieżki ataku, sprawdź **którą** tabelę
+czyta jej `ack` — trzy kody `attack:evade` (`BACKUP_CANNOT_DODGE`, `SHIELD_CANNOT_DODGE`,
+`DODGE_BLOCKED`) siedziały poza nią wszystkie trzy.
+
+**Kafla „Fumble zignorowany" nie doczekasz się rzutami — wymuś kostkę (04.09).**
+Naturalna 1 na 1k10 to średnio dziesięć strzałów, a każdy z nich to uzbrojenie slotu, Alt+klik
+w cel i potrząśnięcie kubkiem. Taniej: dopisz na minutę `if (sides === 10) return 1;` na
+początku zwracanej funkcji w `realtime/dice-rng.ts` (obrażenia lecą k6, więc zostają losowe),
+obejrzyj kafel i **przywróć plik z kopii**, sprawdzając `git diff`. Ta sama sztuczka pokaże
+Krytyka, Fumble i każdy próg, którego nie da się doczekać.

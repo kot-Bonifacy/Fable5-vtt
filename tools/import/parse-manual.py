@@ -718,6 +718,241 @@ def describe_exotic(prose: str, name: str, names: list[str]) -> str | None:
     return clean(body)[:DESCRIPTION_MAX] or None
 
 
+# --- weapon attachments -------------------------------------------------------
+
+# „TypZwykłyPrzedłużonyBębnowyŚredni pistolet 121836 Ciężki pistolet 81428 …"
+# (s. 344): trzy liczby zlepione w jedną, a nagłówek tabeli zlepiony z pierwszym
+# wierszem. Rozcina to `split_on_anchors` po nazwach typów broni — nagłówek nie
+# jest nazwą, więc odpada sam, a „Ciężki pistolet maszynowy” wygrywa z „Ciężkim
+# pistoletem” schowanym w środku.
+MAGAZINE_NUMBERS = re.compile(r"^\s*(?P<nums>\d{2,9})\b")
+
+
+def split_magazine_numbers(glued: str, standard: int) -> tuple[int, int] | None:
+    """Rozdziela „1428" na (14, 28), wiedząc, że zwykły magazynek to 8.
+
+    Trzy liczby są wydrukowane bez separatora, ale pierwsza jest znana — to
+    magazynek z tabeli broni — więc wiersz jest zakotwiczony, nie zgadywany.
+    Reszta ma dokładnie jeden podział zgodny z porządkiem tabeli (zwykły ≤
+    wydłużony ≤ bębnowy); wiersz z dwoma albo zerem takich podziałów idzie do
+    ostrzeżeń, bo po cichu wybrany bęben kłamie do końca kampanii.
+    """
+    head = str(standard)
+    if not glued.startswith(head):
+        return None
+    rest = glued[len(head):]
+    found = [
+        (int(rest[:cut]), int(rest[cut:]))
+        for cut in range(1, len(rest))
+        if not rest[:cut].startswith("0") and not rest[cut:].startswith("0")
+    ]
+    plausible = [
+        (extended, drum)
+        for extended, drum in found
+        if standard <= extended <= drum <= 500
+    ]
+    if len(plausible) != 1:
+        return None
+    return plausible[0]
+
+
+def parse_magazine_table(market: str, types: dict[str, dict]) -> None:
+    """Dokłada typom broni kolumny „Wydłużony" i „Bębnowy" (s. 344)."""
+    text, _ = section(market, "### TABELA MAGAZYNKÓW", "AMUNICJA")
+    body = clean(text)
+    ranged = {
+        label: key
+        for label, key in MANUAL_WEAPON_TYPES.items()
+        if key in types and not types[key].get("melee")
+    }
+    seen: set[str] = set()
+    for label, chunk in split_on_anchors(body, list(ranged)):
+        key = ranged[label]
+        numbers = MAGAZINE_NUMBERS.match(chunk)
+        if not numbers:
+            continue
+        seen.add(label)
+        standard = types[key].get("magazine")
+        if not isinstance(standard, int):
+            warn(f"tabela magazynków: „{label}” nie ma magazynka w tabeli broni")
+            continue
+        columns = split_magazine_numbers(numbers.group("nums"), standard)
+        if columns is None:
+            warn(
+                f"tabela magazynków: nie rozdzieliłem liczb „{numbers.group('nums')}” "
+                f"dla „{label}” (magazynek {standard})"
+            )
+            continue
+        types[key]["magazineExtended"], types[key]["magazineDrum"] = columns
+    missing = [label for label in ranged if label not in seen]
+    if missing:
+        warn(f"tabela magazynków: brak wierszy dla {', '.join(missing)}")
+
+
+# Wiersz ceny, np. „Cena: 100 ed (Premium)".
+ATTACHMENT_PRICE = re.compile(
+    r"Cena:\s*(?P<cost>\d[\d\s]*)\s*ed\s*\(\s*(?P<band>[^)]+)\)", re.IGNORECASE
+)
+
+# „Zajmuje 2 gniazda na dodatki" / „Wykorzystuje 2 gniazda na dodatki".
+ATTACHMENT_SLOTS = re.compile(r"(?:Zajmuje|Wykorzystuje)\s*(?P<n>\d)\s*gniazd", re.IGNORECASE)
+
+# „Po zamontowaniu tego dodatku broni nie da się ukryć pod ubraniem."
+ATTACHMENT_NO_CONCEAL = re.compile(r"nie\s+da\s+się\s+ukryć", re.IGNORECASE)
+
+# Który z ośmiu wierszy jest który — i to, czego proza nie mówi liczbami.
+#
+# Ceny, liczbę gniazd i zdanie „nie da się ukryć" czyta się z podręcznika; ta
+# tabela niesie wyłącznie to, co wiersz mówi słowami: do jakiej broni pasuje
+# i jaką drugą broń doczepia. Rozdział jest celowy — zmiana ceny w książce
+# ląduje tu sama, a zmiana reguły wymaga człowieka.
+ATTACHMENT_RULES: dict[str, dict] = {
+    "Bagnet": {
+        "id": "attachment.bayonet",
+        # „wszystkich broni dystansowych … korzystających z Umiejętności Broń długa"
+        "fit": {"skillIds": ["shoulder-arms"]},
+        # „tę broń można też wykorzystać jak lekką broń białą"
+        "secondary": {"weaponTypeId": "weapon-type.light-melee"},
+    },
+    "Magazynek bębnowy": {
+        "id": "attachment.drum-magazine",
+        # „wszystkich broni dystansowych prócz broni egzotycznych oraz łuków i kuszy"
+        "fit": {"notSkillIds": ["archery"], "needsMagazine": True},
+        "magazine": "drum",
+        "exclusiveGroup": "magazine",
+    },
+    "Wydłużony magazynek": {
+        "id": "attachment.extended-magazine",
+        "fit": {"notSkillIds": ["archery"], "needsMagazine": True},
+        "magazine": "extended",
+        "exclusiveGroup": "magazine",
+    },
+    "Granatnik podwieszany": {
+        "id": "attachment.underbarrel-grenade-launcher",
+        "fit": {"skillIds": ["shoulder-arms"]},
+        # „jako Granatnik z tylko jednym granatem w magazynku"
+        "secondary": {"weaponTypeId": "weapon-type.grenade-launcher", "magazine": 1},
+    },
+    "Celownik noktowizyjny (podczerwień)": {
+        "id": "attachment.night-sight",
+        "fit": {},
+        "ignoresObscurement": True,
+    },
+    "Strzelba podwieszana": {
+        "id": "attachment.underbarrel-shotgun",
+        "fit": {"skillIds": ["shoulder-arms"]},
+        # „jako Strzelbę z tylko dwoma pociskami w magazynku"
+        "secondary": {"weaponTypeId": "weapon-type.shotgun", "magazine": 2},
+    },
+    "Złącze smartguna": {
+        "id": "attachment.smartgun-link",
+        "fit": {},
+        # „wykonując atak dystansowy smartgunem, dodajesz +1 do wyniku Testu"
+        "attackBonus": 1,
+        # „musisz być z nim połączony za pomocą złączy interfejsu lub uchwytu
+        # podskórnego" — po nazwie, bo id powstają właśnie z tych nazw.
+        "requiresCyberware": ["Złącza interfejsu", "Uchwyt podskórny"],
+    },
+    "Snajperska luneta celownicza": {
+        "id": "attachment.sniper-scope",
+        "fit": {},
+        # „do celu odległego o co najmniej 51 metrów z broni w trybie jednego
+        # strzału lub wykonując Celowanie, możesz dodać +1 do Testu"
+        "rangedBonus": {
+            "bonus": 1,
+            "minMetres": 51,
+            "singleOnly": True,
+            "whenAimed": True,
+            "conflictsWith": ["Teleskop"],
+        },
+    },
+}
+
+
+def describe_attachment(prose: str, label: str) -> str | None:
+    """Akapit „Pasuje do:" bez wiersza ceny, który go otwiera."""
+    text = ATTACHMENT_PRICE.sub("", prose)
+    text = text.replace(label, "", 1).strip(" -–—•\n\t")
+    text = re.sub(r"^Pasuje do:\s*", "Pasuje do: ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text[:DESCRIPTION_MAX] if text else None
+
+
+def attachment_chunks(body: str, labels: list[str]) -> dict[str, str]:
+    """Opis każdego dodatku, wycięty po nagłówku pisanym WERSALIKAMI.
+
+    Nazwa dodatku pada w tej sekcji trzy razy i tylko jedno z tych wystąpień
+    otwiera opis: w zbiorczej tabelce cen („Bagnet 100 ed (Premium)"), jako
+    nagłówek własnego akapitu („BAGNET Cena: …") i w środku prozy sąsiada („Aby
+    złącze smartguna działało…"). Wersaliki są jedyną formą, która znaczy
+    „tu zaczyna się opis" — dopasowanie ignorujące wielkość liter brało ostatnie
+    zdanie prozy i gubiło cenę złącza smartguna.
+    """
+    upper = {label.upper(): label for label in labels}
+    pattern = "|".join(re.escape(key) for key in sorted(upper, key=len, reverse=True))
+    matches = list(re.finditer(pattern, body))
+    chunks: dict[str, str] = {}
+    for index, match in enumerate(matches):
+        stop = matches[index + 1].start() if index + 1 < len(matches) else len(body)
+        label = upper[match.group(0)]
+        chunks.setdefault(label, body[match.end() : stop])
+    return chunks
+
+
+def parse_attachments(market: str) -> list[dict]:
+    """Osiem wierszy z „DODATKI DO BRONI" (s. 342–344)."""
+    text, offset = section(market, "### DODATKI DO BRONI", "### TABELA MAGAZYNKÓW")
+    body = clean(text)
+    page = page_of(market, offset)
+    chunks = attachment_chunks(body, list(ATTACHMENT_RULES))
+
+    entries: list[dict] = []
+    for label, rule in ATTACHMENT_RULES.items():
+        prose = chunks.get(label, "")
+        if not prose:
+            warn(f"dodatki do broni: nie znalazłem opisu „{label}”")
+            continue
+        price_match = ATTACHMENT_PRICE.search(prose)
+        if price_match:
+            cost, band = price(
+                price_match.group("cost"), price_match.group("band"), f"dodatek „{label}”"
+            )
+        else:
+            warn(f"dodatki do broni: „{label}” nie ma ceny")
+            cost, band = None, None
+        entry: dict = {
+            "id": rule["id"],
+            "name": label,
+            "category": "attachment",
+            "cost": cost,
+            "source": f"{SOURCE}, s. {page}" if page else SOURCE,
+            "fit": rule["fit"],
+        }
+        if band:
+            entry["costCategory"] = band
+        slots_match = ATTACHMENT_SLOTS.search(prose)
+        if slots_match:
+            entry["slots"] = int(slots_match.group("n"))
+        if ATTACHMENT_NO_CONCEAL.search(prose):
+            entry["blocksConcealment"] = True
+        for field in (
+            "magazine",
+            "attackBonus",
+            "requiresCyberware",
+            "rangedBonus",
+            "ignoresObscurement",
+            "secondary",
+            "exclusiveGroup",
+        ):
+            if field in rule:
+                entry[field] = rule[field]
+        description = describe_attachment(prose, label)
+        if description:
+            entry["description"] = description
+        entries.append(entry)
+    return entries
+
+
 # --- cyberware ---------------------------------------------------------------
 
 # Each family of the cyberware tables, in the order the chapter prints them.
@@ -1148,6 +1383,11 @@ def main() -> int:
             cost=None,
         )
 
+    # Etap 31: kolumny „Wydłużony" i „Bębnowy" siedzą przy typie broni, bo
+    # tabela magazynków jest czytana bronią, nie dodatkiem — jeden magazynek
+    # bębnowy, dziesięć różnych odpowiedzi (s. 344).
+    parse_magazine_table(market, types)
+
     ordered = dict(sorted(types.items(), key=lambda item: item[1]["name"]))
     weapon_types = list(ordered.values())
     apply_overrides(weapon_types, overrides, "weaponTypes")
@@ -1175,13 +1415,28 @@ def main() -> int:
     # to `explosive` — overrides ustawiały je Granatnikowi i Wyrzutni rakiet
     # (podręcznik, s. 92, „Eksplozja”), a ten filtr wycinał je przy zapisie, więc
     # w kampanii nic nie wybuchało mimo gotowej mechaniki obszaru z etapu 16d.
-    # Dokładając pole do `CpredWeaponTypeInput`, dołóż je również tutaj.
+    # Potem zginęły tak samo `thrown`, `maxRangeM` i `ammoIds` (04.09) — granat
+    # przestał być rzucany i leciał bez zasięgu maksymalnego, a miotacz ognia
+    # przyjmował cudzy śrut. Dokładając pole do `CpredWeaponTypeInput`, dołóż je
+    # również tutaj — a `dropped` niżej powie na głos, jeśli o tym zapomnisz.
     schema_fields = {
         "id", "name", "nameOriginal", "skillId", "damage", "magazine", "rof", "hands",
-        "concealable", "attachmentSlots", "melee", "rangeDv", "autofire", "suppressive",
-        "explosive", "halvesArmor", "ammoPatterns", "ammunition", "description", "source",
+        "concealable", "attachmentSlots", "magazineExtended", "magazineDrum", "melee",
+        "rangeDv", "autofire", "suppressive", "explosive", "halvesArmor", "ammoPatterns",
+        "ammoIds", "ammunition", "thrown", "maxRangeM", "description", "source",
         "incomplete",
     }
+    # Pola, które filtr zjada, a nikt ich tu nie wpisał. `cost`/`costCategory`
+    # jadą do wpisu kupowalnego i mają tu ginąć — reszta to zwykle przeoczenie.
+    travels_to_entry = {"cost", "costCategory", "features"}
+    dropped = {
+        key
+        for entry in weapon_types
+        for key in entry
+        if key not in schema_fields and key not in travels_to_entry
+    }
+    for key in sorted(dropped):
+        warn(f"weapon-types: pole „{key}” nie jest na białej liście — wycinam je z zapisu")
     write(
         COMPENDIUM_DIR / "weapon-types.json",
         {
@@ -1196,6 +1451,12 @@ def main() -> int:
     write(
         COMPENDIUM_DIR / "weapons-base.json",
         {"schemaVersion": SCHEMA_VERSION, "source": SOURCE, "entries": entries},
+    )
+
+    attachments = apply_overrides(parse_attachments(market), overrides, "attachments")
+    write(
+        COMPENDIUM_DIR / "attachments.json",
+        {"schemaVersion": SCHEMA_VERSION, "source": SOURCE, "entries": attachments},
     )
 
     armor = apply_overrides(parse_armor(market), overrides, "armor")
@@ -1229,6 +1490,7 @@ def main() -> int:
             "skillGroups": len({skill["group"] for skill in skills}),
             "weaponTypes": len(weapon_types),
             "weapons": len(entries),
+            "attachments": len(attachments),
             "armor": len(armor),
             "cyberware": len(cyberware),
             "criticalInjuries": len(injuries),
@@ -1242,6 +1504,7 @@ def main() -> int:
     print(f"Umiejętności:     {len(skills)}")
     print(f"Typy broni:       {len(weapon_types)}")
     print(f"Bronie (wpisy):   {len(entries)}")
+    print(f"Dodatki do broni: {len(attachments)}")
     print(f"Pancerze:         {len(armor)}")
     print(f"Cyborgizacje:     {len(cyberware)}")
     print(f"Rany krytyczne:   {len(injuries)}")

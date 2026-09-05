@@ -76,6 +76,12 @@ import {
   creationStartEvent,
 } from './creation.js';
 import { characterRollEvent } from './character-rolls.js';
+import {
+  characterCraftPharmaEvent,
+  characterRestEvent,
+  characterUseDoseEvent,
+} from './recovery.js';
+import { checkCallEvent, checkCancelEvent } from './checks.js';
 import { characterCyberwareEvent } from './cyberware.js';
 import {
   economyAdjustEvent,
@@ -89,6 +95,8 @@ import {
   attackEvadeEvent,
   attackRollEvent,
   attackSmartEvent,
+  weaponAttachmentEvent,
+  weaponClearJamEvent,
   weaponReloadEvent,
 } from './attacks.js';
 import { rulerClearEvent, rulerUpdateEvent } from './ruler.js';
@@ -195,6 +203,12 @@ import {
 } from './handouts.js';
 import { screamsheetGenerateEvent } from './screamsheets.js';
 import { relationDeleteEvent, relationListEvent, relationSetEvent } from './relations.js';
+import {
+  archiveCharacterImportEvent,
+  archiveListEvent,
+  archiveSceneImportEvent,
+  archiveSnapshotEvent,
+} from './archive.js';
 import { sendStateSync, stateRequestEvent } from './sync.js';
 
 declare module 'socket.io' {
@@ -217,6 +231,10 @@ const gmPingEvent = defineEvent({
 
 const EVENTS: RealtimeEvent<never, unknown>[] = [
   gmPingEvent,
+  archiveListEvent,
+  archiveSnapshotEvent,
+  archiveCharacterImportEvent,
+  archiveSceneImportEvent,
   campaignActivateEvent,
   stateRequestEvent,
   chatSendEvent,
@@ -282,6 +300,11 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   creationFinishEvent,
   creationDiscardEvent,
   characterRollEvent,
+  characterRestEvent,
+  characterCraftPharmaEvent,
+  characterUseDoseEvent,
+  checkCallEvent,
+  checkCancelEvent,
   characterCyberwareEvent,
   economyBuyEvent,
   economyTransferEvent,
@@ -298,6 +321,8 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   attackRollEvent,
   attackEvadeEvent,
   attackSmartEvent,
+  weaponAttachmentEvent,
+  weaponClearJamEvent,
   weaponReloadEvent,
   rulerUpdateEvent,
   rulerClearEvent,

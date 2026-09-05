@@ -120,7 +120,12 @@ export function toTokenView(
   const view: TokenView = {
     id: token.id,
     sceneId: token.sceneId,
-    name: token.name,
+    // „Snajper Arasaki" is the GM's name for the figure; the table gets
+    // `publicName` when the GM set one, and only then learns the real one by
+    // being told. Filtered here rather than at the label, for the same reason
+    // hidden tokens and unrevealed fog are: a secret that travels is not a
+    // secret. Null — the overwhelming majority — means the two are the same.
+    name: includePrivate ? token.name : (token.publicName ?? token.name),
     imageUrl: token.imageUrl,
     x: token.x,
     y: token.y,
@@ -141,6 +146,10 @@ export function toTokenView(
     if (injuries.length > 0) view.injuries = injuries;
   }
   if (includePrivate) {
+    // The alias itself is private: the editor needs it to show what the table
+    // is being told, and a player who could read it would learn there *is* a
+    // second name.
+    if (token.publicName !== null) view.publicName = token.publicName;
     view.characterId = token.characterId;
     view.visionRange = token.visionRange;
     // The statist's gun and armour (stage 16b). Opaque to this module by
@@ -786,6 +795,7 @@ export const tokenUpdateEvent = defineEvent<TokenUpdatePayload, TokenView>({
 
     const data: Record<string, unknown> = {};
     if (patch.name !== undefined) data.name = patch.name;
+    if (patch.publicName !== undefined) data.publicName = patch.publicName;
     if (patch.imageUrl !== undefined) data.imageUrl = patch.imageUrl;
     if (patch.ownerId !== undefined) data.ownerId = patch.ownerId;
     if (patch.hidden !== undefined) data.hidden = patch.hidden;

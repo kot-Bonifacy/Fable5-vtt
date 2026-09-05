@@ -14,8 +14,10 @@ import { registerAuthRoutes } from './routes/auth.js';
 import { registerJoinRoutes } from './routes/join.js';
 import { registerCampaignRoutes } from './routes/campaigns.js';
 import { MAX_MAP_UPLOAD_BYTES, registerUploadRoutes } from './routes/uploads.js';
+import { registerArchiveRoutes } from './routes/archive.js';
 import { setupRealtime } from './realtime/index.js';
 import { sweepUploadsInBackground } from './uploads-gc.js';
+import { snapshotPathsFor, startSnapshotSchedule } from './snapshots.js';
 import { loadStatusRegistry } from './statuses.js';
 import { loadCompendium } from './compendium.js';
 import { loadCpredRegistry } from './cpred.js';
@@ -101,6 +103,7 @@ export async function buildApp(
   registerJoinRoutes(app, ctx);
   registerCampaignRoutes(app, ctx);
   registerUploadRoutes(app, ctx);
+  registerArchiveRoutes(app, ctx);
 
   const io = new SocketIOServer(app.server, {
     cors: { origin: config.clientOrigin, credentials: true },
@@ -108,7 +111,22 @@ export async function buildApp(
   setupRealtime(io, app, ctx);
   ai.start();
 
+  // Kopie zapasowe (etap 33): jedna przy starcie, potem co godzinę. Brak
+  // sekcji `backups` w konfiguracji znaczy „ten proces kopii nie robi" — tak
+  // stoją testy dymne.
+  const backupPaths = snapshotPathsFor(config);
+  const stopSnapshots =
+    backupPaths && config.backups
+      ? startSnapshotSchedule(
+          backupPaths,
+          { keepHourly: config.backups.keepHourly, keepDaily: config.backups.keepDaily },
+          config.backups.intervalMinutes * 60_000,
+          app.log,
+        )
+      : () => undefined;
+
   app.addHook('onClose', async () => {
+    stopSnapshots();
     ai.stop();
     io.close();
     await prisma.$disconnect();

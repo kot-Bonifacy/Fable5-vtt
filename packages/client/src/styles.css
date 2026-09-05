@@ -814,6 +814,199 @@ body {
   min-width: 0;
 }
 
+/* --- Filtry czatu i tryb zwarty (01.09.2026) --- */
+
+.chat-panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem 0.6rem;
+}
+
+.chat-panel-head .panel-section-title {
+  margin-right: auto;
+}
+
+.chat-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+/* Wyłączona grupa zostaje czytelna, tylko wygaszona: pasek ma mówić, czego na
+   ekranie NIE ma — schowany przełącznik byłby filtrem, o którym się zapomina. */
+.chat-filter {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 0.72rem;
+  line-height: 1.65;
+  padding: 0 0.5rem;
+  cursor: pointer;
+  opacity: 0.55;
+}
+
+.chat-filter:hover {
+  border-color: var(--border-strong);
+  opacity: 0.85;
+}
+
+.chat-filter--on {
+  border-color: rgb(var(--accent-rgb) / 55%);
+  background: rgb(var(--accent-rgb) / 12%);
+  color: var(--text);
+  opacity: 1;
+}
+
+.chat-filter--reset {
+  color: var(--info);
+  opacity: 1;
+}
+
+/* Ukryte wiersze zwijają się w kreskę z licznikiem — klik rozwija je w miejscu,
+   bez ruszania samego filtra. */
+.chat-hidden-run {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.chat-hidden-toggle {
+  border: 0;
+  border-top: 1px dashed var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 0.72rem;
+  padding: 0.15rem 0;
+  text-align: center;
+  cursor: pointer;
+}
+
+.chat-hidden-toggle:hover {
+  color: var(--text);
+  border-top-color: var(--border-strong);
+}
+
+.chat-feed--compact {
+  gap: 0.15rem;
+}
+
+.chat-compact-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  width: 100%;
+  border: 0;
+  border-left: 2px solid transparent;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.85rem;
+  line-height: 1.35;
+  text-align: left;
+  padding: 0.05rem 0.2rem;
+  cursor: pointer;
+  /* Wiersz jest przyciskiem, ale nadal ma się dać zaznaczyć i skopiować. */
+  user-select: text;
+}
+
+.chat-compact-row:hover {
+  background: var(--veil-faint);
+}
+
+.chat-compact-row .chat-message-time {
+  margin-left: 0;
+  flex: none;
+}
+
+.chat-compact-row .chat-message-author {
+  flex: none;
+  white-space: nowrap;
+}
+
+.chat-compact-row .chat-portrait {
+  width: 1rem;
+  height: 1rem;
+  align-self: baseline;
+}
+
+.chat-compact-text,
+.chat-compact-summary {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.chat-compact-text {
+  white-space: pre-wrap;
+}
+
+/* Kolor przy lewej krawędzi zastępuje kartę: po nim widać rodzaj wiersza,
+   zanim się go przeczyta. */
+.chat-compact-row--dice {
+  border-left-color: rgb(var(--accent-rgb) / 45%);
+}
+
+.chat-compact-row--combat {
+  border-left-color: rgb(var(--hurt-rgb) / 55%);
+}
+
+.chat-compact-row--table {
+  border-left-color: rgb(var(--neutral-rgb) / 45%);
+}
+
+.chat-compact-row--talk.chat-message--whisper {
+  border-left-color: var(--whisper);
+}
+
+.chat-compact-row--talk.chat-message--whisper .chat-compact-text {
+  color: var(--whisper);
+  font-style: italic;
+}
+
+.chat-compact-summary--success {
+  color: var(--ok-ink);
+}
+
+.chat-compact-summary--failure {
+  color: var(--err-ink);
+}
+
+.chat-compact-summary--warn {
+  color: var(--warn);
+}
+
+/* Karta rozwinięta mimo trybu zwartego. Miejsce po prawej jest zarezerwowane,
+   żeby strzałka „zwiń" nie usiadła na godzinie ani na przycisku „Cofnij". */
+.chat-expanded {
+  position: relative;
+  padding-right: 1.4rem;
+}
+
+.chat-collapse {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-panel);
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 0.7rem;
+  line-height: 1;
+  padding: 0.15rem 0.3rem;
+  cursor: pointer;
+}
+
+.chat-collapse:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
 /* Stan pusty listy (etap 27f): zdanie i — gdy jest sensowny — pierwszy krok.
    Wyśrodkowanie jest celowe: pustka pośrodku panelu czyta się jak komunikat,
    pustka dosunięta do lewej jak zapomniany wiersz listy. */
@@ -3435,6 +3628,14 @@ input[type='color'] {
   min-width: 8rem;
 }
 
+/* Poziom ripperdoca (04.09.2026) — jedna liczba obok listy chirurgów, więc
+   nie ma prawa rozpychać wiersza jak dwa selecty obok. */
+.compendium-surgeon-skill {
+  flex: 0 0 3.5rem;
+  width: 3.5rem;
+  text-align: center;
+}
+
 .compendium-note {
   font-size: 0.75rem;
   color: var(--text-dim);
@@ -4728,6 +4929,30 @@ body.is-resizing {
   color: var(--text-dim);
 }
 
+/* Dzień odpoczynku i podana dawka — zielona krawędź jak przy karcie ekonomii,
+   bo to też jest rozliczenie przerwy między scenami, a nie zdarzenie walki. */
+.chat-recovery {
+  border-left: 3px solid var(--ok);
+  padding-left: 0.5rem;
+}
+
+.chat-recovery--warn {
+  border-left-color: var(--warn);
+}
+
+.chat-recovery-title {
+  margin: 0 0 0.15rem;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.chat-recovery-hp {
+  color: var(--ok);
+}
+
 .chat-action-body {
   display: flex;
   align-items: center;
@@ -5384,14 +5609,19 @@ body.is-resizing {
   color: var(--text);
 }
 
-/* The left edge carries the kind: a gun, a magazine, a manoeuvre. Three
-   colours the eye sorts without a legend. */
+/* The left edge carries the kind: a gun, a magazine, a jam, a manoeuvre. Four
+   colours the eye sorts without a legend — and the jam is the warning one,
+   because it is the box that has to be pressed before the gun works again. */
 .hud-slot-row.hud-slot--weapon {
   border-left-color: var(--accent);
 }
 
 .hud-slot-row.hud-slot--reload {
   border-left-color: var(--info);
+}
+
+.hud-slot-row.hud-slot--clear-jam {
+  border-left-color: var(--warn);
 }
 
 .hud-slot-row.hud-slot--action {
@@ -5811,9 +6041,15 @@ body.is-resizing {
   gap: 0.2rem;
 }
 
+/* `min-width`, nie `width`: guziki ± mają być kwadratowe i równe, ale w tym
+   samym miejscu siedzą guziki z napisem („Wezwij" Wsparcia, „Targuj"
+   Znajomości, „Podnieś" rejestru awansów), a sztywne 1,6 rem obcinało je do
+   „Wezw" i „Podn". Znalezione dwa razy: przy oględzinach 29b (naprawione wtedy
+   samym `.advance-buy`) i przy 30c — więc tym razem szerokość ustępuje
+   treści wszędzie. */
 .awareness-steps button {
-  width: 1.6rem;
-  padding: 0.05rem 0;
+  min-width: 1.6rem;
+  padding: 0.05rem 0.3rem;
   line-height: 1.3;
 }
 
@@ -5884,15 +6120,6 @@ body.is-resizing {
   padding: 0.05rem 0.4rem;
   line-height: 1.3;
   font-size: 0.74rem;
-}
-
-/* Selektor musi być dwuczłonowy, bo bije się z `.awareness-steps button`
-   (0,1,1) — samo `.advance-buy` (0,1,0) przegrywa kaskadę i guzik zostaje przy
-   1,6 rem, szerokości guzików ±1 panelu Zmysłu Walki. Napis wychodził wtedy
-   poza wiersz: w przewijanej liście Umiejętności widać było „Podn"
-   (znalezione przy oględzinach 29b, błąd jest z 29a). */
-.awareness-steps .advance-buy {
-  width: auto;
 }
 
 /* Zmiana Roli (etap 29b) — wybór i guzik w jednym wierszu, bo to jedna
@@ -5992,6 +6219,66 @@ body.is-resizing {
 
 .awareness-extras p {
   margin: 0.2rem 0 0;
+}
+
+/* Farmaceutyki: środki jeszcze nieodblokowane zostają na liście wyszarzone —
+   Medyk ma widzieć, co kupi za następny punkt Specjalizacji. */
+.pharma-list button {
+  margin-left: 0.35rem;
+  font-size: 0.68rem;
+  padding: 0.05rem 0.35rem;
+}
+
+.pharma-locked {
+  opacity: 0.5;
+}
+
+/* Osiem paneli Zdolności Ról (30a–30d) mieszka w kolumnie tożsamości karty,
+   a ta ma sztywne 15 rem (`.sheet-page`) — okno karty można rozciągać do woli
+   i nic z tego nie dostanie. Cztery kolumny wiersza zjadały tam całą
+   szerokość (wartość 4,5 rem + koszt 3,5 rem + dwa guziki), więc na nazwę
+   zostawało 15 px i sześć zdolności Zmysłu Walki czytało się jako „R..",
+   „W.", „B..", „P..", „W.", „W." — dwie pary nie do rozróżnienia. Nazwa
+   dostaje więc własną linię nad liczbami, a guziki idą na prawą krawędź.
+   Flex, nie siatka: osiem paneli ma w wierszu od trzech do czterech dzieci
+   i żadna jedna deklaracja `grid-template-areas` nie opisuje ich wszystkich.
+   `.hud-form` to drugi dom tego samego panelu — pudełko „Zmysł Walki"
+   w pasku akcji ma 254 px i ścinało nazwy tak samo („Reduk…", „Wyczu…").
+   Poza tymi dwoma (rejestr awansów w `.cp-advance`) wiersz zostaje
+   jednolinijkowy — tam miejsca jest dość. */
+.cp-awareness .awareness-row,
+.hud-form .awareness-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.1rem 0.4rem;
+}
+
+.cp-awareness .awareness-name,
+.hud-form .awareness-name {
+  flex: 1 0 100%;
+  white-space: normal;
+}
+
+.cp-awareness .awareness-value,
+.cp-awareness .awareness-cost,
+.hud-form .awareness-value,
+.hud-form .awareness-cost {
+  min-width: 0;
+  text-align: left;
+}
+
+/* `flex: none` obok `margin-left: auto`: bez niego automatyczny margines
+   zjada całą wolną przestrzeń wiersza, a guzik zostaje ścieśniony do własnego
+   minimum i wychodzi poza panel — „Wezwij" Wsparcia czytało się jako „Wezw". */
+.cp-awareness .awareness-steps,
+.hud-form .awareness-steps {
+  flex: none;
+  margin-left: auto;
+}
+
+/* `grid-column` nie znaczy nic w rodzicu, który przestał być siatką. */
+.cp-awareness .team-loyalty {
+  flex: 1 0 100%;
 }
 
 /* Etap 30c: Wsparcie i zespół Korpo. Oba panele stoją na tym samym arkuszu, co
@@ -8876,4 +9163,187 @@ body.is-resizing {
 
 .creator-skill-specialty--missing {
   border-color: var(--accent);
+}
+
+/* --- etap 32: wezwanie MG do Testu --- */
+
+/* Kubek, który czeka na wezwanie. Bursztyn zamiast zieleni rzutu z karty:
+   ten rzut nie jest pomysłem gracza, tylko czyjąś prośbą, i musi się różnić
+   jednym spojrzeniem. Oddech mocniejszy (ta sama klatka, co przy kreatorze),
+   bo kubek stoi w rogu, a wydarzenie dzieje się na środku stołu. */
+.dice-cup--call {
+  --cup-glow: var(--warn-rgb);
+  color: var(--warn);
+  border-color: var(--warn);
+  animation: dice-cup-call 1.2s ease-in-out infinite;
+}
+
+.chat-check {
+  border-left: 3px solid var(--warn);
+  padding-left: 0.5rem;
+}
+
+.chat-check--cancelled {
+  border-left-color: var(--border);
+  opacity: 0.65;
+}
+
+.chat-check-modifier {
+  margin: 0.1rem 0 0.3rem;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+/* Ramka wezwania w oknie rzutu — powtarza to, co stoi na karcie czatu, bo
+   gracz decyduje o Szczęściu tutaj, a nie tam. */
+.roll-call-frame {
+  border-left: 3px solid var(--warn);
+  padding-left: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.roll-call-prompt {
+  margin: 0 0 0.15rem;
+  font-size: 0.82rem;
+  font-style: italic;
+}
+
+/* Drabinka PT: siedem szczebli, więc zawija się zamiast rozpychać okno. */
+.check-ladder {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-bottom: 0.35rem;
+}
+
+.check-call-dialog {
+  max-width: 26rem;
+}
+
+/*
+ * Kopie zapasowe i pliki wymiany (etap 33) — zakładka MG „Kopie".
+ *
+ * Cztery sekcje jedna pod drugą, każda z tym samym rytmem: tytuł, rządek
+ * kontrolek, zdanie wyjaśniające. Rządki zawijają się jak `.ai-status-main`,
+ * bo panel boczny bywa zwężony do 15 rem, a lista rozwijana z nazwą postaci
+ * ściśnięta do zera nie mówi nic.
+ */
+.archive-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0.6rem;
+  overflow-y: auto;
+}
+
+.archive-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.archive-row-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.5rem;
+}
+
+.archive-select {
+  flex: 1 1 8rem;
+  min-width: 0;
+  padding: 0.25rem 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8rem;
+}
+
+.archive-file {
+  flex: 1 1 100%;
+  min-width: 0;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+/* Ścieżka katalogu kopii: długa, więc łamie się w środku zamiast rozpychać panel. */
+.archive-path {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  word-break: break-all;
+}
+
+.archive-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  /* Kopii bywa trzydzieści osiem — lista dostaje własne przewijanie, żeby
+     „Zrzut kampanii" nie uciekał pod ekran. */
+  max-height: 14rem;
+  overflow-y: auto;
+}
+
+.archive-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.4rem;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg-panel);
+}
+
+.archive-row-name {
+  flex: 1 0 100%;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.74rem;
+  color: var(--text);
+  word-break: break-all;
+}
+
+.archive-row-meta {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.archive-flag {
+  font-size: 0.72rem;
+  color: var(--warn);
+}
+
+.archive-check {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.archive-hint {
+  margin: 0;
+  font-size: 0.74rem;
+  line-height: 1.4;
+  color: var(--text-dim);
+}
+
+.archive-hint code {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.72rem;
+  /* `anywhere`, nie `break-all`: polecenie ma się łamać na spacjach, dopóki się
+     da. `break-all` tnie w środku słowa nawet wtedy, gdy obok jest spacja —
+     w panelu wychodziło z tego „na zwa-kopii". */
+  overflow-wrap: anywhere;
+}
+
+.archive-ok {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--ok-ink);
 }

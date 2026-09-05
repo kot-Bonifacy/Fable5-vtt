@@ -207,4 +207,37 @@ describe('filterCombatForPlayer', () => {
     const view = filterCombatForPlayer(combat([visible], { round: 1 }));
     expect(view.combatants[0]).not.toHaveProperty('hidden');
   });
+
+  it('swaps the alias into the name and never carries the real one', () => {
+    const masked = combatant({
+      id: 'arasaka',
+      name: 'Snajper Arasaki',
+      publicName: 'Ochroniarz',
+      initiative: 14,
+    });
+    const view = filterCombatForPlayer(combat([masked, visible], { round: 1 }));
+    expect(view.combatants[0]?.name).toBe('Ochroniarz');
+    expect(view.combatants[0]).not.toHaveProperty('publicName');
+    expect(JSON.stringify(view)).not.toContain('Snajper Arasaki');
+  });
+
+  it('leaves a figure with an empty alias unlabelled', () => {
+    const masked = combatant({ id: 'x', name: 'Ktoś Ważny', publicName: '', initiative: 9 });
+    const view = filterCombatForPlayer(combat([masked], { round: 1 }));
+    expect(view.combatants[0]?.name).toBe('');
+    expect(JSON.stringify(view)).not.toContain('Ktoś Ważny');
+  });
+
+  it('names the other end of a Hold the way the table knows it', () => {
+    const masked = combatant({ id: 'thug', name: 'Bosman Maelstromu', publicName: 'Zbir' });
+    const held = combatant({
+      id: 'ziti',
+      ownerId: 'user-1',
+      grapple: { role: 'defender', otherId: 'thug', otherName: 'Bosman Maelstromu' },
+    });
+    const view = filterCombatForPlayer(combat([masked, held], { round: 1 }));
+    const row = view.combatants.find((c) => c.id === 'ziti');
+    expect(row?.grapple?.otherName).toBe('Zbir');
+    expect(JSON.stringify(view)).not.toContain('Bosman Maelstromu');
+  });
 });

@@ -16,6 +16,7 @@ import {
   type CyberwareInstallation,
 } from './cyberware.js';
 import { isHousingOption, isLifestyleLevel, type CpredLifestyle } from './economy.js';
+import { isPharmaceuticalId } from './pharma.js';
 // Type-only the other way round: `roleability.ts` reads this file's sheet type,
 // so only its values travel here — the same bargain `creation.ts` makes above.
 import {
@@ -74,6 +75,7 @@ import {
   CPRED_STAT_LABELS,
   CPRED_STAT_MAX,
   CPRED_STAT_MIN,
+  type CpredStatId,
   type CpredStats,
 } from './stats.js';
 
@@ -371,6 +373,17 @@ export interface CpredItemRow {
 
 export interface CpredGearRow extends CpredItemRow {
   qty: number;
+  /**
+   * Co robi zużycie jednej sztuki — id środka z `CPRED_PHARMACEUTICALS`
+   * (`pharma.antybiotyk` …). Nieobecne na zwykłym wierszu: łom nie zużywa się
+   * przez to, że jest łomem.
+   *
+   * Na wierszu ekwipunku, a nie w osobnej tabeli karty, świadomie: dawka *jest*
+   * przedmiotem — waży, kupuje się ją, ginie razem z plecakiem — i `qty` liczy
+   * ją tak samo jak naboje. Osobna lista rozjechałaby się z ekwipunkiem przy
+   * pierwszym „oddaję Rico dwie fiolki".
+   */
+  consumable?: string;
 }
 
 /**
@@ -424,10 +437,56 @@ export interface CpredWeaponRow extends CpredItemRow {
   ammoId?: string;
   /** Rate of fire ("LA" on the Polish sheet). */
   rof: string;
+  /**
+   * Attachments bolted to this weapon, by compendium id (stage 31, s. 342).
+   *
+   * A list on the row rather than an inventory of its own, and the reason is
+   * the one `ammoId` gives: an attachment is not carried, it is *fitted*. What
+   * it does to the gun is read out of the catalogue at the moment the shot is
+   * planned, so a GM editing the table changes every rifle in the campaign at
+   * once — and an id the catalogue forgot simply frees its slot again.
+   */
+  attachmentIds?: string[];
+  /**
+   * Rounds left in each bolted-on weapon, by attachment id (stage 31).
+   *
+   * The underbarrels carry their own magazine — „jako Granatnik z tylko jednym
+   * granatem w magazynku" — and it is not the host's: firing the launcher must
+   * not empty the rifle. A map rather than one number because the row does not
+   * get to assume there is only ever one such attachment, even though the slot
+   * arithmetic currently makes it so.
+   */
+  attachmentAmmo?: Record<string, number>;
+  /**
+   * Kind of round loaded in each bolted-on weapon, by attachment id (02.09).
+   *
+   * The host's `ammoId` cannot answer this: the rifle is holding rifle rounds
+   * and the launcher under it is holding a grenade, and until this field
+   * existed the underbarrel was hard-wired to ordinary ammunition — which meant
+   * **no smoke and no gas could ever be fired from it**, the one delivery the
+   * rules give those rounds („Amunicja dymna", s. 345). A map for the reason
+   * `attachmentAmmo` is one: the row does not get to assume there is only ever
+   * one such attachment.
+   */
+  attachmentAmmoId?: Record<string, string>;
+  /**
+   * „Broń niskiej jakości zaczyna źle działać zawsze, gdy dojdzie do Krytycznej
+   * Porażki … Dopóki w ramach Akcji nie usuniesz usterki, broń nie nadaje się
+   * do użytku" (s. 244).
+   *
+   * On the row rather than derived, because a jam is a fact about *this* gun at
+   * *this* moment — the catalogue says the Dai Lung is poor quality, the row
+   * says today's one is currently a paperweight. Absent means working, which is
+   * what every weapon that is not of poor quality always is.
+   */
+  jammed?: boolean;
 }
 
 /** Rounds a magazine may hold on the sheet — the compendium's own cap. */
 export const WEAPON_AMMO_MAX = 500;
+
+/** Attachments one weapon row may carry — the rulebook's three slots. */
+export const WEAPON_ATTACHMENTS_MAX = 3;
 
 export interface CpredArmorRow extends CpredItemRow {
   /** Stopping Power the piece has when undamaged ("OB" on the Polish sheet). */
@@ -451,6 +510,34 @@ export interface CpredArmorRow extends CpredItemRow {
    */
   penalty?: number;
 }
+
+/**
+ * Gdzie postać jest w procesie naturalnego leczenia (s. 222–223).
+ *
+ * Dwa pola, a nie dwa luźne wiersze karty, bo obu dotyczy ta sama reguła
+ * kasowania: rana, która otwiera się na nowo, zabiera i ustabilizowanie,
+ * i tydzień antybiotyku — proces zaczyna się od zera.
+ */
+export interface CpredRecovery {
+  /**
+   * „Aby rozpocząć proces naturalnego leczenia, musisz zostać ustabilizowany"
+   * (s. 222). Ustawia je udane Ustabilizowanie — na **każdym** progu ran,
+   * nie tylko przy Śmiertelnie Rannym, bo PT ustabilizowania podręcznik podaje
+   * dla wszystkich trzech progów.
+   */
+  stabilized: boolean;
+  /**
+   * Ile dni działania Antybiotyku zostało (0–7, s. 150). Liczone w **dniach
+   * odpoczynku**, nie w kalendarzu — projekt nie ma jeszcze zegara świata
+   * (etap 37), a jedyny czytelnik tej liczby i tak odlicza je po jednym.
+   * „Efekty kilku antybiotyków nie kumulują się": druga dawka ustawia licznik
+   * z powrotem na siedem, a nie na czternaście.
+   */
+  antibioticDays: number;
+}
+
+/** Ile dni działa jedna dawka Antybiotyku (s. 150). */
+export const CPRED_ANTIBIOTIC_DAYS = 7;
 
 /**
  * A Critical Injury the character currently suffers (stage 15). The row keeps
@@ -585,6 +672,60 @@ export function cpredActiveInjuries<T extends { patched?: CpredPatchedInjury }>(
   injuries: readonly T[],
 ): T[] {
   return injuries.filter((injury) => injury.patched === undefined);
+}
+
+/**
+ * „Modyfikator pancerza" — what the worn pieces cost REF, ZW **and** RUCH.
+ *
+ * One function rather than three, because the rulebook prints one number: the
+ * armour table's column reads „−2 REF, ZW i RUCH" (s. 185) and every reader of
+ * it has to reach the same value. Until 02.09 only the RUCH half existed
+ * (`cpredMoveBudget`), so a punk in Metalgear shot, dodged and rolled
+ * Initiative as if they were in a T-shirt — the column said −4 and three of the
+ * four things it named never heard about it.
+ *
+ * „Kary nie sumują się — liczy się najwyższa" (s. 185): a heavy jacket *and* a
+ * helmet slow you by the worse of the two, not by both. Carried but unworn
+ * armour weighs nothing here — it protects nothing either (stage 15).
+ *
+ * Returns a negative number, or 0 when nothing worn costs anything.
+ */
+export function cpredArmorPenalty(armor: readonly CpredArmorRow[] | undefined): number {
+  if (!armor || armor.length === 0) return 0;
+  let worst = 0;
+  for (const row of armor) {
+    if (row.equipped === false) continue;
+    const penalty = row.penalty ?? 0;
+    if (penalty < worst) worst = penalty;
+  }
+  return worst;
+}
+
+/** Label the armour penalty carries wherever it is shown — one spelling. */
+export const CPRED_ARMOR_PENALTY_LABEL = 'Pancerz';
+
+/** The Stats the armour modifier reaches. RUCH is spent, not rolled, so it is not here. */
+const ARMOR_PENALTY_STATS: readonly CpredStatId[] = ['ref', 'dex'];
+
+/**
+ * What the armour takes off a Check made on this Stat, floored the way the
+ * table is („Minimum 0", s. 185): a REF 2 punk in Metalgear rolls at −2, not
+ * at −4, because the modifier may not push the Stat below zero.
+ *
+ * Zero for every Stat the column does not name — INT is INT in Metalgear.
+ */
+export function cpredArmorStatPenalty(
+  armor: readonly CpredArmorRow[] | undefined,
+  statId: CpredStatId,
+  statValue: number,
+): number {
+  if (!ARMOR_PENALTY_STATS.includes(statId)) return 0;
+  const penalty = cpredArmorPenalty(armor);
+  if (penalty === 0) return 0;
+  // `-0` is a number every caller would add without noticing and every test
+  // would compare wrong, so the floor returns the other zero.
+  const taken = Math.min(-penalty, Math.max(0, statValue));
+  return taken === 0 ? 0 : -taken;
 }
 
 /** When a self-healing wound comes off, and what put it there (stage 16h). */
@@ -764,6 +905,8 @@ export interface CpredCharacterData {
    * modifiers accumulate „dopóki nie zostaniesz ustabilizowany").
    */
   deathSaves: number;
+  /** Gdzie postać jest w procesie naturalnego leczenia (s. 222–223). */
+  recovery: CpredRecovery;
   /**
    * Eurodollars. From stage 23b this number is written **only by the server**:
    * a purchase, a transfer, the monthly settlement or a GM correction, each of
@@ -933,6 +1076,7 @@ export function createDefaultCharacterData(): CpredCharacterData {
     cyberware: [],
     criticalInjuries: [],
     deathSaves: 0,
+    recovery: { stabilized: false, antibioticDays: 0 },
     eddies: 0,
     lifestyle: null,
     reputationSources: [],
@@ -1061,6 +1205,92 @@ function validateText(
     return undefined;
   }
   return raw;
+}
+
+/**
+ * The attachment ids on one weapon row (stage 31).
+ *
+ * Returns `undefined` for a malformed list — the caller then drops the whole
+ * row, exactly as it does for a bad magazine. Duplicates are squeezed out here
+ * rather than refused: „Efekty dwóch jednakowych dodatków nie kumulują się"
+ * (s. 342) is enforced when mounting, and a sheet read back from the database
+ * should not be rejected over a repeat somebody's old client wrote.
+ */
+function readAttachmentIds(raw: unknown, issues: CpredValidationIssue[]): string[] | undefined {
+  if (raw === undefined || raw === null) return [];
+  if (!Array.isArray(raw) || raw.length > WEAPON_ATTACHMENTS_MAX) {
+    issues.push(issue('weapons', `Dodatki do broni: lista do ${WEAPON_ATTACHMENTS_MAX} pozycji.`));
+    return undefined;
+  }
+  const ids: string[] = [];
+  for (const value of raw) {
+    if (typeof value !== 'string' || !isValidCompendiumId(value)) {
+      issues.push(issue('weapons', 'Nieprawidłowy identyfikator dodatku do broni.'));
+      return undefined;
+    }
+    if (!ids.includes(value)) ids.push(value);
+  }
+  return ids;
+}
+
+/** Rounds left in each bolted-on weapon, by attachment id (stage 31). */
+function readAttachmentAmmo(
+  raw: unknown,
+  issues: CpredValidationIssue[],
+): Record<string, number> | undefined {
+  if (raw === undefined || raw === null) return {};
+  if (typeof raw !== 'object' || Array.isArray(raw)) {
+    issues.push(issue('weapons', 'Magazynki dodatków muszą być obiektem.'));
+    return undefined;
+  }
+  const entries = Object.entries(raw as Record<string, unknown>);
+  if (entries.length > WEAPON_ATTACHMENTS_MAX) {
+    issues.push(issue('weapons', `Magazynki dodatków: do ${WEAPON_ATTACHMENTS_MAX} pozycji.`));
+    return undefined;
+  }
+  const ammo: Record<string, number> = {};
+  for (const [id, value] of entries) {
+    if (!isValidCompendiumId(id)) {
+      issues.push(issue('weapons', 'Nieprawidłowy identyfikator dodatku do broni.'));
+      return undefined;
+    }
+    if (!isInteger(value) || value < 0 || value > WEAPON_AMMO_MAX) {
+      issues.push(issue('weapons', `Magazynek dodatku: liczba od 0 do ${WEAPON_AMMO_MAX}.`));
+      return undefined;
+    }
+    ammo[id] = value;
+  }
+  return ammo;
+}
+
+/** Round loaded in each bolted-on weapon, by attachment id (02.09). */
+function readAttachmentAmmoId(
+  raw: unknown,
+  issues: CpredValidationIssue[],
+): Record<string, string> | undefined {
+  if (raw === undefined || raw === null) return {};
+  if (typeof raw !== 'object' || Array.isArray(raw)) {
+    issues.push(issue('weapons', 'Naboje dodatków muszą być obiektem.'));
+    return undefined;
+  }
+  const entries = Object.entries(raw as Record<string, unknown>);
+  if (entries.length > WEAPON_ATTACHMENTS_MAX) {
+    issues.push(issue('weapons', `Naboje dodatków: do ${WEAPON_ATTACHMENTS_MAX} pozycji.`));
+    return undefined;
+  }
+  const ammo: Record<string, string> = {};
+  for (const [id, value] of entries) {
+    if (!isValidCompendiumId(id)) {
+      issues.push(issue('weapons', 'Nieprawidłowy identyfikator dodatku do broni.'));
+      return undefined;
+    }
+    if (typeof value !== 'string' || !isValidCompendiumId(value)) {
+      issues.push(issue('weapons', 'Nieprawidłowy identyfikator naboju dodatku.'));
+      return undefined;
+    }
+    ammo[id] = value;
+  }
+  return ammo;
 }
 
 /** The ammunition fields of a weapon row, or undefined when the input is bad. */
@@ -1573,7 +1803,27 @@ function collectCharacterDataPatch(
       // karabinu" is both at once.
       const ammoId =
         typeof row.ammoId === 'string' && isValidCompendiumId(row.ammoId) ? row.ammoId : undefined;
-      return { ...base, damage, ...ammo, rof, ...(ammoId ? { ammoId } : {}) };
+      // Stage 31: what is bolted to the gun, and what the bolted-on weapon has
+      // left in it. Both are dropped whole when malformed rather than repaired
+      // — a half-read attachment list would silently free a slot somebody paid
+      // 500 ed for.
+      const attachmentIds = readAttachmentIds(row.attachmentIds, issues);
+      if (attachmentIds === undefined) return undefined;
+      const attachmentAmmo = readAttachmentAmmo(row.attachmentAmmo, issues);
+      if (attachmentAmmo === undefined) return undefined;
+      const attachmentAmmoId = readAttachmentAmmoId(row.attachmentAmmoId, issues);
+      if (attachmentAmmoId === undefined) return undefined;
+      return {
+        ...base,
+        damage,
+        ...ammo,
+        rof,
+        ...(ammoId ? { ammoId } : {}),
+        ...(attachmentIds.length > 0 ? { attachmentIds } : {}),
+        ...(Object.keys(attachmentAmmo).length > 0 ? { attachmentAmmo } : {}),
+        ...(Object.keys(attachmentAmmoId).length > 0 ? { attachmentAmmoId } : {}),
+        ...(row.jammed === true ? { jammed: true } : {}),
+      };
     });
     if (weapons) patch.weapons = weapons;
   }
@@ -1644,9 +1894,32 @@ function collectCharacterDataPatch(
         issues.push(issue('gear', `Ilość musi być liczbą od 0 do ${ITEM_QTY_MAX}.`));
         return undefined;
       }
-      return { ...base, qty };
+      // Nieznane id środka jest **upuszczane**, a nie odrzucane: wiersz zostaje
+      // zwykłym ekwipunkiem i karta nadal się zapisuje. Ten sam kompromis co
+      // przy polach cyborgizacji niżej — kartę psuje się raz, a czyta stale.
+      const consumable =
+        typeof row.consumable === 'string' && isPharmaceuticalId(row.consumable)
+          ? row.consumable
+          : undefined;
+      return { ...base, qty, ...(consumable ? { consumable } : {}) };
     });
     if (gear) patch.gear = gear;
+  }
+  if ('recovery' in input) {
+    const raw = input.recovery;
+    if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+      issues.push(issue('recovery', 'Stan leczenia musi być obiektem.'));
+    } else {
+      const row = raw as Partial<CpredRecovery>;
+      const days = row.antibioticDays ?? 0;
+      if (!isInteger(days) || days < 0 || days > CPRED_ANTIBIOTIC_DAYS) {
+        issues.push(
+          issue('recovery', `Dni antybiotyku muszą być liczbą od 0 do ${CPRED_ANTIBIOTIC_DAYS}.`),
+        );
+      } else {
+        patch.recovery = { stabilized: row.stabilized === true, antibioticDays: days };
+      }
+    }
   }
   if ('cyberware' in input) {
     const cyberware = validateRows<CpredCyberwareRow>(

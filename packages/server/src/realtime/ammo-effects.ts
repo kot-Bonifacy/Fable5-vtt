@@ -9,8 +9,10 @@ import type {
   TokenHp,
 } from '@vtt/shared';
 import {
+  CPRED_EMP_STATUS_ID,
   cpredAmmoCheckOutcome,
   cpredCheckBase,
+  cpredEmpDisabled,
   criticalInjuryNames,
   describeAmmoFailure,
   formatMetres,
@@ -28,6 +30,7 @@ import {
   sheetExpiryRound,
   sheetFromCombatProfile,
   sheetWoundStatuses,
+  writeSheetStatusDisabled,
   writeSheetStatusTimer,
   type SheetForcedFailure,
 } from '../sheets.js';
@@ -225,11 +228,26 @@ async function applyAmmoFailure(
   /** Nazwy ran figury bez karty — nigdzie nie zapisane, więc liczone tutaj. */
   let statistInjuries: string[] = [];
 
+  /**
+   * Co Impuls EMP wyłączył temu celowi (04.09.2026, s. 345–347).
+   *
+   * Losowane raz, tu, i tym samym RNG co rzut — karta czatu, zapis przy
+   * statusie i monit „Minęła minuta" mają mówić o tych samych dwóch sztukach,
+   * a nie o trzech różnych parach.
+   */
+  let empDisabled: string[] = [];
+
   if (token.characterId) {
     const character = await deps.ctx.prisma.character.findUnique({
       where: { id: token.characterId },
     });
     if (!character) throw new RealtimeError('CHARACTER_NOT_FOUND');
+    if ((check.failure.statuses ?? []).includes(CPRED_EMP_STATUS_ID)) {
+      empDisabled = cpredEmpDisabled(
+        parseCharacterData(character.data, deps.ctx.cpred).cyberware,
+        rng,
+      );
+    }
     const applied = applyForcedFailureToSheet(character, deps.ctx.cpred, failure, compendium);
     const saved = await deps.ctx.prisma.character.update({
       where: { id: character.id },
@@ -306,6 +324,7 @@ async function applyAmmoFailure(
       durationS: check.failure.durationS ?? 0,
       ...(timed?.expiresAtRound !== undefined ? { expiresAtRound: timed.expiresAtRound } : {}),
     },
+    empDisabled,
   );
 
   const statusLabels = (check.failure.statuses ?? []).map((id) =>
@@ -319,6 +338,10 @@ async function applyAmmoFailure(
     statuses: statusLabels,
     ...(injuryLabels.length > 0 ? { injuries: injuryLabels } : {}),
   });
+  // „Wyłączone: Kerenzikov, Cyberoko Kiroshi" — po stronie karty czatu to
+  // jedyna różnica między „oblał Test" a wiedzą, czego mu w tej minucie brakuje.
+  const disabledNote = empDisabled.length > 0 ? `wyłączone: ${empDisabled.join(', ')}` : '';
+  if (disabledNote) notes.push(disabledNote);
 
   // What the GM's „Minęła minuta" button will lift. Only what this hit actually
   // put on: a status the target already carried is not this round's to end.
@@ -340,7 +363,7 @@ async function applyAmmoFailure(
       : {}),
   };
   await logAmmoFailure(deps, campaignId, authorId, entry, `${token.name} — ${ammo.name}`);
-  return summary;
+  return disabledNote ? `${summary} · ${disabledNote}` : summary;
 }
 
 /**
@@ -365,6 +388,7 @@ async function applyFailureStatuses(
   tokenId: string,
   statusIds: readonly string[],
   timer: { source: string; durationS: number; expiresAtRound?: number },
+  empDisabled: readonly string[] = [],
 ): Promise<string[]> {
   if (statusIds.length === 0) return [];
   const token = await deps.ctx.prisma.token.findUnique({ where: { id: tokenId } });
@@ -381,6 +405,9 @@ async function applyFailureStatuses(
       added.push(id);
     }
     if (timer.durationS > 0) statusData = writeSheetStatusTimer(statusData, id, timer);
+    if (id === CPRED_EMP_STATUS_ID && empDisabled.length > 0) {
+      statusData = writeSheetStatusDisabled(statusData, id, empDisabled);
+    }
   }
   await deps.ctx.prisma.token.update({
     where: { id: tokenId },

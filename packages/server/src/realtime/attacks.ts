@@ -22,10 +22,14 @@ import type {
   RollResult,
   ScenePoint,
   SessionUser,
+  WeaponAttachmentPayload,
+  WeaponAttachmentResult,
+  WeaponClearJamPayload,
   WeaponReloadPayload,
 } from '@vtt/shared';
 import {
   CPRED_ACTION_ATTACK,
+  CPRED_ACTION_CLEAR_JAM,
   CPRED_ACTION_RELOAD,
   CPRED_AUTOFIRE_SKILL_ID,
   CPRED_EVASION_SKILL_ID,
@@ -37,6 +41,13 @@ import {
   ammoFitsWeapon,
   ammoOffersSecondRoll,
   ammoProfilesOf,
+  attachmentMountProblem,
+  attachmentProfilesOf,
+  attachmentSlotsFree,
+  fittedAttachmentsFor,
+  resolveAttachmentWeapon,
+  weaponMagazineWith,
+  type CpredAttachmentProfile,
   combatProfileOperatedBy,
   combatProfileWithCombatValue,
   concentrationBase,
@@ -182,27 +193,61 @@ async function throwProfileOf(
  * by hand resolves to nothing, which the planner rejects for ranged attacks —
  * without a range table there is no DV.
  */
+interface ResolvedWeaponRow {
+  row: CpredCharacterData['weapons'][number];
+  resolved: ResolvedWeapon | null;
+  typeId: string | null;
+  ammo: CpredAmmoProfile | null;
+  /** Attachments bolted to the row, resolved from the catalogue (stage 31). */
+  attachments: CpredAttachmentProfile[];
+  /** The weapon `attachmentId` names, when the caller asked for one. */
+  secondary: ResolvedWeapon | null;
+  /** The round in *that* weapon's own magazine (02.09). */
+  secondaryAmmo: CpredAmmoProfile | null;
+}
+
 async function resolveWeaponRow(
   deps: RealtimeDeps,
   campaignId: string,
   data: CpredCharacterData,
   weaponRowId: unknown,
-): Promise<{
-  row: CpredCharacterData['weapons'][number];
-  resolved: ResolvedWeapon | null;
-  typeId: string | null;
-  ammo: CpredAmmoProfile | null;
-}> {
+  /**
+   * Attachment the shot is being fired *with* (stage 31). Resolved here rather
+   * than in the planner for the reason the weapon and the round are: the
+   * catalogue is the server's, and the planner is handed facts.
+   */
+  attachmentId?: unknown,
+): Promise<ResolvedWeaponRow> {
   if (typeof weaponRowId !== 'string') throw new RealtimeError('BAD_REQUEST');
   const row = data.weapons.find((weapon) => weapon.id === weaponRowId);
   if (!row) throw new RealtimeError('UNKNOWN_WEAPON');
-  if (!row.compendiumId) return { row, resolved: null, typeId: null, ammo: null };
+  const bare = {
+    row,
+    resolved: null,
+    typeId: null,
+    ammo: null,
+    attachments: [],
+    secondary: null,
+    secondaryAmmo: null,
+  };
+  if (!row.compendiumId) return bare;
 
   const compendium = await buildCompendiumSync(deps, campaignId);
   const entry = compendium.entries.find((candidate) => candidate.id === row.compendiumId);
-  if (!entry || !isWeaponEntry(entry)) return { row, resolved: null, typeId: null, ammo: null };
+  if (!entry || !isWeaponEntry(entry)) return bare;
   const weaponTypeById = new Map(compendium.weaponTypes.map((type) => [type.id, type]));
   const resolved = resolveWeapon(entry, { weaponTypeById });
+  const attachments = fittedAttachmentsFor(
+    row.attachmentIds,
+    attachmentProfilesOf(compendium.entries),
+    resolved,
+  );
+  const firedWith =
+    typeof attachmentId === 'string'
+      ? attachments.find((candidate) => candidate.id === attachmentId)
+      : undefined;
+  const lookup = ammoLookup(compendium.entries);
+  const secondary = firedWith ? resolveAttachmentWeapon(firedWith, { weaponTypeById }) : null;
   return {
     row,
     resolved,
@@ -210,8 +255,25 @@ async function resolveWeaponRow(
     // Stage 16g: what is actually in the magazine. Read here rather than in the
     // planner for the same reason the weapon is — the catalogue is the server's,
     // and the planner is handed facts, never a place to look them up.
-    ammo: loadedAmmoFor(row, resolved, ammoLookup(compendium.entries)),
+    ammo: loadedAmmoFor(row, resolved, lookup),
+    attachments,
+    secondary,
+    // The bolted-on weapon's own magazine has its own load (02.09), read the
+    // same way and from the same catalogue.
+    secondaryAmmo:
+      firedWith && secondary
+        ? loadedAmmoFor({ ...(attachmentAmmoIdOf(row, firedWith.id) ?? {}) }, secondary, lookup)
+        : null,
   };
+}
+
+/** The round loaded in one bolted-on weapon, as `loadedAmmoFor` wants it. */
+function attachmentAmmoIdOf(
+  row: CpredCharacterData['weapons'][number],
+  attachmentId: string,
+): { ammoId: string } | null {
+  const ammoId = row.attachmentAmmoId?.[attachmentId];
+  return ammoId ? { ammoId } : null;
 }
 
 /** Catalogue lookup for one campaign's ammunition rows (stage 16g). */
@@ -389,9 +451,18 @@ async function spendAttackCosts(
   }
 
   const { character, data } = source;
-  const weapons = data.weapons.map((row) =>
-    row.id === meta.weaponRowId ? { ...row, ammoCurrent: meta.ammoAfter } : row,
-  );
+  // Stage 31: a shot from a bolted-on weapon spends the *attachment's* rounds.
+  // The card already carries which weapon fired („attachmentId"), so the write
+  // needs no second lookup — and the rifle's magazine is left alone, which is
+  // the whole point of the underbarrel having one of its own.
+  const weapons = data.weapons.map((row) => {
+    if (row.id !== meta.weaponRowId) return row;
+    if (!meta.attachmentId) return { ...row, ammoCurrent: meta.ammoAfter };
+    return {
+      ...row,
+      attachmentAmmo: { ...(row.attachmentAmmo ?? {}), [meta.attachmentId]: meta.ammoAfter },
+    };
+  });
   const updated = mergeCharacterData(data, {
     weapons,
     ...(luckSpent > 0 ? { luckCurrent: data.luckCurrent - luckSpent } : {}),
@@ -404,7 +475,49 @@ async function spendAttackCosts(
   await emitTokensOfCharacter(deps, campaignId, saved);
 }
 
-/** „24 m (13–25 m) · PT 15 · magazynek 7/8" — the card's explanation line. */
+/** What the attack card adds when the shot broke the gun that made it. */
+const CPRED_JAM_DETAIL = 'broń niskiej jakości zacięła się — usuń usterkę (Akcja)';
+
+/**
+ * „Broń niskiej jakości zaczyna źle działać zawsze, gdy dojdzie do Krytycznej
+ * Porażki (wyrzucisz 1 w Teście ataku). Dopóki w ramach Akcji nie usuniesz
+ * usterki, broń nie nadaje się do użytku" (s. 244).
+ *
+ * Three conditions, and each of them earns its place:
+ *
+ *  - the die was a **natural 1 that counted**. A Solo who bought Wyjście
+ *    z opresji „ignoruje Krytyczne porażki … wyrzucone w Testach ataku"
+ *    (s. 146) — an ignored fumble is not a fumble, so their Dai Lung holds;
+ *  - the shot came from the **host weapon**, not from something bolted under
+ *    it: an attachment's weapon is built from a weapon *type* and has no
+ *    quality to be poor;
+ *  - the figure has a **sheet**. A statist's gun lives in `combatProfile`,
+ *    which carries no catalogue entry and therefore no quality — one more
+ *    place where a figure nobody statted is simply not asked the question.
+ *
+ * Returns whether the gun jammed, so the card can say so.
+ */
+async function jamPoorWeapon(
+  deps: RealtimeDeps,
+  campaignId: string,
+  source: AttackSource,
+  meta: CpredAttackMeta,
+  resolved: ResolvedWeapon | null | undefined,
+  result: RollResult,
+): Promise<boolean> {
+  if (source.kind !== 'character') return false;
+  if (meta.attachmentId) return false;
+  if (resolved?.quality !== 'poor') return false;
+  const critical = result.critical;
+  if (!critical || critical.type !== 'fumble' || critical.ignored === true) return false;
+  const { character, data } = source;
+  const row = data.weapons.find((weapon) => weapon.id === meta.weaponRowId);
+  if (!row || row.jammed === true) return false;
+  await saveWeaponRow(deps, campaignId, character, data, row.id, { jammed: true });
+  return true;
+}
+
+/** „24 m (13–25 m) · PT 15" — the card's explanation line. */
 function attackDetail(meta: CpredAttackMeta): string {
   const parts: string[] = [];
   if (!meta.melee) {
@@ -431,13 +544,11 @@ function attackDetail(meta: CpredAttackMeta): string {
   // because „Nie ma cech specjalnych" is not worth a line on every card.
   if (meta.ammo) parts.push(`nabój: ${meta.ammo.name}`);
   if (meta.mode !== 'single') parts.push(meta.modeLabel);
-  if (meta.ammoCost > 0) {
-    // Capacity, not „what was in there a moment ago" — the two agree only while
-    // the weapon started the shot full, which is why a single shot looked right
-    // and a ten-round burst printed „29/39" on a forty-round magazine.
-    const capacity = meta.ammoMax ?? meta.ammoCost + meta.ammoAfter;
-    parts.push(`magazynek ${meta.ammoAfter}/${capacity}`);
-  }
+  // Stan magazynka celowo NIE trafia na kartę (decyzja MG z 01.09.2026): licznik
+  // naboi stoi w panelu postaci przy broni i odświeża się tym samym strzałem, a
+  // druga kopia tej samej liczby na końcu każdej linii ataku była szumem.
+  // `meta.ammoAfter` i `meta.ammoMax` zostają w metadanych — czyta je serwer
+  // (odmowa strzału pustą bronią) i bot planujący turę.
   return parts.join(' · ');
 }
 
@@ -842,7 +953,13 @@ export async function performAttackRoll(
           ? metresForRules(distanceToCover(origin, coverTarget) * metresPerPixel(sceneView))
           : metresForRules(metresBetween(origin, aimPoint, sceneView));
 
-      const weapon = await resolveWeaponRow(deps, campaignId, data, payload?.request?.weaponRowId);
+      const weapon = await resolveWeaponRow(
+        deps,
+        campaignId,
+        data,
+        payload?.request?.weaponRowId,
+        payload?.request?.attachmentId,
+      );
       // Being in a Hold is −2 to everything and takes two-handed weapons away
       // (stage 14d). Read from the tracker, never from the request.
       const attackerGrapple = await grappleStateForToken(deps.ctx.prisma, scene.id, attacker.id);
@@ -1028,6 +1145,13 @@ export async function performAttackRoll(
       // log is where rulings live.
       if (payload?.request?.ignoreCover === true) {
         result.attack.detail = `${result.attack.detail} · strzał mimo osłony`;
+      }
+      // „Broń niskiej jakości zaczyna źle działać zawsze, gdy dojdzie do
+      // Krytycznej Porażki" (s. 244). After the card is built and before it is
+      // stored, so the line the table reads and the flag on the sheet come from
+      // the same die.
+      if (await jamPoorWeapon(deps, campaignId, source, meta, weapon.resolved, result)) {
+        result.attack.detail = `${result.attack.detail} · ${CPRED_JAM_DETAIL}`;
       }
 
       const stored = await deps.ctx.prisma.chatMessage.create({
@@ -1689,6 +1813,7 @@ async function spendCharacterAction(
   sceneId: string | null,
   character: Character,
   user: SessionUser,
+  actionId: string = CPRED_ACTION_RELOAD,
 ): Promise<void> {
   if (!sceneId) return;
   const scene = await deps.ctx.prisma.scene.findUnique({ where: { id: sceneId } });
@@ -1702,9 +1827,9 @@ async function spendCharacterAction(
     campaignId,
     scene,
     token.id,
-    { kind: 'action', actionId: CPRED_ACTION_RELOAD },
+    { kind: 'action', actionId },
     user,
-    CPRED_ACTION_RELOAD,
+    actionId,
   );
 }
 
@@ -1726,6 +1851,40 @@ export const weaponReloadEvent = defineEvent<WeaponReloadPayload, { ammo: number
       sceneId: socket.data.viewedSceneId,
       payload,
     }),
+});
+
+/**
+ * „Dopóki w ramach Akcji nie usuniesz usterki, broń nie nadaje się do użytku.
+ * Usunięcie problemu nie wymaga Testu" (s. 244).
+ *
+ * An Action and a flag, and deliberately nothing else: no roll to plan, no card
+ * to deliver, no sound on the map. The one thing worth saying about the order
+ * is that the Action is booked *before* the flag is cleared — a character with
+ * nothing left in the turn must not end up with a working gun and an unpaid
+ * Action, which is the bargain `weapon:reload` strikes one function below.
+ */
+export const weaponClearJamEvent = defineEvent<WeaponClearJamPayload, { jammed: boolean }>({
+  name: 'weapon:clear-jam',
+  handler: async ({ deps, socket, user, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    const character = await requireRollableCharacter(deps, campaignId, user, payload?.characterId);
+    const data = parseCharacterData(character.data, deps.ctx.cpred);
+    const row = data.weapons.find((weapon) => weapon.id === payload?.weaponRowId);
+    if (!row) throw new RealtimeError('UNKNOWN_WEAPON');
+    // A gun nobody jammed costs nothing: the click was a misfire, not an
+    // Action — the same answer a full magazine gets from a reload.
+    if (row.jammed !== true) return { jammed: false };
+    await spendCharacterAction(
+      deps,
+      campaignId,
+      socket.data.viewedSceneId,
+      character,
+      user,
+      CPRED_ACTION_CLEAR_JAM,
+    );
+    await saveWeaponRow(deps, campaignId, character, data, row.id, { jammed: undefined });
+    return { jammed: false };
+  },
 });
 
 /** One reload, socket-free — see `performAttackRoll` for why it is split out. */
@@ -1753,6 +1912,23 @@ export async function performWeaponReload(
     const data = parseCharacterData(character.data, registry);
     const row = data.weapons.find((weapon) => weapon.id === payload?.weaponRowId);
     if (!row) throw new RealtimeError('UNKNOWN_WEAPON');
+
+    // Stage 31: refilling what is bolted on rather than the gun. Its own
+    // magazine, its own Action — and since 02.09 its own choice of round, for
+    // the reason the host row has one: „Amunicja dymna" is fired from a Grenade
+    // Launcher, and the launcher on this sheet is usually the underbarrel.
+    if (typeof payload?.attachmentId === 'string') {
+      return reloadAttachment(deps, {
+        campaignId,
+        user,
+        sceneId,
+        character,
+        data,
+        row,
+        attachmentId: payload.attachmentId,
+        ammoId: payload?.ammoId,
+      });
+    }
 
     // What is being loaded: an id, „ordinary" (null), or „leave it alone".
     const requested = await requireLoadableAmmo(deps, campaignId, row, payload?.ammoId);
@@ -1790,6 +1966,164 @@ export async function performWeaponReload(
     return { ammo: row.ammoMax };
   }
 }
+
+/**
+ * Refilling the weapon somebody bolted under the barrel (stage 31).
+ *
+ * The host's magazine is not touched, which is the whole reason the underbarrel
+ * carries one of its own — and an attachment that holds nothing (a bayonet)
+ * refuses with the same code a bow gets, because the answer is the same: there
+ * is no magazine here to fill.
+ *
+ * Which round goes in is chosen here too (02.09), by the same bargain the host
+ * row strikes: „żeby zmienić nabój, trzeba przeładować", so a swap books the
+ * Action even when the launcher was already loaded. Without it the underbarrel
+ * was wired to ordinary ammunition and the smoke round had no barrel to leave.
+ */
+async function reloadAttachment(
+  deps: RealtimeDeps,
+  options: {
+    campaignId: string;
+    user: SessionUser;
+    sceneId: string | null;
+    character: Character;
+    data: CpredCharacterData;
+    row: CpredCharacterData['weapons'][number];
+    attachmentId: string;
+    /** Round to load; `null` is ordinary, `undefined` leaves it alone. */
+    ammoId?: unknown;
+  },
+): Promise<{ ammo: number }> {
+  const { campaignId, user, sceneId, character, data, row, attachmentId } = options;
+  const weapon = await resolveWeaponRow(deps, campaignId, data, row.id, attachmentId);
+  const fitted = weapon.attachments.find((entry) => entry.id === attachmentId);
+  if (!fitted || !weapon.secondary) throw new RealtimeError('UNKNOWN_ATTACHMENT');
+  const capacity = weapon.secondary.magazine ?? 0;
+  if (capacity <= 0) throw new RealtimeError('WEAPON_HAS_NO_MAGAZINE');
+
+  // Judged against the *bolted-on* weapon, not the gun holding it: a rifle round
+  // does not fit the launcher under it, and neither does the launcher's grenade
+  // fit the rifle.
+  const requested = await requireLoadableAmmo(deps, campaignId, row, options.ammoId, {
+    resolved: weapon.secondary,
+  });
+  const current = row.attachmentAmmoId?.[attachmentId];
+  const nextAmmoId = requested === undefined ? current : (requested?.id ?? undefined);
+  const changing = nextAmmoId !== current;
+
+  const loaded = row.attachmentAmmo?.[attachmentId] ?? capacity;
+  // A full magazine costs nothing — unless the round is changing, and then the
+  // full magazine comes out, exactly as it does on the host row.
+  if (loaded >= capacity && !changing) return { ammo: loaded };
+
+  const attachmentAmmoId = { ...(row.attachmentAmmoId ?? {}) };
+  if (nextAmmoId) attachmentAmmoId[attachmentId] = nextAmmoId;
+  else delete attachmentAmmoId[attachmentId];
+
+  await spendCharacterAction(deps, campaignId, sceneId, character, user);
+  await saveWeaponRow(deps, campaignId, character, data, row.id, {
+    attachmentAmmo: { ...(row.attachmentAmmo ?? {}), [attachmentId]: capacity },
+    attachmentAmmoId,
+  });
+  await emitReloadMapFx(deps, campaignId, sceneId, character, data, row.id);
+  return { ammo: capacity };
+}
+
+/**
+ * Bolting something onto a weapon, and taking it off again (stage 31, s. 342).
+ *
+ * Its own event rather than a sheet patch, and for the reason `eddies` got one
+ * in 23b: the change has consequences the sheet cannot compute from the field
+ * being written. Mounting a drum grows the magazine off a table that lives in
+ * the catalogue; taking one off shrinks it and has to clamp the rounds still in
+ * it; and „Efekty dwóch jednakowych dodatków nie kumulują się" is a refusal, not
+ * a value. All three are decided here, once, on the merged sheet.
+ */
+export const weaponAttachmentEvent = defineEvent<WeaponAttachmentPayload, WeaponAttachmentResult>({
+  name: 'weapon:attachment',
+  handler: async ({ deps, socket, user, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    const character = await requireRollableCharacter(deps, campaignId, user, payload?.characterId);
+    const registry = deps.ctx.cpred;
+    const data = parseCharacterData(character.data, registry);
+    const row = data.weapons.find((weapon) => weapon.id === payload?.weaponRowId);
+    if (!row) throw new RealtimeError('UNKNOWN_WEAPON');
+    if (typeof payload?.attachmentId !== 'string') throw new RealtimeError('BAD_REQUEST');
+    const mounting = payload.action !== 'unmount';
+
+    const compendium = await buildCompendiumSync(deps, campaignId);
+    const weaponTypeById = new Map(compendium.weaponTypes.map((type) => [type.id, type]));
+    const entry = row.compendiumId
+      ? compendium.entries.find((candidate) => candidate.id === row.compendiumId)
+      : undefined;
+    // The same refusal a hand-typed row gets when it tries to shoot: without a
+    // catalogue entry there is no weapon to bolt anything to.
+    if (!entry || !isWeaponEntry(entry)) throw new RealtimeError('UNKNOWN_WEAPON');
+    const resolved = resolveWeapon(entry, { weaponTypeById });
+    const catalogue = attachmentProfilesOf(compendium.entries);
+    const fitted = fittedAttachmentsFor(row.attachmentIds, catalogue, resolved);
+
+    let next: CpredAttachmentProfile[];
+    if (mounting) {
+      const attachment = catalogue.find((candidate) => candidate.id === payload.attachmentId);
+      if (!attachment) throw new RealtimeError('UNKNOWN_ATTACHMENT');
+      const problem = attachmentMountProblem(attachment, resolved, fitted);
+      if (problem) throw new RealtimeError(problem);
+      next = [...fitted, attachment];
+    } else {
+      if (!fitted.some((candidate) => candidate.id === payload.attachmentId)) {
+        throw new RealtimeError('UNKNOWN_ATTACHMENT');
+      }
+      next = fitted.filter((candidate) => candidate.id !== payload.attachmentId);
+    }
+
+    // „Broń może wystrzelić tyle pocisków, ile wyszczególniono w tabeli"
+    // (s. 344). The magazine follows what is bolted on, and the rounds in it are
+    // clamped rather than kept: taking a drum off a rifle holding forty leaves
+    // twenty-five, because the other fifteen went with the drum.
+    const ammoMax = weaponMagazineWith(resolved, next) ?? row.ammoMax;
+    const ammoCurrent = Math.min(row.ammoCurrent, ammoMax);
+    // An attachment coming off takes its own magazine with it, so the sheet does
+    // not carry a count for a launcher that is no longer there.
+    const attachmentAmmo = Object.fromEntries(
+      Object.entries(row.attachmentAmmo ?? {}).filter(([id]) =>
+        next.some((candidate) => candidate.id === id),
+      ),
+    );
+    // And with it the round it was holding (02.09) — a load without a magazine
+    // to sit in would come back the moment the same launcher was bolted on again.
+    const attachmentAmmoId = Object.fromEntries(
+      Object.entries(row.attachmentAmmoId ?? {}).filter(([id]) =>
+        next.some((candidate) => candidate.id === id),
+      ),
+    );
+    // A bolted-on weapon arrives loaded: nobody buys an empty underbarrel, and
+    // the alternative is a launcher that needs an Action before it can ever fire.
+    if (mounting) {
+      const secondary = resolveAttachmentWeapon(next[next.length - 1] as CpredAttachmentProfile, {
+        weaponTypeById,
+      });
+      if (secondary && (secondary.magazine ?? 0) > 0) {
+        attachmentAmmo[payload.attachmentId] = secondary.magazine as number;
+      }
+    }
+
+    const attachmentIds = next.map((candidate) => candidate.id);
+    await saveWeaponRow(deps, campaignId, character, data, row.id, {
+      attachmentIds,
+      attachmentAmmo,
+      attachmentAmmoId,
+      ammoMax,
+      ammoCurrent,
+    });
+    return {
+      attachmentIds,
+      slotsFree: attachmentSlotsFree(resolved, next),
+      ammoMax,
+      ammoCurrent,
+    };
+  },
+});
 
 /**
  * The same reload for a figure with no sheet (29.08).
@@ -1898,6 +2232,12 @@ async function requireLoadableAmmo(
   campaignId: string,
   row: CpredCharacterData['weapons'][number],
   ammoId: unknown,
+  /**
+   * Weapon the round has to fit, when it is not the row's own (02.09): reloading
+   * the underbarrel judges the round against the launcher, never against the
+   * rifle carrying it.
+   */
+  against?: { resolved: ResolvedWeapon | null },
 ): Promise<CpredAmmoProfile | null | undefined> {
   if (ammoId === undefined) return undefined;
   if (ammoId === null || ammoId === '') return null;
@@ -1907,11 +2247,16 @@ async function requireLoadableAmmo(
   const ammo = ammoLookup(compendium.entries)(ammoId);
   if (!ammo) throw new RealtimeError('UNKNOWN_AMMO');
 
-  const entry = row.compendiumId
-    ? compendium.entries.find((candidate) => candidate.id === row.compendiumId)
-    : undefined;
-  const weaponTypeById = new Map(compendium.weaponTypes.map((type) => [type.id, type]));
-  const resolved = entry && isWeaponEntry(entry) ? resolveWeapon(entry, { weaponTypeById }) : null;
+  let resolved: ResolvedWeapon | null;
+  if (against) {
+    resolved = against.resolved;
+  } else {
+    const entry = row.compendiumId
+      ? compendium.entries.find((candidate) => candidate.id === row.compendiumId)
+      : undefined;
+    const weaponTypeById = new Map(compendium.weaponTypes.map((type) => [type.id, type]));
+    resolved = entry && isWeaponEntry(entry) ? resolveWeapon(entry, { weaponTypeById }) : null;
+  }
   // The same test the planner would apply — said now, so nobody discovers it
   // with a target already picked out.
   if (!ammoFitsWeapon(ammo, resolved)) throw new RealtimeError('AMMO_MISMATCH');

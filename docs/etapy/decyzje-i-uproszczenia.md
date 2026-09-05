@@ -11,6 +11,21 @@ przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — ni
 
 ## Sieć i walka — czytanie RAW
 
+- **Broń podwieszana strzela amunicją zwykłą, nie wybieraną (01.09).** Wiersz `↳` ma własny
+  magazynek (`attachmentAmmo`), ale **nie ma własnego `ammoId`**: podwieszany granatnik rzuca
+  granatem, którego obrażenia (6k6) i Eksplozję niesie sam typ broni, a podwieszana strzelba
+  strzela zwykłym pociskiem. Wybór naboju specjalnego **do broni doczepionej** wymagałby trzeciego
+  pola na wierszu karty, a przy stole rozstrzyga się to tak, jak resztę fikcji — MG mówi, co jest
+  w komorze. Nabój w magazynku broni-gospodarza celowo **nie** przechodzi na doczepioną:
+  amunicja przeciwpancerna w karabinie nie jest w granatniku pod nim.
+
+- **Bonus lunety i smartguna nie kumuluje się z niczym poza sobą (01.09).** Podręcznik pisze przy
+  lunecie „Nie kumuluje się z cyborgizacją Teleskop" (s. 344); VTT niesie tę informację jako
+  `rangedBonus.conflictsWith` i **nie egzekwuje jej**, bo Teleskop nie daje dziś żadnego
+  policzalnego bonusu, z którym byłoby się co kłócić. Gdy kiedyś zacznie, warunek jest już
+  w danych i wystarczy go przeczytać. „Efekty dwóch jednakowych dodatków nie kumulują się"
+  (s. 342) jest natomiast egzekwowane — jako odmowa przy montażu, nie jako milczenie później.
+
 - **Sufit pancerza pracownika Korpo nie jest egzekwowany (31.08, sprawdzone w przeglądarce).**
   „Najcięższym pancerzem […] jest Lekka kurtka kuloodporna. Taka polityka Korporacji" (s. 154)
   jedzie jako **zdanie na wierszu pancerza**, nie jako walidacja: karta pracownika jest zwykłą
@@ -195,6 +210,39 @@ to jest ten akapit do przeczytania na nowo.
   jest przekreślony, a `cpredActiveInjuries` wycina ją ze wszystkiego, co czyta skutki. Trzy rany,
   przy których tabela drukuje „Łatanie trwale usuwa Efekt tej Rany", schodzą z karty naprawdę —
   o tym rozstrzyga `cpredCarePermanent`, nie tryb guzika.
+
+## Leczenie i farmaceutyki (03.09)
+
+- **„Opieki jako mnożnika tempa" w podręczniku nie ma — i nie będzie.** Zaległość opisywała
+  „opiekę (Ratownictwo medyczne / klinika / szpital) jako mnożnik tempa", ale to była parafraza,
+  nie cytat: s. 225 wycenia **cenę** ustabilizowania i leczenia Ran Krytycznych („Gdy trafiasz do
+  szpitala, musisz zapłacić tylko za ustabilizowanie lub leczenie o najwyższym PT"), a tempo
+  powrotu do zdrowia jest jedno dla wszystkich — „tyle PW, ile wynosi jego Budowa Ciała" (s. 222).
+  Podnoszą je dokładnie dwie rzeczy i obie są w VTT: chrom „Ulepszone przeciwciała" (BC × 2,
+  s. 362) i Antybiotyk (+2 dziennie przez tydzień, s. 150).
+
+- **„Skuteczny tylko raz dziennie" / „raz na tydzień" jest drukowane, nie egzekwowane.** Turbo
+  uzdrawiacz, Stym i Zryw mają w tabeli limit częstotliwości; karta czatu wypisuje go słowami
+  z podręcznika i na tym kończy. Projekt nie ma zegara świata do **etapu 37** (kalendarz kampanii),
+  a wymyślanie doby na potrzeby jednego licznika byłoby zgadywaniem, którego przy stole nikt nie
+  sprawdzi. Dzień odpoczynku jest **zdarzeniem**, nie punktem na osi czasu — i licznik antybiotyku
+  odlicza właśnie dni odpoczynku, czyli te, w których miałby cokolwiek do roboty.
+
+- **Który środek Medyk „wybrał" za dany punkt Farmaceutyków, VTT bierze z kolejności tabeli.**
+  „Zawsze, gdy przydzielasz punkt do Farmaceutyków, zyskujesz dostęp do jednego z poniższych
+  środków" (s. 150) — podręcznik nie każe wybierać, a `cpredPharmaAccess` daje pierwsze N wierszy.
+  Alternatywą byłby szósty wybór na karcie („które trzy z pięciu?") po to, żeby przy pełnej randze
+  i tak wyszło to samo. Panel pokazuje resztę wyszarzoną, więc widać, co kupi następny punkt.
+
+- **Stym zostaje przy MG do etapu 39.** Jedyny z pięciu środków, którego silnik nie rozlicza —
+  powód i gotowy przepis w `zaleglosci.md`. Nie jest to niedopatrzenie: zawieszenie kary
+  Poważnie Rannego to ta sama maszyneria, której potrzebuje etap 39, i budowanie jej dwa razy
+  skończyłoby się dwoma miejscami, w których „ta kara właściwie nie działa".
+
+- **Dawka schodzi z ekwipunku także wtedy, gdy środek nic nie zdziałał.** Turbo uzdrawiacz podany
+  Śmiertelnie Rannemu (podręcznik go wtedy wyklucza), Antybiotyk przed Ustabilizowaniem, Dynadetoks
+  komuś bez naklejki „Zatruty" — we wszystkich trzech fiolka jest pusta, a karta mówi dlaczego.
+  Odwrotnie byłoby gorzej: zwrot dawki znaczyłby, że Medyk „wie z góry", czego nie warto podawać.
 
 ## Dane z podręcznika — co parser zgubił świadomie
 

@@ -30,12 +30,14 @@ import type {
   TurnBudgetView,
 } from '@vtt/shared';
 import {
+  cpredArmorStatPenalty,
   cpredSheetCombatAwareness,
   cpredRoundOnceUsed,
   markCpredRoundOnce,
   clearCpredRoundOnce,
   CPRED_ACTIONS,
   CPRED_AIM_POINT_LABELS,
+  CPRED_ARMOR_PENALTY_LABEL,
   CPRED_BROKEN_LEG_ROLL,
   CPRED_BROKEN_LEG_TABLE,
   CPRED_EMP_STATUS_ID,
@@ -168,18 +170,24 @@ export function readSheetInitiative(
   registry: SheetRegistry,
 ): SheetInitiative {
   const data = parseCharacterData(character.data, registry);
-  const ref = data.stats.ref;
+  // „Modyfikator pancerza: −2 REF, ZW i RUCH" (s. 185). Initiative is REF, so
+  // heavy armour slows the queue too — and it moves the tie-break with it,
+  // because the tie-break *is* REF and there is only one REF to be had.
+  const armor = cpredArmorStatPenalty(data.armor, 'ref', data.stats.ref);
+  const ref = data.stats.ref + armor;
   // „Każdy przydzielony punkt to +1 do rzutów na Inicjatywę" (Błyskawiczna
   // reakcja, s. 146). It moves the total, never the tie-break: RAW breaks ties
   // by REF, and a Solo's training is not reflexes.
   const fastReflexes = cpredSheetCombatAwareness(data, registry).initiative;
+  const refLabel = `${CPRED_STAT_LABELS.ref.name} (${CPRED_STAT_LABELS.ref.abbr})`;
+  const armorLabel = armor === 0 ? '' : ` ${CPRED_ARMOR_PENALTY_LABEL} ${armor}`;
   return {
     modifier: ref + fastReflexes,
     tieBreak: ref,
     label:
       fastReflexes > 0
-        ? `${CPRED_STAT_LABELS.ref.name} (${CPRED_STAT_LABELS.ref.abbr}) + Błyskawiczna reakcja ${fastReflexes}`
-        : `${CPRED_STAT_LABELS.ref.name} (${CPRED_STAT_LABELS.ref.abbr})`,
+        ? `${refLabel}${armorLabel} + Błyskawiczna reakcja ${fastReflexes}`
+        : `${refLabel}${armorLabel}`,
   };
 }
 
@@ -928,6 +936,16 @@ interface StatusEntry {
    * other less frightening.
    */
   feared?: string[];
+  /**
+   * Cyborgizacje, które Impuls EMP wyłączył tym trafieniem (04.09.2026).
+   *
+   * Nazwy, nie identyfikatory wierszy — czyta je stół na karcie czatu i monit
+   * „Minęła minuta", a wiersz karty może w międzyczasie zniknąć. Lista jedzie
+   * przy statusie, a nie na karcie postaci, dokładnie z tego powodu, co
+   * `feared`: znika razem ze statusem, więc zdjęcie naklejki ręką przez MG
+   * zamyka sprawę bez sprzątania w drugim miejscu.
+   */
+  disabled?: string[];
 }
 
 /**
@@ -958,7 +976,16 @@ function readStatusEntries(raw: string | null | undefined): Record<string, Statu
         const ids = feared.filter((id): id is string => typeof id === 'string' && id.length > 0);
         if (ids.length > 0) entry.feared = ids;
       }
-      if (entry.damage !== undefined || entry.timer || entry.feared) entries[id] = entry;
+      const disabled = (value as { disabled?: unknown }).disabled;
+      if (Array.isArray(disabled)) {
+        const names = disabled.filter(
+          (name): name is string => typeof name === 'string' && name.length > 0,
+        );
+        if (names.length > 0) entry.disabled = names;
+      }
+      if (entry.damage !== undefined || entry.timer || entry.feared || entry.disabled) {
+        entries[id] = entry;
+      }
     }
     return entries;
   } catch {
@@ -1009,6 +1036,7 @@ function serializeStatusEntries(entries: Record<string, StatusEntry>): string {
           ...(entry.damage !== undefined ? { damage: entry.damage } : {}),
           ...(entry.timer ? { timer: entry.timer } : {}),
           ...(entry.feared ? { feared: entry.feared } : {}),
+          ...(entry.disabled ? { disabled: entry.disabled } : {}),
         },
       ]),
     ),
@@ -1144,6 +1172,34 @@ export function writeSheetStatusTimer(
     entries[statusId] = { ...current, timer };
   }
   return serializeStatusEntries(entries);
+}
+
+/**
+ * Zapisuje przy statusie, co ten impuls wyłączył (04.09.2026).
+ *
+ * Osobna funkcja obok `writeSheetStatusTimer`, a nie jej dodatkowy argument:
+ * timer stawia siedem rodzajów amunicji, a listę wyłączonych — jedna. Pusta
+ * lista nie zapisuje niczego, więc figura bez chromu nie zostawia po sobie
+ * pustego pola w bazie.
+ */
+export function writeSheetStatusDisabled(
+  raw: string | null | undefined,
+  statusId: string,
+  names: readonly string[],
+): string {
+  const entries = readStatusEntries(raw);
+  const clean = names.filter((name) => name.length > 0);
+  if (clean.length === 0) return serializeStatusEntries(entries);
+  entries[statusId] = { ...entries[statusId], disabled: [...clean] };
+  return serializeStatusEntries(entries);
+}
+
+/** Co wróci, gdy ten status zejdzie — czytane przez sprzątanie po minucie. */
+export function readSheetStatusDisabled(
+  raw: string | null | undefined,
+  statusId: string,
+): string[] {
+  return readStatusEntries(raw)[statusId]?.disabled ?? [];
 }
 
 /** The round an effect applied now expires at, or null when nothing counts. */

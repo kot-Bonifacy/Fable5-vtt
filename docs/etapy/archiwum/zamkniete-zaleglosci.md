@@ -9,6 +9,379 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Przeniesione 2026-09-04 (druga sesja — paczka „oczy i uszy")
+
+Pięć pozycji z `POMYSLY.md` i z ostatniego akapitu `zaleglosci.md`, wybranych przez MG jako
+jedna sesja klikania bez modelu: **wybuch i chmura gazu na mapie**, **rzut obrażeń obszaru
+(16d)**, **„usuń wszystkie osłony" (16c)**, **dźwięki walki dobrane bez odsłuchu** i
+**przechylenie figury dla stanu „nieprzytomny"**. Cztery zamknięte, jedna została częściowo
+(dźwięki — zmierzone, ale ocena brzmienia należy do ucha MG).
+
+**Wybuch i chmura gazu — obejrzane, arkusze pocięte dobrze.** Oba arkusze wczytują się
+(`/fx/explosion.png` 1024², `/fx/smoke.png` 1280×768) i klatki idą po nich w kolejności
+wiersz po wierszu: dla wybuchu 8×8 = 64 klatki po 128 px, dla chmury 5×3 = 15 klatek po 256 px.
+Ognista kula wyszła na mapie w pełnym rozmiarze (11,5 m ≈ 575 px sceny, tryb `add`), a chmura
+gazu — zielonkawą mgłą nad polem. **Zrzutem ekranu tego się nie łapie** (efekt trwa 1,1 s,
+a runda zrzutu bywa dłuższa); sposób, który zadziałał, jest w pułapkach dev.
+
+**Rzut obrażeń obszaru (16d) — odklikany.** Granatnik podwieszany avatar9 w pole między dwie
+figury: karta ataku wypisała obie z odległością od środka, jeden guzik „Obrażenia 6k6" dał
+**jeden** rzut (6k6 = 20), a „Zastosuj wszystkim (2)" wystawiło **dwie osobne karty obrażeń**
+— „testowy 2x2: przebicie 7 (rzut 20 − OB 13), PW 35 → 28, Ciężka kurtka kuloodporna OB 13 → 12"
+i „Automatyczna wieżyczka: przebicie 20, bez pancerza, PW 25 → 5". Ten sam rzut, różny wynik
+przez pancerz — dokładnie „Każdy cel otrzymuje tyle samo obrażeń" (s. 174). Obie karty
+cofnięte „Cofnij"; PW i ablacja pancerza wróciły.
+
+**„Usuń wszystkie osłony" (16c) — odklikane, z Ctrl+Z.** Dwie osłony postawione, kosz je zdjął
+(licznik „osłon: 2" → „brak osłon", guzik wyszarzony), a **Ctrl+Z przywrócił obie naraz**
+(„Przywrócono 2 osłony"). Przy okazji drobiazg naprawiony w tej samej sesji: **kosze hurtowe
+osłon, ścian, rysunków i stref nie mówiły o Ctrl+Z**, choć bliźniacze kosze świateł i punktów
+dostępu mówiły — a wszystkie sześć zdarzeń `*:clear` woła `rememberDeletion`. Teraz mówią
+wszystkie.
+
+**Przechylenie figury dla „nieprzytomny" — zrobione (35°, nie 20°).** `down` czytał się gorzej
+niż `dead`: trup ma wielkie ✕, szary portret i czarną podstawkę, nieprzytomny — ciemnoczerwoną
+podstawkę i naklejkę wielkości paznokcia. Odtąd portret kładzie się na bok (`CONDITION_TILT_DEG`
+w `TokenNode.ts`), i **dotyczy to obu stanów**: figura martwa też leży, a „nieprzytomny leży,
+martwy stoi" byłoby gorsze niż brak przechylenia. **Kąt z pomysłu (20°) sprawdzono
+w przeglądarce przeciwko pionowej kopii tej samej twarzy i podniesiono do 35°** — różnica przy
+20° była, ale przy zoomie stołu nikt by jej nie zauważył. Obraca się wyłącznie portret
+(`image` i `initial`); pierścień, łuk PW, podstawka, imię i naklejki zostają pionowe.
+
+**Dźwięki walki — zmierzone, nie ocenione.** Ucho MG rozstrzyga, czy próbka pasuje; kod może
+powiedzieć tylko, co w pliku jest. Dwanaście plików WAV przeliczono na obwiednie (szczyt, RMS,
+liczba ataków, cisza na starcie i końcu) — nic nie okazało się dwoma zdarzeniami, jak
+`shot-rifle` sprzed pół roku. **`bowstring.wav` jest w 65% ciszą** (dźwięk kończy się w 160 ms
+przy pliku 460 ms) i ma najniższy RMS z całego zestawu (−24,5 dBFS) — co zgadza się z notatką
+MG, że to najsłabsze dopasowanie. Pełna tabela — w notatce sesji. **Pozycja zostaje otwarta**
+w `POMYSLY.md` do odsłuchu przy stole; do wymiany wystarczy plik w `public/sfx/` i wiersz
+w `SFX_FILES` (plus cztery inne miejsca — patrz umowa „nowa próbka dźwiękowa mapy").
+
+**Dwa błędy znalezione po drodze i naprawione** — opisane w notatce sesji: amunicja bez obrażeń
+wystawiała guzik „Obrażenia" z pustą kością, a importer podręcznika po cichu wycinał
+`thrown`, `maxRangeM` i `ammoIds` z typów broni.
+
+## Przeniesione 2026-09-04 (oględziny Zdolności Ról 30a–30d)
+
+Wszystkie cztery pozycje brzmiały tak samo — „Etap 30x nie był oglądany w przeglądarce.
+Mechanika jedzie w testach (…), ale żadnego z tych ekranów nikt nie kliknął" — i wszystkie
+cztery zamknięto jedną sesją, jedną kartą („Frank") przestawianą kolejno na dziewięć Ról.
+Zamiast czterech osobnych wpisów: **co odklikano** i **sześć błędów, które przy tym wyszły**.
+
+**Odklikane w komplecie.** 30a: panel sześciu zdolności z progami i wyszarzeniami, pudełko
+„Zmysł Walki" w pasku akcji (tylko u Solo), koszt Akcji przy zmianie przydziału w trakcie tury
+(z wierszem logu „Redukcja obrażeń 1 (2 pkt), Precyzyjny atak 1 (3 pkt)") i darmowy zapis tej
+samej wartości, „− 1 (Redukcja obrażeń)" na karcie obrażeń **tylko przy pierwszym ciosie
+Rundy** (drugi cios: 7 przez pancerz, bez redukcji), kafel „Fumble zignorowany (Wyjście
+z opresji)" i wiersze „Precyzyjny atak 1" / „Wyczucie zagrożenia 1" w rozbiciu rzutu.
+30b: panel Medycyny z sufitem 5 na Specjalizację, wiersz „Chirurgia 10 · Technologia Medyczna 3",
+bloki farmaceutyków (guzik „Wytwórz" tylko przy środkach w zasięgu) i drabina kriosystemów;
+panel Twórcy z sakiewką 2 pkt/poziom, dziesięcioma skutkami Ulepszania i tabelą PT/czasu;
+⚒ Prowizorka (OB 7 → 11 na 30 min) z kończącym ją ⌫ oraz ⊕ +1 OB znikający po użyciu.
+30c: sześć kategorii Wsparcia z tabelą, karta „Ktoś odpowiada · 7 ≤ 10 · … za 3 Rundy", wiersz
+„w drodze" z guzikami MG, przybycie czterech Korpogliniarzy przy wzywającym z rzuconą
+inicjatywą, odmowa Uniku; panel Korpo od „Poproś HR o pracownika" po Test Lojalności
+(„1 < Lojalność 7 → Wykonuje polecenie"), z kartą pracownika zgodną z tabelą (Lekka kurtka
+OB 11, B.C. pistolet 4k6, Rola Netrunner rangi 2, cyborgizacje w notatkach).
+30d: panel Efektu Charyzmy z „To żart, prawda?" przy randze 2, karta „Odmowa · 6 ≤ PT 10 …
+nie poprosisz ich przez 7 dni", Znajomości z dobitym targiem i zakupem o 10% taniej, Moto
+z „+3 do Testów: …" i wyczerpanym Taborem, Wiarygodność ze zmianą szansy po dowodach (4 → 7 na 10) i szeptaną kartą Pogłosek z nazwą pobitego progu.
+
+- **Nazwa Zdolności ścinała się do 15 px w ośmiu panelach naraz. ZAMKNIĘTE — naprawione 04.09.**
+  Sześć zdolności Zmysłu Walki czytało się jako „R..", „W.", „B..", „P..", „W.", „W.". Dane były
+  całe (pełne nazwy, pełne podpowiedzi) — układ nie. `.awareness-row` to siatka
+  `1fr auto auto auto`, a `.awareness-name` ma `overflow: hidden`, więc jej minimum wynosi zero;
+  w kolumnie tożsamości karty, która ma **sztywne 15 rem** (`.sheet-page`), wartość (4,5 rem),
+  koszt (3,5 rem) i dwa guziki zjadały 201 z 216 px. Rozciąganie okna karty nic nie dawało, bo
+  ta kolumna nie rośnie. Naprawa: w `.cp-awareness` i `.hud-form` wiersz przestaje być siatką,
+  nazwa bierze całą pierwszą linię, reszta schodzi do drugiej. **Drugi dom tego samego panelu**
+  — pudełko „Zmysł Walki" w pasku akcji — miał to samo (52 px na 102 potrzebne) i wymagał
+  drugiego selektora; rejestr awansów w `.cp-advance` zostaje jednolinijkowy, bo ma miejsce.
+
+- **MG nie mógł zmienić Roli Medykowi z wydanymi punktami Specjalizacji. ZAMKNIĘTE —
+  naprawione 04.09.** Objaw: wybór Roli na karcie wracał na starą wartość, a na dole stało
+  „Błąd zapisu!" i „Ta postać nie ma tej Zdolności Specjalnej" — zdanie o Specjalizacji, choć
+  zmieniano Rolę. Diagnoza: `character:update` waliduje **scaloną** kartę
+  (`cpredSpecialtiesProblem`), bo rozmiar sakiewki zależy od rangi; ta sama łata potrafi jednak
+  **zabrać Zdolność**, bo `roleId` jest od 29a u MG zwykłym polem, a zmiana Roli bez odłożenia
+  starej do `formerRoles` zostawia `medicine` bez właściciela. `cpredSpecialtyProblem` przy
+  `rank === null` i niepustym przydziale zwraca `NO_ABILITY` — czyli odrzucał **tę łatę i każdą
+  następną**. Ten sam potrzask miał Tabor Nomady (`cpredFleetProblem`). Naprawa:
+  `cpredDropOrphanedRolePurses` zdejmuje sakiewkę bez Zdolności **przed** trzema walidacjami;
+  przy wieloklasowości nie schodzi nic, bo `cpredRoleAbilityRank` pyta też o `formerRoles`.
+  Pokryte testem czystej funkcji (trzy przypadki) i testem serwera na gnieździe.
+
+- **Guzik z napisem w rządku ± był ścinany do 1,6 rem. ZAMKNIĘTE — naprawione 04.09.**
+  „Wezwij" Wsparcia czytało się jako „Wezw", bo `.awareness-steps button { width: 1.6rem }` —
+  reguła pisana dla kwadratowych „+"/„−" — trafia też w guziki z napisem. **To drugie spotkanie
+  z tym samym błędem:** 29b naprawiło go wąsko dla `.advance-buy` („Podn" zamiast „Podnieś"),
+  zostawiając regułę, która go powodował. Tym razem `width` ustąpił `min-width` dla wszystkich,
+  a obejście z 29b zeszło jako martwe.
+
+- **Licznik figur Wsparcia padał dwa razy. ZAMKNIĘTE — naprawione 04.09.** Kolejka Inicjatywy
+  pisała „Korporacyjne służby bezpieczeństwa ×4 ×4": `describeBackupPending` doklejało `×count`
+  do etykiety, a `CombatPanel` maluje `{row.label} ×{row.count}` z własnego pola widoku.
+  Etykieta nazywa odtąd wyłącznie „kto" — zgodnie z komentarzem przy `ReinforcementView.label`
+  („the system's own words for who is coming").
+
+- **Odmowa Uniku wracała jako surowy kod. ZAMKNIĘTE — naprawione 04.09.** Na czacie stawało
+  „Błąd ataku: BACKUP_CANNOT_DODGE" zamiast „Funkcjonariusze Wsparcia nie mogą Unikać pocisków".
+  Mylące, bo zdanie **istniało** — w ogólnym `ackErrorText`, a `attack:evade` idzie przez
+  `attackAckErrorText`, gdzie brakowało wszystkich trzech kodów tej ścieżki
+  (`BACKUP_CANNOT_DODGE`, `SHIELD_CANNOT_DODGE`, `DODGE_BLOCKED`). Zdanie Ludzkiej tarczy wzięto
+  z `CPRED_GRAPPLE_PROBLEM_MESSAGES`, zgodnie z umową „zdania kodów silnika mieszkają w shared".
+
+- **Guzik „Kup" pisał cenę sprzed dobitego targu. ZAMKNIĘTE — naprawione 04.09.** Przy targu
+  Fixera („−10% od najbliższego zakupu") guzik mówił „Kup — 20 ed", a z konta schodziło 18;
+  prawdę mówiła dopiero karta ekonomii po zakupie („Targ: Dziesięć procent −10% · cena
+  z katalogu 20 ed"). Klient liczy teraz cenę tą samą funkcją, co serwer
+  (`cpredHaggledPrice`), z tym samym warunkiem `discount > 0`, a podpowiedź guzika nazywa
+  cenę katalogową.
+
+## Przeniesione 2026-09-03 (zestaw A — leczenie, regeneracja i środki zużywalne, trzecia sesja)
+
+- **Farmaceutyki nie miały zapasu dawek. ZAMKNIĘTE — zrobione 03.09.** Pierwotny wpis: „Panel
+  drukuje pięć środków słowami podręcznika i mówi, ilu Medyk ma dostęp, ale który wybrał,
+  wytworzenie dawki (Test PT 13, surowce za 200 ed) i podanie jej (Akcja) prowadzi MG. Brakuje
+  modelu przedmiotu zużywalnego — wiersz ekwipunku to wolny tekst bez licznika."
+  **Diagnoza była o jedno zdanie za surowa:** `CpredGearRow` miał `qty` od dawna, brakowało
+  wyłącznie tego, co **zużycie sztuki oznacza**. Naprawa dodaje więc jedno pole, nie tabelę:
+  `CpredGearRow.consumable` niesie id środka z nowego, bezzależnościowego modułu `pharma.ts`,
+  a dwa zdarzenia robią resztę — `character:craft-pharma` (rzut TECH + Technologia Medyczna vs
+  PT 13; **surowce za 200 ed schodzą z konta także po porażce**, bo tak mówi zdanie „W przypadku
+  porażki surowce przepadają", a udany Test daje tyle dawek, ile wynosi Umiejętność) oraz
+  `character:use-dose` (Akcja, zasięg ramienia, bramka „Postać niebędąca Medykiem nie potrafi
+  poprawnie podawać farmaceutyków"). Cztery z pięciu środków rozlicza silnik; Stym został otwarty
+  i ma własny wpis w `zaleglosci.md` z gotowym przepisem. Obejrzane w przeglądarce: wytworzenie
+  (3 dawki, −200 ed), wiersz „Antybiotyk × 3" z guzikiem „Podaj", podanie sobie i komuś innemu.
+
+- **Ustabilizowanie nie sprawdzało, czy medyk sięga do pacjenta. ZAMKNIĘTE — zrobione 03.09.**
+  Pierwotny wpis (z `POMYSLY.md`, 30.07): „RAW nie podaje zasięgu tej Akcji, więc serwer wymaga
+  tylko, żeby cel był widocznym tokenem kampanii; przy stole »ratuję go z drugiego końca ulicy«
+  jest oczywistym nadużyciem." Naprawa: `requireStabilizeReach` w `realtime/character-rolls.ts`
+  mierzy `metresBetweenTokens` przeciw `CPRED_MELEE_REACH_M` — **ten sam** zasięg, który mierzy
+  Pochwycenie, bo czynnością jest dotknięcie rannego. Trzy rozstrzygnięcia warto zapisać:
+  zasięg obowiązuje **wszystkich, MG włącznie** (wyjątek od zwyczaju „MG omija blokady", bo MG
+  stabilizuje figurą stojącą na mapie); medyk bez żetonu na scenie pacjenta dostaje odmowę
+  `STABILIZE_NOT_ON_SCENE`, a nie zwolnienie; a sprawdzenie idzie **przed** `spendStabilizeAction`,
+  żeby odmowa „za daleko" nie kosztowała tury. Obejrzane w przeglądarce na obu gałęziach.
+
+- **PW nie wracały nigdy. ZAMKNIĘTE — zrobione 03.09** (wpis z `POMYSLY.md`, 03.09). `treatment.ts`
+  umiał zdjąć Ranę Krytyczną, `damage.ts` odjąć PW, a drogi w drugą stronę nie było wcale poza
+  wpisaniem liczby ręką. Nowy moduł `shared/systems/cpred/recovery.ts` liczy **dzień odpoczynku**
+  (s. 222–223): BC punktów, podwójne przy chromie „Ulepszone przeciwciała" (s. 362), plus 2 za
+  Antybiotyk (s. 150), do maksimum; „Splot skórny" i „Pancerz podskórny" odzyskują przy tym 1 OB
+  (s. 363). Warunek „po udanej stabilizacji" siedzi w nowym `CpredCharacterData.recovery`, a
+  **udane Ustabilizowanie ustawia go na każdym progu ran** — do tej sesji rzut na stojącego
+  pacjenta nie robił **nic**, więc PT 10 i PT 13 z tabeli progów były PT donikąd. Nadwyrężenie
+  („Jeśli pacjent przesadzi…") zabiera dzień, ustabilizowanie i tydzień antybiotyku naraz.
+  **Uwaga na jedno odstępstwo od wpisu:** „opieki jako mnożnika tempa" w podręczniku nie ma —
+  szpital zmienia cenę (s. 225), nie szybkość.
+
+## Przeniesione 2026-09-03 (dwa długi higieny, obie z drugiej sesji tego dnia)
+
+- **`tsc --noEmit` na serwerze miał jeden błąd, którego vitest ani ESLint nie widziały.
+  ZAMKNIĘTE — naprawione 03.09.** `attacks.test.ts:1941` — `expect(card.system.ammo?.id)` przy
+  `Property 'id' does not exist on type '{}'`. Diagnoza dokładna: lokalny interfejs `AttackCard`
+  opisywał `system` jako `Record<string, unknown>`, a przy `noUncheckedIndexedAccess`
+  `card.system.ammo` to `unknown` — optional chaining zawęża je do `{}`, na którym nie ma
+  żadnego pola. Naprawa **nie** przez rzut w miejscu asercji: `system` dostał prawdziwy kształt
+  `CpredAttackMeta & { margin: number; multiplier?: number }` (planer plus dwie liczby, które
+  dokłada serwer w `realtime/attacks.ts`), a trzynaście rozsianych po pliku rzutów
+  `as AttackCard` zastąpiły dwa pomocniki: `attackCard()` i `requireAttackCard()`. **Jedyny
+  rzut w pliku siedzi teraz w `attackCard()`** — i jest tam konieczny, bo `RollAttackMeta.system`
+  w `dice.ts` jest `Record<string, unknown>` **świadomie**: silnik kości nie wolno mu wiedzieć,
+  czym jest CP RED (separacja rdzeń/system). Testu w `shared` nie zmieniano. Sprawdzone:
+  `tsc --noEmit` czysty w **całym monorepo** (`shared`, `server`, `client`).
+
+- **Zestaw testów serwera padał losowo pod równoległością. ZAMKNIĘTE — naprawione 03.09.**
+  Dwie przyczyny, obie potwierdzone w kodzie, nie zgadnięte:
+  1. **`waitFor` bierze pierwszą wiadomość, jaka przyjdzie.** Publiczny rzut dociera także do
+     gniazda MG, a jego kopia potrafi wylądować już **po** tym, jak test, który go wywołał,
+     wrócił na kopii gracza — wtedy `waitFor` następnego testu rozwiązuje się na karcie
+     poprzedniego. Naprawa: dopasowanie po treści. `roles30d.test.ts` dostał `waitForMatch`
+     i `waitForRoll(socket, title)`; sześć oczekiwań na `chat:message` czeka teraz na swoją
+     kartę po tytule („Pogłoski", „Targowanie się", „Efekt Charyzmy", „Test Rzetelności",
+     „Prowadzenie pojazdów") albo po obecności rozliczenia ekonomii. `netdemons.test.ts` dostał
+     własne `waitForRoll` — tam kolidowały karta wykrycia Demona i trzy karty Tury Demona;
+     dopasowanie idzie po tytule wymiany („Miecz → Mur", bo `plan.label` to
+     `${program.name} → ${demon.name}`) i po „Kontrola".
+  2. **Rzut, od którego zależy pięć testów niżej — i który przegrywa raz na sto.** To była
+     **główna** przyczyna, a zapis zaległości jej nie znał: kaskada wyglądała na wyścig, bo
+     padało zawsze kilka testów naraz. Netrunner przejmuje węzeł kontrolny Testem Interfejsu
+     10 przeciw **PT 1 wypisanemu na piętrze**. Naturalna jedynka każe dorzucić kość i ją
+     **odjąć** (dorzut sam już nie wybucha), więc najniższy możliwy wynik to **równo 1** —
+     a Test wymaga „więcej niż PT". Zmierzone na milionie rzutów: **0,998 %**. Gdy trafi,
+     w `netdevices.test.ts` pięć następnych testów wraca z `NET_NODE_NOT_HELD`, a
+     w `netdemons.test.ts` Demon nie ma czego odebrać, więc „odebrany" nie pada i PT węzła
+     nigdy nie rośnie do 31. **Wzorzec naprawy istniał w repo od dawna** — `netrun.test.ts`
+     ma na to pętlę dziesięciu podejść; brakowało jej w dwóch pozostałych plikach. Dołożona:
+     w `netdevices.test.ts` do sześciu podejść (walka zaczyna się dopiero niżej, a poza walką
+     `spendTurnForToken` zwraca „not-in-combat", więc budżetu Akcji Sieciowych nie ma),
+     w `netdemons.test.ts` **jedna** powtórka — walka trwa, ranga 10 daje pięć Akcji na Rundę,
+     trzy poszły na ataki wyżej, więc drugie podejście to piąta Akcja i na trzecie budżetu już
+     nie ma. Dwa podejścia znoszą 1 % do 0,01 %.
+  3. **`zones.test.ts` mierzył spadek PW od stanu, który mógł już być zerem.** Kolec ma 50 PW
+     (BC 8, SW 8), podłoga elektryczna bije 6k6 za wejście, a **przy zerze serwer odmawia
+     graczowi ruchu w ogóle** (`realtime/movement.ts`) — więc walk się nie odbywa, spadek jest
+     0 → 0 i test pada na `expected 0 to be less than 0`, obwiniając asercję zamiast stanu.
+     Naprawa: pomocnik `healUp()` stawia kartę na pełni i **zwraca** tę liczbę; cztery testy
+     mierzące PW zaczynają od niego, a piąty (rozliczenie na koniec Tury) dostał go zamiast
+     ręcznej łaty `hpCurrent: 50` wpisanej tam wcześniej — jej komentarz „Kolec leży na zerze"
+     był zresztą pierwszym śladem tej diagnozy.
+
+  4. **Pięć plików miało `beforeAll` bez podniesionego limitu czasu.** Wyszło dopiero
+     w pomiarze po trzech poprawkach wyżej: jeden przebieg na dwanaście padł
+     w `screamsheets.test.ts`, i to **na poziomie pliku** (`FAIL src/screamsheets.test.ts
+[ src/screamsheets.test.ts ]`), a nie na asercji — czyli w haku, nie w teście. Hak robi
+     `npx prisma migrate deploy` (osobny proces CLI Prismy) i podnosi Fastify z Socket.IO,
+     a pod pełną równoległością nie mieści się w domyślnych **10 s** vitesta. Wszystkie
+     pozostałe pliki dymne mają `}, 60_000);` — te pięć (`compendium`, `netcombat`, `netrun`,
+     `netrunning`, `screamsheets`) go nie miało. Dopisane. To jest wreszcie **ta** przyczyna,
+     którą stary wpis w `pulapki-dev.md` opisywał jako „testy dymne pękają na limicie czasu";
+     nowy plik dymny musi dostać ten limit razem z hakiem.
+
+  Sprawdzone po wszystkich czterech naprawach: **piętnaście pełnych przebiegów `vitest run`
+  pod rząd, 918/918 za każdym razem** — zero porażek. Dla porównania: przed czwartą naprawą
+  dwanaście przebiegów dało jedną (`screamsheets.test.ts` na limicie haka).
+
+## Przeniesione 2026-09-02 (trzy błędy z oględzin etapów 31 i 32)
+
+- **Broń podwieszana nie miała wyboru amunicji (01.09). ZAMKNIĘTE — naprawione i obejrzane
+  02.09.** Diagnoza była głębsza niż zapis zaległości: brakowało nie tylko listy w wierszu `↳`,
+  ale i **pola, w którym nabój miałby siedzieć**, i **gałęzi w planerze, która by go czytała**.
+  `secondaryWeaponRow` ustawiała broni podwieszanej `ammoId: undefined` z komentarzem „nabój
+  w magazynku hosta należy do hosta", a `planCpredAttack` i tak zerował profil
+  (`const ammo = firedWith ? null : weapon.ammo`) — czyli **żaden** nabój specjalny nie miał jak
+  wyjść z granatnika, choćby wpisać go ręką w bazie. Naprawa w czterech miejscach: nowe pole
+  karty `attachmentAmmoId` (mapa `id dodatku → id naboju`, obok `attachmentAmmo`), nowe wejście
+  planera `secondaryAmmo` (rozwiązywane przez wołającego, jak `ammo`), `weapon:reload`
+  z `attachmentId` przyjmujące `ammoId` i pasujące nabój **do broni podwieszanej**, nie do
+  karabinu (`requireLoadableAmmo` z parametrem `against`), oraz `AmmoPicker` w wierszu `↳`.
+  Demontaż dodatku zabiera teraz i magazynek, i załadowany nabój. **Obejrzane w przeglądarce
+  02.09** na „Militech Dragonie" avatar9: lista przy granatniku pokazała **wyłącznie granaty**
+  (dymna, EMP, hukbłyskowa, gaz łzawiący, usypiająca…), a lista przy samym karabinie — wyłącznie
+  kule, czyli sprawdzenie naprawdę idzie po broni podwieszanej. Wybór „Amunicji dymnej" napełnił
+  magazynek 0/1 → 1/1 **nie ruszając 25/25 karabinu**, dymek nad celem wycenił strzał z linii
+  granatnika („0–6 m · PT 16 · 1 → 0"), a strzał postawił na mapie **prostokąt „Dym −4"** —
+  z kartą „nabój: Amunicja dymna · obszar 10×10 m · odchylenie…". Zwykłe ⟳ dolewa magazynek
+  i **zachowuje** wybrany nabój. Testy: 3 w `shared`, 4 na serwerze.
+
+- **Podgląd broni nad żetonem pokazywał wiersz, nie dodatek (01.09). ZAMKNIĘTE — naprawione
+  i obejrzane 02.09.** Przyczyna nie leżała w planerze (ten obsługuje `attachmentId` od etapu 31)
+  ani w banerze, tylko w tym, że `TargetTooltip` budował intencję **własną kopią** kodu
+  z `loadAttackAtToken` i przy przepisywaniu zgubił `attachmentId` (a przy okazji `thrown`).
+  Naprawa usuwa kopię: jeden `intentFromTargeting` w `attack-targeting.ts` obsługuje obie drogi,
+  a gałąź paska akcji dostała `attachmentId` ze slotu. **Obejrzane 02.09**: chmurka nad Rudym
+  Kwiatkowskim powiedziała „Granatnik podwieszany" i policzyła jego magazynek. Testy: 4 u klienta.
+
+- **Odmowa serwera przy ręcznej łacie karty zostawiała pole z wartością, której nie ma w bazie
+  (02.09). ZAMKNIĘTE — naprawione i obejrzane tego samego dnia.** Potwierdzona diagnoza z zapisu:
+  `endSave` adoptował widok serwera **tylko** przy `ok === true`, a przy odmowie zapalał sam stan
+  `error` — optymistyczna łata zostawała na ekranie do przeładowania strony. Przy odmowie ack
+  nie niesie widoku (`{ ok: false, error }`) i broadcast nie idzie (bo nic się nie zmieniło), więc
+  nie było **do czego** wracać; naprawa dokłada w `characterStore` cień `serverViews`
+  (aktualizowany przez `applySync`, `applyUpsert` — także wtedy, gdy optymistyczny stan wygrywa —
+  i udany zapis), z którego odmowa przywraca kartę, gdy nic już nie jest w locie. Druga połowa to
+  powód: `saveErrors` niesie kod odmowy, a `characterSaveErrorText` tłumaczy go na zdanie do paska
+  „issues" na dole karty (i na `title` nagłówka). Nowa tabela `CPRED_ROLES_PROBLEMS` w `shared`
+  dopisuje zdania dla `ROLE_TWICE` i `UNKNOWN_ROLE`. **Obejrzane 02.09** na „Franku"
+  z podstawionym `formerRoles: [solo]`: wybór Roli „Solo" wrócił do „— brak —", tytuł został
+  „FRANK" (bez „FRANK SOLO"), a na dole karty stanęło „Ta Rola już jest na karcie — jedna Rola
+  stoi na niej tylko raz.". Dotyczy **każdej** odmowy `character:update`. Testy: 4 u klienta.
+
+## Przeniesione 2026-09-02 (oględziny rozwoju postaci — 29a i 29b)
+
+- **Etap 29a — reszta pięciu ścieżek. ZAMKNIĘTE — odklikane 02.09.** Nośnikiem był **„Frank"**
+  (pusta karta poligonu, na czas sesji własność konta `Tester`, Nomada z Moto 4 i 100 PD);
+  po sesji przywrócony do stanu sprzed. (1) **„Podnieś"** — Atletyka 2 → 3 za 60 PD: licznik
+  spadł 100 → 40, wiersz w panelu przeskoczył na „3 → 4 · 80 PD", strona pierwsza pokazała
+  Atletykę 3, a rejestr — świeży wiersz „Atletyka 2 → 3 · −60 PD · 40 PD" **bez przeładowania**.
+  (2) **Filtr „tylko na które mnie stać"** — przy 40 PD z 66 szczebli zostały 62, wyłącznie po
+  20 i 40 PD; wiersze po 60, 80, 120 i 300 PD zniknęły. (3) **Brak PD** — guziki wyszarzone
+  z podpowiedziami „Brakuje 200 PD" (Moto 4 → 5) i „Brakuje 20 PD" (Ogień ciągły 2 → 3).
+  (4) **Tylko do odczytu u gracza** — „Poziom: Atletyka", „Ranga: Moto" i „Punkty Doświadczenia"
+  mają `readOnly`; **wpisane z klawiatury „9" i „8" nie weszły** przy ognisku w polu, a wybór
+  Roli jest `disabled`. U MG te same trzy pola przyjęły wpis (ranga Zmysłu Walki 1 → 4 ręką MG
+  weszła i **odświeżyła panel gracza na żywo**). (5) **„✦ Przyznaj wszystkim"** — 20 PD z powodem
+  „sesja oględzin 02.09" dostało **pięć postaci graczy z kampanii** (Tony, avatar9, Test 27x,
+  Marcin, Frank), a **żaden BN** (Rudy Kwiatkowski 0) i **żadna postać z innej kampanii**;
+  każda dostała wiersz rejestru z powodem. Zabranie −20 PD wróciło wszystkim do zera i
+  **nie zeszło poniżej** (Frank stał na 0 i na 0 został).
+
+- **Etap 29a — komunikat „Przyznano N PD" liczył postaci dwa razy. ZAMKNIĘTE — naprawione
+  02.09.** Po przyznaniu stanęło **„Przyznano 20 PD — 5 5 postaci."**: `awardPoints`
+  w `CharacterPanel.tsx` składało zdanie z `plural(awarded, …)`, które samo dokleja liczbę,
+  i doklejało `awarded` jeszcze raz przed nim. Naprawa: `pluralWord` (dodany w 27f właśnie dla
+  miejsc formatujących liczbę osobno) — sprawdzone w przeglądarce: „Zabrano 20 PD — 5 postaci."
+  Drugie użycie `plural` w tym samym pliku (odnowienie Szczęścia) jest poprawne i zostaje.
+
+- **Etap 29b — trzy ścieżki od strony MG. ZAMKNIĘTE — odklikane 02.09.** (1) **Darmowy powrót
+  do posiadanej Roli** — Frank (Nomada 4) kupił za 60 PD **Solo**, MG podniósł mu Zmysł Walki
+  do 4, a wtedy lista w panelu pokazała **„Nomada — powrót (Moto 4)"** i guzik obiecał „za darmo,
+  Moto wraca na poziom 4". Powrót przy **0 PD w zapasie** przeszedł, kosztował **0** i zostawił
+  w rejestrze wiersz „Nomada — powrót do Roli (Moto 4) · +0 PD"; powrót w drugą stronę (do Solo)
+  też. (2) **Rzut ze Zdolności poprzedniej Roli** — u Franka **będącego Solo** (Nomada
+  poprzednia, Moto 4) okno rzutu Prowadzeniem pojazdów pokazało „Refleks (REF) +5 ·
+  Prowadzenie pojazdów +4 · **Moto 4 +4** · 1k10 + 13", a karta na czacie ten sam chip „Moto 4 +4"
+  przy wyniku 20. (3) **Ręka MG** — obie rangi (`Ranga: Zmysł Walki`, `Ranga: Moto`) są u MG
+  edytowalne i u gracza tylko do odczytu; odmowy sprawdzone na żywym gnieździe:
+  **`ROLE_TWICE`** przy wpisaniu bieżącej Roli w `formerRoles` i przy wybraniu poprzedniej Roli
+  w polu „Rola", **`UNKNOWN_ROLE`** przy nieznanej Roli w `formerRoles`. **Ustalenie:** nieznane
+  `roleId` **bieżącej** Roli nie dochodzi do `cpredRolesProblem` — parser karty odrzuca je
+  wcześniej jako `INVALID_DATA`, więc `UNKNOWN_ROLE` wychodzi wyłącznie z `formerRoles`.
+
+## Przeniesione 2026-09-01 (druga sesja — pasek dodatków i domknięcie etapu 31)
+
+- **Broń podwieszana i bagnet są nieosiągalne z paska akcji (01.09). ZAMKNIĘTE — naprawione.**
+  `cpredHotbarSlots` budowało sloty wyłącznie z `sheet.weapons`, więc z granatnika
+  podwieszanego i z bagnetu strzelało się tylko z karty postaci. Naprawa: `cpredWeaponOptions`
+  bierze katalog dodatków i typy broni, a `weaponOptionKey` (wiersz + dodatek) niesie tożsamość
+  do czterech miejsc, które dotąd kluczowały na samym `rowId` — id slotu, id przeładowania,
+  grupowanie panelu i pamięć trybu ognia u klienta. Osiem nowych testów w `hotbar.test.ts`.
+  Odklikane: pasek avatar9 pokazał „Bagnet" (3) i „Granatnik podwieszany" (4) osobnymi
+  klawiszami, przeładowanie granatnika z paska zmieniło 0/1 na 1/1 **nie ruszając** magazynka
+  karabinu (25/25), strzał z granatnika załadował kubek na pole z obszarem 10×10 m, a karta
+  ataku bagnetem powiedziała „Militech Dragon · Bagnet" i policzyła go **Bronią białą**
+  (nie Bronią ciężką karabinu) z odmową „Do ataku wręcz cel musi być nie dalej niż 2 m"
+  powyżej dwóch metrów.
+
+- **Etap 31 — oglądnięte sześć rzeczy z ośmiu (01.09). ZAMKNIĘTE — komplet odklikany.**
+  Trzy brakujące:
+  (1) **noktowizor kasujący karę za dym** — ten sam strzał avatar9 → Automatyczna wieżyczka
+  (4 m, PT 15, ta sama chmura): **bez** „Celownika noktowizyjnego" rozbicie miało
+  `Refleks +5 · Broń krótka +10 · Test łaty 15 −1 · Dym −4 · Złącze smartguna +1` (= +11),
+  **z nim** `… bez wiersza „Dym"` (= +15). Kara **znika z rozbicia**, a nie jest równoważona
+  dodatnim wierszem — dokładnie tak, jak zapowiada komentarz w `attacks.ts`.
+  (2) **luneta snajperska** — w VTT nazywa się **„Luneta dalekiego zasięgu"**; strzał
+  z Celowaniem (noga) z 19 m dopisał wiersz **„Luneta dalekiego zasięgu +1"**, choć do 51 m
+  brakowało — czyli bonus wszedł z tytułu Celowania, nie odległości.
+  (3) **demontaż przycinający naboje** — Arasaka Minami 10 przeładowana do **50/50**, po zdjęciu
+  chipa „Magazynek bębnowy" pokazała **30/30**, nie 50/30.
+
+- **Celowanie w statystę — „zdanie zamiast rany". ZAMKNIĘTE — odklikane 01.09.**
+  Strzał z Celowaniem (noga) w **Automatyczną wieżyczkę** (figura bez karty, OB 0): trafienie
+  17 vs PT 15, obrażenia 2k6 = 8, a karta zastosowania powiedziała „Przebicie: 8 obr. · rzut 8 ·
+  bez pancerza · PW 25 → 17" z chipami **„Bez ran → Lekko ranny"** i **„Celowanie (noga):
+  Złamana noga"** oraz zdaniem „−4 do Ruchu (minimum 1)". Rana jest **nazwana**, nie losowana
+  z tabeli 2k6.
+  **Uwaga na przyszłość:** drugiego statysty, „testowy 2x2", tą drogą nie sprawdzisz — ma
+  **OB 13**, a 2k6 nigdy tyle nie przebije, więc rana krytyczna nie ma jak powstać.
+
+## Przeniesione 2026-09-01 (wraz z wycofaniem etapu 27g)
+
+- **Etap 27i — pomiar fps nie objął sceny ze światłami i mgłą. ZAMKNIĘTE — bez pomiaru.**
+  Pozycja czekała na etap 27g (decyzja MG z 28.08). **01.09 MG wycofał etap 27g**, bo
+  wydajność sprawdził samodzielnie poza sesją — a razem z adresem znika powód, dla którego
+  pozycja stała otwarta. Treść oryginalnego wpisu, bez zmian:
+
+  - **Etap 27i — pomiar fps nie objął sceny ze światłami i mgłą.** „Strzelnica" ma widoczność
+    `open`, więc 160,1 → 161,2 fps mierzy **samą warstwę efektów**, a nie najgorszy przypadek
+    z kryterium etapu. Warstwa rysuje na klatkę kilka ścieżek `Graphics` i najwyżej jeden sprite,
+    więc rezerwa jest duża — ale liczby dla sceny z dynamiczną widocznością nadal nie ma.
+    **Decyzja MG z 28.08: pomiar idzie do etapu 27g**, a nie do najbliższej sesji zaległości —
+    scena, na której się go robi, już stoi („Korytarz 16e", widoczność Dynamiczna).
+
 ## Przeniesione 2026-08-31 (pasek figury bez karty: rany, Testy, przeładowanie)
 
 Trzy pozycje długu oględzin, wszystkie z jednego obszaru — paska figury bez karty postaci —

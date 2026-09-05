@@ -891,7 +891,11 @@
 /* Ostrzeżenie przy wierszu, który nie wskazuje modelu: taka broń nie zna
    tabeli zasięgów i nie wystrzeli, więc mówi to karta, a nie dopiero planer
    w chwili nieudanego strzału. */
-.cp-table .weapon-unbound {
+/* Zacięcie broni niskiej jakości (s. 244) nosi tę samą barwę i ten sam
+   kształt: oba zdania mówią „ta broń teraz nie wystrzeli", a różnią się tylko
+   tym, co trzeba zrobić — wskazać model albo usunąć usterkę. */
+.cp-table .weapon-unbound,
+.cp-table .weapon-jammed {
   display: block;
   margin-top: 0.15rem;
   background: transparent;
@@ -899,7 +903,8 @@
   border: 1px solid var(--cp-red);
 }
 
-.cp-table .weapon-unbound:hover:not(:disabled) {
+.cp-table .weapon-unbound:hover:not(:disabled),
+.cp-table .weapon-jammed:hover:not(:disabled) {
   background: var(--cp-red);
   color: var(--cp-on-red);
 }
@@ -964,6 +969,77 @@
   margin: 0.4rem 0 0;
   color: var(--cp-ink-dim);
   font-size: 0.72rem;
+}
+
+/* Dodatki do broni (etap 31, s. 342): trzy kwadraciki gniazd pod nazwą broni,
+   a obok chipy tego, co już w nich siedzi. Kwadracik jest jedyną rzeczą, którą
+   widać, zanim ktokolwiek coś dokręci — dlatego pusty ma obrys, a zajęty
+   wypełnienie: „ile mam wolnego" czyta się bez liczenia. */
+.weapon-slots {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.2rem;
+}
+
+.weapon-slots-boxes {
+  display: inline-flex;
+  gap: 0.15rem;
+}
+
+.weapon-slot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border: 1px solid var(--cp-ink-dim);
+}
+
+.weapon-slot--used {
+  background: var(--cp-ink-dim);
+}
+
+.cp-table .weapon-slot-chip {
+  padding: 0.02rem 0.25rem;
+  background: transparent;
+  border: 1px solid var(--cp-bar);
+  color: var(--cp-ink-dim);
+  font: inherit;
+  font-size: 0.68rem;
+  cursor: pointer;
+}
+
+.cp-table .weapon-slot-chip:hover {
+  border-color: var(--cp-red);
+  color: var(--cp-red);
+}
+
+.weapon-slot-picker {
+  list-style: none;
+  margin: 0.2rem 0 0;
+  padding: 0.2rem;
+  width: 100%;
+  max-height: 10rem;
+  overflow-y: auto;
+  border: 1px solid var(--cp-bar);
+  background: var(--cp-paper);
+}
+
+/* Wiersz broni podwieszanej — ta sama sztuka żelastwa, drugi sposób użycia.
+   Wcięcie i przygaszone pismo mówią „to należy do wiersza nad", zanim ktoś
+   przeczyta strzałkę. */
+.cp-table tr.weapon-secondary > td {
+  padding-top: 0.05rem;
+  padding-bottom: 0.05rem;
+  color: var(--cp-ink-dim);
+  font-size: 0.72rem;
+}
+
+.weapon-secondary-name {
+  padding-left: 0.6rem;
+}
+
+.weapon-secondary-note {
+  font-style: italic;
 }
 
 .cp-table .weapon-ammo-cell {
@@ -1203,6 +1279,101 @@
 
 .cp-addictions textarea {
   min-height: 2.4rem;
+}
+
+/* --- rekonwalescencja: tempo powrotu do zdrowia i dzień odpoczynku --- */
+
+/* Pole rozkłada się w pion, jak Uzależnienia obok: etykieta u góry, zdanie pod
+   nią. Domyślne `.cp-field` układa etykietę i wartość w rzędzie, przez co akapit
+   dostawał kilkanaście znaków szerokości. */
+.cp-recovery-field {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.1rem;
+  padding-bottom: 0.25rem;
+}
+
+.cp-recovery-rate {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.3;
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+}
+
+.cp-recovery-rate--idle {
+  color: var(--cp-ink-dim);
+}
+
+.cp-recovery-sources {
+  font-size: 0.72rem;
+  color: var(--cp-ink-dim);
+}
+
+.cp-recovery-buttons {
+  display: flex;
+  gap: var(--cp-gutter);
+  flex-wrap: wrap;
+}
+
+.cp-recovery-buttons button {
+  flex: 1;
+  min-width: 8rem;
+  background: var(--cp-on-red);
+  color: var(--cp-red-deep);
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-cp-cond);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  padding: 0.2rem 0.5rem;
+}
+
+.cp-recovery-buttons button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* --- farmaceutyki: dawki z licznikiem pod tabelą wyposażenia --- */
+
+.cp-doses-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.cp-doses-list li {
+  background: var(--cp-paper);
+  color: var(--cp-ink);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.12rem 0.35rem;
+  font-size: 0.78rem;
+}
+
+.cp-doses-name {
+  flex: 1;
+}
+
+.cp-doses-qty {
+  font-variant-numeric: tabular-nums;
+  color: var(--cp-ink-dim);
+}
+
+.cp-doses-target {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+}
+
+.cp-doses-target select {
+  flex: 1;
 }
 
 /* --- ekwipunek: plakietki i pola z dołu strony drugiej --- */

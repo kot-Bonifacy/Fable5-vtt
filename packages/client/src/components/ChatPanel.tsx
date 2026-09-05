@@ -1,16 +1,27 @@
-import { useLayoutEffect, useRef, type FormEvent, type ReactNode, type UIEvent } from 'react';
+import {
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type MouseEvent,
+  type ReactNode,
+  type UIEvent,
+} from 'react';
 import type {
   BotActionProposal,
   BotActivityEntry,
   BotTraceBroadcast,
+  ChatCategory,
   ChatMessageView,
   CombatActionLogEntry,
   EconomyLogEntry,
+  RecoveryLogEntry,
   HandoutLogEntry,
   JournalLogEntry,
   RollResult,
 } from '@vtt/shared';
-import { ROLE_GM } from '@vtt/shared';
+import { ROLE_GM, chatCategoryOf, chatCompactLine, isCheckCallOpen } from '@vtt/shared';
 import {
   allowCombatAction,
   fetchHandouts,
@@ -23,7 +34,9 @@ import { AttackRow } from './AttackControls.js';
 import { IconNewspaper } from './UiIcons.js';
 import { OpposedRow } from './GrappleControls.js';
 import { DamageApplyControls, DamageRow } from './DamageControls.js';
+import { CheckCallRow } from './CheckCall.js';
 import { useAuthStore } from '../stores/authStore.js';
+import { useChatFilterStore } from '../stores/chatFilterStore.js';
 import { useChatStore, type ChatItem } from '../stores/chatStore.js';
 import { useHandoutStore } from '../stores/handoutStore.js';
 import { useJournalStore } from '../stores/journalStore.js';
@@ -278,6 +291,38 @@ function BotProposalRow({
  * the payer and the payee — so it needs no „who may see this" branch here: the
  * server decided that before it left.
  */
+/**
+ * Dzień odpoczynku albo podana dawka (s. 150, 222–223).
+ *
+ * Karta publiczna i bez bezwzględnych PW: `hp` niesie **różnicę**, więc nie ma
+ * tu czego redagować per odbiorca — inaczej niż przy karcie obrażeń, gdzie
+ * absolutne PW celu są tajemnicą jego właściciela.
+ */
+function RecoveryRow({ message, entry }: { message: ChatMessageView; entry: RecoveryLogEntry }) {
+  return (
+    <div
+      className={`chat-message chat-recovery${entry.tone === 'warn' ? ' chat-recovery--warn' : ''}`}
+    >
+      <div className="chat-message-meta">
+        <span className="chat-message-author">{entry.actor}</span>
+        <span className="chat-message-time">{formatTime(message.createdAt)}</span>
+      </div>
+      <p className="chat-recovery-title">
+        {entry.title}
+        {entry.hp > 0 ? <strong className="chat-recovery-hp">+{entry.hp} PW</strong> : null}
+      </p>
+      {entry.lines.length > 0 ? (
+        <ul className="chat-economy-lines">
+          {entry.lines.map((line, index) => (
+            <li key={index}>{line}</li>
+          ))}
+        </ul>
+      ) : null}
+      {entry.note ? <p className="chat-economy-summary">{entry.note}</p> : null}
+    </div>
+  );
+}
+
 function EconomyRow({ message, entry }: { message: ChatMessageView; entry: EconomyLogEntry }) {
   return (
     <div className="chat-message chat-economy">
@@ -561,6 +606,288 @@ function BotActivityRow({ entry, canStop }: { entry: BotActivityEntry; canStop: 
   );
 }
 
+/** Notatka lokalna: podpowiedź, błąd albo pytanie z przyciskami (etap 16c). */
+function NoteRow({ item }: { item: Extract<ChatItem, { type: 'note' }> }) {
+  return (
+    <p className="chat-note">
+      {item.text}
+      {/* Buttons on a note (stage 16c): the „cel za osłoną" card asks
+          which of the two answers the rules allow the table wants, and
+          neither has cost anything yet. Pressing one is what turns the
+          choice into a roll — and into a line of the log. */}
+      {item.actions && (
+        <span className="chat-note-actions">
+          {item.actions.map((action) => (
+            <button
+              key={action.label}
+              type="button"
+              className="small-button"
+              {...(action.title ? { title: action.title } : {})}
+              onClick={() => action.run()}
+            >
+              {action.label}
+            </button>
+          ))}
+        </span>
+      )}
+    </p>
+  );
+}
+
+/**
+ * Zaznaczanie tekstu kończy się kliknięciem, więc bez tego sprawdzenia każde
+ * skopiowanie linijki rozwijałoby wiersz pod palcami.
+ */
+function clickWithoutSelection(event: MouseEvent, run: () => void): void {
+  const selection = window.getSelection();
+  if (selection && !selection.isCollapsed && selection.toString().length > 0) return;
+  event.preventDefault();
+  run();
+}
+
+/**
+ * Wypowiedź w trybie zwartym (01.09.2026).
+ *
+ * Tekst zostaje **w całości** — rozmowy się nie streszcza, bo streszczenie
+ * rozmowy jest jej utratą. Zwija się wyłącznie meta: imię i godzina wchodzą
+ * w tę samą linię, więc „Wchodzę." zajmuje jeden wiersz zamiast dwóch.
+ */
+function CompactTalkRow({
+  message,
+  myUserId,
+  onExpand,
+}: {
+  message: ChatMessageView;
+  myUserId: string;
+  onExpand: () => void;
+}) {
+  const isWhisper = message.kind === 'whisper';
+  const whisperLabel =
+    message.authorId === myUserId
+      ? `→ ${message.recipientName ?? '?'}`
+      : `szept od ${message.authorName}`;
+  const revealedChars = useTypewriterStore((state) => state.revealed[message.id]);
+  const typing = revealedChars !== undefined;
+  const text = typing ? message.text.slice(0, revealedChars) : message.text;
+
+  return (
+    <button
+      type="button"
+      className={`chat-message chat-compact-row chat-compact-row--talk${
+        isWhisper ? ' chat-message--whisper' : ''
+      }${message.botId ? ' chat-message--npc' : ''}`}
+      title="Kliknij, aby rozwinąć wiersz"
+      onClick={(event) => clickWithoutSelection(event, onExpand)}
+    >
+      <span className="chat-message-time">{formatTime(message.createdAt)}</span>
+      <Speaker message={message} />
+      <span className="chat-message-author">{message.authorName}</span>
+      {isWhisper && <span className="chat-whisper-label">{whisperLabel}</span>}
+      <span className="chat-compact-text">
+        {text}
+        {typing && <span className="chat-typewriter-cursor" aria-hidden />}
+      </span>
+    </button>
+  );
+}
+
+/**
+ * Karta mechaniczna ściśnięta do jednej linii. Treść bierze się z
+ * `chatCompactLine` — funkcji czystej, wspólnej i pokrytej testami — więc
+ * zwarty wiersz nigdy nie powie czegoś, czego nie ma w pełnej karcie.
+ */
+function CompactCardRow({
+  message,
+  line,
+  onExpand,
+}: {
+  message: ChatMessageView;
+  line: NonNullable<ReturnType<typeof chatCompactLine>>;
+  onExpand: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={`chat-message chat-compact-row chat-compact-row--${chatCategoryOf(message.kind)}`}
+      title="Kliknij, aby rozwinąć pełną kartę"
+      onClick={(event) => clickWithoutSelection(event, onExpand)}
+    >
+      <span className="chat-message-time">{formatTime(message.createdAt)}</span>
+      <span className="chat-message-author">{line.actor}</span>
+      <span
+        className={`chat-compact-summary${line.tone ? ` chat-compact-summary--${line.tone}` : ''}`}
+      >
+        {line.summary}
+      </span>
+    </button>
+  );
+}
+
+/** Pełna karta wiadomości — ten sam wybór rodzaju, co przed filtrami. */
+function FullMessageRow({
+  message,
+  isGm,
+  myUserId,
+  trace,
+  canResolveProposal,
+}: {
+  message: ChatMessageView;
+  isGm: boolean;
+  myUserId: string;
+  trace?: BotTraceBroadcast;
+  canResolveProposal: boolean;
+}) {
+  if (message.kind === 'roll' || message.kind === 'gmroll') {
+    return <RollRow message={message} isGm={isGm} />;
+  }
+  if (message.kind === 'damage' && message.damage) {
+    return <DamageRow message={message} entry={message.damage} isGm={isGm} />;
+  }
+  if (message.kind === 'proposal' && message.proposal) {
+    return (
+      <BotProposalRow
+        message={message}
+        proposal={message.proposal}
+        canResolve={canResolveProposal}
+      />
+    );
+  }
+  if (message.kind === 'economy' && message.economy) {
+    return <EconomyRow message={message} entry={message.economy} />;
+  }
+  if (message.kind === 'handout' && message.handout) {
+    return <HandoutRow message={message} entry={message.handout} />;
+  }
+  if (message.kind === 'journal' && message.journal) {
+    return <JournalRow message={message} entry={message.journal} />;
+  }
+  if (message.kind === 'check' && message.check) {
+    return <CheckCallRow message={message} entry={message.check} />;
+  }
+  if (message.kind === 'recovery' && message.recovery) {
+    return <RecoveryRow message={message} entry={message.recovery} />;
+  }
+  if ((message.kind === 'action' || message.kind === 'gmaction') && message.action) {
+    return <CombatActionRow message={message} entry={message.action} isGm={isGm} />;
+  }
+  return <MessageRow message={message} myUserId={myUserId} {...(trace ? { trace } : {})} />;
+}
+
+/**
+ * Jeden wiersz feedu: zwarty albo pełny.
+ *
+ * Rozwinięcie jest **per wiersz i tymczasowe** (żyje w stanie panelu, nie
+ * w `localStorage`): tryb zwarty jest nastawieniem na całą sesję, a rozwinięcie
+ * — jednym zajrzeniem w kartę, po której wraca się do przeglądania.
+ */
+function FeedRow({
+  item,
+  isGm,
+  myUserId,
+  trace,
+  compact,
+  expanded,
+  onToggleExpand,
+  canResolveProposal,
+}: {
+  item: ChatItem;
+  isGm: boolean;
+  myUserId: string;
+  trace?: BotTraceBroadcast;
+  compact: boolean;
+  expanded: boolean;
+  onToggleExpand: () => void;
+  canResolveProposal: boolean;
+}) {
+  if (item.type === 'note') return <NoteRow item={item} />;
+  const { message } = item;
+  const full = (
+    <FullMessageRow
+      message={message}
+      isGm={isGm}
+      myUserId={myUserId}
+      canResolveProposal={canResolveProposal}
+      {...(trace ? { trace } : {})}
+    />
+  );
+  if (!compact) return full;
+  if (expanded) {
+    // Rozwinięta karta ma własne przyciski, więc nie da się jej zwinąć
+    // kliknięciem w tło — od tego jest strzałka w rogu.
+    return (
+      <div className="chat-expanded">
+        <button
+          type="button"
+          className="chat-collapse"
+          title="Zwiń wiersz z powrotem do jednej linii"
+          aria-label="Zwiń wiersz"
+          onClick={onToggleExpand}
+        >
+          ▴
+        </button>
+        {full}
+      </div>
+    );
+  }
+  const line = chatCompactLine(message);
+  if (!line) {
+    return <CompactTalkRow message={message} myUserId={myUserId} onExpand={onToggleExpand} />;
+  }
+  return <CompactCardRow message={message} line={line} onExpand={onToggleExpand} />;
+}
+
+const CATEGORY_BUTTONS: { id: ChatCategory; icon: string; label: string; title: string }[] = [
+  { id: 'talk', icon: '💬', label: 'Rozmowy', title: 'Wypowiedzi i szepty — także NPC-ów' },
+  { id: 'dice', icon: '🎲', label: 'Rzuty', title: 'Karty rzutów: testy, ataki, obrażenia' },
+  { id: 'combat', icon: '⚔', label: 'Walka', title: 'Rozliczone obrażenia i akcje tury' },
+  {
+    id: 'table',
+    icon: '📋',
+    label: 'Stół',
+    title: 'Eurodolce, handouty, dziennik, propozycje botów i notatki systemowe',
+  },
+];
+
+/** „1 ukryty wiersz" · „3 ukryte wiersze" · „7 ukrytych wierszy". */
+function hiddenLabel(count: number): string {
+  const tens = count % 100;
+  const ones = count % 10;
+  if (count === 1) return '1 ukryty wiersz';
+  if (ones >= 2 && ones <= 4 && (tens < 12 || tens > 14)) return `${count} ukryte wiersze`;
+  return `${count} ukrytych wierszy`;
+}
+
+/**
+ * Wiersze, których filtr nie rusza: te, które czekają na czyjąś decyzję.
+ *
+ * Propozycja bota bez odpowiedzi i notatka z przyciskami nie są logiem — są
+ * pytaniem, a pytanie schowane pod separatorem po prostu zawiśnie, i to
+ * w środku cudzej tury.
+ */
+function isPending(item: ChatItem, myUserId: string, isGm: boolean): boolean {
+  if (item.type === 'note') return (item.actions?.length ?? 0) > 0;
+  const { proposal, check, kind } = item.message;
+  // Wezwanie do Testu (etap 32) jest tym samym, czym propozycja bota: decyzją
+  // czekającą na kliknięcie, a nie wpisem w dzienniku. Schowane pod
+  // separatorem albo ściśnięte do jednej linii zawisłoby w środku cudzej tury.
+  if (kind === 'check') return check !== undefined && isCheckCallOpen(check);
+  if (kind !== 'proposal' || !proposal || proposal.resolution !== undefined) return false;
+  return isGm || proposal.controllerUserId === myUserId;
+}
+
+function itemKey(item: ChatItem): string {
+  return item.type === 'message' ? `m${item.message.id}` : item.id;
+}
+
+/**
+ * Feed po filtrach: widoczne wiersze pojedynczo, ukryte — zbite w klikalne
+ * separatory. Ukryty wiersz **nie znika**: czat jest logiem sesji, więc filtr
+ * ma go zwinąć, a nie skasować z ekranu.
+ */
+type FeedEntry =
+  | { kind: 'item'; key: string; item: ChatItem }
+  | { kind: 'hidden'; key: string; items: ChatItem[]; open: boolean };
+
 export function ChatPanel() {
   const user = useAuthStore((s) => s.user);
   const synced = useChatStore((s) => s.synced);
@@ -571,6 +898,18 @@ export function ChatPanel() {
   const botActivity = useChatStore((s) => s.botActivity);
   const botTraces = useChatStore((s) => s.botTraces);
   const isGm = user?.role === ROLE_GM;
+  const myUserId = user?.id ?? '';
+
+  const categories = useChatFilterStore((s) => s.categories);
+  const compact = useChatFilterStore((s) => s.compact);
+  const toggleCategory = useChatFilterStore((s) => s.toggleCategory);
+  const soloCategory = useChatFilterStore((s) => s.soloCategory);
+  const showAll = useChatFilterStore((s) => s.showAll);
+  const toggleCompact = useChatFilterStore((s) => s.toggleCompact);
+  /** Rozwinięte grupy ukrytych wierszy — klucz bierze się z pierwszego w grupie. */
+  const [openRuns, setOpenRuns] = useState<ReadonlySet<string>>(() => new Set());
+  /** Karty rozwinięte mimo trybu zwartego, po id wiadomości. */
+  const [expandedIds, setExpandedIds] = useState<ReadonlySet<number>>(() => new Set());
 
   // Draft lives in the store so the dice cup can read and execute commands.
   const draft = useChatStore((s) => s.draft);
@@ -580,24 +919,54 @@ export function ChatPanel() {
   /** scrollHeight captured when older-history loading starts (to keep position). */
   const prependHeightRef = useRef<number | null>(null);
 
+  const feed = useMemo<FeedEntry[]>(() => {
+    const out: FeedEntry[] = [];
+    let run: ChatItem[] = [];
+    const flush = () => {
+      if (run.length === 0) return;
+      const key = `hidden-${itemKey(run[0]!)}`;
+      out.push({ kind: 'hidden', key, items: run, open: openRuns.has(key) });
+      run = [];
+    };
+    for (const item of items) {
+      const category = item.type === 'note' ? 'table' : chatCategoryOf(item.message.kind);
+      if (categories[category] || isPending(item, myUserId, isGm)) {
+        flush();
+        out.push({ kind: 'item', key: itemKey(item), item });
+      } else {
+        run.push(item);
+      }
+    }
+    flush();
+    return out;
+  }, [items, categories, openRuns, myUserId, isGm]);
+
+  const hiddenCount = useMemo(
+    () =>
+      feed.reduce((sum, entry) => (entry.kind === 'hidden' ? sum + entry.items.length : sum), 0),
+    [feed],
+  );
+
   useLayoutEffect(() => {
-    const feed = feedRef.current;
-    if (!feed) return;
+    const feedEl = feedRef.current;
+    if (!feedEl) return;
     if (prependHeightRef.current !== null && !loadingHistory) {
-      feed.scrollTop += feed.scrollHeight - prependHeightRef.current;
+      feedEl.scrollTop += feedEl.scrollHeight - prependHeightRef.current;
       prependHeightRef.current = null;
     } else if (stickToBottomRef.current) {
-      feed.scrollTop = feed.scrollHeight;
+      feedEl.scrollTop = feedEl.scrollHeight;
     }
     // Streamed bot text grows the feed too — follow it like a new message.
-  }, [items, loadingHistory, botActivity]);
+    // Zmiana filtrów albo gęstości przestawia całą wysokość feedu, więc feed
+    // trzyma się dna dokładnie tak samo jak przy nowej wiadomości.
+  }, [feed, compact, expandedIds, loadingHistory, botActivity]);
 
   const onScroll = (event: UIEvent<HTMLDivElement>) => {
-    const feed = event.currentTarget;
+    const feedEl = event.currentTarget;
     stickToBottomRef.current =
-      feed.scrollHeight - feed.scrollTop - feed.clientHeight < STICK_TO_BOTTOM_PX;
-    if (feed.scrollTop < LOAD_MORE_THRESHOLD_PX && hasMoreHistory && !loadingHistory) {
-      prependHeightRef.current = feed.scrollHeight;
+      feedEl.scrollHeight - feedEl.scrollTop - feedEl.clientHeight < STICK_TO_BOTTOM_PX;
+    if (feedEl.scrollTop < LOAD_MORE_THRESHOLD_PX && hasMoreHistory && !loadingHistory) {
+      prependHeightRef.current = feedEl.scrollHeight;
       loadOlderHistory();
     }
   };
@@ -610,97 +979,123 @@ export function ChatPanel() {
     stickToBottomRef.current = true;
   };
 
+  function toggleRun(key: string) {
+    setOpenRuns((current) => {
+      const next = new Set(current);
+      if (!next.delete(key)) next.add(key);
+      return next;
+    });
+  }
+
+  function toggleExpanded(id: number) {
+    setExpandedIds((current) => {
+      const next = new Set(current);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+  }
+
+  function renderItem(item: ChatItem, key: string) {
+    const trace = item.type === 'message' ? botTraces[item.message.id] : undefined;
+    return (
+      <FeedRow
+        key={key}
+        item={item}
+        isGm={isGm}
+        myUserId={myUserId}
+        compact={compact}
+        expanded={item.type === 'message' && expandedIds.has(item.message.id)}
+        onToggleExpand={() => {
+          if (item.type === 'message') toggleExpanded(item.message.id);
+        }}
+        canResolveProposal={
+          item.type === 'message' && (isGm || item.message.proposal?.controllerUserId === myUserId)
+        }
+        {...(trace ? { trace } : {})}
+      />
+    );
+  }
+
   if (!user) return null;
 
   return (
     <section className="chat-panel">
-      <h2 className="panel-section-title">Czat</h2>
-      <div className="chat-feed" ref={feedRef} onScroll={onScroll}>
+      <div className="chat-panel-head">
+        <h2 className="panel-section-title">Czat</h2>
+        <div className="chat-filter-bar" role="group" aria-label="Filtry czatu">
+          {CATEGORY_BUTTONS.map((category) => (
+            <button
+              key={category.id}
+              type="button"
+              className={`chat-filter${categories[category.id] ? ' chat-filter--on' : ''}`}
+              aria-pressed={categories[category.id]}
+              title={`${category.title}. Alt+klik — pokaż tylko tę grupę.`}
+              onClick={(event) =>
+                event.altKey ? soloCategory(category.id) : toggleCategory(category.id)
+              }
+            >
+              <span aria-hidden>{category.icon}</span> {category.label}
+            </button>
+          ))}
+          <button
+            type="button"
+            className={`chat-filter${compact ? ' chat-filter--on' : ''}`}
+            aria-pressed={compact}
+            title="Tryb zwarty: karty mechaniki kurczą się do jednej linii (wypowiedzi zostają w całości). Klik w wiersz rozwija go z powrotem."
+            onClick={toggleCompact}
+          >
+            <span aria-hidden>≡</span> Zwarty
+          </button>
+          {hiddenCount > 0 && (
+            <button
+              type="button"
+              className="chat-filter chat-filter--reset"
+              title="Włącz z powrotem wszystkie grupy"
+              onClick={showAll}
+            >
+              Pokaż wszystko
+            </button>
+          )}
+        </div>
+      </div>
+      <div
+        className={`chat-feed${compact ? ' chat-feed--compact' : ''}`}
+        ref={feedRef}
+        onScroll={onScroll}
+      >
         {!synced && <p className="placeholder-text">Synchronizacja…</p>}
         {synced && !campaign && (
           <p className="placeholder-text">Brak aktywnej kampanii — czat jest niedostępny.</p>
         )}
         {loadingHistory && <p className="chat-note">Wczytywanie historii…</p>}
-        {items.map((item: ChatItem) =>
-          item.type === 'message' ? (
-            item.message.kind === 'roll' || item.message.kind === 'gmroll' ? (
-              <RollRow key={item.message.id} message={item.message} isGm={isGm} />
-            ) : item.message.kind === 'damage' && item.message.damage ? (
-              <DamageRow
-                key={item.message.id}
-                message={item.message}
-                entry={item.message.damage}
-                isGm={isGm}
-              />
-            ) : item.message.kind === 'proposal' && item.message.proposal ? (
-              <BotProposalRow
-                key={item.message.id}
-                message={item.message}
-                proposal={item.message.proposal}
-                canResolve={isGm || item.message.proposal.controllerUserId === user.id}
-              />
-            ) : item.message.kind === 'economy' && item.message.economy ? (
-              <EconomyRow
-                key={item.message.id}
-                message={item.message}
-                entry={item.message.economy}
-              />
-            ) : item.message.kind === 'handout' && item.message.handout ? (
-              <HandoutRow
-                key={item.message.id}
-                message={item.message}
-                entry={item.message.handout}
-              />
-            ) : item.message.kind === 'journal' && item.message.journal ? (
-              <JournalRow
-                key={item.message.id}
-                message={item.message}
-                entry={item.message.journal}
-              />
-            ) : (item.message.kind === 'action' || item.message.kind === 'gmaction') &&
-              item.message.action ? (
-              <CombatActionRow
-                key={item.message.id}
-                message={item.message}
-                entry={item.message.action}
-                isGm={isGm}
-              />
-            ) : (
-              <MessageRow
-                key={item.message.id}
-                message={item.message}
-                myUserId={user.id}
-                {...(botTraces[item.message.id] ? { trace: botTraces[item.message.id] } : {})}
-              />
-            )
+        {feed.map((entry) =>
+          entry.kind === 'item' ? (
+            renderItem(entry.item, entry.key)
           ) : (
-            <p key={item.id} className="chat-note">
-              {item.text}
-              {/* Buttons on a note (stage 16c): the „cel za osłoną" card asks
-                  which of the two answers the rules allow the table wants, and
-                  neither has cost anything yet. Pressing one is what turns the
-                  choice into a roll — and into a line of the log. */}
-              {item.actions && (
-                <span className="chat-note-actions">
-                  {item.actions.map((action) => (
-                    <button
-                      key={action.label}
-                      type="button"
-                      className="small-button"
-                      {...(action.title ? { title: action.title } : {})}
-                      onClick={() => action.run()}
-                    >
-                      {action.label}
-                    </button>
-                  ))}
-                </span>
-              )}
-            </p>
+            <div key={entry.key} className="chat-hidden-run">
+              <button
+                type="button"
+                className="chat-hidden-toggle"
+                aria-expanded={entry.open}
+                title={
+                  entry.open
+                    ? 'Zwiń z powrotem wiersze spoza filtra'
+                    : 'Pokaż wiersze ukryte filtrem — bez zmiany samego filtra'
+                }
+                onClick={() => toggleRun(entry.key)}
+              >
+                {entry.open
+                  ? `⋯ ${entry.items.length} spoza filtra — zwiń ⋯`
+                  : `⋯ ${hiddenLabel(entry.items.length)} ⋯`}
+              </button>
+              {entry.open && entry.items.map((item) => renderItem(item, itemKey(item)))}
+            </div>
           ),
         )}
-        {botActivity.map((entry) => (
-          <BotActivityRow key={entry.turnId} entry={entry} canStop={isGm} />
-        ))}
+        {categories.talk &&
+          botActivity.map((entry) => (
+            <BotActivityRow key={entry.turnId} entry={entry} canStop={isGm} />
+          ))}
       </div>
       {isGm && botActivity.length > 1 && (
         <div className="chat-queue-row">

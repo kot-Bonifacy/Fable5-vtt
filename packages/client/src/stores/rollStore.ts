@@ -30,6 +30,27 @@ import {
  * physical gesture (and its entropy).
  */
 
+/**
+ * Wezwanie MG, na które ten rzut odpowiada (etap 32).
+ *
+ * Same rzeczy do pokazania i jeden adres. Czym się rzuca i przeciw czemu wie
+ * serwer z zapisanej karty wezwania — tutaj to samo stoi po to, żeby okno
+ * mogło narysować podgląd, zanim gracz zdecyduje o Szczęściu.
+ */
+export interface RollCall {
+  /** Karta wezwania na czacie. */
+  messageId: number;
+  /** Kto zobaczy wynik — wybrał MG, okno tylko o tym mówi. */
+  visibility: 'public' | 'gm';
+  dv?: number;
+  dvLabel?: string;
+  opponentBonus?: number;
+  prompt?: string;
+  calledByName: string;
+  /** Modyfikator narzucony przez MG — w oknie tylko do odczytu. */
+  modifier?: number;
+}
+
 /** What the dialog is being opened for. */
 export interface RollTarget {
   characterId: string;
@@ -39,6 +60,8 @@ export interface RollTarget {
   statId?: CpredRollRequest['statId'];
   /** Weapon row for `kind: 'damage'`. */
   weaponRowId?: string;
+  /** Set when the roll answers a GM's call (stage 32). */
+  call?: RollCall;
 }
 
 /** A check waiting in the cup: everything the server needs, plus the label. */
@@ -57,6 +80,8 @@ export interface PendingRoll extends Omit<RollTarget, 'characterId'> {
   title: string;
   /** Total modifier — shown on the cup so the thrower knows what they carry. */
   modifierTotal: number;
+  /** Wezwanie MG, na które ten rzut odpowiada (etap 32). */
+  call?: RollCall;
 }
 
 /**

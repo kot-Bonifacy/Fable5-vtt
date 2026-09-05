@@ -301,6 +301,17 @@ describe('ammunition that deals no damage', () => {
         data: {
           stats: { ...(character.data as CpredCharacterData).stats, ref: 6, dex: 5, will: 6 },
           skills: { athletics: 4, handgun: 4, 'resist-torture-drugs': 2 },
+          // Etap 31: „Jeśli próbuje jej użyć osoba bez tej cyborgizacji …
+          // amunicja inteligentna nie wystrzeli" (s. 347). Od tej sesji to
+          // odmowa, nie proza — więc strzelec musi mieć czym celować.
+          cyberware: [
+            {
+              id: 'cw-scope',
+              name: 'Celownik przykładowy',
+              notes: '',
+              type: 'cyberoptics',
+            },
+          ],
           weapons: [
             {
               id: 'w-grenade',
@@ -573,6 +584,108 @@ describe('ammunition that deals no damage', () => {
       await emitAck(gm, 'token:update', { tokenId: mookTokenId, patch: { combatProfile: null } });
       await load('ammo.sample-gas');
     });
+  });
+
+  /**
+   * Impuls EMP mówi, co padło (04.09.2026, s. 345–347).
+   *
+   * Do tej sesji karta kończyła się na „oblał Test": dwie cyborgizacje wybierał
+   * MG w pamięci, a po minucie nikt nie wiedział, co właściwie wraca.
+   */
+  describe('EMP wskazuje wyłączone cyborgizacje', () => {
+    let chromeTokenId: string;
+    let chromeCharacterId: string;
+
+    it('stawia w kwadracie figurę z trzema wszczepami', async () => {
+      const chrome = data(
+        await emitAck<CharacterView>(gm, 'character:create', { name: 'Chromowany' }),
+        'character:create',
+      );
+      chromeCharacterId = chrome.id;
+      await emitAck(gm, 'character:update', {
+        characterId: chromeCharacterId,
+        patch: {
+          data: {
+            // TECHNIKA 2 bez Cyberinżynierii: PT 13 jest praktycznie nie do zdania,
+            // a pętla niżej i tak nie polega na tym, że zawsze się nie uda.
+            stats: { ...(chrome.data as CpredCharacterData).stats, tech: 2 },
+            cyberware: [
+              { id: 'cw-1', name: 'Kerenzikov', notes: '', type: 'neuralware' },
+              { id: 'cw-2', name: 'Cyberoko', notes: '', type: 'cyberoptics' },
+              { id: 'cw-3', name: 'Sprzęg neuralny', notes: '', type: 'neuralware' },
+            ],
+          },
+        },
+      });
+      chromeTokenId = data(
+        await emitAck<TokenView>(gm, 'token:create', {
+          sceneId,
+          name: 'Chromowany',
+          x: AIM.x - 50 + 4 * PX_PER_M,
+          y: AIM.y - 50,
+          hp: { current: 30, max: 30 },
+          characterId: chromeCharacterId,
+        }),
+        'token:create',
+      ).id;
+      expect(chromeTokenId).toBeTruthy();
+    });
+
+    it('nazywa dwie cyborgizacje na karcie i zapisuje je przy statusie', async () => {
+      await load('ammo.sample-emp');
+      let effect: string | undefined;
+      for (let attempt = 0; attempt < 25 && !effect; attempt += 1) {
+        await emitAck(gm, 'token:effect', {
+          tokenId: chromeTokenId,
+          statusId: 'emp',
+          active: false,
+        });
+        const { card } = await lob();
+        const row = (card.forcedChecks ?? []).find((check) => check.name === 'Chromowany');
+        if (row && !row.success) effect = row.effect;
+      }
+      if (!effect) throw new Error('nikt nigdy nie oblał Testu — RNG albo pocisk są zepsute');
+
+      // Dwie nazwy z karty postaci, nie identyfikatory wierszy.
+      expect(effect).toContain('wyłączone:');
+      const named = ['Kerenzikov', 'Cyberoko', 'Sprzęg neuralny'].filter((name) =>
+        effect?.includes(name),
+      );
+      expect(named).toHaveLength(2);
+
+      const token = await tokenOf(chromeTokenId);
+      expect(token.statuses).toContain('emp');
+    }, 30_000);
+
+    // Do 04.09.2026 „Cofnij" zdejmowało naklejkę, ale zostawiało to, co przy
+    // niej wisiało — zegar i listę wyłączonych. Następna walka zgłaszała wtedy
+    // „Minęła minuta" dla statusu, którego na żetonie już nie było.
+    it('„Cofnij" zabiera razem z naklejką zegar i listę wyłączonych', async () => {
+      await load('ammo.sample-emp');
+      let messageId: number | undefined;
+      for (let attempt = 0; attempt < 25 && messageId === undefined; attempt += 1) {
+        await emitAck(gm, 'token:effect', {
+          tokenId: chromeTokenId,
+          statusId: 'emp',
+          active: false,
+        });
+        const { posted } = await lob();
+        const hit = posted.find(
+          (entry) =>
+            (entry.message.damage as DamageLogEntry | undefined)?.targetTokenId === chromeTokenId &&
+            ((entry.message.damage as DamageLogEntry).statusesAdded ?? []).includes('emp'),
+        );
+        if (hit) messageId = hit.message.id;
+      }
+      if (messageId === undefined) throw new Error('nikt nigdy nie oblał Testu');
+
+      const ack = await emitAck(gm, 'damage:undo', { messageId });
+      expect(ack.ok).toBe(true);
+      const token = await tokenOf(chromeTokenId);
+      expect(token.statuses).not.toContain('emp');
+      // Druga połowa — zegar i lista wyłączonych — nie jedzie do klienta wcale,
+      // więc pilnuje jej test czystych funkcji w `sheets.test.ts`.
+    }, 30_000);
   });
 
   describe('effects that last a minute', () => {
@@ -866,6 +979,55 @@ describe('ammunition that deals no damage', () => {
   });
 
   describe('smart ammunition', () => {
+    it('refuses to fire for somebody without the cyberware it needs', async () => {
+      // „z powodów bezpieczeństwa amunicja inteligentna nie wystrzeli po
+      // pociągnięciu za spust" (s. 347). Prozą do etapu 31, bo do 23a karta nie
+      // miała chromu, o który dałoby się zapytać.
+      const bare = data(
+        await emitAck<CharacterView>(gm, 'character:create', { name: 'Bez celownika' }),
+        'character:create',
+      );
+      await emitAck(gm, 'character:update', {
+        characterId: bare.id,
+        patch: {
+          data: {
+            skills: { handgun: 4 },
+            weapons: [
+              {
+                id: 'w-pistol',
+                name: 'Zgrzyt 9',
+                notes: '',
+                compendiumId: 'weapon.zgrzyt-9',
+                damage: '2k6',
+                ammoCurrent: 40,
+                ammoMax: 40,
+                ammoType: '',
+                rof: '2',
+                ammoId: 'ammo.sample-guided',
+              },
+            ],
+          },
+        },
+      });
+      const token = data(
+        await emitAck<TokenView>(gm, 'token:create', {
+          sceneId,
+          name: 'Bez celownika',
+          x: AIM.x - 50 - 12 * PX_PER_M,
+          y: AIM.y - 250,
+          characterId: bare.id,
+        }),
+        'token:create',
+      );
+      const ack = await emitAck(gm, 'attack:roll', {
+        characterId: bare.id,
+        attackerTokenId: token.id,
+        targetTokenId: neighbourTokenId,
+        request: { weaponRowId: 'w-pistol', mode: 'single' },
+      });
+      expect(ack).toEqual({ ok: false, error: 'AMMO_NEEDS_CYBERWARE' });
+    });
+
     it('offers a second roll after a near miss and takes it against the same DV', async () => {
       await emitAck(gm, 'token:move', {
         tokenId: throwerTokenId,

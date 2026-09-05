@@ -1,5 +1,7 @@
 import type {
   BotActionProposal,
+  CheckCallEntry,
+  RecoveryLogEntry,
   ChatHistoryPage,
   ChatMessageBroadcast,
   ChatMessageView,
@@ -113,6 +115,10 @@ export function toChatMessageView(message: StoredMessage): ChatMessageView {
     view.handout = JSON.parse(message.payload) as HandoutLogEntry;
   } else if (message.kind === 'journal' && message.payload) {
     view.journal = JSON.parse(message.payload) as JournalLogEntry;
+  } else if (message.kind === 'check' && message.payload) {
+    view.check = JSON.parse(message.payload) as CheckCallEntry;
+  } else if (message.kind === 'recovery' && message.payload) {
+    view.recovery = JSON.parse(message.payload) as RecoveryLogEntry;
   }
   return view;
 }
@@ -217,6 +223,10 @@ export function visibleTo(user: SessionUser) {
               'economy',
               'handout',
               'journal',
+              // `check` (etap 32) trafia tu z powodu, dla którego jest tu
+              // `proposal`: wezwanie do Testu wystawia MG, więc każde jest jego
+              // sprawą — także wystawione z drugiego konta MG.
+              'check',
             ],
           },
         },

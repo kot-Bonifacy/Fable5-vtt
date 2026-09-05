@@ -269,6 +269,40 @@ describe('combat tracker', () => {
     expect(JSON.stringify(playerCombatTraffic)).not.toContain('Snajper');
   });
 
+  /**
+   * The alias reaches the tracker too (03.09) — a name hidden on the map and
+   * printed in the initiative queue would be no name hidden at all.
+   */
+  it('names an aliased figure in the tracker the way the table knows it', async () => {
+    expect(
+      (
+        await emitAck(gm, 'token:update', {
+          tokenId: npcTokenId,
+          patch: { name: 'Bosman Maelstromu', publicName: 'Zbir' },
+        })
+      ).ok,
+    ).toBe(true);
+
+    try {
+      const playerSync = await roundTrip(player);
+      expect(playerSync.combat?.combatants.map((c) => c.name).sort()).toEqual(['Zbir', 'Ziti']);
+      expect(JSON.stringify(playerSync.combat)).not.toContain('Bosman Maelstromu');
+      expect(JSON.stringify(playerCombatTraffic)).not.toContain('Bosman Maelstromu');
+
+      // MG czyta obie: alias jest tym, co mówi stołowi, nie tym, co sam widzi.
+      const gmRow = (await roundTrip(gm)).combat?.combatants.find((c) => c.tokenId === npcTokenId);
+      expect(gmRow?.name).toBe('Bosman Maelstromu');
+      expect(gmRow?.publicName).toBe('Zbir');
+    } finally {
+      // Reszta pliku zna tę figurę jako „Bandzior" i szuka jej po nazwie —
+      // nazwa wraca także wtedy, gdy asercja wyżej padnie.
+      await emitAck(gm, 'token:update', {
+        tokenId: npcTokenId,
+        patch: { name: 'Bandzior', publicName: null },
+      });
+    }
+  });
+
   it('rolls initiative for everyone at once, silently', async () => {
     const chatSeen: ChatMessageBroadcast[] = [];
     gm.on('chat:message', (payload: ChatMessageBroadcast) => chatSeen.push(payload));
@@ -307,6 +341,62 @@ describe('combat tracker', () => {
     // Initiative is not a Skill Check — a natural 10 must not explode.
     expect(message.message.roll?.critical).toBeUndefined();
     expect(message.message.roll?.breakdown?.[0]?.value).toBe(8);
+  });
+
+  it('ciężki pancerz obniża Inicjatywę i rozstrzyganie remisów (s. 185)', async () => {
+    /** Tabliczka remisu tej postaci, prosto z odświeżonej kolejki. */
+    const tieBreakOfZiti = async (): Promise<number | null> => {
+      const sync = await roundTrip(gm);
+      const row = sync.combat?.combatants.find((entry) => entry.name === 'Ziti');
+      if (!row) throw new Error('combatant missing from tracker');
+      return row.tieBreak;
+    };
+
+    // „Metalgear … −4 REF, ZW i RUCH": REF 8 idzie na 4, a razem z nim tabliczka
+    // remisu — bo remis rozstrzyga się właśnie REF-em i drugiego REF-u nie ma.
+    expect(
+      (
+        await emitAck(gm, 'character:update', {
+          characterId,
+          patch: {
+            data: {
+              armor: [
+                {
+                  id: 'a1',
+                  name: 'Metalgear',
+                  notes: '',
+                  sp: 18,
+                  spCurrent: 18,
+                  location: 'body',
+                  penalty: -4,
+                },
+              ],
+            },
+          },
+        })
+      ).ok,
+    ).toBe(true);
+
+    const card = waitFor<ChatMessageBroadcast>(player, 'chat:message');
+    const rolled = data(
+      await emitAck<{ initiative: number }>(player, 'combat:roll', {
+        combatantId: combat.combatants.find((c) => c.name === 'Ziti')!.id,
+      }),
+      'combat:roll',
+    );
+    expect(rolled.initiative).toBeGreaterThanOrEqual(5);
+    expect(rolled.initiative).toBeLessThanOrEqual(14);
+    const breakdown = (await card).message.roll?.breakdown?.[0];
+    expect(breakdown?.value).toBe(4);
+    expect(breakdown?.label).toContain('Pancerz');
+    expect(await tieBreakOfZiti()).toBe(4);
+
+    // Zdjęty pancerz oddaje oba: to modyfikator, nie trwała strata Cechy.
+    await emitAck(gm, 'character:update', { characterId, patch: { data: { armor: [] } } });
+    await emitAck(player, 'combat:roll', {
+      combatantId: combat.combatants.find((c) => c.name === 'Ziti')!.id,
+    });
+    expect(await tieBreakOfZiti()).toBe(8);
   });
 
   it('refuses a player rolling for somebody else', async () => {

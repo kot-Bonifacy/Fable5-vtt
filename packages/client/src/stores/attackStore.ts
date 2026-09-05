@@ -43,6 +43,16 @@ export interface AttackTargeting {
    * grenade, which is thrown by definition.
    */
   thrown?: boolean;
+  /**
+   * Fire what is bolted onto this row rather than the row itself (stage 31).
+   *
+   * A property of the crosshair rather than of the weapon: „Atak" on the rifle
+   * and „Atak" on its underbarrel launcher arm the same map with two different
+   * shots, and the map has to remember which one is being pointed.
+   */
+  attachmentId?: string;
+  /** Name of that attachment, for the crosshair's label. */
+  attachmentName?: string;
 }
 
 /** Which token's range bands are drawn as rings on the map. */

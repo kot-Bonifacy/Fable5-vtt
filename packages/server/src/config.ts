@@ -1,4 +1,5 @@
 import { resolve } from 'node:path';
+import { SNAPSHOT_RULES_DEFAULT } from '@vtt/shared';
 
 export interface ServerConfig {
   port: number;
@@ -29,6 +30,27 @@ export interface ServerConfig {
    * the log carries GM notes and campaign secrets, so it stays a dev knob.
    */
   botDecisionLogPath?: string;
+  /**
+   * Kopie zapasowe (etap 33). Pole jest **opcjonalne i to jest jego sens**:
+   * brak sekcji znaczy „ten proces kopii nie robi". Tak stoją wszystkie testy
+   * dymne — żaden nie ma powodu odkładać na dysk migawki swojej bazy
+   * tymczasowej, a osobna flaga „wyłącz" byłaby drugim sposobem na to samo.
+   */
+  backups?: BackupConfig;
+}
+
+export interface BackupConfig {
+  /**
+   * Gdzie lądują snapshoty. Poza repozytorium, bo kopia niesie dokładnie to
+   * samo, co `data/private/` — treść kampanii i dane z podręcznika.
+   */
+  dir: string;
+  /** Co ile minut powstaje kopia; `0` wyłącza timer razem z kopią startową. */
+  intervalMinutes: number;
+  /** Rotacja: ile najświeższych kopii zostaje bez pytania o dobę. */
+  keepHourly: number;
+  /** Rotacja: ile dób wstecz zostaje po jednej kopii. */
+  keepDaily: number;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
@@ -55,5 +77,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
       env.BOT_DECISION_LOG === ''
         ? ''
         : resolve(env.BOT_DECISION_LOG ?? '../../data/private/bot-decisions.jsonl'),
+    backups: {
+      dir: resolve(env.BACKUP_DIR ?? '../../data/private/backups'),
+      intervalMinutes: Number(env.BACKUP_INTERVAL_MINUTES ?? 60),
+      keepHourly: Number(env.BACKUP_KEEP_HOURLY ?? SNAPSHOT_RULES_DEFAULT.keepHourly),
+      keepDaily: Number(env.BACKUP_KEEP_DAILY ?? SNAPSHOT_RULES_DEFAULT.keepDaily),
+    },
   };
 }

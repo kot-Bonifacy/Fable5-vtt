@@ -26,6 +26,60 @@ z „Kart 24x": kto na nią wejdzie, dostaje 6k6 przez pancerz i jeszcze raz na 
 Tury; gracz jej nie zobaczy, dopóki nie zda Percepcji PT 17 z 4 m. Karta strefy otwiera się
 narzędziem ⚠ w trybie 📌; „Rozbrój" ją usypia, kosz usuwa.
 
+**Stan po sesji 04.09 (trzecia — montaż cyborgizacji i EMP) — Poligon wraca do stanu sprzed
+sesji.** Nośnikiem była **nowa karta „Pacjent 23a"** (utworzona i skasowana w tej samej sesji,
+razem z czterema wpisami `LedgerEntry` po zakupach wszczepów) oraz **dwa postawione żetony** —
+„Pacjent 23a" i drugi „avatar9" — obydwa usunięte. Na „Strzelnicy" jest znowu **siedem żetonów**,
+w bazie **dziewięć kart**. Granatnik podwieszany avatar9 wrócił do **naboju dymnego z magazynkiem
+1/1** (na czas oględzin miał EMP), a z żetonu **Rudego Kwiatkowskiego** zdjęty został ślad po
+cofniętym Impulsie — `statusData` znowu `{}`. Ślad zostawiony świadomie: **log czatu** — dwie
+karty montażu (nieudany Fumble i udany), dwie karty Utraty Człowieczeństwa, dwie karty ataku
+granatnikiem i dwie karty obrażeń przekreślone „Cofnięte — MG".
+
+**Uwaga dla następnego, kto będzie tu strzelał bronią obszarową:** klik w żeton **zaznacza go**
+zamiast celować (u MG wolno zaznaczyć każdą figurę), przez co uzbrojona broń schodzi z ręki,
+a następny klik w mapę jest **rozkazem marszu**. Kolejność jest w `pulapki-dev.md`.
+
+**Stan po sesji 04.09 (oględziny Zdolności Ról 30a–30d) — Poligon wraca do stanu sprzed sesji.**
+Nośnikiem był **„Frank"**, przestawiany kolejno na dziewięć Ról (Solo → Medyk → Technik → Stróż
+Prawa → Korpo → Rocker → Fixer → Nomada → Media) i **przywrócony z kopii zdjętej na starcie**:
+znowu bez Roli, bez Umiejętności, bez broni i pancerza, 0 ed, 0 PD, PW 35/35. **„Rudy
+Kwiatkowski" też wrócił** — na czas oględzin dostał Ciężki pistolet i Broń krótką 10, teraz ma
+z powrotem samą „Bardzo dużą broń białą" i Broń krótką 3 (rana „Złamana noga" jest sprzed tej
+sesji i została).
+
+Skasowane po sesji: **żeton „Frank"**, **cztery żetony „Korpogliniarz 1–4"** postawione
+Wezwaniem Wsparcia i **karta pracownika „Zwrotnica"** (Korporacyjny netrunner z zespołu Korpo).
+W bazie jest znowu **dziewięć kart** i **siedem żetonów na „Strzelnicy"**.
+
+Kolejka walki wróciła do **„PRZED WALKĄ" z tą samą piątką** (Tony, avatar9, testowy 2x2, Kolec,
+Rudy Kwiatkowski) — sprawdzone przez włączenie i wyłączenie trybu turowego; **tryb turowy jest
+wyłączony**, tak jak był. Walka rozegrana w trakcie sesji została zakończona wraz z jej
+`systemState` (wpisy Wsparcia w drodze).
+
+Ślad zostawiony świadomie: **log czatu z całej sesji** — rzuty Percepcji i Prowadzenia, karty
+ataku (w tym jedna z kaflem „Fumble zignorowany" z wymuszonej kostki), dwie karty obrażeń
+u Franka, Wezwanie Wsparcia i przybycie, Test Lojalności, Efekt Charyzmy, Targowanie się, zakup
+z targiem, Test Rzetelności i szeptana karta Pogłosek. **Magazynek żetonu „Rudy Kwiatkowski"
+(bliższego) pokazuje 7/8** — jeden strzał testowy; karta Rudego ma znów tylko broń białą, więc
+ten licznik zniknie przy pierwszym odświeżeniu wiersza.
+
+**Stan po sesji 02.09 (oględziny 29a i 29b) — Poligon nietknięty.** Nośnikiem była karta
+**„Frank"** i wróciła do stanu sprzed sesji: właściciel **`NPC (MG)`**, bez Roli, bez
+umiejętności, 0 PD, `formerRoles` puste. **Rejestr awansów (`AdvancementEntry`) jest znów pusty**
+— w trakcie sesji stanęło w nim czternaście wierszy (zakup umiejętności, dwa zakupy Roli, dwa
+powroty, przyznanie i zabranie 20 PD pięciu postaciom) i wszystkie zostały skasowane. PD
+wszystkich dziewięciu kart: **0**, tak jak przed sesją. Kopia kart sprzed sesji:
+`data/private/backups/characters-2026-09-02.json` (gitignore).
+
+Ślad zostawiony świadomie: **jedna karta rzutu w logu czatu** — „Frank (Tester) — Prowadzenie
+pojazdów (REF) · 1k10+13 = 20" z chipem „Moto 4 +4". Żaden żeton, żadna scena i żaden obiekt
+sceny nie były w tej sesji dotykane.
+
+**Do następnych oględzin wieloklasowości bierz „Franka", nie „Test 27x".** Pusta karta bez
+Roli, bez ekwipunku i bez żetonu jest jedyną w bazie, której zepsucie nic nie kosztuje;
+„Test 27x" jest nośna dla etapów 26x (cyberdek, żeton „Kolec" pod punktem dostępu).
+
 **Stan po sesji 31.08 (Celowanie, broń z katalogu).** Poligon wraca do stanu sprzed sesji —
 karta „Frank" była nośnikiem oględzin (broń z katalogu, rana nadana, zespół Korpo) i **została
 wyczyszczona**: bez broni, bez ran, bez Roli i bez zespołu, tak jak stała. Zatrudniony na chwilę
@@ -279,7 +333,8 @@ Zbudowana od nowa i **zostawiona na stałe** decyzją MG z 28.08. Do tej pory po
 przy każdej sesji, która potrzebowała dynamicznej widoczności (ostatnio 22.08), i za każdym
 razem płaciliśmy za nią drugi raz. Poligon nie miał ani jednej stałej sceny z widocznością
 `dynamic` — a to jest jedyny tryb, w którym da się oglądać cień ścian, przerwania marszu
-i (w etapie 27g) najgorszy przypadek wydajności.
+i „ktoś wychodzi zza rogu". (Trzecim powodem był najgorszy przypadek wydajności dla etapu 27g;
+**27g wycofano 01.09**, scena zostaje z dwóch pierwszych.)
 
 **Ustawienia:** widoczność **Dynamiczna**, pamięć eksploracji **włączona**, ciemna scena
 wyłączona, siatka 100 px, mapa pusta.
@@ -304,3 +359,62 @@ to jedyna kampania, na której wolno wszystko zepsuć.
 
 **Handout „Kto zostawił krążek na Poligonie?"** (screamsheet z wgraną grafiką) został jako
 dowód odbitki gazetowej z 24c — jedyny screamsheet w kampanii ze zdjęciem.
+
+## Stan po sesji 01.09.2026 (etap 31 — dodatki do broni)
+
+Karta **avatar9** została świadomie zmieniona, żeby dało się obejrzeć dodatki bez przygotowań:
+
+- **„Arasaka Minami 10"** ma **magazynek bębnowy** i **złącze smartguna** (trzy gniazda zajęte),
+  więc magazynek to **50**, nie 30. Stan naboi po oględzinach: 23/50.
+- **„Militech Dragon"** — **nowy wiersz** dopisany z katalogu; nosi **bagnet** i **granatnik
+  podwieszany** (trzy gniazda zajęte), a pod nim dwa wiersze `↳`. Magazynek karabinu 25/25,
+  granatnika **0/1** (jeden granat wystrzelony w oględzinach, pudło z odchyleniem).
+- **Wszczepiony „Uchwyt podskórny"** (prawa cyberręka) — **bez niego złącze smartguna nie daje
+  +1**, więc to on jest warunkiem obejrzenia tej reguły. Człowieczeństwo zapłacone: **28 → 26**,
+  maksimum spadło z 42 na 40 (dalej „Na granicy”).
+
+To jest komplet potrzebny do trzech nieoglądanych pozycji z `zaleglosci.md` (noktowizor w dymie,
+luneta od 51 m, demontaż przycinający naboje) — nie kasuj go, dopóki nie zostaną odhaczone.
+Ślad w logu czatu: trzy karty ataku avatar9 z 01.09.
+
+## Stan po sesji 01.09.2026 (druga) — pasek dodatków i domknięcie oględzin 31
+
+Poligon **przywrócony do stanu z pierwszej sesji 01.09**, opisanego w akapicie wyżej — z jednym
+wyjątkiem i kilkoma śladami w logu czatu.
+
+**Przywrócone po oględzinach:** dym rozwiany („Rozwiej cały dym" w panelu osłon), rana
+**„Złamana noga"** zdjęta z **Automatycznej wieżyczki**, a jej PW cofnięte do **25/25** guzikiem
+„Cofnij" na karcie obrażeń; dopisany na czas oględzin wiersz broni **„Granatnik"** (z „Amunicją
+dymną") skasowany z karty avatar9; **„Celownik noktowizyjny"** zdjęty z Arasaki, a **„Magazynek
+bębnowy"** wrócił na swoje miejsce — Arasaka stoi z powrotem na **23/50** ze złączem smartguna
+i bębnem; żeton avatar9 wrócił na swoje pole z **PW 35/35**. Militech Dragon **25/25**,
+granatnik podwieszany **0/1**, „testowy 2x2" **PW 35/35**, Rudy Kwiatkowski **40/40**.
+
+**Ślady zostawione świadomie:** karty w logu czatu z tej sesji — siedem strzałów z Celowaniem
+(noga) z Arasaki, atak bagnetem i strzał z granatnika podwieszanego, granat dymny z odchyleniem
+oraz karta rany „Celowanie (noga): Złamana noga" u wieżyczki wraz z wierszem „Cofnięte — MG".
+Historii czatu się nie sprząta.
+
+**Do zapamiętania przy oględzinach ran krytycznych u figur bez karty:** statysta
+**„testowy 2x2" ma OB 13**, więc 2k6 nigdy go nie przebije i rana krytyczna nie ma jak powstać.
+Figurą, na której to widać, jest **„Automatyczna wieżyczka"** — OB 0.
+
+**Do zapamiętania przy oględzinach dymu:** chmury nie da się postawić narzędziem. Trzeba wiersza
+broni ze wzorcem `grenade` (Granatnik, Granat) i naboju **„Amunicja dymna"** wybranego listą przy
+wierszu. **Od 02.09 listę ma też broń podwieszana** — granatnik pod karabinem strzela dymem
+i gazem jak każdy inny, więc dopisywanie osobnego wiersza „Granatnik" z katalogu nie jest już
+potrzebne.
+
+## Stan po sesji 02.09 (druga tego dnia — trzy błędy z 31 i 32)
+
+Zmienione i **zostawione**: **„Militech Dragon" avatar9** ma w granatniku podwieszanym wybraną
+**„Amunicję dymną"**, magazynek **1/1** (karabin bez zmian, **25/25**). To stan przygotowany pod
+następne oględziny dymu — jeden klik „Atak" i chmura stoi.
+
+Posprzątane: dym z tej sesji **rozwiany** guzikiem „Rozwiej cały dym" (panel narzędzia osłon —
+przy okazji sprawdzony i działa); **„Frank"** miał na czas testu odmowy podstawione
+`formerRoles: [solo]` prosto w bazie i **wrócił do stanu sprzed** (`roleId: null`,
+`formerRoles: []`) — kopia w scratchpadzie sesji.
+
+**Ślady zostawione świadomie:** karta strzału z granatnika podwieszanego „nabój: Amunicja dymna
+· obszar 10×10 m · odchylenie…" w logu czatu.

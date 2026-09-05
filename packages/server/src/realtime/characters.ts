@@ -19,6 +19,7 @@ import {
   cpredBackupTier,
   cpredBackupTierAt,
   cpredCombatAwarenessProblem,
+  cpredDropOrphanedRolePurses,
   cpredFieldRepairMinutes,
   cpredSheetFabrication,
   cpredRoleAbilityRank,
@@ -208,7 +209,15 @@ export const characterUpdateEvent = defineEvent<CharacterUpdatePayload, Characte
       // discount nobody rolled for — the same door `eddies` closed in 23b.
       if (sheet.haggle !== undefined) throw new RealtimeError('FORBIDDEN');
       const current = parseCharacterData(character.data, deps.ctx.cpred);
-      const merged = mergeCharacterData(current, sheet);
+      // A patch that changes `roleId` — the GM's plain field since 29a — can
+      // take an Ability off the sheet and leave its purse behind. Emptied here,
+      // before the three checks below, because otherwise the first of them
+      // refuses the very patch that changed the Role (and every patch after
+      // it) with a sentence about a Specialty nobody was editing.
+      const merged = cpredDropOrphanedRolePurses(
+        mergeCharacterData(current, sheet),
+        deps.ctx.cpred,
+      );
       // Stage 30b: the two Specialty purses stay on this path (a level-up has
       // no Action to charge), but their size depends on a rank the patch
       // validator cannot see. Judged here, against the sheet as it will be —

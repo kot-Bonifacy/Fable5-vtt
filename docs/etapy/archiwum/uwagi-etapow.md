@@ -68,7 +68,7 @@ pełne notatki sesji są w `dziennik-sesji.md`.
 | 27d | Kości 3D: skórki, dorzut, ustawienia          | ✅     | 2026-08-19        | pięć skórek, skórka jedzie z rzutem (jak w Foundry), dorzut drugą falą, okno ⚙ Ustawienia        |
 | 27e | Motyw dzień/noc dla całej aplikacji           | ✅     | 2026-08-20        | mapa i okno Sieci zostają nocne (decyzja MG); `theme.css` = jedyny plik z kolorem, pilnuje testu |
 | 27f | Szlif UX: pomoc, tooltipy, stany, okna        | ✅     | 2026-08-21        | + odwrócona umowa o przyciskach (decyzja MG); skróty mapy: jedna tabela dla kodu i dla pomocy    |
-| 27g | Wydajność                                     | ⬜     |                   | re-rendery przy ruchu tokenów, bundle, lazy-loading, fps mapy                                    |
+| 27g | ~~Wydajność~~                                 | ⛔     | wycofany 01.09    | MG przetestował wydajność samodzielnie i uznał etap za zbędny; plik został z nagłówkiem ⛔       |
 | 27h | Panel postaci: HUD, który wygląda jak gra     | ✅     | 2026-08-20        | dopisany 20.08 na wniosek MG; ikona slotu i waga statusu liczone w `shared`, nie w CSS           |
 | 27i | Mapa: efekty walki                            | ✅     | 2026-08-20        | zwężony 20.08 (żetony → 27j); efekt przycinany per widz, bang czeka na kości                     |
 | 27j | Żetony i czytelny ruch                        | ✅     | 2026-08-21        | kierunek patrzenia: automat z ruchu i strzału **plus** ręczna gałka (decyzja MG)                 |

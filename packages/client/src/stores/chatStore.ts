@@ -6,10 +6,12 @@ import type {
   ChatHistoryPage,
   ChatMessageBroadcast,
   ChatMessageView,
+  CheckCallEntry,
   PresenceBroadcast,
   PresenceEntry,
   StateSyncPayload,
 } from '@vtt/shared';
+import { isCheckCallOpen } from '@vtt/shared';
 
 /**
  * A button offered on a local note (stage 16c).
@@ -87,6 +89,32 @@ interface ChatStoreState {
 }
 
 let noteCounter = 0;
+
+/**
+ * Wezwanie do Testu, które czeka **na tego gracza** (etap 32).
+ *
+ * Czytane wprost z feedu, bez drugiego magazynu stanu: karta wezwania i tak
+ * w nim siedzi, a dwa źródła prawdy o tym, czy MG jeszcze czeka, rozjechałyby
+ * się przy pierwszym „Odwołaj". Bierzemy **ostatnie** otwarte: przy dwóch
+ * wezwaniach naraz kubek prowadzi do świeższego, a starsze zostaje na czacie.
+ *
+ * Świadomie tylko właściciel karty: MG, który wystawił pięć wezwań, miałby
+ * kubek migający bez przerwy, a jego „Rzuć za nią" stoi na karcie czatu.
+ */
+export function openCheckCallFor(
+  items: ChatItem[],
+  userId: string,
+): { messageId: number; entry: CheckCallEntry } | null {
+  for (let i = items.length - 1; i >= 0; i--) {
+    const item = items[i]!;
+    if (item.type !== 'message') continue;
+    const entry = item.message.check;
+    if (!entry || entry.ownerId !== userId) continue;
+    if (!isCheckCallOpen(entry)) continue;
+    return { messageId: item.message.id, entry };
+  }
+  return null;
+}
 
 function hasMessage(items: ChatItem[], id: number): boolean {
   return items.some((item) => item.type === 'message' && item.message.id === id);

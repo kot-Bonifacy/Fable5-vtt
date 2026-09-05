@@ -6,68 +6,92 @@ odhaczania zaległości albo dotykasz etapu, który tu występuje — nie rutyno
 
 Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/zamkniete-zaleglosci.md`.
 
+**05.09 (etap 33 — kopie zapasowe):** **żadna nowa pozycja nie została otwarta**, a etap
+zamknięto w komplecie z oględzinami. Naprawiony po drodze **jeden błąd** (polski znak w nazwie
+pobieranego pliku wywracał trasę eksportu błędem 500) i **jedna usterka układu** (polecenie
+`restore` w podpowiedzi łamało się w środku słowa). Do sprzątnięcia ręką MG: dwa katalogi
+`przed-przywroceniem-*` w `data/private/backups/`, zostawione po teście przywracania — kosz na
+nie został w trakcie sesji odrzucony.
+
+**04.09 (trzecia sesja):** zamknięte **trzy pozycje z `POMYSLY.md`** o cyborgizacjach — PT
+montażu z Testem Chirurgii, odmowy „nie ma w co tego wszczepić" i EMP nazywający dwie wyłączone
+cyborgizacje. Otwarte **dwie** pozycje, obie niżej: odmowy nieoglądane na koncie gracza oraz
+„Dodaj za darmo", które omija cały montaż. Naprawione przy okazji **dwa błędy**: Borgizacje
+liczone jak rodzina wymagająca podstawy (karta pisała nad Ramownicą „brak cyborgizacji
+podstawowej") i **„Cofnij" zostawiające zegar statusu w `statusData`** po zdjętej naklejce.
+
+**Zamknięte 04.09 (druga sesja):** paczka **„oczy i uszy"** — **wybuch i chmura gazu na mapie**,
+**rzut obrażeń obszaru z 16d**, **„usuń wszystkie osłony" z 16c** i **przechylenie figury dla
+stanu „nieprzytomny"**. Piąta pozycja — **dźwięki walki** — jest zmierzona, ale czeka na ucho MG
+i została w `POMYSLY.md`. Przy okazji naprawiono **dwa błędy** (guzik „Obrażenia" przy amunicji
+bez obrażeń; importer wycinający `thrown`, `maxRangeM` i `ammoIds`) oraz **jedno losowe
+migotanie testu** (`bot-actions.test.ts` porównywał cuid z „bot"). Diagnozy i opisy napraw —
+w `archiwum/zamkniete-zaleglosci.md`; **żadna nowa pozycja nie została otwarta**.
+
+**Zamknięte 04.09:** **wszystkie cztery pozycje „etap 30x nie był oglądany w przeglądarce"**
+— 30a, 30b, 30c i 30d przeszły przez przeglądarkę w komplecie, jedną kartą („Frank")
+przestawianą kolejno na dziewięć Ról. Sześć znalezionych błędów naprawiono w tej samej sesji;
+diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`. Jedna pozycja została otwarta —
+**cyberdek pracownika Korpo**, niżej.
+
+**Zamknięte 03.09 (trzecia sesja tego dnia):** **farmaceutyki bez zapasu dawek**
+i **Ustabilizowanie bez zasięgu**. Przy okazji doszło naturalne leczenie PW, którego projekt nie
+miał wcale (wpis z `POMYSLY.md`). Diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`;
+jedna pozycja została otwarta — **Stym**, niżej.
+
+**Zamknięte 03.09 (druga sesja tego dnia):** oba długi higieny — **czerwony `tsc --noEmit`**
+na serwerze i **losowo padający zestaw testów**. Migotanie miało **cztery** przyczyny, nie jedną;
+diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
+
+**Zamknięte 02.09 (druga sesja tego dnia):** trzy błędy z oględzin etapów 31 i 32 — wybór
+amunicji dla broni podwieszanej, nazwa dodatku w chmurce nad celem i odmowa `character:update`
+zostawiająca na karcie wartość, której nie ma w bazie. Wszystkie naprawione **i obejrzane
+w przeglądarce**; diagnozy i opisy napraw w `archiwum/zamkniete-zaleglosci.md`.
+
 ## Pozycje
 
-- **Celowanie w statystę — „zdanie zamiast rany" nadal nieoglądane (30.08).** Trzy strzały
-  z 30.08 były pudłem, a 31.08 przeładowanie odklikano bez strzelania. Zostaje jedno: strzał
-  z Celowaniem w figurę bez karty ma **nazwać ranę**, a nie ją wylosować. Reszta tej pozycji —
-  przeładowanie w trwającej walce — zamknięta 31.08 (patrz archiwum).
+- **Odmowy montażu nieoglądane na koncie gracza; monit „Minęła minuta" z nazwami — też.**
+  Trzy odmowy z s. 111 (`MISSING_FOUNDATION`, `NO_SLOTS`, `POOL_FULL`) i dwie z s. 226
+  (`SELF_INSTALL`, `NO_SURGERY_SKILL`) mają testy dymne na żywych gniazdach, ale **MG jest z nich
+  zwolniony** — a ripperdoc, którym MG operuje, jest jedyną drogą przez UI, więc przy oględzinach
+  04.09 nie było jak zobaczyć czerwonego zdania w czacie. To ta sama sytuacja co przy odmowach
+  ruchu: trzeba konta gracza. Druga rzecz w tej samej kategorii: **„Minęła minuta … wraca:
+  Kerenzikov, Cyberoko"** — zdanie dopisuje `sweepTimedEffects`, czyli zamiatanie, które chodzi
+  wyłącznie w trybie turowym; żeby je zobaczyć, trzeba przepuścić sześć rund walki. Sama
+  zawartość zapisu jest pokryta testem (`sheets.test.ts`), niepokryte jest **zdanie**.
 
-- **Etap 29a — obejrzana połowa.** 30.08 (trzecia sesja) przy okazji 29b sprawdzone i zamknięte:
-  **panel „Awans"** (nagłówek „N PD w zapasie", wiersz Zdolności nad listą Umiejętności,
-  przewijana lista z nagłówkami kategorii), **cena ×2** („Broń ciężka ×2 · 40 PD"), **rejestr
-  awansów** (data, etykieta, kwota ze znakiem, stan po operacji) i **wyszarzony wybór Roli
-  u gracza**. Zostaje do sprawdzenia: (1) **guzik „Podnieś"** — poziom rośnie na stronie
-  pierwszej, licznik PD spada, a wiersz w rejestrze pojawia się bez przeładowania; (2) **filtr
-  „tylko na które mnie stać"**; (3) **brak PD** — guzik wyszarzony z podpowiedzią „Brakuje
-  N PD"; (4) **pozostałe pola tylko do odczytu u gracza** — poziom Umiejętności, ranga
-  Zdolności i licznik PD nie przyjmują znaków, a **u MG te same pola dalej działają**;
-  (5) **„✦ Przyznaj wszystkim"** w zakładce „Postacie" (tylko MG) — pole liczby, pole powodu,
-  komunikat „Przyznano N PD — M postaci", a licznik rośnie każdej karcie gracza i **żadnemu
-  BN-owi**.
+- **„Dodaj za darmo" omija cały montaż.** Guzik MG przy wpisie kompendium woła
+  `addCompendiumItemToCharacter`, czyli zwykłą łatę karty — nie `character:cyberware`. Wszczep
+  wchodzi więc **bez rzutu na Utratę Człowieczeństwa, bez Testu montażu i bez odmów z s. 111**.
+  Zachowanie jest sprzed 04.09 i po części celowe (to furtka MG na łup i nagrodę za zlecenie), ale
+  od tej sesji różnica między dwiema drogami jest większa niż „płacisz albo nie": jedna liczy
+  zasady, druga nie. Do rozstrzygnięcia przy stole — albo guzik dostaje ścieżkę przez zdarzenie
+  z `payment: 'none'` (i wtedy znika „darmowy" wyjątek od Człowieczeństwa), albo zostaje jak jest
+  i mówi to wprost w tooltipie.
 
-- **Etap 29b — obejrzany od strony gracza, nie od strony MG.** 30.08 sprawdzone na karcie
-  „Test 27x": sekcja „Rola" w panelu Awansu, zakup drugiej Roli za 60 PD, dwa wiersze Zdolności
-  („Zdolności Specjalne" w liczbie mnogiej), oba panele Zdolności obok siebie na stronie
-  pierwszej, chromowa plakietka rangi poprzedniej Roli, tytuł karty i wiersz w zakładce
-  „Postacie" z **nową** Rolą, wiersz rejestru „Nomada — nowa Rola (Moto 1) · −60 PD" i bramka
-  zamykająca się po zmianie (Moto 1 < 4). Zostaje: (1) **darmowy powrót do Roli już posiadanej**
-  — wymaga doprowadzenia bieżącej Zdolności do 4, więc kosztuje 540 PD samego przygotowania;
-  (2) **rzut korzystający ze Zdolności poprzedniej Roli** — np. „Moto N" w rozbiciu karty rzutu
-  Prowadzeniem u postaci, która Nomadą **już nie jest**; (3) **ręka MG** — pole rangi przy
-  poprzedniej Roli (u gracza tylko do odczytu) i odmowy `ROLE_TWICE` / `UNKNOWN_ROLE` przy
-  ręcznym wpisie.
+- **Korporacyjny netrunner nie ma cyberdeku na karcie, tylko w prozie.** Pracownik zespołu
+  Korpo (30c) dostaje pełną kartę postaci **właśnie dlatego**, że statysta nie mógłby zrobić
+  jedynej rzeczy, do której netrunner istnieje — komentarz przy jego pakiecie w `roleability.ts`
+  mówi to wprost („the reason a team member had to be a real sheet: a cyberdeck needs one").
+  Karta wychodzi z HR z Rolą **Netrunner rangi 2** (`ability: { name: 'Interfejs', rank: 2 }`),
+  ale `cyberdeck` zostaje `null`, a deck jest zdaniem w `gear`: „Cyberdek (7 gniazd: Miecz,
+  Zabójca, Robak, Pancerz)". Netrunner z zespołu nie podłączy się więc do Sieci, dopóki MG nie
+  złoży mu decku ręką na karcie. Przepis: `hireTeamMember` (`realtime/team.ts`) ma registry,
+  więc może zbudować `CpredCyberdeck` z `slots: 7` i czterema `CpredNetInstallRow` z profilami
+  Programów skopiowanymi z kompendium — tak samo, jak `purchasedSheetRow` kopiuje liczby broni.
+  Otwarte świadomie 04.09: to dołożenie brakującego zakresu, nie naprawa usterki, i dotyka
+  modelu z 26a.
 
-- **Etap 30d nie był oglądany w przeglądarce.** Mechanika jedzie w testach (38 nowych
-  w `shared`, 13 na serwerze), ale żadnego z tych czterech paneli nikt nie kliknął. Do
-  sprawdzenia — potrzebne postaci z Rolą **Rocker**, **Fixer**, **Nomada** i **Media** (na
-  scenach testowych nie ma żadnej): (1) **panel Efektu Charyzmy** — przełącznik „Zrób z nich
-  fanów / Poproś fanów o przysługę", trzy wiersze z PT 8/10/12, wiersz „Duża grupa" wyszarzony
-  przy randze ≤2 zdaniem „To żart, prawda?"; (2) **karta rzutu Rockera** — „Fani to zrobią /
-  Odmowa" z PT i zdaniem z tabeli, a przy porażce z informacją o tygodniu; (3) **panel
-  Znajomości** — chip dobitego targu z ✕, pole „Druga strona", sześć wierszy targów rosnących
-  z rangą; (4) **zakup z targiem** — cena o 10% niższa, wiersz „Targ: … −10% · cena z katalogu"
-  na karcie ekonomii i chip znikający po zakupie; (5) **panel Moto** — wiersz „+N do Testów:
-  Prowadzenie…", lista Taboru z guzikiem „Dołóż wpis" gasnącym po wyczerpaniu awansów;
-  (6) **rzut Prowadzeniem** — „Moto N" w rozbiciu karty rzutu; (7) **panel Wiarygodności** —
-  wybór dowodów zmieniający szansę w nagłówku, guzik „Publikuj" i guzik „Pogłoski" **widoczny
-  tylko dla MG**; (8) **karta Pogłosek** — szeptem, z nazwą pobitego progu.
-
-- **Etap 30c nie był oglądany w przeglądarce.** Mechanika jedzie w testach (38 nowych
-  w `shared`, 19 na serwerze), ale żadnego z tych ekranów nikt nie kliknął. Do sprawdzenia —
-  potrzebne postaci z Rolą **Stróż Prawa** i **Korpo** (na scenach testowych nie ma żadnej):
-  (1) **panel Wsparcia** pod wierszem Zdolności i pudełko „Wezwanie Wsparcia" w pasku akcji —
-  lista kategorii rośnie z rangą, guzik „Wezwij" przy każdej, zdanie po nieudanym rzucie;
-  (2) **karta rzutu na czacie** — „Ktoś odpowiada / Cisza w eterze" z arytmetyką i informacją,
-  za ile Rund; (3) **wiersz „w drodze" pod Kolejką Inicjatywy** — chip „za N Rund", guziki MG
-  „Postaw" i „Odwołaj", a przy randze 10 i szóstce lista wyboru drugiej grupy; (4) **przybycie**
-  — figury stają przy wzywającym z paskiem PW i wchodzą do kolejki z rzuconą inicjatywą;
-  (5) **odmowa uniku** — strzał w funkcjonariusza i guzik „Unik" na karcie ataku, który ma
-  powiedzieć „Funkcjonariusze Wsparcia nie mogą Unikać pocisków"; (6) **panel zespołu Korpo** —
-  „Wolne etaty", wybór zawodu, imię, „Zatrudnij", wiersz z Lojalnością, guzik „Test", rozwijana
-  tabela zysków i strat, „Koniec sesji" i „Zwolnij"; (7) **karta pracownika** — Cechy z tabeli,
-  pakiet Umiejętności, Lekka kurtka OB 11, B.C. pistolet, cyborgizacje w notatkach; u Netrunnera
-  Rola „Netrunner" z rangą 2.
+- **Nazwa figury nadal jedzie do graczy w kartach czatu.** Alias `Token.publicName` (03.09)
+  zasłania prawdziwą nazwę **na mapie i w Kolejce Inicjatywy** — obie ścieżki filtruje serwer
+  (`toTokenView`, `filterCombatForPlayer`), obie obejrzane w przeglądarce. **Czat zostaje
+  nieszczelny:** ponad trzydzieści miejsc w `realtime/` wpisuje `token.name` w **treść**
+  wiadomości („Snajper Arasaki → Rudy Kwiatkowski"), a wiadomość jest zapisana w bazie
+  i rozsyłana wszystkim tak samo — filtr per-odbiorca wymagałby albo przebudowy kart na dane
+  plus szablon, albo drugiej kopii wiadomości. Praktycznie boli mniej, niż wygląda: kartę
+  pisze figura, która **właśnie coś zrobiła**, więc stół i tak już wie, kto to. Okno edycji
+  tokenu mówi to graczowi wprost („Karty na czacie nadal piszą prawdziwą nazwę"). Do zrobienia
+  razem z **etapem 35**, do którego alias pierwotnie należał.
 
 - **Wsparcie poziomu 10 nie pamięta „tej samej sprawy".** RAW: „po tym pierwszym wezwaniu na
   kolejne przybywają **ci sami** dwaj funkcjonariusze, dopóki wezwanie dotyczy tej samej
@@ -76,43 +100,25 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
   najbliżej jest wątek dziennika kampanii z 24b. Zapisane, bo to jedyna kategoria, w której
   ciągłość jest zasadą, a nie kolorytem.
 
-- **Etap 30b nie był oglądany w przeglądarce.** Mechanika jedzie w testach (30 nowych
-  w `shared`, 7 na serwerze), ale żadnego z tych ekranów nikt nie kliknął. Do sprawdzenia —
-  potrzebne postaci z Rolą **Medyk** i **Technik** (na scenach testowych nie ma żadnej):
-  (1) **panel Medycyny** pod wierszem Zdolności — trzy Specjalizacje, „Do rozdzielenia: N z N",
-  guzik „+" wyszarzony przy szóstym punkcie Chirurgii; (2) **wiersz Umiejętności z Medycyny**
-  („Chirurgia 6 · Technologia Medyczna 3") i dwa rozwijane bloki: farmaceutyki i drabina
-  kriosystemów; (3) **panel Twórcy** — cztery Specjalizacje, sakiewka podwójna, oraz dwa bloki:
-  dziesięć skutków Ulepszania i tabela PT/czasu; ~~(4) guzik „Lecz" przy ranie krytycznej~~ —
-  **odklikany 30.08 (czwarta sesja)**: wybór, kto leczy (pacjent wypada z listy, bo samego siebie
-  leczyć nie można), gałąź „Chirurgia PT 15" wyszarzona u nie-Medyka ze zdaniem „Chirurgia jest
-  dostępna tylko Medykom w ramach Zdolności Specjalnej Medycyna"; (5) **⚒ Prowizorka** przy startym pancerzu (tylko
-  Technikowi z Naprawą ≥ 1) i **⌫** kończące ją; (6) **⊕ +1 OB** — raz na sztukę.
+- **Stym nie zawiesza kar Poważnie Rannego — robi to MG.** Cztery z pięciu farmaceutyków (03.09)
+  rozlicza silnik: Antybiotyk dopisuje tydzień do naturalnego leczenia, Turbo uzdrawiacz leczy
+  BC + SW od ręki, Dynadetoks zdejmuje „Zatruty", Zryw jest zdaniem na karcie. Piąty nie:
+  „przez godzinę cel ignoruje kary wynikające z bycia Poważnie Rannym" (s. 150) znaczy zawieszenie
+  −2 **w każdym Teście**, a tę karę liczy `planCpredRoll` z `woundState`, czyli siedem ścieżek
+  naraz (rzut, atak, Zwarcie, Konfrontacja, Sieć, ruch, obrona). Karta czatu mówi to wprost
+  („kary zawiesza MG na godzinę"), a przepis na naprawę jest jeden i **ten sam, którego potrzebuje
+  etap 39**: `sheetSituationModifiers` (`server/src/sheets.ts`) dostaje listę statusów figury
+  i sam wystawia nazwany wiersz „Stym +2" obok „Poważnie ranny −2" — siedmiu wywołań tej funkcji
+  nie trzeba wtedy uczyć niczego nowego, tylko podać im żeton. Świadomie odłożone do 39, żeby nie
+  budować tej maszynerii dwa razy.
 
-- **Farmaceutyki nie mają zapasu dawek.** Panel drukuje pięć środków słowami podręcznika i mówi,
-  ilu Medyk ma dostęp, ale który wybrał, wytworzenie dawki (Test PT 13, surowce za 200 ed)
-  i podanie jej (Akcja, ewentualnie strzykawką bezigłową jako atak) prowadzi MG. Brakuje modelu
-  przedmiotu zużywalnego — wiersz ekwipunku to wolny tekst bez licznika. Sensowne razem
-  z etapem, który tknie ekwipunek.
-
-- **Etap 30a nie był oglądany w przeglądarce.** Mechanika jedzie w testach (44 nowe w `shared`,
-  10 na serwerze), ale żadnego z tych ekranów nikt nie kliknął. Do sprawdzenia — potrzebna
-  postać z Rolą **Solo** (na „Strzelnicy" nie ma takiej, trzeba przestawić Rolę na karcie):
-  (1) **panel na karcie** pod wierszem Zdolności Specjalnej — sześć wierszy, „Wolne punkty: N z 6",
-  guzik „+" wyszarzony dokładnie tam, gdzie progu nie da się kupić; (2) **pudełko „Zmysł Walki"
-  w pasku akcji** nad mapą — ma się pojawiać tylko Solo i **nie gasnąć** po zużytej Akcji;
-  (3) **koszt Akcji**: zmiana przydziału w trakcie własnej tury zjada Akcję i pisze w logu, co
-  na co poszło; zapis tej samej wartości nie kosztuje nic; (4) **karta obrażeń** po pierwszym
-  ciosie Rundy ma mówić „− 2 (Redukcja obrażeń)", po drugim już nie; (5) **kafel „Fumble
-  zignorowany (Wyjście z opresji)"** — trzeba wyrzucić jedynkę w Teście ataku, więc to kwestia
-  kilku strzałów; (6) rozbicie rzutu z wierszami „Precyzyjny atak N" i „Wyczucie zagrożenia N".
-
-- **Etap 27i — pomiar fps nie objął sceny ze światłami i mgłą.** „Strzelnica" ma widoczność
-  `open`, więc 160,1 → 161,2 fps mierzy **samą warstwę efektów**, a nie najgorszy przypadek
-  z kryterium etapu. Warstwa rysuje na klatkę kilka ścieżek `Graphics` i najwyżej jeden sprite,
-  więc rezerwa jest duża — ale liczby dla sceny z dynamiczną widocznością nadal nie ma.
-  **Decyzja MG z 28.08: pomiar idzie do etapu 27g**, a nie do najbliższej sesji zaległości —
-  scena, na której się go robi, już stoi („Korytarz 16e", widoczność Dynamiczna).
+- **Strzykawka bezigłowa jako atak nie istnieje.** „Jeśli cel sprzeciwia się zabiegowi, Medyk może
+  w ramach Akcji wykonać pojedynczy Atak Bronią Białą (strzykawką bezigłową). W przypadku
+  trafienia, Atak zamiast obrażeń wstrzykuje celowi dawkę farmaceutyku" (s. 150). `character:use-dose`
+  podaje dawkę **bez rzutu**, bo przy stole niemal zawsze podaje się ją komuś przytomnemu
+  i chętnemu. Wrogi cel wymagałby broni „strzykawka" w kompendium i gałęzi w `planCpredAttack`,
+  która zamiast obrażeń woła podanie dawki — czyli tej samej roboty co amunicja bez obrażeń
+  z 16h, tylko od drugiej strony.
 
 - **Etap 24c — zostały dwie ścieżki, obie wymagają modelu.** ~~(1) Zdjęcie prasowe~~
   i ~~(3) edycja zapisanego screamsheetu przez ✎~~ — **odklikane 28.08**, patrz
@@ -184,7 +190,7 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
 - **⚠️ ZANIM ODHACZYSZ COKOLWIEK NIŻEJ: przeczytaj `docs/testy/sesja-testow-walki-2026-08-08.md`.**
   Sesja 08.08 zbudowała **gotowy poligon testowy** (kampania „Poligon bojowy", scena
   „Strzelnica", pięć uzbrojonych figur — nie buduj go od nowa) i **odklikała dużą część list
-  poniżej**: całe 16d (poza rzutem obrażeń obszaru), punkty 1–6 z 16g, tryb turowy u MG, ruch
+  poniżej**: całe 16d (**wraz z rzutem obrażeń obszaru — odklikanym 04.09**), punkty 1–6 z 16g, tryb turowy u MG, ruch
   i budżet, atak z mapy, PT z odległości, obrażenia, ablację pancerza, „Cofnij", ogień ciągły
   i zaporowy oraz menu kontekstowe tokenu. Plik zawiera też **plan dokończenia** (16h, osłony,
   zwarcie, Test Przeżywalności, strona gracza), trzy znalezione błędy i — ważne — **korektę
@@ -192,7 +198,7 @@ Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/z
   a `window.confirm` da się przechwycić i nie zawiesza sterowania.
   **Druga sesja tego samego dnia** domknęła: resztę 16h (usypiająca, EMP, dym, „Minęła
   minuta", poprawka naboju inteligentnego, formularz amunicji w kompendium), **całe osłony
-  16c u MG** (poza „usuń wszystkie"), **etap 15 — śmiertelne rany, Test Przeżywalności,
+  16c u MG** (**wraz z „usuń wszystkie" — odklikanym 04.09, z Ctrl+Z**), **etap 15 — śmiertelne rany, Test Przeżywalności,
   śmierć i Ustabilizowanie od zera**, **Pochwycenie z „Broń się"** z 14d, monity początku
   tury z 14e i zakładkę „AI". Doszły błędy **#7** (etykieta odchylenia granatu) i **#8**
   (klik narzędziem osłon przecieka do warstwy gry) — **oba naprawione 22.08**.

@@ -57,6 +57,14 @@ Każdy etap to jedna sesja pracy z Claude. Etapy są pogrupowane w 8 faz. Szczeg
 | 29  | Rozwój postaci za Punkty Doświadczenia              | H. Świat CP RED      | dopisany 29.08 (audyt)          |
 | 30  | Zdolności Specjalne dziewięciu Ról                  | H. Świat CP RED      | dopisany 29.08 (audyt)          |
 | 31  | Dodatki do broni                                    | H. Świat CP RED      | dopisany 29.08 (audyt)          |
+| 32  | Wezwanie MG do Testu                                | H. Świat CP RED      | dopisany 02.09 (zlecenie MG)    |
+| 33  | Kopie zapasowe, eksport i import                    | I. Wykończenie       | dopisany 02.09 (przegląd VTT)   |
+| 34  | Tabele losowe                                       | I. Wykończenie       | dopisany 02.09 (przegląd VTT)   |
+| 35  | Ping, zaznaczanie wielu figur, klonowanie           | I. Wykończenie       | dopisany 02.09 (przegląd VTT)   |
+| 36  | Makra i pasek własnych akcji                        | I. Wykończenie       | dopisany 02.09 (przegląd VTT)   |
+| 37  | Kalendarz kampanii i upływ czasu                    | H. Świat CP RED      | dopisany 02.09 (przegląd VTT)   |
+| 38  | Przedmioty między kartami                           | H. Świat CP RED      | dopisany 02.09 (przegląd VTT)   |
+| 39  | Efekty czasowe modyfikujące Cechy                   | H. Świat CP RED      | dopisany 02.09 (przegląd VTT)   |
 
 ## Kolejność i zależności
 
@@ -70,6 +78,9 @@ Fazy A→B→C odwzorowują priorytety MVP z ankiety (mapa+tokeny, kości, karty
 - 9–11 (boty podstawowe) przed 19–20.
 - 17a przed 18 (oświetlenie buduje na fog of war); 17b (rysowanie) nie blokuje niczego.
 - 28 (VPS) na końcu, ale można go wcześniej „wcisnąć" w dowolnym momencie, gdy zechcesz grać zdalnie — plan etapu jest samodzielny.
+- 33 (kopie zapasowe) **przed 28** — wdrożenie mnoży egzemplarze stanu przez dwa, a pytanie „która kopia jest prawdziwa" ma mieć wtedy odpowiedź.
+- 37 (kalendarz) **przed 39** — efekt „na godzinę" nie ma na czym wisieć, dopóki czas istnieje wyłącznie w rundach walki.
+- 34 (tabele losowe) **przed 36** — makro „losuj z tabeli" jest jednym z czterech rodzajów makra, ale etap 36 działa i bez niego.
 
 ## Decyzje projektowe (ustalone z użytkownikiem 16.07.2026)
 
@@ -156,6 +167,35 @@ Fazy A→B→C odwzorowują priorytety MVP z ankiety (mapa+tokeny, kości, karty
    a te trzy powstały po nim i nie blokują wdrożenia. **Etap 30 jest z góry podejrzany
    o podział** — dziewięć Zdolności to dziewięć niezależnych mechanik, i tak samo wyglądały
    26 i 27 przed rozbiciem.
+
+9. **Etap 32 — wezwanie MG do Testu** (dopisany 02.09.2026 na zlecenie MG). Do 31 etapu **każdy
+   rzut zaczynał gracz**: mechanika CP RED była kompletna, ale MG nie miał czym powiedzieć
+   kośćmi „sprawdź, czy to zauważasz". Etap dokłada trzecią drogę do kubka — wezwanie wystawiane
+   przez MG, z Poziomem Trudności z drabinki s. 130 albo z rzutem przeciwstawnym. **Skutki
+   zostają w rękach MG** (decyzja MG): karta dowozi werdykt, a przedmiot, PW czy ranę rozlicza
+   się narzędziami, które MG ma od etapów 15, 23b i 30b.
+
+10. **Etapy 33–39 — czego brakuje względem innych VTT** (dopisane 02.09.2026 po przeglądzie
+    zamówionym przez MG). Przegląd zestawił kod z tym, co jest standardem w Foundry, Roll20,
+    Fantasy Grounds i Owlbear Rodeo, i znalazł siedem braków wartych własnej sesji: **kopie
+    zapasowe wraz z eksportem i importem** (33 — jedyna pozycja chroniąca przed utratą pracy
+    nie do odtworzenia; `CLAUDE.md` obiecywał „kopię pliku wg harmonogramu", którego nigdzie
+    nie było), **tabele losowe** (34), **ping, zaznaczanie wielu figur i klonowanie** (35),
+    **makra i własny pasek** (36), **kalendarz i upływ czasu** (37), **przedmioty przenoszone
+    między kartami** (38) i **efekty czasowe modyfikujące Cechy** (39).
+
+    **Rozstrzygnięcie MG, które ukształtowało etap 34:** losowanie z tabeli **nie dotyka
+    kubka**. Kubek ma jeden slot naraz (`rollStore.ts`, `EMPTY_CUP` czyści wszystkie pozostałe
+    pola), więc losowanie ładujące go zdmuchnęłoby rzut wzięty do ręki w oknie postaci albo
+    wezwanie czekające u gracza z etapu 32. Tabela idzie drogą, którą `/r` wysłane Enterem ma
+    od etapu 03: rzut po stronie serwera, bez gestu i bez slotu.
+
+    **Druga decyzja MG z tego dnia:** muzyka i tła dźwiękowe przypisane do sceny **mieszczą się
+    w projekcie** — wycofanie głosu z 09.08 dotyczyło mowy botów, poleceń głosowych i czatu
+    głosowego, a nie odtwarzacza plików. Pomysł czeka w `POMYSLY.md`, nie ma jeszcze numeru.
+
+    **Trzecia:** responsywność i obsługa tabletów schodzi na sam dół listy — gra się zdalnie,
+    każdy przy własnym komputerze.
 
 ## Ryzyka i ograniczenia
 

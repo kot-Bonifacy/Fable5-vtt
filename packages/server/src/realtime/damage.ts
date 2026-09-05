@@ -30,6 +30,7 @@ import {
   readSheetCombatProfile,
   sheetWoundStatuses,
   undoDamageOnSheet,
+  writeSheetStatusTimer,
   type SheetDamageLog,
   type SheetDamageRequest,
 } from '../sheets.js';
@@ -662,9 +663,17 @@ export const damageUndoEvent = defineEvent<DamageUndoPayload, void>({
         const statuses = parseTokenStatuses(token).filter(
           (id) => !entry.statusesAdded!.includes(id),
         );
+        // Razem z naklejką schodzi to, co przy niej wisiało: zegar „na minutę"
+        // i lista cyborgizacji wyłączonych Impulsem (04.09.2026). Do tej sesji
+        // zostawały w `statusData` po cofniętym trafieniu, więc następna walka
+        // zgłaszała „Minęła minuta" dla statusu, którego już nie było.
+        let statusData = token.statusData;
+        for (const id of entry.statusesAdded) {
+          statusData = writeSheetStatusTimer(statusData, id, null);
+        }
         await deps.ctx.prisma.token.update({
           where: { id: token.id },
-          data: { statuses: JSON.stringify(statuses) },
+          data: { statuses: JSON.stringify(statuses), statusData },
         });
       }
     }

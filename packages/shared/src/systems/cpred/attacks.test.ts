@@ -4,6 +4,7 @@ import {
   CPRED_ATTACK_PROBLEM_MESSAGES,
   CPRED_BURST_AMMO_COST,
   CPRED_EVERYDAY_DV,
+  CPRED_JAM_REFUSAL,
   CPRED_MELEE_REACH_M,
   CPRED_PASSIVE_DIE,
   attackAmmoCost,
@@ -21,6 +22,8 @@ import {
   type CpredAttackRequest,
 } from './attacks.js';
 import type { CpredAmmoProfile } from './ammo.js';
+import type { CpredAttachmentProfile } from './attachments.js';
+import { CPRED_OBSCUREMENT_KIND } from './environment.js';
 import { buildCpredRegistry, createDefaultCharacterData, type CpredRegistry } from './character.js';
 import { hasCyberarm } from './cyberware.js';
 import { dvForRange, type ResolvedWeapon } from './compendium.js';
@@ -1051,5 +1054,402 @@ describe('Zmysł Walki w ataku', () => {
     if (!planned.ok) return;
     expect(planned.plan.modifierTotal).toBe(11);
     expect(planned.plan.attack.ignoresFumble).toBeUndefined();
+  });
+});
+
+/**
+ * Dodatki do broni (etap 31, s. 342–344).
+ *
+ * Tu sprawdzamy wyłącznie to, czego nie widać w `attachments.test.ts`: czy
+ * rachunek strzału naprawdę je czyta. Same reguły montażu — gniazda, magazynki,
+ * „tylko jeden magazynek naraz" — mają własny plik.
+ */
+describe('dodatki do broni', () => {
+  const SMARTGUN: CpredAttachmentProfile = {
+    id: 'attachment.smartgun-link',
+    name: 'Złącze smartguna',
+    fit: {},
+    slots: 2,
+    attackBonus: 1,
+    requiresCyberware: ['Złącza interfejsu'],
+  };
+  const SCOPE: CpredAttachmentProfile = {
+    id: 'attachment.sniper-scope',
+    name: 'Snajperska luneta celownicza',
+    fit: {},
+    rangedBonus: { bonus: 1, minMetres: 51, singleOnly: true, whenAimed: true },
+  };
+  const NIGHT_SIGHT: CpredAttachmentProfile = {
+    id: 'attachment.night-sight',
+    name: 'Celownik noktowizyjny',
+    fit: {},
+    ignoresObscurement: true,
+  };
+  const BAYONET: CpredAttachmentProfile = {
+    id: 'attachment.bayonet',
+    name: 'Bagnet',
+    fit: {},
+    secondary: { weaponTypeId: 'weapon-type.light-melee' },
+  };
+
+  /** Lekka broń biała, jak ją zwraca `resolveAttachmentWeapon` dla bagnetu. */
+  const bayonetBlade: ResolvedWeapon = { ...blade, damage: '1k6', halvesArmor: true };
+
+  const gunner = () => sheet({ weapons: [weaponRow()], skills: { handgun: 6 } });
+
+  function shoot(
+    attachments: CpredAttachmentProfile[],
+    {
+      data = gunner(),
+      metres = 10,
+      request = {},
+      context,
+      secondary,
+      secondaryAmmo,
+      row = weaponRow(),
+    }: {
+      data?: ReturnType<typeof sheet>;
+      metres?: number;
+      request?: Partial<CpredAttackRequest>;
+      context?: CpredAttackContext;
+      secondary?: ResolvedWeapon;
+      secondaryAmmo?: CpredAmmoProfile;
+      row?: ReturnType<typeof weaponRow>;
+    } = {},
+  ) {
+    return planCpredAttack(
+      data,
+      registry,
+      { weaponRowId: 'w1', mode: 'single', ...request },
+      {
+        row,
+        resolved: pistol,
+        typeId: 'weapon-type.medium-pistol',
+        attachments,
+        ...(secondary ? { secondary } : {}),
+        ...(secondaryAmmo ? { secondaryAmmo } : {}),
+      },
+      { name: 'Cel', metres },
+      context ?? {},
+    );
+  }
+
+  function breakdownOf(result: ReturnType<typeof shoot>) {
+    if (!result.ok) throw new Error(result.error);
+    return result.plan.breakdown;
+  }
+
+  it('nie dolicza smartguna komuś, kto nie ma się czym do niego podpiąć', () => {
+    expect(breakdownOf(shoot([SMARTGUN])).some((e) => e.label === SMARTGUN.name)).toBe(false);
+  });
+
+  it('dolicza +1, gdy strzelec ma Złącza interfejsu', () => {
+    const wired = sheet({
+      weapons: [weaponRow()],
+      skills: { handgun: 6 },
+      cyberware: [{ id: 'cw', name: 'Złącza interfejsu', notes: '' }],
+    });
+    expect(breakdownOf(shoot([SMARTGUN], { data: wired }))).toContainEqual({
+      label: SMARTGUN.name,
+      value: 1,
+      kind: 'situational',
+    });
+  });
+
+  it('luneta płaci dopiero od 51 m, a przy Celowaniu z każdej odległości', () => {
+    expect(breakdownOf(shoot([SCOPE], { metres: 50 })).some((e) => e.label === SCOPE.name)).toBe(
+      false,
+    );
+    expect(breakdownOf(shoot([SCOPE], { metres: 51 }))).toContainEqual({
+      label: SCOPE.name,
+      value: 1,
+      kind: 'situational',
+    });
+    expect(
+      breakdownOf(shoot([SCOPE], { metres: 5, request: { aimedAt: 'head' } })).some(
+        (e) => e.label === SCOPE.name,
+      ),
+    ).toBe(true);
+  });
+
+  it('noktowizor zdejmuje karę za dym, ale nie rusza Trzymania', () => {
+    const context: CpredAttackContext = {
+      modifiers: [
+        { label: 'Dym', value: -4, kind: CPRED_OBSCUREMENT_KIND },
+        { label: 'Trzymanie', value: -2, kind: 'situational' },
+      ],
+    };
+    expect(breakdownOf(shoot([], { context })).some((e) => e.label === 'Dym')).toBe(true);
+    const sighted = breakdownOf(shoot([NIGHT_SIGHT], { context }));
+    expect(sighted.some((e) => e.label === 'Dym')).toBe(false);
+    // „modyfikatory ujemne za strzelanie do celu ukrytego" — nie każda kara.
+    expect(sighted.some((e) => e.label === 'Trzymanie')).toBe(true);
+  });
+
+  it('strzela bronią doczepioną: jej obrażenia, jej zasięg, jej pancerz', () => {
+    const result = shoot([BAYONET], {
+      metres: 1,
+      request: { attachmentId: BAYONET.id },
+      secondary: bayonetBlade,
+      row: weaponRow({ attachmentIds: [BAYONET.id] }),
+    });
+    if (!result.ok) throw new Error(result.error);
+    expect(result.plan.attack.damage).toBe('1k6');
+    expect(result.plan.attack.melee).toBe(true);
+    // Bagnet jest bronią białą, więc przechodzi przez połowę pancerza (s. 176).
+    expect(result.plan.attack.halvesArmor).toBe(true);
+    expect(result.plan.attack.attachmentName).toBe('Bagnet');
+    // Magazynek pistoletu nie drgnął — dźgnięcie nie kosztuje naboju.
+    expect(result.plan.attack.ammoCost).toBe(0);
+    // Karta niesie obie nazwy: sztukę, którą się trzyma, i to, czym się bije.
+    expect(result.plan.title).toContain('Bagnet');
+    expect(result.plan.title).toContain('Zgrzyt-9');
+  });
+
+  it('bagnetem nie dosięgniesz dalej niż bronią białą', () => {
+    expect(
+      shoot([BAYONET], {
+        metres: 8,
+        request: { attachmentId: BAYONET.id },
+        secondary: bayonetBlade,
+      }),
+    ).toEqual({ ok: false, error: 'MELEE_OUT_OF_REACH' });
+  });
+
+  /**
+   * Granatnik podwieszany i jego własny nabój (zaległość z 01.09).
+   *
+   * Do 02.09 `secondaryWeaponRow` ustawiał broni podwieszanej `ammoId: undefined`,
+   * a planer i tak zerował profil naboju („`firedWith ? null : …`"). Skutek przy
+   * stole: **z granatnika podwieszanego nie dało się wystrzelić dymu ani gazu** —
+   * jedynej drogi, jaką podręcznik daje tym nabojom.
+   */
+  const UNDERBARREL: CpredAttachmentProfile = {
+    id: 'attachment.underbarrel-grenade-launcher',
+    name: 'Granatnik podwieszany',
+    fit: {},
+    slots: 2,
+    secondary: { weaponTypeId: 'weapon-type.grenade-launcher', magazine: 1 },
+  };
+
+  /** Granatnik, jak go zwraca `resolveAttachmentWeapon` — jeden granat w komorze. */
+  const launcher: ResolvedWeapon = {
+    ...pistol,
+    damage: '6k6',
+    magazine: 1,
+    // Rejestr tego pliku zna pięć umiejętności; granatnik strzela tą, którą
+    // strzelec ma — plik pilnuje naboju, nie tabeli umiejętności.
+    skillId: 'handgun',
+    ammoPatterns: ['grenade'],
+    melee: false,
+  };
+
+  const SMOKE: CpredAmmoProfile = {
+    id: 'ammo.smoke',
+    name: 'Amunicja dymna',
+    patterns: ['grenade'],
+  };
+
+  const PIERCING: CpredAmmoProfile = {
+    id: 'ammo.piercing',
+    name: 'Amunicja przebijająca',
+    patterns: ['bullet'],
+  };
+
+  const launcherRow = () =>
+    weaponRow({
+      attachmentIds: [UNDERBARREL.id],
+      attachmentAmmo: { [UNDERBARREL.id]: 1 },
+      attachmentAmmoId: { [UNDERBARREL.id]: SMOKE.id },
+    });
+
+  it('strzela z granatnika nabojem z jego własnego magazynka', () => {
+    const result = shoot([UNDERBARREL], {
+      request: { attachmentId: UNDERBARREL.id },
+      secondary: launcher,
+      secondaryAmmo: SMOKE,
+      row: launcherRow(),
+    });
+    if (!result.ok) throw new Error(result.error);
+    expect(result.plan.attack.ammo?.id).toBe(SMOKE.id);
+    // Magazynek granatnika, nie pistoletu: jeden granat wchodzi, zero zostaje.
+    expect(result.plan.attack.ammoBefore).toBe(1);
+    expect(result.plan.attack.ammoAfter).toBe(0);
+  });
+
+  it('nabój z broni głównej nie wchodzi do granatnika', () => {
+    const result = shoot([UNDERBARREL], {
+      request: { attachmentId: UNDERBARREL.id },
+      secondary: launcher,
+      row: launcherRow(),
+    });
+    if (!result.ok) throw new Error(result.error);
+    // Bez własnego naboju granatnik strzela zwykłym — a nie tym, co siedzi
+    // w pistolecie, którego cechy nie mają z granatem nic wspólnego.
+    expect(result.plan.attack.ammo).toBeUndefined();
+  });
+
+  it('odmawia naboju, który do broni podwieszanej nie pasuje', () => {
+    expect(
+      shoot([UNDERBARREL], {
+        request: { attachmentId: UNDERBARREL.id },
+        secondary: launcher,
+        secondaryAmmo: PIERCING,
+        row: launcherRow(),
+      }),
+    ).toEqual({ ok: false, error: 'AMMO_MISMATCH' });
+  });
+
+  it('odmawia strzału dodatkiem, którego na broni nie ma', () => {
+    expect(shoot([], { request: { attachmentId: BAYONET.id } })).toEqual({
+      ok: false,
+      error: 'UNKNOWN_ATTACHMENT',
+    });
+  });
+
+  it('nabój inteligentny nie wystrzeli bez wymaganej cyborgizacji', () => {
+    // „z powodów bezpieczeństwa amunicja inteligentna nie wystrzeli po
+    // pociągnięciu za spust" (s. 347) — od etapu 31 odmowa, nie proza.
+    const smart: CpredAmmoProfile = {
+      id: 'ammo.smart',
+      name: 'Amunicja inteligentna',
+      patterns: ['bullet'],
+      smart: { maxMiss: 4, bonus: 10, requires: 'Celownik optyczny' },
+    };
+    const withAmmo = (data: ReturnType<typeof sheet>) =>
+      planCpredAttack(
+        data,
+        registry,
+        { weaponRowId: 'w1', mode: 'single' },
+        {
+          row: weaponRow(),
+          resolved: { ...pistol, ammoPatterns: ['bullet'] },
+          typeId: 'weapon-type.medium-pistol',
+          ammo: smart,
+        },
+        { name: 'Cel', metres: 10 },
+      );
+    expect(withAmmo(gunner())).toEqual({ ok: false, error: 'AMMO_NEEDS_CYBERWARE' });
+    const seeing = sheet({
+      weapons: [weaponRow()],
+      skills: { handgun: 6 },
+      cyberware: [{ id: 'cw', name: 'Celownik optyczny', notes: '' }],
+    });
+    expect(withAmmo(seeing).ok).toBe(true);
+  });
+});
+
+describe('jakość broni i modyfikator pancerza w ataku (s. 185, 244)', () => {
+  /** One worn piece with the given modifier — the rest of the row is filler. */
+  function jacket(penalty: number) {
+    return [
+      {
+        id: 'a1',
+        name: 'Ciężka kurtka',
+        notes: '',
+        sp: 13,
+        spCurrent: 13,
+        location: 'body' as const,
+        penalty,
+      },
+    ];
+  }
+
+  const shooter = sheet({ weapons: [weaponRow()], skills: { handgun: 6 } });
+
+  it('odejmuje modyfikator pancerza od Testu ataku, nazwanym wierszem', () => {
+    const armoured = sheet({ ...shooter, armor: jacket(-2) });
+    const bare = plan({}, { data: shooter });
+    const heavy = plan({}, { data: armoured });
+    expect(bare.ok && heavy.ok).toBe(true);
+    if (!bare.ok || !heavy.ok) return;
+    expect(heavy.plan.modifierTotal).toBe(bare.plan.modifierTotal - 2);
+    expect(heavy.plan.breakdown).toContainEqual({
+      label: 'Pancerz',
+      value: -2,
+      kind: 'situational',
+    });
+    expect(bare.plan.breakdown.map((entry) => entry.label)).not.toContain('Pancerz');
+  });
+
+  it('dotyka też ataku bronią białą, bo modyfikator obejmuje ZW', () => {
+    const armoured = sheet({ armor: jacket(-4), skills: { 'melee-weapon': 5 } });
+    const result = plan({}, { data: armoured, resolved: blade, metres: 1 });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.plan.breakdown).toContainEqual({
+      label: 'Pancerz',
+      value: -4,
+      kind: 'situational',
+    });
+  });
+
+  it('dodaje +1 broni doskonałej jakości i nic broni zwykłej', () => {
+    const excellent = plan({}, { data: shooter, resolved: { ...pistol, quality: 'excellent' } });
+    const plain = plan({}, { data: shooter });
+    expect(excellent.ok && plain.ok).toBe(true);
+    if (!excellent.ok || !plain.ok) return;
+    expect(excellent.plan.modifierTotal).toBe(plain.plan.modifierTotal + 1);
+    expect(excellent.plan.breakdown).toContainEqual({
+      label: 'Broń doskonałej jakości',
+      value: 1,
+      kind: 'situational',
+    });
+  });
+
+  it('broń niskiej jakości sama z siebie nie zmienia Testu — zmienia go dopiero zacięcie', () => {
+    const poor = plan({}, { data: shooter, resolved: { ...pistol, quality: 'poor' } });
+    const plain = plan({}, { data: shooter });
+    expect(poor.ok && plain.ok).toBe(true);
+    if (!poor.ok || !plain.ok) return;
+    expect(poor.plan.modifierTotal).toBe(plain.plan.modifierTotal);
+  });
+
+  it('odmawia strzału z zaciętej broni, zanim policzy cokolwiek innego', () => {
+    const jammedRow = weaponRow({ jammed: true });
+    const data = sheet({ weapons: [jammedRow], skills: { handgun: 6 } });
+    const result = plan({}, { data, row: jammedRow, resolved: { ...pistol, quality: 'poor' } });
+    expect(result).toEqual({ ok: false, error: 'WEAPON_JAMMED' });
+    // Ta sama odmowa wygrywa z pustym magazynkiem: gracz ma usunąć usterkę,
+    // a nie iść przeładować.
+    const emptyAndJammed = weaponRow({ jammed: true, ammoCurrent: 0 });
+    expect(
+      plan(
+        {},
+        {
+          data: sheet({ weapons: [emptyAndJammed], skills: { handgun: 6 } }),
+          row: emptyAndJammed,
+          resolved: { ...pistol, quality: 'poor' },
+        },
+      ),
+    ).toEqual({ ok: false, error: 'WEAPON_JAMMED' });
+  });
+
+  it('ma dla zacięcia zdanie, które gracz zobaczy', () => {
+    expect(CPRED_ATTACK_PROBLEM_MESSAGES.WEAPON_JAMMED).toBe(CPRED_JAM_REFUSAL);
+    expect(CPRED_JAM_REFUSAL).toContain('Akcja');
+  });
+});
+
+describe('Unik pod ciężkim pancerzem (s. 185)', () => {
+  it('obniża podstawę Uniku i stały PT, który z niej wyrasta', () => {
+    const dodger = sheet({ skills: { evasion: 4 } });
+    const armoured = sheet({
+      ...dodger,
+      armor: [
+        {
+          id: 'a1',
+          name: 'Metalgear',
+          notes: '',
+          sp: 18,
+          spCurrent: 18,
+          location: 'body' as const,
+          penalty: -4,
+        },
+      ],
+    });
+    expect(evasionBase(dodger, registry)).toBe(9);
+    expect(evasionBase(armoured, registry)).toBe(5);
+    expect(passiveEvasionDv(armoured, registry)).toBe(5 + CPRED_PASSIVE_DIE);
   });
 });

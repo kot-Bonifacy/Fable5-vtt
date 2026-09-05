@@ -69,6 +69,15 @@ function ackOldestSave(gear: string[]): void {
   answer({ ok: true, data: serverView(gear) });
 }
 
+/** Odmawia najstarszemu niezałatwionemu zapisowi — tak, jak robi to serwer. */
+function refuseOldestSave(code: string): void {
+  const pending = wire.sent.find((entry) => entry.event === 'character:update' && entry.ack);
+  if (!pending?.ack) throw new Error('nie ma na co odpowiedzieć — zapis nie poszedł');
+  const answer = pending.ack;
+  delete pending.ack;
+  answer({ ok: false, error: code });
+}
+
 function savesSent(): number {
   return wire.sent.filter((entry) => entry.event === 'character:update').length;
 }
@@ -84,7 +93,14 @@ beforeAll(async () => {
 beforeEach(() => {
   vi.useFakeTimers();
   wire.sent.length = 0;
-  useCharacterStore.setState({ characters: {}, order: [], pendingSaves: {}, saveStates: {} });
+  useCharacterStore.setState({
+    characters: {},
+    order: [],
+    pendingSaves: {},
+    saveStates: {},
+    saveErrors: {},
+    serverViews: {},
+  });
   useCharacterStore.getState().applyUpsert(serverView([]));
 });
 
@@ -130,5 +146,70 @@ describe('autozapis karty postaci', () => {
     expect(savesSent()).toBe(1); // jeden bufor to jeden emit…
     ackOldestSave([]);
     expect(useCharacterStore.getState().pendingSaves['c1']).toBe(0); // …i jeden ack
+  });
+});
+
+/**
+ * Odmowa serwera a karta na ekranie (zaległość z 02.09).
+ *
+ * MG wybierał w polu „Rola" Rolę, którą postać miała już jako poprzednią,
+ * serwer odmawiał `ROLE_TWICE` i **nie zapisywał nic** — a karta dalej pokazywała
+ * nową Rolę, z tytułem okna włącznie, aż do przeładowania strony. Jedynym śladem
+ * było czerwone „Błąd zapisu!" bez powodu. Dotyczyło **każdej** odmowy
+ * `character:update`, nie tylko Ról.
+ *
+ * Dwie rzeczy są tu pilnowane: że ekran wraca do tego, co ma serwer, i że
+ * powód odmowy dojeżdża do karty.
+ */
+describe('odmowa zapisu karty', () => {
+  it('cofa optymistyczną łatę do widoku serwera', () => {
+    socketApi.queueCharacterSave('c1', { name: 'FRANK NOMADA' });
+    expect(useCharacterStore.getState().characters['c1']!.name).toBe('FRANK NOMADA');
+
+    vi.advanceTimersByTime(600);
+    refuseOldestSave('ROLE_TWICE');
+
+    expect(useCharacterStore.getState().characters['c1']!.name).toBe('Rico');
+    expect(useCharacterStore.getState().saveStates['c1']).toBe('error');
+  });
+
+  it('zapamiętuje kod odmowy i tłumaczy go na zdanie', () => {
+    socketApi.queueCharacterSave('c1', { name: 'FRANK NOMADA' });
+    vi.advanceTimersByTime(600);
+    refuseOldestSave('ROLE_TWICE');
+
+    expect(useCharacterStore.getState().saveErrors['c1']).toBe('ROLE_TWICE');
+    expect(socketApi.characterSaveErrorText('ROLE_TWICE')).toContain('już jest na karcie');
+    // Kod, którego nie zna żadna tabela, wraca jako zdanie z kodem — nigdy pusto.
+    expect(socketApi.characterSaveErrorText('WHATEVER')).toContain('WHATEVER');
+  });
+
+  it('udany zapis po odmowie zdejmuje powód', () => {
+    socketApi.queueCharacterSave('c1', { name: 'FRANK NOMADA' });
+    vi.advanceTimersByTime(600);
+    refuseOldestSave('ROLE_TWICE');
+
+    socketApi.queueCharacterSave('c1', { data: { gear: withGear(['A']).gear } });
+    vi.advanceTimersByTime(600);
+    ackOldestSave(['A']);
+
+    expect(useCharacterStore.getState().saveErrors['c1']).toBeUndefined();
+    expect(useCharacterStore.getState().saveStates['c1']).toBe('saved');
+  });
+
+  it('nie cofa niczego, dopóki inny zapis jest w locie', () => {
+    socketApi.queueCharacterSave('c1', { data: { gear: withGear(['A']).gear } });
+    vi.advanceTimersByTime(600);
+    // Druga zmiana wchodzi, zanim serwer odpowiedział na pierwszą.
+    socketApi.queueCharacterSave('c1', { data: { gear: withGear(['A', 'B']).gear } });
+
+    refuseOldestSave('INVALID_DATA');
+    // Cofnięcie teraz zgasiłoby łatę, która dopiero czeka na wysłanie — prawdę
+    // rozstrzygnie ack drugiego zapisu, dokładnie jak przy adopcji widoku.
+    expect(gearNames()).toEqual(['A', 'B']);
+
+    vi.advanceTimersByTime(600);
+    ackOldestSave(['A', 'B']);
+    expect(gearNames()).toEqual(['A', 'B']);
   });
 });

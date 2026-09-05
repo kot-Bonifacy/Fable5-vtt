@@ -266,7 +266,7 @@ export function MapTools() {
       <button
         type="button"
         className="map-tool"
-        title="Usuń wszystkie moje rysunki z tej sceny"
+        title="Usuń wszystkie moje rysunki z tej sceny. Ctrl+Z cofa"
         disabled={!sceneId || !myNewest}
         onClick={() => sceneId && void clearDrawings(sceneId, 'mine')}
       >
@@ -276,7 +276,7 @@ export function MapTools() {
         <button
           type="button"
           className="map-tool map-tool--warn"
-          title="Usuń wszystkie rysunki z tej sceny — także cudze"
+          title="Usuń wszystkie rysunki z tej sceny — także cudze. Ctrl+Z cofa"
           disabled={!sceneId || !anyDrawings}
           onClick={() => sceneId && void clearDrawings(sceneId, 'all')}
         >
@@ -657,7 +657,7 @@ export function MapTools() {
           <button
             type="button"
             className="map-tool map-tool--warn"
-            title="Usuń wszystkie ściany z tej sceny"
+            title="Usuń wszystkie ściany z tej sceny. Ctrl+Z cofa"
             disabled={!sceneId || !hasWalls}
             onClick={() => sceneId && void clearWalls(sceneId)}
           >
@@ -706,7 +706,7 @@ export function MapTools() {
           <button
             type="button"
             className="map-tool map-tool--warn"
-            title="Usuń wszystkie osłony z tej sceny"
+            title="Usuń wszystkie osłony z tej sceny. Ctrl+Z cofa"
             disabled={!sceneId || coverCount === 0}
             onClick={() => sceneId && void clearCovers(sceneId)}
           >
@@ -774,7 +774,7 @@ export function MapTools() {
           <button
             type="button"
             className="map-tool map-tool--warn"
-            title="Usuń wszystkie strefy bronione z tej sceny"
+            title="Usuń wszystkie strefy bronione z tej sceny. Ctrl+Z cofa"
             disabled={!sceneId || zoneCount === 0}
             onClick={() => sceneId && void clearZones(sceneId)}
           >

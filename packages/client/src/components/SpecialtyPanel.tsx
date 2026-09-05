@@ -24,8 +24,12 @@ import {
   CPRED_MEDICINE_ABILITY,
   CPRED_MEDICINE_RULES,
   CPRED_PHARMACEUTICALS,
+  CPRED_PHARMA_BATCH_COST,
+  CPRED_PHARMA_CRAFT_DV,
+  cpredPharmaAccess,
 } from '@vtt/shared';
-import { queueCharacterSave } from '../socket.js';
+import { craftPharmaceutical, queueCharacterSave } from '../socket.js';
+import { plural } from '../plural.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 
 /** Which of the two abilities of etap 30b this panel is showing. */
@@ -165,7 +169,9 @@ export function SpecialtyPanel({
           );
         })}
       </ul>
-      {ability === 'medicine' && <MedicineExtras allocation={allocation} rank={rank} />}
+      {ability === 'medicine' && (
+        <MedicineExtras allocation={allocation} rank={rank} characterId={characterId} />
+      )}
       {ability === 'fabrication' && <FabricationExtras />}
       <p className="awareness-hint">{shape.hint}</p>
     </div>
@@ -181,9 +187,11 @@ export function SpecialtyPanel({
 function MedicineExtras({
   allocation,
   rank,
+  characterId,
 }: {
   allocation: CpredSpecialtyAllocation;
   rank: number;
+  characterId: string;
 }) {
   const pharma = allocation.pharma ?? 0;
   const cryo = allocation.cryo ?? 0;
@@ -200,14 +208,34 @@ function MedicineExtras({
       {pharma > 0 && (
         <details>
           <summary>Farmaceutyki — dostęp do {pharma} z 5 środków</summary>
-          <ul>
-            {CPRED_PHARMACEUTICALS.map((drug) => (
-              <li key={drug.name}>
-                <b>{drug.name}</b> — {drug.effect}
-              </li>
-            ))}
+          <ul className="pharma-list">
+            {CPRED_PHARMACEUTICALS.map((drug) => {
+              // „Zawsze, gdy przydzielasz punkt do Farmaceutyków, zyskujesz
+              // dostęp do jednego z poniższych środków" (s. 150) — kolejność
+              // tabeli jest kolejnością odblokowania, więc reszta zostaje
+              // wypisana szarym: gracz ma widzieć, co go czeka.
+              const unlocked = cpredPharmaAccess(pharma).some((row) => row.id === drug.id);
+              return (
+                <li key={drug.id} className={unlocked ? undefined : 'pharma-locked'}>
+                  <b>{drug.name}</b> — {drug.effect}
+                  {drug.limit ? <i> {drug.limit}</i> : null}
+                  {unlocked && effects.medtechSkill > 0 ? (
+                    <button
+                      type="button"
+                      title={`Test Technologii Medycznej PT ${CPRED_PHARMA_CRAFT_DV}. Surowce za ${CPRED_PHARMA_BATCH_COST} ed przepadają także po porażce. Udany Test daje ${plural(effects.medtechSkill, 'dawkę', 'dawki', 'dawek')}.`}
+                      onClick={() => void craftPharmaceutical(characterId, drug.id)}
+                    >
+                      Wytwórz ({plural(effects.medtechSkill, 'dawkę', 'dawki', 'dawek')})
+                    </button>
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
-          <p>Który środek wybrano przy każdym punkcie, notuje MG — VTT nie prowadzi zapasów.</p>
+          <p>
+            Partia to godzina pracy i surowce za {CPRED_PHARMA_BATCH_COST} ed — przepadają także
+            wtedy, gdy Test się nie uda (s. 150). Dawki lądują w Wyposażeniu, z licznikiem.
+          </p>
         </details>
       )}
       {cryo > 0 && (

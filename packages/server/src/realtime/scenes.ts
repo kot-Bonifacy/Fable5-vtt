@@ -92,7 +92,7 @@ export async function getSceneById(prisma: PrismaClient, sceneId: string): Promi
 }
 
 /** Pushes the fresh scene list to GM sockets (targeted — no seq). */
-async function emitSceneList(deps: RealtimeDeps, campaignId: string): Promise<void> {
+export async function emitSceneList(deps: RealtimeDeps, campaignId: string): Promise<void> {
   const payload: SceneListBroadcast = {
     scenes: await fetchSceneList(deps.ctx.prisma, campaignId),
   };

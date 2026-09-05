@@ -150,6 +150,19 @@ export function readCpredFormerRoles(raw: unknown): CpredRoleRank[] {
 export type CpredRolesProblem = 'UNKNOWN_ROLE' | 'ROLE_TWICE';
 
 /**
+ * Why the sheet was refused, in words the GM can act on.
+ *
+ * Here rather than on the client for the reason every other problem table is
+ * (`CPRED_FLEET_PROBLEMS`, `CPRED_SPECIALTY_PROBLEMS`): the code is the engine's
+ * and so is the sentence, so the panel that greys a button out and the header
+ * that reports a refusal read the same one.
+ */
+export const CPRED_ROLES_PROBLEMS: Record<CpredRolesProblem, string> = {
+  UNKNOWN_ROLE: 'Nie znam takiej Roli — odśwież stronę albo popraw dane kampanii.',
+  ROLE_TWICE: 'Ta Rola już jest na karcie — jedna Rola stoi na niej tylko raz.',
+};
+
+/**
  * Judged against the **merged** sheet for the reason Specialties and the
  * Nomada's Tabor are (stages 30b, 30d): the patch may set `roleId` and
  * `formerRoles` in one write, and „is this Role already here" cannot be
@@ -936,39 +949,13 @@ export function cpredMedicineSkillLevel(
 }
 
 /**
- * The five drugs one point of Farmaceutyki each unlocks (s. 150).
+ * Farmaceutyki (s. 150) mieszkają od tej sesji w `pharma.ts`, a nie tu.
  *
- * Printed here and shown by the panel, but nothing in the engine reads them:
- * producing and administering a dose needs a consumable the sheet does not
- * model (gear rows are free text), so the doses stay the GM's to hand out.
- * Recorded in `decyzje-i-uproszczenia.md` rather than left as a silent gap.
+ * Odkąd dawka jest przedmiotem, katalog czyta **walidacja karty**
+ * (`CpredGearRow.consumable`), a `character.ts` bierze z tego pliku wartości —
+ * odwrotny kierunek niż dziś. `pharma.ts` nie importuje niczego, więc leży
+ * pod obydwoma i żadna strona nie musi się zastanawiać nad kolejnością.
  */
-export const CPRED_PHARMACEUTICALS: readonly { name: string; effect: string }[] = [
-  {
-    name: 'Antybiotyk',
-    effect:
-      'Osoba, która rozpoczęła naturalny powrót do zdrowia, przez tydzień odzyskuje codziennie ' +
-      'dodatkowe 2 PW. Efekty kilku antybiotyków nie kumulują się.',
-  },
-  {
-    name: 'Dynadetoks',
-    effect: 'Organizm błyskawicznie oczyszcza się z narkotyków, trucizn i alkoholu.',
-  },
-  {
-    name: 'Turbo uzdrawiacz',
-    effect:
-      'O ile cel nie jest Śmiertelnie Ranny, natychmiast leczy PW równe sumie BUDOWY CIAŁA ' +
-      'i SIŁY WOLI. Skuteczny raz dziennie.',
-  },
-  {
-    name: 'Stym',
-    effect: 'Przez godzinę cel ignoruje kary za bycie Poważnie Rannym. Skuteczny raz dziennie.',
-  },
-  {
-    name: 'Zryw',
-    effect: 'Cel przez 24 godziny funkcjonuje w pełni sprawnie bez snu. Skuteczny raz na tydzień.',
-  },
-];
 
 /** What each point of Obsługa kriosystemów brings (s. 150) — the panel's table. */
 export const CPRED_CRYO_LEVELS: readonly string[] = [
@@ -2186,7 +2173,11 @@ export function cpredBackupDue(state: CpredCombatState, round: number): CpredBac
 export function describeBackupPending(entry: CpredBackupPending): string {
   const tier = cpredBackupTier(entry.tierId);
   if (!tier) return 'Wsparcie w drodze';
-  return `${tier.name} ×${tier.count}`;
+  // Samo „kto" — ilu ich jest, niesie `ReinforcementView.count` i maluje to
+  // pasek inicjatywy sam (`{row.label} ×{row.count}`). Doklejone tutaj ×N
+  // wychodziło w Kolejce jako „Korporacyjne służby bezpieczeństwa ×4 ×4"
+  // (znalezione przy oględzinach 30c).
+  return tier.name;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════ *
@@ -3018,4 +3009,35 @@ export function cpredFleetSheetProblem(
   registry: CpredRegistry,
 ): CpredFleetProblem | null {
   return cpredFleetProblem(data.fleet, cpredRoleAbilityRank(data, registry, CPRED_MOTO_ABILITY));
+}
+
+/**
+ * Zdejmuje z karty sakiewkę Zdolności, której karta już nie ma (etap 30b/30d).
+ *
+ * MG zmienia `roleId` zwykłą łatą — od 29a to dla niego pole jak każde inne,
+ * inaczej niż u gracza, gdzie `character:role-change` odkłada starą Rolę do
+ * `formerRoles` i Zdolność zostaje znaleziona. Bez tego odłożenia przydział
+ * przeżywa Zdolność, a `cpredSpecialtiesProblem` i `cpredFleetSheetProblem`
+ * odrzucają wtedy **każdą** kolejną łatę karty zdaniem „Ta postać nie ma tej
+ * Zdolności Specjalnej" — łącznie z tą, która Rolę zmienia. Tak to wyszło przy
+ * oględzinach: Medyka z wydanymi punktami Specjalizacji nie dało się zrobić
+ * niczym innym, a zdanie odmowy mówiło o Specjalizacji, nie o Roli.
+ *
+ * Punkty bez Zdolności, która je kupiła, nie są punktami, więc schodzą. Przy
+ * wieloklasowości nie schodzi nic: tam Zdolność wciąż się znajduje i żaden
+ * z trzech warunków niżej nie jest spełniony.
+ */
+export function cpredDropOrphanedRolePurses<
+  T extends CpredRoleSheet & Pick<CpredCharacterData, 'medicine' | 'fabrication' | 'fleet'>,
+>(data: T, registry: CpredRegistry): T {
+  const orphaned = (ability: string): boolean =>
+    cpredRoleAbilityRank(data, registry, ability) === null;
+  const patch: Partial<T> = {};
+  if (cpredSpecialtySpent(data.medicine) > 0 && orphaned(CPRED_MEDICINE_ABILITY))
+    (patch as { medicine: CpredMedicine }).medicine = {};
+  if (cpredSpecialtySpent(data.fabrication) > 0 && orphaned(CPRED_FABRICATION_ABILITY))
+    (patch as { fabrication: CpredFabrication }).fabrication = {};
+  if (data.fleet.length > 0 && orphaned(CPRED_MOTO_ABILITY))
+    (patch as { fleet: CpredFleetRow[] }).fleet = [];
+  return Object.keys(patch).length === 0 ? data : { ...data, ...patch };
 }
