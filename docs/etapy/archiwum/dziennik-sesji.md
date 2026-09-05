@@ -7,6 +7,75 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 04.09 (trzecia) — chrom, który wreszcie coś kosztuje: PT montażu, odmowy i EMP z nazwami
+
+**Zlecenie MG:** znowu kilkanaście zaległości pasujących do jednej sesji, bez niczego wokół
+lokalnego LLM-a. Otwartych pozycji bez modelu jest w `zaleglosci.md` tylko **sześć**, więc lista
+poszła w pięciu paczkach głównie z `POMYSLY.md`; MG wybrał **paczkę A — cyborgizacje**, ale bez
+pozycji A1 (efekty mechaniczne chromu w rzutach): ta wchodzi w `sheetSituationModifiers`, czyli
+w tę samą maszynerię, na którą czeka Stym i etap 39, a decyzja brzmi „nie budujemy jej dwa razy".
+Zostały **A2 (PT montażu), A3 (odmowy z s. 111) i A4 (EMP)**.
+
+**Rozstrzygnięcie MG, które ukształtowało A2:** montaż **nie może wymagać tworzenia NPC-a** —
+ripperdoc przy stole jest zdaniem w opisie MG, nie figurą. Stąd `CharacterCyberwarePayload.surgeon`
+w trzech wariantach: `none` (jak dotąd — klinika bierze pieniądze i wszczep wchodzi), `gm`
+(MG podaje **jedną liczbę** „TECHNIKA + Chirurgia", domyślnie 12, serwer dorzuca 1k10) oraz
+`character` (Medyk z kampanii; jego Chirurgię czyta serwer z karty). PT bierze się z tabeli
+s. 226 (Galeria 13 / Klinika 15 / Szpital 17), a **porażka niszczy wszczep**: pieniądze schodzą,
+wiersz nie powstaje, Człowieczeństwo zostaje nietknięte. Wybór chirurga stoi w oknie montażu
+obok listy postaci; lista chirurgów to lista Medyków z punktem w Chirurgii, więc na Poligonie
+jest pusta — i dobrze, bo nikt jej tam nie ma.
+
+**A3 — trzy odmowy zamiast czerwonego chipa.** `cyberwareInstallRefusal` (czysta funkcja
+w `shared`) odmawia montażu opcji **bez cyborgizacji podstawowej**, **bez wolnego gniazda**
+i **ponad limit 7 sztuk** w rodzinach, które podstawy nie mają. Do tej sesji arytmetyka istniała
+wyłącznie jako ostrzeżenie na karcie — instalacja i tak wchodziła. MG idzie przez odmowę dalej
+(tak samo jak przez blokady ruchu i progi sklepu), ale **karta czatu wtedy ją zapisuje**:
+„… wymaga najpierw cyborgizacji podstawowej (s. 111). (montaż MG)".
+
+**A4 — Impuls EMP mówi, co padło.** Serwer losuje **dwie** cyborgizacje z karty celu (tym samym
+RNG co rzut), nazywa je na karcie („wyłączone: Mikrooptyka, Cyberoko") i zapisuje przy statusie
+`emp`, więc monit „Minęła minuta" ma czym powiedzieć, co wraca. Figura bez chromu dostaje samo
+„EMP · na minutę" — tak jak dotąd, bo nie ma czego nazwać.
+
+**Dwa błędy znalezione przy okazji, oba naprawione:**
+
+1. **Borgizacje liczyły się jak rodzina wymagająca podstawy.** `cyberwareCapacity` pisało nad
+   Ramownicą „brak cyborgizacji podstawowej", której podręcznik nie przewiduje — s. 111 daje
+   podstawy **czterem** rodzinom, a tabela Borgizacji nie ma ani nagłówka z gniazdami, ani żadnej
+   podstawy do kupienia. Bez tej poprawki A3 zamieniłoby usterkę wyświetlania w twardą blokadę:
+   żadna borgizacja nie dałaby się wszczepić.
+2. **„Cofnij" zostawiało zegar w `statusData`.** Zdejmowało naklejkę, ale wpis przy niej
+   (`timer`, a od tej sesji także `disabled`) zostawał — po cofniętym trafieniu następna walka
+   ogłosiłaby „Minęła minuta" dla statusu, którego na żetonie już nie ma. Znalezione **przy
+   sprzątaniu po oględzinach**, nie przez test.
+
+**Oględziny (Poligon, konto MG).** Obejrzane w komplecie: okno montażu z listą chirurgów, montaż
+bez Testu z odmową zapisaną na karcie MG, **nieudany Test ripperdoca** (Fumble: 1k10+0 → −2 vs
+PT 15, „Wszczep zniszczony", 600 ed z konta, karta bez wiersza) i **udany** (1k10+12 = 18, po nim
+druga karta „Utrata Człowieczeństwa — Cyberoko 2k6"), a na końcu **granat EMP** rzucony
+granatnikiem podwieszanym avatar9: „Pacjent 23a — 5 m · Cyberinżynieria 6+5 = 11 vs PT 15 · EMP ·
+na minutę · **wyłączone: Mikrooptyka, Cyberoko**", obok „Rudy Kwiatkowski — EMP · na minutę" bez
+nazw. **Nieobejrzane zostały odmowy** — MG jest z nich zwolniony, a przez UI operuje właśnie MG,
+więc czerwone zdanie w czacie zobaczy dopiero konto gracza (zapisane w `zaleglosci.md` razem
+z monitem „Minęła minuta").
+
+**Poligon wrócił do stanu sprzed sesji:** karta „Pacjent 23a" i dwa postawione żetony skasowane
+(razem z czterema wpisami `LedgerEntry`), nabój granatnika z powrotem dymny i magazynek 1/1,
+ślad po cofniętym Impulsie zdjęty z żetonu Rudego. Na Strzelnicy jest znowu **siedem żetonów**,
+w bazie **dziewięć kart**. Ślad zostawiony świadomie: **log czatu** — dwie karty montażu, dwie
+karty Człowieczeństwa, dwie karty ataku granatnikiem i dwie karty obrażeń przekreślone
+„Cofnięte — MG".
+
+**Do decyzji MG:** guzik **„Dodaj za darmo"** przy wpisie kompendium omija całe zdarzenie
+cyborgizacji — wszczep wchodzi bez rzutu na Człowieczeństwo, bez Testu montażu i bez odmów.
+Zachowanie jest sprzed tej sesji, ale od dziś różnica między dwiema drogami jest większa niż
+„płacisz albo nie". Szczegóły w `zaleglosci.md`.
+
+**Testy na koniec:** 1798 w `shared` (+13), 955 na serwerze (+20), zielone; `tsc --noEmit` czysty
+w całym monorepo, ESLint i Prettier czyste. Doszedł nowy plik `packages/server/src/sheets.test.ts`
+— czyste funkcje kolumny `Token.statusData`, których żaden widok nie wysyła do klienta.
+
 ### Sesja 04.09 (druga) — paczka „oczy i uszy": wybuch, obszar, osłony i leżąca figura
 
 **Zlecenie MG:** znowu kilkanaście zaległości pasujących do jednej sesji, bez niczego wokół

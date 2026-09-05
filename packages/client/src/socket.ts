@@ -159,6 +159,8 @@ import type {
   PresenceBroadcast,
   RollGesture,
   MapFxBroadcast,
+  MapPingBroadcast,
+  MapPingPayload,
   RulerBroadcast,
   RulerClearBroadcast,
   SceneVisibility,
@@ -253,6 +255,7 @@ import { useRelationStore } from './stores/relationStore.js';
 import { useBotStore } from './stores/botStore.js';
 import { useCombatStore } from './stores/combatStore.js';
 import { useRulerStore } from './stores/rulerStore.js';
+import { receiveMapPing, showLocalPing } from './map-ping.js';
 import { useDrawingStore } from './stores/drawingStore.js';
 import { useFogStore } from './stores/fogStore.js';
 import { useNoteStore } from './stores/noteStore.js';
@@ -821,6 +824,11 @@ export function connectSocket(userId: string): Socket {
   socket.on('ruler:clear', (broadcast: RulerClearBroadcast) => {
     useRulerStore.getState().drop(broadcast.userId);
   });
+
+  // Ping (etap 35) — efemeryczny jak linijka wyżej: bez `seq`, bez zapisu, bez
+  // powtórki. Idzie prosto do mapy przez `map-ping.js`, tą samą drogą co efekty
+  // walki: to nie jest stan, z którego cokolwiek się renderuje.
+  socket.on('map:ping', (broadcast: MapPingBroadcast) => receiveMapPing(broadcast));
 
   // Fog of war (stage 17). The mask is campaign-wide state on the active
   // scene, so it is sequenced like tokens; a GM previewing another map gets
@@ -1432,6 +1440,20 @@ export function sendRuler(sceneId: string, points: ScenePoint[], isPrivate: bool
     ...(isPrivate ? { private: true } : {}),
   };
   socket?.emit('ruler:update', payload);
+}
+
+/**
+ * Ping mapy (etap 35): kółko z imieniem w tym miejscu, u każdego, kto ogląda
+ * tę scenę. Bez potwierdzenia i bez czekania — jak `ruler:update`, bo to jest
+ * gest, a nie zmiana stanu. Kółko u siebie rysuje wołający (serwer pomija
+ * nadawcę), więc dokładamy je tutaj od razu.
+ */
+export function sendPing(sceneId: string, x: number, y: number, pull: boolean): void {
+  const payload: MapPingPayload = { sceneId, x, y, ...(pull ? { pull: true } : {}) };
+  socket?.emit('map:ping', payload);
+  // Własne kółko od razu: serwer rozsyła ping przez `socket.to`, więc do
+  // nadawcy nie wraca. Bez tej linijki pingujący jako jedyny nic nie widzi.
+  showLocalPing(sceneId, x, y, useAuthStore.getState().user?.name ?? 'Ja');
 }
 
 /** Tells the other viewers the measurement is over. */
@@ -2161,6 +2183,13 @@ export const updateToken = (tokenId: string, patch: TokenPatch) =>
   emitSceneAck<TokenView>('token:update', { tokenId, patch });
 
 export const deleteToken = (tokenId: string) => emitSceneAck('token:delete', { tokenId });
+
+/**
+ * Kopia figury obok oryginału (etap 35). Numer, profil bojowy statysty i pełne
+ * PW rozstrzyga serwer — patrz `token:duplicate`.
+ */
+export const duplicateToken = (tokenId: string, x?: number, y?: number) =>
+  emitSceneAck<TokenView>('token:duplicate', { tokenId, x, y });
 
 /**
  * Zdejmuje grafikę z biblioteki żetonów (MG). Ack mówi, ile figur na mapie

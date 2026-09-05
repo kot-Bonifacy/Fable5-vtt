@@ -91,6 +91,24 @@ interface SelectionStoreState {
   tokenId: string | null;
   focusTokenId: string | null;
   /**
+   * Zaznaczenie wielu figur (etap 35) — trzeci wskaźnik obok dwóch wyżej.
+   *
+   * **Prywatny jak tamte i nigdy nie jedzie po sieci**: „ramka" to wskaźnik
+   * jednej przeglądarki, a nie stan stołu. Nikt nie musi wiedzieć, że MG
+   * obwiódł akurat tych czterech gangerów.
+   *
+   * Trzyma **wyłącznie figury, którymi ten widz może sterować** — i to nie jest
+   * wygoda, tylko cała odpowiedź na „gracz z ramką na całą mapę". Filtruje
+   * `MapRenderer`, bo to on ma `movableTokens`; u MG przechodzi wszystko, bo MG
+   * sterować może wszystkim.
+   *
+   * Pusta lista znaczy „nie ma zaznaczenia grupowego". Jedna figura w środku
+   * też jest grupą — pasek operacji pokazuje się dopiero od dwóch, ale reguły
+   * (wykluczanie ze scenerią, `Esc`, ruch grupowy) nie mają powodu robić z
+   * jedynki przypadku szczególnego.
+   */
+  groupIds: string[];
+  /**
    * Was the rail emptied on purpose? Only then may it stay empty while a
    * default is available — „never mind" has to actually mean something.
    */
@@ -108,6 +126,16 @@ interface SelectionStoreState {
    * jego. Stąd trzecia droga: ognisko paska bez sterowania.
    */
   focus: (tokenId: string) => void;
+  /**
+   * Zaznacza podaną listę figur (ramka, `Ctrl+A`). Steruje **pierwszą z nich** —
+   * kliknięcie w podłogę ma dalej znaczyć „idź tam", a nie przestać cokolwiek
+   * znaczyć tylko dlatego, że zaznaczonych jest sześć.
+   */
+  setGroup: (tokenIds: string[]) => void;
+  /** `Shift`+klik: dokłada figurę do zaznaczenia albo ją z niego odejmuje. */
+  toggleInGroup: (tokenId: string) => void;
+  /** Zdejmuje samo zaznaczenie grupowe; sterowana figura zostaje. */
+  clearGroup: () => void;
   /** „Never mind": nothing is steered and the rail goes quiet until a pick. */
   dismiss: () => void;
   /** New scene: forget both pointers and re-read what was remembered here. */
@@ -117,6 +145,7 @@ interface SelectionStoreState {
 export const useSelectionStore = create<SelectionStoreState>((set) => ({
   tokenId: null,
   focusTokenId: null,
+  groupIds: [],
   dismissed: false,
 
   select: (tokenId) => {
@@ -128,7 +157,12 @@ export const useSelectionStore = create<SelectionStoreState>((set) => ({
       return;
     }
     rememberFocus(tokenId);
-    set({ tokenId, focusTokenId: tokenId, dismissed: false });
+    // Pojedynczy wybór **zastępuje** grupę: bez tego „kliknąłem obok"
+    // zostawiałoby pod spodem sześć figur, które następna operacja grupowa
+    // nadal by ruszyła. Zerowanie siedzi tutaj, a nie na wejściu do `select`,
+    // bo `select(null)` leci przy każdym zakończonym marszu — a marsz jednej
+    // figury z zaznaczonej szóstki nie jest powodem, żeby zapomnieć pozostałe.
+    set({ tokenId, focusTokenId: tokenId, groupIds: [], dismissed: false });
   },
 
   focus: (tokenId) => {
@@ -138,7 +172,40 @@ export const useSelectionStore = create<SelectionStoreState>((set) => ({
     set({ focusTokenId: tokenId, dismissed: false });
   },
 
-  dismiss: () => set({ tokenId: null, focusTokenId: null, dismissed: true }),
+  setGroup: (tokenIds) => {
+    const groupIds = [...new Set(tokenIds)];
+    const anchor = groupIds[0] ?? null;
+    if (anchor) rememberFocus(anchor);
+    set({
+      groupIds,
+      tokenId: anchor,
+      focusTokenId: anchor ?? recalledFocusTokenId(),
+      dismissed: false,
+    });
+  },
 
-  resetFocus: () => set({ tokenId: null, focusTokenId: recalledFocusTokenId(), dismissed: false }),
+  toggleInGroup: (tokenId) =>
+    set((state) => {
+      // Pierwsze `Shift`+kliknięcie na czystym stole robi z pojedynczego wyboru
+      // grupę dwuelementową, zamiast wyrzucać figurę, którą widz właśnie wziął.
+      const base =
+        state.groupIds.length > 0 ? state.groupIds : state.tokenId ? [state.tokenId] : [];
+      const groupIds = base.includes(tokenId)
+        ? base.filter((id) => id !== tokenId)
+        : [...base, tokenId];
+      const anchor = groupIds.includes(state.tokenId ?? '') ? state.tokenId : (groupIds[0] ?? null);
+      return { groupIds, tokenId: anchor, focusTokenId: anchor ?? state.focusTokenId };
+    }),
+
+  clearGroup: () => set({ groupIds: [] }),
+
+  dismiss: () => set({ tokenId: null, focusTokenId: null, groupIds: [], dismissed: true }),
+
+  resetFocus: () =>
+    set({
+      tokenId: null,
+      focusTokenId: recalledFocusTokenId(),
+      groupIds: [],
+      dismissed: false,
+    }),
 }));

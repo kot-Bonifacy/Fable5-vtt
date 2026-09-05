@@ -84,6 +84,39 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
     ],
   },
   {
+    title: 'Figury: wskazywanie, zaznaczanie, kopiowanie',
+    note: 'Zaznaczyć da się wyłącznie figury, którymi możesz sterować — u gracza własne, u MG wszystkie.',
+    items: [
+      {
+        keys: 'Alt + klik w mapę',
+        what: 'Ping — kółko z Twoim imieniem u wszystkich, którzy oglądają tę scenę',
+      },
+      {
+        keys: 'Alt + Shift + klik',
+        what: 'Ping, który dodatkowo przyciąga widok wszystkich oglądających',
+        gmOnly: true,
+      },
+      {
+        keys: 'Shift + przeciągnięcie',
+        what: 'Ramka — zaznacza wszystkie figury, które w niej stanęły',
+      },
+      {
+        keys: 'Shift + klik w figurę',
+        what: 'Dokłada figurę do zaznaczenia albo ją z niego odejmuje',
+      },
+      { keys: 'Ctrl + A', what: 'Zaznacza wszystkie figury, którymi możesz sterować' },
+      {
+        keys: 'przeciągnięcie zaznaczonej',
+        what: 'Przesuwa całą zaznaczoną grupę — poza walką, bo w Turze budżet metrów jest osobny dla każdej figury',
+      },
+      {
+        keys: 'Alt + przeciągnięcie figury',
+        what: 'Stawia jej kopię tam, gdzie ją upuścisz („Ganger” → „Ganger 2”)',
+        gmOnly: true,
+      },
+    ],
+  },
+  {
     title: 'Narzędzia mapy',
     note: 'Ten sam klawisz odkłada narzędzie z powrotem do wskaźnika.',
     items: MAP_TOOL_SHORTCUTS,
@@ -133,6 +166,7 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
       },
       { keys: 'Esc', what: 'Zamyka otwartą kartę obiektu sceny' },
       { keys: 'Esc', what: 'Zdejmuje zaznaczenie obiektu na mapie' },
+      { keys: 'Esc', what: 'Zdejmuje zaznaczenie wielu figur' },
       { keys: 'Esc', what: 'Odkłada narzędzie mapy' },
       { keys: 'Esc', what: 'Zdejmuje zaznaczenie figury' },
     ],

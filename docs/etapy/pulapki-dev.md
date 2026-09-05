@@ -767,3 +767,25 @@ w cel i potrząśnięcie kubkiem. Taniej: dopisz na minutę `if (sides === 10) r
 początku zwracanej funkcji w `realtime/dice-rng.ts` (obrażenia lecą k6, więc zostają losowe),
 obejrzyj kafel i **przywróć plik z kopii**, sprawdzając `git diff`. Ta sama sztuczka pokaże
 Krytyka, Fumble i każdy próg, którego nie da się doczekać.
+
+**Ramka i ping działają z syntetycznych zdarzeń wskaźnika, `Ctrl+A` nie (05.09).**
+`Shift`+przeciągnięcie (ramka), Alt+klik (ping) i Alt+przeciągnięcie (kopia) odpalają się
+z serii `PointerEvent` wysłanej na `canvas` we **współrzędnych CSS** — tak samo jak zwykłe
+przeciągnięcie żetonu. Skróty klawiszowe **nie**: `window.dispatchEvent(new KeyboardEvent(…))`
+z `ctrlKey` przechodzi bez echa (potwierdzenie pułapki z `Esc`), a `Ctrl+A` trzeba wysłać przez
+CDP — `computer` z `key: "ctrl+a"`, **po** kliknięciu w mapę, żeby ognisko było w oknie.
+
+**Ping gaśnie po 2,2 s, czyli szybciej, niż wraca zrzut ekranu (05.09).**
+Pojedynczy ping wysłany w jednym wywołaniu i oglądany w następnym zawsze będzie już wygasły —
+wygląda to jak „ping nie działa". Najtaniej: `setInterval` pingujący co 500 ms przez kilkanaście
+sekund, z `clearInterval` w osobnym wywołaniu. Ta sama sztuczka nadaje się do każdego efektu
+krótszego niż jedna wymiana z przeglądarką.
+
+**Po przeładowaniu karty mapa wraca do `fitScene`, więc współrzędne z poprzedniego zrzutu
+kłamią (05.09).** Ramka rozciągnięta po starych liczbach łapie zero figur i wygląda jak zepsuty
+gest — a złapała puste pole. Po każdym `location.reload()` (i po każdej panoramie) rób nowy
+zrzut, zanim policzysz współrzędne; skalę czytaj `window.innerWidth / szerokość zrzutu`.
+
+**Kopia figury po Alt+przeciągnięciu nie ma jak pokazać swojej nazwy na mapie** — etykieta pod
+żetonem jest przy zoomie stołu nieczytelna. Nazwę sprawdza się **menu kontekstowym**:
+`PointerEvent` z `button: 2` we współrzędnych CSS, a potem `.context-menu-title`.

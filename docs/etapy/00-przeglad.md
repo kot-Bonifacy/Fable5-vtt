@@ -61,7 +61,7 @@ Każdy etap to jedna sesja pracy z Claude. Etapy są pogrupowane w 8 faz. Szczeg
 | 33  | Kopie zapasowe, eksport i import                    | I. Wykończenie       | dopisany 02.09 (przegląd VTT)   |
 | 34  | Tabele losowe                                       | I. Wykończenie       | dopisany 02.09 (przegląd VTT)   |
 | 35  | Ping, zaznaczanie wielu figur, klonowanie           | I. Wykończenie       | dopisany 02.09 (przegląd VTT)   |
-| 36  | Makra i pasek własnych akcji                        | I. Wykończenie       | dopisany 02.09 (przegląd VTT)   |
+| ~~36~~ | ~~Makra i pasek własnych akcji~~                 | —                    | **wycofany 05.09** (decyzja MG) |
 | 37  | Kalendarz kampanii i upływ czasu                    | H. Świat CP RED      | dopisany 02.09 (przegląd VTT)   |
 | 38  | Przedmioty między kartami                           | H. Świat CP RED      | dopisany 02.09 (przegląd VTT)   |
 | 39  | Efekty czasowe modyfikujące Cechy                   | H. Świat CP RED      | dopisany 02.09 (przegląd VTT)   |
@@ -80,7 +80,6 @@ Fazy A→B→C odwzorowują priorytety MVP z ankiety (mapa+tokeny, kości, karty
 - 28 (VPS) na końcu, ale można go wcześniej „wcisnąć" w dowolnym momencie, gdy zechcesz grać zdalnie — plan etapu jest samodzielny.
 - 33 (kopie zapasowe) **przed 28** — wdrożenie mnoży egzemplarze stanu przez dwa, a pytanie „która kopia jest prawdziwa" ma mieć wtedy odpowiedź.
 - 37 (kalendarz) **przed 39** — efekt „na godzinę" nie ma na czym wisieć, dopóki czas istnieje wyłącznie w rundach walki.
-- 34 (tabele losowe) **przed 36** — makro „losuj z tabeli" jest jednym z czterech rodzajów makra, ale etap 36 działa i bez niego.
 
 ## Decyzje projektowe (ustalone z użytkownikiem 16.07.2026)
 
@@ -183,6 +182,14 @@ Fazy A→B→C odwzorowują priorytety MVP z ankiety (mapa+tokeny, kości, karty
     nie było), **tabele losowe** (34), **ping, zaznaczanie wielu figur i klonowanie** (35),
     **makra i własny pasek** (36), **kalendarz i upływ czasu** (37), **przedmioty przenoszone
     między kartami** (38) i **efekty czasowe modyfikujące Cechy** (39).
+
+    **Z tej siódemki MG wycofał 05.09.2026 etap 36 (makra i własny pasek)** — dokładał
+    złożoność (model `Macro` w bazie, trzy zdarzenia, edytor, druga listwa klawiszy)
+    nieproporcjonalną do pożytku przy stole, na którym `/r` wpisane Enterem i pasek akcji
+    z 16f załatwiają to samo. Numer 36 zostaje **pusty**, żeby odwołania do etapów 37–39
+    w dzienniku sesji i umowach kodu nie przestały się zgadzać. Pasek akcji z 16f
+    (`hotbarSlotsFor`) jest i zostaje **generowany** z tego, co figura potrafi — nie ma i nie
+    będzie miał slotów układanych ręcznie. Nie proponuj wracania do makr.
 
     **Rozstrzygnięcie MG, które ukształtowało etap 34:** losowanie z tabeli **nie dotyka
     kubka**. Kubek ma jeden slot naraz (`rollStore.ts`, `EMPTY_CUP` czyści wszystkie pozostałe

@@ -68,13 +68,15 @@ function connectSocket(cookie?: string): Promise<ClientSocket> {
   });
 }
 
-function emitWithAck(socket: ClientSocket, event: string): Promise<SocketAck> {
+function emitWithAck(socket: ClientSocket, event: string, payload?: unknown): Promise<SocketAck> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('ack timeout')), 3000);
-    socket.emit(event, (response: SocketAck) => {
+    const done = (response: SocketAck) => {
       clearTimeout(timer);
       resolve(response);
-    });
+    };
+    if (payload === undefined) socket.emit(event, done);
+    else socket.emit(event, payload, done);
   });
 }
 
@@ -335,15 +337,26 @@ describe('role enforcement (Socket.IO)', () => {
     await expect(connectSocket()).rejects.toThrow();
   });
 
-  it('answers gm:ping for the GM', async () => {
+  /*
+   * Bramka roli na żywym zdarzeniu (etap 35).
+   *
+   * Do 05.09 pilnowała jej atrapa `gm:ping` z etapu 03 — nazwa bez treści,
+   * którą etap 35 wreszcie zastąpił prawdziwym pingiem mapy (`map:ping`, dla
+   * każdego przy stole). Pokrycie samego wzorca zostaje tutaj, przeniesione na
+   * pierwsze lepsze zdarzenie tylko dla MG: rejestr sprawdza rolę **przed**
+   * wejściem w handler, więc gracz odbija się o `FORBIDDEN`, a MG dochodzi do
+   * środka i dostaje odmowę merytoryczną (nie ma takiej figury). Ta różnica
+   * kodów jest dowodem, że bramka przepuściła jednego, a drugiego nie.
+   */
+  it('przepuszcza MG przez bramkę roli do zdarzenia tylko dla MG', async () => {
     const socket = await connectSocket(gmCookie);
-    const ack = await emitWithAck(socket, 'gm:ping');
-    expect(ack).toEqual({ ok: true });
+    const ack = await emitWithAck(socket, 'token:duplicate', { tokenId: 'brak' });
+    expect(ack).toEqual({ ok: false, error: 'TOKEN_NOT_FOUND' });
   });
 
-  it('denies gm:ping for a player', async () => {
+  it('odbija gracza od zdarzenia tylko dla MG', async () => {
     const socket = await connectSocket(playerCookie);
-    const ack = await emitWithAck(socket, 'gm:ping');
+    const ack = await emitWithAck(socket, 'token:duplicate', { tokenId: 'brak' });
     expect(ack).toEqual({ ok: false, error: 'FORBIDDEN' });
   });
 });

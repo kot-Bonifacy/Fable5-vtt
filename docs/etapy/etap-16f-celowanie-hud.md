@@ -67,7 +67,8 @@ o kim mówić ani czym celować.
 - **Przebudowa zakładki „Walka”** — zostaje pełnym widokiem MG (kolejka inicjatywy, posiłki,
   efekty okresowe, obrażenia). HUD jest skrótem, nie następcą
 - **Sloty przypisywane przez użytkownika** (przeciąganie makr na pasek, jak w Foundry) —
-  pasek jest generowany z tego, co token potrafi. Wpis w POMYSLY
+  pasek jest generowany z tego, co token potrafi. **Decyzją MG z 05.09.2026 tak zostaje
+  na stałe** — makra i własny pasek (etap 36) zostały wycofane
 - **Karta postaci w miniaturze** — panel pokazuje PW, statusy i turę; do cech, umiejętności
   i ekwipunku dalej otwiera się karta (podwójny klik w token, bez zmian)
 - **Motyw i szlif wizualny** — kolory, spójność i okno pomocy `?` z listą skrótów należą

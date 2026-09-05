@@ -456,3 +456,15 @@ szansa` — kształt Rzutu na Śmierć, nie Testu na PT.
   ma własną tabelę przy karcie (bliźniak `LedgerEntry` z 23b), a nie wpisy w dzienniku z 24b.
   Dziennik jest prozą **indeksowaną do RAG-u**: dwadzieścia wierszy „Percepcja 4 → 5" na sesję
   zasypałoby streszczenia z 19c i kontekst botów szumem o zerowej wartości fabularnej.
+
+## Zakres VTT — czego świadomie nie ma
+
+- **Makra i własny pasek akcji — wycofane 05.09.2026 (decyzja MG).** Etap 36 („Makra i pasek
+  własnych akcji", dopisany 02.09 po przeglądzie względem Foundry) został skasowany razem
+  z opisem: model `Macro` w bazie, trzy zdarzenia (`macro:upsert`/`delete`/`run`), edytor
+  z podglądem i druga listwa klawiszy to złożoność nieproporcjonalna do pożytku przy stole,
+  na którym `/r 1k6` wpisane Enterem, wezwanie do Testu z etapu 32 i `/jako` robią to samo
+  bez ani jednej nowej tabeli. **Numer 36 zostaje pusty** — etapy 37–39 zachowały numery,
+  bo cytuje je dziennik sesji i umowy kodu. Konsekwencja dla paska walki: `hotbarSlotsFor`
+  (16f) jest i zostaje **generowany** z tego, co figura potrafi; ręcznie układanych slotów
+  nie będzie. Nie proponuj wracania do makr.

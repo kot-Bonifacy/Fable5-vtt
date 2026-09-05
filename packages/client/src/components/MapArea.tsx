@@ -53,6 +53,7 @@ import {
   createLight,
   createToken,
   createWalls,
+  duplicateToken,
   deleteCover,
   deleteZone,
   deleteDrawing,
@@ -64,6 +65,7 @@ import {
   nextCombatTurn,
   undoSceneDelete,
   paintFog,
+  sendPing,
   sendRuler,
   sendTokenMove,
   setTokenFacing,
@@ -78,6 +80,7 @@ import {
 } from '../socket.js';
 import { loadAttackAtToken } from '../attack-targeting.js';
 import { bindMapFx } from '../map-fx.js';
+import { bindMapPing } from '../map-ping.js';
 import { preloadFxSounds } from '../sfx.js';
 import {
   activateGroup,
@@ -109,6 +112,7 @@ import {
   drawingErrorText,
   lightErrorText,
   openingErrorText,
+  tokenErrorText,
   wallErrorText,
 } from '../mapErrors.js';
 import { useLightStore } from '../stores/lightStore.js';
@@ -125,6 +129,7 @@ import {
   useMapToolStore,
 } from '../stores/mapToolStore.js';
 import { TokenContextMenu } from './TokenContextMenu.js';
+import { TokenGroupBar } from './TokenGroupBar.js';
 import { DrawingTextEditor } from './DrawingTextEditor.js';
 import { MapTools } from './MapTools.js';
 import { SceneObjectCard } from './SceneObjectCard.js';
@@ -735,6 +740,22 @@ export function MapArea() {
     // idą pozostałe zmiany obiektu. Renderer podaje **kształt**, nie payload —
     // to tutaj wie się, którym zdarzeniem obiekt tego rodzaju się zapisuje.
     renderer.onSceneTransform = (ref, shape) => void moveSceneObject(ref, shape);
+    // ── Zaznaczanie wielu figur, ping i kopia (etap 35) ─────────────────────
+    // Renderer zgłasza gest, store rozstrzyga: ramka i `Ctrl+A` dochodzą do
+    // `setGroup` jedną drogą, więc reguła „grupa wyklucza się ze scenerią"
+    // stoi w jednym miejscu (`sceneSelectionStore`), a nie w każdym geście.
+    renderer.onGroupSelect = (tokenIds) => useSelectionStore.getState().setGroup(tokenIds);
+    renderer.onGroupToggle = (tokenId) => useSelectionStore.getState().toggleInGroup(tokenId);
+    renderer.onPing = (x, y, pull) => {
+      const current = useSceneStore.getState().effectiveScene;
+      if (!current) return;
+      sendPing(current.id, x, y, pull);
+    };
+    renderer.onTokenDuplicate = (tokenId, x, y) => {
+      void duplicateToken(tokenId, x, y).then((ack) => {
+        if (!ack.ok) useChatStore.getState().addNote(tokenErrorText(ack.error));
+      });
+    };
     renderer.onRulerChange = (points) => {
       const current = useSceneStore.getState().effectiveScene;
       useRulerStore.getState().setLocal(points);
@@ -796,6 +817,59 @@ export function MapArea() {
     bindMapFx(scene.id, (effects) => rendererRef.current?.playFx(effects));
     return () => bindMapFx(null, null);
   }, [ready, scene]);
+
+  // Pingi (etap 35) tą samą drogą co efekty walki i z tego samego powodu:
+  // ping nie jest stanem, tylko czymś, co się stało na tej jednej mapie.
+  useEffect(() => {
+    if (!ready || !scene) {
+      bindMapPing(null, null, null);
+      return;
+    }
+    bindMapPing(
+      scene.id,
+      (ping) => rendererRef.current?.addPing(ping.x, ping.y, ping.userName),
+      (x, y) => rendererRef.current?.pullViewTo(x, y),
+    );
+    return () => bindMapPing(null, null, null);
+  }, [ready, scene]);
+
+  /**
+   * Zaznaczenie grupowe do renderera (etap 35) — obwódki na mapie.
+   *
+   * Bez React state: obwódki rysuje Pixi, a lista zmienia się przy każdym
+   * `Shift`+kliknięciu. Ta sama umowa, co przy żetonach kilkaset linijek wyżej.
+   */
+  useEffect(() => {
+    if (!ready) return;
+    const push = () => {
+      const selection = useSelectionStore.getState();
+      const renderer = rendererRef.current;
+      renderer?.setGroupSelection(selection.groupIds);
+      // Kotwicę grupy wybiera **store** (tylko on wie, co wyszło z `Shift`
+      // +kliknięcia), więc mapa musi się do niej wyrównać — i musi to zrobić
+      // drogą, która nie odsyła zmiany z powrotem, bo zwykły wybór figury
+      // świadomie zeruje grupę.
+      if (selection.groupIds.length > 0) renderer?.syncSteering(selection.tokenId);
+    };
+    push();
+    return useSelectionStore.subscribe(push);
+  }, [ready]);
+
+  /**
+   * Czy wolno teraz ciągnąć całą grupę naraz (rozstrzygnięcie MG z 05.09).
+   *
+   * Poza walką tak, w walce nie: budżet metrów z 14c jest per figura, a grupowy
+   * chwyt byłby jedyną drogą, która go nie widzi. Bramka stoi u klienta, bo to
+   * jest **gest**, a nie reguła — serwer i tak sądzi każdy `token:move` osobno,
+   * więc żadna dziura w zasadach się tu nie otwiera.
+   */
+  useEffect(() => {
+    if (!ready) return;
+    const push = () =>
+      rendererRef.current?.setGroupDragAllowed(useCombatStore.getState().combat === null);
+    push();
+    return useCombatStore.subscribe(push);
+  }, [ready]);
 
   useEffect(() => {
     if (!ready) return;
@@ -1548,6 +1622,15 @@ export function MapArea() {
         });
         return;
       }
+      // `Ctrl+A` — wszystkie figury, którymi ten widz może sterować (etap 35).
+      // U MG jest to cała scena, u gracza wyłącznie jego własne: filtr siedzi
+      // w rendererze, bo to on ma `movableTokens`, i jest dokładnie ten sam,
+      // którym sieje ramka.
+      if ((event.ctrlKey || event.metaKey) && (event.key === 'a' || event.key === 'A')) {
+        event.preventDefault();
+        rendererRef.current?.selectAllSteerable();
+        return;
+      }
       if (event.ctrlKey || event.metaKey || event.altKey) return;
       // Kasowanie zaznaczonego obiektu scenerii (27k). `Backspace` obok
       // `Delete`, bo na laptopie bez bloku numerycznego to ten sam gest.
@@ -1628,6 +1711,14 @@ export function MapArea() {
           useSceneSelectionStore.getState().select(null);
           return;
         }
+        // Szczebel z 35: zaznaczenie grupowe schodzi **przed** narzędziem i
+        // przed pojedynczą figurą. Sześć obwódek jest najświeższą rzeczą, którą
+        // się zrobiło, a `Esc` cofa najświeższą — i zdejmowanie ich razem
+        // z narzędziem kosztowałoby ponowne wejście w warstwę.
+        if (useSelectionStore.getState().groupIds.length > 0) {
+          useSelectionStore.getState().clearGroup();
+          return;
+        }
         if (tools.tool !== 'pointer') {
           tools.setTool('pointer');
           return;
@@ -1685,6 +1776,7 @@ export function MapArea() {
         </div>
       )}
       <MapTools />
+      <TokenGroupBar />
       <TargetTooltip hover={aimHover} />
       <AimMenu />
       <DrawingTextEditor />

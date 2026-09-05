@@ -124,6 +124,32 @@ by niczego droższego niż 50 ed. Przełącznik 1–4 jest w zakładce **„Komp
 kategorii; MG kupuje przez wszystkie poziomy niezależnie od niego. **Sprawdzone 22.08:** Kompendium pokazuje „Sklep: **Zawodowe** · Do 500 ed", a wpisy wyższych
 poziomów są wyszarzone z powodem — wartość z bazy dociera do UI poprawnie.
 
+## Stan po sesji 05.09 (druga — etap 35: ping, ramka, kopia)
+
+**Poligon wrócił do stanu sprzed sesji i po raz pierwszy jest to sprawdzone różnicowo.**
+Serwer robi od 05.09 kopię przy starcie, więc `snapshot-2026-09-05-1123/db.sqlite` jest
+dokładnym zdjęciem sceny sprzed oględzin — porównanie kolumn `x`, `y`, `hidden`, `statuses`,
+`statusData` i `publicName` wszystkich trzynastu żetonów dało **zero różnic**, przy zgodnych
+licznikach: 13 żetonów, 9 kart, 6 scen, 23 wpisy księgi, 1 walka (ta z „Jhonnym" i „Vexem" na
+innej scenie). **To jest odtąd najtańszy sposób sprzątania po oględzinach** — szybszy i pewniejszy
+niż odtwarzanie pozycji z pamięci.
+
+Zrobione i cofnięte w tej sesji: **dwie kopie „Rudego Kwiatkowskiego"** („Rudy Kwiatkowski 2"
+i „3", jedna gestem Alt+przeciągnięcia, druga guzikiem „⧉ Duplikuj") — skasowane koszem
+grupowym; **tryb turowy** włączony na potrzeby sprawdzenia bramki ruchu grupowego i wyłączony
+(kolejka „PRZED WALKĄ" wraca jednym kliknięciem, tak jak było); **pozycje trzech żetonów**
+(„Tony" 900/1400, „Automatyczna wieżyczka" 1200/1700, „testowy 2x2" 1200/1900) przesunięte
+ruchem grupowym i przywrócone wprost w bazie przy zatrzymanym serwerze.
+
+**Ślad zerowy także w czacie** — i to jest samo w sobie potwierdzenie kryterium etapu: ping nie
+zostawia po sobie ani wiersza czatu, ani niczego w bazie. Operacje grupowe (ukrycie, naklejki,
+kosz) też nie piszą do czatu.
+
+**Do oględzin z konta gracza użyty był `Tony`, nie `Tester`** — Tester nie ma na Strzelnicy
+żadnej figury, a kryterium „gracz z ramką na całą mapę dostaje pod kontrolę wyłącznie swoje
+figury" wymaga, żeby jakąś miał. Tony ma dokładnie jedną z siedmiu widocznych i to właśnie ona
+jako jedyna złapała się w ramkę.
+
 ## Stan kart po oględzinach 29b (30.08, trzecia sesja)
 
 **Karta „Test 27x" była w trakcie oględzin przestawiona na Solo 4 z 400 PD, a potem na Nomadę
