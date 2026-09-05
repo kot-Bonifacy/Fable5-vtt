@@ -10,6 +10,7 @@ import type { BotActionProposal } from './bots/types.js';
 import { checkCallTargetText, type CheckCallEntry } from './checks.js';
 import type { HandoutLogEntry } from './handouts.js';
 import type { JournalLogEntry } from './journal.js';
+import type { TimeLogEntry } from './gametime.js';
 
 /**
  * `action` is the public log of a spent combat action (stage 14b); `gmaction`
@@ -41,7 +42,9 @@ export type ChatKind =
   /** Wezwanie MG do Testu, czekające na kubek wezwanego (etap 32). */
   | 'check'
   /** Dzień odpoczynku albo podana dawka — ciało zmienia stan poza walką. */
-  | 'recovery';
+  | 'recovery'
+  /** Skok zegara świata (etap 37) — „Minęła noc, 15 marca 2045". */
+  | 'time';
 
 /**
  * Powrót do zdrowia, jak zapisuje go czat (s. 222–223, s. 150).
@@ -310,6 +313,8 @@ export interface ChatMessageView {
   check?: CheckCallEntry;
   /** Dzień odpoczynku albo podana dawka — kind `recovery` only. */
   recovery?: RecoveryLogEntry;
+  /** Skok zegara świata — kind `time` only (etap 37). */
+  time?: TimeLogEntry;
   /** ISO timestamp — always assigned by the server. */
   createdAt: string;
 }
@@ -484,7 +489,10 @@ export function chatCategoryOf(kind: ChatKind): ChatCategory {
       return 'table';
     // Odpoczynek i zastrzyk to nie walka, choć zmieniają PW: patrzy się na nie
     // przy rozliczaniu przerwy między scenami, razem z papierami i pieniędzmi.
+    // Skok zegara jest cezurą tej samej przerwy — „minęła noc" czyta się
+    // dokładnie wtedy, co „Vex odzyskał 7 PW".
     case 'recovery':
+    case 'time':
       return 'table';
   }
 }
@@ -677,7 +685,18 @@ export function chatCompactLine(message: ChatMessageView): ChatCompactLine | nul
       return message.check ? compactCheckCall(message.check) : null;
     case 'recovery':
       return message.recovery ? compactRecovery(message.recovery) : null;
+    case 'time':
+      return message.time ? compactTime(message.time) : null;
   }
+}
+
+/** „Zegar świata · Minęła noc — 15 marca 2045, 06:00 · rano". */
+function compactTime(entry: TimeLogEntry): ChatCompactLine {
+  return {
+    actor: 'Zegar świata',
+    summary: `${entry.title} — ${entry.to}`,
+    ...(entry.backwards ? { tone: 'warn' as const } : {}),
+  };
 }
 
 /** „Vex · Dzień odpoczynku — +7 PW" albo „Vex · Antybiotyk — tydzień". */

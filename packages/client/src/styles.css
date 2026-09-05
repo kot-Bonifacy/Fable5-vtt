@@ -1203,6 +1203,40 @@ button:disabled {
   color: var(--warn);
 }
 
+/* ---------------------------------------------------------------------------
+   Zegar świata w górnym pasku (etap 37)
+
+   `flex: none` jak każdy element prawej grupy — miejsce oddaje wyłącznie tytuł
+   i nazwa kampanii. Kropka przy dacie to monit rozliczenia miesiąca; nosi
+   `--warn`, bo mówi „coś czeka", a nie „coś się zepsuło".
+   --------------------------------------------------------------------------- */
+
+.top-bar-clock {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.top-bar-clock--gm {
+  padding: 0.1rem 0.45rem;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  cursor: pointer;
+}
+
+.top-bar-clock--gm:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.top-bar-clock--due {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
 .top-bar-user {
   font-size: 0.88rem;
   color: var(--text-dim);
@@ -4953,6 +4987,48 @@ body.is-resizing {
   color: var(--ok);
 }
 
+/* Data w świecie gry przy wpisie dziennika (etap 37) — cichsza od daty sesji:
+   to dopisek do kroniki, nie jej klucz porządkujący. */
+.journal-world-date {
+  flex: none;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+/* Skok zegara świata (etap 37) — cezura przerwy, nie zdarzenie walki. */
+
+.chat-time {
+  border-left: 3px solid var(--info);
+  padding-left: 0.5rem;
+}
+
+.chat-time--back {
+  border-left-color: var(--warn);
+}
+
+.chat-time-title {
+  margin: 0 0 0.15rem;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.chat-time-days {
+  color: var(--info);
+}
+
+.chat-time-span {
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+.chat-time-from {
+  color: var(--text-dim);
+}
+
 .chat-action-body {
   display: flex;
   align-items: center;
@@ -7260,6 +7336,100 @@ body.is-resizing {
   margin-top: 1.1rem;
   padding-top: 0.9rem;
   border-top: 1px solid var(--border);
+}
+
+/* ---------------------------------------------------------------------------
+   Okno zegara świata (etap 37)
+
+   Dzieli chrom z oknem ustawień (belka, ciało, ✕, uchwyt rozciągania) i różni
+   się wyłącznie treścią. Godzina jest największą liczbą w oknie, bo po nią się
+   tu przychodzi; data i dzień tygodnia stoją obok w jednej linii.
+   --------------------------------------------------------------------------- */
+
+.clock-window {
+  width: min(360px, calc(100vw - 24px));
+}
+
+.clock-now {
+  margin: 0 0 0.6rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.clock-now-time {
+  font-size: 1.6rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.clock-now-date {
+  font-size: 0.95rem;
+}
+
+.clock-now-weekday {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+/* Skoki i para guzików rozliczenia — jeden rządek, zawijany na wąskim oknie. */
+.clock-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.clock-exact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+
+.clock-exact input {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
+.clock-prompt {
+  margin: 0 0 0.5rem;
+  font-size: 0.82rem;
+  color: var(--text-dim);
+}
+
+.clock-prompt--due {
+  color: var(--warn);
+}
+
+.clock-rest {
+  list-style: none;
+  margin: 0 0 0.5rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.clock-rest li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+}
+
+.clock-rest-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clock-rest-hp {
+  flex: none;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
 }
 
 /* ---------------------------------------------------------------------------

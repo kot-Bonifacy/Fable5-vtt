@@ -18,6 +18,7 @@ import {
   KNOWLEDGE_VISIBILITIES,
   KNOWLEDGE_VISIBILITY_LABELS,
   ROLE_GM,
+  formatWorldDate,
   groupJournalByMonth,
   journalMatches,
   normalizeKnowledgeTags,
@@ -501,6 +502,18 @@ function JournalTimeline<T extends JournalPlayerEntry>({
                       <span className="knowledge-type knowledge-type--event">
                         {entry.sessionDate}
                       </span>
+                      {/* Data świata (etap 37) obok realnej, nie zamiast niej:
+                          jedna mówi, kiedy drużyna grała, druga — kiedy to się
+                          działo w Night City. Wpisy sprzed etapu 37 jej nie
+                          mają i wyglądają dokładnie tak, jak wyglądały. */}
+                      {entry.worldDate ? (
+                        <span
+                          className="journal-world-date"
+                          title={`W świecie gry: ${formatWorldDate(entry.worldDate)}`}
+                        >
+                          {formatWorldDate(entry.worldDate)}
+                        </span>
+                      ) : null}
                       <span className="knowledge-entry-title">{entry.title}</span>
                       {badges?.(entry)}
                     </button>

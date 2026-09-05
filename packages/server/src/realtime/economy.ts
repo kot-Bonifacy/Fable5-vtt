@@ -35,6 +35,7 @@ import type { Character } from '../generated/prisma/client.js';
 import { emitCharacterUpsert, toCharacterView } from './character-io.js';
 import { campaignEntry } from './compendium.js';
 import { INCLUDE_CHAT_NAMES, deliverChatMessageTo, toChatMessageView } from './chat-io.js';
+import { markMonthSettled } from './gametime.js';
 import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { campaignShopTier, requireUnlockedTier } from './shop.js';
 import { emitTokensOfCharacter } from './tokens.js';
@@ -527,6 +528,10 @@ export const economySettleEvent = defineEvent<
       },
       [],
     );
+    // Zegar świata (etap 37) przestaje o ten miesiąc pytać — ale dopiero po
+    // prawdziwym rozliczeniu: podgląd niczego nie pobiera, więc niczego też
+    // nie stempluje.
+    if (!preview) await markMonthSettled(deps, campaign.id);
     return { charged, shortfall, settled, skipped };
   },
 });

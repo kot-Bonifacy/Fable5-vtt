@@ -14,7 +14,7 @@ import type {
   StateSyncPayload,
   WallView,
 } from '@vtt/shared';
-import { ROLE_GM, SHOP_TIER_MIN } from '@vtt/shared';
+import { GAME_TIME_DEFAULT, ROLE_GM, SHOP_TIER_MIN } from '@vtt/shared';
 import { defineEvent, type RealtimeDeps } from './registry.js';
 import { computePresence } from './presence.js';
 import { fetchHistoryPage } from './chat-io.js';
@@ -37,6 +37,7 @@ import { fetchBotsFor } from './bots.js';
 import { aiStatusFor } from './ai.js';
 import { buildCompendiumSync } from './compendium.js';
 import { campaignShopTier } from './shop.js';
+import { campaignGameTime } from './gametime.js';
 import { campaignRoom } from './state.js';
 
 /**
@@ -79,6 +80,7 @@ export async function buildStateSync(
       accessPoints: [],
       netRuns: [],
       combat: null,
+      gameTime: { minutes: GAME_TIME_DEFAULT, settledMonth: null },
     };
   }
   const viewedSceneId = socket.data.viewedSceneId;
@@ -107,6 +109,7 @@ export async function buildStateSync(
     shopTier,
     accessPoints,
     netRuns,
+    gameTime,
   ] = await Promise.all([
     computePresence(deps.io, campaign.id),
     fetchHistoryPage(deps.ctx.prisma, campaign.id, user),
@@ -184,6 +187,10 @@ export async function buildStateSync(
     // Runs are campaign-wide rather than scene-wide: „a run survives a scene
     // change" was the reason 26a put the architecture on the campaign.
     fetchRunsFor(deps, campaign.id, user),
+    // Zegar świata (etap 37) — publiczny jak `shopTier`: data i pora dnia są
+    // wspólne dla stołu, a monit rozliczenia liczy się z `settledMonth` po
+    // stronie klienta, więc przeżywa przeładowanie strony.
+    campaignGameTime(deps.ctx.prisma, campaign.id),
   ]);
   const scene: SceneView | null = viewedScene ? toSceneView(viewedScene) : null;
   return {
@@ -221,6 +228,7 @@ export async function buildStateSync(
     accessPoints,
     netRuns,
     combat,
+    gameTime,
   };
 }
 

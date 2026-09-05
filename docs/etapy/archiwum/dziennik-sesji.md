@@ -7,6 +7,78 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 05.09 — kopie zapasowe: kopia, która robi się sama, i plik, który da się przeczytać
+
+**Zlecenie MG:** kontynuacja projektu; z listy wolnych etapów MG wybrał **33 (kopie zapasowe)**,
+a przy okazji **przycięcie `POSTEP.md`** i **scalenie gałęzi do `main`**. Przed kodem padły cztery
+rozstrzygnięcia z opisu etapu — trzy z liczbami zmierzonymi na żywej bazie, żeby decyzja nie
+stała na przeczuciu: **czat to 411 KB z 502 KB tekstu w bazie (82 %)**, `uploads/` 14 MB,
+`data/private/` 82 MB. MG wybrał: czat w zrzucie **przełącznikiem, domyślnie tak**; kopia **przy
+starcie serwera i co godzinę**, zostaje **24 + 14 dób**; `uploads/` **w każdej kopii**
+(„samowystarczalna"); miejsce kopii po etapie 28 — **odłożone do etapu 28**.
+
+**Pierwsza rzecz, którą trzeba było rozstrzygnąć, to nazwa.** `realtime/backup.ts`,
+`backup.test.ts` i `BackupPanel.tsx` **już istniały** i nie mają nic wspólnego z kopiami — to
+Zdolność Roli **Wsparcie** z 30c (ang. _Backup_). Stąd dwie nowe rodziny: `snapshot` na pracę
+z dyskiem i `archive` na pliki wymiany.
+
+**Decyzja MG o „samowystarczalnej kopii" kosztowałaby 336 MB na dobę — kosztuje 14 MB raz.**
+`linkTree` dowiązuje pliki twardo zamiast je kopiować, więc katalog kopii ma pełny komplet
+grafik pod własnymi nazwami, a na dysku to te same bloki (sprawdzone: `stat` pokazuje ten sam
+i-węzeł i licznik 2). Trzydzieści osiem kopii kosztuje **38 × 1,1 MB bazy + 14 MB grafik raz**.
+Jest to bezpieczne **wyłącznie dlatego, że plik uploadu jest niezmienny** — i dokładnie tak stoi
+w umowie kodu, razem z warunkiem, przy którym trzeba będzie wrócić do kopiowania.
+
+**Rotacja liczy się z nazw katalogów, nie z czasu pliku**, bo czas pliku zmienia zwykłe
+skopiowanie katalogu. Wypadła z tego furtka, która okazała się przydatna od razu: **nazwa spoza
+schematu nie jest kasowana nigdy**, więc kopię „na zawsze" robi się przemianowaniem — i tą samą
+drogą idą kopie bezpieczeństwa spod `restore` (`przed-przywroceniem-<ISO>`).
+
+**Cztery świadome odstępstwa od opisu etapu**, wszystkie zapisane w pliku etapu: skrypty jako TS
+w `packages/server/scripts/` (muszą czytać `loadConfig` i `@vtt/shared`), eksport jako **trasa
+REST** zamiast zdarzenia gniazda (zrzut z czatem to 659 KB, a Socket.IO ma limit 1 MB; import
+został gniazdem, bo zmienia stan), eksport z **wierszy z wypisanymi kolumnami zamiast widoków**
+(`toTokenView` podmienia nazwę figury na `publicName` — kopia gubiąca prawdziwą nazwę żetonu nie
+jest kopią) i **kopie jako pole opcjonalne konfiguracji** (`ServerConfig.backups`), dzięki czemu
+54 istniejące zestawy testów dymnych nie wymagały ani jednej linijki zmiany.
+
+**Jeden błąd znaleziony i naprawiony: polski znak w nazwie pobieranego pliku.**
+`Content-Disposition` jedzie po HTTP jako latin-1, więc karta „Bezpański" albo „Zażółć gęślą
+jaźń" wywracała **całą trasę** (`ERR_INVALID_CHAR`, 500 zamiast pobrania). Objawem byłoby
+„eksport nie działa dla niektórych postaci". Nazwa jest odtąd składana do ASCII, a prawdziwa
+jedzie parametrem `filename*=UTF-8''…`. Złapał to test dymny, nie oględziny.
+
+**Jedno znalezisko, które okazało się poprawnym zachowaniem — i dostało test.** Round-trip karty
+**nie jest bajt w bajt**: eksport wypisuje surową kolumnę `data` (kopia ma być prawdą o bazie),
+a import przepuszcza ją przez `parseCharacterData`, więc karta „Tony" z Poligonu wróciła
+z ośmioma dopisanymi polami (`recovery`, `team`, `medicine`…), których jej wiersz nigdy nie
+miał. Nic nie ginie — dochodzą wartości domyślne, bo inaczej plik otwierałby panel pytający
+o pole, którego w karcie nie ma. Asymetria jest teraz opisana w kodzie i pilnowana testem
+„wypełnia braki starej karty domyślnymi wartościami, niczego nie gubiąc".
+
+**Oględziny (Poligon, konto MG) — cały etap odklikany.** Zakładka „Kopie" z trzema kopiami na
+liście, ręczna kopia guzikiem (czwarty wiersz pojawił się od razu), zrzut kampanii **659 KB
+z czatem i 60 KB bez** z manifestem wymieniającym 10 plików `uploads/` i pięć zdań „czego tu nie
+ma", eksport karty (4 KB, `data` jako prawdziwy obiekt, 8 wierszy księgi), **import karty**
+(druga „Tony", inne id, księga przepisana), **odmowa pliku z przyszłej wersji** („Plik zapisała
+nowsza wersja VTT…"), **import sceny** („Strzelnica" w podglądzie, ściany i ustawienia identyczne,
+**6 powiązań z kartami i 5 właścicieli utrzymanych**) oraz **przywracanie w obie strony**
+(9 kart → 10 → 9) z ponownym startem serwera. Poprawione po drodze jedno drobiazgowe: polecenie
+`restore` łamało się w środku słowa („na zwa-kopii") — `break-all` zamieniony na
+`overflow-wrap: anywhere`.
+
+**Poligon wrócił do stanu sprzed sesji:** wczytana karta „Tony" i wczytana scena „Strzelnica"
+skasowane razem z 8 wierszami `LedgerEntry`, 7 żetonami, 4 ścianami i wpisem eksploracji —
+w bazie znowu **9 kart, 6 scen, 13 żetonów, 23 wpisy księgi**. Ślad zostawiony świadomie:
+**cztery snapshoty** w `data/private/backups/` (to teraz pierwsze prawdziwe kopie tej kampanii)
+oraz **dwa katalogi `przed-przywroceniem-*`** z testu przywracania — kosz na nie został
+odrzucony, więc czekają na rękę MG.
+
+**Przy okazji, na zlecenie MG:** `POSTEP.md` przycięty: sekcja „Od czego zacząć" ze **170 do 73 linijek**, cały plik z **642 do 553** — siedemnaście
+akapitów z „Od czego zacząć" (streszczenia zamkniętych sesji i umowy spisane już w
+`umowy-kodu.md`) przeniesione **w całości i bez zmian** do `archiwum/dziennik-sesji.md`. Gałąź
+`feat/cpred-weapon-attachments` scalona do `main`.
+
 ### Sesja 04.09 (trzecia) — chrom, który wreszcie coś kosztuje: PT montażu, odmowy i EMP z nazwami
 
 **Zlecenie MG:** znowu kilkanaście zaległości pasujących do jednej sesji, bez niczego wokół

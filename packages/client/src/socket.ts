@@ -192,6 +192,9 @@ import type {
   TokenPatch,
   TokenSyncBroadcast,
   RollParseError,
+  GameTimeAck,
+  GameTimeBroadcast,
+  GameTimeStepId,
   ShopTierBroadcast,
   TokenUpsertBroadcast,
   TokenView,
@@ -243,6 +246,7 @@ import { useAuthStore } from './stores/authStore.js';
 import { useTokenStore, type TokenViewerCtx } from './stores/tokenStore.js';
 import { useCharacterStore } from './stores/characterStore.js';
 import { useCompendiumStore } from './stores/compendiumStore.js';
+import { useGameTimeStore } from './stores/gameTimeStore.js';
 import { useAiStore } from './stores/aiStore.js';
 import { useRulesStore } from './stores/rulesStore.js';
 import { useKnowledgeStore } from './stores/knowledgeStore.js';
@@ -499,6 +503,7 @@ export function connectSocket(userId: string): Socket {
     useNetRunStore.getState().replacePoints(payload.accessPoints ?? []);
     useNetRunStore.getState().replaceRuns(payload.netRuns ?? []);
     if (payload.ai) useAiStore.getState().setStatus(payload.ai);
+    useGameTimeStore.getState().applySync(payload);
   });
 
   /**
@@ -693,6 +698,11 @@ export function connectSocket(userId: string): Socket {
   // opened up only after a reload is a catalogue the table argues about.
   socket.on('shop:tier', (broadcast: ShopTierBroadcast) => {
     useCompendiumStore.getState().applyShopTier(broadcast.tier);
+  });
+  // Zegar świata (etap 37): rozgłoszenie, nie resynchronizacja — data w pasku
+  // ma zmienić się u wszystkich w chwili, w której MG kliknął „+1 dzień".
+  socket.on('time:set', (broadcast: GameTimeBroadcast) => {
+    useGameTimeStore.getState().applyTime(broadcast.time);
   });
 
   // Character emissions are always targeted (owner + GM) and carry no seq.
@@ -3287,6 +3297,29 @@ export function saveCompendiumEntry(entry: unknown): Promise<SocketAck<Compendiu
       return;
     }
     socket.emit('compendium:upsert', { entry }, (ack: SocketAck<CompendiumEntry>) => resolve(ack));
+  });
+}
+
+/**
+ * MG przesuwa zegar świata (etap 37).
+ *
+ * Skok jedzie **identyfikatorem**, nie liczbą minut: „+1 h" jest intencją,
+ * a arytmetykę robi serwer — ta sama zasada, co przy rzutach kośćmi. Ustawienie
+ * daty wprost jest jedynym wejściem, które niesie liczbę, i jedynym, którym da
+ * się zegar cofnąć.
+ */
+export function setGameTime(
+  payload: { step: GameTimeStepId } | { minutes: number },
+): Promise<SocketAck<GameTimeAck>> {
+  return new Promise((resolve) => {
+    if (!socket) {
+      resolve({ ok: false, error: 'OFFLINE' });
+      return;
+    }
+    socket.emit('time:set', payload, (ack: SocketAck<GameTimeAck>) => {
+      if (ack.ok && ack.data) useGameTimeStore.getState().applyJump(ack.data.time, ack.data.days);
+      resolve(ack);
+    });
   });
 }
 

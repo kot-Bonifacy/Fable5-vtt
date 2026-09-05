@@ -716,7 +716,16 @@ export async function exportCampaign(
 ): Promise<ArchiveFile<CampaignArchive> | null> {
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },
-    select: { name: true, shopTier: true, sandbox: true, createdAt: true },
+    select: {
+      name: true,
+      shopTier: true,
+      sandbox: true,
+      createdAt: true,
+      // Zegar świata (etap 37) — kopia kampanii bez daty w Night City nie jest
+      // kopią tej kampanii, tylko jej wersją sprzed pierwszej nocy.
+      gameTime: true,
+      settledMonth: true,
+    },
   });
   if (!campaign) return null;
 

@@ -102,11 +102,23 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 | 34  | Tabele losowe                                 | ⬜     |                   |
 | 35  | Ping, zaznaczanie wielu figur, klonowanie     | ✅     | 2026-09-05        |
 | ~~36~~ | ~~Makra i pasek własnych akcji~~           | ⛔     | wycofany 05.09.2026 |
-| 37  | Kalendarz kampanii i upływ czasu              | ⬜     |                   |
+| 37  | Kalendarz kampanii i upływ czasu              | ✅     | 2026-09-05        |
 | 38  | Przedmioty między kartami                     | ⬜     |                   |
 | 39  | Efekty czasowe modyfikujące Cechy             | ⬜     |                   |
 
 ## Od czego zacząć
+
+**Kampania ma od 05.09 własny zegar — do tej sesji czas istniał wyłącznie w rundach walki.**
+`Campaign.gameTime` to **minuty od epoki, liczone w UTC** (nie `DateTime`: strefa maszyny nie ma
+nic wspólnego z porą dnia w Night City), start to **1 stycznia 2045, 08:00**. Datę i godzinę
+widzi cały stół w górnym pasku; MG klika chip i dostaje okno z czterema skokami
+(**+10 min, +1 h, do rana, +1 dzień**) oraz **ustawieniem daty wprost** — jedyną drogą, którą da
+się zegar cofnąć. Skok jedzie **identyfikatorem, nie liczbą minut**, i zostawia publiczną kartę
+czatu (rodzaj `time`). **Zegar podpowiada, nie rządzi:** przekroczenie pierwszego dnia miesiąca
+zapala kropkę przy zegarze i sekcję z gotowym „Rozlicz", skok o dobę podsuwa listę rannych
+z guzikiem „Odpoczynek" — **żadne z tego nie dzieje się samo**. Wpis dziennika niesie odtąd datę
+świata obok realnej (`JournalEntry.worldDate`, stemplowana przez serwer przy powstaniu wpisu).
+Sześć umów kodu i pięć pułapek w indeksach niżej.
 
 **Mapa umie od 05.09 trzy rzeczy, których nie umiała przez trzydzieści cztery etapy:** wskazać
 palcem (**`Alt`+klik = ping**, `Alt+Shift` u MG przyciąga wszystkim widok), wziąć **wiele figur
@@ -130,11 +142,12 @@ i `archive`. Wyszedł przy tym **jeden błąd**: polski znak w nazwie pliku wywr
 błędem 500. Osiem umów kodu i cztery pułapki w indeksach niżej.
 
 **Wolne są teraz: 28** (wdrożenie na VPS — a MG planuje przed nim refaktoryzację całości)
-**oraz 34, 37, 38, 39.** **Etap 36 (makra i własny pasek) MG wycofał 05.09** — nie planuj go
-i nie proponuj makr; pasek akcji z 16f zostaje generowany. Kolejność wiążąca w jednym miejscu:
-**37 przed 39** (efekt „na godzinę" potrzebuje zegara świata). Warunek „33 przed
-28" jest od 05.09 spełniony. **Refaktoryzacja całości przed etapem 28 czeka na osobną sesję** —
-MG odłożył ją 05.09, wybierając etap z listy.
+**oraz 34, 38, 39.** **Etap 36 (makra i własny pasek) MG wycofał 05.09** — nie planuj go
+i nie proponuj makr; pasek akcji z 16f zostaje generowany. **Jedyna wiążąca kolejność, „37 przed
+39", jest od 05.09 spełniona** — `CpredTimedEffect` może dostać drugą podstawę (czas świata),
+a zegar da się czytać z serwera przez `campaignGameTime`. Warunek „33 przed 28" też.
+**Refaktoryzacja całości przed etapem 28 czeka na osobną sesję** — MG odłożył ją 05.09,
+wybierając etap z listy.
 
 **Dług oględzin — 14 pozycji, i wszystkie czekają na żywy model.** Cztery pozycje etapu 30
 (**30a, 30b, 30c, 30d**) zamknięte 04.09 — była to ostatnia paczka, którą dało się obejrzeć bez
@@ -187,9 +200,12 @@ nieaktualne. Lista jest zapisem chwili, w której coś zauważono, a nie stanu r
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
 a od 30d pierwszym, przy którym **każda Rola w drużynie gra inaczej niż reszta**.
 
-**Testy na koniec ostatniej sesji:** 1833 w `shared` (+10), 992 na serwerze (+7), 92 u klienta
-(+13) — zielone. ESLint i Prettier czyste na całym repo; `tsc --noEmit` czysty w trzech
-pakietach (od 05.09 obejmuje też `packages/server/scripts/`).
+**Testy na koniec ostatniej sesji:** 1865 w `shared` (+32), 1004 na serwerze (+12), 97 u klienta
+(+5) — zielone. ESLint i Prettier czyste na kodzie; `tsc --noEmit` czysty w trzech pakietach
+(od 05.09 obejmuje też `packages/server/scripts/`). **Trzy pliki dokumentacji —
+`POSTEP.md`, `POMYSLY.md` i `00-przeglad.md` — prettier by przeformatował i jest tak od dawna**
+(sprawdzone 05.09 na czystym HEAD); nie puszczaj na nich `pnpm format`, bo przelałoby to
+kilkaset wierszy szumu do commita etapu.
 
 ## Umowy kodu — indeks
 
@@ -316,6 +332,13 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 - **Kosz figur pyta zawsze, także na poligonie** — `Ctrl+Z` cofa scenerię, nie figury; dlatego `Delete` figur nie dotyka i jedyna droga to guzik z pytaniem niosącym liczbę.
 - **Jakość broni** — `quality` jedzie z **wpisu** kompendium, nie z typu; `poor` po Krytycznej Porażce zapala `CpredWeaponRow.jammed`, a usterkę zdejmuje **własna Akcja** (`weapon:clear-jam`), nie `weapon:reload`. Nie zacina się dodatek podwieszany, statysta ani porażka pominięta przez „Wyjście z opresji".
 
+- **Czas świata to jedna liczba: minuty od epoki, liczone w UTC** (`Campaign.gameTime`, `shared/src/gametime.ts`) — nie `DateTime` i nie tekst. Cała arytmetyka przez `getUTC*`/`Date.UTC`; `new Date('2045-03-15T08:00')` to czas **lokalny** i przesunąłby granicę doby. `GAME_TIME_DEFAULT` i `@default` kolumny muszą być tą samą liczbą.
+- **Skok zegara jedzie identyfikatorem, nie liczbą minut** — `time:set` bierze albo `step` z `GAME_TIME_STEPS`, albo `minutes`, nigdy oba. Nowy skok = wiersz w katalogu + gałąź w `applyGameTimeStep`. Ustawienie daty wprost to jedyne wejście z liczbą i jedyna droga cofnięcia.
+- **Monit rozliczenia to różnica dwóch kluczy miesiąca**, nie licznik dni (`settleDue`) — stempluje go wyłącznie prawdziwe `economy:settle` przez `markMonthSettled`, nigdy podgląd. `settledMonth === null` znaczy „nie pytaj", dlatego nowa kampania stempluje miesiąc startowy.
+- **Zegar podpowiada, nie rządzi** — `realtime/gametime.ts` nie ma ani jednego wywołania ekonomii ani leczenia i nie wie, czym są PW. Listę rannych składa okno zegara u klienta, leczy `character:rest`.
+- **`JournalEntry.worldDate` stempluje serwer przy powstaniu wpisu** i edycja jej nie rusza; stoi **obok** `sessionDate`, nie zamiast. Data świata w łacie klienta pozwoliłaby przedatować kronikę.
+- **Polska liczba mnoga ma trzy formy** — `gameDaysLabel`/`gameDaysPassed` w rdzeniu (1 → „doba", końcówka 2–4 **poza 12–14** → „doby", reszta → „dób"). Ternary w komponencie daje „13 doby".
+
 ## Pułapki dev — indeks
 
 Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapki-dev.md`.
@@ -431,9 +454,78 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 - **Nazwy kopii nie odczytasz z etykiety pod żetonem** (przy zoomie stołu nieczytelna) — otwórz menu kontekstowe (`button: 2`) i przeczytaj `.context-menu-title`.
 - **Kartę do oględzin da się przygotować w bazie bez logowania na MG** — `node --input-type=module` + `node:sqlite` na `packages/server/dev.db`; `better-sqlite3` nie jest w `node_modules` repozytorium.
 
+- **Prisma 7 nie zna `migrate dev --skip-generate`** — wypisuje pomoc polecenia zamiast błędu, co wygląda na złą nazwę migracji.
+- **Migracji danych nie dopisuje się do zastosowanej migracji** (suma kontrolna) — backfill idzie osobnym katalogiem z samym `UPDATE`.
+- **`pnpm dev` z `&` w tle naprawdę startuje serwery**, choć zadanie kończy się od razu; następne uruchomienie pada na `EADDRINUSE`. Najpierw `curl` na :5173, potem szukanie trupa.
+- **Tekst z liczbą sprawdzaj na liczbie większej niż jeden** — cały etap 37 przeszedł oględziny z „jedną dobą", a błąd („minęły 30 doby") pokazały dopiero trzy skoki pod rząd.
+- **„Naturalne leczenie jeszcze się nie zaczęło" to nie usterka zegara** — `cpredRestDay` chce udanego Ustabilizowania (s. 222), a karta z ręcznie obniżonym PW w bazie go nie ma.
+
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 05.09 (trzecia) — kampania, która wie, którego jest w Night City
+
+**Zlecenie MG:** kontynuacja projektu; z listy wolnych etapów MG wybrał **37 (kalendarz kampanii
+i upływ czasu)** i kazał scalić gałąź etapu 35 do `main` przed startem. Cztery rozstrzygnięcia
+padły przed kodem i wszystkie są w pliku etapu: **zegar podpowiada, nie rządzi** (nic nie dzieje
+się samo), **start 1 stycznia 2045, 08:00**, **cztery skoki** zamiast sześciu i **data świata
+jako nowa kolumna dziennika** obok realnej.
+
+**Piąte rozstrzygnięcie wyszło z kolizji między wyborem MG a kryteriami etapu.** MG wybrał same
+skoki naprzód, ale kryterium ukończenia #5 mówi wprost o cofnięciu zegara — a przy czterech
+guzikach „naprzód" nie ma czym ani cofnąć, ani ustawić początku kampanii innego niż domyślny.
+Po dopytaniu **pole daty i godziny weszło do zakresu** i jest dziś jedynym wejściem niosącym
+liczbę minut; wszystkie pozostałe niosą **identyfikator skoku**, bo „+1 h" jest intencją, a nie
+arytmetyką (ta sama zasada, co przy rzutach kośćmi).
+
+**Dwa zdania z opisu etapu okazały się nieaktualne, oba na korzyść.** „Odzyskiwanie PW przez
+odpoczynek nie istnieje w kodzie" przestało być prawdą w 30b — `cpredRestDay` i `character:rest`
+stoją od tamtej sesji, więc etap ich **nie napisał drugi raz**, tylko podpiął pod skok o dobę.
+A `timeZone` opisowy nie powstał wcale: kalendarz jest gregoriański i bez stref, a pole „Night
+City" nie miałoby w kodzie ani jednego odbiorcy.
+
+**Decyzja, która przenika cały etap, to typ kolumny: `Int` z minutami UTC, nie `DateTime`.**
+Strefa czasowa maszyny nie ma nic wspólnego z porą dnia w Night City, a każde przejście przez
+czas lokalny przesunęłoby granicę doby (i klucz miesiąca, i „minęła doba") między dev-em na
+Windows a VPS-em z etapu 28. Pułapką, która by to zrobiła po cichu, jest
+`new Date('2045-03-15T08:00')` — przeglądarka czyta ten zapis jako czas **lokalny**, więc
+`gameTimeFromInput` składa datę ręcznie z `Date.UTC`. Testy pilnują tego wprost.
+
+**Monit rozliczenia liczy się z różnicy dwóch kluczy miesiąca, a nie z dni**, żeby pierwszy
+dzień miesiąca przekroczony jednym skokiem o kwartał i dwoma po dziesięć minut dał **dokładnie
+jeden** monit. Wypadła z tego kolumna `Campaign.settledMonth` i mały wniosek: `null` znaczy
+„nie pytaj" (świeży stół nie zaczyna od zaległego czynszu), więc tworzenie kampanii stempluje
+miesiąc startowy, a cztery kampanie sprzed etapu dostały go **osobną migracją danych** — bo
+dopisania `UPDATE` do już zastosowanej migracji Prisma nie wybacza (suma kontrolna).
+
+**Jeden błąd znaleziony przy oględzinach: „minęły 30 doby".** Polska liczba mnoga ma trzy formy,
+a kod miał dwie — i **cały etap przeszedł oględziny z jedną dobą**, zanim trzy skoki pod rząd to
+pokazały. Naprawione dwiema czystymi funkcjami w rdzeniu (`gameDaysLabel`, `gameDaysPassed`)
+z testem na pułapkę 12–14: „13 dób", nie „13 doby".
+
+**Oględziny (Poligon, konto MG) — cały etap odklikany.** Zegar w pasku u wszystkich
+(„08:00 · 1 stycznia 2045"), okno z czterema skokami, **„do rana" z 22:30 dające 06:00 następnego
+dnia** (a nie stałą liczbę godzin), karty czatu „Minęła doba" / „Minęła noc" / „Zegar ustawiony ·
+29 dób" ze zdaniem „skądś dokądś", **sumowanie dób z trzech skoków** (3), lista rannych
+z „Tony 20/35 PW" i guzikiem „Odpoczynek", **monit miesiąca** (bursztynowa kropka przy zegarze
+plus sekcja „Minął pierwszy dzień miesiąca") oraz **„Podgląd" niczego nie ruszający**
+(„0 ed od 0 postaci", monit nadal zapalony). Wpis dziennika dodany ręcznie dostał **dwie daty**
+(„2026-09-05 · 4 lutego 2045"), a stary wpis „Wycieczka do Afterlife" — samą realną, dokładnie
+jak zaprojektowano. Kliknięcie „Odpoczynek" dało odmowę z podręcznika („najpierw ktoś musi
+wykonać Ustabilizowanie", s. 222) — poprawną, bo karta z ręcznie obniżonym PW nie ma
+`recovery.stabilized`.
+
+**Poligon wrócił do stanu sprzed sesji — sprawdzone różnicowo względem migawki z 13:23:**
+żetony, karty, sceny, księga i kampania **identyczne**, czat wrócił do 718 wierszy z maksimum
+887. Skasowany wpis dziennika z oględzin, przywrócone PW Tony'ego (35/35) i zegar (1 stycznia
+2045, `settledMonth` `2045-01`).
+
+**Testy na koniec:** 1865 w `shared` (+32), 1004 na serwerze (+12), 97 u klienta (+5) — zielone.
+ESLint i Prettier czyste na kodzie; `tsc --noEmit` czysty w trzech pakietach. Doszły trzy
+pliki: `shared/src/gametime.test.ts`, `server/src/gametime.test.ts`
+i `client/src/gametime-store.test.ts`. Jeden pełny przebieg serwera pokazał czerwony plik
+i przeszedł przy powtórce — znany wyścig, patrz pułapki.
 
 ### Sesja 05.09 (druga) — mapa, na której da się wskazać palcem i wziąć sześciu naraz
 
@@ -492,75 +584,3 @@ wiersza czatu, ani niczego w bazie.
 ESLint i Prettier czyste na całym repo; `tsc --noEmit` czysty w trzech pakietach. Doszły trzy
 pliki: `shared/src/ping.test.ts`, `client/src/group-selection.test.ts` i zestaw „ping i kopia
 figury (etap 35)" w `server/src/tokens.test.ts`.
-
-### Sesja 05.09 — kopie zapasowe: kopia, która robi się sama, i plik, który da się przeczytać
-
-**Zlecenie MG:** kontynuacja projektu; z listy wolnych etapów MG wybrał **33 (kopie zapasowe)**,
-a przy okazji **przycięcie `POSTEP.md`** i **scalenie gałęzi do `main`**. Przed kodem padły cztery
-rozstrzygnięcia z opisu etapu — trzy z liczbami zmierzonymi na żywej bazie, żeby decyzja nie
-stała na przeczuciu: **czat to 411 KB z 502 KB tekstu w bazie (82 %)**, `uploads/` 14 MB,
-`data/private/` 82 MB. MG wybrał: czat w zrzucie **przełącznikiem, domyślnie tak**; kopia **przy
-starcie serwera i co godzinę**, zostaje **24 + 14 dób**; `uploads/` **w każdej kopii**
-(„samowystarczalna"); miejsce kopii po etapie 28 — **odłożone do etapu 28**.
-
-**Pierwsza rzecz, którą trzeba było rozstrzygnąć, to nazwa.** `realtime/backup.ts`,
-`backup.test.ts` i `BackupPanel.tsx` **już istniały** i nie mają nic wspólnego z kopiami — to
-Zdolność Roli **Wsparcie** z 30c (ang. _Backup_). Stąd dwie nowe rodziny: `snapshot` na pracę
-z dyskiem i `archive` na pliki wymiany.
-
-**Decyzja MG o „samowystarczalnej kopii" kosztowałaby 336 MB na dobę — kosztuje 14 MB raz.**
-`linkTree` dowiązuje pliki twardo zamiast je kopiować, więc katalog kopii ma pełny komplet
-grafik pod własnymi nazwami, a na dysku to te same bloki (sprawdzone: `stat` pokazuje ten sam
-i-węzeł i licznik 2). Trzydzieści osiem kopii kosztuje **38 × 1,1 MB bazy + 14 MB grafik raz**.
-Jest to bezpieczne **wyłącznie dlatego, że plik uploadu jest niezmienny** — i dokładnie tak stoi
-w umowie kodu, razem z warunkiem, przy którym trzeba będzie wrócić do kopiowania.
-
-**Rotacja liczy się z nazw katalogów, nie z czasu pliku**, bo czas pliku zmienia zwykłe
-skopiowanie katalogu. Wypadła z tego furtka, która okazała się przydatna od razu: **nazwa spoza
-schematu nie jest kasowana nigdy**, więc kopię „na zawsze" robi się przemianowaniem — i tą samą
-drogą idą kopie bezpieczeństwa spod `restore` (`przed-przywroceniem-<ISO>`).
-
-**Cztery świadome odstępstwa od opisu etapu**, wszystkie zapisane w pliku etapu: skrypty jako TS
-w `packages/server/scripts/` (muszą czytać `loadConfig` i `@vtt/shared`), eksport jako **trasa
-REST** zamiast zdarzenia gniazda (zrzut z czatem to 659 KB, a Socket.IO ma limit 1 MB; import
-został gniazdem, bo zmienia stan), eksport z **wierszy z wypisanymi kolumnami zamiast widoków**
-(`toTokenView` podmienia nazwę figury na `publicName` — kopia gubiąca prawdziwą nazwę żetonu nie
-jest kopią) i **kopie jako pole opcjonalne konfiguracji** (`ServerConfig.backups`), dzięki czemu
-54 istniejące zestawy testów dymnych nie wymagały ani jednej linijki zmiany.
-
-**Jeden błąd znaleziony i naprawiony: polski znak w nazwie pobieranego pliku.**
-`Content-Disposition` jedzie po HTTP jako latin-1, więc karta „Bezpański" albo „Zażółć gęślą
-jaźń" wywracała **całą trasę** (`ERR_INVALID_CHAR`, 500 zamiast pobrania). Objawem byłoby
-„eksport nie działa dla niektórych postaci". Nazwa jest odtąd składana do ASCII, a prawdziwa
-jedzie parametrem `filename*=UTF-8''…`. Złapał to test dymny, nie oględziny.
-
-**Jedno znalezisko, które okazało się poprawnym zachowaniem — i dostało test.** Round-trip karty
-**nie jest bajt w bajt**: eksport wypisuje surową kolumnę `data` (kopia ma być prawdą o bazie),
-a import przepuszcza ją przez `parseCharacterData`, więc karta „Tony" z Poligonu wróciła
-z ośmioma dopisanymi polami (`recovery`, `team`, `medicine`…), których jej wiersz nigdy nie
-miał. Nic nie ginie — dochodzą wartości domyślne, bo inaczej plik otwierałby panel pytający
-o pole, którego w karcie nie ma. Asymetria jest teraz opisana w kodzie i pilnowana testem
-„wypełnia braki starej karty domyślnymi wartościami, niczego nie gubiąc".
-
-**Oględziny (Poligon, konto MG) — cały etap odklikany.** Zakładka „Kopie" z trzema kopiami na
-liście, ręczna kopia guzikiem (czwarty wiersz pojawił się od razu), zrzut kampanii **659 KB
-z czatem i 60 KB bez** z manifestem wymieniającym 10 plików `uploads/` i pięć zdań „czego tu nie
-ma", eksport karty (4 KB, `data` jako prawdziwy obiekt, 8 wierszy księgi), **import karty**
-(druga „Tony", inne id, księga przepisana), **odmowa pliku z przyszłej wersji** („Plik zapisała
-nowsza wersja VTT…"), **import sceny** („Strzelnica" w podglądzie, ściany i ustawienia identyczne,
-**6 powiązań z kartami i 5 właścicieli utrzymanych**) oraz **przywracanie w obie strony**
-(9 kart → 10 → 9) z ponownym startem serwera. Poprawione po drodze jedno drobiazgowe: polecenie
-`restore` łamało się w środku słowa („na zwa-kopii") — `break-all` zamieniony na
-`overflow-wrap: anywhere`.
-
-**Poligon wrócił do stanu sprzed sesji:** wczytana karta „Tony" i wczytana scena „Strzelnica"
-skasowane razem z 8 wierszami `LedgerEntry`, 7 żetonami, 4 ścianami i wpisem eksploracji —
-w bazie znowu **9 kart, 6 scen, 13 żetonów, 23 wpisy księgi**. Ślad zostawiony świadomie:
-**cztery snapshoty** w `data/private/backups/` (to teraz pierwsze prawdziwe kopie tej kampanii)
-oraz **dwa katalogi `przed-przywroceniem-*`** z testu przywracania — kosz na nie został
-odrzucony, więc czekają na rękę MG.
-
-**Przy okazji, na zlecenie MG:** `POSTEP.md` przycięty: sekcja „Od czego zacząć" ze **170 do 73 linijek**, cały plik z **642 do 553** — siedemnaście
-akapitów z „Od czego zacząć" (streszczenia zamkniętych sesji i umowy spisane już w
-`umowy-kodu.md`) przeniesione **w całości i bez zmian** do `archiwum/dziennik-sesji.md`. Gałąź
-`feat/cpred-weapon-attachments` scalona do `main`.

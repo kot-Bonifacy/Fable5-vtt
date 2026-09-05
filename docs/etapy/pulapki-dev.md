@@ -789,3 +789,27 @@ zrzut, zanim policzysz współrzędne; skalę czytaj `window.innerWidth / szerok
 **Kopia figury po Alt+przeciągnięciu nie ma jak pokazać swojej nazwy na mapie** — etykieta pod
 żetonem jest przy zoomie stołu nieczytelna. Nazwę sprawdza się **menu kontekstowym**:
 `PointerEvent` z `button: 2` we współrzędnych CSS, a potem `.context-menu-title`.
+
+**Prisma 7 nie zna `migrate dev --skip-generate`** — wypisuje wtedy całą pomoc polecenia zamiast
+błędu, co wygląda jak zła nazwa migracji. Uruchom `migrate dev` bez flagi, a `prisma generate`
+osobno (i pamiętaj o nim — stary klient daje `Unknown argument`).
+
+**Migracji danych nie dopisuje się do już zastosowanej migracji** — Prisma trzyma sumę
+kontrolną pliku i przy następnym `migrate dev` zgłosi, że plik zmieniono. Backfill („uzupełnij
+nową kolumnę na istniejących wierszach") idzie **osobnym katalogiem migracji** z samym
+`UPDATE`; tak powstał `stage37_settled_month_backfill`.
+
+**`pnpm dev` z `&` w tle faktycznie startuje serwery, choć zadanie kończy się od razu**
+— następne uruchomienie pada wtedy na `EADDRINUSE 3001` i „Port 5173 is already in use", co
+wygląda jak zawieszony poprzedni proces. Zanim zaczniesz zabijać porty, sprawdź, czy aplikacja
+po prostu nie działa: `curl -o /dev/null -w "%{http_code}" http://localhost:5173`.
+
+**Tekst z liczbą sprawdzaj na liczbie większej niż jeden** — cały etap 37 przeszedł oględziny
+z „jedną dobą" i dopiero trzy skoki pod rząd pokazały „minęły 30 doby". Każda etykieta zależna
+od liczby ma trzy przypadki po polsku (1, 2–4, 5+ i osobno 12–14), a zrzut z jedynką nie mówi
+o nich nic.
+
+**Karta odpoczynku, która mówi „naturalne leczenie jeszcze się nie zaczęło", to nie usterka
+zegara** — `cpredRestDay` wymaga udanego Ustabilizowania (s. 222), a postać z ręcznie obniżonym
+PW w bazie go nie ma (`recovery` jest wtedy `undefined`). Żeby zobaczyć realne leczenie przy
+oględzinach, trzeba najpierw ustawić `recovery.stabilized`.

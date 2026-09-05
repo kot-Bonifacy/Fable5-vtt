@@ -1055,3 +1055,48 @@ nie sześcioma o każdej figurze — inaczej jedna zerwana operacja zalewałaby 
 obiektów sceny, które wracają `Ctrl+Z`; figury nie wracają — ich id noszą inicjatywa i runy
 Sieci. Dlatego `Delete` figur nadal nie dotyka (odstępstwo od Foundry zostaje w mocy), a jedyna
 droga do usunięcia paczki prowadzi przez guzik z pytaniem niosącym liczbę.
+
+**Czas świata to jedna liczba: minuty od epoki uniksowej, liczone w UTC (05.09, etap 37).**
+`Campaign.gameTime` jest `Int`-em, a nie `DateTime`, i cała arytmetyka w `shared/src/gametime.ts`
+idzie przez `getUTC*` / `Date.UTC`. Dwa powody, oba kosztowałyby cichy błąd. Po pierwsze strefa
+czasowa maszyny nie ma nic wspólnego z porą dnia w Night City — gdyby gdziekolwiek wszedł czas
+lokalny, granica doby przesunęłaby się o kilka godzin między dev-em na Windows a VPS-em, a wraz
+z nią „minęła doba" i klucz miesiąca. Po drugie po tekście nie da się dodać dziesięciu minut ani
+porównać dwóch chwil. `new Date('2045-03-15T08:00')` (bez `Z`) przeglądarka czyta jako czas
+**lokalny** — dlatego `gameTimeFromInput` składa datę ręcznie z `Date.UTC`, a nie parsowaniem.
+Liczba `GAME_TIME_DEFAULT` w `shared` i `@default` kolumny **muszą być tą samą liczbą**.
+
+**Skok zegara jedzie identyfikatorem, nie liczbą minut (05.09, etap 37).** `time:set` przyjmuje
+albo `step` z katalogu `GAME_TIME_STEPS`, albo `minutes` — nigdy obu naraz. „+1 h" jest
+**intencją**, a arytmetykę robi serwer (`applyGameTimeStep`), tak samo jak rzut kośćmi. Jedynym
+wejściem niosącym liczbę jest ustawienie daty wprost, i to jedyna droga, którą da się zegar
+cofnąć. Nowy skok = wiersz w `GAME_TIME_STEPS` (z `label`, `title` i `past` na kartę czatu)
+plus gałąź w `applyGameTimeStep`; kompilator pilnuje kompletu, bo `switch` jest wyczerpujący.
+
+**Monit rozliczenia miesiąca to różnica dwóch kluczy, nie licznik dni (05.09, etap 37).**
+`settleDue` porównuje `gameMonthKey(minutes)` z `Campaign.settledMonth`, więc pierwszy dzień
+miesiąca przekroczony jednym skokiem o kwartał i dwoma po dziesięć minut daje **dokładnie jeden**
+monit. Stempluje wyłącznie **prawdziwe** `economy:settle` (`markMonthSettled`), nigdy podgląd.
+Kampania z `settledMonth === null` monitu nie dostaje — świeży stół nie zaczyna od zaległego
+czynszu — dlatego tworzenie kampanii stempluje miesiąc startowy, a kampanie sprzed etapu 37
+dostały go migracją danych.
+
+**Zegar podpowiada, nie rządzi (05.09, etap 37).** W `realtime/gametime.ts` **nie ma** ani
+jednego wywołania `economy:settle`, ani jednego leczenia i żadnego tykania w tle. Serwerowy
+moduł zegara nie wie, czym są PW ani eurodolce, i to jest jego reguła architektoniczna: listę
+„komu doba odpoczynku coś da" składa okno zegara u klienta z kart, które i tak ma, a leczy
+`character:rest`. Serwer, który sam sobie przesuwa zegar, obudziłby się po nocy z rozliczonym
+miesiącem, którego nikt nie rozegrał.
+
+**Data świata przy wpisie dziennika stempluje się przy powstaniu i nie wędruje (05.09, etap 37).**
+`JournalEntry.worldDate` wypełnia **serwer** z zegara kampanii przy `create`, nigdy klient
+w łacie: gdyby przychodziła w żądaniu, kronikę dałoby się przedatować. Edycja wpisu jej nie rusza
+— poprawka literówki w streszczeniu sprzed miesiąca nie ma prawa przenieść tej sesji
+w kalendarzu Night City. Stoi **obok** `sessionDate`, nie zamiast: jedna mówi, kiedy drużyna
+grała, druga — kiedy to się działo.
+
+**Polska liczba mnoga ma trzy formy i mieszka w rdzeniu (05.09, etap 37).** `gameDaysLabel`
+i `gameDaysPassed` w `shared/src/gametime.ts`: 1 → „doba", końcówka 2–4 **poza 12–14** → „doby",
+reszta → „dób". Warunek na nastolatki jest całą treścią tej funkcji — bez niego wychodzi
+„13 doby". Każdy następny rzeczownik liczony w UI (godziny, tygodnie, naboje) dostaje własną
+funkcję tam samo, nie ternary w komponencie.

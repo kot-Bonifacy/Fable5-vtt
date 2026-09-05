@@ -10,6 +10,7 @@ import type {
   EconomyLogEntry,
   HandoutLogEntry,
   JournalLogEntry,
+  TimeLogEntry,
   SessionUser,
 } from '@vtt/shared';
 import { CHAT_HISTORY_PAGE_SIZE, ROLE_GM, isDiceSkinId } from '@vtt/shared';
@@ -119,6 +120,8 @@ export function toChatMessageView(message: StoredMessage): ChatMessageView {
     view.check = JSON.parse(message.payload) as CheckCallEntry;
   } else if (message.kind === 'recovery' && message.payload) {
     view.recovery = JSON.parse(message.payload) as RecoveryLogEntry;
+  } else if (message.kind === 'time' && message.payload) {
+    view.time = JSON.parse(message.payload) as TimeLogEntry;
   }
   return view;
 }

@@ -18,6 +18,7 @@ import type { RollToss } from './dice.js';
 import type { DrawingView } from './drawings.js';
 import type { ExplorationMask } from './exploration.js';
 import type { FogState } from './fog.js';
+import type { GameTimeState, GameTimeStepId } from './gametime.js';
 import type { LightView } from './lights.js';
 import type { ScenePoint } from './measure.js';
 import type { NetAccessPointView, NetRunPayload } from './netrunning.js';
@@ -166,6 +167,44 @@ export interface StateSyncPayload {
   netRuns: NetRunPayload[];
   /** Combat of the viewed scene, filtered for this viewer; null = no fight. */
   combat: CombatView | null;
+  /**
+   * Zegar świata kampanii (etap 37). Jedzie tu, a nie w `campaign` wyżej,
+   * z tego samego powodu co `shopTier`: przesunięcie czasu ma być jednym
+   * rozgłoszeniem, a nie pełną resynchronizacją, i nie ma prawa zwietrzeć
+   * w `socket.data`. Publiczny — data i pora dnia są wspólne dla stołu.
+   */
+  gameTime: GameTimeState;
+}
+
+/**
+ * MG przesuwa zegar świata (etap 37).
+ *
+ * Albo skok z katalogu (`step`), albo chwila wprost (`minutes`) — nigdy oba
+ * naraz. Serwer liczy skok sam, bo klient wysyłający gotową liczbę minut
+ * mógłby wysłać dowolną: „+1 h" jest **intencją**, a nie arytmetyką.
+ */
+export interface GameTimeSetPayload {
+  step?: GameTimeStepId;
+  minutes?: number;
+}
+
+export interface GameTimeBroadcast {
+  seq: number;
+  time: GameTimeState;
+}
+
+/**
+ * Odpowiedź na `time:set` — nowy stan plus to, czego stan nie powie.
+ *
+ * `days` jest w acku, a nie w stanie, bo jest własnością **skoku**, nie chwili:
+ * po przeładowaniu strony nie ma sensu pytać „ile dób minęło", bo minęły przy
+ * poprzednim kliknięciu. MG dostaje z tego propozycję odpoczynku, którą składa
+ * klient — serwerowy zegar nie ma prawa wiedzieć, czym są PW.
+ */
+export interface GameTimeAck {
+  time: GameTimeState;
+  /** Ile pełnych dób minęło tym skokiem; 0 przy krótkich i przy cofnięciu. */
+  days: number;
 }
 
 /** GM moves the campaign's shop tier (stage 25c). */

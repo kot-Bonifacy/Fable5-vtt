@@ -34,6 +34,7 @@ import {
   clampRelation,
   emptyJournalIndexStatus,
   fallbackTitle,
+  gameDayKey,
   journalCollection,
   journalDigest,
   journalDocumentText,
@@ -54,6 +55,7 @@ import { RealtimeError, defineEvent, type RealtimeDeps } from './registry.js';
 import { fetchBotRelations } from './relations.js';
 import { broadcastChatMessage, insertChatMessage } from './chat-io.js';
 import { campaignRoom, gmRoom } from './state.js';
+import { campaignGameTime } from './gametime.js';
 
 /**
  * Dziennik kampanii i streszczanie sesji (etap 19c).
@@ -95,6 +97,7 @@ interface JournalRow {
   title: string;
   body: string;
   sessionDate: string;
+  worldDate: string | null;
   tags: string;
   visibility: string;
   sharedWithPlayers: boolean;
@@ -161,6 +164,7 @@ function toPlayerEntry(row: JournalRow): JournalPlayerEntry {
     title: row.title,
     body: row.body,
     sessionDate: row.sessionDate,
+    worldDate: row.worldDate,
     handouts: toHandoutLinks(row.handouts),
     createdAt: row.createdAt.toISOString(),
   };
@@ -496,6 +500,10 @@ export const journalUpsertEvent = defineEvent<JournalUpsertPayload, JournalEntry
           data: {
             campaignId,
             ...data,
+            // Data świata stempluje się **przy powstaniu wpisu** i już się nie
+            // zmienia: poprawka literówki w streszczeniu sprzed miesiąca nie
+            // ma prawa przenieść tej sesji w kalendarzu Night City.
+            worldDate: gameDayKey((await campaignGameTime(deps.ctx.prisma, campaignId)).minutes),
             tags: JSON.stringify(data.tags),
             ...(covered !== undefined ? { throughMessageId: covered } : {}),
             ...(lineCount !== undefined ? { lineCount } : {}),

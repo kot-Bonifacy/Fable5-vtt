@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { ClockChip } from './ClockWindow.js';
 import { CombatBar } from './CombatBar.js';
 import { ConnectionStatus } from './ConnectionStatus.js';
 import { SettingsButton } from './SettingsButton.js';
@@ -18,6 +19,11 @@ export function TopBar() {
       <CombatBar />
       <div className="top-bar-right">
         {activeCampaign && <span className="top-bar-campaign">{activeCampaign.name}</span>}
+        {/* Zegar świata (etap 37). Data i pora dnia są wspólne dla stołu, więc
+            napis widzi każdy; guzikiem — czyli wejściem do okna z przesuwaniem
+            czasu — jest wyłącznie u MG. `flex: none` jak każdy element prawej
+            grupy. */}
+        {activeCampaign && <ClockChip isGm={user?.role === 'GM'} />}
         {/* Chip poligonu (postulat MG z 22.08). `flex: none` jak każdy nowy
             element prawej grupy — miejsce oddaje wyłącznie tytuł i nazwa
             kampanii. Kampania produkcyjna nie nosi nic: brak chipu **jest**

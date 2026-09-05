@@ -20,8 +20,15 @@ import type {
   HandoutLogEntry,
   JournalLogEntry,
   RollResult,
+  TimeLogEntry,
 } from '@vtt/shared';
-import { ROLE_GM, chatCategoryOf, chatCompactLine, isCheckCallOpen } from '@vtt/shared';
+import {
+  ROLE_GM,
+  chatCategoryOf,
+  chatCompactLine,
+  gameDaysLabel,
+  isCheckCallOpen,
+} from '@vtt/shared';
 import {
   allowCombatAction,
   fetchHandouts,
@@ -319,6 +326,41 @@ function RecoveryRow({ message, entry }: { message: ChatMessageView; entry: Reco
         </ul>
       ) : null}
       {entry.note ? <p className="chat-economy-summary">{entry.note}</p> : null}
+    </div>
+  );
+}
+
+/**
+ * Skok zegara świata (etap 37).
+ *
+ * Karta bez przycisków i bez liczb: „minęła noc" jest cezurą, a wszystko, co
+ * z niej wynika — rozliczenie, odpoczynek — czeka w oknie zegara u MG. Chwila
+ * sprzed skoku stoi obok nowej, bo dziennik sesji czyta się później i wtedy
+ * „skądś dokądś" jest całą treścią wiersza.
+ */
+function TimeRow({ message, entry }: { message: ChatMessageView; entry: TimeLogEntry }) {
+  return (
+    <div className={`chat-message chat-time${entry.backwards ? ' chat-time--back' : ''}`}>
+      <div className="chat-message-meta">
+        <span className="chat-message-author">Zegar świata</span>
+        <span className="chat-message-time">{formatTime(message.createdAt)}</span>
+      </div>
+      <p className="chat-time-title">
+        {entry.title}
+        {entry.days > 0 ? (
+          <span className="chat-time-days">{gameDaysLabel(entry.days)}</span>
+        ) : null}
+      </p>
+      <p className="chat-time-span">
+        <span className="chat-time-from">{entry.from}</span>
+        <span aria-hidden="true"> → </span>
+        <strong>{entry.to}</strong>
+      </p>
+      {entry.backwards ? (
+        <p className="chat-economy-summary">
+          Cofnięcie zegara niczego nie odwraca — pobrane pozostaje pobrane.
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -766,6 +808,9 @@ function FullMessageRow({
   }
   if (message.kind === 'recovery' && message.recovery) {
     return <RecoveryRow message={message} entry={message.recovery} />;
+  }
+  if (message.kind === 'time' && message.time) {
+    return <TimeRow message={message} entry={message.time} />;
   }
   if ((message.kind === 'action' || message.kind === 'gmaction') && message.action) {
     return <CombatActionRow message={message} entry={message.action} isGm={isGm} />;

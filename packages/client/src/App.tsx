@@ -12,6 +12,7 @@ import { BotEditors } from './components/BotEditor.js';
 import { NetArchitectureEditor } from './components/NetArchitectureEditor.js';
 import { NetRunWindow } from './components/NetRunWindow.js';
 import { RollDialog } from './components/RollDialog.js';
+import { ClockWindow } from './components/ClockWindow.js';
 import { SettingsWindow } from './components/SettingsWindow.js';
 import { ShortcutsWindow } from './components/ShortcutsWindow.js';
 import { LoginPage } from './pages/LoginPage.js';
@@ -97,6 +98,7 @@ function GameView() {
       <NetRunWindow />
       <RollDialog />
       <SettingsWindow />
+      <ClockWindow />
       <ShortcutsWindow />
       <DiceCup />
     </div>

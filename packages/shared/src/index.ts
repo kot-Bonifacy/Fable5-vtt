@@ -14,6 +14,7 @@ export * from './exploration.js';
 export * from './fog.js';
 export * from './figures.js';
 export * from './fx.js';
+export * from './gametime.js';
 export * from './handouts.js';
 export * from './journal.js';
 export * from './knowledge.js';

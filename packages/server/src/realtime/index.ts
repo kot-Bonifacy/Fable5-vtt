@@ -147,6 +147,7 @@ import { noteCreateEvent, noteDeleteEvent, noteUpdateEvent } from './notes.js';
 import { sceneUndoEvent } from './scene-undo.js';
 import { compendiumDeleteEvent, compendiumUpsertEvent } from './compendium.js';
 import { shopTierEvent } from './shop.js';
+import { timeSetEvent } from './gametime.js';
 import { botCreateEvent, botDeleteEvent, botDuplicateEvent, botUpdateEvent } from './bots.js';
 import { botChatEvent, botTeachEvent } from './bot-chat.js';
 import { botSayEvent, botStopEvent } from './bot-turns.js';
@@ -275,6 +276,7 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   compendiumUpsertEvent,
   compendiumDeleteEvent,
   shopTierEvent,
+  timeSetEvent,
   characterCreateEvent,
   characterUpdateEvent,
   characterBackupCallEvent,

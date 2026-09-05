@@ -22,27 +22,54 @@ poza starciem nie ma zegara, więc:
 
 Etap dokłada **zegar świata** jako pole kampanii i narzędzia MG do przesuwania go.
 
-## Rozstrzygnięcie do potwierdzenia z MG
+## Rozstrzygnięcia MG (05.09.2026) — padły przed kodem
 
-**Zegar podpowiada, nie rządzi.** Przesunięcie czasu nie zabiera nikomu pieniędzy samo z siebie
-— pokazuje MG, że minął miesiąc, i podsuwa gotowy przycisk „Rozlicz". To ta sama zasada, na
-której stoi cały rozdział 11 („nic nie rusza się samo") i którą etap 32 zastosował do skutków
-Testu. Jeśli MG chce inaczej — decyzja przed kodem, bo przenika cały etap.
+1. **Zegar podpowiada, nie rządzi.** Potwierdzone. Przesunięcie czasu nie zabiera nikomu
+   pieniędzy i nikogo nie leczy — pokazuje MG, że minął miesiąc, i podsuwa gotowy przycisk
+   „Rozlicz". To ta sama zasada, na której stoi cały rozdział 11 („nic nie rusza się samo")
+   i którą etap 32 zastosował do skutków Testu.
+2. **Kampania startuje 1 stycznia 2045, 08:00** — rok kanoniczny „Czasu Czerwieni". Bez pytania
+   w kreatorze kampanii; datę i tak da się ustawić wprost.
+3. **Cztery skoki i pole daty.** MG wybrał tylko `+10 min`, `+1 h`, `do rana`, `+1 dzień`
+   (bez „+1 tydzień / +1 miesiąc" i bez pola „przesuń o N"). Pole **ustawienia daty wprost**
+   doszło po dopytaniu: bez niego nie da się ani cofnąć zegara, ani ustawić początku kampanii
+   innego niż 2045-01-01, a kryterium ukończenia #5 mówi wprost o cofnięciu.
+4. **Data świata w dzienniku to nowa kolumna obok daty realnej** (`JournalEntry.worldDate`),
+   nie podmiana znaczenia `sessionDate`: jedna mówi, kiedy drużyna grała, druga — kiedy to się
+   działo w Night City.
+
+## Odstępstwa od opisu etapu
+
+- **`timeZone` opisowy nie powstał.** Kalendarz jest gregoriański i bez stref, a pole „Night
+  City" nie miałoby ani jednego odbiorcy w kodzie. Czas jedzie jako jedna liczba (minuty od
+  epoki, liczone w UTC), więc pora dnia jest ta sama na dev-ie i na VPS-ie.
+- **Dzienna regeneracja PW już istniała** — opis etapu twierdził, że „nie istnieje w kodzie",
+  ale `cpredRestDay` (`systems/cpred/recovery.ts`) i zdarzenie `character:rest` doszły w 30b.
+  Etap podpiął ją pod skok o dobę zamiast pisać drugi raz: doby liczy zegar, listę rannych
+  składa okno zegara, a leczenie liczy ten sam kod, co dotąd.
+- **Propozycja odpoczynku jest ulotna.** Doby żyją w przeglądarce MG (`pendingRestDays`),
+  a nie w bazie: propozycja sprzed dwóch godzin nie jest już propozycją, tylko przypomnieniem
+  o czymś, co MG albo zrobił, albo świadomie pominął.
+- **Rannych składa klient, nie serwer.** Serwerowy moduł zegara jest rdzeniem VTT i nie ma
+  prawa wiedzieć, czym jest PW (wskazówka techniczna etapu) — więc listę „komu doba coś da"
+  buduje okno zegara z kart, które klient MG i tak ma, a samo leczenie idzie przez
+  `character:rest`.
 
 ## Zakres
 
-- [ ] `Campaign.gameTime` (data i godzina świata; domyślnie 2045 wg podręcznika) i `timeZone`
-      opisowy — bez stref, kalendarz jest gregoriański
-- [ ] Zegar w `TopBar`: data i pora dnia dla wszystkich, u MG przyciski „+10 min", „+1 h",
-      „do rana", „+1 dzień" oraz ustawienie daty wprost
-- [ ] Wiersz czatu przy skoku czasu („Minęła noc — 15 marca 2045, rano"), rodzaj `time`
-      dopisany w dwóch czystych funkcjach w `shared/src/chat.ts`
-- [ ] Monit rozliczenia miesiąca: po przekroczeniu pierwszego dnia miesiąca MG dostaje kartę
-      z listą postaci i przyciskiem „Rozlicz" wołającym istniejące `economy:settle`
-- [ ] Dzienna regeneracja PW wg podręcznika, jako **propozycja** przy skoku o dobę (MG zatwierdza)
-- [ ] Wpis dziennika (24b) dostaje datę świata obok daty realnej
-- [ ] Testy: przesunięcia czasu (granice doby, miesiąca, roku), monit pojawia się dokładnie raz
-      na miesiąc, regeneracja liczy się wg RAW i nie przekracza PW maksymalnych
+- [x] `Campaign.gameTime` (minuty od epoki, UTC; domyślnie 1 stycznia 2045, 08:00)
+      i `Campaign.settledMonth`; `timeZone` **nie powstał** — patrz odstępstwa
+- [x] Zegar w `TopBar`: data i godzina dla wszystkich, u MG przycisk otwierający okno
+      z „+10 min", „+1 h", „do rana", „+1 dzień" oraz ustawieniem daty wprost
+- [x] Wiersz czatu przy skoku czasu („Minęła noc — 3 stycznia 2045, 06:00 · rano"), rodzaj
+      `time` dopisany w `chatCategoryOf` i `chatCompactLine`
+- [x] Monit rozliczenia miesiąca: kropka przy zegarze w pasku i sekcja w oknie z „Podgląd"
+      i „Rozlicz" wołającym istniejące `economy:settle`; `settledMonth` gasi go dokładnie raz
+- [x] Dzienna regeneracja PW jako **propozycja** przy skoku o dobę (lista rannych + guzik
+      „Odpoczynek" per postać, wołający `character:rest` tyle razy, ile dób minęło)
+- [x] Wpis dziennika (24b) dostaje datę świata obok daty realnej (`JournalEntry.worldDate`)
+- [x] Testy: 32 w `shared` (granice doby, miesiąca, roku, rok przestępny, polska odmiana dób),
+      12 dymnych na serwerze (bramka roli, monit dokładnie raz, cofnięcie), 5 u klienta
 
 ## Poza zakresem
 
@@ -55,13 +82,24 @@ Testu. Jeśli MG chce inaczej — decyzja przed kodem, bo przenika cały etap.
 
 ## Kryteria ukończenia
 
-- [ ] MG przesuwa czas o dobę, a stół widzi nową datę w pasku i wiersz na czacie
-- [ ] Przekroczenie pierwszego dnia miesiąca daje MG monit z gotowym rozliczeniem, ale nic nie
-      pobiera bez kliknięcia
-- [ ] Postać z PW poniżej maksimum dostaje przy skoku o dobę propozycję regeneracji zgodną
-      z podręcznikiem
-- [ ] Wpis dziennika zapisany po skoku czasu niesie datę świata
-- [ ] Cofnięcie zegara nie odwraca niczego, co już zostało rozliczone (i mówi to wprost)
+- [x] MG przesuwa czas o dobę, a stół widzi nową datę w pasku i wiersz na czacie
+      (rozgłoszenie `time:set`, nie resynchronizacja)
+- [x] Przekroczenie pierwszego dnia miesiąca daje MG monit z gotowym rozliczeniem, ale nic nie
+      pobiera bez kliknięcia — sprawdzone testem dymnym (saldo i księga nietknięte) i przy
+      oględzinach („Podgląd": 0 ed od 0 postaci, monit nadal zapalony)
+- [x] Postać z PW poniżej maksimum dostaje przy skoku o dobę propozycję regeneracji
+      (Tony 20/35 na liście; kliknięcie wywołało `character:rest`, który odmówił zgodnie
+      z podręcznikiem — „najpierw ktoś musi wykonać Ustabilizowanie", s. 222)
+- [x] Wpis dziennika zapisany po skoku czasu niesie datę świata („2026-09-05 · 4 lutego 2045")
+- [x] Cofnięcie zegara nie odwraca niczego, co już zostało rozliczone — `settledMonth` zostaje,
+      karta czatu nosi tytuł „Zegar cofnięty" i zdanie „Cofnięcie zegara niczego nie odwraca"
+
+## Błąd znaleziony przy oględzinach
+
+**„minęły 30 doby" zamiast „minęło 30 dób".** Polska liczba mnoga ma trzy formy, a kod miał
+dwie (`days === 1 ? 'jedna doba' : `${days} doby``). Widać to było natychmiast w nagłówku sekcji
+odpoczynku i na karcie czatu. Naprawione dwiema czystymi funkcjami w rdzeniu
+(`gameDaysLabel`, `gameDaysPassed`) z testem na pułapkę 12–14 („13 dób", nie „13 doby").
 
 ## Wskazówki techniczne
 

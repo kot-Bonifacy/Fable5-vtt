@@ -56,6 +56,21 @@ model Campaign {
   /// name out loud when it is NOT one. Deliberately not a permission — the GM
   /// is not to be stopped from doing anything, only told where they are.
   sandbox   Boolean  @default(false)
+  /// Zegar świata (etap 37): minuty od epoki uniksowej, liczone w UTC.
+  ///
+  /// Liczba, nie `DateTime`, i UTC, nie czas lokalny — pora dnia w Night City
+  /// nie ma nic wspólnego ze strefą maszyny, a każde przejście przez czas
+  /// lokalny przesuwałoby granicę doby przy zmianie środowiska (dev na
+  /// Windows, prod na VPS). Domyślna wartość to 1 stycznia 2045, 08:00
+  /// (`GAME_TIME_DEFAULT` w `shared/src/gametime.ts` — obie liczby muszą być
+  /// tą samą liczbą).
+  gameTime  Int      @default(39447840)
+  /// Ostatni rozliczony miesiąc świata („2045-03"); null = nigdy.
+  ///
+  /// Osobna kolumna, a nie data ostatniego `economy:settle`, bo pytanie brzmi
+  /// „czy ten miesiąc jest już rozliczony", a nie „kiedy ostatnio klikano".
+  /// Zegar cofnięty o pół roku nie zapala monitu drugi raz.
+  settledMonth String?
 
   invitations  Invitation[]
   members      CampaignMember[]
@@ -177,6 +192,12 @@ model JournalEntry {
   /// Day the session took place (YYYY-MM-DD). A day, not a timestamp: the entry
   /// describes an evening at the table, and the GM may write it up next morning.
   sessionDate String
+  /// Data w świecie gry (YYYY-MM-DD) w chwili zapisu wpisu (etap 37).
+  ///
+  /// Obok `sessionDate`, nie zamiast: jedna mówi, kiedy drużyna grała, druga —
+  /// kiedy to się działo w Night City. Null na wpisach sprzed etapu 37 i na
+  /// każdym, który powstał w kampanii bez zegara.
+  worldDate String?
   /// JSON array of normalized tags; the bot's permission is a tag list too.
   tags String @default("[]")
   /// gm = never reaches any bot prompt; bots = readable with a matching tag.
