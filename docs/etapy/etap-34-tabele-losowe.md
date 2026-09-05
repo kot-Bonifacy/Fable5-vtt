@@ -57,9 +57,8 @@ wezwaniem. Tabela wchodzi dokładnie w to miejsce:
 - [ ] `/tab <nazwa>` w czacie jako druga droga, przechodząca przez ten sam `parseChatInput`
 - [ ] Import tabel z pliku JSON (`tools/import/`) — treści z podręcznika **wyłącznie**
       z `data/private/`, przykładowe wymyślone w `data/public/`
-- [ ] Nowy rodzaj wiersza czatu dopisany w **dwóch czystych funkcjach** w `shared/src/chat.ts`
-      (`chatCategoryOf` → grupa „Stół", `chatCompactLine`) — inaczej filtry i tryb zwarty z 01.09
-      go nie zobaczą
+- [ ] Nowy rodzaj wiersza czatu dopisany w `chatCategoryOf` w `shared/src/chat.ts`
+      (→ grupa „Stół") — inaczej filtry z 01.09 go nie zobaczą
 - [ ] Testy: rozstrzyganie zakresów i dziur, odmowa cyklu, zagnieżdżenie, widoczność `gm`
       niedochodząca do gracza, losowanie **nie czyści** załadowanego kubka
 

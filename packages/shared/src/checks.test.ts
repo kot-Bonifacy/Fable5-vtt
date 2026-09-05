@@ -5,7 +5,7 @@ import {
   mayAnswerCheckCall,
   type CheckCallEntry,
 } from './checks.js';
-import { chatCategoryOf, chatCompactLine, type ChatMessageView } from './chat.js';
+import { chatCategoryOf } from './chat.js';
 
 /** Wezwanie do Testu, tak jak wychodzi z `check:call` (etap 32). */
 function call(patch: Partial<CheckCallEntry> = {}): CheckCallEntry {
@@ -20,18 +20,6 @@ function call(patch: Partial<CheckCallEntry> = {}): CheckCallEntry {
     system: { kind: 'skill', skillId: 'perception' },
     calledByName: 'MG',
     ...patch,
-  };
-}
-
-function message(entry: CheckCallEntry): ChatMessageView {
-  return {
-    id: 7,
-    kind: 'check',
-    authorId: 'user-gm',
-    authorName: 'MG',
-    text: 'Coś brzęknęło',
-    check: entry,
-    createdAt: '2026-09-02T20:00:00.000Z',
   };
 }
 
@@ -85,35 +73,5 @@ describe('opis progu', () => {
 describe('wezwanie w feedzie czatu', () => {
   it('należy do grupy „Rzuty" — chowa się razem z rzutem, który zapowiada', () => {
     expect(chatCategoryOf('check')).toBe('dice');
-  });
-
-  it('otwartego wezwania tryb zwarty nie ściska — ma przycisk', () => {
-    expect(chatCompactLine(message(call()))).toBeNull();
-  });
-
-  it('rozliczone ściska się z werdyktem i zabarwieniem', () => {
-    const entry = call({
-      resolved: { messageId: 8, byName: 'Vex', success: true, total: 18 },
-    });
-    expect(chatCompactLine(message(entry))).toEqual({
-      actor: 'Forty',
-      summary: 'Percepcja (INT) · PT 15 (Trudny) — Zdane (18)',
-      tone: 'success',
-    });
-  });
-
-  it('nieudane ściska się na czerwono', () => {
-    const entry = call({
-      resolved: { messageId: 8, byName: 'Vex', success: false, total: 11 },
-    });
-    expect(chatCompactLine(message(entry))?.tone).toBe('failure');
-  });
-
-  it('odwołane zostaje jedną linią bez werdyktu', () => {
-    const entry = call({ cancelled: { byName: 'MG' } });
-    expect(chatCompactLine(message(entry))).toEqual({
-      actor: 'Forty',
-      summary: 'Percepcja (INT) — wezwanie odwołane',
-    });
   });
 });

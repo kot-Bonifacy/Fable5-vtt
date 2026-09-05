@@ -916,13 +916,12 @@ zlepia dwie bronie w jedno pudełko: id slotu (`weapon:<klucz>:<tryb>`), id prze
 `hotbarSlotsFor` polem `attachments` i jest **opcjonalny**: kto go nie poda — jak tura bota —
 dostaje pasek sprzed tej zmiany, czyli same bronie z karty.
 
-**Nowy rodzaj wiersza czatu dopisuje się w dwóch czystych funkcjach (01.09, trzecia sesja).**
-Filtry czatu i tryb zwarty stoją na `chatCategoryOf` i `chatCompactLine` w `shared/src/chat.ts`
-— obie mają wyczerpujący `switch` po `ChatKind`, więc nowy rodzaj **nie skompiluje się** bez
-przydziału do grupy, ale `chatCompactLine` można przeoczyć i wtedy wiersz zostanie pełną kartą
-mimo trybu zwartego. Streszczenie **czyta wyłącznie pola, które i tak są w wiadomości**: redakcja
-widoczności robi się na serwerze (etap 15), więc zwarty wiersz ściska dokładnie to, co ten ekran
-dostał, i nie ma jak odsłonić cudzych PW.
+**Nowy rodzaj wiersza czatu przydziela się do grupy filtra (01.09, trzecia sesja; tryb zwarty
+usunięty 06.09.2026).** Filtry czatu stoją na `chatCategoryOf` w `shared/src/chat.ts` — funkcja
+ma wyczerpujący `switch` po `ChatKind`, więc nowy rodzaj **nie skompiluje się** bez przydziału
+do grupy. Pasek filtrów to wyłącznie cztery przełączniki kategorii: gęstość feedu, skrót
+„solo" pod Alt+klikiem i przycisk „Pokaż wszystko" zostały wycofane razem z `chatCompactLine`
+(nikt ich nie używał, a każdy nowy rodzaj wiersza wymagał drugiego streszczenia).
 
 Cztery rzeczy, które łatwo zepsuć przy dokładaniu:
 
@@ -932,15 +931,13 @@ Cztery rzeczy, które łatwo zepsuć przy dokładaniu:
 
 - **Filtr nie chowa pytań.** `isPending` w `ChatPanel.tsx` wyjmuje spod filtra nierozstrzygniętą
   propozycję bota i notatkę z przyciskami (16c). Nowy wiersz, który czeka na czyjeś kliknięcie,
-  dopisuje się tam — inaczej schowa się pod separatorem w środku cudzej tury. Taki wiersz jest
-  też zwolniony z trybu zwartego, bo zwarta linia nie ma przycisków.
+  dopisuje się tam — inaczej schowa się pod separatorem w środku cudzej tury.
 - **Ukryte nie znaczy skasowane.** Odfiltrowane wiersze zwijają się w klikalny separator
   („⋯ 4 ukryte wiersze ⋯"), a nie znikają: czat jest logiem sesji. Odmianę liczebnika robi
   `hiddenLabel`.
-- **Nastawienie jest lokalne.** `chatFilterStore` trzyma wybór w `localStorage` i **nigdy** nie
-  jedzie zdarzeniem Socket.IO — to samo rozstrzygnięcie, co przy głośnościach z 27d. Rozwinięcie
-  pojedynczego wiersza żyje tylko w stanie panelu: tryb jest nastawieniem na sesję, rozwinięcie
-  — jednym zajrzeniem.
+- **Nastawienie jest lokalne.** `chatFilterStore` trzyma wybór w `localStorage` (klucz
+  `vtt.chat.categories`) i **nigdy** nie jedzie zdarzeniem Socket.IO — to samo rozstrzygnięcie,
+  co przy głośnościach z 27d.
 
 **Wezwanie do Testu jest jedynym źródłem prawdy o tym, co zaraz padnie (etap 32).** Rzut
 odpowiadający na wezwanie jedzie zwykłym `character:roll` z jednym dodatkowym polem

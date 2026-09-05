@@ -285,7 +285,7 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 - **Panel Zdolności Roli mieszka w kolumnie 15 rem** (`.cp-identity`) i w pasku akcji (`.hud-form`) — obie wąskie i obu nie da się rozciągnąć. Nazwa idzie własną linią (`.awareness-name { flex: 1 0 100% }`), a guzik z napisem ma `min-width`, nie `width`.
 - **Przedmiot zużywalny** — `CpredGearRow.consumable` + `qty` na wierszu ekwipunku, katalog w `systems/cpred/pharma.ts` (moduł **bez importów**). Nowy środek = wpis w `CPRED_PHARMACEUTICALS` + gałąź w `applyDose`.
 - **Powrót do zdrowia liczy serwer** — `cpredRestDay` w `systems/cpred/recovery.ts` jest jedynym źródłem tempa; klient wysyła samo „minął dzień". Nowe źródło = wiersz w `cpredHealRate`. `recovery.stabilized` pisze **wyłącznie** udane Ustabilizowanie.
-- **Nowy rodzaj wiersza czatu** — dwie czyste funkcje w `shared/src/chat.ts` (`chatCategoryOf`, `chatCompactLine`) + `toChatMessageView` + gałąź `FullMessageRow`. Pominięcie = wiersz w grupie „Stół", którego nie da się ścisnąć.
+- **Nowy rodzaj wiersza czatu** — `chatCategoryOf` w `shared/src/chat.ts` + `toChatMessageView` + gałąź `FullMessageRow`. Pominięcie = wiersz w grupie „Stół".
 - **Nazwa figury dla graczy** — `Token.publicName` (null = prawdziwa, tekst = alias, `''` = bez etykiety); podmiana **tylko** w `toTokenView` i `filterCombatForPlayer`. Nowa ścieżka do gracza filtruje nazwę u siebie. Czat świadomie poza umową.
 - **Ruch przez przeszkodę** — `refuseWalkThroughSolid` w `realtime/movement.ts`; nowe nieprzenikalne coś dokłada segmenty w `movementSegments`/`coverMovementSegments`, nie nową gałąź walidacji. Sprawdzana jest **cała figura**, nie jej środek.
 - **Powód odmowy Akcji** — jedzie na `TurnResourceView.blocked`, nie w prozie obok; kolejność: status → rana zapisana na turze → budżet.
@@ -301,7 +301,7 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 - **Kierunek patrzenia** — `Token.facing` to stan serwera i publiczna część żetonu (`token:facing`); czytelność, nie mechanika — żadna reguła CP RED tego nie czyta.
 - **Efekt mapy** — przycinany na serwerze per gniazdo (`trimMapFxForViewer` w `shared/src/fx.ts`), nie w `MapFxLayer`.
 - **Limity wgrywanego obrazu** — `shared/src/uploads.ts` (serwer re-eksportuje); odmowa zawsze z pełnym wymaganiem, `accept` i sprawdzenie przed wysyłką z tego samego miejsca.
-- **Nowy rodzaj wiersza czatu** — `chatCategoryOf` i `chatCompactLine` w `shared/src/chat.ts` (grupa filtra + jedna linia trybu zwartego); wiersz czekający na decyzję jest wyjęty spod filtra przez `isPending` w `ChatPanel`.
+- **Nowy rodzaj wiersza czatu** — `chatCategoryOf` w `shared/src/chat.ts` (grupa filtra); wiersz czekający na decyzję jest wyjęty spod filtra przez `isPending` w `ChatPanel`.
 - **Stan figury na żetonie** — ✕ tylko dla `dead`, reszta mówi ikoną; `fallbackConditionStatusId` dokłada naklejkę, gdy stan wynika z samych PW.
 - **Drugi pas zasięgu tury** — `TurnDistanceView.extra` (`{ label, max }`) wystawia system (`cpredRunMetres`), mapa maluje bursztyn i nie zna słowa „Bieg".
 - **Nowe pole typu broni** — dopisz je **razem** do `CpredWeaponTypeInput` i do białej listy `schema_fields` w `tools/import/parse-manual.py`; pominięta lista wycina pole po cichu (tak zginęły `explosive` i `ammoPatterns`).

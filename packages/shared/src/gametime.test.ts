@@ -7,7 +7,6 @@ import {
   MINUTES_PER_HOUR,
   applyGameTimeStep,
   chatCategoryOf,
-  chatCompactLine,
   formatGameClock,
   formatGameDate,
   formatGameDayTime,
@@ -26,7 +25,6 @@ import {
   settleDue,
   settleMonthsDue,
   timeLogTitle,
-  type ChatMessageView,
 } from './index.js';
 
 /** Chwila świata z podanej daty UTC — testy czytają się wtedy jak kalendarz. */
@@ -250,29 +248,5 @@ describe('zegar świata na czacie', () => {
 
   it('rodzaj `time` czyta się razem z papierami i pieniędzmi', () => {
     expect(chatCategoryOf('time')).toBe('table');
-  });
-
-  it('ściska się do jednej linii, a cofnięcie nosi ostrzeżenie', () => {
-    const message: ChatMessageView = {
-      id: 1,
-      kind: 'time',
-      authorId: 'gm',
-      authorName: 'MG',
-      text: '',
-      createdAt: '2026-09-05T20:00:00.000Z',
-      time: {
-        title: 'Minęła noc',
-        from: '15 marca 2045, 23:00 · noc',
-        to: '16 marca 2045, 06:00 · rano',
-        days: 1,
-      },
-    };
-    expect(chatCompactLine(message)).toEqual({
-      actor: 'Zegar świata',
-      summary: 'Minęła noc — 16 marca 2045, 06:00 · rano',
-    });
-    expect(chatCompactLine({ ...message, time: { ...message.time!, backwards: true } })?.tone).toBe(
-      'warn',
-    );
   });
 });
