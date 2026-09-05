@@ -60,8 +60,7 @@ wykonać Ustabilizowanie", s. 222) — poprawną, bo karta z ręcznie obniżonym
 `recovery.stabilized`.
 
 **Poligon wrócił do stanu sprzed sesji — sprawdzone różnicowo względem migawki z 13:23:**
-żetony, karty, sceny, księga i kampania **identyczne**, czat wrócił do 718 wierszy z maksimum
-887. Skasowany wpis dziennika z oględzin, przywrócone PW Tony'ego (35/35) i zegar (1 stycznia
+żetony, karty, sceny, księga i kampania **identyczne**, czat wrócił do 718 wierszy z maksimum 887. Skasowany wpis dziennika z oględzin, przywrócone PW Tony'ego (35/35) i zegar (1 stycznia
 2045, `settledMonth` `2045-01`).
 
 **Po pierwszym commicie MG zakwestionował godzinę w pasku gracza — i miał rację.** Zegar rusza
@@ -108,6 +107,7 @@ pliki: `shared/src/gametime.test.ts`, `server/src/gametime.test.ts`
 i `client/src/gametime-store.test.ts`, plus konto gracza i test widoczności
 w `server/src/recovery.test.ts`. Jeden pełny przebieg serwera pokazał czerwony plik
 i przeszedł przy powtórce — znany wyścig, patrz pułapki.
+
 ### Sesja 05.09 (druga) — mapa, na której da się wskazać palcem i wziąć sześciu naraz
 
 **Zlecenie MG:** kontynuacja projektu; z listy wolnych etapów MG wybrał **35 (ping, zaznaczanie

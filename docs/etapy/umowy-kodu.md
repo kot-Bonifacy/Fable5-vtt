@@ -1228,7 +1228,7 @@ punktów przy pierwszym zapisie, a próg poważnej rany wypada w złym miejscu. 
 `cpredSheetRollSheet(data, skillId)` zeruje Cechy i podstawia Wartość bojową (albo poziom broni
 z `statBlock.weaponSkill` pod Umiejętność, której karta sama nie wymienia). Woła się je tam, gdzie
 do 38a wołało się `sheetFromCombatProfile` — przy ataku, przy biernym PT Uniku i przy Teście
-figury — i **nigdzie indziej**: karta *zapisana* trzyma to, co wydrukowano, a nie to, co z tego
+figury — i **nigdzie indziej**: karta _zapisana_ trzyma to, co wydrukowano, a nie to, co z tego
 wychodzi w rzucie. Umiejętność **wpisana** na karcie wygrywa z poziomem broni, bo to deklaracja MG.
 
 **Sześć pól menu żetonu pisze `token:stat`, nie `token:update` (05.09, etap 38a).**

@@ -5,6 +5,7 @@
 > przekazanie, łup i przeszukanie na jednym, już wspólnym modelu ekwipunku.
 >
 > **Trzy rozstrzygnięcia MG z 05.09 obowiązują 38b:**
+>
 > 1. **Przyjęcie wymaga potwierdzenia odbiorcy** — przekazanie trafia do odbiorcy jako oczekująca
 >    propozycja (wzorem wezwania do Testu z etapu 32) i wchodzi na kartę dopiero po „Przyjmij".
 > 2. **Cel musi być widoczny** — ten sam warunek, którym rozwiązano `Ustabilizowanie` w 14e.
