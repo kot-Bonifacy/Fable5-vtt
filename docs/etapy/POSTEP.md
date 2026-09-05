@@ -101,7 +101,7 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 | 33  | Kopie zapasowe, eksport i import              | ✅     | 2026-09-05        |
 | 34  | Tabele losowe                                 | ⬜     |                   |
 | 35  | Ping, zaznaczanie wielu figur, klonowanie     | ✅     | 2026-09-05        |
-| 36  | Makra i pasek własnych akcji                  | ⬜     |                   |
+| ~~36~~ | ~~Makra i pasek własnych akcji~~           | ⛔     | wycofany 05.09.2026 |
 | 37  | Kalendarz kampanii i upływ czasu              | ⬜     |                   |
 | 38  | Przedmioty między kartami                     | ⬜     |                   |
 | 39  | Efekty czasowe modyfikujące Cechy             | ⬜     |                   |
@@ -130,8 +130,9 @@ i `archive`. Wyszedł przy tym **jeden błąd**: polski znak w nazwie pliku wywr
 błędem 500. Osiem umów kodu i cztery pułapki w indeksach niżej.
 
 **Wolne są teraz: 28** (wdrożenie na VPS — a MG planuje przed nim refaktoryzację całości)
-**oraz 34, 36, 37, 38, 39.** Kolejność wiążąca w dwóch miejscach: **37 przed 39** (efekt „na
-godzinę" potrzebuje zegara świata) i **34 przed 36** (makro „losuj z tabeli"). Warunek „33 przed
+**oraz 34, 37, 38, 39.** **Etap 36 (makra i własny pasek) MG wycofał 05.09** — nie planuj go
+i nie proponuj makr; pasek akcji z 16f zostaje generowany. Kolejność wiążąca w jednym miejscu:
+**37 przed 39** (efekt „na godzinę" potrzebuje zegara świata). Warunek „33 przed
 28" jest od 05.09 spełniony. **Refaktoryzacja całości przed etapem 28 czeka na osobną sesję** —
 MG odłożył ją 05.09, wybierając etap z listy.
 
