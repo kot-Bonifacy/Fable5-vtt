@@ -128,6 +128,12 @@ import type {
   KnowledgeIndexStatus,
   KnowledgePreviewResult,
   KnowledgeSyncPayload,
+  RandomTableDeleteBroadcast,
+  RandomTableListPayload,
+  RandomTableRollPayload,
+  RandomTableUpsertBroadcast,
+  RandomTableUpsertPayload,
+  RandomTableView,
   KnowledgeUpsertBroadcast,
   NetArchitectureDeleteBroadcast,
   NetArchitectureListPayload,
@@ -259,6 +265,7 @@ import { useGameTimeStore } from './stores/gameTimeStore.js';
 import { useAiStore } from './stores/aiStore.js';
 import { useRulesStore } from './stores/rulesStore.js';
 import { useKnowledgeStore } from './stores/knowledgeStore.js';
+import { useTableStore } from './stores/tableStore.js';
 import { useNetStore } from './stores/netStore.js';
 import { useNetRunStore } from './stores/netRunStore.js';
 import { useJournalStore } from './stores/journalStore.js';
@@ -613,6 +620,15 @@ export function connectSocket(userId: string): Socket {
     useKnowledgeStore.getState().remove(broadcast.id, broadcast.index),
   );
 
+  // Tabele losowe (34) — jak wyżej, wyłącznie do pokoju MG: tabela jest
+  // narzędziem MG, a jej wiersze zdradzają, co jeszcze może się wydarzyć.
+  socket.on('table:upsert', (broadcast: RandomTableUpsertBroadcast) =>
+    useTableStore.getState().upsert(broadcast.table),
+  );
+  socket.on('table:delete', (broadcast: RandomTableDeleteBroadcast) =>
+    useTableStore.getState().remove(broadcast.id),
+  );
+
   // Biblioteka Architektur Sieciowych (26a) — ta sama zasada co wyżej: PT,
   // Czarne LOD-y i notatki MG lecą wyłącznie do pokoju MG.
   socket.on('net:architectures', (payload: NetArchitectureListPayload) =>
@@ -743,7 +759,10 @@ export function connectSocket(userId: string): Socket {
     useCharacterStore.getState().applyDelete(broadcast.characterId);
   });
   socket.on('chat:message', (broadcast: ChatMessageBroadcast) => {
-    const roll = broadcast.message.roll;
+    // Losowanie z tabeli (34) tumbla **pierwszą** kością łańcucha: patrzy się
+    // na nią tak samo, jak na każdy inny rzut, a podrzuty zostają liczbami na
+    // karcie — dwie animacje z jednego kliknięcia nikomu nic nie mówią.
+    const roll = broadcast.message.roll ?? broadcast.message.rolltable?.steps[0]?.roll;
     // Live rolls (never history/resync) replay the server's results in 3D;
     // their chat card is held back so the table reads the dice first.
     const hold = roll !== undefined && toAnimationNotation(roll) !== null;
@@ -1199,6 +1218,36 @@ export function inventoryErrorText(code: string): string {
 }
 
 /** Polskie komunikaty odmowy przy wystawianiu wezwania do Testu (etap 32). */
+/**
+ * Odmowy tabel losowych (etap 34). `INVALID_TABLE:` niesie gotowe zdanie
+ * z `validateRandomTable` — walidator i formularz mówią to samo tym samym
+ * zdaniem, więc klient go **nie tłumaczy**, tylko pokazuje.
+ */
+export function randomTableErrorText(code: string): string {
+  if (code.startsWith('INVALID_TABLE:')) {
+    const message = code.slice('INVALID_TABLE:'.length).trim();
+    return message.length > 0 ? message : 'Tabela ma błąd — sprawdź zakresy wierszy.';
+  }
+  switch (code) {
+    case 'TABLE_NOT_FOUND':
+      return 'Nie ma takiej tabeli w tej kampanii.';
+    case 'SUBTABLE_NOT_FOUND':
+      return 'Wskazana tabela podrzutu już nie istnieje — odśwież zakładkę.';
+    case 'TABLE_EMPTY':
+      return 'Ta tabela nie ma wierszy, z których dałoby się losować.';
+    case 'MESSAGE_NOT_FOUND':
+      return 'Nie znalazłem tego losowania na czacie.';
+    case 'ALREADY_SHOWN':
+      return 'Ten wynik jest już pokazany stołowi.';
+    case 'TABLE_MISSING_NAME':
+      return 'Podaj nazwę tabeli: /tab <nazwa>.';
+    case 'FORBIDDEN':
+      return 'Tabele losowe są narzędziem MG.';
+    default:
+      return `Błąd tabeli: ${code}`;
+  }
+}
+
 export function checkCallErrorText(code: string): string {
   switch (code) {
     case 'CHARACTER_NOT_FOUND':
@@ -1837,6 +1886,36 @@ export const saveKnowledgeEntry = (payload: KnowledgeUpsertPayload) =>
   emitSceneAck<KnowledgeEntryView>('knowledge:upsert', payload);
 
 export const deleteKnowledgeEntry = (id: string) => emitSceneAck('knowledge:delete', { id });
+
+/** Tabele losowe (34). Wołane przy wejściu w zakładkę, nie w `state:sync`. */
+export function fetchRandomTables(): Promise<RandomTableListPayload | null> {
+  return new Promise((resolve) => {
+    if (!socket) {
+      resolve(null);
+      return;
+    }
+    socket.emit('table:list', (ack: SocketAck<RandomTableListPayload>) => {
+      if (ack.ok && ack.data) useTableStore.getState().replaceAll(ack.data.tables);
+      resolve(ack.ok ? (ack.data ?? null) : null);
+    });
+  });
+}
+
+export const saveRandomTable = (payload: RandomTableUpsertPayload) =>
+  emitSceneAck<RandomTableView>('table:upsert', payload);
+
+export const deleteRandomTable = (id: string) => emitSceneAck('table:delete', { id });
+
+/**
+ * Losowanie z tabeli. **Nie dotyka `rollStore`** — i to jest cała treść tego
+ * etapu po stronie klienta: rzut wzięty do ręki w oknie postaci i czekające
+ * wezwanie do Testu mają przeżyć dowolną liczbę kliknięć „Losuj".
+ */
+export const rollRandomTableNow = (payload: RandomTableRollPayload) =>
+  emitSceneAck('table:roll', payload);
+
+/** „Pokaż stołowi" — dokłada publiczny wiersz z tym samym wynikiem. */
+export const showRandomTableRoll = (messageId: number) => emitSceneAck('table:show', { messageId });
 
 /** Pełny przebieg indeksowania bazy wiedzy — dogania to, co się rozjechało. */
 export const reindexKnowledge = () =>

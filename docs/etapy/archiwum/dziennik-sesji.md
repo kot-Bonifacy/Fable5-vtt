@@ -7,6 +7,70 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 05.09 (piąta) — ganger, który stoi w rosterze obok Vex
+
+**Zlecenie MG:** kontynuacja projektu; z listy wolnych etapów (28, 34, 38) MG wybrał **38
+(przedmioty między kartami)** i przy trzech pytaniach rozstrzygających padła odpowiedź, która
+zmieniła całą sesję: na „gdzie mieszka łup statysty" MG wybrał **statysta dostaje pełną kartę
+postaci** — czyli odwrotnie, niż proponował opis etapu i niż rozstrzygnął etap 16b. Po
+przedstawieniu ceny (33 pliki, ~200 odwołań, migracja bazy) MG **potwierdził wybór w pełnej
+wersji**: „każdy statysta z profilem bojowym to od razu Character". Etap 38 został więc
+**rozdzielony na 38a** (ten refaktor) **i 38b** (przekazywanie, łup, przeszukanie), a plik
+`etap-38a-statysta-jako-karta.md` powstał przed pierwszą linijką kodu.
+
+**Rozpoznanie przed kodem znalazło rzecz, która przesądziła o modelu: profil bojowy NIE jest
+chudszą kartą.** Niesie trzy liczby, których `CpredCharacterData` nie umiał wyrazić —
+**Wartość bojową** („suma Cechy i Umiejętności", s. 158; C-SWAT ma 16, a Umiejętność karty ma
+sufit 10), **zakaz uniku przed pociskami** i **wydrukowane PW** (35 przy BC 4, z Cech wychodzi
+20). Dlatego karta dostała **jedno** nowe pole: `statBlock` (`shared/src/systems/cpred/statblock.ts`)
+— „wydrukowany blok statystyk", a nie kategoria karty, bo MG odrzucił znacznik odróżniający
+statystę w rosterze. Czwartą liczbą w bloku jest **poziom broni** (`weaponSkill`) i to jest
+ustępstwo z powodu, który widać dopiero w migracji: id Umiejętności trzeba by rozwiązywać przez
+kompendium przy każdym zapisie, a kompendium mieszka w plikach `data/private/`, **nie w bazie**,
+więc SQL migracji nie ma go jak przeczytać.
+
+**Co zniknęło:** kolumna `Token.combatProfile`, gałąź `kind: 'statist'` w `AttackSource`,
+drugie ramię `cpredWeaponOptions`, osobny tor obrażeń i osobny tor ran dla statystów, osobne
+przeładowanie. **Co zostało:** szybkość z 16b — menu figury nadal ma sześć pól, tyle że pisze je
+**`token:stat`**, które zakłada kartę i podpina ją jednym zdarzeniem. Doszło pole **„Wartość
+bojowa zamiast Cech"**, bo do tej pory MG stawiający C-SWAT ręką nie miał czym: wpisana
+Umiejętność 14 dawała REF **plus** czternaście.
+
+**Migracja przepisała trzy figury poligonu w SQL-u** (`json_object` + `json_group_object`), bo
+`parseCharacterData` jest tolerancyjny i wystarczy zapisać to, co profil naprawdę niósł. PW,
+amunicja, rany i pancerz przeżyły; „Cel 23x" ma po migracji **33/35 PW** i dwa rzędy pancerza
+(głowa i korpus — jedna liczba profilu to dwa rzędy karty, bo trafienie dobiera rząd po miejscu).
+Poziomy Umiejętności ścinają się w migracji do dziesiątki — inaczej **jeden** wiersz spoza
+zakresu każe `validateSkills` odrzucić **całą** mapę.
+
+**Trzy błędy wyszły przy pierwszym uruchomieniu testów, wszystkie z tej samej rodziny „walidator
+karty odrzuca to, co nowy model zapisuje".** (1) `luck: 0` i wyzerowane REF/ZW/SW figury
+z Wartością bojową wywracały `validateStats`, a karta wracała jako przeciętny człowiek po pięć —
+stąd `CPRED_SHEET_STAT_MIN = 0` obok `CPRED_STAT_MIN = 1`, który zostaje kreatorowi. (2) Unik 14
+funkcjonariusza wywracał `validateSkills` tą samą drogą — teraz ścina się do dziesiątki, a rzut
+i tak bierze Wartość bojową. (3) `normalizeCharacterData` ścinał wydrukowane PW do liczby z Cech,
+stąd `cpredSheetHpMax(data)` i **`hpMax(data.stats)` na pełnej karcie jest odtąd błędem** — ta
+sama umowa co `cpredEffectiveStats` z etapu 39, w drugim obszarze.
+
+**Czwarty błąd był systemowy i mylący:** po skasowaniu kolumny **57 z 61 plików** testów serwera
+padło na timeoutach `state:sync`, jakby zerwał się protokół. Przyczyną był niewygenerowany klient
+Prismy. `npx prisma generate` po każdej zmianie schematu — zanim zaczniesz szukać gdzie indziej.
+
+**Dwie rzeczy dołożone, żeby refaktor niczego po cichu nie zabrał:** kopia figury MG dostaje
+**własną** kartę (inaczej dwa żetony dzieliłyby jedne PW), a karta jedzie odtąd także do
+**właściciela figury**, nie tylko do właściciela karty — bo gracz, któremu MG oddał gangera,
+dostawał jego liczby w prywatnej części żetonu, a teraz mieszkają one na karcie.
+
+**Oględziny częściowe.** Przez przeglądarkę przeszły: trzy zmigrowane figury w panelu postaci,
+karta „Cel 23x" z PW 33/35 i pasek figury budowany z karty. **Menu figury nie było oglądane** —
+prawym klikiem z automatyki nie da się otworzyć menu kontekstowego kanwy Pixi; trzy ścieżki
+(przełącznik statystyk, Wartość bojowa, pytanie o kartę przy koszu) mają testy dymne na żywych
+gniazdach i czekają na ręczne obejrzenie. Pozycja w `zaleglosci.md`.
+
+**Testy:** 1906 w `shared` (+1), 1024 na serwerze (+6), 97 u klienta (bez zmian) — zielone.
+ESLint, Prettier i `tsc --noEmit` czyste w trzech pakietach. Dziewięć umów kodu i cztery pułapki
+w indeksach niżej, cztery świadome odstępstwa w `decyzje-i-uproszczenia.md`.
+
 ### Sesja 05.09 (czwarta) — liczba na karcie, którą da się obniżyć na godzinę
 
 **Zlecenie MG:** kontynuacja projektu; z listy wolnych etapów (28, 34, 38, 39) MG wybrał

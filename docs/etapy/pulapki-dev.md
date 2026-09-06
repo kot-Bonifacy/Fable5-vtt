@@ -22,6 +22,30 @@ dotyczy.
   rozstrzygnąć (gracz nie widzi, kto jest właścicielem cudzej karty), więc rozstrzyga to ack:
   `InventoryGiveResult.pending`. Zdanie warunkowe („jeśli…") w komunikacie o skutku jest zwykle
   znakiem, że brakuje pola w odpowiedzi.
+- **Pomocnik testowy, który przy odczycie odpina słuchacza, daje test przechodzący LOSOWO.**
+  `collectMessages` w `tables.test.ts` zwracał listę **ze** `stop()`, a pętla „losuj, aż wypadnie
+  podrzut” wołała go w każdym obrocie — po pierwszym przebiegu nasłuch był zgaszony i test
+  przechodził tylko wtedy, gdy trafił za pierwszym razem. Objaw jest mylący: pada raz na kilka
+  uruchomień i wygląda na wyścig w serwerze. Odczyt ma być **żywą tablicą**, a odpięcie osobnym
+  krokiem na koniec.
+- **`rollFormula` sam wnioskuje regułę Testu z formuły — pułapka wszędzie, gdzie kość NIE jest
+  Testem.** Przy etapie 34 tabela `1d10` bez `checkRule: false` dawałaby wynik 11+ na dziesiątce,
+  a objaw kłamie: karta mówi „nic nie odpowiada za tę liczbę", więc pierwsze podejrzenie pada na
+  zakresy wierszy, nie na rzut. Poprzednikiem jest inicjatywa z 14 („1d10 + REF nie jest Testem")
+  i rzuty kreatora z 25a. Każde nowe losowanie, które nie jest Testem CP RED, ma to ustawić jawnie
+  — a test, który to łapie, musi sprawdzać `roll.critical === undefined`, nie samą sumę.
+- **Regex na zrzucie podręcznika łapie każdą liczbę, także numer strony.** Pierwsza wersja
+  `parse-encounters.py` uznała „(patrz Korpogliniarze, STR. 417)" za wiersz tabeli i raport
+  pokazał „dziura 101–417" — objaw wskazujący na dziury, nie na wiersz widmo. Zakres wiersza musi
+  być **zakotwiczony** (nawias albo początek linii) **i** mieć po sobie krótką nazwę zakończoną
+  dwukropkiem. Podrzuty w opisie („Rzuć 1k10. 1–2: wnoszą skrzynię") odpadają same, bo po ich
+  liczbie stoi dwukropek zamiast spacji.
+- **Podręcznik bywa źródłem błędu, nie tylko parser.** Tabela „Spotkania wieczorne" ma **w druku**
+  wiersze „(70–72) Drużyna Solo" i „(72–77) Cybergang" — liczba 72 w obu. Sąsiedztwo (64–69, potem
+  72–77) nie zostawia wątpliwości, więc pierwszy kończy się na 71. Poprawka siedzi w `KNOWN_FIXES`
+  **w skrypcie**, nie w wygenerowanym JSON-ie: JSON jest wynikiem i kolejny przebieg parsera
+  skasowałby ręczną poprawkę bez śladu. Zanim uznasz raport pokrycia za błąd parsera, sprawdź
+  liczby w źródle.
 - **Nowy rodzaj wiersza czatu ma SZEŚĆ miejsc, nie pięć — szóstym jest `isPending`.** Do pięciu
   z 05.09 (`ChatKind`, `chatCategoryOf`, `toChatMessageView`, `visibleTo`, `FullMessageRow`)
   dochodzi `isPending` w `ChatPanel`, gdy wiersz **czeka na czyjąś decyzję**: bez tego propozycja

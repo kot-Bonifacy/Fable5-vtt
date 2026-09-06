@@ -87,6 +87,7 @@ model Campaign {
   drafts       CharacterDraft[]
   architectures NetArchitecture[]
   netRuns       NetRun[]
+  randomTables  RandomTable[]
 }
 
 /// A handout: the material the GM hands to the players (stage 24a).
@@ -1221,4 +1222,58 @@ model AdvancementEntry {
 
   @@index([characterId, id])
   @@index([campaignId])
+}
+
+/// Tabela losowa (etap 34) — „losuj, co się dzieje".
+///
+/// Rdzeń VTT, nie mechanika Cyberpunka RED: wiersze są danymi, więc tabela
+/// z podręcznika nie dokłada ani jednej gałęzi w kodzie. Sama treść wierszy
+/// bywa przepisana z podręcznika, więc — jak kompendium z etapu 13 — importuje
+/// się ją z `data/private/`, a w repozytorium leżą wyłącznie skrypty.
+model RandomTable {
+  id         String @id @default(cuid())
+  campaignId String
+  name       String
+  /// Notacja rzutu, przez ten sam `parseRollNotation`, którego używa `/r`
+  /// („1d10", „1d100"). Tabela nie ma własnego parsera notacji.
+  formula String @default("1d10")
+  /// Zdanie MG o tym, kiedy się tę tabelę losuje. Nie trafia na czat.
+  description String @default("")
+  /// gm | public — domyślna widoczność wyniku. Kolumna, a nie stała, bo
+  /// „Co leci w radiu" jest jawne z natury, a „Łup z kieszeni" nigdy nie jest.
+  visibility String @default("gm")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  campaign     Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  rows         RandomTableRow[] @relation("RandomTableRows")
+  referencedBy RandomTableRow[] @relation("RandomTableSub")
+
+  @@index([campaignId])
+}
+
+/// Jeden wiersz tabeli losowej: zakres i to, co on znaczy.
+///
+/// `min`/`max` zamiast wagi, bo podręcznikowe tabele są zakresowe („47–57
+/// Złomiarze") i przepisanie ich na wagi zgubiłoby oryginalne liczby, po
+/// których MG szuka wiersza w książce.
+model RandomTableRow {
+  id      String @id @default(cuid())
+  tableId String
+  min     Int
+  max     Int
+  /// Treść wiersza; pusta, gdy wiersz jest samym odesłaniem do innej tabeli.
+  text String @default("")
+  /// Podrzut: kolejna tabela tej samej kampanii. `SetNull`, a nie kaskada —
+  /// skasowanie „Broni przy ciele" ma zostawić wiersz „łupu" z jego tekstem,
+  /// a nie wyrwać dziurę w zakresach tabeli, której nikt nie ruszał.
+  subTableId String?
+  /// Kolejność w edytorze; losowanie i tak idzie po zakresach.
+  position Int @default(0)
+
+  table    RandomTable  @relation("RandomTableRows", fields: [tableId], references: [id], onDelete: Cascade)
+  subTable RandomTable? @relation("RandomTableSub", fields: [subTableId], references: [id], onDelete: SetNull)
+
+  @@index([tableId])
+  @@index([subTableId])
 }

@@ -227,4 +227,31 @@ describe('chatCategoryOf', () => {
     expect(chatCategoryOf('handout')).toBe('table');
     expect(chatCategoryOf('journal')).toBe('table');
   });
+
+  it('losowanie z tabeli idzie do „Stołu", nie do „Rzutów"', () => {
+    // Kość tam pada, ale patrzy się na treść wiersza — zgaszone „Rzuty" mają
+    // schować testy, a nie wynik losowania fabularnego (etap 34).
+    expect(chatCategoryOf('rolltable')).toBe('table');
+    expect(chatCategoryOf('gmrolltable')).toBe('table');
+  });
+});
+
+describe('/tab (etap 34)', () => {
+  it('cały argument jest nazwą tabeli — także ze spacjami', () => {
+    expect(parseChatInput('/tab Spotkania dzienne')).toEqual({
+      kind: 'rolltable',
+      tableName: 'Spotkania dzienne',
+    });
+    expect(parseChatInput('/tabela łup z kieszeni')).toEqual({
+      kind: 'rolltable',
+      tableName: 'łup z kieszeni',
+    });
+  });
+
+  it('bez nazwy jest odmowa, nie losowanie z czegokolwiek', () => {
+    expect(parseChatInput('/tab')).toEqual({
+      kind: 'invalid-rolltable',
+      reason: 'MISSING_TARGET',
+    });
+  });
 });

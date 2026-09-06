@@ -11,6 +11,7 @@ import type {
   HandoutLogEntry,
   InventoryMoveEntry,
   JournalLogEntry,
+  RandomTableRollEntry,
   TimeLogEntry,
   SessionUser,
 } from '@vtt/shared';
@@ -125,6 +126,14 @@ export function toChatMessageView(message: StoredMessage): ChatMessageView {
     view.time = JSON.parse(message.payload) as TimeLogEntry;
   } else if (message.kind === 'inventory' && message.payload) {
     view.inventory = JSON.parse(message.payload) as InventoryMoveEntry;
+  } else if ((message.kind === 'rolltable' || message.kind === 'gmrolltable') && message.payload) {
+    const entry = JSON.parse(message.payload) as RandomTableRollEntry;
+    // Skórka stemplowana na wyjściu, tak samo jak przy `roll` wyżej i z tego
+    // samego powodu: kości należą do rzucającego, a nie do zapisanego wyniku.
+    if (isDiceSkinId(message.author.diceSkin)) {
+      for (const step of entry.steps ?? []) step.roll.skin = message.author.diceSkin;
+    }
+    view.rolltable = entry;
   }
   return view;
 }
@@ -245,6 +254,12 @@ export function visibleTo(user: SessionUser) {
               // przeniesienie — także takie, które gracze zrobili między sobą,
               // nie pytając. Bez tego wiersza MG widział wyłącznie własne.
               'inventory',
+              // Tabele losowe (34): `rolltable` jest publiczny i jest tu z tego
+              // samego powodu, co `time` — bez wiersza MG widziałby wyłącznie
+              // własne karty. `gmrolltable` jest tu wzorem `proposal`: cicha
+              // karta należy do stołu MG, także wystawiona z drugiego konta MG.
+              'rolltable',
+              'gmrolltable',
             ],
           },
         },
@@ -266,7 +281,15 @@ export function visibleTo(user: SessionUser) {
   // przeładowaniu; widział je tylko ich autor.
   return {
     OR: [
-      { kind: { in: ['say', 'roll', 'damage', 'action', 'journal', 'time', 'recovery'] } },
+      // `rolltable` (34) jest na tej liście, a `gmrolltable` NIE i to jest cała
+      // różnica między nimi: cicha karta losowania nie ma prawa wejść graczowi
+      // do historii nawet wtedy, gdy MG pokaże stołowi ten sam wynik osobnym
+      // wierszem.
+      {
+        kind: {
+          in: ['say', 'roll', 'damage', 'action', 'journal', 'time', 'recovery', 'rolltable'],
+        },
+      },
       { authorId: user.id },
       { recipientId: user.id },
     ],

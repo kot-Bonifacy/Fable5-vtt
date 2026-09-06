@@ -42,6 +42,7 @@ import { OpposedRow } from './GrappleControls.js';
 import { DamageApplyControls, DamageRow } from './DamageControls.js';
 import { CheckCallRow } from './CheckCall.js';
 import { InventoryMoveRow } from './InventoryMove.js';
+import { RollTableRow } from './RollTableCard.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useChatFilterStore } from '../stores/chatFilterStore.js';
 import { useChatStore, type ChatItem } from '../stores/chatStore.js';
@@ -725,6 +726,9 @@ function FullMessageRow({
   }
   if (message.kind === 'time' && message.time) {
     return <TimeRow message={message} entry={message.time} />;
+  }
+  if ((message.kind === 'rolltable' || message.kind === 'gmrolltable') && message.rolltable) {
+    return <RollTableRow message={message} entry={message.rolltable} />;
   }
   if ((message.kind === 'action' || message.kind === 'gmaction') && message.action) {
     return <CombatActionRow message={message} entry={message.action} isGm={isGm} />;

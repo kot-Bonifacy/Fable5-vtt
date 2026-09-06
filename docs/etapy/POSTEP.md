@@ -17,98 +17,116 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 | `archiwum/zamkniete-zaleglosci.md` | zamknięte zaległości z diagnozą i opisem naprawy              | gdy wraca coś, co już raz naprawiono                   |
 | `archiwum/uwagi-etapow.md`         | kolumna „Uwagi" z tabeli niżej (jedno zdanie na etap)         | gdy chcesz szybkie „co było w etapie N"                |
 
-| #   | Etap                                          | Status | Data ukończenia   |
-| --- | --------------------------------------------- | ------ | ----------------- |
-| 01  | Szkielet projektu i środowisko                | ✅     | 2026-07-16        |
-| 02  | Baza danych, użytkownicy, role                | ✅     | 2026-07-16        |
-| 03  | Rdzeń realtime i czat                         | ✅     | 2026-07-17        |
-| 04  | Mapa i sceny                                  | ✅     | 2026-07-17        |
-| 05  | Tokeny                                        | ✅     | 2026-07-17        |
-| 06  | Silnik kości CP RED                           | ✅     | 2026-07-18        |
-| 07  | Karta postaci — model i edytor                | ✅     | 2026-07-18        |
-| 08  | Karta interaktywna i integracja               | ✅     | 2026-07-24        |
-| 09  | AI Gateway — fundament botów                  | ✅     | 2026-07-24        |
-| 10  | Edytor botów                                  | ✅     | 2026-07-25        |
-| 11  | Boty NPC na czacie                            | ✅     | 2026-07-25        |
-| 12  | ~~TTS — głos botów~~                          | ⛔     | wycofany 09.08    |
-| 13  | Dane z podręcznika i kompendium               | ✅     | 2026-07-27        |
-| 14  | Inicjatywa i tury                             | ✅     | 2026-07-26        |
-| 14b | Ekonomia akcji: budżet tury i katalog         | ✅     | 2026-07-30        |
-| 14c | Ruch w turze: budżet metrów na mapie          | ✅     | 2026-07-31        |
-| 14d | Zwarcie: Pochwycenie, Duszenie, Rzut          | ✅     | 2026-07-31        |
-| 14e | Automaty tury: rany krytyczne, DoT, monity    | ✅     | 2026-07-31        |
-| 15  | Obrażenia, pancerz, krytyki, Death Save       | ✅     | 2026-07-27        |
-| 16  | Zasięgi, DV z mapy, autofire                  | ✅     | 2026-07-28        |
-| 16b | Linia strzału i atak z mapy                   | ✅     | 2026-07-31        |
-| 16c | Osłony jako obiekty sceny                     | ✅     | 2026-08-01        |
-| 16d | Granaty, obszary i rzut przedmiotem           | ✅     | 2026-08-01        |
-| 16e | Ruch klikiem: zaznaczenie, automat chodzenia  | ✅     | 2026-07-31        |
-| 16f | Celowanie kursorem i HUD walki                | ✅     | 2026-08-01        |
-| 16g | Amunicja specjalna: kule zmieniające rachunek | ✅     | 2026-08-07        |
-| 16h | Amunicja bez obrażeń: testy, gaz i dym        | ✅     | 2026-08-07        |
-| 17a | Fog of war i warstwa MG                       | ✅     | 2026-07-28        |
-| 17b | Rysowanie po mapie                            | ✅     | 2026-07-28        |
-| 18a | Ściany i widoczność tokenów                   | ✅     | 2026-07-29        |
-| 18b | Ciemność i źródła światła                     | ✅     | 2026-07-30        |
-| 18c | Eksploracja i mgła MG nad widocznością        | ✅     | 2026-07-30        |
-| 18d | Interakcje z drzwiami i oknami                | ✅     | 2026-07-30        |
-| 19a | Fundament RAG i asystent zasad MG             | ✅     | 2026-08-08        |
-| 19b | Baza wiedzy kampanii i kontekst botów         | ✅     | 2026-08-08        |
-| 19c | Streszczenia sesji, dziennik, relacje NPC     | ✅     | 2026-08-08        |
-| 20a | Akcje botów: structured output i rzuty        | ✅     | 2026-08-08        |
-| 20b | Tura bota w walce                             | ✅     | 2026-08-08        |
-| 21  | ~~STT — polecenia głosowe~~                   | ⛔     | wycofany 09.08    |
-| 22  | ~~WebRTC — czat głosowy graczy~~              | ⛔     | wycofany 09.08    |
-| 23a | Cyborgizacje i człowieczeństwo                | ✅     | 2026-08-09        |
-| 23b | Ekonomia: eurodolce, zakupy, lifestyle        | ✅     | 2026-08-09        |
-| 23c | Reputacja i Facedown                          | ✅     | 2026-08-09        |
-| 24a | Handouty                                      | ✅     | 2026-08-09        |
-| 24b | Dziennik kampanii dla stołu                   | ✅     | 2026-08-09        |
-| 24c | Screamsheets                                  | ✅     | 2026-08-13        |
-| 25a | Kreator postaci: rola, cechy, umiejętności    | ✅     | 2026-08-14        |
-| 25b | Kreator: Ścieżka Życia                        | ✅     | 2026-08-14        |
-| 25c | Kreator: wyposażenie startowe i poziomy       | ✅     | 2026-08-14        |
-| 26a | Sieć: dane, architektura i cyberdek           | ✅     | 2026-08-14        |
-| 26b | Run: punkty dostępu, winda i Akcje Sieciowe   | ✅     | 2026-08-15        |
-| 26c | Walka w Sieci: Programy, Paf, Ślizg, LOD      | ✅     | 2026-08-15        |
-| 26d | Węzły kontrolne i systemy obronne             | ✅     | 2026-08-15        |
-| 26e | Demony                                        | ✅     | 2026-08-16        |
-| 26f | Samodzielne systemy obronne i broniona strefa | ✅     | 2026-08-16        |
-| 27a | Karta jak oficjalna: strona pierwsza          | ✅     | 2026-08-13        |
-| 27b | Karta: broń, pancerz, ekwipunek               | ✅     | 2026-08-13        |
-| 27c | Karta: Ścieżka Życia i cyborgizacje           | ✅     | 2026-08-14        |
-| 27  | ~~Kości 3D i szlif UI~~                       | ⛔     | rozdzielony 19.08 |
-| 27d | Kości 3D: skórki, dorzut, ustawienia          | ✅     | 2026-08-19        |
-| 27e | Motyw dzień/noc dla całej aplikacji           | ✅     | 2026-08-20        |
-| 27f | Szlif UX: pomoc, tooltipy, stany, okna        | ✅     | 2026-08-21        |
-| 27g | ~~Wydajność~~                                 | ⛔     | wycofany 01.09    |
-| 27h | Panel postaci: HUD, który wygląda jak gra     | ✅     | 2026-08-20        |
-| 27i | Mapa: efekty walki                            | ✅     | 2026-08-20        |
-| 27j | Żetony i czytelny ruch                        | ✅     | 2026-08-21        |
-| 27k | Edycja sceny: zaznacz, skasuj, cofnij         | ✅     | 2026-08-23        |
-| 27l | Karty obiektów sceny                          | ✅     | 2026-08-24        |
-| 28  | Wdrożenie na VPS                              | ⬜     |                   |
-| 29  | ~~Rozwój postaci za Punkty Doświadczenia~~    | ⛔     | rozdzielony 30.08 |
-| 29a | PD: drabinki, przyznawanie, wydawanie         | ✅     | 2026-08-30        |
-| 29b | Wieloklasowość                                | ✅     | 2026-08-30        |
-| 30  | ~~Zdolności Specjalne dziewięciu Ról~~        | ⛔     | rozdzielony 29.08 |
-| 30a | Szkielet Zdolności Ról i Zmysł Walki Solo     | ✅     | 2026-08-29        |
-| 30b | Medycyna Medyka i Twórca Technika             | ✅     | 2026-08-29        |
-| 30c | Wsparcie i Praca Zespołowa                    | ✅     | 2026-08-29        |
-| 30d | Charyzma, Znajomości, Moto, Wiarygodność      | ✅     | 2026-08-30        |
-| 31  | Dodatki do broni                              | ✅     | 2026-09-01        |
-| 32  | Wezwanie MG do Testu                          | ✅     | 2026-09-02        |
-| 33  | Kopie zapasowe, eksport i import              | ✅     | 2026-09-05        |
-| 34  | Tabele losowe                                 | ⬜     |                   |
-| 35  | Ping, zaznaczanie wielu figur, klonowanie     | ✅     | 2026-09-05        |
-| ~~36~~ | ~~Makra i pasek własnych akcji~~           | ⛔     | wycofany 05.09.2026 |
-| 37  | Kalendarz kampanii i upływ czasu              | ✅     | 2026-09-05        |
-| 38  | ~~Przedmioty między kartami~~                 | ⛔     | rozdzielony 05.09 |
-| 38a | Statysta jako karta postaci                   | ✅     | 2026-09-05        |
-| 38b | Przedmioty: przekazanie, łup, przeszukanie    | ✅     | 2026-09-06        |
-| 39  | Efekty czasowe modyfikujące Cechy              | ✅     | 2026-09-05        |
+| #      | Etap                                          | Status | Data ukończenia     |
+| ------ | --------------------------------------------- | ------ | ------------------- |
+| 01     | Szkielet projektu i środowisko                | ✅     | 2026-07-16          |
+| 02     | Baza danych, użytkownicy, role                | ✅     | 2026-07-16          |
+| 03     | Rdzeń realtime i czat                         | ✅     | 2026-07-17          |
+| 04     | Mapa i sceny                                  | ✅     | 2026-07-17          |
+| 05     | Tokeny                                        | ✅     | 2026-07-17          |
+| 06     | Silnik kości CP RED                           | ✅     | 2026-07-18          |
+| 07     | Karta postaci — model i edytor                | ✅     | 2026-07-18          |
+| 08     | Karta interaktywna i integracja               | ✅     | 2026-07-24          |
+| 09     | AI Gateway — fundament botów                  | ✅     | 2026-07-24          |
+| 10     | Edytor botów                                  | ✅     | 2026-07-25          |
+| 11     | Boty NPC na czacie                            | ✅     | 2026-07-25          |
+| 12     | ~~TTS — głos botów~~                          | ⛔     | wycofany 09.08      |
+| 13     | Dane z podręcznika i kompendium               | ✅     | 2026-07-27          |
+| 14     | Inicjatywa i tury                             | ✅     | 2026-07-26          |
+| 14b    | Ekonomia akcji: budżet tury i katalog         | ✅     | 2026-07-30          |
+| 14c    | Ruch w turze: budżet metrów na mapie          | ✅     | 2026-07-31          |
+| 14d    | Zwarcie: Pochwycenie, Duszenie, Rzut          | ✅     | 2026-07-31          |
+| 14e    | Automaty tury: rany krytyczne, DoT, monity    | ✅     | 2026-07-31          |
+| 15     | Obrażenia, pancerz, krytyki, Death Save       | ✅     | 2026-07-27          |
+| 16     | Zasięgi, DV z mapy, autofire                  | ✅     | 2026-07-28          |
+| 16b    | Linia strzału i atak z mapy                   | ✅     | 2026-07-31          |
+| 16c    | Osłony jako obiekty sceny                     | ✅     | 2026-08-01          |
+| 16d    | Granaty, obszary i rzut przedmiotem           | ✅     | 2026-08-01          |
+| 16e    | Ruch klikiem: zaznaczenie, automat chodzenia  | ✅     | 2026-07-31          |
+| 16f    | Celowanie kursorem i HUD walki                | ✅     | 2026-08-01          |
+| 16g    | Amunicja specjalna: kule zmieniające rachunek | ✅     | 2026-08-07          |
+| 16h    | Amunicja bez obrażeń: testy, gaz i dym        | ✅     | 2026-08-07          |
+| 17a    | Fog of war i warstwa MG                       | ✅     | 2026-07-28          |
+| 17b    | Rysowanie po mapie                            | ✅     | 2026-07-28          |
+| 18a    | Ściany i widoczność tokenów                   | ✅     | 2026-07-29          |
+| 18b    | Ciemność i źródła światła                     | ✅     | 2026-07-30          |
+| 18c    | Eksploracja i mgła MG nad widocznością        | ✅     | 2026-07-30          |
+| 18d    | Interakcje z drzwiami i oknami                | ✅     | 2026-07-30          |
+| 19a    | Fundament RAG i asystent zasad MG             | ✅     | 2026-08-08          |
+| 19b    | Baza wiedzy kampanii i kontekst botów         | ✅     | 2026-08-08          |
+| 19c    | Streszczenia sesji, dziennik, relacje NPC     | ✅     | 2026-08-08          |
+| 20a    | Akcje botów: structured output i rzuty        | ✅     | 2026-08-08          |
+| 20b    | Tura bota w walce                             | ✅     | 2026-08-08          |
+| 21     | ~~STT — polecenia głosowe~~                   | ⛔     | wycofany 09.08      |
+| 22     | ~~WebRTC — czat głosowy graczy~~              | ⛔     | wycofany 09.08      |
+| 23a    | Cyborgizacje i człowieczeństwo                | ✅     | 2026-08-09          |
+| 23b    | Ekonomia: eurodolce, zakupy, lifestyle        | ✅     | 2026-08-09          |
+| 23c    | Reputacja i Facedown                          | ✅     | 2026-08-09          |
+| 24a    | Handouty                                      | ✅     | 2026-08-09          |
+| 24b    | Dziennik kampanii dla stołu                   | ✅     | 2026-08-09          |
+| 24c    | Screamsheets                                  | ✅     | 2026-08-13          |
+| 25a    | Kreator postaci: rola, cechy, umiejętności    | ✅     | 2026-08-14          |
+| 25b    | Kreator: Ścieżka Życia                        | ✅     | 2026-08-14          |
+| 25c    | Kreator: wyposażenie startowe i poziomy       | ✅     | 2026-08-14          |
+| 26a    | Sieć: dane, architektura i cyberdek           | ✅     | 2026-08-14          |
+| 26b    | Run: punkty dostępu, winda i Akcje Sieciowe   | ✅     | 2026-08-15          |
+| 26c    | Walka w Sieci: Programy, Paf, Ślizg, LOD      | ✅     | 2026-08-15          |
+| 26d    | Węzły kontrolne i systemy obronne             | ✅     | 2026-08-15          |
+| 26e    | Demony                                        | ✅     | 2026-08-16          |
+| 26f    | Samodzielne systemy obronne i broniona strefa | ✅     | 2026-08-16          |
+| 27a    | Karta jak oficjalna: strona pierwsza          | ✅     | 2026-08-13          |
+| 27b    | Karta: broń, pancerz, ekwipunek               | ✅     | 2026-08-13          |
+| 27c    | Karta: Ścieżka Życia i cyborgizacje           | ✅     | 2026-08-14          |
+| 27     | ~~Kości 3D i szlif UI~~                       | ⛔     | rozdzielony 19.08   |
+| 27d    | Kości 3D: skórki, dorzut, ustawienia          | ✅     | 2026-08-19          |
+| 27e    | Motyw dzień/noc dla całej aplikacji           | ✅     | 2026-08-20          |
+| 27f    | Szlif UX: pomoc, tooltipy, stany, okna        | ✅     | 2026-08-21          |
+| 27g    | ~~Wydajność~~                                 | ⛔     | wycofany 01.09      |
+| 27h    | Panel postaci: HUD, który wygląda jak gra     | ✅     | 2026-08-20          |
+| 27i    | Mapa: efekty walki                            | ✅     | 2026-08-20          |
+| 27j    | Żetony i czytelny ruch                        | ✅     | 2026-08-21          |
+| 27k    | Edycja sceny: zaznacz, skasuj, cofnij         | ✅     | 2026-08-23          |
+| 27l    | Karty obiektów sceny                          | ✅     | 2026-08-24          |
+| 28     | Wdrożenie na VPS                              | ⬜     |                     |
+| 29     | ~~Rozwój postaci za Punkty Doświadczenia~~    | ⛔     | rozdzielony 30.08   |
+| 29a    | PD: drabinki, przyznawanie, wydawanie         | ✅     | 2026-08-30          |
+| 29b    | Wieloklasowość                                | ✅     | 2026-08-30          |
+| 30     | ~~Zdolności Specjalne dziewięciu Ról~~        | ⛔     | rozdzielony 29.08   |
+| 30a    | Szkielet Zdolności Ról i Zmysł Walki Solo     | ✅     | 2026-08-29          |
+| 30b    | Medycyna Medyka i Twórca Technika             | ✅     | 2026-08-29          |
+| 30c    | Wsparcie i Praca Zespołowa                    | ✅     | 2026-08-29          |
+| 30d    | Charyzma, Znajomości, Moto, Wiarygodność      | ✅     | 2026-08-30          |
+| 31     | Dodatki do broni                              | ✅     | 2026-09-01          |
+| 32     | Wezwanie MG do Testu                          | ✅     | 2026-09-02          |
+| 33     | Kopie zapasowe, eksport i import              | ✅     | 2026-09-05          |
+| 34     | Tabele losowe                                 | ✅     | 2026-09-06          |
+| 35     | Ping, zaznaczanie wielu figur, klonowanie     | ✅     | 2026-09-05          |
+| ~~36~~ | ~~Makra i pasek własnych akcji~~              | ⛔     | wycofany 05.09.2026 |
+| 37     | Kalendarz kampanii i upływ czasu              | ✅     | 2026-09-05          |
+| 38     | ~~Przedmioty między kartami~~                 | ⛔     | rozdzielony 05.09   |
+| 38a    | Statysta jako karta postaci                   | ✅     | 2026-09-05          |
+| 38b    | Przedmioty: przekazanie, łup, przeszukanie    | ✅     | 2026-09-06          |
+| 39     | Efekty czasowe modyfikujące Cechy             | ✅     | 2026-09-05          |
 
 ## Od czego zacząć
+
+**MG może od 06.09 powiedzieć „losuj, co się dzieje" — do etapu 34 tabela losowa nie istniała
+w żadnej postaci.** Tabela jest **rdzeniem VTT, nie mechaniką CP RED**: `shared/src/tables.ts`
+nie importuje niczego z `systems/cpred`, a tabela z podręcznika jest zwykłymi **danymi**. Dwie
+rzeczy niosą cały etap. Pierwsza: **losowanie z tabeli NIE dotyka kubka** — `rollStore` ma jeden
+slot i każdy `load…Cup` rozsypuje przed sobą resztę, więc „Losuj" jest **rzutem serwera**
+(`table:roll`), dokładnie jak `/r 1d10` wysłane Enterem; rzut wzięty do ręki u MG i wezwanie
+czekające u gracza przeżywają dowolną liczbę losowań (pilnuje tego źródłowy strażnik
+`tables-cup.test.ts`). Druga: **tabela nie jest Testem** — rzut idzie z `checkRule: false`
+i `plain: true`, bo `1d10` jest formułą Testu od etapu 06 i bez tej flagi dziesiątka
+eksplodowałaby dorzutem, a tabela dziesięciowierszowa dawałaby jedenastki. **Widoczność
+rozstrzyga RODZAJ wiersza czatu, nie pole w payloadzie**: `rolltable` jest publiczny,
+`gmrolltable` cichy, a „Pokaż stołowi" **dokłada** publiczny wiersz zamiast odsłaniać stary — bo
+`visibleTo` jest białą listą rodzajów w zapytaniu do bazy. **Zakresy muszą pokryć całą formułę**
+(ta sama funkcja w formularzu i przy zapisie), a **cykl i czwarty poziom podrzutu odmawia się przy
+zapisie**, na grafie całej kampanii. Pipeline importu dowiózł **trzy podręcznikowe tabele Spotkań
+Losowych** (s. 417–421, `1d100`) — plus jedną erratę polskiego wydania. Cztery umowy kodu i cztery
+pułapki w indeksach niżej. Cały etap **przeszedł oględziny w dwóch sesjach naraz**.
 
 **Przedmiot przechodzi od 06.09 z karty na kartę — do etapu 38b nie było na to żadnej drogi.**
 Przenosi go **jedna czysta funkcja**, `cpredMoveItems(from, to, refs)`
@@ -278,6 +296,10 @@ kilkaset wierszy szumu do commita etapu.
 Jeden wiersz = jedna umowa; pełna wersja z uzasadnieniem w `umowy-kodu.md`. Umowa złamana
 znaczy zwykle błąd, który już raz kosztował sesję.
 
+- **Losowanie z tabeli nie dotyka `rollStore`** — „Losuj” i `/tab` idą przez `table:roll`/`chat:send`, jak `/r` od etapu 03; kubek ma jeden slot i każdy `load…Cup` czyści resztę. Pilnuje tego strażnik źródłowy `tables-cup.test.ts`.
+- **Rzut z tabeli idzie z `checkRule: false` i `plain: true`** (`rollRandomTable`) — `1d10` jest formułą Testu, więc bez tego dziesiątka eksploduje dorzutem i tabela dziesięciowierszowa daje 11. `plain` gasi malowanie skrajnych oczek na karcie.
+- **Widoczność wyniku to RODZAJ wiersza czatu**: `rolltable` publiczny, `gmrolltable` cichy — wzorem `roll`/`gmroll`. „Pokaż stołowi” **dokłada** publiczny wiersz (treść z zapisanej karty, nie z żądania), bo `visibleTo` jest białą listą rodzajów w zapytaniu do bazy.
+- **Zakresy i graf podrzutów sprawdza się przy ZAPISIE, na całej kampanii** (`randomTableCoverageIssues`, `randomTableNestingIssue`) — ta sama funkcja w formularzu i w handlerze; limit trzech poziomów łamie też tabela, której nikt w tej chwili nie edytuje.
 - **Przedmiot z karty na kartę to `cpredMoveItems(from, to, refs)`** (`systems/cpred/inventory.ts`) — zwraca **obie** karty naraz; wiersz jedzie w całości (magazynek, dodatki, zużyte OB). Cyborgizacje nie jadą nigdzie.
 - **Przeniesiony pancerz przychodzi ZDJĘTY** (`equipped: false`) — jedyne pole, które przenoszenie zmienia po drodze; inaczej łup po cichu zmieniałby OB odbiorcy.
 - **Wyposażenie skleja się po `compendiumId`, nigdy po nazwie** (`stacksWith` — plus nazwa, uwagi, `consumable`, `upgrade`); dwa ręcznie wpisane „Notatnik" mogą być czymkolwiek.
@@ -437,6 +459,10 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 
 Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapki-dev.md`.
 
+- **Pomocnik testowy, który przy odczycie odpina słuchacza, daje test przechodzący LOSOWO** — `collectMessages` gaszony w pętli „losuj do skutku”; objaw wygląda na wyścig w serwerze, a siedzi w harnessie. Odczyt = żywa tablica, odpięcie = osobny krok.
+- **`rollFormula` sam wnioskuje regułę Testu z formuły — i to jest pułapka wszędzie, gdzie kość NIE jest Testem.** Tabela `1d10` bez `checkRule: false` wyrzuca jedenastkę, a objaw („nic nie odpowiada za tę liczbę”) wskazuje na zakresy, nie na rzut. To samo dotyczy każdego przyszłego losowania fabularnego.
+- **Regex na zrzucie podręcznika łapie każdą liczbę, także numer strony.** Pierwsza wersja `parse-encounters.py` zrobiła z „STR. 417” wiersz tabeli („dziura 101–417”). Zakres wiersza musi być zakotwiczony (nawias albo początek linii) **i** mieć po sobie krótką nazwę z dwukropkiem.
+- **Podręcznik bywa źródłem błędu, nie tylko parser.** Tabela wieczorna ma w druku wiersze „(70–72)” i „(72–77)” — 72 w obu. Errata siedzi w `KNOWN_FIXES` **w skrypcie**, bo JSON jest wynikiem i kolejny przebieg parsera skasowałby ręczną poprawkę bez śladu.
 - **`TokenPatch` nie ma `x`/`y` — figurą rusza `token:move`, nie `token:update`**; sanityzacja milczy o nieznanych polach, więc żądanie z pozycją dostaje `{ ok: true }`, a figura stoi.
 - **Odległość „ode mnie" to NAJBLIŻSZA własna figura, nie pierwsza z listy** — karta potrafi stać dwiema figurami (kopia z 35), a serwer egzekwuje zasięg po najbliższej parze.
 - **Komunikat „czeka na X" wolno napisać dopiero wtedy, gdy serwer powie, że coś czeka** (`InventoryGiveResult.pending`); zdanie warunkowe w komunikacie o skutku to znak brakującego pola w ack.
@@ -578,6 +604,87 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 06.09 (druga) — kość, która nie jest Testem
+
+**Zlecenie MG:** kontynuacja projektu, **etap 34 (tabele losowe)**, z prośbą o pytania
+uzupełniające przed kodem i o sugerowanie się Foundry tam, gdzie czegoś nie wiadomo — ale bez
+nadmiarowych mechanik. Cztery pytania padły przed pierwszą linijką i trzy zmieniły kształt etapu:
+
+1. **Widoczność steruje się z dwóch stron** (kolumna `visibility` na tabeli **plus** jednorazowy
+   przełącznik przy losowaniu). Opis etapu przewidywał samo „domyślnie MG"; MG wybrał wersję
+   z kolumną, bo „Co leci w radiu" jest jawne z natury, a „Łup z kieszeni" nigdy nie jest.
+2. **Kości w treści wiersza (`[[2d6]]`) — NIE.** Wiersz jest czystym tekstem; to zdejmuje
+   z `tables.ts` drugi parser i zostawia rachunki MG, zgodnie z „wynik jako gotowy obiekt" poza
+   zakresem.
+3. **`data/public` dostaje minimum** — jedna wymyślona tabela na dowód formatu
+   (`plotka-w-barze.json`), bez wgrywania czegokolwiek do kampanii.
+4. Na pytanie o gotowe tabele padło **„sprawdź materiały, a jak nie znajdziesz, to własny JSON"**.
+   Znalazły się: rozdział 18 podręcznika ma **trzy tabele procentowe Spotkań Losowych**
+   (s. 417–421), więc powstał parser, a nie sam format.
+
+**Rozstrzygnięcie, na którym stoi cały etap, było już w opisie i okazało się trafne: tabela nie
+dotyka kubka.** `rollStore` trzyma siedem pól i każdy `load…Cup` rozsypuje przed sobą `EMPTY_CUP`,
+więc gdyby „Losuj" ładowało kubek, MG straciłby wzięty do ręki rzut Percepcji NPC-a, a graczowi
+zdmuchnęłoby czekające wezwanie z 32. Dlatego losowanie jest **rzutem serwera** — precedens stoi
+od etapu 03: `/r 1d10` wysłane Enterem leci przez `chat:send` bez gestu i nie zajmuje slotu.
+Reguła jest niewidoczna w kodzie (łamie ją dopiero **dopisanie** wywołania), więc pilnuje jej
+**strażnik źródłowy** `tables-cup.test.ts` — ten sam kształt, co strażnik przycisków ikonowych
+z 27f.
+
+**Druga rzecz jest jeszcze mniej widoczna i kosztowałaby cały etap: `1d10` jest formułą Testu.**
+`rollFormula` sam wnioskuje regułę Testu z formuły, więc bez `checkRule: false` dziesiątka
+w tabeli dziesięciowierszowej eksplodowałaby dorzutem i dawała jedenastkę — a wygląda to jak
+dziura w zakresach, nie jak błąd w rzucie. Drugą połową tej samej prawdy jest `plain: true`:
+na karcie czatu dziesiątka ma zostać **nieomalowana**, bo to „wiersz dziesiąty", nie krytyk
+(ta sama umowa, co rzuty kreatora z 27d). Oba ustawienia padają w **jednym** miejscu —
+`rollRandomTable`.
+
+**Widoczność rozstrzyga rodzaj wiersza czatu, nie pole w payloadzie.** `visibleTo` w `chat-io.ts`
+jest białą listą rodzajów **w zapytaniu do bazy**, więc jawny wynik to `rolltable`, a cichy
+`gmrolltable` — wzorem `roll`/`gmroll` z 06 i `action`/`gmaction` z 14b. Stąd też „Pokaż stołowi"
+**dokłada** publiczny wiersz zamiast odsłaniać stary: wiersz raz zapisany jako `gmrolltable`
+nigdy nie wejdzie graczowi do historii. Treść nowego wiersza czyta się **z zapisanej karty**,
+nie z żądania — ta sama umowa, co obrażenia po ataku z 16 i wezwanie z 32.
+
+**Podrzut jest grafem, więc pilnuje się go przy zapisie.** `randomTableNestingIssue` liczy cykl
+i najdłuższą ścieżkę na **całej** kampanii z podmienioną tabelą, bo dopisanie podrzutu w „broni"
+potrafi przekroczyć limit „łupu", którego w tej chwili nikt nie edytuje. Limit to trzy poziomy;
+czwarty zamieniłby jedno kliknięcie w cztery karty naraz. Losowanie ma **drugi** bezpiecznik
+w `rollRandomTable` (`visited` + licznik), bo baza może nieść graf sprzed tej reguły.
+
+**Zakresy sprawdza jedna funkcja po obu stronach.** `randomTableCoverageIssues` chodzi w formularzu
+(podpowiedź na żywo, po każdym znaku) i w handlerze (odmowa) — w oględzinach zapis z dziurą wrócił
+**tym samym zdaniem**, które stało nad formularzem: „Dziura w zakresach: nic nie odpowiada za 7."
+
+**Import dowiózł trzy prawdziwe tabele i jedną erratę.** `parse-encounters.py` czyta zrzut
+markdownowy rozdziału 18; pierwsza wersja regexa złapała „STR. 417" jako wiersz („dziura 101–417"),
+więc zakres wiersza jest odtąd albo **w nawiasie**, albo **na początku linii** i zawsze
+z krótką nazwą zakończoną dwukropkiem. Po zwężeniu dwie tabele pokryły 1–100 od ręki, a trzecia
+pokazała **błąd druku**: wiersze „(70–72) Drużyna Solo" i „(72–77) Cybergang" dzielą liczbę 72.
+Poprawka (70–71) siedzi w `KNOWN_FIXES` **w skrypcie**, nie w JSON-ie, bo JSON jest wynikiem
+i kolejny przebieg skasowałby ją bez śladu. `import-tables.ts` waliduje **wszystko przed
+pierwszym zapisem** (`--dry-run` robi samą walidację), nadpisuje po nazwie i wiąże podrzuty
+drugim przebiegiem, więc kolejność plików nie ma znaczenia.
+
+**Dwie rzeczy dołożone poza opisem etapu, obie tanie i obie o tym, jak to się czyta.** Kość
+pierwszego kroku **tumbla w 3D** (`socket.ts` bierze `message.rolltable?.steps[0]?.roll`) — to nie
+jest kubek, a bez tego losowanie było jedyną kością w tej aplikacji, której nie widać; podrzuty
+zostają liczbami na karcie, bo dwie animacje z jednego kliknięcia nic nie mówią. I **suma stoi
+obok kości tylko wtedy, gdy jest czym się różnić** — przy `1d100` „47 47" powtarza to samo dwa razy.
+
+**Oględziny w dwóch sesjach naraz** (MG na `localhost`, `Tester` na `[::1]`) przeszły **wszystkie
+pięć kryteriów ukończenia**: dziura w zakresach odmówiona czytelnym zdaniem, karta „tylko MG"
+niewidoczna dla gracza **także po przeładowaniu** (jedna publiczna, pięć cichych — sprawdzone
+z konta gracza), kubek z „Percepcja (INT) +10" nietknięty przez cztery losowania z rzędu, podrzut
+losujący obie tabele w jednym kliknięciu i `/tab bronie` dający ten sam wynik co przycisk.
+Zakładka „Tabele" nie istnieje u gracza. Konsola czysta. Poligon ma odtąd dwie tabele testowe
+(opis w `poligon.md`).
+
+**Testy:** 1936 w `shared` (+23), 1051 na serwerze (+11), 99 u klienta (+2) — zielone. ESLint,
+Prettier i `tsc --noEmit` czyste w trzech pakietach. **Strażnik dostępności z 27f złapał jeden
+przycisk** („✕" przy wierszu edytora miał `aria-label` bez `title`) — naprawiony. Cztery umowy
+kodu i cztery pułapki w indeksach niżej.
+
 ### Sesja 06.09 (pierwsza) — pistolet, który przechodzi z ciała do plecaka
 
 **Zlecenie MG:** kontynuacja projektu; z listy wolnych etapów (28, 34, 38b) MG wybrał **38b
@@ -632,67 +739,3 @@ zawiera od 38a **wszystkich statystów**. Zapisana w `zaleglosci.md`, bez decyzj
 ESLint, Prettier i `tsc --noEmit` czyste w trzech pakietach. **Uwaga do liczb z poprzedniej
 notatki: `shared` miał na czystym HEAD 1890, nie 1906** (sprawdzone `git stash`). Osiem umów kodu
 i pięć pułapek w indeksach niżej, trzy świadome odstępstwa w `decyzje-i-uproszczenia.md`.
-
-### Sesja 05.09 (piąta) — ganger, który stoi w rosterze obok Vex
-
-**Zlecenie MG:** kontynuacja projektu; z listy wolnych etapów (28, 34, 38) MG wybrał **38
-(przedmioty między kartami)** i przy trzech pytaniach rozstrzygających padła odpowiedź, która
-zmieniła całą sesję: na „gdzie mieszka łup statysty" MG wybrał **statysta dostaje pełną kartę
-postaci** — czyli odwrotnie, niż proponował opis etapu i niż rozstrzygnął etap 16b. Po
-przedstawieniu ceny (33 pliki, ~200 odwołań, migracja bazy) MG **potwierdził wybór w pełnej
-wersji**: „każdy statysta z profilem bojowym to od razu Character". Etap 38 został więc
-**rozdzielony na 38a** (ten refaktor) **i 38b** (przekazywanie, łup, przeszukanie), a plik
-`etap-38a-statysta-jako-karta.md` powstał przed pierwszą linijką kodu.
-
-**Rozpoznanie przed kodem znalazło rzecz, która przesądziła o modelu: profil bojowy NIE jest
-chudszą kartą.** Niesie trzy liczby, których `CpredCharacterData` nie umiał wyrazić —
-**Wartość bojową** („suma Cechy i Umiejętności", s. 158; C-SWAT ma 16, a Umiejętność karty ma
-sufit 10), **zakaz uniku przed pociskami** i **wydrukowane PW** (35 przy BC 4, z Cech wychodzi
-20). Dlatego karta dostała **jedno** nowe pole: `statBlock` (`shared/src/systems/cpred/statblock.ts`)
-— „wydrukowany blok statystyk", a nie kategoria karty, bo MG odrzucił znacznik odróżniający
-statystę w rosterze. Czwartą liczbą w bloku jest **poziom broni** (`weaponSkill`) i to jest
-ustępstwo z powodu, który widać dopiero w migracji: id Umiejętności trzeba by rozwiązywać przez
-kompendium przy każdym zapisie, a kompendium mieszka w plikach `data/private/`, **nie w bazie**,
-więc SQL migracji nie ma go jak przeczytać.
-
-**Co zniknęło:** kolumna `Token.combatProfile`, gałąź `kind: 'statist'` w `AttackSource`,
-drugie ramię `cpredWeaponOptions`, osobny tor obrażeń i osobny tor ran dla statystów, osobne
-przeładowanie. **Co zostało:** szybkość z 16b — menu figury nadal ma sześć pól, tyle że pisze je
-**`token:stat`**, które zakłada kartę i podpina ją jednym zdarzeniem. Doszło pole **„Wartość
-bojowa zamiast Cech"**, bo do tej pory MG stawiający C-SWAT ręką nie miał czym: wpisana
-Umiejętność 14 dawała REF **plus** czternaście.
-
-**Migracja przepisała trzy figury poligonu w SQL-u** (`json_object` + `json_group_object`), bo
-`parseCharacterData` jest tolerancyjny i wystarczy zapisać to, co profil naprawdę niósł. PW,
-amunicja, rany i pancerz przeżyły; „Cel 23x" ma po migracji **33/35 PW** i dwa rzędy pancerza
-(głowa i korpus — jedna liczba profilu to dwa rzędy karty, bo trafienie dobiera rząd po miejscu).
-Poziomy Umiejętności ścinają się w migracji do dziesiątki — inaczej **jeden** wiersz spoza
-zakresu każe `validateSkills` odrzucić **całą** mapę.
-
-**Trzy błędy wyszły przy pierwszym uruchomieniu testów, wszystkie z tej samej rodziny „walidator
-karty odrzuca to, co nowy model zapisuje".** (1) `luck: 0` i wyzerowane REF/ZW/SW figury
-z Wartością bojową wywracały `validateStats`, a karta wracała jako przeciętny człowiek po pięć —
-stąd `CPRED_SHEET_STAT_MIN = 0` obok `CPRED_STAT_MIN = 1`, który zostaje kreatorowi. (2) Unik 14
-funkcjonariusza wywracał `validateSkills` tą samą drogą — teraz ścina się do dziesiątki, a rzut
-i tak bierze Wartość bojową. (3) `normalizeCharacterData` ścinał wydrukowane PW do liczby z Cech,
-stąd `cpredSheetHpMax(data)` i **`hpMax(data.stats)` na pełnej karcie jest odtąd błędem** — ta
-sama umowa co `cpredEffectiveStats` z etapu 39, w drugim obszarze.
-
-**Czwarty błąd był systemowy i mylący:** po skasowaniu kolumny **57 z 61 plików** testów serwera
-padło na timeoutach `state:sync`, jakby zerwał się protokół. Przyczyną był niewygenerowany klient
-Prismy. `npx prisma generate` po każdej zmianie schematu — zanim zaczniesz szukać gdzie indziej.
-
-**Dwie rzeczy dołożone, żeby refaktor niczego po cichu nie zabrał:** kopia figury MG dostaje
-**własną** kartę (inaczej dwa żetony dzieliłyby jedne PW), a karta jedzie odtąd także do
-**właściciela figury**, nie tylko do właściciela karty — bo gracz, któremu MG oddał gangera,
-dostawał jego liczby w prywatnej części żetonu, a teraz mieszkają one na karcie.
-
-**Oględziny częściowe.** Przez przeglądarkę przeszły: trzy zmigrowane figury w panelu postaci,
-karta „Cel 23x" z PW 33/35 i pasek figury budowany z karty. **Menu figury nie było oglądane** —
-prawym klikiem z automatyki nie da się otworzyć menu kontekstowego kanwy Pixi; trzy ścieżki
-(przełącznik statystyk, Wartość bojowa, pytanie o kartę przy koszu) mają testy dymne na żywych
-gniazdach i czekają na ręczne obejrzenie. Pozycja w `zaleglosci.md`.
-
-**Testy:** 1906 w `shared` (+1), 1024 na serwerze (+6), 97 u klienta (bez zmian) — zielone.
-ESLint, Prettier i `tsc --noEmit` czyste w trzech pakietach. Dziewięć umów kodu i cztery pułapki
-w indeksach niżej, cztery świadome odstępstwa w `decyzje-i-uproszczenia.md`.

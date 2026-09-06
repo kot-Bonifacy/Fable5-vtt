@@ -12,6 +12,7 @@ import type { InventoryMoveEntry } from './inventory.js';
 import type { HandoutLogEntry } from './handouts.js';
 import type { JournalLogEntry } from './journal.js';
 import type { TimeLogEntry } from './gametime.js';
+import type { RandomTableRollEntry } from './tables.js';
 
 /**
  * `action` is the public log of a spent combat action (stage 14b); `gmaction`
@@ -47,7 +48,18 @@ export type ChatKind =
   /** Skok zegara świata (etap 37) — „Minęła noc, 15 marca 2045". */
   | 'time'
   /** Przedmiot zmieniający kartę (etap 38b) — przekazanie albo łup. */
-  | 'inventory';
+  | 'inventory'
+  /** Wynik losowania z tabeli, pokazany całemu stołowi (etap 34). */
+  | 'rolltable'
+  /**
+   * Ten sam wynik, ale wyłącznie dla MG — rodzaj domyślny, bo losowanie
+   * fabularne zwykle wyprzedza to, co gracze mają zobaczyć. Rozdzielenie na
+   * dwa rodzaje, a nie flaga na jednym, jest wymuszone przez `visibleTo`
+   * w `realtime/chat-io.ts`: widoczność historii czatu rozstrzyga się **po
+   * rodzaju**, w zapytaniu do bazy — dokładnie tak, jak `roll`/`gmroll` od
+   * etapu 06 i `action`/`gmaction` od 14b.
+   */
+  | 'gmrolltable';
 
 /**
  * Powrót do zdrowia, jak zapisuje go czat (s. 222–223, s. 150).
@@ -320,6 +332,8 @@ export interface ChatMessageView {
   time?: TimeLogEntry;
   /** Przedmiot, który zmienił kartę — kind `inventory` only (etap 38b). */
   inventory?: InventoryMoveEntry;
+  /** Wynik losowania — kinds `rolltable` i `gmrolltable` only (etap 34). */
+  rolltable?: RandomTableRollEntry;
   /** ISO timestamp — always assigned by the server. */
   createdAt: string;
 }
@@ -339,9 +353,18 @@ export const GM_ROLL_ALIASES = ['gr', 'gmroll'];
 /** Aliases of „speak as this NPC" — GM only, no model involved. */
 export const AS_BOT_ALIASES = ['jako', 'as'];
 
+/**
+ * Aliasy losowania z tabeli (etap 34) — MG only.
+ *
+ * Cały argument jest nazwą tabeli, bez cudzysłowów i bez etykiety: „Spotkania
+ * dzienne w Night City" ma się dać wpisać tak, jak się nazywa. Rozstrzygnięcie
+ * nazwy na tabelę należy do serwera, jak przy każdym innym adresacie.
+ */
+export const RANDOM_TABLE_ALIASES = ['tab', 'tabela'];
+
 /** One-line help shown next to "unknown command" errors. */
 export const CHAT_COMMANDS_HELP =
-  'Dostępne komendy: /w <imię> <treść> (szept), /r <formuła> [etykieta] (rzut), /gr <formuła> (rzut widoczny dla MG), /jako <bot> <treść> (MG mówi jako NPC)';
+  'Dostępne komendy: /w <imię> <treść> (szept), /r <formuła> [etykieta] (rzut), /gr <formuła> (rzut widoczny dla MG), /jako <bot> <treść> (MG mówi jako NPC), /tab <nazwa> (losowanie z tabeli, MG)';
 
 export type ParsedChatInput =
   | { kind: 'empty' }
@@ -353,6 +376,9 @@ export type ParsedChatInput =
   /** GM speaks in a bot's name; `targetName` is the bot. */
   | { kind: 'as-bot'; targetName: string; text: string }
   | { kind: 'invalid-as-bot'; reason: 'MISSING_TARGET' | 'MISSING_TEXT' }
+  /** Losowanie z tabeli (etap 34); `tableName` rozstrzyga serwer. */
+  | { kind: 'rolltable'; tableName: string }
+  | { kind: 'invalid-rolltable'; reason: 'MISSING_TARGET' }
   | { kind: 'unknown-command'; command: string };
 
 /**
@@ -458,6 +484,11 @@ export function parseChatInput(raw: string, knownNames: string[] = []): ParsedCh
     return { kind: 'as-bot', targetName: split.targetName, text: split.text };
   }
 
+  if (RANDOM_TABLE_ALIASES.includes(command)) {
+    if (args.length === 0) return { kind: 'invalid-rolltable', reason: 'MISSING_TARGET' };
+    return { kind: 'rolltable', tableName: args };
+  }
+
   return { kind: 'unknown-command', command };
 }
 
@@ -502,6 +533,13 @@ export function chatCategoryOf(kind: ChatKind): ChatCategory {
     // Przekazanie i łup (38b) czyta się razem z pieniędzmi: to ta sama
     // rubryka „kto co ma", tyle że rzeczami zamiast eurodolcami.
     case 'inventory':
+      return 'table';
+    // Losowanie z tabeli (34) NIE jest w grupie „Rzuty", choć pada w nim kość:
+    // grupa dzieli wiersze po tym, po co się na nie patrzy, a na tę kartę
+    // patrzy się po treść wiersza — „kogo spotykacie" — nie po liczbę.
+    // Zgaszone „Rzuty" mają schować testy, a nie wyniki losowania fabularnego.
+    case 'rolltable':
+    case 'gmrolltable':
       return 'table';
   }
 }

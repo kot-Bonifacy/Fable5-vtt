@@ -34,6 +34,7 @@ export * from './scene-objects.js';
 export * from './scenes.js';
 export * from './screamsheets.js';
 export * from './smoke.js';
+export * from './tables.js';
 export * from './tokens.js';
 export * from './uploads.js';
 export * from './vision.js';

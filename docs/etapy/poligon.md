@@ -462,3 +462,19 @@ tylko-do-dopisywania, a historii czatu i tak się nie sprząta.
 **Przepis na powtórzenie tego układu** (gdy MG będzie chciał odklikać menu figury): karta bez
 właściciela z ekwipunkiem i `hpCurrent: 0`, figura gracza w promieniu 2 m — nic więcej nie trzeba,
 bo o wszystkim rozstrzyga `ownerId`, stan figury i odległość.
+
+## Oględziny 34 (06.09.2026) — dwie tabele testowe, które zostają
+
+Poligon ma od tej sesji **dwie tabele losowe** (zakładka MG „Tabele") i **zostają na stałe**, bo
+są najtańszym sposobem sprawdzenia podrzutu bez odtwarzania czegokolwiek:
+
+- **„Bronie uliczne"** (`1d10`, tylko MG) — 1–6 średni pistolet niskiej jakości, 7–10 rozpruwacze;
+- **„Łup z kieszeni"** (`1d10`, tylko MG) — 1–5 zmięte eddiesy, **6–10 „Broń przy ciele"
+  z podrzutem do „Broni ulicznych"**.
+
+Drugi wiersz „Łupu" jest całym testem zagnieżdżenia: jedno kliknięcie „Losuj" ma dać na czacie
+kartę z **dwoma** krokami. Do sprawdzenia widoczności wystarczy „Pokaż stołowi" przy dowolnej
+karcie — publiczna kopia ma być jedyną, którą `Tester` widzi po przeładowaniu.
+
+**Ślady zostawione świadomie:** kilka kart czatu rodzaju `gmrolltable` i jedna `rolltable`
+(pokazana stołowi). Czatu się nie sprząta.

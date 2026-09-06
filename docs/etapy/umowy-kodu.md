@@ -259,6 +259,48 @@ dokłada wiersz w `cpredHealRate`, nie mnożnik w wywołaniu. Warunek „po udan
 mieszka w `CpredCharacterData.recovery.stabilized` i **pisze go wyłącznie udane Ustabilizowanie**
 (`applyStabilization`) — na każdym progu ran, nie tylko przy zerze.
 
+**Tabela losowa nie dotyka kubka — i to jest cały etap 34.** `rollStore.ts` trzyma siedem pól
+(`pending`, `initiative`, `attack`, `evasion`, `grapple`, `facedown`, `creation`), a każdy
+`load…Cup` rozsypuje przed sobą `EMPTY_CUP`, czyli **czyści wszystkie pozostałe**. Gdyby „Losuj"
+ładowało kubek, MG straciłby wzięty do ręki rzut Percepcji NPC-a w chwili kliknięcia, a graczowi
+zdmuchnęłoby czekające wezwanie do Testu z 32. Dlatego losowanie jest **rzutem serwera**:
+`table:roll` z panelu i `/tab <nazwa>` przez `chat:send` — dokładnie tą samą drogą, którą od
+etapu 03 chodzi `/r 1d10` wysłane Enterem (bez gestu, `rollFormula` bierze zwykły RNG serwera,
+żaden slot nie jest zajęty). W drabince `CupMode` tryb `randtable` stoi na **tym samym szczeblu,
+co `roll`** — na samym dole, pod wezwaniem — więc nic nie traci pierwszeństwa. Reguła jest
+niewidoczna w kodzie (łamie ją dopiero **dopisanie** wywołania, którego dziś nie ma), dlatego
+pilnuje jej strażnik źródłowy `tables-cup.test.ts`: żaden plik tabel u klienta nie ma prawa
+wspomnieć o `rollStore`.
+
+**Rzut z tabeli idzie z `checkRule: false` i `plain: true`, i pada to w jednym miejscu.**
+`rollFormula` **wnioskuje** regułę Testu z formuły (`isCheckFormula`), a `1d10` jest formułą
+Testu w rozumieniu etapu 06 — bez jawnego wyłączenia dziesiątka rozsadza rzut dorzutem i tabela
+dziesięciowierszowa wypluwa jedenastki. `plain: true` jest drugą połową tej samej prawdy: karta
+czatu ma **nie malować** skrajnych oczek, bo dziesiątka znaczy „wiersz dziesiąty", a nie krytyk
+(ta sama umowa, co rzuty kreatora z 27d). Oba ustawienia siedzą w `rollRandomTable`
+(`shared/src/tables.ts`) i nowa droga do losowania ma iść przez tę funkcję, a nie obok niej.
+
+**Widoczność wyniku losowania to RODZAJ wiersza czatu, nie pole w payloadzie.** `visibleTo`
+w `realtime/chat-io.ts` filtruje **po `kind`, w zapytaniu do bazy**, więc jawny wynik zapisuje się
+jako `rolltable`, a cichy jako `gmrolltable` — wzorem `roll`/`gmroll` z etapu 06 i
+`action`/`gmaction` z 14b. Z tego samego powodu **„Pokaż stołowi" DOKŁADA publiczny wiersz**
+zamiast odsłaniać istniejący: wiersz raz zapisany jako `gmrolltable` nigdy nie wejdzie graczowi
+do historii, choćby doleciał rozgłoszeniem. Treść nowego wiersza czyta się **z zapisanej karty**,
+nie z żądania klienta (ta sama umowa, co obrażenia po ataku z 16 i wezwanie z 32), a stara karta
+dostaje `shown: true` przez `chat:update`, więc przycisk znika i drugie kliknięcie odbija się
+o `ALREADY_SHOWN`. Obie kategorie idą do grupy filtra **„Stół", nie „Rzuty"**: kość tam pada, ale
+patrzy się na treść wiersza, a zgaszone „Rzuty" mają schować testy, nie losowanie fabularne.
+
+**Zakresy i graf podrzutów sprawdza się przy ZAPISIE, na całej kampanii.** Pokrycie liczy
+`randomTableCoverageIssues` — **ta sama funkcja** w formularzu (podpowiedź po każdym znaku)
+i w handlerze (odmowa), więc oba mówią to samo zdanie; klient nie zgaduje, co się uda. Graf
+podrzutów sprawdza `randomTableNestingIssue` na **wszystkich** tabelach kampanii z tą jedną
+podmienioną, bo dopisanie podrzutu w „broni" potrafi przekroczyć limit „łupu", którego nikt
+w tej chwili nie edytuje — i odmowa musi paść tam, gdzie ktoś naprawdę klika zapis. Limit to
+`RANDOM_TABLE_NESTING_MAX` = 3; czwarty poziom zamieniłby jedno kliknięcie w cztery karty naraz.
+Losowanie ma **drugi** bezpiecznik w `rollRandomTable` (zbiór odwiedzonych plus licznik kroków),
+bo baza może nieść graf sprzed tej reguły — import wchodzi do niej z boku.
+
 **Nowy rodzaj wiersza czatu dopisuje się w PIĘCIU miejscach, nie w czterech (poprawka z 05.09).**
 Trzy pierwsze były w umowie od 01.09: dwie czyste funkcje w `shared/src/chat.ts`
 (`chatCategoryOf`, `chatCompactLine`), `toChatMessageView` po stronie serwera i jedna gałąź

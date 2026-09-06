@@ -255,3 +255,54 @@ pomijane, bo są raportem, nie danymi. Brak katalogu prywatnego nie jest błęde
 3. Nowe nazwy własne (typ broni, pancerz) dopisz w `terms.py`; bez wpisu w
    słowniku parser je pominie, zamiast zgadywać tłumaczenie.
 4. Przelej kroki 1–3 z góry i sprawdź oba raporty importu.
+
+## Tabele losowe (etap 34)
+
+Osobny, krótki pipeline — tabela losowa jest **danymi rdzenia VTT**, nie
+mechaniką CP RED, więc nie przechodzi przez kompendium ani przez `terms.py`.
+
+```bash
+# 1. podręcznik -> trzy tabele Spotkań Losowych (s. 417–421)
+python tools/import/parse-encounters.py
+
+# 2. podgląd bez zapisu: to samo sito, którym odmawia serwer
+pnpm --filter @vtt/server exec tsx ../../tools/import/import-tables.ts   --dir data/private/cpred/tables --dry-run
+
+# 3. wgranie do kampanii (nazwa albo id)
+pnpm --filter @vtt/server exec tsx ../../tools/import/import-tables.ts   --campaign "Poligon bojowy" --dir data/private/cpred/tables
+```
+
+Format pliku (przykład w repo: `data/public/cpred/tables/plotka-w-barze.json` —
+treść wymyślona, nie z podręcznika):
+
+```json
+{
+  "name": "Łup z kieszeni",
+  "formula": "1d10",
+  "description": "Co ma przy sobie przypadkowy ganger.",
+  "visibility": "gm",
+  "rows": [
+    { "min": 1, "max": 5, "text": "Zmięte eddiesy i karta do klubu." },
+    { "min": 6, "max": 10, "text": "Broń przy ciele", "subTable": "Bronie uliczne" }
+  ]
+}
+```
+
+Trzy rzeczy warte zapamiętania:
+
+- **Nazwa jest tożsamością.** Import nadpisuje tabelę o tej samej nazwie razem
+  z wierszami, więc poprawka w JSON-ie i ponowny przebieg dają jedną tabelę, nie
+  dwie. Ta sama nazwa jest adresem dla `/tab <nazwa>` w czacie.
+- **Podrzut podaje się nazwą** (`subTable`), nie identyfikatorem — pliki nie
+  znają id bazy. Importer wiąże je drugim przebiegiem, kiedy wszystkie tabele są
+  już wgrane, więc kolejność plików nie ma znaczenia.
+- **Zakresy muszą pokryć całą formułę.** `1d100` znaczy 1–100 bez dziur i bez
+  zachodzenia; walidacja jest ta sama (`validateRandomTable` z `@vtt/shared`),
+  której użyje edytor MG, więc plik odbija się w kroku 2, a nie przy stole.
+
+Parser nie zgaduje: znalezione dziury wypisuje i zostawia człowiekowi. Wyjątkiem
+jest lista `KNOWN_FIXES` w `parse-encounters.py` — errata polskiego wydania
+(dziś jedna pozycja: wiersze „(70–72) Drużyna Solo" i „(72–77) Cybergang"
+w tabeli wieczornej dzielą liczbę 72, więc pierwszy kończy się na 71). Poprawka
+mieszka w skrypcie, bo JSON jest wynikiem i kolejny przebieg skasowałby ją bez
+śladu.

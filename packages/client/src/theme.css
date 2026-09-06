@@ -131,6 +131,9 @@
   --neutral-rgb: 127 127 127;
   /* Element uzbrojony, czekający na kliknięcie w mapę. */
   --armed: #facc15;
+  /* Losowanie z tabeli (etap 34) — cudzy los, nie czyjaś decyzja: turkus
+     odróżnia kartę i od zegara (niebieski), i od walki (czerwień). */
+  --fate: #4bc3c0;
 
   /* ===== Cienie ===== */
 
@@ -218,6 +221,7 @@
   --info: #2554a3;
   --neutral-rgb: 110 100 88;
   --armed: #8f6600;
+  --fate: #0f6b68;
   --whisper-rgb: 107 63 160;
   --hurt-light: #6f7412;
 

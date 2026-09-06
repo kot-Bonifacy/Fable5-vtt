@@ -4907,6 +4907,142 @@ body.is-resizing {
   color: var(--text-dim);
 }
 
+/* Tabele losowe (etap 34).
+
+   Karta ma fioletową krawędź — ani zielona przerwa (odpoczynek), ani niebieski
+   zegar, ani czerwona walka: losowanie fabularne jest osobną rubryką stołu.
+   Kości są tu celowo nieomalowane (`plain`): dziesiątka znaczy „wiersz
+   dziesiąty", a nie krytyk. */
+
+.chat-table {
+  border-left: 3px solid var(--fate);
+  padding-left: 0.5rem;
+}
+
+.chat-table--secret {
+  border-left-style: dashed;
+}
+
+.chat-table-steps {
+  list-style: none;
+  margin: 0.15rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.chat-table-step {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+}
+
+.chat-table-sub {
+  flex: 0 0 100%;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.chat-table-dice {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  flex: none;
+}
+
+.chat-table-value {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-weight: 700;
+  color: var(--fate);
+}
+
+.chat-table-text {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
+.chat-table-text--missing {
+  color: var(--warn);
+}
+
+.chat-table-shown {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+/* Zakładka „Tabele" — wiersze edytora są siatką „od–do · treść · podrzut". */
+
+.table-rows-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  margin-top: 0.3rem;
+}
+
+.table-rows {
+  list-style: none;
+  margin: 0.2rem 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.table-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.25rem;
+}
+
+.table-row-num {
+  width: 3.4rem;
+  flex: none;
+}
+
+.table-row-dash {
+  align-self: center;
+  color: var(--text-dim);
+}
+
+.table-row-text {
+  flex: 1 1 6rem;
+  min-width: 0;
+  resize: vertical;
+}
+
+/* Wiersz podręcznikowej tabeli bywa akapitem na 1 400 znaków, a lista dwustu
+   takich pól nie zmieściłaby się na ekranie. Kompromis: jedna linia w spoczynku,
+   pełne okno pod kursorem — bez zmiany wysokości sąsiadów. */
+.table-row-text:focus {
+  min-height: 7rem;
+}
+
+.table-row-sub {
+  flex: 0 1 8rem;
+  min-width: 0;
+}
+
+.table-issues {
+  list-style: none;
+  margin: 0.3rem 0 0;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--warn);
+  border-radius: 4px;
+  color: var(--warn);
+  font-size: 0.78rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.table-roll {
+  font-weight: 600;
+}
+
 .chat-action-body {
   display: flex;
   align-items: center;
