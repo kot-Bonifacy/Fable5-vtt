@@ -50,6 +50,7 @@ import { useCompendiumStore } from '../stores/compendiumStore.js';
 import { AttackLauncher } from './AttackLauncher.js';
 import { FacedownLauncher } from './FacedownLauncher.js';
 import type { TokenMenuState } from './MapArea.js';
+import { NumberStepper } from './NumberStepper.js';
 
 const MENU_WIDTH = 240;
 
@@ -127,53 +128,49 @@ function StatistProfileFields({
     <>
       <div className="scene-editor-row">
         {statFields.map((field) => (
-          <label key={field.key} className="auth-label" title={`Cecha ${field.label}`}>
+          <span key={field.key} className="auth-label" title={`Cecha ${field.label}`}>
             {field.label}
-            <input
-              type="number"
-              className="scene-number-input"
+            <NumberStepper
               min={CPRED_STAT_MIN}
               max={CPRED_STAT_MAX}
               value={profile[field.key]}
-              onChange={(e) => set(field.key, Number(e.target.value))}
+              onChange={(value) => set(field.key, value)}
+              label={`Cecha ${field.label}`}
             />
-          </label>
+          </span>
         ))}
       </div>
       <div className="scene-editor-row">
-        <label className="auth-label" title="Poziom umiejętności, którą strzela ta broń">
+        <span className="auth-label" title="Poziom umiejętności, którą strzela ta broń">
           Umiejętność
-          <input
-            type="number"
-            className="scene-number-input"
+          <NumberStepper
             min={0}
-            max={10}
+            max={SKILL_LEVEL_MAX}
             value={profile.skillLevel}
-            onChange={(e) => set('skillLevel', Number(e.target.value))}
+            onChange={(value) => set('skillLevel', value)}
+            label="Poziom umiejętności broni"
           />
-        </label>
-        <label className="auth-label" title="Poziom Uniku — z niego liczy się PT obrony statysty">
+        </span>
+        <span className="auth-label" title="Poziom Uniku — z niego liczy się PT obrony statysty">
           Unik
-          <input
-            type="number"
-            className="scene-number-input"
+          <NumberStepper
             min={0}
-            max={10}
+            max={SKILL_LEVEL_MAX}
             value={profile.evasion}
-            onChange={(e) => set('evasion', Number(e.target.value))}
+            onChange={(value) => set('evasion', value)}
+            label="Poziom Uniku"
           />
-        </label>
-        <label className="auth-label" title="OB pancerza; schodzi automatycznie przy trafieniu">
+        </span>
+        <span className="auth-label" title="OB pancerza; schodzi automatycznie przy trafieniu">
           Pancerz OB
-          <input
-            type="number"
-            className="scene-number-input"
+          <NumberStepper
             min={0}
             max={ARMOR_SP_MAX}
             value={profile.armorSp}
-            onChange={(e) => set('armorSp', Number(e.target.value))}
+            onChange={(value) => set('armorSp', value)}
+            label="OB pancerza statysty"
           />
-        </label>
+        </span>
       </div>
       {/*
         Wartość bojowa (s. 158) — jedna liczba zamiast Cech i Umiejętności.
@@ -192,14 +189,12 @@ function StatistProfileFields({
       </label>
       {profile.combatValue !== null && (
         <div className="scene-editor-row">
-          <input
-            type="number"
-            className="scene-number-input"
+          <NumberStepper
             min={0}
             max={CPRED_COMBAT_VALUE_MAX}
             value={profile.combatValue}
-            aria-label="Wartość bojowa"
-            onChange={(e) => set('combatValue', Number(e.target.value))}
+            onChange={(value) => set('combatValue', value)}
+            label="Wartość bojowa"
           />
           <span className="auth-hint">
             Atak i obrona jedną liczbą, z Cechą już w środku (s. 158). Tak liczą się funkcjonariusze
@@ -232,17 +227,16 @@ function StatistProfileFields({
         ))}
       </select>
       <div className="scene-editor-row">
-        <label className="auth-label" title="Naboje w magazynku">
+        <span className="auth-label" title="Naboje w magazynku">
           Amunicja
-          <input
-            type="number"
-            className="scene-number-input"
+          <NumberStepper
             min={0}
             max={profile.ammoMax}
-            value={profile.ammoCurrent}
-            onChange={(e) => set('ammoCurrent', Number(e.target.value))}
+            value={Math.min(profile.ammoCurrent, profile.ammoMax)}
+            onChange={(value) => set('ammoCurrent', value)}
+            label="Naboje w magazynku statysty"
           />
-        </label>
+        </span>
         <span className="auth-hint">z {profile.ammoMax}</span>
       </div>
       <StatistSkillFields profile={profile} onChange={onChange} />
@@ -300,15 +294,12 @@ function StatistSkillFields({
       {rows.map((row) => (
         <div key={row.id} className="scene-editor-row">
           <span className="auth-hint">{row.name}</span>
-          <input
-            type="number"
-            className="scene-number-input"
+          <NumberStepper
             min={0}
             max={SKILL_LEVEL_MAX}
             value={row.level}
-            aria-label={`Poziom: ${row.name}`}
-            onChange={(e) => {
-              const level = Number(e.target.value);
+            label={`Poziom: ${row.name}`}
+            onChange={(level) => {
               const next = { ...skills };
               if (level > 0) next[row.id] = level;
               else delete next[row.id];

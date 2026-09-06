@@ -16,6 +16,7 @@ import { callCheck, checkCallErrorText } from '../socket.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useChatStore } from '../stores/chatStore.js';
 import { useCheckStore, type CheckCallDraft } from '../stores/checkStore.js';
+import { NumberStepper, signed } from './NumberStepper.js';
 
 /**
  * „Wezwij do Testu" (etap 32) — okno MG, w którym powstaje wezwanie.
@@ -215,72 +216,39 @@ function CheckCallDialogBody({ draft }: { draft: CheckCallDraft }) {
                 </button>
               ))}
             </div>
-            <label className="auth-label" htmlFor="check-dv">
-              PT (własna liczba)
-            </label>
-            <input
-              id="check-dv"
-              type="number"
+            <span className="auth-label">PT (własna liczba)</span>
+            <NumberStepper
               min={CHECK_CALL_DV_MIN}
               max={CHECK_CALL_DV_MAX}
               value={dv}
-              onChange={(e) => {
-                const value = Number(e.target.value);
-                if (Number.isFinite(value)) {
-                  setDv(
-                    Math.max(CHECK_CALL_DV_MIN, Math.min(CHECK_CALL_DV_MAX, Math.round(value))),
-                  );
-                }
-              }}
+              onChange={setDv}
+              label="PT (własna liczba)"
             />
           </>
         ) : (
           <>
-            <label className="auth-label" htmlFor="check-opponent">
+            <span className="auth-label">
               Druga strona: Cecha + Umiejętność (1k10 dorzuci serwer)
-            </label>
-            <input
-              id="check-opponent"
-              type="number"
+            </span>
+            <NumberStepper
               min={CHECK_CALL_OPPONENT_MIN}
               max={CHECK_CALL_OPPONENT_MAX}
               value={opponentBonus}
-              onChange={(e) => {
-                const value = Number(e.target.value);
-                if (Number.isFinite(value)) {
-                  setOpponentBonus(
-                    Math.max(
-                      CHECK_CALL_OPPONENT_MIN,
-                      Math.min(CHECK_CALL_OPPONENT_MAX, Math.round(value)),
-                    ),
-                  );
-                }
-              }}
+              onChange={setOpponentBonus}
+              label="Druga strona: Cecha + Umiejętność"
             />
             <p className="roll-dialog-hint">Remis wygrywa druga strona (s. 130).</p>
           </>
         )}
 
-        <label className="auth-label" htmlFor="check-modifier">
-          Modyfikator sytuacyjny
-        </label>
-        <input
-          id="check-modifier"
-          type="number"
+        <span className="auth-label">Modyfikator sytuacyjny</span>
+        <NumberStepper
           min={-CPRED_SITUATIONAL_MODIFIER_LIMIT}
           max={CPRED_SITUATIONAL_MODIFIER_LIMIT}
           value={modifier}
-          onChange={(e) => {
-            const value = Number(e.target.value);
-            if (Number.isFinite(value)) {
-              setModifier(
-                Math.max(
-                  -CPRED_SITUATIONAL_MODIFIER_LIMIT,
-                  Math.min(CPRED_SITUATIONAL_MODIFIER_LIMIT, Math.round(value)),
-                ),
-              );
-            }
-          }}
+          onChange={setModifier}
+          format={signed}
+          label="Modyfikator sytuacyjny"
         />
 
         <label className="auth-label" htmlFor="check-prompt">

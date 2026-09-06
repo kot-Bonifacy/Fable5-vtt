@@ -1407,6 +1407,96 @@ button:disabled {
   text-align: center;
 }
 
+/* ===== Przełącznik liczbowy (06.09) =====
+
+   Liczba jako napis plus dwie strzałki w pionie tuż przy niej, obie razem
+   wysokie na jeden wiersz. Decyzja MG: wartości, które w tym systemie mieszczą
+   się w dwóch cyfrach, zmienia się klikaniem, a nie wpisywaniem — dotyczy karty
+   postaci i **okien gry** (rzut, wezwanie, obrażenia, statysta, netrun).
+   Wpisywane zostają liczby, które naprawdę bywają większe: PD, ceny w ed,
+   zasięgi w metrach, wymiary scen i zakresy tabel.
+
+   Skóra jest tutaj **polem aplikacji** (ramka, tło, promień), bo tak wygląda
+   każde inne pole w oknach; karta postaci spłaszcza ją u siebie w `sheet.css`. */
+.cp-step {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 0.15rem;
+  vertical-align: middle;
+  padding: 0.3rem 0.4rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 0.85rem;
+  line-height: 1.15;
+  cursor: default;
+}
+
+.cp-step:focus-visible {
+  outline: 1px solid var(--accent);
+}
+
+.cp-step-value {
+  min-width: 1.4rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Kolumna strzałek rozciąga się na wysokość wiersza z liczbą (`stretch` wyżej),
+   więc obie razem są tak wysokie jak ona — i tylko tyle. */
+.cp-step-arrows {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  width: 0.7rem;
+}
+
+/* `color: inherit` i sama przezroczystość zamiast własnego tła: ten sam guzik
+   siedzi na papierze karty, na czerwonej plakietce rangi i w polu okna. */
+.cp-step-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 50%;
+  min-height: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  color: inherit;
+  opacity: 0.5;
+  font-size: 0.45rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cp-step-arrow:hover:not(:disabled) {
+  opacity: 1;
+}
+
+/* Strzałka przy krańcu zakresu ma zostać widoczna jako strzałka: para, w której
+   jedna połowa znika zupełnie, czyta się jak pojedynczy dziwny znaczek. */
+.cp-step-arrow:disabled {
+  opacity: 0.22;
+  cursor: default;
+}
+
+/* Bez strzałek — liczbę widać, ale zmienia ją co innego (poziom kupowany PD). */
+.cp-step--locked {
+  color: var(--text-dim);
+}
+
+/* W kolumnie okna (`.dialog`, `.bot-field`) pole rozciąga się na całą szerokość
+   — przełącznik nie ma po co: dwie cyfry i dwie strzałki mają stałą, małą
+   szerokość, a rozciągnięty zostawiał liczbę samą przy lewej krawędzi pustego
+   prostokąta. W wierszu (`.scene-editor-row`) `align-self` sterowałby pionem,
+   więc tam go świadomie nie ma. */
+.dialog > .cp-step,
+.bot-field > .cp-step {
+  align-self: flex-start;
+}
+
 input[type='color'] {
   width: 2.4rem;
   height: 1.8rem;

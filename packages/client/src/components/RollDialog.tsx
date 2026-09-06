@@ -14,6 +14,7 @@ import {
 import { useAuthStore } from '../stores/authStore.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { askForCheck } from '../stores/checkStore.js';
+import { NumberStepper, signed } from './NumberStepper.js';
 import {
   useRollStore,
   type PendingRoll,
@@ -208,26 +209,21 @@ function RollDialogBody({ target }: { target: RollTarget }) {
 
         {!call && (
           <>
-            <label className="auth-label" htmlFor="roll-modifier">
+            <span className="auth-label">
               {isDamage ? 'Modyfikator obrażeń' : 'Modyfikator sytuacyjny'}
-            </label>
-            <input
-              id="roll-modifier"
-              type="number"
+            </span>
+            <NumberStepper
               min={-CPRED_SITUATIONAL_MODIFIER_LIMIT}
               max={CPRED_SITUATIONAL_MODIFIER_LIMIT}
               value={modifier}
-              onChange={(e) => {
-                const value = Number(e.target.value);
-                if (Number.isFinite(value)) {
-                  setModifier(
-                    Math.max(
-                      -CPRED_SITUATIONAL_MODIFIER_LIMIT,
-                      Math.min(CPRED_SITUATIONAL_MODIFIER_LIMIT, Math.round(value)),
-                    ),
-                  );
-                }
-              }}
+              onChange={setModifier}
+              format={signed}
+              label={isDamage ? 'Modyfikator obrażeń' : 'Modyfikator sytuacyjny'}
+              {...(mayAsk
+                ? {
+                    title: 'Do własnego rzutu. Z prośbą do MG nie jedzie — modyfikator ustala on.',
+                  }
+                : {})}
             />
           </>
         )}
@@ -235,22 +231,14 @@ function RollDialogBody({ target }: { target: RollTarget }) {
         {/* Luck buys successes on Checks, never damage (RAW). */}
         {!isDamage && (
           <>
-            <label className="auth-label" htmlFor="roll-luck">
-              Punkty Szczęścia (pula: {luckMax})
-            </label>
-            <input
-              id="roll-luck"
-              type="number"
+            <span className="auth-label">Punkty Szczęścia (pula: {luckMax})</span>
+            <NumberStepper
               min={0}
               max={luckMax}
               value={luckSpent}
-              disabled={luckMax === 0}
-              onChange={(e) => {
-                const value = Number(e.target.value);
-                if (Number.isFinite(value)) {
-                  setLuckSpent(Math.max(0, Math.min(luckMax, Math.round(value))));
-                }
-              }}
+              readOnly={luckMax === 0}
+              onChange={setLuckSpent}
+              label="Punkty Szczęścia"
               title="Deklarowane przed rzutem — każdy punkt to +1 do wyniku"
             />
 

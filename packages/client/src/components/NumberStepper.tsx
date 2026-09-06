@@ -1,26 +1,42 @@
 import { useCallback, useEffect, useRef, type KeyboardEvent } from 'react';
 
 /**
- * Liczba na karcie postaci ze strzałkami zamiast pola do wpisywania
- * (decyzja MG z 06.09.2026).
+ * Liczba ze strzałkami zamiast pola do wpisywania (decyzja MG z 06.09.2026).
  *
- * Karta jest **grana**, a nie wypełniana: Punkty Wytrzymałości spadają o kilka,
- * amunicja o jeden, OB o jeden przy każdym przebiciu. Wpisywanie znaczyło
- * zaznacz–skasuj–wpisz przy każdej takiej zmianie, a przy okazji wpuszczało na
- * kartę wszystko, co da się wystukać — pole `type="number"` przyjmuje „7e3"
- * i puste, i trzeba było to sprzątać przy każdym `onChange` osobno. Tu wartość
- * jest napisem, a jedyną drogą do jej zmiany są dwie strzałki, więc nie ma stanu
+ * Karta postaci jest **grana**, a nie wypełniana: PW spadają o kilka, amunicja
+ * o jeden, OB o jeden przy każdym przebiciu. Wpisywanie znaczyło
+ * zaznacz–skasuj–wpisz przy każdej takiej zmianie, a przy okazji wpuszczało
+ * wszystko, co da się wystukać — pole `type="number"` przyjmuje „7e3" i puste,
+ * i trzeba było to sprzątać przy każdym `onChange` osobno. Tu wartość jest
+ * napisem, a jedyną drogą do jej zmiany są dwie strzałki, więc nie ma stanu
  * pośredniego do sprzątania: zakres pilnuje sam przełącznik.
+ *
+ * Ten sam przełącznik stoi w **oknach gry** (rzut, wezwanie MG, statysta
+ * z menu tokena, wirus w netrunie), bo to te same liczby: modyfikator,
+ * Szczęście, PT, Cechy, OB. Skórę bierze z kontekstu — w oknie jest polem
+ * z ramką, na karcie płaskim napisem (`styles.css` + `sheet.css`).
+ *
+ * **Czego nie zamienia:** liczb, które w tym systemie potrafią przekroczyć 99
+ * (PD, ILOŚĆ w wyposażeniu, eurodolce, ceny i zasięgi w kompendium, PW tokenu)
+ * oraz pól, w których **puste znaczy coś innego niż zero** — OB celu bez karty
+ * („puste = z karty"), inicjatywa akcji przygotowanej, pięter i odgałęzień
+ * sieci („puste = losuje serwer"), sztuk w ekwipunku („puste = wszystkie").
+ * Przełącznik zawsze ma liczbę, więc odebrałby im ten stan.
  *
  * Strzałki stoją **w pionie, tuż na prawo od liczby**, i obie razem są wysokie
  * na jeden wiersz — wersja pozioma (`− 7 +`) rozpychała komórki tabel o dwa
- * guziki na każdą liczbę, a tabel na karcie jest pięć.
- *
- * **Przytrzymanie powtarza**, bo bez wpisywania OB 18 to osiemnaście kliknięć.
- * Pola, które naprawdę potrafią przekroczyć 99 — Punkty Doświadczenia, ILOŚĆ
- * w wyposażeniu i eurodolce — zostają zwykłymi polami; klikanie ich po jednym
- * nie miałoby sensu (ta sama decyzja MG).
+ * guziki na każdą liczbę, a tabel na karcie jest pięć. **Przytrzymanie
+ * powtarza**, bo bez wpisywania OB 18 to osiemnaście kliknięć.
  */
+
+/**
+ * Modyfikator czyta się ze znakiem, i to z **prawdziwym** minusem: „−2", a nie
+ * „-2". Zero zostaje zerem — „+0" wygląda jak niedokończone.
+ */
+export function signed(value: number): string {
+  if (value === 0) return '0';
+  return value > 0 ? `+${value}` : `−${Math.abs(value)}`;
+}
 
 /** Ile czekać przed powtarzaniem i jak szybko potem powtarzać. */
 const HOLD_DELAY_MS = 400;

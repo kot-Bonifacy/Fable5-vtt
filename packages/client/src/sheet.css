@@ -296,76 +296,42 @@
   margin: 0;
 }
 
-/* ===== Przełącznik liczbowy — strzałki zamiast wpisywania (06.09) =====
+/* ===== Przełącznik liczbowy na karcie (06.09) =====
 
-   Decyzja MG: karta jest **grana**, a nie wypełniana, więc liczby zmienia się
-   klikaniem. Strzałki stoją w pionie tuż na prawo od liczby i obie razem mają
-   dokładnie jej wysokość — wersja pozioma („− 7 +") rozpychałaby komórki
-   o dwa guziki na każdą liczbę, a tabel na karcie jest pięć.
-
-   Wpisywane zostają wyłącznie pola, które naprawdę potrafią przekroczyć 99:
-   Punkty Doświadczenia (do 99 999), ILOŚĆ w wyposażeniu i eurodolce. */
-.cp-step {
-  display: inline-flex;
-  align-items: stretch;
+   Część wspólna — układ wartości i kolumny strzałek — siedzi w `styles.css`,
+   bo ten sam przełącznik stoi w oknie rzutu, w menu statysty i w netrunie.
+   Tutaj zostaje **skóra wydruku**: pole na karcie nie ma ramki, bo ramką jest
+   samo pole (ta sama reguła, co dla `.cp-field input` wyżej). */
+.sheet-window .cp-step {
+  padding: 0;
   gap: 0.08rem;
-  line-height: 1.15;
-  vertical-align: middle;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  color: inherit;
+  font: inherit;
 }
 
-.cp-step:focus-visible {
+.sheet-window .cp-step:focus-visible {
   outline: none;
   background: var(--cp-focus);
 }
 
-.cp-step-value {
+.sheet-window .cp-step-value {
   min-width: 1.05rem;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
 }
 
-/* Kolumna strzałek rozciąga się na wysokość wiersza z liczbą (`stretch` wyżej),
-   więc obie razem są tak wysokie jak ona — i tylko tyle. */
-.cp-step-arrows {
-  display: flex;
-  flex-direction: column;
-  flex: none;
+.sheet-window .cp-step-arrows {
   width: 0.6rem;
 }
 
-/* `color: inherit` i sama przezroczystość zamiast własnego tła: ten sam guzik
-   siedzi na papierze pola, na czerwonej plakietce rangi i w komórce tabeli. */
-.cp-step-arrow {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 1 1 50%;
-  min-height: 0;
-  padding: 0;
-  border: none;
-  border-radius: 0;
-  background: none;
-  color: inherit;
-  opacity: 0.5;
+.sheet-window .cp-step-arrow {
   font-size: 0.4rem;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.cp-step-arrow:hover:not(:disabled) {
-  opacity: 1;
-}
-
-/* Strzałka przy krańcu zakresu ma zostać widoczna jako strzałka: para, w której
-   jedna połowa znika zupełnie, czyta się jak pojedynczy dziwny znaczek. */
-.cp-step-arrow:disabled {
-  opacity: 0.22;
-  cursor: default;
 }
 
 /* Bez strzałek: liczbę widać, ale kupuje się ją PD (poziom Umiejętności, ranga
    Zdolności) albo pisze ją serwer — u gracza zostaje sam napis. */
-.cp-step--locked {
+.sheet-window .cp-step--locked {
   color: var(--cp-ink-dim);
 }
 

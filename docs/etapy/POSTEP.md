@@ -140,10 +140,18 @@ i BAZA liczyły się **bez efektów czasowych z 39**. Wszystko naprawione; szcze
 Zdolności, magazynek, OB (bieżące i pełne), karę pancerza, gniazda dekera, poziom Reputacji oraz
 dwa pola w panelach Ról. **Wpisywane zostają cztery**: Punkty Doświadczenia (do 99 999),
 Człowieczeństwo (100), ILOŚĆ w wyposażeniu (999) i eurodolce — strzałki mają sens do dwóch cyfr.
-Pole `readOnly` (poziom i ranga u gracza) pokazuje **samą liczbę bez strzałek**. Przy okazji
-naprawiona usterka z 40: przycisk „Poproś MG” w oknie rzutu **nie gasił tego okna**, więc po
-wysłaniu prośby wracał pod nim guzik „Weź kubek” — gracz nie wiedział, czy zgodę dostał. Prośba
-o Test i wezwanie mają **31 testów serwerowych** i sześć klienckich; szczegóły w notatce sesji.
+Pole `readOnly` (poziom i ranga u gracza) pokazuje **samą liczbę bez strzałek**. Ta sama reguła
+weszła do **okien gry**: okno rzutu (modyfikator, Szczęście), okno wezwania MG (PT, przeciwnik,
+modyfikator), statysta z menu tokena (11 pól) i wirus w netrunie. Przełącznik bierze skórę
+z kontekstu — pole z ramką w oknie, płaski napis na karcie. **Drugi wyjątek, obok liczb >99:
+pola, w których puste znaczy coś innego niż zero** (OB celu „puste = z karty", inicjatywa,
+generator sieci „puste = losuje serwer", sztuk w ekwipunku) — przełącznik zawsze ma liczbę,
+więc odebrałby im ten stan.
+
+Przy okazji naprawiona usterka z 40: przycisk „Poproś MG” w oknie rzutu **nie gasił tego okna**,
+więc po wysłaniu prośby wracał pod nim guzik „Weź kubek” — gracz nie wiedział, czy zgodę dostał.
+Prośba o Test i wezwanie mają **31 testów serwerowych** i sześć klienckich; szczegóły w notatce
+sesji.
 
 **MG może od 06.09 powiedzieć „losuj, co się dzieje" — do etapu 34 tabela losowa nie istniała
 w żadnej postaci.** Tabela jest **rdzeniem VTT, nie mechaniką CP RED**: `shared/src/tables.ts`
@@ -337,7 +345,7 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 - **Prawo do prośby czytaj z bazy, nie z karty czatu** — `askedById` służy do rysowania; `check:request` sprawdza `character.ownerId`, a `check:request-cancel` — `authorId` zapisanej wiadomości. Postaci, której już nie ma, odpowiada **odmowa ze śladem na karcie**, nie cisza.
 - **Kubek nie woła na prośbę, i rozstrzyga to RODZAJ wiersza** — `openCheckCallFor` pomija `kind !== 'check'` wprost; przy prośbie progu jeszcze nie ma. Strażnik źródłowy: `check-request-cup.test.ts`.
 - **Okno otwierane znad karty postaci potrzebuje `z-index: 400`** — dopisz jego klasę do listy `.dialog-backdrop:has(…)` obok `.roll-dialog`; `.sheet-window` ma 300, a backdrop 50.
-- **Liczbę na karcie postaci zmienia się strzałkami, nie wpisywaniem** — nowe pole liczbowe to `NumberStepper` (wartość jako napis, strzałki w pionie przy niej, przytrzymanie powtarza). Wpisywane zostają tylko PD, Człowieczeństwo, ILOŚĆ i eurodolce; `readOnly` pokazuje samą liczbę bez strzałek.
+- **Liczbę na karcie i w oknach gry zmienia się strzałkami, nie wpisywaniem** — `NumberStepper` (wartość jako napis, strzałki w pionie przy niej, przytrzymanie powtarza); skóra z kontekstu: pole z ramką w oknie, płaski napis na karcie. Wpisywane zostają liczby >99 (PD, ILOŚĆ, PW tokenu, eurodolce, edytory) **oraz pola, w których puste znaczy coś innego niż zero** (OB celu, inicjatywa, generator sieci, sztuk w ekwipunku).
 - **Prośba o Test zamyka okno rzutu — naraz stoi jedno okno** — `askForCheck` gasi `rollStore` przed otwarciem prośby, w jednym miejscu dla obu wejść. Strażnik: `check-request-dialogs.test.ts`.
 - **Nowy panel Zdolności Roli dopisuje się do `ROLE_ABILITY_PANEL_IDS`** — pas „Zdolność Specjalna” idzie przez całą szerokość siatki strony pierwszej (`grid-column: 1 / -1`), jak „Broń i pancerz”; w kolumnie tożsamości (15 rem, nierozciągalna) panele stać nie mogą.
 - **Losowanie z tabeli nie dotyka `rollStore`** — „Losuj” i `/tab` idą przez `table:roll`/`chat:send`, jak `/r` od etapu 03; kubek ma jeden slot i każdy `load…Cup` czyści resztę. Pilnuje tego strażnik źródłowy `tables-cup.test.ts`.
@@ -710,6 +718,29 @@ tiki z rzędu policzyłyby tę samą wartość i przytrzymanie stanęłoby w mie
 przezroczysty i dziedziczy kolor (`color: inherit`), bo ten sam siedzi na papierze pola, na
 czerwonej plakietce rangi i w komórce tabeli.
 
+**Zlecenie wróciło jeszcze raz i rozszerzyło zakres: strzałki weszły do okien gry.** MG zgłosił,
+że w oknie, z którego prosi się o Test, pól ze strzałkami nie ma — chodziło o **okno rzutu**
+(samo okno prośby ma tylko pole na zdanie „po co"). Przy okazji potwierdził umowę: modyfikator
+i widoczność wpisane w oknie rzutu **nie jadą z prośbą** i tak ma zostać, bo to decyzje MG.
+Zamienione zostały: okno rzutu (modyfikator ze znakiem, Szczęście), okno wezwania MG (PT,
+przeciwnik, modyfikator), statysta z menu tokena (Cechy, poziom broni, Unik, OB, Wartość bojowa,
+amunicja, poziomy Umiejętności — 11 pól) i wirus w netrunie (PT, Akcji Sieciowych) — razem 18.
+
+**Sześciu pól świadomie NIE zamieniłem i to jest odkrycie tej rundy: w części z nich puste
+znaczy coś innego niż zero.** OB celu w oknie obrażeń („puste = OB z karty postaci", a 0 to
+„bez pancerza"), inicjatywa akcji przygotowanej („puste = czeka na zdarzenie"), piętra
+i odgałęzienia generatora sieci („puste = losuje serwer 3k6"), sztuki i gotówka w ekwipunku
+(„puste = wszystkie"). Przełącznik zawsze ma liczbę, więc odebrałby im ten stan. Do tego PW
+tokenu (limit 999) i PD do przyznania (−1000..+1000) zostają polami na mocy tej samej reguły
+dwóch cyfr. Skóra przełącznika rozdzieliła się na dwie: baza w `styles.css` rysuje **pole
+z ramką** (tak wygląda każde inne pole w oknach), a `.sheet-window .cp-step` spłaszcza je do
+napisu — dokładnie tak, jak `.cp-field input` spłaszcza pola na karcie od 27a.
+
+**Wpisany modyfikator gracza znika bez ostrzeżenia** — gracz może wystukać „+3", kliknąć „Poproś
+MG" i ta liczba przepada, bo prośba jej nie niesie. Zachowanie jest poprawne i MG je potwierdził,
+więc zostaje, ale przełącznik dostał u gracza `title`: „Do własnego rzutu. Z prośbą do MG nie
+jedzie — modyfikator ustala on."
+
 **Oględziny w przeglądarce** (sesja gracza `Tony` na `localhost`) potwierdziły naprawę: „Poproś
 MG" **gasi okno rzutu**, po „Wyślij prośbę" na ekranie nie zostaje nic, a prośba dochodzi na
 czat i daje się wycofać. Strzałki działają na wszystkich czterech zakładkach, magazynek zszedł
@@ -717,6 +748,13 @@ z 30 na 25 i wrócił na 30, zatrzymując się na maksimum. Druga sesja gracza (
 potwierdziła, że **cudzej prośby nie widać**. Strony MG **nie sprawdzałem w przeglądarce** —
 zalogowanie się na konto MG wymagałoby wpisania hasła, czego nie robię; zgodę, odmowę i „Ustaw…"
 pokrywa 31 testów serwerowych.
+
+**Oględziny drugiej rundy poszły z konta MG** (`localhost` przelogowany na MG): poziomy
+Umiejętności na karcie Franka mają strzałki i mieszczą się w wąskiej kolumnie POZ., okno rzutu
+liczy modyfikator ze znakiem („+1") i podgląd rzutu od razu pokazuje „1k10 + 6", okno wezwania
+stawia PT i modyfikator obok drabinki, a edytor tokenu wieżyczki ma strzałki przy Cechach,
+Umiejętności, Uniku, OB i amunicji — przy „Pasku HP" i „Zasięgu widzenia" zostały pola, bo tam
+liczby bywają trzycyfrowe.
 
 **Testy:** 1941 w `shared`, **1071** na serwerze (+9), **110** u klienta (+6) — zielone. ESLint,
 Prettier i `tsc --noEmit` czyste w trzech pakietach; konsola przeglądarki bez błędów. Dwie umowy

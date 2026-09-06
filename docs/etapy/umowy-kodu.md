@@ -1406,12 +1406,29 @@ znaczyło zaznacz–skasuj–wpisz. Przy okazji znika cała klasa sprzątania: p
 przyjmuje puste i „7e3", więc każdy `onChange` miał własny `parseNumberInput` i własne klamry;
 przełącznik pilnuje zakresu sam i nie ma stanu pośredniego.
 
-**Wyjątki są trzy i wynikają z jednego progu: dwie cyfry.** Wpisywanymi polami zostają **Punkty
-Doświadczenia** (do 99 999), **Człowieczeństwo** (EMP 10 × 10 = 100) i **ILOŚĆ** w wyposażeniu
-(do 999) — klikanie ich po jednym nie miałoby sensu. Czwartym wyjątkiem są **eurodolce**,
-wyłączone ze zlecenia wprost. Pole tylko do odczytu (poziom Umiejętności i ranga Zdolności
-u gracza — kupuje się je PD) dostaje `readOnly` i pokazuje **samą liczbę bez strzałek**;
-pole, w które klik nic nie robi, jest gorsze niż napis.
+**Ta sama reguła obowiązuje w oknach gry (rozszerzone 06.09 na prośbę MG):** okno rzutu
+(modyfikator, Szczęście), okno wezwania MG (PT, przeciwnik, modyfikator), statysta z menu tokena
+(Cechy, poziom broni, Unik, OB, Wartość bojowa, amunicja, poziomy Umiejętności) i wirus
+w netrunie (PT, Akcji Sieciowych). Skórę przełącznik bierze z kontekstu: baza w `styles.css`
+rysuje **pole z ramką**, a `.sheet-window .cp-step` spłaszcza je do napisu — tak samo, jak
+`.cp-field input` spłaszcza pola na karcie.
+
+**Wyjątek pierwszy: liczby, które przekraczają 99.** Wpisywanymi polami zostają **Punkty
+Doświadczenia** (do 99 999), **Człowieczeństwo** (EMP 10 × 10 = 100), **ILOŚĆ** w wyposażeniu
+(do 999), **PW tokenu** (do 999), **eurodolce** (wyłączone ze zlecenia wprost) oraz wszystko
+w edytorach: ceny w ed, zasięgi w metrach, wymiary scen, zakresy tabel 1–100.
+
+**Wyjątek drugi, mniej oczywisty: pola, w których PUSTE znaczy coś innego niż zero.**
+Przełącznik zawsze ma liczbę, więc odebrałby im ten stan. Dotyczy to OB celu bez karty w oknie
+obrażeń („puste = OB z karty postaci", a 0 to „bez pancerza" — dwie różne rzeczy), inicjatywy
+akcji przygotowanej („puste = czeka na zdarzenie, nie na inicjatywę"), pięter i odgałęzień
+generatora sieci („puste = losuje serwer 3k6") oraz sztuk i gotówki w ekwipunku („puste =
+wszystkie"). Zanim zamienisz pole na przełącznik, sprawdź, czy jego `placeholder` albo zdanie
+obok nie opisuje właśnie pustego stanu.
+
+Pole tylko do odczytu (poziom Umiejętności i ranga Zdolności u gracza — kupuje się je PD)
+dostaje `readOnly` i pokazuje **samą liczbę bez strzałek**; pole, w które klik nic nie robi,
+jest gorsze niż napis.
 
 **Przytrzymanie powtarza i liczy od WŁASNEJ liczby.** Bez wpisywania OB 18 to osiemnaście
 kliknięć, więc `startHold` po 400 ms uruchamia powtarzanie co 70 ms — ale kolejne kroki liczą
