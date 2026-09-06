@@ -334,11 +334,62 @@ export interface CheckCallPayload<TRequest = unknown> {
   /** One or two sentences describing the event being tested. */
   prompt?: string;
   visibility: CheckCallVisibility;
+  /**
+   * Prośba gracza (etap 40), którą to wezwanie zamyka — droga „Ustaw…" na
+   * karcie prośby. Serwer zamyka ją **tym samym żądaniem**, żeby zgoda
+   * i wezwanie nie mogły się rozejść na dwie połowy.
+   */
+  requestMessageId?: number;
 }
 
 /** GM → server payload of `check:cancel` — the call is withdrawn unanswered. */
 export interface CheckCancelPayload {
   messageId: number;
+}
+
+/* ------------------------------------------------------------------ *
+ * Prośba gracza o Test (etap 40)
+ * ------------------------------------------------------------------ */
+
+/**
+ * Gracz → serwer, `check:request`. Lustro `CheckCallPayload` **pomniejszone
+ * o wszystko, co należy do MG**: nie ma tu progu, modyfikatora ani widoczności,
+ * bo gracz, który mógłby je nazwać, ustalałby trudność wymyślonego przez MG
+ * wydarzenia. Zostaje karta, czym rzucić i zdanie „po co".
+ */
+export interface CheckRequestPayload<TRequest = unknown> {
+  characterId: string;
+  request: TRequest;
+  /** Zdanie „po co" — do `CHECK_CALL_PROMPT_MAX` znaków. */
+  reason?: string;
+}
+
+/** Gracz → serwer, `check:request-cancel` — wycofanie własnej prośby. */
+export interface CheckRequestCancelPayload {
+  messageId: number;
+}
+
+/**
+ * MG → serwer, `check:request-resolve` — zgoda albo odmowa.
+ *
+ * Payload niesie **wyłącznie to, co należy do MG**: próg (szczebel drabinki
+ * albo własna liczba, ewentualnie druga strona rzutu przeciwstawnego),
+ * modyfikator sytuacyjny i widoczność wyniku. Czym się rzuca, serwer bierze
+ * z **zapisanej prośby**, nie z tego żądania.
+ */
+export interface CheckRequestResolvePayload {
+  messageId: number;
+  approve: boolean;
+  /** Poziom Trudności; wyklucza się z `opponentBonus`. Tylko przy zgodzie. */
+  dv?: number;
+  /** Rzut przeciwstawny — stała druga strony. Tylko przy zgodzie. */
+  opponentBonus?: number;
+  /** Modyfikator sytuacyjny MG. Tylko przy zgodzie. */
+  modifier?: number;
+  /** Kto zobaczy wynik. Tylko przy zgodzie; brak znaczy „cały stół". */
+  visibility?: CheckCallVisibility;
+  /** Zdanie MG przy odmowie. */
+  note?: string;
 }
 
 /* ------------------------------------------------------------------ *

@@ -172,6 +172,18 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
     ],
   },
   {
+    title: 'Karta postaci: rzut z wiersza',
+    note: 'Działa na wierszach Cech i Umiejętności na stronie pierwszej karty.',
+    items: [
+      { keys: 'klik', what: 'Otwiera okno rzutu — modyfikator, Szczęście, widoczność' },
+      { keys: 'Shift + klik', what: 'Ładuje kubek od razu, z ostatnimi ustawieniami' },
+      {
+        keys: 'Alt + klik',
+        what: 'Prosi MG o Test tą Umiejętnością albo Cechą — MG dostaje kartę z drabinką PT, a kubek zawoła dopiero po jego zgodzie (na własnej karcie, więc MG tego wiersza nie ma)',
+      },
+    ],
+  },
+  {
     title: 'Kubek i rzuty',
     items: [
       { keys: 'Esc', what: 'Odkłada nabrany rzut z powrotem (dopóki kubek nie jest w ruchu)' },

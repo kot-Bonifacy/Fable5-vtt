@@ -83,7 +83,13 @@ import {
   characterRestEvent,
   characterUseDoseEvent,
 } from './recovery.js';
-import { checkCallEvent, checkCancelEvent } from './checks.js';
+import {
+  checkCallEvent,
+  checkCancelEvent,
+  checkRequestCancelEvent,
+  checkRequestEvent,
+  checkRequestResolveEvent,
+} from './checks.js';
 import {
   inventoryGiveEvent,
   inventoryRespondEvent,
@@ -322,6 +328,9 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   characterUseDoseEvent,
   checkCallEvent,
   checkCancelEvent,
+  checkRequestEvent,
+  checkRequestCancelEvent,
+  checkRequestResolveEvent,
   inventorySourcesEvent,
   inventoryGiveEvent,
   inventoryTakeEvent,

@@ -4,6 +4,40 @@ Wyprowadzone z `POSTEP.md` 22.08.2026. Indeks jednolinijkowy jest w `POSTEP.md`;
 opisy z rozpoznaniem i obejściem. Czytaj wpis, zanim zaczniesz szukać błędu w obszarze, którego
 dotyczy.
 
+- **Okno otwierane znad karty postaci znika pod nią, choć powstało (06.09, etap 40).** `.sheet-window`
+  ma `z-index: 300`, a `.dialog-backdrop` — 50. Objaw jest mylący, bo **coś się dzieje**: ekran
+  przygasa scrimem, `Escape` działa, a w DOM-ie okno stoi z prawidłowymi rozmiarami — tylko widać
+  je zero. Pierwsza reakcja („kliknięcie nie doszło") prowadzi w kompletnie inne miejsce.
+  **Rozpoznanie:** `document.elementFromPoint(x, y)` na środku okna zwraca element karty postaci.
+  **Naprawa:** dopisz klasę okna do listy `.dialog-backdrop:has(…)` w `styles.css` — jest tam od
+  27a, dla `.roll-dialog`, i z tego samego powodu.
+- **Ta sama nazwa klasy CSS w dwóch miejscach `sheet.css` — wygrywa późniejsza (06.09).**
+  `.cp-slot` była etykietą lokacji w tabeli pancerza (27b) **i** pudełkiem gniazda na sylwetce
+  cyborgizacji (27c, `position: absolute`, czerwone tło). Efekt: „Głowa", „Korpus" i „Tarcza"
+  **znikały** z tabeli pancerza — nie były przezroczyste, tylko wyjęte z układu wiersza
+  i pomalowane na kolor tła tabeli. Objaw czyta się jako „brak w JSX", a JSX jest w porządku.
+  **Rozpoznanie:** `getComputedStyle(el).backgroundColor` na elemencie, którego nie widać —
+  wartość, której nie ma w jego własnej regule, znaczy drugą definicję. **Naprawa:** nazwa
+  z przedrostkiem obszaru (`cp-armor-slot`); przed dopisaniem klasy do `sheet.css` sprawdź
+  `grep -n '^\.nazwa {' sheet.css`.
+- **`display: flex` na `<td>` wyjmuje komórkę z układu tabeli (06.09).** Komórka przestaje
+  rozciągać się na wysokość wiersza, a że tło `.cp-table` jest czerwone, pod treścią zostaje pas
+  czerwieni wyglądający jak błąd renderowania. Dotknęło to `.weapon-actions`, `.armor-slot-cell`
+  i `.armor-actions`. **Naprawa:** albo flex na **wrapperze wewnątrz** komórki
+  (`.weapon-actions-row`), albo zwykły układ inline z `white-space: nowrap`. To samo dotyczy
+  `display: grid`.
+- **Panel wstawiony w `.cp-field` nie rozciąga się sam (06.09).** `.cp-field` jest wierszem flex,
+  więc dziecko bez `flex: 1` dostaje szerokość swojej treści — rejestr awansów siedział przez to
+  w lewej połowie pola, a druga połowa zostawała biała. To samo w drugą stronę: reguła
+  `.cp-lifepath-head .cp-span2 { grid-column: auto }` (żeby „Pseudonimy" stanęły obok licznika PD)
+  zdejmowała rozciągnięcie **także** panelowi awansu, i prawa kolumna zakładki „Ścieżka Życia"
+  była pustym czerwonym prostokątem wysokim na pół ekranu. Selektor `.cp-span2` w kontenerze
+  siatki trafia w więcej dzieci, niż się wydaje.
+- **Automatyka przeglądarki gubi modyfikator `alt` przy kliknięciu (06.09).** `computer` z
+  `modifiers: "alt"` klika, ale strona dostaje zwykły klik — Alt+klik na wierszu karty nie
+  otwierał okna prośby, choć kod działa. Objaw jest nie do odróżnienia od „funkcja nie zadziałała".
+  **Obejście:** `element.dispatchEvent(new MouseEvent('click', { bubbles: true, altKey: true }))`
+  przez `javascript_tool` — React łapie to normalnie. `shiftKey` przechodzi tą samą drogą.
 - **`TokenPatch` nie ma `x`/`y` — figurą rusza `token:move`, nie `token:update`.** Test etapu 38b
   „odejście od ciała odcina łup" wysyłał `token:update` z `patch: { x, y }`; sanityzacja **milczy**
   o nieznanych polach, więc ack był `{ ok: true }`, figura stała w miejscu, a łup przechodził.

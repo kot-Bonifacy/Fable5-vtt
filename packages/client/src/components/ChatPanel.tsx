@@ -26,6 +26,7 @@ import {
   chatCategoryOf,
   gameDaysLabel,
   isCheckCallOpen,
+  isCheckRequestOpen,
   isInventoryMoveOpen,
 } from '@vtt/shared';
 import {
@@ -41,6 +42,7 @@ import { IconNewspaper } from './UiIcons.js';
 import { OpposedRow } from './GrappleControls.js';
 import { DamageApplyControls, DamageRow } from './DamageControls.js';
 import { CheckCallRow } from './CheckCall.js';
+import { CheckRequestRow } from './CheckRequest.js';
 import { InventoryMoveRow } from './InventoryMove.js';
 import { RollTableRow } from './RollTableCard.js';
 import { useAuthStore } from '../stores/authStore.js';
@@ -718,6 +720,9 @@ function FullMessageRow({
   if (message.kind === 'check' && message.check) {
     return <CheckCallRow message={message} entry={message.check} />;
   }
+  if (message.kind === 'request' && message.request) {
+    return <CheckRequestRow message={message} entry={message.request} />;
+  }
   if (message.kind === 'inventory' && message.inventory) {
     return <InventoryMoveRow message={message} entry={message.inventory} />;
   }
@@ -792,11 +797,15 @@ function hiddenLabel(count: number): string {
  */
 function isPending(item: ChatItem, myUserId: string, isGm: boolean): boolean {
   if (item.type === 'note') return (item.actions?.length ?? 0) > 0;
-  const { proposal, check, inventory, kind } = item.message;
+  const { proposal, check, request, inventory, kind } = item.message;
   // Wezwanie do Testu (etap 32) jest tym samym, czym propozycja bota: decyzją
   // czekającą na kliknięcie, a nie wpisem w dzienniku. Schowane pod
   // separatorem albo ściśnięte do jednej linii zawisłoby w środku cudzej tury.
   if (kind === 'check') return check !== undefined && isCheckCallOpen(check);
+  // Prośba o Test (etap 40) czeka na próg od MG — z tego samego powodu, co
+  // wezwanie wyżej, i tym bardziej, bo jest cicha: gracz nie ma jak się
+  // upomnieć, jeśli filtr zwinie jego pytanie.
+  if (kind === 'request') return request !== undefined && isCheckRequestOpen(request);
   // Propozycja przekazania (38b) czeka na „Przyjmij" dokładnie tak, jak
   // wezwanie czeka na kubek — a schowana pod separatorem zawisłaby na dobre.
   if (kind === 'inventory') return inventory !== undefined && isInventoryMoveOpen(inventory);

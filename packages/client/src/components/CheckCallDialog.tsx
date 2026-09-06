@@ -15,6 +15,7 @@ import {
 import { callCheck, checkCallErrorText } from '../socket.js';
 import { useCharacterStore } from '../stores/characterStore.js';
 import { useChatStore } from '../stores/chatStore.js';
+import { useCheckStore, type CheckCallDraft } from '../stores/checkStore.js';
 
 /**
  * „Wezwij do Testu" (etap 32) — okno MG, w którym powstaje wezwanie.
@@ -24,27 +25,43 @@ import { useChatStore } from '../stores/chatStore.js';
  * przeciwstawny streszczony jedną liczbą drugiej strony. Skutków nie ma
  * świadomie: nieudany Test kończy się zdaniem MG i jego ręką na karcie
  * postaci (decyzja MG z 02.09.2026).
+ *
+ * Od etapu 40 to okno ma **dwa wejścia**: przycisk ⚄ w panelu „Postacie"
+ * i „Ustaw…" na karcie prośby gracza. Drugie wchodzi z wypełnioną postacią,
+ * Umiejętnością i zdaniem „po co" — a wysłanie stamtąd zamyka prośbę tym samym
+ * żądaniem, którym wystawia wezwanie.
  */
-export function CheckCallDialog({
-  characterId,
-  characterName,
-  onClose,
-}: {
-  characterId: string;
-  characterName: string;
-  onClose: () => void;
-}) {
+export function CheckCallDialog() {
+  const draft = useCheckStore((s) => s.callDraft);
+  if (!draft) return null;
+  // Klucz po prośbie i postaci: „Ustaw…" na drugiej karcie ma dać świeże pola,
+  // a nie Umiejętność zapamiętaną z poprzedniej prośby.
+  return (
+    <CheckCallDialogBody
+      key={`${draft.requestMessageId ?? ''}-${draft.characterId}`}
+      draft={draft}
+    />
+  );
+}
+
+function CheckCallDialogBody({ draft }: { draft: CheckCallDraft }) {
+  const { characterId, characterName } = draft;
+  const onClose = useCheckStore((s) => s.closeCall);
   const registry = useCharacterStore((s) => s.registry);
   const character = useCharacterStore((s) => s.characters[characterId]);
 
-  const [kind, setKind] = useState<'skill' | 'stat'>('skill');
-  const [skillId, setSkillId] = useState('');
-  const [statId, setStatId] = useState<CpredStatId>('int');
+  const [kind, setKind] = useState<'skill' | 'stat'>(
+    draft.request?.kind === 'stat' ? 'stat' : 'skill',
+  );
+  const [skillId, setSkillId] = useState(draft.request?.skillId ?? '');
+  const [statId, setStatId] = useState<CpredStatId>(
+    (draft.request?.statId as CpredStatId | undefined) ?? 'int',
+  );
   const [against, setAgainst] = useState<'dv' | 'opposed'>('dv');
   const [dv, setDv] = useState(13);
   const [opponentBonus, setOpponentBonus] = useState(10);
   const [modifier, setModifier] = useState(0);
-  const [prompt, setPrompt] = useState('');
+  const [prompt, setPrompt] = useState(draft.prompt ?? '');
   const [visibility, setVisibility] = useState<'public' | 'gm'>('public');
   const [busy, setBusy] = useState(false);
 
@@ -81,6 +98,9 @@ export function CheckCallDialog({
       ...(modifier !== 0 ? { modifier } : {}),
       ...(prompt.trim().length > 0 ? { prompt: prompt.trim() } : {}),
       visibility,
+      // Zgoda i wezwanie jadą jednym żądaniem — inaczej dałoby się zostawić
+      // prośbę otwartą przy wystawionym wezwaniu, i odwrotnie.
+      ...(draft.requestMessageId !== undefined ? { requestMessageId: draft.requestMessageId } : {}),
     };
     setBusy(true);
     const ack = await callCheck(payload);
@@ -98,6 +118,11 @@ export function CheckCallDialog({
     <div className="dialog-backdrop" onClick={onClose}>
       <div className="dialog check-call-dialog" onClick={(e) => e.stopPropagation()}>
         <h3 className="panel-section-title">Wezwij do Testu — {characterName}</h3>
+        {draft.requestMessageId !== undefined && (
+          <p className="roll-dialog-hint">
+            Odpowiedź na prośbę gracza — wysłanie zamknie ją zgodą.
+          </p>
+        )}
 
         <fieldset className="roll-visibility">
           <legend className="auth-label">Czym rzuca</legend>

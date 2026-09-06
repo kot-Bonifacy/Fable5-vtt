@@ -57,6 +57,9 @@ import type {
   CharacterRollPayload,
   CheckCallPayload,
   CheckCancelPayload,
+  CheckRequestCancelPayload,
+  CheckRequestPayload,
+  CheckRequestResolvePayload,
   InventoryGivePayload,
   InventoryGiveResult,
   InventoryRespondPayload,
@@ -1159,6 +1162,22 @@ export const callCheck = (payload: CheckCallPayload<CpredRollRequest>) =>
 export const cancelCheck = (messageId: number) =>
   emitSceneAck('check:cancel', { messageId } satisfies CheckCancelPayload);
 
+/**
+ * „Poproś MG o Test" (etap 40) — gracz wskazuje z własnej karty Umiejętność
+ * albo Cechę i dopisuje zdanie „po co". Ani progu, ani widoczności tu nie ma:
+ * jedno i drugie należy do MG i dochodzi dopiero przy zgodzie.
+ */
+export const requestCheck = (payload: CheckRequestPayload<CpredRollRequest>) =>
+  emitSceneAck<{ messageId: number }>('check:request', payload);
+
+/** „Wycofaj" na własnej karcie prośby — dopóki MG nie odpowiedział. */
+export const cancelCheckRequest = (messageId: number) =>
+  emitSceneAck('check:request-cancel', { messageId } satisfies CheckRequestCancelPayload);
+
+/** Klik w szczebel drabinki albo „Odmów" na karcie prośby — MG only. */
+export const resolveCheckRequest = (payload: CheckRequestResolvePayload) =>
+  emitSceneAck<{ callMessageId?: number }>('check:request-resolve', payload);
+
 /* ------------------------------------------------------------------ *
  * Przedmioty między kartami (etap 38b)
  * ------------------------------------------------------------------ */
@@ -1245,6 +1264,34 @@ export function randomTableErrorText(code: string): string {
       return 'Tabele losowe są narzędziem MG.';
     default:
       return `Błąd tabeli: ${code}`;
+  }
+}
+
+/** Polskie zdania odmów prośby o Test (etap 40). */
+export function checkRequestErrorText(code: string): string {
+  switch (code) {
+    case 'CHARACTER_NOT_FOUND':
+      return 'Nie ma takiej postaci w tej kampanii.';
+    case 'CHARACTER_NOT_YOURS':
+      return 'O Test prosi się własną kartą — cudzej nie ruszasz.';
+    case 'REQUEST_NOT_FOUND':
+      return 'Nie znalazłem tej prośby na czacie.';
+    case 'REQUEST_CLOSED':
+      return 'Ta prośba jest już rozstrzygnięta albo wycofana.';
+    case 'REQUEST_NOT_YOURS':
+      return 'Wycofać prośbę może tylko ten, kto ją wysłał.';
+    case 'REQUEST_LIMIT':
+      return 'Masz już trzy prośby czekające na MG — poczekaj albo wycofaj jedną.';
+    case 'UNKNOWN_SKILL':
+      return 'Nieznana umiejętność — odśwież stronę.';
+    case 'UNKNOWN_STAT':
+      return 'Nieznana cecha — odśwież stronę.';
+    case 'FORBIDDEN':
+      return 'O prośbach rozstrzyga MG.';
+    case 'BAD_REQUEST':
+      return 'Niepełna prośba — wybierz Umiejętność albo Cechę.';
+    default:
+      return `Błąd prośby o Test: ${code}`;
   }
 }
 

@@ -1,6 +1,7 @@
 import type {
   BotActionProposal,
   CheckCallEntry,
+  CheckRequestEntry,
   RecoveryLogEntry,
   ChatHistoryPage,
   ChatMessageBroadcast,
@@ -120,6 +121,8 @@ export function toChatMessageView(message: StoredMessage): ChatMessageView {
     view.journal = JSON.parse(message.payload) as JournalLogEntry;
   } else if (message.kind === 'check' && message.payload) {
     view.check = JSON.parse(message.payload) as CheckCallEntry;
+  } else if (message.kind === 'request' && message.payload) {
+    view.request = JSON.parse(message.payload) as CheckRequestEntry;
   } else if (message.kind === 'recovery' && message.payload) {
     view.recovery = JSON.parse(message.payload) as RecoveryLogEntry;
   } else if (message.kind === 'time' && message.payload) {
@@ -242,6 +245,13 @@ export function visibleTo(user: SessionUser) {
               // `proposal`: wezwanie do Testu wystawia MG, więc każde jest jego
               // sprawą — także wystawione z drugiego konta MG.
               'check',
+              // `request` (etap 40) jest tu z tego samego powodu, tylko
+              // z drugiej strony: prośba o Test jest adresowana **do MG**, więc
+              // widzi ją każde konto MG, także to, które przy niej nie siedziało.
+              // Na liście gracza (niżej) `request` być NIE MOŻE — gracz widzi
+              // swoją przez klauzulę `authorId`, a wpis na białej liście
+              // pokazałby mu prośby wszystkich pozostałych.
+              'request',
               // `time` (etap 37) i `recovery` (30b) są **publiczne** i są tu
               // z tego samego powodu, co niżej u gracza. Bez tych dwóch wierszy
               // MG widział wyłącznie **własne** karty (przez `authorId`):

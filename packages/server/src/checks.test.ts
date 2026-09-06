@@ -10,6 +10,7 @@ import type {
   CharacterView,
   ChatMessageBroadcast,
   CheckCallEntry,
+  CheckRequestEntry,
   CpredCharacterData,
   InvitationSummary,
   SocketAck,
@@ -484,5 +485,360 @@ describe('wezwanie do Testu', () => {
     const card = await rollCard;
     expect(card.message.roll?.outcome?.success).toBe(false);
     expect(card.message.roll?.outcome?.detail).toContain('druga strona: 30 + 1k10');
+  });
+});
+
+/**
+ * Etap 40 — prośba gracza o Test.
+ *
+ * Ta sama trójka pytań, co przy wezwaniu, tylko z drugiej strony stołu: **kto
+ * widzi prośbę**, **czego proszący nie może sobie nazwać** (cudza karta, próg)
+ * i **czy prośba rozstrzyga się dokładnie raz**.
+ */
+describe('prośba gracza o Test', () => {
+  let gm: ClientSocket;
+  let vex: ClientSocket;
+  let rogue: ClientSocket;
+  let characterId: string;
+  let rogueCharacterId: string;
+  /** Wszystko, co kiedykolwiek dotarło do postronnego gracza — wykrywacz wycieku. */
+  const rogueTraffic: ChatMessageBroadcast[] = [];
+
+  /** Prośba wystawiona i od razu zamknięta — sprzątanie po limicie trzech. */
+  async function askAndClose(): Promise<number> {
+    const asked = await emitAck<{ messageId: number }>(vex, 'check:request', {
+      characterId,
+      request: { kind: 'skill', skillId: 'perception' },
+    });
+    if (!asked.ok || !asked.data) throw new Error('check:request failed');
+    const closed = await emitAck(gm, 'check:request-resolve', {
+      messageId: asked.data.messageId,
+      approve: false,
+    });
+    expect(closed.ok).toBe(true);
+    return asked.data.messageId;
+  }
+
+  it('stawia dwie karty: Vexa i cudzą', async () => {
+    const gmConn = createSocket(gmCookie);
+    const vexConn = createSocket(vexCookie);
+    const rogueConn = createSocket(rogueCookie);
+    gm = gmConn.socket;
+    vex = vexConn.socket;
+    rogue = rogueConn.socket;
+    rogue.on('chat:message', (payload: ChatMessageBroadcast) => rogueTraffic.push(payload));
+    rogue.on('chat:update', (payload: ChatMessageBroadcast) => rogueTraffic.push(payload));
+    await Promise.all([gmConn.firstSync, vexConn.firstSync, rogueConn.firstSync]);
+
+    const mine = await emitAck<CharacterView>(gm, 'character:create', {
+      name: 'Czterdziestka',
+      ownerId: vexId,
+    });
+    if (!mine.ok || !mine.data) throw new Error('character:create failed');
+    characterId = mine.data.id;
+
+    const stats = (mine.data.data as CpredCharacterData).stats;
+    const updated = await emitAck<CharacterView>(gm, 'character:update', {
+      characterId,
+      patch: { data: { stats: { ...stats, int: 7 }, skills: { perception: 4 } } },
+    });
+    expect(updated.ok).toBe(true);
+
+    const theirs = await emitAck<CharacterView>(gm, 'character:create', { name: 'Cudza' });
+    if (!theirs.ok || !theirs.data) throw new Error('character:create failed');
+    rogueCharacterId = theirs.data.id;
+  });
+
+  it('prosi się WŁASNĄ kartą — cudzej nie ruszasz nawet znając jej id', async () => {
+    const ack = await emitAck(vex, 'check:request', {
+      characterId: rogueCharacterId,
+      request: { kind: 'skill', skillId: 'perception' },
+    });
+    expect(ack.ok).toBe(false);
+    if (!ack.ok) expect(ack.error).toBe('CHARACTER_NOT_YOURS');
+  });
+
+  it('nieznaną Umiejętność odrzuca u proszącego, nie MG przy klikaniu szczebla', async () => {
+    const ack = await emitAck(vex, 'check:request', {
+      characterId,
+      request: { kind: 'skill', skillId: 'nie-ma-takiej' },
+    });
+    expect(ack.ok).toBe(false);
+    if (!ack.ok) expect(ack.error).toBe('UNKNOWN_SKILL');
+  });
+
+  it('prośba dociera do MG i proszącego, nigdy do stołu', async () => {
+    const toGm = waitForMatch<ChatMessageBroadcast>(
+      gm,
+      'chat:message',
+      (payload) => payload.message.kind === 'request',
+    );
+    const ack = await emitAck<{ messageId: number }>(vex, 'check:request', {
+      characterId,
+      request: { kind: 'skill', skillId: 'perception' },
+      reason: 'Chcę zrozumieć, co znaczy ta mina.',
+    });
+    expect(ack.ok).toBe(true);
+
+    const entry = (await toGm).message.request as CheckRequestEntry;
+    expect(entry.characterName).toBe('Czterdziestka');
+    expect(entry.rollLabel).toContain('(INT)');
+    expect(entry.askedByName).toBe('Vex');
+    expect(entry.reason).toBe('Chcę zrozumieć, co znaczy ta mina.');
+    // Progu w prośbie nie ma i być nie może — ustala go MG.
+    expect((entry as unknown as { dv?: number }).dv).toBeUndefined();
+    expect(entry.resolution).toBeUndefined();
+    expect(rogueTraffic.some((payload) => payload.message.kind === 'request')).toBe(false);
+
+    if (!ack.ok || !ack.data) throw new Error('check:request failed');
+    const closed = await emitAck(gm, 'check:request-resolve', {
+      messageId: ack.data.messageId,
+      approve: false,
+    });
+    expect(closed.ok).toBe(true);
+  });
+
+  it('zgoda robi ZWYKŁE wezwanie z 32 i zostawia na prośbie chip z progiem', async () => {
+    const asked = await emitAck<{ messageId: number }>(vex, 'check:request', {
+      characterId,
+      request: { kind: 'skill', skillId: 'perception' },
+      reason: 'Chcę odczytać jego minę.',
+    });
+    if (!asked.ok || !asked.data) throw new Error('check:request failed');
+
+    const callCard = waitForMatch<ChatMessageBroadcast>(
+      vex,
+      'chat:message',
+      (payload) => payload.message.kind === 'check',
+    );
+    const updated = waitForMatch<ChatMessageBroadcast>(
+      vex,
+      'chat:update',
+      (payload) => payload.message.id === asked.data!.messageId,
+    );
+
+    const ack = await emitAck<{ callMessageId?: number }>(gm, 'check:request-resolve', {
+      messageId: asked.data.messageId,
+      approve: true,
+      dv: 15,
+      // Umiejętność podrobiona co do joty — serwer ma ją zignorować i wziąć tę
+      // z zapisanej prośby.
+      request: { kind: 'skill', skillId: 'first-aid' },
+    });
+    expect(ack.ok).toBe(true);
+
+    const card = await callCard;
+    const call = card.message.check as CheckCallEntry;
+    expect(call.rollLabel).toContain('Percepcja');
+    expect(call.dv).toBe(15);
+    expect(call.dvLabel).toBe('Trudny');
+    expect(call.ownerId).toBe(vexId);
+    // Zdanie „po co" od gracza jedzie dalej jako opis wydarzenia.
+    expect(call.prompt).toBe('Chcę odczytać jego minę.');
+
+    const request = (await updated).message.request as CheckRequestEntry;
+    expect(request.resolution?.kind).toBe('approved');
+    expect(request.resolution?.targetText).toBe('PT 15 (Trudny)');
+    expect(request.resolution?.callMessageId).toBe(card.message.id);
+    expect(rogueTraffic.some((payload) => payload.message.kind === 'check')).toBe(false);
+  });
+
+  it('rozstrzyga się dokładnie raz: druga zgoda, zgoda po odmowie i po wycofaniu odpadają', async () => {
+    const twice = await emitAck<{ messageId: number }>(vex, 'check:request', {
+      characterId,
+      request: { kind: 'stat', statId: 'emp' },
+    });
+    if (!twice.ok || !twice.data) throw new Error('check:request failed');
+    const first = await emitAck(gm, 'check:request-resolve', {
+      messageId: twice.data.messageId,
+      approve: true,
+      dv: 13,
+    });
+    expect(first.ok).toBe(true);
+    const second = await emitAck(gm, 'check:request-resolve', {
+      messageId: twice.data.messageId,
+      approve: true,
+      dv: 13,
+    });
+    expect(second.ok).toBe(false);
+    if (!second.ok) expect(second.error).toBe('REQUEST_CLOSED');
+
+    const refused = await emitAck<{ messageId: number }>(vex, 'check:request', {
+      characterId,
+      request: { kind: 'stat', statId: 'emp' },
+    });
+    if (!refused.ok || !refused.data) throw new Error('check:request failed');
+    const refusal = await emitAck(gm, 'check:request-resolve', {
+      messageId: refused.data.messageId,
+      approve: false,
+      note: 'Nie ma na to rzutu.',
+    });
+    expect(refusal.ok).toBe(true);
+    const afterRefusal = await emitAck(gm, 'check:request-resolve', {
+      messageId: refused.data.messageId,
+      approve: true,
+      dv: 13,
+    });
+    expect(afterRefusal.ok).toBe(false);
+    if (!afterRefusal.ok) expect(afterRefusal.error).toBe('REQUEST_CLOSED');
+
+    const withdrawn = await emitAck<{ messageId: number }>(vex, 'check:request', {
+      characterId,
+      request: { kind: 'stat', statId: 'emp' },
+    });
+    if (!withdrawn.ok || !withdrawn.data) throw new Error('check:request failed');
+    // Cudzej prośby nie wycofa nikt poza autorem.
+    const stolen = await emitAck(rogue, 'check:request-cancel', {
+      messageId: withdrawn.data.messageId,
+    });
+    expect(stolen.ok).toBe(false);
+    if (!stolen.ok) expect(stolen.error).toBe('REQUEST_NOT_YOURS');
+    const cancelled = await emitAck(vex, 'check:request-cancel', {
+      messageId: withdrawn.data.messageId,
+    });
+    expect(cancelled.ok).toBe(true);
+    const afterWithdrawal = await emitAck(gm, 'check:request-resolve', {
+      messageId: withdrawn.data.messageId,
+      approve: true,
+      dv: 13,
+    });
+    expect(afterWithdrawal.ok).toBe(false);
+    if (!afterWithdrawal.ok) expect(afterWithdrawal.error).toBe('REQUEST_CLOSED');
+  });
+
+  it('gracz nie rozstrzyga próśb — także własnych', async () => {
+    const asked = await emitAck<{ messageId: number }>(vex, 'check:request', {
+      characterId,
+      request: { kind: 'skill', skillId: 'perception' },
+    });
+    if (!asked.ok || !asked.data) throw new Error('check:request failed');
+    const ack = await emitAck(vex, 'check:request-resolve', {
+      messageId: asked.data.messageId,
+      approve: true,
+      dv: 9,
+    });
+    expect(ack.ok).toBe(false);
+    if (!ack.ok) expect(ack.error).toBe('FORBIDDEN');
+    const cancelled = await emitAck(vex, 'check:request-cancel', {
+      messageId: asked.data.messageId,
+    });
+    expect(cancelled.ok).toBe(true);
+  });
+
+  it('trzy otwarte prośby na gracza i ani jednej więcej', async () => {
+    const open: number[] = [];
+    for (let i = 0; i < 3; i++) {
+      const ack = await emitAck<{ messageId: number }>(vex, 'check:request', {
+        characterId,
+        request: { kind: 'skill', skillId: 'perception' },
+      });
+      if (!ack.ok || !ack.data) throw new Error('check:request failed');
+      open.push(ack.data.messageId);
+    }
+    const fourth = await emitAck(vex, 'check:request', {
+      characterId,
+      request: { kind: 'skill', skillId: 'perception' },
+    });
+    expect(fourth.ok).toBe(false);
+    if (!fourth.ok) expect(fourth.error).toBe('REQUEST_LIMIT');
+
+    // Zamknięcie jednej robi miejsce — limit liczy CZEKAJĄCE, nie wysłane.
+    const closed = await emitAck(gm, 'check:request-resolve', {
+      messageId: open[0]!,
+      approve: false,
+    });
+    expect(closed.ok).toBe(true);
+    const fifth = await emitAck<{ messageId: number }>(vex, 'check:request', {
+      characterId,
+      request: { kind: 'skill', skillId: 'perception' },
+    });
+    expect(fifth.ok).toBe(true);
+    if (fifth.ok && fifth.data) open.push(fifth.data.messageId);
+    for (const messageId of open.slice(1)) {
+      await emitAck(gm, 'check:request-resolve', { messageId, approve: false });
+    }
+  });
+
+  it('zgoda na prośbę o skasowaną kartę wraca odmową i ZOSTAWIA na karcie ślad', async () => {
+    const doomed = await emitAck<CharacterView>(gm, 'character:create', {
+      name: 'Znikająca',
+      ownerId: vexId,
+    });
+    if (!doomed.ok || !doomed.data) throw new Error('character:create failed');
+
+    const asked = await emitAck<{ messageId: number }>(vex, 'check:request', {
+      characterId: doomed.data.id,
+      request: { kind: 'stat', statId: 'int' },
+    });
+    if (!asked.ok || !asked.data) throw new Error('check:request failed');
+
+    const deleted = await emitAck(gm, 'character:delete', { characterId: doomed.data.id });
+    expect(deleted.ok).toBe(true);
+
+    const updated = waitForMatch<ChatMessageBroadcast>(
+      vex,
+      'chat:update',
+      (payload) => payload.message.id === asked.data!.messageId,
+    );
+    const ack = await emitAck(gm, 'check:request-resolve', {
+      messageId: asked.data.messageId,
+      approve: true,
+      dv: 13,
+    });
+    expect(ack.ok).toBe(false);
+    if (!ack.ok) expect(ack.error).toBe('CHARACTER_NOT_FOUND');
+
+    const entry = (await updated).message.request as CheckRequestEntry;
+    expect(entry.resolution?.kind).toBe('refused');
+    expect(entry.resolution?.note).toContain('już nie ma');
+  });
+
+  it('„Ustaw…" wystawia wezwanie i zamyka prośbę JEDNYM żądaniem', async () => {
+    const asked = await emitAck<{ messageId: number }>(vex, 'check:request', {
+      characterId,
+      request: { kind: 'skill', skillId: 'perception' },
+      reason: 'Chcę go przejrzeć.',
+    });
+    if (!asked.ok || !asked.data) throw new Error('check:request failed');
+
+    const updated = waitForMatch<ChatMessageBroadcast>(
+      vex,
+      'chat:update',
+      (payload) => payload.message.id === asked.data!.messageId,
+    );
+    // Pełne okno wezwania: MG podmienia Umiejętność — i tu wolno mu to zrobić,
+    // bo żądanie idzie przez `check:call`, a nie przez zgodę na prośbę.
+    const called = await emitAck<{ messageId: number }>(gm, 'check:call', {
+      characterId,
+      request: { kind: 'skill', skillId: 'first-aid' },
+      dv: 17,
+      prompt: 'Rozpoznajesz w nim ranę, nie złość.',
+      visibility: 'gm',
+      requestMessageId: asked.data.messageId,
+    });
+    expect(called.ok).toBe(true);
+    if (!called.ok || !called.data) throw new Error('check:call failed');
+
+    const entry = (await updated).message.request as CheckRequestEntry;
+    expect(entry.resolution?.kind).toBe('approved');
+    expect(entry.resolution?.targetText).toBe('PT 17 (Profesjonalny)');
+    expect(entry.resolution?.callMessageId).toBe(called.data.messageId);
+  });
+
+  it('prośba nie wchodzi postronnemu graczowi do historii czatu', async () => {
+    // Sprawdzane PRZEŁADOWANIEM, nie rozgłoszeniem: `visibleTo` jest białą
+    // listą rodzajów, a wiersz spoza niej dociera na żywo i znika przy
+    // pierwszym odświeżeniu — z konta autora wygląda wtedy na w pełni sprawny
+    // (klauzula `authorId`). Dokładnie tak siedziały dwa błędy naraz w 37 i 30b.
+    const messageId = await askAndClose();
+
+    const outsider = await createSocket(rogueCookie).firstSync;
+    expect(outsider.messages.some((row) => row.id === messageId)).toBe(false);
+    expect(outsider.messages.some((row) => row.kind === 'request')).toBe(false);
+
+    for (const cookie of [gmCookie, vexCookie]) {
+      const sync = await createSocket(cookie).firstSync;
+      expect(sync.messages.some((row) => row.id === messageId)).toBe(true);
+    }
   });
 });

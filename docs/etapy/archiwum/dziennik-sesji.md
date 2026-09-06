@@ -7,6 +7,61 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 06.09 (pierwsza) — pistolet, który przechodzi z ciała do plecaka
+
+**Zlecenie MG:** kontynuacja projektu; z listy wolnych etapów (28, 34, 38b) MG wybrał **38b
+(przedmioty między kartami)** i przy pytaniu o łup dorzucił prośbę: „rozważ jakąś formę brania
+łupu w stylu modułu **Item Piles** z Foundry". Trzy rozstrzygnięcia padły przed kodem, wszystkie
+na rekomendację: **gracz sam przeszukuje NPC-a** (z karty innego gracza przenosi tylko MG),
+**zasięg ramienia** i **jedno okno „Wymiana"** zamiast guzików przy wierszach.
+
+**Czwarte rozstrzygnięcie było korektą decyzji z 05.09 i wyszło z rozpoznania.** „Cel musi być
+widoczny, wzorem `Ustabilizowania` z 14e" opisywało 14e sprzed poprawki — ta czynność ma dziś
+**`CPRED_MELEE_REACH_M`**, więc dosłowne wykonanie tamtego zdania rozjechałoby dwie czynności,
+które są tą samą czynnością: dotknięciem kogoś obok. MG wybrał zasięg ramienia, **mierzony
+wszystkim, MG włącznie** — ten sam świadomy wyjątek od „MG omija blokady", co w 14e.
+
+**Etap zajął jedną sesję wyłącznie dzięki 38a.** Odkąd ganger ma prawdziwą kartę, „zdejmuję
+pistolet z ciała" i „oddaję ci stimpak" to **jedna** operacja na dwóch `CpredCharacterData`:
+`cpredMoveItems` w `shared/systems/cpred/inventory.ts` bierze dwie karty i listę adresów wierszy,
+a zwraca **obie** — rozdzielenie na „zabierz" i „dołóż" pozwoliłoby zapisać połowę. Wiersz jedzie
+w całości, więc magazynek 12/30, `ammoId`, przykręcony celownik z 31 i zużyte OB z 15 przeżywają
+przeprowadzkę **bez ani jednej linijki o nich** — kto dołoży broni nowe pole, dostanie je za darmo.
+
+**Przekazanie na kartę z właścicielem jest PROPOZYCJĄ, nie przelewem** (decyzja MG z 05.09):
+karta czatu rodzaju `inventory` staje bez `resolution` i **nic nie rusza**, dopóki odbiorca albo
+MG nie kliknie „Przyjmij" — wzorem wezwania do Testu z 32, z tą samą umową, że wiersze do
+przeniesienia czyta się **z zapisanej karty**, nie z żądania klienta. Kartę **bez** właściciela
+nie ma kto potwierdzić, więc tam idzie od ręki, a ack niesie `pending: false`. **Łup nie czeka
+nigdy** — nie ma kogo pytać, a trzy warunki (karta bez właściciela, figura leżąca albo martwa,
+zasięg) serwer sprawdził wcześniej.
+
+**Z Item Piles weszły dwie rzeczy i obie były tanie:** „Zabierz wszystko" i **gotówka z kieszeni**
+— ciało ma od 38a `eddies`, a `applyBalance` z 23b dowozi wpis audytu po obu stronach, więc
+350 ed z gangera wygląda w historii tak samo, jak przelew. **Skrzynia jako obiekt sceny została
+poza zakresem** (tak mówi opis etapu) i poszła do `POMYSLY.md` — okno „Wymiana" byłoby jej gotowym
+interfejsem.
+
+**Trzy rzeczy poza planem, wszystkie o tym, gdzie stoi prawda o stanie rzeczy:** pancerz przychodzi
+**zdjęty** (inaczej łup po cichu zmieniałby OB w chwili podniesienia); wiersze wyposażenia
+**sklejają się po `compendiumId`**, nigdy po nazwie; a **id wiersza jest unikalne w obrębie karty,
+nie kampanii** — kopia figury z 35 niesie ten sam `rowId`, więc kolizję rozstrzyga nowe id.
+
+**Oględziny w dwóch sesjach naraz** (MG na `localhost`, `Tester` na `[::1]`, nośnik **Frank**,
+ciałem **Rudy Kwiatkowski**) przeszły cały etap **poza jedną pozycją menu figury** — prawym klikiem
+z automatyki nadal nie da się otworzyć menu kanwy Pixi. Znalazły **dwie usterki**: odległość
+w liście źródeł liczyła się od **pierwszej** figury karty na scenie, a serwer egzekwował od
+**najbliższej**; i komunikat „czeka na przyjęcie" padał także wtedy, gdy nic nie czekało. Obie
+naprawione. Poligon **przywrócony ze snapshotu startowego**.
+
+**Przy okazji zgłoszona MG jedna rzecz spoza zakresu:** lista odbiorców przelewu (`payees` z 23b)
+zawiera od 38a **wszystkich statystów**. Zapisana w `zaleglosci.md`, bez decyzji.
+
+**Testy:** 1913 w `shared` (+23), 1040 na serwerze (+16), 97 u klienta (bez zmian) — zielone.
+ESLint, Prettier i `tsc --noEmit` czyste w trzech pakietach. **Uwaga do liczb z poprzedniej
+notatki: `shared` miał na czystym HEAD 1890, nie 1906** (sprawdzone `git stash`). Osiem umów kodu
+i pięć pułapek w indeksach niżej, trzy świadome odstępstwa w `decyzje-i-uproszczenia.md`.
+
 ### Sesja 05.09 (piąta) — ganger, który stoi w rosterze obok Vex
 
 **Zlecenie MG:** kontynuacja projektu; z listy wolnych etapów (28, 34, 38) MG wybrał **38

@@ -7,7 +7,7 @@ import {
   type RollResult,
 } from './dice.js';
 import type { BotActionProposal } from './bots/types.js';
-import type { CheckCallEntry } from './checks.js';
+import type { CheckCallEntry, CheckRequestEntry } from './checks.js';
 import type { InventoryMoveEntry } from './inventory.js';
 import type { HandoutLogEntry } from './handouts.js';
 import type { JournalLogEntry } from './journal.js';
@@ -28,6 +28,10 @@ import type { RandomTableRollEntry } from './tables.js';
  * whisper pattern for the same reason `proposal` does — it is a request put to
  * one person, not a line for the table — and the roll that answers it is an
  * ordinary card, public or GM-only exactly as the call decided.
+ *
+ * `request` (etap 40) jest tym samym z drugiej strony: gracz pyta MG, czy da
+ * się rzucić. Jedzie tą samą drogą szeptu i z tego samego powodu — to rozmowa
+ * dwóch osób — a zgoda zamienia ją w zwyczajne `check`.
  */
 export type ChatKind =
   | 'say'
@@ -43,6 +47,8 @@ export type ChatKind =
   | 'journal'
   /** Wezwanie MG do Testu, czekające na kubek wezwanego (etap 32). */
   | 'check'
+  /** Prośba gracza o Test, czekająca na próg od MG (etap 40). */
+  | 'request'
   /** Dzień odpoczynku albo podana dawka — ciało zmienia stan poza walką. */
   | 'recovery'
   /** Skok zegara świata (etap 37) — „Minęła noc, 15 marca 2045". */
@@ -326,6 +332,8 @@ export interface ChatMessageView {
   journal?: JournalLogEntry;
   /** GM's call for a roll — kind `check` only (stage 32). */
   check?: CheckCallEntry;
+  /** Prośba gracza o Test — kind `request` only (etap 40). */
+  request?: CheckRequestEntry;
   /** Dzień odpoczynku albo podana dawka — kind `recovery` only. */
   recovery?: RecoveryLogEntry;
   /** Skok zegara świata — kind `time` only (etap 37). */
@@ -510,9 +518,13 @@ export function chatCategoryOf(kind: ChatKind): ChatCategory {
       return 'talk';
     // `check` (etap 32) jest zapowiedzią rzutu i chowa się razem z rzutami:
     // grupa „Rzuty" gasi wtedy całą parę, a nie połowę z niej.
+    // `request` (etap 40) siedzi tu razem z `check` świadomie: zgaszona grupa
+    // „Rzuty" ma gasić **całą** zapowiedź rzutu, a nie jej połowę — inaczej
+    // z feedu znikałoby wezwanie, a zostawała prośba, która je wywołała.
     case 'roll':
     case 'gmroll':
     case 'check':
+    case 'request':
       return 'dice';
     case 'damage':
     case 'action':

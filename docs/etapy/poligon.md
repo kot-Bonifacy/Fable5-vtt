@@ -40,6 +40,14 @@ granatnikiem i dwie karty obrażeń przekreślone „Cofnięte — MG".
 zamiast celować (u MG wolno zaznaczyć każdą figurę), przez co uzbrojona broń schodzi z ręki,
 a następny klik w mapę jest **rozkazem marszu**. Kolejność jest w `pulapki-dev.md`.
 
+**Stan po sesji 06.09 (trzeciej — etap 40, prośba o Test).** Nośnikiem był znowu **„Frank"**:
+na czas oględzin dostał właściciela **`Tester`** i **wrócił do `NPC (MG)`**. Karta jest
+nietknięta — prośby i wezwania niczego na niej nie zmieniają (skutki rozlicza MG ręką, decyzja
+z 32). W logu czatu został **ślad świadomy**: trzy karty „Prośba o Test" na Franku (zgoda z PT 15,
+odmowa ze zdaniem MG, wycofana przez gracza), dwie karty wezwania i jedna karta rzutu
+„Odczytywanie emocji (EMP) — Niezdane · 9". Otwartych wezwań **nie ma** (odwołane), kubek
+Testera pusty. Reszta sceny nietknięta.
+
 **Stan po sesji 04.09 (oględziny Zdolności Ról 30a–30d) — Poligon wraca do stanu sprzed sesji.**
 Nośnikiem był **„Frank"**, przestawiany kolejno na dziewięć Ról (Solo → Medyk → Technik → Stróż
 Prawa → Korpo → Rocker → Fixer → Nomada → Media) i **przywrócony z kopii zdjętej na starcie**:

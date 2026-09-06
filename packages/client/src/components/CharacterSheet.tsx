@@ -97,7 +97,6 @@ import {
   effectiveArmor,
   emptyLifepathEnemy,
   emptyLifepathPerson,
-  effectiveCpredStats,
   formatEddies,
   formatLedgerAmount,
   groupedSkills,
@@ -175,6 +174,7 @@ import {
   transferEddies,
 } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
+import { askForCheck } from '../stores/checkStore.js';
 import { useGameTimeStore } from '../stores/gameTimeStore.js';
 import { AdvancementPanel } from './AdvancementPanel.js';
 import { PortraitPicker } from './PortraitPicker.js';
@@ -399,6 +399,17 @@ interface TabProps {
 }
 
 /**
+ * Jak wiersz karty zaczyna rzut: Umiejętność albo Cecha, `Shift` (kubek od
+ * ręki) i `Alt` (prośba o Test, etap 40). Alias, bo ten sam podpis wędruje
+ * przez trzy komponenty strony pierwszej.
+ */
+type StartRoll = (
+  target: Omit<RollTarget, 'characterId' | 'characterName'>,
+  shift: boolean,
+  alt?: boolean,
+) => void;
+
+/**
  * Strona pierwsza karty — układ oficjalnego arkusza CP RED (etap 27a + 27b).
  *
  * Trzy kolumny wydruku, od lewej: tożsamość (portret, ksywa, rola, zdolność,
@@ -421,17 +432,37 @@ function FrontPage({
   setIssues: (updater: (current: Record<string, string>) => Record<string, string>) => void;
 }) {
   const registry = useCharacterStore((s) => s.registry);
+  const userId = useAuthStore((s) => s.user?.id ?? '');
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
+  // Prośba o Test (etap 40) ma sens wyłącznie na własnej karcie i wyłącznie
+  // u gracza: MG nie prosi sam siebie, ma wezwanie z etapu 32.
+  const mayAsk = !isGm && character.ownerId === userId;
 
   /**
-   * Click opens the roll dialog, Shift+click loads the cup straight away with
-   * the last used settings. Either way the throw itself happens at the cup.
+   * Klik otwiera okno rzutu, Shift+klik ładuje kubek od razu z ostatnimi
+   * ustawieniami, **Alt+klik prosi MG o Test** (etap 40). Tak czy inaczej sam
+   * rzut dzieje się przy kubku — a przy prośbie dopiero po zgodzie MG.
+   *
+   * Alt dopisał się do gotowej gramatyki modyfikatorów jedną gałęzią i niczego
+   * na karcie nie przesunął: wiersz Umiejętności to cztery komórki siatki,
+   * w których nie ma miejsca na piąty element.
    */
-  function startRoll(target: Omit<RollTarget, 'characterId' | 'characterName'>, shift: boolean) {
+  function startRoll(
+    target: Omit<RollTarget, 'characterId' | 'characterName'>,
+    shift: boolean,
+    alt = false,
+  ) {
     const full: RollTarget = {
       characterId: character.id,
       characterName: character.name,
       ...target,
     };
+    // Prośba obejmuje wyłącznie Umiejętność i Cechę; Alt na wierszu obrażeń
+    // ma otworzyć zwykłe okno rzutu, a nie cicho nic nie zrobić.
+    if (alt && mayAsk && (full.kind === 'skill' || full.kind === 'stat')) {
+      askForCheck(full, data, registry);
+      return;
+    }
     if (shift) quickLoadCup(full, data, registry);
     else useRollStore.getState().openDialog(full);
   }
@@ -445,9 +476,130 @@ function FrontPage({
         saveName={saveName}
         setIssues={setIssues}
       />
-      <StatColumn data={data} saveData={saveData} startRoll={startRoll} />
-      <SkillColumns data={data} saveData={saveData} startRoll={startRoll} />
+      <StatColumn data={data} saveData={saveData} startRoll={startRoll} mayAsk={mayAsk} />
+      <SkillColumns data={data} saveData={saveData} startRoll={startRoll} mayAsk={mayAsk} />
+      <RoleAbilityStrip character={character} data={data} saveData={saveData} />
       <Arsenal character={character} data={data} saveData={saveData} startRoll={startRoll} />
+    </div>
+  );
+}
+
+/**
+ * Ogon podpowiedzi przy wierszu, z którego da się rzucić.
+ *
+ * Jedna funkcja zamiast dwóch napisów, bo dwa wiersze karty (Cecha i BAZA
+ * Umiejętności) muszą mówić o Alt+kliku dokładnie to samo — i tylko wtedy, gdy
+ * ten widz naprawdę może poprosić.
+ */
+function rollHintFor(mayAsk: boolean): string {
+  return mayAsk ? ' — Shift pomija okno, Alt prosi MG o Test' : ' — Shift pomija okno';
+}
+
+/**
+ * Pas „Zdolność Specjalna" pod trzema kolumnami strony pierwszej (06.09.2026).
+ *
+ * Dziewięć paneli Ról z etapów 30a–30d mieszkało do tej sesji **w kolumnie
+ * tożsamości**, obok portretu i notatek. Kolumna ma 15 rem i rozciągnąć się nie
+ * da (umowa z 30a), a Efekt Charyzmy czy Medycyna Medyka to proza plus trzy
+ * progi z przyciskami — więc kolumna rosła dwa razy wyżej od Cech i Umiejętności,
+ * a pół strony pierwszej było białą plamą. Wiersz „Zdolność Specjalna" z rangą
+ * **zostaje** w kolumnie, bo tak jest na wydruku; przenosi się wyłącznie to, co
+ * podręcznik drukuje osobno — rozwinięcie Zdolności.
+ *
+ * Pas idzie przez całą szerokość siatki, dokładnie tak, jak „Broń i pancerz"
+ * z etapu 27b, i znika bez śladu, gdy Rola nie ma czego w nim postawić (osiem
+ * z dziewięciu Ról ma samą rangę).
+ */
+/**
+ * Zdolności, które mają w karcie **własny panel**, a nie samą rangę.
+ *
+ * Lista istnieje po to, żeby pas umiał odpowiedzieć „nie mam czego pokazać"
+ * jednym warunkiem, zamiast dziewięciu — a dziesiąty panel dopisuje się w tym
+ * jednym miejscu i w gałęzi niżej.
+ */
+const ROLE_ABILITY_PANEL_IDS = [
+  CPRED_COMBAT_AWARENESS_ABILITY,
+  CPRED_MEDICINE_ABILITY,
+  CPRED_FABRICATION_ABILITY,
+  CPRED_BACKUP_ABILITY,
+  CPRED_TEAMWORK_ABILITY,
+  CPRED_CHARISMA_ABILITY,
+  CPRED_OPERATOR_ABILITY,
+  CPRED_MOTO_ABILITY,
+  CPRED_CREDIBILITY_ABILITY,
+] as const;
+
+function RoleAbilityStrip({ character, data }: TabProps & { character: CharacterSheetView }) {
+  const registry = useCharacterStore((s) => s.registry);
+  const role = registry.roles.find((r) => r.id === data.roleId) ?? null;
+  const panels = ROLE_ABILITY_PANEL_IDS.filter(
+    (ability) => cpredRoleAbilityRank(data, registry, ability) !== null,
+  );
+  if (panels.length === 0) return null;
+
+  return (
+    <div className="cp-strip cp-role-strip">
+      <h3 className="cp-section">Zdolność Specjalna{role ? ` — ${role.ability}` : ''}</h3>
+      <div className="cp-role-cards">
+        {/* Etap 30a: jedyna Zdolność Specjalna, której punkty się rozdziela —
+            reszta Ról ma samą rangę. Panel siedzi pod wierszem Zdolności, bo
+            to jej rozwinięcie, a nie osobna część karty. */}
+        {cpredRoleAbilityRank(data, registry, CPRED_COMBAT_AWARENESS_ABILITY) !== null && (
+          <div className="cp-ability-card">
+            <CombatAwarenessPanel characterId={character.id} />
+          </div>
+        )}
+        {/* Etap 30b: dwie kolejne Zdolności, których punkty się rozdziela —
+            Medycyna Medyka i Twórca Technika. Stoją w tym samym miejscu, co
+            panel Solo, bo to ta sama część karty: rozwinięcie wiersza wyżej. */}
+        {cpredRoleAbilityRank(data, registry, CPRED_MEDICINE_ABILITY) !== null && (
+          <div className="cp-ability-card">
+            <SpecialtyPanel characterId={character.id} ability="medicine" />
+          </div>
+        )}
+        {cpredRoleAbilityRank(data, registry, CPRED_FABRICATION_ABILITY) !== null && (
+          <div className="cp-ability-card">
+            <SpecialtyPanel characterId={character.id} ability="fabrication" />
+          </div>
+        )}
+        {/* Etap 30c: dwie Zdolności, które stawiają na mapie cudzych ludzi —
+            Wsparcie Stróża Prawa i zespół Korpo. Stoją w tym samym miejscu, co
+            trzy panele wyżej, bo to nadal rozwinięcie wiersza Zdolności. */}
+        {cpredRoleAbilityRank(data, registry, CPRED_BACKUP_ABILITY) !== null && (
+          <div className="cp-ability-card">
+            <BackupPanel characterId={character.id} />
+          </div>
+        )}
+        {cpredRoleAbilityRank(data, registry, CPRED_TEAMWORK_ABILITY) !== null && (
+          <div className="cp-ability-card">
+            <TeamPanel characterId={character.id} />
+          </div>
+        )}
+        {/* Etap 30d: cztery ostatnie Zdolności — Rockera, Fixera, Nomady
+            i Media. Żadna nie dotyka walki, więc żadna nie ma domu w pasku
+            akcji: stoją tylko tutaj, pod wierszem Zdolności, jak sześć
+            wcześniejszych. */}
+        {cpredRoleAbilityRank(data, registry, CPRED_CHARISMA_ABILITY) !== null && (
+          <div className="cp-ability-card">
+            <CharismaPanel characterId={character.id} />
+          </div>
+        )}
+        {cpredRoleAbilityRank(data, registry, CPRED_OPERATOR_ABILITY) !== null && (
+          <div className="cp-ability-card">
+            <OperatorPanel characterId={character.id} />
+          </div>
+        )}
+        {cpredRoleAbilityRank(data, registry, CPRED_MOTO_ABILITY) !== null && (
+          <div className="cp-ability-card">
+            <MotoPanel characterId={character.id} />
+          </div>
+        )}
+        {cpredRoleAbilityRank(data, registry, CPRED_CREDIBILITY_ABILITY) !== null && (
+          <div className="cp-ability-card">
+            <CredibilityPanel characterId={character.id} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -465,7 +617,7 @@ function Arsenal({
   startRoll,
 }: TabProps & {
   character: CharacterSheetView;
-  startRoll: (target: Omit<RollTarget, 'characterId' | 'characterName'>, shift: boolean) => void;
+  startRoll: StartRoll;
 }) {
   return (
     <section className="cp-arsenal">
@@ -675,64 +827,6 @@ function IdentityColumn({
             </div>
           );
         })}
-        {/* Etap 30a: jedyna Zdolność Specjalna, której punkty się rozdziela —
-            reszta Ról ma samą rangę. Panel siedzi pod wierszem Zdolności, bo
-            to jej rozwinięcie, a nie osobna część karty. */}
-        {cpredRoleAbilityRank(data, registry, CPRED_COMBAT_AWARENESS_ABILITY) !== null && (
-          <div className="cp-field cp-awareness">
-            <CombatAwarenessPanel characterId={character.id} />
-          </div>
-        )}
-        {/* Etap 30b: dwie kolejne Zdolności, których punkty się rozdziela —
-            Medycyna Medyka i Twórca Technika. Stoją w tym samym miejscu, co
-            panel Solo, bo to ta sama część karty: rozwinięcie wiersza wyżej. */}
-        {cpredRoleAbilityRank(data, registry, CPRED_MEDICINE_ABILITY) !== null && (
-          <div className="cp-field cp-awareness">
-            <SpecialtyPanel characterId={character.id} ability="medicine" />
-          </div>
-        )}
-        {cpredRoleAbilityRank(data, registry, CPRED_FABRICATION_ABILITY) !== null && (
-          <div className="cp-field cp-awareness">
-            <SpecialtyPanel characterId={character.id} ability="fabrication" />
-          </div>
-        )}
-        {/* Etap 30c: dwie Zdolności, które stawiają na mapie cudzych ludzi —
-            Wsparcie Stróża Prawa i zespół Korpo. Stoją w tym samym miejscu, co
-            trzy panele wyżej, bo to nadal rozwinięcie wiersza Zdolności. */}
-        {cpredRoleAbilityRank(data, registry, CPRED_BACKUP_ABILITY) !== null && (
-          <div className="cp-field cp-awareness">
-            <BackupPanel characterId={character.id} />
-          </div>
-        )}
-        {cpredRoleAbilityRank(data, registry, CPRED_TEAMWORK_ABILITY) !== null && (
-          <div className="cp-field cp-awareness">
-            <TeamPanel characterId={character.id} />
-          </div>
-        )}
-        {/* Etap 30d: cztery ostatnie Zdolności — Rockera, Fixera, Nomady
-            i Media. Żadna nie dotyka walki, więc żadna nie ma domu w pasku
-            akcji: stoją tylko tutaj, pod wierszem Zdolności, jak sześć
-            wcześniejszych. */}
-        {cpredRoleAbilityRank(data, registry, CPRED_CHARISMA_ABILITY) !== null && (
-          <div className="cp-field cp-awareness">
-            <CharismaPanel characterId={character.id} />
-          </div>
-        )}
-        {cpredRoleAbilityRank(data, registry, CPRED_OPERATOR_ABILITY) !== null && (
-          <div className="cp-field cp-awareness">
-            <OperatorPanel characterId={character.id} />
-          </div>
-        )}
-        {cpredRoleAbilityRank(data, registry, CPRED_MOTO_ABILITY) !== null && (
-          <div className="cp-field cp-awareness">
-            <MotoPanel characterId={character.id} />
-          </div>
-        )}
-        {cpredRoleAbilityRank(data, registry, CPRED_CREDIBILITY_ABILITY) !== null && (
-          <div className="cp-field cp-awareness">
-            <CredibilityPanel characterId={character.id} />
-          </div>
-        )}
         <div className="cp-field cp-notes">
           <span className="cp-label">Notatki</span>
           <textarea
@@ -860,9 +954,12 @@ function StatColumn({
   data,
   saveData,
   startRoll,
+  mayAsk,
 }: TabProps & {
-  startRoll: (target: Omit<RollTarget, 'characterId' | 'characterName'>, shift: boolean) => void;
+  startRoll: StartRoll;
+  mayAsk: boolean;
 }) {
+  const rollHint = rollHintFor(mayAsk);
   const psychosis = cyberpsychosisFor(data.humanityCurrent);
   // Etap 39: to samo małe pole „z", którym Empatia mówi od 23a, ile jej realnie
   // działa — teraz dla każdej Cechy, którą przesunął efekt czasowy. Nowego
@@ -883,8 +980,10 @@ function StatColumn({
           <button
             type="button"
             className="cp-stat-abbr"
-            onClick={(e: MouseEvent) => startRoll({ kind: 'stat', statId: id }, e.shiftKey)}
-            title={`Rzut: ${CPRED_STAT_LABELS[id].name} (Shift — bez okna)`}
+            onClick={(e: MouseEvent) =>
+              startRoll({ kind: 'stat', statId: id }, e.shiftKey, e.altKey)
+            }
+            title={`Rzut: ${CPRED_STAT_LABELS[id].name}${rollHint}`}
           >
             {CPRED_STAT_LABELS[id].abbr}
           </button>
@@ -970,16 +1069,26 @@ function SkillColumns({
   data,
   saveData,
   startRoll,
+  mayAsk,
 }: TabProps & {
-  startRoll: (target: Omit<RollTarget, 'characterId' | 'characterName'>, shift: boolean) => void;
+  startRoll: StartRoll;
+  mayAsk: boolean;
 }) {
+  const rollHint = rollHintFor(mayAsk);
   const registry = useCharacterStore((s) => s.registry);
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const groups = useMemo(() => groupedSkills(registry), [registry]);
   // BAZA has to show what the roll will actually use: EMP follows Humanity
   // once there is chrome in the body (stage 23a), and a sheet that printed the
   // base value would disagree with every card the server sends back.
-  const effective = effectiveCpredStats(data.stats, data.humanityCurrent);
+  //
+  // Od 06.09 przez `cpredEffectiveStats`, a nie `effectiveCpredStats`: to
+  // druga funkcja liczy **także** efekty czasowe z etapu 39, a umowa tamtego
+  // etapu mówi, że jedyną drogą do liczby, na którą pada kość, jest ona. Do tej
+  // sesji kolumny CECHA i BAZA pokazywały REF 8 przy Liszu −3, a kość leciała
+  // z piątki — kolumna Cech obok liczyła się już poprawnie, więc karta
+  // przeczyła sama sobie o dwie komórki dalej.
+  const effective = cpredEffectiveStats(data);
   const columns = useMemo(() => layoutSkillColumns(groups, SKILL_COLUMN_COUNT), [groups]);
 
   function setLevel(skillId: string, event: ChangeEvent<HTMLInputElement>) {
@@ -1017,7 +1126,7 @@ function SkillColumns({
               {block.skills.map((skill) => {
                 const level = data.skills[skill.id] ?? 0;
                 const abbr = CPRED_STAT_LABELS[skill.stat].abbr;
-                const rollTitle = `Rzut: ${cpredSkillLabel(skill, data)} (${abbr}) — Shift pomija okno`;
+                const rollTitle = `Rzut: ${cpredSkillLabel(skill, data)} (${abbr})${rollHint}`;
                 // The rulebook blurb only exists in the private data files.
                 const title = skill.description
                   ? `${skill.description}
@@ -1033,7 +1142,7 @@ ${rollTitle}`
                         type="button"
                         className="cp-skill-roll"
                         onClick={(e: MouseEvent) =>
-                          startRoll({ kind: 'skill', skillId: skill.id }, e.shiftKey)
+                          startRoll({ kind: 'skill', skillId: skill.id }, e.shiftKey, e.altKey)
                         }
                         title={title}
                       >
@@ -1082,7 +1191,7 @@ ${rollTitle}`
                         type="button"
                         className="cp-skill-base"
                         onClick={(e: MouseEvent) =>
-                          startRoll({ kind: 'skill', skillId: skill.id }, e.shiftKey)
+                          startRoll({ kind: 'skill', skillId: skill.id }, e.shiftKey, e.altKey)
                         }
                         title={rollTitle}
                       >
@@ -1441,7 +1550,7 @@ function WeaponStrip({
   character: CharacterSheetView;
   data: CpredCharacterData;
   saveData: TabProps['saveData'];
-  startRoll: (target: Omit<RollTarget, 'characterId' | 'characterName'>, shift: boolean) => void;
+  startRoll: StartRoll;
 }) {
   const entries = useCompendiumStore((s) => s.entries);
   const weaponTypeById = useCompendiumStore((s) => s.weaponTypeById);
@@ -1687,71 +1796,73 @@ function WeaponStrip({
                   />
                 </td>
                 <td className="weapon-actions">
-                  <button
-                    type="button"
-                    className="small-button"
-                    disabled={empty || !resolved}
-                    title={
-                      !resolved
-                        ? 'Ta broń nie ma wpisu z katalogu — wskaż model, żeby poznała tabelę zasięgów'
-                        : empty
-                          ? 'Pusty magazynek — przeładuj'
-                          : resolved.melee
-                            ? 'Atak wręcz — wskaż cel na mapie (do 2 m)'
-                            : 'Atak — wskaż cel na mapie'
-                    }
-                    onClick={() => aim(row, 'single', resolved)}
-                  >
-                    Atak
-                  </button>
-                  {resolved?.autofire && (
+                  <div className="weapon-actions-row">
                     <button
                       type="button"
                       className="small-button"
-                      disabled={row.ammoCurrent < CPRED_BURST_AMMO_COST}
-                      title={`Ogień ciągły — ${CPRED_BURST_AMMO_COST} naboi, obrażenia 2k6 × przerzut (do ×${resolved.autofire.max})`}
-                      onClick={() => aim(row, 'autofire', resolved)}
+                      disabled={empty || !resolved}
+                      title={
+                        !resolved
+                          ? 'Ta broń nie ma wpisu z katalogu — wskaż model, żeby poznała tabelę zasięgów'
+                          : empty
+                            ? 'Pusty magazynek — przeładuj'
+                            : resolved.melee
+                              ? 'Atak wręcz — wskaż cel na mapie (do 2 m)'
+                              : 'Atak — wskaż cel na mapie'
+                      }
+                      onClick={() => aim(row, 'single', resolved)}
                     >
-                      Seria
+                      Atak
                     </button>
-                  )}
-                  {resolved?.suppressive && (
+                    {resolved?.autofire && (
+                      <button
+                        type="button"
+                        className="small-button"
+                        disabled={row.ammoCurrent < CPRED_BURST_AMMO_COST}
+                        title={`Ogień ciągły — ${CPRED_BURST_AMMO_COST} naboi, obrażenia 2k6 × przerzut (do ×${resolved.autofire.max})`}
+                        onClick={() => aim(row, 'autofire', resolved)}
+                      >
+                        Seria
+                      </button>
+                    )}
+                    {resolved?.suppressive && (
+                      <button
+                        type="button"
+                        className="small-button"
+                        disabled={row.ammoCurrent < CPRED_BURST_AMMO_COST}
+                        title={`Ogień zaporowy — ${CPRED_BURST_AMMO_COST} naboi, testy SW u wszystkich w ${CPRED_SUPPRESSIVE_RANGE_M} m`}
+                        onClick={() => aim(row, 'suppressive', resolved)}
+                      >
+                        Zapora
+                      </button>
+                    )}
+                    {resolved?.rangeDv && (
+                      <button
+                        type="button"
+                        className="small-button"
+                        title="Pokaż pierścienie przedziałów PT wokół swojego tokenu (kliknij ponownie, by schować)"
+                        aria-label="Pokaż pierścienie przedziałów PT wokół swojego tokenu (kliknij ponownie, by schować)"
+                        onClick={() => showRangeRings(row, resolved)}
+                      >
+                        ◎
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="small-button"
-                      disabled={row.ammoCurrent < CPRED_BURST_AMMO_COST}
-                      title={`Ogień zaporowy — ${CPRED_BURST_AMMO_COST} naboi, testy SW u wszystkich w ${CPRED_SUPPRESSIVE_RANGE_M} m`}
-                      onClick={() => aim(row, 'suppressive', resolved)}
+                      disabled={!isValidDamageNotation(row.damage)}
+                      title={
+                        isValidDamageNotation(row.damage)
+                          ? 'Sam rzut na obrażenia, bez testu trafienia (Shift — bez okna)'
+                          : 'Uzupełnij obrażenia notacją kości, np. 3k6'
+                      }
+                      onClick={(event: MouseEvent) =>
+                        startRoll({ kind: 'damage', weaponRowId: row.id }, event.shiftKey)
+                      }
                     >
-                      Zapora
+                      OBR.
                     </button>
-                  )}
-                  {resolved?.rangeDv && (
-                    <button
-                      type="button"
-                      className="small-button"
-                      title="Pokaż pierścienie przedziałów PT wokół swojego tokenu (kliknij ponownie, by schować)"
-                      aria-label="Pokaż pierścienie przedziałów PT wokół swojego tokenu (kliknij ponownie, by schować)"
-                      onClick={() => showRangeRings(row, resolved)}
-                    >
-                      ◎
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    className="small-button"
-                    disabled={!isValidDamageNotation(row.damage)}
-                    title={
-                      isValidDamageNotation(row.damage)
-                        ? 'Sam rzut na obrażenia, bez testu trafienia (Shift — bez okna)'
-                        : 'Uzupełnij obrażenia notacją kości, np. 3k6'
-                    }
-                    onClick={(event: MouseEvent) =>
-                      startRoll({ kind: 'damage', weaponRowId: row.id }, event.shiftKey)
-                    }
-                  >
-                    OBR.
-                  </button>
+                  </div>
                 </td>
                 <td>
                   <button
@@ -1818,22 +1929,26 @@ function WeaponStrip({
                     {weapon.melee ? 'broń biała — do 2 m' : (weapon.typeName ?? '')}
                   </td>
                   <td className="weapon-actions">
-                    <button
-                      type="button"
-                      className="small-button"
-                      disabled={
-                        (weapon.magazine ?? 0) > 0 &&
-                        (row.attachmentAmmo?.[attachment.id] ?? 0) <= 0
-                      }
-                      title={
-                        weapon.melee
-                          ? 'Atak wręcz — wskaż cel na mapie (do 2 m)'
-                          : 'Atak podwieszaną bronią — wskaż cel na mapie'
-                      }
-                      onClick={() => aim(row, 'single', resolved, { attachment, resolved: weapon })}
-                    >
-                      Atak
-                    </button>
+                    <div className="weapon-actions-row">
+                      <button
+                        type="button"
+                        className="small-button"
+                        disabled={
+                          (weapon.magazine ?? 0) > 0 &&
+                          (row.attachmentAmmo?.[attachment.id] ?? 0) <= 0
+                        }
+                        title={
+                          weapon.melee
+                            ? 'Atak wręcz — wskaż cel na mapie (do 2 m)'
+                            : 'Atak podwieszaną bronią — wskaż cel na mapie'
+                        }
+                        onClick={() =>
+                          aim(row, 'single', resolved, { attachment, resolved: weapon })
+                        }
+                      >
+                        Atak
+                      </button>
+                    </div>
                   </td>
                   <td />
                 </tr>
@@ -2056,7 +2171,7 @@ function ArmorStrip({ character, data, saveData }: TabProps & { character: Chara
           {printed.map(({ location, row }) => (
             <tr key={location}>
               <td className="armor-slot-cell">
-                <span className="cp-slot">{ARMOR_LOCATION_LABELS[location]}</span>
+                <span className="cp-armor-slot">{ARMOR_LOCATION_LABELS[location]}</span>
                 {row ? (
                   <input
                     type="text"
@@ -2883,33 +2998,38 @@ function CyberdeckSection({ data, saveData }: TabProps) {
   const deck = data.cyberdeck;
   if (!deck) {
     return (
-      <div className="cp-panel cp-deck cp-deck--empty">
-        <span className="cp-label">Cyberdek</span>
-        <select
-          value=""
-          onChange={(event) => {
-            const entry = decks.find((row) => row.id === event.target.value);
-            if (!entry) return;
-            saveData(
-              {
-                cyberdeck: {
-                  compendiumId: entry.id,
-                  name: entry.name,
-                  slots: entry.deckSlots ?? 1,
-                  installed: [],
+      <div className="cp-panel cp-deck">
+        {/* Wiersz „bez deku" jest polem karty jak każde inne — do 06.09 lista
+            rozwijana leżała wprost na czerwonym panelu, bez białego pola pod
+            sobą, i był to jedyny taki wiersz w całym arkuszu. */}
+        <div className="cp-field cp-row cp-deck--empty">
+          <span className="cp-label">Cyberdek</span>
+          <select
+            value=""
+            onChange={(event) => {
+              const entry = decks.find((row) => row.id === event.target.value);
+              if (!entry) return;
+              saveData(
+                {
+                  cyberdeck: {
+                    compendiumId: entry.id,
+                    name: entry.name,
+                    slots: entry.deckSlots ?? 1,
+                    installed: [],
+                  },
                 },
-              },
-              'cyberdeck',
-            );
-          }}
-        >
-          <option value="">Bez deku — wybierz z kompendium…</option>
-          {decks.map((entry) => (
-            <option key={entry.id} value={entry.id}>
-              {entry.name} ({entry.deckSlots} gniazd)
-            </option>
-          ))}
-        </select>
+                'cyberdeck',
+              );
+            }}
+          >
+            <option value="">Bez deku — wybierz z kompendium…</option>
+            {decks.map((entry) => (
+              <option key={entry.id} value={entry.id}>
+                {entry.name} ({entry.deckSlots} gniazd)
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
     );
   }
@@ -3548,7 +3668,7 @@ function CyberwareSection({
 
   return (
     <>
-      <h3>Cyborgizacje</h3>
+      <h3 className="cp-section">Cyborgizacje</h3>
       {data.cyberware.length === 0 ? (
         <p className="sheet-hint">
           Brak wszczepów. Cyborgizacje instaluje się z zakładki „Kompendium” — serwer rzuca wtedy na

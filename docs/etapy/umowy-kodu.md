@@ -4,6 +4,53 @@ Wyprowadzone z „Od czego zacząć" w `POSTEP.md` 22.08.2026. Indeks jednolinij
 tu leżą pełne wersje. Czytaj wpis, **zanim** dołożysz coś w obszarze, którego dotyczy — każdy
 z nich powstał po tym, jak ktoś dołożył to w złym miejscu.
 
+**Wezwanie do Testu powstaje w JEDNYM miejscu: `createCheckCall` (06.09, etap 40).**
+Do etapu 40 całe wystawianie wezwania siedziało w ciele handlera `check:call` — walidacja postaci,
+`planCpredRoll`, `rollLabel`, `cpredDifficultyRungAt`, wstawienie wiadomości i dostarczenie jej
+wzorem szeptu. Zgoda na prośbę gracza kończy się **dokładnie takim samym wezwaniem**, więc funkcja
+wyszła z handlera i ma dziś dwóch wołających (`check:call` i `check:request-resolve`), a handler
+czyta wyłącznie payload. Druga kopia tej logiki rozjechałaby się z oryginałem w pierwszym etapie,
+który dołoży wezwaniu cokolwiek nowego — dokładnie tak, jak rzut na wezwanie świadomie jedzie
+istniejącym `character:roll`, zamiast mieć własne zdarzenie. **Ramę MG** (próg albo przeciwnik,
+modyfikator, widoczność) czyta z payloadu jedna funkcja `parseCheckFrame`, też wspólna dla obu
+dróg — inaczej widełki PT rozeszłyby się przy pierwszej zmianie drabinki.
+
+**Prośba o Test nie zna ani progu, ani widoczności (06.09, etap 40).**
+`CheckRequestPayload` jest lustrem `CheckCallPayload` **pomniejszonym o wszystko, co należy do
+MG**: zostaje karta, czym rzucić i zdanie „po co". Gracz, który mógłby nazwać PT, ustalałby
+trudność wymyślonego przez MG wydarzenia — to ta sama umowa, którą wezwanie trzyma od 32, tylko
+z drugiej strony stołu. Przy zgodzie serwer bierze Umiejętność **z zapisanej prośby**, nie
+z żądania MG; jedyną drogą do jej podmiany jest pełne okno wezwania („Ustaw…"), które idzie przez
+`check:call` i zamyka prośbę polem `requestMessageId` w tym samym żądaniu.
+
+**Prawo do prośby czytaj z bazy, nie z karty czatu (06.09, etap 40).**
+`askedById` w `CheckRequestEntry` służy do **rysowania**, a nie do wpuszczania: `check:request`
+sprawdza `character.ownerId === user.id` w bazie, a `check:request-cancel` porównuje `authorId`
+zapisanej wiadomości. Między prośbą a kliknięciem MG może minąć scena — karta zmienia właściciela
+albo znika — więc `characterId` z karty służy do **znalezienia** postaci, a nie do
+uwierzytelnienia (ten sam wzorzec, co `bot:proposal` z 20a). Postać, której już nie ma, zamyka
+prośbę **odmową ze śladem na karcie**, a nie cichą bezczynnością.
+
+**Kubek nie woła na prośbę, i rozstrzyga to RODZAJ wiersza (06.09, etap 40).**
+`openCheckCallFor` (`stores/chatStore.ts`) pomija `kind !== 'check'` **wprost**, a nie przez to,
+że prośba akurat nosi payload w innym polu. Kubek zapalony nad prośbą dałby graczowi rzut przed
+zgodą, czyli dokładnie to, czego ten etap miał się pozbyć — a przy prośbie progu jeszcze **nie
+ma**. Pilnuje tego strażnik źródłowy `check-request-cup.test.ts`, wzorem `tables-cup.test.ts`
+z etapu 34.
+
+**Okno otwierane znad karty postaci potrzebuje `z-index: 400` (06.09, etap 40).**
+`.sheet-window` ma 300, a `.dialog-backdrop` — 50. Okno prośby i okno wezwania dopisały się do
+listy `:has()` obok `.roll-dialog`, bo obydwa otwiera się przy rozłożonym arkuszu: prośbę
+Alt+klikiem w wiersz, wezwanie przyciskiem „Ustaw…" na karcie czatu. Bez tego okno **powstaje,
+ale nie widać niczego** — ekran przygasa scrimem, a treść zostaje pod arkuszem.
+
+**Nowy panel Zdolności Roli dopisuje się do `ROLE_ABILITY_PANEL_IDS` (06.09).**
+Lista w `CharacterSheet.tsx` mówi paskowi „Zdolność Specjalna", czy ma co pokazać, jednym
+warunkiem zamiast dziewięciu; dziesiąty panel dopisuje się w niej **i** w gałęzi niżej. Sam pas
+idzie przez całą szerokość siatki strony pierwszej (`grid-column: 1 / -1`), jak „Broń i pancerz"
+z 27b — w kolumnie tożsamości panele stać nie mogą, bo ta ma 15 rem i rozciągnąć się nie da
+(umowa z 30a), więc ciągnęły ją dwa razy niżej niż Cechy i Umiejętności.
+
 **Przedmiot przenosi się JEDNĄ czystą funkcją: `cpredMoveItems(from, to, refs)` (06.09, etap 38b).**
 `shared/src/systems/cpred/inventory.ts` bierze dwie karty i listę adresów wierszy, a zwraca
 **obie** karty naraz. Rozdzielenie tego na „zabierz" i „dołóż" pozwoliłoby wywołującemu zapisać

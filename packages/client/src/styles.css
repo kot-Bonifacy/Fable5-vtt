@@ -2624,8 +2624,15 @@ input[type='color'] {
 }
 
 /* The roll dialog is opened from a sheet window (z-index 300+) — it has to
-   sit above it, otherwise the sheet covers half of the dialog. */
-.dialog-backdrop:has(.roll-dialog) {
+   sit above it, otherwise the sheet covers half of the dialog.
+   To samo dotyczy obu okien Testu (etapy 32 i 40): prośbę otwiera Alt+klik
+   w wiersz karty, a wezwanie — „Ustaw…" na karcie czatu przy otwartej karcie
+   postaci. Bez tego wiersza okno powstaje, ale **niczego nie widać**: ekran
+   przygasa scrimem, a samo okno zostaje pod arkuszem (znalezione 06.09
+   w przeglądarce, w drugiej sesji). */
+.dialog-backdrop:has(.roll-dialog),
+.dialog-backdrop:has(.check-request-dialog),
+.dialog-backdrop:has(.check-call-dialog) {
   z-index: 400;
 }
 
@@ -4566,10 +4573,20 @@ body.is-resizing {
   color: var(--text-dim);
 }
 
+/* Komórka „Atak" trzyma kilka przycisków obok siebie, ale **komórką zostaje**:
+   `display: flex` na `<td>` wyjmuje go z układu tabeli i przestaje rozciągać
+   się na wysokość wiersza — a że tło tabeli arkusza jest czerwone, pod
+   przyciskami zostawał czerwony pas wyglądający na błąd (znalezione 06.09).
+   Układ robi więc wnętrze komórki, nie ona sama. */
 .weapon-actions {
+  vertical-align: top;
+}
+
+.weapon-actions-row {
   display: flex;
   gap: 0.25rem;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 /* The attack card under a roll on the chat. */
@@ -6371,23 +6388,24 @@ body.is-resizing {
    i żadna jedna deklaracja `grid-template-areas` nie opisuje ich wszystkich.
    `.hud-form` to drugi dom tego samego panelu — pudełko „Zmysł Walki"
    w pasku akcji ma 254 px i ścinało nazwy tak samo („Reduk…", „Wyczu…").
-   Poza tymi dwoma (rejestr awansów w `.cp-advance`) wiersz zostaje
-   jednolinijkowy — tam miejsca jest dość. */
-.cp-awareness .awareness-row,
+   Poza tym (rejestr awansów w `.cp-advance`) wiersz zostaje jednolinijkowy —
+   tam miejsca jest dość.
+
+   Do 06.09 była tu jeszcze `.cp-awareness` — panele Ról stały wtedy w kolumnie
+   tożsamości szerokiej na 15 rem i musiały łamać nazwy do własnego wiersza.
+   Po przeprowadzce do pasa „Zdolność Specjalna" mają całą szerokość strony
+   i łamania nie potrzebują. */
 .hud-form .awareness-row {
   display: flex;
   flex-wrap: wrap;
   gap: 0.1rem 0.4rem;
 }
 
-.cp-awareness .awareness-name,
 .hud-form .awareness-name {
   flex: 1 0 100%;
   white-space: normal;
 }
 
-.cp-awareness .awareness-value,
-.cp-awareness .awareness-cost,
 .hud-form .awareness-value,
 .hud-form .awareness-cost {
   min-width: 0;
@@ -6397,15 +6415,9 @@ body.is-resizing {
 /* `flex: none` obok `margin-left: auto`: bez niego automatyczny margines
    zjada całą wolną przestrzeń wiersza, a guzik zostaje ścieśniony do własnego
    minimum i wychodzi poza panel — „Wezwij" Wsparcia czytało się jako „Wezw". */
-.cp-awareness .awareness-steps,
 .hud-form .awareness-steps {
   flex: none;
   margin-left: auto;
-}
-
-/* `grid-column` nie znaczy nic w rodzicu, który przestał być siatką. */
-.cp-awareness .team-loyalty {
-  flex: 1 0 100%;
 }
 
 /* Etap 30c: Wsparcie i zespół Korpo. Oba panele stoją na tym samym arkuszu, co
@@ -9442,6 +9454,86 @@ body.is-resizing {
 }
 
 /*
+ * Prośba gracza o Test (etap 40) — druga strona wezwania.
+ *
+ * Ta sama bursztynowa krawędź, co przy `.chat-check`, i to jest umyślne: obie
+ * karty są zapowiedzią rzutu, a stół ma je czytać jednym spojrzeniem jako
+ * jedną sprawę. Zamknięta prośba gaśnie tak, jak odwołane wezwanie.
+ */
+.chat-request {
+  border-left: 3px solid var(--warn);
+  padding-left: 0.5rem;
+}
+
+.chat-request--closed {
+  border-left-color: var(--border);
+  opacity: 0.65;
+}
+
+.chat-request-note {
+  margin: 0.15rem 0 0.3rem;
+  font-size: 0.78rem;
+  font-style: italic;
+  color: var(--text-dim);
+}
+
+/* Drabinka na karcie czatu, a nie w oknie: zgoda ma być jednym kliknięciem.
+   Panel boczny bywa zwężony do 15 rem, więc szczeble układają się w siatkę
+   `auto-fit` — na szerokim panelu po dwa w rzędzie, na wąskim po jednym —
+   zamiast zawijać się w nierówną kaskadę. */
+.chat-request-ladder {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+  gap: 0.2rem;
+  margin: 0.35rem 0 0.3rem;
+}
+
+.chat-request-ladder .small-button {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.3rem;
+  width: 100%;
+  text-align: left;
+}
+
+.chat-request-refusal {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.35rem;
+}
+
+.chat-request-refusal input {
+  width: 100%;
+}
+
+/* Plakietka przy zakładce „Czat": ile próśb o Test czeka na MG (etap 40).
+   Bursztyn, ten sam co karta prośby i wołający kubek — cała ta ścieżka mówi
+   jednym kolorem „ktoś czeka na twoją decyzję". */
+.side-tab-badge {
+  display: inline-block;
+  min-width: 1.05rem;
+  margin-left: 0.3rem;
+  padding: 0 0.25rem;
+  border-radius: 0.6rem;
+  background: var(--warn);
+  color: var(--bg);
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1.05rem;
+  text-align: center;
+}
+
+.check-request-dialog {
+  max-width: 24rem;
+}
+
+.check-request-what {
+  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+}
+
+/*
  * Kopie zapasowe i pliki wymiany (etap 33) — zakładka MG „Kopie".
  *
  * Cztery sekcje jedna pod drugą, każda z tym samym rytmem: tytuł, rządek
@@ -9763,10 +9855,13 @@ body.is-resizing {
   color: var(--text);
 }
 
-/* Guzik „Wymiana…" nad tabelą wyposażenia karty. */
+/* Guzik „Wymiana…" nad tabelą wyposażenia karty.
+   Do lewej, na tej samej krawędzi, co „+ Wyposażenie" pod tabelą (06.09):
+   dosunięty do prawej wisiał sam nad narożnikiem i wyglądał jak element
+   okna, a nie jak działanie na tej liście. */
 .sheet-gear-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 /* --- Karta przekazania na czacie --------------------------------------- */

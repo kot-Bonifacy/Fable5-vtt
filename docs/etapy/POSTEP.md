@@ -107,8 +107,33 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 | 38a    | Statysta jako karta postaci                   | ✅     | 2026-09-05          |
 | 38b    | Przedmioty: przekazanie, łup, przeszukanie    | ✅     | 2026-09-06          |
 | 39     | Efekty czasowe modyfikujące Cechy             | ✅     | 2026-09-05          |
+| 40     | Prośba gracza o Test                          | ✅     | 2026-09-06          |
 
 ## Od czego zacząć
+
+**Gracz prosi od 06.09 o Test, a MG zgadza się jednym kliknięciem — do etapu 40 kierunek
+gracz → MG nie istniał.** Etap **nie zbudował nowej mechaniki Testu**: zgoda woła
+`createCheckCall`, tę samą funkcję, którą woła `check:call`, i powstaje z niej **zwykłe wezwanie
+z 32** — z kartą, wołającym kubkiem, Szczęściem i werdyktem. Cała różnica siedzi w tym, czego
+prośba **nie** niesie: **ani progu, ani widoczności**, bo jedno i drugie należy do MG, a przy
+zgodzie Umiejętność bierze się z **zapisanej prośby**, nie z żądania MG (podmienia ją wyłącznie
+„Ustaw…”, czyli `check:call` z `requestMessageId` — jedno żądanie zamyka prośbę i stawia
+wezwanie). **Kubek nie zapala się na prośbę** i pilnuje tego strażnik źródłowy
+`check-request-cup.test.ts`. Wejście z karty to **Alt+klik** w wiersz Cechy albo Umiejętności
+(plus „Poproś MG” w oknie rzutu); swobodny rzut z 08 **działa jak przedtem**. Wiersz `request`
+poszedł do `visibleTo` **tylko po stronie MG** — gracz widzi swoją przez `authorId`. Licznik
+czekających próśb przy zakładce „Czat” nie jest ozdobą: prośba jest cicha i bez niego ginie
+w feedzie. Sześć umów kodu i pięć pułapek w indeksach niżej. **Cały etap przeszedł oględziny
+w dwóch sesjach naraz.**
+
+**Karta postaci przeszła 06.09 szlif na wszystkich czterech zakładkach (zlecenie MG).**
+Największa zmiana jest strukturalna: dziewięć paneli Ról z 30a–30d **wyszło z kolumny
+tożsamości** (15 rem, nierozciągalna — umowa z 30a) do **pasa „Zdolność Specjalna”** pod trzema
+kolumnami, tam gdzie leży „Broń i pancerz” z 27b. Bez tego kolumna była dwa razy wyższa od Cech
+i Umiejętności, a pół strony pierwszej — pustym polem. Wyszły przy tym **cztery usterki układu**
+(`.cp-slot` zdefiniowana dwa razy, `display: flex` na trzech `<td>`, typ naboju przelewający się
+na kolumnę ŁA, pusta prawa kolumna „Ścieżki Życia”) i **jeden błąd mechaniczny**: kolumny CECHA
+i BAZA liczyły się **bez efektów czasowych z 39**. Wszystko naprawione; szczegóły w pułapkach.
 
 **MG może od 06.09 powiedzieć „losuj, co się dzieje" — do etapu 34 tabela losowa nie istniała
 w żadnej postaci.** Tabela jest **rdzeniem VTT, nie mechaniką CP RED**: `shared/src/tables.ts`
@@ -220,16 +245,17 @@ przy zatrzymanym serwerze, z kopią stanu sprzed przywrócenia. Doszła zakładk
 i `archive`. Wyszedł przy tym **jeden błąd**: polski znak w nazwie pliku wywracał pobieranie
 błędem 500. Osiem umów kodu i cztery pułapki w indeksach niżej.
 
-**Wolne są teraz już tylko dwa: 28** (wdrożenie na VPS — a MG planuje przed nim refaktoryzację
-całości) **i 34** (tabele losowe). **Etap 38 zamknięty w komplecie 06.09**: 38a (statysta jako
-karta) i 38b (przekazanie, łup, przeszukanie). **Etap 36 (makra i własny pasek) MG wycofał
-05.09** — nie planuj go i nie proponuj makr; pasek akcji z 16f zostaje generowany. **Żadna wiążąca
-kolejność nie została już otwarta**: „37 przed 39" i „33 przed 28" są spełnione.
-**Refaktoryzacja całości przed etapem 28 czeka na osobną sesję** — MG odłożył ją 05.09, wybierając
-etap z listy, i od tamtej pory doszły trzy etapy. **To jest teraz najtańszy moment, żeby ją
-zrobić**: po niej zostaje wyłącznie 34 i wdrożenie.
+**Wolny jest już tylko JEDEN etap: 28** (wdrożenie na VPS — a MG planuje przed nim
+refaktoryzację całości). 34 zamknięty 06.09, 38 w komplecie 06.09 (38a + 38b), 40 — 06.09.
+**Etap 36 (makra i własny pasek) MG wycofał 05.09** — nie planuj go i nie proponuj makr; pasek
+akcji z 16f zostaje generowany. **Żadna wiążąca kolejność nie została już otwarta**: „37 przed
+39" i „33 przed 28" są spełnione. **Refaktoryzacja całości przed etapem 28 czeka na osobną
+sesję** — MG odłożył ją 05.09, wybierając etap z listy, i od tamtej pory doszło pięć etapów.
+**To jest teraz najtańszy moment, żeby ją zrobić**: po niej zostaje wyłącznie wdrożenie.
 
-**Dług oględzin — 16 pozycji.** Etap 38b dołożył **jedną** i jest to **ta sama przeszkoda**, co
+**Dług oględzin — 16 pozycji.** Etap 40 **nie dołożył ani jednej** — cała jego ścieżka
+przeszła oględziny w dwóch sesjach naraz w tej samej sesji, w której powstała; szlif karty
+postaci też. Etap 38b dołożył **jedną** i jest to **ta sama przeszkoda**, co
 w 38a: „🎒 Przeszukaj…" w menu figury, bo prawym klikiem z automatyki nie da się otworzyć menu
 kanwy Pixi. Obie pozycje są w **tym samym menu** i klika się je jednym podejściem ręką MG. Etap 38a
 dołożył **jedną** (menu figury: przełącznik statystyk, Wartość bojowa, pytanie o kartę przy
@@ -284,8 +310,8 @@ nieaktualne. Lista jest zapisem chwili, w której coś zauważono, a nie stanu r
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
 a od 30d pierwszym, przy którym **każda Rola w drużynie gra inaczej niż reszta**.
 
-**Testy na koniec ostatniej sesji:** 1904 w `shared` (+38), 1018 na serwerze (+12), 97 u klienta
-(bez zmian) — zielone. ESLint i Prettier czyste na kodzie; `tsc --noEmit` czysty w trzech pakietach
+**Testy na koniec ostatniej sesji:** 1941 w `shared`, 1062 na serwerze, 104 u klienta — zielone.
+(Sumy w starszych notatkach są zaniżone; to są liczby zmierzone 06.09.) ESLint i Prettier czyste na kodzie; `tsc --noEmit` czysty w trzech pakietach
 (od 05.09 obejmuje też `packages/server/scripts/`). **Trzy pliki dokumentacji —
 `POSTEP.md`, `POMYSLY.md` i `00-przeglad.md` — prettier by przeformatował i jest tak od dawna**
 (sprawdzone 05.09 na czystym HEAD); nie puszczaj na nich `pnpm format`, bo przelałoby to
@@ -296,6 +322,12 @@ kilkaset wierszy szumu do commita etapu.
 Jeden wiersz = jedna umowa; pełna wersja z uzasadnieniem w `umowy-kodu.md`. Umowa złamana
 znaczy zwykle błąd, który już raz kosztował sesję.
 
+- **Wezwanie do Testu powstaje w JEDNYM miejscu — `createCheckCall`** (`realtime/checks.ts`); wołają je `check:call` i zgoda na prośbę z 40, a ramę MG (próg, modyfikator, widoczność) czyta wspólne `parseCheckFrame`. Druga kopia rozjedzie się przy pierwszej zmianie wezwania.
+- **Prośba o Test nie zna progu ani widoczności** — `CheckRequestPayload` to `CheckCallPayload` bez tego, co należy do MG. Przy zgodzie Umiejętność idzie z **zapisanej prośby**; podmienić ją da się wyłącznie przez „Ustaw…”, czyli `check:call` z `requestMessageId`.
+- **Prawo do prośby czytaj z bazy, nie z karty czatu** — `askedById` służy do rysowania; `check:request` sprawdza `character.ownerId`, a `check:request-cancel` — `authorId` zapisanej wiadomości. Postaci, której już nie ma, odpowiada **odmowa ze śladem na karcie**, nie cisza.
+- **Kubek nie woła na prośbę, i rozstrzyga to RODZAJ wiersza** — `openCheckCallFor` pomija `kind !== 'check'` wprost; przy prośbie progu jeszcze nie ma. Strażnik źródłowy: `check-request-cup.test.ts`.
+- **Okno otwierane znad karty postaci potrzebuje `z-index: 400`** — dopisz jego klasę do listy `.dialog-backdrop:has(…)` obok `.roll-dialog`; `.sheet-window` ma 300, a backdrop 50.
+- **Nowy panel Zdolności Roli dopisuje się do `ROLE_ABILITY_PANEL_IDS`** — pas „Zdolność Specjalna” idzie przez całą szerokość siatki strony pierwszej (`grid-column: 1 / -1`), jak „Broń i pancerz”; w kolumnie tożsamości (15 rem, nierozciągalna) panele stać nie mogą.
 - **Losowanie z tabeli nie dotyka `rollStore`** — „Losuj” i `/tab` idą przez `table:roll`/`chat:send`, jak `/r` od etapu 03; kubek ma jeden slot i każdy `load…Cup` czyści resztę. Pilnuje tego strażnik źródłowy `tables-cup.test.ts`.
 - **Rzut z tabeli idzie z `checkRule: false` i `plain: true`** (`rollRandomTable`) — `1d10` jest formułą Testu, więc bez tego dziesiątka eksploduje dorzutem i tabela dziesięciowierszowa daje 11. `plain` gasi malowanie skrajnych oczek na karcie.
 - **Widoczność wyniku to RODZAJ wiersza czatu**: `rolltable` publiczny, `gmrolltable` cichy — wzorem `roll`/`gmroll`. „Pokaż stołowi” **dokłada** publiczny wiersz (treść z zapisanej karty, nie z żądania), bo `visibleTo` jest białą listą rodzajów w zapytaniu do bazy.
@@ -459,6 +491,11 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 
 Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapki-dev.md`.
 
+- **Okno otwierane znad karty postaci znika pod nią, choć powstało** — scrim jest, `Escape` działa, w DOM-ie okno ma rozmiary, a widać zero. Rozpoznanie: `document.elementFromPoint` na jego środku zwraca arkusz.
+- **Ta sama nazwa klasy CSS dwa razy w `sheet.css` — wygrywa późniejsza.** `.cp-slot` była etykietą lokacji pancerza **i** pudełkiem gniazda cyborgizacji, więc „Głowa/Korpus/Tarcza” znikały z tabeli. Przed dopisaniem klasy: `grep -n '^\.nazwa {' sheet.css`.
+- **`display: flex` (i `grid`) na `<td>` wyjmuje komórkę z układu tabeli** — przestaje sięgać wysokości wiersza, a czerwone tło `.cp-table` wychodzi spod treści jak błąd renderowania. Flex idzie na wrapper **wewnątrz** komórki.
+- **Panel wstawiony w `.cp-field` nie rozciąga się sam** (brak `flex: 1`), a selektor `.cp-span2` w kontenerze siatki trafia w więcej dzieci, niż się wydaje — stąd pusta prawa kolumna „Ścieżki Życia”.
+- **Automatyka przeglądarki gubi modyfikator `alt` przy kliknięciu** — Alt+klik nie dochodzi do strony i wygląda jak niedziałająca funkcja. Obejście: `dispatchEvent(new MouseEvent('click', { bubbles: true, altKey: true }))`.
 - **Pomocnik testowy, który przy odczycie odpina słuchacza, daje test przechodzący LOSOWO** — `collectMessages` gaszony w pętli „losuj do skutku”; objaw wygląda na wyścig w serwerze, a siedzi w harnessie. Odczyt = żywa tablica, odpięcie = osobny krok.
 - **`rollFormula` sam wnioskuje regułę Testu z formuły — i to jest pułapka wszędzie, gdzie kość NIE jest Testem.** Tabela `1d10` bez `checkRule: false` wyrzuca jedenastkę, a objaw („nic nie odpowiada za tę liczbę”) wskazuje na zakresy, nie na rzut. To samo dotyczy każdego przyszłego losowania fabularnego.
 - **Regex na zrzucie podręcznika łapie każdą liczbę, także numer strony.** Pierwsza wersja `parse-encounters.py` zrobiła z „STR. 417” wiersz tabeli („dziura 101–417”). Zakres wiersza musi być zakotwiczony (nawias albo początek linii) **i** mieć po sobie krótką nazwę z dwukropkiem.
@@ -604,6 +641,76 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 06.09 (trzecia) — gracz, który pyta MG, czy może rzucić
+
+**Zlecenie MG:** kontynuacja projektu, **etap 40 (prośba gracza o Test)**, z prośbą o pytania
+uzupełniające i o sugerowanie się Foundry tam, gdzie czegoś nie wiadomo — plus **osobne zlecenie:
+„popraw wygląd karty postaci, bo w wyniku zmian straciła spójność"**. Trzy pytania padły przed
+kodem, po obejrzeniu karty w przeglądarce; MG wybrał rekomendację w każdym z nich: pas Zdolności
+**wychodzi z kolumny tożsamości** na pełną szerokość, drabinka PT stoi na karcie czatu **jako
+siatka z nazwami szczebli**, a szlif obejmuje **wszystkie cztery zakładki**.
+
+**Etap nie zbudował nowej mechaniki Testu — dobudował brakującą połowę pętli z 32.** Cała treść
+tego zdania siedzi w jednej funkcji: `createCheckCall` **wyszła z ciała handlera `check:call`**
+i ma dziś dwóch wołających. Klik w szczebel drabinki na karcie prośby robi **zwykłe wezwanie
+z etapu 32** — z kartą, wołającym kubkiem, Szczęściem i werdyktem — bo woła tę samą funkcję, a nie
+własną kopię. Ramę MG (próg albo przeciwnik, modyfikator, widoczność) czyta wspólne
+`parseCheckFrame`.
+
+**Prośba nie zna progu ani widoczności i to jest jej cała definicja.** `CheckRequestPayload` to
+lustro `CheckCallPayload` pomniejszone o wszystko, co należy do MG: zostaje karta, czym rzucić
+i zdanie „po co". Przy zgodzie serwer bierze Umiejętność **z zapisanej prośby**, nie z żądania
+MG — jedyną drogą do jej podmiany jest „Ustaw…", które idzie przez `check:call` i zamyka prośbę
+polem `requestMessageId` **w tym samym żądaniu**, żeby zgoda i wezwanie nie mogły się rozejść na
+dwie połowy.
+
+**Kubek nie zapala się na prośbę** — `openCheckCallFor` pomija rodzaj `request` **wprost**, a nie
+przez to, że payload siedzi w innym polu; przy prośbie progu jeszcze nie ma, więc kubek dałby
+rzut przed zgodą. Pilnuje tego strażnik źródłowy `check-request-cup.test.ts`, wzorem
+`tables-cup.test.ts` z 34. **Wiersz `request` dopisał się do `visibleTo` tylko po stronie MG** —
+gracz widzi swoją przez klauzulę `authorId`, a wpis na jego białej liście pokazałby mu cudze
+prośby.
+
+**Licznik przy zakładce „Czat" nie jest ozdobą.** Prośba jest cicha (bez dźwięku, bez wiersza dla
+stołu) i odjeżdża w górę feedu przy pierwszym rzucie — bez liczby przy zakładce ginie, a gracz
+czeka w ciszy. Liczy się wprost z feedu, tak jak kubek szuka wezwania: dwa magazyny stanu o tym
+samym rozeszłyby się przy pierwszym „Odmów".
+
+**Karta postaci: pół strony pierwszej było pustym polem, i miało to jedną przyczynę.** Dziewięć
+paneli Ról z 30a–30d stało w **kolumnie tożsamości**, która ma 15 rem i rozciągnąć się nie może
+(umowa z 30a) — Efekt Charyzmy to proza plus trzy progi z guzikami, więc kolumna rosła dwa razy
+wyżej od Cech i Umiejętności. Panele przeniosły się do **pasa „Zdolność Specjalna"** pod trzema
+kolumnami, dokładnie tam, gdzie leży „Broń i pancerz" z 27b; wiersz Zdolności z rangą **został**
+w kolumnie, bo tak jest na wydruku. Przy okazji zniknęły reguły `.cp-awareness`, które łamały
+nazwy do własnego wiersza — w pasie miejsca jest dość.
+
+**Cztery usterki wyszły z oględzin i żadna nie była kosmetyczna.** `.cp-slot` była **zdefiniowana
+dwa razy** w `sheet.css` (etykieta lokacji pancerza z 27b i pudełko gniazda cyborgizacji z 27c),
+więc „Głowa", „Korpus" i „Tarcza" **znikały** z tabeli pancerza. `display: flex` na `<td>`
+wyjmowało trzy komórki z układu tabeli i zostawiało pod nimi czerwony pas tła. Typ naboju
+(„Zwykła") przelewał się z kolumny AMUNICJA na ŁA. A w zakładce „Ścieżka Życia" reguła zdejmująca
+`cp-span2` wierszowi „Pseudonimy" zdejmowała je **też** panelowi awansu, więc prawa kolumna była
+pustym czerwonym prostokątem na pół ekranu.
+
+**Jeden błąd był mechaniczny, nie wizualny:** kolumny CECHA i BAZA w tabeli Umiejętności liczyły
+się przez `effectiveCpredStats(stats, humanity)`, czyli **bez efektów czasowych z 39** — karta
+pokazywała REF 8 przy Liszu −3, a kość leciała z piątki, choć kolumna Cech obok liczyła już
+poprawnie. Umowa z 39 mówi wprost, że jedyną drogą do liczby, na którą pada kość, jest
+`cpredEffectiveStats(sheet)`; teraz jest nią i tutaj.
+
+**Oględziny w dwóch sesjach naraz** (MG na `localhost`, `Tester` na `[::1]`, nośnik **Frank**)
+przeszły **całą ścieżkę etapu**: prośba → licznik u MG → klik w „Trudny 15" → wezwanie → wołający
+kubek → rzut → „Niezdane · 9 ≤ PT 15". Sprawdzone też: odmowa ze zdaniem MG, „Wycofaj" u gracza,
+„Ustaw…" z podmienioną Umiejętnością i **nietknięty swobodny rzut** (klik = okno z guzikiem
+„Poproś MG", Shift+klik = kubek). Frank wrócił do `NPC (MG)`, wezwania odwołane, kubek pusty.
+Znalazły **jedną usterkę własną**: okno prośby powstawało **pod** kartą postaci (`z-index` 50
+przeciw 300) — ten sam wiersz `:has()`, który od 27a ratuje okno rzutu.
+
+**Testy:** 1941 w `shared` (+13 z tego etapu), 1062 na serwerze (+11), 104 u klienta (+5) —
+zielone. ESLint, Prettier i `tsc --noEmit` czyste w trzech pakietach. **Uwaga do liczb
+z poprzednich notatek: sumy w nich są zaniżone** — 1941/1062/104 to stan zmierzony na koniec tej
+sesji, a nie 1913/1040/97 + moje dopiski. Sześć umów kodu i pięć pułapek w indeksach niżej.
+
 ### Sesja 06.09 (druga) — kość, która nie jest Testem
 
 **Zlecenie MG:** kontynuacja projektu, **etap 34 (tabele losowe)**, z prośbą o pytania
@@ -684,58 +791,3 @@ Zakładka „Tabele" nie istnieje u gracza. Konsola czysta. Poligon ma odtąd dw
 Prettier i `tsc --noEmit` czyste w trzech pakietach. **Strażnik dostępności z 27f złapał jeden
 przycisk** („✕" przy wierszu edytora miał `aria-label` bez `title`) — naprawiony. Cztery umowy
 kodu i cztery pułapki w indeksach niżej.
-
-### Sesja 06.09 (pierwsza) — pistolet, który przechodzi z ciała do plecaka
-
-**Zlecenie MG:** kontynuacja projektu; z listy wolnych etapów (28, 34, 38b) MG wybrał **38b
-(przedmioty między kartami)** i przy pytaniu o łup dorzucił prośbę: „rozważ jakąś formę brania
-łupu w stylu modułu **Item Piles** z Foundry". Trzy rozstrzygnięcia padły przed kodem, wszystkie
-na rekomendację: **gracz sam przeszukuje NPC-a** (z karty innego gracza przenosi tylko MG),
-**zasięg ramienia** i **jedno okno „Wymiana"** zamiast guzików przy wierszach.
-
-**Czwarte rozstrzygnięcie było korektą decyzji z 05.09 i wyszło z rozpoznania.** „Cel musi być
-widoczny, wzorem `Ustabilizowania` z 14e" opisywało 14e sprzed poprawki — ta czynność ma dziś
-**`CPRED_MELEE_REACH_M`**, więc dosłowne wykonanie tamtego zdania rozjechałoby dwie czynności,
-które są tą samą czynnością: dotknięciem kogoś obok. MG wybrał zasięg ramienia, **mierzony
-wszystkim, MG włącznie** — ten sam świadomy wyjątek od „MG omija blokady", co w 14e.
-
-**Etap zajął jedną sesję wyłącznie dzięki 38a.** Odkąd ganger ma prawdziwą kartę, „zdejmuję
-pistolet z ciała" i „oddaję ci stimpak" to **jedna** operacja na dwóch `CpredCharacterData`:
-`cpredMoveItems` w `shared/systems/cpred/inventory.ts` bierze dwie karty i listę adresów wierszy,
-a zwraca **obie** — rozdzielenie na „zabierz" i „dołóż" pozwoliłoby zapisać połowę. Wiersz jedzie
-w całości, więc magazynek 12/30, `ammoId`, przykręcony celownik z 31 i zużyte OB z 15 przeżywają
-przeprowadzkę **bez ani jednej linijki o nich** — kto dołoży broni nowe pole, dostanie je za darmo.
-
-**Przekazanie na kartę z właścicielem jest PROPOZYCJĄ, nie przelewem** (decyzja MG z 05.09):
-karta czatu rodzaju `inventory` staje bez `resolution` i **nic nie rusza**, dopóki odbiorca albo
-MG nie kliknie „Przyjmij" — wzorem wezwania do Testu z 32, z tą samą umową, że wiersze do
-przeniesienia czyta się **z zapisanej karty**, nie z żądania klienta. Kartę **bez** właściciela
-nie ma kto potwierdzić, więc tam idzie od ręki, a ack niesie `pending: false`. **Łup nie czeka
-nigdy** — nie ma kogo pytać, a trzy warunki (karta bez właściciela, figura leżąca albo martwa,
-zasięg) serwer sprawdził wcześniej.
-
-**Z Item Piles weszły dwie rzeczy i obie były tanie:** „Zabierz wszystko" i **gotówka z kieszeni**
-— ciało ma od 38a `eddies`, a `applyBalance` z 23b dowozi wpis audytu po obu stronach, więc
-350 ed z gangera wygląda w historii tak samo, jak przelew. **Skrzynia jako obiekt sceny została
-poza zakresem** (tak mówi opis etapu) i poszła do `POMYSLY.md` — okno „Wymiana" byłoby jej gotowym
-interfejsem.
-
-**Trzy rzeczy poza planem, wszystkie o tym, gdzie stoi prawda o stanie rzeczy:** pancerz przychodzi
-**zdjęty** (inaczej łup po cichu zmieniałby OB w chwili podniesienia); wiersze wyposażenia
-**sklejają się po `compendiumId`**, nigdy po nazwie; a **id wiersza jest unikalne w obrębie karty,
-nie kampanii** — kopia figury z 35 niesie ten sam `rowId`, więc kolizję rozstrzyga nowe id.
-
-**Oględziny w dwóch sesjach naraz** (MG na `localhost`, `Tester` na `[::1]`, nośnik **Frank**,
-ciałem **Rudy Kwiatkowski**) przeszły cały etap **poza jedną pozycją menu figury** — prawym klikiem
-z automatyki nadal nie da się otworzyć menu kanwy Pixi. Znalazły **dwie usterki**: odległość
-w liście źródeł liczyła się od **pierwszej** figury karty na scenie, a serwer egzekwował od
-**najbliższej**; i komunikat „czeka na przyjęcie" padał także wtedy, gdy nic nie czekało. Obie
-naprawione. Poligon **przywrócony ze snapshotu startowego**.
-
-**Przy okazji zgłoszona MG jedna rzecz spoza zakresu:** lista odbiorców przelewu (`payees` z 23b)
-zawiera od 38a **wszystkich statystów**. Zapisana w `zaleglosci.md`, bez decyzji.
-
-**Testy:** 1913 w `shared` (+23), 1040 na serwerze (+16), 97 u klienta (bez zmian) — zielone.
-ESLint, Prettier i `tsc --noEmit` czyste w trzech pakietach. **Uwaga do liczb z poprzedniej
-notatki: `shared` miał na czystym HEAD 1890, nie 1906** (sprawdzone `git stash`). Osiem umów kodu
-i pięć pułapek w indeksach niżej, trzy świadome odstępstwa w `decyzje-i-uproszczenia.md`.

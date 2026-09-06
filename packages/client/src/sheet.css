@@ -300,7 +300,10 @@
 
 .sheet-page {
   display: grid;
-  grid-template-columns: 15rem 4.6rem minmax(0, 1fr);
+  /* Kolumna Cech ma 5,2 rem, a nie 4,6: przy 4,6 rem wiersz Szczęścia
+     („z 5 ↻") nie mieścił się w polu i mały czerwony kwadracik „z" wychodził
+     poza jego lewą krawędź (06.09). */
+  grid-template-columns: 15rem 5.2rem minmax(0, 1fr);
   gap: 0.4rem;
   align-items: start;
 }
@@ -436,19 +439,61 @@
   align-self: center;
 }
 
-/* Panel Zmysłu Walki pod wierszem Zdolności Specjalnej (etap 30a). Sam panel
-   maluje `styles.css` (`.awareness`) — tu tylko miejsce, które mu karta daje. */
-.cp-awareness {
-  padding: 0.35rem 0.5rem;
-  border: 1px solid var(--border);
+/* --- pas „Zdolność Specjalna" (06.09.2026) --- */
+
+/* Pas idzie przez całą szerokość siatki strony, tak jak „Broń i pancerz".
+   Do 06.09 dziewięć paneli Ról stało w kolumnie tożsamości i ciągnęło ją dwa
+   razy niżej niż Cechy i Umiejętności — pół strony pierwszej było wtedy pustym
+   polem po prawej. */
+.cp-role-strip {
+  grid-column: 1 / -1;
+}
+
+/* Dwie karty w rzędzie na szerokim oknie: żadna Rola nie ma dziś więcej niż
+   jeden panel, ale Wieloklasowość z 29b pozwala nosić kilka naraz. */
+.cp-role-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr));
+  gap: var(--cp-gutter);
+  width: 100%;
+  background: var(--cp-red);
+  padding: var(--cp-gutter);
+}
+
+.cp-ability-card {
+  background: var(--cp-paper);
+  color: var(--cp-ink);
+  padding: 0.45rem 0.6rem;
+  min-width: 0;
+}
+
+/* Rządek terapii z etapu 23a leżał do 06.09 wprost na tle okna, bez ramki
+   i bez tła — jedyny taki element w całym arkuszu. Teraz jest polem karty,
+   jak wszystko inne, co ma guziki. */
+.sheet-window .cyberware-therapy {
+  background: var(--cp-paper);
+  color: var(--cp-ink-dim);
+  padding: 0.3rem 0.5rem;
+  flex-wrap: wrap;
 }
 
 /* Panel awansu na stronie drugiej (etap 29a). Stoi pod licznikiem PD, bo to
    jego rozwinięcie: liczba i to, co można za nią kupić, czyta się razem. Sam
-   panel maluje `styles.css` (`.advance`), jak przy `.cp-awareness`. */
+   panel maluje `styles.css` (`.advance`) — tu tylko miejsce, które mu karta
+   daje. */
 .cp-advance {
   padding: 0.35rem 0.5rem;
   border: 1px solid var(--border);
+}
+
+/* `.cp-field` jest wierszem flex, więc panel w środku nie rozciąga się sam:
+   bez tego rejestr awansów siedział w lewej połowie pola, a druga połowa
+   zostawała biała (06.09). */
+.cp-advance > .awareness,
+.cp-ability-card > .awareness {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
 }
 
 .cp-ability-name {
@@ -524,6 +569,34 @@
   border-radius: 0;
 }
 
+/* Pula na karcie to PASEK MINIATUR, nie galeria (06.09).
+   W panelu bota pula jest listą plików i podpisy mają sens; w kolumnie
+   tożsamości szerokiej na 15 rem dwa kafelki z nazwami zajmowały tyle, co pół
+   portretu, a nazwa („Portret Netrunner") i tak się nie mieściła. Miniatura
+   plus `title` mówią to samo w jednej trzeciej miejsca. */
+.cp-identity .portrait-pool {
+  gap: 0.25rem;
+}
+
+.cp-identity .portrait-pool-grid {
+  grid-template-columns: repeat(auto-fill, minmax(2.6rem, 1fr));
+  gap: var(--cp-gutter);
+}
+
+.cp-identity .portrait-pool-pick {
+  padding: 0.15rem;
+}
+
+.cp-identity .portrait-pool-pick img {
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 0;
+}
+
+.cp-identity .portrait-pool-name {
+  display: none;
+}
+
 .cp-pool-value {
   display: flex;
   align-items: center;
@@ -574,6 +647,9 @@
   gap: 0;
   padding: 0.1rem 0.25rem 0.15rem;
   position: relative;
+  /* Pole Cechy jest ramką i nic nie ma prawa z niej wyjść — inaczej wystający
+     element ląduje na czerwonym rowku między polami i wygląda na błąd. */
+  overflow: hidden;
 }
 
 .cp-stat-abbr {
@@ -610,10 +686,12 @@
   justify-content: center;
   gap: 0.15rem;
   margin-top: -0.1rem;
+  min-width: 0;
 }
 
 .cp-stat-sub input {
-  width: 1.8rem;
+  width: 1.5rem;
+  min-width: 0;
   font-size: 0.8rem;
   font-weight: 600;
 }
@@ -936,10 +1014,8 @@
 
 /* --- pas broni --- */
 
-.weapon-table .weapon-actions {
-  display: flex;
+.weapon-table .weapon-actions-row {
   gap: var(--cp-gutter);
-  flex-wrap: wrap;
 }
 
 /* Przyciski ataku zostają tym, czym były — zmienia się tylko skóra. */
@@ -1122,8 +1198,20 @@
   font-style: italic;
 }
 
+/* Stan magazynka i typ naboju to dwa wiersze jednej komórki, nie jeden.
+   Do 06.09 obie rzeczy stały w jednej linii pod `white-space: nowrap`, więc
+   „Zwykła" wychodziło poza komórkę i lądowało na kolumnie ŁA.
+   Rozdziela je `display: block` na liście naboi, a **nie** flex na komórce:
+   `display: flex` na `<td>` wyjmuje go z układu tabeli i przestaje rozciągać
+   na wysokość wiersza — pod treścią zostaje wtedy czerwony pas tła tabeli. */
 .cp-table .weapon-ammo-cell {
   white-space: nowrap;
+}
+
+.cp-table .weapon-ammo-type {
+  display: block;
+  width: 100%;
+  max-width: 100%;
 }
 
 .cp-table .weapon-ammo-input {
@@ -1148,15 +1236,28 @@
 
 /* --- pancerz: trzy wiersze wydruku --- */
 
+/* Lokacja i nazwa sztuki w jednym wierszu — układem inline, nie flexem na
+   `<td>` (patrz komórka amunicji wyżej: flex zabiera komórce wysokość wiersza). */
 .armor-slot-cell {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
+  white-space: nowrap;
 }
 
-/* Nazwa lokacji stoi w wierszu jak na karcie — kapitalikami, przed polem. */
-.cp-slot {
-  flex: none;
+/* Nazwa sztuki bierze resztę komórki — bez tego pole tekstowe kurczy się do
+   swojej domyślnej szerokości i zostawia pół kolumny pustej. */
+.armor-slot-cell input[type='text'] {
+  width: calc(100% - 4rem);
+}
+
+/* Nazwa lokacji stoi w wierszu jak na karcie — kapitalikami, przed polem.
+   Klasa nazywa się `cp-armor-slot`, a nie `cp-slot`, i to jest naprawa
+   z 06.09: `.cp-slot` istniało w tym pliku **dwa razy** — drugi raz jako
+   pudełko gniazda na sylwetce cyborgizacji (`position: absolute`, czerwone
+   tło). Wygrywała definicja późniejsza, więc „Głowa", „Korpus" i „Tarcza"
+   znikały z tabeli pancerza: stawały się czerwonym prostokątem wyjętym
+   z układu wiersza. */
+.cp-armor-slot {
+  display: inline-block;
+  margin-right: 0.35rem;
   min-width: 3.4rem;
   font-variant-caps: all-small-caps;
   font-weight: 700;
@@ -1188,10 +1289,12 @@
 }
 
 .armor-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.2rem;
-  justify-content: center;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.armor-actions > * + * {
+  margin-left: 0.2rem;
 }
 
 .armor-weaker {
@@ -1203,7 +1306,6 @@
 
 .armor-table--rest .armor-slot-cell select {
   width: 5.5rem;
-  flex: none;
 }
 
 /* Sztuka zdjęta jest przygaszona tuszem, nie przezroczystością: `opacity`
@@ -1605,6 +1707,15 @@
   grid-column: auto;
 }
 
+/* …ale panel awansu (29a) rozciąga się z powrotem na obie kolumny.
+   Reguła wyżej zdejmuje `cp-span2` wierszowi „Pseudonimy", żeby stanął obok
+   licznika PD — i przy okazji zdejmowała je „Awansowi", który przez to stał
+   w lewej kolumnie, a prawa zostawała pustym czerwonym prostokątem wysokim na
+   pół zakładki (znalezione 06.09). */
+.cp-lifepath-head .cp-advance {
+  grid-column: 1 / -1;
+}
+
 .cp-lifepath-head input[type='number'] {
   width: 4rem;
   margin-left: auto;
@@ -1911,11 +2022,9 @@
   gap: 0.35rem;
 }
 
-.cp-deck--empty {
-  flex-direction: row;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.3rem 0.4rem;
+.cp-deck--empty select {
+  flex: 1;
+  min-width: 0;
 }
 
 /* Belka deku niesie cztery rzeczy naraz — nazwę, licznik, pojemność i kosz —
