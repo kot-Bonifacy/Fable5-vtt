@@ -7,6 +7,87 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 06.09 (druga) — kość, która nie jest Testem
+
+**Zlecenie MG:** kontynuacja projektu, **etap 34 (tabele losowe)**, z prośbą o pytania
+uzupełniające przed kodem i o sugerowanie się Foundry tam, gdzie czegoś nie wiadomo — ale bez
+nadmiarowych mechanik. Cztery pytania padły przed pierwszą linijką i trzy zmieniły kształt etapu:
+
+1. **Widoczność steruje się z dwóch stron** (kolumna `visibility` na tabeli **plus** jednorazowy
+   przełącznik przy losowaniu). Opis etapu przewidywał samo „domyślnie MG"; MG wybrał wersję
+   z kolumną, bo „Co leci w radiu" jest jawne z natury, a „Łup z kieszeni" nigdy nie jest.
+2. **Kości w treści wiersza (`[[2d6]]`) — NIE.** Wiersz jest czystym tekstem; to zdejmuje
+   z `tables.ts` drugi parser i zostawia rachunki MG, zgodnie z „wynik jako gotowy obiekt" poza
+   zakresem.
+3. **`data/public` dostaje minimum** — jedna wymyślona tabela na dowód formatu
+   (`plotka-w-barze.json`), bez wgrywania czegokolwiek do kampanii.
+4. Na pytanie o gotowe tabele padło **„sprawdź materiały, a jak nie znajdziesz, to własny JSON"**.
+   Znalazły się: rozdział 18 podręcznika ma **trzy tabele procentowe Spotkań Losowych**
+   (s. 417–421), więc powstał parser, a nie sam format.
+
+**Rozstrzygnięcie, na którym stoi cały etap, było już w opisie i okazało się trafne: tabela nie
+dotyka kubka.** `rollStore` trzyma siedem pól i każdy `load…Cup` rozsypuje przed sobą `EMPTY_CUP`,
+więc gdyby „Losuj" ładowało kubek, MG straciłby wzięty do ręki rzut Percepcji NPC-a, a graczowi
+zdmuchnęłoby czekające wezwanie z 32. Dlatego losowanie jest **rzutem serwera** — precedens stoi
+od etapu 03: `/r 1d10` wysłane Enterem leci przez `chat:send` bez gestu i nie zajmuje slotu.
+Reguła jest niewidoczna w kodzie (łamie ją dopiero **dopisanie** wywołania), więc pilnuje jej
+**strażnik źródłowy** `tables-cup.test.ts` — ten sam kształt, co strażnik przycisków ikonowych
+z 27f.
+
+**Druga rzecz jest jeszcze mniej widoczna i kosztowałaby cały etap: `1d10` jest formułą Testu.**
+`rollFormula` sam wnioskuje regułę Testu z formuły, więc bez `checkRule: false` dziesiątka
+w tabeli dziesięciowierszowej eksplodowałaby dorzutem i dawała jedenastkę — a wygląda to jak
+dziura w zakresach, nie jak błąd w rzucie. Drugą połową tej samej prawdy jest `plain: true`:
+na karcie czatu dziesiątka ma zostać **nieomalowana**, bo to „wiersz dziesiąty", nie krytyk
+(ta sama umowa, co rzuty kreatora z 27d). Oba ustawienia padają w **jednym** miejscu —
+`rollRandomTable`.
+
+**Widoczność rozstrzyga rodzaj wiersza czatu, nie pole w payloadzie.** `visibleTo` w `chat-io.ts`
+jest białą listą rodzajów **w zapytaniu do bazy**, więc jawny wynik to `rolltable`, a cichy
+`gmrolltable` — wzorem `roll`/`gmroll` z 06 i `action`/`gmaction` z 14b. Stąd też „Pokaż stołowi"
+**dokłada** publiczny wiersz zamiast odsłaniać stary: wiersz raz zapisany jako `gmrolltable`
+nigdy nie wejdzie graczowi do historii. Treść nowego wiersza czyta się **z zapisanej karty**,
+nie z żądania — ta sama umowa, co obrażenia po ataku z 16 i wezwanie z 32.
+
+**Podrzut jest grafem, więc pilnuje się go przy zapisie.** `randomTableNestingIssue` liczy cykl
+i najdłuższą ścieżkę na **całej** kampanii z podmienioną tabelą, bo dopisanie podrzutu w „broni"
+potrafi przekroczyć limit „łupu", którego w tej chwili nikt nie edytuje. Limit to trzy poziomy;
+czwarty zamieniłby jedno kliknięcie w cztery karty naraz. Losowanie ma **drugi** bezpiecznik
+w `rollRandomTable` (`visited` + licznik), bo baza może nieść graf sprzed tej reguły.
+
+**Zakresy sprawdza jedna funkcja po obu stronach.** `randomTableCoverageIssues` chodzi w formularzu
+(podpowiedź na żywo, po każdym znaku) i w handlerze (odmowa) — w oględzinach zapis z dziurą wrócił
+**tym samym zdaniem**, które stało nad formularzem: „Dziura w zakresach: nic nie odpowiada za 7."
+
+**Import dowiózł trzy prawdziwe tabele i jedną erratę.** `parse-encounters.py` czyta zrzut
+markdownowy rozdziału 18; pierwsza wersja regexa złapała „STR. 417" jako wiersz („dziura 101–417"),
+więc zakres wiersza jest odtąd albo **w nawiasie**, albo **na początku linii** i zawsze
+z krótką nazwą zakończoną dwukropkiem. Po zwężeniu dwie tabele pokryły 1–100 od ręki, a trzecia
+pokazała **błąd druku**: wiersze „(70–72) Drużyna Solo" i „(72–77) Cybergang" dzielą liczbę 72.
+Poprawka (70–71) siedzi w `KNOWN_FIXES` **w skrypcie**, nie w JSON-ie, bo JSON jest wynikiem
+i kolejny przebieg skasowałby ją bez śladu. `import-tables.ts` waliduje **wszystko przed
+pierwszym zapisem** (`--dry-run` robi samą walidację), nadpisuje po nazwie i wiąże podrzuty
+drugim przebiegiem, więc kolejność plików nie ma znaczenia.
+
+**Dwie rzeczy dołożone poza opisem etapu, obie tanie i obie o tym, jak to się czyta.** Kość
+pierwszego kroku **tumbla w 3D** (`socket.ts` bierze `message.rolltable?.steps[0]?.roll`) — to nie
+jest kubek, a bez tego losowanie było jedyną kością w tej aplikacji, której nie widać; podrzuty
+zostają liczbami na karcie, bo dwie animacje z jednego kliknięcia nic nie mówią. I **suma stoi
+obok kości tylko wtedy, gdy jest czym się różnić** — przy `1d100` „47 47" powtarza to samo dwa razy.
+
+**Oględziny w dwóch sesjach naraz** (MG na `localhost`, `Tester` na `[::1]`) przeszły **wszystkie
+pięć kryteriów ukończenia**: dziura w zakresach odmówiona czytelnym zdaniem, karta „tylko MG"
+niewidoczna dla gracza **także po przeładowaniu** (jedna publiczna, pięć cichych — sprawdzone
+z konta gracza), kubek z „Percepcja (INT) +10" nietknięty przez cztery losowania z rzędu, podrzut
+losujący obie tabele w jednym kliknięciu i `/tab bronie` dający ten sam wynik co przycisk.
+Zakładka „Tabele" nie istnieje u gracza. Konsola czysta. Poligon ma odtąd dwie tabele testowe
+(opis w `poligon.md`).
+
+**Testy:** 1936 w `shared` (+23), 1051 na serwerze (+11), 99 u klienta (+2) — zielone. ESLint,
+Prettier i `tsc --noEmit` czyste w trzech pakietach. **Strażnik dostępności z 27f złapał jeden
+przycisk** („✕" przy wierszu edytora miał `aria-label` bez `title`) — naprawiony. Cztery umowy
+kodu i cztery pułapki w indeksach niżej.
+
 ### Sesja 06.09 (pierwsza) — pistolet, który przechodzi z ciała do plecaka
 
 **Zlecenie MG:** kontynuacja projektu; z listy wolnych etapów (28, 34, 38b) MG wybrał **38b

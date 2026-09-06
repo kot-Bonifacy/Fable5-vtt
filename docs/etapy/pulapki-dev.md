@@ -980,3 +980,25 @@ więc martwa nazwa wywraca zrzut kampanii) i **kopie zapasowe**. Migracja SQL je
 `json_group_object` z `json_each` daje się użyć do przepisania mapy z JSON-a, ale kompendium
 mieszka w plikach `data/private/`, **nie w bazie** — więc SQL nie ma jak rozwiązać „broń →
 Umiejętność" i model musi być tak dobrany, żeby nie musiał (stąd `statBlock.weaponSkill`).
+
+- **Okno, które otwiera drugie okno, musi zgasić SIEBIE (06.09, poprawka do etapu 40).**
+  „Poproś MG" w oknie rzutu otwierało okno prośby i zostawiało własne pod spodem. Objaw jest
+  mylący, bo **wszystko działa**: prośba idzie, jej okno znika — tylko że pod nim wraca guzik
+  „Weź kubek", stojący tam przez cały czas oczekiwania i po zgodzie MG także. Zgłoszenie brzmi
+  wtedy „okno prośby nie zamyka się po zgodzie", a okno prośby jest akurat jedynym, które
+  zamknęło się prawidłowo. **Rozpoznanie:** sprawdź, ile okien trzyma stan naraz
+  (`useRollStore.getState().target` obok `useCheckStore.getState().requestDraft`) — nie to,
+  które widać. **Naprawa:** gaszenie w funkcji przejścia, nie w komponencie, bo wejść jest
+  więcej niż jedno.
+- **Ścieżka z przycisku i ścieżka ze skrótu to DWIE ścieżki (06.09).** Prośbę o Test otwiera
+  Alt+klik w wiersz karty **i** przycisk w oknie rzutu; oględziny etapu 40 przeszły pierwszą
+  i minęły drugą, w której siedziała usterka. Automatyka przeglądarki gubi modyfikator `alt`
+  (pułapka wyżej), więc naturalne jest sprawdzenie tej ścieżki, którą da się kliknąć — i to
+  właśnie ta druga zostaje niesprawdzona. Przy funkcji z dwoma wejściami sprawdź **oba**.
+- **Karta w tle dławi `setInterval` i `requestAnimationFrame` do ~1 Hz (06.09).** Pomiar
+  przytrzymania guzika przez automatykę przeglądarki dał jeden krok zamiast siedmiu i wyglądał
+  na błąd w kodzie powtarzania. **Rozpoznanie:** pętla `requestAnimationFrame` przez sekundę
+  nie zwraca **ani jednej** klatki, a `setInterval(…, 100)` odpala dwa razy na sekundę.
+  **Obejście:** nie mierz w tle nic, co zależy od zegara — sprawdź samą logikę testem
+  jednostkowym albo powtórz kliknięcie ręcznie (`pointerdown`/`pointerup` w pętli z `await`),
+  co przechodzi normalnie.

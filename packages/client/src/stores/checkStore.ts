@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { CpredCharacterData, CpredRegistry, CpredRollRequest } from '@vtt/shared';
 import { planCpredRoll } from '@vtt/shared';
-import type { RollTarget } from './rollStore.js';
+import { useRollStore, type RollTarget } from './rollStore.js';
 
 /**
  * Dwa okna jednej rozmowy o Teście: prośba gracza (etap 40) i wezwanie MG
@@ -63,6 +63,12 @@ export const useCheckStore = create<CheckStoreState>((set) => ({
  * ma pokazywać dokładnie to, o co gracz prosi („Odczytywanie emocji (EMP)"),
  * a nie samą nazwę Umiejętności bez Cechy. Rzut, którego nie da się zaplanować,
  * nie otwiera okna: nie ma o co prosić.
+ *
+ * **Prośba zamyka okno rzutu**, bo jedno wyklucza drugie: kto pyta MG o zgodę,
+ * ten w tej samej chwili nie bierze kubka. Bez tego okno rzutu zostawało pod
+ * oknem prośby i po jej wysłaniu wracało na wierzch z guzikiem „Weź kubek" —
+ * gracz stał przed przyciskiem znaczącym „rzuć bez zgody" i nie wiedział, czy
+ * to jest właśnie ta zgoda (znalezione przez MG 06.09).
  */
 export function askForCheck(
   target: RollTarget,
@@ -79,6 +85,7 @@ export function askForCheck(
   };
   const planned = planCpredRoll(data, registry, request);
   if (!planned.ok) return;
+  useRollStore.getState().closeDialog();
   useCheckStore.getState().openRequest({
     characterId: target.characterId,
     characterName: target.characterName,

@@ -17,6 +17,7 @@ import {
 } from '@vtt/shared';
 import { queueCharacterSave } from '../socket.js';
 import { useCharacterStore } from '../stores/characterStore.js';
+import { NumberStepper } from './NumberStepper.js';
 
 /**
  * Moto Nomady (etap 30d, s. 161–163).
@@ -97,19 +98,13 @@ export function MotoPanel({ characterId }: { characterId: string }) {
               aria-label="Nazwa wpisu Taboru"
               onChange={(event) => patchRow(row.id, { name: event.target.value })}
             />
-            <input
-              type="number"
+            <NumberStepper
               min={1}
               max={rank}
-              value={row.level}
+              value={Math.min(row.level, rank)}
               title="Kategoria wpisu — nie wyżej niż poziom Moto"
-              aria-label={`Kategoria: ${row.name}`}
-              onChange={(event) => {
-                const value = Number.parseInt(event.target.value, 10);
-                if (!Number.isNaN(value)) {
-                  patchRow(row.id, { level: Math.max(1, Math.min(rank, value)) });
-                }
-              }}
+              label={`Kategoria: ${row.name}`}
+              onChange={(value) => patchRow(row.id, { level: value })}
             />
             <button
               type="button"

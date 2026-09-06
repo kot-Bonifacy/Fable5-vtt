@@ -1396,3 +1396,35 @@ Bez tego sterowałby figurą, której statystyk nie widzi, a podgląd rzutu licz
 z Wartością bojową ma **wyzerowane** REF, ZW i SW, żeby rozbicie rzutu nie doliczyło Cechy drugi
 raz („Broń długa 14", bez Cechy). Walidator karty odrzucał wtedy całą mapę Cech i figura wracała
 jako przeciętny człowiek po pięć — błąd znaleziony przy pierwszym uruchomieniu testów 38a.
+
+**Liczbę na karcie postaci zmienia się strzałkami, nie wpisywaniem (06.09, decyzja MG).**
+Nowe pole liczbowe na karcie to `NumberStepper`, a nie `<input type="number">`: wartość jest
+**napisem**, a jedyną drogą do jej zmiany są dwie strzałki w pionie, tuż na prawo od liczby.
+Powód jest z gry, nie z estetyki — kartę się **gra**, a nie wypełnia: PW spadają o kilka,
+amunicja o jeden, OB o jeden przy każdym przebiciu, i przy każdej takiej zmianie wpisywanie
+znaczyło zaznacz–skasuj–wpisz. Przy okazji znika cała klasa sprzątania: pole `type="number"`
+przyjmuje puste i „7e3", więc każdy `onChange` miał własny `parseNumberInput` i własne klamry;
+przełącznik pilnuje zakresu sam i nie ma stanu pośredniego.
+
+**Wyjątki są trzy i wynikają z jednego progu: dwie cyfry.** Wpisywanymi polami zostają **Punkty
+Doświadczenia** (do 99 999), **Człowieczeństwo** (EMP 10 × 10 = 100) i **ILOŚĆ** w wyposażeniu
+(do 999) — klikanie ich po jednym nie miałoby sensu. Czwartym wyjątkiem są **eurodolce**,
+wyłączone ze zlecenia wprost. Pole tylko do odczytu (poziom Umiejętności i ranga Zdolności
+u gracza — kupuje się je PD) dostaje `readOnly` i pokazuje **samą liczbę bez strzałek**;
+pole, w które klik nic nie robi, jest gorsze niż napis.
+
+**Przytrzymanie powtarza i liczy od WŁASNEJ liczby.** Bez wpisywania OB 18 to osiemnaście
+kliknięć, więc `startHold` po 400 ms uruchamia powtarzanie co 70 ms — ale kolejne kroki liczą
+się od wartości zapamiętanej w domknięciu, a nie od `value` z propsów. Karta jest duża, jej
+render potrafi nie nadążyć za tikiem, a wtedy dwa tiki z rzędu policzyłyby tę samą liczbę
+i przytrzymanie stanęłoby w miejscu.
+
+**Prośba o Test zamyka okno rzutu — naraz stoi jedno okno (06.09, poprawka do etapu 40).**
+`askForCheck` gasi `rollStore` **zanim** otworzy prośbę, i robi to w jednym miejscu dla obu
+wejść (Alt+klik w wiersz karty i przycisk „Poproś MG" w oknie rzutu). Bez tego okno rzutu
+zostawało **pod** oknem prośby i po jej wysłaniu wracało na wierzch z guzikiem „Weź kubek",
+czyli z przyciskiem znaczącym „rzuć bez zgody MG" — stojącym tam przez cały czas oczekiwania
+i po zgodzie także. To ta sama zasada, którą `openRequest` i `openCall` trzymają między sobą
+od 40; okno rzutu jest jej trzecim uczestnikiem. Strażnik źródłowy w `check-request-dialogs.test.ts`
+pilnuje, że `RollDialog` prosi **wyłącznie** przez `askForCheck` — `openRequest` wołane wprost
+przywróciłoby usterkę tą samą drogą, którą przyszła.

@@ -135,6 +135,16 @@ i Umiejętności, a pół strony pierwszej — pustym polem. Wyszły przy tym **
 na kolumnę ŁA, pusta prawa kolumna „Ścieżki Życia”) i **jeden błąd mechaniczny**: kolumny CECHA
 i BAZA liczyły się **bez efektów czasowych z 39**. Wszystko naprawione; szczegóły w pułapkach.
 
+**Liczby na karcie zmienia się od 06.09 strzałkami, a nie wpisywaniem (zlecenie MG).**
+`NumberStepper` zastąpił **14 pól**: Cechy, Szczęście bieżące, PW, poziom Umiejętności, rangi
+Zdolności, magazynek, OB (bieżące i pełne), karę pancerza, gniazda dekera, poziom Reputacji oraz
+dwa pola w panelach Ról. **Wpisywane zostają cztery**: Punkty Doświadczenia (do 99 999),
+Człowieczeństwo (100), ILOŚĆ w wyposażeniu (999) i eurodolce — strzałki mają sens do dwóch cyfr.
+Pole `readOnly` (poziom i ranga u gracza) pokazuje **samą liczbę bez strzałek**. Przy okazji
+naprawiona usterka z 40: przycisk „Poproś MG” w oknie rzutu **nie gasił tego okna**, więc po
+wysłaniu prośby wracał pod nim guzik „Weź kubek” — gracz nie wiedział, czy zgodę dostał. Prośba
+o Test i wezwanie mają **31 testów serwerowych** i sześć klienckich; szczegóły w notatce sesji.
+
 **MG może od 06.09 powiedzieć „losuj, co się dzieje" — do etapu 34 tabela losowa nie istniała
 w żadnej postaci.** Tabela jest **rdzeniem VTT, nie mechaniką CP RED**: `shared/src/tables.ts`
 nie importuje niczego z `systems/cpred`, a tabela z podręcznika jest zwykłymi **danymi**. Dwie
@@ -327,6 +337,8 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 - **Prawo do prośby czytaj z bazy, nie z karty czatu** — `askedById` służy do rysowania; `check:request` sprawdza `character.ownerId`, a `check:request-cancel` — `authorId` zapisanej wiadomości. Postaci, której już nie ma, odpowiada **odmowa ze śladem na karcie**, nie cisza.
 - **Kubek nie woła na prośbę, i rozstrzyga to RODZAJ wiersza** — `openCheckCallFor` pomija `kind !== 'check'` wprost; przy prośbie progu jeszcze nie ma. Strażnik źródłowy: `check-request-cup.test.ts`.
 - **Okno otwierane znad karty postaci potrzebuje `z-index: 400`** — dopisz jego klasę do listy `.dialog-backdrop:has(…)` obok `.roll-dialog`; `.sheet-window` ma 300, a backdrop 50.
+- **Liczbę na karcie postaci zmienia się strzałkami, nie wpisywaniem** — nowe pole liczbowe to `NumberStepper` (wartość jako napis, strzałki w pionie przy niej, przytrzymanie powtarza). Wpisywane zostają tylko PD, Człowieczeństwo, ILOŚĆ i eurodolce; `readOnly` pokazuje samą liczbę bez strzałek.
+- **Prośba o Test zamyka okno rzutu — naraz stoi jedno okno** — `askForCheck` gasi `rollStore` przed otwarciem prośby, w jednym miejscu dla obu wejść. Strażnik: `check-request-dialogs.test.ts`.
 - **Nowy panel Zdolności Roli dopisuje się do `ROLE_ABILITY_PANEL_IDS`** — pas „Zdolność Specjalna” idzie przez całą szerokość siatki strony pierwszej (`grid-column: 1 / -1`), jak „Broń i pancerz”; w kolumnie tożsamości (15 rem, nierozciągalna) panele stać nie mogą.
 - **Losowanie z tabeli nie dotyka `rollStore`** — „Losuj” i `/tab` idą przez `table:roll`/`chat:send`, jak `/r` od etapu 03; kubek ma jeden slot i każdy `load…Cup` czyści resztę. Pilnuje tego strażnik źródłowy `tables-cup.test.ts`.
 - **Rzut z tabeli idzie z `checkRule: false` i `plain: true`** (`rollRandomTable`) — `1d10` jest formułą Testu, więc bez tego dziesiątka eksploduje dorzutem i tabela dziesięciowierszowa daje 11. `plain` gasi malowanie skrajnych oczek na karcie.
@@ -493,6 +505,9 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 
 - **Okno otwierane znad karty postaci znika pod nią, choć powstało** — scrim jest, `Escape` działa, w DOM-ie okno ma rozmiary, a widać zero. Rozpoznanie: `document.elementFromPoint` na jego środku zwraca arkusz.
 - **Ta sama nazwa klasy CSS dwa razy w `sheet.css` — wygrywa późniejsza.** `.cp-slot` była etykietą lokacji pancerza **i** pudełkiem gniazda cyborgizacji, więc „Głowa/Korpus/Tarcza” znikały z tabeli. Przed dopisaniem klasy: `grep -n '^\.nazwa {' sheet.css`.
+- **Okno, które otwiera drugie okno, musi zgasić SIEBIE** — objaw brzmi „okno prośby nie zamyka się po zgodzie MG”, a to okno rzutu zostało pod spodem. Rozpoznanie: sprawdź, ile okien trzyma **stan**, nie które widać.
+- **Ścieżka z przycisku i ścieżka ze skrótu to dwie ścieżki** — Alt+klik przeszedł oględziny etapu 40, przycisk „Poproś MG” nie; usterka siedziała w tej drugiej. Przy dwóch wejściach sprawdzaj oba.
+- **Karta w tle dławi `setInterval` i `requestAnimationFrame` do ~1 Hz** — pomiar przytrzymania guzika w automatyce przeglądarki jest nieważny; rAF nie zwraca ani jednej klatki.
 - **`display: flex` (i `grid`) na `<td>` wyjmuje komórkę z układu tabeli** — przestaje sięgać wysokości wiersza, a czerwone tło `.cp-table` wychodzi spod treści jak błąd renderowania. Flex idzie na wrapper **wewnątrz** komórki.
 - **Panel wstawiony w `.cp-field` nie rozciąga się sam** (brak `flex: 1`), a selektor `.cp-span2` w kontenerze siatki trafia w więcej dzieci, niż się wydaje — stąd pusta prawa kolumna „Ścieżki Życia”.
 - **Automatyka przeglądarki gubi modyfikator `alt` przy kliknięciu** — Alt+klik nie dochodzi do strony i wygląda jak niedziałająca funkcja. Obejście: `dispatchEvent(new MouseEvent('click', { bubbles: true, altKey: true }))`.
@@ -641,6 +656,72 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 06.09 (czwarta) — okno, które zostawało, i liczby ze strzałkami
+
+**Zlecenie MG (trzy rzeczy naraz):** okno prośby o Test **nie zamyka się po zgodzie MG** i robi
+się z tego bałagan, bo gracz nie wie, czy zgodę dostał; **sprawdzić tę funkcję większą liczbą
+testów**; i **zamienić pola liczbowe na karcie na przełączniki ±1**, węższe niż dziś, „chyba że
+wartości mogą przekroczyć 99 — co nie powinno mieć miejsca w tym systemie", **z wyjątkiem
+eurodolców**. Trzy pytania przed kodem doprecyzowały kształt: liczba zostaje **napisem** (bez
+wpisywania), guziki **stoją zawsze**, a trzy pola, które naprawdę potrafią przekroczyć 99,
+**zostają polami**. Czwarta odpowiedź przyszła osobno i zmieniła rysunek: strzałki **w pionie,
+tuż na prawo od liczby, obie razem wysokie na jedną liczbę** — nie `− 7 +` po bokach.
+
+**Usterka miała jedną linijkę i była w miejscu, którego wczorajsze oględziny nie dotknęły.**
+Przycisk „Poproś MG" w oknie rzutu wołał `askForCheck`, ale **okna rzutu nie zamykał**: okno
+prośby stawało nad nim, po wysłaniu znikało, a pod spodem wracał guzik **„Weź kubek"** — czyli
+przycisk znaczący „rzuć bez zgody" — i stał tam przez cały czas oczekiwania oraz po zgodzie MG.
+Stąd „nie wiem, czy dostałem zgodę, czy mam jeszcze coś z tym oknem zrobić". Druga droga do
+prośby — **Alt+klik w wiersz karty** — tej wady nie ma i **właśnie ją** sprawdzałem wczoraj
+w przeglądarce; MG kliknął przycisk. Naprawa: `askForCheck` gasi okno rzutu, zanim otworzy
+prośbę, i robi to **w jednym miejscu** dla obu wejść.
+
+**Testy urosły o 15 i celują w to, czego wczoraj nie było.** Serwer (+9): odmowa **nie tworzy
+wezwania** i dowozi zdanie MG; wycofuje **autor, nie MG**; zgoda bez progu i zgoda z progiem
+i przeciwnikiem naraz odpadają, **nie zamykając prośby**; zgoda przeciwstawna nazywa drugą
+stronę; modyfikator i widoczność jadą z żądania MG; `requestMessageId` wskazujący **wezwanie**,
+duszka albo prośbę zamkniętą odpada **i nie zostawia wezwania** (to sprawdza kolejność:
+prośba jest walidowana **przed** `createCheckCall`); powód dłuższy niż 300 znaków odpada.
+Klient (+6): prośba **gasi okno rzutu**, po jej zamknięciu **nie zostaje nic do kliknięcia**,
+rzut nieproszalny (obrażenia) okna nie gasi, nieznana Umiejętność nie otwiera prośby, oba okna
+się wykluczają, a strażnik źródłowy pilnuje, że okno rzutu prosi **wyłącznie** przez
+`askForCheck` — bo `openRequest` wołane wprost przywróciłoby usterkę tą samą drogą.
+
+**Dowód ciszy zamiast czekania na zegar.** „Wezwanie nie powstało" sprawdza się **znacznikiem**:
+po badanym żądaniu leci kolejna prośba i czeka się na **jej** kartę — Socket.IO trzyma kolejność
+w obrębie połączenia, więc gdy znacznik dociera, wszystko wcześniejsze już doszło. Pierwsza
+wersja czekała na kartę **po** wysłaniu i zawieszała się: rozgłoszenie potrafi wyprzedzić ack,
+a nasłuch założony po nim nie doczeka się niczego.
+
+**Przełącznik liczbowy (`NumberStepper`) zastąpił 14 pól na karcie.** Cechy, Szczęście bieżące,
+Punkty Wytrzymałości, poziom Umiejętności, ranga Zdolności (bieżącej i poprzednich), stan
+magazynka, OB bieżące i pełne, kara pancerza, gniazda cyberdeka, poziom Reputacji, modyfikator
+drugiej strony w Handlu i kategoria wpisu Taboru. **Zostały polami trzy**, i to na wyraźną
+decyzję MG: **Punkty Doświadczenia** (do 99 999 — kampania zbiera setki), **Człowieczeństwo**
+(EMP 10 × 10 = 100) i **ILOŚĆ** w wyposażeniu (do 999 — „naboje 200 szt."), plus **eurodolce**
+wyłączone z zlecenia od początku. Pole `readOnly` (poziom Umiejętności i ranga u gracza, bo
+kupuje się je PD) pokazuje **samą liczbę bez strzałek** — to czytelniejsze niż pole, w które
+klik nic nie robi.
+
+**Dwie rzeczy w przełączniku nie są ozdobą.** **Przytrzymanie powtarza** (400 ms zwłoki, potem
+70 ms) — bez wpisywania OB 18 to osiemnaście kliknięć. I powtarzanie **liczy od własnej liczby**,
+a nie od tej z propsów: karta jest duża, jej render potrafi nie nadążyć za tikiem, a wtedy dwa
+tiki z rzędu policzyłyby tę samą wartość i przytrzymanie stanęłoby w miejscu. Sam guzik jest
+przezroczysty i dziedziczy kolor (`color: inherit`), bo ten sam siedzi na papierze pola, na
+czerwonej plakietce rangi i w komórce tabeli.
+
+**Oględziny w przeglądarce** (sesja gracza `Tony` na `localhost`) potwierdziły naprawę: „Poproś
+MG" **gasi okno rzutu**, po „Wyślij prośbę" na ekranie nie zostaje nic, a prośba dochodzi na
+czat i daje się wycofać. Strzałki działają na wszystkich czterech zakładkach, magazynek zszedł
+z 30 na 25 i wrócił na 30, zatrzymując się na maksimum. Druga sesja gracza (`Tester` na `[::1]`)
+potwierdziła, że **cudzej prośby nie widać**. Strony MG **nie sprawdzałem w przeglądarce** —
+zalogowanie się na konto MG wymagałoby wpisania hasła, czego nie robię; zgodę, odmowę i „Ustaw…"
+pokrywa 31 testów serwerowych.
+
+**Testy:** 1941 w `shared`, **1071** na serwerze (+9), **110** u klienta (+6) — zielone. ESLint,
+Prettier i `tsc --noEmit` czyste w trzech pakietach; konsola przeglądarki bez błędów. Dwie umowy
+kodu i dwie pułapki w indeksach niżej.
+
 ### Sesja 06.09 (trzecia) — gracz, który pyta MG, czy może rzucić
 
 **Zlecenie MG:** kontynuacja projektu, **etap 40 (prośba gracza o Test)**, z prośbą o pytania
@@ -710,84 +791,3 @@ przeciw 300) — ten sam wiersz `:has()`, który od 27a ratuje okno rzutu.
 zielone. ESLint, Prettier i `tsc --noEmit` czyste w trzech pakietach. **Uwaga do liczb
 z poprzednich notatek: sumy w nich są zaniżone** — 1941/1062/104 to stan zmierzony na koniec tej
 sesji, a nie 1913/1040/97 + moje dopiski. Sześć umów kodu i pięć pułapek w indeksach niżej.
-
-### Sesja 06.09 (druga) — kość, która nie jest Testem
-
-**Zlecenie MG:** kontynuacja projektu, **etap 34 (tabele losowe)**, z prośbą o pytania
-uzupełniające przed kodem i o sugerowanie się Foundry tam, gdzie czegoś nie wiadomo — ale bez
-nadmiarowych mechanik. Cztery pytania padły przed pierwszą linijką i trzy zmieniły kształt etapu:
-
-1. **Widoczność steruje się z dwóch stron** (kolumna `visibility` na tabeli **plus** jednorazowy
-   przełącznik przy losowaniu). Opis etapu przewidywał samo „domyślnie MG"; MG wybrał wersję
-   z kolumną, bo „Co leci w radiu" jest jawne z natury, a „Łup z kieszeni" nigdy nie jest.
-2. **Kości w treści wiersza (`[[2d6]]`) — NIE.** Wiersz jest czystym tekstem; to zdejmuje
-   z `tables.ts` drugi parser i zostawia rachunki MG, zgodnie z „wynik jako gotowy obiekt" poza
-   zakresem.
-3. **`data/public` dostaje minimum** — jedna wymyślona tabela na dowód formatu
-   (`plotka-w-barze.json`), bez wgrywania czegokolwiek do kampanii.
-4. Na pytanie o gotowe tabele padło **„sprawdź materiały, a jak nie znajdziesz, to własny JSON"**.
-   Znalazły się: rozdział 18 podręcznika ma **trzy tabele procentowe Spotkań Losowych**
-   (s. 417–421), więc powstał parser, a nie sam format.
-
-**Rozstrzygnięcie, na którym stoi cały etap, było już w opisie i okazało się trafne: tabela nie
-dotyka kubka.** `rollStore` trzyma siedem pól i każdy `load…Cup` rozsypuje przed sobą `EMPTY_CUP`,
-więc gdyby „Losuj" ładowało kubek, MG straciłby wzięty do ręki rzut Percepcji NPC-a, a graczowi
-zdmuchnęłoby czekające wezwanie z 32. Dlatego losowanie jest **rzutem serwera** — precedens stoi
-od etapu 03: `/r 1d10` wysłane Enterem leci przez `chat:send` bez gestu i nie zajmuje slotu.
-Reguła jest niewidoczna w kodzie (łamie ją dopiero **dopisanie** wywołania), więc pilnuje jej
-**strażnik źródłowy** `tables-cup.test.ts` — ten sam kształt, co strażnik przycisków ikonowych
-z 27f.
-
-**Druga rzecz jest jeszcze mniej widoczna i kosztowałaby cały etap: `1d10` jest formułą Testu.**
-`rollFormula` sam wnioskuje regułę Testu z formuły, więc bez `checkRule: false` dziesiątka
-w tabeli dziesięciowierszowej eksplodowałaby dorzutem i dawała jedenastkę — a wygląda to jak
-dziura w zakresach, nie jak błąd w rzucie. Drugą połową tej samej prawdy jest `plain: true`:
-na karcie czatu dziesiątka ma zostać **nieomalowana**, bo to „wiersz dziesiąty", nie krytyk
-(ta sama umowa, co rzuty kreatora z 27d). Oba ustawienia padają w **jednym** miejscu —
-`rollRandomTable`.
-
-**Widoczność rozstrzyga rodzaj wiersza czatu, nie pole w payloadzie.** `visibleTo` w `chat-io.ts`
-jest białą listą rodzajów **w zapytaniu do bazy**, więc jawny wynik to `rolltable`, a cichy
-`gmrolltable` — wzorem `roll`/`gmroll` z 06 i `action`/`gmaction` z 14b. Stąd też „Pokaż stołowi"
-**dokłada** publiczny wiersz zamiast odsłaniać stary: wiersz raz zapisany jako `gmrolltable`
-nigdy nie wejdzie graczowi do historii. Treść nowego wiersza czyta się **z zapisanej karty**,
-nie z żądania — ta sama umowa, co obrażenia po ataku z 16 i wezwanie z 32.
-
-**Podrzut jest grafem, więc pilnuje się go przy zapisie.** `randomTableNestingIssue` liczy cykl
-i najdłuższą ścieżkę na **całej** kampanii z podmienioną tabelą, bo dopisanie podrzutu w „broni"
-potrafi przekroczyć limit „łupu", którego w tej chwili nikt nie edytuje. Limit to trzy poziomy;
-czwarty zamieniłby jedno kliknięcie w cztery karty naraz. Losowanie ma **drugi** bezpiecznik
-w `rollRandomTable` (`visited` + licznik), bo baza może nieść graf sprzed tej reguły.
-
-**Zakresy sprawdza jedna funkcja po obu stronach.** `randomTableCoverageIssues` chodzi w formularzu
-(podpowiedź na żywo, po każdym znaku) i w handlerze (odmowa) — w oględzinach zapis z dziurą wrócił
-**tym samym zdaniem**, które stało nad formularzem: „Dziura w zakresach: nic nie odpowiada za 7."
-
-**Import dowiózł trzy prawdziwe tabele i jedną erratę.** `parse-encounters.py` czyta zrzut
-markdownowy rozdziału 18; pierwsza wersja regexa złapała „STR. 417" jako wiersz („dziura 101–417"),
-więc zakres wiersza jest odtąd albo **w nawiasie**, albo **na początku linii** i zawsze
-z krótką nazwą zakończoną dwukropkiem. Po zwężeniu dwie tabele pokryły 1–100 od ręki, a trzecia
-pokazała **błąd druku**: wiersze „(70–72) Drużyna Solo" i „(72–77) Cybergang" dzielą liczbę 72.
-Poprawka (70–71) siedzi w `KNOWN_FIXES` **w skrypcie**, nie w JSON-ie, bo JSON jest wynikiem
-i kolejny przebieg skasowałby ją bez śladu. `import-tables.ts` waliduje **wszystko przed
-pierwszym zapisem** (`--dry-run` robi samą walidację), nadpisuje po nazwie i wiąże podrzuty
-drugim przebiegiem, więc kolejność plików nie ma znaczenia.
-
-**Dwie rzeczy dołożone poza opisem etapu, obie tanie i obie o tym, jak to się czyta.** Kość
-pierwszego kroku **tumbla w 3D** (`socket.ts` bierze `message.rolltable?.steps[0]?.roll`) — to nie
-jest kubek, a bez tego losowanie było jedyną kością w tej aplikacji, której nie widać; podrzuty
-zostają liczbami na karcie, bo dwie animacje z jednego kliknięcia nic nie mówią. I **suma stoi
-obok kości tylko wtedy, gdy jest czym się różnić** — przy `1d100` „47 47" powtarza to samo dwa razy.
-
-**Oględziny w dwóch sesjach naraz** (MG na `localhost`, `Tester` na `[::1]`) przeszły **wszystkie
-pięć kryteriów ukończenia**: dziura w zakresach odmówiona czytelnym zdaniem, karta „tylko MG"
-niewidoczna dla gracza **także po przeładowaniu** (jedna publiczna, pięć cichych — sprawdzone
-z konta gracza), kubek z „Percepcja (INT) +10" nietknięty przez cztery losowania z rzędu, podrzut
-losujący obie tabele w jednym kliknięciu i `/tab bronie` dający ten sam wynik co przycisk.
-Zakładka „Tabele" nie istnieje u gracza. Konsola czysta. Poligon ma odtąd dwie tabele testowe
-(opis w `poligon.md`).
-
-**Testy:** 1936 w `shared` (+23), 1051 na serwerze (+11), 99 u klienta (+2) — zielone. ESLint,
-Prettier i `tsc --noEmit` czyste w trzech pakietach. **Strażnik dostępności z 27f złapał jeden
-przycisk** („✕" przy wierszu edytora miał `aria-label` bez `title`) — naprawiony. Cztery umowy
-kodu i cztery pułapki w indeksach niżej.

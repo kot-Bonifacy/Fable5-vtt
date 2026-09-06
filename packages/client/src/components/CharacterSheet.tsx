@@ -195,6 +195,7 @@ import {
 } from '../stores/rollStore.js';
 import { useWindowPlacement } from '../window-placement.js';
 import { WindowResizeGrip } from './WindowResizeGrip.js';
+import { NumberStepper } from './NumberStepper.js';
 
 type SheetTab = 'stats' | 'bio' | 'chrome' | 'gear';
 
@@ -676,10 +677,12 @@ function IdentityColumn({
     }
   }
 
-  function setPool(key: 'hpCurrent' | 'humanityCurrent', event: ChangeEvent<HTMLInputElement>) {
+  // Człowieczeństwo zostaje polem do wpisania: sięga 100, a strzałki mają sens
+  // do dwóch cyfr (decyzja MG z 06.09).
+  function setHumanity(event: ChangeEvent<HTMLInputElement>) {
     const value = parseNumberInput(event);
     if (value === undefined) return;
-    saveData({ [key]: value }, key);
+    saveData({ humanityCurrent: value }, 'humanityCurrent');
   }
 
   return (
@@ -760,22 +763,18 @@ function IdentityColumn({
           </span>
           {role && (
             <span className="cp-rank" title="Ranga zdolności roli">
-              <input
-                type="number"
+              <NumberStepper
                 min={ROLE_RANK_MIN}
                 max={ROLE_RANK_MAX}
                 value={data.roleAbilityRank}
                 readOnly={!isGm}
-                title={
-                  isGm
-                    ? undefined
-                    : 'Poziom Zdolności kupuje się PD — patrz „Awans” na stronie drugiej.'
-                }
-                onChange={(e) => {
-                  const value = parseNumberInput(e);
-                  if (value !== undefined) saveData({ roleAbilityRank: value }, 'roleAbilityRank');
-                }}
-                aria-label={`Ranga: ${role.ability}`}
+                {...(isGm
+                  ? {}
+                  : {
+                      title: 'Poziom Zdolności kupuje się PD — patrz „Awans” na stronie drugiej.',
+                    })}
+                onChange={(value) => saveData({ roleAbilityRank: value }, 'roleAbilityRank')}
+                label={`Ranga: ${role.ability}`}
               />
             </span>
           )}
@@ -798,20 +797,17 @@ function IdentityColumn({
                 {former.ability}
               </span>
               <span className="cp-rank" title="Ranga zdolności poprzedniej roli">
-                <input
-                  type="number"
+                <NumberStepper
                   min={ROLE_RANK_MIN}
                   max={ROLE_RANK_MAX}
                   value={entry.rank}
                   readOnly={!isGm}
-                  title={
-                    isGm
-                      ? undefined
-                      : 'Poziom Zdolności kupuje się PD — patrz „Awans” na stronie drugiej.'
-                  }
-                  onChange={(e) => {
-                    const value = parseNumberInput(e);
-                    if (value === undefined) return;
+                  {...(isGm
+                    ? {}
+                    : {
+                        title: 'Poziom Zdolności kupuje się PD — patrz „Awans” na stronie drugiej.',
+                      })}
+                  onChange={(value) =>
                     saveData(
                       {
                         formerRoles: data.formerRoles.map((row) =>
@@ -819,9 +815,9 @@ function IdentityColumn({
                         ),
                       },
                       'formerRoles',
-                    );
-                  }}
-                  aria-label={`Ranga: ${former.ability}`}
+                    )
+                  }
+                  label={`Ranga: ${former.ability}`}
                 />
               </span>
             </div>
@@ -851,7 +847,7 @@ function IdentityColumn({
               min={HUMANITY_MIN}
               max={humanityCeiling}
               value={data.humanityCurrent}
-              onChange={(e) => setPool('humanityCurrent', e)}
+              onChange={setHumanity}
               aria-label="Człowieczeństwo"
             />
             <span className="cp-of">z</span>
@@ -864,13 +860,12 @@ function IdentityColumn({
         <div className="cp-field cp-field--notch cp-pool cp-span2" title="Punkty Wytrzymałości">
           <span className="cp-label">Punkty Wytrz.</span>
           <span className="cp-pool-value">
-            <input
-              type="number"
+            <NumberStepper
               min={0}
               max={maxHp}
               value={data.hpCurrent}
-              onChange={(e) => setPool('hpCurrent', e)}
-              aria-label="Punkty Wytrzymałości"
+              onChange={(value) => saveData({ hpCurrent: value }, 'hpCurrent')}
+              label="Punkty Wytrzymałości"
             />
             <span className="cp-of">z</span>
             <span className="cp-pool-max">{maxHp}</span>
@@ -967,9 +962,7 @@ function StatColumn({
   // gdzie stoi Cecha, a nie w drugim panelu obok.
   const effective = cpredEffectiveStats(data);
 
-  function setStat(statId: (typeof CPRED_STAT_IDS)[number], event: ChangeEvent<HTMLInputElement>) {
-    const value = parseNumberInput(event);
-    if (value === undefined) return;
+  function setStat(statId: (typeof CPRED_STAT_IDS)[number], value: number) {
     saveData({ stats: { ...data.stats, [statId]: value } }, `stats.${statId}`);
   }
 
@@ -987,28 +980,23 @@ function StatColumn({
           >
             {CPRED_STAT_LABELS[id].abbr}
           </button>
-          <input
+          <NumberStepper
             className="cp-stat-value"
-            type="number"
             min={CPRED_STAT_MIN}
             max={CPRED_STAT_MAX}
             value={data.stats[id]}
-            onChange={(e) => setStat(id, e)}
-            aria-label={CPRED_STAT_LABELS[id].name}
+            onChange={(value) => setStat(id, value)}
+            label={CPRED_STAT_LABELS[id].name}
           />
           {id === 'luck' && (
             <span className="cp-stat-sub" title="Punkty Szczęścia, które jeszcze zostały">
               <span className="cp-of">z</span>
-              <input
-                type="number"
+              <NumberStepper
                 min={0}
                 max={data.stats.luck}
                 value={data.luckCurrent}
-                onChange={(e) => {
-                  const value = parseNumberInput(e);
-                  if (value !== undefined) saveData({ luckCurrent: value }, 'luckCurrent');
-                }}
-                aria-label="Szczęście: pula bieżąca"
+                onChange={(value) => saveData({ luckCurrent: value }, 'luckCurrent')}
+                label="Szczęście: pula bieżąca"
               />
               <button
                 type="button"
@@ -1091,9 +1079,7 @@ function SkillColumns({
   const effective = cpredEffectiveStats(data);
   const columns = useMemo(() => layoutSkillColumns(groups, SKILL_COLUMN_COUNT), [groups]);
 
-  function setLevel(skillId: string, event: ChangeEvent<HTMLInputElement>) {
-    const value = parseNumberInput(event);
-    if (value === undefined) return;
+  function setLevel(skillId: string, value: number) {
     saveData({ skills: { ...data.skills, [skillId]: value } }, 'skills');
   }
 
@@ -1170,19 +1156,18 @@ ${rollTitle}`
                           stronie drugiej). Wpisywalny zostaje u MG — sędzia
                           musi móc naprawić kartę — a cena bez zamkniętych
                           drzwi obok nie jest ceną. */}
-                      <input
-                        type="number"
+                      <NumberStepper
                         min={SKILL_LEVEL_MIN}
                         max={SKILL_LEVEL_MAX}
                         value={level}
                         readOnly={!isGm}
-                        title={
-                          isGm
-                            ? undefined
-                            : 'Poziom podnosi się za PD — panel „Awans” na stronie drugiej.'
-                        }
-                        onChange={(e) => setLevel(skill.id, e)}
-                        aria-label={`Poziom: ${skill.name}`}
+                        {...(isGm
+                          ? {}
+                          : {
+                              title: 'Poziom podnosi się za PD — panel „Awans” na stronie drugiej.',
+                            })}
+                        onChange={(value) => setLevel(skill.id, value)}
+                        label={`Poziom: ${skill.name}`}
                       />
                     </div>
                     <div className="cp-field cp-skill-cell">{effective[skill.stat]}</div>
@@ -1746,19 +1731,13 @@ function WeaponStrip({
                 <td className="weapon-ammo-cell">
                   {tracksAmmo ? (
                     <>
-                      <input
-                        type="number"
+                      <NumberStepper
                         className={`weapon-ammo-input${empty ? ' weapon-ammo-input--empty' : ''}`}
                         min={0}
                         max={row.ammoMax}
-                        value={row.ammoCurrent}
-                        aria-label={`Stan magazynka: ${row.name}`}
-                        onChange={(e) => {
-                          const value = parseNumberInput(e);
-                          if (value !== undefined) {
-                            updateRow(row.id, { ammoCurrent: Math.min(value, row.ammoMax) });
-                          }
-                        }}
+                        value={Math.min(row.ammoCurrent, row.ammoMax)}
+                        label={`Stan magazynka: ${row.name}`}
+                        onChange={(value) => updateRow(row.id, { ammoCurrent: value })}
                       />
                       <span className="weapon-ammo-max">/{row.ammoMax}</span>
                       <button
@@ -2379,30 +2358,23 @@ function ArmorSp({
   const ablated = row.spCurrent < row.sp;
   return (
     <span className={`armor-sp${ablated ? ' armor-ablated' : ''}`}>
-      <input
-        type="number"
+      <NumberStepper
         min={0}
         max={row.sp}
-        value={row.spCurrent}
-        onChange={(e) => {
-          const value = parseNumberInput(e);
-          if (value !== undefined) update(row.id, { spCurrent: Math.min(value, row.sp) });
-        }}
-        aria-label="Bieżące OB (po ablacji)"
+        value={Math.min(row.spCurrent, row.sp)}
+        onChange={(value) => update(row.id, { spCurrent: value })}
+        label="Bieżące OB (po ablacji)"
         title="Ablacja: każde przebicie obniża OB o 1. Naprawa przywraca pełną wartość."
       />
       <span className="cp-of">z</span>
-      <input
-        type="number"
+      <NumberStepper
         min={0}
         max={ARMOR_SP_MAX}
         value={row.sp}
-        onChange={(e) => {
-          const value = parseNumberInput(e);
-          if (value === undefined) return;
-          update(row.id, { sp: value, spCurrent: Math.min(row.spCurrent, value) });
-        }}
-        aria-label="OB pancerza (nieuszkodzonego)"
+        onChange={(value) =>
+          update(row.id, { sp: value, spCurrent: Math.min(row.spCurrent, value) })
+        }
+        label="OB pancerza (nieuszkodzonego)"
       />
       {ablated && (
         <button
@@ -2432,18 +2404,13 @@ function ArmorPenalty({
   update: (rowId: string, patch: Partial<CpredArmorRow>) => void;
 }) {
   return (
-    <input
-      type="number"
+    <NumberStepper
       min={ARMOR_PENALTY_MIN}
       max={0}
       value={row.penalty ?? 0}
-      onChange={(e) => {
-        const value = parseNumberInput(e);
-        if (value === undefined) return;
-        const clamped = Math.min(0, Math.max(ARMOR_PENALTY_MIN, value));
-        update(row.id, { penalty: clamped === 0 ? undefined : clamped });
-      }}
-      aria-label="Kara pancerza do REF/ZW/RUCH"
+      onChange={(value) => update(row.id, { penalty: value === 0 ? undefined : value })}
+      format={(value) => (value === 0 ? '0' : `−${Math.abs(value)}`)}
+      label="Kara pancerza do REF/ZW/RUCH"
       title="Kara do REF, ZW i RUCH-u. Liczy się najgorsza z noszonych sztuk, kary się nie sumują."
     />
   );
@@ -3077,15 +3044,12 @@ function CyberdeckSection({ data, saveData }: TabProps) {
           title="Kombinezon Bodyweight i cyberręka z dekiem dokładają gniazdo (s. 208)"
         >
           <span>Gniazd</span>
-          <input
-            type="number"
+          <NumberStepper
             min={1}
             max={CYBERDECK_SLOTS_MAX}
             value={deck.slots}
-            onChange={(event) => {
-              const value = Number.parseInt(event.target.value, 10);
-              if (Number.isInteger(value)) patchDeck({ slots: value });
-            }}
+            onChange={(value) => patchDeck({ slots: value })}
+            label="Gniazda cyberdeka"
           />
         </label>
         <button
@@ -4238,17 +4202,14 @@ function ReputationSection({
             >
               {isGm ? (
                 <>
-                  <input
+                  <NumberStepper
                     className="reputation-level"
-                    type="number"
                     min={REPUTATION_LEVEL_MIN}
                     max={REPUTATION_LEVEL_MAX}
                     value={row.level}
                     title="Poziom 1–10 wg tabeli na s. 193"
-                    onChange={(e) => {
-                      const value = parseNumberInput(e);
-                      if (value !== undefined) patchDeed(row.id, { level: value });
-                    }}
+                    onChange={(value) => patchDeed(row.id, { level: value })}
+                    label="Poziom Reputacji"
                   />
                   <input
                     className="reputation-note"

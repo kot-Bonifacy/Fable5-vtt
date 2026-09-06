@@ -15,6 +15,7 @@ import {
 } from '@vtt/shared';
 import { dropHaggle, strikeHaggle } from '../socket.js';
 import { useCharacterStore } from '../stores/characterStore.js';
+import { NumberStepper } from './NumberStepper.js';
 
 /**
  * Znajomości Fixera (etap 30d, s. 159–161).
@@ -90,18 +91,12 @@ export function OperatorPanel({ characterId }: { characterId: string }) {
 
       <label className="haggle-opponent">
         <span>Druga strona (CHA + Handel + Znajomości)</span>
-        <input
-          type="number"
+        <NumberStepper
           min={0}
           max={CPRED_HAGGLE_OPPONENT_MAX}
           value={opponent}
-          onChange={(event) => {
-            const value = Number.parseInt(event.target.value, 10);
-            if (!Number.isNaN(value)) {
-              setOpponent(Math.max(0, Math.min(CPRED_HAGGLE_OPPONENT_MAX, value)));
-            }
-          }}
-          aria-label="Modyfikator drugiej strony"
+          onChange={setOpponent}
+          label="Modyfikator drugiej strony"
         />
       </label>
 

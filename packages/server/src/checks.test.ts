@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { io as ioClient, type Socket as ClientSocket } from 'socket.io-client';
+import { CHECK_CALL_PROMPT_MAX } from '@vtt/shared';
 import type {
   CampaignSummary,
   CharacterView,
@@ -840,5 +841,293 @@ describe('prośba gracza o Test', () => {
       const sync = await createSocket(cookie).firstSync;
       expect(sync.messages.some((row) => row.id === messageId)).toBe(true);
     }
+  });
+
+  /** Zdanie, po którym poznaje się kartę-znacznik z `noCallReached`. */
+  const MARKER = 'znacznik ciszy';
+
+  /**
+   * Cisza z dowodem, bez czekania na zegar.
+   *
+   * Żeby orzec „wezwanie NIE powstało", nie wystarczy nic nie usłyszeć przez
+   * chwilę — trzeba usłyszeć coś, co MUSI przyjść później. Socket.IO trzyma
+   * kolejność w obrębie połączenia, więc znacznikiem jest kolejna prośba tego
+   * samego gracza: gdy jej karta dociera, wszystko wcześniejsze już doszło.
+   */
+  async function noCallReached(): Promise<void> {
+    const seen: string[] = [];
+    const listener = (payload: ChatMessageBroadcast) => seen.push(payload.message.kind);
+    vex.on('chat:message', listener);
+    // Nasłuch stoi PRZED wysłaniem: rozgłoszenie potrafi wyprzedzić ack,
+    // a wtedy czekanie zaczęte po nim nie doczeka się niczego.
+    const arrived = waitForMatch<ChatMessageBroadcast>(
+      vex,
+      'chat:message',
+      (payload) => (payload.message.request as CheckRequestEntry | undefined)?.reason === MARKER,
+    );
+    const marker = await emitAck<{ messageId: number }>(vex, 'check:request', {
+      characterId,
+      request: { kind: 'skill', skillId: 'perception' },
+      reason: MARKER,
+    });
+    if (!marker.ok || !marker.data) throw new Error('check:request failed');
+    await arrived;
+    vex.off('chat:message', listener);
+    expect(seen).not.toContain('check');
+    const closed = await emitAck(gm, 'check:request-resolve', {
+      messageId: marker.data.messageId,
+      approve: false,
+    });
+    expect(closed.ok).toBe(true);
+  }
+
+  it('odmowa niczego nie rzuca, a zdanie MG dochodzi do proszącego', async () => {
+    const asked = await emitAck<{ messageId: number }>(vex, 'check:request', {
+      characterId,
+      request: { kind: 'skill', skillId: 'perception' },
+      reason: 'Chcę wyczuć, czy kłamie.',
+    });
+    if (!asked.ok || !asked.data) throw new Error('check:request failed');
+
+    const updated = waitForMatch<ChatMessageBroadcast>(
+      vex,
+      'chat:update',
+      (payload) => payload.message.id === asked.data!.messageId,
+    );
+    const ack = await emitAck<{ callMessageId?: number }>(gm, 'check:request-resolve', {
+      messageId: asked.data.messageId,
+      approve: false,
+      note: 'Nie ma na to rzutu — po prostu widzisz, że jest zdenerwowany.',
+    });
+    expect(ack.ok).toBe(true);
+    // Odmowa nie ma czym oddzwonić: wezwania nie było.
+    if (ack.ok) expect(ack.data?.callMessageId).toBeUndefined();
+
+    const entry = (await updated).message.request as CheckRequestEntry;
+    expect(entry.resolution?.kind).toBe('refused');
+    expect(entry.resolution?.byName).toBe('MG');
+    expect(entry.resolution?.note).toContain('zdenerwowany');
+    // Odmowa nie nazywa progu — nie ma czego nazwać.
+    expect(entry.resolution?.targetText).toBeUndefined();
+    await noCallReached();
+  });
+
+  it('wycofuje autor, nie MG — a ślad zostaje u obu', async () => {
+    const asked = await emitAck<{ messageId: number }>(vex, 'check:request', {
+      characterId,
+      request: { kind: 'stat', statId: 'int' },
+    });
+    if (!asked.ok || !asked.data) throw new Error('check:request failed');
+
+    // MG ma „Odmów", a nie „Wycofaj": odmowa zostawia zdanie, wycofanie nie.
+    const byGm = await emitAck(gm, 'check:request-cancel', { messageId: asked.data.messageId });
+    expect(byGm.ok).toBe(false);
+    if (!byGm.ok) expect(byGm.error).toBe('REQUEST_NOT_YOURS');
+
+    const seenByGm = waitForMatch<ChatMessageBroadcast>(
+      gm,
+      'chat:update',
+      (payload) => payload.message.id === asked.data!.messageId,
+    );
+    const cancelled = await emitAck(vex, 'check:request-cancel', {
+      messageId: asked.data.messageId,
+    });
+    expect(cancelled.ok).toBe(true);
+
+    const entry = (await seenByGm).message.request as CheckRequestEntry;
+    expect(entry.resolution?.kind).toBe('withdrawn');
+    expect(entry.resolution?.byName).toBe('Vex');
+    // Wycofana prośba jest zamknięta tak samo jak odmówiona.
+    const again = await emitAck(vex, 'check:request-cancel', { messageId: asked.data.messageId });
+    expect(again.ok).toBe(false);
+    if (!again.ok) expect(again.error).toBe('REQUEST_CLOSED');
+  });
+
+  it('zgoda bez progu odpada i NIE zamyka prośby', async () => {
+    const asked = await emitAck<{ messageId: number }>(vex, 'check:request', {
+      characterId,
+      request: { kind: 'skill', skillId: 'perception' },
+    });
+    if (!asked.ok || !asked.data) throw new Error('check:request failed');
+
+    const naked = await emitAck(gm, 'check:request-resolve', {
+      messageId: asked.data.messageId,
+      approve: true,
+    });
+    expect(naked.ok).toBe(false);
+    if (!naked.ok) expect(naked.error).toBe('BAD_REQUEST');
+
+    // Próg i przeciwnik naraz to dwa Testy, nie jeden (s. 130).
+    const both = await emitAck(gm, 'check:request-resolve', {
+      messageId: asked.data.messageId,
+      approve: true,
+      dv: 15,
+      opponentBonus: 8,
+    });
+    expect(both.ok).toBe(false);
+    if (!both.ok) expect(both.error).toBe('BAD_REQUEST');
+
+    // Prośba przeżyła obie pomyłki MG i wciąż czeka.
+    const good = await emitAck(gm, 'check:request-resolve', {
+      messageId: asked.data.messageId,
+      approve: true,
+      dv: 15,
+    });
+    expect(good.ok).toBe(true);
+  });
+
+  it('zgoda na rzut przeciwstawny mówi, ile ma druga strona', async () => {
+    const asked = await emitAck<{ messageId: number }>(vex, 'check:request', {
+      characterId,
+      request: { kind: 'skill', skillId: 'perception' },
+      reason: 'Chcę wypatrzyć jego ogon.',
+    });
+    if (!asked.ok || !asked.data) throw new Error('check:request failed');
+
+    const callCard = waitForMatch<ChatMessageBroadcast>(
+      vex,
+      'chat:message',
+      (payload) => payload.message.kind === 'check',
+    );
+    const updated = waitForMatch<ChatMessageBroadcast>(
+      vex,
+      'chat:update',
+      (payload) => payload.message.id === asked.data!.messageId,
+    );
+    const ack = await emitAck(gm, 'check:request-resolve', {
+      messageId: asked.data.messageId,
+      approve: true,
+      opponentBonus: 12,
+    });
+    expect(ack.ok).toBe(true);
+
+    const call = (await callCard).message.check as CheckCallEntry;
+    expect(call.opponentBonus).toBe(12);
+    expect(call.dv).toBeUndefined();
+    const entry = (await updated).message.request as CheckRequestEntry;
+    expect(entry.resolution?.targetText).toBe('przeciwstawny — druga strona: 12 + 1k10');
+  });
+
+  it('modyfikator i widoczność bierze się z żądania MG, nie z prośby', async () => {
+    const asked = await emitAck<{ messageId: number }>(vex, 'check:request', {
+      characterId,
+      request: { kind: 'skill', skillId: 'perception' },
+    });
+    if (!asked.ok || !asked.data) throw new Error('check:request failed');
+
+    const callCard = waitForMatch<ChatMessageBroadcast>(
+      vex,
+      'chat:message',
+      (payload) => payload.message.kind === 'check',
+    );
+    const ack = await emitAck(gm, 'check:request-resolve', {
+      messageId: asked.data.messageId,
+      approve: true,
+      dv: 21,
+      modifier: -2,
+      visibility: 'gm',
+    });
+    expect(ack.ok).toBe(true);
+
+    const call = (await callCard).message.check as CheckCallEntry;
+    expect(call.modifier).toBe(-2);
+    expect(call.visibility).toBe('gm');
+    expect(call.dvLabel).toBe('Heroiczny');
+    // Wezwanie „tylko MG i wezwany" nie ma prawa dojść do stołu ani przy
+    // zgodzie, ani przy własnym wezwaniu MG.
+    expect(rogueTraffic.some((payload) => payload.message.kind === 'check')).toBe(false);
+  });
+
+  it('„Ustaw…" na wiersz, który prośbą nie jest, nie wystawia wezwania', async () => {
+    // Wiersz istnieje, ale jest wezwaniem, nie prośbą — payload wygląda
+    // podobnie, więc gdyby serwer czytał sam payload, przeszłoby.
+    const call = await emitAck<{ messageId: number }>(gm, 'check:call', {
+      characterId,
+      request: { kind: 'skill', skillId: 'perception' },
+      dv: 13,
+      visibility: 'public',
+    });
+    if (!call.ok || !call.data) throw new Error('check:call failed');
+
+    const ack = await emitAck(gm, 'check:call', {
+      characterId,
+      request: { kind: 'skill', skillId: 'perception' },
+      dv: 13,
+      visibility: 'public',
+      requestMessageId: call.data.messageId,
+    });
+    expect(ack.ok).toBe(false);
+    if (!ack.ok) expect(ack.error).toBe('REQUEST_NOT_FOUND');
+
+    const ghost = await emitAck(gm, 'check:call', {
+      characterId,
+      request: { kind: 'skill', skillId: 'perception' },
+      dv: 13,
+      visibility: 'public',
+      requestMessageId: 9_000_001,
+    });
+    expect(ghost.ok).toBe(false);
+    if (!ghost.ok) expect(ghost.error).toBe('REQUEST_NOT_FOUND');
+
+    // Sedno: prośba jest sprawdzana PRZED wystawieniem wezwania, więc odpadło
+    // jedno i drugie. Odwrotna kolejność zostawiłaby wezwanie bez zgody.
+    await noCallReached();
+
+    const cancelled = await emitAck(gm, 'check:cancel', { messageId: call.data.messageId });
+    expect(cancelled.ok).toBe(true);
+  });
+
+  it('„Ustaw…" na prośbę już zamkniętą też nie wystawia wezwania', async () => {
+    const closedId = await askAndClose();
+    const ack = await emitAck(gm, 'check:call', {
+      characterId,
+      request: { kind: 'skill', skillId: 'perception' },
+      dv: 13,
+      visibility: 'public',
+      requestMessageId: closedId,
+    });
+    expect(ack.ok).toBe(false);
+    if (!ack.ok) expect(ack.error).toBe('REQUEST_CLOSED');
+    await noCallReached();
+  });
+
+  it('powód mieści się w 300 znakach — dłuższy odpada', async () => {
+    const tooLong = await emitAck(vex, 'check:request', {
+      characterId,
+      request: { kind: 'skill', skillId: 'perception' },
+      reason: 'a'.repeat(CHECK_CALL_PROMPT_MAX + 1),
+    });
+    expect(tooLong.ok).toBe(false);
+    if (!tooLong.ok) expect(tooLong.error).toBe('BAD_REQUEST');
+
+    const exact = await emitAck<{ messageId: number }>(vex, 'check:request', {
+      characterId,
+      request: { kind: 'skill', skillId: 'perception' },
+      reason: 'b'.repeat(CHECK_CALL_PROMPT_MAX),
+    });
+    expect(exact.ok).toBe(true);
+    if (!exact.ok || !exact.data) throw new Error('check:request failed');
+    const closed = await emitAck(gm, 'check:request-resolve', {
+      messageId: exact.data.messageId,
+      approve: false,
+    });
+    expect(closed.ok).toBe(true);
+  });
+
+  it('rozstrzygnięcie potrzebuje id wiadomości, i to id PROŚBY', async () => {
+    const missing = await emitAck(gm, 'check:request-resolve', { approve: false });
+    expect(missing.ok).toBe(false);
+    if (!missing.ok) expect(missing.error).toBe('BAD_REQUEST');
+
+    const ghost = await emitAck(gm, 'check:request-resolve', {
+      messageId: 9_000_002,
+      approve: false,
+    });
+    expect(ghost.ok).toBe(false);
+    if (!ghost.ok) expect(ghost.error).toBe('REQUEST_NOT_FOUND');
+
+    const notMine = await emitAck(vex, 'check:request-cancel', { messageId: 9_000_003 });
+    expect(notMine.ok).toBe(false);
+    if (!notMine.ok) expect(notMine.error).toBe('REQUEST_NOT_FOUND');
   });
 });

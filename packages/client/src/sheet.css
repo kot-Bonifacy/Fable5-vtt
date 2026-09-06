@@ -296,6 +296,79 @@
   margin: 0;
 }
 
+/* ===== Przełącznik liczbowy — strzałki zamiast wpisywania (06.09) =====
+
+   Decyzja MG: karta jest **grana**, a nie wypełniana, więc liczby zmienia się
+   klikaniem. Strzałki stoją w pionie tuż na prawo od liczby i obie razem mają
+   dokładnie jej wysokość — wersja pozioma („− 7 +") rozpychałaby komórki
+   o dwa guziki na każdą liczbę, a tabel na karcie jest pięć.
+
+   Wpisywane zostają wyłącznie pola, które naprawdę potrafią przekroczyć 99:
+   Punkty Doświadczenia (do 99 999), ILOŚĆ w wyposażeniu i eurodolce. */
+.cp-step {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 0.08rem;
+  line-height: 1.15;
+  vertical-align: middle;
+}
+
+.cp-step:focus-visible {
+  outline: none;
+  background: var(--cp-focus);
+}
+
+.cp-step-value {
+  min-width: 1.05rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Kolumna strzałek rozciąga się na wysokość wiersza z liczbą (`stretch` wyżej),
+   więc obie razem są tak wysokie jak ona — i tylko tyle. */
+.cp-step-arrows {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  width: 0.6rem;
+}
+
+/* `color: inherit` i sama przezroczystość zamiast własnego tła: ten sam guzik
+   siedzi na papierze pola, na czerwonej plakietce rangi i w komórce tabeli. */
+.cp-step-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 50%;
+  min-height: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  color: inherit;
+  opacity: 0.5;
+  font-size: 0.4rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cp-step-arrow:hover:not(:disabled) {
+  opacity: 1;
+}
+
+/* Strzałka przy krańcu zakresu ma zostać widoczna jako strzałka: para, w której
+   jedna połowa znika zupełnie, czyta się jak pojedynczy dziwny znaczek. */
+.cp-step-arrow:disabled {
+  opacity: 0.22;
+  cursor: default;
+}
+
+/* Bez strzałek: liczbę widać, ale kupuje się ją PD (poziom Umiejętności, ranga
+   Zdolności) albo pisze ją serwer — u gracza zostaje sam napis. */
+.cp-step--locked {
+  color: var(--cp-ink-dim);
+}
+
 /* ===== Strona pierwsza ===== */
 
 .sheet-page {
@@ -431,7 +504,8 @@
   background: var(--cp-ink-dim);
 }
 
-.cp-ability--former .cp-rank input {
+.cp-ability--former .cp-rank input,
+.cp-ability--former .cp-rank .cp-step {
   color: var(--cp-paper);
 }
 
@@ -517,6 +591,18 @@
   width: 1.9rem;
   color: var(--cp-on-red);
   font-weight: 700;
+}
+
+.cp-rank .cp-step {
+  color: var(--cp-on-red);
+  font-weight: 700;
+  padding: 0 0.15rem;
+}
+
+/* Plakietka rangi jest `flex: none`, więc rośnie do treści — bez zwężenia
+   liczby strzałki rozpychałyby ją kosztem nazwy Zdolności obok. */
+.cp-rank .cp-step-value {
+  min-width: 0.9rem;
 }
 
 .cp-rank input:focus {
@@ -614,6 +700,20 @@
   text-align: center;
 }
 
+.cp-pool-value .cp-step-value {
+  min-width: 1.5rem;
+}
+
+/* Strzałki przy dużej cyfrze puli są odpowiednio większe — inaczej wyglądałyby
+   jak pyłek przy 1,15 rem. */
+.cp-pool-value .cp-step-arrows {
+  width: 0.75rem;
+}
+
+.cp-pool-value .cp-step-arrow {
+  font-size: 0.5rem;
+}
+
 .cp-pool-max {
   color: var(--cp-ink-dim);
 }
@@ -679,6 +779,22 @@
   text-align: center;
 }
 
+.cp-step.cp-stat-value {
+  justify-content: center;
+}
+
+.cp-stat-value .cp-step-value {
+  min-width: 1.2rem;
+}
+
+.cp-stat-value .cp-step-arrows {
+  width: 0.7rem;
+}
+
+.cp-stat-value .cp-step-arrow {
+  font-size: 0.45rem;
+}
+
 /* Małe pole „z" pod cechą — bieżące Szczęście i EMP w grze. */
 .cp-stat-sub {
   display: flex;
@@ -694,6 +810,19 @@
   min-width: 0;
   font-size: 0.8rem;
   font-weight: 600;
+}
+
+.cp-stat-sub .cp-step {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.cp-stat-sub .cp-step-value {
+  min-width: 0.7rem;
+}
+
+.cp-stat-sub .cp-step-arrows {
+  width: 0.5rem;
 }
 
 .cp-stat-sub-value {
@@ -865,6 +994,15 @@
 .cp-skill-cell input {
   width: 100%;
   font-size: 0.8rem;
+}
+
+.cp-skill-cell .cp-step {
+  font-size: 0.8rem;
+  justify-content: center;
+}
+
+.cp-skill-cell .cp-step-value {
+  min-width: 0.8rem;
 }
 
 .cp-skill-base {
@@ -1219,9 +1357,18 @@
   text-align: right;
 }
 
-.cp-table .weapon-ammo-input--empty {
+.cp-table .weapon-ammo-input--empty,
+.cp-table .cp-step.weapon-ammo-input--empty {
   color: var(--cp-red);
   font-weight: 700;
+}
+
+.cp-table .cp-step.weapon-ammo-input {
+  width: auto;
+}
+
+.cp-table .weapon-ammo-input .cp-step-value {
+  min-width: 1.1rem;
 }
 
 .cp-table .weapon-ammo-max,
@@ -1277,7 +1424,12 @@
   text-align: center;
 }
 
-.armor-sp.armor-ablated input:first-child {
+.armor-sp .cp-step-value {
+  min-width: 0.9rem;
+}
+
+.armor-sp.armor-ablated input:first-child,
+.armor-sp.armor-ablated .cp-step:first-child {
   color: var(--cp-red);
   font-weight: 700;
 }
@@ -2063,6 +2215,11 @@
   color: inherit;
   font: inherit;
   text-align: center;
+}
+
+.cp-deck-capacity .cp-step-value {
+  min-width: 0.9rem;
+  border-bottom: 1px solid currentColor;
 }
 
 .cp-deck-table td {
