@@ -180,6 +180,7 @@ import { AdvancementPanel } from './AdvancementPanel.js';
 import { PortraitPicker } from './PortraitPicker.js';
 import { useAttackStore } from '../stores/attackStore.js';
 import { useCompendiumStore } from '../stores/compendiumStore.js';
+import { useInventoryStore } from '../stores/inventoryStore.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import {
   ensureCpredDataLoaded,
@@ -3073,6 +3074,19 @@ function GearTab({ character, data, saveData }: TabProps & { character: Characte
     <div className="sheet-gear">
       {/* Bez osobnej belki tytułowej — na wydruku tytułem tego bloku jest sam
           nagłówek kolumny „Wyposażenie", a dwa te same słowa nad sobą to szum. */}
+      {/* Etap 38b: jedyne wejście gracza do przekazywania i do przeszukiwania
+          ciał. Guzik stoi nad ekwipunkiem, bo o przenoszeniu myśli się patrząc
+          na listę rzeczy, a nie szukając narzędzia gdzie indziej. */}
+      <div className="sheet-gear-actions">
+        <button
+          type="button"
+          className="cp-add"
+          title="Przekaż coś komuś albo przeszukaj leżącą figurę obok"
+          onClick={() => useInventoryStore.getState().open(character.id)}
+        >
+          Wymiana…
+        </button>
+      </div>
       <RowTable
         rows={data.gear}
         columns={[

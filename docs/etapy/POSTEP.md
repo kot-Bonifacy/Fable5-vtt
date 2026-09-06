@@ -105,10 +105,27 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 | 37  | Kalendarz kampanii i upływ czasu              | ✅     | 2026-09-05        |
 | 38  | ~~Przedmioty między kartami~~                 | ⛔     | rozdzielony 05.09 |
 | 38a | Statysta jako karta postaci                   | ✅     | 2026-09-05        |
-| 38b | Przedmioty: przekazanie, łup, przeszukanie    | ⬜     |                   |
+| 38b | Przedmioty: przekazanie, łup, przeszukanie    | ✅     | 2026-09-06        |
 | 39  | Efekty czasowe modyfikujące Cechy              | ✅     | 2026-09-05        |
 
 ## Od czego zacząć
+
+**Przedmiot przechodzi od 06.09 z karty na kartę — do etapu 38b nie było na to żadnej drogi.**
+Przenosi go **jedna czysta funkcja**, `cpredMoveItems(from, to, refs)`
+(`shared/systems/cpred/inventory.ts`): bierze dwie karty i listę adresów wierszy, zwraca **obie**
+— rozdzielenie jej na „zabierz" i „dołóż" pozwoliłoby zapisać połowę operacji. Wiersz jedzie
+**w całości**, więc magazynek, `ammoId`, dodatki z 31 i zużyte OB z 15 przeżywają przeprowadzkę
+bez ani jednej linijki o nich. **Pancerz przychodzi ZDJĘTY** — to jedyne pole, które funkcja
+zmienia po drodze, i jest to reguła, nie szczegół. **Przekazanie na kartę z właścicielem jest
+PROPOZYCJĄ** (wzorem wezwania z 32: nic się nie rusza do „Przyjmij", a wiersze czyta się
+z zapisanej karty czatu, nie z żądania klienta); kartę **bez** właściciela nie ma kto potwierdzić,
+więc tam idzie od ręki i ack mówi `pending: false`. **Łup nie czeka nigdy.** **Zasięg to długość
+ramienia (`CPRED_MELEE_REACH_M`), mierzona wszystkim — MG włącznie**, wzorem Ustabilizowania
+z 14e; przy `give` warunku nie ma, gdy karty nie stoją na wspólnej scenie, przy `take` tej furtki
+nie ma. **Gracz przeszukuje wyłącznie kartę bez właściciela, leżącą albo martwą i w zasięgu.**
+Klient **nie zna `characterId` cudzej figury** — łup adresuje się żetonem, a listę źródeł buduje
+serwer. Osiem umów kodu i pięć pułapek w indeksach niżej. **Menu figury („🎒 Przeszukaj…") nie
+było oglądane w przeglądarce** — pozycja w `zaleglosci.md`; reszta etapu przeszła oględziny.
 
 **Figura ostatystykowana ma od 05.09 KARTĘ POSTACI — kolumna `Token.combatProfile` nie
 istnieje.** Umowa etapu 16b („statysta nie jest osobą") została **cofnięta decyzją MG**: ganger,
@@ -185,18 +202,20 @@ przy zatrzymanym serwerze, z kopią stanu sprzed przywrócenia. Doszła zakładk
 i `archive`. Wyszedł przy tym **jeden błąd**: polski znak w nazwie pliku wywracał pobieranie
 błędem 500. Osiem umów kodu i cztery pułapki w indeksach niżej.
 
-**Wolne są teraz: 28** (wdrożenie na VPS — a MG planuje przed nim refaktoryzację całości)
-**oraz 34 i 38b.** **Etap 38 rozdzielono 05.09 na 38a** (statysta jako karta postaci — zrobiony)
-**i 38b** (przekazanie, łup, przeszukanie), bo pierwsza z trzech odpowiedzi MG na pytania
-rozstrzygające okazała się refaktorem etapu 16b. **Etap 36 (makra i własny pasek) MG wycofał 05.09** — nie planuj go
-i nie proponuj makr; pasek akcji z 16f zostaje generowany. **Żadna wiążąca kolejność nie została
-już otwarta**: „37 przed 39" i „33 przed 28" są spełnione. **Refaktoryzacja całości przed
-etapem 28 czeka na osobną sesję** — MG odłożył ją 05.09, wybierając etap z listy, i od tamtej
-pory doszły dwa etapy.
+**Wolne są teraz już tylko dwa: 28** (wdrożenie na VPS — a MG planuje przed nim refaktoryzację
+całości) **i 34** (tabele losowe). **Etap 38 zamknięty w komplecie 06.09**: 38a (statysta jako
+karta) i 38b (przekazanie, łup, przeszukanie). **Etap 36 (makra i własny pasek) MG wycofał
+05.09** — nie planuj go i nie proponuj makr; pasek akcji z 16f zostaje generowany. **Żadna wiążąca
+kolejność nie została już otwarta**: „37 przed 39" i „33 przed 28" są spełnione.
+**Refaktoryzacja całości przed etapem 28 czeka na osobną sesję** — MG odłożył ją 05.09, wybierając
+etap z listy, i od tamtej pory doszły trzy etapy. **To jest teraz najtańszy moment, żeby ją
+zrobić**: po niej zostaje wyłącznie 34 i wdrożenie.
 
-**Dług oględzin — 15 pozycji.** Etap 38a dołożył **jedną** (menu figury: przełącznik statystyk,
-Wartość bojowa, pytanie o kartę przy koszu — prawym klikiem z automatyki nie da się otworzyć menu
-kanwy Pixi; trzy ścieżki mają testy dymne). Pozostałe czternaście czeka na żywy model. Etap 39 **nie dołożył ani jednej** — obejrzany w tej samej sesji, w której powstał. Cztery pozycje etapu 30
+**Dług oględzin — 16 pozycji.** Etap 38b dołożył **jedną** i jest to **ta sama przeszkoda**, co
+w 38a: „🎒 Przeszukaj…" w menu figury, bo prawym klikiem z automatyki nie da się otworzyć menu
+kanwy Pixi. Obie pozycje są w **tym samym menu** i klika się je jednym podejściem ręką MG. Etap 38a
+dołożył **jedną** (menu figury: przełącznik statystyk, Wartość bojowa, pytanie o kartę przy
+koszu — trzy ścieżki mają testy dymne). Pozostałe czternaście czeka na żywy model. Etap 39 **nie dołożył ani jednej** — obejrzany w tej samej sesji, w której powstał. Cztery pozycje etapu 30
 (**30a, 30b, 30c, 30d**) zamknięte 04.09 — była to ostatnia paczka, którą dało się obejrzeć bez
 GPU. Zostaje 20a/20b, 19a–19c, dwie ścieżki 24c, maszynopis wypowiedzi i jedna nowa pozycja
 z 04.09 (cyberdek pracownika Korpo). **29a i 29b wypadły z listy 02.09**, etap 31 i Celowanie
@@ -259,6 +278,14 @@ kilkaset wierszy szumu do commita etapu.
 Jeden wiersz = jedna umowa; pełna wersja z uzasadnieniem w `umowy-kodu.md`. Umowa złamana
 znaczy zwykle błąd, który już raz kosztował sesję.
 
+- **Przedmiot z karty na kartę to `cpredMoveItems(from, to, refs)`** (`systems/cpred/inventory.ts`) — zwraca **obie** karty naraz; wiersz jedzie w całości (magazynek, dodatki, zużyte OB). Cyborgizacje nie jadą nigdzie.
+- **Przeniesiony pancerz przychodzi ZDJĘTY** (`equipped: false`) — jedyne pole, które przenoszenie zmienia po drodze; inaczej łup po cichu zmieniałby OB odbiorcy.
+- **Wyposażenie skleja się po `compendiumId`, nigdy po nazwie** (`stacksWith` — plus nazwa, uwagi, `consumable`, `upgrade`); dwa ręcznie wpisane „Notatnik" mogą być czymkolwiek.
+- **Id wiersza ekwipunku jest unikalne w obrębie KARTY, nie kampanii** — kopia figury z 35 niesie ten sam `rowId`; kolizję rozstrzyga `landedRow` nowym id, nie nadpisaniem.
+- **Przekazanie na kartę Z WŁAŚCICIELEM to propozycja** (`inventory:give` → karta czatu bez `resolution`, ruch dopiero w `inventory:respond`); wiersze czyta się z **zapisanej karty**, nie z żądania. Karta bez właściciela idzie od ręki, a ack mówi `pending: false`.
+- **Zasięg przenoszenia to `CPRED_MELEE_REACH_M`, mierzony wszystkim — MG włącznie** (jak Ustabilizowanie z 14e). Brak wspólnej sceny znosi warunek przy `give`; przy `take` nie znosi nic (`NOT_ON_SCENE`).
+- **Gracz przeszukuje tylko kartę BEZ właściciela, leżącą albo martwą i w zasięgu** — trzy warunki razem, w `inventory:take` i w `inventory:sources`. Z karty gracza przenosi wyłącznie MG.
+- **Klient nie zna `characterId` cudzej figury** — łup adresuje `fromTokenId`, listę źródeł buduje serwer (`inventory:sources`), a lista celów to same nazwy, jak `payees` z 23b.
 - **Cecha „jak teraz" to `cpredEffectiveStats(sheet)`** (`stateffects.ts`), nigdy `data.stats[...]` — tamto jest liczbą **wydrukowaną**. Wyjątkiem są **pule** (maks. PW, SZ, sufit Człowieczeństwa) i tempo leczenia: te czytają bazową.
 - **Efekt na Cesze w rozbiciu rzutu to własny wiersz** (`cpredStatEffectRows`), jak kara z pancerza — a gdy podłoga przycina sumę, wiersze zwijają się w jeden zbiorczy. Nie składaj ich u wołającego.
 - **`statEffects` pisze wyłącznie `character:stat-effect`** — wypada z `character:update` (`FORBIDDEN`) **u wszystkich, także u MG**: nałożenie ma cenę (rzut 1k6 + dwa terminy), a łata nie ma czym zapłacić.
@@ -410,6 +437,11 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 
 Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapki-dev.md`.
 
+- **`TokenPatch` nie ma `x`/`y` — figurą rusza `token:move`, nie `token:update`**; sanityzacja milczy o nieznanych polach, więc żądanie z pozycją dostaje `{ ok: true }`, a figura stoi.
+- **Odległość „ode mnie" to NAJBLIŻSZA własna figura, nie pierwsza z listy** — karta potrafi stać dwiema figurami (kopia z 35), a serwer egzekwuje zasięg po najbliższej parze.
+- **Komunikat „czeka na X" wolno napisać dopiero wtedy, gdy serwer powie, że coś czeka** (`InventoryGiveResult.pending`); zdanie warunkowe w komunikacie o skutku to znak brakującego pola w ack.
+- **Nowy rodzaj wiersza czatu ma SZEŚĆ miejsc, nie pięć** — szóstym jest `isPending` w `ChatPanel`, gdy wiersz czeka na czyjąś decyzję; bez tego chowa go filtr z 01.09 i propozycja zawisa.
+- **Automatyka przeglądarki potrafi zgubić drugą sesję** — zanim uznasz to za błąd serwera, sprawdź `fetch('/api/auth/me')` w obu kartach; cookie jest `httpOnly`, więc widać wyłącznie nagłówek strony.
 - **`socket.data.viewedSceneId` to scena WIDZA, nie celu** — okno karty jej nie zmienia, więc runda dla efektu czyta się ze sceny **żetonu celu** (`effectClockForCharacter`). Inaczej efekt nałożony w walce nie ma terminu rundowego.
 - **Trzy zapisy karty z jednego odczytanego wiersza zostawiają tylko ostatni** — każdy scala z tym, co przeczytał. Nerwosol (3 Cechy) musi czytać kartę **przed każdym** zapisem.
 - **`timed-effects.ts` ↔ `stat-effects.ts` to cykl importów** — pierwszy woła drugi, więc drugi pyta o `Combat` sam, zamiast importować `activeRoundOfScene`.
@@ -546,6 +578,61 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 06.09 (pierwsza) — pistolet, który przechodzi z ciała do plecaka
+
+**Zlecenie MG:** kontynuacja projektu; z listy wolnych etapów (28, 34, 38b) MG wybrał **38b
+(przedmioty między kartami)** i przy pytaniu o łup dorzucił prośbę: „rozważ jakąś formę brania
+łupu w stylu modułu **Item Piles** z Foundry". Trzy rozstrzygnięcia padły przed kodem, wszystkie
+na rekomendację: **gracz sam przeszukuje NPC-a** (z karty innego gracza przenosi tylko MG),
+**zasięg ramienia** i **jedno okno „Wymiana"** zamiast guzików przy wierszach.
+
+**Czwarte rozstrzygnięcie było korektą decyzji z 05.09 i wyszło z rozpoznania.** „Cel musi być
+widoczny, wzorem `Ustabilizowania` z 14e" opisywało 14e sprzed poprawki — ta czynność ma dziś
+**`CPRED_MELEE_REACH_M`**, więc dosłowne wykonanie tamtego zdania rozjechałoby dwie czynności,
+które są tą samą czynnością: dotknięciem kogoś obok. MG wybrał zasięg ramienia, **mierzony
+wszystkim, MG włącznie** — ten sam świadomy wyjątek od „MG omija blokady", co w 14e.
+
+**Etap zajął jedną sesję wyłącznie dzięki 38a.** Odkąd ganger ma prawdziwą kartę, „zdejmuję
+pistolet z ciała" i „oddaję ci stimpak" to **jedna** operacja na dwóch `CpredCharacterData`:
+`cpredMoveItems` w `shared/systems/cpred/inventory.ts` bierze dwie karty i listę adresów wierszy,
+a zwraca **obie** — rozdzielenie na „zabierz" i „dołóż" pozwoliłoby zapisać połowę. Wiersz jedzie
+w całości, więc magazynek 12/30, `ammoId`, przykręcony celownik z 31 i zużyte OB z 15 przeżywają
+przeprowadzkę **bez ani jednej linijki o nich** — kto dołoży broni nowe pole, dostanie je za darmo.
+
+**Przekazanie na kartę z właścicielem jest PROPOZYCJĄ, nie przelewem** (decyzja MG z 05.09):
+karta czatu rodzaju `inventory` staje bez `resolution` i **nic nie rusza**, dopóki odbiorca albo
+MG nie kliknie „Przyjmij" — wzorem wezwania do Testu z 32, z tą samą umową, że wiersze do
+przeniesienia czyta się **z zapisanej karty**, nie z żądania klienta. Kartę **bez** właściciela
+nie ma kto potwierdzić, więc tam idzie od ręki, a ack niesie `pending: false`. **Łup nie czeka
+nigdy** — nie ma kogo pytać, a trzy warunki (karta bez właściciela, figura leżąca albo martwa,
+zasięg) serwer sprawdził wcześniej.
+
+**Z Item Piles weszły dwie rzeczy i obie były tanie:** „Zabierz wszystko" i **gotówka z kieszeni**
+— ciało ma od 38a `eddies`, a `applyBalance` z 23b dowozi wpis audytu po obu stronach, więc
+350 ed z gangera wygląda w historii tak samo, jak przelew. **Skrzynia jako obiekt sceny została
+poza zakresem** (tak mówi opis etapu) i poszła do `POMYSLY.md` — okno „Wymiana" byłoby jej gotowym
+interfejsem.
+
+**Trzy rzeczy poza planem, wszystkie o tym, gdzie stoi prawda o stanie rzeczy:** pancerz przychodzi
+**zdjęty** (inaczej łup po cichu zmieniałby OB w chwili podniesienia); wiersze wyposażenia
+**sklejają się po `compendiumId`**, nigdy po nazwie; a **id wiersza jest unikalne w obrębie karty,
+nie kampanii** — kopia figury z 35 niesie ten sam `rowId`, więc kolizję rozstrzyga nowe id.
+
+**Oględziny w dwóch sesjach naraz** (MG na `localhost`, `Tester` na `[::1]`, nośnik **Frank**,
+ciałem **Rudy Kwiatkowski**) przeszły cały etap **poza jedną pozycją menu figury** — prawym klikiem
+z automatyki nadal nie da się otworzyć menu kanwy Pixi. Znalazły **dwie usterki**: odległość
+w liście źródeł liczyła się od **pierwszej** figury karty na scenie, a serwer egzekwował od
+**najbliższej**; i komunikat „czeka na przyjęcie" padał także wtedy, gdy nic nie czekało. Obie
+naprawione. Poligon **przywrócony ze snapshotu startowego**.
+
+**Przy okazji zgłoszona MG jedna rzecz spoza zakresu:** lista odbiorców przelewu (`payees` z 23b)
+zawiera od 38a **wszystkich statystów**. Zapisana w `zaleglosci.md`, bez decyzji.
+
+**Testy:** 1913 w `shared` (+23), 1040 na serwerze (+16), 97 u klienta (bez zmian) — zielone.
+ESLint, Prettier i `tsc --noEmit` czyste w trzech pakietach. **Uwaga do liczb z poprzedniej
+notatki: `shared` miał na czystym HEAD 1890, nie 1906** (sprawdzone `git stash`). Osiem umów kodu
+i pięć pułapek w indeksach niżej, trzy świadome odstępstwa w `decyzje-i-uproszczenia.md`.
+
 ### Sesja 05.09 (piąta) — ganger, który stoi w rosterze obok Vex
 
 **Zlecenie MG:** kontynuacja projektu; z listy wolnych etapów (28, 34, 38) MG wybrał **38
@@ -609,96 +696,3 @@ gniazdach i czekają na ręczne obejrzenie. Pozycja w `zaleglosci.md`.
 **Testy:** 1906 w `shared` (+1), 1024 na serwerze (+6), 97 u klienta (bez zmian) — zielone.
 ESLint, Prettier i `tsc --noEmit` czyste w trzech pakietach. Dziewięć umów kodu i cztery pułapki
 w indeksach niżej, cztery świadome odstępstwa w `decyzje-i-uproszczenia.md`.
-
-### Sesja 05.09 (czwarta) — liczba na karcie, którą da się obniżyć na godzinę
-
-**Zlecenie MG:** kontynuacja projektu; z listy wolnych etapów (28, 34, 38, 39) MG wybrał
-**39 (efekty czasowe modyfikujące Cechy)** — odblokowany trzy godziny wcześniej przez zegar
-świata z etapu 37. Trzy rozstrzygnięcia padły **przed kodem**, wszystkie na moje pytanie i wszystkie
-na rekomendację:
-
-1. **Efekty nie ruszają PUL.** Maksymalne PW, pula Szczęścia i sufit Człowieczeństwa liczą się
-   z Cechy **bazowej** — to **świadome odstępstwo od zdania „BC rusza PW"** w opisie etapu,
-   i nie chodzi o podręcznik, tylko o `normalizeCharacterData`: przycina `hpCurrent` do maksimum
-   przy **każdym** zapisie karty, więc maksimum obniżone na godzinę zabrałoby punkty **na stałe**.
-   Zapisane w `decyzje-i-uproszczenia.md`.
-2. **Podłoga Cechy to 1** (`CPRED_STAT_MIN`) — z jednym wyjątkiem, który wyszedł przy pisaniu:
-   podłoga nigdy nie stoi **wyżej niż wartość bazowa**, bo Empatia zerowa z cyberpsychozy (s. 229)
-   ma zostać zerowa, a zaciskanie do jedynki by ją **podniosło**.
-3. **Czarny LOD nakłada efekty sam.** `statDrain` i `moveDrain` przestały być „stosuje MG" —
-   `NET_PROGRAM_HOOKS_MANUAL` jest odtąd **pustą listą**, a decyzja z 15.08, która je tam wpisała,
-   uzasadniała się wprost brakiem modelu, który ten etap właśnie zbudował. Gałąź `netHookIsManual`
-   **zostaje** dla następnego Programu, którego skutku silnik nie policzy.
-
-**Rdzeń to jedna funkcja i jedna umowa.** `cpredEffectiveStats(sheet)` w nowym module
-`shared/src/systems/cpred/stateffects.ts` jest **jedyną** drogą do liczby, na którą pada kość:
-bazowa Cecha, poprawka Człowieczeństwa z 23a, suma efektów, przycięcie. Od tej sesji
-`data.stats[...]` znaczy „liczba wydrukowana na karcie", a nie „liczba, którą się gra" — i tak
-zostało przepięte szesnaście miejsc: Testy, atak, Unik, Inicjatywa, RUCH, Rzut na Śmierć, Zwarcie,
-Koncentracja, Konfrontacja, obrażenia wręcz, wieżyczka z operatorem, dwa Testy chirurga i medyka,
-Unik obszaru, rozproszenie granatu i podgląd kubka u klienta. **Pule zostały przy bazowej** —
-i to jest jedyny podział, jaki ten kod zna.
-
-**Efekt jest wierszem karty, nie gałęzią w kodzie:** `{ stat, value, source, durationS,
-expiresAtRound?, expiresAtMinute? }`. Liczba **pada raz** przy nałożeniu i jest zapisana — efekt
-trzymający formułę zmieniałby kartę, ilekroć ktoś na nią spojrzy. W rozbiciu rzutu efekt stoi
-**własnym wierszem** („REF 8 · Lisz −3"), jak kara z pancerza, a gdy podłoga przycina sumę,
-`cpredStatEffectRows` zwija wiersze w jeden zbiorczy — inaczej karta pokazywałaby REF −2.
-
-**Dwa zegary, alternatywa.** Efekt niesie termin rundowy **i** światowy; schodzi ten, który
-dogonił pierwszy. Termin świata stawia się **zawsze**, i to jest poprawka na pułapkę, która
-w `CpredTimedEffect` z 16h siedzi do dziś: efekt z samym terminem rundowym, nałożony w rundzie 8
-walki, która się skończyła, wisiałby do ósmej rundy **następnej** walki. Przemiatań też jest dwa
-i chodzą po różnych listach — rundowe po żetonach sceny (bo naklejka należy do żetonu), światowe
-po kartach kampanii (bo efekt jest wierszem karty, a postać mogła przespać noc poza sceną).
-
-**`gametime.ts` dostał pierwszy i jedyny wyjątek od „zegar podpowiada, nie rządzi".** Po skoku
-woła `sweepStatEffects`. Broni się tym, że **nie ma tu czego wybierać**: „na godzinę" jest
-terminem zapisanym przy nałożeniu, tak jak „do rundy 9", które granica tury zdejmuje sama od 16h.
-Czynsz i odpoczynek MG **wybiera** i zostają za guzikiem. Umowa dopisana z tym testem: nowa rzecz
-wołana z zegara musi przejść to samo pytanie.
-
-**Trzy pułapki kosztowały czas.** (1) `socket.data.viewedSceneId` to scena **widza**, a okno karty
-jej nie zmienia — runda musi się czytać ze sceny **celu** (`effectClockForCharacter`), inaczej efekt
-nałożony w walce nie dostaje terminu rundowego. (2) Trzy zapisy karty z **jednego** odczytanego
-wiersza zostawiają tylko ostatni — Nerwosol nakładał jeden efekt zamiast trzech, dopóki `drainStats`
-nie zaczął czytać karty przed każdym zapisem. (3) `timed-effects.ts` i `stat-effects.ts` prawie
-zamknęły cykl importów; zapytanie o `Combat` siedzi teraz w obu osobno. Czwarta, tania:
-**`vitest` nie sprawdza typów** — fixture z `rof: 2` (a to napis) przeszedł 38 testów i padł
-dopiero na `tsc --noEmit`.
-
-**UI:** panel „Efekty czasowe" w kolumnie tożsamości karty (chipy z odliczaniem, „zdejmij" u MG,
-formularz MG przyjmujący „−2" albo „−1k6" jednym polem), małe pole „z" pod Cechą — to samo, którym
-Empatia mówi od 23a, teraz dla każdej przesuniętej Cechy — i chipy w pasku figury pod naklejkami.
-Gracz widzi chipy i odliczanie, formularza nie.
-
-**Oględziny zrobione w tej samej sesji** — na „Franku", z dwóch kont naraz (MG i `Tester` przez
-`[::1]:5173`). Sprawdzone: obie drogi liczby (wpisana i `−1k6`), sumowanie trzech efektów
-z podłogą (rozbicie zwija się wtedy w jeden wiersz „Lisz, Nerwosol, Skorpion −4" i suma się
-zgadza), rozbicie na karcie czatu, chipy w pasku, ⌫ u MG, brak formularza u gracza, wygasanie
-skokiem +1 h z kartą „Efekty wygasły", **przeliczanie odliczania przy ruchu zegara** („zostaje
-6 h" → „zostaje 5 h") i efekt dodatni na zielono. Znaleziona i naprawiona **jedna usterka
-układu** (ucięta podpowiedź pola „ile"). **Żadna nowa pozycja nie została otwarta.** Nieoglądana
-została **jedna ścieżka**: Nerwosol nakładany przez Czarny LOD — stoi na teście na żywych
-gniazdach, a zbudowanie pod nią architektury Sieci na poligonie było nieopłacalne.
-
-**Poligon wraca do stanu sprzed sesji:** żeton „Frank" skasowany (siedem żetonów na „Strzelnicy"),
-„Frank" znów `NPC (MG)` i bez efektów, zegar świata z powrotem na **1 stycznia 2045, 08:00**.
-Ślad zostawiony świadomie: **log czatu** — rzut Refleksu z chipem „Lisz −3", dwie karty „Minęła
-godzina" i karta „Efekty wygasły".
-
-**Osiem umów kodu i sześć pułapek** w indeksach niżej; pełne wersje w plikach.
-
-**Jedno miejsce w UI, którego oględziny nie znalazły, bo go nie ma: kasowania POJEDYNCZEJ figury.**
-Pasek operacji z etapu 35 wstaje **od dwóch** figur, `Delete` figur nie dotyka (umowa z 35), a ani
-prawy klik, ani dwuklik, ani narzędzie 📌 nie dają kosza — dwuklik otwiera kartę, 📌 to notatka MG.
-Żeton testowy trzeba było skasować z bazy. Nie jest to zaległość tego etapu — poszło jako wpis
-do `POMYSLY.md` (05.09), z propozycją: pokazywać ten sam pasek **od jednej** figury.
-
-**Testy na koniec:** 1904 w `shared` (+38), 1018 na serwerze (+12), 97 u klienta (bez zmian) —
-zielone. ESLint i Prettier czyste na kodzie; `tsc --noEmit` czysty w trzech pakietach. Doszły dwa
-pliki: `shared/src/systems/cpred/stateffects.test.ts` i `server/src/stat-effects.test.ts`, plus
-zestaw Nerwosolu w `server/src/netcombat.test.ts`. Klient buduje się produkcyjnie. Przy okazji
-**zamknięty znany wyścig** z sesji etapu 37: `gametime.test.ts` łapał w `once('chat:message')`
-kartę poprzedniego testu i raz na kilkanaście przebiegów widział „Minęło dziesięć minut" zamiast
-„Minęła doba" — trzy przebiegi z rzędu zielone po naprawie.

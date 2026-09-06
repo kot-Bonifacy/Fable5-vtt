@@ -8,6 +8,15 @@ razy". Przy okazji zapisana odpowiedź MG na pytanie o **upadek i porażenie pr�
 03.09): mają to być **dwa osobne przyciski** z gotowymi liczbami z tabeli, nie jedno okno
 „obrażenia środowiskowe".
 
+**06.09.2026 (etap 38b) dołożył jeden wpis — kontener na scenie w stylu Item Piles.** MG poprosił
+przy rozstrzyganiu etapu, żeby rozważyć „jakąś formę brania łupu w stylu modułu Item Piles
+z Foundry". Dwie rzeczy z tamtego modułu **weszły do 38b** i są zrobione: „Zabierz wszystko"
+i gotówka w łupie (przez audyt z 23b). **Trzecia — stos/skrzynia jako obiekt sceny** — została
+poza zakresem zgodnie z opisem etapu: to nowy rodzaj obiektu w `SCENE_OBJECT_KINDS` (własna karta
+obiektu, uprawnienia, kto może otworzyć, co widać przez fog) i osobna sesja. Okno „Wymiana"
+z 38b byłoby jej gotowym interfejsem — wystarczyłoby, żeby `inventory:sources` umiało zwrócić
+źródło, które nie jest kartą postaci.
+
 Backlog pomysłów, które pojawiły się w trakcie pracy, ale nie należą do zakresu bieżącego etapu. Wracamy do nich po ukończeniu planu albo świadomie wciągamy do któregoś etapu.
 
 **03.09.2026 przegląd mechanik CP RED dołożył cztery wpisy** — dopalacze z uzależnieniem, techniki sztuk walki, naturalna regeneracja PW i dwa brakujące źródła obrażeń. To **cała** reszta listy braków z tamtego przeglądu: **pojazdy i walka pojazdów zostały odrzucone decyzją MG** (zostają narracji — nie dopisuj ich tu ponownie), a dwie pozycje, które wstępnie na liście były, okazały się **już zrobione**: tarcze balistyczne (`ARMOR_LOCATIONS` zna `shield`, jest Akcja „Przygotuj/upuść tarczę") i terapia Człowieczeństwa (`cyberware` z `action: 'therapy'` i kategoria wydatku „Terapia").

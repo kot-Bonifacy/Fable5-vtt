@@ -6,6 +6,24 @@ odhaczania zaległości albo dotykasz etapu, który tu występuje — nie rutyno
 
 Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/zamkniete-zaleglosci.md`.
 
+**06.09 (etap 38b — przedmioty między kartami): „🎒 Przeszukaj…" w menu figury nieoglądane.**
+Cała reszta etapu przeszła przez przeglądarkę w dwóch sesjach naraz (szczegóły w pliku etapu):
+okno „Wymiana" z karty, propozycja i jej przyjęcie u gracza, „Zabierz wszystko" z ciała razem
+z gotówką, odmowa zasięgu, wycofanie i **przeżycie kart czatu po przeładowaniu u obu stron**.
+Nieobejrzana została **jedna pozycja menu figury**, bo prawym klikiem z automatyki nadal nie da
+się otworzyć menu kanwy Pixi (ta sama przeszkoda, co w 38a). Ryzyko jest małe: guzik otwiera
+**ten sam** komponent `InventoryWindow`, który przeszedł oględziny z karty, tyle że z kotwicą
+na karcie tej figury. **Do kliknięcia ręką MG razem z pozycjami z 38a** — są w tym samym menu.
+
+**06.09 (etap 23b, znalezione przy 38b): lista odbiorców przelewu zawiera statystów.**
+`economy:history` zwraca jako `payees` **wszystkie** karty kampanii poza własną
+(`realtime/economy.ts`), a od etapu 38a statyści **są** kartami — więc w rozwijanym „przelew
+do…" u gracza stoją teraz „Ganger", „Cel 23x", „Automatyczna wieżyczka" i Demony. Nic się nie
+psuje (przelew do NPC-a jest legalny i bywa potrzebny), ale lista rośnie i szumi. **Uwaga przy
+naprawie:** okno „Wymiana" z 38b buduje listę celów **tak samo** i tam wieżyczka bywa sensownym
+celem, więc filtr musi być decyzją per lista, nie wspólnym helperem. Zgłoszone MG 06.09, bez
+decyzji — poza zakresem etapu.
+
 **05.09 (etap 38a — statysta jako karta postaci): UI szybkiego edytora nieoglądany
 w przeglądarce.** Przez przeglądarkę przeszła **część** etapu, i to ta, na której najbardziej
 zależało: trzy zmigrowane figury poligonu („Automatyczna wieżyczka", „Strzelec 23x", „Cel 23x")

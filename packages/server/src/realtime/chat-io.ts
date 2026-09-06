@@ -9,6 +9,7 @@ import type {
   DamageLogEntry,
   EconomyLogEntry,
   HandoutLogEntry,
+  InventoryMoveEntry,
   JournalLogEntry,
   TimeLogEntry,
   SessionUser,
@@ -122,6 +123,8 @@ export function toChatMessageView(message: StoredMessage): ChatMessageView {
     view.recovery = JSON.parse(message.payload) as RecoveryLogEntry;
   } else if (message.kind === 'time' && message.payload) {
     view.time = JSON.parse(message.payload) as TimeLogEntry;
+  } else if (message.kind === 'inventory' && message.payload) {
+    view.inventory = JSON.parse(message.payload) as InventoryMoveEntry;
   }
   return view;
 }
@@ -237,6 +240,11 @@ export function visibleTo(user: SessionUser) {
               // pierwszym przeładowaniu, choć to on prowadzi tę przerwę.
               'time',
               'recovery',
+              // `inventory` (38b) jest tu z powodu, dla którego jest `economy`:
+              // karta przekazania jest prywatna, ale MG rozlicza każde
+              // przeniesienie — także takie, które gracze zrobili między sobą,
+              // nie pytając. Bez tego wiersza MG widział wyłącznie własne.
+              'inventory',
             ],
           },
         },

@@ -4,6 +4,60 @@ Wyprowadzone z „Od czego zacząć" w `POSTEP.md` 22.08.2026. Indeks jednolinij
 tu leżą pełne wersje. Czytaj wpis, **zanim** dołożysz coś w obszarze, którego dotyczy — każdy
 z nich powstał po tym, jak ktoś dołożył to w złym miejscu.
 
+**Przedmiot przenosi się JEDNĄ czystą funkcją: `cpredMoveItems(from, to, refs)` (06.09, etap 38b).**
+`shared/src/systems/cpred/inventory.ts` bierze dwie karty i listę adresów wierszy, a zwraca
+**obie** karty naraz. Rozdzielenie tego na „zabierz" i „dołóż" pozwoliłoby wywołującemu zapisać
+połowę operacji — a przedmiot, który zniknął z jednej karty i nie pojawił się na drugiej, jest
+gorszy niż przedmiot, którego nie dało się przenieść. Wiersz jedzie **w całości**: magazynek,
+`ammoId`, `attachmentIds`, `attachmentAmmo`, zużyte OB i „prowizorka" siedzą na wierszu od etapów
+16/16g/31/30b, więc kto dołoży broni nowe pole, dostanie je tutaj za darmo. **Cyborgizacje nie
+jadą nigdzie** — wszczep zdejmuje `character:cyberware` z 23a, z Testem i ceną.
+
+**Pancerz przeniesiony przychodzi ZDJĘTY (`equipped: false`) — 06.09.** Jedyne pole, które
+`cpredMoveItems` zmienia po drodze, i to jest reguła, nie szczegół: podniesiona kurtka inaczej
+zmieniałaby OB odbiorcy w tej samej chwili, w której ląduje na karcie, a o tym, co się nosi,
+decyduje właściciel karty. Broń nie ma odpowiednika tej decyzji, bo samo jej trzymanie nie zmienia
+na karcie żadnej liczby.
+
+**Dwa wiersze wyposażenia sklejają się po `compendiumId`, nigdy po nazwie (06.09).**
+`stacksWith` żąda zgodnego wpisu katalogu **oraz** nazwy, uwag, `consumable` i `upgrade` — dwie
+fiolki z tej samej pozycji kompendium są nierozróżnialne, a dwa ręcznie wpisane „Notatnik" mogą
+być czymkolwiek. Bez sklejania trzy stimpaki z trzech ciał zjadłyby trzy z czterdziestu wierszy
+(`ITEM_ROWS_MAX`).
+
+**Id wiersza ekwipunku jest unikalne w obrębie KARTY, nie kampanii (06.09).** Kopia figury
+z etapu 35 dostaje kartę z przepisanym ekwipunkiem, więc dwie karty naprawdę potrafią nieść ten
+sam `rowId`; `landedRow` mintuje nowe id przy kolizji. Każdy nowy kod przenoszący cokolwiek
+między kartami ma ten sam problem — nie zakładaj, że id z jednej karty jest wolne na drugiej.
+
+**Przekazanie na kartę Z WŁAŚCICIELEM jest propozycją, nie przelewem (06.09, decyzja MG z 05.09).**
+`inventory:give` wystawia wiersz czatu rodzaju `inventory` bez `resolution` i **nic nie rusza**,
+dopóki odbiorca (albo MG w jego zastępstwie) nie kliknie „Przyjmij"; dopiero `inventory:respond`
+woła `cpredMoveItems`. Kartę **bez** właściciela nie ma kto potwierdzić, więc tam operacja
+wykonuje się od ręki, a ack niesie `pending: false` — klient nie zgaduje tego z listy odbiorców,
+której gracz i tak nie widzi w całości. Wiersze do przeniesienia czyta się **z zapisanej karty
+czatu** (`entry.system.items`), nie z żądania klienta — ta sama umowa, którą wezwanie do Testu
+trzyma Umiejętność i próg od etapu 32.
+
+**Zasięg przy przenoszeniu to długość ramienia, mierzona WSZYSTKIM — MG włącznie (06.09).**
+`CPRED_MELEE_REACH_M`, ten sam, którym `Ustabilizowanie` mierzy się od 14e, i ten sam wyjątek od
+zwyczaju „MG omija blokady": MG podaje przedmiot figurą, która stoi na mapie. **Przy `give`
+warunku nie ma, gdy karty nie stoją na żadnej wspólnej scenie** — nie ma czego mierzyć, a to jest
+przerwa między scenami. **Przy `take` tej furtki nie ma**: figura biorącego musi stać na scenie
+ciała (`NOT_ON_SCENE`), bo nie da się przeszukać kogoś, przy kim się nie stoi.
+
+**Gracz przeszukuje wyłącznie kartę BEZ właściciela, i tylko leżącą albo martwą (06.09).**
+Trzy warunki razem, w `inventory:take` i w `inventory:sources`: `ownerId === null`,
+`tokenCondition` = `down`/`dead` (liczone tak, jak rysuje to mapa od 27j) i zasięg. Z karty innego
+**gracza** przenosi wyłącznie MG — „pierwsza kłótnia przy stole nie rozgrywa się przez interfejs".
+Lista źródeł **nie pokazuje** tego, czego nie wolno wziąć, więc odmowa jest wyłącznie zabezpieczeniem
+przed podrobionym żądaniem.
+
+**Klient nie zna `characterId` cudzej figury i nie ma poznać (06.09).** `TokenView.characterId`
+jest częścią prywatną żetonu od etapu 05, więc `inventory:take` adresuje źródło **żetonem**
+(`fromTokenId`), a listę kart, z których wolno brać, buduje serwer (`inventory:sources`). Lista
+odbiorców to same nazwy wszystkich kart kampanii — ta sama umowa, co `payees` przy przelewie z 23b.
+
 **Cecha „jak teraz" czyta się jedną funkcją: `cpredEffectiveStats(sheet)` (05.09, etap 39).**
 Od tego etapu `data.stats[...]` **nie jest** liczbą, którą cokolwiek rozstrzyga — jest liczbą
 **wydrukowaną na karcie**. To, czym pada kość, liczy `cpredEffectiveStats` w

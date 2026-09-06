@@ -8,6 +8,7 @@ import {
 } from './dice.js';
 import type { BotActionProposal } from './bots/types.js';
 import type { CheckCallEntry } from './checks.js';
+import type { InventoryMoveEntry } from './inventory.js';
 import type { HandoutLogEntry } from './handouts.js';
 import type { JournalLogEntry } from './journal.js';
 import type { TimeLogEntry } from './gametime.js';
@@ -44,7 +45,9 @@ export type ChatKind =
   /** Dzień odpoczynku albo podana dawka — ciało zmienia stan poza walką. */
   | 'recovery'
   /** Skok zegara świata (etap 37) — „Minęła noc, 15 marca 2045". */
-  | 'time';
+  | 'time'
+  /** Przedmiot zmieniający kartę (etap 38b) — przekazanie albo łup. */
+  | 'inventory';
 
 /**
  * Powrót do zdrowia, jak zapisuje go czat (s. 222–223, s. 150).
@@ -315,6 +318,8 @@ export interface ChatMessageView {
   recovery?: RecoveryLogEntry;
   /** Skok zegara świata — kind `time` only (etap 37). */
   time?: TimeLogEntry;
+  /** Przedmiot, który zmienił kartę — kind `inventory` only (etap 38b). */
+  inventory?: InventoryMoveEntry;
   /** ISO timestamp — always assigned by the server. */
   createdAt: string;
 }
@@ -493,6 +498,10 @@ export function chatCategoryOf(kind: ChatKind): ChatCategory {
     // dokładnie wtedy, co „Vex odzyskał 7 PW".
     case 'recovery':
     case 'time':
+      return 'table';
+    // Przekazanie i łup (38b) czyta się razem z pieniędzmi: to ta sama
+    // rubryka „kto co ma", tyle że rzeczami zamiast eurodolcami.
+    case 'inventory':
       return 'table';
   }
 }

@@ -7,6 +7,99 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 05.09 (czwarta) — liczba na karcie, którą da się obniżyć na godzinę
+
+**Zlecenie MG:** kontynuacja projektu; z listy wolnych etapów (28, 34, 38, 39) MG wybrał
+**39 (efekty czasowe modyfikujące Cechy)** — odblokowany trzy godziny wcześniej przez zegar
+świata z etapu 37. Trzy rozstrzygnięcia padły **przed kodem**, wszystkie na moje pytanie i wszystkie
+na rekomendację:
+
+1. **Efekty nie ruszają PUL.** Maksymalne PW, pula Szczęścia i sufit Człowieczeństwa liczą się
+   z Cechy **bazowej** — to **świadome odstępstwo od zdania „BC rusza PW"** w opisie etapu,
+   i nie chodzi o podręcznik, tylko o `normalizeCharacterData`: przycina `hpCurrent` do maksimum
+   przy **każdym** zapisie karty, więc maksimum obniżone na godzinę zabrałoby punkty **na stałe**.
+   Zapisane w `decyzje-i-uproszczenia.md`.
+2. **Podłoga Cechy to 1** (`CPRED_STAT_MIN`) — z jednym wyjątkiem, który wyszedł przy pisaniu:
+   podłoga nigdy nie stoi **wyżej niż wartość bazowa**, bo Empatia zerowa z cyberpsychozy (s. 229)
+   ma zostać zerowa, a zaciskanie do jedynki by ją **podniosło**.
+3. **Czarny LOD nakłada efekty sam.** `statDrain` i `moveDrain` przestały być „stosuje MG" —
+   `NET_PROGRAM_HOOKS_MANUAL` jest odtąd **pustą listą**, a decyzja z 15.08, która je tam wpisała,
+   uzasadniała się wprost brakiem modelu, który ten etap właśnie zbudował. Gałąź `netHookIsManual`
+   **zostaje** dla następnego Programu, którego skutku silnik nie policzy.
+
+**Rdzeń to jedna funkcja i jedna umowa.** `cpredEffectiveStats(sheet)` w nowym module
+`shared/src/systems/cpred/stateffects.ts` jest **jedyną** drogą do liczby, na którą pada kość:
+bazowa Cecha, poprawka Człowieczeństwa z 23a, suma efektów, przycięcie. Od tej sesji
+`data.stats[...]` znaczy „liczba wydrukowana na karcie", a nie „liczba, którą się gra" — i tak
+zostało przepięte szesnaście miejsc: Testy, atak, Unik, Inicjatywa, RUCH, Rzut na Śmierć, Zwarcie,
+Koncentracja, Konfrontacja, obrażenia wręcz, wieżyczka z operatorem, dwa Testy chirurga i medyka,
+Unik obszaru, rozproszenie granatu i podgląd kubka u klienta. **Pule zostały przy bazowej** —
+i to jest jedyny podział, jaki ten kod zna.
+
+**Efekt jest wierszem karty, nie gałęzią w kodzie:** `{ stat, value, source, durationS,
+expiresAtRound?, expiresAtMinute? }`. Liczba **pada raz** przy nałożeniu i jest zapisana — efekt
+trzymający formułę zmieniałby kartę, ilekroć ktoś na nią spojrzy. W rozbiciu rzutu efekt stoi
+**własnym wierszem** („REF 8 · Lisz −3"), jak kara z pancerza, a gdy podłoga przycina sumę,
+`cpredStatEffectRows` zwija wiersze w jeden zbiorczy — inaczej karta pokazywałaby REF −2.
+
+**Dwa zegary, alternatywa.** Efekt niesie termin rundowy **i** światowy; schodzi ten, który
+dogonił pierwszy. Termin świata stawia się **zawsze**, i to jest poprawka na pułapkę, która
+w `CpredTimedEffect` z 16h siedzi do dziś: efekt z samym terminem rundowym, nałożony w rundzie 8
+walki, która się skończyła, wisiałby do ósmej rundy **następnej** walki. Przemiatań też jest dwa
+i chodzą po różnych listach — rundowe po żetonach sceny (bo naklejka należy do żetonu), światowe
+po kartach kampanii (bo efekt jest wierszem karty, a postać mogła przespać noc poza sceną).
+
+**`gametime.ts` dostał pierwszy i jedyny wyjątek od „zegar podpowiada, nie rządzi".** Po skoku
+woła `sweepStatEffects`. Broni się tym, że **nie ma tu czego wybierać**: „na godzinę" jest
+terminem zapisanym przy nałożeniu, tak jak „do rundy 9", które granica tury zdejmuje sama od 16h.
+Czynsz i odpoczynek MG **wybiera** i zostają za guzikiem. Umowa dopisana z tym testem: nowa rzecz
+wołana z zegara musi przejść to samo pytanie.
+
+**Trzy pułapki kosztowały czas.** (1) `socket.data.viewedSceneId` to scena **widza**, a okno karty
+jej nie zmienia — runda musi się czytać ze sceny **celu** (`effectClockForCharacter`), inaczej efekt
+nałożony w walce nie dostaje terminu rundowego. (2) Trzy zapisy karty z **jednego** odczytanego
+wiersza zostawiają tylko ostatni — Nerwosol nakładał jeden efekt zamiast trzech, dopóki `drainStats`
+nie zaczął czytać karty przed każdym zapisem. (3) `timed-effects.ts` i `stat-effects.ts` prawie
+zamknęły cykl importów; zapytanie o `Combat` siedzi teraz w obu osobno. Czwarta, tania:
+**`vitest` nie sprawdza typów** — fixture z `rof: 2` (a to napis) przeszedł 38 testów i padł
+dopiero na `tsc --noEmit`.
+
+**UI:** panel „Efekty czasowe" w kolumnie tożsamości karty (chipy z odliczaniem, „zdejmij" u MG,
+formularz MG przyjmujący „−2" albo „−1k6" jednym polem), małe pole „z" pod Cechą — to samo, którym
+Empatia mówi od 23a, teraz dla każdej przesuniętej Cechy — i chipy w pasku figury pod naklejkami.
+Gracz widzi chipy i odliczanie, formularza nie.
+
+**Oględziny zrobione w tej samej sesji** — na „Franku", z dwóch kont naraz (MG i `Tester` przez
+`[::1]:5173`). Sprawdzone: obie drogi liczby (wpisana i `−1k6`), sumowanie trzech efektów
+z podłogą (rozbicie zwija się wtedy w jeden wiersz „Lisz, Nerwosol, Skorpion −4" i suma się
+zgadza), rozbicie na karcie czatu, chipy w pasku, ⌫ u MG, brak formularza u gracza, wygasanie
+skokiem +1 h z kartą „Efekty wygasły", **przeliczanie odliczania przy ruchu zegara** („zostaje
+6 h" → „zostaje 5 h") i efekt dodatni na zielono. Znaleziona i naprawiona **jedna usterka
+układu** (ucięta podpowiedź pola „ile"). **Żadna nowa pozycja nie została otwarta.** Nieoglądana
+została **jedna ścieżka**: Nerwosol nakładany przez Czarny LOD — stoi na teście na żywych
+gniazdach, a zbudowanie pod nią architektury Sieci na poligonie było nieopłacalne.
+
+**Poligon wraca do stanu sprzed sesji:** żeton „Frank" skasowany (siedem żetonów na „Strzelnicy"),
+„Frank" znów `NPC (MG)` i bez efektów, zegar świata z powrotem na **1 stycznia 2045, 08:00**.
+Ślad zostawiony świadomie: **log czatu** — rzut Refleksu z chipem „Lisz −3", dwie karty „Minęła
+godzina" i karta „Efekty wygasły".
+
+**Osiem umów kodu i sześć pułapek** w indeksach niżej; pełne wersje w plikach.
+
+**Jedno miejsce w UI, którego oględziny nie znalazły, bo go nie ma: kasowania POJEDYNCZEJ figury.**
+Pasek operacji z etapu 35 wstaje **od dwóch** figur, `Delete` figur nie dotyka (umowa z 35), a ani
+prawy klik, ani dwuklik, ani narzędzie 📌 nie dają kosza — dwuklik otwiera kartę, 📌 to notatka MG.
+Żeton testowy trzeba było skasować z bazy. Nie jest to zaległość tego etapu — poszło jako wpis
+do `POMYSLY.md` (05.09), z propozycją: pokazywać ten sam pasek **od jednej** figury.
+
+**Testy na koniec:** 1904 w `shared` (+38), 1018 na serwerze (+12), 97 u klienta (bez zmian) —
+zielone. ESLint i Prettier czyste na kodzie; `tsc --noEmit` czysty w trzech pakietach. Doszły dwa
+pliki: `shared/src/systems/cpred/stateffects.test.ts` i `server/src/stat-effects.test.ts`, plus
+zestaw Nerwosolu w `server/src/netcombat.test.ts`. Klient buduje się produkcyjnie. Przy okazji
+**zamknięty znany wyścig** z sesji etapu 37: `gametime.test.ts` łapał w `once('chat:message')`
+kartę poprzedniego testu i raz na kilkanaście przebiegów widział „Minęło dziesięć minut" zamiast
+„Minęła doba" — trzy przebiegi z rzędu zielone po naprawie.
+
 ### Sesja 05.09 (trzecia) — kampania, która wie, którego jest w Night City
 
 **Zlecenie MG:** kontynuacja projektu; z listy wolnych etapów MG wybrał **37 (kalendarz kampanii

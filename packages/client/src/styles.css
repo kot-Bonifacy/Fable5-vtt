@@ -9484,3 +9484,174 @@ body.is-resizing {
   align-items: center;
   gap: 0.25rem;
 }
+
+/* --- Wymiana przedmiotów (etap 38b) ------------------------------------ */
+
+/* Jedno okno na przekazanie, łup i przeszukanie. Węższe od handoutu, bo treścią
+   jest lista krótkich wierszy, a nie kartka do czytania. */
+.inventory-window {
+  position: fixed;
+  z-index: 330;
+  width: min(420px, calc(100vw - 24px));
+  max-height: min(78vh, 760px);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.inventory-window-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.6rem;
+  background: var(--bg-topbar);
+  border-bottom: 1px solid var(--border);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.inventory-window-header:active {
+  cursor: grabbing;
+}
+
+.inventory-window-title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+}
+
+.inventory-window-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.6rem 0.7rem 0.9rem;
+  overflow-y: auto;
+}
+
+/* Skąd → dokąd w jednej linii: kierunek operacji ma być widoczny, zanim
+   ktokolwiek spojrzy na listę. */
+.inventory-ends {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.4rem;
+}
+
+.inventory-end {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.inventory-end select {
+  width: 100%;
+}
+
+.inventory-arrow {
+  padding-bottom: 0.35rem;
+  color: var(--text-dim);
+}
+
+.inventory-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.inventory-row,
+.inventory-money {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.22rem 0.35rem;
+  background: var(--veil-faint);
+  border-radius: 4px;
+}
+
+.inventory-money {
+  border-top: 1px solid var(--border-soft);
+}
+
+.inventory-row-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inventory-row-detail {
+  flex: none;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.inventory-row-qty {
+  flex: none;
+  width: 3.4rem;
+}
+
+.inventory-note {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.inventory-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.inventory-hint,
+.inventory-empty,
+.inventory-message {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.inventory-message {
+  color: var(--text);
+}
+
+/* Guzik „Wymiana…" nad tabelą wyposażenia karty. */
+.sheet-gear-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* --- Karta przekazania na czacie --------------------------------------- */
+
+.chat-inventory {
+  border-left: 3px solid var(--info);
+  padding-left: 0.5rem;
+}
+
+.chat-inventory--refused {
+  border-left-color: var(--border);
+  opacity: 0.65;
+}
+
+.chat-inventory-lines {
+  margin: 0.15rem 0 0.3rem;
+  padding-left: 1rem;
+  font-size: 0.78rem;
+}
+
+.chat-inventory-badge--done {
+  background: rgb(var(--ok-rgb) / 18%);
+  color: var(--ok);
+}

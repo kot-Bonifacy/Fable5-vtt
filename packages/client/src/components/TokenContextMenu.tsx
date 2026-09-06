@@ -44,6 +44,7 @@ import { useChatStore } from '../stores/chatStore.js';
 import { askAboutFigureCard } from '../figure-cards.js';
 import { tokenErrorText } from '../mapErrors.js';
 import { useCharacterStore } from '../stores/characterStore.js';
+import { useInventoryStore } from '../stores/inventoryStore.js';
 import { useCombatStore } from '../stores/combatStore.js';
 import { useCompendiumStore } from '../stores/compendiumStore.js';
 import { AttackLauncher } from './AttackLauncher.js';
@@ -844,6 +845,12 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
     onClose();
   }
 
+  function openExchange() {
+    if (!token?.characterId) return;
+    useInventoryStore.getState().open(token.characterId, token.id);
+    onClose();
+  }
+
   async function duplicate() {
     if (!token) return;
     const ack = await duplicateToken(token.id);
@@ -894,6 +901,13 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
         {token.characterId && (
           <button type="button" className="context-menu-item" onClick={openSheet}>
             📄 Otwórz kartę postaci
+          </button>
+        )}
+        {/* Etap 38b: łup i przeszukanie. Okno otwiera się „od strony" tej figury
+            — jej ekwipunek staje po lewej, a MG wskazuje, komu to oddać. */}
+        {token.characterId && (
+          <button type="button" className="context-menu-item" onClick={openExchange}>
+            🎒 Przeszukaj…
           </button>
         )}
         {/* Stage 16b: the map's own way into the attack. Before it, firing meant

@@ -341,6 +341,120 @@ export interface CheckCancelPayload {
   messageId: number;
 }
 
+/* ------------------------------------------------------------------ *
+ * Przedmioty między kartami (etap 38b)
+ * ------------------------------------------------------------------ */
+
+/**
+ * Client → server payload of `inventory:sources` — „co mogę teraz przeszukać".
+ *
+ * Odpowiedź buduje **serwer**, bo gracz nie zna `characterId` cudzej figury:
+ * `TokenView.characterId` jest częścią prywatną żetonu od etapu 05 i takie
+ * zostaje. Klient podaje adres na mapie, dostaje z powrotem to, co wolno mu
+ * zobaczyć — i nic ponad to.
+ */
+export interface InventorySourcesPayload {
+  /** Karta, dla której otwarto okno („moja strona" wymiany). */
+  characterId: string;
+  /** Figura wskazana wprost z menu żetonu; MG otwiera tak „Przeszukaj". */
+  tokenId?: string;
+}
+
+/** Jedna karta, z której ten użytkownik może w tej chwili brać. */
+export interface InventorySourceView {
+  characterId: string;
+  /** Figura, przy której stoi ta karta; brak znaczy „poza sceną". */
+  tokenId?: string;
+  name: string;
+  /** `null` znaczy NPC — kartę bez właściciela wolno przeszukać graczowi. */
+  ownerId: string | null;
+  /** Odległość od figury pytającego; brak, gdy warunku zasięgu nie było. */
+  metres?: number;
+  items: CpredItemViewWire[];
+  eddies: number;
+}
+
+/**
+ * Wiersz ekwipunku na drucie. Kształtem jest to `CpredItemView`, ale protokół
+ * rdzenia nie importuje typów systemu — tak samo jak `RollOpposedMeta.system`.
+ */
+export interface CpredItemViewWire {
+  list: 'weapons' | 'armor' | 'gear';
+  rowId: string;
+  name: string;
+  detail: string;
+  qty: number;
+  stackable: boolean;
+}
+
+export interface InventorySourcesResult {
+  /** Karty, z których wolno brać — bez własnej, tę klient już ma. */
+  sources: InventorySourceView[];
+  /** Komu wolno dać: nazwy wszystkich kart kampanii poza wskazaną. */
+  targets: { id: string; name: string }[];
+}
+
+/** Jeden przenoszony wiersz — `CpredItemRef` na drucie. */
+export interface InventoryItemRefWire {
+  list: 'weapons' | 'armor' | 'gear';
+  rowId: string;
+  qty?: number;
+}
+
+/**
+ * Client → server payload of `inventory:give` — „masz, weź to".
+ *
+ * Kończy się **propozycją**, gdy karta odbiorcy ma właściciela innego niż
+ * wysyłający; kartą bez właściciela rozporządza MG od ręki, bo nie ma kto
+ * kliknąć „Przyjmij".
+ */
+export interface InventoryGivePayload {
+  fromCharacterId: string;
+  toCharacterId: string;
+  items: InventoryItemRefWire[];
+  /** Eurodolce w tej samej operacji; 0 albo brak znaczy „same rzeczy". */
+  eddies?: number;
+  note?: string;
+}
+
+/**
+ * Odpowiedź na `inventory:give`.
+ *
+ * `pending` mówi, czy cokolwiek czeka: karta bez właściciela nie ma kogo
+ * zapytać o zgodę, więc przeniesienie wykonało się już. Bez tego pola klient
+ * musiałby zgadywać z listy odbiorców, której gracz nie widzi w całości.
+ */
+export interface InventoryGiveResult {
+  messageId: number;
+  pending: boolean;
+}
+
+/**
+ * Client → server payload of `inventory:take` — „zdejmuję to z ciała".
+ *
+ * Źródłem jest **figura**, nie karta: gracz nie zna `characterId` przeszukiwanej
+ * postaci, a warunek („leży albo nie żyje, w zasięgu ręki") i tak jest pytaniem
+ * o żeton na scenie.
+ */
+export interface InventoryTakePayload {
+  fromTokenId: string;
+  toCharacterId: string;
+  items: InventoryItemRefWire[];
+  eddies?: number;
+}
+
+/**
+ * Client → server payload of `inventory:respond` — decyzja o propozycji.
+ *
+ * Jedno zdarzenie na trzy odpowiedzi, bo różni je wyłącznie to, kto klika:
+ * odbiorca przyjmuje albo odrzuca, wysyłający wycofuje. Kto jest kim,
+ * rozstrzyga serwer z zapisanej karty.
+ */
+export interface InventoryRespondPayload {
+  messageId: number;
+  accept: boolean;
+}
+
 /**
  * Client → server payload of `character:cyberware` (stage 23a).
  *

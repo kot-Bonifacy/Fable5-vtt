@@ -84,6 +84,12 @@ import {
   characterUseDoseEvent,
 } from './recovery.js';
 import { checkCallEvent, checkCancelEvent } from './checks.js';
+import {
+  inventoryGiveEvent,
+  inventoryRespondEvent,
+  inventorySourcesEvent,
+  inventoryTakeEvent,
+} from './inventory.js';
 import { characterCyberwareEvent } from './cyberware.js';
 import {
   economyAdjustEvent,
@@ -304,6 +310,10 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   characterUseDoseEvent,
   checkCallEvent,
   checkCancelEvent,
+  inventorySourcesEvent,
+  inventoryGiveEvent,
+  inventoryTakeEvent,
+  inventoryRespondEvent,
   characterCyberwareEvent,
   economyBuyEvent,
   economyTransferEvent,

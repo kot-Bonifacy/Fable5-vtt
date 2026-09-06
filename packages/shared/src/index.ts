@@ -16,6 +16,7 @@ export * from './figures.js';
 export * from './fx.js';
 export * from './gametime.js';
 export * from './handouts.js';
+export * from './inventory.js';
 export * from './journal.js';
 export * from './knowledge.js';
 export * from './netrunning.js';

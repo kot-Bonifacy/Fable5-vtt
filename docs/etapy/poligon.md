@@ -444,3 +444,21 @@ przy okazji sprawdzony i działa); **„Frank"** miał na czas testu odmowy pods
 
 **Ślady zostawione świadomie:** karta strzału z granatnika podwieszanego „nabój: Amunicja dymna
 · obszar 10×10 m · odchylenie…" w logu czatu.
+
+## Oględziny 38b (06.09.2026) — scena wrócona do stanu sprzed sesji
+
+Do sprawdzenia przenoszenia przedmiotów poligon dostał na czas sesji: **„Frank" z właścicielem
+`Tester`** (trzy stimpaki, 120 ed) z figurą postawioną **1 m** od ciała, oraz **„Rudy
+Kwiatkowski" jako ciało** (0 PW, Zgrzyt 9 12/30, Kurtka Kevlarowa OB 7/11, Stimpak ×2, 500 ed).
+**Wszystko przywrócone po oględzinach** ze snapshotu startowego
+(`data/private/backups/snapshot-2026-09-06-1056/db.sqlite`): Frank znów jest `NPC (MG)` z pustą
+kartą i zerowym saldem, Rudy ma 40 PW, 500 ed i samą „Bardzo dużą broń białą", a figura
+`tok-frank-38b` została skasowana.
+
+**Co zostało po sesji i zostać musi:** dwa wiersze w `LedgerEntry` („do: Frank" / „od: Rudy
+Kwiatkowski", 500 ed) i kilka kart czatu rodzaju `inventory`. Audyt jest z założenia
+tylko-do-dopisywania, a historii czatu i tak się nie sprząta.
+
+**Przepis na powtórzenie tego układu** (gdy MG będzie chciał odklikać menu figury): karta bez
+właściciela z ekwipunkiem i `hpCurrent: 0`, figura gracza w promieniu 2 m — nic więcej nie trzeba,
+bo o wszystkim rozstrzyga `ownerId`, stan figury i odległość.

@@ -11,6 +11,26 @@ przestanie się bronić, przenieś ją stąd do `POMYSLY.md` jako zadanie — ni
 
 ## Sieć i walka — czytanie RAW
 
+- **Przeniesiony pancerz przychodzi zdjęty (06.09, etap 38b).** Podręcznik nie mówi nic o czasie
+  zakładania pancerza i VTT też nie będzie — ale wiersz, który ląduje na karcie z `equipped: true`,
+  **natychmiast** zmienia OB odbiorcy, czyli liczbę, którą ktoś zaraz przeciwko niemu rzuci.
+  To jedyne pole, które `cpredMoveItems` zmienia po drodze. Odwrócenie tej decyzji to jedna linia
+  w `cpredMoveItems`, ale wtedy łup po walce po cichu ubiera całą drużynę.
+
+- **Zasięg przenoszenia mierzy się MG tak samo jak graczom (06.09, etap 38b).** Świadomy wyjątek
+  od zwyczaju „MG omija blokady", wzięty wprost z `Ustabilizowania` (14e) i z tego samego powodu:
+  MG podaje przedmiot **figurą stojącą na mapie**, więc odległość jest dla niego równie prawdziwa.
+  Drogą naokoło zostaje edycja obu kart ręką, którą MG i tak ma. Gdyby to zaczęło uwierać przy
+  stole (MG rozdający łup, gdy gracze już odeszli), zmiana jest jednym warunkiem w `inventory:give`
+  i `inventory:take` — ale zmieniaj **obie** czynności naraz albo żadnej.
+
+- **Wiersz czatu o przeniesieniu ma jednego adresata i to czasem za mało (06.09, etap 38b).**
+  `ChatMessage.recipientId` jest pojedyncze, więc gdy **MG** przenosi między dwiema kartami
+  **graczy**, historia zapisuje wiersz u tego, kto dostaje; drugi gracz widzi go na żywo, ale po
+  przeładowaniu nie odzyska. Wybrane świadomie: dwa wiersze na jedno zdarzenie kłamałyby o tym,
+  ile razy coś się stało, a obie karty i tak jadą do obu graczy przez `character:upsert`.
+  Naprawa wymagałaby tabeli odbiorców przy wiadomości — to zmiana schematu, nie łata.
+
 - **Efekty czasowe na Cechach nie ruszają PUL (05.09, decyzja MG).** Efekt z etapu 39 przesuwa
   wszystko, co rozstrzyga się „teraz" — Testy, Unik, Inicjatywę, PT obrony, RUCH, Rzut na Śmierć,
   obrażenia wręcz — ale **maksymalne PW, pula Szczęścia i sufit Człowieczeństwa liczą się z Cechy

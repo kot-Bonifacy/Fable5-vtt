@@ -4,6 +4,36 @@ Wyprowadzone z `POSTEP.md` 22.08.2026. Indeks jednolinijkowy jest w `POSTEP.md`;
 opisy z rozpoznaniem i obejściem. Czytaj wpis, zanim zaczniesz szukać błędu w obszarze, którego
 dotyczy.
 
+- **`TokenPatch` nie ma `x`/`y` — figurą rusza `token:move`, nie `token:update`.** Test etapu 38b
+  „odejście od ciała odcina łup" wysyłał `token:update` z `patch: { x, y }`; sanityzacja **milczy**
+  o nieznanych polach, więc ack był `{ ok: true }`, figura stała w miejscu, a łup przechodził.
+  Objaw jest zdradliwy, bo pierwszy nieudany asercją test **przenosił przedmioty**, a dwa kolejne
+  padały na stanie kart — czyli trzy błędy w miejscach, w których był jeden. Pozycja jedzie
+  `token:move` z `final: true`.
+- **Odległość „ode mnie" liczy się od NAJBLIŻSZEJ własnej figury, nie od pierwszej z listy.**
+  Karta potrafi stać dwiema figurami naraz (kopia z etapu 35, drugi żeton tej samej postaci na tej
+  samej scenie), a `tokens.findMany` zwraca je w kolejności bazy. Pierwsza wersja
+  `inventory:sources` brała `find(...)`, a serwer egzekwował zasięg po **najbliższej** parze —
+  rozwijana lista mówiła więc co innego, niż stosowała odmowa. Wyszło przy oględzinach: „avatar9 —
+  64 m" liczone od drugiej figury Rudego, stojącej na innej scenie.
+- **Komunikat „czeka na X" wolno napisać dopiero wtedy, gdy serwer powie, że coś czeka.** Okno
+  wymiany pisało „Wysłane do: … Czeka na przyjęcie, jeśli kartę prowadzi gracz" po **każdym**
+  przekazaniu — także po tym na kartę NPC-a, które wykonało się od ręki. Klient nie ma jak tego
+  rozstrzygnąć (gracz nie widzi, kto jest właścicielem cudzej karty), więc rozstrzyga to ack:
+  `InventoryGiveResult.pending`. Zdanie warunkowe („jeśli…") w komunikacie o skutku jest zwykle
+  znakiem, że brakuje pola w odpowiedzi.
+- **Nowy rodzaj wiersza czatu ma SZEŚĆ miejsc, nie pięć — szóstym jest `isPending`.** Do pięciu
+  z 05.09 (`ChatKind`, `chatCategoryOf`, `toChatMessageView`, `visibleTo`, `FullMessageRow`)
+  dochodzi `isPending` w `ChatPanel`, gdy wiersz **czeka na czyjąś decyzję**: bez tego propozycja
+  przekazania chowa się pod separatorem filtra „Stół" i zawisa na dobre, dokładnie jak zawisłaby
+  propozycja bota albo wezwanie do Testu. Siódmym, jeśli wiersz niesie własny kształt, jest pole
+  w `ChatMessageView`.
+- **Automatyka przeglądarki potrafi zgubić drugą sesję.** Przy oględzinach 38b karta `[::1]:5173`
+  raz wróciła jako **MG**, choć logowała się jako `Tester`; ponowne wejście na `/join/tester-dev`
+  naprawiło to i po `location.reload()` sesja już się trzymała. Zanim uznasz to za błąd
+  w serwerze, sprawdź `fetch('/api/auth/me')` **w obu kartach** — cookie jest `httpOnly`, więc
+  z `document.cookie` niczego nie widać, a nagłówek strony jest jedynym widocznym objawem.
+
 - **`socket.data.viewedSceneId` to scena WIDZA, nie scena celu — i przy MG prawie zawsze kłamie
   o rundzie.** Nakładając efekt czasowy z okna karty (etap 39), pierwsza wersja czytała rundę
   z oglądanej sceny. Okno karty **nie zmienia** oglądanej sceny, więc pole bywa puste albo wskazuje

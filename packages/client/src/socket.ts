@@ -57,6 +57,12 @@ import type {
   CharacterRollPayload,
   CheckCallPayload,
   CheckCancelPayload,
+  InventoryGivePayload,
+  InventoryGiveResult,
+  InventoryRespondPayload,
+  InventorySourcesPayload,
+  InventorySourcesResult,
+  InventoryTakePayload,
   CharacterUpsertBroadcast,
   CharacterView,
   CombatUpdateBroadcast,
@@ -1133,6 +1139,64 @@ export const callCheck = (payload: CheckCallPayload<CpredRollRequest>) =>
 /** „Odwołaj" na karcie wezwania — działa, dopóki nikt nie potrząsnął kubkiem. */
 export const cancelCheck = (messageId: number) =>
   emitSceneAck('check:cancel', { messageId } satisfies CheckCancelPayload);
+
+/* ------------------------------------------------------------------ *
+ * Przedmioty między kartami (etap 38b)
+ * ------------------------------------------------------------------ */
+
+/** Co da się teraz przeszukać i komu da się dać — pyta okno wymiany. */
+export const fetchInventorySources = (payload: InventorySourcesPayload) =>
+  emitSceneAck<InventorySourcesResult>('inventory:sources', payload);
+
+/** „Oddaj" — na kartę z właścicielem wchodzi jako propozycja do przyjęcia. */
+export const giveInventory = (payload: InventoryGivePayload) =>
+  emitSceneAck<InventoryGiveResult>('inventory:give', payload);
+
+/** „Zabierz" — łup z figury, która leży albo nie żyje. Bez pytania nikogo. */
+export const takeInventory = (payload: InventoryTakePayload) =>
+  emitSceneAck<{ messageId: number }>('inventory:take', payload);
+
+/** „Przyjmij" / „Odrzuć" / „Wycofaj" na karcie przekazania. */
+export const respondInventory = (messageId: number, accept: boolean) =>
+  emitSceneAck('inventory:respond', { messageId, accept } satisfies InventoryRespondPayload);
+
+/** Polskie komunikaty odmowy przy przenoszeniu przedmiotów (etap 38b). */
+export function inventoryErrorText(code: string): string {
+  switch (code) {
+    case 'CHARACTER_NOT_FOUND':
+      return 'Nie ma takiej karty w tej kampanii.';
+    case 'TOKEN_NOT_FOUND':
+      return 'Nie ma takiej figury na scenie.';
+    case 'NO_SHEET':
+      return 'Ta figura nie ma karty, więc nie ma czego przeszukać.';
+    case 'NOT_YOURS':
+      return 'Z karty innego gracza przenosi wyłącznie MG.';
+    case 'STILL_STANDING':
+      return 'Ta figura stoi na nogach — przeszukać da się dopiero leżącą albo martwą.';
+    case 'NOT_ON_SCENE':
+      return 'Twoja figura nie stoi na tej scenie.';
+    case 'OUT_OF_REACH':
+      return 'Za daleko — przedmiot podaje się na wyciągnięcie ręki.';
+    case 'ITEM_NOT_FOUND':
+      return 'Tej pozycji już nie ma na karcie źródłowej.';
+    case 'BAD_QTY':
+      return 'Zła ilość — nie da się przenieść więcej, niż jest.';
+    case 'TOO_MANY_ROWS':
+      return 'Karta odbiorcy nie ma już miejsca na kolejne pozycje.';
+    case 'NO_ITEMS':
+      return 'Nie wskazano, co przenieść.';
+    case 'NOT_ENOUGH_EDDIES':
+      return 'Na karcie źródłowej nie ma tylu eurodolców.';
+    case 'OFFER_NOT_FOUND':
+      return 'Nie znalazłem tej propozycji na czacie.';
+    case 'OFFER_CLOSED':
+      return 'Ta propozycja jest już zamknięta.';
+    case 'OFFER_NOT_YOURS':
+      return 'To nie jest twoja decyzja.';
+    default:
+      return `Błąd przenoszenia: ${code}`;
+  }
+}
 
 /** Polskie komunikaty odmowy przy wystawianiu wezwania do Testu (etap 32). */
 export function checkCallErrorText(code: string): string {

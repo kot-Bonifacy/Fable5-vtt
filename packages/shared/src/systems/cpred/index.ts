@@ -28,6 +28,7 @@ export * from './statuses.js';
 export * from './movement.js';
 export * from './attacks.js';
 export * from './statblock.js';
+export * from './inventory.js';
 export * from './statist.js';
 export * from './grapple.js';
 export * from './reputation.js';

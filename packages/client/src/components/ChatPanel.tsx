@@ -21,7 +21,13 @@ import type {
   RollResult,
   TimeLogEntry,
 } from '@vtt/shared';
-import { ROLE_GM, chatCategoryOf, gameDaysLabel, isCheckCallOpen } from '@vtt/shared';
+import {
+  ROLE_GM,
+  chatCategoryOf,
+  gameDaysLabel,
+  isCheckCallOpen,
+  isInventoryMoveOpen,
+} from '@vtt/shared';
 import {
   allowCombatAction,
   fetchHandouts,
@@ -35,6 +41,7 @@ import { IconNewspaper } from './UiIcons.js';
 import { OpposedRow } from './GrappleControls.js';
 import { DamageApplyControls, DamageRow } from './DamageControls.js';
 import { CheckCallRow } from './CheckCall.js';
+import { InventoryMoveRow } from './InventoryMove.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useChatFilterStore } from '../stores/chatFilterStore.js';
 import { useChatStore, type ChatItem } from '../stores/chatStore.js';
@@ -710,6 +717,9 @@ function FullMessageRow({
   if (message.kind === 'check' && message.check) {
     return <CheckCallRow message={message} entry={message.check} />;
   }
+  if (message.kind === 'inventory' && message.inventory) {
+    return <InventoryMoveRow message={message} entry={message.inventory} />;
+  }
   if (message.kind === 'recovery' && message.recovery) {
     return <RecoveryRow message={message} entry={message.recovery} />;
   }
@@ -778,11 +788,14 @@ function hiddenLabel(count: number): string {
  */
 function isPending(item: ChatItem, myUserId: string, isGm: boolean): boolean {
   if (item.type === 'note') return (item.actions?.length ?? 0) > 0;
-  const { proposal, check, kind } = item.message;
+  const { proposal, check, inventory, kind } = item.message;
   // Wezwanie do Testu (etap 32) jest tym samym, czym propozycja bota: decyzją
   // czekającą na kliknięcie, a nie wpisem w dzienniku. Schowane pod
   // separatorem albo ściśnięte do jednej linii zawisłoby w środku cudzej tury.
   if (kind === 'check') return check !== undefined && isCheckCallOpen(check);
+  // Propozycja przekazania (38b) czeka na „Przyjmij" dokładnie tak, jak
+  // wezwanie czeka na kubek — a schowana pod separatorem zawisłaby na dobre.
+  if (kind === 'inventory') return inventory !== undefined && isInventoryMoveOpen(inventory);
   if (kind !== 'proposal' || !proposal || proposal.resolution !== undefined) return false;
   return isGm || proposal.controllerUserId === myUserId;
 }
