@@ -4,6 +4,28 @@ Wyprowadzone z `POSTEP.md` 22.08.2026. Indeks jednolinijkowy jest w `POSTEP.md`;
 opisy z rozpoznaniem i obejściem. Czytaj wpis, zanim zaczniesz szukać błędu w obszarze, którego
 dotyczy.
 
+- **„Panel sam się zresetował po zmianie z zewnątrz" — zanim oskarżysz rozgłoszenie, sprawdź, czy nie przełączyłeś zakładki karty (09.09, oględziny 29a).**
+  Objaw z oględzin: gracz zaznacza w „Awansie" filtr „tylko na które mnie stać" i rozwija rejestr,
+  MG przyznaje pulę po sesji — a po chwili filtr jest odznaczony, rejestr zwinięty i pusty.
+  Wygląda to jak przerysowanie panelu po `character:upsert` i taka była pierwsza diagnoza: **błędna**.
+
+  Filtr i rejestr są stanem lokalnym `AdvancementPanel`, a panel stoi na **stronie drugiej karty**
+  (zakładka „ŚCIEŻKA ŻYCIA"). Każde przejście KARTA ↔ ŚCIEŻKA ŻYCIA to `setTab`, czyli odmontowanie
+  całej strony razem z jej `useState` — i to ono czyściło stan, tyle że kilka kliknięć wcześniej.
+  Rozgłoszenie nie ruszało niczego: `applyUpsert` w `characterStore` nigdy nie usuwa karty ze
+  składu, a `CharacterSheetWindow` ma stały `key`.
+
+  **Rozpoznanie, które rozstrzyga w jednym kroku:** zapamiętaj węzeł panelu przed zdarzeniem
+  (`window.__probe = document.querySelector('.advance')`), wywołaj zdarzenie i sprawdź
+  `window.__probe.isConnected`. Węzeł **nadal podłączony** znaczy, że komponentu nikt nie
+  odmontował, więc winowajcą jest co innego niż rozgłoszenie — a odłączony wskazuje prawdziwy
+  unmount i dopiero wtedy warto szukać w `key`, w `if (!character) return null` albo w kluczu okna.
+
+  Przy okazji: prawdziwy błąd, który ten fałszywy trop przykrywał, był po drugiej stronie —
+  rejestr **nie odświeżał się wcale**, nawet przy nietkniętym panelu (patrz umowa o stemplu karty
+  w `umowy-kodu.md`). Objaw „stan znika" i objaw „stan zostaje stary" wyglądają przy jednym
+  kliknięciu podobnie i łatwo pomylić je ze sobą.
+
 - **Okno otwierane znad karty postaci znika pod nią, choć powstało (06.09, etap 40).** `.sheet-window`
   ma `z-index: 300`, a `.dialog-backdrop` — 50. Objaw jest mylący, bo **coś się dzieje**: ekran
   przygasa scrimem, `Escape` działa, a w DOM-ie okno stoi z prawidłowymi rozmiarami — tylko widać

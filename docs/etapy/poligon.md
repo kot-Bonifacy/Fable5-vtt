@@ -40,6 +40,16 @@ granatnikiem i dwie karty obrażeń przekreślone „Cofnięte — MG".
 zamiast celować (u MG wolno zaznaczyć każdą figurę), przez co uzbrojona broń schodzi z ręki,
 a następny klik w mapę jest **rozkazem marszu**. Kolejność jest w `pulapki-dev.md`.
 
+**Stan po sesji 09.09 (oględziny 29a — zdobywanie i wydawanie PD) — Poligon nietknięty.**
+Nośnikiem był znowu **„Frank"**: na czas oględzin dostał właściciela **`Tester`**, Rolę
+**Solo ze Zmysłem Walki 2**, 300 PD i cztery Umiejętności (Atletyka 2, Percepcja 4, Ogień ciągły 4,
+Broń krótka 3), w trakcie sesji był jeszcze przestawiony na **Medyka** — i **wrócił do stanu
+sprzed**: `NPC (MG)`, bez Roli, bez Umiejętności, 0 PD. Cztery karty graczy, którym „✦ Przyznaj
+wszystkim" dosypało pulę (Tony, avatar9, Test 27x, Marcin), mają **z powrotem 0 PD**, a **rejestr
+awansów jest znowu pusty** — przed sesją nie miał ani jednego wiersza w całej bazie.
+**Ślad zerowy: ani jedna karta czatu nie powstała** (oba okna rzutu zamknięte „Anuluj"), żaden
+żeton nie był stawiany ani kasowany, scena i kolejka walki nietknięte.
+
 **Stan po sesji 06.09 (trzeciej — etap 40, prośba o Test).** Nośnikiem był znowu **„Frank"**:
 na czas oględzin dostał właściciela **`Tester`** i **wrócił do `NPC (MG)`**. Karta jest
 nietknięta — prośby i wezwania niczego na niej nie zmieniają (skutki rozlicza MG ręką, decyzja

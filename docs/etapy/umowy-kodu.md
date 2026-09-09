@@ -4,6 +4,33 @@ Wyprowadzone z „Od czego zacząć" w `POSTEP.md` 22.08.2026. Indeks jednolinij
 tu leżą pełne wersje. Czytaj wpis, **zanim** dołożysz coś w obszarze, którego dotyczy — każdy
 z nich powstał po tym, jak ktoś dołożył to w złym miejscu.
 
+**Lista czytana z serwera odświeża się na stempel karty, nie na liczbę, która ją opisuje (09.09, oględziny 29a).**
+Rejestr awansów z 29a i rejestr eurodolców z 23b są tą samą rzeczą: krótką listą, którą serwer
+zwraca na żądanie, wyświetlaną obok licznika, który zmienia się **z trzech różnych stron**.
+Wzorzec jest jeden i wygląda tak: `useEffect` na `[characterId, open, savedAt]`, gdzie `open`
+mówi, czy `<details>` jest rozwinięte, a `savedAt` to **`character.updatedAt` — stempel
+serwera**.
+
+Dwie rzeczy w tym zdaniu są nieprzypadkowe i obie kosztowały już błąd.
+
+Po pierwsze **stempel, nie saldo**. Własna łata karty ląduje w składzie optymistycznie
+(`localPatch`), więc licznik zna nową liczbę, **zanim żądanie wyjdzie** — lista czytana na
+saldzie poszłaby do serwera o moment za wcześnie i wróciłaby bez wiersza, który dopiero
+powstaje. Komentarz przy rejestrze eurodolców mówi to wprost od 23b i tam trzeba było to
+odkryć raz.
+
+Po drugie **wyzwalaczem jest cokolwiek, co ruszy kartę** — nie tylko własny zakup. PD dopisuje
+przede wszystkim nie ta karta: pulę po sesji wpisuje MG (`character:xp-award`), korektę też
+(`character:update`). Etap 29a dał rejestrowi jedno wywołanie, w `buy()`, i przez to otwarty
+u gracza rejestr zostawał przy liście sprzed przyznania, a warunek `history === null` sprawiał,
+że zamknięcie i ponowne otwarcie **nic nie dawało**. Jedyną drogą do prawdy było przeładowanie
+strony — akurat wtedy, gdy gracz patrzy na rejestr najczęściej.
+
+Stąd trzecia część umowy: **ręcznego wywołania po własnej akcji się nie dopisuje.** Jedna droga
+obsługuje wiersz własny i ten od MG; druga droga znaczy, że jeden przypadek działa, a drugi cicho
+nie. Strażnikiem jest `advancement-history.test.ts` (test źródłowy, bo klient nie ma DOM-u
+w testach) i pilnuje wszystkich trzech rzeczy naraz.
+
 **Wezwanie do Testu powstaje w JEDNYM miejscu: `createCheckCall` (06.09, etap 40).**
 Do etapu 40 całe wystawianie wezwania siedziało w ciele handlera `check:call` — walidacja postaci,
 `planCpredRoll`, `rollLabel`, `cpredDifficultyRungAt`, wstawienie wiadomości i dostarczenie jej

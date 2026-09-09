@@ -7,6 +7,76 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 06.09 (trzecia) — gracz, który pyta MG, czy może rzucić
+
+**Zlecenie MG:** kontynuacja projektu, **etap 40 (prośba gracza o Test)**, z prośbą o pytania
+uzupełniające i o sugerowanie się Foundry tam, gdzie czegoś nie wiadomo — plus **osobne zlecenie:
+„popraw wygląd karty postaci, bo w wyniku zmian straciła spójność"**. Trzy pytania padły przed
+kodem, po obejrzeniu karty w przeglądarce; MG wybrał rekomendację w każdym z nich: pas Zdolności
+**wychodzi z kolumny tożsamości** na pełną szerokość, drabinka PT stoi na karcie czatu **jako
+siatka z nazwami szczebli**, a szlif obejmuje **wszystkie cztery zakładki**.
+
+**Etap nie zbudował nowej mechaniki Testu — dobudował brakującą połowę pętli z 32.** Cała treść
+tego zdania siedzi w jednej funkcji: `createCheckCall` **wyszła z ciała handlera `check:call`**
+i ma dziś dwóch wołających. Klik w szczebel drabinki na karcie prośby robi **zwykłe wezwanie
+z etapu 32** — z kartą, wołającym kubkiem, Szczęściem i werdyktem — bo woła tę samą funkcję, a nie
+własną kopię. Ramę MG (próg albo przeciwnik, modyfikator, widoczność) czyta wspólne
+`parseCheckFrame`.
+
+**Prośba nie zna progu ani widoczności i to jest jej cała definicja.** `CheckRequestPayload` to
+lustro `CheckCallPayload` pomniejszone o wszystko, co należy do MG: zostaje karta, czym rzucić
+i zdanie „po co". Przy zgodzie serwer bierze Umiejętność **z zapisanej prośby**, nie z żądania
+MG — jedyną drogą do jej podmiany jest „Ustaw…", które idzie przez `check:call` i zamyka prośbę
+polem `requestMessageId` **w tym samym żądaniu**, żeby zgoda i wezwanie nie mogły się rozejść na
+dwie połowy.
+
+**Kubek nie zapala się na prośbę** — `openCheckCallFor` pomija rodzaj `request` **wprost**, a nie
+przez to, że payload siedzi w innym polu; przy prośbie progu jeszcze nie ma, więc kubek dałby
+rzut przed zgodą. Pilnuje tego strażnik źródłowy `check-request-cup.test.ts`, wzorem
+`tables-cup.test.ts` z 34. **Wiersz `request` dopisał się do `visibleTo` tylko po stronie MG** —
+gracz widzi swoją przez klauzulę `authorId`, a wpis na jego białej liście pokazałby mu cudze
+prośby.
+
+**Licznik przy zakładce „Czat" nie jest ozdobą.** Prośba jest cicha (bez dźwięku, bez wiersza dla
+stołu) i odjeżdża w górę feedu przy pierwszym rzucie — bez liczby przy zakładce ginie, a gracz
+czeka w ciszy. Liczy się wprost z feedu, tak jak kubek szuka wezwania: dwa magazyny stanu o tym
+samym rozeszłyby się przy pierwszym „Odmów".
+
+**Karta postaci: pół strony pierwszej było pustym polem, i miało to jedną przyczynę.** Dziewięć
+paneli Ról z 30a–30d stało w **kolumnie tożsamości**, która ma 15 rem i rozciągnąć się nie może
+(umowa z 30a) — Efekt Charyzmy to proza plus trzy progi z guzikami, więc kolumna rosła dwa razy
+wyżej od Cech i Umiejętności. Panele przeniosły się do **pasa „Zdolność Specjalna"** pod trzema
+kolumnami, dokładnie tam, gdzie leży „Broń i pancerz" z 27b; wiersz Zdolności z rangą **został**
+w kolumnie, bo tak jest na wydruku. Przy okazji zniknęły reguły `.cp-awareness`, które łamały
+nazwy do własnego wiersza — w pasie miejsca jest dość.
+
+**Cztery usterki wyszły z oględzin i żadna nie była kosmetyczna.** `.cp-slot` była **zdefiniowana
+dwa razy** w `sheet.css` (etykieta lokacji pancerza z 27b i pudełko gniazda cyborgizacji z 27c),
+więc „Głowa", „Korpus" i „Tarcza" **znikały** z tabeli pancerza. `display: flex` na `<td>`
+wyjmowało trzy komórki z układu tabeli i zostawiało pod nimi czerwony pas tła. Typ naboju
+(„Zwykła") przelewał się z kolumny AMUNICJA na ŁA. A w zakładce „Ścieżka Życia" reguła zdejmująca
+`cp-span2` wierszowi „Pseudonimy" zdejmowała je **też** panelowi awansu, więc prawa kolumna była
+pustym czerwonym prostokątem na pół ekranu.
+
+**Jeden błąd był mechaniczny, nie wizualny:** kolumny CECHA i BAZA w tabeli Umiejętności liczyły
+się przez `effectiveCpredStats(stats, humanity)`, czyli **bez efektów czasowych z 39** — karta
+pokazywała REF 8 przy Liszu −3, a kość leciała z piątki, choć kolumna Cech obok liczyła już
+poprawnie. Umowa z 39 mówi wprost, że jedyną drogą do liczby, na którą pada kość, jest
+`cpredEffectiveStats(sheet)`; teraz jest nią i tutaj.
+
+**Oględziny w dwóch sesjach naraz** (MG na `localhost`, `Tester` na `[::1]`, nośnik **Frank**)
+przeszły **całą ścieżkę etapu**: prośba → licznik u MG → klik w „Trudny 15" → wezwanie → wołający
+kubek → rzut → „Niezdane · 9 ≤ PT 15". Sprawdzone też: odmowa ze zdaniem MG, „Wycofaj" u gracza,
+„Ustaw…" z podmienioną Umiejętnością i **nietknięty swobodny rzut** (klik = okno z guzikiem
+„Poproś MG", Shift+klik = kubek). Frank wrócił do `NPC (MG)`, wezwania odwołane, kubek pusty.
+Znalazły **jedną usterkę własną**: okno prośby powstawało **pod** kartą postaci (`z-index` 50
+przeciw 300) — ten sam wiersz `:has()`, który od 27a ratuje okno rzutu.
+
+**Testy:** 1941 w `shared` (+13 z tego etapu), 1062 na serwerze (+11), 104 u klienta (+5) —
+zielone. ESLint, Prettier i `tsc --noEmit` czyste w trzech pakietach. **Uwaga do liczb
+z poprzednich notatek: sumy w nich są zaniżone** — 1941/1062/104 to stan zmierzony na koniec tej
+sesji, a nie 1913/1040/97 + moje dopiski. Sześć umów kodu i pięć pułapek w indeksach niżej.
+
 ### Sesja 06.09 (druga) — kość, która nie jest Testem
 
 **Zlecenie MG:** kontynuacja projektu, **etap 34 (tabele losowe)**, z prośbą o pytania

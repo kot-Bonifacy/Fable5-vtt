@@ -340,6 +340,7 @@ kilkaset wierszy szumu do commita etapu.
 Jeden wiersz = jedna umowa; pełna wersja z uzasadnieniem w `umowy-kodu.md`. Umowa złamana
 znaczy zwykle błąd, który już raz kosztował sesję.
 
+- **Lista czytana z serwera odświeża się na STEMPEL karty, nie na liczbę, która ją opisuje** — rejestry (awansów z 29a, eurodolców z 23b) czyta `useEffect` na `[characterId, open, savedAt]`, gdzie `savedAt` to `character.updatedAt`. Saldo wyprzedza żądanie (optymistyczna łata), a warunek `history === null` gubi wiersze dopisane przez MG. Strażnik: `advancement-history.test.ts`.
 - **Wezwanie do Testu powstaje w JEDNYM miejscu — `createCheckCall`** (`realtime/checks.ts`); wołają je `check:call` i zgoda na prośbę z 40, a ramę MG (próg, modyfikator, widoczność) czyta wspólne `parseCheckFrame`. Druga kopia rozjedzie się przy pierwszej zmianie wezwania.
 - **Prośba o Test nie zna progu ani widoczności** — `CheckRequestPayload` to `CheckCallPayload` bez tego, co należy do MG. Przy zgodzie Umiejętność idzie z **zapisanej prośby**; podmienić ją da się wyłącznie przez „Ustaw…”, czyli `check:call` z `requestMessageId`.
 - **Prawo do prośby czytaj z bazy, nie z karty czatu** — `askedById` służy do rysowania; `check:request` sprawdza `character.ownerId`, a `check:request-cancel` — `authorId` zapisanej wiadomości. Postaci, której już nie ma, odpowiada **odmowa ze śladem na karcie**, nie cisza.
@@ -511,6 +512,7 @@ znaczy zwykle błąd, który już raz kosztował sesję.
 
 Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapki-dev.md`.
 
+- **„Panel sam się zresetował po zmianie z zewnątrz" to zwykle przełączona zakładka karty, nie rozgłoszenie** — filtr i otwarty rejestr w „Awansie" giną przy KARTA ↔ ŚCIEŻKA ŻYCIA, bo to stan lokalny, a `setTab` odmontowuje stronę. Rozpoznanie: zapamiętaj węzeł (`window.__probe = el`) i sprawdź `isConnected` po zdarzeniu — węzeł nadal podłączony znaczy, że winowajcą jest co innego.
 - **Okno otwierane znad karty postaci znika pod nią, choć powstało** — scrim jest, `Escape` działa, w DOM-ie okno ma rozmiary, a widać zero. Rozpoznanie: `document.elementFromPoint` na jego środku zwraca arkusz.
 - **Ta sama nazwa klasy CSS dwa razy w `sheet.css` — wygrywa późniejsza.** `.cp-slot` była etykietą lokacji pancerza **i** pudełkiem gniazda cyborgizacji, więc „Głowa/Korpus/Tarcza” znikały z tabeli. Przed dopisaniem klasy: `grep -n '^\.nazwa {' sheet.css`.
 - **Okno, które otwiera drugie okno, musi zgasić SIEBIE** — objaw brzmi „okno prośby nie zamyka się po zgodzie MG”, a to okno rzutu zostało pod spodem. Rozpoznanie: sprawdź, ile okien trzyma **stan**, nie które widać.
@@ -664,6 +666,79 @@ Jeden wiersz = jedna pułapka; pełny opis z rozpoznaniem i obejściem w `pulapk
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 09.09 — oględziny zdobywania i wydawania PD (29a)
+
+**Zlecenie MG:** przetestować **zdobywanie doświadczenia i rozwijanie za nie postaci**, z prośbą
+o pytania uzupełniające i o zgłaszanie potencjalnych błędów. Trzy pytania padły przed pierwszym
+klikiem; MG wybrał: **oględziny w przeglądarce** (testy automatyczne były już zielone),
+nośnikiem **„Frank" z przywróceniem stanu** (jak 02.09 i 06.09), a zakres to **29a — PD:
+przyznanie, wydanie, rejestr** plus **wpływ awansu na grę**. Wieloklasowość (29b) i styk
+z etapami 38–40 zostały świadomie poza sesją.
+
+**Frank pojechał przez cały cykl awansu i wszystko poza jedną rzeczą zgadza się z opisem etapu.**
+Na czas oględzin dostał wprost w bazie właściciela `Tester`, Rolę **Solo ze Zmysłem Walki 2**,
+**300 PD** i cztery Umiejętności (Atletyka 2, Percepcja 4, **Ogień ciągły 4** — ×2 — i Broń
+krótka 3); po sesji wrócił do stanu sprzed (`NPC (MG)`, bez Roli, 0 PD, bez Umiejętności).
+Odklikane: trzy drabinki kosztów, **kryterium ×2 na tym samym szczeblu** (Percepcja 4 → 5 za
+**100 PD** obok Ognia ciągłego 4 → 5 za **200 PD**), wykupienie **nowej Umiejętności od zera**
+(Broń długa 20 PD, Broń ciężka ×2 40 PD), filtr „tylko na które mnie stać" (przy 60 PD zostają
+szczeble po 20 i 40), **„Brakuje N PD"** na wyszarzonych guzikach z ceną na czerwono, pusty stan
+„Nic w tej cenie — poczekaj na PD po sesji", **„✦ Przyznaj wszystkim"** (40, 10, 25 i −25 PD —
+zawsze **pięć postaci graczy**, żaden BN, odmiana „5 postaci" trzyma się po naprawie z 02.09),
+odmowa przy pustym polu, **korekta MG** i jej **scalanie w oknie minuty** (trzy wpisy zostawiły
+**jeden** wiersz `adjust`, przeliczony na „+250 → 300", bez śmieci „500 → 50 → 5") oraz rejestr
+mówiący co, za ile i ile zostało.
+
+**Tylne drzwi trzymają z obu stron.** U gracza pole „Punkty Doświadczenia" jest `readOnly`,
+u MG zwykłe; poziomy Umiejętności i ranga Zdolności mają u MG strzałki, u gracza samą liczbę.
+Serwer odmawia niezależnie od UI (`FORBIDDEN` na `improvementPoints`, `skills`,
+`roleAbilityRank` i `roleId` w `character:update`) — pokryte testem
+`characters.test.ts` → „the player may no longer type PD, a skill level or the ability rank".
+
+**Awans wchodzi do gry natychmiast, bez przeładowania — sprawdzone w trzech miejscach.**
+Kupiona Atletyka 2 → 3 zmieniła stronę pierwszą (POZ. 3, BAZA 8) i **okno rzutu** („Atletyka +3,
+1k10 + 8"); kupiony **Zmysł Walki 2 → 3** podniósł panel Solo na „Wolne punkty: 3 z 3"; kupiona
+**Medycyna 3 → 4** (Frank przestawiony ręką MG na Medyka) podniosła sakiewkę Specjalizacji na
+„Do rozdzielenia: 4 z 4", a przy okazji **otworzyła bramkę wieloklasowości** — select „zmień
+Rolę na" odblokował się w tej samej chwili, w której ranga sięgnęła 4. Tabor Nomady z 30d idzie
+tą samą drogą (`cpredRoleAbilityRank`), więc nie był klikany osobno.
+
+**Znaleziony i naprawiony jeden błąd: rejestr awansów nie nadążał za PD dopisanymi spoza karty.**
+Etap 29a dał rejestrowi jedno wywołanie — w `buy()`, po własnym zakupie — a PD dopisuje przede
+wszystkim **nie ta karta**: pulę po sesji i korektę wpisuje MG. Otwarty u gracza rejestr zostawał
+wtedy przy liście sprzed przyznania (licznik nad nim rósł: 60 → 85 PD, lista dalej ośmiowierszowa),
+a **zamknięcie i ponowne otwarcie nic nie dawało**, bo warunek pytał o `history === null`.
+Jedyną drogą do prawdy było przeładowanie strony — i to dokładnie w tej chwili, w której gracz
+patrzy na rejestr najczęściej. Naprawa nie jest nowym pomysłem, tylko **przepisaniem wzorca
+bliźniaczego rejestru eurodolców z 23b**: `useEffect` na `[characterId, open, savedAt]`, gdzie
+`savedAt` to **stempel serwera (`character.updatedAt`), nie saldo** — bo własna łata karty ląduje
+w składzie optymistycznie i lista czytana na saldzie wróciłaby bez wiersza, który dopiero
+powstaje. Ręczne wywołanie z `buy()` zeszło: jedna droga obsługuje wiersz własny i ten od MG.
+Sprawdzone w przeglądarce w obie strony.
+
+**Domknięte kryterium 29a, które przeżyło etap bez pokrycia: „Podniesiony Interfejs Netrunnera
+działa w `netrun.ts` od razu".** Interfejs jest jedyną Zdolnością z mechaniką starszą niż etap 30,
+więc ma dwie drogi do tej samej liczby — kartę i trwający run. Kod robi obie (serwer czyta kartę
+świeżo przy każdej akcji sieciowej, a `character:advance` pcha `netrun:sync`), ale nie miał ani
+testu, ani śladu oględzin. Doszedł test na żywych gniazdach w `netrun.test.ts`: netrunner kupuje
+rangę **w środku runu** i okno dostaje `interfaceRank: 4` **samym broadcastem**, bez ponownego
+wejścia i bez `state:request`. Strażnik sprawdzony na cofniętej naprawie — po wyjęciu `emitRuns`
+pada dokładnie ten jeden test.
+
+**Zgłoszone MG i zostawione bez zmian (decyzja MG):** licznik „N PD w zapasie" ma odwrócone
+wyróżnienie względem czterech innych paneli tej rodziny — przy **0 PD** jest przygaszony,
+przy zapasie świeci, choć w Świadomości Walki, Moto, Specjalizacjach i Zespole wyróżnia się
+właśnie **zero**. Klasa nazywa się `awareness-left--empty` i jest dziś przypięta do stanu
+„nie pusto"; wygląd zostaje, nazwa też.
+
+**Poligon przywrócony w całości:** Frank do stanu sprzed sesji, PD czterech kart graczy
+(Tony, avatar9, Test 27x, Marcin) z powrotem na **0**, a **rejestr awansów wyczyszczony do zera**
+— przed sesją nie miał ani jednego wiersza. **Ani jedna karta czatu nie powstała** (oba okna
+rzutu zamknięte „Anuluj"), żaden żeton nie był stawiany, scena nietknięta.
+
+**Testy:** 1941 w `shared`, **1072** na serwerze (+1), **114** u klienta (+4) — zielone.
+ESLint, Prettier i `tsc --noEmit` czyste. Jedna umowa kodu i jedna pułapka w indeksach niżej.
+
 ### Sesja 06.09 (czwarta) — okno, które zostawało, i liczby ze strzałkami
 
 **Zlecenie MG (trzy rzeczy naraz):** okno prośby o Test **nie zamyka się po zgodzie MG** i robi
@@ -759,73 +834,3 @@ liczby bywają trzycyfrowe.
 **Testy:** 1941 w `shared`, **1071** na serwerze (+9), **110** u klienta (+6) — zielone. ESLint,
 Prettier i `tsc --noEmit` czyste w trzech pakietach; konsola przeglądarki bez błędów. Dwie umowy
 kodu i dwie pułapki w indeksach niżej.
-
-### Sesja 06.09 (trzecia) — gracz, który pyta MG, czy może rzucić
-
-**Zlecenie MG:** kontynuacja projektu, **etap 40 (prośba gracza o Test)**, z prośbą o pytania
-uzupełniające i o sugerowanie się Foundry tam, gdzie czegoś nie wiadomo — plus **osobne zlecenie:
-„popraw wygląd karty postaci, bo w wyniku zmian straciła spójność"**. Trzy pytania padły przed
-kodem, po obejrzeniu karty w przeglądarce; MG wybrał rekomendację w każdym z nich: pas Zdolności
-**wychodzi z kolumny tożsamości** na pełną szerokość, drabinka PT stoi na karcie czatu **jako
-siatka z nazwami szczebli**, a szlif obejmuje **wszystkie cztery zakładki**.
-
-**Etap nie zbudował nowej mechaniki Testu — dobudował brakującą połowę pętli z 32.** Cała treść
-tego zdania siedzi w jednej funkcji: `createCheckCall` **wyszła z ciała handlera `check:call`**
-i ma dziś dwóch wołających. Klik w szczebel drabinki na karcie prośby robi **zwykłe wezwanie
-z etapu 32** — z kartą, wołającym kubkiem, Szczęściem i werdyktem — bo woła tę samą funkcję, a nie
-własną kopię. Ramę MG (próg albo przeciwnik, modyfikator, widoczność) czyta wspólne
-`parseCheckFrame`.
-
-**Prośba nie zna progu ani widoczności i to jest jej cała definicja.** `CheckRequestPayload` to
-lustro `CheckCallPayload` pomniejszone o wszystko, co należy do MG: zostaje karta, czym rzucić
-i zdanie „po co". Przy zgodzie serwer bierze Umiejętność **z zapisanej prośby**, nie z żądania
-MG — jedyną drogą do jej podmiany jest „Ustaw…", które idzie przez `check:call` i zamyka prośbę
-polem `requestMessageId` **w tym samym żądaniu**, żeby zgoda i wezwanie nie mogły się rozejść na
-dwie połowy.
-
-**Kubek nie zapala się na prośbę** — `openCheckCallFor` pomija rodzaj `request` **wprost**, a nie
-przez to, że payload siedzi w innym polu; przy prośbie progu jeszcze nie ma, więc kubek dałby
-rzut przed zgodą. Pilnuje tego strażnik źródłowy `check-request-cup.test.ts`, wzorem
-`tables-cup.test.ts` z 34. **Wiersz `request` dopisał się do `visibleTo` tylko po stronie MG** —
-gracz widzi swoją przez klauzulę `authorId`, a wpis na jego białej liście pokazałby mu cudze
-prośby.
-
-**Licznik przy zakładce „Czat" nie jest ozdobą.** Prośba jest cicha (bez dźwięku, bez wiersza dla
-stołu) i odjeżdża w górę feedu przy pierwszym rzucie — bez liczby przy zakładce ginie, a gracz
-czeka w ciszy. Liczy się wprost z feedu, tak jak kubek szuka wezwania: dwa magazyny stanu o tym
-samym rozeszłyby się przy pierwszym „Odmów".
-
-**Karta postaci: pół strony pierwszej było pustym polem, i miało to jedną przyczynę.** Dziewięć
-paneli Ról z 30a–30d stało w **kolumnie tożsamości**, która ma 15 rem i rozciągnąć się nie może
-(umowa z 30a) — Efekt Charyzmy to proza plus trzy progi z guzikami, więc kolumna rosła dwa razy
-wyżej od Cech i Umiejętności. Panele przeniosły się do **pasa „Zdolność Specjalna"** pod trzema
-kolumnami, dokładnie tam, gdzie leży „Broń i pancerz" z 27b; wiersz Zdolności z rangą **został**
-w kolumnie, bo tak jest na wydruku. Przy okazji zniknęły reguły `.cp-awareness`, które łamały
-nazwy do własnego wiersza — w pasie miejsca jest dość.
-
-**Cztery usterki wyszły z oględzin i żadna nie była kosmetyczna.** `.cp-slot` była **zdefiniowana
-dwa razy** w `sheet.css` (etykieta lokacji pancerza z 27b i pudełko gniazda cyborgizacji z 27c),
-więc „Głowa", „Korpus" i „Tarcza" **znikały** z tabeli pancerza. `display: flex` na `<td>`
-wyjmowało trzy komórki z układu tabeli i zostawiało pod nimi czerwony pas tła. Typ naboju
-(„Zwykła") przelewał się z kolumny AMUNICJA na ŁA. A w zakładce „Ścieżka Życia" reguła zdejmująca
-`cp-span2` wierszowi „Pseudonimy" zdejmowała je **też** panelowi awansu, więc prawa kolumna była
-pustym czerwonym prostokątem na pół ekranu.
-
-**Jeden błąd był mechaniczny, nie wizualny:** kolumny CECHA i BAZA w tabeli Umiejętności liczyły
-się przez `effectiveCpredStats(stats, humanity)`, czyli **bez efektów czasowych z 39** — karta
-pokazywała REF 8 przy Liszu −3, a kość leciała z piątki, choć kolumna Cech obok liczyła już
-poprawnie. Umowa z 39 mówi wprost, że jedyną drogą do liczby, na którą pada kość, jest
-`cpredEffectiveStats(sheet)`; teraz jest nią i tutaj.
-
-**Oględziny w dwóch sesjach naraz** (MG na `localhost`, `Tester` na `[::1]`, nośnik **Frank**)
-przeszły **całą ścieżkę etapu**: prośba → licznik u MG → klik w „Trudny 15" → wezwanie → wołający
-kubek → rzut → „Niezdane · 9 ≤ PT 15". Sprawdzone też: odmowa ze zdaniem MG, „Wycofaj" u gracza,
-„Ustaw…" z podmienioną Umiejętnością i **nietknięty swobodny rzut** (klik = okno z guzikiem
-„Poproś MG", Shift+klik = kubek). Frank wrócił do `NPC (MG)`, wezwania odwołane, kubek pusty.
-Znalazły **jedną usterkę własną**: okno prośby powstawało **pod** kartą postaci (`z-index` 50
-przeciw 300) — ten sam wiersz `:has()`, który od 27a ratuje okno rzutu.
-
-**Testy:** 1941 w `shared` (+13 z tego etapu), 1062 na serwerze (+11), 104 u klienta (+5) —
-zielone. ESLint, Prettier i `tsc --noEmit` czyste w trzech pakietach. **Uwaga do liczb
-z poprzednich notatek: sumy w nich są zaniżone** — 1941/1062/104 to stan zmierzony na koniec tej
-sesji, a nie 1913/1040/97 + moje dopiski. Sześć umów kodu i pięć pułapek w indeksach niżej.
