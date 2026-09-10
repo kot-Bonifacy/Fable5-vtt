@@ -142,6 +142,28 @@ by niczego droższego niż 50 ed. Przełącznik 1–4 jest w zakładce **„Komp
 kategorii; MG kupuje przez wszystkie poziomy niezależnie od niego. **Sprawdzone 22.08:** Kompendium pokazuje „Sklep: **Zawodowe** · Do 500 ed", a wpisy wyższych
 poziomów są wyszarzone z powodem — wartość z bazy dociera do UI poprawnie.
 
+## Jak się ogląda (procedura, nie stan)
+
+Przeniesione z „Od czego zacząć" w `POSTEP.md` 10.09.2026 — to procedura, a nie stan sceny,
+więc nie starzeje się razem z resztą tego pliku.
+
+**Kampania „Poligon bojowy" jest oznaczona jako poligon** — chip „POLIGON" w górnym pasku
+i krótkie pytanie przy kasowaniu. Flaga niczego nie blokuje i **nie rozchodzi się sama** po
+podpiętych ekranach (patrz pułapki).
+
+**Oględziny Roli robi się jedną kartą przestawianą kolejno na dziewięć Ról** — tak poszły
+30a–30d 04.09 (decyzja MG), na „Franku", w kolejności Solo → Medyk → Technik → Stróż Prawa →
+Korpo → Rocker → Fixer → Nomada → Media. Żadna karta na scenach testowych nie ma tych Ról
+z siebie. **Od 29a wybór Roli ma wyłącznie MG**, więc oględziny Ról robi się
+z sesji MG albo przestawia Rolę u MG i patrzy graczem. **Trzecia droga, tańsza i sprawdzona
+30.08, 02.09 oraz 04.09:** kartę przygotowuje się wprost w bazie (`node --input-type=module` +
+`node:sqlite` na `packages/server/dev.db`, przeładowanie karty przeglądarki przynosi nowy stan)
+— patrz pułapki. **Nośnikiem bez skutków ubocznych jest „Frank"** (pusta karta poligonu, bez
+Roli i bez ekwipunku); 02.09 dostał na czas sesji właściciela `Tester` i wrócił do `NPC (MG)`.
+Kopia wszystkich kart sprzed tamtej sesji: `data/private/backups/characters-2026-09-02.json`.
+**Kartę nośną dla innego etapu trzeba potem przywrócić**: „Test 27x" jest netrunnerem poligonu
+Sieci i po 29b wróciła do Interfejsu 7 (`poligon.md`).
+
 ## Stan po sesji 05.09 (druga — etap 35: ping, ramka, kopia)
 
 **Poligon wrócił do stanu sprzed sesji i po raz pierwszy jest to sprawdzone różnicowo.**
