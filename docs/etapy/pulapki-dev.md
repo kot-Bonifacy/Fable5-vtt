@@ -416,6 +416,7 @@ sprawdzaj sumę rozbicia rzutu, nie liczbę w kolumnie.
 
 ## karta — Karta postaci: układ, panele, pola
 
+- **Ujemne `hpCurrent` wpisane wprost do bazy znika przy pierwszym odczycie karty** — `collectCharacterDataPatch` odrzuca `hpCurrent < 0`, a `parseCharacterData` podstawia wtedy PW **domyślnej** karty (35), nie maksimum tej postaci ani zera. Konający NPC przygotowany na −5 wraca jako 35/40 i pierwszy Test idzie na PT z innego progu ran. Obrażenia i tak mają podłogę na zerze (`damage.ts`, „HP floor at 0”), więc **poligon przygotowuje się przez 0**.
 - **„Panel sam się zresetował po zmianie z zewnątrz" to zwykle przełączona zakładka karty, nie rozgłoszenie** — filtr i otwarty rejestr w „Awansie" giną przy KARTA ↔ ŚCIEŻKA ŻYCIA, bo to stan lokalny, a `setTab` odmontowuje stronę. Rozpoznanie: zapamiętaj węzeł (`window.__probe = el`) i sprawdź `isConnected` po zdarzeniu — węzeł nadal podłączony znaczy, że winowajcą jest co innego.
 - **Ta sama nazwa klasy CSS dwa razy w `sheet.css` — wygrywa późniejsza.** `.cp-slot` była etykietą lokacji pancerza **i** pudełkiem gniazda cyborgizacji, więc „Głowa/Korpus/Tarcza” znikały z tabeli. Przed dopisaniem klasy: `grep -n '^\.nazwa {' sheet.css`.
 - **`display: flex` (i `grid`) na `<td>` wyjmuje komórkę z układu tabeli** — przestaje sięgać wysokości wiersza, a czerwone tło `.cp-table` wychodzi spod treści jak błąd renderowania. Flex idzie na wrapper **wewnątrz** komórki.
@@ -747,6 +748,9 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
 
 ## ogledziny — Oględziny w przeglądarce
 
+- **`hover` + `left_click` z `computer` nie jest rozkazem marszu** — trasa liczy się na `pointermove`, więc figura stoi, a w rendererze zostaje **rozpoczęty marsz**, który gasi podgląd trasy: kolejne najechania nic już nie rysują i wygląda to jak zepsuty ruch. Rozpoznanie: następny klik odkłada w czacie „Marsz przerwany.”. Działa dopiero pełna seria z konsoli (`pointermove` → pauza ~400 ms → `pointermove` o 2 px → `pointerdown`/`pointerup`) we współrzędnych CSS.
+- **Odmowy Akcji lądują w kategorii czatu „Stół”, a filtr bywa wyłączony** — zamiast „Zbyt daleko — Pochwycenie wymaga zwarcia (2 m).” widać „⋯ 1 ukryty wiersz ⋯” i klik wygląda na przycisk, który nic nie robi. Filtry są prywatne i lokalne (`localStorage`), więc trzymają się karty, nie konta: **włącz wszystkie cztery przed oględzinami**.
+- **Lista statusów w menu kontekstowym żetonu wychodzi poza dolną krawędź okna** — „Powalony” wypada ok. 150 px pod widokiem, `scrollIntoView` nie pomaga (menu się nie przewija), a `computer` nie kliknie poza zrzutem. Tu akurat `input.click()` na checkboksie **działa** (React łapie zdarzenie) — inaczej niż przy `form_input` z pułapki niżej.
 - **Kursor najechany automatem nie budzi `onAimHover` w Pixi** — celownik się uzbraja i linia strzału się rysuje, ale dymek pod kursorem nie wychodzi. Bliźniak pułapki o prawym kliku w kanwę: obie drogi kliknięte ręką MG działają, obie z automatyki milczą.
 - **Ścieżka z przycisku i ścieżka ze skrótu to dwie ścieżki** — Alt+klik przeszedł oględziny etapu 40, przycisk „Poproś MG” nie; usterka siedziała w tej drugiej. Przy dwóch wejściach sprawdzaj oba.
 - **Karta w tle dławi `setInterval` i `requestAnimationFrame` do ~1 Hz** — pomiar przytrzymania guzika w automatyce przeglądarki jest nieważny; rAF nie zwraca ani jednej klatki.

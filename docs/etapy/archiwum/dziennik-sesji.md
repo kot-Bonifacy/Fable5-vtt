@@ -7,6 +7,79 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 09.09 — oględziny zdobywania i wydawania PD (29a)
+
+**Zlecenie MG:** przetestować **zdobywanie doświadczenia i rozwijanie za nie postaci**, z prośbą
+o pytania uzupełniające i o zgłaszanie potencjalnych błędów. Trzy pytania padły przed pierwszym
+klikiem; MG wybrał: **oględziny w przeglądarce** (testy automatyczne były już zielone),
+nośnikiem **„Frank" z przywróceniem stanu** (jak 02.09 i 06.09), a zakres to **29a — PD:
+przyznanie, wydanie, rejestr** plus **wpływ awansu na grę**. Wieloklasowość (29b) i styk
+z etapami 38–40 zostały świadomie poza sesją.
+
+**Frank pojechał przez cały cykl awansu i wszystko poza jedną rzeczą zgadza się z opisem etapu.**
+Na czas oględzin dostał wprost w bazie właściciela `Tester`, Rolę **Solo ze Zmysłem Walki 2**,
+**300 PD** i cztery Umiejętności (Atletyka 2, Percepcja 4, **Ogień ciągły 4** — ×2 — i Broń
+krótka 3); po sesji wrócił do stanu sprzed (`NPC (MG)`, bez Roli, 0 PD, bez Umiejętności).
+Odklikane: trzy drabinki kosztów, **kryterium ×2 na tym samym szczeblu** (Percepcja 4 → 5 za
+**100 PD** obok Ognia ciągłego 4 → 5 za **200 PD**), wykupienie **nowej Umiejętności od zera**
+(Broń długa 20 PD, Broń ciężka ×2 40 PD), filtr „tylko na które mnie stać" (przy 60 PD zostają
+szczeble po 20 i 40), **„Brakuje N PD"** na wyszarzonych guzikach z ceną na czerwono, pusty stan
+„Nic w tej cenie — poczekaj na PD po sesji", **„✦ Przyznaj wszystkim"** (40, 10, 25 i −25 PD —
+zawsze **pięć postaci graczy**, żaden BN, odmiana „5 postaci" trzyma się po naprawie z 02.09),
+odmowa przy pustym polu, **korekta MG** i jej **scalanie w oknie minuty** (trzy wpisy zostawiły
+**jeden** wiersz `adjust`, przeliczony na „+250 → 300", bez śmieci „500 → 50 → 5") oraz rejestr
+mówiący co, za ile i ile zostało.
+
+**Tylne drzwi trzymają z obu stron.** U gracza pole „Punkty Doświadczenia" jest `readOnly`,
+u MG zwykłe; poziomy Umiejętności i ranga Zdolności mają u MG strzałki, u gracza samą liczbę.
+Serwer odmawia niezależnie od UI (`FORBIDDEN` na `improvementPoints`, `skills`,
+`roleAbilityRank` i `roleId` w `character:update`) — pokryte testem
+`characters.test.ts` → „the player may no longer type PD, a skill level or the ability rank".
+
+**Awans wchodzi do gry natychmiast, bez przeładowania — sprawdzone w trzech miejscach.**
+Kupiona Atletyka 2 → 3 zmieniła stronę pierwszą (POZ. 3, BAZA 8) i **okno rzutu** („Atletyka +3,
+1k10 + 8"); kupiony **Zmysł Walki 2 → 3** podniósł panel Solo na „Wolne punkty: 3 z 3"; kupiona
+**Medycyna 3 → 4** (Frank przestawiony ręką MG na Medyka) podniosła sakiewkę Specjalizacji na
+„Do rozdzielenia: 4 z 4", a przy okazji **otworzyła bramkę wieloklasowości** — select „zmień
+Rolę na" odblokował się w tej samej chwili, w której ranga sięgnęła 4. Tabor Nomady z 30d idzie
+tą samą drogą (`cpredRoleAbilityRank`), więc nie był klikany osobno.
+
+**Znaleziony i naprawiony jeden błąd: rejestr awansów nie nadążał za PD dopisanymi spoza karty.**
+Etap 29a dał rejestrowi jedno wywołanie — w `buy()`, po własnym zakupie — a PD dopisuje przede
+wszystkim **nie ta karta**: pulę po sesji i korektę wpisuje MG. Otwarty u gracza rejestr zostawał
+wtedy przy liście sprzed przyznania (licznik nad nim rósł: 60 → 85 PD, lista dalej ośmiowierszowa),
+a **zamknięcie i ponowne otwarcie nic nie dawało**, bo warunek pytał o `history === null`.
+Jedyną drogą do prawdy było przeładowanie strony — i to dokładnie w tej chwili, w której gracz
+patrzy na rejestr najczęściej. Naprawa nie jest nowym pomysłem, tylko **przepisaniem wzorca
+bliźniaczego rejestru eurodolców z 23b**: `useEffect` na `[characterId, open, savedAt]`, gdzie
+`savedAt` to **stempel serwera (`character.updatedAt`), nie saldo** — bo własna łata karty ląduje
+w składzie optymistycznie i lista czytana na saldzie wróciłaby bez wiersza, który dopiero
+powstaje. Ręczne wywołanie z `buy()` zeszło: jedna droga obsługuje wiersz własny i ten od MG.
+Sprawdzone w przeglądarce w obie strony.
+
+**Domknięte kryterium 29a, które przeżyło etap bez pokrycia: „Podniesiony Interfejs Netrunnera
+działa w `netrun.ts` od razu".** Interfejs jest jedyną Zdolnością z mechaniką starszą niż etap 30,
+więc ma dwie drogi do tej samej liczby — kartę i trwający run. Kod robi obie (serwer czyta kartę
+świeżo przy każdej akcji sieciowej, a `character:advance` pcha `netrun:sync`), ale nie miał ani
+testu, ani śladu oględzin. Doszedł test na żywych gniazdach w `netrun.test.ts`: netrunner kupuje
+rangę **w środku runu** i okno dostaje `interfaceRank: 4` **samym broadcastem**, bez ponownego
+wejścia i bez `state:request`. Strażnik sprawdzony na cofniętej naprawie — po wyjęciu `emitRuns`
+pada dokładnie ten jeden test.
+
+**Zgłoszone MG i zostawione bez zmian (decyzja MG):** licznik „N PD w zapasie" ma odwrócone
+wyróżnienie względem czterech innych paneli tej rodziny — przy **0 PD** jest przygaszony,
+przy zapasie świeci, choć w Świadomości Walki, Moto, Specjalizacjach i Zespole wyróżnia się
+właśnie **zero**. Klasa nazywa się `awareness-left--empty` i jest dziś przypięta do stanu
+„nie pusto"; wygląd zostaje, nazwa też.
+
+**Poligon przywrócony w całości:** Frank do stanu sprzed sesji, PD czterech kart graczy
+(Tony, avatar9, Test 27x, Marcin) z powrotem na **0**, a **rejestr awansów wyczyszczony do zera**
+— przed sesją nie miał ani jednego wiersza. **Ani jedna karta czatu nie powstała** (oba okna
+rzutu zamknięte „Anuluj"), żaden żeton nie był stawiany, scena nietknięta.
+
+**Testy:** 1941 w `shared`, **1072** na serwerze (+1), **114** u klienta (+4) — zielone.
+ESLint, Prettier i `tsc --noEmit` czyste. Jedna umowa kodu i jedna pułapka w indeksach niżej.
+
 ### Sesja 06.09 (czwarta) — okno, które zostawało, i liczby ze strzałkami
 
 **Zlecenie MG (trzy rzeczy naraz):** okno prośby o Test **nie zamyka się po zgodzie MG** i robi

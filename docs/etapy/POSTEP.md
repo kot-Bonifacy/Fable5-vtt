@@ -190,7 +190,7 @@ a nie do tego pliku.
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       |    7 |       4 |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   |   28 |       8 |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      |   12 |       3 |
-| `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         |    5 |       9 |
+| `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         |    5 |      10 |
 | `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia |   22 |       2 |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup, zasięg, oględziny       |   12 |       2 |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      |   15 |       2 |
@@ -198,12 +198,66 @@ a nie do tego pliku.
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            |    1 |       3 |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  |    2 |      10 |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               |    8 |       1 |
-| `ogledziny` | automatyka CDP, zrzuty, dwie sesje naraz, `window.confirm`     |    0 |      55 |
+| `ogledziny` | automatyka CDP, zrzuty, dwie sesje naraz, `window.confirm`     |    0 |      58 |
 | `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              |    0 |      16 |
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 10.09 (druga) — pięć Akcji katalogu przeklikanych w pasku gracza
+
+**Zlecenie MG:** „zaprojektuj testy a następnie przeklikaj przyciski (aby przetestować funkcje
+z nimi związane) w UI gracza takie jak: ustabilizowanie, pochwycenie, wstrzymanie akcji, wstanie
+i bieg", z prośbą o pytania uzupełniające i o zgłaszanie potencjalnych błędów. Cztery pytania
+padły przed pierwszym klikiem; MG wybrał: **plan + oględziny + łatanie luk**, nośnik **Tony**
+z dosypanymi Umiejętnościami (Bijatyka 4, Pierwsza pomoc 4), **oba wejścia** (pasek HUD mapy
+**i** zakładka „Walka") i **przywrócenie całego poligonu** po sesji. Po projekcie testów MG
+przerwał sesję na `/compact`; po raporcie z oględzin zdecydował: **błędy idą do zaległości,
+naprawa w osobnej sesji**. Kodu produkcyjnego ta sesja **nie tknęła**.
+
+**Przeklikane: 32 przypadki na żywej walce** („Strzelnica", kolejka z pięciu uczestników, MG na
+`localhost:5173`, Tony na `[::1]:5173`). Wszystkie pięć Akcji zachowuje się zgodnie z RAW:
+
+- **Wstanie** — slot zostaje aktywny mimo blokady ruchu (wtedy `Bieg` mówi „Powalony token musi
+  najpierw wstać"), naklejka znika **bez przeładowania**, Akcja schodzi, po Wstaniu figura
+  znowu chodzi (przeszła 4 m).
+- **Bieg** — wyszarzenie z powodem, po Akcji Ruchu odblokowanie, klik daje **Ruch 1 z 2**
+  i **10 m / 24 m**; Tony przeszedł w jednej turze **20 m**, czyli dalej, niż sięgał pierwszy pas.
+  Bursztynowy drugi pas widać na trasie **zanim** guzik stanie się klikalny — świadome
+  (`cpredRunMetres` nie pyta o `requiresSpentMove`), ale z pozycji gracza czyta się jak
+  „mapa obiecuje, przycisk odmawia".
+- **Wstrzymanie Akcji** — pusty formularz nie wysyła nic, rezerwacja **nie zdejmuje** Akcji,
+  „Odpal" MG oddaje turę z **niezregenerowanym** budżetem (Ruch 1/1 i 12 m/12 m zostają),
+  a deklaracja „przy 12" **odpaliła się sama** i przestawiła Tony'ego w kolejce z 20 na 12.
+- **Ustabilizowanie** — odmowa zasięgu nic nie kosztuje, kubek to TECH + Pierwsza pomoc,
+  **PT liczy serwer** (PT 15 przy PW 0, PT 10 przy 35/40 — klient tych PW w ogóle nie ma),
+  sukces daje 1 PW + Nieprzytomny na 60 s + zamianę naklejki, porażka zjada Akcję i nie zmienia
+  nic, porzucony kubek (Esc) nie kosztuje nic.
+- **Pochwycenie** — „PT 10 (ZW + Bijatyka celu)", po wygranej oba wiersze kolejki mówią kto kogo,
+  panel zmienia twarz na Duszenie / Rzut / Ludzka tarcza / Uwolnij, Trzymany traci Akcję Ruchu
+  („Pochwycony token nie może wykonać własnej Akcji Ruchu"), następny rzut niesie **„Trzymanie −2"**,
+  „Uwolnij" jest darmowe. Remis sprawdzony w kodzie, nie kostką: `attackerTotal > defenderTotal`.
+
+**Dwa błędy — oba w `zaleglosci.md` (10.09), oba otwarte:** (1) gracz widzi **„BEZ RAN" przy każdej
+cudzej figurze**, bo `StabilizePicker` czyta `hp`, które `tokenStore` graczowi kasuje — lista do
+wyboru konającego mówi, że nikt nie jest ranny; (2) **zakładka „Walka" i pasek mapy nie zgadzają
+się co do wyszarzeń** — `CombatActions.tsx` pyta wyłącznie o „Akcja zużyta", więc `Bieg` bywa tam
+klikalny wbrew regule, a formularze zostają żywe po zużytej Akcji. Zasady są bezpieczne (serwer
+odmawia w obu przypadkach), psuje się obietnica interfejsu — to pułapka „dwa wejścia" z 06.09.
+
+**Trzy rzeczy do wiadomości:** ujemne `hpCurrent` wpisane wprost do bazy jest po cichu zamieniane
+na PW domyślnej karty (poligon przygotowuje się przez **0**); odmowy Akcji lądują w kategorii
+czatu „Stół", którą łatwo mieć wyłączoną, i wtedy klik wygląda na przycisk bez działania;
+„Rudy Kwiatkowski" ma **dwa żetony na jednej karcie**, a zasięg liczy się od tego z kolejki.
+Wszystkie trzy jako pułapki w indeksach niżej.
+
+**Poligon przywrócony z kopii bajtowej sprzed sesji** (`dev.db` przy zatrzymanych serwerach):
+Umiejętności Tony'ego, PW i naklejki Rudego, pozycje żetonów, walka, inicjatywy i statusy wracają
+do stanu sprzed pierwszego kliknięcia.
+
+**Testy:** bez zmian — **1967** w `shared`, **1085** na serwerze, **114** u klienta. Ta sesja
+zmieniła wyłącznie dokumentację; jedna pułapka w `karta` i trzy w `ogledziny` w indeksach niżej.
 
 ### Sesja 10.09 — oględziny wyposażenia figury (etap 41)
 
@@ -272,76 +326,3 @@ stoi w `zaleglosci.md`, najlepiej razem z długiem 38a/38b: to jest **to samo me
 **Testy:** **1967** w `shared` (+26), **1085** na serwerze (+13), 114 u klienta — zielone.
 ESLint, Prettier i `tsc --noEmit` czyste w trzech pakietach; klient się buduje. Sześć umów kodu
 i jedna pułapka w indeksach niżej.
-
-### Sesja 09.09 — oględziny zdobywania i wydawania PD (29a)
-
-**Zlecenie MG:** przetestować **zdobywanie doświadczenia i rozwijanie za nie postaci**, z prośbą
-o pytania uzupełniające i o zgłaszanie potencjalnych błędów. Trzy pytania padły przed pierwszym
-klikiem; MG wybrał: **oględziny w przeglądarce** (testy automatyczne były już zielone),
-nośnikiem **„Frank" z przywróceniem stanu** (jak 02.09 i 06.09), a zakres to **29a — PD:
-przyznanie, wydanie, rejestr** plus **wpływ awansu na grę**. Wieloklasowość (29b) i styk
-z etapami 38–40 zostały świadomie poza sesją.
-
-**Frank pojechał przez cały cykl awansu i wszystko poza jedną rzeczą zgadza się z opisem etapu.**
-Na czas oględzin dostał wprost w bazie właściciela `Tester`, Rolę **Solo ze Zmysłem Walki 2**,
-**300 PD** i cztery Umiejętności (Atletyka 2, Percepcja 4, **Ogień ciągły 4** — ×2 — i Broń
-krótka 3); po sesji wrócił do stanu sprzed (`NPC (MG)`, bez Roli, 0 PD, bez Umiejętności).
-Odklikane: trzy drabinki kosztów, **kryterium ×2 na tym samym szczeblu** (Percepcja 4 → 5 za
-**100 PD** obok Ognia ciągłego 4 → 5 za **200 PD**), wykupienie **nowej Umiejętności od zera**
-(Broń długa 20 PD, Broń ciężka ×2 40 PD), filtr „tylko na które mnie stać" (przy 60 PD zostają
-szczeble po 20 i 40), **„Brakuje N PD"** na wyszarzonych guzikach z ceną na czerwono, pusty stan
-„Nic w tej cenie — poczekaj na PD po sesji", **„✦ Przyznaj wszystkim"** (40, 10, 25 i −25 PD —
-zawsze **pięć postaci graczy**, żaden BN, odmiana „5 postaci" trzyma się po naprawie z 02.09),
-odmowa przy pustym polu, **korekta MG** i jej **scalanie w oknie minuty** (trzy wpisy zostawiły
-**jeden** wiersz `adjust`, przeliczony na „+250 → 300", bez śmieci „500 → 50 → 5") oraz rejestr
-mówiący co, za ile i ile zostało.
-
-**Tylne drzwi trzymają z obu stron.** U gracza pole „Punkty Doświadczenia" jest `readOnly`,
-u MG zwykłe; poziomy Umiejętności i ranga Zdolności mają u MG strzałki, u gracza samą liczbę.
-Serwer odmawia niezależnie od UI (`FORBIDDEN` na `improvementPoints`, `skills`,
-`roleAbilityRank` i `roleId` w `character:update`) — pokryte testem
-`characters.test.ts` → „the player may no longer type PD, a skill level or the ability rank".
-
-**Awans wchodzi do gry natychmiast, bez przeładowania — sprawdzone w trzech miejscach.**
-Kupiona Atletyka 2 → 3 zmieniła stronę pierwszą (POZ. 3, BAZA 8) i **okno rzutu** („Atletyka +3,
-1k10 + 8"); kupiony **Zmysł Walki 2 → 3** podniósł panel Solo na „Wolne punkty: 3 z 3"; kupiona
-**Medycyna 3 → 4** (Frank przestawiony ręką MG na Medyka) podniosła sakiewkę Specjalizacji na
-„Do rozdzielenia: 4 z 4", a przy okazji **otworzyła bramkę wieloklasowości** — select „zmień
-Rolę na" odblokował się w tej samej chwili, w której ranga sięgnęła 4. Tabor Nomady z 30d idzie
-tą samą drogą (`cpredRoleAbilityRank`), więc nie był klikany osobno.
-
-**Znaleziony i naprawiony jeden błąd: rejestr awansów nie nadążał za PD dopisanymi spoza karty.**
-Etap 29a dał rejestrowi jedno wywołanie — w `buy()`, po własnym zakupie — a PD dopisuje przede
-wszystkim **nie ta karta**: pulę po sesji i korektę wpisuje MG. Otwarty u gracza rejestr zostawał
-wtedy przy liście sprzed przyznania (licznik nad nim rósł: 60 → 85 PD, lista dalej ośmiowierszowa),
-a **zamknięcie i ponowne otwarcie nic nie dawało**, bo warunek pytał o `history === null`.
-Jedyną drogą do prawdy było przeładowanie strony — i to dokładnie w tej chwili, w której gracz
-patrzy na rejestr najczęściej. Naprawa nie jest nowym pomysłem, tylko **przepisaniem wzorca
-bliźniaczego rejestru eurodolców z 23b**: `useEffect` na `[characterId, open, savedAt]`, gdzie
-`savedAt` to **stempel serwera (`character.updatedAt`), nie saldo** — bo własna łata karty ląduje
-w składzie optymistycznie i lista czytana na saldzie wróciłaby bez wiersza, który dopiero
-powstaje. Ręczne wywołanie z `buy()` zeszło: jedna droga obsługuje wiersz własny i ten od MG.
-Sprawdzone w przeglądarce w obie strony.
-
-**Domknięte kryterium 29a, które przeżyło etap bez pokrycia: „Podniesiony Interfejs Netrunnera
-działa w `netrun.ts` od razu".** Interfejs jest jedyną Zdolnością z mechaniką starszą niż etap 30,
-więc ma dwie drogi do tej samej liczby — kartę i trwający run. Kod robi obie (serwer czyta kartę
-świeżo przy każdej akcji sieciowej, a `character:advance` pcha `netrun:sync`), ale nie miał ani
-testu, ani śladu oględzin. Doszedł test na żywych gniazdach w `netrun.test.ts`: netrunner kupuje
-rangę **w środku runu** i okno dostaje `interfaceRank: 4` **samym broadcastem**, bez ponownego
-wejścia i bez `state:request`. Strażnik sprawdzony na cofniętej naprawie — po wyjęciu `emitRuns`
-pada dokładnie ten jeden test.
-
-**Zgłoszone MG i zostawione bez zmian (decyzja MG):** licznik „N PD w zapasie" ma odwrócone
-wyróżnienie względem czterech innych paneli tej rodziny — przy **0 PD** jest przygaszony,
-przy zapasie świeci, choć w Świadomości Walki, Moto, Specjalizacjach i Zespole wyróżnia się
-właśnie **zero**. Klasa nazywa się `awareness-left--empty` i jest dziś przypięta do stanu
-„nie pusto"; wygląd zostaje, nazwa też.
-
-**Poligon przywrócony w całości:** Frank do stanu sprzed sesji, PD czterech kart graczy
-(Tony, avatar9, Test 27x, Marcin) z powrotem na **0**, a **rejestr awansów wyczyszczony do zera**
-— przed sesją nie miał ani jednego wiersza. **Ani jedna karta czatu nie powstała** (oba okna
-rzutu zamknięte „Anuluj"), żaden żeton nie był stawiany, scena nietknięta.
-
-**Testy:** 1941 w `shared`, **1072** na serwerze (+1), **114** u klienta (+4) — zielone.
-ESLint, Prettier i `tsc --noEmit` czyste. Jedna umowa kodu i jedna pułapka w indeksach niżej.

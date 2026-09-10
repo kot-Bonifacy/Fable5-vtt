@@ -6,6 +6,50 @@ odhaczania zaległości albo dotykasz etapu, który tu występuje — nie rutyno
 
 Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/zamkniete-zaleglosci.md`.
 
+**10.09 (etap 14b/30b, znalezione przy oględzinach pięciu Akcji katalogu): gracz widzi „bez ran"
+przy każdej cudzej figurze — także przy konającej.** `StabilizePicker`
+(`client/components/CombatForms.tsx:145`) liczy `wounded` z `tokens[row.tokenId]?.hp`, a
+`tokenStore` (`stores/tokenStore.ts:16`) **kasuje `hp` każdego żetonu, którego gracz nie jest
+właścicielem** — i słusznie, bo dane niewidoczne dla gracza nie opuszczają serwera. Brak danych
+zamienia się tu jednak w twierdzenie: `hp === null` daje `wounded === false`, czyli znacznik
+„bez ran". Ten sam wiersz, dwie prawdy — sprawdzone różnicowo w jednej chwili na dwóch kontach:
+
+```
+konto MG:      Rudy Kwiatkowski |         | Ustabilizuj      (PW 1/40)
+konto gracza:  Rudy Kwiatkowski | BEZ RAN | Ustabilizuj
+```
+
+Lista, która istnieje po to, żeby wybrać konającego, mówi graczowi, że nikt nie jest ranny —
+i mówi to najgłośniej dokładnie w sytuacji, dla której ta Akcja istnieje. **Naprawa:** „bez ran"
+tylko wtedy, gdy PW są **znane**; przy nieznanych czytać publiczne naklejki ran
+(`CPRED_MANAGED_WOUND_STATUS_IDS` — serwer trzyma je zgodne z PW na każdym żetonie z kartą,
+`shared/systems/cpred/damage.ts`), a gdy i one milczą — nie pisać nic. Znacznik ma orzekać
+o wiedzy, nie o jej braku. Funkcja „stan ran z naklejek" jest regułą systemu, nie widokiem, więc
+idzie do `shared` z własnym testem. Reszta Ustabilizowania przeszła oględziny bez zarzutu
+(PT liczony przez serwer, powrót na 1 PW, Nieprzytomny na minutę, porzucony kubek za darmo).
+
+**10.09 (etap 14b/16f, tamże): zakładka „Walka" oferuje przyciski, które pasek na mapie
+wyszarza — i odwrotnie.** `CombatActions.tsx:283` pyta o jedną rzecz:
+`!isGm && action.cost === 'action' && actionSpent`. Nie pyta o `blockedAction` ani `blockedMove`
+z 14e, o blokady statusowe (`cpredActionBlock` / `cpredMovementBlock`) ani o regułę katalogu
+„druga Akcja Ruchu dopiero po pierwszej". Pasek mapy pyta o wszystkie naraz, bo idzie przez
+`actionSlotRefusal` w `shared/systems/cpred/hotbar.ts:709`. Widać to gołym okiem:
+
+```
+pasek HUD:       Bieg ✗  „Bieg wymaga wcześniejszego wykonania Akcji Ruchu w tej turze."
+zakładka Walka:  Bieg ✓  klikalny → serwer: „Odmowa: Bieg wymaga wcześniejszego…"
+```
+
+Odwrotna strona tej samej dziury: „Wstrzymanie Akcji…" i „Ustabilizowanie…" zostają w zakładce
+**klikalne po zużytej Akcji** (są wyjęte z warunku jako formularze), choć pasek je gasi — dopiero
+wysłana deklaracja wraca z „Nie masz już Akcji w tej turze.". Zasady są bezpieczne, bo serwer
+odmawia w obu przypadkach; psuje się **obietnica interfejsu**, i to jest pułapka z 06.09
+(„te same komponenty mają dwa domy") w czystej postaci. **Naprawa:** wyprowadzić z `hotbar.ts`
+czystą `cpredActionRefusal(actionId, { statuses, turn, isGm })` — dziś ta wiedza siedzi
+w prywatnym `actionSlotRefusal` — i wołać ją z **obu** wejść, żeby `disabled` i `title` miały
+jedno źródło. Test w `hotbar.test.ts`: Bieg przy niewydanej Akcji Ruchu, Wstanie przy blokadzie
+ruchu (ma przeżyć) i formularze przy zużytej Akcji.
+
 **10.09 (etap 41 — oględziny wyposażenia): cały UI etapu nieoglądany w przeglądarce.**
 Przez przeglądarkę przeszedł **start aplikacji i cisza w konsoli** (przeładowanie z nowym kodem,
 zero błędów) — i na tym koniec, bo **oba wejścia do funkcji są dla automatyki zamknięte**:
