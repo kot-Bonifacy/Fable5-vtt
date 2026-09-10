@@ -113,6 +113,28 @@ describe('cpredWeaponOptions — jedno ramię od etapu 38a: wiersze karty', () =
   it('gives an unstatted token nothing to shoot with', () => {
     expect(cpredWeaponOptions(null, () => pistol)).toEqual([]);
   });
+
+  it('nie gasi niczego, dopóki nikt nie zadeklarował rąk (etap 41)', () => {
+    // Domysł „pierwsza broń z karty" służy oględzinom. Gdyby gasił sloty, każda
+    // figura w kampanii straciłaby drugą broń z paska bez czyjejkolwiek decyzji.
+    const options = cpredWeaponOptions(
+      { weapons: [weaponRow(), weaponRow({ id: 'row-2', name: 'Maczeta', ammoMax: 0 })] },
+      () => pistol,
+    );
+    expect(options.every((option) => option.notDrawn === undefined)).toBe(true);
+  });
+
+  it('gasi broń spoza rąk, gdy ręce są zadeklarowane (etap 41)', () => {
+    const options = cpredWeaponOptions(
+      {
+        weapons: [weaponRow(), weaponRow({ id: 'row-2', name: 'Maczeta', ammoMax: 0 })],
+        drawnWeaponRowIds: ['row-2'],
+      },
+      () => pistol,
+    );
+    expect(options[0]!.notDrawn).toBe(true);
+    expect(options[1]!.notDrawn).toBeUndefined();
+  });
 });
 
 describe('cpredFireModes — the weapon decides how many slots it takes', () => {

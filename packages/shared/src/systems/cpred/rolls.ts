@@ -340,6 +340,18 @@ export interface CpredRollRequest {
    * client's choice; the server only checks it may be reached and seen.
    */
   stabilizeTokenId?: string;
+  /**
+   * Etap 41 — figura, którą ten Test ma **obejrzeć**, jeśli zostanie zdany.
+   *
+   * Nie jest to nowy rodzaj rzutu i nie ma być: oględziny to zwykły Test
+   * Percepcji, a to pole mówi jedynie, **co jego zdanie odsłania**. Dlatego nie
+   * ma tu ani progu, ani nazwy celu — próg ustala MG przy zgodzie na prośbę
+   * (etap 40), a nazwę serwer czyta z żetonu w chwili odsłonięcia.
+   *
+   * Wybór klienta, jak `stabilizeTokenId`, i sprawdzany tak samo: serwer pyta,
+   * czy tę figurę w ogóle widać, zanim cokolwiek pokaże.
+   */
+  sightingTokenId?: string;
   /** Server-filled: DV read off the target's wound threshold (10/13/15). */
   stabilizeDv?: number;
   /** Server-filled: whose name the card names. */

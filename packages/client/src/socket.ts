@@ -225,6 +225,9 @@ import type {
   WeaponAttachmentPayload,
   WeaponAttachmentResult,
   WeaponClearJamPayload,
+  WeaponDrawPayload,
+  SightingLookPayload,
+  SightingLookResult,
   WeaponReloadPayload,
 } from '@vtt/shared';
 import {
@@ -1436,6 +1439,10 @@ function attackAckErrorText(code: string): string {
       return 'Ten wpis nie jest atakiem.';
     case 'WEAPON_HAS_NO_MAGAZINE':
       return 'Ta broń nie ma magazynka do przeładowania.';
+    // Etap 41. Ręce są dwie, a karabin zajmuje obie — zdanie mówi, co zrobić,
+    // bo obie drogi są jednym kliknięciem i różnią się wyłącznie ceną.
+    case 'HANDS_FULL':
+      return 'Nie masz wolnej ręki — schowaj (Akcja) albo upuść to, co trzymasz.';
     // Stage 31 — the four ways an attachment can be refused. The engine's own
     // messages are reused so the greyed-out button and the refusal say the same
     // sentence, which is the umowa the ammunition codes already follow.
@@ -1634,6 +1641,44 @@ export function clearWeaponJam(characterId: string, weaponRowId: string): void {
   const payload: WeaponClearJamPayload = { characterId, weaponRowId };
   socket?.emit('weapon:clear-jam', payload, (ack: SocketAck<{ jammed: boolean }>) => {
     if (!ack.ok) useChatStore.getState().addNote(attackAckErrorText(ack.error));
+  });
+}
+
+/**
+ * Co postać bierze do rąk, a co z nich odkłada (etap 41).
+ *
+ * Trzy gesty jednym zdarzeniem, bo różnią się wyłącznie ceną, którą przypisał im
+ * podręcznik (s. 168): dobycie i upuszczenie są darmowe, schowanie kosztuje
+ * Akcję. Cenę księguje serwer — klient prosi, nie rozlicza.
+ */
+export function drawWeapon(
+  characterId: string,
+  weaponRowId: string,
+  mode: 'draw' | 'holster' | 'drop' = 'draw',
+): void {
+  const payload: WeaponDrawPayload = { characterId, weaponRowId, mode };
+  socket?.emit('weapon:draw', payload, (ack: SocketAck<{ hands: string[] }>) => {
+    if (!ack.ok) useChatStore.getState().addNote(attackAckErrorText(ack.error));
+  });
+}
+
+/**
+ * Rzut oka na cudzą figurę (etap 41) — „co on ma na sobie".
+ *
+ * Zapytanie na żądanie, bo rzut oka składa się z katalogu po stronie serwera.
+ * Odmowa jest **cicha**: pytanie pada przy najechaniu kursorem, a figura, której
+ * nie widać, ma nie zostawiać po sobie zdania na czacie za każdym ruchem myszy.
+ */
+export async function lookAtToken(tokenId: string): Promise<SightingLookResult | null> {
+  return new Promise((resolve) => {
+    const payload: SightingLookPayload = { tokenId };
+    if (!socket) {
+      resolve(null);
+      return;
+    }
+    socket.emit('sighting:look', payload, (ack: SocketAck<SightingLookResult>) => {
+      resolve(ack.ok ? (ack.data ?? null) : null);
+    });
   });
 }
 

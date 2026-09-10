@@ -25,13 +25,17 @@ import type {
   WeaponAttachmentPayload,
   WeaponAttachmentResult,
   WeaponClearJamPayload,
+  WeaponDrawPayload,
   WeaponReloadPayload,
 } from '@vtt/shared';
 import {
+  cpredDrawnWeapons,
   cpredEffectiveStats,
   CPRED_ACTION_ATTACK,
   CPRED_ACTION_CLEAR_JAM,
+  CPRED_ACTION_HOLSTER,
   CPRED_ACTION_RELOAD,
+  CPRED_HANDS,
   CPRED_AUTOFIRE_SKILL_ID,
   CPRED_EVASION_SKILL_ID,
   CPRED_STAT_LABELS,
@@ -1895,6 +1899,89 @@ export const weaponClearJamEvent = defineEvent<WeaponClearJamPayload, { jammed: 
     return { jammed: false };
   },
 });
+
+/* ------------------------------------------------------------------ *
+ * weapon:draw — co postać bierze do rąk (etap 41)
+ * ------------------------------------------------------------------ */
+
+/**
+ * Dobycie, schowanie i upuszczenie broni — trzy gesty, jedno zdarzenie.
+ *
+ * Ceny są podręcznikowe (s. 168) i to one różnią gesty: dobycie i upuszczenie
+ * nic nie kosztują, schowanie kosztuje Akcję. Akcja księguje się **przed**
+ * zapisem, tym samym rachunkiem sumienia, co przy usuwaniu usterki: postać,
+ * której nie starczyło tury, nie ma prawa skończyć z pustą kaburą i niezapłaconą
+ * Akcją.
+ *
+ * **Pierwsze wywołanie deklaruje ręce.** Punktem wyjścia jest to, co do tej pory
+ * *pokazywały* oględziny (`cpredDrawnWeapons` — czyli pierwsza broń z karty),
+ * a nie pustka: co stół widział, to postać miała. Bez tego pierwsze „schowaj
+ * pistolet" zostawiałoby w rękach karabin, którego nikt nie dobywał.
+ */
+export const weaponDrawEvent = defineEvent<WeaponDrawPayload, { hands: string[] }>({
+  name: 'weapon:draw',
+  handler: async ({ deps, socket, user, payload }) => {
+    const campaignId = requireCampaignId(socket.data);
+    const character = await requireRollableCharacter(deps, campaignId, user, payload?.characterId);
+    const data = parseCharacterData(character.data, deps.ctx.cpred);
+    const row = data.weapons.find((weapon) => weapon.id === payload?.weaponRowId);
+    if (!row) throw new RealtimeError('UNKNOWN_WEAPON');
+    const mode = payload?.mode ?? 'draw';
+    if (mode !== 'draw' && mode !== 'holster' && mode !== 'drop') {
+      throw new RealtimeError('BAD_REQUEST');
+    }
+
+    const before: string[] = cpredDrawnWeapons(data).map((weapon) => weapon.id);
+    let hands: string[];
+    if (mode === 'draw') {
+      // Już w rękach — gest był omyłkowy, nie Akcją. Ta sama odpowiedź, którą
+      // pełny magazynek daje przeładowaniu i sprawna broń usuwaniu usterki.
+      if (before.includes(row.id)) return { hands: before };
+      // „Sięgnięcie **wolną ręką**" (s. 168): miejsce w rękach jest warunkiem,
+      // nie formalnością. Ile rąk zajmuje broń, wie katalog — a katalog należy
+      // do serwera, więc pytamy go tutaj, a nie w silniku zasad.
+      const needed = (await resolveWeaponRow(deps, campaignId, data, row.id)).resolved?.hands ?? 1;
+      const held = await handsInUse(deps, campaignId, data, before);
+      if (held + needed > CPRED_HANDS) throw new RealtimeError('HANDS_FULL');
+      hands = [...before, row.id];
+    } else {
+      if (!before.includes(row.id)) return { hands: before };
+      if (mode === 'holster') {
+        await spendCharacterAction(
+          deps,
+          campaignId,
+          socket.data.viewedSceneId,
+          character,
+          user,
+          CPRED_ACTION_HOLSTER,
+        );
+      }
+      hands = before.filter((id) => id !== row.id);
+    }
+
+    const saved = await deps.ctx.prisma.character.update({
+      where: { id: character.id },
+      data: { data: JSON.stringify(mergeCharacterData(data, { drawnWeaponRowIds: hands })) },
+    });
+    await emitCharacterUpsert(deps, campaignId, toCharacterView(saved, deps.ctx.cpred));
+    return { hands };
+  },
+});
+
+/** Ile rąk zajmuje to, co figura już trzyma — po katalogu, broń po broni. */
+async function handsInUse(
+  deps: RealtimeDeps,
+  campaignId: string,
+  data: CpredCharacterData,
+  rowIds: readonly string[],
+): Promise<number> {
+  let used = 0;
+  for (const rowId of rowIds) {
+    const resolved = await resolveWeaponRow(deps, campaignId, data, rowId);
+    used += resolved.resolved?.hands ?? 1;
+  }
+  return used;
+}
 
 /** One reload, socket-free — see `performAttackRoll` for why it is split out. */
 export async function performWeaponReload(

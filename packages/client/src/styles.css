@@ -6746,6 +6746,28 @@ body.is-resizing {
   font-variant-numeric: tabular-nums;
 }
 
+/*
+ * Etap 41 — rzut oka na cel, pod liczbami strzału.
+ *
+ * Jedna kolumna, nie dwie: „Ochrona głowy" i „Karabin szturmowy" to napisy,
+ * a nie liczby, i w połowie szerokości dymka łamałyby się co drugi raz.
+ * Kreska nad nimi oddziela **to, co wiem o celu** od tego, co wiem o własnym
+ * strzale — dwa różne pytania, mimo że odpowiada na nie jeden dymek.
+ */
+.aim-tooltip-facts--seen {
+  grid-template-columns: minmax(0, 1fr);
+  margin-top: 0.3rem;
+  padding-top: 0.3rem;
+  border-top: 1px solid var(--border);
+}
+
+/* Goła głowa świeci, bo to jedyna liczba, na której stoi opłacalność strzału
+   w głowę — po nią powstał cały etap (s. 170). */
+.aim-tooltip-bare {
+  color: var(--warn);
+  font-weight: 600;
+}
+
 .aim-tooltip-note {
   margin: 0.3rem 0 0;
   font-size: 0.62rem;
@@ -9951,6 +9973,101 @@ body.is-resizing {
   color: var(--text);
 }
 
+/* --- Ręce przy wierszu broni (etap 41) --------------------------------- */
+
+.weapon-hands {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+/* Plakietka, nie guzik: „to trzymam" jest stanem, a obok stoją dwie czynności,
+   którymi się go zmienia. */
+.weapon-hands-badge {
+  padding: 0.05rem 0.3rem;
+  font-size: 0.66rem;
+  color: var(--ok);
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+/* --- Okno oględzin (etap 41) ------------------------------------------- */
+
+/* Węższe od okna wymiany: tu stoi jedna kolumna napisów, a nie dwie listy
+   przedmiotów z kolumną guzików między nimi. */
+.sighting-window {
+  width: 19rem;
+}
+
+.sighting-badge {
+  margin: 0 0 0.4rem;
+  padding: 0.15rem 0.4rem;
+  align-self: flex-start;
+  font-size: 0.66rem;
+  color: var(--ok, var(--text));
+  border: 1px solid currentColor;
+  border-radius: 3px;
+}
+
+.sighting-section {
+  margin: 0.5rem 0 0.2rem;
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+.sighting-section:first-of-type {
+  margin-top: 0;
+}
+
+.sighting-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.sighting-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.74rem;
+}
+
+.sighting-where {
+  color: var(--text-dim);
+  flex: 0 0 auto;
+}
+
+.sighting-what {
+  flex: 1 1 auto;
+  text-align: right;
+}
+
+.sighting-numbers {
+  flex: 0 0 auto;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Brak pancerza i puste ręce świecą tak samo, jak goła głowa w dymku: to nie
+   jest brak wiersza, tylko wiersz mówiący „nic tu nie ma" — a na tym stoi cała
+   decyzja, gdzie strzelić (s. 170). */
+.sighting-bare,
+.sighting-bare .sighting-what {
+  color: var(--warn);
+}
+
+.sighting-ask {
+  margin-top: 0.6rem;
+  align-self: flex-start;
+}
+
 /* Guzik „Wymiana…" nad tabelą wyposażenia karty.
    Do lewej, na tej samej krawędzi, co „+ Wyposażenie" pod tabelą (06.09):
    dosunięty do prawej wisiał sam nad narożnikiem i wyglądał jak element
@@ -9958,6 +10075,13 @@ body.is-resizing {
 .sheet-gear-actions {
   display: flex;
   justify-content: flex-start;
+}
+
+/* Karta oględzin na czacie — jedno zdanie i droga do pełnej listy. */
+.chat-sighting-line {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+  color: var(--text);
 }
 
 /* --- Karta przekazania na czacie --------------------------------------- */

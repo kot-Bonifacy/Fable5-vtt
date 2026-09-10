@@ -44,6 +44,7 @@ import { DamageApplyControls, DamageRow } from './DamageControls.js';
 import { CheckCallRow } from './CheckCall.js';
 import { CheckRequestRow } from './CheckRequest.js';
 import { InventoryMoveRow } from './InventoryMove.js';
+import { SightingRow } from './SightingRow.js';
 import { RollTableRow } from './RollTableCard.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useChatFilterStore } from '../stores/chatFilterStore.js';
@@ -725,6 +726,9 @@ function FullMessageRow({
   }
   if (message.kind === 'inventory' && message.inventory) {
     return <InventoryMoveRow message={message} entry={message.inventory} />;
+  }
+  if (message.kind === 'sighting' && message.sighting) {
+    return <SightingRow entry={message.sighting} />;
   }
   if (message.kind === 'recovery' && message.recovery) {
     return <RecoveryRow message={message} entry={message.recovery} />;

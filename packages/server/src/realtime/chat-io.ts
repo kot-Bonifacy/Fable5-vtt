@@ -11,6 +11,7 @@ import type {
   EconomyLogEntry,
   HandoutLogEntry,
   InventoryMoveEntry,
+  SightingLogEntry,
   JournalLogEntry,
   RandomTableRollEntry,
   TimeLogEntry,
@@ -129,6 +130,8 @@ export function toChatMessageView(message: StoredMessage): ChatMessageView {
     view.time = JSON.parse(message.payload) as TimeLogEntry;
   } else if (message.kind === 'inventory' && message.payload) {
     view.inventory = JSON.parse(message.payload) as InventoryMoveEntry;
+  } else if (message.kind === 'sighting' && message.payload) {
+    view.sighting = JSON.parse(message.payload) as SightingLogEntry;
   } else if ((message.kind === 'rolltable' || message.kind === 'gmrolltable') && message.payload) {
     const entry = JSON.parse(message.payload) as RandomTableRollEntry;
     // Skórka stemplowana na wyjściu, tak samo jak przy `roll` wyżej i z tego
@@ -264,6 +267,11 @@ export function visibleTo(user: SessionUser) {
               // przeniesienie — także takie, które gracze zrobili między sobą,
               // nie pytając. Bez tego wiersza MG widział wyłącznie własne.
               'inventory',
+              // `sighting` (41) jest tu z powodu, dla którego jest `inventory`:
+              // karta oględzin jest prywatna (widzi ją ten, kto patrzył), ale MG
+              // ma wiedzieć, co gracze zdążyli o kimś wypatrzeć — inaczej
+              // prowadziłby scenę, nie wiedząc, co druga strona już wie.
+              'sighting',
               // Tabele losowe (34): `rolltable` jest publiczny i jest tu z tego
               // samego powodu, co `time` — bez wiersza MG widziałby wyłącznie
               // własne karty. `gmrolltable` jest tu wzorem `proposal`: cicha

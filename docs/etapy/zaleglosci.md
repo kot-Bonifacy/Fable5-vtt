@@ -6,6 +6,20 @@ odhaczania zaległości albo dotykasz etapu, który tu występuje — nie rutyno
 
 Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/zamkniete-zaleglosci.md`.
 
+**10.09 (etap 41 — oględziny wyposażenia): cały UI etapu nieoglądany w przeglądarce.**
+Przez przeglądarkę przeszedł **start aplikacji i cisza w konsoli** (przeładowanie z nowym kodem,
+zero błędów) — i na tym koniec, bo **oba wejścia do funkcji są dla automatyki zamknięte**:
+menu figury otwiera się prawym klikiem w kanwę Pixi (przeszkoda znana od 38a), a dymek pod
+celownikiem wymaga `onAimHover`, którego syntetyczny ruch kursora nie budzi — celownik się
+uzbraja i linia strzału rysuje, ale dymek nie wychodzi (nowa pułapka, dopisana do `pulapki-dev.md`).
+**Do kliknięcia ręką MG, najlepiej razem z długiem 38a/38b — to jest to samo menu:**
+(1) „🔍 Przyjrzyj się…" u MG i u gracza, (2) okno oględzin: hełm/brak hełmu, ręce, chrom, rany,
+(3) dwie linijki w dymku pod celownikiem, (4) „Poproś MG o dokładne oględziny" → zgoda z PT →
+rzut → karta na czacie z liczbami, (5) guziki „Dobądź / Schowaj / Upuść" przy wierszach broni
+i wyszarzony slot paska po schowaniu. Ryzyko jest **średnie, nie małe**: okno i karta czatu to
+nowe komponenty, nie warianty istniejących. Mechanikę pokrywa 15 testów w `shared`
+(`sighting.test.ts` + dwa w `hotbar.test.ts`) i 13 na żywych gniazdach (`sighting.test.ts`).
+
 **06.09 (etap 38b — przedmioty między kartami): „🎒 Przeszukaj…" w menu figury nieoglądane.**
 Cała reszta etapu przeszła przez przeglądarkę w dwóch sesjach naraz (szczegóły w pliku etapu):
 okno „Wymiana" z karty, propozycja i jej przyjęcie u gracza, „Zabierz wszystko" z ciała razem

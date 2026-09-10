@@ -16,6 +16,7 @@
 
 import { loadedAmmoFor, type CpredAmmoProfile } from './ammo.js';
 import type { CpredCharacterData, CpredWeaponRow } from './character.js';
+import { cpredHandsAreDeclared, cpredWeaponInHands } from './character.js';
 import {
   fittedAttachmentsFor,
   resolveAttachmentWeapon,
@@ -28,6 +29,7 @@ import {
   CPRED_ATTACK_MODE_SHORT,
   CPRED_BURST_AMMO_COST,
   CPRED_JAM_REFUSAL,
+  CPRED_NOT_DRAWN_REFUSAL,
   type CpredAttackMode,
 } from './attacks.js';
 import { cpredActionBlock, cpredMovementBlock } from './statuses.js';
@@ -67,6 +69,14 @@ export interface CpredWeaponOption {
    * from a type, which carries no quality either.
    */
   jammed?: boolean;
+  /**
+   * Etap 41: ta broń nie jest w rękach, więc slot jest wyszarzony.
+   *
+   * Nieobecne przy figurze, której rąk **nikt nie zadeklarował** — a takich jest
+   * większość. Domysł „pierwsza broń z karty" służy oględzinom i nie ma prawa
+   * gasić slotów na pasku (decyzja MG z 10.09.2026).
+   */
+  notDrawn?: boolean;
 }
 
 /** Compendium lookup the caller supplies — the registry lives in its store. */
@@ -100,15 +110,20 @@ export interface CpredAttachmentLookup {
  * broni (`STATIST_WEAPON_ROW_ID`). Pusto = tej figury nikt nie ostatystykował.
  */
 export function cpredWeaponOptions(
-  sheet: Pick<CpredCharacterData, 'weapons'> | null,
+  sheet: Pick<CpredCharacterData, 'weapons' | 'drawnWeaponRowIds'> | null,
   resolve: CpredWeaponResolver,
   resolveAmmo?: CpredAmmoResolver,
   attachments?: CpredAttachmentLookup,
 ): CpredWeaponOption[] {
   const lookup: CpredAmmoResolver = resolveAmmo ?? (() => null);
   if (sheet) {
+    // Etap 41: pytanie zadaje się **raz na kartę**, a nie raz na wiersz — i tylko
+    // wtedy, gdy ręce są zadeklarowane. Bagnet i granatnik dziedziczą odpowiedź
+    // nosiciela, bo trzymanie karabinu jest trzymaniem obu.
+    const handsDeclared = cpredHandsAreDeclared(sheet);
     return sheet.weapons.flatMap((row: CpredWeaponRow) => {
       const resolved = resolve(row.compendiumId);
+      const notDrawn = handsDeclared && !cpredWeaponInHands(sheet, row.id);
       const primary: CpredWeaponOption = {
         rowId: row.id,
         attachmentId: null,
@@ -117,8 +132,12 @@ export function cpredWeaponOptions(
         ammo: row.ammoMax > 0 ? { current: row.ammoCurrent, max: row.ammoMax } : null,
         ammoProfile: loadedAmmoFor(row, resolved, lookup),
         ...(row.jammed === true ? { jammed: true } : {}),
+        ...(notDrawn ? { notDrawn: true } : {}),
       };
-      return [primary, ...secondaryOptionsOf(row, resolved, lookup, attachments)];
+      const secondary = secondaryOptionsOf(row, resolved, lookup, attachments).map((option) =>
+        notDrawn ? { ...option, notDrawn: true } : option,
+      );
+      return [primary, ...secondary];
     });
   }
   return [];
@@ -505,6 +524,9 @@ function weaponRefusal(
   // is cleared, and telling the player to reload would send them spending an
   // Action on the wrong thing.
   if (option.jammed === true) return CPRED_JAM_REFUSAL;
+  // Etap 41. Nad pustym magazynkiem, bo przeładowanie broni leżącej w kaburze
+  // byłoby Akcją wydaną nie na to, co blokuje strzał.
+  if (option.notDrawn === true) return CPRED_NOT_DRAWN_REFUSAL;
   const ammo = option.ammo;
   if (!ammo) return null;
   const cost = mode === 'single' ? 1 : CPRED_BURST_AMMO_COST;

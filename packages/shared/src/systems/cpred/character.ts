@@ -495,6 +495,15 @@ export const WEAPON_AMMO_MAX = 500;
 /** Attachments one weapon row may carry — the rulebook's three slots. */
 export const WEAPON_ATTACHMENTS_MAX = 3;
 
+/**
+ * Ile rąk ma postać (etap 41) — dwie, i to jest cały model.
+ *
+ * Liczba, a nie lista nazwanych rąk („lewa", „prawa"), bo żadna reguła CP RED
+ * nie pyta, **która** ręka trzyma pistolet; pytają wyłącznie o to, czy jest
+ * wolna. Cyberręka nie dokłada trzeciej: jest ręką na miejsce ręki.
+ */
+export const CPRED_HANDS = 2;
+
 export interface CpredArmorRow extends CpredItemRow {
   /** Stopping Power the piece has when undamaged ("OB" on the Polish sheet). */
   sp: number;
@@ -708,6 +717,59 @@ export function cpredArmorPenalty(armor: readonly CpredArmorRow[] | undefined): 
   return worst;
 }
 
+/**
+ * Czy ktokolwiek powiedział, co ta figura trzyma w rękach (etap 41).
+ *
+ * Pytanie zadaje **planer ataku**, i tylko on: dopóki odpowiedź brzmi „nie",
+ * żadna broń z karty nie jest zakazana, bo zakaz opierałby się wtedy na domyśle
+ * VTT, a nie na czyjejkolwiek decyzji. Oględziny tego nie pytają — im wolno
+ * zgadywać, bo zgadują **na głos** i nikomu niczego nie zabraniają.
+ */
+export function cpredHandsAreDeclared(
+  data: Pick<CpredCharacterData, 'drawnWeaponRowIds'>,
+): boolean {
+  return data.drawnWeaponRowIds !== undefined;
+}
+
+/**
+ * Czy ta konkretna broń jest w rękach.
+ *
+ * Sensowne wyłącznie przy zadeklarowanych rękach — przy niezadeklarowanych
+ * odpowiada `true` na wszystko, i to jest właściwa odpowiedź na „czy mogę tym
+ * strzelić", a nie ukrywanie niewiedzy.
+ */
+export function cpredWeaponInHands(
+  data: Pick<CpredCharacterData, 'drawnWeaponRowIds'>,
+  rowId: string,
+): boolean {
+  const hands = data.drawnWeaponRowIds;
+  return hands === undefined || hands.includes(rowId);
+}
+
+/**
+ * Broń, którą ta karta trzyma — tak, jak pokazują ją oględziny.
+ *
+ * Tu mieszka reguła domyślna („karta, której nikt nie pytał, trzyma swoją
+ * pierwszą broń"), bo pytających o obraz jest wielu (dymek, okno oględzin,
+ * pasek akcji) i rozjechaliby się na niej co do jednego.
+ *
+ * Id wskazujące wiersz, którego już nie ma (broń oddana, sprzedana, zabrana
+ * z ciała), **wypada** z listy: broń, która zeszła z karty, nie jest w niczyich
+ * rękach.
+ */
+export function cpredDrawnWeapons(
+  data: Pick<CpredCharacterData, 'weapons' | 'drawnWeaponRowIds'>,
+): CpredWeaponRow[] {
+  const hands = data.drawnWeaponRowIds;
+  if (hands === undefined) {
+    const first = data.weapons[0];
+    return first ? [first] : [];
+  }
+  return hands
+    .map((rowId) => data.weapons.find((row) => row.id === rowId))
+    .filter((row): row is CpredWeaponRow => row !== undefined);
+}
+
 /** Label the armour penalty carries wherever it is shown — one spelling. */
 export const CPRED_ARMOR_PENALTY_LABEL = 'Pancerz';
 
@@ -901,6 +963,30 @@ export interface CpredCharacterData {
    */
   skillSpecialties: Record<string, string>;
   weapons: CpredWeaponRow[];
+  /**
+   * Broń, którą ta postać ma **w rękach** (etap 41) — id wierszy z `weapons`.
+   *
+   * Trzy stany, nie dwa, i to jest cała subtelność tego pola:
+   *
+   *  - **brak pola** — nikt tej figury nigdy nie pytał. Oględziny pokazują wtedy
+   *    **pierwszą broń z karty** (decyzja MG z 10.09.2026), żeby funkcja działała
+   *    na kartach starszych niż ten etap, ale **planer ataku nie odmawia niczego**:
+   *    to jest domysł VTT, a nie deklaracja stołu, i domysł nie ma prawa zabraniać
+   *    (decyzja MG z 10.09.2026, po zmierzeniu skutków na 39 testach). Ta sama
+   *    ostrożność, którą `conditionalPenalty` stosuje do kar w etapie 29a:
+   *    czego VTT nie wie na pewno, tego nie egzekwuje,
+   *  - **`[]`** — **puste ręce**, i to świadomie: ktoś schował broń albo ją upuścił,
+   *  - **lista id** — te konkretne bronie. Dwie, bo ręce są dwie: pistolet i nóż
+   *    trzyma się naraz, a karabin zajmuje obie.
+   *
+   * Od pierwszego dobycia albo schowania pole **istnieje** i od tej chwili odmowa
+   * jest pełna. Czyta się je wyłącznie przez funkcje niżej, nigdy wprost.
+   *
+   * Pisane **tylko** przez `weapon:draw`, nigdy łatą karty: schowanie broni kosztuje
+   * Akcję (s. 168), a cena z furtką obok jest ozdobą — ta sama umowa, którą
+   * `combatAwareness` zawarło w 30a, a `eddies` w 23b.
+   */
+  drawnWeaponRowIds?: string[];
   armor: CpredArmorRow[];
   gear: CpredGearRow[];
   cyberware: CpredCyberwareRow[];
@@ -1860,6 +1946,23 @@ function collectCharacterDataPatch(
       };
     });
     if (weapons) patch.weapons = weapons;
+  }
+  // Etap 41. Trójstanowe pole, więc czyta się je trójstanowo: `null` przechodzi
+  // jako „puste ręce", napis jako id wiersza, a **cokolwiek innego** (w tym
+  // brak klucza) zostawia pole nietknięte, czyli przy regule domyślnej. Id nie
+  // jest tu sprawdzane wobec listy broni — wiersz może zniknąć później, a
+  // odpowiedź na „czy on to nadal ma" należy do `cpredDrawnWeapon`, nie do
+  // parsera, który widzi jedną kartę w jednej chwili.
+  // Etap 41. Pole trójstanowe, więc czyta się je trójstanowo: tablica przechodzi
+  // (pusta znaczy „puste ręce"), a brak klucza albo śmieć zostawia je nietknięte,
+  // czyli przy „nikt nie pytał". Id nie są tu sprawdzane wobec listy broni —
+  // wiersz może zniknąć później, a odpowiedź na „czy on to nadal trzyma" należy
+  // do `cpredDrawnWeapons`, nie do parsera, który widzi jedną kartę w jednej chwili.
+  if ('drawnWeaponRowIds' in input) {
+    const value = input.drawnWeaponRowIds;
+    if (Array.isArray(value) && value.every((row) => typeof row === 'string' && row.length > 0)) {
+      patch.drawnWeaponRowIds = value.slice(0, CPRED_HANDS) as string[];
+    }
   }
   if ('armor' in input) {
     const armor = validateRows<CpredArmorRow>(input.armor, 'armor', issues, (base, row) => {

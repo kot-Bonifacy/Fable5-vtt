@@ -35,6 +35,7 @@ import { ammoFitsWeapon, type CpredAmmoCheck, type CpredAmmoProfile } from './am
 import { CPRED_BLAST_SIDE_M, CPRED_THROW_RANGE_M } from './areas.js';
 import {
   cpredArmorStatPenalty,
+  cpredWeaponInHands,
   CPRED_ARMOR_PENALTY_LABEL,
   type CpredCharacterData,
   type CpredRegistry,
@@ -113,6 +114,17 @@ export const CPRED_EXCELLENT_LABEL = 'Broń doskonałej jakości';
  * weapon row. Spelled once so the table hears the same thing wherever it looks.
  */
 export const CPRED_JAM_REFUSAL = 'Broń się zacięła — usuń usterkę (Akcja).';
+
+/**
+ * To samo dla „tego nie masz w rękach" (etap 41), i z tego samego powodu: zdanie
+ * pada w odmowie planera, na wyszarzonym slocie paska i przy wierszu broni.
+ *
+ * Mówi, **co zrobić**, a nie tylko czego się nie da, bo obie drogi są jednym
+ * kliknięciem i różnią się ceną: schowanie kosztuje Akcję (s. 168), upuszczenie
+ * nie kosztuje nic.
+ */
+export const CPRED_NOT_DRAWN_REFUSAL =
+  'Masz w rękach co innego — schowaj tamto (Akcja) albo upuść, a potem dobądź tę broń.';
 
 /** A burst and a suppressive volley each cost an Action and ten rounds. */
 export const CPRED_BURST_AMMO_COST = 10;
@@ -315,7 +327,8 @@ export type CpredAttackProblem =
   | 'AMMO_SINGLE_ONLY'
   | 'AMMO_NEEDS_CYBERWARE'
   | 'UNKNOWN_ATTACHMENT'
-  | 'WEAPON_JAMMED';
+  | 'WEAPON_JAMMED'
+  | 'WEAPON_NOT_DRAWN';
 
 /** Everything the chat card needs to explain a hit — and to offer the damage roll. */
 export interface CpredAttackMeta {
@@ -680,6 +693,26 @@ export function planCpredAttack(
   // rules ties the two, and refusing the launcher would take away the one thing
   // still worth doing with the gun.
   if (hostRow.jammed === true && !firedWith) return { ok: false, error: 'WEAPON_JAMMED' };
+
+  /*
+   * Etap 41: strzelać można tym, co się ma w rękach.
+   *
+   * Sprawdzane na wierszu **nosiciela**, tak samo jak zacięcie: bagnet
+   * i granatnik podwieszany są częścią broni, którą figura trzyma, więc trzymanie
+   * karabinu jest trzymaniem obu.
+   *
+   * Odmowa obowiązuje **wyłącznie figury z zadeklarowanymi rękami** — decyzja MG
+   * z 10.09.2026. Karta, przy której nikt nigdy nie dobył ani nie schował broni,
+   * nie ma zadeklarowanych rąk, a to, co pokazują jej oględziny („pierwsza broń
+   * z karty"), jest domysłem VTT na użytek obrazu. Domysł nie zabrania: zakaz
+   * z niego wyprowadzony byłby regułą, której nie ustalił nikt przy stole.
+   *
+   * Od pierwszego dobycia albo schowania odmowa jest pełna i mówi, co zrobić —
+   * schować tamtą broń (Akcja, s. 168) albo ją upuścić (za darmo).
+   */
+  if (!cpredWeaponInHands(data, hostRow.id)) {
+    return { ok: false, error: 'WEAPON_NOT_DRAWN' };
+  }
 
   // A hand is busy holding somebody: two-handed weapons are out for both sides
   // of a Hold, whatever the sheet says about extra arms (s. 176).
@@ -1158,4 +1191,5 @@ export const CPRED_ATTACK_PROBLEM_MESSAGES: Record<CpredAttackProblem, string> =
   AMMO_NEEDS_CYBERWARE: 'Ta amunicja nie wystrzeli bez wymaganej cyborgizacji.',
   UNKNOWN_ATTACHMENT: 'Nie ma takiego dodatku na tej broni.',
   WEAPON_JAMMED: CPRED_JAM_REFUSAL,
+  WEAPON_NOT_DRAWN: CPRED_NOT_DRAWN_REFUSAL,
 };

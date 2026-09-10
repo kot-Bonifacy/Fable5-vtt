@@ -118,6 +118,7 @@ import {
   monthlyCostOf,
   purchasedSheetRow,
   resolveWeapon,
+  cpredDrawnWeapons,
   searchCompendium,
   seriousWoundThreshold,
   skillBase,
@@ -167,6 +168,7 @@ import {
   restForADay,
   useDose,
   clearWeaponJam,
+  drawWeapon,
   reloadWeapon,
   sendCyberwareAction,
   setStatEffect,
@@ -1546,6 +1548,16 @@ function WeaponStrip({
    */
   const [picking, setPicking] = useState<{ rowId: string | null } | null>(null);
 
+  /**
+   * Co ta postać ma w rękach (etap 41).
+   *
+   * Czytane przez `cpredDrawnWeapons`, a nie wprost z pola, bo tam mieszka
+   * reguła domyślna: karta, przy której nikt nigdy nie dobył ani nie schował
+   * broni, **pokazuje pierwszą z listy**. Guzik „Schowaj" przy niej nie jest
+   * więc martwy — jest pierwszą deklaracją rąk tej figury.
+   */
+  const inHands = cpredDrawnWeapons(data).map((row) => row.id);
+
   /** Catalogue stats of a row, or null for a hand-typed weapon. */
   function resolvedOf(row: CpredWeaponRow): ResolvedWeapon | null {
     const entry = row.compendiumId ? entries[row.compendiumId] : undefined;
@@ -1715,6 +1727,45 @@ function WeaponStrip({
                       onClick={() => clearWeaponJam(character.id, row.id)}
                     >
                       ⚠ Zacięta — usuń usterkę
+                    </button>
+                  )}
+                  {/* Etap 41: co jest w rękach, a co w kaburze.
+                      Guzik, a nie plakietka, bo to jest **czynność** z ceną
+                      z podręcznika (s. 168): dobycie za darmo, schowanie za
+                      Akcję. Od pierwszego kliknięcia ta figura ma zadeklarowane
+                      ręce i od tej chwili planer ataku odmawia broni, której
+                      w nich nie ma — dopóki nikt nie kliknie, karta pokazuje
+                      pierwszą broń i niczego nie zabrania. */}
+                  {inHands.includes(row.id) ? (
+                    <span className="weapon-hands">
+                      <span className="weapon-hands-badge" title="Ta broń jest w rękach">
+                        ✊ W rękach
+                      </span>
+                      <button
+                        type="button"
+                        className="small-button"
+                        title="Schowanie broni do kabury zabiera Akcję (s. 168)."
+                        onClick={() => drawWeapon(character.id, row.id, 'holster')}
+                      >
+                        Schowaj (Akcja)
+                      </button>
+                      <button
+                        type="button"
+                        className="small-button"
+                        title="Upuszczenie trzymanej broni nie wymaga Akcji (s. 168)."
+                        onClick={() => drawWeapon(character.id, row.id, 'drop')}
+                      >
+                        Upuść
+                      </button>
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="small-button weapon-draw"
+                      title="Sięgnięcie wolną ręką po łatwo dostępną broń nie wymaga Akcji (s. 168)."
+                      onClick={() => drawWeapon(character.id, row.id, 'draw')}
+                    >
+                      Dobądź
                     </button>
                   )}
                   {/* Etap 31: trzy gniazda i to, co w nich siedzi. */}

@@ -108,9 +108,14 @@ w plikach obok — czytaj je **na żądanie, nigdy rutynowo**:
 | 38b    | Przedmioty: przekazanie, łup, przeszukanie    | ✅     | 2026-09-06          |
 | 39     | Efekty czasowe modyfikujące Cechy             | ✅     | 2026-09-05          |
 | 40     | Prośba gracza o Test                          | ✅     | 2026-09-06          |
+| 41     | Oględziny wyposażenia figury                  | ✅     | 2026-09-10          |
 
 
 ## Od czego zacząć
+
+**Etap 41 (oględziny wyposażenia) doszedł 10.09 ze zlecenia MG** — nie było go w planie 28
+etapów. Zamknięty w jednej sesji; **cały jego UI czeka na oględziny ręką MG** (`zaleglosci.md`),
+bo oba wejścia — menu figury i dymek pod celownikiem — są dla automatyki zamknięte.
 
 **Wolny jest już tylko JEDEN etap: 28** (wdrożenie na VPS). Reszta jest zamknięta albo wycofana,
 a **żadna wiążąca kolejność nie jest już otwarta** — „37 przed 39" i „33 przed 28" spełnione.
@@ -125,7 +130,7 @@ go i nie proponuj makr; pasek akcji z 16f zostaje generowany.
 Co z nich obowiązuje w kodzie, stoi w sekcjach obszarów niżej; pełne akapity o każdym —
 w `archiwum/od-czego-zaczac.md`.
 
-**Dług oględzin — 16 pozycji** (`zaleglosci.md`). Czternaście czeka na żywy model. Dwie to **to
+**Dług oględzin — 17 pozycji** (`zaleglosci.md`). Czternaście czeka na żywy model. Dwie to **to
 samo menu figury** („🎒 Przeszukaj…" i przełącznik statystyk), bo prawym klikiem z automatyki nie
 otworzysz menu kanwy Pixi — klika się je jednym podejściem ręką MG. Etapy 39, 40 i szlif karty nie
 dołożyły ani jednej pozycji: przeszły oględziny w tej samej sesji, w której powstały.
@@ -152,8 +157,8 @@ siedzi w `decyzje-i-uproszczenia.md` i **nie wciągaj ich z powrotem** jako nowy
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
 a od 30d pierwszym, przy którym każda Rola w drużynie gra inaczej niż reszta.
 
-**Testy na koniec ostatniej sesji:** 1941 w `shared`, 1062 na serwerze, 104 u klienta — zielone
-(liczby zmierzone 06.09; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
+**Testy na koniec ostatniej sesji:** **1967** w `shared`, **1085** na serwerze, 114 u klienta —
+zielone (liczby zmierzone 10.09; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
 ESLint i Prettier czyste na kodzie, `tsc --noEmit` czysty w trzech pakietach (od 05.09 obejmuje
 też `packages/server/scripts/`). **Nie puszczaj `pnpm format` na `POSTEP.md`, `POMYSLY.md` ani
 `00-przeglad.md`** — Prettier przeformatowałby je od dawna i przelał kilkaset wierszy szumu
@@ -183,22 +188,90 @@ a nie do tego pliku.
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność           |    7 |       5 |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  |   13 |       1 |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       |    7 |       4 |
-| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   |   26 |       8 |
+| `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   |   28 |       8 |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      |   12 |       3 |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         |    5 |       9 |
 | `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia |   22 |       2 |
-| `ekwipunek` | wiersze wyposażenia, przekazanie, łup, zasięg                  |    8 |       2 |
+| `ekwipunek` | wiersze wyposażenia, przekazanie, łup, zasięg, oględziny       |   12 |       2 |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      |   15 |       2 |
 | `siec`      | Programy, LOD, demony, piętra architektury                     |    1 |       3 |
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            |    1 |       3 |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  |    2 |      10 |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               |    8 |       1 |
-| `ogledziny` | automatyka CDP, zrzuty, dwie sesje naraz, `window.confirm`     |    0 |      54 |
+| `ogledziny` | automatyka CDP, zrzuty, dwie sesje naraz, `window.confirm`     |    0 |      55 |
 | `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              |    0 |      16 |
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 10.09 — oględziny wyposażenia figury (etap 41)
+
+**Zlecenie MG:** „dodaj możliwość skanowania założonego/używanego wyposażenia przez inne tokeny
+— żeby móc sprawdzić np. czy wroga/sojusznicza postać ma hełm na głowie, albo jaki rodzaj broni —
+bo teraz tego nie wiadomo, co uniemożliwia określenie, w jaki element ciała wroga celować",
+z prośbą o pytania uzupełniające i o zgłaszanie potencjalnych błędów. **Etapu 41 nie było
+w planie**; powstał plik `etap-41-ogledziny-wyposazenia.md`.
+
+**Diagnoza była prosta i potwierdziła zlecenie co do joty.** Punkt Celowania (16f + 31.08) gracz
+wybierał w ciemno: `TokenView` niesie nazwę, obrazek, naklejki, zwrot i rany, a karta NPC **nie
+jedzie do graczy w ogóle** (`characterAudience`). „Czy ten ganger ma hełm" nie miało **żadnej**
+drogi do stołu — a to jest liczba, na której stoi cała opłacalność strzału w głowę.
+
+**Osiem pytań przed kodem; MG wybrał wariant najszerszy w każdym z nich.** Dwie warstwy (rzut oka
+za darmo, liczby po Teście), PT ustala MG za każdym razem (tor prośby z etapu 40), w walce Akcja,
+widać pancerz + broń + chrom + rany, figura bez deklaracji pokazuje pierwszą broń z karty, a stan
+„broń w rękach" jest **egzekwowany w walce**.
+
+**Egzekwowanie wywróciło 39 testów serwera i to nie była usterka danych testowych.** Karta
+z testów ataku niesie pistolet, karabin i nóż; przy regule domyślnej „pierwsza broń jest w rękach"
+każdy strzał z karabinu odpadał `WEAPON_NOT_DRAWN`. Zgodnie z s. 168 tak ma być — ale zaczynało to
+obowiązywać **także figury, którym nikt nigdy nie powiedział, co trzymają**, czyli wszystkie.
+Zgłoszone MG z liczbą i przykładem; **decyzja: domysł pokazuje, deklaracja zabrania.** Brak pola
+= oględziny pokazują pierwszą broń, planer nie odmawia niczego; od pierwszego `weapon:draw` pole
+istnieje i odmowa jest pełna. Po zmianie **39 testów wróciło do zieleni bez tknięcia ani jednego**.
+
+**Ręce są dwie, nie jedna** (`CPRED_HANDS`) — poprawka względem pierwszego szkicu, w którym stan
+był pojedynczym id. Pistolet i nóż trzyma się naraz, karabin zajmuje obie ręce; arytmetykę robi
+serwer w `weapon:draw` z `resolved.hands`, bo katalog należy do serwera. `weapon:draw` obsługuje
+trzy gesty z cenami z podręcznika: dobycie za darmo, schowanie za Akcję, upuszczenie za darmo —
+i dopiero teraz trzy wpisy katalogu Akcji z 14b coś robią.
+
+**Rzut oka jedzie własnym zdarzeniem `sighting:look`, nie na `TokenView`.** Klasa broni bierze się
+z **typu** w kompendium („Karabin szturmowy", nie „Militech Ronin") i tylko dlatego wolno ją pokazać
+za darmo; kompendium czyta się z bazy, więc doklejenie tego do żetonu kazałoby każdej
+synchronizacji sceny czekać na katalog. Widoczność rozstrzyga **`concealedFrom`** — ta sama, którą
+mapa decyduje o rysowaniu żetonu — żeby oględziny nie miały drugiej definicji „widzę".
+
+**Warstwa szczegółowa to karta czatu rodzaju `sighting`, prywatna jak szept.** Rzut bywa jawny
+i stół widzi, że komuś wyszło; **treść** należy do postaci, która ją zdobyła. Karta zostaje, więc
+po przeładowaniu gracz nadal ma to, co wypatrzył — i to z niej okno czyta liczby. Nie jest to nowy
+rodzaj rzutu: `sightingTokenId` na zwykłym żądaniu Testu mówi jedynie, **co jego zdanie odsłania**.
+
+**Chrom rozstrzyga rodzina, nie flaga przy wpisie** — sześć z ośmiu widać z zewnątrz, Cybersynapsy
+i Cyborgizacje wewnętrzne nie. Wiersz **bez** rodziny (karty sprzed 23a) jest niewidoczny:
+przy wyborze „pokaż, czego nie wiesz" kontra „przemilcz" przemilczenie jest jedynym bezpiecznym
+domyślnym na drodze z karty MG do gracza.
+
+**Menu figury otworzyło się graczom — po raz pierwszy.** Do 41 `onTokenMenu` sprawdzało `ROLE_GM`,
+więc gracz nie miał żadnego wejścia w cudzą figurę poza celownikiem. Gracz dostaje **jedną**
+pozycję („🔍 Przyjrzyj się…"); reszta menu to warsztat MG, a atak i Konfrontację ma z paska,
+gdzie płaci się budżetem tury.
+
+**Pasek akcji wyszarza broń spoza rąk** (`option.notDrawn` → `CPRED_NOT_DRAWN_REFUSAL`) — bez tego
+gracz dowiadywałby się o pustej kaburze dopiero przy rzucie. Gasi **wyłącznie** przy
+zadeklarowanych rękach, tą samą regułą, co planer.
+
+**Oględziny w przeglądarce: NIE ZROBIONE, i to jest jedyny brak tego etapu.** Aplikacja wstaje,
+konsola po przeładowaniu z nowym kodem jest czysta — i na tym koniec, bo **oba wejścia są dla
+automatyki zamknięte**: menu figury chce prawego kliku w kanwę Pixi (przeszkoda znana od 38a),
+a dymek wymaga `onAimHover`, którego syntetyczny ruch kursora nie budzi (celownik się uzbraja,
+linia strzału rysuje, dymek nie wychodzi — nowa pułapka). Pięć pozycji do kliknięcia ręką MG
+stoi w `zaleglosci.md`, najlepiej razem z długiem 38a/38b: to jest **to samo menu**.
+
+**Testy:** **1967** w `shared` (+26), **1085** na serwerze (+13), 114 u klienta — zielone.
+ESLint, Prettier i `tsc --noEmit` czyste w trzech pakietach; klient się buduje. Sześć umów kodu
+i jedna pułapka w indeksach niżej.
 
 ### Sesja 09.09 — oględziny zdobywania i wydawania PD (29a)
 
@@ -272,99 +345,3 @@ rzutu zamknięte „Anuluj"), żaden żeton nie był stawiany, scena nietknięta
 
 **Testy:** 1941 w `shared`, **1072** na serwerze (+1), **114** u klienta (+4) — zielone.
 ESLint, Prettier i `tsc --noEmit` czyste. Jedna umowa kodu i jedna pułapka w indeksach niżej.
-
-### Sesja 06.09 (czwarta) — okno, które zostawało, i liczby ze strzałkami
-
-**Zlecenie MG (trzy rzeczy naraz):** okno prośby o Test **nie zamyka się po zgodzie MG** i robi
-się z tego bałagan, bo gracz nie wie, czy zgodę dostał; **sprawdzić tę funkcję większą liczbą
-testów**; i **zamienić pola liczbowe na karcie na przełączniki ±1**, węższe niż dziś, „chyba że
-wartości mogą przekroczyć 99 — co nie powinno mieć miejsca w tym systemie", **z wyjątkiem
-eurodolców**. Trzy pytania przed kodem doprecyzowały kształt: liczba zostaje **napisem** (bez
-wpisywania), guziki **stoją zawsze**, a trzy pola, które naprawdę potrafią przekroczyć 99,
-**zostają polami**. Czwarta odpowiedź przyszła osobno i zmieniła rysunek: strzałki **w pionie,
-tuż na prawo od liczby, obie razem wysokie na jedną liczbę** — nie `− 7 +` po bokach.
-
-**Usterka miała jedną linijkę i była w miejscu, którego wczorajsze oględziny nie dotknęły.**
-Przycisk „Poproś MG" w oknie rzutu wołał `askForCheck`, ale **okna rzutu nie zamykał**: okno
-prośby stawało nad nim, po wysłaniu znikało, a pod spodem wracał guzik **„Weź kubek"** — czyli
-przycisk znaczący „rzuć bez zgody" — i stał tam przez cały czas oczekiwania oraz po zgodzie MG.
-Stąd „nie wiem, czy dostałem zgodę, czy mam jeszcze coś z tym oknem zrobić". Druga droga do
-prośby — **Alt+klik w wiersz karty** — tej wady nie ma i **właśnie ją** sprawdzałem wczoraj
-w przeglądarce; MG kliknął przycisk. Naprawa: `askForCheck` gasi okno rzutu, zanim otworzy
-prośbę, i robi to **w jednym miejscu** dla obu wejść.
-
-**Testy urosły o 15 i celują w to, czego wczoraj nie było.** Serwer (+9): odmowa **nie tworzy
-wezwania** i dowozi zdanie MG; wycofuje **autor, nie MG**; zgoda bez progu i zgoda z progiem
-i przeciwnikiem naraz odpadają, **nie zamykając prośby**; zgoda przeciwstawna nazywa drugą
-stronę; modyfikator i widoczność jadą z żądania MG; `requestMessageId` wskazujący **wezwanie**,
-duszka albo prośbę zamkniętą odpada **i nie zostawia wezwania** (to sprawdza kolejność:
-prośba jest walidowana **przed** `createCheckCall`); powód dłuższy niż 300 znaków odpada.
-Klient (+6): prośba **gasi okno rzutu**, po jej zamknięciu **nie zostaje nic do kliknięcia**,
-rzut nieproszalny (obrażenia) okna nie gasi, nieznana Umiejętność nie otwiera prośby, oba okna
-się wykluczają, a strażnik źródłowy pilnuje, że okno rzutu prosi **wyłącznie** przez
-`askForCheck` — bo `openRequest` wołane wprost przywróciłoby usterkę tą samą drogą.
-
-**Dowód ciszy zamiast czekania na zegar.** „Wezwanie nie powstało" sprawdza się **znacznikiem**:
-po badanym żądaniu leci kolejna prośba i czeka się na **jej** kartę — Socket.IO trzyma kolejność
-w obrębie połączenia, więc gdy znacznik dociera, wszystko wcześniejsze już doszło. Pierwsza
-wersja czekała na kartę **po** wysłaniu i zawieszała się: rozgłoszenie potrafi wyprzedzić ack,
-a nasłuch założony po nim nie doczeka się niczego.
-
-**Przełącznik liczbowy (`NumberStepper`) zastąpił 14 pól na karcie.** Cechy, Szczęście bieżące,
-Punkty Wytrzymałości, poziom Umiejętności, ranga Zdolności (bieżącej i poprzednich), stan
-magazynka, OB bieżące i pełne, kara pancerza, gniazda cyberdeka, poziom Reputacji, modyfikator
-drugiej strony w Handlu i kategoria wpisu Taboru. **Zostały polami trzy**, i to na wyraźną
-decyzję MG: **Punkty Doświadczenia** (do 99 999 — kampania zbiera setki), **Człowieczeństwo**
-(EMP 10 × 10 = 100) i **ILOŚĆ** w wyposażeniu (do 999 — „naboje 200 szt."), plus **eurodolce**
-wyłączone z zlecenia od początku. Pole `readOnly` (poziom Umiejętności i ranga u gracza, bo
-kupuje się je PD) pokazuje **samą liczbę bez strzałek** — to czytelniejsze niż pole, w które
-klik nic nie robi.
-
-**Dwie rzeczy w przełączniku nie są ozdobą.** **Przytrzymanie powtarza** (400 ms zwłoki, potem
-70 ms) — bez wpisywania OB 18 to osiemnaście kliknięć. I powtarzanie **liczy od własnej liczby**,
-a nie od tej z propsów: karta jest duża, jej render potrafi nie nadążyć za tikiem, a wtedy dwa
-tiki z rzędu policzyłyby tę samą wartość i przytrzymanie stanęłoby w miejscu. Sam guzik jest
-przezroczysty i dziedziczy kolor (`color: inherit`), bo ten sam siedzi na papierze pola, na
-czerwonej plakietce rangi i w komórce tabeli.
-
-**Zlecenie wróciło jeszcze raz i rozszerzyło zakres: strzałki weszły do okien gry.** MG zgłosił,
-że w oknie, z którego prosi się o Test, pól ze strzałkami nie ma — chodziło o **okno rzutu**
-(samo okno prośby ma tylko pole na zdanie „po co"). Przy okazji potwierdził umowę: modyfikator
-i widoczność wpisane w oknie rzutu **nie jadą z prośbą** i tak ma zostać, bo to decyzje MG.
-Zamienione zostały: okno rzutu (modyfikator ze znakiem, Szczęście), okno wezwania MG (PT,
-przeciwnik, modyfikator), statysta z menu tokena (Cechy, poziom broni, Unik, OB, Wartość bojowa,
-amunicja, poziomy Umiejętności — 11 pól) i wirus w netrunie (PT, Akcji Sieciowych) — razem 18.
-
-**Sześciu pól świadomie NIE zamieniłem i to jest odkrycie tej rundy: w części z nich puste
-znaczy coś innego niż zero.** OB celu w oknie obrażeń („puste = OB z karty postaci", a 0 to
-„bez pancerza"), inicjatywa akcji przygotowanej („puste = czeka na zdarzenie"), piętra
-i odgałęzienia generatora sieci („puste = losuje serwer 3k6"), sztuki i gotówka w ekwipunku
-(„puste = wszystkie"). Przełącznik zawsze ma liczbę, więc odebrałby im ten stan. Do tego PW
-tokenu (limit 999) i PD do przyznania (−1000..+1000) zostają polami na mocy tej samej reguły
-dwóch cyfr. Skóra przełącznika rozdzieliła się na dwie: baza w `styles.css` rysuje **pole
-z ramką** (tak wygląda każde inne pole w oknach), a `.sheet-window .cp-step` spłaszcza je do
-napisu — dokładnie tak, jak `.cp-field input` spłaszcza pola na karcie od 27a.
-
-**Wpisany modyfikator gracza znika bez ostrzeżenia** — gracz może wystukać „+3", kliknąć „Poproś
-MG" i ta liczba przepada, bo prośba jej nie niesie. Zachowanie jest poprawne i MG je potwierdził,
-więc zostaje, ale przełącznik dostał u gracza `title`: „Do własnego rzutu. Z prośbą do MG nie
-jedzie — modyfikator ustala on."
-
-**Oględziny w przeglądarce** (sesja gracza `Tony` na `localhost`) potwierdziły naprawę: „Poproś
-MG" **gasi okno rzutu**, po „Wyślij prośbę" na ekranie nie zostaje nic, a prośba dochodzi na
-czat i daje się wycofać. Strzałki działają na wszystkich czterech zakładkach, magazynek zszedł
-z 30 na 25 i wrócił na 30, zatrzymując się na maksimum. Druga sesja gracza (`Tester` na `[::1]`)
-potwierdziła, że **cudzej prośby nie widać**. Strony MG **nie sprawdzałem w przeglądarce** —
-zalogowanie się na konto MG wymagałoby wpisania hasła, czego nie robię; zgodę, odmowę i „Ustaw…"
-pokrywa 31 testów serwerowych.
-
-**Oględziny drugiej rundy poszły z konta MG** (`localhost` przelogowany na MG): poziomy
-Umiejętności na karcie Franka mają strzałki i mieszczą się w wąskiej kolumnie POZ., okno rzutu
-liczy modyfikator ze znakiem („+1") i podgląd rzutu od razu pokazuje „1k10 + 6", okno wezwania
-stawia PT i modyfikator obok drabinki, a edytor tokenu wieżyczki ma strzałki przy Cechach,
-Umiejętności, Uniku, OB i amunicji — przy „Pasku HP" i „Zasięgu widzenia" zostały pola, bo tam
-liczby bywają trzycyfrowe.
-
-**Testy:** 1941 w `shared`, **1071** na serwerze (+9), **110** u klienta (+6) — zielone. ESLint,
-Prettier i `tsc --noEmit` czyste w trzech pakietach; konsola przeglądarki bez błędów. Dwie umowy
-kodu i dwie pułapki w indeksach niżej.

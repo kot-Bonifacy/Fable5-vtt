@@ -55,6 +55,8 @@ export type ChatKind =
   | 'time'
   /** Przedmiot zmieniający kartę (etap 38b) — przekazanie albo łup. */
   | 'inventory'
+  /** Co gracz wypatrzył na cudzej figurze po zdanym Teście (etap 41). */
+  | 'sighting'
   /** Wynik losowania z tabeli, pokazany całemu stołowi (etap 34). */
   | 'rolltable'
   /**
@@ -66,6 +68,29 @@ export type ChatKind =
    * etapu 06 i `action`/`gmaction` od 14b.
    */
   | 'gmrolltable';
+
+/**
+ * Co zdany Test Percepcji pokazał na cudzej figurze (etap 41).
+ *
+ * Karta **prywatna**, wzorem szeptu: dochodzi do tego, kto patrzył, i do MG.
+ * Rzut, który ją poprzedził, może być jawny i zwykle jest — stół widzi, że ktoś
+ * się przygląda i czy mu wyszło. Widzi natomiast **wynik rzutu, nie treść**:
+ * liczby zdobyte spojrzeniem należą do postaci, która je zdobyła, a stół
+ * dowiaduje się ich wtedy, gdy ona je powie.
+ *
+ * Karta zostaje na czacie i to jest jej druga rola: po przeładowaniu strony
+ * gracz nadal ma to, co wypatrzył, bez rzucania po raz drugi.
+ */
+export interface SightingLogEntry {
+  /** Kto patrzył — nazwa postaci, zdenormalizowana jak wszędzie na czacie. */
+  actor: string;
+  /** Na kogo — nazwa, którą widz ma prawo wymówić (alias, jeśli MG go nadał). */
+  target: string;
+  /** Figura, której to dotyczy: okno oględzin dopasowuje po niej kartę. */
+  targetTokenId: string;
+  /** Treść oględzin — nieprzezroczysta dla rdzenia (CP RED: `CpredSighting`). */
+  sighting: Record<string, unknown>;
+}
 
 /**
  * Powrót do zdrowia, jak zapisuje go czat (s. 222–223, s. 150).
@@ -340,6 +365,8 @@ export interface ChatMessageView {
   time?: TimeLogEntry;
   /** Przedmiot, który zmienił kartę — kind `inventory` only (etap 38b). */
   inventory?: InventoryMoveEntry;
+  /** Co widać na obejrzanej figurze — kind `sighting` only (etap 41). */
+  sighting?: SightingLogEntry;
   /** Wynik losowania — kinds `rolltable` i `gmrolltable` only (etap 34). */
   rolltable?: RandomTableRollEntry;
   /** ISO timestamp — always assigned by the server. */
@@ -545,6 +572,11 @@ export function chatCategoryOf(kind: ChatKind): ChatCategory {
     // Przekazanie i łup (38b) czyta się razem z pieniędzmi: to ta sama
     // rubryka „kto co ma", tyle że rzeczami zamiast eurodolcami.
     case 'inventory':
+      return 'table';
+    // Oględziny (41) idą tą samą rubryką: „kto co ma", tyle że o kimś obcym.
+    // Nie do „Rzutów" — tam siedzi Test, który tę kartę wywołał, a zgaszona
+    // grupa rzutów ma gasić kości, nie zabierać zdobytej wiedzy.
+    case 'sighting':
       return 'table';
     // Losowanie z tabeli (34) NIE jest w grupie „Rzuty", choć pada w nim kość:
     // grupa dzieli wiersze po tym, po co się na nie patrzy, a na tę kartę

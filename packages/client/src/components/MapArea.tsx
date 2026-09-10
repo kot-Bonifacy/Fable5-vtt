@@ -129,6 +129,7 @@ import {
   useMapToolStore,
 } from '../stores/mapToolStore.js';
 import { TokenContextMenu } from './TokenContextMenu.js';
+import { SightingWindow } from './SightingWindow.js';
 import { TokenGroupBar } from './TokenGroupBar.js';
 import { DrawingTextEditor } from './DrawingTextEditor.js';
 import { MapTools } from './MapTools.js';
@@ -576,10 +577,12 @@ export function MapArea() {
     };
     renderer.onWalkNote = (text) => useChatStore.getState().addNote(text);
     renderer.onWalkStateChange = setMarchingTokenId;
+    // Etap 41: menu figury otwiera się **także graczowi**, w wersji okrojonej do
+    // jednej pozycji — oględzin. Do 41 był to wyłącznie panel MG, więc gracz nie
+    // miał żadnego wejścia w cudzą figurę poza celownikiem; co w menu widzi kto,
+    // rozstrzyga `TokenContextMenu`, nie ten warunek.
     renderer.onTokenMenu = (tokenId, clientX, clientY) => {
-      if (useAuthStore.getState().user?.role === ROLE_GM) {
-        setMenu({ tokenId, x: clientX, y: clientY });
-      }
+      setMenu({ tokenId, x: clientX, y: clientY });
     };
     renderer.onTokenActivate = (tokenId) => openSheetOfToken(tokenId);
     // Two doors into one attack (stage 16f). A crosshair armed from a sheet or
@@ -1782,6 +1785,7 @@ export function MapArea() {
       <DrawingTextEditor />
       <SceneObjectCard onDelete={(ref) => void removeSceneObject(ref)} />
       {menu && <TokenContextMenu menu={menu} onClose={() => setMenu(null)} />}
+      <SightingWindow />
     </section>
   );
 }

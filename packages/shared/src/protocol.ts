@@ -445,6 +445,49 @@ export interface InventorySourcesResult {
   targets: { id: string; name: string }[];
 }
 
+/* ------------------------------------------------------------------ *
+ * Oględziny figury (etap 41)
+ * ------------------------------------------------------------------ */
+
+/**
+ * „Przyjrzyj się tej figurze" — `sighting:look`.
+ *
+ * Zdarzenie na żądanie, a nie pole na `TokenView`, i to jest rozstrzygnięcie,
+ * nie oszczędność: rzut oka trzeba **złożyć z katalogu** (klasa broni bierze się
+ * z typu w kompendium), a katalog czyta się z bazy. Doklejenie go do żetonu
+ * kazałoby każdej synchronizacji sceny czekać na kompendium, żeby dowieźć coś,
+ * na co nikt w tej chwili nie patrzy.
+ *
+ * Odpowiedź buduje **serwer** i wyłącznie serwer — tą samą umową, co
+ * `inventory:sources`: klient podaje adres na mapie i dostaje to, co wolno mu
+ * zobaczyć. Karta cudzej figury nie jedzie do gracza ani tędy, ani żadną inną
+ * drogą (`characterAudience`).
+ */
+export interface SightingLookPayload {
+  /** Figura, której chce się przyjrzeć pytający. */
+  tokenId: string;
+}
+
+/**
+ * Co widać na figurze — nieprzezroczyste dla rdzenia VTT.
+ *
+ * Rdzeń deklaruje slot („coś, co system nazywa wyglądem"); treść zna wyłącznie
+ * warstwa systemu (CP RED: `CpredSighting`). Ta sama umowa, co przy
+ * `TokenView.injuries` i `TokenCombatProfile`.
+ */
+export type SightingView = Record<string, unknown>;
+
+export interface SightingLookResult {
+  tokenId: string;
+  /** Nazwa, którą **ten** widz ma prawo wymówić — jak na żetonie. */
+  name: string;
+  /**
+   * Rzut oka albo oględziny, zależnie od tego, czy pytający zdał już Test.
+   * `null`, gdy figura nie ma karty: kółko z paskiem PW nie ma co pokazać.
+   */
+  sighting: SightingView | null;
+}
+
 /** Jeden przenoszony wiersz — `CpredItemRef` na drucie. */
 export interface InventoryItemRefWire {
   list: 'weapons' | 'armor' | 'gear';
@@ -773,6 +816,32 @@ export interface AttackSmartPayload {
 export interface WeaponClearJamPayload {
   characterId: string;
   weaponRowId: string;
+}
+
+/**
+ * Co postać bierze do rąk, a co z nich odkłada (etap 41).
+ *
+ * Jedno zdarzenie na trzy gesty, bo przy stole są to trzy odpowiedzi na jedno
+ * pytanie „co trzymasz" — i różnią się wyłącznie ceną, którą podręcznik im
+ * przypisał (s. 168):
+ *
+ *  - `draw` — **za darmo**: „Sięgnięcie wolną ręką po łatwo dostępną broń nie
+ *    wymaga Akcji". Wolną: broń wchodzi do rąk tylko wtedy, gdy jest w nich
+ *    miejsce, a karabin zajmuje obie,
+ *  - `holster` — **Akcja**: „Schowanie trzymanej broni do kabury lub kieszeni
+ *    zabiera Akcję",
+ *  - `drop` — **za darmo**: „Upuszczenie trzymanej broni (ale nie tarczy) nie
+ *    wymaga Akcji". Broń zostaje na karcie; VTT nie kładzie przedmiotów na mapie.
+ *
+ * Pierwsze użycie któregokolwiek z nich **deklaruje ręce** tej figury: od tej
+ * chwili planer ataku odmawia broni, której w nich nie ma. Do tego czasu ręce
+ * są niezadeklarowane i nie zabraniają niczego (decyzja MG z 10.09.2026).
+ */
+export interface WeaponDrawPayload {
+  characterId: string;
+  weaponRowId: string;
+  /** Domyślnie `draw` — najczęstszy gest i jedyny, który nic nie kosztuje. */
+  mode?: 'draw' | 'holster' | 'drop';
 }
 
 /** Reloading a weapon row to a full magazine (an Action at the table). */

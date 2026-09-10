@@ -694,6 +694,8 @@ nie zapisuje — grupa staje od razu.
 
 ## atak — Broń, atak, obrażenia, rany
 
+- **Co postać trzyma w rękach, to `drawnWeaponRowIds`** — lista id wierszy; **brak pola** znaczy „nikt nie pytał" (oględziny pokazują pierwszą broń, planer **nie odmawia niczego**), `[]` znaczy puste ręce. Czyta się przez `cpredDrawnWeapons`, `cpredHandsAreDeclared` i `cpredWeaponInHands`, nigdy wprost.
+- **Ręce zmienia wyłącznie `weapon:draw`** (dobycie za darmo, schowanie za Akcję `CPRED_ACTION_HOLSTER`, upuszczenie za darmo); `character:update` z tym polem odpada `FORBIDDEN` **dla wszystkich, także MG** — jak `combatAwareness`.
 - **Guzik „Obrażenia" na karcie ataku** rysuje się z `attack.damageNotation !== undefined`, nigdy z „trafił albo obszar" — o tym, czy jest co rzucać, rozstrzyga serwer (`ammoDealsDamage`). Amunicja bez obrażeń z 16h dostawała guzik z pustą kością.
 - **Tożsamość broni na pasku to wiersz + dodatek** — `weaponOptionKey(rowId, attachmentId)` w `hotbar.ts`; kluczują na niej id slotu, id przeładowania, grupowanie panelu i `fireModeKey` u klienta. Katalog dodatków wchodzi opcjonalnie — bez niego pasek jest ten sprzed 01.09 (tura bota).
 - **Zdanie o tym, co się komuś stało** — nie nosi id z pliku danych; etykiety są parametrem obowiązkowym (`describeAmmoFailure`), nazwy ran daje `criticalInjuryNames` w `shared`.
@@ -722,6 +724,29 @@ nie zapisuje — grupa staje od razu.
 - **Jakość broni** — `quality` jedzie z **wpisu** kompendium, nie z typu; `poor` po Krytycznej Porażce zapala `CpredWeaponRow.jammed`, a usterkę zdejmuje **własna Akcja** (`weapon:clear-jam`), nie `weapon:reload`. Nie zacina się dodatek podwieszany, statysta ani porażka pominięta przez „Wyjście z opresji".
 
 ---
+
+**Ręce postaci: `drawnWeaponRowIds`, trzy stany i jedna decyzja MG (10.09, etap 41).**
+Pole jest **trójstanowe** i to jest cała jego treść: brak pola znaczy „nikt tej figury nigdy nie
+pytał", `[]` znaczy „puste ręce", lista znaczy „te bronie". Rozróżnienia pierwszego od drugiego
+nie da się ściągnąć do jednego, bo służą do czego innego. **Domysł pokazuje, deklaracja zabrania:**
+karta bez pola pokazuje w oględzinach i na pasku pierwszą broń z listy, ale `planCpredAttack`
+**nie odmawia jej niczego** — zakaz z domysłu byłby regułą, której nie ustalił nikt przy stole.
+Decyzja zapadła po zmierzeniu skutków wariantu twardego: egzekwowanie domysłu wywracało
+**39 testów serwera**, i to nie dlatego, że dane testowe były złe, tylko dlatego, że karta
+z pistoletem, karabinem i nożem mogłaby strzelać wyłącznie z pierwszego wiersza, dopóki ktoś
+ręcznie nie przełoży broni. Od pierwszego `weapon:draw` pole istnieje i odmowa jest pełna.
+
+**Ręce są dwie (`CPRED_HANDS`), a ile zajmuje broń, wie katalog.** Arytmetykę robi **serwer**
+w `weapon:draw` (`resolved.hands`), nie silnik zasad: kompendium należy do serwera, a planer
+dostaje fakty — ta sama umowa, co przy `ResolvedWeapon`. Pistolet i nóż mieszczą się naraz,
+karabin zajmuje obie ręce i wtedy `weapon:draw` odmawia `HANDS_FULL`. Odmowa mówi **co zrobić**,
+bo obie drogi są jednym kliknięciem i różnią się ceną: schowanie kosztuje Akcję (s. 168),
+upuszczenie nie kosztuje nic.
+
+**`WEAPON_NOT_DRAWN` sprawdza się na wierszu NOSICIELA**, dokładnie jak `WEAPON_JAMMED` obok:
+bagnet i granatnik podwieszany są częścią broni, którą figura trzyma, więc trzymanie karabinu jest
+trzymaniem obu. Zdanie odmowy (`CPRED_NOT_DRAWN_REFUSAL`) jest jedno na trzy usta — planer, slot
+paska (`option.notDrawn`) i wiersz karty — tą samą umową, co zacięcie.
 
 **O tym, czy karta ataku ma guzik „Obrażenia", rozstrzyga serwer — klient tylko go rysuje (04.09).**
 Serwer liczy `damages = (trafienie || obszar) && ammoDealsDamage(ammo)` i **nie wysyła
@@ -1399,6 +1424,10 @@ inaczej odziedziczy dokładnie ten sam potrzask.
 
 ## ekwipunek — Ekwipunek i przedmioty między kartami
 
+- **Co widać na cudzej figurze, składa `cpredSighting`** (`systems/cpred/sighting.ts`, moduł czysty) — dwie warstwy w **jednym kształcie**: rzut oka bez liczb, oględziny z liczbami. Nazwę typu broni podaje wołający, moduł nie chodzi do katalogu.
+- **Rzut oka jedzie `sighting:look`, nie na `TokenView`** — składa się go z kompendium, a synchronizacja sceny nie ma po co na to czekać. Warstwę szczegółową dowozi **karta czatu** rodzaju `sighting` po zdanym Teście; żądanie nie ma pola, którym dałoby się o nią poprosić.
+- **Widoczność figury rozstrzyga `concealedFrom`**, ta sama, którą mapa decyduje o rysowaniu żetonu — oględziny nie mają własnej definicji „widzę". Odmowa to `TOKEN_NOT_FOUND`, nie `FORBIDDEN`.
+- **Chrom widać rodziną, nie flagą wpisu** — `CPRED_VISIBLE_CYBERWARE_TYPES` (sześć z ośmiu); wiersz bez rodziny jest **niewidoczny**. Pancerz liczy się wyłącznie założony (`equipped !== false`), jak w etapie 15.
 - **Przedmiot z karty na kartę to `cpredMoveItems(from, to, refs)`** (`systems/cpred/inventory.ts`) — zwraca **obie** karty naraz; wiersz jedzie w całości (magazynek, dodatki, zużyte OB). Cyborgizacje nie jadą nigdzie.
 - **Przeniesiony pancerz przychodzi ZDJĘTY** (`equipped: false`) — jedyne pole, które przenoszenie zmienia po drodze; inaczej łup po cichu zmieniałby OB odbiorcy.
 - **Wyposażenie skleja się po `compendiumId`, nigdy po nazwie** (`stacksWith` — plus nazwa, uwagi, `consumable`, `upgrade`); dwa ręcznie wpisane „Notatnik" mogą być czymkolwiek.
@@ -1409,6 +1438,22 @@ inaczej odziedziczy dokładnie ten sam potrzask.
 - **Przedmiot zużywalny** — `CpredGearRow.consumable` + `qty` na wierszu ekwipunku, katalog w `systems/cpred/pharma.ts` (moduł **bez importów**). Nowy środek = wpis w `CPRED_PHARMACEUTICALS` + gałąź w `applyDose`.
 
 ---
+
+**Oględziny: dwie warstwy, jeden kształt (10.09, etap 41).** `cpredSighting` zwraca ten sam typ
+w obu warstwach, a różni je to, czy pola liczbowe są wypełnione. To jest decyzja, nie skrót:
+klient rysuje **jedną** listę, więc „hełm" i „hełm bojowy OB 7/11" nie mogą się rozjechać w dwa
+widoki trzymane potem w zgodzie. O tym, **czy** wolno pokazać warstwę szczegółową, rozstrzyga
+wołający, a wołających jest dokładnie dwóch: `sighting:look` (zawsze `false`) i zdany Test
+Percepcji w `character-rolls.ts` (`true`). Trzeciego być nie powinno.
+
+**Warstwa szczegółowa jedzie kartą czatu, nie odpowiedzią na zapytanie**, i to z dwóch powodów
+naraz. Pierwszy: rzut bywa jawny, a **treść** oględzin należy do postaci, która ją zdobyła —
+doklejona do wyniku pojechałaby całemu stołowi tą samą drogą, co liczba na kości. Drugi: karta
+zostaje, więc po przeładowaniu strony gracz nadal ma to, co wypatrzył, bez rzucania po raz drugi.
+Okno oględzin czyta ją z czatu po `targetTokenId` i przedkłada nad rzut oka.
+
+**Rany czyta się z żetonu, nie z oględzin** — jadą publicznie w `TokenView.injuries` od 31.08,
+a drugi dom dla jednego faktu byłby drugim miejscem do poprawienia.
 
 **Przedmiot przenosi się JEDNĄ czystą funkcją: `cpredMoveItems(from, to, refs)` (06.09, etap 38b).**
 `shared/src/systems/cpred/inventory.ts` bierze dwie karty i listę adresów wierszy, a zwraca

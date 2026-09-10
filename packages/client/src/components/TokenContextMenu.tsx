@@ -13,6 +13,7 @@ import {
   CPRED_STAT_MAX,
   CPRED_STAT_MIN,
   LIGHT_COLORS,
+  ROLE_GM,
   LIGHT_DEFAULT_COLOR,
   LIGHT_RADIUS_MAX_METRES,
   SKILL_LEVEL_MAX,
@@ -41,6 +42,8 @@ import {
 } from '../socket.js';
 import { useTokenStore } from '../stores/tokenStore.js';
 import { useChatStore } from '../stores/chatStore.js';
+import { useAuthStore } from '../stores/authStore.js';
+import { useSightingStore } from '../stores/sightingStore.js';
 import { askAboutFigureCard } from '../figure-cards.js';
 import { tokenErrorText } from '../mapErrors.js';
 import { useCharacterStore } from '../stores/characterStore.js';
@@ -784,6 +787,7 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
   const token = useTokenStore((s) => s.tokens[menu.tokenId]);
   const statuses = useTokenStore((s) => s.statuses);
   const combat = useCombatStore((s) => s.combat);
+  const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const [editing, setEditing] = useState(false);
   const [aiming, setAiming] = useState(false);
   const [staring, setStaring] = useState(false);
@@ -809,6 +813,41 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
 
   const left = Math.min(menu.x, window.innerWidth - MENU_WIDTH - 8);
   const top = Math.min(menu.y, window.innerHeight - 320);
+
+  function inspect() {
+    if (!token) return;
+    useSightingStore.getState().open(token.id);
+    onClose();
+  }
+
+  /*
+   * Etap 41: menu gracza to **jedna pozycja**, i celowo tylko jedna.
+   *
+   * Cała reszta tego menu jest warsztatem MG — ukrywanie figur, naklejki,
+   * kolejka walki, edycja żetonu — a atak i Konfrontację gracz ma z celownika
+   * i z paska akcji, gdzie płaci się za nie budżetem tury. Dokładanie ich tutaj
+   * dałoby drugie wejście do tego samego, tyle że z pominięciem paska.
+   */
+  if (!isGm) {
+    return (
+      <>
+        <div
+          className="context-menu-backdrop"
+          onClick={onClose}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            onClose();
+          }}
+        />
+        <div className="context-menu" style={{ left, top, width: MENU_WIDTH }}>
+          <p className="context-menu-title">{token.name}</p>
+          <button type="button" className="context-menu-item" onClick={inspect}>
+            🔍 Przyjrzyj się…
+          </button>
+        </div>
+      </>
+    );
+  }
 
   function toggleStatus(statusId: string) {
     if (!token) return;
@@ -901,6 +940,11 @@ export function TokenContextMenu({ menu, onClose }: { menu: TokenMenuState; onCl
             🎒 Przeszukaj…
           </button>
         )}
+        {/* Etap 41: to samo okno, które widzi gracz — MG zagląda w nie, żeby
+            sprawdzić, co druga strona jest w stanie o tej figurze zobaczyć. */}
+        <button type="button" className="context-menu-item" onClick={inspect}>
+          🔍 Przyjrzyj się…
+        </button>
         {/* Stage 16b: the map's own way into the attack. Before it, firing meant
             opening somebody's sheet — and an NPC without one could not fire. */}
         <button

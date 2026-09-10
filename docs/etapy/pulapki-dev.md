@@ -747,6 +747,7 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
 
 ## ogledziny — Oględziny w przeglądarce
 
+- **Kursor najechany automatem nie budzi `onAimHover` w Pixi** — celownik się uzbraja i linia strzału się rysuje, ale dymek pod kursorem nie wychodzi. Bliźniak pułapki o prawym kliku w kanwę: obie drogi kliknięte ręką MG działają, obie z automatyki milczą.
 - **Ścieżka z przycisku i ścieżka ze skrótu to dwie ścieżki** — Alt+klik przeszedł oględziny etapu 40, przycisk „Poproś MG” nie; usterka siedziała w tej drugiej. Przy dwóch wejściach sprawdzaj oba.
 - **Karta w tle dławi `setInterval` i `requestAnimationFrame` do ~1 Hz** — pomiar przytrzymania guzika w automatyce przeglądarki jest nieważny; rAF nie zwraca ani jednej klatki.
 - **Automatyka przeglądarki gubi modyfikator `alt` przy kliknięciu** — Alt+klik nie dochodzi do strony i wygląda jak niedziałająca funkcja. Obejście: `dispatchEvent(new MouseEvent('click', { bubbles: true, altKey: true }))`.

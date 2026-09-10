@@ -72,6 +72,7 @@ import {
   toChatMessageView,
 } from './chat-io.js';
 import { emitCheckCallUpdate, resolveAnsweredCall } from './checks.js';
+import { revealSighting } from './sighting.js';
 import { sanitizeGesture } from './chat.js';
 
 /**
@@ -1124,6 +1125,18 @@ export async function performCharacterRoll(
         total: result.total,
       };
       await emitCheckCallUpdate(deps, campaignId, call.messageId, call.entry);
+    }
+    // Etap 41: zdany Test Percepcji odsłania to, co widać na wskazanej figurze.
+    //
+    // Osobna karta, a nie dopisek do karty rzutu, i to jest rozstrzygnięcie:
+    // rzut bywa jawny („widzę, że mu się udało"), a **treść** oględzin należy do
+    // postaci, która ją zdobyła. Doklejona do wyniku pojechałaby całemu stołowi
+    // tą samą drogą, co liczba na kości.
+    //
+    // Warunek `call` nie jest ozdobą — próg ustala MG (decyzja z 10.09.2026),
+    // więc rzut bez wezwania nie ma czego zdać i nie ma prawa niczego odsłonić.
+    if (call && result.outcome?.success && typeof request.sightingTokenId === 'string') {
+      await revealSighting(deps, campaignId, user, request.sightingTokenId, rollSourceName(source));
     }
     // Somebody coming off the floor is the one green number the map draws
     // (stage 27i). It waits for the card exactly as an attack's does — the

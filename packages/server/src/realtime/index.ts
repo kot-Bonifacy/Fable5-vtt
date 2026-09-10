@@ -112,8 +112,10 @@ import {
   attackSmartEvent,
   weaponAttachmentEvent,
   weaponClearJamEvent,
+  weaponDrawEvent,
   weaponReloadEvent,
 } from './attacks.js';
+import { sightingLookEvent } from './sighting.js';
 import { rulerClearEvent, rulerUpdateEvent } from './ruler.js';
 import { mapPingEvent } from './ping.js';
 import { fogPaintEvent, fogResetEvent, fogUndoEvent, sceneVisibilityEvent } from './fog.js';
@@ -354,7 +356,9 @@ const EVENTS: RealtimeEvent<never, unknown>[] = [
   attackSmartEvent,
   weaponAttachmentEvent,
   weaponClearJamEvent,
+  weaponDrawEvent,
   weaponReloadEvent,
+  sightingLookEvent,
   rulerUpdateEvent,
   mapPingEvent,
   rulerClearEvent,
