@@ -260,6 +260,14 @@ body {
     var(--map-backdrop);
 }
 
+/* Pod mapą powitalną gracza (11.09) siatka stołu gaśnie. Mapa 40 × 30 nie
+   wypełnia okna do brzegu, a kratkowany margines wokół niej to dokładnie ta
+   „czysta siatka", której ten ekran ma nie pokazywać — pod mapą zostaje więc
+   sam ciemny stół. Scenie MG kratka zostaje: tam jest robocza, nie nastrojowa. */
+.map-area--welcome {
+  background: var(--map-backdrop);
+}
+
 .map-canvas-host {
   position: absolute;
   inset: 0;

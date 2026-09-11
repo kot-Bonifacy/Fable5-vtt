@@ -15,6 +15,7 @@ indeksu i pełny wpis pod spodem.
 
 ## mapa — Figury, narzędzia i obiekty sceny
 
+- **Tło powitalne gracza** — `map/welcome-map.ts` jedzie **wyłącznie** do `MapRenderer.setScene`; `sceneStore` dalej trzyma `null`, więc żadne narzędzie, żadne zdarzenie i żaden zapis go nie widzą. Nowa droga „pokaż coś bez sceny" idzie tędy, a nie przez atrapę w store.
 - **Klient nie zna `characterId` cudzej figury** — łup adresuje `fromTokenId`, listę źródeł buduje serwer (`inventory:sources`), a lista celów to same nazwy, jak `payees` z 23b.
 - **Dane przy naklejce żetonu** — `Token.statusData` trzyma `{ damage?, timer?, feared?, disabled? }`; `disabled` to **nazwy** cyborgizacji zdjętych Impulsem. Kasowanie jest wspólne (`writeSheetStatusTimer(…, null)`), więc każda ścieżka zdejmująca status musi je zawołać — „Cofnij" tego nie robiło.
 - **Leżąca figura** — `CONDITION_TILT_DEG` w `TokenNode.ts`, 35° dla `down` i `dead`; obraca się **wyłącznie** portret (`image`, `initial`), a kąt dobiera się w przeglądarce przy zoomie stołu, nie w edytorze.
@@ -45,6 +46,20 @@ indeksu i pełny wpis pod spodem.
 - **Kosz figur pyta zawsze, także na poligonie** — `Ctrl+Z` cofa scenerię, nie figury; dlatego `Delete` figur nie dotyka i jedyna droga to guzik z pytaniem niosącym liczbę.
 
 ---
+
+**Tło powitalne gracza jest obrazkiem, a nie sceną (11.09).** Gdy kampania nie ma aktywnej sceny,
+gracz dostaje mapę (`uploads/art/welcome-map.webp`, 40 × 30 kratek) zamiast czarnego pola
+z komunikatem — ale scena-atrapa z `map/welcome-map.ts` jedzie **wyłącznie** do
+`MapRenderer.setScene`, a `sceneStore.effectiveScene` zostaje `null`. To jest cała bezpieczna
+część pomysłu: wszystkie drogi, którymi coś wychodzi na sieć albo ląduje w bazie — stawianie
+figur, rysowanie, linijka wysyłana innym, ping, efekty walki, mgła — pytają `effectiveScene`
+i dostają `null`, więc odmawiają same z siebie, bez ani jednego nowego warunku. Dlatego tło nie
+potrzebuje wiersza w bazie, migracji ani jednej linii na serwerze, a MG nie może go skasować.
+Umowa na przyszłość: **cokolwiek ma się pokazać bez sceny, pokazuje się tą drogą** — atrapa
+wpuszczona do `sceneStore` znaczy narzędzia uzbrojone nad niczym i żądania z nieistniejącym
+`sceneId`. MG tła nie dostaje (`isGm` wyłącza sondę): jego „Brak sceny" to komunikat roboczy.
+Kratkę atrapa liczy z **wymiarów wczytanego pliku** (`szerokość / 40`), więc podmiana mapy
+40 × 30 nie wymaga kodu; nieobecność pliku (świeży klon, świeży VPS) to `null` i dawne zdanie.
 
 **Klient nie zna `characterId` cudzej figury i nie ma poznać (06.09).** `TokenView.characterId`
 jest częścią prywatną żetonu od etapu 05, więc `inventory:take` adresuje źródło **żetonem**

@@ -24,6 +24,7 @@ import {
   type SceneObjectRef,
   type SceneObjectShape,
   type ScenePoint,
+  type SceneView,
   type TokenView,
 } from '@vtt/shared';
 import {
@@ -34,6 +35,7 @@ import {
   type RenderGlow,
   type RulerLine,
 } from '../map/MapRenderer.js';
+import { loadWelcomeScene } from '../map/welcome-map.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { ensureStatusesLoaded, useTokenStore } from '../stores/tokenStore.js';
@@ -431,6 +433,13 @@ export function MapArea() {
   const [marchingTokenId, setMarchingTokenId] = useState<string | null>(null);
   /** Token under the crosshair and where the pointer is (stage 16f). */
   const [aimHover, setAimHover] = useState<AimHover | null>(null);
+  /**
+   * Mapa powitalna gracza w trzech stanach: `undefined` — sonda jeszcze
+   * w drodze, `null` — pliku nie ma, scena — jest co postawić. Trzy, a nie dwa,
+   * bo inaczej przez czas wczytywania obrazu mrugałby komunikat „Brak aktywnej
+   * sceny", czyli dokładnie to, co ta mapa ma z ekranu zdjąć.
+   */
+  const [welcome, setWelcome] = useState<SceneView | null | undefined>(undefined);
   const scene = useSceneStore((s) => s.effectiveScene);
   const placement = useMapToolStore((s) => s.tokenPlacement);
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
@@ -618,7 +627,13 @@ export function MapArea() {
       useSceneCardStore.getState().openCard({ kind: 'note', id: noteId });
     renderer.onDrawingCreate = (shape) => {
       const current = useSceneStore.getState().effectiveScene;
-      if (!current) return;
+      // Podgląd kreski żyje do odpowiedzi serwera — a gdy sceny nie ma, żadna
+      // odpowiedź nie przyjdzie i szkic zostałby na ekranie na zawsze. Skrótem
+      // `R` narzędzie da się uzbroić mimo wyłączonego guzika w pasku.
+      if (!current) {
+        renderer.clearDrawingPreview();
+        return;
+      }
       const tools = useMapToolStore.getState();
       const gmOnly = useAuthStore.getState().user?.role === ROLE_GM && tools.drawGmOnly;
       void createDrawing(current.id, shape, currentDrawingStyle(tools), gmOnly).then((ack) => {
@@ -798,15 +813,34 @@ export function MapArea() {
     });
   }, []);
 
+  // Mapa powitalna gracza (11.09): gdy MG nie aktywował niczego, gracz dostaje
+  // zwykłą mapę zamiast czarnego pola z komunikatem. Sonda rusza dopiero, gdy
+  // naprawdę nie ma czego pokazać — MG nie pyta o nią nigdy, bo swoją pustkę ma
+  // widzieć. Wynik siedzi w `welcome` i **nie wchodzi do `sceneStore`**:
+  // wszystko poza rendererem ma dalej wiedzieć, że sceny nie ma.
+  useEffect(() => {
+    if (isGm || scene) return;
+    let cancelled = false;
+    void loadWelcomeScene().then((backdrop) => {
+      if (!cancelled) setWelcome(backdrop);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isGm, scene]);
+
+  /** Co widzi renderer: scena serwera, a pod jej nieobecność tło powitalne. */
+  const displayScene = scene ?? (isGm ? null : (welcome ?? null));
+
   useEffect(() => {
     if (!ready) return;
-    rendererRef.current?.setScene(scene);
+    rendererRef.current?.setScene(displayScene);
     // A scene change wipes the token layer, and the store subscription below
     // may have already delivered this scene's tokens (state:sync fills the
     // stores before React runs this effect) — re-push, or the map stays empty
     // until the next token event.
     pushTokens();
-  }, [ready, scene, pushTokens]);
+  }, [ready, displayScene, pushTokens]);
 
   // Where a shot arriving over the socket ends up (stage 27i). Bound to the
   // scene id as well as to the renderer, so a batch that overtakes a scene
@@ -1736,13 +1770,16 @@ export function MapArea() {
   }, [isGm]);
 
   return (
-    <section className="map-area">
+    <section className={`map-area${!scene && displayScene ? ' map-area--welcome' : ''}`}>
       <div
         ref={hostRef}
         className={`map-canvas-host ${placement ? 'map-canvas-host--placing' : ''}`}
         onContextMenu={(e) => e.preventDefault()}
       />
-      {!scene && (
+      {/* Gracz pod mapą powitalną nie dostaje żadnego napisu (decyzja MG,
+          11.09) — to ma być świat, a nie komunikat. Zdanie wraca, gdy tła nie
+          ma czym zastąpić pustki: na świeżym klonie bez pliku w `uploads/`. */}
+      {!scene && (isGm || welcome === null) && (
         <div className="map-overlay">
           <p className="placeholder-text">
             {isGm

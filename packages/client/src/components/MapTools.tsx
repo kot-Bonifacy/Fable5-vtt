@@ -317,8 +317,16 @@ export function MapTools() {
       <button
         type="button"
         className={`map-tool${tool === 'draw' ? ' map-tool--active' : ''}`}
-        title="Rysowanie (R) — przeciągnij po mapie; ustawienia poniżej"
+        // Bez sceny nie ma na czym rysować — a od 11.09 gracz bez sceny **widzi
+        // mapę** (tło powitalne), więc kreska bez tej blokady wyglądałaby na
+        // zjedzoną przez program, nie na niemożliwą.
+        title={
+          sceneId
+            ? 'Rysowanie (R) — przeciągnij po mapie; ustawienia poniżej'
+            : 'Rysowanie — dopiero na aktywnej scenie'
+        }
         aria-pressed={tool === 'draw'}
+        disabled={!sceneId}
         onClick={() => toggleTool('draw')}
       >
         <IconPencil />

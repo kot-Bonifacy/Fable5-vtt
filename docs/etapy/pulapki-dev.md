@@ -12,6 +12,7 @@ Nową pułapkę dopisz do sekcji jej obszaru: wiersz na górę indeksu i pełny 
 
 ## mapa — Figury, narzędzia i obiekty sceny
 
+- **Pusta mapa nie jest pusta** — `.map-area` ma **siatkę wrysowaną w CSS** (48 px), a płótno Pixi jest przezroczyste (`backgroundAlpha: 0`). Kratka wokół mapy i pod nią bierze się stąd, nie z `drawGrid`, więc „ma nie być kratki" znaczy zdjąć tło `.map-area`.
 - **`TokenPatch` nie ma `x`/`y` — figurą rusza `token:move`, nie `token:update`**; sanityzacja milczy o nieznanych polach, więc żądanie z pozycją dostaje `{ ok: true }`, a figura stoi.
 - **Żetonu nie skasujesz `Delete` ani koszem** — przeciągnięcie na kosz go **przesuwa**; przy sprzątaniu po oględzinach najszybciej zatrzymać `pnpm dev` i usunąć wiersze SQL-em (razem z `LedgerEntry` kasowanej karty).
 - **Hit-test tokenu psują pełnoekranowe warstwy** — warstwy czysto malarskie muszą mieć `eventMode = 'none'`; objaw to `Viewport` zamiast `TokenNode` jako cel.
@@ -24,6 +25,16 @@ Nową pułapkę dopisz do sekcji jej obszaru: wiersz na górę indeksu i pełny 
 - **Gracz nie mógł kliknąć cudzej figury** (do 31.08) — nowa funkcja paska „dla gracza przy cudzej figurze" bywa nieosiągalna, choć dane jadą.
 
 ---
+
+- **Pusta mapa nie jest pusta: kratkę rysuje CSS, nie Pixi (11.09).** `.map-area` niesie w tle
+  dwa gradienty co 48 px (`--map-grid`), a płótno Pixi stoi na nim przezroczyste
+  (`backgroundAlpha: 0`). Wyszło przy mapie powitalnej gracza: mapa siadła na środku, a wokół
+  niej — i wszędzie tam, gdzie scena nie sięga krawędzi okna — dalej stała równiutka kratka,
+  czyli dokładnie to, czego ten ekran miał nie pokazywać. **Objaw jest mylący**: w `drawGrid`
+  wszystko się zgadza, bo tamta siatka rysuje się tylko po prostokącie sceny. Kto chce
+  „bez kratki", zdejmuje tło `.map-area` (klasa `.map-area--welcome`), a nie szuka błędu
+  w rendererze. Przy okazji: przy zoomie 1 kratka CSS (48 px) i kratka sceny (36,2 px) mają różny
+  rozmiar, i to jest najszybszy sposób, żeby rozpoznać, na którą się patrzy.
 
 - **`TokenPatch` nie ma `x`/`y` — figurą rusza `token:move`, nie `token:update`.** Test etapu 38b
   „odejście od ciała odcina łup" wysyłał `token:update` z `patch: { x, y }`; sanityzacja **milczy**
@@ -118,6 +129,7 @@ nietrafioną — sprawdzaj obie.
 
 ## serwer — Baza, protokół gniazda, pliki
 
+- **Plik na stałe w `uploads/` znika po godzinie** — zbieracz sierot zamiata `maps`, `portraits`, `tokens` i `handouts`, kasując wszystko, czego nie wymienia żaden wiersz bazy. Asset bez wiersza (np. mapa powitalna) musi leżeć **poza tą czwórką** — stąd `uploads/art/`.
 - **`socket.data.viewedSceneId` to scena WIDZA, nie celu** — okno karty jej nie zmienia, więc runda dla efektu czyta się ze sceny **żetonu celu** (`effectClockForCharacter`). Inaczej efekt nałożony w walce nie ma terminu rundowego.
 - **Trzy zapisy karty z jednego odczytanego wiersza zostawiają tylko ostatni** — każdy scala z tym, co przeczytał. Nerwosol (3 Cechy) musi czytać kartę **przed każdym** zapisem.
 - **`file:./dev.db` liczy się od katalogu roboczego** — w repo są DWA `dev.db`: żywy w `packages/server/` i pusty artefakt migracji w `packages/server/prisma/`. Skrypt sięgający po drugi zrobi kopię pustej bazy i nikt tego nie zauważy.
@@ -133,6 +145,16 @@ nietrafioną — sprawdzaj obie.
 - **Skasowanie kolumny to cztery miejsca, nie jedno** — kod czytający, eksport/import (`archive.ts` wypisuje kolumny z nazwy), kopie zapasowe i migracja SQL. Kompendium mieszka w plikach, nie w bazie, więc SQL nie rozwiąże „broń → Umiejętność".
 
 ---
+
+- **Plik położony w `uploads/` „na stałe" ginie godzinę po wgraniu (11.09).** `uploads-gc.ts`
+  zamiata cztery katalogi — `maps`, `portraits`, `tokens`, `handouts` — i kasuje z nich każdy
+  plik starszy niż okno łaski, którego **nie wymienia żaden wiersz bazy**. Dotąd czytało się to
+  jako „nowa kolumna z adresem musi trafić na listę"; drugi przypadek jest gorszy, bo kolumny
+  w ogóle nie ma: asset wpisany na sztywno w kod klienta (mapa powitalna gracza) nie ma po stronie
+  bazy **niczego**, czym mógłby się wylegitymować. W `uploads/maps/` zniknąłby przy pierwszym
+  starcie serwera po godzinie i wyglądałoby to na zepsutą funkcję albo skasowany plik.
+  Rozwiązanie: katalog spoza zamiatanej czwórki (`uploads/art/`), bo zbieracz nie rusza niczego
+  poza nią.
 
 - **`socket.data.viewedSceneId` to scena WIDZA, nie scena celu — i przy MG prawie zawsze kłamie
   o rundzie.** Nakładając efekt czasowy z okna karty (etap 39), pierwsza wersja czytała rundę

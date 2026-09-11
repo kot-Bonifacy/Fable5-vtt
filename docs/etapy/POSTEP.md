@@ -183,9 +183,9 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  |   27 |       9 |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  |   28 |      10 |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     |    3 |       3 |
-| `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    |    6 |      13 |
+| `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    |    6 |      14 |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście   |    8 |       7 |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  |   13 |       1 |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       |    7 |       4 |
@@ -205,6 +205,63 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 11.09 (druga) — mapa zamiast pustego stołu
+
+**Zlecenie MG:** dodać podaną mapę (`IndustrialAreaGate-40x30.png`) jako **mapę startową dla
+wszystkich graczy**, „aby nigdy nie widzieli czystej siatki, co mogłoby niszczyć imersję",
+w skali **40 × 30** — z zastrzeżeniem, że **MG takiej mapy nie potrzebuje**, a rzecz ma służyć
+wyłącznie jako **rezerwowa**, gdyby MG zapomniał scenę ustawić. Z prośbą o pytania uzupełniające
+i zgłaszanie potencjalnych błędów.
+
+**Cztery pytania przed kodem.** MG wybrał: mapa jest **darmowa, do użytku prywatnego** (więc
+plik **poza repo**), tło pokazuje się **tylko przy braku aktywnej sceny** (nie przy scenie bez
+mapy), jest **tłem powitalnym gracza**, a nie sceną w bazie, i **nie niesie żadnego napisu** —
+sam obraz.
+
+**Całe rozwiązanie mieści się w tym, czego atrapa NIE dotyka.** `map/welcome-map.ts` buduje
+`SceneView`, który jedzie **wyłącznie** do `MapRenderer.setScene`; `sceneStore` dalej trzyma
+`null`. Dzięki temu stawianie figur, rysowanie, linijka dla innych, ping, efekty i mgła odmawiają
+**same z siebie** (wszystkie pytają `effectiveScene`), tło nie potrzebuje wiersza w bazie,
+migracji ani jednej linii na serwerze, a MG nie może go skasować. Umowa w `mapa`.
+
+**Plik leży w `uploads/art/`, i to nie jest kaprys.** Zbieracz sierot zamiata `maps`, `portraits`,
+`tokens` i `handouts`, kasując wszystko, czego nie wymienia wiersz bazy — mapa powitalna nie ma
+w bazie **niczego**, więc w `uploads/maps/` zniknęłaby po godzinie przy starcie serwera. Pułapka
+w `serwer`. **Brak pliku nie jest awarią**: sonda `loadWelcomeScene` oddaje `null` i wraca dawne
+zdanie „Brak aktywnej sceny" (sprawdzone przez schowanie pliku). **Przy etapie 28 plik trzeba
+skopiować na VPS** — dopisane do listy zakresu tamtego etapu.
+
+**Format: WebP q90, 2473 kB → 274 kB.** Q95 kosztuje 206 kB więcej i różni się od q90 w szumie
+(kanałów odchylonych o >10: 0,96 % vs 0,77 %); maksimum 75/255 to **jeden punkt** mapy —
+żółto-czarna taśma przy szlabanie. Tabela pomiarów w `docs/assety-mapy.md`.
+
+**Siatka liczy się z pliku (`szerokość / 40`), nie z kodu** — inaczej niż przy plakacie
+logowania, gdzie wpisane na sztywno współrzędne skończyły się umową „zmiana pliku wymaga
+przemierzenia liczb od nowa". Podmiana mapy 40 × 30 nie wymaga tu ani jednej linii.
+
+**Oględziny znalazły rzecz, której w kodzie nie widać: kratkę rysuje CSS, nie Pixi.** `.map-area`
+ma w tle raster 48 px, a płótno Pixi jest przezroczyste — więc mapa siadła na środku, a wokół
+niej dalej stała równiutka siatka, czyli dokładnie to, czego ten ekran miał nie pokazywać.
+Naprawione klasą `.map-area--welcome` (pod tłem powitalnym zostaje sam ciemny stół); pułapka
+w `mapa`. **Druga rzecz z oględzin:** gracz ma na pasku ołówek, a bez sceny rysunek nie ma dokąd
+pójść — do 11.09 podgląd kreski zostawał wtedy na ekranie na zawsze. Guzik jest teraz wyłączony
+ze zdaniem „dopiero na aktywnej scenie", a `onDrawingCreate` czyści podgląd (skrótem `R` da się
+narzędzie uzbroić mimo wyłączonego guzika).
+
+**Oględziny: zrobione, bez długu.** Dwie sesje naraz (MG `localhost`, `Tester` na `[::1]`),
+scena wyłączona SQL-em i **przywrócona guzikiem „Aktywuj" w UI MG** — czyli przy okazji sprawdzone
+przejście tło → scena u gracza (natychmiastowe). Obejrzane: tło z siatką 40 × 30 na oknie
+3072 × 1559 i 1400 × 900, brak napisu u gracza, **dawne zdanie u MG bez zmian**, degradacja bez
+pliku, wyłączony ołówek. Poligon wrócił do stanu sprzed sesji (Strzelnica aktywna, 7 żetonów).
+
+**Zgłoszone MG: to nie zdejmuje z ekranu całej „czystej siatki".** Sceny poligonu — w tym aktywna
+„Strzelnica" — **nie mają tła**, więc gracz widzi tam gołą kratkę mimo tej zmiany; tło powitalne
+z wyboru MG łata wyłącznie stan „nie ma aktywnej sceny".
+
+**Testy:** **118** u klienta (114 + 4 nowe w `welcome-map.test.ts`), w `shared` i na serwerze
+bez zmian — ta sesja nie tknęła ani jednego, ani drugiego. ESLint i Prettier czyste,
+`tsc --noEmit` u klienta czysty. Jedna umowa w `mapa`, pułapki: jedna w `mapa`, jedna w `serwer`.
 
 ### Sesja 11.09 — plakat na ekranie wejścia
 
@@ -258,57 +315,3 @@ licz się z tym, że menedżer haseł potrafi domknąć sprawę za ciebie.
 
 **Testy:** bez zmian — **1967** w `shared`, **1085** na serwerze, **114** u klienta, zielone.
 ESLint i Prettier czyste; `tsc -b` u klienta czysty. Jedna umowa w `ui`, dwie pułapki w `ui`.
-
-### Sesja 10.09 (druga) — pięć Akcji katalogu przeklikanych w pasku gracza
-
-**Zlecenie MG:** „zaprojektuj testy a następnie przeklikaj przyciski (aby przetestować funkcje
-z nimi związane) w UI gracza takie jak: ustabilizowanie, pochwycenie, wstrzymanie akcji, wstanie
-i bieg", z prośbą o pytania uzupełniające i o zgłaszanie potencjalnych błędów. Cztery pytania
-padły przed pierwszym klikiem; MG wybrał: **plan + oględziny + łatanie luk**, nośnik **Tony**
-z dosypanymi Umiejętnościami (Bijatyka 4, Pierwsza pomoc 4), **oba wejścia** (pasek HUD mapy
-**i** zakładka „Walka") i **przywrócenie całego poligonu** po sesji. Po projekcie testów MG
-przerwał sesję na `/compact`; po raporcie z oględzin zdecydował: **błędy idą do zaległości,
-naprawa w osobnej sesji**. Kodu produkcyjnego ta sesja **nie tknęła**.
-
-**Przeklikane: 32 przypadki na żywej walce** („Strzelnica", kolejka z pięciu uczestników, MG na
-`localhost:5173`, Tony na `[::1]:5173`). Wszystkie pięć Akcji zachowuje się zgodnie z RAW:
-
-- **Wstanie** — slot zostaje aktywny mimo blokady ruchu (wtedy `Bieg` mówi „Powalony token musi
-  najpierw wstać"), naklejka znika **bez przeładowania**, Akcja schodzi, po Wstaniu figura
-  znowu chodzi (przeszła 4 m).
-- **Bieg** — wyszarzenie z powodem, po Akcji Ruchu odblokowanie, klik daje **Ruch 1 z 2**
-  i **10 m / 24 m**; Tony przeszedł w jednej turze **20 m**, czyli dalej, niż sięgał pierwszy pas.
-  Bursztynowy drugi pas widać na trasie **zanim** guzik stanie się klikalny — świadome
-  (`cpredRunMetres` nie pyta o `requiresSpentMove`), ale z pozycji gracza czyta się jak
-  „mapa obiecuje, przycisk odmawia".
-- **Wstrzymanie Akcji** — pusty formularz nie wysyła nic, rezerwacja **nie zdejmuje** Akcji,
-  „Odpal" MG oddaje turę z **niezregenerowanym** budżetem (Ruch 1/1 i 12 m/12 m zostają),
-  a deklaracja „przy 12" **odpaliła się sama** i przestawiła Tony'ego w kolejce z 20 na 12.
-- **Ustabilizowanie** — odmowa zasięgu nic nie kosztuje, kubek to TECH + Pierwsza pomoc,
-  **PT liczy serwer** (PT 15 przy PW 0, PT 10 przy 35/40 — klient tych PW w ogóle nie ma),
-  sukces daje 1 PW + Nieprzytomny na 60 s + zamianę naklejki, porażka zjada Akcję i nie zmienia
-  nic, porzucony kubek (Esc) nie kosztuje nic.
-- **Pochwycenie** — „PT 10 (ZW + Bijatyka celu)", po wygranej oba wiersze kolejki mówią kto kogo,
-  panel zmienia twarz na Duszenie / Rzut / Ludzka tarcza / Uwolnij, Trzymany traci Akcję Ruchu
-  („Pochwycony token nie może wykonać własnej Akcji Ruchu"), następny rzut niesie **„Trzymanie −2"**,
-  „Uwolnij" jest darmowe. Remis sprawdzony w kodzie, nie kostką: `attackerTotal > defenderTotal`.
-
-**Dwa błędy — oba w `zaleglosci.md` (10.09), oba otwarte:** (1) gracz widzi **„BEZ RAN" przy każdej
-cudzej figurze**, bo `StabilizePicker` czyta `hp`, które `tokenStore` graczowi kasuje — lista do
-wyboru konającego mówi, że nikt nie jest ranny; (2) **zakładka „Walka" i pasek mapy nie zgadzają
-się co do wyszarzeń** — `CombatActions.tsx` pyta wyłącznie o „Akcja zużyta", więc `Bieg` bywa tam
-klikalny wbrew regule, a formularze zostają żywe po zużytej Akcji. Zasady są bezpieczne (serwer
-odmawia w obu przypadkach), psuje się obietnica interfejsu — to pułapka „dwa wejścia" z 06.09.
-
-**Trzy rzeczy do wiadomości:** ujemne `hpCurrent` wpisane wprost do bazy jest po cichu zamieniane
-na PW domyślnej karty (poligon przygotowuje się przez **0**); odmowy Akcji lądują w kategorii
-czatu „Stół", którą łatwo mieć wyłączoną, i wtedy klik wygląda na przycisk bez działania;
-„Rudy Kwiatkowski" ma **dwa żetony na jednej karcie**, a zasięg liczy się od tego z kolejki.
-Wszystkie trzy jako pułapki w indeksach niżej.
-
-**Poligon przywrócony z kopii bajtowej sprzed sesji** (`dev.db` przy zatrzymanych serwerach):
-Umiejętności Tony'ego, PW i naklejki Rudego, pozycje żetonów, walka, inicjatywy i statusy wracają
-do stanu sprzed pierwszego kliknięcia.
-
-**Testy:** bez zmian — **1967** w `shared`, **1085** na serwerze, **114** u klienta. Ta sesja
-zmieniła wyłącznie dokumentację; jedna pułapka w `karta` i trzy w `ogledziny` w indeksach niżej.

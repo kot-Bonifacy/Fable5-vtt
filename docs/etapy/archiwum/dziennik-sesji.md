@@ -8,6 +8,61 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
 
+### Sesja 10.09 (druga) — pięć Akcji katalogu przeklikanych w pasku gracza
+
+**Zlecenie MG:** „zaprojektuj testy a następnie przeklikaj przyciski (aby przetestować funkcje
+z nimi związane) w UI gracza takie jak: ustabilizowanie, pochwycenie, wstrzymanie akcji, wstanie
+i bieg", z prośbą o pytania uzupełniające i o zgłaszanie potencjalnych błędów. Cztery pytania
+padły przed pierwszym klikiem; MG wybrał: **plan + oględziny + łatanie luk**, nośnik **Tony**
+z dosypanymi Umiejętnościami (Bijatyka 4, Pierwsza pomoc 4), **oba wejścia** (pasek HUD mapy
+**i** zakładka „Walka") i **przywrócenie całego poligonu** po sesji. Po projekcie testów MG
+przerwał sesję na `/compact`; po raporcie z oględzin zdecydował: **błędy idą do zaległości,
+naprawa w osobnej sesji**. Kodu produkcyjnego ta sesja **nie tknęła**.
+
+**Przeklikane: 32 przypadki na żywej walce** („Strzelnica", kolejka z pięciu uczestników, MG na
+`localhost:5173`, Tony na `[::1]:5173`). Wszystkie pięć Akcji zachowuje się zgodnie z RAW:
+
+- **Wstanie** — slot zostaje aktywny mimo blokady ruchu (wtedy `Bieg` mówi „Powalony token musi
+  najpierw wstać"), naklejka znika **bez przeładowania**, Akcja schodzi, po Wstaniu figura
+  znowu chodzi (przeszła 4 m).
+- **Bieg** — wyszarzenie z powodem, po Akcji Ruchu odblokowanie, klik daje **Ruch 1 z 2**
+  i **10 m / 24 m**; Tony przeszedł w jednej turze **20 m**, czyli dalej, niż sięgał pierwszy pas.
+  Bursztynowy drugi pas widać na trasie **zanim** guzik stanie się klikalny — świadome
+  (`cpredRunMetres` nie pyta o `requiresSpentMove`), ale z pozycji gracza czyta się jak
+  „mapa obiecuje, przycisk odmawia".
+- **Wstrzymanie Akcji** — pusty formularz nie wysyła nic, rezerwacja **nie zdejmuje** Akcji,
+  „Odpal" MG oddaje turę z **niezregenerowanym** budżetem (Ruch 1/1 i 12 m/12 m zostają),
+  a deklaracja „przy 12" **odpaliła się sama** i przestawiła Tony'ego w kolejce z 20 na 12.
+- **Ustabilizowanie** — odmowa zasięgu nic nie kosztuje, kubek to TECH + Pierwsza pomoc,
+  **PT liczy serwer** (PT 15 przy PW 0, PT 10 przy 35/40 — klient tych PW w ogóle nie ma),
+  sukces daje 1 PW + Nieprzytomny na 60 s + zamianę naklejki, porażka zjada Akcję i nie zmienia
+  nic, porzucony kubek (Esc) nie kosztuje nic.
+- **Pochwycenie** — „PT 10 (ZW + Bijatyka celu)", po wygranej oba wiersze kolejki mówią kto kogo,
+  panel zmienia twarz na Duszenie / Rzut / Ludzka tarcza / Uwolnij, Trzymany traci Akcję Ruchu
+  („Pochwycony token nie może wykonać własnej Akcji Ruchu"), następny rzut niesie **„Trzymanie −2"**,
+  „Uwolnij" jest darmowe. Remis sprawdzony w kodzie, nie kostką: `attackerTotal > defenderTotal`.
+
+**Dwa błędy — oba w `zaleglosci.md` (10.09), oba otwarte:** (1) gracz widzi **„BEZ RAN" przy każdej
+cudzej figurze**, bo `StabilizePicker` czyta `hp`, które `tokenStore` graczowi kasuje — lista do
+wyboru konającego mówi, że nikt nie jest ranny; (2) **zakładka „Walka" i pasek mapy nie zgadzają
+się co do wyszarzeń** — `CombatActions.tsx` pyta wyłącznie o „Akcja zużyta", więc `Bieg` bywa tam
+klikalny wbrew regule, a formularze zostają żywe po zużytej Akcji. Zasady są bezpieczne (serwer
+odmawia w obu przypadkach), psuje się obietnica interfejsu — to pułapka „dwa wejścia" z 06.09.
+
+**Trzy rzeczy do wiadomości:** ujemne `hpCurrent` wpisane wprost do bazy jest po cichu zamieniane
+na PW domyślnej karty (poligon przygotowuje się przez **0**); odmowy Akcji lądują w kategorii
+czatu „Stół", którą łatwo mieć wyłączoną, i wtedy klik wygląda na przycisk bez działania;
+„Rudy Kwiatkowski" ma **dwa żetony na jednej karcie**, a zasięg liczy się od tego z kolejki.
+Wszystkie trzy jako pułapki w indeksach niżej.
+
+**Poligon przywrócony z kopii bajtowej sprzed sesji** (`dev.db` przy zatrzymanych serwerach):
+Umiejętności Tony'ego, PW i naklejki Rudego, pozycje żetonów, walka, inicjatywy i statusy wracają
+do stanu sprzed pierwszego kliknięcia.
+
+**Testy:** bez zmian — **1967** w `shared`, **1085** na serwerze, **114** u klienta. Ta sesja
+zmieniła wyłącznie dokumentację; jedna pułapka w `karta` i trzy w `ogledziny` w indeksach niżej.
+
+
 ### Sesja 10.09 — oględziny wyposażenia figury (etap 41)
 
 **Zlecenie MG:** „dodaj możliwość skanowania założonego/używanego wyposażenia przez inne tokeny

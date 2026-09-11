@@ -30,6 +30,55 @@ Notatki z etapu 04. Gdzie brać grafiki map, czego pilnować licencyjnie i jak g
 - Zawartość: aleja N–S (20 m) × przecznica E–W (12 m), zaokrąglone krawężniki, przejścia dla pieszych, sygnalizacja, wysepka rozdzielająca, cztery narożniki zabudowy (dach z lądowiskiem, kamienice z zaułkami 2 m, parking, plac budowy, stragany), auta przy krawężniku i w ruchu, neony z poświatą, kałuże. Wszystkie krawędzie ulic i budynków leżą na wielokrotnościach 100 px, więc siatka pasuje przy offsecie 0.
 - W rogach są cztery małe kropki kalibracyjne (cyan / limonka / bursztyn / magenta) — pozwalają na pierwszy rzut oka potwierdzić, że wczytało się pełne 4096 px.
 
+## Mapa powitalna gracza — `uploads/art/welcome-map.webp` (poza repo)
+
+Tło, które widzi gracz, gdy kampania **nie ma aktywnej sceny** (zlecenie MG, 11.09.2026). Do tej
+pory ten stan wyglądał jak czarne pole ze zdaniem „Brak aktywnej sceny — MG musi ją aktywować";
+od 11.09 stoi tam zwykła mapa — brama strefy przemysłowej, 40 × 30 kratek. MG tego tła **nie
+dostaje**: jego „Brak sceny — utwórz i aktywuj ją" to komunikat roboczy, a nie wyrwa w immersji.
+
+- **Plik leży poza repozytorium i tak ma zostać.** Źródło: darmowa mapa do użytku prywatnego
+  (nie jest to praca własna MG, inaczej niż `night-city-crossroads-2508.webp` i plakat
+  logowania), więc obowiązuje zasada z góry tego pliku: użytek przy stole to co innego niż
+  publikacja w publicznym repo. Katalog `uploads/` jest w `.gitignore`.
+- **Ścieżka jest umową**: `uploads/art/welcome-map.webp`, adres `/uploads/art/welcome-map.webp`.
+  Stała siedzi w `packages/client/src/map/welcome-map.ts`.
+- **Dlaczego `art/`, a nie `maps/`.** Zbieracz sierot (`uploads-gc.ts`) sprząta **cztery**
+  katalogi — `maps`, `portraits`, `tokens`, `handouts` — i kasuje z nich każdy plik, którego nie
+  wymienia żaden wiersz bazy, godzinę po wgraniu. Mapy powitalnej nie wymienia nic (to nie jest
+  scena), więc w `uploads/maps/` **zniknęłaby po godzinie** przy pierwszym starcie serwera.
+  Katalog `art/` nie jest zamiatany.
+- **Brak pliku nie jest awarią.** Klient sonduje obraz przed pokazaniem (`loadWelcomeScene`);
+  gdy pliku nie ma — a nie ma go na świeżym klonie repozytorium — wraca dawne zdanie o braku
+  sceny. **Przy wdrożeniu na VPS (etap 28) plik trzeba skopiować ręcznie**, razem z resztą
+  `uploads/`; bez tego kroku funkcja po prostu nie istnieje i nikt tego nie zauważy.
+- **Siatka liczy się z pliku, nie z kodu**: `szerokość / 40` i `wysokość / 30`. Podmiana mapy na
+  inną **40 × 30** nie wymaga więc ani jednej linii kodu; przy innej skali trzeba poprawić
+  `WELCOME_MAP_COLUMNS` / `WELCOME_MAP_ROWS`. Dla pliku z 11.09 (1448 × 1086 px) kratka wypada
+  36,2 px, czyli 2 m po skali CP RED.
+
+### Format: WebP q90
+
+Źródło `IndustrialAreaGate-40x30.png`, 1448 × 1086 px, 2473 kB. W `uploads/` leży **WebP q90**,
+274 kB — 9× mniej, przy odchyłce niewidocznej na mapie oglądanej w całości. Pomiary względem
+oryginału (4,7 mln kanałów):
+
+| wariant         |    rozmiar |    max |  średnia | kanałów > 10 |        PSNR |
+| --------------- | ---------: | -----: | -------: | -----------: | ----------: |
+| WebP bezstratny |    1742 kB |      0 |        0 |          0 % |           — |
+| WebP q95        |     480 kB |     73 |      1,5 |       0,77 % |     40,4 dB |
+| **WebP q90**    | **274 kB** | **75** | **2,05** |   **0,96 %** | **38,6 dB** |
+| WebP q85        |     193 kB |     78 |     2,41 |        1,2 % |     37,4 dB |
+
+Maksimum 73–78 nawet przy q95 to **jeden punkt** na całej mapie (żółto-czarna taśma przy szlabanie,
+piksel 691 × 473) — kanałów odchylonych o więcej niż 50 jest 0,0008 %. Między q95 a q90 różnica
+jest w szumie, więc bierzemy q90; gdyby kiedyś mapa miała być tłem do gry, a nie do patrzenia,
+wróć do q95. Konwersja:
+
+```
+uv run --with pillow python -c "from PIL import Image; Image.open('mapa.png').convert('RGB').save('welcome-map.webp','WEBP',quality=90,method=6)"
+```
+
 ## Darmowe mapy z sieci (sprawdzone źródła)
 
 | Źródło                                                                                                          | Co jest                                                         | Licencja / uwagi                                           |
