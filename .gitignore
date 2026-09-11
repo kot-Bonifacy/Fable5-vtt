@@ -42,3 +42,8 @@ Thumbs.db
 .idea/
 .vscode/
 !.vscode/extensions.json
+
+# Przegląd ikon (tools/icon-review) — strona jest w całości pochodną plików SVG
+# z repozytorium, waży ćwierć megabajta i odtwarza się jednym `python build.py`.
+# W repo zostaje generator, nie jego wydruk.
+tools/icon-review/przeglad-ikon.html
