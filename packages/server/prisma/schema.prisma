@@ -610,6 +610,18 @@ model Scene {
    */
   explore Boolean @default(true)
 
+  /**
+   * Where the party starts looking on this map (11.09.2026) — the point the GM
+   * marks with the map tool, in scene pixels.
+   *
+   * Null means „not marked", not „none": a player with no figure here opens the
+   * map at the middle of its bottom edge, because that is where a party walks
+   * in from. Two nullable columns rather than one JSON pair, because a camera
+   * target is read on every entry and written once in a while.
+   */
+  spawnX Float?
+  spawnY Float?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

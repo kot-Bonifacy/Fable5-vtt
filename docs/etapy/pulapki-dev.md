@@ -12,6 +12,7 @@ Nową pułapkę dopisz do sekcji jej obszaru: wiersz na górę indeksu i pełny 
 
 ## mapa — Figury, narzędzia i obiekty sceny
 
+- **`clampZoom` z pixi-viewport czyta ALBO `minWidth`/`maxWidth`, ALBO `minScale`/`maxScale`** — pierwsza para wygrywa i drugiej wtyczka już nie patrzy. „Nie oddalaj się poniżej pokrycia mapy" trzeba więc policzyć samemu i podać jako **skalę**; podanie obu par po cichu wyłącza jedną z nich.
 - **Pusta mapa nie jest pusta** — `.map-area` ma **siatkę wrysowaną w CSS** (48 px), a płótno Pixi jest przezroczyste (`backgroundAlpha: 0`). Kratka wokół mapy i pod nią bierze się stąd, nie z `drawGrid`, więc „ma nie być kratki" znaczy zdjąć tło `.map-area`.
 - **`TokenPatch` nie ma `x`/`y` — figurą rusza `token:move`, nie `token:update`**; sanityzacja milczy o nieznanych polach, więc żądanie z pozycją dostaje `{ ok: true }`, a figura stoi.
 - **Żetonu nie skasujesz `Delete` ani koszem** — przeciągnięcie na kosz go **przesuwa**; przy sprzątaniu po oględzinach najszybciej zatrzymać `pnpm dev` i usunąć wiersze SQL-em (razem z `LedgerEntry` kasowanej karty).
@@ -25,6 +26,15 @@ Nową pułapkę dopisz do sekcji jej obszaru: wiersz na górę indeksu i pełny 
 - **Gracz nie mógł kliknąć cudzej figury** (do 31.08) — nowa funkcja paska „dla gracza przy cudzej figurze" bywa nieosiągalna, choć dane jadą.
 
 ---
+
+- **`clampZoom` z pixi-viewport ma dwie pary opcji i bierze tylko jedną (11.09).** W środku stoi
+  `if (minWidth || minHeight || maxWidth || maxHeight) { … } else if (minScale || maxScale) { … }`
+  — więc `clampZoom({ minScale, maxScale, maxWidth })` **nie zadziała tak, jak wygląda**: para
+  „width/height" wygra, a granice skali zostaną zignorowane bez słowa. Przy zamykaniu kamery
+  gracza w granicach mapy (11.09) potrzebna była dolna granica zbliżenia zależna od kształtu okna,
+  więc `coverZoom` liczy się w `camera.ts` i jedzie jako `minScale`. Druga połowa tej samej
+  pułapki: **`clamp` i `clampZoom` trzeba przyłożyć ponownie po każdej zmianie rozmiaru płótna**,
+  bo granica „ekran mieści się w mapie" zależy od proporcji ekranu, a nie tylko od mapy.
 
 - **Pusta mapa nie jest pusta: kratkę rysuje CSS, nie Pixi (11.09).** `.map-area` niesie w tle
   dwa gradienty co 48 px (`--map-grid`), a płótno Pixi stoi na nim przezroczyste

@@ -43,6 +43,7 @@ import {
   resetFog,
   toggleTokenLight,
   undoFog,
+  updateScene,
 } from '../socket.js';
 import {
   IconBrush,
@@ -61,6 +62,7 @@ import {
   IconRoomLight,
   IconLine,
   IconPencil,
+  IconFlag,
   IconPin,
   IconRangeRings,
   IconRect,
@@ -162,6 +164,7 @@ export function MapTools() {
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const myUserId = useAuthStore((s) => s.user?.id ?? null);
   const sceneId = useSceneStore((s) => s.effectiveScene?.id ?? null);
+  const spawn = useSceneStore((s) => s.effectiveScene?.spawn ?? null);
   const fogEnabled = useFogStore((s) => s.fog?.enabled ?? false);
   const overrideCount = useFogStore((s) => s.fog?.overrides.length ?? 0);
   const hasShapes = useFogStore(
@@ -195,19 +198,21 @@ export function MapTools() {
       ? 'Klikaj narożniki — Enter kończy ścianę. Klik w środek istniejącej zaznacza ją, dwuklik otwiera kartę'
       : tool === 'light' && isGm
         ? 'Kliknij mapę, by postawić światło; klik w istniejące zaznacza, dwuklik otwiera kartę'
-        : tool === 'note' && isGm
-          ? 'Kliknij mapę, by wbić pinezkę; klik w istniejącą zaznacza, dwuklik otwiera kartę'
-          : tool === 'netpoint' && isGm
-            ? 'Kliknij mapę, by postawić gniazdo; klik w istniejące zaznacza, dwuklik otwiera kartę'
-            : tool === 'cover' && isGm
-              ? 'Przeciągnij prostokąt, by postawić osłonę; klik w istniejącą zaznacza, dwuklik otwiera kartę'
-              : tool === 'zone' && isGm
-                ? 'Przeciągnij prostokąt bronionego obszaru; klik w istniejący zaznacza, dwuklik otwiera kartę'
-                : tool === 'draw'
-                  ? drawTool === 'text'
-                    ? 'Kliknij mapę, by postawić podpis; klik w istniejący rysunek zaznacza, dwuklik otwiera kartę'
-                    : 'Przeciągnij, by rysować; klik w istniejący rysunek zaznacza go'
-                  : null;
+        : tool === 'spawn' && isGm
+          ? 'Kliknij mapę, by wyznaczyć miejsce startu drużyny — gracz bez figury zaczyna tu patrzeć'
+          : tool === 'note' && isGm
+            ? 'Kliknij mapę, by wbić pinezkę; klik w istniejącą zaznacza, dwuklik otwiera kartę'
+            : tool === 'netpoint' && isGm
+              ? 'Kliknij mapę, by postawić gniazdo; klik w istniejące zaznacza, dwuklik otwiera kartę'
+              : tool === 'cover' && isGm
+                ? 'Przeciągnij prostokąt, by postawić osłonę; klik w istniejącą zaznacza, dwuklik otwiera kartę'
+                : tool === 'zone' && isGm
+                  ? 'Przeciągnij prostokąt bronionego obszaru; klik w istniejący zaznacza, dwuklik otwiera kartę'
+                  : tool === 'draw'
+                    ? drawTool === 'text'
+                      ? 'Kliknij mapę, by postawić podpis; klik w istniejący rysunek zaznacza, dwuklik otwiera kartę'
+                      : 'Przeciągnij, by rysować; klik w istniejący rysunek zaznacza go'
+                    : null;
 
   // Switching fog off mid-session must put the brush away too — otherwise the
   // settings row lingers next to a disabled tool button, and a stray drag
@@ -412,6 +417,20 @@ export function MapTools() {
             onClick={() => toggleTool('note')}
           >
             <IconPin />
+          </button>
+          <button
+            type="button"
+            className={`map-tool${tool === 'spawn' ? ' map-tool--active' : ''}`}
+            title={
+              sceneId
+                ? 'Miejsce startu graczy (G) — kliknij mapę; stąd patrzy gracz, który nie ma tu figury'
+                : 'Miejsce startu graczy — dopiero na aktywnej scenie'
+            }
+            aria-pressed={tool === 'spawn'}
+            disabled={!sceneId}
+            onClick={() => toggleTool('spawn')}
+          >
+            <IconFlag />
           </button>
         </>
       )}
@@ -836,6 +855,25 @@ export function MapTools() {
             title="Usuń wszystkie punkty dostępu z tej sceny (kończy też runy, które przez nie szły). Ctrl+Z cofa"
             disabled={!sceneId || netPointCount === 0}
             onClick={() => sceneId && void clearNetAccessPoints(sceneId)}
+          >
+            <IconTrashAll />
+          </button>
+        </div>
+      )}
+
+      {isGm && tool === 'spawn' && (
+        <div className="map-tool-options" role="group" aria-label="Miejsce startu graczy">
+          <span className="map-tool-hint">
+            {spawn
+              ? `punkt startu: ${Math.round(spawn.x)}, ${Math.round(spawn.y)} px`
+              : 'brak punktu — gracz zaczyna pośrodku dolnej krawędzi mapy'}
+          </span>
+          <button
+            type="button"
+            className="map-tool map-tool--warn"
+            title="Usuń wyznaczony punkt startu — gracze wrócą do środka dolnej krawędzi mapy"
+            disabled={!sceneId || !spawn}
+            onClick={() => sceneId && void updateScene(sceneId, { spawn: null })}
           >
             <IconTrashAll />
           </button>

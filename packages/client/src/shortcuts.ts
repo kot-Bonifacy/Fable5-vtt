@@ -59,6 +59,12 @@ export const MAP_TOOL_KEYS: readonly {
   { key: 's', tool: 'zone', what: 'Strefy bronione — pułapka na podłodze', gmOnly: true },
   { key: 'l', tool: 'light', what: 'Źródła światła', gmOnly: true },
   { key: 'p', tool: 'netpoint', what: 'Punkty dostępu do Sieci', gmOnly: true },
+  {
+    key: 'g',
+    tool: 'spawn',
+    what: 'Miejsce startu graczy — stąd patrzą, wchodząc na scenę',
+    gmOnly: true,
+  },
 ];
 
 /** Wiersze narzędzi mapy budowane z tej samej tabeli, którą czyta `MapArea`. */

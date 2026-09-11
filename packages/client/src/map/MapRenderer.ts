@@ -12,6 +12,13 @@ import {
 } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
 import { MapFxLayer } from './MapFxLayer.js';
+import {
+  MAP_MAX_ZOOM,
+  MAP_MIN_ZOOM,
+  PLAYER_VIEW_SQUARES_AROUND,
+  coverZoom,
+  startCamera,
+} from './camera.js';
 import type {
   CoverView,
   SmokeView,
@@ -382,8 +389,9 @@ const UNLIT_BLUR_PX = 4;
 const GLOW_ALPHA = 0.28;
 /** How far a flickering lamp's glow dips, as a fraction of its own alpha. */
 const FLICKER_DEPTH = 0.22;
-const MIN_ZOOM = 0.05;
-const MAX_ZOOM = 8;
+/** Zbliżenia i kadr startowy mieszkają w `camera.ts` — tu tylko z nich korzystamy. */
+const MIN_ZOOM = MAP_MIN_ZOOM;
+const MAX_ZOOM = MAP_MAX_ZOOM;
 /** Screen-pixel distance that turns a click into a drag. */
 const DRAG_THRESHOLD_PX = 4;
 /** Max gap between two clicks on a token to count as a double-click. */
@@ -845,6 +853,8 @@ export class MapRenderer {
   onNotePlace: ((x: number, y: number) => void) | null = null;
   /** Click on an existing GM note pin. */
   onNoteActivate: ((noteId: string) => void) | null = null;
+  /** Klik w mapę z uzbrojonym narzędziem miejsca startu (world px, 11.09). */
+  onSpawnPlace: ((x: number, y: number) => void) | null = null;
   /** A drawing gesture finished — send it to the server (stage 17b). */
   onDrawingCreate: ((shape: DrawingShape) => void) | null = null;
   /** Click with the text tool armed: the caller asks for the words (world px). */
@@ -1041,6 +1051,10 @@ export class MapRenderer {
   private targeting = false;
   /** Note tool armed: the next click on empty map drops a pin. */
   private notePlacing = false;
+  /** Narzędzie miejsca startu: następny klik w mapę wyznacza punkt (11.09). */
+  private spawnPlacing = false;
+  /** Czy kamera jest zamknięta w granicach mapy (gracz) — patrz `setCameraLocked`. */
+  private cameraLocked = false;
   /** Fog brush settings; `armed` decides whether a drag paints. */
   private fogBrush: FogBrushSettings = {
     armed: false,
@@ -1076,6 +1090,9 @@ export class MapRenderer {
   private lastRingCentre: ScenePoint | null = null;
   private lastRings: RangeRing[] = [];
   private lastNotes: MapNoteView[] = [];
+  /** Znacznik miejsca startu drużyny — rysowany wyłącznie u MG (11.09). */
+  private spawnNode: Container | null = null;
+  private lastSpawn: ScenePoint | null = null;
   private lastWalls: WallView[] = [];
   private lastOpenings: WallView[] = [];
   private lastVisionPolygons: ScenePoint[][] = [];
@@ -1196,6 +1213,7 @@ export class MapRenderer {
     return (
       this.rulerMode ||
       this.notePlacing ||
+      this.spawnPlacing ||
       this.fogBrush.armed ||
       this.draw.armed ||
       this.toolSpentThisClick
@@ -1584,6 +1602,10 @@ export class MapRenderer {
         this.onNotePlace?.(Math.round(event.world.x), Math.round(event.world.y));
         return;
       }
+      if (this.spawnPlacing) {
+        this.onSpawnPlace?.(Math.round(event.world.x), Math.round(event.world.y));
+        return;
+      }
       if (this.onMapClick?.(event.world.x, event.world.y)) return;
       // A weapon in hand used to swallow this click; since stage 16f it does
       // not — the ground under an armed figure still means „walk there", which
@@ -1622,6 +1644,9 @@ export class MapRenderer {
 
     this.app.renderer.on('resize', (width: number, height: number) => {
       viewport.resize(width, height);
+      // Dolna granica zbliżenia zależy od kształtu płótna: okno rozciągnięte
+      // w bok przy niezmienionym zoomie odsłoniłoby czerń za krawędzią mapy.
+      this.applyCameraBounds();
     });
   }
 
@@ -1639,6 +1664,7 @@ export class MapRenderer {
       this.setMoveAllowance(null);
       this.setRangeRings(null, []);
       this.setNotes([]);
+      this.setSpawn(null);
       this.setDrawings([]);
       this.setWalls([], []);
       this.setLights([]);
@@ -1654,13 +1680,7 @@ export class MapRenderer {
     this.sceneId = scene.id;
     viewport.worldWidth = scene.width;
     viewport.worldHeight = scene.height;
-    viewport.clamp({
-      left: -scene.width * PAN_MARGIN,
-      top: -scene.height * PAN_MARGIN,
-      right: scene.width * (1 + PAN_MARGIN),
-      bottom: scene.height * (1 + PAN_MARGIN),
-      underflow: 'center',
-    });
+    this.applyCameraBounds();
 
     this.updateBackground(scene);
     this.drawGrid(scene);
@@ -1680,6 +1700,7 @@ export class MapRenderer {
       this.lastScenePick = null;
       this.drawSceneSelectOutline();
       this.onSceneSelect?.(null);
+      this.setSpawn(null);
       this.setDrawings([]);
       this.setWalls([], []);
       this.setLights([]);
@@ -1780,6 +1801,13 @@ export class MapRenderer {
     this.applyMapCursor();
   }
 
+  /** Uzbraja narzędzie miejsca startu: klik w mapę wyznacza punkt (11.09). */
+  setSpawnPlacing(active: boolean): void {
+    if (this.spawnPlacing === active) return;
+    this.spawnPlacing = active;
+    this.applyMapCursor();
+  }
+
   /**
    * Arms or disarms fog painting. Like the ruler it takes the left button off
    * the viewport, because a drag has to mean one thing at a time.
@@ -1849,9 +1877,11 @@ export class MapRenderer {
                     ? 'copy'
                     : this.notePlacing
                       ? 'copy'
-                      : this.rulerMode
-                        ? 'cell'
-                        : '';
+                      : this.spawnPlacing
+                        ? 'copy'
+                        : this.rulerMode
+                          ? 'cell'
+                          : '';
   }
 
   private cancelFogGesture(): void {
@@ -2743,6 +2773,75 @@ export class MapRenderer {
   pullViewTo(x: number, y: number): void {
     if (this.destroyed) return;
     this.viewport?.moveCenter(x, y);
+    this.refreshOverlays();
+  }
+
+  /**
+   * Zamyka kamerę w granicach mapy albo ją wypuszcza (decyzja MG, 11.09).
+   *
+   * Zamknięta jest u **gracza**: ani przeciągnięciem, ani oddaleniem nie wyjdzie
+   * poza obraz — ekran zawsze leży w całości wewnątrz mapy. MG zostaje
+   * z marginesem, bo ścianę albo osłonę na samej krawędzi rysuje się, mając
+   * dokąd wyjechać.
+   */
+  setCameraLocked(locked: boolean): void {
+    if (this.cameraLocked === locked) return;
+    this.cameraLocked = locked;
+    this.applyCameraBounds();
+  }
+
+  /**
+   * Przykłada granice przesuwania i oddalania do bieżącej sceny.
+   *
+   * Wołane przy każdej zmianie sceny **i przy zmianie rozmiaru okna**: dolna
+   * granica zbliżenia to `coverZoom`, a ta zależy od kształtu płótna — bez tego
+   * rozciągnięte okno odsłania czerń przy niezmienionym zoomie.
+   *
+   * Uwaga na `clampZoom`: wtyczka pixi-viewport czyta **albo** `minWidth`/
+   * `maxWidth`, **albo** `minScale`/`maxScale` (pierwsza para wygrywa i drugiej
+   * już nie patrzy), więc granica „nie oddalaj się poniżej pokrycia" musi być
+   * policzona tutaj i podana jako skala.
+   */
+  private applyCameraBounds(): void {
+    const viewport = this.viewport;
+    const scene = this.scene;
+    if (!viewport || !scene || this.destroyed) return;
+    const margin = this.cameraLocked ? 0 : PAN_MARGIN;
+    viewport.clamp({
+      left: -scene.width * margin,
+      top: -scene.height * margin,
+      right: scene.width * (1 + margin),
+      bottom: scene.height * (1 + margin),
+      underflow: 'center',
+    });
+    const floor = this.cameraLocked
+      ? coverZoom(scene, { width: viewport.screenWidth, height: viewport.screenHeight })
+      : MIN_ZOOM;
+    viewport.clampZoom({ minScale: Math.min(floor, MAX_ZOOM), maxScale: MAX_ZOOM });
+  }
+
+  /**
+   * Kadr startowy gracza: przybliżenie na osiem kratek wokół punktu.
+   *
+   * Osobne od `fitScene`, bo mówi co innego — `fitScene` odpowiada „gdzie jest
+   * ta mapa", a to „gdzie jesteś ty". Wołane raz na wejście na scenę; dalej
+   * widok należy do gracza.
+   */
+  frameAround(point: ScenePoint, squaresAround = PLAYER_VIEW_SQUARES_AROUND): void {
+    const viewport = this.viewport;
+    const scene = this.scene;
+    if (!viewport || !scene || this.destroyed) return;
+    // Płótno bez rozmiaru to układ strony, który jeszcze nie usiadł — kadr
+    // policzony z zera nie miałby z czego wyjść.
+    if (viewport.screenWidth <= 0 || viewport.screenHeight <= 0) return;
+    const shot = startCamera(
+      scene,
+      { width: viewport.screenWidth, height: viewport.screenHeight },
+      point,
+      squaresAround,
+    );
+    viewport.setZoom(shot.zoom, true);
+    viewport.moveCenter(shot.x, shot.y);
     this.refreshOverlays();
   }
 
@@ -5802,6 +5901,44 @@ export class MapRenderer {
     this.refreshSceneSelectOutline('note');
   }
 
+  /**
+   * Znacznik miejsca startu drużyny (11.09) — chorągiewka tam, gdzie MG
+   * postawił punkt, z kropką na samym punkcie.
+   *
+   * Rysuje go **wyłącznie MG**: gracz punkt zna (jego kamera z niego korzysta),
+   * ale chorągiewka na mapie byłaby rekwizytem, którego przy stole nie ma.
+   * Jak pinezka notatki jest skalowany do ekranu, nie do świata, i nie łapie
+   * kliknięć — przestawia się go tym samym narzędziem, którym się go stawia.
+   */
+  setSpawn(point: ScenePoint | null): void {
+    if (this.destroyed) return;
+    this.lastSpawn = point;
+    if (!point) {
+      this.spawnNode?.destroy({ children: true });
+      this.spawnNode = null;
+      return;
+    }
+    if (!this.spawnNode) {
+      const node = new Container();
+      const dot = new Graphics();
+      dot.circle(0, 0, 4).fill({ color: 0xfacc15, alpha: 0.95 });
+      dot.circle(0, 0, 4).stroke({ color: 0x0b1220, width: 1.5, alpha: 0.9 });
+      const glyph = new Text({
+        text: '🚩',
+        style: { fontFamily: 'system-ui, sans-serif', fontSize: 24 },
+      });
+      // Drzewce chorągiewki stoi w punkcie, a płótno powiewa w prawo i w górę.
+      glyph.anchor.set(0.15, 1);
+      node.addChild(dot);
+      node.addChild(glyph);
+      node.eventMode = 'none';
+      this.spawnNode = node;
+      this.noteLayer.addChild(node);
+    }
+    this.spawnNode.position.set(point.x, point.y);
+    this.spawnNode.scale.set(this.overlayScale());
+  }
+
   /** Re-renders the overlays at the current zoom (labels are screen-sized). */
   private refreshOverlays(): void {
     if (this.destroyed) return;
@@ -5815,6 +5952,7 @@ export class MapRenderer {
     this.drawTrail();
     this.setRangeRings(this.lastRingCentre, this.lastRings);
     this.setNotes(this.lastNotes);
+    this.setSpawn(this.lastSpawn);
     // Wall handles, door glyphs and lamp handles are screen-sized, like the note
     // pins: at a typical 0.18x map zoom a world-scaled handle is a few pixels.
     this.drawWallLayer();

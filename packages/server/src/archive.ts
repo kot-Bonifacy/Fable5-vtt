@@ -270,6 +270,8 @@ const SCENE_COLUMNS = {
   dark: true,
   darkSightM: true,
   explore: true,
+  spawnX: true,
+  spawnY: true,
 } as const;
 
 export async function exportScene(
@@ -509,6 +511,8 @@ export async function importScene(
       dark: bool(sceneColumns.dark, false),
       darkSightM: num(sceneColumns.darkSightM, 2),
       explore: bool(sceneColumns.explore, true),
+      spawnX: maybeNum(sceneColumns.spawnX),
+      spawnY: maybeNum(sceneColumns.spawnY),
     },
     select: { id: true },
   });

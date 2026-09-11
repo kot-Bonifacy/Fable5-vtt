@@ -6,6 +6,16 @@ odhaczania zaległości albo dotykasz etapu, który tu występuje — nie rutyno
 
 Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/zamkniete-zaleglosci.md`.
 
+**11.09 (etap 04, znalezione przy oględzinach kamery): MG, który połączył się przy braku
+aktywnej sceny, po własnej aktywacji widzi dalej „Brak sceny".** Serwer przenosi wtedy gniazdo MG
+do pokoju sceny (`realtime/scenes.ts`, `data.viewedSceneId === null` w `scene:activate`), ale
+klient tego nie odnotowuje: gałąź MG w `socket.ts` robi `scenes().applyScene(...)`, a `applyScene`
+**milczy**, gdy `state.scene?.id !== scene.id` — czyli zawsze, gdy lokalna scena jest `null`.
+Mapa MG zostaje pusta do przeładowania karty albo kliknięcia „Pokaż". Gracze są bez zmian
+(ich gałąź woła `setScene`). Usterka jest stara jak 17a, a widać ją tylko w jednym stanie:
+pierwsze uruchomienie kampanii bez aktywnej sceny. **Naprawa:** w gałęzi MG wołać `setScene`,
+gdy lokalna scena jest `null` (`applyScene` zostawić dla podglądu innej sceny).
+
 **11.09 (etap 27e/27h, znalezione przy przeglądzie ikon): naklejka statusu wnosi do interfejsu
 czarny kwadrat, którego motyw dzienny nie umie zgasić.** Pliki w `data/public/cpred/status-icons/`
 mają — w odróżnieniu od `public/icons/hud/` — zachowany czarny prostokąt tła z game-icons, i tak

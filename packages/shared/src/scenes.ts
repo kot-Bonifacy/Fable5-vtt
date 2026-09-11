@@ -1,3 +1,5 @@
+import type { ScenePoint } from './measure.js';
+
 export const GRID_MODES = ['grid', 'gridless'] as const;
 export type GridMode = (typeof GRID_MODES)[number];
 
@@ -71,6 +73,16 @@ export interface SceneView {
    * of view.
    */
   explore: boolean;
+  /**
+   * Gdzie na tej mapie zaczyna patrzeć gracz, który nie ma tu jeszcze figury
+   * (11.09.2026) — „miejsce startu drużyny", stawiane przez MG narzędziem mapy.
+   *
+   * `null` znaczy „MG nie wyznaczył", a nie „brak": kamera bierze wtedy środek
+   * dolnej krawędzi mapy, bo drużyna zwykle wchodzi z dołu kadru. Pole jedzie
+   * do graczy, bo to **ich** kamera je czyta — nie jest niczym tajnym, a
+   * znacznik na mapie widzi i tak wyłącznie MG.
+   */
+  spawn: ScenePoint | null;
 }
 
 /** List entry for the GM scene manager — never sent to players. */
@@ -102,6 +114,8 @@ export interface ScenePatch {
   gridMode?: GridMode;
   grid?: Partial<GridConfig>;
   metersPerSquare?: number;
+  /** Miejsce startu drużyny; `null` kasuje wyznaczony punkt (11.09.2026). */
+  spawn?: ScenePoint | null;
   // `visibility` is deliberately NOT patchable here: changing it has to
   // re-filter every player's token list in the same breath, so it goes through
   // `scene:visibility` (stages 17a, 18a) rather than the generic scene patch.
@@ -274,6 +288,26 @@ export function sanitizeScenePatch(raw: unknown): ScenePatch | null {
       METERS_PER_SQUARE_MIN,
       METERS_PER_SQUARE_MAX,
     );
+  }
+
+  if ('spawn' in input) {
+    const spawn = input.spawn;
+    if (spawn === null) {
+      patch.spawn = null;
+    } else if (
+      typeof spawn === 'object' &&
+      spawn !== null &&
+      isFiniteNumber((spawn as ScenePoint).x) &&
+      isFiniteNumber((spawn as ScenePoint).y)
+    ) {
+      // Punkt spoza mapy byłby kamerą wycelowaną w czerń, a rozmiar sceny
+      // klient i tak zna — ale przycina go serwer, bo klient może kłamać.
+      const { x, y } = spawn as ScenePoint;
+      patch.spawn = {
+        x: Math.round(clamp(x, 0, SCENE_DIMENSION_MAX)),
+        y: Math.round(clamp(y, 0, SCENE_DIMENSION_MAX)),
+      };
+    }
   }
 
   if (typeof input.grid === 'object' && input.grid !== null) {

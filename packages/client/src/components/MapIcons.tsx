@@ -447,3 +447,19 @@ export function IconSnap(props: IconProps) {
     </Svg>
   );
 }
+
+/**
+ * Chorągiewka na maszcie — miejsce startu drużyny (11.09.2026).
+ *
+ * Flaga, a nie pinezka: pinezka jest już notatką MG, a te dwa narzędzia stoją
+ * obok siebie na pasku. Maszt sięga podstawy, bo punkt leży u jego stopy —
+ * dokładnie tam, gdzie znacznik ląduje na mapie.
+ */
+export function IconFlag(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M6 21V3" />
+      <path d="M6 4h11l-2.4 3.6L17 11H6" />
+    </Svg>
+  );
+}

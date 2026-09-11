@@ -54,26 +54,35 @@ dostaje**: jego „Brak sceny — utwórz i aktywuj ją" to komunikat roboczy, a
   `uploads/`; bez tego kroku funkcja po prostu nie istnieje i nikt tego nie zauważy.
 - **Siatka liczy się z pliku, nie z kodu**: `szerokość / 40` i `wysokość / 30`. Podmiana mapy na
   inną **40 × 30** nie wymaga więc ani jednej linii kodu; przy innej skali trzeba poprawić
-  `WELCOME_MAP_COLUMNS` / `WELCOME_MAP_ROWS`. Dla pliku z 11.09 (1448 × 1086 px) kratka wypada
-  36,2 px, czyli 2 m po skali CP RED.
+  `WELCOME_MAP_COLUMNS` / `WELCOME_MAP_ROWS`.
+- **Gracz startuje pośrodku dolnej krawędzi, przybliżony na osiem kratek wokół siebie**, i nie
+  wyjedzie kamerą poza obraz (`map/camera.ts`). Na tle powitalnym punktu startu nie da się
+  przestawić — nie ma wiersza w bazie, w którym MG mógłby go zapisać; na zwykłych scenach służy
+  do tego narzędzie „Miejsce startu graczy" (klawisz `G`).
 
-### Format: WebP q90
+### Plik: `StrefaPrzemyslowa-40x30.png` → WebP q90
 
-Źródło `IndustrialAreaGate-40x30.png`, 1448 × 1086 px, 2473 kB. W `uploads/` leży **WebP q90**,
-274 kB — 9× mniej, przy odchyłce niewidocznej na mapie oglądanej w całości. Pomiary względem
-oryginału (4,7 mln kanałów):
+Wersja z 11.09.2026 (druga tego dnia): **2896 × 2176 px**, kratka **72,4 px**. Poprzedni plik
+(`IndustrialAreaGate-40x30.png`, 1448 × 1086) był tą samą mapą w połowie rozdzielczości —
+za mało, odkąd gracz startuje przybliżony: przy ośmiu kratkach wokół siebie oglądałby go
+w powiększeniu 2×.
 
-| wariant         |    rozmiar |    max |  średnia | kanałów > 10 |        PSNR |
-| --------------- | ---------: | -----: | -------: | -----------: | ----------: |
-| WebP bezstratny |    1742 kB |      0 |        0 |          0 % |           — |
-| WebP q95        |     480 kB |     73 |      1,5 |       0,77 % |     40,4 dB |
-| **WebP q90**    | **274 kB** | **75** | **2,05** |   **0,96 %** | **38,6 dB** |
-| WebP q85        |     193 kB |     78 |     2,41 |        1,2 % |     37,4 dB |
+**Uwaga o wysokości:** 2176 nie dzieli się równo przez 30 (72,53 zamiast 72,4), więc ostatni rząd
+kratek jest o **4 px** wyższy od pozostałych. Na oko niewidoczne; ale to znaczy, że plik nie jest
+dokładnym dwukrotnym powiększeniem poprzedniego i że siatkę liczy się z **szerokości**.
 
-Maksimum 73–78 nawet przy q95 to **jeden punkt** na całej mapie (żółto-czarna taśma przy szlabanie,
-piksel 691 × 473) — kanałów odchylonych o więcej niż 50 jest 0,0008 %. Między q95 a q90 różnica
-jest w szumie, więc bierzemy q90; gdyby kiedyś mapa miała być tłem do gry, a nie do patrzenia,
-wróć do q95. Konwersja:
+Konwersja z PNG 7911 kB do **WebP q90, 581 kB** (13,6×). Pomiary względem oryginału
+(19 mln kanałów):
+
+| wariant      |    rozmiar |    max |  średnia | kanałów > 10 |        PSNR |
+| ------------ | ---------: | -----: | -------: | -----------: | ----------: |
+| WebP q95     |    1077 kB |     85 |     1,32 |       0,74 % |     40,9 dB |
+| **WebP q90** | **581 kB** | **93** | **1,63** |   **0,88 %** | **39,7 dB** |
+| WebP q85     |     397 kB |     83 |     1,87 |       1,14 % |     38,7 dB |
+
+Między q95 a q90 różnica siedzi w szumie (0,74 % vs 0,88 % kanałów odchylonych o więcej niż 10),
+a 496 kB przy każdym wejściu gracza to realna cena; gdyby mapa miała kiedyś służyć do gry,
+a nie do patrzenia, wróć do q95. Konwersja:
 
 ```
 uv run --with pillow python -c "from PIL import Image; Image.open('mapa.png').convert('RGB').save('welcome-map.webp','WEBP',quality=90,method=6)"

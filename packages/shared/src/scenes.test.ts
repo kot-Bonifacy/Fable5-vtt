@@ -79,6 +79,27 @@ describe('sanitizeScenePatch', () => {
     expect(sanitizeScenePatch({ width: Number.NaN, metersPerSquare: '2' })).toEqual({});
   });
 
+  /**
+   * Miejsce startu drużyny (11.09.2026). Trzy stany w jednym polu: para liczb
+   * wyznacza punkt, `null` go kasuje, brak pola nie mówi nic — i te trzy muszą
+   * zostać rozróżnialne po sanityzacji, bo inaczej „usuń punkt" i „nie ruszaj
+   * punktu" znaczyłyby to samo.
+   */
+  it('przyjmuje punkt startu, kasowanie i milczenie jako trzy różne rzeczy', () => {
+    expect(sanitizeScenePatch({ spawn: { x: 10.4, y: 20.6 } })).toEqual({
+      spawn: { x: 10, y: 21 },
+    });
+    expect(sanitizeScenePatch({ spawn: null })).toEqual({ spawn: null });
+    expect(sanitizeScenePatch({})).toEqual({});
+  });
+
+  it('odrzuca punkt startu bez liczb i przycina go do rozmiaru sceny', () => {
+    expect(sanitizeScenePatch({ spawn: { x: 'a', y: 2 } })).toEqual({});
+    expect(sanitizeScenePatch({ spawn: { x: -50, y: 99999 } })).toEqual({
+      spawn: { x: 0, y: 16384 },
+    });
+  });
+
   it('clamps metersPerSquare', () => {
     expect(sanitizeScenePatch({ metersPerSquare: 0 })).toEqual({ metersPerSquare: 0.1 });
     expect(sanitizeScenePatch({ metersPerSquare: 2 })).toEqual({ metersPerSquare: 2 });

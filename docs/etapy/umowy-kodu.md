@@ -15,6 +15,8 @@ indeksu i pełny wpis pod spodem.
 
 ## mapa — Figury, narzędzia i obiekty sceny
 
+- **Kamera mapy** — reguły w `map/camera.ts` (`coverZoom`, `startCamera`, `partyStart`, stałe zoomu), nie w rendererze. Gracz ma kamerę **zamkniętą w mapie** (`setCameraLocked`), MG wolną; kadr startowy to `frameAround`, osobno od `fitScene`.
+- **Miejsce startu graczy** — `Scene.spawnX/spawnY` → `SceneView.spawn` → `ScenePatch.spawn` (`null` kasuje) → `SCENE_COLUMNS` w `archive.ts`. Stawia je narzędzie mapy `spawn` (klawisz `G`, MG), chorągiewkę rysuje `setSpawn` **tylko MG**, a czyta ją kamera gracza bez figury.
 - **Tło powitalne gracza** — `map/welcome-map.ts` jedzie **wyłącznie** do `MapRenderer.setScene`; `sceneStore` dalej trzyma `null`, więc żadne narzędzie, żadne zdarzenie i żaden zapis go nie widzą. Nowa droga „pokaż coś bez sceny" idzie tędy, a nie przez atrapę w store.
 - **Klient nie zna `characterId` cudzej figury** — łup adresuje `fromTokenId`, listę źródeł buduje serwer (`inventory:sources`), a lista celów to same nazwy, jak `payees` z 23b.
 - **Dane przy naklejce żetonu** — `Token.statusData` trzyma `{ damage?, timer?, feared?, disabled? }`; `disabled` to **nazwy** cyborgizacji zdjętych Impulsem. Kasowanie jest wspólne (`writeSheetStatusTimer(…, null)`), więc każda ścieżka zdejmująca status musi je zawołać — „Cofnij" tego nie robiło.
@@ -46,6 +48,35 @@ indeksu i pełny wpis pod spodem.
 - **Kosz figur pyta zawsze, także na poligonie** — `Ctrl+Z` cofa scenerię, nie figury; dlatego `Delete` figur nie dotyka i jedyna droga to guzik z pytaniem niosącym liczbę.
 
 ---
+
+**Reguły kamery mieszkają w `map/camera.ts`, a nie w rendererze (11.09).** `MapRenderer` ma 6 tys.
+wierszy i ciągnie Pixi, więc arytmetyka kadru — `coverZoom`, `startCamera`, `partyStart` i stałe
+`MAP_MIN_ZOOM` / `MAP_MAX_ZOOM` — siedzi obok, w pliku, który da się przetestować bez płótna
+(`camera.test.ts`). Renderer z tego korzysta w dwóch miejscach i oba są publiczne:
+`setCameraLocked(locked)` (gracz: ekran nigdy nie wychodzi poza mapę — `clamp` bez marginesu
+**plus** dolna granica zbliżenia równa `coverZoom`; MG: dawny `PAN_MARGIN`) oraz
+`frameAround(point, squares)` — kadr startowy gracza, świadomie **osobny od `fitScene`**, bo
+`fitScene` odpowiada „gdzie jest ta mapa", a `frameAround` „gdzie jesteś ty".
+**Granice przykłada się ponownie przy każdej zmianie rozmiaru płótna** (`applyCameraBounds`
+w obsłudze `resize`), bo `coverZoom` zależy od kształtu okna — inaczej rozciągnięte okno odsłania
+czerń przy niezmienionym zoomie. Kto dokłada regułę kamery, dokłada ją tam, nie w `MapArea`.
+
+**Kadr startowy wybiera `MapArea`, i robi to raz na scenę (11.09).** Kolejność jest wiążąca:
+**własna figura gracza** na tej scenie → **miejsce startu** wyznaczone przez MG → **środek dolnej
+krawędzi** mapy. Pamięć „tę scenę już kadrowałem" siedzi w `framedRef`, nie w stanie Reacta, bo
+efekt kadrujący rusza także przy każdej edycji sceny przez MG — kamera odrzucana wtedy do punktu
+startu wyrywałaby graczowi widok z ręki w środku walki. Jedyny dozwolony drugi kadr to poprawka
+w ciągu `CAMERA_REANCHOR_MS` od wejścia: po `scene:activate` figury przyjeżdżają osobnym
+`state:sync` chwilę po samej scenie, więc pierwszy kadr bywa robiony, zanim gracz „ma" tu figurę.
+
+**Miejsce startu drużyny to pole sceny, nie obiekt na niej (11.09).** Dlatego nie ma go
+w `SCENE_OBJECT_KINDS`, nie zaznacza się go, nie kasuje `Delete` i nie cofa `Ctrl+Z` — jest
+**jeden na scenę** i mieszka w pięciu miejscach naraz: `Scene.spawnX/spawnY` (migracja
+`scene_spawn_point`), `SceneView.spawn`, `ScenePatch.spawn` (`null` kasuje, brak pola nie mówi
+nic), `SCENE_COLUMNS` w `archive.ts` (inaczej eksport sceny gubiłby punkt) i `setSpawn`
+w rendererze. Stawia go narzędzie mapy `spawn` (klawisz `G`, tylko MG) **zwykłą łatką sceny**,
+bez własnego zdarzenia gniazda. Chorągiewkę widzi **wyłącznie MG**, choć samo pole jedzie do
+graczy — to ich kamera je czyta, więc ukrywanie go byłoby ukrywaniem przed właścicielem.
 
 **Tło powitalne gracza jest obrazkiem, a nie sceną (11.09).** Gdy kampania nie ma aktywnej sceny,
 gracz dostaje mapę (`uploads/art/welcome-map.webp`, 40 × 30 kratek) zamiast czarnego pola

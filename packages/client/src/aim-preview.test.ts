@@ -48,6 +48,7 @@ const SCENE: SceneView = {
   dark: false,
   darkSightM: 2,
   explore: false,
+  spawn: null,
 };
 
 function token(id: string, x: number): TokenView {

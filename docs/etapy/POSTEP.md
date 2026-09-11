@@ -183,7 +183,7 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  |   28 |      10 |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  |   30 |      11 |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     |    3 |       3 |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    |    6 |      14 |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście   |    8 |       7 |
@@ -259,9 +259,56 @@ pliku, wyłączony ołówek. Poligon wrócił do stanu sprzed sesji (Strzelnica 
 „Strzelnica" — **nie mają tła**, więc gracz widzi tam gołą kratkę mimo tej zmiany; tło powitalne
 z wyboru MG łata wyłącznie stan „nie ma aktywnej sceny".
 
-**Testy:** **118** u klienta (114 + 4 nowe w `welcome-map.test.ts`), w `shared` i na serwerze
-bez zmian — ta sesja nie tknęła ani jednego, ani drugiego. ESLint i Prettier czyste,
-`tsc --noEmit` u klienta czysty. Jedna umowa w `mapa`, pułapki: jedna w `mapa`, jedna w `serwer`.
+#### Drugie zlecenie tej samej sesji — kamera gracza zamknięta w mapie
+
+**Zlecenie MG:** „gracze nie mogą widzieć poza obszar wgranej mapy; obszar gry/siatka ma
+obejmować tylko plik graficzny", mapa powitalna na **nowym pliku** (`StrefaPrzemyslowa-40x30.png`,
+2896 × 2176), a gracze mają **zaczynać w tym samym miejscu na dole mapy** i widzieć „niewiele
+więcej niż 8 kratek wokół siebie".
+
+**Cztery pytania, cztery decyzje MG:** kamera zamknięta **na wszystkich scenach, ale tylko
+u graczy** (MG zostaje z marginesem, bo ścianę na krawędzi rysuje się, mając dokąd wyjechać);
+przy maksymalnym oddaleniu **ani piksela czerni** (a nie „cała mapa z czarnymi pasami") —
+świadoma cena: na szerokim oknie całej mapy 40 × 30 nie widać naraz; przybliżenie na osiem kratek
+obowiązuje **też na scenach, na własnej figurze gracza**; a **miejsce startu wyznacza MG**, z
+domyślnym środkiem dolnej krawędzi, gdy tego nie zrobi.
+
+**Cztery rzeczy w kodzie.** (1) `map/camera.ts` — arytmetyka kadru osobno od renderera, żeby dała
+się testować bez Pixi. (2) `setCameraLocked` + `applyCameraBounds` w rendererze, przykładane
+**także przy zmianie rozmiaru okna**, bo dolna granica zbliżenia zależy od kształtu płótna.
+(3) `frameAround` — kadr startowy osobny od `fitScene`; kolejność kotwic: własna figura → punkt
+MG → środek dolnej krawędzi. (4) **Miejsce startu jako pole sceny**: migracja
+`scene_spawn_point`, `SceneView.spawn`, `ScenePatch.spawn`, kolumny w `archive.ts`, narzędzie
+mapy `spawn` (klawisz `G`) i chorągiewka rysowana **tylko MG**. Umowy w `mapa`.
+
+**Mapa powitalna dostała nowy plik**: 2896 × 2176 (kratka 72,4 px), WebP q90, 581 kB. Poprzedni
+był tą samą mapą w połowie rozdzielczości — za mało, odkąd gracz startuje przybliżony. Wysokość
+nie dzieli się równo przez 30 (ostatni rząd o 4 px wyższy); siatkę liczy się z szerokości.
+
+**Oględziny: pełne, na żywym stole, bez długu.** Sprawdzone: kadr startowy tła powitalnego
+(17 kratek w pionie zmierzone na siatce, dół mapy), zamknięcie kamery (oddalanie zatrzymuje się
+na pokryciu, przeciągnięcie w róg nie odsłania czerni), to samo na **scenie MG** ze świeżo wgraną
+mapą, narzędzie miejsca startu u MG (chorągiewka, odczyt „punkt startu: x, y px", kosz punktu),
+kamera gracza **bez figury** (ląduje na punkcie MG) i **z figurą** (Tony: kamera na jego żetonie,
+przycięta do krawędzi mapy — policzone i zgodne co do kratki), oraz to, że **MG dalej może
+wyjechać poza mapę**.
+
+**W trakcie sesji MG sam założył scenę „StrefaPrzemysłowa"** (mapa 1448 × 1086, kratka **47 px**,
+mgła). Oględziny robiłem na niej i **przywróciłem jej stan** co do pola: aktywna, `fog`, bez
+punktu startu. **Uwaga dla MG w raporcie:** kratka 47 px nie odpowiada skali 40 × 30 tego pliku
+(powinno być 36,2 px), więc siatka na tej scenie nie siedzi na rysunku.
+
+**Zaległość dopisana (nie moja usterka, starsza):** MG, który połączył się przy braku aktywnej
+sceny, po własnej aktywacji widzi dalej „Brak sceny" — gałąź MG w `socket.ts` woła `applyScene`,
+a ten milczy przy `scene === null`. Gracze bez zmian.
+
+**Testy:** **125** u klienta (118 + 7 w `camera.test.ts`), **1969** w `shared` (+2 o punkcie
+startu), **1086** na serwerze (+1 dymny o `scene:update` z punktem startu) — wszystkie zielone.
+
+Po pierwszym zleceniu było ich **118** u klienta (114 + 4 w `welcome-map.test.ts`), przy
+niezmienionych `shared` i serwerze. ESLint, Prettier i `tsc --noEmit` czyste w trzech pakietach.
+Umowy dopisane w `mapa` (trzy: tło powitalne, kamera, miejsce startu), pułapki: dwie w `mapa`
+(siatka z CSS, `clampZoom` z dwiema parami opcji) i jedna w `serwer` (zbieracz sierot).
 
 ### Sesja 11.09 — plakat na ekranie wejścia
 

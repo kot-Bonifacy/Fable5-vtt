@@ -35,6 +35,7 @@ import {
   type RenderGlow,
   type RulerLine,
 } from '../map/MapRenderer.js';
+import { partyStart } from '../map/camera.js';
 import { loadWelcomeScene } from '../map/welcome-map.js';
 import { useSceneStore } from '../stores/sceneStore.js';
 import { useAuthStore } from '../stores/authStore.js';
@@ -68,6 +69,7 @@ import {
   undoSceneDelete,
   paintFog,
   sendPing,
+  updateScene,
   sendRuler,
   sendTokenMove,
   setTokenFacing,
@@ -114,6 +116,7 @@ import {
   drawingErrorText,
   lightErrorText,
   openingErrorText,
+  sceneErrorText,
   tokenErrorText,
   wallErrorText,
 } from '../mapErrors.js';
@@ -149,6 +152,14 @@ export interface TokenMenuState {
  * may see it: the GM sees every character, a player only their own (the
  * server never sends anyone else's, so `characters` already reflects that).
  */
+/**
+ * Ile czasu po wejściu na scenę kadr wolno jeszcze przesunąć na figurę gracza,
+ * która przyjechała chwilę po samej scenie (`frameStart`). Dwie i pół sekundy
+ * to z zapasem jedna wymiana `state:request` → `state:sync` przez internet;
+ * po tym czasie widok należy do gracza i nikt mu go nie rusza.
+ */
+const CAMERA_REANCHOR_MS = 2500;
+
 function openSheetOfToken(tokenId: string): void {
   const token = useTokenStore.getState().tokens[tokenId];
   if (!token) return;
@@ -623,6 +634,15 @@ export function MapArea() {
       });
     };
     renderer.onNotePlace = (x, y) => useSceneCardStore.getState().startNoteDraft({ x, y });
+    // Miejsce startu drużyny (11.09) jedzie zwykłą łatką sceny — to jedno pole
+    // sceny, a nie obiekt na niej, więc nie potrzebuje własnego zdarzenia.
+    renderer.onSpawnPlace = (x, y) => {
+      const current = useSceneStore.getState().effectiveScene;
+      if (!current) return;
+      void updateScene(current.id, { spawn: { x, y } }).then((ack) => {
+        if (!ack.ok) useChatStore.getState().addNote(sceneErrorText(ack.error));
+      });
+    };
     renderer.onNoteActivate = (noteId) =>
       useSceneCardStore.getState().openCard({ kind: 'note', id: noteId });
     renderer.onDrawingCreate = (shape) => {
@@ -832,15 +852,62 @@ export function MapArea() {
   /** Co widzi renderer: scena serwera, a pod jej nieobecność tło powitalne. */
   const displayScene = scene ?? (isGm ? null : (welcome ?? null));
 
+  /**
+   * Kadr startowy gracza (11.09): przybliżenie na osiem kratek wokół **jego**
+   * figury, a gdy jej tu nie ma — wokół miejsca startu wyznaczonego przez MG
+   * albo środka dolnej krawędzi mapy.
+   *
+   * Ref, a nie stan, bo to jest pamięć „tę scenę już kadrowałem": efekt niżej
+   * rusza też przy każdej edycji sceny przez MG (zmiana kratki, nazwy, tła),
+   * a kamera odrzucona wtedy do punktu startu byłaby dla gracza wyrwaniem
+   * widoku z ręki w środku walki.
+   */
+  const framedRef = useRef<{ sceneId: string; onOwnToken: boolean; at: number } | null>(null);
+
+  const frameStart = useCallback((displayed: SceneView | null) => {
+    const renderer = rendererRef.current;
+    if (!renderer || !displayed) return;
+    const user = useAuthStore.getState().user;
+    // MG zostaje z `fitScene`: on ogląda całą mapę, bo ma nią zarządzać.
+    if (!user || user.role === ROLE_GM) return;
+    const mine = Object.values(useTokenStore.getState().tokens).find(
+      (token) => token.sceneId === displayed.id && token.ownerId === user.id,
+    );
+    const framed = framedRef.current;
+    if (framed?.sceneId === displayed.id) {
+      // Już kadrowana. Wolno poprawić kadr **raz**: po `scene:activate` figury
+      // przyjeżdżają osobnym `state:sync` chwilę po samej scenie, więc pierwszy
+      // kadr może trafić na „nie masz tu figury". Po paru sekundach widok
+      // należy już do gracza i nikt mu go nie przesuwa.
+      if (framed.onOwnToken || !mine) return;
+      if (Date.now() - framed.at > CAMERA_REANCHOR_MS) return;
+    }
+    renderer.frameAround(
+      mine ? tokenCentre(mine, displayed) : partyStart(displayed, displayed.spawn),
+    );
+    framedRef.current = { sceneId: displayed.id, onOwnToken: mine !== undefined, at: Date.now() };
+  }, []);
+
   useEffect(() => {
     if (!ready) return;
-    rendererRef.current?.setScene(displayScene);
+    const renderer = rendererRef.current;
+    renderer?.setScene(displayScene);
+    // Kamera gracza nie wyjeżdża poza mapę (decyzja MG, 11.09); MG zostaje
+    // z marginesem, bo ścianę na krawędzi rysuje się, mając dokąd wyjechać.
+    renderer?.setCameraLocked(!isGm);
+    // Chorągiewkę miejsca startu widzi wyłącznie MG — gracz ma z niej tylko
+    // kadr, w którym się budzi.
+    renderer?.setSpawn(isGm ? (displayScene?.spawn ?? null) : null);
     // A scene change wipes the token layer, and the store subscription below
     // may have already delivered this scene's tokens (state:sync fills the
     // stores before React runs this effect) — re-push, or the map stays empty
     // until the next token event.
     pushTokens();
-  }, [ready, displayScene, pushTokens]);
+    frameStart(displayScene);
+    // Figury bywają o krok za sceną (patrz `frameStart`), więc kadr dostaje
+    // jeszcze jedną szansę, gdy przyjadą.
+    return useTokenStore.subscribe(() => frameStart(displayScene));
+  }, [ready, displayScene, isGm, pushTokens, frameStart]);
 
   // Where a shot arriving over the socket ends up (stage 27i). Bound to the
   // scene id as well as to the renderer, so a batch that overtakes a scene
@@ -1154,6 +1221,7 @@ export function MapArea() {
     if (!ready) return;
     rendererRef.current?.setRulerMode(tool === 'ruler');
     rendererRef.current?.setNotePlacing(tool === 'note' && isGm);
+    rendererRef.current?.setSpawnPlacing(tool === 'spawn' && isGm);
     rendererRef.current?.setFogBrush({
       armed: tool === 'fog' && isGm,
       mode: fogMode,
