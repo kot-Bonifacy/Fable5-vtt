@@ -54,7 +54,7 @@ Obowiązuje na nie ta sama licencja co na kod repozytorium, a nie CC BY 3.0; w t
 | `hud/martial-arts.svg`     | High kick            | Delapouite    | slot broni: sztuki walki                 |
 | `hud/move.svg`             | Running shoe         | Delapouite    | chip RUCH w panelu postaci               |
 | `hud/pistol.svg`           | Pistol gun           | John Colburn  | slot broni: pistolet                     |
-| `hud/reload.svg`           | Reload gun barrel    | Delapouite    | slot „Przeładuj”                         |
+| `hud/reload.svg`           | rysunek własny       | projekt (VTT) | slot „Przeładuj”                         |
 | `hud/revolver.svg`         | rysunek własny       | projekt (VTT) | slot broni: bardzo ciężki pistolet       |
 | `hud/rifle.svg`            | rysunek własny       | projekt (VTT) | slot broni: karabin szturmowy            |
 | `hud/rocket.svg`           | rysunek własny       | projekt (VTT) | slot broni: wyrzutnia rakiet             |
