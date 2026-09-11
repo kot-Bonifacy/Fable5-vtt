@@ -6,6 +6,32 @@ odhaczania zaległości albo dotykasz etapu, który tu występuje — nie rutyno
 
 Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/zamkniete-zaleglosci.md`.
 
+**11.09 (etap 04, zlecone przez MG): edytor sceny ma pytać o liczbę kratek, a nie o piksele.**
+Dziś rozmiar kratki ustawia się suwakiem w pikselach, więc trafienie w skalę mapy jest
+zgadywanką — i na świeżej scenie MG **nie trafił**: „StrefaPrzemysłowa" ma siatkę **47 px**, a plik
+40 × 30 wymaga **36,2 px** (1448 / 40), przez co kratki nie siedzą na miejscach parkingowych ani
+na jezdni. Mapy z paczek są opisane skalą w nazwie (`…-40x30`), więc to jest informacja, którą MG
+ma pod ręką, tylko nie ma jej gdzie wpisać. **Naprawa:** w `ScenePanel.tsx`, obok suwaka, dwa pola
+„kratek w poziomie / w pionie"; z rozmiaru tła (`scene.background.width/height`) liczą `gridSizePx`
+i wpisują je do szkicu — suwak zostaje dla map bez okrągłej skali. Ta sama arytmetyka co
+w `map/welcome-map.ts` (`szerokość / kolumny`), więc warto ją wyjąć do jednego miejsca.
+**Przy okazji** (MG potwierdził 11.09): scena „StrefaPrzemysłowa" ma wgrany **starszy plik
+w połowie rozdzielczości** (1448 × 1086 zamiast 2896 × 2176 z `Downloads`) — po dołożeniu pola
+warto wgrać nowy i poprawić siatkę jednym wpisem.
+
+**11.09 — decyzje MG do rzeczy zgłoszonych po sesji kamery (żeby nie wracały jako pytania):**
+
+- **„Ani piksela czerni" zostaje.** Gracz przy maksymalnym oddaleniu nie obejmie całej mapy
+  40 × 30 na szerokim oknie i **tak ma być** — „może sobie poprzesuwać albo odpowiednio rozciągnąć
+  okno". Nie proponuj powrotu do wariantu „cała mapa z czarnymi pasami".
+- **Mapa powitalna zostaje bez wyznaczanego punktu startu** — zawsze środek dolnej krawędzi.
+  Tło nie ma wiersza w bazie, w którym MG mógłby punkt zapisać, i nikomu to nie przeszkadza.
+- **Czarne pole gracza pod nieodsłoniętą mgłą jest zachowaniem, nie usterką** — ale czyta się jak
+  awaria: MG sam „miał obawy, że jest zepsuta", patrząc na własną scenę z widocznością `fog`.
+  Nic z tym nie robimy; warto o tym pamiętać przy oględzinach i przy pierwszej sesji z drużyną.
+- **Usterka „MG widzi «Brak sceny» po własnej aktywacji" zostaje na tej liście** (wpis niżej) —
+  MG ją przyjął, naprawa przy okazji.
+
 **11.09 (etap 04, znalezione przy oględzinach kamery): MG, który połączył się przy braku
 aktywnej sceny, po własnej aktywacji widzi dalej „Brak sceny".** Serwer przenosi wtedy gniazdo MG
 do pokoju sceny (`realtime/scenes.ts`, `data.viewedSceneId === null` w `scene:activate`), ale

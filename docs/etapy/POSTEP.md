@@ -298,6 +298,13 @@ mgła). Oględziny robiłem na niej i **przywróciłem jej stan** co do pola: ak
 punktu startu. **Uwaga dla MG w raporcie:** kratka 47 px nie odpowiada skali 40 × 30 tego pliku
 (powinno być 36,2 px), więc siatka na tej scenie nie siedzi na rysunku.
 
+**Odpowiedzi MG na raport zapisane w `zaleglosci.md` (11.09, koniec dnia):** jedna nowa pozycja
+do zrobienia — **pola „kratek w poziomie/pionie" w edytorze sceny** zamiast zgadywania pikseli
+(MG chce; jego własna scena ma z tego powodu siatkę 47 px zamiast 36,2) — oraz cztery decyzje
+zamknięte, żeby nie wracały jako pytania: „ani piksela czerni" zostaje, mapa powitalna zostaje bez
+wyznaczanego punktu startu, czarne pole pod nieodsłoniętą mgłą to zachowanie (choć **MG sam wziął
+je za awarię**), a usterka „MG widzi «Brak sceny» po własnej aktywacji" czeka na liście.
+
 **Zaległość dopisana (nie moja usterka, starsza):** MG, który połączył się przy braku aktywnej
 sceny, po własnej aktywacji widzi dalej „Brak sceny" — gałąź MG w `socket.ts` woła `applyScene`,
 a ten milczy przy `scene === null`. Gracze bez zmian.
