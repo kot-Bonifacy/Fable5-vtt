@@ -907,28 +907,257 @@ body {
   font-size: 0.9rem;
 }
 
-/* --- Auth screens (login / join) --- */
+/* --- Ekrany wejścia: logowanie MG, dołączanie gracza, ekran startowy -------
 
+   Od 11.09.2026 stoją na plakacie `public/art/login-poster.webp` (Night City
+   z narysowaną pośrodku czerwoną ramką celownika). Trzy rzeczy trzymają
+   formularz **w** obrazie, a nie **na** obrazie:
+
+   1. KOTWICA. Ramką logowania jest ta narysowana ramka celownika, więc
+      formularz musi siadać w jej środku przy każdym kształcie okna. W pliku
+      (1672 × 941) ramka leży na 31,6–68,1% szerokości i 14,6–63,1% wysokości —
+      jej środek to 49,8% × 38,8%: poziomo praktycznie środek obrazu, pionowo
+      **11,16% wyżej**. `background-size: cover` skaluje plakat do wysokości
+      `max(wysokość okna, szerokość okna × 941/1672)`, więc dokładnie tę liczbę
+      przelicza `translate` niżej. `clamp` jest zabezpieczeniem na niskie okno:
+      gdyby podniesienie miało wypchnąć formularz za górną krawędź, zostaje on
+      po prostu na środku.
+   2. BRAK PUDEŁKA (decyzja MG z 11.09). Formularz nie ma własnego tła ani
+      obwódki — napisy leżą wprost na papierze plakatu. Wolno tak wyłącznie
+      dzięki kotwicy: to ona gwarantuje, co jest pod spodem. Wnętrze ramki to
+      równy kremowy papier przy każdym kadrze, więc sadza na nim zawsze się
+      czyta. **Odkręcając kotwicę, trzeba oddać formularzowi tło** — inaczej
+      napisy wylądują na sylwetce punka albo na neonach.
+   3. SZEROKOŚĆ LICZONA Z OBRAZU, nie z okna: 24% szerokości plakatu to dwie
+      trzecie wnętrza ramki, więc formularz nigdy z niej nie wychodzi, a na
+      dużym monitorze rośnie razem z nią.
+
+   Kolory: tokeny `--login-*` w `theme.css`, bez pary dziennej — plakat jest
+   fikcją, nie chromem aplikacji, tak samo jak mapa, Sieć i screamsheet.
+
+   `.auth-label`, `.auth-error` i `.auth-hint` to klasy **całej aplikacji**
+   (używa ich pół edytora botów i kart scen), więc ich reguły bazowe zostają
+   nietknięte, a plakatowy wygląd dokłada się wyłącznie pod `.auth-screen`.
+   --------------------------------------------------------------------------- */
+
+/* Kolumna z `safe center`, a nie `place-items: center`, bo formularz bywa
+   wyższy od okna (np. 1500 × 460 — okno rozciągnięte na pół ekranu). Zwykłe
+   wyśrodkowanie wypycha wtedy górę formularza poza widok i **nie da się jej
+   doscrollować**; `safe` w takim wypadku dosuwa treść do początku osi,
+   a `overflow-y` daje pasek przewijania. */
 .auth-screen {
   height: 100%;
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: safe center;
+  overflow-y: auto;
+  padding: 1.5rem;
   background:
-    linear-gradient(var(--border) 1px, transparent 1px) 0 0 / 48px 48px,
-    linear-gradient(90deg, var(--border) 1px, transparent 1px) 0 0 / 48px 48px,
-    var(--bg);
+    url('/art/login-poster.webp') center / cover no-repeat,
+    var(--login-paper);
+  color: var(--login-ink);
+  font-family: var(--font-cp-cond);
+}
+
+/* Podniesienie do środka ramki celownika — patrz punkt 1 wyżej. Wyliczenie
+   siedzi w miejscu, a nie we własnej zmiennej, bo `theme.test.ts` wymaga, żeby
+   każdy `var(--…)` w tym pliku był zdefiniowany w motywie, a to jest geometria
+   kadru, nie kolor. */
+.auth-screen > .auth-card,
+.auth-screen > .placeholder-text {
+  translate: 0 calc(-1 * clamp(0px, max(100dvh, 100dvw * 941 / 1672) * 0.1116, 50dvh - 14rem));
 }
 
 .auth-card {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  width: min(380px, 92vw);
-  padding: 2rem;
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  gap: 0.5rem;
+  width: min(84vw, clamp(16rem, max(100dvw, 100dvh * 1672 / 941) * 0.24, 26rem));
 }
+
+/* Ekran startowy i „Sprawdzanie zaproszenia…" — plakietka HUD-u, nie zdanie. */
+.auth-screen > .placeholder-text {
+  color: var(--login-ink-dim);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+
+/* Nadtytuł: plakat sam mówi „Cyberpunk RED" wielkim logiem w rogu, więc tutaj
+   ta sama nazwa idzie drobnym, rozstrzelonym pismem — jako plakietka systemu,
+   a nie drugie logo konkurujące z pierwszym. */
+.auth-eyebrow {
+  color: var(--login-red-deep);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.36em;
+  text-transform: uppercase;
+}
+
+.auth-screen .auth-title {
+  font-family: 'Anton', 'Oswald', Impact, sans-serif;
+  font-size: clamp(1.45rem, 2.6vw, 2rem);
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--login-ink);
+}
+
+/* Kreska z krzyżykiem na końcu — ten sam gest, którym plakat podkreśla napis
+   „NIGHT CITY" nad ramką. */
+.auth-rule {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.15rem 0 0.55rem;
+  color: var(--login-red);
+}
+
+.auth-rule::before {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: currentcolor;
+}
+
+.auth-rule::after {
+  content: '+';
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.auth-screen .auth-subtitle {
+  color: var(--login-ink);
+  font-size: 0.9rem;
+  letter-spacing: 0.02em;
+}
+
+.auth-screen .auth-label {
+  margin-top: 0.4rem;
+  color: var(--login-ink-dim);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+
+/* Ekran dołączania wiesza `.auth-label` nie tylko na podpisach pól, ale i na
+   całych zdaniach („Wracasz do gry? Wybierz swoje imię:"). Wersaliki
+   z rozstrzeleniem na 0,3 em są dobre dla jednego słowa nad polem, a zdanie
+   w nich krzyczy i źle się czyta — dlatego `<p>` dostaje z powrotem zwykłe
+   pismo, a HUD-owy podpis zostaje przy `<label>`. */
+.auth-screen p.auth-label {
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  text-transform: none;
+}
+
+.auth-screen .auth-error {
+  color: var(--login-red-deep);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.auth-screen .auth-hint {
+  margin-top: 0.55rem;
+  color: var(--login-ink-dim);
+  font-size: 0.76rem;
+  letter-spacing: 0.05em;
+}
+
+/* Pole bez ramki: sam nadruk i kreska pod spodem, jak w formularzu na papierze.
+   Ognisko widać po tym, że kreska robi się czerwona — to jedyne pole na ekranie,
+   więc zmiana barwy na całej jego szerokości czyta się lepiej niż systemowa
+   obwódka doklejona do plakatu. */
+.auth-screen input[type='text'],
+.auth-screen input[type='password'] {
+  padding: 0.3rem 0;
+  background: none;
+  border: none;
+  border-bottom: 2px solid var(--login-ink-dim);
+  border-radius: 0;
+  color: var(--login-ink);
+  caret-color: var(--login-red);
+  font-family: var(--font-cp-cond);
+  font-size: 1.1rem;
+  letter-spacing: 0.14em;
+}
+
+.auth-screen input:focus {
+  outline: none;
+  border-bottom-color: var(--login-red);
+}
+
+/* Hasło podstawione z menedżera haseł Chrome dostaje od przeglądarki własne
+   niebieskie tło i własny kolor liter, a zwykłe `background` tego nie zdejmuje
+   (to styl UA na pseudoklasie, nie kaskada). Zdejmuje je dopiero absurdalnie
+   długie przejście: barwa rusza w stronę niebieskiego, ale nigdy nie dojeżdża.
+   Drugie znane obejście, `box-shadow: inset 0 0 0 100px`, odpada — zalepiłoby
+   pole płaską plamą, a pod spodem ma być ziarno plakatu. */
+.auth-screen input:-webkit-autofill,
+.auth-screen input:-webkit-autofill:hover,
+.auth-screen input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--login-ink);
+  caret-color: var(--login-red);
+  transition: background-color 100000s ease-in-out 0s;
+}
+
+/* Ścięty prawy dolny róg — ten sam gest, co czarna belka z logiem w rogu
+   plakatu. `clip-path` obcina też `box-shadow`, więc cień idzie przez `filter`. */
+.auth-screen .primary-button {
+  margin-top: 0.85rem;
+  padding: 0.62rem 1.1rem;
+  background: var(--login-red);
+  border: none;
+  border-radius: 0;
+  color: var(--login-on-red);
+  font-family: var(--font-cp-cond);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 11px), calc(100% - 11px) 100%, 0 100%);
+  filter: drop-shadow(var(--login-shadow));
+}
+
+.auth-screen .primary-button:hover:not(:disabled) {
+  background: var(--login-red-bright);
+}
+
+.auth-screen .primary-button:active:not(:disabled) {
+  background: var(--login-red-deep);
+}
+
+.auth-screen button:disabled {
+  opacity: 0.45;
+}
+
+/* Ekran dołączania: imiona graczy jako kafle wycięte z papieru. */
+.auth-screen .player-choices {
+  gap: 0.4rem;
+}
+
+.auth-screen .player-chip {
+  padding: 0.32rem 0.7rem;
+  background: var(--login-chip);
+  border: 1px solid var(--login-ink-dim);
+  border-radius: 0;
+  color: var(--login-ink);
+  font-family: var(--font-cp-cond);
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+}
+
+.auth-screen .player-chip:hover:not(:disabled) {
+  background: var(--login-chip-hover);
+  border-color: var(--login-red);
+}
+
+/* --- Klasy pomocnicze, których używa cała aplikacja, nie tylko wejście --- */
 
 .auth-title {
   font-size: 1.15rem;

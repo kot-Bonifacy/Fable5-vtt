@@ -219,6 +219,8 @@ Umiejętność" i model musi być tak dobrany, żeby nie musiał (stąd `statBlo
 
 ## ui — Okna, motyw, style, dostępność
 
+- **Przezroczyste pole hasła Chrome i tak zamaluje własnym niebieskim** — to styl UA na `:-webkit-autofill`, `background` go nie zdejmuje; zdejmuje `transition: background-color 100000s`.
+- **`place-items: center` na ekranie wyższym niż okno chowa górę treści bezpowrotnie** — pasek przewijania nie pomaga, bo przepełnienie jest po obu stronach. Ratuje `justify-content: safe center` w kolumnie flex.
 - **Okno otwierane znad karty postaci znika pod nią, choć powstało** — scrim jest, `Escape` działa, w DOM-ie okno ma rozmiary, a widać zero. Rozpoznanie: `document.elementFromPoint` na jego środku zwraca arkusz.
 - **Okno, które otwiera drugie okno, musi zgasić SIEBIE** — objaw brzmi „okno prośby nie zamyka się po zgodzie MG”, a to okno rzutu zostało pod spodem. Rozpoznanie: sprawdź, ile okien trzyma **stan**, nie które widać.
 - **Prosty cudzysłów w atrybucie JSX zamyka atrybut** — `title="… („−1k6") …"` to błąd składni; zamykający pisze się `”` (U+201D).
@@ -226,6 +228,21 @@ Umiejętność" i model musi być tak dobrany, żeby nie musiał (stąd `statBlo
 - **Nasłuch „klik poza oknem" dopięty w efekcie łapie ten sam klik, który okno otworzył** — okno znika bez śladu i bez błędu; uzbrajaj listener przez `setTimeout(…, 0)`.
 
 ---
+
+- **Pole z hasłem podstawionym przez Chrome zamalowuje się na niebiesko, choć ma `background: none`
+  (11.09).** Na ekranie logowania stojącym na plakacie wygląda to jak wbita w grafikę systemowa
+  plamka. To nie kaskada, tylko styl UA na pseudoklasie `:-webkit-autofill` — zwykłe `background`
+  i `background-color` przegrywają. Zdejmuje to dopiero absurdalnie długie przejście
+  (`transition: background-color 100000s`): barwa rusza w stronę niebieskiego i nigdy nie dojeżdża.
+  Drugie znane obejście, `box-shadow: inset 0 0 0 100px <kolor>`, **tu odpada** — zalepiłoby pole
+  płaską plamą, a pod spodem ma być ziarno plakatu. Litery ustawia się przez
+  `-webkit-text-fill-color`, nie `color`.
+
+- **`place-items: center` chowa górę treści, gdy treść jest wyższa od okna (11.09).** Przy oknie
+  1500 × 460 formularz logowania wystawał poza ekran **z obu stron naraz**, więc dołożenie
+  `overflow-y: auto` samo z siebie nic nie dało: pasek przewijania był, ale góra i tak zostawała
+  poza zasięgiem. Działa dopiero kolumna flex z `justify-content: safe center` — `safe` przy
+  przepełnieniu przestaje centrować i dosuwa treść do początku osi.
 
 - **Okno otwierane znad karty postaci znika pod nią, choć powstało (06.09, etap 40).** `.sheet-window`
   ma `z-index: 300`, a `.dialog-backdrop` — 50. Objaw jest mylący, bo **coś się dzieje**: ekran

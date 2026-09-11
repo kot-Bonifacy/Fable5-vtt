@@ -130,7 +130,8 @@ go i nie proponuj makr; pasek akcji z 16f zostaje generowany.
 Co z nich obowiązuje w kodzie, stoi w sekcjach obszarów niżej; pełne akapity o każdym —
 w `archiwum/od-czego-zaczac.md`.
 
-**Dług oględzin — 17 pozycji** (`zaleglosci.md`). Czternaście czeka na żywy model. Dwie to **to
+**Dług oględzin — 17 pozycji** (`zaleglosci.md`; osiemnasta, dopisana 11.09, to usterka do
+naprawy, nie klik do zrobienia). Czternaście czeka na żywy model. Dwie to **to
 samo menu figury** („🎒 Przeszukaj…" i przełącznik statystyk), bo prawym klikiem z automatyki nie
 otworzysz menu kanwy Pixi — klika się je jednym podejściem ręką MG. Etapy 39, 40 i szlif karty nie
 dołożyły ani jednej pozycji: przeszły oględziny w tej samej sesji, w której powstały.
@@ -185,7 +186,7 @@ a nie do tego pliku.
 | `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  |   27 |       9 |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     |    3 |       3 |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    |    6 |      13 |
-| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność           |    7 |       5 |
+| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście   |    8 |       7 |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  |   13 |       1 |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       |    7 |       4 |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   |   28 |       8 |
@@ -204,6 +205,59 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 11.09 — plakat na ekranie wejścia
+
+**Zlecenie MG:** dodać `tapeta_logowania.png` jako tapetę głównego okna logowania i umieścić
+pośrodku okno logowania pasujące kolorystycznie i stylistycznie, „które nie będzie zaburzało
+obrazu i będzie się w nią dobrze wtapiało", z prośbą o pytania uzupełniające i zgłaszanie
+potencjalnych błędów. Doprecyzowane w trakcie: **konwersja nie ma stracić na jakości.**
+
+**Cztery pytania przed kodem.** MG wybrał: plik **do repo** (`public/art/`, nie poza gitem),
+tapeta na **obu** ekranach wejścia (logowanie MG i dołączanie gracza), formularz **w czerwonej
+ramce celownika narysowanej w plakacie** (nie w geometrycznym środku okna) i **bez własnego
+pudełka** — napisy wprost na papierze. Pochodzenie pliku: **własna generacja AI** MG, jak mapa
+z etapu 04.
+
+**Zgłoszone MG przed pierwszą linią kodu:** repo jest publiczne, a plakat niesie znaki towarowe
+CP RED (logo, Arasaka, Militech). MG zdecydował świadomie; granica prawna i droga odwrotu
+(przeniesienie do `uploads/`, ekran degraduje się do kremowego papieru) — `docs/assety-logowanie.md`.
+
+**Bezstratny WebP, bo plakat jest z ziarna.** 2745 kB PNG → **1811 kB WebP bezstratnego,
+identycznego co do bitu**. Warianty stratne odpadły na pomiarach: nawet q100 daje odchyłkę
+79/255, bo pierwsze, co kodek wyrzuca, to ziarno filmowe i rysy. Tabela pomiarów w pliku assetów.
+**Pillow po cichu ignoruje `near_lossless`** — sprawdzone, nie ma po co próbować drugi raz.
+
+**Kotwica zamiast wyśrodkowania — to jest całe rozwiązanie „wtapiania się".** Ramka celownika
+z plakatu leży na 31,6–68,1% × 14,6–63,1% pliku (wykryte ciągami czerwonych pikseli, nie na oko),
+więc jej środek jest **11,16% wyżej** niż środek obrazu. `translate` odtwarza geometrię
+`background-size: cover`, dzięki czemu formularz siada w tej ramce przy każdym kształcie okna —
+i dopiero to pozwala mu **nie mieć tła**: pod napisami zawsze jest równy kremowy papier.
+
+**Dwie usterki znalezione w przeglądarce i naprawione w tej samej sesji.** Chrome malował pole
+z podstawionym hasłem na niebiesko mimo `background: none` (styl UA na `:-webkit-autofill`;
+zdjęte długim `transition`), a `place-items: center` chowało górę formularza bezpowrotnie na
+oknie 1500 × 460 (naprawione `justify-content: safe center` w kolumnie flex). Obie w `pulapki-dev.md`.
+
+**Trzecia usterka zgłoszona, nie naprawiona — bo starsza niż plakat.** Hasło z menedżera haseł
+nie odblokowuje przycisku „Zaloguj się": `LoginPage` pyta o stan Reacta, a autouzupełnienie nie
+wysyła `input`. Plakat to tylko uwidocznił. Poszło do `zaleglosci.md` razem z propozycją naprawy.
+
+**Kontrasty policzone, nie dobrane na oko** — wszystkie napisy ponad progiem AA na papierze
+(sadza 10,7:1, przygasła 4,6:1, błąd 5,6:1, napis na przycisku 5,2:1). `--login-red` ma 3,7:1,
+więc jest wyłącznie do kresek i teł; drobny tekst bierze `--login-red-deep`.
+
+**Oględziny: zrobione**, wyjątkowo bez długu. Przejrzane wszystkie trzy stany ekranu (startowy,
+logowanie, dołączanie w obu wariantach) na trzech kształtach okna: 1907 × 1024, 430 × 880
+i 1500 × 460. Ekran dołączania z kampanią oglądany na podmienionym DOM-ie — w bazie nie ma
+ważnego zaproszenia, a tworzenie go wykraczałoby poza zlecenie.
+
+**Uwaga na przyszłość: sesja MG na `[::1]:5173` zalogowała się sama.** Chrome trzyma tam hasło MG
+i formularz poszedł bez mojego kliknięcia. Wylogowane od razu; przy oględzinach ekranu logowania
+licz się z tym, że menedżer haseł potrafi domknąć sprawę za ciebie.
+
+**Testy:** bez zmian — **1967** w `shared`, **1085** na serwerze, **114** u klienta, zielone.
+ESLint i Prettier czyste; `tsc -b` u klienta czysty. Jedna umowa w `ui`, dwie pułapki w `ui`.
 
 ### Sesja 10.09 (druga) — pięć Akcji katalogu przeklikanych w pasku gracza
 
@@ -258,71 +312,3 @@ do stanu sprzed pierwszego kliknięcia.
 
 **Testy:** bez zmian — **1967** w `shared`, **1085** na serwerze, **114** u klienta. Ta sesja
 zmieniła wyłącznie dokumentację; jedna pułapka w `karta` i trzy w `ogledziny` w indeksach niżej.
-
-### Sesja 10.09 — oględziny wyposażenia figury (etap 41)
-
-**Zlecenie MG:** „dodaj możliwość skanowania założonego/używanego wyposażenia przez inne tokeny
-— żeby móc sprawdzić np. czy wroga/sojusznicza postać ma hełm na głowie, albo jaki rodzaj broni —
-bo teraz tego nie wiadomo, co uniemożliwia określenie, w jaki element ciała wroga celować",
-z prośbą o pytania uzupełniające i o zgłaszanie potencjalnych błędów. **Etapu 41 nie było
-w planie**; powstał plik `etap-41-ogledziny-wyposazenia.md`.
-
-**Diagnoza była prosta i potwierdziła zlecenie co do joty.** Punkt Celowania (16f + 31.08) gracz
-wybierał w ciemno: `TokenView` niesie nazwę, obrazek, naklejki, zwrot i rany, a karta NPC **nie
-jedzie do graczy w ogóle** (`characterAudience`). „Czy ten ganger ma hełm" nie miało **żadnej**
-drogi do stołu — a to jest liczba, na której stoi cała opłacalność strzału w głowę.
-
-**Osiem pytań przed kodem; MG wybrał wariant najszerszy w każdym z nich.** Dwie warstwy (rzut oka
-za darmo, liczby po Teście), PT ustala MG za każdym razem (tor prośby z etapu 40), w walce Akcja,
-widać pancerz + broń + chrom + rany, figura bez deklaracji pokazuje pierwszą broń z karty, a stan
-„broń w rękach" jest **egzekwowany w walce**.
-
-**Egzekwowanie wywróciło 39 testów serwera i to nie była usterka danych testowych.** Karta
-z testów ataku niesie pistolet, karabin i nóż; przy regule domyślnej „pierwsza broń jest w rękach"
-każdy strzał z karabinu odpadał `WEAPON_NOT_DRAWN`. Zgodnie z s. 168 tak ma być — ale zaczynało to
-obowiązywać **także figury, którym nikt nigdy nie powiedział, co trzymają**, czyli wszystkie.
-Zgłoszone MG z liczbą i przykładem; **decyzja: domysł pokazuje, deklaracja zabrania.** Brak pola
-= oględziny pokazują pierwszą broń, planer nie odmawia niczego; od pierwszego `weapon:draw` pole
-istnieje i odmowa jest pełna. Po zmianie **39 testów wróciło do zieleni bez tknięcia ani jednego**.
-
-**Ręce są dwie, nie jedna** (`CPRED_HANDS`) — poprawka względem pierwszego szkicu, w którym stan
-był pojedynczym id. Pistolet i nóż trzyma się naraz, karabin zajmuje obie ręce; arytmetykę robi
-serwer w `weapon:draw` z `resolved.hands`, bo katalog należy do serwera. `weapon:draw` obsługuje
-trzy gesty z cenami z podręcznika: dobycie za darmo, schowanie za Akcję, upuszczenie za darmo —
-i dopiero teraz trzy wpisy katalogu Akcji z 14b coś robią.
-
-**Rzut oka jedzie własnym zdarzeniem `sighting:look`, nie na `TokenView`.** Klasa broni bierze się
-z **typu** w kompendium („Karabin szturmowy", nie „Militech Ronin") i tylko dlatego wolno ją pokazać
-za darmo; kompendium czyta się z bazy, więc doklejenie tego do żetonu kazałoby każdej
-synchronizacji sceny czekać na katalog. Widoczność rozstrzyga **`concealedFrom`** — ta sama, którą
-mapa decyduje o rysowaniu żetonu — żeby oględziny nie miały drugiej definicji „widzę".
-
-**Warstwa szczegółowa to karta czatu rodzaju `sighting`, prywatna jak szept.** Rzut bywa jawny
-i stół widzi, że komuś wyszło; **treść** należy do postaci, która ją zdobyła. Karta zostaje, więc
-po przeładowaniu gracz nadal ma to, co wypatrzył — i to z niej okno czyta liczby. Nie jest to nowy
-rodzaj rzutu: `sightingTokenId` na zwykłym żądaniu Testu mówi jedynie, **co jego zdanie odsłania**.
-
-**Chrom rozstrzyga rodzina, nie flaga przy wpisie** — sześć z ośmiu widać z zewnątrz, Cybersynapsy
-i Cyborgizacje wewnętrzne nie. Wiersz **bez** rodziny (karty sprzed 23a) jest niewidoczny:
-przy wyborze „pokaż, czego nie wiesz" kontra „przemilcz" przemilczenie jest jedynym bezpiecznym
-domyślnym na drodze z karty MG do gracza.
-
-**Menu figury otworzyło się graczom — po raz pierwszy.** Do 41 `onTokenMenu` sprawdzało `ROLE_GM`,
-więc gracz nie miał żadnego wejścia w cudzą figurę poza celownikiem. Gracz dostaje **jedną**
-pozycję („🔍 Przyjrzyj się…"); reszta menu to warsztat MG, a atak i Konfrontację ma z paska,
-gdzie płaci się budżetem tury.
-
-**Pasek akcji wyszarza broń spoza rąk** (`option.notDrawn` → `CPRED_NOT_DRAWN_REFUSAL`) — bez tego
-gracz dowiadywałby się o pustej kaburze dopiero przy rzucie. Gasi **wyłącznie** przy
-zadeklarowanych rękach, tą samą regułą, co planer.
-
-**Oględziny w przeglądarce: NIE ZROBIONE, i to jest jedyny brak tego etapu.** Aplikacja wstaje,
-konsola po przeładowaniu z nowym kodem jest czysta — i na tym koniec, bo **oba wejścia są dla
-automatyki zamknięte**: menu figury chce prawego kliku w kanwę Pixi (przeszkoda znana od 38a),
-a dymek wymaga `onAimHover`, którego syntetyczny ruch kursora nie budzi (celownik się uzbraja,
-linia strzału rysuje, dymek nie wychodzi — nowa pułapka). Pięć pozycji do kliknięcia ręką MG
-stoi w `zaleglosci.md`, najlepiej razem z długiem 38a/38b: to jest **to samo menu**.
-
-**Testy:** **1967** w `shared` (+26), **1085** na serwerze (+13), 114 u klienta — zielone.
-ESLint, Prettier i `tsc --noEmit` czyste w trzech pakietach; klient się buduje. Sześć umów kodu
-i jedna pułapka w indeksach niżej.

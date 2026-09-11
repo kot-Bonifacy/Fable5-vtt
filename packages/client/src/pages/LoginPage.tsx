@@ -28,8 +28,12 @@ export function LoginPage() {
   return (
     <div className="auth-screen">
       <form className="auth-card" onSubmit={handleSubmit}>
-        <h1 className="auth-title">VTT — Cyberpunk RED</h1>
-        <p className="auth-subtitle">Logowanie Mistrza Gry</p>
+        {/* Plakat krzyczy „Cyberpunk RED" wielkim logiem w lewym rogu, więc tytuł
+            formularza mówi, co się tu robi, a nazwa systemu schodzi do plakietki
+            nad nim. Kreska z krzyżykiem to cytat z samego plakatu. */}
+        <p className="auth-eyebrow">VTT · Cyberpunk RED</p>
+        <h1 className="auth-title">Logowanie Mistrza Gry</h1>
+        <div className="auth-rule" aria-hidden="true" />
         <label className="auth-label" htmlFor="gm-password">
           Hasło
         </label>

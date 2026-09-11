@@ -68,7 +68,9 @@ export function JoinPage() {
     return (
       <div className="auth-screen">
         <div className="auth-card">
-          <h1 className="auth-title">VTT — Cyberpunk RED</h1>
+          <p className="auth-eyebrow">VTT · Cyberpunk RED</p>
+          <h1 className="auth-title">Zaproszenie nieważne</h1>
+          <div className="auth-rule" aria-hidden="true" />
           <p className="auth-error">
             Link zaproszenia jest nieprawidłowy, wygasł lub został unieważniony.
           </p>
@@ -81,9 +83,11 @@ export function JoinPage() {
   return (
     <div className="auth-screen">
       <form className="auth-card" onSubmit={handleSubmit}>
-        <h1 className="auth-title">VTT — Cyberpunk RED</h1>
+        <p className="auth-eyebrow">VTT · Cyberpunk RED</p>
+        <h1 className="auth-title">Dołączasz do gry</h1>
+        <div className="auth-rule" aria-hidden="true" />
         <p className="auth-subtitle">
-          Dołączasz do kampanii: <strong>{info.campaignName}</strong>
+          Kampania: <strong>{info.campaignName}</strong>
         </p>
 
         {info.players.length > 0 && (

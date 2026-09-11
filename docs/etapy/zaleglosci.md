@@ -6,6 +6,16 @@ odhaczania zaległości albo dotykasz etapu, który tu występuje — nie rutyno
 
 Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/zamkniete-zaleglosci.md`.
 
+**11.09 (ekran logowania, znalezione przy oględzinach plakatu): hasło podstawione z menedżera
+haseł nie odblokowuje przycisku „Zaloguj się".** Chrome wypełnia pole przy wejściu na stronę,
+w polu widać kropki — a przycisk zostaje wyszarzony, bo `LoginPage.tsx` pyta o stan Reacta
+(`disabled={busy || password.length === 0}`), a tamto wypełnienie nie wysyła zdarzenia `input`,
+dopóki użytkownik czegoś nie dotknie. Wygląda to na zepsuty przycisk: pole pełne, przycisk martwy.
+Usterka jest **starsza niż plakat** (warunek stoi tam od etapu 02), ale plakat ją uwidocznił —
+wyszarzona czerwień na kremowym papierze czyta się jak wyblakły nadruk, a nie jak stan „nieaktywny".
+**Naprawa:** nie pytać o długość stanu, tylko o zawartość pola przy wysyłce (albo doczytać
+`input.value` w `useEffect` po zamontowaniu). To samo dotyczy pola imienia na ekranie dołączania.
+
 **10.09 (etap 14b/30b, znalezione przy oględzinach pięciu Akcji katalogu): gracz widzi „bez ran"
 przy każdej cudzej figurze — także przy konającej.** `StabilizePicker`
 (`client/components/CombatForms.tsx:145`) liczy `wounded` z `tokens[row.tokenId]?.hp`, a

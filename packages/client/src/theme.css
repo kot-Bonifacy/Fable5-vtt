@@ -403,3 +403,47 @@
   --paper-shade-1: rgb(0 0 0 / 5%);
   --paper-sheen: rgb(255 255 255 / 6%);
 }
+
+/* ============================================================================
+   EKRAN WEJŚCIA (etap poza numeracją, 11.09.2026) — plakat, nie chrom
+   ----------------------------------------------------------------------------
+   Logowanie MG i dołączanie gracza stoją na plakacie `public/art/login-poster.webp`.
+   To ten sam wyjątek co mapa, Sieć i screamsheet: papier plakatu świeci tak samo
+   w dzień i w nocy, więc żaden z tych tokenów nie ma pary dziennej. Gdyby miał,
+   dzienna skórka rozjaśniłaby napisy leżące wprost na kremowym niebie i ekran
+   logowania zniknąłby w południe.
+
+   Barwy spróbkowane z samego pliku, nie dobrane na oko: papier to średnia
+   z wnętrza ramki celownika (222 196 161), czerwień — piksele dolnej linii tej
+   ramki (193 23 21). Stąd formularz wygląda na nadrukowany, a nie doklejony.
+
+   Kontrasty policzone względem papieru: sadza 10,7:1, przygasła sadza 4,6:1,
+   czerwień głęboka (komunikat błędu) 5,6:1, krem na czerwonym przycisku 5,2:1
+   — wszystkie ponad progiem AA. `--login-red` na papierze ma 3,7:1, więc wolno
+   nim rysować **kreski i tła**, ale nie pisać nim drobnego tekstu.
+   ========================================================================== */
+
+:root {
+  /* Papier plakatu. Widać go, zanim tapeta się wczyta, i gdyby jej zabrakło —
+     dlatego jest kremowy, a nie ciemny: sadza na nim zostaje czytelna. */
+  --login-paper: #dec4a1;
+  /* Napis na papierze — sadza plakatu, nie czerń interfejsu. */
+  --login-ink: #1a1613;
+  /* Podpis pola, podpowiedź, linia pod polem w spoczynku. */
+  --login-ink-dim: #5b5245;
+  /* Czerwień ramki celownika: kreski HUD-u, tło przycisku, pole w ognisku. */
+  --login-red: #c11715;
+  /* Najechanie na przycisk — czerwień rozgrzana. */
+  --login-red-bright: #dd4131;
+  /* Czerwień na tekst: `--login-red` ma na papierze 3,7:1 i za mało go widać. */
+  --login-red-deep: #8e0f0d;
+  /* Napis na czerwonym przycisku — krem plakatu, nie czysta biel. */
+  --login-on-red: #f6ead9;
+  /* Kafel z imieniem gracza na ekranie dołączania: papier przybrudzony sadzą. */
+  --login-chip: rgb(26 22 19 / 8%);
+  --login-chip-hover: rgb(26 22 19 / 16%);
+  /* Cień pod przyciskiem. Przycisk ma ścięty róg (`clip-path`), a `clip-path`
+     obcina też `box-shadow` — dlatego to wartość dla `drop-shadow()`, nie dla
+     `box-shadow`, i tak trzeba jej używać. */
+  --login-shadow: 0 4px 10px rgb(26 22 19 / 35%);
+}

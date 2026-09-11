@@ -7,6 +7,75 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+
+### Sesja 10.09 — oględziny wyposażenia figury (etap 41)
+
+**Zlecenie MG:** „dodaj możliwość skanowania założonego/używanego wyposażenia przez inne tokeny
+— żeby móc sprawdzić np. czy wroga/sojusznicza postać ma hełm na głowie, albo jaki rodzaj broni —
+bo teraz tego nie wiadomo, co uniemożliwia określenie, w jaki element ciała wroga celować",
+z prośbą o pytania uzupełniające i o zgłaszanie potencjalnych błędów. **Etapu 41 nie było
+w planie**; powstał plik `etap-41-ogledziny-wyposazenia.md`.
+
+**Diagnoza była prosta i potwierdziła zlecenie co do joty.** Punkt Celowania (16f + 31.08) gracz
+wybierał w ciemno: `TokenView` niesie nazwę, obrazek, naklejki, zwrot i rany, a karta NPC **nie
+jedzie do graczy w ogóle** (`characterAudience`). „Czy ten ganger ma hełm" nie miało **żadnej**
+drogi do stołu — a to jest liczba, na której stoi cała opłacalność strzału w głowę.
+
+**Osiem pytań przed kodem; MG wybrał wariant najszerszy w każdym z nich.** Dwie warstwy (rzut oka
+za darmo, liczby po Teście), PT ustala MG za każdym razem (tor prośby z etapu 40), w walce Akcja,
+widać pancerz + broń + chrom + rany, figura bez deklaracji pokazuje pierwszą broń z karty, a stan
+„broń w rękach" jest **egzekwowany w walce**.
+
+**Egzekwowanie wywróciło 39 testów serwera i to nie była usterka danych testowych.** Karta
+z testów ataku niesie pistolet, karabin i nóż; przy regule domyślnej „pierwsza broń jest w rękach"
+każdy strzał z karabinu odpadał `WEAPON_NOT_DRAWN`. Zgodnie z s. 168 tak ma być — ale zaczynało to
+obowiązywać **także figury, którym nikt nigdy nie powiedział, co trzymają**, czyli wszystkie.
+Zgłoszone MG z liczbą i przykładem; **decyzja: domysł pokazuje, deklaracja zabrania.** Brak pola
+= oględziny pokazują pierwszą broń, planer nie odmawia niczego; od pierwszego `weapon:draw` pole
+istnieje i odmowa jest pełna. Po zmianie **39 testów wróciło do zieleni bez tknięcia ani jednego**.
+
+**Ręce są dwie, nie jedna** (`CPRED_HANDS`) — poprawka względem pierwszego szkicu, w którym stan
+był pojedynczym id. Pistolet i nóż trzyma się naraz, karabin zajmuje obie ręce; arytmetykę robi
+serwer w `weapon:draw` z `resolved.hands`, bo katalog należy do serwera. `weapon:draw` obsługuje
+trzy gesty z cenami z podręcznika: dobycie za darmo, schowanie za Akcję, upuszczenie za darmo —
+i dopiero teraz trzy wpisy katalogu Akcji z 14b coś robią.
+
+**Rzut oka jedzie własnym zdarzeniem `sighting:look`, nie na `TokenView`.** Klasa broni bierze się
+z **typu** w kompendium („Karabin szturmowy", nie „Militech Ronin") i tylko dlatego wolno ją pokazać
+za darmo; kompendium czyta się z bazy, więc doklejenie tego do żetonu kazałoby każdej
+synchronizacji sceny czekać na katalog. Widoczność rozstrzyga **`concealedFrom`** — ta sama, którą
+mapa decyduje o rysowaniu żetonu — żeby oględziny nie miały drugiej definicji „widzę".
+
+**Warstwa szczegółowa to karta czatu rodzaju `sighting`, prywatna jak szept.** Rzut bywa jawny
+i stół widzi, że komuś wyszło; **treść** należy do postaci, która ją zdobyła. Karta zostaje, więc
+po przeładowaniu gracz nadal ma to, co wypatrzył — i to z niej okno czyta liczby. Nie jest to nowy
+rodzaj rzutu: `sightingTokenId` na zwykłym żądaniu Testu mówi jedynie, **co jego zdanie odsłania**.
+
+**Chrom rozstrzyga rodzina, nie flaga przy wpisie** — sześć z ośmiu widać z zewnątrz, Cybersynapsy
+i Cyborgizacje wewnętrzne nie. Wiersz **bez** rodziny (karty sprzed 23a) jest niewidoczny:
+przy wyborze „pokaż, czego nie wiesz" kontra „przemilcz" przemilczenie jest jedynym bezpiecznym
+domyślnym na drodze z karty MG do gracza.
+
+**Menu figury otworzyło się graczom — po raz pierwszy.** Do 41 `onTokenMenu` sprawdzało `ROLE_GM`,
+więc gracz nie miał żadnego wejścia w cudzą figurę poza celownikiem. Gracz dostaje **jedną**
+pozycję („🔍 Przyjrzyj się…"); reszta menu to warsztat MG, a atak i Konfrontację ma z paska,
+gdzie płaci się budżetem tury.
+
+**Pasek akcji wyszarza broń spoza rąk** (`option.notDrawn` → `CPRED_NOT_DRAWN_REFUSAL`) — bez tego
+gracz dowiadywałby się o pustej kaburze dopiero przy rzucie. Gasi **wyłącznie** przy
+zadeklarowanych rękach, tą samą regułą, co planer.
+
+**Oględziny w przeglądarce: NIE ZROBIONE, i to jest jedyny brak tego etapu.** Aplikacja wstaje,
+konsola po przeładowaniu z nowym kodem jest czysta — i na tym koniec, bo **oba wejścia są dla
+automatyki zamknięte**: menu figury chce prawego kliku w kanwę Pixi (przeszkoda znana od 38a),
+a dymek wymaga `onAimHover`, którego syntetyczny ruch kursora nie budzi (celownik się uzbraja,
+linia strzału rysuje, dymek nie wychodzi — nowa pułapka). Pięć pozycji do kliknięcia ręką MG
+stoi w `zaleglosci.md`, najlepiej razem z długiem 38a/38b: to jest **to samo menu**.
+
+**Testy:** **1967** w `shared` (+26), **1085** na serwerze (+13), 114 u klienta — zielone.
+ESLint, Prettier i `tsc --noEmit` czyste w trzech pakietach; klient się buduje. Sześć umów kodu
+i jedna pułapka w indeksach niżej.
+
 ### Sesja 09.09 — oględziny zdobywania i wydawania PD (29a)
 
 **Zlecenie MG:** przetestować **zdobywanie doświadczenia i rozwijanie za nie postaci**, z prośbą

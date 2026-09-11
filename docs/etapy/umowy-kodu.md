@@ -424,6 +424,7 @@ sąsiadach. Nowe rozgłoszenie z `seq` w typie zaczyna się od tych trzech linii
 
 ## ui — Okna, motyw, style, dostępność
 
+- **Ekran wejścia (`.auth-screen`) stoi na plakacie** — formularz nie ma tła i kotwiczy się do ramki **narysowanej w obrazie**, nie do środka okna. Zmiana pliku tapety = przemierzenie ułamków (`docs/assety-logowanie.md`); zdjęcie kotwicy = oddanie formularzowi tła.
 - **Okno otwierane znad karty postaci potrzebuje `z-index: 400`** — dopisz jego klasę do listy `.dialog-backdrop:has(…)` obok `.roll-dialog`; `.sheet-window` ma 300, a backdrop 50.
 - **Nowe pływające okno** — hook `useWindowPlacement` (`window-placement.ts`) + `<WindowResizeGrip />`; uchwyt 13 px od krawędzi, bo róg jest wycięty.
 - **Kolor** — wyłącznie w `packages/client/src/theme.css`; pilnuje `theme.test.ts` (literał w `styles.css`/`sheet.css`, token bez odbiorcy, token chromu bez pary dziennej).
@@ -433,6 +434,27 @@ sąsiadach. Nowe rozgłoszenie z `seq` w typie zaczyna się od tych trzech linii
 - **Zdanie „czego brakuje" w pasku postaci** — `HudContext.sheetNotMine`, renderowane **niezależnie** od `slots.length`: Akcje z katalogu nie potrzebują karty, więc pasek gracza nigdy nie jest pusty.
 
 ---
+
+**Ekran wejścia stoi na plakacie i kotwiczy się do obrazu, nie do okna (11.09).**
+`.auth-screen` (logowanie MG, dołączanie gracza, ekran startowy) ma tłem
+`public/art/login-poster.webp`. Plakat ma pośrodku **narysowaną czerwoną ramkę celownika** i to
+ona jest ramką formularza — dlatego formularz **nie ma własnego tła ani obwódki**, tylko napisy
+wprost na papierze. Wolno tak wyłącznie dlatego, że jest kotwica: `translate` podnosi formularz
+o 11,16% wysokości plakatu, bo środek tej ramki leży na 38,8% wysokości pliku, a nie na 50%.
+Wyliczenie odtwarza geometrię `background-size: cover`, więc trzyma się przy każdym kształcie
+okna — sprawdzone na 1907 × 1024, 430 × 880 i 1500 × 460.
+
+Trzy rzeczy, o które trzeba tu zahaczyć:
+
+- **Podmiana pliku tapety wymaga przemierzenia ułamków.** Współrzędne ramki, barwy i kontrasty
+  siedzą w `docs/assety-logowanie.md`; nowy obraz to nowe liczby w `styles.css` i `theme.css`.
+- **Zdjęcie kotwicy wymaga oddania formularzowi tła.** To kotwica gwarantuje, że pod napisami
+  jest równy kremowy papier. Bez niej napisy wylądują na sylwetce punka albo na neonach.
+- **Wyliczenie siedzi w miejscu, nie we własnej zmiennej CSS** — `theme.test.ts` wymaga, żeby
+  każdy `var(--…)` w `styles.css` był zdefiniowany w motywie, a to geometria kadru, nie kolor.
+
+Kolory idą w `--login-*` i **nie mają pary dziennej**: plakat jest fikcją, nie chromem aplikacji,
+tak samo jak mapa, Sieć i screamsheet.
 
 **Okno otwierane znad karty postaci potrzebuje `z-index: 400` (06.09, etap 40).**
 `.sheet-window` ma 300, a `.dialog-backdrop` — 50. Okno prośby i okno wezwania dopisały się do
