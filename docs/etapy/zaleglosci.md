@@ -6,6 +6,20 @@ odhaczania zaległości albo dotykasz etapu, który tu występuje — nie rutyno
 
 Zamknięte pozycje — z całą diagnozą i opisem naprawy — są w `archiwum/zamkniete-zaleglosci.md`.
 
+**11.09 (etap 27e/27h, znalezione przy przeglądzie ikon): naklejka statusu wnosi do interfejsu
+czarny kwadrat, którego motyw dzienny nie umie zgasić.** Pliki w `data/public/cpred/status-icons/`
+mają — w odróżnieniu od `public/icons/hud/` — zachowany czarny prostokąt tła z game-icons, i tak
+ma być: na mapie rysuje je `TokenNode.updateStatuses` (`client/map/TokenNode.ts:550`) jako sprite'y
+nad cudzą grafiką, gdzie biała sylwetka bez podkładu zniknęłaby na jasnym żetonie. Ale te same
+pliki idą **jako zwykły `<img>`** w trzy miejsca interfejsu: chip w panelu postaci
+(`CombatHud.tsx:84`), wybierak statusów (`TokenContextMenu.tsx:1039`) i pasek grupy
+(`TokenGroupBar.tsx:208`). W motywie dziennym daje to czarny stempel 13,6 px na kremowej pigułce —
+jedyny element panelu, który nie bierze koloru z motywu, obok trzydziestu siedmiu ikon HUD-u
+rysowanych maską CSS (`HudIcon`, `.hud-icon`, `styles.css:5591`). **Naprawa:** w interfejsie
+rysować statusy tą samą maską co resztę (URL pliku w `--hud-icon`, `background: currentColor`) —
+czarne tło jest wtedy nieistotne, bo maska bierze alfę, a sylwetka dostaje kolor chipu. Mapa
+zostaje bez zmian: tam podkład jest potrzebny.
+
 **11.09 (ekran logowania, znalezione przy oględzinach plakatu): hasło podstawione z menedżera
 haseł nie odblokowuje przycisku „Zaloguj się".** Chrome wypełnia pole przy wejściu na stronę,
 w polu widać kropki — a przycisk zostaje wyszarzony, bo `LoginPage.tsx` pyta o stan Reacta
