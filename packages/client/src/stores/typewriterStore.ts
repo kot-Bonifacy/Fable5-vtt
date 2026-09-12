@@ -8,15 +8,11 @@ import { create } from 'zustand';
  * resynchronizację i wszystko, co nigdy nie było pisane na oczach stołu.
  *
  * Efekt jest wyłącznie wizualny i wyłącznie po stronie tej przeglądarki: serwer
- * dostarcza wypowiedź w całości, więc wyłączenie maszynopisu niczego nie ukrywa
- * ani nie opóźnia po stronie danych.
+ * dostarcza wypowiedź w całości, bez opóźniania danych.
  */
 interface TypewriterStoreState {
-  /** Wyłączone = wypowiedzi botów pojawiają się od razu w całości. */
-  enabled: boolean;
   revealed: Record<number, number>;
 
-  setEnabled: (enabled: boolean) => void;
   /** Linia zaczyna się pisać: najpierw pusta, potem rośnie. */
   start: (messageId: number) => void;
   setRevealed: (messageId: number, chars: number) => void;
@@ -25,30 +21,8 @@ interface TypewriterStoreState {
   reset: () => void;
 }
 
-const ENABLED_KEY = 'vtt.typewriter.enabled';
-
-function readEnabled(): boolean {
-  try {
-    // Domyślnie włączone: to zachowanie, które stół zna z etapu 12.
-    return window.localStorage.getItem(ENABLED_KEY) !== '0';
-  } catch {
-    return true;
-  }
-}
-
 export const useTypewriterStore = create<TypewriterStoreState>((set) => ({
-  enabled: readEnabled(),
   revealed: {},
-
-  setEnabled: (enabled) => {
-    try {
-      window.localStorage.setItem(ENABLED_KEY, enabled ? '1' : '0');
-    } catch {
-      // Tryb prywatny: ustawienie po prostu nie przeżyje przeładowania.
-    }
-    // Wyłączenie w trakcie pisania musi natychmiast pokazać wszystko, co wisi.
-    set(enabled ? { enabled } : { enabled, revealed: {} });
-  },
 
   start: (messageId) => set((state) => ({ revealed: { ...state.revealed, [messageId]: 0 } })),
 

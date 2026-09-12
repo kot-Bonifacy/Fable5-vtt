@@ -1363,7 +1363,7 @@ button:disabled {
   text-decoration: none;
 }
 
-/* „Wyloguj", „Panel MG" i przełącznik maszynopisu — ta sama rodzina co małe
+/* „Wyloguj", „Panel MG" i ustawienia — ta sama rodzina co małe
    przyciski paneli, o stopień większe, żeby wiersz miał jeden dystans czytania. */
 .top-bar .small-button {
   padding: 0.3rem 0.7rem;

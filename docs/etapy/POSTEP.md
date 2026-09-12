@@ -249,6 +249,17 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 13.09 — maszynopis wypowiedzi NPC-ów na stałe
+
+**Zlecenie MG:** usunąć możliwość wyłączenia maszynopisu wypowiedzi NPC-ów i zostawić dopisywanie
+słowo po słowie jako jedyną formę wyświetlania świeżych kwestii botów. Usunięto pole z ⚙ Ustawień,
+wzmiankę z podpowiedzi przycisku, flagę `enabled` i zapis preferencji w `localStorage`. Stare
+`vtt.typewriter.enabled=0` nie ma już wpływu na czat. Historia i resynchronizacja nadal pokazują
+pełny tekst od razu; maszynopis obejmuje tylko nowe wypowiedzi NPC-ów.
+
+**Weryfikacja:** 196 testów klienta, build TypeScript/Vite, ESLint i Prettier — zielone; Vite uruchamia
+się i odpowiada HTTP 200. Nie oglądano animacji na żywym bocie. Etap 28 pozostaje nierozpoczęty.
+
 ### Sesja 12.09 (ósma) — pełny ekran z ustawień
 
 **Zlecenie MG: przełącznik pełnego ekranu w ustawieniach — zalogowany gracz ma mieć VTT na pełnym
@@ -286,49 +297,3 @@ Karta gracza Tony (`[::1]`) wróciła do stanu sprzed sesji — klucz usunięty,
 **Testy:** **196** u klienta (+13, `fullscreen.test.ts`) — zielone; `shared` i serwer nietknięte.
 ESLint, Prettier i `tsc --noEmit` czyste w kliencie. Umowy: jedna w `ui`; pułapki: jedna w `ui`,
 jedna w `ogledziny`. Nowe zaległości: **jedna** (oględziny pełnego ekranu).
-
-### Sesja 12.09 (siódma) — Stym, który zawiesza −2, i statysta ranny według wydruku
-
-**Zlecenie MG: przejrzeć zaległości, zaproponować kilka, dopytywać i ostrzegać o błędach.** Każdą
-kandydatkę sprawdziłem w kodzie przed propozycją. Z czterech (A: Stym, B: cyberdek netrunnera Korpo,
-C: zamknięcie „Dodaj za darmo", D: oględziny na kampanii-śmieciu) MG wybrał **tylko A**, a po dwóch
-pytaniach dołożył **Edytor bólu** i **naprawę błędu 38a znalezionego w rozpoznaniu**. Na koniec:
-scalić do `main` i wypchnąć.
-
-**Trzy pozycje zaległości okazały się inne, niż mówią.** (1) „Dodaj za darmo omija cały montaż" —
-nieaktualne od 23b: guzik woła `character:cyberware` z `payment: 'none'`, więc Człowieczeństwo jest
-rzucane, a różni się wyłącznie brak Testu montażu (dopisane do wpisu, czeka na decyzję MG).
-(2) Stym „odłożony do 39" i alias figury w czacie „razem z 35" — oba etapy zamknięto bez nich.
-(3) **Przepis na Stym był niepełny:** karę za rany liczyły poza `sheetSituationModifiers` jeszcze
-targowanie, kubek i napis na karcie — poprawka według przepisu rozjechałaby kubek z wynikiem.
-Przy B sprawdzone w bazie: nie ma ani jednej karty z zespołem, więc deck dotyczyłby nowych zatrudnień.
-
-**Stym i Edytor bólu (`woundsuspension.ts`).** Pole karty `woundSuspension` z terminami efektu
-z etapu 39: nakłada dawka, wygaszają te same dwa przemiatania, zdejmuje ⌫ efektu. W rozbiciu rzutu
-„Poważnie ranny −2 · Stym +2"; −4 Śmiertelnie Rannego zostaje; Edytor bólu działa po nazwie wiersza
-chromu, a to, co wyłączył EMP, zostaje przy MG. **Kara za rany ma odtąd jedno miejsce:
-`cpredWoundPenaltyRows`** (umowa w `kosci`).
-
-**Błąd 38a, którego nie było na liście.** Stan ran z wydrukowanego maksimum PW liczył wyłącznie atak;
-Testy, PT Ustabilizowania celu, targowanie, kubek oraz napis i próg na karcie liczyły go z BC i SW.
-Statysta z PW 35 (BC 6, SW 0) przy 15 PW miał −2 w ataku i zero w Teście, a Medyk stabilizował go
-z PT 10 zamiast 13. Naprawione w tym samym przejściu.
-
-**Oględziny na kampanii „Oględziny 12.09 — do usunięcia"** (zgoda MG). Postać „Oględziny Stym"
-(Medyk, 10/35 PW) założona i obsłużona osobnym gniazdem z konsoli strony: karta dawki na zielono
-(„Kary Poważnie Rannego zawieszone na godzinę."), panel „Efekty czasowe" — „bez kary −2 · Stym ·
-zostaje 1 h · ⌫", przy stanie zdrowia „kary zawiesza Stym", rozbicie Testu z wierszem „Stym +2",
-a po skoku zegara o godzinę: panel pusty, znowu „−2 do wszystkich testów" i wiersz „Efekty wygasły
-— Oględziny Stym — Stym (bez kar Poważnie Rannego)". **Nieklikane w przeglądarce:** ⌫, karta
-Śmiertelnie Rannego i Edytor bólu — wszystkie trzy stoją na testach. Aktywna kampania wróciła na
-„Poligon bojowy"; w kampanii-śmieciu zostaje karta „Oględziny Stym" i zegar przesunięty o godzinę.
-
-**Po drodze padł backend `pnpm dev`** — `tsx watch` nie podniósł serwera po edycjach w wielu plikach
-i nie obudził się ani `touch`, ani zmianą treści. Próbna instancja na :3099 potwierdziła, że kod
-startuje; restart zrobił MG. Pułapki: w `testy` (padnięty backend) i w `ogledziny` (moduł
-`socket.ts` wczytany z konsoli ma własne, puste gniazdo).
-
-**Testy:** **2023** w `shared` (+20, `woundsuspension.test.ts`), **1100** na serwerze (+2,
-`recovery.test.ts`), **183** u klienta — zielone. ESLint, Prettier i `tsc --noEmit` czyste w trzech
-pakietach. Umowy: jedna w `kosci`, jedna w `czas`, poprawiona w `statysta`; pułapki: jedna w `testy`,
-jedna w `ogledziny`. Zamknięte zaległości: **jedna** (Stym) plus błąd spoza listy.

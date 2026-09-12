@@ -3,7 +3,7 @@ import { useSettingsStore } from '../stores/settingsStore.js';
 /**
  * Wejście do okna ustawień (etap 27d).
  *
- * Zastąpiło dwa osobne przełączniki w górnym pasku (☀/☾ z 27a i ⌨ z etapu 11):
+ * Zastąpiło osobne przełączniki w górnym pasku (☀/☾ z 27a i ⌨ z etapu 11):
  * pasek nosi tyle informacji o grze, że nie ma w nim miejsca na rosnącą listę
  * preferencji jednego użytkownika.
  */
@@ -11,7 +11,7 @@ export function SettingsButton() {
   const open = useSettingsStore((s) => s.open);
   const toggleOpen = useSettingsStore((s) => s.toggleOpen);
 
-  const title = 'Ustawienia — kości, dźwięk, pełny ekran, tryb dzienny, maszynopis';
+  const title = 'Ustawienia — kości, dźwięk, pełny ekran, tryb dzienny';
 
   return (
     <button

@@ -12,7 +12,6 @@ import { previewSkin } from '../dice3d.js';
 import { sendDiceSkin } from '../socket.js';
 import { useSettingsStore } from '../stores/settingsStore.js';
 import { useThemeStore } from '../stores/themeStore.js';
-import { useTypewriterStore } from '../stores/typewriterStore.js';
 import { useWindowPlacement } from '../window-placement.js';
 import { WindowResizeGrip } from './WindowResizeGrip.js';
 
@@ -77,8 +76,6 @@ export function SettingsWindow() {
 
   const theme = useThemeStore((s) => s.theme);
   const setTheme = useThemeStore((s) => s.setTheme);
-  const typewriter = useTypewriterStore((s) => s.enabled);
-  const setTypewriter = useTypewriterStore((s) => s.setEnabled);
 
   const placement = useWindowPlacement('settings', () => ({
     x: Math.max(12, window.innerWidth - 420),
@@ -287,20 +284,6 @@ export function SettingsWindow() {
               <span className="settings-hint">
                 Jasna skóra całego VTT. Mapa zostaje ciemna — mgła, ciemność i podpisy żetonów są
                 rysowane na płótnie i w dzień przestałyby być czytelne.
-              </span>
-            </span>
-          </label>
-
-          <label className="settings-row settings-row--switch">
-            <input
-              type="checkbox"
-              checked={typewriter}
-              onChange={(event) => setTypewriter(event.target.checked)}
-            />
-            <span>
-              Maszynopis wypowiedzi NPC-ów
-              <span className="settings-hint">
-                Wypowiedzi botów dopisują się słowo po słowie zamiast pojawiać od razu.
               </span>
             </span>
           </label>

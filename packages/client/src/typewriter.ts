@@ -15,8 +15,7 @@ import { useTypewriterStore } from './stores/typewriterStore.js';
  *    nigdy równocześnie — inaczej dwie rosnące wypowiedzi robią na czacie
  *    bałagan.
  * 3. **Nic się nie ukrywa.** Wypowiedź jest już u klienta; efekt tylko odsłania
- *    ją stopniowo, więc wyłączenie maszynopisu (ustawienie w górnym pasku)
- *    niczego nie traci ani nie opóźnia.
+ *    ją stopniowo, bez opóźniania danych z serwera.
  */
 
 /**
@@ -43,7 +42,6 @@ let running = false;
 
 /** Czy tę linię w ogóle pisać: świeża wypowiedź NPC-a, nie historia ani rzut. */
 export function shouldTypeOut(message: ChatMessageView): boolean {
-  if (!useTypewriterStore.getState().enabled) return false;
   if (!message.botId) return false;
   if (message.kind !== 'say' && message.kind !== 'whisper') return false;
   return message.text.length > 0;
@@ -76,12 +74,6 @@ export function durationFor(length: number): number {
 }
 
 function runJob(job: TypewriterJob): Promise<void> {
-  // Wyłączony maszynopis (albo przełączony w trakcie) pokazuje linię od razu.
-  if (!useTypewriterStore.getState().enabled) {
-    useTypewriterStore.getState().finish(job.messageId);
-    return Promise.resolve();
-  }
-
   const duration = durationFor(job.text.length);
   const startedAt = performance.now();
   return new Promise((resolve) => {
@@ -89,7 +81,7 @@ function runJob(job: TypewriterJob): Promise<void> {
     const step = () => {
       const state = useTypewriterStore.getState();
       const elapsed = performance.now() - startedAt;
-      if (!state.enabled || elapsed >= duration) {
+      if (elapsed >= duration) {
         state.finish(job.messageId);
         window.cancelAnimationFrame(frame);
         resolve();
