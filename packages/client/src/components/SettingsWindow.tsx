@@ -1,5 +1,12 @@
 import type { MapFxSound } from '@vtt/shared';
 import { DICE_SKIN_LIST } from '../dice-skins.js';
+import {
+  enterFullscreen,
+  escapeHoldAvailable,
+  fullscreenSupported,
+  setFullscreenPreference,
+  useFullscreenActive,
+} from '../fullscreen.js';
 import { auditionFxSound } from '../sfx.js';
 import { previewSkin } from '../dice3d.js';
 import { sendDiceSkin } from '../socket.js';
@@ -64,6 +71,9 @@ export function SettingsWindow() {
   const stepSounds = useSettingsStore((s) => s.stepSounds);
   const setStepSounds = useSettingsStore((s) => s.setStepSounds);
   const skin = useSettingsStore((s) => s.skin);
+  const fullscreen = useSettingsStore((s) => s.fullscreen);
+  const fullscreenActive = useFullscreenActive();
+  const canFullscreen = fullscreenSupported();
 
   const theme = useThemeStore((s) => s.theme);
   const setTheme = useThemeStore((s) => s.setTheme);
@@ -232,6 +242,39 @@ export function SettingsWindow() {
 
         <section className="settings-group">
           <h3 className="settings-group-title">Widok</h3>
+
+          {/* Pełny ekran (12.09). Pole to życzenie zapamiętane w tej przeglądarce,
+              nie stan — gracz, który przytrzymał Esc, dalej go chce po F5, więc
+              powrót dostaje własny guzik zamiast odhaczania i zaznaczania od nowa. */}
+          <label className="settings-row settings-row--switch">
+            <input
+              type="checkbox"
+              checked={fullscreen}
+              disabled={!canFullscreen}
+              onChange={(event) => setFullscreenPreference(event.target.checked)}
+            />
+            <span>
+              Pełny ekran
+              <span className="settings-hint">
+                {canFullscreen
+                  ? `VTT bez pasków przeglądarki, zapamiętany w tej przeglądarce. Włącza się przy logowaniu, a po odświeżeniu strony — przy pierwszym kliknięciu albo klawiszu. ${
+                      escapeHoldAvailable()
+                        ? 'Wyjście: przytrzymaj Esc — krótkie Esc dalej zamyka to, co otwarte w VTT.'
+                        : 'Tutaj pierwsze Esc wychodzi z pełnego ekranu i dopiero następne zamyka coś w VTT (przytrzymanie Esc działa w Chrome i Edge, przez HTTPS).'
+                    }`
+                  : 'Ta przeglądarka nie pozwala stronie przejść na pełny ekran.'}
+              </span>
+            </span>
+          </label>
+          {fullscreen && canFullscreen && !fullscreenActive && (
+            <button
+              type="button"
+              className="settings-action"
+              onClick={() => void enterFullscreen()}
+            >
+              ⛶ Wróć do pełnego ekranu
+            </button>
+          )}
 
           <label className="settings-row settings-row--switch">
             <input

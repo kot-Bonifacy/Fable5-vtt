@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import type { JoinInfo } from '@vtt/shared';
 import { ApiError, apiGet } from '../api.js';
 import { useAutofillableField } from '../autofill-field.js';
+import { enterPreferredFullscreen } from '../fullscreen.js';
 import { useAuthStore } from '../stores/authStore.js';
 
 type PageState = 'loading' | 'ready' | 'invalid';
@@ -33,6 +34,9 @@ export function JoinPage() {
 
   async function join(chosenName: string) {
     if (!token || busy) return;
+    // Przed `await`, z tego samego powodu co na ekranie logowania: gestem jest
+    // kliknięcie „Dołącz do gry" albo imienia, a odpowiedź serwera go nie niesie.
+    enterPreferredFullscreen();
     setBusy(true);
     setError(null);
     try {

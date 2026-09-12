@@ -8054,7 +8054,8 @@ body.is-resizing {
   gap: 0.3rem;
 }
 
-.settings-sample {
+.settings-sample,
+.settings-action {
   padding: 0.22rem 0.5rem;
   font: inherit;
   font-size: 0.76rem;
@@ -8065,9 +8066,15 @@ body.is-resizing {
   cursor: pointer;
 }
 
-.settings-sample:hover {
+.settings-sample:hover,
+.settings-action:hover {
   color: var(--text);
   border-color: var(--text-dim);
+}
+
+/* Guzik pod przełącznikiem stoi pod jego nazwą, nie pod polem wyboru. */
+.settings-action {
+  margin: 0 0 0.35rem 1.45rem;
 }
 
 /* --- markdown ------------------------------------------------------------ */

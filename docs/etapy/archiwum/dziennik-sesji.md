@@ -8,6 +8,63 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
 
+### Sesja 12.09 (szósta) — kratka ze skali mapy, naklejki bez kwadratu i praca, która wreszcie jest na GitHubie
+
+**Zlecenie MG: przejrzeć zaległości, zaproponować kilka, dopytywać i ostrzegać o błędach.** Każdą
+kandydatkę sprawdziłem w kodzie przed propozycją. MG wybrał cztery drobne (kratka z liczby kolumn,
+„Brak sceny" u MG, naklejki statusów, Prettier na dwóch plikach), kazał liczyć kratkę **z kolumn**,
+**nie wgrywać teraz** pełnego pliku mapy i na koniec **scalić gałąź do `main` i wypchnąć**.
+
+**Największe znalezisko nie było na liście: 206 commitów istniało tylko na tym dysku.** `origin/main`
+stał na etapie 07 (18.07), a `feat/vtt-campaign-calendar` nie miała upstreamu i niosła 30 commitów
+spoza `main` (etapy 37–41). Przed pushem przejrzana cała niewypchnięta historia, nie tylko ostatni
+stan: zero ścieżek z `data/private/`, `uploads/`, `.env` i baz; jedyny blob powyżej 5 MB to mapa
+„Night City crossroads" — praca własna MG (`docs/assety-mapy.md`).
+
+**Wszystkie trzy przepisy z zaległości były błędne albo niepełne — i każdy wyszedł przed kodem.**
+(1) Naklejki: „maska bierze alfę, czarne tło jest nieistotne" — pliki mają **nieprzezroczysty**
+kwadrat, więc maska z alfy dałaby pełny kolorowy kwadrat; działa `mask-mode: luminance`
+(`StatusIcon`). (2) „Brak sceny": samo `setScene` dałoby MG mapę **bez figur** — decyzja poszła do
+`sceneStore.followActivation`, które mówi też, kiedy dociągnąć figury. (3) Kratka: dwa pola z wpisu
+dawałyby dwie odpowiedzi, bo pełny plik 2896 × 2176 nie dzieli się równo na 40 × 30 — zostało jedno
+pole kolumn z podpowiedzią wierszy. Przy okazji wyszło, że wgranie pełnego pliku **przesunęłoby całą
+scenę** (figury i ściany leżą w pikselach świata) — zapisane w decyzjach MG w `zaleglosci.md`.
+
+**Oględziny na żywym stole.** Menu figury w obu motywach: 17 sylwetek, żadnego kwadratu. Edytor
+sceny: pole kolumn pokazuje 30,81 przy starej kratce, po „40" daje 36,2 px i „W pionie wychodzi
+równo 30"; **zapisane na „StrefiePrzemysłowej"** (47 → 36,2 px, decyzja MG). Budżet walki Marcina
+nietknięty (66,5 m / 12 m), tryb turowy dalej włączony, zero okien `confirm`, zero kart na czacie.
+**Nieobejrzane:** chip statusu w panelu postaci i pasek grupy (wymagałyby zmiany stanu w trwającej
+walce). `app.ts` po Prettierze nie daje różnicy w gicie — jego „niesformatowanie" to
+były same końce linii w katalogu roboczym.
+
+**„Brak sceny" obejrzany w drugiej części sesji — za zgodą MG na kampanię-śmiecia.** Serwer nie ma
+trasy usuwania kampanii, a stan „MG nie ogląda niczego" powstaje tylko w świeżej kampanii (tworzenie
+sceny z panelu od razu ustawia jej podgląd). Założona „Oględziny 12.09 — do usunięcia": scena „Test
+Brak sceny" z mapą Night City i pustym żetonem „Figura testowa" → przeładowanie → „Brak sceny" →
+„Aktywuj" → mapa **z figurą** od razu. „Poligon bojowy" przywrócony co do stanu: „StrefaPrzemysłowa"
+aktywna, RUNDA 1 Marcin/Tony. Dwie rzeczy po drodze: karty automatyki były zalogowane jako **Tony na
+obu hostach** (MG zalogował się sam na `localhost` — hasła nie wpisuję), a w bazie leżą jeszcze trzy
+starsze kampanie-śmieci — pułapka w `ogledziny`.
+
+**Siatka na ciemnej mapie — zrobione w tej samej sesji, decyzją MG („kontrast w edytorze").** Wymóg
+MG: kratka nie musi trafiać idealnie, ale MG ma **sam zauważyć** rozjazd przed aktywacją sceny.
+Domyślna czarna kreska z kryciem 35% na mapie Night City, przyciemnionej mgłą MG, była ledwo
+widoczna. Od teraz **otwarty edytor sceny włącza kontrastową siatkę**: obwódka 3 px ekranu w kolorze
+przeciwnym i kreska z kryciem co najmniej 90% (`gridStrokes` w `map/grid-style.ts`, sześć testów) —
+tylko u MG, nigdy po sieci; przełącznik „Kontrastowa siatka podczas edycji" pokazuje wygląd zapisany.
+Obejrzane na „StrefiePrzemysłowej" (krycie 10%): z kontrastem kratki i ich rozjazd z pasami parkingu
+widać od razu, po odhaczeniu i po zamknięciu edytora siatka wraca do wyglądu zapisanego.
+
+**Przy okazji w tym pliku:** akapit o scenach testowych mówił o czterech i aktywnej „Strzelnicy"
+(jest pięć, aktywna „StrefaPrzemysłowa"), a tabela etapów nie miała wiersza nagłówka od cięcia
+kolumny „Uwagi" — oba poprawione.
+
+**Testy:** **2003** w `shared` (+5, `gridSizeForColumns`), **1098** na serwerze, **183** u klienta
+(+10, `scene-activation.test.ts` i `grid-style.test.ts`) — zielone. ESLint, Prettier i `tsc --noEmit`
+czyste w trzech pakietach. Umowy: dwie w `mapa`, jedna w `ui`; pułapki: jedna w `ui`, trzy w `ogledziny`.
+Zamknięte zaległości: **trzy**.
+
 ### Sesja 12.09 (piąta) — interfejs, który nie kłamie, i martwa funkcja etapu 41
 
 **Zlecenie MG: przejrzeć zaległości i wybrać.** Z szesnastu pozycji przedstawiłem trzy pakiety

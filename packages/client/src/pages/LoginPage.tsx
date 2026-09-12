@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { ApiError } from '../api.js';
 import { useAutofillableField } from '../autofill-field.js';
+import { enterPreferredFullscreen } from '../fullscreen.js';
 import { useAuthStore } from '../stores/authStore.js';
 
 export function LoginPage() {
@@ -18,6 +19,11 @@ export function LoginPage() {
       setError('Wpisz hasło.');
       return;
     }
+    // Pełny ekran wchodzi TU, przed `await`: przeglądarka wpuszcza w niego
+    // wyłącznie w odpowiedzi na gest, a Firefox potrafi uznać gest za stary,
+    // zanim serwer odpowie. Złe hasło zostawia więc na pełnym ekranie ekran
+    // logowania — to cena za pewne wejście po dobrym.
+    enterPreferredFullscreen();
     setBusy(true);
     setError(null);
     try {

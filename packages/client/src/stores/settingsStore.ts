@@ -34,6 +34,12 @@ export interface SettingsState {
    * „o ile nie zmęczy przy stole".
    */
   stepSounds: boolean;
+  /**
+   * Pełny ekran przy logowaniu i po odświeżeniu strony (12.09). To tylko
+   * życzenie: wejściem i wyjściem zajmuje się `fullscreen.ts`, bo przeglądarka
+   * wpuszcza w pełny ekran wyłącznie w odpowiedzi na gest.
+   */
+  fullscreen: boolean;
   /** Skórka TEGO użytkownika (kopia stanu serwera). */
   skin: DiceSkinId;
   /** Czy okno ustawień jest otwarte. */
@@ -44,6 +50,8 @@ export interface SettingsState {
   setCupVolume: (volume: number) => void;
   setSfxVolume: (volume: number) => void;
   setStepSounds: (on: boolean) => void;
+  /** Sam zapis — wejście i wyjście woła `setFullscreenPreference` z `fullscreen.ts`. */
+  setFullscreen: (on: boolean) => void;
   /** Ustawia kopię lokalną; wysyłką na serwer zajmuje się `socket.ts`. */
   applySkin: (skin: DiceSkinId) => void;
   setOpen: (open: boolean) => void;
@@ -55,6 +63,7 @@ const DICE_VOLUME_KEY = 'vtt.dice.volume';
 const CUP_VOLUME_KEY = 'vtt.cup.volume';
 const SFX_VOLUME_KEY = 'vtt.sfx.volume';
 const STEP_SOUNDS_KEY = 'vtt.sfx.steps';
+const FULLSCREEN_KEY = 'vtt.view.fullscreen';
 const SKIN_KEY = 'vtt.dice.skin';
 
 function readFlag(key: string, fallback: boolean): boolean {
@@ -102,6 +111,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   cupVolume: readVolume(CUP_VOLUME_KEY, 50),
   sfxVolume: readVolume(SFX_VOLUME_KEY, 50),
   stepSounds: readFlag(STEP_SOUNDS_KEY, true),
+  fullscreen: readFlag(FULLSCREEN_KEY, false),
   skin: readSkin(),
   open: false,
 
@@ -131,6 +141,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setStepSounds: (on) => {
     write(STEP_SOUNDS_KEY, on ? '1' : '0');
     set({ stepSounds: on });
+  },
+
+  setFullscreen: (on) => {
+    write(FULLSCREEN_KEY, on ? '1' : '0');
+    set({ fullscreen: on });
   },
 
   applySkin: (skin) => {

@@ -30,6 +30,24 @@ na kampanii-śmieciu; diagnozy w `archiwum/zamkniete-zaleglosci.md`. **Żadna no
 otwarta.** Dwie istniejące dostały dopisek z weryfikacji: „Dodaj za darmo" (w dużej części
 nieaktualne) i cyberdek netrunnera Korpo (w bazie nie ma zespołów).
 
+**12.09 (pełny ekran, zlecenie MG poza etapami): NIEOBEJRZANY w widocznym oknie.** Przełącznik
+„Pełny ekran" (⚙ Ustawienia → Widok, `fullscreen.ts`) jest zrobiony i pokryty testami. W przeglądarce
+odklikane: pole, podpowiedź w wariancie „przytrzymaj Esc", zapis w `localStorage`, guzik „⛶ Wróć do
+pełnego ekranu" oraz wywołania `requestFullscreen` z automatu (klik i klawisz) przy aktywnym geście.
+**Samego pełnego ekranu automatyka nie zobaczy** — Chrome odmawia schowanej karcie (pułapka
+w `ogledziny`). Do sprawdzenia ręką, najlepiej na koncie gracza w Chrome:
+(1) zaznaczenie pola wchodzi od razu, odznaczenie wychodzi;
+(2) krótkie Esc zamyka rzeczy w VTT (np. zdejmuje zaznaczenie figury), a przytrzymane wychodzi
+z pełnego ekranu **bez** schodzenia po całej drabinie;
+(3) F5 → pierwszy klik wraca do pełnego ekranu, ale po wyjściu przytrzymanym Esc kolejne kliknięcia
+**nie** wciągają z powrotem;
+(4) wylogowanie wychodzi, zalogowanie i dołączenie wchodzą;
+(5) okno `window.confirm` i wybór pliku portretu — czy zdejmują pełny ekran (niesprawdzone, może
+zależeć od przeglądarki);
+(6) Firefox: Esc wychodzi od razu, a podpowiedź pola mówi to wprost.
+Na `http://217.154.210.181:8088` Keyboard Lock nie działa (brak HTTPS) i Esc wychodzi od razu —
+to nie regres; zadziała na `vtt.tatanga.eu` po etapie 28.
+
 **10.09/12.09 (etap 14b/30b): „bez ran" naprawione, ale NIEOBEJRZANE u gracza.** Usterka
 (gracz widział znacznik „bez ran" przy każdej cudzej figurze, także konającej) jest **naprawiona**
 12.09: `observedWoundState` w `shared` ma trzy stany zamiast dwóch, a `StabilizePicker` pisze

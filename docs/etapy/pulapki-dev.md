@@ -305,6 +305,7 @@ Umiejętność" i model musi być tak dobrany, żeby nie musiał (stąd `statBlo
 
 ## ui — Okna, motyw, style, dostępność
 
+- **`requestFullscreen` zużywa gest — także wtedy, gdy przeglądarka odmawia** — nasłuch po nim widzi `userActivation.isActive === false` i wygląda to, jakby zdarzenie w ogóle nie niosło gestu. Rozpoznanie: loguj `isActive` i ślad stosu **w samym** `requestFullscreen`, nie w nasłuchu dopiętym później.
 - **Maska CSS z pliku, który ma nieprzezroczyste tło, maluje pełny kwadrat** — `mask-image` liczy się domyślnie z alfy, a czarny podkład game-icons ma alfę pełną jak sylwetka. Działa `mask-mode: luminance`. Rozpoznanie: pierwszy `<path>` pliku.
 - **Autofill przeglądarki nie dociera do stanu Reacta** — pole pełne, `useState` puste, więc `disabled={value.length === 0}` zostawia martwy przycisk, a samo odblokowanie go wysłałoby **pustkę**. Czytaj wartość z węzła przy wysyłce (`useAutofillableField`), nie ze stanu.
 - **Przezroczyste pole hasła Chrome i tak zamaluje własnym niebieskim** — to styl UA na `:-webkit-autofill`, `background` go nie zdejmuje; zdejmuje `transition: background-color 100000s`.
@@ -316,6 +317,19 @@ Umiejętność" i model musi być tak dobrany, żeby nie musiał (stąd `statBlo
 - **Nasłuch „klik poza oknem" dopięty w efekcie łapie ten sam klik, który okno otworzył** — okno znika bez śladu i bez błędu; uzbrajaj listener przez `setTimeout(…, 0)`.
 
 ---
+
+- **`requestFullscreen` zużywa gest, także gdy odmawia (12.09, pełny ekran).** Pomiar w oględzinach
+  pokazał `isActive: false` na `pointerdown` i podsunął wniosek „Chrome ustawia gest dopiero po
+  `pointerdown`, więc automat na tym zdarzeniu nigdy nie zadziała". **Nieprawda:** nasłuch automatu
+  był dopięty wcześniej, wywołał `requestFullscreen` przy `isActive: true`, a to wywołanie zużyło gest,
+  zanim zdarzenie doszło do nasłuchu diagnostycznego. Druga twarz tej samej rzeczy była prawdziwym
+  błędem: po odmowie („not granted") automat ponawiał przy każdym kliknięciu, więc guzik „Wróć do
+  pełnego ekranu" dostawał zużyty gest i „Permissions check failed". Naprawa: odmowa **mimo** gestu
+  wyłącza automat do przeładowania. Skutek, który zostaje świadomie: pierwsze kliknięcie po F5 oddaje
+  gest pełnemu ekranowi, więc akcja, która sama go potrzebuje (w Firefoksie kopiowanie linku
+  zaproszenia w Panelu MG), wymaga drugiego kliknięcia. **Rozpoznanie:** podmień
+  `Element.prototype.requestFullscreen` na wersję logującą `isActive` i `new Error().stack` —
+  ślad stosu mówi, kto woła.
 
 - **Maska z alfy nie gasi nieprzezroczystego tła (12.09).** Zaległość z 11.09 kazała rysować
   naklejki statusów tą samą maską co ikony HUD-u, uzasadniając to zdaniem „czarne tło jest wtedy
@@ -889,6 +903,7 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
 
 ## ogledziny — Oględziny w przeglądarce
 
+- **Karta automatyki jest schowana — pełnego ekranu w niej nie obejrzysz** — `requestFullscreen` przy aktywnym geście odpowiada „not granted", bo `document.visibilityState === 'hidden'` (okno automatyki leży za innym). Sprawdź to **przed** szukaniem błędu; pełny ekran i Keyboard Lock ogląda MG ręcznie.
 - **Moduł `/src/socket.ts` wczytany z konsoli ma WŁASNE, puste gniazdo** — `activateCampaign` i reszta odpowiadają `NOT_CONNECTED`, choć pasek mówi „Połączony", także przy adresie z `?t=`. Działa **osobne** połączenie: `io()` z `/node_modules/.vite/deps/socket__io-client.js?v=…` (adres z `performance.getEntriesByType('resource')`) — ciasteczko MG idzie samo.
 - **Serwer nie ma trasy usuwania kampanii** — kampania założona na potrzeby oględzin zostaje w bazie na zawsze; w `dev.db` są już cztery takie („dfgdgfdg", „dsaada", „Ulice Night City", „Oględziny 12.09 — do usunięcia"). **Nie zakładaj piątej** — do testów „świeżej kampanii" używaj „Oględzin 12.09". Przełączenie kampanii przenosi **wszystkie** połączone ekrany, także cudze.
 - **`Escape` z `computer` nie zamyka menu figury** — a klik w puste pole mapy przy zaznaczonej figurze byłby rozkazem marszu. Menu zamyka klik w tytuł aplikacji w górnym pasku.
@@ -951,6 +966,15 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
 - **Tekst z liczbą sprawdzaj na liczbie większej niż jeden** — cały etap 37 przeszedł oględziny z „jedną dobą", a błąd („minęły 30 doby") pokazały dopiero trzy skoki pod rząd.
 - **Feed czatu czytaj z DOM-u, nie ze zrzutu** — `[...document.querySelectorAll('.chat-time')].map(n => n.innerText)`; panel bywa przewinięty i „nie ma karty" znaczy zwykle „nie doskrolowano".
 
+
+- **Karta automatyki jest schowana — Chrome odmawia jej pełnego ekranu (12.09, ósma sesja).**
+  Klik `computer` we współrzędnych zrzutu niesie prawdziwy gest (`userActivation.isActive === true`
+  w chwili wywołania), a mimo to `requestFullscreen` kończy się `TypeError: not granted`. Przyczyna
+  nie leży w kodzie: `document.visibilityState` karty automatyki to `hidden` — okno stoi za oknem
+  MG — a takiej karcie Chrome pełnego ekranu nie daje. Zanim uznasz za zepsute cokolwiek, co wymaga
+  widocznego okna (pełny ekran, Keyboard Lock), przeczytaj `document.visibilityState`. Najpewniej
+  ta sama przyczyna stoi za dławionym `rAF` z indeksu wyżej. Przytrzymania klawisza (`repeat`)
+  automatyka i tak nie wyśle — `key` z `repeat` to osobne wciśnięcia.
 
 - **Moduł klienta wczytany z konsoli to INNA instancja — jego `socket` jest pusty (12.09, siódma
   sesja).** `await import('/src/socket.ts')` — także z dokładnym adresem `?t=…` z listy zasobów —

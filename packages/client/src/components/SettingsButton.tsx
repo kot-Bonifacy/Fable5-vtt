@@ -11,7 +11,7 @@ export function SettingsButton() {
   const open = useSettingsStore((s) => s.open);
   const toggleOpen = useSettingsStore((s) => s.toggleOpen);
 
-  const title = 'Ustawienia — kości, dźwięk, tryb dzienny, maszynopis';
+  const title = 'Ustawienia — kości, dźwięk, pełny ekran, tryb dzienny, maszynopis';
 
   return (
     <button

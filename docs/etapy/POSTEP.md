@@ -137,7 +137,12 @@ po cichu i funkcja „działa z wezwania, a z prośby gracza nie".
 Co z nich obowiązuje w kodzie, stoi w sekcjach obszarów niżej; pełne akapity o każdym —
 w `archiwum/od-czego-zaczac.md`.
 
-**Dług oględzin — 9 pozycji** (`zaleglosci.md`). Sesja 12.09 (szósta) zamknęła **trzy**: kratkę
+**Od 12.09 (ósma sesja) jest pełny ekran z ustawień** (`fullscreen.ts`, ⚙ → Widok, wybór per
+przeglądarka) — **nieobejrzany w widocznym oknie**, bo schowanej karcie automatyki Chrome odmawia.
+Pierwsza rzecz przy stole: sześć kroków z `zaleglosci.md` ręką MG. Na `http://…:8088` Esc wychodzi
+z pełnego ekranu od razu — to nie regres, Keyboard Lock wymaga HTTPS.
+
+**Dług oględzin — 10 pozycji** (`zaleglosci.md`; dziesiąta z 12.09 — pełny ekran). Sesja 12.09 (szósta) zamknęła **trzy**: kratkę
 ze skali mapy, naklejki statusów i „Brak sceny" u MG — tę ostatnią obejrzaną na kampanii-śmieciu
 „Oględziny 12.09", bo ten stan powstaje wyłącznie w świeżej kampanii. Sesja piąta zamknęła **cztery**
 i obaliła przeszkodę, na której stała reszta: **menu figury OTWIERA SIĘ z automatyki** — seria
@@ -196,7 +201,7 @@ siedzi w `decyzje-i-uproszczenia.md` i **nie wciągaj ich z powrotem** jako nowy
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
 a od 30d pierwszym, przy którym każda Rola w drużynie gra inaczej niż reszta.
 
-**Testy na koniec ostatniej sesji:** **2023** w `shared`, **1100** na serwerze, **183** u klienta —
+**Testy na koniec ostatniej sesji:** **2023** w `shared`, **1100** na serwerze, **196** u klienta —
 zielone (liczby zmierzone 12.09; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
 ESLint i Prettier czyste na kodzie, `tsc --noEmit` czysty w trzech pakietach (od 05.09 obejmuje
 też `packages/server/scripts/`). **Nie puszczaj `pnpm format` na `POSTEP.md`, `POMYSLY.md` ani
@@ -224,7 +229,7 @@ a nie do tego pliku.
 | `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  |   40 |      18 |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     |    3 |       3 |
 | `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    |    8 |      15 |
-| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście   |    9 |       9 |
+| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście   |   10 |      10 |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  |   14 |       1 |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       |    8 |       4 |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   |   28 |       8 |
@@ -237,12 +242,50 @@ a nie do tego pliku.
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            |    1 |       3 |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  |    2 |      10 |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               |    8 |       1 |
-| `ogledziny` | automatyka CDP, zrzuty, dwie sesje naraz, `window.confirm`     |    0 |      66 |
+| `ogledziny` | automatyka CDP, zrzuty, dwie sesje naraz, `window.confirm`     |    0 |      67 |
 | `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              |    0 |      17 |
 
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 12.09 (ósma) — pełny ekran z ustawień
+
+**Zlecenie MG: przełącznik pełnego ekranu w ustawieniach — zalogowany gracz ma mieć VTT na pełnym
+ekranie; dopytywać i ostrzegać o błędach.** Poza planem etapów, jak 41. Przed kodem MG dostał trzy
+ograniczenia przeglądarek i zdecydował: wybór **per przeglądarka** (`localStorage`, jak głośności —
+u graczy i u MG), po odświeżeniu strony **pierwszy gest gdziekolwiek**, wyjście **przytrzymaniem
+Esc** (Keyboard Lock). Przy stole: Chrome/Edge i Firefox na PC.
+
+**Co powstało (`fullscreen.ts`).** Pole „Pełny ekran" w ⚙ Ustawienia → Widok: zaznaczenie od razu
+wchodzi, odznaczenie wychodzi, a gdy życzenie jest, a pełnego ekranu nie ma — guzik „⛶ Wróć do
+pełnego ekranu". Wejście przy „Zaloguj się" / „Dołącz do gry" **przed** `await` (Firefox nie uzna
+gestu po odpowiedzi serwera). Po F5 automat czeka na pierwszy `pointerdown`/`keydown` (nie Esc)
+**raz na wczytanie strony**; wylogowanie wychodzi i odnawia automat. W Chrome i Edge Esc idzie pod
+Keyboard Lock, a powtórzenia przytrzymanego Esc są tłumione w przechwytywaniu na `window` — inaczej
+drabina z 27f zdjęłaby kilka rzeczy naraz. Wiersz w pomocy `?`; podpowiedź pola mówi prawdę o Esc
+w tej przeglądarce (z blokadą albo bez).
+
+**Ostrzeżenia dla MG, powiedziane przed kodem:** strona nie włączy pełnego ekranu bez gestu (po F5
+jeden klik); Keyboard Lock wymaga HTTPS albo localhost, więc na `http://217.154.210.181:8088` Esc
+wyjdzie z pełnego ekranu od razu — zadziała na `vtt.tatanga.eu` po etapie 28; `window.confirm`
+i okno wyboru pliku mogą w części przeglądarek zdjąć pełny ekran — niesprawdzone.
+
+**Błąd złapany w przeglądarce: `requestFullscreen` zużywa gest, także gdy odmawia.** Pierwszy odczyt
+pomiaru („`pointerdown` nie niesie gestu") był fałszywy i MG usłyszał go ode mnie, zanim go
+sprostowałem — gest zdążył zużyć sam automat. Prawdziwy błąd: po odmowie automat ponawiał przy
+każdym kliknięciu i odbierał gest guzikowi „Wróć…". Odmowa mimo gestu wyłącza teraz automat do
+przeładowania (pułapka w `ui`).
+
+**Nieobejrzane: sam pełny ekran.** Karta automatyki ma `visibilityState: hidden` i Chrome odmawia jej
+(„not granted") — pułapka w `ogledziny`, lista sześciu kroków do ręcznego sprawdzenia w
+`zaleglosci.md`. Obejrzane: pole i podpowiedź w wariancie „przytrzymaj Esc", zapis
+`vtt.view.fullscreen`, guzik powrotu, wywołania z automatu (klik i klawisz `x`) przy aktywnym geście.
+Karta gracza Tony (`[::1]`) wróciła do stanu sprzed sesji — klucz usunięty, strona przeładowana.
+
+**Testy:** **196** u klienta (+13, `fullscreen.test.ts`) — zielone; `shared` i serwer nietknięte.
+ESLint, Prettier i `tsc --noEmit` czyste w kliencie. Umowy: jedna w `ui`; pułapki: jedna w `ui`,
+jedna w `ogledziny`. Nowe zaległości: **jedna** (oględziny pełnego ekranu).
 
 ### Sesja 12.09 (siódma) — Stym, który zawiesza −2, i statysta ranny według wydruku
 
@@ -289,60 +332,3 @@ startuje; restart zrobił MG. Pułapki: w `testy` (padnięty backend) i w `ogled
 `recovery.test.ts`), **183** u klienta — zielone. ESLint, Prettier i `tsc --noEmit` czyste w trzech
 pakietach. Umowy: jedna w `kosci`, jedna w `czas`, poprawiona w `statysta`; pułapki: jedna w `testy`,
 jedna w `ogledziny`. Zamknięte zaległości: **jedna** (Stym) plus błąd spoza listy.
-
-### Sesja 12.09 (szósta) — kratka ze skali mapy, naklejki bez kwadratu i praca, która wreszcie jest na GitHubie
-
-**Zlecenie MG: przejrzeć zaległości, zaproponować kilka, dopytywać i ostrzegać o błędach.** Każdą
-kandydatkę sprawdziłem w kodzie przed propozycją. MG wybrał cztery drobne (kratka z liczby kolumn,
-„Brak sceny" u MG, naklejki statusów, Prettier na dwóch plikach), kazał liczyć kratkę **z kolumn**,
-**nie wgrywać teraz** pełnego pliku mapy i na koniec **scalić gałąź do `main` i wypchnąć**.
-
-**Największe znalezisko nie było na liście: 206 commitów istniało tylko na tym dysku.** `origin/main`
-stał na etapie 07 (18.07), a `feat/vtt-campaign-calendar` nie miała upstreamu i niosła 30 commitów
-spoza `main` (etapy 37–41). Przed pushem przejrzana cała niewypchnięta historia, nie tylko ostatni
-stan: zero ścieżek z `data/private/`, `uploads/`, `.env` i baz; jedyny blob powyżej 5 MB to mapa
-„Night City crossroads" — praca własna MG (`docs/assety-mapy.md`).
-
-**Wszystkie trzy przepisy z zaległości były błędne albo niepełne — i każdy wyszedł przed kodem.**
-(1) Naklejki: „maska bierze alfę, czarne tło jest nieistotne" — pliki mają **nieprzezroczysty**
-kwadrat, więc maska z alfy dałaby pełny kolorowy kwadrat; działa `mask-mode: luminance`
-(`StatusIcon`). (2) „Brak sceny": samo `setScene` dałoby MG mapę **bez figur** — decyzja poszła do
-`sceneStore.followActivation`, które mówi też, kiedy dociągnąć figury. (3) Kratka: dwa pola z wpisu
-dawałyby dwie odpowiedzi, bo pełny plik 2896 × 2176 nie dzieli się równo na 40 × 30 — zostało jedno
-pole kolumn z podpowiedzią wierszy. Przy okazji wyszło, że wgranie pełnego pliku **przesunęłoby całą
-scenę** (figury i ściany leżą w pikselach świata) — zapisane w decyzjach MG w `zaleglosci.md`.
-
-**Oględziny na żywym stole.** Menu figury w obu motywach: 17 sylwetek, żadnego kwadratu. Edytor
-sceny: pole kolumn pokazuje 30,81 przy starej kratce, po „40" daje 36,2 px i „W pionie wychodzi
-równo 30"; **zapisane na „StrefiePrzemysłowej"** (47 → 36,2 px, decyzja MG). Budżet walki Marcina
-nietknięty (66,5 m / 12 m), tryb turowy dalej włączony, zero okien `confirm`, zero kart na czacie.
-**Nieobejrzane:** chip statusu w panelu postaci i pasek grupy (wymagałyby zmiany stanu w trwającej
-walce). `app.ts` po Prettierze nie daje różnicy w gicie — jego „niesformatowanie" to
-były same końce linii w katalogu roboczym.
-
-**„Brak sceny" obejrzany w drugiej części sesji — za zgodą MG na kampanię-śmiecia.** Serwer nie ma
-trasy usuwania kampanii, a stan „MG nie ogląda niczego" powstaje tylko w świeżej kampanii (tworzenie
-sceny z panelu od razu ustawia jej podgląd). Założona „Oględziny 12.09 — do usunięcia": scena „Test
-Brak sceny" z mapą Night City i pustym żetonem „Figura testowa" → przeładowanie → „Brak sceny" →
-„Aktywuj" → mapa **z figurą** od razu. „Poligon bojowy" przywrócony co do stanu: „StrefaPrzemysłowa"
-aktywna, RUNDA 1 Marcin/Tony. Dwie rzeczy po drodze: karty automatyki były zalogowane jako **Tony na
-obu hostach** (MG zalogował się sam na `localhost` — hasła nie wpisuję), a w bazie leżą jeszcze trzy
-starsze kampanie-śmieci — pułapka w `ogledziny`.
-
-**Siatka na ciemnej mapie — zrobione w tej samej sesji, decyzją MG („kontrast w edytorze").** Wymóg
-MG: kratka nie musi trafiać idealnie, ale MG ma **sam zauważyć** rozjazd przed aktywacją sceny.
-Domyślna czarna kreska z kryciem 35% na mapie Night City, przyciemnionej mgłą MG, była ledwo
-widoczna. Od teraz **otwarty edytor sceny włącza kontrastową siatkę**: obwódka 3 px ekranu w kolorze
-przeciwnym i kreska z kryciem co najmniej 90% (`gridStrokes` w `map/grid-style.ts`, sześć testów) —
-tylko u MG, nigdy po sieci; przełącznik „Kontrastowa siatka podczas edycji" pokazuje wygląd zapisany.
-Obejrzane na „StrefiePrzemysłowej" (krycie 10%): z kontrastem kratki i ich rozjazd z pasami parkingu
-widać od razu, po odhaczeniu i po zamknięciu edytora siatka wraca do wyglądu zapisanego.
-
-**Przy okazji w tym pliku:** akapit o scenach testowych mówił o czterech i aktywnej „Strzelnicy"
-(jest pięć, aktywna „StrefaPrzemysłowa"), a tabela etapów nie miała wiersza nagłówka od cięcia
-kolumny „Uwagi" — oba poprawione.
-
-**Testy:** **2003** w `shared` (+5, `gridSizeForColumns`), **1098** na serwerze, **183** u klienta
-(+10, `scene-activation.test.ts` i `grid-style.test.ts`) — zielone. ESLint, Prettier i `tsc --noEmit`
-czyste w trzech pakietach. Umowy: dwie w `mapa`, jedna w `ui`; pułapki: jedna w `ui`, trzy w `ogledziny`.
-Zamknięte zaległości: **trzy**.

@@ -178,6 +178,16 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
     ],
   },
   {
+    title: 'Pełny ekran',
+    note: 'Włącza się w ⚙ Ustawienia → Widok.',
+    items: [
+      {
+        keys: 'przytrzymanie Esc',
+        what: 'Wychodzi z pełnego ekranu w Chrome i Edge — krótkie Esc dalej schodzi po drabinie wyżej. W Firefoksie i na adresie bez HTTPS z pełnego ekranu wychodzi już pierwsze Esc',
+      },
+    ],
+  },
+  {
     title: 'Karta postaci: rzut z wiersza',
     note: 'Działa na wierszach Cech i Umiejętności na stronie pierwszej karty.',
     items: [

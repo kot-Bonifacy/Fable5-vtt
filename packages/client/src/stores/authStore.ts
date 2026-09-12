@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { AuthState, CampaignSummary, SessionUser } from '@vtt/shared';
 import { apiGet, apiPost } from '../api.js';
+import { leaveFullscreenOnLogout } from '../fullscreen.js';
 import { disconnectSocket } from '../socket.js';
 import { useSettingsStore } from './settingsStore.js';
 
@@ -56,6 +57,7 @@ export const useAuthStore = create<AuthStoreState>((set) => ({
   logout: async () => {
     await apiPost('/api/auth/logout');
     disconnectSocket();
+    leaveFullscreenOnLogout();
     set({ status: 'anonymous', user: null, activeCampaign: null });
   },
 }));

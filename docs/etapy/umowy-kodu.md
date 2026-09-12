@@ -674,6 +674,7 @@ sąsiadach. Nowe rozgłoszenie z `seq` w typie zaczyna się od tych trzech linii
 
 ## ui — Okna, motyw, style, dostępność
 
+- **Pełny ekran — wyłącznie przez `fullscreen.ts`**, nigdy gołe `requestFullscreen`: nowe wejście do gry woła `enterPreferredFullscreen()` **przed** pierwszym `await` w obsłudze gestu, a automat po F5 i tłumik przytrzymanego Esc żyją w `useFullscreen` w korzeniu `App`. Kolejność pilnuje `fullscreen.test.ts`.
 - **Naklejka statusu poza mapą** — wyłącznie `StatusIcon` (`HudIcon.tsx`), nigdy `<img>`: maska z `mask-mode: luminance` (`.status-icon`) gasi czarny podkład pliku i barwi sylwetkę kolorem tekstu. Rozmiar daje kontekst w CSS, nie atrybuty. Mapa rysuje te same pliki jako sprite'y **z** podkładem i tak zostaje.
 - **Ekran wejścia (`.auth-screen`) stoi na plakacie** — formularz nie ma tła i kotwiczy się do ramki **narysowanej w obrazie**, nie do środka okna. Zmiana pliku tapety = przemierzenie ułamków (`docs/assety-logowanie.md`); zdjęcie kotwicy = oddanie formularzowi tła.
 - **Okno otwierane znad karty postaci potrzebuje `z-index: 400`** — dopisz jego klasę do listy `.dialog-backdrop:has(…)` obok `.roll-dialog`; `.sheet-window` ma 300, a backdrop 50.
@@ -685,6 +686,19 @@ sąsiadach. Nowe rozgłoszenie z `seq` w typie zaczyna się od tych trzech linii
 - **Zdanie „czego brakuje" w pasku postaci** — `HudContext.sheetNotMine`, renderowane **niezależnie** od `slots.length`: Akcje z katalogu nie potrzebują karty, więc pasek gracza nigdy nie jest pusty.
 
 ---
+
+**Pełny ekran ma jedno miejsce: `fullscreen.ts` (12.09, zlecenie MG poza etapami).**
+Życzenie leży w `settingsStore.fullscreen` (`vtt.view.fullscreen`, prywatne dla przeglądarki), ale
+samo pole niczego nie włącza — robi to moduł, bo przeglądarka wpuszcza w pełny ekran wyłącznie
+w odpowiedzi na gest. Wejścia są trzy: przełącznik (`setFullscreenPreference`), formularze logowania
+i dołączania (`enterPreferredFullscreen()` **przed** `await` — Firefox nie uzna gestu po odpowiedzi
+serwera) oraz automat po odświeżeniu strony w `useFullscreen` (korzeń `App`, bo MG ląduje też
+w `/gm`). Automat działa **raz na wczytanie strony** i gaśnie po odmowie przeglądarki — kto sam
+wyszedł, nie zostaje wciągnięty z powrotem; wylogowanie (`leaveFullscreenOnLogout`) wychodzi
+i odnawia automat. W pełnym ekranie Esc idzie pod Keyboard Lock (Chrome, Edge, tylko HTTPS
+i localhost), a powtórzenia przytrzymanego Esc tłumi nasłuch w fazie przechwytywania na `window`.
+**Nowy nasłuch Esc nie musi o tym wiedzieć**, byle nie dopinał się w przechwytywaniu na `window`
+przed `App`. Gołe `requestFullscreen` gdzie indziej zużyje gest i rozjedzie stan automatu.
 
 **Naklejka statusu w interfejsie to maska z jasności — nie `<img>` i nie maska z alfy (12.09).**
 Pliki z `data/public/cpred/status-icons/` mają pod białą sylwetką nieprzezroczysty czarny kwadrat:

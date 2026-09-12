@@ -25,6 +25,7 @@ import { GmPanel } from './pages/GmPanel.js';
 import { useAuthStore } from './stores/authStore.js';
 import { connectSocket, disconnectSocket } from './socket.js';
 import { useHelpStore } from './stores/helpStore.js';
+import { useFullscreen } from './fullscreen.js';
 
 /**
  * At the table the right button belongs to the game — it opens the token menu
@@ -124,6 +125,10 @@ export function App() {
   useEffect(() => {
     void initialize();
   }, [initialize]);
+
+  // Pełny ekran (12.09): automat po odświeżeniu strony i Esc pod blokadą.
+  // Tutaj, a nie w `GameView`, bo MG po odświeżeniu ląduje też w `/gm`.
+  useFullscreen(status === 'authenticated');
 
   // Keyed by user id: joining as somebody else in the same browser must not
   // keep the previous user's socket (and their state) alive.
