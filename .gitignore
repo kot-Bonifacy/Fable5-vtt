@@ -47,3 +47,6 @@ Thumbs.db
 # z repozytorium, waży ćwierć megabajta i odtwarza się jednym `python build.py`.
 # W repo zostaje generator, nie jego wydruk.
 tools/icon-review/przeglad-ikon.html
+
+# Instrukcja dla innego modelu, trzymana lokalnie (decyzja MG 12.09.2026).
+AGENTS.md
