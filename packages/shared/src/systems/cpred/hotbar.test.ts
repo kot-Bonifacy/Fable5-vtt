@@ -7,6 +7,8 @@ import {
   cpredWeaponIcon,
   cpredWeaponModeSlot,
   cpredWeaponOptions,
+  cpredActionRefusal,
+  cpredTurnRefusalInput,
   hotbarSlotsFor,
   type CpredHotbarInput,
   type CpredHotbarWeaponSlot,
@@ -18,8 +20,11 @@ import type { CpredWeaponRow } from './character.js';
 import { STATIST_WEAPON_ROW_ID } from './statist.js';
 import {
   CPRED_ACTION_COMBAT_AWARENESS,
+  CPRED_ACTION_HOLD,
+  CPRED_ACTION_MOVE,
   CPRED_ACTION_RUN,
   CPRED_ACTION_SCANNER,
+  CPRED_ACTION_STABILIZE,
   CPRED_ACTION_STAND_UP,
 } from './turn.js';
 
@@ -752,5 +757,74 @@ describe('zacięta broń na pasku akcji (s. 244)', () => {
     );
     const box = slots.find((slot) => slot.kind === 'clear-jam');
     expect(box?.disabled).toBe('Akcja w tej turze już wykorzystana.');
+  });
+});
+
+describe('cpredActionRefusal — jedna odmowa dla obu drzwi (10.09)', () => {
+  const free = { statuses: [], turn: null, isGm: false };
+
+  it('holds Bieg back until the Move Action has been used — the same sentence the bar shows', () => {
+    const before = cpredActionRefusal(CPRED_ACTION_RUN, {
+      statuses: [],
+      turn: { actionSpent: false, moveSpent: false },
+      isGm: false,
+    });
+    const after = cpredActionRefusal(CPRED_ACTION_RUN, {
+      statuses: [],
+      turn: { actionSpent: false, moveSpent: true },
+      isGm: false,
+    });
+    expect(before).toMatch(/Bieg wymaga/);
+    expect(after).toBeNull();
+    // …and the bar, which goes through the same function, agrees to the letter.
+    const slots = hotbarSlotsFor(input({ turn: { actionSpent: false, moveSpent: false } }));
+    const run = slots.find((slot) => slot.kind === 'action' && slot.actionId === CPRED_ACTION_RUN);
+    expect(run?.disabled).toBe(before);
+  });
+
+  it('keeps „Wstanie" alive under a movement block — the cure survives the condition', () => {
+    expect(cpredActionRefusal(CPRED_ACTION_STAND_UP, { ...free, statuses: ['prone'] })).toBeNull();
+    expect(cpredActionRefusal(CPRED_ACTION_RUN, { ...free, statuses: ['prone'] })).not.toBeNull();
+  });
+
+  it('refuses the forms once the Action is spent — they pay for it like every other', () => {
+    const spent = { statuses: [], turn: { actionSpent: true, moveSpent: false }, isGm: false };
+    expect(cpredActionRefusal(CPRED_ACTION_STABILIZE, spent)).toMatch(/już wykorzystana/);
+    expect(cpredActionRefusal(CPRED_ACTION_HOLD, spent)).toMatch(/już wykorzystana/);
+  });
+
+  it('leaves Akcja Ruchu to the movement block — it never touches the Action', () => {
+    // Ten przycisk ma tylko zakładka „Walka"; na pasku ruch robi się ciągnięciem
+    // figury. Bez gałęzi o koszcie wspólna odmowa gasiłaby go zdaniem o Akcji.
+    const spent = { statuses: [], turn: { actionSpent: true, moveSpent: false }, isGm: false };
+    expect(cpredActionRefusal(CPRED_ACTION_MOVE, spent)).toBeNull();
+    expect(cpredActionRefusal(CPRED_ACTION_MOVE, { ...free, statuses: ['prone'] })).not.toBeNull();
+  });
+
+  it('never refuses the GM a budget, and still refuses them a status', () => {
+    const spent = { statuses: [], turn: { actionSpent: true, moveSpent: true }, isGm: true };
+    expect(cpredActionRefusal(CPRED_ACTION_STABILIZE, spent)).toBeNull();
+    expect(
+      cpredActionRefusal(CPRED_ACTION_STABILIZE, { ...spent, statuses: ['unconscious'] }),
+    ).not.toBeNull();
+  });
+});
+
+describe('cpredTurnRefusalInput — jedno czytanie budżetu tury', () => {
+  it('reads the tracker’s resources the way both doors need them', () => {
+    expect(cpredTurnRefusalInput(null)).toBeNull();
+    expect(
+      cpredTurnRefusalInput({
+        resources: [
+          { id: 'action', label: 'Akcja', used: 1, max: 1 },
+          { id: 'move', label: 'Ruch', used: 0, max: 1, blocked: 'Uraz nogi.' },
+        ],
+      }),
+    ).toEqual({
+      actionSpent: true,
+      moveSpent: false,
+      blockedAction: null,
+      blockedMove: 'Uraz nogi.',
+    });
   });
 });

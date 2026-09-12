@@ -29,6 +29,7 @@ import {
   cpredWeaponModeSlot,
   effectiveArmorSp,
   empFromHumanity,
+  cpredTurnRefusalInput,
   hotbarSlotsFor,
   cpredSheetHpMax,
   humanityMaxWith,
@@ -308,16 +309,7 @@ export function hudContextFor(tokenId: string | null): HudContext {
       weaponTypeById,
     },
     statuses: token.statuses,
-    turn: turn
-      ? {
-          actionSpent: turn.resources.find((row) => row.id === 'action')?.used === 1,
-          moveSpent: (turn.resources.find((row) => row.id === 'move')?.used ?? 0) > 0,
-          // Why the resource is gone, when it was never there to spend: a wound
-          // that took the Action away carries its own sentence (stage 14e).
-          blockedAction: turn.resources.find((row) => row.id === 'action')?.blocked ?? null,
-          blockedMove: turn.resources.find((row) => row.id === 'move')?.blocked ?? null,
-        }
-      : null,
+    turn: cpredTurnRefusalInput(turn),
     isGm,
     grapple: combatant?.grapple?.role ?? null,
     netrunner: isNetrunnerSheet(character?.data ?? null),

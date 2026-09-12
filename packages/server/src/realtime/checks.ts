@@ -128,10 +128,21 @@ function requireCallableRequest(raw: unknown, modifier: number): CpredRollReques
   }
   // Szczęście deklaruje rzucający przy kubku, a wszystko poza Umiejętnością,
   // Cechą i modyfikatorem MG jest tu nadmiarowe.
+  //
+  // Jeden wyjątek, i to nie z wygody: `sightingTokenId` (etap 41) mówi, **na co
+  // gracz patrzy**, a nie jak liczy rzut — i bez niego zdany Test Percepcji nie
+  // ma czego odsłonić. Biała lista wycinała go po cichu, więc jedyna droga
+  // gracza do dokładnych oględzin („Poproś MG o dokładne oględziny" → zgoda →
+  // rzut) kończyła się zdanym Testem i niczym więcej (12.09). Adres jest
+  // bezpieczny, bo o prawo do patrzenia pyta dopiero `revealSighting`: zdanie
+  // Testu nie jest prawem do obejrzenia dowolnej figury w kampanii.
   return {
     kind: request!.kind,
     ...(request!.skillId ? { skillId: request!.skillId } : {}),
     ...(request!.statId ? { statId: request!.statId } : {}),
+    ...(typeof request!.sightingTokenId === 'string' && request!.sightingTokenId.length > 0
+      ? { sightingTokenId: request!.sightingTokenId }
+      : {}),
     modifier,
   };
 }

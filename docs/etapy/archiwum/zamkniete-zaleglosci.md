@@ -9,6 +9,68 @@ go czytać.
 albo gdy chcesz sprawdzić, czy pozycja, która wygląda na nową, nie jest wracającą starą.
 Treść wpisów jest niezmieniona — łącznie z datami i odsyłaczami do notatek sesji.
 
+## Zamknięte 2026-09-12 (piąta sesja — interfejs, który nie kłamie)
+
+**10.09 (etap 14b/16f): zakładka „Walka" oferowała przyciski, które pasek na mapie wyszarzał —
+i odwrotnie.** `CombatActions.tsx` pytał o jedno (`!isGm && action.cost === 'action' &&
+actionSpent`), a pasek szedł przez prywatne `actionSlotRefusal` w `hotbar.ts` i pytał o wszystko:
+blokady z 14e, statusowe (`cpredActionBlock` / `cpredMovementBlock`) i regułę katalogu „druga Akcja
+Ruchu dopiero po pierwszej". **Naprawa:** `actionSlotRefusal` wyprowadzone jako
+**`cpredActionRefusal(actionId, { statuses, turn, isGm })`**, wołane z obu wejść, plus
+`cpredTurnRefusalInput(turn)` — jedno czytanie budżetu tury zamiast dwóch odręcznych
+`resources.find('action')` (to one się rozjechały). Formularze („Wstrzymanie Akcji…",
+„Ustabilizowanie…") przestały być wyjęte z warunku i gasną razem z resztą.
+
+**Gałąź, której nie było w zgłoszeniu, a bez której naprawa byłaby regresem:** zakładka ma przycisk
+**„Akcja Ruchu"** (koszt `move`), którego pasek nie ma — wspólna odmowa gasiłaby go zdaniem
+o wykorzystanej **Akcji**, czyli o zasobie, którego ten przycisk nie dotyka. Stąd gałąź po koszcie
+z katalogu. Sześć testów w `hotbar.test.ts`; **obejrzane na żywo** przez status „Powalony" nadany
+Marcinowi (status blokuje też MG, więc nie trzeba było ruszać kolejki): oba wejścia dają odtąd
+**identyczne zdanie** „Powalony token musi najpierw wstać (Akcja „Wstanie")", Wstanie zostaje żywe
+w obu, Akcja Ruchu gaśnie blokadą ruchu. Status zdjęty, stan stołu przywrócony co do liczby.
+
+**11.09 (ekran logowania): hasło podstawione z menedżera haseł nie odblokowywało „Zaloguj się" —
+a sama naprawa przycisku byłaby gorsza od błędu.** `LoginPage.tsx` pytał o stan Reacta
+(`disabled={busy || password.length === 0}`), a autofill pisze prosto do DOM-u, bez zdarzenia
+`input`. Diagnoza ze zgłoszenia była trafna tylko w połowie: pole pełne, przycisk martwy — ale
+odblokowanie guzika wysłałoby **pusty stan** przy pełnym polu, czyli „nieprawidłowe hasło" na
+oczach użytkownika patrzącego na swoje hasło. **Naprawa:** `useAutofillableField`
+(`client/src/autofill-field.ts`) — `read()` bierze wartość **z węzła** przy wysyłce, a efekt po
+zamontowaniu przepisuje do stanu to, co już tam stoi; warunek o długości zszedł z przycisku,
+bo autofill nie ma pewnego momentu. To samo na ekranie dołączania (`JoinPage.tsx`), gdzie pustkę
+odbija „Wpisz imię.". **Obejrzane na żywo** na `[::1]:5173`: pusta wysyłka odbiła zdaniem,
+a wartość podstawiona natywnym setterem **bez zdarzenia** zalogowała konto Tony'ego.
+
+**06.09 (etap 23b): lista odbiorców przelewu zawierała statystów — rozstrzygnięta przez MG
+12.09: „zostaw jak jest, ale posortuj".** Od 38a statyści **są** kartami, więc w „przelew do…"
+stały „Ganger", „Cel 23x", „Automatyczna wieżyczka" i Demony. Nic się nie psuło (przelew do NPC-a
+bywa całym sensem sceny), ale lista szumiała. **Naprawa:** `economy:history` niesie na każdym
+odbiorcy `player: boolean` (czy karta ma właściciela), a karta rozdziela listę na dwa `<optgroup>`:
+**„Postacie graczy"** i **„NPC i figury MG"**. Nikogo nie ubyło. Okno „Wymiana" z 38b **zostawione
+bez zmian** — buduje listę tak samo, ale tam wieżyczka bywa sensownym celem, więc filtr jest
+decyzją per lista (uwaga ze zgłoszenia, utrzymana). Test w `economy.test.ts`; **obejrzane na żywo**
+z konta gracza: Marcin / Test 27x / avatar9 w pierwszej grupie, trzy statystyki i Frank w drugiej.
+
+**10.09 (etap 41): dokładne oględziny NIE DZIAŁAŁY — błąd znaleziony dopiero oględzinami.**
+Pozycja brzmiała „cały UI etapu nieoglądany w przeglądarce" i szacowała ryzyko na średnie.
+Było wyższe: **jedyna droga gracza do dokładnych oględzin była przerwana**.
+`requireCallableRequest` (`realtime/checks.ts`) przepisuje żądanie Testu **pole po polu** i wycinał
+`sightingTokenId` — a to on mówi, na co gracz patrzy. Klient go słał (`SightingWindow.tsx`), serwer
+go czytał (`character-rolls.ts:1138`), między nimi ginął po cichu: zdany Test Percepcji nie
+odsłaniał **niczego**, bez błędu i bez odmowy. **Żaden test nie dotykał tego pola** — ani 15
+w `shared`, ani 13 na gniazdach. **Naprawa:** pole dopisane do białej listy (adres jest bezpieczny,
+bo o prawo do patrzenia pyta dopiero `revealSighting`), plus dwa testy na żywych gniazdach
+przechodzące **pełną** drogę prośba → zgoda → rzut; sprawdzone, że bez poprawki padają.
+
+**Odklikane przy okazji (41 i 38b), tą samą drogą — menu figury z automatyki:** „🔍 Przyjrzyj
+się…" u MG („Oględziny — Marcin": głowa bez ochrony, Granatnik w rękach) i u gracza (z przyciskiem
+prośby, którego MG nie dostaje); pełna ścieżka **prośba → drabinka PT u MG → zgoda → wezwanie →
+kubek → rzut** (14 > PT 9) → **karta „Oględziny" z liczbami** („2k6 · 30/30", czyli to, czego
+zwykłe spojrzenie nie pokazuje) i „Pokaż wszystko" otwierające okno z nagłówkiem „Przyjrzałeś się
+dokładnie"; **„🎒 Przeszukaj…"** (38b) z właściwym zdaniem „Przeszukać można figurę, która leży
+albo nie żyje i nie ma właściciela"; guziki **„Dobądź / Schowaj (Akcja) / Upuść"** przy wierszach
+broni.
+
 ## Zamknięte 2026-09-12 (trzecia sesja — okienko w mgle)
 
 **12.09 (etap 17a, znalezione przy oględzinach widoczności żetonów): gracz nie widzi pod mgłą

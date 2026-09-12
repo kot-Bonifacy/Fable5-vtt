@@ -3,6 +3,7 @@ import type {
   CpredStatId,
   ArmorLocation,
   CompendiumEntry,
+  EconomyPayee,
   CpredArmorRow,
   CpredSkillDefinition,
   CpredAttachmentProfile,
@@ -3449,6 +3450,16 @@ function LifestyleFields({ data, saveData }: TabProps) {
 }
 
 /**
+ * Dwie grupy listy przelewów, w kolejności, w jakiej się ich szuka (MG, 12.09).
+ * Drużyna pierwsza, bo do niej przelewa się najczęściej; figury MG pod spodem,
+ * bo od 38a jest ich w kampanii tyle, ile statystów na mapie.
+ */
+const PAYEE_GROUPS = [
+  { label: 'Postacie graczy', player: true },
+  { label: 'NPC i figury MG', player: false },
+] as const;
+
+/**
  * The wallet (stage 23b).
  *
  * The balance stopped being a field and became a **read-out**: every eddie that
@@ -3472,7 +3483,7 @@ function WalletSection({
 }) {
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
   const [entries, setEntries] = useState<LedgerEntryView[]>([]);
-  const [payees, setPayees] = useState<{ id: string; name: string }[]>([]);
+  const [payees, setPayees] = useState<EconomyPayee[]>([]);
   const [note, setNote] = useState<string | null>(null);
   const [payeeId, setPayeeId] = useState('');
   const [amount, setAmount] = useState('');
@@ -3563,11 +3574,22 @@ function WalletSection({
               onChange={(e) => setPayeeId(e.target.value)}
             >
               <option value="">— przelew do… —</option>
-              {payees.map((payee) => (
-                <option key={payee.id} value={payee.id}>
-                  {payee.name}
-                </option>
-              ))}
+              {/* Dwie grupy zamiast jednej listy (MG, 12.09): od 38a statyści są
+                  kartami, więc obok drużyny stały „Cel 23x" i wieżyczka. Nikogo
+                  nie ubyło — przelew do NPC-a bywa całym sensem sceny. */}
+              {PAYEE_GROUPS.map(({ label, player }) => {
+                const rows = payees.filter((payee) => payee.player === player);
+                if (rows.length === 0) return null;
+                return (
+                  <optgroup key={label} label={label}>
+                    {rows.map((payee) => (
+                      <option key={payee.id} value={payee.id}>
+                        {payee.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                );
+              })}
             </select>
             <input
               type="number"

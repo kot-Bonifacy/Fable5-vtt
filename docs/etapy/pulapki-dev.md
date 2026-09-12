@@ -180,6 +180,7 @@ nietrafioną — sprawdzaj obie.
 
 ## serwer — Baza, protokół gniazda, pliki
 
+- **`requireCallableRequest` to BIAŁA LISTA** (`realtime/checks.ts`) — przepisuje żądanie Testu pole po polu, więc nowe pole w `CpredRollRequest` **ginie po cichu** na drodze prośba → zgoda → rzut. Objaw: funkcja działa z wezwania, a z prośby gracza nie robi nic, bez jednego błędu w logu.
 - **Plik na stałe w `uploads/` znika po godzinie** — zbieracz sierot zamiata `maps`, `portraits`, `tokens` i `handouts`, kasując wszystko, czego nie wymienia żaden wiersz bazy. Asset bez wiersza (np. mapa powitalna) musi leżeć **poza tą czwórką** — stąd `uploads/art/`.
 - **`socket.data.viewedSceneId` to scena WIDZA, nie celu** — okno karty jej nie zmienia, więc runda dla efektu czyta się ze sceny **żetonu celu** (`effectClockForCharacter`). Inaczej efekt nałożony w walce nie ma terminu rundowego.
 - **Trzy zapisy karty z jednego odczytanego wiersza zostawiają tylko ostatni** — każdy scala z tym, co przeczytał. Nerwosol (3 Cechy) musi czytać kartę **przed każdym** zapisem.
@@ -194,6 +195,18 @@ nietrafioną — sprawdzaj obie.
 - **Migracji danych nie dopisuje się do zastosowanej migracji** (suma kontrolna) — backfill idzie osobnym katalogiem z samym `UPDATE`.
 - **Zmiana `schema.prisma` bez `prisma generate` wywraca CAŁY zestaw testów serwera** — 57 plików na timeoutach `state:sync`, jakby zerwał się protokół. Generuj klienta, zanim zaczniesz szukać błędu gdzie indziej.
 - **Skasowanie kolumny to cztery miejsca, nie jedno** — kod czytający, eksport/import (`archive.ts` wypisuje kolumny z nazwy), kopie zapasowe i migracja SQL. Kompendium mieszka w plikach, nie w bazie, więc SQL nie rozwiąże „broń → Umiejętność".
+
+
+- **`requireCallableRequest` przycina żądanie Testu i robi to po cichu (12.09).**
+  `realtime/checks.ts` przepisuje żądanie **pole po polu** (`kind`, `skillId`, `statId`,
+  `modifier`), a komentarz mówi wprost, że reszta „nie ma tu czego szukać". Konsekwencja jest
+  szersza, niż wygląda: wszystko, co dochodzi do `CpredRollRequest` później, musi zostać **dopisane
+  do tej listy**, bo inaczej znika na drodze `check:request` → `check:request-resolve` →
+  `character:roll`. Tak umarły dokładne oględziny z etapu 41: klient słał `sightingTokenId`, serwer
+  go czytał (`character-rolls.ts`), a biała lista wycinała po drodze — zdany Test Percepcji nie
+  odsłaniał **niczego**, bez błędu, bez odmowy, bez śladu w logu. Objaw diagnostyczny: funkcja
+  chodzi z wezwania MG i nie chodzi z prośby gracza (albo odwrotnie), choć „to ten sam rzut".
+  Znalezione dopiero oględzinami — **żaden test nie dotykał tego pola**.
 
 ---
 
@@ -292,6 +305,7 @@ Umiejętność" i model musi być tak dobrany, żeby nie musiał (stąd `statBlo
 
 ## ui — Okna, motyw, style, dostępność
 
+- **Autofill przeglądarki nie dociera do stanu Reacta** — pole pełne, `useState` puste, więc `disabled={value.length === 0}` zostawia martwy przycisk, a samo odblokowanie go wysłałoby **pustkę**. Czytaj wartość z węzła przy wysyłce (`useAutofillableField`), nie ze stanu.
 - **Przezroczyste pole hasła Chrome i tak zamaluje własnym niebieskim** — to styl UA na `:-webkit-autofill`, `background` go nie zdejmuje; zdejmuje `transition: background-color 100000s`.
 - **`place-items: center` na ekranie wyższym niż okno chowa górę treści bezpowrotnie** — pasek przewijania nie pomaga, bo przepełnienie jest po obu stronach. Ratuje `justify-content: safe center` w kolumnie flex.
 - **Okno otwierane znad karty postaci znika pod nią, choć powstało** — scrim jest, `Escape` działa, w DOM-ie okno ma rozmiary, a widać zero. Rozpoznanie: `document.elementFromPoint` na jego środku zwraca arkusz.
@@ -301,6 +315,19 @@ Umiejętność" i model musi być tak dobrany, żeby nie musiał (stąd `statBlo
 - **Nasłuch „klik poza oknem" dopięty w efekcie łapie ten sam klik, który okno otworzył** — okno znika bez śladu i bez błędu; uzbrajaj listener przez `setTimeout(…, 0)`.
 
 ---
+
+- **Autofill przeglądarki omija Reacta w obie strony (12.09).** Menedżer haseł pisze prosto do
+  węzła DOM: żadnego `input`, żadnego `change`, nic, czego React mógłby usłyszeć. Kontrolowane pole
+  ma wtedy **pełne pudełko i pusty `useState`**, więc każde pytanie zadane *stanowi* dostaje złą
+  odpowiedź. Na ekranie logowania czytało się to jako zepsuty przycisk: w polu kropki, „Zaloguj się"
+  wyszarzone. **Pułapka jest w naprawie, nie w objawie:** samo zdjęcie warunku z `disabled` jest
+  gorsze niż błąd — formularz wysyła wtedy pusty *stan*, a użytkownik patrzy na pełne pole i dostaje
+  „nieprawidłowe hasło". Trzeba obu połówek naraz: `read()` przy wysyłce bierze wartość **z węzła**,
+  a synchronizacja po zamontowaniu przepisuje do stanu to, co już tam stoi (`autofill-field.ts`).
+  Warunku o długości **nie wieszaj** na przycisku: autofill nie ma pewnego momentu (Chrome wypełnia
+  jedne pola przy wejściu, inne dopiero po interakcji), więc guzik czekający na wartość, o której
+  nie umie się dowiedzieć, potrafi zostać martwy. Pustkę odbija się zdaniem przy wysyłce.
+  Sprawdzone na żywo: `value` podstawione natywnym setterem bez zdarzenia — wysyłka zalogowała.
 
 - **Pole z hasłem podstawionym przez Chrome zamalowuje się na niebiesko, choć ma `background: none`
   (11.09).** Na ekranie logowania stojącym na plakacie wygląda to jak wbita w grafikę systemowa
@@ -852,6 +879,7 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
 
 ## ogledziny — Oględziny w przeglądarce
 
+- **MENU FIGURY OTWIERA SIĘ Z AUTOMATYKI — korekta z 12.09.** `PointerEvent` z `button: 2` (plus `contextmenu`) we **współrzędnych CSS** na `canvas` wystawia je za pierwszym razem; checkboksy statusów biorą `input.click()`. Trzy pozycje długu (38a, 38b, 41) czekały na rękę MG na podstawie nieprawdziwej przeszkody. **Gracz też ma menu** — własne, jednopozycyjne („🔍 Przyjrzyj się…").
 - **`hover` + `left_click` z `computer` nie jest rozkazem marszu** — trasa liczy się na `pointermove`, więc figura stoi, a w rendererze zostaje **rozpoczęty marsz**, który gasi podgląd trasy: kolejne najechania nic już nie rysują i wygląda to jak zepsuty ruch. Rozpoznanie: następny klik odkłada w czacie „Marsz przerwany.”. Działa dopiero pełna seria z konsoli (`pointermove` → pauza ~400 ms → `pointermove` o 2 px → `pointerdown`/`pointerup`) we współrzędnych CSS.
 - **Odmowy Akcji lądują w kategorii czatu „Stół”, a filtr bywa wyłączony** — zamiast „Zbyt daleko — Pochwycenie wymaga zwarcia (2 m).” widać „⋯ 1 ukryty wiersz ⋯” i klik wygląda na przycisk, który nic nie robi. Filtry są prywatne i lokalne (`localStorage`), więc trzymają się karty, nie konta: **włącz wszystkie cztery przed oględzinami**.
 - **Lista statusów w menu kontekstowym żetonu wychodzi poza dolną krawędź okna** — „Powalony” wypada ok. 150 px pod widokiem, `scrollIntoView` nie pomaga (menu się nie przewija), a `computer` nie kliknie poza zrzutem. Tu akurat `input.click()` na checkboksie **działa** (React łapie zdarzenie) — inaczej niż przy `form_input` z pułapki niżej.
@@ -908,6 +936,33 @@ rozcina to `split_on_anchors` po nazwach typów broni, bo nagłówek nazwą nie 
 - **`pnpm dev` z `&` w tle naprawdę startuje serwery**, choć zadanie kończy się od razu; następne uruchomienie pada na `EADDRINUSE`. Najpierw `curl` na :5173, potem szukanie trupa.
 - **Tekst z liczbą sprawdzaj na liczbie większej niż jeden** — cały etap 37 przeszedł oględziny z „jedną dobą", a błąd („minęły 30 doby") pokazały dopiero trzy skoki pod rząd.
 - **Feed czatu czytaj z DOM-u, nie ze zrzutu** — `[...document.querySelectorAll('.chat-time')].map(n => n.innerText)`; panel bywa przewinięty i „nie ma karty" znaczy zwykle „nie doskrolowano".
+
+
+- **Menu kontekstowe figury JEDNAK otwiera się z automatyki (12.09) — i to jest korekta trzech
+  wpisów długu.** Zaległości 38a, 38b i 41 mówiły zgodnie: „prawym klikiem z automatyki nie
+  otworzysz menu kanwy Pixi", i na tej podstawie **pięć pozycji** czekało na rękę MG. Nieprawda.
+  Działa seria `pointerdown` → `pointerup` z `button: 2, buttons: 2` plus `contextmenu`, wysłana na
+  `canvas` we **współrzędnych CSS** (nie tych ze zrzutu — to jest cała różnica; skala ≈ 0,73 przy
+  DPR 1,25, przelicz `frame × innerWidth / szerokość_ramki`). Menu wyszło za pierwszym podejściem,
+  a checkbox statusu w nim bierze `input.click()` — tak nadano i zdjęto „Powalonego". Tą drogą
+  odklikano w jednej sesji: okno oględzin u MG i u gracza, „🎒 Przeszukaj…", „✏️ Edytuj…"
+  i pełną ścieżkę prośby o dokładne oględziny.
+
+- **Gracz ma własne menu figury, nie brak menu.** Wpis „wystawiane tylko MG" mylił: na **swojej**
+  figurze gracz dostaje menu z **jedną** pozycją („🔍 Przyjrzyj się…"). Cudzej figury pod mgłą nie
+  kliknie w ogóle — ona do niego nie jedzie — więc oględziny cudzej figury z konta gracza wymagają
+  sceny, na której tamtą figurę widać.
+
+- **Zakładka „Walka" pokazuje AKTYWNEGO uczestnika, a pasek HUD — zaznaczoną figurę.** Przy
+  porównywaniu obu wejść łatwo zestawić dwie **różne** figury i wziąć to za rozjazd (albo za jego
+  brak). Zanim cokolwiek orzekniesz, sprawdź nazwę w obu panelach. U gracza dochodzi drugi warunek:
+  `CombatActions` renderuje się dopiero, gdy gracz **jest na turze** albo ma wstrzymaną Akcję
+  (`CombatPanel.tsx`, `actor`) — poza turą siatki akcji nie ma wcale.
+
+- **Pasek HUD maluje odmowę kursorem, nie atrybutem.** Slot odmówiony ma `disabled === false`
+  i `cursor: not-allowed`, a powód w `title`; zakładka „Walka" używa prawdziwego `disabled`.
+  Automat czytający tylko `button.disabled` orzeknie, że pasek niczego nie blokuje. Porównuj
+  **`title`**, bo to jego treść ma być wspólna dla obu wejść.
 
 ---
 

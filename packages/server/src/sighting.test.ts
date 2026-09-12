@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { io as ioClient, type Socket as ClientSocket } from 'socket.io-client';
 import type {
   CampaignSummary,
+  ChatMessageBroadcast,
   CharacterView,
   CpredSighting,
   InvitationSummary,
@@ -114,6 +115,25 @@ function emitAck<T = undefined>(
     };
     if (payload === undefined) socket.emit(event, ack);
     else socket.emit(event, payload, ack);
+  });
+}
+
+/** Jak `waitFor`, ale przepuszcza wiadomości, na które nie czekamy. */
+function waitForMatch<T>(
+  socket: ClientSocket,
+  event: string,
+  match: (payload: T) => boolean,
+  ms = 4000,
+): Promise<T> {
+  return new Promise((resolvePromise, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${event} timeout`)), ms);
+    const listener = (payload: T) => {
+      if (!match(payload)) return;
+      clearTimeout(timer);
+      socket.off(event, listener);
+      resolvePromise(payload);
+    };
+    socket.on(event, listener);
   });
 }
 
@@ -537,5 +557,192 @@ describe('ręce: co postać trzyma', () => {
     // Ręce trzymały pistolet i nóż; oba zeszły z karty, więc nie ma w nich nic —
     // karabin, który został, nie wskakuje do rąk sam.
     expect(sighting.weapons).toEqual([]);
+  });
+});
+
+/**
+ * Droga, którą gracz naprawdę chodzi (etap 41 + 40).
+ *
+ * Okno oględzin nie wysyła niczego samo: „Poproś MG o dokładne oględziny"
+ * otwiera **prośbę o Test** z `sightingTokenId`, MG ustawia próg, a dopiero
+ * zdany rzut z tego wezwania odsłania liczby. Trzy zdarzenia, trzy okazje, żeby
+ * adres figury zginął po drodze — i przez to właśnie funkcja nie działała:
+ * biała lista `requireCallableRequest` wycinała `sightingTokenId`, więc rzut
+ * zdawał się w próżnię (znalezione przy oględzinach 12.09, niepokryte niczym).
+ */
+describe('dokładne oględziny: prośba gracza → zgoda MG → zdany Test', () => {
+  let gm: ClientSocket;
+  let vex: ClientSocket;
+  let sceneId: string;
+  let vexSheetId: string;
+  let gangerSheetId: string;
+  let targetTokenId: string;
+
+  it('stawia scenę: gracz z kartą i ganger do obejrzenia', async () => {
+    const gmConn = createSocket(gmCookie);
+    const vexConn = createSocket(vexCookie);
+    gm = gmConn.socket;
+    vex = vexConn.socket;
+    await Promise.all([gmConn.firstSync, vexConn.firstSync]);
+
+    const vexSheet = data(
+      await emitAck<CharacterView>(gm, 'character:create', { name: 'Vex', ownerId: vexUserId }),
+      'character:create',
+    );
+    vexSheetId = vexSheet.id;
+    // Percepcja, która zdaje niski próg **zawsze** — inaczej test migocze na
+    // jedynce z kości, a mierzy on drogę adresu figury, nie szczęście gracza.
+    expect(
+      (
+        await emitAck(gm, 'character:update', {
+          characterId: vexSheetId,
+          patch: {
+            data: {
+              stats: { ...(vexSheet.data as { stats: Record<string, number> }).stats, int: 8 },
+              skills: { perception: 4 },
+            },
+          },
+        })
+      ).ok,
+    ).toBe(true);
+    gangerSheetId = data(
+      await emitAck<CharacterView>(gm, 'character:create', { name: 'Ganger' }),
+      'character:create',
+    ).id;
+    expect(
+      (
+        await emitAck(gm, 'character:update', {
+          characterId: gangerSheetId,
+          patch: {
+            data: {
+              weapons: [pistol('s-pistol')],
+              armor: [
+                {
+                  id: 's-head',
+                  name: 'Hełm bojowy',
+                  notes: '',
+                  sp: 11,
+                  spCurrent: 7,
+                  location: 'head',
+                },
+              ],
+            },
+          },
+        })
+      ).ok,
+    ).toBe(true);
+
+    const scene = data(
+      await emitAck<SceneView>(gm, 'scene:create', { name: 'Oględziny PT' }),
+      'scene:create',
+    );
+    sceneId = scene.id;
+    await emitAck(gm, 'scene:visibility', { sceneId, visibility: 'open' });
+    const activated = waitFor(vex, 'scene:activate');
+    await emitAck(gm, 'scene:activate', { sceneId });
+    await activated;
+
+    await emitAck<TokenView>(gm, 'token:create', {
+      sceneId,
+      name: 'Vex',
+      x: 0,
+      y: 0,
+      ownerId: vexUserId,
+      characterId: vexSheetId,
+    });
+    targetTokenId = data(
+      await emitAck<TokenView>(gm, 'token:create', {
+        sceneId,
+        name: 'Ganger',
+        x: 100,
+        y: 0,
+        characterId: gangerSheetId,
+      }),
+      'token:create',
+    ).id;
+  });
+
+  it('adres figury przeżywa prośbę i zgodę, a zdany Test odsłania liczby', async () => {
+    const asked = await emitAck<{ messageId: number }>(vex, 'check:request', {
+      characterId: vexSheetId,
+      request: { kind: 'skill', skillId: 'perception', sightingTokenId: targetTokenId },
+      reason: 'Chcę mu się dokładnie przyjrzeć.',
+    });
+    if (!asked.ok || !asked.data) throw new Error('check:request failed');
+
+    const callCard = waitForMatch<ChatMessageBroadcast>(
+      vex,
+      'chat:message',
+      (payload) => payload.message.kind === 'check',
+    );
+    expect(
+      (
+        await emitAck(gm, 'check:request-resolve', {
+          messageId: asked.data.messageId,
+          approve: true,
+          // Próg, który uda się zdać: Percepcja nietrenowana + INT.
+          dv: 2,
+        })
+      ).ok,
+    ).toBe(true);
+    const callId = (await callCard).message.id;
+
+    const sightingCard = waitForMatch<ChatMessageBroadcast>(
+      vex,
+      'chat:message',
+      (payload) => payload.message.kind === 'sighting',
+    );
+    expect(
+      (
+        await emitAck(vex, 'character:roll', {
+          characterId: vexSheetId,
+          request: { kind: 'skill', skillId: 'perception', luckSpent: 0 },
+          callMessageId: callId,
+        })
+      ).ok,
+    ).toBe(true);
+
+    const card = await sightingCard;
+    expect(card.message.text).toContain('Ganger');
+    const entry = card.message.sighting;
+    expect(entry?.target).toBe('Ganger');
+    expect(entry?.targetTokenId).toBe(targetTokenId);
+    // Dokładne oględziny niosą liczby, których zwykłe spojrzenie nie pokazuje.
+    const sighting = entry?.sighting as unknown as CpredSighting;
+    expect(sighting.armor.some((row) => row.location === 'head')).toBe(true);
+    expect(sighting.detailed).toBe(true);
+  });
+
+  it('niezdany Test nie odsłania niczego', async () => {
+    const asked = await emitAck<{ messageId: number }>(vex, 'check:request', {
+      characterId: vexSheetId,
+      request: { kind: 'skill', skillId: 'perception', sightingTokenId: targetTokenId },
+    });
+    if (!asked.ok || !asked.data) throw new Error('check:request failed');
+    const callCard = waitForMatch<ChatMessageBroadcast>(
+      vex,
+      'chat:message',
+      (payload) => payload.message.kind === 'check',
+    );
+    await emitAck(gm, 'check:request-resolve', {
+      messageId: asked.data.messageId,
+      approve: true,
+      dv: 60,
+    });
+    const callId = (await callCard).message.id;
+
+    let revealed = false;
+    const watch = (payload: ChatMessageBroadcast) => {
+      if (payload.message.kind === 'sighting') revealed = true;
+    };
+    vex.on('chat:message', watch);
+    await emitAck(vex, 'character:roll', {
+      characterId: vexSheetId,
+      request: { kind: 'skill', skillId: 'perception', luckSpent: 0 },
+      callMessageId: callId,
+    });
+    await new Promise((r) => setTimeout(r, 400));
+    vex.off('chat:message', watch);
+    expect(revealed).toBe(false);
   });
 });

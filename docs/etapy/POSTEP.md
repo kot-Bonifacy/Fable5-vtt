@@ -124,18 +124,25 @@ etap z listy, i od tamtej pory doszło pięć etapów. To jest najtańszy moment
 niej zostaje wyłącznie wdrożenie. **Etap 36 (makra i własny pasek) MG wycofał 05.09** — nie planuj
 go i nie proponuj makr; pasek akcji z 16f zostaje generowany.
 
+**Etap 41 ma odtąd działającą funkcję główną.** Do 12.09 „dokładne oględziny" **nie odsłaniały
+niczego**: `requireCallableRequest` (`realtime/checks.ts`) wycinał `sightingTokenId` po drodze
+prośba → zgoda → rzut. Naprawione i pokryte testami. **Morał szerszy niż ten jeden etap:** ta
+funkcja jest **białą listą** — nowe pole w `CpredRollRequest` trzeba do niej dopisać, inaczej ginie
+po cichu i funkcja „działa z wezwania, a z prośby gracza nie".
+
 **Pięć ostatnich sesji zamknęło dziewięć etapów:** 40 (prośba gracza o Test), szlif karty postaci,
 38b (przedmioty między kartami) i 34 (tabele losowe) — 06.09; 38a (statysta jako karta),
 39 (efekty na Cechy), 37 (kalendarz), 35 (ping, ramka, kopie figur) i 33 (kopie zapasowe) — 05.09.
 Co z nich obowiązuje w kodzie, stoi w sekcjach obszarów niżej; pełne akapity o każdym —
 w `archiwum/od-czego-zaczac.md`.
 
-**Dług oględzin — 16 pozycji** (`zaleglosci.md`; jedna z nich, z 11.09, to usterka do naprawy,
-a nie klik do zrobienia). **Mgłę własnej figury zamknięto 12.09** — MG zdecydował, gracz ma
-okienko; diagnoza i naprawa w `archiwum/zamkniete-zaleglosci.md`. Czternaście czeka na żywy model. Dwie to **to
-samo menu figury** („🎒 Przeszukaj…" i przełącznik statystyk), bo prawym klikiem z automatyki nie
-otworzysz menu kanwy Pixi — klika się je jednym podejściem ręką MG. Etapy 39, 40 i szlif karty nie
-dołożyły ani jednej pozycji: przeszły oględziny w tej samej sesji, w której powstały.
+**Dług oględzin — 12 pozycji** (`zaleglosci.md`). Sesja 12.09 (piąta) zamknęła **cztery**
+i obaliła przeszkodę, na której stała reszta: **menu figury OTWIERA SIĘ z automatyki** — seria
+`pointerdown`/`pointerup` z `button: 2` we **współrzędnych CSS** (pułapka w `ogledziny`). „🎒
+Przeszukaj…" odklikane tą drogą; przełącznik statystyk czeka już tylko na figurę **bez karty**,
+bo na poligonie każda ją ma. Większość reszty czeka na **żywy model** (19a–20b, 24c). Nowa pozycja
+z tej sesji jest jedna: „bez ran" naprawione, ale nieobejrzane u gracza — formularz otwiera się
+dopiero na jego turze, a MG nie zgodził się ruszać kolejki.
 
 **Ważne dla każdego, kto dotknie progu PT: `>=` przy PT jest błędem, nie wariantem.** Decyzja
 z 28.08 („remis zdaje") została cofnięta — stała na cytacie, którego w polskim wydaniu nie ma.
@@ -171,7 +178,7 @@ siedzi w `decyzje-i-uproszczenia.md` i **nie wciągaj ich z powrotem** jako nowy
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
 a od 30d pierwszym, przy którym każda Rola w drużynie gra inaczej niż reszta.
 
-**Testy na koniec ostatniej sesji:** **1988** w `shared`, **1094** na serwerze, **173** u klienta —
+**Testy na koniec ostatniej sesji:** **1998** w `shared`, **1098** na serwerze, **173** u klienta —
 zielone (liczby zmierzone 12.09; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
 ESLint i Prettier czyste na kodzie, `tsc --noEmit` czysty w trzech pakietach (od 05.09 obejmuje
 też `packages/server/scripts/`). **Nie puszczaj `pnpm format` na `POSTEP.md`, `POMYSLY.md` ani
@@ -198,12 +205,12 @@ a nie do tego pliku.
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
 | `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  |   38 |      18 |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     |    3 |       3 |
-| `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    |    8 |      14 |
-| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście   |    8 |       7 |
+| `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    |    8 |      15 |
+| `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście   |    8 |       8 |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  |   13 |       1 |
-| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       |    7 |       4 |
+| `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       |    8 |       4 |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   |   28 |       8 |
-| `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      |   12 |       3 |
+| `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      |   13 |       3 |
 | `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         |    6 |      11 |
 | `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia |   22 |       2 |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup, zasięg, oględziny       |   12 |       2 |
@@ -212,7 +219,7 @@ a nie do tego pliku.
 | `boty`      | llama-server, RAG, reindeks, dziennik i baza wiedzy            |    1 |       3 |
 | `dane`      | `parse-manual.py`, kompendium poza repo, tabele z podręcznika  |    2 |      10 |
 | `kopie`     | `snapshot`, `archive`, rotacja, eksport i import               |    8 |       1 |
-| `ogledziny` | automatyka CDP, zrzuty, dwie sesje naraz, `window.confirm`     |    0 |      58 |
+| `ogledziny` | automatyka CDP, zrzuty, dwie sesje naraz, `window.confirm`     |    0 |      62 |
 | `testy`     | vitest, migotanie, `tsc --noEmit`, środowisko dev              |    0 |      16 |
 
 ## Notatki z dwóch ostatnich sesji
@@ -275,59 +282,51 @@ w trzech pakietach; `packages/server/src/app.ts` i `portrait-backfill.test.ts` s
 **od dwóch sesji** (tutaj nieruszane). Umowy: dwie w `mapa`, jedna w `serwer`, jedna w `karta`;
 pułapki: jedna w `karta`, jedna dopisana w `ogledziny`.
 
-### Sesja 12.09 (trzecia) — okienko w mgle i portret bez pierścienia na twarzy
+### Sesja 12.09 (piąta) — interfejs, który nie kłamie, i martwa funkcja etapu 41
 
-**Zlecenie MG, trzy rzeczy — jedna z listy zaległości, dwie zgłoszone w trakcie:** (1) naprawić
-„gracz nie widzi pod mgłą nawet własnej figury"; (2) kadrowanie nie pozwala wziąć **górnych
-pikseli** portretu, bo zasłania je pierścień; (3) — po obejrzeniu pierwszej wersji — okienko
-w mgle ma nie pokazywać koncentrycznych okręgów, a zielony okrąg ma **wysunąć się poza grafikę
-portretu o własną grubość**.
+**Zlecenie MG: przejrzeć zaległości i wybrać.** Z szesnastu pozycji przedstawiłem trzy pakiety
+(każdą pozycję **najpierw sprawdziwszy w kodzie** — lista bywa zapisem chwili). MG wybrał
+**Pakiet A**, rozstrzygnął wiszącą od tygodnia pozycję o przelewach („zostaw jak jest, ale
+posortuj") i zgodził się, żeby oględziny długu spróbować zrobić automatyką.
 
-**Trzy pytania przed kodem, trzy decyzje MG.** Wielkość okienka: **krąg około trzech kratek**
-(odrzucone „figura + pół kratki" i „figura + kratka"). Brzeg: **rozmyty**. Kadr: **wolno mu
-wyjechać poza obraz**, a pustkę zamalowuje tło żetonu — MG wybrał to zamiast wariantu „obwódka
-poza portret", po czym, zobaczywszy efekt, dołożył i ten drugi, już jako osobne zlecenie.
+**Trzy usterki Pakietu A — wszystkie naprawione, wszystkie z testem.** (1) **„bez ran" przy
+konającej cudzej figurze**: `observedWoundState` w `shared` ma **trzy** stany, bo gracz bez cudzych
+PW jest w trzecim — „nie wiadomo" nie jest „zdrowy"; naklejki ran są dowodem rany, ale ich brak nie
+dowodzi niczego (Lekko ranny naklejki nie ma). (2) **Rozjazd zakładki „Walka" i paska mapy**:
+`cpredActionRefusal` wyprowadzone z prywatnego `actionSlotRefusal` i wołane z **obu** wejść, plus
+`cpredTurnRefusalInput` — dwa odręczne odczyty budżetu tury to było źródło rozjazdu.
+(3) **Autofill nie odblokowywał logowania**: `useAutofillableField`.
 
-**Usterka mgły była rozjazdem serwera z rendererem, nie brakiem funkcji.** `concealedFrom`
-zwalnia własną figurę gracza z filtra mgły od 17a i mówi to w komentarzu wprost; figura
-przyjeżdżała, tylko `fogSprite` leżał nad nią nieprzezroczysty. Naprawa to
-`MapRenderer.drawFogPeepholes`: okienko wycięte w kompozycie **ostatnim przebiegiem**, więc
-wygrywa też z zamalowaniem pędzlem (`hide`) — tak samo, jak rozstrzyga to serwer. Cudzych figur
-okienko zdradzić nie może, bo one w ogóle nie opuszczają serwera; nową informacją jest sam
-kawałek podłoża wokół własnej postaci.
+**W (2) i (3) zgłoszenie było trafne tylko w połowie — i to jest lekcja obu napraw.** Zakładka ma
+przycisk **„Akcja Ruchu"** (koszt `move`), którego pasek nie ma: wspólna odmowa bez gałęzi
+o koszcie gasiłaby go zdaniem o wykorzystanej **Akcji**, czyli byłaby regresem. A samo odblokowanie
+przycisku logowania byłoby **gorsze od błędu** — formularz wysłałby pusty stan Reacta przy pełnym
+polu, więc użytkownik zobaczyłby „nieprawidłowe hasło" nad własnym hasłem. Obie gałęzie znalazły
+się przed napisaniem kodu, nie po.
 
-**Okienko musi iść z figurą także wtedy, gdy store o niej nie wie.** Przeciąganie i marsz ruszają
-węzłem lokalnie, więc `refreshFogPeepholes` wisi na trzech wejściach (`setTokens`, `onDragMove`,
-krok marszu) i porównuje podpis z pozycją zaokrągloną do dwóch pikseli świata — bez tego gracz
-szedłby przez czerń i odzyskiwał widok dopiero na mecie. Sprawdzone na żywo w trakcie ciągnięcia
-żetonu.
+**Oględziny obaliły przeszkodę, na której stało pięć pozycji długu.** „Prawym klikiem z automatyki
+nie otworzysz menu kanwy Pixi" (38a, 38b, 41) **jest nieprawdą**: seria `pointerdown`/`pointerup`
+z `button: 2` we **współrzędnych CSS** otwiera je za pierwszym podejściem, a checkbox statusu
+bierze `input.click()`. Tą drogą nadano i zdjęto Marcinowi „Powalonego" — i dzięki temu rozjazd
+z punktu (2) dało się obejrzeć **bez ruszania kolejki** (status blokuje też MG). MG odrzucił
+przesuwanie tury, więc „bez ran" u gracza zostało na liście.
 
-**Pierwsza wersja rozmycia poszła do kosza i to jest lekcja na przyszłość.** Brzeg złożony
-z pięciu pierścieni o malejącej alfie **widać jako koncentryczne okręgi** — MG odrzucił go na
-pierwszym zrzucie. Zanik idzie teraz gradientem wypalonym na kanwie (`fogPeepTexture`), tą samą
-drogą, co światło z 18b i pamięć mapy z 18c. Wpis w `pulapki-dev.md`.
+**Największy wynik sesji nie był w planie: dokładne oględziny z etapu 41 NIE DZIAŁAŁY.**
+`requireCallableRequest` (`realtime/checks.ts`) przepisuje żądanie Testu **pole po polu** i wycinał
+`sightingTokenId`. Klient go słał, serwer czytał, między nimi ginął po cichu — zdany Test Percepcji
+nie odsłaniał **niczego**, bez błędu i bez odmowy. **Żaden test nie dotykał tego pola** (ani 15
+w `shared`, ani 13 na gniazdach), a pozycja długu szacowała ryzyko na „średnie". Naprawione,
+pokryte dwoma testami na żywych gniazdach przechodzącymi **pełną** drogę prośba → zgoda → rzut;
+sprawdzone, że bez poprawki padają. Potem obejrzane na żywo: PT 9 → rzut 14 → karta „Oględziny"
+z liczbami („2k6 · 30/30").
 
-**Kadr: granica liczyła się do kratki, a widoczne koło było od niej mniejsze.** Stąd zgłoszenie
-MG — czubka głowy nie dawało się wyjąć spod obwódki. `clampPortraitCrop` pilnuje dziś jednego:
-punkt kadru ma leżeć **na obrazie**. Pustkę na brzegu krążka zamalowuje `PORTRAIT_BACKDROP`,
-rysowany **zawsze** (dawniej krążek znikał po wczytaniu obrazka), a `--map-token-backdrop`
-w `theme.css` niesie tę samą liczbę dla okna kadrowania; pilnuje tego test. Sprawdzone w oknie:
-kadr wyjeżdża w **obu** osiach naraz, a podgląd „Tak na mapie" pokazuje dokładnie to samo.
+**Stan stołu oddany co do liczby.** „StrefaPrzemysłowa" jak zastana: RUNDA 1, Marcin aktywny,
+**PW 40/40 · Ruch 1/1 · Akcja 0/1 · Dystans 66,5 m/12 m · poza budżetem ×2**, Tony 33/50, zero
+statusów, zero otwartych okien. Ślad świadomy: dwie prośby o Test, dwa wezwania i dwa rzuty
+Tony'ego na czacie (jeden sprzed naprawy — bez karty oględzin, drugi po niej — z kartą), oraz
+karta `[::1]:5173` przelogowana z MG na Tony'ego (tak stoi w `poligon.md`).
 
-**Zielony okrąg zszedł z twarzy — druga zmiana geometrii żetonu tego dnia.** `portraitRadius` to
-teraz równo połowa kratki, obwódka właściciela leży w pasie `[extent/2, extent/2 + RING_WIDTH]`,
-a obrączka PW zaczyna się dopiero za nią. **Cena, o której MG wie z obu decyzji:** figura wystaje
-poza kratkę o całą oprawę — przy kratce 47 px to ok. 10 px promienia, więc sąsiedzi potrafią się
-oprawami zetknąć.
-
-**Oględziny na żywym stole, bez długu.** Sesja gracza (`localhost` — Tony) na aktywnej
-„StrefiePrzemysłowej", która ma `visibility = fog` i **zero odsłoniętych kształtów**, czyli
-dokładnie scenerię ze zgłoszenia. Sprawdzone: okienko na wejściu, okienko w ruchu, kadr w obu
-osiach, krążek tła, obwódka poza portretem. **Stan stołu nietknięty** — żeton wrócił na 752/799
-co do piksela, żaden kadr nie został zapisany (okno zamknięte „Anuluj"), motyw karty przywrócony
-na nocny.
-
-**Testy:** **166** u klienta (+12: okienko w mgle i tło portretu), **1987** w `shared`, **1092**
-na serwerze — zielone. ESLint i Prettier czyste **na zmienionych plikach**; `packages/server/src/app.ts`
-i `portrait-backfill.test.ts` są niesformatowane **od poprzedniej sesji** (tutaj nieruszane).
-Umowy: dwie w `mapa`; pułapki: trzy w `mapa`.
+**Testy:** **1998** w `shared` (+10), **1098** na serwerze (+4), **173** u klienta — zielone.
+ESLint, Prettier i `tsc --noEmit` czyste w trzech pakietach. Umowy: jedna w `tura`, jedna
+w `statysta`; pułapki: jedna w `ui`, jedna w `serwer`, **cztery w `ogledziny`** (w tym korekta
+obalająca wpis o menu figury). Zamknięte zaległości: **cztery**; przepisane: **trzy**.

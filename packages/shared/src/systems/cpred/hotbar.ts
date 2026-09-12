@@ -33,6 +33,7 @@ import {
   type CpredAttackMode,
 } from './attacks.js';
 import { cpredActionBlock, cpredMovementBlock } from './statuses.js';
+import type { TurnBudgetView } from '../../combat.js';
 import {
   CPRED_ACTION_GRAPPLE,
   CPRED_ACTION_HOLD,
@@ -557,6 +558,12 @@ function weaponSlotBase(option: CpredWeaponOption): string {
 }
 
 /**
+ * The sentence a spent budget leaves on a slot — the only one of the three that
+ * is about *spending*, which is why it comes last in the order of truth.
+ */
+const ACTION_SPENT_REFUSAL = 'Akcja w tej turze już wykorzystana.';
+
+/**
  * Builds the bar for one token.
  *
  * The order is the order of a turn as it is actually played: what I shoot with,
@@ -576,13 +583,12 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
   // Outside a fight there is no budget to run out of, and the GM is never
   // refused one (14b). Both cases leave only the statuses to say no.
   const budgetSpent = !input.isGm && input.turn?.actionSpent === true;
-  const noAction = 'Akcja w tej turze już wykorzystana.';
   // Order is the order of truth: a status refuses first, then the wound that
   // took the Action away before the turn began, and only then the budget. The
   // last one is the only sentence that is about *spending*, and putting it
   // first is how a blocked figure ended up being told it had already acted.
   const actionRefusal =
-    statusActionBlock ?? input.turn?.blockedAction ?? (budgetSpent ? noAction : null);
+    statusActionBlock ?? input.turn?.blockedAction ?? (budgetSpent ? ACTION_SPENT_REFUSAL : null);
   const moveRefusal = statusMoveBlock ?? input.turn?.blockedMove ?? null;
 
   const slots: CpredHotbarSlot[] = [];
@@ -700,7 +706,51 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
 }
 
 /**
- * Why a catalogue action is greyed out.
+ * The four facts a refusal needs, read off the tracker's budget view.
+ *
+ * The mapping used to live inline in the HUD, which was fine while the HUD was
+ * the only reader. It is not: the tab „Walka" asks the same question about the
+ * same participant, and two hand-rolled readings of `resources.find('action')`
+ * is exactly how the two doors drifted apart in the first place.
+ */
+export function cpredTurnRefusalInput(
+  turn: TurnBudgetView | null | undefined,
+): CpredActionRefusalInput['turn'] {
+  if (!turn) return null;
+  const action = turn.resources.find((row) => row.id === 'action');
+  const move = turn.resources.find((row) => row.id === 'move');
+  return {
+    actionSpent: action?.used === 1,
+    moveSpent: (move?.used ?? 0) > 0,
+    // Why the resource is gone, when it was never there to spend: a wound that
+    // took the Action away carries its own sentence (stage 14e).
+    blockedAction: action?.blocked ?? null,
+    blockedMove: move?.blocked ?? null,
+  };
+}
+
+/**
+ * What a catalogue action needs to know about a figure before it can say no.
+ *
+ * A slice of `CpredHotbarInput` rather than the whole of it, because the tab
+ * „Walka" asks this question too and has no weapons resolver to offer.
+ */
+export interface CpredActionRefusalInput {
+  /** Status ids on the token — Powalony, Trzymany, Nieprzytomny… */
+  statuses: readonly string[];
+  turn: CpredHotbarInput['turn'];
+  isGm: boolean;
+}
+
+/**
+ * Why a catalogue action is greyed out — the single answer both doors ask.
+ *
+ * Two doors, because stage 16f gave the map its own action bar while the tab
+ * „Walka" kept its list: the bar went through this function and the tab asked
+ * one question of its own („czy Akcja wydana"), so Bieg was live in the tab and
+ * dead on the bar, and Wstrzymanie Akcji the other way round. The server
+ * refused in both cases, so the rules were never in danger — what broke was the
+ * interface's promise. Exported (10.09) so that promise has one author.
  *
  * Two exceptions carry the whole of the function. **Wstanie** must survive the
  * movement block: being Powalony is exactly the reason to press it, and a
@@ -708,9 +758,27 @@ export function hotbarSlotsFor(input: CpredHotbarInput): CpredHotbarSlot[] {
  * blocks plus the rule the catalogue itself states — RAW grants the second Move
  * Action only after the first has been used.
  */
+export function cpredActionRefusal(
+  actionId: string,
+  input: CpredActionRefusalInput,
+): string | null {
+  const statusActionBlock = cpredActionBlock(input.statuses);
+  const statusMoveBlock = cpredMovementBlock(input.statuses);
+  const budgetSpent = !input.isGm && input.turn?.actionSpent === true;
+  const actionRefusal =
+    statusActionBlock ?? input.turn?.blockedAction ?? (budgetSpent ? ACTION_SPENT_REFUSAL : null);
+  const moveRefusal = statusMoveBlock ?? input.turn?.blockedMove ?? null;
+  // Akcja Ruchu płaci z drugiego zasobu, więc odmawia jej co innego. Pasek na
+  // mapie nie ma tego przycisku (ruch robi się ciągnięciem figury), zakładka
+  // „Walka" ma — i bez tej gałęzi wspólna odmowa wyszarzałaby ruch zdaniem
+  // o wykorzystanej Akcji, czyli o zasobie, którego ten przycisk nie dotyka.
+  if (cpredAction(actionId)?.cost === 'move') return moveRefusal;
+  return actionSlotRefusal(actionId, input, actionRefusal, moveRefusal);
+}
+
 function actionSlotRefusal(
   actionId: string,
-  input: CpredHotbarInput,
+  input: Pick<CpredActionRefusalInput, 'turn' | 'isGm'>,
   actionRefusal: string | null,
   moveBlock: string | null,
 ): string | null {

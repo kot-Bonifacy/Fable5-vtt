@@ -555,11 +555,18 @@ export const economyHistoryEvent = defineEvent<EconomyHistoryPayload, EconomyHis
     // own, so without this list „przelej Kai 500 ed" has nothing to aim at.
     const payees = await deps.ctx.prisma.character.findMany({
       where: { campaignId: campaign.id, id: { not: character.id } },
-      select: { id: true, name: true },
+      select: { id: true, name: true, ownerId: true },
       orderBy: { name: 'asc' },
     });
     return {
-      payees,
+      // Kto ma właściciela, ten siedzi przy stole; reszta to figury MG, których
+      // od 38a jest w kampanii tyle, ile statystów (12.09). Lista nie kurczy
+      // się o nikogo — dzieli się na dwie, a porządkuje ją klient.
+      payees: payees.map((row) => ({
+        id: row.id,
+        name: row.name,
+        player: row.ownerId !== null,
+      })),
       entries: rows.map((row) => ({
         id: row.id,
         // A row written by a future stage under a kind this build does not know

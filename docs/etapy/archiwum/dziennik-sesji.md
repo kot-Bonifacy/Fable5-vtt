@@ -8,6 +8,64 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
 
+### Sesja 12.09 (trzecia) — okienko w mgle i portret bez pierścienia na twarzy
+
+**Zlecenie MG, trzy rzeczy — jedna z listy zaległości, dwie zgłoszone w trakcie:** (1) naprawić
+„gracz nie widzi pod mgłą nawet własnej figury"; (2) kadrowanie nie pozwala wziąć **górnych
+pikseli** portretu, bo zasłania je pierścień; (3) — po obejrzeniu pierwszej wersji — okienko
+w mgle ma nie pokazywać koncentrycznych okręgów, a zielony okrąg ma **wysunąć się poza grafikę
+portretu o własną grubość**.
+
+**Trzy pytania przed kodem, trzy decyzje MG.** Wielkość okienka: **krąg około trzech kratek**
+(odrzucone „figura + pół kratki" i „figura + kratka"). Brzeg: **rozmyty**. Kadr: **wolno mu
+wyjechać poza obraz**, a pustkę zamalowuje tło żetonu — MG wybrał to zamiast wariantu „obwódka
+poza portret", po czym, zobaczywszy efekt, dołożył i ten drugi, już jako osobne zlecenie.
+
+**Usterka mgły była rozjazdem serwera z rendererem, nie brakiem funkcji.** `concealedFrom`
+zwalnia własną figurę gracza z filtra mgły od 17a i mówi to w komentarzu wprost; figura
+przyjeżdżała, tylko `fogSprite` leżał nad nią nieprzezroczysty. Naprawa to
+`MapRenderer.drawFogPeepholes`: okienko wycięte w kompozycie **ostatnim przebiegiem**, więc
+wygrywa też z zamalowaniem pędzlem (`hide`) — tak samo, jak rozstrzyga to serwer. Cudzych figur
+okienko zdradzić nie może, bo one w ogóle nie opuszczają serwera; nową informacją jest sam
+kawałek podłoża wokół własnej postaci.
+
+**Okienko musi iść z figurą także wtedy, gdy store o niej nie wie.** Przeciąganie i marsz ruszają
+węzłem lokalnie, więc `refreshFogPeepholes` wisi na trzech wejściach (`setTokens`, `onDragMove`,
+krok marszu) i porównuje podpis z pozycją zaokrągloną do dwóch pikseli świata — bez tego gracz
+szedłby przez czerń i odzyskiwał widok dopiero na mecie. Sprawdzone na żywo w trakcie ciągnięcia
+żetonu.
+
+**Pierwsza wersja rozmycia poszła do kosza i to jest lekcja na przyszłość.** Brzeg złożony
+z pięciu pierścieni o malejącej alfie **widać jako koncentryczne okręgi** — MG odrzucił go na
+pierwszym zrzucie. Zanik idzie teraz gradientem wypalonym na kanwie (`fogPeepTexture`), tą samą
+drogą, co światło z 18b i pamięć mapy z 18c. Wpis w `pulapki-dev.md`.
+
+**Kadr: granica liczyła się do kratki, a widoczne koło było od niej mniejsze.** Stąd zgłoszenie
+MG — czubka głowy nie dawało się wyjąć spod obwódki. `clampPortraitCrop` pilnuje dziś jednego:
+punkt kadru ma leżeć **na obrazie**. Pustkę na brzegu krążka zamalowuje `PORTRAIT_BACKDROP`,
+rysowany **zawsze** (dawniej krążek znikał po wczytaniu obrazka), a `--map-token-backdrop`
+w `theme.css` niesie tę samą liczbę dla okna kadrowania; pilnuje tego test. Sprawdzone w oknie:
+kadr wyjeżdża w **obu** osiach naraz, a podgląd „Tak na mapie" pokazuje dokładnie to samo.
+
+**Zielony okrąg zszedł z twarzy — druga zmiana geometrii żetonu tego dnia.** `portraitRadius` to
+teraz równo połowa kratki, obwódka właściciela leży w pasie `[extent/2, extent/2 + RING_WIDTH]`,
+a obrączka PW zaczyna się dopiero za nią. **Cena, o której MG wie z obu decyzji:** figura wystaje
+poza kratkę o całą oprawę — przy kratce 47 px to ok. 10 px promienia, więc sąsiedzi potrafią się
+oprawami zetknąć.
+
+**Oględziny na żywym stole, bez długu.** Sesja gracza (`localhost` — Tony) na aktywnej
+„StrefiePrzemysłowej", która ma `visibility = fog` i **zero odsłoniętych kształtów**, czyli
+dokładnie scenerię ze zgłoszenia. Sprawdzone: okienko na wejściu, okienko w ruchu, kadr w obu
+osiach, krążek tła, obwódka poza portretem. **Stan stołu nietknięty** — żeton wrócił na 752/799
+co do piksela, żaden kadr nie został zapisany (okno zamknięte „Anuluj"), motyw karty przywrócony
+na nocny.
+
+**Testy:** **166** u klienta (+12: okienko w mgle i tło portretu), **1987** w `shared`, **1092**
+na serwerze — zielone. ESLint i Prettier czyste **na zmienionych plikach**; `packages/server/src/app.ts`
+i `portrait-backfill.test.ts` są niesformatowane **od poprzedniej sesji** (tutaj nieruszane).
+Umowy: dwie w `mapa`; pułapki: trzy w `mapa`.
+
+
 ### Sesja 12.09 (druga) — portret ujęty pod mapę
 
 **Zlecenie MG:** dokładając portret, ma być **podgląd i możliwość dopasowania kadru do tego, jak

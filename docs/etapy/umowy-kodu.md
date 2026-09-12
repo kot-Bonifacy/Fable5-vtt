@@ -18,7 +18,8 @@ indeksu i pełny wpis pod spodem.
 - **Ślad przebytej drogi to odciski butów, nie kreska** — `MapRenderer.drawWalkedTrail` (jedna droga dla marszu, ciągnięcia i poświaty), kolory `TRAIL_COLOR` / `TRAIL_COLOR_OVER`, granicę czerwieni liczy `trailOverFrom` w metrach **gruntu**. Trzy pule `FootprintPool` i żadna nie pożycza sprite'ów sąsiadce: trasa, ziemia pod figurą, poświata. Zapasowa kreska zostaje tylko na wypadek niewczytanego glifu.
 - **„Prowadzę tę figurę" mówi pogrubiona obwódka właściciela**, nie osobny okrąg — `drawSelectionRing` rysuje ją na nakładce, promieniem `node.ownerRingRadius` i kolorem `node.ownerRingTint`, z sufitem grubości liczonym z kratki. Uchwyt obrotu wisi dalej na `outerRadius + 22k` i nie potrzebuje okręgu pod sobą.
 - **Okienko w mgle wokół własnej figury** — `fogPeepRadius` w `map/token-ring.ts` (wielkość), `MapRenderer.drawFogPeepholes` (rysunek, ostatni przebieg kompozytu) i `refreshFogPeepholes` (trzy wejścia: `setTokens`, przeciąganie, krok marszu). Brzeg gaśnie gradientem z kanwy, nie pierścieniami.
-- **Kadr portretu na mapie** — trzy liczby przy wierszu `PortraitAsset`, rachunek w `shared/portrait-crop.ts`, `TokenNode.fitImage` tylko go stosuje. Kadr jest cechą **obrazka**, pytany adresem pliku (`ctx.portraitCrops`), i musi być w podpisie figury, inaczej przestawienie go nie przerysuje żetonu. Kadr wolno wywieźć **poza obraz** — pustkę zamalowuje krążek tła (`PORTRAIT_BACKDROP`), rysowany zawsze.
+- **Kadr portretu na mapie** — trzy liczby przy wierszu `PortraitAsset`, rachunek w `shared/portrait-crop.ts`, `TokenNode.fitImage` tylko go stosuje. Kadr jest cechą **obrazka**, pytany adresem pliku (`ctx.portraitCrops`), i musi być w podpisie figury, inaczej przestawienie go nie przerysuje żetonu.
+ Kadr wolno wywieźć **poza obraz** — pustkę zamalowuje krążek tła (`PORTRAIT_BACKDROP`), rysowany zawsze.
 - **Drabinka paska PW** — `tokenHpRung` w `shared/figures.ts`, jedna dla mapy i dla panelu postaci (cztery szczeble: `healthy`, `light`, `serious`, `mortal`). Kolory obrączki to nocne `--ok` / `--hurt-light` / `--warn` / `--err` przepisane do `HP_RUNG_COLORS`; rdzeń dalej nie woła `woundStateFromHp`, zgodności pilnują dwa testy.
 - **Oprawa żetonu (obwódka właściciela, obrączka PW, aureola tury, klin kierunku, podpis)** — promienie liczy `map/token-ring.ts`, nie `TokenNode`. **Portret zajmuje całą kratkę** (`portraitRadius = extent / 2`), a obwódka właściciela i obrączka PW leżą **poza** nim; `furnitureRadius` jest jedyną odpowiedzią na „dokąd sięga figura", więc wszystko, co się o brzeg opiera, czyta tę funkcję.
 - **Rozmiar płótna mapy** — `MapRenderer.watchHostSize` (`ResizeObserver` → `app.queueResize`). `resizeTo` Pixi słucha **wyłącznie** `window.resize`, więc każdy nowy pasek zmieniający szerokość mapy bez ruszania oknem jedzie tędy i nie potrzebuje niczego własnego.
@@ -879,6 +880,7 @@ przywróciłoby usterkę tą samą drogą, którą przyszła.
 
 ## tura — Tura, akcje, ruch w walce
 
+- **Powód odmowy Akcji ma JEDNO źródło** — `cpredActionRefusal(actionId, { statuses, turn, isGm })` w `hotbar.ts`; wołają je **oba** wejścia (pasek mapy i zakładka „Walka"). Akcja o koszcie `move` odmawia z budżetu ruchu, nie Akcji. Budżet tury czyta `cpredTurnRefusalInput(turn)`, nie ręczne `resources.find`.
 - **Ruch przez przeszkodę** — `refuseWalkThroughSolid` w `realtime/movement.ts`; nowe nieprzenikalne coś dokłada segmenty w `movementSegments`/`coverMovementSegments`, nie nową gałąź walidacji. Sprawdzana jest **cała figura**, nie jej środek.
 - **Powód odmowy Akcji** — jedzie na `TurnResourceView.blocked`, nie w prozie obok; kolejność: status → rana zapisana na turze → budżet.
 - **Akcja tylko dla części figur** — `CPRED_HOTBAR_NETRUNNER_ACTION_IDS` (nie lista dla każdego); slot z własnym zdarzeniem obsługuje się w `activateSlot` **bez** `spendCombatAction`.
@@ -917,6 +919,23 @@ dokładane i po kolei zdjęte (MG, 23.08) — każde z nich mówiło drugi raz t
 z dokładnością, do której nikt nie planuje tury. Dokładny metr daje linijka. Ślad skaluje się
 **szerokością tokenu** (`FOOTPRINT_*_RATIO`), nie `overlayScale()`, więc trzyma rozmiar przy
 każdym przybliżeniu; pilnuje tego `walk-bands.test.ts`.
+
+**Odmowa Akcji ma jedno źródło i dwoje drzwi (12.09).** `cpredActionRefusal(actionId, input)`
+w `systems/cpred/hotbar.ts` jest jedyną odpowiedzią na pytanie „czemu ten guzik jest szary", a woła
+ją **i** pasek na mapie (`hotbarSlotsFor`), **i** zakładka „Walka" (`CombatActions.tsx`). Do 12.09
+zakładka pytała o jedno (`action.cost === 'action' && actionSpent`), a pasek szedł przez prywatne
+`actionSlotRefusal`, więc Bieg bywał w zakładce klikalny, a na pasku wyszarzony — i odwrotnie:
+formularze („Wstrzymanie Akcji…", „Ustabilizowanie…") zostawały żywe po zużytej Akcji. Zasady były
+bezpieczne, bo serwer odmawiał w obu przypadkach; psuła się **obietnica interfejsu**.
+
+Dwie rzeczy, o które trzeba tu zahaczyć:
+
+- **Akcja o koszcie `move` odmawia z drugiego zasobu.** Zakładka ma przycisk „Akcja Ruchu",
+  którego pasek nie ma (na mapie ruch robi się ciągnięciem figury) — wspólna odmowa bez gałęzi
+  o koszcie gasiłaby go zdaniem o wykorzystanej Akcji, czyli o zasobie, którego ten przycisk
+  nie dotyka.
+- **Budżet tury czyta się `cpredTurnRefusalInput(turn)`**, nie własnym `resources.find('action')`.
+  Dwa odręczne odczyty tego samego widoku to dokładnie sposób, w jaki oba wejścia się rozjechały.
 
 **Powód odmowy jedzie na zasobie tury, nie w prozie obok niej.** `TurnResourceView.blocked`
 niesie zdanie, którym rana albo status zabrały Akcję (14e), a `hotbarSlotsFor` stawia je
@@ -1238,6 +1257,7 @@ przez „Wyjście z opresji" Solo.
 - **Rzut figury bez karty** — `RollSource` w `character-rolls.ts` (bliźniak `AttackSource`); statysta wchodzi przez `sheetFromCombatProfile`, o gałąź pyta **tylko to, co pisze**, a adres strzelca niesie `CpredAttackMeta.attackerTokenId` wypełniane na serwerze. Przez `character:roll` statysta rzuca wyłącznie na obrażenia.
 - **Statysta nosi rany** w `CpredCombatProfile.criticalInjuries` (pole opcjonalne); `combatProfileSheet` podaje je syntetycznej karcie, więc reguły działają bez gałęzi „czy to statysta". Żeton bez profilu dostaje samo zdanie.
 - **Umiejętność figury bez karty** — `CpredCombatProfile.skills` (id → poziom), wpisana liczba to **cały** modyfikator (Cechy idą do zera), rzucać wolno tylko tym, co na liście (`combatProfileRollableSkills`). Sufit to `STATIST_SKILL_LEVEL_MAX`, nie limit karty.
+- **Znacznik o cudzych ranach orzeka o WIEDZY, nie o jej braku** — `observedWoundState({ hp, statuses })` w `damage.ts` ma trzy wartości (`healthy` / `wounded` / `unknown`), bo cudze PW nie opuszczają serwera. „Bez ran" wolno napisać **tylko** przy `healthy`; naklejki ran są dowodem rany, ale ich brak nie jest dowodem zdrowia (Lekko ranny naklejki nie ma).
 - **Rany figury bez karty** jadą publicznie (`TokenView.injuries`, most `readSheetTokenInjuries`), reszta profilu zostaje prywatna; klient czyta je **tylko** z tego pola.
 - **Figura ostatystykowana MA KARTĘ** — `Token.combatProfile` nie istnieje od 38a, a w silniku zasad nie ma gałęzi „to statysta". Kółko z paskiem PW i bez karty ma własny, chudy tor: same PW, żadnego pancerza, żadnych ran.
 - **Wartość bojowa, zakaz uniku, wydrukowane PW i poziom broni to `statBlock`** — cztery liczby, których karta sama by nie utrzymała. **Nie jest to kategoria karty**: nazwanemu NPC-owi wolno je mieć tak samo.
@@ -1271,6 +1291,18 @@ Statysta rzuca przez `character:roll` **tylko na obrażenia** (`STATIST_CANNOT_R
 Nie z ostrożności: jego atak ma `attack:roll`, jego Unik `attack:evade`, a Szczęścia i Testu
 Przeżywalności nie ma gdzie zapisać. Nowy rodzaj rzutu dla figury bez karty dostaje własne
 zdarzenie albo rozszerza tę listę świadomie.
+
+**Znacznik o cudzych ranach mówi o wiedzy, nie o zdrowiu (12.09).** `tokenStore` kasuje `hp`
+każdego żetonu, którego gracz nie jest właścicielem — i słusznie, bo serwer tych liczb nie wysyła.
+Brak danych łatwo jednak zamienia się w twierdzenie: `hp === null` dawało w `StabilizePicker`
+`wounded === false`, czyli znacznik **„bez ran"** przy każdej cudzej figurze, także przy konającej.
+Lista, która istnieje po to, żeby wybrać konającego, ogłaszała graczowi, że nikt nie jest ranny.
+
+`observedWoundState({ hp, statuses })` (`systems/cpred/damage.ts`) zwraca **trzy** wartości, i to
+jest cała poprawka: PW wygrywają, gdy są; bez nich czyta się publiczne naklejki ran
+(`CPRED_MANAGED_WOUND_STATUS_IDS`), a gdy i one milczą — `unknown`, przy którym nie pisze się nic.
+Naklejki pokrywają tylko dwa dolne progi, więc ich brak **niczego nie dowodzi**: Lekko ranny
+naklejki nie ma. Nowy widok, który chce powiedzieć coś o cudzych ranach, pyta tę funkcję.
 
 **Statysta nosi rany krytyczne od 29.08 — profil bojowy to nie „karta uboga w pola".** Etap 16b
 świadomie zostawił rany poza `CpredCombatProfile` („to opisuje osobę z historią"); powód przestał

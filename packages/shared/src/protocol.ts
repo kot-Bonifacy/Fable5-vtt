@@ -672,7 +672,24 @@ export interface EconomyHistoryPayload {
  */
 export interface EconomyHistoryResult {
   entries: LedgerEntryView[];
-  payees: { id: string; name: string }[];
+  payees: EconomyPayee[];
+}
+
+/**
+ * One name a transfer can be aimed at.
+ *
+ * `player` splits the roster in two rather than filtering it, and that is the
+ * decision (MG, 12.09): paying an NPC is legal and sometimes the point — you
+ * bribe a fixer, you pay a ripperdoc — so nothing is taken away. What changed
+ * is that since stage 38a every statist *is* a sheet, so a list that used to
+ * hold the table now also holds „Ganger", „Cel 23x" and the turret. Two groups
+ * put the people you usually pay at the top and the scenery under a heading.
+ */
+export interface EconomyPayee {
+  id: string;
+  name: string;
+  /** Does a player own this sheet? False for every GM-run figure and NPC. */
+  player: boolean;
 }
 
 /**
