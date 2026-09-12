@@ -249,6 +249,18 @@ a nie do tego pliku.
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
 
+### Sesja 13.09 — odświeżenie okna skrótów klawiszowych
+
+**Zlecenie MG:** zaktualizować treść i wygląd pomocy. Okno ma wyszukiwarkę klawiszy,
+czynności i grup, krótsze opisy, oznaczenia MG i układ dostosowany do szerokości.
+Poprawiono warunki skrótów walki, opis cyfr paska, brak Backspace i opis Esc;
+Alt+klik z prośbą o Test widzi wyłącznie gracz. Klawisze z elementów pomocy nie
+przechodzą do mapy. Zachowana pamięć pozycji i rozmiaru.
+
+**Weryfikacja:** 197 testów klienta, build TypeScript/Vite, ESLint i Prettier — zielone.
+W Chrome obejrzano okno 640 i 400 px, wyszukiwanie, brak wyników oraz czyszczenie filtra.
+Vite zgłasza ostrzeżenie o dużych paczkach JS. Etap 28 pozostaje nierozpoczęty.
+
 ### Sesja 13.09 — skórki kości w jednym wierszu
 
 **Zlecenie MG:** przenieść krótki opis za nazwę skórki, po myślniku, żeby każda pozycja zajmowała
@@ -258,12 +270,3 @@ i działanie rzutów pozostały bez zmian.
 **Weryfikacja:** na żywej stronie w Chrome wszystkie pięć pozycji mieści się w jednym wierszu
 przy standardowej szerokości okna 400 px; 196 testów klienta, build TypeScript/Vite, ESLint
 i Prettier — zielone. Etap 28 pozostaje nierozpoczęty.
-
-### Sesja 13.09 — krótsze opisy skórek kości
-
-**Zlecenie MG:** usunąć fragmenty po myślnikach z opisów pięciu skórek kości w ustawieniach.
-W `dice-skins.ts` pozostawiono same cechy wyglądu. Nazwy skórek, kolory i zachowanie rzutów
-pozostały bez zmian.
-
-**Weryfikacja:** 196 testów klienta, build TypeScript/Vite, ESLint i Prettier — zielone; Vite
-uruchamia się i odpowiada HTTP 200. Etap 28 pozostaje nierozpoczęty.

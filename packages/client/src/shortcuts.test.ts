@@ -68,6 +68,14 @@ describe('katalog skrótów (etap 27f)', () => {
     expect(player.filter((group) => group.items.length === 0)).toEqual([]);
   });
 
+  it('prośbę o Test pokazuje tylko graczowi', () => {
+    const forRole = (isGm: boolean) =>
+      shortcutGroupsFor(isGm).find((group) => group.title === 'Karta postaci: rzut z wiersza')!
+        .items;
+    expect(forRole(false).some((item) => item.keys === 'Alt + klik')).toBe(true);
+    expect(forRole(true).some((item) => item.keys === 'Alt + klik')).toBe(false);
+  });
+
   /**
    * Drabina `Esc` ma krok tylko dla MG, a numery są nadawane po filtrze roli.
    * Zanim tak było, gracz oglądał „1, 2, 3, 4, 6, 7" (22.08, oględziny z konta

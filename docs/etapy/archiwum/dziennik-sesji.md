@@ -7,6 +7,15 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
+### Sesja 13.09 — krótsze opisy skórek kości
+
+**Zlecenie MG:** usunąć fragmenty po myślnikach z opisów pięciu skórek kości w ustawieniach.
+W `dice-skins.ts` pozostawiono same cechy wyglądu. Nazwy skórek, kolory i zachowanie rzutów
+pozostały bez zmian.
+
+**Weryfikacja:** 196 testów klienta, build TypeScript/Vite, ESLint i Prettier — zielone; Vite
+uruchamia się i odpowiada HTTP 200. Etap 28 pozostaje nierozpoczęty.
+
 
 ### Sesja 13.09 — maszynopis wypowiedzi NPC-ów na stałe
 

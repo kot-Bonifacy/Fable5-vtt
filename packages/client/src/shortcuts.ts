@@ -25,6 +25,8 @@ export interface Shortcut {
   what: string;
   /** Skrót działa tylko u MG — u gracza wiersz w ogóle się nie pokazuje. */
   gmOnly?: boolean;
+  /** Prośba o Test jest dostępna tylko graczowi na własnej karcie. */
+  playerOnly?: boolean;
 }
 
 export interface ShortcutGroup {
@@ -77,47 +79,50 @@ const MAP_TOOL_SHORTCUTS: Shortcut[] = MAP_TOOL_KEYS.map((entry) => ({
 export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
   {
     title: 'Walka',
-    note: 'Działa, gdy kursor jest nad mapą i nic nie jest wpisywane w pole tekstowe.',
+    note: 'Skróty działają poza polami edycji. Wybierz figurę, aby używać jej paska akcji.',
     items: [
-      { keys: '1…9', what: 'Użyj broni z tego slotu paska akcji' },
-      { keys: 'Shift + 1…9', what: 'Zmień tryb ognia broni z tego slotu' },
+      {
+        keys: '1…9',
+        what: 'Wybierz broń lub akcję oznaczoną tą cyfrą na pasku (górny rząd klawiatury)',
+      },
+      { keys: 'Shift + 1…9', what: 'Przełącz tryb broni pod tą cyfrą, jeśli ma kilka trybów' },
       {
         keys: 'klik w cel',
-        what: 'Ładuje kubek, a przy kursorze staje wybór Celowania: korpus (zwykły strzał), głowa, trzymany przedmiot, noga. Każda z trzech lokacji to −8 i cała Akcja (s. 170); przy ogniu ciągłym wyboru nie ma',
+        what: 'Przy wybranej broni przygotuj atak. Dla strzału pojedynczego wybierz korpus, głowę, przedmiot lub nogę; celowanie poza korpus: −8 i cała Akcja',
       },
       { keys: 'Tab', what: 'Następna figura, którą możesz sterować' },
       { keys: 'E', what: 'Zakończ Turę (swoją; MG — czyjąkolwiek)' },
     ],
   },
   {
-    title: 'Figury: wskazywanie, zaznaczanie, kopiowanie',
+    title: 'Figury i ping',
     note: 'Zaznaczyć da się wyłącznie figury, którymi możesz sterować — u gracza własne, u MG wszystkie.',
     items: [
       {
         keys: 'Alt + klik w mapę',
-        what: 'Ping — kółko z Twoim imieniem u wszystkich, którzy oglądają tę scenę',
+        what: 'Wskaż miejsce wszystkim oglądającym tę scenę',
       },
       {
         keys: 'Alt + Shift + klik',
-        what: 'Ping, który dodatkowo przyciąga widok wszystkich oglądających',
+        what: 'Wskaż miejsce i przenieś tam widok wszystkich oglądających',
         gmOnly: true,
       },
       {
         keys: 'Shift + przeciągnięcie',
-        what: 'Ramka — zaznacza wszystkie figury, które w niej stanęły',
+        what: 'Zaznacz figury ramką na mapie',
       },
       {
         keys: 'Shift + klik w figurę',
-        what: 'Dokłada figurę do zaznaczenia albo ją z niego odejmuje',
+        what: 'Dodaj figurę do zaznaczenia lub ją odznacz',
       },
       { keys: 'Ctrl + A', what: 'Zaznacza wszystkie figury, którymi możesz sterować' },
       {
         keys: 'przeciągnięcie zaznaczonej',
-        what: 'Przesuwa całą zaznaczoną grupę — poza walką, bo w Turze budżet metrów jest osobny dla każdej figury',
+        what: 'Przesuń całą grupę poza walką. W trybie turowym poruszaj figury osobno',
       },
       {
         keys: 'Alt + przeciągnięcie figury',
-        what: 'Stawia jej kopię tam, gdzie ją upuścisz („Ganger” → „Ganger 2”)',
+        what: 'Utwórz kopię figury w miejscu upuszczenia',
         gmOnly: true,
       },
     ],
@@ -129,22 +134,23 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
   },
   {
     title: 'Obiekty na mapie',
-    note: 'Wejdź w warstwę (klawisz wyżej), kliknij obiekt, a potem — jedna reguła na wszystko, co stoi na mapie.',
+    note: 'Najpierw wybierz odpowiednie narzędzie mapy. Gracz może edytować tylko dostępne mu obiekty.',
     items: [
-      { keys: 'klik', what: 'Zaznacza obiekt uzbrojonej warstwy (obrys pod kursorem)' },
-      { keys: 'dwuklik', what: 'Otwiera kartę obiektu — jedną i tę samą dla wszystkich siedmiu' },
+      { keys: 'klik', what: 'Zaznacz obiekt na aktywnej warstwie' },
+      { keys: 'dwuklik', what: 'Otwórz kartę obiektu' },
       {
         keys: 'przeciągnięcie',
-        what: 'Przesuwa zaznaczony obiekt; róg prostokąta i koniec ściany go skalują',
+        what: 'Przesuń obiekt; przeciągnij narożnik lub koniec ściany, aby zmienić rozmiar',
       },
       {
         keys: 'Ctrl + przeciągnięcie',
-        what: 'To samo bez przyciągania do kratki — piksel po pikselu',
+        what: 'Przesuń lub zmień rozmiar bez przyciągania do kratki',
       },
       { keys: 'Delete', what: 'Usuwa zaznaczony obiekt (figur nie dotyka — te z menu pod PPM)' },
+      { keys: 'Backspace', what: 'Usuń zaznaczony obiekt — tak samo jak Delete' },
       {
         keys: 'Ctrl + Z',
-        what: 'Cofa twoje ostatnie usunięcie na tej scenie; kosz cofa się w całości',
+        what: 'Cofnij swoje ostatnie usunięcie na tej scenie, również opróżnienie kosza',
       },
     ],
   },
@@ -156,8 +162,8 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
     ],
   },
   {
-    title: 'Esc — drabina wyjścia',
-    note: 'Jedno wciśnięcie cofa jedną rzecz, od najświeższej. Nigdy nie zrzuca wszystkiego naraz.',
+    title: 'Esc na mapie — kolejność anulowania',
+    note: 'Na mapie Esc wykonuje pierwszy pasujący krok z listy. Otwarte okna mają także własną obsługę Esc.',
     numbered: true,
     items: [
       { keys: 'Esc', what: 'Zamyka wybór Celowania przy kursorze' },
@@ -165,6 +171,7 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
       { keys: 'Esc', what: 'Rozbraja celowanie bronią' },
       { keys: 'Esc', what: 'Zamyka otwartą kartę HUD-u walki' },
       { keys: 'Esc', what: 'Opuszcza wybraną broń' },
+      { keys: 'Esc', what: 'Anuluje wpisywanie podpisu na mapie' },
       {
         keys: 'Esc',
         what: 'Porzuca rysowany łańcuch ścian albo prostokąt osłony',
@@ -183,7 +190,7 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
     items: [
       {
         keys: 'przytrzymanie Esc',
-        what: 'Wychodzi z pełnego ekranu w Chrome i Edge — krótkie Esc dalej schodzi po drabinie wyżej. W Firefoksie i na adresie bez HTTPS z pełnego ekranu wychodzi już pierwsze Esc',
+        what: 'Wyjdź z pełnego ekranu. Przy aktywnej blokadzie klawiatury w Chrome i Edge krótkie Esc anuluje akcję; bez blokady (np. Firefox lub zwykły HTTP poza localhost) od razu opuszcza pełny ekran',
       },
     ],
   },
@@ -195,7 +202,8 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
       { keys: 'Shift + klik', what: 'Ładuje kubek od razu, z ostatnimi ustawieniami' },
       {
         keys: 'Alt + klik',
-        what: 'Prosi MG o Test tą Umiejętnością albo Cechą — MG dostaje kartę z drabinką PT, a kubek zawoła dopiero po jego zgodzie (na własnej karcie, więc MG tego wiersza nie ma)',
+        what: 'Na własnej karcie poproś MG o Test Cechy lub Umiejętności. Rzut przygotujesz po jego zgodzie',
+        playerOnly: true,
       },
     ],
   },
@@ -209,10 +217,14 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
   {
     title: 'Czat i panele',
     items: [
-      { keys: 'Ctrl + Enter', what: 'Wysyła pytanie do asystenta zasad i do panelu AI' },
+      {
+        keys: 'Ctrl + Enter',
+        what: 'Wyślij pytanie z aktywnego pola w panelu AI lub asystenta zasad',
+      },
       { keys: 'Enter', what: 'Zatwierdza edytowaną inicjatywę w kolejce' },
       { keys: 'Esc', what: 'Zamyka edytor notatki MG i podpisu na mapie' },
-      { keys: '?', what: 'To okno' },
+      { keys: '?', what: 'Otwórz lub zamknij listę skrótów (poza polami edycji)' },
+      { keys: 'Esc', what: 'Zamknij listę skrótów' },
     ],
   },
 ];
@@ -227,7 +239,7 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
  */
 export function shortcutGroupsFor(isGm: boolean): ShortcutGroup[] {
   return SHORTCUT_GROUPS.map((group) => {
-    const items = group.items.filter((item) => isGm || !item.gmOnly);
+    const items = group.items.filter((item) => (isGm ? !item.playerOnly : !item.gmOnly));
     return {
       ...group,
       items: group.numbered

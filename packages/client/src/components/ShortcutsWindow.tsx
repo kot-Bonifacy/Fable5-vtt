@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ROLE_GM } from '@vtt/shared';
 import { shortcutGroupsFor } from '../shortcuts.js';
 import { useAuthStore } from '../stores/authStore.js';
@@ -21,10 +21,21 @@ export function ShortcutsWindow() {
   const open = useHelpStore((s) => s.open);
   const setOpen = useHelpStore((s) => s.setOpen);
   const isGm = useAuthStore((s) => s.user?.role === ROLE_GM);
+  const [query, setQuery] = useState('');
 
   const groups = useMemo(() => shortcutGroupsFor(isGm), [isGm]);
+  const search = query.trim().toLocaleLowerCase('pl');
+  const visibleGroups = groups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) =>
+        `${group.title} ${item.keys} ${item.what}`.toLocaleLowerCase('pl').includes(search),
+      ),
+    }))
+    .filter((group) => group.items.length > 0);
+  const resultCount = visibleGroups.reduce((count, group) => count + group.items.length, 0);
   const placement = useWindowPlacement('shortcuts', () => ({
-    x: Math.max(12, Math.round(window.innerWidth / 2) - 260),
+    x: Math.max(12, Math.round(window.innerWidth / 2) - 320),
     y: 72,
   }));
 
@@ -45,6 +56,22 @@ export function ShortcutsWindow() {
       className="settings-window shortcuts-window"
       style={placement.style}
       aria-label="Skróty klawiszowe"
+      onKeyDown={(event) => {
+        // Nawigacja po pomocy nie może przełączać figur ani narzędzi mapy.
+        event.stopPropagation();
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          setOpen(false);
+        }
+        if (
+          (event.key === '?' || (event.code === 'Slash' && event.shiftKey)) &&
+          !(event.target as HTMLElement).closest(
+            'input, textarea, select, [contenteditable="true"]',
+          )
+        ) {
+          setOpen(false);
+        }
+      }}
     >
       <div className="settings-window-header" {...placement.dragProps}>
         <span className="settings-window-title">⌨ Skróty klawiszowe</span>
@@ -58,8 +85,37 @@ export function ShortcutsWindow() {
           ✕
         </button>
       </div>
-      <div className="settings-window-body">
-        {groups.map((group) => (
+      <div className="shortcuts-toolbar">
+        <p className="shortcuts-intro">
+          Klawiatura i gesty myszy <span>• {isGm ? 'Mistrz Gry' : 'Gracz'}</span>
+        </p>
+        <label className="shortcuts-search">
+          <span>Szukaj skrótu lub czynności</span>
+          <input
+            type="search"
+            value={query}
+            placeholder="Np. linijka, Shift, rzut…"
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </label>
+        <div className="shortcuts-search-status">
+          <span role="status">
+            {search ? `Wyniki: ${resultCount}` : 'Wybierz czynność z listy poniżej'}
+          </span>
+          {query && (
+            <button type="button" className="small-button" onClick={() => setQuery('')}>
+              Wyczyść
+            </button>
+          )}
+        </div>
+      </div>
+      <div className="settings-window-body shortcuts-body">
+        {visibleGroups.length === 0 && (
+          <p className="shortcuts-empty">
+            Brak pasujących skrótów. Wpisz inną nazwę lub wyczyść wyszukiwanie.
+          </p>
+        )}
+        {visibleGroups.map((group) => (
           <section key={group.title} className="shortcuts-group">
             <h3 className="settings-group-title">{group.title}</h3>
             {group.note && <p className="shortcuts-note">{group.note}</p>}
@@ -70,13 +126,16 @@ export function ShortcutsWindow() {
                     {/* Każdy człon osobno, żeby „Shift + 1…9" wyglądało jak dwa
                         klawisze i plus, a nie jak jeden długi napis w ramce. */}
                     {item.keys.split(' + ').map((part, index) => (
-                      <span key={part}>
+                      <span key={`${index}:${part}`} className="shortcuts-key-part">
                         {index > 0 && <span className="shortcuts-plus">+</span>}
                         <kbd>{part}</kbd>
                       </span>
                     ))}
                   </dt>
-                  <dd>{item.what}</dd>
+                  <dd>
+                    {item.what}
+                    {item.gmOnly && <span className="shortcuts-role">MG</span>}
+                  </dd>
                 </div>
               ))}
             </dl>
