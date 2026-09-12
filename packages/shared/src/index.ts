@@ -26,6 +26,7 @@ export * from './measure.js';
 export * from './notes.js';
 export * from './pathfinding.js';
 export * from './ping.js';
+export * from './portrait-crop.js';
 export * from './rects.js';
 export * from './relations.js';
 export * from './rules-assistant.js';

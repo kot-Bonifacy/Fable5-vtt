@@ -15,6 +15,7 @@ indeksu i pełny wpis pod spodem.
 
 ## mapa — Figury, narzędzia i obiekty sceny
 
+- **Kadr portretu na mapie** — trzy liczby przy wierszu `PortraitAsset`, rachunek w `shared/portrait-crop.ts`, `TokenNode.fitImage` tylko go stosuje. Kadr jest cechą **obrazka**, pytany adresem pliku (`ctx.portraitCrops`), i musi być w podpisie figury, inaczej przestawienie go nie przerysuje żetonu.
 - **Drabinka paska PW** — `tokenHpRung` w `shared/figures.ts`, jedna dla mapy i dla panelu postaci (cztery szczeble: `healthy`, `light`, `serious`, `mortal`). Kolory obrączki to nocne `--ok` / `--hurt-light` / `--warn` / `--err` przepisane do `HP_RUNG_COLORS`; rdzeń dalej nie woła `woundStateFromHp`, zgodności pilnują dwa testy.
 - **Oprawa żetonu (obrączka PW, aureola tury, klin kierunku, podpis)** — promienie liczy `map/token-ring.ts`, nie `TokenNode`. Obrączka PW leży **poza** kołem portretu, a `furnitureRadius` jest jedyną odpowiedzią na „dokąd sięga figura"; wszystko, co się o brzeg opiera, czyta tę funkcję.
 - **Rozmiar płótna mapy** — `MapRenderer.watchHostSize` (`ResizeObserver` → `app.queueResize`). `resizeTo` Pixi słucha **wyłącznie** `window.resize`, więc każdy nowy pasek zmieniający szerokość mapy bez ruszania oknem jedzie tędy i nie potrzebuje niczego własnego.
@@ -51,6 +52,36 @@ indeksu i pełny wpis pod spodem.
 - **Kosz figur pyta zawsze, także na poligonie** — `Ctrl+Z` cofa scenerię, nie figury; dlatego `Delete` figur nie dotyka i jedyna droga to guzik z pytaniem niosącym liczbę.
 
 ---
+
+**Kadr portretu na mapie mieszka przy obrazku, nie przy postaci (12.09).** Krążek żetonu jest
+kwadratem przyciętym do koła, a portret prawie zawsze prostokątem w pionie z twarzą w górnej
+trzeciej — więc ślepy środkowy kadr (`extent / min(w, h)`, kotwica 0,5) dawał tors. MG wybrał
+wprost: kadr jest cechą **grafiki**, ustawianą raz przy dokładaniu portretu, i obowiązuje wszędzie,
+gdzie ten plik stanie na mapie.
+
+Podział ról jest sztywny i warto go nie mieszać:
+
+- **`shared/portrait-crop.ts`** trzyma cały rachunek — `PortraitCrop { x, y, zoom }` (punkt obrazu
+  lądujący na środku kratki plus mnożnik skali pokrywającej), `clampPortraitCrop` (krążek nigdy nie
+  wyjeżdża poza obraz; granice zależą od boków grafiki, więc **wymiary są argumentem**),
+  `sanitizePortraitCrop` dla drutu i `portraitCropPlacement` dla rysującego. Domyślne
+  `{0,5; 0,5; 1}` daje **dokładnie** to, co mapa rysowała przed 12.09 — żadna figura nie drgnęła.
+- **`PortraitAsset.cropX/cropY/cropZoom`** to jedyny magazyn. Kadru **nie wypala się w plik**:
+  uploady są niezmienne (kopia zapasowa trzyma je na twardych dowiązaniach), a poza mapą oryginał
+  ma być widoczny w całości.
+- **`TokenNode.fitImage`** wyłącznie stosuje wynik: kotwica **jest** punktem kadru, a sprite stoi
+  nią na środku kratki — dzięki temu leżąca figura dalej obraca się wokół środka krążka.
+- **`TokenNodeCtx.portraitCrops`** to odwzorowanie **adres pliku → kadr**, bo pyta się o obrazek,
+  a nie o figurę: ten sam portret na dwóch żetonach jest ujęty tak samo, a żeton z grafiką spoza
+  puli po prostu nie ma wpisu i dostaje kadr domyślny.
+
+**Kadr musi być w podpisie figury** (`signature` w `TokenNode.update`) — inaczej przestawienie go
+przez MG nie przerysuje żetonu, bo nazwa, obrazek i PW są te same. To jest jedyna pułapka tej
+umowy i ma własny test.
+
+Kadruje się **wyłącznie mapa** (decyzja MG z 12.09): karta, kreator, czat i panel pokazują wgrany
+plik w całości — `.cp-portrait img` ma `object-fit: contain` od 27a z tego samego powodu, a małe
+okrągłe awatary zostają przy środkowym `cover`, bo w kółku 1,35 rem cały prostokąt byłby paskiem.
 
 **Pasek PW ma jedną drabinkę na całą aplikację: `tokenHpRung` (12.09).** Gracz widzi dwa paski tej
 samej postaci naraz — obrączkę wokół swojej figury i pasek w panelu postaci w lewym górnym rogu —
@@ -451,7 +482,8 @@ Cztery rzeczy, które łatwo zepsuć przy dokładaniu:
 
 - **Przełączenie kampanii** — zdarzenie `campaign:activate` (przenosi wszystkie gniazda i odsyła `campaign:switch`), nigdy sam zapis w bazie.
 - **Limity wgrywanego obrazu** — `shared/src/uploads.ts` (serwer re-eksportuje); odmowa zawsze z pełnym wymaganiem, `accept` i sprawdzenie przed wysyłką z tego samego miejsca.
-- **Portret w nowym miejscu** — komponent `PortraitPicker` (pula kampanii); pliki wgrywa wyłącznie MG, listę puli widzi każdy zalogowany.
+- **Portret w nowym miejscu** — komponent `PortraitPicker` (pula kampanii); pliki wgrywa wyłącznie MG jedną trasą `POST /api/uploads/portrait-assets`, listę puli widzi każdy zalogowany.
+- **Kadr portretu** — `portrait:crop` (gniazdo, rozgłasza cały wiersz puli). Nie stoi na `role: ROLE_GM`: gracz kadruje ten jeden portret, który nosi jego własna karta, i sprawdza to serwer.
 - **Kosz w bibliotece, która stoi na scenie** — zdarzenie gniazda (`token:asset-delete`), nie trasa REST: zdjęta grafika schodzi też z żetonów (`emitTokensById` → `token:upsert`), a ack mówi `clearedTokens`. REST wgrywa plik, gniazdo zmienia stan stołu.
 - **Komunikat zależny od zewnętrznej usługi** niesie kod odmowy (`journalStore.fail(msg, code)`), a powrót usługi go zdejmuje (`ai:status` → `clearAiError`) — inaczej wisi do następnej akcji MG; pilnuje `journal-error.test.ts`.
 - **Rozgłoszenie, które rysuje `seq`, musi go u klienta skonsumować** — `if (chat().applySeq(broadcast.seq)) { socket?.emit('state:request'); return; }`. Pominięcie robi lukę i zbędny pełny resync całemu stołowi.
@@ -475,10 +507,24 @@ z pytaniem „to jaki mam podać". Nowy `<input type="file">` bierze `accept` z
 **Pula portretów kampanii — pliki portretów dokłada wyłącznie MG (23.08).** `PortraitAsset`
 jest bliźniakiem `TokenAsset` (model, trasy, kosz dwustopniowy), z jedną różnicą: listę
 `GET /api/portrait-assets` widzi **każdy zalogowany**, bo to z niej gracz wybiera portret swojej
-postaci — biblioteka żetonów zostaje przy `requireGm`. `POST /api/uploads/portraits` (wgranie
-wprost na kartę) też przeszło na `requireGm`; gracz nie ma już żadnej trasy, którą wstawiłby
-plik do `uploads/`. Wspólny komponent to `PortraitPicker` — używają go i karta postaci, i
-kreator; nowe miejsce z portretem bierze jego, nie własnego `<input type="file">`.
+postaci — biblioteka żetonów zostaje przy `requireGm`. Wspólny komponent to `PortraitPicker` —
+używają go i karta postaci, i kreator; nowe miejsce z portretem bierze jego, nie własnego
+`<input type="file">`.
+
+**Od 12.09 portret ma jedną trasę: `POST /api/uploads/portrait-assets`.** Stała obok niej
+`POST /api/uploads/portraits` (wgranie wprost na kartę, w kreatorze i w edytorze bota) kładła sam
+plik, **bez wiersza w bazie** — a portret bez wiersza nie ma gdzie trzymać kadru na mapie i nikomu
+drugi raz się nie przyda. Trasa zniknęła, wszystkie trzy miejsca wgrywają do puli, a pliki wgrane
+przed tą zmianą wciąga do niej `portrait-backfill.ts` przy starcie serwera (obok zbieracza sierot,
+w tle, idempotentnie) — bez tego nowa funkcja nie działałaby dokładnie dla tych postaci, które
+naprawdę stoją na mapie. Lista klienta mieszka w `portraitStore`, nie w komponencie: kadru
+potrzebuje też renderer, a dwie kopie tej samej puli rozjechałyby się przy pierwszej zmianie.
+
+**Kadr zmienia się gniazdem (`portrait:crop`), bo dotyka wszystkich ekranów naraz** — patrz reguła
+„REST wgrywa plik, gniazdo zmienia stan stołu" niżej. Jest jednak **jedynym** zdarzeniem puli bez
+`role: ROLE_GM`: portret wybiera się raz, przy tworzeniu postaci (decyzja MG z 12.09), i w trakcie
+rozgrywki gracz go nie zmienia — ale kadr własnej figury zmienić może. Warunek sprawdza serwer
+(`ownsPortrait`: karta tego gracza nosi ten adres), nie przycisk.
 
 **Kasowanie z biblioteki, które rusza scenę, jest zdarzeniem gniazda** (kosz grafik żetonów,
 27.08). Biblioteka grafik i pula portretów wyglądają jak bliźniaki — wgrywanie i listę mają

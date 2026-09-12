@@ -13,6 +13,7 @@ import type {
   SocketAck,
   StateSyncPayload,
   PortraitAssetView,
+  PortraitCropBroadcast,
   TokenAssetView,
   TokenDeleteBroadcast,
   TokenMoveBroadcast,
@@ -20,6 +21,7 @@ import type {
   TokenView,
 } from '@vtt/shared';
 import type { CharacterView, CpredCharacterData } from '@vtt/shared';
+import { DEFAULT_PORTRAIT_CROP } from '@vtt/shared';
 import type { ServerConfig } from './config.js';
 import { buildApp, type BuiltApp } from './app.js';
 
@@ -268,11 +270,16 @@ describe('portrait pool', () => {
     expect(refused.statusCode).toBe(403);
   });
 
-  it('keeps the direct portrait upload for the GM alone', async () => {
+  /**
+   * Od 12.09 wgranie portretu ma jedno wejście: trasę puli. Osobna
+   * `/api/uploads/portraits`, która kładła plik bez wiersza w bazie, zniknęła —
+   * portret bez wiersza nie miał gdzie trzymać kadru na mapie.
+   */
+  it('keeps the portrait upload for the GM alone, and only through the pool', async () => {
     const { payload, headers } = multipartBody('wprost.png', PNG_1X1);
     const refused = await built.app.inject({
       method: 'POST',
-      url: '/api/uploads/portraits',
+      url: '/api/uploads/portrait-assets',
       headers: { ...headers, cookie: playerCookie },
       payload,
     });
@@ -280,11 +287,98 @@ describe('portrait pool', () => {
 
     const allowed = await built.app.inject({
       method: 'POST',
-      url: '/api/uploads/portraits',
+      url: '/api/uploads/portrait-assets',
       headers: { ...headers, cookie: gmCookie },
       payload,
     });
     expect(allowed.statusCode).toBe(201);
+
+    const gone = await built.app.inject({
+      method: 'POST',
+      url: '/api/uploads/portraits',
+      headers: { ...headers, cookie: gmCookie },
+      payload,
+    });
+    expect(gone.statusCode).toBe(404);
+  });
+
+  /**
+   * Kadr na mapie (12.09) — jedyne, co da się w wierszu puli zmienić po
+   * wgraniu pliku, i jedyna rzecz z tego obszaru, która idzie gniazdem.
+   *
+   * Rozgłoszenie musi dojść **do gracza**, bo kadr jest cechą obrazka: MG
+   * poprawia ujęcie raz, a przestawia je każdej figurze, która ten plik nosi,
+   * u wszystkich naraz.
+   */
+  it('lets the GM reframe a portrait, tells the table, and clamps the numbers', async () => {
+    const gmConn = createSocket(gmCookie);
+    const playerConn = createSocket(playerCookie);
+    await Promise.all([gmConn.firstSync, playerConn.firstSync]);
+    try {
+      const heard = waitFor<PortraitCropBroadcast>(playerConn.socket, 'portrait:crop');
+      // Fikstura jest kwadratem 1 × 1, więc przy zoomie 2 swoboda kadru to
+      // ćwiartka w każdą stronę — 0,9 i 0,1 muszą wrócić jako 0,75 i 0,25.
+      const ack = await emitAck<PortraitAssetView>(gmConn.socket, 'portrait:crop', {
+        assetId,
+        crop: { x: 0.9, y: 0.1, zoom: 2 },
+      });
+      if (!ack.ok || !ack.data) throw new Error('portrait:crop failed');
+      expect(ack.data.crop).toEqual({ x: 0.75, y: 0.25, zoom: 2 });
+      expect((await heard).asset.crop).toEqual({ x: 0.75, y: 0.25, zoom: 2 });
+
+      // Zapisane, a nie tylko odesłane.
+      const list = await built.app.inject({
+        method: 'GET',
+        url: '/api/portrait-assets',
+        headers: { cookie: playerCookie },
+      });
+      const stored = (list.json() as PortraitAssetView[]).find((a) => a.id === assetId);
+      expect(stored?.crop).toEqual({ x: 0.75, y: 0.25, zoom: 2 });
+
+      // Gracz nie kadruje **cudzego** obrazka.
+      expect(
+        await emitAck(playerConn.socket, 'portrait:crop', {
+          assetId,
+          crop: DEFAULT_PORTRAIT_CROP,
+        }),
+      ).toMatchObject({ ok: false, error: 'FORBIDDEN' });
+
+      // …ale własny kadruje. Portret wybiera się raz, przy tworzeniu postaci,
+      // i w rozgrywce gracz go nie zmienia — kadr na mapie zmienić może
+      // (decyzja MG z 12.09), bo to jego figura stoi na stole.
+      const card = await emitAck<CharacterView>(gmConn.socket, 'character:create', {
+        name: 'Kadrujący',
+        ownerId: playerId,
+      });
+      if (!card.ok || !card.data) throw new Error('character:create failed');
+      expect(
+        (
+          await emitAck(playerConn.socket, 'character:update', {
+            characterId: card.data.id,
+            patch: { portraitUrl: ack.data.url },
+          })
+        ).ok,
+      ).toBe(true);
+      const own = await emitAck<PortraitAssetView>(playerConn.socket, 'portrait:crop', {
+        assetId,
+        crop: { x: 0.3, y: 0.7, zoom: 2 },
+      });
+      if (!own.ok || !own.data) throw new Error('player portrait:crop failed');
+      expect(own.data.crop).toEqual({ x: 0.3, y: 0.7, zoom: 2 });
+      // Kadrem nie jest cokolwiek: brak pola albo tekst to złe żądanie.
+      expect(
+        await emitAck(gmConn.socket, 'portrait:crop', { assetId, crop: { x: 0.5, y: 0.5 } }),
+      ).toMatchObject({ ok: false, error: 'BAD_REQUEST' });
+      expect(
+        await emitAck(gmConn.socket, 'portrait:crop', {
+          assetId: 'nie-ma',
+          crop: DEFAULT_PORTRAIT_CROP,
+        }),
+      ).toMatchObject({ ok: false, error: 'NOT_FOUND' });
+    } finally {
+      gmConn.socket.close();
+      playerConn.socket.close();
+    }
   });
 
   it('lets the GM take a portrait off the pool, and nobody else', async () => {

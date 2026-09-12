@@ -22,7 +22,7 @@ import type {
   CpredWeaponRow,
   CriticalInjuryEntry,
   LedgerEntryView,
-  PortraitUploadResult,
+  PortraitAssetView,
   ResolvedWeapon,
 } from '@vtt/shared';
 import {
@@ -176,10 +176,12 @@ import {
   transferEddies,
 } from '../socket.js';
 import { useAuthStore } from '../stores/authStore.js';
+import { usePortraitStore } from '../stores/portraitStore.js';
 import { askForCheck } from '../stores/checkStore.js';
 import { useGameTimeStore } from '../stores/gameTimeStore.js';
 import { AdvancementPanel } from './AdvancementPanel.js';
 import { PortraitPicker } from './PortraitPicker.js';
+import { PortraitCropButton } from './PortraitCropEditor.js';
 import { useAttackStore } from '../stores/attackStore.js';
 import { useCompendiumStore } from '../stores/compendiumStore.js';
 import { useInventoryStore } from '../stores/inventoryStore.js';
@@ -664,9 +666,14 @@ function IdentityColumn({
     }
     setUploading(true);
     try {
-      const result = await apiUpload<PortraitUploadResult>('/api/uploads/portraits', file);
-      queueCharacterSave(character.id, { portraitUrl: result.url });
+      // Od 12.09 jedna trasa dla każdego portretu: plik ląduje w puli
+      // kampanii, dostaje wiersz i **kadr na mapie**, który MG od razu ustawia
+      // w oknie otwartym niżej.
+      const asset = await apiUpload<PortraitAssetView>('/api/uploads/portrait-assets', file);
+      usePortraitStore.getState().applyUpsert(asset);
+      queueCharacterSave(character.id, { portraitUrl: asset.url });
       flushCharacterSave(character.id);
+      usePortraitStore.getState().openCrop(asset.id);
       setIssues((current) => {
         const next = { ...current };
         delete next.portrait;
@@ -696,8 +703,10 @@ function IdentityColumn({
           ) : (
             <span className="cp-portrait-empty">brak portretu</span>
           )}
-          {/* Wgranie własnego pliku zostało **przy MG** (23.08) — gracz
-              wybiera portret z puli kampanii pod ramką. */}
+          {/* Wgranie własnego pliku zostało **przy MG** (23.08). Od 12.09 przy
+              MG została też sama **zmiana** portretu: gracz wybiera twarz raz,
+              w kreatorze, i w trakcie rozgrywki już jej nie podmienia (decyzja
+              MG). Zostaje mu kadr na mapie — przycisk pod ramką. */}
           {isGm ? (
             <label className="cp-portrait-upload">
               {uploading ? 'Wgrywanie…' : 'Wgraj portret'}
@@ -712,13 +721,23 @@ function IdentityColumn({
             </label>
           ) : null}
         </div>
-        <PortraitPicker
-          selectedUrl={character.portraitUrl}
-          onPick={(url) => {
-            queueCharacterSave(character.id, { portraitUrl: url });
-            flushCharacterSave(character.id);
-          }}
-        />
+        <div className="cp-portrait-actions">
+          <PortraitCropButton portraitUrl={character.portraitUrl} />
+          {!isGm && character.portraitUrl ? (
+            <span className="cp-portrait-locked">
+              Portret wybiera się raz, przy tworzeniu postaci. Zmienia go MG.
+            </span>
+          ) : null}
+        </div>
+        {isGm ? (
+          <PortraitPicker
+            selectedUrl={character.portraitUrl}
+            onPick={(url) => {
+              queueCharacterSave(character.id, { portraitUrl: url });
+              flushCharacterSave(character.id);
+            }}
+          />
+        ) : null}
       </div>
 
       <div className="cp-panel">

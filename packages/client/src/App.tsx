@@ -14,6 +14,7 @@ import { NetArchitectureEditor } from './components/NetArchitectureEditor.js';
 import { NetRunWindow } from './components/NetRunWindow.js';
 import { RollDialog } from './components/RollDialog.js';
 import { CheckCallDialog } from './components/CheckCallDialog.js';
+import { PortraitCropEditor } from './components/PortraitCropEditor.js';
 import { CheckRequestDialog } from './components/CheckRequestDialog.js';
 import { ClockWindow } from './components/ClockWindow.js';
 import { SettingsWindow } from './components/SettingsWindow.js';
@@ -102,6 +103,10 @@ function GameView() {
       <NetRunWindow />
       <RollDialog />
       <CheckCallDialog />
+      {/* Kadr portretu pod mapę (12.09) — otwiera się z puli, z karty postaci,
+          z kreatora i z edytora bota, więc mieszka w korzeniu, jak każde inne
+          okno wołane z kilku miejsc naraz. */}
+      <PortraitCropEditor />
       <CheckRequestDialog />
       <SettingsWindow />
       <ClockWindow />

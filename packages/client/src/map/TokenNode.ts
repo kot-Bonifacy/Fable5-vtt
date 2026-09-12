@@ -1,8 +1,11 @@
 import { Assets, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
 import {
+  DEFAULT_PORTRAIT_CROP,
   fallbackConditionStatusId,
+  portraitCropPlacement,
   tokenCondition,
   tokenHpRung,
+  type PortraitCrop,
   type TokenCondition,
   type TokenHpRung,
   type TokenView,
@@ -28,6 +31,15 @@ export interface TokenNodeCtx {
   conditions: ReadonlyMap<string, TokenCondition>;
   /** Token acting right now in the initiative tracker (stage 14). */
   activeTokenId: string | null;
+  /**
+   * Kadr portretu na mapie (12.09), po adresie pliku.
+   *
+   * Kadr jest cechą **obrazka**, nie figury, więc pyta się o niego adresem:
+   * ten sam portret na dwóch żetonach jest ujęty tak samo. Brak wpisu znaczy
+   * „na środek", czyli dokładnie to, co mapa rysowała przed tą zmianą — mapa
+   * nie ma osobnego trybu „bez kadru".
+   */
+  portraitCrops: ReadonlyMap<string, PortraitCrop>;
 }
 
 const RING_OWN = 0x4ade80;
@@ -73,6 +85,18 @@ const HP_RUNG_COLORS: Readonly<Record<TokenHpRung, number>> = {
 const HP_TRACK = 0x0b1220;
 /** Koszulka pod obrączką: obrys, dzięki któremu pasek czyta się na każdym tle. */
 const HP_CASING = 0x05070d;
+
+/**
+ * Kadr portretu tej figury (12.09) — po adresie pliku, nie po figurze.
+ *
+ * Zwraca kadr domyślny, gdy portretu nie ma albo nikt go nie kadrował; żeton
+ * z obrazkiem spoza puli (biblioteka żetonów, grafika z `public/`) też trafia
+ * tutaj i dostaje dawne „na środek".
+ */
+function cropFor(url: string | null, ctx: TokenNodeCtx): PortraitCrop {
+  if (!url) return DEFAULT_PORTRAIT_CROP;
+  return ctx.portraitCrops.get(url) ?? DEFAULT_PORTRAIT_CROP;
+}
 
 /** Czy ta figura w ogóle nosi obrączkę PW — patrz `drawHpArc`. */
 function hasHpRing(token: TokenView): boolean {
@@ -201,6 +225,13 @@ export class TokenNode extends Container {
   private readonly nameText: Text;
   private readonly statusLayer = new Container();
   private imageUrl: string | null = null;
+  /**
+   * Kadr, którym jest ujęty aktualnie wczytany portret (12.09).
+   *
+   * Zapamiętany, bo `fitImage` woła się także po doczytaniu tekstury — czyli
+   * poza `update`, gdzie kontekst jest pod ręką.
+   */
+  private imageCrop: PortraitCrop = DEFAULT_PORTRAIT_CROP;
   private extentPx = 0;
   private signature = '';
   /**
@@ -296,6 +327,9 @@ export class TokenNode extends Container {
       ctx.myUserId,
       ctx.isGm,
       ctx.activeTokenId === token.id,
+      // Bez tego przestawienie kadru przez MG nie przerysowałoby figury:
+      // podpis nie zmienia się, gdy zmienia się sam sposób ujęcia obrazka.
+      cropFor(token.imageUrl, ctx),
     ]);
     if (signature === this.signature) return;
     this.signature = signature;
@@ -359,6 +393,7 @@ export class TokenNode extends Container {
     this.placeholder.tint = CONDITION_TINT[condition];
     this.tiltPortrait(condition);
 
+    this.imageCrop = cropFor(token.imageUrl, ctx);
     this.updateImage(token.imageUrl, extent);
     this.drawHpArc(token, extent, condition);
     this.drawNose(extent, this.ringTint);
@@ -471,13 +506,26 @@ export class TokenNode extends Container {
       });
   }
 
-  /** Scales the image to cover the circle (center-crop for non-square art). */
+  /**
+   * Wpisuje obraz w krążek według kadru MG (12.09).
+   *
+   * Kotwica **jest** punktem kadru, a sprite stoi nią na środku kratki — dzięki
+   * temu leżąca figura (`CONDITION_TILT_DEG`) dalej obraca się wokół środka
+   * krążka, a nie wokół środka pliku, i portret nie ucieka spod maski.
+   *
+   * Bez kadru wychodzi dokładnie to, co ta metoda liczyła wcześniej: skala
+   * `extent / min(w, h)` i kotwica 0,5, czyli ślepy środkowy kadr.
+   */
   private fitImage(extent: number): void {
     const tex = this.image.texture;
     if (tex === Texture.EMPTY || tex.width === 0 || tex.height === 0) return;
-    const scale = extent / Math.min(tex.width, tex.height);
-    this.image.setSize(tex.width * scale, tex.height * scale);
-    this.image.anchor.set(0.5);
+    const place = portraitCropPlacement(
+      this.imageCrop,
+      { width: tex.width, height: tex.height },
+      extent,
+    );
+    this.image.setSize(tex.width * place.scale, tex.height * place.scale);
+    this.image.anchor.set(place.anchorX, place.anchorY);
     this.image.position.set(extent / 2, extent / 2);
     // With an image the disc is just a loading backdrop.
     this.placeholder.visible = false;

@@ -279,6 +279,16 @@
   --map-shadow-slider: drop-shadow(0 1px 2px rgb(0 0 0 / 90%));
   --map-shadow-swatch: 0 1px 3px rgb(0 0 0 / 70%);
 
+  /* Kadrowanie portretu pod mapę (12.09): okno pokazuje krążek żetonu na tle
+     mapy, więc bierze barwy stąd, a nie z chromu — inaczej w dzień MG oglądałby
+     twarz na kremowym, a stół zobaczyłby ją na ciemnym.
+     `--map-ring-own` to obwódka „to moja figura" — **ta sama liczba**, co
+     `RING_OWN` w `TokenNode.ts`; pilnuje tego `portrait-crop.test.ts`. */
+  --map-ring-own: #4ade80;
+  /* Przygaszenie tego, co wypada poza krążek. Nie `--scrim`: tamten przygasza
+     aplikację pod oknem i zmienia się z motywem. */
+  --map-crop-scrim: rgb(3 6 12 / 72%);
+
   /* Narzędzia z własnym znaczeniem koloru: „tylko dla mnie", noc, dzień. */
   --map-warn: #fbbf24;
   --map-night: #818cf8;

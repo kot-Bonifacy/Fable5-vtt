@@ -12,6 +12,7 @@
 // import would close a cycle. The gesture lives there with the other roll
 // payloads that carry one.
 import type { RollGesture } from './protocol.js';
+import type { PortraitCrop } from './portrait-crop.js';
 
 export const CHARACTER_NAME_MAX_LENGTH = 64;
 
@@ -405,13 +406,6 @@ export interface CpredDataPayload {
   lifepath: unknown;
 }
 
-/** Ack data of the portrait upload (`POST /api/uploads/portraits`). */
-export interface PortraitUploadResult {
-  url: string;
-  width: number;
-  height: number;
-}
-
 /**
  * Jeden portret z puli kampanii (`GET /api/portrait-assets`).
  *
@@ -425,6 +419,15 @@ export interface PortraitAssetView {
   url: string;
   width: number;
   height: number;
+  /**
+   * Jak ta grafika jest ujęta w krążku żetonu (12.09).
+   *
+   * Kadr jedzie razem z portretem, bo jest cechą **obrazka**, a nie postaci:
+   * MG ustawia go raz, dokładając portret do puli, i obowiązuje wszędzie, gdzie
+   * ten plik stanie na mapie. Poza mapą nikt go nie czyta — karta, kreator,
+   * czat i panel pokazują oryginał (decyzja MG z 12.09).
+   */
+  crop: PortraitCrop;
 }
 
 /** Najdłuższa nazwa portretu w bibliotece — jak przy żetonach. */

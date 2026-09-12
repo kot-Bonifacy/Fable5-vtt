@@ -159,8 +159,8 @@ siedzi w `decyzje-i-uproszczenia.md` i **nie wciągaj ich z powrotem** jako nowy
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
 a od 30d pierwszym, przy którym każda Rola w drużynie gra inaczej niż reszta.
 
-**Testy na koniec ostatniej sesji:** **1967** w `shared`, **1085** na serwerze, 114 u klienta —
-zielone (liczby zmierzone 10.09; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
+**Testy na koniec ostatniej sesji:** **1987** w `shared`, **1092** na serwerze, **154** u klienta —
+zielone (liczby zmierzone 12.09; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
 ESLint i Prettier czyste na kodzie, `tsc --noEmit` czysty w trzech pakietach (od 05.09 obejmuje
 też `packages/server/scripts/`). **Nie puszczaj `pnpm format` na `POSTEP.md`, `POMYSLY.md` ani
 `00-przeglad.md`** — Prettier przeformatowałby je od dawna i przelał kilkaset wierszy szumu
@@ -184,9 +184,9 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  |   33 |      13 |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  |   34 |      14 |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     |    3 |       3 |
-| `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    |    6 |      14 |
+| `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    |    7 |      14 |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście   |    8 |       7 |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  |   13 |       1 |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       |    7 |       4 |
@@ -206,6 +206,61 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 12.09 (druga) — portret ujęty pod mapę
+
+**Zlecenie MG:** dokładając portret, ma być **podgląd i możliwość dopasowania kadru do tego, jak
+portret będzie widoczny na mapie**; poza mapą portret ma zostać widoczny **w całości**.
+Doprecyzowane w trakcie: **portret wybiera się raz, przy tworzeniu postaci** — w rozgrywce gracz
+go już nie zmienia, zmienia wyłącznie kadr na mapie.
+
+**Trzy pytania przed kodem, trzy decyzje MG.** Kadr mieszka **przy obrazku** (wiersz puli), a nie
+przy postaci — ustawia się go raz na życie pliku. Kadruje się **wyłącznie mapę**: karta i kreator
+pokazują cały obrazek (`object-fit: contain` od 27a), a małe okrągłe awatary zostają przy środkowym
+`cover`, bo w kółku 1,35 rem cały prostokąt byłby paskiem. I **jedna pula na wszystko**: wgranie
+wprost na kartę też zakłada wiersz.
+
+**Problem był realny i mierzalny.** Mapa liczyła `extent / min(w, h)` z kotwicą 0,5 — ślepy środek.
+Portret Tony'ego z żywej kampanii ma **443 × 887**, więc krążek brał środkowy pas: twarz mała,
+broda na krawędzi. Po skadrowaniu (zoom 1,12, `y` 0,30) twarz wypełnia krążek — widać to na
+zrzucie z sesji.
+
+**Cały rachunek wyszedł do `shared/portrait-crop.ts`** (jak `camera.ts` i `token-ring.ts`):
+`clampPortraitCrop` pilnuje, żeby krążek nie wyjechał poza obraz — a granice zależą od boków
+grafiki, więc **wymiary są argumentem**, nie założeniem. Kwadrat przy zoomie 1 nie ma czym
+przesuwać (to nie błąd, to geometria) i dopiero przybliżenie otwiera swobodę. Kadr domyślny daje
+**dokładnie** dawne zachowanie, więc po migracji żadna figura nie drgnęła.
+
+**Kadru nie wypala się w plik** — uploady są niezmienne, bo kopia zapasowa trzyma je na twardych
+dowiązaniach. Trzy kolumny `Float` przy `PortraitAsset` z wartościami domyślnymi; migracja
+`stage_portrait_map_crop`.
+
+**Pułapka, która wyglądałaby jak zepsute rozgłoszenie:** `TokenNode` porzuca przerysowanie, gdy
+`signature` się nie zmienił, a kadr jest cechą **grafiki**, nie żetonu — nazwa, obrazek i PW
+zostają te same. Bez `cropFor(...)` w podpisie zapis szedł do bazy, rozgłoszenie docierało, store
+się aktualizował, a na mapie nie działo się nic. Wpis w `pulapki-dev.md`.
+
+**`portrait:crop` to jedyne zdarzenie puli bez `role: ROLE_GM`** — bo MG dopisał, że gracz ma móc
+zmieniać kadr własnej figury. Warunek sprawdza serwer (`ownsPortrait`), nie przycisk. **Skutek
+uboczny do wiedzy MG:** gdyby dwie postacie nosiły ten sam plik portretu, kadr poprawiony przez
+jedną zmienia ujęcie obu.
+
+**Trasa `/api/uploads/portraits` zniknęła** (kładła plik bez wiersza). Portrety wgrane przed tą
+zmianą wciąga do puli `portrait-backfill.ts` przy starcie serwera — i to nie jest porządki:
+**bez tego funkcja nie działałaby dokładnie dla postaci, które naprawdę grają**. Na żywej bazie
+wciągnął dwa portrety (Marcin 626 × 627, Tony 443 × 887).
+
+**Oględziny na żywym stole, bez długu.** Dwie sesje graczy (`localhost` — Marcin, `[::1]` — Tony);
+MG ma hasło, którego nie wpisuję, więc ścieżka MG sprawdzona przez wspólny kod, a ścieżka gracza
+w całości: przycisk na karcie, okno, przeciąganie, kółko, suwak, zapis, „Wyśrodkuj". **Rozgłoszenie
+sprawdzone międzysesyjnie** — kadr zapisany u Tony'ego zmienił jego żeton w sesji Marcina
+natychmiast, bez przeładowania. Kadr Tony'ego **przywrócony do domyślnego** po oględzinach: nie
+o to prosił MG.
+
+**Testy:** **154** u klienta (+11: `portrait-crop.test.ts`), **1987** w `shared` (+14 o geometrii
+kadru), **1092** na serwerze (+4 o uzupełnieniu puli, +1 o kadrze w `tokens.test.ts`, +1 o zdjętej
+trasie) — zielone. ESLint, Prettier i `tsc -b` czyste. Umowy: jedna w `mapa`, jedna w `serwer`;
+pułapki: jedna w `mapa`.
 
 ### Sesja 12.09 — płótno, które nadąża, i pasek życia poza twarzą
 
@@ -267,114 +322,3 @@ sprawdzone już w żywej aplikacji.
 **Testy:** **142** u klienta (+17: `token-ring.test.ts`), **1973** w `shared` (+4 o drabince),
 **1086** na serwerze — zielone. ESLint, Prettier i `tsc -b` czyste w trzech pakietach. Umowy: trzy
 w `mapa`; pułapki: dwie w `mapa`.
-
-### Sesja 11.09 (druga) — mapa zamiast pustego stołu
-
-**Zlecenie MG:** dodać podaną mapę (`IndustrialAreaGate-40x30.png`) jako **mapę startową dla
-wszystkich graczy**, „aby nigdy nie widzieli czystej siatki, co mogłoby niszczyć imersję",
-w skali **40 × 30** — z zastrzeżeniem, że **MG takiej mapy nie potrzebuje**, a rzecz ma służyć
-wyłącznie jako **rezerwowa**, gdyby MG zapomniał scenę ustawić. Z prośbą o pytania uzupełniające
-i zgłaszanie potencjalnych błędów.
-
-**Cztery pytania przed kodem.** MG wybrał: mapa jest **darmowa, do użytku prywatnego** (więc
-plik **poza repo**), tło pokazuje się **tylko przy braku aktywnej sceny** (nie przy scenie bez
-mapy), jest **tłem powitalnym gracza**, a nie sceną w bazie, i **nie niesie żadnego napisu** —
-sam obraz.
-
-**Całe rozwiązanie mieści się w tym, czego atrapa NIE dotyka.** `map/welcome-map.ts` buduje
-`SceneView`, który jedzie **wyłącznie** do `MapRenderer.setScene`; `sceneStore` dalej trzyma
-`null`. Dzięki temu stawianie figur, rysowanie, linijka dla innych, ping, efekty i mgła odmawiają
-**same z siebie** (wszystkie pytają `effectiveScene`), tło nie potrzebuje wiersza w bazie,
-migracji ani jednej linii na serwerze, a MG nie może go skasować. Umowa w `mapa`.
-
-**Plik leży w `uploads/art/`, i to nie jest kaprys.** Zbieracz sierot zamiata `maps`, `portraits`,
-`tokens` i `handouts`, kasując wszystko, czego nie wymienia wiersz bazy — mapa powitalna nie ma
-w bazie **niczego**, więc w `uploads/maps/` zniknęłaby po godzinie przy starcie serwera. Pułapka
-w `serwer`. **Brak pliku nie jest awarią**: sonda `loadWelcomeScene` oddaje `null` i wraca dawne
-zdanie „Brak aktywnej sceny" (sprawdzone przez schowanie pliku). **Przy etapie 28 plik trzeba
-skopiować na VPS** — dopisane do listy zakresu tamtego etapu.
-
-**Format: WebP q90, 2473 kB → 274 kB.** Q95 kosztuje 206 kB więcej i różni się od q90 w szumie
-(kanałów odchylonych o >10: 0,96 % vs 0,77 %); maksimum 75/255 to **jeden punkt** mapy —
-żółto-czarna taśma przy szlabanie. Tabela pomiarów w `docs/assety-mapy.md`.
-
-**Siatka liczy się z pliku (`szerokość / 40`), nie z kodu** — inaczej niż przy plakacie
-logowania, gdzie wpisane na sztywno współrzędne skończyły się umową „zmiana pliku wymaga
-przemierzenia liczb od nowa". Podmiana mapy 40 × 30 nie wymaga tu ani jednej linii.
-
-**Oględziny znalazły rzecz, której w kodzie nie widać: kratkę rysuje CSS, nie Pixi.** `.map-area`
-ma w tle raster 48 px, a płótno Pixi jest przezroczyste — więc mapa siadła na środku, a wokół
-niej dalej stała równiutka siatka, czyli dokładnie to, czego ten ekran miał nie pokazywać.
-Naprawione klasą `.map-area--welcome` (pod tłem powitalnym zostaje sam ciemny stół); pułapka
-w `mapa`. **Druga rzecz z oględzin:** gracz ma na pasku ołówek, a bez sceny rysunek nie ma dokąd
-pójść — do 11.09 podgląd kreski zostawał wtedy na ekranie na zawsze. Guzik jest teraz wyłączony
-ze zdaniem „dopiero na aktywnej scenie", a `onDrawingCreate` czyści podgląd (skrótem `R` da się
-narzędzie uzbroić mimo wyłączonego guzika).
-
-**Oględziny: zrobione, bez długu.** Dwie sesje naraz (MG `localhost`, `Tester` na `[::1]`),
-scena wyłączona SQL-em i **przywrócona guzikiem „Aktywuj" w UI MG** — czyli przy okazji sprawdzone
-przejście tło → scena u gracza (natychmiastowe). Obejrzane: tło z siatką 40 × 30 na oknie
-3072 × 1559 i 1400 × 900, brak napisu u gracza, **dawne zdanie u MG bez zmian**, degradacja bez
-pliku, wyłączony ołówek. Poligon wrócił do stanu sprzed sesji (Strzelnica aktywna, 7 żetonów).
-
-**Zgłoszone MG: to nie zdejmuje z ekranu całej „czystej siatki".** Sceny poligonu — w tym aktywna
-„Strzelnica" — **nie mają tła**, więc gracz widzi tam gołą kratkę mimo tej zmiany; tło powitalne
-z wyboru MG łata wyłącznie stan „nie ma aktywnej sceny".
-
-#### Drugie zlecenie tej samej sesji — kamera gracza zamknięta w mapie
-
-**Zlecenie MG:** „gracze nie mogą widzieć poza obszar wgranej mapy; obszar gry/siatka ma
-obejmować tylko plik graficzny", mapa powitalna na **nowym pliku** (`StrefaPrzemyslowa-40x30.png`,
-2896 × 2176), a gracze mają **zaczynać w tym samym miejscu na dole mapy** i widzieć „niewiele
-więcej niż 8 kratek wokół siebie".
-
-**Cztery pytania, cztery decyzje MG:** kamera zamknięta **na wszystkich scenach, ale tylko
-u graczy** (MG zostaje z marginesem, bo ścianę na krawędzi rysuje się, mając dokąd wyjechać);
-przy maksymalnym oddaleniu **ani piksela czerni** (a nie „cała mapa z czarnymi pasami") —
-świadoma cena: na szerokim oknie całej mapy 40 × 30 nie widać naraz; przybliżenie na osiem kratek
-obowiązuje **też na scenach, na własnej figurze gracza**; a **miejsce startu wyznacza MG**, z
-domyślnym środkiem dolnej krawędzi, gdy tego nie zrobi.
-
-**Cztery rzeczy w kodzie.** (1) `map/camera.ts` — arytmetyka kadru osobno od renderera, żeby dała
-się testować bez Pixi. (2) `setCameraLocked` + `applyCameraBounds` w rendererze, przykładane
-**także przy zmianie rozmiaru okna**, bo dolna granica zbliżenia zależy od kształtu płótna.
-(3) `frameAround` — kadr startowy osobny od `fitScene`; kolejność kotwic: własna figura → punkt
-MG → środek dolnej krawędzi. (4) **Miejsce startu jako pole sceny**: migracja
-`scene_spawn_point`, `SceneView.spawn`, `ScenePatch.spawn`, kolumny w `archive.ts`, narzędzie
-mapy `spawn` (klawisz `G`) i chorągiewka rysowana **tylko MG**. Umowy w `mapa`.
-
-**Mapa powitalna dostała nowy plik**: 2896 × 2176 (kratka 72,4 px), WebP q90, 581 kB. Poprzedni
-był tą samą mapą w połowie rozdzielczości — za mało, odkąd gracz startuje przybliżony. Wysokość
-nie dzieli się równo przez 30 (ostatni rząd o 4 px wyższy); siatkę liczy się z szerokości.
-
-**Oględziny: pełne, na żywym stole, bez długu.** Sprawdzone: kadr startowy tła powitalnego
-(17 kratek w pionie zmierzone na siatce, dół mapy), zamknięcie kamery (oddalanie zatrzymuje się
-na pokryciu, przeciągnięcie w róg nie odsłania czerni), to samo na **scenie MG** ze świeżo wgraną
-mapą, narzędzie miejsca startu u MG (chorągiewka, odczyt „punkt startu: x, y px", kosz punktu),
-kamera gracza **bez figury** (ląduje na punkcie MG) i **z figurą** (Tony: kamera na jego żetonie,
-przycięta do krawędzi mapy — policzone i zgodne co do kratki), oraz to, że **MG dalej może
-wyjechać poza mapę**.
-
-**W trakcie sesji MG sam założył scenę „StrefaPrzemysłowa"** (mapa 1448 × 1086, kratka **47 px**,
-mgła). Oględziny robiłem na niej i **przywróciłem jej stan** co do pola: aktywna, `fog`, bez
-punktu startu. **Uwaga dla MG w raporcie:** kratka 47 px nie odpowiada skali 40 × 30 tego pliku
-(powinno być 36,2 px), więc siatka na tej scenie nie siedzi na rysunku.
-
-**Odpowiedzi MG na raport zapisane w `zaleglosci.md` (11.09, koniec dnia):** jedna nowa pozycja
-do zrobienia — **pola „kratek w poziomie/pionie" w edytorze sceny** zamiast zgadywania pikseli
-(MG chce; jego własna scena ma z tego powodu siatkę 47 px zamiast 36,2) — oraz cztery decyzje
-zamknięte, żeby nie wracały jako pytania: „ani piksela czerni" zostaje, mapa powitalna zostaje bez
-wyznaczanego punktu startu, czarne pole pod nieodsłoniętą mgłą to zachowanie (choć **MG sam wziął
-je za awarię**), a usterka „MG widzi «Brak sceny» po własnej aktywacji" czeka na liście.
-
-**Zaległość dopisana (nie moja usterka, starsza):** MG, który połączył się przy braku aktywnej
-sceny, po własnej aktywacji widzi dalej „Brak sceny" — gałąź MG w `socket.ts` woła `applyScene`,
-a ten milczy przy `scene === null`. Gracze bez zmian.
-
-**Testy:** **125** u klienta (118 + 7 w `camera.test.ts`), **1969** w `shared` (+2 o punkcie
-startu), **1086** na serwerze (+1 dymny o `scene:update` z punktem startu) — wszystkie zielone.
-
-Po pierwszym zleceniu było ich **118** u klienta (114 + 4 w `welcome-map.test.ts`), przy
-niezmienionych `shared` i serwerze. ESLint, Prettier i `tsc --noEmit` czyste w trzech pakietach.
-Umowy dopisane w `mapa` (trzy: tło powitalne, kamera, miejsce startu), pułapki: dwie w `mapa`
-(siatka z CSS, `clampZoom` z dwiema parami opcji) i jedna w `serwer` (zbieracz sierot).

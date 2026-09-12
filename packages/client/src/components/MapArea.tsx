@@ -48,6 +48,7 @@ import {
   myActiveCombatant,
   useCombatStore,
 } from '../stores/combatStore.js';
+import { usePortraitStore } from '../stores/portraitStore.js';
 import {
   clearRuler,
   createCover,
@@ -830,6 +831,10 @@ export function MapArea() {
       // icon does (stage 27j) — the map never learns what „unconscious" means.
       conditions: conditionRegistry(tokenState.statuses),
       activeTokenId: activeTokenIdOf(useCombatStore.getState().combat),
+      // Kadr portretu (12.09) jest cechą obrazka, więc jedzie tu jako
+      // odwzorowanie adres → ujęcie, a nie polem figury: ten sam plik na dwóch
+      // żetonach ma być ujęty tak samo.
+      portraitCrops: usePortraitStore.getState().crops,
     });
   }, []);
 
@@ -981,10 +986,18 @@ export function MapArea() {
     const unsubTokens = useTokenStore.subscribe(pushTokens);
     const unsubScene = useSceneStore.subscribe(pushTokens);
     const unsubCombat = useCombatStore.subscribe(pushTokens);
+    // MG przestawia kadr w oknie puli — figury mają zmienić ujęcie od razu,
+    // a nie po przeładowaniu strony.
+    const unsubPortraits = usePortraitStore.subscribe(pushTokens);
+    // Pula jest publiczna dla każdego zalogowanego, więc gracz czyta kadry tą
+    // samą drogą co MG. Nieudane pobranie nie psuje mapy: bez wpisu figura
+    // dostaje kadr domyślny.
+    void usePortraitStore.getState().load();
     return () => {
       unsubTokens();
       unsubScene();
       unsubCombat();
+      unsubPortraits();
     };
   }, [ready, pushTokens]);
 

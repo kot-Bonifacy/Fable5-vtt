@@ -212,6 +212,9 @@ import type {
   GameTimeAck,
   GameTimeBroadcast,
   GameTimeStepId,
+  PortraitAssetView,
+  PortraitCrop,
+  PortraitCropBroadcast,
   ShopTierBroadcast,
   TokenUpsertBroadcast,
   TokenView,
@@ -267,6 +270,7 @@ import { useAuthStore } from './stores/authStore.js';
 import { useTokenStore, type TokenViewerCtx } from './stores/tokenStore.js';
 import { useCharacterStore } from './stores/characterStore.js';
 import { useCompendiumStore } from './stores/compendiumStore.js';
+import { usePortraitStore } from './stores/portraitStore.js';
 import { useGameTimeStore } from './stores/gameTimeStore.js';
 import { useAiStore } from './stores/aiStore.js';
 import { useRulesStore } from './stores/rulesStore.js';
@@ -746,6 +750,16 @@ export function connectSocket(userId: string): Socket {
       return;
     }
     useCompendiumStore.getState().applyShopTier(broadcast.tier);
+  });
+  // Kadr portretu na mapie (12.09). Rozgłoszenie do całego stołu, bo kadr jest
+  // cechą obrazka: poprawione ujęcie ma trafić na każdą figurę, która ten plik
+  // nosi, u wszystkich naraz.
+  socket.on('portrait:crop', (broadcast: PortraitCropBroadcast) => {
+    if (chat().applySeq(broadcast.seq)) {
+      socket?.emit('state:request');
+      return;
+    }
+    usePortraitStore.getState().applyUpsert(broadcast.asset);
   });
   // Zegar świata (etap 37): rozgłoszenie, nie resynchronizacja — data w pasku
   // ma zmienić się u wszystkich w chwili, w której MG kliknął „+1 dzień".
@@ -3631,6 +3645,27 @@ export function setGameTime(
       if (ack.ok && ack.data) useGameTimeStore.getState().applyJump(ack.data.time, ack.data.days);
       resolve(ack);
     });
+  });
+}
+
+/**
+ * MG: przestawia kadr portretu na mapie (12.09); cały stół słyszy.
+ *
+ * Zapisuje się **cały** kadr, a nie różnicę — okno kadrowania i tak trzyma trzy
+ * liczby naraz, a serwer i tak je zaciska do granic tego obrazu.
+ */
+export function setPortraitCrop(
+  assetId: string,
+  crop: PortraitCrop,
+): Promise<SocketAck<PortraitAssetView>> {
+  return new Promise((resolve) => {
+    if (!socket) {
+      resolve({ ok: false, error: 'OFFLINE' });
+      return;
+    }
+    socket.emit('portrait:crop', { assetId, crop }, (ack: SocketAck<PortraitAssetView>) =>
+      resolve(ack),
+    );
   });
 }
 

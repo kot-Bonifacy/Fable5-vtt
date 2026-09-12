@@ -12,6 +12,7 @@ Nową pułapkę dopisz do sekcji jej obszaru: wiersz na górę indeksu i pełny 
 
 ## mapa — Figury, narzędzia i obiekty sceny
 
+- **Podpis figury (`signature`) decyduje, czy `TokenNode` w ogóle się przerysuje** — a składa się z pól żetonu i kontekstu. Zmiana czegoś **spoza** tej listy (kadr portretu, 12.09) zapisuje się, rozgłasza i po prostu nie widać jej na mapie do przeładowania strony; wygląda to jak niedziałające rozgłoszenie, a jest pominiętą klatką.
 - **`resizeTo` w Pixi v8 NIE obserwuje elementu** — mierzy się nim, ale przelicza rozmiar wyłącznie na `window.resize`. Pasek zmieniający szerokość mapy bez ruszania oknem zostawiał płótno w starym rozmiarze, a w odsłoniętym pasie świeciła kratka z CSS-a. Trzeba `ResizeObserver` (`watchHostSize`).
 - **Nakładki `MapRenderer` mierzą odstęp w pikselach EKRANU** (`8 * overlayScale()`), więc w pikselach świata topnieje on ze zbliżeniem: obrączka zaznaczenia liczona od `half` wchodziła przy zoomie 2 na pasek życia. Liczy się je od `node.outerRadius`.
 - **`clampZoom` z pixi-viewport czyta ALBO `minWidth`/`maxWidth`, ALBO `minScale`/`maxScale`** — pierwsza para wygrywa i drugiej wtyczka już nie patrzy. „Nie oddalaj się poniżej pokrycia mapy" trzeba więc policzyć samemu i podać jako **skalę**; podanie obu par po cichu wyłącza jedną z nich.
@@ -44,6 +45,16 @@ Nową pułapkę dopisz do sekcji jej obszaru: wiersz na górę indeksu i pełny 
   przychodzi, póki wstrzyknięta funkcja nie wróci — więc `await new Promise(r => setTimeout(r, 600))`
   w tym samym wywołaniu pokazuje stary rozmiar płótna i wygląda jak niedziałająca poprawka. Zmień
   szerokość w jednym wywołaniu, zmierz w **następnym**.
+
+- **Podpis figury decyduje o przerysowaniu, więc nowa cecha rysunku musi w nim być (12.09).**
+  `TokenNode.update` porzuca robotę na wejściu, gdy `signature` się nie zmienił — i to jest jedyny
+  powód, dla którego 20 Hz przeciągania nie topi przeglądarki. Podpis zbiera pola żetonu (nazwa,
+  obrazek, rozmiar, PW, naklejki…) i kilka pól kontekstu. Kadr portretu jest cechą **grafiki**,
+  nie żetonu: gdy MG go przestawia, `token.imageUrl` zostaje ten sam, PW to samo, nazwa ta sama —
+  więc dopóki `cropFor(token.imageUrl, ctx)` nie wszedł do podpisu, zapis szedł do bazy,
+  rozgłoszenie docierało, store się aktualizował, a **na mapie nie działo się nic**. Diagnoza jest
+  myląca, bo każdy ogniwo po drodze da się sprawdzić i każde działa. Reguła: cokolwiek dokładasz do
+  `TokenNodeCtx`, co zmienia rysunek, dopisz do `signature` w tym samym ruchu.
 
 - **Obrączka zaznaczenia mierzy odstęp w pikselach ekranu, a figurę w pikselach świata (12.09).**
   `drawSelectionRing`, `drawGroupRings` i `facingKnob` liczą `… + 8 * overlayScale()`, gdzie

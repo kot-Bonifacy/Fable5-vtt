@@ -4,7 +4,7 @@ import type { BotView } from './bots/types.js';
 import type { ChatMessageView } from './chat.js';
 import type { CheckCallVisibility } from './checks.js';
 import type { CombatView } from './combat.js';
-import type { CharacterView } from './characters.js';
+import type { CharacterView, PortraitAssetView } from './characters.js';
 import type { CoverView } from './covers.js';
 import type { SmokeView } from './smoke.js';
 import type { DefenseZoneView } from './zones.js';
@@ -21,6 +21,7 @@ import type { FogState } from './fog.js';
 import type { GameTimeState, GameTimeStepId } from './gametime.js';
 import type { LightView } from './lights.js';
 import type { ScenePoint } from './measure.js';
+import type { PortraitCrop } from './portrait-crop.js';
 import type { NetAccessPointView, NetRunPayload } from './netrunning.js';
 import type { MapNoteView } from './notes.js';
 import type { SceneSummary, SceneView } from './scenes.js';
@@ -215,6 +216,25 @@ export interface ShopTierPayload {
 export interface ShopTierBroadcast {
   seq: number;
   tier: ShopTier;
+}
+
+/**
+ * MG przestawia kadr portretu z puli (12.09).
+ *
+ * Kadr jest cechą obrazka, więc zmiana dotyczy **każdej** figury, która ten plik
+ * nosi — stąd rozgłoszenie do całego pokoju kampanii, a nie odpowiedź dla
+ * jednego klienta. Gracz przy stole ma zobaczyć poprawione ujęcie w tej samej
+ * chwili, w której MG puścił suwak, a nie po przeładowaniu strony.
+ */
+export interface PortraitCropPayload {
+  assetId: string;
+  crop: PortraitCrop;
+}
+
+export interface PortraitCropBroadcast {
+  seq: number;
+  /** Cały wiersz puli, nie sam kadr: klient, który go jeszcze nie zna, uczy się go tu. */
+  asset: PortraitAssetView;
 }
 
 /** Weapon base rows plus every entry: imported ones and the GM's own. */

@@ -3,13 +3,7 @@ import { basename, extname, join } from 'node:path';
 import { mkdir, writeFile } from 'node:fs/promises';
 import type { FastifyInstance } from 'fastify';
 import { imageSize } from 'image-size';
-import type {
-  HandoutImage,
-  MapUploadResult,
-  PortraitAssetView,
-  PortraitUploadResult,
-  TokenAssetView,
-} from '@vtt/shared';
+import type { HandoutImage, MapUploadResult, PortraitAssetView, TokenAssetView } from '@vtt/shared';
 import {
   PORTRAIT_NAME_MAX_LENGTH,
   SCENE_DIMENSION_MAX,
@@ -18,6 +12,7 @@ import {
 } from '@vtt/shared';
 import type { AppContext } from '../context.js';
 import { requireAuth, requireGm } from '../auth/guards.js';
+import { toPortraitAssetView } from '../portraits.js';
 import { getActiveCampaign } from './helpers.js';
 
 // The numbers themselves live in `shared/src/uploads.ts`, because the client
@@ -138,47 +133,6 @@ export function registerUploadRoutes(app: FastifyInstance, ctx: AppContext): voi
     return reply.code(201).send(result);
   });
 
-  // Portret wgrywany wprost na kartę albo w kreatorze — od 23.08 **tylko MG**.
-  // Gracz nie dokłada plików: wybiera z puli kampanii (`/api/portrait-assets`),
-  // żeby o tym, co leży w `uploads/portraits`, decydowało jedno konto.
-  app.post('/api/uploads/portraits', { preHandler: requireGm }, async (request, reply) => {
-    const file = await request.file({ limits: { fileSize: MAX_PORTRAIT_UPLOAD_BYTES } });
-    if (!file) {
-      return reply.code(400).send({ error: 'NO_FILE' });
-    }
-
-    let buffer: Buffer;
-    try {
-      buffer = await file.toBuffer();
-    } catch {
-      return reply.code(413).send({ error: 'FILE_TOO_LARGE' });
-    }
-
-    let width: number;
-    let height: number;
-    let type: string | undefined;
-    try {
-      ({ width, height, type } = imageSize(buffer));
-    } catch {
-      return reply.code(400).send({ error: 'UNSUPPORTED_IMAGE' });
-    }
-    const extension = type ? IMAGE_EXTENSIONS[type] : undefined;
-    if (!extension) {
-      return reply.code(400).send({ error: 'UNSUPPORTED_IMAGE' });
-    }
-    if (width > PORTRAIT_IMAGE_MAX_SIDE || height > PORTRAIT_IMAGE_MAX_SIDE) {
-      return reply.code(400).send({ error: 'IMAGE_TOO_LARGE' });
-    }
-
-    const portraitsDir = join(ctx.config.uploadsDir, 'portraits');
-    await mkdir(portraitsDir, { recursive: true });
-    const filename = `${randomBytes(12).toString('base64url')}.${extension}`;
-    await writeFile(join(portraitsDir, filename), buffer);
-
-    const result: PortraitUploadResult = { url: `/uploads/portraits/${filename}`, width, height };
-    return reply.code(201).send(result);
-  });
-
   // Handout images (stage 24a) — GM only, like maps: a handout is material the
   // GM hands out, and nobody else creates one.
   app.post('/api/uploads/handouts', { preHandler: requireGm }, async (request, reply) => {
@@ -224,6 +178,12 @@ export function registerUploadRoutes(app: FastifyInstance, ctx: AppContext): voi
    *
    * Bliźniak `/api/uploads/tokens`: ta sama walidacja, inny katalog i inna
    * publiczność listy niżej.
+   *
+   * **Od 12.09 to jedyna trasa portretu.** Do tej pory obok niej stała
+   * `/api/uploads/portraits`, którą karta, kreator i edytor bota wgrywały plik
+   * *bez* wiersza w bazie — a portret bez wiersza nie ma gdzie trzymać kadru na
+   * mapie i nikomu drugi raz się nie przyda. Teraz każdy wgrany portret wraca
+   * w puli i da się go skadrować (decyzja MG z 12.09).
    */
   app.post('/api/uploads/portrait-assets', { preHandler: requireGm }, async (request, reply) => {
     const campaign = await getActiveCampaign(ctx.prisma);
@@ -272,13 +232,7 @@ export function registerUploadRoutes(app: FastifyInstance, ctx: AppContext): voi
     const asset = await ctx.prisma.portraitAsset.create({
       data: { campaignId: campaign.id, name, url: `/uploads/portraits/${filename}`, width, height },
     });
-    const result: PortraitAssetView = {
-      id: asset.id,
-      name: asset.name,
-      url: asset.url,
-      width: asset.width,
-      height: asset.height,
-    };
+    const result: PortraitAssetView = toPortraitAssetView(asset);
     return reply.code(201).send(result);
   });
 
@@ -292,13 +246,7 @@ export function registerUploadRoutes(app: FastifyInstance, ctx: AppContext): voi
       where: { campaignId: campaign.id },
       orderBy: { createdAt: 'desc' },
     });
-    const views: PortraitAssetView[] = assets.map((a) => ({
-      id: a.id,
-      name: a.name,
-      url: a.url,
-      width: a.width,
-      height: a.height,
-    }));
+    const views: PortraitAssetView[] = assets.map(toPortraitAssetView);
     return reply.send(views);
   });
 

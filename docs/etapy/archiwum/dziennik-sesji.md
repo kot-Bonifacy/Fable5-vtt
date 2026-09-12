@@ -8,6 +8,117 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
 
+### Sesja 11.09 (druga) — mapa zamiast pustego stołu
+
+**Zlecenie MG:** dodać podaną mapę (`IndustrialAreaGate-40x30.png`) jako **mapę startową dla
+wszystkich graczy**, „aby nigdy nie widzieli czystej siatki, co mogłoby niszczyć imersję",
+w skali **40 × 30** — z zastrzeżeniem, że **MG takiej mapy nie potrzebuje**, a rzecz ma służyć
+wyłącznie jako **rezerwowa**, gdyby MG zapomniał scenę ustawić. Z prośbą o pytania uzupełniające
+i zgłaszanie potencjalnych błędów.
+
+**Cztery pytania przed kodem.** MG wybrał: mapa jest **darmowa, do użytku prywatnego** (więc
+plik **poza repo**), tło pokazuje się **tylko przy braku aktywnej sceny** (nie przy scenie bez
+mapy), jest **tłem powitalnym gracza**, a nie sceną w bazie, i **nie niesie żadnego napisu** —
+sam obraz.
+
+**Całe rozwiązanie mieści się w tym, czego atrapa NIE dotyka.** `map/welcome-map.ts` buduje
+`SceneView`, który jedzie **wyłącznie** do `MapRenderer.setScene`; `sceneStore` dalej trzyma
+`null`. Dzięki temu stawianie figur, rysowanie, linijka dla innych, ping, efekty i mgła odmawiają
+**same z siebie** (wszystkie pytają `effectiveScene`), tło nie potrzebuje wiersza w bazie,
+migracji ani jednej linii na serwerze, a MG nie może go skasować. Umowa w `mapa`.
+
+**Plik leży w `uploads/art/`, i to nie jest kaprys.** Zbieracz sierot zamiata `maps`, `portraits`,
+`tokens` i `handouts`, kasując wszystko, czego nie wymienia wiersz bazy — mapa powitalna nie ma
+w bazie **niczego**, więc w `uploads/maps/` zniknęłaby po godzinie przy starcie serwera. Pułapka
+w `serwer`. **Brak pliku nie jest awarią**: sonda `loadWelcomeScene` oddaje `null` i wraca dawne
+zdanie „Brak aktywnej sceny" (sprawdzone przez schowanie pliku). **Przy etapie 28 plik trzeba
+skopiować na VPS** — dopisane do listy zakresu tamtego etapu.
+
+**Format: WebP q90, 2473 kB → 274 kB.** Q95 kosztuje 206 kB więcej i różni się od q90 w szumie
+(kanałów odchylonych o >10: 0,96 % vs 0,77 %); maksimum 75/255 to **jeden punkt** mapy —
+żółto-czarna taśma przy szlabanie. Tabela pomiarów w `docs/assety-mapy.md`.
+
+**Siatka liczy się z pliku (`szerokość / 40`), nie z kodu** — inaczej niż przy plakacie
+logowania, gdzie wpisane na sztywno współrzędne skończyły się umową „zmiana pliku wymaga
+przemierzenia liczb od nowa". Podmiana mapy 40 × 30 nie wymaga tu ani jednej linii.
+
+**Oględziny znalazły rzecz, której w kodzie nie widać: kratkę rysuje CSS, nie Pixi.** `.map-area`
+ma w tle raster 48 px, a płótno Pixi jest przezroczyste — więc mapa siadła na środku, a wokół
+niej dalej stała równiutka siatka, czyli dokładnie to, czego ten ekran miał nie pokazywać.
+Naprawione klasą `.map-area--welcome` (pod tłem powitalnym zostaje sam ciemny stół); pułapka
+w `mapa`. **Druga rzecz z oględzin:** gracz ma na pasku ołówek, a bez sceny rysunek nie ma dokąd
+pójść — do 11.09 podgląd kreski zostawał wtedy na ekranie na zawsze. Guzik jest teraz wyłączony
+ze zdaniem „dopiero na aktywnej scenie", a `onDrawingCreate` czyści podgląd (skrótem `R` da się
+narzędzie uzbroić mimo wyłączonego guzika).
+
+**Oględziny: zrobione, bez długu.** Dwie sesje naraz (MG `localhost`, `Tester` na `[::1]`),
+scena wyłączona SQL-em i **przywrócona guzikiem „Aktywuj" w UI MG** — czyli przy okazji sprawdzone
+przejście tło → scena u gracza (natychmiastowe). Obejrzane: tło z siatką 40 × 30 na oknie
+3072 × 1559 i 1400 × 900, brak napisu u gracza, **dawne zdanie u MG bez zmian**, degradacja bez
+pliku, wyłączony ołówek. Poligon wrócił do stanu sprzed sesji (Strzelnica aktywna, 7 żetonów).
+
+**Zgłoszone MG: to nie zdejmuje z ekranu całej „czystej siatki".** Sceny poligonu — w tym aktywna
+„Strzelnica" — **nie mają tła**, więc gracz widzi tam gołą kratkę mimo tej zmiany; tło powitalne
+z wyboru MG łata wyłącznie stan „nie ma aktywnej sceny".
+
+#### Drugie zlecenie tej samej sesji — kamera gracza zamknięta w mapie
+
+**Zlecenie MG:** „gracze nie mogą widzieć poza obszar wgranej mapy; obszar gry/siatka ma
+obejmować tylko plik graficzny", mapa powitalna na **nowym pliku** (`StrefaPrzemyslowa-40x30.png`,
+2896 × 2176), a gracze mają **zaczynać w tym samym miejscu na dole mapy** i widzieć „niewiele
+więcej niż 8 kratek wokół siebie".
+
+**Cztery pytania, cztery decyzje MG:** kamera zamknięta **na wszystkich scenach, ale tylko
+u graczy** (MG zostaje z marginesem, bo ścianę na krawędzi rysuje się, mając dokąd wyjechać);
+przy maksymalnym oddaleniu **ani piksela czerni** (a nie „cała mapa z czarnymi pasami") —
+świadoma cena: na szerokim oknie całej mapy 40 × 30 nie widać naraz; przybliżenie na osiem kratek
+obowiązuje **też na scenach, na własnej figurze gracza**; a **miejsce startu wyznacza MG**, z
+domyślnym środkiem dolnej krawędzi, gdy tego nie zrobi.
+
+**Cztery rzeczy w kodzie.** (1) `map/camera.ts` — arytmetyka kadru osobno od renderera, żeby dała
+się testować bez Pixi. (2) `setCameraLocked` + `applyCameraBounds` w rendererze, przykładane
+**także przy zmianie rozmiaru okna**, bo dolna granica zbliżenia zależy od kształtu płótna.
+(3) `frameAround` — kadr startowy osobny od `fitScene`; kolejność kotwic: własna figura → punkt
+MG → środek dolnej krawędzi. (4) **Miejsce startu jako pole sceny**: migracja
+`scene_spawn_point`, `SceneView.spawn`, `ScenePatch.spawn`, kolumny w `archive.ts`, narzędzie
+mapy `spawn` (klawisz `G`) i chorągiewka rysowana **tylko MG**. Umowy w `mapa`.
+
+**Mapa powitalna dostała nowy plik**: 2896 × 2176 (kratka 72,4 px), WebP q90, 581 kB. Poprzedni
+był tą samą mapą w połowie rozdzielczości — za mało, odkąd gracz startuje przybliżony. Wysokość
+nie dzieli się równo przez 30 (ostatni rząd o 4 px wyższy); siatkę liczy się z szerokości.
+
+**Oględziny: pełne, na żywym stole, bez długu.** Sprawdzone: kadr startowy tła powitalnego
+(17 kratek w pionie zmierzone na siatce, dół mapy), zamknięcie kamery (oddalanie zatrzymuje się
+na pokryciu, przeciągnięcie w róg nie odsłania czerni), to samo na **scenie MG** ze świeżo wgraną
+mapą, narzędzie miejsca startu u MG (chorągiewka, odczyt „punkt startu: x, y px", kosz punktu),
+kamera gracza **bez figury** (ląduje na punkcie MG) i **z figurą** (Tony: kamera na jego żetonie,
+przycięta do krawędzi mapy — policzone i zgodne co do kratki), oraz to, że **MG dalej może
+wyjechać poza mapę**.
+
+**W trakcie sesji MG sam założył scenę „StrefaPrzemysłowa"** (mapa 1448 × 1086, kratka **47 px**,
+mgła). Oględziny robiłem na niej i **przywróciłem jej stan** co do pola: aktywna, `fog`, bez
+punktu startu. **Uwaga dla MG w raporcie:** kratka 47 px nie odpowiada skali 40 × 30 tego pliku
+(powinno być 36,2 px), więc siatka na tej scenie nie siedzi na rysunku.
+
+**Odpowiedzi MG na raport zapisane w `zaleglosci.md` (11.09, koniec dnia):** jedna nowa pozycja
+do zrobienia — **pola „kratek w poziomie/pionie" w edytorze sceny** zamiast zgadywania pikseli
+(MG chce; jego własna scena ma z tego powodu siatkę 47 px zamiast 36,2) — oraz cztery decyzje
+zamknięte, żeby nie wracały jako pytania: „ani piksela czerni" zostaje, mapa powitalna zostaje bez
+wyznaczanego punktu startu, czarne pole pod nieodsłoniętą mgłą to zachowanie (choć **MG sam wziął
+je za awarię**), a usterka „MG widzi «Brak sceny» po własnej aktywacji" czeka na liście.
+
+**Zaległość dopisana (nie moja usterka, starsza):** MG, który połączył się przy braku aktywnej
+sceny, po własnej aktywacji widzi dalej „Brak sceny" — gałąź MG w `socket.ts` woła `applyScene`,
+a ten milczy przy `scene === null`. Gracze bez zmian.
+
+**Testy:** **125** u klienta (118 + 7 w `camera.test.ts`), **1969** w `shared` (+2 o punkcie
+startu), **1086** na serwerze (+1 dymny o `scene:update` z punktem startu) — wszystkie zielone.
+
+Po pierwszym zleceniu było ich **118** u klienta (114 + 4 w `welcome-map.test.ts`), przy
+niezmienionych `shared` i serwerze. ESLint, Prettier i `tsc --noEmit` czyste w trzech pakietach.
+Umowy dopisane w `mapa` (trzy: tło powitalne, kamera, miejsce startu), pułapki: dwie w `mapa`
+(siatka z CSS, `clampZoom` z dwiema parami opcji) i jedna w `serwer` (zbieracz sierot).
+
 ### Sesja 11.09 — plakat na ekranie wejścia
 
 **Zlecenie MG:** dodać `tapeta_logowania.png` jako tapetę głównego okna logowania i umieścić

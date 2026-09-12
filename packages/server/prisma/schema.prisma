@@ -543,6 +543,21 @@ model PortraitAsset {
   url        String
   width      Int
   height     Int
+  /**
+   * Kadr na mapie (12.09) — który punkt grafiki siada na środku krążka żetonu
+   * i jak mocno jest przybliżony. Znaczenie liczb: `shared/src/portrait-crop.ts`.
+   *
+   * Trzy kolumny, a nie JSON, bo to trzy liczby o stałym znaczeniu — i trzy
+   * wartości domyślne, dzięki którym każdy portret wgrany przed 12.09 dostaje
+   * dokładnie to ujęcie, które mapa rysowała do tej pory.
+   *
+   * Kadru **nie wypala się w plik**: uploady są niezmienne (kopia zapasowa
+   * trzyma je na twardych dowiązaniach), a poza mapą oryginał ma być widoczny
+   * w całości.
+   */
+  cropX      Float    @default(0.5)
+  cropY      Float    @default(0.5)
+  cropZoom   Float    @default(1)
   createdAt  DateTime @default(now())
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)

@@ -603,10 +603,21 @@
 
 /* Pula portretów (23.08) leży wprost na czerwonym panelu tożsamości, więc
    bierze kolory karty, nie globalne — globalny `--text-dim` na `--cp-red`
-   znikał zupełnie. */
+   znikał zupełnie. Z tego samego powodu zdanie o zamkniętym wyborze portretu
+   (12.09) też bierze barwę stąd. */
 .cp-identity .portrait-pool-head,
-.cp-identity .portrait-pool-empty {
+.cp-identity .portrait-pool-empty,
+.cp-identity .cp-portrait-locked {
   color: var(--cp-on-red-dim);
+}
+
+/* Przycisk kadru na czerwonym panelu — jak wszystko inne na karcie, papier
+   z czerwoną krawędzią, a nie szara kostka z chromu. */
+.cp-identity .cp-portrait-actions .small-button {
+  background: var(--cp-paper);
+  color: var(--cp-ink);
+  border-color: var(--cp-red-deep);
+  border-radius: 0;
 }
 
 .cp-identity .portrait-pool-pick {

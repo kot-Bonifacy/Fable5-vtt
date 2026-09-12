@@ -2959,7 +2959,10 @@ input[type='color'] {
    w przeglądarce, w drugiej sesji). */
 .dialog-backdrop:has(.roll-dialog),
 .dialog-backdrop:has(.check-request-dialog),
-.dialog-backdrop:has(.check-call-dialog) {
+.dialog-backdrop:has(.check-call-dialog),
+/* Kadr portretu (12.09) wchodzi tą samą drogą: otwiera się z karty postaci
+   i z kreatora, czyli **spod** okna o z-index 300+. */
+.dialog-backdrop:has(.portrait-crop) {
   z-index: 400;
 }
 
@@ -8950,6 +8953,210 @@ body.is-resizing {
   padding: 0.15rem;
   background: var(--bg);
   border-radius: 0 0 8px 8px;
+}
+
+/* Przycisk kadru siedzi w rogu przeciwnym do kosza, tak samo skryty: pula ma
+   być siatką portretów, nie siatką przycisków. Widzi go wyłącznie MG, bo kadr
+   jest cechą obrazka z puli, a pulę prowadzi jedno konto (12.09). */
+.portrait-pool-crop {
+  position: absolute;
+  top: 0.15rem;
+  left: 0.15rem;
+  padding: 0 0.25rem;
+  opacity: 0;
+}
+
+.portrait-pool-item:hover .portrait-pool-crop,
+.portrait-pool-crop:focus-visible {
+  opacity: 1;
+}
+
+/* Kafelek z ustawionym kadrem — kropka, żeby MG widział, którego portretu już
+   dotknął, bez otwierania każdego po kolei. */
+.portrait-pool-item--framed .portrait-pool-pick::after {
+  content: '';
+  position: absolute;
+  top: 0.3rem;
+  right: 0.35rem;
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/*
+ * Okno kadrowania portretu pod mapę (zlecenie MG, 12.09).
+ *
+ * Szersze niż zwykły `.dialog`, bo mieści kwadrat kratki i podgląd w prawdziwej
+ * wielkości obok siebie — a przy wąskim oknie jedno i drugie zwija się w kolumnę.
+ */
+.portrait-crop {
+  width: min(36rem, 94vw);
+  gap: 0.6rem;
+}
+
+.portrait-crop-hint {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.portrait-crop-stage-row {
+  display: flex;
+  gap: 0.9rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* Zawsze ciemne, w obu motywach — płótno mapy też zostaje nocne (etap 27e),
+   więc portret ma być oglądany na tym tle, na którym stanie. */
+.portrait-crop-stage {
+  position: relative;
+  flex: none;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--map-backdrop);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.portrait-crop-stage:active {
+  cursor: grabbing;
+}
+
+.portrait-crop-stage:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* `max-width: none`, bo reszta aplikacji skaluje obrazki do szerokości
+   rodzica — a tutaj rozmiar jest liczony z kadru i ma być dosłowny. */
+.portrait-crop-image {
+  position: absolute;
+  max-width: none;
+  pointer-events: none;
+}
+
+.portrait-crop-mask,
+.portrait-crop-ring,
+.portrait-crop-cell {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* Cień na wszystkim poza krążkiem — jeden `box-shadow` zamiast maski, bo to,
+   co odcięte, ma zostać widoczne, tylko przygaszone. */
+.portrait-crop-mask {
+  border-radius: 50%;
+  box-shadow: 0 0 0 9999px var(--map-crop-scrim);
+}
+
+/* Obwódka właściciela w kolorze „to moja figura" — ten sam zielony, co na
+   mapie (`RING_OWN` w `TokenNode.ts`). */
+.portrait-crop-ring {
+  border-radius: 50%;
+  border-style: solid;
+  border-color: var(--map-ring-own);
+}
+
+.portrait-crop-cell {
+  border: 1px dashed var(--map-line-soft);
+}
+
+.portrait-crop-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-width: 7rem;
+  padding-top: 1.2rem;
+}
+
+.portrait-crop-side-label {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.portrait-crop-side-note {
+  margin: 0;
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}
+
+/* Krążek w prawdziwej wielkości kratki. Obramowanie **jest** obwódką
+   właściciela: przy `border-box` wnętrze wychodzi równo `portraitRadius · 2`. */
+.portrait-crop-true {
+  position: relative;
+  display: block;
+  flex: none;
+  overflow: hidden;
+  border-radius: 50%;
+  border-style: solid;
+  border-color: var(--map-ring-own);
+  background: var(--map-backdrop);
+}
+
+.portrait-crop-true img {
+  position: absolute;
+  max-width: none;
+}
+
+.portrait-crop-zoom {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.portrait-crop-zoom input[type='range'] {
+  flex: 1;
+  min-width: 0;
+}
+
+.portrait-crop-zoom-value {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+  min-width: 3rem;
+  text-align: right;
+}
+
+.portrait-crop-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.portrait-crop-spacer {
+  flex: 1;
+}
+
+.portrait-crop-save {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Pod ramką portretu na karcie: kadr na mapie i — u gracza — zdanie o tym,
+   czemu samego portretu nie da się już zmienić (decyzja MG z 12.09). */
+.cp-portrait-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.cp-portrait-locked {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  flex: 1;
+  min-width: 8rem;
 }
 
 .creator-checkbox {
