@@ -64,7 +64,7 @@ describe('pasy zasięgu na trasie ruchu', () => {
 
   it('czyści ślady, zanim podgląd zdąży się wycofać', () => {
     const preview = blockAfter('private drawWalkPreview(): void {');
-    const cleared = preview.indexOf('this.hideFootprints()');
+    const cleared = preview.indexOf('this.routePrints.hide()');
     const firstReturn = preview.indexOf('return;');
     expect(cleared, 'podgląd trasy nie chowa śladów').toBeGreaterThan(0);
     expect(cleared, 'ślady chowane po pierwszym wyjściu — zostaną na mapie').toBeLessThan(
@@ -80,7 +80,7 @@ describe('pasy zasięgu na trasie ruchu', () => {
   it('skaluje ślady tokenem, nie ekranem', () => {
     // Nie `blockAfter`: sygnatura ma własną klamrę w typie `bandAt`, więc
     // liczenie zagnieżdżeń urwałoby się na liście parametrów.
-    const prints = between('private drawFootprints(', 'private footprintAt(');
+    const prints = between('private drawFootprints(', 'The floor this turn can still pay for');
     expect(prints, 'ślady wciąż liczone w pikselach ekranu').not.toContain('overlayScale');
     for (const ratio of ['FOOTPRINT_W_RATIO', 'FOOTPRINT_H_RATIO', 'FOOTPRINT_OFFSET_RATIO']) {
       expect(prints, `ślady nie używają ${ratio}`).toContain(ratio);

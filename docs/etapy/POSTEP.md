@@ -143,6 +143,18 @@ Pełny zapis w `decyzje-i-uproszczenia.md`; przeczytaj go, **zanim** cokolwiek t
 druga zmiana zdania w tej sprawie. **Wyjątek od 30c: Test Lojalności** zdaje się przy wyniku
 _mniejszym_ od Lojalności (s. 154).
 
+**Od 12.09 scena ma zamek na ruch graczy i NOWA SCENA WCHODZI ZAMKNIĘTA.**
+`Scene.playerMoveLocked` — przełącznik „Ruch graczy po tej mapie" w edytorze sceny, działa od razu,
+MG nie dotyczy nigdy. Sceny, które istniały przed tą zmianą, migracja **otworzyła**, ale każda nowa
+(i każda wciągnięta z pliku) startuje zamknięta: gracz zobaczy mapę, a figurą nie ruszy, dopóki MG
+nie odhaczy pola. Jeśli przy stole „gracz nie może chodzić", to jest pierwsze miejsce do sprawdzenia
+— i pierwsza rzecz do zrobienia w każdym nowym teście serwera, który każe graczowi ruszyć figurą.
+
+**Na „StrefiePrzemysłowej" został włączony tryb turowy (RUNDA 1: Marcin, Tony) — decyzją MG
+z 12.09, do wyłączenia jego ręką.** Zostaw go, dopóki MG nie powie inaczej; „✕" przy kolejce woła
+gołego `window.confirm`, więc z automatyki **nie da się go wyłączyć** bez wcześniejszego
+przechwycenia (patrz `pulapki-dev.md`, sekcja `ogledziny`).
+
 **Sceny testowe — cztery, bez zmian.** Aktywna „Strzelnica" (komplet pod Sieć); **„Korytarza 16e"
 nie kasuj** — to jedyna stała scena z widocznością Dynamiczną. Konta, współrzędne, stan po sesji
 i procedura oględzin Ról — `poligon.md`.
@@ -159,7 +171,7 @@ siedzi w `decyzje-i-uproszczenia.md` i **nie wciągaj ich z powrotem** jako nowy
 **Sesja zerowa z drużyną** jest nadal najlepszym testem 25a+25b+25c i trzech stron karty naraz —
 a od 30d pierwszym, przy którym każda Rola w drużynie gra inaczej niż reszta.
 
-**Testy na koniec ostatniej sesji:** **1987** w `shared`, **1092** na serwerze, **166** u klienta —
+**Testy na koniec ostatniej sesji:** **1988** w `shared`, **1094** na serwerze, **173** u klienta —
 zielone (liczby zmierzone 12.09; sumy w starszych notatkach są zaniżone, nie poprawiaj ich w dół).
 ESLint i Prettier czyste na kodzie, `tsc --noEmit` czysty w trzech pakietach (od 05.09 obejmuje
 też `packages/server/scripts/`). **Nie puszczaj `pnpm format` na `POSTEP.md`, `POMYSLY.md` ani
@@ -184,15 +196,15 @@ a nie do tego pliku.
 
 | obszar      | co obejmuje                                                    | umów | pułapek |
 | ----------- | -------------------------------------------------------------- | ---- | ------- |
-| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  |   36 |      18 |
+| `mapa`      | figury, zaznaczanie, narzędzia, obiekty sceny, ściany, efekty  |   38 |      18 |
 | `czat`      | rodzaje wierszy, `visibleTo`, filtr, `seq`                     |    3 |       3 |
-| `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    |    7 |      14 |
+| `serwer`    | Prisma i migracje, zdarzenia gniazda, zapisy karty, uploady    |    8 |      14 |
 | `ui`        | okna pływające, `z-index`, motyw, skróty, dostępność, wejście   |    8 |       7 |
 | `kosci`     | kubek, `rollFormula`, wezwania i prośby o Test, tabele losowe  |   13 |       1 |
 | `tura`      | budżet Akcji i metrów, kolejka, trasa, ruch przez ściany       |    7 |       4 |
 | `atak`      | broń i dodatki, amunicja, obrażenia, pancerz, rany krytyczne   |   28 |       8 |
 | `statysta`  | figura z kartą, `statBlock`, Wartość bojowa, `token:stat`      |   12 |       3 |
-| `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         |    5 |      10 |
+| `karta`     | strony i zakładki, panele, `sheet.css`, walidacja list         |    6 |      11 |
 | `postac`    | kreator, PD i awanse, Role i Zdolności, cyborgizacje, ekonomia |   22 |       2 |
 | `ekwipunek` | wiersze wyposażenia, przekazanie, łup, zasięg, oględziny       |   12 |       2 |
 | `czas`      | zegar świata, kalendarz, `statEffects`, leczenie po dobie      |   15 |       2 |
@@ -206,6 +218,62 @@ a nie do tego pliku.
 ## Notatki z dwóch ostatnich sesji
 
 Starsze — w całości w `archiwum/dziennik-sesji.md`.
+
+### Sesja 12.09 (czwarta) — ślady zamiast kresek, mapa zamknięta na klucz i karta, którą widać
+
+**Zlecenie MG, trzy rzeczy plus jedna dorzucona w trakcie:** (1) czcionki na karcie postaci mają
+wypełniać pola, w których stoją („liczba INT jest niewspółmiernie mała"); (2) sprawdzić, a jak nie
+ma — dorobić **blokadę ruchu graczy po mapie**, dopóki MG jej nie otworzy, żeby drużyna nie poznała
+mapy przed rozgrywką; (3) za idącą figurą mają zostawać **szare ślady butów** zamiast zielonej
+kreski; (4) w trakcie: zdjąć **biały przerywany okrąg** zaznaczenia.
+
+**Cztery pytania przed kodem, cztery decyzje MG.** Karta: pola Cech **wolno powiększyć** (kolumna
+ciągnie się na całą stronę, liczba 2,6 rem) i przegląd obejmuje **wszystkie cztery zakładki**.
+Blokada: **per scena**, nowe sceny zamknięte, istniejące otwarte migracją. Ślady: **obie kreski
+znikają**, a ślad ma się **barwić na czerwono w trybie turowym, żeby gracz wiedział, jak daleko
+dojdzie w tej Turze**. Okrąg: **zdjąć**, a sterowanie pokazać samą obwódką właściciela.
+
+**Blokady nie było w ogóle — to nowa funkcja, nie naprawa.** `Scene.playerMoveLocked` jedzie zwykłą
+łatą `scene:update` (nie własnym zdarzeniem jak `visibility`: niczego graczom nie zabiera), a odmowa
+`MOVE_LOCKED` stoi w `performTokenMove` **przed** `validateTokenMove` — tamto sądzi dopiero
+upuszczenie, a blokada musi ściąć też klatkę ciągnięcia. Cena, o której warto wiedzieć: domyślne
+„nowa scena zamknięta" wywróciło **57 testów w dziewięciu zestawach** serwera — każdy, kto każe
+graczowi ruszyć figurą, musi teraz otworzyć scenę zaraz po `scene:create`.
+
+**Ślad korzysta z tego samego glifu, co trasa planowana — i to jest cały pomysł.** Jedna droga
+(`drawWalkedTrail`) obsługuje marsz, ciągnięcie i poświatę; **trzy osobne pule** odcisków, bo
+poświata przeżywa marsz o pięć sekund i nie może dzielić sprite'ów z niczym, co rysuje się w tym
+samym czasie. Czerwień zaczyna się dokładnie tam, gdzie kończy się budżet Tury — sprawdzone na
+żywo: ciągnięcie na 19,3 m przy 12 m budżetu daje szary ślad do okręgu zasięgu i czerwony za nim.
+
+**Biały okrąg nie był zdublowany — i MG i tak kazał go zdjąć.** Kolorowa obwódka mówi **czyja** jest
+figura, biały okrąg mówił **którą prowadzę**; przedstawiłem różnicę, MG wybrał złożenie obu
+wiadomości w jedną kreskę. Podświetlenie musi jednak zostać **na nakładce** (`overlayScale`), bo
+wszystko w `TokenNode` liczy się w pikselach świata i przy stole znika — z sufitem grubości
+liczonym z kratki, żeby przy oddaleniu nie zjadło portretu.
+
+**Największa liczba na karcie stała w 16 px, bo przegrywała kaskadę.** Pudełko Cechy urosło od razu,
+liczba w środku ani drgnęła: `.sheet-window .cp-step { font: inherit }` (0-2-0) bije `.cp-stat-value`
+(0-1-0). Trzecia odsłona tej samej pułapki po `.cp-slot` (06.09) i `.advance-buy` (29b) — wpis
+w `pulapki-dev.md`. Poszły w górę też pule, progi, komórki Umiejętności, pola tekstowe, tabele,
+belki i zakładki; **nazwy Umiejętności zostały** przy 0,8 rem, bo większy krój kończy je wielokropkiem.
+
+**Oględziny na żywym stole, z jednym śladem i jedną wpadką.** Dwie sesje (`localhost` — MG,
+`[::1]` — Tony). Sprawdzone: kursor „nie wolno", zdanie na czacie, żeton nieruszony przy ciągnięciu
+i przy kliku, natychmiastowe otwarcie mapy z panelu MG, czerwień śladu w Turze, karta na czterech
+zakładkach i w wąskim oknie. **Wpadka:** „✕" przy kolejce woła **goły** `window.confirm`, więc
+zawiesił kartę pod CDP; zamknięcie karty odwołuje modal, ale **walka zostaje w bazie**, a moduł
+z `import('/src/socket.ts')` dostaje własną, niepodłączoną instancję, więc `endCombat()` z konsoli
+też nie przejdzie. **MG zdecydował: tryb turowy zostaje włączony** na „StrefiePrzemysłowej" (RUNDA 1,
+Marcin i Tony) i wyłączy go sam. Żeton Marcina wrócił na **1034/658** co do piksela, Tony nie drgnął
+(752/799), blokada mapy przywrócona na **otwartą**. Ślad świadomy: kilka kart „Akcja Ruchu — poza
+budżetem tury" i dwa zdania „MG nie otworzył jeszcze tej mapy do ruchu" na czacie.
+
+**Testy:** **1094** na serwerze (+2 o blokadzie), **1988** w `shared` (+1 o sanityzacji łaty),
+**173** u klienta (+7 nowy `walk-trail.test.ts`) — zielone. ESLint, Prettier i `tsc --noEmit` czyste
+w trzech pakietach; `packages/server/src/app.ts` i `portrait-backfill.test.ts` są niesformatowane
+**od dwóch sesji** (tutaj nieruszane). Umowy: dwie w `mapa`, jedna w `serwer`, jedna w `karta`;
+pułapki: jedna w `karta`, jedna dopisana w `ogledziny`.
 
 ### Sesja 12.09 (trzecia) — okienko w mgle i portret bez pierścienia na twarzy
 
@@ -263,58 +331,3 @@ na nocny.
 na serwerze — zielone. ESLint i Prettier czyste **na zmienionych plikach**; `packages/server/src/app.ts`
 i `portrait-backfill.test.ts` są niesformatowane **od poprzedniej sesji** (tutaj nieruszane).
 Umowy: dwie w `mapa`; pułapki: trzy w `mapa`.
-
-### Sesja 12.09 (druga) — portret ujęty pod mapę
-
-**Zlecenie MG:** dokładając portret, ma być **podgląd i możliwość dopasowania kadru do tego, jak
-portret będzie widoczny na mapie**; poza mapą portret ma zostać widoczny **w całości**.
-Doprecyzowane w trakcie: **portret wybiera się raz, przy tworzeniu postaci** — w rozgrywce gracz
-go już nie zmienia, zmienia wyłącznie kadr na mapie.
-
-**Trzy pytania przed kodem, trzy decyzje MG.** Kadr mieszka **przy obrazku** (wiersz puli), a nie
-przy postaci — ustawia się go raz na życie pliku. Kadruje się **wyłącznie mapę**: karta i kreator
-pokazują cały obrazek (`object-fit: contain` od 27a), a małe okrągłe awatary zostają przy środkowym
-`cover`, bo w kółku 1,35 rem cały prostokąt byłby paskiem. I **jedna pula na wszystko**: wgranie
-wprost na kartę też zakłada wiersz.
-
-**Problem był realny i mierzalny.** Mapa liczyła `extent / min(w, h)` z kotwicą 0,5 — ślepy środek.
-Portret Tony'ego z żywej kampanii ma **443 × 887**, więc krążek brał środkowy pas: twarz mała,
-broda na krawędzi. Po skadrowaniu (zoom 1,12, `y` 0,30) twarz wypełnia krążek — widać to na
-zrzucie z sesji.
-
-**Cały rachunek wyszedł do `shared/portrait-crop.ts`** (jak `camera.ts` i `token-ring.ts`):
-`clampPortraitCrop` pilnuje, żeby krążek nie wyjechał poza obraz — a granice zależą od boków
-grafiki, więc **wymiary są argumentem**, nie założeniem. Kwadrat przy zoomie 1 nie ma czym
-przesuwać (to nie błąd, to geometria) i dopiero przybliżenie otwiera swobodę. Kadr domyślny daje
-**dokładnie** dawne zachowanie, więc po migracji żadna figura nie drgnęła.
-
-**Kadru nie wypala się w plik** — uploady są niezmienne, bo kopia zapasowa trzyma je na twardych
-dowiązaniach. Trzy kolumny `Float` przy `PortraitAsset` z wartościami domyślnymi; migracja
-`stage_portrait_map_crop`.
-
-**Pułapka, która wyglądałaby jak zepsute rozgłoszenie:** `TokenNode` porzuca przerysowanie, gdy
-`signature` się nie zmienił, a kadr jest cechą **grafiki**, nie żetonu — nazwa, obrazek i PW
-zostają te same. Bez `cropFor(...)` w podpisie zapis szedł do bazy, rozgłoszenie docierało, store
-się aktualizował, a na mapie nie działo się nic. Wpis w `pulapki-dev.md`.
-
-**`portrait:crop` to jedyne zdarzenie puli bez `role: ROLE_GM`** — bo MG dopisał, że gracz ma móc
-zmieniać kadr własnej figury. Warunek sprawdza serwer (`ownsPortrait`), nie przycisk. **Skutek
-uboczny do wiedzy MG:** gdyby dwie postacie nosiły ten sam plik portretu, kadr poprawiony przez
-jedną zmienia ujęcie obu.
-
-**Trasa `/api/uploads/portraits` zniknęła** (kładła plik bez wiersza). Portrety wgrane przed tą
-zmianą wciąga do puli `portrait-backfill.ts` przy starcie serwera — i to nie jest porządki:
-**bez tego funkcja nie działałaby dokładnie dla postaci, które naprawdę grają**. Na żywej bazie
-wciągnął dwa portrety (Marcin 626 × 627, Tony 443 × 887).
-
-**Oględziny na żywym stole, bez długu.** Dwie sesje graczy (`localhost` — Marcin, `[::1]` — Tony);
-MG ma hasło, którego nie wpisuję, więc ścieżka MG sprawdzona przez wspólny kod, a ścieżka gracza
-w całości: przycisk na karcie, okno, przeciąganie, kółko, suwak, zapis, „Wyśrodkuj". **Rozgłoszenie
-sprawdzone międzysesyjnie** — kadr zapisany u Tony'ego zmienił jego żeton w sesji Marcina
-natychmiast, bez przeładowania. Kadr Tony'ego **przywrócony do domyślnego** po oględzinach: nie
-o to prosił MG.
-
-**Testy:** **154** u klienta (+11: `portrait-crop.test.ts`), **1987** w `shared` (+14 o geometrii
-kadru), **1092** na serwerze (+4 o uzupełnieniu puli, +1 o kadrze w `tokens.test.ts`, +1 o zdjętej
-trasie) — zielone. ESLint, Prettier i `tsc -b` czyste. Umowy: jedna w `mapa`, jedna w `serwer`;
-pułapki: jedna w `mapa`.

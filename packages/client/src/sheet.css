@@ -121,7 +121,10 @@
   padding: 0.3rem 1.1rem;
   font-family: var(--font-cp-cond);
   font-weight: 500;
-  font-size: 0.76rem;
+  /* 0,88 rem, nie 0,76 (12.09): zakładki stoją w pasku wysokim na 30 px i są
+     jedyną nawigacją karty — mniejsze od nazw umiejętności pod spodem nie mają
+     prawa być. */
+  font-size: 0.88rem;
   letter-spacing: 0.09em;
   text-transform: uppercase;
   color: var(--cp-on-red-faint);
@@ -205,7 +208,9 @@
   color: var(--cp-bar-ink);
   font-family: var(--font-cp-cond);
   font-weight: 500;
-  font-size: 0.74rem;
+  /* Czarna belka trzyma nazwę kategorii — na wydruku jest wyraźnie większa niż
+     wiersze pod nią, a tu do 12.09 była od nich mniejsza. */
+  font-size: 0.84rem;
   letter-spacing: 0.03em;
   padding: 0.14rem 0.4rem;
   display: flex;
@@ -220,9 +225,12 @@
   text-transform: none;
 }
 
+/* Nagłówki kolumn liczbowych („POZ. · CECHA · BAZA") zostają najmniejszym
+   krojem karty — to podpis kolumny, nie treść — ale 0,62 rem dawało 9,9 px,
+   czyli mniej niż minimum czytelności przy stole. */
 .cp-bar--th {
   justify-content: center;
-  font-size: 0.62rem;
+  font-size: 0.7rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -256,6 +264,10 @@
 }
 
 /* Pola formularza wewnątrz arkusza: bez ramek, bo ramką jest samo pole. */
+/* 0,95 rem, nie 0,85 (12.09): pole arkusza ma 1,35 rem wysokości w minimum
+   i zwykle stoi wyżej, więc krój z 0,85 rem zostawiał w nim pas pustego
+   papieru nad i pod wpisaną treścią. Etykieta obok (`.cp-label`, kapitaliki
+   0,82 rem) zostaje mniejsza — na wydruku też jest drobniejsza od treści. */
 .cp-field input,
 .cp-field select,
 .cp-field textarea {
@@ -263,7 +275,7 @@
   border: none;
   color: var(--cp-ink);
   font-family: inherit;
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   min-width: 0;
   padding: 0.05rem 0.15rem;
 }
@@ -371,14 +383,9 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .cp-stats {
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
-
-  .cp-stat {
-    flex: 1 1 4.2rem;
-  }
+  /* Cechy w wąskim oknie: reguły są **niżej**, przy samej kolumnie Cech —
+     od 12.09 baza `.cp-stat` niesie własne `flex`, a przy równej wadze
+     selektora wygrywa reguła późniejsza w pliku. */
 
   /* Pola z dołu strony drugiej też schodzą do jednej kolumny — w dwóch
      „Zakwaterowanie" zostaje samą etykietą bez miejsca na wybór. */
@@ -660,6 +667,10 @@
   display: none;
 }
 
+/* Człowieczeństwo i Punkty Wytrzymałości to dwie największe liczby strony po
+   Cechach — i tak też mają wyglądać (zlecenie MG, 12.09). Do 12.09 stały
+   w 1,15 rem w polu wysokim na 49 px, czyli zajmowały nieco ponad jedną
+   trzecią jego wysokości. */
 .cp-pool-value {
   display: flex;
   align-items: center;
@@ -667,12 +678,15 @@
   gap: 0.3rem;
   font-family: var(--font-cp-cond);
   font-weight: 700;
-  font-size: 1.15rem;
+  font-size: 1.7rem;
   line-height: 1;
 }
 
+/* Szerokość w `em`, nie w `rem`: pole ma pomieścić trzy cyfry **tej** liczby,
+   więc rośnie razem z nią. W `rem` powiększenie kroju kończyło się kursorem
+   wypychającym trzecią cyfrę poza pole. */
 .cp-pool-value input {
-  width: 2.6rem;
+  width: 2.4em;
   font: inherit;
   text-align: center;
 }
@@ -682,21 +696,23 @@
 }
 
 /* Strzałki przy dużej cyfrze puli są odpowiednio większe — inaczej wyglądałyby
-   jak pyłek przy 1,15 rem. */
+   jak pyłek przy 1,7 rem. */
 .cp-pool-value .cp-step-arrows {
-  width: 0.75rem;
+  width: 0.9rem;
 }
 
 .cp-pool-value .cp-step-arrow {
-  font-size: 0.5rem;
+  font-size: 0.6rem;
 }
 
 .cp-pool-max {
   color: var(--cp-ink-dim);
 }
 
+/* „Poważnie Ranny" i „Przeżywalność" — progi, nie liczniki, więc mniejsze niż
+   PW, ale i tak w polu wysokim na 36 px stały do 12.09 w 1 rem. */
 .cp-pool--flat .cp-pool-value {
-  font-size: 1rem;
+  font-size: 1.35rem;
 }
 
 .cp-pools {
@@ -712,15 +728,25 @@
 
 /* --- kolumna cech --- */
 
+/* Kolumna Cech ciągnie się na całą wysokość strony (zlecenie MG, 12.09).
+
+   Do 12.09 dziesięć pudełek po 39 px kończyło się w połowie karty, a pod nimi
+   zostawało pół tysiąca pikseli czerwieni — przy liczbie 16 px, czyli mniejszej
+   niż etykieta pola obok. Na wydruku CP RED Cecha jest **największą liczbą na
+   stronie** i tak ma być tutaj: `align-self: stretch` łamie `align-items: start`
+   siatki tylko dla tej jednej kolumny, a `flex: 1` rozdziela zysk po równo. */
 .cp-stats {
   display: flex;
   flex-direction: column;
   gap: var(--cp-gutter);
+  align-self: stretch;
 }
 
 .cp-stat {
+  flex: 1 1 auto;
   flex-direction: column;
   align-items: stretch;
+  justify-content: center;
   gap: 0;
   padding: 0.1rem 0.25rem 0.15rem;
   position: relative;
@@ -736,7 +762,7 @@
   cursor: pointer;
   font-family: var(--font-cp-cond);
   font-weight: 700;
-  font-size: 0.74rem;
+  font-size: 0.86rem;
   letter-spacing: 0.04em;
   color: var(--cp-ink);
   padding: 0 0.1rem;
@@ -747,12 +773,17 @@
   color: var(--cp-red);
 }
 
-.cp-stat-value {
+/* `.sheet-window` w selektorze nie jest ozdobą: skóra przełącznika liczbowego
+   (`.sheet-window .cp-step`, 0-2-0) niesie `font: inherit`, więc goły
+   `.cp-stat-value` (0-1-0) przegrywał kaskadę i liczba zostawała przy 16 px
+   niezależnie od tego, co tu wpisano. Ta sama pułapka, co `.advance-buy`
+   z 29b — i tak samo niewidoczna w kodzie komponentu. */
+.sheet-window .cp-stat-value {
   width: 100%;
   font-family: var(--font-cp-cond);
   font-weight: 700;
-  font-size: 1.3rem;
-  line-height: 1.1;
+  font-size: 2.6rem;
+  line-height: 1;
   text-align: center;
 }
 
@@ -761,15 +792,18 @@
 }
 
 .cp-stat-value .cp-step-value {
-  min-width: 1.2rem;
+  min-width: 1.4rem;
 }
 
+/* Strzałki rosną z liczbą, ale wolniej: przy 2,2 rem para strzałek liczona
+   proporcjonalnie byłaby drugą, konkurencyjną kolumną w polu szerokim na
+   5,2 rem. Mają być tym, czym są — uchwytem obok liczby. */
 .cp-stat-value .cp-step-arrows {
-  width: 0.7rem;
+  width: 0.85rem;
 }
 
 .cp-stat-value .cp-step-arrow {
-  font-size: 0.45rem;
+  font-size: 0.6rem;
 }
 
 /* Małe pole „z" pod cechą — bieżące Szczęście i EMP w grze. */
@@ -783,29 +817,53 @@
 }
 
 .cp-stat-sub input {
-  width: 1.5rem;
+  width: 1.7rem;
   min-width: 0;
-  font-size: 0.8rem;
+  font-size: 1.05rem;
   font-weight: 600;
 }
 
 .cp-stat-sub .cp-step {
-  font-size: 0.8rem;
+  font-size: 1.05rem;
   font-weight: 600;
 }
 
 .cp-stat-sub .cp-step-value {
-  min-width: 0.7rem;
+  min-width: 0.9rem;
 }
 
 .cp-stat-sub .cp-step-arrows {
-  width: 0.5rem;
+  width: 0.6rem;
 }
 
 .cp-stat-sub-value {
-  font-size: 0.8rem;
+  font-size: 1.05rem;
   font-weight: 600;
   padding: 0 0.2rem;
+}
+
+/* Wąskie okno: Cechy schodzą w rząd z zawijaniem, więc pudełko przestaje być
+   wysoką kolumną i robi się kaflem ~4,2 rem. Liczba musi zejść razem z nim —
+   2,6 rem w kaflu tej szerokości nie zmieściłoby się obok strzałek, a pole ma
+   `overflow: hidden`, więc obcięłoby ją bez śladu. */
+@container (max-width: 700px) {
+  .cp-stats {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-self: auto;
+  }
+
+  .cp-stats .cp-stat {
+    flex: 1 1 4.2rem;
+  }
+
+  .sheet-window .cp-stats .cp-stat-value {
+    font-size: 1.5rem;
+  }
+
+  .sheet-window .cp-stats .cp-stat-abbr {
+    font-size: 0.74rem;
+  }
 }
 
 /* Etap 39: Cecha przesunięta efektem czasowym mówi to kolorem małego pola „z",
@@ -968,18 +1026,22 @@
   min-height: 1.3rem;
 }
 
+/* Trzy kolumny liczb obok nazwy umiejętności. Nazwa zostaje przy 0,8 rem —
+   wypełnia swoje pole na szerokość i większy krój kończyłby ją wielokropkiem
+   („Odporność na tortury/narkotyki") — ale liczby mają całe 34 px na 26 px
+   i stały w nich mniejsze niż nazwa obok. */
 .cp-skill-cell input {
   width: 100%;
-  font-size: 0.8rem;
+  font-size: 0.95rem;
 }
 
 .cp-skill-cell .cp-step {
-  font-size: 0.8rem;
+  font-size: 0.95rem;
   justify-content: center;
 }
 
 .cp-skill-cell .cp-step-value {
-  min-width: 0.8rem;
+  min-width: 0.9rem;
 }
 
 .cp-skill-base {
@@ -988,7 +1050,7 @@
   cursor: pointer;
   font-family: var(--font-cp-cond);
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: 1.05rem;
   color: var(--cp-ink);
   padding: 0;
   width: 100%;
@@ -1055,7 +1117,7 @@
   color: var(--cp-bar-ink);
   font-family: var(--font-cp-cond);
   font-weight: 500;
-  font-size: 0.66rem;
+  font-size: 0.72rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   text-align: left;
@@ -1063,13 +1125,17 @@
   border: none;
 }
 
+/* Wiersz tabeli broni bywa wysoki na 70 px, ale wysokość robią mu **guziki**,
+   nie pusty papier — więc treść rośnie tu ostrożnie (0,82 → 0,88 rem). Krój
+   dobrany pod nazwę broni: „Ciężki pistolet maszynowy" ma się mieścić w jednej
+   linii, a to on wyznacza sufit. */
 .cp-table td {
   background: var(--cp-paper);
   color: var(--cp-ink);
   border: none;
   padding: 0.1rem 0.3rem;
   vertical-align: middle;
-  font-size: 0.82rem;
+  font-size: 0.88rem;
 }
 
 .cp-table input,

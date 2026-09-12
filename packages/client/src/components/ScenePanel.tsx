@@ -207,6 +207,29 @@ function SceneEditor({ onClose }: { onClose: () => void }) {
             : 'Gracz widzi tylko to, co widzą jego tokeny. Narysuj ściany narzędziem „Ściany” (klawisz W); bez ścian widać całą mapę, a gracz bez tokenu — nic.'}
       </p>
 
+      {/* Blokada ruchu graczy (zlecenie MG, 12.09). Działa od razu, jak dwie
+          rzeczy nad nią i jedna pod — ale z innego powodu niż widoczność:
+          tamta zabiera graczom figury z listy, a ta niczego nie zabiera i
+          niczego nie pokazuje. Zmienia wyłącznie odpowiedź na pytanie „wolno
+          mi tę figurę podnieść", więc jedzie zwykłą łatą sceny.
+
+          Nowa scena wchodzi **zamknięta**: mapa dopiero budowana nie jest
+          mapą, po której drużyna ma chodzić. */}
+      <label className="auth-label">
+        <input
+          type="checkbox"
+          checked={!scene.playerMoveLocked}
+          onChange={(e) => void updateScene(scene.id, { playerMoveLocked: !e.target.checked })}
+        />{' '}
+        Ruch graczy po tej mapie
+      </label>
+      <p className="auth-hint">
+        {scene.playerMoveLocked
+          ? 'Zamknięta. Gracze widzą mapę, ale nie ruszą na niej żadną figurą — także własną. Odblokuj, gdy rozgrywka na tej scenie faktycznie się zaczyna.'
+          : 'Otwarta. Gracze prowadzą własne figury. Zamknij, jeśli chcesz pokazać mapę, zanim drużyna zacznie ją zwiedzać na własną rękę.'}
+        {' Ciebie blokada nie dotyczy nigdy. Zmiana działa od razu, bez „Zapisz”.'}
+      </p>
+
       {/* Darkness only means something where sight comes from tokens, so the
           switch appears with the mode that asks them. It applies at once for the
           same reason the mode does: turning the lights out takes every token in

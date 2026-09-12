@@ -57,6 +57,10 @@ export function buildWelcomeScene(width: number, height: number): SceneView {
     gridMode: 'grid',
     grid: { ...DEFAULT_GRID, sizePx: width / WELCOME_MAP_COLUMNS },
     metersPerSquare: 2,
+    // Blokada ruchu (12.09) jest tu formalnością: na plakacie nie stoi ani
+    // jedna figura, więc nie ma czym ruszać — ale otwarte znaczy „ta atrapa
+    // niczego nie zabrania", co jest prawdą, a nie przeoczeniem.
+    playerMoveLocked: false,
     // Nic tu nie jest tajne i nie ma czego odsłaniać: mgła malowana potrzebuje
     // MG, a widoczność dynamiczna — figur gracza, których na tle nie ma.
     visibility: 'open',

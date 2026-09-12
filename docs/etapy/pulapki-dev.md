@@ -506,6 +506,7 @@ sprawdzaj sumę rozbicia rzutu, nie liczbę w kolumnie.
 
 ## karta — Karta postaci: układ, panele, pola
 
+- **`font-size` na polu karty nic nie robi, jeśli w środku stoi przełącznik liczbowy** — `.sheet-window .cp-step { font: inherit }` (0-2-0) bije gołe `.cp-stat-value` (0-1-0), więc liczba zostaje przy 16 px, choćbyś wpisał 2,6 rem. Rozpoznanie: `getComputedStyle(el).fontSize` w konsoli, nie oko — pudełko rośnie, liczba nie.
 - **Ujemne `hpCurrent` wpisane wprost do bazy znika przy pierwszym odczycie karty** — `collectCharacterDataPatch` odrzuca `hpCurrent < 0`, a `parseCharacterData` podstawia wtedy PW **domyślnej** karty (35), nie maksimum tej postaci ani zera. Konający NPC przygotowany na −5 wraca jako 35/40 i pierwszy Test idzie na PT z innego progu ran. Obrażenia i tak mają podłogę na zerze (`damage.ts`, „HP floor at 0”), więc **poligon przygotowuje się przez 0**.
 - **„Panel sam się zresetował po zmianie z zewnątrz" to zwykle przełączona zakładka karty, nie rozgłoszenie** — filtr i otwarty rejestr w „Awansie" giną przy KARTA ↔ ŚCIEŻKA ŻYCIA, bo to stan lokalny, a `setTab` odmontowuje stronę. Rozpoznanie: zapamiętaj węzeł (`window.__probe = el`) i sprawdź `isConnected` po zdarzeniu — węzeł nadal podłączony znaczy, że winowajcą jest co innego.
 - **Ta sama nazwa klasy CSS dwa razy w `sheet.css` — wygrywa późniejsza.** `.cp-slot` była etykietą lokacji pancerza **i** pudełkiem gniazda cyborgizacji, więc „Głowa/Korpus/Tarcza” znikały z tabeli. Przed dopisaniem klasy: `grep -n '^\.nazwa {' sheet.css`.
@@ -518,6 +519,19 @@ sprawdzaj sumę rozbicia rzutu, nie liczbę w kolumnie.
 - **`validateSkills` i `validateStats` odrzucają CAŁĄ mapę przez jeden wiersz spoza zakresu** — nie ścinają go i nie wyrzucają. Objaw jest cichy: figura jest po prostu słabsza, niż ją wpisano.
 
 ---
+
+- **Wpisany `font-size` nie działa, bo skóra przełącznika liczbowego niesie `font: inherit` (12.09).**
+  Trzecia odsłona tej samej kaskady, co `.advance-buy` z 29b i `.cp-slot` z 06.09 — i najbardziej
+  myląca z trzech, bo **coś się zmienia**. Powiększenie pudełka Cechy zadziałało od razu (`.cp-stat`
+  nie ma konkurencji), a liczba w środku ani drgnęła: `.cp-stat-value` waży 0-1-0, a
+  `.sheet-window .cp-step` — skóra przełącznika, wspólna dla karty, okna rzutu i menu statysty —
+  waży 0-2-0 i wprost mówi `font: inherit`. Objaw czyta się jako „CSS się nie przeładował" albo
+  „to nie ta klasa", i tak też go najpierw zdiagnozowałem.
+
+  **Rozpoznanie w jednym kroku:** `getComputedStyle(document.querySelector('.cp-stat-value'))
+  .fontSize` w konsoli. Wartość, której nie ma w twojej regule, znaczy drugą definicję —
+  dokładnie ta sama procedura, co przy `.cp-slot`. **Naprawa:** prefiks `.sheet-window` przy
+  selektorze i reguła **niżej w pliku** niż skóra przełącznika (`sheet.css` ma ją przy ~305 wierszu).
 
 - **„Panel sam się zresetował po zmianie z zewnątrz" — zanim oskarżysz rozgłoszenie, sprawdź, czy nie przełączyłeś zakładki karty (09.09, oględziny 29a).**
   Objaw z oględzin: gracz zaznacza w „Awansie" filtr „tylko na które mnie stać" i rozwija rejestr,
@@ -949,6 +963,16 @@ dt.files`, `input.dispatchEvent(new Event('change', { bubbles: true }))` — Rea
   a hurtowe kasowanie warstwy wraca `Ctrl+Z` (wszystkie sześć zdarzeń `*:clear` woła
   `rememberDeletion`). Zanim uznasz brak pytania za usterkę, sprawdź **obie** rzeczy: flagę
   `Campaign.sandbox` i to, czy zdarzenie odkłada wpis w buforze cofania.
+
+  **Druga połowa tej samej pułapki, znaleziona 12.09: pyta też „✕" przy kolejce inicjatywy.**
+  `stopTurnMode` w `CombatBar.tsx` woła **goły** `window.confirm` („Wyłączyć tryb turowy?"),
+  a nie `confirmDestructive`, więc **flaga `sandbox` go nie zdejmuje** i pyta zawsze. Karta
+  zawisła na amen w połowie oględzin, bo przechwycenia nie założyłem — przycisk nie wygląda na
+  niszczący. **Zamknięcie karty nie jest wyjściem:** modal ginie jako „Anuluj", więc walka
+  **zostaje w bazie**, a kolejnej kartki nie da się już zalogować jako to samo gniazdo — moduł
+  wciągnięty przez `import('/src/socket.ts')` dostaje **własną**, niepodłączoną instancję
+  (`NOT_CONNECTED`), więc `endCombat()` z konsoli też nie przejdzie. Zostaje ręka MG.
+  **Przed dotknięciem „✕" zakładaj `window.confirm = () => true`.**
 
 - **Slot paska akcji trzeba klikać po współrzędnych z DOM-u, nie z pamięci.** Lista przesuwa się
   o cały wiersz, gdy figura zyska albo straci chip stanu (04.09: dołożenie statusu

@@ -2807,6 +2807,9 @@ export function combatErrorText(code: string): string {
     // refusal card; the tracker only needs to say that it was stopped.
     case 'MOVE_REFUSED':
       return 'Ruch odrzucony — szczegóły na karcie odmowy.';
+    // Zlecenie MG 12.09: mapa zamknięta, dopóki MG jej nie otworzy.
+    case 'MOVE_LOCKED':
+      return 'MG nie otworzył jeszcze tej mapy do ruchu.';
     // Stage 14d: the refusal already carries its own sentence on the card.
     case 'STATUS_BLOCKED':
       return 'Stan tokenu nie pozwala na tę Akcję — szczegóły na karcie odmowy.';

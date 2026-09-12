@@ -446,6 +446,23 @@ export class TokenNode extends Container {
   }
 
   /**
+   * Kolor obwódki właściciela: zielona — moja figura, błękitna — cudza gracza,
+   * czerwona — NPC.
+   *
+   * Czyta go `MapRenderer`, odkąd „tą figurą sterują moje kliknięcia" mówi
+   * **pogrubiona własna obwódka**, a nie osobny biały okrąg (zlecenie MG,
+   * 12.09): nakładka musi znać kolor, który ma pogrubić.
+   */
+  get ownerRingTint(): number {
+    return this.ringTint;
+  }
+
+  /** Promień osi obwódki właściciela w pikselach świata — dla tej samej nakładki. */
+  get ownerRingRadius(): number {
+    return ownerRingRadius(this.extentPx);
+  }
+
+  /**
    * Turns the figure locally (stage 27j) — what dragging and marching do while
    * they are happening.
    *

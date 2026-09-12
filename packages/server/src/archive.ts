@@ -272,6 +272,7 @@ const SCENE_COLUMNS = {
   explore: true,
   spawnX: true,
   spawnY: true,
+  playerMoveLocked: true,
 } as const;
 
 export async function exportScene(
@@ -513,6 +514,9 @@ export async function importScene(
       explore: bool(sceneColumns.explore, true),
       spawnX: maybeNum(sceneColumns.spawnX),
       spawnY: maybeNum(sceneColumns.spawnY),
+      // Domyślnie **zamknięta**, jak przy nowej scenie (12.09): mapa wjeżdżająca
+      // z pliku jest dla stołu tak samo nieznana, jak dopiero co narysowana.
+      playerMoveLocked: bool(sceneColumns.playerMoveLocked, true),
     },
     select: { id: true },
   });

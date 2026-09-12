@@ -8,6 +8,62 @@ decyzji, listy tego, co zostało niezweryfikowane, albo nazwy migracji.
 Kolejność: od najnowszych. Treść wpisów jest niezmieniona.
 
 
+### Sesja 12.09 (druga) — portret ujęty pod mapę
+
+**Zlecenie MG:** dokładając portret, ma być **podgląd i możliwość dopasowania kadru do tego, jak
+portret będzie widoczny na mapie**; poza mapą portret ma zostać widoczny **w całości**.
+Doprecyzowane w trakcie: **portret wybiera się raz, przy tworzeniu postaci** — w rozgrywce gracz
+go już nie zmienia, zmienia wyłącznie kadr na mapie.
+
+**Trzy pytania przed kodem, trzy decyzje MG.** Kadr mieszka **przy obrazku** (wiersz puli), a nie
+przy postaci — ustawia się go raz na życie pliku. Kadruje się **wyłącznie mapę**: karta i kreator
+pokazują cały obrazek (`object-fit: contain` od 27a), a małe okrągłe awatary zostają przy środkowym
+`cover`, bo w kółku 1,35 rem cały prostokąt byłby paskiem. I **jedna pula na wszystko**: wgranie
+wprost na kartę też zakłada wiersz.
+
+**Problem był realny i mierzalny.** Mapa liczyła `extent / min(w, h)` z kotwicą 0,5 — ślepy środek.
+Portret Tony'ego z żywej kampanii ma **443 × 887**, więc krążek brał środkowy pas: twarz mała,
+broda na krawędzi. Po skadrowaniu (zoom 1,12, `y` 0,30) twarz wypełnia krążek — widać to na
+zrzucie z sesji.
+
+**Cały rachunek wyszedł do `shared/portrait-crop.ts`** (jak `camera.ts` i `token-ring.ts`):
+`clampPortraitCrop` pilnuje, żeby krążek nie wyjechał poza obraz — a granice zależą od boków
+grafiki, więc **wymiary są argumentem**, nie założeniem. Kwadrat przy zoomie 1 nie ma czym
+przesuwać (to nie błąd, to geometria) i dopiero przybliżenie otwiera swobodę. Kadr domyślny daje
+**dokładnie** dawne zachowanie, więc po migracji żadna figura nie drgnęła.
+
+**Kadru nie wypala się w plik** — uploady są niezmienne, bo kopia zapasowa trzyma je na twardych
+dowiązaniach. Trzy kolumny `Float` przy `PortraitAsset` z wartościami domyślnymi; migracja
+`stage_portrait_map_crop`.
+
+**Pułapka, która wyglądałaby jak zepsute rozgłoszenie:** `TokenNode` porzuca przerysowanie, gdy
+`signature` się nie zmienił, a kadr jest cechą **grafiki**, nie żetonu — nazwa, obrazek i PW
+zostają te same. Bez `cropFor(...)` w podpisie zapis szedł do bazy, rozgłoszenie docierało, store
+się aktualizował, a na mapie nie działo się nic. Wpis w `pulapki-dev.md`.
+
+**`portrait:crop` to jedyne zdarzenie puli bez `role: ROLE_GM`** — bo MG dopisał, że gracz ma móc
+zmieniać kadr własnej figury. Warunek sprawdza serwer (`ownsPortrait`), nie przycisk. **Skutek
+uboczny do wiedzy MG:** gdyby dwie postacie nosiły ten sam plik portretu, kadr poprawiony przez
+jedną zmienia ujęcie obu.
+
+**Trasa `/api/uploads/portraits` zniknęła** (kładła plik bez wiersza). Portrety wgrane przed tą
+zmianą wciąga do puli `portrait-backfill.ts` przy starcie serwera — i to nie jest porządki:
+**bez tego funkcja nie działałaby dokładnie dla postaci, które naprawdę grają**. Na żywej bazie
+wciągnął dwa portrety (Marcin 626 × 627, Tony 443 × 887).
+
+**Oględziny na żywym stole, bez długu.** Dwie sesje graczy (`localhost` — Marcin, `[::1]` — Tony);
+MG ma hasło, którego nie wpisuję, więc ścieżka MG sprawdzona przez wspólny kod, a ścieżka gracza
+w całości: przycisk na karcie, okno, przeciąganie, kółko, suwak, zapis, „Wyśrodkuj". **Rozgłoszenie
+sprawdzone międzysesyjnie** — kadr zapisany u Tony'ego zmienił jego żeton w sesji Marcina
+natychmiast, bez przeładowania. Kadr Tony'ego **przywrócony do domyślnego** po oględzinach: nie
+o to prosił MG.
+
+**Testy:** **154** u klienta (+11: `portrait-crop.test.ts`), **1987** w `shared` (+14 o geometrii
+kadru), **1092** na serwerze (+4 o uzupełnieniu puli, +1 o kadrze w `tokens.test.ts`, +1 o zdjętej
+trasie) — zielone. ESLint, Prettier i `tsc -b` czyste. Umowy: jedna w `mapa`, jedna w `serwer`;
+pułapki: jedna w `mapa`.
+
+
 ### Sesja 12.09 — płótno, które nadąża, i pasek życia poza twarzą
 
 **Zlecenie MG, trzy punkty:** (1) chowając albo przesuwając boczne paski, mapa ma się sama

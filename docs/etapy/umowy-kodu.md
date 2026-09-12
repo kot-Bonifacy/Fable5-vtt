@@ -15,6 +15,8 @@ indeksu i pełny wpis pod spodem.
 
 ## mapa — Figury, narzędzia i obiekty sceny
 
+- **Ślad przebytej drogi to odciski butów, nie kreska** — `MapRenderer.drawWalkedTrail` (jedna droga dla marszu, ciągnięcia i poświaty), kolory `TRAIL_COLOR` / `TRAIL_COLOR_OVER`, granicę czerwieni liczy `trailOverFrom` w metrach **gruntu**. Trzy pule `FootprintPool` i żadna nie pożycza sprite'ów sąsiadce: trasa, ziemia pod figurą, poświata. Zapasowa kreska zostaje tylko na wypadek niewczytanego glifu.
+- **„Prowadzę tę figurę" mówi pogrubiona obwódka właściciela**, nie osobny okrąg — `drawSelectionRing` rysuje ją na nakładce, promieniem `node.ownerRingRadius` i kolorem `node.ownerRingTint`, z sufitem grubości liczonym z kratki. Uchwyt obrotu wisi dalej na `outerRadius + 22k` i nie potrzebuje okręgu pod sobą.
 - **Okienko w mgle wokół własnej figury** — `fogPeepRadius` w `map/token-ring.ts` (wielkość), `MapRenderer.drawFogPeepholes` (rysunek, ostatni przebieg kompozytu) i `refreshFogPeepholes` (trzy wejścia: `setTokens`, przeciąganie, krok marszu). Brzeg gaśnie gradientem z kanwy, nie pierścieniami.
 - **Kadr portretu na mapie** — trzy liczby przy wierszu `PortraitAsset`, rachunek w `shared/portrait-crop.ts`, `TokenNode.fitImage` tylko go stosuje. Kadr jest cechą **obrazka**, pytany adresem pliku (`ctx.portraitCrops`), i musi być w podpisie figury, inaczej przestawienie go nie przerysuje żetonu. Kadr wolno wywieźć **poza obraz** — pustkę zamalowuje krążek tła (`PORTRAIT_BACKDROP`), rysowany zawsze.
 - **Drabinka paska PW** — `tokenHpRung` w `shared/figures.ts`, jedna dla mapy i dla panelu postaci (cztery szczeble: `healthy`, `light`, `serious`, `mortal`). Kolory obrączki to nocne `--ok` / `--hurt-light` / `--warn` / `--err` przepisane do `HP_RUNG_COLORS`; rdzeń dalej nie woła `woundStateFromHp`, zgodności pilnują dwa testy.
@@ -53,6 +55,52 @@ indeksu i pełny wpis pod spodem.
 - **Kosz figur pyta zawsze, także na poligonie** — `Ctrl+Z` cofa scenerię, nie figury; dlatego `Delete` figur nie dotyka i jedyna droga to guzik z pytaniem niosącym liczbę.
 
 ---
+
+**Ślad za idącą figurą to odciski butów, a zielone kreski nie wracają (zlecenie MG, 12.09).**
+MG zażądał dwóch rzeczy naraz: obie zielone kreski mają zniknąć — ta rysowana pod idącą figurą
+i ta pod ciągniętą myszą — a zostawać mają **szare odciski**, te same, którymi 27j rysuje trasę
+planowaną. Powód jest z czytania mapy: figura zostawia za sobą dokładnie to, co obiecywała przed
+sobą, więc „tędy poszedł" i „tędy pójdzie" czyta się jednym odruchem, a różni je sam kolor.
+
+Jedna droga na trzy przypadki: `drawWalkedTrail(pool, graphics, points, scene, half, overFrom,
+alpha)`. Woła ją marsz (`drawMarchTrail`), ciągnięcie (`drawMoveOverlay`) i poświata po
+zatrzymaniu (`drawTrail`). `graphics` jest **zapasowym wyjściem**, nie drugą warstwą rysunku:
+glif buta leci „wystrzel i zapomnij", a ślad, którego nie widać, byłby gorszy niż kreska, którą
+MG kazał zdjąć.
+
+**Czerwień jest odpowiedzią na pytanie, a nie ozdobą.** Zlecenie brzmiało: „ślady mają być
+zabarwiane na czerwono w trybie turowym, aby gracz wiedział, jak daleko dojdzie jego postać
+w danej turze". Do 12.09 kreska ciągnięcia szła na czerwono **od końca do końca**, czyli mówiła
+„za daleko" bez powiedzenia *gdzie*. Granica szarości i czerwieni jest tą odpowiedzią, a liczy ją
+`trailOverFrom` w metrach **gruntu** (`metresLeft / costFactor`) — bo ślad leży na ziemi, a nie
+w budżecie. Marsz nosi tę granicę w `MarchState.overFrom`, osobno od `budget`: tamten stoi na
+`null` przy budżecie niewymuszanym (MG), a kolor śladu ma mówić prawdę także jemu.
+
+**Trzy pule odcisków i żadna nie pożycza sprite'ów sąsiadce.** `FootprintPool` (warstwa +
+`Sprite[]`, `visible` mówi ile jest w użyciu) stoi trzy razy: `routePrints` — trasa pod kursorem,
+`trailPrints` — ziemia pod figurą idącą **albo** ciągniętą (te dwie się wykluczają: klik
+w cokolwiek zatrzymuje marsz, a `updateWalkHover` odpuszcza przy `this.drag`), `fadingPrints` —
+poświata, która marsz przeżywa. Do 12.09 pula była jedna i wystarczała, bo poświata była linią;
+od kiedy i ona jest odciskami, jedna pula znaczyłaby, że najechanie myszą kasuje ślad dopiero co
+przebytej drogi. `TRAIL_FADE_MS` urósł z 1600 do 5000 ms, a gaśnie dopiero na **ostatniej
+ćwiartce** życia — ślad blaknący od pierwszej klatki przez większość swojego istnienia jest już
+ledwie widoczny, a właśnie wtedy pada pytanie, dla którego leży.
+
+**„Prowadzę tę figurę" mówi pogrubiona obwódka właściciela (zlecenie MG, 12.09).**
+Biały przerywany okrąg zniknął — MG zauważył go jako czwarty krąg na żetonie i spytał, po co jest,
+skoro figura ma już obwódkę. Odpowiedź brzmiała „to nie to samo": kolorowa obwódka mówi **czyja**
+jest figura (zielona — moja, błękitna — cudza gracza, czerwona — NPC) i nosi ją każdy żeton przez
+cały czas, a biały okrąg mówił **którą prowadzę**. MG zdecydował mimo to złożyć obie wiadomości
+w jedną kreskę.
+
+Rysuje ją `drawSelectionRing` — **na nakładce**, nie w `TokenNode`, i to jest jedyny sposób, w jaki
+to może działać: wszystko w `TokenNode` liczy się w pikselach **świata**, a stół ogląda mapę 4096 px
+w jednej piątej skali, gdzie kreska szeroka na trzy piksele świata ląduje na pół piksela ekranu
+(komentarz na górze `TokenNode.ts` mówi to od 16e). Nakładka mnoży grubość przez `overlayScale()`,
+więc obwódka przeżywa oddalenie — ale grubość ma **sufit liczony z kratki** (`extent * 0.14`),
+bo bez niego przy oddaleniu zjadłaby cały portret. Ciemna koszulka po obu stronach, jak pod
+obrączką PW: pogrubiona kreska leży wprost na rysunku mapy, a ten bywa i czarny, i piaskowy.
+Uchwyt obrotu został tam, gdzie był (`outerRadius + 22k`) — kropka na patyku trzyma się sama.
 
 **Kadr portretu na mapie mieszka przy obrazku, nie przy postaci (12.09).** Krążek żetonu jest
 kwadratem przyciętym do koła, a portret prawie zawsze prostokątem w pionie z twarzą w górnej
@@ -499,6 +547,7 @@ Cztery rzeczy, które łatwo zepsuć przy dokładaniu:
 
 ## serwer — Baza, protokół gniazda, pliki
 
+- **Blokada ruchu graczy po mapie** — `Scene.playerMoveLocked` (nowa scena **zamknięta**, migracja otworzyła stare), zwykłe pole `ScenePatch` (nie własne zdarzenie, bo niczego graczom nie zabiera), odmowa `MOVE_LOCKED` w `performTokenMove` **przed** `validateTokenMove` — żeby ścinała też klatkę pośrednią. MG nie jest nią związany nigdy.
 - **Przełączenie kampanii** — zdarzenie `campaign:activate` (przenosi wszystkie gniazda i odsyła `campaign:switch`), nigdy sam zapis w bazie.
 - **Limity wgrywanego obrazu** — `shared/src/uploads.ts` (serwer re-eksportuje); odmowa zawsze z pełnym wymaganiem, `accept` i sprawdzenie przed wysyłką z tego samego miejsca.
 - **Portret w nowym miejscu** — komponent `PortraitPicker` (pula kampanii); pliki wgrywa wyłącznie MG jedną trasą `POST /api/uploads/portrait-assets`, listę puli widzi każdy zalogowany.
@@ -508,6 +557,29 @@ Cztery rzeczy, które łatwo zepsuć przy dokładaniu:
 - **Rozgłoszenie, które rysuje `seq`, musi go u klienta skonsumować** — `if (chat().applySeq(broadcast.seq)) { socket?.emit('state:request'); return; }`. Pominięcie robi lukę i zbędny pełny resync całemu stołowi.
 
 ---
+
+**Blokada ruchu graczy po mapie jest polem sceny, nie własnym zdarzeniem (zlecenie MG, 12.09).**
+Powód jest z sesji, nie z reguł: drużyna, która dostanie mapę przed rozpoczęciem gry, obejdzie ją
+własną figurą i pozna zanim MG cokolwiek powie — a przy widoczności dynamicznej zdejmie przy okazji
+mgłę. `Scene.playerMoveLocked` jedzie więc zwykłą łatą `scene:update`, a **nie** własnym zdarzeniem
+jak `visibility`, `dark` czy `explore`: tamte trzy **odbierają graczom figury** w chwili
+przełączenia i muszą przefiltrować listy tokenów, a ta niczego nie zabiera i niczego nie pokazuje.
+Zmienia tylko odpowiedź na pytanie „wolno mi tę figurę podnieść".
+
+**Nowa scena wchodzi zamknięta, stare zostały otwarte.** Kolumna ma `@default(true)`, ale migracja
+`20260912154000_scene_player_move_lock` robi po niej `UPDATE "Scene" SET "playerMoveLocked" = false`
+— mapa dopiero budowana nie jest mapą, po której drużyna ma chodzić, ale zmiana zasad przy stole
+z dnia na dzień nie była tym, o co MG prosił. **Import sceny z pliku też wchodzi zamknięty**
+(`archive.ts`): mapa z archiwum jest dla stołu tak samo nieznana, jak dopiero narysowana. To samo
+domyślne ustawienie kosztowało 57 czerwonych testów w dziewięciu zestawach serwera — każdy, który
+każe graczowi ruszyć figurą, musi teraz **otworzyć scenę zaraz po `scene:create`**.
+
+**Odmowa stoi w `performTokenMove`, nie w `validateTokenMove`** (`realtime/tokens.ts`), tuż za
+sprawdzeniem właściciela. Tamto pyta o Turę i o ściany, więc odpowiada dopiero na upuszczeniu
+(`final`) — a blokada ma odrzucić **także pojedynczą klatkę ciągnięcia**, inaczej mapę dałoby się
+przejść bez ani jednego `final`. Kod odmowy to `MOVE_LOCKED`; zdanie („MG nie otworzył jeszcze tej
+mapy do ruchu.") stoi u klienta w trzech miejscach naraz — `moveErrorText`, tabela `socket.ts`
+i stała `MOVE_LOCKED_NOTE` w rendererze — bo kursor mówi „nie" jeszcze przed kliknięciem.
 
 **Aktywną kampanię przełącza `campaign:activate`, nie zapis w bazie.** Zdarzenie przenosi
 **wszystkie** podpięte gniazda (pokoje, scena, `state:sync`) i odsyła `campaign:switch`; trasa
@@ -1287,6 +1359,7 @@ jako przeciętny człowiek po pięć — błąd znaleziony przy pierwszym urucho
 
 ## karta — Karta postaci: układ, panele, pola
 
+- **Wielkość liczby na karcie ustawia się z prefiksem `.sheet-window`** — skóra przełącznika (`.sheet-window .cp-step`, 0-2-0) niesie `font: inherit`, więc goła klasa pola (0-1-0) przegrywa kaskadę i liczba zostaje przy 16 px. Cechy: `.cp-stats { align-self: stretch }` + `.cp-stat { flex: 1 }` ciągną kolumnę na całą stronę, a wąskie okno ma **własny** blok `@container` **pod** regułami bazowymi.
 - **Lista czytana z serwera odświeża się na STEMPEL karty, nie na liczbę, która ją opisuje** — rejestry (awansów z 29a, eurodolców z 23b) czyta `useEffect` na `[characterId, open, savedAt]`, gdzie `savedAt` to `character.updatedAt`. Saldo wyprzedza żądanie (optymistyczna łata), a warunek `history === null` gubi wiersze dopisane przez MG. Strażnik: `advancement-history.test.ts`.
 - **Liczbę na karcie i w oknach gry zmienia się strzałkami, nie wpisywaniem** — `NumberStepper` (wartość jako napis, strzałki w pionie przy niej, przytrzymanie powtarza); skóra z kontekstu: pole z ramką w oknie, płaski napis na karcie. Wpisywane zostają liczby >99 (PD, ILOŚĆ, PW tokenu, eurodolce, edytory) **oraz pola, w których puste znaczy coś innego niż zero** (OB celu, inicjatywa, generator sieci, sztuk w ekwipunku).
 - **Nowy panel Zdolności Roli dopisuje się do `ROLE_ABILITY_PANEL_IDS`** — pas „Zdolność Specjalna” idzie przez całą szerokość siatki strony pierwszej (`grid-column: 1 / -1`), jak „Broń i pancerz”; w kolumnie tożsamości (15 rem, nierozciągalna) panele stać nie mogą.
@@ -1294,6 +1367,31 @@ jako przeciętny człowiek po pięć — błąd znaleziony przy pierwszym urucho
 - **Odmowa zapisu karty** — `characterStore.serverViews` (cień widoku serwera) przywraca kartę, gdy nic nie jest w locie, a `saveErrors` + `characterSaveErrorText` piszą powód w pasku „issues"; zdania kodów silnika mieszkają w `shared` obok typu problemu.
 
 ---
+
+**Liczby na karcie mają wypełniać swoje pola, a ustawia się je z prefiksem `.sheet-window`
+(zlecenie MG, 12.09).** Zgłoszenie brzmiało: „liczba określająca wartość INT, mimo że ma w polu
+dużo miejsca, jest niewspółmiernie mała". Pomiar to potwierdził — pudełko Cechy miało 77 × 39 px,
+liczba stała w 16 px, czyli **mniej niż etykieta pola obok**, a cała kolumna Cech kończyła się
+w połowie karty, zostawiając pod sobą pół tysiąca pikseli czerwieni.
+
+Trzy rzeczy z tej naprawy obowiązują dalej:
+
+- **Kolumna Cech ciągnie się na całą wysokość strony.** `.cp-stats { align-self: stretch }` łamie
+  `align-items: start` siatki `.sheet-page` **tylko dla tej jednej kolumny**, a `.cp-stat
+  { flex: 1 1 auto }` rozdziela zysk po równo. Pudełko ma dziś ~94 px, liczba 2,6 rem.
+- **Wąskie okno ma własny blok `@container (max-width: 700px)` — i musi stać POD regułami
+  bazowymi.** Cechy schodzą tam w rząd z zawijaniem (kafel ~4,2 rem) i liczba schodzi do 1,5 rem,
+  bo 2,6 rem nie zmieściłoby się obok strzałek, a pole ma `overflow: hidden`, więc obcięłoby ją
+  bez śladu. Blok z góry pliku przegrywał z bazą przy równej wadze selektora.
+- **Liczba w polu = `.sheet-window .cp-nazwa`, nigdy samo `.cp-nazwa`.** Patrz pułapka obok:
+  skóra przełącznika liczbowego niesie `font: inherit` i wygrywa kaskadę.
+
+Przy okazji poszły w górę pozostałe liczby, które stały w polu z zapasem: pule
+(`.cp-pool-value` 1,15 → 1,7 rem, szerokość pola w `em`, żeby rosła razem z krojem), progi
+(`.cp-pool--flat` 1 → 1,35 rem), komórki Umiejętności (0,8 → 0,95 rem, BAZA 0,85 → 1,05 rem),
+pola tekstowe arkusza (0,85 → 0,95 rem), tabele (0,82 → 0,88 rem), belki i zakładki.
+**Nazwy Umiejętności zostały przy 0,8 rem** i to jest decyzja: wypełniają swoje pole na szerokość,
+a większy krój kończyłby „Odporność na tortury/narkotyki" wielokropkiem.
 
 **Lista czytana z serwera odświeża się na stempel karty, nie na liczbę, która ją opisuje (09.09, oględziny 29a).**
 Rejestr awansów z 29a i rejestr eurodolców z 23b są tą samą rzeczą: krótką listą, którą serwer

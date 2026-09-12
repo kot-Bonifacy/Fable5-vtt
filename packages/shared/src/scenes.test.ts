@@ -75,6 +75,19 @@ describe('sanitizeScenePatch', () => {
     expect(sanitizeScenePatch({ background: null })).toEqual({ background: null });
   });
 
+  /**
+   * Blokada ruchu graczy (zlecenie MG, 12.09.2026) — zwykłe pole łaty, ale
+   * **tylko** logiczne. „false" jako napis jest w JavaScripcie prawdą, więc
+   * pole przyjmowane na wiarę potrafiłoby otworzyć mapę wtedy, gdy prosi się
+   * o jej zamknięcie.
+   */
+  it('przyjmuje blokadę ruchu wyłącznie jako wartość logiczną', () => {
+    expect(sanitizeScenePatch({ playerMoveLocked: true })).toEqual({ playerMoveLocked: true });
+    expect(sanitizeScenePatch({ playerMoveLocked: false })).toEqual({ playerMoveLocked: false });
+    expect(sanitizeScenePatch({ playerMoveLocked: 'false' })).toEqual({});
+    expect(sanitizeScenePatch({ playerMoveLocked: 1 })).toEqual({});
+  });
+
   it('ignores NaN and non-numeric numbers', () => {
     expect(sanitizeScenePatch({ width: Number.NaN, metersPerSquare: '2' })).toEqual({});
   });

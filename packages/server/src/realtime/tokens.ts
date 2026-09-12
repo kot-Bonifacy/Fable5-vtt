@@ -1422,6 +1422,14 @@ export async function performTokenMove(
     // tokens (existence must not leak); owning a visible token is required.
     if (!isGm && token.hidden) throw new RealtimeError('TOKEN_NOT_FOUND');
     if (!isGm && token.ownerId !== user.id) throw new RealtimeError('FORBIDDEN');
+    // Mapa zamknięta przez MG (zlecenie MG, 12.09): drużyna, która dostanie
+    // planszę przed rozpoczęciem gry, obejdzie ją własną figurą i pozna zanim
+    // MG cokolwiek powie — a przy widoczności dynamicznej zdejmie przy okazji
+    // mgłę. Sprawdzane **tu**, a nie w `validateTokenMove`: tamto pyta o Turę
+    // i o ściany, więc odpowiada dopiero na upuszczeniu (`final`), a blokada ma
+    // odrzucić także pojedynczą klatkę ciągnięcia. MG nie jest nią związany
+    // nigdy — tak samo, jak nie jest związany budżetem Tury (14b).
+    if (!isGm && scene.playerMoveLocked) throw new RealtimeError('MOVE_LOCKED');
     if (typeof payload?.x !== 'number' || typeof payload?.y !== 'number') {
       throw new RealtimeError('BAD_REQUEST');
     }

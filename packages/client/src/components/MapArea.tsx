@@ -187,6 +187,8 @@ function moveErrorText(code: string | undefined): string {
       return 'Ruch odrzucony — sprawdź kartę odmowy na czacie.';
     case 'FORBIDDEN':
       return 'Nie możesz ruszać tym tokenem.';
+    case 'MOVE_LOCKED':
+      return 'MG nie otworzył jeszcze tej mapy do ruchu.';
     case 'TOKEN_NOT_FOUND':
       return 'Nie znaleziono tokenu — odśwież stronę.';
     default:
@@ -395,8 +397,12 @@ function walkRefusalFor(
   combat: CombatView | null,
   token: TokenView | undefined,
   isGm: boolean,
+  scene: SceneView | null,
 ): string | null {
   if (!tokenId || isGm) return null;
+  // Mapa zamknięta przez MG (12.09) wyprzedza wszystko inne: dopóki jej nie
+  // otworzy, ani Tura, ani stan figury nie mają nic do rzeczy.
+  if (scene?.playerMoveLocked) return 'MG nie otworzył jeszcze tej mapy do ruchu.';
   const blocked = token ? cpredMovementBlock(token.statuses) : null;
   if (blocked) return blocked;
   // „Not your turn" is asked in exactly one place (stage 16f): the action bar
@@ -1088,6 +1094,7 @@ export function MapArea() {
         useCombatStore.getState().combat,
         selected ? useTokenStore.getState().tokens[selected] : undefined,
         useAuthStore.getState().user?.role === ROLE_GM,
+        useSceneStore.getState().scene,
       ),
     );
   }, []);
@@ -1098,10 +1105,15 @@ export function MapArea() {
     const unsubSelection = useSelectionStore.subscribe(pushWalkRefusal);
     const unsubCombat = useCombatStore.subscribe(pushWalkRefusal);
     const unsubTokens = useTokenStore.subscribe(pushWalkRefusal);
+    // Blokada ruchu jest cechą sceny (12.09), więc przekręcenie jej przez MG
+    // musi dojść tą samą drogą, co powalenie figury — inaczej gracz miałby
+    // kursor „nie wolno" jeszcze długo po otwarciu mapy.
+    const unsubScene = useSceneStore.subscribe(pushWalkRefusal);
     return () => {
       unsubSelection();
       unsubCombat();
       unsubTokens();
+      unsubScene();
     };
   }, [ready, pushWalkRefusal]);
 

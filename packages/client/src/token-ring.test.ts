@@ -103,25 +103,46 @@ describe('żaden okrąg nie wchodzi na portret', () => {
 });
 
 /**
- * Obrączka zaznaczenia i pierścień grupy rysują się w `MapRenderer`, na
- * warstwie nakładki, w pikselach **ekranu** — więc ich odstęp od figury topnieje
+ * Pierścień grupy i uchwyt obrotu rysują się w `MapRenderer`, na warstwie
+ * nakładki, w pikselach **ekranu** — więc ich odstęp od figury topnieje
  * w pikselach świata wraz ze zbliżeniem. Przy zoomie 2 dawne `half + 8 * k`
  * siadało dokładnie na pasku życia. Obie muszą więc pytać `node.outerRadius`.
  */
 describe('nakładki liczą się od brzegu oprawy, nie od kratki', () => {
   const RENDERER = readFileSync(join(import.meta.dirname, 'map', 'MapRenderer.ts'), 'utf8');
 
-  it.each(['drawSelectionRing', 'drawGroupRings', 'facingKnob'])(
-    '`%s` pyta o `outerRadius`',
-    (method) => {
-      // `private`, bo samo imię metody trafia najpierw w jej wywołanie —
-      // `drawSelectionRing` woła się z dziewięciu miejsc w tym pliku.
-      const start = RENDERER.indexOf(`private ${method}(`);
-      expect(start, `nie znalazłem ${method} w MapRenderer.ts`).toBeGreaterThan(0);
-      const body = RENDERER.slice(start, start + 1600);
-      expect(body).toContain('node.outerRadius');
-    },
-  );
+  it.each(['drawGroupRings', 'facingKnob'])('`%s` pyta o `outerRadius`', (method) => {
+    // `private`, bo samo imię metody trafia najpierw w jej wywołanie.
+    const start = RENDERER.indexOf(`private ${method}(`);
+    expect(start, `nie znalazłem ${method} w MapRenderer.ts`).toBeGreaterThan(0);
+    const body = RENDERER.slice(start, start + 1600);
+    expect(body).toContain('node.outerRadius');
+  });
+
+  /**
+   * „Prowadzę tę figurę" mówi od 12.09 **pogrubiona obwódka właściciela**, a nie
+   * osobny biały przerywany okrąg (zlecenie MG: „skoro obwódka i tak mówi, że to
+   * ta figura"). Stąd inna geometria niż u sąsiadów wyżej: podświetlenie leży
+   * dokładnie **na** obwódce, więc pyta `ownerRingRadius`, a nie brzeg oprawy.
+   *
+   * Dwie rzeczy są tu nieprzypadkowe i obie łatwo cofnąć bez zauważenia.
+   * Po pierwsze **kolor jest z figury** (`ownerRingTint`) — biel wróciłaby jako
+   * czwarty kolor na żetonie, a to właśnie ona została zdjęta. Po drugie
+   * **grubość ma sufit liczony z kratki**: bez niego kreska skalowana ekranem
+   * pożarłaby przy oddaleniu cały portret, a bez skalowania w ogóle znikałaby
+   * przy stole (patrz komentarz na górze `TokenNode.ts`).
+   */
+  it('„prowadzę tę figurę" rysuje pogrubioną obwódkę właściciela, nie biały okrąg', () => {
+    const start = RENDERER.indexOf('private drawSelectionRing(');
+    expect(start, 'nie znalazłem drawSelectionRing w MapRenderer.ts').toBeGreaterThan(0);
+    const body = RENDERER.slice(start, start + 1600);
+    expect(body, 'podświetlenie zeszło z obwódki właściciela').toContain('node.ownerRingRadius');
+    expect(body, 'podświetlenie nie bierze koloru z figury').toContain('node.ownerRingTint');
+    expect(body, 'grubość bez sufitu — przy oddaleniu zje portret').toContain('Math.min(');
+    expect(RENDERER, 'wrócił biały przerywany okrąg zaznaczenia').not.toContain(
+      'SELECT_RING_DASHES',
+    );
+  });
 });
 
 describe('oprawa figury', () => {

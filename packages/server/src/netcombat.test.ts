@@ -392,6 +392,9 @@ describe('walka w Sieci na żywych gniazdach', () => {
       'scene',
     );
     sceneId = scene.id;
+    // Mapa otwarta dla graczy (12.09): nowa scena wchodzi **zamknięta**, a ten
+    // zestaw jest o ruchu figur, nie o blokadzie.
+    await emitAck(gm, 'scene:update', { sceneId, patch: { playerMoveLocked: false } });
     await emitAck(gm, 'scene:visibility', { sceneId, visibility: 'open' });
     const activated = waitFor(player, 'scene:activate');
     await emitAck(gm, 'scene:activate', { sceneId });

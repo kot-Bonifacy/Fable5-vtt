@@ -602,6 +602,21 @@ model Scene {
   visibility String @default("fog")
 
   /**
+   * Czy gracze mają ręce związane na tej mapie (zlecenie MG, 12.09.2026)?
+   *
+   * Powód jest z sesji, nie z reguł: drużyna, która dostanie mapę przed
+   * rozpoczęciem gry, obejdzie ją własną figurą i pozna ją zanim MG cokolwiek
+   * powie — a przy widoczności dynamicznej zdejmie przy okazji mgłę. Blokada
+   * dotyczy **wyłącznie graczy**; MG nie jest nią nigdy związany, tak samo jak
+   * budżetem Tury (14b).
+   *
+   * Domyślnie **zamknięta**, bo nowa scena to zwykle mapa dopiero budowana —
+   * ale migracja odblokowuje wszystkie sceny, które już istniały: zmiana
+   * nawyków przy stole z dnia na dzień nie jest tym, o co MG prosił.
+   */
+  playerMoveLocked Boolean @default(true)
+
+  /**
    * Is it dark in here (stage 18b)? Only meaningful while `visibility` is
    * "dynamic": darkness limits what a *token* sees, and the other two modes ask
    * tokens nothing. Off keeps every existing scene exactly as it was.
